@@ -570,28 +570,23 @@ function mostrarResetErro(msg) {
 }
 
 async function redefinirSenha() {
-    const username   = document.getElementById("r-usuario").value.trim();
-    const senhaAtual = document.getElementById("r-senha-atual").value;
+    const username   = _resetForcado ? _forcedUser : document.getElementById("r-usuario").value.trim();
+    const senhaAtual = _resetForcado ? _forcedPass : document.getElementById("r-senha-atual").value;
     const senhaNova  = document.getElementById("r-senha-nova").value;
     const senhaConf  = document.getElementById("r-senha-conf").value;
     const btn = document.getElementById("resetBtn");
 
-    if (!username || !senhaAtual || !senhaNova || !senhaConf) {
+    if (!_resetForcado && (!username || !senhaAtual)) {
         mostrarResetErro("Preencha todos os campos."); return;
+    }
+    if (!senhaNova || !senhaConf) {
+        mostrarResetErro("Preencha a nova senha e a confirmação."); return;
     }
     if (senhaNova !== senhaConf) {
         mostrarResetErro("As senhas novas não coincidem."); return;
     }
     if (senhaNova.length < 4) {
         mostrarResetErro("A nova senha deve ter pelo menos 4 caracteres."); return;
-    }
-    if (senhaNova === "GC2026") {
-        mostrarResetErro("Esta senha não pode ser utilizada. Escolha uma senha diferente."); return;
-    }
-
-    if (_resetForcado) {
-        username   = _forcedUser;
-        senhaAtual = _forcedPass;
     }
 
     btn.disabled = true;
@@ -612,6 +607,7 @@ async function redefinirSenha() {
             setTimeout(() => {
                 _resetForcado = false;
                 document.getElementById("resetPanel").classList.remove("active");
+                if (username) document.getElementById("usuario").value = username;
             }, 2000);
             return;
         }
