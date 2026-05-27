@@ -531,26 +531,55 @@ body {
     .home-actions  { grid-template-columns: 1fr 1fr; }
 }
 
-/* ===== ADMIN ENTREGADORES ===== */
-.adm-ent-lista {
-    display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px;
+/* ===== ADMIN SEARCH ENTREGADOR ===== */
+.adm-search-wrap { position: relative; margin-bottom: 20px; }
+.adm-search-input-area {
+    display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+    background: rgba(15,15,20,0.8); border: 1px solid rgba(58,134,255,0.25);
+    border-radius: 10px; transition: border-color 0.2s, box-shadow 0.2s;
 }
-.adm-ent-chip {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 12px 16px;
-    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
-    border-radius: 10px; cursor: pointer; transition: all 0.18s; user-select: none;
+.adm-search-input-area:focus-within {
+    border-color: #3a86ff; box-shadow: 0 0 0 3px rgba(58,134,255,0.1);
 }
-.adm-ent-nome {
-    font-size: 14px; font-weight: 500; color: #aab4c8; transition: color 0.18s;
+.adm-search-input-area svg {
+    width: 15px; height: 15px; stroke: #4a6a8a; fill: none;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;
 }
-.adm-ent-valor {
-    font-size: 14px; font-weight: 700; color: #34d399; white-space: nowrap;
+.adm-search-input-area input {
+    flex: 1; background: none; border: none; outline: none;
+    color: #f1f5f9; font-size: 14px; font-family: 'Inter', sans-serif;
 }
-.adm-ent-chip:hover  { background: rgba(58,134,255,0.1); border-color: rgba(58,134,255,0.4); }
-.adm-ent-chip:hover .adm-ent-nome { color: #fff; }
-.adm-ent-chip.active { background: rgba(58,134,255,0.18); border-color: #3a86ff; }
-.adm-ent-chip.active .adm-ent-nome { color: #fff; }
+.adm-search-input-area input::placeholder { color: #4a6a8a; }
+.adm-selected-chip {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 14px;
+    background: rgba(58,134,255,0.1); border: 1px solid rgba(58,134,255,0.4);
+    border-radius: 10px;
+}
+.adm-selected-chip span { font-size: 14px; font-weight: 600; color: #f1f5f9; }
+.adm-selected-chip button {
+    background: none; border: none; cursor: pointer; color: #4a6a8a;
+    font-size: 20px; line-height: 1; padding: 0 2px; transition: color 0.2s;
+}
+.adm-selected-chip button:hover { color: #ef4444; }
+.adm-dropdown {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 50;
+    background: #0f1923; border: 1px solid rgba(58,134,255,0.2);
+    border-radius: 10px; overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    max-height: 280px; overflow-y: auto;
+}
+.adm-dropdown-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 14px; cursor: pointer;
+    border-bottom: 1px solid rgba(58,134,255,0.07); transition: background 0.15s;
+}
+.adm-dropdown-item:last-child { border-bottom: none; }
+.adm-dropdown-item:hover { background: rgba(58,134,255,0.12); }
+.adm-dropdown-item-nome { font-size: 13.5px; font-weight: 500; color: #aab4c8; }
+.adm-dropdown-item:hover .adm-dropdown-item-nome { color: #fff; }
+.adm-dropdown-item-valor { font-size: 13px; font-weight: 700; color: #34d399; white-space: nowrap; }
+.adm-dropdown-empty { padding: 16px 14px; font-size: 13px; color: #4a6a8a; text-align: center; }
 </style>
 </head>
 <body>
@@ -867,8 +896,20 @@ body {
                 <div class="fechamento-empty" id="adm-fech-empty">Selecione o mês, ano e quinzena para ver os entregadores.</div>
 
                 <div id="adm-ent-section" style="display:none">
-                    <div class="painel-section-title" style="margin-bottom:10px">Entregadores</div>
-                    <div class="adm-ent-lista" id="adm-ent-lista"></div>
+                    <div class="adm-search-wrap" id="adm-search-wrap">
+                        <div class="adm-search-input-area" id="adm-search-input-area">
+                            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="adm-search-input" placeholder="Pesquisar entregador..."
+                                   oninput="filtrarEntregadores()" onfocus="abrirDropdownEntregadores()">
+                        </div>
+                        <div class="adm-selected-chip" id="adm-selected-chip" style="display:none">
+                            <span id="adm-selected-nome"></span>
+                            <button onclick="limparSelecaoEntregador()">×</button>
+                        </div>
+                        <div class="adm-dropdown" id="adm-dropdown" style="display:none">
+                            <div id="adm-dropdown-lista"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="adm-fech-data" style="display:none">
@@ -1344,11 +1385,13 @@ let _admFMes = new Date().getMonth() + 1;
 let _admFAno = new Date().getFullYear();
 let _admFQuinzena = null;
 let _admFEntregador = "";
+let _admEntregadoresLista = [];
 
 function abrirAdminFechamentos(event) {
     event.preventDefault();
     _admFQuinzena = null;
     _admFEntregador = "";
+    _admEntregadoresLista = [];
     document.getElementById("adm-btn-1q").classList.remove("active");
     document.getElementById("adm-btn-2q").classList.remove("active");
     document.getElementById("adm-fech-empty").innerText = "Selecione o mês, ano e quinzena para ver os entregadores.";
@@ -1377,6 +1420,7 @@ function selecionarQuinzenaAdmin(q) {
     _admFAno = parseInt(document.getElementById("adm-fech-ano").value);
     _admFQuinzena = q;
     _admFEntregador = "";
+    _admEntregadoresLista = [];
     document.getElementById("adm-btn-1q").classList.toggle("active", q === 1);
     document.getElementById("adm-btn-2q").classList.toggle("active", q === 2);
     document.getElementById("adm-ent-section").style.display = "none";
@@ -1395,14 +1439,12 @@ function selecionarQuinzenaAdmin(q) {
             empty.innerText = body.error || "Nenhum fechamento encontrado para este período.";
             return;
         }
+        _admEntregadoresLista = body.entregadores;
         empty.style.display = "none";
-        const lista = document.getElementById("adm-ent-lista");
-        lista.innerHTML = body.entregadores.map(e =>
-            `<div class="adm-ent-chip" data-nome="${e.nome.replace(/"/g,'&quot;')}" onclick="selecionarEntregadorAdmin(this.dataset.nome)">
-                <span class="adm-ent-nome">${e.nome}</span>
-                <span class="adm-ent-valor">${e.total_receber}</span>
-            </div>`
-        ).join("");
+        document.getElementById("adm-search-input").value = "";
+        document.getElementById("adm-search-input-area").style.display = "";
+        document.getElementById("adm-selected-chip").style.display = "none";
+        document.getElementById("adm-dropdown").style.display = "none";
         document.getElementById("adm-ent-section").style.display = "";
     })
     .catch(() => {
@@ -1410,14 +1452,57 @@ function selecionarQuinzenaAdmin(q) {
     });
 }
 
+function _renderDropdown(lista) {
+    const el = document.getElementById("adm-dropdown-lista");
+    if (!lista.length) {
+        el.innerHTML = `<div class="adm-dropdown-empty">Nenhum entregador encontrado</div>`;
+        return;
+    }
+    el.innerHTML = lista.map(e =>
+        `<div class="adm-dropdown-item" data-nome="${e.nome.replace(/"/g,'&quot;')}" onclick="selecionarEntregadorAdmin(this.dataset.nome)">
+            <span class="adm-dropdown-item-nome">${e.nome}</span>
+            <span class="adm-dropdown-item-valor">${e.total_receber}</span>
+        </div>`
+    ).join("");
+}
+
+function abrirDropdownEntregadores() {
+    _renderDropdown(_admEntregadoresLista);
+    document.getElementById("adm-dropdown").style.display = "";
+}
+
+function filtrarEntregadores() {
+    const q = document.getElementById("adm-search-input").value.toLowerCase();
+    const filtrados = _admEntregadoresLista.filter(e => e.nome.toLowerCase().includes(q));
+    _renderDropdown(filtrados);
+    document.getElementById("adm-dropdown").style.display = "";
+}
+
 function selecionarEntregadorAdmin(nome) {
     _admFEntregador = nome;
-    document.querySelectorAll(".adm-ent-chip").forEach(c => {
-        const n = c.querySelector(".adm-ent-nome");
-        c.classList.toggle("active", n && n.textContent === nome);
-    });
+    document.getElementById("adm-selected-nome").textContent = nome;
+    document.getElementById("adm-search-input-area").style.display = "none";
+    document.getElementById("adm-selected-chip").style.display = "";
+    document.getElementById("adm-dropdown").style.display = "none";
     _carregarPainelAdmin();
 }
+
+function limparSelecaoEntregador() {
+    _admFEntregador = "";
+    document.getElementById("adm-search-input").value = "";
+    document.getElementById("adm-search-input-area").style.display = "";
+    document.getElementById("adm-selected-chip").style.display = "none";
+    document.getElementById("adm-fech-data").style.display = "none";
+    document.getElementById("adm-fech-empty").style.display = "none";
+}
+
+document.addEventListener("click", function(e) {
+    const wrap = document.getElementById("adm-search-wrap");
+    if (wrap && !wrap.contains(e.target)) {
+        const dd = document.getElementById("adm-dropdown");
+        if (dd) dd.style.display = "none";
+    }
+});
 
 function _carregarPainelAdmin() {
     const empty = document.getElementById("adm-fech-empty");
