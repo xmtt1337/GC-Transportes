@@ -1480,6 +1480,7 @@ function _carregarPainelAdmin() {
 
         empty.style.display = "none";
         data.style.display  = "";
+        data.scrollIntoView({ behavior: "smooth", block: "start" });
     })
     .catch(() => {
         empty.innerText = "Erro ao conectar com o servidor.";
