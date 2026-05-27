@@ -1398,7 +1398,7 @@ function selecionarQuinzenaAdmin(q) {
         empty.style.display = "none";
         const lista = document.getElementById("adm-ent-lista");
         lista.innerHTML = body.entregadores.map(e =>
-            `<div class="adm-ent-chip" onclick="selecionarEntregadorAdmin(${JSON.stringify(e.nome)})">
+            `<div class="adm-ent-chip" data-nome="${e.nome.replace(/"/g,'&quot;')}" onclick="selecionarEntregadorAdmin(this.dataset.nome)">
                 <span class="adm-ent-nome">${e.nome}</span>
                 <span class="adm-ent-valor">${e.total_receber}</span>
             </div>`
