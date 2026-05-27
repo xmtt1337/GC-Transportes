@@ -2,305 +2,428 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Login</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Login · GC Transportes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="img/logobranca.png" type="image/png">
-<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
-
-<script src="https://unpkg.com/feather-icons"></script>
-
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Poppins', sans-serif;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
 body {
-    min-width: 320px;
-    min-height: 480px;
-    height: 100vh;
+    min-height: 100dvh;
     display: flex;
-    justify-content: center;
-    align-items: center;
-    background: linear-gradient(135deg, #0f0f14, #0d1b2a);
+    background: #07090e;
+}
+
+/* ──── PAINEL ESQUERDO ──── */
+.login-left {
+    width: 52%;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 48px;
+    background: linear-gradient(150deg, #0d1b2a 0%, #0a1520 60%, #060e17 100%);
     overflow: hidden;
 }
 
-body::before {
+.left-glow-1 {
+    position: absolute;
+    width: 560px; height: 560px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(58,134,255,0.13) 0%, transparent 65%);
+    top: -160px; left: -160px;
+    pointer-events: none;
+}
+.left-glow-2 {
+    position: absolute;
+    width: 420px; height: 420px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(58,134,255,0.08) 0%, transparent 65%);
+    bottom: -100px; right: -80px;
+    pointer-events: none;
+}
+.left-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(58,134,255,0.07);
+    pointer-events: none;
+}
+.left-ring-1 { width: 320px; height: 320px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+.left-ring-2 { width: 520px; height: 520px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+.left-ring-3 { width: 720px; height: 720px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+
+.left-content {
+    position: relative; z-index: 1;
+    text-align: center;
+    animation: fadeUp 0.9s ease forwards;
+}
+
+.left-logo {
+    width: 110px;
+    margin-bottom: 32px;
+    filter: drop-shadow(0 0 36px rgba(58,134,255,0.35));
+}
+
+.left-title {
+    font-size: 30px;
+    font-weight: 700;
+    color: #f1f5f9;
+    letter-spacing: -0.4px;
+    margin-bottom: 12px;
+}
+
+.left-tagline {
+    font-size: 14px;
+    color: #3d5a78;
+    line-height: 1.7;
+    font-weight: 400;
+}
+
+.left-divider {
+    width: 40px; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(58,134,255,0.5), transparent);
+    margin: 24px auto;
+    border-radius: 2px;
+}
+
+.left-chips {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.left-chip {
+    padding: 5px 14px;
+    background: rgba(58,134,255,0.08);
+    border: 1px solid rgba(58,134,255,0.15);
+    border-radius: 20px;
+    font-size: 12px;
+    color: #3a6699;
+    font-weight: 500;
+}
+
+/* ──── PAINEL DIREITO ──── */
+.login-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 52px;
+    background: #0b0f17;
+    position: relative;
+}
+
+.login-right::before {
     content: "";
     position: absolute;
-    width: 1600px;
-    height: 1600px;
-    background: radial-gradient(circle, rgba(58,134,255,0.15) 0%, transparent 60%);
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    inset: 0;
+    background: linear-gradient(135deg, rgba(58,134,255,0.025) 0%, transparent 55%);
     pointer-events: none;
 }
 
-.login-card {
-    background: rgba(27, 38, 59, 0.9);
-    padding: 50px 40px;
-    border-radius: 18px;
+.form-wrapper {
     width: 100%;
-    max-width: 400px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-    text-align: center;
-    border: 1px solid rgba(58,134,255,0.2);
-    backdrop-filter: blur(20px);
-    animation: fadeIn 0.8s ease forwards;
+    max-width: 360px;
+    position: relative; z-index: 1;
+    animation: fadeUp 0.7s ease 0.1s both;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-20px);}
-    to { opacity: 1; transform: translateY(0);}
-}
-
-.login-card h1 {
-    margin-bottom: 30px;
-    font-size: 26px;
-    color: #f1f5f9;
+.form-eyebrow {
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 1px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #3a86ff;
+    margin-bottom: 10px;
 }
 
-.login-card input {
-    width: 100%;
-    padding: 14px 16px;
-    margin-bottom: 20px;
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.08);
-    font-size: 15px;
-    background: #0f0f14;
+.form-title {
+    font-size: 28px;
+    font-weight: 700;
     color: #f1f5f9;
-    transition: all 0.3s ease;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
 }
 
-.login-card input:focus {
-    border-color: #3a86ff;
-    box-shadow: 0 0 10px rgba(58,134,255,0.5);
+.form-sub {
+    font-size: 14px;
+    color: #2e4560;
+    margin-bottom: 34px;
+    line-height: 1.5;
+}
+
+.field { margin-bottom: 18px; }
+
+.field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #4a6a8a;
+    margin-bottom: 7px;
+}
+
+.input-wrap { position: relative; }
+
+.input-wrap .field-icon {
+    position: absolute; left: 14px; top: 50%;
+    transform: translateY(-50%);
+    width: 16px; height: 16px;
+    stroke: #2a3e55; fill: none;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    pointer-events: none;
+    transition: stroke 0.2s;
+}
+
+.input-wrap input {
+    width: 100%;
+    padding: 13px 14px 13px 42px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    font-size: 15px;
+    color: #e2e8f0;
+    font-family: 'Inter', sans-serif;
     outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
-.senha-container {
-    position: relative;
-}
+.input-wrap input::placeholder { color: #1e2e40; }
 
-.senha-container input {
-    padding-right: 50px;
+.input-wrap input:focus {
+    border-color: rgba(58,134,255,0.55);
+    background: rgba(58,134,255,0.04);
+    box-shadow: 0 0 0 3px rgba(58,134,255,0.1);
 }
+.input-wrap input:focus + .field-icon,
+.input-wrap:focus-within .field-icon { stroke: #3a86ff; }
 
 .toggle-senha {
-    position: absolute;
-    right: 16px;
-    top: 37%;
+    position: absolute; right: 12px; top: 50%;
     transform: translateY(-50%);
-    cursor: pointer;
-    color: rgba(241, 245, 249, 0.5); /* mais apagado */
-    transition: 0.3s;
+    background: none; border: none; cursor: pointer; padding: 4px;
+    display: flex; align-items: center;
+    color: #2a3e55; transition: color 0.2s;
+    -webkit-tap-highlight-color: transparent;
 }
-
-.toggle-senha:hover {
-    color: #3a86ff;
-}
-
-.login-card button {
-    width: 100%;
-    padding: 14px;
-    border: none;
-    border-radius: 10px;
-    background: linear-gradient(90deg, #3a86ff, #2667ff);
-    color: #ffffff;
-    font-size: 16px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    margin-top: 10px;
-}
-
-.login-card button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(58,134,255,0.4);
-}
-
-.forgot {
-    margin-top: 18px;
-    font-size: 14px;
+.toggle-senha:hover { color: #3a86ff; }
+.toggle-senha svg {
+    width: 16px; height: 16px;
+    stroke: currentColor; fill: none;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    pointer-events: none;
 }
 
 .erro-msg {
-    opacity: 0;
-    max-height: 0;
-    overflow: hidden;
-    background: rgba(255, 59, 59, 0.1);
-    color: #ff4d4d;
-    border: 1px solid rgba(255, 59, 59, 0.3);
-    padding: 0 10px;
-    border-radius: 8px;
-    font-size: 14px;
-    margin-bottom: 0;
-    text-align: left;
-    transition: all 0.4s ease;
+    display: flex; align-items: center; gap: 9px;
+    opacity: 0; max-height: 0; overflow: hidden;
+    background: rgba(239,68,68,0.07);
+    color: #f87171;
+    border: 1px solid rgba(239,68,68,0.18);
+    padding: 0 12px; border-radius: 10px;
+    font-size: 13px; margin-bottom: 0;
+    transition: all 0.35s ease;
 }
+.erro-msg.show { opacity: 1; max-height: 60px; padding: 10px 12px; margin-bottom: 18px; }
+.erro-msg svg { flex-shrink: 0; width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-.erro-msg.show {
-    opacity: 1;
-    max-height: 100px;
-    padding: 10px;
-    margin-bottom: 15px;
+.login-btn {
+    width: 100%; padding: 14px;
+    background: #3a86ff;
+    border: none; border-radius: 12px;
+    color: #fff; font-size: 15px; font-weight: 600;
+    cursor: pointer; font-family: 'Inter', sans-serif;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 6px;
+    letter-spacing: 0.01em;
 }
-
-
-.forgot a {
-    color: #3a86ff;
-    text-decoration: none;
-    transition: 0.2s;
+.login-btn:hover:not(:disabled) {
+    background: #2563eb;
+    box-shadow: 0 8px 28px rgba(58,134,255,0.38);
+    transform: translateY(-1px);
 }
-
-.logo-login {
-    width: 180px;   /* ajusta o tamanho */
-    margin-bottom: 5px;
-}
-.button-loading {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-}
+.login-btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+.login-btn:disabled { opacity: 0.65; cursor: not-allowed; }
 
 .spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top: 2px solid #ffffff;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.25);
+    border-top-color: #fff;
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
+.forgot {
+    text-align: center; margin-top: 22px;
+    font-size: 13px; color: #2a3e55;
 }
-.forgot a:hover {
-    text-decoration: underline;
+.forgot a {
+    color: #3a6699; text-decoration: none;
+    font-weight: 500; transition: color 0.2s;
+}
+.forgot a:hover { color: #3a86ff; }
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
-@media (max-width: 500px) {
-    .login-card {
-        padding: 40px 30px;
+/* ──── MOBILE ──── */
+@media (max-width: 680px) {
+    body { flex-direction: column; overflow-y: auto; }
+
+    .login-left {
+        width: 100%; padding: 40px 28px 32px;
+        min-height: unset;
     }
+    .left-glow-1, .left-glow-2, .left-ring-1, .left-ring-2, .left-ring-3 { display: none; }
+    .left-logo  { width: 76px; margin-bottom: 18px; }
+    .left-title { font-size: 22px; }
+    .left-tagline { font-size: 13px; }
+    .left-divider, .left-chips { display: none; }
+
+    .login-right {
+        flex: 1; padding: 32px 24px 44px;
+        align-items: flex-start;
+    }
+    .form-wrapper { max-width: 100%; }
+    .form-title { font-size: 24px; }
 }
 </style>
 </head>
 <body>
 
-<div class="login-card">
-    <form autocomplete="off" onsubmit="login(); return false;">
-       <img src="img/logobranca.png" alt="Abatti" class="logo-login">
+<!-- ESQUERDA: BRANDING -->
+<div class="login-left">
+    <div class="left-glow-1"></div>
+    <div class="left-glow-2"></div>
+    <div class="left-ring left-ring-1"></div>
+    <div class="left-ring left-ring-2"></div>
+    <div class="left-ring left-ring-3"></div>
 
-        <div id="erroMsg" class="erro-msg"></div>
+    <div class="left-content">
+        <img src="img/logobranca.png" alt="GC Transportes" class="left-logo">
+        <div class="left-title">GC Transportes</div>
+        <div class="left-tagline">Painel de controle de entregas<br>e fechamentos quinzenais.</div>
+        <div class="left-divider"></div>
+        <div class="left-chips">
+            <div class="left-chip">Loggi</div>
+            <div class="left-chip">J&amp;T</div>
+            <div class="left-chip">iMile</div>
+            <div class="left-chip">Anjun</div>
+            <div class="left-chip">Shopee</div>
+        </div>
+    </div>
+</div>
 
-        <!-- Inputs falsos para evitar autocomplete -->
+<!-- DIREITA: FORMULÁRIO -->
+<div class="login-right">
+    <form class="form-wrapper" autocomplete="off" onsubmit="login(); return false;">
+
+        <div class="form-eyebrow">Área restrita</div>
+        <div class="form-title">Bem-vindo de volta</div>
+        <div class="form-sub">Entre com suas credenciais para acessar o painel.</div>
+
+        <div id="erroMsg" class="erro-msg">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span id="erroTexto"></span>
+        </div>
+
         <input type="text" style="display:none">
         <input type="password" style="display:none">
 
-        <!-- Inputs reais -->
-        <input type="text" id="usuario" placeholder="Usuário" autocomplete="off" name="campo1">
-
-        <div class="senha-container">
-            <input type="password" id="senha" placeholder="Senha" autocomplete="new-password" name="campo2">
-            <i data-feather="eye" class="toggle-senha"></i>
+        <div class="field">
+            <label for="usuario">Usuário</label>
+            <div class="input-wrap">
+                <input type="text" id="usuario" placeholder="Seu usuário" autocomplete="off" name="c1">
+                <svg class="field-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
         </div>
 
-        <button type="submit">Entrar</button>
+        <div class="field">
+            <label for="senha">Senha</label>
+            <div class="input-wrap">
+                <input type="password" id="senha" placeholder="Sua senha" autocomplete="new-password" name="c2" style="padding-right:44px">
+                <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <button type="button" class="toggle-senha" id="toggleSenha" aria-label="Mostrar senha">
+                    <svg id="eyeIcon" viewBox="0 0 24 24">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
 
-        <!-- Mensagem de erro -->
-        
+        <button type="submit" class="login-btn" id="loginBtn">Entrar</button>
+
         <div class="forgot">
-            <a href="#" onclick="redefinirSenha()">Redefinir senha</a>
+            <a href="#" onclick="redefinirSenha(); return false;">Esqueceu a senha?</a>
         </div>
+
     </form>
 </div>
 
 <script>
-    feather.replace();
+const toggleBtn  = document.getElementById("toggleSenha");
+const senhaInput = document.getElementById("senha");
+const eyeIcon    = document.getElementById("eyeIcon");
 
-    const toggle = document.querySelector(".toggle-senha");
-const passwordInput = document.getElementById("senha");
+const eyeOpen   = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+const eyeClosed = `<line x1="17.94" y1="17.94" x2="22" y2="22"/><line x1="1" y1="1" x2="6.06" y2="6.06"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="12" x2="3.12" y2="12"/>`;
 
-toggle.addEventListener("click", () => {
-    const isPassword = passwordInput.type === "password";
-
-    passwordInput.type = isPassword ? "text" : "password";
-
-    toggle.innerHTML = isPassword 
-        ? feather.icons["eye-off"].toSvg()
-        : feather.icons["eye"].toSvg();
+toggleBtn.addEventListener("click", () => {
+    const isPass = senhaInput.type === "password";
+    senhaInput.type = isPass ? "text" : "password";
+    eyeIcon.innerHTML = isPass ? eyeClosed : eyeOpen;
 });
+
 let erroTimeout;
-
-function mostrarErro(mensagem) {
-    const erroMsg = document.getElementById("erroMsg");
-
+function mostrarErro(msg) {
     clearTimeout(erroTimeout);
-
-    erroMsg.innerText = mensagem;
-    erroMsg.classList.add("show");
-
-    erroTimeout = setTimeout(() => {
-        erroMsg.classList.remove("show");
-    }, 2700);
+    document.getElementById("erroTexto").innerText = msg;
+    document.getElementById("erroMsg").classList.add("show");
+    erroTimeout = setTimeout(() => document.getElementById("erroMsg").classList.remove("show"), 3200);
 }
-   async function login() {
-    const username = document.getElementById("usuario").value;
+
+async function login() {
+    const username = document.getElementById("usuario").value.trim();
     const password = document.getElementById("senha").value;
-    const botao = document.querySelector("button");
+    const btn = document.getElementById("loginBtn");
 
-    if (!username || !password) {
-        mostrarErro("Preencha usuário e senha.");
-        return;
-    }
+    if (!username || !password) { mostrarErro("Preencha usuário e senha."); return; }
 
-    botao.disabled = true;
-    botao.classList.add("button-loading");
-    botao.innerHTML = `<div class="spinner"></div> Entrando...`;
+    btn.disabled = true;
+    btn.innerHTML = `<div class="spinner"></div> Entrando...`;
 
     try {
-        const response = await fetch("https://sistema-backend-i4uh.onrender.com/login", {
+        const res  = await fetch("https://sistema-backend-i4uh.onrender.com/login", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, password })
         });
-
-        const data = await response.json();
-
+        const data = await res.json();
         if (data.success) {
             localStorage.setItem("token", data.token);
             window.location.href = "index.html";
             return;
-        } else {
-            mostrarErro("Usuário ou senha inválidos.");
         }
-
-    } catch (error) {
+        mostrarErro("Usuário ou senha inválidos.");
+    } catch {
         mostrarErro("Erro ao conectar com o servidor.");
-        console.error(error);
     }
 
-    botao.disabled = false;
-    botao.classList.remove("button-loading");
-    botao.innerHTML = "Entrar";
+    btn.disabled = false;
+    btn.innerHTML = "Entrar";
 }
 
-    function redefinirSenha() {
-        alert("Entre em contato com o administrador do sistema.");
-    }
+function redefinirSenha() {
+    alert("Entre em contato com o administrador do sistema.");
+}
 </script>
 
 </body>
