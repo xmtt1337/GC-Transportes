@@ -534,7 +534,7 @@ body {
 
 /* ===== ADMIN RESUMO QUINZENA ===== */
 .adm-resumo-cards {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;
 }
 .adm-resumo-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
@@ -927,16 +927,12 @@ body {
                             <div class="adm-rc-valor adm-rc-verde" id="adm-rc-total">—</div>
                         </div>
                         <div class="adm-resumo-card">
+                            <div class="adm-rc-label">Total de Pacotes</div>
+                            <div class="adm-rc-valor" id="adm-rc-pacotes">—</div>
+                        </div>
+                        <div class="adm-resumo-card">
                             <div class="adm-rc-label">Entregadores</div>
                             <div class="adm-rc-valor" id="adm-rc-count">—</div>
-                        </div>
-                        <div class="adm-resumo-card">
-                            <div class="adm-rc-label">Maior Valor</div>
-                            <div class="adm-rc-valor adm-rc-verde" id="adm-rc-maior">—</div>
-                        </div>
-                        <div class="adm-resumo-card">
-                            <div class="adm-rc-label">Menor Valor</div>
-                            <div class="adm-rc-valor" id="adm-rc-menor">—</div>
                         </div>
                     </div>
                     <div class="adm-chart-wrap">
@@ -1441,58 +1437,61 @@ function moedaJS(n) {
     return "R$ " + (n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function _renderResumo(lista) {
-    const total  = lista.reduce((s, e) => s + e.total_receber_num, 0);
-    const valores = lista.map(e => e.total_receber_num);
-    const maior  = Math.max(...valores);
-    const menor  = Math.min(...valores);
-    document.getElementById("adm-rc-total").textContent = moedaJS(total);
-    document.getElementById("adm-rc-count").textContent = lista.length;
-    document.getElementById("adm-rc-maior").textContent = moedaJS(maior);
-    document.getElementById("adm-rc-menor").textContent = moedaJS(menor);
-    document.getElementById("adm-rc-menor").className   = "adm-rc-valor" + (menor < 0 ? " adm-rc-neg" : "");
+function _renderResumo(d) {
+    document.getElementById("adm-rc-total").textContent   = d.total_geral;
+    document.getElementById("adm-rc-pacotes").textContent = (d.total_entregues || 0).toLocaleString("pt-BR");
+    document.getElementById("adm-rc-count").textContent   = d.entregadores;
 
-    const sorted = [...lista].sort((a, b) => b.total_receber_num - a.total_receber_num);
+    const transp = [
+        { label: "Loggi",  valor: d.loggi.valor_num,  qtd: d.loggi.qtd,  bg: "rgba(58,134,255,0.65)",  bd: "rgba(58,134,255,1)" },
+        { label: "J&T",    valor: d.jt.valor_num,     qtd: d.jt.qtd,     bg: "rgba(139,92,246,0.65)", bd: "rgba(139,92,246,1)" },
+        { label: "iMile",  valor: d.imile.valor_num,  qtd: d.imile.qtd,  bg: "rgba(52,211,153,0.65)", bd: "rgba(52,211,153,1)" },
+        { label: "Anjun",  valor: d.anjun.valor_num,  qtd: d.anjun.qtd,  bg: "rgba(251,191,36,0.65)", bd: "rgba(251,191,36,1)" },
+        { label: "Shopee", valor: d.shopee.valor_num, qtd: d.shopee.qtd, bg: "rgba(249,115,22,0.65)", bd: "rgba(249,115,22,1)" },
+    ];
+
     const canvas = document.getElementById("adm-chart");
-    canvas.style.height = Math.max(180, sorted.length * 38 + 40) + "px";
+    canvas.style.height = "260px";
     canvas.style.width  = "100%";
 
     if (_admChart) { _admChart.destroy(); _admChart = null; }
     _admChart = new Chart(canvas.getContext("2d"), {
         type: "bar",
         data: {
-            labels: sorted.map(e => e.nome),
+            labels: transp.map(t => t.label),
             datasets: [{
-                data: sorted.map(e => e.total_receber_num),
-                backgroundColor: sorted.map(e => e.total_receber_num >= 0
-                    ? "rgba(52,211,153,0.55)" : "rgba(239,68,68,0.55)"),
-                borderColor: sorted.map(e => e.total_receber_num >= 0
-                    ? "rgba(52,211,153,0.9)" : "rgba(239,68,68,0.9)"),
+                data: transp.map(t => t.valor),
+                backgroundColor: transp.map(t => t.bg),
+                borderColor: transp.map(t => t.bd),
                 borderWidth: 1,
-                borderRadius: 5,
+                borderRadius: 7,
             }]
         },
         options: {
-            indexAxis: "y",
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    callbacks: { label: ctx => "  " + moedaJS(ctx.raw) }
+                    callbacks: {
+                        label: ctx => {
+                            const t = transp[ctx.dataIndex];
+                            return ["  " + moedaJS(ctx.raw), "  " + t.qtd.toLocaleString("pt-BR") + " pacotes"];
+                        }
+                    }
                 }
             },
             scales: {
                 x: {
                     grid:   { color: "rgba(58,134,255,0.08)" },
                     border: { color: "rgba(58,134,255,0.1)" },
-                    ticks:  { color: "#4a6a8a", font: { size: 11 },
-                              callback: v => "R$ " + v.toLocaleString("pt-BR") }
+                    ticks:  { color: "#aab4c8", font: { size: 13, weight: "600" } }
                 },
                 y: {
-                    grid:   { display: false },
+                    grid:   { color: "rgba(58,134,255,0.08)" },
                     border: { color: "rgba(58,134,255,0.1)" },
-                    ticks:  { color: "#aab4c8", font: { size: 12 } }
+                    ticks:  { color: "#4a6a8a", font: { size: 11 },
+                              callback: v => "R$ " + v.toLocaleString("pt-BR") }
                 }
             }
         }
@@ -1539,23 +1538,36 @@ function selecionarQuinzenaAdmin(q) {
     document.getElementById("adm-btn-2q").classList.toggle("active", q === 2);
     document.getElementById("adm-ent-section").style.display = "none";
     document.getElementById("adm-fech-data").style.display = "none";
+    document.getElementById("adm-resumo-section").style.display = "none";
 
     const empty = document.getElementById("adm-fech-empty");
-    empty.innerText = "Carregando entregadores...";
+    empty.innerText = "Carregando...";
     empty.style.display = "";
 
-    fetch(`${API}/admin/entregadores?mes=${_admFMes}&ano=${_admFAno}&quinzena=${q}`, {
-        headers: { "Authorization": "Bearer " + token }
-    })
-    .then(res => res.json().then(body => ({ ok: res.ok, body })))
-    .then(({ ok, body }) => {
-        if (!ok) {
-            empty.innerText = body.error || "Nenhum fechamento encontrado para este período.";
+    const headers = { "Authorization": "Bearer " + token };
+    const qs = `mes=${_admFMes}&ano=${_admFAno}&quinzena=${q}`;
+
+    Promise.all([
+        fetch(`${API}/admin/entregadores?${qs}`, { headers }).then(r => r.json().then(b => ({ ok: r.ok, b }))),
+        fetch(`${API}/admin/resumo-quinzena?${qs}`, { headers }).then(r => r.json().then(b => ({ ok: r.ok, b })))
+    ])
+    .then(([ent, res]) => {
+        if (!ent.ok) {
+            empty.innerText = ent.b.error || "Nenhum fechamento encontrado para este período.";
             return;
         }
-        _admEntregadoresLista = body.entregadores;
+        _admEntregadoresLista = ent.b.entregadores;
         empty.style.display = "none";
-        _renderResumo(body.entregadores);
+
+        const resumoData = res.ok ? res.b : {
+            total_geral: "—", total_entregues: 0,
+            entregadores: ent.b.entregadores.length,
+            loggi: {valor_num:0,qtd:0}, jt: {valor_num:0,qtd:0},
+            imile: {valor_num:0,qtd:0}, anjun: {valor_num:0,qtd:0},
+            shopee: {valor_num:0,qtd:0}
+        };
+        _renderResumo(resumoData);
+
         document.getElementById("adm-search-input").value = "";
         document.getElementById("adm-search-input-area").style.display = "";
         document.getElementById("adm-selected-chip").style.display = "none";
