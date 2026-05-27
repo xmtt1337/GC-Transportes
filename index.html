@@ -5,6 +5,7 @@
 <title>GC Transportes - Painel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="img/logobranca.png" type="image/png">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
@@ -531,6 +532,29 @@ body {
     .home-actions  { grid-template-columns: 1fr 1fr; }
 }
 
+/* ===== ADMIN RESUMO QUINZENA ===== */
+.adm-resumo-cards {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;
+}
+.adm-resumo-card {
+    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
+    border-radius: 14px; padding: 16px 18px;
+}
+.adm-rc-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: #4a6a8a; font-weight: 600; margin-bottom: 8px;
+}
+.adm-rc-valor { font-size: 20px; font-weight: 700; color: #f1f5f9; }
+.adm-rc-verde { color: #34d399; }
+.adm-rc-neg   { color: #ef4444; }
+.adm-chart-wrap {
+    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
+    border-radius: 14px; padding: 20px 20px 14px; margin-bottom: 20px;
+}
+@media (max-width: 680px) {
+    .adm-resumo-cards { grid-template-columns: 1fr 1fr; }
+}
+
 /* ===== ADMIN SEARCH ENTREGADOR ===== */
 .adm-search-wrap { position: relative; margin-bottom: 20px; }
 .adm-search-input-area {
@@ -894,6 +918,31 @@ body {
 
             <div class="fech-body">
                 <div class="fechamento-empty" id="adm-fech-empty">Selecione o mês, ano e quinzena para ver os entregadores.</div>
+
+                <!-- Resumo da quinzena -->
+                <div id="adm-resumo-section" style="display:none">
+                    <div class="adm-resumo-cards">
+                        <div class="adm-resumo-card">
+                            <div class="adm-rc-label">Total a Pagar</div>
+                            <div class="adm-rc-valor adm-rc-verde" id="adm-rc-total">—</div>
+                        </div>
+                        <div class="adm-resumo-card">
+                            <div class="adm-rc-label">Entregadores</div>
+                            <div class="adm-rc-valor" id="adm-rc-count">—</div>
+                        </div>
+                        <div class="adm-resumo-card">
+                            <div class="adm-rc-label">Maior Valor</div>
+                            <div class="adm-rc-valor adm-rc-verde" id="adm-rc-maior">—</div>
+                        </div>
+                        <div class="adm-resumo-card">
+                            <div class="adm-rc-label">Menor Valor</div>
+                            <div class="adm-rc-valor" id="adm-rc-menor">—</div>
+                        </div>
+                    </div>
+                    <div class="adm-chart-wrap">
+                        <canvas id="adm-chart"></canvas>
+                    </div>
+                </div>
 
                 <div id="adm-ent-section" style="display:none">
                     <div class="adm-search-wrap" id="adm-search-wrap">
@@ -1386,6 +1435,70 @@ let _admFAno = new Date().getFullYear();
 let _admFQuinzena = null;
 let _admFEntregador = "";
 let _admEntregadoresLista = [];
+let _admChart = null;
+
+function moedaJS(n) {
+    return "R$ " + (n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function _renderResumo(lista) {
+    const total  = lista.reduce((s, e) => s + e.total_receber_num, 0);
+    const valores = lista.map(e => e.total_receber_num);
+    const maior  = Math.max(...valores);
+    const menor  = Math.min(...valores);
+    document.getElementById("adm-rc-total").textContent = moedaJS(total);
+    document.getElementById("adm-rc-count").textContent = lista.length;
+    document.getElementById("adm-rc-maior").textContent = moedaJS(maior);
+    document.getElementById("adm-rc-menor").textContent = moedaJS(menor);
+    document.getElementById("adm-rc-menor").className   = "adm-rc-valor" + (menor < 0 ? " adm-rc-neg" : "");
+
+    const sorted = [...lista].sort((a, b) => b.total_receber_num - a.total_receber_num);
+    const canvas = document.getElementById("adm-chart");
+    canvas.style.height = Math.max(180, sorted.length * 38 + 40) + "px";
+    canvas.style.width  = "100%";
+
+    if (_admChart) { _admChart.destroy(); _admChart = null; }
+    _admChart = new Chart(canvas.getContext("2d"), {
+        type: "bar",
+        data: {
+            labels: sorted.map(e => e.nome),
+            datasets: [{
+                data: sorted.map(e => e.total_receber_num),
+                backgroundColor: sorted.map(e => e.total_receber_num >= 0
+                    ? "rgba(52,211,153,0.55)" : "rgba(239,68,68,0.55)"),
+                borderColor: sorted.map(e => e.total_receber_num >= 0
+                    ? "rgba(52,211,153,0.9)" : "rgba(239,68,68,0.9)"),
+                borderWidth: 1,
+                borderRadius: 5,
+            }]
+        },
+        options: {
+            indexAxis: "y",
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: { label: ctx => "  " + moedaJS(ctx.raw) }
+                }
+            },
+            scales: {
+                x: {
+                    grid:   { color: "rgba(58,134,255,0.08)" },
+                    border: { color: "rgba(58,134,255,0.1)" },
+                    ticks:  { color: "#4a6a8a", font: { size: 11 },
+                              callback: v => "R$ " + v.toLocaleString("pt-BR") }
+                },
+                y: {
+                    grid:   { display: false },
+                    border: { color: "rgba(58,134,255,0.1)" },
+                    ticks:  { color: "#aab4c8", font: { size: 12 } }
+                }
+            }
+        }
+    });
+    document.getElementById("adm-resumo-section").style.display = "";
+}
 
 function abrirAdminFechamentos(event) {
     event.preventDefault();
@@ -1396,6 +1509,7 @@ function abrirAdminFechamentos(event) {
     document.getElementById("adm-btn-2q").classList.remove("active");
     document.getElementById("adm-fech-empty").innerText = "Selecione o mês, ano e quinzena para ver os entregadores.";
     document.getElementById("adm-fech-empty").style.display = "";
+    document.getElementById("adm-resumo-section").style.display = "none";
     document.getElementById("adm-ent-section").style.display = "none";
     document.getElementById("adm-fech-data").style.display = "none";
     _iniciarSelectsAdmFech();
@@ -1441,6 +1555,7 @@ function selecionarQuinzenaAdmin(q) {
         }
         _admEntregadoresLista = body.entregadores;
         empty.style.display = "none";
+        _renderResumo(body.entregadores);
         document.getElementById("adm-search-input").value = "";
         document.getElementById("adm-search-input-area").style.display = "";
         document.getElementById("adm-selected-chip").style.display = "none";
