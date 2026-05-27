@@ -368,14 +368,14 @@ body {
     <div class="reset-panel" id="resetPanel">
         <form class="form-wrapper" autocomplete="off" onsubmit="redefinirSenha(); return false;">
 
-            <button type="button" class="reset-back" onclick="fecharReset()">
+            <button type="button" class="reset-back" id="resetBackBtn" onclick="fecharReset()">
                 <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
                 Voltar ao login
             </button>
 
             <div class="form-eyebrow">Segurança</div>
-            <div class="form-title">Redefinir senha</div>
-            <div class="form-sub">Confirme sua identidade e escolha uma nova senha.</div>
+            <div class="form-title" id="resetTitle">Redefinir senha</div>
+            <div class="form-sub" id="resetSub">Confirme sua identidade e escolha uma nova senha.</div>
 
             <div id="resetErroMsg" class="erro-msg">
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -507,6 +507,10 @@ async function login() {
         });
         const data = await res.json();
         if (data.success) {
+            if (data.require_password_change) {
+                abrirReset(true, username, password);
+                return;
+            }
             localStorage.setItem("token", data.token);
             window.location.href = "index.html";
             return;
@@ -520,17 +524,40 @@ async function login() {
     btn.innerHTML = "Entrar";
 }
 
-function abrirReset() {
+let _resetForcado = false;
+let _forcedUser   = "";
+let _forcedPass   = "";
+
+function abrirReset(forcado, username, senhaAtual) {
+    _resetForcado = !!forcado;
+    _forcedUser   = username   || "";
+    _forcedPass   = senhaAtual || "";
+
     document.getElementById("resetPanel").classList.add("active");
     document.getElementById("resetErroMsg").classList.remove("show");
     document.getElementById("resetSucessoMsg").classList.remove("show");
-    document.getElementById("r-usuario").value = "";
-    document.getElementById("r-senha-atual").value = "";
-    document.getElementById("r-senha-nova").value = "";
-    document.getElementById("r-senha-conf").value = "";
+    document.getElementById("r-usuario").value     = _forcedUser;
+    document.getElementById("r-senha-atual").value = _forcedPass;
+    document.getElementById("r-senha-nova").value  = "";
+    document.getElementById("r-senha-conf").value  = "";
+
+    if (forcado) {
+        document.getElementById("resetBackBtn").style.display = "none";
+        document.getElementById("resetTitle").innerText = "Crie uma nova senha";
+        document.getElementById("resetSub").innerText   = "Por segurança, você precisa alterar a senha padrão antes de continuar.";
+        document.getElementById("r-usuario").closest(".field").style.display     = "none";
+        document.getElementById("r-senha-atual").closest(".field").style.display = "none";
+    } else {
+        document.getElementById("resetBackBtn").style.display = "";
+        document.getElementById("resetTitle").innerText = "Redefinir senha";
+        document.getElementById("resetSub").innerText   = "Confirme sua identidade e escolha uma nova senha.";
+        document.getElementById("r-usuario").closest(".field").style.display     = "";
+        document.getElementById("r-senha-atual").closest(".field").style.display = "";
+    }
 }
 
 function fecharReset() {
+    if (_resetForcado) return;
     document.getElementById("resetPanel").classList.remove("active");
 }
 
@@ -558,6 +585,14 @@ async function redefinirSenha() {
     if (senhaNova.length < 4) {
         mostrarResetErro("A nova senha deve ter pelo menos 4 caracteres."); return;
     }
+    if (senhaNova === "GC2026") {
+        mostrarResetErro("Esta senha não pode ser utilizada. Escolha uma senha diferente."); return;
+    }
+
+    if (_resetForcado) {
+        username   = _forcedUser;
+        senhaAtual = _forcedPass;
+    }
 
     btn.disabled = true;
     btn.innerHTML = `<div class="spinner"></div> Salvando...`;
@@ -574,7 +609,10 @@ async function redefinirSenha() {
             document.getElementById("resetSucessoMsg").classList.add("show");
             btn.disabled = false;
             btn.innerHTML = "Salvar nova senha";
-            setTimeout(() => fecharReset(), 2500);
+            setTimeout(() => {
+                _resetForcado = false;
+                document.getElementById("resetPanel").classList.remove("active");
+            }, 2000);
             return;
         }
         mostrarResetErro(data.error || "Erro ao redefinir senha.");
