@@ -177,7 +177,10 @@ body {
 }
 .tela-full.active-view {
     display: flex; flex-direction: column; align-items: stretch;
-    justify-content: flex-start; overflow-y: auto;
+    justify-content: flex-start; overflow-y: auto; overflow-x: hidden;
+}
+.tela-full.active-view > div {
+    width: 100%;
 }
 
 /* ===== TELA RECEBIMENTO ===== */
@@ -221,9 +224,12 @@ body {
 .fech-filtrar-btn:hover { background: #2563eb; box-shadow: 0 0 14px rgba(58,134,255,0.4); }
 
 .quinzena-toggle {
-    display: flex; background: rgba(27,38,59,0.9);
+    display: flex; background: rgba(27,38,59,0.97);
     border: 1px solid rgba(58,134,255,0.15); border-radius: 12px;
     overflow: hidden; margin-bottom: 20px;
+    position: sticky; top: 0; z-index: 5;
+    backdrop-filter: blur(10px);
+    width: 100%;
 }
 .quinzena-btn {
     flex: 1; padding: 13px 0; background: none; border: none; color: #7a8599;
@@ -490,8 +496,8 @@ body {
 
         <!-- TELA FECHAMENTOS -->
         <div id="tela-fechamentos" class="view tela-full">
-            <div>
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+            <div style="width:100%">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;width:100%">
                     <select class="fech-select" id="sel-mes">
                         <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
                         <option value="3">Março</option>    <option value="4">Abril</option>
