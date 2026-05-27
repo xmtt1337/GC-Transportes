@@ -506,6 +506,8 @@ async function login() {
         const data = await res.json();
         if (data.success) {
             if (data.require_password_change) {
+                btn.disabled = false;
+                btn.innerHTML = "Entrar";
                 abrirReset(true, username, password);
                 return;
             }
