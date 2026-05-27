@@ -481,15 +481,13 @@ toggleBtn.addEventListener("click", () => {
     eyeIcon.innerHTML = isPass ? eyeClosed : eyeOpen;
 });
 
-let erroTimeout;
 function mostrarErro(msg) {
-    clearTimeout(erroTimeout);
     document.getElementById("erroTexto").innerText = msg;
     document.getElementById("erroMsg").classList.add("show");
-    erroTimeout = setTimeout(() => document.getElementById("erroMsg").classList.remove("show"), 3200);
 }
 
 async function login() {
+    document.getElementById("erroMsg").classList.remove("show");
     const username = document.getElementById("usuario").value.trim();
     const password = document.getElementById("senha").value;
     const btn = document.getElementById("loginBtn");
@@ -561,15 +559,16 @@ function fecharReset() {
     document.getElementById("resetPanel").classList.remove("active");
 }
 
-let resetErroTimeout;
 function mostrarResetErro(msg) {
-    clearTimeout(resetErroTimeout);
     document.getElementById("resetErroTexto").innerText = msg;
     document.getElementById("resetErroMsg").classList.add("show");
-    resetErroTimeout = setTimeout(() => document.getElementById("resetErroMsg").classList.remove("show"), 3500);
+    document.getElementById("resetSucessoMsg").classList.remove("show");
 }
 
 async function redefinirSenha() {
+    // limpa erro anterior ao tentar de novo
+    document.getElementById("resetErroMsg").classList.remove("show");
+
     const username   = _resetForcado ? _forcedUser : document.getElementById("r-usuario").value.trim();
     const senhaAtual = _resetForcado ? _forcedPass : document.getElementById("r-senha-atual").value;
     const senhaNova  = document.getElementById("r-senha-nova").value;
@@ -592,15 +591,21 @@ async function redefinirSenha() {
     btn.disabled = true;
     btn.innerHTML = `<div class="spinner"></div> Salvando...`;
 
+    // aviso de servidor frio após 6s sem resposta
+    const avisoTimeout = setTimeout(() => {
+        if (btn.disabled) btn.innerHTML = `<div class="spinner"></div> Servidor iniciando, aguarde...`;
+    }, 6000);
+
     try {
         const res  = await fetch("https://sistema-backend-i4uh.onrender.com/redefinir-senha", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, senha_atual: senhaAtual, senha_nova: senhaNova })
         });
-        const data = await res.json();
+        clearTimeout(avisoTimeout);
+        let data;
+        try { data = await res.json(); } catch { data = {}; }
         if (data.success) {
-            document.getElementById("resetErroMsg").classList.remove("show");
             document.getElementById("resetSucessoMsg").classList.add("show");
             btn.disabled = false;
             btn.innerHTML = "Salvar nova senha";
@@ -611,9 +616,10 @@ async function redefinirSenha() {
             }, 2000);
             return;
         }
-        mostrarResetErro(data.error || "Erro ao redefinir senha.");
-    } catch {
-        mostrarResetErro("Erro ao conectar com o servidor.");
+        mostrarResetErro(data.error || `Erro ${res.status}: não foi possível salvar.`);
+    } catch (err) {
+        clearTimeout(avisoTimeout);
+        mostrarResetErro("Erro ao conectar com o servidor. Tente novamente.");
     }
 
     btn.disabled = false;
