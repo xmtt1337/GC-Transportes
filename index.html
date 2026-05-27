@@ -533,16 +533,23 @@ body {
 
 /* ===== ADMIN ENTREGADORES ===== */
 .adm-ent-lista {
-    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+    display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px;
 }
 .adm-ent-chip {
-    padding: 9px 18px;
-    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.2);
-    border-radius: 10px; color: #aab4c8; font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
+    border-radius: 10px; color: #aab4c8; font-size: 14px; font-weight: 500;
     cursor: pointer; transition: all 0.18s; user-select: none;
 }
-.adm-ent-chip:hover  { background: rgba(58,134,255,0.12); color: #fff; border-color: rgba(58,134,255,0.45); }
-.adm-ent-chip.active { background: rgba(58,134,255,0.22); color: #fff; border-color: #3a86ff; }
+.adm-ent-chip::before {
+    content: ""; width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(58,134,255,0.35); flex-shrink: 0; transition: background 0.18s;
+}
+.adm-ent-chip:hover  { background: rgba(58,134,255,0.1); color: #fff; border-color: rgba(58,134,255,0.4); }
+.adm-ent-chip:hover::before { background: #3a86ff; }
+.adm-ent-chip.active { background: rgba(58,134,255,0.18); color: #fff; border-color: #3a86ff; }
+.adm-ent-chip.active::before { background: #3a86ff; box-shadow: 0 0 6px rgba(58,134,255,0.7); }
 </style>
 </head>
 <body>
