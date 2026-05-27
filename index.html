@@ -177,10 +177,26 @@ body {
 }
 .tela-full.active-view {
     display: flex; flex-direction: column; align-items: stretch;
-    justify-content: flex-start; overflow-y: auto; overflow-x: hidden;
+    justify-content: flex-start; overflow: hidden;
 }
-.tela-full.active-view > div {
-    width: 100%;
+
+/* Cabeçalho fixo (não rola) */
+.fech-header {
+    flex-shrink: 0;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(58,134,255,0.1);
+}
+.fech-period-row {
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap; margin-bottom: 12px;
+}
+
+/* Corpo rolável */
+.fech-body {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    padding-top: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(58,134,255,0.3) transparent;
 }
 
 /* ===== TELA RECEBIMENTO ===== */
@@ -224,12 +240,10 @@ body {
 .fech-filtrar-btn:hover { background: #2563eb; box-shadow: 0 0 14px rgba(58,134,255,0.4); }
 
 .quinzena-toggle {
-    display: flex; background: rgba(27,38,59,0.97);
-    border: 1px solid rgba(58,134,255,0.15); border-radius: 12px;
-    overflow: hidden; margin-bottom: 20px;
-    position: sticky; top: 0; z-index: 5;
-    backdrop-filter: blur(10px);
-    width: 100%;
+    display: flex; background: rgba(27,38,59,0.95);
+    border: 1px solid rgba(58,134,255,0.2); border-radius: 12px;
+    overflow: hidden; width: 100%;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
 .quinzena-btn {
     flex: 1; padding: 13px 0; background: none; border: none; color: #7a8599;
@@ -250,39 +264,42 @@ body {
 
 /* ===== PAINEL ENTREGADOR ===== */
 .painel-banner {
-    border-radius: 14px; padding: 22px 26px;
-    display: flex; align-items: center; gap: 24px;
-    margin-bottom: 16px; border: 1px solid rgba(58,134,255,0.2);
+    border-radius: 18px; padding: 28px 32px;
+    display: flex; align-items: center; gap: 32px;
+    margin-bottom: 20px; border: 1px solid rgba(58,134,255,0.2);
 }
-.painel-banner.banner-positivo { background: rgba(52,211,153,0.08); border-color: rgba(52,211,153,0.3); }
-.painel-banner.banner-negativo { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.3); }
+.painel-banner.banner-positivo { background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(52,211,153,0.04)); border-color: rgba(52,211,153,0.35); }
+.painel-banner.banner-negativo { background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.04)); border-color: rgba(239,68,68,0.35); }
 
 .pb-left { flex: 1; }
-.pb-eyebrow { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #7a8599; margin-bottom: 6px; }
-.pb-valor { font-size: 34px; font-weight: 700; }
+.pb-eyebrow { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: #7a8599; margin-bottom: 10px; }
+.pb-valor { font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: -0.5px; }
 .banner-positivo .pb-valor { color: #34d399; }
 .banner-negativo .pb-valor { color: #ef4444; }
+.pb-periodo { font-size: 13px; color: #aab4c8; margin-top: 8px; font-weight: 500; }
 .pb-sub { font-size: 12px; color: #7a8599; margin-top: 4px; }
 
-.pb-divider { width: 1px; background: rgba(58,134,255,0.15); align-self: stretch; }
+.pb-divider { width: 1px; background: rgba(255,255,255,0.07); align-self: stretch; margin: 4px 0; }
 
-.pb-right { text-align: center; min-width: 130px; }
-.pb-ent-label { font-size: 10px; color: #7a8599; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
-.pb-ent-valor { font-size: 30px; font-weight: 700; color: #f1f5f9; }
-.pb-ent-sub { font-size: 12px; color: #7a8599; }
+.pb-right { text-align: center; min-width: 160px; padding: 0 12px; }
+.pb-ent-label { font-size: 11px; color: #7a8599; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px; }
+.pb-ent-valor { font-size: 42px; font-weight: 700; color: #f1f5f9; line-height: 1; }
+.pb-ent-sub { font-size: 12px; color: #7a8599; margin-top: 8px; }
 
 .painel-ajustes {
     display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px;
 }
 .paj-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
-    border-radius: 12px; padding: 14px 16px;
+    border-radius: 14px; padding: 16px 18px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
+.paj-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
 .paj-card.positivo { border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.06); }
 .paj-card.negativo { border-color: rgba(239,68,68,0.3);  background: rgba(239,68,68,0.06); }
-.paj-label    { font-size: 12px; color: #7a8599; font-weight: 500; margin-bottom: 3px; }
-.paj-sublabel { font-size: 11px; color: #7a8599; margin-bottom: 4px; }
-.paj-value    { font-size: 15px; font-weight: 700; color: #f1f5f9; }
+.paj-label    { font-size: 11px; color: #7a8599; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.paj-sublabel { font-size: 10px; color: #7a8599; margin-bottom: 5px; }
+.paj-value    { font-size: 17px; font-weight: 700; color: #f1f5f9; }
 .paj-card.positivo .paj-value { color: #34d399; }
 .paj-card.negativo .paj-value { color: #ef4444; }
 
@@ -296,18 +313,21 @@ body {
 }
 .pt-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
-    border-radius: 12px; padding: 14px 16px;
+    border-radius: 14px; padding: 16px 18px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
+.pt-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
 .pt-header {
-    font-size: 13px; font-weight: 600; color: #3a86ff;
-    margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(58,134,255,0.1);
+    font-size: 13px; font-weight: 700; color: #3a86ff;
+    margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(58,134,255,0.12);
+    letter-spacing: 0.03em;
 }
 .pt-row {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 4px 0; font-size: 13px;
+    padding: 5px 0; font-size: 13px;
 }
-.pt-row span:first-child { color: #7a8599; }
-.pt-row span:last-child  { color: #f1f5f9; font-weight: 600; font-size: 12px; }
+.pt-row span:first-child { color: #7a8599; font-size: 12px; }
+.pt-row span:last-child  { color: #f1f5f9; font-weight: 600; font-size: 13px; }
 
 .painel-ocorrencias {
     display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;
@@ -496,8 +516,10 @@ body {
 
         <!-- TELA FECHAMENTOS -->
         <div id="tela-fechamentos" class="view tela-full">
-            <div style="width:100%">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;width:100%">
+
+            <!-- Cabeçalho fixo -->
+            <div class="fech-header">
+                <div class="fech-period-row">
                     <select class="fech-select" id="sel-mes">
                         <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
                         <option value="3">Março</option>    <option value="4">Abril</option>
@@ -509,12 +531,14 @@ body {
                     <select class="fech-select" id="sel-ano"></select>
                     <button class="fech-filtrar-btn" onclick="filtrarPeriodo()">Filtrar</button>
                 </div>
-
                 <div class="quinzena-toggle">
                     <button class="quinzena-btn" id="btn-1q" onclick="selecionarQuinzena(1)">1ª Quinzena &nbsp;(1 – 15)</button>
                     <button class="quinzena-btn" id="btn-2q" onclick="selecionarQuinzena(2)">2ª Quinzena &nbsp;(16 – fim)</button>
                 </div>
+            </div>
 
+            <!-- Corpo rolável -->
+            <div class="fech-body">
                 <!-- Estado vazio / carregando -->
                 <div class="fechamento-empty" id="fechamento-empty">Selecione uma quinzena para ver o fechamento.</div>
 
@@ -524,8 +548,9 @@ body {
                     <!-- Banner total a receber -->
                     <div class="painel-banner banner-positivo" id="pb-banner">
                         <div class="pb-left">
-                            <div class="pb-eyebrow">Valor líquido a receber da quinzena</div>
+                            <div class="pb-eyebrow">Valor líquido a receber</div>
                             <div class="pb-valor" id="pb-total-receber">—</div>
+                            <div class="pb-periodo" id="pb-periodo">—</div>
                             <div class="pb-sub">Resultado final após todos os descontos e acréscimos</div>
                         </div>
                         <div class="pb-divider"></div>
@@ -612,8 +637,8 @@ body {
                     </div>
 
                 </div><!-- /fechamento-data -->
-            </div>
-        </div>
+            </div><!-- /fech-body -->
+        </div><!-- /tela-fechamentos -->
 
         <!-- TELA RECEBIMENTO -->
         <div id="tela-receber" class="view tela-receber-full">
@@ -835,6 +860,7 @@ function _carregarPainel() {
         const banner = document.getElementById("pb-banner");
         banner.className = "painel-banner " + (d.total_receber_num < 0 ? "banner-negativo" : "banner-positivo");
         document.getElementById("pb-total-receber").innerText   = d.total_receber;
+        document.getElementById("pb-periodo").innerText         = d.periodo || "";
         document.getElementById("pb-total-entregues").innerText = d.total_entregues;
 
         // Ajustes
