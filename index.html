@@ -1260,7 +1260,7 @@ fetch(API + "/perfil", {
 .then(res => { if (!res.ok) throw new Error(); return res.json(); })
 .then(data => {
     const username = data.usuario.username;
-    const usernameFormatado = username.slice(0, -4);
+    const usernameFormatado = username.includes(".") ? username.slice(0, username.lastIndexOf(".")) : username;
     const role = data.usuario.role;
 
     document.querySelector(".username").innerText = usernameFormatado;
