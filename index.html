@@ -909,6 +909,7 @@ body {
                         <option value="11">Novembro</option><option value="12">Dezembro</option>
                     </select>
                     <select class="fech-select" id="adm-fech-ano"></select>
+                    <button class="fech-filtrar-btn" onclick="buscarQuinzenaAdmin()">Buscar</button>
                 </div>
                 <div class="quinzena-toggle">
                     <button class="quinzena-btn" id="adm-btn-1q" onclick="selecionarQuinzenaAdmin(1)">1ª Quinzena &nbsp;(1 – 15)</button>
@@ -918,6 +919,23 @@ body {
 
             <div class="fech-body">
                 <div class="fechamento-empty" id="adm-fech-empty">Selecione o mês, ano e quinzena para ver os entregadores.</div>
+
+                <div id="adm-ent-section" style="display:none">
+                    <div class="adm-search-wrap" id="adm-search-wrap">
+                        <div class="adm-search-input-area" id="adm-search-input-area">
+                            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="adm-search-input" placeholder="Pesquisar entregador..."
+                                   oninput="filtrarEntregadores()" onfocus="abrirDropdownEntregadores()">
+                        </div>
+                        <div class="adm-selected-chip" id="adm-selected-chip" style="display:none">
+                            <span id="adm-selected-nome"></span>
+                            <button onclick="limparSelecaoEntregador()">×</button>
+                        </div>
+                        <div class="adm-dropdown" id="adm-dropdown" style="display:none">
+                            <div id="adm-dropdown-lista"></div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Resumo da quinzena -->
                 <div id="adm-resumo-section" style="display:none">
@@ -937,23 +955,6 @@ body {
                     </div>
                     <div class="adm-chart-wrap">
                         <canvas id="adm-chart"></canvas>
-                    </div>
-                </div>
-
-                <div id="adm-ent-section" style="display:none">
-                    <div class="adm-search-wrap" id="adm-search-wrap">
-                        <div class="adm-search-input-area" id="adm-search-input-area">
-                            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                            <input type="text" id="adm-search-input" placeholder="Pesquisar entregador..."
-                                   oninput="filtrarEntregadores()" onfocus="abrirDropdownEntregadores()">
-                        </div>
-                        <div class="adm-selected-chip" id="adm-selected-chip" style="display:none">
-                            <span id="adm-selected-nome"></span>
-                            <button onclick="limparSelecaoEntregador()">×</button>
-                        </div>
-                        <div class="adm-dropdown" id="adm-dropdown" style="display:none">
-                            <div id="adm-dropdown-lista"></div>
-                        </div>
                     </div>
                 </div>
 
@@ -1529,13 +1530,21 @@ function _iniciarSelectsAdmFech() {
 }
 
 function selecionarQuinzenaAdmin(q) {
-    _admFMes = parseInt(document.getElementById("adm-fech-mes").value);
-    _admFAno = parseInt(document.getElementById("adm-fech-ano").value);
     _admFQuinzena = q;
-    _admFEntregador = "";
-    _admEntregadoresLista = [];
     document.getElementById("adm-btn-1q").classList.toggle("active", q === 1);
     document.getElementById("adm-btn-2q").classList.toggle("active", q === 2);
+}
+
+function buscarQuinzenaAdmin() {
+    if (!_admFQuinzena) {
+        document.getElementById("adm-fech-empty").innerText = "Selecione a quinzena (1ª ou 2ª) antes de buscar.";
+        document.getElementById("adm-fech-empty").style.display = "";
+        return;
+    }
+    _admFMes = parseInt(document.getElementById("adm-fech-mes").value);
+    _admFAno = parseInt(document.getElementById("adm-fech-ano").value);
+    _admFEntregador = "";
+    _admEntregadoresLista = [];
     document.getElementById("adm-ent-section").style.display = "none";
     document.getElementById("adm-fech-data").style.display = "none";
     document.getElementById("adm-resumo-section").style.display = "none";
@@ -1545,7 +1554,7 @@ function selecionarQuinzenaAdmin(q) {
     empty.style.display = "";
 
     const headers = { "Authorization": "Bearer " + token };
-    const qs = `mes=${_admFMes}&ano=${_admFAno}&quinzena=${q}`;
+    const qs = `mes=${_admFMes}&ano=${_admFAno}&quinzena=${_admFQuinzena}`;
 
     Promise.all([
         fetch(`${API}/admin/entregadores?${qs}`, { headers }).then(r => r.json().then(b => ({ ok: r.ok, b }))),
@@ -1566,13 +1575,13 @@ function selecionarQuinzenaAdmin(q) {
             imile: {valor_num:0,qtd:0}, anjun: {valor_num:0,qtd:0},
             shopee: {valor_num:0,qtd:0}
         };
-        _renderResumo(resumoData);
 
         document.getElementById("adm-search-input").value = "";
         document.getElementById("adm-search-input-area").style.display = "";
         document.getElementById("adm-selected-chip").style.display = "none";
         document.getElementById("adm-dropdown").style.display = "none";
         document.getElementById("adm-ent-section").style.display = "";
+        _renderResumo(resumoData);
     })
     .catch(() => {
         empty.innerText = "Erro ao conectar com o servidor.";
