@@ -2900,19 +2900,25 @@ function _extrairCamposNota(raw) {
     // ── EMISSOR ──
     let emissor = "—";
 
-    // DANFSe/NFS-e: seção "EMITENTE DA NFS" → "Nome / Nome Empresarial X E-mail"
+    // DANFSe/NFS-e ABRASF: "EMITENTE DA NFS" → "Nome / Nome Empresarial"
     const emitSecM = t.match(/EMITENTE\s+DA\s+NFS.{0,5}(.{0,600}?)(?=TOMADOR|INTERMEDIÁRIO|SERVI[CÇ]O\s+PRESTADO)/i);
     if (emitSecM) {
-        const sec  = emitSecM[1];
+        const sec   = emitSecM[1];
         const nomeM = sec.match(/Nome\s*[\/\|]\s*Nome\s+Empresarial\s+(.+?)(?=\s+E-mail|\s+Endere[çc]o|\s+Inscri)/i);
-        if (nomeM) {
-            // MEI: nome vem precedido do CNPJ sem formatação, ex: "66.845.622 SANDRO..."
-            emissor = nomeM[1].trim().replace(/^\d{2}\.?\d{3}\.?\d{3}\s+/, "");
+        if (nomeM) emissor = nomeM[1].trim().replace(/^\d{2}\.?\d{3}\.?\d{3}\s+/, "");
+    }
+    // NFS-e Prefeitura: "PRESTADOR DE SERVIÇOS" → "Nome/Razão social: NAME"
+    if (emissor === "—") {
+        const prestSecM = t.match(/PRESTADOR\s+DE\s+SERVI[CÇ]OS?(.{0,800}?)(?=TOMADOR)/i);
+        if (prestSecM) {
+            const sec   = prestSecM[1];
+            const nomeM = sec.match(/Raz[aãâáÃÂÁ]o\s+social[:\s]+(.{3,80}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri))/i);
+            if (nomeM) emissor = nomeM[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim();
         }
     }
-    // DANFE / outros: "RAZÃO SOCIAL" ou "NOME EMPRESARIAL"
+    // DANFE / NF-e: "RAZÃO SOCIAL" ou "NOME EMPRESARIAL"
     if (emissor === "—") {
-        const razaoM = t.match(/(?:RAZ[AÃ]O\s+SOCIAL|NOME\s+EMPRESARIAL)[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|ENDERE[CÇ]O|INS|IE\b|\d{2}[.\/]))/i);
+        const razaoM = t.match(/(?:RAZ[AaãÃ]O\s+SOCIAL|NOME\s+EMPRESARIAL)[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|ENDERE[CÇ]O|INS|IE\b|\d{2}[.\/]))/i);
         if (razaoM) emissor = razaoM[1].trim();
     }
     // Fallback: texto antes do CNPJ do emitente
@@ -2925,17 +2931,25 @@ function _extrairCamposNota(raw) {
     // ── TOMADOR ──
     let tomador = "—";
 
-    // DANFSe/NFS-e: seção "TOMADOR DO SERVIÇO" → "Nome / Nome Empresarial X E-mail"
+    // DANFSe/NFS-e ABRASF: "TOMADOR DO SERVIÇO" → "Nome / Nome Empresarial"
     const tomSecM = t.match(/TOMADOR\s+DO\s+SERVI[CÇ]O(.{0,600}?)(?=INTERMEDIÁRIO|SERVI[CÇ]O\s+PRESTADO|TRIBUTAÇÃO|DISCRIMINA)/i);
     if (tomSecM) {
         const sec   = tomSecM[1];
         const nomeM = sec.match(/Nome\s*[\/\|]\s*Nome\s+Empresarial\s+(.+?)(?=\s+E-mail|\s+Endere[çc]o|\s+Inscri)/i);
         if (nomeM) tomador = nomeM[1].trim();
     }
-    // NFS-e genérica / DANFE
+    // NFS-e Prefeitura: "TOMADOR DE SERVIÇOS" → "Nome/Razão social: NAME"
+    if (tomador === "—") {
+        const tomServSecM = t.match(/TOMADOR\s+DE\s+SERVI[CÇ]OS?(.{0,600}?)(?=DISCRIMINA|RETEN[CÇ]|FORMA\s+DE\s+PAGAMENTO)/i);
+        if (tomServSecM) {
+            const sec   = tomServSecM[1];
+            const nomeM = sec.match(/Raz[aãâáÃÂÁ]o\s+social[:\s]+(.{3,80}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri))/i);
+            if (nomeM) tomador = nomeM[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim();
+        }
+    }
+    // DANFE / NF-e genérica
     if (tomador === "—") {
         const tomLabelPatterns = [
-            /TOMADOR\s+DE\s+SERVI[CÇ]OS?[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]))/i,
             /DESTINAT[AÁ]RIO(?:[\/\s]REMETENTE)?[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]))/i,
             /CONTRATANTE[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]))/i,
         ];
