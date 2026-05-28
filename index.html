@@ -355,6 +355,32 @@ body {
 .poc-table .val-neg { color: #ef4444; font-weight: 600; }
 .poc-empty { text-align: center !important; color: #7a8599 !important; padding: 20px 14px !important; }
 
+/* ===== EXTRAVIOS CARDS ===== */
+.extr-lista { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; }
+.extr-vazio { padding: 20px 14px; text-align: center; color: #7a8599; font-size: 13px; }
+.extr-card {
+    background: rgba(15,15,20,0.45); border-radius: 10px;
+    padding: 12px 14px; border: 1px solid rgba(58,134,255,0.08);
+}
+.extr-top {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; margin-bottom: 6px;
+}
+.extr-transp { font-size: 11px; font-weight: 700; color: #3a86ff; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+.extr-codigo { font-size: 11px; color: #7a8599; font-family: monospace; word-break: break-all; text-align: right; max-width: 60%; }
+.extr-endereco { font-size: 12px; color: #aab4c8; line-height: 1.45; margin-bottom: 10px; }
+.extr-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.extr-valor { font-size: 13px; font-weight: 600; color: #7a8599; }
+.extr-valor.val-neg { color: #ef4444; }
+.extr-wa {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 11px; background: rgba(37,211,102,0.08);
+    border: 1px solid rgba(37,211,102,0.25); border-radius: 8px;
+    color: #25d366; font-size: 11px; font-weight: 600;
+    text-decoration: none; transition: background 0.2s, border-color 0.2s; white-space: nowrap;
+}
+.extr-wa:hover { background: rgba(37,211,102,0.18); border-color: rgba(37,211,102,0.5); }
+
 /* ===== ADMIN ===== */
 .admin-section {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
@@ -913,10 +939,7 @@ body {
                     <div class="painel-ocorrencias">
                         <div class="poc-card">
                             <div class="poc-header">Extravios</div>
-                            <table class="poc-table">
-                                <thead><tr><th>Transportadora</th><th>Código</th><th>Endereço</th><th>Valor</th></tr></thead>
-                                <tbody id="extravios-tbody"></tbody>
-                            </table>
+                            <div class="extr-lista" id="extravios-lista"></div>
                         </div>
                         <div class="poc-card">
                             <div class="poc-header">Multas</div>
@@ -1089,10 +1112,7 @@ body {
                     <div class="painel-ocorrencias">
                         <div class="poc-card">
                             <div class="poc-header">Extravios</div>
-                            <table class="poc-table">
-                                <thead><tr><th>Transportadora</th><th>Código</th><th>Endereço</th><th>Valor</th></tr></thead>
-                                <tbody id="adm-extravios-tbody"></tbody>
-                            </table>
+                            <div class="extr-lista" id="adm-extravios-lista"></div>
                         </div>
                         <div class="poc-card">
                             <div class="poc-header">Multas</div>
@@ -1298,6 +1318,32 @@ function abrirReceber(event) {
     mostrarTela("tela-receber");
 }
 
+// ───── EXTRAVIOS CARDS ─────
+function _renderExtravios(lista, containerId) {
+    const el = document.getElementById(containerId);
+    if (!lista.length) {
+        el.innerHTML = `<div class="extr-vazio">Nenhum extravio no período</div>`;
+        return;
+    }
+    el.innerHTML = lista.map(e => {
+        const msg = encodeURIComponent(`Queria contestar o pedido da ${e.transportadora}.\nCódigo: ${e.codigo}`);
+        return `<div class="extr-card">
+            <div class="extr-top">
+                <span class="extr-transp">${e.transportadora}</span>
+                <span class="extr-codigo">${e.codigo}</span>
+            </div>
+            <div class="extr-endereco">${e.endereco}</div>
+            <div class="extr-bottom">
+                <span class="extr-valor${e.tem_valor ? ' val-neg' : ''}">${e.valor}</span>
+                <a class="extr-wa" href="https://wa.me/554991984179?text=${msg}" target="_blank" rel="noopener noreferrer">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/></svg>
+                    Contestar
+                </a>
+            </div>
+        </div>`;
+    }).join("");
+}
+
 // ───── TELA FECHAMENTOS ─────
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
                "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -1392,15 +1438,7 @@ function _carregarPainel() {
         document.getElementById("pt-shopee-q").innerText = d.entregues_shopee + " pacotes";
 
         // Extravios
-        const extTbody = document.getElementById("extravios-tbody");
-        extTbody.innerHTML = d.extravios_linhas.length
-            ? d.extravios_linhas.map(e => `<tr>
-                <td class="mono">${e.transportadora}</td>
-                <td class="mono">${e.codigo}</td>
-                <td>${e.endereco}</td>
-                <td class="${e.tem_valor ? 'val-neg' : ''}">${e.valor}</td>
-              </tr>`).join("")
-            : `<tr><td colspan="4" class="poc-empty">Nenhum extravio no período</td></tr>`;
+        _renderExtravios(d.extravios_linhas, "extravios-lista");
 
         // Multas
         const multTbody = document.getElementById("multas-tbody");
@@ -1890,15 +1928,7 @@ function _carregarPainelAdmin() {
         document.getElementById("adm-pt-shopee-v").innerText = d.valor_shopee;
         document.getElementById("adm-pt-shopee-q").innerText = d.entregues_shopee + " pacotes";
 
-        const extTbody = document.getElementById("adm-extravios-tbody");
-        extTbody.innerHTML = d.extravios_linhas.length
-            ? d.extravios_linhas.map(e => `<tr>
-                <td class="mono">${e.transportadora}</td>
-                <td class="mono">${e.codigo}</td>
-                <td>${e.endereco}</td>
-                <td class="${e.tem_valor ? 'val-neg' : ''}">${e.valor}</td>
-              </tr>`).join("")
-            : `<tr><td colspan="4" class="poc-empty">Nenhum extravio no período</td></tr>`;
+        _renderExtravios(d.extravios_linhas, "adm-extravios-lista");
 
         const multTbody = document.getElementById("adm-multas-tbody");
         multTbody.innerHTML = d.multas_linhas.length
