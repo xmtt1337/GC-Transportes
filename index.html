@@ -1753,11 +1753,11 @@ let _dashBarChart = null;
 let _dashGran = "quinzena";
 
 const TRANSP_DEF = [
-    { key: "loggi",  label: "Loggi",  color: "#3a86ff", bg: "rgba(58,134,255,0.7)"  },
-    { key: "jt",     label: "J&T",    color: "#8b5cf6", bg: "rgba(139,92,246,0.7)" },
-    { key: "imile",  label: "iMile",  color: "#34d399", bg: "rgba(52,211,153,0.7)" },
-    { key: "anjun",  label: "Anjun",  color: "#fbbf24", bg: "rgba(251,191,36,0.7)" },
-    { key: "shopee", label: "Shopee", color: "#f97316", bg: "rgba(249,115,22,0.7)" },
+    { key: "loggi",  label: "Loggi",  color: "#01b4f7", bg: "rgba(1,180,247,0.7)"   },
+    { key: "jt",     label: "J&T",    color: "#cc4138", bg: "rgba(204,65,56,0.7)"   },
+    { key: "imile",  label: "iMile",  color: "#0328ff", bg: "rgba(3,40,255,0.7)"    },
+    { key: "anjun",  label: "Anjun",  color: "#009c21", bg: "rgba(0,156,33,0.7)"    },
+    { key: "shopee", label: "Shopee", color: "#ed4d2d", bg: "rgba(237,77,45,0.7)"   },
 ];
 const MES_NOMES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
@@ -1845,13 +1845,17 @@ function buscarDashboard() {
         document.getElementById("dash-total-num").textContent     = totalAno.toLocaleString("pt-BR");
         document.getElementById("dash-chart-title").textContent   = _dashGran === "quinzena" ? "Pacotes por Quinzena" : "Pacotes por Mês";
 
+        const ult  = grupos[grupos.length - 1];
+        const prev = grupos[grupos.length - 2];
         document.getElementById("dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
-            const total = grupos.reduce((s, g) => s + (g[t.key] || 0), 0);
-            const pct   = totalAno > 0 ? ((total / totalAno) * 100).toFixed(1) : "0.0";
+            const total   = grupos.reduce((s, g) => s + (g[t.key] || 0), 0);
+            const pct     = totalAno > 0 ? ((total / totalAno) * 100).toFixed(1) : "0.0";
+            const dlt     = _delta(ult ? ult[t.key] || 0 : 0, prev ? prev[t.key] || 0 : 0);
             return `<div class="dash-tc">
                 <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
                 <div class="dash-tc-qtd">${total.toLocaleString("pt-BR")}</div>
                 <div class="dash-tc-sub">pacotes no ano · ${pct}%</div>
+                <div class="dash-tc-delta ${dlt.cls}">${dlt.txt} vs anterior</div>
             </div>`;
         }).join("");
 
@@ -1874,9 +1878,13 @@ function buscarDashboard() {
                 plugins: {
                     legend: { display: true, labels: { color: "#aab4c8", font: { size: 12 }, usePointStyle: true, padding: 16 } },
                     tooltip: { callbacks: { label: ctx => {
-                        const periodoTotal = grupos[ctx.dataIndex].total;
-                        const pct = periodoTotal > 0 ? ((ctx.raw / periodoTotal) * 100).toFixed(1) : "0.0";
-                        return "  " + ctx.raw.toLocaleString("pt-BR") + " pacotes (" + pct + "%)";
+                        const i    = ctx.dataIndex;
+                        const t    = TRANSP_DEF[ctx.datasetIndex];
+                        const periodoTotal = grupos[i].total;
+                        const pct  = periodoTotal > 0 ? ((ctx.raw / periodoTotal) * 100).toFixed(1) : "0.0";
+                        const ant  = i > 0 ? (grupos[i - 1][t.key] || 0) : null;
+                        const dlt  = _delta(ctx.raw, ant);
+                        return "  " + ctx.raw.toLocaleString("pt-BR") + " pacotes (" + pct + "%)  " + dlt.txt;
                     }}}
                 },
                 scales: {
@@ -1979,8 +1987,11 @@ function buscarEntDashboard() {
                 plugins: {
                     legend: { display: false },
                     tooltip: { callbacks: { label: ctx => {
+                        const i   = ctx.dataIndex;
                         const pct = totalAno > 0 ? ((ctx.raw / totalAno) * 100).toFixed(1) : "0.0";
-                        return "  " + moedaJS(ctx.raw) + " (" + pct + "% do ano)";
+                        const ant = i > 0 ? grupos[i - 1].valor : null;
+                        const dlt = _delta(ctx.raw, ant);
+                        return "  " + moedaJS(ctx.raw) + " (" + pct + "% do ano)  " + dlt.txt;
                     }}}
                 },
                 scales: {
