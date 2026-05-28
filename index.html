@@ -200,6 +200,8 @@ body {
     padding-top: 20px;
     scrollbar-width: thin;
     scrollbar-color: rgba(58,134,255,0.3) transparent;
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* ===== TELA RECEBIMENTO ===== */
@@ -1305,16 +1307,19 @@ const token = localStorage.getItem("token");
 
 if (!token) window.location.href = "login.html";
 
-// Pull-to-refresh: swipe down no topo de qualquer tela → recarrega a página
+// Pull-to-refresh
 (function() {
-    let _ptrY = 0;
+    let _ptrY = 0, _ptrEl = null;
     document.addEventListener('touchstart', e => {
-        _ptrY = e.touches[0].pageY;
+        const el = e.target.closest('.fech-body');
+        if (el && el.scrollTop <= 2) { _ptrEl = el; _ptrY = e.touches[0].clientY; }
+        else _ptrEl = null;
     }, { passive: true });
     document.addEventListener('touchend', e => {
-        const el = e.target.closest('.fech-body');
-        if (!el || el.scrollTop > 8) return;
-        if (e.changedTouches[0].pageY - _ptrY > 90) window.location.reload();
+        if (!_ptrEl) return;
+        const dy = e.changedTouches[0].clientY - _ptrY;
+        _ptrEl = null;
+        if (dy > 75) window.location.reload();
     }, { passive: true });
 })();
 
