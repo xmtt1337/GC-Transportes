@@ -1903,38 +1903,7 @@ function buscarDashboard() {
         empty.style.display = "none";
         content.style.display = "";
 
-        // Totais por mês para os KPIs
-        const byMesTot = {};
-        dados.forEach(d => { byMesTot[d.mes] = (byMesTot[d.mes] || 0) + (d.total_entregues || 0); });
-        const mesesDisp = Object.keys(byMesTot).map(Number).sort((a, b) => a - b);
-        const totalAno  = mesesDisp.reduce((s, m) => s + byMesTot[m], 0);
-        const mesUlt    = mesesDisp[mesesDisp.length - 1];
-        const mesAnt    = mesesDisp[mesesDisp.length - 2];
-        const mesInicio = mesesDisp[0];
-        const totUlt    = mesUlt    ? byMesTot[mesUlt]    : 0;
-        const totAnt    = mesAnt    ? byMesTot[mesAnt]    : 0;
-        const totInicio = mesInicio ? byMesTot[mesInicio] : 0;
-
-        // KPI - total
-        document.getElementById("dkpi-total").textContent = totalAno.toLocaleString("pt-BR");
-
-        function _setKpi(cardId, elId, subId, pct, subTxt) {
-            document.getElementById(cardId).className = "dash-kpi-card" + (pct.dir > 0 ? " kpi-up" : pct.dir < 0 ? " kpi-down" : "");
-            const el = document.getElementById(elId);
-            el.className = "dash-kpi-pct " + pct.cls;
-            el.textContent = pct.txt;
-            document.getElementById(subId).textContent = subTxt;
-        }
-
-        _setKpi("dkpi-mes-card", "dkpi-vs-mes", "dkpi-vs-mes-sub",
-            _pctKpi(totUlt, totAnt),
-            mesUlt && mesAnt ? MES_NOMES[mesUlt].slice(0,3) + " vs " + MES_NOMES[mesAnt].slice(0,3) : "comparação mensal");
-
-        _setKpi("dkpi-inicio-card", "dkpi-vs-inicio", "dkpi-vs-inicio-sub",
-            _pctKpi(totUlt, totInicio),
-            mesUlt && mesInicio ? MES_NOMES[mesUlt].slice(0,3) + " vs " + MES_NOMES[mesInicio].slice(0,3) : "desde Janeiro");
-
-        // Build grupos por granularidade
+        // Grupos primeiro — KPIs respeitam a granularidade escolhida
         let grupos;
         if (_dashGran === "quinzena") {
             grupos = dados.map(d => ({
@@ -1960,9 +1929,35 @@ function buscarDashboard() {
             grupos = Object.keys(byMes).sort((a, b) => Number(a) - Number(b)).map(m => byMes[m]);
         }
 
+        const totalAno = grupos.reduce((s, g) => s + g.total, 0);
+        const ult      = grupos[grupos.length - 1];
+        const prev     = grupos[grupos.length - 2];
+        const inicio   = grupos[0];
+
+        // KPIs — comparação baseada nos grupos (quinzena ou mês)
+        document.getElementById("dkpi-total").textContent = totalAno.toLocaleString("pt-BR");
+        document.getElementById("dkpi-mes-card").querySelector(".dash-kpi-lbl").textContent =
+            _dashGran === "quinzena" ? "vs Quinzena Anterior" : "vs Mês Anterior";
+
+        function _setKpi(cardId, elId, subId, pct, subTxt) {
+            document.getElementById(cardId).className = "dash-kpi-card" + (pct.dir > 0 ? " kpi-up" : pct.dir < 0 ? " kpi-down" : "");
+            const el = document.getElementById(elId);
+            el.className = "dash-kpi-pct " + pct.cls;
+            el.textContent = pct.txt;
+            document.getElementById(subId).textContent = subTxt;
+        }
+
+        _setKpi("dkpi-mes-card", "dkpi-vs-mes", "dkpi-vs-mes-sub",
+            _pctKpi(ult ? ult.total : 0, prev ? prev.total : 0),
+            ult && prev ? ult.label + " vs " + prev.label : "—");
+
+        _setKpi("dkpi-inicio-card", "dkpi-vs-inicio", "dkpi-vs-inicio-sub",
+            _pctKpi(ult ? ult.total : 0, inicio ? inicio.total : 0),
+            ult && inicio && ult.label !== inicio.label ? ult.label + " vs " + inicio.label : "—");
+
         document.getElementById("dash-chart-title").textContent = _dashGran === "quinzena" ? "Pacotes por Quinzena" : "Pacotes por Mês";
 
-        // Chips de período com total por período
+        // Chips de período
         document.getElementById("dash-pchips").innerHTML = grupos.map((g, i) =>
             `<div class="dash-pchip${i === grupos.length - 1 ? " current" : ""}">
                 <div class="dpc-lbl">${g.label}</div>
@@ -1970,9 +1965,7 @@ function buscarDashboard() {
             </div>`
         ).join("");
 
-        // Cards de transportadoras sem % do ano, com badge lucro/preju
-        const ult  = grupos[grupos.length - 1];
-        const prev = grupos[grupos.length - 2];
+        // Cards de transportadoras
         document.getElementById("dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
             const total  = grupos.reduce((s, g) => s + (g[t.key] || 0), 0);
             const dlt    = _delta(ult ? ult[t.key] || 0 : 0, prev ? prev[t.key] || 0 : 0);
@@ -2071,38 +2064,7 @@ function buscarEntDashboard() {
         empty.style.display = "none";
         content.style.display = "";
 
-        // Totais por mês para os KPIs
-        const byMesVal = {};
-        dados.forEach(d => { byMesVal[d.mes] = (byMesVal[d.mes] || 0) + (d.total_receber_num || 0); });
-        const mesesDisp = Object.keys(byMesVal).map(Number).sort((a, b) => a - b);
-        const totalAno  = mesesDisp.reduce((s, m) => s + byMesVal[m], 0);
-        const mesUlt    = mesesDisp[mesesDisp.length - 1];
-        const mesAnt    = mesesDisp[mesesDisp.length - 2];
-        const mesInicio = mesesDisp[0];
-        const totUlt    = mesUlt    ? byMesVal[mesUlt]    : 0;
-        const totAnt    = mesAnt    ? byMesVal[mesAnt]    : 0;
-        const totInicio = mesInicio ? byMesVal[mesInicio] : 0;
-
-        // KPI - total
-        document.getElementById("edkpi-total").textContent = moedaJS(totalAno);
-
-        function _setKpiE(cardId, elId, subId, pct, subTxt) {
-            document.getElementById(cardId).className = "dash-kpi-card" + (pct.dir > 0 ? " kpi-up" : pct.dir < 0 ? " kpi-down" : "");
-            const el = document.getElementById(elId);
-            el.className = "dash-kpi-pct " + pct.cls;
-            el.textContent = pct.txt;
-            document.getElementById(subId).textContent = subTxt;
-        }
-
-        _setKpiE("edkpi-mes-card", "edkpi-vs-mes", "edkpi-vs-mes-sub",
-            _pctKpi(totUlt, totAnt),
-            mesUlt && mesAnt ? MES_NOMES[mesUlt].slice(0,3) + " vs " + MES_NOMES[mesAnt].slice(0,3) : "comparação mensal");
-
-        _setKpiE("edkpi-inicio-card", "edkpi-vs-inicio", "edkpi-vs-inicio-sub",
-            _pctKpi(totUlt, totInicio),
-            mesUlt && mesInicio ? MES_NOMES[mesUlt].slice(0,3) + " vs " + MES_NOMES[mesInicio].slice(0,3) : "desde Janeiro");
-
-        // Build grupos por granularidade
+        // Grupos primeiro — KPIs respeitam a granularidade escolhida
         let grupos;
         if (_entDashGran === "quinzena") {
             grupos = dados.map(d => ({
@@ -2128,7 +2090,32 @@ function buscarEntDashboard() {
             grupos = Object.keys(byMes).sort((a, b) => Number(a) - Number(b)).map(m => byMes[m]);
         }
 
-        const labels = grupos.map(g => g.label);
+        const totalAno = grupos.reduce((s, g) => s + g.valor, 0);
+        const ult      = grupos[grupos.length - 1];
+        const prev     = grupos[grupos.length - 2];
+        const inicio   = grupos[0];
+        const labels   = grupos.map(g => g.label);
+
+        // KPIs — comparação baseada nos grupos (quinzena ou mês)
+        document.getElementById("edkpi-total").textContent = moedaJS(totalAno);
+        document.getElementById("edkpi-mes-card").querySelector(".dash-kpi-lbl").textContent =
+            _entDashGran === "quinzena" ? "vs Quinzena Anterior" : "vs Mês Anterior";
+
+        function _setKpiE(cardId, elId, subId, pct, subTxt) {
+            document.getElementById(cardId).className = "dash-kpi-card" + (pct.dir > 0 ? " kpi-up" : pct.dir < 0 ? " kpi-down" : "");
+            const el = document.getElementById(elId);
+            el.className = "dash-kpi-pct " + pct.cls;
+            el.textContent = pct.txt;
+            document.getElementById(subId).textContent = subTxt;
+        }
+
+        _setKpiE("edkpi-mes-card", "edkpi-vs-mes", "edkpi-vs-mes-sub",
+            _pctKpi(ult ? ult.valor : 0, prev ? prev.valor : 0),
+            ult && prev ? ult.label + " vs " + prev.label : "—");
+
+        _setKpiE("edkpi-inicio-card", "edkpi-vs-inicio", "edkpi-vs-inicio-sub",
+            _pctKpi(ult ? ult.valor : 0, inicio ? inicio.valor : 0),
+            ult && inicio && ult.label !== inicio.label ? ult.label + " vs " + inicio.label : "—");
 
         // Chips de período com valor por período
         document.getElementById("ent-dash-pchips").innerHTML = grupos.map((g, i) =>
@@ -2138,9 +2125,7 @@ function buscarEntDashboard() {
             </div>`
         ).join("");
 
-        // Cards de transportadoras por quantidade + lucro/preju
-        const ult  = grupos[grupos.length - 1];
-        const prev = grupos[grupos.length - 2];
+        // Cards de transportadoras
         document.getElementById("ent-dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
             const total  = grupos.reduce((s, g) => s + (g[t.key] || 0), 0);
             const dlt    = _delta(ult ? ult[t.key] || 0 : 0, prev ? prev[t.key] || 0 : 0);
