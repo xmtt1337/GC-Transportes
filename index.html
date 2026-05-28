@@ -446,14 +446,14 @@ body {
 }
 .topbar-mobile-menu:active { color: #fff; }
 
-.topbar-reload-btn {
+.sidebar-reload-btn {
     display: none; background: none; border: none; color: #7a8599;
-    cursor: pointer; padding: 6px; border-radius: 8px;
+    cursor: pointer; padding: 6px 8px; border-radius: 8px;
     align-items: center; justify-content: center;
     -webkit-tap-highlight-color: transparent;
-    margin-right: 4px; transition: color 0.2s;
+    transition: color 0.2s; margin-left: 4px;
 }
-.topbar-reload-btn:active { color: #3a86ff; }
+.sidebar-reload-btn:hover, .sidebar-reload-btn:active { color: #fff; }
 
 @media (max-width: 680px) {
     body { height: 100dvh; }
@@ -472,7 +472,7 @@ body {
     .sidebar.expanded .sidebar-footer { justify-content: flex-end; padding-right: 10px; }
 
     .topbar-mobile-menu { display: flex; }
-    .sidebar.expanded ~ .content .topbar-reload-btn { display: flex; }
+    .sidebar.expanded .sidebar-reload-btn { display: flex; }
 
     .content { padding: 12px; }
     .topbar { height: 52px; padding: 0 12px; margin-bottom: 12px; border-radius: 12px; }
@@ -883,6 +883,12 @@ body {
                 <polyline points="9 18 15 12 9 6"/>
             </svg>
         </button>
+        <button class="sidebar-reload-btn" onclick="window.location.reload()" aria-label="Atualizar">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                <path d="M3.51 9a9 9 0 0114.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0020.49 15"/>
+            </svg>
+        </button>
     </div>
 
 </nav>
@@ -896,12 +902,6 @@ body {
             <button class="topbar-mobile-menu" onclick="toggleSidebar()" aria-label="Menu">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-                </svg>
-            </button>
-            <button class="topbar-reload-btn" onclick="window.location.reload()" aria-label="Atualizar">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-                    <path d="M3.51 9a9 9 0 0114.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0020.49 15"/>
                 </svg>
             </button>
             <h1 id="titulo-pagina">Painel</h1>
