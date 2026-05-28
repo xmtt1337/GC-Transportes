@@ -732,7 +732,9 @@ body {
     flex-shrink: 0; background: rgba(27,38,59,0.9);
     border: 1px solid rgba(58,134,255,0.1); border-radius: 10px;
     padding: 9px 13px; text-align: center; min-width: 76px;
+    cursor: pointer; transition: border-color 0.18s, background 0.18s, transform 0.15s;
 }
+.dash-pchip:hover { border-color: rgba(58,134,255,0.45); background: rgba(58,134,255,0.09); transform: translateY(-2px); }
 .dash-pchip.current { border-color: rgba(58,134,255,0.5); background: rgba(58,134,255,0.1); }
 .dpc-lbl { font-size: 10px; color: #4a6a8a; margin-bottom: 4px; font-weight: 500; }
 .dpc-val { font-size: 13px; font-weight: 700; color: #f1f5f9; }
@@ -1553,6 +1555,64 @@ function _carregarPainel() {
     });
 }
 
+// ───── NAVEGAÇÃO RÁPIDA: CHIP → FECHAMENTO ─────
+function irParaFechamentoPeriodo(mes, ano, quinzena) {
+    _fMes = mes;
+    _fAno = ano;
+    _iniciarSelects();
+    document.getElementById("sel-mes").value = mes;
+    document.getElementById("fechamento-data").style.display = "none";
+
+    if (quinzena) {
+        _fQuinzena = quinzena;
+        document.getElementById("btn-1q").classList.toggle("active", quinzena === 1);
+        document.getElementById("btn-2q").classList.toggle("active", quinzena === 2);
+        document.getElementById("fechamento-empty").style.display = "none";
+        mostrarTela("tela-fechamentos");
+        _carregarPainel();
+    } else {
+        _fQuinzena = null;
+        document.getElementById("btn-1q").classList.remove("active");
+        document.getElementById("btn-2q").classList.remove("active");
+        document.getElementById("fechamento-empty").innerText = "Selecione uma quinzena para ver o fechamento.";
+        document.getElementById("fechamento-empty").style.display = "";
+        mostrarTela("tela-fechamentos");
+    }
+}
+
+function irParaAdminFechamentoPeriodo(mes, ano, quinzena) {
+    _admFMes = mes;
+    _admFAno = ano;
+    _admFQuinzena = quinzena || null;
+    _admFEntregador = "";
+    _admEntregadoresLista = [];
+    _iniciarSelectsAdmFech();
+    document.getElementById("adm-fech-mes").value = mes;
+    document.getElementById("adm-fech-data").style.display = "none";
+    document.getElementById("adm-search-input").value = "";
+    document.getElementById("adm-search-input-area").style.display = "";
+    document.getElementById("adm-selected-chip").style.display = "none";
+    document.getElementById("adm-dropdown").style.display = "none";
+    document.getElementById("adm-ent-section").style.display = "none";
+
+    if (quinzena) {
+        document.getElementById("adm-btn-1q").classList.toggle("active", quinzena === 1);
+        document.getElementById("adm-btn-2q").classList.toggle("active", quinzena === 2);
+    } else {
+        document.getElementById("adm-btn-1q").classList.remove("active");
+        document.getElementById("adm-btn-2q").classList.remove("active");
+    }
+
+    mostrarTela("tela-admin-fechamentos");
+
+    if (quinzena) {
+        buscarQuinzenaAdmin();
+    } else {
+        document.getElementById("adm-fech-empty").innerText = "Selecione a quinzena para ver os entregadores.";
+        document.getElementById("adm-fech-empty").style.display = "";
+    }
+}
+
 // ───── TELA ADMIN ─────
 function abrirAdmin(event) {
     if (event) event.preventDefault();
@@ -1907,18 +1967,20 @@ function buscarDashboard() {
         let grupos;
         if (_dashGran === "quinzena") {
             grupos = dados.map(d => ({
-                label:  `${d.quinzena}Q ${MES_NOMES[d.mes].slice(0, 3)}`,
-                total:  d.total_entregues || 0,
-                loggi:  d.loggi  ? d.loggi.qtd  : 0,
-                jt:     d.jt     ? d.jt.qtd     : 0,
-                imile:  d.imile  ? d.imile.qtd  : 0,
-                anjun:  d.anjun  ? d.anjun.qtd  : 0,
-                shopee: d.shopee ? d.shopee.qtd : 0,
+                label:    `${d.quinzena}Q ${MES_NOMES[d.mes].slice(0, 3)}`,
+                total:    d.total_entregues || 0,
+                mes:      d.mes,
+                quinzena: d.quinzena,
+                loggi:    d.loggi  ? d.loggi.qtd  : 0,
+                jt:       d.jt     ? d.jt.qtd     : 0,
+                imile:    d.imile  ? d.imile.qtd  : 0,
+                anjun:    d.anjun  ? d.anjun.qtd  : 0,
+                shopee:   d.shopee ? d.shopee.qtd : 0,
             }));
         } else {
             const byMes = {};
             dados.forEach(d => {
-                if (!byMes[d.mes]) byMes[d.mes] = { label: MES_NOMES[d.mes].slice(0, 3), total: 0, loggi: 0, jt: 0, imile: 0, anjun: 0, shopee: 0 };
+                if (!byMes[d.mes]) byMes[d.mes] = { label: MES_NOMES[d.mes].slice(0, 3), total: 0, mes: d.mes, quinzena: 0, loggi: 0, jt: 0, imile: 0, anjun: 0, shopee: 0 };
                 byMes[d.mes].total  += d.total_entregues || 0;
                 byMes[d.mes].loggi  += d.loggi  ? d.loggi.qtd  : 0;
                 byMes[d.mes].jt     += d.jt     ? d.jt.qtd     : 0;
@@ -1957,9 +2019,9 @@ function buscarDashboard() {
 
         document.getElementById("dash-chart-title").textContent = _dashGran === "quinzena" ? "Pacotes por Quinzena" : "Pacotes por Mês";
 
-        // Chips de período
+        // Chips de período (clicáveis → abre pesquisa de fechamento)
         document.getElementById("dash-pchips").innerHTML = grupos.map((g, i) =>
-            `<div class="dash-pchip${i === grupos.length - 1 ? " current" : ""}">
+            `<div class="dash-pchip${i === grupos.length - 1 ? " current" : ""}" onclick="irParaAdminFechamentoPeriodo(${g.mes},${ano},${g.quinzena||0})">
                 <div class="dpc-lbl">${g.label}</div>
                 <div class="dpc-val">${g.total.toLocaleString("pt-BR")}</div>
             </div>`
@@ -2068,18 +2130,20 @@ function buscarEntDashboard() {
         let grupos;
         if (_entDashGran === "quinzena") {
             grupos = dados.map(d => ({
-                label:  `${d.quinzena}Q ${MES_NOMES[d.mes].slice(0, 3)}`,
-                valor:  d.total_receber_num || 0,
-                loggi:  d.entregues_loggi  || 0,
-                jt:     d.entregues_jt     || 0,
-                imile:  d.qtd_imile        || 0,
-                anjun:  d.entregues_anjun  || 0,
-                shopee: d.entregues_shopee || 0,
+                label:    `${d.quinzena}Q ${MES_NOMES[d.mes].slice(0, 3)}`,
+                valor:    d.total_receber_num || 0,
+                mes:      d.mes,
+                quinzena: d.quinzena,
+                loggi:    d.entregues_loggi  || 0,
+                jt:       d.entregues_jt     || 0,
+                imile:    d.qtd_imile        || 0,
+                anjun:    d.entregues_anjun  || 0,
+                shopee:   d.entregues_shopee || 0,
             }));
         } else {
             const byMes = {};
             dados.forEach(d => {
-                if (!byMes[d.mes]) byMes[d.mes] = { label: MES_NOMES[d.mes].slice(0, 3), valor: 0, loggi: 0, jt: 0, imile: 0, anjun: 0, shopee: 0 };
+                if (!byMes[d.mes]) byMes[d.mes] = { label: MES_NOMES[d.mes].slice(0, 3), valor: 0, mes: d.mes, quinzena: 0, loggi: 0, jt: 0, imile: 0, anjun: 0, shopee: 0 };
                 byMes[d.mes].valor  += d.total_receber_num  || 0;
                 byMes[d.mes].loggi  += d.entregues_loggi   || 0;
                 byMes[d.mes].jt     += d.entregues_jt      || 0;
@@ -2117,9 +2181,9 @@ function buscarEntDashboard() {
             _pctKpi(ult ? ult.valor : 0, inicio ? inicio.valor : 0),
             ult && inicio && ult.label !== inicio.label ? ult.label + " vs " + inicio.label : "—");
 
-        // Chips de período com valor por período
+        // Chips de período (clicáveis → abre o fechamento daquela quinzena)
         document.getElementById("ent-dash-pchips").innerHTML = grupos.map((g, i) =>
-            `<div class="dash-pchip${i === grupos.length - 1 ? " current" : ""}">
+            `<div class="dash-pchip${i === grupos.length - 1 ? " current" : ""}" onclick="irParaFechamentoPeriodo(${g.mes},${ano},${g.quinzena||0})">
                 <div class="dpc-lbl">${g.label}</div>
                 <div class="dpc-val">${moedaJS(g.valor)}</div>
             </div>`
