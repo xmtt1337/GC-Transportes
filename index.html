@@ -454,6 +454,7 @@ body {
     transition: color 0.2s; margin-left: 4px;
 }
 .sidebar-reload-btn:hover, .sidebar-reload-btn:active { color: #fff; }
+.sidebar.expanded .sidebar-reload-btn { display: flex; }
 
 @media (max-width: 680px) {
     body { height: 100dvh; }
@@ -472,7 +473,6 @@ body {
     .sidebar.expanded .sidebar-footer { justify-content: flex-end; padding-right: 10px; }
 
     .topbar-mobile-menu { display: flex; }
-    .sidebar.expanded .sidebar-reload-btn { display: flex; }
 
     .content { padding: 12px; }
     .topbar { height: 52px; padding: 0 12px; margin-bottom: 12px; border-radius: 12px; }
