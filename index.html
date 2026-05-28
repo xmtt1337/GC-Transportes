@@ -2095,10 +2095,38 @@ function _parseMoeda(s) {
 function _entSelecionarChip(idx) {
     if (idx < 0 || idx >= _entGrupos.length) return;
     _entSelIdx = idx;
-    const g = _entGrupos[idx];
+    const g    = _entGrupos[idx];
+    const prev = _entGrupos[idx - 1] || null;
+    const ini  = _entGrupos[0];
+
+    // Highlight chip
     document.querySelectorAll("#ent-dash-pchips .dash-pchip").forEach((el, i) =>
         el.classList.toggle("current", i === idx)
     );
+
+    // Update KPI cards to reflect selected period
+    const gran = _entDashGran === "quinzena" ? "Quinzena" : "Mês";
+    document.getElementById("edkpi-mes-card").querySelector(".dash-kpi-lbl").textContent =
+        "vs " + gran + " Anterior";
+
+    function _applyKpi(cardId, pctElId, subId, pct, subTxt) {
+        document.getElementById(cardId).className =
+            "dash-kpi-card" + (pct.dir > 0 ? " kpi-up" : pct.dir < 0 ? " kpi-down" : "");
+        const el = document.getElementById(pctElId);
+        el.className  = "dash-kpi-pct " + pct.cls;
+        el.textContent = pct.txt;
+        document.getElementById(subId).textContent = subTxt;
+    }
+
+    _applyKpi("edkpi-mes-card", "edkpi-vs-mes", "edkpi-vs-mes-sub",
+        _pctKpi(g.valor, prev ? prev.valor : 0),
+        prev ? g.label + " vs " + prev.label : "—");
+
+    _applyKpi("edkpi-inicio-card", "edkpi-vs-inicio", "edkpi-vs-inicio-sub",
+        _pctKpi(g.valor, ini.valor),
+        g.label !== ini.label ? g.label + " vs " + ini.label : "—");
+
+    // Update carrier cards
     document.getElementById("ent-dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
         const v = g[t.valKey] || 0;
         const q = g[t.key]   || 0;
