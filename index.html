@@ -245,20 +245,21 @@ body {
 .fech-filtrar-btn:hover { background: #2563eb; box-shadow: 0 0 14px rgba(58,134,255,0.4); }
 
 .quinzena-toggle {
-    display: flex; background: rgba(27,38,59,0.95);
-    border: 1px solid rgba(58,134,255,0.2); border-radius: 12px;
-    overflow: hidden; width: 100%;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    display: flex; background: rgba(10,16,30,0.85);
+    border: 1px solid rgba(58,134,255,0.15); border-radius: 14px;
+    padding: 4px; gap: 4px; width: 100%;
 }
 .quinzena-btn {
-    flex: 1; padding: 13px 0; background: none; border: none; color: #7a8599;
+    flex: 1; padding: 11px 0; background: none; border: none; color: #64748b;
     font-size: 14px; font-weight: 500; cursor: pointer;
-    transition: background 0.2s, color 0.2s; font-family: 'Inter', sans-serif;
-    border-right: 1px solid rgba(58,134,255,0.1);
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    font-family: 'Inter', sans-serif; border-radius: 10px;
 }
-.quinzena-btn:last-child { border-right: none; }
-.quinzena-btn:hover:not(.active) { background: rgba(58,134,255,0.08); color: #ccc; }
-.quinzena-btn.active { background: rgba(58,134,255,0.22); color: #fff; }
+.quinzena-btn:hover:not(.active) { background: rgba(58,134,255,0.08); color: #cbd5e1; }
+.quinzena-btn.active {
+    background: #1e40af; color: #fff;
+    box-shadow: 0 2px 10px rgba(30,64,175,0.45);
+}
 
 .fechamento-empty {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
@@ -2723,10 +2724,11 @@ async function _processarNota(input) {
             const content = await page.getTextContent();
             text += content.items.map(it => it.str).join(" ") + "\n";
         }
-        const nota    = _extrairCamposNota(text);
-        const notaNum = _parseMoeda(nota.valor);
-        const status  = (_fTotalReceber && notaNum > 0)
-            ? (Math.abs(notaNum - _fTotalReceber) < 0.02 ? "confere" : "diverge")
+        const nota             = _extrairCamposNota(text);
+        const notaNum          = _parseMoeda(nota.valor);
+        const valor_fechamento = _fTotalReceber || null;
+        const status           = (valor_fechamento && notaNum > 0)
+            ? (Math.abs(notaNum - valor_fechamento) < 0.02 ? "confere" : "diverge")
             : null;
 
         // Verificar se a chave de acesso já foi usada em outro período/entregador
@@ -2747,7 +2749,7 @@ async function _processarNota(input) {
         await fetch(`${API}/nota`, {
             method: "POST",
             headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-            body: JSON.stringify({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena, ...nota, status })
+            body: JSON.stringify({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena, ...nota, status, valor_fechamento })
         });
         _renderNotaCard(nota);
     } catch (e) {
