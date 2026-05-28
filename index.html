@@ -834,7 +834,9 @@ body {
 .nota-field:last-child { border-bottom: none; }
 .nota-field-lbl { font-size: 11px; color: #7a8599; flex-shrink: 0; }
 .nota-field-val { font-size: 13px; font-weight: 600; color: #f1f5f9; text-align: right; }
-.nota-chave-val { font-family: monospace; font-size: 11px; word-break: break-all; color: #94a3b8; font-weight: 400; }
+.nota-chave-val { font-family: monospace; font-size: 11px; word-break: break-all; color: #94a3b8; font-weight: 400; text-align: right; }
+.nota-field-chave { align-items: flex-start; }
+.nota-field-chave .nota-field-lbl { padding-top: 2px; }
 .nota-status {
     margin-top: 12px; padding: 10px 14px; border-radius: 10px;
     font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px;
@@ -870,7 +872,10 @@ body {
 .adm-nf-badge.confere { background: rgba(34,197,94,0.12); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); }
 .adm-nf-badge.diverge { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
 .adm-nf-badge.pendente { background: rgba(148,163,184,0.1); color: #64748b; border: 1px solid rgba(148,163,184,0.2); }
+.adm-nf-chave { word-break: break-all; max-width: 180px; line-height: 1.5; font-size: 11px; }
 @media (max-width: 680px) {
+    .adm-nf-table th:nth-child(3),
+    .adm-nf-table td:nth-child(3),
     .adm-nf-table th:nth-child(4),
     .adm-nf-table td:nth-child(4),
     .adm-nf-table th:nth-child(5),
@@ -1157,13 +1162,12 @@ body {
                             <span class="nota-card-title">Nota Fiscal Anexada</span>
                             <button class="nota-remove-btn" onclick="_removerNota()">✕ Remover</button>
                         </div>
-                        <div class="nota-field"><span class="nota-field-lbl">Nº NF</span><span class="nota-field-val" id="nota-numero">—</span></div>
+                        <div class="nota-field nota-field-chave"><span class="nota-field-lbl">Nº NF</span><span class="nota-field-val nota-chave-val" id="nota-numero">—</span></div>
                         <div class="nota-field"><span class="nota-field-lbl">Data Emissão</span><span class="nota-field-val" id="nota-emissao">—</span></div>
                         <div class="nota-field"><span class="nota-field-lbl">CNPJ</span><span class="nota-field-val" id="nota-cnpj">—</span></div>
                         <div class="nota-field"><span class="nota-field-lbl">Emissor</span><span class="nota-field-val" id="nota-emissor">—</span></div>
                         <div class="nota-field"><span class="nota-field-lbl">Valor</span><span class="nota-field-val" id="nota-valor">—</span></div>
                         <div class="nota-field"><span class="nota-field-lbl">Tomador</span><span class="nota-field-val" id="nota-tomador">—</span></div>
-                        <div class="nota-field" id="nota-chave-row" style="display:none"><span class="nota-field-lbl">Chave de Acesso</span><span class="nota-field-val nota-chave-val" id="nota-chave">—</span></div>
                         <div id="nota-status" class="nota-status" style="display:none"></div>
                     </div>
 
@@ -1372,12 +1376,11 @@ body {
                                 <tr>
                                     <th>Entregador</th>
                                     <th>Status</th>
-                                    <th>Nº NF</th>
                                     <th>Valor NF</th>
                                     <th>Data Emissão</th>
                                     <th>CNPJ</th>
                                     <th>Emissor</th>
-                                    <th>Chave de Acesso</th>
+                                    <th>Nº NF / Chave de Acesso</th>
                                 </tr>
                             </thead>
                             <tbody id="adm-nf-tbody"></tbody>
@@ -2048,16 +2051,15 @@ function buscarNFsAdmin() {
         document.getElementById("adm-nf-tbody").innerHTML = rows.map(nf => {
             const badgeCls = nf.status === "confere" ? "confere" : nf.status === "diverge" ? "diverge" : "pendente";
             const badgeTxt = nf.status === "confere" ? "✓ Confere" : nf.status === "diverge" ? "⚠ Diverge" : "—";
-            const chave    = nf.chave_acesso || "—";
+            const nfId     = nf.chave_acesso || nf.numero_nf || "—";
             return `<tr>
                 <td class="adm-nf-entregador">${nf.username}</td>
                 <td><span class="adm-nf-badge ${badgeCls}">${badgeTxt}</span></td>
-                <td class="adm-nf-cnpj">${nf.numero_nf || "—"}</td>
                 <td class="adm-nf-valor">${nf.valor || "—"}</td>
                 <td>${nf.emissao || "—"}</td>
                 <td class="adm-nf-cnpj">${nf.cnpj || "—"}</td>
                 <td>${nf.emissor || "—"}</td>
-                <td class="adm-nf-cnpj" title="${chave}">${chave !== "—" ? chave.slice(0,20)+"…" : "—"}</td>
+                <td class="adm-nf-cnpj adm-nf-chave">${nfId}</td>
             </tr>`;
         }).join("");
     })
@@ -2671,19 +2673,12 @@ function _carregarNota() {
 function _renderNotaCard(nota) {
     document.getElementById("nota-upload-area").style.display = "none";
     document.getElementById("nota-card").style.display = "";
-    document.getElementById("nota-numero").textContent  = nota.numero_nf    || "—";
+    document.getElementById("nota-numero").textContent  = nota.chave_acesso || nota.numero_nf || "—";
     document.getElementById("nota-emissao").textContent = nota.emissao      || "—";
     document.getElementById("nota-cnpj").textContent    = nota.cnpj         || "—";
     document.getElementById("nota-emissor").textContent = nota.emissor      || "—";
     document.getElementById("nota-valor").textContent   = nota.valor        || "—";
     document.getElementById("nota-tomador").textContent = nota.tomador      || "—";
-    const chaveRow = document.getElementById("nota-chave-row");
-    if (nota.chave_acesso) {
-        document.getElementById("nota-chave").textContent = nota.chave_acesso;
-        chaveRow.style.display = "";
-    } else {
-        chaveRow.style.display = "none";
-    }
 
     const statusEl = document.getElementById("nota-status");
     if (nota.valor && nota.valor !== "—" && _fTotalReceber) {
