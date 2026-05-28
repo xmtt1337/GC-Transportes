@@ -1274,6 +1274,11 @@ body {
                         <div class="dash-chart-canvas"><canvas id="ent-dash-valor-chart"></canvas></div>
                     </div>
 
+                    <div class="dash-chart-card">
+                        <div class="dash-chart-title">Transportadoras por Período (R$)</div>
+                        <div class="dash-chart-canvas"><canvas id="ent-dash-transp-chart"></canvas></div>
+                    </div>
+
                 </div>
             </div>
 
@@ -1894,11 +1899,11 @@ let _dashBarChart = null;
 let _dashGran = "quinzena";
 
 const TRANSP_DEF = [
-    { key: "loggi",  label: "Loggi",  color: "#01b4f7", bg: "rgba(1,180,247,0.7)"   },
-    { key: "jt",     label: "J&T",    color: "#cc4138", bg: "rgba(204,65,56,0.7)"   },
-    { key: "imile",  label: "iMile",  color: "#6b80ff", bg: "rgba(107,128,255,0.7)"  },
-    { key: "anjun",  label: "Anjun",  color: "#009c21", bg: "rgba(0,156,33,0.7)"    },
-    { key: "shopee", label: "Shopee", color: "#ed4d2d", bg: "rgba(237,77,45,0.7)"   },
+    { key: "loggi",  valKey: "loggi_v",  label: "Loggi",  color: "#01b4f7", bg: "rgba(1,180,247,0.7)"   },
+    { key: "jt",     valKey: "jt_v",     label: "J&T",    color: "#cc4138", bg: "rgba(204,65,56,0.7)"   },
+    { key: "imile",  valKey: "imile_v",  label: "iMile",  color: "#6b80ff", bg: "rgba(107,128,255,0.7)"  },
+    { key: "anjun",  valKey: "anjun_v",  label: "Anjun",  color: "#009c21", bg: "rgba(0,156,33,0.7)"    },
+    { key: "shopee", valKey: "shopee_v", label: "Shopee", color: "#ed4d2d", bg: "rgba(237,77,45,0.7)"   },
 ];
 const MES_NOMES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
@@ -2080,8 +2085,9 @@ function buscarDashboard() {
 }
 
 // ───── ENT DASHBOARD ─────
-let _entDashValorChart = null;
-let _entDashGran       = "quinzena";
+let _entDashValorChart  = null;
+let _entDashTranspChart = null;
+let _entDashGran        = "quinzena";
 
 function setEntDashGran(tipo) {
     _entDashGran = tipo;
@@ -2139,17 +2145,27 @@ function buscarEntDashboard() {
                 imile:    d.qtd_imile        || 0,
                 anjun:    d.entregues_anjun  || 0,
                 shopee:   d.entregues_shopee || 0,
+                loggi_v:  d.valor_loggi  || 0,
+                jt_v:     d.valor_jt     || 0,
+                imile_v:  d.valor_imile  || 0,
+                anjun_v:  d.valor_anjun  || 0,
+                shopee_v: d.valor_shopee || 0,
             }));
         } else {
             const byMes = {};
             dados.forEach(d => {
-                if (!byMes[d.mes]) byMes[d.mes] = { label: MES_NOMES[d.mes].slice(0, 3), valor: 0, mes: d.mes, quinzena: 0, loggi: 0, jt: 0, imile: 0, anjun: 0, shopee: 0 };
-                byMes[d.mes].valor  += d.total_receber_num  || 0;
-                byMes[d.mes].loggi  += d.entregues_loggi   || 0;
-                byMes[d.mes].jt     += d.entregues_jt      || 0;
-                byMes[d.mes].imile  += d.qtd_imile         || 0;
-                byMes[d.mes].anjun  += d.entregues_anjun   || 0;
-                byMes[d.mes].shopee += d.entregues_shopee  || 0;
+                if (!byMes[d.mes]) byMes[d.mes] = { label: MES_NOMES[d.mes].slice(0, 3), valor: 0, mes: d.mes, quinzena: 0, loggi: 0, jt: 0, imile: 0, anjun: 0, shopee: 0, loggi_v: 0, jt_v: 0, imile_v: 0, anjun_v: 0, shopee_v: 0 };
+                byMes[d.mes].valor   += d.total_receber_num  || 0;
+                byMes[d.mes].loggi   += d.entregues_loggi   || 0;
+                byMes[d.mes].jt      += d.entregues_jt      || 0;
+                byMes[d.mes].imile   += d.qtd_imile         || 0;
+                byMes[d.mes].anjun   += d.entregues_anjun   || 0;
+                byMes[d.mes].shopee  += d.entregues_shopee  || 0;
+                byMes[d.mes].loggi_v += d.valor_loggi  || 0;
+                byMes[d.mes].jt_v    += d.valor_jt     || 0;
+                byMes[d.mes].imile_v += d.valor_imile  || 0;
+                byMes[d.mes].anjun_v += d.valor_anjun  || 0;
+                byMes[d.mes].shopee_v+= d.valor_shopee || 0;
             });
             grupos = Object.keys(byMes).sort((a, b) => Number(a) - Number(b)).map(m => byMes[m]);
         }
@@ -2189,17 +2205,18 @@ function buscarEntDashboard() {
             </div>`
         ).join("");
 
-        // Cards de transportadoras
+        // Cards de transportadoras — R$ do período atual
         document.getElementById("ent-dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
-            const total  = grupos.reduce((s, g) => s + (g[t.key] || 0), 0);
-            const dlt    = _delta(ult ? ult[t.key] || 0 : 0, prev ? prev[t.key] || 0 : 0);
-            const pctStr = dlt.cls !== "flat" ? dlt.txt.slice(2) : "—";
-            const bCls   = dlt.cls === "up" ? "lucro" : dlt.cls === "down" ? "preju" : "estavel";
-            const badge  = `<span class="lbadge ${bCls}">${pctStr}</span>`;
+            const ultVal  = ult ? (ult[t.valKey] || 0) : 0;
+            const prevVal = prev ? (prev[t.valKey] || 0) : 0;
+            const dlt     = _delta(ultVal, prevVal);
+            const pctStr  = dlt.cls !== "flat" ? dlt.txt.slice(2) : "—";
+            const bCls    = dlt.cls === "up" ? "lucro" : dlt.cls === "down" ? "preju" : "estavel";
+            const badge   = `<span class="lbadge ${bCls}">${pctStr}</span>`;
             return `<div class="dash-tc">
                 <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
-                <div class="dash-tc-qtd">${total.toLocaleString("pt-BR")}</div>
-                <div class="dash-tc-sub">pacotes no ano</div>
+                <div class="dash-tc-qtd">${moedaJS(ultVal)}</div>
+                <div class="dash-tc-sub">${ult ? ult.label : "—"}</div>
                 ${badge}
             </div>`;
         }).join("");
@@ -2229,6 +2246,35 @@ function buscarEntDashboard() {
                 scales: {
                     x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
                     y: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => moedaJS(v) } }
+                }
+            }
+        });
+
+        // Gráfico de transportadoras por período (R$)
+        const transpCanvas = document.getElementById("ent-dash-transp-chart");
+        if (_entDashTranspChart) { _entDashTranspChart.destroy(); _entDashTranspChart = null; }
+        _entDashTranspChart = new Chart(transpCanvas.getContext("2d"), {
+            type: "bar",
+            data: {
+                labels,
+                datasets: TRANSP_DEF.map(t => ({
+                    label: t.label,
+                    data: grupos.map(g => g[t.valKey] || 0),
+                    backgroundColor: t.bg,
+                    borderColor: t.color,
+                    borderWidth: 1,
+                    borderRadius: 5,
+                }))
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: "#aab4c8", font: { size: 12 }, boxWidth: 14, padding: 16 } },
+                    tooltip: { callbacks: { label: ctx => "  " + ctx.dataset.label + ": " + moedaJS(ctx.raw) } }
+                },
+                scales: {
+                    x: { stacked: false, grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
+                    y: { stacked: false, grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => moedaJS(v) } }
                 }
             }
         });
