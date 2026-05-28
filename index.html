@@ -938,7 +938,7 @@ body {
             <!-- Cabeçalho fixo -->
             <div class="fech-header">
                 <div class="fech-period-row">
-                    <select class="fech-select" id="sel-mes">
+                    <select class="fech-select" id="sel-mes" onchange="filtrarPeriodo()">
                         <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
                         <option value="3">Março</option>    <option value="4">Abril</option>
                         <option value="5">Maio</option>     <option value="6">Junho</option>
@@ -946,8 +946,7 @@ body {
                         <option value="9">Setembro</option> <option value="10">Outubro</option>
                         <option value="11">Novembro</option><option value="12">Dezembro</option>
                     </select>
-                    <select class="fech-select" id="sel-ano"></select>
-                    <button class="fech-filtrar-btn" onclick="filtrarPeriodo()">Filtrar</button>
+                    <select class="fech-select" id="sel-ano" onchange="filtrarPeriodo()"></select>
                 </div>
                 <div class="quinzena-toggle">
                     <button class="quinzena-btn" id="btn-1q" onclick="selecionarQuinzena(1)">1ª Quinzena &nbsp;(1 – 15)</button>
