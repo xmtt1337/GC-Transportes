@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="img/logobranca.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
@@ -789,6 +790,49 @@ body {
     .dpc-val { font-size: 11px; }
     .dash-pchip { padding: 6px 10px; }
 }
+
+/* ===== NOTA FISCAL ===== */
+.nota-upload-area {
+    border: 2px dashed rgba(58,134,255,0.25); border-radius: 14px;
+    padding: 24px; text-align: center; margin-bottom: 16px;
+    transition: border-color 0.2s;
+}
+.nota-upload-area:hover { border-color: rgba(58,134,255,0.5); }
+.nota-btn-upload {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(58,134,255,0.12); border: 1px solid rgba(58,134,255,0.3);
+    color: #3a86ff; border-radius: 10px; padding: 10px 20px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+.nota-btn-upload:hover { background: rgba(58,134,255,0.2); border-color: rgba(58,134,255,0.5); }
+.nota-hint { font-size: 11px; color: #4a6a8a; margin-top: 8px; }
+.nota-loading { text-align: center; color: #4a6a8a; font-size: 13px; padding: 16px; }
+
+.nota-card {
+    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.2);
+    border-radius: 14px; padding: 16px 18px; margin-bottom: 16px;
+}
+.nota-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px; padding-bottom: 10px;
+    border-bottom: 1px solid rgba(58,134,255,0.1);
+}
+.nota-card-title { font-size: 12px; font-weight: 700; color: #3a86ff; text-transform: uppercase; letter-spacing: 0.06em; }
+.nota-remove-btn {
+    background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
+    color: #ef4444; border-radius: 8px; padding: 4px 10px;
+    font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s;
+}
+.nota-remove-btn:hover { background: rgba(239,68,68,0.18); }
+.nota-field {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 6px 0; border-bottom: 1px solid rgba(58,134,255,0.05); gap: 12px;
+}
+.nota-field:last-child { border-bottom: none; }
+.nota-field-lbl { font-size: 11px; color: #7a8599; flex-shrink: 0; }
+.nota-field-val { font-size: 13px; font-weight: 600; color: #f1f5f9; text-align: right; }
 </style>
 </head>
 <body>
@@ -1046,6 +1090,30 @@ body {
                                 <tbody id="multas-tbody"></tbody>
                             </table>
                         </div>
+                    </div>
+
+                    <!-- Nota Fiscal -->
+                    <div class="painel-section-title">Nota Fiscal</div>
+
+                    <div id="nota-upload-area" class="nota-upload-area">
+                        <input type="file" id="nota-file-input" accept=".pdf" style="display:none" onchange="_processarNota(this)">
+                        <button class="nota-btn-upload" onclick="document.getElementById('nota-file-input').click()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                            Anexar PDF
+                        </button>
+                        <p class="nota-hint">Extraímos automaticamente os dados da nota</p>
+                    </div>
+
+                    <div id="nota-card" class="nota-card" style="display:none">
+                        <div class="nota-card-header">
+                            <span class="nota-card-title">Nota Fiscal Anexada</span>
+                            <button class="nota-remove-btn" onclick="_removerNota()">✕ Remover</button>
+                        </div>
+                        <div class="nota-field"><span class="nota-field-lbl">Data Emissão</span><span class="nota-field-val" id="nota-emissao">—</span></div>
+                        <div class="nota-field"><span class="nota-field-lbl">CNPJ</span><span class="nota-field-val" id="nota-cnpj">—</span></div>
+                        <div class="nota-field"><span class="nota-field-lbl">Emissor</span><span class="nota-field-val" id="nota-emissor">—</span></div>
+                        <div class="nota-field"><span class="nota-field-lbl">Valor</span><span class="nota-field-val" id="nota-valor">—</span></div>
+                        <div class="nota-field"><span class="nota-field-lbl">Tomador</span><span class="nota-field-val" id="nota-tomador">—</span></div>
                     </div>
 
                 </div><!-- /fechamento-data -->
@@ -1585,6 +1653,7 @@ function _carregarPainel() {
 
         empty.style.display = "none";
         data.style.display  = "";
+        _carregarNota();
     })
     .catch(() => {
         empty.innerText = "Erro ao conectar com o servidor.";
@@ -2390,6 +2459,91 @@ function buscarEntDashboard() {
     .catch(() => { empty.innerText = "Erro ao conectar com o servidor."; });
 }
 
+// ───── NOTA FISCAL ─────
+if (typeof pdfjsLib !== "undefined")
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+function _notaKey() {
+    const uid = token ? token.slice(-16) : "x";
+    return `nota_${uid}_${_fAno}_${_fMes}_${_fQuinzena}`;
+}
+
+function _carregarNota() {
+    const nota = JSON.parse(localStorage.getItem(_notaKey()) || "null");
+    if (nota) {
+        _renderNotaCard(nota);
+    } else {
+        document.getElementById("nota-upload-area").style.display = "";
+        document.getElementById("nota-card").style.display = "none";
+        document.getElementById("nota-file-input").value = "";
+    }
+}
+
+function _renderNotaCard(nota) {
+    document.getElementById("nota-upload-area").style.display = "none";
+    document.getElementById("nota-card").style.display = "";
+    document.getElementById("nota-emissao").textContent = nota.emissao  || "—";
+    document.getElementById("nota-cnpj").textContent    = nota.cnpj     || "—";
+    document.getElementById("nota-emissor").textContent = nota.emissor  || "—";
+    document.getElementById("nota-valor").textContent   = nota.valor    || "—";
+    document.getElementById("nota-tomador").textContent = nota.tomador  || "—";
+}
+
+function _removerNota() {
+    localStorage.removeItem(_notaKey());
+    document.getElementById("nota-card").style.display = "none";
+    document.getElementById("nota-upload-area").style.display = "";
+    document.getElementById("nota-file-input").value = "";
+}
+
+async function _processarNota(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const area = document.getElementById("nota-upload-area");
+    area.innerHTML = `<div class="nota-loading">Lendo PDF…</div>`;
+    try {
+        const buf = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+        let text = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(it => it.str).join(" ") + "\n";
+        }
+        const nota = _extrairCamposNota(text);
+        localStorage.setItem(_notaKey(), JSON.stringify(nota));
+        _renderNotaCard(nota);
+    } catch (e) {
+        area.innerHTML = `
+            <input type="file" id="nota-file-input" accept=".pdf" style="display:none" onchange="_processarNota(this)">
+            <button class="nota-btn-upload" onclick="document.getElementById('nota-file-input').click()">Tentar novamente</button>
+            <p class="nota-hint" style="color:#ef4444">Erro ao ler o PDF. Verifique o arquivo.</p>`;
+    }
+}
+
+function _extrairCamposNota(raw) {
+    const t = raw.replace(/\s+/g, " ");
+
+    const dataMatch = t.match(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}(?::\d{2})?)/);
+    const emissao   = dataMatch ? `${dataMatch[1]} ${dataMatch[2]}`
+        : (t.match(/\d{2}\/\d{2}\/\d{4}/) || ["—"])[0];
+
+    const cnpjRaw  = t.match(/\d{2}[.\s]?\d{3}[.\s]?\d{3}[\/\s]?\d{4}[-\s]?\d{2}/);
+    const cnpj     = cnpjRaw ? cnpjRaw[0].replace(/\s/g,"") : "—";
+
+    const valorTotal = t.match(/VALOR\s+(?:TOTAL|L[IÍ]QUIDO|DOS\s+SERVI[CÇ]OS)[^R\d]*([\d.]+,\d{2})/i);
+    const valorRs    = t.match(/R\$\s*([\d.]+,\d{2})/);
+    const valor      = valorTotal ? `R$ ${valorTotal[1]}` : valorRs ? `R$ ${valorRs[1]}` : "—";
+
+    const emissorM = t.match(/(?:PREST[AO]DOR\s+DE\s+SERVI[CÇ]OS?|EMITENTE|EMISSOR|RAZ[AÃ]O\s+SOCIAL)[:\s]+([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][^|]{3,60}?)(?=\s{2,}|\d|CPF|CNPJ)/i);
+    const emissor  = emissorM ? emissorM[1].trim() : "—";
+
+    const tomadorM = t.match(/(?:TOMADOR\s+DE\s+SERVI[CÇ]OS?|DESTINAT[AÁ]RIO|CONTRATANTE)[:\s]+([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][^|]{3,60}?)(?=\s{2,}|\d|CPF|CNPJ)/i);
+    const tomador  = tomadorM ? tomadorM[1].trim() : "—";
+
+    return { emissao, cnpj, emissor, valor, tomador };
+}
+
 function _carregarPainelAdmin() {
     const empty = document.getElementById("adm-fech-empty");
     const data  = document.getElementById("adm-fech-data");
@@ -2436,7 +2590,8 @@ function _carregarPainelAdmin() {
         multTbody.innerHTML = d.multas_linhas.length
             ? d.multas_linhas.map(m => `<tr>
                 <td class="mono">${m.transportadora}</td>
-                <td class="mono">${m.codigo}</td>
+                <td cla
+                ss="mono">${m.codigo}</td>
                 <td class="${m.tem_valor ? 'val-neg' : ''}">${m.valor}</td>
               </tr>`).join("")
             : `<tr><td colspan="3" class="poc-empty">Nenhuma multa no período</td></tr>`;
