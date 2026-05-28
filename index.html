@@ -839,6 +839,38 @@ body {
 }
 .nota-status.confere { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #22c55e; }
 .nota-status.diverge { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #ef4444; }
+
+/* ===== ADMIN NOTAS FISCAIS ===== */
+.adm-nf-wrap {
+    background: rgba(15,25,43,0.7); border: 1px solid rgba(58,134,255,0.12);
+    border-radius: 14px; overflow: hidden;
+}
+.adm-nf-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.adm-nf-table th {
+    padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 700;
+    color: #7a8599; text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(58,134,255,0.12); white-space: nowrap;
+}
+.adm-nf-table td {
+    padding: 12px 16px; border-bottom: 1px solid rgba(58,134,255,0.07); color: #f1f5f9;
+    vertical-align: middle;
+}
+.adm-nf-table tr:last-child td { border-bottom: none; }
+.adm-nf-table tr:hover td { background: rgba(58,134,255,0.04); }
+.adm-nf-entregador { font-weight: 600; color: #e2e8f0; }
+.adm-nf-valor { font-weight: 700; color: #22c55e; }
+.adm-nf-cnpj { font-family: monospace; font-size: 12px; color: #94a3b8; }
+.adm-nf-counter {
+    font-size: 12px; color: #7a8599; margin-bottom: 12px;
+}
+@media (max-width: 680px) {
+    .adm-nf-table th:nth-child(3),
+    .adm-nf-table td:nth-child(3),
+    .adm-nf-table th:nth-child(4),
+    .adm-nf-table td:nth-child(4),
+    .adm-nf-table th:nth-child(6),
+    .adm-nf-table td:nth-child(6) { display: none; }
+}
 </style>
 </head>
 <body>
@@ -910,6 +942,7 @@ body {
         <ul class="submenu" data-menu="adminmenu" id="submenu-adminmenu" style="display:none">
             <li><a href="#" onclick="abrirAdmin(event)">Alimentar</a></li>
             <li><a href="#" onclick="abrirAdminFechamentos(event)">Pesquisar</a></li>
+            <li><a href="#" onclick="abrirAdminNFs(event)">Notas Fiscais</a></li>
         </ul>
 
         <li class="menu-item" id="menu-dashboard" onclick="abrirDashboard(event)" style="display:none">
@@ -1299,6 +1332,49 @@ body {
                 </div><!-- /adm-fech-data -->
             </div><!-- /fech-body -->
         </div><!-- /tela-admin-fechamentos -->
+
+        <!-- TELA ADMIN NOTAS FISCAIS -->
+        <div id="tela-admin-nfs" class="view tela-full">
+            <div class="fech-header">
+                <div class="fech-period-row">
+                    <select class="fech-select" id="adm-nf-mes">
+                        <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>    <option value="4">Abril</option>
+                        <option value="5">Maio</option>     <option value="6">Junho</option>
+                        <option value="7">Julho</option>    <option value="8">Agosto</option>
+                        <option value="9">Setembro</option> <option value="10">Outubro</option>
+                        <option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    <select class="fech-select" id="adm-nf-ano"></select>
+                    <button class="fech-filtrar-btn" onclick="buscarNFsAdmin()">Buscar</button>
+                </div>
+                <div class="quinzena-toggle">
+                    <button class="quinzena-btn" id="adm-nf-btn-1q" onclick="selecionarQuinzenaNF(1)">1ª Quinzena &nbsp;(1 – 15)</button>
+                    <button class="quinzena-btn" id="adm-nf-btn-2q" onclick="selecionarQuinzenaNF(2)">2ª Quinzena &nbsp;(16 – fim)</button>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="adm-nf-empty">Selecione o mês, ano e quinzena para ver as notas fiscais.</div>
+                <div id="adm-nf-resultado" style="display:none">
+                    <div class="adm-nf-counter" id="adm-nf-counter"></div>
+                    <div class="adm-nf-wrap">
+                        <table class="adm-nf-table">
+                            <thead>
+                                <tr>
+                                    <th>Entregador</th>
+                                    <th>Data Emissão</th>
+                                    <th>CNPJ</th>
+                                    <th>Emissor</th>
+                                    <th>Valor NF</th>
+                                    <th>Tomador</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adm-nf-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-admin-nfs -->
 
         <!-- TELA DASHBOARD -->
         <div id="tela-dashboard" class="view tela-full">
@@ -1892,6 +1968,85 @@ function abrirAdminFechamentos(event) {
     document.getElementById("adm-fech-data").style.display = "none";
     _iniciarSelectsAdmFech();
     mostrarTela("tela-admin-fechamentos");
+}
+
+// ───── TELA ADMIN NOTAS FISCAIS ─────
+let _admNFMes      = new Date().getMonth() + 1;
+let _admNFAno      = new Date().getFullYear();
+let _admNFQuinzena = null;
+
+function abrirAdminNFs(event) {
+    if (event) event.preventDefault();
+    _admNFQuinzena = null;
+    document.getElementById("adm-nf-btn-1q").classList.remove("active");
+    document.getElementById("adm-nf-btn-2q").classList.remove("active");
+    document.getElementById("adm-nf-empty").innerText = "Selecione o mês, ano e quinzena para ver as notas fiscais.";
+    document.getElementById("adm-nf-empty").style.display = "";
+    document.getElementById("adm-nf-resultado").style.display = "none";
+    _iniciarSelectsAdmNF();
+    mostrarTela("tela-admin-nfs");
+}
+
+function _iniciarSelectsAdmNF() {
+    const selAno = document.getElementById("adm-nf-ano");
+    const anoAtual = new Date().getFullYear();
+    selAno.innerHTML = "";
+    for (let a = anoAtual - 2; a <= anoAtual; a++) {
+        const opt = document.createElement("option");
+        opt.value = a; opt.textContent = a;
+        selAno.appendChild(opt);
+    }
+    selAno.value = _admNFAno;
+    document.getElementById("adm-nf-mes").value = _admNFMes;
+}
+
+function selecionarQuinzenaNF(q) {
+    _admNFQuinzena = q;
+    document.getElementById("adm-nf-btn-1q").classList.toggle("active", q === 1);
+    document.getElementById("adm-nf-btn-2q").classList.toggle("active", q === 2);
+}
+
+function buscarNFsAdmin() {
+    if (!_admNFQuinzena) {
+        document.getElementById("adm-nf-empty").innerText = "Selecione a quinzena (1ª ou 2ª) antes de buscar.";
+        document.getElementById("adm-nf-empty").style.display = "";
+        return;
+    }
+    _admNFMes = parseInt(document.getElementById("adm-nf-mes").value);
+    _admNFAno = parseInt(document.getElementById("adm-nf-ano").value);
+
+    const empty     = document.getElementById("adm-nf-empty");
+    const resultado = document.getElementById("adm-nf-resultado");
+    empty.innerText = "Carregando...";
+    empty.style.display = "";
+    resultado.style.display = "none";
+
+    fetch(`${API}/admin/notas?mes=${_admNFMes}&ano=${_admNFAno}&quinzena=${_admNFQuinzena}`, {
+        headers: { "Authorization": "Bearer " + token }
+    })
+    .then(r => r.json())
+    .then(rows => {
+        if (!Array.isArray(rows) || !rows.length) {
+            empty.innerText = "Nenhuma nota fiscal encontrada para este período.";
+            return;
+        }
+        empty.style.display = "none";
+        resultado.style.display = "";
+        document.getElementById("adm-nf-counter").textContent = `${rows.length} nota${rows.length > 1 ? "s" : ""} fiscal encontrada${rows.length > 1 ? "s" : ""}`;
+        document.getElementById("adm-nf-tbody").innerHTML = rows.map(nf => `
+            <tr>
+                <td class="adm-nf-entregador">${nf.username}</td>
+                <td>${nf.emissao || "—"}</td>
+                <td class="adm-nf-cnpj">${nf.cnpj || "—"}</td>
+                <td>${nf.emissor || "—"}</td>
+                <td class="adm-nf-valor">${nf.valor || "—"}</td>
+                <td>${nf.tomador || "—"}</td>
+            </tr>
+        `).join("");
+    })
+    .catch(() => {
+        empty.innerText = "Erro ao carregar notas fiscais.";
+    });
 }
 
 function _iniciarSelectsAdmFech() {
@@ -2559,24 +2714,90 @@ async function _processarNota(input) {
 }
 
 function _extrairCamposNota(raw) {
-    const t = raw.replace(/\s+/g, " ");
+    // Normaliza: colapsa espaços múltiplos mas preserva estrutura
+    const t = raw.replace(/[\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim();
 
-    const dataMatch = t.match(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}(?::\d{2})?)/);
-    const emissao   = dataMatch ? `${dataMatch[1]} ${dataMatch[2]}`
-        : (t.match(/\d{2}\/\d{2}\/\d{4}/) || ["—"])[0];
+    // ── DATA DE EMISSÃO ──
+    // Prioridade: label "emissão" + data/hora > data+hora juntas > só data
+    const dataLabelM = t.match(/emiss[aã]o\D{0,20}?(\d{2}\/\d{2}\/\d{4})\D{0,5}(\d{2}:\d{2}(?::\d{2})?)?/i);
+    const dataHoraM  = t.match(/(\d{2}\/\d{2}\/\d{4})\s*[\s\-T]\s*(\d{2}:\d{2}(?::\d{2})?)/);
+    let emissao;
+    if (dataLabelM) {
+        emissao = dataLabelM[2] ? `${dataLabelM[1]} ${dataLabelM[2]}` : dataLabelM[1];
+    } else if (dataHoraM) {
+        emissao = `${dataHoraM[1]} ${dataHoraM[2]}`;
+    } else {
+        emissao = (t.match(/\d{2}\/\d{2}\/\d{4}/) || ["—"])[0];
+    }
 
-    const cnpjRaw  = t.match(/\d{2}[.\s]?\d{3}[.\s]?\d{3}[\/\s]?\d{4}[-\s]?\d{2}/);
-    const cnpj     = cnpjRaw ? cnpjRaw[0].replace(/\s/g,"") : "—";
+    // ── CNPJ ──
+    // Coleta todos os CNPJs válidos (14 dígitos) com suas posições
+    const cnpjRe  = /\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g;
+    const cnpjAll = [];
+    let mc;
+    while ((mc = cnpjRe.exec(t)) !== null) {
+        if (mc[0].replace(/\D/g, "").length === 14) cnpjAll.push({ raw: mc[0], idx: mc.index });
+    }
+    // CNPJ da emissão: preferir o que vem após "CNPJ" antes do meio do texto
+    const halfIdx     = t.length / 2;
+    const cnpjEmit    = cnpjAll.find(c => c.idx < halfIdx) || cnpjAll[0];
+    const cnpj        = cnpjEmit ? cnpjEmit.raw.replace(/\s/g, "") : "—";
 
-    const valorTotal = t.match(/VALOR\s+(?:TOTAL|L[IÍ]QUIDO|DOS\s+SERVI[CÇ]OS)[^R\d]*([\d.]+,\d{2})/i);
-    const valorRs    = t.match(/R\$\s*([\d.]+,\d{2})/);
-    const valor      = valorTotal ? `R$ ${valorTotal[1]}` : valorRs ? `R$ ${valorRs[1]}` : "—";
+    // ── VALOR ──
+    const valorPatterns = [
+        /VALOR\s+TOTAL\s+DA\s+NOTA[^\d]*([\d.]+,\d{2})/i,
+        /TOTAL\s+DA\s+NOTA[^\d]*([\d.]+,\d{2})/i,
+        /VALOR\s+DOS\s+SERVI[CÇ]OS[^\d]*([\d.]+,\d{2})/i,
+        /VALOR\s+L[IÍ]QUIDO[^\d]*([\d.]+,\d{2})/i,
+        /VALOR\s+TOTAL[^\d]*([\d.]+,\d{2})/i,
+        /TOTAL\s+GERAL[^\d]*([\d.]+,\d{2})/i,
+        /TOTAL\s+A\s+PAGAR[^\d]*([\d.]+,\d{2})/i,
+        /VALOR\s+BRUTO[^\d]*([\d.]+,\d{2})/i,
+        /R\$\s*([\d.]+,\d{2})/,
+    ];
+    let valor = "—";
+    for (const pat of valorPatterns) {
+        const vm = t.match(pat);
+        if (vm) { valor = `R$ ${vm[1]}`; break; }
+    }
 
-    const emissorM = t.match(/(?:PREST[AO]DOR\s+DE\s+SERVI[CÇ]OS?|EMITENTE|EMISSOR|RAZ[AÃ]O\s+SOCIAL)[:\s]+([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][^|]{3,60}?)(?=\s{2,}|\d|CPF|CNPJ)/i);
-    const emissor  = emissorM ? emissorM[1].trim() : "—";
+    // ── EMISSOR ──
+    // Estratégia 1: label explícito seguido do nome
+    const emissorLabelPatterns = [
+        /(?:RAZ[AÃ]O\s+SOCIAL|NOME\s+EMPRESARIAL)[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|ENDERE[CÇ]O|INS|IE\b|IM\b|\d{2}[.\/-]))/i,
+        /(?:PREST[AO]DOR\s+DE\s+SERVI[CÇ]OS?|EMITENTE|EMISSOR)[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/-]))/i,
+        /NOME[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/-]))/i,
+    ];
+    let emissor = "—";
+    for (const pat of emissorLabelPatterns) {
+        const em = t.match(pat);
+        if (em) { emissor = em[1].trim(); break; }
+    }
+    // Estratégia 2 (DANFE): nome imediatamente antes do primeiro CNPJ
+    if (emissor === "—" && cnpjEmit) {
+        const before = t.slice(Math.max(0, cnpjEmit.idx - 120), cnpjEmit.idx);
+        const nameM  = before.match(/([A-Za-záàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][A-Za-z0-9áàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ\s\-&.,'/]{4,70})\s*$/);
+        if (nameM) emissor = nameM[1].trim();
+    }
 
-    const tomadorM = t.match(/(?:TOMADOR\s+DE\s+SERVI[CÇ]OS?|DESTINAT[AÁ]RIO|CONTRATANTE)[:\s]+([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][^|]{3,60}?)(?=\s{2,}|\d|CPF|CNPJ)/i);
-    const tomador  = tomadorM ? tomadorM[1].trim() : "—";
+    // ── TOMADOR ──
+    const tomadorLabelPatterns = [
+        /(?:TOMADOR\s+DE\s+SERVI[CÇ]OS?)[:\s]*(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/-]))/i,
+        /(?:DESTINAT[AÁ]RIO(?:[\/\s]REMETENTE)?)[:\s]*(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/-]))/i,
+        /(?:CONTRATANTE|CLIENTE)[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/-]))/i,
+    ];
+    let tomador = "—";
+    for (const pat of tomadorLabelPatterns) {
+        const tm = t.match(pat);
+        if (tm) { tomador = tm[1].trim(); break; }
+    }
+    // Estratégia 2: nome antes do segundo CNPJ (tomador's CNPJ)
+    if (tomador === "—" && cnpjAll.length > 1) {
+        const c2     = cnpjAll[1];
+        const before = t.slice(Math.max(0, c2.idx - 120), c2.idx);
+        const nameM2 = before.match(/([A-Za-záàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][A-Za-z0-9áàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ\s\-&.,'/]{4,70})\s*$/);
+        if (nameM2) tomador = nameM2[1].trim();
+    }
 
     return { emissao, cnpj, emissor, valor, tomador };
 }
