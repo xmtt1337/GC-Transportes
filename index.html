@@ -1871,9 +1871,8 @@ function buscarDashboard() {
             ? `vs 1ª quinzena (${MES_NOMES[mes]})`
             : `vs 2ª quinzena (${MES_NOMES[pm]})`;
     } else {
-        // Soma as duas quinzenas do mês anterior
-        prevFetches = [fp(pm, pa, 1), fp(pm, pa, 2)];
-        compLabel   = `vs mês de ${MES_NOMES[pm]} ${pa}`;
+        prevFetches = [fp(pm, pa, q)];
+        compLabel   = `vs ${q}ª quinzena (${MES_NOMES[pm]} ${pa})`;
     }
 
     Promise.all([fp(mes, ano, q), ...prevFetches])
@@ -2020,8 +2019,8 @@ function buscarEntDashboard() {
             ? `vs 1ª quinzena (${MES_NOMES[mes]})`
             : `vs 2ª quinzena (${MES_NOMES[pm]})`;
     } else {
-        prevFetches = [fp(pm, pa, 1), fp(pm, pa, 2)];
-        compLabel   = `vs mês de ${MES_NOMES[pm]} ${pa}`;
+        prevFetches = [fp(pm, pa, q)];
+        compLabel   = `vs ${q}ª quinzena (${MES_NOMES[pm]} ${pa})`;
     }
 
     Promise.all([fp(mes, ano, q), ...prevFetches])
