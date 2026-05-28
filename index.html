@@ -1132,9 +1132,13 @@ body {
         <div id="tela-dashboard" class="view tela-full">
 
             <div class="fech-header">
-                <div class="fech-period-row">
+                <div class="fech-period-row" style="margin-bottom:10px">
                     <select class="fech-select" id="dash-ano"></select>
                     <button class="fech-filtrar-btn" onclick="buscarDashboard()">Buscar</button>
+                </div>
+                <div class="dash-comp-toggle">
+                    <button class="dash-comp-btn active" id="dash-gran-q" onclick="setDashGran('quinzena')">Por quinzena</button>
+                    <button class="dash-comp-btn" id="dash-gran-m" onclick="setDashGran('mes')">Por mês</button>
                 </div>
             </div>
 
@@ -1154,7 +1158,7 @@ body {
                     <div class="dash-transp-grid" id="dash-transp-grid"></div>
 
                     <div class="dash-chart-card">
-                        <div class="dash-chart-title">Pacotes por Quinzena</div>
+                        <div class="dash-chart-title" id="dash-chart-title">Pacotes por Quinzena</div>
                         <div class="dash-chart-canvas"><canvas id="dash-bar-chart"></canvas></div>
                     </div>
 
@@ -1182,22 +1186,9 @@ body {
 
                 <div id="ent-dash-content" style="display:none">
 
-                    <div class="dash-total-banner">
-                        <div>
-                            <div class="dash-total-period" id="ent-dash-period-label">—</div>
-                            <div class="dash-total-num" id="ent-dash-total-num">—</div>
-                            <div class="dash-total-sub">total recebido no ano</div>
-                        </div>
-                    </div>
-
                     <div class="dash-chart-card">
                         <div class="dash-chart-title">Valor Recebido</div>
                         <div class="dash-chart-canvas"><canvas id="ent-dash-valor-chart"></canvas></div>
-                    </div>
-
-                    <div class="dash-chart-card">
-                        <div class="dash-chart-title">Entregas por Transportadora</div>
-                        <div class="dash-chart-canvas"><canvas id="ent-dash-qtd-chart"></canvas></div>
                     </div>
 
                 </div>
@@ -1759,6 +1750,7 @@ document.addEventListener("click", function(e) {
 
 // ───── DASHBOARD ─────
 let _dashBarChart = null;
+let _dashGran = "quinzena";
 
 const TRANSP_DEF = [
     { key: "loggi",  label: "Loggi",  color: "#3a86ff", bg: "rgba(58,134,255,0.7)"  },
@@ -1776,6 +1768,13 @@ function _delta(atual, ant) {
     if (diff > 0) return { cls: "up",   txt: "↑ +" + pct + "%" };
     if (diff < 0) return { cls: "down", txt: "↓ "  + pct + "%" };
     return { cls: "flat", txt: "= 0%" };
+}
+
+function setDashGran(tipo) {
+    _dashGran = tipo;
+    document.getElementById("dash-gran-q").classList.toggle("active", tipo === "quinzena");
+    document.getElementById("dash-gran-m").classList.toggle("active", tipo === "mes");
+    if (document.getElementById("dash-content").style.display !== "none") buscarDashboard();
 }
 
 function abrirDashboard(event) {
@@ -1814,18 +1813,45 @@ function buscarDashboard() {
         empty.style.display = "none";
         content.style.display = "";
 
-        const labels  = dados.map(d => `${d.quinzena}Q ${MES_NOMES[d.mes].slice(0, 3)}`);
-        const totalAno = dados.reduce((s, d) => s + (d.total_entregues || 0), 0);
+        let grupos;
+        if (_dashGran === "quinzena") {
+            grupos = dados.map(d => ({
+                label: `${d.quinzena}Q ${MES_NOMES[d.mes].slice(0, 3)}`,
+                total: d.total_entregues || 0,
+                loggi: d.loggi  ? d.loggi.qtd  : 0,
+                jt:    d.jt     ? d.jt.qtd     : 0,
+                imile: d.imile  ? d.imile.qtd  : 0,
+                anjun: d.anjun  ? d.anjun.qtd  : 0,
+                shopee: d.shopee ? d.shopee.qtd : 0,
+            }));
+        } else {
+            const byMes = {};
+            dados.forEach(d => {
+                if (!byMes[d.mes]) byMes[d.mes] = { label: MES_NOMES[d.mes].slice(0, 3), total: 0, loggi: 0, jt: 0, imile: 0, anjun: 0, shopee: 0 };
+                byMes[d.mes].total  += d.total_entregues || 0;
+                byMes[d.mes].loggi  += d.loggi  ? d.loggi.qtd  : 0;
+                byMes[d.mes].jt     += d.jt     ? d.jt.qtd     : 0;
+                byMes[d.mes].imile  += d.imile  ? d.imile.qtd  : 0;
+                byMes[d.mes].anjun  += d.anjun  ? d.anjun.qtd  : 0;
+                byMes[d.mes].shopee += d.shopee ? d.shopee.qtd : 0;
+            });
+            grupos = Object.keys(byMes).sort((a, b) => Number(a) - Number(b)).map(m => byMes[m]);
+        }
 
-        document.getElementById("dash-period-label").textContent = `Ano ${ano}`;
-        document.getElementById("dash-total-num").textContent    = totalAno.toLocaleString("pt-BR");
+        const totalAno = grupos.reduce((s, g) => s + g.total, 0);
+        const labels   = grupos.map(g => g.label);
+
+        document.getElementById("dash-period-label").textContent  = `Ano ${ano}`;
+        document.getElementById("dash-total-num").textContent     = totalAno.toLocaleString("pt-BR");
+        document.getElementById("dash-chart-title").textContent   = _dashGran === "quinzena" ? "Pacotes por Quinzena" : "Pacotes por Mês";
 
         document.getElementById("dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
-            const total = dados.reduce((s, d) => s + (d[t.key] ? d[t.key].qtd : 0), 0);
+            const total = grupos.reduce((s, g) => s + (g[t.key] || 0), 0);
+            const pct   = totalAno > 0 ? ((total / totalAno) * 100).toFixed(1) : "0.0";
             return `<div class="dash-tc">
                 <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
                 <div class="dash-tc-qtd">${total.toLocaleString("pt-BR")}</div>
-                <div class="dash-tc-sub">pacotes no ano</div>
+                <div class="dash-tc-sub">pacotes no ano · ${pct}%</div>
             </div>`;
         }).join("");
 
@@ -1837,7 +1863,7 @@ function buscarDashboard() {
                 labels,
                 datasets: TRANSP_DEF.map(t => ({
                     label: t.label,
-                    data: dados.map(d => d[t.key] ? d[t.key].qtd : 0),
+                    data: grupos.map(g => g[t.key] || 0),
                     backgroundColor: t.bg,
                     borderColor: t.color,
                     borderWidth: 1, borderRadius: 4,
@@ -1847,7 +1873,11 @@ function buscarDashboard() {
                 responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: true, labels: { color: "#aab4c8", font: { size: 12 }, usePointStyle: true, padding: 16 } },
-                    tooltip: { callbacks: { label: ctx => "  " + ctx.raw.toLocaleString("pt-BR") + " pacotes" } }
+                    tooltip: { callbacks: { label: ctx => {
+                        const periodoTotal = grupos[ctx.dataIndex].total;
+                        const pct = periodoTotal > 0 ? ((ctx.raw / periodoTotal) * 100).toFixed(1) : "0.0";
+                        return "  " + ctx.raw.toLocaleString("pt-BR") + " pacotes (" + pct + "%)";
+                    }}}
                 },
                 scales: {
                     x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
@@ -1861,7 +1891,6 @@ function buscarDashboard() {
 
 // ───── ENT DASHBOARD ─────
 let _entDashValorChart = null;
-let _entDashQtdChart   = null;
 let _entDashGran       = "quinzena";
 
 function setEntDashGran(tipo) {
@@ -1934,10 +1963,7 @@ function buscarEntDashboard() {
 
         const labels   = grupos.map(g => g.label);
         const totalAno = grupos.reduce((s, g) => s + g.valor, 0);
-        document.getElementById("ent-dash-period-label").textContent = `Ano ${ano}`;
-        document.getElementById("ent-dash-total-num").textContent    = moedaJS(totalAno);
 
-        // Chart 1: valor recebido
         const valCanvas = document.getElementById("ent-dash-valor-chart");
         if (_entDashValorChart) { _entDashValorChart.destroy(); _entDashValorChart = null; }
         _entDashValorChart = new Chart(valCanvas.getContext("2d"), {
@@ -1952,39 +1978,14 @@ function buscarEntDashboard() {
                 responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: ctx => "  " + moedaJS(ctx.raw) } }
+                    tooltip: { callbacks: { label: ctx => {
+                        const pct = totalAno > 0 ? ((ctx.raw / totalAno) * 100).toFixed(1) : "0.0";
+                        return "  " + moedaJS(ctx.raw) + " (" + pct + "% do ano)";
+                    }}}
                 },
                 scales: {
                     x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
                     y: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => moedaJS(v) } }
-                }
-            }
-        });
-
-        // Chart 2: entregas por transportadora
-        const qtdCanvas = document.getElementById("ent-dash-qtd-chart");
-        if (_entDashQtdChart) { _entDashQtdChart.destroy(); _entDashQtdChart = null; }
-        _entDashQtdChart = new Chart(qtdCanvas.getContext("2d"), {
-            type: "bar",
-            data: {
-                labels,
-                datasets: TRANSP_DEF.map(t => ({
-                    label: t.label,
-                    data: grupos.map(g => g[t.key] || 0),
-                    backgroundColor: t.bg,
-                    borderColor: t.color,
-                    borderWidth: 1, borderRadius: 4,
-                }))
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: true, labels: { color: "#aab4c8", font: { size: 12 }, usePointStyle: true, padding: 16 } },
-                    tooltip: { callbacks: { label: ctx => "  " + ctx.raw.toLocaleString("pt-BR") + " pacotes" } }
-                },
-                scales: {
-                    x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
-                    y: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => v.toLocaleString("pt-BR") } }
                 }
             }
         });
