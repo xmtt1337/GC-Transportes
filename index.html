@@ -833,6 +833,7 @@ body {
 .nota-field:last-child { border-bottom: none; }
 .nota-field-lbl { font-size: 11px; color: #7a8599; flex-shrink: 0; }
 .nota-field-val { font-size: 13px; font-weight: 600; color: #f1f5f9; text-align: right; }
+.nota-chave-val { font-family: monospace; font-size: 11px; word-break: break-all; color: #94a3b8; font-weight: 400; }
 .nota-status {
     margin-top: 12px; padding: 10px 14px; border-radius: 10px;
     font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px;
@@ -1155,11 +1156,13 @@ body {
                             <span class="nota-card-title">Nota Fiscal Anexada</span>
                             <button class="nota-remove-btn" onclick="_removerNota()">✕ Remover</button>
                         </div>
+                        <div class="nota-field"><span class="nota-field-lbl">Nº NF</span><span class="nota-field-val" id="nota-numero">—</span></div>
                         <div class="nota-field"><span class="nota-field-lbl">Data Emissão</span><span class="nota-field-val" id="nota-emissao">—</span></div>
                         <div class="nota-field"><span class="nota-field-lbl">CNPJ</span><span class="nota-field-val" id="nota-cnpj">—</span></div>
                         <div class="nota-field"><span class="nota-field-lbl">Emissor</span><span class="nota-field-val" id="nota-emissor">—</span></div>
                         <div class="nota-field"><span class="nota-field-lbl">Valor</span><span class="nota-field-val" id="nota-valor">—</span></div>
                         <div class="nota-field"><span class="nota-field-lbl">Tomador</span><span class="nota-field-val" id="nota-tomador">—</span></div>
+                        <div class="nota-field" id="nota-chave-row" style="display:none"><span class="nota-field-lbl">Chave de Acesso</span><span class="nota-field-val nota-chave-val" id="nota-chave">—</span></div>
                         <div id="nota-status" class="nota-status" style="display:none"></div>
                     </div>
 
@@ -1368,11 +1371,12 @@ body {
                                 <tr>
                                     <th>Entregador</th>
                                     <th>Status</th>
+                                    <th>Nº NF</th>
                                     <th>Valor NF</th>
                                     <th>Data Emissão</th>
                                     <th>CNPJ</th>
                                     <th>Emissor</th>
-                                    <th>Tomador</th>
+                                    <th>Chave de Acesso</th>
                                 </tr>
                             </thead>
                             <tbody id="adm-nf-tbody"></tbody>
@@ -2043,14 +2047,16 @@ function buscarNFsAdmin() {
         document.getElementById("adm-nf-tbody").innerHTML = rows.map(nf => {
             const badgeCls = nf.status === "confere" ? "confere" : nf.status === "diverge" ? "diverge" : "pendente";
             const badgeTxt = nf.status === "confere" ? "✓ Confere" : nf.status === "diverge" ? "⚠ Diverge" : "—";
+            const chave    = nf.chave_acesso || "—";
             return `<tr>
                 <td class="adm-nf-entregador">${nf.username}</td>
                 <td><span class="adm-nf-badge ${badgeCls}">${badgeTxt}</span></td>
+                <td class="adm-nf-cnpj">${nf.numero_nf || "—"}</td>
                 <td class="adm-nf-valor">${nf.valor || "—"}</td>
                 <td>${nf.emissao || "—"}</td>
                 <td class="adm-nf-cnpj">${nf.cnpj || "—"}</td>
                 <td>${nf.emissor || "—"}</td>
-                <td>${nf.tomador || "—"}</td>
+                <td class="adm-nf-cnpj" title="${chave}">${chave !== "—" ? chave.slice(0,20)+"…" : "—"}</td>
             </tr>`;
         }).join("");
     })
@@ -2664,11 +2670,19 @@ function _carregarNota() {
 function _renderNotaCard(nota) {
     document.getElementById("nota-upload-area").style.display = "none";
     document.getElementById("nota-card").style.display = "";
-    document.getElementById("nota-emissao").textContent = nota.emissao  || "—";
-    document.getElementById("nota-cnpj").textContent    = nota.cnpj     || "—";
-    document.getElementById("nota-emissor").textContent = nota.emissor  || "—";
-    document.getElementById("nota-valor").textContent   = nota.valor    || "—";
-    document.getElementById("nota-tomador").textContent = nota.tomador  || "—";
+    document.getElementById("nota-numero").textContent  = nota.numero_nf    || "—";
+    document.getElementById("nota-emissao").textContent = nota.emissao      || "—";
+    document.getElementById("nota-cnpj").textContent    = nota.cnpj         || "—";
+    document.getElementById("nota-emissor").textContent = nota.emissor      || "—";
+    document.getElementById("nota-valor").textContent   = nota.valor        || "—";
+    document.getElementById("nota-tomador").textContent = nota.tomador      || "—";
+    const chaveRow = document.getElementById("nota-chave-row");
+    if (nota.chave_acesso) {
+        document.getElementById("nota-chave").textContent = nota.chave_acesso;
+        chaveRow.style.display = "";
+    } else {
+        chaveRow.style.display = "none";
+    }
 
     const statusEl = document.getElementById("nota-status");
     if (nota.valor && nota.valor !== "—" && _fTotalReceber) {
@@ -2714,6 +2728,22 @@ async function _processarNota(input) {
         const status  = (_fTotalReceber && notaNum > 0)
             ? (Math.abs(notaNum - _fTotalReceber) < 0.02 ? "confere" : "diverge")
             : null;
+
+        // Verificar se a chave de acesso já foi usada em outro período/entregador
+        if (nota.chave_acesso) {
+            const vRes  = await fetch(`${API}/nota/verificar?chave_acesso=${nota.chave_acesso}&mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}`, {
+                headers: { "Authorization": "Bearer " + token }
+            });
+            const vData = await vRes.json();
+            if (vData.duplicata) {
+                _mostrarUploadArea();
+                const hint = document.querySelector("#nota-upload-area .nota-hint");
+                hint.style.color  = "#ef4444";
+                hint.textContent  = `⚠ Esta nota já foi utilizada (${vData.detalhe}). Use uma nota diferente.`;
+                return;
+            }
+        }
+
         await fetch(`${API}/nota`, {
             method: "POST",
             headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
@@ -2729,6 +2759,16 @@ async function _processarNota(input) {
 
 function _extrairCamposNota(raw) {
     const t = raw.replace(/[\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim();
+
+    // ── CHAVE DE ACESSO (44 dígitos isolados) ──
+    const chaveM      = t.match(/(?<!\d)(\d{44})(?!\d)/);
+    const chave_acesso = chaveM ? chaveM[1] : null;
+
+    // ── NÚMERO DA NF ──
+    const numNfM  = t.match(/N[úu]mero\s+da\s+NFS?-?[eE][:\s]+(\d+)/i)
+                 || t.match(/NF-?[eE]\s+N[°ºo]?[:\s.]+(\d+)/i)
+                 || t.match(/Nota\s+Fiscal\s+N[°ºo]?[:\s.]+(\d+)/i);
+    const numero_nf = numNfM ? numNfM[1] : null;
 
     // ── DATA DE EMISSÃO ──
     const dataLabelM = t.match(/emiss[aã]o[^0-9]{0,30}(\d{2}\/\d{2}\/\d{4})[^0-9]{0,5}(\d{2}:\d{2}(?::\d{2})?)?/i);
@@ -2835,7 +2875,7 @@ function _extrairCamposNota(raw) {
         if (nameM2) tomador = nameM2[1].trim();
     }
 
-    return { emissao, cnpj, emissor, valor, tomador };
+    return { emissao, cnpj, emissor, valor, tomador, numero_nf, chave_acesso };
 }
 
 function _carregarPainelAdmin() {
