@@ -2714,13 +2714,11 @@ async function _processarNota(input) {
 }
 
 function _extrairCamposNota(raw) {
-    // Normaliza: colapsa espaços múltiplos mas preserva estrutura
     const t = raw.replace(/[\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim();
 
     // ── DATA DE EMISSÃO ──
-    // Prioridade: label "emissão" + data/hora > data+hora juntas > só data
-    const dataLabelM = t.match(/emiss[aã]o\D{0,20}?(\d{2}\/\d{2}\/\d{4})\D{0,5}(\d{2}:\d{2}(?::\d{2})?)?/i);
-    const dataHoraM  = t.match(/(\d{2}\/\d{2}\/\d{4})\s*[\s\-T]\s*(\d{2}:\d{2}(?::\d{2})?)/);
+    const dataLabelM = t.match(/emiss[aã]o[^0-9]{0,30}(\d{2}\/\d{2}\/\d{4})[^0-9]{0,5}(\d{2}:\d{2}(?::\d{2})?)?/i);
+    const dataHoraM  = t.match(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}(?::\d{2})?)/);
     let emissao;
     if (dataLabelM) {
         emissao = dataLabelM[2] ? `${dataLabelM[1]} ${dataLabelM[2]}` : dataLabelM[1];
@@ -2731,28 +2729,35 @@ function _extrairCamposNota(raw) {
     }
 
     // ── CNPJ ──
-    // Coleta todos os CNPJs válidos (14 dígitos) com suas posições
-    const cnpjRe  = /\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g;
+    // Usa regex estrita com pontuação (XX.XXX.XXX/XXXX-XX) para não casar
+    // com a Chave de Acesso (44 dígitos sem pontuação) nem com CPF
     const cnpjAll = [];
+    const cnpjFmtRe = /\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g;
     let mc;
-    while ((mc = cnpjRe.exec(t)) !== null) {
-        if (mc[0].replace(/\D/g, "").length === 14) cnpjAll.push({ raw: mc[0], idx: mc.index });
+    while ((mc = cnpjFmtRe.exec(t)) !== null) {
+        cnpjAll.push({ raw: mc[0], idx: mc.index });
     }
-    // CNPJ da emissão: preferir o que vem após "CNPJ" antes do meio do texto
-    const halfIdx     = t.length / 2;
-    const cnpjEmit    = cnpjAll.find(c => c.idx < halfIdx) || cnpjAll[0];
-    const cnpj        = cnpjEmit ? cnpjEmit.raw.replace(/\s/g, "") : "—";
+    // Fallback: 14 dígitos isolados (não adjacentes a mais dígitos)
+    if (!cnpjAll.length) {
+        const re14 = /(?<!\d)\d{14}(?!\d)/g;
+        while ((mc = re14.exec(t)) !== null) cnpjAll.push({ raw: mc[0], idx: mc.index });
+    }
+    // CNPJ do emitente: o que aparece antes de "TOMADOR" (ou o primeiro)
+    const tomadorIdx = t.search(/TOMADOR/i);
+    const cnpjEmit   = cnpjAll.find(c => tomadorIdx < 0 || c.idx < tomadorIdx) || cnpjAll[0];
+    const cnpj       = cnpjEmit ? cnpjEmit.raw : "—";
 
     // ── VALOR ──
     const valorPatterns = [
+        /Valor\s+L[ií]quido\s+da\s+NFS-?e[:\s]*([\d.]+,\d{2})/i,
         /VALOR\s+TOTAL\s+DA\s+NOTA[^\d]*([\d.]+,\d{2})/i,
         /TOTAL\s+DA\s+NOTA[^\d]*([\d.]+,\d{2})/i,
         /VALOR\s+DOS\s+SERVI[CÇ]OS[^\d]*([\d.]+,\d{2})/i,
+        /Valor\s+do\s+Servi[çc]o[:\s]*([\d.]+,\d{2})/i,
         /VALOR\s+L[IÍ]QUIDO[^\d]*([\d.]+,\d{2})/i,
         /VALOR\s+TOTAL[^\d]*([\d.]+,\d{2})/i,
         /TOTAL\s+GERAL[^\d]*([\d.]+,\d{2})/i,
         /TOTAL\s+A\s+PAGAR[^\d]*([\d.]+,\d{2})/i,
-        /VALOR\s+BRUTO[^\d]*([\d.]+,\d{2})/i,
         /R\$\s*([\d.]+,\d{2})/,
     ];
     let valor = "—";
@@ -2762,40 +2767,57 @@ function _extrairCamposNota(raw) {
     }
 
     // ── EMISSOR ──
-    // Estratégia 1: label explícito seguido do nome
-    const emissorLabelPatterns = [
-        /(?:RAZ[AÃ]O\s+SOCIAL|NOME\s+EMPRESARIAL)[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|ENDERE[CÇ]O|INS|IE\b|IM\b|\d{2}[.\/-]))/i,
-        /(?:PREST[AO]DOR\s+DE\s+SERVI[CÇ]OS?|EMITENTE|EMISSOR)[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/-]))/i,
-        /NOME[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/-]))/i,
-    ];
     let emissor = "—";
-    for (const pat of emissorLabelPatterns) {
-        const em = t.match(pat);
-        if (em) { emissor = em[1].trim(); break; }
+
+    // DANFSe/NFS-e: seção "EMITENTE DA NFS" → "Nome / Nome Empresarial X E-mail"
+    const emitSecM = t.match(/EMITENTE\s+DA\s+NFS.{0,5}(.{0,600}?)(?=TOMADOR|INTERMEDIÁRIO|SERVI[CÇ]O\s+PRESTADO)/i);
+    if (emitSecM) {
+        const sec  = emitSecM[1];
+        const nomeM = sec.match(/Nome\s*[\/\|]\s*Nome\s+Empresarial\s+(.+?)(?=\s+E-mail|\s+Endere[çc]o|\s+Inscri)/i);
+        if (nomeM) {
+            // MEI: nome vem precedido do CNPJ sem formatação, ex: "66.845.622 SANDRO..."
+            emissor = nomeM[1].trim().replace(/^\d{2}\.?\d{3}\.?\d{3}\s+/, "");
+        }
     }
-    // Estratégia 2 (DANFE): nome imediatamente antes do primeiro CNPJ
+    // DANFE / outros: "RAZÃO SOCIAL" ou "NOME EMPRESARIAL"
+    if (emissor === "—") {
+        const razaoM = t.match(/(?:RAZ[AÃ]O\s+SOCIAL|NOME\s+EMPRESARIAL)[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|ENDERE[CÇ]O|INS|IE\b|\d{2}[.\/]))/i);
+        if (razaoM) emissor = razaoM[1].trim();
+    }
+    // Fallback: texto antes do CNPJ do emitente
     if (emissor === "—" && cnpjEmit) {
-        const before = t.slice(Math.max(0, cnpjEmit.idx - 120), cnpjEmit.idx);
-        const nameM  = before.match(/([A-Za-záàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][A-Za-z0-9áàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ\s\-&.,'/]{4,70})\s*$/);
+        const before = t.slice(Math.max(0, cnpjEmit.idx - 100), cnpjEmit.idx);
+        const nameM  = before.match(/([A-Za-záàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][\wáàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ\s\-&.,'/]{4,70})\s*$/);
         if (nameM) emissor = nameM[1].trim();
     }
 
     // ── TOMADOR ──
-    const tomadorLabelPatterns = [
-        /(?:TOMADOR\s+DE\s+SERVI[CÇ]OS?)[:\s]*(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/-]))/i,
-        /(?:DESTINAT[AÁ]RIO(?:[\/\s]REMETENTE)?)[:\s]*(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/-]))/i,
-        /(?:CONTRATANTE|CLIENTE)[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/-]))/i,
-    ];
     let tomador = "—";
-    for (const pat of tomadorLabelPatterns) {
-        const tm = t.match(pat);
-        if (tm) { tomador = tm[1].trim(); break; }
+
+    // DANFSe/NFS-e: seção "TOMADOR DO SERVIÇO" → "Nome / Nome Empresarial X E-mail"
+    const tomSecM = t.match(/TOMADOR\s+DO\s+SERVI[CÇ]O(.{0,600}?)(?=INTERMEDIÁRIO|SERVI[CÇ]O\s+PRESTADO|TRIBUTAÇÃO|DISCRIMINA)/i);
+    if (tomSecM) {
+        const sec   = tomSecM[1];
+        const nomeM = sec.match(/Nome\s*[\/\|]\s*Nome\s+Empresarial\s+(.+?)(?=\s+E-mail|\s+Endere[çc]o|\s+Inscri)/i);
+        if (nomeM) tomador = nomeM[1].trim();
     }
-    // Estratégia 2: nome antes do segundo CNPJ (tomador's CNPJ)
+    // NFS-e genérica / DANFE
+    if (tomador === "—") {
+        const tomLabelPatterns = [
+            /TOMADOR\s+DE\s+SERVI[CÇ]OS?[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]))/i,
+            /DESTINAT[AÁ]RIO(?:[\/\s]REMETENTE)?[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]))/i,
+            /CONTRATANTE[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]))/i,
+        ];
+        for (const pat of tomLabelPatterns) {
+            const tm = t.match(pat);
+            if (tm) { tomador = tm[1].trim(); break; }
+        }
+    }
+    // Fallback: texto antes do segundo CNPJ (tomador)
     if (tomador === "—" && cnpjAll.length > 1) {
-        const c2     = cnpjAll[1];
-        const before = t.slice(Math.max(0, c2.idx - 120), c2.idx);
-        const nameM2 = before.match(/([A-Za-záàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][A-Za-z0-9áàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ\s\-&.,'/]{4,70})\s*$/);
+        const c2     = cnpjAll.find(c => c !== cnpjEmit) || cnpjAll[1];
+        const before = t.slice(Math.max(0, c2.idx - 100), c2.idx);
+        const nameM2 = before.match(/([A-Za-záàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][\wáàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ\s\-&.,'/]{4,70})\s*$/);
         if (nameM2) tomador = nameM2[1].trim();
     }
 
