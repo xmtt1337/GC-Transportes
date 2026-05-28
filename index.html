@@ -604,6 +604,24 @@ body {
 .adm-dropdown-item:hover .adm-dropdown-item-nome { color: #fff; }
 .adm-dropdown-item-valor { font-size: 13px; font-weight: 700; color: #34d399; white-space: nowrap; }
 .adm-dropdown-empty { padding: 16px 14px; font-size: 13px; color: #4a6a8a; text-align: center; }
+
+/* ===== DASHBOARD ===== */
+.dash-charts-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;
+}
+.dash-chart-card {
+    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
+    border-radius: 14px; padding: 20px 20px 14px;
+}
+.dash-chart-title {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.12em; color: #4a6a8a; margin-bottom: 14px;
+}
+.dash-chart-canvas { position: relative; height: 260px; }
+@media (max-width: 680px) {
+    .dash-charts-grid { grid-template-columns: 1fr; }
+    .dash-chart-canvas { height: 220px; }
+}
 </style>
 </head>
 <body>
@@ -674,6 +692,7 @@ body {
         <ul class="submenu" data-menu="adminmenu" id="submenu-adminmenu" style="display:none">
             <li><a href="#" onclick="abrirAdmin(event)">Alimentar</a></li>
             <li><a href="#" onclick="abrirAdminFechamentos(event)">Pesquisar</a></li>
+            <li><a href="#" onclick="abrirDashboard(event)">Dashboard</a></li>
         </ul>
 
     </ul>
@@ -1049,6 +1068,61 @@ body {
             </div><!-- /fech-body -->
         </div><!-- /tela-admin-fechamentos -->
 
+        <!-- TELA DASHBOARD -->
+        <div id="tela-dashboard" class="view tela-full">
+
+            <div class="fech-header">
+                <div class="fech-period-row">
+                    <select class="fech-select" id="dash-mes">
+                        <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>    <option value="4">Abril</option>
+                        <option value="5">Maio</option>     <option value="6">Junho</option>
+                        <option value="7">Julho</option>    <option value="8">Agosto</option>
+                        <option value="9">Setembro</option> <option value="10">Outubro</option>
+                        <option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    <select class="fech-select" id="dash-ano"></select>
+                    <select class="fech-select" id="dash-quinzena">
+                        <option value="1">1ª Quinzena</option>
+                        <option value="2">2ª Quinzena</option>
+                    </select>
+                    <button class="fech-filtrar-btn" onclick="buscarDashboard()">Buscar</button>
+                </div>
+            </div>
+
+            <div class="fech-body">
+                <div class="fechamento-empty" id="dash-empty">Selecione o período e clique em Buscar.</div>
+
+                <div id="dash-content" style="display:none">
+                    <div class="adm-resumo-cards">
+                        <div class="adm-resumo-card">
+                            <div class="adm-rc-label">Total a Pagar</div>
+                            <div class="adm-rc-valor adm-rc-verde" id="dash-rc-total">—</div>
+                        </div>
+                        <div class="adm-resumo-card">
+                            <div class="adm-rc-label">Total de Pacotes</div>
+                            <div class="adm-rc-valor" id="dash-rc-pacotes">—</div>
+                        </div>
+                        <div class="adm-resumo-card">
+                            <div class="adm-rc-label">Entregadores</div>
+                            <div class="adm-rc-valor" id="dash-rc-count">—</div>
+                        </div>
+                    </div>
+                    <div class="dash-charts-grid">
+                        <div class="dash-chart-card">
+                            <div class="dash-chart-title">Valor por Transportadora</div>
+                            <div class="dash-chart-canvas"><canvas id="dash-bar-chart"></canvas></div>
+                        </div>
+                        <div class="dash-chart-card">
+                            <div class="dash-chart-title">Distribuição por Transportadora</div>
+                            <div class="dash-chart-canvas"><canvas id="dash-pie-chart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /tela-dashboard -->
+
     </div>
 </div>
 
@@ -1408,6 +1482,12 @@ function renderHomeActions(role) {
     }
     if (role === "admin") {
         defs.push({
+            icon: `<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`,
+            title: "Dashboard",
+            desc: "Gráficos e resumo por transportadora.",
+            fn: "abrirDashboard()"
+        });
+        defs.push({
             icon: `<circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><path d="M18 14l2 2 4-4"/>`,
             title: "Administração",
             desc: "Planilhas e fechamentos dos entregadores.",
@@ -1639,6 +1719,117 @@ document.addEventListener("click", function(e) {
         if (dd) dd.style.display = "none";
     }
 });
+
+// ───── DASHBOARD ─────
+let _dashBarChart = null;
+let _dashPieChart = null;
+
+function abrirDashboard(event) {
+    if (event) event.preventDefault();
+    document.getElementById("dash-empty").innerText = "Selecione o período e clique em Buscar.";
+    document.getElementById("dash-empty").style.display = "";
+    document.getElementById("dash-content").style.display = "none";
+    _iniciarSelectsDash();
+    mostrarTela("tela-dashboard");
+}
+
+function _iniciarSelectsDash() {
+    const selAno = document.getElementById("dash-ano");
+    const anoAtual = new Date().getFullYear();
+    selAno.innerHTML = "";
+    for (let a = anoAtual - 2; a <= anoAtual; a++) {
+        const opt = document.createElement("option");
+        opt.value = a; opt.textContent = a;
+        if (a === anoAtual) opt.selected = true;
+        selAno.appendChild(opt);
+    }
+    document.getElementById("dash-mes").value = new Date().getMonth() + 1;
+}
+
+function buscarDashboard() {
+    const mes = parseInt(document.getElementById("dash-mes").value);
+    const ano = parseInt(document.getElementById("dash-ano").value);
+    const q   = parseInt(document.getElementById("dash-quinzena").value);
+
+    const empty   = document.getElementById("dash-empty");
+    const content = document.getElementById("dash-content");
+    empty.innerText = "Carregando...";
+    empty.style.display = "";
+    content.style.display = "none";
+
+    fetch(`${API}/admin/resumo-quinzena?mes=${mes}&ano=${ano}&quinzena=${q}`, {
+        headers: { "Authorization": "Bearer " + token }
+    })
+    .then(r => r.json().then(b => ({ ok: r.ok, b })))
+    .then(({ ok, b }) => {
+        if (!ok) {
+            empty.innerText = b.error || "Nenhum fechamento encontrado para este período.";
+            return;
+        }
+        empty.style.display = "none";
+        content.style.display = "";
+
+        document.getElementById("dash-rc-total").textContent   = b.total_geral;
+        document.getElementById("dash-rc-pacotes").textContent = (b.total_entregues || 0).toLocaleString("pt-BR");
+        document.getElementById("dash-rc-count").textContent   = b.entregadores;
+
+        const transp = [
+            { label: "Loggi",  valor: b.loggi.valor_num,  qtd: b.loggi.qtd,  bg: "rgba(58,134,255,0.75)",  bd: "rgba(58,134,255,1)" },
+            { label: "J&T",    valor: b.jt.valor_num,     qtd: b.jt.qtd,     bg: "rgba(139,92,246,0.75)", bd: "rgba(139,92,246,1)" },
+            { label: "iMile",  valor: b.imile.valor_num,  qtd: b.imile.qtd,  bg: "rgba(52,211,153,0.75)", bd: "rgba(52,211,153,1)" },
+            { label: "Anjun",  valor: b.anjun.valor_num,  qtd: b.anjun.qtd,  bg: "rgba(251,191,36,0.75)", bd: "rgba(251,191,36,1)" },
+            { label: "Shopee", valor: b.shopee.valor_num, qtd: b.shopee.qtd, bg: "rgba(249,115,22,0.75)", bd: "rgba(249,115,22,1)" },
+        ];
+
+        // Gráfico de barras
+        const barCanvas = document.getElementById("dash-bar-chart");
+        if (_dashBarChart) { _dashBarChart.destroy(); _dashBarChart = null; }
+        _dashBarChart = new Chart(barCanvas.getContext("2d"), {
+            type: "bar",
+            data: {
+                labels: transp.map(t => t.label),
+                datasets: [{ data: transp.map(t => t.valor), backgroundColor: transp.map(t => t.bg), borderColor: transp.map(t => t.bd), borderWidth: 1, borderRadius: 7 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ["  " + moedaJS(ctx.raw), "  " + transp[ctx.dataIndex].qtd.toLocaleString("pt-BR") + " pacotes"] } }
+                },
+                scales: {
+                    x: { grid: { color: "rgba(58,134,255,0.08)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 13, weight: "600" } } },
+                    y: { grid: { color: "rgba(58,134,255,0.08)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => "R$ " + v.toLocaleString("pt-BR") } }
+                }
+            }
+        });
+
+        // Gráfico de rosca
+        const pieCanvas = document.getElementById("dash-pie-chart");
+        if (_dashPieChart) { _dashPieChart.destroy(); _dashPieChart = null; }
+        const totalValor = transp.reduce((s, t) => s + t.valor, 0);
+        _dashPieChart = new Chart(pieCanvas.getContext("2d"), {
+            type: "doughnut",
+            data: {
+                labels: transp.map(t => t.label),
+                datasets: [{ data: transp.map(t => t.valor), backgroundColor: transp.map(t => t.bg), borderColor: transp.map(t => t.bd), borderWidth: 2, hoverOffset: 10 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: "right", labels: { color: "#aab4c8", font: { size: 12 }, padding: 14, usePointStyle: true, pointStyleWidth: 10 } },
+                    tooltip: { callbacks: { label: ctx => {
+                        const pct = totalValor > 0 ? ((ctx.raw / totalValor) * 100).toFixed(1) : "0.0";
+                        return "  " + moedaJS(ctx.raw) + "  (" + pct + "%)";
+                    }}}
+                },
+                cutout: "62%"
+            }
+        });
+    })
+    .catch(() => {
+        empty.innerText = "Erro ao conectar com o servidor.";
+    });
+}
 
 function _carregarPainelAdmin() {
     const empty = document.getElementById("adm-fech-empty");
