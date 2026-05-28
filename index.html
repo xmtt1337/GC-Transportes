@@ -753,6 +753,7 @@ body {
         </li>
         <ul class="submenu" data-menu="fechamentos" id="submenu-fechamentos" style="display:none">
             <li><a href="#" onclick="abrirFechamentos(event)">Meus Fechamentos</a></li>
+            <li><a href="#" onclick="abrirEntDashboard(event)">Dashboard</a></li>
         </ul>
 
         <li class="menu-item" data-menu="adminmenu" id="menu-adminmenu" onclick="toggleMenu(this)" style="display:none">
@@ -1185,6 +1186,64 @@ body {
 
         </div><!-- /tela-dashboard -->
 
+        <!-- TELA ENT DASHBOARD -->
+        <div id="tela-ent-dashboard" class="view tela-full">
+
+            <div class="fech-header">
+                <div class="fech-period-row" style="margin-bottom:10px">
+                    <select class="fech-select" id="ent-dash-mes">
+                        <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>    <option value="4">Abril</option>
+                        <option value="5">Maio</option>     <option value="6">Junho</option>
+                        <option value="7">Julho</option>    <option value="8">Agosto</option>
+                        <option value="9">Setembro</option> <option value="10">Outubro</option>
+                        <option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    <select class="fech-select" id="ent-dash-ano"></select>
+                    <select class="fech-select" id="ent-dash-quinzena">
+                        <option value="1">1ª Quinzena</option>
+                        <option value="2">2ª Quinzena</option>
+                    </select>
+                    <button class="fech-filtrar-btn" onclick="buscarEntDashboard()">Buscar</button>
+                </div>
+                <div class="dash-comp-toggle">
+                    <button class="dash-comp-btn active" id="ent-dash-comp-q" onclick="setEntDashComp('quinzena')">Comparar com quinzena anterior</button>
+                    <button class="dash-comp-btn" id="ent-dash-comp-m" onclick="setEntDashComp('mes')">Comparar com mês anterior</button>
+                </div>
+            </div>
+
+            <div class="fech-body">
+                <div class="fechamento-empty" id="ent-dash-empty">Selecione o período e clique em Buscar.</div>
+
+                <div id="ent-dash-content" style="display:none">
+
+                    <!-- Banner total -->
+                    <div class="dash-total-banner">
+                        <div>
+                            <div class="dash-total-period" id="ent-dash-period-label">—</div>
+                            <div class="dash-total-num" id="ent-dash-total-num">—</div>
+                            <div class="dash-total-sub">total a receber</div>
+                        </div>
+                        <div class="dash-total-right">
+                            <div class="dash-delta-badge flat" id="ent-dash-total-delta">—</div>
+                            <div class="dash-delta-sub" id="ent-dash-total-comp-label">vs período anterior</div>
+                        </div>
+                    </div>
+
+                    <!-- Cards por transportadora -->
+                    <div class="dash-transp-grid" id="ent-dash-transp-grid"></div>
+
+                    <!-- Gráfico de barras comparativo -->
+                    <div class="dash-chart-card">
+                        <div class="dash-chart-title">Valores por Transportadora</div>
+                        <div class="dash-chart-canvas"><canvas id="ent-dash-bar-chart"></canvas></div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div><!-- /tela-ent-dashboard -->
+
     </div>
 </div>
 
@@ -1319,14 +1378,20 @@ function abrirReceber(event) {
 }
 
 // ───── EXTRAVIOS CARDS ─────
-function _renderExtravios(lista, containerId) {
+function _renderExtravios(lista, containerId, showWa) {
     const el = document.getElementById(containerId);
     if (!lista.length) {
         el.innerHTML = `<div class="extr-vazio">Nenhum extravio no período</div>`;
         return;
     }
     el.innerHTML = lista.map(e => {
-        const msg = encodeURIComponent(`Queria contestar o pedido da ${e.transportadora}.\nCódigo: ${e.codigo}`);
+        const wa = showWa ? (() => {
+            const msg = encodeURIComponent(`Queria contestar o pedido da ${e.transportadora}.\nCódigo: ${e.codigo}`);
+            return `<a class="extr-wa" href="https://wa.me/554991984179?text=${msg}" target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/></svg>
+                Contestar
+            </a>`;
+        })() : "";
         return `<div class="extr-card">
             <div class="extr-top">
                 <span class="extr-transp">${e.transportadora}</span>
@@ -1335,10 +1400,7 @@ function _renderExtravios(lista, containerId) {
             <div class="extr-endereco">${e.endereco}</div>
             <div class="extr-bottom">
                 <span class="extr-valor${e.tem_valor ? ' val-neg' : ''}">${e.valor}</span>
-                <a class="extr-wa" href="https://wa.me/554991984179?text=${msg}" target="_blank" rel="noopener noreferrer">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/></svg>
-                    Contestar
-                </a>
+                ${wa}
             </div>
         </div>`;
     }).join("");
@@ -1438,7 +1500,7 @@ function _carregarPainel() {
         document.getElementById("pt-shopee-q").innerText = d.entregues_shopee + " pacotes";
 
         // Extravios
-        _renderExtravios(d.extravios_linhas, "extravios-lista");
+        _renderExtravios(d.extravios_linhas, "extravios-lista", true);
 
         // Multas
         const multTbody = document.getElementById("multas-tbody");
@@ -1564,6 +1626,12 @@ function renderHomeActions(role) {
             title: "Meus Fechamentos",
             desc: "Veja seus valores quinzenais.",
             fn: "abrirFechamentos()"
+        });
+        defs.push({
+            icon: `<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`,
+            title: "Dashboard",
+            desc: "Evolução dos seus valores por transportadora.",
+            fn: "abrirEntDashboard()"
         });
     }
     if (role === "admin") {
@@ -1881,6 +1949,153 @@ function buscarDashboard() {
                 scales: {
                     x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 13, weight: "600" } } },
                     y: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => v.toLocaleString("pt-BR") } }
+                }
+            }
+        });
+    })
+    .catch(() => { empty.innerText = "Erro ao conectar com o servidor."; });
+}
+
+// ───── ENT DASHBOARD ─────
+let _entDashBarChart = null;
+let _entDashComp = "quinzena";
+
+function setEntDashComp(tipo) {
+    _entDashComp = tipo;
+    document.getElementById("ent-dash-comp-q").classList.toggle("active", tipo === "quinzena");
+    document.getElementById("ent-dash-comp-m").classList.toggle("active", tipo === "mes");
+    if (document.getElementById("ent-dash-content").style.display !== "none") buscarEntDashboard();
+}
+
+function abrirEntDashboard(event) {
+    if (event) event.preventDefault();
+    document.getElementById("ent-dash-empty").innerText = "Selecione o período e clique em Buscar.";
+    document.getElementById("ent-dash-empty").style.display = "";
+    document.getElementById("ent-dash-content").style.display = "none";
+    _iniciarSelectsEntDash();
+    mostrarTela("tela-ent-dashboard");
+}
+
+function _iniciarSelectsEntDash() {
+    const selAno = document.getElementById("ent-dash-ano");
+    const anoAtual = new Date().getFullYear();
+    selAno.innerHTML = "";
+    for (let a = anoAtual - 2; a <= anoAtual; a++) {
+        const opt = document.createElement("option");
+        opt.value = a; opt.textContent = a;
+        if (a === anoAtual) opt.selected = true;
+        selAno.appendChild(opt);
+    }
+    document.getElementById("ent-dash-mes").value = new Date().getMonth() + 1;
+}
+
+function _parseValor(str) {
+    if (!str) return 0;
+    return parseFloat(String(str).replace(/R\$\s*/g, "").replace(/\./g, "").replace(",", ".")) || 0;
+}
+
+const _TRANSP_VAL_KEYS = { loggi: "valor_loggi", jt: "valor_jt", imile: "valor_imile", anjun: "valor_anjun", shopee: "valor_shopee" };
+
+function buscarEntDashboard() {
+    const mes = parseInt(document.getElementById("ent-dash-mes").value);
+    const ano = parseInt(document.getElementById("ent-dash-ano").value);
+    const q   = parseInt(document.getElementById("ent-dash-quinzena").value);
+    const pm  = mes === 1 ? 12 : mes - 1;
+    const pa  = mes === 1 ? ano - 1 : ano;
+
+    const empty   = document.getElementById("ent-dash-empty");
+    const content = document.getElementById("ent-dash-content");
+    empty.innerText = "Carregando...";
+    empty.style.display = "";
+    content.style.display = "none";
+
+    const headers = { "Authorization": "Bearer " + token };
+    const fp = (m, a, qv) => fetch(`${API}/painel?mes=${m}&ano=${a}&quinzena=${qv}`, { headers }).then(r => r.json().then(b => ({ ok: r.ok, b })));
+
+    let prevFetches, compLabel;
+    if (_entDashComp === "quinzena") {
+        const prevQ = q === 2 ? fp(mes, ano, 1) : fp(pm, pa, 2);
+        prevFetches = [prevQ];
+        compLabel   = q === 2
+            ? `vs 1ª quinzena (${MES_NOMES[mes]})`
+            : `vs 2ª quinzena (${MES_NOMES[pm]})`;
+    } else {
+        prevFetches = [fp(pm, pa, 1), fp(pm, pa, 2)];
+        compLabel   = `vs mês de ${MES_NOMES[pm]} ${pa}`;
+    }
+
+    Promise.all([fp(mes, ano, q), ...prevFetches])
+    .then(([cur, ...antArr]) => {
+        if (!cur.ok) { empty.innerText = cur.b.error || "Nenhum fechamento encontrado."; return; }
+        empty.style.display = "none";
+        content.style.display = "";
+
+        const c = cur.b;
+
+        const validos = antArr.filter(x => x.ok).map(x => x.b);
+        let a = null;
+        if (validos.length) {
+            a = { total_receber_num: 0 };
+            TRANSP_DEF.forEach(t => { a[t.key] = { valor_num: 0 }; });
+            validos.forEach(b => {
+                a.total_receber_num += b.total_receber_num || 0;
+                TRANSP_DEF.forEach(t => { a[t.key].valor_num += _parseValor(b[_TRANSP_VAL_KEYS[t.key]]); });
+            });
+        }
+
+        document.getElementById("ent-dash-period-label").textContent = `${q}ª Quinzena · ${MES_NOMES[mes]} ${ano}`;
+        document.getElementById("ent-dash-total-num").textContent    = moedaJS(c.total_receber_num || 0);
+
+        const dTotal = _delta(c.total_receber_num || 0, a ? a.total_receber_num : 0);
+        const badge  = document.getElementById("ent-dash-total-delta");
+        badge.className   = "dash-delta-badge " + dTotal.cls;
+        badge.textContent = dTotal.txt;
+        document.getElementById("ent-dash-total-comp-label").textContent = compLabel;
+
+        document.getElementById("ent-dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
+            const valC = _parseValor(c[_TRANSP_VAL_KEYS[t.key]]);
+            const valA = a && a[t.key] ? a[t.key].valor_num : 0;
+            const d = _delta(valC, valA);
+            return `<div class="dash-tc">
+                <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
+                <div class="dash-tc-qtd" style="font-size:18px">${moedaJS(valC)}</div>
+                <div class="dash-tc-sub">valor no período</div>
+                <span class="dash-tc-delta ${d.cls}">${d.txt}</span>
+            </div>`;
+        }).join("");
+
+        const canvas = document.getElementById("ent-dash-bar-chart");
+        if (_entDashBarChart) { _entDashBarChart.destroy(); _entDashBarChart = null; }
+        _entDashBarChart = new Chart(canvas.getContext("2d"), {
+            type: "bar",
+            data: {
+                labels: TRANSP_DEF.map(t => t.label),
+                datasets: [
+                    {
+                        label: `${q}ª Q · ${MES_NOMES[mes]}`,
+                        data: TRANSP_DEF.map(t => _parseValor(c[_TRANSP_VAL_KEYS[t.key]])),
+                        backgroundColor: TRANSP_DEF.map(t => t.bg),
+                        borderColor: TRANSP_DEF.map(t => t.color),
+                        borderWidth: 1, borderRadius: 7,
+                    },
+                    ...(a ? [{
+                        label: compLabel,
+                        data: TRANSP_DEF.map(t => a[t.key] ? a[t.key].valor_num : 0),
+                        backgroundColor: "rgba(100,110,130,0.25)",
+                        borderColor: "rgba(100,110,130,0.5)",
+                        borderWidth: 1, borderRadius: 7,
+                    }] : [])
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, labels: { color: "#aab4c8", font: { size: 12 }, usePointStyle: true, padding: 16 } },
+                    tooltip: { callbacks: { label: ctx => "  " + moedaJS(ctx.raw) } }
+                },
+                scales: {
+                    x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 13, weight: "600" } } },
+                    y: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => moedaJS(v) } }
                 }
             }
         });
