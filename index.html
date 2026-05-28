@@ -1248,11 +1248,6 @@ body {
                 <div id="ent-dash-content" style="display:none">
 
                     <div class="dash-kpi-row">
-                        <div class="dash-kpi-card" id="edkpi-total-card">
-                            <div class="dash-kpi-lbl">Total do Ano</div>
-                            <div class="dash-kpi-num sm" id="edkpi-total">—</div>
-                            <div class="dash-kpi-sub">em pagamentos</div>
-                        </div>
                         <div class="dash-kpi-card" id="edkpi-mes-card">
                             <div class="dash-kpi-lbl">vs Mês Anterior</div>
                             <div class="dash-kpi-pct flat" id="edkpi-vs-mes">—</div>
@@ -2088,6 +2083,32 @@ function buscarDashboard() {
 let _entDashValorChart  = null;
 let _entDashTranspChart = null;
 let _entDashGran        = "quinzena";
+let _entGrupos          = [];
+let _entAno             = new Date().getFullYear();
+let _entSelIdx          = -1;
+
+function _parseMoeda(s) {
+    if (!s || typeof s !== "string") return 0;
+    return parseFloat(s.replace(/[^\d,\-]/g, "").replace(",", ".")) || 0;
+}
+
+function _entSelecionarChip(idx) {
+    if (idx < 0 || idx >= _entGrupos.length) return;
+    _entSelIdx = idx;
+    const g = _entGrupos[idx];
+    document.querySelectorAll("#ent-dash-pchips .dash-pchip").forEach((el, i) =>
+        el.classList.toggle("current", i === idx)
+    );
+    document.getElementById("ent-dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
+        const v = g[t.valKey] || 0;
+        const q = g[t.key]   || 0;
+        return `<div class="dash-tc">
+            <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
+            <div class="dash-tc-qtd">${moedaJS(v)}</div>
+            <div class="dash-tc-sub">${q} pacotes · ${g.label}</div>
+        </div>`;
+    }).join("");
+}
 
 function setEntDashGran(tipo) {
     _entDashGran = tipo;
@@ -2170,14 +2191,16 @@ function buscarEntDashboard() {
             grupos = Object.keys(byMes).sort((a, b) => Number(a) - Number(b)).map(m => byMes[m]);
         }
 
-        const totalAno = grupos.reduce((s, g) => s + g.valor, 0);
-        const ult      = grupos[grupos.length - 1];
-        const prev     = grupos[grupos.length - 2];
-        const inicio   = grupos[0];
-        const labels   = grupos.map(g => g.label);
+        const ult    = grupos[grupos.length - 1];
+        const prev   = grupos[grupos.length - 2];
+        const inicio = grupos[0];
+        const labels = grupos.map(g => g.label);
+
+        // Store globally for chip selection
+        _entGrupos = grupos;
+        _entAno    = ano;
 
         // KPIs — comparação baseada nos grupos (quinzena ou mês)
-        document.getElementById("edkpi-total").textContent = moedaJS(totalAno);
         document.getElementById("edkpi-mes-card").querySelector(".dash-kpi-lbl").textContent =
             _entDashGran === "quinzena" ? "vs Quinzena Anterior" : "vs Mês Anterior";
 
@@ -2197,29 +2220,13 @@ function buscarEntDashboard() {
             _pctKpi(ult ? ult.valor : 0, inicio ? inicio.valor : 0),
             ult && inicio && ult.label !== inicio.label ? ult.label + " vs " + inicio.label : "—");
 
-        // Chips de período (clicáveis → abre o fechamento daquela quinzena)
+        // Chips de período (clicáveis → seleciona período no dashboard)
         document.getElementById("ent-dash-pchips").innerHTML = grupos.map((g, i) =>
-            `<div class="dash-pchip${i === grupos.length - 1 ? " current" : ""}" onclick="irParaFechamentoPeriodo(${g.mes},${ano},${g.quinzena||0})">
+            `<div class="dash-pchip" onclick="_entSelecionarChip(${i})">
                 <div class="dpc-lbl">${g.label}</div>
                 <div class="dpc-val">${moedaJS(g.valor)}</div>
             </div>`
         ).join("");
-
-        // Cards de transportadoras — R$ do período atual
-        document.getElementById("ent-dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
-            const ultVal  = ult ? (ult[t.valKey] || 0) : 0;
-            const prevVal = prev ? (prev[t.valKey] || 0) : 0;
-            const dlt     = _delta(ultVal, prevVal);
-            const pctStr  = dlt.cls !== "flat" ? dlt.txt.slice(2) : "—";
-            const bCls    = dlt.cls === "up" ? "lucro" : dlt.cls === "down" ? "preju" : "estavel";
-            const badge   = `<span class="lbadge ${bCls}">${pctStr}</span>`;
-            return `<div class="dash-tc">
-                <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
-                <div class="dash-tc-qtd">${moedaJS(ultVal)}</div>
-                <div class="dash-tc-sub">${ult ? ult.label : "—"}</div>
-                ${badge}
-            </div>`;
-        }).join("");
 
         // Gráfico de valor recebido
         const valCanvas = document.getElementById("ent-dash-valor-chart");
@@ -2250,33 +2257,54 @@ function buscarEntDashboard() {
             }
         });
 
-        // Gráfico de transportadoras por período (R$)
-        const transpCanvas = document.getElementById("ent-dash-transp-chart");
-        if (_entDashTranspChart) { _entDashTranspChart.destroy(); _entDashTranspChart = null; }
-        _entDashTranspChart = new Chart(transpCanvas.getContext("2d"), {
-            type: "bar",
-            data: {
-                labels,
-                datasets: TRANSP_DEF.map(t => ({
-                    label: t.label,
-                    data: grupos.map(g => g[t.valKey] || 0),
-                    backgroundColor: t.bg,
-                    borderColor: t.color,
-                    borderWidth: 1,
-                    borderRadius: 5,
-                }))
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: {
-                    legend: { labels: { color: "#aab4c8", font: { size: 12 }, boxWidth: 14, padding: 16 } },
-                    tooltip: { callbacks: { label: ctx => "  " + ctx.dataset.label + ": " + moedaJS(ctx.raw) } }
+        // Enriquecer grupos com valores R$ por transportadora (via painel de cada período)
+        const hdrs2 = { "Authorization": "Bearer " + token };
+        Promise.all(grupos.map(g => {
+            const qs = g.quinzena ? [g.quinzena] : [1, 2];
+            return Promise.all(qs.map(q =>
+                fetch(`${API}/painel?mes=${g.mes}&ano=${ano}&quinzena=${q}`, { headers: hdrs2 })
+                .then(r => r.ok ? r.json() : null).catch(() => null)
+            )).then(results => {
+                results.filter(Boolean).forEach(p => {
+                    g.loggi_v  += _parseMoeda(p.valor_loggi);
+                    g.jt_v     += _parseMoeda(p.valor_jt);
+                    g.imile_v  += _parseMoeda(p.valor_imile);
+                    g.anjun_v  += _parseMoeda(p.valor_anjun);
+                    g.shopee_v += _parseMoeda(p.valor_shopee);
+                });
+            });
+        })).then(() => {
+            // Selecionar último período e renderizar cards
+            _entSelecionarChip(grupos.length - 1);
+
+            // Gráfico de transportadoras por período (R$)
+            const transpCanvas = document.getElementById("ent-dash-transp-chart");
+            if (_entDashTranspChart) { _entDashTranspChart.destroy(); _entDashTranspChart = null; }
+            _entDashTranspChart = new Chart(transpCanvas.getContext("2d"), {
+                type: "bar",
+                data: {
+                    labels,
+                    datasets: TRANSP_DEF.map(t => ({
+                        label: t.label,
+                        data: grupos.map(g => g[t.valKey] || 0),
+                        backgroundColor: t.bg,
+                        borderColor: t.color,
+                        borderWidth: 1,
+                        borderRadius: 5,
+                    }))
                 },
-                scales: {
-                    x: { stacked: false, grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
-                    y: { stacked: false, grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => moedaJS(v) } }
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: "#aab4c8", font: { size: 12 }, boxWidth: 14, padding: 16 } },
+                        tooltip: { callbacks: { label: ctx => "  " + ctx.dataset.label + ": " + moedaJS(ctx.raw) } }
+                    },
+                    scales: {
+                        x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
+                        y: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => moedaJS(v) } }
+                    }
                 }
-            }
+            });
         });
     })
     .catch(() => { empty.innerText = "Erro ao conectar com o servidor."; });
