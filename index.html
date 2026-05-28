@@ -1863,39 +1863,51 @@ function buscarDashboard() {
     const headers = { "Authorization": "Bearer " + token };
     const fp = (m, a, qv) => fetch(`${API}/admin/resumo-quinzena?mes=${m}&ano=${a}&quinzena=${qv}`, { headers }).then(r => r.json().then(b => ({ ok: r.ok, b })));
 
-    let prevFetches, compLabel;
+    let curFetches, prevFetches, compLabel, periodLabel, chartCurLabel;
     if (_dashComp === "quinzena") {
-        const prevQ = q === 2 ? fp(mes, ano, 1) : fp(pm, pa, 2);
-        prevFetches  = [prevQ];
-        compLabel    = q === 2
-            ? `vs 1ª quinzena (${MES_NOMES[mes]})`
-            : `vs 2ª quinzena (${MES_NOMES[pm]})`;
+        curFetches    = [fp(mes, ano, q)];
+        const prevQ   = q === 2 ? fp(mes, ano, 1) : fp(pm, pa, 2);
+        prevFetches   = [prevQ];
+        compLabel     = q === 2 ? `vs 1ª quinzena (${MES_NOMES[mes]})` : `vs 2ª quinzena (${MES_NOMES[pm]})`;
+        periodLabel   = `${q}ª Quinzena · ${MES_NOMES[mes]} ${ano}`;
+        chartCurLabel = `${q}ª Q · ${MES_NOMES[mes]}`;
     } else {
-        prevFetches = [fp(pm, pa, q)];
-        compLabel   = `vs ${q}ª quinzena (${MES_NOMES[pm]} ${pa})`;
+        curFetches    = [fp(mes, ano, 1), fp(mes, ano, 2)];
+        prevFetches   = [fp(pm, pa, 1), fp(pm, pa, 2)];
+        compLabel     = `vs ${MES_NOMES[pm]} ${pa}`;
+        periodLabel   = `${MES_NOMES[mes]} ${ano}`;
+        chartCurLabel = MES_NOMES[mes];
     }
 
-    Promise.all([fp(mes, ano, q), ...prevFetches])
-    .then(([cur, ...antArr]) => {
-        if (!cur.ok) { empty.innerText = cur.b.error || "Nenhum fechamento encontrado."; return; }
+    Promise.all([...curFetches, ...prevFetches])
+    .then(results => {
+        const curRes = results.slice(0, curFetches.length);
+        const antRes = results.slice(curFetches.length);
+
+        const curVal = curRes.filter(x => x.ok).map(x => x.b);
+        if (!curVal.length) { empty.innerText = curRes[0]?.b?.error || "Nenhum fechamento encontrado."; return; }
         empty.style.display = "none";
         content.style.display = "";
 
-        const c = cur.b;
+        const c = { total_entregues: 0 };
+        TRANSP_DEF.forEach(t => { c[t.key] = { qtd: 0 }; });
+        curVal.forEach(b => {
+            c.total_entregues += b.total_entregues || 0;
+            TRANSP_DEF.forEach(t => { c[t.key].qtd += b[t.key] ? b[t.key].qtd : 0; });
+        });
 
-        // Agrega períodos de comparação
         let a = null;
-        const validos = antArr.filter(x => x.ok).map(x => x.b);
-        if (validos.length) {
+        const antVal = antRes.filter(x => x.ok).map(x => x.b);
+        if (antVal.length) {
             a = { total_entregues: 0 };
             TRANSP_DEF.forEach(t => { a[t.key] = { qtd: 0 }; });
-            validos.forEach(b => {
+            antVal.forEach(b => {
                 a.total_entregues += b.total_entregues || 0;
                 TRANSP_DEF.forEach(t => { a[t.key].qtd += b[t.key] ? b[t.key].qtd : 0; });
             });
         }
 
-        document.getElementById("dash-period-label").textContent = `${q}ª Quinzena · ${MES_NOMES[mes]} ${ano}`;
+        document.getElementById("dash-period-label").textContent = periodLabel;
         document.getElementById("dash-total-num").textContent    = (c.total_entregues || 0).toLocaleString("pt-BR");
 
         const dTotal = _delta(c.total_entregues, a ? a.total_entregues : 0);
@@ -1924,7 +1936,7 @@ function buscarDashboard() {
                 labels: TRANSP_DEF.map(t => t.label),
                 datasets: [
                     {
-                        label: `${q}ª Q · ${MES_NOMES[mes]}`,
+                        label: chartCurLabel,
                         data: TRANSP_DEF.map(t => c[t.key] ? c[t.key].qtd : 0),
                         backgroundColor: TRANSP_DEF.map(t => t.bg),
                         borderColor: TRANSP_DEF.map(t => t.color),
@@ -2011,38 +2023,51 @@ function buscarEntDashboard() {
     const headers = { "Authorization": "Bearer " + token };
     const fp = (m, a, qv) => fetch(`${API}/painel?mes=${m}&ano=${a}&quinzena=${qv}`, { headers }).then(r => r.json().then(b => ({ ok: r.ok, b })));
 
-    let prevFetches, compLabel;
+    let curFetches, prevFetches, compLabel, periodLabel, chartCurLabel;
     if (_entDashComp === "quinzena") {
-        const prevQ = q === 2 ? fp(mes, ano, 1) : fp(pm, pa, 2);
-        prevFetches = [prevQ];
-        compLabel   = q === 2
-            ? `vs 1ª quinzena (${MES_NOMES[mes]})`
-            : `vs 2ª quinzena (${MES_NOMES[pm]})`;
+        curFetches    = [fp(mes, ano, q)];
+        const prevQ   = q === 2 ? fp(mes, ano, 1) : fp(pm, pa, 2);
+        prevFetches   = [prevQ];
+        compLabel     = q === 2 ? `vs 1ª quinzena (${MES_NOMES[mes]})` : `vs 2ª quinzena (${MES_NOMES[pm]})`;
+        periodLabel   = `${q}ª Quinzena · ${MES_NOMES[mes]} ${ano}`;
+        chartCurLabel = `${q}ª Q · ${MES_NOMES[mes]}`;
     } else {
-        prevFetches = [fp(pm, pa, q)];
-        compLabel   = `vs ${q}ª quinzena (${MES_NOMES[pm]} ${pa})`;
+        curFetches    = [fp(mes, ano, 1), fp(mes, ano, 2)];
+        prevFetches   = [fp(pm, pa, 1), fp(pm, pa, 2)];
+        compLabel     = `vs ${MES_NOMES[pm]} ${pa}`;
+        periodLabel   = `${MES_NOMES[mes]} ${ano}`;
+        chartCurLabel = MES_NOMES[mes];
     }
 
-    Promise.all([fp(mes, ano, q), ...prevFetches])
-    .then(([cur, ...antArr]) => {
-        if (!cur.ok) { empty.innerText = cur.b.error || "Nenhum fechamento encontrado."; return; }
+    Promise.all([...curFetches, ...prevFetches])
+    .then(results => {
+        const curRes = results.slice(0, curFetches.length);
+        const antRes = results.slice(curFetches.length);
+
+        const curVal = curRes.filter(x => x.ok).map(x => x.b);
+        if (!curVal.length) { empty.innerText = curRes[0]?.b?.error || "Nenhum fechamento encontrado."; return; }
         empty.style.display = "none";
         content.style.display = "";
 
-        const c = cur.b;
+        const c = { total_receber_num: 0 };
+        TRANSP_DEF.forEach(t => { c[t.key] = { valor_num: 0 }; });
+        curVal.forEach(b => {
+            c.total_receber_num += b.total_receber_num || 0;
+            TRANSP_DEF.forEach(t => { c[t.key].valor_num += _parseValor(b[_TRANSP_VAL_KEYS[t.key]]); });
+        });
 
-        const validos = antArr.filter(x => x.ok).map(x => x.b);
         let a = null;
-        if (validos.length) {
+        const antVal = antRes.filter(x => x.ok).map(x => x.b);
+        if (antVal.length) {
             a = { total_receber_num: 0 };
             TRANSP_DEF.forEach(t => { a[t.key] = { valor_num: 0 }; });
-            validos.forEach(b => {
+            antVal.forEach(b => {
                 a.total_receber_num += b.total_receber_num || 0;
                 TRANSP_DEF.forEach(t => { a[t.key].valor_num += _parseValor(b[_TRANSP_VAL_KEYS[t.key]]); });
             });
         }
 
-        document.getElementById("ent-dash-period-label").textContent = `${q}ª Quinzena · ${MES_NOMES[mes]} ${ano}`;
+        document.getElementById("ent-dash-period-label").textContent = periodLabel;
         document.getElementById("ent-dash-total-num").textContent    = moedaJS(c.total_receber_num || 0);
 
         const dTotal = _delta(c.total_receber_num || 0, a ? a.total_receber_num : 0);
@@ -2052,7 +2077,7 @@ function buscarEntDashboard() {
         document.getElementById("ent-dash-total-comp-label").textContent = compLabel;
 
         document.getElementById("ent-dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
-            const valC = _parseValor(c[_TRANSP_VAL_KEYS[t.key]]);
+            const valC = c[t.key] ? c[t.key].valor_num : 0;
             const valA = a && a[t.key] ? a[t.key].valor_num : 0;
             const d = _delta(valC, valA);
             return `<div class="dash-tc">
@@ -2071,8 +2096,8 @@ function buscarEntDashboard() {
                 labels: TRANSP_DEF.map(t => t.label),
                 datasets: [
                     {
-                        label: `${q}ª Q · ${MES_NOMES[mes]}`,
-                        data: TRANSP_DEF.map(t => _parseValor(c[_TRANSP_VAL_KEYS[t.key]])),
+                        label: chartCurLabel,
+                        data: TRANSP_DEF.map(t => c[t.key] ? c[t.key].valor_num : 0),
                         backgroundColor: TRANSP_DEF.map(t => t.bg),
                         borderColor: TRANSP_DEF.map(t => t.color),
                         borderWidth: 1, borderRadius: 7,
