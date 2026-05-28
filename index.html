@@ -1132,52 +1132,29 @@ body {
         <div id="tela-dashboard" class="view tela-full">
 
             <div class="fech-header">
-                <div class="fech-period-row" style="margin-bottom:10px">
-                    <select class="fech-select" id="dash-mes">
-                        <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
-                        <option value="3">Março</option>    <option value="4">Abril</option>
-                        <option value="5">Maio</option>     <option value="6">Junho</option>
-                        <option value="7">Julho</option>    <option value="8">Agosto</option>
-                        <option value="9">Setembro</option> <option value="10">Outubro</option>
-                        <option value="11">Novembro</option><option value="12">Dezembro</option>
-                    </select>
+                <div class="fech-period-row">
                     <select class="fech-select" id="dash-ano"></select>
-                    <select class="fech-select" id="dash-quinzena">
-                        <option value="1">1ª Quinzena</option>
-                        <option value="2">2ª Quinzena</option>
-                    </select>
                     <button class="fech-filtrar-btn" onclick="buscarDashboard()">Buscar</button>
-                </div>
-                <div class="dash-comp-toggle">
-                    <button class="dash-comp-btn active" id="dash-comp-q" onclick="setDashComp('quinzena')">Comparar com quinzena anterior</button>
-                    <button class="dash-comp-btn" id="dash-comp-m" onclick="setDashComp('mes')">Comparar com mês anterior</button>
                 </div>
             </div>
 
             <div class="fech-body">
-                <div class="fechamento-empty" id="dash-empty">Selecione o período e clique em Buscar.</div>
+                <div class="fechamento-empty" id="dash-empty">Selecione o ano e clique em Buscar.</div>
 
                 <div id="dash-content" style="display:none">
 
-                    <!-- Banner total -->
                     <div class="dash-total-banner">
                         <div>
                             <div class="dash-total-period" id="dash-period-label">—</div>
                             <div class="dash-total-num" id="dash-total-num">—</div>
-                            <div class="dash-total-sub">pacotes entregues no total</div>
-                        </div>
-                        <div class="dash-total-right">
-                            <div class="dash-delta-badge flat" id="dash-total-delta">—</div>
-                            <div class="dash-delta-sub" id="dash-total-comp-label">vs período anterior</div>
+                            <div class="dash-total-sub">pacotes entregues no ano</div>
                         </div>
                     </div>
 
-                    <!-- Cards por transportadora -->
                     <div class="dash-transp-grid" id="dash-transp-grid"></div>
 
-                    <!-- Gráfico de barras comparativo -->
                     <div class="dash-chart-card">
-                        <div class="dash-chart-title">Pacotes Entregues por Transportadora</div>
+                        <div class="dash-chart-title">Pacotes por Quinzena</div>
                         <div class="dash-chart-canvas"><canvas id="dash-bar-chart"></canvas></div>
                     </div>
 
@@ -1191,52 +1168,36 @@ body {
 
             <div class="fech-header">
                 <div class="fech-period-row" style="margin-bottom:10px">
-                    <select class="fech-select" id="ent-dash-mes">
-                        <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
-                        <option value="3">Março</option>    <option value="4">Abril</option>
-                        <option value="5">Maio</option>     <option value="6">Junho</option>
-                        <option value="7">Julho</option>    <option value="8">Agosto</option>
-                        <option value="9">Setembro</option> <option value="10">Outubro</option>
-                        <option value="11">Novembro</option><option value="12">Dezembro</option>
-                    </select>
                     <select class="fech-select" id="ent-dash-ano"></select>
-                    <select class="fech-select" id="ent-dash-quinzena">
-                        <option value="1">1ª Quinzena</option>
-                        <option value="2">2ª Quinzena</option>
-                    </select>
                     <button class="fech-filtrar-btn" onclick="buscarEntDashboard()">Buscar</button>
                 </div>
                 <div class="dash-comp-toggle">
-                    <button class="dash-comp-btn active" id="ent-dash-comp-q" onclick="setEntDashComp('quinzena')">Comparar com quinzena anterior</button>
-                    <button class="dash-comp-btn" id="ent-dash-comp-m" onclick="setEntDashComp('mes')">Comparar com mês anterior</button>
+                    <button class="dash-comp-btn active" id="ent-dash-gran-q" onclick="setEntDashGran('quinzena')">Por quinzena</button>
+                    <button class="dash-comp-btn" id="ent-dash-gran-m" onclick="setEntDashGran('mes')">Por mês</button>
                 </div>
             </div>
 
             <div class="fech-body">
-                <div class="fechamento-empty" id="ent-dash-empty">Selecione o período e clique em Buscar.</div>
+                <div class="fechamento-empty" id="ent-dash-empty">Selecione o ano e clique em Buscar.</div>
 
                 <div id="ent-dash-content" style="display:none">
 
-                    <!-- Banner total -->
                     <div class="dash-total-banner">
                         <div>
                             <div class="dash-total-period" id="ent-dash-period-label">—</div>
                             <div class="dash-total-num" id="ent-dash-total-num">—</div>
-                            <div class="dash-total-sub">total a receber</div>
-                        </div>
-                        <div class="dash-total-right">
-                            <div class="dash-delta-badge flat" id="ent-dash-total-delta">—</div>
-                            <div class="dash-delta-sub" id="ent-dash-total-comp-label">vs período anterior</div>
+                            <div class="dash-total-sub">total recebido no ano</div>
                         </div>
                     </div>
 
-                    <!-- Cards por transportadora -->
-                    <div class="dash-transp-grid" id="ent-dash-transp-grid"></div>
-
-                    <!-- Gráfico de barras comparativo -->
                     <div class="dash-chart-card">
-                        <div class="dash-chart-title">Valores por Transportadora</div>
-                        <div class="dash-chart-canvas"><canvas id="ent-dash-bar-chart"></canvas></div>
+                        <div class="dash-chart-title">Valor Recebido</div>
+                        <div class="dash-chart-canvas"><canvas id="ent-dash-valor-chart"></canvas></div>
+                    </div>
+
+                    <div class="dash-chart-card">
+                        <div class="dash-chart-title">Entregas por Transportadora</div>
+                        <div class="dash-chart-canvas"><canvas id="ent-dash-qtd-chart"></canvas></div>
                     </div>
 
                 </div>
@@ -1798,7 +1759,6 @@ document.addEventListener("click", function(e) {
 
 // ───── DASHBOARD ─────
 let _dashBarChart = null;
-let _dashComp = "quinzena";
 
 const TRANSP_DEF = [
     { key: "loggi",  label: "Loggi",  color: "#3a86ff", bg: "rgba(58,134,255,0.7)"  },
@@ -1808,13 +1768,6 @@ const TRANSP_DEF = [
     { key: "shopee", label: "Shopee", color: "#f97316", bg: "rgba(249,115,22,0.7)" },
 ];
 const MES_NOMES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-
-function setDashComp(tipo) {
-    _dashComp = tipo;
-    document.getElementById("dash-comp-q").classList.toggle("active", tipo === "quinzena");
-    document.getElementById("dash-comp-m").classList.toggle("active", tipo === "mes");
-    if (document.getElementById("dash-content").style.display !== "none") buscarDashboard();
-}
 
 function _delta(atual, ant) {
     if (!ant) return { cls: "flat", txt: "—" };
@@ -1827,7 +1780,7 @@ function _delta(atual, ant) {
 
 function abrirDashboard(event) {
     if (event) event.preventDefault();
-    document.getElementById("dash-empty").innerText = "Selecione o período e clique em Buscar.";
+    document.getElementById("dash-empty").innerText = "Selecione o ano e clique em Buscar.";
     document.getElementById("dash-empty").style.display = "";
     document.getElementById("dash-content").style.display = "none";
     _iniciarSelectsDash();
@@ -1844,87 +1797,35 @@ function _iniciarSelectsDash() {
         if (a === anoAtual) opt.selected = true;
         selAno.appendChild(opt);
     }
-    document.getElementById("dash-mes").value = new Date().getMonth() + 1;
 }
 
 function buscarDashboard() {
-    const mes = parseInt(document.getElementById("dash-mes").value);
-    const ano = parseInt(document.getElementById("dash-ano").value);
-    const q   = parseInt(document.getElementById("dash-quinzena").value);
-    const pm  = mes === 1 ? 12 : mes - 1;
-    const pa  = mes === 1 ? ano - 1 : ano;
-
+    const ano   = parseInt(document.getElementById("dash-ano").value);
     const empty   = document.getElementById("dash-empty");
     const content = document.getElementById("dash-content");
     empty.innerText = "Carregando...";
     empty.style.display = "";
     content.style.display = "none";
 
-    const headers = { "Authorization": "Bearer " + token };
-    const fp = (m, a, qv) => fetch(`${API}/admin/resumo-quinzena?mes=${m}&ano=${a}&quinzena=${qv}`, { headers }).then(r => r.json().then(b => ({ ok: r.ok, b })));
-
-    let curFetches, prevFetches, compLabel, periodLabel, chartCurLabel;
-    if (_dashComp === "quinzena") {
-        curFetches    = [fp(mes, ano, q)];
-        const prevQ   = q === 2 ? fp(mes, ano, 1) : fp(pm, pa, 2);
-        prevFetches   = [prevQ];
-        compLabel     = q === 2 ? `vs 1ª quinzena (${MES_NOMES[mes]})` : `vs 2ª quinzena (${MES_NOMES[pm]})`;
-        periodLabel   = `${q}ª Quinzena · ${MES_NOMES[mes]} ${ano}`;
-        chartCurLabel = `${q}ª Q · ${MES_NOMES[mes]}`;
-    } else {
-        curFetches    = [fp(mes, ano, 1), fp(mes, ano, 2)];
-        prevFetches   = [fp(pm, pa, 1), fp(pm, pa, 2)];
-        compLabel     = `vs ${MES_NOMES[pm]} ${pa}`;
-        periodLabel   = `${MES_NOMES[mes]} ${ano}`;
-        chartCurLabel = MES_NOMES[mes];
-    }
-
-    Promise.all([...curFetches, ...prevFetches])
-    .then(results => {
-        const curRes = results.slice(0, curFetches.length);
-        const antRes = results.slice(curFetches.length);
-
-        const curVal = curRes.filter(x => x.ok).map(x => x.b);
-        if (!curVal.length) { empty.innerText = curRes[0]?.b?.error || "Nenhum fechamento encontrado."; return; }
+    fetch(`${API}/admin/historico?ano=${ano}`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => r.json())
+    .then(dados => {
+        if (!dados.length) { empty.innerText = "Nenhum dado encontrado para este ano."; return; }
         empty.style.display = "none";
         content.style.display = "";
 
-        const c = { total_entregues: 0 };
-        TRANSP_DEF.forEach(t => { c[t.key] = { qtd: 0 }; });
-        curVal.forEach(b => {
-            c.total_entregues += b.total_entregues || 0;
-            TRANSP_DEF.forEach(t => { c[t.key].qtd += b[t.key] ? b[t.key].qtd : 0; });
-        });
+        const labels  = dados.map(d => `${d.quinzena}Q ${MES_NOMES[d.mes].slice(0, 3)}`);
+        const totalAno = dados.reduce((s, d) => s + (d.total_entregues || 0), 0);
 
-        let a = null;
-        const antVal = antRes.filter(x => x.ok).map(x => x.b);
-        if (antVal.length) {
-            a = { total_entregues: 0 };
-            TRANSP_DEF.forEach(t => { a[t.key] = { qtd: 0 }; });
-            antVal.forEach(b => {
-                a.total_entregues += b.total_entregues || 0;
-                TRANSP_DEF.forEach(t => { a[t.key].qtd += b[t.key] ? b[t.key].qtd : 0; });
-            });
-        }
-
-        document.getElementById("dash-period-label").textContent = periodLabel;
-        document.getElementById("dash-total-num").textContent    = (c.total_entregues || 0).toLocaleString("pt-BR");
-
-        const dTotal = _delta(c.total_entregues, a ? a.total_entregues : 0);
-        const badge  = document.getElementById("dash-total-delta");
-        badge.className   = "dash-delta-badge " + dTotal.cls;
-        badge.textContent = dTotal.txt;
-        document.getElementById("dash-total-comp-label").textContent = compLabel;
+        document.getElementById("dash-period-label").textContent = `Ano ${ano}`;
+        document.getElementById("dash-total-num").textContent    = totalAno.toLocaleString("pt-BR");
 
         document.getElementById("dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
-            const qtdC = c[t.key] ? c[t.key].qtd : 0;
-            const qtdA = a && a[t.key] ? a[t.key].qtd : 0;
-            const d = _delta(qtdC, qtdA);
+            const total = dados.reduce((s, d) => s + (d[t.key] ? d[t.key].qtd : 0), 0);
             return `<div class="dash-tc">
                 <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
-                <div class="dash-tc-qtd">${qtdC.toLocaleString("pt-BR")}</div>
-                <div class="dash-tc-sub">pacotes entregues</div>
-                <span class="dash-tc-delta ${d.cls}">${d.txt}</span>
+                <div class="dash-tc-qtd">${total.toLocaleString("pt-BR")}</div>
+                <div class="dash-tc-sub">pacotes no ano</div>
             </div>`;
         }).join("");
 
@@ -1933,23 +1834,14 @@ function buscarDashboard() {
         _dashBarChart = new Chart(canvas.getContext("2d"), {
             type: "bar",
             data: {
-                labels: TRANSP_DEF.map(t => t.label),
-                datasets: [
-                    {
-                        label: chartCurLabel,
-                        data: TRANSP_DEF.map(t => c[t.key] ? c[t.key].qtd : 0),
-                        backgroundColor: TRANSP_DEF.map(t => t.bg),
-                        borderColor: TRANSP_DEF.map(t => t.color),
-                        borderWidth: 1, borderRadius: 7,
-                    },
-                    ...(a ? [{
-                        label: compLabel,
-                        data: TRANSP_DEF.map(t => a[t.key] ? a[t.key].qtd : 0),
-                        backgroundColor: "rgba(100,110,130,0.25)",
-                        borderColor: "rgba(100,110,130,0.5)",
-                        borderWidth: 1, borderRadius: 7,
-                    }] : [])
-                ]
+                labels,
+                datasets: TRANSP_DEF.map(t => ({
+                    label: t.label,
+                    data: dados.map(d => d[t.key] ? d[t.key].qtd : 0),
+                    backgroundColor: t.bg,
+                    borderColor: t.color,
+                    borderWidth: 1, borderRadius: 4,
+                }))
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
@@ -1958,7 +1850,7 @@ function buscarDashboard() {
                     tooltip: { callbacks: { label: ctx => "  " + ctx.raw.toLocaleString("pt-BR") + " pacotes" } }
                 },
                 scales: {
-                    x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 13, weight: "600" } } },
+                    x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
                     y: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => v.toLocaleString("pt-BR") } }
                 }
             }
@@ -1968,19 +1860,20 @@ function buscarDashboard() {
 }
 
 // ───── ENT DASHBOARD ─────
-let _entDashBarChart = null;
-let _entDashComp = "quinzena";
+let _entDashValorChart = null;
+let _entDashQtdChart   = null;
+let _entDashGran       = "quinzena";
 
-function setEntDashComp(tipo) {
-    _entDashComp = tipo;
-    document.getElementById("ent-dash-comp-q").classList.toggle("active", tipo === "quinzena");
-    document.getElementById("ent-dash-comp-m").classList.toggle("active", tipo === "mes");
+function setEntDashGran(tipo) {
+    _entDashGran = tipo;
+    document.getElementById("ent-dash-gran-q").classList.toggle("active", tipo === "quinzena");
+    document.getElementById("ent-dash-gran-m").classList.toggle("active", tipo === "mes");
     if (document.getElementById("ent-dash-content").style.display !== "none") buscarEntDashboard();
 }
 
 function abrirEntDashboard(event) {
     if (event) event.preventDefault();
-    document.getElementById("ent-dash-empty").innerText = "Selecione o período e clique em Buscar.";
+    document.getElementById("ent-dash-empty").innerText = "Selecione o ano e clique em Buscar.";
     document.getElementById("ent-dash-empty").style.display = "";
     document.getElementById("ent-dash-content").style.display = "none";
     _iniciarSelectsEntDash();
@@ -1997,129 +1890,101 @@ function _iniciarSelectsEntDash() {
         if (a === anoAtual) opt.selected = true;
         selAno.appendChild(opt);
     }
-    document.getElementById("ent-dash-mes").value = new Date().getMonth() + 1;
 }
-
-function _parseValor(str) {
-    if (!str) return 0;
-    return parseFloat(String(str).replace(/R\$\s*/g, "").replace(/\./g, "").replace(",", ".")) || 0;
-}
-
-const _TRANSP_VAL_KEYS = { loggi: "valor_loggi", jt: "valor_jt", imile: "valor_imile", anjun: "valor_anjun", shopee: "valor_shopee" };
 
 function buscarEntDashboard() {
-    const mes = parseInt(document.getElementById("ent-dash-mes").value);
-    const ano = parseInt(document.getElementById("ent-dash-ano").value);
-    const q   = parseInt(document.getElementById("ent-dash-quinzena").value);
-    const pm  = mes === 1 ? 12 : mes - 1;
-    const pa  = mes === 1 ? ano - 1 : ano;
-
+    const ano   = parseInt(document.getElementById("ent-dash-ano").value);
     const empty   = document.getElementById("ent-dash-empty");
     const content = document.getElementById("ent-dash-content");
     empty.innerText = "Carregando...";
     empty.style.display = "";
     content.style.display = "none";
 
-    const headers = { "Authorization": "Bearer " + token };
-    const fp = (m, a, qv) => fetch(`${API}/painel?mes=${m}&ano=${a}&quinzena=${qv}`, { headers }).then(r => r.json().then(b => ({ ok: r.ok, b })));
-
-    let curFetches, prevFetches, compLabel, periodLabel, chartCurLabel;
-    if (_entDashComp === "quinzena") {
-        curFetches    = [fp(mes, ano, q)];
-        const prevQ   = q === 2 ? fp(mes, ano, 1) : fp(pm, pa, 2);
-        prevFetches   = [prevQ];
-        compLabel     = q === 2 ? `vs 1ª quinzena (${MES_NOMES[mes]})` : `vs 2ª quinzena (${MES_NOMES[pm]})`;
-        periodLabel   = `${q}ª Quinzena · ${MES_NOMES[mes]} ${ano}`;
-        chartCurLabel = `${q}ª Q · ${MES_NOMES[mes]}`;
-    } else {
-        curFetches    = [fp(mes, ano, 1), fp(mes, ano, 2)];
-        prevFetches   = [fp(pm, pa, 1), fp(pm, pa, 2)];
-        compLabel     = `vs ${MES_NOMES[pm]} ${pa}`;
-        periodLabel   = `${MES_NOMES[mes]} ${ano}`;
-        chartCurLabel = MES_NOMES[mes];
-    }
-
-    Promise.all([...curFetches, ...prevFetches])
-    .then(results => {
-        const curRes = results.slice(0, curFetches.length);
-        const antRes = results.slice(curFetches.length);
-
-        const curVal = curRes.filter(x => x.ok).map(x => x.b);
-        if (!curVal.length) { empty.innerText = curRes[0]?.b?.error || "Nenhum fechamento encontrado."; return; }
+    fetch(`${API}/historico?ano=${ano}`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => r.json())
+    .then(dados => {
+        if (!dados.length) { empty.innerText = "Nenhum dado encontrado para este ano."; return; }
         empty.style.display = "none";
         content.style.display = "";
 
-        const c = { total_receber_num: 0 };
-        TRANSP_DEF.forEach(t => { c[t.key] = { valor_num: 0 }; });
-        curVal.forEach(b => {
-            c.total_receber_num += b.total_receber_num || 0;
-            TRANSP_DEF.forEach(t => { c[t.key].valor_num += _parseValor(b[_TRANSP_VAL_KEYS[t.key]]); });
-        });
-
-        let a = null;
-        const antVal = antRes.filter(x => x.ok).map(x => x.b);
-        if (antVal.length) {
-            a = { total_receber_num: 0 };
-            TRANSP_DEF.forEach(t => { a[t.key] = { valor_num: 0 }; });
-            antVal.forEach(b => {
-                a.total_receber_num += b.total_receber_num || 0;
-                TRANSP_DEF.forEach(t => { a[t.key].valor_num += _parseValor(b[_TRANSP_VAL_KEYS[t.key]]); });
+        let grupos;
+        if (_entDashGran === "quinzena") {
+            grupos = dados.map(d => ({
+                label: `${d.quinzena}Q ${MES_NOMES[d.mes].slice(0, 3)}`,
+                valor: d.total_receber_num || 0,
+                loggi: d.entregues_loggi  || 0,
+                jt:    d.entregues_jt     || 0,
+                imile: d.qtd_imile        || 0,
+                anjun: d.entregues_anjun  || 0,
+                shopee: d.entregues_shopee || 0,
+            }));
+        } else {
+            const byMes = {};
+            dados.forEach(d => {
+                if (!byMes[d.mes]) byMes[d.mes] = { label: MES_NOMES[d.mes].slice(0, 3), valor: 0, loggi: 0, jt: 0, imile: 0, anjun: 0, shopee: 0 };
+                byMes[d.mes].valor  += d.total_receber_num  || 0;
+                byMes[d.mes].loggi  += d.entregues_loggi   || 0;
+                byMes[d.mes].jt     += d.entregues_jt      || 0;
+                byMes[d.mes].imile  += d.qtd_imile         || 0;
+                byMes[d.mes].anjun  += d.entregues_anjun   || 0;
+                byMes[d.mes].shopee += d.entregues_shopee  || 0;
             });
+            grupos = Object.keys(byMes).sort((a, b) => Number(a) - Number(b)).map(m => byMes[m]);
         }
 
-        document.getElementById("ent-dash-period-label").textContent = periodLabel;
-        document.getElementById("ent-dash-total-num").textContent    = moedaJS(c.total_receber_num || 0);
+        const labels   = grupos.map(g => g.label);
+        const totalAno = grupos.reduce((s, g) => s + g.valor, 0);
+        document.getElementById("ent-dash-period-label").textContent = `Ano ${ano}`;
+        document.getElementById("ent-dash-total-num").textContent    = moedaJS(totalAno);
 
-        const dTotal = _delta(c.total_receber_num || 0, a ? a.total_receber_num : 0);
-        const badge  = document.getElementById("ent-dash-total-delta");
-        badge.className   = "dash-delta-badge " + dTotal.cls;
-        badge.textContent = dTotal.txt;
-        document.getElementById("ent-dash-total-comp-label").textContent = compLabel;
-
-        document.getElementById("ent-dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
-            const valC = c[t.key] ? c[t.key].valor_num : 0;
-            const valA = a && a[t.key] ? a[t.key].valor_num : 0;
-            const d = _delta(valC, valA);
-            return `<div class="dash-tc">
-                <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
-                <div class="dash-tc-qtd" style="font-size:18px">${moedaJS(valC)}</div>
-                <div class="dash-tc-sub">valor no período</div>
-                <span class="dash-tc-delta ${d.cls}">${d.txt}</span>
-            </div>`;
-        }).join("");
-
-        const canvas = document.getElementById("ent-dash-bar-chart");
-        if (_entDashBarChart) { _entDashBarChart.destroy(); _entDashBarChart = null; }
-        _entDashBarChart = new Chart(canvas.getContext("2d"), {
+        // Chart 1: valor recebido
+        const valCanvas = document.getElementById("ent-dash-valor-chart");
+        if (_entDashValorChart) { _entDashValorChart.destroy(); _entDashValorChart = null; }
+        _entDashValorChart = new Chart(valCanvas.getContext("2d"), {
             type: "bar",
             data: {
-                labels: TRANSP_DEF.map(t => t.label),
-                datasets: [
-                    {
-                        label: chartCurLabel,
-                        data: TRANSP_DEF.map(t => c[t.key] ? c[t.key].valor_num : 0),
-                        backgroundColor: TRANSP_DEF.map(t => t.bg),
-                        borderColor: TRANSP_DEF.map(t => t.color),
-                        borderWidth: 1, borderRadius: 7,
-                    },
-                    ...(a ? [{
-                        label: compLabel,
-                        data: TRANSP_DEF.map(t => a[t.key] ? a[t.key].valor_num : 0),
-                        backgroundColor: "rgba(100,110,130,0.25)",
-                        borderColor: "rgba(100,110,130,0.5)",
-                        borderWidth: 1, borderRadius: 7,
-                    }] : [])
-                ]
+                labels,
+                datasets: [{ label: "Total a Receber", data: grupos.map(g => g.valor),
+                    backgroundColor: "rgba(58,134,255,0.7)", borderColor: "#3a86ff",
+                    borderWidth: 1, borderRadius: 7 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => "  " + moedaJS(ctx.raw) } }
+                },
+                scales: {
+                    x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
+                    y: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => moedaJS(v) } }
+                }
+            }
+        });
+
+        // Chart 2: entregas por transportadora
+        const qtdCanvas = document.getElementById("ent-dash-qtd-chart");
+        if (_entDashQtdChart) { _entDashQtdChart.destroy(); _entDashQtdChart = null; }
+        _entDashQtdChart = new Chart(qtdCanvas.getContext("2d"), {
+            type: "bar",
+            data: {
+                labels,
+                datasets: TRANSP_DEF.map(t => ({
+                    label: t.label,
+                    data: grupos.map(g => g[t.key] || 0),
+                    backgroundColor: t.bg,
+                    borderColor: t.color,
+                    borderWidth: 1, borderRadius: 4,
+                }))
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: true, labels: { color: "#aab4c8", font: { size: 12 }, usePointStyle: true, padding: 16 } },
-                    tooltip: { callbacks: { label: ctx => "  " + moedaJS(ctx.raw) } }
+                    tooltip: { callbacks: { label: ctx => "  " + ctx.raw.toLocaleString("pt-BR") + " pacotes" } }
                 },
                 scales: {
-                    x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 13, weight: "600" } } },
-                    y: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => moedaJS(v) } }
+                    x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
+                    y: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => v.toLocaleString("pt-BR") } }
                 }
             }
         });
