@@ -2628,24 +2628,26 @@ function buscarEntDashboard() {
 if (typeof pdfjsLib !== "undefined")
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
+function _mostrarUploadArea() {
+    const area = document.getElementById("nota-upload-area");
+    area.innerHTML = `
+        <input type="file" id="nota-file-input" accept=".pdf" style="display:none" onchange="_processarNota(this)">
+        <button class="nota-btn-upload" onclick="document.getElementById('nota-file-input').click()">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            Anexar PDF
+        </button>
+        <p class="nota-hint">Extraímos automaticamente os dados da nota</p>`;
+    area.style.display = "";
+    document.getElementById("nota-card").style.display = "none";
+}
+
 function _carregarNota() {
     fetch(`${API}/nota?mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}`, {
         headers: { "Authorization": "Bearer " + token }
     })
     .then(r => r.ok ? r.json() : null)
-    .then(nota => {
-        if (nota) {
-            _renderNotaCard(nota);
-        } else {
-            document.getElementById("nota-upload-area").style.display = "";
-            document.getElementById("nota-card").style.display = "none";
-            document.getElementById("nota-file-input").value = "";
-        }
-    })
-    .catch(() => {
-        document.getElementById("nota-upload-area").style.display = "";
-        document.getElementById("nota-card").style.display = "none";
-    });
+    .then(nota => nota ? _renderNotaCard(nota) : _mostrarUploadArea())
+    .catch(() => _mostrarUploadArea());
 }
 
 function _renderNotaCard(nota) {
@@ -2679,9 +2681,7 @@ async function _removerNota() {
         method: "DELETE",
         headers: { "Authorization": "Bearer " + token }
     }).catch(() => {});
-    document.getElementById("nota-card").style.display = "none";
-    document.getElementById("nota-upload-area").style.display = "";
-    document.getElementById("nota-file-input").value = "";
+    _mostrarUploadArea();
 }
 
 async function _processarNota(input) {
@@ -2706,10 +2706,9 @@ async function _processarNota(input) {
         });
         _renderNotaCard(nota);
     } catch (e) {
-        area.innerHTML = `
-            <input type="file" id="nota-file-input" accept=".pdf" style="display:none" onchange="_processarNota(this)">
-            <button class="nota-btn-upload" onclick="document.getElementById('nota-file-input').click()">Tentar novamente</button>
-            <p class="nota-hint" style="color:#ef4444">Erro ao ler o PDF. Verifique o arquivo.</p>`;
+        _mostrarUploadArea();
+        document.querySelector("#nota-upload-area .nota-hint").textContent = "Erro ao ler o PDF. Tente novamente.";
+        document.querySelector("#nota-upload-area .nota-hint").style.color = "#ef4444";
     }
 }
 
