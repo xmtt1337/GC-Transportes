@@ -1201,11 +1201,6 @@ body {
                 <div id="dash-content" style="display:none">
 
                     <div class="dash-kpi-row">
-                        <div class="dash-kpi-card" id="dkpi-total-card">
-                            <div class="dash-kpi-lbl">Total do Ano</div>
-                            <div class="dash-kpi-num" id="dkpi-total">—</div>
-                            <div class="dash-kpi-sub">pacotes entregues</div>
-                        </div>
                         <div class="dash-kpi-card" id="dkpi-mes-card">
                             <div class="dash-kpi-lbl">vs Mês Anterior</div>
                             <div class="dash-kpi-pct flat" id="dkpi-vs-mes">—</div>
@@ -1891,7 +1886,57 @@ document.addEventListener("click", function(e) {
 
 // ───── DASHBOARD ─────
 let _dashBarChart = null;
-let _dashGran = "quinzena";
+let _dashGran     = "quinzena";
+let _admGrupos    = [];
+let _admAno       = new Date().getFullYear();
+let _admSelIdx    = -1;
+
+function _admSelecionarChip(idx) {
+    if (idx < 0 || idx >= _admGrupos.length) return;
+    _admSelIdx = idx;
+    const g    = _admGrupos[idx];
+    const prev = _admGrupos[idx - 1] || null;
+    const ini  = _admGrupos[0];
+
+    document.querySelectorAll("#dash-pchips .dash-pchip").forEach((el, i) =>
+        el.classList.toggle("current", i === idx)
+    );
+
+    const gran = _dashGran === "quinzena" ? "Quinzena" : "Mês";
+    document.getElementById("dkpi-mes-card").querySelector(".dash-kpi-lbl").textContent =
+        "vs " + gran + " Anterior";
+
+    function _applyKpi(cardId, pctElId, subId, pct, subTxt) {
+        document.getElementById(cardId).className =
+            "dash-kpi-card" + (pct.dir > 0 ? " kpi-up" : pct.dir < 0 ? " kpi-down" : "");
+        const el = document.getElementById(pctElId);
+        el.className   = "dash-kpi-pct " + pct.cls;
+        el.textContent = pct.txt;
+        document.getElementById(subId).textContent = subTxt;
+    }
+
+    _applyKpi("dkpi-mes-card", "dkpi-vs-mes", "dkpi-vs-mes-sub",
+        _pctKpi(g.total, prev ? prev.total : 0),
+        prev ? g.label + " vs " + prev.label : "—");
+
+    _applyKpi("dkpi-inicio-card", "dkpi-vs-inicio", "dkpi-vs-inicio-sub",
+        _pctKpi(g.total, ini.total),
+        g.label !== ini.label ? g.label + " vs " + ini.label : "—");
+
+    document.getElementById("dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
+        const qtd  = g[t.key] || 0;
+        const pQtd = prev ? (prev[t.key] || 0) : 0;
+        const dlt  = _delta(qtd, pQtd);
+        const pctStr = dlt.cls !== "flat" ? dlt.txt.slice(2) : "—";
+        const bCls   = dlt.cls === "up" ? "lucro" : dlt.cls === "down" ? "preju" : "estavel";
+        return `<div class="dash-tc">
+            <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
+            <div class="dash-tc-qtd">${qtd.toLocaleString("pt-BR")}</div>
+            <div class="dash-tc-sub">pacotes · ${g.label}</div>
+            <span class="lbadge ${bCls}">${pctStr}</span>
+        </div>`;
+    }).join("");
+}
 
 const TRANSP_DEF = [
     { key: "loggi",  valKey: "loggi_v",  label: "Loggi",  color: "#01b4f7", bg: "rgba(1,180,247,0.7)"   },
@@ -1991,56 +2036,19 @@ function buscarDashboard() {
             grupos = Object.keys(byMes).sort((a, b) => Number(a) - Number(b)).map(m => byMes[m]);
         }
 
-        const totalAno = grupos.reduce((s, g) => s + g.total, 0);
-        const ult      = grupos[grupos.length - 1];
-        const prev     = grupos[grupos.length - 2];
-        const inicio   = grupos[0];
-
-        // KPIs — comparação baseada nos grupos (quinzena ou mês)
-        document.getElementById("dkpi-total").textContent = totalAno.toLocaleString("pt-BR");
-        document.getElementById("dkpi-mes-card").querySelector(".dash-kpi-lbl").textContent =
-            _dashGran === "quinzena" ? "vs Quinzena Anterior" : "vs Mês Anterior";
-
-        function _setKpi(cardId, elId, subId, pct, subTxt) {
-            document.getElementById(cardId).className = "dash-kpi-card" + (pct.dir > 0 ? " kpi-up" : pct.dir < 0 ? " kpi-down" : "");
-            const el = document.getElementById(elId);
-            el.className = "dash-kpi-pct " + pct.cls;
-            el.textContent = pct.txt;
-            document.getElementById(subId).textContent = subTxt;
-        }
-
-        _setKpi("dkpi-mes-card", "dkpi-vs-mes", "dkpi-vs-mes-sub",
-            _pctKpi(ult ? ult.total : 0, prev ? prev.total : 0),
-            ult && prev ? ult.label + " vs " + prev.label : "—");
-
-        _setKpi("dkpi-inicio-card", "dkpi-vs-inicio", "dkpi-vs-inicio-sub",
-            _pctKpi(ult ? ult.total : 0, inicio ? inicio.total : 0),
-            ult && inicio && ult.label !== inicio.label ? ult.label + " vs " + inicio.label : "—");
+        // Store globally for chip selection
+        _admGrupos = grupos;
+        _admAno    = ano;
 
         document.getElementById("dash-chart-title").textContent = _dashGran === "quinzena" ? "Pacotes por Quinzena" : "Pacotes por Mês";
 
-        // Chips de período (clicáveis → abre pesquisa de fechamento)
+        // Chips de período (clicáveis → seleciona período no dashboard)
         document.getElementById("dash-pchips").innerHTML = grupos.map((g, i) =>
-            `<div class="dash-pchip${i === grupos.length - 1 ? " current" : ""}" onclick="irParaAdminFechamentoPeriodo(${g.mes},${ano},${g.quinzena||0})">
+            `<div class="dash-pchip" onclick="_admSelecionarChip(${i})">
                 <div class="dpc-lbl">${g.label}</div>
                 <div class="dpc-val">${g.total.toLocaleString("pt-BR")}</div>
             </div>`
         ).join("");
-
-        // Cards de transportadoras
-        document.getElementById("dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
-            const total  = grupos.reduce((s, g) => s + (g[t.key] || 0), 0);
-            const dlt    = _delta(ult ? ult[t.key] || 0 : 0, prev ? prev[t.key] || 0 : 0);
-            const pctStr = dlt.cls !== "flat" ? dlt.txt.slice(2) : "—";
-            const bCls   = dlt.cls === "up" ? "lucro" : dlt.cls === "down" ? "preju" : "estavel";
-            const badge  = `<span class="lbadge ${bCls}">${pctStr}</span>`;
-            return `<div class="dash-tc">
-                <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
-                <div class="dash-tc-qtd">${total.toLocaleString("pt-BR")}</div>
-                <div class="dash-tc-sub">pacotes no ano</div>
-                ${badge}
-            </div>`;
-        }).join("");
 
         const labels = grupos.map(g => g.label);
         const canvas = document.getElementById("dash-bar-chart");
@@ -2075,6 +2083,9 @@ function buscarDashboard() {
                 }
             }
         });
+
+        // Selecionar último período nos cards e KPIs
+        _admSelecionarChip(grupos.length - 1);
     })
     .catch(() => { empty.innerText = "Erro ao conectar com o servidor."; });
 }
