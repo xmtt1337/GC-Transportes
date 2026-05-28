@@ -1076,8 +1076,8 @@ body {
 
                     <!-- Ajustes: 5 cards -->
                     <div class="painel-ajustes">
-                        <div class="paj-card positivo">
-                            <div class="paj-label">Adicional</div>
+                        <div class="paj-card positivo" id="paj-adicional-card">
+                            <div class="paj-label">Adicional / Desconto</div>
                             <div class="paj-value" id="paj-adicional">—</div>
                         </div>
                         <div class="paj-card positivo">
@@ -1276,8 +1276,8 @@ body {
                     </div>
 
                     <div class="painel-ajustes">
-                        <div class="paj-card positivo">
-                            <div class="paj-label">Adicional</div>
+                        <div class="paj-card positivo" id="adm-paj-adicional-card">
+                            <div class="paj-label">Adicional / Desconto</div>
                             <div class="paj-value" id="adm-paj-adicional">—</div>
                         </div>
                         <div class="paj-card positivo">
@@ -1721,6 +1721,7 @@ function _carregarPainel() {
 
         // Ajustes
         document.getElementById("paj-adicional").innerText    = d.adicional;
+        document.getElementById("paj-adicional-card").className = "paj-card " + (_parseMoeda(d.adicional) < 0 ? "negativo" : "positivo");
         document.getElementById("paj-deslocamento").innerText = d.deslocamento;
         document.getElementById("paj-grandes").innerText      = d.valor_grandes;
         document.getElementById("paj-descontos").innerText    = d.descontos;
@@ -2899,6 +2900,7 @@ function _carregarPainelAdmin() {
         document.getElementById("adm-pb-total-entregues").innerText = d.total_entregues;
 
         document.getElementById("adm-paj-adicional").innerText    = d.adicional;
+        document.getElementById("adm-paj-adicional-card").className = "paj-card " + (_parseMoeda(d.adicional) < 0 ? "negativo" : "positivo");
         document.getElementById("adm-paj-deslocamento").innerText = d.deslocamento;
         document.getElementById("adm-paj-grandes").innerText      = d.valor_grandes;
         document.getElementById("adm-paj-descontos").innerText    = d.descontos;
