@@ -1260,7 +1260,12 @@ function toggleMenu(element) {
 function mostrarTela(id) {
     document.querySelectorAll(".view").forEach(v => v.classList.remove("active-view"));
     document.getElementById(id).classList.add("active-view");
-    if (window.innerWidth <= 680) fecharSidebar();
+    // Sempre fecha/recolhe a sidebar ao navegar
+    const sidebar = document.getElementById("sidebar");
+    sidebar.classList.remove("expanded");
+    document.getElementById("sidebar-backdrop").classList.remove("active");
+    document.querySelectorAll(".submenu").forEach(m => m.classList.remove("open"));
+    document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active", "open"));
 }
 
 // ───── TELA RECEBER ─────
@@ -1705,16 +1710,6 @@ function setDashComp(tipo) {
     if (document.getElementById("dash-content").style.display !== "none") buscarDashboard();
 }
 
-function _periodoAnterior(mes, ano, q) {
-    if (_dashComp === "quinzena") {
-        if (q === 2) return { mes, ano, q: 1 };
-        const pm = mes === 1 ? 12 : mes - 1;
-        return { mes: pm, ano: mes === 1 ? ano - 1 : ano, q: 2 };
-    }
-    const pm = mes === 1 ? 12 : mes - 1;
-    return { mes: pm, ano: mes === 1 ? ano - 1 : ano, q };
-}
-
 function _delta(atual, ant) {
     if (!ant) return { cls: "flat", txt: "—" };
     const diff = atual - ant;
@@ -1750,7 +1745,8 @@ function buscarDashboard() {
     const mes = parseInt(document.getElementById("dash-mes").value);
     const ano = parseInt(document.getElementById("dash-ano").value);
     const q   = parseInt(document.getElementById("dash-quinzena").value);
-    const prev = _periodoAnterior(mes, ano, q);
+    const pm  = mes === 1 ? 12 : mes - 1;
+    const pa  = mes === 1 ? ano - 1 : ano;
 
     const empty   = document.getElementById("dash-empty");
     const content = document.getElementById("dash-content");
@@ -1759,33 +1755,50 @@ function buscarDashboard() {
     content.style.display = "none";
 
     const headers = { "Authorization": "Bearer " + token };
-    Promise.all([
-        fetch(`${API}/admin/resumo-quinzena?mes=${mes}&ano=${ano}&quinzena=${q}`, { headers }).then(r => r.json().then(b => ({ ok: r.ok, b }))),
-        fetch(`${API}/admin/resumo-quinzena?mes=${prev.mes}&ano=${prev.ano}&quinzena=${prev.q}`, { headers }).then(r => r.json().then(b => ({ ok: r.ok, b })))
-    ])
-    .then(([cur, ant]) => {
+    const fp = (m, a, qv) => fetch(`${API}/admin/resumo-quinzena?mes=${m}&ano=${a}&quinzena=${qv}`, { headers }).then(r => r.json().then(b => ({ ok: r.ok, b })));
+
+    let prevFetches, compLabel;
+    if (_dashComp === "quinzena") {
+        const prevQ = q === 2 ? fp(mes, ano, 1) : fp(pm, pa, 2);
+        prevFetches  = [prevQ];
+        compLabel    = q === 2
+            ? `vs 1ª quinzena (${MES_NOMES[mes]})`
+            : `vs 2ª quinzena (${MES_NOMES[pm]})`;
+    } else {
+        // Soma as duas quinzenas do mês anterior
+        prevFetches = [fp(pm, pa, 1), fp(pm, pa, 2)];
+        compLabel   = `vs mês de ${MES_NOMES[pm]} ${pa}`;
+    }
+
+    Promise.all([fp(mes, ano, q), ...prevFetches])
+    .then(([cur, ...antArr]) => {
         if (!cur.ok) { empty.innerText = cur.b.error || "Nenhum fechamento encontrado."; return; }
         empty.style.display = "none";
         content.style.display = "";
 
         const c = cur.b;
-        const a = ant.ok ? ant.b : null;
 
-        // Banner total
+        // Agrega períodos de comparação
+        let a = null;
+        const validos = antArr.filter(x => x.ok).map(x => x.b);
+        if (validos.length) {
+            a = { total_entregues: 0 };
+            TRANSP_DEF.forEach(t => { a[t.key] = { qtd: 0 }; });
+            validos.forEach(b => {
+                a.total_entregues += b.total_entregues || 0;
+                TRANSP_DEF.forEach(t => { a[t.key].qtd += b[t.key] ? b[t.key].qtd : 0; });
+            });
+        }
+
         document.getElementById("dash-period-label").textContent = `${q}ª Quinzena · ${MES_NOMES[mes]} ${ano}`;
-        document.getElementById("dash-total-num").textContent = (c.total_entregues || 0).toLocaleString("pt-BR");
+        document.getElementById("dash-total-num").textContent    = (c.total_entregues || 0).toLocaleString("pt-BR");
 
         const dTotal = _delta(c.total_entregues, a ? a.total_entregues : 0);
-        const badge = document.getElementById("dash-total-delta");
-        badge.className = "dash-delta-badge " + dTotal.cls;
+        const badge  = document.getElementById("dash-total-delta");
+        badge.className   = "dash-delta-badge " + dTotal.cls;
         badge.textContent = dTotal.txt;
-
-        const compLabel = _dashComp === "quinzena"
-            ? `vs ${prev.q}ª quinzena (${MES_NOMES[prev.mes]})`
-            : `vs ${MES_NOMES[prev.mes]} ${prev.ano}`;
         document.getElementById("dash-total-comp-label").textContent = compLabel;
 
-        // Cards transportadoras
         document.getElementById("dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
             const qtdC = c[t.key] ? c[t.key].qtd : 0;
             const qtdA = a && a[t.key] ? a[t.key].qtd : 0;
@@ -1798,7 +1811,6 @@ function buscarDashboard() {
             </div>`;
         }).join("");
 
-        // Gráfico comparativo (pacotes, não valores)
         const canvas = document.getElementById("dash-bar-chart");
         if (_dashBarChart) { _dashBarChart.destroy(); _dashBarChart = null; }
         _dashBarChart = new Chart(canvas.getContext("2d"), {
