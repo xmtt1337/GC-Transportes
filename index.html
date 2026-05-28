@@ -860,16 +860,23 @@ body {
 .adm-nf-entregador { font-weight: 600; color: #e2e8f0; }
 .adm-nf-valor { font-weight: 700; color: #22c55e; }
 .adm-nf-cnpj { font-family: monospace; font-size: 12px; color: #94a3b8; }
-.adm-nf-counter {
-    font-size: 12px; color: #7a8599; margin-bottom: 12px;
+.adm-nf-counter { font-size: 12px; color: #7a8599; margin-bottom: 12px; }
+.adm-nf-badge {
+    display: inline-block; padding: 3px 9px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
 }
+.adm-nf-badge.confere { background: rgba(34,197,94,0.12); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); }
+.adm-nf-badge.diverge { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+.adm-nf-badge.pendente { background: rgba(148,163,184,0.1); color: #64748b; border: 1px solid rgba(148,163,184,0.2); }
 @media (max-width: 680px) {
-    .adm-nf-table th:nth-child(3),
-    .adm-nf-table td:nth-child(3),
     .adm-nf-table th:nth-child(4),
     .adm-nf-table td:nth-child(4),
+    .adm-nf-table th:nth-child(5),
+    .adm-nf-table td:nth-child(5),
     .adm-nf-table th:nth-child(6),
-    .adm-nf-table td:nth-child(6) { display: none; }
+    .adm-nf-table td:nth-child(6),
+    .adm-nf-table th:nth-child(7),
+    .adm-nf-table td:nth-child(7) { display: none; }
 }
 </style>
 </head>
@@ -1207,7 +1214,7 @@ body {
 
             <div class="fech-header">
                 <div class="fech-period-row">
-                    <select class="fech-select" id="adm-fech-mes">
+                    <select class="fech-select" id="adm-fech-mes" onchange="buscarQuinzenaAdmin()">
                         <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
                         <option value="3">Março</option>    <option value="4">Abril</option>
                         <option value="5">Maio</option>     <option value="6">Junho</option>
@@ -1215,8 +1222,7 @@ body {
                         <option value="9">Setembro</option> <option value="10">Outubro</option>
                         <option value="11">Novembro</option><option value="12">Dezembro</option>
                     </select>
-                    <select class="fech-select" id="adm-fech-ano"></select>
-                    <button class="fech-filtrar-btn" onclick="buscarQuinzenaAdmin()">Buscar</button>
+                    <select class="fech-select" id="adm-fech-ano" onchange="buscarQuinzenaAdmin()"></select>
                 </div>
                 <div class="quinzena-toggle">
                     <button class="quinzena-btn" id="adm-btn-1q" onclick="selecionarQuinzenaAdmin(1)">1ª Quinzena &nbsp;(1 – 15)</button>
@@ -1337,7 +1343,7 @@ body {
         <div id="tela-admin-nfs" class="view tela-full">
             <div class="fech-header">
                 <div class="fech-period-row">
-                    <select class="fech-select" id="adm-nf-mes">
+                    <select class="fech-select" id="adm-nf-mes" onchange="buscarNFsAdmin()">
                         <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
                         <option value="3">Março</option>    <option value="4">Abril</option>
                         <option value="5">Maio</option>     <option value="6">Junho</option>
@@ -1345,8 +1351,7 @@ body {
                         <option value="9">Setembro</option> <option value="10">Outubro</option>
                         <option value="11">Novembro</option><option value="12">Dezembro</option>
                     </select>
-                    <select class="fech-select" id="adm-nf-ano"></select>
-                    <button class="fech-filtrar-btn" onclick="buscarNFsAdmin()">Buscar</button>
+                    <select class="fech-select" id="adm-nf-ano" onchange="buscarNFsAdmin()"></select>
                 </div>
                 <div class="quinzena-toggle">
                     <button class="quinzena-btn" id="adm-nf-btn-1q" onclick="selecionarQuinzenaNF(1)">1ª Quinzena &nbsp;(1 – 15)</button>
@@ -1362,10 +1367,11 @@ body {
                             <thead>
                                 <tr>
                                     <th>Entregador</th>
+                                    <th>Status</th>
+                                    <th>Valor NF</th>
                                     <th>Data Emissão</th>
                                     <th>CNPJ</th>
                                     <th>Emissor</th>
-                                    <th>Valor NF</th>
                                     <th>Tomador</th>
                                 </tr>
                             </thead>
@@ -2004,6 +2010,7 @@ function selecionarQuinzenaNF(q) {
     _admNFQuinzena = q;
     document.getElementById("adm-nf-btn-1q").classList.toggle("active", q === 1);
     document.getElementById("adm-nf-btn-2q").classList.toggle("active", q === 2);
+    buscarNFsAdmin();
 }
 
 function buscarNFsAdmin() {
@@ -2033,16 +2040,19 @@ function buscarNFsAdmin() {
         empty.style.display = "none";
         resultado.style.display = "";
         document.getElementById("adm-nf-counter").textContent = `${rows.length} nota${rows.length > 1 ? "s" : ""} fiscal encontrada${rows.length > 1 ? "s" : ""}`;
-        document.getElementById("adm-nf-tbody").innerHTML = rows.map(nf => `
-            <tr>
+        document.getElementById("adm-nf-tbody").innerHTML = rows.map(nf => {
+            const badgeCls = nf.status === "confere" ? "confere" : nf.status === "diverge" ? "diverge" : "pendente";
+            const badgeTxt = nf.status === "confere" ? "✓ Confere" : nf.status === "diverge" ? "⚠ Diverge" : "—";
+            return `<tr>
                 <td class="adm-nf-entregador">${nf.username}</td>
+                <td><span class="adm-nf-badge ${badgeCls}">${badgeTxt}</span></td>
+                <td class="adm-nf-valor">${nf.valor || "—"}</td>
                 <td>${nf.emissao || "—"}</td>
                 <td class="adm-nf-cnpj">${nf.cnpj || "—"}</td>
                 <td>${nf.emissor || "—"}</td>
-                <td class="adm-nf-valor">${nf.valor || "—"}</td>
                 <td>${nf.tomador || "—"}</td>
-            </tr>
-        `).join("");
+            </tr>`;
+        }).join("");
     })
     .catch(() => {
         empty.innerText = "Erro ao carregar notas fiscais.";
@@ -2066,6 +2076,7 @@ function selecionarQuinzenaAdmin(q) {
     _admFQuinzena = q;
     document.getElementById("adm-btn-1q").classList.toggle("active", q === 1);
     document.getElementById("adm-btn-2q").classList.toggle("active", q === 2);
+    buscarQuinzenaAdmin();
 }
 
 function buscarQuinzenaAdmin() {
@@ -2698,11 +2709,15 @@ async function _processarNota(input) {
             const content = await page.getTextContent();
             text += content.items.map(it => it.str).join(" ") + "\n";
         }
-        const nota = _extrairCamposNota(text);
+        const nota    = _extrairCamposNota(text);
+        const notaNum = _parseMoeda(nota.valor);
+        const status  = (_fTotalReceber && notaNum > 0)
+            ? (Math.abs(notaNum - _fTotalReceber) < 0.02 ? "confere" : "diverge")
+            : null;
         await fetch(`${API}/nota`, {
             method: "POST",
             headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-            body: JSON.stringify({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena, ...nota })
+            body: JSON.stringify({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena, ...nota, status })
         });
         _renderNotaCard(nota);
     } catch (e) {
