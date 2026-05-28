@@ -1864,7 +1864,7 @@ function setDashGran(tipo) {
     _dashGran = tipo;
     document.getElementById("dash-gran-q").classList.toggle("active", tipo === "quinzena");
     document.getElementById("dash-gran-m").classList.toggle("active", tipo === "mes");
-    if (document.getElementById("dash-content").style.display !== "none") buscarDashboard();
+    buscarDashboard();
 }
 
 function abrirDashboard(event) {
@@ -1974,13 +1974,11 @@ function buscarDashboard() {
         const ult  = grupos[grupos.length - 1];
         const prev = grupos[grupos.length - 2];
         document.getElementById("dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
-            const total = grupos.reduce((s, g) => s + (g[t.key] || 0), 0);
-            const dlt   = _delta(ult ? ult[t.key] || 0 : 0, prev ? prev[t.key] || 0 : 0);
-            const badge = dlt.cls === "up"
-                ? `<span class="lbadge lucro">↑ Lucro</span>`
-                : dlt.cls === "down"
-                ? `<span class="lbadge preju">↓ Prejuízo</span>`
-                : `<span class="lbadge estavel">= Estável</span>`;
+            const total  = grupos.reduce((s, g) => s + (g[t.key] || 0), 0);
+            const dlt    = _delta(ult ? ult[t.key] || 0 : 0, prev ? prev[t.key] || 0 : 0);
+            const pctStr = dlt.cls !== "flat" ? dlt.txt.slice(2) : "—";
+            const bCls   = dlt.cls === "up" ? "lucro" : dlt.cls === "down" ? "preju" : "estavel";
+            const badge  = `<span class="lbadge ${bCls}">${pctStr}</span>`;
             return `<div class="dash-tc">
                 <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
                 <div class="dash-tc-qtd">${total.toLocaleString("pt-BR")}</div>
@@ -2034,7 +2032,7 @@ function setEntDashGran(tipo) {
     _entDashGran = tipo;
     document.getElementById("ent-dash-gran-q").classList.toggle("active", tipo === "quinzena");
     document.getElementById("ent-dash-gran-m").classList.toggle("active", tipo === "mes");
-    if (document.getElementById("ent-dash-content").style.display !== "none") buscarEntDashboard();
+    buscarEntDashboard();
 }
 
 function abrirEntDashboard(event) {
@@ -2144,13 +2142,11 @@ function buscarEntDashboard() {
         const ult  = grupos[grupos.length - 1];
         const prev = grupos[grupos.length - 2];
         document.getElementById("ent-dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
-            const total = grupos.reduce((s, g) => s + (g[t.key] || 0), 0);
-            const dlt   = _delta(ult ? ult[t.key] || 0 : 0, prev ? prev[t.key] || 0 : 0);
-            const badge = dlt.cls === "up"
-                ? `<span class="lbadge lucro">↑ Lucro</span>`
-                : dlt.cls === "down"
-                ? `<span class="lbadge preju">↓ Prejuízo</span>`
-                : `<span class="lbadge estavel">= Estável</span>`;
+            const total  = grupos.reduce((s, g) => s + (g[t.key] || 0), 0);
+            const dlt    = _delta(ult ? ult[t.key] || 0 : 0, prev ? prev[t.key] || 0 : 0);
+            const pctStr = dlt.cls !== "flat" ? dlt.txt.slice(2) : "—";
+            const bCls   = dlt.cls === "up" ? "lucro" : dlt.cls === "down" ? "preju" : "estavel";
+            const badge  = `<span class="lbadge ${bCls}">${pctStr}</span>`;
             return `<div class="dash-tc">
                 <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
                 <div class="dash-tc-qtd">${total.toLocaleString("pt-BR")}</div>
