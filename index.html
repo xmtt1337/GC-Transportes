@@ -2463,20 +2463,24 @@ function buscarEntDashboard() {
 if (typeof pdfjsLib !== "undefined")
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-function _notaKey() {
-    const uid = token ? token.slice(-16) : "x";
-    return `nota_${uid}_${_fAno}_${_fMes}_${_fQuinzena}`;
-}
-
 function _carregarNota() {
-    const nota = JSON.parse(localStorage.getItem(_notaKey()) || "null");
-    if (nota) {
-        _renderNotaCard(nota);
-    } else {
+    fetch(`${API}/nota?mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}`, {
+        headers: { "Authorization": "Bearer " + token }
+    })
+    .then(r => r.ok ? r.json() : null)
+    .then(nota => {
+        if (nota) {
+            _renderNotaCard(nota);
+        } else {
+            document.getElementById("nota-upload-area").style.display = "";
+            document.getElementById("nota-card").style.display = "none";
+            document.getElementById("nota-file-input").value = "";
+        }
+    })
+    .catch(() => {
         document.getElementById("nota-upload-area").style.display = "";
         document.getElementById("nota-card").style.display = "none";
-        document.getElementById("nota-file-input").value = "";
-    }
+    });
 }
 
 function _renderNotaCard(nota) {
@@ -2489,8 +2493,11 @@ function _renderNotaCard(nota) {
     document.getElementById("nota-tomador").textContent = nota.tomador  || "—";
 }
 
-function _removerNota() {
-    localStorage.removeItem(_notaKey());
+async function _removerNota() {
+    await fetch(`${API}/nota?mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}`, {
+        method: "DELETE",
+        headers: { "Authorization": "Bearer " + token }
+    }).catch(() => {});
     document.getElementById("nota-card").style.display = "none";
     document.getElementById("nota-upload-area").style.display = "";
     document.getElementById("nota-file-input").value = "";
@@ -2511,7 +2518,11 @@ async function _processarNota(input) {
             text += content.items.map(it => it.str).join(" ") + "\n";
         }
         const nota = _extrairCamposNota(text);
-        localStorage.setItem(_notaKey(), JSON.stringify(nota));
+        await fetch(`${API}/nota`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+            body: JSON.stringify({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena, ...nota })
+        });
         _renderNotaCard(nota);
     } catch (e) {
         area.innerHTML = `
