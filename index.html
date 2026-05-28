@@ -200,7 +200,6 @@ body {
     padding-top: 20px;
     scrollbar-width: thin;
     scrollbar-color: rgba(58,134,255,0.3) transparent;
-    overscroll-behavior-y: none;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -447,6 +446,15 @@ body {
 }
 .topbar-mobile-menu:active { color: #fff; }
 
+.topbar-reload-btn {
+    display: none; background: none; border: none; color: #7a8599;
+    cursor: pointer; padding: 6px; border-radius: 8px;
+    align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    margin-right: 4px; transition: color 0.2s;
+}
+.topbar-reload-btn:active { color: #3a86ff; }
+
 @media (max-width: 680px) {
     body { height: 100dvh; }
 
@@ -464,6 +472,7 @@ body {
     .sidebar.expanded .sidebar-footer { justify-content: flex-end; padding-right: 10px; }
 
     .topbar-mobile-menu { display: flex; }
+    .sidebar.expanded ~ .content .topbar-reload-btn { display: flex; }
 
     .content { padding: 12px; }
     .topbar { height: 52px; padding: 0 12px; margin-bottom: 12px; border-radius: 12px; }
@@ -889,6 +898,12 @@ body {
                     <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
                 </svg>
             </button>
+            <button class="topbar-reload-btn" onclick="window.location.reload()" aria-label="Atualizar">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                    <path d="M3.51 9a9 9 0 0114.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0020.49 15"/>
+                </svg>
+            </button>
             <h1 id="titulo-pagina">Painel</h1>
         </div>
         <div class="user-area">
@@ -1307,21 +1322,6 @@ const token = localStorage.getItem("token");
 
 if (!token) window.location.href = "login.html";
 
-// Pull-to-refresh
-(function() {
-    let _ptrY = 0, _ptrEl = null;
-    document.addEventListener('touchstart', e => {
-        const el = e.target.closest('.fech-body');
-        if (el && el.scrollTop <= 2) { _ptrEl = el; _ptrY = e.touches[0].clientY; }
-        else _ptrEl = null;
-    }, { passive: true });
-    document.addEventListener('touchend', e => {
-        if (!_ptrEl) return;
-        const dy = e.changedTouches[0].clientY - _ptrY;
-        _ptrEl = null;
-        if (dy > 75) window.location.reload();
-    }, { passive: true });
-})();
 
 // Carrega perfil do usuário
 fetch(API + "/perfil", {
