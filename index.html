@@ -1305,6 +1305,19 @@ const token = localStorage.getItem("token");
 
 if (!token) window.location.href = "login.html";
 
+// Pull-to-refresh: swipe down no topo de qualquer tela → recarrega a página
+(function() {
+    let _ptrY = 0;
+    document.addEventListener('touchstart', e => {
+        _ptrY = e.touches[0].pageY;
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+        const el = e.target.closest('.fech-body');
+        if (!el || el.scrollTop > 8) return;
+        if (e.changedTouches[0].pageY - _ptrY > 90) window.location.reload();
+    }, { passive: true });
+})();
+
 // Carrega perfil do usuário
 fetch(API + "/perfil", {
     headers: { "Authorization": "Bearer " + token }
