@@ -889,6 +889,49 @@ body {
 .adm-nf-badge.diverge { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
 .adm-nf-badge.pendente { background: rgba(148,163,184,0.1); color: #64748b; border: 1px solid rgba(148,163,184,0.2); }
 .adm-nf-chave { word-break: break-all; max-width: 180px; line-height: 1.5; font-size: 11px; }
+/* ===== ADMIN USUÁRIOS ===== */
+.adm-usr-add-btn {
+    padding: 8px 16px; border-radius: 10px; border: 1px solid rgba(58,134,255,0.3);
+    background: rgba(58,134,255,0.1); color: #3a86ff; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: background 0.2s, transform 0.1s;
+}
+.adm-usr-add-btn:hover { background: rgba(58,134,255,0.2); transform: translateY(-1px); }
+.adm-usr-form-grid {
+    display: grid; grid-template-columns: 1fr 1fr 150px auto; gap: 8px; align-items: center;
+    margin-top: 14px;
+}
+.adm-usr-input {
+    background: rgba(15,25,43,0.8); border: 1px solid rgba(58,134,255,0.2); color: #f1f5f9;
+    border-radius: 10px; padding: 9px 12px; font-size: 13px; outline: none; width: 100%;
+}
+.adm-usr-input:focus { border-color: rgba(58,134,255,0.5); }
+.adm-usr-input option { background: #1b263b; }
+.adm-usr-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.adm-usr-badge.admin      { background: rgba(58,134,255,0.12); color: #3a86ff; border: 1px solid rgba(58,134,255,0.25); }
+.adm-usr-badge.entregador { background: rgba(34,197,94,0.12);  color: #22c55e; border: 1px solid rgba(34,197,94,0.25); }
+.adm-usr-badge.operador   { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+.adm-usr-badge.ativo   { background: rgba(34,197,94,0.1);   color: #22c55e; border: 1px solid rgba(34,197,94,0.25); }
+.adm-usr-badge.inativo { background: rgba(148,163,184,0.08); color: #64748b; border: 1px solid rgba(148,163,184,0.18); }
+.adm-usr-action {
+    padding: 5px 11px; border-radius: 8px; border: 1px solid; font-size: 11px; font-weight: 600;
+    cursor: pointer; background: transparent; transition: opacity 0.2s; white-space: nowrap;
+}
+.adm-usr-action.inativar { border-color: rgba(251,146,60,0.35); color: #fb923c; }
+.adm-usr-action.ativar   { border-color: rgba(34,197,94,0.35);  color: #22c55e; }
+.adm-usr-action.deletar  { border-color: rgba(239,68,68,0.35);  color: #ef4444; }
+.adm-usr-action:hover    { opacity: 0.65; }
+.adm-usr-avatar {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(58,134,255,0.15); display: flex; align-items: center;
+    justify-content: center; font-size: 13px; font-weight: 700; color: #3a86ff;
+}
+@media (max-width: 680px) {
+    .adm-usr-form-grid { grid-template-columns: 1fr 1fr; }
+}
+
 /* ===== NOTAS FISCAIS STATUS ===== */
 .nf-status-list { display: flex; flex-direction: column; gap: 10px; }
 .nf-status-card {
@@ -994,6 +1037,7 @@ body {
             <li><a href="#" onclick="abrirAdminFechamentos(event)">Pesquisar</a></li>
             <li><a href="#" onclick="abrirAdminNFs(event)">Notas Fiscais</a></li>
             <li><a href="#" onclick="abrirConfNFs(event)">Conferência NF</a></li>
+            <li><a href="#" onclick="abrirAdminUsuarios(event)">Usuários</a></li>
         </ul>
 
         <li class="menu-item" id="menu-dashboard" onclick="abrirDashboard(event)" style="display:none">
@@ -1478,6 +1522,47 @@ body {
                 </div>
             </div>
         </div><!-- /tela-conf-nfs -->
+
+        <!-- TELA ADMIN USUÁRIOS -->
+        <div id="tela-admin-usuarios" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Gerenciar Usuários</div>
+                    <button class="adm-usr-add-btn" onclick="_toggleAddUsuario()">+ Adicionar</button>
+                </div>
+                <div id="adm-usr-form" style="display:none">
+                    <div class="adm-usr-form-grid">
+                        <input class="adm-usr-input" id="adm-usr-nome" placeholder="Nome de usuário" type="text">
+                        <input class="adm-usr-input" id="adm-usr-senha" placeholder="Senha (padrão: GC2026)" type="text">
+                        <select class="adm-usr-input" id="adm-usr-role">
+                            <option value="entregador">Entregador</option>
+                            <option value="admin">Admin</option>
+                            <option value="operador">Operador</option>
+                        </select>
+                        <button class="adm-usr-add-btn" onclick="_salvarUsuario()">Salvar</button>
+                    </div>
+                    <div id="adm-usr-form-msg" style="font-size:12px;margin-top:8px;color:#ef4444"></div>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="adm-usr-empty">Carregando...</div>
+                <div id="adm-usr-resultado" style="display:none">
+                    <div class="adm-nf-wrap">
+                        <table class="adm-nf-table">
+                            <thead>
+                                <tr>
+                                    <th>Usuário</th>
+                                    <th>Função</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adm-usr-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-admin-usuarios -->
 
         <!-- TELA DASHBOARD -->
         <div id="tela-dashboard" class="view tela-full">
@@ -2232,6 +2317,112 @@ function _iniciarSelectsConfNF() {
         selAno.appendChild(opt);
     }
     document.getElementById("conf-nf-mes").value = _confNFMes;
+}
+
+// ───── TELA ADMIN USUÁRIOS ─────
+function abrirAdminUsuarios(event) {
+    if (event) event.preventDefault();
+    document.getElementById("adm-usr-form").style.display = "none";
+    mostrarTela("tela-admin-usuarios");
+    _carregarUsuarios();
+}
+
+function _carregarUsuarios() {
+    const tok = localStorage.getItem("token");
+    const empty = document.getElementById("adm-usr-empty");
+    const res   = document.getElementById("adm-usr-resultado");
+    empty.innerText = "Carregando...";
+    empty.style.display = "";
+    res.style.display = "none";
+
+    fetch(`${API}/admin/usuarios`, { headers: { "Authorization": "Bearer " + tok } })
+    .then(r => r.json())
+    .then(users => {
+        if (!Array.isArray(users) || !users.length) {
+            empty.innerText = "Nenhum usuário encontrado.";
+            return;
+        }
+        empty.style.display = "none";
+        res.style.display = "";
+        const ROLES = { admin: "Admin", entregador: "Entregador", operador: "Operador" };
+        document.getElementById("adm-usr-tbody").innerHTML = users.map(u => `
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div class="adm-usr-avatar">${u.username.slice(0, 2).toUpperCase()}</div>
+                        <span style="font-weight:600;color:#e2e8f0">${u.username}</span>
+                    </div>
+                </td>
+                <td><span class="adm-usr-badge ${u.role}">${ROLES[u.role] || u.role}</span></td>
+                <td><span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span></td>
+                <td>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <button class="adm-usr-action ${u.active ? 'inativar' : 'ativar'}" onclick="_toggleAtivoUsuario(${u.id},${!u.active})">${u.active ? 'Inativar' : 'Ativar'}</button>
+                        <button class="adm-usr-action deletar" onclick="_deletarUsuario(${u.id},'${u.username.replace(/'/g,"\\'")}')">Deletar</button>
+                    </div>
+                </td>
+            </tr>
+        `).join("");
+    }).catch(() => { empty.innerText = "Erro ao carregar usuários."; });
+}
+
+function _toggleAddUsuario() {
+    const form = document.getElementById("adm-usr-form");
+    const visible = form.style.display !== "none";
+    form.style.display = visible ? "none" : "";
+    if (!visible) {
+        document.getElementById("adm-usr-nome").value = "";
+        document.getElementById("adm-usr-senha").value = "";
+        document.getElementById("adm-usr-role").value = "entregador";
+        document.getElementById("adm-usr-form-msg").innerText = "";
+    }
+}
+
+function _salvarUsuario() {
+    const tok      = localStorage.getItem("token");
+    const username = document.getElementById("adm-usr-nome").value.trim();
+    const password = document.getElementById("adm-usr-senha").value.trim();
+    const role     = document.getElementById("adm-usr-role").value;
+    const msg      = document.getElementById("adm-usr-form-msg");
+    msg.innerText  = "";
+    if (!username) { msg.innerText = "Informe o nome de usuário."; return; }
+
+    fetch(`${API}/admin/usuarios`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, role })
+    }).then(r => r.json())
+    .then(data => {
+        if (data.error) { msg.innerText = data.error; return; }
+        document.getElementById("adm-usr-form").style.display = "none";
+        _carregarUsuarios();
+    }).catch(() => { msg.innerText = "Erro ao adicionar usuário."; });
+}
+
+function _toggleAtivoUsuario(id, active) {
+    const tok = localStorage.getItem("token");
+    fetch(`${API}/admin/usuarios/${id}`, {
+        method: "PATCH",
+        headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
+        body: JSON.stringify({ active })
+    }).then(r => r.json())
+    .then(data => {
+        if (data.error) { alert(data.error); return; }
+        _carregarUsuarios();
+    }).catch(() => alert("Erro ao atualizar usuário."));
+}
+
+function _deletarUsuario(id, username) {
+    if (!confirm(`Deletar o usuário "${username}"?\nEsta ação não pode ser desfeita.`)) return;
+    const tok = localStorage.getItem("token");
+    fetch(`${API}/admin/usuarios/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": "Bearer " + tok }
+    }).then(r => r.json())
+    .then(data => {
+        if (data.error) { alert(data.error); return; }
+        _carregarUsuarios();
+    }).catch(() => alert("Erro ao deletar usuário."));
 }
 
 // ───── TELA ADMIN NOTAS FISCAIS ─────
