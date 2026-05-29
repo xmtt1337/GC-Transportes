@@ -873,6 +873,24 @@ body {
 .adm-nf-badge.diverge { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
 .adm-nf-badge.pendente { background: rgba(148,163,184,0.1); color: #64748b; border: 1px solid rgba(148,163,184,0.2); }
 .adm-nf-chave { word-break: break-all; max-width: 180px; line-height: 1.5; font-size: 11px; }
+/* ===== NOTAS FISCAIS STATUS ===== */
+.nf-status-list { display: flex; flex-direction: column; gap: 10px; }
+.nf-status-card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 15px 18px; border-radius: 14px; border: 1px solid;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.nf-status-card.ok      { background: rgba(34,197,94,0.05);  border-color: rgba(34,197,94,0.18);  cursor: default; }
+.nf-status-card.pendente{ background: rgba(251,146,60,0.06); border-color: rgba(251,146,60,0.25); cursor: pointer; }
+.nf-status-card.pendente:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(251,146,60,0.14); }
+.nf-status-icon { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.nf-status-icon.ok      { background: rgba(34,197,94,0.14); }
+.nf-status-icon.pendente{ background: rgba(251,146,60,0.14); }
+.nf-status-info { flex:1; min-width:0; }
+.nf-status-label{ font-weight:600; color:#e2e8f0; font-size:14px; }
+.nf-status-sub  { font-size:12px; color:#64748b; margin-top:3px; }
+.nf-status-tag  { font-size:11px; font-weight:700; white-space:nowrap; }
+
 @media (max-width: 680px) {
     .adm-nf-table th:nth-child(3),
     .adm-nf-table td:nth-child(3),
@@ -1538,26 +1556,15 @@ body {
         <!-- TELA MINHAS NOTAS FISCAIS -->
         <div id="tela-minhas-nfs" class="view tela-full">
             <div class="fech-header">
-                <h2 style="margin:0;font-size:18px;font-weight:700;color:#e2e8f0">Minhas Notas Fiscais</h2>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                    <h2 style="margin:0;font-size:18px;font-weight:700;color:#e2e8f0">Notas Fiscais</h2>
+                    <select class="fech-select" id="mnf-ano" onchange="_carregarMinhasNFs()" style="width:auto;min-width:90px"></select>
+                </div>
             </div>
             <div class="fech-body">
                 <div class="fechamento-empty" id="minhas-nf-empty">Carregando...</div>
                 <div id="minhas-nf-resultado" style="display:none">
-                    <div class="adm-nf-counter" id="minhas-nf-counter"></div>
-                    <div class="adm-nf-wrap">
-                        <table class="adm-nf-table">
-                            <thead>
-                                <tr>
-                                    <th>Período</th>
-                                    <th>Valor NF</th>
-                                    <th class="mnf-hide-sm">Emissão</th>
-                                    <th class="mnf-hide-sm">Emissor</th>
-                                    <th class="mnf-hide-sm">Chave de Acesso</th>
-                                </tr>
-                            </thead>
-                            <tbody id="minhas-nf-tbody"></tbody>
-                        </table>
-                    </div>
+                    <div id="minhas-nf-lista"></div>
                 </div>
             </div>
         </div><!-- /tela-minhas-nfs -->
@@ -2648,47 +2655,101 @@ function abrirEntDashboard(event) {
     buscarEntDashboard();
 }
 
+const _MNF_MESES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
 function abrirMinhasNFs(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-minhas-nfs");
-    const empty  = document.getElementById("minhas-nf-empty");
-    const result = document.getElementById("minhas-nf-resultado");
+    const selAno  = document.getElementById("mnf-ano");
+    const anoAtual = new Date().getFullYear();
+    if (!selAno.options.length) {
+        for (let a = anoAtual - 2; a <= anoAtual; a++) {
+            const opt = document.createElement("option");
+            opt.value = a; opt.textContent = a;
+            if (a === anoAtual) opt.selected = true;
+            selAno.appendChild(opt);
+        }
+    }
+    _carregarMinhasNFs();
+}
+
+function _carregarMinhasNFs() {
+    const ano   = document.getElementById("mnf-ano").value;
+    const empty = document.getElementById("minhas-nf-empty");
+    const res   = document.getElementById("minhas-nf-resultado");
     empty.innerText = "Carregando...";
     empty.style.display = "";
-    result.style.display = "none";
-    const token = localStorage.getItem("token");
-    const MESES_NM = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-                      "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-    fetch(`${API}/minhas-notas`, { headers: { "Authorization": "Bearer " + token } })
-        .then(r => r.json())
-        .then(rows => {
-            if (!rows.length) {
-                empty.innerText = "Nenhuma nota fiscal anexada ainda.";
-                return;
-            }
-            empty.style.display = "none";
-            result.style.display = "";
-            document.getElementById("minhas-nf-counter").textContent =
-                `${rows.length} nota${rows.length > 1 ? "s" : ""} fiscal encontrada${rows.length > 1 ? "s" : ""}`;
-            document.getElementById("minhas-nf-tbody").innerHTML = rows.map(nf => {
-                const periodo  = `${MESES_NM[nf.mes] || nf.mes}/${nf.ano}`;
-                const qz       = nf.quinzena == 1 ? "1ª Quinzena" : "2ª Quinzena";
-                const chavePart = nf.chave_acesso
-                    ? `<div style="font-family:monospace;font-size:10px;color:#64748b;word-break:break-all;line-height:1.5;max-width:180px">${nf.chave_acesso}</div>`
-                    : "—";
-                return `<tr>
-                    <td>
-                        <div class="adm-nf-entregador">${periodo}</div>
-                        <div style="font-size:11px;color:#64748b;margin-top:2px">${qz}</div>
-                    </td>
-                    <td class="adm-nf-valor">${nf.valor || "—"}</td>
-                    <td class="mnf-hide-sm">${nf.emissao || "—"}</td>
-                    <td class="mnf-hide-sm">${nf.emissor || "—"}</td>
-                    <td class="mnf-hide-sm">${chavePart}</td>
-                </tr>`;
-            }).join("");
-        })
-        .catch(() => { empty.innerText = "Erro ao carregar notas fiscais."; });
+    res.style.display = "none";
+    const tok = localStorage.getItem("token");
+
+    Promise.all([
+        fetch(`${API}/historico?ano=${ano}`, { headers: { "Authorization": "Bearer " + tok } }).then(r => r.json()),
+        fetch(`${API}/minhas-notas`,          { headers: { "Authorization": "Bearer " + tok } }).then(r => r.json())
+    ]).then(([historico, nfs]) => {
+        if (!Array.isArray(historico) || !historico.length) {
+            empty.innerText = "Nenhum fechamento encontrado para este ano.";
+            return;
+        }
+        const nfMap = {};
+        (nfs || []).forEach(nf => { nfMap[`${nf.mes}_${nf.ano}_${nf.quinzena}`] = nf; });
+
+        const periodos = historico
+            .filter(d => (d.total_receber_num || 0) > 0)
+            .map(d => ({
+                mes: d.mes, ano: parseInt(ano), quinzena: d.quinzena,
+                label: `${_MNF_MESES[d.mes]} · ${d.quinzena === 1 ? "1ª Quinzena" : "2ª Quinzena"}`,
+                total: d.total_receber_num || 0,
+                nf: nfMap[`${d.mes}_${ano}_${d.quinzena}`] || null
+            }))
+            .reverse();
+
+        if (!periodos.length) {
+            empty.innerText = "Nenhum período com fechamento encontrado.";
+            return;
+        }
+
+        const pendentes = periodos.filter(p => !p.nf).length;
+        const enviadas  = periodos.filter(p => !!p.nf).length;
+
+        empty.style.display = "none";
+        res.style.display = "";
+        document.getElementById("minhas-nf-lista").innerHTML = `
+            <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+                <span style="background:rgba(34,197,94,0.1);color:#22c55e;border:1px solid rgba(34,197,94,0.25);padding:4px 13px;border-radius:20px;font-size:12px;font-weight:700">✓ ${enviadas} enviadas</span>
+                ${pendentes ? `<span style="background:rgba(251,146,60,0.1);color:#fb923c;border:1px solid rgba(251,146,60,0.28);padding:4px 13px;border-radius:20px;font-size:12px;font-weight:700">⚠ ${pendentes} pendentes</span>` : ""}
+            </div>
+            <div class="nf-status-list">
+            ${periodos.map(p => p.nf ? `
+                <div class="nf-status-card ok">
+                    <div class="nf-status-icon ok">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div class="nf-status-info">
+                        <div class="nf-status-label">${p.label}</div>
+                        <div class="nf-status-sub">NF: ${p.nf.valor || "—"} &nbsp;·&nbsp; Quinzena: ${moedaJS(p.total)}</div>
+                    </div>
+                    <div class="nf-status-tag" style="color:#22c55e">Enviada</div>
+                </div>` : `
+                <div class="nf-status-card pendente" onclick="_irParaFechamentoPeriodo(${p.mes},${p.ano},${p.quinzena})">
+                    <div class="nf-status-icon pendente">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </div>
+                    <div class="nf-status-info">
+                        <div class="nf-status-label">${p.label}</div>
+                        <div class="nf-status-sub">Quinzena: ${moedaJS(p.total)} &nbsp;·&nbsp; Nota não enviada</div>
+                    </div>
+                    <div class="nf-status-tag" style="color:#fb923c">Anexar →</div>
+                </div>`).join("")}
+            </div>`;
+    }).catch(() => { empty.innerText = "Erro ao carregar dados."; });
+}
+
+function _irParaFechamentoPeriodo(mes, ano, quinzena) {
+    _fMes = parseInt(mes);
+    _fAno = parseInt(ano);
+    abrirFechamentos();
+    selecionarQuinzena(parseInt(quinzena));
 }
 
 function _iniciarSelectsEntDash() {
