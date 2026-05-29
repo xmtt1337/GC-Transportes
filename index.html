@@ -2473,12 +2473,11 @@ function _copiarID() {
 }
 
 function _resetarSenha(id, username) {
-    if (!confirm(`Resetar a senha de "${username}" para GC2026?`)) return;
+    if (!confirm(`Resetar a senha de "${username}" para a senha padrão?`)) return;
     const tok = localStorage.getItem("token");
-    fetch(`${API}/admin/usuarios/${id}/senha`, {
+    fetch(`${API}/admin/usuarios/${id}/reset-senha`, {
         method: "PUT",
-        headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
-        body: JSON.stringify({ senha: "GC2026" })
+        headers: { "Authorization": "Bearer " + tok }
     }).then(r => r.json())
     .then(data => { if (data.error) alert(data.error); })
     .catch(() => alert("Erro ao resetar senha."));
@@ -3641,8 +3640,8 @@ function _carregarPainelAdmin() {
             <div class="usr-modal-title">Novo Entregador</div>
             <div class="usr-modal-sub">O ID será gerado automaticamente no formato <span style="color:#3a86ff;font-weight:600">GCxxxxxxx</span>.</div>
             <div class="usr-modal-field">
-                <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(padrão: GC2026)</span></label>
-                <input class="usr-modal-input" id="mne-senha" type="text" placeholder="Deixe em branco para usar GC2026" autocomplete="off">
+                <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(opcional — deixe em branco para usar a senha padrão)</span></label>
+                <input class="usr-modal-input" id="mne-senha" type="text" placeholder="Deixe em branco para senha padrão" autocomplete="off">
             </div>
             <div class="usr-modal-error" id="mne-erro"></div>
             <div class="usr-modal-btns">
