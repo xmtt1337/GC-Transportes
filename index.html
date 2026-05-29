@@ -2837,14 +2837,35 @@ async function _processarNota(input) {
 function _extrairCamposNota(raw) {
     const t = raw.replace(/[\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim();
 
-    // ── CHAVE DE ACESSO (44 dígitos isolados) ──
-    const chaveM      = t.match(/(?<!\d)(\d{44})(?!\d)/);
-    const chave_acesso = chaveM ? chaveM[1] : null;
+    // ── CHAVE DE ACESSO / CÓDIGO ÚNICO ──
+    // Prioridade 1: 44 dígitos isolados (NF-e, CT-e, NFS-e ABRASF)
+    let chave_acesso = null;
+    const chaveM44 = t.match(/(?<!\d)(\d{44})(?!\d)/);
+    if (chaveM44) chave_acesso = chaveM44[1];
+
+    // Prioridade 2: código alfanumérico em diversas nomenclaturas municipais
+    if (!chave_acesso) {
+        const codPats = [
+            /C[oó]digo\s+de\s+verifica[cç][aã]o[:\s]+([A-Z0-9]{4,50})/i,
+            /C[oó]digo\s+de\s+autenticidade[:\s]+([A-Z0-9]{4,50})/i,
+            /C[oó]digo\s+de\s+controle[:\s]+([A-Z0-9]{4,50})/i,
+            /C[oó]digo\s+verificador[:\s]+([A-Z0-9]{4,50})/i,
+            /Chave\s+de\s+acesso[:\s]+([A-Z0-9]{8,60})/i,
+            /Verifica[cç][aã]o\s+de\s+autenticidade[:\s]+([A-Z0-9]{4,50})/i,
+            /C[oó]digo\s+NFS-?[eE][:\s]+([A-Z0-9]{4,50})/i,
+        ];
+        for (const p of codPats) {
+            const m = t.match(p);
+            if (m) { chave_acesso = m[1].trim(); break; }
+        }
+    }
 
     // ── NÚMERO DA NF ──
-    const numNfM  = t.match(/N[úu]mero\s+da\s+NFS?-?[eE][:\s]+(\d+)/i)
-                 || t.match(/NF-?[eE]\s+N[°ºo]?[:\s.]+(\d+)/i)
-                 || t.match(/Nota\s+Fiscal\s+N[°ºo]?[:\s.]+(\d+)/i);
+    const numNfM = t.match(/N[úu]mero\s+da\s+NFS?-?[eE][:\s]+(\d+)/i)
+                || t.match(/N[úu]mero\s+d[ao]\s+[Nn]ota[:\s\s]+(\d+)/i)
+                || t.match(/N[úu]mero\s+do\s+RPS[:\s]+(\d+)/i)
+                || t.match(/NF-?[eE]\s+N[°ºo]?[:\s.]+(\d+)/i)
+                || t.match(/Nota\s+Fiscal\s+N[°ºo]?[:\s.]+(\d+)/i);
     const numero_nf = numNfM ? numNfM[1] : null;
 
     // ── DATA DE EMISSÃO ──
