@@ -885,6 +885,9 @@ body {
     .adm-nf-table th:nth-child(7),
     .adm-nf-table td:nth-child(7) { display: none; }
     .mnf-hide-sm { display: none; }
+    /* Minhas NFs: reexibir coluna 3 (Valor NF) no mobile */
+    #tela-minhas-nfs .adm-nf-table th:nth-child(3),
+    #tela-minhas-nfs .adm-nf-table td:nth-child(3) { display: table-cell; }
 }
 </style>
 </head>
@@ -1463,6 +1466,8 @@ body {
                     </div>
 
                     <div class="dash-pchips" id="ent-dash-pchips"></div>
+
+                    <div id="ent-dash-total-linha" style="display:none;text-align:right;font-size:13px;color:#94a3b8;margin-bottom:8px;padding:0 2px"></div>
 
                     <div class="ent-transp-grid" id="ent-dash-transp-grid"></div>
 
@@ -2466,6 +2471,11 @@ function _entSelecionarChip(idx) {
         _pctKpi(g.valor, ini.valor),
         g.label !== ini.label ? g.label + " vs " + ini.label : "—");
 
+    // Total a receber no período
+    const totalLinha = document.getElementById("ent-dash-total-linha");
+    totalLinha.style.display = "";
+    totalLinha.innerHTML = `Total a receber · ${g.label}: <strong style="color:#22c55e;font-size:15px;font-weight:700">${moedaJS(g.valor)}</strong>`;
+
     // Update carrier cards
     document.getElementById("ent-dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
         const v = g[t.valKey] || 0;
@@ -2846,13 +2856,16 @@ function _extrairCamposNota(raw) {
     // Prioridade 2: código alfanumérico em diversas nomenclaturas municipais
     if (!chave_acesso) {
         const codPats = [
-            /C[oó]digo\s+de\s+verifica[cç][aã]o[:\s]+([A-Z0-9]{4,50})/i,
-            /C[oó]digo\s+de\s+autenticidade[:\s]+([A-Z0-9]{4,50})/i,
-            /C[oó]digo\s+de\s+controle[:\s]+([A-Z0-9]{4,50})/i,
-            /C[oó]digo\s+verificador[:\s]+([A-Z0-9]{4,50})/i,
-            /Chave\s+de\s+acesso[:\s]+([A-Z0-9]{8,60})/i,
-            /Verifica[cç][aã]o\s+de\s+autenticidade[:\s]+([A-Z0-9]{4,50})/i,
-            /C[oó]digo\s+NFS-?[eE][:\s]+([A-Z0-9]{4,50})/i,
+            // Explícito com Unicode (ç=ç, ã=ã, ó=ó)
+            /C[oó]digo\s+de\s+verifica[çc][aã]o[:\s]+([A-Za-z0-9]{4,50})/i,
+            // Fallback loose: qualquer coisa após "verifica" (cobre encodings alternativos)
+            /C[oó]digo\s+de\s+verifica\S*\s+([A-Za-z0-9]{4,50})/i,
+            /C[oó]digo\s+de\s+autenticidade[:\s]+([A-Za-z0-9]{4,50})/i,
+            /C[oó]digo\s+de\s+controle[:\s]+([A-Za-z0-9]{4,50})/i,
+            /C[oó]digo\s+verificador[:\s]+([A-Za-z0-9]{4,50})/i,
+            /Chave\s+de\s+acesso[:\s]+([A-Za-z0-9]{8,60})/i,
+            /Verifica\S*\s+de\s+autenticidade[:\s]+([A-Za-z0-9]{4,50})/i,
+            /C[oó]digo\s+NFS-?[eE][:\s]+([A-Za-z0-9]{4,50})/i,
         ];
         for (const p of codPats) {
             const m = t.match(p);
