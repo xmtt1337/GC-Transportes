@@ -3050,10 +3050,36 @@ function _extrairCamposNota(raw) {
     const t = raw.replace(/[\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim();
 
     // ── CHAVE DE ACESSO / CÓDIGO ÚNICO ──
-    // Prioridade 1: 44 dígitos isolados (NF-e, CT-e, NFS-e ABRASF)
     let chave_acesso = null;
+
+    // P1: 44 dígitos contínuos (NF-e, CT-e, NFS-e ABRASF sem espaçamento)
     const chaveM44 = t.match(/(?<!\d)(\d{44})(?!\d)/);
     if (chaveM44) chave_acesso = chaveM44[1];
+
+    // P2: 44 dígitos em grupos de 4 separados por espaço (formato DANFE impresso)
+    // ex: "3525 0466 8456 2200 0186 5500 1000 0000 4510 0000 0045"
+    if (!chave_acesso) {
+        const m4 = t.match(/(?<!\d)(\d{4}(?:\s+\d{4}){10})(?!\d)/);
+        if (m4) chave_acesso = m4[1].replace(/\s+/g, "");
+    }
+
+    // P3: próximo ao label "Chave de Acesso" — captura qualquer sequência de dígitos/espaços
+    if (!chave_acesso) {
+        const mLabel = t.match(/[Cc]have\s+de\s+[Aa]cesso[^0-9]{0,40}([\d][\d\s]{42,56}[\d])/);
+        if (mLabel) {
+            const d = mLabel[1].replace(/\s/g, "");
+            if (d.length >= 44) chave_acesso = d.slice(0, 44);
+        }
+    }
+
+    // P4: qualquer grupo de dígitos-com-espaços que some exatamente 44 dígitos
+    if (!chave_acesso) {
+        const candidatos = t.match(/\d[\d ]{43,70}\d/g) || [];
+        for (const c of candidatos) {
+            const d = c.replace(/ /g, "");
+            if (d.length === 44 && /^\d+$/.test(d)) { chave_acesso = d; break; }
+        }
+    }
 
     // Prioridade 2: código alfanumérico em diversas nomenclaturas municipais
     if (!chave_acesso) {
