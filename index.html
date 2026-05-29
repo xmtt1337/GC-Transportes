@@ -922,7 +922,56 @@ body {
 .adm-usr-action.inativar { border-color: rgba(251,146,60,0.35); color: #fb923c; }
 .adm-usr-action.ativar   { border-color: rgba(34,197,94,0.35);  color: #22c55e; }
 .adm-usr-action.deletar  { border-color: rgba(239,68,68,0.35);  color: #ef4444; }
+.adm-usr-action.senha    { border-color: rgba(148,163,184,0.3); color: #94a3b8; }
 .adm-usr-action:hover    { opacity: 0.65; }
+
+/* ===== MODAL GENÉRICO ===== */
+.usr-modal-overlay {
+    position: fixed; inset: 0; z-index: 500;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.22s ease;
+}
+.usr-modal-overlay.open { opacity: 1; pointer-events: all; }
+.usr-modal {
+    background: #0f1925; border: 1px solid rgba(58,134,255,0.2);
+    border-radius: 20px; padding: 32px 28px; width: 100%; max-width: 380px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+    transform: scale(0.96) translateY(12px);
+    transition: transform 0.25s ease, opacity 0.22s ease;
+    opacity: 0;
+}
+.usr-modal-overlay.open .usr-modal { transform: scale(1) translateY(0); opacity: 1; }
+.usr-modal-title { font-size: 18px; font-weight: 700; color: #f1f5f9; margin-bottom: 6px; }
+.usr-modal-sub   { font-size: 13px; color: #4a6a8a; margin-bottom: 24px; }
+.usr-modal-field { margin-bottom: 14px; }
+.usr-modal-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #4a6a8a; margin-bottom: 6px; display: block; }
+.usr-modal-input {
+    width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(58,134,255,0.18);
+    color: #f1f5f9; border-radius: 12px; padding: 11px 14px; font-size: 14px;
+    font-family: inherit; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+}
+.usr-modal-input:focus { border-color: rgba(58,134,255,0.5); box-shadow: 0 0 0 3px rgba(58,134,255,0.1); }
+.usr-modal-input::placeholder { color: #2e4560; }
+.usr-modal-error { font-size: 12px; color: #f87171; margin-top: 10px; min-height: 16px; }
+.usr-modal-btns { display: flex; gap: 10px; margin-top: 24px; }
+.usr-modal-btn-primary {
+    flex: 1; padding: 12px; border-radius: 12px; border: none;
+    background: #3a86ff; color: #fff; font-size: 14px; font-weight: 600;
+    font-family: inherit; cursor: pointer; transition: background 0.2s, transform 0.15s;
+}
+.usr-modal-btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+.usr-modal-btn-cancel {
+    padding: 12px 18px; border-radius: 12px;
+    border: 1px solid rgba(58,134,255,0.18); background: transparent;
+    color: #64748b; font-size: 14px; font-weight: 500;
+    font-family: inherit; cursor: pointer; transition: border-color 0.2s, color 0.2s;
+}
+.usr-modal-btn-cancel:hover { border-color: rgba(58,134,255,0.35); color: #94a3b8; }
 .adm-usr-avatar {
     width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
     background: rgba(58,134,255,0.15); display: flex; align-items: center;
@@ -1542,15 +1591,7 @@ body {
             <div class="fech-header">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Entregadores</div>
-                    <button class="adm-usr-add-btn" onclick="_toggleAddUsuario()">+ Adicionar</button>
-                </div>
-                <div id="adm-usr-form" style="display:none">
-                    <div class="adm-usr-form-grid">
-                        <input class="adm-usr-input" id="adm-usr-nome" placeholder="Nome de usuário" type="text">
-                        <input class="adm-usr-input" id="adm-usr-senha" placeholder="Senha (padrão: GC2026)" type="text">
-                        <button class="adm-usr-add-btn" onclick="_salvarUsuario()">Salvar</button>
-                    </div>
-                    <div id="adm-usr-form-msg" style="font-size:12px;margin-top:8px;color:#ef4444"></div>
+                    <button class="adm-usr-add-btn" onclick="_abrirModalNovoEntregador()">+ Adicionar</button>
                 </div>
             </div>
             <div class="fech-body">
@@ -2332,7 +2373,6 @@ function _iniciarSelectsConfNF() {
 // ───── TELA ADMIN USUÁRIOS ─────
 function abrirAdminUsuarios(event) {
     if (event) event.preventDefault();
-    document.getElementById("adm-usr-form").style.display = "none";
     mostrarTela("tela-admin-usuarios");
     _carregarUsuarios();
 }
@@ -2366,6 +2406,7 @@ function _carregarUsuarios() {
                 <td>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
                         <button class="adm-usr-action ${u.active ? 'inativar' : 'ativar'}" onclick="_toggleAtivoUsuario(${u.id},${!u.active})">${u.active ? 'Inativar' : 'Ativar'}</button>
+                        <button class="adm-usr-action senha" onclick="_abrirModalRedefinirSenha(${u.id},'${u.username.replace(/'/g,"\\'")}')">Senha</button>
                         <button class="adm-usr-action deletar" onclick="_deletarUsuario(${u.id},'${u.username.replace(/'/g,"\\'")}')">Deletar</button>
                     </div>
                 </td>
@@ -2374,24 +2415,31 @@ function _carregarUsuarios() {
     }).catch(() => { empty.innerText = "Erro ao carregar entregadores."; });
 }
 
-function _toggleAddUsuario() {
-    const form = document.getElementById("adm-usr-form");
-    const visible = form.style.display !== "none";
-    form.style.display = visible ? "none" : "";
-    if (!visible) {
-        document.getElementById("adm-usr-nome").value = "";
-        document.getElementById("adm-usr-senha").value = "";
-        document.getElementById("adm-usr-form-msg").innerText = "";
-    }
+function _abrirModal(id) {
+    document.getElementById(id).classList.add("open");
+}
+function _fecharModal(id) {
+    document.getElementById(id).classList.remove("open");
+}
+function _fecharModalSeBackdrop(event, id) {
+    if (event.target === document.getElementById(id)) _fecharModal(id);
 }
 
-function _salvarUsuario() {
+function _abrirModalNovoEntregador() {
+    document.getElementById("mne-nome").value  = "";
+    document.getElementById("mne-senha").value = "";
+    document.getElementById("mne-erro").innerText = "";
+    _abrirModal("modal-novo-entregador");
+    setTimeout(() => document.getElementById("mne-nome").focus(), 80);
+}
+
+function _salvarNovoEntregador() {
     const tok      = localStorage.getItem("token");
-    const username = document.getElementById("adm-usr-nome").value.trim();
-    const password = document.getElementById("adm-usr-senha").value.trim();
-    const msg      = document.getElementById("adm-usr-form-msg");
-    msg.innerText  = "";
-    if (!username) { msg.innerText = "Informe o nome de usuário."; return; }
+    const username = document.getElementById("mne-nome").value.trim();
+    const password = document.getElementById("mne-senha").value.trim();
+    const erro     = document.getElementById("mne-erro");
+    erro.innerText = "";
+    if (!username) { erro.innerText = "Informe o nome de usuário."; return; }
 
     fetch(`${API}/admin/usuarios`, {
         method: "POST",
@@ -2399,10 +2447,39 @@ function _salvarUsuario() {
         body: JSON.stringify({ username, password, role: "entregador" })
     }).then(r => r.json())
     .then(data => {
-        if (data.error) { msg.innerText = data.error; return; }
-        document.getElementById("adm-usr-form").style.display = "none";
+        if (data.error) { erro.innerText = data.error; return; }
+        _fecharModal("modal-novo-entregador");
         _carregarUsuarios();
-    }).catch(() => { msg.innerText = "Erro ao adicionar usuário."; });
+    }).catch(() => { erro.innerText = "Erro ao cadastrar entregador."; });
+}
+
+function _abrirModalRedefinirSenha(id, username) {
+    document.getElementById("mrs-id").value      = id;
+    document.getElementById("mrs-senha").value   = "";
+    document.getElementById("mrs-erro").innerText = "";
+    document.getElementById("mrs-sub").innerText  = `Nova senha para ${username}.`;
+    _abrirModal("modal-redefinir-senha");
+    setTimeout(() => document.getElementById("mrs-senha").focus(), 80);
+}
+
+function _salvarNovaSenha() {
+    const tok   = localStorage.getItem("token");
+    const id    = document.getElementById("mrs-id").value;
+    const senha = document.getElementById("mrs-senha").value.trim();
+    const erro  = document.getElementById("mrs-erro");
+    erro.innerText = "";
+    if (!senha) { erro.innerText = "Informe a nova senha."; return; }
+    if (senha.length < 4) { erro.innerText = "A senha deve ter pelo menos 4 caracteres."; return; }
+
+    fetch(`${API}/admin/usuarios/${id}/senha`, {
+        method: "PUT",
+        headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
+        body: JSON.stringify({ senha })
+    }).then(r => r.json())
+    .then(data => {
+        if (data.error) { erro.innerText = data.error; return; }
+        _fecharModal("modal-redefinir-senha");
+    }).catch(() => { erro.innerText = "Erro ao redefinir senha."; });
 }
 
 function _toggleAtivoUsuario(id, active) {
@@ -3553,6 +3630,45 @@ function _carregarPainelAdmin() {
     });
 }
 </script>
+
+<!-- MODAL: NOVO ENTREGADOR -->
+<div class="usr-modal-overlay" id="modal-novo-entregador" onclick="_fecharModalSeBackdrop(event,'modal-novo-entregador')">
+    <div class="usr-modal">
+        <div class="usr-modal-title">Novo Entregador</div>
+        <div class="usr-modal-sub">Preencha os dados para cadastrar o entregador.</div>
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Nome de usuário</label>
+            <input class="usr-modal-input" id="mne-nome" type="text" placeholder="Ex: joao.silva" autocomplete="off">
+        </div>
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(padrão: GC2026)</span></label>
+            <input class="usr-modal-input" id="mne-senha" type="text" placeholder="Deixe em branco para usar GC2026" autocomplete="off">
+        </div>
+        <div class="usr-modal-error" id="mne-erro"></div>
+        <div class="usr-modal-btns">
+            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-novo-entregador')">Cancelar</button>
+            <button class="usr-modal-btn-primary" onclick="_salvarNovoEntregador()">Cadastrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: REDEFINIR SENHA -->
+<div class="usr-modal-overlay" id="modal-redefinir-senha" onclick="_fecharModalSeBackdrop(event,'modal-redefinir-senha')">
+    <div class="usr-modal">
+        <div class="usr-modal-title">Redefinir Senha</div>
+        <div class="usr-modal-sub" id="mrs-sub">Defina uma nova senha para o entregador.</div>
+        <input type="hidden" id="mrs-id">
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Nova senha</label>
+            <input class="usr-modal-input" id="mrs-senha" type="text" placeholder="Mínimo 4 caracteres" autocomplete="off">
+        </div>
+        <div class="usr-modal-error" id="mrs-erro"></div>
+        <div class="usr-modal-btns">
+            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-redefinir-senha')">Cancelar</button>
+            <button class="usr-modal-btn-primary" onclick="_salvarNovaSenha()">Salvar</button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
