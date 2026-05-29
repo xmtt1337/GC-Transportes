@@ -1596,6 +1596,7 @@ body {
                                     <th>Emitiu NF?</th>
                                     <th>Valor NF</th>
                                     <th>Conferência</th>
+                                    <th>WhatsApp</th>
                                 </tr>
                             </thead>
                             <tbody id="conf-nf-tbody"></tbody>
@@ -2392,6 +2393,8 @@ function buscarConfNFs() {
         const confere  = rows.filter(r => r.status === "confere").length;
         document.getElementById("conf-nf-counter").innerHTML =
             `${total} entregadores &nbsp;·&nbsp; <span style="color:#22c55e">${emitidas} enviaram NF</span> &nbsp;·&nbsp; <span style="color:#22c55e">${confere} conferem</span>`;
+        const MESES_CONF = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+        const quinzenaLabel = `${_confNFQuinzena}ª quinzena de ${MESES_CONF[parseInt(document.getElementById("conf-nf-mes").value)]}/${document.getElementById("conf-nf-ano").value}`;
         document.getElementById("conf-nf-tbody").innerHTML = rows.map(r => {
             let emitBadge, confBadge;
             if (!r.emitiu_nf) {
@@ -2406,12 +2409,22 @@ function buscarConfNFs() {
                 else
                     confBadge = `<span class="adm-nf-badge pendente">—</span>`;
             }
+            let waBtn = "";
+            if (!r.emitiu_nf) {
+                const phone = (r.telefone || "").replace(/\D/g, "");
+                const primeiroNome = r.nome.split(" ")[0];
+                const msg = encodeURIComponent(`Olá ${primeiroNome}! notamos que você não anexou a NFS-e referente a ${quinzenaLabel}`);
+                if (phone) {
+                    waBtn = `<a class="extr-wa" href="https://wa.me/55${phone}?text=${msg}" target="_blank">WhatsApp</a>`;
+                }
+            }
             return `<tr>
                 <td class="adm-nf-entregador">${r.nome}</td>
                 <td class="adm-nf-valor">${r.total_receber || "—"}</td>
                 <td>${emitBadge}</td>
                 <td>${r.valor_nf || "—"}</td>
                 <td>${confBadge}</td>
+                <td>${waBtn}</td>
             </tr>`;
         }).join("");
     })
