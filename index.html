@@ -889,6 +889,24 @@ body {
 .adm-nf-badge.diverge { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
 .adm-nf-badge.pendente { background: rgba(148,163,184,0.1); color: #64748b; border: 1px solid rgba(148,163,184,0.2); }
 .adm-nf-chave { word-break: break-all; max-width: 180px; line-height: 1.5; font-size: 11px; }
+/* ===== PAGAMENTOS ===== */
+.pag-pix-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 6px;
+    font-size: 11px; font-weight: 600;
+    background: rgba(58,134,255,0.1); color: #3a86ff;
+    border: 1px solid rgba(58,134,255,0.2); white-space: nowrap;
+}
+.pag-doc  { font-family: monospace; font-size: 12px; color: #94a3b8; }
+.pag-pix  { font-size: 12px; color: #e2e8f0; word-break: break-all; }
+.pag-valor { font-weight: 700; color: #22c55e; }
+.pag-sem-cad { color: #475569; font-size: 12px; font-style: italic; }
+@media (max-width: 680px) {
+    #tela-admin-pagamentos .adm-nf-table th:nth-child(3),
+    #tela-admin-pagamentos .adm-nf-table td:nth-child(3),
+    #tela-admin-pagamentos .adm-nf-table th:nth-child(4),
+    #tela-admin-pagamentos .adm-nf-table td:nth-child(4) { display: none; }
+}
+
 /* ===== ADMIN USUÁRIOS ===== */
 .adm-usr-add-btn {
     padding: 8px 16px; border-radius: 10px; border: 1px solid rgba(58,134,255,0.3);
@@ -1086,6 +1104,7 @@ body {
             <li><a href="#" onclick="abrirAdminFechamentos(event)">Pesquisar</a></li>
             <li><a href="#" onclick="abrirAdminNFs(event)">Notas Fiscais</a></li>
             <li><a href="#" onclick="abrirConfNFs(event)">Conferência NF</a></li>
+            <li><a href="#" onclick="abrirAdminPagamentos(event)">Pagamentos</a></li>
         </ul>
 
         <li class="menu-item" data-menu="cadastros" id="menu-cadastros" onclick="toggleMenu(this)" style="display:none">
@@ -1586,6 +1605,47 @@ body {
             </div>
         </div><!-- /tela-conf-nfs -->
 
+        <!-- TELA ADMIN PAGAMENTOS -->
+        <div id="tela-admin-pagamentos" class="view tela-full">
+            <div class="fech-header">
+                <div class="fech-period-row">
+                    <select class="fech-select" id="pag-mes" onchange="buscarPagamentos()">
+                        <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>    <option value="4">Abril</option>
+                        <option value="5">Maio</option>     <option value="6">Junho</option>
+                        <option value="7">Julho</option>    <option value="8">Agosto</option>
+                        <option value="9">Setembro</option> <option value="10">Outubro</option>
+                        <option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    <select class="fech-select" id="pag-ano" onchange="buscarPagamentos()"></select>
+                </div>
+                <div class="quinzena-toggle">
+                    <button class="quinzena-btn" id="pag-btn-1q" onclick="selecionarQuinzenaPag(1)">1ª Quinzena &nbsp;(1 – 15)</button>
+                    <button class="quinzena-btn" id="pag-btn-2q" onclick="selecionarQuinzenaPag(2)">2ª Quinzena &nbsp;(16 – fim)</button>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="pag-empty">Selecione o mês, ano e quinzena para ver os pagamentos.</div>
+                <div id="pag-resultado" style="display:none">
+                    <div class="adm-nf-counter" id="pag-counter"></div>
+                    <div class="adm-nf-wrap">
+                        <table class="adm-nf-table">
+                            <thead>
+                                <tr>
+                                    <th>Entregador</th>
+                                    <th>Valor</th>
+                                    <th>Documento</th>
+                                    <th>Chave PIX</th>
+                                    <th>Tipo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pag-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-admin-pagamentos -->
+
         <!-- TELA ADMIN USUÁRIOS -->
         <div id="tela-admin-usuarios" class="view tela-full">
             <div class="fech-header">
@@ -1871,7 +1931,7 @@ function _renderExtravios(lista, containerId, showWa) {
     }
     el.innerHTML = lista.map(e => {
         const wa = showWa ? (() => {
-            const msg = encodeURIComponent(`Queria contestar um pedido da ${e.transportadora}.\nCódigo: ${e.codigo}`);
+            const msg = encodeURIComponent(`Olá! Eu gostaria de contestar um pedido da ${e.transportadora}.\nCódigo: ${e.codigo}`);
             return `<a class="extr-wa" href="https://wa.me/554991984179?text=${msg}" target="_blank" rel="noopener noreferrer">
                 <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/></svg>
                 Contestar
@@ -2514,6 +2574,83 @@ function _deletarUsuario(id, username) {
         if (data.error) { alert(data.error); return; }
         _carregarUsuarios();
     }).catch(() => alert("Erro ao deletar usuário."));
+}
+
+// ───── TELA ADMIN PAGAMENTOS ─────
+let _pagMes      = new Date().getMonth() + 1;
+let _pagAno      = new Date().getFullYear();
+let _pagQuinzena = null;
+
+function abrirAdminPagamentos(event) {
+    if (event) event.preventDefault();
+    _pagQuinzena = null;
+    document.getElementById("pag-btn-1q").classList.remove("active");
+    document.getElementById("pag-btn-2q").classList.remove("active");
+    document.getElementById("pag-empty").innerText = "Selecione o mês, ano e quinzena para ver os pagamentos.";
+    document.getElementById("pag-empty").style.display = "";
+    document.getElementById("pag-resultado").style.display = "none";
+    _iniciarSelectsPag();
+    mostrarTela("tela-admin-pagamentos");
+}
+
+function _iniciarSelectsPag() {
+    const selAno   = document.getElementById("pag-ano");
+    const anoAtual = new Date().getFullYear();
+    selAno.innerHTML = "";
+    for (let a = anoAtual - 2; a <= anoAtual; a++) {
+        const opt = document.createElement("option");
+        opt.value = a; opt.textContent = a;
+        if (a === _pagAno) opt.selected = true;
+        selAno.appendChild(opt);
+    }
+    document.getElementById("pag-mes").value = _pagMes;
+}
+
+function selecionarQuinzenaPag(q) {
+    _pagQuinzena = q;
+    document.getElementById("pag-btn-1q").classList.toggle("active", q === 1);
+    document.getElementById("pag-btn-2q").classList.toggle("active", q === 2);
+    buscarPagamentos();
+}
+
+function buscarPagamentos() {
+    if (!_pagQuinzena) {
+        document.getElementById("pag-empty").innerText = "Selecione a quinzena (1ª ou 2ª) antes de buscar.";
+        document.getElementById("pag-empty").style.display = "";
+        return;
+    }
+    const mes = document.getElementById("pag-mes").value;
+    const ano = document.getElementById("pag-ano").value;
+    _pagMes = parseInt(mes); _pagAno = parseInt(ano);
+    const empty    = document.getElementById("pag-empty");
+    const resultado = document.getElementById("pag-resultado");
+    empty.innerText = "Carregando...";
+    empty.style.display = "";
+    resultado.style.display = "none";
+
+    fetch(`${API}/admin/pagamentos?mes=${mes}&ano=${ano}&quinzena=${_pagQuinzena}`, {
+        headers: { "Authorization": "Bearer " + token }
+    }).then(r => r.json())
+    .then(data => {
+        if (data.error) { empty.innerText = data.error; return; }
+        if (!data.length) { empty.innerText = "Nenhum entregador com valor neste período."; return; }
+        empty.style.display = "none";
+        resultado.style.display = "";
+
+        const total = data.reduce((s, d) => s + (d.total_num || 0), 0);
+        document.getElementById("pag-counter").innerHTML =
+            `${data.length} entregadores &nbsp;·&nbsp; Total: <strong style="color:#22c55e">${moedaJS(total)}</strong>`;
+
+        document.getElementById("pag-tbody").innerHTML = data.map(d => `
+            <tr>
+                <td class="adm-nf-entregador">${d.nome}</td>
+                <td class="pag-valor">${d.total}</td>
+                <td class="pag-doc">${d.documento || '<span class="pag-sem-cad">—</span>'}</td>
+                <td class="pag-pix">${d.chave_pix || '<span class="pag-sem-cad">—</span>'}</td>
+                <td>${d.tipo_pix ? `<span class="pag-pix-badge">${d.tipo_pix}</span>` : '<span class="pag-sem-cad">—</span>'}</td>
+            </tr>
+        `).join("");
+    }).catch(() => { empty.innerText = "Erro ao carregar pagamentos."; });
 }
 
 // ───── TELA ADMIN NOTAS FISCAIS ─────
