@@ -897,7 +897,7 @@ body {
 }
 .adm-usr-add-btn:hover { background: rgba(58,134,255,0.2); transform: translateY(-1px); }
 .adm-usr-form-grid {
-    display: grid; grid-template-columns: 1fr 1fr 150px auto; gap: 8px; align-items: center;
+    display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center;
     margin-top: 14px;
 }
 .adm-usr-input {
@@ -1037,7 +1037,21 @@ body {
             <li><a href="#" onclick="abrirAdminFechamentos(event)">Pesquisar</a></li>
             <li><a href="#" onclick="abrirAdminNFs(event)">Notas Fiscais</a></li>
             <li><a href="#" onclick="abrirConfNFs(event)">Conferência NF</a></li>
-            <li><a href="#" onclick="abrirAdminUsuarios(event)">Usuários</a></li>
+        </ul>
+
+        <li class="menu-item" data-menu="cadastros" id="menu-cadastros" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <span class="label">Cadastros</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Cadastros</span>
+        </li>
+        <ul class="submenu" data-menu="cadastros" id="submenu-cadastros" style="display:none">
+            <li><a href="#" onclick="abrirAdminUsuarios(event)">Entregadores</a></li>
         </ul>
 
         <li class="menu-item" id="menu-dashboard" onclick="abrirDashboard(event)" style="display:none">
@@ -1527,18 +1541,13 @@ body {
         <div id="tela-admin-usuarios" class="view tela-full">
             <div class="fech-header">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Gerenciar Usuários</div>
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Entregadores</div>
                     <button class="adm-usr-add-btn" onclick="_toggleAddUsuario()">+ Adicionar</button>
                 </div>
                 <div id="adm-usr-form" style="display:none">
                     <div class="adm-usr-form-grid">
                         <input class="adm-usr-input" id="adm-usr-nome" placeholder="Nome de usuário" type="text">
                         <input class="adm-usr-input" id="adm-usr-senha" placeholder="Senha (padrão: GC2026)" type="text">
-                        <select class="adm-usr-input" id="adm-usr-role">
-                            <option value="entregador">Entregador</option>
-                            <option value="admin">Admin</option>
-                            <option value="operador">Operador</option>
-                        </select>
                         <button class="adm-usr-add-btn" onclick="_salvarUsuario()">Salvar</button>
                     </div>
                     <div id="adm-usr-form-msg" style="font-size:12px;margin-top:8px;color:#ef4444"></div>
@@ -1551,8 +1560,7 @@ body {
                         <table class="adm-nf-table">
                             <thead>
                                 <tr>
-                                    <th>Usuário</th>
-                                    <th>Função</th>
+                                    <th>Entregador</th>
                                     <th>Status</th>
                                     <th>Ações</th>
                                 </tr>
@@ -1707,6 +1715,8 @@ fetch(API + "/perfil", {
     if (role === "admin") {
         document.getElementById("menu-adminmenu").style.display  = "";
         document.getElementById("submenu-adminmenu").style.display  = "";
+        document.getElementById("menu-cadastros").style.display  = "";
+        document.getElementById("submenu-cadastros").style.display  = "";
         document.getElementById("menu-dashboard").style.display  = "";
     }
 
@@ -2335,16 +2345,15 @@ function _carregarUsuarios() {
     empty.style.display = "";
     res.style.display = "none";
 
-    fetch(`${API}/admin/usuarios`, { headers: { "Authorization": "Bearer " + tok } })
+    fetch(`${API}/admin/usuarios?role=entregador`, { headers: { "Authorization": "Bearer " + tok } })
     .then(r => r.json())
     .then(users => {
         if (!Array.isArray(users) || !users.length) {
-            empty.innerText = "Nenhum usuário encontrado.";
+            empty.innerText = "Nenhum entregador cadastrado.";
             return;
         }
         empty.style.display = "none";
         res.style.display = "";
-        const ROLES = { admin: "Admin", entregador: "Entregador", operador: "Operador" };
         document.getElementById("adm-usr-tbody").innerHTML = users.map(u => `
             <tr>
                 <td>
@@ -2353,7 +2362,6 @@ function _carregarUsuarios() {
                         <span style="font-weight:600;color:#e2e8f0">${u.username}</span>
                     </div>
                 </td>
-                <td><span class="adm-usr-badge ${u.role}">${ROLES[u.role] || u.role}</span></td>
                 <td><span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span></td>
                 <td>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2363,7 +2371,7 @@ function _carregarUsuarios() {
                 </td>
             </tr>
         `).join("");
-    }).catch(() => { empty.innerText = "Erro ao carregar usuários."; });
+    }).catch(() => { empty.innerText = "Erro ao carregar entregadores."; });
 }
 
 function _toggleAddUsuario() {
@@ -2373,7 +2381,6 @@ function _toggleAddUsuario() {
     if (!visible) {
         document.getElementById("adm-usr-nome").value = "";
         document.getElementById("adm-usr-senha").value = "";
-        document.getElementById("adm-usr-role").value = "entregador";
         document.getElementById("adm-usr-form-msg").innerText = "";
     }
 }
@@ -2382,7 +2389,6 @@ function _salvarUsuario() {
     const tok      = localStorage.getItem("token");
     const username = document.getElementById("adm-usr-nome").value.trim();
     const password = document.getElementById("adm-usr-senha").value.trim();
-    const role     = document.getElementById("adm-usr-role").value;
     const msg      = document.getElementById("adm-usr-form-msg");
     msg.innerText  = "";
     if (!username) { msg.innerText = "Informe o nome de usuário."; return; }
@@ -2390,7 +2396,7 @@ function _salvarUsuario() {
     fetch(`${API}/admin/usuarios`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, role })
+        body: JSON.stringify({ username, password, role: "entregador" })
     }).then(r => r.json())
     .then(data => {
         if (data.error) { msg.innerText = data.error; return; }
