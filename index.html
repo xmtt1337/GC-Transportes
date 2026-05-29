@@ -2406,7 +2406,7 @@ function _carregarUsuarios() {
                 <td>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
                         <button class="adm-usr-action ${u.active ? 'inativar' : 'ativar'}" onclick="_toggleAtivoUsuario(${u.id},${!u.active})">${u.active ? 'Inativar' : 'Ativar'}</button>
-                        <button class="adm-usr-action senha" onclick="_abrirModalRedefinirSenha(${u.id},'${u.username.replace(/'/g,"\\'")}')">Senha</button>
+                        <button class="adm-usr-action senha" onclick="_resetarSenha(${u.id},'${u.username.replace(/'/g,"\\'")}')">Resetar Senha</button>
                         <button class="adm-usr-action deletar" onclick="_deletarUsuario(${u.id},'${u.username.replace(/'/g,"\\'")}')">Deletar</button>
                     </div>
                 </td>
@@ -2472,33 +2472,16 @@ function _copiarID() {
     });
 }
 
-function _abrirModalRedefinirSenha(id, username) {
-    document.getElementById("mrs-id").value      = id;
-    document.getElementById("mrs-senha").value   = "";
-    document.getElementById("mrs-erro").innerText = "";
-    document.getElementById("mrs-sub").innerText  = `Nova senha para ${username}.`;
-    _abrirModal("modal-redefinir-senha");
-    setTimeout(() => document.getElementById("mrs-senha").focus(), 80);
-}
-
-function _salvarNovaSenha() {
-    const tok   = localStorage.getItem("token");
-    const id    = document.getElementById("mrs-id").value;
-    const senha = document.getElementById("mrs-senha").value.trim();
-    const erro  = document.getElementById("mrs-erro");
-    erro.innerText = "";
-    if (!senha) { erro.innerText = "Informe a nova senha."; return; }
-    if (senha.length < 4) { erro.innerText = "A senha deve ter pelo menos 4 caracteres."; return; }
-
+function _resetarSenha(id, username) {
+    if (!confirm(`Resetar a senha de "${username}" para GC2026?`)) return;
+    const tok = localStorage.getItem("token");
     fetch(`${API}/admin/usuarios/${id}/senha`, {
         method: "PUT",
         headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
-        body: JSON.stringify({ senha })
+        body: JSON.stringify({ senha: "GC2026" })
     }).then(r => r.json())
-    .then(data => {
-        if (data.error) { erro.innerText = data.error; return; }
-        _fecharModal("modal-redefinir-senha");
-    }).catch(() => { erro.innerText = "Erro ao redefinir senha."; });
+    .then(data => { if (data.error) alert(data.error); })
+    .catch(() => alert("Erro ao resetar senha."));
 }
 
 function _toggleAtivoUsuario(id, active) {
@@ -3684,23 +3667,6 @@ function _carregarPainelAdmin() {
     </div>
 </div>
 
-<!-- MODAL: REDEFINIR SENHA -->
-<div class="usr-modal-overlay" id="modal-redefinir-senha" onclick="_fecharModalSeBackdrop(event,'modal-redefinir-senha')">
-    <div class="usr-modal">
-        <div class="usr-modal-title">Redefinir Senha</div>
-        <div class="usr-modal-sub" id="mrs-sub">Defina uma nova senha para o entregador.</div>
-        <input type="hidden" id="mrs-id">
-        <div class="usr-modal-field">
-            <label class="usr-modal-label">Nova senha</label>
-            <input class="usr-modal-input" id="mrs-senha" type="text" placeholder="Mínimo 4 caracteres" autocomplete="off">
-        </div>
-        <div class="usr-modal-error" id="mrs-erro"></div>
-        <div class="usr-modal-btns">
-            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-redefinir-senha')">Cancelar</button>
-            <button class="usr-modal-btn-primary" onclick="_salvarNovaSenha()">Salvar</button>
-        </div>
-    </div>
-</div>
 
 </body>
 </html>
