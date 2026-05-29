@@ -572,6 +572,22 @@ body {
 .home-card-title { font-size: 14px; font-weight: 600; color: #f1f5f9; }
 .home-card-desc  { font-size: 12px; color: #4a6a8a; line-height: 1.5; }
 
+#home-nf-status { margin-top: 14px; }
+.home-nf-widget {
+    border-radius: 16px; padding: 16px 20px; display: flex; align-items: center;
+    gap: 14px; border: 1px solid; text-align: left;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.home-nf-widget.ok       { background: rgba(34,197,94,0.05);   border-color: rgba(34,197,94,0.2);   cursor: default; }
+.home-nf-widget.pendente { background: rgba(251,146,60,0.06);  border-color: rgba(251,146,60,0.3);  cursor: pointer; }
+.home-nf-widget.pendente:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(251,146,60,0.15); }
+.home-nf-widget-icon {
+    width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+}
+.home-nf-widget-icon.ok       { background: rgba(34,197,94,0.14); }
+.home-nf-widget-icon.pendente { background: rgba(251,146,60,0.14); }
+
 @media (max-width: 680px) {
     .home-greeting { font-size: 26px; }
     .home-actions  { grid-template-columns: 1fr 1fr; }
@@ -1047,6 +1063,7 @@ body {
                 <div class="home-greeting">Olá, <span id="welcome-name">...</span>!</div>
                 <div class="home-role-badge" id="home-role-badge">Carregando...</div>
                 <div class="home-actions" id="home-actions"></div>
+                <div id="home-nf-status"></div>
             </div>
         </div>
 
@@ -2052,6 +2069,52 @@ function renderHomeActions(role) {
             </div>
         </div>
     `).join("");
+
+    if (role === "entregador") carregarHomeNFStatus();
+}
+
+function carregarHomeNFStatus() {
+    const widget = document.getElementById("home-nf-status");
+    if (!widget) return;
+    const tok = localStorage.getItem("token");
+    const anoAtual = new Date().getFullYear();
+
+    Promise.all([
+        fetch(`${API}/historico?ano=${anoAtual}`, { headers: { "Authorization": "Bearer " + tok } }).then(r => r.json()),
+        fetch(`${API}/minhas-notas`,               { headers: { "Authorization": "Bearer " + tok } }).then(r => r.json())
+    ]).then(([historico, nfs]) => {
+        if (!Array.isArray(historico) || !historico.length) return;
+        const nfMap = {};
+        (nfs || []).forEach(nf => { nfMap[`${nf.mes}_${nf.ano}_${nf.quinzena}`] = nf; });
+        const periodos  = historico.filter(d => (d.total_receber_num || 0) > 0);
+        const pendentes = periodos.filter(d => !nfMap[`${d.mes}_${anoAtual}_${d.quinzena}`]).length;
+
+        if (pendentes === 0) {
+            widget.innerHTML = `
+                <div class="home-nf-widget ok">
+                    <div class="home-nf-widget-icon ok">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-size:14px;font-weight:600;color:#22c55e">Notas Fiscais em dia</div>
+                        <div style="font-size:12px;color:#64748b;margin-top:2px">Todos os períodos enviados</div>
+                    </div>
+                    <div style="font-size:11px;font-weight:700;color:#22c55e;white-space:nowrap">✓ OK</div>
+                </div>`;
+        } else {
+            widget.innerHTML = `
+                <div class="home-nf-widget pendente" onclick="abrirMinhasNFs()">
+                    <div class="home-nf-widget-icon pendente">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-size:14px;font-weight:600;color:#fb923c">${pendentes} ${pendentes === 1 ? "nota pendente" : "notas pendentes"}</div>
+                        <div style="font-size:12px;color:#64748b;margin-top:2px">Clique para ver os períodos em aberto</div>
+                    </div>
+                    <div style="font-size:12px;font-weight:700;color:#fb923c;white-space:nowrap">Ver →</div>
+                </div>`;
+        }
+    }).catch(() => {});
 }
 
 // ───── ADMIN FECHAMENTOS ─────
