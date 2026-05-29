@@ -1737,11 +1737,12 @@ fetch(API + "/perfil", {
 .then(res => { if (!res.ok) throw new Error(); return res.json(); })
 .then(data => {
     const username = data.usuario.username;
-    const usernameFormatado = username.includes(".") ? username.slice(0, username.lastIndexOf(".")) : username;
+    const name     = data.usuario.name;
+    const displayName = name || username;
     const role = data.usuario.role;
 
-    document.querySelector(".username").innerText = usernameFormatado;
-    document.getElementById("welcome-name").innerText = usernameFormatado;
+    document.querySelector(".username").innerText = displayName;
+    document.getElementById("welcome-name").innerText = displayName;
 
     if (role === "entregador") {
         document.getElementById("menu-operacao").style.display  = "none";
@@ -1750,7 +1751,7 @@ fetch(API + "/perfil", {
         document.getElementById("submenu-pedidos").style.display   = "none";
         document.getElementById("menu-fechamentos").style.display  = "";
         document.getElementById("submenu-fechamentos").style.display  = "";
-        document.getElementById("welcome-name").innerText = usernameFormatado.split(" ")[0];
+        document.getElementById("welcome-name").innerText = displayName.split(" ")[0];
     }
 
     if (role === "admin") {
@@ -2587,7 +2588,7 @@ function buscarNFsAdmin() {
                 ? `<div class="adm-nf-chave" style="font-family:monospace;font-size:10.5px;color:#64748b;word-break:break-all;line-height:1.5">${nf.chave_acesso}</div>`
                 : `<span style="color:#475569">—</span>`;
             return `<tr>
-                <td class="adm-nf-entregador">${nf.username}</td>
+                <td class="adm-nf-entregador">${nf.user_name || nf.username}</td>
                 <td><span class="adm-nf-badge ${badgeCls}">${badgeTxt}</span></td>
                 <td class="adm-nf-valor">${nf.valor || "—"}</td>
                 <td>${nf.emissao || "—"}</td>
@@ -3644,7 +3645,7 @@ function _carregarPainelAdmin() {
         <!-- form -->
         <div id="mne-form">
             <div class="usr-modal-title">Novo Entregador</div>
-            <div class="usr-modal-sub">O ID de acesso será gerado automaticamente.</div>
+            <div class="usr-modal-sub">O ID de acesso sera gerado automaticamente.</div>
             <div class="usr-modal-field">
                 <label class="usr-modal-label">Nome <span style="color:#2e4560;font-weight:400;text-transform:none">(conforme planilha)</span></label>
                 <input class="usr-modal-input" id="mne-nome" type="text" placeholder="Nome completo do entregador" autocomplete="off">
