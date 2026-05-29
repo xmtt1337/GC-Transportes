@@ -2398,8 +2398,11 @@ function _carregarUsuarios() {
             <tr>
                 <td>
                     <div style="display:flex;align-items:center;gap:10px">
-                        <div class="adm-usr-avatar">${u.username.slice(0, 2).toUpperCase()}</div>
-                        <span style="font-weight:600;color:#e2e8f0">${u.username}</span>
+                        <div class="adm-usr-avatar">${(u.name || u.username).slice(0, 2).toUpperCase()}</div>
+                        <div>
+                            <div style="font-weight:600;color:#e2e8f0">${u.name || "—"}</div>
+                            <div style="font-size:11px;color:#4a6a8a;margin-top:2px">${u.username}</div>
+                        </div>
                     </div>
                 </td>
                 <td><span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span></td>
@@ -2426,27 +2429,30 @@ function _fecharModalSeBackdrop(event, id) {
 }
 
 function _abrirModalNovoEntregador() {
+    document.getElementById("mne-nome").value     = "";
     document.getElementById("mne-senha").value    = "";
     document.getElementById("mne-erro").innerText = "";
     document.getElementById("mne-form").style.display    = "";
     document.getElementById("mne-sucesso").style.display = "none";
     _abrirModal("modal-novo-entregador");
-    setTimeout(() => document.getElementById("mne-senha").focus(), 80);
+    setTimeout(() => document.getElementById("mne-nome").focus(), 80);
 }
 
 function _salvarNovoEntregador() {
     const tok      = localStorage.getItem("token");
+    const name     = document.getElementById("mne-nome").value.trim();
     const password = document.getElementById("mne-senha").value.trim();
     const erro     = document.getElementById("mne-erro");
     const btn      = document.getElementById("mne-btn-salvar");
     erro.innerText = "";
+    if (!name) { erro.innerText = "Informe o nome do entregador."; return; }
     btn.disabled   = true;
     btn.textContent = "Cadastrando...";
 
     fetch(`${API}/admin/usuarios`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
-        body: JSON.stringify({ password, role: "entregador" })
+        body: JSON.stringify({ name, password, role: "entregador" })
     }).then(r => r.json())
     .then(data => {
         btn.disabled = false;
@@ -3638,9 +3644,13 @@ function _carregarPainelAdmin() {
         <!-- form -->
         <div id="mne-form">
             <div class="usr-modal-title">Novo Entregador</div>
-            <div class="usr-modal-sub">O ID será gerado automaticamente no formato <span style="color:#3a86ff;font-weight:600">GCxxxxxxx</span>.</div>
+            <div class="usr-modal-sub">O ID de acesso será gerado automaticamente.</div>
             <div class="usr-modal-field">
-                <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(opcional — deixe em branco para usar a senha padrão)</span></label>
+                <label class="usr-modal-label">Nome <span style="color:#2e4560;font-weight:400;text-transform:none">(conforme planilha)</span></label>
+                <input class="usr-modal-input" id="mne-nome" type="text" placeholder="Nome completo do entregador" autocomplete="off">
+            </div>
+            <div class="usr-modal-field">
+                <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(opcional — deixe em branco para senha padrão)</span></label>
                 <input class="usr-modal-input" id="mne-senha" type="text" placeholder="Deixe em branco para senha padrão" autocomplete="off">
             </div>
             <div class="usr-modal-error" id="mne-erro"></div>
