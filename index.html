@@ -2426,31 +2426,50 @@ function _fecharModalSeBackdrop(event, id) {
 }
 
 function _abrirModalNovoEntregador() {
-    document.getElementById("mne-nome").value  = "";
-    document.getElementById("mne-senha").value = "";
+    document.getElementById("mne-senha").value    = "";
     document.getElementById("mne-erro").innerText = "";
+    document.getElementById("mne-form").style.display    = "";
+    document.getElementById("mne-sucesso").style.display = "none";
     _abrirModal("modal-novo-entregador");
-    setTimeout(() => document.getElementById("mne-nome").focus(), 80);
+    setTimeout(() => document.getElementById("mne-senha").focus(), 80);
 }
 
 function _salvarNovoEntregador() {
     const tok      = localStorage.getItem("token");
-    const username = document.getElementById("mne-nome").value.trim();
     const password = document.getElementById("mne-senha").value.trim();
     const erro     = document.getElementById("mne-erro");
+    const btn      = document.getElementById("mne-btn-salvar");
     erro.innerText = "";
-    if (!username) { erro.innerText = "Informe o nome de usuário."; return; }
+    btn.disabled   = true;
+    btn.textContent = "Cadastrando...";
 
     fetch(`${API}/admin/usuarios`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, role: "entregador" })
+        body: JSON.stringify({ password, role: "entregador" })
     }).then(r => r.json())
     .then(data => {
+        btn.disabled = false;
+        btn.textContent = "Cadastrar";
         if (data.error) { erro.innerText = data.error; return; }
-        _fecharModal("modal-novo-entregador");
+        document.getElementById("mne-id-gerado").innerText = data.username;
+        document.getElementById("mne-copiado").innerText   = "";
+        document.getElementById("mne-form").style.display    = "none";
+        document.getElementById("mne-sucesso").style.display = "";
         _carregarUsuarios();
-    }).catch(() => { erro.innerText = "Erro ao cadastrar entregador."; });
+    }).catch(() => {
+        btn.disabled = false;
+        btn.textContent = "Cadastrar";
+        erro.innerText = "Erro ao cadastrar entregador.";
+    });
+}
+
+function _copiarID() {
+    const id = document.getElementById("mne-id-gerado").innerText;
+    navigator.clipboard.writeText(id).then(() => {
+        document.getElementById("mne-copiado").innerText = "✓ Copiado!";
+        setTimeout(() => { document.getElementById("mne-copiado").innerText = ""; }, 2000);
+    });
 }
 
 function _abrirModalRedefinirSenha(id, username) {
@@ -3634,20 +3653,33 @@ function _carregarPainelAdmin() {
 <!-- MODAL: NOVO ENTREGADOR -->
 <div class="usr-modal-overlay" id="modal-novo-entregador" onclick="_fecharModalSeBackdrop(event,'modal-novo-entregador')">
     <div class="usr-modal">
-        <div class="usr-modal-title">Novo Entregador</div>
-        <div class="usr-modal-sub">Preencha os dados para cadastrar o entregador.</div>
-        <div class="usr-modal-field">
-            <label class="usr-modal-label">Nome de usuário</label>
-            <input class="usr-modal-input" id="mne-nome" type="text" placeholder="Ex: joao.silva" autocomplete="off">
+        <!-- form -->
+        <div id="mne-form">
+            <div class="usr-modal-title">Novo Entregador</div>
+            <div class="usr-modal-sub">O ID será gerado automaticamente no formato <span style="color:#3a86ff;font-weight:600">GCxxxxxxx</span>.</div>
+            <div class="usr-modal-field">
+                <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(padrão: GC2026)</span></label>
+                <input class="usr-modal-input" id="mne-senha" type="text" placeholder="Deixe em branco para usar GC2026" autocomplete="off">
+            </div>
+            <div class="usr-modal-error" id="mne-erro"></div>
+            <div class="usr-modal-btns">
+                <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-novo-entregador')">Cancelar</button>
+                <button class="usr-modal-btn-primary" id="mne-btn-salvar" onclick="_salvarNovoEntregador()">Cadastrar</button>
+            </div>
         </div>
-        <div class="usr-modal-field">
-            <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(padrão: GC2026)</span></label>
-            <input class="usr-modal-input" id="mne-senha" type="text" placeholder="Deixe em branco para usar GC2026" autocomplete="off">
-        </div>
-        <div class="usr-modal-error" id="mne-erro"></div>
-        <div class="usr-modal-btns">
-            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-novo-entregador')">Cancelar</button>
-            <button class="usr-modal-btn-primary" onclick="_salvarNovoEntregador()">Cadastrar</button>
+        <!-- sucesso -->
+        <div id="mne-sucesso" style="display:none;text-align:center">
+            <div style="width:52px;height:52px;border-radius:50%;background:rgba(34,197,94,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:6px">Entregador cadastrado!</div>
+            <div style="font-size:13px;color:#64748b;margin-bottom:20px">Anote o ID de acesso abaixo.</div>
+            <div style="background:rgba(58,134,255,0.08);border:1px solid rgba(58,134,255,0.2);border-radius:12px;padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <span id="mne-id-gerado" style="font-size:22px;font-weight:700;color:#3a86ff;letter-spacing:1px"></span>
+                <button onclick="_copiarID()" style="background:rgba(58,134,255,0.15);border:1px solid rgba(58,134,255,0.3);color:#3a86ff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s" onmouseover="this.style.background='rgba(58,134,255,0.25)'" onmouseout="this.style.background='rgba(58,134,255,0.15)'">Copiar</button>
+            </div>
+            <div id="mne-copiado" style="font-size:12px;color:#22c55e;height:16px;margin-bottom:16px"></div>
+            <button class="usr-modal-btn-primary" onclick="_fecharModal('modal-novo-entregador')">Fechar</button>
         </div>
     </div>
 </div>
