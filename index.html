@@ -204,25 +204,6 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
-/* ===== TELA RECEBIMENTO ===== */
-.tela-receber-full { display: none; width: 100%; height: 100%; }
-.tela-receber-full.active-view { display: flex; align-items: flex-start; justify-content: center; padding-top: 130px; }
-.receber-full-container { width: 100%; max-width: 800px; text-align: center; }
-.input-receber-full {
-    width: 100%; padding: 10px; font-size: 28px; border-radius: 18px;
-    border: 2px solid rgba(58,134,255,0.4); background: rgba(15,15,20,0.8);
-    color: #fff; text-align: center; outline: none; transition: 0.3s;
-}
-.input-receber-full:focus { border-color: #3a86ff; box-shadow: 0 0 25px rgba(58,134,255,0.5); }
-.status-recebimento { margin-top: 25px; font-size: 20px; font-weight: 600; height: 30px; }
-.barra-feedback {
-    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-    width: 100%; max-width: 1200px; padding: 18px 30px; font-size: 22px; font-weight: 600;
-    border-radius: 14px; text-align: center; opacity: 0; transition: all 0.3s ease; z-index: 10;
-}
-.barra-sucesso { background: rgba(27,59,255,0.75); }
-.barra-erro    { background: rgba(92,15,15,0.75); }
-.barra-feedback.mostrar { opacity: 1; }
 
 /* ===== FECHAMENTOS / PAINEL ===== */
 .fech-select {
@@ -1054,7 +1035,6 @@ body {
             <span class="menu-tooltip">Operação</span>
         </li>
         <ul class="submenu" data-menu="operacao" id="submenu-operacao">
-            <li><a href="#" onclick="abrirReceber(event)">Receber</a></li>
             <li><a href="#" onclick="_emBreve(event)">Atribuir</a></li>
         </ul>
 
@@ -1361,14 +1341,6 @@ body {
             </div><!-- /fech-body -->
         </div><!-- /tela-fechamentos -->
 
-        <!-- TELA RECEBIMENTO -->
-        <div id="tela-receber" class="view tela-receber-full">
-            <div id="barra-feedback" class="barra-feedback"></div>
-            <div class="receber-full-container">
-                <input type="text" id="codigo" class="input-receber-full" placeholder="Bipar ou digitar código..." autofocus>
-                <div id="status-recebimento" class="status-recebimento"></div>
-            </div>
-        </div>
 
         <!-- TELA ADMIN -->
         <div id="tela-admin" class="view tela-full">
@@ -1910,35 +1882,6 @@ function mostrarTela(id) {
     document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active", "open"));
 }
 
-// ───── TELA RECEBER ─────
-const inputCodigo = document.getElementById("codigo");
-const barra = document.getElementById("barra-feedback");
-
-inputCodigo.addEventListener("keydown", function(e) {
-    if (e.key !== "Enter") return;
-    const codigo = inputCodigo.value.trim();
-    if (!codigo) return;
-    mostrarFeedback(codigoValido(codigo), codigo);
-    inputCodigo.value = "";
-});
-
-function codigoValido(codigo) {
-    const c = codigo.toUpperCase();
-    return c.length === 44 || c.endsWith("TX") || c.endsWith("D") ||
-           c.endsWith("R") || c.endsWith("T") || c.endsWith("G") || c.startsWith("DGOBR");
-}
-
-function mostrarFeedback(valido, codigo) {
-    barra.classList.remove("barra-sucesso", "barra-erro");
-    barra.classList.add("mostrar", valido ? "barra-sucesso" : "barra-erro");
-    barra.innerText = (valido ? "Código enviado: " : "Código incorreto: ") + codigo;
-    setTimeout(() => barra.classList.remove("mostrar"), 2000);
-}
-
-function abrirReceber(event) {
-    if (event) event.preventDefault();
-    mostrarTela("tela-receber");
-}
 
 function _emBreve(event) {
     if (event) event.preventDefault();
@@ -2243,14 +2186,6 @@ function renderHomeActions(role) {
     if (!container) return;
     const defs = [];
 
-    if (role !== "entregador") {
-        defs.push({
-            icon: `<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>`,
-            title: "Receber Pacotes",
-            desc: "Bipe ou digite o código do pacote.",
-            fn: "abrirReceber()"
-        });
-    }
     if (role === "entregador") {
         defs.push({
             icon: `<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01"/>`,
