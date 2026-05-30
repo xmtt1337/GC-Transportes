@@ -1879,7 +1879,10 @@ function irParaHome() {
 
 function toggleMenu(element) {
     const sidebar = document.getElementById("sidebar");
-    if (!sidebar.classList.contains("expanded")) sidebar.classList.add("expanded");
+    if (!sidebar.classList.contains("expanded")) {
+        sidebar.classList.add("expanded");
+        document.getElementById("sidebar-backdrop").classList.add("active");
+    }
 
     const allMenuItems = document.querySelectorAll(".menu-item");
     const allSubmenus  = document.querySelectorAll(".submenu");
