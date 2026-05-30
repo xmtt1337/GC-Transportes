@@ -2415,7 +2415,9 @@ function buscarConfNFs() {
                 const primeiroNome = r.nome.split(" ")[0];
                 const msg = encodeURIComponent(`Olá ${primeiroNome}! notamos que você não anexou a NFS-e referente a ${quinzenaLabel}`);
                 if (phone) {
-                    waBtn = `<a class="extr-wa" href="https://wa.me/55${phone}?text=${msg}" target="_blank">WhatsApp</a>`;
+                    waBtn = `<a class="extr-wa" href="https://wa.me/55${phone}?text=${msg}" target="_blank" rel="noopener noreferrer">WhatsApp</a>`;
+                } else {
+                    waBtn = `<span class="extr-wa" style="opacity:0.4;cursor:default" title="Cadastre o telefone em Cadastros → Entregadores">Sem telefone</span>`;
                 }
             }
             return `<tr>
