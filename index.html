@@ -1102,6 +1102,18 @@ body {
         <ul class="submenu" data-menu="adminmenu" id="submenu-adminmenu" style="display:none">
             <li><a href="#" onclick="abrirAdmin(event)">Alimentar</a></li>
             <li><a href="#" onclick="abrirAdminFechamentos(event)">Pesquisar</a></li>
+        </ul>
+
+        <li class="menu-item" data-menu="financeiro" id="menu-financeiro" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24">
+                <rect x="1" y="4" width="22" height="16" rx="2"/>
+                <line x1="1" y1="10" x2="23" y2="10"/>
+            </svg>
+            <span class="label">Financeiro</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Financeiro</span>
+        </li>
+        <ul class="submenu" data-menu="financeiro" id="submenu-financeiro" style="display:none">
             <li><a href="#" onclick="abrirAdminNFs(event)">Notas Fiscais</a></li>
             <li><a href="#" onclick="abrirConfNFs(event)">Conferência NF</a></li>
             <li><a href="#" onclick="abrirAdminPagamentos(event)">Pagamentos</a></li>
@@ -1567,7 +1579,8 @@ body {
         <!-- TELA CONFERÊNCIA NF -->
         <div id="tela-conf-nfs" class="view tela-full">
             <div class="fech-header">
-                <div class="fech-period-row">
+                <div class="fech-period-row" style="justify-content:space-between">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                     <select class="fech-select" id="conf-nf-mes" onchange="buscarConfNFs()">
                         <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
                         <option value="3">Março</option>    <option value="4">Abril</option>
@@ -1577,6 +1590,10 @@ body {
                         <option value="11">Novembro</option><option value="12">Dezembro</option>
                     </select>
                     <select class="fech-select" id="conf-nf-ano" onchange="buscarConfNFs()"></select>
+                    </div>
+                    <button id="conf-nf-filtro-btn" onclick="_toggleFiltroConf()" style="padding:9px 16px;border-radius:10px;border:1px solid rgba(251,146,60,0.35);background:transparent;color:#fb923c;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s;white-space:nowrap">
+                        Ver apenas pendentes
+                    </button>
                 </div>
                 <div class="quinzena-toggle">
                     <button class="quinzena-btn" id="conf-nf-btn-1q" onclick="selecionarQuinzenaConf(1)">1ª Quinzena &nbsp;(1 – 15)</button>
@@ -1816,11 +1833,13 @@ fetch(API + "/perfil", {
     }
 
     if (role === "admin") {
-        document.getElementById("menu-adminmenu").style.display  = "";
+        document.getElementById("menu-adminmenu").style.display    = "";
         document.getElementById("submenu-adminmenu").style.display  = "";
-        document.getElementById("menu-cadastros").style.display  = "";
+        document.getElementById("menu-financeiro").style.display   = "";
+        document.getElementById("submenu-financeiro").style.display = "";
+        document.getElementById("menu-cadastros").style.display    = "";
         document.getElementById("submenu-cadastros").style.display  = "";
-        document.getElementById("menu-dashboard").style.display  = "";
+        document.getElementById("menu-dashboard").style.display    = "";
     }
 
     renderHomeActions(role);
@@ -2342,9 +2361,24 @@ function abrirAdminFechamentos(event) {
 }
 
 // ───── TELA CONFERÊNCIA NF ─────
-let _confNFMes      = new Date().getMonth() + 1;
-let _confNFAno      = new Date().getFullYear();
-let _confNFQuinzena = null;
+let _confNFMes           = new Date().getMonth() + 1;
+let _confNFAno           = new Date().getFullYear();
+let _confNFQuinzena      = null;
+let _confNFFiltrarPend   = false;
+let _confNFTodosRows     = [];
+
+function _toggleFiltroConf() {
+    _confNFFiltrarPend = !_confNFFiltrarPend;
+    const btn = document.getElementById("conf-nf-filtro-btn");
+    if (_confNFFiltrarPend) {
+        btn.style.background = "rgba(251,146,60,0.15)";
+        btn.textContent = "Ver todos";
+    } else {
+        btn.style.background = "transparent";
+        btn.textContent = "Ver apenas pendentes";
+    }
+    _renderConfNFTabela(_confNFFiltrarPend ? _confNFTodosRows.filter(r => !r.emitiu_nf) : _confNFTodosRows);
+}
 
 function abrirConfNFs(event) {
     if (event) event.preventDefault();
@@ -2388,49 +2422,61 @@ function buscarConfNFs() {
         if (!rows.length) { empty.innerText = "Nenhum entregador encontrado para este período."; return; }
         empty.style.display = "none";
         resultado.style.display = "";
+        _confNFTodosRows = rows;
+        _confNFFiltrarPend = false;
+        const btn = document.getElementById("conf-nf-filtro-btn");
+        if (btn) { btn.style.background = "transparent"; btn.textContent = "Ver apenas pendentes"; }
         const total    = rows.length;
         const emitidas = rows.filter(r => r.emitiu_nf).length;
+        const pendentes = total - emitidas;
         const confere  = rows.filter(r => r.status === "confere").length;
         document.getElementById("conf-nf-counter").innerHTML =
-            `${total} entregadores &nbsp;·&nbsp; <span style="color:#22c55e">${emitidas} enviaram NF</span> &nbsp;·&nbsp; <span style="color:#22c55e">${confere} conferem</span>`;
-        const MESES_CONF = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-        const quinzenaLabel = `${_confNFQuinzena}ª quinzena de ${MESES_CONF[parseInt(document.getElementById("conf-nf-mes").value)]}/${document.getElementById("conf-nf-ano").value}`;
-        document.getElementById("conf-nf-tbody").innerHTML = rows.map(r => {
-            let emitBadge, confBadge;
-            if (!r.emitiu_nf) {
-                emitBadge = `<span class="adm-nf-badge pendente">Não enviou</span>`;
-                confBadge = `<span class="adm-nf-badge pendente">—</span>`;
-            } else {
-                emitBadge = `<span class="adm-nf-badge confere">✓ Enviou</span>`;
-                if (r.status === "confere")
-                    confBadge = `<span class="adm-nf-badge confere">✓ Confere</span>`;
-                else if (r.status === "diverge")
-                    confBadge = `<span class="adm-nf-badge diverge">⚠ Diverge</span>`;
-                else
-                    confBadge = `<span class="adm-nf-badge pendente">—</span>`;
-            }
-            let waBtn = "";
-            if (!r.emitiu_nf) {
-                const phone = (r.telefone || "").replace(/\D/g, "");
-                const primeiroNome = r.nome.split(" ")[0];
-                const msg = encodeURIComponent(`Olá ${primeiroNome}! notamos que você não anexou a NFS-e referente a ${quinzenaLabel}`);
-                if (phone) {
-                    waBtn = `<a class="extr-wa" href="https://wa.me/55${phone}?text=${msg}" target="_blank" rel="noopener noreferrer">WhatsApp</a>`;
-                } else {
-                    waBtn = `<span class="extr-wa" style="opacity:0.4;cursor:default" title="Cadastre o telefone em Cadastros → Entregadores">Sem telefone</span>`;
-                }
-            }
-            return `<tr>
-                <td class="adm-nf-entregador">${r.nome}</td>
-                <td class="adm-nf-valor">${r.total_receber || "—"}</td>
-                <td>${emitBadge}</td>
-                <td>${r.valor_nf || "—"}</td>
-                <td>${confBadge}</td>
-                <td>${waBtn}</td>
-            </tr>`;
-        }).join("");
+            `${total} entregadores &nbsp;·&nbsp; <span style="color:#22c55e">${emitidas} enviaram NF</span> &nbsp;·&nbsp; <span style="color:#fb923c">${pendentes} pendentes</span> &nbsp;·&nbsp; <span style="color:#22c55e">${confere} conferem</span>`;
+        _renderConfNFTabela(rows);
     })
     .catch(() => { empty.innerText = "Erro ao carregar dados."; });
+}
+
+function _renderConfNFTabela(rows) {
+    const MESES_CONF = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    const quinzenaLabel = `${_confNFQuinzena}ª quinzena de ${MESES_CONF[parseInt(document.getElementById("conf-nf-mes").value)]}/${document.getElementById("conf-nf-ano").value}`;
+    document.getElementById("conf-nf-tbody").innerHTML = rows.map(r => {
+        let emitBadge, confBadge;
+        if (!r.emitiu_nf) {
+            emitBadge = `<span class="adm-nf-badge pendente">Não enviou</span>`;
+            confBadge = `<span class="adm-nf-badge pendente">—</span>`;
+        } else {
+            emitBadge = `<span class="adm-nf-badge confere">✓ Enviou</span>`;
+            if (r.status === "confere")
+                confBadge = `<span class="adm-nf-badge confere">✓ Confere</span>`;
+            else if (r.status === "diverge")
+                confBadge = `<span class="adm-nf-badge diverge">⚠ Diverge</span>`;
+            else
+                confBadge = `<span class="adm-nf-badge pendente">—</span>`;
+        }
+        let waBtn = "";
+        if (!r.emitiu_nf) {
+            const phone = (r.telefone || "").replace(/\D/g, "");
+            const primeiroNome = r.nome.split(" ")[0];
+            const msg = encodeURIComponent(`Olá ${primeiroNome}! notamos que você não anexou a NFS-e referente a ${quinzenaLabel}`);
+            if (phone) {
+                waBtn = `<a class="extr-wa" href="https://wa.me/55${phone}?text=${msg}" target="_blank" rel="noopener noreferrer">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/></svg>
+                    Notificar entregador
+                </a>`;
+            } else {
+                waBtn = `<span class="extr-wa" style="opacity:0.35;cursor:default" title="Sem telefone na planilha TERCEIRIZADOS">Sem telefone</span>`;
+            }
+        }
+        return `<tr>
+            <td class="adm-nf-entregador">${r.nome}</td>
+            <td class="adm-nf-valor">${r.total_receber || "—"}</td>
+            <td>${emitBadge}</td>
+            <td>${r.valor_nf || "—"}</td>
+            <td>${confBadge}</td>
+            <td>${waBtn}</td>
+        </tr>`;
+    }).join("");
 }
 
 function _iniciarSelectsConfNF() {
@@ -2478,7 +2524,6 @@ function _carregarUsuarios() {
                         <div>
                             <div style="font-weight:600;color:#e2e8f0">${u.name || "—"}</div>
                             <div style="font-size:11px;color:#4a6a8a;margin-top:2px">${u.username}</div>
-                            ${u.telefone ? `<div style="font-size:11px;color:#22c55e;margin-top:1px">📱 ${u.telefone}</div>` : `<div style="font-size:11px;color:#475569;margin-top:1px">Sem telefone</div>`}
                         </div>
                     </div>
                 </td>
@@ -2486,7 +2531,6 @@ function _carregarUsuarios() {
                 <td>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
                         <button class="adm-usr-action ${u.active ? 'inativar' : 'ativar'}" onclick="_toggleAtivoUsuario(${u.id},${!u.active})">${u.active ? 'Inativar' : 'Ativar'}</button>
-                        <button class="adm-usr-action senha" onclick="_abrirModalTelefone(${u.id},'${(u.name || u.username).replace(/'/g,"\\'")}','${(u.telefone || "").replace(/'/g,"\\'")}')">Telefone</button>
                         <button class="adm-usr-action senha" onclick="_resetarSenha(${u.id},'${u.username.replace(/'/g,"\\'")}')">Resetar Senha</button>
                         <button class="adm-usr-action deletar" onclick="_deletarUsuario(${u.id},'${u.username.replace(/'/g,"\\'")}')">Deletar</button>
                     </div>
