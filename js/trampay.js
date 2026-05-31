@@ -4,18 +4,19 @@ let _trampayRows = [];
 function _lerCsvTrampay(input) {
     const file = input.files[0];
     if (!file) return;
-    const btnImportar = document.getElementById("trampay-importar-btn");
-    if (btnImportar) { btnImportar.style.display = "none"; }
+    document.getElementById("trampay-importar-btn").style.display = "none";
     document.getElementById("trampay-resultado").style.display = "none";
     document.getElementById("trampay-sucesso").style.display   = "none";
+    document.getElementById("trampay-counter").textContent = "Lendo arquivo...";
+    document.getElementById("trampay-resultado").style.display = "";
     const reader = new FileReader();
     reader.onload = e => {
         const text = e.target.result;
         const linhas = text.split(/\r?\n/).filter(l => l.trim());
-        if (linhas.length < 2) { alert("CSV vazio ou inválido."); return; }
+        if (linhas.length < 2) { alert("CSV vazio ou inválido."); document.getElementById("trampay-resultado").style.display="none"; return; }
 
-        // Detectar separador (tab ou vírgula)
-        const sep = linhas[0].includes("\t") ? "\t" : ",";
+        // Detectar separador: tab, ponto-e-vírgula ou vírgula
+        const sep = linhas[0].includes("\t") ? "\t" : linhas[0].includes(";") ? ";" : ",";
         const cab = linhas[0].split(sep).map(c => c.trim().toLowerCase()
             .replace(/[_\s]/g, "_")
             .normalize("NFD").replace(/[̀-ͯ]/g, ""));
