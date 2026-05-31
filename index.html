@@ -7,6 +7,7 @@
 <link rel="icon" href="img/logobranca.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
@@ -1648,7 +1649,13 @@ body {
             <div class="fech-body">
                 <div class="fechamento-empty" id="adm-nf-empty">Selecione o mês, ano e quinzena para ver as notas fiscais.</div>
                 <div id="adm-nf-resultado" style="display:none">
-                    <div class="adm-nf-counter" id="adm-nf-counter"></div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+                        <div class="adm-nf-counter" id="adm-nf-counter" style="margin-bottom:0"></div>
+                        <button onclick="_exportarNFsXlsx()" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.08);color:#34d399;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(52,211,153,0.16)'" onmouseout="this.style.background='rgba(52,211,153,0.08)'">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Exportar XLSX
+                        </button>
+                    </div>
                     <div class="adm-nf-wrap">
                         <table class="adm-nf-table">
                             <thead>
@@ -3084,10 +3091,35 @@ function _baixarCsvPagamentos() {
         .catch(() => {});
 }
 
+function _exportarNFsXlsx() {
+    if (!_admNFRows.length) return;
+    const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    const nomeMes = MESES[(_admNFMes || 1) - 1] || "";
+    const ordQ    = _admNFQuinzena === 1 ? "1ª Quinzena" : "2ª Quinzena";
+
+    const data = _admNFRows.map(nf => ({
+        "Entregador":      nf.user_name || nf.username || "",
+        "Status":          nf.status === "confere" ? "Confere" : nf.status === "diverge" ? "Diverge" : "Pendente",
+        "Valor NF":        nf.valor || "",
+        "Data Emissão":    nf.emissao || "",
+        "CNPJ":            nf.cnpj || "",
+        "Emissor":         nf.emissor || "",
+        "Nº NF":           nf.numero_nf || "",
+        "Chave de Acesso": nf.chave_acesso || "",
+        "Tomador":         nf.tomador || "",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Notas Fiscais");
+    XLSX.writeFile(wb, `notas_fiscais_${nomeMes}_${_admNFAno}_${ordQ.replace(" ","")}.xlsx`);
+}
+
 // ───── TELA ADMIN NOTAS FISCAIS ─────
 let _admNFMes      = new Date().getMonth() + 1;
 let _admNFAno      = new Date().getFullYear();
 let _admNFQuinzena = null;
+let _admNFRows     = [];
 
 function abrirAdminNFs(event) {
     if (event) event.preventDefault();
@@ -3142,9 +3174,11 @@ function buscarNFsAdmin() {
     .then(r => r.json())
     .then(rows => {
         if (!Array.isArray(rows) || !rows.length) {
+            _admNFRows = [];
             empty.innerText = "Nenhuma nota fiscal encontrada para este período.";
             return;
         }
+        _admNFRows = rows;
         empty.style.display = "none";
         resultado.style.display = "";
 
