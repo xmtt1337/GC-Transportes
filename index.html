@@ -2791,7 +2791,24 @@ function buscarNFsAdmin() {
         }
         empty.style.display = "none";
         resultado.style.display = "";
-        document.getElementById("adm-nf-counter").textContent = `${rows.length} nota${rows.length > 1 ? "s" : ""} fiscal encontrada${rows.length > 1 ? "s" : ""}`;
+
+        // Total valor NFs
+        const totalNF = rows.reduce((s, nf) => s + (_parseMoeda(nf.valor) || 0), 0);
+
+        // Detectar chaves de acesso duplicadas
+        const chaveCount = {};
+        rows.forEach(nf => { if (nf.chave_acesso) chaveCount[nf.chave_acesso] = (chaveCount[nf.chave_acesso] || 0) + 1; });
+        const nDup = rows.filter(nf => chaveCount[nf.chave_acesso] > 1).length;
+
+        // Verificar tomador GC Transportes
+        const _isGC = t => t && /gc.*transport/i.test(t);
+        const nSemGC = rows.filter(nf => nf.tomador && !_isGC(nf.tomador)).length;
+
+        let counter = `${rows.length} nota${rows.length > 1 ? "s" : ""} &nbsp;·&nbsp; Total: <strong style="color:#22c55e">${moedaJS(totalNF)}</strong>`;
+        if (nDup)   counter += ` &nbsp;·&nbsp; <span style="color:#ef4444">⚠ ${nDup} chave(s) duplicada(s)</span>`;
+        if (nSemGC) counter += ` &nbsp;·&nbsp; <span style="color:#ef4444">⚠ ${nSemGC} sem GC Transportes</span>`;
+        document.getElementById("adm-nf-counter").innerHTML = counter;
+
         document.getElementById("adm-nf-tbody").innerHTML = rows.map(nf => {
             const badgeCls = nf.status === "confere" ? "confere" : nf.status === "diverge" ? "diverge" : "pendente";
             const badgeTxt = nf.status === "confere" ? "✓ Confere" : nf.status === "diverge" ? "⚠ Diverge" : "—";
@@ -2799,8 +2816,19 @@ function buscarNFsAdmin() {
             const chavePart = nf.chave_acesso
                 ? `<div class="adm-nf-chave" style="font-family:monospace;font-size:10.5px;color:#64748b;word-break:break-all;line-height:1.5">${nf.chave_acesso}</div>`
                 : `<span style="color:#475569">—</span>`;
-            return `<tr>
-                <td class="adm-nf-entregador">${nf.user_name || nf.username}</td>
+
+            const isDup   = chaveCount[nf.chave_acesso] > 1;
+            const notGC   = nf.tomador && !_isGC(nf.tomador);
+            const rowErr  = isDup || notGC;
+            const rowStyle = rowErr ? ' style="background:rgba(239,68,68,0.07);border-left:3px solid #ef4444"' : '';
+
+            const alertas = [
+                isDup ? `<span class="adm-nf-badge diverge" style="margin-top:4px;display:inline-block">Chave duplicada</span>` : "",
+                notGC ? `<span class="adm-nf-badge diverge" style="margin-top:4px;display:inline-block" title="${nf.tomador}">Tomador ≠ GC</span>` : "",
+            ].filter(Boolean).join(" ");
+
+            return `<tr${rowStyle}>
+                <td class="adm-nf-entregador">${nf.user_name || nf.username}${alertas ? `<div style="margin-top:4px">${alertas}</div>` : ""}</td>
                 <td><span class="adm-nf-badge ${badgeCls}">${badgeTxt}</span></td>
                 <td class="adm-nf-valor">${nf.valor || "—"}</td>
                 <td>${nf.emissao || "—"}</td>
