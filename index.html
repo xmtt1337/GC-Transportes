@@ -1833,7 +1833,7 @@ body {
                                     <th>ID Externo</th>
                                     <th>Chave PIX</th>
                                     <th>Tipo PIX</th>
-                                    <th>Status</th>
+                                    <th>Data Criação</th>
                                 </tr>
                             </thead>
                             <tbody id="trampay-ent-tbody"></tbody>
@@ -2777,12 +2777,12 @@ function _carregarEntregadoresTrampay() {
             `${data.length} entregador${data.length !== 1 ? "es" : ""} cadastrado${data.length !== 1 ? "s" : ""}`;
         document.getElementById("trampay-ent-tbody").innerHTML = data.map(u => `
             <tr>
-                <td class="adm-nf-entregador">${u.name || "—"}</td>
-                <td class="adm-nf-cnpj">${u.documento || "<span style='color:#475569;font-style:italic'>Não informado</span>"}</td>
+                <td class="adm-nf-entregador">${u.nome || "—"}</td>
+                <td class="adm-nf-cnpj">${u.documento || "—"}</td>
                 <td class="adm-nf-cnpj">${u.id_externo || "—"}</td>
                 <td class="pag-pix">${u.chave_pix || "—"}</td>
                 <td>${u.chave_pix ? `<span class="pag-pix-badge">${u.tipo_pix || "—"}</span>` : "—"}</td>
-                <td><span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? "Ativo" : "Inativo"}</span></td>
+                <td style="font-size:12px;color:#64748b">${u.data_criacao || "—"}</td>
             </tr>
         `).join("");
     }).catch(() => { empty.innerText = "Erro ao carregar entregadores Trampay."; });
