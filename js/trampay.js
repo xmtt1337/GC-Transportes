@@ -10,10 +10,17 @@ function _lerCsvTrampay(input) {
     document.getElementById("trampay-counter").textContent = "Lendo arquivo...";
     document.getElementById("trampay-resultado").style.display = "";
     const reader = new FileReader();
+    reader.onerror = () => {
+        document.getElementById("trampay-counter").textContent = "Erro ao ler o arquivo.";
+    };
     reader.onload = e => {
+      try {
         const text = e.target.result;
         const linhas = text.split(/\r?\n/).filter(l => l.trim());
-        if (linhas.length < 2) { alert("CSV vazio ou inválido."); document.getElementById("trampay-resultado").style.display="none"; return; }
+        if (linhas.length < 2) {
+            document.getElementById("trampay-counter").textContent = "Arquivo vazio ou inválido.";
+            return;
+        }
 
         // Detectar separador: tab, ponto-e-vírgula ou vírgula
         const sep = linhas[0].includes("\t") ? "\t" : linhas[0].includes(";") ? ";" : ",";
@@ -57,6 +64,9 @@ function _lerCsvTrampay(input) {
 
         document.getElementById("trampay-resultado").style.display    = "";
         document.getElementById("trampay-importar-btn").style.display = "";
+      } catch(err) {
+        document.getElementById("trampay-counter").textContent = "Erro ao processar: " + err.message;
+      }
     };
     reader.readAsText(file, "UTF-8");
 }
