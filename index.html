@@ -1764,7 +1764,6 @@ body {
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
                     <div>
                         <div style="font-size:15px;font-weight:700;color:#e2e8f0">Importar Entregadores — Trampay</div>
-                        <div style="font-size:12px;color:#4a6a8a;margin-top:3px">CSV com: nome, documento, id_externo, chave_pix, chave_pix_tipo, data_criação</div>
                     </div>
                     <button id="trampay-importar-btn" class="fech-filtrar-btn" style="display:none" onclick="_confirmarImportTrampay()">Importar dados</button>
                 </div>
@@ -1834,6 +1833,7 @@ body {
                                     <th>Chave PIX</th>
                                     <th>Tipo PIX</th>
                                     <th>Data Criação</th>
+                                    <th>Última Atualização</th>
                                 </tr>
                             </thead>
                             <tbody id="trampay-ent-tbody"></tbody>
@@ -2783,6 +2783,7 @@ function _carregarEntregadoresTrampay() {
                 <td class="pag-pix">${u.chave_pix || "—"}</td>
                 <td>${u.chave_pix ? `<span class="pag-pix-badge">${u.tipo_pix || "—"}</span>` : "—"}</td>
                 <td style="font-size:12px;color:#64748b">${u.data_criacao || "—"}</td>
+                <td style="font-size:12px;color:#64748b">${u.updated_at ? new Date(u.updated_at).toLocaleString('pt-BR') : "—"}</td>
             </tr>
         `).join("");
     }).catch(() => { empty.innerText = "Erro ao carregar entregadores Trampay."; });
