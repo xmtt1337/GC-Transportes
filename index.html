@@ -654,6 +654,47 @@ body {
 .adm-dropdown-item-valor { font-size: 13px; font-weight: 700; color: #34d399; white-space: nowrap; }
 .adm-dropdown-empty { padding: 16px 14px; font-size: 13px; color: #4a6a8a; text-align: center; }
 
+/* ===== GRID ENTREGADORES ===== */
+.adm-ent-resumo {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 10px; margin-bottom: 14px;
+    padding: 14px 18px;
+    background: rgba(27,38,59,0.5); border: 1px solid rgba(58,134,255,0.1);
+    border-radius: 12px;
+}
+.adm-ent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+}
+.adm-ent-card {
+    background: rgba(27,38,59,0.7); border: 1px solid rgba(58,134,255,0.1);
+    border-radius: 14px; padding: 16px; cursor: pointer;
+    transition: all 0.18s ease;
+}
+.adm-ent-card:hover {
+    border-color: rgba(58,134,255,0.35);
+    transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+.adm-ent-card.selected {
+    border-color: #3a86ff; background: rgba(58,134,255,0.08);
+    box-shadow: 0 0 0 1px rgba(58,134,255,0.2);
+}
+.adm-ent-card-nome {
+    font-size: 13px; font-weight: 700; color: #e2e8f0; margin-bottom: 8px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.adm-ent-card-valor { font-size: 20px; font-weight: 700; color: #34d399; line-height: 1; margin-bottom: 3px; }
+.adm-ent-card-qtd   { font-size: 11px; color: #4a6a8a; margin-bottom: 10px; }
+.adm-ent-transp     { display: flex; gap: 5px; flex-wrap: wrap; }
+.adm-ent-t          { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px; white-space: nowrap; }
+
+@media (max-width: 680px) {
+    .adm-ent-grid { grid-template-columns: 1fr 1fr; }
+    .adm-ent-card { padding: 12px; }
+    .adm-ent-card-valor { font-size: 16px; }
+}
+
 /* ===== DASHBOARD ===== */
 .dash-comp-toggle {
     display: flex; background: rgba(15,15,20,0.6);
@@ -1406,22 +1447,25 @@ body {
             <div class="fech-body">
                 <div class="fechamento-empty" id="adm-fech-empty">Selecione o mês, ano e quinzena para ver os entregadores.</div>
 
-                <!-- sem resumo aqui — use o Dashboard -->
                 <div id="adm-ent-section" style="display:none">
-                    <div class="adm-search-wrap" id="adm-search-wrap">
+                    <!-- Resumo geral -->
+                    <div class="adm-ent-resumo" id="adm-ent-resumo">
+                        <span id="adm-ent-counter" style="font-size:13px;color:#94a3b8;font-weight:500"></span>
+                        <span id="adm-ent-total-geral" style="font-size:14px;font-weight:700;color:#34d399"></span>
+                    </div>
+                    <!-- Busca + chip selecionado -->
+                    <div style="margin-bottom:14px">
                         <div class="adm-search-input-area" id="adm-search-input-area">
-                            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                            <input type="text" id="adm-search-input" placeholder="Pesquisar entregador..."
-                                   oninput="filtrarEntregadores()" onfocus="abrirDropdownEntregadores()">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="adm-search-input" placeholder="Filtrar entregadores..." oninput="filtrarEntregadores()">
                         </div>
-                        <div class="adm-selected-chip" id="adm-selected-chip" style="display:none">
+                        <div class="adm-selected-chip" id="adm-selected-chip" style="display:none;margin-top:8px">
                             <span id="adm-selected-nome"></span>
                             <button onclick="limparSelecaoEntregador()">×</button>
                         </div>
-                        <div class="adm-dropdown" id="adm-dropdown" style="display:none">
-                            <div id="adm-dropdown-lista"></div>
-                        </div>
                     </div>
+                    <!-- Grid de cards -->
+                    <div class="adm-ent-grid" id="adm-ent-grid"></div>
                 </div>
 
                 <div id="adm-fech-data" style="display:none">
@@ -2815,65 +2859,73 @@ function buscarQuinzenaAdmin() {
         document.getElementById("adm-search-input").value = "";
         document.getElementById("adm-search-input-area").style.display = "";
         document.getElementById("adm-selected-chip").style.display = "none";
-        document.getElementById("adm-dropdown").style.display = "none";
+        document.getElementById("adm-fech-data").style.display = "none";
+        // Resumo geral
+        const totalGeral = b.entregadores.reduce((s, e) => s + (e.total_receber_num || 0), 0);
+        document.getElementById("adm-ent-counter").textContent = `${b.entregadores.length} entregadores`;
+        document.getElementById("adm-ent-total-geral").textContent = `Total: ${moedaJS(totalGeral)}`;
         document.getElementById("adm-ent-section").style.display = "";
+        _renderEntregadoresGrid(b.entregadores);
     })
     .catch(() => {
         empty.innerText = "Erro ao conectar com o servidor.";
     });
 }
 
-function _renderDropdown(lista) {
-    const el = document.getElementById("adm-dropdown-lista");
+const _TRANSP_CHIPS = [
+    { key: "qtd_loggi",  label: "Loggi",  color: "#01b4f7" },
+    { key: "qtd_jt",     label: "J&T",    color: "#cc4138" },
+    { key: "qtd_imile",  label: "iMile",  color: "#6b80ff" },
+    { key: "qtd_anjun",  label: "Anjun",  color: "#009c21" },
+    { key: "qtd_shopee", label: "Shopee", color: "#ed4d2d" },
+];
+
+function _renderEntregadoresGrid(lista) {
+    const grid = document.getElementById("adm-ent-grid");
     if (!lista.length) {
-        el.innerHTML = `<div class="adm-dropdown-empty">Nenhum entregador encontrado</div>`;
+        grid.innerHTML = `<div style="grid-column:1/-1;padding:24px;text-align:center;color:#4a6a8a;font-size:13px">Nenhum entregador encontrado</div>`;
         return;
     }
-    el.innerHTML = lista.map(e =>
-        `<div class="adm-dropdown-item" data-nome="${e.nome.replace(/"/g,'&quot;')}" onclick="selecionarEntregadorAdmin(this.dataset.nome)">
-            <span class="adm-dropdown-item-nome">${e.nome}</span>
-            <span class="adm-dropdown-item-valor">${e.total_receber}</span>
-        </div>`
-    ).join("");
-}
-
-function abrirDropdownEntregadores() {
-    _renderDropdown(_admEntregadoresLista);
-    document.getElementById("adm-dropdown").style.display = "";
+    grid.innerHTML = lista.map(e => {
+        const chips = _TRANSP_CHIPS
+            .filter(t => (e[t.key] || 0) > 0)
+            .map(t => `<span class="adm-ent-t" style="background:${t.color}22;color:${t.color};border:1px solid ${t.color}44">${t.label} ${e[t.key]}</span>`)
+            .join("");
+        const nomeEsc = e.nome.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        return `<div class="adm-ent-card" onclick="selecionarEntregadorAdmin('${nomeEsc}')" data-nome="${nomeEsc}">
+            <div class="adm-ent-card-nome" title="${e.nome}">${e.nome}</div>
+            <div class="adm-ent-card-valor">${e.total_receber}</div>
+            <div class="adm-ent-card-qtd">${e.total_entregues || 0} pacotes entregues</div>
+            ${chips ? `<div class="adm-ent-transp">${chips}</div>` : ""}
+        </div>`;
+    }).join("");
 }
 
 function filtrarEntregadores() {
     const q = document.getElementById("adm-search-input").value.toLowerCase();
-    const filtrados = _admEntregadoresLista.filter(e => e.nome.toLowerCase().includes(q));
-    _renderDropdown(filtrados);
-    document.getElementById("adm-dropdown").style.display = "";
+    _renderEntregadoresGrid(_admEntregadoresLista.filter(e => e.nome.toLowerCase().includes(q)));
 }
+
+function abrirDropdownEntregadores() {}
 
 function selecionarEntregadorAdmin(nome) {
     _admFEntregador = nome;
+    // Destaca card selecionado
+    document.querySelectorAll(".adm-ent-card").forEach(c =>
+        c.classList.toggle("selected", c.dataset.nome === nome)
+    );
     document.getElementById("adm-selected-nome").textContent = nome;
-    document.getElementById("adm-search-input-area").style.display = "none";
     document.getElementById("adm-selected-chip").style.display = "";
-    document.getElementById("adm-dropdown").style.display = "none";
     _carregarPainelAdmin();
 }
 
 function limparSelecaoEntregador() {
     _admFEntregador = "";
-    document.getElementById("adm-search-input").value = "";
-    document.getElementById("adm-search-input-area").style.display = "";
+    document.querySelectorAll(".adm-ent-card").forEach(c => c.classList.remove("selected"));
     document.getElementById("adm-selected-chip").style.display = "none";
     document.getElementById("adm-fech-data").style.display = "none";
     document.getElementById("adm-fech-empty").style.display = "none";
 }
-
-document.addEventListener("click", function(e) {
-    const wrap = document.getElementById("adm-search-wrap");
-    if (wrap && !wrap.contains(e.target)) {
-        const dd = document.getElementById("adm-dropdown");
-        if (dd) dd.style.display = "none";
-    }
-});
 
 // ───── DASHBOARD ─────
 let _dashBarChart = null;
