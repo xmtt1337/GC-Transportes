@@ -1222,6 +1222,7 @@ body {
             </li>
             <ul class="sub-submenu" id="subgroup-trampay">
                 <li><a href="#" onclick="abrirImportarTrampay(event)">Importar</a></li>
+                <li><a href="#" onclick="abrirEntregadoresTrampay(event)">Entregadores</a></li>
             </ul>
         </ul>
 
@@ -1808,6 +1809,39 @@ body {
                 </div>
             </div>
         </div><!-- /tela-trampay-importar -->
+
+        <!-- TELA ENTREGADORES TRAMPAY -->
+        <div id="tela-trampay-entregadores" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                    <div>
+                        <div style="font-size:15px;font-weight:700;color:#e2e8f0">Entregadores — Trampay</div>
+                        <div style="font-size:12px;color:#4a6a8a;margin-top:3px">Dados importados via CSV da Trampay</div>
+                    </div>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="trampay-ent-empty">Carregando...</div>
+                <div id="trampay-ent-resultado" style="display:none">
+                    <div class="adm-nf-counter" id="trampay-ent-counter"></div>
+                    <div class="adm-nf-wrap">
+                        <table class="adm-nf-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Documento</th>
+                                    <th>ID Externo</th>
+                                    <th>Chave PIX</th>
+                                    <th>Tipo PIX</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trampay-ent-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-trampay-entregadores -->
 
         <!-- TELA ADMIN USUÁRIOS -->
         <div id="tela-admin-usuarios" class="view tela-full">
@@ -2713,6 +2747,45 @@ async function _confirmarImportTrampay() {
         btn.disabled = false;
         btn.textContent = "Importar dados";
     }
+}
+
+// ───── TELA ENTREGADORES TRAMPAY ─────
+function abrirEntregadoresTrampay(event) {
+    if (event) event.preventDefault();
+    mostrarTela("tela-trampay-entregadores");
+    _carregarEntregadoresTrampay();
+}
+
+function _carregarEntregadoresTrampay() {
+    const tok = localStorage.getItem("token");
+    const empty = document.getElementById("trampay-ent-empty");
+    const res   = document.getElementById("trampay-ent-resultado");
+    empty.innerText = "Carregando...";
+    empty.style.display = "";
+    res.style.display = "none";
+
+    fetch(`${API}/admin/trampay/entregadores`, { headers: { "Authorization": "Bearer " + tok } })
+    .then(r => r.json())
+    .then(data => {
+        if (!Array.isArray(data) || !data.length) {
+            empty.innerText = "Nenhum entregador com dados Trampay.";
+            return;
+        }
+        empty.style.display = "none";
+        res.style.display = "";
+        document.getElementById("trampay-ent-counter").textContent =
+            `${data.length} entregador${data.length !== 1 ? "es" : ""} cadastrado${data.length !== 1 ? "s" : ""}`;
+        document.getElementById("trampay-ent-tbody").innerHTML = data.map(u => `
+            <tr>
+                <td class="adm-nf-entregador">${u.name || "—"}</td>
+                <td class="adm-nf-cnpj">${u.documento || "<span style='color:#475569;font-style:italic'>Não informado</span>"}</td>
+                <td class="adm-nf-cnpj">${u.id_externo || "—"}</td>
+                <td class="pag-pix">${u.chave_pix || "—"}</td>
+                <td>${u.chave_pix ? `<span class="pag-pix-badge">${u.tipo_pix || "—"}</span>` : "—"}</td>
+                <td><span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? "Ativo" : "Inativo"}</span></td>
+            </tr>
+        `).join("");
+    }).catch(() => { empty.innerText = "Erro ao carregar entregadores Trampay."; });
 }
 
 // ───── TELA ADMIN USUÁRIOS ─────
