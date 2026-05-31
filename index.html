@@ -226,20 +226,27 @@ body {
 .fech-filtrar-btn:hover { background: #2563eb; box-shadow: 0 0 14px rgba(58,134,255,0.4); }
 
 .quinzena-toggle {
-    display: flex; background: rgba(10,16,30,0.85);
-    border: 1px solid rgba(58,134,255,0.15); border-radius: 14px;
-    padding: 4px; gap: 4px; width: 100%;
+    display: flex; gap: 10px; width: 100%;
 }
 .quinzena-btn {
-    flex: 1; padding: 11px 0; background: none; border: none; color: #64748b;
-    font-size: 14px; font-weight: 500; cursor: pointer;
-    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
-    font-family: 'Inter', sans-serif; border-radius: 10px;
+    flex: 1; padding: 12px 16px;
+    background: rgba(27,38,59,0.45);
+    border: 1px solid rgba(58,134,255,0.1);
+    color: #475569; font-size: 13.5px; font-weight: 500;
+    cursor: pointer; text-align: center; white-space: nowrap;
+    transition: all 0.22s ease;
+    font-family: 'Inter', sans-serif; border-radius: 12px;
 }
-.quinzena-btn:hover:not(.active) { background: rgba(58,134,255,0.08); color: #cbd5e1; }
+.quinzena-btn:hover:not(.active) {
+    border-color: rgba(58,134,255,0.28);
+    color: #94a3b8;
+    background: rgba(27,38,59,0.85);
+}
 .quinzena-btn.active {
-    background: #1e40af; color: #fff;
-    box-shadow: 0 2px 10px rgba(30,64,175,0.45);
+    background: rgba(58,134,255,0.1);
+    border-color: rgba(58,134,255,0.5);
+    color: #93c5fd; font-weight: 600;
+    box-shadow: 0 0 0 1px rgba(58,134,255,0.15), 0 4px 20px rgba(58,134,255,0.1);
 }
 
 .fechamento-empty {
@@ -471,7 +478,7 @@ body {
 
     .fech-select { font-size: 13px; padding: 9px 30px 9px 10px; }
     .fech-filtrar-btn { padding: 9px 14px; font-size: 13px; }
-    .quinzena-btn { font-size: 13px; padding: 12px 4px; }
+    .quinzena-btn { font-size: 12.5px; padding: 10px 8px; }
 
     .painel-banner {
         flex-direction: column; align-items: stretch;
