@@ -2869,7 +2869,7 @@ function buscarQuinzenaAdmin() {
         document.getElementById("adm-fech-data").style.display = "none";
         // Resumo geral
         const totalGeral   = b.entregadores.reduce((s, e) => s + (e.total_receber_num || 0), 0);
-        const totalPacotes = b.entregadores.reduce((s, e) => s + (parseInt(e.total_entregues) || 0), 0);
+        const totalPacotes = b.entregadores.reduce((s, e) => s + (e.total_entregues || 0), 0);
         document.getElementById("adm-ent-counter").textContent       = `${b.entregadores.length} entregadores`;
         document.getElementById("adm-ent-total-pacotes").textContent = `${totalPacotes.toLocaleString("pt-BR")} pacotes entregues`;
         document.getElementById("adm-ent-total-geral").textContent   = `Total: ${moedaJS(totalGeral)}`;
