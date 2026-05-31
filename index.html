@@ -936,6 +936,43 @@ body {
     #tela-admin-pagamentos .adm-nf-table td:nth-child(4) { display: none; }
 }
 
+/* ===== SUBMENU 3º NÍVEL ===== */
+.submenu-group-lbl {
+    display: block; padding: 10px 15px 4px 14px;
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.13em; color: #3a86ff; opacity: 0.65;
+    cursor: default;
+}
+.submenu-sub { list-style: none; }
+.submenu-sub a { padding-left: 48px !important; font-size: 13px !important; }
+
+/* ===== TELA IMPORTAR TRAMPAY ===== */
+.trampay-upload-area {
+    border: 2px dashed rgba(58,134,255,0.22); border-radius: 14px;
+    padding: 28px; text-align: center; margin-bottom: 16px;
+    transition: border-color 0.2s;
+}
+.trampay-upload-area:hover { border-color: rgba(58,134,255,0.45); }
+.trampay-preview-wrap {
+    background: rgba(15,25,43,0.7); border: 1px solid rgba(58,134,255,0.12);
+    border-radius: 14px; overflow: hidden; margin-bottom: 16px;
+}
+.trampay-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.trampay-table th {
+    padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 700;
+    color: #7a8599; text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(58,134,255,0.12); white-space: nowrap;
+    background: rgba(15,15,20,0.3);
+}
+.trampay-table td {
+    padding: 10px 14px; border-bottom: 1px solid rgba(58,134,255,0.06); color: #e2e8f0;
+}
+.trampay-table tr:last-child td { border-bottom: none; }
+.trampay-table tr:hover td { background: rgba(58,134,255,0.03); }
+.trampay-table .t-doc  { font-family: monospace; font-size: 12px; color: #94a3b8; }
+.trampay-table .t-pix  { font-size: 12px; color: #94a3b8; word-break: break-all; }
+.trampay-table .t-nome { font-weight: 600; color: #e2e8f0; }
+
 /* ===== ADMIN USUÁRIOS ===== */
 .adm-usr-add-btn {
     padding: 8px 16px; border-radius: 10px; border: 1px solid rgba(58,134,255,0.3);
@@ -1159,7 +1196,14 @@ body {
             <span class="menu-tooltip">Cadastros</span>
         </li>
         <ul class="submenu" data-menu="cadastros" id="submenu-cadastros" style="display:none">
-            <li><a href="#" onclick="abrirAdminUsuarios(event)">Entregadores</a></li>
+            <span class="submenu-group-lbl">GC Transportes</span>
+            <ul class="submenu-sub">
+                <li><a href="#" onclick="abrirAdminUsuarios(event)">Entregadores</a></li>
+            </ul>
+            <span class="submenu-group-lbl">Trampay</span>
+            <ul class="submenu-sub">
+                <li><a href="#" onclick="abrirImportarTrampay(event)">Importar</a></li>
+            </ul>
         </ul>
 
         <li class="menu-item" id="menu-dashboard" onclick="abrirDashboard(event)" style="display:none">
@@ -1693,6 +1737,58 @@ body {
                 </div>
             </div>
         </div><!-- /tela-admin-pagamentos -->
+
+        <!-- TELA IMPORTAR TRAMPAY -->
+        <div id="tela-trampay-importar" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                    <div>
+                        <div style="font-size:15px;font-weight:700;color:#e2e8f0">Importar Entregadores — Trampay</div>
+                        <div style="font-size:12px;color:#4a6a8a;margin-top:3px">CSV com: nome, documento, id_externo, chave_pix, chave_pix_tipo, data_criação</div>
+                    </div>
+                    <button id="trampay-importar-btn" class="fech-filtrar-btn" style="display:none" onclick="_confirmarImportTrampay()">Importar dados</button>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div id="trampay-upload-area" class="trampay-upload-area">
+                    <input type="file" id="trampay-file-input" accept=".csv" style="display:none" onchange="_lerCsvTrampay(this)">
+                    <button class="nota-btn-upload" onclick="document.getElementById('trampay-file-input').click()">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Selecionar CSV
+                    </button>
+                    <p class="nota-hint">Arraste ou clique para selecionar o arquivo exportado da Trampay</p>
+                </div>
+
+                <div id="trampay-resultado" style="display:none">
+                    <div id="trampay-counter" class="adm-nf-counter" style="margin-bottom:12px"></div>
+                    <div class="trampay-preview-wrap">
+                        <table class="trampay-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Documento</th>
+                                    <th>ID Externo</th>
+                                    <th>Chave PIX</th>
+                                    <th>Tipo PIX</th>
+                                    <th>Data Criação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trampay-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="trampay-sucesso" style="display:none;padding:20px 0">
+                    <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        <div>
+                            <div style="font-weight:600;color:#22c55e;font-size:14px" id="trampay-sucesso-txt">Importação concluída!</div>
+                            <div style="font-size:12px;color:#64748b;margin-top:2px">Os dados de pagamento foram atualizados.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-trampay-importar -->
 
         <!-- TELA ADMIN USUÁRIOS -->
         <div id="tela-admin-usuarios" class="view tela-full">
@@ -2489,6 +2585,103 @@ function _iniciarSelectsConfNF() {
         selAno.appendChild(opt);
     }
     document.getElementById("conf-nf-mes").value = _confNFMes;
+}
+
+// ───── TELA IMPORTAR TRAMPAY ─────
+let _trampayRows = [];
+
+function abrirImportarTrampay(event) {
+    if (event) event.preventDefault();
+    _trampayRows = [];
+    document.getElementById("trampay-file-input").value = "";
+    document.getElementById("trampay-resultado").style.display = "none";
+    document.getElementById("trampay-sucesso").style.display   = "none";
+    document.getElementById("trampay-importar-btn").style.display = "none";
+    document.getElementById("trampay-upload-area").style.display  = "";
+    mostrarTela("tela-trampay-importar");
+}
+
+function _lerCsvTrampay(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const text = e.target.result;
+        const linhas = text.split(/\r?\n/).filter(l => l.trim());
+        if (linhas.length < 2) { alert("CSV vazio ou inválido."); return; }
+
+        // Detectar separador (tab ou vírgula)
+        const sep = linhas[0].includes("\t") ? "\t" : ",";
+        const cab = linhas[0].split(sep).map(c => c.trim().toLowerCase()
+            .replace(/[_\s]/g, "_")
+            .normalize("NFD").replace(/[̀-ͯ]/g, ""));
+
+        const idx = k => cab.findIndex(c => c.includes(k));
+        const iNome  = idx("nome");
+        const iDoc   = idx("doc");
+        const iExt   = idx("externo") >= 0 ? idx("externo") : idx("id");
+        const iPix   = idx("chave");
+        const iTipo  = idx("tipo");
+        const iData  = idx("data");
+
+        _trampayRows = linhas.slice(1).map(l => {
+            const cols = l.split(sep).map(c => c.trim().replace(/^"|"$/g, ""));
+            return {
+                nome:          iNome  >= 0 ? cols[iNome]  : "",
+                documento:     iDoc   >= 0 ? cols[iDoc]   : "",
+                id_externo:    iExt   >= 0 ? cols[iExt]   : "",
+                chave_pix:     iPix   >= 0 ? cols[iPix]   : "",
+                chave_pix_tipo:iTipo  >= 0 ? cols[iTipo]  : "",
+                data_criacao:  iData  >= 0 ? cols[iData]  : "",
+            };
+        }).filter(r => r.nome);
+
+        document.getElementById("trampay-counter").textContent =
+            `${_trampayRows.length} entregadores encontrados no CSV`;
+
+        document.getElementById("trampay-tbody").innerHTML = _trampayRows.map(r => `
+            <tr>
+                <td class="t-nome">${r.nome}</td>
+                <td class="t-doc">${r.documento || "—"}</td>
+                <td class="t-doc">${r.id_externo || "—"}</td>
+                <td class="t-pix">${r.chave_pix || "—"}</td>
+                <td>${r.chave_pix_tipo ? `<span class="pag-pix-badge">${r.chave_pix_tipo}</span>` : "—"}</td>
+                <td style="font-size:12px;color:#64748b">${r.data_criacao || "—"}</td>
+            </tr>
+        `).join("");
+
+        document.getElementById("trampay-upload-area").style.display  = "none";
+        document.getElementById("trampay-resultado").style.display     = "";
+        document.getElementById("trampay-importar-btn").style.display  = "";
+    };
+    reader.readAsText(file, "UTF-8");
+}
+
+async function _confirmarImportTrampay() {
+    if (!_trampayRows.length) return;
+    const btn = document.getElementById("trampay-importar-btn");
+    btn.disabled = true;
+    btn.textContent = "Importando...";
+    const tok = localStorage.getItem("token");
+
+    try {
+        const res  = await fetch(`${API}/admin/trampay/importar`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
+            body: JSON.stringify({ entregadores: _trampayRows })
+        });
+        const data = await res.json();
+        if (data.error) { alert(data.error); btn.disabled = false; btn.textContent = "Importar dados"; return; }
+        document.getElementById("trampay-sucesso-txt").textContent =
+            `${data.atualizados || _trampayRows.length} entregadores atualizados com sucesso!`;
+        document.getElementById("trampay-resultado").style.display = "none";
+        document.getElementById("trampay-importar-btn").style.display = "none";
+        document.getElementById("trampay-sucesso").style.display = "";
+    } catch {
+        alert("Erro ao conectar com o servidor.");
+        btn.disabled = false;
+        btn.textContent = "Importar dados";
+    }
 }
 
 // ───── TELA ADMIN USUÁRIOS ─────
