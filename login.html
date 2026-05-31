@@ -273,20 +273,45 @@ body {
 .reset-panel {
     display: none;
     position: absolute; inset: 0;
-    background: #0b0f17;
+    background: rgba(7,9,14,0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     align-items: center; justify-content: center;
-    padding: 40px 52px;
+    padding: 40px 24px;
     z-index: 10;
-    animation: fadeUp 0.4s ease both;
+    animation: fadeUp 0.35s ease both;
 }
 .reset-panel.active { display: flex; }
+
+.reset-card {
+    background: linear-gradient(160deg, #0f1925 0%, #0b1220 100%);
+    border: 1px solid rgba(58,134,255,0.15);
+    border-radius: 24px;
+    padding: 36px 32px 32px;
+    width: 100%; max-width: 400px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(58,134,255,0.05);
+    position: relative;
+}
+
+.reset-icon-wrap {
+    width: 52px; height: 52px; border-radius: 16px;
+    background: rgba(58,134,255,0.1);
+    border: 1px solid rgba(58,134,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+}
+.reset-icon-wrap svg {
+    width: 24px; height: 24px;
+    stroke: #3a86ff; fill: none;
+    stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
+}
 
 .reset-back {
     background: none; border: none; cursor: pointer;
     color: #3a6699; font-family: 'Inter', sans-serif;
     font-size: 13px; font-weight: 500;
     display: flex; align-items: center; gap: 6px;
-    padding: 0; margin-bottom: 28px;
+    padding: 0; margin-bottom: 24px;
     transition: color 0.2s;
     -webkit-tap-highlight-color: transparent;
 }
@@ -305,7 +330,8 @@ body {
 .sucesso-msg svg { flex-shrink: 0; width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 @media (max-width: 680px) {
-    .reset-panel { padding: 32px 24px 44px; align-items: flex-start; }
+    .reset-panel { padding: 20px 16px; align-items: center; }
+    .reset-card { padding: 28px 20px 24px; }
 }
 
 @keyframes fadeUp {
@@ -366,61 +392,67 @@ body {
 
     <!-- PAINEL REDEFINIR SENHA (sobrepõe o formulário) -->
     <div class="reset-panel" id="resetPanel">
-        <form class="form-wrapper" autocomplete="off" onsubmit="redefinirSenha(); return false;">
+        <div class="reset-card">
+            <form autocomplete="off" onsubmit="redefinirSenha(); return false;">
 
-            <button type="button" class="reset-back" id="resetBackBtn" onclick="fecharReset()">
-                <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-                Voltar ao login
-            </button>
+                <button type="button" class="reset-back" id="resetBackBtn" onclick="fecharReset()">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                    Voltar ao login
+                </button>
 
-            <div class="form-eyebrow">Segurança</div>
-            <div class="form-title" id="resetTitle">Redefinir senha</div>
-            <div class="form-sub" id="resetSub">Confirme sua identidade e escolha uma nova senha.</div>
-
-            <div id="resetErroMsg" class="erro-msg">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <span id="resetErroTexto"></span>
-            </div>
-            <div id="resetSucessoMsg" class="sucesso-msg">
-                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Senha alterada com sucesso! Faça login.</span>
-            </div>
-
-            <div class="field">
-                <label for="r-usuario">Usuário</label>
-                <div class="input-wrap">
-                    <input type="text" id="r-usuario" placeholder="Seu usuário" autocomplete="off">
-                    <svg class="field-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <div class="reset-icon-wrap" id="resetIconWrap">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 </div>
-            </div>
 
-            <div class="field">
-                <label for="r-senha-atual">Senha atual</label>
-                <div class="input-wrap">
-                    <input type="password" id="r-senha-atual" placeholder="Senha atual" autocomplete="new-password">
-                    <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <div class="form-eyebrow">Segurança</div>
+                <div class="form-title" id="resetTitle">Redefinir senha</div>
+                <div class="form-sub" id="resetSub">Confirme sua identidade e escolha uma nova senha.</div>
+
+                <div id="resetErroMsg" class="erro-msg">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span id="resetErroTexto"></span>
                 </div>
-            </div>
-
-            <div class="field">
-                <label for="r-senha-nova">Nova senha</label>
-                <div class="input-wrap">
-                    <input type="password" id="r-senha-nova" placeholder="Nova senha" autocomplete="new-password">
-                    <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <div id="resetSucessoMsg" class="sucesso-msg">
+                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Senha alterada com sucesso! Faça login.</span>
                 </div>
-            </div>
 
-            <div class="field">
-                <label for="r-senha-conf">Confirmar nova senha</label>
-                <div class="input-wrap">
-                    <input type="password" id="r-senha-conf" placeholder="Repita a nova senha" autocomplete="new-password">
-                    <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <div class="field">
+                    <label for="r-usuario">Usuário</label>
+                    <div class="input-wrap">
+                        <input type="text" id="r-usuario" placeholder="Seu usuário" autocomplete="off">
+                        <svg class="field-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
                 </div>
-            </div>
 
-            <button type="submit" class="login-btn" id="resetBtn">Salvar nova senha</button>
+                <div class="field">
+                    <label for="r-senha-atual">Senha atual</label>
+                    <div class="input-wrap">
+                        <input type="password" id="r-senha-atual" placeholder="Senha atual" autocomplete="new-password">
+                        <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                </div>
 
-        </form>
+                <div class="field">
+                    <label for="r-senha-nova">Nova senha</label>
+                    <div class="input-wrap">
+                        <input type="password" id="r-senha-nova" placeholder="Nova senha" autocomplete="new-password">
+                        <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="r-senha-conf">Confirmar nova senha</label>
+                    <div class="input-wrap">
+                        <input type="password" id="r-senha-conf" placeholder="Repita a nova senha" autocomplete="new-password">
+                        <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                </div>
+
+                <button type="submit" class="login-btn" id="resetBtn">Salvar nova senha</button>
+
+            </form>
+        </div>
     </div>
 
     <form class="form-wrapper" autocomplete="off" onsubmit="login(); return false;">
@@ -545,6 +577,7 @@ function abrirReset(forcado, username, senhaAtual) {
         document.getElementById("resetBackBtn").style.display = "none";
         document.getElementById("resetTitle").innerText = "Crie uma nova senha";
         document.getElementById("resetSub").innerText   = "Por segurança, você precisa alterar a senha padrão antes de continuar.";
+        document.getElementById("resetIconWrap").innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#3a86ff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>`;
         document.getElementById("r-usuario").closest(".field").style.display     = "none";
         document.getElementById("r-senha-atual").closest(".field").style.display = "none";
     } else {
