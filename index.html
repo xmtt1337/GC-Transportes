@@ -1451,7 +1451,10 @@ body {
                     <!-- Resumo geral -->
                     <div class="adm-ent-resumo" id="adm-ent-resumo">
                         <span id="adm-ent-counter" style="font-size:13px;color:#94a3b8;font-weight:500"></span>
-                        <span id="adm-ent-total-geral" style="font-size:14px;font-weight:700;color:#34d399"></span>
+                        <div style="text-align:right">
+                            <div id="adm-ent-total-pacotes" style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:2px"></div>
+                            <span id="adm-ent-total-geral" style="font-size:14px;font-weight:700;color:#34d399"></span>
+                        </div>
                     </div>
                     <!-- Busca + chip selecionado -->
                     <div style="margin-bottom:14px">
@@ -2865,9 +2868,11 @@ function buscarQuinzenaAdmin() {
         document.getElementById("adm-selected-chip").style.display = "none";
         document.getElementById("adm-fech-data").style.display = "none";
         // Resumo geral
-        const totalGeral = b.entregadores.reduce((s, e) => s + (e.total_receber_num || 0), 0);
-        document.getElementById("adm-ent-counter").textContent = `${b.entregadores.length} entregadores`;
-        document.getElementById("adm-ent-total-geral").textContent = `Total: ${moedaJS(totalGeral)}`;
+        const totalGeral   = b.entregadores.reduce((s, e) => s + (e.total_receber_num || 0), 0);
+        const totalPacotes = b.entregadores.reduce((s, e) => s + (e.total_entregues   || 0), 0);
+        document.getElementById("adm-ent-counter").textContent       = `${b.entregadores.length} entregadores`;
+        document.getElementById("adm-ent-total-pacotes").textContent = `${totalPacotes.toLocaleString("pt-BR")} pacotes entregues`;
+        document.getElementById("adm-ent-total-geral").textContent   = `Total: ${moedaJS(totalGeral)}`;
         document.getElementById("adm-ent-section").style.display = "";
         _renderEntregadoresGrid(b.entregadores);
     })
