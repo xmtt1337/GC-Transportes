@@ -1470,6 +1470,10 @@ body {
 
                 <div id="adm-fech-data" style="display:none">
 
+                    <button onclick="limparSelecaoEntregador()" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:18px;padding:8px 16px;border-radius:10px;border:1px solid rgba(58,134,255,0.2);background:transparent;color:#64748b;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.color='#f1f5f9';this.style.borderColor='rgba(58,134,255,0.4)'" onmouseout="this.style.color='#64748b';this.style.borderColor='rgba(58,134,255,0.2)'">
+                        ← Voltar para lista
+                    </button>
+
                     <div class="painel-banner banner-positivo" id="adm-pb-banner">
                         <div class="pb-left">
                             <div class="pb-eyebrow">Valor líquido a receber</div>
@@ -2887,16 +2891,11 @@ function _renderEntregadoresGrid(lista) {
         return;
     }
     grid.innerHTML = lista.map(e => {
-        const chips = _TRANSP_CHIPS
-            .filter(t => (e[t.key] || 0) > 0)
-            .map(t => `<span class="adm-ent-t" style="background:${t.color}22;color:${t.color};border:1px solid ${t.color}44">${t.label} ${e[t.key]}</span>`)
-            .join("");
         const nomeEsc = e.nome.replace(/'/g, "\\'").replace(/"/g, "&quot;");
         return `<div class="adm-ent-card" onclick="selecionarEntregadorAdmin('${nomeEsc}')" data-nome="${nomeEsc}">
             <div class="adm-ent-card-nome" title="${e.nome}">${e.nome}</div>
             <div class="adm-ent-card-valor">${e.total_receber}</div>
             <div class="adm-ent-card-qtd">${e.total_entregues || 0} pacotes entregues</div>
-            ${chips ? `<div class="adm-ent-transp">${chips}</div>` : ""}
         </div>`;
     }).join("");
 }
@@ -2910,21 +2909,15 @@ function abrirDropdownEntregadores() {}
 
 function selecionarEntregadorAdmin(nome) {
     _admFEntregador = nome;
-    // Destaca card selecionado
-    document.querySelectorAll(".adm-ent-card").forEach(c =>
-        c.classList.toggle("selected", c.dataset.nome === nome)
-    );
-    document.getElementById("adm-selected-nome").textContent = nome;
-    document.getElementById("adm-selected-chip").style.display = "";
+    document.getElementById("adm-ent-section").style.display = "none";
     _carregarPainelAdmin();
 }
 
 function limparSelecaoEntregador() {
     _admFEntregador = "";
-    document.querySelectorAll(".adm-ent-card").forEach(c => c.classList.remove("selected"));
-    document.getElementById("adm-selected-chip").style.display = "none";
     document.getElementById("adm-fech-data").style.display = "none";
     document.getElementById("adm-fech-empty").style.display = "none";
+    document.getElementById("adm-ent-section").style.display = "";
 }
 
 // ───── DASHBOARD ─────
