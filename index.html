@@ -4284,10 +4284,7 @@ function _carregarPainelAdmin() {
                 <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(opcional — deixe em branco para senha padrão)</span></label>
                 <input class="usr-modal-input" id="mne-senha" type="text" placeholder="Deixe em branco para senha padrão" autocomplete="off">
             </div>
-            <div class="usr-modal-field">
-                <label class="usr-modal-label">Telefone / WhatsApp <span style="color:#2e4560;font-weight:400;text-transform:none">(opcional)</span></label>
-                <input class="usr-modal-input" id="mne-telefone" type="tel" placeholder="(xx) 9xxxx-xxxx" autocomplete="off">
-            </div>
+            <input type="hidden" id="mne-telefone" value="">
             <div class="usr-modal-error" id="mne-erro"></div>
             <div class="usr-modal-btns">
                 <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-novo-entregador')">Cancelar</button>
