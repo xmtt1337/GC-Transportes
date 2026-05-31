@@ -1739,7 +1739,13 @@ body {
             <div class="fech-body">
                 <div class="fechamento-empty" id="pag-empty">Selecione o mês, ano e quinzena para ver os pagamentos.</div>
                 <div id="pag-resultado" style="display:none">
-                    <div class="adm-nf-counter" id="pag-counter"></div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+                        <div class="adm-nf-counter" id="pag-counter" style="margin-bottom:0"></div>
+                        <button onclick="_baixarCsvPagamentos()" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.08);color:#34d399;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(52,211,153,0.16)'" onmouseout="this.style.background='rgba(52,211,153,0.08)'">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Baixar CSV
+                        </button>
+                    </div>
                     <div class="adm-nf-wrap">
                         <table class="adm-nf-table">
                             <thead>
@@ -3024,6 +3030,31 @@ function buscarPagamentos() {
             </tr>
         `).join("");
     }).catch(() => { empty.innerText = "Erro ao carregar pagamentos."; });
+}
+
+function _baixarCsvPagamentos() {
+    const mes      = document.getElementById("pag-mes").value;
+    const ano      = document.getElementById("pag-ano").value;
+    const quinzena = _pagQuinzena;
+    if (!quinzena) return;
+    const url = `${API}/admin/pagamentos/csv?mes=${mes}&ano=${ano}&quinzena=${quinzena}`;
+    const a   = document.createElement("a");
+    a.href    = url;
+    a.setAttribute("download", `pagamentos_${mes}_${ano}_q${quinzena}.csv`);
+    const headers = new Headers({ "Authorization": "Bearer " + token });
+    fetch(url, { headers })
+        .then(r => {
+            if (!r.ok) return r.json().then(d => { alert(d.error || "Erro ao gerar CSV."); throw new Error(); });
+            return r.blob();
+        })
+        .then(blob => {
+            const link = document.createElement("a");
+            link.href  = URL.createObjectURL(blob);
+            link.download = `pagamentos_${mes}_${ano}_q${quinzena}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        })
+        .catch(() => {});
 }
 
 // ───── TELA ADMIN NOTAS FISCAIS ─────
