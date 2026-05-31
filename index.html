@@ -2869,7 +2869,8 @@ function buscarQuinzenaAdmin() {
         document.getElementById("adm-fech-data").style.display = "none";
         // Resumo geral
         const totalGeral   = b.entregadores.reduce((s, e) => s + (e.total_receber_num || 0), 0);
-        const totalPacotes = b.entregadores.reduce((s, e) => s + (e.total_entregues || 0), 0);
+        const _toInt = v => parseInt(String(v || 0).replace(/\./g, "")) || 0;
+        const totalPacotes = b.entregadores.reduce((s, e) => s + _toInt(e.total_entregues), 0);
         document.getElementById("adm-ent-counter").textContent       = `${b.entregadores.length} entregadores`;
         document.getElementById("adm-ent-total-pacotes").textContent = `${totalPacotes.toLocaleString("pt-BR")} pacotes entregues`;
         document.getElementById("adm-ent-total-geral").textContent   = `Total: ${moedaJS(totalGeral)}`;
@@ -2900,7 +2901,7 @@ function _renderEntregadoresGrid(lista) {
         return `<div class="adm-ent-card" onclick="selecionarEntregadorAdmin('${nomeEsc}')" data-nome="${nomeEsc}">
             <div class="adm-ent-card-nome" title="${e.nome}">${e.nome}</div>
             <div class="adm-ent-card-valor">${e.total_receber}</div>
-            <div class="adm-ent-card-qtd">${e.total_entregues || 0} pacotes entregues</div>
+            <div class="adm-ent-card-qtd">${parseInt(String(e.total_entregues || 0).replace(/\./g, "")) || 0} pacotes entregues</div>
         </div>`;
     }).join("");
 }
