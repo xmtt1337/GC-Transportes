@@ -1,20 +1,13 @@
-// ───── TELA IMPORTAR TRAMPAY ─────
+// ───── TELA IMPORTAR TRAMPAY (embutido na tela Entregadores) ─────
 let _trampayRows = [];
-
-function abrirImportarTrampay(event) {
-    if (event) event.preventDefault();
-    _trampayRows = [];
-    document.getElementById("trampay-file-input").value = "";
-    document.getElementById("trampay-resultado").style.display = "none";
-    document.getElementById("trampay-sucesso").style.display   = "none";
-    document.getElementById("trampay-importar-btn").style.display = "none";
-    document.getElementById("trampay-upload-area").style.display  = "";
-    mostrarTela("tela-trampay-importar");
-}
 
 function _lerCsvTrampay(input) {
     const file = input.files[0];
     if (!file) return;
+    const btnImportar = document.getElementById("trampay-importar-btn");
+    if (btnImportar) { btnImportar.style.display = "none"; }
+    document.getElementById("trampay-resultado").style.display = "none";
+    document.getElementById("trampay-sucesso").style.display   = "none";
     const reader = new FileReader();
     reader.onload = e => {
         const text = e.target.result;
@@ -61,9 +54,8 @@ function _lerCsvTrampay(input) {
             </tr>
         `).join("");
 
-        document.getElementById("trampay-upload-area").style.display  = "none";
-        document.getElementById("trampay-resultado").style.display     = "";
-        document.getElementById("trampay-importar-btn").style.display  = "";
+        document.getElementById("trampay-resultado").style.display    = "";
+        document.getElementById("trampay-importar-btn").style.display = "";
     };
     reader.readAsText(file, "UTF-8");
 }
