@@ -3112,11 +3112,17 @@ function _entSelecionarChip(idx) {
 
     // Update carrier cards
     document.getElementById("ent-dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
-        const v = g[t.valKey] || 0;
-        const q = g[t.key]   || 0;
+        const v   = g[t.valKey]    || 0;
+        const q   = g[t.key]       || 0;
+        const pv  = prev ? (prev[t.valKey] || 0) : null;
+        const dlt = _delta(v, pv);
+        const bCls = dlt.cls === "up" ? "lucro" : dlt.cls === "down" ? "preju" : "estavel";
+        const badge = dlt.cls !== "flat"
+            ? `<span class="lbadge ${bCls}" style="font-size:10px;padding:2px 7px">${dlt.txt}</span>`
+            : "";
         return `<div class="dash-tc">
             <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
-            <div class="dash-tc-qtd">${moedaJS(v)}</div>
+            <div class="dash-tc-qtd" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${moedaJS(v)}${badge}</div>
             <div class="dash-tc-sub">${q} pacotes · ${g.label}</div>
         </div>`;
     }).join("");
