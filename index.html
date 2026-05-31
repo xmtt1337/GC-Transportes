@@ -1648,7 +1648,10 @@ body {
             <div class="fech-header">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Entregadores</div>
-                    <button class="adm-usr-add-btn" onclick="_abrirModalNovoEntregador()">+ Adicionar</button>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <button class="adm-usr-add-btn" style="border-color:rgba(251,146,60,0.35);color:#fb923c;background:rgba(251,146,60,0.08)" onclick="_resetarTodasSenhas()">Resetar Todas as Senhas</button>
+                        <button class="adm-usr-add-btn" onclick="_abrirModalNovoEntregador()">+ Adicionar</button>
+                    </div>
                 </div>
             </div>
             <div class="fech-body">
@@ -2545,6 +2548,19 @@ function _copiarID() {
         document.getElementById("mne-copiado").innerText = "✓ Copiado!";
         setTimeout(() => { document.getElementById("mne-copiado").innerText = ""; }, 2000);
     });
+}
+
+function _resetarTodasSenhas() {
+    if (!confirm("Resetar a senha de TODOS os entregadores para a senha padrão?\n\nEsta ação não pode ser desfeita.")) return;
+    const tok = localStorage.getItem("token");
+    fetch(`${API}/admin/usuarios/reset-todas-senhas`, {
+        method: "PUT",
+        headers: { "Authorization": "Bearer " + tok }
+    }).then(r => r.json())
+    .then(data => {
+        if (data.error) { alert(data.error); return; }
+        alert(`Senhas resetadas com sucesso para ${data.total || "todos os"} entregadores.`);
+    }).catch(() => alert("Erro ao resetar senhas."));
 }
 
 function _resetarSenha(id, username) {
