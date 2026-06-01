@@ -99,56 +99,13 @@ function _carregarPainelAdmin() {
 }
 
 function _baixarPainelAdminPDF() {
-    const btn = document.getElementById("adm-pdf-btn");
     const MESES_PDF = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-    btn.disabled = true;
-    btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Gerando...`;
 
-    const nome     = _admFEntregador;
-    const mes      = MESES_PDF[_admFMes] || _admFMes;
-    const quinzena = _admFQuinzena;
-    const ano      = _admFAno;
+    document.getElementById("adm-pdf-nome").textContent    = _admFEntregador;
+    document.getElementById("adm-pdf-periodo").textContent = `${_admFQuinzena}ª Quinzena  ·  ${MESES_PDF[_admFMes] || _admFMes} / ${_admFAno}`;
+    document.getElementById("adm-pdf-header").style.display = "block";
 
-    const wrapper = document.createElement("div");
-    wrapper.style.cssText = "background:#0f0f14;padding:28px 24px;font-family:Inter,sans-serif;color:#f1f5f9;width:800px;";
+    window.print();
 
-    const header = document.createElement("div");
-    header.style.cssText = "margin-bottom:20px;border-bottom:1px solid rgba(58,134,255,0.2);padding-bottom:14px;";
-    header.innerHTML = `
-        <div style="font-size:10px;font-weight:700;color:#3a86ff;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">GC TRANSPORTES · FECHAMENTO</div>
-        <div style="font-size:20px;font-weight:700;color:#f1f5f9;margin-bottom:4px">${nome}</div>
-        <div style="font-size:13px;color:#7a8599">${quinzena}ª Quinzena &nbsp;·&nbsp; ${mes} / ${ano}</div>`;
-    wrapper.appendChild(header);
-
-    const panel = document.getElementById("adm-fech-data");
-    const clone = panel.cloneNode(true);
-    const topbar = clone.querySelector(".adm-fech-topbar");
-    if (topbar) topbar.remove();
-    wrapper.appendChild(clone);
-
-    wrapper.style.position = "absolute";
-    wrapper.style.left = "-9999px";
-    document.body.appendChild(wrapper);
-
-    const nomeArq  = nome.replace(/[^a-zA-ZÀ-ú0-9\s]/g, "").trim().replace(/\s+/g, "_");
-    const filename = `Fechamento_${nomeArq}_Q${quinzena}_${mes}_${ano}.pdf`;
-
-    const resetBtn = () => {
-        btn.disabled = false;
-        btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Baixar PDF`;
-    };
-
-    html2pdf().set({
-        margin: [10, 8, 10, 8],
-        filename: filename,
-        image: { type: "jpeg", quality: 0.97 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#0f0f14", logging: false },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
-    }).from(wrapper).save().then(() => {
-        document.body.removeChild(wrapper);
-        resetBtn();
-    }).catch(() => {
-        document.body.removeChild(wrapper);
-        resetBtn();
-    });
+    document.getElementById("adm-pdf-header").style.display = "none";
 }
