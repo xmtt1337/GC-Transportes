@@ -134,6 +134,16 @@
             <span class="menu-tooltip">Dashboard</span>
         </li>
 
+        <li class="menu-item" id="menu-extravios" onclick="abrirExtravios(event)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span class="label">Extravios</span>
+            <span class="menu-tooltip">Extravios</span>
+        </li>
+
     </ul>
 
     <div class="sidebar-footer">
@@ -874,6 +884,58 @@
             </div>
         </div><!-- /tela-minhas-nfs -->
 
+        <!-- TELA EXTRAVIOS -->
+        <div id="tela-extravios" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <select class="fech-select" id="extrv-sel-ano" onchange="_filtrarExtravios()"></select>
+                    <select class="fech-select" id="extrv-sel-mes" onchange="_filtrarExtravios()">
+                        <option value="0">Todos os meses</option>
+                        <option value="1">Janeiro</option>
+                        <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Maio</option>
+                        <option value="6">Junho</option>
+                        <option value="7">Julho</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+                    <button class="extrv-refresh-btn" onclick="_extrvRefresh()">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Atualizar
+                    </button>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="extrv-empty">Carregando...</div>
+                <div id="extrv-content" style="display:none">
+
+                    <!-- BEM FEITO -->
+                    <div class="extrv-section">
+                        <div class="extrv-section-title bem-feito">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Bem Feito
+                        </div>
+                        <div id="extrv-bf-content"></div>
+                    </div>
+
+                    <!-- CONTESTAÇÕES -->
+                    <div class="extrv-section">
+                        <div class="extrv-section-title contestacao">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            Contestações
+                        </div>
+                        <div id="extrv-cont-content"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div><!-- /tela-extravios -->
+
     </div>
 </div>
 
@@ -890,6 +952,7 @@
 <script src="js/dashboard.js"></script>
 <script src="js/ent-dashboard.js"></script>
 <script src="js/nota-fiscal.js"></script>
+<script src="js/extravios.js"></script>
 <script src="js/modals.js"></script>
 
 <!-- MODAL: TELEFONE -->
