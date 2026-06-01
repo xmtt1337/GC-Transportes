@@ -1109,3 +1109,19 @@ body {
     .adm-nf-table td:nth-child(7) { display: none; }
     .mnf-hide-sm { display: none; }
 }
+
+/* ===== IMPRESSÃO / PDF ===== */
+@media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .sidebar, .sidebar-backdrop, .topbar, .fech-header { display: none !important; }
+    body { background: #0f0f14 !important; overflow: visible !important; height: auto !important; display: block !important; }
+    .content { padding: 10px !important; overflow: visible !important; display: block !important; }
+    .main { overflow: visible !important; height: auto !important; display: block !important; }
+    .view { display: none !important; }
+    .tela-full.active-view { display: block !important; overflow: visible !important; height: auto !important; }
+    .fech-body { overflow: visible !important; height: auto !important; padding: 0 !important; }
+    #adm-fech-empty, #adm-ent-section { display: none !important; }
+    #adm-fech-data { display: block !important; }
+    #adm-pdf-header { display: block !important; }
+    #adm-pdf-btn, [onclick="limparSelecaoEntregador()"] { display: none !important; }
+}
