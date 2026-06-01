@@ -36,11 +36,16 @@ fetch(API + "/perfil", {
         document.getElementById("menu-cadastros").style.display    = "";
         document.getElementById("submenu-cadastros").style.display  = "";
         document.getElementById("menu-dashboard").style.display    = "";
+        document.getElementById("menu-extravios").style.display    = "";
+    }
+
+    if (role === "sac") {
+        document.getElementById("menu-extravios").style.display    = "";
     }
 
     renderHomeActions(role);
     const badge = document.getElementById("home-role-badge");
-    if (badge) badge.innerText = role === "admin" ? "Administrador" : role === "entregador" ? "Entregador" : "Operador";
+    if (badge) badge.innerText = role === "admin" ? "Administrador" : role === "entregador" ? "Entregador" : role === "sac" ? "SAC" : "Operador";
 })
 .catch(() => {
     localStorage.removeItem("token");
