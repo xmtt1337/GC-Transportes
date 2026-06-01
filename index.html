@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 
 <link rel="stylesheet" href="style.css">
 </head>
@@ -434,7 +435,7 @@
 
                 <div id="adm-fech-data" style="display:none">
 
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:10px;flex-wrap:wrap">
+                    <div id="adm-fech-topbar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:10px;flex-wrap:wrap">
                         <button onclick="limparSelecaoEntregador()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:1px solid rgba(58,134,255,0.2);background:transparent;color:#64748b;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.color='#f1f5f9';this.style.borderColor='rgba(58,134,255,0.4)'" onmouseout="this.style.color='#64748b';this.style.borderColor='rgba(58,134,255,0.2)'">
                             ← Voltar para lista
                         </button>
