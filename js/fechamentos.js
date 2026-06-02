@@ -80,7 +80,12 @@ function _carregarPainel() {
         document.getElementById("paj-adicional-card").className = "paj-card " + (_parseMoeda(d.adicional) < 0 ? "negativo" : "positivo");
         document.getElementById("paj-deslocamento").innerText = d.deslocamento;
         document.getElementById("paj-grandes").innerText      = d.valor_grandes;
-        document.getElementById("paj-descontos").innerText    = d.descontos;
+        const _descTotal = [...(d.extravios_linhas||[]), ...(d.multas_linhas||[])]
+            .filter(x => x.tem_valor)
+            .reduce((a, x) => a + _parseMoeda(x.valor), 0);
+        document.getElementById("paj-descontos").innerText = _descTotal > 0
+            ? "R$ " + _descTotal.toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2})
+            : d.descontos;
         document.getElementById("paj-ticket").innerText       = d.desconto_ticket;
 
         // Transportadoras
