@@ -206,7 +206,7 @@ function carregarHomeNFStatus() {
         if (!Array.isArray(historico) || !historico.length) return;
         const nfMap = {};
         (nfs || []).forEach(nf => { nfMap[`${nf.mes}_${nf.ano}_${nf.quinzena}`] = nf; });
-        const periodos  = historico.filter(d => (d.total_receber_num || 0) > 0);
+        const periodos  = historico.filter(d => (d.total_receber_num || 0) > 0 && !d.ignora_nf);
         const pendentes = periodos.filter(d => !nfMap[`${d.mes}_${anoAtual}_${d.quinzena}`]).length;
 
         if (pendentes === 0) {
