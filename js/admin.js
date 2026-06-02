@@ -137,19 +137,16 @@ function _carregarHomeAdmin() {
     const dash = document.getElementById("home-admin-dash");
     if (!dash) return;
     const tok = localStorage.getItem("token");
-    const anoAtual = new Date().getFullYear();
     const mesNomes = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
     Promise.all([
-        fetch(`${API}/admin/planilhas`,              { headers: { "Authorization": "Bearer " + tok } }).then(r => r.json()),
-        fetch(`${API}/admin/usuarios?role=entregador`,{ headers: { "Authorization": "Bearer " + tok } }).then(r => r.json()),
-        fetch(`${API}/admin/historico?ano=${anoAtual}`,{ headers: { "Authorization": "Bearer " + tok } }).then(r => r.json()),
-    ]).then(([planilhas, entregadores, historico]) => {
+        fetch(`${API}/admin/planilhas`,               { headers: { "Authorization": "Bearer " + tok } }).then(r => r.json()),
+        fetch(`${API}/admin/usuarios?role=entregador`, { headers: { "Authorization": "Bearer " + tok } }).then(r => r.json()),
+    ]).then(([planilhas, entregadores]) => {
         if (!Array.isArray(planilhas) || !planilhas.length) return;
 
-        const ultimo  = planilhas[0];
-        const nEnt    = Array.isArray(entregadores) ? entregadores.filter(u => u.active !== false).length : "—";
-        const periodos = Array.isArray(historico) ? historico : [];
+        const ultimo = planilhas[0];
+        const nEnt   = Array.isArray(entregadores) ? entregadores.filter(u => u.active !== false).length : "—";
 
         fetch(`${API}/admin/resumo-quinzena?mes=${ultimo.mes}&ano=${ultimo.ano}&quinzena=${ultimo.quinzena}`, {
             headers: { "Authorization": "Bearer " + tok }
@@ -190,46 +187,8 @@ function _carregarHomeAdmin() {
                         <div class="adm-home-card-value" style="color:#a78bfa;font-size:13px">Abrir →</div>
                     </div>
                 </div>
-                ${periodos.length >= 2 ? `
-                <div class="adm-home-chart-wrap">
-                    <div class="adm-home-chart-title">Pacotes entregues por período — ${anoAtual}</div>
-                    <div style="position:relative;height:160px"><canvas id="home-admin-chart"></canvas></div>
-                </div>` : ""}
             `;
 
-            if (periodos.length >= 2) {
-                const transp = [
-                    { key: "loggi",  label: "Loggi",  color: "#01b4f7" },
-                    { key: "jt",     label: "J&T",    color: "#cc4138" },
-                    { key: "imile",  label: "iMile",  color: "#6b80ff" },
-                    { key: "anjun",  label: "Anjun",  color: "#009c21" },
-                    { key: "shopee", label: "Shopee", color: "#ed4d2d" },
-                ];
-                const labels = periodos.map(p => `${p.quinzena}ª ${mesNomes[p.mes]}`);
-                const ctx = document.getElementById("home-admin-chart").getContext("2d");
-                new Chart(ctx, {
-                    type: "bar",
-                    data: {
-                        labels,
-                        datasets: transp.map(t => ({
-                            label:           t.label,
-                            data:            periodos.map(p => p[t.key]?.qtd || 0),
-                            backgroundColor: t.color + "cc",
-                            borderRadius:    4,
-                        }))
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: { labels: { color: "#94a3b8", font: { size: 11 }, boxWidth: 12 } }
-                        },
-                        scales: {
-                            x: { stacked: true, ticks: { color: "#7a8599", font: { size: 11 } }, grid: { color: "rgba(255,255,255,0.04)" } },
-                            y: { stacked: true, ticks: { color: "#7a8599", font: { size: 11 } }, grid: { color: "rgba(255,255,255,0.06)" } }
-                        }
-                    }
-                });
-            }
         }).catch(() => {});
     }).catch(() => {});
 }
