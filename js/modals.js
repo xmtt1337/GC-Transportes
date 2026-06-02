@@ -261,12 +261,15 @@ function _baixarPainelAdminPDF() {
     };
 
     setTimeout(() => {
+        const el = container.firstElementChild;
+        const pxToMm = px => px * 25.4 / 96;
+        const heightMm = Math.ceil(pxToMm(el.offsetHeight)) + 12;
         html2pdf().set({
             margin:      [6, 6, 6, 6],
             filename:    filename,
             image:       { type: "jpeg", quality: 0.95 },
             html2canvas: { scale: 2, useCORS: true, backgroundColor: "#0f0f14", logging: false },
-            jsPDF:       { unit: "mm", format: "a4", orientation: "portrait" }
-        }).from(container.firstElementChild).save().then(cleanup).catch(cleanup);
+            jsPDF:       { unit: "mm", format: [210, heightMm], orientation: "portrait" }
+        }).from(el).save().then(cleanup).catch(cleanup);
     }, 400);
 }
