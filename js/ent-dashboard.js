@@ -124,7 +124,7 @@ function _carregarMinhasNFs() {
         (nfs || []).forEach(nf => { nfMap[`${nf.mes}_${nf.ano}_${nf.quinzena}`] = nf; });
 
         const periodos = historico
-            .filter(d => (d.total_receber_num || 0) > 0)
+            .filter(d => (d.total_receber_num || 0) > 0 && !d.ignora_nf)
             .map(d => ({
                 mes: d.mes, ano: parseInt(ano), quinzena: d.quinzena,
                 label: `${_MNF_MESES[d.mes]} · ${d.quinzena === 1 ? "1ª Quinzena" : "2ª Quinzena"}`,
