@@ -66,7 +66,7 @@ function _iniciarFiltrosExtrv() {
 }
 
 function _filtrarExtravios() {
-    if (_extrvData) _renderExtravios(_extrvData);
+    if (_extrvData) _renderExtrDash(_extrvData);
     else _carregarExtravios();
 }
 
@@ -292,14 +292,14 @@ async function _carregarExtravios() {
             if (!rows.length) throw new Error("vazio");
             _extrvData = rows;
         }
-        _renderExtravios(_extrvData);
+        _renderExtrDash(_extrvData);
     } catch(e) {
         empty.textContent = "Erro ao carregar dados. A planilha precisa estar compartilhada como pública (qualquer pessoa com o link pode ver).";
     }
 }
 
 // ── Render principal ──
-function _renderExtravios(rows) {
+function _renderExtrDash(rows) {
     const ano = parseInt(document.getElementById("extrv-sel-ano").value);
     const mes = parseInt(document.getElementById("extrv-sel-mes").value);
 
