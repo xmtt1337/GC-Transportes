@@ -59,7 +59,135 @@ function _filtrarExtravios() {
 function _extrvRefresh() {
     _extrvData = null;
     _extrvDestroyCharts();
+    const inp = document.getElementById("extrv-busca-input");
+    if (inp) inp.value = "";
+    const clr = document.getElementById("extrv-busca-clear");
+    if (clr) clr.style.display = "none";
+    const res = document.getElementById("extrv-busca-resultado");
+    if (res) { res.style.display = "none"; res.innerHTML = ""; }
     _carregarExtravios();
+}
+
+function _extrvBuscarCodigo() {
+    const inp = document.getElementById("extrv-busca-input");
+    const q   = (inp ? inp.value : "").trim();
+    const clr = document.getElementById("extrv-busca-clear");
+    if (clr) clr.style.display = q ? "" : "none";
+
+    const res     = document.getElementById("extrv-busca-resultado");
+    const content = document.getElementById("extrv-content");
+    const empty   = document.getElementById("extrv-empty");
+
+    if (!q) {
+        res.style.display = "none";
+        res.innerHTML = "";
+        if (_extrvData) { content.style.display = ""; empty.style.display = "none"; }
+        return;
+    }
+
+    content.style.display = "none";
+    empty.style.display   = "none";
+
+    if (!_extrvData) {
+        res.style.display = "";
+        res.innerHTML = `<div class="ed-section"><div class="ed-vazio">Dados ainda não carregados. Aguarde o carregamento e tente novamente.</div></div>`;
+        return;
+    }
+
+    const s = _extrvData[0];
+    const BC = {
+        codigo : _findCol(s, "CÓDIGO","Código","codigo","CODIGO"),
+        unico  : _findCol(s, "ÚNICO","Único","unico","UNICO"),
+        status : _findCol(s, "Status","STATUS","status"),
+        transp : _findCol(s, "TRANSPORTADORA","Transportadora"),
+        data   : _findCol(s, "DATA","Data","data"),
+        hora   : _findCol(s, "HORA","Hora","hora"),
+        cidade : _findCol(s, "Cidade","CIDADE","cidade"),
+        valor  : _findCol(s, "Valor","VALOR","valor"),
+        resp   : _findCol(s, "Responsavel","RESPONSAVEL","Responsável","RESPONSÁVEL"),
+        end    : _findCol(s, "Endereço","ENDEREÇO","Endereco","ENDERECO"),
+        causa  : _findCol(s, "CAUSA DO PROBLEMA","Causa do Problema","causa do problema"),
+        ddesc  : _findCol(s, "Data desconto","DATA DESCONTO","Data Desconto"),
+        desc   : _findCol(s, "Para desconto?","Para Desconto?","PARA DESCONTO?"),
+    };
+
+    const qNorm = _nk(q);
+    const matches = _extrvData.filter(r => {
+        const cod = _nk(BC.codigo ? r[BC.codigo] : "");
+        return cod.includes(qNorm);
+    });
+
+    const statusColors = {
+        "para desconto": "#fb923c", "contestado": "#3a86ff",
+        "em analise": "#fbbf24", "lost": "#ef4444",
+        "dmaged": "#a78bfa", "damaged": "#a78bfa",
+    };
+    function sBadgeColor(st) {
+        const k = _nk(st||"");
+        for (const [key, c] of Object.entries(statusColors)) {
+            if (k.includes(key)) return c;
+        }
+        return "#64748b";
+    }
+    function bcField(lbl, val) {
+        if (!val || !(val+"").trim()) return "";
+        return `<div class="extrv-bc-field"><span class="extrv-bc-lbl">${lbl}</span><span class="extrv-bc-val">${val}</span></div>`;
+    }
+
+    if (!matches.length) {
+        res.style.display = "";
+        res.innerHTML = `<div class="ed-section">
+            <div class="ed-section-title">Pesquisa por CÓDIGO</div>
+            <div class="ed-vazio">Nenhum resultado para "<strong style="color:#f1f5f9">${q}</strong>"</div>
+        </div>`;
+        return;
+    }
+
+    const cards = matches.map(r => {
+        const status   = (BC.status ? r[BC.status] : "") || "—";
+        const codigo   = (BC.codigo ? r[BC.codigo] : "") || "—";
+        const descVal  = (BC.desc ? r[BC.desc] : "") || "—";
+        const descColor = _nk(descVal) === "sim" ? "#fb923c" : "#22c55e";
+        const sc = sBadgeColor(status);
+        const val = _parseV(BC.valor ? r[BC.valor] : "");
+        return `<div class="extrv-busca-card">
+            <div class="extrv-bc-header">
+                <div class="extrv-bc-code">${codigo}</div>
+                <span class="extrv-bc-badge" style="background:${sc}22;color:${sc};border-color:${sc}55">${status}</span>
+            </div>
+            <div class="extrv-bc-grid">
+                ${bcField("Transportadora", BC.transp ? r[BC.transp] : "")}
+                ${bcField("Data", BC.data ? r[BC.data] : "")}
+                ${bcField("Hora", BC.hora ? r[BC.hora] : "")}
+                ${bcField("Cidade", BC.cidade ? r[BC.cidade] : "")}
+                ${bcField("Único", BC.unico ? r[BC.unico] : "")}
+                ${bcField("Valor", val > 0 ? _moeda(val) : "")}
+                ${bcField("Responsável", BC.resp ? r[BC.resp] : "")}
+                ${bcField("Endereço", BC.end ? r[BC.end] : "")}
+                ${bcField("Causa", BC.causa ? r[BC.causa] : "")}
+                ${bcField("Data Desconto", BC.ddesc ? r[BC.ddesc] : "")}
+                <div class="extrv-bc-field">
+                    <span class="extrv-bc-lbl">Para Desconto</span>
+                    <span class="extrv-bc-val" style="font-weight:700;color:${descColor}">${descVal}</span>
+                </div>
+            </div>
+        </div>`;
+    }).join("");
+
+    res.style.display = "";
+    res.innerHTML = `<div class="ed-section">
+        <div class="ed-section-title">
+            Pesquisa por CÓDIGO
+            <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:#64748b;margin-left:4px">${matches.length} resultado${matches.length !== 1 ? "s" : ""} para "<em style="color:#f1f5f9">${q}</em>"</span>
+        </div>
+        <div class="extrv-busca-lista">${cards}</div>
+    </div>`;
+}
+
+function _extrvLimparBusca() {
+    const inp = document.getElementById("extrv-busca-input");
+    if (inp) inp.value = "";
+    _extrvBuscarCodigo();
 }
 
 function _extrvDestroyCharts() {
