@@ -153,6 +153,13 @@ function buscarQuinzenaAdmin() {
     empty.innerText = "Carregando...";
     empty.style.display = "";
 
+    // Constrói mapa nome→username em background para exibir ID na pesquisa
+    fetch(`${API}/admin/usuarios?role=entregador`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json()).then(users => {
+            _admNomeParaId = {};
+            (users || []).forEach(u => { if (u.name) _admNomeParaId[u.name] = u.username; });
+        }).catch(() => {});
+
     fetch(`${API}/admin/entregadores?mes=${_admFMes}&ano=${_admFAno}&quinzena=${_admFQuinzena}`, {
         headers: { "Authorization": "Bearer " + token }
     })
@@ -218,14 +225,12 @@ function abrirDropdownEntregadores() {}
 
 function selecionarEntregadorAdmin(nome, username) {
     _admFEntregador = nome;
+    const id = _admNomeParaId[nome] || username || "";
     const info = document.getElementById("adm-fech-topbar-info");
     if (info) {
-        info.innerHTML = username
-            ? `<div style="text-align:center">
-                <div style="font-size:14px;font-weight:700;color:#e2e8f0">${nome}</div>
-                <div style="font-size:11px;color:#4a6a8a;font-family:monospace;margin-top:2px">ID: ${username}</div>
-               </div>`
-            : `<div style="font-size:14px;font-weight:700;color:#e2e8f0;text-align:center">${nome}</div>`;
+        info.innerHTML = id
+            ? `<span style="font-size:11px;font-family:monospace;color:#3a5a7a;opacity:0.75;letter-spacing:0.5px">${id}</span>`
+            : "";
     }
     document.getElementById("adm-ent-section").style.display = "none";
     _carregarPainelAdmin();
