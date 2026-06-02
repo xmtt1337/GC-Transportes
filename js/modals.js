@@ -64,7 +64,12 @@ function _carregarPainelAdmin() {
         document.getElementById("adm-paj-adicional-card").className = "paj-card " + (_parseMoeda(d.adicional) < 0 ? "negativo" : "positivo");
         document.getElementById("adm-paj-deslocamento").innerText = d.deslocamento;
         document.getElementById("adm-paj-grandes").innerText      = d.valor_grandes;
-        document.getElementById("adm-paj-descontos").innerText    = d.descontos;
+        const _admDescTotal = [...(d.extravios_linhas||[]), ...(d.multas_linhas||[])]
+            .filter(x => x.tem_valor)
+            .reduce((a, x) => a + _parseMoeda(x.valor), 0);
+        document.getElementById("adm-paj-descontos").innerText = _admDescTotal > 0
+            ? "R$ " + _admDescTotal.toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2})
+            : d.descontos;
         document.getElementById("adm-paj-ticket").innerText       = d.desconto_ticket;
 
         document.getElementById("adm-pt-loggi-v").innerText  = d.valor_loggi;
