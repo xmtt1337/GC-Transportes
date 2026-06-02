@@ -116,6 +116,7 @@
             </li>
             <ul class="sub-submenu" id="subgroup-gc">
                 <li><a href="#" onclick="abrirAdminUsuarios(event)">Entregadores</a></li>
+                <li><a href="#" onclick="abrirAdminUsuariosGC(event)">Usuários</a></li>
             </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Trampay <span class="subgroup-arrow">▾</span>
@@ -937,6 +938,34 @@
             </div>
         </div><!-- /tela-extravios-dash -->
 
+        <!-- TELA USUÁRIOS GC -->
+        <div id="tela-admin-usuarios-gc" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Usuários — GC Transportes</div>
+                    <button class="adm-usr-add-btn" onclick="_abrirModalNovoUsuarioGC()">+ Adicionar</button>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="gc-usr-empty">Carregando...</div>
+                <div id="gc-usr-resultado" style="display:none">
+                    <div class="adm-nf-wrap">
+                        <table class="adm-nf-table">
+                            <thead>
+                                <tr>
+                                    <th>Usuário</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="gc-usr-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-admin-usuarios-gc -->
+
     </div>
 </div>
 
@@ -954,7 +983,75 @@
 <script src="js/ent-dashboard.js"></script>
 <script src="js/nota-fiscal.js"></script>
 <script src="js/extravios.js"></script>
+<script src="js/usuarios-gc.js"></script>
 <script src="js/modals.js"></script>
+
+<!-- MODAL: NOVO USUÁRIO GC -->
+<div class="usr-modal-overlay" id="modal-novo-usuario-gc" onclick="_fecharModalSeBackdrop(event,'modal-novo-usuario-gc')">
+    <div class="usr-modal">
+        <div id="ngc-form">
+            <div class="usr-modal-title">Novo Usuário GC</div>
+            <div class="usr-modal-sub">O ID de acesso será gerado automaticamente.</div>
+            <div class="usr-modal-field">
+                <label class="usr-modal-label">Nome</label>
+                <input class="usr-modal-input" id="ngc-nome" type="text" placeholder="Nome completo" autocomplete="off">
+            </div>
+            <div class="usr-modal-field">
+                <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(opcional — deixe em branco para senha padrão)</span></label>
+                <input class="usr-modal-input" id="ngc-senha" type="text" placeholder="Deixe em branco para senha padrão" autocomplete="off">
+            </div>
+            <div class="usr-modal-field">
+                <label class="usr-modal-label">Role</label>
+                <select class="usr-modal-input" id="ngc-role" style="cursor:pointer">
+                    <option value="user">Usuário</option>
+                    <option value="sac">SAC</option>
+                    <option value="finance">Financeiro</option>
+                    <option value="admin">Administrador</option>
+                </select>
+            </div>
+            <div class="usr-modal-error" id="ngc-erro"></div>
+            <div class="usr-modal-btns">
+                <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-novo-usuario-gc')">Cancelar</button>
+                <button class="usr-modal-btn-primary" id="ngc-btn-salvar" onclick="_salvarNovoUsuarioGC()">Cadastrar</button>
+            </div>
+        </div>
+        <div id="ngc-sucesso" style="display:none;text-align:center">
+            <div style="width:52px;height:52px;border-radius:50%;background:rgba(34,197,94,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:6px">Usuário cadastrado!</div>
+            <div style="font-size:13px;color:#64748b;margin-bottom:20px">Anote o ID de acesso abaixo.</div>
+            <div style="background:rgba(58,134,255,0.08);border:1px solid rgba(58,134,255,0.2);border-radius:12px;padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <span id="ngc-id-gerado" style="font-size:22px;font-weight:700;color:#3a86ff;letter-spacing:1px"></span>
+                <button onclick="_copiarIDGC()" style="background:rgba(58,134,255,0.15);border:1px solid rgba(58,134,255,0.3);color:#3a86ff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s" onmouseover="this.style.background='rgba(58,134,255,0.25)'" onmouseout="this.style.background='rgba(58,134,255,0.15)'">Copiar</button>
+            </div>
+            <div id="ngc-copiado" style="font-size:12px;color:#22c55e;height:16px;margin-bottom:16px"></div>
+            <button class="usr-modal-btn-primary" onclick="_fecharModal('modal-novo-usuario-gc')">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: EDITAR ROLE GC -->
+<div class="usr-modal-overlay" id="modal-editar-role-gc" onclick="_fecharModalSeBackdrop(event,'modal-editar-role-gc')">
+    <div class="usr-modal">
+        <div class="usr-modal-title">Editar Role</div>
+        <div class="usr-modal-sub" id="erg-nome" style="color:#e2e8f0;font-size:14px;font-weight:600;margin-bottom:16px"></div>
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Nova Role</label>
+            <select class="usr-modal-input" id="erg-role" style="cursor:pointer">
+                <option value="user">Usuário</option>
+                <option value="sac">SAC</option>
+                <option value="finance">Financeiro</option>
+                <option value="admin">Administrador</option>
+            </select>
+        </div>
+        <div class="usr-modal-error" id="erg-erro"></div>
+        <div class="usr-modal-btns">
+            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-editar-role-gc')">Cancelar</button>
+            <button class="usr-modal-btn-primary" id="erg-btn-salvar" onclick="_salvarRoleGC()">Salvar</button>
+        </div>
+    </div>
+</div>
 
 <!-- MODAL: TELEFONE -->
 <div class="usr-modal-overlay" id="modal-telefone" onclick="_fecharModalSeBackdrop(event,'modal-telefone')">
