@@ -1053,6 +1053,7 @@ body {
     font-family: inherit; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
 }
 .usr-modal-input:focus { border-color: rgba(58,134,255,0.5); box-shadow: 0 0 0 3px rgba(58,134,255,0.1); }
+.usr-modal-input option { background: #1a2535; color: #e2e8f0; }
 .usr-modal-input::placeholder { color: #2e4560; }
 .usr-modal-error { font-size: 12px; color: #f87171; margin-top: 10px; min-height: 16px; }
 .usr-modal-btns { display: flex; gap: 10px; margin-top: 24px; }
