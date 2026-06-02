@@ -511,7 +511,7 @@ body {
 
 /* ===== HOME REDESIGN ===== */
 .home-container {
-    text-align: center; max-width: 560px; width: 100%;
+    text-align: center; max-width: 820px; width: 100%;
     padding: 20px; position: relative; z-index: 1;
 }
 .home-eyebrow {
@@ -567,7 +567,7 @@ body {
     letter-spacing: 1.5px; margin-bottom: 12px;
 }
 .adm-home-cards {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; text-align: left;
 }
 .adm-home-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.12);
@@ -592,6 +592,11 @@ body {
 @media (max-width: 780px) {
     .adm-home-cards { grid-template-columns: repeat(2, 1fr); }
     .adm-home-card-value { font-size: 18px; }
+}
+@media (max-width: 500px) {
+    .adm-home-cards { grid-template-columns: 1fr 1fr; }
+    .adm-home-card-value { font-size: 16px; }
+    .home-actions { grid-template-columns: 1fr !important; }
 }
 
 .home-nf-widget {
