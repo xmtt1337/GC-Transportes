@@ -35,7 +35,6 @@ fetch(API + "/perfil", {
         document.getElementById("submenu-financeiro").style.display = "";
         document.getElementById("menu-cadastros").style.display    = "";
         document.getElementById("submenu-cadastros").style.display  = "";
-        document.getElementById("menu-dashboard").style.display    = "";
         document.getElementById("menu-extravios").style.display    = "";
         document.getElementById("submenu-extravios").style.display  = "";
     }
