@@ -130,6 +130,108 @@ function renderHomeActions(role) {
     `).join("");
 
     if (role === "entregador") carregarHomeNFStatus();
+    if (role === "admin") _carregarHomeAdmin();
+}
+
+function _carregarHomeAdmin() {
+    const dash = document.getElementById("home-admin-dash");
+    if (!dash) return;
+    const tok = localStorage.getItem("token");
+    const anoAtual = new Date().getFullYear();
+    const mesNomes = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+    Promise.all([
+        fetch(`${API}/admin/planilhas`,              { headers: { "Authorization": "Bearer " + tok } }).then(r => r.json()),
+        fetch(`${API}/admin/usuarios?role=entregador`,{ headers: { "Authorization": "Bearer " + tok } }).then(r => r.json()),
+        fetch(`${API}/admin/historico?ano=${anoAtual}`,{ headers: { "Authorization": "Bearer " + tok } }).then(r => r.json()),
+    ]).then(([planilhas, entregadores, historico]) => {
+        if (!Array.isArray(planilhas) || !planilhas.length) return;
+
+        const ultimo  = planilhas[0];
+        const nEnt    = Array.isArray(entregadores) ? entregadores.filter(u => u.active !== false).length : "—";
+        const periodos = Array.isArray(historico) ? historico : [];
+
+        fetch(`${API}/admin/resumo-quinzena?mes=${ultimo.mes}&ano=${ultimo.ano}&quinzena=${ultimo.quinzena}`, {
+            headers: { "Authorization": "Bearer " + tok }
+        }).then(r => r.json()).then(resumo => {
+            const periodoLabel = `${ultimo.quinzena}ª Qz · ${mesNomes[ultimo.mes]} ${ultimo.ano}`;
+            const totalPagar   = resumo.total_geral || "—";
+            const totalPacotes = resumo.total_entregues ? resumo.total_entregues.toLocaleString("pt-BR") : "—";
+
+            dash.innerHTML = `
+                <div class="adm-home-section-label">Último período: ${periodoLabel}</div>
+                <div class="adm-home-cards">
+                    <div class="adm-home-card">
+                        <div class="adm-home-card-icon" style="background:rgba(58,134,255,0.1)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#3a86ff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+                        </div>
+                        <div class="adm-home-card-label">Entregadores ativos</div>
+                        <div class="adm-home-card-value" style="color:#3a86ff">${nEnt}</div>
+                    </div>
+                    <div class="adm-home-card">
+                        <div class="adm-home-card-icon" style="background:rgba(34,197,94,0.1)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
+                        <div class="adm-home-card-label">Total a pagar</div>
+                        <div class="adm-home-card-value" style="color:#22c55e">${totalPagar}</div>
+                    </div>
+                    <div class="adm-home-card">
+                        <div class="adm-home-card-icon" style="background:rgba(251,146,60,0.1)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.91 8.84L8.56 2.23a1 1 0 0 0-.97 0L2.05 5.11A1 1 0 0 0 2 6v12a1 1 0 0 0 .53.88l6.03 3.26a1 1 0 0 0 .94 0L21 15.34a1 1 0 0 0 .54-.88V9.7a1 1 0 0 0-.63-.86z"/><polyline points="7.9 4.5 12 6.86 16.1 4.5"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        </div>
+                        <div class="adm-home-card-label">Pacotes entregues</div>
+                        <div class="adm-home-card-value" style="color:#fb923c">${totalPacotes}</div>
+                    </div>
+                    <div class="adm-home-card" onclick="abrirAdminFechamentos(event)" style="cursor:pointer">
+                        <div class="adm-home-card-icon" style="background:rgba(167,139,250,0.1)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        </div>
+                        <div class="adm-home-card-label">Ver fechamentos</div>
+                        <div class="adm-home-card-value" style="color:#a78bfa;font-size:13px">Abrir →</div>
+                    </div>
+                </div>
+                ${periodos.length >= 2 ? `
+                <div class="adm-home-chart-wrap">
+                    <div class="adm-home-chart-title">Pacotes entregues por período — ${anoAtual}</div>
+                    <canvas id="home-admin-chart"></canvas>
+                </div>` : ""}
+            `;
+
+            if (periodos.length >= 2) {
+                const transp = [
+                    { key: "loggi",  label: "Loggi",  color: "#01b4f7" },
+                    { key: "jt",     label: "J&T",    color: "#cc4138" },
+                    { key: "imile",  label: "iMile",  color: "#6b80ff" },
+                    { key: "anjun",  label: "Anjun",  color: "#009c21" },
+                    { key: "shopee", label: "Shopee", color: "#ed4d2d" },
+                ];
+                const labels = periodos.map(p => `${p.quinzena}ª ${mesNomes[p.mes]}`);
+                const ctx = document.getElementById("home-admin-chart").getContext("2d");
+                new Chart(ctx, {
+                    type: "bar",
+                    data: {
+                        labels,
+                        datasets: transp.map(t => ({
+                            label:           t.label,
+                            data:            periodos.map(p => p[t.key]?.qtd || 0),
+                            backgroundColor: t.color + "cc",
+                            borderRadius:    4,
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { labels: { color: "#94a3b8", font: { size: 11 }, boxWidth: 12 } }
+                        },
+                        scales: {
+                            x: { stacked: true, ticks: { color: "#7a8599", font: { size: 11 } }, grid: { color: "rgba(255,255,255,0.04)" } },
+                            y: { stacked: true, ticks: { color: "#7a8599", font: { size: 11 } }, grid: { color: "rgba(255,255,255,0.06)" } }
+                        }
+                    }
+                });
+            }
+        }).catch(() => {});
+    }).catch(() => {});
 }
 
 function carregarHomeNFStatus() {
@@ -182,6 +284,7 @@ let _admFAno = new Date().getFullYear();
 let _admFQuinzena = null;
 let _admFEntregador = "";
 let _admEntregadoresLista = [];
+let _admNomeParaId = {}; // mapa nome → username
 
 function moedaJS(n) {
     return "R$ " + (n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

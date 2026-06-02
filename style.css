@@ -559,6 +559,41 @@ body {
 .home-card-desc  { font-size: 12px; color: #4a6a8a; line-height: 1.5; }
 
 #home-nf-status { margin-top: 14px; }
+
+/* ── Admin Home Dashboard ── */
+#home-admin-dash { margin-top: 28px; }
+.adm-home-section-label {
+    font-size: 10px; font-weight: 700; color: #3a5a7a; text-transform: uppercase;
+    letter-spacing: 1.5px; margin-bottom: 12px;
+}
+.adm-home-cards {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
+}
+.adm-home-card {
+    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.12);
+    border-radius: 14px; padding: 16px; transition: transform 0.18s, border-color 0.18s;
+}
+.adm-home-card:hover { transform: translateY(-3px); border-color: rgba(58,134,255,0.3); }
+.adm-home-card-icon {
+    width: 36px; height: 36px; border-radius: 10px; display: flex;
+    align-items: center; justify-content: center; margin-bottom: 12px;
+}
+.adm-home-card-icon svg { width: 18px; height: 18px; }
+.adm-home-card-label { font-size: 11px; color: #4a6a8a; margin-bottom: 6px; }
+.adm-home-card-value { font-size: 22px; font-weight: 700; line-height: 1.1; }
+.adm-home-chart-wrap {
+    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.12);
+    border-radius: 14px; padding: 18px 20px;
+}
+.adm-home-chart-title {
+    font-size: 11px; font-weight: 600; color: #7a8599; text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 14px;
+}
+@media (max-width: 780px) {
+    .adm-home-cards { grid-template-columns: repeat(2, 1fr); }
+    .adm-home-card-value { font-size: 18px; }
+}
+
 .home-nf-widget {
     border-radius: 16px; padding: 16px 20px; display: flex; align-items: center;
     gap: 14px; border: 1px solid; text-align: left;
