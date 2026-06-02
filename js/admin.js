@@ -193,7 +193,7 @@ function _carregarHomeAdmin() {
                 ${periodos.length >= 2 ? `
                 <div class="adm-home-chart-wrap">
                     <div class="adm-home-chart-title">Pacotes entregues por período — ${anoAtual}</div>
-                    <canvas id="home-admin-chart"></canvas>
+                    <div style="position:relative;height:160px"><canvas id="home-admin-chart"></canvas></div>
                 </div>` : ""}
             `;
 

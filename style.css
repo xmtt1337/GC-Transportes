@@ -513,16 +513,21 @@ body {
 #tela-home {
     align-items: flex-start !important;
     justify-content: flex-start !important;
-    overflow-y: auto;
+    overflow: hidden;
+}
+.logo-central {
+    width: 340px; height: auto; opacity: 0.04; position: absolute;
+    left: 50%; top: 50%; transform: translate(-50%, -50%);
+    pointer-events: none;
 }
 .home-container {
     text-align: center; max-width: min(820px, 96vw); width: 100%;
-    padding: 20px 20px 40px; position: relative; z-index: 1;
+    padding: 16px 20px 20px; position: relative; z-index: 1;
     margin: 0 auto;
 }
 .home-eyebrow {
     font-size: 11px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: 0.14em; color: #3a86ff; margin-bottom: 16px;
+    letter-spacing: 0.14em; color: #3a86ff; margin-bottom: 10px;
     display: inline-flex; align-items: center; gap: 8px;
 }
 .home-eyebrow::before, .home-eyebrow::after {
@@ -530,79 +535,79 @@ body {
     background: rgba(58,134,255,0.4);
 }
 .home-greeting {
-    font-size: 36px; font-weight: 700; color: #f1f5f9;
-    letter-spacing: -0.8px; margin-bottom: 10px; line-height: 1.15;
+    font-size: 30px; font-weight: 700; color: #f1f5f9;
+    letter-spacing: -0.5px; margin-bottom: 8px; line-height: 1.15;
 }
 .home-role-badge {
-    display: inline-block; padding: 4px 14px;
+    display: inline-block; padding: 3px 12px;
     background: rgba(58,134,255,0.1); border: 1px solid rgba(58,134,255,0.2);
     border-radius: 20px; font-size: 12px; color: #3a86ff;
-    font-weight: 500; margin-bottom: 36px;
+    font-weight: 500; margin-bottom: 18px;
 }
 .home-actions {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 280px));
-    justify-content: center; gap: 14px; text-align: left;
+    justify-content: center; gap: 12px; text-align: left;
 }
 .home-action-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
-    border-radius: 16px; padding: 22px 18px; cursor: pointer;
+    border-radius: 14px; padding: 16px 18px; cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    display: flex; flex-direction: column; gap: 12px;
+    display: flex; flex-direction: column; gap: 10px;
 }
 .home-action-card:hover {
-    transform: translateY(-4px); box-shadow: 0 14px 40px rgba(58,134,255,0.18);
+    transform: translateY(-3px); box-shadow: 0 10px 30px rgba(58,134,255,0.15);
     border-color: rgba(58,134,255,0.4);
 }
 .home-card-icon {
-    width: 42px; height: 42px; background: rgba(58,134,255,0.1);
-    border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; background: rgba(58,134,255,0.1);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
 }
 .home-card-icon svg {
-    width: 20px; height: 20px; stroke: #3a86ff; fill: none;
+    width: 18px; height: 18px; stroke: #3a86ff; fill: none;
     stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
 }
-.home-card-title { font-size: 14px; font-weight: 600; color: #f1f5f9; }
-.home-card-desc  { font-size: 12px; color: #4a6a8a; line-height: 1.5; }
+.home-card-title { font-size: 13px; font-weight: 600; color: #f1f5f9; }
+.home-card-desc  { font-size: 11px; color: #4a6a8a; line-height: 1.5; }
 
-#home-nf-status { margin-top: 14px; }
+#home-nf-status { margin-top: 10px; }
 
 /* ── Admin Home Dashboard ── */
-#home-admin-dash { margin-top: 28px; text-align: left; }
+#home-admin-dash { margin-top: 16px; text-align: left; }
 .adm-home-section-label {
     font-size: 10px; font-weight: 700; color: #3a5a7a; text-transform: uppercase;
-    letter-spacing: 1.5px; margin-bottom: 12px; text-align: left;
+    letter-spacing: 1.5px; margin-bottom: 8px; text-align: left;
 }
 .adm-home-cards {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px;
 }
 .adm-home-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.12);
-    border-radius: 14px; padding: 16px; text-align: left;
+    border-radius: 12px; padding: 12px 14px; text-align: left;
     transition: transform 0.18s, border-color 0.18s;
 }
-.adm-home-card:hover { transform: translateY(-3px); border-color: rgba(58,134,255,0.3); }
+.adm-home-card:hover { transform: translateY(-2px); border-color: rgba(58,134,255,0.3); }
 .adm-home-card-icon {
-    width: 36px; height: 36px; border-radius: 10px; display: flex;
-    align-items: center; justify-content: center; margin-bottom: 12px;
+    width: 30px; height: 30px; border-radius: 8px; display: flex;
+    align-items: center; justify-content: center; margin-bottom: 8px;
 }
-.adm-home-card-icon svg { width: 18px; height: 18px; }
-.adm-home-card-label { font-size: 11px; color: #4a6a8a; margin-bottom: 6px; }
-.adm-home-card-value { font-size: 22px; font-weight: 700; line-height: 1.1; }
+.adm-home-card-icon svg { width: 15px; height: 15px; }
+.adm-home-card-label { font-size: 10px; color: #4a6a8a; margin-bottom: 4px; }
+.adm-home-card-value { font-size: 19px; font-weight: 700; line-height: 1.1; }
 .adm-home-chart-wrap {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.12);
-    border-radius: 14px; padding: 18px 20px; text-align: left;
+    border-radius: 12px; padding: 14px 16px; text-align: left;
 }
 .adm-home-chart-title {
-    font-size: 11px; font-weight: 600; color: #7a8599; text-transform: uppercase;
-    letter-spacing: 1px; margin-bottom: 14px;
+    font-size: 10px; font-weight: 600; color: #7a8599; text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 10px;
 }
 @media (max-width: 700px) {
     .adm-home-cards { grid-template-columns: repeat(2, 1fr); }
-    .adm-home-card-value { font-size: 18px; }
+    .adm-home-card-value { font-size: 16px; }
 }
 @media (max-width: 420px) {
     .adm-home-cards { grid-template-columns: repeat(2, 1fr); }
-    .adm-home-card-value { font-size: 15px; }
+    .adm-home-card-value { font-size: 14px; }
 }
 
 .home-nf-widget {
