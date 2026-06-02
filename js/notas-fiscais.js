@@ -198,9 +198,11 @@ function _renderEntregadoresGrid(lista) {
         return;
     }
     grid.innerHTML = lista.map(e => {
-        const nomeEsc = e.nome.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-        return `<div class="adm-ent-card" onclick="selecionarEntregadorAdmin('${nomeEsc}')" data-nome="${nomeEsc}">
+        const nomeEsc     = e.nome.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        const usernameEsc = (e.username || "").replace(/'/g, "\\'");
+        return `<div class="adm-ent-card" onclick="selecionarEntregadorAdmin('${nomeEsc}','${usernameEsc}')" data-nome="${nomeEsc}">
             <div class="adm-ent-card-nome" title="${e.nome}">${e.nome}</div>
+            ${e.username ? `<div style="font-size:10px;color:#4a6a8a;font-family:monospace;margin-top:2px">ID: ${e.username}</div>` : ""}
             <div class="adm-ent-card-valor">${e.total_receber}</div>
             <div class="adm-ent-card-qtd">${parseInt(String(e.total_entregues || 0).replace(/\./g, "")) || 0} pacotes entregues</div>
         </div>`;
@@ -214,14 +216,25 @@ function filtrarEntregadores() {
 
 function abrirDropdownEntregadores() {}
 
-function selecionarEntregadorAdmin(nome) {
+function selecionarEntregadorAdmin(nome, username) {
     _admFEntregador = nome;
+    const info = document.getElementById("adm-fech-topbar-info");
+    if (info) {
+        info.innerHTML = username
+            ? `<div style="text-align:center">
+                <div style="font-size:14px;font-weight:700;color:#e2e8f0">${nome}</div>
+                <div style="font-size:11px;color:#4a6a8a;font-family:monospace;margin-top:2px">ID: ${username}</div>
+               </div>`
+            : `<div style="font-size:14px;font-weight:700;color:#e2e8f0;text-align:center">${nome}</div>`;
+    }
     document.getElementById("adm-ent-section").style.display = "none";
     _carregarPainelAdmin();
 }
 
 function limparSelecaoEntregador() {
     _admFEntregador = "";
+    const info = document.getElementById("adm-fech-topbar-info");
+    if (info) info.innerHTML = "";
     document.getElementById("adm-fech-data").style.display = "none";
     document.getElementById("adm-fech-empty").style.display = "none";
     document.getElementById("adm-ent-section").style.display = "";
