@@ -12,7 +12,21 @@ const EXTRV_GC = [
 const MES_NOMES_EX = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const MES_FULL_EX  = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
+const EXTRV_PALETA = [
+    { bg:"rgba(1,180,247,0.82)",   bd:"#01b4f7" },
+    { bg:"rgba(204,65,56,0.82)",   bd:"#cc4138" },
+    { bg:"rgba(107,128,255,0.82)", bd:"#6b80ff" },
+    { bg:"rgba(0,156,33,0.82)",    bd:"#009c21" },
+    { bg:"rgba(237,77,45,0.82)",   bd:"#ed4d2d" },
+    { bg:"rgba(251,146,60,0.82)",  bd:"#fb923c" },
+    { bg:"rgba(167,139,250,0.82)", bd:"#a78bfa" },
+    { bg:"rgba(251,191,36,0.82)",  bd:"#fbbf24" },
+    { bg:"rgba(248,113,113,0.82)", bd:"#f87171" },
+    { bg:"rgba(52,211,153,0.82)",  bd:"#34d399" },
+];
+
 let _extrvData    = null;
+let _extrvChT     = null; // chart topo (anual)
 let _extrvChM     = null; // chart mensal
 let _extrvChC     = null; // chart contestações
 
@@ -49,6 +63,7 @@ function _extrvRefresh() {
 }
 
 function _extrvDestroyCharts() {
+    if (_extrvChT) { _extrvChT.destroy(); _extrvChT = null; }
     if (_extrvChM) { _extrvChM.destroy(); _extrvChM = null; }
     if (_extrvChC) { _extrvChC.destroy(); _extrvChC = null; }
 }
@@ -184,6 +199,7 @@ function _renderExtravios(rows) {
     document.getElementById("extrv-empty").style.display = "none";
     document.getElementById("extrv-content").style.display = "";
 
+    _renderChartTopo(allYear, C);
     _renderResumo(filtered, allYear, C, mes);
     _renderTransp(filtered, C);
     _renderDescontos(filtered, C);
@@ -532,6 +548,111 @@ function _renderContest(rows, C) {
                 tooltip:{callbacks:{label:c=>` ${c.label}: ${c.parsed} caso${c.parsed!==1?"s":""}`}}
             },
             cutout:"65%"
+        }
+    });
+}
+
+// ────────────────────────────────────────────────────────
+// GRÁFICO TOPO — Valor Anual por Mês × Transportadora
+// ────────────────────────────────────────────────────────
+function _renderChartTopo(allYear, C) {
+    const el = document.getElementById("extrv-chart-topo");
+
+    // Agrupar transportadoras únicas, ordenadas por volume total
+    const transpTotais = {};
+    allYear.forEach(r => {
+        const t = (C.transp ? r[C.transp] : "") || "—";
+        const v = _parseV(C.valor ? r[C.valor] : "");
+        transpTotais[t] = (transpTotais[t] || 0) + v;
+    });
+    const transps = Object.entries(transpTotais)
+        .sort((a, b) => b[1] - a[1])
+        .map(([t]) => t);
+
+    if (!transps.length) { el.innerHTML = ""; return; }
+
+    // Dados mensais por transportadora
+    const byMesTransp = {};
+    transps.forEach(t => { byMesTransp[t] = new Array(12).fill(0); });
+    allYear.forEach(r => {
+        const dt = _parseD(C.data ? r[C.data] : "");
+        if (!dt) return;
+        const t = (C.transp ? r[C.transp] : "") || "—";
+        const v = _parseV(C.valor ? r[C.valor] : "");
+        if (byMesTransp[t]) byMesTransp[t][dt.month - 1] += v;
+    });
+
+    // Total por mês (para tooltip de rodapé)
+    const totalMes = new Array(12).fill(0);
+    transps.forEach(t => byMesTransp[t].forEach((v, i) => { totalMes[i] += v; }));
+
+    const datasets = transps.map((t, i) => {
+        const cor = EXTRV_PALETA[i % EXTRV_PALETA.length];
+        return {
+            label: t,
+            data: byMesTransp[t],
+            backgroundColor: cor.bg,
+            borderColor: cor.bd,
+            borderWidth: 1,
+            stack: "s",
+        };
+    });
+
+    const anoSel = document.getElementById("extrv-sel-ano").value;
+    el.innerHTML = `
+    <div class="ed-section">
+        <div class="ed-section-title">Valor Anual por Transportadora — ${anoSel}</div>
+        <div style="position:relative;height:300px">
+            <canvas id="extrv-ch-topo"></canvas>
+        </div>
+    </div>`;
+
+    if (_extrvChT) { _extrvChT.destroy(); _extrvChT = null; }
+    const ctx = document.getElementById("extrv-ch-topo");
+    if (!ctx) return;
+
+    _extrvChT = new Chart(ctx, {
+        type: "bar",
+        data: { labels: MES_NOMES_EX, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: "bottom",
+                    labels: { color: "#94a3b8", font: { size: 11 }, padding: 14, boxWidth: 12 }
+                },
+                tooltip: {
+                    mode: "index",
+                    callbacks: {
+                        label: ctx => {
+                            const v = ctx.parsed.y;
+                            return v > 0 ? ` ${ctx.dataset.label}: ${_moeda(v)}` : null;
+                        },
+                        footer: items => {
+                            const total = items.reduce((a, i) => a + (i.parsed.y || 0), 0);
+                            return total > 0 ? `Total: ${_moeda(total)}` : "";
+                        }
+                    },
+                    filter: item => (item.parsed.y || 0) > 0,
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: { color: "rgba(255,255,255,0.04)" },
+                    ticks: { color: "#7a8599", font: { size: 11 } }
+                },
+                y: {
+                    stacked: true,
+                    grid: { color: "rgba(255,255,255,0.04)" },
+                    ticks: {
+                        color: "#7a8599",
+                        font: { size: 11 },
+                        callback: v => "R$ " + Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })
+                    }
+                }
+            }
         }
     });
 }
