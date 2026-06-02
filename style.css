@@ -511,7 +511,7 @@ body {
 
 /* ===== HOME REDESIGN ===== */
 .home-container {
-    text-align: center; max-width: 820px; width: 100%;
+    text-align: center; max-width: min(820px, 96vw); width: 100%;
     padding: 20px; position: relative; z-index: 1;
 }
 .home-eyebrow {
@@ -534,8 +534,8 @@ body {
     font-weight: 500; margin-bottom: 36px;
 }
 .home-actions {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-    gap: 14px; text-align: left;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 280px));
+    justify-content: center; gap: 14px; text-align: left;
 }
 .home-action-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
@@ -561,17 +561,18 @@ body {
 #home-nf-status { margin-top: 14px; }
 
 /* ── Admin Home Dashboard ── */
-#home-admin-dash { margin-top: 28px; }
+#home-admin-dash { margin-top: 28px; text-align: left; }
 .adm-home-section-label {
     font-size: 10px; font-weight: 700; color: #3a5a7a; text-transform: uppercase;
-    letter-spacing: 1.5px; margin-bottom: 12px;
+    letter-spacing: 1.5px; margin-bottom: 12px; text-align: left;
 }
 .adm-home-cards {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; text-align: left;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
 }
 .adm-home-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.12);
-    border-radius: 14px; padding: 16px; transition: transform 0.18s, border-color 0.18s;
+    border-radius: 14px; padding: 16px; text-align: left;
+    transition: transform 0.18s, border-color 0.18s;
 }
 .adm-home-card:hover { transform: translateY(-3px); border-color: rgba(58,134,255,0.3); }
 .adm-home-card-icon {
@@ -583,20 +584,19 @@ body {
 .adm-home-card-value { font-size: 22px; font-weight: 700; line-height: 1.1; }
 .adm-home-chart-wrap {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.12);
-    border-radius: 14px; padding: 18px 20px;
+    border-radius: 14px; padding: 18px 20px; text-align: left;
 }
 .adm-home-chart-title {
     font-size: 11px; font-weight: 600; color: #7a8599; text-transform: uppercase;
     letter-spacing: 1px; margin-bottom: 14px;
 }
-@media (max-width: 780px) {
+@media (max-width: 700px) {
     .adm-home-cards { grid-template-columns: repeat(2, 1fr); }
     .adm-home-card-value { font-size: 18px; }
 }
-@media (max-width: 500px) {
-    .adm-home-cards { grid-template-columns: 1fr 1fr; }
-    .adm-home-card-value { font-size: 16px; }
-    .home-actions { grid-template-columns: 1fr !important; }
+@media (max-width: 420px) {
+    .adm-home-cards { grid-template-columns: repeat(2, 1fr); }
+    .adm-home-card-value { font-size: 15px; }
 }
 
 .home-nf-widget {
