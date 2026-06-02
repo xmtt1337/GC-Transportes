@@ -134,15 +134,20 @@
             <span class="menu-tooltip">Dashboard</span>
         </li>
 
-        <li class="menu-item" id="menu-extravios" onclick="abrirExtravios(event)" style="display:none">
+        <li class="menu-item" data-menu="extravios" id="menu-extravios" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                 <line x1="12" y1="9" x2="12" y2="13"/>
                 <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
             <span class="label">Extravios</span>
+            <span class="arrow">▾</span>
             <span class="menu-tooltip">Extravios</span>
         </li>
+        <ul class="submenu" data-menu="extravios" id="submenu-extravios" style="display:none">
+            <li><a href="#" onclick="abrirExtraviosBusca(event)">Pesquisar</a></li>
+            <li><a href="#" onclick="abrirExtraviosDash(event)">Dashboard</a></li>
+        </ul>
 
     </ul>
 
@@ -884,8 +889,23 @@
             </div>
         </div><!-- /tela-minhas-nfs -->
 
-        <!-- TELA EXTRAVIOS -->
-        <div id="tela-extravios" class="view tela-full">
+        <!-- TELA EXTRAVIOS — PESQUISAR -->
+        <div id="tela-extravios-busca" class="view tela-full">
+            <div class="fech-header">
+                <div class="extrv-search-wrap" style="min-width:300px;max-width:520px">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="extrv-busca-input" placeholder="Digite o CÓDIGO do pedido..." oninput="_extrvBuscarCodigo()">
+                    <button class="extrv-busca-clear" id="extrv-busca-clear" onclick="_extrvLimparBusca()" style="display:none">×</button>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="extrv-busca-empty">Digite o CÓDIGO do pedido para ver todas as informações.</div>
+                <div id="extrv-busca-resultado" style="display:none"></div>
+            </div>
+        </div><!-- /tela-extravios-busca -->
+
+        <!-- TELA EXTRAVIOS — DASHBOARD -->
+        <div id="tela-extravios-dash" class="view tela-full">
             <div class="fech-header">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                     <select class="fech-select" id="extrv-sel-ano" onchange="_filtrarExtravios()"></select>
@@ -908,16 +928,10 @@
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                         Atualizar
                     </button>
-                    <div class="extrv-search-wrap">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="text" id="extrv-busca-input" placeholder="Pesquisar por CÓDIGO..." oninput="_extrvBuscarCodigo()">
-                        <button class="extrv-busca-clear" id="extrv-busca-clear" onclick="_extrvLimparBusca()" style="display:none">×</button>
-                    </div>
                 </div>
             </div>
             <div class="fech-body">
                 <div class="fechamento-empty" id="extrv-empty">Carregando...</div>
-                <div id="extrv-busca-resultado" style="display:none"></div>
                 <div id="extrv-content" style="display:none">
                     <div id="extrv-chart-topo"></div>
                     <div id="extrv-resumo"></div>
@@ -927,7 +941,7 @@
                     <div id="extrv-mensal" style="display:none"></div>
                 </div>
             </div>
-        </div><!-- /tela-extravios -->
+        </div><!-- /tela-extravios-dash -->
 
     </div>
 </div>

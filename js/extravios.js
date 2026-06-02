@@ -31,11 +31,25 @@ let _extrvChM     = null; // chart mensal
 let _extrvChC     = null; // chart contestações
 
 // ── Navegação ──
-function abrirExtravios(event) {
+function abrirExtraviosDash(event) {
     if (event) event.preventDefault();
     _iniciarFiltrosExtrv();
-    mostrarTela("tela-extravios");
+    mostrarTela("tela-extravios-dash");
     _carregarExtravios();
+}
+
+function abrirExtraviosBusca(event) {
+    if (event) event.preventDefault();
+    mostrarTela("tela-extravios-busca");
+    if (!_extrvData) {
+        fetch(EXTRV_URL)
+            .then(r => { if (!r.ok) throw new Error(); return r.text(); })
+            .then(text => {
+                const rows = _parseCSVExtrv(text);
+                if (rows.length) _extrvData = rows;
+            })
+            .catch(() => {});
+    }
 }
 
 function _iniciarFiltrosExtrv() {
@@ -59,12 +73,6 @@ function _filtrarExtravios() {
 function _extrvRefresh() {
     _extrvData = null;
     _extrvDestroyCharts();
-    const inp = document.getElementById("extrv-busca-input");
-    if (inp) inp.value = "";
-    const clr = document.getElementById("extrv-busca-clear");
-    if (clr) clr.style.display = "none";
-    const res = document.getElementById("extrv-busca-resultado");
-    if (res) { res.style.display = "none"; res.innerHTML = ""; }
     _carregarExtravios();
 }
 
@@ -74,19 +82,17 @@ function _extrvBuscarCodigo() {
     const clr = document.getElementById("extrv-busca-clear");
     if (clr) clr.style.display = q ? "" : "none";
 
-    const res     = document.getElementById("extrv-busca-resultado");
-    const content = document.getElementById("extrv-content");
-    const empty   = document.getElementById("extrv-empty");
+    const res   = document.getElementById("extrv-busca-resultado");
+    const empty = document.getElementById("extrv-busca-empty");
 
     if (!q) {
         res.style.display = "none";
         res.innerHTML = "";
-        if (_extrvData) { content.style.display = ""; empty.style.display = "none"; }
+        if (empty) empty.style.display = "";
         return;
     }
 
-    content.style.display = "none";
-    empty.style.display   = "none";
+    if (empty) empty.style.display = "none";
 
     if (!_extrvData) {
         res.style.display = "";

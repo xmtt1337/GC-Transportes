@@ -37,10 +37,12 @@ fetch(API + "/perfil", {
         document.getElementById("submenu-cadastros").style.display  = "";
         document.getElementById("menu-dashboard").style.display    = "";
         document.getElementById("menu-extravios").style.display    = "";
+        document.getElementById("submenu-extravios").style.display  = "";
     }
 
     if (role === "sac") {
         document.getElementById("menu-extravios").style.display    = "";
+        document.getElementById("submenu-extravios").style.display  = "";
     }
 
     renderHomeActions(role);
