@@ -246,6 +246,38 @@
                 <!-- Dados do painel (oculto até carregar) -->
                 <div id="fechamento-data" style="display:none">
 
+                    <!-- NF -->
+                    <label id="nota-upload-area" class="nota-upload-area">
+                        <input type="file" id="nota-file-input" accept=".pdf" style="display:none" onchange="_processarNota(this)">
+                        <div class="nota-upload-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3a86ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+                        </div>
+                        <div class="nota-upload-text">
+                            <div class="nota-upload-title">Enviar Nota Fiscal</div>
+                            <div class="nota-upload-sub">Selecione o PDF · dados extraídos automaticamente</div>
+                        </div>
+                        <div class="nota-upload-btn">Selecionar PDF</div>
+                    </label>
+
+                    <div id="nota-card" class="nota-card" style="display:none">
+                        <div class="nota-card-header">
+                            <div style="display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span class="nota-card-title" style="color:#22c55e">NF Enviada</span>
+                                <span class="nota-chave-val" id="nota-numero" style="font-size:11px;color:#64748b;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</span>
+                            </div>
+                            <button class="nota-remove-btn" onclick="_removerNota()">✕ Remover</button>
+                        </div>
+                        <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#94a3b8;margin-top:6px">
+                            <span><span style="color:#4a6a8a">Emissão </span><span id="nota-emissao">—</span></span>
+                            <span><span style="color:#4a6a8a">CNPJ </span><span id="nota-cnpj">—</span></span>
+                            <span><span style="color:#4a6a8a">Emissor </span><span id="nota-emissor">—</span></span>
+                            <span><span style="color:#4a6a8a">Valor </span><span id="nota-valor">—</span></span>
+                            <span><span style="color:#4a6a8a">Tomador </span><span id="nota-tomador">—</span></span>
+                        </div>
+                        <div id="nota-status" class="nota-status" style="display:none"></div>
+                    </div>
+
                     <!-- Banner total a receber -->
                     <div class="painel-banner banner-positivo" id="pb-banner">
                         <div class="pb-left">
@@ -330,35 +362,6 @@
                                 <tbody id="multas-tbody"></tbody>
                             </table>
                         </div>
-                    </div>
-
-                    <!-- Nota Fiscal -->
-                    <div class="painel-section-title">Nota Fiscal</div>
-
-                    <div id="nota-upload-area" class="nota-upload-area" onclick="document.getElementById('nota-file-input').click()">
-                        <input type="file" id="nota-file-input" accept=".pdf" style="display:none" onchange="_processarNota(this)">
-                        <div class="nota-upload-icon">
-                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#3a86ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
-                        </div>
-                        <div class="nota-upload-text">
-                            <div class="nota-upload-title">Enviar Nota Fiscal</div>
-                            <div class="nota-upload-sub">Selecione o PDF da NF · dados extraídos automaticamente</div>
-                        </div>
-                        <div class="nota-upload-btn">Selecionar PDF</div>
-                    </div>
-
-                    <div id="nota-card" class="nota-card" style="display:none">
-                        <div class="nota-card-header">
-                            <span class="nota-card-title">Nota Fiscal Anexada</span>
-                            <button class="nota-remove-btn" onclick="_removerNota()">✕ Remover</button>
-                        </div>
-                        <div class="nota-field nota-field-chave"><span class="nota-field-lbl">Nº NF</span><span class="nota-field-val nota-chave-val" id="nota-numero">—</span></div>
-                        <div class="nota-field"><span class="nota-field-lbl">Data Emissão</span><span class="nota-field-val" id="nota-emissao">—</span></div>
-                        <div class="nota-field"><span class="nota-field-lbl">CNPJ</span><span class="nota-field-val" id="nota-cnpj">—</span></div>
-                        <div class="nota-field"><span class="nota-field-lbl">Emissor</span><span class="nota-field-val" id="nota-emissor">—</span></div>
-                        <div class="nota-field"><span class="nota-field-lbl">Valor</span><span class="nota-field-val" id="nota-valor">—</span></div>
-                        <div class="nota-field"><span class="nota-field-lbl">Tomador</span><span class="nota-field-val" id="nota-tomador">—</span></div>
-                        <div id="nota-status" class="nota-status" style="display:none"></div>
                     </div>
 
                 </div><!-- /fechamento-data -->
