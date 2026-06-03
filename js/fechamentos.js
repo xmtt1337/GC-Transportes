@@ -42,6 +42,15 @@ function filtrarPeriodo() {
     document.getElementById("fechamento-data").style.display  = "none";
 }
 
+function _calcularDataPagamento(mes, ano, quinzena) {
+    const ultimoDia = quinzena === 1
+        ? new Date(ano, mes - 1, 15)   // 1ª quinzena: dia 15
+        : new Date(ano, mes, 0);       // 2ª quinzena: último dia do mês
+    const pagamento = new Date(ultimoDia);
+    pagamento.setDate(pagamento.getDate() + 45);
+    return pagamento.toLocaleDateString("pt-BR");
+}
+
 function selecionarQuinzena(q) {
     _fQuinzena = q;
     document.getElementById("btn-1q").classList.toggle("active", q === 1);
@@ -74,6 +83,7 @@ function _carregarPainel() {
         banner.className = "painel-banner " + (d.total_receber_num < 0 ? "banner-negativo" : "banner-positivo");
         document.getElementById("pb-total-receber").innerText   = d.total_receber;
         document.getElementById("pb-total-entregues").innerText = d.total_entregues;
+        document.getElementById("pb-pagamento").innerText = "Previsão de pagamento: " + _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
 
         // Ajustes
         document.getElementById("paj-adicional").innerText    = d.adicional;
