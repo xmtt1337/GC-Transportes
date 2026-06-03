@@ -83,7 +83,7 @@ function _carregarPainel() {
         banner.className = "painel-banner " + (d.total_receber_num < 0 ? "banner-negativo" : "banner-positivo");
         document.getElementById("pb-total-receber").innerText   = d.total_receber;
         document.getElementById("pb-total-entregues").innerText = d.total_entregues;
-        document.getElementById("pb-pagamento").innerText = "* Sem adiantamento, o pagamento previsto é " + _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
+        document.getElementById("pb-pagamento").innerText = "Pagamento previsto: " + _calcularDataPagamento(_fMes, _fAno, _fQuinzena) + " (exceto quem antecipou)";
 
         // Ajustes
         document.getElementById("paj-adicional").innerText    = d.adicional;
