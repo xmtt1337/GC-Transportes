@@ -2,7 +2,9 @@
 if (typeof pdfjsLib !== "undefined")
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-function _mostrarUploadArea() {
+let _notaAtual = null;
+
+function _mostrarUploadArea(erro) {
     const area = document.getElementById("nota-upload-area");
     area.innerHTML = `
         <input type="file" id="nota-file-input" accept=".pdf" style="display:none" onchange="_processarNota(this)">
@@ -11,11 +13,84 @@ function _mostrarUploadArea() {
         </div>
         <div class="nota-upload-text">
             <div class="nota-upload-title">Enviar Nota Fiscal</div>
-            <div class="nota-upload-sub">Selecione o PDF · dados extraídos automaticamente</div>
+            <div class="nota-upload-sub" id="nota-upload-sub">${erro ? `<span style="color:#ef4444">${erro}</span>` : "Arraste o PDF aqui ou clique para selecionar"}</div>
         </div>
-        <div class="nota-upload-btn">Selecionar PDF</div>`;
+        <div class="nota-upload-btn">Selecionar</div>`;
+    area.ondragover  = (e) => { e.preventDefault(); area.classList.add("drag-over"); };
+    area.ondragleave = ()  => area.classList.remove("drag-over");
+    area.ondrop      = (e) => {
+        e.preventDefault(); area.classList.remove("drag-over");
+        const f = e.dataTransfer.files[0];
+        if (f && f.type === "application/pdf") _processarNotaFile(f);
+        else _mostrarUploadArea("Arquivo inválido. Envie um PDF.");
+    };
     area.style.display = "";
     document.getElementById("nota-card").style.display = "none";
+}
+
+function _renderNotaCard(nota) {
+    _notaAtual = nota;
+    document.getElementById("nota-upload-area").style.display = "none";
+    const notaNum = _parseMoeda(nota.valor);
+    const diff    = _fTotalReceber && notaNum > 0 ? Math.abs(notaNum - _fTotalReceber) : null;
+    const statusHtml = diff !== null
+        ? (diff < 0.02
+            ? `<div class="nota-status confere" style="margin-top:6px"><span>✓</span> Valor confere com o fechamento (${moedaJS(_fTotalReceber)})</div>`
+            : `<div class="nota-status diverge" style="margin-top:6px"><span>⚠</span> Valor diverge — fechamento: ${moedaJS(_fTotalReceber)} · NF: ${moedaJS(notaNum)}</div>`)
+        : "";
+    const card = document.getElementById("nota-card");
+    card.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px">
+            <div class="nota-card-ok-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div style="flex:1;min-width:0">
+                <span style="font-size:13px;font-weight:700;color:#22c55e">NF Enviada</span>
+                ${nota.chave_acesso || nota.numero_nf ? `<span style="font-size:11px;color:#64748b;margin-left:8px">${(nota.chave_acesso || nota.numero_nf).slice(0,20)}…</span>` : ""}
+            </div>
+            <button class="nota-ver-btn" onclick="_verNotaModal()">Ver nota →</button>
+            <button class="nota-remove-btn" onclick="_removerNota()">✕</button>
+        </div>
+        ${statusHtml}`;
+    card.style.display = "";
+}
+
+function _verNotaModal() {
+    if (!_notaAtual) return;
+    const n = _notaAtual;
+    const notaNum = _parseMoeda(n.valor);
+    const diff    = _fTotalReceber && notaNum > 0 ? Math.abs(notaNum - _fTotalReceber) : null;
+    const statusHtml = diff !== null
+        ? (diff < 0.02
+            ? `<div class="nota-status confere"><span>✓</span> Valor confere com o fechamento (${moedaJS(_fTotalReceber)})</div>`
+            : `<div class="nota-status diverge"><span>⚠</span> Valor diverge — fechamento: ${moedaJS(_fTotalReceber)} · NF: ${moedaJS(notaNum)}</div>`)
+        : "";
+    const row = (lbl, val) => val && val !== "—"
+        ? `<div class="nota-modal-row"><span class="nota-modal-lbl">${lbl}</span><span class="nota-modal-val">${val}</span></div>`
+        : "";
+    const overlay = document.createElement("div");
+    overlay.className = "nota-modal-overlay";
+    overlay.innerHTML = `
+        <div class="nota-modal">
+            <div class="nota-modal-header">
+                <span>Nota Fiscal</span>
+                <button class="nota-modal-close" onclick="this.closest('.nota-modal-overlay').remove()">✕</button>
+            </div>
+            <div class="nota-modal-body">
+                ${row("Nº / Chave", n.chave_acesso || n.numero_nf)}
+                ${row("Data emissão", n.emissao)}
+                ${row("CNPJ", n.cnpj)}
+                ${row("Emissor", n.emissor)}
+                ${row("Valor", n.valor)}
+                ${row("Tomador", n.tomador)}
+                ${statusHtml}
+            </div>
+            <div class="nota-modal-footer">
+                <button class="nota-remove-btn" onclick="_removerNota();this.closest('.nota-modal-overlay').remove()">✕ Remover NF</button>
+            </div>
+        </div>`;
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
 }
 
 function _carregarNota() {
@@ -62,9 +137,12 @@ async function _removerNota() {
     _mostrarUploadArea();
 }
 
-async function _processarNota(input) {
+function _processarNota(input) {
     const file = input.files[0];
-    if (!file) return;
+    if (file) _processarNotaFile(file);
+}
+
+async function _processarNotaFile(file) {
     const area = document.getElementById("nota-upload-area");
     area.innerHTML = `<div class="nota-loading">Lendo PDF…</div>`;
     try {
@@ -83,17 +161,13 @@ async function _processarNota(input) {
             ? (Math.abs(notaNum - valor_fechamento) < 0.02 ? "confere" : "diverge")
             : null;
 
-        // Verificar se a chave de acesso já foi usada em outro período/entregador
         if (nota.chave_acesso) {
             const vRes  = await fetch(`${API}/nota/verificar?chave_acesso=${nota.chave_acesso}&mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}`, {
                 headers: { "Authorization": "Bearer " + token }
             });
             const vData = await vRes.json();
             if (vData.duplicata) {
-                _mostrarUploadArea();
-                const hint = document.querySelector("#nota-upload-area .nota-hint");
-                hint.style.color  = "#ef4444";
-                hint.textContent  = `⚠ Esta nota já foi utilizada (${vData.detalhe}). Use uma nota diferente.`;
+                _mostrarUploadArea(`⚠ Esta nota já foi utilizada (${vData.detalhe}). Use uma nota diferente.`);
                 return;
             }
         }
@@ -105,9 +179,7 @@ async function _processarNota(input) {
         });
         _renderNotaCard(nota);
     } catch (e) {
-        _mostrarUploadArea();
-        document.querySelector("#nota-upload-area .nota-hint").textContent = "Erro ao ler o PDF. Tente novamente.";
-        document.querySelector("#nota-upload-area .nota-hint").style.color = "#ef4444";
+        _mostrarUploadArea("Erro ao ler o PDF. Tente novamente.");
     }
 }
 
