@@ -185,15 +185,22 @@ function _nomePertoCNPJ(t, entry, janela = 400) {
     return _reAdmin.test(c) ? null : c;
 }
 
-// Rejeita candidatos que contenham texto de instrução/rodapé de NFS-e
+// Rejeita candidatos que contenham texto de instrução/rodapé de NFS-e ou metadados de DPS
 function _isTextoInstrucao(nome) {
-    return /consulta\s+da\s+chave/i.test(nome)            ||
-           /portal\s+nacional/i.test(nome)                ||
-           /nfs-?e/i.test(nome)                           ||
-           /n[úu]mero\s+da\s+nfs/i.test(nome)            ||
+    return /consulta\s+da\s+chave/i.test(nome)               ||
+           /portal\s+nacional/i.test(nome)                   ||
+           /nfs-?e/i.test(nome)                              ||
+           /n[úu]mero\s+da\s+nfs/i.test(nome)               ||
            /c[oó]digo\s+de\s+verifica[çc][aã]o/i.test(nome) ||
-           /verifique\s+autenticidade/i.test(nome)        ||
-           /autenticidade/i.test(nome);
+           /verifique\s+autenticidade/i.test(nome)           ||
+           /autenticidade/i.test(nome)                       ||
+           /n[úu]mero\s+da\s+dps/i.test(nome)               ||
+           /s[ée]rie\s+da\s+dps/i.test(nome)                ||
+           /emiss[aã]o\s+da\s+dps/i.test(nome)              ||
+           /\bdata\s+e\s+hora\b/i.test(nome)                 ||
+           /\bs[ée]rie\b.{0,10}\b\d{4,}/i.test(nome)        ||
+           /n[úu]mero\s+do\s+rps/i.test(nome)               ||
+           /data\s+de\s+emiss[aã]o/i.test(nome);
 }
 
 // ── Estratégia de proximidade ao CNPJ ──
@@ -240,6 +247,16 @@ function _extrairEmissor(t, cnpjEmit, sepIdx) {
                     if (m && !_reAdmin.test(m[1])) return m[1].trim();
                 }
                 return null;
+            },
+        },
+        // ── DPS (Documento de Prestação de Serviços): seção "PRESTADOR" ──
+        {
+            nome: "dps-prestador",
+            fn: () => {
+                const m = t.match(/\bPRESTADOR\b(.{0,600}?)(?=\bTOMADOR\b|\bSERVI[CÇ]O\b|\bDISCRIMINA)/i);
+                if (!m) return null;
+                const n = _nomeNaSec(m[1]);
+                return n ? n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim() : null;
             },
         },
         // ── NFS-e ABRASF: seção "EMITENTE DA NFS-e" ──
