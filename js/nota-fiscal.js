@@ -65,9 +65,8 @@ function _verNotaModal() {
             ? `<div class="nota-status confere"><span>✓</span> Valor confere com o fechamento (${moedaJS(_fTotalReceber)})</div>`
             : `<div class="nota-status diverge"><span>⚠</span> Valor diverge — fechamento: ${moedaJS(_fTotalReceber)} · NF: ${moedaJS(notaNum)}</div>`)
         : "";
-    const row = (lbl, val) => val && val !== "—"
-        ? `<div class="nota-modal-row"><span class="nota-modal-lbl">${lbl}</span><span class="nota-modal-val">${val}</span></div>`
-        : "";
+    const row = (lbl, val) =>
+        `<div class="nota-modal-row"><span class="nota-modal-lbl">${lbl}</span><span class="nota-modal-val" style="${!val||val==='—'?'color:#4a6a8a':''}">${val||'—'}</span></div>`;
     const overlay = document.createElement("div");
     overlay.className = "nota-modal-overlay";
     overlay.innerHTML = `
