@@ -545,8 +545,9 @@ body {
     font-weight: 500; margin-bottom: 18px;
 }
 .home-actions {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 280px));
-    justify-content: center; gap: 12px; text-align: left; align-items: stretch;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; text-align: left; align-items: stretch;
+    width: 100%; max-width: 572px; margin: 0 auto;
 }
 .home-action-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
@@ -569,7 +570,7 @@ body {
 .home-card-title { font-size: 13px; font-weight: 600; color: #f1f5f9; }
 .home-card-desc  { font-size: 11px; color: #4a6a8a; line-height: 1.5; }
 
-#home-nf-status { margin-top: 10px; }
+#home-nf-status { margin-top: 10px; max-width: 572px; width: 100%; margin-left: auto; margin-right: auto; }
 
 /* ── Admin Home Dashboard ── */
 #home-admin-dash { margin-top: 16px; text-align: left; }
