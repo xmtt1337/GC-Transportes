@@ -888,21 +888,31 @@ body {
 
 /* ===== NOTA FISCAL ===== */
 .nota-upload-area {
-    border: 2px dashed rgba(58,134,255,0.25); border-radius: 14px;
-    padding: 24px; text-align: center; margin-bottom: 16px;
-    transition: border-color 0.2s;
-}
-.nota-upload-area:hover { border-color: rgba(58,134,255,0.5); }
-.nota-btn-upload {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(58,134,255,0.12); border: 1px solid rgba(58,134,255,0.3);
-    color: #3a86ff; border-radius: 10px; padding: 10px 20px;
-    font-size: 14px; font-weight: 600; cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
+    background: rgba(58,134,255,0.05); border: 1.5px dashed rgba(58,134,255,0.28);
+    border-radius: 14px; padding: 20px 18px; margin-bottom: 16px;
+    cursor: pointer; transition: background 0.2s, border-color 0.2s;
+    display: flex; align-items: center; gap: 16px;
     -webkit-tap-highlight-color: transparent;
 }
-.nota-btn-upload:hover { background: rgba(58,134,255,0.2); border-color: rgba(58,134,255,0.5); }
-.nota-hint { font-size: 11px; color: #4a6a8a; margin-top: 8px; }
+.nota-upload-area:hover { background: rgba(58,134,255,0.1); border-color: rgba(58,134,255,0.5); }
+.nota-upload-icon {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    background: rgba(58,134,255,0.13); display: flex; align-items: center; justify-content: center;
+}
+.nota-upload-text { flex: 1; min-width: 0; text-align: left; }
+.nota-upload-title { font-size: 14px; font-weight: 700; color: #c8d8f0; margin-bottom: 3px; }
+.nota-upload-sub { font-size: 12px; color: #4a6a8a; }
+.nota-upload-btn {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(58,134,255,0.15); border: 1px solid rgba(58,134,255,0.35);
+    color: #3a86ff; border-radius: 8px; padding: 8px 14px;
+    font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    transition: background 0.2s; -webkit-tap-highlight-color: transparent;
+}
+.nota-upload-area:hover .nota-upload-btn { background: rgba(58,134,255,0.25); }
+.nota-btn-upload { display: none; }
+.nota-hint { display: none; }
+.nota-loading { text-align: center; color: #4a6a8a; font-size: 13px; padding: 16px; }
 .nota-loading { text-align: center; color: #4a6a8a; font-size: 13px; padding: 16px; }
 
 .nota-card {
