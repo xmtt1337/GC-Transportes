@@ -241,7 +241,8 @@ function _extrairCamposNota(raw) {
     ]) { const vm = t.match(pat); if (vm) { valor = `R$ ${vm[1]}`; break; } }
 
     // ── AUXILIARES ──
-    const _reAdmin = /\b(ENDERE[ÇC]O|INSCRI[ÇC][ÃA]O(?:\s+ESTADUAL)?|CEP\b|BAIRRO|MUNIC[IÍ]PIO|CIDADE\b|UF\b|TELEFONE|E-?MAIL|FONE\b|FAX\b)\b/iu;
+    // Rejeita qualquer texto que contenha labels administrativos ou de seção
+    const _reAdmin = /\b(ENDERE[ÇC]O|INSCRI[ÇC][ÃA]O(?:\s+ESTADUAL)?|CEP\b|BAIRRO|MUNIC[IÍ]PIO|CIDADE\b|UF\b|TELEFONE|E-?MAIL|FONE\b|FAX\b|CNPJ\b|CPF\b|NIF\b|EMITENTE\b|PRESTADOR\b|TOMADOR\b|DESTINAT[AÁ]R|SERVI[CÇ]O\b)\b/iu;
 
     function _nomePertoCNPJ(entry, janela = 400) {
         if (!entry) return null;
@@ -253,15 +254,16 @@ function _extrairCamposNota(raw) {
     }
 
     // Extrai nome por labels dentro de uma seção
-    // Trata: "Razão Social / Nome Empresarial EMPRESA XYZ" (sem dois-pontos, barra no meio)
+    // Trata: "Razão Social / Nome Empresarial EMPRESA XYZ" (sem dois-pontos, barra no meio, sem espaço)
     function _nomeNaSec(sec) {
         return (
-            // "Razão Social / Nome Empresarial VALUE" ou "Razão Social: VALUE"
-            sec.match(/Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s+([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere))/iu) ||
-            // "Nome Empresarial: VALUE" ou "Nome Empresarial VALUE"
-            sec.match(/Nome\s+Empresarial\s*:?\s+([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere))/iu) ||
+            // "Razão Social / Nome Empresarial VALUE" ou "Razão Social: VALUE" ou colado "Razão Social / Nome EmpresarialVALUE"
+            // \s* ao invés de \s+ porque o \s* do grupo opcional já consome o espaço separador
+            sec.match(/Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
+            // "Nome Empresarial VALUE"
+            sec.match(/Nome\s+Empresarial\s*:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
             // "Nome / Nome Empresarial VALUE"
-            sec.match(/Nome\s*[\/|]\s*(?:Nome\s+)?Empresarial\s+([\p{L}].{2,79}?)(?=\s+(?:E-?mail|Endere[çc]o|Inscri|CNPJ|CPF))/iu) ||
+            sec.match(/Nome\s*[\/|]\s*(?:Nome\s+)?Empresarial\s*([\p{L}].{2,79}?)(?=\s+(?:E-?mail|Endere[çc]o|Inscri|CNPJ|CPF))/iu) ||
             // "Nome: VALUE"
             sec.match(/\bNome\s*:\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|E-?mail|Endere))/iu)
         );
@@ -284,9 +286,9 @@ function _extrairCamposNota(raw) {
             // "Emissor:" / "Emitente:" direto
             /(?:Emiss[ao]r[a]?|Emitente)\s*:\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bCEP\b|\bIE\b|E-?mail|Endere))/iu,
             // "Razão Social / Nome Empresarial VALUE" — padrão ABRASF mais comum
-            /Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
+            /Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere|\s{2}))/iu,
             // "Nome Empresarial VALUE"
-            /Nome\s+Empresarial\s*:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri))/iu,
+            /Nome\s+Empresarial\s*:?\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri))/iu,
         ]) {
             const m = emitPart.match(pat);
             if (m && !_reAdmin.test(m[1])) { emissor = m[1].trim(); break; }
