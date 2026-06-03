@@ -12,7 +12,7 @@ function _mostrarUploadArea(erro) {
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3a86ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
         </div>
         <div class="nota-upload-text">
-            <div class="nota-upload-title">Enviar Nota Fiscal</div>
+            <div class="nota-upload-title">Anexar PDF da Nota Fiscal</div>
             <div class="nota-upload-sub" id="nota-upload-sub">${erro ? `<span style="color:#ef4444">${erro}</span>` : "Arraste o PDF aqui ou clique para selecionar"}</div>
         </div>
         <div class="nota-upload-btn">Selecionar</div>`;
