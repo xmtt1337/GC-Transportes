@@ -155,8 +155,173 @@ async function _processarNotaFile(file) {
     }
 }
 
+// ── Auxiliares de extração (compartilhados entre emissor e tomador) ──
+
+// Rejeita texto que contenha labels administrativos ou de seção
+const _reAdmin = /\b(ENDERE[ÇC]O|INSCRI[ÇC][ÃA]O(?:\s+ESTADUAL)?|CEP\b|BAIRRO|MUNIC[IÍ]PIO|CIDADE\b|UF\b|TELEFONE|E-?MAIL|FONE\b|FAX\b|CNPJ\b|CPF\b|NIF\b|EMITENTE\b|PRESTADOR\b|TOMADOR\b|DESTINAT[AÁ]R|SERVI[CÇ]O\b)\b/iu;
+
+// Busca nome por labels dentro de uma seção de texto
+function _nomeNaSec(sec) {
+    return (
+        sec.match(/Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
+        sec.match(/Nome\s+Empresarial\s*:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
+        sec.match(/Nome\s*[\/|]\s*(?:Nome\s+)?Empresarial\s*([\p{L}].{2,79}?)(?=\s+(?:E-?mail|Endere[çc]o|Inscri|CNPJ|CPF))/iu) ||
+        sec.match(/\bNome\s*:\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|E-?mail|Endere))/iu)
+    );
+}
+
+// Busca nome no início de seção sem label explícito (DANFE)
+function _nomeDirectSec(sec) {
+    return sec.match(/^\s*([\p{Lu}][\p{L}\s\-&.,'/\d]{3,80}?)(?=\s*(?:CNPJ|IE\b|ENDERE[CÇ]O|INSCRI|\d{2}[.\/]))/u);
+}
+
+// Texto mais próximo ao CNPJ (olhando para trás, janela configurável)
+function _nomePertoCNPJ(t, entry, janela = 400) {
+    if (!entry) return null;
+    const before = t.slice(Math.max(0, entry.idx - janela), entry.idx);
+    const m = before.match(/([\p{L}][\p{L}\d\s\-&.,'/]{3,80})\s*$/u);
+    if (!m) return null;
+    const c = m[1].trim();
+    return _reAdmin.test(c) ? null : c;
+}
+
+// ── Estratégia de proximidade ao CNPJ ──
+// Captura até 300 chars antes do CNPJ do emitente, remove labels e dados administrativos,
+// e retorna o maior candidato que pareça uma razão social.
+function _emissorPorProximidadeCNPJ(t, cnpjEmit) {
+    if (!cnpjEmit) return null;
+    let trecho = t.slice(Math.max(0, cnpjEmit.idx - 300), cnpjEmit.idx);
+
+    trecho = trecho
+        .replace(/(?:CNPJ|CPF|CEP|BAIRRO|MUNIC[IÍ]PIO|CIDADE|UF|TELEFONE|E-?MAIL|FONE|FAX|ENDERE[ÇC]O|PRESTADOR|EMITENTE|TOMADOR|INSCRI[ÇC][ÃA]O(?:\s+ESTADUAL)?)\s*:?/gi, " ")
+        .replace(/\d{2}\.\d{3}-\d{3}/g, " ")           // CEP formatado
+        .replace(/\(\d{2}\)\s*\d[\d\s\-]{6,}/g, " ")   // telefone
+        .replace(/[\d.\/\-]{8,}/g, " ")                 // sequências numéricas longas
+        .replace(/\s{2,}/g, " ").trim();
+
+    const candidatos = (trecho.match(/[\p{L}][\p{L}\d\s\-&.,'/]{3,80}/gu) || [])
+        .map(c => c.trim())
+        .filter(c => c.length >= 4 && !_reAdmin.test(c));
+
+    if (!candidatos.length) return null;
+    return candidatos.sort((a, b) => b.length - a.length)[0] || null;
+}
+
+// ── Extração do emissor ──
+// Pipeline de estratégias em cascata. Para adicionar suporte a um novo layout de NFS-e,
+// acrescente uma entrada no array `estrategias` abaixo.
+function _extrairEmissor(t, cnpjEmit, sepIdx) {
+    const emitPart = sepIdx < Infinity ? t.slice(0, sepIdx) : t;
+
+    const estrategias = [
+        // ── Proximidade ao CNPJ (funciona em muitos layouts sem seção explícita) ──
+        {
+            nome: "proximidade-cnpj",
+            fn: () => _emissorPorProximidadeCNPJ(t, cnpjEmit),
+        },
+        // ── Labels diretos no trecho do emitente ──
+        {
+            nome: "label-direto",
+            fn: () => {
+                for (const pat of [
+                    /(?:Emiss[ao]r[a]?|Emitente)\s*:\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bCEP\b|\bIE\b|E-?mail|Endere))/iu,
+                    /Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere|\s{2}))/iu,
+                    /Nome\s+Empresarial\s*:?\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri))/iu,
+                    /Prestador\s+de\s+Servi[çc]os?\s*:\s*([\p{L}].{3,119}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
+                    /Dados\s+do\s+Prestador\s*:\s*([\p{L}].{3,119}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
+                ]) {
+                    const m = emitPart.match(pat);
+                    if (m && !_reAdmin.test(m[1])) return m[1].trim();
+                }
+                return null;
+            },
+        },
+        // ── NFS-e ABRASF: seção "EMITENTE DA NFS-e" ──
+        {
+            nome: "nfse-emitente-abrasf",
+            fn: () => {
+                const m = t.match(/EMITENTE\s+DA\s+NFS.{0,5}(.{0,600}?)(?=TOMADOR|INTERMEDI[AÁ]RIO|SERVI[CÇ]O\s+PRESTADO)/i);
+                if (!m) return null;
+                const n = _nomeNaSec(m[1]);
+                return n ? n[1].trim().replace(/^\d{2}\.?\d{3}\.?\d{3}\s+/, "") : null;
+            },
+        },
+        // ── NFS-e prefeituras: seção "PRESTADOR DE SERVIÇOS" ──
+        {
+            nome: "nfse-prestador-servicos",
+            fn: () => {
+                const m = t.match(/PRESTADOR\s+DE\s+SERVI[CÇ]OS?(.{0,800}?)(?=TOMADOR)/i);
+                if (!m) return null;
+                const n = _nomeNaSec(m[1]);
+                return n ? n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim() : null;
+            },
+        },
+        // ── Seção "DADOS DO PRESTADOR" ──
+        {
+            nome: "nfse-dados-prestador",
+            fn: () => {
+                const m = t.match(/DADOS\s+DO\s+PRESTADOR(.{0,600}?)(?=DADOS\s+DO\s+TOMADOR|TOMADOR)/i);
+                if (!m) return null;
+                const n = _nomeNaSec(m[1]);
+                return n ? n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim() : null;
+            },
+        },
+        // ── DANFE: "IDENTIFICAÇÃO DO EMITENTE" ──
+        {
+            nome: "danfe-identificacao-emitente",
+            fn: () => {
+                const m = t.match(/IDENTIFICA[CÇ][ÃA]O\s+DO\s+EMITENTE\s+([\p{L}][\p{L}\s\-&.,'/\d]{3,80}?)(?=\s*(?:CNPJ|IE\b|ENDERE|NF-e|\d{2}[.\/]))/u);
+                return m ? m[1].trim() : null;
+            },
+        },
+        // ── DANFE: bloco "EMITENTE" ──
+        {
+            nome: "danfe-emitente",
+            fn: () => {
+                const m = t.match(/\bEMITENTE\b(.{0,500}?)(?=DESTINAT[AÁ]R|RECEBEMOS|FATURA|TRANSPOR|C[AÁ]LCULO)/i);
+                if (!m) return null;
+                const n = _nomeNaSec(m[1]) || _nomeDirectSec(m[1]);
+                return n ? n[1].trim() : null;
+            },
+        },
+        // ── CTe: "REMETENTE" ──
+        {
+            nome: "cte-remetente",
+            fn: () => {
+                const m = t.match(/\bREMETENTE\b(.{0,400}?)(?=DESTINAT[AÁ]R|TOMADOR|TRANSPOR)/i);
+                if (!m) return null;
+                const n = _nomeNaSec(m[1]) || _nomeDirectSec(m[1]);
+                return n ? n[1].trim() : null;
+            },
+        },
+        // ── Fallback: texto mais próximo ao CNPJ do emitente (janela ampla) ──
+        {
+            nome: "fallback-perto-cnpj",
+            fn: () => _nomePertoCNPJ(t, cnpjEmit),
+        },
+    ];
+
+    for (const { nome, fn } of estrategias) {
+        const resultado = fn();
+        if (resultado && resultado !== "—") {
+            console.log(`=== EMISSOR [${nome}] ===`, resultado);
+            return resultado;
+        }
+    }
+
+    console.warn("Não foi possível identificar o emissor");
+    if (cnpjEmit) {
+        const trecho = t.slice(Math.max(0, cnpjEmit.idx - 250), cnpjEmit.idx + 250);
+        console.warn("Trecho ao redor do CNPJ emitente:", trecho);
+    }
+    return "—";
+}
+
 function _extrairCamposNota(raw) {
     const t = raw.replace(/[\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim();
+
+    console.log("=== TEXTO EXTRAÍDO PDF ===");
+    console.log(t);
 
     // ── CHAVE DE ACESSO ──
     let chave_acesso = null;
@@ -239,101 +404,17 @@ function _extrairCamposNota(raw) {
         /R\$\s*([\d.]+,\d{2})/,
     ]) { const vm = t.match(pat); if (vm) { valor = `R$ ${vm[1]}`; break; } }
 
-    // ── AUXILIARES ──
-    // Rejeita qualquer texto que contenha labels administrativos ou de seção
-    const _reAdmin = /\b(ENDERE[ÇC]O|INSCRI[ÇC][ÃA]O(?:\s+ESTADUAL)?|CEP\b|BAIRRO|MUNIC[IÍ]PIO|CIDADE\b|UF\b|TELEFONE|E-?MAIL|FONE\b|FAX\b|CNPJ\b|CPF\b|NIF\b|EMITENTE\b|PRESTADOR\b|TOMADOR\b|DESTINAT[AÁ]R|SERVI[CÇ]O\b)\b/iu;
-
-    function _nomePertoCNPJ(entry, janela = 400) {
-        if (!entry) return null;
-        const before = t.slice(Math.max(0, entry.idx - janela), entry.idx);
-        const m = before.match(/([\p{L}][\p{L}\d\s\-&.,'/]{3,80})\s*$/u);
-        if (!m) return null;
-        const c = m[1].trim();
-        return _reAdmin.test(c) ? null : c;
-    }
-
-    // Extrai nome por labels dentro de uma seção
-    // Trata: "Razão Social / Nome Empresarial EMPRESA XYZ" (sem dois-pontos, barra no meio, sem espaço)
-    function _nomeNaSec(sec) {
-        return (
-            // "Razão Social / Nome Empresarial VALUE" ou "Razão Social: VALUE" ou colado "Razão Social / Nome EmpresarialVALUE"
-            // \s* ao invés de \s+ porque o \s* do grupo opcional já consome o espaço separador
-            sec.match(/Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
-            // "Nome Empresarial VALUE"
-            sec.match(/Nome\s+Empresarial\s*:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
-            // "Nome / Nome Empresarial VALUE"
-            sec.match(/Nome\s*[\/|]\s*(?:Nome\s+)?Empresarial\s*([\p{L}].{2,79}?)(?=\s+(?:E-?mail|Endere[çc]o|Inscri|CNPJ|CPF))/iu) ||
-            // "Nome: VALUE"
-            sec.match(/\bNome\s*:\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|E-?mail|Endere))/iu)
-        );
-    }
-
-    // Nome direto no início de seção sem label (DANFE)
-    function _nomeDirectSec(sec) {
-        return sec.match(/^\s*([\p{Lu}][\p{L}\s\-&.,'/\d]{3,80}?)(?=\s*(?:CNPJ|IE\b|ENDERE[CÇ]O|INSCRI|\d{2}[.\/]))/u);
-    }
-
-    // Trecho antes do separador emitente/tomador
-    const emitPart = sepIdx < Infinity ? t.slice(0, sepIdx) : t;
-
     // ── EMISSOR ──
-    let emissor = "—";
+    const emissor = _extrairEmissor(t, cnpjEmit, sepIdx);
 
-    // P0: PROCX-style — busca direta por label no trecho do emitente (mais confiável)
-    if (emissor === "—") {
-        for (const pat of [
-            // "Emissor:" / "Emitente:" direto
-            /(?:Emiss[ao]r[a]?|Emitente)\s*:\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bCEP\b|\bIE\b|E-?mail|Endere))/iu,
-            // "Razão Social / Nome Empresarial VALUE" — padrão ABRASF mais comum
-            /Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere|\s{2}))/iu,
-            // "Nome Empresarial VALUE"
-            /Nome\s+Empresarial\s*:?\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri))/iu,
-        ]) {
-            const m = emitPart.match(pat);
-            if (m && !_reAdmin.test(m[1])) { emissor = m[1].trim(); break; }
-        }
-    }
-    // P1: NFS-e ABRASF — "EMITENTE DA NFS-e" section
-    if (emissor === "—") {
-        const m = t.match(/EMITENTE\s+DA\s+NFS.{0,5}(.{0,600}?)(?=TOMADOR|INTERMEDI[AÁ]RIO|SERVI[CÇ]O\s+PRESTADO)/i);
-        if (m) { const n = _nomeNaSec(m[1]); if (n) emissor = n[1].trim().replace(/^\d{2}\.?\d{3}\.?\d{3}\s+/, ""); }
-    }
-    // P2: NFS-e prefeituras — "PRESTADOR DE SERVIÇOS"
-    if (emissor === "—") {
-        const m = t.match(/PRESTADOR\s+DE\s+SERVI[CÇ]OS?(.{0,800}?)(?=TOMADOR)/i);
-        if (m) { const n = _nomeNaSec(m[1]); if (n) emissor = n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim(); }
-    }
-    // P3: "DADOS DO PRESTADOR"
-    if (emissor === "—") {
-        const m = t.match(/DADOS\s+DO\s+PRESTADOR(.{0,600}?)(?=DADOS\s+DO\s+TOMADOR|TOMADOR)/i);
-        if (m) { const n = _nomeNaSec(m[1]); if (n) emissor = n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim(); }
-    }
-    // P4: DANFE — "IDENTIFICAÇÃO DO EMITENTE"
-    if (emissor === "—") {
-        const m = t.match(/IDENTIFICA[CÇ][ÃA]O\s+DO\s+EMITENTE\s+([\p{L}][\p{L}\s\-&.,'/\d]{3,80}?)(?=\s*(?:CNPJ|IE\b|ENDERE|NF-e|\d{2}[.\/]))/u);
-        if (m) emissor = m[1].trim();
-    }
-    // P5: DANFE — bloco "EMITENTE"
-    if (emissor === "—") {
-        const m = t.match(/\bEMITENTE\b(.{0,500}?)(?=DESTINAT[AÁ]R|RECEBEMOS|FATURA|TRANSPOR|C[AÁ]LCULO)/i);
-        if (m) {
-            const n = _nomeNaSec(m[1]) || _nomeDirectSec(m[1]);
-            if (n) emissor = n[1].trim();
-        }
-    }
-    // P6: CTe — "REMETENTE"
-    if (emissor === "—") {
-        const m = t.match(/\bREMETENTE\b(.{0,400}?)(?=DESTINAT[AÁ]R|TOMADOR|TRANSPOR)/i);
-        if (m) { const n = _nomeNaSec(m[1]) || _nomeDirectSec(m[1]); if (n) emissor = n[1].trim(); }
-    }
-    // Fallback: texto antes do CNPJ do emitente
-    if (emissor === "—") emissor = _nomePertoCNPJ(cnpjEmit) || "—";
+    console.log("=== EMISSOR EXTRAÍDO ===");
+    console.log(emissor);
 
     // ── TOMADOR ──
     let tomador = "—";
     const tomPart = sepIdx < Infinity ? t.slice(sepIdx) : "";
 
-    // P0: PROCX-style no trecho do tomador
+    // P0: labels diretos no trecho do tomador
     if (tomador === "—" && tomPart) {
         for (const pat of [
             /Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
@@ -379,7 +460,7 @@ function _extrairCamposNota(raw) {
     // Fallback: texto antes do segundo CNPJ
     if (tomador === "—" && cnpjAll.length > 1) {
         const c2 = cnpjAll.find(c => c !== cnpjEmit) || cnpjAll[1];
-        tomador = _nomePertoCNPJ(c2) || "—";
+        tomador = _nomePertoCNPJ(t, c2) || "—";
     }
 
     return { emissao, cnpj, emissor, valor, tomador, numero_nf, chave_acesso };
