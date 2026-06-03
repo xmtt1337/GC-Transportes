@@ -252,94 +252,118 @@ function _extrairCamposNota(raw) {
         return _reAdmin.test(c) ? null : c;
     }
 
+    // Extrai nome por labels dentro de uma seção
+    // Trata: "Razão Social / Nome Empresarial EMPRESA XYZ" (sem dois-pontos, barra no meio)
     function _nomeNaSec(sec) {
-        return sec.match(/Raz[aã]o\s+[Ss]ocial[:\s]+(.{3,80}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri))/i)
-            || sec.match(/Nome\s+Empresarial[:\s]+(.{3,80}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri))/i)
-            || sec.match(/Nome\s*[\/|]\s*(?:Nome\s+)?Empresarial\s+(.+?)(?=\s+E-?mail|\s+Endere[çc]o|\s+Inscri|\s+CNPJ|\s+CPF)/i)
-            || sec.match(/Nome[:\s]+(.{3,80}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|\s+E-?mail|\s+Endere[çc]o))/i);
+        return (
+            // "Razão Social / Nome Empresarial VALUE" ou "Razão Social: VALUE"
+            sec.match(/Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s+([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere))/iu) ||
+            // "Nome Empresarial: VALUE" ou "Nome Empresarial VALUE"
+            sec.match(/Nome\s+Empresarial\s*:?\s+([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere))/iu) ||
+            // "Nome / Nome Empresarial VALUE"
+            sec.match(/Nome\s*[\/|]\s*(?:Nome\s+)?Empresarial\s+([\p{L}].{2,79}?)(?=\s+(?:E-?mail|Endere[çc]o|Inscri|CNPJ|CPF))/iu) ||
+            // "Nome: VALUE"
+            sec.match(/\bNome\s*:\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|E-?mail|Endere))/iu)
+        );
     }
 
-    // Nome direto após header (DANFE): primeira sequência de letras antes de CNPJ/IE/ENDEREÇO
+    // Nome direto no início de seção sem label (DANFE)
     function _nomeDirectSec(sec) {
         return sec.match(/^\s*([\p{Lu}][\p{L}\s\-&.,'/\d]{3,80}?)(?=\s*(?:CNPJ|IE\b|ENDERE[CÇ]O|INSCRI|\d{2}[.\/]))/u);
     }
 
+    // Trecho antes do separador emitente/tomador
+    const emitPart = sepIdx < Infinity ? t.slice(0, sepIdx) : t;
+
     // ── EMISSOR ──
     let emissor = "—";
 
-    // NFS-e ABRASF / DANFSe
+    // P0: PROCX-style — busca direta por label no trecho do emitente (mais confiável)
+    if (emissor === "—") {
+        for (const pat of [
+            // "Emissor:" / "Emitente:" direto
+            /(?:Emiss[ao]r[a]?|Emitente)\s*:\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bCEP\b|\bIE\b|E-?mail|Endere))/iu,
+            // "Razão Social / Nome Empresarial VALUE" — padrão ABRASF mais comum
+            /Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
+            // "Nome Empresarial VALUE"
+            /Nome\s+Empresarial\s*:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri))/iu,
+        ]) {
+            const m = emitPart.match(pat);
+            if (m && !_reAdmin.test(m[1])) { emissor = m[1].trim(); break; }
+        }
+    }
+    // P1: NFS-e ABRASF — "EMITENTE DA NFS-e" section
     if (emissor === "—") {
         const m = t.match(/EMITENTE\s+DA\s+NFS.{0,5}(.{0,600}?)(?=TOMADOR|INTERMEDI[AÁ]RIO|SERVI[CÇ]O\s+PRESTADO)/i);
         if (m) { const n = _nomeNaSec(m[1]); if (n) emissor = n[1].trim().replace(/^\d{2}\.?\d{3}\.?\d{3}\s+/, ""); }
     }
-    // NFS-e prefeituras — PRESTADOR DE SERVIÇOS
+    // P2: NFS-e prefeituras — "PRESTADOR DE SERVIÇOS"
     if (emissor === "—") {
         const m = t.match(/PRESTADOR\s+DE\s+SERVI[CÇ]OS?(.{0,800}?)(?=TOMADOR)/i);
         if (m) { const n = _nomeNaSec(m[1]); if (n) emissor = n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim(); }
     }
-    // NFS-e — DADOS DO PRESTADOR
+    // P3: "DADOS DO PRESTADOR"
     if (emissor === "—") {
         const m = t.match(/DADOS\s+DO\s+PRESTADOR(.{0,600}?)(?=DADOS\s+DO\s+TOMADOR|TOMADOR)/i);
         if (m) { const n = _nomeNaSec(m[1]); if (n) emissor = n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim(); }
     }
-    // DANFE/NF-e — IDENTIFICAÇÃO DO EMITENTE (bloco no topo do DANFE)
+    // P4: DANFE — "IDENTIFICAÇÃO DO EMITENTE"
     if (emissor === "—") {
         const m = t.match(/IDENTIFICA[CÇ][ÃA]O\s+DO\s+EMITENTE\s+([\p{L}][\p{L}\s\-&.,'/\d]{3,80}?)(?=\s*(?:CNPJ|IE\b|ENDERE|NF-e|\d{2}[.\/]))/u);
         if (m) emissor = m[1].trim();
     }
-    // DANFE/NF-e — bloco EMITENTE (sem "DA NFS")
+    // P5: DANFE — bloco "EMITENTE"
     if (emissor === "—") {
-        const m = t.match(/\bEMITENTE\b(.{0,500}?)(?=DESTINAT[AÁ]R|RECEBEMOS|FATURA|TRANSPOR|C[AÁ]LCULO\s+DO\s+IMPOSTO)/i);
+        const m = t.match(/\bEMITENTE\b(.{0,500}?)(?=DESTINAT[AÁ]R|RECEBEMOS|FATURA|TRANSPOR|C[AÁ]LCULO)/i);
         if (m) {
-            const sec = m[1];
-            const withLabel = _nomeNaSec(sec);
-            if (withLabel) emissor = withLabel[1].trim();
-            else { const d = _nomeDirectSec(sec); if (d) emissor = d[1].trim(); }
+            const n = _nomeNaSec(m[1]) || _nomeDirectSec(m[1]);
+            if (n) emissor = n[1].trim();
         }
     }
-    // CTe — REMETENTE
+    // P6: CTe — "REMETENTE"
     if (emissor === "—") {
         const m = t.match(/\bREMETENTE\b(.{0,400}?)(?=DESTINAT[AÁ]R|TOMADOR|TRANSPOR)/i);
         if (m) { const n = _nomeNaSec(m[1]) || _nomeDirectSec(m[1]); if (n) emissor = n[1].trim(); }
-    }
-    // Genérico — RAZÃO SOCIAL / NOME EMPRESARIAL no contexto do emitente
-    if (emissor === "—") {
-        // Pega só a primeira ocorrência (que pertence ao emitente)
-        const m = t.match(/(?:RAZ[AÃ]O\s+SOCIAL|NOME\s+EMPRESARIAL)[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|ENDERE[CÇ]O|INS|IE\b|\d{2}[.\/]))/i);
-        if (m) emissor = m[1].trim();
     }
     // Fallback: texto antes do CNPJ do emitente
     if (emissor === "—") emissor = _nomePertoCNPJ(cnpjEmit) || "—";
 
     // ── TOMADOR ──
     let tomador = "—";
+    const tomPart = sepIdx < Infinity ? t.slice(sepIdx) : "";
 
-    // NFS-e ABRASF
+    // P0: PROCX-style no trecho do tomador
+    if (tomador === "—" && tomPart) {
+        for (const pat of [
+            /Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
+            /Nome\s+Empresarial\s*:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri))/iu,
+            /\bNome\s*:\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|Inscri|E-?mail|Endere))/iu,
+        ]) {
+            const m = tomPart.match(pat);
+            if (m && !_reAdmin.test(m[1])) { tomador = m[1].trim(); break; }
+        }
+    }
+    // P1: NFS-e ABRASF — "TOMADOR DO SERVIÇO"
     if (tomador === "—") {
         const m = t.match(/TOMADOR\s+DO\s+SERVI[CÇ]O(.{0,600}?)(?=INTERMEDI[AÁ]RIO|SERVI[CÇ]O\s+PRESTADO|TRIBUTA[CÇ][ÃA]O|DISCRIMINA)/i);
         if (m) { const n = _nomeNaSec(m[1]); if (n) tomador = n[1].trim(); }
     }
-    // NFS-e prefeituras — TOMADOR DE SERVIÇOS
+    // P2: "TOMADOR DE SERVIÇOS"
     if (tomador === "—") {
         const m = t.match(/TOMADOR\s+DE\s+SERVI[CÇ]OS?(.{0,600}?)(?=DISCRIMINA|RETEN[CÇ]|FORMA\s+DE\s+PAGAMENTO|TRIBUTA[CÇ][ÃA]O)/i);
         if (m) { const n = _nomeNaSec(m[1]); if (n) tomador = n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim(); }
     }
-    // NFS-e — DADOS DO TOMADOR
+    // P3: "DADOS DO TOMADOR"
     if (tomador === "—") {
         const m = t.match(/DADOS\s+DO\s+TOMADOR(.{0,600}?)(?=DISCRIMINA|RETEN[CÇ]|FORMA\s+DE\s+PAGAMENTO|TRIBUTA[CÇ][ÃA]O)/i);
         if (m) { const n = _nomeNaSec(m[1]); if (n) tomador = n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim(); }
     }
-    // DANFE — bloco DESTINATÁRIO/REMETENTE
+    // P4: DANFE — "DESTINATÁRIO/REMETENTE"
     if (tomador === "—") {
-        const m = t.match(/DESTINAT[AÁ]RIO(?:\/REMETENTE)?(.{0,500}?)(?=FATURA|TRANSPOR|C[AÁ]LCULO\s+DO\s+IMPOSTO|DADOS\s+DO\s+PRODUTO)/i);
-        if (m) {
-            const sec = m[1];
-            const withLabel = _nomeNaSec(sec);
-            if (withLabel) tomador = withLabel[1].trim();
-            else { const d = _nomeDirectSec(sec); if (d) tomador = d[1].trim(); }
-        }
+        const m = t.match(/DESTINAT[AÁ]RIO(?:\/REMETENTE)?(.{0,500}?)(?=FATURA|TRANSPOR|C[AÁ]LCULO|DADOS\s+DO\s+PRODUTO)/i);
+        if (m) { const n = _nomeNaSec(m[1]) || _nomeDirectSec(m[1]); if (n) tomador = n[1].trim(); }
     }
-    // CTe — DESTINATÁRIO
+    // P5: CTe — "DESTINATÁRIO"
     if (tomador === "—") {
         const m = t.match(/\bDESTINAT[AÁ]RIO\b(.{0,400}?)(?=TOMADOR|TRANSPOR|PRODUTO)/i);
         if (m) { const n = _nomeNaSec(m[1]) || _nomeDirectSec(m[1]); if (n) tomador = n[1].trim(); }
@@ -347,8 +371,8 @@ function _extrairCamposNota(raw) {
     // Labels genéricos
     if (tomador === "—") {
         for (const pat of [
-            /CONTRATANTE[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]))/i,
-            /\bTOMADOR[:\s]+(.{4,80}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]))/i,
+            /CONTRATANTE\s*:\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]))/iu,
+            /\bTOMADOR\s*:\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]))/iu,
         ]) { const m = t.match(pat); if (m) { tomador = m[1].trim(); break; } }
     }
     // Fallback: texto antes do segundo CNPJ
