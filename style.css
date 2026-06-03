@@ -260,7 +260,7 @@ body {
 .banner-positivo .pb-valor { color: #34d399; }
 .banner-negativo .pb-valor { color: #ef4444; }
 .pb-sub { font-size: 12px; color: #7a8599; margin-top: 8px; }
-.pb-pagamento { font-size: 12px; color: #94a3b8; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.07); }
+.pb-pagamento { font-size: 11px; color: #4a6a8a; margin-top: -12px; margin-bottom: 20px; padding-left: 4px; }
 
 .pb-divider { width: 1px; background: rgba(255,255,255,0.07); align-self: stretch; margin: 4px 0; }
 
