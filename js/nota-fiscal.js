@@ -185,6 +185,17 @@ function _nomePertoCNPJ(t, entry, janela = 400) {
     return _reAdmin.test(c) ? null : c;
 }
 
+// Rejeita candidatos que contenham texto de instrução/rodapé de NFS-e
+function _isTextoInstrucao(nome) {
+    return /consulta\s+da\s+chave/i.test(nome)            ||
+           /portal\s+nacional/i.test(nome)                ||
+           /nfs-?e/i.test(nome)                           ||
+           /n[úu]mero\s+da\s+nfs/i.test(nome)            ||
+           /c[oó]digo\s+de\s+verifica[çc][aã]o/i.test(nome) ||
+           /verifique\s+autenticidade/i.test(nome)        ||
+           /autenticidade/i.test(nome);
+}
+
 // ── Estratégia de proximidade ao CNPJ ──
 // Captura até 300 chars antes do CNPJ do emitente, remove labels e dados administrativos,
 // e retorna o maior candidato que pareça uma razão social.
@@ -201,7 +212,7 @@ function _emissorPorProximidadeCNPJ(t, cnpjEmit) {
 
     const candidatos = (trecho.match(/[\p{L}][\p{L}\d\s\-&.,'/]{3,80}/gu) || [])
         .map(c => c.trim())
-        .filter(c => c.length >= 4 && !_reAdmin.test(c));
+        .filter(c => c.length >= 4 && !_reAdmin.test(c) && !_isTextoInstrucao(c));
 
     if (!candidatos.length) return null;
     return candidatos.sort((a, b) => b.length - a.length)[0] || null;
@@ -214,12 +225,7 @@ function _extrairEmissor(t, cnpjEmit, sepIdx) {
     const emitPart = sepIdx < Infinity ? t.slice(0, sepIdx) : t;
 
     const estrategias = [
-        // ── Proximidade ao CNPJ (funciona em muitos layouts sem seção explícita) ──
-        {
-            nome: "proximidade-cnpj",
-            fn: () => _emissorPorProximidadeCNPJ(t, cnpjEmit),
-        },
-        // ── Labels diretos no trecho do emitente ──
+        // ── Labels diretos no trecho do emitente (mais confiável — tem label explícito) ──
         {
             nome: "label-direto",
             fn: () => {
@@ -294,7 +300,12 @@ function _extrairEmissor(t, cnpjEmit, sepIdx) {
                 return n ? n[1].trim() : null;
             },
         },
-        // ── Fallback: texto mais próximo ao CNPJ do emitente (janela ampla) ──
+        // ── Proximidade ao CNPJ (heurística — usada apenas quando nenhum label foi encontrado) ──
+        {
+            nome: "proximidade-cnpj",
+            fn: () => _emissorPorProximidadeCNPJ(t, cnpjEmit),
+        },
+        // ── Fallback final: texto mais próximo ao CNPJ do emitente (janela ampla) ──
         {
             nome: "fallback-perto-cnpj",
             fn: () => _nomePertoCNPJ(t, cnpjEmit),
@@ -303,7 +314,7 @@ function _extrairEmissor(t, cnpjEmit, sepIdx) {
 
     for (const { nome, fn } of estrategias) {
         const resultado = fn();
-        if (resultado && resultado !== "—") {
+        if (resultado && resultado !== "—" && !_isTextoInstrucao(resultado)) {
             console.log(`=== EMISSOR [${nome}] ===`, resultado);
             return resultado;
         }
@@ -403,6 +414,14 @@ function _extrairCamposNota(raw) {
         /TOTAL\s+A\s+PAGAR[^\d]*([\d.]+,\d{2})/i,
         /R\$\s*([\d.]+,\d{2})/,
     ]) { const vm = t.match(pat); if (vm) { valor = `R$ ${vm[1]}`; break; } }
+
+    console.log("=== CNPJ EMITENTE ===");
+    console.log(cnpjEmit);
+
+    if (cnpjEmit) {
+        console.log("=== TRECHO AO REDOR DO CNPJ ===");
+        console.log(t.slice(Math.max(0, cnpjEmit.idx - 500), cnpjEmit.idx + 500));
+    }
 
     // ── EMISSOR ──
     const emissor = _extrairEmissor(t, cnpjEmit, sepIdx);
