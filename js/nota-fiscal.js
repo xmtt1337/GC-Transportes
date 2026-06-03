@@ -7,14 +7,13 @@ function _mostrarUploadArea() {
     area.innerHTML = `
         <input type="file" id="nota-file-input" accept=".pdf" style="display:none" onchange="_processarNota(this)">
         <div class="nota-upload-icon">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#3a86ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3a86ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
         </div>
         <div class="nota-upload-text">
             <div class="nota-upload-title">Enviar Nota Fiscal</div>
-            <div class="nota-upload-sub">Selecione o PDF da NF · dados extraídos automaticamente</div>
+            <div class="nota-upload-sub">Selecione o PDF · dados extraídos automaticamente</div>
         </div>
         <div class="nota-upload-btn">Selecionar PDF</div>`;
-    area.onclick = () => document.getElementById("nota-file-input").click();
     area.style.display = "";
     document.getElementById("nota-card").style.display = "none";
 }
