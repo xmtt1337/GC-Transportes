@@ -185,22 +185,23 @@ function _nomePertoCNPJ(t, entry, janela = 400) {
     return _reAdmin.test(c) ? null : c;
 }
 
-// Rejeita candidatos que contenham texto de instrução/rodapé de NFS-e ou metadados de DPS
+// Rejeita candidatos que contenham texto de instrução, metadados de DPS/NFS-e ou campos administrativos.
+// Usa NFD + remoção de diacríticos para não depender da forma de codificação do PDF (composta vs decomposta).
 function _isTextoInstrucao(nome) {
-    return /consulta\s+da\s+chave/i.test(nome)               ||
-           /portal\s+nacional/i.test(nome)                   ||
-           /nfs-?e/i.test(nome)                              ||
-           /n[úu]mero\s+da\s+nfs/i.test(nome)               ||
-           /c[oó]digo\s+de\s+verifica[çc][aã]o/i.test(nome) ||
-           /verifique\s+autenticidade/i.test(nome)           ||
-           /autenticidade/i.test(nome)                       ||
-           /n[úu]mero\s+da\s+dps/i.test(nome)               ||
-           /s[ée]rie\s+da\s+dps/i.test(nome)                ||
-           /emiss[aã]o\s+da\s+dps/i.test(nome)              ||
-           /\bdata\s+e\s+hora\b/i.test(nome)                 ||
-           /\bs[ée]rie\b.{0,10}\b\d{4,}/i.test(nome)        ||
-           /n[úu]mero\s+do\s+rps/i.test(nome)               ||
-           /data\s+de\s+emiss[aã]o/i.test(nome);
+    const n = nome.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    return n.includes("consulta da chave")   ||
+           n.includes("portal nacional")     ||
+           n.includes("autenticidade")       ||
+           n.includes("numero da nfs")       ||
+           n.includes("nfs-e")               ||
+           n.includes("numero da dps")       ||
+           n.includes("serie da dps")        ||
+           n.includes("emissao da dps")      ||
+           n.includes("data e hora")         ||
+           n.includes("numero do rps")       ||
+           n.includes("data de emissao")     ||
+           n.includes("codigo de verifica")  ||
+           n.includes("verifique");
 }
 
 // ── Estratégia de proximidade ao CNPJ ──
@@ -215,6 +216,9 @@ function _emissorPorProximidadeCNPJ(t, cnpjEmit) {
         .replace(/\d{2}\.\d{3}-\d{3}/g, " ")           // CEP formatado
         .replace(/\(\d{2}\)\s*\d[\d\s\-]{6,}/g, " ")   // telefone
         .replace(/[\d.\/\-]{8,}/g, " ")                 // sequências numéricas longas
+        .replace(/\bDPS\b/gi, " ")                      // token "DPS" isolado
+        .replace(/\bData\s+e\s+Hora\b/gi, " ")          // metadado DPS
+        .replace(/\bS[ée]rie\b/gi, " ")                 // "Série da DPS"
         .replace(/\s{2,}/g, " ").trim();
 
     const candidatos = (trecho.match(/[\p{L}][\p{L}\d\s\-&.,'/]{3,80}/gu) || [])
@@ -346,7 +350,9 @@ function _extrairEmissor(t, cnpjEmit, sepIdx) {
 }
 
 function _extrairCamposNota(raw) {
-    const t = raw.replace(/[\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim();
+    // NFC garante que caracteres acentuados estejam compostos (ú, ã, ç…)
+    // independente de como o PDF.js os extraiu
+    const t = raw.normalize("NFC").replace(/[\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim();
 
     console.log("=== TEXTO EXTRAÍDO PDF ===");
     console.log(t);
