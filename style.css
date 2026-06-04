@@ -77,26 +77,31 @@ body {
 
 .submenu {
     max-height: 0; overflow: hidden; opacity: 0; list-style: none;
-    background: rgba(58,134,255,0.05); border-radius: 10px; margin: 0 8px;
-    border: 1px solid transparent;
-    transition: max-height 0.35s ease, opacity 0.25s ease, margin-bottom 0.35s ease, border-color 0.3s ease;
+    margin: 0 6px; padding: 0 0 4px 0;
+    transition: max-height 0.35s ease, opacity 0.25s ease;
 }
-.sidebar.expanded .submenu.open {
-    max-height: 200px; opacity: 1; margin-bottom: 6px; border-color: rgba(58,134,255,0.1);
-}
+.sidebar.expanded .submenu.open { opacity: 1; margin-bottom: 4px; }
+
+/* ── Links diretos no submenu ── */
+.submenu > li > a,
 .submenu a {
-    display: block; padding: 11px 15px 11px 36px; font-size: 13.5px;
-    color: #7a8599; text-decoration: none; border-radius: 8px;
-    transition: background 0.2s, color 0.2s; white-space: nowrap; position: relative;
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px 9px 16px; font-size: 13px; font-weight: 500;
+    color: #64748b; text-decoration: none; border-radius: 8px;
+    transition: background 0.18s, color 0.18s; white-space: nowrap;
 }
-.submenu a:hover  { background: rgba(58,134,255,0.15); color: #fff; }
-.submenu a.active { background: rgba(58,134,255,0.25); color: #fff; }
+.submenu a:hover  { background: rgba(255,255,255,0.05); color: #cbd5e1; }
+.submenu a.active { color: #f1f5f9; }
+
+/* Círculo antes de cada link */
 .submenu a::before {
-    content: ""; position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-    width: 6px; height: 6px; border: 1.5px solid #3a86ff; border-radius: 50%;
-    opacity: 0.6; transition: all 0.3s ease;
+    content: ""; flex-shrink: 0;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #2e3d52; border: 1.5px solid #3d5068;
+    transition: all 0.2s ease;
 }
-.submenu a.active::before { background: #fff; border-color: #fff; opacity: 1; box-shadow: 0 0 6px rgba(255,255,255,0.8); }
+.submenu a:hover::before  { background: #3a86ff; border-color: #3a86ff; }
+.submenu a.active::before { background: #f1f5f9; border-color: #f1f5f9; box-shadow: 0 0 6px rgba(255,255,255,0.5); }
 
 .sidebar-footer {
     padding: 8px 6px; border-top: 1px solid rgba(58,134,255,0.25);
@@ -1036,48 +1041,70 @@ body {
 }
 
 /* ===== SUBMENU 3º NÍVEL ===== */
+/* ── Subgroup header (nível 1: ex "Bipagem") ── */
 .subgroup-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 15px; cursor: pointer; list-style: none;
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px 9px 16px; cursor: pointer; list-style: none;
     color: #64748b; font-size: 13px; font-weight: 600;
-    border-radius: 7px; margin: 1px 0;
-    transition: background 0.2s, color 0.2s;
+    border-radius: 8px; margin: 1px 0;
+    transition: background 0.18s, color 0.18s;
 }
-.subgroup-header:hover { background: rgba(58,134,255,0.1); color: #94a3b8; }
-.subgroup-header.open  { color: #e2e8f0; }
-.subgroup-arrow {
-    font-size: 10px; opacity: 0.6;
-    transition: transform 0.25s ease;
-    display: inline-block;
+.subgroup-header::before {
+    content: ""; flex-shrink: 0;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #2e3d52; border: 1.5px solid #3d5068;
+    transition: all 0.2s;
 }
-.subgroup-header.open .subgroup-arrow { transform: rotate(180deg); }
+.subgroup-header:hover  { color: #cbd5e1; }
+.subgroup-header:hover::before { border-color: #3a86ff; }
+.subgroup-header.open   { color: #e2e8f0; }
+.subgroup-header.open::before { background: #3a86ff; border-color: #3a86ff; }
 
+.subgroup-arrow {
+    font-size: 10px; opacity: 0.5; margin-left: auto;
+    transition: transform 0.25s ease; display: inline-block;
+}
+.subgroup-header.open .subgroup-arrow  { transform: rotate(180deg); opacity: 0.8; }
+.subgroup-header-2.open .subgroup-arrow { transform: rotate(180deg); opacity: 0.8; }
+
+/* ── Sub-submenu (nível 1 expandido) ── */
 .sub-submenu {
     list-style: none;
     max-height: 0; overflow: hidden; opacity: 0;
     transition: max-height 0.3s ease, opacity 0.22s ease;
+    padding-left: 18px;
 }
 .sub-submenu.open { opacity: 1; }
-.sub-submenu a { padding-left: 46px !important; font-size: 13px !important; }
+.sub-submenu a { padding-left: 18px !important; font-size: 13px !important; }
 
+/* ── Subgroup header nível 2 (ex "Alimentar separação") ── */
 .subgroup-header-2 {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 8px 15px 8px 30px; cursor: pointer; list-style: none;
-    color: #64748b; font-size: 12.5px; font-weight: 600;
-    border-radius: 7px; margin: 1px 0;
-    transition: background 0.2s, color 0.2s;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px 8px 18px; cursor: pointer; list-style: none;
+    color: #4a6080; font-size: 12.5px; font-weight: 600;
+    border-radius: 8px; margin: 1px 0;
+    transition: background 0.18s, color 0.18s;
 }
-.subgroup-header-2:hover { background: rgba(58,134,255,0.08); color: #94a3b8; }
-.subgroup-header-2.open  { color: #e2e8f0; }
-.subgroup-header-2.open .subgroup-arrow { transform: rotate(180deg); }
+.subgroup-header-2::before {
+    content: ""; flex-shrink: 0;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #273344; border: 1.5px solid #334155;
+    transition: all 0.2s;
+}
+.subgroup-header-2:hover  { color: #94a3b8; }
+.subgroup-header-2:hover::before { border-color: #3a86ff; }
+.subgroup-header-2.open   { color: #cbd5e1; }
+.subgroup-header-2.open::before { background: #3a86ff; border-color: #3a86ff; }
 
+/* ── Sub-sub-submenu (nível 2 expandido) ── */
 .sub-sub-submenu {
     list-style: none;
     max-height: 0; overflow: hidden; opacity: 0;
     transition: max-height 0.3s ease, opacity 0.22s ease;
+    padding-left: 14px;
 }
 .sub-sub-submenu.open { opacity: 1; }
-.sub-sub-submenu a { padding-left: 58px !important; font-size: 12.5px !important; }
+.sub-sub-submenu a { padding-left: 18px !important; font-size: 12.5px !important; }
 
 /* ===== TELA IMPORTAR TRAMPAY ===== */
 .trampay-upload-area {
@@ -1331,7 +1358,7 @@ body {
 .ed-tr-row    { display: grid; grid-template-columns: 180px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
 .ed-tr-row:last-child { border-bottom: none; }
 .ed-tr-name   { font-size: 13px; font-weight: 600; color: #e2e8f0; }
-.ed-tr-bars   { }
+.ed-tr-bars   { display: block; }
 .ed-tr-bar-bg { background: rgba(255,255,255,0.04); height: 10px; border-radius: 5px; position: relative; overflow: hidden; display: flex; }
 .ed-tr-bar-fill { height: 100%; transition: width 0.5s ease; }
 .ed-tr-bar-fill.sim { background: rgba(251,146,60,0.8); }
@@ -1360,7 +1387,7 @@ body {
 .ed-comp-seg.gc  { background: #fb923c; transition: width 0.5s ease; }
 .ed-comp-seg.ext { background: #6b80ff; transition: width 0.5s ease; }
 .ed-desc-cols    { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.ed-desc-col     { }
+.ed-desc-col     { display: block; }
 .ed-desc-col-hdr {
     display: flex; align-items: center; gap: 7px;
     font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
@@ -1389,7 +1416,7 @@ body {
 .ed-taxa-track      { background: rgba(255,255,255,0.06); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
 .ed-taxa-fill       { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
 .ed-taxa-saved      { font-size: 13px; font-weight: 600; color: #22c55e; }
-.ed-cont-chart-wrap { }
+.ed-cont-chart-wrap { display: block; }
 .ed-cont-cards      { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
 .ed-cc              { padding: 16px; border-radius: 12px; border: 1px solid; }
 .ed-cc.resolvido    { background: rgba(34,197,94,0.06);   border-color: rgba(34,197,94,0.28); }
