@@ -217,8 +217,14 @@ async function _alimentarLerGrid(file) {
         reader.onload = e => {
             try {
                 const data = new Uint8Array(e.target.result);
-                const wb   = XLSX.read(data, { type: 'array' });
-                const ws   = wb.Sheets[wb.SheetNames[0]];
+                let wb;
+                if (file.name.toLowerCase().endsWith('.csv')) {
+                    const text = new TextDecoder('utf-8').decode(data);
+                    wb = XLSX.read(text, { type: 'string' });
+                } else {
+                    wb = XLSX.read(data, { type: 'array', raw: false });
+                }
+                const ws = wb.Sheets[wb.SheetNames[0]];
                 resolve(XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false }));
             } catch (err) { reject(err); }
         };
