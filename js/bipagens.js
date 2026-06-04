@@ -77,6 +77,30 @@ async function _bipBuscar() {
     _bipSelecionarInput();
 }
 
+async function _bipSincronizarCeps() {
+    const btn = document.getElementById('bip-sync-btn');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0 0 20.49 15"/></svg> Sincronizando...`;
+    try {
+        const res  = await fetch(API + '/admin/sincronizar-ceps', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro');
+        btn.innerHTML = `✓ ${data.total.toLocaleString('pt-BR')} CEPs sincronizados`;
+        btn.style.borderColor = 'rgba(34,197,94,0.35)';
+        btn.style.color       = '#22c55e';
+        btn.style.background  = 'rgba(34,197,94,0.08)';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.borderColor=''; btn.style.color=''; btn.style.background=''; btn.disabled=false; }, 3000);
+    } catch (err) {
+        btn.innerHTML = `✗ ${err.message}`;
+        btn.style.color = '#ef4444';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.color=''; btn.disabled=false; }, 3000);
+    }
+}
+
 function _bipSelecionarInput() {
     const input = document.getElementById('bip-input');
     if (!input) return;
