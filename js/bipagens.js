@@ -7,6 +7,25 @@ function abrirBipagens() {
     document.getElementById('bip-input').value = '';
     document.getElementById('bip-clear').style.display = 'none';
     setTimeout(() => document.getElementById('bip-input').focus(), 250);
+    _bipCarregarStatusCeps();
+}
+
+async function _bipCarregarStatusCeps() {
+    try {
+        const res  = await fetch(API + '/bipagem/cep-status', { headers: { 'Authorization': 'Bearer ' + token } });
+        const data = await res.json();
+        const btn  = document.getElementById('bip-sync-btn');
+        if (!btn) return;
+        const n = data.total || 0;
+        if (n === 0) {
+            btn.title = 'Banco vazio — clique para sincronizar';
+            btn.style.borderColor = 'rgba(239,68,68,0.5)';
+            btn.style.color       = '#ef4444';
+            btn.style.background  = 'rgba(239,68,68,0.08)';
+        } else {
+            btn.title = `${n.toLocaleString('pt-BR')} CEPs no banco`;
+        }
+    } catch { /* silencioso */ }
 }
 
 function _bipAuto(input) {
