@@ -34,15 +34,20 @@
             <span class="menu-tooltip">Operação</span>
         </li>
         <ul class="submenu" data-menu="operacao" id="submenu-operacao">
-            <li><a href="#" onclick="_emBreve(event)">Atribuir</a></li>
             <li class="subgroup-header" onclick="toggleSubGroup(this)" data-nav="abrirBipagens">
-                Bipagens <span class="subgroup-arrow">▾</span>
+                Bipagem <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-bipagens">
-                <li><a href="#" onclick="abrirAlimentar(event,'loggi')">Loggi</a></li>
-                <li><a href="#" onclick="abrirAlimentar(event,'anjun')">Anjun</a></li>
-                <li><a href="#" onclick="abrirAlimentar(event,'jt')">J&amp;T Express</a></li>
-                <li><a href="#" onclick="abrirAlimentar(event,'imile')">Imile</a></li>
+                <li><a href="#" onclick="_emBreve(event)">Separação</a></li>
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
+                    Alimentar separação <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="subsubgroup-alimentar">
+                    <li><a href="#" onclick="abrirAlimentar(event,'loggi')">Loggi</a></li>
+                    <li><a href="#" onclick="abrirAlimentar(event,'anjun')">Anjun</a></li>
+                    <li><a href="#" onclick="abrirAlimentar(event,'jt')">J&amp;T</a></li>
+                    <li><a href="#" onclick="abrirAlimentar(event,'imile')">Imile</a></li>
+                </ul>
             </ul>
         </ul>
 
