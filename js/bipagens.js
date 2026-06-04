@@ -1,6 +1,7 @@
 let _bipTimeout = null;
 
-function abrirBipagens() {
+function abrirBipagens(event) {
+    if (event) event.preventDefault();
     mostrarTela('tela-bipagens');
     document.getElementById('titulo-pagina').innerText = 'Bipagens';
     document.getElementById('bip-resultado').innerHTML = '';
