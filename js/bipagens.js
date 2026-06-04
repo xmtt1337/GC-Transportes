@@ -63,7 +63,7 @@ async function _bipBuscar() {
                 </div>
                 <div style="display:grid;gap:2px">
                     ${_bipLinha('Transportadora', transpNome,              '#3a86ff')}
-                    ${_bipLinha('Entregador',     data.entregador || '—',  '#f1f5f9')}
+                    ${_bipLinha('Entregador', data.entregador || '⚠ Sem entregador atribuído', data.entregador ? '#f1f5f9' : '#fb923c')}
                     ${_bipLinha('Cidade',         data.cidade     || '—',  '#e2e8f0')}
                     ${data.bairro  ? _bipLinha('Bairro',       data.bairro,             '#94a3b8') : ''}
                     ${data.sigla   ? _bipLinha('Sigla / Rota', data.sigla,              '#fb923c') : ''}
