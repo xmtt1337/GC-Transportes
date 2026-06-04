@@ -48,6 +48,7 @@ async function _bipBuscar() {
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                     <span style="color:#ef4444;font-size:14px;font-weight:500">${data.error || 'Código não encontrado'}</span>
                 </div>`;
+            _bipSelecionarInput();
             return;
         }
 
@@ -73,6 +74,14 @@ async function _bipBuscar() {
     } catch {
         el.innerHTML = `<div style="color:#ef4444;font-size:14px;padding:12px 0">Erro ao conectar ao servidor.</div>`;
     }
+    _bipSelecionarInput();
+}
+
+function _bipSelecionarInput() {
+    const input = document.getElementById('bip-input');
+    if (!input) return;
+    input.focus();
+    input.select();
 }
 
 function _bipLinha(label, valor, corValor) {
