@@ -91,8 +91,21 @@ async function _alimentarAnexar(input) {
         _alimentarGridPendente = grid;
 
         const headers = grid[0].map(c => String(c || '').trim()).filter(c => c);
+        const lower   = headers.map(h => h.toLowerCase());
+        const defBar  = lower.findIndex(h => h.includes('barras') || h.includes('barcode') || h.includes('código') || h.includes('codigo'));
+        const defCep  = lower.findIndex(h => h === 'cep' || h.includes('cep'));
+
         status.innerHTML = '';
-        _alimentarMostrarSeletorColunas(headers);
+
+        // Se as colunas obrigatórias foram detectadas com segurança, pula o seletor
+        if (defBar >= 0 && defCep >= 0) {
+            const defCid  = lower.findIndex(h => h.includes('cidade') || h.includes('city'));
+            const defReg  = lower.findIndex(h => h.includes('região') || h.includes('regiao') || h.includes('saca') || h.includes('hub'));
+            const defDest = lower.findIndex(h => h.includes('para') || h.includes('destinat') || h.includes('recipient'));
+            await _alimentarEnviarComIndices(file, grid, defBar, defCep, defCid, defReg, defDest);
+        } else {
+            _alimentarMostrarSeletorColunas(headers);
+        }
     } catch (err) {
         status.innerHTML = `<div style="color:#ef4444;font-size:13px">${err.message}</div>`;
         input.value = '';
@@ -150,17 +163,17 @@ function _alimentarCancelarUpload() {
 
 async function _alimentarConfirmarUpload() {
     const erroEl = document.getElementById('alimentar-col-erro');
-    const barIdx  = parseInt(document.getElementById('col-barcode').value);
-    const cepIdx  = parseInt(document.getElementById('col-cep').value);
-    const cidIdx  = parseInt(document.getElementById('col-cidade')?.value ?? -1);
-    const regIdx  = parseInt(document.getElementById('col-regiao')?.value ?? -1);
-    const desIdx  = parseInt(document.getElementById('col-dest')?.value   ?? -1);
-
+    const barIdx = parseInt(document.getElementById('col-barcode').value);
+    const cepIdx = parseInt(document.getElementById('col-cep').value);
+    const cidIdx = parseInt(document.getElementById('col-cidade')?.value ?? -1);
+    const regIdx = parseInt(document.getElementById('col-regiao')?.value ?? -1);
+    const desIdx = parseInt(document.getElementById('col-dest')?.value   ?? -1);
     if (isNaN(barIdx) || barIdx < 0) { erroEl.innerText = 'Selecione a coluna do código de barras.'; return; }
     if (isNaN(cepIdx) || cepIdx < 0) { erroEl.innerText = 'Selecione a coluna do CEP.'; return; }
+    await _alimentarEnviarComIndices(_alimentarFilePendente, _alimentarGridPendente, barIdx, cepIdx, cidIdx, regIdx, desIdx);
+}
 
-    const grid   = _alimentarGridPendente;
-    const file   = _alimentarFilePendente;
+async function _alimentarEnviarComIndices(file, grid, barIdx, cepIdx, cidIdx, regIdx, desIdx) {
     const pacotes = [];
     for (let i = 1; i < grid.length; i++) {
         const row     = grid[i];
@@ -170,7 +183,7 @@ async function _alimentarConfirmarUpload() {
         pacotes.push({
             codigo_barras: barcode || null,
             id_pacote:     null,
-            cep:           cep     || null,
+            cep:           cep    || null,
             cidade:        cidIdx >= 0 ? String(row[cidIdx] || '').trim() || null : null,
             regiao:        regIdx >= 0 ? String(row[regIdx] || '').trim() || null : null,
             destinatario:  desIdx >= 0 ? String(row[desIdx] || '').trim() || null : null,
@@ -187,7 +200,6 @@ async function _alimentarConfirmarUpload() {
             reader.onerror = reject;
             reader.readAsDataURL(file);
         });
-
         const res = await fetch(API + '/alimentar/upload', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
