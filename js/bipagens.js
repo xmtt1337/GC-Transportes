@@ -141,11 +141,16 @@ async function _bipSincronizarCeps() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erro');
-        btn.innerHTML = `✓ ${data.total.toLocaleString('pt-BR')} CEPs sincronizados`;
+        const porTransp = data.por_transportadora || {};
+        const nomes = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee' };
+        const resumo = Object.entries(porTransp)
+            .map(([k,v]) => `${nomes[k]||k}: ${v.toLocaleString('pt-BR')}`)
+            .join(' · ');
+        btn.innerHTML = `✓ ${data.total.toLocaleString('pt-BR')} CEPs — ${resumo}`;
         btn.style.borderColor = 'rgba(34,197,94,0.35)';
         btn.style.color       = '#22c55e';
         btn.style.background  = 'rgba(34,197,94,0.08)';
-        setTimeout(() => { btn.innerHTML = orig; btn.style.borderColor=''; btn.style.color=''; btn.style.background=''; btn.disabled=false; }, 3000);
+        setTimeout(() => { btn.innerHTML = orig; btn.style.borderColor=''; btn.style.color=''; btn.style.background=''; btn.disabled=false; }, 6000);
     } catch (err) {
         btn.innerHTML = `✗ ${err.message}`;
         btn.style.color = '#ef4444';
