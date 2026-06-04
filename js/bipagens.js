@@ -51,7 +51,7 @@ async function _bipBuscar() {
             return;
         }
 
-        const transpNomes = { loggi: 'Loggi', anjun: 'Anjun', jt: 'J&T Express', imile: 'Imile' };
+        const transpNomes = { loggi: 'Loggi', anjun: 'Anjun', jt: 'J&T Express', imile: 'Imile', shopee: 'Shopee' };
         const transpNome  = transpNomes[data.transportadora] || data.transportadora || '—';
 
         el.innerHTML = `
@@ -60,13 +60,14 @@ async function _bipBuscar() {
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     <span style="font-size:14px;font-weight:700;color:#22c55e">Pacote encontrado</span>
                 </div>
-                <div style="display:grid;gap:10px">
-                    ${_bipLinha('Transportadora', transpNome, '#3a86ff')}
-                    ${_bipLinha('Entregador',     data.entregador    || '—', '#e2e8f0')}
-                    ${_bipLinha('Cidade',         data.cidade        || '—', '#e2e8f0')}
-                    ${data.regiao     ? _bipLinha('Região',       data.regiao,       '#94a3b8') : ''}
-                    ${data.cep        ? _bipLinha('CEP',          _bipFormatCep(data.cep), '#94a3b8') : ''}
-                    ${data.destinatario ? _bipLinha('Destinatário', data.destinatario, '#94a3b8') : ''}
+                <div style="display:grid;gap:2px">
+                    ${_bipLinha('Transportadora', transpNome,              '#3a86ff')}
+                    ${_bipLinha('Entregador',     data.entregador || '—',  '#f1f5f9')}
+                    ${_bipLinha('Cidade',         data.cidade     || '—',  '#e2e8f0')}
+                    ${data.bairro  ? _bipLinha('Bairro',       data.bairro,             '#94a3b8') : ''}
+                    ${data.sigla   ? _bipLinha('Sigla / Rota', data.sigla,              '#fb923c') : ''}
+                    ${data.cep     ? _bipLinha('CEP',          _bipFormatCep(data.cep), '#64748b') : ''}
+                    ${data.destinatario ? _bipLinha('Destinatário', data.destinatario,  '#64748b') : ''}
                 </div>
             </div>`;
     } catch {
