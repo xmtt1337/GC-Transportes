@@ -70,26 +70,8 @@ async function _bipBuscarCep(cep) {
         const data = await res.json();
         if (!res.ok) { el.innerHTML = _bipErroHtml(data.error); return; }
 
-        const transpNomes = { loggi: 'Loggi', anjun: 'Anjun', jt: 'J&T Express', imile: 'Imile', shopee: 'Shopee' };
         const linhas = Array.isArray(data) ? data : [data];
-
-        el.innerHTML = linhas.map(d => {
-            const transpNome = transpNomes[d.transportadora] || d.transportadora || '—';
-            return `
-            <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:14px;padding:18px 20px;margin-bottom:10px">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    <span style="font-size:13px;font-weight:700;color:#22c55e">CEP encontrado</span>
-                </div>
-                <div style="display:grid;gap:2px">
-                    ${_bipLinha('Transportadora', transpNome, '#3a86ff')}
-                    ${_bipLinha('Entregador', d.entregador || '⚠ Sem entregador atribuído', d.entregador ? '#f1f5f9' : '#fb923c')}
-                    ${_bipLinha('Cidade', d.cidade || '—', '#e2e8f0')}
-                    ${d.bairro ? _bipLinha('Bairro', d.bairro, '#94a3b8') : ''}
-                    ${d.sigla  ? _bipLinha('Sigla / Rota', d.sigla, '#fb923c') : ''}
-                </div>
-            </div>`;
-        }).join('');
+        el.innerHTML = _bipRenderCepCards(linhas);
     } catch {
         el.innerHTML = _bipErroHtml('Erro ao conectar ao servidor.');
     }
@@ -104,6 +86,12 @@ async function _bipBuscarCodigo(codigo) {
         });
         const data = await res.json();
         if (!res.ok) { el.innerHTML = _bipErroHtml(data.error || 'Código não encontrado'); return; }
+
+        // Backend detectou que era CEP, não barcode
+        if (data.tipo === 'cep') {
+            el.innerHTML = _bipRenderCepCards(data.resultados);
+            return;
+        }
 
         const transpNomes = { loggi: 'Loggi', anjun: 'Anjun', jt: 'J&T Express', imile: 'Imile', shopee: 'Shopee' };
         const transpNome  = transpNomes[data.transportadora] || data.transportadora || '—';
@@ -170,6 +158,28 @@ function _bipSelecionarInput() {
     if (!input) return;
     input.focus();
     input.select();
+}
+
+const _TRANSP_NOMES = { loggi: 'Loggi', anjun: 'Anjun', jt: 'J&T Express', imile: 'Imile', shopee: 'Shopee' };
+
+function _bipRenderCepCards(linhas) {
+    return linhas.map(d => {
+        const transpNome = _TRANSP_NOMES[d.transportadora] || d.transportadora || '—';
+        return `
+        <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:14px;padding:18px 20px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span style="font-size:13px;font-weight:700;color:#22c55e">CEP encontrado</span>
+            </div>
+            <div style="display:grid;gap:2px">
+                ${_bipLinha('Transportadora', transpNome, '#3a86ff')}
+                ${_bipLinha('Entregador', d.entregador || '⚠ Sem entregador atribuído', d.entregador ? '#f1f5f9' : '#fb923c')}
+                ${_bipLinha('Cidade', d.cidade || '—', '#e2e8f0')}
+                ${d.bairro ? _bipLinha('Bairro', d.bairro, '#94a3b8') : ''}
+                ${d.sigla  ? _bipLinha('Sigla / Rota', d.sigla, '#fb923c') : ''}
+            </div>
+        </div>`;
+    }).join('');
 }
 
 function _bipLinha(label, valor, corValor) {
