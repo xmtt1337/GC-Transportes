@@ -100,27 +100,22 @@ async function _alimentarAnexar(input) {
 }
 
 function _alimentarMostrarSeletorColunas(headers) {
-    const opts = headers.map((h, i) => `<option value="${i}">${h}</option>`).join('');
-
-    // Tenta pré-selecionar os índices mais prováveis
-    const lower    = headers.map(h => h.toLowerCase());
-    const defBar   = lower.findIndex(h => h.includes('barras') || h.includes('barcode') || h.includes('código') || h.includes('codigo'));
-    const defCep   = lower.findIndex(h => h === 'cep' || h.includes('cep'));
-    const defCid   = lower.findIndex(h => h.includes('cidade') || h.includes('city'));
-    const defReg   = lower.findIndex(h => h.includes('região') || h.includes('regiao') || h.includes('saca') || h.includes('hub'));
-    const defDest  = lower.findIndex(h => h.includes('para') || h.includes('destinat') || h.includes('recipient'));
-
-    const sel = (def) => def >= 0 ? `value="${def}"` : '';
+    const lower   = headers.map(h => h.toLowerCase());
+    const defBar  = lower.findIndex(h => h.includes('barras') || h.includes('barcode') || h.includes('código') || h.includes('codigo'));
+    const defCep  = lower.findIndex(h => h === 'cep' || h.includes('cep'));
+    const defCid  = lower.findIndex(h => h.includes('cidade') || h.includes('city'));
+    const defReg  = lower.findIndex(h => h.includes('região') || h.includes('regiao') || h.includes('saca') || h.includes('hub'));
+    const defDest = lower.findIndex(h => h.includes('para') || h.includes('destinat') || h.includes('recipient'));
 
     document.getElementById('alimentar-upload-status').innerHTML = `
         <div style="background:rgba(58,134,255,0.07);border:1px solid rgba(58,134,255,0.18);border-radius:12px;padding:16px 18px;margin-top:8px">
             <div style="font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:12px">Selecione as colunas do arquivo</div>
             <div style="display:grid;gap:10px">
-                ${_alimentarCampo('col-barcode', 'Código de barras *', opts, sel(defBar))}
-                ${_alimentarCampo('col-cep',     'CEP *',              opts, sel(defCep))}
-                ${_alimentarCampo('col-cidade',  'Cidade',             opts, sel(defCid), true)}
-                ${_alimentarCampo('col-regiao',  'Região / Saca',      opts, sel(defReg), true)}
-                ${_alimentarCampo('col-dest',    'Destinatário',       opts, sel(defDest), true)}
+                ${_alimentarCampo('col-barcode', 'Código de barras *', headers, defBar,  false)}
+                ${_alimentarCampo('col-cep',     'CEP *',              headers, defCep,  false)}
+                ${_alimentarCampo('col-cidade',  'Cidade',             headers, defCid,  true)}
+                ${_alimentarCampo('col-regiao',  'Região / Saca',      headers, defReg,  true)}
+                ${_alimentarCampo('col-dest',    'Destinatário',       headers, defDest, true)}
             </div>
             <div style="display:flex;gap:8px;margin-top:14px">
                 <button onclick="_alimentarConfirmarUpload()" style="padding:9px 20px;border-radius:9px;border:none;background:#3a86ff;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Enviar</button>
@@ -130,12 +125,17 @@ function _alimentarMostrarSeletorColunas(headers) {
         </div>`;
 }
 
-function _alimentarCampo(id, label, opts, sel, opcional) {
-    const opNenhuma = opcional ? '<option value="-1">— não usar —</option>' : '';
+function _alimentarCampo(id, label, headers, defIdx, opcional) {
+    const opNenhuma = opcional
+        ? `<option value="-1"${defIdx < 0 ? ' selected' : ''}>— não usar —</option>`
+        : '';
+    const opts = headers.map((h, i) =>
+        `<option value="${i}"${i === defIdx ? ' selected' : ''}>${h}</option>`
+    ).join('');
     return `
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <label style="font-size:12px;color:#94a3b8;width:130px;flex-shrink:0">${label}</label>
-            <select id="${id}" style="flex:1;min-width:150px;background:#0f1923;border:1px solid rgba(58,134,255,0.2);border-radius:7px;color:#e2e8f0;padding:6px 10px;font-size:13px;font-family:inherit" ${sel}>
+            <select id="${id}" style="flex:1;min-width:150px;background:#0f1923;border:1px solid rgba(58,134,255,0.2);border-radius:7px;color:#e2e8f0;padding:6px 10px;font-size:13px;font-family:inherit">
                 ${opNenhuma}${opts}
             </select>
         </div>`;
@@ -219,7 +219,7 @@ async function _alimentarLerGrid(file) {
                 const data = new Uint8Array(e.target.result);
                 const wb   = XLSX.read(data, { type: 'array' });
                 const ws   = wb.Sheets[wb.SheetNames[0]];
-                resolve(XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }));
+                resolve(XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false }));
             } catch (err) { reject(err); }
         };
         reader.onerror = reject;
