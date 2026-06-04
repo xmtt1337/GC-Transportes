@@ -39,10 +39,10 @@
                 Alimentar <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-alimentar">
-                <li><a href="#" onclick="_emBreve(event)">Loggi</a></li>
-                <li><a href="#" onclick="_emBreve(event)">Anjun</a></li>
-                <li><a href="#" onclick="_emBreve(event)">J&amp;T Express</a></li>
-                <li><a href="#" onclick="_emBreve(event)">Imile</a></li>
+                <li><a href="#" onclick="abrirAlimentar(event,'loggi')">Loggi</a></li>
+                <li><a href="#" onclick="abrirAlimentar(event,'anjun')">Anjun</a></li>
+                <li><a href="#" onclick="abrirAlimentar(event,'jt')">J&amp;T Express</a></li>
+                <li><a href="#" onclick="abrirAlimentar(event,'imile')">Imile</a></li>
             </ul>
         </ul>
 
@@ -939,6 +939,16 @@
             </div>
         </div><!-- /tela-extravios-dash -->
 
+        <!-- TELA ALIMENTAR -->
+        <div id="tela-alimentar" class="view tela-full">
+            <div class="fech-header">
+                <div style="font-size:15px;font-weight:700;color:#e2e8f0" id="alimentar-titulo">Alimentar</div>
+            </div>
+            <div class="fech-body">
+                <div id="alimentar-content"></div>
+            </div>
+        </div>
+
         <!-- TELA USUÁRIOS GC -->
         <div id="tela-admin-usuarios-gc" class="view tela-full">
             <div class="fech-header">
@@ -986,6 +996,7 @@
 <script src="js/extravios.js"></script>
 <script src="js/usuarios-gc.js"></script>
 <script src="js/modals.js"></script>
+<script src="js/alimentar.js"></script>
 
 <!-- MODAL: NOVO USUÁRIO GC -->
 <div class="usr-modal-overlay" id="modal-novo-usuario-gc" onclick="_fecharModalSeBackdrop(event,'modal-novo-usuario-gc')">
