@@ -1057,8 +1057,27 @@ body {
     max-height: 0; overflow: hidden; opacity: 0;
     transition: max-height 0.3s ease, opacity 0.22s ease;
 }
-.sub-submenu.open { max-height: 300px; opacity: 1; }
+.sub-submenu.open { max-height: 400px; opacity: 1; }
 .sub-submenu a { padding-left: 46px !important; font-size: 13px !important; }
+
+.subgroup-header-2 {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 15px 8px 30px; cursor: pointer; list-style: none;
+    color: #64748b; font-size: 12.5px; font-weight: 600;
+    border-radius: 7px; margin: 1px 0;
+    transition: background 0.2s, color 0.2s;
+}
+.subgroup-header-2:hover { background: rgba(58,134,255,0.08); color: #94a3b8; }
+.subgroup-header-2.open  { color: #e2e8f0; }
+.subgroup-header-2.open .subgroup-arrow { transform: rotate(180deg); }
+
+.sub-sub-submenu {
+    list-style: none;
+    max-height: 0; overflow: hidden; opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.22s ease;
+}
+.sub-sub-submenu.open { max-height: 300px; opacity: 1; }
+.sub-sub-submenu a { padding-left: 58px !important; font-size: 12.5px !important; }
 
 /* ===== TELA IMPORTAR TRAMPAY ===== */
 .trampay-upload-area {
