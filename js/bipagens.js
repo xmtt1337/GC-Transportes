@@ -146,11 +146,16 @@ async function _bipSincronizarCeps() {
         const resumo = Object.entries(porTransp)
             .map(([k,v]) => `${nomes[k]||k}: ${v.toLocaleString('pt-BR')}`)
             .join(' · ');
-        btn.innerHTML = `✓ ${data.total.toLocaleString('pt-BR')} CEPs — ${resumo}`;
-        btn.style.borderColor = 'rgba(34,197,94,0.35)';
-        btn.style.color       = '#22c55e';
-        btn.style.background  = 'rgba(34,197,94,0.08)';
-        setTimeout(() => { btn.innerHTML = orig; btn.style.borderColor=''; btn.style.color=''; btn.style.background=''; btn.disabled=false; }, 6000);
+        const temErro = data.erros && data.erros.length > 0;
+        btn.innerHTML = `${temErro ? '⚠' : '✓'} ${data.total.toLocaleString('pt-BR')} CEPs — ${resumo}`;
+        btn.style.borderColor = temErro ? 'rgba(251,146,60,0.5)'  : 'rgba(34,197,94,0.35)';
+        btn.style.color       = temErro ? '#fb923c'               : '#22c55e';
+        btn.style.background  = temErro ? 'rgba(251,146,60,0.08)' : 'rgba(34,197,94,0.08)';
+        if (temErro) {
+            btn.title = 'Erros:\n' + data.erros.join('\n');
+            console.warn('Erros no sync de CEPs:', data.erros);
+        }
+        setTimeout(() => { btn.innerHTML = orig; btn.style.borderColor=''; btn.style.color=''; btn.style.background=''; btn.title=''; btn.disabled=false; }, 8000);
     } catch (err) {
         btn.innerHTML = `✗ ${err.message}`;
         btn.style.color = '#ef4444';
