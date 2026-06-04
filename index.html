@@ -35,6 +35,15 @@
         </li>
         <ul class="submenu" data-menu="operacao" id="submenu-operacao">
             <li><a href="#" onclick="_emBreve(event)">Atribuir</a></li>
+            <li class="subgroup-header" onclick="toggleSubGroup(this)">
+                Alimentar <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="subgroup-alimentar">
+                <li><a href="#" onclick="_emBreve(event)">Loggi</a></li>
+                <li><a href="#" onclick="_emBreve(event)">Anjun</a></li>
+                <li><a href="#" onclick="_emBreve(event)">J&amp;T Express</a></li>
+                <li><a href="#" onclick="_emBreve(event)">Imile</a></li>
+            </ul>
         </ul>
 
         <li class="menu-item" data-menu="pedidos" id="menu-pedidos" onclick="toggleMenu(this)">
@@ -1045,7 +1054,7 @@
     </div>
 </div>
 
-<!-- MODAL: TELEFONE -->
+<!-- MODAL: TELEFONE  -->
 <div class="usr-modal-overlay" id="modal-telefone" onclick="_fecharModalSeBackdrop(event,'modal-telefone')">
     <div class="usr-modal">
         <div class="usr-modal-title">Telefone / WhatsApp</div>
@@ -1062,7 +1071,7 @@
     </div>
 </div>
 
-<!-- MODAL: NOVO ENTREGADOR -->
+<!-- MODAL: NEW DRIVER -->
 <div class="usr-modal-overlay" id="modal-novo-entregador" onclick="_fecharModalSeBackdrop(event,'modal-novo-entregador')">
     <div class="usr-modal">
         <!-- form -->
