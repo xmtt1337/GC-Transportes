@@ -74,6 +74,9 @@ function _alimentarRenderizar(arquivos) {
     el.innerHTML = html;
 }
 
+let _alimentarFilePendente = null;
+let _alimentarGridPendente = null;
+
 async function _alimentarAnexar(input) {
     const file = input.files[0];
     if (!file) return;
@@ -81,17 +84,109 @@ async function _alimentarAnexar(input) {
     status.innerHTML = '<div style="color:#64748b;font-size:13px">Lendo arquivo...</div>';
 
     try {
-        const [base64, pacotes] = await Promise.all([
-            new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload  = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            }),
-            _alimentarParsearArquivo(file)
-        ]);
+        const grid = await _alimentarLerGrid(file);
+        if (!grid || grid.length < 2) throw new Error('Arquivo vazio ou inválido.');
 
-        status.innerHTML = `<div style="color:#64748b;font-size:13px">Enviando ${pacotes.length} pacotes...</div>`;
+        _alimentarFilePendente = file;
+        _alimentarGridPendente = grid;
+
+        const headers = grid[0].map(c => String(c || '').trim()).filter(c => c);
+        status.innerHTML = '';
+        _alimentarMostrarSeletorColunas(headers);
+    } catch (err) {
+        status.innerHTML = `<div style="color:#ef4444;font-size:13px">${err.message}</div>`;
+        input.value = '';
+    }
+}
+
+function _alimentarMostrarSeletorColunas(headers) {
+    const opts = headers.map((h, i) => `<option value="${i}">${h}</option>`).join('');
+
+    // Tenta pré-selecionar os índices mais prováveis
+    const lower    = headers.map(h => h.toLowerCase());
+    const defBar   = lower.findIndex(h => h.includes('barras') || h.includes('barcode') || h.includes('código') || h.includes('codigo'));
+    const defCep   = lower.findIndex(h => h === 'cep' || h.includes('cep'));
+    const defCid   = lower.findIndex(h => h.includes('cidade') || h.includes('city'));
+    const defReg   = lower.findIndex(h => h.includes('região') || h.includes('regiao') || h.includes('saca') || h.includes('hub'));
+    const defDest  = lower.findIndex(h => h.includes('para') || h.includes('destinat') || h.includes('recipient'));
+
+    const sel = (def) => def >= 0 ? `value="${def}"` : '';
+
+    document.getElementById('alimentar-upload-status').innerHTML = `
+        <div style="background:rgba(58,134,255,0.07);border:1px solid rgba(58,134,255,0.18);border-radius:12px;padding:16px 18px;margin-top:8px">
+            <div style="font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:12px">Selecione as colunas do arquivo</div>
+            <div style="display:grid;gap:10px">
+                ${_alimentarCampo('col-barcode', 'Código de barras *', opts, sel(defBar))}
+                ${_alimentarCampo('col-cep',     'CEP *',              opts, sel(defCep))}
+                ${_alimentarCampo('col-cidade',  'Cidade',             opts, sel(defCid), true)}
+                ${_alimentarCampo('col-regiao',  'Região / Saca',      opts, sel(defReg), true)}
+                ${_alimentarCampo('col-dest',    'Destinatário',       opts, sel(defDest), true)}
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px">
+                <button onclick="_alimentarConfirmarUpload()" style="padding:9px 20px;border-radius:9px;border:none;background:#3a86ff;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Enviar</button>
+                <button onclick="_alimentarCancelarUpload()" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#64748b;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">Cancelar</button>
+            </div>
+            <div id="alimentar-col-erro" style="color:#ef4444;font-size:12px;margin-top:8px"></div>
+        </div>`;
+}
+
+function _alimentarCampo(id, label, opts, sel, opcional) {
+    const opNenhuma = opcional ? '<option value="-1">— não usar —</option>' : '';
+    return `
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <label style="font-size:12px;color:#94a3b8;width:130px;flex-shrink:0">${label}</label>
+            <select id="${id}" style="flex:1;min-width:150px;background:#0f1923;border:1px solid rgba(58,134,255,0.2);border-radius:7px;color:#e2e8f0;padding:6px 10px;font-size:13px;font-family:inherit" ${sel}>
+                ${opNenhuma}${opts}
+            </select>
+        </div>`;
+}
+
+function _alimentarCancelarUpload() {
+    _alimentarFilePendente = null;
+    _alimentarGridPendente = null;
+    document.getElementById('alimentar-upload-status').innerHTML = '';
+    document.getElementById('alimentar-file-input').value = '';
+}
+
+async function _alimentarConfirmarUpload() {
+    const erroEl = document.getElementById('alimentar-col-erro');
+    const barIdx  = parseInt(document.getElementById('col-barcode').value);
+    const cepIdx  = parseInt(document.getElementById('col-cep').value);
+    const cidIdx  = parseInt(document.getElementById('col-cidade')?.value ?? -1);
+    const regIdx  = parseInt(document.getElementById('col-regiao')?.value ?? -1);
+    const desIdx  = parseInt(document.getElementById('col-dest')?.value   ?? -1);
+
+    if (isNaN(barIdx) || barIdx < 0) { erroEl.innerText = 'Selecione a coluna do código de barras.'; return; }
+    if (isNaN(cepIdx) || cepIdx < 0) { erroEl.innerText = 'Selecione a coluna do CEP.'; return; }
+
+    const grid   = _alimentarGridPendente;
+    const file   = _alimentarFilePendente;
+    const pacotes = [];
+    for (let i = 1; i < grid.length; i++) {
+        const row     = grid[i];
+        const barcode = String(row[barIdx] || '').trim();
+        const cep     = String(row[cepIdx] || '').replace(/\D/g, '');
+        if (!barcode && !cep) continue;
+        pacotes.push({
+            codigo_barras: barcode || null,
+            id_pacote:     null,
+            cep:           cep     || null,
+            cidade:        cidIdx >= 0 ? String(row[cidIdx] || '').trim() || null : null,
+            regiao:        regIdx >= 0 ? String(row[regIdx] || '').trim() || null : null,
+            destinatario:  desIdx >= 0 ? String(row[desIdx] || '').trim() || null : null,
+        });
+    }
+
+    const status = document.getElementById('alimentar-upload-status');
+    status.innerHTML = `<div style="color:#64748b;font-size:13px">Enviando ${pacotes.length} pacotes...</div>`;
+
+    try {
+        const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload  = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
 
         const res = await fetch(API + '/alimentar/upload', {
             method: 'POST',
@@ -107,65 +202,29 @@ async function _alimentarAnexar(input) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erro ao enviar');
         status.innerHTML = '';
-        input.value = '';
+        document.getElementById('alimentar-file-input').value = '';
+        _alimentarFilePendente = null;
+        _alimentarGridPendente = null;
         _alimentarCarregar();
     } catch (err) {
         status.innerHTML = `<div style="color:#ef4444;font-size:13px">${err.message}</div>`;
     }
 }
 
-async function _alimentarParsearArquivo(file) {
-    return new Promise(resolve => {
+async function _alimentarLerGrid(file) {
+    return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = e => {
             try {
                 const data = new Uint8Array(e.target.result);
                 const wb   = XLSX.read(data, { type: 'array' });
                 const ws   = wb.Sheets[wb.SheetNames[0]];
-                const grid = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-                resolve(_alimentarExtrairPacotes(grid));
-            } catch { resolve([]); }
+                resolve(XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }));
+            } catch (err) { reject(err); }
         };
-        reader.onerror = () => resolve([]);
+        reader.onerror = reject;
         reader.readAsArrayBuffer(file);
     });
-}
-
-function _alimentarExtrairPacotes(grid) {
-    if (grid.length < 2) return [];
-    const header = grid[0].map(c => String(c || '').trim().toLowerCase());
-
-    const findCol = (...names) => {
-        for (const name of names) {
-            const idx = header.findIndex(h => h.includes(name));
-            if (idx >= 0) return idx;
-        }
-        return -1;
-    };
-
-    const barcodeIdx  = findCol('código de barras', 'barcode', 'cod. barras', 'codbarras', 'código', 'codigo');
-    const idPacIdx    = findCol('id do pacote', 'id pacote', 'pedido', 'order', 'pacote');
-    const cidadeIdx   = findCol('cidade', 'city', 'municipio', 'município');
-    const regiaoIdx   = findCol('região', 'regiao', 'region', 'hub', 'saca', 'rota');
-    const cepIdx      = findCol('cep');
-    const destIdx     = findCol('para', 'destinatário', 'destinatario', 'recipient', 'nome dest');
-
-    const result = [];
-    for (let i = 1; i < grid.length; i++) {
-        const row = grid[i];
-        const barcode = barcodeIdx >= 0 ? String(row[barcodeIdx] || '').trim() : '';
-        const idPac   = idPacIdx   >= 0 ? String(row[idPacIdx]   || '').trim() : '';
-        if (!barcode && !idPac) continue;
-        result.push({
-            codigo_barras: barcode || null,
-            id_pacote:     idPac   || null,
-            cidade:        cidadeIdx  >= 0 ? String(row[cidadeIdx]  || '').trim() || null : null,
-            regiao:        regiaoIdx  >= 0 ? String(row[regiaoIdx]  || '').trim() || null : null,
-            cep:           cepIdx     >= 0 ? String(row[cepIdx]     || '').replace(/\D/g,'') || null : null,
-            destinatario:  destIdx    >= 0 ? String(row[destIdx]    || '').trim() || null : null,
-        });
-    }
-    return result;
 }
 
 async function _alimentarBaixar(id, nomeArquivo) {
