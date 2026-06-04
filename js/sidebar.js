@@ -28,10 +28,14 @@ function toggleSubGroup(el) {
     const sub    = el.nextElementSibling;
     const isOpen = sub.classList.contains("open");
     el.parentElement.querySelectorAll(".subgroup-header").forEach(h => h.classList.remove("open"));
-    el.parentElement.querySelectorAll(".sub-submenu").forEach(s => s.classList.remove("open"));
+    el.parentElement.querySelectorAll(".sub-submenu").forEach(s => {
+        s.classList.remove("open");
+        s.style.maxHeight = "0";
+    });
     if (!isOpen) {
         sub.classList.add("open");
         el.classList.add("open");
+        sub.style.maxHeight = sub.scrollHeight + "px";
     }
     if (el.dataset.nav && typeof window[el.dataset.nav] === "function") {
         window[el.dataset.nav]();
@@ -42,10 +46,17 @@ function toggleSubSubGroup(el) {
     const sub    = el.nextElementSibling;
     const isOpen = sub.classList.contains("open");
     el.parentElement.querySelectorAll(".subgroup-header-2").forEach(h => h.classList.remove("open"));
-    el.parentElement.querySelectorAll(".sub-sub-submenu").forEach(s => s.classList.remove("open"));
+    el.parentElement.querySelectorAll(".sub-sub-submenu").forEach(s => {
+        s.classList.remove("open");
+        s.style.maxHeight = "0";
+    });
     if (!isOpen) {
         sub.classList.add("open");
         el.classList.add("open");
+        sub.style.maxHeight = sub.scrollHeight + "px";
+        // Avisa o pai para recalcular sua altura
+        const pai = el.closest(".sub-submenu");
+        if (pai) pai.style.maxHeight = pai.scrollHeight + sub.scrollHeight + "px";
     }
 }
 
