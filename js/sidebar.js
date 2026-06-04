@@ -27,9 +27,19 @@ function irParaHome() {
 function toggleSubGroup(el) {
     const sub   = el.nextElementSibling;
     const isOpen = sub.classList.contains("open");
-    // Fecha outros subgroups do mesmo pai
     el.parentElement.querySelectorAll(".subgroup-header").forEach(h => h.classList.remove("open"));
     el.parentElement.querySelectorAll(".sub-submenu").forEach(s => s.classList.remove("open"));
+    if (!isOpen) {
+        sub.classList.add("open");
+        el.classList.add("open");
+    }
+}
+
+function toggleSubSubGroup(el) {
+    const sub    = el.nextElementSibling;
+    const isOpen = sub.classList.contains("open");
+    el.parentElement.querySelectorAll(".subgroup-header-2").forEach(h => h.classList.remove("open"));
+    el.parentElement.querySelectorAll(".sub-sub-submenu").forEach(s => s.classList.remove("open"));
     if (!isOpen) {
         sub.classList.add("open");
         el.classList.add("open");
