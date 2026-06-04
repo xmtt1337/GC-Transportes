@@ -1467,3 +1467,5 @@ body {
     #adm-pdf-header { display: block !important; }
     #adm-pdf-btn, [onclick="limparSelecaoEntregador()"] { display: none !important; }
 }
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

@@ -35,7 +35,7 @@
         </li>
         <ul class="submenu" data-menu="operacao" id="submenu-operacao">
             <li><a href="#" onclick="_emBreve(event)">Atribuir</a></li>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
+            <li class="subgroup-header" onclick="toggleSubGroup(this)" data-nav="abrirBipagens">
                 Bipagens <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-bipagens">
@@ -939,6 +939,26 @@
             </div>
         </div><!-- /tela-extravios-dash -->
 
+        <!-- TELA BIPAGENS -->
+        <div id="tela-bipagens" class="view tela-full">
+            <div class="fech-header">
+                <div style="font-size:15px;font-weight:700;color:#e2e8f0">Bipagens</div>
+            </div>
+            <div class="fech-body">
+                <div style="max-width:520px;margin:0 auto;padding-top:8px">
+                    <div class="adm-search-input-area" style="margin-bottom:16px">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#3a86ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <input type="text" id="bip-input" placeholder="Bipar ou digitar código do pacote..."
+                            oninput="_bipAuto(this)"
+                            onkeydown="if(event.key==='Enter') _bipBuscar()"
+                            autocomplete="off" autocorrect="off" spellcheck="false">
+                        <button class="extrv-busca-clear" id="bip-clear" onclick="_bipLimpar()" style="display:none">×</button>
+                    </div>
+                    <div id="bip-resultado"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- TELA ALIMENTAR -->
         <div id="tela-alimentar" class="view tela-full">
             <div class="fech-header">
@@ -997,6 +1017,7 @@
 <script src="js/usuarios-gc.js"></script>
 <script src="js/modals.js"></script>
 <script src="js/alimentar.js"></script>
+<script src="js/bipagens.js"></script>
 
 <!-- MODAL: NOVO USUÁRIO GC -->
 <div class="usr-modal-overlay" id="modal-novo-usuario-gc" onclick="_fecharModalSeBackdrop(event,'modal-novo-usuario-gc')">

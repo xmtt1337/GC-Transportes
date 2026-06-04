@@ -25,13 +25,16 @@ function irParaHome() {
 }
 
 function toggleSubGroup(el) {
-    const sub   = el.nextElementSibling;
+    const sub    = el.nextElementSibling;
     const isOpen = sub.classList.contains("open");
     el.parentElement.querySelectorAll(".subgroup-header").forEach(h => h.classList.remove("open"));
     el.parentElement.querySelectorAll(".sub-submenu").forEach(s => s.classList.remove("open"));
     if (!isOpen) {
         sub.classList.add("open");
         el.classList.add("open");
+    }
+    if (el.dataset.nav && typeof window[el.dataset.nav] === "function") {
+        window[el.dataset.nav]();
     }
 }
 
