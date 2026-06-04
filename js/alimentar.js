@@ -78,15 +78,20 @@ async function _alimentarAnexar(input) {
     const file = input.files[0];
     if (!file) return;
     const status = document.getElementById('alimentar-upload-status');
-    status.innerHTML = '<div style="color:#64748b;font-size:13px">Enviando...</div>';
+    status.innerHTML = '<div style="color:#64748b;font-size:13px">Lendo arquivo...</div>';
 
     try {
-        const base64 = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload  = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
+        const [base64, pacotes] = await Promise.all([
+            new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload  = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            }),
+            _alimentarParsearArquivo(file)
+        ]);
+
+        status.innerHTML = `<div style="color:#64748b;font-size:13px">Enviando ${pacotes.length} pacotes...</div>`;
 
         const res = await fetch(API + '/alimentar/upload', {
             method: 'POST',
@@ -95,7 +100,8 @@ async function _alimentarAnexar(input) {
                 transportadora:  _alimentarTransp,
                 nome_arquivo:    file.name,
                 conteudo_base64: base64,
-                mime_type:       file.type || 'application/octet-stream'
+                mime_type:       file.type || 'application/octet-stream',
+                pacotes
             })
         });
         const data = await res.json();
@@ -106,6 +112,60 @@ async function _alimentarAnexar(input) {
     } catch (err) {
         status.innerHTML = `<div style="color:#ef4444;font-size:13px">${err.message}</div>`;
     }
+}
+
+async function _alimentarParsearArquivo(file) {
+    return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const wb   = XLSX.read(data, { type: 'array' });
+                const ws   = wb.Sheets[wb.SheetNames[0]];
+                const grid = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                resolve(_alimentarExtrairPacotes(grid));
+            } catch { resolve([]); }
+        };
+        reader.onerror = () => resolve([]);
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+function _alimentarExtrairPacotes(grid) {
+    if (grid.length < 2) return [];
+    const header = grid[0].map(c => String(c || '').trim().toLowerCase());
+
+    const findCol = (...names) => {
+        for (const name of names) {
+            const idx = header.findIndex(h => h.includes(name));
+            if (idx >= 0) return idx;
+        }
+        return -1;
+    };
+
+    const barcodeIdx  = findCol('código de barras', 'barcode', 'cod. barras', 'codbarras', 'código', 'codigo');
+    const idPacIdx    = findCol('id do pacote', 'id pacote', 'pedido', 'order', 'pacote');
+    const cidadeIdx   = findCol('cidade', 'city', 'municipio', 'município');
+    const regiaoIdx   = findCol('região', 'regiao', 'region', 'hub', 'saca', 'rota');
+    const cepIdx      = findCol('cep');
+    const destIdx     = findCol('para', 'destinatário', 'destinatario', 'recipient', 'nome dest');
+
+    const result = [];
+    for (let i = 1; i < grid.length; i++) {
+        const row = grid[i];
+        const barcode = barcodeIdx >= 0 ? String(row[barcodeIdx] || '').trim() : '';
+        const idPac   = idPacIdx   >= 0 ? String(row[idPacIdx]   || '').trim() : '';
+        if (!barcode && !idPac) continue;
+        result.push({
+            codigo_barras: barcode || null,
+            id_pacote:     idPac   || null,
+            cidade:        cidadeIdx  >= 0 ? String(row[cidadeIdx]  || '').trim() || null : null,
+            regiao:        regiaoIdx  >= 0 ? String(row[regiaoIdx]  || '').trim() || null : null,
+            cep:           cepIdx     >= 0 ? String(row[cepIdx]     || '').replace(/\D/g,'') || null : null,
+            destinatario:  destIdx    >= 0 ? String(row[destIdx]    || '').trim() || null : null,
+        });
+    }
+    return result;
 }
 
 async function _alimentarBaixar(id, nomeArquivo) {
