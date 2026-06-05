@@ -29,13 +29,24 @@ async function _pedCarregar() {
     try {
         let url = API + '/pedidos/lista';
         if (de && ate) url += `?de=${de}&ate=${ate}`;
-        const res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+
+        const controller = new AbortController();
+        const timeout    = setTimeout(() => controller.abort(), 20000);
+
+        const res  = await fetch(url, {
+            headers: { 'Authorization': 'Bearer ' + token },
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         _pedDados = data;
         _pedRenderizar(data);
     } catch (err) {
-        emptyEl.innerText = 'Erro ao carregar: ' + err.message;
+        emptyEl.innerText = err.name === 'AbortError'
+            ? 'O servidor demorou muito para responder. Tente novamente.'
+            : 'Erro ao carregar: ' + err.message;
     }
 }
 
