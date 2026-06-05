@@ -108,6 +108,16 @@ async function _alimentarAnexar(input) {
             const defReg  = lower.findIndex(h => h.includes('região') || h.includes('regiao') || h.includes('saca') || h.includes('hub'));
             const defDest = lower.findIndex(h => h.includes('para') || h.includes('destinat') || h.includes('recipient'));
             await _alimentarEnviarComIndices(file, grid, defBar, defCep, defCid, defReg, defDest);
+        } else if (_alimentarTransp === 'imile') {
+            // Fallback iMile: colunas exatas do formato alternativo
+            const rawHeaders = grid[0].map(c => String(c || '').trim());
+            const imileBar = rawHeaders.findIndex(h => h === 'Waybill No');
+            const imileCep = rawHeaders.findIndex(h => h === 'Destination Zipcode');
+            if (imileBar >= 0 && imileCep >= 0) {
+                await _alimentarEnviarComIndices(file, grid, imileBar, imileCep, -1, -1, -1);
+            } else {
+                _alimentarMostrarSeletorColunas(headers);
+            }
         } else {
             _alimentarMostrarSeletorColunas(headers);
         }
