@@ -28,15 +28,22 @@ async function _desempCarregar() {
     emptyEl.style.display = '';
     contentEl.style.display = 'none';
 
+    const transp = document.getElementById('desemp-transp').value;
+    const transpNomeFiltro = { todas:'Todas', loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee' };
+
     try {
-        let url = API + '/bipagem/desempenho';
-        if (mes && ano) url += `?mes=${mes}&ano=${ano}`;
+        const params = new URLSearchParams();
+        if (mes && ano) { params.set('mes', mes); params.set('ano', ano); }
+        if (transp && transp !== 'todas') params.set('transportadora', transp);
+        const url  = API + '/bipagem/desempenho' + (params.toString() ? '?' + params.toString() : '');
         const res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
 
         const meses = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-        const periodo = mes && ano ? `${meses[parseInt(mes)]} ${ano}` : 'Geral (todos os meses)';
+        const periodoMes   = mes && ano ? `${meses[parseInt(mes)]} ${ano}` : 'Todos os meses';
+        const periodoTransp = transp !== 'todas' ? ` · ${transpNomeFiltro[transp]}` : '';
+        const periodo = periodoMes + periodoTransp;
 
         if (!data.length) {
             emptyEl.innerText = `Nenhuma bipagem em ${periodo}.`;
@@ -70,7 +77,8 @@ function _desempRenderizar(rows, periodo) {
         const pctTotal = totalGeral > 0 ? (u.total / totalGeral * 100).toFixed(0) : 0;
         const medal  = medalhas[i] || `${i+1}º`;
 
-        const barras = transp.filter(t => u[t] > 0).map(t => `
+        const transpFiltro = document.getElementById('desemp-transp').value;
+        const barras = transp.filter(t => u[t] > 0 && (transpFiltro === 'todas' || transpFiltro === t)).map(t => `
             <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
                 <span style="width:7px;height:7px;border-radius:50%;background:${cores[t]};flex-shrink:0"></span>
                 <span style="font-size:11px;color:#64748b;width:40px">${nomes[t]}</span>
