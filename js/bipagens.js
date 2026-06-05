@@ -74,7 +74,8 @@ async function _bipBuscarCep(cep) {
 
         const linhas = Array.isArray(data) ? data : [data];
         el.innerHTML = _bipRenderCepCards(linhas);
-        _bipRegistrar(cep.replace(/\D/g,''), linhas[0] || {});
+        const cepLimpo = cep.replace(/\D/g,'');
+        linhas.forEach(d => _bipRegistrar(cepLimpo, d));
     } catch {
         el.innerHTML = _bipErroHtml('Erro ao conectar ao servidor.');
     }
@@ -93,8 +94,7 @@ async function _bipBuscarCodigo(codigo) {
         // Backend detectou que era CEP, não barcode
         if (data.tipo === 'cep') {
             el.innerHTML = _bipRenderCepCards(data.resultados);
-            const r = data.resultados[0] || {};
-            _bipRegistrar(codigo, r);
+            data.resultados.forEach(r => _bipRegistrar(codigo, r));
             return;
         }
 
