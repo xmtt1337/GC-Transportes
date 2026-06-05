@@ -1484,29 +1484,37 @@ body {
 
 
 /* ===== SEPARAÇÃO (BIPAGENS) ===== */
-.bip-layout { display: flex; gap: 0; height: 100%; overflow: hidden; }
-
-.bip-panel-left {
-    width: 380px; flex-shrink: 0;
-    display: flex; flex-direction: column; gap: 14px;
-    padding-right: 28px;
-}
-.bip-divider {
-    width: 1px; flex-shrink: 0; align-self: stretch;
-    background: linear-gradient(to bottom, transparent, rgba(58,134,255,0.12) 15%, rgba(58,134,255,0.12) 85%, transparent);
-}
-.bip-panel-right {
-    flex: 1; min-width: 0;
+.bip-layout {
     display: flex; flex-direction: column;
-    padding-left: 28px; overflow: hidden;
+    gap: 0; overflow: hidden;
+}
+
+/* Zona de busca centralizada */
+.bip-top-zone {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 14px; padding-bottom: 24px; flex-shrink: 0;
+}
+.bip-resultado-area { width: 100%; max-width: 560px; }
+
+/* Divisor horizontal */
+.bip-h-divider {
+    height: 1px; flex-shrink: 0;
+    background: linear-gradient(to right, transparent, rgba(58,134,255,0.12) 15%, rgba(58,134,255,0.12) 85%, transparent);
+}
+
+/* Zona da lista com scroll */
+.bip-bottom-zone {
+    flex: 1; min-height: 0; overflow: hidden;
+    display: flex; flex-direction: column; padding-top: 20px;
 }
 
 /* Search input */
 .bip-search-wrap {
     display: flex; align-items: center; gap: 12px;
+    width: 100%; max-width: 560px;
     background: rgba(255,255,255,0.02);
     border: 1.5px solid rgba(58,134,255,0.18);
-    border-radius: 14px; padding: 13px 16px;
+    border-radius: 14px; padding: 13px 18px;
     transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 .bip-search-wrap:focus-within {
@@ -1554,13 +1562,18 @@ body {
 .bip-log-scroll { flex: 1; overflow-y: auto; min-height: 0; }
 .bip-empty-msg { color: #2e3d52; font-size: 13px; padding: 6px 0; }
 
-/* Session items */
+/* Session items — grid 2 col em telas grandes */
+.bip-log-scroll > #bip-sessao-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 6px;
+}
 .bip-item {
     display: flex; align-items: center; gap: 10px;
-    padding: 10px 12px; border-radius: 10px;
+    padding: 10px 14px; border-radius: 10px;
     border: 1px solid rgba(255,255,255,0.04);
     background: rgba(255,255,255,0.015);
-    margin-bottom: 5px; transition: background 0.15s;
+    transition: background 0.15s;
 }
 .bip-item:hover { background: rgba(255,255,255,0.035); }
 .bip-item-badge {
