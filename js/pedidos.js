@@ -1,80 +1,108 @@
+let _pedDados = [];
+
+const _PED_TRANSP_NOMES = { loggi:'Loggi', anjun:'Anjun', jt:'J&T Express', imile:'Imile', shopee:'Shopee', cep:'CEP' };
+const _PED_TRANSP_CORES = { loggi:'#12A5E8', anjun:'#22C55E', imile:'#9333EA', jt:'#EF4444', shopee:'#F97316', cep:'#94a3b8' };
+
 function abrirPesquisarPedidos(event) {
     if (event) event.preventDefault();
     mostrarTela('tela-pesquisar-pedidos');
-    document.getElementById('titulo-pagina').innerText = 'Pedidos';
-    document.getElementById('ped-resultado').innerHTML = '';
-    document.getElementById('ped-busca-input').value = '';
-    document.getElementById('ped-busca-clear').style.display = 'none';
-    setTimeout(() => document.getElementById('ped-busca-input').focus(), 200);
+    document.getElementById('titulo-pagina').innerText = 'Pedidos bipados';
+    _pedCarregar();
 }
 
-function _pedLimpar() {
-    document.getElementById('ped-busca-input').value = '';
-    document.getElementById('ped-busca-clear').style.display = 'none';
-    document.getElementById('ped-resultado').innerHTML = '';
-    document.getElementById('ped-busca-input').focus();
+function _pedLimparFiltro() {
+    document.getElementById('ped-de').value  = '';
+    document.getElementById('ped-ate').value = '';
+    _pedCarregar();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const input = document.getElementById('ped-busca-input');
-    if (input) input.addEventListener('input', () => {
-        document.getElementById('ped-busca-clear').style.display = input.value ? '' : 'none';
-    });
-});
+async function _pedCarregar() {
+    const de  = document.getElementById('ped-de').value;
+    const ate = document.getElementById('ped-ate').value;
+    const emptyEl = document.getElementById('ped-empty');
+    const listaEl = document.getElementById('ped-lista');
 
-async function _pedBuscar() {
-    const codigo = document.getElementById('ped-busca-input').value.trim();
-    if (!codigo) return;
-
-    const el = document.getElementById('ped-resultado');
-    el.innerHTML = `<div style="color:#64748b;font-size:14px;padding:12px 0">Buscando...</div>`;
+    emptyEl.innerText = 'Carregando...';
+    emptyEl.style.display = '';
+    listaEl.style.display = 'none';
 
     try {
-        const res  = await fetch(API + '/pedidos/buscar?codigo=' + encodeURIComponent(codigo), {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
+        let url = API + '/pedidos/lista';
+        if (de && ate) url += `?de=${de}&ate=${ate}`;
+        const res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
         const data = await res.json();
-
-        if (!res.ok) {
-            el.innerHTML = `
-                <div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:12px">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    <span style="color:#ef4444;font-size:14px">${data.error}</span>
-                </div>`;
-            return;
-        }
-
-        const transpNomes = { loggi:'Loggi', anjun:'Anjun', jt:'J&T Express', imile:'Imile', shopee:'Shopee', cep:'CEP' };
-        const transpCores = { loggi:'#12A5E8', anjun:'#22C55E', imile:'#9333EA', jt:'#EF4444', shopee:'#F97316', cep:'#94a3b8' };
-
-        el.innerHTML = data.map((r, i) => {
-            const cor       = transpCores[r.transportadora] || '#64748b';
-            const transpNome= transpNomes[r.transportadora] || r.transportadora || '—';
-            const dataHora  = r.bipado_em ? new Date(r.bipado_em).toLocaleString('pt-BR') : '—';
-            const cepFmt    = r.cep ? r.cep.slice(0,5) + '-' + r.cep.slice(5) : '—';
-            return `
-            <div style="background:${cor}12;border:1px solid ${cor}30;border-radius:12px;padding:16px 18px;margin-bottom:10px">
-                ${data.length > 1 ? `<div style="font-size:11px;color:#4a6a8a;margin-bottom:10px">Bipagem ${i+1} de ${data.length}</div>` : ''}
-                <div style="display:grid;gap:3px">
-                    ${_pedLinha('Código',        r.codigo        || '—', '#e2e8f0')}
-                    ${_pedLinha('Transportadora', transpNome,              cor)}
-                    ${_pedLinha('Entregador',     r.entregador    || '—', '#f1f5f9')}
-                    ${_pedLinha('Cidade',         r.cidade        || '—', '#e2e8f0')}
-                    ${_pedLinha('CEP',            cepFmt,                 '#94a3b8')}
-                    ${_pedLinha('Bipado em',      dataHora,               '#64748b')}
-                    ${_pedLinha('Bipado por',     r.usuario_nome  || '—', '#64748b')}
-                </div>
-            </div>`;
-        }).join('');
-    } catch {
-        el.innerHTML = `<div style="color:#ef4444;font-size:14px;padding:12px 0">Erro ao conectar ao servidor.</div>`;
+        if (!res.ok) throw new Error(data.error);
+        _pedDados = data;
+        _pedRenderizar(data);
+    } catch (err) {
+        emptyEl.innerText = 'Erro ao carregar: ' + err.message;
     }
 }
 
-function _pedLinha(label, valor, cor) {
-    return `
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
-            <span style="font-size:12px;color:#4a6a8a;font-weight:500;white-space:nowrap">${label}</span>
-            <span style="font-size:13px;font-weight:600;color:${cor};text-align:right">${valor}</span>
-        </div>`;
+function _pedRenderizar(rows) {
+    const emptyEl = document.getElementById('ped-empty');
+    const listaEl = document.getElementById('ped-lista');
+
+    if (!rows.length) {
+        emptyEl.innerText = 'Nenhum pedido bipado no período.';
+        emptyEl.style.display = '';
+        listaEl.style.display = 'none';
+        return;
+    }
+
+    document.getElementById('ped-counter').innerText = `${rows.length.toLocaleString('pt-BR')} registro${rows.length !== 1 ? 's' : ''}`;
+
+    const tbody = document.getElementById('ped-tbody');
+    tbody.innerHTML = rows.map(r => {
+        const cor   = _PED_TRANSP_CORES[r.transportadora] || '#64748b';
+        const nome  = _PED_TRANSP_NOMES[r.transportadora] || r.transportadora || '—';
+        const data  = r.bipado_em ? new Date(r.bipado_em).toLocaleString('pt-BR') : '—';
+        const cep   = r.cep ? r.cep.slice(0,5) + '-' + r.cep.slice(5) : '—';
+        return `<tr>
+            <td style="font-size:12px;color:#94a3b8;font-family:monospace">${r.codigo || '—'}</td>
+            <td><span style="font-weight:600;color:${cor}">${nome}</span></td>
+            <td>${r.entregador || '—'}</td>
+            <td>${r.cidade || '—'}</td>
+            <td style="font-family:monospace;font-size:12px">${cep}</td>
+            <td style="font-size:12px;white-space:nowrap">${data}</td>
+            <td style="font-size:12px;color:#64748b">${r.usuario_nome || '—'}</td>
+        </tr>`;
+    }).join('');
+
+    emptyEl.style.display = 'none';
+    listaEl.style.display = '';
+}
+
+function _pedFiltrarLocal() {
+    const termo = document.getElementById('ped-filtro-input').value.trim().toLowerCase();
+    if (!termo) { _pedRenderizar(_pedDados); return; }
+    const filtrado = _pedDados.filter(r =>
+        (r.codigo       || '').toLowerCase().includes(termo) ||
+        (r.entregador   || '').toLowerCase().includes(termo) ||
+        (r.cidade       || '').toLowerCase().includes(termo) ||
+        (r.usuario_nome || '').toLowerCase().includes(termo)
+    );
+    _pedRenderizar(filtrado);
+}
+
+function _pedExportar() {
+    if (!_pedDados.length) return;
+    const de  = document.getElementById('ped-de').value;
+    const ate = document.getElementById('ped-ate').value;
+
+    const rows = _pedDados.map(r => ({
+        'Código':         r.codigo        || '',
+        'Transportadora': _PED_TRANSP_NOMES[r.transportadora] || r.transportadora || '',
+        'Entregador':     r.entregador    || '',
+        'Cidade':         r.cidade        || '',
+        'CEP':            r.cep ? r.cep.slice(0,5) + '-' + r.cep.slice(5) : '',
+        'Bipado em':      r.bipado_em ? new Date(r.bipado_em).toLocaleString('pt-BR') : '',
+        'Bipado por':     r.usuario_nome  || '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Bipagens');
+    const nome = de && ate ? `bipagens_${de}_${ate}.xlsx` : 'bipagens_todos.xlsx';
+    XLSX.writeFile(wb, nome);
 }
