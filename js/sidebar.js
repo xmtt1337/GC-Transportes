@@ -1,17 +1,8 @@
 // ───── SIDEBAR ─────
 function _fecharTodosSubmenus() {
-    document.querySelectorAll(".submenu").forEach(m => {
-        m.classList.remove("open");
-        m.style.maxHeight = "0";
-    });
-    document.querySelectorAll(".sub-submenu").forEach(s => {
-        s.classList.remove("open");
-        s.style.maxHeight = "0";
-    });
-    document.querySelectorAll(".sub-sub-submenu").forEach(s => {
-        s.classList.remove("open");
-        s.style.maxHeight = "0";
-    });
+    document.querySelectorAll(".submenu").forEach(m => m.classList.remove("open"));
+    document.querySelectorAll(".sub-submenu").forEach(s => s.classList.remove("open"));
+    document.querySelectorAll(".sub-sub-submenu").forEach(s => s.classList.remove("open"));
     document.querySelectorAll(".subgroup-header, .subgroup-header-2").forEach(h => h.classList.remove("open"));
 }
 
@@ -47,16 +38,14 @@ function toggleMenu(element) {
         document.getElementById("sidebar-backdrop").classList.add("active");
     }
 
-    const allMenuItems = document.querySelectorAll(".menu-item");
     const submenu = element.nextElementSibling;
     const isOpen  = submenu.classList.contains("open");
 
-    allMenuItems.forEach(i => i.classList.remove("active", "open"));
+    document.querySelectorAll(".menu-item").forEach(i => i.classList.remove("active", "open"));
     _fecharTodosSubmenus();
 
     if (!isOpen) {
         submenu.classList.add("open");
-        submenu.style.maxHeight = submenu.scrollHeight + "px";
         element.classList.add("open", "active");
     }
 }
@@ -66,18 +55,11 @@ function toggleSubGroup(el) {
     const isOpen = sub.classList.contains("open");
 
     el.parentElement.querySelectorAll(".subgroup-header").forEach(h => h.classList.remove("open"));
-    el.parentElement.querySelectorAll(".sub-submenu").forEach(s => {
-        s.classList.remove("open");
-        s.style.maxHeight = "0";
-    });
+    el.parentElement.querySelectorAll(".sub-submenu").forEach(s => s.classList.remove("open"));
 
     if (!isOpen) {
         sub.classList.add("open");
         el.classList.add("open");
-        sub.style.maxHeight = sub.scrollHeight + "px";
-        // Recalcula o pai (submenu) para acomodar o sub-submenu aberto
-        const pai = el.closest(".submenu");
-        if (pai) pai.style.maxHeight = pai.scrollHeight + sub.scrollHeight + "px";
     }
 
     if (el.dataset.nav && typeof window[el.dataset.nav] === "function") {
@@ -90,19 +72,10 @@ function toggleSubSubGroup(el) {
     const isOpen = sub.classList.contains("open");
 
     el.parentElement.querySelectorAll(".subgroup-header-2").forEach(h => h.classList.remove("open"));
-    el.parentElement.querySelectorAll(".sub-sub-submenu").forEach(s => {
-        s.classList.remove("open");
-        s.style.maxHeight = "0";
-    });
+    el.parentElement.querySelectorAll(".sub-sub-submenu").forEach(s => s.classList.remove("open"));
 
     if (!isOpen) {
         sub.classList.add("open");
         el.classList.add("open");
-        sub.style.maxHeight = sub.scrollHeight + "px";
-        // Recalcula os pais em cascata
-        const subSubmenu = el.closest(".sub-submenu");
-        if (subSubmenu) subSubmenu.style.maxHeight = subSubmenu.scrollHeight + sub.scrollHeight + "px";
-        const submenu = el.closest(".submenu");
-        if (submenu) submenu.style.maxHeight = submenu.scrollHeight + sub.scrollHeight + "px";
     }
 }
