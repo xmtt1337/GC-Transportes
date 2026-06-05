@@ -1035,10 +1035,16 @@
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Desempenho — Bipagens</div>
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                        <input type="date" id="desemp-de" class="fech-select" style="width:auto" onchange="_desempCarregar()">
-                        <span style="color:#4a6a8a;font-size:13px">até</span>
-                        <input type="date" id="desemp-ate" class="fech-select" style="width:auto" onchange="_desempCarregar()">
-                        <button onclick="_desempLimparFiltro()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit">Todos</button>
+                        <select id="desemp-mes" class="fech-select" onchange="_desempCarregar()">
+                            <option value="">Todos os meses</option>
+                            <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                            <option value="3">Março</option><option value="4">Abril</option>
+                            <option value="5">Maio</option><option value="6">Junho</option>
+                            <option value="7">Julho</option><option value="8">Agosto</option>
+                            <option value="9">Setembro</option><option value="10">Outubro</option>
+                            <option value="11">Novembro</option><option value="12">Dezembro</option>
+                        </select>
+                        <select id="desemp-ano" class="fech-select" onchange="_desempCarregar()"></select>
                     </div>
                 </div>
             </div>
