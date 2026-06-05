@@ -174,25 +174,23 @@ async function _bipSincronizarCeps() {
     }
 }
 
-const _BIP_SESSAO_KEY = 'bip_sessao';
+const _bipSessao = [];
 
 function _bipSessaoAdicionar(codigo, dados) {
-    const lista = JSON.parse(sessionStorage.getItem(_BIP_SESSAO_KEY) || '[]');
-    lista.unshift({
+    _bipSessao.unshift({
         codigo,
         entregador:     dados.entregador     || null,
         transportadora: dados.transportadora || null,
         cidade:         dados.cidade         || null,
         hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     });
-    sessionStorage.setItem(_BIP_SESSAO_KEY, JSON.stringify(lista));
     _bipSessaoRenderizar();
 }
 
 function _bipSessaoRenderizar() {
     const el = document.getElementById('bip-sessao-lista');
     if (!el) return;
-    const lista = JSON.parse(sessionStorage.getItem(_BIP_SESSAO_KEY) || '[]');
+    const lista = _bipSessao;
     if (!lista.length) {
         el.innerHTML = '<div style="color:#2e3d52;font-size:13px">Nenhuma bipagem ainda.</div>';
         return;
