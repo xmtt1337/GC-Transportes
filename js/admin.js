@@ -130,10 +130,10 @@ function renderHomeActions(role) {
     `).join("");
 
     if (role === "entregador") carregarHomeNFStatus();
-    if (role === "admin") _carregarHomeAdmin();
+    if (role === "admin" || role === "finance") _carregarHomeAdmin(role);
 }
 
-function _carregarHomeAdmin() {
+function _carregarHomeAdmin(role) {
     const dash = document.getElementById("home-admin-dash");
     if (!dash) return;
     const tok = localStorage.getItem("token");
@@ -165,13 +165,14 @@ function _carregarHomeAdmin() {
                         <div class="adm-home-card-label">Entregadores ativos</div>
                         <div class="adm-home-card-value" style="color:#3a86ff">${nEnt}</div>
                     </div>
+                    ${role === "finance" ? `
                     <div class="adm-home-card">
                         <div class="adm-home-card-icon" style="background:rgba(34,197,94,0.1)">
                             <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                         </div>
                         <div class="adm-home-card-label">Total a pagar</div>
                         <div class="adm-home-card-value" style="color:#22c55e">${totalPagar}</div>
-                    </div>
+                    </div>` : ""}
                     <div class="adm-home-card">
                         <div class="adm-home-card-icon" style="background:rgba(251,146,60,0.1)">
                             <svg viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.91 8.84L8.56 2.23a1 1 0 0 0-.97 0L2.05 5.11A1 1 0 0 0 2 6v12a1 1 0 0 0 .53.88l6.03 3.26a1 1 0 0 0 .94 0L21 15.34a1 1 0 0 0 .54-.88V9.7a1 1 0 0 0-.63-.86z"/><polyline points="7.9 4.5 12 6.86 16.1 4.5"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
@@ -179,13 +180,14 @@ function _carregarHomeAdmin() {
                         <div class="adm-home-card-label">Pacotes entregues</div>
                         <div class="adm-home-card-value" style="color:#fb923c">${totalPacotes}</div>
                     </div>
+                    ${role === "finance" ? `
                     <div class="adm-home-card" onclick="abrirAdminFechamentos(event)" style="cursor:pointer">
                         <div class="adm-home-card-icon" style="background:rgba(167,139,250,0.1)">
                             <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
                         </div>
                         <div class="adm-home-card-label">Ver fechamentos</div>
                         <div class="adm-home-card-value" style="color:#a78bfa;font-size:13px">Abrir →</div>
-                    </div>
+                    </div>` : ""}
                 </div>
             `;
 
