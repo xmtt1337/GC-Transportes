@@ -93,7 +93,10 @@ async function _alimentarAnexar(input) {
         const headers = grid[0].map(c => String(c || '').trim()).filter(c => c);
         const lower   = headers.map(h => h.toLowerCase());
         const defBar  = lower.findIndex(h => h.includes('barras') || h.includes('barcode') || h.includes('waybill') || h.includes('código') || h.includes('codigo') || h.includes('tracking') || h.includes('rastreio') || h.includes('jms') || h.includes('pedido'));
-        const defCep  = lower.findIndex(h => h.includes('cep'));
+        const defCep  = (() => {
+            const destino = lower.findIndex(h => h.includes('cep') && (h.includes('dest') || h.includes('receb') || h.includes('entrega')));
+            return destino >= 0 ? destino : lower.findIndex(h => h.includes('cep') && !h.includes('orig') && !h.includes('reme'));
+        })();
 
         status.innerHTML = '';
 
@@ -115,7 +118,10 @@ async function _alimentarAnexar(input) {
 function _alimentarMostrarSeletorColunas(headers) {
     const lower   = headers.map(h => h.toLowerCase());
     const defBar  = lower.findIndex(h => h.includes('barras') || h.includes('barcode') || h.includes('waybill') || h.includes('código') || h.includes('codigo') || h.includes('tracking') || h.includes('rastreio') || h.includes('jms') || h.includes('pedido'));
-    const defCep  = lower.findIndex(h => h.includes('cep'));
+    const defCep  = (() => {
+        const destino = lower.findIndex(h => h.includes('cep') && (h.includes('dest') || h.includes('receb') || h.includes('entrega')));
+        return destino >= 0 ? destino : lower.findIndex(h => h.includes('cep') && !h.includes('orig') && !h.includes('reme'));
+    })();
     const defCid  = lower.findIndex(h => h.includes('cidade') || h.includes('city'));
     const defReg  = lower.findIndex(h => h.includes('região') || h.includes('regiao') || h.includes('saca') || h.includes('hub'));
     const defDest = lower.findIndex(h => h.includes('para') || h.includes('destinat') || h.includes('recipient'));
