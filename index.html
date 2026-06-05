@@ -958,8 +958,8 @@
             </div>
             <div class="fech-body bip-layout">
 
-                <!-- Esquerda: input + resultado -->
-                <div class="bip-panel-left">
+                <!-- Topo: input + resultado centralizados -->
+                <div class="bip-top-zone">
                     <div class="bip-search-wrap">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#3a86ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         <input type="text" id="bip-input" placeholder="Bipar ou digitar código..."
@@ -968,14 +968,14 @@
                             autocomplete="off" autocorrect="off" spellcheck="false">
                         <button class="bip-clear-btn" id="bip-clear" onclick="_bipLimpar()" style="display:none">×</button>
                     </div>
-                    <div id="bip-resultado"></div>
+                    <div id="bip-resultado" class="bip-resultado-area"></div>
                 </div>
 
-                <!-- Divisor -->
-                <div class="bip-divider"></div>
+                <!-- Divisor horizontal -->
+                <div class="bip-h-divider"></div>
 
-                <!-- Direita: histórico da sessão -->
-                <div class="bip-panel-right">
+                <!-- Base: lista da sessão com scroll -->
+                <div class="bip-bottom-zone">
                     <div class="bip-log-header">
                         <span class="bip-log-title">Bipados nesta sessão</span>
                         <span id="bip-sessao-count" class="bip-count-badge">0</span>
