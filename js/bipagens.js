@@ -198,11 +198,17 @@ function _bipSessaoRenderizar() {
         const cor  = transpCores[item.transportadora] || '#64748b';
         const nome = transpNomes[item.transportadora] || item.transportadora || '—';
         return `
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);margin-bottom:5px">
-            <span style="font-size:11px;color:#2e3d52;white-space:nowrap;font-variant-numeric:tabular-nums">${item.hora}</span>
-            <span style="width:7px;height:7px;border-radius:50%;background:${cor};flex-shrink:0"></span>
-            <span style="font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${item.codigo}</span>
-            <span style="font-size:12px;font-weight:600;color:#94a3b8;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">${item.entregador || '—'}</span>
+        <div style="padding:9px 12px;border-radius:9px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);margin-bottom:5px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="font-size:11px;color:#2e3d52;font-variant-numeric:tabular-nums;white-space:nowrap">${item.hora}</span>
+                <span style="width:7px;height:7px;border-radius:50%;background:${cor};flex-shrink:0"></span>
+                <span style="font-size:12px;font-weight:700;color:${cor}">${nome}</span>
+                <span style="font-size:11px;color:#334155;margin-left:auto;white-space:nowrap">${item.cidade || '—'}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding-left:15px">
+                <span style="font-size:11px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${item.codigo}</span>
+                <span style="font-size:12px;font-weight:600;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${item.entregador || '—'}</span>
+            </div>
         </div>`;
     }).join('');
 }
