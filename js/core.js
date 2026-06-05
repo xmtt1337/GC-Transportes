@@ -30,14 +30,22 @@ fetch(API + "/perfil", {
 
     if (role === "admin") {
         document.getElementById("menu-desempenho-bip").style.display = "";
-        document.getElementById("menu-adminmenu").style.display    = "";
-        document.getElementById("submenu-adminmenu").style.display  = "";
-        document.getElementById("menu-financeiro").style.display   = "";
-        document.getElementById("submenu-financeiro").style.display = "";
-        document.getElementById("menu-cadastros").style.display    = "";
-        document.getElementById("submenu-cadastros").style.display  = "";
-        document.getElementById("menu-extravios").style.display    = "";
-        document.getElementById("submenu-extravios").style.display  = "";
+        document.getElementById("menu-cadastros").style.display      = "";
+        document.getElementById("submenu-cadastros").style.display   = "";
+        document.getElementById("menu-extravios").style.display      = "";
+        document.getElementById("submenu-extravios").style.display   = "";
+    }
+
+    if (role === "finance") {
+        document.getElementById("menu-desempenho-bip").style.display = "";
+        document.getElementById("menu-adminmenu").style.display      = "";
+        document.getElementById("submenu-adminmenu").style.display   = "";
+        document.getElementById("menu-financeiro").style.display     = "";
+        document.getElementById("submenu-financeiro").style.display  = "";
+        document.getElementById("menu-cadastros").style.display      = "";
+        document.getElementById("submenu-cadastros").style.display   = "";
+        document.getElementById("menu-extravios").style.display      = "";
+        document.getElementById("submenu-extravios").style.display   = "";
     }
 
     if (role === "sac") {
@@ -47,7 +55,7 @@ fetch(API + "/perfil", {
 
     renderHomeActions(role);
     const badge = document.getElementById("home-role-badge");
-    if (badge) badge.innerText = role === "admin" ? "Administrador" : role === "entregador" ? "Entregador" : role === "sac" ? "SAC" : "Operador";
+    if (badge) badge.innerText = role === "admin" ? "Administrador" : role === "entregador" ? "Entregador" : role === "finance" ? "Financeiro" : role === "sac" ? "SAC" : "Operador";
 })
 .catch(() => {
     localStorage.removeItem("token");
