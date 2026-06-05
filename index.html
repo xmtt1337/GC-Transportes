@@ -950,32 +950,40 @@
             <div class="fech-header">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Separação</div>
-                    <button id="bip-sync-btn" onclick="_bipSincronizarCeps()" style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:10px;border:1px solid rgba(251,146,60,0.35);background:rgba(251,146,60,0.08);color:#fb923c;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(251,146,60,0.16)'" onmouseout="this.style.background='rgba(251,146,60,0.08)'">
+                    <button id="bip-sync-btn" onclick="_bipSincronizarCeps()" class="bip-sync-btn">
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0 0 20.49 15"/></svg>
                         Sincronizar CEPs
                     </button>
                 </div>
             </div>
-            <div class="fech-body" style="display:flex;gap:20px">
+            <div class="fech-body bip-layout">
 
                 <!-- Esquerda: input + resultado -->
-                <div style="width:420px;flex-shrink:0;display:flex;flex-direction:column;gap:12px">
-                    <div class="adm-search-input-area">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#3a86ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <div class="bip-panel-left">
+                    <div class="bip-search-wrap">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#3a86ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         <input type="text" id="bip-input" placeholder="Bipar ou digitar código..."
                             oninput="_bipAuto(this)"
                             onkeydown="if(event.key==='Enter') _bipBuscar()"
                             autocomplete="off" autocorrect="off" spellcheck="false">
-                        <button class="extrv-busca-clear" id="bip-clear" onclick="_bipLimpar()" style="display:none">×</button>
+                        <button class="bip-clear-btn" id="bip-clear" onclick="_bipLimpar()" style="display:none">×</button>
                     </div>
                     <div id="bip-resultado"></div>
                 </div>
 
+                <!-- Divisor -->
+                <div class="bip-divider"></div>
+
                 <!-- Direita: histórico da sessão -->
-                <div style="flex:1;min-width:0;overflow-y:auto">
-                    <div style="font-size:12px;font-weight:700;color:#4a6a8a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Bipados nesta sessão</div>
-                    <div id="bip-sessao-lista">
-                        <div style="color:#2e3d52;font-size:13px">Nenhuma bipagem ainda.</div>
+                <div class="bip-panel-right">
+                    <div class="bip-log-header">
+                        <span class="bip-log-title">Bipados nesta sessão</span>
+                        <span id="bip-sessao-count" class="bip-count-badge">0</span>
+                    </div>
+                    <div class="bip-log-scroll">
+                        <div id="bip-sessao-lista">
+                            <div class="bip-empty-msg">Nenhuma bipagem ainda.</div>
+                        </div>
                     </div>
                 </div>
 
