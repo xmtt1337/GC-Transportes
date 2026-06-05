@@ -118,6 +118,7 @@ async function _bipBuscarCodigo(codigo) {
                     ${_bipLinha('Entregador', data.entregador || '⚠ Sem entregador atribuído', !data.entregador)}
                     ${_bipLinha('Cidade', data.cidade || '—')}
                     ${data.bairro  ? _bipLinha('Bairro', data.bairro) : ''}
+                    ${data.rua     ? _bipLinha('Rua', data.rua) : ''}
                     ${data.sigla   ? _bipLinha('Sigla / Rota', data.sigla, true) : ''}
                     ${data.cep     ? _bipLinha('CEP', _bipFormatCep(data.cep)) : ''}
                     ${data.destinatario && data.transportadora !== 'jt' ? _bipLinha('Destinatário', data.destinatario) : ''}
