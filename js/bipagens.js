@@ -74,8 +74,7 @@ async function _bipBuscarCep(cep) {
 
         const linhas = Array.isArray(data) ? data : [data];
         el.innerHTML = _bipRenderCepCards(linhas);
-        const cepLimpo = cep.replace(/\D/g,'');
-        linhas.forEach(d => _bipRegistrar(cepLimpo, d));
+        _bipRegistrar(cep.replace(/\D/g,''), { transportadora: 'cep', cidade: (linhas[0] || {}).cidade });
     } catch {
         el.innerHTML = _bipErroHtml('Erro ao conectar ao servidor.');
     }
@@ -94,7 +93,7 @@ async function _bipBuscarCodigo(codigo) {
         // Backend detectou que era CEP, não barcode
         if (data.tipo === 'cep') {
             el.innerHTML = _bipRenderCepCards(data.resultados);
-            data.resultados.forEach(r => _bipRegistrar(codigo, r));
+            _bipRegistrar(codigo, { transportadora: 'cep', cidade: (data.resultados[0] || {}).cidade });
             return;
         }
 
@@ -192,8 +191,8 @@ function _bipSessaoRenderizar() {
         el.innerHTML = '<div style="color:#2e3d52;font-size:13px">Nenhuma bipagem ainda.</div>';
         return;
     }
-    const transpNomes = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee' };
-    const transpCores = { loggi:'#12A5E8', anjun:'#22C55E', imile:'#9333EA', jt:'#EF4444', shopee:'#F97316' };
+    const transpNomes = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee', cep:'CEP' };
+    const transpCores = { loggi:'#12A5E8', anjun:'#22C55E', imile:'#9333EA', jt:'#EF4444', shopee:'#F97316', cep:'#94a3b8' };
     el.innerHTML = lista.map(item => {
         const cor  = transpCores[item.transportadora] || '#64748b';
         const nome = transpNomes[item.transportadora] || item.transportadora || '—';
