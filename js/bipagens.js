@@ -9,6 +9,7 @@ function abrirBipagens(event) {
     document.getElementById('bip-clear').style.display = 'none';
     setTimeout(() => document.getElementById('bip-input').focus(), 250);
     _bipCarregarStatusCeps();
+    _bipSessaoRenderizar();
 }
 
 async function _bipCarregarStatusCeps() {
@@ -168,7 +169,46 @@ async function _bipSincronizarCeps() {
     }
 }
 
+const _BIP_SESSAO_KEY = 'bip_sessao';
+
+function _bipSessaoAdicionar(codigo, dados) {
+    const lista = JSON.parse(sessionStorage.getItem(_BIP_SESSAO_KEY) || '[]');
+    lista.unshift({
+        codigo,
+        entregador:     dados.entregador     || null,
+        transportadora: dados.transportadora || null,
+        cidade:         dados.cidade         || null,
+        hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    });
+    sessionStorage.setItem(_BIP_SESSAO_KEY, JSON.stringify(lista));
+    _bipSessaoRenderizar();
+}
+
+function _bipSessaoRenderizar() {
+    const el = document.getElementById('bip-sessao-lista');
+    if (!el) return;
+    const lista = JSON.parse(sessionStorage.getItem(_BIP_SESSAO_KEY) || '[]');
+    if (!lista.length) {
+        el.innerHTML = '<div style="color:#2e3d52;font-size:13px">Nenhuma bipagem ainda.</div>';
+        return;
+    }
+    const transpNomes = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee' };
+    const transpCores = { loggi:'#12A5E8', anjun:'#22C55E', imile:'#9333EA', jt:'#EF4444', shopee:'#F97316' };
+    el.innerHTML = lista.map(item => {
+        const cor  = transpCores[item.transportadora] || '#64748b';
+        const nome = transpNomes[item.transportadora] || item.transportadora || '—';
+        return `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);margin-bottom:5px">
+            <span style="font-size:11px;color:#2e3d52;white-space:nowrap;font-variant-numeric:tabular-nums">${item.hora}</span>
+            <span style="width:7px;height:7px;border-radius:50%;background:${cor};flex-shrink:0"></span>
+            <span style="font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${item.codigo}</span>
+            <span style="font-size:12px;font-weight:600;color:#94a3b8;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">${item.entregador || '—'}</span>
+        </div>`;
+    }).join('');
+}
+
 function _bipRegistrar(codigo, dados) {
+    _bipSessaoAdicionar(codigo, dados);
     fetch(API + '/bipagem/registrar', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
