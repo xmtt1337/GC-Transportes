@@ -1504,7 +1504,7 @@ body {
 
 /* Zona da lista com scroll */
 .bip-bottom-zone {
-    flex: 1; min-height: 0; overflow: hidden;
+    flex: 1; min-height: 0;
     display: flex; flex-direction: column; padding-top: 20px;
 }
 
@@ -1562,18 +1562,13 @@ body {
 .bip-log-scroll { flex: 1; overflow-y: auto; min-height: 0; }
 .bip-empty-msg { color: #2e3d52; font-size: 13px; padding: 6px 0; }
 
-/* Session items — grid 2 col em telas grandes */
-.bip-log-scroll > #bip-sessao-lista {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 6px;
-}
+/* Session items */
 .bip-item {
     display: flex; align-items: center; gap: 10px;
     padding: 10px 14px; border-radius: 10px;
     border: 1px solid rgba(255,255,255,0.04);
     background: rgba(255,255,255,0.015);
-    transition: background 0.15s;
+    margin-bottom: 5px; transition: background 0.15s;
 }
 .bip-item:hover { background: rgba(255,255,255,0.035); }
 .bip-item-badge {
