@@ -29,6 +29,7 @@ fetch(API + "/perfil", {
     }
 
     if (role === "admin") {
+        document.getElementById("menu-desempenho-bip").style.display = "";
         document.getElementById("menu-adminmenu").style.display    = "";
         document.getElementById("submenu-adminmenu").style.display  = "";
         document.getElementById("menu-financeiro").style.display   = "";
