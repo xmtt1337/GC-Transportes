@@ -120,7 +120,7 @@ async function _bipBuscarCodigo(codigo) {
                     ${data.bairro  ? _bipLinha('Bairro',       data.bairro,             '#94a3b8') : ''}
                     ${data.sigla   ? _bipLinha('Sigla / Rota', data.sigla,              '#fb923c') : ''}
                     ${data.cep     ? _bipLinha('CEP',          _bipFormatCep(data.cep), '#64748b') : ''}
-                    ${data.destinatario ? _bipLinha('Destinatário', data.destinatario,  '#64748b') : ''}
+                    ${data.destinatario && data.transportadora !== 'jt' ? _bipLinha('Destinatário', data.destinatario, '#64748b') : ''}
                 </div>
             </div>`;
     } catch {
