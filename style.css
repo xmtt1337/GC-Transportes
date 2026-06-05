@@ -82,9 +82,9 @@ body {
 .submenu {
     max-height: 0; overflow: hidden; opacity: 0; list-style: none;
     margin: 0 6px; padding: 0 0 4px 0;
-    transition: max-height 0.35s ease, opacity 0.25s ease;
+    transition: max-height 0.4s ease, opacity 0.25s ease;
 }
-.sidebar.expanded .submenu.open { opacity: 1; margin-bottom: 4px; }
+.sidebar.expanded .submenu.open { max-height: 100dvh; opacity: 1; margin-bottom: 4px; }
 
 /* ── Links diretos no submenu ── */
 .submenu > li > a,
@@ -1075,10 +1075,10 @@ body {
 .sub-submenu {
     list-style: none;
     max-height: 0; overflow: hidden; opacity: 0;
-    transition: max-height 0.3s ease, opacity 0.22s ease;
+    transition: max-height 0.35s ease, opacity 0.22s ease;
     padding-left: 18px;
 }
-.sub-submenu.open { opacity: 1; }
+.sub-submenu.open { max-height: 60dvh; opacity: 1; }
 .sub-submenu a { padding-left: 18px !important; font-size: 13px !important; }
 
 /* ── Subgroup header nível 2 (ex "Alimentar separação") ── */
@@ -1107,7 +1107,7 @@ body {
     transition: max-height 0.3s ease, opacity 0.22s ease;
     padding-left: 14px;
 }
-.sub-sub-submenu.open { opacity: 1; }
+.sub-sub-submenu.open { max-height: 40dvh; opacity: 1; }
 .sub-sub-submenu a { padding-left: 18px !important; font-size: 12.5px !important; }
 
 /* ===== TELA IMPORTAR TRAMPAY ===== */
