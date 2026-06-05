@@ -73,6 +73,7 @@ async function _bipBuscarCep(cep) {
 
         const linhas = Array.isArray(data) ? data : [data];
         el.innerHTML = _bipRenderCepCards(linhas);
+        _bipRegistrar(cep.replace(/\D/g,''), linhas[0] || {});
     } catch {
         el.innerHTML = _bipErroHtml('Erro ao conectar ao servidor.');
     }
@@ -91,11 +92,15 @@ async function _bipBuscarCodigo(codigo) {
         // Backend detectou que era CEP, não barcode
         if (data.tipo === 'cep') {
             el.innerHTML = _bipRenderCepCards(data.resultados);
+            const r = data.resultados[0] || {};
+            _bipRegistrar(codigo, r);
             return;
         }
 
         const transpNome = _TRANSP_NOMES[data.transportadora] || data.transportadora || '—';
         const cor        = _bipCorTransp(data.transportadora);
+
+        _bipRegistrar(codigo, data);
 
         el.innerHTML = `
             <div style="background:${cor}18;border:1px solid ${cor}40;border-radius:14px;padding:18px 20px">
@@ -161,6 +166,20 @@ async function _bipSincronizarCeps() {
         btn.style.color = '#ef4444';
         setTimeout(() => { btn.innerHTML = orig; btn.style.color=''; btn.disabled=false; }, 3000);
     }
+}
+
+function _bipRegistrar(codigo, dados) {
+    fetch(API + '/bipagem/registrar', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            codigo,
+            entregador:     dados.entregador     || null,
+            transportadora: dados.transportadora || null,
+            cidade:         dados.cidade         || null,
+            cep:            dados.cep            || null,
+        })
+    }).catch(() => {});
 }
 
 function _bipSelecionarInput() {
