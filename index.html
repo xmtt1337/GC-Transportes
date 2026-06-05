@@ -39,6 +39,7 @@
             </li>
             <ul class="sub-submenu" id="subgroup-bipagens">
                 <li><a href="#" onclick="abrirBipagens(event)">Separação</a></li>
+                <li id="menu-desempenho-bip" style="display:none"><a href="#" onclick="abrirDesempenhoBip(event)">Desempenho</a></li>
                 <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
                     Alimentar separação <span class="subgroup-arrow">▾</span>
                 </li>
@@ -1028,6 +1029,27 @@
             </div>
         </div>
 
+        <!-- TELA DESEMPENHO BIPAGENS -->
+        <div id="tela-desempenho-bip" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Desempenho — Bipagens</div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <input type="date" id="desemp-de" class="fech-select" style="width:auto" onchange="_desempCarregar()">
+                        <span style="color:#4a6a8a;font-size:13px">até</span>
+                        <input type="date" id="desemp-ate" class="fech-select" style="width:auto" onchange="_desempCarregar()">
+                        <button onclick="_desempLimparFiltro()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit">Todos</button>
+                    </div>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="desemp-empty">Carregando...</div>
+                <div id="desemp-content" style="display:none">
+                    <div id="desemp-ranking"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- TELA ALIMENTAR -->
         <div id="tela-alimentar" class="view tela-full">
             <div class="fech-header">
@@ -1088,6 +1110,7 @@
 <script src="js/alimentar.js"></script>
 <script src="js/bipagens.js"></script>
 <script src="js/pedidos.js"></script>
+<script src="js/desempenho-bip.js"></script>
 
 <!-- MODAL: NOVO USUÁRIO GC -->
 <div class="usr-modal-overlay" id="modal-novo-usuario-gc" onclick="_fecharModalSeBackdrop(event,'modal-novo-usuario-gc')">
