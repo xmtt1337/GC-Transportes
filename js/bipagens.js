@@ -109,18 +109,18 @@ async function _bipBuscarCodigo(codigo) {
         _bipRegistrar(codigo, data);
 
         el.innerHTML = `
-            <div style="background:${cor}18;border:1px solid ${cor}40;border-radius:14px;padding:18px 20px">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="${cor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    <span style="font-size:14px;font-weight:700;color:${cor}">${transpNome}</span>
+            <div class="bip-result-card" style="border-left:3px solid ${cor}">
+                <div class="bip-result-head" style="background:${cor}0e">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="${cor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span class="bip-result-transp" style="background:${cor}1a;color:${cor}">${transpNome}</span>
                 </div>
-                <div style="display:grid;gap:2px">
-                    ${_bipLinha('Entregador', data.entregador || '⚠ Sem entregador atribuído', data.entregador ? '#f1f5f9' : '#fb923c')}
-                    ${_bipLinha('Cidade',     data.cidade || '—', '#e2e8f0')}
-                    ${data.bairro  ? _bipLinha('Bairro',       data.bairro,             '#94a3b8') : ''}
-                    ${data.sigla   ? _bipLinha('Sigla / Rota', data.sigla,              '#fb923c') : ''}
-                    ${data.cep     ? _bipLinha('CEP',          _bipFormatCep(data.cep), '#64748b') : ''}
-                    ${data.destinatario && data.transportadora !== 'jt' ? _bipLinha('Destinatário', data.destinatario, '#64748b') : ''}
+                <div class="bip-result-rows">
+                    ${_bipLinha('Entregador', data.entregador || '⚠ Sem entregador atribuído', !data.entregador)}
+                    ${_bipLinha('Cidade', data.cidade || '—')}
+                    ${data.bairro  ? _bipLinha('Bairro', data.bairro) : ''}
+                    ${data.sigla   ? _bipLinha('Sigla / Rota', data.sigla, true) : ''}
+                    ${data.cep     ? _bipLinha('CEP', _bipFormatCep(data.cep)) : ''}
+                    ${data.destinatario && data.transportadora !== 'jt' ? _bipLinha('Destinatário', data.destinatario) : ''}
                 </div>
             </div>`;
     } catch {
@@ -129,15 +129,17 @@ async function _bipBuscarCodigo(codigo) {
 }
 
 function _bipLoadingHtml() {
-    return `<div style="display:flex;align-items:center;gap:10px;color:#64748b;font-size:14px;padding:16px 0">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Buscando...</div>`;
+    return `<div class="bip-loading">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Buscando...
+    </div>`;
 }
 
 function _bipErroHtml(msg) {
-    return `<div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:12px">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-        <span style="color:#ef4444;font-size:14px;font-weight:500">${msg}</span></div>`;
+    return `<div class="bip-error-card">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        ${msg}
+    </div>`;
 }
 
 async function _bipSincronizarCeps() {
@@ -188,11 +190,13 @@ function _bipSessaoAdicionar(codigo, dados) {
 }
 
 function _bipSessaoRenderizar() {
-    const el = document.getElementById('bip-sessao-lista');
+    const el      = document.getElementById('bip-sessao-lista');
+    const countEl = document.getElementById('bip-sessao-count');
     if (!el) return;
     const lista = _bipSessao;
+    if (countEl) countEl.textContent = lista.length;
     if (!lista.length) {
-        el.innerHTML = '<div style="color:#2e3d52;font-size:13px">Nenhuma bipagem ainda.</div>';
+        el.innerHTML = '<div class="bip-empty-msg">Nenhuma bipagem ainda.</div>';
         return;
     }
     const transpNomes = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee', cep:'CEP' };
@@ -201,16 +205,15 @@ function _bipSessaoRenderizar() {
         const cor  = transpCores[item.transportadora] || '#64748b';
         const nome = transpNomes[item.transportadora] || item.transportadora || '—';
         return `
-        <div style="padding:9px 12px;border-radius:9px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);margin-bottom:5px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-                <span style="font-size:11px;color:#2e3d52;font-variant-numeric:tabular-nums;white-space:nowrap">${item.hora}</span>
-                <span style="width:7px;height:7px;border-radius:50%;background:${cor};flex-shrink:0"></span>
-                <span style="font-size:12px;font-weight:700;color:${cor}">${nome}</span>
-                <span style="font-size:11px;color:#334155;margin-left:auto;white-space:nowrap">${item.cidade || '—'}</span>
+        <div class="bip-item">
+            <span class="bip-item-badge" style="background:${cor}1a;color:${cor};border:1px solid ${cor}35">${nome}</span>
+            <div class="bip-item-body">
+                <div class="bip-item-ent">${item.entregador || '—'}</div>
+                <div class="bip-item-code">${item.codigo}</div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;padding-left:15px">
-                <span style="font-size:11px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${item.codigo}</span>
-                <span style="font-size:12px;font-weight:600;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${item.entregador || '—'}</span>
+            <div class="bip-item-right">
+                <div class="bip-item-city">${item.cidade || '—'}</div>
+                <div class="bip-item-hora">${item.hora}</div>
             </div>
         </div>`;
     }).join('');
@@ -245,31 +248,29 @@ function _bipCorTransp(t) { return _TRANSP_CORES[t] || '#3a86ff'; }
 
 function _bipRenderCepCards(linhas) {
     return linhas.map(d => {
-        const cor      = _bipCorTransp(d.transportadora);
-        const corAlpha = cor + '18';
-        const corBorda = cor + '40';
+        const cor        = _bipCorTransp(d.transportadora);
         const transpNome = _TRANSP_NOMES[d.transportadora] || d.transportadora || '—';
         return `
-        <div style="background:${corAlpha};border:1px solid ${corBorda};border-radius:14px;padding:18px 20px;margin-bottom:10px">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="${cor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <span style="font-size:13px;font-weight:700;color:${cor}">${transpNome}</span>
+        <div class="bip-result-card" style="border-left:3px solid ${cor};margin-bottom:10px">
+            <div class="bip-result-head" style="background:${cor}0e">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="${cor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span class="bip-result-transp" style="background:${cor}1a;color:${cor}">${transpNome}</span>
             </div>
-            <div style="display:grid;gap:2px">
-                ${_bipLinha('Entregador', d.entregador || '⚠ Sem entregador atribuído', d.entregador ? '#f1f5f9' : '#fb923c')}
-                ${_bipLinha('Cidade', d.cidade || '—', '#e2e8f0')}
-                ${d.bairro ? _bipLinha('Bairro', d.bairro, '#94a3b8') : ''}
-                ${d.sigla  ? _bipLinha('Sigla / Rota', d.sigla, '#fb923c') : ''}
+            <div class="bip-result-rows">
+                ${_bipLinha('Entregador', d.entregador || '⚠ Sem entregador atribuído', !d.entregador)}
+                ${_bipLinha('Cidade', d.cidade || '—')}
+                ${d.bairro ? _bipLinha('Bairro', d.bairro) : ''}
+                ${d.sigla  ? _bipLinha('Sigla / Rota', d.sigla, true) : ''}
             </div>
         </div>`;
     }).join('');
 }
 
-function _bipLinha(label, valor, corValor) {
+function _bipLinha(label, valor, warn = false) {
     return `
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
-            <span style="font-size:12px;color:#64748b;font-weight:500;white-space:nowrap">${label}</span>
-            <span style="font-size:14px;font-weight:600;color:${corValor};text-align:right">${valor}</span>
+        <div class="bip-result-row">
+            <span class="bip-result-lbl">${label}</span>
+            <span class="bip-result-val${warn ? ' warn' : ''}">${valor}</span>
         </div>`;
 }
 
