@@ -133,15 +133,20 @@ async function _processarNotaFile(file) {
             ? (Math.abs(notaNum - valor_fechamento) < 0.02 ? "confere" : "diverge")
             : null;
 
-        if (nota.chave_acesso) {
-            const vRes  = await fetch(`${API}/nota/verificar?chave_acesso=${nota.chave_acesso}&mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}`, {
-                headers: { "Authorization": "Bearer " + token }
-            });
-            const vData = await vRes.json();
-            if (vData.duplicata) {
-                _mostrarUploadArea(`⚠ Esta nota já foi utilizada (${vData.detalhe}). Use uma nota diferente.`);
-                return;
-            }
+        const vParams = new URLSearchParams({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena });
+        if (nota.chave_acesso) vParams.set('chave_acesso', nota.chave_acesso);
+        if (nota.numero_nf)    vParams.set('numero_nf',   nota.numero_nf);
+        if (nota.valor)        vParams.set('valor',        nota.valor);
+        if (nota.cnpj)         vParams.set('cnpj',         nota.cnpj);
+        if (nota.emissor)      vParams.set('emissor',      nota.emissor);
+        if (nota.emissao)      vParams.set('emissao',      nota.emissao);
+        const vRes  = await fetch(`${API}/nota/verificar?${vParams}`, {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const vData = await vRes.json();
+        if (vData.duplicata) {
+            _mostrarUploadArea(`⚠ Esta nota já foi utilizada (${vData.detalhe}). Use uma nota diferente.`);
+            return;
         }
 
         await fetch(`${API}/nota`, {
