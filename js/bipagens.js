@@ -1,4 +1,6 @@
-let _bipTimeout = null;
+let _bipTimeout    = null;
+let _bipUltCodigo  = '';
+let _bipUltTs      = 0;
 
 function abrirBipagens(event) {
     if (event) event.preventDefault();
@@ -53,6 +55,10 @@ async function _bipBuscar() {
     clearTimeout(_bipTimeout);
     const codigo = document.getElementById('bip-input').value.trim();
     if (!codigo) return;
+    const agora = Date.now();
+    if (codigo === _bipUltCodigo && agora - _bipUltTs < 1500) return;
+    _bipUltCodigo = codigo;
+    _bipUltTs     = agora;
 
     if (_bipEhCep(codigo)) {
         await _bipBuscarCep(codigo);
