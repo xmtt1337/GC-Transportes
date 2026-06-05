@@ -261,6 +261,7 @@ function _bipRenderCepCards(linhas) {
                 ${_bipLinha('Entregador', d.entregador || '⚠ Sem entregador atribuído', !d.entregador)}
                 ${_bipLinha('Cidade', d.cidade || '—')}
                 ${d.bairro ? _bipLinha('Bairro', d.bairro) : ''}
+                ${d.rua    ? _bipLinha('Rua', d.rua) : ''}
                 ${d.sigla  ? _bipLinha('Sigla / Rota', d.sigla, true) : ''}
             </div>
         </div>`;
