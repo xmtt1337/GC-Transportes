@@ -587,13 +587,27 @@ function _extrairCamposNota(raw) {
             }
         }
 
-        // 4. TOMADOR — usa o CNPJ que não é do emissor como âncora
+        // 4. TOMADOR — janela de 900 chars antes do CNPJ do tomador
+        //    O nome fica no início da seção; o CNPJ fica no fim — distância > 300 chars.
         const _tomCnpjEntry = cnpjAll.find(c => c.raw !== cnpj);
         if (_tomCnpjEntry) {
-            // Tenta proximidade ao CNPJ do tomador (300–400 chars antes)
-            const _tn = _emissorPorProximidadeCNPJ(t, _tomCnpjEntry) || _nomePertoCNPJ(t, _tomCnpjEntry);
-            if (_tn && !_reAdmin.test(_tn) && !_isTextoInstrucao(_tn) && _tn !== emissor) {
-                tomador = _tn;
+            const _bigBefore = t.slice(Math.max(0, _tomCnpjEntry.idx - 900), _tomCnpjEntry.idx);
+            const _rsLargeM = _bigBefore.match(/Raz[aã]o\s+[Ss]ocial\s*:?\s*([\p{L}][\p{L}\s&.,'/\-]{2,60}?)(?=\s*(?:[-–]\s*\d|CPF|CNPJ|Inscri|Nome|E-?mail|Endere|Complem|Munic))/iu);
+            if (_rsLargeM) {
+                const _tn = _rsLargeM[1].trim().replace(/\s*[-–]\s*\d+\s*$/, '').trim();
+                if (_tn && !_reAdmin.test(_tn) && !_isTextoInstrucao(_tn) && _tn !== emissor) tomador = _tn;
+            }
+            // Fallback: primeira sequência de 2+ palavras ALL-CAPS no trecho do tomador
+            if (tomador === "—" && _tomWin) {
+                const _caps = /\b([A-ZÀ-Ü]{2,}(?:\s+[A-ZÀ-Ü]{2,})+)\b/g;
+                let _cm;
+                while ((_cm = _caps.exec(_tomWin.text)) !== null) {
+                    const _c = _cm[1].trim();
+                    if (!_reAdmin.test(_c) && !_isTextoInstrucao(_c) && _c !== emissor
+                        && !/\b(RODM?|ROD\b|AV\b|RUA|ESTR|DISCRIMIN|RETEN|TRIBUT|OUTRAS|INFORM)\b/i.test(_c)) {
+                        tomador = _c; break;
+                    }
+                }
             }
         }
     }
