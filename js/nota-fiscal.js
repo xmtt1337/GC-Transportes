@@ -494,7 +494,7 @@ function _extrairCamposNota(raw) {
     }
 
     // ── EMISSOR ──
-    const emissor = _extrairEmissor(t, cnpjEmit, sepIdx);
+    let emissor = _extrairEmissor(t, cnpjEmit, sepIdx);
 
     console.log("=== EMISSOR EXTRAÍDO ===");
     console.log(emissor);
