@@ -1,11 +1,12 @@
 // ───── USUÁRIOS GC TRANSPORTES ─────
 
-const GC_ROLE_LABELS = { admin: "Administrador", finance: "Financeiro", sac: "SAC", user: "Usuário" };
+const GC_ROLE_LABELS = { admin: "Administrador", finance: "Financeiro", sac: "SAC", user: "Usuário", dev: "Dev" };
 const GC_ROLE_COLORS = {
     admin:   { bg: "rgba(58,134,255,0.12)",  color: "#3a86ff" },
     finance: { bg: "rgba(34,197,94,0.12)",   color: "#22c55e" },
     sac:     { bg: "rgba(251,146,60,0.12)",  color: "#fb923c" },
     user:    { bg: "rgba(148,163,184,0.12)", color: "#94a3b8" },
+    dev:     { bg: "rgba(168,85,247,0.12)",  color: "#a855f7" },
 };
 
 let _editRoleGC_id = null;
