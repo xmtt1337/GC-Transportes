@@ -159,6 +159,45 @@ function renderHomeActions(role) {
     if (role === "finance") _carregarHomeAdmin(role);
     if (role === "dev")     _carregarHomeAdmin("admin");
     if (role === "admin")   _carregarHomeAdmin("admin");
+    if (role === "user")    _carregarHomeUser();
+}
+
+function _carregarHomeUser() {
+    const dash = document.getElementById("home-user-dash");
+    if (!dash) return;
+    const tok = localStorage.getItem("token");
+    const mesNomes = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+    fetch(`${API}/bipagem/meu-desempenho`, { headers: { "Authorization": "Bearer " + tok } })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) return;
+        const tierIcons = { Bronze: "🥉", Prata: "🥈", Ouro: "🥇", Elite: "⚡" };
+        const proximoTxt = d.proxTier
+            ? `Faltam <strong>${d.faltamProxTier}</strong> bipagens para ${d.proxTier}`
+            : `Nível máximo atingido!`;
+        dash.innerHTML = `
+            <div class="user-desemp-widget">
+                <div class="user-desemp-header">
+                    <div>
+                        <div class="user-desemp-total">${d.total.toLocaleString("pt-BR")}</div>
+                        <div class="user-desemp-label">Bipagens em ${mesNomes[d.mes]}</div>
+                    </div>
+                    <div class="user-desemp-ranking">
+                        <div class="user-desemp-pos">${d.posicao}°</div>
+                        <div class="user-desemp-pos-label">de ${d.totalUsuarios} operadores</div>
+                    </div>
+                </div>
+                <div class="user-desemp-tier ${d.tierAtual}">${tierIcons[d.tierAtual] || ""} ${d.tierAtual}</div>
+                <div class="user-desemp-progress-wrap">
+                    <div class="user-desemp-progress-bar">
+                        <div class="user-desemp-progress-fill" style="width:${d.progressoTier}%"></div>
+                    </div>
+                    <div class="user-desemp-progress-text">${proximoTxt}</div>
+                </div>
+            </div>`;
+    })
+    .catch(() => {});
 }
 
 function _carregarHomeAdmin(role) {
