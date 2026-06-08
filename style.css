@@ -657,12 +657,13 @@ body {
 
 /* ── Card de perfil (dropdown) ── */
 .perfil-card {
-    position: absolute; top: calc(100% + 10px); right: 0;
-    width: 288px; z-index: 9999;
+    position: fixed;
+    width: 288px; z-index: 99999;
     background: #0b1018; border: 1px solid rgba(255,255,255,0.07);
     border-radius: 16px; overflow: hidden;
     box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(58,134,255,0.06);
     animation: pc-in 0.15s ease;
+    max-height: calc(100vh - 70px); overflow-y: auto;
 }
 @keyframes pc-in {
     from { opacity: 0; transform: translateY(-6px) scale(0.98); }
