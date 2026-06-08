@@ -593,18 +593,29 @@ function _extrairCamposNota(raw) {
         if (_tomLixo(tomador)) tomador = "—";
 
         if (tomador === "—") {
-            // Varre TODOS os "Razão social:" no texto, pula o que for igual ao emissor
-            // O 1º match é o PRESTADOR; o 2º é o TOMADOR — por isso usa exec() em loop
+            // Tentativa 1: "Razão social:" em loop — pula ocorrência do emissor
             const _tomCnpjEntry = cnpjAll.find(c => c.raw !== cnpj);
-            const _searchIn = _tomCnpjEntry
-                ? t.slice(0, _tomCnpjEntry.idx + 50)   // todo texto até o CNPJ do tomador
-                : t;
+            const _searchIn = _tomCnpjEntry ? t.slice(0, _tomCnpjEntry.idx + 50) : t;
             const _rsGlobal = /Raz[aã]o\s+[Ss]ocial\s*:?\s*([\p{L}][\p{L}\s&.,'/\-]{2,60}?)(?=\s*(?:[-–]\s*\d|CPF|CNPJ|Inscri|Nome|E-?mail|Endere|Complem|Munic))/giu;
             let _rsG;
             while ((_rsG = _rsGlobal.exec(_searchIn)) !== null) {
                 const _tn = _rsG[1].trim().replace(/\s*[-–]\s*\d+\s*$/, '').trim();
                 if (_tn && !_reAdmin.test(_tn) && !_isTextoInstrucao(_tn) && _tn !== emissor && !_tomLixo(_tn)) {
                     tomador = _tn; break;
+                }
+            }
+
+            // Tentativa 2: primeira sequência ALL-CAPS de 2+ palavras na seção TOMADOR
+            // (cobre o caso em que label e valor estão separados no PDF extraído)
+            if (tomador === "—" && _tomWin) {
+                const _caps = /\b([A-ZÀ-Ü]{2,}(?:\s+[A-ZÀ-Ü]{2,})+)\b/g;
+                let _cm;
+                while ((_cm = _caps.exec(_tomWin.text)) !== null) {
+                    const _c = _cm[1].trim();
+                    if (!_reAdmin.test(_c) && !_isTextoInstrucao(_c) && _c !== emissor
+                        && !/\b(RODM?|ROD\b|AV\b|RUA|ESTR|DISCRIMIN|RETEN|TRIBUT|OUTRAS|INFORM|PAGAMENTO)\b/i.test(_c)) {
+                        tomador = _c; break;
+                    }
                 }
             }
         }
