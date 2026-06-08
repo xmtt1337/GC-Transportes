@@ -384,13 +384,14 @@ function _extrairCamposNota(raw) {
         }
     }
     if (!chave_acesso) {
+        // Exige ao menos um dígito no código — evita capturar palavras comuns como "Secretaria"
         for (const p of [
-            /C[oó]digo\s+de\s+verifica[çc][aã]o[:\s]+([A-Za-z0-9]{4,50})/i,
-            /C[oó]digo\s+de\s+autenticidade[:\s]+([A-Za-z0-9]{4,50})/i,
-            /C[oó]digo\s+de\s+controle[:\s]+([A-Za-z0-9]{4,50})/i,
-            /C[oó]digo\s+verificador[:\s]+([A-Za-z0-9]{4,50})/i,
+            /C[oó]digo\s+de\s+verifica[çc][aã]o[:\s]+([A-Za-z0-9]*\d[A-Za-z0-9]{0,49})/i,
+            /C[oó]digo\s+de\s+autenticidade[:\s]+([A-Za-z0-9]*\d[A-Za-z0-9]{0,49})/i,
+            /C[oó]digo\s+de\s+controle[:\s]+([A-Za-z0-9]*\d[A-Za-z0-9]{0,49})/i,
+            /C[oó]digo\s+verificador[:\s]+([A-Za-z0-9]*\d[A-Za-z0-9]{0,49})/i,
             /Chave\s+de\s+acesso[:\s]+([A-Za-z0-9]{8,60})/i,
-            /C[oó]digo\s+NFS-?[eE][:\s]+([A-Za-z0-9]{4,50})/i,
+            /C[oó]digo\s+NFS-?[eE][:\s]+([A-Za-z0-9]*\d[A-Za-z0-9]{0,49})/i,
         ]) { const m = t.match(p); if (m) { chave_acesso = m[1].trim(); break; } }
     }
 
@@ -424,13 +425,35 @@ function _extrairCamposNota(raw) {
         const re14 = /(?<!\d)\d{14}(?!\d)/g;
         while ((mc = re14.exec(t)) !== null) cnpjAll.push({ raw: mc[0], idx: mc.index });
     }
-    // Para DANFE: emitente vem antes de DESTINATÁRIO; para NFS-e: antes de TOMADOR
-    const sepIdx   = Math.min(
-        t.search(/DESTINAT[AÁ]R/i) < 0 ? Infinity : t.search(/DESTINAT[AÁ]R/i),
-        t.search(/\bTOMADOR\b/i)   < 0 ? Infinity : t.search(/\bTOMADOR\b/i)
-    );
-    const cnpjEmit = cnpjAll.find(c => sepIdx === Infinity || c.idx < sepIdx) || cnpjAll[0];
-    const cnpj     = cnpjEmit ? cnpjEmit.raw : "—";
+
+    // Para NFS-e municipal (Curitibanos e similares): busca CNPJ na seção PRESTADOR DE SERVIÇOS
+    // O PDF.js pode extrair colunas fora de ordem, fazendo CNPJ do tomador aparecer primeiro.
+    let cnpjEmit;
+    const _prestExec = /PRESTADOR\s+DE\s+SERVI[CÇ]OS?/i.exec(t);
+    const _tomExec   = /TOMADOR\s+DE\s+SERVI[CÇ]OS?/i.exec(t);
+    if (_prestExec && _tomExec && _prestExec.index < _tomExec.index) {
+        const prestSec  = t.slice(_prestExec.index, _tomExec.index);
+        const prestCnpj = /\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/.exec(prestSec);
+        if (prestCnpj) {
+            cnpjEmit = { raw: prestCnpj[0], idx: _prestExec.index + prestCnpj.index };
+        }
+    }
+
+    // Fallback: primeiro CNPJ antes do separador DESTINATÁRIO/TOMADOR
+    if (!cnpjEmit) {
+        const _s = (pat) => { const i = t.search(pat); return i < 0 ? Infinity : i; };
+        const sepIdx = Math.min(
+            _s(/DESTINAT[AÁ]R/i),
+            Math.min(_s(/TOMADOR\s+DE\s+SERVI[CÇ]OS?/i), _s(/\bTOMADOR\b/i))
+        );
+        cnpjEmit = cnpjAll.find(c => sepIdx === Infinity || c.idx < sepIdx) || cnpjAll[0];
+    }
+
+    const sepIdx = (() => {
+        const _s = (pat) => { const i = t.search(pat); return i < 0 ? Infinity : i; };
+        return Math.min(_s(/DESTINAT[AÁ]R/i), Math.min(_s(/TOMADOR\s+DE\s+SERVI[CÇ]OS?/i), _s(/\bTOMADOR\b/i)));
+    })();
+    const cnpj = cnpjEmit ? cnpjEmit.raw : "—";
 
     // ── VALOR ──
     let valor = "—";
