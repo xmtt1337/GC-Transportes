@@ -112,9 +112,9 @@ function _renderPerfilCard(card, d) {
     const svgScan  = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>`;
     const svgChev  = `<svg class="pc-senha-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
 
-    const subNivel = d.proxNome
-        ? `Faltam ${(d.faltam||0).toLocaleString("pt-BR")} bipagens para ${d.proxNome}`
-        : `Nível máximo atingido`;
+    const subNivel = d.proxNivel
+        ? `Faltam ${(d.faltam||0).toLocaleString("pt-BR")} bipagens para Nv ${d.proxNivel}`
+        : `Nv 100 — nível máximo`;
 
     card.innerHTML = `
         <div class="pc-header">
@@ -129,8 +129,7 @@ function _renderPerfilCard(card, d) {
             <div class="pc-section-hd">${svgStar} Nível</div>
             <div class="pc-nivel-row">
                 <span class="pc-nivel-num">Nv ${d.nivel}</span>
-                <span class="pc-nivel-nome">${d.nome}</span>
-                <span class="pc-nivel-total">${(d.totalBipagens||0).toLocaleString("pt-BR")} total</span>
+                <span class="pc-nivel-total">${(d.totalBipagens||0).toLocaleString("pt-BR")} únicos</span>
             </div>
             <div class="pc-bar"><div class="pc-bar-fill" style="width:${d.progresso}%"></div></div>
             <div class="pc-nivel-sub">${subNivel}</div>
