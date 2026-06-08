@@ -416,7 +416,7 @@ function _extrairCamposNota(raw) {
     else if (dataHoraM) emissao = `${dataHoraM[1]} ${dataHoraM[2]}`;
     else                emissao = (t.match(/\d{2}\/\d{2}\/\d{4}/) || ["—"])[0];
 
-    // ── CNPJ ──
+    // ── CNPJ / EMISSOR / TOMADOR — detecção por seção ──
     const cnpjAll = [];
     let mc;
     const cnpjFmtRe = /\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g;
@@ -426,27 +426,37 @@ function _extrairCamposNota(raw) {
         while ((mc = re14.exec(t)) !== null) cnpjAll.push({ raw: mc[0], idx: mc.index });
     }
 
-    // Para NFS-e municipal (Curitibanos e similares): busca CNPJ na seção PRESTADOR DE SERVIÇOS
-    // O PDF.js pode extrair colunas fora de ordem, fazendo CNPJ do tomador aparecer primeiro.
-    let cnpjEmit;
-    const _prestExec = /PRESTADOR\s+DE\s+SERVI[CÇ]OS?/i.exec(t);
-    const _tomExec   = /TOMADOR\s+DE\s+SERVI[CÇ]OS?/i.exec(t);
-    if (_prestExec && _tomExec && _prestExec.index < _tomExec.index) {
-        const prestSec  = t.slice(_prestExec.index, _tomExec.index);
-        const prestCnpj = /\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/.exec(prestSec);
-        if (prestCnpj) {
-            cnpjEmit = { raw: prestCnpj[0], idx: _prestExec.index + prestCnpj.index };
-        }
-    }
-
-    // Fallback: primeiro CNPJ antes do separador DESTINATÁRIO/TOMADOR
-    if (!cnpjEmit) {
-        const _s = (pat) => { const i = t.search(pat); return i < 0 ? Infinity : i; };
-        const sepIdx = Math.min(
-            _s(/DESTINAT[AÁ]R/i),
-            Math.min(_s(/TOMADOR\s+DE\s+SERVI[CÇ]OS?/i), _s(/\bTOMADOR\b/i))
+    // Extrai uma "janela" de texto após um marcador de seção (800 chars)
+    const _secWindow = (pat) => {
+        const m = new RegExp(pat, 'i').exec(t);
+        return m ? { text: t.slice(m.index, m.index + 800), start: m.index } : null;
+    };
+    // Busca CNPJ rotulado "CPF/CNPJ:XX.XXX..." dentro de uma janela de seção
+    const _cnpjNaSec = (win) => {
+        if (!win) return null;
+        const m = /CPF\s*\/?\s*CNPJ\s*:?\s*(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/i.exec(win.text);
+        return m ? { raw: m[1], idx: win.start + m.index + m[0].lastIndexOf(m[1]) } : null;
+    };
+    // Busca nome rotulado "Nome/Razão social:" ou "Razão social:" dentro de uma janela
+    const _nomeNaSecWin = (win) => {
+        if (!win) return null;
+        const m = (
+            /(?:Nome\s*[\/|]\s*)?Raz[aã]o\s+[Ss]ocial\s*:?\s*([\p{L}][^\n\r]{2,79}?)(?=\s*(?:CPF|CNPJ|Inscri|E-?mail|Endere|Site\b))/iu.exec(win.text) ||
+            /Nome\s*[\/|]\s*Raz[aã]o\s+[Ss]ocial\s*:?\s*([\p{L}][^\n\r]{2,79}?)(?=\s*(?:CPF|CNPJ|Inscri|E-?mail|Endere|Site\b))/iu.exec(win.text)
         );
-        cnpjEmit = cnpjAll.find(c => sepIdx === Infinity || c.idx < sepIdx) || cnpjAll[0];
+        return m ? m[1].trim().replace(/\s*[-–]\s*\d{8,14}\s*$/, '').trim() : null;
+    };
+
+    const _prestWin = _secWindow('PRESTADOR\\s+DE\\s+SERVI[CÇ]OS?');
+    const _tomWin   = _secWindow('TOMADOR\\s+DE\\s+SERVI[CÇ]OS?');
+
+    // CNPJ: prioriza o rotulado na seção PRESTADOR
+    let cnpjEmit = _cnpjNaSec(_prestWin);
+    if (!cnpjEmit) {
+        // Fallback: primeiro CNPJ antes do separador DESTINATÁRIO/TOMADOR
+        const _s = (pat) => { const i = t.search(pat); return i < 0 ? Infinity : i; };
+        const _sep = Math.min(_s(/DESTINAT[AÁ]R/i), Math.min(_s(/TOMADOR\s+DE\s+SERVI[CÇ]OS?/i), _s(/\bTOMADOR\b/i)));
+        cnpjEmit = cnpjAll.find(c => _sep === Infinity || c.idx < _sep) || cnpjAll[0];
     }
 
     const sepIdx = (() => {
@@ -541,6 +551,14 @@ function _extrairCamposNota(raw) {
         const c2 = cnpjAll.find(c => c !== cnpjEmit) || cnpjAll[1];
         tomador = _nomePertoCNPJ(t, c2) || "—";
     }
+
+    // ── Override NFS-e municipal: usa labels explícitos das seções ──
+    // Tem prioridade sobre as heurísticas acima pois é mais confiável.
+    const _emissNaSec = _nomeNaSecWin(_prestWin);
+    if (_emissNaSec) emissor = _emissNaSec;
+
+    const _tomNaSec = _nomeNaSecWin(_tomWin);
+    if (_tomNaSec) tomador = _tomNaSec;
 
     return { emissao, cnpj, emissor, valor, tomador, numero_nf, chave_acesso };
 }
