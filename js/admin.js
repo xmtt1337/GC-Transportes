@@ -168,33 +168,44 @@ function _carregarHomeUser() {
     const tok = localStorage.getItem("token");
     const mesNomes = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
+    const iconScan = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>`;
+    const iconTarget = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#3a86ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`;
+    const iconTrophy = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>`;
+
     fetch(`${API}/bipagem/meu-desempenho`, { headers: { "Authorization": "Bearer " + tok } })
     .then(r => r.json())
     .then(d => {
         if (d.error) return;
-        const tierIcons = { Bronze: "🥉", Prata: "🥈", Ouro: "🥇", Elite: "⚡" };
-        const proximoTxt = d.proxTier
-            ? `Faltam <strong>${d.faltamProxTier}</strong> bipagens para ${d.proxTier}`
-            : `Nível máximo atingido!`;
+
+        const bottomHtml = d.pessoaAcima
+            ? `<div class="user-desemp-bottom">
+                <div class="user-desemp-gap-icon">${iconTarget}</div>
+                <div class="user-desemp-gap-text">
+                    Faltam <strong>${d.faltam.toLocaleString("pt-BR")}</strong> bipagem${d.faltam !== 1 ? "s" : ""}
+                    para ultrapassar <em>${d.pessoaAcima.nome}</em>
+                    <span style="color:#3a5a7a;font-size:11px"> · ${d.pessoaAcima.total.toLocaleString("pt-BR")} bip.</span>
+                </div>
+               </div>`
+            : `<div class="user-desemp-first">
+                <div class="user-desemp-first-icon">${iconTrophy}</div>
+                <div class="user-desemp-first-text"><strong>Você está em 1°!</strong> Continue assim.</div>
+               </div>`;
+
         dash.innerHTML = `
             <div class="user-desemp-widget">
-                <div class="user-desemp-header">
-                    <div>
-                        <div class="user-desemp-total">${d.total.toLocaleString("pt-BR")}</div>
-                        <div class="user-desemp-label">Bipagens em ${mesNomes[d.mes]}</div>
+                <div class="user-desemp-top">
+                    <div class="user-desemp-eyebrow">
+                        ${iconScan} Bipagens em ${mesNomes[d.mes]}
                     </div>
-                    <div class="user-desemp-ranking">
-                        <div class="user-desemp-pos">${d.posicao}°</div>
-                        <div class="user-desemp-pos-label">de ${d.totalUsuarios} operadores</div>
+                    <div class="user-desemp-count-row">
+                        <div class="user-desemp-count">${d.total.toLocaleString("pt-BR")}</div>
+                        <div class="user-desemp-pos-block">
+                            <div class="user-desemp-pos">${d.posicao}°</div>
+                            <div class="user-desemp-pos-sub">de ${d.totalUsuarios} operadores</div>
+                        </div>
                     </div>
                 </div>
-                <div class="user-desemp-tier ${d.tierAtual}">${tierIcons[d.tierAtual] || ""} ${d.tierAtual}</div>
-                <div class="user-desemp-progress-wrap">
-                    <div class="user-desemp-progress-bar">
-                        <div class="user-desemp-progress-fill" style="width:${d.progressoTier}%"></div>
-                    </div>
-                    <div class="user-desemp-progress-text">${proximoTxt}</div>
-                </div>
+                ${bottomHtml}
             </div>`;
     })
     .catch(() => {});

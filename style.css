@@ -647,56 +647,78 @@ body {
     .adm-home-card-value { font-size: 14px; }
 }
 
+/* ── Badge de nível (topo, ao lado do nome) ── */
+.user-nivel-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 3px 9px; border-radius: 20px;
+    background: rgba(58,134,255,0.1); border: 1px solid rgba(58,134,255,0.22);
+    color: #5d9aff; white-space: nowrap;
+}
+
 /* ── Widget de Desempenho (role user) ── */
-#home-user-dash { margin-top: 16px; text-align: left; }
+#home-user-dash { margin-top: 18px; text-align: left; width: 100%; max-width: 572px; margin-inline: auto; }
 .user-desemp-widget {
-    background: rgba(11,16,26,0.9); border: 1px solid var(--border);
-    border-radius: 14px; padding: 18px 20px;
+    background: rgba(11,16,26,0.92);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 0;
+    overflow: hidden;
 }
-.user-desemp-header {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    margin-bottom: 14px;
+.user-desemp-top {
+    padding: 18px 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.045);
 }
-.user-desemp-total {
-    font-size: 36px; font-weight: 700; color: #f1f5f9; line-height: 1;
+.user-desemp-eyebrow {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em; color: #3a5a7a; margin-bottom: 10px;
 }
-.user-desemp-label {
-    font-size: 10px; color: #4a6a8a; text-transform: uppercase;
-    letter-spacing: 1px; margin-top: 3px;
+.user-desemp-eyebrow svg { opacity: 0.55; }
+.user-desemp-count-row {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 12px;
 }
-.user-desemp-ranking {
-    text-align: right;
+.user-desemp-count {
+    font-size: 48px; font-weight: 800; color: #f1f5f9;
+    line-height: 1; letter-spacing: -2px;
+    font-variant-numeric: tabular-nums;
 }
+.user-desemp-pos-block { text-align: right; padding-bottom: 4px; }
 .user-desemp-pos {
-    font-size: 18px; font-weight: 700; color: #3a86ff; line-height: 1;
+    font-size: 22px; font-weight: 700; color: #3a86ff; line-height: 1;
+    letter-spacing: -0.5px;
 }
-.user-desemp-pos-label {
-    font-size: 10px; color: #4a6a8a; margin-top: 2px;
+.user-desemp-pos-sub {
+    font-size: 10px; color: #3a5a7a; margin-top: 2px;
 }
-.user-desemp-tier {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 11px; font-weight: 600; padding: 3px 10px;
-    border-radius: 20px; margin-bottom: 10px;
+.user-desemp-bottom {
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 8px;
 }
-.user-desemp-tier.Bronze { background: rgba(180,115,60,0.15);  color: #cd7f32; border: 1px solid rgba(180,115,60,0.3); }
-.user-desemp-tier.Prata  { background: rgba(160,170,185,0.12); color: #b0bec5; border: 1px solid rgba(160,170,185,0.3); }
-.user-desemp-tier.Ouro   { background: rgba(255,200,30,0.1);   color: #ffd700; border: 1px solid rgba(255,200,30,0.3);  }
-.user-desemp-tier.Elite  { background: rgba(58,134,255,0.12);  color: #3a86ff; border: 1px solid rgba(58,134,255,0.3);  }
-.user-desemp-progress-wrap { margin-bottom: 6px; }
-.user-desemp-progress-bar {
-    height: 5px; border-radius: 999px;
-    background: rgba(255,255,255,0.06); overflow: hidden; margin-bottom: 4px;
+.user-desemp-gap-icon {
+    width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px;
+    background: rgba(58,134,255,0.08); border: 1px solid rgba(58,134,255,0.14);
+    display: flex; align-items: center; justify-content: center;
 }
-.user-desemp-progress-fill {
-    height: 100%; border-radius: 999px;
-    background: linear-gradient(90deg, #3a86ff, #60a5fa);
-    transition: width 0.6s ease;
+.user-desemp-gap-icon svg { opacity: 0.7; }
+.user-desemp-gap-text { font-size: 12.5px; color: #7a8fa8; line-height: 1.45; }
+.user-desemp-gap-text strong { color: #c8d8ec; font-weight: 600; }
+.user-desemp-gap-text em { color: #3a86ff; font-style: normal; font-weight: 600; }
+.user-desemp-first {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 20px;
 }
-.user-desemp-progress-text {
-    font-size: 10px; color: #4a6a8a;
+.user-desemp-first-icon {
+    width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px;
+    background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.18);
+    display: flex; align-items: center; justify-content: center;
 }
+.user-desemp-first-icon svg { opacity: 0.75; }
+.user-desemp-first-text { font-size: 12.5px; color: #7a8fa8; }
+.user-desemp-first-text strong { color: #fbbf24; font-weight: 600; }
 @media (max-width: 420px) {
-    .user-desemp-total { font-size: 28px; }
+    .user-desemp-count { font-size: 38px; }
+    .user-desemp-pos { font-size: 18px; }
 }
 
 .home-nf-widget {
