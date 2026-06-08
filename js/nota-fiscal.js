@@ -168,6 +168,9 @@ const _reAdmin = /\b(ENDERE[ÇC]O|INSCRI[ÇC][ÃA]O(?:\s+ESTADUAL)?|CEP\b|BAIRRO
 // Busca nome por labels dentro de uma seção de texto
 function _nomeNaSec(sec) {
     return (
+        // "Nome/Razão social:" — NFS-e municipais (Curitibanos e similares)
+        sec.match(/Nome\s*[\/|]\s*Raz[aã]o\s+[Ss]ocial\s*:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
+        // "Razão Social" padrão / "Razão Social / Nome Empresarial"
         sec.match(/Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
         sec.match(/Nome\s+Empresarial\s*:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
         sec.match(/Nome\s*[\/|]\s*(?:Nome\s+)?Empresarial\s*([\p{L}].{2,79}?)(?=\s+(?:E-?mail|Endere[çc]o|Inscri|CNPJ|CPF))/iu) ||
@@ -393,12 +396,14 @@ function _extrairCamposNota(raw) {
 
     // ── NÚMERO DA NF ──
     const numero_nf = (
-        t.match(/N[úu]mero\s+da\s+NFS?-?[eE][:\s]+(\d+)/i)      ||
-        t.match(/N[úu]mero\s+d[ao]\s+[Nn]ota[:\s]+(\d+)/i)       ||
-        t.match(/N[úu]mero\s+do\s+RPS[:\s]+(\d+)/i)              ||
-        t.match(/\bN[°º]\s*([\d.]+)\s+S[ÉE]RIE/i)                ||
-        t.match(/NF-?[eE]\s+N[°ºo.]?[:\s]+(\d[\d.]+)/i)          ||
-        t.match(/Nota\s+Fiscal\s+N[°ºo.]?[:\s]+(\d[\d.]+)/i)     ||
+        t.match(/N[úu]mero\s+da\s+NFS?-?[eE][:\s]+(\d+)/i)           ||
+        t.match(/N[úu]mero\s+d[ao]\s+[Nn]ota\s*[:\s]\s*(\d+)/i)       ||
+        // Curitibanos e similares: "Número da nota 62" (sem dois-pontos, valor direto)
+        t.match(/N[úu]mero\s+da\s+[Nn]ota\s+(\d+)/i)                  ||
+        t.match(/N[úu]mero\s+do\s+RPS[:\s]+(\d+)/i)                   ||
+        t.match(/\bN[°º]\s*([\d.]+)\s+S[ÉE]RIE/i)                     ||
+        t.match(/NF-?[eE]\s+N[°ºo.]?[:\s]+(\d[\d.]+)/i)               ||
+        t.match(/Nota\s+Fiscal\s+N[°ºo.]?[:\s]+(\d[\d.]+)/i)          ||
         t.match(/NFS-?[eE]\s+N[°ºo.]?\s*(\d+)/i)
     )?.[1] ?? null;
 
@@ -431,9 +436,13 @@ function _extrairCamposNota(raw) {
     let valor = "—";
     for (const pat of [
         /Valor\s+L[ií]quido\s+da\s+NFS?-?[eE][:\s]*([\d.]+,\d{2})/i,
+        // Curitibanos / NFS-e municipais: "Valor líquido = R$ 1.218,60"
+        /Valor\s+l[íi]quido\s*=\s*R?\$?\s*([\d.]+,\d{2})/i,
+        /Valor\s+bruto\s*=\s*R?\$?\s*([\d.]+,\d{2})/i,
         /VALOR\s+TOTAL\s+DA\s+NOTA[^\d]*([\d.]+,\d{2})/i,
         /TOTAL\s+DA\s+NOTA[^\d]*([\d.]+,\d{2})/i,
         /VALOR\s+DOS\s+SERVI[CÇ]OS[^\d]*([\d.]+,\d{2})/i,
+        // "Valor do serviço 1.218,6000" — captura só 2 casas decimais mesmo com 4
         /Valor\s+do\s+Servi[çc]o[:\s]*([\d.]+,\d{2})/i,
         /VALOR\s+L[IÍ]QUIDO[^\d]*([\d.]+,\d{2})/i,
         /VALOR\s+TOTAL\s+DO\s+CT-?[eE][^\d]*([\d.]+,\d{2})/i,
