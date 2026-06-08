@@ -587,15 +587,15 @@ function _extrairCamposNota(raw) {
             }
         }
 
-        // 4. TOMADOR — segundo "Razão social:" que NÃO seja o emissor
-        const _rsAll = [];
-        const _rsRe = /Raz[aã]o\s+[Ss]ocial\s*:?\s*([\p{L}][\p{L}\s\-&.,'/]{2,79}?)(?=\s*(?:[-–]\s*\d|\bCPF|\bCNPJ))/giu;
-        let _rsM2;
-        while ((_rsM2 = _rsRe.exec(t)) !== null) {
-            const _n = _rsM2[1].trim().replace(/\s*[-–]\s*\d{8,14}\s*$/, '').trim();
-            if (_n && !_reAdmin.test(_n) && !_isTextoInstrucao(_n) && _n !== emissor) _rsAll.push(_n);
+        // 4. TOMADOR — usa o CNPJ que não é do emissor como âncora
+        const _tomCnpjEntry = cnpjAll.find(c => c.raw !== cnpj);
+        if (_tomCnpjEntry) {
+            // Tenta proximidade ao CNPJ do tomador (300–400 chars antes)
+            const _tn = _emissorPorProximidadeCNPJ(t, _tomCnpjEntry) || _nomePertoCNPJ(t, _tomCnpjEntry);
+            if (_tn && !_reAdmin.test(_tn) && !_isTextoInstrucao(_tn) && _tn !== emissor) {
+                tomador = _tn;
+            }
         }
-        if (_rsAll.length > 0) tomador = _rsAll[0];
     }
 
     return { emissao, cnpj, emissor, valor, tomador, numero_nf, chave_acesso };
