@@ -463,7 +463,7 @@ function _extrairCamposNota(raw) {
         const _s = (pat) => { const i = t.search(pat); return i < 0 ? Infinity : i; };
         return Math.min(_s(/DESTINAT[AÁ]R/i), Math.min(_s(/TOMADOR\s+DE\s+SERVI[CÇ]OS?/i), _s(/\bTOMADOR\b/i)));
     })();
-    const cnpj = cnpjEmit ? cnpjEmit.raw : "—";
+    let cnpj = cnpjEmit ? cnpjEmit.raw : "—";
 
     // ── VALOR ──
     let valor = "—";
@@ -552,13 +552,51 @@ function _extrairCamposNota(raw) {
         tomador = _nomePertoCNPJ(t, c2) || "—";
     }
 
-    // ── Override NFS-e municipal: usa labels explícitos das seções ──
-    // Tem prioridade sobre as heurísticas acima pois é mais confiável.
-    const _emissNaSec = _nomeNaSecWin(_prestWin);
-    if (_emissNaSec) emissor = _emissNaSec;
+    // ── Override NFS-e municipal (Curitibanos e similares) ──
+    // Nesse formato, o PDF.js separa labels dos valores, tornando label-matching ineficaz.
+    // Usamos padrões que independem da ordem de extração do texto.
+    if (/Nota\s+Fiscal\s+de\s+Servi[çc]os\s+Eletr[ôo]nica|NFS-?E\b/i.test(t)) {
 
-    const _tomNaSec = _nomeNaSecWin(_tomWin);
-    if (_tomNaSec) tomador = _tomNaSec;
+        // 1. EMISSOR — padrão "NOME - CPF/11dígitos" (prestador pessoa física)
+        //    Cobre "LUCAS TEIXEIRA NETO - 08940227921" independente de onde apareça no texto
+        const _pfM = t.match(/\b([\p{Lu}][\p{L}]{1,}(?:\s+[\p{Lu}][\p{L}]{1,}){1,6})\s*[-–]\s*0*\d{7,11}\b/u);
+        if (_pfM) {
+            const _cand = _pfM[1].trim();
+            if (_cand.split(/\s+/).length >= 2 && !_reAdmin.test(_cand) && !_isTextoInstrucao(_cand)) {
+                emissor = _cand;
+            }
+        }
+        // 2. Se não achou pessoa física, tenta "Razão social: NOME [- CPF | CPF/CNPJ]"
+        if (emissor === "—" || _isTextoInstrucao(emissor)) {
+            const _rsM = t.match(/Raz[aã]o\s+[Ss]ocial\s*:?\s*([\p{L}][\p{L}\s\-&.,'/]{2,79}?)(?=\s*(?:[-–]\s*\d|\bCPF|\bCNPJ))/iu);
+            if (_rsM && !_reAdmin.test(_rsM[1]) && !_isTextoInstrucao(_rsM[1])) {
+                emissor = _rsM[1].trim();
+            }
+        }
+
+        // 3. CNPJ do emissor — busca o CNPJ mais próximo do nome do emissor no texto
+        if (emissor !== "—") {
+            const _emIdx = t.indexOf(emissor.split(/\s+/)[0]);
+            if (_emIdx >= 0) {
+                const _vic = t.slice(Math.max(0, _emIdx - 60), _emIdx + 250);
+                const _vicCnpj = /\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/.exec(_vic);
+                if (_vicCnpj) {
+                    cnpjEmit = { raw: _vicCnpj[0], idx: Math.max(0, _emIdx - 60) + _vicCnpj.index };
+                    cnpj = _vicCnpj[0];
+                }
+            }
+        }
+
+        // 4. TOMADOR — segundo "Razão social:" que NÃO seja o emissor
+        const _rsAll = [];
+        const _rsRe = /Raz[aã]o\s+[Ss]ocial\s*:?\s*([\p{L}][\p{L}\s\-&.,'/]{2,79}?)(?=\s*(?:[-–]\s*\d|\bCPF|\bCNPJ))/giu;
+        let _rsM2;
+        while ((_rsM2 = _rsRe.exec(t)) !== null) {
+            const _n = _rsM2[1].trim().replace(/\s*[-–]\s*\d{8,14}\s*$/, '').trim();
+            if (_n && !_reAdmin.test(_n) && !_isTextoInstrucao(_n) && _n !== emissor) _rsAll.push(_n);
+        }
+        if (_rsAll.length > 0) tomador = _rsAll[0];
+    }
 
     return { emissao, cnpj, emissor, valor, tomador, numero_nf, chave_acesso };
 }
