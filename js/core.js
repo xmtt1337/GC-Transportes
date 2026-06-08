@@ -3,59 +3,85 @@ const token = localStorage.getItem("token");
 
 if (!token) window.location.href = "login.html";
 
-
-// Carrega perfil do usuário
-fetch(API + "/perfil", {
-    headers: { "Authorization": "Bearer " + token }
-})
+fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
 .then(res => { if (!res.ok) throw new Error(); return res.json(); })
 .then(data => {
-    const username = data.usuario.username;
-    const name     = data.usuario.name;
+    const username    = data.usuario.username;
+    const name        = data.usuario.name;
     const displayName = name || username;
-    const role = data.usuario.role;
+    const role        = data.usuario.role;
 
-    document.querySelector(".username").innerText = displayName;
+    document.querySelector(".username").innerText  = displayName;
     document.getElementById("welcome-name").innerText = displayName;
 
+    const show = (id) => { const el = document.getElementById(id); if (el) el.style.display = ""; };
+    const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = "none"; };
+
+    // ── Menus comuns para roles com acesso operacional ──
+    const _showOperacional = () => {
+        show("menu-desempenho-bip");
+    };
+    const _showFechamentosAdmin = () => {
+        show("menu-adminmenu");
+        show("submenu-adminmenu");
+    };
+    const _showFinanceiro = () => {
+        show("menu-financeiro");
+        show("submenu-financeiro");
+    };
+    const _showCadastros = () => {
+        show("menu-cadastros");
+        show("submenu-cadastros");
+    };
+    const _showExtravios = () => {
+        show("menu-extravios");
+        show("submenu-extravios");
+    };
+
     if (role === "entregador") {
-        document.getElementById("menu-operacao").style.display  = "none";
-        document.getElementById("submenu-operacao").style.display  = "none";
-        document.getElementById("menu-pedidos").style.display   = "none";
-        document.getElementById("submenu-pedidos").style.display   = "none";
-        document.getElementById("menu-fechamentos").style.display  = "";
-        document.getElementById("submenu-fechamentos").style.display  = "";
+        hide("menu-operacao");
+        hide("submenu-operacao");
+        hide("menu-pedidos");
+        hide("submenu-pedidos");
+        show("menu-fechamentos");
+        show("submenu-fechamentos");
         document.getElementById("welcome-name").innerText = displayName.split(" ")[0];
     }
 
-    if (role === "admin") {
-        document.getElementById("menu-desempenho-bip").style.display = "";
-        document.getElementById("menu-cadastros").style.display      = "";
-        document.getElementById("submenu-cadastros").style.display   = "";
-        document.getElementById("menu-extravios").style.display      = "";
-        document.getElementById("submenu-extravios").style.display   = "";
+    if (role === "user") {
+        _showOperacional();
+        _showCadastros();
+        // sem: fechamentos admin, financeiro, extravios
     }
 
-    if (role === "finance") {
-        document.getElementById("menu-desempenho-bip").style.display = "";
-        document.getElementById("menu-adminmenu").style.display      = "";
-        document.getElementById("submenu-adminmenu").style.display   = "";
-        document.getElementById("menu-financeiro").style.display     = "";
-        document.getElementById("submenu-financeiro").style.display  = "";
-        document.getElementById("menu-cadastros").style.display      = "";
-        document.getElementById("submenu-cadastros").style.display   = "";
-        document.getElementById("menu-extravios").style.display      = "";
-        document.getElementById("submenu-extravios").style.display   = "";
+    if (role === "admin") {
+        _showOperacional();
+        _showFechamentosAdmin();
+        _showCadastros();
+        _showExtravios();
+        // sem: financeiro
+    }
+
+    if (role === "finance" || role === "dev") {
+        _showOperacional();
+        _showFechamentosAdmin();
+        _showFinanceiro();
+        _showCadastros();
+        _showExtravios();
     }
 
     if (role === "sac") {
-        document.getElementById("menu-extravios").style.display    = "";
-        document.getElementById("submenu-extravios").style.display  = "";
+        _showExtravios();
     }
 
     renderHomeActions(role);
+
+    const badgeLabels = {
+        dev: "Dev", admin: "Administrador", finance: "Financeiro",
+        user: "Usuário", entregador: "Entregador", sac: "SAC"
+    };
     const badge = document.getElementById("home-role-badge");
-    if (badge) badge.innerText = role === "admin" ? "Administrador" : role === "entregador" ? "Entregador" : role === "finance" ? "Financeiro" : role === "sac" ? "SAC" : "Operador";
+    if (badge) badge.innerText = badgeLabels[role] || role;
 })
 .catch(() => {
     localStorage.removeItem("token");
