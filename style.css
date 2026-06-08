@@ -158,7 +158,7 @@ body {
 .topbar-left { display: flex; align-items: center; gap: 12px; }
 .topbar h1 { font-size: 16px; font-weight: 600; color: #e2e8f0; letter-spacing: -0.2px; }
 
-.user-area { display: flex; align-items: center; gap: 15px; }
+.user-area { display: flex; align-items: center; gap: 15px; position: relative; }
 .username { font-size: 14px; color: #aab4c8; font-weight: 500; }
 
 .logout-btn {
@@ -647,13 +647,108 @@ body {
     .adm-home-card-value { font-size: 14px; }
 }
 
-/* ── Badge de nível (topo, ao lado do nome) ── */
-.user-nivel-badge {
-    font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
-    padding: 3px 9px; border-radius: 20px;
-    background: rgba(58,134,255,0.1); border: 1px solid rgba(58,134,255,0.22);
-    color: #5d9aff; white-space: nowrap;
+/* ── Username clicável ── */
+.perfil-trigger {
+    cursor: pointer; border-radius: 6px;
+    padding: 4px 8px; margin: -4px -8px;
+    transition: background 0.15s, color 0.15s;
 }
+.perfil-trigger:hover { background: rgba(58,134,255,0.08); color: #c8d8f0; }
+
+/* ── Card de perfil (dropdown) ── */
+.perfil-card {
+    position: absolute; top: calc(100% + 10px); right: 0;
+    width: 288px; z-index: 9999;
+    background: #0b1018; border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(58,134,255,0.06);
+    animation: pc-in 0.15s ease;
+}
+@keyframes pc-in {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+.pc-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 16px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.045);
+}
+.pc-avatar {
+    width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #1e3a5f, #0d2240);
+    border: 1.5px solid rgba(58,134,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: #5d9aff; letter-spacing: 0;
+}
+.pc-name { font-size: 13px; font-weight: 600; color: #e2e8f0; line-height: 1.25; }
+.pc-meta { font-size: 11px; color: #3a5a7a; margin-top: 2px; }
+.pc-section { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.045); }
+.pc-section-hd {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em; color: #2e4a64; margin-bottom: 10px;
+}
+.pc-nivel-row {
+    display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;
+}
+.pc-nivel-num {
+    font-size: 20px; font-weight: 800; color: #f1f5f9;
+    letter-spacing: -0.5px; line-height: 1;
+}
+.pc-nivel-nome { font-size: 13px; font-weight: 600; color: #3a86ff; }
+.pc-nivel-total { font-size: 10px; color: #2e4a64; margin-left: auto; }
+.pc-bar {
+    height: 4px; border-radius: 999px;
+    background: rgba(255,255,255,0.05); overflow: hidden; margin-bottom: 5px;
+}
+.pc-bar-fill {
+    height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, #2563eb, #60a5fa);
+    transition: width 0.5s ease;
+}
+.pc-nivel-sub { font-size: 10.5px; color: #3a5a7a; }
+.pc-transp-list { display: flex; flex-direction: column; gap: 6px; }
+.pc-transp-row { display: flex; align-items: center; gap: 8px; }
+.pc-transp-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.pc-transp-label { font-size: 11px; color: #5a7a9a; width: 44px; flex-shrink: 0; }
+.pc-transp-bar-wrap {
+    flex: 1; height: 4px; border-radius: 999px;
+    background: rgba(255,255,255,0.05); overflow: hidden;
+}
+.pc-transp-bar-fill { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
+.pc-transp-val { font-size: 11px; font-weight: 600; color: #7a9ab8; width: 28px; text-align: right; flex-shrink: 0; }
+.pc-senha-toggle {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 12px 16px; background: transparent; border: none;
+    cursor: pointer; text-align: left; color: #4a6a8a; font-size: 12px;
+    transition: color 0.15s, background 0.15s; border-top: 1px solid rgba(255,255,255,0.045);
+}
+.pc-senha-toggle:hover { background: rgba(255,255,255,0.02); color: #7a9ab8; }
+.pc-senha-toggle svg { flex-shrink: 0; opacity: 0.6; }
+.pc-senha-toggle span { flex: 1; font-weight: 500; }
+.pc-senha-chevron { transition: transform 0.2s; }
+.pc-senha-chevron.open { transform: rotate(180deg); }
+.pc-senha-form { padding: 0 16px 14px; display: flex; flex-direction: column; gap: 8px; }
+.pc-senha-input {
+    width: 100%; background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 8px;
+    padding: 8px 11px; font-size: 12px; color: #c8d8ec;
+    outline: none; box-sizing: border-box; transition: border-color 0.15s;
+}
+.pc-senha-input:focus { border-color: rgba(58,134,255,0.4); }
+.pc-senha-input::placeholder { color: #2e4a64; }
+.pc-senha-submit {
+    padding: 8px; border-radius: 8px; border: none; cursor: pointer;
+    background: rgba(58,134,255,0.15); border: 1px solid rgba(58,134,255,0.25);
+    color: #5d9aff; font-size: 12px; font-weight: 600;
+    transition: background 0.15s, border-color 0.15s;
+}
+.pc-senha-submit:hover { background: rgba(58,134,255,0.25); border-color: rgba(58,134,255,0.4); }
+.pc-msg { font-size: 11px; padding: 6px 8px; border-radius: 6px; text-align: center; }
+.pc-msg.ok  { background: rgba(34,197,94,0.08); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
+.pc-msg.err { background: rgba(239,68,68,0.08); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
 
 /* ── Widget de Desempenho (role user) ── */
 #home-user-dash { margin-top: 18px; text-align: left; width: 100%; max-width: 572px; margin-inline: auto; }

@@ -11,6 +11,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     const displayName = name || username;
     const role        = data.usuario.role;
 
+    window._gcUser = { name, username, displayName, role };
     document.querySelector(".username").innerText  = displayName;
     document.getElementById("welcome-name").innerText = displayName;
 
@@ -83,16 +84,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     const badge = document.getElementById("home-role-badge");
     if (badge) badge.innerText = badgeLabels[role] || role;
 
-    if (role === "user") {
-        fetch(API + "/meu-nivel", { headers: { "Authorization": "Bearer " + token } })
-        .then(r => r.json())
-        .then(d => {
-            if (!d.nivel) return;
-            const el = document.getElementById("user-nivel-badge");
-            if (el) { el.textContent = "Nv " + d.nivel + " · " + d.nome; el.style.display = ""; }
-        })
-        .catch(() => {});
-    }
 })
 .catch(() => {
     localStorage.removeItem("token");
