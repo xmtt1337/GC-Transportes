@@ -647,6 +647,58 @@ body {
     .adm-home-card-value { font-size: 14px; }
 }
 
+/* ── Widget de Desempenho (role user) ── */
+#home-user-dash { margin-top: 16px; text-align: left; }
+.user-desemp-widget {
+    background: rgba(11,16,26,0.9); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 20px;
+}
+.user-desemp-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 14px;
+}
+.user-desemp-total {
+    font-size: 36px; font-weight: 700; color: #f1f5f9; line-height: 1;
+}
+.user-desemp-label {
+    font-size: 10px; color: #4a6a8a; text-transform: uppercase;
+    letter-spacing: 1px; margin-top: 3px;
+}
+.user-desemp-ranking {
+    text-align: right;
+}
+.user-desemp-pos {
+    font-size: 18px; font-weight: 700; color: #3a86ff; line-height: 1;
+}
+.user-desemp-pos-label {
+    font-size: 10px; color: #4a6a8a; margin-top: 2px;
+}
+.user-desemp-tier {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; padding: 3px 10px;
+    border-radius: 20px; margin-bottom: 10px;
+}
+.user-desemp-tier.Bronze { background: rgba(180,115,60,0.15);  color: #cd7f32; border: 1px solid rgba(180,115,60,0.3); }
+.user-desemp-tier.Prata  { background: rgba(160,170,185,0.12); color: #b0bec5; border: 1px solid rgba(160,170,185,0.3); }
+.user-desemp-tier.Ouro   { background: rgba(255,200,30,0.1);   color: #ffd700; border: 1px solid rgba(255,200,30,0.3);  }
+.user-desemp-tier.Elite  { background: rgba(58,134,255,0.12);  color: #3a86ff; border: 1px solid rgba(58,134,255,0.3);  }
+.user-desemp-progress-wrap { margin-bottom: 6px; }
+.user-desemp-progress-bar {
+    height: 5px; border-radius: 999px;
+    background: rgba(255,255,255,0.06); overflow: hidden; margin-bottom: 4px;
+}
+.user-desemp-progress-fill {
+    height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, #3a86ff, #60a5fa);
+    transition: width 0.6s ease;
+}
+.user-desemp-progress-text {
+    font-size: 10px; color: #4a6a8a;
+}
+@media (max-width: 420px) {
+    .user-desemp-total { font-size: 28px; }
+}
+
 .home-nf-widget {
     border-radius: 16px; padding: 16px 20px; display: flex; align-items: center;
     gap: 14px; border: 1px solid; text-align: left;
