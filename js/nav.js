@@ -61,7 +61,18 @@ function abrirPerfilCard(e) {
     if (!card) return;
     if (card.style.display !== "none") { fecharPerfilCard(); return; }
 
+    // Posiciona o card abaixo do trigger (position: fixed)
+    const trigger = document.getElementById("username-trigger");
+    if (trigger) {
+        const rect = trigger.getBoundingClientRect();
+        card.style.top   = (rect.bottom + 10) + "px";
+        card.style.right = (window.innerWidth - rect.right) + "px";
+        card.style.left  = "auto";
+    }
+
     card.style.display = "block";
+    // Impede que cliques DENTRO do card fechem ele
+    card.onclick = ev => ev.stopPropagation();
     card.innerHTML = `<div style="padding:20px 16px;color:#3a5a7a;font-size:12px">Carregando...</div>`;
 
     document.addEventListener("click", _pcClickFora);
