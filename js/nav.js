@@ -61,7 +61,10 @@ function abrirPerfilCard(e) {
     if (!card) return;
     if (card.style.display !== "none") { fecharPerfilCard(); return; }
 
-    // Posiciona o card abaixo do trigger (position: fixed)
+    // Move para <body> para escapar de qualquer stacking context pai
+    if (card.parentElement !== document.body) document.body.appendChild(card);
+
+    // Posiciona abaixo do trigger
     const trigger = document.getElementById("username-trigger");
     if (trigger) {
         const rect = trigger.getBoundingClientRect();
@@ -71,7 +74,6 @@ function abrirPerfilCard(e) {
     }
 
     card.style.display = "block";
-    // Impede que cliques DENTRO do card fechem ele
     card.onclick = ev => ev.stopPropagation();
     card.innerHTML = `<div style="padding:20px 16px;color:#3a5a7a;font-size:12px">Carregando...</div>`;
 
