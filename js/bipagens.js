@@ -76,13 +76,13 @@ async function _bipBuscarCep(cep) {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         const data = await res.json();
-        if (!res.ok) { el.innerHTML = _bipErroHtml(data.error); return; }
+        if (!res.ok) { _bipMostrarErro(el, data.error); return; }
 
         const linhas = Array.isArray(data) ? data : [data];
         el.innerHTML = _bipRenderCepCards(linhas);
         _bipRegistrar(cep.replace(/\D/g,''), { transportadora: 'cep', cidade: (linhas[0] || {}).cidade });
     } catch {
-        el.innerHTML = _bipErroHtml('Erro ao conectar ao servidor.');
+        _bipMostrarErro(el, 'Erro ao conectar ao servidor.');
     }
 }
 
@@ -94,7 +94,7 @@ async function _bipBuscarCodigo(codigo) {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         const data = await res.json();
-        if (!res.ok) { el.innerHTML = _bipErroHtml(data.error || 'Código não encontrado'); return; }
+        if (!res.ok) { _bipMostrarErro(el, data.error || 'Código não encontrado'); return; }
 
         // Backend detectou que era CEP, não barcode
         if (data.tipo === 'cep') {
@@ -125,7 +125,7 @@ async function _bipBuscarCodigo(codigo) {
                 </div>
             </div>`;
     } catch {
-        el.innerHTML = _bipErroHtml('Erro ao conectar ao servidor.');
+        _bipMostrarErro(el, 'Erro ao conectar ao servidor.');
     }
 }
 
@@ -141,6 +141,34 @@ function _bipErroHtml(msg) {
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
         ${msg}
     </div>`;
+}
+
+function _bipMostrarErro(el, msg) {
+    el.innerHTML = _bipErroHtml(msg);
+    _bipBeepErro();
+}
+
+function _bipBeepErro() {
+    try {
+        const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+        const t    = ctx.currentTime;
+
+        // Dois beeps descendentes — padrão de erro de leitor
+        [[0, 440, 0.18], [0.22, 300, 0.18]].forEach(([inicio, freq, dur]) => {
+            const osc  = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t + inicio);
+            gain.gain.setValueAtTime(0.4, t + inicio);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + inicio + dur);
+            osc.start(t + inicio);
+            osc.stop(t + inicio + dur);
+        });
+
+        setTimeout(() => ctx.close(), 600);
+    } catch (_) {}
 }
 
 async function _bipSincronizarCeps() {
