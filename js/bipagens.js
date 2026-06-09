@@ -109,21 +109,33 @@ async function _bipBuscarCodigo(codigo) {
 
         _bipRegistrar(codigo, data);
 
+        const temEnt  = !!data.entregador;
+        const entNome = data.entregador || 'Sem entregador atribuído';
+        const detalhes = [
+            data.cidade                                        ? _bipLinha('Cidade',        data.cidade) : '',
+            data.bairro                                        ? _bipLinha('Bairro',        data.bairro) : '',
+            data.rua                                           ? _bipLinha('Rua',           data.rua) : '',
+            data.sigla                                         ? _bipLinha('Sigla / Rota',  data.sigla, true) : '',
+            data.cep                                           ? _bipLinha('CEP',           _bipFormatCep(data.cep)) : '',
+            data.destinatario && data.transportadora !== 'jt'  ? _bipLinha('Destinatário',  data.destinatario) : '',
+        ].join('');
+
         el.innerHTML = `
-            <div class="bip-result-card" style="border-left:3px solid ${cor}">
-                <div class="bip-result-head" style="background:${cor}0e">
-                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="${cor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    <span class="bip-result-transp" style="background:${cor}1a;color:${cor}">${transpNome}</span>
+            <div class="bip-result-card" style="border-color:${cor}35">
+                <div class="bip-result-head" style="background:${cor}0d">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="${cor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span class="bip-result-transp" style="background:${cor}18;color:${cor}">${transpNome}</span>
                 </div>
-                <div class="bip-result-rows">
-                    ${_bipLinha('Entregador', data.entregador || '⚠ Sem entregador atribuído', !data.entregador)}
-                    ${_bipLinha('Cidade', data.cidade || '—')}
-                    ${data.bairro  ? _bipLinha('Bairro', data.bairro) : ''}
-                    ${data.rua     ? _bipLinha('Rua', data.rua) : ''}
-                    ${data.sigla   ? _bipLinha('Sigla / Rota', data.sigla, true) : ''}
-                    ${data.cep     ? _bipLinha('CEP', _bipFormatCep(data.cep)) : ''}
-                    ${data.destinatario && data.transportadora !== 'jt' ? _bipLinha('Destinatário', data.destinatario) : ''}
+                <div class="bip-result-ent" style="border-color:${cor}20">
+                    <div class="bip-result-ent-avatar" style="background:${cor}15;border-color:${cor}30;color:${cor}">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                    <div>
+                        <div class="bip-result-ent-label">Entregador</div>
+                        <div class="bip-result-ent-nome ${temEnt ? '' : 'sem-ent'}">${entNome}</div>
+                    </div>
                 </div>
+                ${detalhes ? `<div class="bip-result-rows">${detalhes}</div>` : ''}
             </div>`;
     } catch {
         _bipMostrarErro(el, 'Erro ao conectar ao servidor.');

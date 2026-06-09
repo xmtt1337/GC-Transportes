@@ -1786,28 +1786,50 @@ body {
 
 /* Result card */
 .bip-result-card {
-    border-radius: 14px; overflow: hidden;
+    border-radius: 16px; overflow: hidden;
     border: 1px solid rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.02);
+    background: rgba(10,15,24,0.95);
 }
 .bip-result-head {
-    padding: 13px 18px 11px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px 9px;
+    border-bottom: 1px solid rgba(255,255,255,0.045);
+    display: flex; align-items: center; gap: 9px;
 }
 .bip-result-transp {
-    font-size: 12px; font-weight: 700; letter-spacing: .03em;
-    padding: 4px 12px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; letter-spacing: .05em;
+    padding: 3px 10px; border-radius: 20px; text-transform: uppercase;
 }
-.bip-result-rows { padding: 2px 18px 8px; }
+/* ── Bloco do entregador (destaque) ── */
+.bip-result-ent {
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.045);
+    display: flex; align-items: center; gap: 14px;
+}
+.bip-result-ent-avatar {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    border: 1.5px solid; display: flex; align-items: center; justify-content: center;
+}
+.bip-result-ent-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .1em; color: #2e4a64; margin-bottom: 3px;
+}
+.bip-result-ent-nome {
+    font-size: 20px; font-weight: 800; color: #f1f5f9;
+    letter-spacing: -0.4px; line-height: 1.15;
+}
+.bip-result-ent-nome.sem-ent {
+    font-size: 14px; font-weight: 500; color: #fb923c;
+}
+/* ── Detalhes abaixo ── */
+.bip-result-rows { padding: 4px 18px 10px; }
 .bip-result-row {
     display: flex; justify-content: space-between; align-items: baseline;
-    gap: 12px; padding: 8px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    gap: 12px; padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.035);
 }
 .bip-result-row:last-child { border-bottom: none; }
-.bip-result-lbl { font-size: 12px; color: #4a6a8a; font-weight: 500; white-space: nowrap; }
-.bip-result-val { font-size: 14px; font-weight: 600; color: #e2e8f0; text-align: right; }
+.bip-result-lbl { font-size: 11px; color: #2e4a64; font-weight: 500; white-space: nowrap; }
+.bip-result-val { font-size: 13px; font-weight: 600; color: #c8d8ec; text-align: right; }
 .bip-result-val.warn { color: #fb923c; }
 .bip-result-val.accent { color: #fb923c; }
 
