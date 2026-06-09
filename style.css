@@ -1820,6 +1820,9 @@ body {
 .bip-result-ent-nome.sem-ent {
     font-size: 14px; font-weight: 500; color: #fb923c;
 }
+.bip-result-ent-sigla {
+    font-size: 11px; color: #3a5a7a; margin-top: 3px; font-weight: 500;
+}
 /* ── Detalhes abaixo ── */
 .bip-result-rows { padding: 4px 18px 10px; }
 .bip-result-row {
