@@ -15,6 +15,14 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     document.querySelector(".username").innerText  = displayName;
     document.getElementById("welcome-name").innerText = displayName;
 
+    if (role === "user") {
+        const trigger = document.getElementById("username-trigger");
+        if (trigger) {
+            trigger.classList.add("perfil-trigger");
+            trigger.onclick = (e) => abrirPerfilCard(e);
+        }
+    }
+
     const show = (id) => { const el = document.getElementById(id); if (el) el.style.display = ""; };
     const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = "none"; };
 
