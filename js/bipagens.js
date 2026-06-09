@@ -112,12 +112,11 @@ async function _bipBuscarCodigo(codigo) {
         const temEnt  = !!data.entregador;
         const entNome = data.entregador || 'Sem entregador atribuído';
         const detalhes = [
-            data.cidade                                        ? _bipLinha('Cidade',        data.cidade) : '',
-            data.bairro                                        ? _bipLinha('Bairro',        data.bairro) : '',
-            data.rua                                           ? _bipLinha('Rua',           data.rua) : '',
-            data.sigla                                         ? _bipLinha('Sigla / Rota',  data.sigla, true) : '',
-            data.cep                                           ? _bipLinha('CEP',           _bipFormatCep(data.cep)) : '',
-            data.destinatario && data.transportadora !== 'jt'  ? _bipLinha('Destinatário',  data.destinatario) : '',
+            data.cidade                                        ? _bipLinha('Cidade',       data.cidade) : '',
+            data.bairro                                        ? _bipLinha('Bairro',       data.bairro) : '',
+            data.rua                                           ? _bipLinha('Rua',          data.rua) : '',
+            data.cep                                           ? _bipLinha('CEP',          _bipFormatCep(data.cep)) : '',
+            data.destinatario && data.transportadora !== 'jt'  ? _bipLinha('Destinatário', data.destinatario) : '',
         ].join('');
 
         el.innerHTML = `
@@ -133,6 +132,7 @@ async function _bipBuscarCodigo(codigo) {
                     <div>
                         <div class="bip-result-ent-label">Entregador</div>
                         <div class="bip-result-ent-nome ${temEnt ? '' : 'sem-ent'}">${entNome}</div>
+                        ${data.sigla ? `<div class="bip-result-ent-sigla">${data.sigla}</div>` : ''}
                     </div>
                 </div>
                 ${detalhes ? `<div class="bip-result-rows">${detalhes}</div>` : ''}
