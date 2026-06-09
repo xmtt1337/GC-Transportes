@@ -304,19 +304,29 @@ function _bipRenderCepCards(linhas) {
     return linhas.map(d => {
         const cor        = _bipCorTransp(d.transportadora);
         const transpNome = _TRANSP_NOMES[d.transportadora] || d.transportadora || '—';
+        const temEnt     = !!d.entregador;
+        const detalhes   = [
+            d.cidade ? _bipLinha('Cidade', d.cidade) : '',
+            d.bairro ? _bipLinha('Bairro', d.bairro) : '',
+            d.rua    ? _bipLinha('Rua',    d.rua)    : '',
+        ].join('');
         return `
-        <div class="bip-result-card" style="border-left:3px solid ${cor};margin-bottom:10px">
-            <div class="bip-result-head" style="background:${cor}0e">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="${cor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <span class="bip-result-transp" style="background:${cor}1a;color:${cor}">${transpNome}</span>
+        <div class="bip-result-card" style="border-color:${cor}35;margin-bottom:10px">
+            <div class="bip-result-head" style="background:${cor}0d">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="${cor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span class="bip-result-transp" style="background:${cor}18;color:${cor}">${transpNome}</span>
             </div>
-            <div class="bip-result-rows">
-                ${_bipLinha('Entregador', d.entregador || '⚠ Sem entregador atribuído', !d.entregador)}
-                ${_bipLinha('Cidade', d.cidade || '—')}
-                ${d.bairro ? _bipLinha('Bairro', d.bairro) : ''}
-                ${d.rua    ? _bipLinha('Rua', d.rua) : ''}
-                ${d.sigla  ? _bipLinha('Sigla / Rota', d.sigla, true) : ''}
+            <div class="bip-result-ent" style="border-color:${cor}20">
+                <div class="bip-result-ent-avatar" style="background:${cor}15;border-color:${cor}30;color:${cor}">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div>
+                    <div class="bip-result-ent-label">Entregador</div>
+                    <div class="bip-result-ent-nome ${temEnt ? '' : 'sem-ent'}">${d.entregador || 'Sem entregador atribuído'}</div>
+                    ${d.sigla ? `<div class="bip-result-ent-sigla">${d.sigla}</div>` : ''}
+                </div>
             </div>
+            ${detalhes ? `<div class="bip-result-rows">${detalhes}</div>` : ''}
         </div>`;
     }).join('');
 }
