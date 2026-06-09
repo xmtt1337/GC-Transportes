@@ -1821,7 +1821,7 @@ body {
     font-size: 14px; font-weight: 500; color: #fb923c;
 }
 .bip-result-ent-sigla {
-    font-size: 13px; color: #f1f5f9; margin-top: 3px; font-weight: 500;
+    font-size: 13px; color: #ffffff !important; margin-top: 3px; font-weight: 600;
 }
 /* ── Detalhes abaixo ── */
 .bip-result-rows { padding: 4px 18px 10px; }
