@@ -126,16 +126,6 @@ function _emBreve(event) {
     mostrarTela("tela-em-breve");
 }
 
-// ───── CONFERÊNCIAS ─────
-const _TRANSP_LABELS = { loggi: "Loggi", jt: "J&T", anjun: "Anjun", imile: "Imile", shopee: "Shopee" };
-
-function abrirConferencias(event, transportadora) {
-    if (event) event.preventDefault();
-    const label = _TRANSP_LABELS[transportadora] || transportadora;
-    document.getElementById("titulo-pagina").innerText = "Conferências — " + label;
-    document.getElementById("conf-transp-titulo").innerText = "Conferências — " + label;
-    mostrarTela("tela-conferencias");
-}
 
 // ───── EXTRAVIOS CARDS ─────
 function _renderExtravios(lista, containerId, showWa) {
