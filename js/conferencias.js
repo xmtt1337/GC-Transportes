@@ -78,7 +78,10 @@ async function _confLerGrid(file) {
                 const data = new Uint8Array(e.target.result);
                 let wb;
                 if (file.name.toLowerCase().endsWith('.csv')) {
-                    const text = new TextDecoder('utf-8').decode(data);
+                    // Detecta BOM UTF-8 (EF BB BF); sem BOM assume Windows-1252 (padrão Loggi/BR)
+                    const hasUtf8Bom = data[0] === 0xEF && data[1] === 0xBB && data[2] === 0xBF;
+                    const encoding   = hasUtf8Bom ? 'utf-8' : 'windows-1252';
+                    const text       = new TextDecoder(encoding).decode(data);
                     wb = XLSX.read(text, { type: 'string' });
                 } else {
                     wb = XLSX.read(data, { type: 'array', raw: false });
