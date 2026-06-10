@@ -3,19 +3,22 @@
 let _confTransp        = null;
 let _confChartInstance = null;
 let _confGridPendente  = null;
+// Mapa cidade → [codigos pendentes] montado no cliente
+let _confPendentesPorCidade = {};
 
 const _CONF_NOMES = { loggi: 'Loggi', jt: 'J&T', anjun: 'Anjun', imile: 'Imile', shopee: 'Shopee' };
 const _CONF_CORES = { loggi: '#12A5E8', jt: '#EF4444', anjun: '#22C55E', imile: '#9333EA', shopee: '#F97316' };
 
 function abrirConferencias(event, transportadora) {
     if (event) event.preventDefault();
-    _confTransp       = transportadora;
-    _confGridPendente = null;
+    _confTransp              = transportadora;
+    _confGridPendente        = null;
+    _confPendentesPorCidade  = {};
 
     const label = _CONF_NOMES[transportadora] || transportadora;
-    document.getElementById('titulo-pagina').innerText    = 'Conferências — ' + label;
+    document.getElementById('titulo-pagina').innerText      = 'Conferências — ' + label;
     document.getElementById('conf-transp-titulo').innerText = label;
-    document.getElementById('conf-file-input').value       = '';
+    document.getElementById('conf-file-input').value        = '';
     document.getElementById('conf-status').innerHTML        = '';
     document.getElementById('conf-resultado').style.display = 'none';
     document.getElementById('conf-empty-msg').style.display = '';
@@ -173,6 +176,19 @@ async function _confAnalisar(grid, barIdx, cidIdx) {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erro ao analisar');
+
+        // Monta mapa de pendentes por cidade usando os códigos expedidos devolvidos pelo backend
+        const expedidosSet = new Set(
+            (data.expedidos_codigos || []).map(c => String(c).toUpperCase())
+        );
+        _confPendentesPorCidade = {};
+        for (const p of pacotes) {
+            if (!expedidosSet.has(p.codigo.toUpperCase())) {
+                if (!_confPendentesPorCidade[p.cidade]) _confPendentesPorCidade[p.cidade] = [];
+                _confPendentesPorCidade[p.cidade].push(p.codigo);
+            }
+        }
+
         status.innerHTML = '';
         _confRenderResultado(data);
     } catch (err) {
@@ -188,7 +204,7 @@ function _confRenderResultado(data) {
     const pct     = total_chegaram > 0 ? Math.round((total_expedido / total_chegaram) * 100) : 0;
     const cor     = _CONF_CORES[_confTransp] || '#3a86ff';
 
-    // Labels do gráfico
+    // Labels do donut
     document.getElementById('conf-pizza-labels').innerHTML = `
         <div style="display:flex;flex-direction:column;gap:10px">
             <div style="display:flex;align-items:center;gap:8px">
@@ -207,7 +223,7 @@ function _confRenderResultado(data) {
             <div style="font-size:12px;color:#64748b">expedido</div>
         </div>`;
 
-    // Gráfico donut
+    // Donut
     if (_confChartInstance) { _confChartInstance.destroy(); _confChartInstance = null; }
     const ctx = document.getElementById('conf-chart').getContext('2d');
     _confChartInstance = new Chart(ctx, {
@@ -228,22 +244,74 @@ function _confRenderResultado(data) {
         }
     });
 
-    // Barras por cidade
+    // Cards por cidade
     document.getElementById('conf-cidades').innerHTML = por_cidade.length
-        ? por_cidade.map(c => {
-            const p = c.chegaram > 0 ? Math.round((c.expedido / c.chegaram) * 100) : 0;
+        ? por_cidade.map((c, idx) => {
+            const p      = c.chegaram > 0 ? Math.round((c.expedido / c.chegaram) * 100) : 0;
+            const nPend  = c.chegaram - c.expedido;
+            const cidId  = 'conf-pend-' + idx;
             return `
-            <div style="margin-bottom:16px">
-                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
-                    <span style="font-size:13px;font-weight:600;color:#e2e8f0">${c.cidade}</span>
-                    <span style="font-size:12px;color:#64748b">${c.expedido.toLocaleString('pt-BR')} / ${c.chegaram.toLocaleString('pt-BR')} &nbsp;·&nbsp; <span style="color:${cor};font-weight:700">${p}%</span></span>
+            <div style="background:rgba(15,25,35,0.5);border:1px solid rgba(58,134,255,0.12);border-radius:14px;padding:16px 18px;margin-bottom:12px">
+
+                <!-- Linha título -->
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+                    <span style="font-size:14px;font-weight:700;color:#e2e8f0">${c.cidade}</span>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                        <span style="font-size:12px;color:#64748b">${c.chegaram.toLocaleString('pt-BR')} recebidos</span>
+                        <span style="font-size:12px;color:#64748b">·</span>
+                        <span style="font-size:12px;color:#e2e8f0;font-weight:600">${c.expedido.toLocaleString('pt-BR')} expedidos</span>
+                        <span style="font-size:13px;font-weight:800;color:${cor}">${p}%</span>
+                    </div>
                 </div>
-                <div style="height:8px;background:rgba(100,116,139,0.18);border-radius:999px;overflow:hidden">
+
+                <!-- Barra de progresso -->
+                <div style="height:9px;background:rgba(100,116,139,0.18);border-radius:999px;overflow:hidden;margin-bottom:10px">
                     <div style="height:100%;width:${p}%;background:${cor};border-radius:999px;transition:width 0.6s ease"></div>
                 </div>
+
+                <!-- Botão pendentes -->
+                ${nPend > 0 ? `
+                <button onclick="_confTogglePendentes('${cidId}','${c.cidade.replace(/'/g,"\\'")}')"
+                    id="btn-${cidId}"
+                    style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1px solid rgba(251,146,60,0.35);background:rgba(251,146,60,0.08);color:#fb923c;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Ver ${nPend.toLocaleString('pt-BR')} pendente${nPend !== 1 ? 's' : ''}
+                </button>
+                <div id="${cidId}" style="display:none;margin-top:10px"></div>
+                ` : `<span style="font-size:12px;color:#22c55e;font-weight:600">✓ Todos expedidos</span>`}
+
             </div>`;
         }).join('')
         : '<div style="color:#64748b;font-size:13px">Nenhuma cidade disponível.</div>';
 
     document.getElementById('conf-resultado').style.display = '';
+}
+
+function _confTogglePendentes(cidId, cidade) {
+    const el  = document.getElementById(cidId);
+    const btn = document.getElementById('btn-' + cidId);
+    if (!el) return;
+
+    if (el.style.display !== 'none') {
+        el.style.display = 'none';
+        return;
+    }
+
+    const pendentes = _confPendentesPorCidade[cidade] || [];
+    if (!pendentes.length) {
+        el.innerHTML = '<div style="color:#64748b;font-size:12px">Nenhum código disponível.</div>';
+    } else {
+        el.innerHTML = `
+            <div style="background:rgba(251,146,60,0.05);border:1px solid rgba(251,146,60,0.18);border-radius:10px;padding:12px 14px;max-height:220px;overflow-y:auto">
+                <div style="font-size:11px;font-weight:700;color:#fb923c;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">
+                    Códigos pendentes — ${cidade}
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    ${pendentes.map(cod =>
+                        `<span style="font-family:monospace;font-size:11.5px;background:rgba(251,146,60,0.1);border:1px solid rgba(251,146,60,0.25);color:#fed7aa;padding:3px 8px;border-radius:6px">${cod}</span>`
+                    ).join('')}
+                </div>
+            </div>`;
+    }
+    el.style.display = '';
 }
