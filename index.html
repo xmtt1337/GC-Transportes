@@ -67,6 +67,24 @@
             <li><a href="#" onclick="_emBreve(event)">Na Rua</a></li>
         </ul>
 
+        <li class="menu-item" data-menu="conferencias" id="menu-conferencias" onclick="toggleMenu(this)">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                <rect x="9" y="3" width="6" height="4" rx="1"/>
+                <path d="M9 12l2 2 4-4"/>
+            </svg>
+            <span class="label">Conferências</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Conferências</span>
+        </li>
+        <ul class="submenu" data-menu="conferencias" id="submenu-conferencias">
+            <li><a href="#" onclick="abrirConferencias(event,'loggi')">Loggi</a></li>
+            <li><a href="#" onclick="abrirConferencias(event,'jt')">J&amp;T</a></li>
+            <li><a href="#" onclick="abrirConferencias(event,'anjun')">Anjun</a></li>
+            <li><a href="#" onclick="abrirConferencias(event,'imile')">Imile</a></li>
+            <li><a href="#" onclick="abrirConferencias(event,'shopee')">Shopee</a></li>
+        </ul>
+
         <li class="menu-item" data-menu="fechamentos" id="menu-fechamentos" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24">
                 <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -139,25 +157,6 @@
             <ul class="sub-submenu" id="subgroup-trampay">
                 <li><a href="#" onclick="abrirEntregadoresTrampay(event)">Entregadores</a></li>
             </ul>
-        </ul>
-
-        
-        <li class="menu-item" data-menu="conferencias" id="menu-conferencias" onclick="toggleMenu(this)">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
-                <rect x="9" y="3" width="6" height="4" rx="1"/>
-                <path d="M9 12l2 2 4-4"/>
-            </svg>
-            <span class="label">Conferências</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">Conferências</span>
-        </li>
-        <ul class="submenu" data-menu="conferencias" id="submenu-conferencias">
-            <li><a href="#" onclick="abrirConferencias(event,'loggi')">Loggi</a></li>
-            <li><a href="#" onclick="abrirConferencias(event,'jt')">J&amp;T</a></li>
-            <li><a href="#" onclick="abrirConferencias(event,'anjun')">Anjun</a></li>
-            <li><a href="#" onclick="abrirConferencias(event,'imile')">Imile</a></li>
-            <li><a href="#" onclick="abrirConferencias(event,'shopee')">Shopee</a></li>
         </ul>
 
         <li class="menu-item" data-menu="extravios" id="menu-extravios" onclick="toggleMenu(this)" style="display:none">
