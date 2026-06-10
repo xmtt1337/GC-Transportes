@@ -3,8 +3,9 @@
 let _confTransp        = null;
 let _confChartInstance = null;
 let _confGridPendente  = null;
-// Mapa cidade → [codigos pendentes] montado no cliente
 let _confPendentesPorCidade = {};
+let _confTodosPacotes  = [];   // todos os pacotes do arquivo
+let _confExpedidosSet  = new Set(); // códigos confirmados como bipados
 
 const _CONF_NOMES = { loggi: 'Loggi', jt: 'J&T', anjun: 'Anjun', imile: 'Imile', shopee: 'Shopee' };
 const _CONF_CORES = { loggi: '#12A5E8', jt: '#EF4444', anjun: '#22C55E', imile: '#9333EA', shopee: '#F97316' };
@@ -14,6 +15,8 @@ function abrirConferencias(event, transportadora) {
     _confTransp              = transportadora;
     _confGridPendente        = null;
     _confPendentesPorCidade  = {};
+    _confTodosPacotes        = [];
+    _confExpedidosSet        = new Set();
 
     const label = _CONF_NOMES[transportadora] || transportadora;
     document.getElementById('titulo-pagina').innerText      = 'Conferências — ' + label;
@@ -177,13 +180,14 @@ async function _confAnalisar(grid, barIdx, cidIdx) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erro ao analisar');
 
-        // Monta mapa de pendentes por cidade usando os códigos expedidos devolvidos pelo backend
-        const expedidosSet = new Set(
+        // Monta mapa de pendentes e salva estado para exports
+        _confTodosPacotes  = pacotes;
+        _confExpedidosSet  = new Set(
             (data.expedidos_codigos || []).map(c => String(c).toUpperCase())
         );
         _confPendentesPorCidade = {};
         for (const p of pacotes) {
-            if (!expedidosSet.has(p.codigo.toUpperCase())) {
+            if (!_confExpedidosSet.has(p.codigo.toUpperCase())) {
                 if (!_confPendentesPorCidade[p.cidade]) _confPendentesPorCidade[p.cidade] = [];
                 _confPendentesPorCidade[p.cidade].push(p.codigo);
             }
@@ -243,6 +247,17 @@ function _confRenderResultado(data) {
             animation: { duration: 700 }
         }
     });
+
+    // Botões de export
+    document.getElementById('conf-export-row').innerHTML = `
+        <button onclick="_confExportarNaRua()" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.08);color:#34d399;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(52,211,153,0.18)'" onmouseout="this.style.background='rgba(52,211,153,0.08)'">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar Na Rua
+        </button>
+        <button onclick="_confExportarNaBase()" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;border:1px solid rgba(251,146,60,0.35);background:rgba(251,146,60,0.08);color:#fb923c;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(251,146,60,0.18)'" onmouseout="this.style.background='rgba(251,146,60,0.08)'">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar Na Base
+        </button>`;
 
     // Cards por cidade
     document.getElementById('conf-cidades').innerHTML = por_cidade.length
@@ -314,4 +329,26 @@ function _confTogglePendentes(cidId, cidade) {
             </div>`;
     }
     el.style.display = '';
+}
+
+// ── Exportações ──────────────────────────────────────────────────────────────
+
+function _confExportarNaRua() {
+    const lista = _confTodosPacotes.filter(p => _confExpedidosSet.has(p.codigo.toUpperCase()));
+    _confExportarXlsx(lista, 'Na Rua');
+}
+
+function _confExportarNaBase() {
+    const lista = _confTodosPacotes.filter(p => !_confExpedidosSet.has(p.codigo.toUpperCase()));
+    _confExportarXlsx(lista, 'Na Base');
+}
+
+function _confExportarXlsx(lista, tipo) {
+    if (!lista.length) { alert('Nenhum pacote para exportar.'); return; }
+    const transp = _CONF_NOMES[_confTransp] || _confTransp;
+    const data   = lista.map(p => ({ 'Código': p.codigo, 'Cidade': p.cidade }));
+    const ws     = XLSX.utils.json_to_sheet(data);
+    const wb     = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, tipo);
+    XLSX.writeFile(wb, `${transp}_${tipo.replace(' ', '_')}.xlsx`);
 }
