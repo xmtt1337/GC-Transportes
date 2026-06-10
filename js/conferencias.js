@@ -56,10 +56,11 @@ async function _confAnexar(input) {
             h.includes('jms')    || h.includes('pedido')   || h.includes('numero')
         );
         const defCid = lower.findIndex(h => h.includes('cidade') || h.includes('city'));
+        const defSts = lower.findIndex(h => h.includes('status'));
 
         if (defBar >= 0) {
             status.innerHTML = '';
-            await _confAnalisar(grid, defBar, defCid);
+            await _confAnalisar(grid, defBar, defCid, defSts);
         } else {
             _confMostrarSeletor(headers, lower);
         }
@@ -99,6 +100,7 @@ function _confMostrarSeletor(headers, lower) {
         h.includes('codigo') || h.includes('tracking')
     );
     const defCid = lower.findIndex(h => h.includes('cidade') || h.includes('city'));
+    const defSts = lower.findIndex(h => h.includes('status'));
 
     const mkOpts = (defIdx, opcional) => {
         const nenhuma = opcional
@@ -124,6 +126,12 @@ function _confMostrarSeletor(headers, lower) {
                         ${mkOpts(defCid, true)}
                     </select>
                 </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <label style="font-size:12px;color:#94a3b8;width:130px;flex-shrink:0">Status</label>
+                    <select id="conf-col-sts" style="flex:1;min-width:150px;background:#0f1923;border:1px solid rgba(58,134,255,0.2);border-radius:7px;color:#e2e8f0;padding:6px 10px;font-size:13px;font-family:inherit">
+                        ${mkOpts(defSts, true)}
+                    </select>
+                </div>
             </div>
             <div style="display:flex;gap:8px;margin-top:14px">
                 <button onclick="_confConfirmarSeletor()" style="padding:9px 20px;border-radius:9px;border:none;background:#3a86ff;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Analisar</button>
@@ -136,10 +144,11 @@ function _confMostrarSeletor(headers, lower) {
 async function _confConfirmarSeletor() {
     const barIdx = parseInt(document.getElementById('conf-col-bar').value);
     const cidIdx = parseInt(document.getElementById('conf-col-cid')?.value ?? -1);
+    const stsIdx = parseInt(document.getElementById('conf-col-sts')?.value ?? -1);
     const erroEl = document.getElementById('conf-seletor-erro');
     if (isNaN(barIdx) || barIdx < 0) { erroEl.innerText = 'Selecione a coluna do código.'; return; }
     document.getElementById('conf-status').innerHTML = '';
-    await _confAnalisar(_confGridPendente, barIdx, cidIdx);
+    await _confAnalisar(_confGridPendente, barIdx, cidIdx, stsIdx);
 }
 
 function _confCancelarSeletor() {
@@ -150,7 +159,7 @@ function _confCancelarSeletor() {
 
 // ── Análise ─────────────────────────────────────────────────────────────────
 
-async function _confAnalisar(grid, barIdx, cidIdx) {
+async function _confAnalisar(grid, barIdx, cidIdx, stsIdx = -1) {
     const status = document.getElementById('conf-status');
 
     const pacotes = [];
@@ -158,8 +167,9 @@ async function _confAnalisar(grid, barIdx, cidIdx) {
         const row    = grid[i];
         const codigo = String(row[barIdx] || '').trim();
         if (!codigo) continue;
-        const cidade = cidIdx >= 0 ? String(row[cidIdx] || '').trim() || 'Não informada' : 'Não informada';
-        pacotes.push({ codigo, cidade });
+        const cidade   = cidIdx >= 0 ? String(row[cidIdx] || '').trim() || 'Não informada' : 'Não informada';
+        const statusPk = stsIdx >= 0 ? String(row[stsIdx] || '').trim() : '';
+        pacotes.push({ codigo, cidade, status: statusPk });
     }
 
     if (!pacotes.length) {
@@ -339,16 +349,24 @@ function _confExportarNaRua() {
 }
 
 function _confExportarNaBase() {
-    const lista = _confTodosPacotes.filter(p => !_confExpedidosSet.has(p.codigo.toUpperCase()));
+    const lista = _confTodosPacotes.filter(p =>
+        !_confExpedidosSet.has(p.codigo.toUpperCase()) &&
+        p.status.toLowerCase().includes('sem tentativa')
+    );
     _confExportarXlsx(lista, 'Na Base');
 }
 
 function _confExportarXlsx(lista, tipo) {
     if (!lista.length) { alert('Nenhum pacote para exportar.'); return; }
-    const transp = _CONF_NOMES[_confTransp] || _confTransp;
-    const data   = lista.map(p => ({ 'Código': p.codigo, 'Cidade': p.cidade }));
-    const ws     = XLSX.utils.json_to_sheet(data);
-    const wb     = XLSX.utils.book_new();
+    const transp    = _CONF_NOMES[_confTransp] || _confTransp;
+    const temStatus = lista.some(p => p.status);
+    const data      = lista.map(p => {
+        const row = { 'Código': p.codigo, 'Cidade': p.cidade };
+        if (temStatus) row['Status'] = p.status;
+        return row;
+    });
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, tipo);
     XLSX.writeFile(wb, `${transp}_${tipo.replace(' ', '_')}.xlsx`);
 }
