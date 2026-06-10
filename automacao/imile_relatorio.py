@@ -18,11 +18,10 @@ from playwright.sync_api import sync_playwright
 # ── Configurações ──────────────────────────────────────────────────────────────
 load_dotenv(Path(__file__).parent / ".env")
 
-IMILE_EMAIL    = os.getenv("IMILE_EMAIL", "")
-IMILE_PASSWORD = os.getenv("IMILE_PASSWORD", "")
-BACKEND_URL    = os.getenv("BACKEND_URL", "").rstrip("/")
-BACKEND_USER   = os.getenv("BACKEND_USER", "")
-BACKEND_PASS   = os.getenv("BACKEND_PASS", "")
+IMILE_EMAIL      = os.getenv("IMILE_EMAIL", "")
+IMILE_PASSWORD   = os.getenv("IMILE_PASSWORD", "")
+BACKEND_URL      = os.getenv("BACKEND_URL", "https://sistema-backend-i4uh.onrender.com")
+AUTOMATION_KEY   = os.getenv("AUTOMATION_KEY", "")
 DOWNLOAD_DIR   = Path(__file__).parent / "downloads"
 DOWNLOAD_DIR.mkdir(exist_ok=True)
 
@@ -46,22 +45,14 @@ def log(msg: str):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
 
-# ── Autenticação no backend ────────────────────────────────────────────────────
-def login_backend() -> str:
-    if not BACKEND_URL or not BACKEND_USER:
-        log("⚠ BACKEND_URL ou BACKEND_USER não configurados no .env")
+def checar_config():
+    erros = []
+    if not IMILE_EMAIL:    erros.append("IMILE_EMAIL")
+    if not IMILE_PASSWORD: erros.append("IMILE_PASSWORD")
+    if not AUTOMATION_KEY: erros.append("AUTOMATION_KEY")
+    if erros:
+        print(f"ERRO: Preencha no .env: {', '.join(erros)}")
         sys.exit(1)
-    log(f"Autenticando no backend ({BACKEND_URL})...")
-    r = requests.post(f"{BACKEND_URL}/login",
-                      json={"username": BACKEND_USER, "password": BACKEND_PASS},
-                      timeout=15)
-    r.raise_for_status()
-    data = r.json()
-    if not data.get("success"):
-        log("⚠ Login no backend falhou — verifique BACKEND_USER e BACKEND_PASS no .env")
-        sys.exit(1)
-    log("  → Login no backend OK.")
-    return data["token"]
 
 
 # ── Passo 1: Login iMile ───────────────────────────────────────────────────────
@@ -301,9 +292,9 @@ def enviar_backend(arquivo: Path, pacotes: list[dict], token: str):
     }
 
     r = requests.post(
-        f"{BACKEND_URL}/alimentar/upload",
+        f"{BACKEND_URL}/automacao/imile-upload",
         json=payload,
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"x-automation-key": AUTOMATION_KEY},
         timeout=60,
     )
 
@@ -320,10 +311,8 @@ def main():
         print("ERRO: Preencha IMILE_EMAIL e IMILE_PASSWORD no arquivo .env")
         sys.exit(1)
 
+    checar_config()
     log(f"=== iMile → Backend | {datetime.now().strftime('%d/%m/%Y %H:%M')} ===")
-
-    # Login no backend primeiro (falha rápido se credenciais erradas)
-    token = login_backend()
 
     # Automação no portal iMile
     with sync_playwright() as p:
@@ -349,7 +338,7 @@ def main():
         log("Nenhum pacote encontrado no arquivo. Verifique as colunas em COLUNAS no topo do script.")
         return
 
-    enviar_backend(arquivo, pacotes, token)
+    enviar_backend(arquivo, pacotes, AUTOMATION_KEY)
     log("=== Concluído ===")
 
 
