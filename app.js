@@ -19,12 +19,14 @@ fetch(API + "/perfil", {
     document.getElementById("welcome-name").innerText = displayName;
 
     if (role === "entregador") {
-        document.getElementById("menu-operacao").style.display  = "none";
-        document.getElementById("submenu-operacao").style.display  = "none";
-        document.getElementById("menu-pedidos").style.display   = "none";
-        document.getElementById("submenu-pedidos").style.display   = "none";
-        document.getElementById("menu-fechamentos").style.display  = "";
-        document.getElementById("submenu-fechamentos").style.display  = "";
+        document.getElementById("menu-operacao").style.display      = "none";
+        document.getElementById("submenu-operacao").style.display      = "none";
+        document.getElementById("menu-pedidos").style.display       = "none";
+        document.getElementById("submenu-pedidos").style.display       = "none";
+        document.getElementById("menu-fechamentos").style.display    = "";
+        document.getElementById("submenu-fechamentos").style.display    = "";
+        document.getElementById("menu-conferencias").style.display   = "none";
+        document.getElementById("submenu-conferencias").style.display   = "none";
         document.getElementById("welcome-name").innerText = displayName.split(" ")[0];
     }
 
@@ -122,6 +124,17 @@ function mostrarTela(id) {
 function _emBreve(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-em-breve");
+}
+
+// ───── CONFERÊNCIAS ─────
+const _TRANSP_LABELS = { loggi: "Loggi", jt: "J&T", anjun: "Anjun", imile: "Imile", shopee: "Shopee" };
+
+function abrirConferencias(event, transportadora) {
+    if (event) event.preventDefault();
+    const label = _TRANSP_LABELS[transportadora] || transportadora;
+    document.getElementById("titulo-pagina").innerText = "Conferências — " + label;
+    document.getElementById("conf-transp-titulo").innerText = "Conferências — " + label;
+    mostrarTela("tela-conferencias");
 }
 
 // ───── EXTRAVIOS CARDS ─────
