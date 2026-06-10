@@ -4,8 +4,9 @@ let _confTransp        = null;
 let _confChartInstance = null;
 let _confGridPendente  = null;
 let _confPendentesPorCidade = {};
-let _confTodosPacotes  = [];   // todos os pacotes do arquivo
-let _confExpedidosSet  = new Set(); // códigos confirmados como bipados
+let _confTodosPacotes  = [];
+let _confExpedidosSet  = new Set();
+let _confTipoExport    = null; // 'na_rua' | 'na_base'
 
 const _CONF_NOMES = { loggi: 'Loggi', jt: 'J&T', anjun: 'Anjun', imile: 'Imile', shopee: 'Shopee' };
 const _CONF_CORES = { loggi: '#12A5E8', jt: '#EF4444', anjun: '#22C55E', imile: '#9333EA', shopee: '#F97316' };
@@ -17,11 +18,13 @@ function abrirConferencias(event, transportadora) {
     _confPendentesPorCidade  = {};
     _confTodosPacotes        = [];
     _confExpedidosSet        = new Set();
+    _confTipoExport          = null;
 
     const label = _CONF_NOMES[transportadora] || transportadora;
     document.getElementById('titulo-pagina').innerText      = 'Conferências — ' + label;
     document.getElementById('conf-transp-titulo').innerText = label;
-    document.getElementById('conf-file-input').value        = '';
+    document.getElementById('conf-file-na-rua').value       = '';
+    document.getElementById('conf-file-na-base').value      = '';
     document.getElementById('conf-status').innerHTML        = '';
     document.getElementById('conf-resultado').style.display = 'none';
     document.getElementById('conf-empty-msg').style.display = '';
@@ -32,6 +35,11 @@ function abrirConferencias(event, transportadora) {
 }
 
 // ── Leitura do arquivo ──────────────────────────────────────────────────────
+
+function _confAnexarTipo(input, tipo) {
+    _confTipoExport = tipo;
+    _confAnexar(input);
+}
 
 async function _confAnexar(input) {
     const file = input.files[0];
@@ -156,8 +164,10 @@ async function _confConfirmarSeletor() {
 
 function _confCancelarSeletor() {
     _confGridPendente = null;
-    document.getElementById('conf-status').innerHTML = '';
-    document.getElementById('conf-file-input').value = '';
+    _confTipoExport   = null;
+    document.getElementById('conf-status').innerHTML     = '';
+    document.getElementById('conf-file-na-rua').value    = '';
+    document.getElementById('conf-file-na-base').value   = '';
 }
 
 // ── Análise ─────────────────────────────────────────────────────────────────
@@ -208,6 +218,11 @@ async function _confAnalisar(grid, barIdx, cidIdx, stsIdx = -1) {
 
         status.innerHTML = '';
         _confRenderResultado(data);
+        // Export automático conforme botão clicado
+        if (_confTipoExport === 'na_rua')  _confExportarNaRua();
+        if (_confTipoExport === 'na_base') _confExportarNaBase();
+        document.getElementById('conf-file-na-rua').value  = '';
+        document.getElementById('conf-file-na-base').value = '';
     } catch (err) {
         status.innerHTML = `<div style="color:#ef4444;font-size:13px">${err.message}</div>`;
     }
