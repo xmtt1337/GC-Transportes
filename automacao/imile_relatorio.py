@@ -18,10 +18,9 @@ from playwright.sync_api import sync_playwright
 # ── Configurações ──────────────────────────────────────────────────────────────
 load_dotenv(Path(__file__).parent / ".env")
 
-IMILE_EMAIL      = os.getenv("IMILE_EMAIL", "")
-IMILE_PASSWORD   = os.getenv("IMILE_PASSWORD", "")
-BACKEND_URL      = os.getenv("BACKEND_URL", "https://sistema-backend-i4uh.onrender.com")
-AUTOMATION_KEY   = os.getenv("AUTOMATION_KEY", "")
+IMILE_EMAIL    = os.getenv("IMILE_EMAIL", "")
+IMILE_PASSWORD = os.getenv("IMILE_PASSWORD", "")
+BACKEND_URL    = "https://sistema-backend-i4uh.onrender.com"
 DOWNLOAD_DIR   = Path(__file__).parent / "downloads"
 DOWNLOAD_DIR.mkdir(exist_ok=True)
 
@@ -49,7 +48,6 @@ def checar_config():
     erros = []
     if not IMILE_EMAIL:    erros.append("IMILE_EMAIL")
     if not IMILE_PASSWORD: erros.append("IMILE_PASSWORD")
-    if not AUTOMATION_KEY: erros.append("AUTOMATION_KEY")
     if erros:
         print(f"ERRO: Preencha no .env: {', '.join(erros)}")
         sys.exit(1)
@@ -274,7 +272,7 @@ def parsear_pacotes(arquivo: Path) -> list[dict]:
 
 
 # ── Passo 6: Enviar ao backend ─────────────────────────────────────────────────
-def enviar_backend(arquivo: Path, pacotes: list[dict], token: str):
+def enviar_backend(arquivo: Path, pacotes: list[dict]):
     log("Enviando para o backend...")
 
     with open(arquivo, "rb") as f:
@@ -294,7 +292,7 @@ def enviar_backend(arquivo: Path, pacotes: list[dict], token: str):
     r = requests.post(
         f"{BACKEND_URL}/automacao/imile-upload",
         json=payload,
-        headers={"x-automation-key": AUTOMATION_KEY},
+        headers={},
         timeout=60,
     )
 
@@ -338,7 +336,7 @@ def main():
         log("Nenhum pacote encontrado no arquivo. Verifique as colunas em COLUNAS no topo do script.")
         return
 
-    enviar_backend(arquivo, pacotes, AUTOMATION_KEY)
+    enviar_backend(arquivo, pacotes)
     log("=== Concluído ===")
 
 
