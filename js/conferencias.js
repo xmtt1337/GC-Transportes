@@ -84,9 +84,15 @@ async function _confLerGrid(file) {
                 const data = new Uint8Array(e.target.result);
                 let wb;
                 if (file.name.toLowerCase().endsWith('.csv')) {
-                    const hasUtf8Bom = data[0] === 0xEF && data[1] === 0xBB && data[2] === 0xBF;
-                    const encoding   = hasUtf8Bom ? 'utf-8' : 'windows-1252';
-                    const text       = new TextDecoder(encoding).decode(data);
+                    // Tenta UTF-8 (com ou sem BOM); se inválido, usa windows-1252
+                    let text;
+                    try {
+                        text = new TextDecoder('utf-8', { fatal: true }).decode(data);
+                    } catch (_) {
+                        text = new TextDecoder('windows-1252').decode(data);
+                    }
+                    // Remove BOM se presente
+                    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
                     wb = XLSX.read(text, { type: 'string' });
                 } else {
                     wb = XLSX.read(data, { type: 'array', raw: false });
@@ -187,6 +193,13 @@ function _confCancelarSeletor() {
 
 // ── Processamento do grid ────────────────────────────────────────────────────
 
+function _confNormalizarCidade(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return 'Não informada';
+    // Title case: cada palavra com inicial maiúscula, resto minúsculo
+    return s.toLowerCase().replace(/(?:^|\s)\S/g, c => c.toUpperCase());
+}
+
 function _confProcessarGrid(grid, barIdx, cidIdx, stsIdx, entIdx, tipo) {
     const pacotes = [];
     for (let i = 1; i < grid.length; i++) {
@@ -195,7 +208,7 @@ function _confProcessarGrid(grid, barIdx, cidIdx, stsIdx, entIdx, tipo) {
         if (!codigo) continue;
         pacotes.push({
             codigo,
-            cidade:     cidIdx >= 0 ? String(row[cidIdx] || '').trim() || 'Não informada' : 'Não informada',
+            cidade:     cidIdx >= 0 ? _confNormalizarCidade(row[cidIdx]) : 'Não informada',
             status:     stsIdx >= 0 ? String(row[stsIdx] || '').trim() : '',
             entregador: entIdx >= 0 ? String(row[entIdx] || '').trim() : '',
         });
