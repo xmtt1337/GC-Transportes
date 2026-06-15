@@ -80,10 +80,21 @@ function _carregarPainel() {
 
         // Banner
         const banner = document.getElementById("pb-banner");
+        const temAnt = d.antecipado_num > 0;
         banner.className = "painel-banner " + (d.total_receber_num < 0 ? "banner-negativo" : "banner-positivo");
-        document.getElementById("pb-total-receber").innerText   = d.total_receber;
+        document.getElementById("pb-eyebrow").innerText = temAnt ? "Valor líquido após antecipação" : "Valor líquido a receber";
+        document.getElementById("pb-total-receber").innerText = temAnt ? d.liquido : d.total_receber;
+        const antRow = document.getElementById("pb-ant-row");
+        if (temAnt) {
+            antRow.style.display = "";
+            antRow.innerHTML = `<span style="color:rgba(255,255,255,0.55);font-size:12px">Bruto: ${d.total_receber}</span>&nbsp;&nbsp;<span style="color:#f97316;font-size:12px">− Antecipado: ${d.antecipado}</span>`;
+        } else {
+            antRow.style.display = "none";
+        }
         document.getElementById("pb-total-entregues").innerText = d.total_entregues;
-        document.getElementById("pb-pagamento").innerText = "Pagamento previsto: " + _calcularDataPagamento(_fMes, _fAno, _fQuinzena) + " (exceto quem antecipou)";
+        document.getElementById("pb-pagamento").innerText = temAnt
+            ? "Antecipação pendente — pagamento do saldo em " + _calcularDataPagamento(_fMes, _fAno, _fQuinzena)
+            : "Pagamento previsto: " + _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
 
         // Ajustes
         document.getElementById("paj-adicional").innerText    = d.adicional;
