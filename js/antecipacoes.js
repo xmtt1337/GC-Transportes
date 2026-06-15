@@ -90,13 +90,11 @@ function _antCarregarHistorico() {
             const data    = r.data_solicitacao ? new Date(r.data_solicitacao).toLocaleDateString("pt-BR") : "—";
             const vNF     = r.valor_nf ? moedaJS(parseFloat(r.valor_nf)) : "—";
             const vAnt    = r.valor_antecipado ? moedaJS(parseFloat(r.valor_antecipado)) : "—";
-            const badge   = _antStatusBadge(r.status);
             return `<tr>
                 <td>${periodo}</td>
                 <td>${vNF}</td>
                 <td style="color:#3a86ff;font-weight:600">${vAnt}</td>
                 <td>${r.numero_nf || "—"}</td>
-                <td>${badge}</td>
                 <td style="color:#64748b;font-size:12px">${data}</td>
             </tr>`;
         }).join("");

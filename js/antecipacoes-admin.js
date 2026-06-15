@@ -43,17 +43,15 @@ function buscarAntecipacoes() {
         document.getElementById("adm-ant-empty").style.display = "";
         return;
     }
-    const mes     = document.getElementById("adm-ant-mes").value;
-    const ano     = document.getElementById("adm-ant-ano").value;
-    const status  = document.getElementById("adm-ant-status").value;
+    const mes = document.getElementById("adm-ant-mes").value;
+    const ano = document.getElementById("adm-ant-ano").value;
     _admAntMes = parseInt(mes); _admAntAno = parseInt(ano);
 
     const empty  = document.getElementById("adm-ant-empty");
     const result = document.getElementById("adm-ant-resultado");
     empty.innerText = "Carregando..."; empty.style.display = ""; result.style.display = "none";
 
-    let url = `${API}/admin/antecipacoes?mes=${mes}&ano=${ano}&quinzena=${_admAntQuinzena}`;
-    if (status) url += `&status=${status}`;
+    const url = `${API}/admin/antecipacoes?mes=${mes}&ano=${ano}&quinzena=${_admAntQuinzena}`;
 
     fetch(url, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
@@ -87,7 +85,6 @@ function _renderAdmAntTabela(rows) {
             <td>${r.numero_nf || "—"}</td>
             <td style="font-size:12px;color:#94a3b8">${cnpj}</td>
             <td style="font-size:12px;color:#94a3b8">${r.telefone || "—"}</td>
-            <td>${badge}</td>
         </tr>`;
     }).join("");
 }
@@ -115,9 +112,6 @@ function _exportarAntecipacaoXlsx() {
         "Nº NF":            r.numero_nf || "",
         "CNPJ":             r.cnpj ? r.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5") : "",
         "Telefone":         r.telefone || "",
-        "Status":           r.status || "",
-        "Data Aprovação":   r.data_aprovacao ? new Date(r.data_aprovacao).toLocaleDateString("pt-BR") : "",
-        "Aprovado Por":     r.aprovado_por || "",
         "Observação":       r.observacao || "",
     }));
     const ws = XLSX.utils.json_to_sheet(data);
