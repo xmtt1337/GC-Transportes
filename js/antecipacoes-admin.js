@@ -72,25 +72,22 @@ function buscarAntecipacoes() {
 function _renderAdmAntTabela(rows) {
     const MESES = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
     document.getElementById("adm-ant-tbody").innerHTML = rows.map(r => {
-        const data   = r.data_solicitacao ? new Date(r.data_solicitacao).toLocaleDateString("pt-BR") : "—";
-        const vNF    = r.valor_nf ? moedaJS(parseFloat(r.valor_nf)) : "—";
-        const vAnt   = r.valor_antecipado ? moedaJS(parseFloat(r.valor_antecipado)) : "—";
-        const qz     = `${r.quinzena}ª Qz ${MESES[r.mes]}/${r.ano}`;
-        const badge  = _admAntBadge(r.status);
-        const acoes  = _admAntAcoes(r);
-        const cnpj   = r.cnpj ? r.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5") : "—";
+        const data  = r.data_solicitacao ? new Date(r.data_solicitacao).toLocaleDateString("pt-BR") : "—";
+        const vNF   = r.valor_nf ? moedaJS(parseFloat(r.valor_nf)) : "—";
+        const vAnt  = r.valor_antecipado ? moedaJS(parseFloat(r.valor_antecipado)) : "—";
+        const qz    = `${r.quinzena}ª Qz ${MESES[r.mes]}/${r.ano}`;
+        const badge = _admAntBadge(r.status);
+        const cnpj  = r.cnpj ? r.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5") : "—";
         return `<tr>
             <td style="font-size:12px;color:#64748b">${data}</td>
             <td class="adm-nf-entregador">${r.usuario_nome || "—"}</td>
-            <td>${qz}</td>
+            <td style="color:#94a3b8">${qz}</td>
             <td>${vNF}</td>
             <td style="color:#3a86ff;font-weight:600">${vAnt}</td>
             <td>${r.numero_nf || "—"}</td>
             <td style="font-size:12px;color:#94a3b8">${cnpj}</td>
             <td style="font-size:12px;color:#94a3b8">${r.telefone || "—"}</td>
             <td>${badge}</td>
-            <td style="font-size:12px;color:#64748b">${r.aprovado_por || "—"}</td>
-            <td>${acoes}</td>
         </tr>`;
     }).join("");
 }
@@ -104,49 +101,6 @@ function _admAntBadge(status) {
     };
     const s = map[status] || { color: "#64748b", bg: "rgba(100,116,139,0.1)", label: status };
     return `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:${s.color};background:${s.bg}">${s.label}</span>`;
-}
-
-function _admAntAcoes(r) {
-    if (r.status === "pendente") {
-        return `
-            <div style="display:flex;gap:6px">
-                <button onclick="_admAntAprovar(${r.id})" style="padding:5px 12px;border-radius:7px;border:none;background:rgba(34,197,94,0.12);color:#22c55e;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Aprovar</button>
-                <button onclick="_admAntRejeitar(${r.id})" style="padding:5px 12px;border-radius:7px;border:none;background:rgba(239,68,68,0.1);color:#ef4444;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Rejeitar</button>
-            </div>`;
-    }
-    if (r.status === "aprovada") {
-        return `<button onclick="_admAntMarcarPaga(${r.id})" style="padding:5px 12px;border-radius:7px;border:none;background:rgba(58,134,255,0.1);color:#3a86ff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Marcar Paga</button>`;
-    }
-    return `<span style="font-size:12px;color:#4a6a8a">—</span>`;
-}
-
-function _admAntAprovar(id) {
-    if (!confirm("Aprovar esta solicitação de antecipação?")) return;
-    _admAntPatch(id, { status: "aprovada" });
-}
-
-function _admAntRejeitar(id) {
-    const obs = prompt("Motivo da rejeição (opcional):");
-    if (obs === null) return;
-    _admAntPatch(id, { status: "rejeitada", observacao: obs || null });
-}
-
-function _admAntMarcarPaga(id) {
-    if (!confirm("Marcar esta antecipação como paga?")) return;
-    _admAntPatch(id, { status: "paga" });
-}
-
-function _admAntPatch(id, body) {
-    fetch(`${API}/admin/antecipacoes/${id}`, {
-        method: "PATCH",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-    }).then(r => r.json())
-    .then(d => {
-        if (d.error) { alert(d.error); return; }
-        buscarAntecipacoes();
-    })
-    .catch(() => alert("Erro ao atualizar solicitação."));
 }
 
 function _exportarAntecipacaoXlsx() {
