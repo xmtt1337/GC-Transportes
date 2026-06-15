@@ -1207,7 +1207,7 @@
                     <!-- Formulário -->
                     <div id="ant-form-wrap" style="background:rgba(15,25,35,0.5);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:20px">
                         <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:16px">Solicitar Antecipação</div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+                        <div class="ant-form-grid">
                             <div>
                                 <label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:5px">CNPJ *</label>
                                 <input type="text" id="ant-cnpj" maxlength="18" placeholder="00.000.000/0000-00"
@@ -1221,10 +1221,10 @@
                                     style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit;box-sizing:border-box">
                             </div>
                         </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+                        <div class="ant-form-grid">
                             <div>
                                 <label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:5px">Valor a antecipar *</label>
-                                <div style="display:flex;gap:8px;align-items:center">
+                                <div class="ant-valor-row">
                                     <input type="number" id="ant-valor" min="0.01" step="0.01" placeholder="0,00"
                                         style="flex:1;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit">
                                     <button onclick="_antPreencherValorTotal()" style="padding:8px 12px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap" title="Solicitar valor total da NF">Valor total</button>
