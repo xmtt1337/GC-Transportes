@@ -1882,86 +1882,142 @@ body {
 
 @media (max-width: 680px) {
 
-    /* ── Formulário de antecipação ── */
+    /* ════ FECHAMENTO — PAINEL ENTREGADOR ════ */
+
+    /* fech-body: menos padding no topo em mobile */
+    .fech-body { padding-top: 14px; }
+
+    /* Banner: mais compacto e legível */
+    .painel-banner {
+        flex-direction: column; align-items: stretch;
+        gap: 0; padding: 18px 16px; border-radius: 14px;
+        margin-bottom: 14px;
+    }
+    .pb-valor { font-size: 32px; letter-spacing: -0.5px; }
+    .pb-eyebrow { font-size: 10px; margin-bottom: 6px; }
+    .pb-sub { font-size: 11px; margin-top: 6px; }
+    .pb-divider { display: none; }
+    .pb-right {
+        text-align: left; min-width: unset; padding: 12px 0 0;
+        margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .pb-ent-valor { font-size: 26px; line-height: 1; }
+    .pb-ent-label { text-align: left; font-size: 10px; margin-bottom: 6px; }
+    .pb-ent-sub   { text-align: left; font-size: 11px; margin-top: 5px; }
+    .pb-pagamento { font-size: 11px; margin-top: 5px; margin-bottom: 12px; }
+
+    /* Ajustes: 2 colunas compactas */
+    .painel-ajustes {
+        grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;
+    }
+    .paj-card  { padding: 11px 10px; border-radius: 10px; }
+    .paj-label { font-size: 9px; letter-spacing: 0.04em; }
+    .paj-sublabel { font-size: 8px; }
+    .paj-value { font-size: 15px; }
+
+    /* Título de seção */
+    .painel-section-title {
+        font-size: 10px; margin-bottom: 8px; margin-top: 16px;
+    }
+
+    /* Transportadoras: 2 colunas */
+    .painel-transp { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .pt-card    { padding: 10px 11px; border-radius: 10px; }
+    .pt-header  { font-size: 11px; padding-bottom: 7px; margin-bottom: 7px; }
+    .pt-row     { padding: 3px 0; }
+    .pt-row span:first-child { font-size: 10px; }
+    .pt-row span:last-child  { font-size: 11px; }
+
+    /* Ocorrências: 1 coluna */
+    .painel-ocorrencias { grid-template-columns: 1fr; gap: 8px; }
+    .poc-card { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; }
+    .poc-table { min-width: 300px; }
+    .poc-card .poc-header { font-size: 11px; }
+
+    /* ── Nota Fiscal card (dentro do fechamento) ── */
+    .nota-card { padding: 12px; border-radius: 10px; margin-bottom: 10px; }
+
+    /* Linha: ícone ok + "NF Enviada + chave" + botões — empilha em 2 linhas no mobile */
+    .nota-card > div:first-child {
+        flex-wrap: wrap; gap: 8px;
+    }
+    .nota-card > div:first-child > div[style*="flex:1"] {
+        flex: 1 1 120px; min-width: 0;
+    }
+    .nota-ver-btn {
+        padding: 7px 14px; font-size: 12px; flex-shrink: 0;
+    }
+    .nota-remove-btn {
+        padding: 5px 10px; font-size: 12px; flex-shrink: 0;
+    }
+
+    /* Status diverge/confere: texto pode quebrar */
+    .nota-status {
+        font-size: 11px; padding: 9px 12px; border-radius: 8px;
+        flex-wrap: wrap; margin-top: 8px;
+    }
+
+    /* ── Nota upload area ── */
+    .nota-upload-area { flex-wrap: wrap; gap: 8px; padding: 12px; }
+    .nota-upload-btn  { width: 100%; justify-content: center; padding: 10px; }
+
+    /* ── Quinzena toggle: touch-friendly ── */
+    .quinzena-btn { min-height: 46px; font-size: 13px; padding: 12px 8px; }
+
+    /* ── Select: 16px previne zoom iOS ── */
+    .fech-select { font-size: 16px; }
+
+    /* ════ FORMULÁRIO DE ANTECIPAÇÃO ════ */
+
     #ant-content { padding: 0; }
+    #ant-nf-card { padding: 13px 14px; margin-bottom: 12px; border-radius: 12px; }
+    #ant-nf-info { font-size: 16px; }
 
-    #ant-nf-card { padding: 14px 16px; margin-bottom: 14px; }
-    #ant-nf-info { font-size: 17px; }
-
-    #ant-form-wrap { padding: 16px; border-radius: 12px; }
+    #ant-form-wrap { padding: 14px; border-radius: 12px; }
     .ant-form-grid { grid-template-columns: 1fr; }
 
     #ant-cnpj, #ant-telefone, #ant-valor, #ant-numero-nf {
-        padding: 13px 14px;
-        border-radius: 10px;
-        font-size: 16px;
-        width: 100%;
+        padding: 13px 14px; border-radius: 10px;
+        font-size: 16px; width: 100%;
     }
-
-    /* Linha valor + botão "Valor total": botão abaixo do input */
     .ant-valor-row { flex-direction: column; }
     .ant-valor-row button { width: 100%; justify-content: center; padding: 11px; }
-
     #ant-form-wrap button[onclick="_antEnviarSolicitacao()"] {
         width: 100%; padding: 14px; font-size: 15px;
         border-radius: 12px; margin-top: 4px;
     }
 
-    /* ── Nota upload area ── */
-    .nota-upload-area {
-        flex-wrap: wrap; gap: 10px; padding: 14px;
-    }
-    .nota-upload-btn { width: 100%; justify-content: center; padding: 10px; }
-
-    /* ── Nota card ── */
-    .nota-card { padding: 14px; }
-    .nota-card-header { flex-wrap: wrap; gap: 8px; }
-    .nota-ver-btn { width: 100%; justify-content: center; padding: 9px; }
-
-    /* ── Painel do fechamento ── */
-    .painel-ajustes { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .paj-card { padding: 12px 10px; }
-    .paj-label { font-size: 10px; }
-    .paj-value { font-size: 16px; }
-
-    .painel-transp { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .pt-card { padding: 10px; }
-    .pt-header { font-size: 12px; }
-
-    /* ── Quinzena toggle: botões maiores para toque ── */
-    .quinzena-btn { min-height: 46px; font-size: 13px; }
-
-    /* ── Select: 16px previne zoom iOS ── */
-    .fech-select { font-size: 16px; }
-
-    /* ── Home actions entregador: 1 coluna ── */
+    /* ════ HOME ENTREGADOR ════ */
     .home-actions { grid-template-columns: 1fr; max-width: 100%; }
-    .home-action-card { padding: 16px 14px; gap: 8px; }
+    .home-action-card { padding: 14px; gap: 8px; }
     .home-greeting { font-size: 26px; }
 
-    /* ── Dashboard entregador: cards menores ── */
+    /* ════ DASHBOARD ENTREGADOR ════ */
     .dash-kpi-pct { font-size: 20px; }
     .ent-transp-grid { gap: 8px; }
 
-    /* ── Histórico de antecipações ── */
-    #ant-historico-tbody tr td:nth-child(4),
-    #ant-historico-tbody tr th:nth-child(4) { display: none; } /* esconde Nº NF */
+    /* ── Histórico de antecipações: oculta coluna Nº NF ── */
+    #ant-historico-tbody tr td:nth-child(4) { display: none; }
+    #ant-historico-resultado thead th:nth-child(4) { display: none; }
 }
 
 @media (max-width: 420px) {
-    /* ── Formulário antecipação ainda mais compacto ── */
-    #ant-form-wrap { padding: 14px; }
-    #ant-nf-card   { padding: 12px; }
+    /* ── Banner ainda mais compacto ── */
+    .pb-valor     { font-size: 28px; }
+    .pb-ent-valor { font-size: 22px; }
+    .painel-banner { padding: 14px; }
 
-    .painel-ajustes { grid-template-columns: 1fr 1fr; }
-    .painel-transp  { grid-template-columns: 1fr 1fr; }
+    /* ── Ajustes: etiquetas ainda menores ── */
+    .paj-label { font-size: 8px; }
+    .paj-value { font-size: 14px; }
 
-    /* ── Topbar: cabe só o título e o menu hamburguer ── */
+    /* ── Topbar ── */
     .topbar h1 { font-size: 14px; }
-
-    /* ── Home greeting menor ── */
     .home-greeting { font-size: 22px; }
-    .home-card-title { font-size: 12px; }
+
+    /* ── Formulário antecipação ── */
+    #ant-form-wrap { padding: 12px; }
+    #ant-nf-card   { padding: 11px 12px; }
 }
 
 /* ===== IMPRESSÃO / PDF ===== */
