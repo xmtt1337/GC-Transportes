@@ -59,19 +59,26 @@ function buscarPagamentos() {
         empty.style.display = "none";
         resultado.style.display = "";
 
-        const total = data.reduce((s, d) => s + (d.total_num || 0), 0);
+        const totalBruto  = data.reduce((s, d) => s + (d.total_num || 0), 0);
+        const totalAnt    = data.reduce((s, d) => s + (d.antecipado_num || 0), 0);
+        const totalLiq    = data.reduce((s, d) => s + (d.liquido_num != null ? d.liquido_num : d.total_num || 0), 0);
         document.getElementById("pag-counter").innerHTML =
-            `${data.length} entregadores &nbsp;·&nbsp; Total: <strong style="color:#22c55e">${moedaJS(total)}</strong>`;
+            `${data.length} entregadores &nbsp;·&nbsp; Bruto: <strong>${moedaJS(totalBruto)}</strong>` +
+            (totalAnt > 0 ? ` &nbsp;·&nbsp; Antecipado: <strong style="color:#fb923c">${moedaJS(totalAnt)}</strong>` : "") +
+            ` &nbsp;·&nbsp; Líquido: <strong style="color:#22c55e">${moedaJS(totalLiq)}</strong>`;
 
-        document.getElementById("pag-tbody").innerHTML = data.map(d => `
-            <tr>
+        document.getElementById("pag-tbody").innerHTML = data.map(d => {
+            const temAnt = (d.antecipado_num || 0) > 0;
+            return `<tr>
                 <td class="adm-nf-entregador">${d.nome}</td>
-                <td class="pag-valor">${d.total}</td>
+                <td class="pag-valor" style="color:#94a3b8">${d.total}</td>
+                <td class="pag-valor" style="color:${temAnt ? '#fb923c' : '#4a6a8a'}">${temAnt ? d.antecipado : '—'}</td>
+                <td class="pag-valor" style="color:#22c55e;font-weight:700">${d.liquido || d.total}</td>
                 <td class="pag-doc">${d.documento || '<span class="pag-sem-cad">—</span>'}</td>
                 <td class="pag-pix">${d.chave_pix || '<span class="pag-sem-cad">—</span>'}</td>
                 <td>${d.tipo_pix ? `<span class="pag-pix-badge">${d.tipo_pix}</span>` : '<span class="pag-sem-cad">—</span>'}</td>
-            </tr>
-        `).join("");
+            </tr>`;
+        }).join("");
     }).catch(() => { empty.innerText = "Erro ao carregar pagamentos."; });
 }
 

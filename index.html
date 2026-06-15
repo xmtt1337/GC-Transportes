@@ -99,6 +99,7 @@
             <li><a href="#" onclick="abrirFechamentos(event)">Meus Fechamentos</a></li>
             <li><a href="#" onclick="abrirEntDashboard(event)">Dashboard</a></li>
             <li><a href="#" onclick="abrirMinhasNFs(event)">Notas Fiscais</a></li>
+            <li id="menu-antecipacao-ent" style="display:none"><a href="#" onclick="abrirAntecipacoes(event)">Antecipação de Pagamento</a></li>
         </ul>
 
         <li class="menu-item" data-menu="adminmenu" id="menu-adminmenu" onclick="toggleMenu(this)" style="display:none">
@@ -129,6 +130,7 @@
         <ul class="submenu" data-menu="financeiro" id="submenu-financeiro" style="display:none">
             <li><a href="#" onclick="abrirAdminNFs(event)">Notas Fiscais</a></li>
             <li><a href="#" onclick="abrirConfNFs(event)">Conferência NF</a></li>
+            <li><a href="#" onclick="abrirAdminAntecipacoes(event)">Antecipações</a></li>
             <li><a href="#" onclick="abrirAdminPagamentos(event)">Pagamentos</a></li>
         </ul>
 
@@ -704,7 +706,9 @@
                             <thead>
                                 <tr>
                                     <th>Entregador</th>
-                                    <th>Valor</th>
+                                    <th>Valor Bruto</th>
+                                    <th>Antecipado</th>
+                                    <th>Valor Líquido</th>
                                     <th>Documento</th>
                                     <th>Chave PIX</th>
                                     <th>Tipo</th>
@@ -1173,6 +1177,155 @@
             </div>
         </div><!-- /tela-admin-usuarios-gc -->
 
+        <!-- TELA ANTECIPAÇÃO (ENTREGADOR) -->
+        <div id="tela-antecipacoes" class="view tela-full">
+            <div class="fech-header">
+                <div class="fech-period-row">
+                    <select class="fech-select" id="ant-mes" onchange="_antBuscarNF()">
+                        <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                        <option value="3">Março</option><option value="4">Abril</option>
+                        <option value="5">Maio</option><option value="6">Junho</option>
+                        <option value="7">Julho</option><option value="8">Agosto</option>
+                        <option value="9">Setembro</option><option value="10">Outubro</option>
+                        <option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    <select class="fech-select" id="ant-ano"></select>
+                </div>
+                <div class="quinzena-toggle">
+                    <button class="quinzena-btn" id="ant-btn-1q" onclick="selecionarQuinzenaAnt(1)">1ª Quinzena &nbsp;(1 – 15)</button>
+                    <button class="quinzena-btn" id="ant-btn-2q" onclick="selecionarQuinzenaAnt(2)">2ª Quinzena &nbsp;(16 – fim)</button>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="ant-empty">Selecione o mês, ano e quinzena para solicitar uma antecipação.</div>
+                <div id="ant-content" style="display:none">
+                    <!-- Card da NF -->
+                    <div id="ant-nf-card" style="background:rgba(58,134,255,0.07);border:1px solid rgba(58,134,255,0.2);border-radius:14px;padding:16px 20px;margin-bottom:18px">
+                        <div style="font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Nota Fiscal da Quinzena</div>
+                        <div id="ant-nf-info" style="font-size:15px;color:#e2e8f0;font-weight:600">—</div>
+                    </div>
+                    <!-- Formulário -->
+                    <div id="ant-form-wrap" style="background:rgba(15,25,35,0.5);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:20px">
+                        <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:16px">Solicitar Antecipação</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+                            <div>
+                                <label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:5px">CNPJ *</label>
+                                <input type="text" id="ant-cnpj" maxlength="18" placeholder="00.000.000/0000-00"
+                                    oninput="_antMaskCNPJ(this)"
+                                    style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit;box-sizing:border-box">
+                            </div>
+                            <div>
+                                <label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:5px">Telefone para contato *</label>
+                                <input type="text" id="ant-telefone" maxlength="15" placeholder="(00) 00000-0000"
+                                    oninput="this.value=this.value.replace(/\D/g,'')"
+                                    style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit;box-sizing:border-box">
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+                            <div>
+                                <label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:5px">Valor a antecipar *</label>
+                                <div style="display:flex;gap:8px;align-items:center">
+                                    <input type="number" id="ant-valor" min="0.01" step="0.01" placeholder="0,00"
+                                        style="flex:1;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit">
+                                    <button onclick="_antPreencherValorTotal()" style="padding:8px 12px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap" title="Solicitar valor total da NF">Valor total</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:5px">Número da Nota Fiscal *</label>
+                                <input type="text" id="ant-numero-nf" placeholder="Nº da NF"
+                                    style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit;box-sizing:border-box">
+                            </div>
+                        </div>
+                        <div id="ant-form-msg" style="font-size:13px;margin-bottom:12px;display:none"></div>
+                        <button onclick="_antEnviarSolicitacao()" style="padding:10px 24px;border-radius:10px;border:none;background:#3a86ff;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Enviar Solicitação</button>
+                    </div>
+                    <!-- Histórico -->
+                    <div style="margin-top:24px">
+                        <div style="font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Minhas Solicitações</div>
+                        <div id="ant-historico-wrap">
+                            <div class="fechamento-empty" id="ant-historico-empty" style="padding:20px 0">Nenhuma solicitação encontrada.</div>
+                            <div class="adm-nf-wrap" id="ant-historico-resultado" style="display:none">
+                                <table class="adm-nf-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Quinzena</th>
+                                            <th>Valor NF</th>
+                                            <th>Valor Solicitado</th>
+                                            <th>Nº NF</th>
+                                            <th>Status</th>
+                                            <th>Data</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ant-historico-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-antecipacoes -->
+
+        <!-- TELA ANTECIPAÇÕES ADMIN -->
+        <div id="tela-admin-antecipacoes" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Antecipações</div>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <select class="fech-select" id="adm-ant-mes">
+                            <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                            <option value="3">Março</option><option value="4">Abril</option>
+                            <option value="5">Maio</option><option value="6">Junho</option>
+                            <option value="7">Julho</option><option value="8">Agosto</option>
+                            <option value="9">Setembro</option><option value="10">Outubro</option>
+                            <option value="11">Novembro</option><option value="12">Dezembro</option>
+                        </select>
+                        <select class="fech-select" id="adm-ant-ano"></select>
+                        <div class="quinzena-toggle" style="margin:0">
+                            <button class="quinzena-btn" id="adm-ant-btn-1q" onclick="selecionarQuinzenaAntAdmin(1)">1ª</button>
+                            <button class="quinzena-btn" id="adm-ant-btn-2q" onclick="selecionarQuinzenaAntAdmin(2)">2ª</button>
+                        </div>
+                        <select class="fech-select" id="adm-ant-status" onchange="buscarAntecipacoes()" style="min-width:130px">
+                            <option value="">Todos os status</option>
+                            <option value="pendente">Pendente</option>
+                            <option value="aprovada">Aprovada</option>
+                            <option value="rejeitada">Rejeitada</option>
+                            <option value="paga">Paga</option>
+                        </select>
+                        <button onclick="_exportarAntecipacaoXlsx()" style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.08);color:#34d399;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Exportar XLSX
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="adm-ant-empty">Selecione o período e a quinzena para ver as antecipações.</div>
+                <div id="adm-ant-resultado" style="display:none">
+                    <div class="adm-nf-counter" id="adm-ant-counter"></div>
+                    <div class="adm-nf-wrap">
+                        <table class="adm-nf-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Entregador</th>
+                                    <th>Quinzena</th>
+                                    <th>Valor NF</th>
+                                    <th>Valor Solicitado</th>
+                                    <th>Nº NF</th>
+                                    <th>CNPJ</th>
+                                    <th>Telefone</th>
+                                    <th>Status</th>
+                                    <th>Responsável</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adm-ant-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-admin-antecipacoes -->
+
     </div>
 </div>
 
@@ -1197,6 +1350,8 @@
 <script src="js/pedidos.js"></script>
 <script src="js/desempenho-bip.js"></script>
 <script src="js/conferencias.js"></script>
+<script src="js/antecipacoes.js"></script>
+<script src="js/antecipacoes-admin.js"></script>
 
 <!-- MODAL: NOVO USUÁRIO GC -->
 <div class="usr-modal-overlay" id="modal-novo-usuario-gc" onclick="_fecharModalSeBackdrop(event,'modal-novo-usuario-gc')">
