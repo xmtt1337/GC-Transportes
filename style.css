@@ -1848,6 +1848,122 @@ body {
     color: #ef4444; font-size: 13px; font-weight: 500;
 }
 
+/* ===== TELAS DO ENTREGADOR — MOBILE ===== */
+
+/* Grid do formulário de antecipação */
+.ant-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+/* Linha "valor + botão valor total" */
+.ant-valor-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Inputs do formulário de antecipação — evita zoom no iOS (font-size < 16px dispara zoom) */
+#ant-cnpj, #ant-telefone, #ant-valor, #ant-numero-nf {
+    font-size: 16px;
+    -webkit-appearance: none;
+}
+
+/* Tabela de histórico de antecipações — scroll horizontal */
+#ant-historico-resultado .adm-nf-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+#ant-historico-resultado .adm-nf-table {
+    min-width: 520px;
+}
+
+@media (max-width: 680px) {
+
+    /* ── Formulário de antecipação ── */
+    #ant-content { padding: 0; }
+
+    #ant-nf-card { padding: 14px 16px; margin-bottom: 14px; }
+    #ant-nf-info { font-size: 17px; }
+
+    #ant-form-wrap { padding: 16px; border-radius: 12px; }
+    .ant-form-grid { grid-template-columns: 1fr; }
+
+    #ant-cnpj, #ant-telefone, #ant-valor, #ant-numero-nf {
+        padding: 13px 14px;
+        border-radius: 10px;
+        font-size: 16px;
+        width: 100%;
+    }
+
+    /* Linha valor + botão "Valor total": botão abaixo do input */
+    .ant-valor-row { flex-direction: column; }
+    .ant-valor-row button { width: 100%; justify-content: center; padding: 11px; }
+
+    #ant-form-wrap button[onclick="_antEnviarSolicitacao()"] {
+        width: 100%; padding: 14px; font-size: 15px;
+        border-radius: 12px; margin-top: 4px;
+    }
+
+    /* ── Nota upload area ── */
+    .nota-upload-area {
+        flex-wrap: wrap; gap: 10px; padding: 14px;
+    }
+    .nota-upload-btn { width: 100%; justify-content: center; padding: 10px; }
+
+    /* ── Nota card ── */
+    .nota-card { padding: 14px; }
+    .nota-card-header { flex-wrap: wrap; gap: 8px; }
+    .nota-ver-btn { width: 100%; justify-content: center; padding: 9px; }
+
+    /* ── Painel do fechamento ── */
+    .painel-ajustes { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .paj-card { padding: 12px 10px; }
+    .paj-label { font-size: 10px; }
+    .paj-value { font-size: 16px; }
+
+    .painel-transp { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .pt-card { padding: 10px; }
+    .pt-header { font-size: 12px; }
+
+    /* ── Quinzena toggle: botões maiores para toque ── */
+    .quinzena-btn { min-height: 46px; font-size: 13px; }
+
+    /* ── Select: 16px previne zoom iOS ── */
+    .fech-select { font-size: 16px; }
+
+    /* ── Home actions entregador: 1 coluna ── */
+    .home-actions { grid-template-columns: 1fr; max-width: 100%; }
+    .home-action-card { padding: 16px 14px; gap: 8px; }
+    .home-greeting { font-size: 26px; }
+
+    /* ── Dashboard entregador: cards menores ── */
+    .dash-kpi-pct { font-size: 20px; }
+    .ent-transp-grid { gap: 8px; }
+
+    /* ── Histórico de antecipações ── */
+    #ant-historico-tbody tr td:nth-child(4),
+    #ant-historico-tbody tr th:nth-child(4) { display: none; } /* esconde Nº NF */
+}
+
+@media (max-width: 420px) {
+    /* ── Formulário antecipação ainda mais compacto ── */
+    #ant-form-wrap { padding: 14px; }
+    #ant-nf-card   { padding: 12px; }
+
+    .painel-ajustes { grid-template-columns: 1fr 1fr; }
+    .painel-transp  { grid-template-columns: 1fr 1fr; }
+
+    /* ── Topbar: cabe só o título e o menu hamburguer ── */
+    .topbar h1 { font-size: 14px; }
+
+    /* ── Home greeting menor ── */
+    .home-greeting { font-size: 22px; }
+    .home-card-title { font-size: 12px; }
+}
+
 /* ===== IMPRESSÃO / PDF ===== */
 @media print {
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
