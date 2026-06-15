@@ -1253,7 +1253,6 @@
                                             <th>Valor NF</th>
                                             <th>Valor Solicitado</th>
                                             <th>Nº NF</th>
-                                            <th>Status</th>
                                             <th>Data</th>
                                         </tr>
                                     </thead>
@@ -1285,13 +1284,6 @@
                     <button class="quinzena-btn" id="adm-ant-btn-2q" onclick="selecionarQuinzenaAntAdmin(2)">2ª Quinzena &nbsp;(16 – fim)</button>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
-                    <select class="fech-select" id="adm-ant-status" onchange="buscarAntecipacoes()" style="min-width:150px">
-                        <option value="">Todos os status</option>
-                        <option value="pendente">Pendente</option>
-                        <option value="aprovada">Aprovada</option>
-                        <option value="rejeitada">Rejeitada</option>
-                        <option value="paga">Paga</option>
-                    </select>
                     <button onclick="_exportarAntecipacaoXlsx()" style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.08);color:#34d399;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s" onmouseover="this.style.background='rgba(52,211,153,0.18)'" onmouseout="this.style.background='rgba(52,211,153,0.08)'">
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         Exportar XLSX
@@ -1314,7 +1306,6 @@
                                     <th>Nº NF</th>
                                     <th>CNPJ</th>
                                     <th>Telefone</th>
-                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody id="adm-ant-tbody"></tbody>
