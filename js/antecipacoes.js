@@ -134,13 +134,14 @@ function _antMaskCNPJ(input) {
 function _antValidarCNPJ(cnpj) {
     cnpj = cnpj.replace(/\D/g, "");
     if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
-    const calc = (n) => {
-        let s = 0, p = n - 7;
-        for (let i = 0; i < n - 1; i++) { s += parseInt(cnpj[i]) * (p - i); if (p - i < 2) p = 9 + (n - 7 - i); }
-        const r = s % 11;
-        return r < 2 ? 0 : 11 - r;
-    };
-    return calc(12) === parseInt(cnpj[12]) && calc(13) === parseInt(cnpj[13]);
+    let soma = 0, peso = 5;
+    for (let i = 0; i < 12; i++) { soma += parseInt(cnpj[i]) * peso; peso = peso === 2 ? 9 : peso - 1; }
+    let r = soma % 11;
+    if ((r < 2 ? 0 : 11 - r) !== parseInt(cnpj[12])) return false;
+    soma = 0; peso = 6;
+    for (let i = 0; i < 13; i++) { soma += parseInt(cnpj[i]) * peso; peso = peso === 2 ? 9 : peso - 1; }
+    r = soma % 11;
+    return (r < 2 ? 0 : 11 - r) === parseInt(cnpj[13]);
 }
 
 function _antLimparFormMsg() {

@@ -1268,47 +1268,45 @@
         <!-- TELA ANTECIPAÇÕES ADMIN -->
         <div id="tela-admin-antecipacoes" class="view tela-full">
             <div class="fech-header">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Antecipações</div>
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                        <select class="fech-select" id="adm-ant-mes">
-                            <option value="1">Janeiro</option><option value="2">Fevereiro</option>
-                            <option value="3">Março</option><option value="4">Abril</option>
-                            <option value="5">Maio</option><option value="6">Junho</option>
-                            <option value="7">Julho</option><option value="8">Agosto</option>
-                            <option value="9">Setembro</option><option value="10">Outubro</option>
-                            <option value="11">Novembro</option><option value="12">Dezembro</option>
-                        </select>
-                        <select class="fech-select" id="adm-ant-ano"></select>
-                        <div class="quinzena-toggle" style="margin:0">
-                            <button class="quinzena-btn" id="adm-ant-btn-1q" onclick="selecionarQuinzenaAntAdmin(1)">1ª</button>
-                            <button class="quinzena-btn" id="adm-ant-btn-2q" onclick="selecionarQuinzenaAntAdmin(2)">2ª</button>
-                        </div>
-                        <select class="fech-select" id="adm-ant-status" onchange="buscarAntecipacoes()" style="min-width:130px">
-                            <option value="">Todos os status</option>
-                            <option value="pendente">Pendente</option>
-                            <option value="aprovada">Aprovada</option>
-                            <option value="rejeitada">Rejeitada</option>
-                            <option value="paga">Paga</option>
-                        </select>
-                        <button onclick="_exportarAntecipacaoXlsx()" style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.08);color:#34d399;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
-                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            Exportar XLSX
-                        </button>
-                    </div>
+                <div class="fech-period-row">
+                    <select class="fech-select" id="adm-ant-mes">
+                        <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                        <option value="3">Março</option><option value="4">Abril</option>
+                        <option value="5">Maio</option><option value="6">Junho</option>
+                        <option value="7">Julho</option><option value="8">Agosto</option>
+                        <option value="9">Setembro</option><option value="10">Outubro</option>
+                        <option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    <select class="fech-select" id="adm-ant-ano"></select>
+                </div>
+                <div class="quinzena-toggle">
+                    <button class="quinzena-btn" id="adm-ant-btn-1q" onclick="selecionarQuinzenaAntAdmin(1)">1ª Quinzena &nbsp;(1 – 15)</button>
+                    <button class="quinzena-btn" id="adm-ant-btn-2q" onclick="selecionarQuinzenaAntAdmin(2)">2ª Quinzena &nbsp;(16 – fim)</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+                    <select class="fech-select" id="adm-ant-status" onchange="buscarAntecipacoes()" style="min-width:150px">
+                        <option value="">Todos os status</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="aprovada">Aprovada</option>
+                        <option value="rejeitada">Rejeitada</option>
+                        <option value="paga">Paga</option>
+                    </select>
+                    <button onclick="_exportarAntecipacaoXlsx()" style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.08);color:#34d399;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s" onmouseover="this.style.background='rgba(52,211,153,0.18)'" onmouseout="this.style.background='rgba(52,211,153,0.08)'">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Exportar XLSX
+                    </button>
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="adm-ant-empty">Selecione o período e a quinzena para ver as antecipações.</div>
+                <div class="fechamento-empty" id="adm-ant-empty">Selecione o mês, ano e quinzena para ver as antecipações.</div>
                 <div id="adm-ant-resultado" style="display:none">
-                    <div class="adm-nf-counter" id="adm-ant-counter"></div>
+                    <div class="adm-nf-counter" id="adm-ant-counter" style="margin-bottom:12px"></div>
                     <div class="adm-nf-wrap">
                         <table class="adm-nf-table">
                             <thead>
                                 <tr>
                                     <th>Data</th>
                                     <th>Entregador</th>
-                                    <th>Quinzena</th>
                                     <th>Valor NF</th>
                                     <th>Valor Solicitado</th>
                                     <th>Nº NF</th>
