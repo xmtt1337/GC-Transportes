@@ -102,11 +102,11 @@ function _antCarregarHistorico() {
             const vNF     = r.valor_nf ? moedaJS(parseFloat(r.valor_nf)) : "—";
             const vAnt    = r.valor_antecipado ? moedaJS(parseFloat(r.valor_antecipado)) : "—";
             return `<tr>
-                <td>${periodo}</td>
-                <td>${vNF}</td>
-                <td style="color:#3a86ff;font-weight:600">${vAnt}</td>
-                <td>${r.numero_nf || "—"}</td>
-                <td style="color:#64748b;font-size:12px">${data}</td>
+                <td data-label="Quinzena">${periodo}</td>
+                <td data-label="Valor NF">${vNF}</td>
+                <td data-label="Solicitado" style="color:#3a86ff;font-weight:600">${vAnt}</td>
+                <td data-label="Nº NF">${r.numero_nf || "—"}</td>
+                <td data-label="Data" style="color:#64748b;font-size:12px">${data}</td>
             </tr>`;
         }).join("");
     }).catch(() => {});
