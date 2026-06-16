@@ -93,16 +93,16 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt) {
     }
 
     const dataUpload     = new Date(uploadedAt);
-    const dataConferencia = _addDiasUteis(dataUpload, 3); // 3 dias úteis para conferir
-    const dataLiberacao   = _addDiasUteis(dataUpload, 5); // +2 dias úteis para emitir NF
+    const dataConferencia = _addDiasUteis(dataUpload, 2); // 2 dias úteis para conferir
+    const dataLiberacao   = _addDiasUteis(dataUpload, 5); // +3 dias úteis para emitir NF
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
 
     if (hoje < dataLiberacao) {
         const dtConf = dataConferencia.toLocaleDateString("pt-BR");
         const dtLib  = dataLiberacao.toLocaleDateString("pt-BR");
         const fase   = hoje < dataConferencia
-            ? `Você tem até <strong style="color:#e2e8f0">${dtConf}</strong> para conferir sua folha, depois emita e anexe sua NF.`
-            : `Prazo para emissão da NF em andamento — prazo final: <strong style="color:#e2e8f0">${dtLib}</strong>.`;
+            ? `Você tem até <strong style="color:#e2e8f0">${dtConf}</strong> para conferir sua folha (2 dias úteis), depois emita e anexe sua NF.`
+            : `Prazo para emissão e anexo da NF em andamento — prazo final: <strong style="color:#e2e8f0">${dtLib}</strong>.`;
         card.innerHTML = _antCardHtml("clock",
             `Disponível a partir de ${dtLib}`,
             `Planilha anexada em ${dataUpload.toLocaleDateString("pt-BR")}.<br>${fase}`);
