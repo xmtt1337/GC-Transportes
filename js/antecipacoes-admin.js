@@ -102,22 +102,23 @@ function _admAntBadge(status) {
 
 function _admAntPagarTodas() {
     if (!_admAntQuinzena || !_admAntRows.length) return;
-    if (!confirm(`Marcar TODAS as antecipações desta quinzena como PAGAS?`)) return;
-    const mes = document.getElementById("adm-ant-mes").value;
-    const ano = document.getElementById("adm-ant-ano").value;
-    fetch(`${API}/admin/antecipacoes/quinzena/pagar`, {
-        method: "PATCH",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ mes: parseInt(mes), ano: parseInt(ano), quinzena: _admAntQuinzena })
-    }).then(r => r.json()).then(d => {
-        if (d.error) return alert(d.error);
-        const btn = document.getElementById("adm-ant-pagar-btn");
-        if (btn) { btn.disabled = true; btn.textContent = `✓ ${d.updated} antecipação(ões) marcada(s) como paga`; btn.style.color = "#22c55e"; btn.style.borderColor = "rgba(34,197,94,0.35)"; btn.style.background = "rgba(34,197,94,0.08)"; }
-    }).catch(() => alert("Erro ao marcar como paga."));
+    gcConfirm("Marcar TODAS as antecipações desta quinzena como PAGAS?", () => {
+        const mes = document.getElementById("adm-ant-mes").value;
+        const ano = document.getElementById("adm-ant-ano").value;
+        fetch(`${API}/admin/antecipacoes/quinzena/pagar`, {
+            method: "PATCH",
+            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+            body: JSON.stringify({ mes: parseInt(mes), ano: parseInt(ano), quinzena: _admAntQuinzena })
+        }).then(r => r.json()).then(d => {
+            if (d.error) return gcAlert(d.error);
+            const btn = document.getElementById("adm-ant-pagar-btn");
+            if (btn) { btn.disabled = true; btn.textContent = `✓ ${d.updated} antecipação(ões) marcada(s) como paga`; btn.style.color = "#22c55e"; btn.style.borderColor = "rgba(34,197,94,0.35)"; btn.style.background = "rgba(34,197,94,0.08)"; }
+        }).catch(() => gcAlert("Erro ao marcar como paga."));
+    }, null, "Confirmar");
 }
 
 function _exportarAntecipacaoXlsx() {
-    if (!_admAntRows.length) return alert("Nenhum dado para exportar.");
+    if (!_admAntRows.length) { gcAlert("Nenhum dado para exportar."); return; }
     const MESES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
     const data = _admAntRows.map(r => ({
         "Data Solicitação": r.data_solicitacao ? new Date(r.data_solicitacao).toLocaleDateString("pt-BR") : "",

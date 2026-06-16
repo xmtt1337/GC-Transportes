@@ -85,7 +85,7 @@ async function _confirmarImportTrampay() {
             body: JSON.stringify({ entregadores: _trampayRows })
         });
         const data = await res.json();
-        if (data.error) { alert(data.error); btn.disabled = false; btn.textContent = "Importar dados"; return; }
+        if (data.error) { gcAlert(data.error); btn.disabled = false; btn.textContent = "Importar dados"; return; }
         const partes = [];
         if (data.atualizados) partes.push(`${data.atualizados} atualizados`);
         if (data.novos)       partes.push(`${data.novos} novos`);
@@ -97,7 +97,7 @@ async function _confirmarImportTrampay() {
         document.getElementById("trampay-file-input").value = "";
         _carregarEntregadoresTrampay();
     } catch {
-        alert("Erro ao conectar com o servidor.");
+        gcAlert("Erro ao conectar com o servidor.");
         btn.disabled = false;
         btn.textContent = "Importar dados";
     }

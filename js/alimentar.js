@@ -279,20 +279,21 @@ async function _alimentarBaixar(id, nomeArquivo) {
         a.click();
         URL.revokeObjectURL(url);
     } catch (err) {
-        alert('Erro ao baixar: ' + err.message);
+        gcAlert('Erro ao baixar: ' + err.message);
     }
 }
 
-async function _alimentarRemover(id) {
-    if (!confirm('Remover este arquivo do banco de dados?')) return;
-    try {
-        const res = await fetch(API + '/alimentar/' + id, {
-            method: 'DELETE',
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        if (!res.ok) throw new Error('Erro ao remover');
-        _alimentarCarregar();
-    } catch (err) {
-        alert('Erro ao remover: ' + err.message);
-    }
+function _alimentarRemover(id) {
+    gcConfirm('Remover este arquivo do banco de dados?', async () => {
+        try {
+            const res = await fetch(API + '/alimentar/' + id, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!res.ok) throw new Error('Erro ao remover');
+            _alimentarCarregar();
+        } catch (err) {
+            gcAlert('Erro ao remover: ' + err.message);
+        }
+    }, null, "Remover");
 }

@@ -167,28 +167,30 @@ function _toggleAtivoGC(id, active) {
         headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
         body: JSON.stringify({ active })
     }).then(r => r.json())
-    .then(data => { if (data.error) alert(data.error); else _carregarUsuariosGC(); })
-    .catch(() => alert("Erro ao atualizar usuário."));
+    .then(data => { if (data.error) gcAlert(data.error); else _carregarUsuariosGC(); })
+    .catch(() => gcAlert("Erro ao atualizar usuário."));
 }
 
 function _resetarSenhaGC(id, username) {
-    if (!confirm(`Resetar a senha de "${username}" para a senha padrão?`)) return;
-    const tok = localStorage.getItem("token");
-    fetch(`${API}/admin/usuarios/${id}/reset-senha`, {
-        method: "PUT",
-        headers: { "Authorization": "Bearer " + tok }
-    }).then(r => r.json())
-    .then(data => { if (data.error) alert(data.error); else alert("Senha resetada com sucesso."); })
-    .catch(() => alert("Erro ao resetar senha."));
+    gcConfirm(`Resetar a senha de "${username}" para a senha padrão?`, () => {
+        const tok = localStorage.getItem("token");
+        fetch(`${API}/admin/usuarios/${id}/reset-senha`, {
+            method: "PUT",
+            headers: { "Authorization": "Bearer " + tok }
+        }).then(r => r.json())
+        .then(data => { if (data.error) gcAlert(data.error); else gcAlert("Senha resetada com sucesso."); })
+        .catch(() => gcAlert("Erro ao resetar senha."));
+    }, null, "Resetar");
 }
 
 function _deletarUsuarioGC(id, username) {
-    if (!confirm(`Deletar o usuário "${username}"?\nEsta ação não pode ser desfeita.`)) return;
-    const tok = localStorage.getItem("token");
-    fetch(`${API}/admin/usuarios/${id}`, {
-        method: "DELETE",
-        headers: { "Authorization": "Bearer " + tok }
-    }).then(r => r.json())
-    .then(data => { if (data.error) alert(data.error); else _carregarUsuariosGC(); })
-    .catch(() => alert("Erro ao deletar usuário."));
+    gcConfirm(`Deletar o usuário "${username}"?\nEsta ação não pode ser desfeita.`, () => {
+        const tok = localStorage.getItem("token");
+        fetch(`${API}/admin/usuarios/${id}`, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + tok }
+        }).then(r => r.json())
+        .then(data => { if (data.error) gcAlert(data.error); else _carregarUsuariosGC(); })
+        .catch(() => gcAlert("Erro ao deletar usuário."));
+    }, null, "Deletar");
 }

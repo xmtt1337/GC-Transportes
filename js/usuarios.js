@@ -109,27 +109,29 @@ function _copiarID() {
 }
 
 function _resetarTodasSenhas() {
-    if (!confirm("Resetar a senha de TODOS os entregadores para a senha padrão?\n\nEsta ação não pode ser desfeita.")) return;
-    const tok = localStorage.getItem("token");
-    fetch(`${API}/admin/usuarios/reset-todas-senhas`, {
-        method: "PUT",
-        headers: { "Authorization": "Bearer " + tok }
-    }).then(r => r.json())
-    .then(data => {
-        if (data.error) { alert(data.error); return; }
-        alert(`Senhas resetadas com sucesso para ${data.total || "todos os"} entregadores.`);
-    }).catch(() => alert("Erro ao resetar senhas."));
+    gcConfirm("Resetar a senha de TODOS os entregadores para a senha padrão?\n\nEsta ação não pode ser desfeita.", () => {
+        const tok = localStorage.getItem("token");
+        fetch(`${API}/admin/usuarios/reset-todas-senhas`, {
+            method: "PUT",
+            headers: { "Authorization": "Bearer " + tok }
+        }).then(r => r.json())
+        .then(data => {
+            if (data.error) { gcAlert(data.error); return; }
+            gcAlert(`Senhas resetadas com sucesso para ${data.total || "todos os"} entregadores.`);
+        }).catch(() => gcAlert("Erro ao resetar senhas."));
+    }, "Confirmar Reset em Massa", "Resetar Todas");
 }
 
 function _resetarSenha(id, username) {
-    if (!confirm(`Resetar a senha de "${username}" para a senha padrão?`)) return;
-    const tok = localStorage.getItem("token");
-    fetch(`${API}/admin/usuarios/${id}/reset-senha`, {
-        method: "PUT",
-        headers: { "Authorization": "Bearer " + tok }
-    }).then(r => r.json())
-    .then(data => { if (data.error) alert(data.error); })
-    .catch(() => alert("Erro ao resetar senha."));
+    gcConfirm(`Resetar a senha de "${username}" para a senha padrão?`, () => {
+        const tok = localStorage.getItem("token");
+        fetch(`${API}/admin/usuarios/${id}/reset-senha`, {
+            method: "PUT",
+            headers: { "Authorization": "Bearer " + tok }
+        }).then(r => r.json())
+        .then(data => { if (data.error) gcAlert(data.error); })
+        .catch(() => gcAlert("Erro ao resetar senha."));
+    }, null, "Resetar");
 }
 
 function _toggleAtivoUsuario(id, active) {
@@ -140,20 +142,21 @@ function _toggleAtivoUsuario(id, active) {
         body: JSON.stringify({ active })
     }).then(r => r.json())
     .then(data => {
-        if (data.error) { alert(data.error); return; }
+        if (data.error) { gcAlert(data.error); return; }
         _carregarUsuarios();
-    }).catch(() => alert("Erro ao atualizar usuário."));
+    }).catch(() => gcAlert("Erro ao atualizar usuário."));
 }
 
 function _deletarUsuario(id, username) {
-    if (!confirm(`Deletar o usuário "${username}"?\nEsta ação não pode ser desfeita.`)) return;
-    const tok = localStorage.getItem("token");
-    fetch(`${API}/admin/usuarios/${id}`, {
-        method: "DELETE",
-        headers: { "Authorization": "Bearer " + tok }
-    }).then(r => r.json())
-    .then(data => {
-        if (data.error) { alert(data.error); return; }
-        _carregarUsuarios();
-    }).catch(() => alert("Erro ao deletar usuário."));
+    gcConfirm(`Deletar o usuário "${username}"?\nEsta ação não pode ser desfeita.`, () => {
+        const tok = localStorage.getItem("token");
+        fetch(`${API}/admin/usuarios/${id}`, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + tok }
+        }).then(r => r.json())
+        .then(data => {
+            if (data.error) { gcAlert(data.error); return; }
+            _carregarUsuarios();
+        }).catch(() => gcAlert("Erro ao deletar usuário."));
+    }, null, "Deletar");
 }
