@@ -48,15 +48,21 @@ function _addDiasUteis(date, dias) {
 }
 
 function _antCardHtml(tipo, titulo, sub) {
+    const SVG = {
+        lock:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`,
+        wait:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M5 22h14M5 2h14M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></svg>`,
+        clock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
+        ok:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+    };
     const cfg = {
-        lock:  { icon: "🔒", border: "#334155", bg: "rgba(51,65,85,0.35)",   cor: "#94a3b8" },
-        wait:  { icon: "⏳", border: "#92400e", bg: "rgba(146,64,14,0.18)",  cor: "#f59e0b" },
-        clock: { icon: "🕐", border: "#1e3a8a", bg: "rgba(30,58,138,0.18)",  cor: "#60a5fa" },
-        ok:    { icon: "✓",  border: "#14532d", bg: "rgba(20,83,45,0.18)",   cor: "#22c55e" },
+        lock:  { border: "#334155", bg: "rgba(51,65,85,0.35)",  cor: "#94a3b8" },
+        wait:  { border: "#92400e", bg: "rgba(146,64,14,0.18)", cor: "#f59e0b" },
+        clock: { border: "#1e3a8a", bg: "rgba(30,58,138,0.18)", cor: "#60a5fa" },
+        ok:    { border: "#14532d", bg: "rgba(20,83,45,0.18)",  cor: "#22c55e" },
     };
     const c = cfg[tipo] || cfg.wait;
     return `<div style="border:1px solid ${c.border};background:${c.bg};border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:14px">
-        <div style="font-size:17px;line-height:1.2;flex-shrink:0">${c.icon}</div>
+        <div style="color:${c.cor};flex-shrink:0;margin-top:1px;opacity:.9">${SVG[tipo] || SVG.wait}</div>
         <div>
             <div style="font-size:13px;font-weight:700;color:${c.cor};margin-bottom:4px">${titulo}</div>
             <div style="font-size:12px;line-height:1.5;color:#94a3b8">${sub}</div>
