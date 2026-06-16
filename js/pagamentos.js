@@ -109,32 +109,34 @@ function _renderStatusPagBtn(d) {
 
 function _pagarQuinzena() {
     if (!_pagQuinzena) return;
-    if (!confirm("Marcar a quinzena inteira como PAGA? Todos os entregadores serão notificados.")) return;
-    const mes = document.getElementById("pag-mes").value;
-    const ano = document.getElementById("pag-ano").value;
-    fetch(`${API}/admin/pagamentos/quinzena`, {
-        method: "PATCH",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ mes: parseInt(mes), ano: parseInt(ano), quinzena: _pagQuinzena, status: "pago" })
-    }).then(r => r.json()).then(d => {
-        if (d.error) return alert(d.error);
-        _renderStatusPagBtn(d);
-    }).catch(() => alert("Erro ao salvar status."));
+    gcConfirm("Marcar a quinzena inteira como PAGA?", () => {
+        const mes = document.getElementById("pag-mes").value;
+        const ano = document.getElementById("pag-ano").value;
+        fetch(`${API}/admin/pagamentos/quinzena`, {
+            method: "PATCH",
+            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+            body: JSON.stringify({ mes: parseInt(mes), ano: parseInt(ano), quinzena: _pagQuinzena, status: "pago" })
+        }).then(r => r.json()).then(d => {
+            if (d.error) return gcAlert(d.error);
+            _renderStatusPagBtn(d);
+        }).catch(() => gcAlert("Erro ao salvar status."));
+    }, "Confirmar Pagamento", "Marcar como Pago");
 }
 
 function _desfazerPagamento() {
     if (!_pagQuinzena) return;
-    if (!confirm("Desfazer o pagamento desta quinzena?")) return;
-    const mes = document.getElementById("pag-mes").value;
-    const ano = document.getElementById("pag-ano").value;
-    fetch(`${API}/admin/pagamentos/quinzena`, {
-        method: "PATCH",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ mes: parseInt(mes), ano: parseInt(ano), quinzena: _pagQuinzena, status: "pendente" })
-    }).then(r => r.json()).then(d => {
-        if (d.error) return alert(d.error);
-        _renderStatusPagBtn(d);
-    }).catch(() => alert("Erro ao desfazer."));
+    gcConfirm("Desfazer o pagamento desta quinzena?", () => {
+        const mes = document.getElementById("pag-mes").value;
+        const ano = document.getElementById("pag-ano").value;
+        fetch(`${API}/admin/pagamentos/quinzena`, {
+            method: "PATCH",
+            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+            body: JSON.stringify({ mes: parseInt(mes), ano: parseInt(ano), quinzena: _pagQuinzena, status: "pendente" })
+        }).then(r => r.json()).then(d => {
+            if (d.error) return gcAlert(d.error);
+            _renderStatusPagBtn(d);
+        }).catch(() => gcAlert("Erro ao desfazer."));
+    }, null, "Desfazer");
 }
 
 function _baixarCsvPagamentos() {
@@ -149,7 +151,7 @@ function _baixarCsvPagamentos() {
     const headers = new Headers({ "Authorization": "Bearer " + token });
     fetch(url, { headers })
         .then(r => {
-            if (!r.ok) return r.json().then(d => { alert(d.error || "Erro ao gerar CSV."); throw new Error(); });
+            if (!r.ok) return r.json().then(d => { gcAlert(d.error || "Erro ao gerar CSV."); throw new Error(); });
             return r.blob();
         })
         .then(blob => {

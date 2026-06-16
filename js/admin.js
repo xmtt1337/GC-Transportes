@@ -46,7 +46,7 @@ function adicionarPlanilha() {
     const ano  = document.getElementById("adm-ano").value;
     const q    = document.getElementById("adm-quinzena").value;
     const url  = document.getElementById("adm-url").value.trim();
-    if (!url) { alert("Cole a URL da planilha."); return; }
+    if (!url) { gcAlert("Cole a URL da planilha."); return; }
 
     fetch(API + "/admin/planilhas", {
         method: "POST",
@@ -61,11 +61,12 @@ function adicionarPlanilha() {
 }
 
 function deletarPlanilha(id) {
-    if (!confirm("Remover esta planilha?")) return;
-    fetch(API + "/admin/planilhas/" + id, {
-        method: "DELETE",
-        headers: { "Authorization": "Bearer " + token }
-    }).then(() => _carregarPlanilhas());
+    gcConfirm("Remover esta planilha?", () => {
+        fetch(API + "/admin/planilhas/" + id, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + token }
+        }).then(() => _carregarPlanilhas());
+    }, null, "Remover");
 }
 
 // ───── LOGOUT ─────

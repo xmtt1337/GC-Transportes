@@ -432,7 +432,7 @@ function _confRenderResultado({
 // ── Exportação ────────────────────────────────────────────────────────────────
 
 function _confExportarLista(lista, tipo) {
-    if (!lista || !lista.length) { alert('Nenhum pacote para exportar.'); return; }
+    if (!lista || !lista.length) { gcAlert('Nenhum pacote para exportar.'); return; }
     const transp    = _CONF_NOMES[_confTransp] || _confTransp;
     const temStatus = lista.some(p => p.status);
     const temEnt    = lista.some(p => p.entregador);

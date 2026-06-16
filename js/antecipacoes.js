@@ -125,7 +125,7 @@ function _antStatusBadge(status) {
 
 function _antPreencherValorTotal() {
     if (!_antNFAtual || !_antNFAtual.valor_fechamento) {
-        alert("Não foi possível determinar o valor total da NF. Verifique se a nota foi registrada corretamente.");
+        gcAlert("Não foi possível determinar o valor total da NF. Verifique se a nota foi registrada corretamente.");
         return;
     }
     document.getElementById("ant-valor").value = parseFloat(_antNFAtual.valor_fechamento).toFixed(2);

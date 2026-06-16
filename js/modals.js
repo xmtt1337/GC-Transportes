@@ -1,3 +1,38 @@
+// ───── CUSTOM MODALS ─────
+function gcAlert(msg, titulo) {
+    return new Promise(resolve => {
+        const overlay = document.createElement("div");
+        overlay.className = "gc-overlay";
+        overlay.innerHTML = `<div class="gc-card">
+            ${titulo ? `<div class="gc-card-title">${titulo}</div>` : ""}
+            <div class="gc-card-msg">${msg}</div>
+            <div class="gc-card-btns">
+                <button class="gc-btn-confirm">OK</button>
+            </div>
+        </div>`;
+        overlay.querySelector(".gc-btn-confirm").addEventListener("click", () => { overlay.remove(); resolve(); });
+        overlay.addEventListener("click", e => { if (e.target === overlay) { overlay.remove(); resolve(); } });
+        document.body.appendChild(overlay);
+    });
+}
+
+function gcConfirm(msg, onConfirm, titulo, confirmLabel) {
+    const overlay = document.createElement("div");
+    overlay.className = "gc-overlay";
+    overlay.innerHTML = `<div class="gc-card">
+        ${titulo ? `<div class="gc-card-title">${titulo}</div>` : ""}
+        <div class="gc-card-msg">${msg}</div>
+        <div class="gc-card-btns">
+            <button class="gc-btn-cancel">Cancelar</button>
+            <button class="gc-btn-confirm">${confirmLabel || "Confirmar"}</button>
+        </div>
+    </div>`;
+    overlay.querySelector(".gc-btn-cancel").addEventListener("click", () => overlay.remove());
+    overlay.querySelector(".gc-btn-confirm").addEventListener("click", () => { overlay.remove(); onConfirm(); });
+    overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+}
+
 // ───── MODAL TELEFONE ─────
 let _mtUserId = null;
 

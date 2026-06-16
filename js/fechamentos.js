@@ -66,7 +66,8 @@ function _renderPgtoStatusCard(d) {
         tipo   = "pgto-antecipado";
         icone  = "⚡";
         titulo = "Antecipação Solicitada";
-        sub    = `Antecipado: ${d.antecipado} · Saldo a receber: ${d.liquido}`;
+        const saldo = d.liquido_num > 0 ? ` · Saldo a receber: ${d.liquido}` : "";
+        sub    = `Antecipado: ${d.antecipado}${saldo} · Pagamento em ${_calcularDataPagamento(_fMes, _fAno, _fQuinzena)}`;
     } else {
         tipo   = "pgto-pendente";
         icone  = "◷";
@@ -120,27 +121,15 @@ function _carregarPainel() {
 
         _fTotalReceber = d.total_receber_num || 0;
 
-        // Banner
+        // Banner — sempre mostra o valor bruto a receber
         const banner = document.getElementById("pb-banner");
         const temAnt = d.antecipado_num > 0;
         banner.className = "painel-banner " + (d.total_receber_num < 0 ? "banner-negativo" : "banner-positivo");
-        document.getElementById("pb-eyebrow").innerText = temAnt ? "Valor líquido após antecipação" : "Valor líquido a receber";
-        document.getElementById("pb-total-receber").innerText = temAnt ? d.liquido : d.total_receber;
-        const antRow = document.getElementById("pb-ant-row");
-        if (temAnt) {
-            antRow.style.display = "";
-            antRow.innerHTML = `<span style="color:rgba(255,255,255,0.55);font-size:12px">Bruto: ${d.total_receber}</span>&nbsp;&nbsp;<span style="color:#f97316;font-size:12px">− Antecipado: ${d.antecipado}</span>`;
-        } else {
-            antRow.style.display = "none";
-        }
+        document.getElementById("pb-eyebrow").innerText = "Valor a receber no período";
+        document.getElementById("pb-total-receber").innerText = d.total_receber;
+        document.getElementById("pb-ant-row").style.display = "none";
         document.getElementById("pb-total-entregues").innerText = d.total_entregues;
-        const pago = d.pagamento_status === "pago";
-        document.getElementById("pb-pagamento").style.display = pago ? "none" : "";
-        if (!pago) {
-            document.getElementById("pb-pagamento").innerText = temAnt
-                ? "Antecipação solicitada — saldo em " + _calcularDataPagamento(_fMes, _fAno, _fQuinzena)
-                : "Pagamento previsto: " + _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
-        }
+        document.getElementById("pb-pagamento").style.display = "none";
         _renderPgtoStatusCard(d);
 
         // Ajustes
