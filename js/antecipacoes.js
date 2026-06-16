@@ -44,31 +44,42 @@ function _antBuscarNF() {
     _antMes = parseInt(mes); _antAno = parseInt(ano);
     _antNFAtual = null;
 
-    fetch(`${API}/nota?mes=${mes}&ano=${ano}&quinzena=${_antQuinzena}`, {
-        headers: { "Authorization": "Bearer " + token }
-    }).then(r => r.json())
-    .then(nf => {
-        if (nf.error) {
-            document.getElementById("ant-nf-info").innerHTML =
-                `<span style="color:#f59e0b">Nenhuma nota fiscal encontrada para esta quinzena.</span>`;
-            _antNFAtual = null;
+    // Busca NF (dados cadastrais) e painel (valor vivo da planilha) em paralelo
+    Promise.all([
+        fetch(`${API}/nota?mes=${mes}&ano=${ano}&quinzena=${_antQuinzena}`, {
+            headers: { "Authorization": "Bearer " + token }
+        }).then(r => r.json()).catch(() => null),
+        fetch(`${API}/painel?mes=${mes}&ano=${ano}&quinzena=${_antQuinzena}`, {
+            headers: { "Authorization": "Bearer " + token }
+        }).then(r => r.ok ? r.json() : null).catch(() => null)
+    ]).then(([nf, painel]) => {
+        const valorLive = painel?.total_receber_num ?? null;
+
+        if (nf && !nf.error) {
+            _antNFAtual = { ...nf };
+            // Sobrescreve valor_fechamento com o valor atual da planilha (se disponível)
+            if (valorLive !== null) _antNFAtual.valor_fechamento = valorLive;
+        } else if (valorLive !== null) {
+            // Sem NF no banco, mas a planilha tem o valor
+            _antNFAtual = { valor_fechamento: valorLive };
         } else {
-            _antNFAtual = nf;
-            const vf = nf.valor_fechamento ? moedaJS(parseFloat(nf.valor_fechamento)) : (nf.valor || "—");
+            _antNFAtual = null;
+        }
+
+        if (_antNFAtual?.valor_fechamento) {
+            const vf = moedaJS(parseFloat(_antNFAtual.valor_fechamento));
             document.getElementById("ant-nf-info").innerHTML =
                 `<span style="color:#22c55e">${vf}</span>` +
-                (nf.numero_nf ? ` &nbsp;·&nbsp; <span style="color:#94a3b8">NF ${nf.numero_nf}</span>` : "");
-            if (nf.numero_nf) document.getElementById("ant-numero-nf").value = nf.numero_nf;
+                (_antNFAtual.numero_nf ? ` &nbsp;·&nbsp; <span style="color:#94a3b8">NF ${_antNFAtual.numero_nf}</span>` : "");
+            if (_antNFAtual.numero_nf) document.getElementById("ant-numero-nf").value = _antNFAtual.numero_nf;
+        } else {
+            document.getElementById("ant-nf-info").innerHTML =
+                `<span style="color:#f59e0b">Nenhum fechamento encontrado para esta quinzena.</span>`;
         }
+
         document.getElementById("ant-empty").style.display = "none";
         document.getElementById("ant-content").style.display = "";
         _antLimparFormMsg();
-    })
-    .catch(() => {
-        document.getElementById("ant-nf-info").innerHTML =
-            `<span style="color:#ef4444">Erro ao buscar nota fiscal.</span>`;
-        document.getElementById("ant-empty").style.display = "none";
-        document.getElementById("ant-content").style.display = "";
     });
 }
 
