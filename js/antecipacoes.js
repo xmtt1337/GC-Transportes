@@ -118,8 +118,8 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlan
     }
 
     if (diverge) {
-        const vNF  = moedaJS(parseFloat(_antNFAtual.valor));
-        const vPl  = moedaJS(parseFloat(valorPlanilha));
+        const vNF  = moedaJS(_antNFAtual._valorNum);
+        const vPl  = moedaJS(valorPlanilha);
         card.innerHTML = _antCardHtml("error", "Valor da NF diverge do fechamento",
             `O valor da nota fiscal emitida (<strong style="color:#fca5a5">${vNF}</strong>) é diferente do valor do seu fechamento (<strong style="color:#fca5a5">${vPl}</strong>). Corrija a NF para que os valores correspondam antes de solicitar a antecipação.`);
         if (form) form.style.display = "none";
