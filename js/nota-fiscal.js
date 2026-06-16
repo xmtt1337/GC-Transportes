@@ -659,11 +659,31 @@ function _extrairCamposNota(raw) {
         }
 
         // Tomador — seção "TOMADOR DO SERVIÇO", mesma estrutura
-        const _dTomSec = t.match(/TOMADOR\s+DO\s+SERVI[CÇ]O(.{0,1000}?)(?=INTERMEDI[AÁ]RIO|SERVI[CÇ]O\s+PRESTADO|TRIBUTA[CÇ][ÃA]O)/i);
+        // Terminadores: DISCRIMINAÇÃO e VALORES são os mais comuns no DANFSe nacional
+        const _dTomSec = t.match(/TOMADOR\s+DO\s+SERVI[CÇG]O(.{0,1500}?)(?=INTERMEDI[AÁ]RIO|SERVI[CÇG]O\s+PRESTADO|TRIBUTA[CÇG][AÃA]O|DISCRIMINA[CÇG][AÃA]O|DESCRI[CÇG][AÃA]O\s+DOS|VALORES\s+DO\s+SERVI|TOTAL\s+DO\s+SERVI)/i);
         if (_dTomSec) {
-            const _nm = _dTomSec[1].match(/Nome\s*[\/|]\s*(?:Nome\s+)?Empresarial(?:\s+E-?mail)?\s+([\p{L}][^\n\r@]{2,79}?)(?=\s*(?:@|Endere|Munic[íi]|CEP|CNPJ|CPF|Inscri))/iu);
+            // Tentativa 1: label "Nome / Nome Empresarial [E-mail]" — separator opcional (OCR pode perder o /)
+            const _nm = _dTomSec[1].match(/Nome\s*[\/|\\]?\s*(?:Nome\s+)?Empresarial(?:\s+E-?mail)?\s+([\p{L}][^\n\r@]{2,79}?)(?=\s*(?:\S*@|\bEndere|\bMunic[íi]|\bCEP\b|\bCNPJ\b|\bCPF\b|\bInscri))/iu);
             if (_nm && !_reAdmin.test(_nm[1]) && !_isTextoInstrucao(_nm[1])) {
-                tomador = _nm[1].trim();
+                // Remove possível username de email colado no fim (ex: "GC TRANSPORTES cobrador10rs")
+                tomador = _nm[1].trim().replace(/\s+\w[\w._-]{2,}$/, s => /\d/.test(s) ? '' : s).trim();
+            }
+
+            // Tentativa 2: sequência de 2+ palavras em MAIÚSCULAS antes de CNPJ/CPF na seção
+            if (tomador === "—") {
+                const _capM = _dTomSec[1].match(/\b([A-ZÁÉÍÓÚÂÊÔÃÕÇÀÜ]{2,}(?:\s+(?:DE|DA|DO|E|&)?\s*[A-ZÁÉÍÓÚÂÊÔÃÕÇÀÜ]{2,}){1,8})\b(?=[^A-Z]{0,30}(?:CNPJ|CPF|\d{2}\.\d{3}))/u);
+                if (_capM) {
+                    const _c = _capM[1].trim();
+                    if (!_reAdmin.test(_c) && !_isTextoInstrucao(_c) && _c !== emissor) tomador = _c;
+                }
+            }
+
+            // Tentativa 3: qualquer texto com letra maiúscula logo após o label Razão Social
+            if (tomador === "—") {
+                const _rsM = _dTomSec[1].match(/Raz[aã]o\s+[Ss]ocial\s*:?\s*([\p{L}][\p{L}\s&.,'/\-]{2,79}?)(?=\s*(?:CNPJ|CPF|Inscri|Endere|CEP|\d{2}[.\/]))/iu);
+                if (_rsM && !_reAdmin.test(_rsM[1]) && !_isTextoInstrucao(_rsM[1])) {
+                    tomador = _rsM[1].trim();
+                }
             }
         }
 
