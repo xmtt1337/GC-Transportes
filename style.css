@@ -1884,6 +1884,7 @@ body {
 /* Inputs do formulário de antecipação — evita zoom no iOS (font-size < 16px dispara zoom) */
 #ant-cnpj, #ant-telefone, #ant-valor, #ant-numero-nf {
     font-size: 16px;
+    appearance: none;
     -webkit-appearance: none;
 }
 
@@ -1909,6 +1910,7 @@ body {
     border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
     color: #e2e8f0; font-size: 15px; font-family: inherit; box-sizing: border-box;
     transition: border-color 0.2s, background 0.2s;
+    appearance: none;
     -webkit-appearance: none;
 }
 .ant-input:focus { outline: none; border-color: rgba(58,134,255,0.5); background: rgba(58,134,255,0.05); }
