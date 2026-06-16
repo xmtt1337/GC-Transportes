@@ -66,8 +66,8 @@ function _renderPgtoStatusCard(d) {
         tipo   = "pgto-antecipado";
         icone  = "⚡";
         titulo = "Antecipação Solicitada";
-        const saldo = d.liquido_num > 0 ? ` · Saldo a receber: ${d.liquido}` : "";
-        sub    = `Antecipado: ${d.antecipado}${saldo} · Pagamento em ${_calcularDataPagamento(_fMes, _fAno, _fQuinzena)}`;
+        const saldo = d.liquido_num > 0 ? ` · Saldo a receber: ${d.liquido}` : " · Valor total antecipado";
+        sub    = `Antecipado: ${d.antecipado}${saldo}`;
     } else {
         tipo   = "pgto-pendente";
         icone  = "◷";
