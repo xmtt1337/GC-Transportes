@@ -1,16 +1,24 @@
 // ───── CUSTOM MODALS ─────
+const _gcOverlayStyle = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(7,9,14,0.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box";
+const _gcCardStyle    = "background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:26px 28px 22px;max-width:420px;width:100%;box-shadow:0 24px 48px rgba(0,0,0,0.7);font-family:Inter,system-ui,sans-serif";
+const _gcTitleStyle   = "font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:8px";
+const _gcMsgStyle     = "font-size:14px;color:#94a3b8;line-height:1.6;margin-bottom:22px;white-space:pre-line";
+const _gcBtnsStyle    = "display:flex;gap:10px;justify-content:flex-end";
+const _gcBtnOkStyle   = "background:#3a86ff;color:#fff;border:none;border-radius:9px;padding:9px 22px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit";
+const _gcBtnCxStyle   = "background:rgba(255,255,255,0.05);color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:9px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit";
+
 function gcAlert(msg, titulo) {
     return new Promise(resolve => {
         const overlay = document.createElement("div");
-        overlay.className = "gc-overlay";
-        overlay.innerHTML = `<div class="gc-card">
-            ${titulo ? `<div class="gc-card-title">${titulo}</div>` : ""}
-            <div class="gc-card-msg">${msg}</div>
-            <div class="gc-card-btns">
-                <button class="gc-btn-confirm">OK</button>
+        overlay.setAttribute("style", _gcOverlayStyle);
+        overlay.innerHTML = `<div style="${_gcCardStyle}">
+            ${titulo ? `<div style="${_gcTitleStyle}">${titulo}</div>` : ""}
+            <div style="${_gcMsgStyle}">${msg}</div>
+            <div style="${_gcBtnsStyle}">
+                <button style="${_gcBtnOkStyle}">OK</button>
             </div>
         </div>`;
-        overlay.querySelector(".gc-btn-confirm").addEventListener("click", () => { overlay.remove(); resolve(); });
+        overlay.querySelector("button").addEventListener("click", () => { overlay.remove(); resolve(); });
         overlay.addEventListener("click", e => { if (e.target === overlay) { overlay.remove(); resolve(); } });
         document.body.appendChild(overlay);
     });
@@ -18,17 +26,17 @@ function gcAlert(msg, titulo) {
 
 function gcConfirm(msg, onConfirm, titulo, confirmLabel) {
     const overlay = document.createElement("div");
-    overlay.className = "gc-overlay";
-    overlay.innerHTML = `<div class="gc-card">
-        ${titulo ? `<div class="gc-card-title">${titulo}</div>` : ""}
-        <div class="gc-card-msg">${msg}</div>
-        <div class="gc-card-btns">
-            <button class="gc-btn-cancel">Cancelar</button>
-            <button class="gc-btn-confirm">${confirmLabel || "Confirmar"}</button>
+    overlay.setAttribute("style", _gcOverlayStyle);
+    overlay.innerHTML = `<div style="${_gcCardStyle}">
+        ${titulo ? `<div style="${_gcTitleStyle}">${titulo}</div>` : ""}
+        <div style="${_gcMsgStyle}">${msg}</div>
+        <div style="${_gcBtnsStyle}">
+            <button style="${_gcBtnCxStyle}" data-action="cancel">Cancelar</button>
+            <button style="${_gcBtnOkStyle}" data-action="confirm">${confirmLabel || "Confirmar"}</button>
         </div>
     </div>`;
-    overlay.querySelector(".gc-btn-cancel").addEventListener("click", () => overlay.remove());
-    overlay.querySelector(".gc-btn-confirm").addEventListener("click", () => { overlay.remove(); onConfirm(); });
+    overlay.querySelector("[data-action=cancel]").addEventListener("click", () => overlay.remove());
+    overlay.querySelector("[data-action=confirm]").addEventListener("click", () => { overlay.remove(); onConfirm(); });
     overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
     document.body.appendChild(overlay);
 }
