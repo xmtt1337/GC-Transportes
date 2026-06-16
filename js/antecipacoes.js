@@ -155,7 +155,7 @@ function _antBuscarNF() {
         // Normaliza valor do banco (pode estar em formato BR: "4.675,61" ou "R$ 4.675,61")
         const _nfValorNum = nf ? (parseFloat(String(nf.valor || "").replace(/[R$\s.]/g, "").replace(",", ".")) || 0) : 0;
         if (nf && nf.id) {
-            _antNFAtual = { ...nf };
+            _antNFAtual = { ...nf, _valorNum: _nfValorNum }; // valor já normalizado
             const vNF = _nfValorNum;
 
             if (vNF > 0) {
@@ -227,11 +227,11 @@ function _antStatusBadge(status) {
 }
 
 function _antPreencherValorTotal() {
-    if (!_antNFAtual || !_antNFAtual.valor) {
+    if (!_antNFAtual || !(_antNFAtual._valorNum > 0)) {
         gcAlert("Nenhuma nota fiscal encontrada para esta quinzena. Emita e anexe a NF primeiro.");
         return;
     }
-    document.getElementById("ant-valor").value = parseFloat(_antNFAtual.valor).toFixed(2);
+    document.getElementById("ant-valor").value = _antNFAtual._valorNum.toFixed(2);
 }
 
 function _antMaskCNPJ(input) {
@@ -284,8 +284,8 @@ function _antEnviarSolicitacao() {
     if (!_antValidarCNPJ(cnpj)) return _antMostrarMsg("CNPJ inválido. Verifique os dígitos.", "erro");
     if (!telefone) return _antMostrarMsg("Informe o telefone para contato.", "erro");
     if (!valor || isNaN(valor) || valor <= 0) return _antMostrarMsg("Informe um valor válido para antecipar.", "erro");
-    if (_antNFAtual?.valor && valor > parseFloat(_antNFAtual.valor)) {
-        return _antMostrarMsg(`O valor solicitado não pode superar o valor da NF (${moedaJS(parseFloat(_antNFAtual.valor))}).`, "erro");
+    if (_antNFAtual?._valorNum > 0 && valor > _antNFAtual._valorNum) {
+        return _antMostrarMsg(`O valor solicitado não pode superar o valor da NF (${moedaJS(_antNFAtual._valorNum)}).`, "erro");
     }
     if (!numeroNF) return _antMostrarMsg("Informe o número da nota fiscal.", "erro");
 
@@ -294,7 +294,7 @@ function _antEnviarSolicitacao() {
 
     const body = {
         quinzena: _antQuinzena, mes, ano,
-        valor_nf: _antNFAtual?.valor || null,
+        valor_nf: _antNFAtual?._valorNum || null,
         valor_antecipado: valor,
         numero_nf: numeroNF,
         cnpj: cnpj.replace(/\D/g, ""),
