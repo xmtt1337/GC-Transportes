@@ -47,6 +47,16 @@ function _renderPgtoStatusCard(d) {
     if (!card) return;
     const temAnt = d.antecipado_num > 0;
     const pago   = d.pagamento_status === "pago";
+
+    // Para quinzenas antigas sem registro de pagamento, não exibe o card
+    if (!pago) {
+        const ultimoDia = _fQuinzena === 1
+            ? new Date(_fAno, _fMes - 1, 15)
+            : new Date(_fAno, _fMes, 0);
+        const dataPag = new Date(ultimoDia);
+        dataPag.setDate(dataPag.getDate() + 45);
+        if (dataPag < new Date()) { card.style.display = "none"; return; }
+    }
     const dataPgto = d.pagamento_data
         ? new Date(d.pagamento_data).toLocaleDateString("pt-BR") : null;
 
