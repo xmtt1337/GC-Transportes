@@ -37,6 +37,84 @@ function selecionarQuinzenaAnt(q) {
     _antCarregarHistorico();
 }
 
+function _addDiasUteis(date, dias) {
+    const result = new Date(date);
+    let adicionados = 0;
+    while (adicionados < dias) {
+        result.setDate(result.getDate() + 1);
+        if (result.getDay() !== 0 && result.getDay() !== 6) adicionados++;
+    }
+    result.setHours(0, 0, 0, 0);
+    return result;
+}
+
+function _antCardHtml(tipo, titulo, sub) {
+    const cfg = {
+        lock:  { icon: "🔒", border: "#334155", bg: "rgba(51,65,85,0.35)",   cor: "#94a3b8" },
+        wait:  { icon: "⏳", border: "#92400e", bg: "rgba(146,64,14,0.18)",  cor: "#f59e0b" },
+        clock: { icon: "🕐", border: "#1e3a8a", bg: "rgba(30,58,138,0.18)",  cor: "#60a5fa" },
+        ok:    { icon: "✓",  border: "#14532d", bg: "rgba(20,83,45,0.18)",   cor: "#22c55e" },
+    };
+    const c = cfg[tipo] || cfg.wait;
+    return `<div style="border:1px solid ${c.border};background:${c.bg};border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:14px">
+        <div style="font-size:17px;line-height:1.2;flex-shrink:0">${c.icon}</div>
+        <div>
+            <div style="font-size:13px;font-weight:700;color:${c.cor};margin-bottom:4px">${titulo}</div>
+            <div style="font-size:12px;line-height:1.5;color:#94a3b8">${sub}</div>
+        </div>
+    </div>`;
+}
+
+function _antRenderStatusCard(mes, ano, quinzena, uploadedAt) {
+    let card = document.getElementById("ant-status-card");
+    if (!card) {
+        card = document.createElement("div");
+        card.id = "ant-status-card";
+        const formWrap = document.getElementById("ant-form-wrap");
+        if (formWrap) formWrap.parentNode.insertBefore(card, formWrap);
+        else document.getElementById("ant-content")?.prepend(card);
+    }
+    const form = document.getElementById("ant-form-wrap");
+
+    // Período bloqueado: antes da 2ª Quinzena de Maio/2026
+    const bloqueado = ano < 2026 || (ano === 2026 && mes < 5) || (ano === 2026 && mes === 5 && quinzena < 2);
+    if (bloqueado) {
+        card.innerHTML = _antCardHtml("lock", "Antecipação não disponível",
+            "Esta funcionalidade está disponível a partir da 2ª Quinzena de Maio/2026.");
+        if (form) form.style.display = "none";
+        return;
+    }
+
+    if (!uploadedAt) {
+        card.innerHTML = _antCardHtml("wait", "Planilha ainda não processada",
+            "O administrador ainda não anexou a planilha para este período. Aguarde.");
+        if (form) form.style.display = "none";
+        return;
+    }
+
+    const dataUpload     = new Date(uploadedAt);
+    const dataConferencia = _addDiasUteis(dataUpload, 3); // 3 dias úteis para conferir
+    const dataLiberacao   = _addDiasUteis(dataUpload, 5); // +2 dias úteis para emitir NF
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+
+    if (hoje < dataLiberacao) {
+        const dtConf = dataConferencia.toLocaleDateString("pt-BR");
+        const dtLib  = dataLiberacao.toLocaleDateString("pt-BR");
+        const fase   = hoje < dataConferencia
+            ? `Você tem até <strong style="color:#e2e8f0">${dtConf}</strong> para conferir sua folha, depois emita e anexe sua NF.`
+            : `Prazo para emissão da NF em andamento — prazo final: <strong style="color:#e2e8f0">${dtLib}</strong>.`;
+        card.innerHTML = _antCardHtml("clock",
+            `Disponível a partir de ${dtLib}`,
+            `Planilha anexada em ${dataUpload.toLocaleDateString("pt-BR")}.<br>${fase}`);
+        if (form) form.style.display = "none";
+        return;
+    }
+
+    card.innerHTML = _antCardHtml("ok", "Antecipação disponível",
+        "O prazo de conferência e emissão de NF foi cumprido. Você pode solicitar a antecipação.");
+    if (form) form.style.display = "";
+}
+
 function _antBuscarNF() {
     if (!_antQuinzena) return;
     const mes = document.getElementById("ant-mes").value;
@@ -53,14 +131,13 @@ function _antBuscarNF() {
             headers: { "Authorization": "Bearer " + token }
         }).then(r => r.ok ? r.json() : null).catch(() => null)
     ]).then(([nf, painel]) => {
-        const valorLive = painel?.total_receber_num ?? null;
+        const valorLive  = painel?.total_receber_num ?? null;
+        const uploadedAt = painel?.planilha_uploaded_at ?? null;
 
         if (nf && !nf.error) {
             _antNFAtual = { ...nf };
-            // Sobrescreve valor_fechamento com o valor atual da planilha (se disponível)
             if (valorLive !== null) _antNFAtual.valor_fechamento = valorLive;
         } else if (valorLive !== null) {
-            // Sem NF no banco, mas a planilha tem o valor
             _antNFAtual = { valor_fechamento: valorLive };
         } else {
             _antNFAtual = null;
@@ -80,6 +157,7 @@ function _antBuscarNF() {
         document.getElementById("ant-empty").style.display = "none";
         document.getElementById("ant-content").style.display = "";
         _antLimparFormMsg();
+        _antRenderStatusCard(_antMes, _antAno, _antQuinzena, uploadedAt);
     });
 }
 
