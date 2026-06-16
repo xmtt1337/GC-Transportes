@@ -468,7 +468,7 @@ function _extrairCamposNota(raw) {
     // ── VALOR ──
     let valor = "—";
     for (const pat of [
-        /Valor\s+L[ií]quido\s+da\s+NFS?-?[eE][:\s]*([\d.]+,\d{2})/i,
+        /Valor\s+L[ií]quido\s+da\s+NFS?-?[eE][:\s]*(?:R\$\s*)?([\d.]+,\d{2})/i,
         // Curitibanos / NFS-e municipais: "Valor líquido = R$ 1.218,60"
         /Valor\s+l[íi]quido\s*=\s*R?\$?\s*([\d.]+,\d{2})/i,
         /Valor\s+bruto\s*=\s*R?\$?\s*([\d.]+,\d{2})/i,
@@ -476,7 +476,7 @@ function _extrairCamposNota(raw) {
         /TOTAL\s+DA\s+NOTA[^\d]*([\d.]+,\d{2})/i,
         /VALOR\s+DOS\s+SERVI[CÇ]OS[^\d]*([\d.]+,\d{2})/i,
         // "Valor do serviço 1.218,6000" — captura só 2 casas decimais mesmo com 4
-        /Valor\s+do\s+Servi[çc]o[:\s]*([\d.]+,\d{2})/i,
+        /Valor\s+do\s+Servi[çc]o[:\s]*(?:R\$\s*)?([\d.]+,\d{2})/i,
         /VALOR\s+L[IÍ]QUIDO[^\d]*([\d.]+,\d{2})/i,
         /VALOR\s+TOTAL\s+DO\s+CT-?[eE][^\d]*([\d.]+,\d{2})/i,
         /VALOR\s+TOTAL[^\d]*([\d.]+,\d{2})/i,
@@ -618,6 +618,37 @@ function _extrairCamposNota(raw) {
                     }
                 }
             }
+        }
+    }
+
+    // ── Override DANFSe v1.0 (Documento Auxiliar da NFS-e - padrão nacional) ──
+    // Problema: PDF.js lê tabelas linha por linha, então os headers das colunas ficam
+    // intercalados com os valores — ex: "Nome / Nome Empresarial E-mail PH ARRUDA..."
+    if (/DANFSe\b|Documento\s+Auxiliar\s+da\s+NFS-?e/i.test(t)) {
+
+        // Emissor — seção "EMITENTE DA NFS-e", pula header "E-mail" intercalado
+        const _dEmSec = t.match(/EMITENTE\s+DA\s+NFS-?e(.{0,1000}?)(?=TOMADOR|INTERMEDI[AÁ]RIO|SERVI[CÇ]O\s+PRESTADO)/i);
+        if (_dEmSec) {
+            const _nm = _dEmSec[1].match(/Nome\s*[\/|]\s*(?:Nome\s+)?Empresarial(?:\s+E-?mail)?\s+([\p{L}][^\n\r@]{2,79}?)(?=\s*(?:@|Endere|Munic[íi]|CEP|CNPJ|CPF|Simples|Regime|Inscri))/iu);
+            if (_nm && !_reAdmin.test(_nm[1]) && !_isTextoInstrucao(_nm[1])) {
+                emissor = _nm[1].trim();
+            }
+        }
+
+        // Tomador — seção "TOMADOR DO SERVIÇO", mesma estrutura
+        const _dTomSec = t.match(/TOMADOR\s+DO\s+SERVI[CÇ]O(.{0,1000}?)(?=INTERMEDI[AÁ]RIO|SERVI[CÇ]O\s+PRESTADO|TRIBUTA[CÇ][ÃA]O)/i);
+        if (_dTomSec) {
+            const _nm = _dTomSec[1].match(/Nome\s*[\/|]\s*(?:Nome\s+)?Empresarial(?:\s+E-?mail)?\s+([\p{L}][^\n\r@]{2,79}?)(?=\s*(?:@|Endere|Munic[íi]|CEP|CNPJ|CPF|Inscri))/iu);
+            if (_nm && !_reAdmin.test(_nm[1]) && !_isTextoInstrucao(_nm[1])) {
+                tomador = _nm[1].trim();
+            }
+        }
+
+        // Número da NFS-e — no layout DANFSe os 3 headers ficam na mesma linha antes dos valores
+        // "Número da NFS-e Competência da NFS-e Data e Hora da emissão da NFS-e [5] [15/06/2026] ..."
+        if (!numero_nf) {
+            const _nfNum = t.match(/N[úu]mero\s+da\s+NFS-?e\s+Compet[êe]ncia\s+da\s+NFS-?e[^\d]{0,80}(\d{1,10})\s+\d{2}\/\d{2}\/\d{4}/i);
+            if (_nfNum) numero_nf = _nfNum[1];
         }
     }
 
