@@ -43,51 +43,24 @@ function filtrarPeriodo() {
 }
 
 function _renderPgtoStatusCard(d) {
-    const card  = document.getElementById("pgto-status-card");
+    const card = document.getElementById("pgto-status-card");
     if (!card) return;
-    const temAnt = d.antecipado_num > 0;
-    const pago   = d.pagamento_status === "pago";
 
-    // Para quinzenas antigas sem registro de pagamento, não exibe o card
-    if (!pago) {
-        const ultimoDia = _fQuinzena === 1
-            ? new Date(_fAno, _fMes - 1, 15)
-            : new Date(_fAno, _fMes, 0);
-        const dataPag = new Date(ultimoDia);
-        dataPag.setDate(dataPag.getDate() + 45);
-        if (dataPag < new Date()) { card.style.display = "none"; return; }
-    }
+    // Só exibe quando o pagamento foi confirmado pelo financeiro
+    if (d.pagamento_status !== "pago") { card.style.display = "none"; return; }
+
+    const temAnt   = d.antecipado_num > 0;
     const dataPgto = d.pagamento_data
         ? new Date(d.pagamento_data).toLocaleDateString("pt-BR") : null;
 
-    let tipo, titulo, sub, icone;
-
-    if (pago && !temAnt) {
-        tipo   = "pgto-pago";
-        icone  = "✓";
-        titulo = "Pagamento Efetuado";
-        sub    = `Pago em ${dataPgto} · ${d.total_receber}`;
-    } else if (pago && temAnt) {
-        tipo   = "pgto-pago";
-        icone  = "✓";
-        titulo = "Pago — Antecipação + Saldo";
-        sub    = `Antecipado: ${d.antecipado} · Saldo pago em ${dataPgto}: ${d.liquido}`;
-    } else if (temAnt) {
-        tipo   = "pgto-antecipado";
-        icone  = "⚡";
-        titulo = "Antecipação Solicitada";
-        const saldo = d.liquido_num > 0 ? ` · Saldo a receber: ${d.liquido}` : " · Valor total antecipado";
-        sub    = `Antecipado: ${d.antecipado}${saldo}`;
-    } else {
-        tipo   = "pgto-pendente";
-        icone  = "◷";
-        titulo = "Pagamento Pendente";
-        sub    = `Previsto para ${_calcularDataPagamento(_fMes, _fAno, _fQuinzena)}`;
-    }
+    const titulo = temAnt ? "Pago — Antecipação + Saldo" : "Pagamento Efetuado";
+    const sub    = temAnt
+        ? `Antecipado: ${d.antecipado} · Saldo pago em ${dataPgto}: ${d.liquido}`
+        : `Pago em ${dataPgto} · ${d.total_receber}`;
 
     card.style.display = "";
-    card.innerHTML = `<div class="pgto-card ${tipo}">
-        <div class="pgto-card-icon">${icone}</div>
+    card.innerHTML = `<div class="pgto-card pgto-pago">
+        <div class="pgto-card-icon">✓</div>
         <div>
             <div class="pgto-card-title">${titulo}</div>
             <div class="pgto-card-sub">${sub}</div>
