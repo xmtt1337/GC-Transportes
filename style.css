@@ -295,6 +295,21 @@ body {
 .pb-ant-row { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .pb-pagamento { font-size: 11px; color: #4a6a8a; margin-top: 6px; margin-bottom: 16px; padding-left: 2px; letter-spacing: 0.01em; }
 
+/* ── Card status pagamento (entregador) ── */
+.pgto-card { display: flex; align-items: center; gap: 14px; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; }
+.pgto-card.pgto-pago       { background: rgba(34,197,94,0.08);  border: 1px solid rgba(34,197,94,0.22); }
+.pgto-card.pgto-antecipado { background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.22); }
+.pgto-card.pgto-pendente   { background: rgba(58,134,255,0.06); border: 1px solid rgba(58,134,255,0.18); }
+.pgto-card-icon { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+.pgto-pago       .pgto-card-icon { background: rgba(34,197,94,0.15);  color: #22c55e; }
+.pgto-antecipado .pgto-card-icon { background: rgba(249,115,22,0.15); color: #f97316; }
+.pgto-pendente   .pgto-card-icon { background: rgba(58,134,255,0.12); color: #3a86ff; }
+.pgto-card-title { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.pgto-pago       .pgto-card-title { color: #22c55e; }
+.pgto-antecipado .pgto-card-title { color: #f97316; }
+.pgto-pendente   .pgto-card-title { color: #3a86ff; }
+.pgto-card-sub { font-size: 12px; color: #64748b; }
+
 .pb-divider { width: 1px; background: rgba(255,255,255,0.07); align-self: stretch; margin: 4px 0; }
 
 .pb-right { text-align: center; min-width: 160px; padding: 0 12px; }

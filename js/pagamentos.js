@@ -79,7 +79,62 @@ function buscarPagamentos() {
                 <td>${d.tipo_pix ? `<span class="pag-pix-badge">${d.tipo_pix}</span>` : '<span class="pag-sem-cad">—</span>'}</td>
             </tr>`;
         }).join("");
+
+        _buscarStatusQuinzena();
     }).catch(() => { empty.innerText = "Erro ao carregar pagamentos."; });
+}
+
+function _buscarStatusQuinzena() {
+    const mes = document.getElementById("pag-mes").value;
+    const ano = document.getElementById("pag-ano").value;
+    fetch(`${API}/admin/pagamentos/quinzena?mes=${mes}&ano=${ano}&quinzena=${_pagQuinzena}`, {
+        headers: { "Authorization": "Bearer " + token }
+    }).then(r => r.json()).then(d => { _renderStatusPagBtn(d); }).catch(() => {});
+}
+
+function _renderStatusPagBtn(d) {
+    const btn      = document.getElementById("pag-pagar-btn");
+    const pagoDiv  = document.getElementById("pag-status-pago");
+    const pagoData = document.getElementById("pag-pago-data");
+    if (d.status === "pago") {
+        btn.style.display   = "none";
+        pagoDiv.style.display = "flex";
+        const dt = d.data_pagamento ? new Date(d.data_pagamento).toLocaleDateString("pt-BR") : "—";
+        pagoData.innerText  = dt;
+    } else {
+        btn.style.display   = "";
+        pagoDiv.style.display = "none";
+    }
+}
+
+function _pagarQuinzena() {
+    if (!_pagQuinzena) return;
+    if (!confirm("Marcar a quinzena inteira como PAGA? Todos os entregadores serão notificados.")) return;
+    const mes = document.getElementById("pag-mes").value;
+    const ano = document.getElementById("pag-ano").value;
+    fetch(`${API}/admin/pagamentos/quinzena`, {
+        method: "PATCH",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ mes: parseInt(mes), ano: parseInt(ano), quinzena: _pagQuinzena, status: "pago" })
+    }).then(r => r.json()).then(d => {
+        if (d.error) return alert(d.error);
+        _renderStatusPagBtn(d);
+    }).catch(() => alert("Erro ao salvar status."));
+}
+
+function _desfazerPagamento() {
+    if (!_pagQuinzena) return;
+    if (!confirm("Desfazer o pagamento desta quinzena?")) return;
+    const mes = document.getElementById("pag-mes").value;
+    const ano = document.getElementById("pag-ano").value;
+    fetch(`${API}/admin/pagamentos/quinzena`, {
+        method: "PATCH",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ mes: parseInt(mes), ano: parseInt(ano), quinzena: _pagQuinzena, status: "pendente" })
+    }).then(r => r.json()).then(d => {
+        if (d.error) return alert(d.error);
+        _renderStatusPagBtn(d);
+    }).catch(() => alert("Erro ao desfazer."));
 }
 
 function _baixarCsvPagamentos() {

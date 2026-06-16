@@ -42,6 +42,48 @@ function filtrarPeriodo() {
     document.getElementById("fechamento-data").style.display  = "none";
 }
 
+function _renderPgtoStatusCard(d) {
+    const card  = document.getElementById("pgto-status-card");
+    if (!card) return;
+    const temAnt = d.antecipado_num > 0;
+    const pago   = d.pagamento_status === "pago";
+    const dataPgto = d.pagamento_data
+        ? new Date(d.pagamento_data).toLocaleDateString("pt-BR") : null;
+
+    let tipo, titulo, sub, icone;
+
+    if (pago && !temAnt) {
+        tipo   = "pgto-pago";
+        icone  = "✓";
+        titulo = "Pagamento Efetuado";
+        sub    = `Pago em ${dataPgto} · ${d.total_receber}`;
+    } else if (pago && temAnt) {
+        tipo   = "pgto-pago";
+        icone  = "✓";
+        titulo = "Pago — Antecipação + Saldo";
+        sub    = `Antecipado: ${d.antecipado} · Saldo pago em ${dataPgto}: ${d.liquido}`;
+    } else if (temAnt) {
+        tipo   = "pgto-antecipado";
+        icone  = "⚡";
+        titulo = "Antecipação Solicitada";
+        sub    = `Antecipado: ${d.antecipado} · Saldo a receber: ${d.liquido}`;
+    } else {
+        tipo   = "pgto-pendente";
+        icone  = "◷";
+        titulo = "Pagamento Pendente";
+        sub    = `Previsto para ${_calcularDataPagamento(_fMes, _fAno, _fQuinzena)}`;
+    }
+
+    card.style.display = "";
+    card.innerHTML = `<div class="pgto-card ${tipo}">
+        <div class="pgto-card-icon">${icone}</div>
+        <div>
+            <div class="pgto-card-title">${titulo}</div>
+            <div class="pgto-card-sub">${sub}</div>
+        </div>
+    </div>`;
+}
+
 function _calcularDataPagamento(mes, ano, quinzena) {
     const ultimoDia = quinzena === 1
         ? new Date(ano, mes - 1, 15)   // 1ª quinzena: dia 15
@@ -92,9 +134,14 @@ function _carregarPainel() {
             antRow.style.display = "none";
         }
         document.getElementById("pb-total-entregues").innerText = d.total_entregues;
-        document.getElementById("pb-pagamento").innerText = temAnt
-            ? "Antecipação pendente — pagamento do saldo em " + _calcularDataPagamento(_fMes, _fAno, _fQuinzena)
-            : "Pagamento previsto: " + _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
+        const pago = d.pagamento_status === "pago";
+        document.getElementById("pb-pagamento").style.display = pago ? "none" : "";
+        if (!pago) {
+            document.getElementById("pb-pagamento").innerText = temAnt
+                ? "Antecipação solicitada — saldo em " + _calcularDataPagamento(_fMes, _fAno, _fQuinzena)
+                : "Pagamento previsto: " + _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
+        }
+        _renderPgtoStatusCard(d);
 
         // Ajustes
         document.getElementById("paj-adicional").innerText    = d.adicional;
