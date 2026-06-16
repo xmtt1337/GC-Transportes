@@ -131,32 +131,26 @@ function _antBuscarNF() {
     Promise.all([
         fetch(`${API}/nota?mes=${mes}&ano=${ano}&quinzena=${_antQuinzena}`, {
             headers: { "Authorization": "Bearer " + token }
-        }).then(r => r.json()).catch(() => null),
+        }).then(r => r.ok ? r.json() : null).catch(() => null),
         fetch(`${API}/painel?mes=${mes}&ano=${ano}&quinzena=${_antQuinzena}`, {
             headers: { "Authorization": "Bearer " + token }
         }).then(r => r.ok ? r.json() : null).catch(() => null)
     ]).then(([nf, painel]) => {
-        const valorLive  = painel?.total_receber_num ?? null;
         const uploadedAt = painel?.planilha_uploaded_at ?? null;
+        const nfCard = document.getElementById("ant-nf-card");
 
-        if (nf && !nf.error) {
+        // Só mostra o card e usa valor da NF se ela foi emitida
+        if (nf && nf.valor) {
             _antNFAtual = { ...nf };
-            if (valorLive !== null) _antNFAtual.valor_fechamento = valorLive;
-        } else if (valorLive !== null) {
-            _antNFAtual = { valor_fechamento: valorLive };
-        } else {
-            _antNFAtual = null;
-        }
-
-        if (_antNFAtual?.valor_fechamento) {
-            const vf = moedaJS(parseFloat(_antNFAtual.valor_fechamento));
+            const vf = moedaJS(parseFloat(nf.valor));
             document.getElementById("ant-nf-info").innerHTML =
                 `<span style="color:#22c55e">${vf}</span>` +
-                (_antNFAtual.numero_nf ? ` &nbsp;·&nbsp; <span style="color:#94a3b8">NF ${_antNFAtual.numero_nf}</span>` : "");
-            if (_antNFAtual.numero_nf) document.getElementById("ant-numero-nf").value = _antNFAtual.numero_nf;
+                (nf.numero_nf ? ` &nbsp;·&nbsp; <span style="color:#94a3b8">NF ${nf.numero_nf}</span>` : "");
+            if (nf.numero_nf) document.getElementById("ant-numero-nf").value = nf.numero_nf;
+            nfCard.style.display = "";
         } else {
-            document.getElementById("ant-nf-info").innerHTML =
-                `<span style="color:#f59e0b">Nenhum fechamento encontrado para esta quinzena.</span>`;
+            _antNFAtual = null;
+            nfCard.style.display = "none";
         }
 
         document.getElementById("ant-empty").style.display = "none";
@@ -207,11 +201,11 @@ function _antStatusBadge(status) {
 }
 
 function _antPreencherValorTotal() {
-    if (!_antNFAtual || !_antNFAtual.valor_fechamento) {
-        gcAlert("Não foi possível determinar o valor total da NF. Verifique se a nota foi registrada corretamente.");
+    if (!_antNFAtual || !_antNFAtual.valor) {
+        gcAlert("Nenhuma nota fiscal encontrada para esta quinzena. Emita e anexe a NF primeiro.");
         return;
     }
-    document.getElementById("ant-valor").value = parseFloat(_antNFAtual.valor_fechamento).toFixed(2);
+    document.getElementById("ant-valor").value = parseFloat(_antNFAtual.valor).toFixed(2);
 }
 
 function _antMaskCNPJ(input) {
@@ -263,8 +257,8 @@ function _antEnviarSolicitacao() {
     if (!_antValidarCNPJ(cnpj)) return _antMostrarMsg("CNPJ inválido. Verifique os dígitos.", "erro");
     if (!telefone) return _antMostrarMsg("Informe o telefone para contato.", "erro");
     if (!valor || isNaN(valor) || valor <= 0) return _antMostrarMsg("Informe um valor válido para antecipar.", "erro");
-    if (_antNFAtual?.valor_fechamento && valor > parseFloat(_antNFAtual.valor_fechamento)) {
-        return _antMostrarMsg(`O valor solicitado não pode superar o valor da NF (${moedaJS(parseFloat(_antNFAtual.valor_fechamento))}).`, "erro");
+    if (_antNFAtual?.valor && valor > parseFloat(_antNFAtual.valor)) {
+        return _antMostrarMsg(`O valor solicitado não pode superar o valor da NF (${moedaJS(parseFloat(_antNFAtual.valor))}).`, "erro");
     }
     if (!numeroNF) return _antMostrarMsg("Informe o número da nota fiscal.", "erro");
 
@@ -273,7 +267,7 @@ function _antEnviarSolicitacao() {
 
     const body = {
         quinzena: _antQuinzena, mes, ano,
-        valor_nf: _antNFAtual?.valor_fechamento || null,
+        valor_nf: _antNFAtual?.valor || null,
         valor_antecipado: valor,
         numero_nf: numeroNF,
         cnpj: cnpj.replace(/\D/g, ""),
