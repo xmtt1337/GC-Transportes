@@ -53,12 +53,14 @@ function _antCardHtml(tipo, titulo, sub) {
         wait:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M5 22h14M5 2h14M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></svg>`,
         clock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
         ok:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+        error: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
     };
     const cfg = {
         lock:  { border: "#334155", bg: "rgba(51,65,85,0.35)",  cor: "#94a3b8" },
         wait:  { border: "#92400e", bg: "rgba(146,64,14,0.18)", cor: "#f59e0b" },
         clock: { border: "#1e3a8a", bg: "rgba(30,58,138,0.18)", cor: "#60a5fa" },
         ok:    { border: "#14532d", bg: "rgba(20,83,45,0.18)",  cor: "#22c55e" },
+        error: { border: "#7f1d1d", bg: "rgba(127,29,29,0.22)", cor: "#f87171" },
     };
     const c = cfg[tipo] || cfg.wait;
     return `<div style="border:1px solid ${c.border};background:${c.bg};border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:14px">
@@ -70,7 +72,7 @@ function _antCardHtml(tipo, titulo, sub) {
     </div>`;
 }
 
-function _antRenderStatusCard(mes, ano, quinzena, uploadedAt) {
+function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlanilha) {
     let card = document.getElementById("ant-status-card");
     if (!card) {
         card = document.createElement("div");
@@ -115,6 +117,15 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt) {
         return;
     }
 
+    if (diverge) {
+        const vNF  = moedaJS(parseFloat(_antNFAtual.valor));
+        const vPl  = moedaJS(parseFloat(valorPlanilha));
+        card.innerHTML = _antCardHtml("error", "Valor da NF diverge do fechamento",
+            `O valor da nota fiscal emitida (<strong style="color:#fca5a5">${vNF}</strong>) é diferente do valor do seu fechamento (<strong style="color:#fca5a5">${vPl}</strong>). Corrija a NF para que os valores correspondam antes de solicitar a antecipação.`);
+        if (form) form.style.display = "none";
+        return;
+    }
+
     card.innerHTML = _antCardHtml("ok", "Antecipação disponível",
         "O prazo de conferência e emissão de NF foi cumprido. Você pode solicitar a antecipação.");
     if (form) form.style.display = "";
@@ -136,18 +147,25 @@ function _antBuscarNF() {
             headers: { "Authorization": "Bearer " + token }
         }).then(r => r.ok ? r.json() : null).catch(() => null)
     ]).then(([nf, painel]) => {
-        const uploadedAt = painel?.planilha_uploaded_at ?? null;
-        const nfCard = document.getElementById("ant-nf-card");
+        const uploadedAt    = painel?.planilha_uploaded_at ?? null;
+        const valorPlanilha = painel?.total_receber_num ?? null;
+        const nfCard        = document.getElementById("ant-nf-card");
+        let diverge = false;
 
         // Só mostra o card e usa valor da NF se ela foi emitida
         if (nf && nf.valor) {
             _antNFAtual = { ...nf };
-            const vf = moedaJS(parseFloat(nf.valor));
+            const vNF = parseFloat(nf.valor);
             document.getElementById("ant-nf-info").innerHTML =
-                `<span style="color:#22c55e">${vf}</span>` +
+                `<span style="color:#22c55e">${moedaJS(vNF)}</span>` +
                 (nf.numero_nf ? ` &nbsp;·&nbsp; <span style="color:#94a3b8">NF ${nf.numero_nf}</span>` : "");
             if (nf.numero_nf) document.getElementById("ant-numero-nf").value = nf.numero_nf;
             nfCard.style.display = "";
+
+            // Bloqueia se valor da NF divergir do valor do fechamento
+            if (valorPlanilha !== null && Math.abs(vNF - valorPlanilha) > 0.01) {
+                diverge = true;
+            }
         } else {
             _antNFAtual = null;
             nfCard.style.display = "none";
@@ -156,7 +174,7 @@ function _antBuscarNF() {
         document.getElementById("ant-empty").style.display = "none";
         document.getElementById("ant-content").style.display = "";
         _antLimparFormMsg();
-        _antRenderStatusCard(_antMes, _antAno, _antQuinzena, uploadedAt);
+        _antRenderStatusCard(_antMes, _antAno, _antQuinzena, uploadedAt, diverge, valorPlanilha);
     });
 }
 
@@ -253,6 +271,7 @@ function _antEnviarSolicitacao() {
     const mes      = parseInt(document.getElementById("ant-mes").value);
     const ano      = parseInt(document.getElementById("ant-ano").value);
 
+    if (!_antNFAtual?.valor) return _antMostrarMsg("Nenhuma nota fiscal encontrada para esta quinzena. Emita e anexe a NF primeiro.", "erro");
     if (!cnpj) return _antMostrarMsg("Informe o CNPJ.", "erro");
     if (!_antValidarCNPJ(cnpj)) return _antMostrarMsg("CNPJ inválido. Verifique os dígitos.", "erro");
     if (!telefone) return _antMostrarMsg("Informe o telefone para contato.", "erro");
