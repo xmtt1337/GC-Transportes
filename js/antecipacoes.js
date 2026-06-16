@@ -152,8 +152,8 @@ function _antBuscarNF() {
         const nfCard        = document.getElementById("ant-nf-card");
         let diverge = false;
 
-        // Mostra o card se a NF foi emitida (independente do valor ter sido extraído)
-        const _nfValorNum = nf ? parseFloat(nf.valor) : 0;
+        // Normaliza valor do banco (pode estar em formato BR: "4.675,61" ou "R$ 4.675,61")
+        const _nfValorNum = nf ? (parseFloat(String(nf.valor || "").replace(/[R$\s.]/g, "").replace(",", ".")) || 0) : 0;
         if (nf && nf.id) {
             _antNFAtual = { ...nf };
             const vNF = _nfValorNum;
