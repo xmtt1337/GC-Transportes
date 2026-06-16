@@ -119,45 +119,68 @@ async function _processarNotaFile(file) {
     area.innerHTML = `<div class="nota-loading">Lendo PDF…</div>`;
     try {
         const buf = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
         let text = "";
-        for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const content = await page.getTextContent();
-            text += content.items.map(it => it.str).join(" ") + "\n";
-        }
-        const nota             = _extrairCamposNota(text);
-        const notaNum          = _parseMoeda(nota.valor);
-        const valor_fechamento = _fTotalReceber || null;
-        const status           = (valor_fechamento && notaNum > 0)
-            ? (Math.abs(notaNum - valor_fechamento) < 0.02 ? "confere" : "diverge")
-            : null;
 
-        const vParams = new URLSearchParams({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena });
-        if (nota.chave_acesso) vParams.set('chave_acesso', nota.chave_acesso);
-        if (nota.numero_nf)    vParams.set('numero_nf',   nota.numero_nf);
-        if (nota.valor)        vParams.set('valor',        nota.valor);
-        if (nota.cnpj)         vParams.set('cnpj',         nota.cnpj);
-        if (nota.emissor)      vParams.set('emissor',      nota.emissor);
-        if (nota.emissao)      vParams.set('emissao',      nota.emissao);
-        const vRes  = await fetch(`${API}/nota/verificar?${vParams}`, {
-            headers: { "Authorization": "Bearer " + token }
-        });
-        const vData = await vRes.json();
-        if (vData.duplicata) {
-            _mostrarUploadArea(`⚠ Esta nota já foi utilizada (${vData.detalhe}). Use uma nota diferente.`);
+        // Tenta extração server-side primeiro — melhor compatibilidade com PDFs de prefeituras
+        try {
+            const resp = await fetch(`${API}/nota/extrair-pdf`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/pdf" },
+                body: buf.slice(0)
+            });
+            if (resp.ok) text = (await resp.json()).text || "";
+        } catch(_) {}
+
+        // Se servidor não retornou texto, tenta client-side PDF.js
+        if (!text.trim()) {
+            const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                text += content.items.map(it => it.str).join(" ") + "\n";
+            }
+        }
+
+        const nota = _extrairCamposNota(text);
+        const temDados = nota.cnpj !== "—" || nota.valor !== "—" || nota.numero_nf || nota.chave_acesso;
+        if (!temDados) {
+            _mostrarUploadArea("Este PDF não contém texto legível. Verifique se o arquivo não é uma imagem escaneada.");
             return;
         }
-
-        await fetch(`${API}/nota`, {
-            method: "POST",
-            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-            body: JSON.stringify({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena, ...nota, status, valor_fechamento })
-        });
-        _renderNotaCard(nota);
+        await _salvarNota(nota);
     } catch (e) {
         _mostrarUploadArea("Erro ao ler o PDF. Tente novamente.");
     }
+}
+
+async function _salvarNota(nota) {
+    const notaNum          = _parseMoeda(nota.valor);
+    const valor_fechamento = _fTotalReceber || null;
+    const status           = (valor_fechamento && notaNum > 0)
+        ? (Math.abs(notaNum - valor_fechamento) < 0.02 ? "confere" : "diverge")
+        : null;
+
+    const vParams = new URLSearchParams({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena });
+    if (nota.chave_acesso) vParams.set('chave_acesso', nota.chave_acesso);
+    if (nota.numero_nf)    vParams.set('numero_nf',   nota.numero_nf);
+    if (nota.valor)        vParams.set('valor',        nota.valor);
+    if (nota.cnpj)         vParams.set('cnpj',         nota.cnpj);
+    if (nota.emissor)      vParams.set('emissor',      nota.emissor);
+    if (nota.emissao)      vParams.set('emissao',      nota.emissao);
+    const vRes  = await fetch(`${API}/nota/verificar?${vParams}`, {
+        headers: { "Authorization": "Bearer " + token }
+    });
+    const vData = await vRes.json();
+    if (vData.duplicata) {
+        _mostrarUploadArea(`⚠ Esta nota já foi utilizada (${vData.detalhe}). Use uma nota diferente.`);
+        return;
+    }
+    await fetch(`${API}/nota`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena, ...nota, status, valor_fechamento })
+    });
+    _renderNotaCard(nota);
 }
 
 // ── Auxiliares de extração (compartilhados entre emissor e tomador) ──
