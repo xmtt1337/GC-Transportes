@@ -100,6 +100,22 @@ function _admAntBadge(status) {
     return `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:${s.color};background:${s.bg}">${s.label}</span>`;
 }
 
+function _admAntPagarTodas() {
+    if (!_admAntQuinzena || !_admAntRows.length) return;
+    if (!confirm(`Marcar TODAS as antecipações desta quinzena como PAGAS?`)) return;
+    const mes = document.getElementById("adm-ant-mes").value;
+    const ano = document.getElementById("adm-ant-ano").value;
+    fetch(`${API}/admin/antecipacoes/quinzena/pagar`, {
+        method: "PATCH",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ mes: parseInt(mes), ano: parseInt(ano), quinzena: _admAntQuinzena })
+    }).then(r => r.json()).then(d => {
+        if (d.error) return alert(d.error);
+        const btn = document.getElementById("adm-ant-pagar-btn");
+        if (btn) { btn.disabled = true; btn.textContent = `✓ ${d.updated} antecipação(ões) marcada(s) como paga`; btn.style.color = "#22c55e"; btn.style.borderColor = "rgba(34,197,94,0.35)"; btn.style.background = "rgba(34,197,94,0.08)"; }
+    }).catch(() => alert("Erro ao marcar como paga."));
+}
+
 function _exportarAntecipacaoXlsx() {
     if (!_admAntRows.length) return alert("Nenhum dado para exportar.");
     const MESES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
