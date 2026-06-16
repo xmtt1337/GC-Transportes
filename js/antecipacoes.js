@@ -152,21 +152,28 @@ function _antBuscarNF() {
         const nfCard        = document.getElementById("ant-nf-card");
         let diverge = false;
 
-        // Só mostra o card e usa valor da NF se ela foi emitida com valor > 0
+        // Mostra o card se a NF foi emitida (independente do valor ter sido extraído)
         const _nfValorNum = nf ? parseFloat(nf.valor) : 0;
-        if (nf && _nfValorNum > 0) {
+        if (nf && nf.id) {
             _antNFAtual = { ...nf };
             const vNF = _nfValorNum;
-            document.getElementById("ant-nf-info").innerHTML =
-                `<span style="color:#22c55e">${moedaJS(vNF)}</span>` +
-                (nf.numero_nf ? ` &nbsp;·&nbsp; <span style="color:#94a3b8">NF ${nf.numero_nf}</span>` : "");
+
+            if (vNF > 0) {
+                document.getElementById("ant-nf-info").innerHTML =
+                    `<span style="color:#22c55e">${moedaJS(vNF)}</span>` +
+                    (nf.numero_nf ? ` &nbsp;·&nbsp; <span style="color:#94a3b8">NF ${nf.numero_nf}</span>` : "");
+                // Bloqueia se valor da NF divergir do valor do fechamento
+                if (valorPlanilha !== null && valorPlanilha > 0 && Math.abs(vNF - valorPlanilha) > 0.01) {
+                    diverge = true;
+                }
+            } else {
+                // NF existe mas valor não foi extraído automaticamente do PDF
+                document.getElementById("ant-nf-info").innerHTML =
+                    `<span style="color:#f59e0b">Valor não extraído — preencha manualmente</span>`;
+            }
+
             if (nf.numero_nf) document.getElementById("ant-numero-nf").value = nf.numero_nf;
             nfCard.style.display = "";
-
-            // Bloqueia se valor da NF divergir do valor do fechamento
-            if (valorPlanilha !== null && Math.abs(vNF - valorPlanilha) > 0.01) {
-                diverge = true;
-            }
         } else {
             _antNFAtual = null;
             nfCard.style.display = "none";
@@ -272,7 +279,7 @@ function _antEnviarSolicitacao() {
     const mes      = parseInt(document.getElementById("ant-mes").value);
     const ano      = parseInt(document.getElementById("ant-ano").value);
 
-    if (!_antNFAtual?.valor) return _antMostrarMsg("Nenhuma nota fiscal encontrada para esta quinzena. Emita e anexe a NF primeiro.", "erro");
+    if (!_antNFAtual?.id) return _antMostrarMsg("Nenhuma nota fiscal encontrada para esta quinzena. Emita e anexe a NF primeiro.", "erro");
     if (!cnpj) return _antMostrarMsg("Informe o CNPJ.", "erro");
     if (!_antValidarCNPJ(cnpj)) return _antMostrarMsg("CNPJ inválido. Verifique os dígitos.", "erro");
     if (!telefone) return _antMostrarMsg("Informe o telefone para contato.", "erro");
