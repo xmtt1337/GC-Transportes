@@ -1213,53 +1213,50 @@
             <div class="fech-body">
                 <div class="fechamento-empty" id="ant-empty">Selecione o mês, ano e quinzena para solicitar uma antecipação.</div>
                 <div id="ant-content" style="display:none">
+
                     <!-- Card da NF -->
-                    <div id="ant-nf-card" style="background:rgba(58,134,255,0.07);border:1px solid rgba(58,134,255,0.2);border-radius:14px;padding:16px 20px;margin-bottom:18px">
-                        <div style="font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Nota Fiscal da Quinzena</div>
-                        <div id="ant-nf-info" style="font-size:15px;color:#e2e8f0;font-weight:600">—</div>
+                    <div id="ant-nf-card" class="ant-nf-card">
+                        <div class="ant-nf-label">Nota Fiscal da Quinzena</div>
+                        <div id="ant-nf-info" class="ant-nf-info">—</div>
                     </div>
+
                     <!-- Formulário -->
-                    <div id="ant-form-wrap" style="background:rgba(15,25,35,0.5);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:20px">
-                        <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:16px">Solicitar Antecipação</div>
+                    <div id="ant-form-wrap" class="ant-form-wrap">
+                        <div class="ant-form-title">Solicitar Antecipação</div>
                         <div class="ant-form-grid">
-                            <div>
-                                <label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:5px">CNPJ *</label>
-                                <input type="text" id="ant-cnpj" maxlength="18" placeholder="00.000.000/0000-00"
-                                    oninput="_antMaskCNPJ(this)"
-                                    style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit;box-sizing:border-box">
+                            <div class="ant-field">
+                                <label class="ant-label">CNPJ *</label>
+                                <input type="text" id="ant-cnpj" class="ant-input" maxlength="18" placeholder="00.000.000/0000-00" oninput="_antMaskCNPJ(this)">
                             </div>
-                            <div>
-                                <label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:5px">Telefone para contato *</label>
-                                <input type="text" id="ant-telefone" maxlength="15" placeholder="(00) 00000-0000"
-                                    oninput="this.value=this.value.replace(/\D/g,'')"
-                                    style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit;box-sizing:border-box">
+                            <div class="ant-field">
+                                <label class="ant-label">Telefone para contato *</label>
+                                <input type="text" id="ant-telefone" class="ant-input" maxlength="15" placeholder="(00) 00000-0000" oninput="this.value=this.value.replace(/\D/g,'')">
                             </div>
                         </div>
                         <div class="ant-form-grid">
-                            <div>
-                                <label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:5px">Valor a antecipar *</label>
+                            <div class="ant-field">
+                                <label class="ant-label">Valor a antecipar *</label>
                                 <div class="ant-valor-row">
-                                    <input type="number" id="ant-valor" min="0.01" step="0.01" placeholder="0,00"
-                                        style="flex:1;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit">
-                                    <button onclick="_antPreencherValorTotal()" style="padding:8px 12px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap" title="Solicitar valor total da NF">Valor total</button>
+                                    <input type="number" id="ant-valor" class="ant-input" min="0.01" step="0.01" placeholder="0,00" style="flex:1">
+                                    <button onclick="_antPreencherValorTotal()" class="ant-valor-btn">Valor total</button>
                                 </div>
                             </div>
-                            <div>
-                                <label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:5px">Número da Nota Fiscal *</label>
-                                <input type="text" id="ant-numero-nf" placeholder="Nº da NF"
-                                    style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit;box-sizing:border-box">
+                            <div class="ant-field">
+                                <label class="ant-label">Número da Nota Fiscal *</label>
+                                <input type="text" id="ant-numero-nf" class="ant-input" placeholder="Nº da NF">
                             </div>
                         </div>
-                        <div id="ant-form-msg" style="font-size:13px;margin-bottom:12px;display:none"></div>
-                        <button onclick="_antEnviarSolicitacao()" style="padding:10px 24px;border-radius:10px;border:none;background:#3a86ff;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Enviar Solicitação</button>
+                        <div id="ant-form-msg" class="ant-form-msg" style="display:none"></div>
+                        <button onclick="_antEnviarSolicitacao()" class="ant-submit-btn">Enviar Solicitação</button>
                     </div>
+
                     <!-- Histórico -->
-                    <div style="margin-top:24px">
-                        <div style="font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Minhas Solicitações</div>
+                    <div class="ant-historico-section">
+                        <div class="ant-sol-title">Minhas Solicitações</div>
                         <div id="ant-historico-wrap">
-                            <div class="fechamento-empty" id="ant-historico-empty" style="padding:20px 0">Nenhuma solicitação encontrada.</div>
-                            <div class="adm-nf-wrap" id="ant-historico-resultado" style="display:none">
-                                <table class="adm-nf-table">
+                            <div class="fechamento-empty" id="ant-historico-empty" style="padding:16px 0">Nenhuma solicitação encontrada.</div>
+                            <div id="ant-historico-resultado" style="display:none">
+                                <table class="ant-hist-table" id="ant-historico-table">
                                     <thead>
                                         <tr>
                                             <th>Quinzena</th>
@@ -1274,6 +1271,7 @@
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div><!-- /tela-antecipacoes -->
