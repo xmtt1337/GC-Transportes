@@ -34,7 +34,6 @@ function selecionarQuinzenaAnt(q) {
     document.getElementById("ant-btn-1q").classList.toggle("active", q === 1);
     document.getElementById("ant-btn-2q").classList.toggle("active", q === 2);
     _antBuscarNF();
-    _antCarregarHistorico();
 }
 
 function _addDiasUteis(date, dias) {
@@ -86,8 +85,8 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt) {
     }
 
     if (!uploadedAt) {
-        card.innerHTML = _antCardHtml("wait", "Planilha ainda não processada",
-            "O administrador ainda não anexou a planilha para este período. Aguarde.");
+        card.innerHTML = _antCardHtml("wait", "Período ainda não processado",
+            "O administrador ainda não processou este período. Aguarde.");
         if (form) form.style.display = "none";
         return;
     }
@@ -105,7 +104,7 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt) {
             : `Prazo para emissão e anexo da NF em andamento — prazo final: <strong style="color:#e2e8f0">${dtLib}</strong>.`;
         card.innerHTML = _antCardHtml("clock",
             `Disponível a partir de ${dtLib}`,
-            `Planilha anexada em ${dataUpload.toLocaleDateString("pt-BR")}.<br>${fase}`);
+            `Processado em ${dataUpload.toLocaleDateString("pt-BR")}.<br>${fase}`);
         if (form) form.style.display = "none";
         return;
     }
@@ -287,10 +286,53 @@ function _antEnviarSolicitacao() {
         document.getElementById("ant-cnpj").value = "";
         document.getElementById("ant-telefone").value = "";
         document.getElementById("ant-valor").value = "";
-        _antCarregarHistorico();
     })
     .catch(() => {
         if (btn) { btn.disabled = false; btn.textContent = "Enviar Solicitação"; }
         _antMostrarMsg("Erro ao enviar solicitação. Tente novamente.", "erro");
+    });
+}
+
+// ───── MINHAS SOLICITAÇÕES ─────
+
+function abrirMinhasSolicitacoes(event) {
+    if (event) event.preventDefault();
+    mostrarTela("tela-minhas-solicitacoes");
+    _carregarMinhasSolicitacoes();
+}
+
+function _carregarMinhasSolicitacoes() {
+    const empty  = document.getElementById("ms-empty");
+    const result = document.getElementById("ms-resultado");
+    empty.innerText = "Carregando...";
+    empty.style.display = "";
+    result.style.display = "none";
+
+    fetch(`${API}/antecipacoes`, {
+        headers: { "Authorization": "Bearer " + token }
+    }).then(r => r.json())
+    .then(rows => {
+        if (!rows.length) {
+            empty.innerText = "Nenhuma solicitação encontrada.";
+            return;
+        }
+        empty.style.display = "none";
+        result.style.display = "";
+        const MESES = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+        document.getElementById("ms-tbody").innerHTML = rows.map(r => {
+            const periodo = `${r.quinzena}ª Qz ${MESES[r.mes]}/${r.ano}`;
+            const data    = r.data_solicitacao ? new Date(r.data_solicitacao).toLocaleDateString("pt-BR") : "—";
+            const vNF     = r.valor_nf ? moedaJS(parseFloat(r.valor_nf)) : "—";
+            const vAnt    = r.valor_antecipado ? moedaJS(parseFloat(r.valor_antecipado)) : "—";
+            return `<tr>
+                <td data-label="Quinzena">${periodo}</td>
+                <td data-label="Valor NF">${vNF}</td>
+                <td data-label="Solicitado" style="color:#3a86ff;font-weight:600">${vAnt}</td>
+                <td data-label="Status">${_antStatusBadge(r.status)}</td>
+                <td data-label="Data" style="color:#64748b;font-size:12px">${data}</td>
+            </tr>`;
+        }).join("");
+    }).catch(() => {
+        empty.innerText = "Erro ao carregar solicitações.";
     });
 }

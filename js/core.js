@@ -56,7 +56,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         hide("submenu-conferencias");
         show("menu-fechamentos");
         show("submenu-fechamentos");
-        show("menu-antecipacao-ent");
+        show("menu-adiantamentos");
+        show("submenu-adiantamentos");
         document.getElementById("welcome-name").innerText = displayName.split(" ")[0];
     }
 

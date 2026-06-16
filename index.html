@@ -99,7 +99,21 @@
             <li><a href="#" onclick="abrirFechamentos(event)">Meus Fechamentos</a></li>
             <li><a href="#" onclick="abrirEntDashboard(event)">Dashboard</a></li>
             <li><a href="#" onclick="abrirMinhasNFs(event)">Notas Fiscais</a></li>
-            <li id="menu-antecipacao-ent" style="display:none"><a href="#" onclick="abrirAntecipacoes(event)">Antecipação de Pagamento</a></li>
+        </ul>
+
+        <li class="menu-item" data-menu="adiantamentos" id="menu-adiantamentos" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <path d="M16 12a2 2 0 0 0 0 4h4v-4Z"/>
+                <path d="M2 10h20"/>
+            </svg>
+            <span class="label">Adiantamentos</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Adiantamentos</span>
+        </li>
+        <ul class="submenu" data-menu="adiantamentos" id="submenu-adiantamentos" style="display:none">
+            <li><a href="#" onclick="abrirAntecipacoes(event)">Solicitar Antecipação</a></li>
+            <li><a href="#" onclick="abrirMinhasSolicitacoes(event)">Minhas Solicitações</a></li>
         </ul>
 
         <li class="menu-item" data-menu="adminmenu" id="menu-adminmenu" onclick="toggleMenu(this)" style="display:none">
@@ -1250,31 +1264,31 @@
                         <button onclick="_antEnviarSolicitacao()" class="ant-submit-btn">Enviar Solicitação</button>
                     </div>
 
-                    <!-- Histórico -->
-                    <div class="ant-historico-section">
-                        <div class="ant-sol-title">Minhas Solicitações</div>
-                        <div id="ant-historico-wrap">
-                            <div class="fechamento-empty" id="ant-historico-empty" style="padding:16px 0">Nenhuma solicitação encontrada.</div>
-                            <div id="ant-historico-resultado" style="display:none">
-                                <table class="ant-hist-table" id="ant-historico-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Quinzena</th>
-                                            <th>Valor NF</th>
-                                            <th>Valor Solicitado</th>
-                                            <th>Nº NF</th>
-                                            <th>Data</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="ant-historico-tbody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
             </div>
         </div><!-- /tela-antecipacoes -->
+
+        <!-- TELA MINHAS SOLICITAÇÕES (ENTREGADOR) -->
+        <div id="tela-minhas-solicitacoes" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div class="ant-sol-title" style="margin-bottom:18px">Minhas Solicitações de Adiantamento</div>
+                <div class="fechamento-empty" id="ms-empty">Carregando...</div>
+                <div id="ms-resultado" style="display:none">
+                    <table class="ant-hist-table">
+                        <thead>
+                            <tr>
+                                <th>Quinzena</th>
+                                <th>Valor NF</th>
+                                <th>Solicitado</th>
+                                <th>Status</th>
+                                <th>Data</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ms-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div><!-- /tela-minhas-solicitacoes -->
 
         <!-- TELA ANTECIPAÇÕES ADMIN -->
         <div id="tela-admin-antecipacoes" class="view tela-full">
