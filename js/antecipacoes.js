@@ -152,10 +152,11 @@ function _antBuscarNF() {
         const nfCard        = document.getElementById("ant-nf-card");
         let diverge = false;
 
-        // Só mostra o card e usa valor da NF se ela foi emitida
-        if (nf && nf.valor) {
+        // Só mostra o card e usa valor da NF se ela foi emitida com valor > 0
+        const _nfValorNum = nf ? parseFloat(nf.valor) : 0;
+        if (nf && _nfValorNum > 0) {
             _antNFAtual = { ...nf };
-            const vNF = parseFloat(nf.valor);
+            const vNF = _nfValorNum;
             document.getElementById("ant-nf-info").innerHTML =
                 `<span style="color:#22c55e">${moedaJS(vNF)}</span>` +
                 (nf.numero_nf ? ` &nbsp;·&nbsp; <span style="color:#94a3b8">NF ${nf.numero_nf}</span>` : "");
