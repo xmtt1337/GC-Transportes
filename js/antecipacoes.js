@@ -108,8 +108,7 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlan
         return;
     }
 
-    card.innerHTML = _antCardHtml("ok", "Antecipação disponível",
-        "O prazo de conferência e emissão de NF foi cumprido. Você pode solicitar a antecipação.");
+    card.innerHTML = "";
     if (form) form.style.display = "";
 }
 
