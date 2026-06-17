@@ -74,9 +74,10 @@ function _renderAdmAntTabela(rows) {
         const vNF   = r.valor_nf ? moedaJS(parseFloat(r.valor_nf)) : "—";
         const vAnt  = r.valor_antecipado ? moedaJS(parseFloat(r.valor_antecipado)) : "—";
         const qz    = `${r.quinzena}ª Qz ${MESES[r.mes]}/${r.ano}`;
-        const badge = _admAntBadge(r.status);
         const cnpj  = r.cnpj ? r.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5") : "—";
+        const finalizado = r.status === "paga" || r.status === "rejeitada";
         return `<tr>
+            <td style="text-align:center"><input type="checkbox" class="adm-ant-cb" data-id="${r.id}" ${finalizado ? "disabled" : ""} onchange="_admAntOnCbChange()" style="cursor:${finalizado?"not-allowed":"pointer"};accent-color:#3a86ff;width:15px;height:15px;opacity:${finalizado?"0.3":"1"}"></td>
             <td style="font-size:12px;color:#64748b">${data}</td>
             <td class="adm-nf-entregador">${r.usuario_nome || "—"}</td>
             <td style="color:#94a3b8">${qz}</td>
@@ -85,8 +86,13 @@ function _renderAdmAntTabela(rows) {
             <td>${r.numero_nf || "—"}</td>
             <td style="font-size:12px;color:#94a3b8">${cnpj}</td>
             <td style="font-size:12px;color:#94a3b8">${r.telefone || "—"}</td>
+            <td>${_admAntBadge(r.status)}</td>
         </tr>`;
     }).join("");
+    const cbAll = document.getElementById("adm-ant-cb-all");
+    if (cbAll) cbAll.checked = false;
+    const selBtn = document.getElementById("adm-ant-sel-btn");
+    if (selBtn) selBtn.style.display = "none";
 }
 
 function _admAntBadge(status) {
@@ -98,6 +104,40 @@ function _admAntBadge(status) {
     };
     const s = map[status] || { color: "#64748b", bg: "rgba(100,116,139,0.1)", label: status };
     return `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:${s.color};background:${s.bg}">${s.label}</span>`;
+}
+
+function _admAntOnCbChange() {
+    const selecionados = document.querySelectorAll(".adm-ant-cb:checked").length;
+    const selBtn = document.getElementById("adm-ant-sel-btn");
+    if (selBtn) {
+        selBtn.style.display = selecionados > 0 ? "inline-flex" : "none";
+        const txt = selBtn.querySelector("span") || selBtn.lastChild;
+        if (txt && txt.nodeType === 3) txt.textContent = ` Marcar ${selecionados} como Paga${selecionados !== 1 ? "s" : ""}`;
+        else selBtn.childNodes[selBtn.childNodes.length - 1].textContent = ` Marcar ${selecionados} como Paga${selecionados !== 1 ? "s" : ""}`;
+    }
+    const cbAll = document.getElementById("adm-ant-cb-all");
+    const disponiveis = document.querySelectorAll(".adm-ant-cb:not([disabled])");
+    if (cbAll) cbAll.checked = disponiveis.length > 0 && selecionados === disponiveis.length;
+}
+
+function _admAntSelectAll(cbAll) {
+    document.querySelectorAll(".adm-ant-cb:not([disabled])").forEach(cb => { cb.checked = cbAll.checked; });
+    _admAntOnCbChange();
+}
+
+function _admAntPagarSelecionadas() {
+    const ids = [...document.querySelectorAll(".adm-ant-cb:checked")].map(cb => parseInt(cb.dataset.id));
+    if (!ids.length) return;
+    gcConfirm(`Marcar ${ids.length} antecipação(ões) selecionada(s) como PAGA(S)?`, () => {
+        fetch(`${API}/admin/antecipacoes/bulk/pagar`, {
+            method: "PATCH",
+            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+            body: JSON.stringify({ ids })
+        }).then(r => r.json()).then(d => {
+            if (d.error) return gcAlert(d.error);
+            buscarAntecipacoes();
+        }).catch(() => gcAlert("Erro ao marcar como pagas."));
+    }, null, "Confirmar");
 }
 
 function _admAntPagarTodas() {
