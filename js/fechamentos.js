@@ -104,15 +104,33 @@ function _carregarPainel() {
 
         _fTotalReceber = d.total_receber_num || 0;
 
-        // Banner — sempre mostra o valor bruto a receber
-        const banner = document.getElementById("pb-banner");
-        const temAnt = d.antecipado_num > 0;
+        // Banner
+        const banner  = document.getElementById("pb-banner");
+        const temAnt  = d.antecipado_num > 0;
+        // Q2 Maio/2026 em diante: antecipação habilitada
+        const ehPeriodoAnt = _fAno > 2026 || (_fAno === 2026 && (_fMes > 5 || (_fMes === 5 && _fQuinzena >= 2)));
         banner.className = "painel-banner " + (d.total_receber_num < 0 ? "banner-negativo" : "banner-positivo");
-        document.getElementById("pb-eyebrow").innerText = "Valor a receber no período";
+        document.getElementById("pb-eyebrow").innerText = temAnt ? "Valor bruto do período" : "Valor a receber no período";
         document.getElementById("pb-total-receber").innerText = d.total_receber;
-        document.getElementById("pb-ant-row").style.display = "none";
         document.getElementById("pb-total-entregues").innerText = d.total_entregues;
         document.getElementById("pb-pagamento").style.display = "none";
+
+        const antRow = document.getElementById("pb-ant-row");
+        if (ehPeriodoAnt) {
+            antRow.style.display = "";
+            if (temAnt) {
+                antRow.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#3a86ff;font-weight:600">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Antecipado: ${d.antecipado} &nbsp;·&nbsp; <span style="color:#94a3b8;font-weight:400">Saldo a receber: ${d.liquido}</span>
+                </span>`;
+            } else {
+                const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
+                antRow.innerHTML = `<span style="font-size:12px;color:#64748b">Previsão de recebimento: <strong style="color:#94a3b8">${dataPrev}</strong></span>`;
+            }
+        } else {
+            antRow.style.display = "none";
+        }
+
         _renderPgtoStatusCard(d);
 
         // Ajustes
