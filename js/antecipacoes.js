@@ -99,24 +99,6 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlan
         return;
     }
 
-    const dataUpload     = new Date(uploadedAt);
-    const dataConferencia = _addDiasUteis(dataUpload, 2); // 2 dias úteis para conferir
-    const dataLiberacao   = _addDiasUteis(dataUpload, 5); // +3 dias úteis para emitir NF
-    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-
-    if (hoje < dataLiberacao) {
-        const dtConf = dataConferencia.toLocaleDateString("pt-BR");
-        const dtLib  = dataLiberacao.toLocaleDateString("pt-BR");
-        const fase   = hoje < dataConferencia
-            ? `Você tem até <strong style="color:#e2e8f0">${dtConf}</strong> para conferir sua folha (2 dias úteis), depois emita e anexe sua NF.`
-            : `Prazo para emissão e anexo da NF em andamento — prazo final: <strong style="color:#e2e8f0">${dtLib}</strong>.`;
-        card.innerHTML = _antCardHtml("clock",
-            `Disponível a partir de ${dtLib}`,
-            `Processado em ${dataUpload.toLocaleDateString("pt-BR")}.<br>${fase}`);
-        if (form) form.style.display = "none";
-        return;
-    }
-
     if (diverge) {
         const vNF  = moedaJS(_antNFAtual._valorNum);
         const vPl  = moedaJS(valorPlanilha);
