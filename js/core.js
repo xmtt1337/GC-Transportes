@@ -72,6 +72,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         _showFechamentosAdmin();
         _showCadastros();
         _showExtravios();
+        show("bip-sync-btn");
         // sem: financeiro
     }
 
@@ -81,6 +82,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         _showFinanceiro();
         _showCadastros();
         _showExtravios();
+        show("bip-sync-btn");
     }
 
     if (role === "sac") {
