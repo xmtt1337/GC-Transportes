@@ -137,11 +137,12 @@ function _fmt(n) {
 
 function _renderPainelVideira(d) {
     // Hero + KPI grid
-    document.getElementById("vp-cards").innerHTML = `
-        <div style="background:linear-gradient(135deg,rgba(34,197,94,0.09) 0%,rgba(58,134,255,0.04) 100%);border:1px solid rgba(34,197,94,0.2);border-radius:18px;padding:20px 24px;margin-bottom:16px">
+    const cards = document.getElementById("vp-cards");
+    cards.innerHTML = `
+        <div style="background:linear-gradient(135deg,rgba(34,197,94,0.09) 0%,rgba(58,134,255,0.04) 100%);border:1px solid rgba(34,197,94,0.2);border-radius:18px;padding:20px 24px;margin-bottom:18px">
             <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Resultado Líquido do Período</div>
             <div style="font-size:30px;font-weight:800;color:#22c55e;letter-spacing:-.5px;margin-bottom:18px">${d.valor_total_liquido || "—"}</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px">
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
                 ${[
                     { lbl:"Total Pacotes", val:(d.qtd_pacotes_total||0).toLocaleString("pt-BR"), c:"#3a86ff" },
                     { lbl:"Coletas",       val:(d.qtd_coletas||0).toLocaleString("pt-BR"),       c:"#f97316" },
@@ -149,7 +150,7 @@ function _renderPainelVideira(d) {
                     { lbl:"Diária Col.",   val:d.diaria_coletas||"—",                            c:"#94a3b8" },
                     { lbl:"Descontos",     val:d.valor_desconto||"—",                            c:"#ef4444" },
                 ].map(c => `
-                    <div style="background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:11px 14px">
+                    <div style="background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:11px 16px;min-width:120px">
                         <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${c.lbl}</div>
                         <div style="font-size:17px;font-weight:700;color:${c.c}">${c.val}</div>
                     </div>
@@ -198,6 +199,18 @@ function _renderPainelVideira(d) {
             <td></td>
         </tr>
     `;
+
+    // Extravios
+    const extEl = document.getElementById("vp-extravios");
+    const lista = d.extravios_linhas || [];
+    extEl.innerHTML = `
+        <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px;padding-left:2px">
+            Extravios do Período
+            <span style="font-size:10px;font-weight:500;color:#64748b;text-transform:none;letter-spacing:0;margin-left:6px">${lista.length} registro${lista.length !== 1 ? "s" : ""}</span>
+        </div>
+        <div id="vp-extravios-lista"></div>
+    `;
+    _renderExtravios(lista, "vp-extravios-lista", false);
 
     document.getElementById("vp-empty").style.display   = "none";
     document.getElementById("vp-content").style.display = "";
