@@ -186,6 +186,7 @@
             <span class="menu-tooltip">Videira</span>
         </li>
         <ul class="submenu" data-menu="videira" id="submenu-videira" style="display:none">
+            <li><a href="#" onclick="abrirVideiraDash(event)">Dashboard</a></li>
             <li><a href="#" onclick="abrirVideiraPainel(event)">Meu Fechamento</a></li>
             <li><a href="#" onclick="abrirVideiraAlimentar(event)">Alimentar Fechamento</a></li>
         </ul>
@@ -1478,6 +1479,47 @@
         </div>
     </div>
 </div><!-- /tela-videira-painel -->
+
+<!-- TELA VIDEIRA — DASHBOARD -->
+<div id="tela-videira-dash" class="view tela-full">
+    <div class="fech-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+            <div style="font-size:15px;font-weight:700;color:#e2e8f0">Dashboard — Videira</div>
+        </div>
+        <div class="dash-comp-toggle">
+            <button class="dash-comp-btn active" id="vd-gran-q" onclick="setVdGran('quinzena')">Por quinzena</button>
+            <button class="dash-comp-btn" id="vd-gran-m" onclick="setVdGran('mes')">Por mês</button>
+        </div>
+    </div>
+    <div class="fech-body">
+        <div class="fechamento-empty" id="vd-empty">Carregando...</div>
+        <div id="vd-content" style="display:none">
+            <div class="dash-kpi-row">
+                <div class="dash-kpi-card" id="vdkpi-ant-card">
+                    <div class="dash-kpi-lbl">vs Quinzena Anterior</div>
+                    <div class="dash-kpi-pct flat" id="vdkpi-vs-ant">—</div>
+                    <div class="dash-kpi-sub" id="vdkpi-vs-ant-sub">comparação</div>
+                </div>
+                <div class="dash-kpi-card" id="vdkpi-ini-card">
+                    <div class="dash-kpi-lbl">vs Início</div>
+                    <div class="dash-kpi-pct flat" id="vdkpi-vs-ini">—</div>
+                    <div class="dash-kpi-sub" id="vdkpi-vs-ini-sub">desde o primeiro</div>
+                </div>
+            </div>
+            <div class="dash-pchips" id="vd-pchips"></div>
+            <div id="vd-total-linha" style="display:none;text-align:right;font-size:13px;color:#94a3b8;margin-bottom:8px;padding:0 2px"></div>
+            <div class="ent-transp-grid" id="vd-transp-grid"></div>
+            <div class="dash-chart-card">
+                <div class="dash-chart-title">Valor Líquido por Período</div>
+                <div class="dash-chart-canvas"><canvas id="vd-valor-chart"></canvas></div>
+            </div>
+            <div class="dash-chart-card">
+                <div class="dash-chart-title">Transportadoras por Período (Qtd)</div>
+                <div class="dash-chart-canvas"><canvas id="vd-transp-chart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div><!-- /tela-videira-dash -->
 
 <!-- MODAL: NOVO USUÁRIO GC -->
 <div class="usr-modal-overlay" id="modal-novo-usuario-gc" onclick="_fecharModalSeBackdrop(event,'modal-novo-usuario-gc')">
