@@ -98,8 +98,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         hide("submenu-conferencias");
         show("menu-videira");
         show("submenu-videira");
-        show("menu-extravios");
-        show("submenu-extravios");
     }
 
     if (role === "admin" || role === "dev") {
