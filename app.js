@@ -40,9 +40,25 @@ fetch(API + "/perfil", {
         document.getElementById("menu-dashboard").style.display    = "";
     }
 
+    if (role === "ADM Videira") {
+        document.getElementById("menu-operacao").style.display     = "none";
+        document.getElementById("submenu-operacao").style.display  = "none";
+        document.getElementById("menu-pedidos").style.display      = "none";
+        document.getElementById("submenu-pedidos").style.display   = "none";
+        document.getElementById("menu-conferencias").style.display = "none";
+        document.getElementById("submenu-conferencias").style.display = "none";
+        document.getElementById("menu-videira").style.display      = "";
+        document.getElementById("submenu-videira").style.display   = "";
+    }
+
+    if (["admin", "dev"].includes(role)) {
+        document.getElementById("menu-videira").style.display    = "";
+        document.getElementById("submenu-videira").style.display = "";
+    }
+
     renderHomeActions(role);
     const badge = document.getElementById("home-role-badge");
-    if (badge) badge.innerText = role === "admin" ? "Administrador" : role === "entregador" ? "Entregador" : "Operador";
+    if (badge) badge.innerText = role === "admin" ? "Administrador" : role === "entregador" ? "Entregador" : role === "ADM Videira" ? "ADM Videira" : "Operador";
 })
 .catch(() => {
     localStorage.removeItem("token");
