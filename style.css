@@ -177,7 +177,7 @@ body {
 .logout-btn:hover .tooltip { opacity: 1; transform: translateY(0); }
 
 /* ===== MAIN ===== */
-.main { flex: 1; min-height: 0; min-width: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+.main { flex: 1; min-height: 0; min-width: 0; display: flex; align-items: stretch; position: relative; }
 
 .card {
     background: rgba(27,38,59,0.9); padding: 50px; border-radius: 20px;
