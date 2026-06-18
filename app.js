@@ -465,8 +465,23 @@ function renderHomeActions(role) {
         defs.push({
             icon: `<circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><path d="M18 14l2 2 4-4"/>`,
             title: "Administração",
-            desc: "Planilhas e fechamentos dos entregadores.",
+            desc: "Fechamentos dos entregadores.",
             fn: "abrirAdmin()"
+        });
+    }
+
+    if (role === "ADM Videira") {
+        defs.push({
+            icon: `<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h6M8 18h4"/>`,
+            title: "Meu Fechamento",
+            desc: "Veja o fechamento por cidade e transportadora.",
+            fn: "abrirVideiraPainel()"
+        });
+        defs.push({
+            icon: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>`,
+            title: "Alimentar Fechamento",
+            desc: "Informe o link do fechamento para o período.",
+            fn: "abrirVideiraAlimentar()"
         });
     }
 
