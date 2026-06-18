@@ -174,30 +174,29 @@ function _renderPainelVideira(d) {
         </tr>
     `).join("");
 
-    // Totais
+    // Totais — estilo pivot table (QTD + R$ empilhados em uma única linha)
     const tq = d.totais_qtd || {};
     const tv = d.totais_val || {};
     const totalQtd = tq.total > 0 ? tq.total : ((tq.shopee||0) + (tq.imile||0) + (tq.anjun||0) + (tq.jt||0) + (tq.loggi||0));
+    const _cell = (qtd, val, cor) => `
+        <td style="text-align:right;padding:10px 12px;vertical-align:middle">
+            <div style="font-size:14px;font-weight:700;color:${cor};line-height:1.3">${_fmt(qtd)}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">${val || "—"}</div>
+        </td>`;
     document.getElementById("vp-tfoot").innerHTML = `
-        <tr style="background:rgba(255,255,255,0.05);font-weight:700;font-size:13px;border-top:1px solid rgba(255,255,255,0.08)">
-            <td style="color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Total Qtd</td>
-            <td style="text-align:right;color:#f97316">${_fmt(tq.shopee)}</td>
-            <td style="text-align:right;color:#9333ea">${_fmt(tq.imile)}</td>
-            <td style="text-align:right;color:#22c55e">${_fmt(tq.anjun)}</td>
-            <td style="text-align:right;color:#ef4444">${_fmt(tq.jt)}</td>
-            <td style="text-align:right;color:#12a5e8">${_fmt(tq.loggi)}</td>
-            <td style="text-align:right;font-size:14px">${_fmt(totalQtd)}</td>
-            <td style="text-align:right;color:#22c55e;font-size:13px">${d.soma_valor_cidades || "—"}</td>
-        </tr>
-        <tr style="background:rgba(255,255,255,0.02);font-size:12px;color:#64748b">
-            <td style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Valores</td>
-            <td style="text-align:right">${tv.shopee||"—"}</td>
-            <td style="text-align:right">${tv.imile||"—"}</td>
-            <td style="text-align:right">${tv.anjun||"—"}</td>
-            <td style="text-align:right">${tv.jt||"—"}</td>
-            <td style="text-align:right">${tv.loggi||"—"}</td>
-            <td></td>
-            <td></td>
+        <tr style="background:rgba(255,255,255,0.06);border-top:2px solid rgba(255,255,255,0.12)">
+            <td style="padding:10px 12px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;vertical-align:middle">Total Geral</td>
+            ${_cell(tq.shopee, tv.shopee, "#f97316")}
+            ${_cell(tq.imile,  tv.imile,  "#9333ea")}
+            ${_cell(tq.anjun,  tv.anjun,  "#22c55e")}
+            ${_cell(tq.jt,     tv.jt,     "#ef4444")}
+            ${_cell(tq.loggi,  tv.loggi,  "#12a5e8")}
+            <td style="text-align:right;padding:10px 12px;vertical-align:middle">
+                <div style="font-size:15px;font-weight:800;color:#e2e8f0;line-height:1.3">${_fmt(totalQtd)}</div>
+            </td>
+            <td style="text-align:right;padding:10px 12px;vertical-align:middle">
+                <div style="font-size:14px;font-weight:700;color:#22c55e;line-height:1.3">${d.soma_valor_cidades || "—"}</div>
+            </td>
         </tr>
     `;
 
