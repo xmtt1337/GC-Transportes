@@ -181,14 +181,14 @@
                 <path d="M16 2v4M8 2v4M3 10h18"/>
                 <path d="M8 14h6M8 18h4"/>
             </svg>
-            <span class="label">Videira</span>
+            <span class="label">Fechamentos</span>
             <span class="arrow">▾</span>
-            <span class="menu-tooltip">Videira</span>
+            <span class="menu-tooltip">Fechamentos</span>
         </li>
         <ul class="submenu" data-menu="videira" id="submenu-videira" style="display:none">
             <li><a href="#" onclick="abrirVideiraDash(event)">Dashboard</a></li>
             <li><a href="#" onclick="abrirVideiraPainel(event)">Meu Fechamento</a></li>
-            <li><a href="#" onclick="abrirVideiraAlimentar(event)">Alimentar Fechamento</a></li>
+            <li id="videira-li-alimentar" style="display:none"><a href="#" onclick="abrirVideiraAlimentar(event)">Alimentar Fechamento</a></li>
         </ul>
 
         <li class="menu-item" data-menu="extravios" id="menu-extravios" onclick="toggleMenu(this)" style="display:none">
