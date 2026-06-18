@@ -146,6 +146,21 @@ function renderHomeActions(role) {
         });
     }
 
+    if (role === "ADM Videira") {
+        defs.push({
+            icon: `<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01"/>`,
+            title: "Meu Fechamento",
+            desc: "Veja o fechamento por cidade e transportadora.",
+            fn: "abrirVideiraPainel(event)"
+        });
+        defs.push({
+            icon: `<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>`,
+            title: "Alimentar Fechamento",
+            desc: "Informe o link do fechamento para o período.",
+            fn: "abrirVideiraAlimentar(event)"
+        });
+    }
+
     container.innerHTML = defs.map(d => `
         <div class="home-action-card" onclick="${d.fn}">
             <div class="home-card-icon"><svg viewBox="0 0 24 24">${d.icon}</svg></div>
