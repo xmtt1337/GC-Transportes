@@ -175,6 +175,21 @@
             </ul>
         </ul>
 
+        <li class="menu-item" data-menu="videira" id="menu-videira" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+                <path d="M8 14h6M8 18h4"/>
+            </svg>
+            <span class="label">Videira</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Videira</span>
+        </li>
+        <ul class="submenu" data-menu="videira" id="submenu-videira" style="display:none">
+            <li><a href="#" onclick="abrirVideiraPainel(event)">Meu Fechamento</a></li>
+            <li><a href="#" onclick="abrirVideiraAlimentar(event)">Alimentar Fechamento</a></li>
+        </ul>
+
         <li class="menu-item" data-menu="extravios" id="menu-extravios" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -1380,6 +1395,83 @@
 <script src="js/conferencias.js"></script>
 <script src="js/antecipacoes.js"></script>
 <script src="js/antecipacoes-admin.js"></script>
+<script src="js/videira.js"></script>
+
+<!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
+<div id="tela-videira-alimentar" class="view tela-full">
+    <div class="fech-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div style="font-size:15px;font-weight:700;color:#e2e8f0">Alimentar Fechamento — Videira</div>
+        </div>
+        <div class="fech-period-row" style="margin-top:14px;flex-wrap:wrap;gap:10px">
+            <select class="fech-select" id="vali-mes">
+                <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                <option value="3">Março</option><option value="4">Abril</option>
+                <option value="5">Maio</option><option value="6">Junho</option>
+                <option value="7">Julho</option><option value="8">Agosto</option>
+                <option value="9">Setembro</option><option value="10">Outubro</option>
+                <option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select>
+            <select class="fech-select" id="vali-ano"></select>
+            <select class="fech-select" id="vali-quinzena">
+                <option value="1">1ª Quinzena</option>
+                <option value="2">2ª Quinzena</option>
+            </select>
+            <input type="text" class="fech-select" id="vali-url" placeholder="Cole aqui o link do Google Sheets" style="min-width:320px;flex:1">
+            <button onclick="adicionarPlanilhaVideira()" style="padding:9px 20px;border-radius:10px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">Salvar</button>
+        </div>
+    </div>
+    <div class="fech-body">
+        <div id="vali-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+</div><!-- /tela-videira-alimentar -->
+
+<!-- TELA VIDEIRA — PAINEL -->
+<div id="tela-videira-painel" class="view tela-full">
+    <div class="fech-header">
+        <div class="fech-period-row">
+            <select class="fech-select" id="vp-mes" onchange="buscarPainelVideira()">
+                <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                <option value="3">Março</option><option value="4">Abril</option>
+                <option value="5">Maio</option><option value="6">Junho</option>
+                <option value="7">Julho</option><option value="8">Agosto</option>
+                <option value="9">Setembro</option><option value="10">Outubro</option>
+                <option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select>
+            <select class="fech-select" id="vp-ano" onchange="buscarPainelVideira()"></select>
+        </div>
+        <div class="quinzena-toggle">
+            <button class="quinzena-btn" id="vp-btn-1q" onclick="selecionarQuinzenaVideira(1)">1ª Quinzena &nbsp;(1 – 15)</button>
+            <button class="quinzena-btn" id="vp-btn-2q" onclick="selecionarQuinzenaVideira(2)">2ª Quinzena &nbsp;(16 – fim)</button>
+        </div>
+    </div>
+    <div class="fech-body">
+        <div class="fechamento-empty" id="vp-empty">Selecione o período para ver o fechamento.</div>
+        <div id="vp-content" style="display:none">
+            <!-- KPI Cards -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:18px" id="vp-cards"></div>
+            <!-- Tabela de cidades -->
+            <div class="adm-nf-wrap">
+                <table class="adm-nf-table" id="vp-table">
+                    <thead>
+                        <tr>
+                            <th>Cidade</th>
+                            <th style="text-align:right">Shopee</th>
+                            <th style="text-align:right">iMile</th>
+                            <th style="text-align:right">Anjun</th>
+                            <th style="text-align:right">J&amp;T</th>
+                            <th style="text-align:right">Loggi</th>
+                            <th style="text-align:right">Total Qtd</th>
+                            <th style="text-align:right">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vp-tbody"></tbody>
+                    <tfoot id="vp-tfoot"></tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div><!-- /tela-videira-painel -->
 
 <!-- MODAL: NOVO USUÁRIO GC -->
 <div class="usr-modal-overlay" id="modal-novo-usuario-gc" onclick="_fecharModalSeBackdrop(event,'modal-novo-usuario-gc')">
