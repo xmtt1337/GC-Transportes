@@ -216,3 +216,201 @@ function _renderPainelVideira(d) {
     document.getElementById("vp-empty").style.display   = "none";
     document.getElementById("vp-content").style.display = "";
 }
+
+// ───── VIDEIRA — DASHBOARD ─────
+
+let _vdGran        = "quinzena";
+let _vdGruposRaw   = [];
+let _vdGrupos      = [];
+let _vdSelIdx      = -1;
+let _vdValorChart  = null;
+let _vdTranspChart = null;
+
+function abrirVideiraDash(event) {
+    if (event) event.preventDefault();
+    document.getElementById("vd-empty").innerText      = "Carregando...";
+    document.getElementById("vd-empty").style.display  = "";
+    document.getElementById("vd-content").style.display = "none";
+    mostrarTela("tela-videira-dash");
+    _buscarVideiraDash();
+}
+
+function setVdGran(tipo) {
+    _vdGran = tipo;
+    document.getElementById("vd-gran-q").classList.toggle("active", tipo === "quinzena");
+    document.getElementById("vd-gran-m").classList.toggle("active", tipo === "mes");
+    if (_vdGruposRaw.length) _renderVdDash(_vdGruposRaw);
+}
+
+function _pmoedaVd(s) {
+    if (typeof s === "number") return s;
+    if (!s) return 0;
+    return parseFloat(String(s).replace(/[^\d,\-]/g, "").replace(",", ".")) || 0;
+}
+
+function _buscarVideiraDash() {
+    fetch(`${API}/videira/planilhas`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => r.json())
+    .then(planilhas => {
+        if (!Array.isArray(planilhas) || !planilhas.length) {
+            document.getElementById("vd-empty").innerText = "Nenhum fechamento cadastrado.";
+            return;
+        }
+        // planilhas vem do mais recente para o mais antigo — invertemos para o gráfico
+        const ordered = [...planilhas].reverse();
+        return Promise.all(ordered.map(p =>
+            fetch(`${API}/videira/painel?mes=${p.mes}&ano=${p.ano}&quinzena=${p.quinzena}`, {
+                headers: { "Authorization": "Bearer " + token }
+            }).then(r => r.ok ? r.json() : null).catch(() => null)
+        )).then(results => {
+            const raw = ordered.map((p, i) => {
+                const d = results[i];
+                if (!d || d.error) return null;
+                const tq = d.totais_qtd || {};
+                const tv = d.totais_val || {};
+                return {
+                    mes: p.mes, ano: p.ano, quinzena: p.quinzena,
+                    label:    `${p.quinzena}Q ${MES_NOMES[p.mes].slice(0, 3)}`,
+                    valor:    d.valor_total_liquido_num || 0,
+                    shopee:   tq.shopee || 0,  shopee_v: _pmoedaVd(tv.shopee),
+                    imile:    tq.imile  || 0,  imile_v:  _pmoedaVd(tv.imile),
+                    anjun:    tq.anjun  || 0,  anjun_v:  _pmoedaVd(tv.anjun),
+                    jt:       tq.jt     || 0,  jt_v:     _pmoedaVd(tv.jt),
+                    loggi:    tq.loggi  || 0,  loggi_v:  _pmoedaVd(tv.loggi),
+                    qtd_total: d.qtd_pacotes_total || 0,
+                };
+            }).filter(Boolean);
+            _vdGruposRaw = raw;
+            _renderVdDash(raw);
+        });
+    })
+    .catch(() => { document.getElementById("vd-empty").innerText = "Erro ao carregar dados."; });
+}
+
+function _renderVdDash(raw) {
+    let grupos;
+    if (_vdGran === "quinzena") {
+        grupos = raw;
+    } else {
+        const byMes = {};
+        raw.forEach(d => {
+            const k = `${d.ano}_${d.mes}`;
+            if (!byMes[k]) byMes[k] = {
+                mes: d.mes, ano: d.ano, quinzena: 0,
+                label: MES_NOMES[d.mes].slice(0, 3),
+                valor: 0, shopee: 0, shopee_v: 0, imile: 0, imile_v: 0,
+                anjun: 0, anjun_v: 0, jt: 0, jt_v: 0, loggi: 0, loggi_v: 0, qtd_total: 0
+            };
+            const g = byMes[k];
+            g.valor    += d.valor;       g.qtd_total += d.qtd_total;
+            g.shopee   += d.shopee;      g.shopee_v  += d.shopee_v;
+            g.imile    += d.imile;       g.imile_v   += d.imile_v;
+            g.anjun    += d.anjun;       g.anjun_v   += d.anjun_v;
+            g.jt       += d.jt;          g.jt_v      += d.jt_v;
+            g.loggi    += d.loggi;       g.loggi_v   += d.loggi_v;
+        });
+        grupos = Object.values(byMes);
+    }
+    _vdGrupos = grupos;
+    if (!grupos.length) { document.getElementById("vd-empty").innerText = "Sem dados."; return; }
+
+    document.getElementById("vd-empty").style.display   = "none";
+    document.getElementById("vd-content").style.display = "";
+
+    const labels = grupos.map(g => g.label);
+    const ult  = grupos[grupos.length - 1];
+    const prev = grupos[grupos.length - 2] || null;
+    const ini  = grupos[0];
+
+    // KPI cards
+    const gran = _vdGran === "quinzena" ? "Quinzena" : "Mês";
+    document.getElementById("vdkpi-ant-card").querySelector(".dash-kpi-lbl").textContent = `vs ${gran} Anterior`;
+    function _applyVdKpi(cardId, pctId, subId, pct, sub) {
+        document.getElementById(cardId).className = "dash-kpi-card" + (pct.dir > 0 ? " kpi-up" : pct.dir < 0 ? " kpi-down" : "");
+        const el = document.getElementById(pctId);
+        el.className = "dash-kpi-pct " + pct.cls;
+        el.textContent = pct.txt;
+        document.getElementById(subId).textContent = sub;
+    }
+    _applyVdKpi("vdkpi-ant-card","vdkpi-vs-ant","vdkpi-vs-ant-sub",
+        _pctKpi(ult.valor, prev ? prev.valor : 0),
+        prev ? ult.label + " vs " + prev.label : "—");
+    _applyVdKpi("vdkpi-ini-card","vdkpi-vs-ini","vdkpi-vs-ini-sub",
+        _pctKpi(ult.valor, ini.valor),
+        ult.label !== ini.label ? ult.label + " vs " + ini.label : "—");
+
+    // Period chips
+    document.getElementById("vd-pchips").innerHTML = grupos.map((g, i) =>
+        `<div class="dash-pchip" onclick="_vdSelecionarChip(${i})">
+            <div class="dpc-lbl">${g.label}</div>
+            <div class="dpc-val">${moedaJS(g.valor)}</div>
+        </div>`
+    ).join("");
+    _vdSelecionarChip(grupos.length - 1);
+
+    // Chart: Valor Líquido por período
+    if (_vdValorChart) { _vdValorChart.destroy(); _vdValorChart = null; }
+    _vdValorChart = new Chart(document.getElementById("vd-valor-chart").getContext("2d"), {
+        type: "bar",
+        data: { labels, datasets: [{ label: "Valor Líquido", data: grupos.map(g => g.valor),
+            backgroundColor: "rgba(34,197,94,0.7)", borderColor: "#22c55e", borderWidth: 1, borderRadius: 7 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false },
+                tooltip: { callbacks: { label: ctx => "  " + moedaJS(ctx.raw) + (_delta(ctx.raw, ctx.dataIndex > 0 ? grupos[ctx.dataIndex-1].valor : null).cls !== "flat" ? "  " + _delta(ctx.raw, grupos[ctx.dataIndex-1]?.valor).txt : "") } }
+            },
+            scales: {
+                x: { grid: { color: "rgba(34,197,94,0.07)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
+                y: { grid: { color: "rgba(34,197,94,0.07)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => moedaJS(v) } }
+            }
+        }
+    });
+
+    // Chart: Transportadoras por período (Qtd)
+    if (_vdTranspChart) { _vdTranspChart.destroy(); _vdTranspChart = null; }
+    _vdTranspChart = new Chart(document.getElementById("vd-transp-chart").getContext("2d"), {
+        type: "bar",
+        data: { labels, datasets: TRANSP_DEF.map(t => ({
+            label: t.label, data: grupos.map(g => g[t.key] || 0),
+            backgroundColor: t.bg, borderColor: t.color, borderWidth: 1, borderRadius: 5,
+        })) },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: "#aab4c8", font: { size: 12 }, boxWidth: 14, padding: 16 } },
+                tooltip: { callbacks: { label: ctx => "  " + ctx.dataset.label + ": " + (ctx.raw||0).toLocaleString("pt-BR") } }
+            },
+            scales: {
+                x: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
+                y: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#4a6a8a", font: { size: 11 } } }
+            }
+        }
+    });
+}
+
+function _vdSelecionarChip(idx) {
+    if (idx < 0 || idx >= _vdGrupos.length) return;
+    _vdSelIdx = idx;
+    const g    = _vdGrupos[idx];
+    const prev = _vdGrupos[idx - 1] || null;
+    document.querySelectorAll("#vd-pchips .dash-pchip").forEach((el, i) =>
+        el.classList.toggle("current", i === idx)
+    );
+    const totalLinha = document.getElementById("vd-total-linha");
+    totalLinha.style.display = "";
+    totalLinha.innerHTML = `Valor líquido · ${g.label}: <strong style="color:#22c55e;font-size:15px;font-weight:700">${moedaJS(g.valor)}</strong>`;
+    document.getElementById("vd-transp-grid").innerHTML = TRANSP_DEF.map(t => {
+        const v   = g[t.valKey] || 0;
+        const q   = g[t.key]    || 0;
+        const pv  = prev ? (prev[t.valKey] || 0) : null;
+        const dlt = _delta(v, pv);
+        const bCls = dlt.cls === "up" ? "lucro" : dlt.cls === "down" ? "preju" : "estavel";
+        const badge = dlt.cls !== "flat"
+            ? `<span class="lbadge ${bCls}" style="font-size:10px;padding:2px 7px">${dlt.txt}</span>` : "";
+        return `<div class="dash-tc">
+            <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
+            <div class="dash-tc-qtd" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${moedaJS(v)}${badge}</div>
+            <div class="dash-tc-sub">${q.toLocaleString("pt-BR")} pacotes · ${g.label}</div>
+        </div>`;
+    }).join("");
+}

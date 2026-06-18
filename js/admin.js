@@ -148,6 +148,12 @@ function renderHomeActions(role) {
 
     if (role === "ADM Videira") {
         defs.push({
+            icon: `<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`,
+            title: "Dashboard",
+            desc: "Evolução por quinzena/mês e transportadoras.",
+            fn: "abrirVideiraDash(event)"
+        });
+        defs.push({
             icon: `<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01"/>`,
             title: "Meu Fechamento",
             desc: "Veja o fechamento por cidade e transportadora.",
