@@ -1,7 +1,39 @@
 // ───── NAVEGAÇÃO ENTRE TELAS ─────
+const _TELA_TITULOS = {
+    "tela-home":                 "Painel",
+    "tela-admin":                "Alimentar",
+    "tela-admin-fechamentos":    "Pesquisar Fechamentos",
+    "tela-admin-nfs":            "Notas Fiscais",
+    "tela-conf-nfs":             "Conferência NF",
+    "tela-admin-pagamentos":     "Pagamentos",
+    "tela-trampay-entregadores": "Entregadores",
+    "tela-admin-usuarios":       "Entregadores",
+    "tela-admin-usuarios-gc":    "Usuários",
+    "tela-dashboard":            "Dashboard",
+    "tela-ent-dashboard":        "Dashboard",
+    "tela-fechamentos":          "Meus Fechamentos",
+    "tela-minhas-nfs":           "Notas Fiscais",
+    "tela-extravios-dash":       "Extravios",
+    "tela-extravios-busca":      "Pesquisar Extravio",
+    "tela-conferencias":         "Conferências",
+    "tela-bipagens":             "Separação",
+    "tela-pesquisar-pedidos":    "Pesquisar Pedidos",
+    "tela-desempenho-bip":       "Desempenho",
+    "tela-alimentar":            "Alimentar",
+    "tela-antecipacoes":         "Solicitar Antecipação",
+    "tela-minhas-solicitacoes":  "Minhas Solicitações",
+    "tela-admin-antecipacoes":   "Antecipações",
+    "tela-videira-alimentar":    "Alimentar Fechamento",
+    "tela-videira-painel":       "Meu Fechamento",
+    "tela-videira-dash":         "Dashboard",
+    "tela-em-breve":             "Em Breve",
+};
+
 function mostrarTela(id) {
     document.querySelectorAll(".view").forEach(v => v.classList.remove("active-view"));
     document.getElementById(id).classList.add("active-view");
+    const titulo = document.getElementById("titulo-pagina");
+    if (titulo && _TELA_TITULOS[id]) titulo.innerText = _TELA_TITULOS[id];
     // Sempre fecha/recolhe a sidebar ao navegar
     const sidebar = document.getElementById("sidebar");
     sidebar.classList.remove("expanded");
