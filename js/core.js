@@ -89,6 +89,22 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         _showExtravios();
     }
 
+    if (role === "ADM Videira") {
+        hide("menu-operacao");
+        hide("submenu-operacao");
+        hide("menu-pedidos");
+        hide("submenu-pedidos");
+        hide("menu-conferencias");
+        hide("submenu-conferencias");
+        show("menu-videira");
+        show("submenu-videira");
+    }
+
+    if (role === "admin" || role === "dev") {
+        show("menu-videira");
+        show("submenu-videira");
+    }
+
     renderHomeActions(role);
 
     const badgeLabels = {
