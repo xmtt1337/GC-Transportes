@@ -174,31 +174,48 @@ function _renderPainelVideira(d) {
         </tr>
     `).join("");
 
-    // Totais — estilo pivot table (QTD + R$ empilhados em uma única linha)
+    // Totais
     const tq = d.totais_qtd || {};
     const tv = d.totais_val || {};
     const totalQtd = tq.total > 0 ? tq.total : ((tq.shopee||0) + (tq.imile||0) + (tq.anjun||0) + (tq.jt||0) + (tq.loggi||0));
-    const _cell = (qtd, val, cor) => `
-        <td style="text-align:right;padding:10px 12px;vertical-align:middle">
-            <div style="font-size:14px;font-weight:700;color:${cor};line-height:1.3">${_fmt(qtd)}</div>
-            <div style="font-size:11px;color:#64748b;margin-top:2px">${val || "—"}</div>
-        </td>`;
+
+    // Tabela: footer só com QTD totais
     document.getElementById("vp-tfoot").innerHTML = `
-        <tr style="background:rgba(255,255,255,0.06);border-top:2px solid rgba(255,255,255,0.12)">
-            <td style="padding:10px 12px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;vertical-align:middle">Total Geral</td>
-            ${_cell(tq.shopee, tv.shopee, "#f97316")}
-            ${_cell(tq.imile,  tv.imile,  "#9333ea")}
-            ${_cell(tq.anjun,  tv.anjun,  "#22c55e")}
-            ${_cell(tq.jt,     tv.jt,     "#ef4444")}
-            ${_cell(tq.loggi,  tv.loggi,  "#12a5e8")}
-            <td style="text-align:right;padding:10px 12px;vertical-align:middle">
-                <div style="font-size:15px;font-weight:800;color:#e2e8f0;line-height:1.3">${_fmt(totalQtd)}</div>
-            </td>
-            <td style="text-align:right;padding:10px 12px;vertical-align:middle">
-                <div style="font-size:14px;font-weight:700;color:#22c55e;line-height:1.3">${d.soma_valor_cidades || "—"}</div>
-            </td>
+        <tr style="background:rgba(255,255,255,0.05);border-top:2px solid rgba(255,255,255,0.1)">
+            <td style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Total</td>
+            <td style="text-align:right;font-weight:700;color:#f97316">${_fmt(tq.shopee)}</td>
+            <td style="text-align:right;font-weight:700;color:#9333ea">${_fmt(tq.imile)}</td>
+            <td style="text-align:right;font-weight:700;color:#22c55e">${_fmt(tq.anjun)}</td>
+            <td style="text-align:right;font-weight:700;color:#ef4444">${_fmt(tq.jt)}</td>
+            <td style="text-align:right;font-weight:700;color:#12a5e8">${_fmt(tq.loggi)}</td>
+            <td style="text-align:right;font-weight:800;font-size:14px;color:#e2e8f0">${_fmt(totalQtd)}</td>
+            <td style="text-align:right;font-weight:700;color:#22c55e">${d.soma_valor_cidades || "—"}</td>
         </tr>
     `;
+
+    // Cards de valor por transportadora (abaixo da tabela)
+    const transp = [
+        { nome:"Shopee", cor:"#f97316", bg:"rgba(249,115,22,0.08)", qtd: tq.shopee||0, val: tv.shopee },
+        { nome:"iMile",  cor:"#9333ea", bg:"rgba(147,51,234,0.08)", qtd: tq.imile||0,  val: tv.imile  },
+        { nome:"Anjun",  cor:"#22c55e", bg:"rgba(34,197,94,0.08)",  qtd: tq.anjun||0,  val: tv.anjun  },
+        { nome:"J&T",    cor:"#ef4444", bg:"rgba(239,68,68,0.08)",  qtd: tq.jt||0,     val: tv.jt     },
+        { nome:"Loggi",  cor:"#12a5e8", bg:"rgba(18,165,232,0.08)", qtd: tq.loggi||0,  val: tv.loggi  },
+    ];
+    const vpValCards = document.getElementById("vp-val-cards");
+    if (vpValCards) {
+        vpValCards.innerHTML = `
+            <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px;padding-left:2px">Valores por Transportadora</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                ${transp.map(t => `
+                    <div style="flex:1;min-width:140px;background:${t.bg};border:1px solid ${t.cor}33;border-radius:14px;padding:14px 16px">
+                        <div style="font-size:11px;font-weight:600;color:${t.cor};text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${t.nome}</div>
+                        <div style="font-size:18px;font-weight:700;color:#e2e8f0;line-height:1">${t.val || "—"}</div>
+                        <div style="font-size:11px;color:#64748b;margin-top:5px">${_fmt(t.qtd)} pacotes</div>
+                    </div>
+                `).join("")}
+            </div>
+        `;
+    }
 
     // Extravios
     const extEl = document.getElementById("vp-extravios");
