@@ -98,11 +98,13 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         hide("submenu-conferencias");
         show("menu-videira");
         show("submenu-videira");
+        // Alimentar só para dev
     }
 
-    if (role === "admin" || role === "dev") {
+    if (role === "dev") {
         show("menu-videira");
         show("submenu-videira");
+        show("videira-li-alimentar");
     }
 
     renderHomeActions(role);
