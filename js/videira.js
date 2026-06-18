@@ -136,26 +136,31 @@ function _fmt(n) {
 }
 
 function _renderPainelVideira(d) {
-    // KPI cards
-    const cards = [
-        { label: "Valor Total Líquido", value: d.valor_total_liquido, color: "#22c55e" },
-        { label: "Total de Pacotes",    value: d.qtd_pacotes_total,   color: "#3a86ff" },
-        { label: "Coletas",             value: d.qtd_coletas,         color: "#f97316" },
-        { label: "Valor Coletas",       value: d.valor_coletas,       color: "#f97316" },
-        { label: "Diária Coletas",      value: d.diaria_coletas,      color: "#94a3b8" },
-        { label: "Descontos",           value: d.valor_desconto,      color: "#ef4444" },
-    ];
-
-    document.getElementById("vp-cards").innerHTML = cards.map(c => `
-        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px 18px">
-            <div style="font-size:12px;color:#64748b;margin-bottom:6px;font-weight:500">${c.label}</div>
-            <div style="font-size:20px;font-weight:700;color:${c.color}">${c.value || "—"}</div>
+    // Hero + KPI grid
+    document.getElementById("vp-cards").innerHTML = `
+        <div style="background:linear-gradient(135deg,rgba(34,197,94,0.09) 0%,rgba(58,134,255,0.04) 100%);border:1px solid rgba(34,197,94,0.2);border-radius:18px;padding:20px 24px;margin-bottom:16px">
+            <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Resultado Líquido do Período</div>
+            <div style="font-size:30px;font-weight:800;color:#22c55e;letter-spacing:-.5px;margin-bottom:18px">${d.valor_total_liquido || "—"}</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px">
+                ${[
+                    { lbl:"Total Pacotes", val:(d.qtd_pacotes_total||0).toLocaleString("pt-BR"), c:"#3a86ff" },
+                    { lbl:"Coletas",       val:(d.qtd_coletas||0).toLocaleString("pt-BR"),       c:"#f97316" },
+                    { lbl:"Valor Coletas", val:d.valor_coletas||"—",                             c:"#f97316" },
+                    { lbl:"Diária Col.",   val:d.diaria_coletas||"—",                            c:"#94a3b8" },
+                    { lbl:"Descontos",     val:d.valor_desconto||"—",                            c:"#ef4444" },
+                ].map(c => `
+                    <div style="background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:11px 14px">
+                        <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${c.lbl}</div>
+                        <div style="font-size:17px;font-weight:700;color:${c.c}">${c.val}</div>
+                    </div>
+                `).join("")}
+            </div>
         </div>
-    `).join("");
+        <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px;padding-left:2px">Detalhamento por Cidade</div>
+    `;
 
     // Tabela de cidades
-    const tbody = document.getElementById("vp-tbody");
-    tbody.innerHTML = (d.cidades || []).map(c => `
+    document.getElementById("vp-tbody").innerHTML = (d.cidades || []).map(c => `
         <tr>
             <td style="font-weight:600">${c.cidade}</td>
             <td style="text-align:right;color:#f97316">${_fmt(c.shopee)}</td>
@@ -168,12 +173,12 @@ function _renderPainelVideira(d) {
         </tr>
     `).join("");
 
-    // Totais no tfoot
+    // Totais
     const tq = d.totais_qtd || {};
     const tv = d.totais_val || {};
     document.getElementById("vp-tfoot").innerHTML = `
         <tr style="background:rgba(255,255,255,0.04);font-weight:700;font-size:13px">
-            <td>Totais (qtd)</td>
+            <td>Total Qtd</td>
             <td style="text-align:right;color:#f97316">${_fmt(tq.shopee)}</td>
             <td style="text-align:right;color:#9333ea">${_fmt(tq.imile)}</td>
             <td style="text-align:right;color:#22c55e">${_fmt(tq.anjun)}</td>
@@ -184,11 +189,11 @@ function _renderPainelVideira(d) {
         </tr>
         <tr style="background:rgba(255,255,255,0.02);font-size:12px;color:#94a3b8">
             <td>Valores</td>
-            <td style="text-align:right">${tv.shopee || "—"}</td>
-            <td style="text-align:right">${tv.imile  || "—"}</td>
-            <td style="text-align:right">${tv.anjun  || "—"}</td>
-            <td style="text-align:right">${tv.jt     || "—"}</td>
-            <td style="text-align:right">${tv.loggi  || "—"}</td>
+            <td style="text-align:right">${tv.shopee||"—"}</td>
+            <td style="text-align:right">${tv.imile||"—"}</td>
+            <td style="text-align:right">${tv.anjun||"—"}</td>
+            <td style="text-align:right">${tv.jt||"—"}</td>
+            <td style="text-align:right">${tv.loggi||"—"}</td>
             <td></td>
             <td></td>
         </tr>

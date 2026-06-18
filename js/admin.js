@@ -159,6 +159,12 @@ function renderHomeActions(role) {
             desc: "Informe o link do fechamento para o período.",
             fn: "abrirVideiraAlimentar(event)"
         });
+        defs.push({
+            icon: `<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>`,
+            title: "Extravios",
+            desc: "Análise e histórico de extravios da unidade.",
+            fn: "abrirExtraviosDash(event)"
+        });
     }
 
     container.innerHTML = defs.map(d => `
@@ -171,11 +177,12 @@ function renderHomeActions(role) {
         </div>
     `).join("");
 
-    if (role === "entregador") carregarHomeNFStatus();
-    if (role === "finance") _carregarHomeAdmin(role);
-    if (role === "dev")     _carregarHomeAdmin("admin");
-    if (role === "admin")   _carregarHomeAdmin("admin");
-    if (role === "user")    _carregarHomeUser();
+    if (role === "entregador")    carregarHomeNFStatus();
+    if (role === "finance")       _carregarHomeAdmin(role);
+    if (role === "dev")           _carregarHomeAdmin("admin");
+    if (role === "admin")         _carregarHomeAdmin("admin");
+    if (role === "user")          _carregarHomeUser();
+    if (role === "ADM Videira")   _carregarHomeVideira();
 }
 
 function _carregarHomeUser() {
@@ -287,6 +294,62 @@ function _carregarHomeAdmin(role) {
 
         }).catch(() => {});
     }).catch(() => {});
+}
+
+function _carregarHomeVideira() {
+    const dash = document.getElementById("home-videira-dash");
+    if (!dash) return;
+    const tok = localStorage.getItem("token");
+    const mesNomes = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+    fetch(`${API}/videira/planilhas`, { headers: { "Authorization": "Bearer " + tok } })
+    .then(r => r.json())
+    .then(planilhas => {
+        if (!Array.isArray(planilhas) || !planilhas.length) return;
+        const ultimo = planilhas[0];
+
+        fetch(`${API}/videira/painel?mes=${ultimo.mes}&ano=${ultimo.ano}&quinzena=${ultimo.quinzena}`, {
+            headers: { "Authorization": "Bearer " + tok }
+        }).then(r => r.json()).then(data => {
+            if (data.error) return;
+            const periodoLabel = `${ultimo.quinzena}ª Qz · ${mesNomes[ultimo.mes]} ${ultimo.ano}`;
+
+            dash.innerHTML = `
+                <div class="adm-home-section-label">Último período: ${periodoLabel}</div>
+                <div class="adm-home-cards">
+                    <div class="adm-home-card">
+                        <div class="adm-home-card-icon" style="background:rgba(34,197,94,0.1)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
+                        <div class="adm-home-card-label">Valor Líquido</div>
+                        <div class="adm-home-card-value" style="color:#22c55e">${data.valor_total_liquido || "—"}</div>
+                    </div>
+                    <div class="adm-home-card">
+                        <div class="adm-home-card-icon" style="background:rgba(58,134,255,0.1)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#3a86ff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.91 8.84L8.56 2.23a1 1 0 0 0-.97 0L2.05 5.11A1 1 0 0 0 2 6v12a1 1 0 0 0 .53.88l6.03 3.26a1 1 0 0 0 .94 0L21 15.34a1 1 0 0 0 .54-.88V9.7a1 1 0 0 0-.63-.86z"/><polyline points="7.9 4.5 12 6.86 16.1 4.5"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        </div>
+                        <div class="adm-home-card-label">Total Pacotes</div>
+                        <div class="adm-home-card-value" style="color:#3a86ff">${data.qtd_pacotes_total ? Number(data.qtd_pacotes_total).toLocaleString("pt-BR") : "—"}</div>
+                    </div>
+                    <div class="adm-home-card">
+                        <div class="adm-home-card-icon" style="background:rgba(249,115,22,0.1)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                        </div>
+                        <div class="adm-home-card-label">Coletas</div>
+                        <div class="adm-home-card-value" style="color:#f97316">${data.qtd_coletas ? Number(data.qtd_coletas).toLocaleString("pt-BR") : "—"}</div>
+                    </div>
+                    <div class="adm-home-card" onclick="abrirVideiraPainel(event)" style="cursor:pointer">
+                        <div class="adm-home-card-icon" style="background:rgba(167,139,250,0.1)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        </div>
+                        <div class="adm-home-card-label">Ver Fechamento</div>
+                        <div class="adm-home-card-value" style="color:#a78bfa;font-size:13px">Abrir →</div>
+                    </div>
+                </div>
+            `;
+        }).catch(() => {});
+    })
+    .catch(() => {});
 }
 
 function carregarHomeNFStatus() {
