@@ -253,7 +253,6 @@ function _baixarExtraviosVdXlsx() {
         "Código":         e.codigo,
         "Endereço":       e.endereco,
         "Responsável":    e.responsavel,
-        "Status":         e.status,
         "Valor":          e.valor,
     }));
 
