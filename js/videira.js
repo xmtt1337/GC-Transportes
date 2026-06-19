@@ -220,17 +220,47 @@ function _renderPainelVideira(d) {
     // Extravios
     const extEl = document.getElementById("vp-extravios");
     const lista = d.extravios_linhas || [];
+    const _periodoLabel = d.quinzena_ref || "Extravios";
     extEl.innerHTML = `
-        <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px;padding-left:2px">
-            Extravios do Período
-            <span style="font-size:10px;font-weight:500;color:#64748b;text-transform:none;letter-spacing:0;margin-left:6px">${lista.length} registro${lista.length !== 1 ? "s" : ""}</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+            <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.7px">
+                Extravios do Período
+                <span style="font-size:10px;font-weight:500;color:#64748b;text-transform:none;letter-spacing:0;margin-left:6px">${lista.length} registro${lista.length !== 1 ? "s" : ""}</span>
+            </div>
+            ${lista.length > 0 ? `
+            <button onclick="_baixarExtraviosVdXlsx()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.07);color:#34d399;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s" onmouseover="this.style.background='rgba(52,211,153,0.16)'" onmouseout="this.style.background='rgba(52,211,153,0.07)'">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Baixar XLSX
+            </button>` : ""}
         </div>
         <div id="vp-extravios-lista"></div>
     `;
     _renderExtravios(lista, "vp-extravios-lista", true);
+    window._vdExtraviosLista   = lista;
+    window._vdExtraviosPeriodo = _periodoLabel;
 
     document.getElementById("vp-empty").style.display   = "none";
     document.getElementById("vp-content").style.display = "";
+}
+
+function _baixarExtraviosVdXlsx() {
+    const lista   = window._vdExtraviosLista   || [];
+    const periodo = window._vdExtraviosPeriodo || "Extravios";
+    if (!lista.length) return;
+
+    const linhas = lista.map(e => ({
+        "Transportadora": e.transportadora,
+        "Código":         e.codigo,
+        "Endereço":       e.endereco,
+        "Responsável":    e.responsavel,
+        "Status":         e.status,
+        "Valor":          e.valor,
+    }));
+
+    const ws  = XLSX.utils.json_to_sheet(linhas);
+    const wb  = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Extravios");
+    XLSX.writeFile(wb, `Extravios_${periodo.replace(/\//g, "-")}.xlsx`);
 }
 
 // ───── VIDEIRA — DASHBOARD ─────
