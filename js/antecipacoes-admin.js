@@ -62,6 +62,9 @@ function buscarAntecipacoes() {
         empty.style.display = "none"; result.style.display = "";
         document.getElementById("adm-ant-counter").innerHTML =
             `${rows.length} solicitação${rows.length !== 1 ? "ões" : ""}`;
+        const totalSol = rows.reduce((s, r) => s + (parseFloat(r.valor_antecipado) || 0), 0);
+        const totalEl  = document.getElementById("adm-ant-total");
+        if (totalEl) totalEl.innerHTML = `Total solicitado: <strong style="color:#3a86ff">${moedaJS(totalSol)}</strong>`;
         _renderAdmAntTabela(rows);
     })
     .catch(() => { empty.innerText = "Erro ao carregar antecipações."; });
