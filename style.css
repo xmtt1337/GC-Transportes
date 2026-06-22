@@ -594,36 +594,35 @@ body {
     font-weight: 600; margin-bottom: 20px; letter-spacing: 0.02em;
 }
 .home-actions {
-    display: flex; flex-direction: column;
-    gap: 7px; width: 100%; max-width: 580px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; width: 100%; max-width: 580px; margin: 0 auto;
 }
 .home-action-card {
     background: rgba(11,16,26,0.95);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-left: 3px solid var(--ac, #3a86ff);
-    border-radius: 10px; padding: 13px 16px; cursor: pointer;
-    display: flex; align-items: center; gap: 13px;
-    transition: transform 0.18s ease, box-shadow 0.18s, background 0.18s;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-top: 2px solid var(--ac, #3a86ff);
+    border-radius: 12px; padding: 22px 18px 18px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 14px;
+    transition: transform 0.2s ease, box-shadow 0.2s, background 0.2s;
 }
 .home-action-card:hover {
-    transform: translateX(5px);
-    background: rgba(16,24,44,0.98);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+    background: rgba(14,22,42,0.98);
 }
 .hac-icon {
-    width: 40px; height: 40px; flex-shrink: 0;
-    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; flex-shrink: 0;
+    border-radius: 12px; display: flex; align-items: center; justify-content: center;
 }
 .hac-icon svg {
-    width: 19px; height: 19px; fill: none;
+    width: 21px; height: 21px; fill: none;
     stroke: var(--ac, #3a86ff);
     stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
 }
-.hac-body { flex: 1; min-width: 0; }
-.hac-title { font-size: 13.5px; font-weight: 600; color: #e2e8f0; margin-bottom: 2px; }
-.hac-desc  { font-size: 11.5px; color: #3a5070; line-height: 1.4; }
-.hac-arrow { color: #253347; flex-shrink: 0; display: flex; transition: color 0.18s, transform 0.18s; }
-.home-action-card:hover .hac-arrow { color: var(--ac, #3a86ff); transform: translateX(3px); }
+.hac-body { width: 100%; }
+.hac-title { font-size: 14px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
+.hac-desc  { font-size: 12px; color: #3a5070; line-height: 1.45; }
+.hac-arrow { display: none; }
 
 #home-nf-status { margin-top: 10px; max-width: 572px; width: 100%; margin-left: auto; margin-right: auto; }
 
