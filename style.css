@@ -619,10 +619,11 @@ body {
     stroke: var(--ac, #3a86ff);
     stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
 }
-.hac-body { width: 100%; }
+.hac-body { width: 100%; text-align: left; }
 .hac-title { font-size: 14px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
 .hac-desc  { font-size: 12px; color: #3a5070; line-height: 1.45; }
 .hac-arrow { display: none; }
+.hac-icon  { text-align: left; }
 
 #home-nf-status { margin-top: 10px; max-width: 572px; width: 100%; margin-left: auto; margin-right: auto; }
 
