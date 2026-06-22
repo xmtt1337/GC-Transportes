@@ -594,73 +594,85 @@ body {
     font-weight: 600; margin-bottom: 20px; letter-spacing: 0.02em;
 }
 .home-actions {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 12px; text-align: left; align-items: stretch;
-    width: 100%; max-width: 572px; margin: 0 auto;
+    display: flex; flex-direction: column;
+    gap: 7px; width: 100%; max-width: 580px; margin: 0 auto;
 }
 .home-action-card {
-    background: rgba(11,16,26,0.9); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 20px 18px; cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s;
-    display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
+    background: rgba(11,16,26,0.95);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-left: 3px solid var(--ac, #3a86ff);
+    border-radius: 10px; padding: 13px 16px; cursor: pointer;
+    display: flex; align-items: center; gap: 13px;
+    transition: transform 0.18s ease, box-shadow 0.18s, background 0.18s;
 }
 .home-action-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(58,134,255,0.2);
-    border-color: rgba(58,134,255,0.3);
-    background: rgba(14,20,34,0.95);
+    transform: translateX(5px);
+    background: rgba(16,24,44,0.98);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
-.home-card-icon {
-    width: 40px; height: 40px; background: rgba(58,134,255,0.1);
-    border-radius: 11px; display: flex; align-items: center; justify-content: center;
-    border: 1px solid rgba(58,134,255,0.15);
+.hac-icon {
+    width: 40px; height: 40px; flex-shrink: 0;
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
 }
-.home-card-icon svg {
-    width: 18px; height: 18px; stroke: #3a86ff; fill: none;
+.hac-icon svg {
+    width: 19px; height: 19px; fill: none;
+    stroke: var(--ac, #3a86ff);
     stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
 }
-.home-card-title { font-size: 13px; font-weight: 600; color: #f1f5f9; }
-.home-card-desc  { font-size: 11.5px; color: #3d5470; line-height: 1.55; }
+.hac-body { flex: 1; min-width: 0; }
+.hac-title { font-size: 13.5px; font-weight: 600; color: #e2e8f0; margin-bottom: 2px; }
+.hac-desc  { font-size: 11.5px; color: #3a5070; line-height: 1.4; }
+.hac-arrow { color: #253347; flex-shrink: 0; display: flex; transition: color 0.18s, transform 0.18s; }
+.home-action-card:hover .hac-arrow { color: var(--ac, #3a86ff); transform: translateX(3px); }
 
 #home-nf-status { margin-top: 10px; max-width: 572px; width: 100%; margin-left: auto; margin-right: auto; }
 
 /* ── Admin Home Dashboard ── */
-#home-admin-dash { margin-top: 16px; text-align: left; }
-.adm-home-section-label {
-    font-size: 10px; font-weight: 700; color: #3a5a7a; text-transform: uppercase;
-    letter-spacing: 1.5px; margin-bottom: 8px; text-align: left;
+#home-admin-dash, #home-videira-dash {
+    margin-top: 18px; width: 100%; max-width: 580px;
+    margin-left: auto; margin-right: auto;
 }
-.adm-home-cards {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px;
+.adm-kpi-wrap {
+    background: rgba(11,16,26,0.95);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px; overflow: hidden;
 }
-.adm-home-card {
-    background: rgba(11,16,26,0.9); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 14px 16px; text-align: left;
-    transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
+.adm-kpi-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.015);
 }
-.adm-home-card:hover { transform: translateY(-2px); border-color: rgba(58,134,255,0.25); box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
-.adm-home-card-icon {
-    width: 30px; height: 30px; border-radius: 8px; display: flex;
-    align-items: center; justify-content: center; margin-bottom: 8px;
+.adm-kpi-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.55);
 }
-.adm-home-card-icon svg { width: 15px; height: 15px; }
-.adm-home-card-label { font-size: 10px; color: #4a6a8a; margin-bottom: 4px; }
-.adm-home-card-value { font-size: 19px; font-weight: 700; line-height: 1.1; }
-.adm-home-chart-wrap {
-    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.12);
-    border-radius: 12px; padding: 14px 16px; text-align: left;
+.adm-kpi-periodo {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.3px; color: #3a5a7a;
 }
-.adm-home-chart-title {
-    font-size: 10px; font-weight: 600; color: #7a8599; text-transform: uppercase;
-    letter-spacing: 1px; margin-bottom: 10px;
+.adm-kpi-row { display: flex; align-items: stretch; }
+.adm-kpi-item {
+    flex: 1; display: flex; align-items: center; gap: 12px;
+    padding: 16px 18px; transition: background 0.15s;
 }
-@media (max-width: 700px) {
-    .adm-home-cards { grid-template-columns: repeat(2, 1fr); }
-    .adm-home-card-value { font-size: 16px; }
+.adm-kpi-item.clickable { cursor: pointer; }
+.adm-kpi-item.clickable:hover { background: rgba(255,255,255,0.025); }
+.adm-kpi-sep {
+    width: 1px; background: rgba(255,255,255,0.05);
+    flex-shrink: 0; margin: 10px 0;
 }
-@media (max-width: 420px) {
-    .adm-home-cards { grid-template-columns: repeat(2, 1fr); }
-    .adm-home-card-value { font-size: 14px; }
+.adm-kpi-icon {
+    width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+}
+.adm-kpi-icon svg { width: 17px; height: 17px; }
+.adm-kpi-num { font-size: 22px; font-weight: 700; line-height: 1; letter-spacing: -0.5px; }
+.adm-kpi-lbl { font-size: 11px; color: #3d5470; margin-top: 3px; }
+@media (max-width: 580px) {
+    .adm-kpi-row { flex-direction: column; }
+    .adm-kpi-sep { width: auto; height: 1px; margin: 0 16px; }
+    .adm-kpi-num { font-size: 18px; }
 }
 
 /* ── Username clicável ── */
@@ -849,7 +861,7 @@ body {
 
 @media (max-width: 680px) {
     .home-greeting { font-size: 26px; }
-    .home-actions  { grid-template-columns: 1fr 1fr; }
+    .home-actions  { gap: 6px; }
 }
 
 /* ===== ADMIN RESUMO QUINZENA ===== */

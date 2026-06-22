@@ -93,12 +93,14 @@ function renderHomeActions(role) {
 
     if (role === "entregador") {
         defs.push({
+            color: "#3a86ff", ibg: "rgba(58,134,255,0.12)",
             icon: `<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01"/>`,
             title: "Meus Fechamentos",
             desc: "Veja seus valores quinzenais.",
             fn: "abrirFechamentos()"
         });
         defs.push({
+            color: "#22c55e", ibg: "rgba(34,197,94,0.12)",
             icon: `<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`,
             title: "Dashboard",
             desc: "Evolução dos seus valores por transportadora.",
@@ -107,24 +109,28 @@ function renderHomeActions(role) {
     }
     if (role === "admin" || role === "dev") {
         defs.push({
+            color: "#3a86ff", ibg: "rgba(58,134,255,0.12)",
             icon: `<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`,
             title: "Desempenho",
             desc: "Ranking de bipagens por operador.",
             fn: "abrirDesempenhoBip(event)"
         });
         defs.push({
+            color: "#22c55e", ibg: "rgba(34,197,94,0.12)",
             icon: `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
             title: "Usuários",
             desc: "Gerenciar entregadores e acessos.",
             fn: "abrirAdminUsuariosGC(event)"
         });
         defs.push({
+            color: "#a78bfa", ibg: "rgba(167,139,250,0.12)",
             icon: `<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>`,
             title: "Pesquisar Pedidos",
             desc: "Buscar histórico de bipagens.",
             fn: "abrirPesquisarPedidos(event)"
         });
         defs.push({
+            color: "#fb923c", ibg: "rgba(251,146,60,0.12)",
             icon: `<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>`,
             title: "Extravios",
             desc: "Análise e histórico de extravios.",
@@ -133,12 +139,14 @@ function renderHomeActions(role) {
     }
     if (role === "user") {
         defs.push({
+            color: "#22c55e", ibg: "rgba(34,197,94,0.12)",
             icon: `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
             title: "Usuários",
             desc: "Gerenciar entregadores e acessos.",
             fn: "abrirAdminUsuariosGC(event)"
         });
         defs.push({
+            color: "#a78bfa", ibg: "rgba(167,139,250,0.12)",
             icon: `<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>`,
             title: "Pesquisar Pedidos",
             desc: "Buscar histórico de bipagens.",
@@ -148,12 +156,14 @@ function renderHomeActions(role) {
 
     if (role === "ADM Videira") {
         defs.push({
+            color: "#22c55e", ibg: "rgba(34,197,94,0.12)",
             icon: `<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`,
             title: "Dashboard",
             desc: "Evolução por quinzena/mês e transportadoras.",
             fn: "abrirVideiraDash(event)"
         });
         defs.push({
+            color: "#3a86ff", ibg: "rgba(58,134,255,0.12)",
             icon: `<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01"/>`,
             title: "Meu Fechamento",
             desc: "Veja o fechamento por cidade e transportadora.",
@@ -161,13 +171,15 @@ function renderHomeActions(role) {
         });
     }
 
+    const arrowSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`;
     container.innerHTML = defs.map(d => `
-        <div class="home-action-card" onclick="${d.fn}">
-            <div class="home-card-icon"><svg viewBox="0 0 24 24">${d.icon}</svg></div>
-            <div>
-                <div class="home-card-title">${d.title}</div>
-                <div class="home-card-desc">${d.desc}</div>
+        <div class="home-action-card" onclick="${d.fn}" style="--ac:${d.color || '#3a86ff'}">
+            <div class="hac-icon" style="background:${d.ibg || 'rgba(58,134,255,0.12)'}"><svg viewBox="0 0 24 24">${d.icon}</svg></div>
+            <div class="hac-body">
+                <div class="hac-title">${d.title}</div>
+                <div class="hac-desc">${d.desc}</div>
             </div>
+            <div class="hac-arrow">${arrowSvg}</div>
         </div>
     `).join("");
 
@@ -251,38 +263,54 @@ function _carregarHomeAdmin(role) {
             const totalPacotes = resumo.total_entregues ? resumo.total_entregues.toLocaleString("pt-BR") : "—";
 
             dash.innerHTML = `
-                <div class="adm-home-section-label">Último período: ${periodoLabel}</div>
-                <div class="adm-home-cards">
-                    <div class="adm-home-card">
-                        <div class="adm-home-card-icon" style="background:rgba(58,134,255,0.1)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#3a86ff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
-                        </div>
-                        <div class="adm-home-card-label">Entregadores ativos</div>
-                        <div class="adm-home-card-value" style="color:#3a86ff">${nEnt}</div>
+                <div class="adm-kpi-wrap">
+                    <div class="adm-kpi-header">
+                        <span class="adm-kpi-dot"></span>
+                        <span class="adm-kpi-periodo">Último período: ${periodoLabel}</span>
                     </div>
-                    ${role === "finance" ? `
-                    <div class="adm-home-card">
-                        <div class="adm-home-card-icon" style="background:rgba(34,197,94,0.1)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <div class="adm-kpi-row">
+                        <div class="adm-kpi-item">
+                            <div class="adm-kpi-icon" style="background:rgba(58,134,255,0.12)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#3a86ff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+                            </div>
+                            <div>
+                                <div class="adm-kpi-num" style="color:#3a86ff">${nEnt}</div>
+                                <div class="adm-kpi-lbl">Entregadores ativos</div>
+                            </div>
                         </div>
-                        <div class="adm-home-card-label">Total a pagar</div>
-                        <div class="adm-home-card-value" style="color:#22c55e">${totalPagar}</div>
-                    </div>` : ""}
-                    <div class="adm-home-card">
-                        <div class="adm-home-card-icon" style="background:rgba(251,146,60,0.1)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.91 8.84L8.56 2.23a1 1 0 0 0-.97 0L2.05 5.11A1 1 0 0 0 2 6v12a1 1 0 0 0 .53.88l6.03 3.26a1 1 0 0 0 .94 0L21 15.34a1 1 0 0 0 .54-.88V9.7a1 1 0 0 0-.63-.86z"/><polyline points="7.9 4.5 12 6.86 16.1 4.5"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        ${role === "finance" ? `
+                        <div class="adm-kpi-sep"></div>
+                        <div class="adm-kpi-item">
+                            <div class="adm-kpi-icon" style="background:rgba(34,197,94,0.12)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                            <div>
+                                <div class="adm-kpi-num" style="color:#22c55e">${totalPagar}</div>
+                                <div class="adm-kpi-lbl">Total a pagar</div>
+                            </div>
+                        </div>` : ""}
+                        <div class="adm-kpi-sep"></div>
+                        <div class="adm-kpi-item">
+                            <div class="adm-kpi-icon" style="background:rgba(251,146,60,0.12)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.91 8.84L8.56 2.23a1 1 0 0 0-.97 0L2.05 5.11A1 1 0 0 0 2 6v12a1 1 0 0 0 .53.88l6.03 3.26a1 1 0 0 0 .94 0L21 15.34a1 1 0 0 0 .54-.88V9.7a1 1 0 0 0-.63-.86z"/><polyline points="7.9 4.5 12 6.86 16.1 4.5"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                            </div>
+                            <div>
+                                <div class="adm-kpi-num" style="color:#fb923c">${totalPacotes}</div>
+                                <div class="adm-kpi-lbl">Pacotes entregues</div>
+                            </div>
                         </div>
-                        <div class="adm-home-card-label">Pacotes entregues</div>
-                        <div class="adm-home-card-value" style="color:#fb923c">${totalPacotes}</div>
+                        ${role === "finance" ? `
+                        <div class="adm-kpi-sep"></div>
+                        <div class="adm-kpi-item clickable" onclick="abrirAdminFechamentos(event)">
+                            <div class="adm-kpi-icon" style="background:rgba(167,139,250,0.12)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                            </div>
+                            <div>
+                                <div class="adm-kpi-num" style="color:#a78bfa;font-size:14px">Abrir →</div>
+                                <div class="adm-kpi-lbl">Ver fechamentos</div>
+                            </div>
+                        </div>` : ""}
                     </div>
-                    ${role === "finance" ? `
-                    <div class="adm-home-card" onclick="abrirAdminFechamentos(event)" style="cursor:pointer">
-                        <div class="adm-home-card-icon" style="background:rgba(167,139,250,0.1)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                        </div>
-                        <div class="adm-home-card-label">Ver fechamentos</div>
-                        <div class="adm-home-card-value" style="color:#a78bfa;font-size:13px">Abrir →</div>
-                    </div>` : ""}
                 </div>
             `;
 
@@ -309,35 +337,51 @@ function _carregarHomeVideira() {
             const periodoLabel = `${ultimo.quinzena}ª Qz · ${mesNomes[ultimo.mes]} ${ultimo.ano}`;
 
             dash.innerHTML = `
-                <div class="adm-home-section-label">Último período: ${periodoLabel}</div>
-                <div class="adm-home-cards">
-                    <div class="adm-home-card">
-                        <div class="adm-home-card-icon" style="background:rgba(34,197,94,0.1)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                        </div>
-                        <div class="adm-home-card-label">Valor Líquido</div>
-                        <div class="adm-home-card-value" style="color:#22c55e">${data.valor_total_liquido || "—"}</div>
+                <div class="adm-kpi-wrap">
+                    <div class="adm-kpi-header">
+                        <span class="adm-kpi-dot"></span>
+                        <span class="adm-kpi-periodo">Último período: ${periodoLabel}</span>
                     </div>
-                    <div class="adm-home-card">
-                        <div class="adm-home-card-icon" style="background:rgba(58,134,255,0.1)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#3a86ff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.91 8.84L8.56 2.23a1 1 0 0 0-.97 0L2.05 5.11A1 1 0 0 0 2 6v12a1 1 0 0 0 .53.88l6.03 3.26a1 1 0 0 0 .94 0L21 15.34a1 1 0 0 0 .54-.88V9.7a1 1 0 0 0-.63-.86z"/><polyline points="7.9 4.5 12 6.86 16.1 4.5"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    <div class="adm-kpi-row">
+                        <div class="adm-kpi-item">
+                            <div class="adm-kpi-icon" style="background:rgba(34,197,94,0.12)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                            <div>
+                                <div class="adm-kpi-num" style="color:#22c55e">${data.valor_total_liquido || "—"}</div>
+                                <div class="adm-kpi-lbl">Valor Líquido</div>
+                            </div>
                         </div>
-                        <div class="adm-home-card-label">Total Pacotes</div>
-                        <div class="adm-home-card-value" style="color:#3a86ff">${data.qtd_pacotes_total ? Number(data.qtd_pacotes_total).toLocaleString("pt-BR") : "—"}</div>
-                    </div>
-                    <div class="adm-home-card">
-                        <div class="adm-home-card-icon" style="background:rgba(249,115,22,0.1)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                        <div class="adm-kpi-sep"></div>
+                        <div class="adm-kpi-item">
+                            <div class="adm-kpi-icon" style="background:rgba(58,134,255,0.12)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#3a86ff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.91 8.84L8.56 2.23a1 1 0 0 0-.97 0L2.05 5.11A1 1 0 0 0 2 6v12a1 1 0 0 0 .53.88l6.03 3.26a1 1 0 0 0 .94 0L21 15.34a1 1 0 0 0 .54-.88V9.7a1 1 0 0 0-.63-.86z"/><polyline points="7.9 4.5 12 6.86 16.1 4.5"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                            </div>
+                            <div>
+                                <div class="adm-kpi-num" style="color:#3a86ff">${data.qtd_pacotes_total ? Number(data.qtd_pacotes_total).toLocaleString("pt-BR") : "—"}</div>
+                                <div class="adm-kpi-lbl">Total Pacotes</div>
+                            </div>
                         </div>
-                        <div class="adm-home-card-label">Coletas</div>
-                        <div class="adm-home-card-value" style="color:#f97316">${data.qtd_coletas ? Number(data.qtd_coletas).toLocaleString("pt-BR") : "—"}</div>
-                    </div>
-                    <div class="adm-home-card" onclick="abrirVideiraPainel(event)" style="cursor:pointer">
-                        <div class="adm-home-card-icon" style="background:rgba(167,139,250,0.1)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        <div class="adm-kpi-sep"></div>
+                        <div class="adm-kpi-item">
+                            <div class="adm-kpi-icon" style="background:rgba(249,115,22,0.12)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                            </div>
+                            <div>
+                                <div class="adm-kpi-num" style="color:#f97316">${data.qtd_coletas ? Number(data.qtd_coletas).toLocaleString("pt-BR") : "—"}</div>
+                                <div class="adm-kpi-lbl">Coletas</div>
+                            </div>
                         </div>
-                        <div class="adm-home-card-label">Ver Fechamento</div>
-                        <div class="adm-home-card-value" style="color:#a78bfa;font-size:13px">Abrir →</div>
+                        <div class="adm-kpi-sep"></div>
+                        <div class="adm-kpi-item clickable" onclick="abrirVideiraPainel(event)">
+                            <div class="adm-kpi-icon" style="background:rgba(167,139,250,0.12)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                            </div>
+                            <div>
+                                <div class="adm-kpi-num" style="color:#a78bfa;font-size:14px">Abrir →</div>
+                                <div class="adm-kpi-lbl">Ver Fechamento</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
