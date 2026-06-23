@@ -290,10 +290,12 @@ function _antEnviarSolicitacao() {
     .then(d => {
         if (btn) { btn.disabled = false; btn.textContent = "Enviar Solicitação"; }
         if (d.error) return _antMostrarMsg(d.error, "erro");
-        _antMostrarMsg("Solicitação enviada! Aguarde — assim que o financeiro subir seu saldo na Trampay, você poderá solicitar o valor pelo WhatsApp da Trampay.", "ok");
-        document.getElementById("ant-cnpj").value = "";
-        document.getElementById("ant-telefone").value = "";
-        document.getElementById("ant-valor").value = "";
+        const card = document.getElementById("ant-status-card");
+        if (card) card.innerHTML = _antCardHtml("ok", "Solicitação enviada com sucesso!",
+            "Assim que o financeiro subir seu saldo na Trampay, você poderá solicitar o valor pelo <strong style='color:#cbd5e1'>WhatsApp da Trampay</strong>.");
+        const form = document.getElementById("ant-form-wrap");
+        if (form) form.style.display = "none";
+        _antLimparFormMsg();
     })
     .catch(() => {
         if (btn) { btn.disabled = false; btn.textContent = "Enviar Solicitação"; }
