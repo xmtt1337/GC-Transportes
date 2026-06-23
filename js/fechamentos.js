@@ -120,23 +120,32 @@ function _carregarPainel() {
         if (ehPeriodoAnt) {
             antRow.style.display = "";
             if (temAnt) {
-                // Saldo subido na Trampay — entregador precisa solicitar pelo WhatsApp
-                antRow.innerHTML = `<span style="display:flex;flex-direction:column;gap:4px">
-                    <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#3a86ff;font-weight:600">
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        Saldo disponível na Trampay: ${d.antecipado} &nbsp;·&nbsp; <span style="color:#94a3b8;font-weight:400">Saldo a receber: ${d.liquido}</span>
-                    </span>
-                    <span style="font-size:11px;color:#f59e0b;padding-left:19px">Solicite o valor pelo WhatsApp da Trampay para receber o adiantamento.</span>
-                </span>`;
+                antRow.innerHTML = `
+                <div style="border:1px solid rgba(58,134,255,0.25);background:rgba(58,134,255,0.07);border-radius:14px;padding:14px 18px;display:flex;align-items:flex-start;gap:12px">
+                    <div style="color:#3a86ff;flex-shrink:0;margin-top:1px">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size:13px;font-weight:700;color:#3a86ff;margin-bottom:5px">Saldo disponível na Trampay</div>
+                        <div style="font-size:12px;color:#94a3b8">
+                            Antecipado: <strong style="color:#e2e8f0">${d.antecipado}</strong>
+                            &nbsp;·&nbsp; Saldo a receber: <strong style="color:#e2e8f0">${d.liquido}</strong>
+                        </div>
+                        <div style="font-size:11px;color:#f59e0b;margin-top:6px">Solicite o valor pelo WhatsApp da Trampay para receber o adiantamento.</div>
+                    </div>
+                </div>`;
             } else if (antInfo && (antInfo.status === "pendente" || antInfo.status === "aprovada")) {
-                // Solicitação enviada, aguardando o financeiro subir na Trampay
-                antRow.innerHTML = `<span style="font-size:12px;color:#eab308;display:inline-flex;align-items:center;gap:5px">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                antRow.innerHTML = `
+                <div style="border:1px solid rgba(234,179,8,0.2);background:rgba(234,179,8,0.06);border-radius:14px;padding:13px 18px;display:flex;align-items:center;gap:10px;font-size:12px;color:#eab308">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                     Solicitação enviada — aguardando liberação do saldo na Trampay
-                </span>`;
+                </div>`;
             } else {
                 const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
-                antRow.innerHTML = `<span style="font-size:12px;color:#64748b">Previsão de recebimento: <strong style="color:#94a3b8">${dataPrev}</strong></span>`;
+                antRow.innerHTML = `
+                <div style="font-size:12px;color:#64748b;padding:4px 2px">
+                    Previsão de recebimento: <strong style="color:#94a3b8">${dataPrev}</strong>
+                </div>`;
             }
         } else {
             antRow.style.display = "none";
