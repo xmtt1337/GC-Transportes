@@ -111,7 +111,7 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlan
                 </a>`);
         } else {
             card.innerHTML = _antCardHtml("clock", "Solicitação em análise",
-                `Você solicitou <strong style="color:#93c5fd">${vAnt}</strong>. Assim que o financeiro subir o saldo na Trampay, você será avisado aqui.`);
+                `Você solicitou <strong style="color:#93c5fd">${vAnt}</strong>. Assim que o financeiro subir o saldo na Trampay, você será avisado.`);
         }
         if (form) form.style.display = "none";
         return;
