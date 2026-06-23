@@ -115,13 +115,24 @@ function _carregarPainel() {
         document.getElementById("pb-total-entregues").innerText = d.total_entregues;
         document.getElementById("pb-pagamento").style.display = "none";
 
-        const antRow = document.getElementById("pb-ant-row");
+        const antRow  = document.getElementById("pb-ant-row");
+        const antInfo = d.antecipacao_info || null;
         if (ehPeriodoAnt) {
             antRow.style.display = "";
             if (temAnt) {
-                antRow.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#3a86ff;font-weight:600">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Antecipado: ${d.antecipado} &nbsp;·&nbsp; <span style="color:#94a3b8;font-weight:400">Saldo a receber: ${d.liquido}</span>
+                // Saldo subido na Trampay — entregador precisa solicitar pelo WhatsApp
+                antRow.innerHTML = `<span style="display:flex;flex-direction:column;gap:4px">
+                    <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#3a86ff;font-weight:600">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Saldo disponível na Trampay: ${d.antecipado} &nbsp;·&nbsp; <span style="color:#94a3b8;font-weight:400">Saldo a receber: ${d.liquido}</span>
+                    </span>
+                    <span style="font-size:11px;color:#f59e0b;padding-left:19px">Solicite o valor pelo WhatsApp da Trampay para receber o adiantamento.</span>
+                </span>`;
+            } else if (antInfo && (antInfo.status === "pendente" || antInfo.status === "aprovada")) {
+                // Solicitação enviada, aguardando o financeiro subir na Trampay
+                antRow.innerHTML = `<span style="font-size:12px;color:#eab308;display:inline-flex;align-items:center;gap:5px">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    Solicitação enviada — aguardando liberação do saldo na Trampay
                 </span>`;
             } else {
                 const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena);

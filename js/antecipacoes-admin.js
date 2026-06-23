@@ -103,7 +103,7 @@ function _admAntBadge(status) {
         pendente:  { color: "#eab308", bg: "rgba(234,179,8,0.1)",    label: "Pendente"  },
         aprovada:  { color: "#22c55e", bg: "rgba(34,197,94,0.1)",    label: "Aprovada"  },
         rejeitada: { color: "#ef4444", bg: "rgba(239,68,68,0.1)",    label: "Rejeitada" },
-        paga:      { color: "#3a86ff", bg: "rgba(58,134,255,0.1)",   label: "Paga"      },
+        paga:      { color: "#3a86ff", bg: "rgba(58,134,255,0.1)",   label: "Trampay ✓" },
     };
     const s = map[status] || { color: "#64748b", bg: "rgba(100,116,139,0.1)", label: status };
     return `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:${s.color};background:${s.bg}">${s.label}</span>`;
@@ -115,8 +115,8 @@ function _admAntOnCbChange() {
     if (selBtn) {
         selBtn.style.display = selecionados > 0 ? "inline-flex" : "none";
         const txt = selBtn.querySelector("span") || selBtn.lastChild;
-        if (txt && txt.nodeType === 3) txt.textContent = ` Marcar ${selecionados} como Paga${selecionados !== 1 ? "s" : ""}`;
-        else selBtn.childNodes[selBtn.childNodes.length - 1].textContent = ` Marcar ${selecionados} como Paga${selecionados !== 1 ? "s" : ""}`;
+        if (txt && txt.nodeType === 3) txt.textContent = ` Saldo Subido na Trampay (${selecionados})`;
+        else selBtn.childNodes[selBtn.childNodes.length - 1].textContent = ` Saldo Subido na Trampay (${selecionados})`;
     }
     const cbAll = document.getElementById("adm-ant-cb-all");
     const disponiveis = document.querySelectorAll(".adm-ant-cb:not([disabled])");
@@ -131,7 +131,7 @@ function _admAntSelectAll(cbAll) {
 function _admAntPagarSelecionadas() {
     const ids = [...document.querySelectorAll(".adm-ant-cb:checked")].map(cb => parseInt(cb.dataset.id));
     if (!ids.length) return;
-    gcConfirm(`Marcar ${ids.length} antecipação(ões) selecionada(s) como PAGA(S)?`, () => {
+    gcConfirm(`Confirmar que o saldo de ${ids.length} entregador(es) já foi subido na Trampay?`, () => {
         fetch(`${API}/admin/antecipacoes/bulk/pagar`, {
             method: "PATCH",
             headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
@@ -145,7 +145,7 @@ function _admAntPagarSelecionadas() {
 
 function _admAntPagarTodas() {
     if (!_admAntQuinzena || !_admAntRows.length) return;
-    gcConfirm("Marcar TODAS as antecipações desta quinzena como PAGAS?", () => {
+    gcConfirm("Confirmar que o saldo de TODOS os entregadores desta quinzena já foi subido na Trampay?", () => {
         const mes = document.getElementById("adm-ant-mes").value;
         const ano = document.getElementById("adm-ant-ano").value;
         fetch(`${API}/admin/antecipacoes/quinzena/pagar`, {
@@ -155,7 +155,7 @@ function _admAntPagarTodas() {
         }).then(r => r.json()).then(d => {
             if (d.error) return gcAlert(d.error);
             const btn = document.getElementById("adm-ant-pagar-btn");
-            if (btn) { btn.disabled = true; btn.textContent = `✓ ${d.updated} antecipação(ões) marcada(s) como paga`; btn.style.color = "#22c55e"; btn.style.borderColor = "rgba(34,197,94,0.35)"; btn.style.background = "rgba(34,197,94,0.08)"; }
+            if (btn) { btn.disabled = true; btn.textContent = `✓ Saldo subido na Trampay (${d.updated})`; btn.style.color = "#22c55e"; btn.style.borderColor = "rgba(34,197,94,0.35)"; btn.style.background = "rgba(34,197,94,0.08)"; }
         }).catch(() => gcAlert("Erro ao marcar como paga."));
     }, null, "Confirmar");
 }

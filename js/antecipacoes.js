@@ -201,7 +201,7 @@ function _antStatusBadge(status) {
         pendente:  { color: "#eab308", bg: "rgba(234,179,8,0.1)",    label: "Pendente"  },
         aprovada:  { color: "#22c55e", bg: "rgba(34,197,94,0.1)",    label: "Aprovada"  },
         rejeitada: { color: "#ef4444", bg: "rgba(239,68,68,0.1)",    label: "Rejeitada" },
-        paga:      { color: "#3a86ff", bg: "rgba(58,134,255,0.1)",   label: "Paga"      },
+        paga:      { color: "#3a86ff", bg: "rgba(58,134,255,0.1)",   label: "Trampay ✓" },
     };
     const s = map[status] || { color: "#64748b", bg: "rgba(100,116,139,0.1)", label: status };
     return `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:${s.color};background:${s.bg}">${s.label}</span>`;
@@ -290,7 +290,7 @@ function _antEnviarSolicitacao() {
     .then(d => {
         if (btn) { btn.disabled = false; btn.textContent = "Enviar Solicitação"; }
         if (d.error) return _antMostrarMsg(d.error, "erro");
-        _antMostrarMsg("Solicitação enviada com sucesso! Aguarde a análise do financeiro.", "ok");
+        _antMostrarMsg("Solicitação enviada! Aguarde — assim que o financeiro subir seu saldo na Trampay, você poderá solicitar o valor pelo WhatsApp da Trampay.", "ok");
         document.getElementById("ant-cnpj").value = "";
         document.getElementById("ant-telefone").value = "";
         document.getElementById("ant-valor").value = "";
