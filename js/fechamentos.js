@@ -130,10 +130,11 @@ function _carregarPainel() {
                         <div style="font-size:12px;color:#94a3b8">
                             ${(() => {
                                 const liquidoNum = (d.total_receber_num || 0) - (d.antecipado_num || 0);
-                                const saldo = liquidoNum > 0.01
-                                    ? ` &nbsp;·&nbsp; Saldo a receber: <strong style="color:#e2e8f0">${d.liquido}</strong>`
-                                    : " &nbsp;·&nbsp; <span style='color:#64748b'>Valor total antecipado</span>";
-                                return `Antecipado: <strong style="color:#e2e8f0">${d.antecipado}</strong>${saldo}`;
+                                if (liquidoNum > 0.01) {
+                                    const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
+                                    return `Antecipado: <strong style="color:#e2e8f0">${d.antecipado}</strong> &nbsp;·&nbsp; Saldo a receber: <strong style="color:#e2e8f0">${d.liquido}</strong> &nbsp;·&nbsp; Previsão: <strong style="color:#e2e8f0">${dataPrev}</strong>`;
+                                }
+                                return `Antecipado: <strong style="color:#e2e8f0">${d.antecipado}</strong> &nbsp;·&nbsp; <span style='color:#64748b'>Valor total antecipado</span>`;
                             })()}
                         </div>
                         <div style="font-size:11px;color:#f59e0b;margin-top:6px">Acesse o WhatsApp da Trampay para solicitar o adiantamento.</div>
