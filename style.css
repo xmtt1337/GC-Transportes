@@ -1926,6 +1926,13 @@ body {
     -webkit-appearance: none;
 }
 .ant-input:focus { outline: none; border-color: rgba(58,134,255,0.5); background: rgba(58,134,255,0.05); }
+.ant-input:-webkit-autofill,
+.ant-input:-webkit-autofill:hover,
+.ant-input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px #0d1623 inset !important;
+    -webkit-text-fill-color: #e2e8f0 !important;
+    caret-color: #e2e8f0;
+}
 .ant-valor-btn {
     padding: 10px 14px; border-radius: 10px;
     border: 1px solid rgba(58,134,255,0.35); background: rgba(58,134,255,0.08);
