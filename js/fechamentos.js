@@ -121,7 +121,7 @@ function _carregarPainel() {
             antRow.style.display = "";
             if (temAnt) {
                 antRow.innerHTML = `
-                <div style="border:1px solid rgba(58,134,255,0.25);background:rgba(58,134,255,0.07);border-radius:14px;padding:14px 18px;display:flex;align-items:flex-start;gap:12px">
+                <div style="border:1px solid rgba(58,134,255,0.25);background:rgba(58,134,255,0.07);border-radius:14px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px">
                     <div style="color:#3a86ff;flex-shrink:0;margin-top:1px">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     </div>
