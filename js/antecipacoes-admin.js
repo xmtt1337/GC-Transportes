@@ -160,6 +160,26 @@ function _admAntPagarTodas() {
     }, null, "Confirmar");
 }
 
+function _baixarCsvAntecipacoes() {
+    if (!_admAntQuinzena) return gcAlert("Selecione a quinzena antes de exportar.");
+    const mes = document.getElementById("adm-ant-mes").value;
+    const ano = document.getElementById("adm-ant-ano").value;
+    const url = `${API}/admin/antecipacoes/csv?mes=${mes}&ano=${ano}&quinzena=${_admAntQuinzena}`;
+    fetch(url, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => {
+            if (!r.ok) return r.json().then(d => { gcAlert(d.error || "Erro ao gerar CSV."); throw new Error(); });
+            return r.blob();
+        })
+        .then(blob => {
+            const link = document.createElement("a");
+            link.href  = URL.createObjectURL(blob);
+            link.download = `antecipacoes_trampay_${mes}_${ano}_q${_admAntQuinzena}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        })
+        .catch(() => {});
+}
+
 function _exportarAntecipacaoXlsx() {
     if (!_admAntRows.length) { gcAlert("Nenhum dado para exportar."); return; }
     const MESES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
