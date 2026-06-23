@@ -128,8 +128,13 @@ function _carregarPainel() {
                     <div>
                         <div style="font-size:13px;font-weight:700;color:#3a86ff;margin-bottom:5px">Saldo disponível na Trampay</div>
                         <div style="font-size:12px;color:#94a3b8">
-                            Antecipado: <strong style="color:#e2e8f0">${d.antecipado}</strong>
-                            &nbsp;·&nbsp; Saldo a receber: <strong style="color:#e2e8f0">${d.liquido}</strong>
+                            ${(() => {
+                                const liquidoNum = (d.total_receber_num || 0) - (d.antecipado_num || 0);
+                                const saldo = liquidoNum > 0.01
+                                    ? ` &nbsp;·&nbsp; Saldo a receber: <strong style="color:#e2e8f0">${d.liquido}</strong>`
+                                    : " &nbsp;·&nbsp; <span style='color:#64748b'>Valor total antecipado</span>";
+                                return `Antecipado: <strong style="color:#e2e8f0">${d.antecipado}</strong>${saldo}`;
+                            })()}
                         </div>
                         <div style="font-size:11px;color:#f59e0b;margin-top:6px">Solicite o valor pelo WhatsApp da Trampay para receber o adiantamento.</div>
                     </div>
