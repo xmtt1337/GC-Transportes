@@ -121,7 +121,7 @@ function _carregarPainel() {
             antRow.style.display = "";
             if (temAnt) {
                 antRow.innerHTML = `
-                <div style="border:1px solid rgba(58,134,255,0.25);background:rgba(58,134,255,0.07);border-radius:14px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px">
+                <div style="border:1px solid rgba(58,134,255,0.25);background:rgba(58,134,255,0.07);border-radius:14px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px;margin-top:10px;margin-bottom:4px">
                     <div style="color:#3a86ff;flex-shrink:0;margin-top:1px">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     </div>
@@ -141,7 +141,7 @@ function _carregarPainel() {
                 </div>`;
             } else if (antInfo && (antInfo.status === "pendente" || antInfo.status === "aprovada")) {
                 antRow.innerHTML = `
-                <div style="border:1px solid rgba(234,179,8,0.2);background:rgba(234,179,8,0.06);border-radius:14px;padding:13px 18px;display:flex;align-items:center;gap:10px;font-size:12px;color:#eab308">
+                <div style="border:1px solid rgba(234,179,8,0.2);background:rgba(234,179,8,0.06);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:12px;color:#eab308;margin-top:10px;margin-bottom:4px">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                     Solicitação enviada — aguardando liberação do saldo na Trampay
                 </div>`;
