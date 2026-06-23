@@ -107,7 +107,7 @@ function renderHomeActions(role) {
             fn: "abrirEntDashboard()"
         });
     }
-    if (role === "admin" || role === "dev") {
+    if (role === "admin" || role === "dev" || role === "finance") {
         defs.push({
             color: "#3a86ff", ibg: "rgba(58,134,255,0.12)",
             icon: `<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`,
@@ -154,37 +154,6 @@ function renderHomeActions(role) {
         });
     }
 
-    if (role === "finance") {
-        defs.push({
-            color: "#3a86ff", ibg: "rgba(58,134,255,0.12)",
-            icon: `<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01"/>`,
-            title: "Fechamentos",
-            desc: "Gerencie os fechamentos dos entregadores.",
-            fn: "abrirAdminFechamentos(event)"
-        });
-        defs.push({
-            color: "#a78bfa", ibg: "rgba(167,139,250,0.12)",
-            icon: `<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>`,
-            title: "Antecipações",
-            desc: "Gerencie as antecipações Trampay.",
-            fn: "abrirAdminAntecipacoes(event)"
-        });
-        defs.push({
-            color: "#22c55e", ibg: "rgba(34,197,94,0.12)",
-            icon: `<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>`,
-            title: "Pagamentos",
-            desc: "Exporte o modelo de pagamentos Trampay.",
-            fn: "abrirAdminPagamentos(event)"
-        });
-        defs.push({
-            color: "#fb923c", ibg: "rgba(251,146,60,0.12)",
-            icon: `<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>`,
-            title: "Notas Fiscais",
-            desc: "Visualize as notas enviadas pelos entregadores.",
-            fn: "abrirAdminNFs(event)"
-        });
-    }
-
     if (role === "ADM Videira") {
         defs.push({
             color: "#22c55e", ibg: "rgba(34,197,94,0.12)",
@@ -213,7 +182,7 @@ function renderHomeActions(role) {
     `).join("");
 
     if (role === "entregador")    carregarHomeNFStatus();
-    if (role === "finance")       _carregarHomeAdmin(role);
+    if (role === "finance")       _carregarHomeAdmin("admin");
     if (role === "dev")           _carregarHomeAdmin("admin");
     if (role === "admin")         _carregarHomeAdmin("admin");
     if (role === "user")          _carregarHomeUser();
