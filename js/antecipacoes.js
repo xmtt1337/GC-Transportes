@@ -72,7 +72,7 @@ function _antCardHtml(tipo, titulo, sub) {
     </div>`;
 }
 
-function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlanilha) {
+function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlanilha, antInfo) {
     let card = document.getElementById("ant-status-card");
     if (!card) {
         card = document.createElement("div");
@@ -95,6 +95,20 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlan
     if (!uploadedAt) {
         card.innerHTML = _antCardHtml("wait", "Período ainda não processado",
             "O administrador ainda não processou este período. Aguarde.");
+        if (form) form.style.display = "none";
+        return;
+    }
+
+    // Já existe solicitação — mostra card com valor e esconde o form
+    if (antInfo) {
+        const vAnt = moedaJS(parseFloat(antInfo.valor_antecipado) || 0);
+        if (antInfo.status === "paga") {
+            card.innerHTML = _antCardHtml("ok", "Saldo disponível na Trampay",
+                `Você solicitou <strong style="color:#86efac">${vAnt}</strong>. O saldo foi liberado — solicite o valor pelo <strong style="color:#cbd5e1">WhatsApp da Trampay</strong>.`);
+        } else {
+            card.innerHTML = _antCardHtml("clock", "Solicitação em análise",
+                `Você solicitou <strong style="color:#93c5fd">${vAnt}</strong>. Assim que o financeiro subir o saldo na Trampay, você será avisado aqui.`);
+        }
         if (form) form.style.display = "none";
         return;
     }
@@ -160,10 +174,11 @@ function _antBuscarNF() {
             nfCard.style.display = "none";
         }
 
+        const antInfo = painel?.antecipacao_info ?? null;
         document.getElementById("ant-empty").style.display = "none";
         document.getElementById("ant-content").style.display = "";
         _antLimparFormMsg();
-        _antRenderStatusCard(_antMes, _antAno, _antQuinzena, uploadedAt, diverge, valorPlanilha);
+        _antRenderStatusCard(_antMes, _antAno, _antQuinzena, uploadedAt, diverge, valorPlanilha, antInfo);
     });
 }
 
