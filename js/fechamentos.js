@@ -134,7 +134,7 @@ function _carregarPainel() {
                             const liquidoNum = (d.total_receber_num || 0) - (d.antecipado_num || 0);
                             if (liquidoNum > 0.01) {
                                 const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
-                                return `<div style="font-size:12px;color:#94a3b8;margin-top:3px">Saldo a receber em <strong style="color:#e2e8f0">${dataPrev}</strong>: <strong style="color:#e2e8f0">${d.liquido}</strong></div>`;
+                                return `<div style="font-size:12px;color:#94a3b8;margin-top:3px">Saldo a receber em ${dataPrev}: <strong style="color:#e2e8f0">${d.liquido}</strong></div>`;
                             }
                             return "";
                         })()}
