@@ -128,15 +128,16 @@ function _carregarPainel() {
                     <div>
                         <div style="font-size:13px;font-weight:700;color:#3a86ff;margin-bottom:5px">Saldo disponível na Trampay</div>
                         <div style="font-size:12px;color:#94a3b8">
-                            ${(() => {
-                                const liquidoNum = (d.total_receber_num || 0) - (d.antecipado_num || 0);
-                                if (liquidoNum > 0.01) {
-                                    const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
-                                    return `Antecipado: <strong style="color:#e2e8f0">${d.antecipado}</strong> &nbsp;·&nbsp; Saldo a receber: <strong style="color:#e2e8f0">${d.liquido}</strong> &nbsp;·&nbsp; Previsão: <strong style="color:#e2e8f0">${dataPrev}</strong>`;
-                                }
-                                return `Antecipado: <strong style="color:#e2e8f0">${d.antecipado}</strong> &nbsp;·&nbsp; <span style='color:#64748b'>Valor total antecipado</span>`;
-                            })()}
+                            Antecipado: <strong style="color:#e2e8f0">${d.antecipado}</strong>
                         </div>
+                        ${(() => {
+                            const liquidoNum = (d.total_receber_num || 0) - (d.antecipado_num || 0);
+                            if (liquidoNum > 0.01) {
+                                const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
+                                return `<div style="font-size:12px;color:#94a3b8;margin-top:3px">Saldo a receber em <strong style="color:#e2e8f0">${dataPrev}</strong>: <strong style="color:#e2e8f0">${d.liquido}</strong></div>`;
+                            }
+                            return "";
+                        })()}
                         <div style="font-size:11px;color:#f59e0b;margin-top:6px">Acesse o WhatsApp da Trampay para solicitar o adiantamento.</div>
                     </div>
                 </div>`;
