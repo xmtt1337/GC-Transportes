@@ -106,7 +106,7 @@ function _admAntBadge(status) {
         paga:      { color: "#3a86ff", bg: "rgba(58,134,255,0.1)",   label: "Trampay ✓" },
     };
     const s = map[status] || { color: "#64748b", bg: "rgba(100,116,139,0.1)", label: status };
-    return `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:${s.color};background:${s.bg}">${s.label}</span>`;
+    return `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;color:${s.color};background:${s.bg}">${s.label}</span>`;
 }
 
 function _admAntOnCbChange() {
