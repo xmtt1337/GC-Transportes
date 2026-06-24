@@ -172,8 +172,8 @@ function renderHomeActions(role) {
     }
 
     container.innerHTML = defs.map(d => `
-        <div class="home-action-card" onclick="${d.fn}"${d.color ? ` style="--ac:${d.color}"` : ''}>
-            <div class="hac-icon"${d.ibg ? ` style="background:${d.ibg}"` : ''}><svg viewBox="0 0 24 24">${d.icon}</svg></div>
+        <div class="home-action-card" onclick="${d.fn}">
+            <div class="hac-icon"><svg viewBox="0 0 24 24">${d.icon}</svg></div>
             <div class="hac-body">
                 <div class="hac-title">${d.title}</div>
                 <div class="hac-desc">${d.desc}</div>
