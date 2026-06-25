@@ -29,16 +29,38 @@ function _carregarPlanilhas() {
             return;
         }
         const mesNomes = ["", "Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-        el.innerHTML = rows.map(r => `
-            <div class="admin-list-item">
-                <div>
-                    <strong>${mesNomes[r.mes]}/${r.ano} — ${r.quinzena}ª Quinzena</strong>
+        el.innerHTML = rows.map(r => {
+            const ativo = r.ativo !== false;
+            return `
+            <div class="admin-list-item" style="${ativo ? '' : 'opacity:0.45'}">
+                <div style="min-width:0;flex:1">
+                    <strong style="color:${ativo ? '#e2e8f0' : '#64748b'}">${mesNomes[r.mes]}/${r.ano} — ${r.quinzena}ª Quinzena</strong>
+                    ${!ativo ? `<span style="margin-left:8px;font-size:11px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.1);padding:2px 7px;border-radius:20px">Desativado</span>` : ''}
                     <div class="info">${r.spreadsheet_id}</div>
                 </div>
-                <button class="admin-del-btn" onclick="deletarPlanilha(${r.id})">Remover</button>
-            </div>
-        `).join("");
+                <div style="display:flex;gap:6px;flex-shrink:0">
+                    <button onclick="_togglePlanilha(${r.id}, ${ativo})" style="padding:6px 12px;border-radius:8px;border:1px solid ${ativo ? 'rgba(234,179,8,0.35)' : 'rgba(34,197,94,0.35)'};background:${ativo ? 'rgba(234,179,8,0.08)' : 'rgba(34,197,94,0.08)'};color:${ativo ? '#eab308' : '#22c55e'};font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">${ativo ? 'Desativar' : 'Ativar'}</button>
+                    <button class="admin-del-btn" onclick="deletarPlanilha(${r.id})">Remover</button>
+                </div>
+            </div>`;
+        }).join("");
     });
+}
+
+function _togglePlanilha(id, atualmenteAtivo) {
+    const acao = atualmenteAtivo ? "desativar" : "ativar";
+    gcConfirm(`Deseja ${acao} este fechamento?`, () => {
+        fetch(`${API}/admin/planilhas/${id}/toggle`, {
+            method: "PATCH",
+            headers: { "Authorization": "Bearer " + token }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) return gcAlert(d.error);
+            _carregarPlanilhas();
+        })
+        .catch(() => gcAlert("Erro ao alterar status."));
+    }, null, acao.charAt(0).toUpperCase() + acao.slice(1));
 }
 
 function adicionarPlanilha() {
