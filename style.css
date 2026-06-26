@@ -440,7 +440,7 @@ body {
     transition: background 0.22s, border-color 0.22s;
 }
 .gc-toggle--on {
-    background: #0d9488; border-color: #0d9488;
+    background: #3a86ff; border-color: #3a86ff;
 }
 .gc-toggle__knob {
     position: absolute; top: 3px; left: 3px;
@@ -2157,6 +2157,57 @@ body {
     padding: 16px;
     animation: gcFadeIn 0.15s ease;
 }
+/* ===== SKELETON LOADER ===== */
+@keyframes sk-shimmer {
+    from { background-position: -600px 0; }
+    to   { background-position:  600px 0; }
+}
+.sk {
+    background: linear-gradient(90deg,
+        rgba(255,255,255,0.04) 25%,
+        rgba(255,255,255,0.09) 50%,
+        rgba(255,255,255,0.04) 75%);
+    background-size: 1200px 100%;
+    animation: sk-shimmer 1.6s infinite linear;
+    border-radius: 6px;
+}
+.fechamento-empty.sk-mode {
+    background: transparent; border: none; padding: 0;
+    min-height: unset; display: block;
+}
+.sk-banner {
+    border-radius: 18px; padding: 28px 32px;
+    border: 1px solid rgba(58,134,255,0.08);
+    background: rgba(27,38,59,0.45);
+    display: flex; align-items: center; gap: 32px;
+    margin-bottom: 20px;
+}
+.sk-banner-left  { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+.sk-banner-right { min-width: 160px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.sk-divider { width: 1px; background: rgba(255,255,255,0.06); align-self: stretch; margin: 4px 0; }
+.sk-section { height: 8px; width: 100px; border-radius: 4px; margin-bottom: 10px; }
+.sk-grid-5  { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 20px; }
+.sk-grid-2  { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.sk-card {
+    background: rgba(27,38,59,0.45); border: 1px solid rgba(58,134,255,0.08);
+    border-radius: 14px; padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 10px;
+}
+.sk-tall { min-height: 100px; }
+.sk-h8  { height: 8px;  border-radius: 4px; }
+.sk-h14 { height: 14px; border-radius: 4px; }
+.sk-h44 { height: 44px; border-radius: 8px; }
+.sk-w40 { width: 40%; }
+.sk-w60 { width: 60%; }
+.sk-w80 { width: 80%; }
+@media (max-width: 680px) {
+    .sk-grid-5 { grid-template-columns: 1fr 1fr; }
+    .sk-grid-2 { grid-template-columns: 1fr; }
+    .sk-banner { flex-direction: column; gap: 16px; padding: 20px; }
+    .sk-divider { display: none; }
+    .sk-banner-right { width: 100%; align-items: flex-start; }
+}
+
 @keyframes gcFadeIn { from { opacity: 0 } to { opacity: 1 } }
 .gc-card {
     background: #111827;
