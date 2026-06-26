@@ -63,7 +63,7 @@ function _antCardHtml(tipo, titulo, sub) {
         error: { border: "#7f1d1d", bg: "rgba(127,29,29,0.22)", cor: "#f87171" },
     };
     const c = cfg[tipo] || cfg.wait;
-    return `<div style="border:1px solid ${c.border};background:${c.bg};border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:14px">
+    return `<div style="border:1ppx solid ${c.border};background:${c.bg};border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:14px">
         <div style="color:${c.cor};flex-shrink:0;margin-top:1px;opacity:.9">${SVG[tipo] || SVG.wait}</div>
         <div>
             <div style="font-size:13px;font-weight:700;color:${c.cor};margin-bottom:4px">${titulo}</div>
