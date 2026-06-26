@@ -86,10 +86,57 @@ function selecionarQuinzena(q) {
     _carregarPainel();
 }
 
+function _skeletonFechamento() {
+    const card5 = Array(5).fill(`
+        <div class="sk-card">
+            <div class="sk sk-h8 sk-w60"></div>
+            <div class="sk sk-h44"></div>
+            <div class="sk sk-h8 sk-w40"></div>
+        </div>`).join("");
+    const card5sm = Array(5).fill(`
+        <div class="sk-card">
+            <div class="sk sk-h8 sk-w60"></div>
+            <div class="sk sk-h14"></div>
+            <div class="sk sk-h8 sk-w40"></div>
+        </div>`).join("");
+    return `
+        <div class="sk-banner">
+            <div class="sk-banner-left">
+                <div class="sk sk-h8 sk-w40"></div>
+                <div class="sk sk-h44" style="width:55%"></div>
+                <div class="sk sk-h8 sk-w60"></div>
+            </div>
+            <div class="sk-divider"></div>
+            <div class="sk-banner-right">
+                <div class="sk sk-h8 sk-w80"></div>
+                <div class="sk sk-h44" style="width:80px"></div>
+                <div class="sk sk-h8 sk-w60"></div>
+            </div>
+        </div>
+        <div class="sk sk-section"></div>
+        <div class="sk-grid-5">${card5}</div>
+        <div class="sk sk-section"></div>
+        <div class="sk-grid-5">${card5sm}</div>
+        <div class="sk sk-section"></div>
+        <div class="sk-grid-2">
+            <div class="sk-card sk-tall">
+                <div class="sk sk-h8 sk-w40"></div>
+                <div class="sk sk-h8 sk-w80"></div>
+                <div class="sk sk-h8 sk-w60"></div>
+            </div>
+            <div class="sk-card sk-tall">
+                <div class="sk sk-h8 sk-w40"></div>
+                <div class="sk sk-h8 sk-w80"></div>
+                <div class="sk sk-h8 sk-w60"></div>
+            </div>
+        </div>`;
+}
+
 function _carregarPainel() {
     const empty = document.getElementById("fechamento-empty");
     const data  = document.getElementById("fechamento-data");
-    empty.innerText = "Carregando...";
+    empty.classList.add("sk-mode");
+    empty.innerHTML = _skeletonFechamento();
     empty.style.display = "";
     data.style.display  = "none";
 
@@ -99,6 +146,7 @@ function _carregarPainel() {
     .then(res => res.json().then(body => ({ ok: res.ok, body })))
     .then(({ ok, body }) => {
         if (!ok) {
+            empty.classList.remove("sk-mode");
             empty.innerText = body.error || "Nenhum fechamento encontrado para este período.";
             return;
         }
@@ -200,11 +248,13 @@ function _carregarPainel() {
               </tr>`).join("")
             : `<tr><td colspan="3" class="poc-empty">Nenhuma multa no período</td></tr>`;
 
+        empty.classList.remove("sk-mode");
         empty.style.display = "none";
         data.style.display  = "";
         _carregarNota();
     })
     .catch(() => {
+        empty.classList.remove("sk-mode");
         empty.innerText = "Erro ao conectar com o servidor.";
     });
 }
