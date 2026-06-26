@@ -38,8 +38,10 @@ function _carregarPlanilhas() {
                     ${!ativo ? `<span style="margin-left:8px;font-size:11px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.1);padding:2px 7px;border-radius:20px">Desativado</span>` : ''}
                     <div class="info">${r.spreadsheet_id}</div>
                 </div>
-                <div style="display:flex;gap:6px;flex-shrink:0">
-                    <button onclick="_togglePlanilha(${r.id}, ${ativo})" style="padding:6px 12px;border-radius:8px;border:1px solid ${ativo ? 'rgba(234,179,8,0.35)' : 'rgba(34,197,94,0.35)'};background:${ativo ? 'rgba(234,179,8,0.08)' : 'rgba(34,197,94,0.08)'};color:${ativo ? '#eab308' : '#22c55e'};font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">${ativo ? 'Desativar' : 'Ativar'}</button>
+                <div style="display:flex;gap:10px;align-items:center;flex-shrink:0">
+                    <div class="gc-toggle ${ativo ? 'gc-toggle--on' : ''}" onclick="_togglePlanilha(${r.id}, ${ativo})" title="${ativo ? 'Desativar' : 'Ativar'}">
+                        <div class="gc-toggle__knob"></div>
+                    </div>
                     <button class="admin-del-btn" onclick="deletarPlanilha(${r.id})">Remover</button>
                 </div>
             </div>`;
