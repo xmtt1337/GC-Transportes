@@ -207,10 +207,11 @@ function _renderEntregadoresGrid(lista) {
     grid.innerHTML = lista.map(e => {
         const nomeEsc     = e.nome.replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const usernameEsc = (e.username || "").replace(/'/g, "\\'");
+        const negativo = (e.total_receber_num || 0) < 0;
         return `<div class="adm-ent-card" onclick="selecionarEntregadorAdmin('${nomeEsc}','${usernameEsc}')" data-nome="${nomeEsc}">
             <div class="adm-ent-card-nome" title="${e.nome}">${e.nome}</div>
             ${e.username ? `<div style="font-size:10px;color:#4a6a8a;font-family:monospace;margin-top:2px">ID: ${e.username}</div>` : ""}
-            <div class="adm-ent-card-valor">${e.total_receber}</div>
+            <div class="adm-ent-card-valor" style="${negativo ? 'color:#ef4444' : ''}">${e.total_receber}</div>
             <div class="adm-ent-card-qtd">${parseInt(String(e.total_entregues || 0).replace(/\./g, "")) || 0} pacotes entregues</div>
         </div>`;
     }).join("");
