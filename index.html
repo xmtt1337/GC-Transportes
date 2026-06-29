@@ -130,6 +130,13 @@
             <li><a href="#" onclick="abrirAdmin(event)">Alimentar</a></li>
             <li><a href="#" onclick="abrirAdminFechamentos(event)">Pesquisar</a></li>
             <li><a href="#" onclick="abrirDashboard(event)">Dashboard</a></li>
+            <li class="subgroup-header" id="videira-subgroup-header" style="display:none" onclick="toggleSubGroup(this)">
+                Terceirizada Videira <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="subgroup-videira">
+                <li><a href="#" onclick="abrirVideiraAlimentar(event)">Alimentar Fechamentos</a></li>
+                <li><a href="#" onclick="abrirVideiraPainel(event)">Fechamento Videira</a></li>
+            </ul>
         </ul>
 
         <li class="menu-item" data-menu="financeiro" id="menu-financeiro" onclick="toggleMenu(this)" style="display:none">
