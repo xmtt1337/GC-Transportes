@@ -83,6 +83,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         _showCadastros();
         _showExtravios();
         show("bip-sync-btn");
+        show("videira-subgroup-header");
     }
 
     if (role === "sac") {
@@ -99,12 +100,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-videira");
         show("submenu-videira");
         // Alimentar só para dev
-    }
-
-    if (role === "dev") {
-        show("menu-videira");
-        show("submenu-videira");
-        show("videira-li-alimentar");
     }
 
     renderHomeActions(role);
