@@ -205,7 +205,12 @@ function _carregarPainel() {
                 </div>`;
             }
         } else {
-            antRow.style.display = "none";
+            const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena, d.planilha_ativado_at);
+            antRow.style.display = "";
+            antRow.innerHTML = `
+            <div style="font-size:12px;color:#64748b;padding:4px 2px">
+                Previsão de recebimento: <strong style="color:#94a3b8">${dataPrev}</strong>
+            </div>`;
         }
 
         _renderPgtoStatusCard(d);
