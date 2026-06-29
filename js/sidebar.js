@@ -64,6 +64,22 @@ function toggleSubGroup(el) {
     }
 }
 
+// Desktop hover-to-expand com debounce (evita travar ao entrar/sair rápido)
+document.addEventListener("DOMContentLoaded", function () {
+    if (!window.matchMedia("(hover: hover) and (min-width: 681px)").matches) return;
+    const sidebar = document.getElementById("sidebar");
+    if (!sidebar) return;
+    let hoverTimer;
+    sidebar.addEventListener("mouseenter", () => {
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(() => sidebar.classList.add("expanded"), 80);
+    });
+    sidebar.addEventListener("mouseleave", () => {
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(() => sidebar.classList.remove("expanded"), 150);
+    });
+});
+
 function toggleSubSubGroup(el) {
     const sub    = el.nextElementSibling;
     const isOpen = sub.classList.contains("open");

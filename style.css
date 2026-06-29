@@ -508,20 +508,6 @@ body {
 .sidebar-reload-btn:hover, .sidebar-reload-btn:active { color: #fff; }
 .sidebar.expanded .sidebar-reload-btn { display: flex; }
 
-/* ── Hover-to-expand (desktop only) ── */
-@media (hover: hover) and (min-width: 681px) {
-    .sidebar:hover {
-        width: 250px; min-width: 250px;
-    }
-    .sidebar:hover .logo-img { width: 58px; }
-    .sidebar:hover .menu-item { padding: 13px 18px; justify-content: flex-start; gap: 13px; }
-    .sidebar:hover .menu-item .label { opacity: 1; max-width: 160px; }
-    .sidebar:hover .menu-item .arrow { opacity: 1; max-width: 20px; }
-    .sidebar:hover .menu-item .menu-tooltip { display: none; }
-    .sidebar:hover .submenu.open { max-height: 100dvh; opacity: 1; margin-bottom: 4px; }
-    .sidebar:hover .sidebar-footer { justify-content: space-between; padding: 0 10px; }
-    .sidebar:hover .sidebar-reload-btn { display: flex; }
-}
 
 @media (max-width: 680px) {
     body { height: 100dvh; }
