@@ -39,22 +39,22 @@
             </li>
             <ul class="sub-submenu" id="subgroup-bipagens">
                 <li><a href="#" onclick="abrirBipagens(event)">Separação</a></li>
-                <li class="subgroup-header-2" id="menu-desempenho-bip" style="display:none" onclick="toggleSubSubGroup(this)">
-                    Desempenho <span class="subgroup-arrow">▾</span>
-                </li>
-                <ul class="sub-sub-submenu" id="subsubgroup-desempenho">
-                    <li><a href="#" onclick="abrirDesempenhoBip(event)">Quantidade x Usuário</a></li>
-                    <li><a href="#" onclick="abrirDesempenhoHora(event)">Quantidade x Hora</a></li>
-                </ul>
-                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
-                    Alimentar separação <span class="subgroup-arrow">▾</span>
-                </li>
-                <ul class="sub-sub-submenu" id="subsubgroup-alimentar">
-                    <li><a href="#" onclick="abrirAlimentar(event,'loggi')">Loggi</a></li>
-                    <li><a href="#" onclick="abrirAlimentar(event,'anjun')">Anjun</a></li>
-                    <li><a href="#" onclick="abrirAlimentar(event,'jt')">J&amp;T</a></li>
-                    <li><a href="#" onclick="abrirAlimentar(event,'imile')">Imile</a></li>
-                </ul>
+            </ul>
+            <li class="subgroup-header" onclick="toggleSubGroup(this)">
+                Alimentar separação <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="subgroup-alimentar">
+                <li><a href="#" onclick="abrirAlimentar(event,'loggi')">Loggi</a></li>
+                <li><a href="#" onclick="abrirAlimentar(event,'anjun')">Anjun</a></li>
+                <li><a href="#" onclick="abrirAlimentar(event,'jt')">J&amp;T</a></li>
+                <li><a href="#" onclick="abrirAlimentar(event,'imile')">Imile</a></li>
+            </ul>
+            <li class="subgroup-header" id="menu-desempenho-bip" style="display:none" onclick="toggleSubGroup(this)">
+                Desempenho <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="subgroup-desempenho">
+                <li><a href="#" onclick="abrirDesempenhoBip(event)">Quantidade x Usuário</a></li>
+                <li><a href="#" onclick="abrirDesempenhoHora(event)">Quantidade x Hora</a></li>
             </ul>
         </ul>
 
