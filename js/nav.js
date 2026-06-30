@@ -27,6 +27,7 @@ const _TELA_TITULOS = {
     "tela-videira-painel":       "Meu Fechamento",
     "tela-videira-dash":         "Dashboard",
     "tela-em-breve":             "Em Breve",
+    "tela-torre-alimentar":      "Alimentar",
 };
 
 function mostrarTela(id) {
@@ -165,7 +166,7 @@ function _renderPerfilCard(card, d) {
             <div class="pc-avatar">${inicial}</div>
             <div>
                 <div class="pc-name">${u.displayName || u.name || u.username || "—"}</div>
-                <div class="pc-meta">@${u.username || "—"} · ${roleLabel}</div>
+                <div class="pc-meta">@${u.username} · ${roleLabel}</div>
             </div>
         </div>
 
