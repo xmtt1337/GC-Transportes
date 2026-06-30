@@ -177,7 +177,6 @@ let _pedCalModo    = 'filtro'; // 'filtro' | 'export'
 let _pedCalMes     = new Date();
 let _pedCalInicio  = null;
 let _pedCalFim     = null;
-let _pedCalPreview = null; // data sob o mouse, so usado pra previsualizar o intervalo antes do 2º clique
 
 function _pedFmtData(d) {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -200,7 +199,6 @@ function _pedAbrirCalendario(event, modo) {
     const ate = document.getElementById('ped-ate').value;
     _pedCalInicio = de ? _pedParseData(de) : null;
     _pedCalFim    = ate ? _pedParseData(ate) : null;
-    _pedCalPreview = null;
     _pedCalMes    = new Date(_pedCalInicio || new Date());
     _pedCalMes.setDate(1);
 
@@ -250,12 +248,6 @@ function _pedCalClick(dataStr) {
     }
 }
 
-function _pedCalHover(dataStr) {
-    if (!_pedCalInicio || _pedCalFim) return;
-    _pedCalPreview = _pedParseData(dataStr);
-    _pedCalRender();
-}
-
 function _pedAplicarFiltro() {
     const de  = _pedFmtData(_pedCalInicio);
     const ate = _pedFmtData(_pedCalFim);
@@ -287,7 +279,7 @@ function _pedCalRender() {
     const mesIdx = mes.getMonth();
 
     const inicio = _pedCalInicio;
-    const fim    = _pedCalFim || (_pedCalInicio && _pedCalPreview && _pedCalPreview > _pedCalInicio ? _pedCalPreview : null);
+    const fim    = _pedCalFim;
 
     const primeiroDiaSemana = new Date(ano, mesIdx, 1).getDay();
     const diasNoMes = new Date(ano, mesIdx + 1, 0).getDate();
@@ -307,12 +299,12 @@ function _pedCalRender() {
             if (t === inicio.getTime() && t === fim.getTime()) classes += ' intervalo-unico';
             else if (t === inicio.getTime()) classes += ' intervalo-inicio';
             else if (t === fim.getTime()) classes += ' intervalo-fim';
-            else if (t > inicio.getTime() && t < fim.getTime()) classes += ' no-intervalo' + (!_pedCalFim ? ' previa' : '');
+            else if (t > inicio.getTime() && t < fim.getTime()) classes += ' no-intervalo';
         } else if (inicio && dia.getTime() === inicio.getTime()) {
             classes += ' intervalo-unico';
         }
 
-        gridHtml += `<div class="${classes}" onclick="_pedCalClick('${dataStr}')" onmouseover="_pedCalHover('${dataStr}')">${dia.getDate()}</div>`;
+        gridHtml += `<div class="${classes}" onclick="_pedCalClick('${dataStr}')">${dia.getDate()}</div>`;
     }
 
     const dowHtml = _PED_CAL_DOW.map(d => `<div class="ped-cal-dow">${d}</div>`).join('');
