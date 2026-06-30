@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Redefinir senha · GC Transportes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="img/logobranca.png" type="image/png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+body {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #07090e;
+    padding: 24px;
+}
+
+.bg-glow {
+    position: fixed;
+    width: 560px; height: 560px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(58,134,255,0.13) 0%, transparent 65%);
+    top: -160px; left: -160px;
+    pointer-events: none;
+}
+
+.card {
+    background: linear-gradient(160deg, #0f1925 0%, #0b1220 100%);
+    border: 1px solid rgba(58,134,255,0.15);
+    border-radius: 24px;
+    padding: 36px 32px 32px;
+    width: 100%; max-width: 400px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(58,134,255,0.05);
+    position: relative; z-index: 1;
+    animation: fadeUp 0.5s ease both;
+}
+
+.icon-wrap {
+    width: 52px; height: 52px; border-radius: 16px;
+    background: rgba(58,134,255,0.1);
+    border: 1px solid rgba(58,134,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+}
+.icon-wrap svg {
+    width: 24px; height: 24px;
+    stroke: #3a86ff; fill: none;
+    stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
+}
+.icon-wrap.erro {
+    background: rgba(239,68,68,0.1);
+    border-color: rgba(239,68,68,0.2);
+}
+.icon-wrap.erro svg { stroke: #f87171; }
+
+.eyebrow {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.14em; color: #3a86ff; margin-bottom: 10px;
+}
+.title {
+    font-size: 24px; font-weight: 700; color: #f1f5f9;
+    letter-spacing: -0.3px; margin-bottom: 6px;
+}
+.sub {
+    font-size: 14px; color: #5a7a9a; margin-bottom: 28px; line-height: 1.5;
+}
+
+.field { margin-bottom: 18px; }
+.field label {
+    display: block; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: #4a6a8a; margin-bottom: 7px;
+}
+.input-wrap { position: relative; }
+.input-wrap .field-icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    width: 16px; height: 16px; stroke: #2a3e55; fill: none;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    pointer-events: none; transition: stroke 0.2s;
+}
+.input-wrap input {
+    width: 100%; padding: 13px 14px 13px 42px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; font-size: 15px; color: #e2e8f0;
+    font-family: 'Inter', sans-serif; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.input-wrap input::placeholder { color: #1e2e40; }
+.input-wrap input:focus {
+    border-color: rgba(58,134,255,0.55);
+    background: rgba(58,134,255,0.04);
+    box-shadow: 0 0 0 3px rgba(58,134,255,0.1);
+}
+.input-wrap input:focus + .field-icon { stroke: #3a86ff; }
+
+.btn {
+    width: 100%; padding: 14px;
+    background: #3a86ff; border: none; border-radius: 12px;
+    color: #fff; font-size: 15px; font-weight: 600;
+    cursor: pointer; font-family: 'Inter', sans-serif;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 6px; letter-spacing: 0.01em;
+}
+.btn:hover:not(:disabled) {
+    background: #2563eb;
+    box-shadow: 0 8px 28px rgba(58,134,255,0.38);
+    transform: translateY(-1px);
+}
+.btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+.btn:disabled { opacity: 0.65; cursor: not-allowed; }
+
+.btn-link {
+    display: block; text-align: center; margin-top: 18px;
+    color: #3a6699; text-decoration: none; font-size: 13px; font-weight: 500;
+    transition: color 0.2s;
+}
+.btn-link:hover { color: #3a86ff; }
+
+.spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.25);
+    border-top-color: #fff; border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.msg {
+    display: flex; align-items: center; gap: 9px;
+    opacity: 0; max-height: 0; overflow: hidden;
+    padding: 0 12px; border-radius: 10px; font-size: 13px;
+    transition: all 0.35s ease;
+}
+.msg.show { opacity: 1; max-height: 60px; padding: 10px 12px; margin-bottom: 18px; }
+.msg svg { flex-shrink: 0; width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.msg-erro    { background: rgba(239,68,68,0.07); color: #f87171; border: 1px solid rgba(239,68,68,0.18); }
+.msg-sucesso { background: rgba(52,211,153,0.07); color: #34d399; border: 1px solid rgba(52,211,153,0.2); }
+
+.loading-spin {
+    width: 28px; height: 28px;
+    border: 3px solid rgba(58,134,255,0.2);
+    border-top-color: #3a86ff; border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 8px auto 0;
+}
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+
+<div class="card" id="card">
+    <div class="icon-wrap" id="iconWrap">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    </div>
+    <div class="eyebrow">Segurança</div>
+    <div class="title" id="title">Validando link...</div>
+    <div class="sub" id="sub">Aguarde um instante.</div>
+    <div class="loading-spin" id="loadingSpin"></div>
+</div>
+
+<script>
+const API = "https://sistema-backend-i4uh.onrender.com";
+const params = new URLSearchParams(window.location.search);
+const token  = params.get("token");
+
+function renderErro(msg) {
+    document.getElementById("loadingSpin").style.display = "none";
+    document.getElementById("iconWrap").classList.add("erro");
+    document.getElementById("iconWrap").innerHTML = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+    document.getElementById("title").innerText = "Link inválido";
+    document.getElementById("sub").innerText = msg;
+    const card = document.getElementById("card");
+    const link = document.createElement("a");
+    link.href = "login.html";
+    link.className = "btn-link";
+    link.innerText = "Voltar ao login";
+    card.appendChild(link);
+}
+
+function renderForm() {
+    document.getElementById("loadingSpin").style.display = "none";
+    document.getElementById("iconWrap").innerHTML = `<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+    document.getElementById("title").innerText = "Crie uma nova senha";
+    document.getElementById("sub").innerText = "Escolha uma nova senha para sua conta.";
+
+    const card = document.getElementById("card");
+    const formHtml = document.createElement("div");
+    formHtml.innerHTML = `
+        <div id="msgErro" class="msg msg-erro">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span id="msgErroTexto"></span>
+        </div>
+        <div id="msgSucesso" class="msg msg-sucesso">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Senha alterada com sucesso!</span>
+        </div>
+        <div class="field">
+            <label for="senha-nova">Nova senha</label>
+            <div class="input-wrap">
+                <input type="password" id="senha-nova" placeholder="Nova senha" autocomplete="new-password">
+                <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+        </div>
+        <div class="field">
+            <label for="senha-conf">Confirmar nova senha</label>
+            <div class="input-wrap">
+                <input type="password" id="senha-conf" placeholder="Repita a nova senha" autocomplete="new-password">
+                <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+        </div>
+        <button type="button" class="btn" id="btnSalvar">Salvar nova senha</button>
+    `;
+    card.appendChild(formHtml);
+    document.getElementById("btnSalvar").addEventListener("click", confirmarSenha);
+}
+
+async function confirmarSenha() {
+    document.getElementById("msgErro").classList.remove("show");
+    const nova = document.getElementById("senha-nova").value;
+    const conf = document.getElementById("senha-conf").value;
+    const btn  = document.getElementById("btnSalvar");
+
+    if (!nova || !conf) { mostrarErro("Preencha a nova senha e a confirmação."); return; }
+    if (nova !== conf)  { mostrarErro("As senhas não coincidem."); return; }
+    if (nova.length < 4) { mostrarErro("A nova senha deve ter pelo menos 4 caracteres."); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = `<div class="spinner"></div> Salvando...`;
+
+    try {
+        const res = await fetch(`${API}/redefinir-senha/confirmar`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, senha_nova: nova })
+        });
+        let data;
+        try { data = await res.json(); } catch { data = {}; }
+        if (data.success) {
+            document.getElementById("msgSucesso").classList.add("show");
+            document.getElementById("senha-nova").closest(".field").style.display = "none";
+            document.getElementById("senha-conf").closest(".field").style.display = "none";
+            btn.style.display = "none";
+            setTimeout(() => { window.location.href = "login.html"; }, 2200);
+            return;
+        }
+        mostrarErro(data.error || `Erro ${res.status}: não foi possível salvar.`);
+    } catch {
+        mostrarErro("Erro ao conectar com o servidor. Tente novamente.");
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = "Salvar nova senha";
+}
+
+function mostrarErro(msg) {
+    document.getElementById("msgErroTexto").innerText = msg;
+    document.getElementById("msgErro").classList.add("show");
+}
+
+(async function init() {
+    if (!token) { renderErro("Nenhum token foi informado."); return; }
+    try {
+        const res = await fetch(`${API}/redefinir-senha/validar?token=${encodeURIComponent(token)}`);
+        let data;
+        try { data = await res.json(); } catch { data = {}; }
+        if (data.valid) { renderForm(); }
+        else { renderErro(data.error || "Este link é inválido ou já expirou."); }
+    } catch {
+        renderErro("Erro ao conectar com o servidor. Tente novamente em alguns instantes.");
+    }
+})();
+</script>
+
+</body>
+</html>

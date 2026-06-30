@@ -155,7 +155,6 @@ function _renderPerfilCard(card, d) {
     const svgKey   = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
     const svgStar  = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
     const svgScan  = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>`;
-    const svgChev  = `<svg class="pc-senha-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
 
     const subNivel = d.proxNivel
         ? `Faltam ${(d.faltam||0).toLocaleString("pt-BR")} bipagens para Nv ${d.proxNivel}`
@@ -185,59 +184,8 @@ function _renderPerfilCard(card, d) {
             <div class="pc-transp-list">${transpRows}</div>
         </div>
 
-        <button class="pc-senha-toggle" onclick="_pcToggleSenha(this)">
+        <div class="pc-senha-info">
             ${svgKey}
-            <span>Redefinir senha</span>
-            ${svgChev}
-        </button>
-        <div class="pc-senha-form" style="display:none">
-            <input id="pc-s-atual" class="pc-senha-input" type="password" placeholder="Senha atual" autocomplete="current-password">
-            <input id="pc-s-nova"  class="pc-senha-input" type="password" placeholder="Nova senha" autocomplete="new-password">
-            <input id="pc-s-conf"  class="pc-senha-input" type="password" placeholder="Confirmar nova senha" autocomplete="new-password">
-            <div id="pc-msg" style="display:none" class="pc-msg"></div>
-            <button class="pc-senha-submit" onclick="_pcSalvarSenha()">Salvar</button>
+            <span>Para alterar sua senha, use "Esqueci minha senha" na tela de login.</span>
         </div>`;
-}
-
-function _pcToggleSenha(btn) {
-    const form = btn.nextElementSibling;
-    const chevron = btn.querySelector(".pc-senha-chevron");
-    const aberto = form.style.display !== "none";
-    form.style.display = aberto ? "none" : "flex";
-    chevron.classList.toggle("open", !aberto);
-    if (!aberto) btn.nextElementSibling.querySelector("#pc-s-atual")?.focus();
-}
-
-function _pcSalvarSenha() {
-    const atual = document.getElementById("pc-s-atual")?.value.trim();
-    const nova  = document.getElementById("pc-s-nova")?.value.trim();
-    const conf  = document.getElementById("pc-s-conf")?.value.trim();
-    const msg   = document.getElementById("pc-msg");
-    const u     = window._gcUser || {};
-
-    const show = (txt, tipo) => {
-        msg.textContent = txt; msg.className = "pc-msg " + tipo; msg.style.display = "block";
-    };
-    if (!atual || !nova || !conf)      return show("Preencha todos os campos.", "err");
-    if (nova !== conf)                 return show("As senhas não coincidem.", "err");
-    if (nova.length < 4)               return show("A nova senha deve ter ao menos 4 caracteres.", "err");
-
-    const tok = localStorage.getItem("token");
-    fetch(API + "/redefinir-senha", {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
-        body: JSON.stringify({ username: u.username, senha_atual: atual, senha_nova: nova }),
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (d.success) {
-            show("Senha alterada com sucesso!", "ok");
-            document.getElementById("pc-s-atual").value = "";
-            document.getElementById("pc-s-nova").value  = "";
-            document.getElementById("pc-s-conf").value  = "";
-        } else {
-            show(d.error || "Erro ao alterar senha.", "err");
-        }
-    })
-    .catch(() => show("Erro de conexão.", "err"));
 }
