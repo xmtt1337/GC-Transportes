@@ -268,10 +268,23 @@ function mostrarErro(msg) {
     document.getElementById("msgErro").classList.add("show");
 }
 
+async function _coletarDicaAparelho() {
+    if (!navigator.userAgentData) return null;
+    try {
+        const hi = await navigator.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]);
+        return { model: hi.model || null, platform: hi.platform || null, platformVersion: hi.platformVersion || null };
+    } catch { return null; }
+}
+
 (async function init() {
     if (!token) { renderErro("Nenhum token foi informado."); return; }
     try {
-        const res = await fetch(`${API}/redefinir-senha/validar?token=${encodeURIComponent(token)}`);
+        const dica = await _coletarDicaAparelho();
+        let url = `${API}/redefinir-senha/validar?token=${encodeURIComponent(token)}`;
+        if (dica && dica.model) {
+            url += `&model=${encodeURIComponent(dica.model)}&platform=${encodeURIComponent(dica.platform || "")}&platformVersion=${encodeURIComponent(dica.platformVersion || "")}`;
+        }
+        const res = await fetch(url);
         let data;
         try { data = await res.json(); } catch { data = {}; }
         if (data.valid) { renderForm(); }
