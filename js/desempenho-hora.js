@@ -38,9 +38,9 @@ async function _desempHoraCarregar() {
     }
 }
 
-// Compara um valor atual com uma base (ontem ou média histórica): verde se avançou, vermelho se não
+// Compara um valor atual com uma base (última bipagem anterior ou média histórica): verde se avançou, vermelho se não
 function _desempHoraComparar(atual, base) {
-    if (!base) return atual > 0 ? { texto: 'novo', classe: 'up' } : { texto: '—', classe: 'neutral' };
+    if (!base) return { texto: '-', classe: 'neutral' };
     const pct    = ((atual - base) / base) * 100;
     const classe = pct >= 0 ? 'up' : 'down';
     const seta   = pct >= 0 ? '▲' : '▼';
@@ -83,15 +83,15 @@ function _desempHoraRenderizar(rows, comparativo, data) {
 
             const c = compMap[nome] || {};
             // Média por hora considera apenas o intervalo entre a primeira e a última bipagem do dia
-            const mediaHora      = c.hoje_horas  > 0 ? totalDia      / c.hoje_horas  : 0;
-            const ontemMediaHora = c.ontem_horas > 0 ? c.ontem_total / c.ontem_horas : null;
-            const histMediaDia   = c.hist_dias   > 0 ? c.hist_total  / c.hist_dias   : null;
-            const histMediaHora  = c.hist_horas  > 0 ? c.hist_total  / c.hist_horas  : null;
+            const mediaHora       = c.hoje_horas   > 0 ? totalDia       / c.hoje_horas   : 0;
+            const ultimaMediaHora = c.ultimo_horas > 0 ? c.ultimo_total / c.ultimo_horas : null;
+            const histMediaDia    = c.hist_dias    > 0 ? c.hist_total   / c.hist_dias    : null;
+            const histMediaHora   = c.hist_horas   > 0 ? c.hist_total   / c.hist_horas   : null;
 
-            const cmpOntemQtd   = _desempHoraComparar(totalDia,  c.ontem_total);
-            const cmpOntemMedia = _desempHoraComparar(mediaHora, ontemMediaHora);
-            const cmpHistQtd    = _desempHoraComparar(totalDia,  histMediaDia);
-            const cmpHistMedia  = _desempHoraComparar(mediaHora, histMediaHora);
+            const cmpUltimaQtd   = _desempHoraComparar(totalDia,  c.ultimo_total);
+            const cmpUltimaMedia = _desempHoraComparar(mediaHora, ultimaMediaHora);
+            const cmpHistQtd     = _desempHoraComparar(totalDia,  histMediaDia);
+            const cmpHistMedia   = _desempHoraComparar(mediaHora, histMediaHora);
 
             const horasHtml = horasOrd.map(h => {
                 const qtd = horas[h];
@@ -129,9 +129,9 @@ function _desempHoraRenderizar(rows, comparativo, data) {
                 </div>
                 <div class="dh-compare">
                     <div class="dh-compare-row">
-                        <span class="dh-compare-label">vs ontem</span>
-                        <span class="dh-badge ${cmpOntemQtd.classe}">${cmpOntemQtd.texto} qtd</span>
-                        <span class="dh-badge ${cmpOntemMedia.classe}">${cmpOntemMedia.texto} méd</span>
+                        <span class="dh-compare-label">vs última bipagem</span>
+                        <span class="dh-badge ${cmpUltimaQtd.classe}">${cmpUltimaQtd.texto} qtd</span>
+                        <span class="dh-badge ${cmpUltimaMedia.classe}">${cmpUltimaMedia.texto} méd</span>
                     </div>
                     <div class="dh-compare-row">
                         <span class="dh-compare-label">vs histórico</span>
