@@ -2048,6 +2048,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .ped-cal-day.outro-mes { color: #1e2c3d; }
 .ped-cal-day:hover { background: rgba(58,134,255,0.12); }
 .ped-cal-day.no-intervalo { background: rgba(58,134,255,0.12); border-radius: 0; }
+.ped-cal-day.no-intervalo.previa { background: rgba(58,134,255,0.06); }
 .ped-cal-day.intervalo-inicio { background: #3a86ff; color: #fff; font-weight: 700; border-radius: 8px 0 0 8px; }
 .ped-cal-day.intervalo-fim { background: #3a86ff; color: #fff; font-weight: 700; border-radius: 0 8px 8px 0; }
 .ped-cal-day.intervalo-unico { background: #3a86ff; color: #fff; font-weight: 700; border-radius: 8px; }

@@ -16,6 +16,7 @@ function abrirPesquisarPedidos(event) {
 function _pedLimparFiltro() {
     document.getElementById('ped-de').value  = '';
     document.getElementById('ped-ate').value = '';
+    document.getElementById('ped-filtro-txt').innerText = 'Todos os períodos';
     _pedCarregar();
 }
 
@@ -169,12 +170,14 @@ async function _pedExportarComDatas(de, ate) {
     btn.innerHTML = txtOriginal;
 }
 
-// ───── POPOVER DE EXPORTAÇÃO — CALENDÁRIO DE INTERVALO (clique e arraste) ─────
+// ───── CALENDÁRIO DE INTERVALO (1 clique = data inicial, 1 clique = data final) ─────
+// Usado tanto pelo filtro de período (topo) quanto pelo "Exportar Pedidos".
 const _PED_CAL_DOW = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-let _pedCalMes       = new Date();
-let _pedCalInicio    = null;
-let _pedCalFim       = null;
-let _pedCalArrastando = false;
+let _pedCalModo    = 'filtro'; // 'filtro' | 'export'
+let _pedCalMes     = new Date();
+let _pedCalInicio  = null;
+let _pedCalFim     = null;
+let _pedCalPreview = null; // data sob o mouse, so usado pra previsualizar o intervalo antes do 2º clique
 
 function _pedFmtData(d) {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -184,21 +187,24 @@ function _pedParseData(str) {
     return new Date(y, m - 1, d);
 }
 
-function _pedAbrirExportarPop(event) {
+function _pedAbrirCalendario(event, modo) {
     event.stopPropagation();
     const pop = document.getElementById('ped-export-pop');
-    if (pop.style.display !== 'none') { _pedFecharExportarPop(); return; }
+    const jaAberto = pop.style.display !== 'none' && _pedCalModo === modo;
+    if (jaAberto) { _pedFecharCalendario(); return; }
 
     if (pop.parentElement !== document.body) document.body.appendChild(pop);
 
+    _pedCalModo = modo;
     const de  = document.getElementById('ped-de').value;
     const ate = document.getElementById('ped-ate').value;
     _pedCalInicio = de ? _pedParseData(de) : null;
-    _pedCalFim    = ate ? _pedParseData(ate) : (_pedCalInicio || null);
+    _pedCalFim    = ate ? _pedParseData(ate) : null;
+    _pedCalPreview = null;
     _pedCalMes    = new Date(_pedCalInicio || new Date());
     _pedCalMes.setDate(1);
 
-    const btn = document.getElementById('ped-exportar-btn');
+    const btn = document.getElementById(modo === 'export' ? 'ped-exportar-btn' : 'ped-filtro-btn');
     const rect = btn.getBoundingClientRect();
     pop.style.top   = (rect.bottom + 8) + 'px';
     pop.style.right = (window.innerWidth - rect.right) + 'px';
@@ -207,20 +213,13 @@ function _pedAbrirExportarPop(event) {
     pop.onclick = ev => ev.stopPropagation();
 
     _pedCalRender();
-    document.addEventListener('click', _pedFecharExportarPop);
-    document.addEventListener('mouseup', _pedCalMouseUp);
+    document.addEventListener('click', _pedFecharCalendario);
 }
 
-function _pedFecharExportarPop() {
+function _pedFecharCalendario() {
     const pop = document.getElementById('ped-export-pop');
     pop.style.display = 'none';
-    _pedCalArrastando = false;
-    document.removeEventListener('click', _pedFecharExportarPop);
-    document.removeEventListener('mouseup', _pedCalMouseUp);
-}
-
-function _pedCalMouseUp() {
-    _pedCalArrastando = false;
+    document.removeEventListener('click', _pedFecharCalendario);
 }
 
 function _pedCalMesAnterior() {
@@ -232,29 +231,52 @@ function _pedCalMesProximo() {
     _pedCalRender();
 }
 
-function _pedCalDown(dataStr) {
-    _pedCalInicio = _pedParseData(dataStr);
-    _pedCalFim    = _pedCalInicio;
-    _pedCalArrastando = true;
+function _pedCalClick(dataStr) {
+    const d = _pedParseData(dataStr);
+    if (!_pedCalInicio || _pedCalFim) {
+        // comeca uma nova selecao
+        _pedCalInicio = d;
+        _pedCalFim    = null;
+    } else if (d < _pedCalInicio) {
+        _pedCalFim    = _pedCalInicio;
+        _pedCalInicio = d;
+    } else {
+        _pedCalFim = d;
+    }
     _pedCalRender();
+
+    if (_pedCalInicio && _pedCalFim && _pedCalModo === 'filtro') {
+        _pedAplicarFiltro();
+    }
 }
-function _pedCalEnter(dataStr) {
-    if (!_pedCalArrastando) return;
-    _pedCalFim = _pedParseData(dataStr);
+
+function _pedCalHover(dataStr) {
+    if (!_pedCalInicio || _pedCalFim) return;
+    _pedCalPreview = _pedParseData(dataStr);
     _pedCalRender();
 }
 
+function _pedAplicarFiltro() {
+    const de  = _pedFmtData(_pedCalInicio);
+    const ate = _pedFmtData(_pedCalFim);
+    document.getElementById('ped-de').value  = de;
+    document.getElementById('ped-ate').value = ate;
+    document.getElementById('ped-filtro-txt').innerText =
+        `${_pedCalInicio.toLocaleDateString('pt-BR')} — ${_pedCalFim.toLocaleDateString('pt-BR')}`;
+    _pedFecharCalendario();
+    _pedCarregar();
+}
+
 function _pedCalCancelar() {
-    _pedFecharExportarPop();
+    _pedFecharCalendario();
 }
 
 function _pedCalConfirmar() {
     if (!_pedCalInicio) return;
-    let inicio = _pedCalInicio, fim = _pedCalFim || _pedCalInicio;
-    if (fim < inicio) { [inicio, fim] = [fim, inicio]; }
-    const de  = _pedFmtData(inicio);
+    const fim = _pedCalFim || _pedCalInicio;
+    const de  = _pedFmtData(_pedCalInicio);
     const ate = _pedFmtData(fim);
-    _pedFecharExportarPop();
+    _pedFecharCalendario();
     _pedExportarComDatas(de, ate);
 }
 
@@ -264,8 +286,8 @@ function _pedCalRender() {
     const ano = mes.getFullYear();
     const mesIdx = mes.getMonth();
 
-    let inicio = _pedCalInicio, fim = _pedCalFim;
-    if (inicio && fim && fim < inicio) { [inicio, fim] = [fim, inicio]; }
+    const inicio = _pedCalInicio;
+    const fim    = _pedCalFim || (_pedCalInicio && _pedCalPreview && _pedCalPreview > _pedCalInicio ? _pedCalPreview : null);
 
     const primeiroDiaSemana = new Date(ano, mesIdx, 1).getDay();
     const diasNoMes = new Date(ano, mesIdx + 1, 0).getDate();
@@ -285,20 +307,33 @@ function _pedCalRender() {
             if (t === inicio.getTime() && t === fim.getTime()) classes += ' intervalo-unico';
             else if (t === inicio.getTime()) classes += ' intervalo-inicio';
             else if (t === fim.getTime()) classes += ' intervalo-fim';
-            else if (t > inicio.getTime() && t < fim.getTime()) classes += ' no-intervalo';
+            else if (t > inicio.getTime() && t < fim.getTime()) classes += ' no-intervalo' + (!_pedCalFim ? ' previa' : '');
+        } else if (inicio && dia.getTime() === inicio.getTime()) {
+            classes += ' intervalo-unico';
         }
 
-        gridHtml += `<div class="${classes}" onmousedown="_pedCalDown('${dataStr}')" onmouseenter="_pedCalEnter('${dataStr}')">${dia.getDate()}</div>`;
+        gridHtml += `<div class="${classes}" onclick="_pedCalClick('${dataStr}')" onmouseover="_pedCalHover('${dataStr}')">${dia.getDate()}</div>`;
     }
 
     const dowHtml = _PED_CAL_DOW.map(d => `<div class="ped-cal-dow">${d}</div>`).join('');
 
-    let rangeTxt = 'Clique e arraste para selecionar o período';
-    if (inicio && fim) {
-        rangeTxt = inicio.getTime() === fim.getTime()
-            ? inicio.toLocaleDateString('pt-BR')
-            : `${inicio.toLocaleDateString('pt-BR')} — ${fim.toLocaleDateString('pt-BR')}`;
-    }
+    let rangeTxt = !_pedCalInicio
+        ? 'Clique na data inicial'
+        : !_pedCalFim
+            ? 'Agora clique na data final'
+            : `${_pedCalInicio.toLocaleDateString('pt-BR')} — ${_pedCalFim.toLocaleDateString('pt-BR')}`;
+
+    const footer = _pedCalModo === 'export'
+        ? `<div class="ped-cal-footer">
+            <span class="ped-cal-range-txt">${rangeTxt}</span>
+            <div class="ped-cal-btns">
+                <button class="ped-cal-btn-cancelar" onclick="_pedCalCancelar()">Cancelar</button>
+                <button class="ped-cal-btn-confirmar" onclick="_pedCalConfirmar()" ${inicio ? '' : 'disabled'}>Exportar</button>
+            </div>
+        </div>`
+        : `<div class="ped-cal-footer">
+            <span class="ped-cal-range-txt">${rangeTxt}</span>
+        </div>`;
 
     pop.innerHTML = `
         <div class="ped-cal-header">
@@ -311,11 +346,5 @@ function _pedCalRender() {
             </button>
         </div>
         <div class="ped-cal-grid">${dowHtml}${gridHtml}</div>
-        <div class="ped-cal-footer">
-            <span class="ped-cal-range-txt">${rangeTxt}</span>
-            <div class="ped-cal-btns">
-                <button class="ped-cal-btn-cancelar" onclick="_pedCalCancelar()">Cancelar</button>
-                <button class="ped-cal-btn-confirmar" onclick="_pedCalConfirmar()" ${inicio ? '' : 'disabled'}>Exportar</button>
-            </div>
-        </div>`;
+        ${footer}`;
 }
