@@ -393,7 +393,7 @@ body {
     <!-- PAINEL REDEFINIR SENHA (sobrepõe o formulário) -->
     <div class="reset-panel" id="resetPanel">
         <div class="reset-card">
-            <form autocomplete="off" onsubmit="_submitReset(); return false;">
+            <form autocomplete="off" onsubmit="esqueciSenha(); return false;">
 
                 <button type="button" class="reset-back" id="resetBackBtn" onclick="fecharReset()">
                     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
@@ -401,12 +401,12 @@ body {
                 </button>
 
                 <div class="reset-icon-wrap" id="resetIconWrap">
-                    <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
                 </div>
 
                 <div class="form-eyebrow">Segurança</div>
-                <div class="form-title" id="resetTitle">Redefinir senha</div>
-                <div class="form-sub" id="resetSub">Confirme sua identidade e escolha uma nova senha.</div>
+                <div class="form-title" id="resetTitle">Esqueci minha senha</div>
+                <div class="form-sub" id="resetSub">Informe seu usuário e e-mail cadastrado para receber o link de redefinição.</div>
 
                 <div id="resetErroMsg" class="erro-msg">
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -414,7 +414,7 @@ body {
                 </div>
                 <div id="resetSucessoMsg" class="sucesso-msg">
                     <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                    <span id="resetSucessoTexto">Senha alterada com sucesso! Faça login.</span>
+                    <span id="resetSucessoTexto">Link enviado! Verifique seu e-mail.</span>
                 </div>
 
                 <div class="field">
@@ -426,38 +426,14 @@ body {
                 </div>
 
                 <div class="field">
-                    <label for="r-senha-atual">Senha atual</label>
-                    <div class="input-wrap">
-                        <input type="password" id="r-senha-atual" placeholder="Senha atual" autocomplete="new-password">
-                        <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    </div>
-                </div>
-
-                <div class="field">
-                    <label for="r-email">E-mail cadastrado</label>
+                    <label for="r-email">E-mail</label>
                     <div class="input-wrap">
                         <input type="email" id="r-email" placeholder="seuemail@exemplo.com" autocomplete="off">
                         <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
                     </div>
                 </div>
 
-                <div class="field">
-                    <label for="r-senha-nova">Nova senha</label>
-                    <div class="input-wrap">
-                        <input type="password" id="r-senha-nova" placeholder="Nova senha" autocomplete="new-password">
-                        <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    </div>
-                </div>
-
-                <div class="field">
-                    <label for="r-senha-conf">Confirmar nova senha</label>
-                    <div class="input-wrap">
-                        <input type="password" id="r-senha-conf" placeholder="Repita a nova senha" autocomplete="new-password">
-                        <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    </div>
-                </div>
-
-                <button type="submit" class="login-btn" id="resetBtn">Salvar nova senha</button>
+                <button type="submit" class="login-btn" id="resetBtn">Enviar link de redefinição</button>
 
             </form>
         </div>
@@ -548,7 +524,7 @@ async function login() {
             if (data.require_password_change) {
                 btn.disabled = false;
                 btn.innerHTML = "Entrar";
-                abrirReset(true, username, password);
+                abrirReset(true, username);
                 return;
             }
             localStorage.setItem("token", data.token);
@@ -565,52 +541,25 @@ async function login() {
 }
 
 let _resetForcado = false;
-let _forcedUser   = "";
-let _forcedPass   = "";
 
-function abrirReset(forcado, username, senhaAtual) {
+function abrirReset(forcado, username) {
     _resetForcado = !!forcado;
-    _forcedUser   = username   || "";
-    _forcedPass   = senhaAtual || "";
 
     document.getElementById("resetPanel").classList.add("active");
     document.getElementById("resetErroMsg").classList.remove("show");
     document.getElementById("resetSucessoMsg").classList.remove("show");
-    document.getElementById("r-usuario").value     = _forcedUser;
-    document.getElementById("r-senha-atual").value = _forcedPass;
-    document.getElementById("r-senha-nova").value  = "";
-    document.getElementById("r-senha-conf").value  = "";
-    document.getElementById("r-email").value       = "";
+    document.getElementById("r-usuario").value = username || "";
+    document.getElementById("r-email").value   = "";
 
     if (forcado) {
         document.getElementById("resetBackBtn").style.display = "none";
-        document.getElementById("resetTitle").innerText = "Crie uma nova senha";
-        document.getElementById("resetSub").innerText   = "Por segurança, você precisa alterar a senha padrão antes de continuar.";
-        document.getElementById("resetIconWrap").innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#3a86ff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>`;
-        document.getElementById("r-usuario").closest(".field").style.display     = "none";
-        document.getElementById("r-senha-atual").closest(".field").style.display = "none";
-        document.getElementById("r-email").closest(".field").style.display       = "none";
-        document.getElementById("r-senha-nova").closest(".field").style.display  = "";
-        document.getElementById("r-senha-conf").closest(".field").style.display  = "";
-        document.getElementById("resetSucessoTexto").innerText = "Senha alterada com sucesso! Faça login.";
-        document.getElementById("resetBtn").innerText = "Salvar nova senha";
+        document.getElementById("resetTitle").innerText = "Defina sua senha";
+        document.getElementById("resetSub").innerText   = "Por segurança, sua senha ainda é a padrão. Informe seu e-mail para receber o link de definição de senha.";
     } else {
         document.getElementById("resetBackBtn").style.display = "";
         document.getElementById("resetTitle").innerText = "Esqueci minha senha";
         document.getElementById("resetSub").innerText   = "Informe seu usuário e e-mail cadastrado para receber o link de redefinição.";
-        document.getElementById("resetIconWrap").innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#3a86ff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>`;
-        document.getElementById("r-usuario").closest(".field").style.display     = "";
-        document.getElementById("r-senha-atual").closest(".field").style.display = "none";
-        document.getElementById("r-email").closest(".field").style.display       = "";
-        document.getElementById("r-senha-nova").closest(".field").style.display  = "none";
-        document.getElementById("r-senha-conf").closest(".field").style.display  = "none";
-        document.getElementById("resetSucessoTexto").innerText = "Link enviado! Verifique seu e-mail.";
-        document.getElementById("resetBtn").innerText = "Enviar link de redefinição";
     }
-}
-
-function _submitReset() {
-    if (_resetForcado) { redefinirSenha(); } else { esqueciSenha(); }
 }
 
 async function esqueciSenha() {
@@ -664,66 +613,6 @@ function mostrarResetErro(msg) {
     document.getElementById("resetSucessoMsg").classList.remove("show");
 }
 
-async function redefinirSenha() {
-    // limpa erro anterior ao tentar de novo
-    document.getElementById("resetErroMsg").classList.remove("show");
-
-    const username   = _resetForcado ? _forcedUser : document.getElementById("r-usuario").value.trim();
-    const senhaAtual = _resetForcado ? _forcedPass : document.getElementById("r-senha-atual").value;
-    const senhaNova  = document.getElementById("r-senha-nova").value;
-    const senhaConf  = document.getElementById("r-senha-conf").value;
-    const btn = document.getElementById("resetBtn");
-
-    if (!_resetForcado && (!username || !senhaAtual)) {
-        mostrarResetErro("Preencha todos os campos."); return;
-    }
-    if (!senhaNova || !senhaConf) {
-        mostrarResetErro("Preencha a nova senha e a confirmação."); return;
-    }
-    if (senhaNova !== senhaConf) {
-        mostrarResetErro("As senhas novas não coincidem."); return;
-    }
-    if (senhaNova.length < 4) {
-        mostrarResetErro("A nova senha deve ter pelo menos 4 caracteres."); return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = `<div class="spinner"></div> Salvando...`;
-
-    // aviso de servidor frio após 6s sem resposta
-    const avisoTimeout = setTimeout(() => {
-        if (btn.disabled) btn.innerHTML = `<div class="spinner"></div> Servidor iniciando, aguarde...`;
-    }, 6000);
-
-    try {
-        const res  = await fetch("https://sistema-backend-i4uh.onrender.com/redefinir-senha", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, senha_atual: senhaAtual, senha_nova: senhaNova })
-        });
-        clearTimeout(avisoTimeout);
-        let data;
-        try { data = await res.json(); } catch { data = {}; }
-        if (data.success) {
-            document.getElementById("resetSucessoMsg").classList.add("show");
-            btn.disabled = false;
-            btn.innerHTML = "Salvar nova senha";
-            setTimeout(() => {
-                _resetForcado = false;
-                document.getElementById("resetPanel").classList.remove("active");
-                if (username) document.getElementById("usuario").value = username;
-            }, 2000);
-            return;
-        }
-        mostrarResetErro(data.error || `Erro ${res.status}: não foi possível salvar.`);
-    } catch (err) {
-        clearTimeout(avisoTimeout);
-        mostrarResetErro("Erro ao conectar com o servidor. Tente novamente.");
-    }
-
-    btn.disabled = false;
-    btn.innerHTML = "Salvar nova senha";
-}
 </script>
 
 </body>
