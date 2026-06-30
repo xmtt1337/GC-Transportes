@@ -23,7 +23,10 @@ async function _desempHoraCarregar() {
     if (!data) { emptyEl.innerText = 'Selecione uma data.'; return; }
 
     try {
-        const url  = API + '/bipagem/desempenho-hora?data=' + data;
+        const transp = document.getElementById('desemp-hora-transp').value;
+        const params = new URLSearchParams({ data });
+        if (transp && transp !== 'todas') params.set('transportadora', transp);
+        const url  = API + '/bipagem/desempenho-hora?' + params.toString();
         const res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
         const body = await res.json();
         if (!res.ok) throw new Error(body.error);
