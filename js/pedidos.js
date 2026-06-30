@@ -139,8 +139,8 @@ async function _pedExportarComDatas(de, ate) {
     btn.innerText = 'Exportando...';
 
     try {
-        let url = API + '/pedidos/lista?exportar=1';
-        if (de && ate) url += `&de=${de}&ate=${ate}`;
+        let url = API + '/pedidos/lista';
+        if (de && ate) url += `?de=${de}&ate=${ate}`;
 
         const res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
         const dados = await res.json();
