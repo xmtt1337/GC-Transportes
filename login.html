@@ -393,7 +393,7 @@ body {
     <!-- PAINEL REDEFINIR SENHA (sobrepõe o formulário) -->
     <div class="reset-panel" id="resetPanel">
         <div class="reset-card">
-            <form autocomplete="off" onsubmit="redefinirSenha(); return false;">
+            <form autocomplete="off" onsubmit="_submitReset(); return false;">
 
                 <button type="button" class="reset-back" id="resetBackBtn" onclick="fecharReset()">
                     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
@@ -414,7 +414,7 @@ body {
                 </div>
                 <div id="resetSucessoMsg" class="sucesso-msg">
                     <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                    <span>Senha alterada com sucesso! Faça login.</span>
+                    <span id="resetSucessoTexto">Senha alterada com sucesso! Faça login.</span>
                 </div>
 
                 <div class="field">
@@ -430,6 +430,14 @@ body {
                     <div class="input-wrap">
                         <input type="password" id="r-senha-atual" placeholder="Senha atual" autocomplete="new-password">
                         <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="r-email">E-mail cadastrado</label>
+                    <div class="input-wrap">
+                        <input type="email" id="r-email" placeholder="seuemail@exemplo.com" autocomplete="off">
+                        <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
                     </div>
                 </div>
 
@@ -493,7 +501,7 @@ body {
         <button type="submit" class="login-btn" id="loginBtn">Entrar</button>
 
         <div class="forgot">
-            <a href="#" onclick="abrirReset(); return false;">Redefinir senha</a>
+            <a href="#" onclick="abrirReset(); return false;">Esqueci minha senha</a>
         </div>
 
     </form>
@@ -572,6 +580,7 @@ function abrirReset(forcado, username, senhaAtual) {
     document.getElementById("r-senha-atual").value = _forcedPass;
     document.getElementById("r-senha-nova").value  = "";
     document.getElementById("r-senha-conf").value  = "";
+    document.getElementById("r-email").value       = "";
 
     if (forcado) {
         document.getElementById("resetBackBtn").style.display = "none";
@@ -580,13 +589,68 @@ function abrirReset(forcado, username, senhaAtual) {
         document.getElementById("resetIconWrap").innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#3a86ff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>`;
         document.getElementById("r-usuario").closest(".field").style.display     = "none";
         document.getElementById("r-senha-atual").closest(".field").style.display = "none";
+        document.getElementById("r-email").closest(".field").style.display       = "none";
+        document.getElementById("r-senha-nova").closest(".field").style.display  = "";
+        document.getElementById("r-senha-conf").closest(".field").style.display  = "";
+        document.getElementById("resetSucessoTexto").innerText = "Senha alterada com sucesso! Faça login.";
+        document.getElementById("resetBtn").innerText = "Salvar nova senha";
     } else {
         document.getElementById("resetBackBtn").style.display = "";
-        document.getElementById("resetTitle").innerText = "Redefinir senha";
-        document.getElementById("resetSub").innerText   = "Confirme sua identidade e escolha uma nova senha.";
+        document.getElementById("resetTitle").innerText = "Esqueci minha senha";
+        document.getElementById("resetSub").innerText   = "Informe seu usuário e e-mail cadastrado para receber o link de redefinição.";
+        document.getElementById("resetIconWrap").innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#3a86ff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>`;
         document.getElementById("r-usuario").closest(".field").style.display     = "";
-        document.getElementById("r-senha-atual").closest(".field").style.display = "";
+        document.getElementById("r-senha-atual").closest(".field").style.display = "none";
+        document.getElementById("r-email").closest(".field").style.display       = "";
+        document.getElementById("r-senha-nova").closest(".field").style.display  = "none";
+        document.getElementById("r-senha-conf").closest(".field").style.display  = "none";
+        document.getElementById("resetSucessoTexto").innerText = "Link enviado! Verifique seu e-mail.";
+        document.getElementById("resetBtn").innerText = "Enviar link de redefinição";
     }
+}
+
+function _submitReset() {
+    if (_resetForcado) { redefinirSenha(); } else { esqueciSenha(); }
+}
+
+async function esqueciSenha() {
+    document.getElementById("resetErroMsg").classList.remove("show");
+    const username = document.getElementById("r-usuario").value.trim();
+    const email     = document.getElementById("r-email").value.trim();
+    const btn = document.getElementById("resetBtn");
+
+    if (!username || !email) { mostrarResetErro("Preencha usuário e e-mail."); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = `<div class="spinner"></div> Enviando...`;
+
+    const avisoTimeout = setTimeout(() => {
+        if (btn.disabled) btn.innerHTML = `<div class="spinner"></div> Servidor iniciando, aguarde...`;
+    }, 6000);
+
+    try {
+        const res  = await fetch("https://sistema-backend-i4uh.onrender.com/esqueci-senha", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, email })
+        });
+        clearTimeout(avisoTimeout);
+        let data;
+        try { data = await res.json(); } catch { data = {}; }
+        if (data.success) {
+            document.getElementById("resetSucessoMsg").classList.add("show");
+            btn.disabled = false;
+            btn.innerHTML = "Enviar link de redefinição";
+            return;
+        }
+        mostrarResetErro(data.error || `Erro ${res.status}: não foi possível enviar.`);
+    } catch (err) {
+        clearTimeout(avisoTimeout);
+        mostrarResetErro("Erro ao conectar com o servidor. Tente novamente.");
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = "Enviar link de redefinição";
 }
 
 function fecharReset() {
