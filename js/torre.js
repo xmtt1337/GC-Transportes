@@ -67,10 +67,6 @@ function _taRenderizar(cfg) {
 
     el.innerHTML = `
         <div style="max-width:680px;margin:0 auto;padding:4px 0 40px">
-            <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 14px 5px 10px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:0.04em;border:1px solid ${cfg.cor}40;background:${cfg.cor}18;color:${cfg.cor};margin-bottom:20px">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Torre de Controle · Alimentar
-            </div>
             <div style="font-size:24px;font-weight:800;color:#f1f5f9;letter-spacing:-0.4px;margin-bottom:6px">${cfg.nome}</div>
             <div style="font-size:13.5px;color:#4a6a8a;margin-bottom:28px;line-height:1.5">Siga os passos abaixo para baixar o relatório e enviá-lo para a base.</div>
 
