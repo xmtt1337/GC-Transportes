@@ -206,6 +206,13 @@ function renderForm() {
             <span>Senha alterada com sucesso!</span>
         </div>
         <div class="field">
+            <label for="r-usuario">Usuário</label>
+            <div class="input-wrap">
+                <input type="text" id="r-usuario" placeholder="Seu usuário" autocomplete="username">
+                <svg class="field-icon" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
+            </div>
+        </div>
+        <div class="field">
             <label for="senha-nova">Nova senha</label>
             <div class="input-wrap">
                 <input type="password" id="senha-nova" placeholder="Nova senha" autocomplete="new-password">
@@ -227,10 +234,12 @@ function renderForm() {
 
 async function confirmarSenha() {
     document.getElementById("msgErro").classList.remove("show");
+    const usuario = document.getElementById("r-usuario").value.trim();
     const nova = document.getElementById("senha-nova").value;
     const conf = document.getElementById("senha-conf").value;
     const btn  = document.getElementById("btnSalvar");
 
+    if (!usuario) { mostrarErro("Preencha seu usuário."); return; }
     if (!nova || !conf) { mostrarErro("Preencha a nova senha e a confirmação."); return; }
     if (nova !== conf)  { mostrarErro("As senhas não coincidem."); return; }
     if (nova.length < 4) { mostrarErro("A nova senha deve ter pelo menos 4 caracteres."); return; }
@@ -242,12 +251,13 @@ async function confirmarSenha() {
         const res = await fetch(`${API}/redefinir-senha/confirmar`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, senha_nova: nova })
+            body: JSON.stringify({ token, username: usuario, senha_nova: nova })
         });
         let data;
         try { data = await res.json(); } catch { data = {}; }
         if (data.success) {
             document.getElementById("msgSucesso").classList.add("show");
+            document.getElementById("r-usuario").closest(".field").style.display = "none";
             document.getElementById("senha-nova").closest(".field").style.display = "none";
             document.getElementById("senha-conf").closest(".field").style.display = "none";
             btn.style.display = "none";
