@@ -40,11 +40,17 @@ async function _desempHoraCarregar() {
 
 // Compara um valor atual com uma base (ontem ou média histórica): verde se avançou, vermelho se não
 function _desempHoraComparar(atual, base) {
-    if (!base) return atual > 0 ? { texto: 'novo', cor: '#22c55e' } : { texto: '—', cor: '#4a6a8a' };
-    const pct  = ((atual - base) / base) * 100;
-    const cor  = pct >= 0 ? '#22c55e' : '#ef4444';
-    const seta = pct >= 0 ? '▲' : '▼';
-    return { texto: `${seta} ${pct >= 0 ? '+' : ''}${pct.toFixed(0)}%`, cor };
+    if (!base) return atual > 0 ? { texto: 'novo', classe: 'up' } : { texto: '—', classe: 'neutral' };
+    const pct    = ((atual - base) / base) * 100;
+    const classe = pct >= 0 ? 'up' : 'down';
+    const seta   = pct >= 0 ? '▲' : '▼';
+    return { texto: `${seta} ${pct >= 0 ? '+' : ''}${pct.toFixed(0)}%`, classe };
+}
+
+function _desempHoraIniciais(nome) {
+    const partes = nome.trim().split(/\s+/);
+    const ini = partes.length > 1 ? partes[0][0] + partes[partes.length - 1][0] : partes[0].slice(0, 2);
+    return ini.toUpperCase();
 }
 
 function _desempHoraRenderizar(rows, comparativo, data) {
@@ -67,9 +73,7 @@ function _desempHoraRenderizar(rows, comparativo, data) {
     const dataFmt = new Date(data + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
 
     listaEl.innerHTML = `
-        <div style="font-size:12px;color:#4a6a8a;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">
-            ${dataFmt} · ${nomes.length} operador${nomes.length !== 1 ? 'es' : ''}
-        </div>
+        <div class="dh-summary">${dataFmt} · ${nomes.length} operador${nomes.length !== 1 ? 'es' : ''}</div>
         ${nomes.map(nome => {
             const horas    = usuarios[nome];
             // Só mostra as horas que de fato tiveram bipagem, sem preencher horas vazias
@@ -93,43 +97,49 @@ function _desempHoraRenderizar(rows, comparativo, data) {
                 const qtd = horas[h];
                 const pct = Math.max((qtd / maxHora * 100), 8);
                 return `
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0">
-                    <div style="font-size:10px;color:#cbd5e1;font-weight:600">${qtd}</div>
-                    <div style="width:100%;height:64px;display:flex;align-items:flex-end;background:rgba(255,255,255,0.03);border-radius:4px;overflow:hidden">
-                        <div style="width:100%;height:${pct}%;background:linear-gradient(180deg,#60a5fa,#3a86ff);border-radius:4px 4px 0 0"></div>
+                <div class="dh-bar-col">
+                    <div class="dh-bar-val">${qtd}</div>
+                    <div class="dh-bar-track">
+                        <div class="dh-bar-fill" style="height:${pct}%"></div>
                     </div>
-                    <div style="font-size:9px;color:#4a6a8a">${String(h).padStart(2, '0')}h</div>
+                    <div class="dh-bar-hour">${String(h).padStart(2, '0')}h</div>
                 </div>`;
             }).join('');
 
             return `
-            <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px 20px;margin-bottom:10px">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:16px;flex-wrap:wrap">
-                    <div style="font-size:14px;font-weight:700;color:#e2e8f0">${nome}</div>
-                    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-                        <div style="text-align:right">
-                            <div style="font-size:20px;font-weight:700;color:#f1f5f9;line-height:1">${totalDia.toLocaleString('pt-BR')}</div>
-                            <div style="font-size:11px;color:#4a6a8a">no dia</div>
+            <div class="dh-card">
+                <div class="dh-head">
+                    <div class="dh-user">
+                        <div class="dh-avatar">${_desempHoraIniciais(nome)}</div>
+                        <div style="min-width:0">
+                            <div class="dh-name">${nome}</div>
+                            <div class="dh-sub">${c.hoje_horas ? c.hoje_horas + 'h ativas' : '—'}</div>
                         </div>
-                        <div style="text-align:right">
-                            <div style="font-size:20px;font-weight:700;color:#f1f5f9;line-height:1">${mediaHora.toFixed(1)}</div>
-                            <div style="font-size:11px;color:#4a6a8a">média/h</div>
+                    </div>
+                    <div class="dh-stats">
+                        <div class="dh-stat">
+                            <div class="dh-stat-value">${totalDia.toLocaleString('pt-BR')}</div>
+                            <div class="dh-stat-label">no dia</div>
                         </div>
-                        <div style="display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:600">
-                            <div style="white-space:nowrap">
-                                <span style="color:#4a6a8a;font-weight:500">vs ontem:</span>
-                                <span style="color:${cmpOntemQtd.cor};margin-left:4px">${cmpOntemQtd.texto} qtd</span>
-                                <span style="color:${cmpOntemMedia.cor};margin-left:6px">${cmpOntemMedia.texto} méd</span>
-                            </div>
-                            <div style="white-space:nowrap">
-                                <span style="color:#4a6a8a;font-weight:500">vs histórico:</span>
-                                <span style="color:${cmpHistQtd.cor};margin-left:4px">${cmpHistQtd.texto} qtd</span>
-                                <span style="color:${cmpHistMedia.cor};margin-left:6px">${cmpHistMedia.texto} méd</span>
-                            </div>
+                        <div class="dh-stat">
+                            <div class="dh-stat-value">${mediaHora.toFixed(1)}</div>
+                            <div class="dh-stat-label">média/h</div>
                         </div>
                     </div>
                 </div>
-                <div style="display:flex;gap:4px">${horasHtml}</div>
+                <div class="dh-compare">
+                    <div class="dh-compare-row">
+                        <span class="dh-compare-label">vs ontem</span>
+                        <span class="dh-badge ${cmpOntemQtd.classe}">${cmpOntemQtd.texto} qtd</span>
+                        <span class="dh-badge ${cmpOntemMedia.classe}">${cmpOntemMedia.texto} méd</span>
+                    </div>
+                    <div class="dh-compare-row">
+                        <span class="dh-compare-label">vs histórico</span>
+                        <span class="dh-badge ${cmpHistQtd.classe}">${cmpHistQtd.texto} qtd</span>
+                        <span class="dh-badge ${cmpHistMedia.classe}">${cmpHistMedia.texto} méd</span>
+                    </div>
+                </div>
+                <div class="dh-bars">${horasHtml}</div>
             </div>`;
         }).join('')}`;
 
