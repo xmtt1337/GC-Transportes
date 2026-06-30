@@ -141,7 +141,7 @@
                 Alimentar <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-torre-alimentar">
-                <li><a href="#" onclick="_emBreve(event)">Anjun</a></li>
+                <li><a href="#" onclick="abrirTorreAlimentar(event,'anjun')">Anjun</a></li>
                 <li><a href="#" onclick="_emBreve(event)">Imile</a></li>
                 <li><a href="#" onclick="_emBreve(event)">J&amp;T Express</a></li>
                 <li><a href="#" onclick="_emBreve(event)">Loggi</a></li>
@@ -311,6 +311,13 @@
                 <div id="home-admin-dash"></div>
                 <div id="home-user-dash"></div>
                 <div id="home-videira-dash"></div>
+            </div>
+        </div>
+
+        <!-- TELA TORRE DE CONTROLE — ALIMENTAR -->
+        <div id="tela-torre-alimentar" class="view tela-full">
+            <div class="fech-body">
+                <div id="ta-conteudo"></div>
             </div>
         </div>
 
@@ -1490,6 +1497,7 @@
 <script src="js/antecipacoes.js"></script>
 <script src="js/antecipacoes-admin.js"></script>
 <script src="js/videira.js"></script>
+<script src="js/torre.js"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
