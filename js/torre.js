@@ -72,7 +72,7 @@ function _taRenderizar(cfg) {
                 Torre de Controle · Alimentar
             </div>
             <div style="font-size:24px;font-weight:800;color:#f1f5f9;letter-spacing:-0.4px;margin-bottom:6px">${cfg.nome}</div>
-            <div style="font-size:13.5px;color:#4a6a8a;margin-bottom:28px;line-height:1.5">Siga os passos abaixo para baixar o relatório e enviá-lo para a planilha.</div>
+            <div style="font-size:13.5px;color:#4a6a8a;margin-bottom:28px;line-height:1.5">Siga os passos abaixo para baixar o relatório e enviá-lo para a base.</div>
 
             <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">${passos}</div>
 
@@ -95,12 +95,12 @@ function _taRenderizar(cfg) {
             <button id="ta-btn-enviar" onclick="_taEnviar('${cfg.key}')" disabled
                 style="width:100%;margin-top:16px;padding:14px;background:#3a86ff;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;opacity:0.45;transition:opacity 0.2s,transform 0.1s">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                Enviar para planilha
+                Enviar relatório
             </button>
 
             <div id="ta-msg-ok" style="display:none;align-items:center;gap:10px;margin-top:14px;padding:12px 14px;border-radius:10px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);color:#34d399;font-size:13px;font-weight:500">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <span id="ta-msg-ok-txt">Planilha atualizada com sucesso!</span>
+                <span id="ta-msg-ok-txt">Relatório enviado com sucesso!</span>
             </div>
             <div id="ta-msg-err" style="display:none;align-items:center;gap:10px;margin-top:14px;padding:12px 14px;border-radius:10px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.18);color:#f87171;font-size:13px;font-weight:500">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -175,7 +175,7 @@ async function _taEnviar(key) {
         const data = await res.json();
         if (data.success) {
             document.getElementById("ta-msg-ok-txt").innerText =
-                `Planilha atualizada! ${data.linhas} linha${data.linhas !== 1 ? "s" : ""} importada${data.linhas !== 1 ? "s" : ""}.`;
+                `Relatório enviado! ${data.linhas} linha${data.linhas !== 1 ? "s" : ""} importada${data.linhas !== 1 ? "s" : ""}.`;
             document.getElementById("ta-msg-ok").style.display = "flex";
             _taRemoverArquivo();
         } else {
