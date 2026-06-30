@@ -122,6 +122,20 @@
             <li><a href="#" onclick="abrirMinhasSolicitacoes(event)">Minhas Solicitações</a></li>
         </ul>
 
+        <li class="menu-item" data-menu="torrecontrole" id="menu-torrecontrole" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v6"/>
+                <path d="M5.64 8.64a8 8 0 1 0 12.72 0"/>
+                <circle cx="12" cy="14" r="2"/>
+            </svg>
+            <span class="label">Torre de Controle</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Torre de Controle</span>
+        </li>
+        <ul class="submenu" data-menu="torrecontrole" id="submenu-torrecontrole" style="display:none">
+            <li><a href="#" onclick="_emBreve(event)">Visão Geral</a></li>
+        </ul>
+
         <li class="menu-item" data-menu="adminmenu" id="menu-adminmenu" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24">
                 <rect x="3" y="4" width="18" height="18" rx="2"/>
