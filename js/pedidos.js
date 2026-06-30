@@ -131,10 +131,8 @@ function _pedFiltrarLocal() {
     _pedRenderizar(filtrado);
 }
 
-async function _pedExportar(event) {
-    const de  = document.getElementById('ped-de').value;
-    const ate = document.getElementById('ped-ate').value;
-    const btn = event.currentTarget;
+async function _pedExportarComDatas(de, ate) {
+    const btn = document.getElementById('ped-exportar-btn');
     const txtOriginal = btn.innerHTML;
     btn.disabled = true;
     btn.innerText = 'Exportando...';
@@ -146,7 +144,7 @@ async function _pedExportar(event) {
         const res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
         const dados = await res.json();
         if (!res.ok) throw new Error(dados.error);
-        if (!dados.length) { btn.disabled = false; btn.innerHTML = txtOriginal; return; }
+        if (!dados.length) { alert('Nenhum pedido bipado nesse período.'); btn.disabled = false; btn.innerHTML = txtOriginal; return; }
 
         const rows = dados.map(r => ({
             'Código':         r.codigo        || '',
@@ -169,4 +167,155 @@ async function _pedExportar(event) {
 
     btn.disabled = false;
     btn.innerHTML = txtOriginal;
+}
+
+// ───── POPOVER DE EXPORTAÇÃO — CALENDÁRIO DE INTERVALO (clique e arraste) ─────
+const _PED_CAL_DOW = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+let _pedCalMes       = new Date();
+let _pedCalInicio    = null;
+let _pedCalFim       = null;
+let _pedCalArrastando = false;
+
+function _pedFmtData(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function _pedParseData(str) {
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+function _pedAbrirExportarPop(event) {
+    event.stopPropagation();
+    const pop = document.getElementById('ped-export-pop');
+    if (pop.style.display !== 'none') { _pedFecharExportarPop(); return; }
+
+    if (pop.parentElement !== document.body) document.body.appendChild(pop);
+
+    const de  = document.getElementById('ped-de').value;
+    const ate = document.getElementById('ped-ate').value;
+    _pedCalInicio = de ? _pedParseData(de) : null;
+    _pedCalFim    = ate ? _pedParseData(ate) : (_pedCalInicio || null);
+    _pedCalMes    = new Date(_pedCalInicio || new Date());
+    _pedCalMes.setDate(1);
+
+    const btn = document.getElementById('ped-exportar-btn');
+    const rect = btn.getBoundingClientRect();
+    pop.style.top   = (rect.bottom + 8) + 'px';
+    pop.style.right = (window.innerWidth - rect.right) + 'px';
+    pop.style.left  = 'auto';
+    pop.style.display = 'block';
+    pop.onclick = ev => ev.stopPropagation();
+
+    _pedCalRender();
+    document.addEventListener('click', _pedFecharExportarPop);
+    document.addEventListener('mouseup', _pedCalMouseUp);
+}
+
+function _pedFecharExportarPop() {
+    const pop = document.getElementById('ped-export-pop');
+    pop.style.display = 'none';
+    _pedCalArrastando = false;
+    document.removeEventListener('click', _pedFecharExportarPop);
+    document.removeEventListener('mouseup', _pedCalMouseUp);
+}
+
+function _pedCalMouseUp() {
+    _pedCalArrastando = false;
+}
+
+function _pedCalMesAnterior() {
+    _pedCalMes.setMonth(_pedCalMes.getMonth() - 1);
+    _pedCalRender();
+}
+function _pedCalMesProximo() {
+    _pedCalMes.setMonth(_pedCalMes.getMonth() + 1);
+    _pedCalRender();
+}
+
+function _pedCalDown(dataStr) {
+    _pedCalInicio = _pedParseData(dataStr);
+    _pedCalFim    = _pedCalInicio;
+    _pedCalArrastando = true;
+    _pedCalRender();
+}
+function _pedCalEnter(dataStr) {
+    if (!_pedCalArrastando) return;
+    _pedCalFim = _pedParseData(dataStr);
+    _pedCalRender();
+}
+
+function _pedCalCancelar() {
+    _pedFecharExportarPop();
+}
+
+function _pedCalConfirmar() {
+    if (!_pedCalInicio) return;
+    let inicio = _pedCalInicio, fim = _pedCalFim || _pedCalInicio;
+    if (fim < inicio) { [inicio, fim] = [fim, inicio]; }
+    const de  = _pedFmtData(inicio);
+    const ate = _pedFmtData(fim);
+    _pedFecharExportarPop();
+    _pedExportarComDatas(de, ate);
+}
+
+function _pedCalRender() {
+    const pop = document.getElementById('ped-export-pop');
+    const mes = _pedCalMes;
+    const ano = mes.getFullYear();
+    const mesIdx = mes.getMonth();
+
+    let inicio = _pedCalInicio, fim = _pedCalFim;
+    if (inicio && fim && fim < inicio) { [inicio, fim] = [fim, inicio]; }
+
+    const primeiroDiaSemana = new Date(ano, mesIdx, 1).getDay();
+    const diasNoMes = new Date(ano, mesIdx + 1, 0).getDate();
+    const celulaInicio = new Date(ano, mesIdx, 1 - primeiroDiaSemana);
+
+    const totalCelulas = Math.ceil((primeiroDiaSemana + diasNoMes) / 7) * 7;
+    let gridHtml = '';
+    for (let i = 0; i < totalCelulas; i++) {
+        const dia = new Date(celulaInicio);
+        dia.setDate(celulaInicio.getDate() + i);
+        const dataStr = _pedFmtData(dia);
+        const foraDoMes = dia.getMonth() !== mesIdx;
+
+        let classes = 'ped-cal-day' + (foraDoMes ? ' outro-mes' : '');
+        if (inicio && fim) {
+            const t = dia.getTime();
+            if (t === inicio.getTime() && t === fim.getTime()) classes += ' intervalo-unico';
+            else if (t === inicio.getTime()) classes += ' intervalo-inicio';
+            else if (t === fim.getTime()) classes += ' intervalo-fim';
+            else if (t > inicio.getTime() && t < fim.getTime()) classes += ' no-intervalo';
+        }
+
+        gridHtml += `<div class="${classes}" onmousedown="_pedCalDown('${dataStr}')" onmouseenter="_pedCalEnter('${dataStr}')">${dia.getDate()}</div>`;
+    }
+
+    const dowHtml = _PED_CAL_DOW.map(d => `<div class="ped-cal-dow">${d}</div>`).join('');
+
+    let rangeTxt = 'Clique e arraste para selecionar o período';
+    if (inicio && fim) {
+        rangeTxt = inicio.getTime() === fim.getTime()
+            ? inicio.toLocaleDateString('pt-BR')
+            : `${inicio.toLocaleDateString('pt-BR')} — ${fim.toLocaleDateString('pt-BR')}`;
+    }
+
+    pop.innerHTML = `
+        <div class="ped-cal-header">
+            <button class="ped-cal-nav" onclick="_pedCalMesAnterior()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span>${_MES_NOMES[mesIdx + 1]} ${ano}</span>
+            <button class="ped-cal-nav" onclick="_pedCalMesProximo()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+        </div>
+        <div class="ped-cal-grid">${dowHtml}${gridHtml}</div>
+        <div class="ped-cal-footer">
+            <span class="ped-cal-range-txt">${rangeTxt}</span>
+            <div class="ped-cal-btns">
+                <button class="ped-cal-btn-cancelar" onclick="_pedCalCancelar()">Cancelar</button>
+                <button class="ped-cal-btn-confirmar" onclick="_pedCalConfirmar()" ${inicio ? '' : 'disabled'}>Exportar</button>
+            </div>
+        </div>`;
 }

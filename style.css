@@ -2018,6 +2018,57 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .ant-hist-table tr:last-child td { border-bottom: none; }
 .ant-hist-table tr:hover td { background: rgba(58,134,255,0.04); }
 
+/* ===== EXPORTAR PEDIDOS — CALENDARIO DE INTERVALO ===== */
+.ped-export-pop {
+    position: fixed; z-index: 99999; width: 300px;
+    background: #0b1018; border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px; overflow: hidden; user-select: none;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(58,134,255,0.06);
+    animation: pc-in 0.15s ease;
+}
+.ped-cal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.045);
+}
+.ped-cal-header span { font-size: 13px; font-weight: 700; color: #e2e8f0; text-transform: capitalize; }
+.ped-cal-nav {
+    width: 26px; height: 26px; border-radius: 8px; border: none;
+    background: rgba(255,255,255,0.04); color: #94a3b8; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+.ped-cal-nav:hover { background: rgba(58,134,255,0.15); color: #5d9aff; }
+.ped-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); padding: 6px 10px 4px; gap: 2px; }
+.ped-cal-dow { font-size: 10px; font-weight: 700; color: #2e4a64; text-align: center; padding: 6px 0 8px; text-transform: uppercase; }
+.ped-cal-day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 12.5px; color: #cbd5e1; border-radius: 8px; cursor: pointer;
+    position: relative; transition: background 0.1s, color 0.1s;
+}
+.ped-cal-day.outro-mes { color: #1e2c3d; }
+.ped-cal-day:hover { background: rgba(58,134,255,0.12); }
+.ped-cal-day.no-intervalo { background: rgba(58,134,255,0.12); border-radius: 0; }
+.ped-cal-day.intervalo-inicio { background: #3a86ff; color: #fff; font-weight: 700; border-radius: 8px 0 0 8px; }
+.ped-cal-day.intervalo-fim { background: #3a86ff; color: #fff; font-weight: 700; border-radius: 0 8px 8px 0; }
+.ped-cal-day.intervalo-unico { background: #3a86ff; color: #fff; font-weight: 700; border-radius: 8px; }
+.ped-cal-footer {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 12px 16px 14px; border-top: 1px solid rgba(255,255,255,0.045);
+}
+.ped-cal-range-txt { font-size: 11.5px; color: #4a6a8a; line-height: 1.3; }
+.ped-cal-btns { display: flex; gap: 8px; }
+.ped-cal-btn-cancelar {
+    padding: 7px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);
+    background: transparent; color: #94a3b8; font-size: 12.5px; cursor: pointer; font-family: inherit;
+}
+.ped-cal-btn-confirmar {
+    padding: 7px 14px; border-radius: 8px; border: none;
+    background: #3a86ff; color: #fff; font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: inherit;
+    transition: background 0.15s;
+}
+.ped-cal-btn-confirmar:hover:not(:disabled) { background: #2563eb; }
+.ped-cal-btn-confirmar:disabled { opacity: 0.45; cursor: not-allowed; }
+
 @media (max-width: 680px) {
 
     /* ════ FECHAMENTO — PAINEL ENTREGADOR ════ */
