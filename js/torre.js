@@ -53,12 +53,12 @@ function _taRenderizar(cfg) {
     if (!el) return;
 
     const passos = cfg.passos.map((p, i) => `
-        <div class="ta-step">
-            <div class="ta-step-num">${i + 1}</div>
-            <div class="ta-step-body">
-                <div class="ta-step-titulo">${p.titulo}</div>
-                <div class="ta-step-desc">${p.desc}</div>
-                ${p.link ? `<a class="ta-step-link" href="${p.link.href}" target="_blank" rel="noopener">
+        <div style="display:flex;gap:16px;align-items:flex-start;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.055);border-radius:12px;padding:14px 16px">
+            <div style="flex-shrink:0;width:28px;height:28px;border-radius:50%;background:rgba(58,134,255,0.15);border:1.5px solid rgba(58,134,255,0.3);color:#5d9aff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">${i + 1}</div>
+            <div style="flex:1;min-width:0">
+                <div style="font-size:13.5px;font-weight:700;color:#e2e8f0;margin-bottom:3px">${p.titulo}</div>
+                <div style="font-size:12.5px;color:#4a6a8a;line-height:1.5">${p.desc}</div>
+                ${p.link ? `<a href="${p.link.href}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:6px 12px;border-radius:8px;background:rgba(58,134,255,0.1);border:1px solid rgba(58,134,255,0.25);color:#5d9aff;font-size:12px;font-weight:600;text-decoration:none">
                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                     ${p.link.label}
                 </a>` : ""}
@@ -66,41 +66,43 @@ function _taRenderizar(cfg) {
         </div>`).join("");
 
     el.innerHTML = `
-        <div class="ta-wrap">
-            <div class="ta-transp-badge" style="color:${cfg.cor};border-color:${cfg.cor}40;background:${cfg.cor}12">
+        <div style="max-width:680px;margin:0 auto;padding:4px 0 40px">
+            <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 14px 5px 10px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:0.04em;border:1px solid ${cfg.cor}40;background:${cfg.cor}18;color:${cfg.cor};margin-bottom:20px">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 Torre de Controle · Alimentar
             </div>
-            <div class="ta-titulo">${cfg.nome}</div>
-            <div class="ta-sub">Siga os passos abaixo para baixar o relatório e enviá-lo para a planilha.</div>
+            <div style="font-size:24px;font-weight:800;color:#f1f5f9;letter-spacing:-0.4px;margin-bottom:6px">${cfg.nome}</div>
+            <div style="font-size:13.5px;color:#4a6a8a;margin-bottom:28px;line-height:1.5">Siga os passos abaixo para baixar o relatório e enviá-lo para a planilha.</div>
 
-            <div class="ta-steps">${passos}</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">${passos}</div>
 
-            <div class="ta-upload-zone" id="ta-zone" onclick="document.getElementById('ta-input').click()"
-                ondragover="_taDragOver(event)" ondragleave="_taDragLeave(event)" ondrop="_taDrop(event)">
-                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#3a86ff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <div id="ta-zone" onclick="document.getElementById('ta-input').click()"
+                ondragover="_taDragOver(event)" ondragleave="_taDragLeave(event)" ondrop="_taDrop(event)"
+                style="border:2px dashed rgba(58,134,255,0.3);border-radius:16px;background:rgba(58,134,255,0.04);padding:40px 24px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#3a86ff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.45;display:block;margin:0 auto 14px">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                     <polyline points="17 8 12 3 7 8"/>
                     <line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
-                <div class="ta-upload-title">Arraste o arquivo aqui</div>
-                <div class="ta-upload-sub">ou clique para selecionar do computador</div>
-                <div class="ta-upload-tipos">Aceita: .xlsx · .xls · .csv</div>
+                <div style="font-size:15px;font-weight:600;color:#cbd5e1;margin-bottom:5px">Arraste o arquivo aqui</div>
+                <div style="font-size:12.5px;color:#334155">ou clique para selecionar do computador</div>
+                <div style="font-size:11px;color:#1e2e40;margin-top:6px">Aceita: .xlsx · .xls · .csv</div>
                 <input type="file" id="ta-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="_taArquivoSelecionado(this.files[0])">
             </div>
 
             <div id="ta-file-info" style="display:none"></div>
 
-            <button class="ta-btn-enviar" id="ta-btn-enviar" onclick="_taEnviar('${cfg.key}')" disabled>
+            <button id="ta-btn-enviar" onclick="_taEnviar('${cfg.key}')" disabled
+                style="width:100%;margin-top:16px;padding:14px;background:#3a86ff;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;opacity:0.45;transition:opacity 0.2s,transform 0.1s">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 Enviar para planilha
             </button>
 
-            <div class="ta-msg ta-msg-ok"  id="ta-msg-ok">
+            <div id="ta-msg-ok" style="display:none;align-items:center;gap:10px;margin-top:14px;padding:12px 14px;border-radius:10px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);color:#34d399;font-size:13px;font-weight:500">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 <span id="ta-msg-ok-txt">Planilha atualizada com sucesso!</span>
             </div>
-            <div class="ta-msg ta-msg-err" id="ta-msg-err">
+            <div id="ta-msg-err" style="display:none;align-items:center;gap:10px;margin-top:14px;padding:12px 14px;border-radius:10px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.18);color:#f87171;font-size:13px;font-weight:500">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 <span id="ta-msg-err-txt">Erro ao enviar.</span>
             </div>
@@ -128,26 +130,30 @@ function _taArquivoSelecionado(f) {
     const info = document.getElementById("ta-file-info");
     info.style.display = "";
     info.innerHTML = `
-        <div class="ta-file-sel">
-            <div class="ta-file-icon">
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 16px;margin-top:16px">
+            <div style="flex-shrink:0;width:36px;height:36px;border-radius:9px;background:rgba(58,134,255,0.12);display:flex;align-items:center;justify-content:center">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5d9aff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             </div>
             <div style="flex:1;min-width:0">
-                <div class="ta-file-nome">${f.name}</div>
-                <div class="ta-file-size">${kb} KB</div>
+                <div style="font-size:13px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
+                <div style="font-size:11.5px;color:#4a6a8a;margin-top:2px">${kb} KB</div>
             </div>
-            <button class="ta-file-remover" onclick="_taRemoverArquivo()">✕</button>
+            <button onclick="_taRemoverArquivo()" style="background:none;border:none;color:#4a6a8a;cursor:pointer;font-size:18px;line-height:1;padding:0 4px">✕</button>
         </div>`;
-    document.getElementById("ta-btn-enviar").disabled = false;
-    document.getElementById("ta-msg-ok").classList.remove("show");
-    document.getElementById("ta-msg-err").classList.remove("show");
+    const btn = document.getElementById("ta-btn-enviar");
+    btn.disabled = false;
+    btn.style.opacity = "1";
+    document.getElementById("ta-msg-ok").style.display = "none";
+    document.getElementById("ta-msg-err").style.display = "none";
 }
 
 function _taRemoverArquivo() {
     _taArquivo = null;
     document.getElementById("ta-file-info").style.display = "none";
     document.getElementById("ta-input").value = "";
-    document.getElementById("ta-btn-enviar").disabled = true;
+    const btn = document.getElementById("ta-btn-enviar");
+    btn.disabled = true;
+    btn.style.opacity = "0.45";
 }
 
 async function _taEnviar(key) {
@@ -156,8 +162,8 @@ async function _taEnviar(key) {
     const txtOrig = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `<div class="spinner" style="width:16px;height:16px;border:2px solid rgba(255,255,255,0.25);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite"></div> Enviando...`;
-    document.getElementById("ta-msg-ok").classList.remove("show");
-    document.getElementById("ta-msg-err").classList.remove("show");
+    document.getElementById("ta-msg-ok").style.display = "none";
+    document.getElementById("ta-msg-err").style.display = "none";
 
     try {
         const base64 = await _taLerBase64(_taArquivo);
@@ -170,15 +176,15 @@ async function _taEnviar(key) {
         if (data.success) {
             document.getElementById("ta-msg-ok-txt").innerText =
                 `Planilha atualizada! ${data.linhas} linha${data.linhas !== 1 ? "s" : ""} importada${data.linhas !== 1 ? "s" : ""}.`;
-            document.getElementById("ta-msg-ok").classList.add("show");
+            document.getElementById("ta-msg-ok").style.display = "flex";
             _taRemoverArquivo();
         } else {
             document.getElementById("ta-msg-err-txt").innerText = data.error || "Erro ao enviar.";
-            document.getElementById("ta-msg-err").classList.add("show");
+            document.getElementById("ta-msg-err").style.display = "flex";
         }
     } catch (err) {
         document.getElementById("ta-msg-err-txt").innerText = "Erro ao conectar com o servidor.";
-        document.getElementById("ta-msg-err").classList.add("show");
+        document.getElementById("ta-msg-err").style.display = "flex";
     }
 
     btn.disabled = true;
