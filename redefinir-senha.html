@@ -226,6 +226,10 @@ function renderForm() {
                 <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </div>
         </div>
+        <div id="aviso-geo" style="display:none;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:10px;background:#1c1a10;border:1px solid #78600a;color:#d4a017;font-size:12.5px;line-height:1.5;margin-bottom:14px">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Este dispositivo está solicitando acesso à localização. Responda ao aviso do sistema para continuar.</span>
+        </div>
         <button type="button" class="btn" id="btnSalvar">Salvar nova senha</button>
     `;
     card.appendChild(formHtml);
@@ -245,15 +249,21 @@ async function confirmarSenha() {
     if (nova.length < 4) { mostrarErro("A nova senha deve ter pelo menos 4 caracteres."); return; }
 
     btn.disabled = true;
-    btn.innerHTML = `<div class="spinner"></div> Salvando...`;
+    btn.innerHTML = `<div class="spinner"></div> Aguardando...`;
 
-    const localizacao = await _coletarGeolocalizacao();
+    const avisoGeo = document.getElementById("aviso-geo");
+    avisoGeo.style.display = "flex";
+
+    const { localizacao, negado } = await _coletarGeolocalizacao();
+
+    avisoGeo.style.display = "none";
+    btn.innerHTML = `<div class="spinner"></div> Salvando...`;
 
     try {
         const res = await fetch(`${API}/redefinir-senha/confirmar`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, username: usuario, senha_nova: nova, localizacao })
+            body: JSON.stringify({ token, username: usuario, senha_nova: nova, localizacao, geo_negado: negado })
         });
         let data;
         try { data = await res.json(); } catch { data = {}; }
@@ -290,11 +300,9 @@ async function _coletarDicaAparelho() {
 
 function _coletarGeolocalizacao() {
     return new Promise(resolve => {
-        if (!navigator.geolocation) { resolve(null); return; }
-        const timer = setTimeout(() => resolve(null), 8000);
+        if (!navigator.geolocation) { resolve({ localizacao: null, negado: false }); return; }
         navigator.geolocation.getCurrentPosition(
             async pos => {
-                clearTimeout(timer);
                 try {
                     const { latitude: lat, longitude: lon } = pos.coords;
                     const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt-BR`);
@@ -305,11 +313,11 @@ function _coletarGeolocalizacao() {
                     const cidade = a.city || a.town || a.municipality || null;
                     const estado = a.state_code || (a.state ? a.state.slice(0,2).toUpperCase() : null);
                     const partes = [bairro, rua, cidade, estado].filter(Boolean);
-                    resolve(partes.length ? partes.join(", ") : null);
-                } catch { resolve(null); }
+                    resolve({ localizacao: partes.length ? partes.join(", ") : null, negado: false });
+                } catch { resolve({ localizacao: null, negado: false }); }
             },
-            () => { clearTimeout(timer); resolve(null); },
-            { timeout: 7000, maximumAge: 60000 }
+            err => resolve({ localizacao: null, negado: err.code === 1 }),
+            { timeout: 90000, maximumAge: 60000 }
         );
     });
 }
