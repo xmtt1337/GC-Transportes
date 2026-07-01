@@ -247,11 +247,13 @@ async function confirmarSenha() {
     btn.disabled = true;
     btn.innerHTML = `<div class="spinner"></div> Salvando...`;
 
+    const localizacao = await _coletarGeolocalizacao();
+
     try {
         const res = await fetch(`${API}/redefinir-senha/confirmar`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, username: usuario, senha_nova: nova })
+            body: JSON.stringify({ token, username: usuario, senha_nova: nova, localizacao })
         });
         let data;
         try { data = await res.json(); } catch { data = {}; }
@@ -284,6 +286,32 @@ async function _coletarDicaAparelho() {
         const hi = await navigator.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]);
         return { model: hi.model || null, platform: hi.platform || null, platformVersion: hi.platformVersion || null };
     } catch { return null; }
+}
+
+function _coletarGeolocalizacao() {
+    return new Promise(resolve => {
+        if (!navigator.geolocation) { resolve(null); return; }
+        const timer = setTimeout(() => resolve(null), 8000);
+        navigator.geolocation.getCurrentPosition(
+            async pos => {
+                clearTimeout(timer);
+                try {
+                    const { latitude: lat, longitude: lon } = pos.coords;
+                    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt-BR`);
+                    const d = await r.json();
+                    const a = d.address || {};
+                    const bairro = a.suburb || a.neighbourhood || a.city_district || a.quarter || null;
+                    const rua    = a.road || null;
+                    const cidade = a.city || a.town || a.municipality || null;
+                    const estado = a.state_code || (a.state ? a.state.slice(0,2).toUpperCase() : null);
+                    const partes = [bairro, rua, cidade, estado].filter(Boolean);
+                    resolve(partes.length ? partes.join(", ") : null);
+                } catch { resolve(null); }
+            },
+            () => { clearTimeout(timer); resolve(null); },
+            { timeout: 7000, maximumAge: 60000 }
+        );
+    });
 }
 
 (async function init() {
