@@ -68,6 +68,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     if (role === "user") {
         _showOperacional();
         _showCadastros();
+        show("bip-sync-btn");
         // sem: fechamentos admin, financeiro, extravios
     }
 
