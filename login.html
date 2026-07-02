@@ -587,6 +587,8 @@ async function esqueciSenha() {
         let data;
         try { data = await res.json(); } catch { data = {}; }
         if (data.success) {
+            if (data.email_mascarado)
+                document.getElementById("resetSucessoTexto").innerText = `Link enviado para ${data.email_mascarado}`;
             document.getElementById("resetSucessoMsg").classList.add("show");
             btn.disabled = false;
             btn.innerHTML = "Enviar link de redefinição";
