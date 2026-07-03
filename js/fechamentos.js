@@ -68,12 +68,9 @@ function _renderPgtoStatusCard(d) {
     </div>`;
 }
 
-function _calcularDataPagamento(mes, ano, quinzena, ativadoAt) {
-    // Q1 Jun/2026 em diante: conta 45 dias a partir de quando o admin ativou a planilha
-    const usarAtivado = ativadoAt && (ano > 2026 || (ano === 2026 && mes >= 6));
-    const base = usarAtivado
-        ? new Date(ativadoAt)
-        : (quinzena === 1 ? new Date(ano, mes - 1, 15) : new Date(ano, mes, 0));
+function _calcularDataPagamento(mes, ano, quinzena) {
+    // Q1: último dia é 15; Q2: último dia do mês. Conta 45 dias a partir daí.
+    const base = quinzena === 1 ? new Date(ano, mes - 1, 15) : new Date(ano, mes, 0);
     const pagamento = new Date(base);
     pagamento.setDate(pagamento.getDate() + 45);
     return pagamento.toLocaleDateString("pt-BR");
@@ -183,7 +180,7 @@ function _carregarPainel() {
                         ${(() => {
                             const liquidoNum = (d.total_receber_num || 0) - (d.antecipado_num || 0);
                             if (liquidoNum > 0.01) {
-                                const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena, d.planilha_ativado_at);
+                                const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
                                 return `<div style="font-size:12px;color:#94a3b8;margin-top:3px">Saldo a receber em ${dataPrev}: <strong style="color:#e2e8f0">${d.liquido}</strong></div>`;
                             }
                             return "";
@@ -198,7 +195,7 @@ function _carregarPainel() {
                     Solicitação enviada — aguardando liberação do saldo na Trampay
                 </div>`;
             } else {
-                const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena, d.planilha_ativado_at);
+                const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
                 antRow.innerHTML = `
                 <div style="font-size:12px;color:#64748b;padding:4px 2px">
                     Previsão de recebimento: <strong style="color:#94a3b8">${dataPrev}</strong>
