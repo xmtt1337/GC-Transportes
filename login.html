@@ -589,9 +589,15 @@ async function verificarUsuarioReset() {
             btn.innerHTML = "Continuar";
             return;
         }
+        if (!data.tem_email && !_resetForcado) {
+            mostrarResetErro("Este usuário não tem e-mail cadastrado. Fale com o administrador para redefinir a senha.");
+            btn.disabled  = false;
+            btn.innerHTML = "Continuar";
+            return;
+        }
         btn.style.display = "none";
         document.getElementById("r-usuario").disabled = true;
-        if (!data.tem_email) {
+        if (!data.tem_email && _resetForcado) {
             document.getElementById("r-email-wrap").style.display = "";
             document.getElementById("resetSub").innerText = "Informe seu e-mail para receber o link de redefinição.";
         } else {
