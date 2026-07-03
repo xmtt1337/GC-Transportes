@@ -2331,14 +2331,7 @@ function _carregarPainelAdmin() {
 
         _renderExtravios(d.extravios_linhas, "adm-extravios-lista");
 
-        const multTbody = document.getElementById("adm-multas-tbody");
-        multTbody.innerHTML = d.multas_linhas.length
-            ? d.multas_linhas.map(m => `<tr>
-                <td class="mono">${m.transportadora}</td>
-                <td class="mono">${m.codigo}</td>
-                <td class="${m.tem_valor ? 'val-neg' : ''}">${m.valor}</td>
-              </tr>`).join("")
-            : `<tr><td colspan="3" class="poc-empty">Nenhuma multa no período</td></tr>`;
+        _renderMultas(d.multas_linhas, "adm-multas-lista", false);
 
         empty.style.display = "none";
         data.style.display  = "";

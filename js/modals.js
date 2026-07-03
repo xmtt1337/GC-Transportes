@@ -162,16 +162,13 @@ function _baixarPainelAdminPDF() {
     const extVazio  = !!document.querySelector("#adm-extravios-lista .extr-vazio") || !extEls.length;
 
     // Multas
-    const multasRows = Array.from(document.querySelectorAll("#adm-multas-tbody tr")).map(tr => {
-        const tds = tr.querySelectorAll("td");
-        return tds.length ? {
-            transp: tds[0]?.innerText || "—",
-            codigo: tds[1]?.innerText || "—",
-            valor:  tds[2]?.innerText || "—",
-            isNeg:  tds[2]?.className?.includes("val-neg") || false
-        } : null;
-    }).filter(Boolean);
-    const multasVazio = !multasRows.length || (multasRows[0].transp.length > 10 && !multasRows[0].codigo.trim());
+    const multasRows = Array.from(document.querySelectorAll("#adm-multas-lista .extr-card")).map(card => ({
+        transp: card.querySelector(".extr-transp")?.innerText || "—",
+        codigo: card.querySelector(".extr-codigo")?.innerText || "—",
+        valor:  card.querySelector(".extr-valor")?.innerText  || "—",
+        isNeg:  card.querySelector(".extr-valor")?.classList.contains("val-neg") || false
+    }));
+    const multasVazio = !multasRows.length;
 
     const pCard = (label, val, neg) =>
         `<div style="flex:1;min-width:120px;background:#1b263b;border:1px solid rgba(58,134,255,0.13);border-radius:8px;padding:10px 12px">
