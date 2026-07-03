@@ -101,6 +101,29 @@ function _renderMultas(lista, elId, showWa = false) {
     }).join("");
 }
 
+// ───── SEÇÃO BADGE (indica qual seção está visível no scroll) ─────
+function _watchSecao(fechBodySel, extListaId, mulListaId, badgeId) {
+    const body = document.querySelector(fechBodySel);
+    const badge = document.getElementById(badgeId);
+    if (!body || !badge) return;
+    if (body._secWatch) body.removeEventListener('scroll', body._secWatch);
+    body._secWatch = function() {
+        const bTop = body.getBoundingClientRect().top;
+        const extH = document.getElementById(extListaId)?.closest('.poc-card')?.querySelector('.poc-header');
+        const mulH = document.getElementById(mulListaId)?.closest('.poc-card')?.querySelector('.poc-header');
+        const exTop = extH?.getBoundingClientRect().top ?? Infinity;
+        const muTop = mulH?.getBoundingClientRect().top ?? Infinity;
+        if (muTop - bTop < 0) {
+            badge.textContent = 'Multas'; badge.style.display = 'inline';
+        } else if (exTop - bTop < 0) {
+            badge.textContent = 'Extravios'; badge.style.display = 'inline';
+        } else {
+            badge.style.display = 'none';
+        }
+    };
+    body.addEventListener('scroll', body._secWatch);
+}
+
 // ───── CARD DE PERFIL ─────
 const _TRANSP = [
     { key: "loggi",  label: "Loggi",  cor: "#12A5E8" },
