@@ -107,6 +107,7 @@ function _carregarPainelAdmin() {
         document.getElementById("adm-paj-adicional-card").className = "paj-card " + (_parseMoeda(d.adicional) < 0 ? "negativo" : "positivo");
         document.getElementById("adm-paj-deslocamento").innerText = d.deslocamento;
         document.getElementById("adm-paj-grandes").innerText      = d.valor_grandes;
+        if (document.getElementById("adm-paj-grandes-q")) document.getElementById("adm-paj-grandes-q").innerText = d.qtd_grandes + " pacotes";
         const _admDescTotal = [...(d.extravios_linhas||[]), ...(d.multas_linhas||[])]
             .filter(x => x.tem_valor)
             .reduce((a, x) => a + _parseMoeda(x.valor), 0);

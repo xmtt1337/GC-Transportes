@@ -215,6 +215,7 @@ function _carregarPainel() {
         document.getElementById("paj-adicional-card").className = "paj-card " + (_parseMoeda(d.adicional) < 0 ? "negativo" : "positivo");
         document.getElementById("paj-deslocamento").innerText = d.deslocamento;
         document.getElementById("paj-grandes").innerText      = d.valor_grandes;
+        if (document.getElementById("paj-grandes-q")) document.getElementById("paj-grandes-q").innerText = d.qtd_grandes + " pacotes";
         const _descTotal = [...(d.extravios_linhas||[]), ...(d.multas_linhas||[])]
             .filter(x => x.tem_valor)
             .reduce((a, x) => a + _parseMoeda(x.valor), 0);
