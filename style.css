@@ -391,11 +391,15 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .pb-ent-sub { font-size: 12px; color: #7a8599; margin-top: 8px; }
 
 .painel-ajustes {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;
+    display: grid; grid-template-columns: repeat(1, 1fr); gap: 12px; margin-bottom: 20px;
 }
 .painel-adicionais {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;
 }
+.painel-descontos {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;
+}
+.pt-header-neg { color: #ef4444; }
 .paj-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
     border-radius: 14px; padding: 16px 18px;
@@ -640,7 +644,8 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     .pb-ent-label { text-align: left; }
     .pb-ent-sub   { text-align: left; }
 
-    .painel-ajustes, .painel-adicionais { grid-template-columns: 1fr 1fr; }
+    .painel-ajustes { grid-template-columns: 1fr; }
+    .painel-adicionais, .painel-descontos { grid-template-columns: 1fr 1fr; }
     .painel-transp  { grid-template-columns: 1fr 1fr; }
     .pt-card { padding: 10px 12px; }
     .pt-row  { padding: 3px 0; }
@@ -2103,9 +2108,9 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     .pb-ent-sub   { text-align: left; font-size: 11px; margin-top: 5px; }
     .pb-pagamento { font-size: 11px; margin-top: 5px; margin-bottom: 12px; }
 
-    /* Ajustes: 2 colunas compactas */
+    /* Ajustes: 1 coluna compacta */
     .painel-ajustes {
-        grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;
+        grid-template-columns: 1fr; gap: 8px; margin-bottom: 14px;
     }
     .paj-card  { padding: 11px 10px; border-radius: 10px; }
     .paj-label { font-size: 9px; letter-spacing: 0.04em; }

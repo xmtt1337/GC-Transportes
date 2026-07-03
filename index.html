@@ -402,20 +402,11 @@
                     <!-- Card status do pagamento -->
                     <div id="pgto-status-card" style="display:none"></div>
 
-                    <!-- Ajustes: 3 cards -->
+                    <!-- Ajustes: 1 card -->
                     <div class="painel-ajustes">
                         <div class="paj-card positivo" id="paj-adicional-card">
                             <div class="paj-label">Adicional / Desconto</div>
                             <div class="paj-value" id="paj-adicional">—</div>
-                        </div>
-                        <div class="paj-card negativo">
-                            <div class="paj-label">Extravios + Multas</div>
-                            <div class="paj-value" id="paj-descontos">—</div>
-                        </div>
-                        <div class="paj-card negativo">
-                            <div class="paj-label">Ticket Log</div>
-                            <div class="paj-sublabel">Desconto no cartão</div>
-                            <div class="paj-value" id="paj-ticket">—</div>
                         </div>
                     </div>
 
@@ -470,6 +461,19 @@
                         <div class="pt-card">
                             <div class="pt-header">Deslocamento</div>
                             <div class="pt-row"><span>Valor</span><span id="paj-deslocamento">—</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Descontos -->
+                    <div class="painel-section-title">Descontos</div>
+                    <div class="painel-descontos">
+                        <div class="pt-card">
+                            <div class="pt-header pt-header-neg">Extravios + Multas</div>
+                            <div class="pt-row"><span>Total</span><span id="paj-descontos" class="val-neg">—</span></div>
+                        </div>
+                        <div class="pt-card">
+                            <div class="pt-header pt-header-neg">Ticket Log</div>
+                            <div class="pt-row"><span>Desconto no cartão</span><span id="paj-ticket" class="val-neg">—</span></div>
                         </div>
                     </div>
 
@@ -614,15 +618,6 @@
                             <div class="paj-label">Adicional / Desconto</div>
                             <div class="paj-value" id="adm-paj-adicional">—</div>
                         </div>
-                        <div class="paj-card negativo">
-                            <div class="paj-label">Extravios + Multas</div>
-                            <div class="paj-value" id="adm-paj-descontos">—</div>
-                        </div>
-                        <div class="paj-card negativo">
-                            <div class="paj-label">Ticket Log</div>
-                            <div class="paj-sublabel">Desconto no cartão</div>
-                            <div class="paj-value" id="adm-paj-ticket">—</div>
-                        </div>
                     </div>
 
                     <div class="painel-section-title">Transportadoras</div>
@@ -675,6 +670,19 @@
                         <div class="pt-card">
                             <div class="pt-header">Deslocamento</div>
                             <div class="pt-row"><span>Valor</span><span id="adm-paj-deslocamento">—</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Descontos -->
+                    <div class="painel-section-title">Descontos</div>
+                    <div class="painel-descontos">
+                        <div class="pt-card">
+                            <div class="pt-header pt-header-neg">Extravios + Multas</div>
+                            <div class="pt-row"><span>Total</span><span id="adm-paj-descontos" class="val-neg">—</span></div>
+                        </div>
+                        <div class="pt-card">
+                            <div class="pt-header pt-header-neg">Ticket Log</div>
+                            <div class="pt-row"><span>Desconto no cartão</span><span id="adm-paj-ticket" class="val-neg">—</span></div>
                         </div>
                     </div>
 
