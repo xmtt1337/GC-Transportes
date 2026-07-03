@@ -425,7 +425,7 @@ body {
                     </div>
                 </div>
 
-                <div class="field">
+                <div class="field" id="r-email-wrap" style="display:none">
                     <label for="r-email">E-mail</label>
                     <div class="input-wrap">
                         <input type="email" id="r-email" placeholder="seuemail@exemplo.com" autocomplete="off">
@@ -433,7 +433,8 @@ body {
                     </div>
                 </div>
 
-                <button type="submit" class="login-btn" id="resetBtn">Enviar link de redefinição</button>
+                <button type="button" class="login-btn" id="resetBtnVerificar" onclick="verificarUsuarioReset()">Continuar</button>
+                <button type="submit" class="login-btn" id="resetBtn" style="display:none">Enviar link de redefinição</button>
 
             </form>
         </div>
@@ -548,27 +549,70 @@ function abrirReset(forcado, username) {
     document.getElementById("resetPanel").classList.add("active");
     document.getElementById("resetErroMsg").classList.remove("show");
     document.getElementById("resetSucessoMsg").classList.remove("show");
-    document.getElementById("r-usuario").value = username || "";
-    document.getElementById("r-email").value   = "";
+    document.getElementById("r-usuario").value    = username || "";
+    document.getElementById("r-usuario").disabled = false;
+    document.getElementById("r-email").value      = "";
+    document.getElementById("r-email-wrap").style.display  = "none";
+    document.getElementById("resetBtnVerificar").style.display = "";
+    document.getElementById("resetBtnVerificar").disabled  = false;
+    document.getElementById("resetBtnVerificar").innerHTML = "Continuar";
+    document.getElementById("resetBtn").style.display = "none";
 
     if (forcado) {
         document.getElementById("resetBackBtn").style.display = "none";
         document.getElementById("resetTitle").innerText = "Defina sua senha";
-        document.getElementById("resetSub").innerText   = "Por segurança, sua senha ainda é a padrão. Informe seu e-mail para receber o link de definição de senha.";
+        document.getElementById("resetSub").innerText   = "Por segurança, sua senha ainda é a padrão. Informe seu usuário para continuar.";
+        if (username) verificarUsuarioReset();
     } else {
         document.getElementById("resetBackBtn").style.display = "";
         document.getElementById("resetTitle").innerText = "Esqueci minha senha";
-        document.getElementById("resetSub").innerText   = "Informe seu usuário e e-mail cadastrado para receber o link de redefinição.";
+        document.getElementById("resetSub").innerText   = "Informe seu usuário para continuar.";
+    }
+}
+
+async function verificarUsuarioReset() {
+    document.getElementById("resetErroMsg").classList.remove("show");
+    const username = document.getElementById("r-usuario").value.trim();
+    const btn = document.getElementById("resetBtnVerificar");
+    if (!username) { mostrarResetErro("Preencha seu usuário."); return; }
+
+    btn.disabled  = true;
+    btn.innerHTML = `<span class="spinner"></span>`;
+
+    try {
+        const res  = await fetch(`https://sistema-backend-i4uh.onrender.com/esqueci-senha/verificar-usuario?username=${encodeURIComponent(username)}`);
+        const data = await res.json();
+        if (!res.ok) {
+            mostrarResetErro(data.error || "Usuário não encontrado.");
+            btn.disabled  = false;
+            btn.innerHTML = "Continuar";
+            return;
+        }
+        btn.style.display = "none";
+        document.getElementById("r-usuario").disabled = true;
+        if (!data.tem_email) {
+            document.getElementById("r-email-wrap").style.display = "";
+            document.getElementById("resetSub").innerText = "Informe seu e-mail para receber o link de redefinição.";
+        } else {
+            document.getElementById("resetSub").innerText = "Clique em enviar para receber o link de redefinição no e-mail cadastrado.";
+        }
+        document.getElementById("resetBtn").style.display = "";
+    } catch {
+        mostrarResetErro("Erro ao conectar. Tente novamente.");
+        btn.disabled  = false;
+        btn.innerHTML = "Continuar";
     }
 }
 
 async function esqueciSenha() {
     document.getElementById("resetErroMsg").classList.remove("show");
-    const username = document.getElementById("r-usuario").value.trim();
-    const email     = document.getElementById("r-email").value.trim();
-    const btn = document.getElementById("resetBtn");
+    const username  = document.getElementById("r-usuario").value.trim();
+    const emailWrap = document.getElementById("r-email-wrap");
+    const email     = emailWrap.style.display === "none" ? "" : document.getElementById("r-email").value.trim();
+    const btn       = document.getElementById("resetBtn");
 
-    if (!username || !email) { mostrarResetErro("Preencha usuário e e-mail."); return; }
+    if (!username) { mostrarResetErro("Usuário não identificado."); return; }
+    if (emailWrap.style.display !== "none" && !email) { mostrarResetErro("Preencha seu e-mail."); return; }
 
     btn.disabled = true;
     btn.innerHTML = `<div class="spinner"></div> Enviando...`;
