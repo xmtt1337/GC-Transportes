@@ -421,7 +421,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 }
 
 .painel-transp {
-    display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;
 }
 .pt-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
@@ -598,9 +598,6 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .sidebar.expanded .sidebar-reload-btn { display: flex; }
 
 
-@media (max-width: 960px) {
-    .painel-transp { grid-template-columns: repeat(3, 1fr); }
-}
 @media (max-width: 680px) {
     body { height: 100dvh; }
 
