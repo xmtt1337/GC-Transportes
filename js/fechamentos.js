@@ -236,6 +236,8 @@ function _carregarPainel() {
         document.getElementById("pt-shopee-q").innerText = d.entregues_shopee + " pacotes";
         document.getElementById("pt-coletas-v").innerText = d.valor_coletas;
         document.getElementById("pt-coletas-q").innerText = d.qtd_coletas + " coletas";
+        document.getElementById("pt-totalexpress-v").innerText = d.valor_total_express;
+        document.getElementById("pt-totalexpress-q").innerText = d.entregues_total_express + " pacotes";
 
         // Extravios
         _renderExtravios(d.extravios_linhas, "extravios-lista", true);

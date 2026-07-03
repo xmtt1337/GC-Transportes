@@ -127,6 +127,8 @@ function _carregarPainelAdmin() {
         document.getElementById("adm-pt-shopee-q").innerText = d.entregues_shopee + " pacotes";
         document.getElementById("adm-pt-coletas-v").innerText = d.valor_coletas;
         document.getElementById("adm-pt-coletas-q").innerText = d.qtd_coletas + " coletas";
+        document.getElementById("adm-pt-totalexpress-v").innerText = d.valor_total_express;
+        document.getElementById("adm-pt-totalexpress-q").innerText = d.entregues_total_express + " pacotes";
 
         _renderExtravios(d.extravios_linhas, "adm-extravios-lista");
 
@@ -186,6 +188,7 @@ function _baixarPainelAdminPDF() {
         ["Anjun","adm-pt-anjun-v","adm-pt-anjun-q"],
         ["Shopee","adm-pt-shopee-v","adm-pt-shopee-q"],
         ["Coletas","adm-pt-coletas-v","adm-pt-coletas-q"],
+        ["Total Express","adm-pt-totalexpress-v","adm-pt-totalexpress-q"],
     ];
 
     const htmlStr = `
