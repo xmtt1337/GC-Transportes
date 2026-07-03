@@ -187,7 +187,6 @@ function _baixarPainelAdminPDF() {
         ["iMile","adm-pt-imile-v","adm-pt-imile-q"],
         ["Anjun","adm-pt-anjun-v","adm-pt-anjun-q"],
         ["Shopee","adm-pt-shopee-v","adm-pt-shopee-q"],
-        ["Coletas","adm-pt-coletas-v","adm-pt-coletas-q"],
         ["Total Express","adm-pt-totalexpress-v","adm-pt-totalexpress-q"],
     ];
 
