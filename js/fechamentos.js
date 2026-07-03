@@ -247,7 +247,7 @@ function _carregarPainel() {
         empty.style.display = "none";
         data.style.display  = "";
         _carregarNota();
-        _watchSecao('#tela-fechamentos .fech-body', 'extravios-lista', 'multas-lista', 'poc-secao-ent');
+        _watchSecao('#tela-fechamentos .fech-body', 'poc-secao-ent');
     })
     .catch(() => {
         empty.classList.remove("sk-mode");
