@@ -394,7 +394,7 @@ body {
     <!-- PAINEL REDEFINIR SENHA (sobrepõe o formulário) -->
     <div class="reset-panel" id="resetPanel">
         <div class="reset-card">
-            <form autocomplete="off" onsubmit="esqueciSenha(); return false;">
+            <form autocomplete="off" onsubmit="_resetSubmit(); return false;">
 
                 <button type="button" class="reset-back" id="resetBackBtn" onclick="fecharReset()">
                     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
@@ -602,6 +602,14 @@ async function verificarUsuarioReset() {
         mostrarResetErro("Erro ao conectar. Tente novamente.");
         btn.disabled  = false;
         btn.innerHTML = "Continuar";
+    }
+}
+
+function _resetSubmit() {
+    if (document.getElementById("resetBtnVerificar").style.display !== "none") {
+        verificarUsuarioReset();
+    } else {
+        esqueciSenha();
     }
 }
 
