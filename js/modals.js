@@ -215,7 +215,7 @@ function _baixarPainelAdminPDF() {
         </div>
 
         <div style="display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap">
-            ${pCard("Adicional / Desconto", g("adm-paj-adicional"), adicNeg)}
+            ${pCard("Ajustes", g("adm-paj-adicional"), adicNeg)}
             ${pCard("Deslocamento", g("adm-paj-deslocamento"), false)}
             ${pCard("Pacotes Grandes", g("adm-paj-grandes"), false)}
             ${pCard("Extravios + Multas", g("adm-paj-descontos"), true)}
