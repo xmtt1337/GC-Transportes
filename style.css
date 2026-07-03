@@ -400,7 +400,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;
 }
 .pt-header-neg { color: #ef4444; }
-.pt-row .val-neg { color: #ef4444; font-weight: 600; }
+.pt-row span.val-neg { color: #ef4444 !important; font-weight: 600; }
 .paj-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
     border-radius: 14px; padding: 16px 18px;
@@ -598,6 +598,9 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .sidebar.expanded .sidebar-reload-btn { display: flex; }
 
 
+@media (max-width: 960px) {
+    .painel-transp { grid-template-columns: repeat(3, 1fr); }
+}
 @media (max-width: 680px) {
     body { height: 100dvh; }
 
