@@ -114,7 +114,10 @@ function _carregarPainelAdmin() {
         document.getElementById("adm-paj-descontos").innerText = _admDescTotal > 0
             ? "R$ " + _admDescTotal.toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2})
             : d.descontos;
-        document.getElementById("adm-paj-ticket").innerText       = d.desconto_ticket;
+        document.getElementById("adm-paj-descontos-card").className = "paj-card " + (_admDescTotal > 0 ? "negativo" : "");
+        const _admTicketNum = _parseMoeda(d.desconto_ticket);
+        document.getElementById("adm-paj-ticket").innerText = d.desconto_ticket;
+        document.getElementById("adm-paj-ticket-card").className = "paj-card " + (_admTicketNum > 0 ? "negativo" : "");
 
         document.getElementById("adm-pt-loggi-v").innerText  = d.valor_loggi;
         document.getElementById("adm-pt-loggi-q").innerText  = d.entregues_loggi + " pacotes";

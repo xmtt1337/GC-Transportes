@@ -219,7 +219,10 @@ function _carregarPainel() {
         document.getElementById("paj-descontos").innerText = _descTotal > 0
             ? "R$ " + _descTotal.toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2})
             : d.descontos;
-        document.getElementById("paj-ticket").innerText       = d.desconto_ticket;
+        document.getElementById("paj-descontos-card").className = "paj-card " + (_descTotal > 0 ? "negativo" : "");
+        const _ticketNum = _parseMoeda(d.desconto_ticket);
+        document.getElementById("paj-ticket").innerText = d.desconto_ticket;
+        document.getElementById("paj-ticket-card").className = "paj-card " + (_ticketNum > 0 ? "negativo" : "");
 
         // Transportadoras
         document.getElementById("pt-loggi-v").innerText  = d.valor_loggi;
