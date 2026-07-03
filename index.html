@@ -1649,6 +1649,11 @@
                 </select>
             </div>
             <div class="usr-modal-error" id="ngc-erro"></div>
+            <div id="ngc-duplicado" style="display:none;margin-top:10px;padding:13px 15px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.22);border-radius:12px">
+                <div style="font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Nome já cadastrado</div>
+                <div style="font-size:12.5px;color:#94a3b8;margin-bottom:10px">Já existe um usuário com este nome. O ID de acesso é:</div>
+                <div style="font-size:20px;font-weight:700;color:#3a86ff;letter-spacing:1px" id="ngc-duplicado-id"></div>
+            </div>
             <div class="usr-modal-btns">
                 <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-novo-usuario-gc')">Cancelar</button>
                 <button class="usr-modal-btn-primary" id="ngc-btn-salvar" onclick="_salvarNovoUsuarioGC()">Cadastrar</button>
@@ -1725,6 +1730,11 @@
             </div>
             <input type="hidden" id="mne-telefone" value="">
             <div class="usr-modal-error" id="mne-erro"></div>
+            <div id="mne-duplicado" style="display:none;margin-top:10px;padding:13px 15px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.22);border-radius:12px">
+                <div style="font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Nome já cadastrado</div>
+                <div style="font-size:12.5px;color:#94a3b8;margin-bottom:10px">Já existe um usuário com este nome. O ID de acesso é:</div>
+                <div style="font-size:20px;font-weight:700;color:#3a86ff;letter-spacing:1px" id="mne-duplicado-id"></div>
+            </div>
             <div class="usr-modal-btns">
                 <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-novo-entregador')">Cancelar</button>
                 <button class="usr-modal-btn-primary" id="mne-btn-salvar" onclick="_salvarNovoEntregador()">Cadastrar</button>

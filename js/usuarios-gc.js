@@ -72,6 +72,7 @@ function _abrirModalNovoUsuarioGC() {
     document.getElementById("ngc-senha").value  = "";
     document.getElementById("ngc-role").value   = "user";
     document.getElementById("ngc-erro").innerText = "";
+    document.getElementById("ngc-duplicado").style.display = "none";
     document.getElementById("ngc-form").style.display    = "";
     document.getElementById("ngc-sucesso").style.display = "none";
     _abrirModal("modal-novo-usuario-gc");
@@ -86,6 +87,7 @@ function _salvarNovoUsuarioGC() {
     const erro     = document.getElementById("ngc-erro");
     const btn      = document.getElementById("ngc-btn-salvar");
     erro.innerText = "";
+    document.getElementById("ngc-duplicado").style.display = "none";
     if (!name) { erro.innerText = "Informe o nome do usuário."; return; }
     btn.disabled = true;
     btn.textContent = "Cadastrando...";
@@ -98,6 +100,11 @@ function _salvarNovoUsuarioGC() {
     .then(data => {
         btn.disabled = false;
         btn.textContent = "Cadastrar";
+        if (data.duplicate) {
+            document.getElementById("ngc-duplicado-id").innerText = data.existing_username;
+            document.getElementById("ngc-duplicado").style.display = "";
+            return;
+        }
         if (data.error) { erro.innerText = data.error; return; }
         document.getElementById("ngc-id-gerado").innerText = data.username;
         document.getElementById("ngc-copiado").innerText   = "";

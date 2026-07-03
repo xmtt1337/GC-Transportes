@@ -61,6 +61,7 @@ function _abrirModalNovoEntregador() {
     document.getElementById("mne-senha").value     = "";
     document.getElementById("mne-telefone").value  = "";
     document.getElementById("mne-erro").innerText  = "";
+    document.getElementById("mne-duplicado").style.display = "none";
     document.getElementById("mne-form").style.display    = "";
     document.getElementById("mne-sucesso").style.display = "none";
     _abrirModal("modal-novo-entregador");
@@ -75,6 +76,7 @@ function _salvarNovoEntregador() {
     const erro     = document.getElementById("mne-erro");
     const btn      = document.getElementById("mne-btn-salvar");
     erro.innerText = "";
+    document.getElementById("mne-duplicado").style.display = "none";
     if (!name) { erro.innerText = "Informe o nome do entregador."; return; }
     btn.disabled   = true;
     btn.textContent = "Cadastrando...";
@@ -87,6 +89,11 @@ function _salvarNovoEntregador() {
     .then(data => {
         btn.disabled = false;
         btn.textContent = "Cadastrar";
+        if (data.duplicate) {
+            document.getElementById("mne-duplicado-id").innerText = data.existing_username;
+            document.getElementById("mne-duplicado").style.display = "";
+            return;
+        }
         if (data.error) { erro.innerText = data.error; return; }
         document.getElementById("mne-id-gerado").innerText = data.username;
         document.getElementById("mne-copiado").innerText   = "";
