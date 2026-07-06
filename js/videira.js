@@ -187,6 +187,7 @@ function _renderPainelVideira(d) {
             <td style="text-align:right;color:#ef4444">${_fmt(c.jt)}</td>
             <td style="text-align:right;color:#12a5e8">${_fmt(c.loggi)}</td>
             <td style="text-align:right;color:#f59e0b">${_fmt(c.total_express)}</td>
+            <td style="text-align:right;color:#e8340a">${_fmt(c.jadlog)}</td>
             <td style="text-align:right;font-weight:600">${_fmt(c.qtd_total)}</td>
             <td style="text-align:right;color:#22c55e;font-weight:600">${c.valor_cidade}</td>
         </tr>
@@ -195,7 +196,7 @@ function _renderPainelVideira(d) {
     // Totais
     const tq = d.totais_qtd || {};
     const tv = d.totais_val || {};
-    const totalQtd = tq.total > 0 ? tq.total : ((tq.shopee||0) + (tq.imile||0) + (tq.anjun||0) + (tq.jt||0) + (tq.loggi||0) + (tq.total_express||0));
+    const totalQtd = tq.total > 0 ? tq.total : ((tq.shopee||0) + (tq.imile||0) + (tq.anjun||0) + (tq.jt||0) + (tq.loggi||0) + (tq.total_express||0) + (tq.jadlog||0));
 
     // Tabela: footer só com QTD totais
     document.getElementById("vp-tfoot").innerHTML = `
@@ -207,6 +208,7 @@ function _renderPainelVideira(d) {
             <td style="text-align:right;font-weight:700;color:#ef4444">${_fmt(tq.jt)}</td>
             <td style="text-align:right;font-weight:700;color:#12a5e8">${_fmt(tq.loggi)}</td>
             <td style="text-align:right;font-weight:700;color:#f59e0b">${_fmt(tq.total_express)}</td>
+            <td style="text-align:right;font-weight:700;color:#e8340a">${_fmt(tq.jadlog)}</td>
             <td style="text-align:right;font-weight:800;font-size:14px;color:#e2e8f0">${_fmt(totalQtd)}</td>
             <td style="text-align:right;font-weight:700;color:#22c55e">${d.soma_valor_cidades || "—"}</td>
         </tr>
@@ -220,6 +222,7 @@ function _renderPainelVideira(d) {
         { nome:"J&T",           cor:"#ef4444", bg:"rgba(239,68,68,0.08)",  qtd: tq.jt||0,             val: tv.jt            },
         { nome:"Loggi",         cor:"#12a5e8", bg:"rgba(18,165,232,0.08)", qtd: tq.loggi||0,          val: tv.loggi         },
         { nome:"Total Express", cor:"#f59e0b", bg:"rgba(245,158,11,0.08)", qtd: tq.total_express||0,  val: tv.total_express },
+        { nome:"JadLog",        cor:"#e8340a", bg:"rgba(232,51,10,0.08)",  qtd: tq.jadlog||0,          val: tv.jadlog        },
     ];
     const vpValCards = document.getElementById("vp-val-cards");
     if (vpValCards) {
