@@ -139,38 +139,42 @@ function _renderPainelVideira(d) {
     const liqNum = d.valor_total_liquido_num || 0;
     const desNum = parseFloat(String(d.valor_desconto||"").replace(/[^\d,\-]/g,"").replace(",",".")) || 0;
 
-    // Banner + KPI
     const cards = document.getElementById("vp-cards");
     cards.innerHTML = `
-        <div class="painel-banner ${liqNum < 0 ? "banner-negativo" : "banner-positivo"}">
-            <div class="pb-left">
-                <div class="pb-eyebrow">Resultado Líquido do Período</div>
-                <div class="pb-valor">${d.valor_total_liquido || "—"}</div>
-                <div class="pb-pagamento">${d.quinzena_ref || ""}</div>
+        <div class="vp-hero${liqNum < 0 ? " neg" : ""}">
+            <div>
+                <div class="vp-hero-eyebrow">Resultado Líquido do Período</div>
+                <div class="vp-hero-val">${d.valor_total_liquido || "—"}</div>
+                <div class="vp-hero-sub">${d.quinzena_ref || ""}</div>
             </div>
-            <div class="pb-divider"></div>
-            <div class="pb-right">
-                <div class="pb-ent-label">Total Pacotes</div>
-                <div class="pb-ent-valor">${(d.qtd_pacotes_total||0).toLocaleString("pt-BR")}</div>
-                <div class="pb-ent-sub">pacotes finalizados</div>
-            </div>
-        </div>
-
-        <div class="painel-section-title">Adicionais</div>
-        <div class="painel-adicionais">
-            <div class="pt-card">
-                <div class="pt-header">Coletas</div>
-                <div class="pt-row"><span>Quantidade</span><span>${(d.qtd_coletas||0).toLocaleString("pt-BR")} coletas</span></div>
-                <div class="pt-row"><span>Valor</span><span>${d.valor_coletas||"—"}</span></div>
-                <div class="pt-row"><span>Diária</span><span>${d.diaria_coletas||"—"}</span></div>
-            </div>
-            <div class="paj-card ${desNum > 0 ? "negativo" : ""}">
-                <div class="paj-label">Descontos</div>
-                <div class="paj-value">${d.valor_desconto||"R$ 0,00"}</div>
+            <div class="vp-hero-sep"></div>
+            <div class="vp-hero-right">
+                <div class="vp-hero-eyebrow">Total Pacotes</div>
+                <div class="vp-hero-val neutral">${(d.qtd_pacotes_total||0).toLocaleString("pt-BR")}</div>
+                <div class="vp-hero-sub">pacotes finalizados</div>
             </div>
         </div>
 
-        <div class="painel-section-title">Detalhamento por Cidade</div>
+        <div class="vp-stats">
+            <div class="vp-stat orange">
+                <div class="vp-stat-lbl">Coletas</div>
+                <div class="vp-stat-val">${(d.qtd_coletas||0).toLocaleString("pt-BR")} col.</div>
+            </div>
+            <div class="vp-stat orange">
+                <div class="vp-stat-lbl">Valor Coletas</div>
+                <div class="vp-stat-val">${d.valor_coletas || "—"}</div>
+            </div>
+            <div class="vp-stat">
+                <div class="vp-stat-lbl">Diária Col.</div>
+                <div class="vp-stat-val">${d.diaria_coletas || "—"}</div>
+            </div>
+            <div class="vp-stat${desNum > 0 ? " red" : ""}">
+                <div class="vp-stat-lbl">Descontos</div>
+                <div class="vp-stat-val">${d.valor_desconto || "R$ 0,00"}</div>
+            </div>
+        </div>
+
+        <div class="vp-lbl">Detalhamento por Cidade</div>
     `;
 
     // Tabela de cidades
@@ -220,13 +224,13 @@ function _renderPainelVideira(d) {
     const vpValCards = document.getElementById("vp-val-cards");
     if (vpValCards) {
         vpValCards.innerHTML = `
-            <div class="painel-section-title">Transportadoras</div>
-            <div class="painel-transp">
+            <div class="vp-lbl">Transportadoras</div>
+            <div class="vp-carrier-grid">
                 ${transp.map(t => `
-                    <div class="pt-card">
-                        <div class="pt-header" style="color:${t.cor}">${t.nome}</div>
-                        <div class="pt-row"><span>Valor</span><span>${t.val || "—"}</span></div>
-                        <div class="pt-row"><span>Pacotes</span><span>${_fmt(t.qtd)}</span></div>
+                    <div class="vp-c" style="border-left-color:${t.cor}">
+                        <div class="vp-c-name" style="color:${t.cor}">${t.nome}</div>
+                        <div class="vp-c-val">${t.val || "—"}</div>
+                        <div class="vp-c-qty">${_fmt(t.qtd)} pacotes</div>
                     </div>
                 `).join("")}
             </div>

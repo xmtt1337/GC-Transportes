@@ -597,6 +597,75 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .sidebar-reload-btn:hover, .sidebar-reload-btn:active { color: #fff; }
 .sidebar.expanded .sidebar-reload-btn { display: flex; }
 
+/* ── VIDEIRA PAINEL ─────────────────────────────────────────────── */
+.vp-hero {
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    background: linear-gradient(140deg, rgba(34,197,94,0.07) 0%, rgba(15,23,42,0) 55%);
+    border: 1px solid rgba(34,197,94,0.16); border-radius: 18px;
+    padding: 22px 26px; margin-bottom: 14px;
+}
+.vp-hero.neg {
+    background: linear-gradient(140deg, rgba(239,68,68,0.07) 0%, rgba(15,23,42,0) 55%);
+    border-color: rgba(239,68,68,0.16);
+}
+.vp-hero-eyebrow {
+    font-size: 9px; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: #475569; margin-bottom: 7px;
+}
+.vp-hero-val {
+    font-size: 32px; font-weight: 800; letter-spacing: -.03em;
+    line-height: 1; color: #22c55e; font-variant-numeric: tabular-nums;
+}
+.vp-hero.neg .vp-hero-val { color: #ef4444; }
+.vp-hero-val.neutral { color: #f1f5f9; }
+.vp-hero-sub { font-size: 11px; color: #475569; margin-top: 7px; }
+.vp-hero-sep { width: 1px; height: 52px; background: rgba(255,255,255,0.06); margin: 0 26px; }
+.vp-hero-right { text-align: right; }
+
+.vp-stats {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 9px; margin-bottom: 20px;
+}
+.vp-stat {
+    background: rgba(14,22,40,0.8); border: 1px solid rgba(58,134,255,0.09);
+    border-radius: 11px; padding: 12px 14px;
+}
+.vp-stat-lbl {
+    font-size: 9px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: #475569; margin-bottom: 5px;
+}
+.vp-stat-val { font-size: 14px; font-weight: 700; color: #f1f5f9; font-variant-numeric: tabular-nums; }
+.vp-stat.orange { border-color: rgba(249,115,22,0.18); }
+.vp-stat.orange .vp-stat-val { color: #f97316; }
+.vp-stat.red { border-color: rgba(239,68,68,0.2); }
+.vp-stat.red .vp-stat-val { color: #ef4444; }
+
+.vp-lbl {
+    font-size: 9px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: #334155;
+    display: flex; align-items: center; gap: 10px;
+    margin: 18px 0 10px;
+}
+.vp-lbl::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.04); }
+
+.vp-carrier-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 9px; margin-bottom: 22px;
+}
+.vp-c {
+    background: rgba(14,22,40,0.8); border: 1px solid rgba(58,134,255,0.07);
+    border-left-width: 3px; border-radius: 4px; padding: 14px 16px;
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+.vp-c:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+.vp-c-name { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 9px; }
+.vp-c-val { font-size: 17px; font-weight: 700; color: #f1f5f9; line-height: 1; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.vp-c-qty { font-size: 11px; color: #475569; }
+
+#vp-table { font-variant-numeric: tabular-nums; }
+#vp-table thead th { position: sticky; top: 0; background: #0d1629; z-index: 1; }
+/* ── /VIDEIRA PAINEL ─────────────────────────────────────────────── */
 
 @media (max-width: 680px) {
     body { height: 100dvh; }
@@ -648,6 +717,11 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     .painel-ajustes { grid-template-columns: 1fr; }
     .painel-adicionais, .painel-descontos { grid-template-columns: 1fr 1fr; }
     .painel-transp  { grid-template-columns: 1fr 1fr; }
+    .vp-hero { grid-template-columns: 1fr; gap: 14px; }
+    .vp-hero-sep { display: none; }
+    .vp-hero-right { text-align: left; }
+    .vp-hero-val { font-size: 26px; }
+    .vp-carrier-grid { grid-template-columns: 1fr 1fr; }
     .pt-card { padding: 10px 12px; }
     .pt-row  { padding: 3px 0; }
     .pt-row span:first-child { font-size: 11px; }
