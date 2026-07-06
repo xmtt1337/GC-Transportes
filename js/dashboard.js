@@ -1,5 +1,6 @@
 // ───── DASHBOARD ─────
 let _dashBarChart = null;
+let _dashPieChart = null;
 let _dashGran     = "quinzena";
 let _admGrupos    = [];
 let _admAno       = new Date().getFullYear();
@@ -43,11 +44,56 @@ function _admSelecionarChip(idx) {
         const dlt  = _delta(qtd, pQtd);
         const pctStr = dlt.cls !== "flat" ? dlt.txt.slice(2) : "—";
         const bCls   = dlt.cls === "up" ? "lucro" : dlt.cls === "down" ? "preju" : "estavel";
-        return `<div class="dash-tc">
+        return `<div class="dash-tc" style="border-left-color:${t.color}">
             <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
             <div class="dash-tc-qtd">${qtd.toLocaleString("pt-BR")}</div>
             <div class="dash-tc-sub">pacotes · ${g.label}</div>
             <span class="lbadge ${bCls}">${pctStr}</span>
+        </div>`;
+    }).join("");
+
+    // Donut chart — mix de transportadoras do período selecionado
+    const totPie = TRANSP_DEF.reduce((s, t) => s + (g[t.key] || 0), 0);
+    const pieData = TRANSP_DEF.map(t => g[t.key] || 0);
+    const pieCanvas = document.getElementById("dash-pie-chart");
+    if (_dashPieChart) {
+        _dashPieChart.data.datasets[0].data = pieData;
+        _dashPieChart.update();
+    } else if (pieCanvas) {
+        _dashPieChart = new Chart(pieCanvas.getContext("2d"), {
+            type: "doughnut",
+            data: {
+                labels: TRANSP_DEF.map(t => t.label),
+                datasets: [{
+                    data: pieData,
+                    backgroundColor: TRANSP_DEF.map(t => t.bg),
+                    borderColor:     TRANSP_DEF.map(t => t.color),
+                    borderWidth: 1.5,
+                    hoverOffset: 6,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: "68%",
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => {
+                        const pct = totPie ? ((ctx.raw / totPie) * 100).toFixed(1) : "0.0";
+                        return `  ${ctx.raw.toLocaleString("pt-BR")} pacotes  (${pct}%)`;
+                    }}}
+                }
+            }
+        });
+    }
+    // Legenda do donut
+    const legendEl = document.getElementById("dash-pie-legend");
+    if (legendEl) legendEl.innerHTML = TRANSP_DEF.map(t => {
+        const qtd = g[t.key] || 0;
+        const pct = totPie ? ((qtd / totPie) * 100).toFixed(1) : "0.0";
+        return `<div class="dash-pie-leg">
+            <div class="dash-pie-dot" style="background:${t.color}"></div>
+            <span class="dash-pie-name">${t.label}</span>
+            <span class="dash-pie-qty">${qtd.toLocaleString("pt-BR")}</span>
+            <span class="dash-pie-pct">${pct}%</span>
         </div>`;
     }).join("");
 }
@@ -167,6 +213,7 @@ function buscarDashboard() {
         const labels = grupos.map(g => g.label);
         const canvas = document.getElementById("dash-bar-chart");
         if (_dashBarChart) { _dashBarChart.destroy(); _dashBarChart = null; }
+        if (_dashPieChart) { _dashPieChart.destroy(); _dashPieChart = null; }
         _dashBarChart = new Chart(canvas.getContext("2d"), {
             type: "bar",
             data: {

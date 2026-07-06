@@ -1181,32 +1181,45 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .dash-delta-sub { font-size: 11px; color: #4a6a8a; margin-top: 5px; }
 
 .dash-transp-grid {
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 12px;
 }
 .dash-tc {
-    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.12);
-    border-radius: 14px; padding: 18px 16px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    background: rgba(14,22,40,0.8); border: 1px solid rgba(58,134,255,0.1);
+    border-left-width: 3px; border-radius: 6px; padding: 14px 14px;
+    transition: transform .12s ease, box-shadow .12s ease;
 }
-.dash-tc:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(0,0,0,0.35); }
-.dash-tc-name { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(58,134,255,0.08); }
-.dash-tc-qtd  { font-size: 30px; font-weight: 700; color: #f1f5f9; line-height: 1; letter-spacing: -0.5px; margin-bottom: 3px; }
-.dash-tc-sub  { font-size: 10px; color: #4a6a8a; margin-bottom: 12px; }
-.dash-tc-delta { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 12px; }
-.dash-tc-delta.up   { background: rgba(52,211,153,0.1);  color: #34d399; }
-.dash-tc-delta.down { background: rgba(239,68,68,0.1);   color: #ef4444; }
-.dash-tc-delta.flat { background: rgba(120,120,120,0.1); color: #7a8599; }
+.dash-tc:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
+.dash-tc-name { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 9px; }
+.dash-tc-qtd  { font-size: 26px; font-weight: 800; color: #f1f5f9; line-height: 1; letter-spacing: -0.03em; margin-bottom: 3px; font-variant-numeric: tabular-nums; }
+.dash-tc-sub  { font-size: 10px; color: #475569; margin-bottom: 8px; }
 
+.dash-charts-row {
+    display: grid; grid-template-columns: 260px 1fr; gap: 12px; margin-bottom: 16px;
+}
 .dash-chart-card {
-    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
-    border-radius: 14px; padding: 20px 20px 14px;
+    background: rgba(14,22,40,0.8); border: 1px solid rgba(58,134,255,0.12);
+    border-radius: 12px; padding: 18px 18px 14px;
 }
 .dash-chart-title {
-    font-size: 10px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: 0.12em; color: #4a6a8a; margin-bottom: 14px;
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .13em; color: #334155; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
 }
+.dash-chart-title::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.04); }
 .dash-chart-canvas { position: relative; height: 240px; }
+/* Donut chart inside left card */
+.dash-pie-donut { position: relative; width: 150px; height: 150px; margin: 0 auto 14px; }
+.dash-pie-legend { display: flex; flex-direction: column; gap: 7px; }
+.dash-pie-leg { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.dash-pie-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dash-pie-name { color: #94a3b8; flex: 1; font-size: 11px; }
+.dash-pie-qty { font-weight: 700; color: #f1f5f9; font-variant-numeric: tabular-nums; font-size: 12px; }
+.dash-pie-pct { font-size: 10px; color: #475569; min-width: 38px; text-align: right; }
 
+@media (max-width: 860px) {
+    .dash-charts-row { grid-template-columns: 1fr; }
+    .dash-pie-donut  { width: 120px; height: 120px; }
+}
 @media (max-width: 680px) {
     .dash-transp-grid { grid-template-columns: 1fr 1fr; }
     .dash-total-banner { flex-direction: column; align-items: flex-start; }
@@ -1214,52 +1227,57 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     .dash-total-num { font-size: 36px; }
     .dash-chart-canvas { height: 180px; }
 
-    .dash-tc          { padding: 10px 10px; }
-    .dash-tc-name     { font-size: 10px; margin-bottom: 6px; padding-bottom: 6px; }
-    .dash-tc-qtd      { font-size: 16px; letter-spacing: 0; }
-    .dash-tc-sub      { font-size: 9px; margin-bottom: 6px; }
-    .lbadge           { font-size: 9px; padding: 2px 5px; }
+    .dash-tc     { padding: 10px 10px; }
+    .dash-tc-qtd { font-size: 16px; }
+    .dash-tc-sub { font-size: 9px; margin-bottom: 6px; }
+    .lbadge      { font-size: 9px; padding: 2px 5px; }
 }
 
 /* ===== DASHBOARD KPI + PERIOD CHIPS + LUCRO BADGE ===== */
 .dash-kpi-row {
-    display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 16px;
+    display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin-bottom: 14px;
 }
 .dash-kpi-card {
-    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
-    border-radius: 14px; padding: 18px 20px; transition: border-color 0.25s, background 0.25s;
+    background: rgba(14,22,40,0.8); border: 1px solid rgba(58,134,255,0.12);
+    border-radius: 14px; padding: 18px 20px; transition: border-color .25s, background .25s;
 }
-.dash-kpi-card.kpi-up   { border-color: rgba(52,211,153,0.35);  background: rgba(52,211,153,0.05); }
-.dash-kpi-card.kpi-down { border-color: rgba(239,68,68,0.3);    background: rgba(239,68,68,0.04); }
+.dash-kpi-card.kpi-up   {
+    background: linear-gradient(140deg, rgba(34,197,94,0.07) 0%, rgba(15,23,42,0) 60%);
+    border-color: rgba(34,197,94,0.2);
+}
+.dash-kpi-card.kpi-down {
+    background: linear-gradient(140deg, rgba(239,68,68,0.07) 0%, rgba(15,23,42,0) 60%);
+    border-color: rgba(239,68,68,0.2);
+}
 .dash-kpi-lbl {
-    font-size: 10px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: 0.12em; color: #4a6a8a; margin-bottom: 8px;
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .13em; color: #334155; margin-bottom: 10px;
 }
 .dash-kpi-num {
-    font-size: 28px; font-weight: 700; color: #f1f5f9;
-    line-height: 1; letter-spacing: -0.5px; margin-bottom: 4px;
+    font-size: 28px; font-weight: 800; color: #f1f5f9;
+    line-height: 1; letter-spacing: -0.03em; margin-bottom: 4px; font-variant-numeric: tabular-nums;
 }
-.dash-kpi-num.sm { font-size: 19px; letter-spacing: -0.3px; }
-.dash-kpi-pct { font-size: 22px; font-weight: 700; margin-bottom: 4px; line-height: 1.1; }
-.dash-kpi-pct.up   { color: #34d399; }
+.dash-kpi-num.sm { font-size: 19px; }
+.dash-kpi-pct { font-size: 28px; font-weight: 800; margin-bottom: 6px; line-height: 1; letter-spacing: -0.03em; }
+.dash-kpi-pct.up   { color: #22c55e; }
 .dash-kpi-pct.down { color: #ef4444; }
-.dash-kpi-pct.flat { color: #7a8599; }
-.dash-kpi-sub { font-size: 11px; color: #4a6a8a; }
+.dash-kpi-pct.flat { color: #475569; }
+.dash-kpi-sub { font-size: 11px; color: #475569; }
 
 .dash-pchips {
-    display: flex; gap: 8px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 4px;
+    display: flex; gap: 8px; overflow-x: auto; margin-bottom: 14px; padding-bottom: 4px;
     scrollbar-width: thin; scrollbar-color: rgba(58,134,255,0.25) transparent;
 }
 .dash-pchip {
-    flex-shrink: 0; background: rgba(27,38,59,0.9);
-    border: 1px solid rgba(58,134,255,0.1); border-radius: 10px;
+    flex-shrink: 0; background: rgba(14,22,40,0.8);
+    border: 1px solid rgba(58,134,255,0.1); border-radius: 8px;
     padding: 9px 13px; text-align: center; min-width: 76px;
-    cursor: pointer; transition: border-color 0.18s, background 0.18s, transform 0.15s;
+    cursor: pointer; transition: border-color .15s, background .15s, transform .12s;
 }
-.dash-pchip:hover { border-color: rgba(58,134,255,0.45); background: rgba(58,134,255,0.09); transform: translateY(-2px); }
-.dash-pchip.current { border-color: rgba(58,134,255,0.5); background: rgba(58,134,255,0.1); }
-.dpc-lbl { font-size: 10px; color: #4a6a8a; margin-bottom: 4px; font-weight: 500; }
-.dpc-val { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+.dash-pchip:hover { border-color: rgba(58,134,255,0.4); background: rgba(58,134,255,0.08); transform: translateY(-2px); }
+.dash-pchip.current { border-color: rgba(58,134,255,0.55); background: rgba(58,134,255,0.12); box-shadow: 0 0 0 1px rgba(58,134,255,0.2); }
+.dpc-lbl { font-size: 9px; color: #475569; margin-bottom: 4px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.dpc-val { font-size: 13px; font-weight: 700; color: #f1f5f9; font-variant-numeric: tabular-nums; }
 
 .lbadge {
     display: inline-flex; align-items: center; gap: 3px;
