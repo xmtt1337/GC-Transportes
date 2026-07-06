@@ -918,7 +918,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     display: flex; align-items: center; justify-content: center;
 }
 .adm-kpi-icon svg { width: 17px; height: 17px; }
-.adm-kpi-num { font-size: 22px; font-weight: 700; line-height: 1; letter-spacing: -0.5px; }
+.adm-kpi-num { font-size: 22px; font-weight: 700; line-height: 1; letter-spacing: -0.5px; white-space: nowrap; }
 .adm-kpi-lbl { font-size: 11px; color: #3d5470; margin-top: 3px; }
 @media (max-width: 580px) {
     .adm-kpi-row { flex-direction: column; }
