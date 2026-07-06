@@ -249,10 +249,10 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px;
 }
 .dh-card {
-    background: rgba(11,16,26,0.95);
+    background: linear-gradient(140deg, var(--dh-bg, rgba(58,134,255,0.05)) 0%, rgba(11,16,26,0.95) 55%);
     border: 1px solid rgba(255,255,255,0.06);
     border-left: 3px solid var(--dh-accent, rgba(58,134,255,0.35));
-    border-radius: 10px; padding: 18px 22px; margin-bottom: 12px;
+    padding: 18px 22px; margin-bottom: 12px;
     box-shadow: 0 4px 18px rgba(0,0,0,0.35);
 }
 .dh-head {
@@ -298,17 +298,16 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .dh-bar-col { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; min-width: 0; }
 .dh-bar-val { font-size: 10px; color: #cbd5e1; font-weight: 600; }
 .dh-bar-track {
-    width: 100%; height: 88px; display: flex; align-items: flex-end;
-    background: rgba(0,0,0,0.25); border-radius: 6px; overflow: hidden;
+    width: 100%; height: 96px; display: flex; align-items: flex-end;
+    background: rgba(0,0,0,0.3); overflow: hidden;
 }
 .dh-bar-fill {
-    width: 100%; background: linear-gradient(180deg, #60a5fa 0%, #2a72e8 100%);
-    border-radius: 6px 6px 0 0; box-shadow: 0 0 10px rgba(58,134,255,0.35);
-    transition: height 0.3s ease;
+    width: 100%; background: linear-gradient(180deg, #60a5fa 0%, #1d5fc9 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
 }
 .dh-bar-fill.dh-bar-peak {
-    background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
-    box-shadow: 0 0 14px rgba(34,197,94,0.55);
+    background: linear-gradient(180deg, #4ade80 0%, #15803d 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 0 18px rgba(34,197,94,0.4);
 }
 .dh-bar-hour { font-size: 9px; color: var(--text-dim); font-weight: 600; }
 
@@ -326,10 +325,10 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 }
 .rank-summary::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.04); }
 .rank-card {
-    background: rgba(11,16,26,0.95);
+    background: linear-gradient(140deg, var(--rk-bg, rgba(255,255,255,0.02)) 0%, rgba(11,16,26,0.95) 55%);
     border: 1px solid rgba(255,255,255,0.06);
     border-left: 3px solid var(--rk-accent, rgba(255,255,255,0.08));
-    border-radius: 10px; padding: 16px 20px; margin-bottom: 10px;
+    padding: 16px 20px; margin-bottom: 10px;
 }
 .rank-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
 .rank-pos { font-size: 22px; width: 34px; text-align: center; flex-shrink: 0; line-height: 1; }
@@ -340,14 +339,14 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .rank-total { text-align: right; flex-shrink: 0; }
 .rank-num { font-size: 28px; font-weight: 800; color: #f1f5f9; line-height: 1; font-variant-numeric: tabular-nums; }
 .rank-lbl { font-size: 10px; color: #334155; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
-.rank-bar-track { height: 10px; background: rgba(255,255,255,0.04); border-radius: 5px; overflow: hidden; margin-bottom: 12px; }
-.rank-bar-fill { height: 100%; background: linear-gradient(90deg, #3a86ff, #60a5fa); border-radius: 5px; }
-.rank-carriers { display: flex; flex-direction: column; gap: 5px; }
+.rank-bar-track { height: 14px; background: rgba(255,255,255,0.04); overflow: hidden; margin-bottom: 12px; }
+.rank-bar-fill { height: 100%; background: linear-gradient(90deg, #3a86ff, #60a5fa); box-shadow: inset 0 1px 0 rgba(255,255,255,0.15); }
+.rank-carriers { display: flex; flex-direction: column; gap: 6px; }
 .rank-carrier { display: flex; align-items: center; gap: 8px; }
 .rank-c-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .rank-c-name { font-size: 11px; color: #475569; width: 38px; flex-shrink: 0; }
-.rank-c-track { flex: 1; height: 8px; background: rgba(255,255,255,0.04); border-radius: 4px; overflow: hidden; }
-.rank-c-fill { height: 100%; border-radius: 4px; }
+.rank-c-track { flex: 1; height: 10px; background: rgba(255,255,255,0.04); overflow: hidden; }
+.rank-c-fill { height: 100%; box-shadow: inset 0 1px 0 rgba(255,255,255,0.12); }
 .rank-c-val { font-size: 11px; font-weight: 700; min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
 
 .fech-filtrar-btn {

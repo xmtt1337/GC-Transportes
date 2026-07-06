@@ -112,8 +112,9 @@ function _desempHoraRenderizar(rows, comparativo, data) {
             }).join('');
 
             const accentColor = cmpHistQtd.classe === 'up' ? '#22c55e' : cmpHistQtd.classe === 'down' ? '#ef4444' : 'rgba(58,134,255,0.4)';
+            const bgColor     = cmpHistQtd.classe === 'up' ? 'rgba(34,197,94,0.07)' : cmpHistQtd.classe === 'down' ? 'rgba(239,68,68,0.07)' : 'rgba(58,134,255,0.05)';
             return `
-            <div class="dh-card" style="--dh-accent:${accentColor}">
+            <div class="dh-card" style="--dh-accent:${accentColor};--dh-bg:${bgColor}">
                 <div class="dh-head">
                     <div class="dh-user">
                         <div class="dh-avatar">${_desempHoraIniciais(nome)}</div>

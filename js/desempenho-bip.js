@@ -66,6 +66,7 @@ function _desempRenderizar(rows, periodo) {
     const transp = ['loggi','anjun','jt','imile','shopee'];
     const posMedal   = ['🥇','🥈','🥉'];
     const posAccent  = ['#eab308','#94a3b8','#b45309'];
+    const posBg      = ['rgba(234,179,8,0.09)','rgba(148,163,184,0.07)','rgba(180,83,9,0.08)','rgba(58,134,255,0.03)'];
     const totalGeral = rows.reduce((s, u) => s + u.total, 0);
     const transpFiltro = document.getElementById('desemp-transp').value;
 
@@ -75,6 +76,7 @@ function _desempRenderizar(rows, periodo) {
             const pct      = maximo > 0 ? (u.total / maximo * 100).toFixed(1) : 0;
             const pctTotal = totalGeral > 0 ? (u.total / totalGeral * 100).toFixed(0) : 0;
             const accent   = posAccent[i] || 'rgba(255,255,255,0.08)';
+            const rkBg     = posBg[Math.min(i, 3)];
             const posEl    = i < 3
                 ? `<div class="rank-pos">${posMedal[i]}</div>`
                 : `<div class="rank-pos"><span class="rank-pos-num">${i+1}º</span></div>`;
@@ -92,7 +94,7 @@ function _desempRenderizar(rows, periodo) {
                 }).join('');
 
             return `
-            <div class="rank-card" style="--rk-accent:${accent}">
+            <div class="rank-card" style="--rk-accent:${accent};--rk-bg:${rkBg}">
                 <div class="rank-head">
                     ${posEl}
                     <div class="rank-info">
