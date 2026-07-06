@@ -93,13 +93,17 @@ function _desempRenderizar(rows, periodo) {
                     </div>`;
                 }).join('');
 
+            const partes = (u.usuario_nome || '').trim().split(/\s+/);
+            const ini = partes.length > 1 ? partes[0][0] + partes[partes.length-1][0] : (partes[0]||'?').slice(0,2);
+
             return `
             <div class="rank-card" style="--rk-accent:${accent};--rk-bg:${rkBg}">
                 <div class="rank-head">
                     ${posEl}
+                    <div class="rank-avatar">${ini.toUpperCase()}</div>
                     <div class="rank-info">
                         <div class="rank-name">${u.usuario_nome}</div>
-                        <div class="rank-pct-lbl">${pctTotal}% do total do período</div>
+                        <div class="rank-pct-lbl">${pctTotal}% do total · ${u.total.toLocaleString('pt-BR')} de ${totalGeral.toLocaleString('pt-BR')}</div>
                     </div>
                     <div class="rank-total">
                         <div class="rank-num">${u.total.toLocaleString('pt-BR')}</div>
