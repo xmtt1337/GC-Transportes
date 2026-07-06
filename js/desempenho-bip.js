@@ -61,9 +61,9 @@ function _desempRenderizar(rows, periodo) {
     const rankEl    = document.getElementById('desemp-ranking');
 
     const maximo = rows[0].total;
-    const cores  = { loggi:'#12A5E8', anjun:'#22C55E', jt:'#EF4444', imile:'#9333EA', shopee:'#F97316' };
-    const nomes  = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee' };
-    const transp = ['loggi','anjun','jt','imile','shopee'];
+    const cores  = { loggi:'#12A5E8', anjun:'#22C55E', jt:'#EF4444', imile:'#9333EA', shopee:'#F97316', cep:'#06b6d4' };
+    const nomes  = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee', cep:'CEP' };
+    const transp = ['loggi','anjun','jt','imile','shopee','cep'];
     const posMedal   = ['🥇','🥈','🥉'];
     const posAccent  = ['#eab308','#94a3b8','#b45309'];
     const posBg      = ['rgba(234,179,8,0.09)','rgba(148,163,184,0.07)','rgba(180,83,9,0.08)','rgba(58,134,255,0.03)'];
@@ -103,7 +103,7 @@ function _desempRenderizar(rows, periodo) {
                     </div>
                     <div class="rank-total">
                         <div class="rank-num">${u.total.toLocaleString('pt-BR')}</div>
-                        <div class="rank-lbl">pacotes</div>
+                        <div class="rank-lbl">bipagens</div>
                     </div>
                 </div>
                 <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${pct}%"></div></div>
