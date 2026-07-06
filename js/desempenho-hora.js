@@ -96,21 +96,24 @@ function _desempHoraRenderizar(rows, comparativo, data) {
             const cmpHistQtd     = _desempHoraComparar(totalDia,  histMediaDia);
             const cmpHistMedia   = _desempHoraComparar(mediaHora, histMediaHora);
 
+            const peakHora = horasOrd.reduce((best, h) => horas[h] > horas[best] ? h : best, horasOrd[0]);
             const horasHtml = horasOrd.map(h => {
                 const qtd = horas[h];
                 const pct = Math.max((qtd / maxHora * 100), 8);
+                const isPeak = h === peakHora;
                 return `
                 <div class="dh-bar-col">
                     <div class="dh-bar-val">${qtd}</div>
                     <div class="dh-bar-track">
-                        <div class="dh-bar-fill" style="height:${pct}%"></div>
+                        <div class="dh-bar-fill${isPeak ? ' dh-bar-peak' : ''}" style="height:${pct}%"></div>
                     </div>
                     <div class="dh-bar-hour">${String(h).padStart(2, '0')}h</div>
                 </div>`;
             }).join('');
 
+            const accentColor = cmpHistQtd.classe === 'up' ? '#22c55e' : cmpHistQtd.classe === 'down' ? '#ef4444' : 'rgba(58,134,255,0.4)';
             return `
-            <div class="dh-card">
+            <div class="dh-card" style="--dh-accent:${accentColor}">
                 <div class="dh-head">
                     <div class="dh-user">
                         <div class="dh-avatar">${_desempHoraIniciais(nome)}</div>
