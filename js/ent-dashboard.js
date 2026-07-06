@@ -1,6 +1,7 @@
 // ───── ENT DASHBOARD ─────
 let _entDashValorChart  = null;
 let _entDashTranspChart = null;
+let _entDashPieChart    = null;
 let _entDashGran        = "quinzena";
 let _entGrupos          = [];
 let _entAno             = new Date().getFullYear();
@@ -48,9 +49,11 @@ function _entSelecionarChip(idx) {
     // Total a receber no período
     const totalLinha = document.getElementById("ent-dash-total-linha");
     totalLinha.style.display = "";
-    totalLinha.innerHTML = `Total a receber · ${g.label}: <strong style="color:#22c55e;font-size:15px;font-weight:700">${moedaJS(g.valor)}</strong>`;
+    totalLinha.innerHTML = `
+        <span class="ent-total-rec-lbl">${g.label} · Total a receber</span>
+        <span class="ent-total-rec-val">${moedaJS(g.valor)}</span>`;
 
-    // Update carrier cards
+    // Carrier cards com left-border colorido
     document.getElementById("ent-dash-transp-grid").innerHTML = TRANSP_DEF.map(t => {
         const v   = g[t.valKey]    || 0;
         const q   = g[t.key]       || 0;
@@ -60,10 +63,53 @@ function _entSelecionarChip(idx) {
         const badge = dlt.cls !== "flat"
             ? `<span class="lbadge ${bCls}" style="font-size:10px;padding:2px 7px">${dlt.txt}</span>`
             : "";
-        return `<div class="dash-tc">
+        return `<div class="dash-tc" style="border-left-color:${t.color}">
             <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
             <div class="dash-tc-qtd" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${moedaJS(v)}${badge}</div>
             <div class="dash-tc-sub">${q} pacotes · ${g.label}</div>
+        </div>`;
+    }).join("");
+
+    // Donut — mix de transportadoras em R$ do período selecionado
+    const totPie = TRANSP_DEF.reduce((s, t) => s + (g[t.valKey] || 0), 0);
+    const pieData = TRANSP_DEF.map(t => g[t.valKey] || 0);
+    const pieCanvas = document.getElementById("ent-dash-pie-chart");
+    if (_entDashPieChart) {
+        _entDashPieChart.data.datasets[0].data = pieData;
+        _entDashPieChart.update();
+    } else if (pieCanvas) {
+        _entDashPieChart = new Chart(pieCanvas.getContext("2d"), {
+            type: "doughnut",
+            data: {
+                labels: TRANSP_DEF.map(t => t.label),
+                datasets: [{
+                    data: pieData,
+                    backgroundColor: TRANSP_DEF.map(t => t.bg),
+                    borderColor:     TRANSP_DEF.map(t => t.color),
+                    borderWidth: 1.5, hoverOffset: 6,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: "68%",
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => {
+                        const pct = totPie ? ((ctx.raw / totPie) * 100).toFixed(1) : "0.0";
+                        return `  ${moedaJS(ctx.raw)}  (${pct}%)`;
+                    }}}
+                }
+            }
+        });
+    }
+    const legendEl = document.getElementById("ent-dash-pie-legend");
+    if (legendEl) legendEl.innerHTML = TRANSP_DEF.map(t => {
+        const v = g[t.valKey] || 0;
+        const pct = totPie ? ((v / totPie) * 100).toFixed(1) : "0.0";
+        return `<div class="dash-pie-leg">
+            <div class="dash-pie-dot" style="background:${t.color}"></div>
+            <span class="dash-pie-name">${t.label}</span>
+            <span class="dash-pie-qty">${moedaJS(v)}</span>
+            <span class="dash-pie-pct">${pct}%</span>
         </div>`;
     }).join("");
 }
@@ -285,7 +331,8 @@ function buscarEntDashboard() {
 
         // Gráfico de valor recebido
         const valCanvas = document.getElementById("ent-dash-valor-chart");
-        if (_entDashValorChart) { _entDashValorChart.destroy(); _entDashValorChart = null; }
+        if (_entDashValorChart)  { _entDashValorChart.destroy();  _entDashValorChart  = null; }
+        if (_entDashPieChart)    { _entDashPieChart.destroy();    _entDashPieChart    = null; }
         _entDashValorChart = new Chart(valCanvas.getContext("2d"), {
             type: "bar",
             data: {

@@ -1021,16 +1021,23 @@
 
                     <div class="dash-pchips" id="ent-dash-pchips"></div>
 
-                    <div id="ent-dash-total-linha" style="display:none;text-align:right;font-size:13px;color:#94a3b8;margin-bottom:8px;padding:0 2px"></div>
+                    <div id="ent-dash-total-linha" style="display:none" class="ent-total-rec"></div>
 
-                    <div class="ent-transp-grid" id="ent-dash-transp-grid"></div>
+                    <div class="dash-transp-grid" id="ent-dash-transp-grid"></div>
 
-                    <div class="dash-chart-card">
-                        <div class="dash-chart-title">Valor Recebido por Período</div>
-                        <div class="dash-chart-canvas"><canvas id="ent-dash-valor-chart"></canvas></div>
+                    <div class="dash-charts-row">
+                        <div class="dash-chart-card">
+                            <div class="dash-chart-title">Mix por Transportadora</div>
+                            <div class="dash-pie-donut"><canvas id="ent-dash-pie-chart"></canvas></div>
+                            <div class="dash-pie-legend" id="ent-dash-pie-legend"></div>
+                        </div>
+                        <div class="dash-chart-card">
+                            <div class="dash-chart-title">Valor Recebido por Período</div>
+                            <div class="dash-chart-canvas"><canvas id="ent-dash-valor-chart"></canvas></div>
+                        </div>
                     </div>
 
-                    <div class="dash-chart-card">
+                    <div class="dash-chart-card" style="margin-bottom:16px">
                         <div class="dash-chart-title">Transportadoras por Período (R$)</div>
                         <div class="dash-chart-canvas"><canvas id="ent-dash-transp-chart"></canvas></div>
                     </div>
