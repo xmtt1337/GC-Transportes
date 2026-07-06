@@ -262,32 +262,38 @@ function buscarEntDashboard() {
                 valor:    d.total_receber_num || 0,
                 mes:      d.mes,
                 quinzena: d.quinzena,
-                loggi:    d.entregues_loggi  || 0,
-                jt:       d.entregues_jt     || 0,
-                imile:    d.qtd_imile        || 0,
-                anjun:    d.entregues_anjun  || 0,
-                shopee:   d.entregues_shopee || 0,
-                loggi_v:  d.valor_loggi  || 0,
-                jt_v:     d.valor_jt     || 0,
-                imile_v:  d.valor_imile  || 0,
-                anjun_v:  d.valor_anjun  || 0,
-                shopee_v: d.valor_shopee || 0,
+                loggi:         d.entregues_loggi          || 0,
+                jt:            d.entregues_jt             || 0,
+                imile:         d.qtd_imile                || 0,
+                anjun:         d.entregues_anjun          || 0,
+                shopee:        d.entregues_shopee         || 0,
+                total_express: d.entregues_total_express  || 0,
+                jadlog:        d.entregues_jadlog         || 0,
+                loggi_v:       d.valor_loggi  || 0,
+                jt_v:          d.valor_jt     || 0,
+                imile_v:       d.valor_imile  || 0,
+                anjun_v:       d.valor_anjun  || 0,
+                shopee_v:      d.valor_shopee || 0,
+                total_express_v: 0,
+                jadlog_v:        0,
             }));
         } else {
             const byMes = {};
             dados.forEach(d => {
-                if (!byMes[d.mes]) byMes[d.mes] = { label: MES_NOMES[d.mes].slice(0, 3), valor: 0, mes: d.mes, quinzena: 0, loggi: 0, jt: 0, imile: 0, anjun: 0, shopee: 0, loggi_v: 0, jt_v: 0, imile_v: 0, anjun_v: 0, shopee_v: 0 };
-                byMes[d.mes].valor   += d.total_receber_num  || 0;
-                byMes[d.mes].loggi   += d.entregues_loggi   || 0;
-                byMes[d.mes].jt      += d.entregues_jt      || 0;
-                byMes[d.mes].imile   += d.qtd_imile         || 0;
-                byMes[d.mes].anjun   += d.entregues_anjun   || 0;
-                byMes[d.mes].shopee  += d.entregues_shopee  || 0;
-                byMes[d.mes].loggi_v += d.valor_loggi  || 0;
-                byMes[d.mes].jt_v    += d.valor_jt     || 0;
-                byMes[d.mes].imile_v += d.valor_imile  || 0;
-                byMes[d.mes].anjun_v += d.valor_anjun  || 0;
-                byMes[d.mes].shopee_v+= d.valor_shopee || 0;
+                if (!byMes[d.mes]) byMes[d.mes] = { label: MES_NOMES[d.mes].slice(0, 3), valor: 0, mes: d.mes, quinzena: 0, loggi: 0, jt: 0, imile: 0, anjun: 0, shopee: 0, total_express: 0, jadlog: 0, loggi_v: 0, jt_v: 0, imile_v: 0, anjun_v: 0, shopee_v: 0, total_express_v: 0, jadlog_v: 0 };
+                byMes[d.mes].valor         += d.total_receber_num        || 0;
+                byMes[d.mes].loggi         += d.entregues_loggi         || 0;
+                byMes[d.mes].jt            += d.entregues_jt            || 0;
+                byMes[d.mes].imile         += d.qtd_imile               || 0;
+                byMes[d.mes].anjun         += d.entregues_anjun         || 0;
+                byMes[d.mes].shopee        += d.entregues_shopee        || 0;
+                byMes[d.mes].total_express += d.entregues_total_express || 0;
+                byMes[d.mes].jadlog        += d.entregues_jadlog        || 0;
+                byMes[d.mes].loggi_v       += d.valor_loggi  || 0;
+                byMes[d.mes].jt_v          += d.valor_jt     || 0;
+                byMes[d.mes].imile_v       += d.valor_imile  || 0;
+                byMes[d.mes].anjun_v       += d.valor_anjun  || 0;
+                byMes[d.mes].shopee_v      += d.valor_shopee || 0;
             });
             grupos = Object.keys(byMes).sort((a, b) => Number(a) - Number(b)).map(m => byMes[m]);
         }
@@ -339,7 +345,7 @@ function buscarEntDashboard() {
                 labels,
                 datasets: [{ label: "Total a Receber", data: grupos.map(g => g.valor),
                     backgroundColor: "rgba(58,134,255,0.7)", borderColor: "#3a86ff",
-                    borderWidth: 1, borderRadius: 7 }]
+                    borderWidth: 1 }]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
@@ -368,11 +374,12 @@ function buscarEntDashboard() {
                 .then(r => r.ok ? r.json() : null).catch(() => null)
             )).then(results => {
                 results.filter(Boolean).forEach(p => {
-                    g.loggi_v  += _parseMoeda(p.valor_loggi);
-                    g.jt_v     += _parseMoeda(p.valor_jt);
-                    g.imile_v  += _parseMoeda(p.valor_imile);
-                    g.anjun_v  += _parseMoeda(p.valor_anjun);
-                    g.shopee_v += _parseMoeda(p.valor_shopee);
+                    g.loggi_v         += _parseMoeda(p.valor_loggi);
+                    g.jt_v            += _parseMoeda(p.valor_jt);
+                    g.imile_v         += _parseMoeda(p.valor_imile);
+                    g.anjun_v         += _parseMoeda(p.valor_anjun);
+                    g.shopee_v        += _parseMoeda(p.valor_shopee);
+                    g.total_express_v += _parseMoeda(p.valor_total_express);
                 });
             });
         })).then(() => {
@@ -392,7 +399,6 @@ function buscarEntDashboard() {
                         backgroundColor: t.bg,
                         borderColor: t.color,
                         borderWidth: 1,
-                        borderRadius: 5,
                     }))
                 },
                 options: {

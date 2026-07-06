@@ -99,11 +99,13 @@ function _admSelecionarChip(idx) {
 }
 
 const TRANSP_DEF = [
-    { key: "loggi",  valKey: "loggi_v",  label: "Loggi",  color: "#01b4f7", bg: "rgba(1,180,247,0.7)"   },
-    { key: "jt",     valKey: "jt_v",     label: "J&T",    color: "#cc4138", bg: "rgba(204,65,56,0.7)"   },
-    { key: "imile",  valKey: "imile_v",  label: "iMile",  color: "#6b80ff", bg: "rgba(107,128,255,0.7)"  },
-    { key: "anjun",  valKey: "anjun_v",  label: "Anjun",  color: "#009c21", bg: "rgba(0,156,33,0.7)"    },
-    { key: "shopee", valKey: "shopee_v", label: "Shopee", color: "#ed4d2d", bg: "rgba(237,77,45,0.7)"   },
+    { key: "loggi",         valKey: "loggi_v",         label: "Loggi",     color: "#01b4f7", bg: "rgba(1,180,247,0.7)"    },
+    { key: "jt",            valKey: "jt_v",            label: "J&T",       color: "#cc4138", bg: "rgba(204,65,56,0.7)"    },
+    { key: "imile",         valKey: "imile_v",         label: "iMile",     color: "#6b80ff", bg: "rgba(107,128,255,0.7)"  },
+    { key: "anjun",         valKey: "anjun_v",         label: "Anjun",     color: "#009c21", bg: "rgba(0,156,33,0.7)"     },
+    { key: "shopee",        valKey: "shopee_v",        label: "Shopee",    color: "#ed4d2d", bg: "rgba(237,77,45,0.7)"    },
+    { key: "total_express", valKey: "total_express_v", label: "T.Express", color: "#f59e0b", bg: "rgba(245,158,11,0.7)"   },
+    { key: "jadlog",        valKey: "jadlog_v",        label: "JadLog",    color: "#e8340a", bg: "rgba(232,52,10,0.7)"    },
 ];
 const MES_NOMES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
@@ -176,22 +178,26 @@ function buscarDashboard() {
                 total:    d.total_entregues || 0,
                 mes:      d.mes,
                 quinzena: d.quinzena,
-                loggi:    d.loggi  ? d.loggi.qtd  : 0,
-                jt:       d.jt     ? d.jt.qtd     : 0,
-                imile:    d.imile  ? d.imile.qtd  : 0,
-                anjun:    d.anjun  ? d.anjun.qtd  : 0,
-                shopee:   d.shopee ? d.shopee.qtd : 0,
+                loggi:         d.loggi         ? d.loggi.qtd         : 0,
+                jt:            d.jt            ? d.jt.qtd            : 0,
+                imile:         d.imile         ? d.imile.qtd         : 0,
+                anjun:         d.anjun         ? d.anjun.qtd         : 0,
+                shopee:        d.shopee        ? d.shopee.qtd        : 0,
+                total_express: d.total_express ? d.total_express.qtd : 0,
+                jadlog:        d.jadlog        ? d.jadlog.qtd        : 0,
             }));
         } else {
             const byMes = {};
             dados.forEach(d => {
-                if (!byMes[d.mes]) byMes[d.mes] = { label: MES_NOMES[d.mes].slice(0, 3), total: 0, mes: d.mes, quinzena: 0, loggi: 0, jt: 0, imile: 0, anjun: 0, shopee: 0 };
-                byMes[d.mes].total  += d.total_entregues || 0;
-                byMes[d.mes].loggi  += d.loggi  ? d.loggi.qtd  : 0;
-                byMes[d.mes].jt     += d.jt     ? d.jt.qtd     : 0;
-                byMes[d.mes].imile  += d.imile  ? d.imile.qtd  : 0;
-                byMes[d.mes].anjun  += d.anjun  ? d.anjun.qtd  : 0;
-                byMes[d.mes].shopee += d.shopee ? d.shopee.qtd : 0;
+                if (!byMes[d.mes]) byMes[d.mes] = { label: MES_NOMES[d.mes].slice(0, 3), total: 0, mes: d.mes, quinzena: 0, loggi: 0, jt: 0, imile: 0, anjun: 0, shopee: 0, total_express: 0, jadlog: 0 };
+                byMes[d.mes].total         += d.total_entregues || 0;
+                byMes[d.mes].loggi         += d.loggi         ? d.loggi.qtd         : 0;
+                byMes[d.mes].jt            += d.jt            ? d.jt.qtd            : 0;
+                byMes[d.mes].imile         += d.imile         ? d.imile.qtd         : 0;
+                byMes[d.mes].anjun         += d.anjun         ? d.anjun.qtd         : 0;
+                byMes[d.mes].shopee        += d.shopee        ? d.shopee.qtd        : 0;
+                byMes[d.mes].total_express += d.total_express ? d.total_express.qtd : 0;
+                byMes[d.mes].jadlog        += d.jadlog        ? d.jadlog.qtd        : 0;
             });
             grupos = Object.keys(byMes).sort((a, b) => Number(a) - Number(b)).map(m => byMes[m]);
         }
@@ -223,7 +229,7 @@ function buscarDashboard() {
                     data: grupos.map(g => g[t.key] || 0),
                     backgroundColor: t.bg,
                     borderColor: t.color,
-                    borderWidth: 1, borderRadius: 4,
+                    borderWidth: 1,
                 }))
             },
             options: {

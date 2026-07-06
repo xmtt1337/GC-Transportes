@@ -451,7 +451,7 @@ function _renderVdDash(raw) {
     _vdValorChart = new Chart(document.getElementById("vd-valor-chart").getContext("2d"), {
         type: "bar",
         data: { labels, datasets: [{ label: "Valor Líquido", data: grupos.map(g => g.valor),
-            backgroundColor: "rgba(34,197,94,0.7)", borderColor: "#22c55e", borderWidth: 1, borderRadius: 7 }] },
+            backgroundColor: "rgba(34,197,94,0.7)", borderColor: "#22c55e", borderWidth: 1 }] },
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false },
