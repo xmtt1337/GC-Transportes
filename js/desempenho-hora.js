@@ -35,7 +35,7 @@ async function _desempHoraCarregar() {
             emptyEl.innerText = 'Nenhuma bipagem nesta data.';
             return;
         }
-        _desempHoraRenderizar(body.horas, body.comparativo || [], data);
+        _desempHoraRenderizar(body.horas, body.comparativo || [], body.transp || [], data);
     } catch (err) {
         emptyEl.innerText = 'Erro: ' + err.message;
     }
@@ -56,13 +56,57 @@ function _desempHoraIniciais(nome) {
     return ini.toUpperCase();
 }
 
-function _desempHoraRenderizar(rows, comparativo, data) {
+function _desempHoraDonut(segmentos, totalDia) {
+    const cores = { loggi:'#12A5E8', anjun:'#22C55E', jt:'#EF4444', imile:'#9333EA', shopee:'#F97316' };
+    const nomes = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee' };
+    if (!segmentos || !segmentos.length) return '';
+    const r = 28; const cx = 38; const cy = 38; const espessura = 13;
+    const circum = 2 * Math.PI * r;
+    let acum = 0;
+    const svgSegs = segmentos.map(s => {
+        const pct  = s.total / totalDia;
+        const dash = pct * circum;
+        const off  = -acum;
+        acum += dash;
+        const cor = cores[s.transportadora] || '#4a6a8a';
+        return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${cor}" stroke-width="${espessura}"
+            stroke-dasharray="${dash.toFixed(2)} ${circum.toFixed(2)}"
+            stroke-dashoffset="${off.toFixed(2)}"
+            transform="rotate(-90 ${cx} ${cy})"/>`;
+    }).join('');
+    const legend = segmentos.map(s => {
+        const cor  = cores[s.transportadora] || '#4a6a8a';
+        const pct  = ((s.total / totalDia) * 100).toFixed(0);
+        const nome = nomes[s.transportadora] || s.transportadora;
+        return `<div class="dh-donut-item">
+            <span class="dh-donut-dot" style="background:${cor}"></span>
+            <span class="dh-donut-lbl">${nome}</span>
+            <span class="dh-donut-val">${s.total}</span>
+            <span class="dh-donut-pct">${pct}%</span>
+        </div>`;
+    }).join('');
+    return `<div class="dh-donut-area">
+        <svg width="76" height="76" viewBox="0 0 76 76" style="flex-shrink:0">
+            <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="${espessura}"/>
+            ${svgSegs}
+        </svg>
+        <div class="dh-donut-legend">${legend}</div>
+    </div>`;
+}
+
+function _desempHoraRenderizar(rows, comparativo, transpRows, data) {
     const emptyEl   = document.getElementById('desemp-hora-empty');
     const contentEl = document.getElementById('desemp-hora-content');
     const listaEl   = document.getElementById('desemp-hora-lista');
 
     const compMap = {};
     comparativo.forEach(c => { compMap[c.usuario_nome] = c; });
+
+    const transpMap = {};
+    transpRows.forEach(t => {
+        if (!transpMap[t.usuario_nome]) transpMap[t.usuario_nome] = [];
+        transpMap[t.usuario_nome].push(t);
+    });
 
     // Agrupa por usuário -> { hora: total }
     const usuarios = {};
@@ -184,9 +228,12 @@ function _desempHoraRenderizar(rows, comparativo, data) {
                         <span class="dh-badge ${cmpHistMedia.classe}">${cmpHistMedia.texto} méd</span>
                     </div>
                 </div>
-                <div class="dh-bars-wrap">
-                    <div class="dh-bars">${horasHtml}</div>
-                    ${tendenciaHtml}
+                <div class="dh-bottom-row">
+                    <div class="dh-bars-wrap">
+                        <div class="dh-bars">${horasHtml}</div>
+                        ${tendenciaHtml}
+                    </div>
+                    ${_desempHoraDonut(transpMap[nome] || [], totalDia)}
                 </div>
             </div>`;
         }).join('')}`;
