@@ -416,8 +416,12 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .paj-card.negativo .paj-value { color: #ef4444; }
 
 .painel-section-title {
-    font-size: 10px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: 0.12em; color: #7a8599; margin-bottom: 10px;
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.13em; color: #334155; margin-bottom: 10px; margin-top: 4px;
+    display: flex; align-items: center; gap: 10px;
+}
+.painel-section-title::after {
+    content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.04);
 }
 
 .painel-transp {
@@ -425,14 +429,27 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 }
 .pt-card {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
-    border-radius: 14px; padding: 16px 18px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border-left-width: 3px; border-radius: 6px; padding: 14px 16px;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
-.pt-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+.pt-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
+/* Carrier accent colors */
+.pt-card-loggi  { border-left-color: #12a5e8; }
+.pt-card-jt     { border-left-color: #ef4444; }
+.pt-card-imile  { border-left-color: #9333ea; }
+.pt-card-anjun  { border-left-color: #22c55e; }
+.pt-card-shopee { border-left-color: #f97316; }
+.pt-card-te     { border-left-color: #f59e0b; }
+.pt-card-loggi  .pt-header { color: #12a5e8; border-bottom-color: rgba(18,165,232,0.15); }
+.pt-card-jt     .pt-header { color: #ef4444; border-bottom-color: rgba(239,68,68,0.15); }
+.pt-card-imile  .pt-header { color: #9333ea; border-bottom-color: rgba(147,51,234,0.15); }
+.pt-card-anjun  .pt-header { color: #22c55e; border-bottom-color: rgba(34,197,94,0.15); }
+.pt-card-shopee .pt-header { color: #f97316; border-bottom-color: rgba(249,115,22,0.15); }
+.pt-card-te     .pt-header { color: #f59e0b; border-bottom-color: rgba(245,158,11,0.15); }
 .pt-header {
-    font-size: 13px; font-weight: 700; color: #3a86ff;
-    margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(58,134,255,0.12);
-    letter-spacing: 0.03em;
+    font-size: 12px; font-weight: 700; color: #3a86ff;
+    margin-bottom: 10px; padding-bottom: 9px; border-bottom: 1px solid rgba(58,134,255,0.12);
+    letter-spacing: 0.08em; text-transform: uppercase;
 }
 .pt-row {
     display: flex; justify-content: space-between; align-items: center;
