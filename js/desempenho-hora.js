@@ -124,6 +124,8 @@ function _desempHoraRenderizar(rows, comparativo, transpRows, data) {
 
     const totalEquipe  = nomes.reduce((s, n) => s + totaisPorNome[n], 0);
     const mediaEquipe  = nomes.length > 0 ? (totalEquipe / nomes.length).toFixed(0) : 0;
+    const totalHorasEquipe = nomes.reduce((s, n) => s + ((compMap[n] || {}).hoje_horas || 0), 0);
+    const mediaHoraEquipe  = totalHorasEquipe > 0 ? (totalEquipe / totalHorasEquipe).toFixed(1) : '—';
     const dataFmt = new Date(data + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
     const rankClasse   = ['dh-rank-1', 'dh-rank-2', 'dh-rank-3'];
 
@@ -136,6 +138,10 @@ function _desempHoraRenderizar(rows, comparativo, transpRows, data) {
             <div class="dh-equipe-kpi">
                 <div class="dh-equipe-kpi-val">${mediaEquipe}</div>
                 <div class="dh-equipe-kpi-label">Média por operador</div>
+            </div>
+            <div class="dh-equipe-kpi">
+                <div class="dh-equipe-kpi-val">${mediaHoraEquipe}</div>
+                <div class="dh-equipe-kpi-label">Média/h da equipe</div>
             </div>
             <div class="dh-equipe-kpi">
                 <div class="dh-equipe-kpi-val">${nomes.length}</div>

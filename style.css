@@ -245,10 +245,9 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 
 /* Desempenho — Quantidade x Hora */
 /* Desempenho — Quantidade x Hora */
-#desemp-hora-lista { max-width: 820px; }
 
 .dh-equipe {
-    display: grid; grid-template-columns: repeat(3, 1fr);
+    display: grid; grid-template-columns: repeat(4, 1fr);
     gap: 10px; margin-bottom: 18px;
 }
 .dh-equipe-kpi {
@@ -362,7 +361,6 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 
 /* ── Ranking Desempenho ── */
 /* ── Ranking Desempenho ── */
-#desemp-ranking { max-width: 820px; }
 
 .rank-summary {
     font-size: 11px; color: var(--text-muted); font-weight: 600;
