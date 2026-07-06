@@ -136,28 +136,41 @@ function _fmt(n) {
 }
 
 function _renderPainelVideira(d) {
-    // Hero + KPI grid
+    const liqNum = d.valor_total_liquido_num || 0;
+    const desNum = parseFloat(String(d.valor_desconto||"").replace(/[^\d,\-]/g,"").replace(",",".")) || 0;
+
+    // Banner + KPI
     const cards = document.getElementById("vp-cards");
     cards.innerHTML = `
-        <div style="background:linear-gradient(135deg,rgba(34,197,94,0.09) 0%,rgba(58,134,255,0.04) 100%);border:1px solid rgba(34,197,94,0.2);border-radius:18px;padding:20px 24px;margin-bottom:18px">
-            <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Resultado Líquido do Período</div>
-            <div style="font-size:30px;font-weight:800;color:#22c55e;letter-spacing:-.5px;margin-bottom:18px">${d.valor_total_liquido || "—"}</div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-                ${[
-                    { lbl:"Total Pacotes", val:(d.qtd_pacotes_total||0).toLocaleString("pt-BR"), c:"#3a86ff" },
-                    { lbl:"Coletas",       val:(d.qtd_coletas||0).toLocaleString("pt-BR"),       c:"#f97316" },
-                    { lbl:"Valor Coletas", val:d.valor_coletas||"—",                             c:"#f97316" },
-                    { lbl:"Diária Col.",   val:d.diaria_coletas||"—",                            c:"#94a3b8" },
-                    { lbl:"Descontos",     val:d.valor_desconto||"—",                            c:"#ef4444" },
-                ].map(c => `
-                    <div style="background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:11px 16px;min-width:120px">
-                        <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${c.lbl}</div>
-                        <div style="font-size:17px;font-weight:700;color:${c.c}">${c.val}</div>
-                    </div>
-                `).join("")}
+        <div class="painel-banner ${liqNum < 0 ? "banner-negativo" : "banner-positivo"}">
+            <div class="pb-left">
+                <div class="pb-eyebrow">Resultado Líquido do Período</div>
+                <div class="pb-valor">${d.valor_total_liquido || "—"}</div>
+                <div class="pb-pagamento">${d.quinzena_ref || ""}</div>
+            </div>
+            <div class="pb-divider"></div>
+            <div class="pb-right">
+                <div class="pb-ent-label">Total Pacotes</div>
+                <div class="pb-ent-valor">${(d.qtd_pacotes_total||0).toLocaleString("pt-BR")}</div>
+                <div class="pb-ent-sub">pacotes finalizados</div>
             </div>
         </div>
-        <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px;padding-left:2px">Detalhamento por Cidade</div>
+
+        <div class="painel-section-title">Adicionais</div>
+        <div class="painel-adicionais">
+            <div class="pt-card">
+                <div class="pt-header">Coletas</div>
+                <div class="pt-row"><span>Quantidade</span><span>${(d.qtd_coletas||0).toLocaleString("pt-BR")} coletas</span></div>
+                <div class="pt-row"><span>Valor</span><span>${d.valor_coletas||"—"}</span></div>
+                <div class="pt-row"><span>Diária</span><span>${d.diaria_coletas||"—"}</span></div>
+            </div>
+            <div class="paj-card ${desNum > 0 ? "negativo" : ""}">
+                <div class="paj-label">Descontos</div>
+                <div class="paj-value">${d.valor_desconto||"R$ 0,00"}</div>
+            </div>
+        </div>
+
+        <div class="painel-section-title">Detalhamento por Cidade</div>
     `;
 
     // Tabela de cidades
@@ -207,13 +220,13 @@ function _renderPainelVideira(d) {
     const vpValCards = document.getElementById("vp-val-cards");
     if (vpValCards) {
         vpValCards.innerHTML = `
-            <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px;padding-left:2px">Valores por Transportadora</div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div class="painel-section-title">Transportadoras</div>
+            <div class="painel-transp">
                 ${transp.map(t => `
-                    <div style="flex:1;min-width:140px;background:${t.bg};border:1px solid ${t.cor}33;border-radius:14px;padding:14px 16px">
-                        <div style="font-size:11px;font-weight:600;color:${t.cor};text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${t.nome}</div>
-                        <div style="font-size:18px;font-weight:700;color:#e2e8f0;line-height:1">${t.val || "—"}</div>
-                        <div style="font-size:11px;color:#64748b;margin-top:5px">${_fmt(t.qtd)} pacotes</div>
+                    <div class="pt-card">
+                        <div class="pt-header" style="color:${t.cor}">${t.nome}</div>
+                        <div class="pt-row"><span>Valor</span><span>${t.val || "—"}</span></div>
+                        <div class="pt-row"><span>Pacotes</span><span>${_fmt(t.qtd)}</span></div>
                     </div>
                 `).join("")}
             </div>
