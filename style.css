@@ -244,49 +244,72 @@ input.fech-select[type="date"] {
 input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
 
 /* Desempenho — Quantidade x Hora */
+/* Desempenho — Quantidade x Hora */
+.dh-equipe {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.dh-equipe-kpi {
+    flex: 1; min-width: 120px;
+    background: var(--surface-2); border: 1px solid rgba(58,134,255,0.18);
+    border-radius: var(--radius-sm); padding: 12px 16px;
+}
+.dh-equipe-kpi-val { font-size: 24px; font-weight: 700; color: #f1f5f9; line-height: 1; }
+.dh-equipe-kpi-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; }
+
 .dh-summary {
     font-size: 12px; color: var(--text-muted); font-weight: 600;
-    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px;
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px;
 }
 .dh-card {
     background: linear-gradient(140deg, var(--dh-bg, rgba(58,134,255,0.05)) 0%, rgba(11,16,26,0.95) 55%);
     border: 1px solid rgba(255,255,255,0.06);
     border-left: 3px solid var(--dh-accent, rgba(58,134,255,0.35));
-    padding: 18px 22px; margin-bottom: 12px;
-    box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+    border-radius: var(--radius); padding: 18px 22px; margin-bottom: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
 .dh-head {
     display: flex; align-items: center; justify-content: space-between;
     flex-wrap: wrap; gap: 16px; margin-bottom: 14px;
 }
 .dh-user { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.dh-rank {
+    font-size: 11px; font-weight: 800; color: var(--text-muted);
+    min-width: 22px; text-align: center; letter-spacing: -.02em;
+}
+.dh-rank.dh-rank-1 { color: #f59e0b; }
+.dh-rank.dh-rank-2 { color: #94a3b8; }
+.dh-rank.dh-rank-3 { color: #b87333; }
 .dh-avatar {
     width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
     background: linear-gradient(135deg, #2a72e8, #3a86ff); color: #fff;
     font-size: 14px; font-weight: 700; display: flex;
     align-items: center; justify-content: center;
-    box-shadow: 0 4px 14px rgba(58,134,255,0.45);
+    box-shadow: 0 4px 14px rgba(58,134,255,0.4);
 }
 .dh-name {
     font-size: 14.5px; font-weight: 700; color: var(--text);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.dh-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-.dh-stats { display: flex; align-items: center; gap: 26px; flex-shrink: 0; }
-.dh-stat { text-align: right; min-width: 50px; }
-.dh-stat-value { font-size: 22px; font-weight: 700; color: #f1f5f9; line-height: 1; }
+.dh-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dh-peak-pill {
+    font-size: 10px; font-weight: 700; color: #4ade80;
+    background: rgba(34,197,94,0.1); border-radius: 99px; padding: 1px 7px;
+}
+.dh-stats { display: flex; align-items: center; gap: 24px; flex-shrink: 0; }
+.dh-stat { text-align: right; min-width: 52px; }
+.dh-stat-value { font-size: 26px; font-weight: 700; color: #f1f5f9; line-height: 1; }
 .dh-stat-label {
     font-size: 10px; color: var(--text-muted); text-transform: uppercase;
     letter-spacing: .04em; margin-top: 4px;
 }
 .dh-compare {
-    display: flex; flex-wrap: wrap; gap: 8px 28px;
-    padding: 10px 14px; background: rgba(0,0,0,0.35);
-    border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius-sm);
-    margin-bottom: 16px;
+    display: flex; flex-wrap: wrap; gap: 6px 28px;
+    padding: 9px 14px; background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-sm);
+    margin-bottom: 14px;
 }
 .dh-compare-row { display: flex; align-items: center; gap: 7px; font-size: 11px; }
-.dh-compare-label { color: var(--text-dim); font-weight: 600; min-width: 90px; }
+.dh-compare-label { color: var(--text-dim); font-weight: 600; min-width: 116px; }
 .dh-badge {
     display: inline-flex; align-items: center; gap: 3px;
     font-size: 11px; font-weight: 700;
@@ -294,27 +317,35 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .dh-badge.up { color: #22c55e; }
 .dh-badge.down { color: #ef4444; }
 .dh-badge.neutral { color: var(--text-dim); font-weight: 600; }
-.dh-bars { display: flex; gap: 6px; }
-.dh-bar-col { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.dh-bars-wrap { display: flex; flex-direction: column; gap: 8px; }
+.dh-trend {
+    font-size: 10.5px; font-weight: 700; text-align: right;
+}
+.dh-trend.up { color: #22c55e; }
+.dh-trend.down { color: #64748b; }
+.dh-trend.flat { color: var(--text-dim); }
+.dh-bars { display: flex; gap: 5px; }
+.dh-bar-col { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; min-width: 0; }
 .dh-bar-val { font-size: 10px; color: #cbd5e1; font-weight: 600; }
 .dh-bar-track {
-    width: 100%; height: 96px; display: flex; align-items: flex-end;
-    background: rgba(0,0,0,0.3); overflow: hidden;
+    width: 100%; height: 80px; display: flex; align-items: flex-end;
+    background: rgba(0,0,0,0.28); border-radius: 5px; overflow: hidden;
 }
 .dh-bar-fill {
     width: 100%; background: linear-gradient(180deg, #60a5fa 0%, #1d5fc9 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+    border-radius: 4px 4px 0 0; box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
 }
 .dh-bar-fill.dh-bar-peak {
     background: linear-gradient(180deg, #4ade80 0%, #15803d 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 0 18px rgba(34,197,94,0.4);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 0 14px rgba(34,197,94,0.35);
 }
 .dh-bar-hour { font-size: 9px; color: var(--text-dim); font-weight: 600; }
 
 @media (max-width: 680px) {
     .dh-head { flex-direction: column; align-items: flex-start; }
-    .dh-stats { width: 100%; justify-content: flex-start; gap: 30px; }
+    .dh-stats { width: 100%; justify-content: flex-start; gap: 28px; }
     .dh-stat { text-align: left; }
+    .dh-equipe-kpi-val { font-size: 20px; }
 }
 
 /* ── Ranking Desempenho ── */

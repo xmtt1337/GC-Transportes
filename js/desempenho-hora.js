@@ -71,21 +71,41 @@ function _desempHoraRenderizar(rows, comparativo, data) {
         usuarios[r.usuario_nome][r.hora] = r.total;
     });
 
-    const nomes = Object.keys(usuarios).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    // Ordena por total descrescente (melhor operador primeiro)
+    const totaisPorNome = {};
+    Object.keys(usuarios).forEach(n => {
+        totaisPorNome[n] = Object.values(usuarios[n]).reduce((a, b) => a + b, 0);
+    });
+    const nomes = Object.keys(usuarios).sort((a, b) => totaisPorNome[b] - totaisPorNome[a]);
 
+    const totalEquipe  = nomes.reduce((s, n) => s + totaisPorNome[n], 0);
+    const mediaEquipe  = nomes.length > 0 ? (totalEquipe / nomes.length).toFixed(0) : 0;
     const dataFmt = new Date(data + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+    const rankClasse   = ['dh-rank-1', 'dh-rank-2', 'dh-rank-3'];
 
     listaEl.innerHTML = `
-        <div class="dh-summary">${dataFmt} · ${nomes.length} operador${nomes.length !== 1 ? 'es' : ''}</div>
-        ${nomes.map(nome => {
+        <div class="dh-equipe">
+            <div class="dh-equipe-kpi">
+                <div class="dh-equipe-kpi-val">${totalEquipe.toLocaleString('pt-BR')}</div>
+                <div class="dh-equipe-kpi-label">Total da equipe</div>
+            </div>
+            <div class="dh-equipe-kpi">
+                <div class="dh-equipe-kpi-val">${mediaEquipe}</div>
+                <div class="dh-equipe-kpi-label">Média por operador</div>
+            </div>
+            <div class="dh-equipe-kpi">
+                <div class="dh-equipe-kpi-val">${nomes.length}</div>
+                <div class="dh-equipe-kpi-label">Operador${nomes.length !== 1 ? 'es' : ''}</div>
+            </div>
+        </div>
+        <div class="dh-summary">${dataFmt}</div>
+        ${nomes.map((nome, idx) => {
             const horas    = usuarios[nome];
-            // Só mostra as horas que de fato tiveram bipagem, sem preencher horas vazias
             const horasOrd = Object.keys(horas).map(Number).sort((a, b) => a - b);
-            const totalDia = Object.values(horas).reduce((a, b) => a + b, 0);
+            const totalDia = totaisPorNome[nome];
             const maxHora  = Math.max(...Object.values(horas), 1);
 
             const c = compMap[nome] || {};
-            // Média por hora considera apenas o intervalo entre a primeira e a última bipagem do dia
             const mediaHora       = c.hoje_horas   > 0 ? totalDia       / c.hoje_horas   : 0;
             const ultimaMediaHora = c.ultimo_horas > 0 ? c.ultimo_total / c.ultimo_horas : null;
             const histMediaDia    = c.hist_dias    > 0 ? c.hist_total   / c.hist_dias    : null;
@@ -96,10 +116,22 @@ function _desempHoraRenderizar(rows, comparativo, data) {
             const cmpHistQtd     = _desempHoraComparar(totalDia,  histMediaDia);
             const cmpHistMedia   = _desempHoraComparar(mediaHora, histMediaHora);
 
+            // Tendência: compara média da primeira metade do turno vs segunda metade
+            let tendenciaHtml = '';
+            if (horasOrd.length >= 3) {
+                const meio      = Math.floor(horasOrd.length / 2);
+                const mediaIni  = horasOrd.slice(0, meio).reduce((s, h) => s + horas[h], 0) / meio;
+                const mediaFim  = horasOrd.slice(-meio).reduce((s, h) => s + horas[h], 0) / meio;
+                const diffPct   = ((mediaFim - mediaIni) / mediaIni) * 100;
+                if (diffPct > 5)       tendenciaHtml = `<span class="dh-trend up">▲ acelerando ${diffPct.toFixed(0)}%</span>`;
+                else if (diffPct < -5) tendenciaHtml = `<span class="dh-trend down">▼ desacelerando ${Math.abs(diffPct).toFixed(0)}%</span>`;
+                else                   tendenciaHtml = `<span class="dh-trend flat">→ ritmo estável</span>`;
+            }
+
             const peakHora = horasOrd.reduce((best, h) => horas[h] > horas[best] ? h : best, horasOrd[0]);
             const horasHtml = horasOrd.map(h => {
-                const qtd = horas[h];
-                const pct = Math.max((qtd / maxHora * 100), 8);
+                const qtd    = horas[h];
+                const pct    = Math.max((qtd / maxHora * 100), 8);
                 const isPeak = h === peakHora;
                 return `
                 <div class="dh-bar-col">
@@ -113,14 +145,20 @@ function _desempHoraRenderizar(rows, comparativo, data) {
 
             const accentColor = cmpHistQtd.classe === 'up' ? '#22c55e' : cmpHistQtd.classe === 'down' ? '#ef4444' : 'rgba(58,134,255,0.4)';
             const bgColor     = cmpHistQtd.classe === 'up' ? 'rgba(34,197,94,0.07)' : cmpHistQtd.classe === 'down' ? 'rgba(239,68,68,0.07)' : 'rgba(58,134,255,0.05)';
+            const rankLabel   = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`;
+
             return `
             <div class="dh-card" style="--dh-accent:${accentColor};--dh-bg:${bgColor}">
                 <div class="dh-head">
                     <div class="dh-user">
+                        <span class="dh-rank ${rankClasse[idx] || ''}">${rankLabel}</span>
                         <div class="dh-avatar">${_desempHoraIniciais(nome)}</div>
                         <div style="min-width:0">
                             <div class="dh-name">${nome}</div>
-                            <div class="dh-sub">${c.hoje_horas ? c.hoje_horas + 'h ativas' : '—'}</div>
+                            <div class="dh-sub">
+                                ${c.hoje_horas ? c.hoje_horas + 'h ativas' : '—'}
+                                <span class="dh-peak-pill">⚡ pico ${String(peakHora).padStart(2,'0')}h</span>
+                            </div>
                         </div>
                     </div>
                     <div class="dh-stats">
@@ -146,7 +184,10 @@ function _desempHoraRenderizar(rows, comparativo, data) {
                         <span class="dh-badge ${cmpHistMedia.classe}">${cmpHistMedia.texto} méd</span>
                     </div>
                 </div>
-                <div class="dh-bars">${horasHtml}</div>
+                <div class="dh-bars-wrap">
+                    <div class="dh-bars">${horasHtml}</div>
+                    ${tendenciaHtml}
+                </div>
             </div>`;
         }).join('')}`;
 
