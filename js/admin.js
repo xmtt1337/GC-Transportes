@@ -196,12 +196,13 @@ function renderHomeActions(role) {
     }
 
     container.innerHTML = defs.map(d => `
-        <div class="home-action-card" onclick="${d.fn}">
-            <div class="hac-icon"><svg viewBox="0 0 24 24">${d.icon}</svg></div>
+        <div class="home-action-card" style="--ac:${d.color};--ibg:${d.ibg}" onclick="${d.fn}">
+            <div class="hac-icon" style="background:${d.ibg}"><svg viewBox="0 0 24 24">${d.icon}</svg></div>
             <div class="hac-body">
                 <div class="hac-title">${d.title}</div>
                 <div class="hac-desc">${d.desc}</div>
             </div>
+            <div class="hac-go">Abrir →</div>
         </div>
     `).join("");
 
@@ -381,16 +382,6 @@ function _carregarHomeVideira() {
                             <div>
                                 <div class="adm-kpi-num" style="color:#f97316">${data.qtd_coletas ? Number(data.qtd_coletas).toLocaleString("pt-BR") : "—"}</div>
                                 <div class="adm-kpi-lbl">Coletas</div>
-                            </div>
-                        </div>
-                        <div class="adm-kpi-sep"></div>
-                        <div class="adm-kpi-item clickable" onclick="abrirVideiraPainel(event)">
-                            <div class="adm-kpi-icon" style="background:rgba(167,139,250,0.12)">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                            </div>
-                            <div>
-                                <div class="adm-kpi-num" style="color:#a78bfa;font-size:14px">Abrir →</div>
-                                <div class="adm-kpi-lbl">Ver Fechamento</div>
                             </div>
                         </div>
                     </div>
