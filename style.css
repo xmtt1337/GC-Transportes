@@ -342,15 +342,15 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .dh-bar-hour { font-size: 9px; color: var(--text-dim); font-weight: 600; }
 .dh-donut-area {
     flex: 1; min-width: 0; display: flex; align-items: center;
-    gap: 14px; padding-left: 8px;
-    border-left: 1px solid rgba(255,255,255,0.05);
+    justify-content: center; gap: 28px; padding-left: 8px;
+    border-left: 1px solid rgba(255,255,255,0.05); align-self: stretch;
 }
-.dh-donut-legend { display: flex; flex-direction: column; gap: 5px; }
-.dh-donut-item { display: flex; align-items: center; gap: 6px; }
-.dh-donut-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.dh-donut-lbl { font-size: 11px; color: var(--text-muted); min-width: 34px; }
-.dh-donut-val { font-size: 11px; font-weight: 700; color: #cbd5e1; }
-.dh-donut-pct { font-size: 10px; color: var(--text-dim); margin-left: 2px; }
+.dh-donut-legend { display: flex; flex-direction: column; gap: 6px; }
+.dh-donut-item { display: flex; align-items: center; gap: 7px; }
+.dh-donut-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dh-donut-lbl { font-size: 12px; color: var(--text-muted); min-width: 42px; }
+.dh-donut-val { font-size: 12px; font-weight: 700; color: #cbd5e1; min-width: 30px; text-align: right; }
+.dh-donut-pct { font-size: 11px; color: var(--text-dim); margin-left: 4px; }
 
 @media (max-width: 680px) {
     .dh-equipe { grid-template-columns: repeat(2, 1fr); }

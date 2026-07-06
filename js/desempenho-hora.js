@@ -60,7 +60,7 @@ function _desempHoraDonut(segmentos, totalDia) {
     const cores = { loggi:'#12A5E8', anjun:'#22C55E', jt:'#EF4444', imile:'#9333EA', shopee:'#F97316' };
     const nomes = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee' };
     if (!segmentos || !segmentos.length) return '';
-    const r = 28; const cx = 38; const cy = 38; const espessura = 13;
+    const r = 41; const cx = 56; const cy = 56; const espessura = 19;
     const circum = 2 * Math.PI * r;
     let acum = 0;
     const svgSegs = segmentos.map(s => {
@@ -86,7 +86,7 @@ function _desempHoraDonut(segmentos, totalDia) {
         </div>`;
     }).join('');
     return `<div class="dh-donut-area">
-        <svg width="76" height="76" viewBox="0 0 76 76" style="flex-shrink:0">
+        <svg width="112" height="112" viewBox="0 0 112 112" style="flex-shrink:0">
             <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="${espessura}"/>
             ${svgSegs}
         </svg>
