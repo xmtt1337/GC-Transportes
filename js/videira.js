@@ -263,9 +263,17 @@ function _renderPainelVideira(d) {
     document.getElementById("vp-content").style.display = "";
 }
 
+function _refToNomeArquivo(ref) {
+    const meses = {jan:"Janeiro",fev:"Fevereiro",mar:"Marco",abr:"Abril",mai:"Maio",jun:"Junho",jul:"Julho",ago:"Agosto",set:"Setembro",out:"Outubro",nov:"Novembro",dez:"Dezembro"};
+    const m = String(ref || "").trim().match(/^Q([12])([A-Za-z]{3})/i);
+    if (!m) return ref || "Periodo";
+    const nome = meses[m[2].toLowerCase()] || m[2];
+    return `Q${m[1]}_${nome}_${new Date().getFullYear()}`;
+}
+
 function _baixarExtraviosVdXlsx() {
     const lista   = window._vdExtraviosLista   || [];
-    const periodo = window._vdExtraviosPeriodo || "Extravios";
+    const periodo = window._vdExtraviosPeriodo || "";
     if (!lista.length) return;
 
     const linhas = lista.map(e => ({
@@ -279,7 +287,7 @@ function _baixarExtraviosVdXlsx() {
     const ws  = XLSX.utils.json_to_sheet(linhas);
     const wb  = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Extravios");
-    XLSX.writeFile(wb, `Extravios_${periodo.replace(/\//g, "-")}.xlsx`);
+    XLSX.writeFile(wb, `Extravios_Videira_${_refToNomeArquivo(periodo)}.xlsx`);
 }
 
 // ───── VIDEIRA — DASHBOARD ─────
