@@ -301,6 +301,17 @@ let _vdGrupos      = [];
 let _vdSelIdx      = -1;
 let _vdValorChart  = null;
 let _vdTranspChart = null;
+let _vdPieChart    = null;
+
+const VD_TRANSP_DEF = [
+    { key: "shopee",        valKey: "shopee_v",        label: "Shopee",    color: "#f97316", bg: "rgba(249,115,22,0.7)"  },
+    { key: "imile",         valKey: "imile_v",         label: "iMile",     color: "#9333ea", bg: "rgba(147,51,234,0.7)"  },
+    { key: "anjun",         valKey: "anjun_v",         label: "Anjun",     color: "#22c55e", bg: "rgba(34,197,94,0.7)"   },
+    { key: "jt",            valKey: "jt_v",            label: "J&T",       color: "#ef4444", bg: "rgba(239,68,68,0.7)"   },
+    { key: "loggi",         valKey: "loggi_v",         label: "Loggi",     color: "#12a5e8", bg: "rgba(18,165,232,0.7)"  },
+    { key: "total_express", valKey: "total_express_v", label: "T.Express", color: "#f59e0b", bg: "rgba(245,158,11,0.7)"  },
+    { key: "jadlog",        valKey: "jadlog_v",        label: "JadLog",    color: "#e8340a", bg: "rgba(232,52,10,0.7)"   },
+];
 
 function abrirVideiraDash(event) {
     if (event) event.preventDefault();
@@ -354,6 +365,7 @@ function _buscarVideiraDash() {
                     jt:             tq.jt             || 0, jt_v:             _pmoedaVd(tv.jt),
                     loggi:          tq.loggi          || 0, loggi_v:          _pmoedaVd(tv.loggi),
                     total_express:  tq.total_express  || 0, total_express_v:  _pmoedaVd(tv.total_express),
+                    jadlog:         tq.jadlog         || 0, jadlog_v:         _pmoedaVd(tv.jadlog),
                     qtd_total: d.qtd_pacotes_total || 0,
                 };
             }).filter(Boolean);
@@ -377,7 +389,7 @@ function _renderVdDash(raw) {
                 label: MES_NOMES[d.mes].slice(0, 3),
                 valor: 0, shopee: 0, shopee_v: 0, imile: 0, imile_v: 0,
                 anjun: 0, anjun_v: 0, jt: 0, jt_v: 0, loggi: 0, loggi_v: 0,
-                total_express: 0, total_express_v: 0, qtd_total: 0
+                total_express: 0, total_express_v: 0, jadlog: 0, jadlog_v: 0, qtd_total: 0
             };
             const g = byMes[k];
             g.valor         += d.valor;          g.qtd_total       += d.qtd_total;
@@ -387,6 +399,7 @@ function _renderVdDash(raw) {
             g.jt            += d.jt;             g.jt_v            += d.jt_v;
             g.loggi         += d.loggi;          g.loggi_v         += d.loggi_v;
             g.total_express += d.total_express;  g.total_express_v += d.total_express_v;
+            g.jadlog        += d.jadlog;         g.jadlog_v        += d.jadlog_v;
         });
         grupos = Object.values(byMes);
     }
@@ -425,7 +438,13 @@ function _renderVdDash(raw) {
             <div class="dpc-val">${moedaJS(g.valor)}</div>
         </div>`
     ).join("");
+
+    if (_vdPieChart) { _vdPieChart.destroy(); _vdPieChart = null; }
     _vdSelecionarChip(grupos.length - 1);
+
+    const gran2 = _vdGran === "quinzena" ? "Quinzena" : "Mês";
+    const titEl = document.getElementById("vd-transp-title");
+    if (titEl) titEl.textContent = `Transportadoras por ${gran2} (Qtd)`;
 
     // Chart: Valor Líquido por período
     if (_vdValorChart) { _vdValorChart.destroy(); _vdValorChart = null; }
@@ -445,23 +464,23 @@ function _renderVdDash(raw) {
         }
     });
 
-    // Chart: Transportadoras por período (Qtd)
+    // Chart: Transportadoras por período (Qtd) — stacked
     if (_vdTranspChart) { _vdTranspChart.destroy(); _vdTranspChart = null; }
     _vdTranspChart = new Chart(document.getElementById("vd-transp-chart").getContext("2d"), {
         type: "bar",
-        data: { labels, datasets: TRANSP_DEF.map(t => ({
+        data: { labels, datasets: VD_TRANSP_DEF.map(t => ({
             label: t.label, data: grupos.map(g => g[t.key] || 0),
-            backgroundColor: t.bg, borderColor: t.color, borderWidth: 1, borderRadius: 5,
+            backgroundColor: t.bg, borderColor: t.color, borderWidth: 1, borderRadius: 4,
         })) },
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: {
-                legend: { labels: { color: "#aab4c8", font: { size: 12 }, boxWidth: 14, padding: 16 } },
+                legend: { labels: { color: "#aab4c8", font: { size: 11 }, boxWidth: 12, padding: 14 } },
                 tooltip: { callbacks: { label: ctx => "  " + ctx.dataset.label + ": " + (ctx.raw||0).toLocaleString("pt-BR") } }
             },
             scales: {
-                x: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
-                y: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#4a6a8a", font: { size: 11 } } }
+                x: { stacked: true, grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
+                y: { stacked: true, grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#4a6a8a", font: { size: 11 } } }
             }
         }
     });
@@ -475,21 +494,63 @@ function _vdSelecionarChip(idx) {
     document.querySelectorAll("#vd-pchips .dash-pchip").forEach((el, i) =>
         el.classList.toggle("current", i === idx)
     );
-    const totalLinha = document.getElementById("vd-total-linha");
-    totalLinha.style.display = "";
-    totalLinha.innerHTML = `Valor líquido · ${g.label}: <strong style="color:#22c55e;font-size:15px;font-weight:700">${moedaJS(g.valor)}</strong>`;
-    document.getElementById("vd-transp-grid").innerHTML = TRANSP_DEF.map(t => {
+
+    // Carrier cards com borda lateral colorida
+    document.getElementById("vd-transp-grid").innerHTML = VD_TRANSP_DEF.map(t => {
         const v   = g[t.valKey] || 0;
         const q   = g[t.key]    || 0;
         const pv  = prev ? (prev[t.valKey] || 0) : null;
         const dlt = _delta(v, pv);
         const bCls = dlt.cls === "up" ? "lucro" : dlt.cls === "down" ? "preju" : "estavel";
         const badge = dlt.cls !== "flat"
-            ? `<span class="lbadge ${bCls}" style="font-size:10px;padding:2px 7px">${dlt.txt}</span>` : "";
-        return `<div class="dash-tc">
+            ? `<span class="lbadge ${bCls}">${dlt.txt.slice(2)}</span>` : "";
+        return `<div class="dash-tc" style="border-left-color:${t.color}">
             <div class="dash-tc-name" style="color:${t.color}">${t.label}</div>
-            <div class="dash-tc-qtd" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${moedaJS(v)}${badge}</div>
+            <div class="dash-tc-qtd">${moedaJS(v)} ${badge}</div>
             <div class="dash-tc-sub">${q.toLocaleString("pt-BR")} pacotes · ${g.label}</div>
+        </div>`;
+    }).join("");
+
+    // Donut — mix por qtd
+    const totPie = VD_TRANSP_DEF.reduce((s, t) => s + (g[t.key] || 0), 0);
+    const pieData = VD_TRANSP_DEF.map(t => g[t.key] || 0);
+    const pieCanvas = document.getElementById("vd-pie-chart");
+    if (_vdPieChart) {
+        _vdPieChart.data.datasets[0].data = pieData;
+        _vdPieChart.update();
+    } else if (pieCanvas) {
+        _vdPieChart = new Chart(pieCanvas.getContext("2d"), {
+            type: "doughnut",
+            data: {
+                labels: VD_TRANSP_DEF.map(t => t.label),
+                datasets: [{
+                    data: pieData,
+                    backgroundColor: VD_TRANSP_DEF.map(t => t.bg),
+                    borderColor:     VD_TRANSP_DEF.map(t => t.color),
+                    borderWidth: 1.5, hoverOffset: 6,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: "68%",
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => {
+                        const pct = totPie ? ((ctx.raw / totPie) * 100).toFixed(1) : "0.0";
+                        return `  ${ctx.raw.toLocaleString("pt-BR")} pacotes  (${pct}%)`;
+                    }}}
+                }
+            }
+        });
+    }
+    const legendEl = document.getElementById("vd-pie-legend");
+    if (legendEl) legendEl.innerHTML = VD_TRANSP_DEF.map(t => {
+        const qtd = g[t.key] || 0;
+        const pct = totPie ? ((qtd / totPie) * 100).toFixed(1) : "0.0";
+        return `<div class="dash-pie-leg">
+            <div class="dash-pie-dot" style="background:${t.color}"></div>
+            <span class="dash-pie-name">${t.label}</span>
+            <span class="dash-pie-qty">${qtd.toLocaleString("pt-BR")}</span>
+            <span class="dash-pie-pct">${pct}%</span>
         </div>`;
     }).join("");
 }

@@ -1640,9 +1640,6 @@
 <!-- TELA VIDEIRA — DASHBOARD -->
 <div id="tela-videira-dash" class="view tela-full">
     <div class="fech-header">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
-            <div style="font-size:15px;font-weight:700;color:#e2e8f0">Dashboard — Videira</div>
-        </div>
         <div class="dash-comp-toggle">
             <button class="dash-comp-btn active" id="vd-gran-q" onclick="setVdGran('quinzena')">Por quinzena</button>
             <button class="dash-comp-btn" id="vd-gran-m" onclick="setVdGran('mes')">Por mês</button>
@@ -1664,14 +1661,20 @@
                 </div>
             </div>
             <div class="dash-pchips" id="vd-pchips"></div>
-            <div id="vd-total-linha" style="display:none;text-align:right;font-size:13px;color:#94a3b8;margin-bottom:8px;padding:0 2px"></div>
-            <div class="ent-transp-grid" id="vd-transp-grid"></div>
-            <div class="dash-chart-card">
-                <div class="dash-chart-title">Valor Líquido por Período</div>
-                <div class="dash-chart-canvas"><canvas id="vd-valor-chart"></canvas></div>
+            <div class="dash-transp-grid" id="vd-transp-grid"></div>
+            <div class="dash-charts-row">
+                <div class="dash-chart-card">
+                    <div class="dash-chart-title">Mix de Transportadoras</div>
+                    <div class="dash-pie-donut"><canvas id="vd-pie-chart"></canvas></div>
+                    <div class="dash-pie-legend" id="vd-pie-legend"></div>
+                </div>
+                <div class="dash-chart-card">
+                    <div class="dash-chart-title">Valor Líquido por Período</div>
+                    <div class="dash-chart-canvas"><canvas id="vd-valor-chart"></canvas></div>
+                </div>
             </div>
             <div class="dash-chart-card">
-                <div class="dash-chart-title">Transportadoras por Período (Qtd)</div>
+                <div class="dash-chart-title" id="vd-transp-title">Transportadoras por Quinzena (Qtd)</div>
                 <div class="dash-chart-canvas"><canvas id="vd-transp-chart"></canvas></div>
             </div>
         </div>
