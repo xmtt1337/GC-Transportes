@@ -352,21 +352,26 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 
 /* ===== PAINEL ENTREGADOR ===== */
 .painel-banner {
-    border-radius: 18px; padding: 28px 32px;
-    display: flex; align-items: center; gap: 32px;
-    margin-bottom: 20px; border: 1px solid rgba(58,134,255,0.2);
+    border-radius: 14px; padding: 24px 28px;
+    display: flex; align-items: center; gap: 28px;
+    margin-bottom: 20px; border: 1px solid rgba(58,134,255,0.18);
 }
-.painel-banner.banner-positivo { background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(52,211,153,0.04)); border-color: rgba(52,211,153,0.35); }
-.painel-banner.banner-negativo { background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.04)); border-color: rgba(239,68,68,0.35); }
-
+.painel-banner.banner-positivo {
+    background: linear-gradient(140deg, rgba(34,197,94,0.11) 0%, rgba(14,22,40,0) 55%);
+    border-color: rgba(34,197,94,0.22);
+}
+.painel-banner.banner-negativo {
+    background: linear-gradient(140deg, rgba(239,68,68,0.11) 0%, rgba(14,22,40,0) 55%);
+    border-color: rgba(239,68,68,0.22);
+}
 .pb-left { flex: 1; }
-.pb-eyebrow { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: #7a8599; margin-bottom: 10px; }
-.pb-valor { font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: -0.5px; }
-.banner-positivo .pb-valor { color: #34d399; }
+.pb-eyebrow { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: #334155; font-weight: 700; margin-bottom: 9px; }
+.pb-valor { font-size: 48px; font-weight: 800; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.banner-positivo .pb-valor { color: #22c55e; }
 .banner-negativo .pb-valor { color: #ef4444; }
-.pb-sub { font-size: 12px; color: #7a8599; margin-top: 8px; }
+.pb-sub { font-size: 11px; color: #475569; margin-top: 9px; }
 .pb-ant-row { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.pb-pagamento { font-size: 11px; color: #4a6a8a; margin-top: 6px; margin-bottom: 16px; padding-left: 2px; letter-spacing: 0.01em; }
+.pb-pagamento { font-size: 11px; color: #475569; margin-top: 6px; margin-bottom: 16px; padding-left: 2px; }
 
 /* ── Card status pagamento (entregador) ── */
 .pgto-card { display: flex; align-items: center; gap: 14px; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; }
@@ -383,12 +388,12 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .pgto-pendente   .pgto-card-title { color: #3a86ff; }
 .pgto-card-sub { font-size: 12px; color: #64748b; }
 
-.pb-divider { width: 1px; background: rgba(255,255,255,0.07); align-self: stretch; margin: 4px 0; }
+.pb-divider { width: 1px; background: rgba(255,255,255,0.06); align-self: stretch; margin: 4px 0; }
 
-.pb-right { text-align: center; min-width: 160px; padding: 0 12px; }
-.pb-ent-label { font-size: 11px; color: #7a8599; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px; }
-.pb-ent-valor { font-size: 42px; font-weight: 700; color: #f1f5f9; line-height: 1; }
-.pb-ent-sub { font-size: 12px; color: #7a8599; margin-top: 8px; }
+.pb-right { text-align: center; min-width: 148px; padding: 0 12px; }
+.pb-ent-label { font-size: 9px; color: #334155; text-transform: uppercase; letter-spacing: .13em; font-weight: 700; margin-bottom: 9px; }
+.pb-ent-valor { font-size: 40px; font-weight: 800; color: #f1f5f9; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.pb-ent-sub { font-size: 11px; color: #475569; margin-top: 8px; }
 
 .painel-ajustes {
     display: grid; grid-template-columns: repeat(1, 1fr); gap: 12px; margin-bottom: 20px;
@@ -402,17 +407,23 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .pt-header-neg { color: #ef4444; }
 .pt-row span.val-neg { color: #ef4444 !important; font-weight: 600; }
 .paj-card {
-    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
-    border-radius: 14px; padding: 16px 18px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    background: rgba(14,22,40,0.8); border: 1px solid rgba(58,134,255,0.12);
+    border-radius: 10px; padding: 16px 18px;
+    transition: transform .12s ease, box-shadow .12s ease;
 }
-.paj-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
-.paj-card.positivo { border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.06); }
-.paj-card.negativo { border-color: rgba(239,68,68,0.3);  background: rgba(239,68,68,0.06); }
-.paj-label    { font-size: 11px; color: #7a8599; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
-.paj-sublabel { font-size: 10px; color: #7a8599; margin-bottom: 5px; }
-.paj-value    { font-size: 17px; font-weight: 700; color: #f1f5f9; }
-.paj-card.positivo .paj-value { color: #34d399; }
+.paj-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
+.paj-card.positivo {
+    background: linear-gradient(140deg, rgba(34,197,94,0.09) 0%, rgba(14,22,40,0.8) 60%);
+    border-color: rgba(34,197,94,0.2);
+}
+.paj-card.negativo {
+    background: linear-gradient(140deg, rgba(239,68,68,0.09) 0%, rgba(14,22,40,0.8) 60%);
+    border-color: rgba(239,68,68,0.2);
+}
+.paj-label    { font-size: 9px; color: #334155; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 6px; }
+.paj-sublabel { font-size: 10px; color: #475569; margin-bottom: 6px; }
+.paj-value    { font-size: 20px; font-weight: 800; color: #f1f5f9; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.paj-card.positivo .paj-value { color: #22c55e; }
 .paj-card.negativo .paj-value { color: #ef4444; }
 
 .painel-section-title {
@@ -453,24 +464,27 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 }
 .pt-row {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 5px 0; font-size: 13px;
+    padding: 5px 0; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.03);
 }
-.pt-row span:first-child { color: #7a8599; font-size: 12px; }
-.pt-row span:last-child  { color: #f1f5f9; font-weight: 600; font-size: 13px; }
+.pt-row:last-child { border-bottom: none; }
+.pt-row span:first-child { color: #475569; font-size: 11px; font-weight: 500; }
+.pt-row span:last-child  { color: #f1f5f9; font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
 
 .painel-ocorrencias {
     display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px;
 }
 .poc-card {
-    background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
-    border-radius: 12px; overflow: visible; position: relative;
+    background: rgba(14,22,40,0.8); border: 1px solid rgba(58,134,255,0.1);
+    border-radius: 10px; overflow: visible; position: relative;
 }
 .poc-header {
-    padding: 11px 16px; font-size: 13px; font-weight: 700; color: #f1f5f9;
-    background: rgba(18,24,38,0.96); border-bottom: 1px solid rgba(58,134,255,0.15);
-    border-radius: 12px 12px 0 0;
-    letter-spacing: 0.01em;
+    padding: 12px 16px; font-size: 9px; font-weight: 700; color: #334155;
+    letter-spacing: .13em; text-transform: uppercase;
+    background: rgba(8,14,26,0.7); border-bottom: 1px solid rgba(58,134,255,0.08);
+    border-radius: 10px 10px 0 0;
+    display: flex; align-items: center; gap: 10px;
 }
+.poc-header::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.04); }
 .poc-secao-badge {
     display: none; font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
     text-transform: uppercase; color: #3a86ff;
@@ -491,21 +505,23 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .poc-empty { text-align: center !important; color: #7a8599 !important; padding: 20px 14px !important; }
 
 /* ===== EXTRAVIOS CARDS ===== */
-.extr-lista { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; }
-.extr-vazio { padding: 20px 14px; text-align: center; color: #7a8599; font-size: 13px; }
+.extr-lista { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 14px; }
+.extr-vazio { padding: 22px 14px; text-align: center; color: #475569; font-size: 13px; }
 .extr-card {
-    background: rgba(15,15,20,0.45); border-radius: 10px;
+    background: rgba(10,16,30,0.55); border-radius: 8px;
     padding: 12px 14px; border: 1px solid rgba(58,134,255,0.08);
+    transition: border-color .12s;
 }
+.extr-card:hover { border-color: rgba(58,134,255,0.2); }
 .extr-top {
     display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 12px; margin-bottom: 6px;
+    gap: 12px; margin-bottom: 7px;
 }
-.extr-transp { font-size: 11px; font-weight: 700; color: #3a86ff; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
-.extr-codigo { font-size: 11px; color: #7a8599; font-family: monospace; word-break: break-all; text-align: right; max-width: 60%; }
-.extr-endereco { font-size: 12px; color: #aab4c8; line-height: 1.45; margin-bottom: 10px; }
+.extr-transp { font-size: 9px; font-weight: 700; color: #3a86ff; text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; }
+.extr-codigo { font-size: 10px; color: #475569; font-family: monospace; word-break: break-all; text-align: right; max-width: 60%; }
+.extr-endereco { font-size: 12px; color: #94a3b8; line-height: 1.5; margin-bottom: 10px; }
 .extr-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.extr-valor { font-size: 13px; font-weight: 600; color: #7a8599; }
+.extr-valor { font-size: 13px; font-weight: 700; color: #475569; font-variant-numeric: tabular-nums; }
 .extr-valor.val-neg { color: #ef4444; }
 .extr-wa {
     display: inline-flex; align-items: center; gap: 5px;
@@ -721,13 +737,13 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
         flex-direction: column; align-items: stretch;
         gap: 0; padding: 20px;
     }
-    .pb-valor { font-size: 36px; }
+    .pb-valor { font-size: 38px; }
     .pb-divider { display: none; }
     .pb-right {
         text-align: left; min-width: unset; padding: 14px 0 0;
-        margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.06);
+        margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.05);
     }
-    .pb-ent-valor { font-size: 32px; }
+    .pb-ent-valor { font-size: 30px; }
     .pb-ent-label { text-align: left; }
     .pb-ent-sub   { text-align: left; }
 
