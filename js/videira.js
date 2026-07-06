@@ -169,6 +169,7 @@ function _renderPainelVideira(d) {
             <td style="text-align:right;color:#22c55e">${_fmt(c.anjun)}</td>
             <td style="text-align:right;color:#ef4444">${_fmt(c.jt)}</td>
             <td style="text-align:right;color:#12a5e8">${_fmt(c.loggi)}</td>
+            <td style="text-align:right;color:#f59e0b">${_fmt(c.total_express)}</td>
             <td style="text-align:right;font-weight:600">${_fmt(c.qtd_total)}</td>
             <td style="text-align:right;color:#22c55e;font-weight:600">${c.valor_cidade}</td>
         </tr>
@@ -177,7 +178,7 @@ function _renderPainelVideira(d) {
     // Totais
     const tq = d.totais_qtd || {};
     const tv = d.totais_val || {};
-    const totalQtd = tq.total > 0 ? tq.total : ((tq.shopee||0) + (tq.imile||0) + (tq.anjun||0) + (tq.jt||0) + (tq.loggi||0));
+    const totalQtd = tq.total > 0 ? tq.total : ((tq.shopee||0) + (tq.imile||0) + (tq.anjun||0) + (tq.jt||0) + (tq.loggi||0) + (tq.total_express||0));
 
     // Tabela: footer só com QTD totais
     document.getElementById("vp-tfoot").innerHTML = `
@@ -188,6 +189,7 @@ function _renderPainelVideira(d) {
             <td style="text-align:right;font-weight:700;color:#22c55e">${_fmt(tq.anjun)}</td>
             <td style="text-align:right;font-weight:700;color:#ef4444">${_fmt(tq.jt)}</td>
             <td style="text-align:right;font-weight:700;color:#12a5e8">${_fmt(tq.loggi)}</td>
+            <td style="text-align:right;font-weight:700;color:#f59e0b">${_fmt(tq.total_express)}</td>
             <td style="text-align:right;font-weight:800;font-size:14px;color:#e2e8f0">${_fmt(totalQtd)}</td>
             <td style="text-align:right;font-weight:700;color:#22c55e">${d.soma_valor_cidades || "—"}</td>
         </tr>
@@ -195,11 +197,12 @@ function _renderPainelVideira(d) {
 
     // Cards de valor por transportadora (abaixo da tabela)
     const transp = [
-        { nome:"Shopee", cor:"#f97316", bg:"rgba(249,115,22,0.08)", qtd: tq.shopee||0, val: tv.shopee },
-        { nome:"iMile",  cor:"#9333ea", bg:"rgba(147,51,234,0.08)", qtd: tq.imile||0,  val: tv.imile  },
-        { nome:"Anjun",  cor:"#22c55e", bg:"rgba(34,197,94,0.08)",  qtd: tq.anjun||0,  val: tv.anjun  },
-        { nome:"J&T",    cor:"#ef4444", bg:"rgba(239,68,68,0.08)",  qtd: tq.jt||0,     val: tv.jt     },
-        { nome:"Loggi",  cor:"#12a5e8", bg:"rgba(18,165,232,0.08)", qtd: tq.loggi||0,  val: tv.loggi  },
+        { nome:"Shopee",        cor:"#f97316", bg:"rgba(249,115,22,0.08)",  qtd: tq.shopee||0,        val: tv.shopee        },
+        { nome:"iMile",         cor:"#9333ea", bg:"rgba(147,51,234,0.08)", qtd: tq.imile||0,          val: tv.imile         },
+        { nome:"Anjun",         cor:"#22c55e", bg:"rgba(34,197,94,0.08)",  qtd: tq.anjun||0,          val: tv.anjun         },
+        { nome:"J&T",           cor:"#ef4444", bg:"rgba(239,68,68,0.08)",  qtd: tq.jt||0,             val: tv.jt            },
+        { nome:"Loggi",         cor:"#12a5e8", bg:"rgba(18,165,232,0.08)", qtd: tq.loggi||0,          val: tv.loggi         },
+        { nome:"Total Express", cor:"#f59e0b", bg:"rgba(245,158,11,0.08)", qtd: tq.total_express||0,  val: tv.total_express },
     ];
     const vpValCards = document.getElementById("vp-val-cards");
     if (vpValCards) {
@@ -317,11 +320,12 @@ function _buscarVideiraDash() {
                     mes: p.mes, ano: p.ano, quinzena: p.quinzena,
                     label:    `${p.quinzena}Q ${MES_NOMES[p.mes].slice(0, 3)}`,
                     valor:    d.valor_total_liquido_num || 0,
-                    shopee:   tq.shopee || 0,  shopee_v: _pmoedaVd(tv.shopee),
-                    imile:    tq.imile  || 0,  imile_v:  _pmoedaVd(tv.imile),
-                    anjun:    tq.anjun  || 0,  anjun_v:  _pmoedaVd(tv.anjun),
-                    jt:       tq.jt     || 0,  jt_v:     _pmoedaVd(tv.jt),
-                    loggi:    tq.loggi  || 0,  loggi_v:  _pmoedaVd(tv.loggi),
+                    shopee:         tq.shopee         || 0, shopee_v:         _pmoedaVd(tv.shopee),
+                    imile:          tq.imile          || 0, imile_v:          _pmoedaVd(tv.imile),
+                    anjun:          tq.anjun          || 0, anjun_v:          _pmoedaVd(tv.anjun),
+                    jt:             tq.jt             || 0, jt_v:             _pmoedaVd(tv.jt),
+                    loggi:          tq.loggi          || 0, loggi_v:          _pmoedaVd(tv.loggi),
+                    total_express:  tq.total_express  || 0, total_express_v:  _pmoedaVd(tv.total_express),
                     qtd_total: d.qtd_pacotes_total || 0,
                 };
             }).filter(Boolean);
@@ -344,15 +348,17 @@ function _renderVdDash(raw) {
                 mes: d.mes, ano: d.ano, quinzena: 0,
                 label: MES_NOMES[d.mes].slice(0, 3),
                 valor: 0, shopee: 0, shopee_v: 0, imile: 0, imile_v: 0,
-                anjun: 0, anjun_v: 0, jt: 0, jt_v: 0, loggi: 0, loggi_v: 0, qtd_total: 0
+                anjun: 0, anjun_v: 0, jt: 0, jt_v: 0, loggi: 0, loggi_v: 0,
+                total_express: 0, total_express_v: 0, qtd_total: 0
             };
             const g = byMes[k];
-            g.valor    += d.valor;       g.qtd_total += d.qtd_total;
-            g.shopee   += d.shopee;      g.shopee_v  += d.shopee_v;
-            g.imile    += d.imile;       g.imile_v   += d.imile_v;
-            g.anjun    += d.anjun;       g.anjun_v   += d.anjun_v;
-            g.jt       += d.jt;          g.jt_v      += d.jt_v;
-            g.loggi    += d.loggi;       g.loggi_v   += d.loggi_v;
+            g.valor         += d.valor;          g.qtd_total       += d.qtd_total;
+            g.shopee        += d.shopee;         g.shopee_v        += d.shopee_v;
+            g.imile         += d.imile;          g.imile_v         += d.imile_v;
+            g.anjun         += d.anjun;          g.anjun_v         += d.anjun_v;
+            g.jt            += d.jt;             g.jt_v            += d.jt_v;
+            g.loggi         += d.loggi;          g.loggi_v         += d.loggi_v;
+            g.total_express += d.total_express;  g.total_express_v += d.total_express_v;
         });
         grupos = Object.values(byMes);
     }
