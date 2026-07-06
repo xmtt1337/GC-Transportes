@@ -73,7 +73,7 @@ body {
 }
 .sidebar.expanded .menu-item { padding: 13px 18px; justify-content: flex-start; gap: 13px; }
 .menu-item:hover  { background: rgba(58,134,255,0.08); color: #fff; }
-.menu-item.active { background: rgba(58,134,255,0.12); color: #fff; box-shadow: inset 3px 0 0 #3a86ff; }
+.menu-item.active { color: #3a86ff; box-shadow: inset 3px 0 0 #3a86ff; }
 
 .menu-item .label {
     font-size: 14px; font-weight: 500; flex: 1;
