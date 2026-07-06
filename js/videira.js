@@ -444,7 +444,7 @@ function _renderVdDash(raw) {
 
     const gran2 = _vdGran === "quinzena" ? "Quinzena" : "Mês";
     const titEl = document.getElementById("vd-transp-title");
-    if (titEl) titEl.textContent = `Transportadoras por ${gran2} (Qtd)`;
+    if (titEl) titEl.textContent = `Mix de Transportadoras por ${gran2} (%)`;
 
     // Chart: Valor Líquido por período
     if (_vdValorChart) { _vdValorChart.destroy(); _vdValorChart = null; }
@@ -464,23 +464,34 @@ function _renderVdDash(raw) {
         }
     });
 
-    // Chart: Transportadoras por período (Qtd) — stacked
+    // Chart: Mix por período — 100% normalizado
     if (_vdTranspChart) { _vdTranspChart.destroy(); _vdTranspChart = null; }
+    const totaisPorPeriodo = grupos.map(g => VD_TRANSP_DEF.reduce((s, t) => s + (g[t.key] || 0), 0));
     _vdTranspChart = new Chart(document.getElementById("vd-transp-chart").getContext("2d"), {
         type: "bar",
         data: { labels, datasets: VD_TRANSP_DEF.map(t => ({
-            label: t.label, data: grupos.map(g => g[t.key] || 0),
-            backgroundColor: t.bg, borderColor: t.color, borderWidth: 1, borderRadius: 4,
+            label: t.label,
+            data: grupos.map((g, i) => {
+                const tot = totaisPorPeriodo[i];
+                return tot ? +((( g[t.key] || 0) / tot) * 100).toFixed(2) : 0;
+            }),
+            backgroundColor: t.bg, borderColor: t.color, borderWidth: 1,
         })) },
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: {
                 legend: { labels: { color: "#aab4c8", font: { size: 11 }, boxWidth: 12, padding: 14 } },
-                tooltip: { callbacks: { label: ctx => "  " + ctx.dataset.label + ": " + (ctx.raw||0).toLocaleString("pt-BR") } }
+                tooltip: { callbacks: { label: ctx => {
+                    const g = grupos[ctx.dataIndex];
+                    const t = VD_TRANSP_DEF[ctx.datasetIndex];
+                    const qtd = g ? (g[t.key] || 0) : 0;
+                    return `  ${ctx.dataset.label}: ${ctx.raw}%  (${qtd.toLocaleString("pt-BR")} pct)`;
+                }}}
             },
             scales: {
                 x: { stacked: true, grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
-                y: { stacked: true, grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#4a6a8a", font: { size: 11 } } }
+                y: { stacked: true, max: 100, grid: { color: "rgba(255,255,255,0.04)" },
+                    ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => v + "%" } }
             }
         }
     });
