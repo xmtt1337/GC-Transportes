@@ -2071,6 +2071,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     transition: background 0.2s;
 }
 .bip-sync-btn:hover { background: rgba(251,146,60,0.16); }
+.bip-sync-info { font-size: 10.5px; color: var(--text-dim); white-space: nowrap; }
 
 /* Session log */
 .bip-log-header {

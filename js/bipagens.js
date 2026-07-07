@@ -16,9 +16,10 @@ function abrirBipagens(event) {
 
 async function _bipCarregarStatusCeps() {
     try {
-        const res  = await fetch(API + '/bipagem/cep-status', { headers: { 'Authorization': 'Bearer ' + token } });
-        const data = await res.json();
-        const btn  = document.getElementById('bip-sync-btn');
+        const res   = await fetch(API + '/bipagem/cep-status', { headers: { 'Authorization': 'Bearer ' + token } });
+        const data  = await res.json();
+        const btn   = document.getElementById('bip-sync-btn');
+        const info  = document.getElementById('bip-sync-info');
         if (!btn) return;
         const n = data.total || 0;
         if (n === 0) {
@@ -28,6 +29,11 @@ async function _bipCarregarStatusCeps() {
             btn.style.background  = 'rgba(239,68,68,0.08)';
         } else {
             btn.title = `${n.toLocaleString('pt-BR')} CEPs no banco`;
+        }
+        if (info) {
+            info.textContent = data.atualizado_em
+                ? 'Última atualização: ' + new Date(data.atualizado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                : '';
         }
     } catch { /* silencioso */ }
 }
