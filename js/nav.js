@@ -101,29 +101,6 @@ function _renderMultas(lista, elId, showWa = false) {
     }).join("");
 }
 
-// ───── SEÇÃO BADGE (indica qual seção está visível no scroll) ─────
-function _watchSecao(fechBodySel, badgeId) {
-    const body = document.querySelector(fechBodySel);
-    const badge = document.getElementById(badgeId);
-    if (!body || !badge) return;
-    if (body._secWatch) body.removeEventListener('scroll', body._secWatch);
-    body._secWatch = function() {
-        const bTop = body.getBoundingClientRect().top;
-        const markers = body.querySelectorAll('.painel-section-title, .poc-card .poc-header');
-        let current = null;
-        for (const el of markers) {
-            if (el.getBoundingClientRect().top - bTop < 10) current = el;
-        }
-        if (current) {
-            badge.textContent = current.textContent.trim();
-            badge.style.display = 'inline';
-        } else {
-            badge.style.display = 'none';
-        }
-    };
-    body.addEventListener('scroll', body._secWatch);
-}
-
 // ───── CARD DE PERFIL ─────
 const _TRANSP = [
     { key: "loggi",  label: "Loggi",  cor: "#12A5E8" },

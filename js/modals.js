@@ -137,7 +137,6 @@ function _carregarPainelAdmin() {
         _renderExtravios(d.extravios_linhas, "adm-extravios-lista");
 
         _renderMultas(d.multas_linhas, "adm-multas-lista", false);
-        _watchSecao('#tela-admin-fechamentos .fech-body', 'poc-secao-adm');
 
         empty.style.display = "none";
         data.style.display  = "";
