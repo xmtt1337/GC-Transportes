@@ -115,8 +115,18 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         dev: "Dev", admin: "Administrador", finance: "Financeiro",
         user: "Usuário", entregador: "Entregador", sac: "SAC"
     };
+    const badgeColors = {
+        dev: "#a78bfa", admin: "#fb923c", finance: "#34d399",
+        user: "#3a86ff", entregador: "#22c55e", sac: "#06b6d4", "ADM Videira": "#e879f9"
+    };
     const badge = document.getElementById("home-role-badge");
-    if (badge) badge.innerText = badgeLabels[role] || role;
+    if (badge) {
+        const cor = badgeColors[role] || "#3a86ff";
+        badge.innerHTML = `<span class="role-dot" style="background:${cor}"></span>${badgeLabels[role] || role}`;
+        badge.style.color       = cor;
+        badge.style.borderColor = cor + "3d";
+        badge.style.background  = cor + "14";
+    }
 
 })
 .catch(() => {

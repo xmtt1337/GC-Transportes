@@ -889,25 +889,33 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     letter-spacing: -0.8px; margin-bottom: 10px; line-height: 1.15;
 }
 .home-role-badge {
-    display: inline-block; padding: 4px 14px;
+    display: inline-flex; align-items: center; padding: 4px 14px;
     background: rgba(58,134,255,0.08); border: 1px solid rgba(58,134,255,0.14);
     border-radius: 20px; font-size: 11.5px; color: #5d9aff;
     font-weight: 600; margin-bottom: 20px; letter-spacing: 0.02em;
 }
+.role-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-right: 8px; flex-shrink: 0;
+    box-shadow: 0 0 8px 1px rgba(255,255,255,0.2);
+}
 .home-actions {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 10px; width: 100%; max-width: 580px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px; width: 100%; max-width: 760px; margin: 0 auto;
 }
 .home-action-card {
     background: linear-gradient(140deg, var(--ibg, rgba(58,134,255,0.12)) 0%, rgba(11,16,26,0.95) 55%);
     border: 1px solid rgba(255,255,255,0.07);
     border-top: 2px solid var(--ac, #3a86ff);
+    border-radius: var(--radius);
     padding: 22px 18px 16px; cursor: pointer;
     display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
-    transition: border-color 0.2s ease;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 .home-action-card:hover {
     border-color: var(--ac, #3a86ff);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.45);
 }
 .hac-icon {
     width: 40px; height: 40px; flex-shrink: 0;
@@ -929,11 +937,11 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .home-action-card:hover .hac-go { opacity: 1; transform: translateX(3px); }
 .hac-arrow { display: none; }
 
-#home-nf-status { margin-top: 10px; max-width: 572px; width: 100%; margin-left: auto; margin-right: auto; }
+#home-nf-status { margin-top: 10px; max-width: 760px; width: 100%; margin-left: auto; margin-right: auto; }
 
 /* ── Admin Home Dashboard ── */
 #home-admin-dash, #home-videira-dash {
-    margin-top: 18px; width: 100%; max-width: 580px;
+    margin-top: 18px; width: 100%; max-width: 760px;
     margin-left: auto; margin-right: auto;
 }
 .adm-kpi-wrap {
@@ -1059,10 +1067,11 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .pc-senha-info svg { flex-shrink: 0; opacity: 0.6; }
 
 /* ── Widget de Desempenho (role user) ── */
-#home-user-dash { margin-top: 18px; text-align: left; width: 100%; max-width: 572px; margin-inline: auto; }
+#home-user-dash { margin-top: 18px; text-align: left; width: 100%; max-width: 760px; margin-inline: auto; }
 .user-desemp-widget {
     background: rgba(11,16,26,0.92);
     border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 0;
     overflow: hidden;
 }
