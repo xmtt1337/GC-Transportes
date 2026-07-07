@@ -108,6 +108,7 @@ const _TRANSP = [
     { key: "jt",     label: "J&T",    cor: "#EF4444" },
     { key: "imile",  label: "iMile",  cor: "#9333EA" },
     { key: "shopee", label: "Shopee", cor: "#F97316" },
+    { key: "cep",    label: "CEP",    cor: "#94a3b8" },
 ];
 const _MES_NOMES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
