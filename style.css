@@ -2008,13 +2008,13 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     /* sem overflow:hidden — fech-body já tem overflow-y:auto e rola tudo */
 }
 
-/* Grid: scanner à esquerda, sessão à direita */
-.bip-grid {
-    display: grid; grid-template-columns: minmax(340px, 440px) 1fr;
-    gap: 24px; align-items: start;
+/* Scanner centralizado no topo, sessão embaixo em largura total */
+.bip-grid { display: flex; flex-direction: column; gap: 22px; }
+.bip-col-scan {
+    display: flex; flex-direction: column; gap: 14px;
+    width: 100%; max-width: 560px; align-self: center;
 }
-.bip-col-scan { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.bip-col-log  { min-width: 0; }
+.bip-col-log { min-width: 0; }
 .bip-resultado-area { width: 100%; }
 
 /* Card do scanner */
@@ -2103,9 +2103,6 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     border: 1px solid;
 }
 
-@media (max-width: 900px) {
-    .bip-grid { grid-template-columns: 1fr; }
-}
 
 /* Session items */
 .bip-item {
