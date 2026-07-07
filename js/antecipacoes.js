@@ -289,6 +289,23 @@ function _antEnviarSolicitacao() {
     }
     if (!numeroNF) return _antMostrarMsg("Informe o número da nota fiscal.", "erro");
 
+    const MESES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    const periodo = `${_antQuinzena}ª Quinzena de ${MESES[mes]}/${ano}`;
+    const resumo = `
+        <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:4px">
+            <div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#64748b">Período</span><strong style="color:#e2e8f0">${periodo}</strong></div>
+            <div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#64748b">Nota fiscal</span><strong style="color:#e2e8f0">Nº ${numeroNF}</strong></div>
+            <div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#64748b">Valor a antecipar</span><strong style="color:#4ade80;font-size:16px">${moedaJS(valor)}</strong></div>
+        </div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);font-size:12.5px;color:#94a3b8">
+            Após o envio, não será possível alterar os dados desta solicitação. Confirme se as informações estão corretas.
+        </div>`;
+
+    gcConfirm(resumo, () => _antEnviarSolicitacaoConfirmado(mes, ano, valor, numeroNF, cnpj, telefone),
+        "Confirmar solicitação de antecipação", "Enviar solicitação");
+}
+
+function _antEnviarSolicitacaoConfirmado(mes, ano, valor, numeroNF, cnpj, telefone) {
     const btn = document.querySelector("#ant-form-wrap button[onclick='_antEnviarSolicitacao()']");
     if (btn) { btn.disabled = true; btn.textContent = "Enviando..."; }
 
