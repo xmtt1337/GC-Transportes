@@ -1173,36 +1173,41 @@
                 </div>
             </div>
             <div class="fech-body bip-layout">
+                <div class="bip-grid">
 
-                <!-- Topo: input + resultado centralizados -->
-                <div class="bip-top-zone">
-                    <div class="bip-search-wrap">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#3a86ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        <input type="text" id="bip-input" placeholder="Bipar ou digitar código..."
-                            oninput="_bipAuto(this)"
-                            onkeydown="if(event.key==='Enter') _bipBuscar()"
-                            autocomplete="off" autocorrect="off" spellcheck="false">
-                        <button class="bip-clear-btn" id="bip-clear" onclick="_bipLimpar()" style="display:none">×</button>
+                    <!-- Coluna esquerda: scanner + resultado -->
+                    <div class="bip-col-scan">
+                        <div class="bip-scan-card">
+                            <div class="bip-scan-title">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12.01"/><line x1="10" y1="12" x2="10" y2="12.01"/><line x1="13" y1="12" x2="13" y2="12.01"/><line x1="16" y1="12" x2="16" y2="12.01"/></svg>
+                                Escanear pacote
+                            </div>
+                            <div class="bip-search-wrap" id="bip-search-wrap">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#3a86ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <input type="text" id="bip-input" placeholder="Bipar ou digitar código..."
+                                    oninput="_bipAuto(this)"
+                                    onkeydown="if(event.key==='Enter') _bipBuscar()"
+                                    autocomplete="off" autocorrect="off" spellcheck="false">
+                                <button class="bip-clear-btn" id="bip-clear" onclick="_bipLimpar()" style="display:none">×</button>
+                            </div>
+                            <div class="bip-scan-hint">Código de barras ou CEP — a busca é automática</div>
+                        </div>
+                        <div id="bip-resultado" class="bip-resultado-area"></div>
                     </div>
-                    <div id="bip-resultado" class="bip-resultado-area"></div>
-                </div>
 
-                <!-- Divisor horizontal -->
-                <div class="bip-h-divider"></div>
-
-                <!-- Base: lista da sessão com scroll -->
-                <div class="bip-bottom-zone">
-                    <div class="bip-log-header">
-                        <span class="bip-log-title">Bipados nesta sessão</span>
-                        <span id="bip-sessao-count" class="bip-count-badge">0</span>
-                    </div>
-                    <div class="bip-log-scroll">
+                    <!-- Coluna direita: sessão -->
+                    <div class="bip-col-log">
+                        <div class="bip-log-header">
+                            <span class="bip-log-title">Bipados nesta sessão</span>
+                            <span id="bip-sessao-count" class="bip-count-badge">0</span>
+                        </div>
+                        <div id="bip-sessao-stats" class="bip-sessao-stats"></div>
                         <div id="bip-sessao-lista">
                             <div class="bip-empty-msg">Nenhuma bipagem ainda.</div>
                         </div>
                     </div>
-                </div>
 
+                </div>
             </div>
         </div>
 

@@ -169,7 +169,20 @@ function _bipInicializarAudio() {
 
 function _bipMostrarErro(el, msg) {
     el.innerHTML = _bipErroHtml(msg);
+    _bipFlash('err');
     _bipBeepErro();
+}
+
+// Pisca a borda do input: verde no sucesso, vermelho no erro (feedback pra quem bipa sem olhar)
+let _bipFlashTimer = null;
+function _bipFlash(tipo) {
+    const wrap = document.getElementById('bip-search-wrap');
+    if (!wrap) return;
+    clearTimeout(_bipFlashTimer);
+    wrap.classList.remove('flash-ok', 'flash-err');
+    void wrap.offsetWidth; // força reflow pra reiniciar a transição
+    wrap.classList.add(tipo === 'ok' ? 'flash-ok' : 'flash-err');
+    _bipFlashTimer = setTimeout(() => wrap.classList.remove('flash-ok', 'flash-err'), 900);
 }
 
 function _bipBeepErro() {
@@ -247,15 +260,30 @@ function _bipSessaoAdicionar(codigo, dados) {
 function _bipSessaoRenderizar() {
     const el      = document.getElementById('bip-sessao-lista');
     const countEl = document.getElementById('bip-sessao-count');
+    const statsEl = document.getElementById('bip-sessao-stats');
     if (!el) return;
     const lista = _bipSessao;
     if (countEl) countEl.textContent = lista.length;
-    if (!lista.length) {
-        el.innerHTML = '<div class="bip-empty-msg">Nenhuma bipagem ainda.</div>';
-        return;
-    }
     const transpNomes = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee', cep:'CEP' };
     const transpCores = { loggi:'#12A5E8', anjun:'#22C55E', imile:'#9333EA', jt:'#EF4444', shopee:'#F97316', cep:'#94a3b8' };
+    if (!lista.length) {
+        el.innerHTML = '<div class="bip-empty-msg">Nenhuma bipagem ainda.</div>';
+        if (statsEl) statsEl.innerHTML = '';
+        return;
+    }
+    if (statsEl) {
+        const porTransp = {};
+        lista.forEach(i => {
+            const t = i.transportadora || 'outros';
+            porTransp[t] = (porTransp[t] || 0) + 1;
+        });
+        statsEl.innerHTML = Object.entries(porTransp)
+            .sort((a, b) => b[1] - a[1])
+            .map(([t, n]) => {
+                const cor = transpCores[t] || '#64748b';
+                return `<span class="bip-stat-chip" style="color:${cor};border-color:${cor}40;background:${cor}12">${transpNomes[t] || t} · ${n}</span>`;
+            }).join('');
+    }
     el.innerHTML = lista.map(item => {
         const cor  = transpCores[item.transportadora] || '#64748b';
         const nome = transpNomes[item.transportadora] || item.transportadora || '—';
@@ -275,6 +303,7 @@ function _bipSessaoRenderizar() {
 }
 
 function _bipRegistrar(codigo, dados) {
+    _bipFlash('ok');
     _bipSessaoAdicionar(codigo, dados);
     fetch(API + '/bipagem/registrar', {
         method: 'POST',

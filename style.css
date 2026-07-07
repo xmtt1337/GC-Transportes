@@ -2008,38 +2008,51 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     /* sem overflow:hidden — fech-body já tem overflow-y:auto e rola tudo */
 }
 
-/* Zona de busca centralizada */
-.bip-top-zone {
-    display: flex; flex-direction: column; align-items: center;
-    gap: 14px; padding-bottom: 24px;
+/* Grid: scanner à esquerda, sessão à direita */
+.bip-grid {
+    display: grid; grid-template-columns: minmax(340px, 440px) 1fr;
+    gap: 24px; align-items: start;
 }
-.bip-resultado-area { width: 100%; max-width: 560px; }
+.bip-col-scan { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.bip-col-log  { min-width: 0; }
+.bip-resultado-area { width: 100%; }
 
-/* Divisor horizontal */
-.bip-h-divider {
-    height: 1px;
-    background: linear-gradient(to right, transparent, rgba(58,134,255,0.12) 15%, rgba(58,134,255,0.12) 85%, transparent);
-    margin-bottom: 20px;
+/* Card do scanner */
+.bip-scan-card {
+    background: linear-gradient(150deg, rgba(58,134,255,0.06) 0%, rgba(11,16,26,0.95) 60%);
+    border: 1px solid rgba(58,134,255,0.16);
+    border-radius: var(--radius); padding: 18px 20px 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
 }
-
-/* Zona da lista — sem scroll próprio, rola junto com a página */
-.bip-bottom-zone {
-    display: flex; flex-direction: column;
+.bip-scan-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700; color: #3a86ff;
+    text-transform: uppercase; letter-spacing: .08em;
+    margin-bottom: 14px;
 }
+.bip-scan-hint { font-size: 11px; color: var(--text-dim); margin-top: 10px; }
 
 /* Search input */
 .bip-search-wrap {
     display: flex; align-items: center; gap: 12px;
-    width: 100%; max-width: 560px;
-    background: rgba(255,255,255,0.02);
+    width: 100%;
+    background: rgba(0,0,0,0.3);
     border: 1.5px solid rgba(58,134,255,0.18);
     border-radius: 14px; padding: 13px 18px;
     transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 .bip-search-wrap:focus-within {
     border-color: rgba(58,134,255,0.45);
-    background: rgba(58,134,255,0.03);
+    background: rgba(58,134,255,0.04);
     box-shadow: 0 0 0 3px rgba(58,134,255,0.07);
+}
+.bip-search-wrap.flash-ok {
+    border-color: rgba(34,197,94,0.7) !important;
+    box-shadow: 0 0 0 3px rgba(34,197,94,0.15) !important;
+}
+.bip-search-wrap.flash-err {
+    border-color: rgba(239,68,68,0.7) !important;
+    box-shadow: 0 0 0 3px rgba(239,68,68,0.15) !important;
 }
 .bip-search-wrap input {
     flex: 1; background: none; border: none; outline: none;
@@ -2078,8 +2091,21 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     border-radius: 20px; padding: 2px 10px;
     min-width: 28px; text-align: center;
 }
-.bip-log-scroll { /* scroll herdado do fech-body */ }
 .bip-empty-msg { color: #2e3d52; font-size: 13px; padding: 6px 0; }
+
+/* Chips com contagem por transportadora na sessão */
+.bip-sessao-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.bip-sessao-stats:empty { display: none; }
+.bip-stat-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 20px;
+    border: 1px solid;
+}
+
+@media (max-width: 900px) {
+    .bip-grid { grid-template-columns: 1fr; }
+}
 
 /* Session items */
 .bip-item {
