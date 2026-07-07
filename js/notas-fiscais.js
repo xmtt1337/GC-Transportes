@@ -100,6 +100,13 @@ function buscarNFsAdmin() {
                 notGC ? `<span class="adm-nf-badge diverge" style="margin-top:4px;display:inline-block" title="${nf.tomador}">Tomador ≠ GC</span>` : "",
             ].filter(Boolean).join(" ");
 
+            const pdfBtn = nf.tem_pdf
+                ? `<button class="adm-nf-pdf-btn" onclick="_baixarNFPdf(${nf.id}, '${String(nf.numero_nf || "").replace(/[^\w-]/g, "")}')" title="Baixar o PDF anexado">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    PDF
+                </button>`
+                : "";
+
             return `<tr${rowStyle}>
                 <td class="adm-nf-entregador">${nf.user_name || nf.username}${alertas ? `<div style="margin-top:4px">${alertas}</div>` : ""}</td>
                 <td><span class="adm-nf-badge ${badgeCls}">${badgeTxt}</span></td>
@@ -107,13 +114,29 @@ function buscarNFsAdmin() {
                 <td>${nf.emissao || "—"}</td>
                 <td class="adm-nf-cnpj">${nf.cnpj || "—"}</td>
                 <td>${nf.emissor || "—"}</td>
-                <td>${numPart}${chavePart}</td>
+                <td>${numPart}${chavePart}${pdfBtn ? `<div style="margin-top:6px">${pdfBtn}</div>` : ""}</td>
             </tr>`;
         }).join("");
     })
     .catch(() => {
         empty.innerText = "Erro ao carregar notas fiscais.";
     });
+}
+
+function _baixarNFPdf(id, numero) {
+    fetch(`${API}/nota/pdf/${id}`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
+    .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `NF_${numero || id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    })
+    .catch(() => gcAlert("PDF não disponível para esta nota. Notas anexadas antes desta atualização não têm o arquivo salvo."));
 }
 
 function _iniciarSelectsAdmFech() {

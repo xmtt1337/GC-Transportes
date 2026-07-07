@@ -147,13 +147,24 @@ async function _processarNotaFile(file) {
             _mostrarUploadArea("Este PDF não contém texto legível. Verifique se o arquivo não é uma imagem escaneada.");
             return;
         }
-        await _salvarNota(nota);
+        // Converte o PDF em base64 para arquivá-lo junto com os dados
+        let pdfB64 = "";
+        try {
+            const bytes = new Uint8Array(buf);
+            let bin = "";
+            const CH = 0x8000;
+            for (let i = 0; i < bytes.length; i += CH) {
+                bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+            }
+            pdfB64 = btoa(bin);
+        } catch (_) {}
+        await _salvarNota(nota, pdfB64);
     } catch (e) {
         _mostrarUploadArea("Erro ao ler o PDF. Tente novamente.");
     }
 }
 
-async function _salvarNota(nota) {
+async function _salvarNota(nota, pdfB64) {
     const notaNum          = _parseMoeda(nota.valor);
     const valor_fechamento = _fTotalReceber || null;
     const status           = (valor_fechamento && notaNum > 0)
@@ -178,7 +189,7 @@ async function _salvarNota(nota) {
     await fetch(`${API}/nota`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena, ...nota, status, valor_fechamento })
+        body: JSON.stringify({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena, ...nota, status, valor_fechamento, pdf_base64: pdfB64 || null })
     });
     _renderNotaCard(nota);
 }
