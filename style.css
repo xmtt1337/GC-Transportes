@@ -206,19 +206,19 @@ body {
 /* Cabeçalho fixo (não rola) */
 .fech-header {
     flex-shrink: 0; width: 100%;
-    padding-bottom: 16px;
+    padding-bottom: 10px;
     border-bottom: 1px solid var(--border);
 }
 .fech-period-row {
     display: flex; align-items: center; gap: 10px;
-    flex-wrap: wrap; margin-bottom: 12px;
+    flex-wrap: wrap; margin-bottom: 8px;
 }
 
 /* Corpo rolável */
 .fech-body {
     flex: 1; min-height: 0; min-width: 0;
     overflow-y: auto; overflow-x: hidden;
-    padding-top: 20px;
+    padding-top: 14px;
     scrollbar-width: thin;
     scrollbar-color: rgba(58,134,255,0.3) transparent;
     -webkit-overflow-scrolling: touch;
@@ -418,28 +418,36 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .fech-filtrar-btn:active { transform: translateY(0); }
 
 .quinzena-toggle {
-    display: flex; gap: 10px; width: 100%;
+    display: flex; gap: 8px; width: 100%; max-width: 560px;
 }
 .quinzena-btn {
-    flex: 1; padding: 12px 16px;
-    background: rgba(27,38,59,0.45);
+    flex: 1; padding: 9px 16px;
+    background: #141c2b;
     border: 1px solid rgba(58,134,255,0.1);
-    color: #475569; font-size: 13.5px; font-weight: 500;
+    color: #475569; font-size: 13px; font-weight: 500;
     cursor: pointer; text-align: center; white-space: nowrap;
     transition: all 0.22s ease;
-    font-family: 'Inter', sans-serif; border-radius: 12px;
+    font-family: 'Inter', sans-serif; border-radius: 10px;
 }
 .quinzena-btn:hover:not(.active) {
     border-color: rgba(58,134,255,0.28);
     color: #94a3b8;
-    background: rgba(27,38,59,0.85);
+    background: #1b2638;
 }
 .quinzena-btn.active {
-    background: rgba(58,134,255,0.1);
+    background: #101f38;
     border-color: rgba(58,134,255,0.5);
     color: #93c5fd; font-weight: 600;
     box-shadow: 0 0 0 1px rgba(58,134,255,0.15), 0 4px 20px rgba(58,134,255,0.1);
 }
+
+/* Quando o toggle é o último item do cabeçalho fixo, ele "pendura" pela metade
+   sobre o conteúdo que rola — o fundo fixo termina no meio do card */
+.fech-header:has(> .quinzena-toggle:last-child) { padding-bottom: 0; border-bottom: none; }
+.fech-header > .quinzena-toggle:last-child {
+    margin-bottom: -19px; position: relative; z-index: 4;
+}
+.fech-header:has(> .quinzena-toggle:last-child) + .fech-body { padding-top: 34px; }
 
 .fechamento-empty {
     background: rgba(27,38,59,0.9); border: 1px solid rgba(58,134,255,0.15);
