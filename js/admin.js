@@ -220,6 +220,15 @@ function renderHomeActions(role) {
         </div>
     `).join("");
 
+    // Brilho que acompanha o mouse dentro do card
+    container.querySelectorAll(".home-action-card").forEach(card => {
+        card.addEventListener("mousemove", e => {
+            const r = card.getBoundingClientRect();
+            card.style.setProperty("--mx", (e.clientX - r.left) + "px");
+            card.style.setProperty("--my", (e.clientY - r.top) + "px");
+        });
+    });
+
     if (role === "entregador")    carregarHomeNFStatus();
     if (role === "finance")       _carregarHomeAdmin("admin");
     if (role === "dev")           _carregarHomeAdmin("admin");
