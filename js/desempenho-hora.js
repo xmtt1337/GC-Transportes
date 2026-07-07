@@ -222,22 +222,24 @@ function _desempHoraRenderizar(rows, comparativo, transpRows, data) {
                         </div>
                     </div>
                 </div>
-                <div class="dh-compare">
-                    <div class="dh-compare-row">
-                        <span class="dh-compare-label">vs última bipagem</span>
-                        <span class="dh-badge ${cmpUltimaQtd.classe}">${cmpUltimaQtd.texto} qtd</span>
-                        <span class="dh-badge ${cmpUltimaMedia.classe}">${cmpUltimaMedia.texto} méd</span>
-                    </div>
-                    <div class="dh-compare-row">
-                        <span class="dh-compare-label">vs histórico</span>
-                        <span class="dh-badge ${cmpHistQtd.classe}">${cmpHistQtd.texto} qtd</span>
-                        <span class="dh-badge ${cmpHistMedia.classe}">${cmpHistMedia.texto} méd</span>
-                    </div>
-                </div>
-                <div class="dh-bottom-row">
-                    <div class="dh-bars-wrap">
-                        <div class="dh-bars">${horasHtml}</div>
-                        ${tendenciaHtml}
+                <div class="dh-body">
+                    <div class="dh-left">
+                        <div class="dh-compare">
+                            <div class="dh-compare-row">
+                                <span class="dh-compare-label">vs última bipagem</span>
+                                <span class="dh-badge ${cmpUltimaQtd.classe}">${cmpUltimaQtd.texto} qtd</span>
+                                <span class="dh-badge ${cmpUltimaMedia.classe}">${cmpUltimaMedia.texto} méd</span>
+                            </div>
+                            <div class="dh-compare-row">
+                                <span class="dh-compare-label">vs histórico</span>
+                                <span class="dh-badge ${cmpHistQtd.classe}">${cmpHistQtd.texto} qtd</span>
+                                <span class="dh-badge ${cmpHistMedia.classe}">${cmpHistMedia.texto} méd</span>
+                            </div>
+                        </div>
+                        <div class="dh-bars-wrap">
+                            <div class="dh-bars">${horasHtml}</div>
+                            ${tendenciaHtml}
+                        </div>
                     </div>
                     ${_desempHoraDonut(transpMap[nome] || [], totalDia)}
                 </div>

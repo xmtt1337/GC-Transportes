@@ -315,7 +315,8 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .dh-badge.up { color: #22c55e; }
 .dh-badge.down { color: #ef4444; }
 .dh-badge.neutral { color: var(--text-dim); font-weight: 600; }
-.dh-bottom-row { display: flex; gap: 20px; align-items: flex-start; }
+.dh-body { display: flex; gap: 24px; align-items: center; }
+.dh-left { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .dh-bars-wrap { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
 .dh-trend { font-size: 10.5px; font-weight: 700; }
 .dh-trend.up { color: #22c55e; }
@@ -341,8 +342,9 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 }
 .dh-bar-hour { font-size: 9px; color: var(--text-dim); font-weight: 600; }
 .dh-donut-area {
-    flex: 1; min-width: 0; display: flex; align-items: center;
-    justify-content: flex-end; gap: 28px; padding-right: 16px;
+    flex: 0 0 auto; display: flex; align-items: center;
+    gap: 22px; padding: 0 16px 0 24px;
+    border-left: 1px solid rgba(255,255,255,0.06);
     align-self: stretch;
 }
 .dh-donut-legend { display: flex; flex-direction: column; gap: 6px; }
