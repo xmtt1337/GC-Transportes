@@ -101,7 +101,7 @@ function buscarNFsAdmin() {
             ].filter(Boolean).join(" ");
 
             const pdfBtn = nf.tem_pdf
-                ? `<button class="adm-nf-pdf-btn" onclick="_baixarNFPdf(${nf.id}, '${String(nf.numero_nf || "").replace(/[^\w-]/g, "")}')" title="Baixar o PDF anexado">
+                ? `<button class="adm-nf-pdf-btn" onclick="_baixarNFPdf(${nf.id}, '${String(nf.numero_nf || "").replace(/[^\w-]/g, "")}', '${String(nf.user_name || nf.username || "").replace(/[^\wÀ-ÿ .-]/g, "")}')" title="Baixar o PDF anexado">
                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     PDF
                 </button>`
@@ -123,14 +123,14 @@ function buscarNFsAdmin() {
     });
 }
 
-function _baixarNFPdf(id, numero) {
+function _baixarNFPdf(id, numero, nome) {
     fetch(`${API}/nota/pdf/${id}`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
     .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `NF_${numero || id}.pdf`;
+        a.download = `NF ${_admFQuinzena}Q ${String(_admFMes).padStart(2, "0")}-${_admFAno}${nome ? " - " + nome : ""}${numero ? " - Nº " + numero : ""}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
