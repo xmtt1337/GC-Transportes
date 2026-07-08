@@ -1,15 +1,19 @@
 // ───── PLANEJAMENTO VIDEIRA (bairro → entregador, por transportadora) ─────
-const _PV_TRANSP_NOMES = { loggi: "Loggi", anjun: "Anjun", shopee: "Shopee", imile: "Imile", jt: "J&T" };
 let _pvTransportadora = "loggi";
 let _pvLinhas   = [];
 let _pvUsuarios = [];
 
-function abrirPlanejamentoVideira(event, transportadora) {
+function abrirPlanejamentoVideira(event) {
     if (event) event.preventDefault();
-    _pvTransportadora = transportadora;
-    document.getElementById("pv-transp-nome").innerText = _PV_TRANSP_NOMES[transportadora] || transportadora;
+    document.getElementById("pv-transp-select").value = _pvTransportadora;
     document.getElementById("pv-filtro-input").value = "";
     mostrarTela("tela-planejamento-videira");
+    _pvCarregar();
+}
+
+function _pvTrocarTransportadora() {
+    _pvTransportadora = document.getElementById("pv-transp-select").value;
+    document.getElementById("pv-filtro-input").value = "";
     _pvCarregar();
 }
 

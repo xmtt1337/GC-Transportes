@@ -183,16 +183,13 @@
                 <path d="M9 11l3 3L22 4"/>
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
             </svg>
-            <span class="label">Planejamento</span>
+            <span class="label">Planejamento de Rotas</span>
             <span class="arrow">▾</span>
-            <span class="menu-tooltip">Planejamento</span>
+            <span class="menu-tooltip">Planejamento de Rotas</span>
         </li>
         <ul class="submenu" data-menu="planejamento" id="submenu-planejamento" style="display:none">
-            <li><a href="#" onclick="abrirPlanejamentoVideira(event,'loggi')">Loggi</a></li>
-            <li><a href="#" onclick="abrirPlanejamentoVideira(event,'anjun')">Anjun</a></li>
-            <li><a href="#" onclick="abrirPlanejamentoVideira(event,'shopee')">Shopee</a></li>
-            <li><a href="#" onclick="abrirPlanejamentoVideira(event,'imile')">Imile</a></li>
-            <li><a href="#" onclick="abrirPlanejamentoVideira(event,'jt')">J&amp;T</a></li>
+            <li><a href="#" onclick="_emBreve(event)">Caçador</a></li>
+            <li><a href="#" onclick="abrirPlanejamentoVideira(event)">Videira</a></li>
         </ul>
 
         <li class="menu-item" data-menu="financeiro" id="menu-financeiro" onclick="toggleMenu(this)" style="display:none">
@@ -1711,10 +1708,19 @@
 <div id="tela-planejamento-videira" class="view tela-full">
     <div class="fech-header">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-            <div style="font-size:15px;font-weight:700;color:#e2e8f0">Planejamento — <span id="pv-transp-nome">Loggi</span></div>
-            <div class="adm-search-input-area" style="max-width:280px">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="pv-filtro-input" placeholder="Filtrar por bairro..." oninput="_pvFiltrarLocal()">
+            <div style="font-size:15px;font-weight:700;color:#e2e8f0">Planejamento de Rotas — Videira</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <select class="fech-select" id="pv-transp-select" onchange="_pvTrocarTransportadora()">
+                    <option value="loggi">Loggi</option>
+                    <option value="anjun">Anjun</option>
+                    <option value="shopee">Shopee</option>
+                    <option value="imile">Imile</option>
+                    <option value="jt">J&amp;T</option>
+                </select>
+                <div class="adm-search-input-area" style="max-width:280px">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="pv-filtro-input" placeholder="Filtrar por bairro..." oninput="_pvFiltrarLocal()">
+                </div>
             </div>
         </div>
     </div>
