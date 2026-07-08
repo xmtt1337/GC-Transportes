@@ -698,36 +698,52 @@
         <!-- TELA ADMIN NOTAS FISCAIS -->
         <div id="tela-admin-nfs" class="view tela-full">
             <div class="fech-header">
-                <div class="fech-period-row">
-                    <select class="fech-select" id="adm-nf-mes" onchange="buscarNFsAdmin()">
-                        <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
-                        <option value="3">Março</option>    <option value="4">Abril</option>
-                        <option value="5">Maio</option>     <option value="6">Junho</option>
-                        <option value="7">Julho</option>    <option value="8">Agosto</option>
-                        <option value="9">Setembro</option> <option value="10">Outubro</option>
-                        <option value="11">Novembro</option><option value="12">Dezembro</option>
-                    </select>
-                    <select class="fech-select" id="adm-nf-ano" onchange="buscarNFsAdmin()"></select>
-                    <select class="fech-select" id="adm-nf-quinzena" onchange="buscarNFsAdmin()">
-                        <option value="">Todas as quinzenas</option>
-                        <option value="1">1ª Quinzena (1 – 15)</option>
-                        <option value="2">2ª Quinzena (16 – fim)</option>
-                    </select>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px">
-                    <input type="hidden" id="adm-nf-de">
-                    <input type="hidden" id="adm-nf-ate">
-                    <button id="adm-nf-filtro-envio-btn" onclick="_admNFAbrirCalendario(event,'envio')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:rgba(11,16,26,0.9);color:#cbd5e1;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#4a6a8a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
-                        <span id="adm-nf-filtro-envio-txt">Data de envio</span>
-                    </button>
-                    <input type="hidden" id="adm-nf-emissao-de">
-                    <input type="hidden" id="adm-nf-emissao-ate">
-                    <button id="adm-nf-filtro-emissao-btn" onclick="_admNFAbrirCalendario(event,'emissao')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:rgba(11,16,26,0.9);color:#cbd5e1;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#4a6a8a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
-                        <span id="adm-nf-filtro-emissao-txt">Data de emissão</span>
-                    </button>
-                    <button onclick="_admNFLimparFiltrosData()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit">Limpar filtros de data</button>
+                <div class="nf-filtro-grid">
+                    <div class="nf-filtro-field">
+                        <span class="nf-filtro-label">Mês</span>
+                        <select class="fech-select" id="adm-nf-mes">
+                            <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
+                            <option value="3">Março</option>    <option value="4">Abril</option>
+                            <option value="5">Maio</option>     <option value="6">Junho</option>
+                            <option value="7">Julho</option>    <option value="8">Agosto</option>
+                            <option value="9">Setembro</option> <option value="10">Outubro</option>
+                            <option value="11">Novembro</option><option value="12">Dezembro</option>
+                        </select>
+                    </div>
+                    <div class="nf-filtro-field">
+                        <span class="nf-filtro-label">Ano</span>
+                        <select class="fech-select" id="adm-nf-ano"></select>
+                    </div>
+                    <div class="nf-filtro-field">
+                        <span class="nf-filtro-label">Quinzena</span>
+                        <div class="nf-filtro-input" id="adm-nf-quinzena-btn" onclick="_admNFAbrirCalendario(event,'quinzena')">
+                            <span class="txt" id="adm-nf-quinzena-txt">Todas as quinzenas</span>
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#4a6a8a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+                        </div>
+                        <input type="hidden" id="adm-nf-quinzena">
+                    </div>
+                    <div class="nf-filtro-field">
+                        <span class="nf-filtro-label">Data de envio</span>
+                        <div class="nf-filtro-input" id="adm-nf-filtro-envio-btn" onclick="_admNFAbrirCalendario(event,'envio')">
+                            <span class="txt" id="adm-nf-filtro-envio-txt">Escolha o período</span>
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#4a6a8a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+                        </div>
+                        <input type="hidden" id="adm-nf-de">
+                        <input type="hidden" id="adm-nf-ate">
+                    </div>
+                    <div class="nf-filtro-field">
+                        <span class="nf-filtro-label">Data de emissão</span>
+                        <div class="nf-filtro-input" id="adm-nf-filtro-emissao-btn" onclick="_admNFAbrirCalendario(event,'emissao')">
+                            <span class="txt" id="adm-nf-filtro-emissao-txt">Escolha o período</span>
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#4a6a8a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+                        </div>
+                        <input type="hidden" id="adm-nf-emissao-de">
+                        <input type="hidden" id="adm-nf-emissao-ate">
+                    </div>
+                    <div class="nf-filtro-field nf-filtro-actions">
+                        <button class="nf-btn-pesquisar" onclick="buscarNFsAdmin()">Pesquisar</button>
+                        <button class="nf-btn-redefinir" onclick="_admNFRedefinirFiltros()">Redefinir</button>
+                    </div>
                 </div>
             </div>
             <div class="fech-body">

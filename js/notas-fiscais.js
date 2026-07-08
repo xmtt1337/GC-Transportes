@@ -7,9 +7,9 @@ let _admNFPorPagina = 25;
 
 function abrirAdminNFs(event) {
     if (event) event.preventDefault();
-    document.getElementById("adm-nf-quinzena").value = "";
-    document.getElementById("adm-nf-resultado").style.display = "none";
     _iniciarSelectsAdmNF();
+    _admNFResetFiltrosExtras();
+    document.getElementById("adm-nf-resultado").style.display = "none";
     mostrarTela("tela-admin-nfs");
     buscarNFsAdmin();
 }
@@ -25,6 +25,31 @@ function _iniciarSelectsAdmNF() {
     }
     selAno.value = _admNFAno;
     document.getElementById("adm-nf-mes").value = _admNFMes;
+}
+
+function _admNFResetFiltrosExtras() {
+    document.getElementById("adm-nf-quinzena").value = "";
+    const qTxt = document.getElementById("adm-nf-quinzena-txt");
+    qTxt.innerText = "Todas as quinzenas";
+    qTxt.classList.remove("ativo");
+
+    document.getElementById("adm-nf-de").value  = "";
+    document.getElementById("adm-nf-ate").value = "";
+    const envioTxt = document.getElementById("adm-nf-filtro-envio-txt");
+    envioTxt.innerText = "Escolha o período";
+    envioTxt.classList.remove("ativo");
+
+    document.getElementById("adm-nf-emissao-de").value  = "";
+    document.getElementById("adm-nf-emissao-ate").value = "";
+    const emissaoTxt = document.getElementById("adm-nf-filtro-emissao-txt");
+    emissaoTxt.innerText = "Escolha o período";
+    emissaoTxt.classList.remove("ativo");
+}
+
+function _admNFRedefinirFiltros() {
+    _iniciarSelectsAdmNF();
+    _admNFResetFiltrosExtras();
+    buscarNFsAdmin();
 }
 
 function buscarNFsAdmin() {
@@ -158,21 +183,12 @@ function _admNFProximaPagina() {
     _admNFRenderizarPagina();
 }
 
-function _admNFLimparFiltrosData() {
-    document.getElementById("adm-nf-de").value  = "";
-    document.getElementById("adm-nf-ate").value = "";
-    document.getElementById("adm-nf-filtro-envio-txt").innerText = "Data de envio";
-    document.getElementById("adm-nf-emissao-de").value  = "";
-    document.getElementById("adm-nf-emissao-ate").value = "";
-    document.getElementById("adm-nf-filtro-emissao-txt").innerText = "Data de emissão";
-    buscarNFsAdmin();
-}
-
-// ───── Calendário de intervalo (filtro por data de envio OU data de emissão) ─────
-// campo: 'envio' -> adm-nf-de/ate | 'emissao' -> adm-nf-emissao-de/ate
+// ───── Calendário de intervalo (quinzena com snap automático, envio e emissão livres) ─────
+// campo: 'quinzena' -> snap 1-15 / 16-fim | 'envio' -> adm-nf-de/ate | 'emissao' -> adm-nf-emissao-de/ate
 const _admNFCalCampos = {
-    envio:   { de: "adm-nf-de",         ate: "adm-nf-ate",         txt: "adm-nf-filtro-envio-txt",   btn: "adm-nf-filtro-envio-btn",   label: "Data de envio" },
-    emissao: { de: "adm-nf-emissao-de", ate: "adm-nf-emissao-ate", txt: "adm-nf-filtro-emissao-txt", btn: "adm-nf-filtro-emissao-btn", label: "Data de emissão" },
+    quinzena: { btn: "adm-nf-quinzena-btn" },
+    envio:    { de: "adm-nf-de",         ate: "adm-nf-ate",         txt: "adm-nf-filtro-envio-txt",   btn: "adm-nf-filtro-envio-btn" },
+    emissao:  { de: "adm-nf-emissao-de", ate: "adm-nf-emissao-ate", txt: "adm-nf-filtro-emissao-txt", btn: "adm-nf-filtro-emissao-btn" },
 };
 let _admNFCalCampo  = "envio";
 let _admNFCalMes    = new Date();
@@ -197,12 +213,26 @@ function _admNFAbrirCalendario(event, campo) {
     const cfg = _admNFCalCampos[campo];
     if (pop.parentElement !== document.body) document.body.appendChild(pop);
 
-    const de  = document.getElementById(cfg.de).value;
-    const ate = document.getElementById(cfg.ate).value;
-    _admNFCalInicio = de ? _admNFParseData(de) : null;
-    _admNFCalFim    = ate ? _admNFParseData(ate) : null;
-    _admNFCalMes    = new Date(_admNFCalInicio || new Date());
-    _admNFCalMes.setDate(1);
+    if (campo === "quinzena") {
+        const q = document.getElementById("adm-nf-quinzena").value;
+        const mes = parseInt(document.getElementById("adm-nf-mes").value);
+        const ano = parseInt(document.getElementById("adm-nf-ano").value);
+        if (q) {
+            _admNFCalInicio = new Date(ano, mes - 1, 1);
+            _admNFCalFim    = new Date(ano, mes - 1, q === "1" ? 15 : new Date(ano, mes, 0).getDate());
+        } else {
+            _admNFCalInicio = null;
+            _admNFCalFim    = null;
+        }
+        _admNFCalMes = new Date(ano, mes - 1, 1);
+    } else {
+        const de  = document.getElementById(cfg.de).value;
+        const ate = document.getElementById(cfg.ate).value;
+        _admNFCalInicio = de ? _admNFParseData(de) : null;
+        _admNFCalFim    = ate ? _admNFParseData(ate) : null;
+        _admNFCalMes    = new Date(_admNFCalInicio || new Date());
+        _admNFCalMes.setDate(1);
+    }
 
     const btn = document.getElementById(cfg.btn);
     const rect = btn.getBoundingClientRect();
@@ -226,6 +256,29 @@ function _admNFCalMesProximo()  { _admNFCalMes.setMonth(_admNFCalMes.getMonth() 
 
 function _admNFCalClick(dataStr) {
     const d = _admNFParseData(dataStr);
+
+    // Quinzena: um único clique já seleciona a quinzena inteira (1-15 ou 16-fim do mês clicado),
+    // nunca uma faixa livre — evita selecionar sem querer parte da 1ª + parte da 2ª quinzena
+    if (_admNFCalCampo === "quinzena") {
+        const mesClicado = d.getMonth() + 1;
+        const anoClicado = d.getFullYear();
+        const q = d.getDate() <= 15 ? 1 : 2;
+        _admNFCalInicio = new Date(anoClicado, mesClicado - 1, 1);
+        _admNFCalFim    = new Date(anoClicado, mesClicado - 1, q === 1 ? 15 : new Date(anoClicado, mesClicado, 0).getDate());
+        _admNFCalRender();
+
+        document.getElementById("adm-nf-mes").value = mesClicado;
+        document.getElementById("adm-nf-ano").value = anoClicado;
+        document.getElementById("adm-nf-quinzena").value = q;
+        const qTxt = document.getElementById("adm-nf-quinzena-txt");
+        qTxt.innerText = `${q}ª Qz — ${_admNFCalInicio.toLocaleDateString('pt-BR')} a ${_admNFCalFim.toLocaleDateString('pt-BR')}`;
+        qTxt.classList.add("ativo");
+        _admNFFecharCalendario();
+        buscarNFsAdmin();
+        return;
+    }
+
+    // Envio / emissão: seleção livre de intervalo (2 cliques — data inicial e final)
     if (!_admNFCalInicio || _admNFCalFim) {
         _admNFCalInicio = d;
         _admNFCalFim    = null;
@@ -241,8 +294,9 @@ function _admNFCalClick(dataStr) {
         const cfg = _admNFCalCampos[_admNFCalCampo];
         document.getElementById(cfg.de).value  = _admNFFmtData(_admNFCalInicio);
         document.getElementById(cfg.ate).value = _admNFFmtData(_admNFCalFim);
-        document.getElementById(cfg.txt).innerText =
-            `${_admNFCalInicio.toLocaleDateString('pt-BR')} — ${_admNFCalFim.toLocaleDateString('pt-BR')}`;
+        const txtEl = document.getElementById(cfg.txt);
+        txtEl.innerText = `${_admNFCalInicio.toLocaleDateString('pt-BR')} — ${_admNFCalFim.toLocaleDateString('pt-BR')}`;
+        txtEl.classList.add("ativo");
         _admNFFecharCalendario();
         buscarNFsAdmin();
     }
@@ -285,11 +339,15 @@ function _admNFCalRender() {
 
     const dowHtml = ['D','S','T','Q','Q','S','S'].map(d => `<div class="ped-cal-dow">${d}</div>`).join('');
 
-    const rangeTxt = !_admNFCalInicio
-        ? 'Clique na data inicial'
-        : !_admNFCalFim
-            ? 'Agora clique na data final'
-            : `${_admNFCalInicio.toLocaleDateString('pt-BR')} — ${_admNFCalFim.toLocaleDateString('pt-BR')}`;
+    const rangeTxt = _admNFCalCampo === "quinzena"
+        ? (_admNFCalInicio && _admNFCalFim
+            ? `${_admNFCalInicio.toLocaleDateString('pt-BR')} — ${_admNFCalFim.toLocaleDateString('pt-BR')}`
+            : 'Clique em qualquer dia da quinzena desejada')
+        : !_admNFCalInicio
+            ? 'Clique na data inicial'
+            : !_admNFCalFim
+                ? 'Agora clique na data final'
+                : `${_admNFCalInicio.toLocaleDateString('pt-BR')} — ${_admNFCalFim.toLocaleDateString('pt-BR')}`;
 
     pop.innerHTML = `
         <div class="ped-cal-header">
