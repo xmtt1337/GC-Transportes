@@ -106,15 +106,40 @@ function _renderConfNFTabela(rows) {
                 waBtn = `<span class="extr-wa" style="opacity:0.35;cursor:default" title="Sem telefone na planilha TERCEIRIZADOS">Sem telefone</span>`;
             }
         }
+        let pdfBtn = "";
+        if (r.emitiu_nf && r.nota_id && r.tem_pdf) {
+            pdfBtn = `<button class="adm-nf-pdf-btn" onclick="_confBaixarNFPdf(${r.nota_id}, '${String(r.nome).replace(/[^\wÀ-ÿ .-]/g, "")}')" title="Baixar o PDF anexado">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                PDF
+            </button>`;
+        }
         return `<tr>
             <td class="adm-nf-entregador">${r.nome}</td>
             <td class="adm-nf-valor">${r.total_receber || "—"}</td>
             <td>${emitBadge}</td>
             <td>${r.valor_nf || "—"}</td>
             <td>${confBadge}</td>
-            <td>${waBtn}</td>
+            <td>${waBtn}${pdfBtn}</td>
         </tr>`;
     }).join("");
+}
+
+function _confBaixarNFPdf(id, nome) {
+    const mes = document.getElementById("conf-nf-mes").value;
+    const ano = document.getElementById("conf-nf-ano").value;
+    fetch(`${API}/nota/pdf/${id}`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
+    .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `NF ${_confNFQuinzena}Q ${String(mes).padStart(2, "0")}-${ano}${nome ? " - " + nome : ""}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    })
+    .catch(() => gcAlert("PDF não disponível para esta nota. Notas anexadas antes desta atualização não têm o arquivo salvo."));
 }
 
 function _iniciarSelectsConfNF() {

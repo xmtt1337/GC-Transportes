@@ -85,11 +85,30 @@ function _verNotaModal() {
                 ${statusHtml}
             </div>
             <div class="nota-modal-footer">
+                ${n.id ? `<button class="nota-ver-btn" onclick="_baixarMinhaNF()">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PDF</button>` : ""}
                 <button class="nota-remove-btn" onclick="_removerNota();this.closest('.nota-modal-overlay').remove()">✕ Remover NF</button>
             </div>
         </div>`;
     overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
     document.body.appendChild(overlay);
+}
+
+function _baixarMinhaNF() {
+    if (!_notaAtual || !_notaAtual.id) return;
+    fetch(`${API}/nota/pdf/${_notaAtual.id}`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
+    .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `NF ${_fQuinzena}Q ${String(_fMes).padStart(2, "0")}-${_fAno}${_notaAtual.numero_nf ? " - Nº " + _notaAtual.numero_nf : ""}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    })
+    .catch(() => gcAlert("PDF não disponível para esta nota. Notas anexadas antes desta atualização não têm o arquivo salvo."));
 }
 
 function _carregarNota() {
@@ -186,11 +205,13 @@ async function _salvarNota(nota, pdfB64) {
         _mostrarUploadArea(`⚠ Esta nota já foi utilizada (${vData.detalhe}). Use uma nota diferente.`);
         return;
     }
-    await fetch(`${API}/nota`, {
+    const notaRes = await fetch(`${API}/nota`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
         body: JSON.stringify({ mes: _fMes, ano: _fAno, quinzena: _fQuinzena, ...nota, status, valor_fechamento, pdf_base64: pdfB64 || null })
     });
+    const notaData = await notaRes.json().catch(() => ({}));
+    if (notaData.id) nota.id = notaData.id;
     _renderNotaCard(nota);
 }
 
