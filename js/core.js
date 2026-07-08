@@ -76,12 +76,11 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
 
     if (role === "admin") {
         _showOperacional();
-        _showFechamentosAdmin();
         _showCadastros();
         _showExtravios();
         _showTorreControle();
         show("bip-sync-btn");
-        // sem: financeiro
+        // sem: financeiro, fechamento/planejamento (só dev e finance)
     }
 
     if (role === "finance" || role === "dev") {
