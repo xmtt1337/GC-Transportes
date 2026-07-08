@@ -4,6 +4,9 @@ let _confNFAno           = new Date().getFullYear();
 let _confNFQuinzena      = null;
 let _confNFFiltrarPend   = false;
 let _confNFTodosRows     = [];
+let _confNFFiltrados     = [];
+let _confNFPagina        = 1;
+let _confNFPorPagina     = 25;
 
 function _toggleFiltroConf() {
     _confNFFiltrarPend = !_confNFFiltrarPend;
@@ -76,8 +79,20 @@ function buscarConfNFs() {
 }
 
 function _renderConfNFTabela(rows) {
+    _confNFFiltrados = rows;
+    _confNFPagina = 1;
+    _confNFRenderizarPagina();
+}
+
+function _confNFRenderizarPagina() {
     const MESES_CONF = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
     const quinzenaLabel = `${_confNFQuinzena}ª quinzena de ${MESES_CONF[parseInt(document.getElementById("conf-nf-mes").value)]}/${document.getElementById("conf-nf-ano").value}`;
+
+    const totalPaginas = Math.max(1, Math.ceil(_confNFFiltrados.length / _confNFPorPagina));
+    _confNFPagina = Math.min(Math.max(1, _confNFPagina), totalPaginas);
+    const inicio = (_confNFPagina - 1) * _confNFPorPagina;
+    const rows   = _confNFFiltrados.slice(inicio, inicio + _confNFPorPagina);
+
     document.getElementById("conf-nf-tbody").innerHTML = rows.map(r => {
         let emitBadge, confBadge;
         if (!r.emitiu_nf) {
@@ -122,6 +137,27 @@ function _renderConfNFTabela(rows) {
             <td>${waBtn}${pdfBtn}</td>
         </tr>`;
     }).join("");
+
+    document.getElementById("conf-nf-pagina-info").innerText = `Página ${_confNFPagina} de ${totalPaginas}`;
+}
+
+function _confNFMudarPorPagina() {
+    _confNFPorPagina = parseInt(document.getElementById("conf-nf-por-pagina").value, 10);
+    _confNFPagina = 1;
+    _confNFRenderizarPagina();
+}
+
+function _confNFPaginaAnterior() {
+    if (_confNFPagina <= 1) return;
+    _confNFPagina--;
+    _confNFRenderizarPagina();
+}
+
+function _confNFProximaPagina() {
+    const totalPaginas = Math.max(1, Math.ceil(_confNFFiltrados.length / _confNFPorPagina));
+    if (_confNFPagina >= totalPaginas) return;
+    _confNFPagina++;
+    _confNFRenderizarPagina();
 }
 
 function _confBaixarNFPdf(id, nome) {

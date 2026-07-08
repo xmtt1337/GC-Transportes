@@ -713,6 +713,15 @@
                     <button class="quinzena-btn" id="adm-nf-btn-1q" onclick="selecionarQuinzenaNF(1)">1ª Quinzena &nbsp;(1 – 15)</button>
                     <button class="quinzena-btn" id="adm-nf-btn-2q" onclick="selecionarQuinzenaNF(2)">2ª Quinzena &nbsp;(16 – fim)</button>
                 </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px">
+                    <input type="hidden" id="adm-nf-de">
+                    <input type="hidden" id="adm-nf-ate">
+                    <button id="adm-nf-filtro-btn" onclick="_admNFAbrirCalendario(event)" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:rgba(11,16,26,0.9);color:#cbd5e1;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#4a6a8a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+                        <span id="adm-nf-filtro-txt">Filtrar por data de envio</span>
+                    </button>
+                    <button onclick="_admNFLimparFiltroData()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit">Limpar filtro de data</button>
+                </div>
             </div>
             <div class="fech-body">
                 <div class="fechamento-empty" id="adm-nf-empty">Selecione o mês, ano e quinzena para ver as notas fiscais.</div>
@@ -740,8 +749,23 @@
                             <tbody id="adm-nf-tbody"></tbody>
                         </table>
                     </div>
+                    <div style="position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:12px 4px;flex-wrap:wrap;gap:10px;background:#0b0f18;border-top:1px solid rgba(255,255,255,0.06)">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span style="font-size:12.5px;color:#4a6a8a">Itens por página</span>
+                            <select id="adm-nf-por-pagina" class="fech-select" style="width:auto" onchange="_admNFMudarPorPagina()">
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <button onclick="_admNFPaginaAnterior()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">‹ Anterior</button>
+                            <span id="adm-nf-pagina-info" style="font-size:12.5px;color:#4a6a8a;white-space:nowrap"></span>
+                            <button onclick="_admNFProximaPagina()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">Próxima ›</button>
+                        </div>
+                    </div>
                 </div>
             </div>
+            <div id="adm-nf-cal-pop" class="ped-export-pop" style="display:none"></div>
         </div><!-- /tela-admin-nfs -->
 
         <!-- TELA CONFERÊNCIA NF -->
@@ -786,6 +810,20 @@
                             </thead>
                             <tbody id="conf-nf-tbody"></tbody>
                         </table>
+                    </div>
+                    <div style="position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:12px 4px;flex-wrap:wrap;gap:10px;background:#0b0f18;border-top:1px solid rgba(255,255,255,0.06)">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span style="font-size:12.5px;color:#4a6a8a">Itens por página</span>
+                            <select id="conf-nf-por-pagina" class="fech-select" style="width:auto" onchange="_confNFMudarPorPagina()">
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <button onclick="_confNFPaginaAnterior()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">‹ Anterior</button>
+                            <span id="conf-nf-pagina-info" style="font-size:12.5px;color:#4a6a8a;white-space:nowrap"></span>
+                            <button onclick="_confNFProximaPagina()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">Próxima ›</button>
+                        </div>
                     </div>
                 </div>
             </div>

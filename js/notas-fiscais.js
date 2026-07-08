@@ -1,8 +1,11 @@
 // ───── TELA ADMIN NOTAS FISCAIS ─────
-let _admNFMes      = new Date().getMonth() + 1;
-let _admNFAno      = new Date().getFullYear();
-let _admNFQuinzena = null;
-let _admNFRows     = [];
+let _admNFMes       = new Date().getMonth() + 1;
+let _admNFAno       = new Date().getFullYear();
+let _admNFQuinzena  = null;
+let _admNFRows      = [];
+let _admNFPagina    = 1;
+let _admNFPorPagina = 25;
+let _admNFModoData  = false;
 
 function abrirAdminNFs(event) {
     if (event) event.preventDefault();
@@ -37,7 +40,11 @@ function selecionarQuinzenaNF(q) {
 }
 
 function buscarNFsAdmin() {
-    if (!_admNFQuinzena) {
+    const de  = document.getElementById("adm-nf-de").value;
+    const ate = document.getElementById("adm-nf-ate").value;
+    _admNFModoData = !!(de && ate);
+
+    if (!_admNFModoData && !_admNFQuinzena) {
         document.getElementById("adm-nf-empty").innerText = "Selecione a quinzena (1ª ou 2ª) antes de buscar.";
         document.getElementById("adm-nf-empty").style.display = "";
         return;
@@ -51,17 +58,20 @@ function buscarNFsAdmin() {
     empty.style.display = "";
     resultado.style.display = "none";
 
-    fetch(`${API}/admin/notas?mes=${_admNFMes}&ano=${_admNFAno}&quinzena=${_admNFQuinzena}`, {
-        headers: { "Authorization": "Bearer " + token }
-    })
+    const url = _admNFModoData
+        ? `${API}/admin/notas?de=${de}&ate=${ate}`
+        : `${API}/admin/notas?mes=${_admNFMes}&ano=${_admNFAno}&quinzena=${_admNFQuinzena}`;
+
+    fetch(url, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
     .then(rows => {
         if (!Array.isArray(rows) || !rows.length) {
             _admNFRows = [];
-            empty.innerText = "Nenhuma nota fiscal encontrada para este período.";
+            empty.innerText = _admNFModoData ? "Nenhuma nota fiscal anexada nesse intervalo." : "Nenhuma nota fiscal encontrada para este período.";
             return;
         }
-        _admNFRows = rows;
+        _admNFRows   = rows;
+        _admNFPagina = 1;
         empty.style.display = "none";
         resultado.style.display = "";
 
@@ -82,45 +92,221 @@ function buscarNFsAdmin() {
         if (nSemGC) counter += ` &nbsp;·&nbsp; <span style="color:#ef4444">⚠ ${nSemGC} sem GC Transportes</span>`;
         document.getElementById("adm-nf-counter").innerHTML = counter;
 
-        document.getElementById("adm-nf-tbody").innerHTML = rows.map(nf => {
-            const badgeCls = nf.status === "confere" ? "confere" : nf.status === "diverge" ? "diverge" : "pendente";
-            const badgeTxt = nf.status === "confere" ? "✓ Confere" : nf.status === "diverge" ? "⚠ Diverge" : "—";
-            const numPart   = nf.numero_nf ? `<div style="color:#94a3b8;font-size:11px;margin-bottom:3px">Nº ${nf.numero_nf}</div>` : "";
-            const chavePart = nf.chave_acesso
-                ? `<div class="adm-nf-chave" style="font-family:monospace;font-size:10.5px;color:#64748b;word-break:break-all;line-height:1.5">${nf.chave_acesso}</div>`
-                : `<span style="color:#475569">—</span>`;
-
-            const isDup   = chaveCount[nf.chave_acesso] > 1;
-            const notGC   = nf.tomador && !_isGC(nf.tomador);
-            const rowErr  = isDup || notGC;
-            const rowStyle = rowErr ? ' style="background:rgba(239,68,68,0.07);border-left:3px solid #ef4444"' : '';
-
-            const alertas = [
-                isDup ? `<span class="adm-nf-badge diverge" style="margin-top:4px;display:inline-block">Chave duplicada</span>` : "",
-                notGC ? `<span class="adm-nf-badge diverge" style="margin-top:4px;display:inline-block" title="${nf.tomador}">Tomador ≠ GC</span>` : "",
-            ].filter(Boolean).join(" ");
-
-            const pdfBtn = nf.tem_pdf
-                ? `<button class="adm-nf-pdf-btn" onclick="_baixarNFPdf(${nf.id}, '${String(nf.numero_nf || "").replace(/[^\w-]/g, "")}', '${String(nf.user_name || nf.username || "").replace(/[^\wÀ-ÿ .-]/g, "")}')" title="Baixar o PDF anexado">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    PDF
-                </button>`
-                : "";
-
-            return `<tr${rowStyle}>
-                <td class="adm-nf-entregador">${nf.user_name || nf.username}${alertas ? `<div style="margin-top:4px">${alertas}</div>` : ""}</td>
-                <td><span class="adm-nf-badge ${badgeCls}">${badgeTxt}</span></td>
-                <td class="adm-nf-valor">${nf.valor || "—"}</td>
-                <td>${nf.emissao || "—"}</td>
-                <td class="adm-nf-cnpj">${nf.cnpj || "—"}</td>
-                <td>${nf.emissor || "—"}</td>
-                <td>${numPart}${chavePart}${pdfBtn ? `<div style="margin-top:6px">${pdfBtn}</div>` : ""}</td>
-            </tr>`;
-        }).join("");
+        _admNFRenderizarPagina();
     })
     .catch(() => {
         empty.innerText = "Erro ao carregar notas fiscais.";
     });
+}
+
+function _admNFRenderizarPagina() {
+    const rows = _admNFRows;
+
+    const chaveCount = {};
+    rows.forEach(nf => { if (nf.chave_acesso) chaveCount[nf.chave_acesso] = (chaveCount[nf.chave_acesso] || 0) + 1; });
+    const _isGC = t => t && /gc.*transport/i.test(t);
+
+    const totalPaginas = Math.max(1, Math.ceil(rows.length / _admNFPorPagina));
+    _admNFPagina = Math.min(Math.max(1, _admNFPagina), totalPaginas);
+    const inicio = (_admNFPagina - 1) * _admNFPorPagina;
+    const pagina = rows.slice(inicio, inicio + _admNFPorPagina);
+
+    document.getElementById("adm-nf-tbody").innerHTML = pagina.map(nf => {
+        const badgeCls = nf.status === "confere" ? "confere" : nf.status === "diverge" ? "diverge" : "pendente";
+        const badgeTxt = nf.status === "confere" ? "✓ Confere" : nf.status === "diverge" ? "⚠ Diverge" : "—";
+        const numPart   = nf.numero_nf ? `<div style="color:#94a3b8;font-size:11px;margin-bottom:3px">Nº ${nf.numero_nf}</div>` : "";
+        const chavePart = nf.chave_acesso
+            ? `<div class="adm-nf-chave" style="font-family:monospace;font-size:10.5px;color:#64748b;word-break:break-all;line-height:1.5">${nf.chave_acesso}</div>`
+            : `<span style="color:#475569">—</span>`;
+
+        const isDup   = chaveCount[nf.chave_acesso] > 1;
+        const notGC   = nf.tomador && !_isGC(nf.tomador);
+        const rowErr  = isDup || notGC;
+        const rowStyle = rowErr ? ' style="background:rgba(239,68,68,0.07);border-left:3px solid #ef4444"' : '';
+
+        const alertas = [
+            isDup ? `<span class="adm-nf-badge diverge" style="margin-top:4px;display:inline-block">Chave duplicada</span>` : "",
+            notGC ? `<span class="adm-nf-badge diverge" style="margin-top:4px;display:inline-block" title="${nf.tomador}">Tomador ≠ GC</span>` : "",
+        ].filter(Boolean).join(" ");
+
+        const pdfBtn = nf.tem_pdf
+            ? `<button class="adm-nf-pdf-btn" onclick="_baixarNFPdf(${nf.id}, '${String(nf.numero_nf || "").replace(/[^\w-]/g, "")}', '${String(nf.user_name || nf.username || "").replace(/[^\wÀ-ÿ .-]/g, "")}')" title="Baixar o PDF anexado">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                PDF
+            </button>`
+            : "";
+
+        const periodoLbl = _admNFModoData && nf.mes && nf.ano && nf.quinzena
+            ? `<div style="font-size:10.5px;color:#4a6a8a;margin-top:2px">${nf.quinzena}ª Qz ${String(nf.mes).padStart(2,"0")}/${nf.ano}</div>`
+            : "";
+
+        return `<tr${rowStyle}>
+            <td class="adm-nf-entregador">${nf.user_name || nf.username}${periodoLbl}${alertas ? `<div style="margin-top:4px">${alertas}</div>` : ""}</td>
+            <td><span class="adm-nf-badge ${badgeCls}">${badgeTxt}</span></td>
+            <td class="adm-nf-valor">${nf.valor || "—"}</td>
+            <td>${nf.emissao || "—"}</td>
+            <td class="adm-nf-cnpj">${nf.cnpj || "—"}</td>
+            <td>${nf.emissor || "—"}</td>
+            <td>${numPart}${chavePart}${pdfBtn ? `<div style="margin-top:6px">${pdfBtn}</div>` : ""}</td>
+        </tr>`;
+    }).join("");
+
+    document.getElementById("adm-nf-pagina-info").innerText = `Página ${_admNFPagina} de ${totalPaginas}`;
+}
+
+function _admNFMudarPorPagina() {
+    _admNFPorPagina = parseInt(document.getElementById("adm-nf-por-pagina").value, 10);
+    _admNFPagina = 1;
+    _admNFRenderizarPagina();
+}
+
+function _admNFPaginaAnterior() {
+    if (_admNFPagina <= 1) return;
+    _admNFPagina--;
+    _admNFRenderizarPagina();
+}
+
+function _admNFProximaPagina() {
+    const totalPaginas = Math.max(1, Math.ceil(_admNFRows.length / _admNFPorPagina));
+    if (_admNFPagina >= totalPaginas) return;
+    _admNFPagina++;
+    _admNFRenderizarPagina();
+}
+
+function _admNFLimparFiltroData() {
+    document.getElementById("adm-nf-de").value  = "";
+    document.getElementById("adm-nf-ate").value = "";
+    document.getElementById("adm-nf-filtro-txt").innerText = "Filtrar por data de envio";
+    _admNFModoData = false;
+    if (_admNFQuinzena) buscarNFsAdmin();
+}
+
+// ───── Calendário de intervalo (filtro por data de envio) ─────
+let _admNFCalMes    = new Date();
+let _admNFCalInicio = null;
+let _admNFCalFim    = null;
+
+function _admNFFmtData(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function _admNFParseData(str) {
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+function _admNFAbrirCalendario(event) {
+    event.stopPropagation();
+    const pop = document.getElementById("adm-nf-cal-pop");
+    const jaAberto = pop.style.display !== "none";
+    if (jaAberto) { _admNFFecharCalendario(); return; }
+
+    if (pop.parentElement !== document.body) document.body.appendChild(pop);
+
+    const de  = document.getElementById("adm-nf-de").value;
+    const ate = document.getElementById("adm-nf-ate").value;
+    _admNFCalInicio = de ? _admNFParseData(de) : null;
+    _admNFCalFim    = ate ? _admNFParseData(ate) : null;
+    _admNFCalMes    = new Date(_admNFCalInicio || new Date());
+    _admNFCalMes.setDate(1);
+
+    const btn = document.getElementById("adm-nf-filtro-btn");
+    const rect = btn.getBoundingClientRect();
+    pop.style.top   = (rect.bottom + 8) + "px";
+    pop.style.left  = rect.left + "px";
+    pop.style.right = "auto";
+    pop.style.display = "block";
+    pop.onclick = ev => ev.stopPropagation();
+
+    _admNFCalRender();
+    document.addEventListener("click", _admNFFecharCalendario);
+}
+
+function _admNFFecharCalendario() {
+    document.getElementById("adm-nf-cal-pop").style.display = "none";
+    document.removeEventListener("click", _admNFFecharCalendario);
+}
+
+function _admNFCalMesAnterior() { _admNFCalMes.setMonth(_admNFCalMes.getMonth() - 1); _admNFCalRender(); }
+function _admNFCalMesProximo()  { _admNFCalMes.setMonth(_admNFCalMes.getMonth() + 1); _admNFCalRender(); }
+
+function _admNFCalClick(dataStr) {
+    const d = _admNFParseData(dataStr);
+    if (!_admNFCalInicio || _admNFCalFim) {
+        _admNFCalInicio = d;
+        _admNFCalFim    = null;
+    } else if (d < _admNFCalInicio) {
+        _admNFCalFim    = _admNFCalInicio;
+        _admNFCalInicio = d;
+    } else {
+        _admNFCalFim = d;
+    }
+    _admNFCalRender();
+
+    if (_admNFCalInicio && _admNFCalFim) {
+        document.getElementById("adm-nf-de").value  = _admNFFmtData(_admNFCalInicio);
+        document.getElementById("adm-nf-ate").value = _admNFFmtData(_admNFCalFim);
+        document.getElementById("adm-nf-filtro-txt").innerText =
+            `${_admNFCalInicio.toLocaleDateString('pt-BR')} — ${_admNFCalFim.toLocaleDateString('pt-BR')}`;
+        _admNFFecharCalendario();
+        buscarNFsAdmin();
+    }
+}
+
+function _admNFCalRender() {
+    const pop = document.getElementById("adm-nf-cal-pop");
+    const mes = _admNFCalMes;
+    const ano = mes.getFullYear();
+    const mesIdx = mes.getMonth();
+
+    const inicio = _admNFCalInicio;
+    const fim    = _admNFCalFim;
+
+    const primeiroDiaSemana = new Date(ano, mesIdx, 1).getDay();
+    const diasNoMes = new Date(ano, mesIdx + 1, 0).getDate();
+    const celulaInicio = new Date(ano, mesIdx, 1 - primeiroDiaSemana);
+
+    const totalCelulas = Math.ceil((primeiroDiaSemana + diasNoMes) / 7) * 7;
+    let gridHtml = '';
+    for (let i = 0; i < totalCelulas; i++) {
+        const dia = new Date(celulaInicio);
+        dia.setDate(celulaInicio.getDate() + i);
+        const dataStr = _admNFFmtData(dia);
+        const foraDoMes = dia.getMonth() !== mesIdx;
+
+        let classes = 'ped-cal-day' + (foraDoMes ? ' outro-mes' : '');
+        if (inicio && fim) {
+            const t = dia.getTime();
+            if (t === inicio.getTime() && t === fim.getTime()) classes += ' intervalo-unico';
+            else if (t === inicio.getTime()) classes += ' intervalo-inicio';
+            else if (t === fim.getTime()) classes += ' intervalo-fim';
+            else if (t > inicio.getTime() && t < fim.getTime()) classes += ' no-intervalo';
+        } else if (inicio && dia.getTime() === inicio.getTime()) {
+            classes += ' intervalo-unico';
+        }
+
+        gridHtml += `<div class="${classes}" onclick="_admNFCalClick('${dataStr}')">${dia.getDate()}</div>`;
+    }
+
+    const dowHtml = ['D','S','T','Q','Q','S','S'].map(d => `<div class="ped-cal-dow">${d}</div>`).join('');
+
+    const rangeTxt = !_admNFCalInicio
+        ? 'Clique na data inicial'
+        : !_admNFCalFim
+            ? 'Agora clique na data final'
+            : `${_admNFCalInicio.toLocaleDateString('pt-BR')} — ${_admNFCalFim.toLocaleDateString('pt-BR')}`;
+
+    pop.innerHTML = `
+        <div class="ped-cal-header">
+            <button class="ped-cal-nav" onclick="_admNFCalMesAnterior()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span>${_MES_NOMES[mesIdx + 1]} ${ano}</span>
+            <button class="ped-cal-nav" onclick="_admNFCalMesProximo()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+        </div>
+        <div class="ped-cal-grid">${dowHtml}${gridHtml}</div>
+        <div class="ped-cal-footer"><span class="ped-cal-range-txt">${rangeTxt}</span></div>`;
 }
 
 function _baixarNFPdf(id, numero, nome) {
