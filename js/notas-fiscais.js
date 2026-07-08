@@ -176,6 +176,7 @@ let _admNFCalCampo  = "envio";
 let _admNFCalMes    = new Date();
 let _admNFCalInicio = null;
 let _admNFCalFim    = null;
+let _admNFCalHover  = null;
 
 function _admNFFmtData(d) {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -192,6 +193,7 @@ function _admNFAbrirCalendario(event, campo) {
     if (jaAberto) { _admNFFecharCalendario(); return; }
 
     _admNFCalCampo = campo;
+    _admNFCalHover = null;
     const cfg = _admNFCalCampos[campo];
     if (pop.parentElement !== document.body) document.body.appendChild(pop);
 
@@ -235,6 +237,7 @@ function _admNFCalClick(dataStr) {
     } else {
         _admNFCalFim = d;
     }
+    _admNFCalHover = null;
     _admNFCalRender();
 
     if (_admNFCalInicio && _admNFCalFim) {
@@ -249,14 +252,30 @@ function _admNFCalClick(dataStr) {
     }
 }
 
+// Rastro de seleção: enquanto só a data inicial foi clicada, o hover do mouse
+// pré-visualiza o intervalo até o dia sobre o qual o cursor está passando
+function _admNFCalHoverDia(dataStr) {
+    if (!_admNFCalInicio || _admNFCalFim) return;
+    const d = _admNFParseData(dataStr);
+    if (_admNFCalHover && _admNFCalHover.getTime() === d.getTime()) return;
+    _admNFCalHover = d;
+    _admNFCalRender();
+}
+
 function _admNFCalRender() {
     const pop = document.getElementById("adm-nf-cal-pop");
     const mes = _admNFCalMes;
     const ano = mes.getFullYear();
     const mesIdx = mes.getMonth();
 
-    const inicio = _admNFCalInicio;
-    const fim    = _admNFCalFim;
+    // Enquanto só a inicial foi clicada, usa o dia sob o mouse como "fim" provisório
+    // só para desenhar o rastro — não mexe no estado real da seleção
+    let inicio = _admNFCalInicio;
+    let fim    = _admNFCalFim;
+    if (inicio && !fim && _admNFCalHover) {
+        if (_admNFCalHover < inicio) { fim = inicio; inicio = _admNFCalHover; }
+        else { fim = _admNFCalHover; }
+    }
 
     const primeiroDiaSemana = new Date(ano, mesIdx, 1).getDay();
     const diasNoMes = new Date(ano, mesIdx + 1, 0).getDate();
@@ -281,7 +300,7 @@ function _admNFCalRender() {
             classes += ' intervalo-unico';
         }
 
-        gridHtml += `<div class="${classes}" onclick="_admNFCalClick('${dataStr}')">${dia.getDate()}</div>`;
+        gridHtml += `<div class="${classes}" onclick="_admNFCalClick('${dataStr}')" onmouseover="_admNFCalHoverDia('${dataStr}')">${dia.getDate()}</div>`;
     }
 
     const dowHtml = ['D','S','T','Q','Q','S','S'].map(d => `<div class="ped-cal-dow">${d}</div>`).join('');
