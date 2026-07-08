@@ -1,20 +1,42 @@
 // ───── PLANEJAMENTO VIDEIRA (bairro → entregador, por transportadora) ─────
+const _PV_TRANSP = [
+    { key: "loggi",  label: "Loggi",  cor: "#12A5E8" },
+    { key: "anjun",  label: "Anjun",  cor: "#22C55E" },
+    { key: "shopee", label: "Shopee", cor: "#F97316" },
+    { key: "imile",  label: "Imile",  cor: "#9333EA" },
+    { key: "jt",     label: "J&T",    cor: "#EF4444" },
+];
+
 let _pvTransportadora = "loggi";
 let _pvLinhas   = [];
 let _pvUsuarios = [];
 
 function abrirPlanejamentoVideira(event) {
     if (event) event.preventDefault();
-    document.getElementById("pv-transp-select").value = _pvTransportadora;
+    document.getElementById("pv-transp-tabs").innerHTML = _PV_TRANSP.map(t => `
+        <button class="pv-transp-tab${t.key === _pvTransportadora ? " active" : ""}" style="--pvc:${t.cor}"
+            data-t="${t.key}" onclick="_pvTrocarTransportadora('${t.key}')">${t.label}</button>
+    `).join("");
     document.getElementById("pv-filtro-input").value = "";
+    _pvAplicarAccent();
     mostrarTela("tela-planejamento-videira");
     _pvCarregar();
 }
 
-function _pvTrocarTransportadora() {
-    _pvTransportadora = document.getElementById("pv-transp-select").value;
+function _pvTrocarTransportadora(t) {
+    _pvTransportadora = t;
+    document.querySelectorAll(".pv-transp-tab").forEach(btn =>
+        btn.classList.toggle("active", btn.dataset.t === t)
+    );
     document.getElementById("pv-filtro-input").value = "";
+    _pvAplicarAccent();
     _pvCarregar();
+}
+
+function _pvAplicarAccent() {
+    const cor = (_PV_TRANSP.find(t => t.key === _pvTransportadora) || {}).cor || "#3a86ff";
+    // Aplica no root para o popup de busca (que fica anexado ao <body>) também herdar a cor certa
+    document.documentElement.style.setProperty("--pv-accent", cor);
 }
 
 function _pvCarregar() {
@@ -41,15 +63,16 @@ function _pvCarregar() {
 }
 
 function _pvRenderizar(linhas) {
-    document.getElementById("pv-counter").innerText = `${linhas.length} bairro${linhas.length !== 1 ? "s" : ""}`;
+    _pvAtualizarContador(linhas);
 
     document.getElementById("pv-tbody").innerHTML = linhas.map(l => {
-        const exibicao = l.entregador || "Não Definido";
+        const exibicao   = l.entregador || "Não Definido";
+        const naoDefinido = !l.entregador;
         return `<tr>
             <td class="adm-nf-entregador">${l.bairro || "—"}</td>
             <td class="adm-nf-cnpj">${l.sigla || "—"}</td>
             <td>
-                <input type="text" class="fech-select pv-combo-input" style="width:100%" autocomplete="off"
+                <input type="text" class="fech-select pv-combo-input${naoDefinido ? " pv-nao-definido" : ""}" style="width:100%" autocomplete="off"
                     value="${exibicao.replace(/"/g, "&quot;")}" data-linha="${l.linha}"
                     oninput="_pvComboFiltrar(this)" onfocus="_pvComboAbrir(this)" onblur="_pvComboBlur(this)">
             </td>
@@ -153,13 +176,23 @@ function _pvSalvar(linha, entregador, inputEl) {
         // Atualiza estado local para o filtro/revalidação continuar refletindo o valor salvo
         const item = _pvLinhas.find(l => l.linha === linha);
         if (item) item.entregador = entregador;
+        inputEl.classList.toggle("pv-nao-definido", !entregador);
         inputEl.style.borderColor = "rgba(34,197,94,0.6)";
         setTimeout(() => { inputEl.style.borderColor = ""; }, 900);
+        _pvAtualizarContador();
     })
     .catch(() => {
         inputEl.disabled = false;
         gcAlert("Erro ao salvar. Tente novamente.");
     });
+}
+
+function _pvAtualizarContador(linhas) {
+    const base = linhas || _pvLinhas;
+    const semEntregador = base.filter(l => !l.entregador).length;
+    document.getElementById("pv-counter").innerHTML =
+        `${base.length} bairro${base.length !== 1 ? "s" : ""}` +
+        (semEntregador ? ` <span class="pv-alerta">· ${semEntregador} sem entregador definido</span>` : "");
 }
 
 function _pvFiltrarLocal() {

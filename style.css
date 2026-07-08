@@ -2370,8 +2370,47 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     padding: 9px 14px; font-size: 13px; color: #cbd5e1; cursor: pointer;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.pv-combo-item:hover { background: rgba(58,134,255,0.12); color: #fff; }
+.pv-combo-item:hover { background: color-mix(in srgb, var(--pv-accent, #3a86ff) 18%, transparent); color: #fff; }
 .pv-combo-empty { padding: 10px 14px; font-size: 12.5px; color: #4a6a8a; }
+
+/* Abas de transportadora (Planejamento de Rotas) — cada uma na cor da própria transportadora */
+.pv-transp-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.pv-transp-tab {
+    padding: 8px 18px; border-radius: 99px; cursor: pointer; font-family: inherit;
+    font-size: 13px; font-weight: 600; transition: all 0.2s ease;
+    border: 1px solid color-mix(in srgb, var(--pvc) 32%, transparent);
+    background: color-mix(in srgb, var(--pvc) 8%, transparent);
+    color: var(--pvc);
+}
+.pv-transp-tab:hover { background: color-mix(in srgb, var(--pvc) 18%, transparent); }
+.pv-transp-tab.active {
+    background: var(--pvc); color: #fff; border-color: var(--pvc);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--pvc) 50%, transparent);
+}
+
+/* Card da tabela — acento na cor da transportadora selecionada */
+.pv-card {
+    background: linear-gradient(150deg, color-mix(in srgb, var(--pv-accent, #3a86ff) 7%, transparent) 0%, rgba(11,16,26,0.97) 55%);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-left: 3px solid var(--pv-accent, #3a86ff);
+    border-radius: var(--radius); overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+    transition: border-left-color 0.25s ease;
+}
+.pv-summary {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    font-size: 12px; color: var(--text-muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px;
+}
+.pv-summary .pv-alerta { color: #fb923c; text-transform: none; letter-spacing: 0; font-weight: 700; }
+
+.pv-combo-input { transition: border-color 0.2s, box-shadow 0.2s, color 0.2s; }
+.pv-combo-input:focus {
+    border-color: var(--pv-accent, #3a86ff) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pv-accent, #3a86ff) 18%, transparent);
+    outline: none;
+}
+.pv-combo-input.pv-nao-definido { color: #fb923c; font-style: italic; }
 .ped-cal-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.045);
