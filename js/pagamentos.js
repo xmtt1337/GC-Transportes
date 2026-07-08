@@ -168,7 +168,8 @@ function _exportarNFsXlsx() {
     if (!_admNFRows.length) return;
     const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
     const nomeMes = MESES[(_admNFMes || 1) - 1] || "";
-    const ordQ    = _admNFQuinzena === 1 ? "1ª Quinzena" : "2ª Quinzena";
+    const quinzenaSel = document.getElementById("adm-nf-quinzena")?.value;
+    const ordQ    = quinzenaSel === "1" ? "1aQuinzena" : quinzenaSel === "2" ? "2aQuinzena" : "TodasQuinzenas";
 
     const data = _admNFRows.map(nf => ({
         "Entregador":      nf.user_name || nf.username || "",
@@ -185,5 +186,5 @@ function _exportarNFsXlsx() {
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Notas Fiscais");
-    XLSX.writeFile(wb, `notas_fiscais_${nomeMes}_${_admNFAno}_${ordQ.replace(" ","")}.xlsx`);
+    XLSX.writeFile(wb, `notas_fiscais_${nomeMes}_${_admNFAno}_${ordQ}.xlsx`);
 }

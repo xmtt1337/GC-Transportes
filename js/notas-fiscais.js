@@ -1,22 +1,17 @@
 // ───── TELA ADMIN NOTAS FISCAIS ─────
 let _admNFMes       = new Date().getMonth() + 1;
 let _admNFAno       = new Date().getFullYear();
-let _admNFQuinzena  = null;
 let _admNFRows      = [];
 let _admNFPagina    = 1;
 let _admNFPorPagina = 25;
-let _admNFModoData  = false;
 
 function abrirAdminNFs(event) {
     if (event) event.preventDefault();
-    _admNFQuinzena = null;
-    document.getElementById("adm-nf-btn-1q").classList.remove("active");
-    document.getElementById("adm-nf-btn-2q").classList.remove("active");
-    document.getElementById("adm-nf-empty").innerText = "Selecione o mês, ano e quinzena para ver as notas fiscais.";
-    document.getElementById("adm-nf-empty").style.display = "";
+    document.getElementById("adm-nf-quinzena").value = "";
     document.getElementById("adm-nf-resultado").style.display = "none";
     _iniciarSelectsAdmNF();
     mostrarTela("tela-admin-nfs");
+    buscarNFsAdmin();
 }
 
 function _iniciarSelectsAdmNF() {
@@ -32,25 +27,14 @@ function _iniciarSelectsAdmNF() {
     document.getElementById("adm-nf-mes").value = _admNFMes;
 }
 
-function selecionarQuinzenaNF(q) {
-    _admNFQuinzena = q;
-    document.getElementById("adm-nf-btn-1q").classList.toggle("active", q === 1);
-    document.getElementById("adm-nf-btn-2q").classList.toggle("active", q === 2);
-    buscarNFsAdmin();
-}
-
 function buscarNFsAdmin() {
-    const de  = document.getElementById("adm-nf-de").value;
-    const ate = document.getElementById("adm-nf-ate").value;
-    _admNFModoData = !!(de && ate);
-
-    if (!_admNFModoData && !_admNFQuinzena) {
-        document.getElementById("adm-nf-empty").innerText = "Selecione a quinzena (1ª ou 2ª) antes de buscar.";
-        document.getElementById("adm-nf-empty").style.display = "";
-        return;
-    }
     _admNFMes = parseInt(document.getElementById("adm-nf-mes").value);
     _admNFAno = parseInt(document.getElementById("adm-nf-ano").value);
+    const quinzena   = document.getElementById("adm-nf-quinzena").value;
+    const de         = document.getElementById("adm-nf-de").value;
+    const ate        = document.getElementById("adm-nf-ate").value;
+    const emissaoDe  = document.getElementById("adm-nf-emissao-de").value;
+    const emissaoAte = document.getElementById("adm-nf-emissao-ate").value;
 
     const empty     = document.getElementById("adm-nf-empty");
     const resultado = document.getElementById("adm-nf-resultado");
@@ -58,16 +42,17 @@ function buscarNFsAdmin() {
     empty.style.display = "";
     resultado.style.display = "none";
 
-    const url = _admNFModoData
-        ? `${API}/admin/notas?de=${de}&ate=${ate}`
-        : `${API}/admin/notas?mes=${_admNFMes}&ano=${_admNFAno}&quinzena=${_admNFQuinzena}`;
+    const params = new URLSearchParams({ mes: _admNFMes, ano: _admNFAno });
+    if (quinzena)          params.set("quinzena", quinzena);
+    if (de && ate)         { params.set("de", de); params.set("ate", ate); }
+    if (emissaoDe && emissaoAte) { params.set("emissaoDe", emissaoDe); params.set("emissaoAte", emissaoAte); }
 
-    fetch(url, { headers: { "Authorization": "Bearer " + token } })
+    fetch(`${API}/admin/notas?${params.toString()}`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
     .then(rows => {
         if (!Array.isArray(rows) || !rows.length) {
             _admNFRows = [];
-            empty.innerText = _admNFModoData ? "Nenhuma nota fiscal anexada nesse intervalo." : "Nenhuma nota fiscal encontrada para este período.";
+            empty.innerText = rows.error || "Nenhuma nota fiscal encontrada para os filtros selecionados.";
             return;
         }
         _admNFRows   = rows;
@@ -130,14 +115,14 @@ function _admNFRenderizarPagina() {
         ].filter(Boolean).join(" ");
 
         const pdfBtn = nf.tem_pdf
-            ? `<button class="adm-nf-pdf-btn" onclick="_baixarNFPdf(${nf.id}, '${String(nf.numero_nf || "").replace(/[^\w-]/g, "")}', '${String(nf.user_name || nf.username || "").replace(/[^\wÀ-ÿ .-]/g, "")}')" title="Baixar o PDF anexado">
+            ? `<button class="adm-nf-pdf-btn" onclick="_baixarNFPdf(${nf.id}, '${String(nf.numero_nf || "").replace(/[^\w-]/g, "")}', '${String(nf.user_name || nf.username || "").replace(/[^\wÀ-ÿ .-]/g, "")}', ${nf.mes}, ${nf.ano}, ${nf.quinzena})" title="Baixar o PDF anexado">
                 <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 PDF
             </button>`
             : "";
 
-        const periodoLbl = _admNFModoData && nf.mes && nf.ano && nf.quinzena
-            ? `<div style="font-size:10.5px;color:#4a6a8a;margin-top:2px">${nf.quinzena}ª Qz ${String(nf.mes).padStart(2,"0")}/${nf.ano}</div>`
+        const periodoLbl = nf.mes && nf.ano && nf.quinzena
+            ? `<div style="font-size:10.5px;color:#4a6a8a;margin-top:2px">${nf.quinzena}ª Qz ${String(nf.mes).padStart(2,"0")}/${nf.ano} · enviada ${nf.created_at ? new Date(nf.created_at).toLocaleDateString('pt-BR') : '—'}</div>`
             : "";
 
         return `<tr${rowStyle}>
@@ -173,15 +158,23 @@ function _admNFProximaPagina() {
     _admNFRenderizarPagina();
 }
 
-function _admNFLimparFiltroData() {
+function _admNFLimparFiltrosData() {
     document.getElementById("adm-nf-de").value  = "";
     document.getElementById("adm-nf-ate").value = "";
-    document.getElementById("adm-nf-filtro-txt").innerText = "Filtrar por data de envio";
-    _admNFModoData = false;
-    if (_admNFQuinzena) buscarNFsAdmin();
+    document.getElementById("adm-nf-filtro-envio-txt").innerText = "Data de envio";
+    document.getElementById("adm-nf-emissao-de").value  = "";
+    document.getElementById("adm-nf-emissao-ate").value = "";
+    document.getElementById("adm-nf-filtro-emissao-txt").innerText = "Data de emissão";
+    buscarNFsAdmin();
 }
 
-// ───── Calendário de intervalo (filtro por data de envio) ─────
+// ───── Calendário de intervalo (filtro por data de envio OU data de emissão) ─────
+// campo: 'envio' -> adm-nf-de/ate | 'emissao' -> adm-nf-emissao-de/ate
+const _admNFCalCampos = {
+    envio:   { de: "adm-nf-de",         ate: "adm-nf-ate",         txt: "adm-nf-filtro-envio-txt",   btn: "adm-nf-filtro-envio-btn",   label: "Data de envio" },
+    emissao: { de: "adm-nf-emissao-de", ate: "adm-nf-emissao-ate", txt: "adm-nf-filtro-emissao-txt", btn: "adm-nf-filtro-emissao-btn", label: "Data de emissão" },
+};
+let _admNFCalCampo  = "envio";
 let _admNFCalMes    = new Date();
 let _admNFCalInicio = null;
 let _admNFCalFim    = null;
@@ -194,22 +187,24 @@ function _admNFParseData(str) {
     return new Date(y, m - 1, d);
 }
 
-function _admNFAbrirCalendario(event) {
+function _admNFAbrirCalendario(event, campo) {
     event.stopPropagation();
     const pop = document.getElementById("adm-nf-cal-pop");
-    const jaAberto = pop.style.display !== "none";
+    const jaAberto = pop.style.display !== "none" && _admNFCalCampo === campo;
     if (jaAberto) { _admNFFecharCalendario(); return; }
 
+    _admNFCalCampo = campo;
+    const cfg = _admNFCalCampos[campo];
     if (pop.parentElement !== document.body) document.body.appendChild(pop);
 
-    const de  = document.getElementById("adm-nf-de").value;
-    const ate = document.getElementById("adm-nf-ate").value;
+    const de  = document.getElementById(cfg.de).value;
+    const ate = document.getElementById(cfg.ate).value;
     _admNFCalInicio = de ? _admNFParseData(de) : null;
     _admNFCalFim    = ate ? _admNFParseData(ate) : null;
     _admNFCalMes    = new Date(_admNFCalInicio || new Date());
     _admNFCalMes.setDate(1);
 
-    const btn = document.getElementById("adm-nf-filtro-btn");
+    const btn = document.getElementById(cfg.btn);
     const rect = btn.getBoundingClientRect();
     pop.style.top   = (rect.bottom + 8) + "px";
     pop.style.left  = rect.left + "px";
@@ -243,9 +238,10 @@ function _admNFCalClick(dataStr) {
     _admNFCalRender();
 
     if (_admNFCalInicio && _admNFCalFim) {
-        document.getElementById("adm-nf-de").value  = _admNFFmtData(_admNFCalInicio);
-        document.getElementById("adm-nf-ate").value = _admNFFmtData(_admNFCalFim);
-        document.getElementById("adm-nf-filtro-txt").innerText =
+        const cfg = _admNFCalCampos[_admNFCalCampo];
+        document.getElementById(cfg.de).value  = _admNFFmtData(_admNFCalInicio);
+        document.getElementById(cfg.ate).value = _admNFFmtData(_admNFCalFim);
+        document.getElementById(cfg.txt).innerText =
             `${_admNFCalInicio.toLocaleDateString('pt-BR')} — ${_admNFCalFim.toLocaleDateString('pt-BR')}`;
         _admNFFecharCalendario();
         buscarNFsAdmin();
@@ -309,14 +305,14 @@ function _admNFCalRender() {
         <div class="ped-cal-footer"><span class="ped-cal-range-txt">${rangeTxt}</span></div>`;
 }
 
-function _baixarNFPdf(id, numero, nome) {
+function _baixarNFPdf(id, numero, nome, mes, ano, quinzena) {
     fetch(`${API}/nota/pdf/${id}`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
     .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `NF ${_admFQuinzena}Q ${String(_admFMes).padStart(2, "0")}-${_admFAno}${nome ? " - " + nome : ""}${numero ? " - Nº " + numero : ""}.pdf`;
+        a.download = `NF ${quinzena}Q ${String(mes).padStart(2, "0")}-${ano}${nome ? " - " + nome : ""}${numero ? " - Nº " + numero : ""}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
