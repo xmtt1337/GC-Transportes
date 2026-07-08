@@ -31,8 +31,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-desempenho-bip");
     };
     const _showFechamentosAdmin = () => {
-        show("menu-adminmenu");
-        show("submenu-adminmenu");
+        show("menu-fechamento");
+        show("submenu-fechamento");
     };
     const _showFinanceiro = () => {
         show("menu-financeiro");
@@ -90,7 +90,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         _showExtravios();
         _showTorreControle();
         show("bip-sync-btn");
-        show("videira-subgroup-header");
     }
 
     if (role === "sac") {
