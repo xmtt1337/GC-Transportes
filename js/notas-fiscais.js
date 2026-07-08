@@ -7,30 +7,19 @@ let _admNFPorPagina = 25;
 
 function abrirAdminNFs(event) {
     if (event) event.preventDefault();
-    _iniciarSelectsAdmNF();
     _admNFResetFiltrosExtras();
     document.getElementById("adm-nf-resultado").style.display = "none";
     mostrarTela("tela-admin-nfs");
     buscarNFsAdmin();
 }
 
-function _iniciarSelectsAdmNF() {
-    const selAno = document.getElementById("adm-nf-ano");
-    const anoAtual = new Date().getFullYear();
-    selAno.innerHTML = "";
-    for (let a = anoAtual - 2; a <= anoAtual; a++) {
-        const opt = document.createElement("option");
-        opt.value = a; opt.textContent = a;
-        selAno.appendChild(opt);
-    }
-    selAno.value = _admNFAno;
-    document.getElementById("adm-nf-mes").value = _admNFMes;
-}
-
 function _admNFResetFiltrosExtras() {
+    _admNFMes = new Date().getMonth() + 1;
+    _admNFAno = new Date().getFullYear();
+
     document.getElementById("adm-nf-quinzena").value = "";
     const qTxt = document.getElementById("adm-nf-quinzena-txt");
-    qTxt.innerText = "Todas as quinzenas";
+    qTxt.innerText = "Selecione o período";
     qTxt.classList.remove("ativo");
 
     document.getElementById("adm-nf-de").value  = "";
@@ -47,14 +36,13 @@ function _admNFResetFiltrosExtras() {
 }
 
 function _admNFRedefinirFiltros() {
-    _iniciarSelectsAdmNF();
     _admNFResetFiltrosExtras();
     buscarNFsAdmin();
 }
 
 function buscarNFsAdmin() {
-    _admNFMes = parseInt(document.getElementById("adm-nf-mes").value);
-    _admNFAno = parseInt(document.getElementById("adm-nf-ano").value);
+    // Mês/ano só entram na busca se um período (quinzena) foi selecionado no calendário —
+    // sem período selecionado, a busca depende só dos filtros de data (envio/emissão)
     const quinzena   = document.getElementById("adm-nf-quinzena").value;
     const de         = document.getElementById("adm-nf-de").value;
     const ate        = document.getElementById("adm-nf-ate").value;
@@ -67,8 +55,8 @@ function buscarNFsAdmin() {
     empty.style.display = "";
     resultado.style.display = "none";
 
-    const params = new URLSearchParams({ mes: _admNFMes, ano: _admNFAno });
-    if (quinzena)          params.set("quinzena", quinzena);
+    const params = new URLSearchParams();
+    if (quinzena) { params.set("mes", _admNFMes); params.set("ano", _admNFAno); params.set("quinzena", quinzena); }
     if (de && ate)         { params.set("de", de); params.set("ate", ate); }
     if (emissaoDe && emissaoAte) { params.set("emissaoDe", emissaoDe); params.set("emissaoAte", emissaoAte); }
 
@@ -215,16 +203,14 @@ function _admNFAbrirCalendario(event, campo) {
 
     if (campo === "quinzena") {
         const q = document.getElementById("adm-nf-quinzena").value;
-        const mes = parseInt(document.getElementById("adm-nf-mes").value);
-        const ano = parseInt(document.getElementById("adm-nf-ano").value);
         if (q) {
-            _admNFCalInicio = new Date(ano, mes - 1, 1);
-            _admNFCalFim    = new Date(ano, mes - 1, q === "1" ? 15 : new Date(ano, mes, 0).getDate());
+            _admNFCalInicio = new Date(_admNFAno, _admNFMes - 1, 1);
+            _admNFCalFim    = new Date(_admNFAno, _admNFMes - 1, q === "1" ? 15 : new Date(_admNFAno, _admNFMes, 0).getDate());
         } else {
             _admNFCalInicio = null;
             _admNFCalFim    = null;
         }
-        _admNFCalMes = new Date(ano, mes - 1, 1);
+        _admNFCalMes = new Date(_admNFAno, _admNFMes - 1, 1);
     } else {
         const de  = document.getElementById(cfg.de).value;
         const ate = document.getElementById(cfg.ate).value;
@@ -267,8 +253,8 @@ function _admNFCalClick(dataStr) {
         _admNFCalFim    = new Date(anoClicado, mesClicado - 1, q === 1 ? 15 : new Date(anoClicado, mesClicado, 0).getDate());
         _admNFCalRender();
 
-        document.getElementById("adm-nf-mes").value = mesClicado;
-        document.getElementById("adm-nf-ano").value = anoClicado;
+        _admNFMes = mesClicado;
+        _admNFAno = anoClicado;
         document.getElementById("adm-nf-quinzena").value = q;
         const qTxt = document.getElementById("adm-nf-quinzena-txt");
         qTxt.innerText = `${q}ª Qz — ${_admNFCalInicio.toLocaleDateString('pt-BR')} a ${_admNFCalFim.toLocaleDateString('pt-BR')}`;
