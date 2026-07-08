@@ -201,16 +201,18 @@ const _reAdmin = /\b(ENDERE[ÇC]O|INSCRI[ÇC][ÃA]O(?:\s+ESTADUAL)?|CEP\b|BAIRRO
 
 // Busca nome por labels dentro de uma seção de texto
 function _nomeNaSec(sec) {
-    // \s* entre as palavras dos labels: PDFs da NFS-e nacional grudam as palavras ("RazãoSocial")
-    return (
+    // \s* entre as palavras dos labels: PDFs da NFS-e nacional grudam as palavras ("RazãoSocial").
+    // (?:[\d.\/-]{2,25}\s*)? descarta prefixo numérico grudado no nome ("59.574.237BRENDA...").
+    const m = (
         // "Nome/Razão social:" — NFS-e municipais (Curitibanos e similares)
-        sec.match(/Nome\s*[\/|]\s*Raz[aã]o\s*[Ss]ocial\s*:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
+        sec.match(/Nome\s*[\/|]\s*Raz[aã]o\s*[Ss]ocial\s*:?\s*(?:[\d.\/-]{2,25}\s*)?([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
         // "Razão Social" padrão / "Razão Social / Nome Empresarial"
-        sec.match(/Raz[aã]o\s*[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s*)?Empresarial\s*)?:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
-        sec.match(/Nome\s*Empresarial\s*:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
-        sec.match(/Nome\s*[\/|]\s*(?:Nome\s*)?Empresarial\s*([\p{L}].{2,79}?)(?=\s+(?:E-?mail|Endere[çc]o|Inscri|CNPJ|CPF))/iu) ||
-        sec.match(/\bNome\s*:\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|E-?mail|Endere))/iu)
+        sec.match(/Raz[aã]o\s*[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s*)?Empresarial\s*)?:?\s*(?:[\d.\/-]{2,25}\s*)?([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
+        sec.match(/Nome\s*Empresarial\s*:?\s*(?:[\d.\/-]{2,25}\s*)?([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
+        sec.match(/Nome\s*[\/|]\s*(?:Nome\s*)?Empresarial\s*(?:[\d.\/-]{2,25}\s*)?([\p{L}].{2,79}?)(?=\s+(?:E-?mail|Endere[çc]o|Inscri|CNPJ|CPF))/iu) ||
+        sec.match(/\bNome\s*:\s*(?:[\d.\/-]{2,25}\s*)?([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|E-?mail|Endere))/iu)
     );
+    return m;
 }
 
 // Busca nome no início de seção sem label explícito (DANFE)
@@ -282,8 +284,8 @@ function _extrairEmissor(t, cnpjEmit, sepIdx) {
             fn: () => {
                 for (const pat of [
                     /(?:Emiss[ao]r[a]?|Emitente)\s*:\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bCEP\b|\bIE\b|E-?mail|Endere))/iu,
-                    /Raz[aã]o\s*[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s*)?Empresarial\s*)?:?\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere|\s{2}))/iu,
-                    /Nome\s*Empresarial\s*:?\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri))/iu,
+                    /Raz[aã]o\s*[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s*)?Empresarial\s*)?:?\s*(?:[\d.\/-]{2,25}\s*)?([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere|\s{2}))/iu,
+                    /Nome\s*Empresarial\s*:?\s*(?:[\d.\/-]{2,25}\s*)?([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
                     /Prestador\s*de\s*Servi[çc]os?\s*:\s*([\p{L}].{3,119}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
                     /Dados\s*do\s*Prestador\s*:\s*([\p{L}].{3,119}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
                 ]) {
@@ -514,7 +516,7 @@ function _extrairCamposNota(raw) {
     // ── VALOR ──
     let valor = "—";
     for (const pat of [
-        /Valor\s+L[ií]quido\s+da\s+NFS?-?[eE][:\s]*(?:R\$\s*)?([\d.]+,\d{2})/i,
+        /Valor\s*L[ií]quido\s*da\s*NFS?-?[eE]\s*:?\s*(?:R\$\s*)?([\d.]+,\d{2})/i,
         // Curitibanos / NFS-e municipais: "Valor líquido = R$ 1.218,60"
         /Valor\s+l[íi]quido\s*=\s*R?\$?\s*([\d.]+,\d{2})/i,
         /Valor\s+bruto\s*=\s*R?\$?\s*([\d.]+,\d{2})/i,
@@ -522,7 +524,7 @@ function _extrairCamposNota(raw) {
         /TOTAL\s+DA\s+NOTA[^\d]*([\d.]+,\d{2})/i,
         /VALOR\s+DOS\s+SERVI[CÇ]OS[^\d]*([\d.]+,\d{2})/i,
         // "Valor do serviço 1.218,6000" — captura só 2 casas decimais mesmo com 4
-        /Valor\s+do\s+Servi[çc]o[:\s]*(?:R\$\s*)?([\d.]+,\d{2})/i,
+        /Valor\s*do\s*Servi[çc]o\s*:?\s*(?:R\$\s*)?([\d.]+,\d{2})/i,
         /VALOR\s+L[IÍ]QUIDO[^\d]*([\d.]+,\d{2})/i,
         /VALOR\s+TOTAL\s+DO\s+CT-?[eE][^\d]*([\d.]+,\d{2})/i,
         /VALOR\s+TOTAL[^\d]*([\d.]+,\d{2})/i,
@@ -552,9 +554,9 @@ function _extrairCamposNota(raw) {
     // P0: labels diretos no trecho do tomador
     if (tomador === "—" && tomPart) {
         for (const pat of [
-            /Raz[aã]o\s*[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s*)?Empresarial\s*)?:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
-            /Nome\s*Empresarial\s*:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri))/iu,
-            /\bNome\s*:\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|Inscri|E-?mail|Endere))/iu,
+            /Raz[aã]o\s*[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s*)?Empresarial\s*)?:?\s+(?:[\d.\/-]{2,25}\s*)?([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
+            /Nome\s*Empresarial\s*:?\s+(?:[\d.\/-]{2,25}\s*)?([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
+            /\bNome\s*:\s*(?:[\d.\/-]{2,25}\s*)?([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|Inscri|E-?mail|Endere))/iu,
         ]) {
             const m = tomPart.match(pat);
             if (m && !_reAdmin.test(m[1])) { tomador = m[1].trim(); break; }
