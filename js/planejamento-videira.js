@@ -44,27 +44,103 @@ function _pvRenderizar(linhas) {
     document.getElementById("pv-counter").innerText = `${linhas.length} bairro${linhas.length !== 1 ? "s" : ""}`;
 
     document.getElementById("pv-tbody").innerHTML = linhas.map(l => {
-        const atual = l.entregador || "";
-        const opcoesComSelecao = ["Não Definido", ..._pvUsuarios].map(u => {
-            const val = u === "Não Definido" ? "" : u;
-            const sel = val === atual ? " selected" : "";
-            return `<option value="${val.replace(/"/g, "&quot;")}"${sel}>${u}</option>`;
-        }).join("");
+        const exibicao = l.entregador || "Não Definido";
         return `<tr>
             <td class="adm-nf-entregador">${l.bairro || "—"}</td>
             <td class="adm-nf-cnpj">${l.sigla || "—"}</td>
             <td>
-                <select class="fech-select" style="width:100%" onchange="_pvSalvar(${l.linha}, this)">
-                    ${opcoesComSelecao}
-                </select>
+                <input type="text" class="fech-select pv-combo-input" style="width:100%" autocomplete="off"
+                    value="${exibicao.replace(/"/g, "&quot;")}" data-linha="${l.linha}"
+                    oninput="_pvComboFiltrar(this)" onfocus="_pvComboAbrir(this)" onblur="_pvComboBlur(this)">
             </td>
         </tr>`;
     }).join("");
 }
 
-function _pvSalvar(linha, selectEl) {
-    const entregador = selectEl.value;
-    selectEl.disabled = true;
+// ───── Combobox de busca do entregador (só aceita nome que esteja na lista de usuários) ─────
+let _pvComboLinha   = null;
+let _pvComboInputEl = null;
+
+function _pvOpcoesFiltradas(termo) {
+    const t = (termo || "").trim().toLowerCase();
+    const todas = ["Não Definido", ..._pvUsuarios];
+    if (!t || t === "não definido") return todas;
+    return todas.filter(u => u.toLowerCase().includes(t));
+}
+
+function _pvComboAbrir(inputEl) {
+    _pvComboLinha   = parseInt(inputEl.dataset.linha);
+    _pvComboInputEl = inputEl;
+    inputEl.select();
+
+    const pop = document.getElementById("pv-combo-pop");
+    if (pop.parentElement !== document.body) document.body.appendChild(pop);
+    const rect = inputEl.getBoundingClientRect();
+    pop.style.top   = (rect.bottom + 4) + "px";
+    pop.style.left  = rect.left + "px";
+    pop.style.width = rect.width + "px";
+    pop.style.display = "block";
+    _pvComboRenderLista(_pvOpcoesFiltradas(inputEl.value));
+}
+
+function _pvComboFiltrar(inputEl) {
+    _pvComboRenderLista(_pvOpcoesFiltradas(inputEl.value));
+}
+
+function _pvComboRenderLista(opcoes) {
+    const pop = document.getElementById("pv-combo-pop");
+    if (!opcoes.length) {
+        pop.innerHTML = `<div class="pv-combo-empty">Nenhum nome encontrado</div>`;
+        return;
+    }
+    pop.innerHTML = opcoes.map(u =>
+        `<div class="pv-combo-item" onmousedown="_pvComboEscolher('${u.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')">${u}</div>`
+    ).join("");
+}
+
+function _pvComboEscolher(nome) {
+    if (!_pvComboInputEl || _pvComboLinha === null) return;
+    const inputEl = _pvComboInputEl;
+    const linha   = _pvComboLinha;
+    inputEl.value = nome;
+    _pvComboFechar();
+    const item = _pvLinhas.find(l => l.linha === linha);
+    const atual = (item && item.entregador) || "Não Definido";
+    if (nome !== atual) _pvSalvar(linha, nome === "Não Definido" ? "" : nome, inputEl);
+}
+
+function _pvComboBlur(inputEl) {
+    // Pequeno atraso para o onmousedown do item da lista disparar antes do blur fechar tudo
+    setTimeout(() => {
+        _pvComboFechar();
+        const linha = parseInt(inputEl.dataset.linha);
+        const item  = _pvLinhas.find(l => l.linha === linha);
+        const atual = (item && item.entregador) || "Não Definido";
+        const digitado = inputEl.value.trim();
+
+        if (digitado === "" || digitado === "Não Definido") {
+            inputEl.value = "Não Definido";
+            if (atual !== "Não Definido") _pvSalvar(linha, "", inputEl);
+            return;
+        }
+        // Só aceita texto que bata exatamente com um nome da lista de usuários
+        if (!_pvUsuarios.includes(digitado)) {
+            inputEl.value = atual;
+            return;
+        }
+        if (digitado !== atual) _pvSalvar(linha, digitado, inputEl);
+    }, 150);
+}
+
+function _pvComboFechar() {
+    const pop = document.getElementById("pv-combo-pop");
+    pop.style.display = "none";
+    _pvComboLinha   = null;
+    _pvComboInputEl = null;
+}
+
+function _pvSalvar(linha, entregador, inputEl) {
+    inputEl.disabled = true;
     fetch(`${API}/videira/planejamento`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
@@ -72,16 +148,16 @@ function _pvSalvar(linha, selectEl) {
     })
     .then(r => r.json())
     .then(d => {
-        selectEl.disabled = false;
+        inputEl.disabled = false;
         if (d.error) { gcAlert(d.error); return; }
-        // Atualiza estado local para o filtro continuar refletindo o valor salvo
+        // Atualiza estado local para o filtro/revalidação continuar refletindo o valor salvo
         const item = _pvLinhas.find(l => l.linha === linha);
         if (item) item.entregador = entregador;
-        selectEl.style.borderColor = "rgba(34,197,94,0.6)";
-        setTimeout(() => { selectEl.style.borderColor = ""; }, 900);
+        inputEl.style.borderColor = "rgba(34,197,94,0.6)";
+        setTimeout(() => { inputEl.style.borderColor = ""; }, 900);
     })
     .catch(() => {
-        selectEl.disabled = false;
+        inputEl.disabled = false;
         gcAlert("Erro ao salvar. Tente novamente.");
     });
 }
