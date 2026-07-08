@@ -201,13 +201,14 @@ const _reAdmin = /\b(ENDERE[ÇC]O|INSCRI[ÇC][ÃA]O(?:\s+ESTADUAL)?|CEP\b|BAIRRO
 
 // Busca nome por labels dentro de uma seção de texto
 function _nomeNaSec(sec) {
+    // \s* entre as palavras dos labels: PDFs da NFS-e nacional grudam as palavras ("RazãoSocial")
     return (
         // "Nome/Razão social:" — NFS-e municipais (Curitibanos e similares)
-        sec.match(/Nome\s*[\/|]\s*Raz[aã]o\s+[Ss]ocial\s*:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
+        sec.match(/Nome\s*[\/|]\s*Raz[aã]o\s*[Ss]ocial\s*:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
         // "Razão Social" padrão / "Razão Social / Nome Empresarial"
-        sec.match(/Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
-        sec.match(/Nome\s+Empresarial\s*:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
-        sec.match(/Nome\s*[\/|]\s*(?:Nome\s+)?Empresarial\s*([\p{L}].{2,79}?)(?=\s+(?:E-?mail|Endere[çc]o|Inscri|CNPJ|CPF))/iu) ||
+        sec.match(/Raz[aã]o\s*[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s*)?Empresarial\s*)?:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
+        sec.match(/Nome\s*Empresarial\s*:?\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|IE\b|E-?mail|Endere|\s{2}))/iu) ||
+        sec.match(/Nome\s*[\/|]\s*(?:Nome\s*)?Empresarial\s*([\p{L}].{2,79}?)(?=\s+(?:E-?mail|Endere[çc]o|Inscri|CNPJ|CPF))/iu) ||
         sec.match(/\bNome\s*:\s*([\p{L}].{2,79}?)(?=\s*(?:CPF|CNPJ|\d{2}[.\/]|Inscri|E-?mail|Endere))/iu)
     );
 }
@@ -229,21 +230,18 @@ function _nomePertoCNPJ(t, entry, janela = 400) {
 
 // Rejeita candidatos que contenham texto de instrução, metadados de DPS/NFS-e ou campos administrativos.
 // Usa NFD + remoção de diacríticos para não depender da forma de codificação do PDF (composta vs decomposta).
+// Compara também a versão sem espaços — PDFs da NFS-e nacional grudam as palavras ("NúmerodaDPS").
 function _isTextoInstrucao(nome) {
-    const n = nome.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-    return n.includes("consulta da chave")   ||
-           n.includes("portal nacional")     ||
-           n.includes("autenticidade")       ||
-           n.includes("numero da nfs")       ||
-           n.includes("nfs-e")               ||
-           n.includes("numero da dps")       ||
-           n.includes("serie da dps")        ||
-           n.includes("emissao da dps")      ||
-           n.includes("data e hora")         ||
-           n.includes("numero do rps")       ||
-           n.includes("data de emissao")     ||
-           n.includes("codigo de verifica")  ||
-           n.includes("verifique");
+    const n  = nome.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const ns = n.replace(/\s+/g, "");
+    const termos = [
+        "consulta da chave", "portal nacional", "autenticidade",
+        "numero da nfs", "nfs-e", "numero da dps", "serie da dps",
+        "emissao da dps", "data e hora", "numero do rps",
+        "data de emissao", "codigo de verifica", "verifique",
+        "chave de acesso", "municipio gerador", "ambiente de dados",
+    ];
+    return termos.some(x => n.includes(x) || ns.includes(x.replace(/ /g, "")));
 }
 
 // ── Estratégia de proximidade ao CNPJ ──
@@ -284,10 +282,10 @@ function _extrairEmissor(t, cnpjEmit, sepIdx) {
             fn: () => {
                 for (const pat of [
                     /(?:Emiss[ao]r[a]?|Emitente)\s*:\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bCEP\b|\bIE\b|E-?mail|Endere))/iu,
-                    /Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere|\s{2}))/iu,
-                    /Nome\s+Empresarial\s*:?\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri))/iu,
-                    /Prestador\s+de\s+Servi[çc]os?\s*:\s*([\p{L}].{3,119}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
-                    /Dados\s+do\s+Prestador\s*:\s*([\p{L}].{3,119}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
+                    /Raz[aã]o\s*[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s*)?Empresarial\s*)?:?\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere|\s{2}))/iu,
+                    /Nome\s*Empresarial\s*:?\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri))/iu,
+                    /Prestador\s*de\s*Servi[çc]os?\s*:\s*([\p{L}].{3,119}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
+                    /Dados\s*do\s*Prestador\s*:\s*([\p{L}].{3,119}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
                 ]) {
                     const m = emitPart.match(pat);
                     if (m && !_reAdmin.test(m[1])) return m[1].trim();
@@ -296,20 +294,21 @@ function _extrairEmissor(t, cnpjEmit, sepIdx) {
             },
         },
         // ── DPS (Documento de Prestação de Serviços): seção "PRESTADOR" ──
+        // Sem \b à direita: NFS-e nacional gruda as palavras ("PrestadordoServiço")
         {
             nome: "dps-prestador",
             fn: () => {
-                const m = t.match(/\bPRESTADOR\b(.{0,600}?)(?=\bTOMADOR\b|\bSERVI[CÇ]O\b|\bDISCRIMINA)/i);
+                const m = t.match(/\bPRESTADOR(.{0,600}?)(?=TOMADOR|SERVI[CÇ]O|DISCRIMINA)/i);
                 if (!m) return null;
                 const n = _nomeNaSec(m[1]);
                 return n ? n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim() : null;
             },
         },
-        // ── NFS-e ABRASF: seção "EMITENTE DA NFS-e" ──
+        // ── NFS-e ABRASF / padrão nacional: seção "EMITENTE DA NFS-e" ──
         {
             nome: "nfse-emitente-abrasf",
             fn: () => {
-                const m = t.match(/EMITENTE\s+DA\s+NFS.{0,5}(.{0,600}?)(?=TOMADOR|INTERMEDI[AÁ]RIO|SERVI[CÇ]O\s+PRESTADO)/i);
+                const m = t.match(/EMITENTE\s*DA\s*NFS.{0,5}(.{0,600}?)(?=TOMADOR|INTERMEDI[AÁ]RIO|SERVI[CÇ]O\s*PRESTADO)/i);
                 if (!m) return null;
                 const n = _nomeNaSec(m[1]);
                 return n ? n[1].trim().replace(/^\d{2}\.?\d{3}\.?\d{3}\s+/, "") : null;
@@ -319,7 +318,7 @@ function _extrairEmissor(t, cnpjEmit, sepIdx) {
         {
             nome: "nfse-prestador-servicos",
             fn: () => {
-                const m = t.match(/PRESTADOR\s+DE\s+SERVI[CÇ]OS?(.{0,800}?)(?=TOMADOR)/i);
+                const m = t.match(/PRESTADOR\s*D[EO]\s*SERVI[CÇ]OS?(.{0,800}?)(?=TOMADOR)/i);
                 if (!m) return null;
                 const n = _nomeNaSec(m[1]);
                 return n ? n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim() : null;
@@ -329,7 +328,7 @@ function _extrairEmissor(t, cnpjEmit, sepIdx) {
         {
             nome: "nfse-dados-prestador",
             fn: () => {
-                const m = t.match(/DADOS\s+DO\s+PRESTADOR(.{0,600}?)(?=DADOS\s+DO\s+TOMADOR|TOMADOR)/i);
+                const m = t.match(/DADOS\s*DO\s*PRESTADOR(.{0,600}?)(?=DADOS\s*DO\s*TOMADOR|TOMADOR)/i);
                 if (!m) return null;
                 const n = _nomeNaSec(m[1]);
                 return n ? n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim() : null;
@@ -400,21 +399,31 @@ function _extrairCamposNota(raw) {
     console.log(t);
 
     // ── CHAVE DE ACESSO ──
+    // NF-e/CT-e = 44 dígitos · NFS-e padrão nacional = 50 dígitos
     let chave_acesso = null;
-    const chaveM44 = t.match(/(?<!\d)(\d{44})(?!\d)/);
-    if (chaveM44) chave_acesso = chaveM44[1];
+    const chaveM50 = t.match(/(?<!\d)(\d{50})(?!\d)/);
+    if (chaveM50) chave_acesso = chaveM50[1];
+    if (!chave_acesso) {
+        const chaveM44 = t.match(/(?<!\d)(\d{44})(?!\d)/);
+        if (chaveM44) chave_acesso = chaveM44[1];
+    }
     if (!chave_acesso) {
         const m4 = t.match(/(?<!\d)(\d{4}(?:\s+\d{4}){10})(?!\d)/);
         if (m4) chave_acesso = m4[1].replace(/\s+/g, "");
     }
     if (!chave_acesso) {
-        const mLabel = t.match(/[Cc]have\s+de\s+[Aa]cesso[^0-9]{0,40}([\d][\d\s]{42,56}[\d])/);
-        if (mLabel) { const d = mLabel[1].replace(/\s/g, ""); if (d.length >= 44) chave_acesso = d.slice(0, 44); }
+        // \s* no label: NFS-e nacional gruda as palavras ("ChavedeAcessodaNFS-e")
+        const mLabel = t.match(/[Cc]have\s*de\s*[Aa]cesso[^0-9]{0,40}([\d][\d\s]{42,70}[\d])/);
+        if (mLabel) {
+            const d = mLabel[1].replace(/\s/g, "");
+            if (d.length >= 50)      chave_acesso = d.slice(0, 50);
+            else if (d.length >= 44) chave_acesso = d.slice(0, 44);
+        }
     }
     if (!chave_acesso) {
         for (const c of (t.match(/\d[\d ]{43,70}\d/g) || [])) {
             const d = c.replace(/ /g, "");
-            if (d.length === 44 && /^\d+$/.test(d)) { chave_acesso = d; break; }
+            if ((d.length === 44 || d.length === 50) && /^\d+$/.test(d)) { chave_acesso = d; break; }
         }
     }
     if (!chave_acesso) {
@@ -431,7 +440,8 @@ function _extrairCamposNota(raw) {
 
     // ── NÚMERO DA NF ──
     const numero_nf = (
-        t.match(/N[úu]mero\s+da\s+NFS?-?[eE][:\s]+(\d+)/i)           ||
+        // \s* no label: NFS-e nacional gruda as palavras ("NúmerodaNFS-e")
+        t.match(/N[úu]mero\s*da\s*NFS?-?[eE]\s*:?\s*(\d+)/i)          ||
         t.match(/N[úu]mero\s+d[ao]\s+[Nn]ota\s*[:\s]\s*(\d+)/i)       ||
         // Curitibanos e similares: "Número da nota 62" (sem dois-pontos, valor direto)
         t.match(/N[úu]mero\s+da\s+[Nn]ota\s+(\d+)/i)                  ||
@@ -481,22 +491,24 @@ function _extrairCamposNota(raw) {
         return m ? m[1].trim().replace(/\s*[-–]\s*\d{8,14}\s*$/, '').trim() : null;
     };
 
-    const _prestWin = _secWindow('PRESTADOR\\s+DE\\s+SERVI[CÇ]OS?');
-    const _tomWin   = _secWindow('TOMADOR\\s+DE\\s+SERVI[CÇ]OS?');
+    const _prestWin = _secWindow('PRESTADOR\\s*D[EO]\\s*SERVI[CÇ]OS?');
+    const _tomWin   = _secWindow('TOMADOR\\s*D[EO]\\s*SERVI[CÇ]OS?');
+
+    // Separador emissor/tomador — sem \b à direita: NFS-e nacional gruda ("TomadordoServiço")
+    const _sepDe = () => {
+        const _s = (pat) => { const i = t.search(pat); return i < 0 ? Infinity : i; };
+        return Math.min(_s(/DESTINAT[AÁ]R/i), Math.min(_s(/TOMADOR\s*D[EO]\s*SERVI[CÇ]OS?/i), _s(/\bTOMADOR/i)));
+    };
 
     // CNPJ: prioriza o rotulado na seção PRESTADOR
     let cnpjEmit = _cnpjNaSec(_prestWin);
     if (!cnpjEmit) {
         // Fallback: primeiro CNPJ antes do separador DESTINATÁRIO/TOMADOR
-        const _s = (pat) => { const i = t.search(pat); return i < 0 ? Infinity : i; };
-        const _sep = Math.min(_s(/DESTINAT[AÁ]R/i), Math.min(_s(/TOMADOR\s+DE\s+SERVI[CÇ]OS?/i), _s(/\bTOMADOR\b/i)));
+        const _sep = _sepDe();
         cnpjEmit = cnpjAll.find(c => _sep === Infinity || c.idx < _sep) || cnpjAll[0];
     }
 
-    const sepIdx = (() => {
-        const _s = (pat) => { const i = t.search(pat); return i < 0 ? Infinity : i; };
-        return Math.min(_s(/DESTINAT[AÁ]R/i), Math.min(_s(/TOMADOR\s+DE\s+SERVI[CÇ]OS?/i), _s(/\bTOMADOR\b/i)));
-    })();
+    const sepIdx = _sepDe();
     let cnpj = cnpjEmit ? cnpjEmit.raw : "—";
 
     // ── VALOR ──
@@ -540,27 +552,27 @@ function _extrairCamposNota(raw) {
     // P0: labels diretos no trecho do tomador
     if (tomador === "—" && tomPart) {
         for (const pat of [
-            /Raz[aã]o\s+[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s+)?Empresarial\s*)?:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
-            /Nome\s+Empresarial\s*:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri))/iu,
+            /Raz[aã]o\s*[Ss]ocial\s*(?:[\/|]\s*(?:Nome\s*)?Empresarial\s*)?:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri|E-?mail|Endere))/iu,
+            /Nome\s*Empresarial\s*:?\s+([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|\bIE\b|Inscri))/iu,
             /\bNome\s*:\s*([\p{L}].{3,79}?)(?=\s*(?:CNPJ|CPF|\d{2}[.\/]|Inscri|E-?mail|Endere))/iu,
         ]) {
             const m = tomPart.match(pat);
             if (m && !_reAdmin.test(m[1])) { tomador = m[1].trim(); break; }
         }
     }
-    // P1: NFS-e ABRASF — "TOMADOR DO SERVIÇO"
+    // P1: NFS-e ABRASF / padrão nacional — "TOMADOR DO SERVIÇO" (\s* tolera texto grudado)
     if (tomador === "—") {
-        const m = t.match(/TOMADOR\s+DO\s+SERVI[CÇ]O(.{0,600}?)(?=INTERMEDI[AÁ]RIO|SERVI[CÇ]O\s+PRESTADO|TRIBUTA[CÇ][ÃA]O|DISCRIMINA)/i);
+        const m = t.match(/TOMADOR\s*DO\s*SERVI[CÇ]O(.{0,600}?)(?=INTERMEDI[AÁ]RIO|SERVI[CÇ]O\s*PRESTADO|TRIBUTA[CÇ][ÃA]O|DISCRIMINA|C[OÓ]DIGO\s*DE\s*TRIBUTA|VALOR\s*DO\s*SERVI|$)/i);
         if (m) { const n = _nomeNaSec(m[1]); if (n) tomador = n[1].trim(); }
     }
     // P2: "TOMADOR DE SERVIÇOS"
     if (tomador === "—") {
-        const m = t.match(/TOMADOR\s+DE\s+SERVI[CÇ]OS?(.{0,600}?)(?=DISCRIMINA|RETEN[CÇ]|FORMA\s+DE\s+PAGAMENTO|TRIBUTA[CÇ][ÃA]O)/i);
+        const m = t.match(/TOMADOR\s*DE\s*SERVI[CÇ]OS?(.{0,600}?)(?=DISCRIMINA|RETEN[CÇ]|FORMA\s*DE\s*PAGAMENTO|TRIBUTA[CÇ][ÃA]O)/i);
         if (m) { const n = _nomeNaSec(m[1]); if (n) tomador = n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim(); }
     }
     // P3: "DADOS DO TOMADOR"
     if (tomador === "—") {
-        const m = t.match(/DADOS\s+DO\s+TOMADOR(.{0,600}?)(?=DISCRIMINA|RETEN[CÇ]|FORMA\s+DE\s+PAGAMENTO|TRIBUTA[CÇ][ÃA]O)/i);
+        const m = t.match(/DADOS\s*DO\s*TOMADOR(.{0,600}?)(?=DISCRIMINA|RETEN[CÇ]|FORMA\s*DE\s*PAGAMENTO|TRIBUTA[CÇ][ÃA]O)/i);
         if (m) { const n = _nomeNaSec(m[1]); if (n) tomador = n[1].trim().replace(/\s*[-–]\s*\d{8,11}\s*$/, "").trim(); }
     }
     // P4: DANFE — "DESTINATÁRIO/REMETENTE"
