@@ -33,6 +33,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     const _showFechamentosAdmin = () => {
         show("menu-fechamento");
         show("submenu-fechamento");
+        show("menu-planejamento");
+        show("submenu-planejamento");
     };
     const _showFinanceiro = () => {
         show("menu-financeiro");

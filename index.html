@@ -178,6 +178,23 @@
             </ul>
         </ul>
 
+        <li class="menu-item" data-menu="planejamento" id="menu-planejamento" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+            <span class="label">Planejamento</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Planejamento</span>
+        </li>
+        <ul class="submenu" data-menu="planejamento" id="submenu-planejamento" style="display:none">
+            <li><a href="#" onclick="abrirPlanejamentoVideira(event,'loggi')">Loggi</a></li>
+            <li><a href="#" onclick="abrirPlanejamentoVideira(event,'anjun')">Anjun</a></li>
+            <li><a href="#" onclick="abrirPlanejamentoVideira(event,'shopee')">Shopee</a></li>
+            <li><a href="#" onclick="abrirPlanejamentoVideira(event,'imile')">Imile</a></li>
+            <li><a href="#" onclick="abrirPlanejamentoVideira(event,'jt')">J&amp;T</a></li>
+        </ul>
+
         <li class="menu-item" data-menu="financeiro" id="menu-financeiro" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24">
                 <rect x="1" y="4" width="22" height="16" rx="2"/>
@@ -1603,6 +1620,7 @@
 <script src="js/antecipacoes.js"></script>
 <script src="js/antecipacoes-admin.js"></script>
 <script src="js/videira.js"></script>
+<script src="js/planejamento-videira.js"></script>
 <script src="js/torre.js"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
@@ -1689,6 +1707,36 @@
         </div>
     </div>
 </div><!-- /tela-videira-painel -->
+
+<div id="tela-planejamento-videira" class="view tela-full">
+    <div class="fech-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div style="font-size:15px;font-weight:700;color:#e2e8f0">Planejamento — <span id="pv-transp-nome">Loggi</span></div>
+            <div class="adm-search-input-area" style="max-width:280px">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="pv-filtro-input" placeholder="Filtrar por bairro..." oninput="_pvFiltrarLocal()">
+            </div>
+        </div>
+    </div>
+    <div class="fech-body">
+        <div class="fechamento-empty" id="pv-empty">Carregando...</div>
+        <div id="pv-content" style="display:none">
+            <div class="adm-nf-counter" id="pv-counter"></div>
+            <div class="adm-nf-wrap">
+                <table class="adm-nf-table">
+                    <thead>
+                        <tr>
+                            <th>Bairro</th>
+                            <th>Sigla</th>
+                            <th>Entregador</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pv-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div><!-- /tela-planejamento-videira -->
 
 <!-- TELA VIDEIRA — DASHBOARD -->
 <div id="tela-videira-dash" class="view tela-full">
