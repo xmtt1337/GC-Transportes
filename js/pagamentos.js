@@ -166,10 +166,8 @@ function _baixarCsvPagamentos() {
 
 function _exportarNFsXlsx() {
     if (!_admNFRows.length) return;
-    const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-    const nomeMes = MESES[(_admNFMes || 1) - 1] || "";
-    const quinzenaSel = document.getElementById("adm-nf-quinzena")?.value;
-    const ordQ    = quinzenaSel === "1" ? "1aQuinzena" : quinzenaSel === "2" ? "2aQuinzena" : "TodasQuinzenas";
+    const hoje = new Date();
+    const carimbo = `${hoje.getFullYear()}${String(hoje.getMonth()+1).padStart(2,"0")}${String(hoje.getDate()).padStart(2,"0")}`;
 
     const data = _admNFRows.map(nf => ({
         "Entregador":      nf.user_name || nf.username || "",
@@ -186,5 +184,5 @@ function _exportarNFsXlsx() {
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Notas Fiscais");
-    XLSX.writeFile(wb, `notas_fiscais_${nomeMes}_${_admNFAno}_${ordQ}.xlsx`);
+    XLSX.writeFile(wb, `notas_fiscais_${carimbo}.xlsx`);
 }
