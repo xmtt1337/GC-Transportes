@@ -273,29 +273,23 @@ function _pvRenderizarPorEntregador(linhas) {
     const nomes = Object.keys(grupos)
         .filter(n => n !== "__vazio__")
         .sort((a, b) => grupos[b].length - grupos[a].length || a.localeCompare(b, "pt-BR"));
-    const vazios = grupos["__vazio__"] || [];
 
-    const iconAlerta = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
-
-    const cardHtml = (nome, itens, isVazio) => {
+    const cardHtml = (nome, itens) => {
         const chips = itens.map(i => `
             <span class="pv-bairro-chip">${i.bairro || "—"}${i.sigla ? ` <span class="sigla">${i.sigla}</span>` : ""}</span>
         `).join("");
         return `
-        <div class="pv-driver-card${isVazio ? " pv-driver-vazio" : ""}">
+        <div class="pv-driver-card">
             <div class="pv-driver-head">
-                <div class="pv-ent-avatar${isVazio ? " pv-avatar-vazio" : ""}" style="width:36px;height:36px;font-size:12px">${isVazio ? iconAlerta : _pvIniciais(nome)}</div>
-                <div class="pv-driver-name">${isVazio ? "Sem entregador definido" : nome}</div>
+                <div class="pv-ent-avatar" style="width:36px;height:36px;font-size:12px">${_pvIniciais(nome)}</div>
+                <div class="pv-driver-name">${nome}</div>
                 <div class="pv-driver-count">${itens.length} bairro${itens.length !== 1 ? "s" : ""}</div>
             </div>
             <div class="pv-driver-bairros">${chips}</div>
         </div>`;
     };
 
-    const html = [
-        ...nomes.map(n => cardHtml(n, grupos[n], false)),
-        ...(vazios.length ? [cardHtml(null, vazios, true)] : []),
-    ].join("");
+    const html = nomes.map(n => cardHtml(n, grupos[n])).join("");
 
     document.getElementById("pv-driver-grid").innerHTML =
         html || `<div class="fechamento-empty">Nenhum resultado para este filtro.</div>`;
