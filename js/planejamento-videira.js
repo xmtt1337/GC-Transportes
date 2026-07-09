@@ -473,8 +473,15 @@ function _pvDragSoltar(e) {
 
     if (overCard && novoNome && novoNome !== nomeAtual) {
         // Drop válido: anima o chip "encaixando" no card de destino e confirma no servidor
-        const destRect = overCard.getBoundingClientRect();
-        _pvDragAnimarGhostAte(ghost, destRect.left + 14, destRect.top + 46, { opacity: "0", transform: "scale(0.35) rotate(0deg)" });
+        const destRect  = overCard.getBoundingClientRect();
+        const ghostRect = ghost.getBoundingClientRect();
+        // Pouso dentro do card de destino (não um deslocamento fixo que pode cair fora dele
+        // em cards pequenos), e sempre limitado às bordas visíveis da tela
+        let destLeft = destRect.left + 14;
+        let destTop  = destRect.top + Math.min(46, Math.max(20, destRect.height - 24));
+        destLeft = Math.max(4, Math.min(destLeft, window.innerWidth  - ghostRect.width  - 4));
+        destTop  = Math.max(4, Math.min(destTop,  window.innerHeight - ghostRect.height - 4));
+        _pvDragAnimarGhostAte(ghost, destLeft, destTop, { opacity: "0", transform: "scale(0.35) rotate(0deg)" });
         _pvReatribuirPorDrag(linha, novoNome);
     } else {
         // Drop inválido (fora de um card, ou no próprio card de origem): volta animado

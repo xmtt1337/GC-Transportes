@@ -2516,7 +2516,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     min-width: 0; /* item de grid não deve crescer além da coluna por causa do header nowrap */
 }
 .pv-driver-card.pv-drop-target {
-    transform: scale(1.025);
+    /* sem scale: em cards quase full-width no mobile, aumentar o tamanho empurra a borda pra fora da tela */
     background: linear-gradient(150deg, color-mix(in srgb, var(--pv-accent, #3a86ff) 16%, transparent) 0%, rgba(11,16,26,0.97) 60%);
     box-shadow: 0 0 0 2px var(--pv-accent, #3a86ff), 0 14px 34px color-mix(in srgb, var(--pv-accent, #3a86ff) 35%, transparent);
 }
