@@ -10,6 +10,7 @@ const _PV_TRANSP = [
 let _pvTransportadora = "loggi";
 let _pvLinhas   = [];
 let _pvUsuarios = [];
+let _pvView     = "bairro"; // 'bairro' | 'entregador'
 
 function abrirPlanejamentoVideira(event) {
     if (event) event.preventDefault();
@@ -21,6 +22,9 @@ function abrirPlanejamentoVideira(event) {
     `).join("");
     document.getElementById("pv-filtro-input").value = "";
     _pvAplicarAccent();
+    document.querySelectorAll(".pv-view-btn").forEach(b => b.classList.toggle("active", b.dataset.view === _pvView));
+    document.getElementById("pv-card").style.display        = _pvView === "bairro" ? "" : "none";
+    document.getElementById("pv-driver-grid").style.display = _pvView === "entregador" ? "" : "none";
     mostrarTela("tela-planejamento-videira");
     _pvCarregar();
 }
@@ -41,6 +45,14 @@ function _pvAplicarAccent() {
     document.documentElement.style.setProperty("--pv-accent", cor);
 }
 
+function _pvMudarView(view) {
+    _pvView = view;
+    document.querySelectorAll(".pv-view-btn").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+    document.getElementById("pv-card").style.display        = view === "bairro" ? "" : "none";
+    document.getElementById("pv-driver-grid").style.display = view === "entregador" ? "" : "none";
+    _pvFiltrarLocal();
+}
+
 function _pvCarregar() {
     const empty   = document.getElementById("pv-empty");
     const content = document.getElementById("pv-content");
@@ -59,7 +71,7 @@ function _pvCarregar() {
         _pvUsuarios = b.usuarios || [];
         empty.style.display = "none";
         content.style.display = "";
-        _pvRenderizar(_pvLinhas);
+        _pvFiltrarLocal();
     })
     .catch(() => { empty.innerText = "Erro ao conectar com o servidor."; });
 }
@@ -239,10 +251,52 @@ function _pvAtualizarContador(linhas) {
 
 function _pvFiltrarLocal() {
     const termo = document.getElementById("pv-filtro-input").value.trim().toLowerCase();
-    if (!termo) { _pvRenderizar(_pvLinhas); return; }
-    const filtrado = _pvLinhas.filter(l =>
-        (l.bairro || "").toLowerCase().includes(termo) ||
-        (l.sigla  || "").toLowerCase().includes(termo)
+    const base = !termo ? _pvLinhas : _pvLinhas.filter(l =>
+        (l.bairro     || "").toLowerCase().includes(termo) ||
+        (l.sigla      || "").toLowerCase().includes(termo) ||
+        (l.entregador || "").toLowerCase().includes(termo)
     );
-    _pvRenderizar(filtrado);
+    if (_pvView === "bairro") _pvRenderizar(base);
+    else _pvRenderizarPorEntregador(base);
+}
+
+// ───── Visão "Por Entregador" — quais bairros/siglas cada um vai atender ─────
+function _pvRenderizarPorEntregador(linhas) {
+    _pvAtualizarContador(linhas);
+
+    const grupos = {};
+    linhas.forEach(l => {
+        const chave = l.entregador || "__vazio__";
+        (grupos[chave] = grupos[chave] || []).push(l);
+    });
+
+    const nomes = Object.keys(grupos)
+        .filter(n => n !== "__vazio__")
+        .sort((a, b) => grupos[b].length - grupos[a].length || a.localeCompare(b, "pt-BR"));
+    const vazios = grupos["__vazio__"] || [];
+
+    const iconAlerta = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+
+    const cardHtml = (nome, itens, isVazio) => {
+        const chips = itens.map(i => `
+            <span class="pv-bairro-chip">${i.bairro || "—"}${i.sigla ? ` <span class="sigla">${i.sigla}</span>` : ""}</span>
+        `).join("");
+        return `
+        <div class="pv-driver-card${isVazio ? " pv-driver-vazio" : ""}">
+            <div class="pv-driver-head">
+                <div class="pv-ent-avatar${isVazio ? " pv-avatar-vazio" : ""}" style="width:36px;height:36px;font-size:12px">${isVazio ? iconAlerta : _pvIniciais(nome)}</div>
+                <div class="pv-driver-name">${isVazio ? "Sem entregador definido" : nome}</div>
+                <div class="pv-driver-count">${itens.length} bairro${itens.length !== 1 ? "s" : ""}</div>
+            </div>
+            <div class="pv-driver-bairros">${chips}</div>
+        </div>`;
+    };
+
+    const html = [
+        ...nomes.map(n => cardHtml(n, grupos[n], false)),
+        ...(vazios.length ? [cardHtml(null, vazios, true)] : []),
+    ].join("");
+
+    document.getElementById("pv-driver-grid").innerHTML =
+        html || `<div class="fechamento-empty">Nenhum resultado para este filtro.</div>`;
 }

@@ -1719,7 +1719,13 @@
                 <input type="text" id="pv-filtro-input" placeholder="Filtrar por bairro..." oninput="_pvFiltrarLocal()">
             </div>
         </div>
-        <div class="pv-transp-tabs" id="pv-transp-tabs"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:14px">
+            <div class="pv-transp-tabs" id="pv-transp-tabs" style="margin-top:0"></div>
+            <div class="pv-view-toggle" id="pv-view-toggle">
+                <button class="pv-view-btn active" data-view="bairro" onclick="_pvMudarView('bairro')">Por Bairro</button>
+                <button class="pv-view-btn" data-view="entregador" onclick="_pvMudarView('entregador')">Por Entregador</button>
+            </div>
+        </div>
     </div>
     <div class="fech-body">
         <div class="fechamento-empty" id="pv-empty">Carregando...</div>
@@ -1739,6 +1745,7 @@
                     </table>
                 </div>
             </div>
+            <div class="pv-driver-grid" id="pv-driver-grid" style="display:none"></div>
         </div>
     </div>
 </div><!-- /tela-planejamento-videira -->
