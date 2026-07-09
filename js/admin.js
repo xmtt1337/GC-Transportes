@@ -131,7 +131,7 @@ function renderHomeActions(role) {
             fn: "abrirEntDashboard()"
         });
     }
-    if (role === "admin" || role === "dev" || role === "finance") {
+    if (role === "admin") {
         defs.push({
             color: "#06b6d4", ibg: "rgba(6,182,212,0.12)",
             icon: `<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/>`,
@@ -189,6 +189,13 @@ function renderHomeActions(role) {
             title: "Pagamentos",
             desc: "Controle de pagamentos aos entregadores.",
             fn: "abrirAdminPagamentos(event)"
+        });
+        defs.push({
+            color: "#fb923c", ibg: "rgba(251,146,60,0.12)",
+            icon: `<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>`,
+            title: "Extravios",
+            desc: "Análise e histórico de extravios.",
+            fn: "abrirExtraviosDash(event)"
         });
     }
     if (role === "user") {
