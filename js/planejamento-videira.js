@@ -30,6 +30,7 @@ function abrirPlanejamentoVideira(event) {
 }
 
 function _pvTrocarTransportadora(t) {
+    _pvDragForcarLimpeza();
     _pvTransportadora = t;
     document.querySelectorAll(".pv-transp-tab").forEach(btn =>
         btn.classList.toggle("active", btn.dataset.t === t)
@@ -46,6 +47,7 @@ function _pvAplicarAccent() {
 }
 
 function _pvMudarView(view) {
+    _pvDragForcarLimpeza();
     _pvView = view;
     document.querySelectorAll(".pv-view-btn").forEach(b => b.classList.toggle("active", b.dataset.view === view));
     document.getElementById("pv-card").style.display        = view === "bairro" ? "" : "none";
@@ -312,6 +314,11 @@ function _pvDragIniciar(e) {
     const chip = e.target.closest(".pv-bairro-chip");
     if (!chip) return;
 
+    // Segurança: se por qualquer motivo um arraste anterior não foi limpo direito
+    // (fantasma preso), limpa tudo antes de começar um novo
+    if (_pvDrag) _pvDragForcarLimpeza();
+    _pvLimparFantasmasOrfaos();
+
     e.preventDefault();
     const rect  = chip.getBoundingClientRect();
     const linha = parseInt(chip.dataset.linha);
@@ -347,6 +354,28 @@ function _pvDragIniciar(e) {
 
     _pvDrag.rafId = requestAnimationFrame(_pvDragTick);
 }
+
+// Remove qualquer fantasma que tenha ficado esquecido na tela (ex: recarregou a lista
+// de bairros no meio de um arraste, ou algum evento de finalização não disparou)
+function _pvLimparFantasmasOrfaos() {
+    document.querySelectorAll(".pv-chip-ghost").forEach(el => el.remove());
+}
+
+// Limpeza "seca", sem animação — usada em cenários anômalos (perdeu foco da janela,
+// trocou de aba, apertou Esc) onde só precisamos garantir que nada fique preso
+function _pvDragForcarLimpeza() {
+    if (!_pvDrag) return;
+    const { chip, ghost, overCard } = _pvDrag;
+    _pvDragFinalizar(chip, overCard);
+    ghost.remove();
+    _pvDrag = null;
+}
+
+// Redes de segurança: qualquer coisa que tire o foco da página no meio do arraste
+// cancela o drag em vez de deixar o fantasma preso na tela
+window.addEventListener("blur", _pvDragForcarLimpeza);
+document.addEventListener("visibilitychange", () => { if (document.hidden) _pvDragForcarLimpeza(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") _pvDragForcarLimpeza(); });
 
 function _pvDragMover(e) {
     if (!_pvDrag) return;
@@ -456,11 +485,7 @@ function _pvDragSoltar(e) {
 }
 
 function _pvDragCancelar() {
-    if (!_pvDrag) return;
-    const { chip, ghost, overCard } = _pvDrag;
-    _pvDragFinalizar(chip, overCard);
-    ghost.remove();
-    _pvDrag = null;
+    _pvDragForcarLimpeza();
 }
 
 function _pvReatribuirPorDrag(linha, novoEntregador) {
