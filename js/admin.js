@@ -168,6 +168,29 @@ function renderHomeActions(role) {
             fn: "abrirExtraviosDash(event)"
         });
     }
+    if (role === "dev" || role === "finance") {
+        defs.push({
+            color: "#14b8a6", ibg: "rgba(20,184,166,0.12)",
+            icon: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/>`,
+            title: "Conferência NF",
+            desc: "Conferir notas fiscais recebidas.",
+            fn: "abrirConfNFs(event)"
+        });
+        defs.push({
+            color: "#eab308", ibg: "rgba(234,179,8,0.12)",
+            icon: `<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>`,
+            title: "Antecipações",
+            desc: "Gerenciar antecipações de pagamento.",
+            fn: "abrirAdminAntecipacoes(event)"
+        });
+        defs.push({
+            color: "#ec4899", ibg: "rgba(236,72,153,0.12)",
+            icon: `<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>`,
+            title: "Pagamentos",
+            desc: "Controle de pagamentos aos entregadores.",
+            fn: "abrirAdminPagamentos(event)"
+        });
+    }
     if (role === "user") {
         defs.push({
             color: "#06b6d4", ibg: "rgba(6,182,212,0.12)",
