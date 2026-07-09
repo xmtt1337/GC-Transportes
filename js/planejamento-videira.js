@@ -276,7 +276,7 @@ function _pvRenderizarPorEntregador(linhas) {
 
     const nomes = Object.keys(grupos)
         .filter(n => n !== "__vazio__")
-        .sort((a, b) => grupos[b].length - grupos[a].length || a.localeCompare(b, "pt-BR"));
+        .sort((a, b) => a.localeCompare(b, "pt-BR"));
 
     const cardHtml = (nome, itens) => {
         const chips = itens.map(i => `
