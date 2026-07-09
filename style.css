@@ -2557,7 +2557,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     background: color-mix(in srgb, var(--pv-accent, #3a86ff) 26%, #0b1018);
     color: #fff; border: 1px solid var(--pv-accent, #3a86ff);
     box-shadow: 0 16px 36px rgba(0,0,0,0.55), 0 0 0 1px color-mix(in srgb, var(--pv-accent, #3a86ff) 45%, transparent);
-    transform: scale(1.1) rotate(-3deg);
+    /* transform (escala + rotação do "balanço") é controlado via JS a cada frame */
     animation: pv-chip-pulse 1s ease-in-out infinite;
 }
 .pv-chip-ghost .sigla { color: #fff; opacity: 0.85; }

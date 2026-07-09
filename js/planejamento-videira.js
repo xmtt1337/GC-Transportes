@@ -302,7 +302,9 @@ function _pvRenderizarPorEntregador(linhas) {
 // ───── Arrastar e soltar: mover um bairro de um entregador para outro ─────
 // Implementado com Pointer Events (não HTML5 drag nativo) para poder animar
 // livremente o "chip" enquanto ele é segurado, e o card de destino ao passar por cima.
-let _pvDrag = null; // { linha, chip, ghost, offsetX, offsetY, startLeft, startTop, overCard }
+// A posição segue o mouse instantaneamente; a rotação "balança" com atraso, baseada
+// na velocidade horizontal do ponteiro, e se acalma sozinha quando o mouse para.
+let _pvDrag = null;
 
 function _pvDragIniciar(e) {
     if (_pvView !== "entregador") return;
@@ -321,6 +323,7 @@ function _pvDragIniciar(e) {
     ghost.style.top        = rect.top + "px";
     ghost.style.width      = rect.width + "px";
     ghost.style.margin     = "0";
+    ghost.style.transform  = "scale(1.1) rotate(0deg)";
     document.body.appendChild(ghost);
 
     chip.classList.add("pv-chip-source-dragging");
@@ -330,21 +333,32 @@ function _pvDragIniciar(e) {
         offsetX: e.clientX - rect.left,
         offsetY: e.clientY - rect.top,
         startLeft: rect.left, startTop: rect.top,
+        targetLeft: rect.left, targetTop: rect.top,
+        lastX: e.clientX,
+        velX: 0, rot: 0,
         overCard: null,
-        pointerId: e.pointerId,
+        rafId: null,
     };
 
     chip.setPointerCapture(e.pointerId);
     chip.addEventListener("pointermove", _pvDragMover);
     chip.addEventListener("pointerup", _pvDragSoltar);
     chip.addEventListener("pointercancel", _pvDragCancelar);
+
+    _pvDrag.rafId = requestAnimationFrame(_pvDragTick);
 }
 
 function _pvDragMover(e) {
     if (!_pvDrag) return;
     const d = _pvDrag;
-    d.ghost.style.left = (e.clientX - d.offsetX) + "px";
-    d.ghost.style.top  = (e.clientY - d.offsetY) + "px";
+
+    d.targetLeft = e.clientX - d.offsetX;
+    d.targetTop  = e.clientY - d.offsetY;
+
+    // Velocidade horizontal suavizada (média móvel) — alimenta o balanço no _pvDragTick
+    const dx = e.clientX - d.lastX;
+    d.lastX = e.clientX;
+    d.velX = d.velX * 0.7 + dx * 0.3;
 
     // O ghost tem pointer-events:none, então elementFromPoint enxerga o que está embaixo dele
     const under = document.elementFromPoint(e.clientX, e.clientY);
@@ -357,7 +371,27 @@ function _pvDragMover(e) {
     }
 }
 
+function _pvDragTick() {
+    const d = _pvDrag;
+    if (!d) return;
+
+    d.ghost.style.left = d.targetLeft + "px";
+    d.ghost.style.top  = d.targetTop + "px";
+
+    // Rotação-alvo proporcional à velocidade horizontal, limitada a ±18°;
+    // "d.rot" persegue esse alvo aos poucos (efeito mola) e a velocidade tem atrito,
+    // então o balanço se acalma sozinho quando o mouse para ou muda de direção.
+    const rotAlvo = Math.max(-18, Math.min(18, d.velX * 1.4));
+    d.rot += (rotAlvo - d.rot) * 0.2;
+    d.velX *= 0.9;
+
+    d.ghost.style.transform = `scale(1.1) rotate(${d.rot.toFixed(2)}deg)`;
+
+    d.rafId = requestAnimationFrame(_pvDragTick);
+}
+
 function _pvDragFinalizar(chip, overCard) {
+    if (_pvDrag && _pvDrag.rafId) cancelAnimationFrame(_pvDrag.rafId);
     chip.classList.remove("pv-chip-source-dragging");
     if (overCard) overCard.classList.remove("pv-drop-target");
     chip.removeEventListener("pointermove", _pvDragMover);
