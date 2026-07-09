@@ -33,6 +33,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     const _showFechamentosAdmin = () => {
         show("menu-fechamento");
         show("submenu-fechamento");
+    };
+    const _showPlanejamento = () => {
         show("menu-planejamento");
         show("submenu-planejamento");
     };
@@ -76,16 +78,18 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
 
     if (role === "admin") {
         _showOperacional();
+        _showPlanejamento();
         _showCadastros();
         _showExtravios();
         _showTorreControle();
         show("bip-sync-btn");
-        // sem: financeiro, fechamento/planejamento (só dev e finance)
+        // sem: financeiro, fechamento (só dev e finance)
     }
 
     if (role === "finance" || role === "dev") {
         _showOperacional();
         _showFechamentosAdmin();
+        _showPlanejamento();
         _showFinanceiro();
         _showCadastros();
         _showExtravios();
