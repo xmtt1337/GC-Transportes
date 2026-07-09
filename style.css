@@ -2498,6 +2498,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 /* Cards agrupados por entregador — "quem vai fazer qual rota" */
 .pv-driver-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;
+    align-items: start;
 }
 .pv-driver-card {
     background: linear-gradient(150deg, color-mix(in srgb, var(--pv-accent, #3a86ff) 6%, transparent) 0%, rgba(11,16,26,0.97) 60%);
