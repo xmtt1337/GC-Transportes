@@ -7,13 +7,18 @@ const _PV_TRANSP = [
     { key: "jt",     label: "J&T",    cor: "#EF4444" },
 ];
 
+const _PV_UNIDADE_LABEL = { videira: "Videira", cacador: "Caçador" };
+
+let _pvUnidade        = "videira";
 let _pvTransportadora = "loggi";
 let _pvLinhas   = [];
 let _pvUsuarios = [];
 let _pvView     = "bairro"; // 'bairro' | 'entregador'
 
-function abrirPlanejamentoVideira(event) {
+function abrirPlanejamentoVideira(event, unidade) {
     if (event) event.preventDefault();
+    _pvUnidade = unidade || "videira";
+    document.getElementById("pv-titulo-unidade").innerText = _PV_UNIDADE_LABEL[_pvUnidade] || _pvUnidade;
     document.getElementById("pv-transp-tabs").innerHTML = _PV_TRANSP.map(t => `
         <button class="pv-transp-tab${t.key === _pvTransportadora ? " active" : ""}" style="--pvc:${t.cor}"
             data-t="${t.key}" onclick="_pvTrocarTransportadora('${t.key}')">
@@ -62,7 +67,7 @@ function _pvCarregar() {
     empty.style.display = "";
     content.style.display = "none";
 
-    fetch(`${API}/videira/planejamento?transportadora=${_pvTransportadora}`, {
+    fetch(`${API}/videira/planejamento?transportadora=${_pvTransportadora}&unidade=${_pvUnidade}`, {
         headers: { "Authorization": "Bearer " + token }
     })
     .then(r => r.json().then(b => ({ ok: r.ok, b })))
@@ -201,7 +206,7 @@ function _pvSalvarAPI(linha, entregador) {
     return fetch(`${API}/videira/planejamento`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ transportadora: _pvTransportadora, linha, entregador })
+        body: JSON.stringify({ transportadora: _pvTransportadora, linha, entregador, unidade: _pvUnidade })
     }).then(r => r.json());
 }
 
