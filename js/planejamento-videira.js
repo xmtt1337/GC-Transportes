@@ -126,10 +126,16 @@ function _pvComboAbrir(inputEl) {
 
     const pop = document.getElementById("pv-combo-pop");
     if (pop.parentElement !== document.body) document.body.appendChild(pop);
-    const rect = inputEl.getBoundingClientRect();
+    const rect   = inputEl.getBoundingClientRect();
+    const margem = 8;
+    // Mais largo que o campo (que é estreito) para o nome completo caber sem cortar,
+    // mas nunca maior que a tela; e reposiciona para não vazar pela direita/esquerda
+    const largura = Math.min(Math.max(rect.width, 240), window.innerWidth - margem * 2);
+    let left = Math.min(rect.left, window.innerWidth - largura - margem);
+    left = Math.max(left, margem);
     pop.style.top   = (rect.bottom + 4) + "px";
-    pop.style.left  = rect.left + "px";
-    pop.style.width = rect.width + "px";
+    pop.style.left  = left + "px";
+    pop.style.width = largura + "px";
     pop.style.display = "block";
     _pvComboRenderLista(_pvOpcoesFiltradas(inputEl.value));
 }
