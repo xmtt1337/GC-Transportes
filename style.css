@@ -2373,19 +2373,66 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .pv-combo-item:hover { background: color-mix(in srgb, var(--pv-accent, #3a86ff) 18%, transparent); color: #fff; }
 .pv-combo-empty { padding: 10px 14px; font-size: 12.5px; color: #4a6a8a; }
 
+/* Título com ícone (Planejamento de Rotas) */
+.pv-title-icon {
+    width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--pv-accent, #3a86ff) 14%, transparent);
+    color: var(--pv-accent, #3a86ff);
+    transition: background 0.25s ease, color 0.25s ease;
+}
+
 /* Abas de transportadora (Planejamento de Rotas) — cada uma na cor da própria transportadora */
-.pv-transp-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.pv-transp-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 .pv-transp-tab {
-    padding: 8px 18px; border-radius: 99px; cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 18px 8px 14px; border-radius: 99px; cursor: pointer; font-family: inherit;
     font-size: 13px; font-weight: 600; transition: all 0.2s ease;
     border: 1px solid color-mix(in srgb, var(--pvc) 32%, transparent);
     background: color-mix(in srgb, var(--pvc) 8%, transparent);
     color: var(--pvc);
 }
-.pv-transp-tab:hover { background: color-mix(in srgb, var(--pvc) 18%, transparent); }
+.pv-transp-tab svg { flex-shrink: 0; opacity: 0.85; }
+.pv-transp-tab:hover { background: color-mix(in srgb, var(--pvc) 18%, transparent); transform: translateY(-1px); }
 .pv-transp-tab.active {
     background: var(--pvc); color: #fff; border-color: var(--pvc);
     box-shadow: 0 4px 16px color-mix(in srgb, var(--pvc) 50%, transparent);
+}
+.pv-transp-tab.active .pv-tab-dot { background: #fff; }
+.pv-tab-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    background: var(--pvc); box-shadow: 0 0 8px 1px color-mix(in srgb, var(--pvc) 60%, transparent);
+}
+
+/* Tira de indicadores (total / definidos / pendentes / cobertura) */
+.pv-stats { display: flex; align-items: stretch; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.pv-stat-tile {
+    background: var(--surface-2); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius-sm); padding: 12px 22px; min-width: 96px;
+}
+.pv-stat-val { font-size: 24px; font-weight: 700; color: #f1f5f9; line-height: 1; font-variant-numeric: tabular-nums; }
+.pv-stat-val.pv-ok   { color: #22c55e; }
+.pv-stat-val.pv-warn { color: #fb923c; }
+.pv-stat-lbl {
+    font-size: 10px; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: .05em; margin-top: 5px; white-space: nowrap;
+}
+.pv-stat-progress {
+    flex: 1; min-width: 200px; background: var(--surface-2);
+    border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-sm);
+    padding: 11px 18px; display: flex; flex-direction: column; justify-content: center; gap: 8px;
+}
+.pv-stat-progress-hd {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 10px; color: var(--text-muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: .05em;
+}
+.pv-stat-progress-hd b { color: var(--pv-accent, #3a86ff); font-size: 14px; letter-spacing: 0; }
+.pv-progress-track { height: 7px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.pv-progress-fill {
+    height: 100%; border-radius: 99px; transition: width 0.5s ease;
+    background: linear-gradient(90deg, var(--pv-accent, #3a86ff), color-mix(in srgb, var(--pv-accent, #3a86ff) 55%, white));
+    box-shadow: 0 0 10px color-mix(in srgb, var(--pv-accent, #3a86ff) 55%, transparent);
 }
 
 /* Card da tabela — acento na cor da transportadora selecionada */
@@ -2397,12 +2444,31 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     box-shadow: 0 4px 20px rgba(0,0,0,0.35);
     transition: border-left-color 0.25s ease;
 }
-.pv-summary {
-    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-    font-size: 12px; color: var(--text-muted); font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px;
+.pv-table th:nth-child(2) { width: 90px; }
+.pv-table th:nth-child(3), .pv-table td:nth-child(3) { width: 46%; }
+#pv-tbody tr:hover td { background: color-mix(in srgb, var(--pv-accent, #3a86ff) 6%, transparent); }
+
+.pv-sigla-pill {
+    display: inline-block; padding: 3px 11px; border-radius: 99px;
+    font-size: 11.5px; font-weight: 700; font-family: 'SFMono-Regular', Consolas, monospace; letter-spacing: .01em;
+    color: var(--pv-accent, #3a86ff);
+    background: color-mix(in srgb, var(--pv-accent, #3a86ff) 13%, transparent);
+    border: 1px solid color-mix(in srgb, var(--pv-accent, #3a86ff) 28%, transparent);
 }
-.pv-summary .pv-alerta { color: #fb923c; text-transform: none; letter-spacing: 0; font-weight: 700; }
+
+.pv-ent-cell { display: flex; align-items: center; gap: 10px; }
+.pv-ent-avatar {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10.5px; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, var(--pv-accent, #3a86ff), color-mix(in srgb, var(--pv-accent, #3a86ff) 55%, black));
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--pv-accent, #3a86ff) 35%, transparent);
+}
+.pv-ent-avatar.pv-avatar-vazio {
+    background: rgba(255,255,255,0.04); color: #fb923c;
+    border: 1.5px dashed rgba(251,146,60,0.4); box-shadow: none;
+}
+.pv-ent-cell .pv-combo-input { flex: 1; min-width: 0; }
 
 .pv-combo-input { transition: border-color 0.2s, box-shadow 0.2s, color 0.2s; }
 .pv-combo-input:focus {
@@ -2411,6 +2477,11 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     outline: none;
 }
 .pv-combo-input.pv-nao-definido { color: #fb923c; font-style: italic; }
+
+@media (max-width: 680px) {
+    .pv-stats { gap: 8px; }
+    .pv-stat-tile { padding: 10px 16px; min-width: 80px; }
+}
 .ped-cal-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.045);

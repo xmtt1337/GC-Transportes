@@ -15,7 +15,9 @@ function abrirPlanejamentoVideira(event) {
     if (event) event.preventDefault();
     document.getElementById("pv-transp-tabs").innerHTML = _PV_TRANSP.map(t => `
         <button class="pv-transp-tab${t.key === _pvTransportadora ? " active" : ""}" style="--pvc:${t.cor}"
-            data-t="${t.key}" onclick="_pvTrocarTransportadora('${t.key}')">${t.label}</button>
+            data-t="${t.key}" onclick="_pvTrocarTransportadora('${t.key}')">
+            <span class="pv-tab-dot"></span>${t.label}
+        </button>
     `).join("");
     document.getElementById("pv-filtro-input").value = "";
     _pvAplicarAccent();
@@ -62,19 +64,31 @@ function _pvCarregar() {
     .catch(() => { empty.innerText = "Erro ao conectar com o servidor."; });
 }
 
+function _pvIniciais(nome) {
+    const partes = nome.trim().split(/\s+/);
+    const ini = partes.length > 1 ? partes[0][0] + partes[partes.length - 1][0] : partes[0].slice(0, 2);
+    return ini.toUpperCase();
+}
+
 function _pvRenderizar(linhas) {
     _pvAtualizarContador(linhas);
 
     document.getElementById("pv-tbody").innerHTML = linhas.map(l => {
-        const exibicao   = l.entregador || "Não Definido";
+        const exibicao    = l.entregador || "Não Definido";
         const naoDefinido = !l.entregador;
+        const avatarTxt   = naoDefinido
+            ? `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+            : _pvIniciais(l.entregador);
         return `<tr>
             <td class="adm-nf-entregador">${l.bairro || "—"}</td>
-            <td class="adm-nf-cnpj">${l.sigla || "—"}</td>
+            <td>${l.sigla ? `<span class="pv-sigla-pill">${l.sigla}</span>` : "—"}</td>
             <td>
-                <input type="text" class="fech-select pv-combo-input${naoDefinido ? " pv-nao-definido" : ""}" style="width:100%" autocomplete="off"
-                    value="${exibicao.replace(/"/g, "&quot;")}" data-linha="${l.linha}"
-                    oninput="_pvComboFiltrar(this)" onfocus="_pvComboAbrir(this)" onblur="_pvComboBlur(this)">
+                <div class="pv-ent-cell">
+                    <div class="pv-ent-avatar${naoDefinido ? " pv-avatar-vazio" : ""}">${avatarTxt}</div>
+                    <input type="text" class="fech-select pv-combo-input${naoDefinido ? " pv-nao-definido" : ""}" autocomplete="off"
+                        value="${exibicao.replace(/"/g, "&quot;")}" data-linha="${l.linha}"
+                        oninput="_pvComboFiltrar(this)" onfocus="_pvComboAbrir(this)" onblur="_pvComboBlur(this)">
+                </div>
             </td>
         </tr>`;
     }).join("");
@@ -179,6 +193,14 @@ function _pvSalvar(linha, entregador, inputEl) {
         inputEl.classList.toggle("pv-nao-definido", !entregador);
         inputEl.style.borderColor = "rgba(34,197,94,0.6)";
         setTimeout(() => { inputEl.style.borderColor = ""; }, 900);
+
+        const avatarEl = inputEl.closest(".pv-ent-cell")?.querySelector(".pv-ent-avatar");
+        if (avatarEl) {
+            avatarEl.classList.toggle("pv-avatar-vazio", !entregador);
+            avatarEl.innerHTML = entregador
+                ? _pvIniciais(entregador)
+                : `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+        }
         _pvAtualizarContador();
     })
     .catch(() => {
@@ -189,10 +211,30 @@ function _pvSalvar(linha, entregador, inputEl) {
 
 function _pvAtualizarContador(linhas) {
     const base = linhas || _pvLinhas;
-    const semEntregador = base.filter(l => !l.entregador).length;
-    document.getElementById("pv-counter").innerHTML =
-        `${base.length} bairro${base.length !== 1 ? "s" : ""}` +
-        (semEntregador ? ` <span class="pv-alerta">· ${semEntregador} sem entregador definido</span>` : "");
+    const total      = base.length;
+    const definidos  = base.filter(l => !!l.entregador).length;
+    const pendentes  = total - definidos;
+    const pct        = total > 0 ? Math.round((definidos / total) * 100) : 0;
+
+    document.getElementById("pv-counter").innerHTML = `
+        <div class="pv-stats">
+            <div class="pv-stat-tile">
+                <div class="pv-stat-val">${total}</div>
+                <div class="pv-stat-lbl">Bairro${total !== 1 ? "s" : ""}</div>
+            </div>
+            <div class="pv-stat-tile">
+                <div class="pv-stat-val pv-ok">${definidos}</div>
+                <div class="pv-stat-lbl">Definidos</div>
+            </div>
+            <div class="pv-stat-tile">
+                <div class="pv-stat-val${pendentes ? " pv-warn" : ""}">${pendentes}</div>
+                <div class="pv-stat-lbl">Pendentes</div>
+            </div>
+            <div class="pv-stat-progress">
+                <div class="pv-stat-progress-hd"><span>Cobertura da rota</span><b>${pct}%</b></div>
+                <div class="pv-progress-track"><div class="pv-progress-fill" style="width:${pct}%"></div></div>
+            </div>
+        </div>`;
 }
 
 function _pvFiltrarLocal() {

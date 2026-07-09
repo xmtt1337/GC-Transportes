@@ -1708,7 +1708,12 @@
 <div id="tela-planejamento-videira" class="view tela-full">
     <div class="fech-header">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">
-            <div style="font-size:15px;font-weight:700;color:#e2e8f0">Planejamento de Rotas — Videira</div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <div class="pv-title-icon">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                </div>
+                <div style="font-size:15px;font-weight:700;color:#e2e8f0">Planejamento de Rotas <span style="color:var(--text-muted);font-weight:600">— Videira</span></div>
+            </div>
             <div class="adm-search-input-area" style="max-width:260px">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="text" id="pv-filtro-input" placeholder="Filtrar por bairro..." oninput="_pvFiltrarLocal()">
@@ -1719,10 +1724,10 @@
     <div class="fech-body">
         <div class="fechamento-empty" id="pv-empty">Carregando...</div>
         <div id="pv-content" style="display:none">
-            <div class="pv-summary" id="pv-counter"></div>
+            <div id="pv-counter"></div>
             <div class="pv-card" id="pv-card">
                 <div class="adm-nf-wrap" style="border:none;border-radius:0;background:transparent">
-                    <table class="adm-nf-table">
+                    <table class="adm-nf-table pv-table">
                         <thead>
                             <tr>
                                 <th>Bairro</th>
