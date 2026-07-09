@@ -2516,7 +2516,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     min-width: 0; /* item de grid não deve crescer além da coluna por causa do header nowrap */
 }
 .pv-driver-card.pv-drop-target {
-    /* sem scale: em cards quase full-width no mobile, aumentar o tamanho empurra a borda pra fora da tela */
+    transform: scale(1.02);
     background: linear-gradient(150deg, color-mix(in srgb, var(--pv-accent, #3a86ff) 16%, transparent) 0%, rgba(11,16,26,0.97) 60%);
     box-shadow: 0 0 0 2px var(--pv-accent, #3a86ff), 0 14px 34px color-mix(in srgb, var(--pv-accent, #3a86ff) 35%, transparent);
 }
@@ -2575,7 +2575,9 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     .pv-stats { gap: 8px; }
     .pv-stat-tile { padding: 10px 14px; min-width: 0; flex: 1; }
     .pv-stat-progress { flex-basis: 100%; }
-    .pv-driver-grid { grid-template-columns: 1fr; }
+    /* padding lateral: da uma folga pro card crescer (scale do drop-target) sem estourar a tela,
+       já que no mobile é 1 coluna full-width */
+    .pv-driver-grid { grid-template-columns: 1fr; padding: 0 6px; }
 
     .pv-transp-tabs { gap: 6px; margin-top: 10px; }
     .pv-transp-tab { padding: 7px 12px 7px 10px; font-size: 12px; }
