@@ -334,7 +334,7 @@ function _pvDragIniciar(e) {
         offsetY: e.clientY - rect.top,
         startLeft: rect.left, startTop: rect.top,
         targetLeft: rect.left, targetTop: rect.top,
-        lastX: e.clientX,
+        lastX: e.clientX, lastY: e.clientY,
         velX: 0, rot: 0,
         overCard: null,
         rafId: null,
@@ -357,18 +357,28 @@ function _pvDragMover(e) {
 
     // Velocidade horizontal suavizada (média móvel) — alimenta o balanço no _pvDragTick
     const dx = e.clientX - d.lastX;
-    d.lastX = e.clientX;
     d.velX = d.velX * 0.7 + dx * 0.3;
+    d.lastX = e.clientX;
+    d.lastY = e.clientY;
+}
 
-    // O ghost tem pointer-events:none, então elementFromPoint enxerga o que está embaixo dele
-    const under = document.elementFromPoint(e.clientX, e.clientY);
-    const card  = under ? under.closest(".pv-driver-card") : null;
+// Rola a área da tela automaticamente quando o dedo/mouse chega perto da borda
+// de cima ou de baixo do conteúdo — essencial no mobile, onde só cabe uma tela por vez
+// e o card de destino pode estar fora da área visível.
+function _pvAutoScroll(clientY) {
+    const scroller = document.querySelector("#tela-planejamento-videira .fech-body");
+    if (!scroller) return;
+    const rect   = scroller.getBoundingClientRect();
+    const margem = 60;
+    const velMax = 14;
 
-    if (card !== d.overCard) {
-        if (d.overCard) d.overCard.classList.remove("pv-drop-target");
-        if (card) card.classList.add("pv-drop-target");
-        d.overCard = card;
+    let vel = 0;
+    if (clientY < rect.top + margem) {
+        vel = -velMax * (1 - Math.max(0, clientY - rect.top) / margem);
+    } else if (clientY > rect.bottom - margem) {
+        vel = velMax * (1 - Math.max(0, rect.bottom - clientY) / margem);
     }
+    if (vel) scroller.scrollTop += vel;
 }
 
 function _pvDragTick() {
@@ -384,8 +394,20 @@ function _pvDragTick() {
     const rotAlvo = Math.max(-18, Math.min(18, d.velX * 1.4));
     d.rot += (rotAlvo - d.rot) * 0.2;
     d.velX *= 0.9;
-
     d.ghost.style.transform = `scale(1.1) rotate(${d.rot.toFixed(2)}deg)`;
+
+    // Recalcula o card sob o ponteiro a cada frame (não só em pointermove) — assim o
+    // destaque de destino continua certo mesmo quando o auto-scroll move o conteúdo
+    // com o dedo parado perto da borda da tela.
+    const under = document.elementFromPoint(d.lastX, d.lastY);
+    const card  = under ? under.closest(".pv-driver-card") : null;
+    if (card !== d.overCard) {
+        if (d.overCard) d.overCard.classList.remove("pv-drop-target");
+        if (card) card.classList.add("pv-drop-target");
+        d.overCard = card;
+    }
+
+    _pvAutoScroll(d.lastY);
 
     d.rafId = requestAnimationFrame(_pvDragTick);
 }

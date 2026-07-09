@@ -2513,6 +2513,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     border-radius: var(--radius); padding: 16px 18px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.3);
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    min-width: 0; /* item de grid não deve crescer além da coluna por causa do header nowrap */
 }
 .pv-driver-card.pv-drop-target {
     transform: scale(1.025);
