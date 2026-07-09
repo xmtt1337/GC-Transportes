@@ -188,14 +188,18 @@ function _pvComboFechar() {
     _pvComboInputEl = null;
 }
 
-function _pvSalvar(linha, entregador, inputEl) {
-    inputEl.disabled = true;
-    fetch(`${API}/videira/planejamento`, {
+// Chamada crua da API — usada tanto pelo campo de busca quanto pelo arrastar-e-soltar
+function _pvSalvarAPI(linha, entregador) {
+    return fetch(`${API}/videira/planejamento`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
         body: JSON.stringify({ transportadora: _pvTransportadora, linha, entregador })
-    })
-    .then(r => r.json())
+    }).then(r => r.json());
+}
+
+function _pvSalvar(linha, entregador, inputEl) {
+    inputEl.disabled = true;
+    _pvSalvarAPI(linha, entregador)
     .then(d => {
         inputEl.disabled = false;
         if (d.error) { gcAlert(d.error); return; }
@@ -276,10 +280,10 @@ function _pvRenderizarPorEntregador(linhas) {
 
     const cardHtml = (nome, itens) => {
         const chips = itens.map(i => `
-            <span class="pv-bairro-chip">${i.bairro || "—"}${i.sigla ? ` <span class="sigla">${i.sigla}</span>` : ""}</span>
+            <span class="pv-bairro-chip" data-linha="${i.linha}">${i.bairro || "—"}${i.sigla ? ` <span class="sigla">${i.sigla}</span>` : ""}</span>
         `).join("");
         return `
-        <div class="pv-driver-card">
+        <div class="pv-driver-card" data-nome="${nome.replace(/"/g, "&quot;")}">
             <div class="pv-driver-head">
                 <div class="pv-ent-avatar" style="width:36px;height:36px;font-size:12px">${_pvIniciais(nome)}</div>
                 <div class="pv-driver-name">${nome}</div>
@@ -294,3 +298,122 @@ function _pvRenderizarPorEntregador(linhas) {
     document.getElementById("pv-driver-grid").innerHTML =
         html || `<div class="fechamento-empty">Nenhum resultado para este filtro.</div>`;
 }
+
+// ───── Arrastar e soltar: mover um bairro de um entregador para outro ─────
+// Implementado com Pointer Events (não HTML5 drag nativo) para poder animar
+// livremente o "chip" enquanto ele é segurado, e o card de destino ao passar por cima.
+let _pvDrag = null; // { linha, chip, ghost, offsetX, offsetY, startLeft, startTop, overCard }
+
+function _pvDragIniciar(e) {
+    if (_pvView !== "entregador") return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const chip = e.target.closest(".pv-bairro-chip");
+    if (!chip) return;
+
+    e.preventDefault();
+    const rect  = chip.getBoundingClientRect();
+    const linha = parseInt(chip.dataset.linha);
+
+    const ghost = chip.cloneNode(true);
+    ghost.classList.add("pv-chip-ghost");
+    ghost.style.position   = "fixed";
+    ghost.style.left       = rect.left + "px";
+    ghost.style.top        = rect.top + "px";
+    ghost.style.width      = rect.width + "px";
+    ghost.style.margin     = "0";
+    document.body.appendChild(ghost);
+
+    chip.classList.add("pv-chip-source-dragging");
+
+    _pvDrag = {
+        linha, chip, ghost,
+        offsetX: e.clientX - rect.left,
+        offsetY: e.clientY - rect.top,
+        startLeft: rect.left, startTop: rect.top,
+        overCard: null,
+        pointerId: e.pointerId,
+    };
+
+    chip.setPointerCapture(e.pointerId);
+    chip.addEventListener("pointermove", _pvDragMover);
+    chip.addEventListener("pointerup", _pvDragSoltar);
+    chip.addEventListener("pointercancel", _pvDragCancelar);
+}
+
+function _pvDragMover(e) {
+    if (!_pvDrag) return;
+    const d = _pvDrag;
+    d.ghost.style.left = (e.clientX - d.offsetX) + "px";
+    d.ghost.style.top  = (e.clientY - d.offsetY) + "px";
+
+    // O ghost tem pointer-events:none, então elementFromPoint enxerga o que está embaixo dele
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const card  = under ? under.closest(".pv-driver-card") : null;
+
+    if (card !== d.overCard) {
+        if (d.overCard) d.overCard.classList.remove("pv-drop-target");
+        if (card) card.classList.add("pv-drop-target");
+        d.overCard = card;
+    }
+}
+
+function _pvDragFinalizar(chip, overCard) {
+    chip.classList.remove("pv-chip-source-dragging");
+    if (overCard) overCard.classList.remove("pv-drop-target");
+    chip.removeEventListener("pointermove", _pvDragMover);
+    chip.removeEventListener("pointerup", _pvDragSoltar);
+    chip.removeEventListener("pointercancel", _pvDragCancelar);
+}
+
+// Anima o ghost de onde ele está agora até (left,top) — o reflow forçado entre setar
+// o transition e mudar o destino é o que garante que a transição realmente anime
+function _pvDragAnimarGhostAte(ghost, left, top, extra) {
+    ghost.style.transition = "left .22s cubic-bezier(.34,1.56,.64,1), top .22s cubic-bezier(.34,1.56,.64,1), opacity .22s ease, transform .22s ease";
+    void ghost.offsetWidth;
+    ghost.style.left = left + "px";
+    ghost.style.top  = top + "px";
+    if (extra) Object.assign(ghost.style, extra);
+    setTimeout(() => ghost.remove(), 240);
+}
+
+function _pvDragSoltar(e) {
+    if (!_pvDrag) return;
+    const { chip, ghost, linha, overCard, startLeft, startTop } = _pvDrag;
+    try { chip.releasePointerCapture(e.pointerId); } catch (_) {}
+    _pvDragFinalizar(chip, overCard);
+
+    const novoNome  = overCard ? overCard.dataset.nome : null;
+    const item      = _pvLinhas.find(l => l.linha === linha);
+    const nomeAtual = item ? item.entregador : null;
+
+    if (overCard && novoNome && novoNome !== nomeAtual) {
+        // Drop válido: anima o chip "encaixando" no card de destino e confirma no servidor
+        const destRect = overCard.getBoundingClientRect();
+        _pvDragAnimarGhostAte(ghost, destRect.left + 14, destRect.top + 46, { opacity: "0", transform: "scale(0.35) rotate(0deg)" });
+        _pvReatribuirPorDrag(linha, novoNome);
+    } else {
+        // Drop inválido (fora de um card, ou no próprio card de origem): volta animado
+        _pvDragAnimarGhostAte(ghost, startLeft, startTop, { transform: "scale(1) rotate(0deg)" });
+    }
+
+    _pvDrag = null;
+}
+
+function _pvDragCancelar() {
+    if (!_pvDrag) return;
+    const { chip, ghost, overCard } = _pvDrag;
+    _pvDragFinalizar(chip, overCard);
+    ghost.remove();
+    _pvDrag = null;
+}
+
+function _pvReatribuirPorDrag(linha, novoEntregador) {
+    return _pvSalvarAPI(linha, novoEntregador).then(d => {
+        if (d.error) { gcAlert(d.error); return; }
+        const item = _pvLinhas.find(l => l.linha === linha);
+        if (item) item.entregador = novoEntregador;
+        _pvFiltrarLocal();
+    }).catch(() => gcAlert("Erro ao mover o bairro. Tente novamente."));
+}
+
+document.addEventListener("pointerdown", _pvDragIniciar);
