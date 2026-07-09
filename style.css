@@ -2448,8 +2448,10 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     box-shadow: 0 4px 20px rgba(0,0,0,0.35);
     transition: border-left-color 0.25s ease;
 }
+.pv-table { table-layout: fixed; width: 100%; }
 .pv-table th:nth-child(2) { width: 90px; }
 .pv-table th:nth-child(3), .pv-table td:nth-child(3) { width: 46%; }
+.pv-table td:nth-child(1) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #pv-tbody tr:hover td { background: color-mix(in srgb, var(--pv-accent, #3a86ff) 6%, transparent); }
 
 .pv-sigla-pill {
@@ -2544,12 +2546,14 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     .pv-transp-tabs { gap: 6px; margin-top: 10px; }
     .pv-transp-tab { padding: 7px 12px 7px 10px; font-size: 12px; }
 
-    .pv-table th, .pv-table td { padding: 10px 8px; }
-    .pv-table th:nth-child(2), .pv-table td:nth-child(2) { width: 1%; white-space: nowrap; }
+    .pv-table th, .pv-table td { padding: 10px 6px; }
+    .pv-table th:nth-child(1), .pv-table td:nth-child(1) { width: 30%; }
+    .pv-table th:nth-child(2), .pv-table td:nth-child(2) { width: 74px; }
     .pv-table th:nth-child(3), .pv-table td:nth-child(3) { width: auto; }
-    .pv-ent-cell { gap: 6px; }
-    .pv-ent-avatar { width: 24px; height: 24px; font-size: 9.5px; }
-    .pv-combo-input { padding: 8px 10px; font-size: 13px; }
+    .pv-sigla-pill { padding: 3px 7px; font-size: 10.5px; }
+    .pv-ent-cell { gap: 5px; }
+    .pv-ent-avatar { width: 22px; height: 22px; font-size: 9px; }
+    .pv-combo-input { padding: 7px 8px; font-size: 12.5px; }
 }
 .ped-cal-header {
     display: flex; align-items: center; justify-content: space-between;
