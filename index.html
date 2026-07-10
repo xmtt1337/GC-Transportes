@@ -122,6 +122,19 @@
             <li><a href="#" onclick="abrirMinhasSolicitacoes(event)">Minhas Solicitações</a></li>
         </ul>
 
+        <li class="menu-item" data-menu="baixas" id="menu-baixas" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <span class="label">Baixas</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Baixas</span>
+        </li>
+        <ul class="submenu" data-menu="baixas" id="submenu-baixas" style="display:none">
+            <li><a href="#" onclick="_emBreve(event)">Total Express</a></li>
+        </ul>
+
         <li class="menu-item" data-menu="torrecontrole" id="menu-torrecontrole" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2v6"/>

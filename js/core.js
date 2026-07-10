@@ -66,6 +66,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("submenu-fechamentos");
         show("menu-adiantamentos");
         show("submenu-adiantamentos");
+        show("menu-baixas");
+        show("submenu-baixas");
         document.getElementById("welcome-name").innerText = displayName.split(" ")[0];
     }
 
