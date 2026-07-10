@@ -2353,6 +2353,28 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .ant-hist-table tr:last-child td { border-bottom: none; }
 .ant-hist-table tr:hover td { background: rgba(58,134,255,0.04); }
 
+/* ===== BAIXAS — TOTAL EXPRESS ===== */
+.bte-foto-row { display: flex; }
+.bte-foto-btn {
+    display: flex; align-items: center; gap: 9px;
+    padding: 11px 16px; border-radius: 10px;
+    border: 1px solid rgba(58,134,255,0.35); background: rgba(58,134,255,0.08);
+    color: #3a86ff; font-size: 13px; font-weight: 700; cursor: pointer;
+    font-family: inherit; transition: background 0.2s;
+}
+.bte-foto-btn:hover { background: rgba(58,134,255,0.16); }
+.bte-foto-preview {
+    margin-top: 10px; max-width: 220px; max-height: 220px;
+    border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);
+}
+.bte-codigo-row { display: flex; gap: 10px; }
+.bte-scan-btn {
+    flex-shrink: 0; width: 46px; display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; border: 1px solid rgba(58,134,255,0.35); background: rgba(58,134,255,0.08);
+    color: #3a86ff; cursor: pointer; transition: background 0.2s;
+}
+.bte-scan-btn:hover { background: rgba(58,134,255,0.16); }
+
 /* ===== EXPORTAR PEDIDOS — CALENDARIO DE INTERVALO ===== */
 .ped-export-pop {
     position: fixed; z-index: 99999; width: 300px;

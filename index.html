@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 
 <link rel="stylesheet" href="style.css">
 </head>
@@ -132,7 +133,7 @@
             <span class="menu-tooltip">Baixas</span>
         </li>
         <ul class="submenu" data-menu="baixas" id="submenu-baixas" style="display:none">
-            <li><a href="#" onclick="_emBreve(event)">Total Express</a></li>
+            <li><a href="#" onclick="abrirBaixaTotalExpress(event)">Total Express</a></li>
         </ul>
 
         <li class="menu-item" data-menu="torrecontrole" id="menu-torrecontrole" onclick="toggleMenu(this)" style="display:none">
@@ -1534,6 +1535,60 @@
             </div>
         </div><!-- /tela-minhas-solicitacoes -->
 
+        <!-- TELA BAIXAS — TOTAL EXPRESS (ENTREGADOR) -->
+        <div id="tela-baixa-te" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+
+                <div id="bte-form-wrap" class="ant-form-wrap">
+                    <div class="ant-form-title">Baixa — Total Express</div>
+
+                    <div class="ant-field" style="margin-bottom:14px">
+                        <label class="ant-label">Nome do cliente</label>
+                        <input type="text" id="bte-cliente" class="ant-input" placeholder="Opcional">
+                    </div>
+
+                    <div class="ant-field" style="margin-bottom:14px">
+                        <label class="ant-label">Foto da etiqueta *</label>
+                        <div class="bte-foto-row">
+                            <button type="button" class="bte-foto-btn" onclick="document.getElementById('bte-foto-input').click()">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                Tirar foto da etiqueta
+                            </button>
+                            <input type="file" id="bte-foto-input" accept="image/*" capture="environment" style="display:none" onchange="_bteFotoSelecionada(this)">
+                        </div>
+                        <img id="bte-foto-preview" class="bte-foto-preview" style="display:none">
+                    </div>
+
+                    <div class="ant-field" style="margin-bottom:14px">
+                        <label class="ant-label">Código *</label>
+                        <div class="bte-codigo-row">
+                            <input type="text" id="bte-codigo" class="ant-input" placeholder='Digite o código (deve conter "TX")' style="flex:1">
+                            <button type="button" class="bte-scan-btn" onclick="_bteAbrirScanner()" title="Escanear código de barras / QR code">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="bte-form-msg" class="ant-form-msg" style="display:none"></div>
+                    <button onclick="_bteEnviarBaixa()" class="ant-submit-btn" id="bte-submit-btn">Enviar Baixa</button>
+                </div>
+
+                <div class="ant-historico-section">
+                    <div class="ant-sol-title">Últimas Baixas Enviadas</div>
+                    <div class="fechamento-empty" id="bte-hist-empty">Carregando...</div>
+                    <div id="bte-hist-resultado" style="display:none">
+                        <table class="ant-hist-table">
+                            <thead>
+                                <tr><th>Código</th><th>Cliente</th><th>Data/Hora</th></tr>
+                            </thead>
+                            <tbody id="bte-hist-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div><!-- /tela-baixa-te -->
+
         <!-- TELA ANTECIPAÇÕES ADMIN -->
         <div id="tela-admin-antecipacoes" class="view tela-full">
             <div class="fech-header">
@@ -1629,6 +1684,7 @@
 <script src="js/conferencias.js"></script>
 <script src="js/antecipacoes.js"></script>
 <script src="js/antecipacoes-admin.js"></script>
+<script src="js/baixas.js"></script>
 <script src="js/videira.js"></script>
 <script src="js/planejamento-videira.js"></script>
 <script src="js/torre.js"></script>
