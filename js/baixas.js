@@ -42,15 +42,42 @@ function _bteMostrarMsg(msg, tipo) {
 function _bteFotoSelecionada(input) {
     const file = input.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-        _bteFotoBase64   = reader.result.split(",")[1];
-        _bteFotoMimeType = file.type || "image/jpeg";
+    _bteComprimirImagem(file).then(({ dataUrl, base64 }) => {
+        _bteFotoBase64   = base64;
+        _bteFotoMimeType = "image/jpeg";
         const preview = document.getElementById("bte-foto-preview");
-        preview.src = reader.result;
+        preview.src = dataUrl;
         preview.style.display = "";
-    };
-    reader.readAsDataURL(file);
+    }).catch(() => {
+        gcAlert("Não foi possível processar a foto. Tente novamente.");
+    });
+}
+
+// Redimensiona e recomprime a foto no navegador antes de enviar — etiqueta de celular
+// costuma vir com vários MB, e isso ia direto pro banco em base64 (33% maior ainda).
+function _bteComprimirImagem(file, maxDim = 1280, qualidade = 0.7) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+                let { width, height } = img;
+                if (width > maxDim || height > maxDim) {
+                    if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+                    else { width = Math.round(width * maxDim / height); height = maxDim; }
+                }
+                const canvas = document.createElement("canvas");
+                canvas.width = width; canvas.height = height;
+                canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+                const dataUrl = canvas.toDataURL("image/jpeg", qualidade);
+                resolve({ dataUrl, base64: dataUrl.split(",")[1] });
+            };
+            img.onerror = reject;
+            img.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
 }
 
 function _bteEnviarBaixa() {
