@@ -5,6 +5,11 @@ let _bteScanControls = null;
 
 function abrirBaixaTotalExpress(event) {
     if (event) event.preventDefault();
+    const role = window._gcUser && window._gcUser.role;
+    if (role && role !== "entregador") {
+        abrirAdminBaixasTotalExpress();
+        return;
+    }
     _bteLimparForm();
     mostrarTela("tela-baixa-te");
     _bteCarregarHistorico();
@@ -165,4 +170,145 @@ function _bteFecharScanner() {
     document.removeEventListener("keydown", _bteScanEscKey);
     window.removeEventListener("blur", _bteFecharScanner);
     document.removeEventListener("visibilitychange", _bteScanVisibilidade);
+}
+
+// ───── BAIXAS — TOTAL EXPRESS (ADMIN/FINANCE/DEV) ─────
+let _abteDados     = [];
+let _abteFiltrados = [];
+let _abtePagina    = 1;
+let _abtePorPagina = 25;
+
+function abrirAdminBaixasTotalExpress(event) {
+    if (event) event.preventDefault();
+    mostrarTela("tela-admin-baixas-te");
+    _abteCarregar();
+}
+
+function _abteCarregar() {
+    const empty = document.getElementById("abte-empty");
+    const lista = document.getElementById("abte-lista");
+    empty.innerText = "Carregando...";
+    empty.style.display = "";
+    lista.style.display = "none";
+
+    fetch(`${API}/admin/baixas/total-express`, {
+        headers: { "Authorization": "Bearer " + token }
+    }).then(r => r.json())
+    .then(rows => {
+        if (!Array.isArray(rows)) { empty.innerText = rows.error || "Erro ao carregar baixas."; return; }
+        _abteDados = rows;
+        const filtro = document.getElementById("abte-filtro-input");
+        if (filtro) filtro.value = "";
+        _abteRenderizar(rows);
+    }).catch(() => {
+        empty.innerText = "Erro ao carregar baixas.";
+    });
+}
+
+function _abteRenderizar(rows) {
+    const empty = document.getElementById("abte-empty");
+    const lista = document.getElementById("abte-lista");
+    _abteFiltrados = rows;
+    _abtePagina = 1;
+
+    if (!rows.length) {
+        empty.innerText = "Nenhuma baixa encontrada.";
+        empty.style.display = "";
+        lista.style.display = "none";
+        return;
+    }
+    document.getElementById("abte-counter").innerText = `${rows.length.toLocaleString("pt-BR")} baixa${rows.length !== 1 ? "s" : ""}`;
+    empty.style.display = "none";
+    lista.style.display = "";
+    _abteRenderizarPagina();
+}
+
+function _abteRenderizarPagina() {
+    const totalPaginas = Math.max(1, Math.ceil(_abteFiltrados.length / _abtePorPagina));
+    _abtePagina = Math.min(Math.max(1, _abtePagina), totalPaginas);
+    const inicio = (_abtePagina - 1) * _abtePorPagina;
+    const pagina = _abteFiltrados.slice(inicio, inicio + _abtePorPagina);
+
+    document.getElementById("abte-tbody").innerHTML = pagina.map(r => `
+        <tr>
+            <td style="font-family:monospace;font-size:12px">${r.codigo}</td>
+            <td>${r.nome_cliente || "—"}</td>
+            <td>${r.usuario_nome || "—"}</td>
+            <td style="font-size:12px;white-space:nowrap;color:#94a3b8">${r.data_hora_brasilia || "—"}</td>
+            <td>
+                <button class="abte-foto-btn" onclick="_abteVerFoto(${r.id})">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    Ver foto
+                </button>
+            </td>
+        </tr>`).join("");
+
+    document.getElementById("abte-pagina-info").innerText = `Página ${_abtePagina} de ${totalPaginas}`;
+}
+
+function _abteMudarPorPagina() {
+    _abtePorPagina = parseInt(document.getElementById("abte-por-pagina").value, 10);
+    _abtePagina = 1;
+    _abteRenderizarPagina();
+}
+
+function _abtePaginaAnterior() {
+    if (_abtePagina <= 1) return;
+    _abtePagina--;
+    _abteRenderizarPagina();
+}
+
+function _abteProximaPagina() {
+    const totalPaginas = Math.max(1, Math.ceil(_abteFiltrados.length / _abtePorPagina));
+    if (_abtePagina >= totalPaginas) return;
+    _abtePagina++;
+    _abteRenderizarPagina();
+}
+
+function _abteFiltrarLocal() {
+    const termo = document.getElementById("abte-filtro-input").value.trim().toLowerCase();
+    if (!termo) { _abteRenderizar(_abteDados); return; }
+    const filtrado = _abteDados.filter(r =>
+        (r.codigo       || "").toLowerCase().includes(termo) ||
+        (r.nome_cliente || "").toLowerCase().includes(termo) ||
+        (r.usuario_nome || "").toLowerCase().includes(termo)
+    );
+    _abteRenderizar(filtrado);
+}
+
+function _abteVerFoto(id) {
+    if (document.getElementById("abte-foto-overlay")) return;
+
+    const overlay = document.createElement("div");
+    overlay.id = "abte-foto-overlay";
+    overlay.setAttribute("style", "position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(7,9,14,0.92);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box");
+    overlay.innerHTML = `
+        <div style="max-width:520px;width:100%;background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;box-sizing:border-box;text-align:center">
+            <div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:14px">Foto da etiqueta</div>
+            <div id="abte-foto-loading" style="color:#64748b;font-size:13px;padding:40px 0">Carregando foto...</div>
+            <img id="abte-foto-img" style="display:none;max-width:100%;max-height:65vh;border-radius:10px">
+            <button id="abte-foto-fechar" style="margin-top:16px;width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Fechar</button>
+        </div>`;
+    document.body.appendChild(overlay);
+    const fechar = () => overlay.remove();
+    overlay.querySelector("#abte-foto-fechar").addEventListener("click", fechar);
+    overlay.addEventListener("click", e => { if (e.target === overlay) fechar(); });
+
+    fetch(`${API}/admin/baixas/total-express/${id}/foto`, {
+        headers: { "Authorization": "Bearer " + token }
+    }).then(r => r.json())
+    .then(d => {
+        if (d.error || !d.foto_base64) {
+            document.getElementById("abte-foto-loading").textContent = "Foto não encontrada.";
+            return;
+        }
+        const img = document.getElementById("abte-foto-img");
+        img.src = `data:${d.foto_mime_type || "image/jpeg"};base64,${d.foto_base64}`;
+        img.onload = () => {
+            img.style.display = "";
+            document.getElementById("abte-foto-loading").style.display = "none";
+        };
+    }).catch(() => {
+        document.getElementById("abte-foto-loading").textContent = "Erro ao carregar a foto.";
+    });
 }

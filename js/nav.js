@@ -24,6 +24,7 @@ const _TELA_TITULOS = {
     "tela-minhas-solicitacoes":  "Minhas Solicitações",
     "tela-admin-antecipacoes":   "Antecipações",
     "tela-baixa-te":             "Baixas — Total Express",
+    "tela-admin-baixas-te":      "Baixas — Total Express",
     "tela-videira-alimentar":    "Alimentar Fechamento",
     "tela-videira-painel":       "Meu Fechamento",
     "tela-videira-dash":         "Dashboard",

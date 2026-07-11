@@ -84,6 +84,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         _showCadastros();
         _showExtravios();
         _showTorreControle();
+        show("menu-baixas");
+        show("submenu-baixas");
         show("bip-sync-btn");
         // sem: financeiro, fechamento (só dev e finance)
     }
@@ -96,6 +98,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         _showCadastros();
         _showExtravios();
         _showTorreControle();
+        show("menu-baixas");
+        show("submenu-baixas");
         show("bip-sync-btn");
     }
 
