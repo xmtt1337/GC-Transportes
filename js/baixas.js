@@ -1,7 +1,10 @@
 // ───── BAIXAS — TOTAL EXPRESS (ENTREGADOR) ─────
 let _bteFotoBase64   = null;
 let _bteFotoMimeType = null;
-let _bteScanControls = null;
+let _bteScanStream   = null;
+let _bteScanTimer    = null;
+let _bteScanReader   = null;
+let _bteScanCanvas   = null;
 
 function abrirBaixaTotalExpress(event) {
     if (event) event.preventDefault();
@@ -143,6 +146,10 @@ function _bteCarregarHistorico() {
 }
 
 // ───── SCANNER DE CÓDIGO (CÂMERA) ─────
+// Proporção da área de leitura marcada na tela (relativa ao vídeo) — só essa região
+// é recortada e decodificada, ignorando o resto do frame (fundo, mão, mesa etc.).
+const _BTE_SCAN_AREA_W = 0.82;
+const _BTE_SCAN_AREA_H = 0.30;
 
 function _bteAbrirScanner() {
     if (document.getElementById("bte-scan-overlay")) return;
@@ -156,8 +163,11 @@ function _bteAbrirScanner() {
     overlay.setAttribute("style", "position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(7,9,14,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box");
     overlay.innerHTML = `
         <div style="width:100%;max-width:420px;background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;box-sizing:border-box">
-            <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:14px">Aponte a câmera para o código</div>
-            <video id="bte-scan-video" style="width:100%;border-radius:10px;background:#000;display:block" muted playsinline></video>
+            <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:14px">Alinhe o código dentro da área marcada</div>
+            <div style="position:relative;width:100%;border-radius:10px;overflow:hidden">
+                <video id="bte-scan-video" style="width:100%;display:block;background:#000" muted playsinline></video>
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:${_BTE_SCAN_AREA_W*100}%;height:${_BTE_SCAN_AREA_H*100}%;border:2px solid #3a86ff;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,0.55);pointer-events:none"></div>
+            </div>
             <div id="bte-scan-erro" style="color:#f87171;font-size:13px;margin-top:10px;display:none"></div>
             <button id="bte-scan-cancelar" style="margin-top:16px;width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
         </div>`;
@@ -168,12 +178,12 @@ function _bteAbrirScanner() {
     document.addEventListener("visibilitychange", _bteScanVisibilidade);
 
     const videoEl = overlay.querySelector("#bte-scan-video");
-    const reader  = new ZXingBrowser.BrowserMultiFormatReader();
 
+    _bteScanReader = new ZXingBrowser.BrowserMultiFormatReader();
     // Restringe aos formatos usados em etiqueta de transportadora — testar todos os
     // formatos (Aztec, PDF417, RSS etc.) em cada frame é o que deixa a leitura lenta.
     if (ZXingBrowser.BarcodeFormat) {
-        reader.possibleFormats = [
+        _bteScanReader.possibleFormats = [
             ZXingBrowser.BarcodeFormat.QR_CODE,
             ZXingBrowser.BarcodeFormat.CODE_128,
             ZXingBrowser.BarcodeFormat.CODE_39,
@@ -183,27 +193,48 @@ function _bteAbrirScanner() {
         ];
     }
 
-    // Pede uma resolução menor à câmera — menos pixels por frame para decodificar
-    // é mais rápido do que a resolução máxima que o celular ofereceria por padrão.
-    const constraints = {
-        video: {
-            facingMode: { ideal: "environment" },
-            width:      { ideal: 1280 },
-            height:     { ideal: 720 }
-        }
-    };
-
-    reader.decodeFromConstraints(constraints, videoEl, (result, err, controls) => {
-        _bteScanControls = controls;
-        if (result) {
-            document.getElementById("bte-codigo").value = result.getText();
-            _bteFecharScanner();
-        }
+    navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
+    }).then(stream => {
+        _bteScanStream = stream;
+        videoEl.srcObject = stream;
+        videoEl.play();
+        _bteScanTimer = setTimeout(_bteScanLoop, 300);
     }).catch(() => {
         const erroEl = overlay.querySelector("#bte-scan-erro");
         erroEl.textContent = "Não foi possível acessar a câmera. Verifique as permissões do navegador.";
         erroEl.style.display = "";
     });
+}
+
+// Recorta só a área marcada (em pixels do vídeo, não da tela) e tenta decodificar
+// apenas ali — menos pixels por tentativa e ignora o fundo desfocado ao redor.
+function _bteScanLoop() {
+    if (!_bteScanReader) return;
+    const videoEl = document.getElementById("bte-scan-video");
+    if (!videoEl || !videoEl.videoWidth) {
+        _bteScanTimer = setTimeout(_bteScanLoop, 150);
+        return;
+    }
+    const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+    const sw = Math.round(vw * _BTE_SCAN_AREA_W), sh = Math.round(vh * _BTE_SCAN_AREA_H);
+    const sx = Math.round((vw - sw) / 2), sy = Math.round((vh - sh) / 2);
+
+    if (!_bteScanCanvas) _bteScanCanvas = document.createElement("canvas");
+    _bteScanCanvas.width = sw; _bteScanCanvas.height = sh;
+    _bteScanCanvas.getContext("2d").drawImage(videoEl, sx, sy, sw, sh, 0, 0, sw, sh);
+
+    try {
+        const result = _bteScanReader.decodeFromCanvas(_bteScanCanvas);
+        if (result) {
+            document.getElementById("bte-codigo").value = result.getText();
+            _bteFecharScanner();
+            return;
+        }
+    } catch (e) {
+        // nenhum código nesse frame — normal, segue tentando
+    }
+    _bteScanTimer = setTimeout(_bteScanLoop, 150);
 }
 
 function _bteScanEscKey(e) {
@@ -215,7 +246,9 @@ function _bteScanVisibilidade() {
 }
 
 function _bteFecharScanner() {
-    if (_bteScanControls) { _bteScanControls.stop(); _bteScanControls = null; }
+    if (_bteScanTimer) { clearTimeout(_bteScanTimer); _bteScanTimer = null; }
+    if (_bteScanStream) { _bteScanStream.getTracks().forEach(t => t.stop()); _bteScanStream = null; }
+    _bteScanReader = null;
     const overlay = document.getElementById("bte-scan-overlay");
     if (overlay) overlay.remove();
     document.removeEventListener("keydown", _bteScanEscKey);
