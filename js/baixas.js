@@ -169,7 +169,31 @@ function _bteAbrirScanner() {
 
     const videoEl = overlay.querySelector("#bte-scan-video");
     const reader  = new ZXingBrowser.BrowserMultiFormatReader();
-    reader.decodeFromVideoDevice(undefined, videoEl, (result, err, controls) => {
+
+    // Restringe aos formatos usados em etiqueta de transportadora — testar todos os
+    // formatos (Aztec, PDF417, RSS etc.) em cada frame é o que deixa a leitura lenta.
+    if (ZXingBrowser.BarcodeFormat) {
+        reader.possibleFormats = [
+            ZXingBrowser.BarcodeFormat.QR_CODE,
+            ZXingBrowser.BarcodeFormat.CODE_128,
+            ZXingBrowser.BarcodeFormat.CODE_39,
+            ZXingBrowser.BarcodeFormat.EAN_13,
+            ZXingBrowser.BarcodeFormat.ITF,
+            ZXingBrowser.BarcodeFormat.DATA_MATRIX
+        ];
+    }
+
+    // Pede uma resolução menor à câmera — menos pixels por frame para decodificar
+    // é mais rápido do que a resolução máxima que o celular ofereceria por padrão.
+    const constraints = {
+        video: {
+            facingMode: { ideal: "environment" },
+            width:      { ideal: 1280 },
+            height:     { ideal: 720 }
+        }
+    };
+
+    reader.decodeFromConstraints(constraints, videoEl, (result, err, controls) => {
         _bteScanControls = controls;
         if (result) {
             document.getElementById("bte-codigo").value = result.getText();
