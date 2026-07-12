@@ -130,13 +130,7 @@ function renderHomeActions(role) {
             desc: "Evolução dos seus valores por transportadora.",
             fn: "abrirEntDashboard()"
         });
-        defs.push({
-            color: "#14b8a6", ibg: "rgba(20,184,166,0.12)",
-            icon: `<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>`,
-            title: "Baixas — Total Express",
-            desc: "Registrar baixa de entrega com foto da etiqueta.",
-            fn: "abrirBaixaTotalExpress(event)"
-        });
+        // Card "Baixas — Total Express" desativado temporariamente (aguardando ajustes)
     }
     if (role === "admin") {
         defs.push({
