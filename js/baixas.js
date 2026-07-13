@@ -26,6 +26,65 @@ function abrirBaixaTotalExpress(event) {
     _bteAtualizarBadgeFila();
     _bteMostrarAvisosFila();
     _bteFilaSincronizar();
+    _bteVerificarPermissaoLocalizacao();
+}
+
+// ───── EXPLICAÇÃO DA LOCALIZAÇÃO (uma vez, antes do prompt real do navegador) ─────
+const _BTE_GEO_FLAG = "bte_geo_explicado";
+
+function _bteVerificarPermissaoLocalizacao() {
+    if (localStorage.getItem(_BTE_GEO_FLAG)) return; // já passou por essa tela antes
+    _bteMostrarCardLocalizacao();
+}
+
+function _bteMostrarCardLocalizacao() {
+    if (document.getElementById("bte-geo-overlay")) return;
+    const overlay = document.createElement("div");
+    overlay.id = "bte-geo-overlay";
+    overlay.setAttribute("style", "position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(7,9,14,0.92);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box");
+    overlay.innerHTML = `
+        <div style="max-width:380px;width:100%;background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;box-sizing:border-box;text-align:center">
+            <div style="width:52px;height:52px;border-radius:50%;background:rgba(58,134,255,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#3a86ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+            <div style="font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:10px">Precisamos da sua localização</div>
+            <div style="font-size:13.5px;color:#94a3b8;line-height:1.6;margin-bottom:22px">
+                Para o controle das entregas, o app acessa sua localização no momento de cada baixa.
+                A seguir, o navegador vai pedir essa permissão — toque em <strong>"Permitir"</strong> quando aparecer.
+            </div>
+            <div style="display:flex;gap:10px">
+                <button id="bte-geo-recusar" style="flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Recusar</button>
+                <button id="bte-geo-confirmar" style="flex:1;padding:12px;border-radius:10px;border:none;background:#3a86ff;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Confirmar</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector("#bte-geo-confirmar").addEventListener("click", _bteGeoConfirmar);
+    overlay.querySelector("#bte-geo-recusar").addEventListener("click", _bteGeoMostrarBloqueio);
+}
+
+function _bteGeoConfirmar() {
+    localStorage.setItem(_BTE_GEO_FLAG, "1");
+    const overlay = document.getElementById("bte-geo-overlay");
+    if (overlay) overlay.remove();
+    _bteCapturarLocalizacao(); // dispara o prompt real do navegador agora
+}
+
+// Recusou: mostra um segundo card, sem botão de fechar — só sai daqui indo em "Permitir"
+function _bteGeoMostrarBloqueio() {
+    const overlay = document.getElementById("bte-geo-overlay");
+    if (!overlay) return;
+    overlay.innerHTML = `
+        <div style="max-width:380px;width:100%;background:#111827;border:1px solid rgba(239,68,68,0.3);border-radius:16px;padding:24px;box-sizing:border-box;text-align:center">
+            <div style="width:52px;height:52px;border-radius:50%;background:rgba(239,68,68,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#f87171" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div style="font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:10px">Localização necessária</div>
+            <div style="font-size:13.5px;color:#94a3b8;line-height:1.6;margin-bottom:22px">
+                Para continuar usando as baixas, é necessário aceitar o acesso à localização — ela confirma que a entrega foi feita no local certo.
+            </div>
+            <button id="bte-geo-permitir" style="width:100%;padding:12px;border-radius:10px;border:none;background:#3a86ff;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Permitir</button>
+        </div>`;
+    overlay.querySelector("#bte-geo-permitir").addEventListener("click", _bteGeoConfirmar);
 }
 
 function _bteLimparForm() {
