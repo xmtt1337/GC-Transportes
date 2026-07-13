@@ -116,8 +116,6 @@ function _bteCapturarLocalizacao() {
 // só um pouco (nunca trava o envio) — é o que fazia a baixa sair sem endereço às vezes.
 function _bteAguardarLocalizacao() {
     if (!_bteGeoEmAndamento) return Promise.resolve();
-    const btn = document.getElementById("bte-submit-btn");
-    if (btn) btn.textContent = "Aguardando localização...";
     const espera = new Promise(resolve => setTimeout(resolve, 6000));
     return Promise.race([_bteGeoPromise, espera]);
 }
