@@ -229,6 +229,7 @@ function _bteEnviarBaixa() {
                 }
                 _bteLimparForm();
                 _bteMostrarMsg("Baixa enviada com sucesso!", "ok");
+                _gcBeepSucesso();
                 _bteCarregarHistorico();
             })
             .catch(() => {
@@ -326,6 +327,7 @@ async function _bteFilaSincronizar() {
         if (tela && tela.classList.contains("active-view")) {
             if (enviadas > 0) {
                 _bteCarregarHistorico();
+                _gcBeepSucesso();
                 // substitui a mensagem antiga ("salva no celular...") pela confirmação
                 _bteMostrarMsg(
                     enviadas === 1

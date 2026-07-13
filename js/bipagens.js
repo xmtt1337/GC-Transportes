@@ -39,7 +39,7 @@ async function _bipCarregarStatusCeps() {
 }
 
 function _bipAuto(input) {
-    _bipInicializarAudio(); // garante AudioContext dentro de gesto do usuário
+    _gcInicializarAudio(); // garante AudioContext dentro de gesto do usuário
     document.getElementById('bip-clear').style.display = input.value ? '' : 'none';
     clearTimeout(_bipTimeout);
     if (input.value.trim().length >= 6) {
@@ -163,20 +163,10 @@ function _bipErroHtml(msg) {
     </div>`;
 }
 
-// AudioContext criado uma vez e desbloqueado na primeira interação do usuário
-let _bipAudioCtx = null;
-
-function _bipInicializarAudio() {
-    if (_bipAudioCtx) return;
-    try {
-        _bipAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    } catch (_) {}
-}
-
 function _bipMostrarErro(el, msg) {
     el.innerHTML = _bipErroHtml(msg);
     _bipFlash('err');
-    _bipBeepErro();
+    _gcBeepErro();
 }
 
 // Pisca a borda do input: verde no sucesso, vermelho no erro (feedback pra quem bipa sem olhar)
@@ -191,30 +181,6 @@ function _bipFlash(tipo) {
     _bipFlashTimer = setTimeout(() => wrap.classList.remove('flash-ok', 'flash-err'), 900);
 }
 
-function _bipBeepErro() {
-    try {
-        _bipInicializarAudio();
-        const ctx = _bipAudioCtx;
-        if (!ctx) return;
-
-        // resume() desbloqueia caso o contexto ainda esteja suspenso
-        ctx.resume().then(() => {
-            const t = ctx.currentTime;
-            [[0, 440, 0.18], [0.22, 300, 0.18]].forEach(([inicio, freq, dur]) => {
-                const osc  = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, t + inicio);
-                gain.gain.setValueAtTime(0.4, t + inicio);
-                gain.gain.exponentialRampToValueAtTime(0.001, t + inicio + dur);
-                osc.start(t + inicio);
-                osc.stop(t + inicio + dur);
-            });
-        });
-    } catch (_) {}
-}
 
 async function _bipSincronizarCeps() {
     const btn = document.getElementById('bip-sync-btn');
@@ -310,6 +276,7 @@ function _bipSessaoRenderizar() {
 
 function _bipRegistrar(codigo, dados) {
     _bipFlash('ok');
+    _gcBeepSucesso();
     _bipSessaoAdicionar(codigo, dados);
     fetch(API + '/bipagem/registrar', {
         method: 'POST',

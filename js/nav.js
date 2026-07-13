@@ -50,6 +50,49 @@ function mostrarTela(id, rota) {
 }
 
 
+// ───── SOM DE FEEDBACK (bipagem, baixas etc.) ─────
+// Contexto único compartilhado — precisa nascer dentro de um gesto do usuário pra
+// não ficar bloqueado (regra de autoplay do navegador, principalmente no iOS).
+let _gcAudioCtx = null;
+
+function _gcInicializarAudio() {
+    if (_gcAudioCtx) return;
+    try { _gcAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
+}
+
+function _gcTocarTom(notas, volume) {
+    try {
+        _gcInicializarAudio();
+        const ctx = _gcAudioCtx;
+        if (!ctx) return;
+        ctx.resume().then(() => {
+            const t = ctx.currentTime;
+            notas.forEach(([inicio, freq, tipo, dur]) => {
+                const osc  = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = tipo;
+                osc.frequency.setValueAtTime(freq, t + inicio);
+                gain.gain.setValueAtTime(volume, t + inicio);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + inicio + dur);
+                osc.start(t + inicio);
+                osc.stop(t + inicio + dur);
+            });
+        });
+    } catch (_) {}
+}
+
+// Ding-dong ascendente — usado em qualquer confirmação de sucesso (bipagem, baixa)
+function _gcBeepSucesso() {
+    _gcTocarTom([[0, 600, "sine", 0.10], [0.11, 900, "sine", 0.16]], 0.7);
+}
+
+// Onda quadrada (mais "cortante" que seno) + volume bem mais alto que o beep antigo
+function _gcBeepErro() {
+    _gcTocarTom([[0, 440, "square", 0.22], [0.24, 300, "square", 0.22]], 0.9);
+}
+
 function _emBreve(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-em-breve");
