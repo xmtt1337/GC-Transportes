@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>GC Transportes</title>
+<script>
+// GitHub Pages serve este arquivo pra qualquer caminho que não seja um arquivo real
+// (ex.: /GC-Transportes/Baixas/TotalExpress). Redireciona pro index.html preservando
+// o caminho como query string; o index.html restaura a URL bonita a partir dela.
+(function () {
+    var base  = "/GC-Transportes/";
+    var path  = location.pathname;
+    var resto = path.indexOf(base) === 0 ? path.slice(base.length) : path.replace(/^\//, "");
+    location.replace(base + "?_rota=" + encodeURIComponent(resto + location.search + location.hash));
+})();
+</script>
+</head>
+<body></body>
+</html>

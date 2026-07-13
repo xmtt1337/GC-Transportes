@@ -5,6 +5,17 @@
 <title>GC Transportes - Painel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link rel="icon" href="img/logobranca.png" type="image/png">
+<script>
+// GitHub Pages não roteia no servidor: o 404.html redireciona pra cá com o caminho
+// original em ?_rota=. Restaura a URL "bonita" antes do resto da página carregar.
+(function () {
+    var params = new URLSearchParams(location.search);
+    var rota = params.get("_rota");
+    if (rota !== null) {
+        history.replaceState(null, "", "/GC-Transportes/" + rota);
+    }
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -1709,6 +1720,7 @@
         </div><!-- /tela-admin-antecipacoes -->
 
 <script src="js/core.js"></script>
+<script src="js/router.js"></script>
 <script src="js/sidebar.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/fechamentos.js"></script>

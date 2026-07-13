@@ -30,7 +30,8 @@ function abrirPlanejamentoVideira(event, unidade) {
     document.querySelectorAll(".pv-view-btn").forEach(b => b.classList.toggle("active", b.dataset.view === _pvView));
     document.getElementById("pv-card").style.display        = _pvView === "bairro" ? "" : "none";
     document.getElementById("pv-driver-grid").style.display = _pvView === "entregador" ? "" : "none";
-    mostrarTela("tela-planejamento-videira");
+    const _rotaUnidade = { videira: "Videira", cacador: "Cacador" };
+    mostrarTela("tela-planejamento-videira", "Planejamento/" + (_rotaUnidade[_pvUnidade] || ""));
     _pvCarregar();
 }
 

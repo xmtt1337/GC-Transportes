@@ -138,6 +138,10 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         badge.style.background  = cor + "14";
     }
 
+    // Abre direto a tela indicada na URL (ex.: /GC-Transportes/Baixas/TotalExpress),
+    // se houver uma — feito só depois dos menus do cargo estarem prontos.
+    if (typeof _rotaAbrirAtual === "function") _rotaAbrirAtual();
+
 })
 .catch(() => {
     localStorage.removeItem("token");

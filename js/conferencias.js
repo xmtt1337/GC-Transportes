@@ -28,7 +28,8 @@ function abrirConferencias(event, transportadora) {
     document.getElementById('conf-empty-msg').style.display = '';
 
     if (_confChartInstance) { _confChartInstance.destroy(); _confChartInstance = null; }
-    mostrarTela('tela-conferencias');
+    const _rotaNomes = { loggi: 'Loggi', jt: 'JT', anjun: 'Anjun', imile: 'Imile', shopee: 'Shopee' };
+    mostrarTela('tela-conferencias', 'Conferencias/' + (_rotaNomes[transportadora] || ''));
 }
 
 // ── Leitura do arquivo ──────────────────────────────────────────────────────

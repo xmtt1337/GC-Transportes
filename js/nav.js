@@ -32,7 +32,7 @@ const _TELA_TITULOS = {
     "tela-torre-alimentar":      "Alimentar",
 };
 
-function mostrarTela(id) {
+function mostrarTela(id, rota) {
     document.querySelectorAll(".view").forEach(v => v.classList.remove("active-view"));
     document.getElementById(id).classList.add("active-view");
     const titulo = document.getElementById("titulo-pagina");
@@ -43,6 +43,10 @@ function mostrarTela(id) {
     document.getElementById("sidebar-backdrop").classList.remove("active");
     document.querySelectorAll(".submenu").forEach(m => m.classList.remove("open"));
     document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active", "open"));
+
+    if (typeof _rotaAtualizarUrl === "function") {
+        _rotaAtualizarUrl(rota !== undefined ? rota : (typeof _TELA_ROTAS !== "undefined" ? _TELA_ROTAS[id] : undefined));
+    }
 }
 
 

@@ -41,7 +41,7 @@ function abrirTorreAlimentar(event, key) {
     if (!cfg) { _emBreve(event); return; }
 
     _taArquivo = null;
-    mostrarTela("tela-torre-alimentar");
+    mostrarTela("tela-torre-alimentar", "TorreControle/Alimentar" + key.charAt(0).toUpperCase() + key.slice(1));
     if (document.getElementById("titulo-pagina"))
         document.getElementById("titulo-pagina").innerText = cfg.nome;
 

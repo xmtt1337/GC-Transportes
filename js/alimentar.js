@@ -7,7 +7,8 @@ function abrirAlimentar(event, transportadora) {
     _alimentarTransp = transportadora;
     document.getElementById('alimentar-titulo').innerText = 'Alimentar — ' + (_ALIMENTAR_NOMES[transportadora] || transportadora);
     document.getElementById('titulo-pagina').innerText = 'Alimentar';
-    mostrarTela('tela-alimentar');
+    const _rotaNomes = { loggi: 'Loggi', anjun: 'Anjun', jt: 'JT', imile: 'Imile' };
+    mostrarTela('tela-alimentar', 'Operacao/Alimentar' + (_rotaNomes[transportadora] || ''));
     _alimentarCarregar();
 }
 
