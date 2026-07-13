@@ -467,19 +467,29 @@ function _abteRenderizarPagina() {
     const inicio = (_abtePagina - 1) * _abtePorPagina;
     const pagina = _abteFiltrados.slice(inicio, inicio + _abtePorPagina);
 
-    document.getElementById("abte-tbody").innerHTML = pagina.map(r => `
-        <tr>
-            <td style="font-family:monospace;font-size:12px">${r.codigo}</td>
+    document.getElementById("abte-tbody").innerHTML = pagina.map(r => {
+        const suspeita = (r.mesmo_local_hora || 0) > 5;
+        let endereco = r.endereco || "—";
+        if (r.latitude != null && r.longitude != null) {
+            endereco += ` <a href="https://maps.google.com/?q=${r.latitude},${r.longitude}" target="_blank" rel="noopener noreferrer" style="color:#5d9aff;font-size:11px;white-space:nowrap;text-decoration:none">ver mapa</a>`;
+        }
+        if (suspeita) {
+            endereco += `<br><span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;color:#f87171;background:rgba(239,68,68,0.12)">⚠ ${r.mesmo_local_hora} baixas neste local nesta hora</span>`;
+        }
+        return `<tr${suspeita ? ' style="background:rgba(239,68,68,0.06)"' : ""}>
+            <td style="font-family:monospace;font-size:12px">${suspeita ? "⚠ " : ""}${r.codigo}</td>
             <td>${r.nome_cliente || "—"}</td>
             <td>${r.usuario_nome || "—"}</td>
             <td style="font-size:12px;white-space:nowrap;color:#94a3b8">${r.data_hora_brasilia || "—"}</td>
+            <td style="font-size:12px;color:#94a3b8">${endereco}</td>
             <td>
                 <button class="abte-foto-btn" onclick="_abteVerFoto(${r.id})">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     Ver foto
                 </button>
             </td>
-        </tr>`).join("");
+        </tr>`;
+    }).join("");
 
     document.getElementById("abte-pagina-info").innerText = `Página ${_abtePagina} de ${totalPaginas}`;
 }
@@ -509,7 +519,8 @@ function _abteFiltrarLocal() {
     const filtrado = _abteDados.filter(r =>
         (r.codigo       || "").toLowerCase().includes(termo) ||
         (r.nome_cliente || "").toLowerCase().includes(termo) ||
-        (r.usuario_nome || "").toLowerCase().includes(termo)
+        (r.usuario_nome || "").toLowerCase().includes(termo) ||
+        (r.endereco     || "").toLowerCase().includes(termo)
     );
     _abteRenderizar(filtrado);
 }
