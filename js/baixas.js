@@ -265,7 +265,8 @@ function _bteEnviarBaixa() {
             longitude:       _bteGeo ? _bteGeo.longitude : null,
             precisao_metros: _bteGeo ? _bteGeo.precisao  : null,
             endereco:        _bteGeo ? _bteGeo.endereco  : null,
-            capturada_em:    capturadaEm
+            capturada_em:    capturadaEm,
+            foi_offline:     false // só vira true se realmente cair na fila, abaixo
         };
 
         _bteFilaTemCodigo(codigo).then(naFila => {
@@ -273,7 +274,7 @@ function _bteEnviarBaixa() {
                 btn.disabled = false; btn.textContent = "Enviar Baixa";
                 return _bteMostrarMsg("Este código já está na fila de envio deste celular.", "erro");
             }
-            if (!navigator.onLine) return _bteGuardarNaFila(payload, btn);
+            if (!navigator.onLine) { payload.foi_offline = true; return _bteGuardarNaFila(payload, btn); }
 
             fetch(`${API}/baixas/total-express`, {
                 method: "POST",
@@ -293,6 +294,7 @@ function _bteEnviarBaixa() {
             })
             .catch(() => {
                 // rede caiu no meio do caminho — guarda no celular em vez de perder
+                payload.foi_offline = true;
                 _bteGuardarNaFila(payload, btn);
             });
         });
