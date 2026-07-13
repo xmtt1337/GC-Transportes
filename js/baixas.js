@@ -60,10 +60,32 @@ function _bteCapturarLocalizacao() {
         _bteGeo = {
             latitude:  pos.coords.latitude,
             longitude: pos.coords.longitude,
-            precisao:  Math.round(pos.coords.accuracy || 0)
+            precisao:  Math.round(pos.coords.accuracy || 0),
+            endereco:  null
         };
+        _bteBuscarEndereco(pos.coords.latitude, pos.coords.longitude)
+            .then(end => { if (_bteGeo) _bteGeo.endereco = end; });
     }, () => { /* sem permissão ou sem sinal — a baixa segue sem localização */ },
     { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+}
+
+// Converte a coordenada em endereço legível (rua, número, bairro, cidade) via
+// Nominatim/OpenStreetMap — gratuito, sem chave. Se falhar, a baixa vai só com GPS.
+function _bteBuscarEndereco(lat, lng) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&accept-language=pt-BR`;
+    return fetch(url).then(r => r.json()).then(d => {
+        const a = d.address || {};
+        const rua    = a.road || a.pedestrian || a.residential || "";
+        const numero = a.house_number || "";
+        const bairro = a.suburb || a.neighbourhood || a.quarter || "";
+        const cidade = a.city || a.town || a.village || a.municipality || "";
+        const uf     = a.state || "";
+        const partes = [];
+        if (rua)    partes.push(numero ? `${rua}, ${numero}` : rua);
+        if (bairro) partes.push(bairro);
+        if (cidade) partes.push(uf ? `${cidade} - ${uf}` : cidade);
+        return partes.join(", ") || d.display_name || null;
+    }).catch(() => null);
 }
 
 function _bteFotoSelecionada(input) {
@@ -129,7 +151,8 @@ function _bteEnviarBaixa() {
             foto_mime_type: _bteFotoMimeType,
             latitude:        _bteGeo ? _bteGeo.latitude  : null,
             longitude:       _bteGeo ? _bteGeo.longitude : null,
-            precisao_metros: _bteGeo ? _bteGeo.precisao  : null
+            precisao_metros: _bteGeo ? _bteGeo.precisao  : null,
+            endereco:        _bteGeo ? _bteGeo.endereco  : null
         })
     }).then(r => r.json())
     .then(d => {
