@@ -693,12 +693,21 @@ function _abteRenderizarPagina() {
         if (suspeita) {
             endereco += `<br><span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;color:#f87171;background:rgba(239,68,68,0.12)">⚠ ${r.mesmo_local_hora} baixas neste local nesta hora</span>`;
         }
+        let tipoBaixa;
+        if (r.foi_offline === true) {
+            tipoBaixa = `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:#eab308;background:rgba(234,179,8,0.1)">Offline</span>`;
+        } else if (r.foi_offline === false) {
+            tipoBaixa = `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:#22c55e;background:rgba(34,197,94,0.1)">Online</span>`;
+        } else {
+            tipoBaixa = `<span style="color:#64748b;font-size:12px">—</span>`;
+        }
         return `<tr${suspeita ? ' style="background:rgba(239,68,68,0.06)"' : ""}>
             <td style="font-family:monospace;font-size:12px">${suspeita ? "⚠ " : ""}${r.codigo}</td>
             <td>${r.nome_cliente || "—"}</td>
             <td>${r.usuario_nome || "—"}</td>
             <td style="font-size:12px;white-space:nowrap;color:#94a3b8">${r.data_hora_brasilia || "—"}</td>
             <td style="font-size:12px;color:#94a3b8">${endereco}</td>
+            <td>${tipoBaixa}</td>
             <td>
                 <button class="abte-foto-btn" onclick="_abteVerFoto(${r.id})">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
