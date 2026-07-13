@@ -9,6 +9,7 @@ let _bteScanCanvas   = null;
 let _bteScanCanvas2  = null;
 let _bteDetector     = null; // BarcodeDetector nativo (Android/Chrome) — muito melhor em 1D que o ZXing
 let _bteZbarPromise  = null; // carregamento sob demanda do ZBar (WASM) — reserva pro Safari/iPhone
+let _bteCodigoDuplicado = false; // true enquanto o código no campo já tiver sido baixado
 
 function abrirBaixaTotalExpress(event) {
     if (event) event.preventDefault();
@@ -26,6 +27,7 @@ function _bteLimparForm() {
     _bteFotoBase64 = null;
     _bteFotoMimeType = null;
     _bteGeo = null;
+    _bteCodigoDuplicado = false;
     document.getElementById("bte-cliente").value = "";
     document.getElementById("bte-codigo").value = "";
     document.getElementById("bte-foto-input").value = "";
@@ -45,6 +47,34 @@ function _bteMostrarMsg(msg, tipo) {
     const bg  = tipo === "erro" ? "rgba(239,68,68,0.08)" : "rgba(34,197,94,0.08)";
     el.style.cssText = `display:block;padding:10px 14px;border-radius:9px;background:${bg};border:1px solid ${cor}33;color:${cor};font-size:13px`;
     el.innerHTML = msg;
+}
+
+function _bteMsgJaBaixado(d) {
+    return `Este código já foi baixado por <strong>${d.usuario_nome || "outro entregador"}</strong> em <strong>${d.data_hora_brasilia || "data desconhecida"}</strong>.`;
+}
+
+// Checa em tempo real (ao sair do campo, ou logo após um scan) se o código já foi
+// baixado por alguém, avisando antes do entregador preencher o resto do formulário.
+function _bteVerificarCodigo() {
+    const codigo = document.getElementById("bte-codigo").value.trim();
+    _bteCodigoDuplicado = false;
+    if (!codigo) { _bteLimparMsg(); return; }
+    if (!/tx/i.test(codigo)) {
+        _bteMostrarMsg('O código deve conter "TX".', "erro");
+        return;
+    }
+    fetch(`${API}/baixas/total-express/verificar?codigo=${encodeURIComponent(codigo)}`, {
+        headers: { "Authorization": "Bearer " + token }
+    }).then(r => r.json())
+    .then(d => {
+        if (document.getElementById("bte-codigo").value.trim() !== codigo) return; // campo mudou enquanto checava
+        if (d.existe) {
+            _bteCodigoDuplicado = true;
+            _bteMostrarMsg(_bteMsgJaBaixado(d), "erro");
+        } else {
+            _bteLimparMsg();
+        }
+    }).catch(() => {});
 }
 
 // Abre a câmera e já dispara a captura da localização em paralelo — o GPS "esquenta"
@@ -136,6 +166,7 @@ function _bteEnviarBaixa() {
 
     if (!codigo) return _bteMostrarMsg("Informe o código (digitando ou escaneando).", "erro");
     if (!/tx/i.test(codigo)) return _bteMostrarMsg('O código deve conter "TX".', "erro");
+    if (_bteCodigoDuplicado) return; // mensagem de "já baixado" já está exibida
     if (!_bteFotoBase64) return _bteMostrarMsg("Tire a foto da etiqueta antes de enviar.", "erro");
 
     const btn = document.getElementById("bte-submit-btn");
@@ -157,7 +188,10 @@ function _bteEnviarBaixa() {
     }).then(r => r.json())
     .then(d => {
         btn.disabled = false; btn.textContent = "Enviar Baixa";
-        if (d.error) return _bteMostrarMsg(d.error, "erro");
+        if (d.error) {
+            if (d.ja_baixado) { _bteCodigoDuplicado = true; return _bteMostrarMsg(_bteMsgJaBaixado(d), "erro"); }
+            return _bteMostrarMsg(d.error, "erro");
+        }
         _bteLimparForm();
         _bteMostrarMsg("Baixa enviada com sucesso!", "ok");
         _bteCarregarHistorico();
@@ -305,6 +339,7 @@ function _bteScanLoop() {
         if (texto) {
             document.getElementById("bte-codigo").value = texto;
             _bteFecharScanner();
+            _bteVerificarCodigo();
             return;
         }
         _bteScanTimer = setTimeout(_bteScanLoop, 120);
