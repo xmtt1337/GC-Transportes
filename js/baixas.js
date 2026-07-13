@@ -5,6 +5,8 @@ let _bteScanStream   = null;
 let _bteScanTimer    = null;
 let _bteScanReader   = null;
 let _bteScanCanvas   = null;
+let _bteScanCanvas2  = null;
+let _bteDetector     = null; // BarcodeDetector nativo (Android/Chrome) — muito melhor em 1D que o ZXing
 
 function abrirBaixaTotalExpress(event) {
     if (event) event.preventDefault();
@@ -190,6 +192,15 @@ function _bteAbrirScanner() {
     hints.set(3, true);
     _bteScanReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
 
+    // Detector nativo do navegador (Android/Chrome usa o motor do Google Lens):
+    // lê código de barras 1D com folga onde o ZXing falha. Se não existir, fica o ZXing.
+    _bteDetector = null;
+    if (window.BarcodeDetector) {
+        try {
+            _bteDetector = new BarcodeDetector({ formats: ["qr_code", "code_128", "code_39", "ean_13", "itf", "data_matrix"] });
+        } catch (e) { _bteDetector = null; }
+    }
+
     navigator.mediaDevices.getUserMedia({
         // 1080p: código de barras denso precisa de mais pixels por barra que QR code
         video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 }, focusMode: "continuous" }
@@ -222,17 +233,39 @@ function _bteScanLoop() {
     _bteScanCanvas.width = sw; _bteScanCanvas.height = sh;
     _bteScanCanvas.getContext("2d").drawImage(videoEl, sx, sy, sw, sh, 0, 0, sw, sh);
 
-    try {
-        const result = _bteScanReader.decodeFromCanvas(_bteScanCanvas);
-        if (result) {
-            document.getElementById("bte-codigo").value = result.getText();
+    _bteScanDecodificar(_bteScanCanvas).then(texto => {
+        if (!_bteScanReader) return; // scanner foi fechado enquanto decodificava
+        if (texto) {
+            document.getElementById("bte-codigo").value = texto;
             _bteFecharScanner();
             return;
         }
-    } catch (e) {
-        // nenhum código nesse frame — normal, segue tentando
+        _bteScanTimer = setTimeout(_bteScanLoop, 120);
+    });
+}
+
+// Ordem de tentativa: BarcodeDetector nativo → ZXing → ZXing com o recorte ampliado 2x
+// (código denso filmado de perto fica com ~3px por barra, pouco pro binarizador do ZXing).
+async function _bteScanDecodificar(canvas) {
+    if (_bteDetector) {
+        try {
+            const codigos = await _bteDetector.detect(canvas);
+            return (codigos && codigos.length && codigos[0].rawValue) || null;
+        } catch (e) {
+            _bteDetector = null; // detector nativo indisponível de verdade — segue só com ZXing
+        }
     }
-    _bteScanTimer = setTimeout(_bteScanLoop, 150);
+    try {
+        return _bteScanReader.decodeFromCanvas(canvas).getText();
+    } catch (e) { /* nenhum código nesse frame — tenta ampliado */ }
+    try {
+        if (!_bteScanCanvas2) _bteScanCanvas2 = document.createElement("canvas");
+        _bteScanCanvas2.width = canvas.width * 2; _bteScanCanvas2.height = canvas.height * 2;
+        const ctx = _bteScanCanvas2.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(canvas, 0, 0, _bteScanCanvas2.width, _bteScanCanvas2.height);
+        return _bteScanReader.decodeFromCanvas(_bteScanCanvas2).getText();
+    } catch (e) { return null; }
 }
 
 function _bteScanEscKey(e) {
@@ -247,6 +280,7 @@ function _bteFecharScanner() {
     if (_bteScanTimer) { clearTimeout(_bteScanTimer); _bteScanTimer = null; }
     if (_bteScanStream) { _bteScanStream.getTracks().forEach(t => t.stop()); _bteScanStream = null; }
     _bteScanReader = null;
+    _bteDetector   = null;
     const overlay = document.getElementById("bte-scan-overlay");
     if (overlay) overlay.remove();
     document.removeEventListener("keydown", _bteScanEscKey);
