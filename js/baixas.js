@@ -153,6 +153,10 @@ function _bteCarregarHistorico() {
 // é recortada e decodificada, ignorando o resto do frame (fundo, mão, mesa etc.).
 const _BTE_SCAN_AREA_W = 0.90;
 const _BTE_SCAN_AREA_H = 0.20;
+// A área analisada é maior que a caixa visual: dá folga pro QR (mais alto que a faixa)
+// e pra mira imperfeita. O filtro de centralidade impede de ler código fora da mira.
+const _BTE_DETECT_W = 0.96;
+const _BTE_DETECT_H = 0.45;
 
 function _bteAbrirScanner() {
     if (document.getElementById("bte-scan-overlay")) return;
@@ -182,16 +186,9 @@ function _bteAbrirScanner() {
 
     const videoEl = overlay.querySelector("#bte-scan-video");
 
-    // O bundle UMD do ZXing não exporta os enums BarcodeFormat/DecodeHintType, então
-    // usamos os valores numéricos como fallback (conferidos no fonte da lib).
-    const FMT = ZXingBrowser.BarcodeFormat ||
-        { QR_CODE: 11, CODE_128: 4, CODE_39: 2, EAN_13: 7, ITF: 8, DATA_MATRIX: 5 };
-    const hints = new Map();
-    // 2 = POSSIBLE_FORMATS: só os formatos usados em etiqueta de transportadora
-    hints.set(2, [FMT.QR_CODE, FMT.CODE_128, FMT.CODE_39, FMT.EAN_13, FMT.ITF, FMT.DATA_MATRIX]);
-    // 3 = TRY_HARDER: varre mais linhas por frame — sem isso o 1D (código reto) quase não lê
-    hints.set(3, true);
-    _bteScanReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
+    // ZXing sem hints (configuração que sempre leu QR bem) — ele é só a última reserva;
+    // código de barras 1D é trabalho do detector nativo e do ZBar.
+    _bteScanReader = new ZXingBrowser.BrowserMultiFormatReader();
 
     // Detector nativo do navegador (Android/Chrome usa o motor do Google Lens):
     // lê código de barras 1D com folga onde o ZXing falha. Se não existir, fica o ZXing.
@@ -201,9 +198,9 @@ function _bteAbrirScanner() {
             _bteDetector = new BarcodeDetector({ formats: ["qr_code", "code_128", "code_39", "ean_13", "itf", "data_matrix"] });
         } catch (e) { _bteDetector = null; }
     }
-    // Safari/iPhone não tem BarcodeDetector — já dispara o download do ZBar (WASM),
-    // que é bem mais forte em código de barras 1D que o ZXing.
-    if (!_bteDetector) _bteCarregarZbar().catch(() => {});
+    // ZBar (WASM) entra na cascata em todos os aparelhos — em alguns Androids o
+    // detector nativo existe mas decepciona; o ZBar cobre esses e o Safari/iPhone.
+    _bteCarregarZbar().catch(() => {});
 
     navigator.mediaDevices.getUserMedia({
         // 1080p: código de barras denso precisa de mais pixels por barra que QR code
@@ -212,6 +209,7 @@ function _bteAbrirScanner() {
         _bteScanStream = stream;
         videoEl.srcObject = stream;
         videoEl.play();
+        _bteAfinarCamera(stream);
         _bteScanTimer = setTimeout(_bteScanLoop, 300);
     }).catch(() => {
         const erroEl = overlay.querySelector("#bte-scan-erro");
@@ -220,8 +218,25 @@ function _bteAbrirScanner() {
     });
 }
 
-// Recorta só a área marcada (em pixels do vídeo, não da tela) e tenta decodificar
-// apenas ali — menos pixels por tentativa e ignora o fundo desfocado ao redor.
+// Foco contínuo + zoom 2x quando a câmera suporta: o truque dos apps de bipagem —
+// de perto demais a câmera não foca e o código de barras sai borrado; com zoom o
+// entregador segura o celular mais longe (onde foca) e o código continua grande.
+function _bteAfinarCamera(stream) {
+    try {
+        const track = stream.getVideoTracks()[0];
+        if (!track || !track.getCapabilities) return;
+        const caps = track.getCapabilities();
+        const adv  = [];
+        if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) adv.push({ focusMode: "continuous" });
+        if (caps.zoom && typeof caps.zoom.max === "number") {
+            const zoom = Math.min(2, caps.zoom.max);
+            if (zoom > (caps.zoom.min || 1)) adv.push({ zoom });
+        }
+        if (adv.length) track.applyConstraints({ advanced: adv }).catch(() => {});
+    } catch (e) { /* câmera sem esses recursos — segue sem ajuste */ }
+}
+
+// Recorta a faixa central do vídeo (maior que a caixa visual) e tenta decodificar ali.
 function _bteScanLoop() {
     if (!_bteScanReader) return;
     const videoEl = document.getElementById("bte-scan-video");
@@ -230,7 +245,7 @@ function _bteScanLoop() {
         return;
     }
     const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
-    const sw = Math.round(vw * _BTE_SCAN_AREA_W), sh = Math.round(vh * _BTE_SCAN_AREA_H);
+    const sw = Math.round(vw * _BTE_DETECT_W), sh = Math.round(vh * _BTE_DETECT_H);
     const sx = Math.round((vw - sw) / 2), sy = Math.round((vh - sh) / 2);
 
     if (!_bteScanCanvas) _bteScanCanvas = document.createElement("canvas");
@@ -261,22 +276,57 @@ function _bteCarregarZbar() {
     return _bteZbarPromise;
 }
 
+// Entre os códigos achados no frame, vale o mais próximo do centro da mira; código
+// fora da faixa central é descartado (ex.: o QR no topo da etiqueta da transportadora).
+function _bteMaisCentral(candidatos, canvas) {
+    const cx = canvas.width / 2, cy = canvas.height / 2;
+    let melhor = null, melhorDist = Infinity;
+    for (const c of candidatos) {
+        if (!c.texto) continue;
+        const x = (c.x == null) ? cx : c.x;
+        const y = (c.y == null) ? cy : c.y;
+        if (Math.abs(y - cy) > canvas.height * 0.35) continue;
+        const d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+        if (d < melhorDist) { melhorDist = d; melhor = c.texto; }
+    }
+    return melhor;
+}
+
 // Ordem de tentativa: BarcodeDetector nativo → ZBar (WASM) → ZXing → ZXing ampliado 2x
 // (código denso filmado de perto fica com ~3px por barra, pouco pro binarizador do ZXing).
 async function _bteScanDecodificar(canvas) {
     if (_bteDetector) {
         try {
-            const codigos = await _bteDetector.detect(canvas);
-            return (codigos && codigos.length && codigos[0].rawValue) || null;
+            const codigos = await _bteDetector.detect(canvas) || [];
+            const texto = _bteMaisCentral(codigos.map(c => ({
+                texto: c.rawValue,
+                x: c.boundingBox ? c.boundingBox.x + c.boundingBox.width / 2 : null,
+                y: c.boundingBox ? c.boundingBox.y + c.boundingBox.height / 2 : null
+            })), canvas);
+            if (texto) return texto;
         } catch (e) {
             _bteDetector = null; // detector nativo indisponível de verdade — segue pros outros
+            _bteCarregarZbar().catch(() => {});
         }
     }
     if (window.zbarWasm) {
         try {
             const ctx = canvas.getContext("2d", { willReadFrequently: true });
-            const simbolos = await zbarWasm.scanImageData(ctx.getImageData(0, 0, canvas.width, canvas.height));
-            if (simbolos && simbolos.length) return simbolos[0].decode();
+            const simbolos = await zbarWasm.scanImageData(ctx.getImageData(0, 0, canvas.width, canvas.height)) || [];
+            const candidatos = [];
+            for (const s of simbolos) {
+                let texto = "";
+                try { texto = s.decode(); } catch (e) { continue; }
+                const pts = s.points || [];
+                const cand = { texto, x: null, y: null };
+                if (pts.length) {
+                    cand.x = pts.reduce((a, p) => a + p.x, 0) / pts.length;
+                    cand.y = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+                }
+                candidatos.push(cand);
+            }
+            const texto = _bteMaisCentral(candidatos, canvas);
+            if (texto) return texto;
         } catch (e) { /* segue pro ZXing */ }
     }
     try {
