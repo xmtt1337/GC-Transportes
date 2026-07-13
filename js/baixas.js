@@ -265,7 +265,7 @@ function _bteGuardarNaFila(payload, btn) {
 async function _bteFilaSincronizar() {
     if (_bteSincronizando || !navigator.onLine) return;
     _bteSincronizando = true;
-    let enviouAlguma = false;
+    let enviadas = 0;
     try {
         const itens = await _bteFilaListar();
         for (const item of itens) {
@@ -278,7 +278,7 @@ async function _bteFilaSincronizar() {
                 });
                 d = await r.json();
             } catch (e) { break; } // sem rede/servidor fora — tenta na próxima
-            if (r.ok) { await _bteFilaRemover(item.id); enviouAlguma = true; continue; }
+            if (r.ok) { await _bteFilaRemover(item.id); enviadas++; continue; }
             if (d && d.ja_baixado) {
                 await _bteFilaRemover(item.id);
                 // se foi baixado por OUTRO entregador enquanto esta estava na fila, avisa;
@@ -301,8 +301,16 @@ async function _bteFilaSincronizar() {
         _bteAtualizarBadgeFila();
         const tela = document.getElementById("tela-baixa-te");
         if (tela && tela.classList.contains("active-view")) {
-            if (enviouAlguma) _bteCarregarHistorico();
-            _bteMostrarAvisosFila();
+            if (enviadas > 0) {
+                _bteCarregarHistorico();
+                // substitui a mensagem antiga ("salva no celular...") pela confirmação
+                _bteMostrarMsg(
+                    enviadas === 1
+                        ? "A baixa que estava aguardando foi <strong>enviada com sucesso</strong>!"
+                        : `As ${enviadas} baixas que estavam aguardando foram <strong>enviadas com sucesso</strong>!`,
+                    "ok");
+            }
+            _bteMostrarAvisosFila(); // aviso de código já baixado prevalece, se houver
         }
     }
 }
