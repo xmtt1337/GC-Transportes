@@ -7,6 +7,7 @@ let _bteScanReader   = null;
 let _bteScanCanvas   = null;
 let _bteScanCanvas2  = null;
 let _bteDetector     = null; // BarcodeDetector nativo (Android/Chrome) — muito melhor em 1D que o ZXing
+let _bteZbarPromise  = null; // carregamento sob demanda do ZBar (WASM) — reserva pro Safari/iPhone
 
 function abrirBaixaTotalExpress(event) {
     if (event) event.preventDefault();
@@ -200,6 +201,9 @@ function _bteAbrirScanner() {
             _bteDetector = new BarcodeDetector({ formats: ["qr_code", "code_128", "code_39", "ean_13", "itf", "data_matrix"] });
         } catch (e) { _bteDetector = null; }
     }
+    // Safari/iPhone não tem BarcodeDetector — já dispara o download do ZBar (WASM),
+    // que é bem mais forte em código de barras 1D que o ZXing.
+    if (!_bteDetector) _bteCarregarZbar().catch(() => {});
 
     navigator.mediaDevices.getUserMedia({
         // 1080p: código de barras denso precisa de mais pixels por barra que QR code
@@ -231,7 +235,7 @@ function _bteScanLoop() {
 
     if (!_bteScanCanvas) _bteScanCanvas = document.createElement("canvas");
     _bteScanCanvas.width = sw; _bteScanCanvas.height = sh;
-    _bteScanCanvas.getContext("2d").drawImage(videoEl, sx, sy, sw, sh, 0, 0, sw, sh);
+    _bteScanCanvas.getContext("2d", { willReadFrequently: true }).drawImage(videoEl, sx, sy, sw, sh, 0, 0, sw, sh);
 
     _bteScanDecodificar(_bteScanCanvas).then(texto => {
         if (!_bteScanReader) return; // scanner foi fechado enquanto decodificava
@@ -244,7 +248,20 @@ function _bteScanLoop() {
     });
 }
 
-// Ordem de tentativa: BarcodeDetector nativo → ZXing → ZXing com o recorte ampliado 2x
+function _bteCarregarZbar() {
+    if (window.zbarWasm) return Promise.resolve(window.zbarWasm);
+    if (_bteZbarPromise) return _bteZbarPromise;
+    _bteZbarPromise = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.11.0/dist/index.js";
+        s.onload  = () => resolve(window.zbarWasm || null);
+        s.onerror = () => { _bteZbarPromise = null; reject(new Error("zbar load")); };
+        document.head.appendChild(s);
+    });
+    return _bteZbarPromise;
+}
+
+// Ordem de tentativa: BarcodeDetector nativo → ZBar (WASM) → ZXing → ZXing ampliado 2x
 // (código denso filmado de perto fica com ~3px por barra, pouco pro binarizador do ZXing).
 async function _bteScanDecodificar(canvas) {
     if (_bteDetector) {
@@ -252,8 +269,15 @@ async function _bteScanDecodificar(canvas) {
             const codigos = await _bteDetector.detect(canvas);
             return (codigos && codigos.length && codigos[0].rawValue) || null;
         } catch (e) {
-            _bteDetector = null; // detector nativo indisponível de verdade — segue só com ZXing
+            _bteDetector = null; // detector nativo indisponível de verdade — segue pros outros
         }
+    }
+    if (window.zbarWasm) {
+        try {
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
+            const simbolos = await zbarWasm.scanImageData(ctx.getImageData(0, 0, canvas.width, canvas.height));
+            if (simbolos && simbolos.length) return simbolos[0].decode();
+        } catch (e) { /* segue pro ZXing */ }
     }
     try {
         return _bteScanReader.decodeFromCanvas(canvas).getText();
