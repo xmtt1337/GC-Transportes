@@ -148,8 +148,8 @@ function _bteCarregarHistorico() {
 // ───── SCANNER DE CÓDIGO (CÂMERA) ─────
 // Proporção da área de leitura marcada na tela (relativa ao vídeo) — só essa região
 // é recortada e decodificada, ignorando o resto do frame (fundo, mão, mesa etc.).
-const _BTE_SCAN_AREA_W = 0.82;
-const _BTE_SCAN_AREA_H = 0.30;
+const _BTE_SCAN_AREA_W = 0.90;
+const _BTE_SCAN_AREA_H = 0.20;
 
 function _bteAbrirScanner() {
     if (document.getElementById("bte-scan-overlay")) return;
@@ -179,22 +179,20 @@ function _bteAbrirScanner() {
 
     const videoEl = overlay.querySelector("#bte-scan-video");
 
-    _bteScanReader = new ZXingBrowser.BrowserMultiFormatReader();
-    // Restringe aos formatos usados em etiqueta de transportadora — testar todos os
-    // formatos (Aztec, PDF417, RSS etc.) em cada frame é o que deixa a leitura lenta.
-    if (ZXingBrowser.BarcodeFormat) {
-        _bteScanReader.possibleFormats = [
-            ZXingBrowser.BarcodeFormat.QR_CODE,
-            ZXingBrowser.BarcodeFormat.CODE_128,
-            ZXingBrowser.BarcodeFormat.CODE_39,
-            ZXingBrowser.BarcodeFormat.EAN_13,
-            ZXingBrowser.BarcodeFormat.ITF,
-            ZXingBrowser.BarcodeFormat.DATA_MATRIX
-        ];
-    }
+    // O bundle UMD do ZXing não exporta os enums BarcodeFormat/DecodeHintType, então
+    // usamos os valores numéricos como fallback (conferidos no fonte da lib).
+    const FMT = ZXingBrowser.BarcodeFormat ||
+        { QR_CODE: 11, CODE_128: 4, CODE_39: 2, EAN_13: 7, ITF: 8, DATA_MATRIX: 5 };
+    const hints = new Map();
+    // 2 = POSSIBLE_FORMATS: só os formatos usados em etiqueta de transportadora
+    hints.set(2, [FMT.QR_CODE, FMT.CODE_128, FMT.CODE_39, FMT.EAN_13, FMT.ITF, FMT.DATA_MATRIX]);
+    // 3 = TRY_HARDER: varre mais linhas por frame — sem isso o 1D (código reto) quase não lê
+    hints.set(3, true);
+    _bteScanReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
 
     navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        // 1080p: código de barras denso precisa de mais pixels por barra que QR code
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 }, focusMode: "continuous" }
     }).then(stream => {
         _bteScanStream = stream;
         videoEl.srcObject = stream;
