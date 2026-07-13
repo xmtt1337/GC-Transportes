@@ -808,6 +808,13 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     .sidebar.expanded .submenu.open { max-height: 200px; opacity: 1; margin-bottom: 6px; border-color: rgba(58,134,255,0.1); }
     .sidebar.expanded .sidebar-footer { justify-content: space-between; padding: 0 10px; }
 
+    .sidebar-backdrop {
+        display: block; position: fixed; inset: 0; z-index: 90;
+        background: rgba(0,0,0,0.5); opacity: 0; pointer-events: none;
+        transition: opacity 0.25s ease;
+    }
+    .sidebar-backdrop.active { opacity: 1; pointer-events: auto; }
+
     .topbar-mobile-menu { display: flex; }
 
     .content { padding: 12px; }

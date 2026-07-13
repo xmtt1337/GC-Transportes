@@ -9,6 +9,7 @@ function _fecharTodosSubmenus() {
 function toggleSidebar() {
     const sidebar = document.getElementById("sidebar");
     const isExpanded = sidebar.classList.toggle("expanded");
+    document.getElementById("sidebar-backdrop").classList.toggle("active", isExpanded);
     if (!isExpanded) {
         _fecharTodosSubmenus();
         document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active", "open"));
@@ -17,6 +18,7 @@ function toggleSidebar() {
 
 function fecharSidebar() {
     document.getElementById("sidebar").classList.remove("expanded");
+    document.getElementById("sidebar-backdrop").classList.remove("active");
     _fecharTodosSubmenus();
     document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active", "open"));
 }
@@ -33,6 +35,7 @@ function toggleMenu(element) {
     const sidebar = document.getElementById("sidebar");
     if (!sidebar.classList.contains("expanded")) {
         sidebar.classList.add("expanded");
+        document.getElementById("sidebar-backdrop").classList.add("active");
     }
 
     const submenu = element.nextElementSibling;
