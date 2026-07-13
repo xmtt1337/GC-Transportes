@@ -1,6 +1,7 @@
 // ───── BAIXAS — TOTAL EXPRESS (ENTREGADOR) ─────
 let _bteFotoBase64   = null;
 let _bteFotoMimeType = null;
+let _bteGeo          = null; // { latitude, longitude, precisao } capturada ao tirar a foto
 let _bteScanStream   = null;
 let _bteScanTimer    = null;
 let _bteScanReader   = null;
@@ -24,6 +25,7 @@ function abrirBaixaTotalExpress(event) {
 function _bteLimparForm() {
     _bteFotoBase64 = null;
     _bteFotoMimeType = null;
+    _bteGeo = null;
     document.getElementById("bte-cliente").value = "";
     document.getElementById("bte-codigo").value = "";
     document.getElementById("bte-foto-input").value = "";
@@ -45,9 +47,29 @@ function _bteMostrarMsg(msg, tipo) {
     el.innerHTML = msg;
 }
 
+// Abre a câmera e já dispara a captura da localização em paralelo — o GPS "esquenta"
+// enquanto o entregador tira a foto, e o fix chega junto com a imagem.
+function _bteTirarFoto() {
+    _bteCapturarLocalizacao();
+    document.getElementById("bte-foto-input").click();
+}
+
+function _bteCapturarLocalizacao() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(pos => {
+        _bteGeo = {
+            latitude:  pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            precisao:  Math.round(pos.coords.accuracy || 0)
+        };
+    }, () => { /* sem permissão ou sem sinal — a baixa segue sem localização */ },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+}
+
 function _bteFotoSelecionada(input) {
     const file = input.files[0];
     if (!file) return;
+    _bteCapturarLocalizacao(); // segunda chance, caso a primeira ainda não tenha resolvido
     _bteComprimirImagem(file).then(({ dataUrl, base64 }) => {
         _bteFotoBase64   = base64;
         _bteFotoMimeType = "image/jpeg";
@@ -104,7 +126,10 @@ function _bteEnviarBaixa() {
             nome_cliente: cliente || null,
             codigo,
             foto_base64: _bteFotoBase64,
-            foto_mime_type: _bteFotoMimeType
+            foto_mime_type: _bteFotoMimeType,
+            latitude:        _bteGeo ? _bteGeo.latitude  : null,
+            longitude:       _bteGeo ? _bteGeo.longitude : null,
+            precisao_metros: _bteGeo ? _bteGeo.precisao  : null
         })
     }).then(r => r.json())
     .then(d => {
