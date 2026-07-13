@@ -83,9 +83,11 @@ function _gcTocarTom(notas, volume) {
     } catch (_) {}
 }
 
-// Ding-dong ascendente — usado em qualquer confirmação de sucesso (bipagem, baixa)
+// Ding-dong ascendente — usado em qualquer confirmação de sucesso (bipagem, baixa).
+// Onda quadrada (mesma do erro) + faixa de frequência onde alto-falante de celular
+// reproduz mais forte — com o ganho já no máximo (1), só isso aumenta o volume percebido.
 function _gcBeepSucesso() {
-    _gcTocarTom([[0, 700, "triangle", 0.12], [0.12, 1050, "triangle", 0.22]], 1);
+    _gcTocarTom([[0, 880, "square", 0.13], [0.13, 1320, "square", 0.24]], 1);
 }
 
 // Onda quadrada (mais "cortante" que seno) + volume bem mais alto que o beep antigo
