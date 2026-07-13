@@ -76,8 +76,11 @@ const _TELA_ROTAS = {
 };
 
 // Atualiza a URL sem recarregar a página. rota=undefined (tela sem entrada no mapa,
-// ex. telas internas/modais) não mexe na URL atual.
+// ex. telas internas/modais) não mexe na URL atual. Só roda no GitHub Pages de
+// verdade — local (Live Server etc.) o site não mora em /GC-Transportes/, então
+// reescrever a URL aqui só quebraria os caminhos relativos (sem o <base> compensando).
 function _rotaAtualizarUrl(rota) {
+    if (location.hostname !== "xmtt1337.github.io") return;
     if (rota === undefined || rota === null) return;
     const destino = rota ? `${_ROTA_BASE}/${rota}` : `${_ROTA_BASE}/`;
     if (location.pathname !== destino) history.pushState({ rota }, "", destino);
