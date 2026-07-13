@@ -92,7 +92,24 @@ function _rotaAbrirAtual() {
     if (caminho === "index.html") caminho = "";
     if (!caminho) return; // raiz — fica na home, que já é a tela padrão
     const abrir = _ROTAS[caminho];
-    if (abrir) abrir();
+    if (!abrir) return;
+    abrir();
+    _marcarSubmenuAtivo(caminho);
+}
+
+// Destaca no menu lateral o link correspondente à rota aberta (o mesmo efeito que já
+// acontece ao clicar direto no menu — só que aqui a tela foi aberta por código, sem
+// clique, então precisa ser feito manualmente).
+function _marcarSubmenuAtivo(caminho) {
+    document.querySelectorAll(".submenu a").forEach(l => l.classList.remove("active"));
+    document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
+    const candidatos = document.querySelectorAll(`.submenu a[data-rota="${caminho}"]`);
+    let alvo = null;
+    candidatos.forEach(el => { if (!alvo && el.offsetParent !== null) alvo = el; });
+    if (!alvo) return; // link não existe pro cargo atual (ex.: sem permissão) — nada pra marcar
+    alvo.classList.add("active");
+    const menuItem = alvo.closest(".submenu").previousElementSibling;
+    if (menuItem) menuItem.classList.add("active");
 }
 
 window.addEventListener("popstate", _rotaAbrirAtual);

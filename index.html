@@ -54,23 +54,23 @@
                 Bipagem <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-bipagens">
-                <li><a href="#" onclick="abrirBipagens(event)">Separação</a></li>
+                <li><a href="#" data-rota="Operacao/Bipagem" onclick="abrirBipagens(event)">Separação</a></li>
             </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Alimentar separação <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-alimentar">
-                <li><a href="#" onclick="abrirAlimentar(event,'loggi')">Loggi</a></li>
-                <li><a href="#" onclick="abrirAlimentar(event,'anjun')">Anjun</a></li>
-                <li><a href="#" onclick="abrirAlimentar(event,'jt')">J&amp;T</a></li>
-                <li><a href="#" onclick="abrirAlimentar(event,'imile')">Imile</a></li>
+                <li><a href="#" data-rota="Operacao/AlimentarLoggi" onclick="abrirAlimentar(event,'loggi')">Loggi</a></li>
+                <li><a href="#" data-rota="Operacao/AlimentarAnjun" onclick="abrirAlimentar(event,'anjun')">Anjun</a></li>
+                <li><a href="#" data-rota="Operacao/AlimentarJT" onclick="abrirAlimentar(event,'jt')">J&amp;T</a></li>
+                <li><a href="#" data-rota="Operacao/AlimentarImile" onclick="abrirAlimentar(event,'imile')">Imile</a></li>
             </ul>
             <li class="subgroup-header" id="menu-desempenho-bip" style="display:none" onclick="toggleSubGroup(this)">
                 Desempenho <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-desempenho">
-                <li><a href="#" onclick="abrirDesempenhoBip(event)">Quantidade x Usuário</a></li>
-                <li><a href="#" onclick="abrirDesempenhoHora(event)">Quantidade x Hora</a></li>
+                <li><a href="#" data-rota="Operacao/DesempenhoUsuario" onclick="abrirDesempenhoBip(event)">Quantidade x Usuário</a></li>
+                <li><a href="#" data-rota="Operacao/DesempenhoHora" onclick="abrirDesempenhoHora(event)">Quantidade x Hora</a></li>
             </ul>
         </ul>
 
@@ -85,7 +85,7 @@
             <span class="menu-tooltip">Pedidos</span>
         </li>
         <ul class="submenu" data-menu="pedidos" id="submenu-pedidos">
-            <li><a href="#" onclick="abrirPesquisarPedidos(event)">Pesquisar pedidos bipados</a></li>
+            <li><a href="#" data-rota="Pedidos/Pesquisar" onclick="abrirPesquisarPedidos(event)">Pesquisar pedidos bipados</a></li>
             <li><a href="#" onclick="_emBreve(event)">Na Rua</a></li>
         </ul>
 
@@ -100,11 +100,11 @@
             <span class="menu-tooltip">Conferências</span>
         </li>
         <ul class="submenu" data-menu="conferencias" id="submenu-conferencias">
-            <li><a href="#" onclick="abrirConferencias(event,'loggi')">Loggi</a></li>
-            <li><a href="#" onclick="abrirConferencias(event,'jt')">J&amp;T</a></li>
-            <li><a href="#" onclick="abrirConferencias(event,'anjun')">Anjun</a></li>
-            <li><a href="#" onclick="abrirConferencias(event,'imile')">Imile</a></li>
-            <li><a href="#" onclick="abrirConferencias(event,'shopee')">Shopee</a></li>
+            <li><a href="#" data-rota="Conferencias/Loggi" onclick="abrirConferencias(event,'loggi')">Loggi</a></li>
+            <li><a href="#" data-rota="Conferencias/JT" onclick="abrirConferencias(event,'jt')">J&amp;T</a></li>
+            <li><a href="#" data-rota="Conferencias/Anjun" onclick="abrirConferencias(event,'anjun')">Anjun</a></li>
+            <li><a href="#" data-rota="Conferencias/Imile" onclick="abrirConferencias(event,'imile')">Imile</a></li>
+            <li><a href="#" data-rota="Conferencias/Shopee" onclick="abrirConferencias(event,'shopee')">Shopee</a></li>
         </ul>
 
         <li class="menu-item" data-menu="fechamentos" id="menu-fechamentos" onclick="toggleMenu(this)" style="display:none">
@@ -118,9 +118,9 @@
             <span class="menu-tooltip">Fechamentos</span>
         </li>
         <ul class="submenu" data-menu="fechamentos" id="submenu-fechamentos" style="display:none">
-            <li><a href="#" onclick="abrirFechamentos(event)">Meus Fechamentos</a></li>
-            <li><a href="#" onclick="abrirEntDashboard(event)">Dashboard</a></li>
-            <li><a href="#" onclick="abrirMinhasNFs(event)">Notas Fiscais</a></li>
+            <li><a href="#" data-rota="Fechamentos/Meus" onclick="abrirFechamentos(event)">Meus Fechamentos</a></li>
+            <li><a href="#" data-rota="Fechamentos/Dashboard" onclick="abrirEntDashboard(event)">Dashboard</a></li>
+            <li><a href="#" data-rota="Fechamentos/NotasFiscais" onclick="abrirMinhasNFs(event)">Notas Fiscais</a></li>
         </ul>
 
         <li class="menu-item" data-menu="adiantamentos" id="menu-adiantamentos" onclick="toggleMenu(this)" style="display:none">
@@ -134,8 +134,8 @@
             <span class="menu-tooltip">Adiantamentos</span>
         </li>
         <ul class="submenu" data-menu="adiantamentos" id="submenu-adiantamentos" style="display:none">
-            <li><a href="#" onclick="abrirAntecipacoes(event)">Solicitar Antecipação</a></li>
-            <li><a href="#" onclick="abrirMinhasSolicitacoes(event)">Minhas Solicitações</a></li>
+            <li><a href="#" data-rota="Adiantamentos/Solicitar" onclick="abrirAntecipacoes(event)">Solicitar Antecipação</a></li>
+            <li><a href="#" data-rota="Adiantamentos/Minhas" onclick="abrirMinhasSolicitacoes(event)">Minhas Solicitações</a></li>
         </ul>
 
         <li class="menu-item" data-menu="baixas" id="menu-baixas" onclick="toggleMenu(this)" style="display:none">
@@ -148,7 +148,7 @@
             <span class="menu-tooltip">Baixas</span>
         </li>
         <ul class="submenu" data-menu="baixas" id="submenu-baixas" style="display:none">
-            <li><a href="#" onclick="abrirBaixaTotalExpress(event)">Total Express</a></li>
+            <li><a href="#" data-rota="Baixas/TotalExpress" onclick="abrirBaixaTotalExpress(event)">Total Express</a></li>
         </ul>
 
         <li class="menu-item" data-menu="torrecontrole" id="menu-torrecontrole" onclick="toggleMenu(this)" style="display:none">
@@ -170,7 +170,7 @@
                 Alimentar <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-torre-alimentar">
-                <li><a href="#" onclick="abrirTorreAlimentar(event,'anjun')">Anjun</a></li>
+                <li><a href="#" data-rota="TorreControle/AlimentarAnjun" onclick="abrirTorreAlimentar(event,'anjun')">Anjun</a></li>
                 <li><a href="#" onclick="_emBreve(event)">Imile</a></li>
                 <li><a href="#" onclick="_emBreve(event)">J&amp;T Express</a></li>
                 <li><a href="#" onclick="_emBreve(event)">Loggi</a></li>
@@ -194,16 +194,16 @@
                 Caçador <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-fechamento-cacador">
-                <li><a href="#" onclick="abrirAdmin(event)">Alimentar</a></li>
-                <li><a href="#" onclick="abrirAdminFechamentos(event)">Pesquisar</a></li>
-                <li><a href="#" onclick="abrirDashboard(event)">Dashboard</a></li>
+                <li><a href="#" data-rota="Fechamento/CacadorAlimentar" onclick="abrirAdmin(event)">Alimentar</a></li>
+                <li><a href="#" data-rota="Fechamento/CacadorPesquisar" onclick="abrirAdminFechamentos(event)">Pesquisar</a></li>
+                <li><a href="#" data-rota="Fechamento/CacadorDashboard" onclick="abrirDashboard(event)">Dashboard</a></li>
             </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Videira <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-fechamento-videira">
-                <li><a href="#" onclick="abrirVideiraAlimentar(event)">Alimentar Fechamentos</a></li>
-                <li><a href="#" onclick="abrirVideiraPainel(event)">Fechamento Videira</a></li>
+                <li><a href="#" data-rota="Videira/AlimentarFechamento" onclick="abrirVideiraAlimentar(event)">Alimentar Fechamentos</a></li>
+                <li><a href="#" data-rota="Videira/MeuFechamento" onclick="abrirVideiraPainel(event)">Fechamento Videira</a></li>
             </ul>
         </ul>
 
@@ -217,8 +217,8 @@
             <span class="menu-tooltip">Planejamento de Rotas</span>
         </li>
         <ul class="submenu" data-menu="planejamento" id="submenu-planejamento" style="display:none">
-            <li><a href="#" onclick="abrirPlanejamentoVideira(event,'cacador')">Caçador</a></li>
-            <li><a href="#" onclick="abrirPlanejamentoVideira(event,'videira')">Videira</a></li>
+            <li><a href="#" data-rota="Planejamento/Cacador" onclick="abrirPlanejamentoVideira(event,'cacador')">Caçador</a></li>
+            <li><a href="#" data-rota="Planejamento/Videira" onclick="abrirPlanejamentoVideira(event,'videira')">Videira</a></li>
         </ul>
 
         <li class="menu-item" data-menu="financeiro" id="menu-financeiro" onclick="toggleMenu(this)" style="display:none">
@@ -231,10 +231,10 @@
             <span class="menu-tooltip">Financeiro</span>
         </li>
         <ul class="submenu" data-menu="financeiro" id="submenu-financeiro" style="display:none">
-            <li><a href="#" onclick="abrirAdminNFs(event)">Notas Fiscais</a></li>
-            <li><a href="#" onclick="abrirConfNFs(event)">Conferência NF</a></li>
-            <li><a href="#" onclick="abrirAdminAntecipacoes(event)">Antecipações</a></li>
-            <li><a href="#" onclick="abrirAdminPagamentos(event)">Pagamentos</a></li>
+            <li><a href="#" data-rota="Financeiro/NotasFiscais" onclick="abrirAdminNFs(event)">Notas Fiscais</a></li>
+            <li><a href="#" data-rota="Financeiro/ConferenciaNF" onclick="abrirConfNFs(event)">Conferência NF</a></li>
+            <li><a href="#" data-rota="Financeiro/Antecipacoes" onclick="abrirAdminAntecipacoes(event)">Antecipações</a></li>
+            <li><a href="#" data-rota="Financeiro/Pagamentos" onclick="abrirAdminPagamentos(event)">Pagamentos</a></li>
         </ul>
 
         <li class="menu-item" data-menu="cadastros" id="menu-cadastros" onclick="toggleMenu(this)" style="display:none">
@@ -253,14 +253,14 @@
                 Sistema <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-gc">
-                <li><a href="#" onclick="abrirAdminUsuarios(event)">Entregadores</a></li>
-                <li><a href="#" onclick="abrirAdminUsuariosGC(event)">Usuários</a></li>
+                <li><a href="#" data-rota="Cadastros/Entregadores" onclick="abrirAdminUsuarios(event)">Entregadores</a></li>
+                <li><a href="#" data-rota="Cadastros/Usuarios" onclick="abrirAdminUsuariosGC(event)">Usuários</a></li>
             </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Trampay <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-trampay">
-                <li><a href="#" onclick="abrirEntregadoresTrampay(event)">Entregadores</a></li>
+                <li><a href="#" data-rota="Cadastros/TrampayEntregadores" onclick="abrirEntregadoresTrampay(event)">Entregadores</a></li>
             </ul>
         </ul>
 
@@ -275,9 +275,9 @@
             <span class="menu-tooltip">Fechamentos</span>
         </li>
         <ul class="submenu" data-menu="videira" id="submenu-videira" style="display:none">
-            <li><a href="#" onclick="abrirVideiraDash(event)">Dashboard</a></li>
-            <li><a href="#" onclick="abrirVideiraPainel(event)">Meu Fechamento</a></li>
-            <li id="videira-li-alimentar" style="display:none"><a href="#" onclick="abrirVideiraAlimentar(event)">Alimentar Fechamento</a></li>
+            <li><a href="#" data-rota="Videira/Dashboard" onclick="abrirVideiraDash(event)">Dashboard</a></li>
+            <li><a href="#" data-rota="Videira/MeuFechamento" onclick="abrirVideiraPainel(event)">Meu Fechamento</a></li>
+            <li id="videira-li-alimentar" style="display:none"><a href="#" data-rota="Videira/AlimentarFechamento" onclick="abrirVideiraAlimentar(event)">Alimentar Fechamento</a></li>
         </ul>
 
         <li class="menu-item" data-menu="extravios" id="menu-extravios" onclick="toggleMenu(this)" style="display:none">
@@ -291,8 +291,8 @@
             <span class="menu-tooltip">Extravios</span>
         </li>
         <ul class="submenu" data-menu="extravios" id="submenu-extravios" style="display:none">
-            <li><a href="#" onclick="abrirExtraviosBusca(event)">Pesquisar</a></li>
-            <li><a href="#" onclick="abrirExtraviosDash(event)">Dashboard</a></li>
+            <li><a href="#" data-rota="Extravios/Pesquisar" onclick="abrirExtraviosBusca(event)">Pesquisar</a></li>
+            <li><a href="#" data-rota="Extravios/Dashboard" onclick="abrirExtraviosDash(event)">Dashboard</a></li>
         </ul>
 
 
