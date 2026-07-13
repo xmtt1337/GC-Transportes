@@ -21,6 +21,9 @@ function abrirBaixaTotalExpress(event) {
     _bteLimparForm();
     mostrarTela("tela-baixa-te");
     _bteCarregarHistorico();
+    _bteAtualizarBadgeFila();
+    _bteMostrarAvisosFila();
+    _bteFilaSincronizar();
 }
 
 function _bteLimparForm() {
@@ -169,38 +172,182 @@ function _bteEnviarBaixa() {
     if (_bteCodigoDuplicado) return; // mensagem de "já baixado" já está exibida
     if (!_bteFotoBase64) return _bteMostrarMsg("Tire a foto da etiqueta antes de enviar.", "erro");
 
+    const payload = {
+        nome_cliente: cliente || null,
+        codigo,
+        foto_base64: _bteFotoBase64,
+        foto_mime_type: _bteFotoMimeType,
+        latitude:        _bteGeo ? _bteGeo.latitude  : null,
+        longitude:       _bteGeo ? _bteGeo.longitude : null,
+        precisao_metros: _bteGeo ? _bteGeo.precisao  : null,
+        endereco:        _bteGeo ? _bteGeo.endereco  : null,
+        capturada_em:    new Date().toISOString()
+    };
+
     const btn = document.getElementById("bte-submit-btn");
     btn.disabled = true; btn.textContent = "Enviando...";
 
-    fetch(`${API}/baixas/total-express`, {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({
-            nome_cliente: cliente || null,
-            codigo,
-            foto_base64: _bteFotoBase64,
-            foto_mime_type: _bteFotoMimeType,
-            latitude:        _bteGeo ? _bteGeo.latitude  : null,
-            longitude:       _bteGeo ? _bteGeo.longitude : null,
-            precisao_metros: _bteGeo ? _bteGeo.precisao  : null,
-            endereco:        _bteGeo ? _bteGeo.endereco  : null
-        })
-    }).then(r => r.json())
-    .then(d => {
-        btn.disabled = false; btn.textContent = "Enviar Baixa";
-        if (d.error) {
-            if (d.ja_baixado) { _bteCodigoDuplicado = true; return _bteMostrarMsg(_bteMsgJaBaixado(d), "erro"); }
-            return _bteMostrarMsg(d.error, "erro");
+    _bteFilaTemCodigo(codigo).then(naFila => {
+        if (naFila) {
+            btn.disabled = false; btn.textContent = "Enviar Baixa";
+            return _bteMostrarMsg("Este código já está na fila de envio deste celular.", "erro");
         }
-        _bteLimparForm();
-        _bteMostrarMsg("Baixa enviada com sucesso!", "ok");
-        _bteCarregarHistorico();
-    })
-    .catch(() => {
-        btn.disabled = false; btn.textContent = "Enviar Baixa";
-        _bteMostrarMsg("Erro ao enviar a baixa. Tente novamente.", "erro");
+        if (!navigator.onLine) return _bteGuardarNaFila(payload, btn);
+
+        fetch(`${API}/baixas/total-express`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        }).then(r => r.json())
+        .then(d => {
+            btn.disabled = false; btn.textContent = "Enviar Baixa";
+            if (d.error) {
+                if (d.ja_baixado) { _bteCodigoDuplicado = true; return _bteMostrarMsg(_bteMsgJaBaixado(d), "erro"); }
+                return _bteMostrarMsg(d.error, "erro");
+            }
+            _bteLimparForm();
+            _bteMostrarMsg("Baixa enviada com sucesso!", "ok");
+            _bteCarregarHistorico();
+        })
+        .catch(() => {
+            // rede caiu no meio do caminho — guarda no celular em vez de perder
+            _bteGuardarNaFila(payload, btn);
+        });
     });
 }
+
+// ───── FILA OFFLINE (IndexedDB — aguenta as fotos, diferente do localStorage) ─────
+let _bteSincronizando = false;
+
+function _bteAbrirDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open("gc-baixas-offline", 1);
+        req.onupgradeneeded = () => {
+            req.result.createObjectStore("fila", { keyPath: "id", autoIncrement: true });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror   = () => reject(req.error);
+    });
+}
+
+function _bteFilaStore(modo, fn) {
+    return _bteAbrirDB().then(db => new Promise((resolve, reject) => {
+        const req = fn(db.transaction("fila", modo).objectStore("fila"));
+        req.onsuccess = () => resolve(req.result);
+        req.onerror   = () => reject(req.error);
+    }));
+}
+
+function _bteFilaAdicionar(payload) { return _bteFilaStore("readwrite", st => st.add({ payload })); }
+function _bteFilaListar()           { return _bteFilaStore("readonly",  st => st.getAll()); }
+function _bteFilaRemover(id)        { return _bteFilaStore("readwrite", st => st.delete(id)); }
+
+function _bteFilaTemCodigo(codigo) {
+    return _bteFilaListar().then(itens =>
+        itens.some(i => String(i.payload.codigo).toUpperCase() === String(codigo).toUpperCase())
+    ).catch(() => false);
+}
+
+function _bteGuardarNaFila(payload, btn) {
+    _bteFilaAdicionar(payload).then(() => {
+        if (btn) { btn.disabled = false; btn.textContent = "Enviar Baixa"; }
+        _bteLimparForm();
+        _bteMostrarMsg("Sem internet agora — a baixa foi <strong>salva no celular</strong> e será enviada automaticamente quando a conexão voltar.", "ok");
+        _bteAtualizarBadgeFila();
+    }).catch(() => {
+        if (btn) { btn.disabled = false; btn.textContent = "Enviar Baixa"; }
+        _bteMostrarMsg("Sem internet e não foi possível salvar no celular. Tente novamente.", "erro");
+    });
+}
+
+// Envia as baixas guardadas, uma a uma, parando na primeira falha de rede/servidor
+// (o que sobrar tenta de novo no próximo gatilho: internet voltou, tela aberta, botão).
+async function _bteFilaSincronizar() {
+    if (_bteSincronizando || !navigator.onLine) return;
+    _bteSincronizando = true;
+    let enviouAlguma = false;
+    try {
+        const itens = await _bteFilaListar();
+        for (const item of itens) {
+            let r, d;
+            try {
+                r = await fetch(`${API}/baixas/total-express`, {
+                    method: "POST",
+                    headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                    body: JSON.stringify(item.payload)
+                });
+                d = await r.json();
+            } catch (e) { break; } // sem rede/servidor fora — tenta na próxima
+            if (r.ok) { await _bteFilaRemover(item.id); enviouAlguma = true; continue; }
+            if (d && d.ja_baixado) {
+                await _bteFilaRemover(item.id);
+                // se foi baixado por OUTRO entregador enquanto esta estava na fila, avisa;
+                // se era duplicata do próprio (reenvio após resposta perdida), segue quieto
+                const eu = window._gcUser ? (window._gcUser.name || window._gcUser.username) : null;
+                if (d.usuario_nome && d.usuario_nome !== eu) {
+                    try {
+                        const avisos = JSON.parse(localStorage.getItem("bte_fila_avisos") || "[]");
+                        avisos.push({ codigo: item.payload.codigo, usuario_nome: d.usuario_nome, data: d.data_hora_brasilia });
+                        localStorage.setItem("bte_fila_avisos", JSON.stringify(avisos));
+                    } catch (e) {}
+                }
+                continue;
+            }
+            if (r.status === 400) { await _bteFilaRemover(item.id); continue; } // inválida — reenviar não resolve
+            break; // 401/403/5xx — token vencido ou servidor com problema, tenta depois
+        }
+    } finally {
+        _bteSincronizando = false;
+        _bteAtualizarBadgeFila();
+        const tela = document.getElementById("tela-baixa-te");
+        if (tela && tela.classList.contains("active-view")) {
+            if (enviouAlguma) _bteCarregarHistorico();
+            _bteMostrarAvisosFila();
+        }
+    }
+}
+
+function _bteAtualizarBadgeFila() {
+    const card = document.getElementById("bte-fila-card");
+    if (!card) return;
+    _bteFilaListar().then(itens => {
+        if (!itens.length) { card.style.display = "none"; card.innerHTML = ""; return; }
+        card.style.display = "";
+        card.innerHTML = `
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 16px;border-radius:12px;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.3);margin-bottom:16px">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="#eab308" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                <div style="flex:1;min-width:170px">
+                    <div style="font-size:13px;font-weight:700;color:#eab308">${itens.length} baixa${itens.length > 1 ? "s" : ""} aguardando envio</div>
+                    <div style="font-size:12px;color:#94a3b8">Ser${itens.length > 1 ? "ão enviadas" : "á enviada"} automaticamente quando a internet voltar.</div>
+                </div>
+                <button onclick="_bteFilaTentarAgora()" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(234,179,8,0.4);background:rgba(234,179,8,0.12);color:#eab308;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Enviar agora</button>
+            </div>`;
+    }).catch(() => {});
+}
+
+function _bteFilaTentarAgora() {
+    if (!navigator.onLine) {
+        gcAlert("Ainda sem conexão com a internet. As baixas serão enviadas automaticamente assim que o sinal voltar.");
+        return;
+    }
+    _bteFilaSincronizar();
+}
+
+// Avisos de baixas descartadas na sincronização (código já baixado por outro entregador)
+function _bteMostrarAvisosFila() {
+    let avisos = [];
+    try { avisos = JSON.parse(localStorage.getItem("bte_fila_avisos") || "[]"); } catch (e) {}
+    if (!avisos.length) return;
+    localStorage.removeItem("bte_fila_avisos");
+    const linhas = avisos.map(a =>
+        `A baixa do código <strong>${a.codigo}</strong> que estava na fila não foi enviada: já baixado por <strong>${a.usuario_nome || "outro entregador"}</strong> em <strong>${a.data || "—"}</strong>.`
+    ).join("<br><br>");
+    _bteMostrarMsg(linhas, "erro");
+}
+
+// Gatilhos automáticos: internet voltou / app abriu
+window.addEventListener("online", () => { _bteFilaSincronizar(); });
+setTimeout(() => { _bteFilaSincronizar(); }, 3000);
 
 function _bteCarregarHistorico() {
     const empty  = document.getElementById("bte-hist-empty");
@@ -226,7 +373,9 @@ function _bteCarregarHistorico() {
                 <td data-label="Data/Hora" style="color:#64748b;font-size:12px">${r.data_hora_brasilia || "—"}</td>
             </tr>`).join("");
     }).catch(() => {
-        empty.innerText = "Erro ao carregar histórico.";
+        empty.innerText = navigator.onLine
+            ? "Erro ao carregar histórico."
+            : "Sem internet — o histórico aparece quando a conexão voltar.";
     });
 }
 
