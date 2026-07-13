@@ -1,7 +1,9 @@
 // ───── BAIXAS — TOTAL EXPRESS (ENTREGADOR) ─────
 let _bteFotoBase64   = null;
 let _bteFotoMimeType = null;
-let _bteGeo          = null; // { latitude, longitude, precisao } capturada ao tirar a foto
+let _bteGeo          = null; // { latitude, longitude, precisao, endereco } capturada ao tirar a foto
+let _bteGeoPromise    = null; // promise da tentativa de captura em andamento (GPS + endereço)
+let _bteGeoEmAndamento = false;
 let _bteScanStream   = null;
 let _bteScanTimer    = null;
 let _bteScanReader   = null;
@@ -30,6 +32,8 @@ function _bteLimparForm() {
     _bteFotoBase64 = null;
     _bteFotoMimeType = null;
     _bteGeo = null;
+    _bteGeoPromise = null;
+    _bteGeoEmAndamento = false;
     _bteCodigoDuplicado = false;
     document.getElementById("bte-cliente").value = "";
     document.getElementById("bte-codigo").value = "";
@@ -89,17 +93,33 @@ function _bteTirarFoto() {
 
 function _bteCapturarLocalizacao() {
     if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(pos => {
-        _bteGeo = {
-            latitude:  pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            precisao:  Math.round(pos.coords.accuracy || 0),
-            endereco:  null
-        };
-        _bteBuscarEndereco(pos.coords.latitude, pos.coords.longitude)
-            .then(end => { if (_bteGeo) _bteGeo.endereco = end; });
-    }, () => { /* sem permissão ou sem sinal — a baixa segue sem localização */ },
-    { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+    if (_bteGeoEmAndamento) return;       // já tentando — não duplica a chamada ao GPS
+    if (_bteGeo && _bteGeo.endereco) return; // já tem endereço completo, nada a fazer
+    _bteGeoEmAndamento = true;
+    _bteGeoPromise = new Promise(resolve => {
+        navigator.geolocation.getCurrentPosition(pos => {
+            _bteGeo = {
+                latitude:  pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                precisao:  Math.round(pos.coords.accuracy || 0),
+                endereco:  null
+            };
+            _bteBuscarEndereco(pos.coords.latitude, pos.coords.longitude)
+                .then(end => { if (_bteGeo) _bteGeo.endereco = end; })
+                .finally(() => { _bteGeoEmAndamento = false; resolve(); });
+        }, () => { _bteGeoEmAndamento = false; resolve(); /* sem permissão/sinal — segue sem localização */ },
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
+    });
+}
+
+// Se a foto+código forem preenchidos mais rápido que o GPS/endereço resolvem, espera
+// só um pouco (nunca trava o envio) — é o que fazia a baixa sair sem endereço às vezes.
+function _bteAguardarLocalizacao() {
+    if (!_bteGeoEmAndamento) return Promise.resolve();
+    const btn = document.getElementById("bte-submit-btn");
+    if (btn) btn.textContent = "Aguardando localização...";
+    const espera = new Promise(resolve => setTimeout(resolve, 6000));
+    return Promise.race([_bteGeoPromise, espera]);
 }
 
 // Converte a coordenada em endereço legível (rua, número, bairro, cidade) via
@@ -172,46 +192,51 @@ function _bteEnviarBaixa() {
     if (_bteCodigoDuplicado) return; // mensagem de "já baixado" já está exibida
     if (!_bteFotoBase64) return _bteMostrarMsg("Tire a foto da etiqueta antes de enviar.", "erro");
 
-    const payload = {
-        nome_cliente: cliente || null,
-        codigo,
-        foto_base64: _bteFotoBase64,
-        foto_mime_type: _bteFotoMimeType,
-        latitude:        _bteGeo ? _bteGeo.latitude  : null,
-        longitude:       _bteGeo ? _bteGeo.longitude : null,
-        precisao_metros: _bteGeo ? _bteGeo.precisao  : null,
-        endereco:        _bteGeo ? _bteGeo.endereco  : null,
-        capturada_em:    new Date().toISOString()
-    };
-
     const btn = document.getElementById("bte-submit-btn");
     btn.disabled = true; btn.textContent = "Enviando...";
+    // Marca a hora da captura já aqui (antes da espera), não depois — é o momento real da baixa
+    const capturadaEm = new Date().toISOString();
 
-    _bteFilaTemCodigo(codigo).then(naFila => {
-        if (naFila) {
-            btn.disabled = false; btn.textContent = "Enviar Baixa";
-            return _bteMostrarMsg("Este código já está na fila de envio deste celular.", "erro");
-        }
-        if (!navigator.onLine) return _bteGuardarNaFila(payload, btn);
+    _bteAguardarLocalizacao().then(() => {
+        btn.textContent = "Enviando...";
+        const payload = {
+            nome_cliente: cliente || null,
+            codigo,
+            foto_base64: _bteFotoBase64,
+            foto_mime_type: _bteFotoMimeType,
+            latitude:        _bteGeo ? _bteGeo.latitude  : null,
+            longitude:       _bteGeo ? _bteGeo.longitude : null,
+            precisao_metros: _bteGeo ? _bteGeo.precisao  : null,
+            endereco:        _bteGeo ? _bteGeo.endereco  : null,
+            capturada_em:    capturadaEm
+        };
 
-        fetch(`${API}/baixas/total-express`, {
-            method: "POST",
-            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        }).then(r => r.json())
-        .then(d => {
-            btn.disabled = false; btn.textContent = "Enviar Baixa";
-            if (d.error) {
-                if (d.ja_baixado) { _bteCodigoDuplicado = true; return _bteMostrarMsg(_bteMsgJaBaixado(d), "erro"); }
-                return _bteMostrarMsg(d.error, "erro");
+        _bteFilaTemCodigo(codigo).then(naFila => {
+            if (naFila) {
+                btn.disabled = false; btn.textContent = "Enviar Baixa";
+                return _bteMostrarMsg("Este código já está na fila de envio deste celular.", "erro");
             }
-            _bteLimparForm();
-            _bteMostrarMsg("Baixa enviada com sucesso!", "ok");
-            _bteCarregarHistorico();
-        })
-        .catch(() => {
-            // rede caiu no meio do caminho — guarda no celular em vez de perder
-            _bteGuardarNaFila(payload, btn);
+            if (!navigator.onLine) return _bteGuardarNaFila(payload, btn);
+
+            fetch(`${API}/baixas/total-express`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            }).then(r => r.json())
+            .then(d => {
+                btn.disabled = false; btn.textContent = "Enviar Baixa";
+                if (d.error) {
+                    if (d.ja_baixado) { _bteCodigoDuplicado = true; return _bteMostrarMsg(_bteMsgJaBaixado(d), "erro"); }
+                    return _bteMostrarMsg(d.error, "erro");
+                }
+                _bteLimparForm();
+                _bteMostrarMsg("Baixa enviada com sucesso!", "ok");
+                _bteCarregarHistorico();
+            })
+            .catch(() => {
+                // rede caiu no meio do caminho — guarda no celular em vez de perder
+                _bteGuardarNaFila(payload, btn);
+            });
         });
     });
 }
