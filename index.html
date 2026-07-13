@@ -2,6 +2,10 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<!-- Fixa a URL-base pra tudo que é caminho relativo (style.css, js/*, img/*) — sem
+     isso, quando a URL vira /Planejamento/Cacador esses caminhos passam a resolver
+     como se "Planejamento" fosse uma pasta, e tudo (CSS incluso) dá 404. -->
+<base href="/GC-Transportes/">
 <title>GC Transportes - Painel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link rel="icon" href="img/logobranca.png" type="image/png">
