@@ -69,6 +69,22 @@ function buscarPagamentos() {
 
         document.getElementById("pag-tbody").innerHTML = data.map(d => {
             const temAnt = (d.antecipado_num || 0) > 0;
+            let confBadge;
+            if (!d.emitiu_nf) {
+                confBadge = `<span class="adm-nf-badge pendente">Não enviou</span>`;
+            } else if (d.status_nf === "confere") {
+                confBadge = `<span class="adm-nf-badge confere">✓ Confere</span>`;
+            } else if (d.status_nf === "diverge") {
+                confBadge = `<span class="adm-nf-badge diverge">⚠ Diverge</span>`;
+            } else {
+                confBadge = `<span class="adm-nf-badge pendente">—</span>`;
+            }
+            const pdfBtn = (d.nota_id && d.tem_pdf)
+                ? `<button class="adm-nf-pdf-btn" onclick="_pagBaixarNFPdf(${d.nota_id}, '${String(d.nome).replace(/[^\wÀ-ÿ .-]/g, "")}')" title="Baixar o PDF anexado">
+                       <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                       PDF
+                   </button>`
+                : `<span class="pag-sem-cad">—</span>`;
             return `<tr>
                 <td class="adm-nf-entregador">${d.nome}</td>
                 <td class="pag-valor" style="color:#94a3b8">${d.total}</td>
@@ -77,6 +93,8 @@ function buscarPagamentos() {
                 <td class="pag-doc">${d.documento || '<span class="pag-sem-cad">—</span>'}</td>
                 <td class="pag-pix">${d.chave_pix || '<span class="pag-sem-cad">—</span>'}</td>
                 <td>${d.tipo_pix ? `<span class="pag-pix-badge">${d.tipo_pix}</span>` : '<span class="pag-sem-cad">—</span>'}</td>
+                <td>${confBadge}</td>
+                <td>${pdfBtn}</td>
             </tr>`;
         }).join("");
 
@@ -137,6 +155,22 @@ function _desfazerPagamento() {
             _renderStatusPagBtn(d);
         }).catch(() => gcAlert("Erro ao desfazer."));
     }, null, "Desfazer");
+}
+
+function _pagBaixarNFPdf(id, nome) {
+    fetch(`${API}/nota/pdf/${id}`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
+    .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `NF ${_pagQuinzena}Q ${String(_pagMes).padStart(2, "0")}-${_pagAno}${nome ? " - " + nome : ""}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    })
+    .catch(() => gcAlert("PDF não disponível para esta nota. Notas anexadas antes desta atualização não têm o arquivo salvo."));
 }
 
 function _baixarCsvPagamentos() {
