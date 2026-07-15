@@ -30,6 +30,7 @@ const _TELA_TITULOS = {
     "tela-videira-dash":         "Dashboard",
     "tela-em-breve":             "Em Breve",
     "tela-torre-alimentar":      "Alimentar",
+    "tela-criar-fechamento":     "Criar Fechamento",
 };
 
 function mostrarTela(id, rota) {
