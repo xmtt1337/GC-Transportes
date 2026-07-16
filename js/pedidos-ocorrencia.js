@@ -1,12 +1,6 @@
 // ───── PEDIDOS COM OCORRÊNCIA (colar dados tabulados Driver/Order ID/OnHold Time) ─────
-
-function abrirPedidosOcorrencia(event) {
-    if (event) event.preventDefault();
-    document.getElementById("poc-textarea").value = "";
-    document.getElementById("poc-colar-status").innerHTML = "";
-    mostrarTela("tela-pedidos-ocorrencia");
-    _pocCarregarLista();
-}
+// Vive dentro da tela Criar Fechamento — cada transportadora tem seu próprio lote
+// (os Order IDs vêm do relatório daquela transportadora específica).
 
 // Aceita o texto colado direto de uma planilha (com abas entre colunas). Tolera linhas de
 // cabeçalho soltas (ex.: "Driver Name" / "Order ID" / "OnHold Time" cada uma em uma linha,
@@ -26,9 +20,19 @@ function _pocParseTexto(texto) {
     return linhas;
 }
 
-async function _pocEnviarColados() {
-    const status = document.getElementById("poc-colar-status");
-    const texto = document.getElementById("poc-textarea").value;
+function _cfResetOcorrencias() {
+    document.getElementById("cf-ocorrencia-textarea").value = "";
+    document.getElementById("cf-ocorrencia-status").innerHTML = "";
+    document.getElementById("cf-ocorrencia-busca").value = "";
+    document.getElementById("cf-ocorrencia-transp-nome").innerText = _CF_TRANSPORTADORAS.find(t => t.key === _cfTranspAtual)?.label || "";
+    _cfCarregarOcorrencias();
+}
+
+async function _cfEnviarOcorrencias() {
+    const status = document.getElementById("cf-ocorrencia-status");
+    const cfg = _CF_TRANSPORTADORAS.find(t => t.key === _cfTranspAtual);
+    if (!cfg) return;
+    const texto = document.getElementById("cf-ocorrencia-textarea").value;
     const linhas = _pocParseTexto(texto);
     if (!linhas.length) {
         status.innerHTML = `<div style="color:#ef4444;font-size:13px">Nenhuma linha válida encontrada — cole o texto com as colunas separadas por tab.</div>`;
@@ -39,34 +43,35 @@ async function _pocEnviarColados() {
         const res = await fetch(`${API}/admin/pedidos-ocorrencia`, {
             method: "POST",
             headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-            body: JSON.stringify({ linhas })
+            body: JSON.stringify({ transportadora: cfg.transportadora, linhas })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Erro ao enviar.");
         status.innerHTML = `<div style="color:#22c55e;font-size:13px">✓ ${data.inseridos} pedidos adicionados com sucesso!</div>`;
-        document.getElementById("poc-textarea").value = "";
-        _pocCarregarLista();
+        document.getElementById("cf-ocorrencia-textarea").value = "";
+        _cfCarregarOcorrencias();
     } catch (err) {
         status.innerHTML = `<div style="color:#ef4444;font-size:13px">${err.message}</div>`;
     }
 }
 
-function _pocBuscar() {
-    _pocCarregarLista(document.getElementById("poc-busca").value.trim());
+function _cfBuscarOcorrencias() {
+    _cfCarregarOcorrencias(document.getElementById("cf-ocorrencia-busca").value.trim());
 }
 
-function _pocCarregarLista(busca) {
-    const tbody = document.getElementById("poc-tbody");
+function _cfCarregarOcorrencias(busca) {
+    const cfg = _CF_TRANSPORTADORAS.find(t => t.key === _cfTranspAtual);
+    if (!cfg) return;
+    const tbody = document.getElementById("cf-ocorrencia-tbody");
     tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#64748b;padding:16px">Carregando...</td></tr>`;
 
-    const url = busca
-        ? `${API}/admin/pedidos-ocorrencia?busca=${encodeURIComponent(busca)}`
-        : `${API}/admin/pedidos-ocorrencia`;
+    const params = new URLSearchParams({ transportadora: cfg.transportadora });
+    if (busca) params.set("busca", busca);
 
-    fetch(url, { headers: { "Authorization": "Bearer " + token } })
+    fetch(`${API}/admin/pedidos-ocorrencia?${params}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(rows => {
-            document.getElementById("poc-total").innerText = `${rows.length} pedido${rows.length !== 1 ? "s" : ""}`;
+            document.getElementById("cf-ocorrencia-total").innerText = `${rows.length} pedido${rows.length !== 1 ? "s" : ""}`;
             if (!rows.length) {
                 tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#64748b;padding:16px">Nenhum pedido cadastrado.</td></tr>`;
                 return;
@@ -76,7 +81,7 @@ function _pocCarregarLista(busca) {
                     <td>${r.driver || "-"}</td>
                     <td>${r.order_id || "-"}</td>
                     <td>${r.onhold_time || "-"}</td>
-                    <td><button onclick="_pocRemover(${r.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px">Remover</button></td>
+                    <td><button onclick="_cfRemoverOcorrencia(${r.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px">Remover</button></td>
                 </tr>
             `).join("");
         }).catch(() => {
@@ -84,12 +89,12 @@ function _pocCarregarLista(busca) {
         });
 }
 
-function _pocRemover(id) {
+function _cfRemoverOcorrencia(id) {
     if (!confirm("Remover este pedido?")) return;
     fetch(`${API}/admin/pedidos-ocorrencia/${id}`, {
         method: "DELETE",
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json())
-    .then(() => _pocCarregarLista(document.getElementById("poc-busca").value.trim()))
+    .then(() => _cfBuscarOcorrencias())
     .catch(() => alert("Erro ao remover."));
 }

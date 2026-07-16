@@ -70,6 +70,7 @@ function _cfCarregarResumo() {
         _cfRenderResumo(Array.isArray(rows) ? rows : []);
         _cfRenderTabs();
         document.getElementById("cf-upload-wrap").style.display = "none";
+        document.getElementById("cf-ocorrencia-wrap").style.display = "none";
     }).catch(() => {
         empty.innerText = "Erro ao carregar dados do período.";
     });

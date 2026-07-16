@@ -213,7 +213,6 @@ if (location.hostname === "xmtt1337.github.io") {
                 <li><a href="#" data-rota="Videira/MeuFechamento" onclick="abrirVideiraPainel(event)">Fechamento Videira</a></li>
             </ul>
             <li><a href="#" data-rota="Fechamento/Criar" onclick="abrirCriarFechamento(event)">Criar Fechamento</a></li>
-            <li><a href="#" data-rota="Fechamento/PedidosOcorrencia" onclick="abrirPedidosOcorrencia(event)">Pedidos com Ocorrência</a></li>
         </ul>
 
         <li class="menu-item" data-menu="planejamento" id="menu-planejamento" onclick="toggleMenu(this)" style="display:none">
@@ -1909,44 +1908,42 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div id="cf-upload-status" style="margin-top:10px"></div>
             </div>
 
+            <div id="cf-ocorrencia-wrap" style="display:none;margin-top:28px;padding-top:22px;border-top:1px solid rgba(255,255,255,0.07)">
+                <div class="ant-form-title" style="margin-bottom:10px">Pedidos com ocorrência — <span id="cf-ocorrencia-transp-nome"></span></div>
+                <div style="font-size:13px;color:#64748b;margin-bottom:10px">Cole as colunas Driver Name / Order ID / OnHold Time direto da planilha.</div>
+                <textarea id="cf-ocorrencia-textarea" rows="6" style="width:100%;resize:vertical;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#e2e8f0;font-family:inherit;font-size:13px;padding:12px"></textarea>
+                <div style="margin-top:10px;display:flex;align-items:center;gap:12px">
+                    <button onclick="_cfEnviarOcorrencias()" style="padding:9px 16px;border-radius:10px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Enviar</button>
+                    <span id="cf-ocorrencia-status" style="font-size:13px"></span>
+                </div>
+
+                <div style="margin-top:20px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:14px">
+                        <span id="cf-ocorrencia-total" style="font-size:13px;color:#4a6a8a;font-weight:500"></span>
+                        <div class="adm-search-input-area" style="max-width:280px">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="cf-ocorrencia-busca" placeholder="Buscar por driver ou order ID..." oninput="_cfBuscarOcorrencias()">
+                        </div>
+                    </div>
+                    <div class="adm-nf-wrap">
+                        <table class="adm-nf-table" id="cf-ocorrencia-table">
+                            <thead>
+                                <tr>
+                                    <th>Driver Name</th>
+                                    <th>Order ID</th>
+                                    <th>OnHold Time</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="cf-ocorrencia-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div><!-- /tela-criar-fechamento -->
-
-<div id="tela-pedidos-ocorrencia" class="view tela-full">
-    <div class="fech-body">
-        <div class="ant-form-title" style="margin-bottom:10px">Colar dados (Driver Name / Order ID / OnHold Time)</div>
-        <div style="font-size:13px;color:#64748b;margin-bottom:10px">Copie as colunas direto da planilha (com Driver Name, Order ID e OnHold Time) e cole abaixo.</div>
-        <textarea id="poc-textarea" rows="8" style="width:100%;resize:vertical;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#e2e8f0;font-family:inherit;font-size:13px;padding:12px"></textarea>
-        <div style="margin-top:10px;display:flex;align-items:center;gap:12px">
-            <button onclick="_pocEnviarColados()" style="padding:9px 16px;border-radius:10px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Enviar</button>
-            <span id="poc-colar-status" style="font-size:13px"></span>
-        </div>
-
-        <div style="margin-top:28px;padding-top:22px;border-top:1px solid rgba(255,255,255,0.07)">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:14px">
-                <span id="poc-total" style="font-size:13px;color:#4a6a8a;font-weight:500"></span>
-                <div class="adm-search-input-area" style="max-width:280px">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" id="poc-busca" placeholder="Buscar por driver ou order ID..." oninput="_pocBuscar()">
-                </div>
-            </div>
-            <div class="adm-nf-wrap">
-                <table class="adm-nf-table" id="poc-table">
-                    <thead>
-                        <tr>
-                            <th>Driver Name</th>
-                            <th>Order ID</th>
-                            <th>OnHold Time</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="poc-tbody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div><!-- /tela-pedidos-ocorrencia -->
 
 <div id="tela-planejamento-videira" class="view tela-full">
     <div class="fech-header">
