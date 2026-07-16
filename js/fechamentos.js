@@ -285,6 +285,7 @@ function irParaFechamentoPeriodo(mes, ano, quinzena) {
 // ───── RELATÓRIO DETALHADO POR DRIVER (planilhas reais das transportadoras) ─────
 let _relDriverDados   = null;
 let _relDriverArquivo = "Relatorio.xlsx";
+let _relDriverChart   = null;
 
 const _REL_DRIVER_LABELS = { "JET": "J&T", "Imile": "iMile" };
 const _REL_DRIVER_CORES  = { "Loggi": "#12A5E8", "Anjun": "#22C55E", "Imile": "#9333EA", "JET": "#EF4444", "Total Express": "#3a86ff" };
@@ -343,9 +344,44 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
         }
         _relDriverDados = { transportadoras: lista };
         document.getElementById("rd-btn-baixar").disabled = false;
-        body.innerHTML = lista.map(t => {
+
+        // Resumo geral de prazo (soma do que está sendo exibido)
+        const totDentro = lista.reduce((s, t) => s + (t.dentro_prazo || 0), 0);
+        const totFora   = lista.reduce((s, t) => s + (t.fora_prazo   || 0), 0);
+        const totSem    = lista.reduce((s, t) => s + (t.sem_prazo    || 0), 0);
+        const totPrazo  = totDentro + totFora;
+        const pctDentro = totPrazo ? ((totDentro / totPrazo) * 100).toFixed(1) : "0.0";
+        const pctFora   = totPrazo ? ((totFora   / totPrazo) * 100).toFixed(1) : "0.0";
+
+        const legenda = (cor, nome, qtd, pct) => `
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#94a3b8;padding:3px 0">
+                <span style="width:9px;height:9px;border-radius:50%;background:${cor};flex-shrink:0"></span>
+                <span style="flex:1">${nome}</span>
+                <strong style="color:#e2e8f0">${qtd}</strong>
+                ${pct !== null ? `<span style="color:#64748b;min-width:48px;text-align:right">${pct}%</span>` : ""}
+            </div>`;
+
+        const chartHtml = totPrazo ? `
+            <div style="display:flex;align-items:center;gap:18px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:10px">
+                <div style="width:110px;height:110px;position:relative;flex-shrink:0">
+                    <canvas id="rd-pie"></canvas>
+                    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+                        <div style="font-size:17px;font-weight:700;color:${totFora > totDentro ? "#ef4444" : "#22c55e"}">${pctDentro}%</div>
+                        <div style="font-size:9.5px;color:#64748b">no prazo</div>
+                    </div>
+                </div>
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Prazo de entrega</div>
+                    ${legenda("#22c55e", "Dentro do prazo", totDentro, pctDentro)}
+                    ${legenda("#ef4444", "Fora do prazo", totFora, pctFora)}
+                    ${totSem ? legenda("#64748b", "Sem informação", totSem, null) : ""}
+                </div>
+            </div>` : "";
+
+        body.innerHTML = chartHtml + lista.map(t => {
             const label = _REL_DRIVER_LABELS[t.transportadora] || t.transportadora;
             const cor   = _REL_DRIVER_CORES[t.transportadora] || "#3a86ff";
+            const temPrazo = (t.dentro_prazo || 0) + (t.fora_prazo || 0) > 0;
             return `
             <div style="border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:10px">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
@@ -355,6 +391,12 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
                     </div>
                     <div style="font-size:13px;color:#94a3b8">${t.quantidade} entrega${t.quantidade !== 1 ? "s" : ""} · <strong style="color:#e2e8f0">${t.valor}</strong></div>
                 </div>
+                ${temPrazo ? `
+                <div style="display:flex;align-items:center;gap:14px;font-size:12px;padding:0 0 8px 17px">
+                    <span style="color:#22c55e">✓ ${t.dentro_prazo} no prazo</span>
+                    <span style="color:${t.fora_prazo ? "#ef4444" : "#64748b"}">✗ ${t.fora_prazo} fora do prazo</span>
+                    ${t.sem_prazo ? `<span style="color:#64748b">${t.sem_prazo} sem info</span>` : ""}
+                </div>` : ""}
                 ${t.usuarios.map(u => `
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0 4px 17px;color:#94a3b8">
                         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.usuario}</span>
@@ -362,6 +404,31 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
                     </div>`).join("")}
             </div>`;
         }).join("");
+
+        if (totPrazo) {
+            if (_relDriverChart) { _relDriverChart.destroy(); _relDriverChart = null; }
+            const dados  = [totDentro, totFora];
+            const cores  = ["#22c55e", "#ef4444"];
+            if (totSem) { dados.push(totSem); cores.push("#64748b"); }
+            _relDriverChart = new Chart(document.getElementById("rd-pie").getContext("2d"), {
+                type: "doughnut",
+                data: {
+                    labels: totSem ? ["Dentro do prazo", "Fora do prazo", "Sem informação"] : ["Dentro do prazo", "Fora do prazo"],
+                    datasets: [{ data: dados, backgroundColor: cores, borderColor: "#0b0f18", borderWidth: 2, hoverOffset: 4 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: "70%",
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => {
+                            const tot = dados.reduce((a, b) => a + b, 0);
+                            const pct = tot ? ((ctx.raw / tot) * 100).toFixed(1) : "0.0";
+                            return ` ${ctx.raw} (${pct}%)`;
+                        }}}
+                    }
+                }
+            });
+        }
     })
     .catch(() => {
         body.innerHTML = `<div style="color:#ef4444;font-size:13px;padding:24px 0;text-align:center">Erro ao conectar com o servidor.</div>`;
