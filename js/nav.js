@@ -31,6 +31,7 @@ const _TELA_TITULOS = {
     "tela-em-breve":             "Em Breve",
     "tela-torre-alimentar":      "Alimentar",
     "tela-criar-fechamento":     "Criar Fechamento",
+    "tela-pedidos-ocorrencia":   "Pedidos com Ocorrência",
 };
 
 function mostrarTela(id, rota) {
