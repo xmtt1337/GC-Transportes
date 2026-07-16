@@ -79,6 +79,12 @@ if (location.hostname === "xmtt1337.github.io") {
                 <li><a href="#" data-rota="Operacao/DesempenhoUsuario" onclick="abrirDesempenhoBip(event)">Quantidade x Usuário</a></li>
                 <li><a href="#" data-rota="Operacao/DesempenhoHora" onclick="abrirDesempenhoHora(event)">Quantidade x Hora</a></li>
             </ul>
+            <li class="subgroup-header" onclick="toggleSubGroup(this)">
+                Devoluções <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="subgroup-devolucoes-op">
+                <li><a href="#" data-rota="Operacao/DevolucoesReceber" onclick="abrirDevolucoesReceber(event)">Receber</a></li>
+            </ul>
         </ul>
 
         <li class="menu-item" data-menu="pedidos" id="menu-pedidos" onclick="toggleMenu(this)">
@@ -1731,13 +1737,41 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div id="dev-env-resultado" style="display:none">
                     <table class="ant-hist-table">
                         <thead>
-                            <tr><th>Código / Descrição</th><th>Transportadora</th><th>Motivo</th><th>Data/Hora</th></tr>
+                            <tr><th>Código / Descrição</th><th>Transportadora</th><th>Motivo</th><th>Data/Hora</th><th>Status</th></tr>
                         </thead>
                         <tbody id="dev-env-tbody"></tbody>
                     </table>
                 </div>
             </div>
         </div><!-- /tela-devolucao-enviadas -->
+
+        <!-- TELA DEVOLUÇÕES — RECEBER NO HUB (EQUIPE DA BASE) -->
+        <div id="tela-devolucao-receber" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div class="ant-form-wrap">
+                    <div class="ant-form-title">Receber Devolução</div>
+                    <div class="ant-field" style="margin-bottom:14px">
+                        <label class="ant-label">Código do pacote</label>
+                        <div class="bte-codigo-row">
+                            <input type="text" id="dr-codigo" class="ant-input" placeholder="Digite, escaneie ou use a pistola" style="flex:1" onkeydown="_drEnterKey(event)">
+                            <button type="button" class="bte-scan-btn" onclick="_drScan()" title="Escanear código de barras / QR code">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button onclick="_drReceberCodigo()" class="ant-submit-btn">Receber</button>
+                    <div id="dr-msg" style="display:none;margin-top:14px"></div>
+                </div>
+
+                <div class="ant-historico-section">
+                    <div class="ant-sol-title" id="dr-pend-total">Pendentes de recebimento</div>
+                    <div class="fechamento-empty" id="dr-pend-empty">Carregando...</div>
+                    <div id="dr-pend-lista" style="display:none">
+                        <div id="dr-pend-cards"></div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-devolucao-receber -->
 
         <!-- TELA BAIXAS TOTAL EXPRESS — ADMIN/FINANCE/DEV -->
         <div id="tela-admin-baixas-te" class="view tela-full">

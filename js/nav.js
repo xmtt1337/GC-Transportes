@@ -28,6 +28,7 @@ const _TELA_TITULOS = {
     "tela-devolucao-nova":       "Nova Devolução",
     "tela-devolucao-pendentes":  "Devoluções Pendentes",
     "tela-devolucao-enviadas":   "Devoluções Enviadas",
+    "tela-devolucao-receber":    "Receber Devoluções",
     "tela-videira-alimentar":    "Alimentar Fechamento",
     "tela-videira-painel":       "Meu Fechamento",
     "tela-videira-dash":         "Dashboard",
