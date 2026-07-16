@@ -1803,6 +1803,57 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     .adm-usr-form-grid { grid-template-columns: 1fr 1fr; }
 }
 
+/* ===== RELATÓRIO DETALHADO POR DRIVER (modal) ===== */
+#modal-relatorio-driver .usr-modal { max-width: 540px; }
+#rd-body { max-height: 55vh; overflow-y: auto; margin: 14px 0 4px; }
+.rd-chart-card {
+    display: flex; align-items: center; gap: 18px;
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+    padding: 14px; margin-bottom: 10px;
+}
+.rd-donut { width: 110px; height: 110px; position: relative; flex-shrink: 0; }
+.rd-donut-center {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; pointer-events: none;
+}
+.rd-donut-pct { font-size: 17px; font-weight: 700; }
+.rd-donut-sub { font-size: 9.5px; color: #64748b; }
+.rd-legend { flex: 1; min-width: 0; }
+.rd-leg-title {
+    font-size: 11px; font-weight: 700; color: #475569;
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;
+}
+.rd-leg-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #94a3b8; padding: 3px 0; }
+.rd-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.rd-leg-nome { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-leg-qtd { color: #e2e8f0; font-weight: 700; }
+.rd-leg-pct { color: #64748b; min-width: 48px; text-align: right; }
+.rd-transp-card { border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.rd-transp-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 6px 10px; margin-bottom: 8px; flex-wrap: wrap;
+}
+.rd-transp-nome { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #e2e8f0; font-weight: 700; }
+.rd-transp-tot { font-size: 13px; color: #94a3b8; white-space: nowrap; }
+.rd-transp-tot strong { color: #e2e8f0; }
+.rd-prazo-row { display: flex; align-items: center; gap: 6px 14px; font-size: 12px; padding: 0 0 8px 17px; flex-wrap: wrap; }
+.rd-usr-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; font-size: 12.5px; padding: 4px 0 4px 17px; color: #94a3b8;
+}
+.rd-usr-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rd-usr-val { flex-shrink: 0; }
+@media (max-width: 680px) {
+    #modal-relatorio-driver { padding: 12px; }
+    #modal-relatorio-driver .usr-modal { padding: 22px 16px; }
+    #rd-body { max-height: 62vh; }
+    .rd-chart-card { flex-direction: column; gap: 12px; padding: 16px 14px; }
+    .rd-donut { width: 132px; height: 132px; }
+    .rd-donut-pct { font-size: 20px; }
+    .rd-donut-sub { font-size: 10.5px; }
+    .rd-legend { width: 100%; }
+}
+
 /* ===== NOTAS FISCAIS STATUS ===== */
 .nf-status-list { display: flex; flex-direction: column; gap: 10px; }
 .nf-status-card {

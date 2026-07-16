@@ -2139,10 +2139,10 @@ if (location.hostname === "xmtt1337.github.io") {
 
 <!-- MODAL: RELATÓRIO DETALHADO DO DRIVER (Meus Fechamentos) -->
 <div class="usr-modal-overlay" id="modal-relatorio-driver" onclick="_fecharModalSeBackdrop(event,'modal-relatorio-driver')">
-    <div class="usr-modal" style="max-width:540px;width:calc(100% - 32px)">
+    <div class="usr-modal">
         <div class="usr-modal-title">Relatório detalhado</div>
         <div class="usr-modal-sub" id="rd-sub"></div>
-        <div id="rd-body" style="max-height:55vh;overflow-y:auto;margin:14px 0 4px"></div>
+        <div id="rd-body"></div>
         <div class="usr-modal-btns">
             <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-relatorio-driver')">Fechar</button>
             <button class="usr-modal-btn-primary" id="rd-btn-baixar" onclick="_baixarRelatorioDriver()" disabled>

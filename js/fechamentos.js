@@ -369,24 +369,24 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
         const pctFora   = totPrazo ? ((totFora   / totPrazo) * 100).toFixed(1) : "0.0";
 
         const legenda = (cor, nome, qtd, pct) => `
-            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#94a3b8;padding:3px 0">
-                <span style="width:9px;height:9px;border-radius:50%;background:${cor};flex-shrink:0"></span>
-                <span style="flex:1">${nome}</span>
-                <strong style="color:#e2e8f0">${qtd}</strong>
-                ${pct !== null ? `<span style="color:#64748b;min-width:48px;text-align:right">${pct}%</span>` : ""}
+            <div class="rd-leg-row">
+                <span class="rd-dot" style="background:${cor}"></span>
+                <span class="rd-leg-nome">${nome}</span>
+                <span class="rd-leg-qtd">${qtd}</span>
+                ${pct !== null ? `<span class="rd-leg-pct">${pct}%</span>` : ""}
             </div>`;
 
         const chartHtml = (temCamposPrazo && totPrazo) ? `
-            <div style="display:flex;align-items:center;gap:18px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:10px">
-                <div style="width:110px;height:110px;position:relative;flex-shrink:0">
+            <div class="rd-chart-card">
+                <div class="rd-donut">
                     <canvas id="rd-pie"></canvas>
-                    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
-                        <div style="font-size:17px;font-weight:700;color:${totFora > totDentro ? "#ef4444" : "#22c55e"}">${pctDentro}%</div>
-                        <div style="font-size:9.5px;color:#64748b">no prazo</div>
+                    <div class="rd-donut-center">
+                        <div class="rd-donut-pct" style="color:${totFora > totDentro ? "#ef4444" : "#22c55e"}">${pctDentro}%</div>
+                        <div class="rd-donut-sub">no prazo</div>
                     </div>
                 </div>
-                <div style="flex:1;min-width:0">
-                    <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Prazo de entrega</div>
+                <div class="rd-legend">
+                    <div class="rd-leg-title">Prazo de entrega</div>
                     ${legenda("#22c55e", "Dentro do prazo", totDentro, pctDentro)}
                     ${legenda("#ef4444", "Fora do prazo", totFora, pctFora)}
                 </div>
@@ -397,23 +397,20 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
             const cor   = _REL_DRIVER_CORES[t.transportadora] || "#3a86ff";
             const temPrazo = ((t.dentro_prazo || 0) + (t.fora_prazo || 0)) > 0;
             return `
-            <div style="border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:10px">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
-                    <div style="display:flex;align-items:center;gap:8px">
-                        <span style="width:9px;height:9px;border-radius:50%;background:${cor};flex-shrink:0"></span>
-                        <strong style="font-size:14px;color:#e2e8f0">${label}</strong>
-                    </div>
-                    <div style="font-size:13px;color:#94a3b8">${t.quantidade} entrega${t.quantidade !== 1 ? "s" : ""} · <strong style="color:#e2e8f0">${t.valor}</strong></div>
+            <div class="rd-transp-card">
+                <div class="rd-transp-head">
+                    <div class="rd-transp-nome"><span class="rd-dot" style="background:${cor}"></span>${label}</div>
+                    <div class="rd-transp-tot">${t.quantidade} entrega${t.quantidade !== 1 ? "s" : ""} · <strong>${t.valor}</strong></div>
                 </div>
                 ${temPrazo ? `
-                <div style="display:flex;align-items:center;gap:14px;font-size:12px;padding:0 0 8px 17px">
+                <div class="rd-prazo-row">
                     <span style="color:#22c55e">✓ ${t.dentro_prazo} no prazo</span>
                     <span style="color:${t.fora_prazo ? "#ef4444" : "#64748b"}">✗ ${t.fora_prazo} fora do prazo</span>
                 </div>` : ""}
                 ${t.usuarios.map(u => `
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0 4px 17px;color:#94a3b8">
-                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.usuario}</span>
-                        <span style="flex-shrink:0">${u.quantidade} · ${u.valor}</span>
+                    <div class="rd-usr-row">
+                        <span class="rd-usr-nome">${u.usuario}</span>
+                        <span class="rd-usr-val">${u.quantidade} · ${u.valor}</span>
                     </div>`).join("")}
             </div>`;
         }).join("");
@@ -429,18 +426,13 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
                 type: "doughnut",
                 data: {
                     labels: nomes,
-                    datasets: [{ data: dados, backgroundColor: cores, borderColor: "#0b0f18", borderWidth: 2, hoverOffset: 4 }]
+                    datasets: [{ data: dados, backgroundColor: cores, borderColor: "#0b0f18", borderWidth: 2 }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false, cutout: "70%",
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: ctx => {
-                            const tot = dados.reduce((a, b) => a + b, 0);
-                            const pct = tot ? ((ctx.raw / tot) * 100).toFixed(1) : "0.0";
-                            return ` ${ctx.raw} (${pct}%)`;
-                        }}}
-                    }
+                    // Tooltip desligado: ao passar o mouse ele cobria o percentual do
+                    // centro, e a legenda ao lado já mostra os mesmos números.
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
                 }
             });
         }
