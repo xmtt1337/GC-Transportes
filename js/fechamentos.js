@@ -363,12 +363,12 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
                 ${pct !== null ? `<span style="color:#64748b;min-width:48px;text-align:right">${pct}%</span>` : ""}
             </div>`;
 
-        const chartHtml = temCamposPrazo ? `
+        const chartHtml = (temCamposPrazo && totPrazo) ? `
             <div style="display:flex;align-items:center;gap:18px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:10px">
                 <div style="width:110px;height:110px;position:relative;flex-shrink:0">
                     <canvas id="rd-pie"></canvas>
                     <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
-                        <div style="font-size:17px;font-weight:700;color:${!totPrazo ? "#64748b" : (totFora > totDentro ? "#ef4444" : "#22c55e")}">${totPrazo ? pctDentro + "%" : "—"}</div>
+                        <div style="font-size:17px;font-weight:700;color:${totFora > totDentro ? "#ef4444" : "#22c55e"}">${pctDentro}%</div>
                         <div style="font-size:9.5px;color:#64748b">no prazo</div>
                     </div>
                 </div>
@@ -376,14 +376,13 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
                     <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Prazo de entrega</div>
                     ${legenda("#22c55e", "Dentro do prazo", totDentro, pctDentro)}
                     ${legenda("#ef4444", "Fora do prazo", totFora, pctFora)}
-                    ${totSem ? legenda("#64748b", "Sem informação", totSem, null) : ""}
                 </div>
             </div>` : "";
 
         body.innerHTML = chartHtml + lista.map(t => {
             const label = _REL_DRIVER_LABELS[t.transportadora] || t.transportadora;
             const cor   = _REL_DRIVER_CORES[t.transportadora] || "#3a86ff";
-            const temPrazo = t.dentro_prazo !== undefined && ((t.dentro_prazo || 0) + (t.fora_prazo || 0) + (t.sem_prazo || 0)) > 0;
+            const temPrazo = ((t.dentro_prazo || 0) + (t.fora_prazo || 0)) > 0;
             return `
             <div style="border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:10px">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
@@ -397,7 +396,6 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
                 <div style="display:flex;align-items:center;gap:14px;font-size:12px;padding:0 0 8px 17px">
                     <span style="color:#22c55e">✓ ${t.dentro_prazo} no prazo</span>
                     <span style="color:${t.fora_prazo ? "#ef4444" : "#64748b"}">✗ ${t.fora_prazo} fora do prazo</span>
-                    ${t.sem_prazo ? `<span style="color:#64748b">${t.sem_prazo} sem info</span>` : ""}
                 </div>` : ""}
                 ${t.usuarios.map(u => `
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0 4px 17px;color:#94a3b8">
@@ -407,14 +405,13 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
             </div>`;
         }).join("");
 
-        if (temCamposPrazo && (totPrazo + totSem) > 0) {
+        if (temCamposPrazo && totPrazo > 0) {
             if (_relDriverChart) { _relDriverChart.destroy(); _relDriverChart = null; }
             const dados  = [];
             const cores  = [];
             const nomes  = [];
             if (totDentro) { dados.push(totDentro); cores.push("#22c55e"); nomes.push("Dentro do prazo"); }
             if (totFora)   { dados.push(totFora);   cores.push("#ef4444"); nomes.push("Fora do prazo"); }
-            if (totSem)    { dados.push(totSem);    cores.push("#64748b"); nomes.push("Sem informação"); }
             _relDriverChart = new Chart(document.getElementById("rd-pie").getContext("2d"), {
                 type: "doughnut",
                 data: {
