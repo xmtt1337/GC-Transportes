@@ -289,27 +289,34 @@ let _relDriverArquivo = "Relatorio.xlsx";
 const _REL_DRIVER_LABELS = { "JET": "J&T", "Imile": "iMile" };
 const _REL_DRIVER_CORES  = { "Loggi": "#12A5E8", "Anjun": "#22C55E", "Imile": "#9333EA", "JET": "#EF4444", "Total Express": "#3a86ff" };
 
-// Painel do entregador (Meus Fechamentos) — usa o período selecionado na tela
-function abrirRelatorioDriver() {
+// Painel do entregador (Meus Fechamentos) — usa o período selecionado na tela.
+// transp (opcional) = mostra só aquela transportadora (clique direto no card dela).
+function abrirRelatorioDriver(transp) {
     if (!_fQuinzena) return;
+    const label  = transp ? (_REL_DRIVER_LABELS[transp] || transp) : null;
+    const sufixo = transp ? `_${label.replace("&", "e").replace(/\s+/g, "")}` : "";
     _abrirRelatorioDriverCom(
         `${API}/painel/relatorio-driver?mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}`,
-        `${MESES[_fMes - 1]} / ${_fAno} — ${_fQuinzena}ª quinzena`,
-        `Relatorio_${String(_fMes).padStart(2, "0")}-${_fAno}_Q${_fQuinzena}.xlsx`
+        `${label ? label + " — " : ""}${MESES[_fMes - 1]} / ${_fAno} — ${_fQuinzena}ª quinzena`,
+        `Relatorio${sufixo}_${String(_fMes).padStart(2, "0")}-${_fAno}_Q${_fQuinzena}.xlsx`,
+        transp
     );
 }
 
 // Visão do admin (Fechamento → Pesquisar) — mesmo modal, para o entregador selecionado
-function abrirRelatorioDriverAdmin() {
+function abrirRelatorioDriverAdmin(transp) {
     if (!_admFQuinzena || !_admFEntregador) return;
+    const label  = transp ? (_REL_DRIVER_LABELS[transp] || transp) : null;
+    const sufixo = transp ? `_${label.replace("&", "e").replace(/\s+/g, "")}` : "";
     _abrirRelatorioDriverCom(
         `${API}/admin/relatorio-driver?mes=${_admFMes}&ano=${_admFAno}&quinzena=${_admFQuinzena}&entregador=${encodeURIComponent(_admFEntregador)}`,
-        `${_admFEntregador} — ${MESES[_admFMes - 1]} / ${_admFAno} — ${_admFQuinzena}ª quinzena`,
-        `Relatorio_${_admFEntregador.replace(/[\\/:*?"<>|]/g, "")}_${String(_admFMes).padStart(2, "0")}-${_admFAno}_Q${_admFQuinzena}.xlsx`
+        `${_admFEntregador} — ${label ? label + " — " : ""}${MESES[_admFMes - 1]} / ${_admFAno} — ${_admFQuinzena}ª quinzena`,
+        `Relatorio_${_admFEntregador.replace(/[\\/:*?"<>|]/g, "")}${sufixo}_${String(_admFMes).padStart(2, "0")}-${_admFAno}_Q${_admFQuinzena}.xlsx`,
+        transp
     );
 }
 
-function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo) {
+function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
     _relDriverDados   = null;
     _relDriverArquivo = nomeArquivo;
     const body = document.getElementById("rd-body");
@@ -327,13 +334,16 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo) {
             body.innerHTML = `<div style="color:#ef4444;font-size:13px;padding:24px 0;text-align:center">${b.error || "Erro ao carregar o relatório."}</div>`;
             return;
         }
-        if (!b.transportadoras || !b.transportadoras.length) {
-            body.innerHTML = `<div style="color:#64748b;font-size:13px;padding:24px 0;text-align:center">Nenhuma entrega sua encontrada nos relatórios desse período.</div>`;
+        let lista = b.transportadoras || [];
+        if (filtroTransp) lista = lista.filter(t => t.transportadora === filtroTransp);
+        if (!lista.length) {
+            const onde = filtroTransp ? `na ${_REL_DRIVER_LABELS[filtroTransp] || filtroTransp}` : "nos relatórios";
+            body.innerHTML = `<div style="color:#64748b;font-size:13px;padding:24px 0;text-align:center">Nenhuma entrega encontrada ${onde} nesse período.</div>`;
             return;
         }
-        _relDriverDados = b;
+        _relDriverDados = { transportadoras: lista };
         document.getElementById("rd-btn-baixar").disabled = false;
-        body.innerHTML = b.transportadoras.map(t => {
+        body.innerHTML = lista.map(t => {
             const label = _REL_DRIVER_LABELS[t.transportadora] || t.transportadora;
             const cor   = _REL_DRIVER_CORES[t.transportadora] || "#3a86ff";
             return `
