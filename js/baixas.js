@@ -483,7 +483,12 @@ const _BTE_SCAN_AREA_H = 0.20;
 const _BTE_DETECT_W = 0.96;
 const _BTE_DETECT_H = 0.45;
 
-function _bteAbrirScanner() {
+// callback opcional: outras telas (ex.: Devoluções) reusam o mesmo scanner e recebem
+// o texto lido, em vez do comportamento padrão (preencher o campo das baixas).
+let _bteScanCallback = null;
+
+function _bteAbrirScanner(callback) {
+    _bteScanCallback = typeof callback === "function" ? callback : null;
     if (document.getElementById("bte-scan-overlay")) return;
     if (typeof ZXingBrowser === "undefined") {
         gcAlert("Leitor de código indisponível no momento. Digite o código manualmente.");
@@ -580,8 +585,10 @@ function _bteScanLoop() {
     _bteScanDecodificar(_bteScanCanvas).then(texto => {
         if (!_bteScanReader) return; // scanner foi fechado enquanto decodificava
         if (texto) {
-            document.getElementById("bte-codigo").value = texto;
+            const cb = _bteScanCallback; // guarda antes: fechar o scanner limpa o callback
             _bteFecharScanner();
+            if (cb) { cb(texto); return; }
+            document.getElementById("bte-codigo").value = texto;
             _bteVerificarCodigo();
             return;
         }
@@ -679,8 +686,9 @@ function _bteScanVisibilidade() {
 function _bteFecharScanner() {
     if (_bteScanTimer) { clearTimeout(_bteScanTimer); _bteScanTimer = null; }
     if (_bteScanStream) { _bteScanStream.getTracks().forEach(t => t.stop()); _bteScanStream = null; }
-    _bteScanReader = null;
-    _bteDetector   = null;
+    _bteScanReader   = null;
+    _bteDetector     = null;
+    _bteScanCallback = null;
     const overlay = document.getElementById("bte-scan-overlay");
     if (overlay) overlay.remove();
     document.removeEventListener("keydown", _bteScanEscKey);

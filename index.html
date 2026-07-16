@@ -158,6 +158,22 @@ if (location.hostname === "xmtt1337.github.io") {
             <li><a href="#" data-rota="Baixas/TotalExpress" onclick="abrirBaixaTotalExpress(event)">Total Express</a></li>
         </ul>
 
+        <li class="menu-item" data-menu="devolucoes" id="menu-devolucoes" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+            <span class="label">Devoluções</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Devoluções</span>
+        </li>
+        <ul class="submenu" data-menu="devolucoes" id="submenu-devolucoes" style="display:none">
+            <li><a href="#" data-rota="Devolucoes/Nova" onclick="abrirDevolucaoNova(event)">Nova</a></li>
+            <li><a href="#" data-rota="Devolucoes/Pendentes" onclick="abrirDevolucoesPendentes(event)">Pendentes</a></li>
+            <li><a href="#" data-rota="Devolucoes/Enviadas" onclick="abrirDevolucoesEnviadas(event)">Enviado</a></li>
+        </ul>
+
         <li class="menu-item" data-menu="torrecontrole" id="menu-torrecontrole" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2v6"/>
@@ -1628,6 +1644,101 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-baixa-te -->
 
+        <!-- TELA DEVOLUÇÕES — NOVA (ENTREGADOR) -->
+        <div id="tela-devolucao-nova" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div class="ant-form-wrap">
+                    <div class="ant-form-title">Nova Devolução</div>
+
+                    <div class="ant-field" style="margin-bottom:14px">
+                        <label class="ant-label">Foto do pacote *</label>
+                        <div class="bte-foto-row">
+                            <button type="button" class="bte-foto-btn" onclick="_devTirarFoto()">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                Tirar foto do pacote
+                            </button>
+                            <input type="file" id="dev-foto-input" accept="image/*" capture="environment" style="display:none" onchange="_devFotoSelecionada(this)">
+                        </div>
+                        <img id="dev-foto-preview" class="bte-foto-preview" style="display:none">
+                    </div>
+
+                    <div class="ant-field" style="margin-bottom:14px">
+                        <label class="ant-label">Motivo da devolução *</label>
+                        <select id="dev-motivo" class="ant-input">
+                            <option value="">Selecione o motivo</option>
+                            <option value="Fora de rota">Fora de rota</option>
+                            <option value="Recusado/Endereço não encontrado">Recusado/Endereço não encontrado</option>
+                            <option value="Avaria">Avaria</option>
+                        </select>
+                    </div>
+
+                    <div class="ant-field" style="margin-bottom:14px">
+                        <label class="ant-label">Transportadora *</label>
+                        <select id="dev-transportadora" class="ant-input">
+                            <option value="">Selecione a transportadora</option>
+                            <option value="Loggi">Loggi</option>
+                            <option value="Shopee">Shopee</option>
+                            <option value="J&T Express">J&amp;T Express</option>
+                            <option value="Imile">Imile</option>
+                            <option value="Anjun">Anjun</option>
+                            <option value="Total Express">Total Express</option>
+                        </select>
+                    </div>
+
+                    <div class="ant-field" style="margin-bottom:14px" id="dev-codigo-field">
+                        <label class="ant-label">Código do pacote *</label>
+                        <div class="bte-codigo-row">
+                            <input type="text" id="dev-codigo" class="ant-input" placeholder="Digite ou escaneie o código" style="flex:1">
+                            <button type="button" class="bte-scan-btn" onclick="_devAbrirScanner()" title="Escanear código de barras / QR code">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="ant-field" style="margin-bottom:14px">
+                        <label style="display:flex;align-items:center;gap:9px;font-size:13px;color:#94a3b8;cursor:pointer">
+                            <input type="checkbox" id="dev-sem-codigo" onchange="_devToggleSemCodigo()" style="width:16px;height:16px;accent-color:#3a86ff;cursor:pointer">
+                            Não foi possível identificar o código
+                        </label>
+                    </div>
+
+                    <div class="ant-field" style="margin-bottom:14px;display:none" id="dev-descricao-field">
+                        <label class="ant-label">Informações do pacote *</label>
+                        <textarea id="dev-descricao" class="ant-input" rows="3" style="resize:vertical" placeholder="Descreva o que estiver disponível: nome, produto ou endereço"></textarea>
+                    </div>
+
+                    <div id="dev-form-msg" class="ant-form-msg" style="display:none"></div>
+                    <button onclick="_devEnviar()" class="ant-submit-btn" id="dev-submit-btn">Enviar Devolução</button>
+                </div>
+            </div>
+        </div><!-- /tela-devolucao-nova -->
+
+        <!-- TELA DEVOLUÇÕES — PENDENTES (fila offline do celular) -->
+        <div id="tela-devolucao-pendentes" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div class="fechamento-empty" id="dev-pend-empty">Carregando...</div>
+                <div id="dev-pend-lista" style="display:none">
+                    <div id="dev-pend-aviso"></div>
+                    <div id="dev-pend-cards"></div>
+                </div>
+            </div>
+        </div><!-- /tela-devolucao-pendentes -->
+
+        <!-- TELA DEVOLUÇÕES — ENVIADO (histórico do servidor) -->
+        <div id="tela-devolucao-enviadas" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div class="fechamento-empty" id="dev-env-empty">Carregando...</div>
+                <div id="dev-env-resultado" style="display:none">
+                    <table class="ant-hist-table">
+                        <thead>
+                            <tr><th>Código / Descrição</th><th>Transportadora</th><th>Motivo</th><th>Data/Hora</th></tr>
+                        </thead>
+                        <tbody id="dev-env-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div><!-- /tela-devolucao-enviadas -->
+
         <!-- TELA BAIXAS TOTAL EXPRESS — ADMIN/FINANCE/DEV -->
         <div id="tela-admin-baixas-te" class="view tela-full">
             <div class="fech-header">
@@ -1776,6 +1887,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="js/antecipacoes.js"></script>
 <script src="js/antecipacoes-admin.js"></script>
 <script src="js/baixas.js"></script>
+<script src="js/devolucoes.js"></script>
 <script src="js/videira.js"></script>
 <script src="js/planejamento-videira.js"></script>
 <script src="js/torre.js"></script>
