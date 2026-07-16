@@ -384,6 +384,70 @@ function _drReceber(body) {
     });
 }
 
+// ───── REGISTRO (todas as devoluções — equipe da base) ─────
+let _drRegistroDados = [];
+
+function abrirDevolucoesRegistro(event) {
+    if (event) event.preventDefault();
+    document.getElementById("drr-busca").value = "";
+    mostrarTela("tela-devolucao-registro");
+    _drrCarregar();
+}
+
+function _drrCarregar() {
+    const empty  = document.getElementById("drr-empty");
+    const result = document.getElementById("drr-resultado");
+    empty.innerText = "Carregando...";
+    empty.style.display = "";
+    result.style.display = "none";
+
+    fetch(`${API}/devolucoes/registro`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(rows => {
+            if (!Array.isArray(rows) || !rows.length) {
+                empty.innerText = "Nenhuma devolução registrada ainda.";
+                return;
+            }
+            _drRegistroDados = rows;
+            empty.style.display = "none";
+            result.style.display = "";
+            _drrRenderizar(rows);
+        })
+        .catch(() => {
+            empty.innerText = "Erro ao conectar com o servidor.";
+        });
+}
+
+function _drrRenderizar(rows) {
+    document.getElementById("drr-total").innerText =
+        `${rows.length} devoluç${rows.length !== 1 ? "ões" : "ão"}`;
+    document.getElementById("drr-tbody").innerHTML = rows.map(r => `
+        <tr>
+            <td>${r.codigo || (r.descricao ? `<span style="color:#94a3b8">${r.descricao}</span>` : "—")}</td>
+            <td>${r.transportadora || "—"}</td>
+            <td>${r.motivo || "—"}</td>
+            <td>
+                <div style="color:#e2e8f0">${r.usuario_nome || "—"}</div>
+                <div style="font-size:11.5px;color:#64748b">${r.data_hora_brasilia || "—"}</div>
+            </td>
+            <td>${r.status === "recebido" ? `
+                <div style="color:#22c55e;font-weight:600">${r.recebido_por || "Recebido"}</div>
+                <div style="font-size:11.5px;color:#64748b">${r.recebido_data_hora_brasilia || "—"}</div>`
+                : _devStatusBadge(r)}
+            </td>
+        </tr>
+    `).join("");
+}
+
+function _drrFiltrar() {
+    const q = document.getElementById("drr-busca").value.trim().toLowerCase();
+    if (!q) return _drrRenderizar(_drRegistroDados);
+    _drrRenderizar(_drRegistroDados.filter(r =>
+        [r.codigo, r.descricao, r.transportadora, r.motivo, r.usuario_nome, r.recebido_por]
+            .some(v => String(v || "").toLowerCase().includes(q))
+    ));
+}
+
 function _drCarregarPendentes() {
     const empty = document.getElementById("dr-pend-empty");
     const lista = document.getElementById("dr-pend-lista");

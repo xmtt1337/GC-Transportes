@@ -84,6 +84,7 @@ if (location.hostname === "xmtt1337.github.io") {
             </li>
             <ul class="sub-submenu" id="subgroup-devolucoes-op">
                 <li><a href="#" data-rota="Operacao/DevolucoesReceber" onclick="abrirDevolucoesReceber(event)">Receber</a></li>
+                <li><a href="#" data-rota="Operacao/DevolucoesRegistro" onclick="abrirDevolucoesRegistro(event)">Registro</a></li>
             </ul>
         </ul>
 
@@ -1772,6 +1773,28 @@ if (location.hostname === "xmtt1337.github.io") {
                 </div>
             </div>
         </div><!-- /tela-devolucao-receber -->
+
+        <!-- TELA DEVOLUÇÕES — REGISTRO GERAL (EQUIPE DA BASE) -->
+        <div id="tela-devolucao-registro" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:14px">
+                    <span id="drr-total" style="font-size:13px;color:#4a6a8a;font-weight:500"></span>
+                    <div class="adm-search-input-area" style="max-width:300px">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="drr-busca" placeholder="Buscar por código, entregador, motivo..." oninput="_drrFiltrar()">
+                    </div>
+                </div>
+                <div class="fechamento-empty" id="drr-empty">Carregando...</div>
+                <div id="drr-resultado" style="display:none">
+                    <table class="ant-hist-table">
+                        <thead>
+                            <tr><th>Código / Descrição</th><th>Transportadora</th><th>Motivo</th><th>Registrada por</th><th>Recebida por</th></tr>
+                        </thead>
+                        <tbody id="drr-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div><!-- /tela-devolucao-registro -->
 
         <!-- TELA BAIXAS TOTAL EXPRESS — ADMIN/FINANCE/DEV -->
         <div id="tela-admin-baixas-te" class="view tela-full">
