@@ -282,6 +282,72 @@ function irParaFechamentoPeriodo(mes, ano, quinzena) {
     }
 }
 
+// ───── RELATÓRIO DETALHADO POR DRIVER (planilhas reais das transportadoras) ─────
+let _relDriverDados = null;
+
+const _REL_DRIVER_LABELS = { "JET": "J&T", "Imile": "iMile" };
+const _REL_DRIVER_CORES  = { "Loggi": "#12A5E8", "Anjun": "#22C55E", "Imile": "#9333EA", "JET": "#EF4444", "Total Express": "#3a86ff" };
+
+function abrirRelatorioDriver() {
+    if (!_fQuinzena) return;
+    _relDriverDados = null;
+    const body = document.getElementById("rd-body");
+    document.getElementById("rd-sub").innerText = `${MESES[_fMes - 1]} / ${_fAno} — ${_fQuinzena}ª quinzena`;
+    document.getElementById("rd-btn-baixar").disabled = true;
+    body.innerHTML = `<div style="color:#64748b;font-size:13px;padding:24px 0;text-align:center">Carregando relatório...</div>`;
+    _abrirModal("modal-relatorio-driver");
+
+    fetch(`${API}/painel/relatorio-driver?mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}`, {
+        headers: { "Authorization": "Bearer " + token }
+    })
+    .then(res => res.json().then(b => ({ ok: res.ok, b })))
+    .then(({ ok, b }) => {
+        if (!ok) {
+            body.innerHTML = `<div style="color:#ef4444;font-size:13px;padding:24px 0;text-align:center">${b.error || "Erro ao carregar o relatório."}</div>`;
+            return;
+        }
+        if (!b.transportadoras || !b.transportadoras.length) {
+            body.innerHTML = `<div style="color:#64748b;font-size:13px;padding:24px 0;text-align:center">Nenhuma entrega sua encontrada nos relatórios desse período.</div>`;
+            return;
+        }
+        _relDriverDados = b;
+        document.getElementById("rd-btn-baixar").disabled = false;
+        body.innerHTML = b.transportadoras.map(t => {
+            const label = _REL_DRIVER_LABELS[t.transportadora] || t.transportadora;
+            const cor   = _REL_DRIVER_CORES[t.transportadora] || "#3a86ff";
+            return `
+            <div style="border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <span style="width:9px;height:9px;border-radius:50%;background:${cor};flex-shrink:0"></span>
+                        <strong style="font-size:14px;color:#e2e8f0">${label}</strong>
+                    </div>
+                    <div style="font-size:13px;color:#94a3b8">${t.quantidade} entrega${t.quantidade !== 1 ? "s" : ""} · <strong style="color:#e2e8f0">${t.valor}</strong></div>
+                </div>
+                ${t.usuarios.map(u => `
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0 4px 17px;color:#94a3b8">
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.usuario}</span>
+                        <span style="flex-shrink:0">${u.quantidade} · ${u.valor}</span>
+                    </div>`).join("")}
+            </div>`;
+        }).join("");
+    })
+    .catch(() => {
+        body.innerHTML = `<div style="color:#ef4444;font-size:13px;padding:24px 0;text-align:center">Erro ao conectar com o servidor.</div>`;
+    });
+}
+
+function _baixarRelatorioDriver() {
+    if (!_relDriverDados) return;
+    const wb = XLSX.utils.book_new();
+    _relDriverDados.transportadoras.forEach(t => {
+        const ws = XLSX.utils.aoa_to_sheet([t.cabecalho, ...t.linhas]);
+        const nomeAba = (_REL_DRIVER_LABELS[t.transportadora] || t.transportadora).slice(0, 31);
+        XLSX.utils.book_append_sheet(wb, ws, nomeAba);
+    });
+    XLSX.writeFile(wb, `Relatorio_${String(_fMes).padStart(2, "0")}-${_fAno}_Q${_fQuinzena}.xlsx`);
+}
+
 function irParaAdminFechamentoPeriodo(mes, ano, quinzena) {
     _admFMes = mes;
     _admFAno = ano;
