@@ -288,7 +288,7 @@ let _relDriverArquivo = "Relatorio.xlsx";
 let _relDriverChart   = null;
 
 const _REL_DRIVER_LABELS = { "JET": "J&T", "Imile": "iMile" };
-const _REL_DRIVER_CORES  = { "Loggi": "#12A5E8", "Anjun": "#22C55E", "Imile": "#9333EA", "JET": "#EF4444", "Total Express": "#3a86ff" };
+const _REL_DRIVER_CORES  = { "Loggi": "#12A5E8", "Anjun": "#22C55E", "Imile": "#9333EA", "JET": "#EF4444", "Total Express": "#3a86ff", "Shopee": "#F97316" };
 
 // Nome do arquivo baixado, bem descritivo:
 // "Relatorio Fechamento - <Entregador> - <Transportadora|Todas> - 2ª Quinzena Junho 2026.xlsx"
@@ -354,7 +354,9 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
             return;
         }
         _relDriverDados = { transportadoras: lista };
-        document.getElementById("rd-btn-baixar").disabled = false;
+        // Só habilita o download se houver linhas detalhadas (a Shopee, por ora,
+        // vem só com o resumo — sem relatório completo pra baixar)
+        document.getElementById("rd-btn-baixar").disabled = !lista.some(t => t.linhas && t.linhas.length);
 
         // Resumo geral de prazo (soma do que está sendo exibido). Os campos só existem
         // na resposta do backend atualizado — se não vierem, a seção não é montada.
@@ -450,7 +452,9 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
 
 function _baixarRelatorioDriver() {
     if (!_relDriverDados) return;
-    const lista = _relDriverDados.transportadoras;
+    // Só entram no arquivo as transportadoras com relatório completo (com linhas)
+    const lista = _relDriverDados.transportadoras.filter(t => t.linhas && t.linhas.length);
+    if (!lista.length) return;
     const wb = XLSX.utils.book_new();
 
     // Primeira aba "Todas" com tudo junto (união das colunas, na ordem em que aparecem)
