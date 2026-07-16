@@ -75,6 +75,30 @@ function _cfCarregarResumo() {
     });
 }
 
+// Reaplica a tabela de conversão de nomes (fechamento_nomes) nas entregas já salvas
+// desse período — sem precisar reprocessar/reenviar o relatório original.
+function _cfAtualizarNomes() {
+    if (!_cfQuinzena) return;
+    const btn    = document.getElementById("cf-atualizar-nomes-btn");
+    const status = document.getElementById("cf-atualizar-nomes-status");
+    btn.disabled = true;
+    status.innerText = "Atualizando...";
+
+    fetch(`${API}/admin/fechamento/entregas/atualizar-nomes`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena })
+    }).then(r => r.json())
+    .then(d => {
+        btn.disabled = false;
+        if (d.error) { status.innerText = d.error; return; }
+        status.innerText = `${d.atualizados} entrega${d.atualizados !== 1 ? "s" : ""} atualizada${d.atualizados !== 1 ? "s" : ""}.`;
+    }).catch(() => {
+        btn.disabled = false;
+        status.innerText = "Erro ao atualizar.";
+    });
+}
+
 function _cfRenderResumo(rows) {
     const el = document.getElementById("cf-resumo");
     if (!rows.length) {
