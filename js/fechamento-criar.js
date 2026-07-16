@@ -148,7 +148,7 @@ async function _cfArquivoSelecionado(input) {
         const linhas = cfg.parser(grid, cfg);
         if (!linhas.length) throw new Error("Nenhuma linha válida encontrada no arquivo.");
         status.innerHTML = `<div style="color:#64748b;font-size:13px">Enviando ${linhas.length} entregas...</div>`;
-        await _cfEnviarLinhas(linhas);
+        await _cfEnviarLinhas(linhas, cfg.transportadora);
         status.innerHTML = `<div style="color:#22c55e;font-size:13px">✓ ${linhas.length} entregas enviadas com sucesso!</div>`;
         input.value = "";
         _cfCarregarResumo();
@@ -158,11 +158,14 @@ async function _cfArquivoSelecionado(input) {
     }
 }
 
-async function _cfEnviarLinhas(linhas) {
+async function _cfEnviarLinhas(linhas, transportadoraLabel) {
     const res = await fetch(`${API}/admin/fechamento/entregas`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: _cfTranspAtual, linhas })
+        // Manda o mesmo texto ("Shopee CFC") que fica gravado em cada linha — antes mandava
+        // a chave interna (shopee_cfc), que nunca batia com o que estava salvo no banco,
+        // e por isso o reenvio nunca apagava o lote anterior (só empilhava por cima).
+        body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: transportadoraLabel, linhas })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Erro ao enviar.");
