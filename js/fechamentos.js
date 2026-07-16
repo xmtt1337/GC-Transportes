@@ -437,8 +437,22 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
 
 function _baixarRelatorioDriver() {
     if (!_relDriverDados) return;
+    const lista = _relDriverDados.transportadoras;
     const wb = XLSX.utils.book_new();
-    _relDriverDados.transportadoras.forEach(t => {
+
+    // Primeira aba "Todas" com tudo junto (união das colunas, na ordem em que aparecem)
+    if (lista.length > 1) {
+        const todasCab = [];
+        lista.forEach(t => t.cabecalho.forEach(c => { if (!todasCab.includes(c)) todasCab.push(c); }));
+        const todasLinhas = [];
+        lista.forEach(t => {
+            const idx = todasCab.map(c => t.cabecalho.indexOf(c));
+            t.linhas.forEach(l => todasLinhas.push(idx.map(i => (i >= 0 ? (l[i] !== undefined ? l[i] : "") : ""))));
+        });
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([todasCab, ...todasLinhas]), "Todas");
+    }
+
+    lista.forEach(t => {
         const ws = XLSX.utils.aoa_to_sheet([t.cabecalho, ...t.linhas]);
         const nomeAba = (_REL_DRIVER_LABELS[t.transportadora] || t.transportadora).slice(0, 31);
         XLSX.utils.book_append_sheet(wb, ws, nomeAba);
