@@ -675,24 +675,30 @@ if (location.hostname === "xmtt1337.github.io") {
                         </div>
                     </div>
 
-                    <div class="painel-section-title">Transportadoras</div>
+                    <div class="painel-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                        Transportadoras
+                        <button onclick="abrirRelatorioDriverAdmin()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;text-transform:none;letter-spacing:normal">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Relatório detalhado
+                        </button>
+                    </div>
                     <div class="painel-transp">
-                        <div class="pt-card pt-card-loggi">
+                        <div class="pt-card pt-card-loggi" onclick="abrirRelatorioDriverAdmin()" style="cursor:pointer">
                             <div class="pt-header">Loggi</div>
                             <div class="pt-row"><span>Valor</span><span id="adm-pt-loggi-v">—</span></div>
                             <div class="pt-row"><span>Entregues</span><span id="adm-pt-loggi-q">—</span></div>
                         </div>
-                        <div class="pt-card pt-card-jt">
+                        <div class="pt-card pt-card-jt" onclick="abrirRelatorioDriverAdmin()" style="cursor:pointer">
                             <div class="pt-header">J&amp;T</div>
                             <div class="pt-row"><span>Valor</span><span id="adm-pt-jt-v">—</span></div>
                             <div class="pt-row"><span>Entregues</span><span id="adm-pt-jt-q">—</span></div>
                         </div>
-                        <div class="pt-card pt-card-imile">
+                        <div class="pt-card pt-card-imile" onclick="abrirRelatorioDriverAdmin()" style="cursor:pointer">
                             <div class="pt-header">iMile</div>
                             <div class="pt-row"><span>Valor</span><span id="adm-pt-imile-v">—</span></div>
                             <div class="pt-row"><span>Entregues</span><span id="adm-pt-imile-q">—</span></div>
                         </div>
-                        <div class="pt-card pt-card-anjun">
+                        <div class="pt-card pt-card-anjun" onclick="abrirRelatorioDriverAdmin()" style="cursor:pointer">
                             <div class="pt-header">Anjun</div>
                             <div class="pt-row"><span>Valor</span><span id="adm-pt-anjun-v">—</span></div>
                             <div class="pt-row"><span>Entregues</span><span id="adm-pt-anjun-q">—</span></div>
@@ -702,7 +708,7 @@ if (location.hostname === "xmtt1337.github.io") {
                             <div class="pt-row"><span>Valor</span><span id="adm-pt-shopee-v">—</span></div>
                             <div class="pt-row"><span>Entregues</span><span id="adm-pt-shopee-q">—</span></div>
                         </div>
-                        <div class="pt-card pt-card-te">
+                        <div class="pt-card pt-card-te" onclick="abrirRelatorioDriverAdmin()" style="cursor:pointer">
                             <div class="pt-header">Total Express</div>
                             <div class="pt-row"><span>Valor</span><span id="adm-pt-totalexpress-v">—</span></div>
                             <div class="pt-row"><span>Entregues</span><span id="adm-pt-totalexpress-q">—</span></div>

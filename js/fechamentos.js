@@ -283,21 +283,42 @@ function irParaFechamentoPeriodo(mes, ano, quinzena) {
 }
 
 // ───── RELATÓRIO DETALHADO POR DRIVER (planilhas reais das transportadoras) ─────
-let _relDriverDados = null;
+let _relDriverDados   = null;
+let _relDriverArquivo = "Relatorio.xlsx";
 
 const _REL_DRIVER_LABELS = { "JET": "J&T", "Imile": "iMile" };
 const _REL_DRIVER_CORES  = { "Loggi": "#12A5E8", "Anjun": "#22C55E", "Imile": "#9333EA", "JET": "#EF4444", "Total Express": "#3a86ff" };
 
+// Painel do entregador (Meus Fechamentos) — usa o período selecionado na tela
 function abrirRelatorioDriver() {
     if (!_fQuinzena) return;
-    _relDriverDados = null;
+    _abrirRelatorioDriverCom(
+        `${API}/painel/relatorio-driver?mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}`,
+        `${MESES[_fMes - 1]} / ${_fAno} — ${_fQuinzena}ª quinzena`,
+        `Relatorio_${String(_fMes).padStart(2, "0")}-${_fAno}_Q${_fQuinzena}.xlsx`
+    );
+}
+
+// Visão do admin (Fechamento → Pesquisar) — mesmo modal, para o entregador selecionado
+function abrirRelatorioDriverAdmin() {
+    if (!_admFQuinzena || !_admFEntregador) return;
+    _abrirRelatorioDriverCom(
+        `${API}/admin/relatorio-driver?mes=${_admFMes}&ano=${_admFAno}&quinzena=${_admFQuinzena}&entregador=${encodeURIComponent(_admFEntregador)}`,
+        `${_admFEntregador} — ${MESES[_admFMes - 1]} / ${_admFAno} — ${_admFQuinzena}ª quinzena`,
+        `Relatorio_${_admFEntregador.replace(/[\\/:*?"<>|]/g, "")}_${String(_admFMes).padStart(2, "0")}-${_admFAno}_Q${_admFQuinzena}.xlsx`
+    );
+}
+
+function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo) {
+    _relDriverDados   = null;
+    _relDriverArquivo = nomeArquivo;
     const body = document.getElementById("rd-body");
-    document.getElementById("rd-sub").innerText = `${MESES[_fMes - 1]} / ${_fAno} — ${_fQuinzena}ª quinzena`;
+    document.getElementById("rd-sub").innerText = subtitulo;
     document.getElementById("rd-btn-baixar").disabled = true;
     body.innerHTML = `<div style="color:#64748b;font-size:13px;padding:24px 0;text-align:center">Carregando relatório...</div>`;
     _abrirModal("modal-relatorio-driver");
 
-    fetch(`${API}/painel/relatorio-driver?mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}`, {
+    fetch(url, {
         headers: { "Authorization": "Bearer " + token }
     })
     .then(res => res.json().then(b => ({ ok: res.ok, b })))
@@ -345,7 +366,7 @@ function _baixarRelatorioDriver() {
         const nomeAba = (_REL_DRIVER_LABELS[t.transportadora] || t.transportadora).slice(0, 31);
         XLSX.utils.book_append_sheet(wb, ws, nomeAba);
     });
-    XLSX.writeFile(wb, `Relatorio_${String(_fMes).padStart(2, "0")}-${_fAno}_Q${_fQuinzena}.xlsx`);
+    XLSX.writeFile(wb, _relDriverArquivo);
 }
 
 function irParaAdminFechamentoPeriodo(mes, ano, quinzena) {
