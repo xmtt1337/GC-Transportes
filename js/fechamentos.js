@@ -290,16 +290,28 @@ let _relDriverChart   = null;
 const _REL_DRIVER_LABELS = { "JET": "J&T", "Imile": "iMile" };
 const _REL_DRIVER_CORES  = { "Loggi": "#12A5E8", "Anjun": "#22C55E", "Imile": "#9333EA", "JET": "#EF4444", "Total Express": "#3a86ff" };
 
+// Nome do arquivo baixado, bem descritivo:
+// "Relatorio Fechamento - <Entregador> - <Transportadora|Todas> - 2ª Quinzena Junho 2026.xlsx"
+function _relDriverNomeArquivo(entregador, transpLabel, mes, ano, quinzena) {
+    const partes = [
+        "Relatorio Fechamento",
+        entregador || null,
+        transpLabel || "Todas Transportadoras",
+        `${quinzena}ª Quinzena ${MESES[mes - 1]} ${ano}`,
+    ].filter(Boolean);
+    return partes.join(" - ").replace(/[\\/:*?"<>|]/g, "") + ".xlsx";
+}
+
 // Painel do entregador (Meus Fechamentos) — usa o período selecionado na tela.
 // transp (opcional) = mostra só aquela transportadora (clique direto no card dela).
 function abrirRelatorioDriver(transp) {
     if (!_fQuinzena) return;
-    const label  = transp ? (_REL_DRIVER_LABELS[transp] || transp) : null;
-    const sufixo = transp ? `_${label.replace("&", "e").replace(/\s+/g, "")}` : "";
+    const label = transp ? (_REL_DRIVER_LABELS[transp] || transp) : null;
+    const nome  = (window._gcUser && window._gcUser.displayName) || "";
     _abrirRelatorioDriverCom(
         `${API}/painel/relatorio-driver?mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}`,
         `${label ? label + " — " : ""}${MESES[_fMes - 1]} / ${_fAno} — ${_fQuinzena}ª quinzena`,
-        `Relatorio${sufixo}_${String(_fMes).padStart(2, "0")}-${_fAno}_Q${_fQuinzena}.xlsx`,
+        _relDriverNomeArquivo(nome, label, _fMes, _fAno, _fQuinzena),
         transp
     );
 }
@@ -307,12 +319,11 @@ function abrirRelatorioDriver(transp) {
 // Visão do admin (Fechamento → Pesquisar) — mesmo modal, para o entregador selecionado
 function abrirRelatorioDriverAdmin(transp) {
     if (!_admFQuinzena || !_admFEntregador) return;
-    const label  = transp ? (_REL_DRIVER_LABELS[transp] || transp) : null;
-    const sufixo = transp ? `_${label.replace("&", "e").replace(/\s+/g, "")}` : "";
+    const label = transp ? (_REL_DRIVER_LABELS[transp] || transp) : null;
     _abrirRelatorioDriverCom(
         `${API}/admin/relatorio-driver?mes=${_admFMes}&ano=${_admFAno}&quinzena=${_admFQuinzena}&entregador=${encodeURIComponent(_admFEntregador)}`,
         `${_admFEntregador} — ${label ? label + " — " : ""}${MESES[_admFMes - 1]} / ${_admFAno} — ${_admFQuinzena}ª quinzena`,
-        `Relatorio_${_admFEntregador.replace(/[\\/:*?"<>|]/g, "")}${sufixo}_${String(_admFMes).padStart(2, "0")}-${_admFAno}_Q${_admFQuinzena}.xlsx`,
+        _relDriverNomeArquivo(_admFEntregador, label, _admFMes, _admFAno, _admFQuinzena),
         transp
     );
 }
