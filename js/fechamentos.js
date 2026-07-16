@@ -345,7 +345,9 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
         _relDriverDados = { transportadoras: lista };
         document.getElementById("rd-btn-baixar").disabled = false;
 
-        // Resumo geral de prazo (soma do que está sendo exibido)
+        // Resumo geral de prazo (soma do que está sendo exibido). Os campos só existem
+        // na resposta do backend atualizado — se não vierem, a seção não é montada.
+        const temCamposPrazo = lista.some(t => t.dentro_prazo !== undefined);
         const totDentro = lista.reduce((s, t) => s + (t.dentro_prazo || 0), 0);
         const totFora   = lista.reduce((s, t) => s + (t.fora_prazo   || 0), 0);
         const totSem    = lista.reduce((s, t) => s + (t.sem_prazo    || 0), 0);
@@ -361,12 +363,12 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
                 ${pct !== null ? `<span style="color:#64748b;min-width:48px;text-align:right">${pct}%</span>` : ""}
             </div>`;
 
-        const chartHtml = totPrazo ? `
+        const chartHtml = temCamposPrazo ? `
             <div style="display:flex;align-items:center;gap:18px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:10px">
                 <div style="width:110px;height:110px;position:relative;flex-shrink:0">
                     <canvas id="rd-pie"></canvas>
                     <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
-                        <div style="font-size:17px;font-weight:700;color:${totFora > totDentro ? "#ef4444" : "#22c55e"}">${pctDentro}%</div>
+                        <div style="font-size:17px;font-weight:700;color:${!totPrazo ? "#64748b" : (totFora > totDentro ? "#ef4444" : "#22c55e")}">${totPrazo ? pctDentro + "%" : "—"}</div>
                         <div style="font-size:9.5px;color:#64748b">no prazo</div>
                     </div>
                 </div>
@@ -381,7 +383,7 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
         body.innerHTML = chartHtml + lista.map(t => {
             const label = _REL_DRIVER_LABELS[t.transportadora] || t.transportadora;
             const cor   = _REL_DRIVER_CORES[t.transportadora] || "#3a86ff";
-            const temPrazo = (t.dentro_prazo || 0) + (t.fora_prazo || 0) > 0;
+            const temPrazo = t.dentro_prazo !== undefined && ((t.dentro_prazo || 0) + (t.fora_prazo || 0) + (t.sem_prazo || 0)) > 0;
             return `
             <div style="border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:10px">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
@@ -405,15 +407,18 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
             </div>`;
         }).join("");
 
-        if (totPrazo) {
+        if (temCamposPrazo && (totPrazo + totSem) > 0) {
             if (_relDriverChart) { _relDriverChart.destroy(); _relDriverChart = null; }
-            const dados  = [totDentro, totFora];
-            const cores  = ["#22c55e", "#ef4444"];
-            if (totSem) { dados.push(totSem); cores.push("#64748b"); }
+            const dados  = [];
+            const cores  = [];
+            const nomes  = [];
+            if (totDentro) { dados.push(totDentro); cores.push("#22c55e"); nomes.push("Dentro do prazo"); }
+            if (totFora)   { dados.push(totFora);   cores.push("#ef4444"); nomes.push("Fora do prazo"); }
+            if (totSem)    { dados.push(totSem);    cores.push("#64748b"); nomes.push("Sem informação"); }
             _relDriverChart = new Chart(document.getElementById("rd-pie").getContext("2d"), {
                 type: "doughnut",
                 data: {
-                    labels: totSem ? ["Dentro do prazo", "Fora do prazo", "Sem informação"] : ["Dentro do prazo", "Fora do prazo"],
+                    labels: nomes,
                     datasets: [{ data: dados, backgroundColor: cores, borderColor: "#0b0f18", borderWidth: 2, hoverOffset: 4 }]
                 },
                 options: {
