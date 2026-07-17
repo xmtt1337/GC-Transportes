@@ -368,6 +368,44 @@ function _drReceber(body) {
     });
 }
 
+// Foto da devolução sob demanda (mesmo visual do "Ver foto" das baixas)
+function _drVerFoto(id) {
+    if (document.getElementById("dr-foto-overlay")) return;
+    const overlay = document.createElement("div");
+    overlay.id = "dr-foto-overlay";
+    overlay.setAttribute("style", "position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(7,9,14,0.92);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box");
+    overlay.innerHTML = `
+        <div style="max-width:520px;width:100%;background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;box-sizing:border-box;text-align:center">
+            <div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:14px">Foto do pacote</div>
+            <div id="dr-foto-loading" style="color:#64748b;font-size:13px;padding:40px 0">Carregando foto...</div>
+            <img id="dr-foto-img" style="display:none;max-width:100%;max-height:65vh;border-radius:10px">
+            <button id="dr-foto-fechar" style="margin-top:16px;width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Fechar</button>
+        </div>`;
+    document.body.appendChild(overlay);
+    const fechar = () => overlay.remove();
+    overlay.querySelector("#dr-foto-fechar").addEventListener("click", fechar);
+    overlay.addEventListener("click", e => { if (e.target === overlay) fechar(); });
+
+    fetch(`${API}/devolucoes/foto/${id}`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(d => {
+            if (d.error || !d.foto_base64) {
+                document.getElementById("dr-foto-loading").textContent = "Foto não encontrada.";
+                return;
+            }
+            const img = document.getElementById("dr-foto-img");
+            img.src = `data:${d.foto_mime_type || "image/jpeg"};base64,${d.foto_base64}`;
+            img.onload = () => {
+                document.getElementById("dr-foto-loading").style.display = "none";
+                img.style.display = "";
+            };
+        })
+        .catch(() => {
+            const l = document.getElementById("dr-foto-loading");
+            if (l) l.textContent = "Erro ao carregar a foto.";
+        });
+}
+
 // ───── REGISTRO (todas as devoluções — equipe da base) ─────
 let _drRegistroDados = [];
 
@@ -420,6 +458,12 @@ function _drrRenderizar(rows) {
                 <div style="font-size:11.5px;color:#64748b">${r.recebido_data_hora_brasilia || "—"}</div>`
                 : _devStatusBadge(r)}
             </td>
+            <td>${r.tem_foto ? `
+                <button class="abte-foto-btn" onclick="_drVerFoto(${r.id})">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    Ver foto
+                </button>` : `<span style="color:#475569">—</span>`}
+            </td>
         </tr>
     `).join("");
 }
@@ -456,6 +500,11 @@ function _drCarregarPendentes() {
                         <div style="font-size:12.5px;color:#94a3b8;margin-top:2px">${r.transportadora || "—"} · ${r.motivo || "—"}</div>
                         <div style="font-size:11.5px;color:#64748b;margin-top:2px">Registrada por ${r.usuario_nome || "—"} em ${r.data_hora_brasilia || "—"}</div>
                     </div>
+                    ${r.tem_foto ? `
+                    <button class="abte-foto-btn" onclick="_drVerFoto(${r.id})">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        Ver foto
+                    </button>` : ""}
                     <button onclick="_drReceberPorId(${r.id})" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.1);color:#22c55e;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Receber</button>
                 </div>
             `).join("");
