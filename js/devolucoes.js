@@ -23,9 +23,14 @@ function abrirDevolucoesEnviadas(event) {
 // ───── FORMULÁRIO (NOVA) ─────
 // Chip clicado: guarda o valor no input escondido e marca só ele como ativo
 function _devChip(btn, inputId) {
-    document.getElementById(inputId).value = btn.textContent.trim();
+    document.getElementById(inputId).value = btn.dataset.val || btn.textContent.trim();
     btn.parentElement.querySelectorAll(".dev-chip").forEach(c => c.classList.toggle("active", c === btn));
 }
+
+// O botão de enviar tem um ícone dentro — restaurar via innerHTML pra não perdê-lo
+const _DEV_BTN_HTML = `
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    Enviar Devolução`;
 
 function _devLimparForm() {
     _devFotoBase64 = null;
@@ -125,7 +130,7 @@ function _devEnviar() {
         body: JSON.stringify(payload)
     }).then(r => r.json())
     .then(d => {
-        btn.disabled = false; btn.textContent = "Enviar Devolução";
+        btn.disabled = false; btn.innerHTML = _DEV_BTN_HTML;
         if (d.error) return _devMostrarMsg(d.error, "erro");
         _devLimparForm();
         _devMostrarMsg("Devolução enviada com sucesso!", "ok");
@@ -166,12 +171,12 @@ function _devFilaRemover(id)        { return _devFilaStore("readwrite", st => st
 
 function _devGuardarNaFila(payload, btn) {
     _devFilaAdicionar(payload).then(() => {
-        if (btn) { btn.disabled = false; btn.textContent = "Enviar Devolução"; }
+        if (btn) { btn.disabled = false; btn.innerHTML = _DEV_BTN_HTML; }
         _devLimparForm();
         _devMostrarMsg("Sem internet agora — a devolução foi <strong>salva no celular</strong> e será enviada automaticamente quando a conexão voltar.", "ok");
         _devAtualizarBadgeFila();
     }).catch(() => {
-        if (btn) { btn.disabled = false; btn.textContent = "Enviar Devolução"; }
+        if (btn) { btn.disabled = false; btn.innerHTML = _DEV_BTN_HTML; }
         _devMostrarMsg("Sem internet e não foi possível salvar no celular. Tente novamente.", "erro");
     });
 }

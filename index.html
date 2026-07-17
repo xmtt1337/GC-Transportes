@@ -1658,10 +1658,18 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div id="dev-fila-card" style="display:none"></div>
 
                 <div class="ant-form-wrap">
-                    <div class="ant-form-title">Criar Devolução</div>
+                    <div class="dev-form-head">
+                        <div class="dev-form-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        </div>
+                        <div>
+                            <div class="ant-form-title" style="margin-bottom:2px">Criar Devolução</div>
+                            <div class="dev-form-sub">Registre o pacote que voltou pra base</div>
+                        </div>
+                    </div>
 
-                    <div class="ant-field" style="margin-bottom:16px">
-                        <label class="ant-label">Foto do pacote *</label>
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">1</span> Foto do pacote</div>
                         <div class="dev-foto-tile" id="dev-foto-tile" onclick="_devTirarFoto()">
                             <div class="dev-foto-vazio">
                                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -1673,8 +1681,8 @@ if (location.hostname === "xmtt1337.github.io") {
                         <input type="file" id="dev-foto-input" accept="image/*" capture="environment" style="display:none" onchange="_devFotoSelecionada(this)">
                     </div>
 
-                    <div class="ant-field" style="margin-bottom:16px">
-                        <label class="ant-label">Motivo da devolução *</label>
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">2</span> Motivo da devolução</div>
                         <div class="dev-chips">
                             <button type="button" class="dev-chip" onclick="_devChip(this,'dev-motivo')">Fora de rota</button>
                             <button type="button" class="dev-chip" onclick="_devChip(this,'dev-motivo')">Recusado</button>
@@ -1685,43 +1693,48 @@ if (location.hostname === "xmtt1337.github.io") {
                         <input type="hidden" id="dev-motivo">
                     </div>
 
-                    <div class="ant-field" style="margin-bottom:16px">
-                        <label class="ant-label">Transportadora *</label>
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">3</span> Transportadora</div>
                         <div class="dev-chips">
-                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-transportadora')">Loggi</button>
-                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-transportadora')">Shopee</button>
-                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-transportadora')">J&amp;T Express</button>
-                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-transportadora')">Imile</button>
-                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-transportadora')">Anjun</button>
-                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-transportadora')">Total Express</button>
+                            <button type="button" class="dev-chip" data-val="Loggi" onclick="_devChip(this,'dev-transportadora')"><span class="dev-chip-dot" style="background:#12A5E8"></span>Loggi</button>
+                            <button type="button" class="dev-chip" data-val="Shopee" onclick="_devChip(this,'dev-transportadora')"><span class="dev-chip-dot" style="background:#F97316"></span>Shopee</button>
+                            <button type="button" class="dev-chip" data-val="J&amp;T Express" onclick="_devChip(this,'dev-transportadora')"><span class="dev-chip-dot" style="background:#EF4444"></span>J&amp;T Express</button>
+                            <button type="button" class="dev-chip" data-val="Imile" onclick="_devChip(this,'dev-transportadora')"><span class="dev-chip-dot" style="background:#9333EA"></span>Imile</button>
+                            <button type="button" class="dev-chip" data-val="Anjun" onclick="_devChip(this,'dev-transportadora')"><span class="dev-chip-dot" style="background:#22C55E"></span>Anjun</button>
+                            <button type="button" class="dev-chip" data-val="Total Express" onclick="_devChip(this,'dev-transportadora')"><span class="dev-chip-dot" style="background:#F59E0B"></span>Total Express</button>
                         </div>
                         <input type="hidden" id="dev-transportadora">
                     </div>
 
-                    <div class="ant-field" style="margin-bottom:14px" id="dev-codigo-field">
-                        <label class="ant-label">Código do pacote *</label>
-                        <div class="bte-codigo-row">
-                            <input type="text" id="dev-codigo" class="ant-input" placeholder="Digite ou escaneie o código" style="flex:1">
-                            <button type="button" class="bte-scan-btn" onclick="_devAbrirScanner()" title="Escanear código de barras / QR code">
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-                            </button>
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">4</span> Código do pacote</div>
+                        <div id="dev-codigo-field">
+                            <div class="bte-codigo-row">
+                                <input type="text" id="dev-codigo" class="ant-input" placeholder="Digite ou escaneie o código" style="flex:1">
+                                <button type="button" class="bte-scan-btn" onclick="_devAbrirScanner()" title="Escanear código de barras / QR code">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <label class="dev-sem-codigo-row">
+                            <input type="checkbox" id="dev-sem-codigo" onchange="_devToggleSemCodigo()">
+                            Não foi possível identificar o código
+                        </label>
+
+                        <div style="display:none" id="dev-descricao-field">
+                            <div class="ant-field">
+                                <label class="ant-label">Informações do pacote *</label>
+                                <textarea id="dev-descricao" class="ant-input" rows="3" style="resize:vertical" placeholder="Descreva o que estiver disponível: nome, produto ou endereço"></textarea>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="ant-field" style="margin-bottom:14px">
-                        <label style="display:flex;align-items:center;gap:9px;font-size:13px;color:#94a3b8;cursor:pointer">
-                            <input type="checkbox" id="dev-sem-codigo" onchange="_devToggleSemCodigo()" style="width:16px;height:16px;accent-color:#3a86ff;cursor:pointer">
-                            Não foi possível identificar o código
-                        </label>
-                    </div>
-
-                    <div class="ant-field" style="margin-bottom:14px;display:none" id="dev-descricao-field">
-                        <label class="ant-label">Informações do pacote *</label>
-                        <textarea id="dev-descricao" class="ant-input" rows="3" style="resize:vertical" placeholder="Descreva o que estiver disponível: nome, produto ou endereço"></textarea>
-                    </div>
-
                     <div id="dev-form-msg" class="ant-form-msg" style="display:none"></div>
-                    <button onclick="_devEnviar()" class="ant-submit-btn" id="dev-submit-btn">Enviar Devolução</button>
+                    <button onclick="_devEnviar()" class="ant-submit-btn dev-submit" id="dev-submit-btn">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        Enviar Devolução
+                    </button>
                 </div>
             </div>
         </div><!-- /tela-devolucao-nova -->
