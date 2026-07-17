@@ -21,17 +21,24 @@ function abrirDevolucoesEnviadas(event) {
 }
 
 // ───── FORMULÁRIO (NOVA) ─────
+// Chip clicado: guarda o valor no input escondido e marca só ele como ativo
+function _devChip(btn, inputId) {
+    document.getElementById(inputId).value = btn.textContent.trim();
+    btn.parentElement.querySelectorAll(".dev-chip").forEach(c => c.classList.toggle("active", c === btn));
+}
+
 function _devLimparForm() {
     _devFotoBase64 = null;
     _devFotoMimeType = null;
     document.getElementById("dev-motivo").value = "";
     document.getElementById("dev-transportadora").value = "";
+    document.querySelectorAll("#tela-devolucao-nova .dev-chip.active").forEach(c => c.classList.remove("active"));
     document.getElementById("dev-codigo").value = "";
     document.getElementById("dev-sem-codigo").checked = false;
     document.getElementById("dev-descricao").value = "";
     document.getElementById("dev-foto-input").value = "";
-    document.getElementById("dev-foto-preview").style.display = "none";
     document.getElementById("dev-foto-preview").src = "";
+    document.getElementById("dev-foto-tile").classList.remove("tem-foto");
     _devToggleSemCodigo();
     _devLimparMsg();
 }
@@ -60,9 +67,8 @@ function _devFotoSelecionada(input) {
     _bteComprimirImagem(file).then(({ dataUrl, base64 }) => {
         _devFotoBase64   = base64;
         _devFotoMimeType = "image/jpeg";
-        const preview = document.getElementById("dev-foto-preview");
-        preview.src = dataUrl;
-        preview.style.display = "";
+        document.getElementById("dev-foto-preview").src = dataUrl;
+        document.getElementById("dev-foto-tile").classList.add("tem-foto");
     }).catch(() => {
         gcAlert("Não foi possível processar a foto. Tente novamente.");
     });

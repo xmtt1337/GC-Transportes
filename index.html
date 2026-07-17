@@ -1660,41 +1660,42 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div class="ant-form-wrap">
                     <div class="ant-form-title">Criar Devolução</div>
 
-                    <div class="ant-field" style="margin-bottom:14px">
+                    <div class="ant-field" style="margin-bottom:16px">
                         <label class="ant-label">Foto do pacote *</label>
-                        <div class="bte-foto-row">
-                            <button type="button" class="bte-foto-btn" onclick="_devTirarFoto()">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        <div class="dev-foto-tile" id="dev-foto-tile" onclick="_devTirarFoto()">
+                            <div class="dev-foto-vazio">
+                                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                                 Tirar foto do pacote
-                            </button>
-                            <input type="file" id="dev-foto-input" accept="image/*" capture="environment" style="display:none" onchange="_devFotoSelecionada(this)">
+                            </div>
+                            <img id="dev-foto-preview" alt="">
+                            <div class="dev-foto-refazer">Trocar foto</div>
                         </div>
-                        <img id="dev-foto-preview" class="bte-foto-preview" style="display:none">
+                        <input type="file" id="dev-foto-input" accept="image/*" capture="environment" style="display:none" onchange="_devFotoSelecionada(this)">
                     </div>
 
-                    <div class="ant-field" style="margin-bottom:14px">
+                    <div class="ant-field" style="margin-bottom:16px">
                         <label class="ant-label">Motivo da devolução *</label>
-                        <select id="dev-motivo" class="ant-input">
-                            <option value="">Selecione o motivo</option>
-                            <option value="Fora de rota">Fora de rota</option>
-                            <option value="Recusado">Recusado</option>
-                            <option value="Mudou-se">Mudou-se</option>
-                            <option value="Endereço não encontrado">Endereço não encontrado</option>
-                            <option value="Avaria">Avaria</option>
-                        </select>
+                        <div class="dev-chips">
+                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-motivo')">Fora de rota</button>
+                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-motivo')">Recusado</button>
+                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-motivo')">Mudou-se</button>
+                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-motivo')">Endereço não encontrado</button>
+                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-motivo')">Avaria</button>
+                        </div>
+                        <input type="hidden" id="dev-motivo">
                     </div>
 
-                    <div class="ant-field" style="margin-bottom:14px">
+                    <div class="ant-field" style="margin-bottom:16px">
                         <label class="ant-label">Transportadora *</label>
-                        <select id="dev-transportadora" class="ant-input">
-                            <option value="">Selecione a transportadora</option>
-                            <option value="Loggi">Loggi</option>
-                            <option value="Shopee">Shopee</option>
-                            <option value="J&T Express">J&amp;T Express</option>
-                            <option value="Imile">Imile</option>
-                            <option value="Anjun">Anjun</option>
-                            <option value="Total Express">Total Express</option>
-                        </select>
+                        <div class="dev-chips">
+                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-transportadora')">Loggi</button>
+                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-transportadora')">Shopee</button>
+                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-transportadora')">J&amp;T Express</button>
+                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-transportadora')">Imile</button>
+                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-transportadora')">Anjun</button>
+                            <button type="button" class="dev-chip" onclick="_devChip(this,'dev-transportadora')">Total Express</button>
+                        </div>
+                        <input type="hidden" id="dev-transportadora">
                     </div>
 
                     <div class="ant-field" style="margin-bottom:14px" id="dev-codigo-field">
