@@ -1,10 +1,11 @@
 // ───── PLANEJAMENTO VIDEIRA (bairro → entregador, por transportadora) ─────
 const _PV_TRANSP = [
-    { key: "loggi",  label: "Loggi",  cor: "#12A5E8" },
-    { key: "anjun",  label: "Anjun",  cor: "#22C55E" },
-    { key: "shopee", label: "Shopee", cor: "#F97316" },
-    { key: "imile",  label: "Imile",  cor: "#9333EA" },
-    { key: "jt",     label: "J&T",    cor: "#EF4444" },
+    { key: "loggi",         label: "Loggi",         cor: "#12A5E8" },
+    { key: "anjun",         label: "Anjun",         cor: "#22C55E" },
+    { key: "shopee",        label: "Shopee",        cor: "#F97316" },
+    { key: "imile",         label: "Imile",         cor: "#9333EA" },
+    { key: "jt",            label: "J&T",           cor: "#EF4444" },
+    { key: "total_express", label: "Total Express", cor: "#F59E0B" },
 ];
 
 const _PV_UNIDADE_LABEL = { videira: "Videira", cacador: "Caçador" };
