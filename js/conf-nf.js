@@ -71,8 +71,10 @@ function buscarConfNFs() {
         const emitidas = rows.filter(r => r.emitiu_nf).length;
         const pendentes = total - emitidas;
         const confere  = rows.filter(r => r.status === "confere").length;
-        document.getElementById("conf-nf-counter").innerHTML =
-            `${total} entregadores &nbsp;·&nbsp; <span style="color:#22c55e">${emitidas} enviaram NF</span> &nbsp;·&nbsp; <span style="color:#fb923c">${pendentes} pendentes</span> &nbsp;·&nbsp; <span style="color:#22c55e">${confere} conferem</span>`;
+        const semGC    = rows.filter(r => r.emitiu_nf && r.tomador_ok === false).length;
+        let counter = `${total} entregadores &nbsp;·&nbsp; <span style="color:#22c55e">${emitidas} enviaram NF</span> &nbsp;·&nbsp; <span style="color:#fb923c">${pendentes} pendentes</span> &nbsp;·&nbsp; <span style="color:#22c55e">${confere} conferem</span>`;
+        if (semGC) counter += ` &nbsp;·&nbsp; <span style="color:#ef4444">⚠ ${semGC} tomador ≠ GC</span>`;
+        document.getElementById("conf-nf-counter").innerHTML = counter;
         _renderConfNFTabela(rows);
     })
     .catch(() => { empty.innerText = "Erro ao carregar dados."; });
@@ -107,6 +109,12 @@ function _confNFRenderizarPagina() {
             else
                 confBadge = `<span class="adm-nf-badge pendente">—</span>`;
         }
+        let tomBadge = `<span class="adm-nf-badge pendente">—</span>`;
+        if (r.emitiu_nf) {
+            tomBadge = r.tomador_ok
+                ? `<span class="adm-nf-badge confere">✓ GC</span>`
+                : `<span class="adm-nf-badge diverge" title="${r.tomador || ""}">⚠ ≠ GC</span>`;
+        }
         let waBtn = "";
         if (!r.emitiu_nf) {
             const phone = (r.telefone || "").replace(/\D/g, "");
@@ -134,6 +142,7 @@ function _confNFRenderizarPagina() {
             <td>${emitBadge}</td>
             <td>${r.valor_nf || "—"}</td>
             <td>${confBadge}</td>
+            <td>${tomBadge}</td>
             <td>${waBtn}${pdfBtn}</td>
         </tr>`;
     }).join("");
