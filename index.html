@@ -176,9 +176,8 @@ if (location.hostname === "xmtt1337.github.io") {
             <span class="menu-tooltip">Devoluções</span>
         </li>
         <ul class="submenu" data-menu="devolucoes" id="submenu-devolucoes" style="display:none">
-            <li><a href="#" data-rota="Devolucoes/Nova" onclick="abrirDevolucaoNova(event)">Nova</a></li>
-            <li><a href="#" data-rota="Devolucoes/Pendentes" onclick="abrirDevolucoesPendentes(event)">Pendentes</a></li>
-            <li><a href="#" data-rota="Devolucoes/Enviadas" onclick="abrirDevolucoesEnviadas(event)">Enviado</a></li>
+            <li><a href="#" data-rota="Devolucoes/Nova" onclick="abrirDevolucaoNova(event)">Criar devolução</a></li>
+            <li><a href="#" data-rota="Devolucoes/Enviadas" onclick="abrirDevolucoesEnviadas(event)">Registro</a></li>
         </ul>
 
         <li class="menu-item" data-menu="torrecontrole" id="menu-torrecontrole" onclick="toggleMenu(this)" style="display:none">
@@ -1652,11 +1651,14 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-baixa-te -->
 
-        <!-- TELA DEVOLUÇÕES — NOVA (ENTREGADOR) -->
+        <!-- TELA DEVOLUÇÕES — CRIAR (ENTREGADOR) -->
         <div id="tela-devolucao-nova" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
+
+                <div id="dev-fila-card" style="display:none"></div>
+
                 <div class="ant-form-wrap">
-                    <div class="ant-form-title">Nova Devolução</div>
+                    <div class="ant-form-title">Criar Devolução</div>
 
                     <div class="ant-field" style="margin-bottom:14px">
                         <label class="ant-label">Foto do pacote *</label>
@@ -1720,17 +1722,6 @@ if (location.hostname === "xmtt1337.github.io") {
                 </div>
             </div>
         </div><!-- /tela-devolucao-nova -->
-
-        <!-- TELA DEVOLUÇÕES — PENDENTES (fila offline do celular) -->
-        <div id="tela-devolucao-pendentes" class="view tela-full">
-            <div class="fech-body" style="padding-top:24px">
-                <div class="fechamento-empty" id="dev-pend-empty">Carregando...</div>
-                <div id="dev-pend-lista" style="display:none">
-                    <div id="dev-pend-aviso"></div>
-                    <div id="dev-pend-cards"></div>
-                </div>
-            </div>
-        </div><!-- /tela-devolucao-pendentes -->
 
         <!-- TELA DEVOLUÇÕES — ENVIADO (histórico do servidor) -->
         <div id="tela-devolucao-enviadas" class="view tela-full">

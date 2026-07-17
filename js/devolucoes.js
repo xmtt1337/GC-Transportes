@@ -9,13 +9,7 @@ function abrirDevolucaoNova(event) {
     if (event) event.preventDefault();
     _devLimparForm();
     mostrarTela("tela-devolucao-nova");
-    _devFilaSincronizar();
-}
-
-function abrirDevolucoesPendentes(event) {
-    if (event) event.preventDefault();
-    mostrarTela("tela-devolucao-pendentes");
-    _devRenderPendentes();
+    _devAtualizarBadgeFila();
     _devFilaSincronizar();
 }
 
@@ -168,7 +162,8 @@ function _devGuardarNaFila(payload, btn) {
     _devFilaAdicionar(payload).then(() => {
         if (btn) { btn.disabled = false; btn.textContent = "Enviar Devolução"; }
         _devLimparForm();
-        _devMostrarMsg("Sem internet agora — a devolução foi <strong>salva no celular</strong> (veja em Pendentes) e será enviada automaticamente quando a conexão voltar.", "ok");
+        _devMostrarMsg("Sem internet agora — a devolução foi <strong>salva no celular</strong> e será enviada automaticamente quando a conexão voltar.", "ok");
+        _devAtualizarBadgeFila();
     }).catch(() => {
         if (btn) { btn.disabled = false; btn.textContent = "Enviar Devolução"; }
         _devMostrarMsg("Sem internet e não foi possível salvar no celular. Tente novamente.", "erro");
@@ -198,8 +193,7 @@ async function _devFilaSincronizar() {
         }
     } finally {
         _devSincronizando = false;
-        const telaPend = document.getElementById("tela-devolucao-pendentes");
-        if (telaPend && telaPend.classList.contains("active-view")) _devRenderPendentes();
+        _devAtualizarBadgeFila();
         if (enviadas > 0) {
             _gcBeepSucesso();
             const telaEnv = document.getElementById("tela-devolucao-enviadas");
@@ -220,20 +214,15 @@ async function _devFilaSincronizar() {
 window.addEventListener("online", () => { _devFilaSincronizar(); });
 setTimeout(() => { _devFilaSincronizar(); }, 3500);
 
-// ───── TELA PENDENTES (fila do celular) ─────
-function _devRenderPendentes() {
-    const empty  = document.getElementById("dev-pend-empty");
-    const lista  = document.getElementById("dev-pend-lista");
+// Banner compacto na tela Criar Devolução avisando de devoluções ainda na fila do
+// celular (mesmo esquema do "bte-fila-card" das Baixas Total Express).
+function _devAtualizarBadgeFila() {
+    const card = document.getElementById("dev-fila-card");
+    if (!card) return;
     _devFilaListar().then(itens => {
-        if (!itens.length) {
-            empty.innerText = "Nenhuma devolução pendente — tudo enviado!";
-            empty.style.display = "";
-            lista.style.display = "none";
-            return;
-        }
-        empty.style.display = "none";
-        lista.style.display = "";
-        document.getElementById("dev-pend-aviso").innerHTML = `
+        if (!itens.length) { card.style.display = "none"; card.innerHTML = ""; return; }
+        card.style.display = "";
+        card.innerHTML = `
             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 16px;border-radius:12px;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.3);margin-bottom:16px">
                 <div style="flex:1;min-width:170px">
                     <div style="font-size:13px;font-weight:700;color:#eab308">${itens.length} devoluç${itens.length > 1 ? "ões" : "ão"} aguardando envio</div>
@@ -241,24 +230,7 @@ function _devRenderPendentes() {
                 </div>
                 <button onclick="_devFilaTentarAgora()" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(234,179,8,0.4);background:rgba(234,179,8,0.12);color:#eab308;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Enviar agora</button>
             </div>`;
-        document.getElementById("dev-pend-cards").innerHTML = itens.map(i => {
-            const p = i.payload;
-            const quando = p.capturada_em ? new Date(p.capturada_em).toLocaleString("pt-BR") : "—";
-            return `
-            <div style="display:flex;gap:12px;align-items:flex-start;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:10px">
-                ${p.foto_base64 ? `<img src="data:${p.foto_mime_type || "image/jpeg"};base64,${p.foto_base64}" style="width:54px;height:54px;object-fit:cover;border-radius:8px;flex-shrink:0">` : ""}
-                <div style="flex:1;min-width:0">
-                    <div style="font-size:13.5px;font-weight:700;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.codigo || p.descricao || "—"}</div>
-                    <div style="font-size:12.5px;color:#94a3b8;margin-top:2px">${p.transportadora} · ${p.motivo}</div>
-                    <div style="font-size:11.5px;color:#64748b;margin-top:2px">Registrada em ${quando}</div>
-                </div>
-            </div>`;
-        }).join("");
-    }).catch(() => {
-        empty.innerText = "Erro ao ler as devoluções pendentes deste celular.";
-        empty.style.display = "";
-        lista.style.display = "none";
-    });
+    }).catch(() => {});
 }
 
 function _devFilaTentarAgora() {
@@ -266,7 +238,7 @@ function _devFilaTentarAgora() {
         gcAlert("Ainda sem conexão com a internet. As devoluções serão enviadas automaticamente assim que o sinal voltar.");
         return;
     }
-    _devFilaSincronizar().then(() => _devRenderPendentes());
+    _devFilaSincronizar();
 }
 
 // ───── TELA ENVIADO (histórico do servidor) ─────

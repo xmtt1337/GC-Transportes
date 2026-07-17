@@ -6,7 +6,6 @@ const _ROTA_BASE = "/GC-Transportes";
 const _ROTAS = {
     "Baixas/TotalExpress":           () => abrirBaixaTotalExpress(),
     "Devolucoes/Nova":               () => abrirDevolucaoNova(),
-    "Devolucoes/Pendentes":          () => abrirDevolucoesPendentes(),
     "Devolucoes/Enviadas":           () => abrirDevolucoesEnviadas(),
     "Operacao/Bipagem":              () => abrirBipagens(),
     "Operacao/AlimentarLoggi":       () => abrirAlimentar(null, "loggi"),
@@ -56,7 +55,6 @@ const _TELA_ROTAS = {
     "tela-baixa-te":             "Baixas/TotalExpress",
     "tela-admin-baixas-te":      "Baixas/TotalExpress",
     "tela-devolucao-nova":       "Devolucoes/Nova",
-    "tela-devolucao-pendentes":  "Devolucoes/Pendentes",
     "tela-devolucao-enviadas":   "Devolucoes/Enviadas",
     "tela-devolucao-receber":    "Operacao/DevolucoesReceber",
     "tela-devolucao-registro":   "Operacao/DevolucoesRegistro",
