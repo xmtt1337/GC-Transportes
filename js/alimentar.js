@@ -1,13 +1,13 @@
 let _alimentarTransp = null;
 
-const _ALIMENTAR_NOMES = { loggi: 'Loggi', anjun: 'Anjun', jt: 'J&T Express', imile: 'Imile' };
+const _ALIMENTAR_NOMES = { loggi: 'Loggi', anjun: 'Anjun', jt: 'J&T Express', imile: 'Imile', total_express: 'Total Express' };
 
 function abrirAlimentar(event, transportadora) {
     if (event) event.preventDefault();
     _alimentarTransp = transportadora;
     document.getElementById('alimentar-titulo').innerText = 'Alimentar — ' + (_ALIMENTAR_NOMES[transportadora] || transportadora);
     document.getElementById('titulo-pagina').innerText = 'Alimentar';
-    const _rotaNomes = { loggi: 'Loggi', anjun: 'Anjun', jt: 'JT', imile: 'Imile' };
+    const _rotaNomes = { loggi: 'Loggi', anjun: 'Anjun', jt: 'JT', imile: 'Imile', total_express: 'TotalExpress' };
     mostrarTela('tela-alimentar', 'Operacao/Alimentar' + (_rotaNomes[transportadora] || ''));
     _alimentarCarregar();
 }

@@ -12,6 +12,7 @@ const _ROTAS = {
     "Operacao/AlimentarAnjun":       () => abrirAlimentar(null, "anjun"),
     "Operacao/AlimentarJT":          () => abrirAlimentar(null, "jt"),
     "Operacao/AlimentarImile":       () => abrirAlimentar(null, "imile"),
+    "Operacao/AlimentarTotalExpress":() => abrirAlimentar(null, "total_express"),
     "Operacao/DesempenhoUsuario":    () => abrirDesempenhoBip(),
     "Operacao/DesempenhoHora":       () => abrirDesempenhoHora(),
     "Operacao/DevolucoesReceber":    () => abrirDevolucoesReceber(),

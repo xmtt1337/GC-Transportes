@@ -236,8 +236,8 @@ function _bipSessaoRenderizar() {
     if (!el) return;
     const lista = _bipSessao;
     if (countEl) countEl.textContent = lista.length;
-    const transpNomes = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee', cep:'CEP' };
-    const transpCores = { loggi:'#12A5E8', anjun:'#22C55E', imile:'#9333EA', jt:'#EF4444', shopee:'#F97316', cep:'#94a3b8' };
+    const transpNomes = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee', total_express:'Total Express', cep:'CEP' };
+    const transpCores = { loggi:'#12A5E8', anjun:'#22C55E', imile:'#9333EA', jt:'#EF4444', shopee:'#F97316', total_express:'#F59E0B', cep:'#94a3b8' };
     if (!lista.length) {
         el.innerHTML = '<div class="bip-empty-msg">Nenhuma bipagem ainda.</div>';
         if (statsEl) statsEl.innerHTML = '';
@@ -298,8 +298,8 @@ function _bipSelecionarInput() {
     input.select();
 }
 
-const _TRANSP_NOMES  = { loggi: 'Loggi', anjun: 'Anjun', jt: 'J&T Express', imile: 'Imile', shopee: 'Shopee' };
-const _TRANSP_CORES  = { loggi: '#12A5E8', anjun: '#22C55E', imile: '#9333EA', jt: '#EF4444', shopee: '#F97316' };
+const _TRANSP_NOMES  = { loggi: 'Loggi', anjun: 'Anjun', jt: 'J&T Express', imile: 'Imile', shopee: 'Shopee', total_express: 'Total Express' };
+const _TRANSP_CORES  = { loggi: '#12A5E8', anjun: '#22C55E', imile: '#9333EA', jt: '#EF4444', shopee: '#F97316', total_express: '#F59E0B' };
 
 function _bipCorTransp(t) { return _TRANSP_CORES[t] || '#3a86ff'; }
 
