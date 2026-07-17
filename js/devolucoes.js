@@ -363,13 +363,19 @@ function _drReceber(body) {
     .then(({ ok, d }) => {
         if (!ok) {
             _gcBeepErro();
-            if (d.nao_registrado) {
-                _drMostrarMsg(`⚠️ Este pacote <strong>não foi registrado pelo entregador</strong> como devolução. Confira o código ou peça pro entregador registrar.`, "erro");
-            } else if (d.ja_recebido) {
+            if (d.ja_recebido) {
                 _drMostrarMsg(`Esta devolução já foi recebida${d.recebido_por ? ` por <strong>${d.recebido_por}</strong>` : ""}${d.recebido_data_hora_brasilia ? ` em <strong>${d.recebido_data_hora_brasilia}</strong>` : ""}.`, "aviso");
             } else {
                 _drMostrarMsg(d.error || "Erro ao receber.", "erro");
             }
+            return;
+        }
+        if (d.nao_registrado) {
+            // recebido e salvo no registro, mas sem devolução registrada pelo entregador
+            _gcBeepErro();
+            _drMostrarMsg(`⚠️ <strong>${d.codigo}</strong>: este pacote <strong>não foi registrado pelo entregador</strong> como devolução. O recebimento ficou salvo no registro mesmo assim.`, "erro");
+            document.getElementById("dr-codigo").value = "";
+            document.getElementById("dr-codigo").focus();
             return;
         }
         _gcBeepSucesso();
@@ -426,9 +432,10 @@ function _drrRenderizar(rows) {
             <td>${r.codigo || (r.descricao ? `<span style="color:#94a3b8">${r.descricao}</span>` : "—")}</td>
             <td>${r.transportadora || "—"}</td>
             <td>${r.motivo || "—"}</td>
-            <td>
+            <td>${r.sem_registro ? `
+                <span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;font-size:11.5px;font-weight:700">Não registrada pelo entregador</span>` : `
                 <div style="color:#e2e8f0">${r.usuario_nome || "—"}</div>
-                <div style="font-size:11.5px;color:#64748b">${r.data_hora_brasilia || "—"}</div>
+                <div style="font-size:11.5px;color:#64748b">${r.data_hora_brasilia || "—"}</div>`}
             </td>
             <td>${r.status === "recebido" ? `
                 <div style="color:#22c55e;font-weight:600">${r.recebido_por || "Recebido"}</div>
