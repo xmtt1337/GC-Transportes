@@ -919,10 +919,17 @@ function _abteDrpAplicar() {
 }
 
 // Fecha o painel se o clique foi fora dele (mas não interfere no clique que o abre,
-// já que esse clique nasce dentro do próprio "wrap")
+// já que esse clique nasce dentro do próprio "wrap"). Usa composedPath() em vez de
+// wrap.contains(e.target): ao clicar num dia, _abteDrpRenderGrid() reconstrói a grade
+// (innerHTML) e o botão clicado é destruído antes do evento acabar de borbulhar — com
+// contains() o alvo já "desapareceu" da árvore e o painel fechava sozinho no 1º clique.
+// composedPath() guarda o caminho de quando o evento foi disparado, então continua
+// válido mesmo depois do nó ser removido.
 document.addEventListener("click", e => {
     const wrap = document.getElementById("abte-drp-wrap");
-    if (!wrap || wrap.contains(e.target)) return;
+    if (!wrap) return;
+    const dentro = e.composedPath ? e.composedPath().includes(wrap) : wrap.contains(e.target);
+    if (dentro) return;
     const painel = document.getElementById("abte-drp-panel");
     if (painel) painel.style.display = "none";
 });
