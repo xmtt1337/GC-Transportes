@@ -820,6 +820,113 @@ function _abteFiltrarLocal() {
     _abteRenderizar(filtrado);
 }
 
+// ── SELETOR DE INTERVALO DE DATAS (calendário com o período inteiro destacado) ──
+let _abteDrpMesRef = new Date();
+let _abteDrpInicio = null;
+let _abteDrpFim    = null;
+
+function _abteDrpDiaChave(d) { // "yyyy-mm-dd" local (sem passar por UTC)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function _abteDrpFormatarBR(d) {
+    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+function _abteDrpToggle() {
+    const painel = document.getElementById("abte-drp-panel");
+    const vaiAbrir = painel.style.display === "none";
+    painel.style.display = vaiAbrir ? "" : "none";
+    if (vaiAbrir) _abteDrpRenderGrid();
+}
+
+function _abteDrpMudarMes(delta) {
+    _abteDrpMesRef.setMonth(_abteDrpMesRef.getMonth() + delta);
+    _abteDrpRenderGrid();
+}
+
+// Primeiro clique começa um intervalo novo; segundo clique fecha o intervalo
+// (invertendo início/fim se o segundo clique for numa data anterior à primeira).
+function _abteDrpClicarDia(chave) {
+    const [y, m, d] = chave.split("-").map(Number);
+    const dia = new Date(y, m - 1, d);
+    if (!_abteDrpInicio || _abteDrpFim) {
+        _abteDrpInicio = dia; _abteDrpFim = null;
+    } else if (dia < _abteDrpInicio) {
+        _abteDrpFim = _abteDrpInicio; _abteDrpInicio = dia;
+    } else {
+        _abteDrpFim = dia;
+    }
+    _abteDrpRenderGrid();
+}
+
+function _abteDrpRenderGrid() {
+    const ref = _abteDrpMesRef;
+    const ano = ref.getFullYear(), mes = ref.getMonth();
+    const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    document.getElementById("abte-drp-mes-label").innerText = `${MESES[mes]} ${ano}`;
+
+    const inicioGrid = new Date(ano, mes, 1);
+    inicioGrid.setDate(inicioGrid.getDate() - inicioGrid.getDay()); // volta até o domingo da 1ª semana
+
+    const hojeChave   = _abteDrpDiaChave(new Date());
+    const inicioChave = _abteDrpInicio ? _abteDrpDiaChave(_abteDrpInicio) : null;
+    const fimChave    = _abteDrpFim    ? _abteDrpDiaChave(_abteDrpFim)    : null;
+
+    let html = "";
+    const cursor = new Date(inicioGrid);
+    for (let i = 0; i < 42; i++) { // 6 semanas fixas — mantém a grade com altura estável em todo mês
+        const chave     = _abteDrpDiaChave(cursor);
+        const dow       = cursor.getDay();
+        const foraDoMes = cursor.getMonth() !== mes;
+        const emRange   = inicioChave && fimChave && chave >= inicioChave && chave <= fimChave;
+        const ehInicio  = chave === inicioChave;
+        const ehFim     = chave === fimChave;
+        const unico     = inicioChave && !fimChave && ehInicio;
+
+        let classes = "drp-day";
+        if (foraDoMes) classes += " fora-mes";
+        if (chave === hojeChave) classes += " hoje";
+        if (emRange) classes += " in-range";
+        if (emRange && (dow === 0 || ehInicio)) classes += " range-l";
+        if (emRange && (dow === 6 || ehFim))    classes += " range-r";
+        if (ehInicio || ehFim || unico) classes += " selecionado";
+
+        html += `<button type="button" class="${classes}" onclick="_abteDrpClicarDia('${chave}')">${cursor.getDate()}</button>`;
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    document.getElementById("abte-drp-grid").innerHTML = html;
+}
+
+function _abteDrpLimpar() {
+    _abteDrpInicio = null; _abteDrpFim = null;
+    document.getElementById("abte-exp-de").value  = "";
+    document.getElementById("abte-exp-ate").value = "";
+    document.getElementById("abte-drp-label").innerText = "Todo o período";
+    document.getElementById("abte-drp-panel").style.display = "none";
+}
+
+function _abteDrpAplicar() {
+    const inicio = _abteDrpInicio;
+    const fim    = _abteDrpFim || _abteDrpInicio; // só clicou um dia — trata como intervalo de 1 dia
+    document.getElementById("abte-exp-de").value  = inicio ? _abteDrpDiaChave(inicio) : "";
+    document.getElementById("abte-exp-ate").value = fim    ? _abteDrpDiaChave(fim)    : "";
+    document.getElementById("abte-drp-label").innerText = !inicio
+        ? "Todo o período"
+        : (_abteDrpDiaChave(inicio) === _abteDrpDiaChave(fim)
+            ? _abteDrpFormatarBR(inicio)
+            : `${_abteDrpFormatarBR(inicio)} – ${_abteDrpFormatarBR(fim)}`);
+    document.getElementById("abte-drp-panel").style.display = "none";
+}
+
+// Fecha o painel se o clique foi fora dele (mas não interfere no clique que o abre,
+// já que esse clique nasce dentro do próprio "wrap")
+document.addEventListener("click", e => {
+    const wrap = document.getElementById("abte-drp-wrap");
+    if (!wrap || wrap.contains(e.target)) return;
+    const painel = document.getElementById("abte-drp-panel");
+    if (painel) painel.style.display = "none";
+});
+
 // ── EXPORTAR (filtro por data / entregador / cidade — cidade vem do texto do Endereço) ──
 
 // endereco vem no formato "Rua, Numero, Bairro, Cidade - UF" (montado em
@@ -853,6 +960,11 @@ function _abteAbrirExportar() {
     document.getElementById("abte-exp-de").value  = "";
     document.getElementById("abte-exp-ate").value = "";
     document.getElementById("abte-exp-erro").textContent = "";
+    document.getElementById("abte-drp-label").innerText = "Todo o período";
+    document.getElementById("abte-drp-panel").style.display = "none";
+    _abteDrpMesRef = new Date();
+    _abteDrpInicio = null;
+    _abteDrpFim    = null;
     _abrirModal("modal-abte-exportar");
 }
 
