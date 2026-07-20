@@ -57,9 +57,19 @@ function _vcCarregarDisponiveis() {
 }
 
 function _vcAtualizarInfo() {
-    const restantes = _vcDisponiveis.filter(d => !_vcPedidos.some(c => c.toUpperCase() === d.codigo.toUpperCase())).length;
-    document.getElementById("vc-disp-info").innerText =
-        `${restantes} devoluç${restantes !== 1 ? "ões" : "ão"} disponíve${restantes !== 1 ? "is" : "l"} pra adicionar.`;
+    const restantes = _vcDisponiveis.filter(d => !_vcPedidos.some(c => c.toUpperCase() === d.codigo.toUpperCase()));
+    document.getElementById("vc-disp-info").innerText = restantes.length
+        ? `Toque pra adicionar (${restantes.length} disponíve${restantes.length !== 1 ? "is" : "l"}):`
+        : "Nenhuma devolução disponível pra adicionar. Registre a devolução do pacote primeiro.";
+    document.getElementById("vc-disp-lista").innerHTML = restantes.map(d => `
+        <button type="button" onclick="_vcAdicionarCodigo('${String(d.codigo).replace(/'/g, "\\'")}')"
+            style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 12px;margin-bottom:7px;border:1px solid rgba(58,134,255,0.25);border-radius:10px;background:rgba(58,134,255,0.05);color:#e2e8f0;cursor:pointer;font-family:inherit">
+            <span style="color:#3a86ff;font-size:18px;line-height:1;flex-shrink:0">+</span>
+            <span style="flex:1;min-width:0">
+                <span style="display:block;font-size:13px;font-weight:700;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.codigo}</span>
+                ${d.transportadora ? `<span style="display:block;font-size:11.5px;color:#94a3b8">${d.transportadora}${d.motivo ? " · " + d.motivo : ""}</span>` : ""}
+            </span>
+        </button>`).join("");
 }
 
 function _vcScan() {
