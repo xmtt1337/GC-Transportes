@@ -5,6 +5,14 @@
 let _devFotoBase64   = null;
 let _devFotoMimeType = null;
 
+// CEP = 8 dígitos, com ou sem hífen depois do 5º ("00000-000" ou "00000000") e nada
+// mais — nunca é um código de rastreio válido. Usado nas duas pontas de Devoluções
+// (entregador registrando e admin recebendo) pra barrar código bipado/digitado errado.
+const _DEV_CEP_REGEX = /^\d{5}-?\d{3}$/;
+function _devEhCep(codigo) {
+    return _DEV_CEP_REGEX.test(String(codigo || "").trim());
+}
+
 function abrirDevolucaoNova(event) {
     if (event) event.preventDefault();
     _devLimparForm();
@@ -81,6 +89,11 @@ function _devFotoSelecionada(input) {
 
 function _devAbrirScanner() {
     _bteAbrirScanner(texto => {
+        if (_devEhCep(texto)) {
+            _gcBeepErro();
+            _devMostrarMsg("Esse código lido é um CEP, não o código do pacote. Escaneie o código de rastreio da etiqueta.", "erro");
+            return;
+        }
         document.getElementById("dev-codigo").value = texto;
         document.getElementById("dev-sem-codigo").checked = false;
         _devToggleSemCodigo();
@@ -106,6 +119,7 @@ function _devEnviar() {
     if (!motivo)         return _devMostrarMsg("Selecione o motivo da devolução.", "erro");
     if (!transportadora) return _devMostrarMsg("Selecione a transportadora.", "erro");
     if (!semCodigo && !codigo) return _devMostrarMsg("Informe o código do pacote (digitando ou escaneando) — ou marque que não foi possível identificar.", "erro");
+    if (!semCodigo && _devEhCep(codigo)) return _devMostrarMsg("Esse código é um CEP, não o código do pacote. Confira o código de rastreio.", "erro");
     if (semCodigo && !descricao) return _devMostrarMsg("Descreva as informações do pacote (nome, produto ou endereço).", "erro");
 
     const btn = document.getElementById("dev-submit-btn");
@@ -329,6 +343,13 @@ function _drEnterKey(e) {
 function _drReceberCodigo() {
     const codigo = document.getElementById("dr-codigo").value.trim();
     if (!codigo) return _drMostrarMsg("Digite ou escaneie o código do pacote.", "erro");
+    if (_devEhCep(codigo)) {
+        _gcBeepErro();
+        _drMostrarMsg("Esse código é um CEP, não o código do pacote. Confira o código de rastreio.", "erro");
+        document.getElementById("dr-codigo").value = "";
+        document.getElementById("dr-codigo").focus();
+        return;
+    }
     _drReceber({ codigo });
 }
 
