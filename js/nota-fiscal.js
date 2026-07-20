@@ -33,19 +33,25 @@ function _tomadorOk(nota) {
     return nota.tomador ? /gc.*transport/i.test(nota.tomador) : null;
 }
 
+// Um aviso por vez, do mais importante pro menos: tomador errado > valor divergente.
+// Se estiver tudo certo, não mostra nada (silêncio = ok, sem poluir com "confere").
+function _notaStatusHtml(nota, comMargem) {
+    const margem = comMargem ? ' style="margin-top:6px"' : "";
+    if (_tomadorOk(nota) === false) {
+        return `<div class="nota-status diverge"${margem}><span>⚠</span> Tomador incorreto — precisa ser GC Transportes</div>`;
+    }
+    const notaNum = _parseMoeda(nota.valor);
+    const diff    = _fTotalReceber && notaNum > 0 ? Math.abs(notaNum - _fTotalReceber) : null;
+    if (diff !== null && diff >= 0.02) {
+        return `<div class="nota-status diverge"${margem}><span>⚠</span> Valor diverge — fechamento: ${moedaJS(_fTotalReceber)} · NF: ${moedaJS(notaNum)}</div>`;
+    }
+    return "";
+}
+
 function _renderNotaCard(nota) {
     _notaAtual = nota;
     document.getElementById("nota-upload-area").style.display = "none";
-    const notaNum = _parseMoeda(nota.valor);
-    const diff    = _fTotalReceber && notaNum > 0 ? Math.abs(notaNum - _fTotalReceber) : null;
-    const statusHtml = diff !== null
-        ? (diff < 0.02
-            ? `<div class="nota-status confere" style="margin-top:6px"><span>✓</span> Valor confere com o fechamento (${moedaJS(_fTotalReceber)})</div>`
-            : `<div class="nota-status diverge" style="margin-top:6px"><span>⚠</span> Valor diverge — fechamento: ${moedaJS(_fTotalReceber)} · NF: ${moedaJS(notaNum)}</div>`)
-        : "";
-    const tomadorHtml = _tomadorOk(nota) === false
-        ? `<div class="nota-status diverge" style="margin-top:6px"><span>⚠</span> Tomador incorreto — precisa ser GC Transportes (veio "${nota.tomador}")</div>`
-        : "";
+    const statusHtml = _notaStatusHtml(nota, true);
     const card = document.getElementById("nota-card");
     card.innerHTML = `
         <div style="display:flex;align-items:center;gap:10px">
@@ -59,24 +65,14 @@ function _renderNotaCard(nota) {
             <button class="nota-ver-btn" onclick="_verNotaModal()">Ver nota →</button>
             <button class="nota-remove-btn" onclick="_removerNota()">✕</button>
         </div>
-        ${statusHtml}
-        ${tomadorHtml}`;
+        ${statusHtml}`;
     card.style.display = "";
 }
 
 function _verNotaModal() {
     if (!_notaAtual) return;
     const n = _notaAtual;
-    const notaNum = _parseMoeda(n.valor);
-    const diff    = _fTotalReceber && notaNum > 0 ? Math.abs(notaNum - _fTotalReceber) : null;
-    const statusHtml = diff !== null
-        ? (diff < 0.02
-            ? `<div class="nota-status confere"><span>✓</span> Valor confere com o fechamento (${moedaJS(_fTotalReceber)})</div>`
-            : `<div class="nota-status diverge"><span>⚠</span> Valor diverge — fechamento: ${moedaJS(_fTotalReceber)} · NF: ${moedaJS(notaNum)}</div>`)
-        : "";
-    const tomadorHtml = _tomadorOk(n) === false
-        ? `<div class="nota-status diverge"><span>⚠</span> Tomador incorreto — precisa ser GC Transportes</div>`
-        : "";
+    const statusHtml = _notaStatusHtml(n, false);
     const row = (lbl, val) =>
         `<div class="nota-modal-row"><span class="nota-modal-lbl">${lbl}</span><span class="nota-modal-val" style="${!val||val==='—'?'color:#4a6a8a':''}">${val||'—'}</span></div>`;
     const overlay = document.createElement("div");
@@ -95,7 +91,6 @@ function _verNotaModal() {
                 ${row("Valor", n.valor)}
                 ${row("Tomador", n.tomador)}
                 ${statusHtml}
-                ${tomadorHtml}
             </div>
             <div class="nota-modal-footer">
                 ${n.id ? `<button class="nota-ver-btn" onclick="_baixarMinhaNF()">
