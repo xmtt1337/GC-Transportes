@@ -404,7 +404,29 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
                 </div>
             </div>` : "";
 
-        body.innerHTML = chartHtml + lista.map(t => {
+        // Quantidade e valor por cidade — agregado das transportadoras exibidas
+        // (rows sem "Cidade" na planilha, como a Shopee, entram como "—" ou nem aparecem)
+        const porCidadeAgg = {};
+        lista.forEach(t => (t.cidades || []).forEach(c => {
+            if (!porCidadeAgg[c.cidade]) porCidadeAgg[c.cidade] = { cidade: c.cidade, quantidade: 0, valor_num: 0 };
+            porCidadeAgg[c.cidade].quantidade += c.quantidade;
+            porCidadeAgg[c.cidade].valor_num  += c.valor_num;
+        }));
+        const cidadesOrdenadas = Object.values(porCidadeAgg).sort((a, b) => b.valor_num - a.valor_num);
+
+        const cidadesHtml = cidadesOrdenadas.length ? `
+            <div class="rd-transp-card">
+                <div class="rd-transp-head">
+                    <div class="rd-transp-nome">Por cidade</div>
+                </div>
+                ${cidadesOrdenadas.map(c => `
+                    <div class="rd-usr-row">
+                        <span class="rd-usr-nome">${c.cidade}</span>
+                        <span class="rd-usr-val">${c.quantidade} · ${moedaJS(c.valor_num)}</span>
+                    </div>`).join("")}
+            </div>` : "";
+
+        body.innerHTML = chartHtml + cidadesHtml + lista.map(t => {
             const label = _REL_DRIVER_LABELS[t.transportadora] || t.transportadora;
             const cor   = _REL_DRIVER_CORES[t.transportadora] || "#3a86ff";
             const temPrazo = ((t.dentro_prazo || 0) + (t.fora_prazo || 0)) > 0;
