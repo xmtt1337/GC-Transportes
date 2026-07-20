@@ -28,6 +28,11 @@ function _mostrarUploadArea(erro) {
     document.getElementById("nota-card").style.display = "none";
 }
 
+// null = tomador não extraído da NF (não acusa nada — sem certeza não avisa)
+function _tomadorOk(nota) {
+    return nota.tomador ? /gc.*transport/i.test(nota.tomador) : null;
+}
+
 function _renderNotaCard(nota) {
     _notaAtual = nota;
     document.getElementById("nota-upload-area").style.display = "none";
@@ -37,6 +42,9 @@ function _renderNotaCard(nota) {
         ? (diff < 0.02
             ? `<div class="nota-status confere" style="margin-top:6px"><span>✓</span> Valor confere com o fechamento (${moedaJS(_fTotalReceber)})</div>`
             : `<div class="nota-status diverge" style="margin-top:6px"><span>⚠</span> Valor diverge — fechamento: ${moedaJS(_fTotalReceber)} · NF: ${moedaJS(notaNum)}</div>`)
+        : "";
+    const tomadorHtml = _tomadorOk(nota) === false
+        ? `<div class="nota-status diverge" style="margin-top:6px"><span>⚠</span> Tomador incorreto — precisa ser GC Transportes (veio "${nota.tomador}")</div>`
         : "";
     const card = document.getElementById("nota-card");
     card.innerHTML = `
@@ -51,7 +59,8 @@ function _renderNotaCard(nota) {
             <button class="nota-ver-btn" onclick="_verNotaModal()">Ver nota →</button>
             <button class="nota-remove-btn" onclick="_removerNota()">✕</button>
         </div>
-        ${statusHtml}`;
+        ${statusHtml}
+        ${tomadorHtml}`;
     card.style.display = "";
 }
 
@@ -64,6 +73,9 @@ function _verNotaModal() {
         ? (diff < 0.02
             ? `<div class="nota-status confere"><span>✓</span> Valor confere com o fechamento (${moedaJS(_fTotalReceber)})</div>`
             : `<div class="nota-status diverge"><span>⚠</span> Valor diverge — fechamento: ${moedaJS(_fTotalReceber)} · NF: ${moedaJS(notaNum)}</div>`)
+        : "";
+    const tomadorHtml = _tomadorOk(n) === false
+        ? `<div class="nota-status diverge"><span>⚠</span> Tomador incorreto — precisa ser GC Transportes</div>`
         : "";
     const row = (lbl, val) =>
         `<div class="nota-modal-row"><span class="nota-modal-lbl">${lbl}</span><span class="nota-modal-val" style="${!val||val==='—'?'color:#4a6a8a':''}">${val||'—'}</span></div>`;
@@ -83,6 +95,7 @@ function _verNotaModal() {
                 ${row("Valor", n.valor)}
                 ${row("Tomador", n.tomador)}
                 ${statusHtml}
+                ${tomadorHtml}
             </div>
             <div class="nota-modal-footer">
                 ${n.id ? `<button class="nota-ver-btn" onclick="_baixarMinhaNF()">
