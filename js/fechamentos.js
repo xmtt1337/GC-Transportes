@@ -144,7 +144,19 @@ function _carregarPainel() {
     .then(({ ok, body }) => {
         if (!ok) {
             empty.classList.remove("sk-mode");
-            empty.innerText = body.error || "Nenhum fechamento encontrado para este período.";
+            if (body.nf_pendente) {
+                empty.innerHTML = `
+                    <div style="max-width:440px;margin:0 auto;text-align:center;padding:8px 0">
+                        <div style="width:48px;height:48px;border-radius:50%;background:rgba(239,68,68,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        </div>
+                        <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:8px">Regularize a nota fiscal pendente</div>
+                        <div style="font-size:13.5px;color:#94a3b8;line-height:1.6;margin-bottom:20px">${body.error}</div>
+                        <button onclick="abrirMinhasNFs()" style="padding:11px 22px;border-radius:10px;border:none;background:#3a86ff;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Ir para Notas Fiscais</button>
+                    </div>`;
+            } else {
+                empty.innerText = body.error || "Nenhum fechamento encontrado para este período.";
+            }
             return;
         }
         const d = body;
