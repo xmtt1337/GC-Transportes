@@ -72,7 +72,7 @@ function _antCardHtml(tipo, titulo, sub) {
     </div>`;
 }
 
-function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlanilha, antInfo) {
+function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlanilha, antInfo, tomadorErrado) {
     let card = document.getElementById("ant-status-card");
     if (!card) {
         card = document.createElement("div");
@@ -117,6 +117,13 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlan
         return;
     }
 
+    if (tomadorErrado) {
+        card.innerHTML = _antCardHtml("error", "Tomador da NF incorreto",
+            `A nota fiscal enviada não está com a <strong style="color:#fca5a5">GC Transportes</strong> como tomador do serviço. Corrija e reenvie a NF antes de solicitar a antecipação.`);
+        if (form) form.style.display = "none";
+        return;
+    }
+
     if (diverge) {
         const vNF  = moedaJS(_antNFAtual._valorNum);
         const vPl  = moedaJS(valorPlanilha);
@@ -150,6 +157,8 @@ function _antBuscarNF() {
         const valorPlanilha = painel?.total_receber_num ?? null;
         const nfCard        = document.getElementById("ant-nf-card");
         let diverge = false;
+        // Mesma checagem usada em Notas Fiscais e Conferência NF
+        const tomadorErrado = !!(nf && nf.tomador && !/gc.*transport/i.test(nf.tomador));
 
         // Normaliza valor do banco (pode estar em formato BR: "4.675,61" ou "R$ 4.675,61")
         const _nfValorNum = nf ? (parseFloat(String(nf.valor || "").replace(/[R$\s.]/g, "").replace(",", ".")) || 0) : 0;
@@ -182,7 +191,7 @@ function _antBuscarNF() {
         document.getElementById("ant-empty").style.display = "none";
         document.getElementById("ant-content").style.display = "";
         _antLimparFormMsg();
-        _antRenderStatusCard(_antMes, _antAno, _antQuinzena, uploadedAt, diverge, valorPlanilha, antInfo);
+        _antRenderStatusCard(_antMes, _antAno, _antQuinzena, uploadedAt, diverge, valorPlanilha, antInfo, tomadorErrado);
     });
 }
 
