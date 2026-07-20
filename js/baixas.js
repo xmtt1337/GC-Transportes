@@ -820,6 +820,89 @@ function _abteFiltrarLocal() {
     _abteRenderizar(filtrado);
 }
 
+// ── EXPORTAR (filtro por data / entregador / cidade — cidade vem do texto do Endereço) ──
+
+// endereco vem no formato "Rua, Numero, Bairro, Cidade - UF" (montado em
+// _buscarEnderecoReverso, no backend) — a cidade é sempre o pedaço antes do " - " no
+// último trecho separado por vírgula.
+function _abteExtrairCidade(endereco) {
+    if (!endereco) return null;
+    const partes = String(endereco).split(",").map(p => p.trim()).filter(Boolean);
+    if (!partes.length) return null;
+    const cidade = partes[partes.length - 1].split(" - ")[0].trim();
+    return cidade || null;
+}
+
+// data_hora_brasilia é sempre "dd/mm/yyyy ..." (gerado no backend com toLocaleString
+// pt-BR) — vira "yyyy-mm-dd" pra comparar direto com o valor de <input type="date">.
+function _abteDataISO(dataHoraBrasilia) {
+    const m = String(dataHoraBrasilia || "").match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+}
+
+function _abteAbrirExportar() {
+    const entregadores = [...new Set(_abteDados.map(r => r.usuario_nome).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const cidades = [...new Set(_abteDados.map(r => _abteExtrairCidade(r.endereco)).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+    document.getElementById("abte-exp-entregador").innerHTML =
+        `<option value="">Todos os entregadores</option>` + entregadores.map(e => `<option value="${e}">${e}</option>`).join("");
+    document.getElementById("abte-exp-cidade").innerHTML =
+        `<option value="">Todas as cidades</option>` + cidades.map(c => `<option value="${c}">${c}</option>`).join("");
+    document.getElementById("abte-exp-de").value  = "";
+    document.getElementById("abte-exp-ate").value = "";
+    document.getElementById("abte-exp-erro").textContent = "";
+    _abrirModal("modal-abte-exportar");
+}
+
+function _abteExportar() {
+    const de  = document.getElementById("abte-exp-de").value;
+    const ate = document.getElementById("abte-exp-ate").value;
+    const ent = document.getElementById("abte-exp-entregador").value;
+    const cid = document.getElementById("abte-exp-cidade").value;
+    const erroEl = document.getElementById("abte-exp-erro");
+    erroEl.textContent = "";
+
+    const filtrados = _abteDados.filter(r => {
+        if (ent && r.usuario_nome !== ent) return false;
+        if (cid && _abteExtrairCidade(r.endereco) !== cid) return false;
+        if (de || ate) {
+            const iso = _abteDataISO(r.data_hora_brasilia);
+            if (!iso) return false;
+            if (de && iso < de) return false;
+            if (ate && iso > ate) return false;
+        }
+        return true;
+    });
+
+    if (!filtrados.length) {
+        erroEl.textContent = "Nenhuma baixa encontrada com esses filtros.";
+        return;
+    }
+
+    const linhas = filtrados.map(r => ({
+        "Código":     r.codigo,
+        "Cliente":    r.nome_cliente || "",
+        "Entregador": r.usuario_nome || "",
+        "Data/Hora":  r.data_hora_brasilia || "",
+        "Cidade":     _abteExtrairCidade(r.endereco) || "",
+        "Endereço":   r.endereco || "",
+        "Tipo":       r.foi_offline === true ? "Offline" : r.foi_offline === false ? "Online" : "",
+    }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhas), "Baixas");
+
+    const nomeArquivo = ["Baixas_TotalExpress"];
+    if (ent) nomeArquivo.push(ent.replace(/[\\/:*?"<>|]/g, ""));
+    if (cid) nomeArquivo.push(cid.replace(/[\\/:*?"<>|]/g, ""));
+    if (de || ate) nomeArquivo.push(`${de || "inicio"}_a_${ate || "fim"}`);
+    XLSX.writeFile(wb, nomeArquivo.join("_") + ".xlsx");
+
+    _fecharModal("modal-abte-exportar");
+}
+
 function _abteVerFoto(id) {
     if (document.getElementById("abte-foto-overlay")) return;
 

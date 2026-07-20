@@ -1813,11 +1813,17 @@ if (location.hostname === "xmtt1337.github.io") {
             <div class="fech-body">
                 <div class="fechamento-empty" id="abte-empty">Carregando...</div>
                 <div id="abte-lista" style="display:none">
-                    <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap;gap:14px">
-                        <span id="abte-counter" style="font-size:13px;color:#4a6a8a;font-weight:500"></span>
-                        <div class="adm-search-input-area" style="max-width:280px">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                            <input type="text" id="abte-filtro-input" placeholder="Filtrar por código, cliente ou entregador..." oninput="_abteFiltrarLocal()">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:14px">
+                        <button onclick="_abteAbrirExportar()" style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Exportar
+                        </button>
+                        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                            <span id="abte-counter" style="font-size:13px;color:#4a6a8a;font-weight:500"></span>
+                            <div class="adm-search-input-area" style="max-width:280px">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <input type="text" id="abte-filtro-input" placeholder="Filtrar por código, cliente ou entregador..." oninput="_abteFiltrarLocal()">
+                            </div>
                         </div>
                     </div>
                     <div class="adm-nf-wrap">
@@ -2326,6 +2332,40 @@ if (location.hostname === "xmtt1337.github.io") {
             <button class="usr-modal-btn-primary" id="rd-btn-baixar" onclick="_baixarRelatorioDriver()" disabled>
                 Baixar XLSX
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: EXPORTAR BAIXAS TOTAL EXPRESS (ADMIN) -->
+<div class="usr-modal-overlay" id="modal-abte-exportar" onclick="_fecharModalSeBackdrop(event,'modal-abte-exportar')">
+    <div class="usr-modal">
+        <div class="usr-modal-title">Exportar baixas</div>
+        <div class="usr-modal-sub">Deixe os filtros em branco para exportar todas.</div>
+
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Período (data da baixa)</label>
+            <div style="display:flex;gap:10px">
+                <input type="date" class="usr-modal-input" id="abte-exp-de" style="flex:1">
+                <input type="date" class="usr-modal-input" id="abte-exp-ate" style="flex:1">
+            </div>
+        </div>
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Entregador</label>
+            <select class="usr-modal-input" id="abte-exp-entregador">
+                <option value="">Todos os entregadores</option>
+            </select>
+        </div>
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Cidade</label>
+            <select class="usr-modal-input" id="abte-exp-cidade">
+                <option value="">Todas as cidades</option>
+            </select>
+        </div>
+
+        <div class="usr-modal-error" id="abte-exp-erro"></div>
+        <div class="usr-modal-btns">
+            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-abte-exportar')">Cancelar</button>
+            <button class="usr-modal-btn-primary" onclick="_abteExportar()">Exportar XLSX</button>
         </div>
     </div>
 </div>
