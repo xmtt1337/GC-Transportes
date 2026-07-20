@@ -25,13 +25,20 @@ function abrirViagemCriar(event) {
         document.getElementById(`vc-${t}-input`).value = "";
     });
     _vcMsg("", null);
+    _vcMsgTop("", null);
     _vcRenderLista();
     mostrarTela("tela-viagem-criar");
     _vcCarregarDisponiveis();
 }
 
-function _vcMsg(msg, tipo) {
-    const el = document.getElementById("vc-msg");
+function _vcMsg(msg, tipo) { _vcMsgEl("vc-msg", msg, tipo); }
+// Mensagem de validação do scan/digitação — fica logo abaixo do campo de código
+// (topo da tela), onde o entregador está olhando ao bipar.
+function _vcMsgTop(msg, tipo) { _vcMsgEl("vc-msg-top", msg, tipo); }
+
+function _vcMsgEl(id, msg, tipo) {
+    const el = document.getElementById(id);
+    if (!el) return;
     if (!msg) { el.style.display = "none"; el.innerHTML = ""; return; }
     const cor = tipo === "erro" ? "#ef4444" : "#22c55e";
     const bg  = tipo === "erro" ? "rgba(239,68,68,0.08)" : "rgba(34,197,94,0.08)";
@@ -69,20 +76,20 @@ function _vcAdicionarCodigo(codigoRaw) {
     if (!codigo) return;
     if (_devEhCep(codigo)) {
         _gcBeepErro();
-        return _vcMsg("Esse código é um CEP, não o código do pacote.", "erro");
+        return _vcMsgTop("Esse código é um CEP, não o código do pacote.", "erro");
     }
     if (_vcPedidos.some(c => c.toUpperCase() === codigo.toUpperCase())) {
         _gcBeepErro();
-        return _vcMsg(`O código <strong>${codigo}</strong> já está na viagem.`, "erro");
+        return _vcMsgTop(`O código <strong>${codigo}</strong> já está na viagem.`, "erro");
     }
     const disp = _vcDisponiveis.find(d => d.codigo.toUpperCase() === codigo.toUpperCase());
     if (!disp) {
         _gcBeepErro();
-        return _vcMsg(`O código <strong>${codigo}</strong> não está nas suas devoluções disponíveis. Registre a devolução dele primeiro.`, "erro");
+        return _vcMsgTop(`O código <strong>${codigo}</strong> não está nas suas devoluções disponíveis. Registre a devolução dele primeiro.`, "erro");
     }
     _vcPedidos.push(disp.codigo);
     _gcBeepSucesso();
-    _vcMsg("", null);
+    _vcMsgTop("", null);
     _vcRenderLista();
     _vcAtualizarInfo();
     document.getElementById("vc-codigo").focus();
