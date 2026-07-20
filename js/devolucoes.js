@@ -213,7 +213,7 @@ async function _devFilaSincronizar() {
                 await r.json();
             } catch (e) { break; } // sem rede/servidor fora — tenta na próxima
             if (r.ok) { await _devFilaRemover(item.id); enviadas++; continue; }
-            if (r.status === 400) { await _devFilaRemover(item.id); continue; } // inválida — reenviar não resolve
+            if (r.status === 400 || r.status === 409) { await _devFilaRemover(item.id); continue; } // inválida ou código já registrado — reenviar não resolve
             break; // 401/403/5xx — token vencido ou servidor com problema, tenta depois
         }
     } finally {
