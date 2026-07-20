@@ -306,93 +306,8 @@ function _devCarregarEnviadas() {
         });
 }
 
-// ───── RECEBER NO HUB (equipe da base — menu Operação → Devoluções → Receber) ─────
-function abrirDevolucoesReceber(event) {
-    if (event) event.preventDefault();
-    document.getElementById("dr-codigo").value = "";
-    _drLimparMsg();
-    mostrarTela("tela-devolucao-receber");
-    _drCarregarPendentes();
-}
-
-function _drLimparMsg() {
-    const el = document.getElementById("dr-msg");
-    el.style.display = "none"; el.innerHTML = "";
-}
-
-function _drMostrarMsg(msg, tipo) {
-    const el = document.getElementById("dr-msg");
-    const cores = { erro: "#ef4444", ok: "#22c55e", aviso: "#eab308" };
-    const cor = cores[tipo] || cores.ok;
-    el.style.cssText = `display:block;padding:10px 14px;border-radius:9px;background:${cor}14;border:1px solid ${cor}33;color:${cor};font-size:13px;margin-top:14px`;
-    el.innerHTML = msg;
-}
-
-function _drScan() {
-    _bteAbrirScanner(texto => {
-        document.getElementById("dr-codigo").value = texto;
-        _drReceberCodigo(); // pistola/câmera: recebe direto após a leitura
-    });
-}
-
-function _drEnterKey(e) {
-    // leitor físico de código de barras digita o código e manda Enter
-    if (e.key === "Enter") { e.preventDefault(); _drReceberCodigo(); }
-}
-
-function _drReceberCodigo() {
-    const codigo = document.getElementById("dr-codigo").value.trim();
-    if (!codigo) return _drMostrarMsg("Digite ou escaneie o código do pacote.", "erro");
-    if (_devEhCep(codigo)) {
-        _gcBeepErro();
-        _drMostrarMsg("Esse código é um CEP, não o código do pacote. Confira o código de rastreio.", "erro");
-        document.getElementById("dr-codigo").value = "";
-        document.getElementById("dr-codigo").focus();
-        return;
-    }
-    _drReceber({ codigo });
-}
-
-function _drReceberPorId(id) {
-    _drReceber({ id });
-}
-
-function _drReceber(body) {
-    _drLimparMsg();
-    fetch(`${API}/devolucoes/receber`, {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-    }).then(r => r.json().then(d => ({ ok: r.ok, d })))
-    .then(({ ok, d }) => {
-        if (!ok) {
-            _gcBeepErro();
-            if (d.ja_recebido) {
-                _drMostrarMsg(`Esta devolução já foi recebida${d.recebido_por ? ` por <strong>${d.recebido_por}</strong>` : ""}${d.recebido_data_hora_brasilia ? ` em <strong>${d.recebido_data_hora_brasilia}</strong>` : ""}.`, "aviso");
-            } else {
-                _drMostrarMsg(d.error || "Erro ao receber.", "erro");
-            }
-            return;
-        }
-        if (d.nao_registrado) {
-            // recebido e salvo no registro, mas sem devolução registrada pelo entregador
-            _gcBeepErro();
-            _drMostrarMsg(`⚠️ <strong>${d.codigo}</strong>: este pacote <strong>não foi registrado pelo entregador</strong> como devolução. O recebimento ficou salvo no registro mesmo assim.`, "erro");
-            document.getElementById("dr-codigo").value = "";
-            document.getElementById("dr-codigo").focus();
-            return;
-        }
-        _gcBeepSucesso();
-        _drMostrarMsg(`✓ <strong>${d.codigo || d.descricao || "Pacote"}</strong> recebido no hub — devolução de <strong>${d.usuario_nome || "—"}</strong> (${d.transportadora || "—"} · ${d.motivo || "—"}).`, "ok");
-        document.getElementById("dr-codigo").value = "";
-        document.getElementById("dr-codigo").focus();
-        _drCarregarPendentes();
-    })
-    .catch(() => {
-        _gcBeepErro();
-        _drMostrarMsg("Erro ao conectar com o servidor.", "erro");
-    });
-}
+// O recebimento agora é por VIAGEM (operação recebe o GC e confere os pedidos) —
+// toda a lógica de "Receber" vive em viagens.js (abrirDevolucoesReceber e _vr*).
 
 // Foto da devolução sob demanda (mesmo visual do "Ver foto" das baixas)
 function _drVerFoto(id) {
@@ -474,6 +389,7 @@ function _drrRenderizar(rows) {
             <td>${r.codigo || (r.descricao ? `<span style="color:#94a3b8">${r.descricao}</span>` : "—")}</td>
             <td>${r.transportadora || "—"}</td>
             <td>${r.motivo || "—"}</td>
+            <td>${r.viagem_numero ? `<span style="font-family:monospace;font-weight:700;color:#3a86ff">${r.viagem_numero}</span>` : `<span style="color:#475569">—</span>`}</td>
             <td>${r.sem_registro ? `
                 <span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;font-size:11.5px;font-weight:700">Não registrada pelo entregador</span>` : `
                 <div style="color:#e2e8f0">${r.usuario_nome || "—"}</div>
@@ -498,46 +414,7 @@ function _drrFiltrar() {
     const q = document.getElementById("drr-busca").value.trim().toLowerCase();
     if (!q) return _drrRenderizar(_drRegistroDados);
     _drrRenderizar(_drRegistroDados.filter(r =>
-        [r.codigo, r.descricao, r.transportadora, r.motivo, r.usuario_nome, r.recebido_por]
+        [r.codigo, r.descricao, r.transportadora, r.motivo, r.usuario_nome, r.recebido_por, r.viagem_numero]
             .some(v => String(v || "").toLowerCase().includes(q))
     ));
-}
-
-function _drCarregarPendentes() {
-    const empty = document.getElementById("dr-pend-empty");
-    const lista = document.getElementById("dr-pend-lista");
-    fetch(`${API}/devolucoes/pendentes`, { headers: { "Authorization": "Bearer " + token } })
-        .then(r => r.json())
-        .then(rows => {
-            if (!Array.isArray(rows) || !rows.length) {
-                empty.innerText = "Nenhuma devolução pendente de recebimento.";
-                empty.style.display = "";
-                lista.style.display = "none";
-                return;
-            }
-            empty.style.display = "none";
-            lista.style.display = "";
-            document.getElementById("dr-pend-total").innerText =
-                `${rows.length} pacote${rows.length !== 1 ? "s" : ""} pendente${rows.length !== 1 ? "s" : ""} de recebimento`;
-            document.getElementById("dr-pend-cards").innerHTML = rows.map(r => `
-                <div style="display:flex;gap:12px;align-items:center;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:10px;flex-wrap:wrap">
-                    <div style="flex:1;min-width:200px">
-                        <div style="font-size:13.5px;font-weight:700;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.codigo || r.descricao || "—"}</div>
-                        <div style="font-size:12.5px;color:#94a3b8;margin-top:2px">${r.transportadora || "—"} · ${r.motivo || "—"}</div>
-                        <div style="font-size:11.5px;color:#64748b;margin-top:2px">Registrada por ${r.usuario_nome || "—"} em ${r.data_hora_brasilia || "—"}</div>
-                    </div>
-                    ${r.tem_foto ? `
-                    <button class="abte-foto-btn" onclick="_drVerFoto(${r.id})">
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        Ver foto
-                    </button>` : ""}
-                    <button onclick="_drReceberPorId(${r.id})" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.1);color:#22c55e;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Receber</button>
-                </div>
-            `).join("");
-        })
-        .catch(() => {
-            empty.innerText = "Erro ao carregar as devoluções pendentes.";
-            empty.style.display = "";
-            lista.style.display = "none";
-        });
 }
