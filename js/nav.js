@@ -27,7 +27,7 @@ const _TELA_TITULOS = {
     "tela-admin-baixas-te":      "Baixas — Total Express",
     "tela-devolucao-nova":       "Registrar Devolução",
     "tela-devolucao-enviadas":   "Registro",
-    "tela-viagem-criar":         "Criar Viagem",
+    "tela-viagem-fechar":        "Fechar Viagem",
     "tela-viagem-minhas":        "Minhas Viagens",
     "tela-devolucao-receber":    "Receber Viagem",
     "tela-devolucao-registro":   "Registro de Devoluções",

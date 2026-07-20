@@ -1,44 +1,34 @@
 // ───── VIAGENS ─────
-// Entregador agrupa devoluções (pedidos) numa viagem lacrada + foto da saca e da saca
-// no caminhão. A viagem nasce "aberta" (editável) e trava quando a operação recebe.
+// O pedido já nasce dentro da viagem "aberta" do entregador (auto-criada na primeira
+// devolução registrada — não existe mais uma tela separada de "criar viagem"). O
+// entregador fecha a viagem quando quiser (fotos da saca + saca no caminhão), o que
+// trava a edição; a operação só recebe uma viagem já "fechada".
 // Reaproveita helpers globais: _bteAbrirScanner, _bteComprimirImagem, _devEhCep,
 // _gcBeepSucesso/_gcBeepErro, mostrarTela, gcAlert, API, token.
 
-// ══════════════════ CRIAR VIAGEM (ENTREGADOR) ══════════════════
-let _vcPedidos      = [];   // códigos já adicionados à viagem
-let _vcDisponiveis  = [];   // devoluções do entregador sem viagem (códigos válidos)
-let _vcSacaBase64   = null;
-let _vcCaminhaoBase64 = null;
-let _vcFotoMime     = "image/jpeg";
+// ══════════════════ FECHAR VIAGEM (ENTREGADOR) ══════════════════
+let _vfViagemId      = null;
+let _vfSacaBase64    = null;
+let _vfCaminhaoBase64 = null;
 
-function abrirViagemCriar(event) {
-    if (event) event.preventDefault();
-    _vcPedidos = [];
-    _vcSacaBase64 = null;
-    _vcCaminhaoBase64 = null;
-    document.getElementById("vc-form").style.display = "";
-    document.getElementById("vc-sucesso").style.display = "none";
-    document.getElementById("vc-codigo").value = "";
+function _vfAbrir(id) {
+    _vfViagemId = id;
+    _vfSacaBase64 = null;
+    _vfCaminhaoBase64 = null;
+    document.getElementById("vf-form").style.display = "";
+    document.getElementById("vf-sucesso").style.display = "none";
     ["saca", "caminhao"].forEach(t => {
-        document.getElementById(`vc-${t}-preview`).src = "";
-        document.getElementById(`vc-${t}-tile`).classList.remove("tem-foto");
-        document.getElementById(`vc-${t}-input`).value = "";
+        document.getElementById(`vf-${t}-preview`).src = "";
+        document.getElementById(`vf-${t}-tile`).classList.remove("tem-foto");
+        document.getElementById(`vf-${t}-input`).value = "";
     });
-    _vcMsg("", null);
-    _vcMsgTop("", null);
-    _vcRenderLista();
-    mostrarTela("tela-viagem-criar");
-    _vcCarregarDisponiveis();
+    _vfMsg("", null);
+    mostrarTela("tela-viagem-fechar");
+    _vfCarregar();
 }
 
-function _vcMsg(msg, tipo) { _vcMsgEl("vc-msg", msg, tipo); }
-// Mensagem de validação do scan/digitação — fica logo abaixo do campo de código
-// (topo da tela), onde o entregador está olhando ao bipar.
-function _vcMsgTop(msg, tipo) { _vcMsgEl("vc-msg-top", msg, tipo); }
-
-function _vcMsgEl(id, msg, tipo) {
-    const el = document.getElementById(id);
-    if (!el) return;
+function _vfMsg(msg, tipo) {
+    const el = document.getElementById("vf-msg");
     if (!msg) { el.style.display = "none"; el.innerHTML = ""; return; }
     const cor = tipo === "erro" ? "#ef4444" : "#22c55e";
     const bg  = tipo === "erro" ? "rgba(239,68,68,0.08)" : "rgba(34,197,94,0.08)";
@@ -46,149 +36,67 @@ function _vcMsgEl(id, msg, tipo) {
     el.innerHTML = msg;
 }
 
-function _vcCarregarDisponiveis() {
-    fetch(`${API}/viagens/pedidos-disponiveis`, { headers: { "Authorization": "Bearer " + token } })
+function _vfCarregar() {
+    fetch(`${API}/viagens/${_vfViagemId}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
-        .then(rows => {
-            _vcDisponiveis = Array.isArray(rows) ? rows : [];
-            _vcAtualizarInfo();
+        .then(v => {
+            if (v.error) return _vfMsg(v.error, "erro");
+            document.getElementById("vf-numero").innerText = v.numero;
+            const qtd = (v.pedidos || []).length;
+            document.getElementById("vf-qtd-pedidos").innerText = `${qtd} pedido${qtd !== 1 ? "s" : ""}`;
+            document.getElementById("vf-pedidos-lista").innerHTML = (v.pedidos || []).map(p => `
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;margin-bottom:7px">
+                    <div style="flex:1;min-width:0">
+                        <div style="font-size:13px;font-weight:700;color:#e2e8f0;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.codigo || p.descricao || "—"}</div>
+                        <div style="font-size:11.5px;color:#94a3b8">${p.transportadora || "—"}${p.motivo ? " · " + p.motivo : ""}</div>
+                    </div>
+                </div>`).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhum pedido nesta viagem.</div>`;
         })
-        .catch(() => { _vcDisponiveis = []; });
+        .catch(() => _vfMsg("Erro ao carregar a viagem.", "erro"));
 }
 
-function _vcAtualizarInfo() {
-    const restantes = _vcDisponiveis.filter(d => !_vcPedidos.some(c => c.toUpperCase() === d.codigo.toUpperCase()));
-    document.getElementById("vc-disp-info").innerText = restantes.length
-        ? `Toque pra adicionar (${restantes.length} disponíve${restantes.length !== 1 ? "is" : "l"}):`
-        : "Nenhuma devolução disponível pra adicionar. Registre a devolução do pacote primeiro.";
-    document.getElementById("vc-disp-lista").innerHTML = restantes.map(d => `
-        <button type="button" onclick="_vcAdicionarCodigo('${String(d.codigo).replace(/'/g, "\\'")}')"
-            style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 12px;margin-bottom:7px;border:1px solid rgba(58,134,255,0.25);border-radius:10px;background:rgba(58,134,255,0.05);color:#e2e8f0;cursor:pointer;font-family:inherit">
-            <span style="color:#3a86ff;font-size:18px;line-height:1;flex-shrink:0">+</span>
-            <span style="flex:1;min-width:0">
-                <span style="display:block;font-size:13px;font-weight:700;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.codigo}</span>
-                ${d.transportadora ? `<span style="display:block;font-size:11.5px;color:#94a3b8">${d.transportadora}${d.motivo ? " · " + d.motivo : ""}</span>` : ""}
-            </span>
-        </button>`).join("");
+function _vfTirarFoto(tipo) {
+    document.getElementById(`vf-${tipo}-input`).click();
 }
 
-function _vcScan() {
-    _bteAbrirScanner(texto => _vcAdicionarCodigo(texto));
-}
-
-function _vcCodigoEnter(e) {
-    if (e.key === "Enter") { e.preventDefault(); _vcAdicionarCodigo(document.getElementById("vc-codigo").value); }
-}
-
-function _vcAdicionarCodigo(codigoRaw) {
-    const codigo = String(codigoRaw || "").trim();
-    document.getElementById("vc-codigo").value = "";
-    if (!codigo) return;
-    if (_devEhCep(codigo)) {
-        _gcBeepErro();
-        return _vcMsgTop("Esse código é um CEP, não o código do pacote.", "erro");
-    }
-    if (_vcPedidos.some(c => c.toUpperCase() === codigo.toUpperCase())) {
-        _gcBeepErro();
-        return _vcMsgTop(`O código <strong>${codigo}</strong> já está na viagem.`, "erro");
-    }
-    const disp = _vcDisponiveis.find(d => d.codigo.toUpperCase() === codigo.toUpperCase());
-    if (!disp) {
-        _gcBeepErro();
-        return _vcMsgTop(`O código <strong>${codigo}</strong> não está nas suas devoluções disponíveis. Registre a devolução dele primeiro.`, "erro");
-    }
-    _vcPedidos.push(disp.codigo);
-    _gcBeepSucesso();
-    _vcMsgTop("", null);
-    _vcRenderLista();
-    _vcAtualizarInfo();
-    document.getElementById("vc-codigo").focus();
-}
-
-function _vcRemover(codigo) {
-    _vcPedidos = _vcPedidos.filter(c => c !== codigo);
-    _vcRenderLista();
-    _vcAtualizarInfo();
-}
-
-function _vcRenderLista() {
-    const el = document.getElementById("vc-lista");
-    if (!_vcPedidos.length) {
-        el.innerHTML = `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhum pedido adicionado ainda.</div>`;
-        return;
-    }
-    el.innerHTML = `<div style="font-size:11px;font-weight:700;color:#4a6a8a;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">${_vcPedidos.length} pedido${_vcPedidos.length !== 1 ? "s" : ""}</div>` +
-        _vcPedidos.map(c => {
-            const d = _vcDisponiveis.find(x => x.codigo.toUpperCase() === c.toUpperCase()) || {};
-            return `
-            <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;margin-bottom:7px">
-                <div style="flex:1;min-width:0">
-                    <div style="font-size:13px;font-weight:700;color:#e2e8f0;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c}</div>
-                    ${d.transportadora ? `<div style="font-size:11.5px;color:#94a3b8">${d.transportadora}${d.motivo ? " · " + d.motivo : ""}</div>` : ""}
-                </div>
-                <button onclick="_vcRemover('${c.replace(/'/g, "\\'")}')" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;line-height:1;flex-shrink:0" title="Remover">✕</button>
-            </div>`;
-        }).join("");
-}
-
-function _vcTirarFoto(tipo) {
-    document.getElementById(`vc-${tipo}-input`).click();
-}
-
-function _vcFotoSelecionada(tipo, input) {
+function _vfFotoSelecionada(tipo, input) {
     const file = input.files[0];
     if (!file) return;
     _bteComprimirImagem(file).then(({ dataUrl, base64 }) => {
-        if (tipo === "saca") _vcSacaBase64 = base64; else _vcCaminhaoBase64 = base64;
-        document.getElementById(`vc-${tipo}-preview`).src = dataUrl;
-        document.getElementById(`vc-${tipo}-tile`).classList.add("tem-foto");
+        if (tipo === "saca") _vfSacaBase64 = base64; else _vfCaminhaoBase64 = base64;
+        document.getElementById(`vf-${tipo}-preview`).src = dataUrl;
+        document.getElementById(`vf-${tipo}-tile`).classList.add("tem-foto");
     }).catch(() => gcAlert("Não foi possível processar a foto. Tente novamente."));
 }
 
-function _vcCriar() {
-    if (!_vcPedidos.length) return _vcMsg("Adicione ao menos um pedido à viagem.", "erro");
-    if (!_vcSacaBase64)     return _vcMsg("Tire a foto da saca.", "erro");
-    if (!_vcCaminhaoBase64) return _vcMsg("Tire a foto da saca no caminhão.", "erro");
+function _vfConfirmar() {
+    if (!_vfSacaBase64)     return _vfMsg("Tire a foto da saca.", "erro");
+    if (!_vfCaminhaoBase64) return _vfMsg("Tire a foto da saca no caminhão.", "erro");
 
-    const btn = document.getElementById("vc-submit-btn");
-    btn.disabled = true; btn.textContent = "Criando...";
+    const btn = document.getElementById("vf-submit-btn");
+    btn.disabled = true; btn.textContent = "Fechando...";
 
-    fetch(`${API}/viagens`, {
+    fetch(`${API}/viagens/${_vfViagemId}/fechar`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({
-            codigos: _vcPedidos,
-            foto_saca: _vcSacaBase64,
-            foto_caminhao: _vcCaminhaoBase64,
-            foto_mime_type: _vcFotoMime
-        })
+        body: JSON.stringify({ foto_saca: _vfSacaBase64, foto_caminhao: _vfCaminhaoBase64, foto_mime_type: "image/jpeg" })
     }).then(r => r.json())
     .then(d => {
-        btn.disabled = false; btn.textContent = "Criar viagem";
-        if (d.error) return _vcMsg(d.error, "erro");
+        btn.disabled = false; btn.textContent = "Fechar Viagem";
+        if (d.error) return _vfMsg(d.error, "erro");
         _gcBeepSucesso();
-        document.getElementById("vc-numero-gerado").innerText = d.numero;
-        document.getElementById("vc-copiado").innerText = "";
-        document.getElementById("vc-form").style.display = "none";
-        document.getElementById("vc-sucesso").style.display = "";
+        document.getElementById("vf-sucesso-numero").innerText = d.numero;
+        document.getElementById("vf-form").style.display = "none";
+        document.getElementById("vf-sucesso").style.display = "";
     })
     .catch(() => {
-        btn.disabled = false; btn.textContent = "Criar viagem";
-        _vcMsg("Erro ao criar a viagem. Tente novamente.", "erro");
-    });
-}
-
-function _vcCopiarNumero() {
-    const num = document.getElementById("vc-numero-gerado").innerText;
-    navigator.clipboard.writeText(num).then(() => {
-        document.getElementById("vc-copiado").innerText = "✓ Copiado!";
-        setTimeout(() => { document.getElementById("vc-copiado").innerText = ""; }, 2000);
+        btn.disabled = false; btn.textContent = "Fechar Viagem";
+        _vfMsg("Erro ao fechar a viagem. Tente novamente.", "erro");
     });
 }
 
 // ══════════════════ MINHAS VIAGENS (ENTREGADOR) ══════════════════
-let _vmDetalheId    = null;
-let _vmDisponiveis  = [];  // pra editar (adicionar pedidos) na viagem aberta
+let _vmDetalheId = null;
 
 function abrirViagemMinhas(event) {
     if (event) event.preventDefault();
@@ -199,6 +107,9 @@ function abrirViagemMinhas(event) {
 function _vmStatusBadge(status) {
     if (status === "recebida") {
         return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;font-size:11px;font-weight:700">Recebida</span>`;
+    }
+    if (status === "fechada") {
+        return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(58,134,255,0.1);border:1px solid rgba(58,134,255,0.3);color:#3a86ff;font-size:11px;font-weight:700">Fechada — aguardando recebimento</span>`;
     }
     return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);color:#eab308;font-size:11px;font-weight:700">Aberta</span>`;
 }
@@ -260,15 +171,12 @@ function _vmFecharDetalhe() {
 }
 
 function _vmCarregarDetalhe() {
-    Promise.all([
-        fetch(`${API}/viagens/${_vmDetalheId}`, { headers: { "Authorization": "Bearer " + token } }).then(r => r.json()),
-        fetch(`${API}/viagens/pedidos-disponiveis`, { headers: { "Authorization": "Bearer " + token } }).then(r => r.json()).catch(() => [])
-    ]).then(([v, disp]) => {
-        _vmDisponiveis = Array.isArray(disp) ? disp : [];
-        _vmRenderDetalhe(v);
-    }).catch(() => {
-        document.getElementById("vm-modal-body").innerHTML = `<div style="color:#ef4444;font-size:13px;padding:24px 0;text-align:center">Erro ao carregar a viagem.</div>`;
-    });
+    fetch(`${API}/viagens/${_vmDetalheId}`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(v => _vmRenderDetalhe(v))
+        .catch(() => {
+            document.getElementById("vm-modal-body").innerHTML = `<div style="color:#ef4444;font-size:13px;padding:24px 0;text-align:center">Erro ao carregar a viagem.</div>`;
+        });
 }
 
 function _vmRenderDetalhe(v) {
@@ -287,7 +195,7 @@ function _vmRenderDetalhe(v) {
             </div>
             ${recebido
                 ? `<span style="font-size:11px;font-weight:700;color:#22c55e;flex-shrink:0">✓ Conferido</span>`
-                : (editavel ? `<button onclick="_vmRemoverPedido(${p.id})" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;flex-shrink:0" title="Remover">✕</button>` : `<span style="font-size:11px;color:#eab308;flex-shrink:0">Pendente</span>`)}
+                : (editavel ? `<button onclick="_vmRemoverPedido(${p.id})" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;flex-shrink:0" title="Remover (exclui o registro dessa devolução)">✕</button>` : `<span style="font-size:11px;color:#eab308;flex-shrink:0">Pendente</span>`)}
         </div>`;
     }).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhum pedido nesta viagem.</div>`;
 
@@ -301,23 +209,16 @@ function _vmRenderDetalhe(v) {
         </div>
         <div style="margin:8px 0 16px">${_vmStatusBadge(v.status)}${v.status === "recebida" && v.recebida_por ? `<span style="font-size:12px;color:#64748b;margin-left:8px">por ${v.recebida_por}${v.recebida_data_hora_brasilia ? " em " + v.recebida_data_hora_brasilia : ""}</span>` : ""}</div>
 
-        ${editavel ? `
-        <div style="margin-bottom:14px">
-            <div class="bte-codigo-row">
-                <input type="text" id="vm-add-codigo" class="ant-input" placeholder="Adicionar pedido (escaneie ou digite)" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_vmAdicionarPedido(this.value);}">
-                <button type="button" class="bte-scan-btn" onclick="_vmScanAdicionar()" title="Escanear">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-                </button>
-            </div>
-            <div id="vm-add-msg" style="display:none;margin-top:8px"></div>
-        </div>` : ""}
-
         <div style="font-size:11px;font-weight:700;color:#4a6a8a;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">${(v.pedidos || []).length} pedido${(v.pedidos || []).length !== 1 ? "s" : ""}</div>
         ${pedidosHtml}
 
         <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+            ${editavel ? `
+            <button onclick="_vmFecharViagemAgora(${v.id})" style="padding:9px 16px;border-radius:9px;border:none;background:#3a86ff;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Fechar viagem</button>
+            ` : `
             <button onclick="_vmVerFoto(${v.id},'saca')" class="abte-foto-btn">Foto da saca</button>
             <button onclick="_vmVerFoto(${v.id},'caminhao')" class="abte-foto-btn">Foto no caminhão</button>
+            `}
             <button onclick="_vmImprimir(${v.id})" class="abte-foto-btn">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                 Imprimir
@@ -325,43 +226,13 @@ function _vmRenderDetalhe(v) {
         </div>`;
 }
 
-function _vmAddMsg(msg, tipo) {
-    const el = document.getElementById("vm-add-msg");
-    if (!el) return;
-    if (!msg) { el.style.display = "none"; return; }
-    const cor = tipo === "erro" ? "#ef4444" : "#22c55e";
-    el.style.cssText = `display:block;font-size:12.5px;color:${cor}`;
-    el.innerHTML = msg;
-}
-
-function _vmScanAdicionar() {
-    _bteAbrirScanner(texto => _vmAdicionarPedido(texto));
-}
-
-function _vmAdicionarPedido(codigoRaw) {
-    const codigo = String(codigoRaw || "").trim();
-    const inp = document.getElementById("vm-add-codigo");
-    if (inp) inp.value = "";
-    if (!codigo) return;
-    if (_devEhCep(codigo)) { _gcBeepErro(); return _vmAddMsg("Esse código é um CEP, não o código do pacote.", "erro"); }
-    const disp = _vmDisponiveis.find(d => d.codigo.toUpperCase() === codigo.toUpperCase());
-    if (!disp) { _gcBeepErro(); return _vmAddMsg(`"${codigo}" não está nas suas devoluções disponíveis.`, "erro"); }
-
-    fetch(`${API}/viagens/${_vmDetalheId}`, {
-        method: "PATCH",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ adicionar: [disp.codigo] })
-    }).then(r => r.json())
-    .then(d => {
-        if (d.error) { _gcBeepErro(); return _vmAddMsg(d.error, "erro"); }
-        if (d.invalidos && d.invalidos.length) { _gcBeepErro(); return _vmAddMsg(`Não foi possível adicionar: ${d.invalidos.join(", ")}`, "erro"); }
-        _gcBeepSucesso();
-        _vmCarregarDetalhe(); // recarrega pedidos + disponíveis
-    })
-    .catch(() => _vmAddMsg("Erro ao adicionar.", "erro"));
+function _vmFecharViagemAgora(id) {
+    _vmFecharDetalhe();
+    _vfAbrir(id);
 }
 
 function _vmRemoverPedido(devolucaoId) {
+    if (!confirm("Remover este pedido da viagem? Isso exclui o registro da devolução — se quiser incluir de novo, terá que registrar a devolução novamente.")) return;
     fetch(`${API}/viagens/${_vmDetalheId}`, {
         method: "PATCH",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
@@ -407,7 +278,7 @@ function _vmImprimir(id) {
                     .foot{margin-top:24px;font-size:11px;color:#999}
                 </style></head><body>
                 <h1>Viagem ${v.numero}</h1>
-                <div class="sub">${v.status === "recebida" ? "Recebida pela operação" : "Aberta"}</div>
+                <div class="sub">${v.status === "recebida" ? "Recebida pela operação" : v.status === "fechada" ? "Fechada — aguardando recebimento" : "Aberta"}</div>
                 <div class="meta">
                     <div><b>Entregador</b>${v.entregador_nome || "—"}</div>
                     <div><b>Criada em</b>${v.data_hora_brasilia || "—"}</div>

@@ -13,12 +13,71 @@ function _devEhCep(codigo) {
     return _DEV_CEP_REGEX.test(String(codigo || "").trim());
 }
 
+// Viagem "aberta" atual do entregador (cada pedido registrado entra automaticamente
+// nela) — id guardado aqui pros botões "Ver pedidos" / "Fechar Viagem".
+let _devViagemAtualId = null;
+
 function abrirDevolucaoNova(event) {
     if (event) event.preventDefault();
     _devLimparForm();
+    document.getElementById("dev-form-wrap").style.display = "";
+    document.getElementById("dev-pedido-sucesso").style.display = "none";
     mostrarTela("tela-devolucao-nova");
     _devAtualizarBadgeFila();
+    _devAtualizarBannerViagem();
     _devFilaSincronizar();
+}
+
+// Banner "Viagem em andamento" no topo — mostra a viagem aberta atual (se houver)
+function _devAtualizarBannerViagem() {
+    fetch(`${API}/viagens/aberta`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(d => {
+            if (!d || !d.aberta) {
+                _devViagemAtualId = null;
+                const banner = document.getElementById("dev-viagem-banner");
+                if (banner) banner.style.display = "none";
+                return;
+            }
+            _devViagemAtualId = d.id;
+            _devAtualizarBannerComDados(d);
+        })
+        .catch(() => {});
+}
+
+function _devAtualizarBannerComDados(viagem) {
+    const banner = document.getElementById("dev-viagem-banner");
+    if (!banner || !viagem) return;
+    banner.style.display = "flex";
+    document.getElementById("dev-viagem-numero").innerText = viagem.numero;
+    document.getElementById("dev-viagem-qtd").innerText = `${viagem.pedidos} pedido${viagem.pedidos !== 1 ? "s" : ""}`;
+}
+
+function _devVerPedidosViagemAtual() {
+    if (_devViagemAtualId) _vmAbrirDetalhe(_devViagemAtualId);
+}
+
+// Card de sucesso após enviar: mostra a viagem e oferece "Adicionar mais" ou "Fechar"
+function _devMostrarSucesso(viagem) {
+    document.getElementById("dev-form-wrap").style.display = "none";
+    document.getElementById("dev-pedido-sucesso").style.display = "";
+    document.getElementById("dev-sucesso-numero").innerText = viagem ? viagem.numero : "—";
+    document.getElementById("dev-sucesso-qtd").innerText = viagem ? viagem.pedidos : "—";
+    if (viagem) {
+        _devViagemAtualId = viagem.id;
+        _devAtualizarBannerComDados(viagem);
+    }
+}
+
+function _devAdicionarMais() {
+    document.getElementById("dev-pedido-sucesso").style.display = "none";
+    document.getElementById("dev-form-wrap").style.display = "";
+    const campo = document.getElementById("dev-codigo");
+    if (campo) campo.focus();
+}
+
+function _devIrFecharViagem() {
+    if (_devViagemAtualId) _vfAbrir(_devViagemAtualId);
 }
 
 function abrirDevolucoesEnviadas(event) {
@@ -147,8 +206,8 @@ function _devEnviar() {
         btn.disabled = false; btn.innerHTML = _DEV_BTN_HTML;
         if (d.error) return _devMostrarMsg(d.error, "erro");
         _devLimparForm();
-        _devMostrarMsg("Devolução enviada com sucesso!", "ok");
         _gcBeepSucesso();
+        _devMostrarSucesso(d.viagem);
     })
     .catch(() => {
         // rede caiu no meio do caminho — guarda no celular em vez de perder
@@ -225,11 +284,14 @@ async function _devFilaSincronizar() {
             if (telaEnv && telaEnv.classList.contains("active-view")) _devCarregarEnviadas();
             const telaNova = document.getElementById("tela-devolucao-nova");
             if (telaNova && telaNova.classList.contains("active-view")) {
-                _devMostrarMsg(
-                    enviadas === 1
-                        ? "A devolução que estava pendente foi <strong>enviada com sucesso</strong>!"
-                        : `As ${enviadas} devoluções que estavam pendentes foram <strong>enviadas com sucesso</strong>!`,
-                    "ok");
+                _devAtualizarBannerViagem();
+                if (document.getElementById("dev-form-wrap").style.display !== "none") {
+                    _devMostrarMsg(
+                        enviadas === 1
+                            ? "A devolução que estava pendente foi <strong>enviada com sucesso</strong>!"
+                            : `As ${enviadas} devoluções que estavam pendentes foram <strong>enviadas com sucesso</strong>!`,
+                        "ok");
+                }
             }
         }
     }

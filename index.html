@@ -178,7 +178,6 @@ if (location.hostname === "xmtt1337.github.io") {
         </li>
         <ul class="submenu" data-menu="devolucoes" id="submenu-devolucoes" style="display:none">
             <li><a href="#" data-rota="Devolucoes/Nova" onclick="abrirDevolucaoNova(event)">Registrar devolução</a></li>
-            <li><a href="#" data-rota="Devolucoes/CriarViagem" onclick="abrirViagemCriar(event)">Criar viagem</a></li>
             <li><a href="#" data-rota="Devolucoes/MinhasViagens" onclick="abrirViagemMinhas(event)">Minhas viagens</a></li>
         </ul>
 
@@ -1659,7 +1658,17 @@ if (location.hostname === "xmtt1337.github.io") {
 
                 <div id="dev-fila-card" style="display:none"></div>
 
-                <div class="ant-form-wrap">
+                <!-- Viagem em andamento: cada pedido registrado entra automaticamente nela -->
+                <div id="dev-viagem-banner" style="display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 16px;border-radius:12px;background:rgba(58,134,255,0.08);border:1px solid rgba(58,134,255,0.28);margin-bottom:16px">
+                    <div>
+                        <div style="font-size:10.5px;font-weight:700;color:#4a6a8a;text-transform:uppercase;letter-spacing:0.06em">Viagem em andamento</div>
+                        <div style="font-size:15px;font-weight:800;color:#3a86ff;font-family:monospace" id="dev-viagem-numero">—</div>
+                        <div style="font-size:12px;color:#94a3b8" id="dev-viagem-qtd">—</div>
+                    </div>
+                    <button onclick="_devVerPedidosViagemAtual()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.1);color:#3a86ff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Ver pedidos</button>
+                </div>
+
+                <div class="ant-form-wrap" id="dev-form-wrap">
                     <div class="dev-form-head">
                         <div class="dev-form-icon">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
@@ -1738,6 +1747,19 @@ if (location.hostname === "xmtt1337.github.io") {
                         Enviar Devolução
                     </button>
                 </div>
+
+                <!-- Confirmação após enviar: pedido já entrou na viagem em aberto -->
+                <div class="ant-form-wrap" id="dev-pedido-sucesso" style="display:none;text-align:center">
+                    <div style="width:52px;height:52px;border-radius:50%;background:rgba(34,197,94,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div style="font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:10px">Pedido adicionado à viagem <span id="dev-sucesso-numero" style="color:#3a86ff;font-family:monospace">—</span></div>
+                    <div style="font-size:13px;color:#94a3b8;margin-bottom:20px">Pedidos adicionados: <strong id="dev-sucesso-qtd" style="color:#e2e8f0">—</strong></div>
+                    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                        <button onclick="_devAdicionarMais()" style="padding:11px 20px;border-radius:10px;border:none;background:#3a86ff;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Adicionar mais</button>
+                        <button onclick="_devIrFecharViagem()" style="padding:11px 20px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Fechar Viagem</button>
+                    </div>
+                </div>
             </div>
         </div><!-- /tela-devolucao-nova -->
 
@@ -1809,87 +1831,73 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-devolucao-receber -->
 
-        <!-- TELA VIAGEM — CRIAR (ENTREGADOR) -->
-        <div id="tela-viagem-criar" class="view tela-full">
+        <!-- TELA VIAGEM — FECHAR (ENTREGADOR) -->
+        <div id="tela-viagem-fechar" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
                 <!-- Formulário -->
-                <div class="ant-form-wrap" id="vc-form">
+                <div class="ant-form-wrap" id="vf-form">
                     <div class="dev-form-head">
                         <div class="dev-form-icon">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                         </div>
                         <div>
-                            <div class="ant-form-title" style="margin-bottom:2px">Criar Viagem</div>
-                            <div class="dev-form-sub">Agrupe os pedidos que já registrou como devolução</div>
+                            <div class="ant-form-title" style="margin-bottom:2px">Fechar Viagem</div>
+                            <div class="dev-form-sub"><span id="vf-numero">—</span> · <span id="vf-qtd-pedidos">—</span></div>
                         </div>
                     </div>
 
                     <div class="dev-sec">
-                        <div class="dev-sec-head"><span class="dev-sec-num">1</span> Pedidos da viagem</div>
-                        <div class="bte-codigo-row">
-                            <input type="text" id="vc-codigo" class="ant-input" placeholder="Escaneie ou digite o código" style="flex:1" onkeydown="_vcCodigoEnter(event)">
-                            <button type="button" class="bte-scan-btn" onclick="_vcScan()" title="Escanear código do pedido">
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-                            </button>
-                        </div>
-                        <div id="vc-msg-top" style="display:none;margin-top:10px"></div>
-                        <div style="font-size:12px;color:#64748b;margin-top:10px" id="vc-disp-info"></div>
-                        <div id="vc-disp-lista" style="margin-top:8px"></div>
-                        <div id="vc-lista" style="margin-top:14px"></div>
+                        <div class="dev-sec-head"><span class="dev-sec-num">1</span> Pedidos desta viagem</div>
+                        <div id="vf-pedidos-lista"></div>
                     </div>
 
                     <div class="dev-sec">
                         <div class="dev-sec-head"><span class="dev-sec-num">2</span> Foto da saca</div>
-                        <div class="dev-foto-tile" id="vc-saca-tile" onclick="_vcTirarFoto('saca')">
+                        <div class="dev-foto-tile" id="vf-saca-tile" onclick="_vfTirarFoto('saca')">
                             <div class="dev-foto-vazio">
                                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                                 Tirar foto da saca
                             </div>
-                            <img id="vc-saca-preview" alt="">
+                            <img id="vf-saca-preview" alt="">
                             <div class="dev-foto-refazer">Trocar foto</div>
                         </div>
-                        <input type="file" id="vc-saca-input" accept="image/*" capture="environment" style="display:none" onchange="_vcFotoSelecionada('saca', this)">
+                        <input type="file" id="vf-saca-input" accept="image/*" capture="environment" style="display:none" onchange="_vfFotoSelecionada('saca', this)">
                     </div>
 
                     <div class="dev-sec">
                         <div class="dev-sec-head"><span class="dev-sec-num">3</span> Foto da saca no caminhão</div>
-                        <div class="dev-foto-tile" id="vc-caminhao-tile" onclick="_vcTirarFoto('caminhao')">
+                        <div class="dev-foto-tile" id="vf-caminhao-tile" onclick="_vfTirarFoto('caminhao')">
                             <div class="dev-foto-vazio">
                                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                                 Tirar foto no caminhão
                             </div>
-                            <img id="vc-caminhao-preview" alt="">
+                            <img id="vf-caminhao-preview" alt="">
                             <div class="dev-foto-refazer">Trocar foto</div>
                         </div>
-                        <input type="file" id="vc-caminhao-input" accept="image/*" capture="environment" style="display:none" onchange="_vcFotoSelecionada('caminhao', this)">
+                        <input type="file" id="vf-caminhao-input" accept="image/*" capture="environment" style="display:none" onchange="_vfFotoSelecionada('caminhao', this)">
                     </div>
 
-                    <div id="vc-msg" class="ant-form-msg" style="display:none"></div>
-                    <button onclick="_vcCriar()" class="ant-submit-btn dev-submit" id="vc-submit-btn">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        Criar viagem
+                    <div id="vf-msg" class="ant-form-msg" style="display:none"></div>
+                    <button onclick="_vfConfirmar()" class="ant-submit-btn dev-submit" id="vf-submit-btn">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        Fechar Viagem
                     </button>
                 </div>
 
-                <!-- Sucesso: mostra o número da viagem pra copiar -->
-                <div class="ant-form-wrap" id="vc-sucesso" style="display:none;text-align:center">
+                <!-- Sucesso: viagem fechada, pronta pra entregar na base -->
+                <div class="ant-form-wrap" id="vf-sucesso" style="display:none;text-align:center">
                     <div style="width:52px;height:52px;border-radius:50%;background:rgba(34,197,94,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
                         <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     </div>
-                    <div style="font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:6px">Viagem criada!</div>
-                    <div style="font-size:13px;color:#94a3b8;margin-bottom:18px">Anote o número da viagem — a operação vai pedir ele no recebimento.</div>
-                    <div style="display:inline-flex;align-items:center;gap:12px;padding:12px 20px;border-radius:12px;background:rgba(58,134,255,0.08);border:1px solid rgba(58,134,255,0.28);margin-bottom:8px">
-                        <span id="vc-numero-gerado" style="font-size:26px;font-weight:800;color:#3a86ff;font-family:monospace;letter-spacing:1px">—</span>
-                        <button onclick="_vcCopiarNumero()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.12);color:#3a86ff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Copiar</button>
-                    </div>
-                    <div id="vc-copiado" style="font-size:12.5px;color:#22c55e;height:18px"></div>
-                    <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                    <div style="font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:6px">Viagem <span id="vf-sucesso-numero" style="color:#3a86ff;font-family:monospace">—</span> fechada!</div>
+                    <div style="font-size:13px;color:#94a3b8;margin-bottom:20px">Leve a saca até a base e informe esse número pra operação receber.</div>
+                    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
                         <button onclick="abrirViagemMinhas()" style="padding:11px 20px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Ver minhas viagens</button>
-                        <button onclick="abrirViagemCriar()" style="padding:11px 20px;border-radius:10px;border:none;background:#3a86ff;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Nova viagem</button>
+                        <button onclick="abrirDevolucaoNova()" style="padding:11px 20px;border-radius:10px;border:none;background:#3a86ff;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Registrar devolução</button>
                     </div>
                 </div>
             </div>
-        </div><!-- /tela-viagem-criar -->
+        </div><!-- /tela-viagem-fechar -->
 
         <!-- TELA VIAGEM — MINHAS VIAGENS (ENTREGADOR) -->
         <div id="tela-viagem-minhas" class="view tela-full">
