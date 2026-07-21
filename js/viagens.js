@@ -1,7 +1,7 @@
 // ───── VIAGENS ─────
 // O pedido já nasce dentro da viagem "aberta" do entregador (auto-criada na primeira
 // devolução registrada — não existe mais uma tela separada de "criar viagem"). O
-// entregador fecha a viagem quando quiser (foto da saca com o número escrito nela),
+// entregador fecha a viagem quando quiser (foto da saca identificada com o número),
 // o que trava a edição; a operação só recebe uma viagem já "fechada".
 // Reaproveita helpers globais: _bteAbrirScanner, _bteComprimirImagem, _devEhCep,
 // _gcBeepSucesso/_gcBeepErro, mostrarTela, gcAlert, API, token.
@@ -39,7 +39,7 @@ function _vfCarregar() {
             if (v.error) return _vfMsg(v.error, "erro");
             document.getElementById("vf-numero").innerText = v.numero;
             document.getElementById("vf-saca-instrucao").innerHTML =
-                `Escreva <strong style="color:#e2e8f0;font-family:monospace">${v.numero}</strong> na saca antes de tirar a foto.`;
+                `Use <strong style="color:#e2e8f0;font-family:monospace">${v.numero}</strong> pra identificar/etiquetar a saca antes de tirar a foto.`;
             const qtd = (v.pedidos || []).length;
             document.getElementById("vf-qtd-pedidos").innerText = `${qtd} pedido${qtd !== 1 ? "s" : ""}`;
             document.getElementById("vf-pedidos-lista").innerHTML = (v.pedidos || []).map(p => `
