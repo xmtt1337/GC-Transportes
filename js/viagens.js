@@ -206,7 +206,6 @@ function _vmRenderDetalhe(v) {
         ? `<button onclick="_vmAdicionarPedido()" style="${btnSec}">+ Adicionar pedido</button>
            <button onclick="_vmImprimir(${v.id})" style="${btnSec}">${svgImp} Imprimir</button>`
         : `<button onclick="_vmVerFoto(${v.id},'saca')" style="${btnSec}">${svgFoto} Foto da saca</button>
-           <button onclick="_vmVerFoto(${v.id},'caminhao')" style="${btnSec}">${svgFoto} Foto no caminhão</button>
            <button onclick="_vmImprimir(${v.id})" style="${btnSec}">${svgImp} Imprimir</button>`;
 
     const acaoPrincipal = editavel
