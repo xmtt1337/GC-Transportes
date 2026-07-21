@@ -196,32 +196,44 @@ function _vmRenderDetalhe(v) {
         </div>`;
     }).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhum pedido nesta viagem.</div>`;
 
+    // Botões: 1 ação principal por estado (fechar/reabrir) em largura total,
+    // utilitários (adicionar/fotos/imprimir) numa linha secundária uniforme.
+    const btnSec  = `flex:1;min-width:130px;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.03);color:#cbd5e1;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit`;
+    const svgImp  = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`;
+    const svgFoto = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
+
+    const utilitarios = editavel
+        ? `<button onclick="_vmAdicionarPedido()" style="${btnSec}">+ Adicionar pedido</button>
+           <button onclick="_vmImprimir(${v.id})" style="${btnSec}">${svgImp} Imprimir</button>`
+        : `<button onclick="_vmVerFoto(${v.id},'saca')" style="${btnSec}">${svgFoto} Foto da saca</button>
+           <button onclick="_vmVerFoto(${v.id},'caminhao')" style="${btnSec}">${svgFoto} Foto no caminhão</button>
+           <button onclick="_vmImprimir(${v.id})" style="${btnSec}">${svgImp} Imprimir</button>`;
+
+    const acaoPrincipal = editavel
+        ? `<button onclick="_vmFecharViagemAgora(${v.id})" style="width:100%;margin-top:8px;padding:12px;border-radius:10px;border:none;background:#3a86ff;color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit">Fechar viagem</button>`
+        : v.status === "fechada"
+            ? `<button onclick="_vmReabrirViagem(${v.id})" style="width:100%;margin-top:8px;padding:12px;border-radius:10px;border:1px solid rgba(234,179,8,0.35);background:rgba(234,179,8,0.08);color:#eab308;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit">Reabrir viagem</button>`
+            : "";
+
     document.getElementById("vm-modal-body").innerHTML = `
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:14px">
             <div>
-                <div style="font-size:24px;font-weight:800;color:#3a86ff;font-family:monospace">${v.numero}</div>
-                <div style="font-size:12.5px;color:#94a3b8;margin-top:2px">${v.data_hora_brasilia || "—"}</div>
+                <div style="font-size:22px;font-weight:800;color:#3a86ff;font-family:monospace;line-height:1.2">${v.numero}</div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px">
+                    ${_vmStatusBadge(v.status)}
+                    <span style="font-size:12px;color:#64748b">${v.data_hora_brasilia || "—"}</span>
+                </div>
+                ${v.status === "recebida" && v.recebida_por ? `<div style="font-size:12px;color:#64748b;margin-top:5px">Recebida por ${v.recebida_por}${v.recebida_data_hora_brasilia ? " em " + v.recebida_data_hora_brasilia : ""}</div>` : ""}
             </div>
-            <button onclick="_vmFecharDetalhe()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">✕</button>
+            <button onclick="_vmFecharDetalhe()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1;padding:2px">✕</button>
         </div>
-        <div style="margin:8px 0 16px">${_vmStatusBadge(v.status)}${v.status === "recebida" && v.recebida_por ? `<span style="font-size:12px;color:#64748b;margin-left:8px">por ${v.recebida_por}${v.recebida_data_hora_brasilia ? " em " + v.recebida_data_hora_brasilia : ""}</span>` : ""}</div>
 
         <div style="font-size:11px;font-weight:700;color:#4a6a8a;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">${(v.pedidos || []).length} pedido${(v.pedidos || []).length !== 1 ? "s" : ""}</div>
-        ${pedidosHtml}
+        <div style="max-height:38vh;overflow-y:auto;margin-bottom:14px">${pedidosHtml}</div>
 
-        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-            ${editavel ? `
-            <button onclick="_vmAdicionarPedido()" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">+ Adicionar pedido</button>
-            <button onclick="_vmFecharViagemAgora(${v.id})" style="padding:9px 16px;border-radius:9px;border:none;background:#3a86ff;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Fechar viagem</button>
-            ` : `
-            ${v.status === "fechada" ? `<button onclick="_vmReabrirViagem(${v.id})" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(234,179,8,0.35);background:rgba(234,179,8,0.08);color:#eab308;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Reabrir viagem</button>` : ""}
-            <button onclick="_vmVerFoto(${v.id},'saca')" class="abte-foto-btn">Foto da saca</button>
-            <button onclick="_vmVerFoto(${v.id},'caminhao')" class="abte-foto-btn">Foto no caminhão</button>
-            `}
-            <button onclick="_vmImprimir(${v.id})" class="abte-foto-btn">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                Imprimir
-            </button>
+        <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:14px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">${utilitarios}</div>
+            ${acaoPrincipal}
         </div>`;
 }
 
