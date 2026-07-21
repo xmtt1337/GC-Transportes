@@ -211,6 +211,7 @@ function _vmRenderDetalhe(v) {
 
         <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
             ${editavel ? `
+            <button onclick="_vmAdicionarPedido()" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">+ Adicionar pedido</button>
             <button onclick="_vmFecharViagemAgora(${v.id})" style="padding:9px 16px;border-radius:9px;border:none;background:#3a86ff;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Fechar viagem</button>
             ` : `
             ${v.status === "fechada" ? `<button onclick="_vmReabrirViagem(${v.id})" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(234,179,8,0.35);background:rgba(234,179,8,0.08);color:#eab308;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Reabrir viagem</button>` : ""}
@@ -227,6 +228,11 @@ function _vmRenderDetalhe(v) {
 function _vmFecharViagemAgora(id) {
     _vmFecharDetalhe();
     _vfAbrir(id);
+}
+
+function _vmAdicionarPedido() {
+    _vmFecharDetalhe();
+    abrirDevolucaoNova();
 }
 
 function _vmReabrirViagem(id) {
