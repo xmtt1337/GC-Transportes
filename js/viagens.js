@@ -282,6 +282,8 @@ function _vmImprimir(id) {
                     .sub{color:#555;font-size:13px;margin-bottom:18px}
                     .meta{display:flex;gap:24px;flex-wrap:wrap;font-size:13px;margin-bottom:18px}
                     .meta b{display:block;color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+                    .codes{display:flex;align-items:center;gap:28px;margin-bottom:18px}
+                    .codes .lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;text-align:center}
                     table{width:100%;border-collapse:collapse;font-size:13px}
                     th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #ddd}
                     th{background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#555}
@@ -296,10 +298,21 @@ function _vmImprimir(id) {
                     <div><b>Pedidos</b>${(v.pedidos || []).length}</div>
                     ${v.recebida_por ? `<div><b>Recebida por</b>${v.recebida_por}${v.recebida_data_hora_brasilia ? " · " + v.recebida_data_hora_brasilia : ""}</div>` : ""}
                 </div>
+                <div class="codes">
+                    <div><canvas id="print-qr"></canvas><div class="lbl">QR Code</div></div>
+                    <div><svg id="print-barcode"></svg></div>
+                </div>
                 <table><thead><tr><th>#</th><th>Código / Descrição</th><th>Transportadora</th><th>Motivo</th><th>Status</th></tr></thead>
                 <tbody>${linhas || `<tr><td colspan="5" style="text-align:center;color:#888;padding:16px">Sem pedidos</td></tr>`}</tbody></table>
                 <div class="foot">GC Transportes — impresso em ${new Date().toLocaleString("pt-BR")}</div>
-                <script>window.onload=function(){window.print();}<\/script>
+                <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+                <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"><\/script>
+                <script>
+                    try { JsBarcode("#print-barcode", "${v.numero}", { format: "CODE128", width: 2, height: 50, fontSize: 13, margin: 0 }); } catch (e) {}
+                    if (window.QRCode) {
+                        QRCode.toCanvas(document.getElementById("print-qr"), "${v.numero}", { width: 100, margin: 0 }, function () { window.print(); });
+                    } else { window.print(); }
+                <\/script>
                 </body></html>`);
             w.document.close();
         })
@@ -344,7 +357,7 @@ function _vrNumeroEnter(e) { if (e.key === "Enter") { e.preventDefault(); _vrRec
 
 function _vrReceberViagem() {
     const numero = document.getElementById("vr-numero").value.trim();
-    if (!numero) return _vrMsg("Informe o número da viagem (ex: GC0001).", "erro");
+    if (!numero) return _vrMsg("Informe o número da viagem (ex: GC2026070001).", "erro");
     _vrMsg("Abrindo viagem...", "ok");
     fetch(`${API}/viagens/receber`, {
         method: "POST",
