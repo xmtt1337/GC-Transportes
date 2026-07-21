@@ -213,6 +213,7 @@ function _vmRenderDetalhe(v) {
             ${editavel ? `
             <button onclick="_vmFecharViagemAgora(${v.id})" style="padding:9px 16px;border-radius:9px;border:none;background:#3a86ff;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Fechar viagem</button>
             ` : `
+            ${v.status === "fechada" ? `<button onclick="_vmReabrirViagem(${v.id})" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(234,179,8,0.35);background:rgba(234,179,8,0.08);color:#eab308;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Reabrir viagem</button>` : ""}
             <button onclick="_vmVerFoto(${v.id},'saca')" class="abte-foto-btn">Foto da saca</button>
             <button onclick="_vmVerFoto(${v.id},'caminhao')" class="abte-foto-btn">Foto no caminhão</button>
             `}
@@ -226,6 +227,19 @@ function _vmRenderDetalhe(v) {
 function _vmFecharViagemAgora(id) {
     _vmFecharDetalhe();
     _vfAbrir(id);
+}
+
+function _vmReabrirViagem(id) {
+    if (!confirm("Reabrir esta viagem? Ela volta a ficar aberta pra você adicionar ou remover pedidos — depois vai precisar fechar de novo (com foto da saca).")) return;
+    fetch(`${API}/viagens/${id}/reabrir`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token }
+    }).then(r => r.json())
+    .then(d => {
+        if (d.error) { gcAlert(d.error); return; }
+        _vmCarregarDetalhe();
+    })
+    .catch(() => gcAlert("Erro ao reabrir a viagem."));
 }
 
 function _vmRemoverPedido(devolucaoId) {
