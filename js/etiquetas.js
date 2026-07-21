@@ -149,22 +149,18 @@ function _etqAbrirImpressao(transp, ent, qtd, pacotes, dataFmt, numeroCarga) {
                     <img class="gc" src="${urlGc}" alt="GC Transportes">
                     <img class="transp" src="${urlTransp}" alt="${transp.label}" style="height:${transp.alturaMm}mm">
                 </div>
-
-                <div class="lbl-box lbl-carga-box">
-                    <div class="lbl-sec">ID DA CARGA</div>
-                    <div class="lbl-carga">${numeroCarga}</div>
-                    <div class="lbl-barcode-wrap"><svg class="lbl-barcode" data-code="${numeroCarga}"></svg></div>
-                </div>
-
-                <div class="lbl-sec" style="margin-top:4mm">ENTREGADOR</div>
+                <div class="lbl-divider"></div>
+                <div class="lbl-sec">ID DA CARGA</div>
+                <div class="lbl-carga">${numeroCarga}</div>
+                <svg class="lbl-barcode" data-code="${numeroCarga}"></svg>
+                <div class="lbl-divider"></div>
+                <div class="lbl-sec">ENTREGADOR</div>
                 <div class="lbl-nome">${ent.nome}</div>
-
-                <div class="lbl-grid">
-                    <div class="cell id"><b>ID</b><span>${ent.id}</span></div>
-                    <div class="cell"><b>DATA</b><span>${dataFmt}</span></div>
-                    ${_etqTipo === "avulso" ? "" : `<div class="cell"><b>PACOTES</b><span>${pacotes}</span></div>`}
+                <div class="lbl-id">ID ${ent.id}</div>
+                <div class="lbl-meta">
+                    <div><b>DATA</b><span class="v">${dataFmt}</span></div>
+                    ${_etqTipo === "avulso" ? "" : `<div><b>PACOTES</b><span class="v">${pacotes}</span></div>`}
                 </div>
-
                 <div class="lbl-vol">${tipoLabel} ${i}/${qtd}</div>
             </div>`);
     }
@@ -178,50 +174,38 @@ function _etqAbrirImpressao(transp, ent, qtd, pacotes, dataFmt, numeroCarga) {
             body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff }
             @page { size: 100mm 150mm; margin: 0 }
             .label {
-                width: 100mm; height: 150mm; padding: 6mm;
+                width: 100mm; height: 150mm; padding: 6mm 7mm;
                 display: flex; flex-direction: column; overflow: hidden;
                 page-break-after: always; page-break-inside: avoid;
             }
             .label:last-child { page-break-after: auto }
-
-            /* Cabeçalho: faixa de altura fixa, logos centralizadas na vertical */
-            .lbl-top {
-                height: 15mm; flex-shrink: 0; margin-bottom: 3mm;
-                display: flex; justify-content: space-between; align-items: center; gap: 6mm;
-            }
-            .lbl-top img { object-fit: contain }
-            .lbl-top img.gc     { height: 11mm; max-width: 32mm }
-            .lbl-top img.transp { max-width: 34mm } /* altura vem inline, por logo */
-
+            .lbl-top { display: flex; justify-content: space-between; align-items: center; gap: 6mm }
+            /* Logos recortadas no conteúdo (sem margem transparente): altura única
+               padroniza o tamanho visual; max-width segura as muito largas (J&T) */
+            .lbl-top img.gc     { height: 11mm; max-width: 30mm; object-fit: contain }
+            .lbl-top img.transp { height: 9mm;  max-width: 30mm; object-fit: contain }
+            .lbl-divider { border-top: 0.5mm solid #000; margin: 3mm 0 }
             .lbl-sec { font-size: 8pt; letter-spacing: 2px; font-weight: bold; color: #333 }
-
-            /* Caixa do ID da carga: número + código de barras centralizados */
-            .lbl-box { border: 0.6mm solid #000; border-radius: 2.5mm }
-            .lbl-carga-box { padding: 3mm 4mm; text-align: center }
             .lbl-carga {
                 font-size: 17pt; font-weight: 800; font-family: 'Courier New', monospace;
                 letter-spacing: 0.5px; margin: 1mm 0 2mm;
             }
-            .lbl-barcode-wrap { text-align: center }
-            .lbl-barcode { height: 14mm }
-
+            .lbl-barcode { width: 100%; height: 16mm }
             .lbl-nome {
-                font-size: 16pt; font-weight: 800; line-height: 1.15;
-                text-transform: uppercase; margin: 1mm 0 3mm; word-break: break-word;
+                font-size: 15pt; font-weight: 800; line-height: 1.15;
+                text-transform: uppercase; margin: 1mm 0 1mm; word-break: break-word;
             }
-
-            /* Grade de dados: células com divisórias, ID em destaque */
-            .lbl-grid { display: flex; border: 0.6mm solid #000; border-radius: 2.5mm; overflow: hidden }
-            .lbl-grid .cell { flex: 1; padding: 2.5mm 2mm 3mm; text-align: center; border-left: 0.5mm solid #000 }
-            .lbl-grid .cell:first-child { border-left: none }
-            .lbl-grid .cell b { display: block; font-size: 7.5pt; letter-spacing: 1.5px; color: #444; margin-bottom: 1mm }
-            .lbl-grid .cell span { font-size: 12pt; font-weight: 800 }
-            .lbl-grid .cell.id span { font-size: 17pt; font-family: 'Courier New', monospace }
-
+            .lbl-id {
+                font-size: 21pt; font-weight: 800; font-family: 'Courier New', monospace;
+                margin: 0 0 3mm;
+            }
+            .lbl-meta { display: flex; gap: 8mm; flex-wrap: wrap }
+            .lbl-meta b { display: block; font-size: 7.5pt; letter-spacing: 1.5px; color: #444; margin-bottom: 0.5mm }
+            .lbl-meta .v { font-size: 12.5pt; font-weight: bold; font-family: 'Courier New', monospace }
             .lbl-vol {
                 margin-top: auto; align-self: center;
                 font-size: 22pt; font-weight: 800; white-space: nowrap;
-                border: 0.8mm solid #000; border-radius: 3mm; padding: 2.5mm 9mm;
+                letter-spacing: 1px; padding-bottom: 1mm;
             }
         </style></head><body>
         ${paginas.join("")}
