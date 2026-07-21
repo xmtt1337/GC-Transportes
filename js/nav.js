@@ -31,6 +31,7 @@ const _TELA_TITULOS = {
     "tela-viagem-minhas":        "Minhas Viagens",
     "tela-devolucao-receber":    "Receber Viagem",
     "tela-devolucao-registro":   "Registro de Devoluções",
+    "tela-etiquetas":            "Impressão de Etiquetas",
     "tela-videira-alimentar":    "Alimentar Fechamento",
     "tela-videira-painel":       "Meu Fechamento",
     "tela-videira-dash":         "Dashboard",

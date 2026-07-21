@@ -87,6 +87,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <li><a href="#" data-rota="Operacao/DevolucoesReceber" onclick="abrirDevolucoesReceber(event)">Receber</a></li>
                 <li><a href="#" data-rota="Operacao/DevolucoesRegistro" onclick="abrirDevolucoesRegistro(event)">Registro</a></li>
             </ul>
+            <li id="menu-item-etiquetas"><a href="#" data-rota="Operacao/Etiquetas" onclick="abrirEtiquetas(event)">Impressão de etiquetas</a></li>
         </ul>
 
         <li class="menu-item" data-menu="pedidos" id="menu-pedidos" onclick="toggleMenu(this)">
@@ -1893,6 +1894,56 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-viagem-minhas -->
 
+        <!-- TELA IMPRESSÃO DE ETIQUETAS (EQUIPE INTERNA) -->
+        <div id="tela-etiquetas" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div class="ant-form-wrap" style="max-width:600px;margin:0 auto">
+                    <div class="dev-form-head">
+                        <div class="dev-form-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                        </div>
+                        <div>
+                            <div class="ant-form-title" style="margin-bottom:2px">Impressão de Etiquetas</div>
+                            <div class="dev-form-sub">Etiquetas de identificação de sacas por entregador</div>
+                        </div>
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">1</span> Transportadora</div>
+                        <div class="dev-chips" id="etq-transp-chips"></div>
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">2</span> Entregador</div>
+                        <input list="etq-ent-datalist" id="etq-entregador" class="ant-input" placeholder="Digite pra buscar o entregador…" autocomplete="off" oninput="_etqEntregadorMudou()">
+                        <datalist id="etq-ent-datalist"></datalist>
+                        <div id="etq-ent-id-row" style="display:none;margin-top:10px;font-size:13px;color:#94a3b8">ID do entregador: <strong id="etq-ent-id" style="color:#3a86ff;font-family:monospace;font-size:14px">—</strong></div>
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">3</span> Quantidade de etiquetas</div>
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <button type="button" onclick="_etqQtdDelta(-1)" style="width:42px;height:42px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.03);color:#cbd5e1;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">−</button>
+                            <input type="number" id="etq-qtd" class="ant-input" value="1" min="1" max="60" style="max-width:90px;text-align:center">
+                            <button type="button" onclick="_etqQtdDelta(1)" style="width:42px;height:42px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.03);color:#cbd5e1;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">+</button>
+                            <span style="font-size:12px;color:#64748b">2 etiquetas por folha A4</span>
+                        </div>
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">4</span> Data</div>
+                        <input type="date" id="etq-data" class="ant-input" style="max-width:220px">
+                    </div>
+
+                    <div id="etq-msg" class="ant-form-msg" style="display:none"></div>
+                    <button onclick="_etqImprimir()" class="ant-submit-btn dev-submit" id="etq-btn">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        Imprimir etiquetas
+                    </button>
+                </div>
+            </div>
+        </div><!-- /tela-etiquetas -->
+
         <!-- TELA DEVOLUÇÕES — REGISTRO GERAL (EQUIPE DA BASE) -->
         <div id="tela-devolucao-registro" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
@@ -2071,6 +2122,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="js/baixas.js"></script>
 <script src="js/devolucoes.js"></script>
 <script src="js/viagens.js"></script>
+<script src="js/etiquetas.js"></script>
 <script src="js/videira.js"></script>
 <script src="js/planejamento-videira.js"></script>
 <script src="js/torre.js"></script>

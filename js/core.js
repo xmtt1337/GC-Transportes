@@ -107,6 +107,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
 
     if (role === "sac") {
         _showExtravios();
+        hide("menu-item-etiquetas"); // etiquetas é só do pessoal operacional (user até dev)
     }
 
     if (role === "ADM Videira") {
