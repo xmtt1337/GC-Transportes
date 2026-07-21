@@ -296,28 +296,32 @@ function _vmImprimir(id) {
                 <style>
                     body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:28px;max-width:720px;margin:0 auto}
                     h1{font-size:22px;margin:0 0 4px}
-                    .sub{color:#555;font-size:13px;margin-bottom:18px}
-                    .meta{display:flex;gap:24px;flex-wrap:wrap;font-size:13px;margin-bottom:18px}
+                    .sub{color:#555;font-size:13px;margin-bottom:14px}
+                    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:18px}
+                    .meta{display:flex;gap:24px;flex-wrap:wrap;font-size:13px}
                     .meta b{display:block;color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
-                    .codes{display:flex;align-items:center;gap:28px;margin-bottom:18px}
-                    .codes .lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;text-align:center}
+                    .codes{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0}
                     table{width:100%;border-collapse:collapse;font-size:13px}
                     th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #ddd}
                     th{background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#555}
                     td:first-child,th:first-child{width:36px;color:#888}
                     .foot{margin-top:24px;font-size:11px;color:#999}
                 </style></head><body>
-                <h1>Viagem ${v.numero}</h1>
-                <div class="sub">${v.status === "recebida" ? "Recebida pela operação" : v.status === "fechada" ? "Fechada — aguardando recebimento" : "Aberta"}</div>
-                <div class="meta">
-                    <div><b>Entregador</b>${v.entregador_nome || "—"}</div>
-                    <div><b>Criada em</b>${v.data_hora_brasilia || "—"}</div>
-                    <div><b>Pedidos</b>${(v.pedidos || []).length}</div>
-                    ${v.recebida_por ? `<div><b>Recebida por</b>${v.recebida_por}${v.recebida_data_hora_brasilia ? " · " + v.recebida_data_hora_brasilia : ""}</div>` : ""}
-                </div>
-                <div class="codes">
-                    <div><div id="print-qr"></div><div class="lbl">QR Code</div></div>
-                    <div><svg id="print-barcode"></svg></div>
+                <div class="top">
+                    <div>
+                        <h1>Viagem ${v.numero}</h1>
+                        <div class="sub">${v.status === "recebida" ? "Recebida pela operação" : v.status === "fechada" ? "Fechada — aguardando recebimento" : "Aberta"}</div>
+                        <div class="meta">
+                            <div><b>Entregador</b>${v.entregador_nome || "—"}</div>
+                            <div><b>Criada em</b>${v.data_hora_brasilia || "—"}</div>
+                            <div><b>Pedidos</b>${(v.pedidos || []).length}</div>
+                            ${v.recebida_por ? `<div><b>Recebida por</b>${v.recebida_por}${v.recebida_data_hora_brasilia ? " · " + v.recebida_data_hora_brasilia : ""}</div>` : ""}
+                        </div>
+                    </div>
+                    <div class="codes">
+                        <div id="print-qr"></div>
+                        <svg id="print-barcode"></svg>
+                    </div>
                 </div>
                 <table><thead><tr><th>#</th><th>Código / Descrição</th><th>Transportadora</th><th>Motivo</th><th>Status</th></tr></thead>
                 <tbody>${linhas || `<tr><td colspan="5" style="text-align:center;color:#888;padding:16px">Sem pedidos</td></tr>`}</tbody></table>
