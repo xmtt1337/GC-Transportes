@@ -41,8 +41,20 @@ function _devAtualizarBannerViagem() {
             }
             _devViagemAtualId = d.id;
             _devAtualizarBannerComDados(d);
+            // Anti-burro: viagem aberta desde outro dia é fácil de esquecer — avisa
+            // toda vez que abrir a tela em vez de confiar só no banner passando batido.
+            if (d.de_hoje === false) _devAvisarViagemAntiga(d);
         })
         .catch(() => {});
+}
+
+function _devAvisarViagemAntiga(viagem) {
+    gcConfirm(
+        `Você tem a viagem <strong style="color:#3a86ff;font-family:monospace">${viagem.numero}</strong> aberta desde <strong>${viagem.criada_em || "outro dia"}</strong>, com ${viagem.pedidos} pedido${viagem.pedidos !== 1 ? "s" : ""}. Os pedidos que você registrar agora vão entrar nela. Se ela já não faz mais sentido, feche-a antes de continuar.`,
+        () => _devVerPedidosViagemAtual(),
+        "Viagem em aberto de outro dia",
+        "Ver essa viagem"
+    );
 }
 
 function _devAtualizarBannerComDados(viagem) {
