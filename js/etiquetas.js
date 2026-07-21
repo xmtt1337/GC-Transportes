@@ -93,79 +93,96 @@ function _etqImprimir() {
     const ent = _etqEntregadorAtual();
     if (!ent) return _etqMsg("Selecione um entregador da lista (digite e escolha uma das opções).", "erro");
     const qtd = parseInt(document.getElementById("etq-qtd").value) || 0;
-    if (qtd < 1 || qtd > 60) return _etqMsg("Quantidade deve ser entre 1 e 60 etiquetas.", "erro");
+    if (qtd < 1 || qtd > 60) return _etqMsg("Quantidade de etiquetas deve ser entre 1 e 60.", "erro");
+    const pacotes = parseInt(document.getElementById("etq-pacotes").value) || 0;
+    if (pacotes < 1) return _etqMsg("Informe a quantidade de pacotes.", "erro");
     const dataVal = document.getElementById("etq-data").value;
     if (!dataVal) return _etqMsg("Selecione a data.", "erro");
     const [ano, mes, dia] = dataVal.split("-");
     const dataFmt = `${dia}/${mes}/${ano}`;
 
+    // O ID da carga (GC + ano + 7 dígitos) vem do servidor — sequencial e único por impressão
+    const btn = document.getElementById("etq-btn");
+    btn.disabled = true;
+    fetch(`${API}/etiquetas/carga`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({
+            transportadora: transp.valor, entregador_id: ent.id, entregador_nome: ent.nome,
+            qtd_sacas: qtd, qtd_pacotes: pacotes, data: dataFmt
+        })
+    }).then(r => r.json())
+    .then(d => {
+        btn.disabled = false;
+        if (!d.numero) return _etqMsg(d.error || "Erro ao gerar o ID da carga.", "erro");
+        _etqAbrirImpressao(transp, ent, qtd, pacotes, dataFmt, d.numero);
+    })
+    .catch(() => { btn.disabled = false; _etqMsg("Erro de conexão ao gerar o ID da carga.", "erro"); });
+}
+
+function _etqAbrirImpressao(transp, ent, qtd, pacotes, dataFmt, numeroCarga) {
     // window.open é about:blank — caminhos relativos não resolvem; monta URLs absolutas
     const urlGc     = new URL(_ETQ_LOGO_GC, document.baseURI).href;
     const urlTransp = new URL(transp.logo, document.baseURI).href;
 
-    const etiquetas = [];
+    const paginas = [];
     for (let i = 1; i <= qtd; i++) {
-        etiquetas.push(`
+        paginas.push(`
             <div class="label">
                 <div class="lbl-top">
                     <img class="gc" src="${urlGc}" alt="GC Transportes">
                     <img class="transp" src="${urlTransp}" alt="${transp.label}">
                 </div>
                 <div class="lbl-divider"></div>
-                <div class="lbl-ent-label">ENTREGADOR</div>
+                <div class="lbl-sec">ID DA CARGA</div>
+                <div class="lbl-carga">${numeroCarga}</div>
+                <svg class="lbl-barcode" data-code="${numeroCarga}"></svg>
+                <div class="lbl-divider"></div>
+                <div class="lbl-sec">ENTREGADOR</div>
                 <div class="lbl-nome">${ent.nome}</div>
                 <div class="lbl-meta">
-                    <div><b>ID ENTREGADOR</b><span class="v">${ent.id}</span></div>
+                    <div><b>ID</b><span class="v">${ent.id}</span></div>
                     <div><b>DATA</b><span class="v">${dataFmt}</span></div>
-                    <div><b>TRANSPORTADORA</b><span class="v" style="font-family:Arial">${transp.label}</span></div>
+                    <div><b>PACOTES</b><span class="v">${pacotes}</span></div>
                 </div>
-                <div class="lbl-bottom">
-                    <svg class="lbl-barcode" data-code="${ent.id}"></svg>
-                    <div class="lbl-vol">SACA ${i}/${qtd}</div>
-                </div>
+                <div class="lbl-vol">SACA ${i}/${qtd}</div>
             </div>`);
-    }
-
-    // 2 etiquetas por folha A4
-    const paginas = [];
-    for (let i = 0; i < etiquetas.length; i += 2) {
-        paginas.push(`<div class="page">${etiquetas.slice(i, i + 2).join("")}</div>`);
     }
 
     const w = window.open("", "_blank");
     if (!w) return _etqMsg("Permita pop-ups para imprimir.", "erro");
     w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
-        <title>Etiquetas ${transp.label} — ${ent.nome} — ${dataFmt}</title>
+        <title>Etiquetas ${numeroCarga} — ${ent.nome} — ${dataFmt}</title>
         <style>
             * { margin: 0; box-sizing: border-box }
             body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff }
-            @page { size: A4 portrait; margin: 0 }
-            .page {
-                width: 210mm; height: 296mm; padding: 8mm;
-                display: flex; flex-direction: column; gap: 6mm;
+            @page { size: 100mm 150mm; margin: 0 }
+            .label {
+                width: 100mm; height: 149.5mm; padding: 6mm 7mm;
+                display: flex; flex-direction: column; overflow: hidden;
                 page-break-after: always;
             }
-            .label {
-                flex: 1; min-height: 0; overflow: hidden;
-                border: 1.2mm solid #000; border-radius: 5mm;
-                padding: 9mm 10mm; display: flex; flex-direction: column;
+            .lbl-top { display: flex; justify-content: space-between; align-items: center; gap: 6mm }
+            .lbl-top img.gc     { height: 11mm; object-fit: contain }
+            .lbl-top img.transp { height: 10mm; max-width: 40mm; object-fit: contain }
+            .lbl-divider { border-top: 0.5mm solid #000; margin: 3mm 0 }
+            .lbl-sec { font-size: 8pt; letter-spacing: 2px; font-weight: bold; color: #333 }
+            .lbl-carga {
+                font-size: 17pt; font-weight: 800; font-family: 'Courier New', monospace;
+                letter-spacing: 0.5px; margin: 1mm 0 2mm;
             }
-            .lbl-top { display: flex; justify-content: space-between; align-items: center; gap: 10mm }
-            .lbl-top img.gc     { height: 16mm; object-fit: contain }
-            .lbl-top img.transp { height: 14mm; max-width: 62mm; object-fit: contain }
-            .lbl-divider { border-top: 0.6mm solid #000; margin: 5mm 0 6mm }
-            .lbl-ent-label { font-size: 10pt; letter-spacing: 2.5px; font-weight: bold; color: #333 }
+            .lbl-barcode { width: 100%; height: 16mm }
             .lbl-nome {
-                font-size: 27pt; font-weight: 800; line-height: 1.12;
-                text-transform: uppercase; margin: 2mm 0 6mm; word-break: break-word;
+                font-size: 15pt; font-weight: 800; line-height: 1.15;
+                text-transform: uppercase; margin: 1mm 0 3mm; word-break: break-word;
             }
-            .lbl-meta { display: flex; gap: 13mm; flex-wrap: wrap }
-            .lbl-meta b { display: block; font-size: 8.5pt; letter-spacing: 1.5px; color: #444; margin-bottom: 1mm }
-            .lbl-meta .v { font-size: 15pt; font-weight: bold; font-family: 'Courier New', monospace }
-            .lbl-bottom { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; gap: 8mm }
+            .lbl-meta { display: flex; gap: 8mm; flex-wrap: wrap }
+            .lbl-meta b { display: block; font-size: 7.5pt; letter-spacing: 1.5px; color: #444; margin-bottom: 0.5mm }
+            .lbl-meta .v { font-size: 12.5pt; font-weight: bold; font-family: 'Courier New', monospace }
             .lbl-vol {
-                font-size: 20pt; font-weight: 800; white-space: nowrap;
-                border: 0.8mm solid #000; border-radius: 3mm; padding: 2.5mm 5mm;
+                margin-top: auto; align-self: center;
+                font-size: 21pt; font-weight: 800; white-space: nowrap;
+                border: 0.8mm solid #000; border-radius: 3mm; padding: 2.5mm 8mm;
             }
         </style></head><body>
         ${paginas.join("")}
@@ -175,7 +192,7 @@ function _etqImprimir() {
             window.onload = function () {
                 try {
                     document.querySelectorAll(".lbl-barcode").forEach(function (el) {
-                        JsBarcode(el, el.dataset.code, { format: "CODE128", width: 2, height: 42, fontSize: 12, margin: 0 });
+                        JsBarcode(el, el.dataset.code, { format: "CODE128", width: 1.6, height: 44, displayValue: false, margin: 0 });
                     });
                 } catch (e) {}
                 window.print();
