@@ -80,7 +80,10 @@ function _salvarTelefone() {
     });
 }
 
+let _admPainelReqId = 0; // descarta resposta de entregador/período trocado antes do fetch anterior voltar
+
 function _carregarPainelAdmin() {
+    const reqId = ++_admPainelReqId;
     const empty = document.getElementById("adm-fech-empty");
     const data  = document.getElementById("adm-fech-data");
     empty.innerText = "Carregando...";
@@ -92,6 +95,7 @@ function _carregarPainelAdmin() {
     })
     .then(res => res.json().then(body => ({ ok: res.ok, body })))
     .then(({ ok, body }) => {
+        if (reqId !== _admPainelReqId) return; // entregador/período já mudou de novo — resposta desatualizada, ignora
         if (!ok) {
             empty.innerText = body.error || "Nenhum fechamento encontrado para este período.";
             return;
@@ -143,6 +147,7 @@ function _carregarPainelAdmin() {
         data.scrollIntoView({ behavior: "smooth", block: "start" });
     })
     .catch(() => {
+        if (reqId !== _admPainelReqId) return;
         empty.innerText = "Erro ao conectar com o servidor.";
     });
 }

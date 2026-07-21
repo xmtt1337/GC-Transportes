@@ -6,6 +6,7 @@ let _fMes           = new Date().getMonth() + 1;
 let _fAno           = new Date().getFullYear();
 let _fQuinzena      = null;
 let _fTotalReceber  = 0;
+let _fPainelReqId   = 0; // descarta resposta de período trocado antes do fetch anterior voltar
 
 function abrirFechamentos(event) {
     if (event) event.preventDefault();
@@ -130,6 +131,7 @@ function _skeletonFechamento() {
 }
 
 function _carregarPainel() {
+    const reqId = ++_fPainelReqId;
     const empty = document.getElementById("fechamento-empty");
     const data  = document.getElementById("fechamento-data");
     empty.classList.add("sk-mode");
@@ -142,6 +144,7 @@ function _carregarPainel() {
     })
     .then(res => res.json().then(body => ({ ok: res.ok, body })))
     .then(({ ok, body }) => {
+        if (reqId !== _fPainelReqId) return; // período já mudou de novo — resposta desatualizada, ignora
         if (!ok) {
             empty.classList.remove("sk-mode");
             if (body.nf_pendente) {
@@ -264,6 +267,7 @@ function _carregarPainel() {
         _carregarNota();
     })
     .catch(() => {
+        if (reqId !== _fPainelReqId) return;
         empty.classList.remove("sk-mode");
         empty.innerText = "Erro ao conectar com o servidor.";
     });
