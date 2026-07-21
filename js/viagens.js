@@ -300,7 +300,7 @@ function _vmImprimir(id) {
                     .top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:18px}
                     .meta{display:flex;gap:24px;flex-wrap:wrap;font-size:13px}
                     .meta b{display:block;color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
-                    .codes{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0}
+                    .codes{display:flex;flex-direction:row;align-items:center;gap:14px;flex-shrink:0}
                     table{width:100%;border-collapse:collapse;font-size:13px}
                     th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #ddd}
                     th{background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#555}
