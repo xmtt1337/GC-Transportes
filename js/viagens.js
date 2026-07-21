@@ -316,19 +316,23 @@ function _vmImprimir(id) {
                     ${v.recebida_por ? `<div><b>Recebida por</b>${v.recebida_por}${v.recebida_data_hora_brasilia ? " · " + v.recebida_data_hora_brasilia : ""}</div>` : ""}
                 </div>
                 <div class="codes">
-                    <div><canvas id="print-qr"></canvas><div class="lbl">QR Code</div></div>
+                    <div><div id="print-qr"></div><div class="lbl">QR Code</div></div>
                     <div><svg id="print-barcode"></svg></div>
                 </div>
                 <table><thead><tr><th>#</th><th>Código / Descrição</th><th>Transportadora</th><th>Motivo</th><th>Status</th></tr></thead>
                 <tbody>${linhas || `<tr><td colspan="5" style="text-align:center;color:#888;padding:16px">Sem pedidos</td></tr>`}</tbody></table>
                 <div class="foot">GC Transportes — impresso em ${new Date().toLocaleString("pt-BR")}</div>
                 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
-                <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"><\/script>
+                <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"><\/script>
                 <script>
                     try { JsBarcode("#print-barcode", "${v.numero}", { format: "CODE128", width: 2, height: 50, fontSize: 13, margin: 0 }); } catch (e) {}
-                    if (window.QRCode) {
-                        QRCode.toCanvas(document.getElementById("print-qr"), "${v.numero}", { width: 100, margin: 0 }, function () { window.print(); });
-                    } else { window.print(); }
+                    try {
+                        var qr = qrcode(0, "M");
+                        qr.addData("${v.numero}");
+                        qr.make();
+                        document.getElementById("print-qr").innerHTML = qr.createSvgTag({ cellSize: 3, margin: 0 });
+                    } catch (e) {}
+                    window.print();
                 <\/script>
                 </body></html>`);
             w.document.close();
