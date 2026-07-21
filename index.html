@@ -1914,14 +1914,22 @@ if (location.hostname === "xmtt1337.github.io") {
                     </div>
 
                     <div class="dev-sec">
-                        <div class="dev-sec-head"><span class="dev-sec-num">2</span> Entregador</div>
+                        <div class="dev-sec-head"><span class="dev-sec-num">2</span> Tipo</div>
+                        <div class="dev-chips">
+                            <button type="button" class="dev-chip" id="etq-tipo-saca" onclick="_etqSelecionarTipo('saca')">Saca</button>
+                            <button type="button" class="dev-chip" id="etq-tipo-avulso" onclick="_etqSelecionarTipo('avulso')">Avulso</button>
+                        </div>
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">3</span> Entregador</div>
                         <input list="etq-ent-datalist" id="etq-entregador" class="ant-input" placeholder="Digite pra buscar o entregador…" autocomplete="off" oninput="_etqEntregadorMudou()">
                         <datalist id="etq-ent-datalist"></datalist>
                         <div id="etq-ent-id-row" style="display:none;margin-top:10px;font-size:13px;color:#94a3b8">ID do entregador: <strong id="etq-ent-id" style="color:#3a86ff;font-family:monospace;font-size:14px">—</strong></div>
                     </div>
 
                     <div class="dev-sec">
-                        <div class="dev-sec-head"><span class="dev-sec-num">3</span> Quantidade de etiquetas (sacas)</div>
+                        <div class="dev-sec-head"><span class="dev-sec-num">4</span> Quantidade de etiquetas</div>
                         <div style="display:flex;align-items:center;gap:10px">
                             <button type="button" onclick="_etqQtdDelta(-1)" style="width:42px;height:42px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.03);color:#cbd5e1;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">−</button>
                             <input type="number" id="etq-qtd" class="ant-input" value="1" min="1" max="60" style="max-width:90px;text-align:center">

@@ -14,6 +14,13 @@ const _ETQ_LOGO_GC = "img/Transportadoras/GC preto sem fundo.png";
 
 let _etqEntregadores = [];  // [{id, nome}] — cache da planilha
 let _etqTransp = null;
+let _etqTipo   = null;      // "saca" | "avulso"
+
+function _etqSelecionarTipo(tipo) {
+    _etqTipo = tipo;
+    document.getElementById("etq-tipo-saca").classList.toggle("active", tipo === "saca");
+    document.getElementById("etq-tipo-avulso").classList.toggle("active", tipo === "avulso");
+}
 
 function abrirEtiquetas(event) {
     if (event) event.preventDefault();
@@ -90,6 +97,7 @@ function _etqImprimir() {
     _etqMsg("", null);
     const transp = _ETQ_TRANSPORTADORAS.find(t => t.valor === _etqTransp);
     if (!transp) return _etqMsg("Selecione a transportadora.", "erro");
+    if (!_etqTipo) return _etqMsg("Selecione o tipo (saca ou avulso).", "erro");
     const ent = _etqEntregadorAtual();
     if (!ent) return _etqMsg("Selecione um entregador da lista (digite e escolha uma das opções).", "erro");
     const qtd = parseInt(document.getElementById("etq-qtd").value) || 0;
@@ -108,7 +116,7 @@ function _etqImprimir() {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
         body: JSON.stringify({
-            transportadora: transp.valor, entregador_id: ent.id, entregador_nome: ent.nome,
+            transportadora: transp.valor, tipo: _etqTipo, entregador_id: ent.id, entregador_nome: ent.nome,
             qtd_sacas: qtd, qtd_pacotes: pacotes, data: dataFmt
         })
     }).then(r => r.json())
@@ -121,6 +129,7 @@ function _etqImprimir() {
 }
 
 function _etqAbrirImpressao(transp, ent, qtd, pacotes, dataFmt, numeroCarga) {
+    const tipoLabel = _etqTipo === "avulso" ? "AVULSO" : "SACA";
     // window.open é about:blank — caminhos relativos não resolvem; monta URLs absolutas
     const urlGc     = new URL(_ETQ_LOGO_GC, document.baseURI).href;
     const urlTransp = new URL(transp.logo, document.baseURI).href;
@@ -145,7 +154,7 @@ function _etqAbrirImpressao(transp, ent, qtd, pacotes, dataFmt, numeroCarga) {
                     <div><b>DATA</b><span class="v">${dataFmt}</span></div>
                     <div><b>PACOTES</b><span class="v">${pacotes}</span></div>
                 </div>
-                <div class="lbl-vol">SACA ${i}/${qtd}</div>
+                <div class="lbl-vol">${tipoLabel} ${i}/${qtd}</div>
             </div>`);
     }
 
@@ -158,13 +167,16 @@ function _etqAbrirImpressao(transp, ent, qtd, pacotes, dataFmt, numeroCarga) {
             body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff }
             @page { size: 100mm 150mm; margin: 0 }
             .label {
-                width: 100mm; height: 149.5mm; padding: 6mm 7mm;
+                width: 100mm; height: 150mm; padding: 6mm 7mm;
                 display: flex; flex-direction: column; overflow: hidden;
-                page-break-after: always;
+                page-break-after: always; page-break-inside: avoid;
             }
+            .label:last-child { page-break-after: auto }
             .lbl-top { display: flex; justify-content: space-between; align-items: center; gap: 6mm }
-            .lbl-top img.gc     { height: 11mm; object-fit: contain }
-            .lbl-top img.transp { height: 10mm; max-width: 40mm; object-fit: contain }
+            /* Logos recortadas no conteúdo (sem margem transparente): altura única
+               padroniza o tamanho visual; max-width segura as muito largas (J&T) */
+            .lbl-top img.gc     { height: 11mm; max-width: 30mm; object-fit: contain }
+            .lbl-top img.transp { height: 9mm;  max-width: 30mm; object-fit: contain }
             .lbl-divider { border-top: 0.5mm solid #000; margin: 3mm 0 }
             .lbl-sec { font-size: 8pt; letter-spacing: 2px; font-weight: bold; color: #333 }
             .lbl-carga {
