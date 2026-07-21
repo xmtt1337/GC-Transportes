@@ -1,27 +1,23 @@
 // ───── VIAGENS ─────
 // O pedido já nasce dentro da viagem "aberta" do entregador (auto-criada na primeira
 // devolução registrada — não existe mais uma tela separada de "criar viagem"). O
-// entregador fecha a viagem quando quiser (fotos da saca + saca no caminhão), o que
-// trava a edição; a operação só recebe uma viagem já "fechada".
+// entregador fecha a viagem quando quiser (foto da saca com o número escrito nela),
+// o que trava a edição; a operação só recebe uma viagem já "fechada".
 // Reaproveita helpers globais: _bteAbrirScanner, _bteComprimirImagem, _devEhCep,
 // _gcBeepSucesso/_gcBeepErro, mostrarTela, gcAlert, API, token.
 
 // ══════════════════ FECHAR VIAGEM (ENTREGADOR) ══════════════════
 let _vfViagemId      = null;
 let _vfSacaBase64    = null;
-let _vfCaminhaoBase64 = null;
 
 function _vfAbrir(id) {
     _vfViagemId = id;
     _vfSacaBase64 = null;
-    _vfCaminhaoBase64 = null;
     document.getElementById("vf-form").style.display = "";
     document.getElementById("vf-sucesso").style.display = "none";
-    ["saca", "caminhao"].forEach(t => {
-        document.getElementById(`vf-${t}-preview`).src = "";
-        document.getElementById(`vf-${t}-tile`).classList.remove("tem-foto");
-        document.getElementById(`vf-${t}-input`).value = "";
-    });
+    document.getElementById("vf-saca-preview").src = "";
+    document.getElementById("vf-saca-tile").classList.remove("tem-foto");
+    document.getElementById("vf-saca-input").value = "";
     _vfMsg("", null);
     mostrarTela("tela-viagem-fechar");
     _vfCarregar();
@@ -65,15 +61,14 @@ function _vfFotoSelecionada(tipo, input) {
     const file = input.files[0];
     if (!file) return;
     _bteComprimirImagem(file).then(({ dataUrl, base64 }) => {
-        if (tipo === "saca") _vfSacaBase64 = base64; else _vfCaminhaoBase64 = base64;
+        _vfSacaBase64 = base64;
         document.getElementById(`vf-${tipo}-preview`).src = dataUrl;
         document.getElementById(`vf-${tipo}-tile`).classList.add("tem-foto");
     }).catch(() => gcAlert("Não foi possível processar a foto. Tente novamente."));
 }
 
 function _vfConfirmar() {
-    if (!_vfSacaBase64)     return _vfMsg("Tire a foto da saca.", "erro");
-    if (!_vfCaminhaoBase64) return _vfMsg("Tire a foto da saca no caminhão.", "erro");
+    if (!_vfSacaBase64) return _vfMsg("Tire a foto da saca.", "erro");
 
     const btn = document.getElementById("vf-submit-btn");
     btn.disabled = true; btn.textContent = "Fechando...";
@@ -81,7 +76,7 @@ function _vfConfirmar() {
     fetch(`${API}/viagens/${_vfViagemId}/fechar`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ foto_saca: _vfSacaBase64, foto_caminhao: _vfCaminhaoBase64, foto_mime_type: "image/jpeg" })
+        body: JSON.stringify({ foto_saca: _vfSacaBase64, foto_mime_type: "image/jpeg" })
     }).then(r => r.json())
     .then(d => {
         btn.disabled = false; btn.textContent = "Fechar Viagem";
