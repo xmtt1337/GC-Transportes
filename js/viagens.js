@@ -42,6 +42,8 @@ function _vfCarregar() {
         .then(v => {
             if (v.error) return _vfMsg(v.error, "erro");
             document.getElementById("vf-numero").innerText = v.numero;
+            document.getElementById("vf-saca-instrucao").innerHTML =
+                `Escreva <strong style="color:#e2e8f0;font-family:monospace">${v.numero}</strong> na saca antes de tirar a foto.`;
             const qtd = (v.pedidos || []).length;
             document.getElementById("vf-qtd-pedidos").innerText = `${qtd} pedido${qtd !== 1 ? "s" : ""}`;
             document.getElementById("vf-pedidos-lista").innerHTML = (v.pedidos || []).map(p => `
