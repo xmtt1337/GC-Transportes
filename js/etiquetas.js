@@ -2,13 +2,16 @@
 // O pessoal interno seleciona transportadora + entregador (da planilha de cadastro,
 // col A = ID / col B = nome), quantidade e data, e imprime etiquetas grandes (2 por
 // folha A4) com as logos, nome, ID, volume X/N e código de barras do ID.
+// alturaMm: altura da logo na etiqueta. As logos "quadradas" (Anjun, iMile, SPX)
+// precisam de mais altura que as compridas (Loggi, Total, J&T) pro tamanho VISUAL
+// ficar parecido — altura única deixava as quadradas minúsculas.
 const _ETQ_TRANSPORTADORAS = [
-    { valor: "loggi",         label: "Loggi",         logo: "img/Transportadoras/loggi.preta.png" },
-    { valor: "anjun",         label: "Anjun",         logo: "img/Transportadoras/Anjun.preto.png" },
-    { valor: "imile",         label: "iMile",         logo: "img/Transportadoras/iMile.preto.png" },
-    { valor: "jt",            label: "J&T Express",   logo: "img/Transportadoras/JET.pretajpg.png" },
-    { valor: "shopee",        label: "Shopee",        logo: "img/Transportadoras/SPX.preta.png" },
-    { valor: "total_express", label: "Total Express", logo: "img/Transportadoras/Total Express Preta.png" },
+    { valor: "loggi",         label: "Loggi",         logo: "img/Transportadoras/loggi.preta.png",         alturaMm: 9 },
+    { valor: "anjun",         label: "Anjun",         logo: "img/Transportadoras/Anjun.preto.png",         alturaMm: 13 },
+    { valor: "imile",         label: "iMile",         logo: "img/Transportadoras/iMile.preto.png",         alturaMm: 12.5 },
+    { valor: "jt",            label: "J&T Express",   logo: "img/Transportadoras/JET.pretajpg.png",        alturaMm: 7.5 },
+    { valor: "shopee",        label: "Shopee",        logo: "img/Transportadoras/SPX.preta.png",           alturaMm: 11.5 },
+    { valor: "total_express", label: "Total Express", logo: "img/Transportadoras/Total Express Preta.png", alturaMm: 9 },
 ];
 const _ETQ_LOGO_GC = "img/Transportadoras/GC preto sem fundo.png";
 
@@ -20,6 +23,8 @@ function _etqSelecionarTipo(tipo) {
     _etqTipo = tipo;
     document.getElementById("etq-tipo-saca").classList.toggle("active", tipo === "saca");
     document.getElementById("etq-tipo-avulso").classList.toggle("active", tipo === "avulso");
+    // Avulso = 1 pacote por etiqueta, não faz sentido perguntar quantidade de pacotes
+    document.getElementById("etq-sec-pacotes").style.display = tipo === "avulso" ? "none" : "";
 }
 
 function abrirEtiquetas(event) {
@@ -57,23 +62,24 @@ function _etqCarregarEntregadores() {
         .then(rows => {
             if (!Array.isArray(rows)) return;
             _etqEntregadores = rows;
+            // Busca pelo ID (o nome aparece como rótulo da opção no autocompletar)
             document.getElementById("etq-ent-datalist").innerHTML =
-                rows.map(e => `<option value="${e.nome.replace(/"/g, "&quot;")}">`).join("");
+                rows.map(e => `<option value="${e.id.replace(/"/g, "&quot;")}">${e.nome.replace(/</g, "&lt;")}</option>`).join("");
         })
         .catch(() => _etqMsg("Erro ao carregar a lista de entregadores.", "erro"));
 }
 
 function _etqEntregadorAtual() {
-    const nome = document.getElementById("etq-entregador").value.trim().toLowerCase();
-    return _etqEntregadores.find(e => e.nome.toLowerCase() === nome) || null;
+    const id = document.getElementById("etq-entregador").value.trim();
+    return _etqEntregadores.find(e => e.id === id) || null;
 }
 
 function _etqEntregadorMudou() {
     const ent = _etqEntregadorAtual();
-    const row = document.getElementById("etq-ent-id-row");
+    const row = document.getElementById("etq-ent-nome-row");
     if (ent) {
         row.style.display = "";
-        document.getElementById("etq-ent-id").innerText = ent.id;
+        document.getElementById("etq-ent-nome").innerText = ent.nome;
     } else {
         row.style.display = "none";
     }
@@ -99,10 +105,11 @@ function _etqImprimir() {
     if (!transp) return _etqMsg("Selecione a transportadora.", "erro");
     if (!_etqTipo) return _etqMsg("Selecione o tipo (saca ou avulso).", "erro");
     const ent = _etqEntregadorAtual();
-    if (!ent) return _etqMsg("Selecione um entregador da lista (digite e escolha uma das opções).", "erro");
+    if (!ent) return _etqMsg("Informe um ID de entregador válido (digite e escolha uma das opções).", "erro");
     const qtd = parseInt(document.getElementById("etq-qtd").value) || 0;
-    if (qtd < 1 || qtd > 60) return _etqMsg("Quantidade de etiquetas deve ser entre 1 e 60.", "erro");
-    const pacotes = parseInt(document.getElementById("etq-pacotes").value) || 0;
+    if (qtd < 1 || qtd > 60) return _etqMsg("Quantidade de volumes deve ser entre 1 e 60.", "erro");
+    // Avulso: 1 pacote por etiqueta — a quantidade de pacotes é a própria qtd de volumes
+    const pacotes = _etqTipo === "avulso" ? qtd : (parseInt(document.getElementById("etq-pacotes").value) || 0);
     if (pacotes < 1) return _etqMsg("Informe a quantidade de pacotes.", "erro");
     const dataVal = document.getElementById("etq-data").value;
     if (!dataVal) return _etqMsg("Selecione a data.", "erro");
@@ -140,7 +147,7 @@ function _etqAbrirImpressao(transp, ent, qtd, pacotes, dataFmt, numeroCarga) {
             <div class="label">
                 <div class="lbl-top">
                     <img class="gc" src="${urlGc}" alt="GC Transportes">
-                    <img class="transp" src="${urlTransp}" alt="${transp.label}">
+                    <img class="transp" src="${urlTransp}" alt="${transp.label}" style="height:${transp.alturaMm}mm">
                 </div>
                 <div class="lbl-divider"></div>
                 <div class="lbl-sec">ID DA CARGA</div>
@@ -149,10 +156,10 @@ function _etqAbrirImpressao(transp, ent, qtd, pacotes, dataFmt, numeroCarga) {
                 <div class="lbl-divider"></div>
                 <div class="lbl-sec">ENTREGADOR</div>
                 <div class="lbl-nome">${ent.nome}</div>
+                <div class="lbl-id">ID ${ent.id}</div>
                 <div class="lbl-meta">
-                    <div><b>ID</b><span class="v">${ent.id}</span></div>
                     <div><b>DATA</b><span class="v">${dataFmt}</span></div>
-                    <div><b>PACOTES</b><span class="v">${pacotes}</span></div>
+                    ${_etqTipo === "avulso" ? "" : `<div><b>PACOTES</b><span class="v">${pacotes}</span></div>`}
                 </div>
                 <div class="lbl-vol">${tipoLabel} ${i}/${qtd}</div>
             </div>`);
@@ -186,7 +193,11 @@ function _etqAbrirImpressao(transp, ent, qtd, pacotes, dataFmt, numeroCarga) {
             .lbl-barcode { width: 100%; height: 16mm }
             .lbl-nome {
                 font-size: 15pt; font-weight: 800; line-height: 1.15;
-                text-transform: uppercase; margin: 1mm 0 3mm; word-break: break-word;
+                text-transform: uppercase; margin: 1mm 0 1mm; word-break: break-word;
+            }
+            .lbl-id {
+                font-size: 21pt; font-weight: 800; font-family: 'Courier New', monospace;
+                margin: 0 0 3mm;
             }
             .lbl-meta { display: flex; gap: 8mm; flex-wrap: wrap }
             .lbl-meta b { display: block; font-size: 7.5pt; letter-spacing: 1.5px; color: #444; margin-bottom: 0.5mm }
