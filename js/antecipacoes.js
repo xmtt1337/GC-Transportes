@@ -36,6 +36,34 @@ function selecionarQuinzenaAnt(q) {
     _antBuscarNF();
 }
 
+// Prazo pra antecipar: até 17 dias antes do pagamento da quinzena (pagamento =
+// 45 dias após o fim dela — mesma conta do _calcularDataPagamento da tela de
+// fechamentos). diasRestantes conta em dias de calendário: 0 = hoje é o último dia.
+function _antPrazoAntecipacao(mes, ano, quinzena) {
+    const base = quinzena === 1 ? new Date(ano, mes - 1, 15) : new Date(ano, mes, 0);
+    const pagamento = new Date(base);
+    pagamento.setDate(pagamento.getDate() + 45);
+    const limite = new Date(pagamento);
+    limite.setDate(limite.getDate() - 17);
+    limite.setHours(0, 0, 0, 0);
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const diasRestantes = Math.round((limite - hoje) / 86400000);
+    return {
+        limite,
+        aberto: diasRestantes >= 0,
+        diasRestantes,
+        limiteFmt: limite.toLocaleDateString("pt-BR"),
+    };
+}
+
+function _antPrazoTextoAberto(prazo) {
+    const resto = prazo.diasRestantes === 0
+        ? "<strong style=\"color:#fbbf24\">hoje é o último dia!</strong>"
+        : `${prazo.diasRestantes} dia${prazo.diasRestantes !== 1 ? "s" : ""} restante${prazo.diasRestantes !== 1 ? "s" : ""}`;
+    return `Você tem até o dia <strong style="color:#93c5fd">${prazo.limiteFmt}</strong> pra antecipar (${resto})`;
+}
+
 function _addDiasUteis(date, dias) {
     const result = new Date(date);
     let adicionados = 0;
@@ -92,9 +120,11 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlan
         return;
     }
 
+    const prazo = _antPrazoAntecipacao(mes, ano, quinzena);
+
     if (!uploadedAt) {
         card.innerHTML = _antCardHtml("wait", "Período ainda não processado",
-            "O administrador ainda não processou este período. Aguarde.");
+            `O administrador ainda não processou este período. Aguarde.${prazo.aberto ? "<br><br>" + _antPrazoTextoAberto(prazo) + "." : ""}`);
         if (form) form.style.display = "none";
         return;
     }
@@ -117,6 +147,14 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlan
         return;
     }
 
+    // Prazo encerrado (17 dias antes do pagamento) e nenhuma solicitação feita
+    if (!prazo.aberto) {
+        card.innerHTML = _antCardHtml("lock", "Prazo de antecipação encerrado",
+            `O prazo pra antecipar esta quinzena foi até <strong style="color:#cbd5e1">${prazo.limiteFmt}</strong> (17 dias antes do pagamento).`);
+        if (form) form.style.display = "none";
+        return;
+    }
+
     if (tomadorErrado) {
         card.innerHTML = _antCardHtml("error", "Tomador da NF incorreto",
             `A nota fiscal enviada não está com a <strong style="color:#fca5a5">GC Transportes</strong> como tomador do serviço. Corrija e reenvie a NF antes de solicitar a antecipação.`);
@@ -133,7 +171,8 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlan
         return;
     }
 
-    card.innerHTML = "";
+    // Tudo certo: form liberado, com o "timer" do prazo em cima
+    card.innerHTML = _antCardHtml("clock", "Prazo pra antecipar", `${_antPrazoTextoAberto(prazo)}.`);
     if (form) form.style.display = "";
 }
 
