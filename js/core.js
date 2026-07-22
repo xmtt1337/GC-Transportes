@@ -109,6 +109,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-baixas");
         show("submenu-baixas");
         show("bip-sync-btn");
+        if (role === "finance") hide("menu-item-pacotes-faltantes-adm"); // só admin/dev
     }
 
     if (role === "sac") {
