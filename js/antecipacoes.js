@@ -150,7 +150,7 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlan
     // Prazo encerrado (17 dias antes do pagamento) e nenhuma solicitação feita
     if (!prazo.aberto) {
         card.innerHTML = _antCardHtml("lock", "Prazo de antecipação encerrado",
-            `O prazo pra antecipar esta quinzena foi até <strong style="color:#cbd5e1">${prazo.limiteFmt}</strong> (17 dias antes do pagamento).`);
+            `O prazo pra antecipar esta quinzena foi até <strong style="color:#cbd5e1">${prazo.limiteFmt}</strong>.`);
         if (form) form.style.display = "none";
         return;
     }
