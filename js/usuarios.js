@@ -22,6 +22,7 @@ function _carregarUsuarios() {
         }
         empty.style.display = "none";
         res.style.display = "";
+        const podeFaltante = ["admin", "dev", "sac"].includes((window._gcUser && window._gcUser.role) || "");
         document.getElementById("adm-usr-tbody").innerHTML = users.map(u => `
             <tr>
                 <td>
@@ -35,10 +36,13 @@ function _carregarUsuarios() {
                 </td>
                 <td><span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span></td>
                 <td>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap">
-                        <button class="adm-usr-action ${u.active ? 'inativar' : 'ativar'}" onclick="_toggleAtivoUsuario(${u.id},${!u.active})">${u.active ? 'Inativar' : 'Ativar'}</button>
-                        <button class="adm-usr-action senha" onclick="_resetarSenha(${u.id},'${u.username.replace(/'/g,"\\'")}')">Resetar Senha</button>
-                        <button class="adm-usr-action deletar" onclick="_deletarUsuario(${u.id},'${u.username.replace(/'/g,"\\'")}')">Deletar</button>
+                    <div class="adm-usr-editar-wrap">
+                        <button class="adm-usr-action senha" onclick="_toggleMenuUsuario(event,${u.id})">Editar ▾</button>
+                        <div class="adm-usr-editar-menu" id="adm-usr-menu-${u.id}">
+                            <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleAtivoUsuario(${u.id},${!u.active})">${u.active ? 'Inativar' : 'Ativar'}</button>
+                            <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_resetarSenha(${u.id},'${u.username.replace(/'/g,"\\'")}')">Resetar senha</button>
+                            ${podeFaltante ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleFaltante(${u.id},${!u.pode_pacote_faltante})">${u.pode_pacote_faltante ? 'Desativar' : 'Ativar'} formulário de faltante</button>` : ""}
+                        </div>
                     </div>
                 </td>
             </tr>
@@ -154,16 +158,28 @@ function _toggleAtivoUsuario(id, active) {
     }).catch(() => gcAlert("Erro ao atualizar usuário."));
 }
 
-function _deletarUsuario(id, username) {
-    gcConfirm(`Deletar o usuário "${username}"?\nEsta ação não pode ser desfeita.`, () => {
-        const tok = localStorage.getItem("token");
-        fetch(`${API}/admin/usuarios/${id}`, {
-            method: "DELETE",
-            headers: { "Authorization": "Bearer " + tok }
-        }).then(r => r.json())
-        .then(data => {
-            if (data.error) { gcAlert(data.error); return; }
-            _carregarUsuarios();
-        }).catch(() => gcAlert("Erro ao deletar usuário."));
-    }, null, "Deletar");
+function _toggleFaltante(id, valor) {
+    const tok = localStorage.getItem("token");
+    fetch(`${API}/admin/usuarios/${id}`, {
+        method: "PATCH",
+        headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
+        body: JSON.stringify({ pode_pacote_faltante: valor })
+    }).then(r => r.json())
+    .then(data => {
+        if (data.error) { gcAlert(data.error); return; }
+        _carregarUsuarios();
+    }).catch(() => gcAlert("Erro ao atualizar permissão."));
 }
+
+// Dropdown "Editar" por linha: só um aberto por vez, fecha ao clicar fora
+function _toggleMenuUsuario(event, id) {
+    event.stopPropagation();
+    const menu = document.getElementById(`adm-usr-menu-${id}`);
+    const jaAberto = menu.classList.contains("open");
+    _fecharMenusUsuario();
+    if (!jaAberto) menu.classList.add("open");
+}
+function _fecharMenusUsuario() {
+    document.querySelectorAll(".adm-usr-editar-menu.open").forEach(m => m.classList.remove("open"));
+}
+document.addEventListener("click", _fecharMenusUsuario);

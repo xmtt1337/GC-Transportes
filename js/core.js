@@ -70,6 +70,12 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("submenu-baixas");
         show("menu-devolucoes");
         show("submenu-devolucoes");
+        // Ocorrências → Pacotes Faltantes: só aparece pro entregador liberado
+        // (toggle em Cadastros → Entregadores, "Editar" → Ativar formulário de faltante)
+        if (data.usuario.pode_pacote_faltante) {
+            show("menu-ocorrencias");
+            show("submenu-ocorrencias");
+        }
         document.getElementById("welcome-name").innerText = displayName.split(" ")[0];
     }
 
@@ -107,6 +113,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
 
     if (role === "sac") {
         _showExtravios();
+        _showCadastros(); // sac fica acima do admin na gestão de entregadores
         hide("menu-item-etiquetas"); // etiquetas é só do pessoal operacional (user até dev)
     }
 

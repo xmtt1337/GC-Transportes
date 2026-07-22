@@ -182,6 +182,20 @@ if (location.hostname === "xmtt1337.github.io") {
             <li><a href="#" data-rota="Devolucoes/MinhasViagens" onclick="abrirViagemMinhas(event)">Minhas viagens</a></li>
         </ul>
 
+        <li class="menu-item" data-menu="ocorrencias" id="menu-ocorrencias" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span class="label">Ocorrências</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Ocorrências</span>
+        </li>
+        <ul class="submenu" data-menu="ocorrencias" id="submenu-ocorrencias" style="display:none">
+            <li><a href="#" data-rota="Ocorrencias/PacotesFaltantes" onclick="abrirPacotesFaltantes(event)">Pacotes Faltantes</a></li>
+        </ul>
+
         <li class="menu-item" data-menu="torrecontrole" id="menu-torrecontrole" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2v6"/>
@@ -1067,7 +1081,7 @@ if (location.hostname === "xmtt1337.github.io") {
                                 <tr>
                                     <th>Entregador</th>
                                     <th>Status</th>
-                                    <th>Ações</th>
+                                    <th>Editar</th>
                                 </tr>
                             </thead>
                             <tbody id="adm-usr-tbody"></tbody>
@@ -1894,6 +1908,71 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-viagem-minhas -->
 
+        <!-- TELA OCORRÊNCIAS — PACOTES FALTANTES (ENTREGADOR) -->
+        <div id="tela-pacotes-faltantes" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div id="pf-fila-card" style="display:none"></div>
+
+                <div class="ant-form-wrap" id="pf-form-wrap" style="max-width:560px;margin:0 auto">
+                    <div class="dev-form-head">
+                        <div class="dev-form-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        </div>
+                        <div>
+                            <div class="ant-form-title" style="margin-bottom:2px">Pacote Faltante</div>
+                            <div class="dev-form-sub">Pacote atribuído a você que não está fisicamente com você</div>
+                        </div>
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">1</span> Transportadora</div>
+                        <div class="dev-chips" id="pf-transp-chips"></div>
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">2</span> Código do pacote</div>
+                        <div class="bte-codigo-row">
+                            <input type="text" id="pf-codigo" class="ant-input" placeholder="Escaneie ou digite o código" style="flex:1" onkeydown="_pfCodigoEnter(event)">
+                            <button type="button" class="bte-scan-btn" onclick="_pfAbrirScanner()" title="Escanear código do pacote">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="pf-msg" class="ant-form-msg" style="display:none"></div>
+                    <button onclick="_pfEnviar()" class="ant-submit-btn dev-submit" id="pf-submit-btn">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        Registrar Pacote Faltante
+                    </button>
+                </div>
+
+                <div style="max-width:560px;margin:14px auto 0;text-align:center">
+                    <a href="#" onclick="abrirPacotesFaltantesRegistro(event)" style="color:#3a86ff;font-size:13px;font-weight:600;text-decoration:none">Ver meus registros →</a>
+                </div>
+            </div>
+        </div><!-- /tela-pacotes-faltantes -->
+
+        <!-- TELA OCORRÊNCIAS — PACOTES FALTANTES: MEUS REGISTROS (ENTREGADOR) -->
+        <div id="tela-pacotes-faltantes-registro" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Meus Pacotes Faltantes</div>
+                    <button onclick="abrirPacotesFaltantes()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#94a3b8;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">← Voltar</button>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="pf-reg-empty">Carregando...</div>
+                <div id="pf-reg-resultado" style="display:none">
+                    <div class="adm-nf-wrap">
+                        <table class="adm-nf-table">
+                            <thead><tr><th>Código</th><th>Transportadora</th><th>Data/Hora</th></tr></thead>
+                            <tbody id="pf-reg-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-pacotes-faltantes-registro -->
+
         <!-- TELA IMPRESSÃO DE ETIQUETAS (EQUIPE INTERNA) -->
         <div id="tela-etiquetas" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
@@ -2135,6 +2214,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="js/baixas.js"></script>
 <script src="js/devolucoes.js"></script>
 <script src="js/viagens.js"></script>
+<script src="js/ocorrencias.js"></script>
 <script src="js/etiquetas.js"></script>
 <script src="js/videira.js"></script>
 <script src="js/planejamento-videira.js"></script>
