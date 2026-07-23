@@ -7,7 +7,7 @@ let _trfDestinos      = [];  // [{id, nome}] — mesma planilha de cadastro usad
 let _trfFotoBase64    = null;
 let _trfFotoMimeType  = null;
 let _trfSignaturePad  = null;
-let _trfLocalizacao   = null; // {latitude, longitude, precisao} — confirmada no destino, obrigatória pra registrar
+let _trfLocalizacao   = null; // {latitude, longitude, precisao} — best-effort, silenciosa; sem isso a entrega segue sem coordenadas
 
 function abrirTransferenciaNova(event) {
     if (event) event.preventDefault();
@@ -15,32 +15,24 @@ function abrirTransferenciaNova(event) {
     _trfLimparForm();
     _trfCarregarDestinos();
     _trfAtualizarBanner();
-    _trfPedirLocalizacao();
+    _trfCapturarLocalizacao();
     setTimeout(_trfInicializarAssinatura, 50); // espera o canvas ficar visível (tamanho real)
 }
 
-// Pede a localização ativamente (diferente do compartilhamento passivo do
-// entregador): aqui é pra provar onde a carga foi deixada, então precisa mesmo
-// que o navegador pergunte a permissão na hora, se ainda não tiver decidido.
-function _trfPedirLocalizacao() {
+// Captura a localização em silêncio (sem mostrar nada pro motorista, sem bloquear
+// o formulário): se ele já concedeu a permissão em algum momento, vai junto na
+// entrega; se não concedeu, a entrega segue sem coordenadas — o admin que reparar
+// a falta disso conversa com ele depois.
+function _trfCapturarLocalizacao() {
     _trfLocalizacao = null;
-    const el = document.getElementById("trf-localizacao-status");
-    if (!el) return;
-    if (!navigator.geolocation) {
-        el.innerHTML = `<span style="color:#ef4444">✕ Seu navegador não suporta localização.</span>`;
-        return;
-    }
-    el.innerHTML = `<span style="color:#94a3b8">Confirmando sua localização…</span>`;
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(pos => {
         _trfLocalizacao = {
             latitude:  pos.coords.latitude,
             longitude: pos.coords.longitude,
             precisao:  Math.round(pos.coords.accuracy || 0)
         };
-        el.innerHTML = `<span style="color:#22c55e">✓ Localização confirmada (±${_trfLocalizacao.precisao}m)</span>`;
-    }, () => {
-        el.innerHTML = `<span style="color:#ef4444">⚠ Permita o acesso à localização pra poder registrar a entrega.</span> <button type="button" onclick="_trfPedirLocalizacao()" style="margin-left:6px;background:none;border:none;color:#3a86ff;font-size:12.5px;font-weight:700;cursor:pointer;text-decoration:underline;font-family:inherit">Tentar de novo</button>`;
-    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
+    }, () => {}, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
 }
 
 function _trfAtualizarBanner() {
@@ -142,7 +134,6 @@ function _trfEnviar() {
     const recebedor = document.getElementById("trf-recebedor").value.trim();
     if (!recebedor) return _trfMsg("Informe o nome de quem recebeu a carga.", "erro");
     if (!_trfSignaturePad || _trfSignaturePad.isEmpty()) return _trfMsg("Peça pro recebedor assinar no campo de assinatura.", "erro");
-    if (!_trfLocalizacao) return _trfMsg("Confirme sua localização antes de registrar (veja o aviso acima da assinatura).", "erro");
 
     const assinaturaBase64 = _trfSignaturePad.toDataURL("image/png").split(",")[1];
 
@@ -156,7 +147,9 @@ function _trfEnviar() {
             destino_id: destino.id, destino_nome: destino.nome,
             foto_base64: _trfFotoBase64, foto_mime_type: _trfFotoMimeType,
             recebedor_nome: recebedor, assinatura_base64: assinaturaBase64,
-            latitude: _trfLocalizacao.latitude, longitude: _trfLocalizacao.longitude, precisao: _trfLocalizacao.precisao
+            latitude: _trfLocalizacao ? _trfLocalizacao.latitude  : null,
+            longitude: _trfLocalizacao ? _trfLocalizacao.longitude : null,
+            precisao: _trfLocalizacao ? _trfLocalizacao.precisao   : null
         })
     }).then(r => r.json())
     .then(d => {
@@ -165,7 +158,7 @@ function _trfEnviar() {
         if (d.error) return _trfMsg(d.error, "erro");
         _gcBeepSucesso();
         _trfLimparForm();
-        _trfPedirLocalizacao(); // reconfirma a localização pra próxima entrega (pode ser em outro lugar)
+        _trfCapturarLocalizacao(); // recaptura pra próxima entrega (pode ser em outro lugar)
         _trfMsg(`✓ Entrega em <strong>${destino.nome}</strong> registrada.`, "ok");
         if (d.viagem) {
             document.getElementById("trf-viagem-banner").style.display = "flex";
@@ -240,7 +233,6 @@ function _trfAbrirDetalheViagem(viagemId) {
             <div style="display:flex;gap:8px;flex-wrap:wrap">
                 ${e.tem_foto ? `<button class="abte-foto-btn" onclick="_trfaVerFoto(${e.id})">Foto</button>` : ""}
                 <button class="abte-foto-btn" onclick="_trfaVerAssinatura(${e.id})">Assinatura</button>
-                ${e.latitude != null ? `<a href="https://maps.google.com/?q=${e.latitude},${e.longitude}" target="_blank" rel="noopener noreferrer" class="abte-foto-btn" style="text-decoration:none">Ver no mapa</a>` : ""}
             </div>
         </div>`).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhuma entrega nesta viagem.</div>`;
 

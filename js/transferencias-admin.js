@@ -57,6 +57,7 @@ function _trfaRenderizar(viagens) {
                     <div style="flex:1;min-width:160px">
                         <div style="font-size:13px;font-weight:600;color:#e2e8f0">${e.destino_nome || "—"}</div>
                         <div style="font-size:11.5px;color:#94a3b8">Recebido por ${e.recebedor_nome || "—"} · ${e.data_hora_brasilia || "—"}</div>
+                        ${e.latitude == null ? `<div style="font-size:11px;color:#eab308;margin-top:2px">⚠ Motorista sem localização habilitada</div>` : ""}
                     </div>
                     <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
                         ${e.tem_foto ? `<button class="abte-foto-btn" onclick="_trfaVerFoto(${e.id})">Foto</button>` : ""}
