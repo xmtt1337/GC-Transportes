@@ -367,11 +367,11 @@ function _devCarregarEnviadas() {
             result.style.display = "";
             document.getElementById("dev-env-tbody").innerHTML = rows.map(r => `
                 <tr>
-                    <td>${r.codigo || (r.descricao ? `<span style="color:#94a3b8">${r.descricao}</span>` : "—")}</td>
-                    <td>${r.transportadora || "—"}</td>
-                    <td>${r.motivo || "—"}</td>
-                    <td>${r.data_hora_brasilia || "—"}</td>
-                    <td>${_devStatusBadge(r)}</td>
+                    <td data-label="Código / Descrição">${r.codigo || (r.descricao ? `<span style="color:#94a3b8">${r.descricao}</span>` : "—")}</td>
+                    <td data-label="Transportadora">${r.transportadora || "—"}</td>
+                    <td data-label="Motivo">${r.motivo || "—"}</td>
+                    <td data-label="Data/Hora">${r.data_hora_brasilia || "—"}</td>
+                    <td data-label="Status">${_devStatusBadge(r)}</td>
                 </tr>
             `).join("");
         })

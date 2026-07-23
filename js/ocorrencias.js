@@ -218,9 +218,9 @@ function _pfCarregarRegistro() {
             result.style.display = "";
             document.getElementById("pf-reg-tbody").innerHTML = rows.map(r => `
                 <tr>
-                    <td style="font-family:monospace">${r.codigo || "—"}</td>
-                    <td>${r.transportadora || "—"}</td>
-                    <td>${r.data_hora_brasilia || "—"}</td>
+                    <td data-label="Código" style="font-family:monospace">${r.codigo || "—"}</td>
+                    <td data-label="Transportadora">${r.transportadora || "—"}</td>
+                    <td data-label="Data/Hora">${r.data_hora_brasilia || "—"}</td>
                 </tr>
             `).join("");
         })

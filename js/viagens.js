@@ -474,6 +474,75 @@ function _vrVerFotoViagem(tipo) {
     _viagemVerFoto(_vrViagem.id, tipo);
 }
 
+// ══════════════════ RECEBER AVULSO (OPERAÇÃO) — TEMPORÁRIO ══════════════════
+// Atalho enquanto muitos entregadores não mandam o código da viagem junto: recebe
+// o pedido direto pelo código, sem passar pela tela de "Receber Viagem". Assim que
+// isso deixar de acontecer, essa tela e a rota /devolucoes/receber-avulso somem.
+let _vraRecebidos = [];
+
+function abrirDevolucoesReceberAvulso(event) {
+    if (event) event.preventDefault();
+    _vraRecebidos = [];
+    document.getElementById("vra-codigo").value = "";
+    _vraMsg("", null);
+    _vraRenderLista();
+    mostrarTela("tela-devolucao-receber-avulso");
+    document.getElementById("vra-codigo").focus();
+}
+
+function _vraMsg(msg, tipo) {
+    const el = document.getElementById("vra-msg");
+    if (!msg) { el.style.display = "none"; el.innerHTML = ""; return; }
+    const cores = { erro: "#ef4444", ok: "#22c55e", aviso: "#eab308" };
+    const cor = cores[tipo] || cores.ok;
+    el.style.cssText = `display:block;padding:10px 14px;border-radius:9px;background:${cor}14;border:1px solid ${cor}33;color:${cor};font-size:13px`;
+    el.innerHTML = msg;
+}
+
+function _vraScanCodigo() {
+    _bteAbrirScanner(texto => { document.getElementById("vra-codigo").value = texto; _vraReceber(); });
+}
+function _vraCodigoEnter(e) { if (e.key === "Enter") { e.preventDefault(); _vraReceber(); } }
+
+function _vraReceber() {
+    const codigo = document.getElementById("vra-codigo").value.trim();
+    document.getElementById("vra-codigo").value = "";
+    document.getElementById("vra-codigo").focus();
+    if (!codigo) return;
+    if (_devEhCep(codigo)) { _gcBeepErro(); return _vraMsg("Esse código é um CEP, não o código do pedido.", "erro"); }
+
+    fetch(`${API}/devolucoes/receber-avulso`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ codigo })
+    }).then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+        if (!ok) {
+            _gcBeepErro();
+            if (d.ja_recebido) return _vraMsg(`Este pedido já foi conferido${d.recebido_data_hora_brasilia ? " em " + d.recebido_data_hora_brasilia : ""}.`, "aviso");
+            return _vraMsg(d.error || "Erro ao conferir.", "erro");
+        }
+        _gcBeepSucesso();
+        _vraMsg(`✓ <strong>${d.codigo}</strong> conferido (${d.transportadora || "—"}).`, "ok");
+        _vraRecebidos.unshift(d);
+        _vraRenderLista();
+    })
+    .catch(() => { _gcBeepErro(); _vraMsg("Erro ao conectar com o servidor.", "erro"); });
+}
+
+function _vraRenderLista() {
+    document.getElementById("vra-lista").innerHTML = _vraRecebidos.map(r => `
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:11px 14px;margin-bottom:8px;background:rgba(34,197,94,0.05)">
+            <div style="flex-shrink:0;color:#22c55e">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:700;color:#e2e8f0;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.codigo || r.descricao || "—"}</div>
+                <div style="font-size:11.5px;color:#94a3b8">${r.transportadora || "—"}${r.motivo ? " · " + r.motivo : ""}${r.usuario_nome ? " · " + r.usuario_nome : ""}</div>
+            </div>
+        </div>`).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhum pedido recebido ainda nesta sessão.</div>`;
+}
+
 // Overlay genérico pra ver a foto da viagem (saca | caminhao) — usado pelo entregador
 // (Minhas viagens) e pela operação (Receber).
 function _viagemVerFoto(id, tipo) {

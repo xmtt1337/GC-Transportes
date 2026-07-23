@@ -86,7 +86,8 @@ if (location.hostname === "xmtt1337.github.io") {
                 Devoluções <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-devolucoes-op">
-                <li><a href="#" data-rota="Operacao/DevolucoesReceber" onclick="abrirDevolucoesReceber(event)">Receber</a></li>
+                <li><a href="#" data-rota="Operacao/DevolucoesReceber" onclick="abrirDevolucoesReceber(event)">Receber Viagem</a></li>
+                <li><a href="#" data-rota="Operacao/DevolucoesReceberAvulso" onclick="abrirDevolucoesReceberAvulso(event)">Receber Avulso</a></li>
                 <li><a href="#" data-rota="Operacao/DevolucoesRegistro" onclick="abrirDevolucoesRegistro(event)">Registro</a></li>
             </ul>
             <li id="menu-item-etiquetas"><a href="#" data-rota="Operacao/Etiquetas" onclick="abrirEtiquetas(event)">Impressão de etiquetas</a></li>
@@ -1849,6 +1850,29 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-devolucao-receber -->
 
+        <!-- TELA DEVOLUÇÕES — RECEBER AVULSO (EQUIPE DA BASE) — TEMPORÁRIO, ver comentário no backend -->
+        <div id="tela-devolucao-receber-avulso" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div class="ant-form-wrap" style="margin-bottom:16px">
+                    <div class="ant-form-title">Receber avulso</div>
+                    <div class="dev-form-sub" style="margin-bottom:16px;color:#eab308">⚠ Temporário — use só quando o entregador não informou o número da viagem. Recebe o pedido direto pelo código, sem passar pela viagem.</div>
+                    <div class="ant-field">
+                        <label class="ant-label">Código do pedido</label>
+                        <div class="bte-codigo-row">
+                            <input type="text" id="vra-codigo" class="ant-input" placeholder="Escaneie ou digite o código do pedido" style="flex:1" onkeydown="_vraCodigoEnter(event)">
+                            <button type="button" class="bte-scan-btn" onclick="_vraScanCodigo()" title="Escanear código do pedido">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="vra-msg" style="display:none;margin-top:14px"></div>
+                </div>
+
+                <span class="ant-sol-title" style="border:none;padding:0;margin:0 0 10px;display:block">Recebidos nesta sessão</span>
+                <div id="vra-lista"></div>
+            </div>
+        </div><!-- /tela-devolucao-receber-avulso -->
+
         <!-- TELA VIAGEM — FECHAR (ENTREGADOR) -->
         <div id="tela-viagem-fechar" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
@@ -1967,12 +1991,10 @@ if (location.hostname === "xmtt1337.github.io") {
             <div class="fech-body">
                 <div class="fechamento-empty" id="pf-reg-empty">Carregando...</div>
                 <div id="pf-reg-resultado" style="display:none">
-                    <div class="adm-nf-wrap">
-                        <table class="adm-nf-table">
-                            <thead><tr><th>Código</th><th>Transportadora</th><th>Data/Hora</th></tr></thead>
-                            <tbody id="pf-reg-tbody"></tbody>
-                        </table>
-                    </div>
+                    <table class="ant-hist-table">
+                        <thead><tr><th>Código</th><th>Transportadora</th><th>Data/Hora</th></tr></thead>
+                        <tbody id="pf-reg-tbody"></tbody>
+                    </table>
                 </div>
             </div>
         </div><!-- /tela-pacotes-faltantes-registro -->
