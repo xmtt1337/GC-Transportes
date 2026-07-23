@@ -34,6 +34,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
 <link rel="stylesheet" href="style.css">
 </head>
@@ -199,6 +200,21 @@ if (location.hostname === "xmtt1337.github.io") {
             <li><a href="#" data-rota="Ocorrencias/PacotesFaltantes" onclick="abrirPacotesFaltantes(event)">Pacotes Faltantes</a></li>
         </ul>
 
+        <li class="menu-item" data-menu="transferencias" id="menu-transferencias" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="1" y="3" width="15" height="13"/>
+                <path d="M16 8h4l3 3v5h-7V8z"/>
+                <circle cx="5.5" cy="18.5" r="2.5"/>
+                <circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+            <span class="label">Transferências</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Transferências</span>
+        </li>
+        <ul class="submenu" data-menu="transferencias" id="submenu-transferencias" style="display:none">
+            <li><a href="#" data-rota="Transferencias/Nova" onclick="abrirTransferenciaNova(event)">Registrar entrega</a></li>
+        </ul>
+
         <li class="menu-item" data-menu="torrecontrole" id="menu-torrecontrole" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2v6"/>
@@ -216,6 +232,7 @@ if (location.hostname === "xmtt1337.github.io") {
             <li><a href="#" onclick="_emBreve(event)">Sem Movimentação</a></li>
             <li id="menu-item-mapa-localizacao"><a href="#" data-rota="TorreControle/Mapa" onclick="abrirLocalizacaoAdmin(event)">Localização dos Entregadores</a></li>
             <li id="menu-item-pacotes-faltantes-adm"><a href="#" data-rota="TorreControle/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event)">Pacotes Faltantes</a></li>
+            <li id="menu-item-transferencias-adm"><a href="#" data-rota="TorreControle/Transferencias" onclick="abrirTransferenciasAdmin(event)">Transferências</a></li>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Alimentar <span class="subgroup-arrow">▾</span>
             </li>
@@ -305,6 +322,7 @@ if (location.hostname === "xmtt1337.github.io") {
             </li>
             <ul class="sub-submenu" id="subgroup-gc">
                 <li><a href="#" data-rota="Cadastros/Entregadores" onclick="abrirAdminUsuarios(event)">Entregadores</a></li>
+                <li><a href="#" data-rota="Cadastros/Motoristas" onclick="abrirAdminMotoristas(event)">Motoristas</a></li>
                 <li><a href="#" data-rota="Cadastros/Usuarios" onclick="abrirAdminUsuariosGC(event)">Usuários</a></li>
             </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
@@ -1095,6 +1113,35 @@ if (location.hostname === "xmtt1337.github.io") {
                 </div>
             </div>
         </div><!-- /tela-admin-usuarios -->
+
+        <!-- TELA ADMIN MOTORISTAS -->
+        <div id="tela-admin-motoristas" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Motoristas</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <button class="adm-usr-add-btn" onclick="_abrirModalNovoMotorista()">+ Adicionar</button>
+                    </div>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="adm-mot-empty">Carregando...</div>
+                <div id="adm-mot-resultado" style="display:none">
+                    <div class="adm-nf-wrap">
+                        <table class="adm-nf-table">
+                            <thead>
+                                <tr>
+                                    <th>Motorista</th>
+                                    <th>Status</th>
+                                    <th>Editar</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adm-mot-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-admin-motoristas -->
 
         <!-- TELA DASHBOARD -->
         <div id="tela-dashboard" class="view tela-full">
@@ -1999,6 +2046,86 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-pacotes-faltantes-registro -->
 
+        <!-- TELA TRANSFERÊNCIAS — REGISTRAR ENTREGA (MOTORISTA) -->
+        <div id="tela-transferencia-nova" class="view tela-full">
+            <!-- Viagem do dia: fora da área que rola, fica sempre visível igual um cabeçalho -->
+            <div id="trf-viagem-banner" style="display:none;flex-shrink:0;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 16px;margin:20px 0 0;border-radius:12px;background:#101c30;border:1px solid rgba(58,134,255,0.28)">
+                <div>
+                    <div style="font-size:10.5px;font-weight:700;color:#4a6a8a;text-transform:uppercase;letter-spacing:0.06em">Viagem de hoje</div>
+                    <div style="font-size:15px;font-weight:800;color:#3a86ff;font-family:monospace" id="trf-viagem-numero">—</div>
+                    <div style="font-size:12px;color:#94a3b8" id="trf-viagem-qtd">—</div>
+                </div>
+                <button onclick="abrirTransferenciaHistorico()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.1);color:#3a86ff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Ver histórico</button>
+            </div>
+
+            <div class="fech-body" style="padding-top:24px">
+                <div class="ant-form-wrap" id="trf-form-wrap" style="max-width:560px;margin:0 auto">
+                    <div class="dev-form-head">
+                        <div class="dev-form-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                        </div>
+                        <div>
+                            <div class="ant-form-title" style="margin-bottom:2px">Registrar Entrega</div>
+                            <div class="dev-form-sub">Confirme a entrega da carga no destino</div>
+                        </div>
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">1</span> Destino</div>
+                        <input list="trf-destino-datalist" id="trf-destino" class="ant-input" placeholder="Digite o ID ou o nome do destino…" autocomplete="off" oninput="_trfDestinoMudou()">
+                        <datalist id="trf-destino-datalist"></datalist>
+                        <div id="trf-destino-id-row" style="display:none;margin-top:10px;font-size:13px;color:#94a3b8">ID: <strong id="trf-destino-id" style="color:#3a86ff;font-family:monospace;font-size:14px">—</strong></div>
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">2</span> Foto da carga no destino</div>
+                        <div class="dev-foto-tile" id="trf-foto-tile" onclick="_trfTirarFoto()">
+                            <div class="dev-foto-vazio">
+                                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                Tirar foto da carga
+                            </div>
+                            <img id="trf-foto-preview" alt="">
+                            <div class="dev-foto-refazer">Trocar foto</div>
+                        </div>
+                        <input type="file" id="trf-foto-input" accept="image/*" capture="environment" style="display:none" onchange="_trfFotoSelecionada(this)">
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">3</span> Nome de quem recebeu a carga</div>
+                        <input type="text" id="trf-recebedor" class="ant-input" placeholder="Nome completo">
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">4</span> Assinatura do recebedor</div>
+                        <div style="border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:#fff;overflow:hidden;touch-action:none">
+                            <canvas id="trf-assinatura-canvas" style="width:100%;height:180px;display:block"></canvas>
+                        </div>
+                        <button type="button" onclick="_trfLimparAssinatura()" style="margin-top:8px;padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.03);color:#94a3b8;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">Limpar assinatura</button>
+                    </div>
+
+                    <div id="trf-msg" class="ant-form-msg" style="display:none"></div>
+                    <button onclick="_trfEnviar()" class="ant-submit-btn dev-submit" id="trf-submit-btn">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        Registrar Entrega
+                    </button>
+                </div>
+            </div>
+        </div><!-- /tela-transferencia-nova -->
+
+        <!-- TELA TRANSFERÊNCIAS — HISTÓRICO (MOTORISTA) -->
+        <div id="tela-transferencia-historico" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Histórico de Transferências</div>
+                    <button onclick="abrirTransferenciaNova()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#94a3b8;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">← Voltar</button>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="trf-hist-empty">Carregando...</div>
+                <div id="trf-hist-lista" style="display:none"></div>
+            </div>
+        </div><!-- /tela-transferencia-historico -->
+
         <!-- TELA IMPRESSÃO DE ETIQUETAS (EQUIPE INTERNA) -->
         <div id="tela-etiquetas" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
@@ -2212,6 +2339,26 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-torre-mapa -->
 
+        <!-- TELA TORRE DE CONTROLE — TRANSFERÊNCIAS (ADMIN/DEV) -->
+        <div id="tela-torre-transferencias" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Transferências</div>
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                        <span id="trfa-counter" style="font-size:12.5px;color:#4a6a8a"></span>
+                        <div class="adm-search-input-area" style="max-width:280px">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="trfa-filtro-input" placeholder="Filtrar por motorista, destino ou nº da viagem..." oninput="_trfaFiltrarLocal()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="trfa-empty">Carregando...</div>
+                <div id="trfa-lista" style="display:none"></div>
+            </div>
+        </div><!-- /tela-torre-transferencias -->
+
         <!-- TELA ANTECIPAÇÕES ADMIN -->
         <div id="tela-admin-antecipacoes" class="view tela-full">
             <div class="fech-header">
@@ -2292,6 +2439,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="js/conf-nf.js"></script>
 <script src="js/trampay.js"></script>
 <script src="js/usuarios.js"></script>
+<script src="js/motoristas.js"></script>
 <script src="js/pagamentos.js"></script>
 <script src="js/notas-fiscais.js"></script>
 <script src="js/dashboard.js"></script>
@@ -2317,6 +2465,8 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="js/ocorrencias-admin.js"></script>
 <script src="js/localizacao.js"></script>
 <script src="js/localizacao-admin.js"></script>
+<script src="js/transferencias.js"></script>
+<script src="js/transferencias-admin.js"></script>
 <script src="js/etiquetas.js"></script>
 <script src="js/videira.js"></script>
 <script src="js/planejamento-videira.js"></script>
@@ -2840,6 +2990,49 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
             <div id="mne-copiado" style="font-size:12px;color:#22c55e;height:16px;margin-bottom:16px"></div>
             <button class="usr-modal-btn-primary" onclick="_fecharModal('modal-novo-entregador')">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: NOVO MOTORISTA -->
+<div class="usr-modal-overlay" id="modal-novo-motorista" onclick="_fecharModalSeBackdrop(event,'modal-novo-motorista')">
+    <div class="usr-modal">
+        <!-- form -->
+        <div id="mnm-form">
+            <div class="usr-modal-title">Novo Motorista</div>
+            <div class="usr-modal-sub">O ID de acesso sera gerado automaticamente.</div>
+            <div class="usr-modal-field">
+                <label class="usr-modal-label">Nome</label>
+                <input class="usr-modal-input" id="mnm-nome" type="text" placeholder="Nome completo do motorista" autocomplete="off">
+            </div>
+            <div class="usr-modal-field">
+                <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(opcional — deixe em branco para senha padrão)</span></label>
+                <input class="usr-modal-input" id="mnm-senha" type="text" placeholder="Deixe em branco para senha padrão" autocomplete="off">
+            </div>
+            <div class="usr-modal-error" id="mnm-erro"></div>
+            <div id="mnm-duplicado" style="display:none;margin-top:10px;padding:13px 15px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.22);border-radius:12px">
+                <div style="font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Nome já cadastrado</div>
+                <div style="font-size:12.5px;color:#94a3b8;margin-bottom:10px">Já existe um usuário com este nome. O ID de acesso é:</div>
+                <div style="font-size:20px;font-weight:700;color:#3a86ff;letter-spacing:1px" id="mnm-duplicado-id"></div>
+            </div>
+            <div class="usr-modal-btns">
+                <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-novo-motorista')">Cancelar</button>
+                <button class="usr-modal-btn-primary" id="mnm-btn-salvar" onclick="_salvarNovoMotorista()">Cadastrar</button>
+            </div>
+        </div>
+        <!-- sucesso -->
+        <div id="mnm-sucesso" style="display:none;text-align:center">
+            <div style="width:52px;height:52px;border-radius:50%;background:rgba(34,197,94,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:6px">Motorista cadastrado!</div>
+            <div style="font-size:13px;color:#64748b;margin-bottom:20px">Anote o ID de acesso abaixo.</div>
+            <div style="background:rgba(58,134,255,0.08);border:1px solid rgba(58,134,255,0.2);border-radius:12px;padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <span id="mnm-id-gerado" style="font-size:22px;font-weight:700;color:#3a86ff;letter-spacing:1px"></span>
+                <button onclick="_copiarIDMotorista()" style="background:rgba(58,134,255,0.15);border:1px solid rgba(58,134,255,0.3);color:#3a86ff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s" onmouseover="this.style.background='rgba(58,134,255,0.25)'" onmouseout="this.style.background='rgba(58,134,255,0.15)'">Copiar</button>
+            </div>
+            <div id="mnm-copiado" style="font-size:12px;color:#22c55e;height:16px;margin-bottom:16px"></div>
+            <button class="usr-modal-btn-primary" onclick="_fecharModal('modal-novo-motorista')">Fechar</button>
         </div>
     </div>
 </div>

@@ -145,7 +145,7 @@ function _resetarSenha(id, username) {
     }, null, "Resetar");
 }
 
-function _toggleAtivoUsuario(id, active) {
+function _toggleAtivoUsuario(id, active, aoTerminar) {
     const tok = localStorage.getItem("token");
     fetch(`${API}/admin/usuarios/${id}`, {
         method: "PATCH",
@@ -154,7 +154,7 @@ function _toggleAtivoUsuario(id, active) {
     }).then(r => r.json())
     .then(data => {
         if (data.error) { gcAlert(data.error); return; }
-        _carregarUsuarios();
+        (aoTerminar || _carregarUsuarios)();
     }).catch(() => gcAlert("Erro ao atualizar usuário."));
 }
 

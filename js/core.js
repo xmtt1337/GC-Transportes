@@ -80,6 +80,18 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         _locIniciarCompartilhamento(); // controle de veículo — só ativa se já tiver permissão de localização concedida
     }
 
+    if (role === "motorista") {
+        hide("menu-operacao");
+        hide("submenu-operacao");
+        hide("menu-pedidos");
+        hide("submenu-pedidos");
+        hide("menu-conferencias");
+        hide("submenu-conferencias");
+        show("menu-transferencias");
+        show("submenu-transferencias");
+        document.getElementById("welcome-name").innerText = displayName.split(" ")[0];
+    }
+
     if (role === "user") {
         _showOperacional();
         _showCadastros();
@@ -114,6 +126,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         if (role === "finance") {
             hide("menu-item-pacotes-faltantes-adm"); // só admin/dev
             hide("menu-item-mapa-localizacao");       // localização de entregador é sensível — só admin/dev
+            hide("menu-item-transferencias-adm");     // só admin/dev
         }
     }
 
@@ -139,11 +152,11 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
 
     const badgeLabels = {
         dev: "Dev", admin: "Administrador", finance: "Financeiro",
-        user: "Usuário", entregador: "Entregador", sac: "SAC"
+        user: "Usuário", entregador: "Entregador", sac: "SAC", motorista: "Motorista"
     };
     const badgeColors = {
         dev: "#a78bfa", admin: "#fb923c", finance: "#34d399",
-        user: "#3a86ff", entregador: "#22c55e", sac: "#06b6d4", "ADM Videira": "#e879f9"
+        user: "#3a86ff", entregador: "#22c55e", sac: "#06b6d4", "ADM Videira": "#e879f9", motorista: "#f59e0b"
     };
     const badge = document.getElementById("home-role-badge");
     if (badge) {
