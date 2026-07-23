@@ -32,6 +32,8 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <link rel="stylesheet" href="style.css">
 </head>
@@ -211,6 +213,7 @@ if (location.hostname === "xmtt1337.github.io") {
             <li><a href="#" onclick="_emBreve(event)">Na Rua</a></li>
             <li><a href="#" onclick="_emBreve(event)">Na Base</a></li>
             <li><a href="#" onclick="_emBreve(event)">Sem Movimentação</a></li>
+            <li id="menu-item-mapa-localizacao"><a href="#" data-rota="TorreControle/Mapa" onclick="abrirLocalizacaoAdmin(event)">Localização dos Entregadores</a></li>
             <li id="menu-item-pacotes-faltantes-adm"><a href="#" data-rota="TorreControle/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event)">Pacotes Faltantes</a></li>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Alimentar <span class="subgroup-arrow">▾</span>
@@ -2166,6 +2169,20 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-torre-pacotes-faltantes -->
 
+        <!-- TELA TORRE DE CONTROLE — LOCALIZAÇÃO DOS ENTREGADORES (ADMIN/DEV) -->
+        <div id="tela-torre-mapa" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Localização dos Entregadores</div>
+                    <span id="loc-counter" style="font-size:12.5px;color:#4a6a8a"></span>
+                </div>
+            </div>
+            <div class="fech-body loc-body">
+                <div id="loc-mapa"></div>
+                <div id="loc-lista"></div>
+            </div>
+        </div><!-- /tela-torre-mapa -->
+
         <!-- TELA ANTECIPAÇÕES ADMIN -->
         <div id="tela-admin-antecipacoes" class="view tela-full">
             <div class="fech-header">
@@ -2269,6 +2286,8 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="js/viagens.js"></script>
 <script src="js/ocorrencias.js"></script>
 <script src="js/ocorrencias-admin.js"></script>
+<script src="js/localizacao.js"></script>
+<script src="js/localizacao-admin.js"></script>
 <script src="js/etiquetas.js"></script>
 <script src="js/videira.js"></script>
 <script src="js/planejamento-videira.js"></script>

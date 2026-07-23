@@ -35,6 +35,7 @@ const _TELA_TITULOS = {
     "tela-pacotes-faltantes":          "Pacotes Faltantes",
     "tela-pacotes-faltantes-registro": "Meus Pacotes Faltantes",
     "tela-torre-pacotes-faltantes": "Pacotes Faltantes",
+    "tela-torre-mapa":              "Localização dos Entregadores",
     "tela-videira-alimentar":    "Alimentar Fechamento",
     "tela-videira-painel":       "Meu Fechamento",
     "tela-videira-dash":         "Dashboard",

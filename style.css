@@ -224,6 +224,19 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
+/* Mapa ao vivo (Torre de Controle → Localização dos Entregadores): o Leaflet
+   precisa de um container com altura definida, então essa tela some com o scroll
+   normal do .fech-body e vira um flex de mapa + lista lateral, cada um rolando
+   por conta própria. */
+.loc-body { padding: 0; overflow: hidden; display: flex; }
+#loc-mapa { flex: 1; min-width: 0; background: #0b0f18; }
+#loc-lista {
+    width: 260px; flex-shrink: 0; overflow-y: auto; padding: 12px;
+    border-left: 1px solid rgba(255,255,255,0.08);
+}
+.loc-item { padding: 10px 8px; border-radius: 8px; cursor: pointer; margin-bottom: 4px; }
+.loc-item:hover { background: rgba(255,255,255,0.04); }
+
 
 /* ===== FECHAMENTOS / PAINEL ===== */
 .fech-select {

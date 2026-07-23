@@ -77,6 +77,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
             show("submenu-ocorrencias");
         }
         document.getElementById("welcome-name").innerText = displayName.split(" ")[0];
+        _locIniciarCompartilhamento(); // controle de veículo — só ativa se já tiver permissão de localização concedida
     }
 
     if (role === "user") {
@@ -109,7 +110,10 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-baixas");
         show("submenu-baixas");
         show("bip-sync-btn");
-        if (role === "finance") hide("menu-item-pacotes-faltantes-adm"); // só admin/dev
+        if (role === "finance") {
+            hide("menu-item-pacotes-faltantes-adm"); // só admin/dev
+            hide("menu-item-mapa-localizacao");       // localização de entregador é sensível — só admin/dev
+        }
     }
 
     if (role === "sac") {
