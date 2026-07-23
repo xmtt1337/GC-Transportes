@@ -41,6 +41,8 @@ const _TELA_TITULOS = {
     "tela-torre-transferencias":    "Transferências",
     "tela-transferencia-nova":      "Registrar Entrega",
     "tela-transferencia-historico": "Histórico de Transferências",
+    "tela-motorista-buscar":        "Buscar Viagem",
+    "tela-motorista-cargas":        "Minhas Cargas",
     "tela-videira-alimentar":    "Alimentar Fechamento",
     "tela-videira-painel":       "Meu Fechamento",
     "tela-videira-dash":         "Dashboard",

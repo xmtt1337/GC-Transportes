@@ -216,6 +216,21 @@ if (location.hostname === "xmtt1337.github.io") {
             <li><a href="#" data-rota="Transferencias/Historico" onclick="abrirTransferenciaHistorico(event)">Histórico</a></li>
         </ul>
 
+        <li class="menu-item" data-menu="devolucoes-motorista" id="menu-devolucoes-motorista" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+            <span class="label">Devoluções</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Devoluções</span>
+        </li>
+        <ul class="submenu" data-menu="devolucoes-motorista" id="submenu-devolucoes-motorista" style="display:none">
+            <li><a href="#" data-rota="DevolucoesMotorista/Buscar" onclick="abrirMotoristaBuscarViagem(event)">Buscar viagem</a></li>
+            <li><a href="#" data-rota="DevolucoesMotorista/MinhasCargas" onclick="abrirMotoristaMinhasCargas(event)">Minhas cargas</a></li>
+        </ul>
+
         <li class="menu-item" data-menu="torrecontrole" id="menu-torrecontrole" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2v6"/>
@@ -2097,7 +2112,12 @@ if (location.hostname === "xmtt1337.github.io") {
                     </div>
 
                     <div class="dev-sec">
-                        <div class="dev-sec-head"><span class="dev-sec-num">4</span> Assinatura do recebedor</div>
+                        <div class="dev-sec-head"><span class="dev-sec-num">4</span> Localização</div>
+                        <div id="trf-localizacao-status" style="font-size:13px">Confirmando sua localização…</div>
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">5</span> Assinatura do recebedor</div>
                         <div style="border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:#fff;overflow:hidden;touch-action:none">
                             <canvas id="trf-assinatura-canvas" style="width:100%;height:180px;display:block"></canvas>
                         </div>
@@ -2126,6 +2146,47 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div id="trf-hist-lista" style="display:none"></div>
             </div>
         </div><!-- /tela-transferencia-historico -->
+
+        <!-- TELA DEVOLUÇÕES MOTORISTA — BUSCAR VIAGEM -->
+        <div id="tela-motorista-buscar" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div class="ant-form-wrap" style="max-width:560px;margin:0 auto">
+                    <div class="dev-form-head">
+                        <div class="dev-form-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        </div>
+                        <div>
+                            <div class="ant-form-title" style="margin-bottom:2px">Buscar Viagem</div>
+                            <div class="dev-form-sub">Informe o número da viagem (GC) da saca que você está recolhendo</div>
+                        </div>
+                    </div>
+
+                    <div class="dev-sec">
+                        <div class="dev-sec-head"><span class="dev-sec-num">1</span> Número da viagem</div>
+                        <div class="bte-codigo-row">
+                            <input type="text" id="motb-numero" class="ant-input" placeholder="Ex: GC2026070001" style="flex:1" onkeydown="_motbNumeroEnter(event)">
+                            <button type="button" class="bte-scan-btn" onclick="_motbScanNumero()" title="Escanear o número da viagem">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="motb-msg" style="display:none;margin-top:14px"></div>
+                    <button onclick="_motbBuscarViagem()" class="ant-submit-btn">Buscar viagem</button>
+                </div>
+            </div>
+        </div><!-- /tela-motorista-buscar -->
+
+        <!-- TELA DEVOLUÇÕES MOTORISTA — MINHAS CARGAS -->
+        <div id="tela-motorista-cargas" class="view tela-full">
+            <div class="fech-header">
+                <div style="font-size:15px;font-weight:700;color:#e2e8f0">Minhas Cargas</div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="motc-empty">Carregando...</div>
+                <div id="motc-lista" style="display:none"></div>
+            </div>
+        </div><!-- /tela-motorista-cargas -->
 
         <!-- TELA IMPRESSÃO DE ETIQUETAS (EQUIPE INTERNA) -->
         <div id="tela-etiquetas" class="view tela-full">
@@ -2468,6 +2529,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="js/localizacao-admin.js"></script>
 <script src="js/transferencias.js"></script>
 <script src="js/transferencias-admin.js"></script>
+<script src="js/motorista-devolucoes.js"></script>
 <script src="js/etiquetas.js"></script>
 <script src="js/videira.js"></script>
 <script src="js/planejamento-videira.js"></script>

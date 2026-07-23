@@ -105,6 +105,9 @@ function _vmStatusBadge(status) {
     if (status === "recebida") {
         return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;font-size:11px;font-weight:700">Recebida</span>`;
     }
+    if (status === "em_transferencia") {
+        return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);color:#a855f7;font-size:11px;font-weight:700">Em transferência</span>`;
+    }
     if (status === "fechada") {
         return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(58,134,255,0.1);border:1px solid rgba(58,134,255,0.3);color:#3a86ff;font-size:11px;font-weight:700">Fechada — aguardando recebimento</span>`;
     }
@@ -310,7 +313,7 @@ function _vmImprimir(id) {
                 <div class="top">
                     <div>
                         <h1>Viagem ${v.numero}</h1>
-                        <div class="sub">${v.status === "recebida" ? "Recebida pela operação" : v.status === "fechada" ? "Fechada — aguardando recebimento" : "Aberta"}</div>
+                        <div class="sub">${v.status === "recebida" ? "Recebida pela operação" : v.status === "em_transferencia" ? "Em transferência" : v.status === "fechada" ? "Fechada — aguardando recebimento" : "Aberta"}</div>
                         <div class="meta">
                             <div><b>Entregador</b>${v.entregador_nome || "—"}</div>
                             <div><b>Criada em</b>${v.data_hora_brasilia || "—"}</div>

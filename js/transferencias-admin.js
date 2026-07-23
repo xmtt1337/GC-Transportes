@@ -58,9 +58,10 @@ function _trfaRenderizar(viagens) {
                         <div style="font-size:13px;font-weight:600;color:#e2e8f0">${e.destino_nome || "—"}</div>
                         <div style="font-size:11.5px;color:#94a3b8">Recebido por ${e.recebedor_nome || "—"} · ${e.data_hora_brasilia || "—"}</div>
                     </div>
-                    <div style="display:flex;gap:8px;flex-shrink:0">
+                    <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
                         ${e.tem_foto ? `<button class="abte-foto-btn" onclick="_trfaVerFoto(${e.id})">Foto</button>` : ""}
                         <button class="abte-foto-btn" onclick="_trfaVerAssinatura(${e.id})">Assinatura</button>
+                        ${e.latitude != null ? `<a href="https://maps.google.com/?q=${e.latitude},${e.longitude}" target="_blank" rel="noopener noreferrer" class="abte-foto-btn" style="text-decoration:none">Ver no mapa</a>` : ""}
                     </div>
                 </div>`).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhuma entrega nesta viagem.</div>`}
         </div>`).join("");

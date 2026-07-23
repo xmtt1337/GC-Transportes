@@ -89,6 +89,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         hide("submenu-conferencias");
         show("menu-transferencias");
         show("submenu-transferencias");
+        show("menu-devolucoes-motorista");
+        show("submenu-devolucoes-motorista");
         document.getElementById("welcome-name").innerText = displayName.split(" ")[0];
     }
 
