@@ -95,14 +95,8 @@ function deletarPlanilha(id) {
 
 // ───── LOGOUT ─────
 function logout() {
-    // Para de aparecer no mapa de Localização dos Entregadores assim que sair —
-    // sem isso, a última posição continuaria lá até a janela de 30 min expirar.
-    fetch(`${API}/localizacao`, { method: "DELETE", headers: { "Authorization": "Bearer " + token } })
-        .catch(() => {})
-        .finally(() => {
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        });
+    localStorage.removeItem("token");
+    window.location.href = "login.html";
 }
 
 // ───── LINK ATIVO NO SUBMENU ─────

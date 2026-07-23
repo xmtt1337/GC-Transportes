@@ -6,8 +6,10 @@ let _locMap            = null;
 let _locMarkers        = {};
 let _locAutoRefresh    = null;
 let _locBoundsAjustado = false;
+let _locDadosBrutos    = []; // última resposta do servidor, sem filtro — refiltra sem re-buscar
+let _locFiltro         = "todos"; // "todos" | "ativos" | "inativos"
 
-const _LOC_ATIVO_SEGUNDOS = 10 * 60; // até 10 min atrás conta como "ativo agora"
+const _LOC_ATIVO_SEGUNDOS = 10 * 60; // até 10 min atrás conta como "ativo agora"; passou disso = ausente (mas continua no mapa)
 
 function abrirLocalizacaoAdmin(event) {
     if (event) event.preventDefault();
@@ -30,8 +32,20 @@ function _locInicializarMapa() {
 function _locCarregar() {
     fetch(`${API}/admin/localizacoes`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
-        .then(rows => { if (Array.isArray(rows)) _locRenderizar(rows); })
-        .catch(() => {});
+        .then(rows => {
+            if (!Array.isArray(rows)) return;
+            _locDadosBrutos = rows;
+            _locRenderizar();
+        }).catch(() => {});
+}
+
+// Ativos/Ausentes/Todos — refiltra com o que já foi carregado, sem nova requisição
+function _locFiltrar(filtro) {
+    _locFiltro = filtro;
+    document.querySelectorAll("#loc-filtro-chips .dev-chip").forEach(c =>
+        c.classList.toggle("active", c.dataset.filtro === filtro));
+    _locBoundsAjustado = false; // troca de filtro pode mudar bastante os pontos — reenquadra o mapa
+    _locRenderizar();
 }
 
 function _locTextoTempo(segundos) {
@@ -42,17 +56,24 @@ function _locTextoTempo(segundos) {
     return `há ${horas}h`;
 }
 
-function _locRenderizar(rows) {
+function _locRenderizar() {
     // Tela pode ter sido montada escondida (view ainda não visível quando o mapa foi
     // criado) — o Leaflet só sabe o tamanho real do container depois disso.
     setTimeout(() => _locMap.invalidateSize(), 50);
 
-    const comPosicao = rows.filter(r => r.latitude != null && r.longitude != null);
-    const idsAtuais = new Set();
+    const comPosicao = _locDadosBrutos.filter(r => r.latitude != null && r.longitude != null);
+    const visiveis = comPosicao.filter(r => {
+        const ativo = r.segundos_atras <= _LOC_ATIVO_SEGUNDOS;
+        if (_locFiltro === "ativos")   return ativo;
+        if (_locFiltro === "inativos") return !ativo;
+        return true;
+    });
+
+    const idsVisiveis = new Set();
     const bounds = [];
 
-    comPosicao.forEach(r => {
-        idsAtuais.add(r.usuario_id);
+    visiveis.forEach(r => {
+        idsVisiveis.add(r.usuario_id);
         const ativo = r.segundos_atras <= _LOC_ATIVO_SEGUNDOS;
         const cor = ativo ? "#22c55e" : "#64748b";
         const icon = L.divIcon({
@@ -68,19 +89,20 @@ function _locRenderizar(rows) {
         } else {
             marker.setLatLng([r.latitude, r.longitude]);
             marker.setIcon(icon);
+            if (!_locMap.hasLayer(marker)) marker.addTo(_locMap);
         }
         marker.bindPopup(`
             <strong>${r.usuario_nome || "—"}</strong><br>
-            ${_locTextoTempo(r.segundos_atras)}
+            ${ativo ? "Ativo" : "Ausente"} — ${_locTextoTempo(r.segundos_atras)}
             ${r.precisao_metros ? `<br><span style="color:#888">±${Math.round(r.precisao_metros)}m de precisão</span>` : ""}
             ${r.data_hora_brasilia ? `<br><span style="color:#888">${r.data_hora_brasilia}</span>` : ""}
         `);
         bounds.push([r.latitude, r.longitude]);
     });
 
-    // Remove do mapa quem não veio mais na resposta (ex: perdeu a linha no banco)
+    // Tira do mapa quem não está mais na lista visível (filtrado, ou some da resposta)
     Object.keys(_locMarkers).forEach(id => {
-        if (!idsAtuais.has(parseInt(id))) { _locMap.removeLayer(_locMarkers[id]); delete _locMarkers[id]; }
+        if (!idsVisiveis.has(parseInt(id))) { _locMap.removeLayer(_locMarkers[id]); delete _locMarkers[id]; }
     });
 
     if (bounds.length && !_locBoundsAjustado) {
@@ -90,9 +112,9 @@ function _locRenderizar(rows) {
 
     const ativos = comPosicao.filter(r => r.segundos_atras <= _LOC_ATIVO_SEGUNDOS);
     document.getElementById("loc-counter").innerText =
-        `${ativos.length} ativo${ativos.length !== 1 ? "s" : ""} agora · ${comPosicao.length} no total`;
+        `${ativos.length} ativo${ativos.length !== 1 ? "s" : ""} · ${comPosicao.length - ativos.length} ausente${comPosicao.length - ativos.length !== 1 ? "s" : ""} · ${comPosicao.length} no total`;
 
-    document.getElementById("loc-lista").innerHTML = comPosicao
+    document.getElementById("loc-lista").innerHTML = visiveis
         .slice()
         .sort((a, b) => a.segundos_atras - b.segundos_atras)
         .map(r => {
@@ -104,7 +126,7 @@ function _locRenderizar(rows) {
                 </div>
                 <div style="font-size:11.5px;color:#64748b;margin-left:15px">${_locTextoTempo(r.segundos_atras)}</div>
             </div>`;
-        }).join("") || `<div style="color:#4a6a8a;font-size:13px;text-align:center;padding:20px 8px">Nenhum entregador compartilhando localização ainda.</div>`;
+        }).join("") || `<div style="color:#4a6a8a;font-size:13px;text-align:center;padding:20px 8px">Nenhum entregador${_locFiltro !== "todos" ? " nesse filtro" : " compartilhando localização ainda"}.</div>`;
 }
 
 function _locFocar(usuarioId) {

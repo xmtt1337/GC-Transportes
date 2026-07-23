@@ -2174,7 +2174,14 @@ if (location.hostname === "xmtt1337.github.io") {
             <div class="fech-header">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Localização dos Entregadores</div>
-                    <span id="loc-counter" style="font-size:12.5px;color:#4a6a8a"></span>
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                        <div class="dev-chips" id="loc-filtro-chips">
+                            <button type="button" class="dev-chip active" data-filtro="todos" onclick="_locFiltrar('todos')">Todos</button>
+                            <button type="button" class="dev-chip" data-filtro="ativos" onclick="_locFiltrar('ativos')">Ativos</button>
+                            <button type="button" class="dev-chip" data-filtro="inativos" onclick="_locFiltrar('inativos')">Ausentes</button>
+                        </div>
+                        <span id="loc-counter" style="font-size:12.5px;color:#4a6a8a"></span>
+                    </div>
                 </div>
             </div>
             <div class="fech-body loc-body">
