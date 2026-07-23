@@ -96,6 +96,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-baixas");
         show("submenu-baixas");
         show("bip-sync-btn");
+        hide("menu-item-mapa-localizacao"); // localização de entregador é só pra dev
         // sem: financeiro, fechamento (só dev e finance)
     }
 
