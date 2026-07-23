@@ -28,7 +28,7 @@ function _motbNumeroEnter(e) { if (e.key === "Enter") { e.preventDefault(); _mot
 function _motbBuscarViagem() {
     const numero = document.getElementById("motb-numero").value.trim();
     if (!numero) return _motbMsg("Informe o número da viagem (ex: GC2026070001).", "erro");
-    _motbMsg("Buscando viagem...", "ok");
+    _motbMsg("Coletando viagem...", "ok");
 
     fetch(`${API}/viagens/buscar`, {
         method: "POST",
@@ -36,10 +36,10 @@ function _motbBuscarViagem() {
         body: JSON.stringify({ numero })
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
-        if (!ok) { _gcBeepErro(); return _motbMsg(d.error || "Erro ao buscar a viagem.", "erro"); }
+        if (!ok) { _gcBeepErro(); return _motbMsg(d.error || "Erro ao coletar a viagem.", "erro"); }
         _gcBeepSucesso();
         document.getElementById("motb-numero").value = "";
-        _motbMsg(`✓ Viagem <strong>${d.numero}</strong> (${d.entregador_nome || "—"}, ${d.pedidos} pedido${d.pedidos !== 1 ? "s" : ""}) coletada com sucesso.`, "ok");
+        _motbMsg(`✓ Viagem <strong>${d.numero}</strong> (${d.entregador_nome || "—"}${d.entregador_username ? " · " + d.entregador_username : ""}, ${d.pedidos} pedido${d.pedidos !== 1 ? "s" : ""}) coletada com sucesso.`, "ok");
     })
     .catch(() => { _gcBeepErro(); _motbMsg("Erro ao conectar com o servidor.", "erro"); });
 }
@@ -52,10 +52,9 @@ function abrirMotoristaMinhasCargas(event) {
 }
 
 function _motcStatusBadge(status) {
-    if (status === "recebida") {
-        return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;font-size:11px;font-weight:700">Entregue na base</span>`;
-    }
-    return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);color:#a855f7;font-size:11px;font-weight:700">Em trânsito</span>`;
+    const cor = status === "recebida" ? "#22c55e" : "#eab308";
+    const texto = status === "recebida" ? "Entregue na base" : "Em trânsito";
+    return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:${cor}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0"></span>${texto}</span>`;
 }
 
 function _motcCarregar() {
@@ -81,7 +80,7 @@ function _motcCarregar() {
                             <span style="font-size:16px;font-weight:800;color:#3a86ff;font-family:monospace">${v.numero}</span>
                             ${_motcStatusBadge(v.status)}
                         </div>
-                        <div style="font-size:12.5px;color:#94a3b8;margin-top:3px">${v.entregador_nome || "—"} · ${v.pedidos} pedido${v.pedidos !== 1 ? "s" : ""}</div>
+                        <div style="font-size:12.5px;color:#94a3b8;margin-top:3px">${v.entregador_nome || "—"}${v.entregador_username ? ` (${v.entregador_username})` : ""} · ${v.pedidos} pedido${v.pedidos !== 1 ? "s" : ""}</div>
                     </div>
                     <div style="font-size:12px;color:#64748b;text-align:right">
                         ${v.status === "recebida"
