@@ -158,6 +158,8 @@ function abrirTransferenciaHistorico(event) {
     _trfCarregarHistorico();
 }
 
+let _trfHistDados = []; // última resposta — o modal de detalhe usa sem buscar de novo
+
 function _trfCarregarHistorico() {
     const empty = document.getElementById("trf-hist-empty");
     const lista = document.getElementById("trf-hist-lista");
@@ -172,22 +174,58 @@ function _trfCarregarHistorico() {
                 empty.innerText = "Nenhuma viagem registrada ainda.";
                 return;
             }
+            _trfHistDados = viagens;
             empty.style.display = "none";
             lista.style.display = "";
             lista.innerHTML = viagens.map(v => `
-                <div style="border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;margin-bottom:10px">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-                        <span style="font-size:16px;font-weight:800;color:#3a86ff;font-family:monospace">${v.numero}</span>
-                        <span style="font-size:12px;color:#64748b">${(v.entregas || []).length} entrega${(v.entregas || []).length !== 1 ? "s" : ""}</span>
+                <div onclick="_trfAbrirDetalheViagem(${v.id})" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer" onmouseover="this.style.borderColor='rgba(58,134,255,0.35)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                    <div>
+                        <div style="font-size:16px;font-weight:800;color:#3a86ff;font-family:monospace">${v.numero}</div>
+                        <div style="font-size:12px;color:#94a3b8;margin-top:2px">${v.data_viagem || "—"}</div>
                     </div>
-                    ${(v.entregas || []).map(e => `
-                        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid rgba(255,255,255,0.05)">
-                            <div style="flex:1;min-width:0">
-                                <div style="font-size:13px;font-weight:600;color:#e2e8f0">${e.destino_nome || "—"}</div>
-                                <div style="font-size:11.5px;color:#94a3b8">Recebido por ${e.recebedor_nome || "—"} · ${e.data_hora_brasilia || "—"}</div>
-                            </div>
-                        </div>`).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhuma entrega nesta viagem.</div>`}
+                    <span style="font-size:12px;color:#64748b">${(v.entregas || []).length} entrega${(v.entregas || []).length !== 1 ? "s" : ""} →</span>
                 </div>`).join("");
         })
         .catch(() => { empty.innerText = "Erro ao carregar o histórico."; });
+}
+
+// Modal com os recebimentos da viagem clicada — mesmo componente genérico
+// (usr-modal-overlay) usado em Minhas Viagens.
+function _trfAbrirDetalheViagem(viagemId) {
+    const v = _trfHistDados.find(x => x.id === viagemId);
+    if (!v) return;
+
+    let overlay = document.getElementById("trf-hist-modal-overlay");
+    if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "trf-hist-modal-overlay";
+        overlay.className = "usr-modal-overlay";
+        overlay.onclick = e => { if (e.target === overlay) overlay.classList.remove("open"); };
+        document.body.appendChild(overlay);
+    }
+
+    const entregasHtml = (v.entregas || []).map(e => `
+        <div style="border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:11px 14px;margin-bottom:8px">
+            <div style="font-size:13px;font-weight:700;color:#e2e8f0">${e.destino_nome || "—"}</div>
+            <div style="font-size:11.5px;color:#94a3b8;margin:2px 0 8px">Recebido por ${e.recebedor_nome || "—"} · ${e.data_hora_brasilia || "—"}</div>
+            <div style="display:flex;gap:8px">
+                ${e.tem_foto ? `<button class="abte-foto-btn" onclick="_trfaVerFoto(${e.id})">Foto</button>` : ""}
+                <button class="abte-foto-btn" onclick="_trfaVerAssinatura(${e.id})">Assinatura</button>
+            </div>
+        </div>`).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhuma entrega nesta viagem.</div>`;
+
+    overlay.innerHTML = `<div class="usr-modal" style="max-width:540px;width:calc(100% - 32px)">
+        <div style="max-height:70vh;overflow-y:auto">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px">
+                <div>
+                    <div style="font-size:22px;font-weight:800;color:#3a86ff;font-family:monospace">${v.numero}</div>
+                    <div style="font-size:12.5px;color:#94a3b8;margin-top:2px">${v.data_viagem || "—"}</div>
+                </div>
+                <button onclick="document.getElementById('trf-hist-modal-overlay').classList.remove('open')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">✕</button>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:#4a6a8a;text-transform:uppercase;letter-spacing:0.05em;margin:14px 0 8px">${(v.entregas || []).length} entrega${(v.entregas || []).length !== 1 ? "s" : ""}</div>
+            ${entregasHtml}
+        </div>
+    </div>`;
+    overlay.classList.add("open");
 }
