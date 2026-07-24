@@ -125,6 +125,10 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-baixas");
         show("submenu-baixas");
         show("bip-sync-btn");
+        if (role === "dev") {
+            show("btn-add-entregador"); // só dev cria entregador/motorista novo
+            show("btn-add-motorista");
+        }
         if (role === "finance") {
             hide("menu-item-pacotes-faltantes-adm"); // só admin/dev
             hide("menu-item-mapa-localizacao");       // localização de entregador é sensível — só admin/dev

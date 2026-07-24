@@ -1107,7 +1107,7 @@ if (location.hostname === "xmtt1337.github.io") {
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Entregadores</div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap">
                         <button class="adm-usr-add-btn" style="border-color:rgba(251,146,60,0.35);color:#fb923c;background:rgba(251,146,60,0.08)" onclick="_resetarTodasSenhas()">Resetar Todas as Senhas</button>
-                        <button class="adm-usr-add-btn" onclick="_abrirModalNovoEntregador()">+ Adicionar</button>
+                        <button class="adm-usr-add-btn" id="btn-add-entregador" style="display:none" onclick="_abrirModalNovoEntregador()">+ Adicionar</button>
                     </div>
                 </div>
             </div>
@@ -1136,7 +1136,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Motoristas</div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        <button class="adm-usr-add-btn" onclick="_abrirModalNovoMotorista()">+ Adicionar</button>
+                        <button class="adm-usr-add-btn" id="btn-add-motorista" style="display:none" onclick="_abrirModalNovoMotorista()">+ Adicionar</button>
                     </div>
                 </div>
             </div>
