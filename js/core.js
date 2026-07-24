@@ -130,16 +130,16 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
             show("btn-add-motorista");
         }
         if (role === "finance") {
-            hide("menu-item-pacotes-faltantes-adm"); // só admin/dev
-            hide("menu-item-mapa-localizacao");       // localização de entregador é sensível — só admin/dev
-            hide("menu-item-transferencias-adm");     // só admin/dev
+            hide("menu-item-mapa-localizacao"); // localização de entregador é sensível — só dev
         }
     }
 
     if (role === "sac") {
         _showExtravios();
         _showCadastros(); // sac fica acima do admin na gestão de entregadores
+        _showTorreControle(); // pacotes faltantes/transferências: admin, dev, sac e finance veem
         hide("menu-item-etiquetas"); // etiquetas é só do pessoal operacional (user até dev)
+        hide("menu-item-mapa-localizacao"); // localização de entregador é sensível — só dev
     }
 
     if (role === "ADM Videira") {
