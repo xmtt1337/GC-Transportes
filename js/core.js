@@ -132,6 +132,9 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         if (role === "finance") {
             hide("menu-item-mapa-localizacao"); // localização de entregador é sensível — só dev
         }
+        if (role === "dev") {
+            show("menu-item-todos-usuarios"); // visão de todos os usuários do sistema — só dev
+        }
     }
 
     if (role === "sac") {
