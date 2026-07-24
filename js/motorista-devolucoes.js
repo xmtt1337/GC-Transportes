@@ -73,7 +73,22 @@ function _motcCarregar() {
             }
             empty.style.display = "none";
             lista.style.display = "";
-            lista.innerHTML = rows.map(v => `
+
+            // Agrupa as coletas pela viagem diária do motorista (vt) em que cada uma
+            // entrou — mesma ordem que já veio do servidor (vt.criado_em DESC).
+            let ultimoGrupo = null;
+            lista.innerHTML = rows.map(v => {
+                let divisor = "";
+                if (v.viagem_transferencia_id !== ultimoGrupo) {
+                    ultimoGrupo = v.viagem_transferencia_id;
+                    divisor = `
+                        <div style="display:flex;align-items:center;gap:10px;margin:22px 0 10px;opacity:0.45">
+                            <div style="flex:1;height:1px;background:currentColor"></div>
+                            <span style="font-size:11px;font-weight:700;color:#94a3b8;white-space:nowrap;font-family:monospace">${v.viagem_transferencia_numero || "—"} · ${v.viagem_transferencia_data || "—"}</span>
+                            <div style="flex:1;height:1px;background:currentColor"></div>
+                        </div>`;
+                }
+                return divisor + `
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;margin-bottom:10px">
                     <div>
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -87,7 +102,8 @@ function _motcCarregar() {
                             ? `Entregue em<br>${v.recebida_data_hora_brasilia || "—"}`
                             : `Coletada em<br>${v.em_transferencia_data_hora_brasilia || "—"}`}
                     </div>
-                </div>`).join("");
+                </div>`;
+            }).join("");
         })
         .catch(() => { empty.innerText = "Erro ao carregar as cargas."; });
 }
