@@ -567,7 +567,18 @@ function _renderDescontos(rows, C) {
     }
 
     const gcHTML  = EXTRV_GC.map(k => respRow(k, gcMap[k], gcMaxN, "gc")).join("");
-    const extHTML = extSorted.map(([k,d]) => respRow(k, d, extMaxN, "ext")).join("");
+
+    // Top 10 entregadores — o resto vira uma linha-resumo pra lista não ficar gigante
+    const extTop     = extSorted.slice(0, 10);
+    const extResto   = extSorted.slice(10);
+    const restoN     = extResto.reduce((a,[,d]) => a + d.n, 0);
+    const restoV     = extResto.reduce((a,[,d]) => a + d.v, 0);
+    let extHTML = extTop.map(([k,d]) => respRow(k, d, extMaxN, "ext")).join("");
+    if (extResto.length) {
+        extHTML += `<div class="ed-resp-row" style="padding-top:10px">
+            <div style="font-size:12px;color:#64748b">+ ${extResto.length} outros entregadores · ${restoN} oc. · ${_moeda(restoV)}</div>
+        </div>`;
+    }
 
     document.getElementById("extrv-descontos").innerHTML = `
     <div class="ed-section">
