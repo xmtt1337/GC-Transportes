@@ -224,7 +224,10 @@ function _parseCSVExtrv(text) {
     return lines.slice(1).filter(l => l.trim()).map(line => {
         const vals = _splitCSVLine(line);
         const obj = {};
-        headers.forEach((h, i) => { obj[h] = (vals[i]||"").trim().replace(/^"|"$/g,""); });
+        headers.forEach((h, i) => {
+            if (!h || Object.prototype.hasOwnProperty.call(obj, h)) return; // ignora cabeçalho vazio ou duplicado (planilha tem colunas repetidas no final)
+            obj[h] = (vals[i]||"").trim().replace(/^"|"$/g,"");
+        });
         return obj;
     });
 }
