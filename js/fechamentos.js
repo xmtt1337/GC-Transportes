@@ -350,7 +350,7 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
     const body = document.getElementById("rd-body");
     document.getElementById("rd-sub").innerText = subtitulo;
     document.getElementById("rd-btn-baixar").disabled = true;
-    body.innerHTML = `<div style="color:#64748b;font-size:13px;padding:24px 0;text-align:center">Carregando relatório...</div>`;
+    body.innerHTML = `<div style="padding:8px 4px">${skLinhas(4)}</div>`;
     _abrirModal("modal-relatorio-driver");
 
     fetch(url, {

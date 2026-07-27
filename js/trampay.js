@@ -119,7 +119,7 @@ function _carregarEntregadoresTrampay() {
     const tok = localStorage.getItem("token");
     const empty = document.getElementById("trampay-ent-empty");
     const res   = document.getElementById("trampay-ent-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     res.style.display = "none";
 
@@ -127,7 +127,7 @@ function _carregarEntregadoresTrampay() {
     .then(r => r.json())
     .then(data => {
         if (!Array.isArray(data) || !data.length) {
-            empty.innerText = "Nenhum entregador com dados Trampay.";
+            skFim(empty, "Nenhum entregador com dados Trampay.");
             return;
         }
         empty.style.display = "none";
@@ -148,5 +148,5 @@ function _carregarEntregadoresTrampay() {
                 <td style="font-size:12px;color:#64748b">${u.data_criacao || "—"}</td>
             </tr>
         `).join("");
-    }).catch(() => { empty.innerText = "Erro ao carregar entregadores Trampay."; });
+    }).catch(() => { skFim(empty, "Erro ao carregar entregadores Trampay."); });
 }

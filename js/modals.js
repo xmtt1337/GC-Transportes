@@ -86,7 +86,7 @@ function _carregarPainelAdmin() {
     const reqId = ++_admPainelReqId;
     const empty = document.getElementById("adm-fech-empty");
     const data  = document.getElementById("adm-fech-data");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     data.style.display = "none";
 
@@ -97,7 +97,7 @@ function _carregarPainelAdmin() {
     .then(({ ok, body }) => {
         if (reqId !== _admPainelReqId) return; // entregador/período já mudou de novo — resposta desatualizada, ignora
         if (!ok) {
-            empty.innerText = body.error || "Nenhum fechamento encontrado para este período.";
+            skFim(empty, body.error || "Nenhum fechamento encontrado para este período.");
             return;
         }
         const d = body;
@@ -148,7 +148,7 @@ function _carregarPainelAdmin() {
     })
     .catch(() => {
         if (reqId !== _admPainelReqId) return;
-        empty.innerText = "Erro ao conectar com o servidor.";
+        skFim(empty, "Erro ao conectar com o servidor.");
     });
 }
 

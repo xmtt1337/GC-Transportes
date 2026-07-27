@@ -446,7 +446,7 @@ setTimeout(() => { _bteFilaSincronizar(); }, 3000);
 function _bteCarregarHistorico() {
     const empty  = document.getElementById("bte-hist-empty");
     const result = document.getElementById("bte-hist-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     result.style.display = "none";
 
@@ -455,7 +455,7 @@ function _bteCarregarHistorico() {
     }).then(r => r.json())
     .then(rows => {
         if (!Array.isArray(rows) || !rows.length) {
-            empty.innerText = "Nenhuma baixa enviada ainda.";
+            skFim(empty, "Nenhuma baixa enviada ainda.");
             return;
         }
         empty.style.display = "none";
@@ -711,7 +711,7 @@ function abrirAdminBaixasTotalExpress(event) {
 function _abteCarregar() {
     const empty = document.getElementById("abte-empty");
     const lista = document.getElementById("abte-lista");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     lista.style.display = "none";
 
@@ -719,13 +719,13 @@ function _abteCarregar() {
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json())
     .then(rows => {
-        if (!Array.isArray(rows)) { empty.innerText = rows.error || "Erro ao carregar baixas."; return; }
+        if (!Array.isArray(rows)) { skFim(empty, rows.error || "Erro ao carregar baixas."); return; }
         _abteDados = rows;
         const filtro = document.getElementById("abte-filtro-input");
         if (filtro) filtro.value = "";
         _abteRenderizar(rows);
     }).catch(() => {
-        empty.innerText = "Erro ao carregar baixas.";
+        skFim(empty, "Erro ao carregar baixas.");
     });
 }
 
@@ -736,7 +736,7 @@ function _abteRenderizar(rows) {
     _abtePagina = 1;
 
     if (!rows.length) {
-        empty.innerText = "Nenhuma baixa encontrada.";
+        skFim(empty, "Nenhuma baixa encontrada.");
         empty.style.display = "";
         lista.style.display = "none";
         return;

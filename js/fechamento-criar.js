@@ -56,7 +56,7 @@ function _cfCarregarResumo() {
     _cfAno = parseInt(document.getElementById("cf-ano").value);
     const empty   = document.getElementById("cf-empty");
     const content = document.getElementById("cf-content");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     content.style.display = "none";
 
@@ -72,7 +72,7 @@ function _cfCarregarResumo() {
         document.getElementById("cf-upload-wrap").style.display = "none";
         document.getElementById("cf-ocorrencia-wrap").style.display = "none";
     }).catch(() => {
-        empty.innerText = "Erro ao carregar dados do período.";
+        skFim(empty, "Erro ao carregar dados do período.");
     });
 }
 

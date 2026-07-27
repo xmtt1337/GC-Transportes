@@ -9,7 +9,7 @@ function _carregarUsuarios() {
     const tok = localStorage.getItem("token");
     const empty = document.getElementById("adm-usr-empty");
     const res   = document.getElementById("adm-usr-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     res.style.display = "none";
 
@@ -17,7 +17,7 @@ function _carregarUsuarios() {
     .then(r => r.json())
     .then(users => {
         if (!Array.isArray(users) || !users.length) {
-            empty.innerText = "Nenhum entregador cadastrado.";
+            skFim(empty, "Nenhum entregador cadastrado.");
             return;
         }
         empty.style.display = "none";
@@ -47,7 +47,7 @@ function _carregarUsuarios() {
                 </td>
             </tr>
         `).join("");
-    }).catch(() => { empty.innerText = "Erro ao carregar entregadores."; });
+    }).catch(() => { skFim(empty, "Erro ao carregar entregadores."); });
 }
 
 function _abrirModal(id) {

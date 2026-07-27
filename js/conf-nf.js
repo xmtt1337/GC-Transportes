@@ -45,7 +45,7 @@ function buscarConfNFs() {
     const ano      = document.getElementById("conf-nf-ano").value;
     const empty    = document.getElementById("conf-nf-empty");
     const resultado = document.getElementById("conf-nf-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     resultado.style.display = "none";
 
@@ -54,8 +54,8 @@ function buscarConfNFs() {
     })
     .then(r => r.json())
     .then(rows => {
-        if (rows.error) { empty.innerText = rows.error; return; }
-        if (!rows.length) { empty.innerText = "Nenhum entregador encontrado para este período."; return; }
+        if (rows.error) { skFim(empty, rows.error); return; }
+        if (!rows.length) { skFim(empty, "Nenhum entregador encontrado para este período."); return; }
         empty.style.display = "none";
         resultado.style.display = "";
         _confNFTodosRows = rows;
@@ -72,7 +72,7 @@ function buscarConfNFs() {
         document.getElementById("conf-nf-counter").innerHTML = counter;
         _renderConfNFTabela(rows);
     })
-    .catch(() => { empty.innerText = "Erro ao carregar dados."; });
+    .catch(() => { skFim(empty, "Erro ao carregar dados."); });
 }
 
 function _renderConfNFTabela(rows) {

@@ -21,7 +21,7 @@ function _carregarUsuariosGC() {
     const tok   = localStorage.getItem("token");
     const empty = document.getElementById("gc-usr-empty");
     const res   = document.getElementById("gc-usr-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     res.style.display = "none";
 
@@ -30,7 +30,7 @@ function _carregarUsuariosGC() {
     .then(users => {
         const gcUsers = (Array.isArray(users) ? users : []).filter(u => u.role !== "entregador");
         if (!gcUsers.length) {
-            empty.innerText = "Nenhum usuário GC cadastrado.";
+            skFim(empty, "Nenhum usuário GC cadastrado.");
             return;
         }
         empty.style.display = "none";
@@ -63,7 +63,7 @@ function _carregarUsuariosGC() {
                 </td>
             </tr>`;
         }).join("");
-    }).catch(() => { empty.innerText = "Erro ao carregar usuários."; });
+    }).catch(() => { skFim(empty, "Erro ao carregar usuários."); });
 }
 
 // ── Novo usuário ──

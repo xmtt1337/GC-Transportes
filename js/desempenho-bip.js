@@ -24,7 +24,7 @@ async function _desempCarregar() {
     const emptyEl   = document.getElementById('desemp-empty');
     const contentEl = document.getElementById('desemp-content');
 
-    emptyEl.innerText = 'Carregando...';
+    skMostrar(emptyEl);
     emptyEl.style.display = '';
     contentEl.style.display = 'none';
 
@@ -46,12 +46,12 @@ async function _desempCarregar() {
         const periodo = periodoMes + periodoTransp;
 
         if (!data.length) {
-            emptyEl.innerText = `Nenhuma bipagem em ${periodo}.`;
+            skFim(emptyEl, `Nenhuma bipagem em ${periodo}.`);
             return;
         }
         _desempRenderizar(data, periodo);
     } catch (err) {
-        emptyEl.innerText = 'Erro: ' + err.message;
+        skFim(emptyEl, 'Erro: ' + err.message);
     }
 }
 

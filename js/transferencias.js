@@ -185,7 +185,7 @@ let _trfHistDados = []; // última resposta — o modal de detalhe usa sem busca
 function _trfCarregarHistorico() {
     const empty = document.getElementById("trf-hist-empty");
     const lista = document.getElementById("trf-hist-lista");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     lista.style.display = "none";
 
@@ -193,7 +193,7 @@ function _trfCarregarHistorico() {
         .then(r => r.json())
         .then(viagens => {
             if (!Array.isArray(viagens) || !viagens.length) {
-                empty.innerText = "Nenhuma viagem registrada ainda.";
+                skFim(empty, "Nenhuma viagem registrada ainda.");
                 return;
             }
             _trfHistDados = viagens;
@@ -208,7 +208,7 @@ function _trfCarregarHistorico() {
                     <span style="font-size:12px;color:#64748b">${(v.entregas || []).length} entrega${(v.entregas || []).length !== 1 ? "s" : ""} →</span>
                 </div>`).join("");
         })
-        .catch(() => { empty.innerText = "Erro ao carregar o histórico."; });
+        .catch(() => { skFim(empty, "Erro ao carregar o histórico."); });
 }
 
 // Modal com os recebimentos da viagem clicada — mesmo componente genérico

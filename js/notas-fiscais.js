@@ -46,7 +46,7 @@ function buscarNFsAdmin() {
 
     const empty     = document.getElementById("adm-nf-empty");
     const resultado = document.getElementById("adm-nf-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     resultado.style.display = "none";
 
@@ -60,7 +60,7 @@ function buscarNFsAdmin() {
     .then(rows => {
         if (!Array.isArray(rows) || !rows.length) {
             _admNFRows = [];
-            empty.innerText = rows.error || "Nenhuma nota fiscal encontrada para os filtros selecionados.";
+            skFim(empty, rows.error || "Nenhuma nota fiscal encontrada para os filtros selecionados.");
             return;
         }
         _admNFRows   = rows;
@@ -88,7 +88,7 @@ function buscarNFsAdmin() {
         _admNFRenderizarPagina();
     })
     .catch(() => {
-        empty.innerText = "Erro ao carregar notas fiscais.";
+        skFim(empty, "Erro ao carregar notas fiscais.");
     });
 }
 
@@ -375,7 +375,7 @@ function buscarQuinzenaAdmin() {
     document.getElementById("adm-fech-data").style.display = "none";
 
     const empty = document.getElementById("adm-fech-empty");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
 
     // Constrói mapa nome→username em background para exibir ID na pesquisa
@@ -391,7 +391,7 @@ function buscarQuinzenaAdmin() {
     .then(r => r.json().then(b => ({ ok: r.ok, b })))
     .then(({ ok, b }) => {
         if (!ok) {
-            empty.innerText = b.error || "Nenhum fechamento encontrado para este período.";
+            skFim(empty, b.error || "Nenhum fechamento encontrado para este período.");
             return;
         }
         _admEntregadoresLista = b.entregadores;
@@ -411,7 +411,7 @@ function buscarQuinzenaAdmin() {
         _renderEntregadoresGrid(b.entregadores);
     })
     .catch(() => {
-        empty.innerText = "Erro ao conectar com o servidor.";
+        skFim(empty, "Erro ao conectar com o servidor.");
     });
 }
 

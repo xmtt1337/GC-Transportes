@@ -185,3 +185,32 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     localStorage.removeItem("token");
     window.location.href = "login.html";
 });
+
+// ───── SKELETON DE CARREGAMENTO (uso geral) ─────
+// skLinhas(n): só as linhas com shimmer (pra usar dentro de modais/containers).
+// skHTML(n): linhas dentro de um card padrão.
+// skMostrar(el, n): transforma um placeholder "Carregando..." em skeleton.
+// skFim(el, texto): tira o modo skeleton e (opcional) mostra um texto (erro/vazio).
+function skLinhas(linhas = 6) {
+    return Array(linhas).fill(`
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 0">
+            <div class="sk" style="width:9px;height:9px;border-radius:50%;flex-shrink:0"></div>
+            <div class="sk sk-h8" style="width:26%;max-width:190px"></div>
+            <div class="sk sk-h8" style="flex:1"></div>
+            <div class="sk sk-h8" style="width:70px"></div>
+        </div>`).join("");
+}
+function skHTML(linhas = 6) {
+    return `<div class="sk-card" style="gap:0">${skLinhas(linhas)}</div>`;
+}
+function skMostrar(el, linhas = 6) {
+    if (!el) return;
+    el.classList.add("sk-mode");
+    el.style.display = "";
+    el.innerHTML = skHTML(linhas);
+}
+function skFim(el, texto) {
+    if (!el) return;
+    el.classList.remove("sk-mode");
+    if (texto !== undefined) el.innerText = texto;
+}

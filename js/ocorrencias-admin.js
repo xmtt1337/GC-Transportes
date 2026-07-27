@@ -15,19 +15,19 @@ function abrirPacotesFaltantesAdmin(event) {
 function _pfaCarregar() {
     const empty = document.getElementById("pfa-empty");
     const lista = document.getElementById("pfa-lista");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     lista.style.display = "none";
 
     fetch(`${API}/admin/pacotes-faltantes`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(rows => {
-            if (!Array.isArray(rows)) { empty.innerText = rows.error || "Erro ao carregar pacotes faltantes."; return; }
+            if (!Array.isArray(rows)) { skFim(empty, rows.error || "Erro ao carregar pacotes faltantes."); return; }
             _pfaDados = rows;
             const filtro = document.getElementById("pfa-filtro-input");
             if (filtro) filtro.value = "";
             _pfaRenderizar(rows);
-        }).catch(() => { empty.innerText = "Erro ao carregar pacotes faltantes."; });
+        }).catch(() => { skFim(empty, "Erro ao carregar pacotes faltantes."); });
 }
 
 function _pfaRenderizar(rows) {
@@ -37,7 +37,7 @@ function _pfaRenderizar(rows) {
     _pfaPagina = 1;
 
     if (!rows.length) {
-        empty.innerText = "Nenhum pacote faltante registrado.";
+        skFim(empty, "Nenhum pacote faltante registrado.");
         empty.style.display = "";
         lista.style.display = "none";
         return;

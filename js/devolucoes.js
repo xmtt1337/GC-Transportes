@@ -352,7 +352,7 @@ function _devStatusBadge(r) {
 function _devCarregarEnviadas() {
     const empty  = document.getElementById("dev-env-empty");
     const result = document.getElementById("dev-env-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     result.style.display = "none";
 
@@ -360,7 +360,7 @@ function _devCarregarEnviadas() {
         .then(r => r.json())
         .then(rows => {
             if (!Array.isArray(rows) || !rows.length) {
-                empty.innerText = "Nenhuma devolução enviada ainda.";
+                skFim(empty, "Nenhuma devolução enviada ainda.");
                 return;
             }
             empty.style.display = "none";
@@ -376,7 +376,7 @@ function _devCarregarEnviadas() {
             `).join("");
         })
         .catch(() => {
-            empty.innerText = "Erro ao conectar com o servidor.";
+            skFim(empty, "Erro ao conectar com o servidor.");
         });
 }
 
@@ -434,7 +434,7 @@ function abrirDevolucoesRegistro(event) {
 function _drrCarregar() {
     const empty  = document.getElementById("drr-empty");
     const result = document.getElementById("drr-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     result.style.display = "none";
 
@@ -442,7 +442,7 @@ function _drrCarregar() {
         .then(r => r.json())
         .then(rows => {
             if (!Array.isArray(rows) || !rows.length) {
-                empty.innerText = "Nenhuma devolução registrada ainda.";
+                skFim(empty, "Nenhuma devolução registrada ainda.");
                 return;
             }
             _drRegistroDados = rows;
@@ -451,7 +451,7 @@ function _drrCarregar() {
             _drrRenderizar(rows);
         })
         .catch(() => {
-            empty.innerText = "Erro ao conectar com o servidor.";
+            skFim(empty, "Erro ao conectar com o servidor.");
         });
 }
 

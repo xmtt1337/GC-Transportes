@@ -203,7 +203,7 @@ function abrirPerfilCard(e) {
 
     card.style.display = "block";
     card.onclick = ev => ev.stopPropagation();
-    card.innerHTML = `<div style="padding:20px 16px;color:#3a5a7a;font-size:12px">Carregando...</div>`;
+    card.innerHTML = `<div style="padding:14px 16px">${skLinhas(2)}</div>`;
 
     document.addEventListener("click", _pcClickFora);
 

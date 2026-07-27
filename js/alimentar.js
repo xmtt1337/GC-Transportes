@@ -14,7 +14,7 @@ function abrirAlimentar(event, transportadora) {
 
 async function _alimentarCarregar() {
     const el = document.getElementById('alimentar-content');
-    el.innerHTML = '<div style="color:#64748b;font-size:14px;padding:20px 0">Carregando...</div>';
+    el.innerHTML = skHTML(4);
     try {
         const res = await fetch(API + '/alimentar/arquivos?transportadora=' + _alimentarTransp, {
             headers: { 'Authorization': 'Bearer ' + token }

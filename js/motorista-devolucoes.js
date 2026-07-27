@@ -60,7 +60,7 @@ function _motcStatusBadge(status) {
 function _motcCarregar() {
     const empty = document.getElementById("motc-empty");
     const lista = document.getElementById("motc-lista");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     lista.style.display = "none";
 
@@ -68,7 +68,7 @@ function _motcCarregar() {
         .then(r => r.json())
         .then(rows => {
             if (!Array.isArray(rows) || !rows.length) {
-                empty.innerText = "Nenhuma carga recolhida ainda.";
+                skFim(empty, "Nenhuma carga recolhida ainda.");
                 return;
             }
             empty.style.display = "none";
@@ -105,5 +105,5 @@ function _motcCarregar() {
                 </div>`;
             }).join("");
         })
-        .catch(() => { empty.innerText = "Erro ao carregar as cargas."; });
+        .catch(() => { skFim(empty, "Erro ao carregar as cargas."); });
 }

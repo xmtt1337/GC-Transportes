@@ -16,11 +16,11 @@ async function _desempHoraCarregar() {
     const emptyEl   = document.getElementById('desemp-hora-empty');
     const contentEl = document.getElementById('desemp-hora-content');
 
-    emptyEl.innerText = 'Carregando...';
+    skMostrar(emptyEl);
     emptyEl.style.display = '';
     contentEl.style.display = 'none';
 
-    if (!data) { emptyEl.innerText = 'Selecione uma data.'; return; }
+    if (!data) { skFim(emptyEl, 'Selecione uma data.'); return; }
 
     try {
         const transp = document.getElementById('desemp-hora-transp').value;
@@ -32,12 +32,12 @@ async function _desempHoraCarregar() {
         if (!res.ok) throw new Error(body.error);
 
         if (!body.horas || !body.horas.length) {
-            emptyEl.innerText = 'Nenhuma bipagem nesta data.';
+            skFim(emptyEl, 'Nenhuma bipagem nesta data.');
             return;
         }
         _desempHoraRenderizar(body.horas, body.comparativo || [], body.transp || [], data);
     } catch (err) {
-        emptyEl.innerText = 'Erro: ' + err.message;
+        skFim(emptyEl, 'Erro: ' + err.message);
     }
 }
 

@@ -3059,7 +3059,7 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
     animation: sk-shimmer 1.6s infinite linear;
     border-radius: 6px;
 }
-.fechamento-empty.sk-mode {
+.sk-mode, .fechamento-empty.sk-mode {
     background: transparent; border: none; padding: 0;
     min-height: unset; display: block;
 }

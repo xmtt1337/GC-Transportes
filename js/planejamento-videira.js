@@ -65,7 +65,7 @@ function _pvMudarView(view) {
 function _pvCarregar() {
     const empty   = document.getElementById("pv-empty");
     const content = document.getElementById("pv-content");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     content.style.display = "none";
 
@@ -74,15 +74,15 @@ function _pvCarregar() {
     })
     .then(r => r.json().then(b => ({ ok: r.ok, b })))
     .then(({ ok, b }) => {
-        if (!ok) { empty.innerText = b.error || "Erro ao carregar planejamento."; return; }
-        if (!b.linhas || !b.linhas.length) { empty.innerText = "Nenhum bairro encontrado nesta aba."; return; }
+        if (!ok) { skFim(empty, b.error || "Erro ao carregar planejamento."); return; }
+        if (!b.linhas || !b.linhas.length) { skFim(empty, "Nenhum bairro encontrado nesta aba."); return; }
         _pvLinhas   = b.linhas;
         _pvUsuarios = b.usuarios || [];
         empty.style.display = "none";
         content.style.display = "";
         _pvFiltrarLocal();
     })
-    .catch(() => { empty.innerText = "Erro ao conectar com o servidor."; });
+    .catch(() => { skFim(empty, "Erro ao conectar com o servidor."); });
 }
 
 function _pvIniciais(nome) {

@@ -49,15 +49,15 @@ function buscarAntecipacoes() {
 
     const empty  = document.getElementById("adm-ant-empty");
     const result = document.getElementById("adm-ant-resultado");
-    empty.innerText = "Carregando..."; empty.style.display = ""; result.style.display = "none";
+    skMostrar(empty); empty.style.display = ""; result.style.display = "none";
 
     const url = `${API}/admin/antecipacoes?mes=${mes}&ano=${ano}&quinzena=${_admAntQuinzena}`;
 
     fetch(url, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
     .then(rows => {
-        if (rows.error) { empty.innerText = rows.error; return; }
-        if (!rows.length) { empty.innerText = "Nenhuma solicitação encontrada para este período."; return; }
+        if (rows.error) { skFim(empty, rows.error); return; }
+        if (!rows.length) { skFim(empty, "Nenhuma solicitação encontrada para este período."); return; }
         _admAntRows = rows;
         empty.style.display = "none"; result.style.display = "";
         document.getElementById("adm-ant-counter").innerHTML =
@@ -67,7 +67,7 @@ function buscarAntecipacoes() {
         if (totalEl) totalEl.innerHTML = `Total solicitado: <strong style="color:#3a86ff">${moedaJS(totalSol)}</strong>`;
         _renderAdmAntTabela(rows);
     })
-    .catch(() => { empty.innerText = "Erro ao carregar antecipações."; });
+    .catch(() => { skFim(empty, "Erro ao carregar antecipações."); });
 }
 
 function _renderAdmAntTabela(rows) {

@@ -117,7 +117,7 @@ function _vmStatusBadge(status) {
 function _vmCarregar() {
     const empty = document.getElementById("vm-empty");
     const lista = document.getElementById("vm-lista");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     lista.style.display = "none";
 
@@ -125,7 +125,7 @@ function _vmCarregar() {
         .then(r => r.json())
         .then(rows => {
             if (!Array.isArray(rows) || !rows.length) {
-                empty.innerText = "Você ainda não criou nenhuma viagem.";
+                skFim(empty, "Você ainda não criou nenhuma viagem.");
                 return;
             }
             empty.style.display = "none";
@@ -145,7 +145,7 @@ function _vmCarregar() {
                 </div>
             `).join("");
         })
-        .catch(() => { empty.innerText = "Erro ao carregar as viagens."; });
+        .catch(() => { skFim(empty, "Erro ao carregar as viagens."); });
 }
 
 function _vmAbrirDetalhe(id) {
@@ -159,7 +159,7 @@ function _vmAbrirDetalhe(id) {
         document.body.appendChild(overlay);
     }
     overlay.innerHTML = `<div class="usr-modal" style="max-width:540px;width:calc(100% - 32px)">
-        <div id="vm-modal-body" style="max-height:70vh;overflow-y:auto"><div style="color:#64748b;font-size:13px;padding:30px 0;text-align:center">Carregando...</div></div>
+        <div id="vm-modal-body" style="max-height:70vh;overflow-y:auto"><div style="padding:10px 4px">${skLinhas(3)}</div></div>
     </div>`;
     overlay.classList.add("open");
     _vmCarregarDetalhe();

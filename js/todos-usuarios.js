@@ -19,19 +19,19 @@ function abrirTodosUsuarios(event) {
 function _tuCarregar() {
     const empty = document.getElementById("tu-empty");
     const res   = document.getElementById("tu-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     res.style.display = "none";
 
     fetch(`${API}/admin/dev/usuarios`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(rows => {
-            if (!Array.isArray(rows)) { empty.innerText = rows.error || "Erro ao carregar usuários."; return; }
+            if (!Array.isArray(rows)) { skFim(empty, rows.error || "Erro ao carregar usuários."); return; }
             _tuDados = rows;
             const filtro = document.getElementById("tu-filtro-input");
             if (filtro) filtro.value = "";
             _tuAplicarFiltros();
-        }).catch(() => { empty.innerText = "Erro ao carregar usuários."; });
+        }).catch(() => { skFim(empty, "Erro ao carregar usuários."); });
 }
 
 function _tuTextoAcesso(segundos) {
@@ -96,7 +96,7 @@ function _tuRenderizar(rows) {
         `${_tuDados.length} usuário${_tuDados.length !== 1 ? "s" : ""} · ${online} online agora`;
 
     if (!rows.length) {
-        empty.innerText = "Nenhum usuário encontrado com esse filtro.";
+        skFim(empty, "Nenhum usuário encontrado com esse filtro.");
         empty.style.display = "";
         res.style.display = "none";
         return;

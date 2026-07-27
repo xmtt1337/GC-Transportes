@@ -46,7 +46,7 @@ function buscarPagamentos() {
     _pagMes = parseInt(mes); _pagAno = parseInt(ano);
     const empty    = document.getElementById("pag-empty");
     const resultado = document.getElementById("pag-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     resultado.style.display = "none";
 
@@ -54,8 +54,8 @@ function buscarPagamentos() {
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json())
     .then(data => {
-        if (data.error) { empty.innerText = data.error; return; }
-        if (!data.length) { empty.innerText = "Nenhum entregador com valor neste período."; return; }
+        if (data.error) { skFim(empty, data.error); return; }
+        if (!data.length) { skFim(empty, "Nenhum entregador com valor neste período."); return; }
         empty.style.display = "none";
         resultado.style.display = "";
 
@@ -99,7 +99,7 @@ function buscarPagamentos() {
         }).join("");
 
         _buscarStatusQuinzena();
-    }).catch(() => { empty.innerText = "Erro ao carregar pagamentos."; });
+    }).catch(() => { skFim(empty, "Erro ao carregar pagamentos."); });
 }
 
 function _buscarStatusQuinzena() {

@@ -113,7 +113,7 @@ function buscarPainelVideira() {
 
     document.getElementById("vp-empty").style.display   = "";
     document.getElementById("vp-content").style.display = "none";
-    document.getElementById("vp-empty").innerText       = "Carregando...";
+    skMostrar(document.getElementById("vp-empty"));
 
     fetch(`${API}/videira/painel?mes=${mes}&ano=${ano}&quinzena=${quinzena}`, {
         headers: { "Authorization": "Bearer " + token }
@@ -121,13 +121,13 @@ function buscarPainelVideira() {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            document.getElementById("vp-empty").innerText = data.error;
+            skFim(document.getElementById("vp-empty"), data.error);
             return;
         }
         _renderPainelVideira(data);
     })
     .catch(() => {
-        document.getElementById("vp-empty").innerText = "Erro ao carregar o fechamento.";
+        skFim(document.getElementById("vp-empty"), "Erro ao carregar o fechamento.");
     });
 }
 
@@ -315,7 +315,7 @@ const VD_TRANSP_DEF = [
 
 function abrirVideiraDash(event) {
     if (event) event.preventDefault();
-    document.getElementById("vd-empty").innerText      = "Carregando...";
+    skMostrar(document.getElementById("vd-empty"));
     document.getElementById("vd-empty").style.display  = "";
     document.getElementById("vd-content").style.display = "none";
     mostrarTela("tela-videira-dash");
@@ -340,7 +340,7 @@ function _buscarVideiraDash() {
     .then(r => r.json())
     .then(planilhas => {
         if (!Array.isArray(planilhas) || !planilhas.length) {
-            document.getElementById("vd-empty").innerText = "Nenhum fechamento cadastrado.";
+            skFim(document.getElementById("vd-empty"), "Nenhum fechamento cadastrado.");
             return;
         }
         // planilhas vem do mais recente para o mais antigo — invertemos para o gráfico
@@ -373,7 +373,7 @@ function _buscarVideiraDash() {
             _renderVdDash(raw);
         });
     })
-    .catch(() => { document.getElementById("vd-empty").innerText = "Erro ao carregar dados."; });
+    .catch(() => { skFim(document.getElementById("vd-empty"), "Erro ao carregar dados."); });
 }
 
 function _renderVdDash(raw) {
@@ -404,7 +404,7 @@ function _renderVdDash(raw) {
         grupos = Object.values(byMes);
     }
     _vdGrupos = grupos;
-    if (!grupos.length) { document.getElementById("vd-empty").innerText = "Sem dados."; return; }
+    if (!grupos.length) { skFim(document.getElementById("vd-empty"), "Sem dados."); return; }
 
     document.getElementById("vd-empty").style.display   = "none";
     document.getElementById("vd-content").style.display = "";

@@ -136,7 +136,7 @@ function setDashGran(tipo) {
 
 function abrirDashboard(event) {
     if (event) event.preventDefault();
-    document.getElementById("dash-empty").innerText = "Carregando...";
+    skMostrar(document.getElementById("dash-empty"));
     document.getElementById("dash-empty").style.display = "";
     document.getElementById("dash-content").style.display = "none";
     mostrarTela("tela-dashboard");
@@ -159,14 +159,14 @@ function buscarDashboard() {
     const ano     = new Date().getFullYear();
     const empty   = document.getElementById("dash-empty");
     const content = document.getElementById("dash-content");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     content.style.display = "none";
 
     fetch(`${API}/admin/historico?ano=${ano}`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
     .then(dados => {
-        if (!dados.length) { empty.innerText = "Nenhum dado encontrado para este ano."; return; }
+        if (!dados.length) { skFim(empty, "Nenhum dado encontrado para este ano."); return; }
         empty.style.display = "none";
         content.style.display = "";
 
@@ -254,5 +254,5 @@ function buscarDashboard() {
         // Selecionar último período nos cards e KPIs
         _admSelecionarChip(grupos.length - 1);
     })
-    .catch(() => { empty.innerText = "Erro ao conectar com o servidor."; });
+    .catch(() => { skFim(empty, "Erro ao conectar com o servidor."); });
 }

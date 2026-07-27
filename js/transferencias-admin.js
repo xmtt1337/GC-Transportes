@@ -12,19 +12,19 @@ function abrirTransferenciasAdmin(event) {
 function _trfaCarregar() {
     const empty = document.getElementById("trfa-empty");
     const lista = document.getElementById("trfa-lista");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     lista.style.display = "none";
 
     fetch(`${API}/admin/transferencias`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(rows => {
-            if (!Array.isArray(rows)) { empty.innerText = rows.error || "Erro ao carregar transferências."; return; }
+            if (!Array.isArray(rows)) { skFim(empty, rows.error || "Erro ao carregar transferências."); return; }
             _trfaDados = rows;
             const filtro = document.getElementById("trfa-filtro-input");
             if (filtro) filtro.value = "";
             _trfaRenderizar(rows);
-        }).catch(() => { empty.innerText = "Erro ao carregar transferências."; });
+        }).catch(() => { skFim(empty, "Erro ao carregar transferências."); });
 }
 
 function _trfaRenderizar(viagens) {
@@ -32,7 +32,7 @@ function _trfaRenderizar(viagens) {
     const lista = document.getElementById("trfa-lista");
 
     if (!viagens.length) {
-        empty.innerText = "Nenhuma transferência registrada.";
+        skFim(empty, "Nenhuma transferência registrada.");
         empty.style.display = "";
         lista.style.display = "none";
         return;

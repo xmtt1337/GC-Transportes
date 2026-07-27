@@ -393,7 +393,7 @@ function abrirMinhasSolicitacoes(event) {
 function _carregarMinhasSolicitacoes() {
     const empty  = document.getElementById("ms-empty");
     const result = document.getElementById("ms-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     result.style.display = "none";
 
@@ -402,7 +402,7 @@ function _carregarMinhasSolicitacoes() {
     }).then(r => r.json())
     .then(rows => {
         if (!rows.length) {
-            empty.innerText = "Nenhuma solicitação encontrada.";
+            skFim(empty, "Nenhuma solicitação encontrada.");
             return;
         }
         empty.style.display = "none";
@@ -422,6 +422,6 @@ function _carregarMinhasSolicitacoes() {
             </tr>`;
         }).join("");
     }).catch(() => {
-        empty.innerText = "Erro ao carregar solicitações.";
+        skFim(empty, "Erro ao carregar solicitações.");
     });
 }

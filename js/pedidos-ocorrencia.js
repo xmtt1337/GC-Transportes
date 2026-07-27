@@ -63,7 +63,7 @@ function _cfCarregarOcorrencias(busca) {
     const cfg = _CF_TRANSPORTADORAS.find(t => t.key === _cfTranspAtual);
     if (!cfg) return;
     const tbody = document.getElementById("cf-ocorrencia-tbody");
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#64748b;padding:16px">Carregando...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="padding:10px 16px">${skLinhas(3)}</td></tr>`;
 
     const params = new URLSearchParams({ transportadora: cfg.transportadora });
     if (busca) params.set("busca", busca);

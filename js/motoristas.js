@@ -11,7 +11,7 @@ function _carregarMotoristas() {
     const tok   = localStorage.getItem("token");
     const empty = document.getElementById("adm-mot-empty");
     const res   = document.getElementById("adm-mot-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     res.style.display = "none";
 
@@ -19,7 +19,7 @@ function _carregarMotoristas() {
     .then(r => r.json())
     .then(users => {
         if (!Array.isArray(users) || !users.length) {
-            empty.innerText = "Nenhum motorista cadastrado.";
+            skFim(empty, "Nenhum motorista cadastrado.");
             return;
         }
         empty.style.display = "none";
@@ -47,7 +47,7 @@ function _carregarMotoristas() {
                 </td>
             </tr>
         `).join("");
-    }).catch(() => { empty.innerText = "Erro ao carregar motoristas."; });
+    }).catch(() => { skFim(empty, "Erro ao carregar motoristas."); });
 }
 
 function _toggleMenuMotorista(event, id) {

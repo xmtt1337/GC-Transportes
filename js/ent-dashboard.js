@@ -123,7 +123,7 @@ function setEntDashGran(tipo) {
 
 function abrirEntDashboard(event) {
     if (event) event.preventDefault();
-    document.getElementById("ent-dash-empty").innerText = "Carregando...";
+    skMostrar(document.getElementById("ent-dash-empty"));
     document.getElementById("ent-dash-empty").style.display = "";
     document.getElementById("ent-dash-content").style.display = "none";
     mostrarTela("tela-ent-dashboard");
@@ -153,7 +153,7 @@ function _carregarMinhasNFs() {
     const ano   = document.getElementById("mnf-ano").value;
     const empty = document.getElementById("minhas-nf-empty");
     const res   = document.getElementById("minhas-nf-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     res.style.display = "none";
     const tok = localStorage.getItem("token");
@@ -163,7 +163,7 @@ function _carregarMinhasNFs() {
         fetch(`${API}/minhas-notas`,          { headers: { "Authorization": "Bearer " + tok } }).then(r => r.json())
     ]).then(([historico, nfs]) => {
         if (!Array.isArray(historico) || !historico.length) {
-            empty.innerText = "Nenhum fechamento encontrado para este ano.";
+            skFim(empty, "Nenhum fechamento encontrado para este ano.");
             return;
         }
         const nfMap = {};
@@ -180,7 +180,7 @@ function _carregarMinhasNFs() {
             .reverse();
 
         if (!periodos.length) {
-            empty.innerText = "Nenhum período com fechamento encontrado.";
+            skFim(empty, "Nenhum período com fechamento encontrado.");
             return;
         }
 
@@ -217,7 +217,7 @@ function _carregarMinhasNFs() {
                     <div class="nf-status-tag" style="color:#fb923c">Anexar →</div>
                 </div>`).join("")}
             </div>`;
-    }).catch(() => { empty.innerText = "Erro ao carregar dados."; });
+    }).catch(() => { skFim(empty, "Erro ao carregar dados."); });
 }
 
 function _irParaFechamentoPeriodo(mes, ano, quinzena) {
@@ -243,14 +243,14 @@ function buscarEntDashboard() {
     const ano     = new Date().getFullYear();
     const empty   = document.getElementById("ent-dash-empty");
     const content = document.getElementById("ent-dash-content");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     content.style.display = "none";
 
     fetch(`${API}/historico?ano=${ano}`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
     .then(dados => {
-        if (!dados.length) { empty.innerText = "Nenhum dado encontrado para este ano."; return; }
+        if (!dados.length) { skFim(empty, "Nenhum dado encontrado para este ano."); return; }
         empty.style.display = "none";
         content.style.display = "";
 
@@ -415,5 +415,5 @@ function buscarEntDashboard() {
             });
         });
     })
-    .catch(() => { empty.innerText = "Erro ao conectar com o servidor."; });
+    .catch(() => { skFim(empty, "Erro ao conectar com o servidor."); });
 }

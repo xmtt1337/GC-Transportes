@@ -26,7 +26,7 @@ async function _pedCarregar() {
     const emptyEl = document.getElementById('ped-empty');
     const listaEl = document.getElementById('ped-lista');
 
-    emptyEl.innerText = 'Carregando...';
+    skMostrar(emptyEl);
     emptyEl.style.display = '';
     listaEl.style.display = 'none';
 
@@ -62,7 +62,7 @@ function _pedRenderizar(rows) {
     _pedPagina = 1;
 
     if (!rows.length) {
-        emptyEl.innerText = 'Nenhum pedido bipado no período.';
+        skFim(emptyEl, 'Nenhum pedido bipado no período.');
         emptyEl.style.display = '';
         listaEl.style.display = 'none';
         return;

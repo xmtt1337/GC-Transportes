@@ -203,7 +203,7 @@ function abrirPacotesFaltantesRegistro(event) {
 function _pfCarregarRegistro() {
     const empty  = document.getElementById("pf-reg-empty");
     const result = document.getElementById("pf-reg-resultado");
-    empty.innerText = "Carregando...";
+    skMostrar(empty);
     empty.style.display = "";
     result.style.display = "none";
 
@@ -211,7 +211,7 @@ function _pfCarregarRegistro() {
         .then(r => r.json())
         .then(rows => {
             if (!Array.isArray(rows) || !rows.length) {
-                empty.innerText = "Nenhum pacote faltante registrado ainda.";
+                skFim(empty, "Nenhum pacote faltante registrado ainda.");
                 return;
             }
             empty.style.display = "none";
@@ -224,7 +224,7 @@ function _pfCarregarRegistro() {
                 </tr>
             `).join("");
         })
-        .catch(() => { empty.innerText = "Erro ao carregar os registros."; });
+        .catch(() => { skFim(empty, "Erro ao carregar os registros."); });
 }
 
 // Gatilho automático: app abriu com pacotes pendentes na fila
