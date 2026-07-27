@@ -42,7 +42,7 @@ function _locCarregar() {
 // Ativos/Ausentes/Todos — refiltra com o que já foi carregado, sem nova requisição
 function _locFiltrar(filtro) {
     _locFiltro = filtro;
-    document.querySelectorAll("#loc-filtro-chips .dev-chip").forEach(c =>
+    document.querySelectorAll("#loc-filtro-chips .filtro-tab").forEach(c =>
         c.classList.toggle("active", c.dataset.filtro === filtro));
     _locBoundsAjustado = false; // troca de filtro pode mudar bastante os pontos — reenquadra o mapa
     _locRenderizar();

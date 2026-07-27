@@ -2564,6 +2564,17 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .dev-chip:hover { border-color: rgba(58,134,255,0.4); color: #cbd5e1; }
 .dev-chip.active { border-color: #3a86ff; background: rgba(58,134,255,0.14); color: #fff; }
 
+/* Abas de filtro (Todos/Online/Ativos...) — texto puro com sublinhado no
+   selecionado, sem caixinha de botão, pra não parecer chip de formulário. */
+.filtro-tabs { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.filtro-tab {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    padding: 2px 0 4px; cursor: pointer; font-family: inherit;
+    font-size: 13px; font-weight: 600; color: #64748b; transition: color .15s, border-color .15s;
+}
+.filtro-tab:hover { color: #cbd5e1; }
+.filtro-tab.active { color: #3a86ff; border-bottom-color: #3a86ff; }
+
 .dev-sem-codigo-row {
     display: flex; align-items: center; gap: 9px; margin-top: 12px;
     font-size: 13px; color: #94a3b8; cursor: pointer;

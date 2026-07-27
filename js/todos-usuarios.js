@@ -57,7 +57,7 @@ function _tuOnline(u) {
 // Chips (Todos/Online/Nunca acessou/Inativos) + busca por texto, combinados
 function _tuFiltrar(filtro) {
     _tuFiltro = filtro;
-    document.querySelectorAll("#tu-filtro-chips .dev-chip").forEach(c =>
+    document.querySelectorAll("#tu-filtro-chips .filtro-tab").forEach(c =>
         c.classList.toggle("active", c.dataset.filtro === filtro));
     _tuAplicarFiltros();
 }
@@ -76,6 +76,13 @@ function _tuAplicarFiltros() {
         return (u.name     || "").toLowerCase().includes(termo) ||
                (u.username || "").toLowerCase().includes(termo) ||
                (_TU_CARGO_LABELS[u.role] || u.role || "").toLowerCase().includes(termo);
+    });
+    // Mais recente primeiro — quem nunca acessou (sem segundos_desde_acesso) vai pro final
+    filtrado.sort((a, b) => {
+        if (a.segundos_desde_acesso == null && b.segundos_desde_acesso == null) return 0;
+        if (a.segundos_desde_acesso == null) return 1;
+        if (b.segundos_desde_acesso == null) return -1;
+        return a.segundos_desde_acesso - b.segundos_desde_acesso;
     });
     _tuRenderizar(filtrado);
 }
