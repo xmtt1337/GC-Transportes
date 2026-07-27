@@ -136,7 +136,7 @@ function setDashGran(tipo) {
 
 function abrirDashboard(event) {
     if (event) event.preventDefault();
-    skMostrar(document.getElementById("dash-empty"));
+    skMostrar(document.getElementById("dash-empty"), "dash");
     document.getElementById("dash-empty").style.display = "";
     document.getElementById("dash-content").style.display = "none";
     mostrarTela("tela-dashboard");
@@ -159,7 +159,7 @@ function buscarDashboard() {
     const ano     = new Date().getFullYear();
     const empty   = document.getElementById("dash-empty");
     const content = document.getElementById("dash-content");
-    skMostrar(empty);
+    skMostrar(empty, "dash");
     empty.style.display = "";
     content.style.display = "none";
 

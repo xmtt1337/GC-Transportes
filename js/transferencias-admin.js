@@ -12,7 +12,7 @@ function abrirTransferenciasAdmin(event) {
 function _trfaCarregar() {
     const empty = document.getElementById("trfa-empty");
     const lista = document.getElementById("trfa-lista");
-    skMostrar(empty);
+    skMostrar(empty, "cards");
     empty.style.display = "";
     lista.style.display = "none";
 

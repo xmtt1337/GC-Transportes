@@ -86,7 +86,7 @@ function _carregarPainelAdmin() {
     const reqId = ++_admPainelReqId;
     const empty = document.getElementById("adm-fech-empty");
     const data  = document.getElementById("adm-fech-data");
-    skMostrar(empty);
+    skMostrar(empty, "fech");
     empty.style.display = "";
     data.style.display = "none";
 

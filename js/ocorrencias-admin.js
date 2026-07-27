@@ -15,7 +15,7 @@ function abrirPacotesFaltantesAdmin(event) {
 function _pfaCarregar() {
     const empty = document.getElementById("pfa-empty");
     const lista = document.getElementById("pfa-lista");
-    skMostrar(empty);
+    skMostrar(empty, "cards");
     empty.style.display = "";
     lista.style.display = "none";
 

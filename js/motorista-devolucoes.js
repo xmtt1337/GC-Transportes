@@ -60,7 +60,7 @@ function _motcStatusBadge(status) {
 function _motcCarregar() {
     const empty = document.getElementById("motc-empty");
     const lista = document.getElementById("motc-lista");
-    skMostrar(empty);
+    skMostrar(empty, "cards");
     empty.style.display = "";
     lista.style.display = "none";
 

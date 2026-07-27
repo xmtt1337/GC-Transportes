@@ -117,7 +117,7 @@ function _vmStatusBadge(status) {
 function _vmCarregar() {
     const empty = document.getElementById("vm-empty");
     const lista = document.getElementById("vm-lista");
-    skMostrar(empty);
+    skMostrar(empty, "cards");
     empty.style.display = "";
     lista.style.display = "none";
 

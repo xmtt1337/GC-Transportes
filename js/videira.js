@@ -113,7 +113,7 @@ function buscarPainelVideira() {
 
     document.getElementById("vp-empty").style.display   = "";
     document.getElementById("vp-content").style.display = "none";
-    skMostrar(document.getElementById("vp-empty"));
+    skMostrar(document.getElementById("vp-empty"), "fech");
 
     fetch(`${API}/videira/painel?mes=${mes}&ano=${ano}&quinzena=${quinzena}`, {
         headers: { "Authorization": "Bearer " + token }
@@ -315,7 +315,7 @@ const VD_TRANSP_DEF = [
 
 function abrirVideiraDash(event) {
     if (event) event.preventDefault();
-    skMostrar(document.getElementById("vd-empty"));
+    skMostrar(document.getElementById("vd-empty"), "dash");
     document.getElementById("vd-empty").style.display  = "";
     document.getElementById("vd-content").style.display = "none";
     mostrarTela("tela-videira-dash");

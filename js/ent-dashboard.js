@@ -123,7 +123,7 @@ function setEntDashGran(tipo) {
 
 function abrirEntDashboard(event) {
     if (event) event.preventDefault();
-    skMostrar(document.getElementById("ent-dash-empty"));
+    skMostrar(document.getElementById("ent-dash-empty"), "dash");
     document.getElementById("ent-dash-empty").style.display = "";
     document.getElementById("ent-dash-content").style.display = "none";
     mostrarTela("tela-ent-dashboard");
@@ -153,7 +153,7 @@ function _carregarMinhasNFs() {
     const ano   = document.getElementById("mnf-ano").value;
     const empty = document.getElementById("minhas-nf-empty");
     const res   = document.getElementById("minhas-nf-resultado");
-    skMostrar(empty);
+    skMostrar(empty, "cards");
     empty.style.display = "";
     res.style.display = "none";
     const tok = localStorage.getItem("token");
@@ -243,7 +243,7 @@ function buscarEntDashboard() {
     const ano     = new Date().getFullYear();
     const empty   = document.getElementById("ent-dash-empty");
     const content = document.getElementById("ent-dash-content");
-    skMostrar(empty);
+    skMostrar(empty, "dash");
     empty.style.display = "";
     content.style.display = "none";
 

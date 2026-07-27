@@ -185,7 +185,7 @@ let _trfHistDados = []; // última resposta — o modal de detalhe usa sem busca
 function _trfCarregarHistorico() {
     const empty = document.getElementById("trf-hist-empty");
     const lista = document.getElementById("trf-hist-lista");
-    skMostrar(empty);
+    skMostrar(empty, "cards");
     empty.style.display = "";
     lista.style.display = "none";
 
