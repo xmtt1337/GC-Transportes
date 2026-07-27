@@ -11,13 +11,8 @@ let _confNFPorPagina     = 25;
 function _toggleFiltroConf() {
     _confNFFiltrarPend = !_confNFFiltrarPend;
     const btn = document.getElementById("conf-nf-filtro-btn");
-    if (_confNFFiltrarPend) {
-        btn.style.background = "rgba(251,146,60,0.15)";
-        btn.textContent = "Ver todos";
-    } else {
-        btn.style.background = "transparent";
-        btn.textContent = "Ver apenas pendentes";
-    }
+    btn.classList.toggle("active", _confNFFiltrarPend);
+    btn.textContent = _confNFFiltrarPend ? "Ver todos" : "Ver apenas pendentes";
     _renderConfNFTabela(_confNFFiltrarPend ? _confNFTodosRows.filter(r => !r.emitiu_nf) : _confNFTodosRows);
 }
 
@@ -66,7 +61,7 @@ function buscarConfNFs() {
         _confNFTodosRows = rows;
         _confNFFiltrarPend = false;
         const btn = document.getElementById("conf-nf-filtro-btn");
-        if (btn) { btn.style.background = "transparent"; btn.textContent = "Ver apenas pendentes"; }
+        if (btn) { btn.classList.remove("active"); btn.textContent = "Ver apenas pendentes"; }
         const total    = rows.length;
         const emitidas = rows.filter(r => r.emitiu_nf).length;
         const pendentes = total - emitidas;
