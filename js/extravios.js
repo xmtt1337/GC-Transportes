@@ -358,12 +358,15 @@ function _renderExtrDash(rows) {
 // SEÇÃO 1 — RESUMO GERAL
 // ────────────────────────────────────────────────────────
 function _renderResumo(rows, allYear, C, mes) {
+    const ano      = document.getElementById("extrv-sel-ano").value;
     const total    = rows.length;
     const totalVal = _soma(rows, C.valor);
     const simRows  = rows.filter(r => _isSim(r, C.desc));
     const naoRows  = rows.filter(r => C.desc && _nk(r[C.desc]) === "nao");
+    const contRows = rows.filter(r => _isContestado(r, C.status));
     const simVal   = _soma(simRows, C.valor);
     const naoVal   = _soma(naoRows, C.valor);
+    const contVal  = _soma(contRows, C.valor);
 
     // Agrupar por status
     const statusMap = {};
@@ -410,33 +413,39 @@ function _renderResumo(rows, allYear, C, mes) {
 
     document.getElementById("extrv-resumo").innerHTML = `
     <div class="ed-section">
-        <div class="ed-section-title">Visão Geral · ${mes !== 0 ? MES_FULL_EX[mes-1] : "Ano Completo"}</div>
+        <div class="ed-section-title">Visão Geral · ${mes !== 0 ? `${MES_FULL_EX[mes-1]} de ${ano}` : `Ano ${ano} completo`}</div>
 
-        <div class="ed-kpi5">
-            <div class="ed-kpi" style="--kc:#3a86ff">
-                <div class="ed-kpi-lbl">Total Registros</div>
-                <div class="ed-kpi-n" style="color:var(--kc)">${total}</div>
+        <div class="ed-kpis">
+            <div class="ed-kpi">
+                <div class="ed-kpi-lbl">Registros no período</div>
+                <div class="ed-kpi-n">${total}</div>
                 <div class="ed-kpi-v">${_moeda(totalVal)}</div>
             </div>
-            <div class="ed-kpi" style="--kc:#fb923c">
-                <div class="ed-kpi-lbl">Para Desconto · SIM</div>
-                <div class="ed-kpi-n" style="color:var(--kc)">${simRows.length}</div>
+            <div class="ed-kpi">
+                <div class="ed-kpi-lbl">Para desconto · Sim</div>
+                <div class="ed-kpi-n" style="color:#fb923c">${simRows.length}</div>
                 <div class="ed-kpi-v">${_moeda(simVal)}</div>
             </div>
-            <div class="ed-kpi" style="--kc:#22c55e">
-                <div class="ed-kpi-lbl">Para Desconto · NÃO</div>
-                <div class="ed-kpi-n" style="color:var(--kc)">${naoRows.length}</div>
+            <div class="ed-kpi">
+                <div class="ed-kpi-lbl">Para desconto · Não</div>
+                <div class="ed-kpi-n" style="color:#22c55e">${naoRows.length}</div>
                 <div class="ed-kpi-v">${_moeda(naoVal)}</div>
             </div>
-            <div class="ed-kpi" style="--kc:#3a86ff">
-                <div class="ed-kpi-lbl">Qtd · Ano ${document.getElementById("extrv-sel-ano").value}</div>
-                <div class="ed-kpi-n" style="color:var(--kc)">${allYear.length}</div>
-                <div class="ed-kpi-v">${_moeda(_soma(allYear, C.valor))}</div>
+            <div class="ed-kpi">
+                <div class="ed-kpi-lbl">Contestados</div>
+                <div class="ed-kpi-n" style="color:#3a86ff">${contRows.length}</div>
+                <div class="ed-kpi-v">${_moeda(contVal)}</div>
             </div>
+            ${mes !== 0 ? `
+            <div class="ed-kpi">
+                <div class="ed-kpi-lbl">Ano ${ano} inteiro</div>
+                <div class="ed-kpi-n" style="color:#94a3b8">${allYear.length}</div>
+                <div class="ed-kpi-v">${_moeda(_soma(allYear, C.valor))}</div>
+            </div>` : ""}
         </div>
 
         ${statusList.length ? `
-        <div class="ed-sub-title" style="margin-top:14px">Por Status</div>
+        <div class="ed-sub-title" style="margin-top:24px">Por Status</div>
         <div class="ed-status-list">${statusHTML}</div>
         ` : ""}
     </div>`;
@@ -648,21 +657,18 @@ function _renderContest(rows, C) {
 
         <div class="ed-cont-cards">
             <div class="ed-cc resolvido">
-                <div class="ed-cc-lbl">Revertidas</div>
-                <div class="ed-cc-n">${resol.length}</div>
-                <div class="ed-cc-v">${_moeda(valResol)}</div>
+                <div class="ed-cc-lbl"><span class="ed-cc-dot" style="background:#22c55e"></span>Revertidas</div>
+                <div class="ed-cc-n">${resol.length} <span class="ed-cc-v">${_moeda(valResol)}</span></div>
                 <div class="ed-cc-pct">${totCont>0?(resol.length/totCont*100).toFixed(1):0}% dos contestados</div>
             </div>
             <div class="ed-cc pendente">
-                <div class="ed-cc-lbl">Pendentes / Não revertidas</div>
-                <div class="ed-cc-n">${pend.length}</div>
-                <div class="ed-cc-v">${_moeda(valPend)}</div>
+                <div class="ed-cc-lbl"><span class="ed-cc-dot" style="background:#fbbf24"></span>Pendentes / Não revertidas</div>
+                <div class="ed-cc-n">${pend.length} <span class="ed-cc-v">${_moeda(valPend)}</span></div>
                 <div class="ed-cc-pct">${totCont>0?(pend.length/totCont*100).toFixed(1):0}% dos contestados</div>
             </div>
             <div class="ed-cc total-cont">
-                <div class="ed-cc-lbl">Total Contestados</div>
-                <div class="ed-cc-n">${totCont}</div>
-                <div class="ed-cc-v">${_moeda(valCont)}</div>
+                <div class="ed-cc-lbl"><span class="ed-cc-dot" style="background:#3a86ff"></span>Total contestados</div>
+                <div class="ed-cc-n">${totCont} <span class="ed-cc-v">${_moeda(valCont)}</span></div>
                 <div class="ed-cc-pct">em disputa / processados</div>
             </div>
         </div>
