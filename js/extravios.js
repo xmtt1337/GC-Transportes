@@ -124,6 +124,7 @@ function _extrvBuscarCodigo() {
     });
 
     const statusColors = {
+        "resolvido": "#22c55e",
         "para desconto": "#fb923c", "contestado": "#3a86ff",
         "em analise": "#fbbf24", "lost": "#ef4444",
         "dmaged": "#a78bfa", "damaged": "#a78bfa",
@@ -379,6 +380,7 @@ function _renderResumo(rows, allYear, C, mes) {
     const statusList = Object.entries(statusMap).sort((a,b) => b[1].n - a[1].n);
 
     const statusColors = {
+        "resolvido":     "#22c55e",
         "para desconto": "#fb923c",
         "contestado":    "#3a86ff",
         "em analise":    "#fbbf24",
@@ -628,59 +630,59 @@ function _renderDescontos(rows, C) {
 // ────────────────────────────────────────────────────────
 // SEÇÃO 4 — CONTESTAÇÕES
 // ────────────────────────────────────────────────────────
+// "Contestado" = entregador entrou com contestação (em aberto, aguardando resposta).
+// "Resolvido" = contestação aceita / caso resolvido — não vai pra desconto.
 function _renderContest(rows, C) {
-    const contRows = rows.filter(r => _isContestado(r, C.status));
-    const resol    = contRows.filter(r => C.desc && _nk(r[C.desc]) !== "sim");
-    const pend     = contRows.filter(r => _isSim(r, C.desc));
+    const contRows  = rows.filter(r => _isContestado(r, C.status));
+    const resolRows = rows.filter(r => C.status && _nk(r[C.status]).includes("resolvid"));
 
     const totCont  = contRows.length;
     const valCont  = _soma(contRows, C.valor);
-    const valResol = _soma(resol, C.valor);
-    const valPend  = _soma(pend, C.valor);
+    const totResol = resolRows.length;
+    const valResol = _soma(resolRows, C.valor);
 
-    const decided = contRows.length;
-    const taxa    = decided > 0 ? (resol.length/decided*100).toFixed(1) : 0;
-    const taxaNum = parseFloat(taxa);
+    const universo = totResol + totCont;
+    const taxa     = universo > 0 ? (totResol/universo*100).toFixed(1) : 0;
 
     const el = document.getElementById("extrv-contest");
 
-    if (totCont === 0) {
-        el.innerHTML = `<div class="ed-section"><div class="ed-section-title">Contestações</div><div class="ed-vazio">Nenhuma contestação no período.</div></div>`;
+    if (universo === 0) {
+        el.innerHTML = `<div class="ed-section"><div class="ed-section-title">Contestações & Resolvidos</div><div class="ed-vazio">Nenhuma contestação ou caso resolvido no período.</div></div>`;
         return;
     }
 
     el.innerHTML = `
     <div class="ed-section">
-        <div class="ed-section-title">Contestações</div>
+        <div class="ed-section-title">Contestações & Resolvidos</div>
 
         <div class="ed-cont-grid">
             <div class="ed-cont-taxa">
-                <div class="ed-taxa-lbl">Revertidas (Contestado · Para desconto NÃO)</div>
-                <div class="ed-taxa-num" style="color:${taxaNum>=50?'#22c55e':'#f59e0b'}">${taxa}%</div>
-                <div class="ed-taxa-sub">${resol.length} de ${totCont} contestados não serão descontados</div>
+                <div class="ed-taxa-lbl">Resolvidos no período</div>
+                <div class="ed-taxa-num" style="color:#22c55e">${totResol}</div>
+                <div class="ed-taxa-sub">${_moeda(valResol)} em casos resolvidos — não vão pra desconto</div>
                 <div class="ed-taxa-track">
-                    <div class="ed-taxa-fill" style="width:${taxa}%;background:${taxaNum>=50?'#22c55e':'#f59e0b'}"></div>
+                    <div class="ed-taxa-fill" style="width:${taxa}%;background:#22c55e"></div>
                 </div>
-                <div class="ed-taxa-saved">↑ ${_moeda(valResol)} não descontados</div>
+                <div class="ed-taxa-saved">${taxa}% resolvidos · ${totCont} contestaç${totCont===1?"ão":"ões"} em aberto</div>
             </div>
             <div class="ed-cont-chart-wrap"><canvas id="extrv-ch-cont"></canvas></div>
         </div>
 
         <div class="ed-cont-cards">
             <div class="ed-cc resolvido">
-                <div class="ed-cc-lbl"><span class="ed-cc-dot" style="background:#22c55e"></span>Revertidas</div>
-                <div class="ed-cc-n">${resol.length} <span class="ed-cc-v">${_moeda(valResol)}</span></div>
-                <div class="ed-cc-pct">${totCont>0?(resol.length/totCont*100).toFixed(1):0}% dos contestados</div>
+                <div class="ed-cc-lbl"><span class="ed-cc-dot" style="background:#22c55e"></span>Resolvidos</div>
+                <div class="ed-cc-n">${totResol} <span class="ed-cc-v">${_moeda(valResol)}</span></div>
+                <div class="ed-cc-pct">contestação aceita / caso encerrado</div>
             </div>
             <div class="ed-cc pendente">
-                <div class="ed-cc-lbl"><span class="ed-cc-dot" style="background:#fbbf24"></span>Pendentes / Não revertidas</div>
-                <div class="ed-cc-n">${pend.length} <span class="ed-cc-v">${_moeda(valPend)}</span></div>
-                <div class="ed-cc-pct">${totCont>0?(pend.length/totCont*100).toFixed(1):0}% dos contestados</div>
+                <div class="ed-cc-lbl"><span class="ed-cc-dot" style="background:#fbbf24"></span>Contestados (em aberto)</div>
+                <div class="ed-cc-n">${totCont} <span class="ed-cc-v">${_moeda(valCont)}</span></div>
+                <div class="ed-cc-pct">aguardando resposta da transportadora</div>
             </div>
             <div class="ed-cc total-cont">
-                <div class="ed-cc-lbl"><span class="ed-cc-dot" style="background:#3a86ff"></span>Total contestados</div>
-                <div class="ed-cc-n">${totCont} <span class="ed-cc-v">${_moeda(valCont)}</span></div>
-                <div class="ed-cc-pct">em disputa / processados</div>
+                <div class="ed-cc-lbl"><span class="ed-cc-dot" style="background:#3a86ff"></span>Total</div>
+                <div class="ed-cc-n">${universo} <span class="ed-cc-v">${_moeda(valResol + valCont)}</span></div>
+                <div class="ed-cc-pct">resolvidos + contestados</div>
             </div>
         </div>
     </div>`;
@@ -688,10 +690,10 @@ function _renderContest(rows, C) {
     if (_extrvChC) { _extrvChC.destroy(); _extrvChC = null; }
     const ctx = document.getElementById("extrv-ch-cont");
     if (!ctx) return;
-    const vals = [resol.length, pend.length].filter((_,i)=>[resol.length,pend.length][i]>0);
-    const lbls = ["Revertidas","Pendentes/Não revertidas"].filter((_,i)=>[resol.length,pend.length][i]>0);
-    const bgs  = ["rgba(34,197,94,0.82)","rgba(251,191,36,0.75)"].filter((_,i)=>[resol.length,pend.length][i]>0);
-    const brd  = ["#22c55e","#fbbf24"].filter((_,i)=>[resol.length,pend.length][i]>0);
+    const vals = [totResol, totCont].filter((_,i)=>[totResol,totCont][i]>0);
+    const lbls = ["Resolvidos","Contestados em aberto"].filter((_,i)=>[totResol,totCont][i]>0);
+    const bgs  = ["rgba(34,197,94,0.82)","rgba(251,191,36,0.75)"].filter((_,i)=>[totResol,totCont][i]>0);
+    const brd  = ["#22c55e","#fbbf24"].filter((_,i)=>[totResol,totCont][i]>0);
     _extrvChC = new Chart(ctx, {
         type:"doughnut",
         data:{ labels:lbls, datasets:[{data:vals,backgroundColor:bgs,borderColor:brd,borderWidth:2}] },
