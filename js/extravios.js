@@ -641,8 +641,10 @@ function _renderContest(rows, C) {
     const totResol = resolRows.length;
     const valResol = _soma(resolRows, C.valor);
 
-    const universo = totResol + totCont;
-    const taxa     = universo > 0 ? (totResol/universo*100).toFixed(1) : 0;
+    const universo     = totResol + totCont;
+    const totalPeriodo = rows.length;
+    const demais       = totalPeriodo - totResol;
+    const taxa         = totalPeriodo > 0 ? (totResol/totalPeriodo*100).toFixed(1) : 0;
 
     const el = document.getElementById("extrv-contest");
 
@@ -663,7 +665,7 @@ function _renderContest(rows, C) {
                 <div class="ed-taxa-track">
                     <div class="ed-taxa-fill" style="width:${taxa}%;background:#22c55e"></div>
                 </div>
-                <div class="ed-taxa-saved">${taxa}% resolvidos · ${totCont} contestaç${totCont===1?"ão":"ões"} em aberto</div>
+                <div class="ed-taxa-saved">${taxa}% de todos os registros do período · ${totCont} contestaç${totCont===1?"ão":"ões"} em aberto</div>
             </div>
             <div class="ed-cont-chart-wrap"><canvas id="extrv-ch-cont"></canvas></div>
         </div>
@@ -690,10 +692,10 @@ function _renderContest(rows, C) {
     if (_extrvChC) { _extrvChC.destroy(); _extrvChC = null; }
     const ctx = document.getElementById("extrv-ch-cont");
     if (!ctx) return;
-    const vals = [totResol, totCont].filter((_,i)=>[totResol,totCont][i]>0);
-    const lbls = ["Resolvidos","Contestados em aberto"].filter((_,i)=>[totResol,totCont][i]>0);
-    const bgs  = ["rgba(34,197,94,0.82)","rgba(251,191,36,0.75)"].filter((_,i)=>[totResol,totCont][i]>0);
-    const brd  = ["#22c55e","#fbbf24"].filter((_,i)=>[totResol,totCont][i]>0);
+    const vals = [totResol, demais].filter((_,i)=>[totResol,demais][i]>0);
+    const lbls = ["Resolvidos","Demais registros"].filter((_,i)=>[totResol,demais][i]>0);
+    const bgs  = ["rgba(34,197,94,0.82)","rgba(100,116,139,0.45)"].filter((_,i)=>[totResol,demais][i]>0);
+    const brd  = ["#22c55e","#64748b"].filter((_,i)=>[totResol,demais][i]>0);
     _extrvChC = new Chart(ctx, {
         type:"doughnut",
         data:{ labels:lbls, datasets:[{data:vals,backgroundColor:bgs,borderColor:brd,borderWidth:2}] },
