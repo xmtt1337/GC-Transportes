@@ -9,7 +9,177 @@ function abrirWhatsappTeste(event) {
     }
     mostrarTela("tela-whatsapp-teste");
     document.getElementById("wa-msg").innerText = "";
+    _waRecRenderCampos();
     _waCarregarHistorico();
+}
+
+// ── Mensagens de reclamação por transportadora ──
+// Cada categoria vira um template aprovado na Meta (nome em "template"); os campos
+// abaixo viram os parâmetros {{1}}, {{2}}... na mesma ordem em que aparecem no texto.
+const WA_REC_TEMPLATES = {
+    tiktok: {
+        rotulo: "TikTok (J&T)",
+        template: "reclamacao_tiktok_jt",
+        campos: [
+            { id: "nome_cliente", label: "Nome do cliente" },
+            { id: "codigo_pedido", label: "Código do pedido" },
+            { id: "nome_loja", label: "Nome da loja" },
+        ],
+        montar: v => `Olá, ${v.nome_cliente || "___"}
+Meu nome é Matheus, representante da transportadora J&T Express.
+Verificamos que você abriu uma reclamação referente ao pedido ${v.codigo_pedido || "___"}, realizado pela ${v.nome_loja || "___"}.
+Para que possamos auxiliar, escolha uma das opções abaixo e responda apenas com o número:
+1 - Recebi o produto;
+2 - Recebi o produto corretamente lacrado/embalado;
+3 - Não recebi o produto;
+4 - Recebi o produto com itens faltantes;
+5 - Recebi o produto com a embalagem externa em más condições;
+6 - Recebi um produto diferente do comprado;
+7 - Recebi o produto com defeito`,
+        parametros: v => [v.nome_cliente, v.codigo_pedido, v.nome_loja],
+    },
+    mercadolivre: {
+        rotulo: "Mercado Livre (J&T)",
+        template: "reclamacao_ml_jt",
+        campos: [
+            { id: "nome_cliente", label: "Nome do cliente" },
+            { id: "nome_produto", label: "Nome do produto" },
+            { id: "id_pacote_jms", label: "ID do pacote e número JMS" },
+            { id: "data_entrega", label: "Data e hora da entrega" },
+        ],
+        montar: v => `Olá, ${v.nome_cliente || "___"}!
+Me chamo ${_waRecNomeAtendente()}, sou da Transportadora J&T Express, parceira de entregas do Mercado Livre.
+
+Verificamos que você abriu uma reclamação referente ao produto ${v.nome_produto || "___"} ID ${v.id_pacote_jms || "___"} entregue dia ${v.data_entrega || "___"}.
+Para que possamos auxiliar, escolha uma opção:
+1- Recebi o produto
+2- Não recebi o produto;
+3- Recebi o pacote com produtos faltantes;
+4- Recebi o produto com defeito;
+5- Recebi um produto diferente do comprado.`,
+        parametros: v => [v.nome_cliente, _waRecNomeAtendente(), v.nome_produto, v.id_pacote_jms, v.data_entrega],
+    },
+    shopee: {
+        rotulo: "Shopee",
+        template: "reclamacao_shopee",
+        campos: [
+            { id: "nome_cliente", label: "Nome do cliente" },
+            { id: "codigo_pedido", label: "Código do pedido" },
+        ],
+        montar: v => `Olá, ${v.nome_cliente || "___"}! Aqui é da transportadora GCTRANSPORTES, parceira da Shopee e responsável pela entrega do seu pedido ${v.codigo_pedido || "___"}. Por gentileza, pode confirmar a entrega do seu pedido preenchendo os dados abaixo?
+【1】Nome completo do destinatário:
+【2】CPF:
+【3】Seu pedido foi recebido?: SIM ou NÃO
+【4】A solicitação de reembolso foi cancelada via app?*: SIM ou NÃO
+【Nota】*Caso seu pedido tenha sido entregue e a solicitação de reembolso ainda está aberta, pedimos que prossiga com o cancelamento do reembolso via app. Agradecemos pela atenção!`,
+        parametros: v => [v.nome_cliente, v.codigo_pedido],
+    },
+    imile: {
+        rotulo: "iMile",
+        template: "reclamacao_imile",
+        campos: [
+            { id: "nome_cliente", label: "Nome do cliente" },
+            { id: "numero_pedido", label: "Número do pedido" },
+            { id: "remetente", label: "Remetente" },
+            { id: "produto", label: "Produto" },
+        ],
+        montar: v => `Olá cliente ${v.nome_cliente || "___"}, tudo bem?
+Me chamo Amanda, sou do time de SAC da Imile Delivery.
+Recebemos uma reclamação a respeito do seu pedido número ${v.numero_pedido || "___"}, remetente ${v.remetente || "___"}.
+PRODUTO: ${v.produto || "___"}
+
+Poderia me confirmar se você recebeu ele corretamente se estava lacrado?
+Observação: não aceitamos áudios, apenas mensagens por escrito
+
+Aguardo seu retorno e agradeço desde já! ☺️`,
+        parametros: v => [v.nome_cliente, v.numero_pedido, v.remetente, v.produto],
+    },
+    anjun: {
+        rotulo: "Anjun",
+        template: "reclamacao_anjun",
+        campos: [
+            { id: "nome_cliente", label: "Nome do cliente" },
+            { id: "numero_pedido", label: "Número do pedido" },
+            { id: "plataforma", label: "Plataforma (Shopee, Mercado Livre...)" },
+        ],
+        montar: v => `Olá, ${v.nome_cliente || "___"}! Faço parte da equipe de parceiros da Anjun Express, transportadora responsável pela entrega do seu pedido. O motivo do meu contato é para falarmos a respeito do pedido ${v.numero_pedido || "___"}, do qual foi aberto uma reclamação. Plataforma: ${v.plataforma || "___"}
+Por gentileza, poderia confirmar o recebimento do seu pedido preenchendo os dados abaixo?
+.CPF:
+.Seu pedido foi entregue? Responda com SIM ou NÃO.`,
+        parametros: v => [v.nome_cliente, v.numero_pedido, v.plataforma],
+    },
+};
+
+let _waRecCategoria = "tiktok";
+
+// "(seu nome)" do script do Mercado Livre vira o nome de quem está logado, em vez
+// de pedir de novo toda hora — Matheus (TikTok) e Amanda (iMile) ficam fixos, como no script original.
+function _waRecNomeAtendente() {
+    return (window._gcUser && window._gcUser.name) || "___";
+}
+
+function _waRecEscolher(cat) {
+    _waRecCategoria = cat;
+    document.querySelectorAll("#wa-rec-tabs .filtro-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.cat === cat));
+    _waRecRenderCampos();
+}
+
+function _waRecRenderCampos() {
+    const cfg = WA_REC_TEMPLATES[_waRecCategoria];
+    document.getElementById("wa-rec-campos").innerHTML = cfg.campos.map(c => `
+        <div>
+            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">${c.label}</label>
+            <input type="text" id="wa-rec-campo-${c.id}" class="fech-select" style="width:100%" oninput="_waRecAtualizarPreview()">
+        </div>`).join("");
+    _waRecAtualizarPreview();
+}
+
+function _waRecValores() {
+    const cfg = WA_REC_TEMPLATES[_waRecCategoria];
+    const v = {};
+    cfg.campos.forEach(c => {
+        const el = document.getElementById(`wa-rec-campo-${c.id}`);
+        v[c.id] = el ? el.value.trim() : "";
+    });
+    return v;
+}
+
+function _waRecAtualizarPreview() {
+    const cfg = WA_REC_TEMPLATES[_waRecCategoria];
+    document.getElementById("wa-rec-preview").innerText = cfg.montar(_waRecValores());
+}
+
+function _waRecEnviar() {
+    const cfg    = WA_REC_TEMPLATES[_waRecCategoria];
+    const numero = document.getElementById("wa-rec-numero").value.trim();
+    const msgEl  = document.getElementById("wa-rec-msg");
+    const v      = _waRecValores();
+
+    if (!numero) { msgEl.style.color = "#ef4444"; msgEl.innerText = "Informe o número do cliente."; return; }
+    const faltando = cfg.campos.filter(c => !v[c.id]);
+    if (faltando.length) {
+        msgEl.style.color = "#ef4444";
+        msgEl.innerText = "Preencha: " + faltando.map(c => c.label).join(", ");
+        return;
+    }
+
+    msgEl.style.color = "#64748b";
+    msgEl.innerText = "Enviando...";
+
+    fetch(`${API}/admin/whatsapp/enviar`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ numero, template: cfg.template, parametros: cfg.parametros(v) })
+    })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ ok, body }) => {
+        if (!ok) { msgEl.style.color = "#ef4444"; msgEl.innerText = body.error || "Erro ao enviar."; return; }
+        msgEl.style.color = "#22c55e";
+        msgEl.innerText = "Enviado! ID: " + (body.id || "—");
+        _waCarregarHistorico();
+    })
+    .catch(() => { msgEl.style.color = "#ef4444"; msgEl.innerText = "Erro ao conectar com o servidor."; });
 }
 
 function _waEnviar() {
