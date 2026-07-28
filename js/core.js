@@ -134,6 +134,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         }
         if (role === "dev") {
             show("menu-item-todos-usuarios"); // visão de todos os usuários do sistema — só dev
+            show("menu-item-whatsapp-teste"); // teste de disparo WhatsApp — só dev, enquanto valida a integração
         }
     }
 

@@ -341,6 +341,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <li><a href="#" data-rota="Cadastros/Motoristas" onclick="abrirAdminMotoristas(event)">Motoristas</a></li>
                 <li><a href="#" data-rota="Cadastros/Usuarios" onclick="abrirAdminUsuariosGC(event)">Usuários</a></li>
                 <li id="menu-item-todos-usuarios" style="display:none"><a href="#" data-rota="Cadastros/TodosUsuarios" onclick="abrirTodosUsuarios(event)">Todos os Usuários</a></li>
+                <li id="menu-item-whatsapp-teste" style="display:none"><a href="#" data-rota="Cadastros/WhatsappTeste" onclick="abrirWhatsappTeste(event)">WhatsApp (teste)</a></li>
             </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Trampay <span class="subgroup-arrow">▾</span>
@@ -1636,6 +1637,39 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-todos-usuarios -->
 
+        <!-- TELA WHATSAPP — TESTE DE ENVIO (SÓ DEV) -->
+        <div id="tela-whatsapp-teste" class="view tela-full">
+            <div class="fech-header">
+                <div style="font-size:15px;font-weight:700;color:#e2e8f0">WhatsApp — Teste de envio</div>
+            </div>
+            <div class="fech-body">
+                <div class="ed-section" style="max-width:520px;margin-bottom:20px">
+                    <div class="ed-section-title">Disparar mensagem por template</div>
+                    <div style="display:flex;flex-direction:column;gap:14px">
+                        <div>
+                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Número (com DDI)</label>
+                            <input type="text" id="wa-numero" class="fech-select" style="width:100%" placeholder="5549991391812">
+                        </div>
+                        <div>
+                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Template</label>
+                            <input type="text" id="wa-template" class="fech-select" style="width:100%" placeholder="hello_world">
+                        </div>
+                        <div>
+                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Parâmetros (separados por vírgula, na ordem {{1}}, {{2}}...)</label>
+                            <input type="text" id="wa-parametros" class="fech-select" style="width:100%" placeholder="João, GC2026070099">
+                        </div>
+                        <button class="extrv-refresh-btn" onclick="_waEnviar()" style="justify-content:center;padding:10px">Enviar mensagem</button>
+                        <div id="wa-msg" style="font-size:13px"></div>
+                    </div>
+                </div>
+
+                <div class="ed-section" style="max-width:820px">
+                    <div class="ed-section-title">Últimos envios<span class="ed-legend" style="margin-left:auto"><a href="#" onclick="_waCarregarHistorico();return false" style="color:#3a86ff">atualizar</a></span></div>
+                    <div id="wa-historico"></div>
+                </div>
+            </div>
+        </div><!-- /tela-whatsapp-teste -->
+
         <!-- TELA ANTECIPAÇÃO (ENTREGADOR) -->
         <div id="tela-antecipacoes" class="view tela-full">
             <div class="fech-header">
@@ -2547,6 +2581,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="js/extravios.js?v=20260727a"></script>
 <script src="js/usuarios-gc.js?v=20260727a"></script>
 <script src="js/todos-usuarios.js?v=20260727a"></script>
+<script src="js/whatsapp-teste.js?v=20260727a"></script>
 <script src="js/modals.js?v=20260727a"></script>
 <script src="js/alimentar.js?v=20260727a"></script>
 <script src="js/fechamento-criar.js?v=20260727a"></script>
