@@ -48,7 +48,7 @@ Para que possamos auxiliar, escolha uma das opções abaixo e responda apenas co
             { id: "data_entrega", label: "Data e hora da entrega" },
         ],
         montar: v => `Olá, ${v.nome_cliente || "___"}!
-Me chamo ${_waRecNomeAtendente()}, sou da Transportadora J&T Express, parceira de entregas do Mercado Livre.
+Me chamo ${_waRecNomeAtendente()} e sou da Transportadora J&T Express, parceira de entregas do Mercado Livre.
 
 Verificamos que você abriu uma reclamação referente ao produto ${v.nome_produto || "___"} ID ${v.id_pacote_jms || "___"} entregue dia ${v.data_entrega || "___"}.
 Para que possamos auxiliar, escolha uma opção:
@@ -66,12 +66,7 @@ Para que possamos auxiliar, escolha uma opção:
             { id: "nome_cliente", label: "Nome do cliente" },
             { id: "codigo_pedido", label: "Código do pedido" },
         ],
-        montar: v => `Olá, ${v.nome_cliente || "___"}! Aqui é da transportadora GCTRANSPORTES, parceira da Shopee e responsável pela entrega do seu pedido ${v.codigo_pedido || "___"}. Por gentileza, pode confirmar a entrega do seu pedido preenchendo os dados abaixo?
-【1】Nome completo do destinatário:
-【2】CPF:
-【3】Seu pedido foi recebido?: SIM ou NÃO
-【4】A solicitação de reembolso foi cancelada via app?*: SIM ou NÃO
-【Nota】*Caso seu pedido tenha sido entregue e a solicitação de reembolso ainda está aberta, pedimos que prossiga com o cancelamento do reembolso via app. Agradecemos pela atenção!`,
+        montar: v => `Olá, ${v.nome_cliente || "___"} !Aqui é da transportadora GCTRANSPORTES, parceira da Shopee e responsável pela entrega do seu pedido ${v.codigo_pedido || "___"}. Por gentileza, pode confirmar a entrega do seu pedido preenchendo os dados abaixo:【1】Nome completo do destinatário:【2】CPF:【3】Seu pedido foi recebido?: SIM ou NÃO【4】 A solicitação de reembolso foi cancelada via app?*: SIM ou NÃO【Nota】*Caso seu pedido tenha sido entregue e a solicitação de reembolso ainda está aberta, pedimos que prossiga com o cancelamento do reembolso via app. Agradecemos pela atenção!`,
         parametros: v => [v.nome_cliente, v.codigo_pedido],
     },
     imile: {
@@ -102,10 +97,7 @@ Aguardo seu retorno e agradeço desde já! ☺️`,
             { id: "numero_pedido", label: "Número do pedido" },
             { id: "plataforma", label: "Plataforma (Shopee, Mercado Livre...)" },
         ],
-        montar: v => `Olá, ${v.nome_cliente || "___"}! Faço parte da equipe de parceiros da Anjun Express, transportadora responsável pela entrega do seu pedido. O motivo do meu contato é para falarmos a respeito do pedido ${v.numero_pedido || "___"}, do qual foi aberto uma reclamação. Plataforma: ${v.plataforma || "___"}
-Por gentileza, poderia confirmar o recebimento do seu pedido preenchendo os dados abaixo?
-.CPF:
-.Seu pedido foi entregue? Responda com SIM ou NÃO.`,
+        montar: v => `Olá, ${v.nome_cliente || "___"} ! Faço parte da equipe de parceiros da Anjun Express, transportadora responsável pela entrega do seu pedido. O motivo do meu contato é para falarmos a respeito do pedido ${v.numero_pedido || "___"}, do qual foi aberto uma reclamação. Plataforma: ${v.plataforma || "___"} Por gentileza, poderia confirmar o recebimento do seu pedido preenchendo os dados abaixo? .CPF: .Seu pedido foi entregue? Responda com SIM ou NÃO.`,
         parametros: v => [v.nome_cliente, v.numero_pedido, v.plataforma],
     },
 };
