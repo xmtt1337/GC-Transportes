@@ -158,6 +158,13 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         // Alimentar só para dev
     }
 
+    // Registro de Pacotes Faltantes: entregador usa o menu Ocorrências, com toggle liberado
+    // (acima). Os demais cargos (user, admin, finance, dev, sac, motorista, ADM Videira) já têm
+    // acesso direto, como item dentro de Operação — entra na mesma lista/tabela compartilhada.
+    if (role !== "entregador") {
+        show("menu-item-pacotes-faltantes-op");
+    }
+
     renderHomeActions(role);
 
     const badgeLabels = {
