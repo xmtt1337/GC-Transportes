@@ -26,7 +26,7 @@ const WA_REC_TEMPLATES = {
             { id: "nome_loja", label: "Nome da loja" },
         ],
         montar: v => `Olá, ${v.nome_cliente || "___"}
-Meu nome é Matheus, representante da transportadora J&T Express.
+Meu nome é ${_waRecNomeAtendente()}, representante da transportadora J&T Express.
 Verificamos que você abriu uma reclamação referente ao pedido ${v.codigo_pedido || "___"}, realizado pela ${v.nome_loja || "___"}.
 Para que possamos auxiliar, escolha uma das opções abaixo e responda apenas com o número:
 1 - Recebi o produto;
@@ -36,7 +36,7 @@ Para que possamos auxiliar, escolha uma das opções abaixo e responda apenas co
 5 - Recebi o produto com a embalagem externa em más condições;
 6 - Recebi um produto diferente do comprado;
 7 - Recebi o produto com defeito`,
-        parametros: v => [v.nome_cliente, v.codigo_pedido, v.nome_loja],
+        parametros: v => [v.nome_cliente, _waRecNomeAtendente(), v.codigo_pedido, v.nome_loja],
     },
     mercadolivre: {
         rotulo: "Mercado Livre (J&T)",
@@ -84,7 +84,7 @@ Para que possamos auxiliar, escolha uma opção:
             { id: "produto", label: "Produto" },
         ],
         montar: v => `Olá cliente ${v.nome_cliente || "___"}, tudo bem?
-Me chamo Amanda, sou do time de SAC da Imile Delivery.
+Me chamo ${_waRecNomeAtendente()}, sou do time de SAC da Imile Delivery.
 Recebemos uma reclamação a respeito do seu pedido número ${v.numero_pedido || "___"}, remetente ${v.remetente || "___"}.
 PRODUTO: ${v.produto || "___"}
 
@@ -92,7 +92,7 @@ Poderia me confirmar se você recebeu ele corretamente se estava lacrado?
 Observação: não aceitamos áudios, apenas mensagens por escrito
 
 Aguardo seu retorno e agradeço desde já! ☺️`,
-        parametros: v => [v.nome_cliente, v.numero_pedido, v.remetente, v.produto],
+        parametros: v => [v.nome_cliente, _waRecNomeAtendente(), v.numero_pedido, v.remetente, v.produto],
     },
     anjun: {
         rotulo: "Anjun",
@@ -112,8 +112,8 @@ Por gentileza, poderia confirmar o recebimento do seu pedido preenchendo os dado
 
 let _waRecCategoria = "tiktok";
 
-// "(seu nome)" do script do Mercado Livre vira o nome de quem está logado, em vez
-// de pedir de novo toda hora — Matheus (TikTok) e Amanda (iMile) ficam fixos, como no script original.
+// Nome de quem está atendendo (Matheus/Amanda/"seu nome" nos scripts originais) vira
+// o nome de quem está logado no sistema, em vez de fixo ou de precisar digitar toda hora.
 function _waRecNomeAtendente() {
     return (window._gcUser && window._gcUser.name) || "___";
 }
