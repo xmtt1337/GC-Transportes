@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260728c">
+<link rel="stylesheet" href="style.css?v=20260728d">
 </head>
 <body>
 
@@ -2179,7 +2179,7 @@ if (location.hostname === "xmtt1337.github.io") {
         <div id="tela-pacotes-faltantes-registro" class="view tela-full">
             <div class="fech-header">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Meus Pacotes Faltantes</div>
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0" id="pf-reg-titulo">Meus Pacotes Faltantes</div>
                     <button onclick="abrirPacotesFaltantes()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#94a3b8;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">← Voltar</button>
                 </div>
             </div>
@@ -2187,7 +2187,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div class="fechamento-empty" id="pf-reg-empty">Carregando...</div>
                 <div id="pf-reg-resultado" style="display:none">
                     <table class="ant-hist-table">
-                        <thead><tr><th>Código</th><th>Transportadora</th><th>Data/Hora</th></tr></thead>
+                        <thead id="pf-reg-thead"><tr><th>Código</th><th>Transportadora</th><th>Data/Hora</th></tr></thead>
                         <tbody id="pf-reg-tbody"></tbody>
                     </table>
                 </div>
@@ -2619,50 +2619,50 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260728c"></script>
-<script src="js/router.js?v=20260728c"></script>
-<script src="js/sidebar.js?v=20260728c"></script>
-<script src="js/nav.js?v=20260728c"></script>
-<script src="js/fechamentos.js?v=20260728c"></script>
-<script src="js/admin.js?v=20260728c"></script>
-<script src="js/conf-nf.js?v=20260728c"></script>
-<script src="js/trampay.js?v=20260728c"></script>
-<script src="js/usuarios.js?v=20260728c"></script>
-<script src="js/motoristas.js?v=20260728c"></script>
-<script src="js/pagamentos.js?v=20260728c"></script>
-<script src="js/notas-fiscais.js?v=20260728c"></script>
-<script src="js/dashboard.js?v=20260728c"></script>
-<script src="js/ent-dashboard.js?v=20260728c"></script>
-<script src="js/nota-fiscal.js?v=20260728c"></script>
-<script src="js/extravios.js?v=20260728c"></script>
-<script src="js/usuarios-gc.js?v=20260728c"></script>
-<script src="js/todos-usuarios.js?v=20260728c"></script>
-<script src="js/whatsapp-teste.js?v=20260728c"></script>
-<script src="js/modals.js?v=20260728c"></script>
-<script src="js/alimentar.js?v=20260728c"></script>
-<script src="js/fechamento-criar.js?v=20260728c"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260728c"></script>
-<script src="js/bipagens.js?v=20260728c"></script>
-<script src="js/pedidos.js?v=20260728c"></script>
-<script src="js/desempenho-bip.js?v=20260728c"></script>
-<script src="js/desempenho-hora.js?v=20260728c"></script>
-<script src="js/conferencias.js?v=20260728c"></script>
-<script src="js/antecipacoes.js?v=20260728c"></script>
-<script src="js/antecipacoes-admin.js?v=20260728c"></script>
-<script src="js/baixas.js?v=20260728c"></script>
-<script src="js/devolucoes.js?v=20260728c"></script>
-<script src="js/viagens.js?v=20260728c"></script>
-<script src="js/ocorrencias.js?v=20260728c"></script>
-<script src="js/ocorrencias-admin.js?v=20260728c"></script>
-<script src="js/localizacao.js?v=20260728c"></script>
-<script src="js/localizacao-admin.js?v=20260728c"></script>
-<script src="js/transferencias.js?v=20260728c"></script>
-<script src="js/transferencias-admin.js?v=20260728c"></script>
-<script src="js/motorista-devolucoes.js?v=20260728c"></script>
-<script src="js/etiquetas.js?v=20260728c"></script>
-<script src="js/videira.js?v=20260728c"></script>
-<script src="js/planejamento-videira.js?v=20260728c"></script>
-<script src="js/torre.js?v=20260728c"></script>
+<script src="js/core.js?v=20260728d"></script>
+<script src="js/router.js?v=20260728d"></script>
+<script src="js/sidebar.js?v=20260728d"></script>
+<script src="js/nav.js?v=20260728d"></script>
+<script src="js/fechamentos.js?v=20260728d"></script>
+<script src="js/admin.js?v=20260728d"></script>
+<script src="js/conf-nf.js?v=20260728d"></script>
+<script src="js/trampay.js?v=20260728d"></script>
+<script src="js/usuarios.js?v=20260728d"></script>
+<script src="js/motoristas.js?v=20260728d"></script>
+<script src="js/pagamentos.js?v=20260728d"></script>
+<script src="js/notas-fiscais.js?v=20260728d"></script>
+<script src="js/dashboard.js?v=20260728d"></script>
+<script src="js/ent-dashboard.js?v=20260728d"></script>
+<script src="js/nota-fiscal.js?v=20260728d"></script>
+<script src="js/extravios.js?v=20260728d"></script>
+<script src="js/usuarios-gc.js?v=20260728d"></script>
+<script src="js/todos-usuarios.js?v=20260728d"></script>
+<script src="js/whatsapp-teste.js?v=20260728d"></script>
+<script src="js/modals.js?v=20260728d"></script>
+<script src="js/alimentar.js?v=20260728d"></script>
+<script src="js/fechamento-criar.js?v=20260728d"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260728d"></script>
+<script src="js/bipagens.js?v=20260728d"></script>
+<script src="js/pedidos.js?v=20260728d"></script>
+<script src="js/desempenho-bip.js?v=20260728d"></script>
+<script src="js/desempenho-hora.js?v=20260728d"></script>
+<script src="js/conferencias.js?v=20260728d"></script>
+<script src="js/antecipacoes.js?v=20260728d"></script>
+<script src="js/antecipacoes-admin.js?v=20260728d"></script>
+<script src="js/baixas.js?v=20260728d"></script>
+<script src="js/devolucoes.js?v=20260728d"></script>
+<script src="js/viagens.js?v=20260728d"></script>
+<script src="js/ocorrencias.js?v=20260728d"></script>
+<script src="js/ocorrencias-admin.js?v=20260728d"></script>
+<script src="js/localizacao.js?v=20260728d"></script>
+<script src="js/localizacao-admin.js?v=20260728d"></script>
+<script src="js/transferencias.js?v=20260728d"></script>
+<script src="js/transferencias-admin.js?v=20260728d"></script>
+<script src="js/motorista-devolucoes.js?v=20260728d"></script>
+<script src="js/etiquetas.js?v=20260728d"></script>
+<script src="js/videira.js?v=20260728d"></script>
+<script src="js/planejamento-videira.js?v=20260728d"></script>
+<script src="js/torre.js?v=20260728d"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">

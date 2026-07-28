@@ -203,6 +203,11 @@ function abrirPacotesFaltantesRegistro(event) {
 function _pfCarregarRegistro() {
     const empty  = document.getElementById("pf-reg-empty");
     const result = document.getElementById("pf-reg-resultado");
+    const ehEntregador = window._gcUser && window._gcUser.role === "entregador";
+    document.getElementById("pf-reg-titulo").innerText = ehEntregador ? "Meus Pacotes Faltantes" : "Pacotes Faltantes";
+    document.getElementById("pf-reg-thead").innerHTML = ehEntregador
+        ? "<tr><th>Código</th><th>Transportadora</th><th>Data/Hora</th></tr>"
+        : "<tr><th>Código</th><th>Transportadora</th><th>Registrado por</th><th>Data/Hora</th></tr>";
     skMostrar(empty);
     empty.style.display = "";
     result.style.display = "none";
@@ -220,6 +225,7 @@ function _pfCarregarRegistro() {
                 <tr>
                     <td data-label="Código" style="font-family:monospace">${r.codigo || "—"}</td>
                     <td data-label="Transportadora">${r.transportadora || "—"}</td>
+                    ${ehEntregador ? "" : `<td data-label="Registrado por">${r.usuario_nome || "—"}</td>`}
                     <td data-label="Data/Hora">${r.data_hora_brasilia || "—"}</td>
                 </tr>
             `).join("");
