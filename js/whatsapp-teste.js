@@ -262,7 +262,10 @@ function _waRecEnviar() {
     fetch(`${API}/admin/whatsapp/enviar`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ numero, template: cfg.template, parametros: cfg.parametros(v) })
+        body: JSON.stringify({
+            numero, template: cfg.template, parametros: cfg.parametros(v),
+            texto: cfg.montar(v), nome_cliente: v.nome_cliente || null
+        })
     })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ ok, body }) => {

@@ -237,6 +237,42 @@ body {
 .loc-item { padding: 10px 8px; border-radius: 8px; cursor: pointer; margin-bottom: 4px; }
 .loc-item:hover { background: rgba(255,255,255,0.04); }
 
+/* ===== WHATSAPP — RÉPLICA VISUAL DA CONVERSA ===== */
+.wac-chat-header {
+    flex-shrink: 0; display: flex; align-items: center; gap: 12px;
+    background: #075e54; padding: 12px 16px; color: #fff;
+}
+.wac-voltar { background: none; border: none; color: #fff; font-size: 22px; cursor: pointer; padding: 0 4px; line-height: 1; }
+.wac-chat-avatar {
+    width: 38px; height: 38px; border-radius: 50%; background: #25d366;
+    display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+}
+.wac-chat-info { display: flex; flex-direction: column; min-width: 0; }
+.wac-chat-nome { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wac-chat-numero { font-size: 12px; color: rgba(255,255,255,0.75); }
+.wac-chat-body {
+    flex: 1; min-height: 0; overflow-y: auto;
+    background-color: #e5ddd5;
+    background-image:
+        linear-gradient(rgba(0,0,0,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.035) 1px, transparent 1px);
+    background-size: 22px 22px;
+    padding: 18px 16px; display: flex; flex-direction: column; gap: 6px;
+}
+.wac-bubble {
+    max-width: 72%; padding: 6px 9px 8px; border-radius: 7px;
+    font-size: 14px; line-height: 1.35; color: #111b21;
+    white-space: pre-wrap; word-break: break-word;
+    box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+}
+.wac-bubble.enviada  { align-self: flex-end;   background: #dcf8c6; border-top-right-radius: 0; }
+.wac-bubble.recebida { align-self: flex-start; background: #ffffff; border-top-left-radius: 0; }
+.wac-bubble-hora {
+    float: right; margin: 4px 0 -3px 8px; font-size: 11px; color: rgba(0,0,0,0.45);
+    display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;
+}
+.wac-check { color: #53bdeb; font-weight: 700; }
+
 
 /* ===== FECHAMENTOS / PAINEL ===== */
 .fech-select {

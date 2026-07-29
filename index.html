@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260728e">
+<link rel="stylesheet" href="style.css?v=20260728f">
 </head>
 <body>
 
@@ -343,6 +343,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <li><a href="#" data-rota="Cadastros/Usuarios" onclick="abrirAdminUsuariosGC(event)">Usuários</a></li>
                 <li id="menu-item-todos-usuarios" style="display:none"><a href="#" data-rota="Cadastros/TodosUsuarios" onclick="abrirTodosUsuarios(event)">Todos os Usuários</a></li>
                 <li id="menu-item-whatsapp-teste" style="display:none"><a href="#" data-rota="Cadastros/WhatsappTeste" onclick="abrirWhatsappTeste(event)">WhatsApp (teste)</a></li>
+                <li id="menu-item-whatsapp-conversas" style="display:none"><a href="#" data-rota="Cadastros/WhatsappConversas" onclick="abrirWhatsappConversas(event)">WhatsApp — Conversas</a></li>
             </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Trampay <span class="subgroup-arrow">▾</span>
@@ -1649,7 +1650,7 @@ if (location.hostname === "xmtt1337.github.io") {
                     <div style="display:flex;flex-direction:column;gap:14px">
                         <div>
                             <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">WABA ID</label>
-                            <input type="text" id="wa-tpl-waba" class="fech-select" style="width:100%" value="871328202328226">
+                            <input type="text" id="wa-tpl-waba" class="fech-select" style="width:100%;background-image:none;padding-right:14px" value="871328202328226">
                         </div>
                         <div class="filtro-tabs" id="wa-tpl-atalhos">
                             <button type="button" class="filtro-tab" data-tpl="reclamacao_tiktok_jt" onclick="_waTplPreencher('reclamacao_tiktok_jt')">TikTok</button>
@@ -1661,7 +1662,7 @@ if (location.hostname === "xmtt1337.github.io") {
                         <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px">
                             <div>
                                 <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Nome do template</label>
-                                <input type="text" id="wa-tpl-nome" class="fech-select" style="width:100%" placeholder="reclamacao_tiktok_jt">
+                                <input type="text" id="wa-tpl-nome" class="fech-select" style="width:100%;background-image:none;padding-right:14px" placeholder="reclamacao_tiktok_jt">
                             </div>
                             <div>
                                 <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Categoria</label>
@@ -1673,12 +1674,12 @@ if (location.hostname === "xmtt1337.github.io") {
                             </div>
                             <div>
                                 <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Idioma</label>
-                                <input type="text" id="wa-tpl-idioma" class="fech-select" style="width:100%" value="pt_BR">
+                                <input type="text" id="wa-tpl-idioma" class="fech-select" style="width:100%;background-image:none;padding-right:14px" value="pt_BR">
                             </div>
                         </div>
                         <div>
                             <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Corpo (use {{1}}, {{2}}... nos lugares das variáveis)</label>
-                            <textarea id="wa-tpl-corpo" class="fech-select" style="width:100%;min-height:160px;font-family:monospace;font-size:12.5px;resize:vertical;padding:10px"></textarea>
+                            <textarea id="wa-tpl-corpo" class="fech-select" style="width:100%;min-height:160px;font-family:monospace;font-size:12.5px;resize:vertical;padding:10px;background-image:none"></textarea>
                         </div>
                         <div>
                             <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Exemplos das variáveis (separados por vírgula, na ordem)</label>
@@ -1770,6 +1771,34 @@ if (location.hostname === "xmtt1337.github.io") {
                 </div>
             </div>
         </div><!-- /tela-whatsapp-teste -->
+
+        <!-- TELA WHATSAPP — LISTA DE CONVERSAS (SÓ DEV) -->
+        <div id="tela-whatsapp-conversas" class="view tela-full">
+            <div class="fech-header">
+                <div style="font-size:15px;font-weight:700;color:#e2e8f0">WhatsApp — Conversas</div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="wac-lista-empty">Carregando...</div>
+                <div id="wac-lista-resultado" style="display:none">
+                    <div class="ed-section" style="max-width:820px">
+                        <div class="ed-tr-list" id="wac-lista"></div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-whatsapp-conversas -->
+
+        <!-- TELA WHATSAPP — RÉPLICA VISUAL DA CONVERSA (SÓ DEV) -->
+        <div id="tela-whatsapp-conversa-chat" class="view tela-full" style="padding:0;display:flex;flex-direction:column">
+            <div class="wac-chat-header">
+                <button onclick="abrirWhatsappConversas()" class="wac-voltar" title="Voltar">←</button>
+                <div class="wac-chat-avatar">👤</div>
+                <div class="wac-chat-info">
+                    <div class="wac-chat-nome" id="wac-chat-nome">—</div>
+                    <div class="wac-chat-numero" id="wac-chat-numero">—</div>
+                </div>
+            </div>
+            <div class="wac-chat-body" id="wac-chat-body"></div>
+        </div><!-- /tela-whatsapp-conversa-chat -->
 
         <!-- TELA ANTECIPAÇÃO (ENTREGADOR) -->
         <div id="tela-antecipacoes" class="view tela-full">
@@ -2664,50 +2693,51 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260728e"></script>
-<script src="js/router.js?v=20260728e"></script>
-<script src="js/sidebar.js?v=20260728e"></script>
-<script src="js/nav.js?v=20260728e"></script>
-<script src="js/fechamentos.js?v=20260728e"></script>
-<script src="js/admin.js?v=20260728e"></script>
-<script src="js/conf-nf.js?v=20260728e"></script>
-<script src="js/trampay.js?v=20260728e"></script>
-<script src="js/usuarios.js?v=20260728e"></script>
-<script src="js/motoristas.js?v=20260728e"></script>
-<script src="js/pagamentos.js?v=20260728e"></script>
-<script src="js/notas-fiscais.js?v=20260728e"></script>
-<script src="js/dashboard.js?v=20260728e"></script>
-<script src="js/ent-dashboard.js?v=20260728e"></script>
-<script src="js/nota-fiscal.js?v=20260728e"></script>
-<script src="js/extravios.js?v=20260728e"></script>
-<script src="js/usuarios-gc.js?v=20260728e"></script>
-<script src="js/todos-usuarios.js?v=20260728e"></script>
-<script src="js/whatsapp-teste.js?v=20260728e"></script>
-<script src="js/modals.js?v=20260728e"></script>
-<script src="js/alimentar.js?v=20260728e"></script>
-<script src="js/fechamento-criar.js?v=20260728e"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260728e"></script>
-<script src="js/bipagens.js?v=20260728e"></script>
-<script src="js/pedidos.js?v=20260728e"></script>
-<script src="js/desempenho-bip.js?v=20260728e"></script>
-<script src="js/desempenho-hora.js?v=20260728e"></script>
-<script src="js/conferencias.js?v=20260728e"></script>
-<script src="js/antecipacoes.js?v=20260728e"></script>
-<script src="js/antecipacoes-admin.js?v=20260728e"></script>
-<script src="js/baixas.js?v=20260728e"></script>
-<script src="js/devolucoes.js?v=20260728e"></script>
-<script src="js/viagens.js?v=20260728e"></script>
-<script src="js/ocorrencias.js?v=20260728e"></script>
-<script src="js/ocorrencias-admin.js?v=20260728e"></script>
-<script src="js/localizacao.js?v=20260728e"></script>
-<script src="js/localizacao-admin.js?v=20260728e"></script>
-<script src="js/transferencias.js?v=20260728e"></script>
-<script src="js/transferencias-admin.js?v=20260728e"></script>
-<script src="js/motorista-devolucoes.js?v=20260728e"></script>
-<script src="js/etiquetas.js?v=20260728e"></script>
-<script src="js/videira.js?v=20260728e"></script>
-<script src="js/planejamento-videira.js?v=20260728e"></script>
-<script src="js/torre.js?v=20260728e"></script>
+<script src="js/core.js?v=20260728f"></script>
+<script src="js/router.js?v=20260728f"></script>
+<script src="js/sidebar.js?v=20260728f"></script>
+<script src="js/nav.js?v=20260728f"></script>
+<script src="js/fechamentos.js?v=20260728f"></script>
+<script src="js/admin.js?v=20260728f"></script>
+<script src="js/conf-nf.js?v=20260728f"></script>
+<script src="js/trampay.js?v=20260728f"></script>
+<script src="js/usuarios.js?v=20260728f"></script>
+<script src="js/motoristas.js?v=20260728f"></script>
+<script src="js/pagamentos.js?v=20260728f"></script>
+<script src="js/notas-fiscais.js?v=20260728f"></script>
+<script src="js/dashboard.js?v=20260728f"></script>
+<script src="js/ent-dashboard.js?v=20260728f"></script>
+<script src="js/nota-fiscal.js?v=20260728f"></script>
+<script src="js/extravios.js?v=20260728f"></script>
+<script src="js/usuarios-gc.js?v=20260728f"></script>
+<script src="js/todos-usuarios.js?v=20260728f"></script>
+<script src="js/whatsapp-teste.js?v=20260728f"></script>
+<script src="js/whatsapp-conversa.js?v=20260728f"></script>
+<script src="js/modals.js?v=20260728f"></script>
+<script src="js/alimentar.js?v=20260728f"></script>
+<script src="js/fechamento-criar.js?v=20260728f"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260728f"></script>
+<script src="js/bipagens.js?v=20260728f"></script>
+<script src="js/pedidos.js?v=20260728f"></script>
+<script src="js/desempenho-bip.js?v=20260728f"></script>
+<script src="js/desempenho-hora.js?v=20260728f"></script>
+<script src="js/conferencias.js?v=20260728f"></script>
+<script src="js/antecipacoes.js?v=20260728f"></script>
+<script src="js/antecipacoes-admin.js?v=20260728f"></script>
+<script src="js/baixas.js?v=20260728f"></script>
+<script src="js/devolucoes.js?v=20260728f"></script>
+<script src="js/viagens.js?v=20260728f"></script>
+<script src="js/ocorrencias.js?v=20260728f"></script>
+<script src="js/ocorrencias-admin.js?v=20260728f"></script>
+<script src="js/localizacao.js?v=20260728f"></script>
+<script src="js/localizacao-admin.js?v=20260728f"></script>
+<script src="js/transferencias.js?v=20260728f"></script>
+<script src="js/transferencias-admin.js?v=20260728f"></script>
+<script src="js/motorista-devolucoes.js?v=20260728f"></script>
+<script src="js/etiquetas.js?v=20260728f"></script>
+<script src="js/videira.js?v=20260728f"></script>
+<script src="js/planejamento-videira.js?v=20260728f"></script>
+<script src="js/torre.js?v=20260728f"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
