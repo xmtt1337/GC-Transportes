@@ -13,6 +13,106 @@ function abrirWhatsappTeste(event) {
     _waCarregarHistorico();
 }
 
+// ── Criar template direto pela API (contorna o bug da tela "Criar modelo") ──
+const WA_TPL_CRIAR_CONFIGS = {
+    reclamacao_tiktok_jt: {
+        corpo: `Olá, {{1}}
+Meu nome é {{2}}, representante da transportadora J&T Express.
+Verificamos que você abriu uma reclamação referente ao pedido {{3}}, realizado pela {{4}}.
+Para que possamos auxiliar, escolha uma das opções abaixo e responda apenas com o número:
+1 - Recebi o produto;
+2 - Recebi o produto corretamente lacrado/embalado;
+3 - Não recebi o produto;
+4 - Recebi o produto com itens faltantes;
+5 - Recebi o produto com a embalagem externa em más condições;
+6 - Recebi um produto diferente do comprado;
+7 - Recebi o produto com defeito`,
+        exemplos: "João Silva, Matheus, 888001765263150, Loja Exemplo"
+    },
+    reclamacao_ml_jt: {
+        corpo: `Olá, {{1}}!
+Me chamo {{2}} e sou da Transportadora J&T Express, parceira de entregas do Mercado Livre.
+
+Verificamos que você abriu uma reclamação referente ao produto {{3}} ID {{4}} entregue dia {{5}}.
+Para que possamos auxiliar, escolha uma opção:
+1- Recebi o produto
+2- Não recebi o produto;
+3- Recebi o pacote com produtos faltantes;
+4- Recebi o produto com defeito;
+5- Recebi um produto diferente do comprado.`,
+        exemplos: "João Silva, Matheus, Fone de ouvido, 888001765263150 / JMS789, 28/07/2026 14:30"
+    },
+    reclamacao_shopee: {
+        corpo: "Olá, {{1}} !Aqui é da transportadora GCTRANSPORTES, parceira da Shopee e responsável pela entrega do seu pedido {{2}}. Por gentileza, pode confirmar a entrega do seu pedido preenchendo os dados abaixo:【1】Nome completo do destinatário:【2】CPF:【3】Seu pedido foi recebido?: SIM ou NÃO【4】 A solicitação de reembolso foi cancelada via app?*: SIM ou NÃO【Nota】*Caso seu pedido tenha sido entregue e a solicitação de reembolso ainda está aberta, pedimos que prossiga com o cancelamento do reembolso via app. Agradecemos pela atenção!",
+        exemplos: "João Silva, 888001765263150"
+    },
+    reclamacao_imile: {
+        corpo: `Olá cliente {{1}}, tudo bem?
+Me chamo {{2}}, sou do time de SAC da Imile Delivery.
+Recebemos uma reclamação a respeito do seu pedido número {{3}}, remetente {{4}}.
+PRODUTO: {{5}}
+
+Poderia me confirmar se você recebeu ele corretamente se estava lacrado?
+Observação: não aceitamos áudios, apenas mensagens por escrito
+
+Aguardo seu retorno e agradeço desde já! ☺️`,
+        exemplos: "João Silva, Amanda, 888001765263150, Loja Exemplo, Fone de ouvido"
+    },
+    reclamacao_anjun: {
+        corpo: "Olá, {{1}} ! Faço parte da equipe de parceiros da Anjun Express, transportadora responsável pela entrega do seu pedido. O motivo do meu contato é para falarmos a respeito do pedido {{2}}, do qual foi aberto uma reclamação. Plataforma: {{3}} Por gentileza, poderia confirmar o recebimento do seu pedido preenchendo os dados abaixo? .CPF: .Seu pedido foi entregue? Responda com SIM ou NÃO.",
+        exemplos: "João Silva, 888001765263150, Shopee"
+    }
+};
+
+function _waTplPreencher(nome) {
+    const cfg = WA_TPL_CRIAR_CONFIGS[nome];
+    if (!cfg) return;
+    document.getElementById("wa-tpl-nome").value = nome;
+    document.getElementById("wa-tpl-corpo").value = cfg.corpo;
+    document.getElementById("wa-tpl-exemplos").value = cfg.exemplos;
+    document.querySelectorAll("#wa-tpl-atalhos .filtro-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.tpl === nome));
+}
+
+function _waTplCriar() {
+    const wabaId    = document.getElementById("wa-tpl-waba").value.trim();
+    const nome      = document.getElementById("wa-tpl-nome").value.trim();
+    const categoria = document.getElementById("wa-tpl-categoria").value;
+    const idioma    = document.getElementById("wa-tpl-idioma").value.trim() || "pt_BR";
+    const corpo     = document.getElementById("wa-tpl-corpo").value;
+    const exemplos  = document.getElementById("wa-tpl-exemplos").value.split(",").map(e => e.trim()).filter(e => e);
+    const msgEl = document.getElementById("wa-tpl-msg");
+
+    if (!wabaId || !nome || !corpo) {
+        msgEl.style.color = "#ef4444";
+        msgEl.innerText = "Preencha WABA ID, nome e corpo.";
+        return;
+    }
+
+    msgEl.style.color = "#64748b";
+    msgEl.innerText = "Criando...";
+
+    fetch(`${API}/admin/whatsapp/criar-template`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ waba_id: wabaId, nome, categoria, idioma, corpo, exemplos })
+    })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ ok, body }) => {
+        if (!ok) {
+            msgEl.style.color = "#ef4444";
+            msgEl.innerText = (body.error || "Erro ao criar.") + (body.detalhe ? " — " + JSON.stringify(body.detalhe) : "");
+            return;
+        }
+        msgEl.style.color = "#22c55e";
+        msgEl.innerText = `Template criado! Status: ${body.status || "—"} (ID: ${body.id || "—"})`;
+    })
+    .catch(() => {
+        msgEl.style.color = "#ef4444";
+        msgEl.innerText = "Erro ao conectar com o servidor.";
+    });
+}
+
 // ── Mensagens de reclamação por transportadora ──
 // Cada categoria vira um template aprovado na Meta (nome em "template"); os campos
 // abaixo viram os parâmetros {{1}}, {{2}}... na mesma ordem em que aparecem no texto.
