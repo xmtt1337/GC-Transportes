@@ -74,3 +74,26 @@ function _wacCarregarConversa() {
         })
         .catch(() => { body.innerHTML = `<div style="text-align:center;color:#ef4444;font-size:13px;padding:20px">Erro ao carregar conversa.</div>`; });
 }
+
+// Resposta livre — só funciona dentro da janela de 24h aberta pelo cliente (sem template).
+function _wacResponderEnviar() {
+    const input = document.getElementById("wac-compose-input");
+    const texto = input.value.trim();
+    if (!texto || !_wacNumeroAtual) return;
+
+    input.disabled = true;
+    fetch(`${API}/admin/whatsapp/responder`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ numero: _wacNumeroAtual, texto })
+    })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ ok, body }) => {
+        input.disabled = false;
+        if (!ok) { gcAlert(body.error || "Erro ao enviar."); return; }
+        input.value = "";
+        input.focus();
+        _wacCarregarConversa();
+    })
+    .catch(() => { input.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
+}
