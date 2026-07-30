@@ -201,7 +201,12 @@ function _waRecEnviar() {
     })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ ok, body }) => {
-        if (!ok) { msgEl.style.color = "#ef4444"; msgEl.innerText = body.error || "Erro ao enviar."; return; }
+        if (!ok) {
+            if (body.detalhe) console.error("[whatsapp] recusa da Meta:", body.detalhe);
+            msgEl.style.color = "#ef4444";
+            msgEl.innerText = body.error || "Erro ao enviar.";
+            return;
+        }
         msgEl.style.color = "#22c55e";
         msgEl.innerText = "Enviado! ID: " + (body.id || "—");
         _waCarregarHistorico();
