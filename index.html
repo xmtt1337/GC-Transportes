@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260728h">
+<link rel="stylesheet" href="style.css?v=20260728i">
 </head>
 <body>
 
@@ -1645,51 +1645,6 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div style="font-size:15px;font-weight:700;color:#e2e8f0">WhatsApp — Teste de envio</div>
             </div>
             <div class="fech-body">
-                <div class="ed-section" style="max-width:700px;margin-bottom:20px">
-                    <div class="ed-section-title">Criar template via API (contorna bug da tela)</div>
-                    <div style="display:flex;flex-direction:column;gap:14px">
-                        <div>
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">WABA ID</label>
-                            <input type="text" id="wa-tpl-waba" class="fech-select" style="width:100%;background-image:none;padding-right:14px" value="871328202328226">
-                        </div>
-                        <div class="filtro-tabs" id="wa-tpl-atalhos">
-                            <button type="button" class="filtro-tab" data-tpl="reclamacao_tiktok_jt" onclick="_waTplPreencher('reclamacao_tiktok_jt')">TikTok</button>
-                            <button type="button" class="filtro-tab" data-tpl="reclamacao_ml_jt" onclick="_waTplPreencher('reclamacao_ml_jt')">Mercado Livre</button>
-                            <button type="button" class="filtro-tab" data-tpl="reclamacao_shopee" onclick="_waTplPreencher('reclamacao_shopee')">Shopee</button>
-                            <button type="button" class="filtro-tab" data-tpl="reclamacao_imile" onclick="_waTplPreencher('reclamacao_imile')">iMile</button>
-                            <button type="button" class="filtro-tab" data-tpl="reclamacao_anjun" onclick="_waTplPreencher('reclamacao_anjun')">Anjun</button>
-                        </div>
-                        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px">
-                            <div>
-                                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Nome do template</label>
-                                <input type="text" id="wa-tpl-nome" class="fech-select" style="width:100%;background-image:none;padding-right:14px" placeholder="reclamacao_tiktok_jt">
-                            </div>
-                            <div>
-                                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Categoria</label>
-                                <select id="wa-tpl-categoria" class="fech-select" style="width:100%">
-                                    <option value="UTILITY" selected>Utilidade</option>
-                                    <option value="MARKETING">Marketing</option>
-                                    <option value="AUTHENTICATION">Autenticação</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Idioma</label>
-                                <input type="text" id="wa-tpl-idioma" class="fech-select" style="width:100%;background-image:none;padding-right:14px" value="pt_BR">
-                            </div>
-                        </div>
-                        <div>
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Corpo (use {{1}}, {{2}}... nos lugares das variáveis)</label>
-                            <textarea id="wa-tpl-corpo" class="fech-select" style="width:100%;min-height:160px;font-family:monospace;font-size:12.5px;resize:vertical;padding:10px;background-image:none"></textarea>
-                        </div>
-                        <div>
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Exemplos das variáveis (separados por vírgula, na ordem)</label>
-                            <input type="text" id="wa-tpl-exemplos" class="fech-select" style="width:100%" placeholder="João Silva, Matheus, 888001765263150, Loja Exemplo">
-                        </div>
-                        <button class="extrv-refresh-btn" onclick="_waTplCriar()" style="justify-content:center;padding:10px">Criar template</button>
-                        <div id="wa-tpl-msg" style="font-size:13px"></div>
-                    </div>
-                </div>
-
                 <div class="ed-section" style="max-width:640px;margin-bottom:20px">
                     <div class="ed-section-title">Mensagem de reclamação por transportadora</div>
                     <div class="filtro-tabs" id="wa-rec-tabs" style="margin-bottom:16px">
@@ -1711,26 +1666,6 @@ if (location.hostname === "xmtt1337.github.io") {
                         </div>
                         <button class="extrv-refresh-btn" onclick="_waRecEnviar()" style="justify-content:center;padding:10px">Enviar mensagem</button>
                         <div id="wa-rec-msg" style="font-size:13px"></div>
-                    </div>
-                </div>
-
-                <div class="ed-section" style="max-width:520px;margin-bottom:20px">
-                    <div class="ed-section-title">Disparar mensagem por template (livre)</div>
-                    <div style="display:flex;flex-direction:column;gap:14px">
-                        <div>
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Número (com DDI)</label>
-                            <input type="text" id="wa-numero" class="fech-select" style="width:100%" placeholder="5549991391812">
-                        </div>
-                        <div>
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Template</label>
-                            <input type="text" id="wa-template" class="fech-select" style="width:100%" placeholder="hello_world">
-                        </div>
-                        <div>
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Parâmetros (separados por vírgula, na ordem {{1}}, {{2}}...)</label>
-                            <input type="text" id="wa-parametros" class="fech-select" style="width:100%" placeholder="João, GC2026070099">
-                        </div>
-                        <button class="extrv-refresh-btn" onclick="_waEnviar()" style="justify-content:center;padding:10px">Enviar mensagem</button>
-                        <div id="wa-msg" style="font-size:13px"></div>
                     </div>
                 </div>
 
@@ -2699,51 +2634,51 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260728h"></script>
-<script src="js/router.js?v=20260728h"></script>
-<script src="js/sidebar.js?v=20260728h"></script>
-<script src="js/nav.js?v=20260728h"></script>
-<script src="js/fechamentos.js?v=20260728h"></script>
-<script src="js/admin.js?v=20260728h"></script>
-<script src="js/conf-nf.js?v=20260728h"></script>
-<script src="js/trampay.js?v=20260728h"></script>
-<script src="js/usuarios.js?v=20260728h"></script>
-<script src="js/motoristas.js?v=20260728h"></script>
-<script src="js/pagamentos.js?v=20260728h"></script>
-<script src="js/notas-fiscais.js?v=20260728h"></script>
-<script src="js/dashboard.js?v=20260728h"></script>
-<script src="js/ent-dashboard.js?v=20260728h"></script>
-<script src="js/nota-fiscal.js?v=20260728h"></script>
-<script src="js/extravios.js?v=20260728h"></script>
-<script src="js/usuarios-gc.js?v=20260728h"></script>
-<script src="js/todos-usuarios.js?v=20260728h"></script>
-<script src="js/whatsapp-teste.js?v=20260728h"></script>
-<script src="js/whatsapp-conversa.js?v=20260728h"></script>
-<script src="js/modals.js?v=20260728h"></script>
-<script src="js/alimentar.js?v=20260728h"></script>
-<script src="js/fechamento-criar.js?v=20260728h"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260728h"></script>
-<script src="js/bipagens.js?v=20260728h"></script>
-<script src="js/pedidos.js?v=20260728h"></script>
-<script src="js/desempenho-bip.js?v=20260728h"></script>
-<script src="js/desempenho-hora.js?v=20260728h"></script>
-<script src="js/conferencias.js?v=20260728h"></script>
-<script src="js/antecipacoes.js?v=20260728h"></script>
-<script src="js/antecipacoes-admin.js?v=20260728h"></script>
-<script src="js/baixas.js?v=20260728h"></script>
-<script src="js/devolucoes.js?v=20260728h"></script>
-<script src="js/viagens.js?v=20260728h"></script>
-<script src="js/ocorrencias.js?v=20260728h"></script>
-<script src="js/ocorrencias-admin.js?v=20260728h"></script>
-<script src="js/localizacao.js?v=20260728h"></script>
-<script src="js/localizacao-admin.js?v=20260728h"></script>
-<script src="js/transferencias.js?v=20260728h"></script>
-<script src="js/transferencias-admin.js?v=20260728h"></script>
-<script src="js/motorista-devolucoes.js?v=20260728h"></script>
-<script src="js/etiquetas.js?v=20260728h"></script>
-<script src="js/videira.js?v=20260728h"></script>
-<script src="js/planejamento-videira.js?v=20260728h"></script>
-<script src="js/torre.js?v=20260728h"></script>
+<script src="js/core.js?v=20260728i"></script>
+<script src="js/router.js?v=20260728i"></script>
+<script src="js/sidebar.js?v=20260728i"></script>
+<script src="js/nav.js?v=20260728i"></script>
+<script src="js/fechamentos.js?v=20260728i"></script>
+<script src="js/admin.js?v=20260728i"></script>
+<script src="js/conf-nf.js?v=20260728i"></script>
+<script src="js/trampay.js?v=20260728i"></script>
+<script src="js/usuarios.js?v=20260728i"></script>
+<script src="js/motoristas.js?v=20260728i"></script>
+<script src="js/pagamentos.js?v=20260728i"></script>
+<script src="js/notas-fiscais.js?v=20260728i"></script>
+<script src="js/dashboard.js?v=20260728i"></script>
+<script src="js/ent-dashboard.js?v=20260728i"></script>
+<script src="js/nota-fiscal.js?v=20260728i"></script>
+<script src="js/extravios.js?v=20260728i"></script>
+<script src="js/usuarios-gc.js?v=20260728i"></script>
+<script src="js/todos-usuarios.js?v=20260728i"></script>
+<script src="js/whatsapp-teste.js?v=20260728i"></script>
+<script src="js/whatsapp-conversa.js?v=20260728i"></script>
+<script src="js/modals.js?v=20260728i"></script>
+<script src="js/alimentar.js?v=20260728i"></script>
+<script src="js/fechamento-criar.js?v=20260728i"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260728i"></script>
+<script src="js/bipagens.js?v=20260728i"></script>
+<script src="js/pedidos.js?v=20260728i"></script>
+<script src="js/desempenho-bip.js?v=20260728i"></script>
+<script src="js/desempenho-hora.js?v=20260728i"></script>
+<script src="js/conferencias.js?v=20260728i"></script>
+<script src="js/antecipacoes.js?v=20260728i"></script>
+<script src="js/antecipacoes-admin.js?v=20260728i"></script>
+<script src="js/baixas.js?v=20260728i"></script>
+<script src="js/devolucoes.js?v=20260728i"></script>
+<script src="js/viagens.js?v=20260728i"></script>
+<script src="js/ocorrencias.js?v=20260728i"></script>
+<script src="js/ocorrencias-admin.js?v=20260728i"></script>
+<script src="js/localizacao.js?v=20260728i"></script>
+<script src="js/localizacao-admin.js?v=20260728i"></script>
+<script src="js/transferencias.js?v=20260728i"></script>
+<script src="js/transferencias-admin.js?v=20260728i"></script>
+<script src="js/motorista-devolucoes.js?v=20260728i"></script>
+<script src="js/etiquetas.js?v=20260728i"></script>
+<script src="js/videira.js?v=20260728i"></script>
+<script src="js/planejamento-videira.js?v=20260728i"></script>
+<script src="js/torre.js?v=20260728i"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
