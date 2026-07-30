@@ -33,17 +33,27 @@ function _wacStatusPrazo(conversa) {
     const hojeData = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
     const diasRestantes = Math.round((vencimentoData - hojeData) / (1000 * 60 * 60 * 24));
 
-    if (diasRestantes <= 0) return "vencendo_hoje";
+    if (diasRestantes < 0)   return "vencidos";       // passou do prazo e o cliente nunca respondeu
+    if (diasRestantes === 0) return "vencendo_hoje";
     if (diasRestantes === 1) return "um_dia";
     return "dois_dias";
 }
 
-const WA_GRUPOS_PRAZO = [
+// Colunas abertas: só o que ainda está correndo contra o prazo.
+const WA_COLUNAS_PRAZO = [
     { chave: "vencendo_hoje", titulo: "Vence hoje",  cor: "#ef4444", corBg: "rgba(239,68,68,0.14)" },
     { chave: "um_dia",        titulo: "1 dia",       cor: "#fbbf24", corBg: "rgba(251,191,36,0.14)" },
     { chave: "dois_dias",     titulo: "2 dias",      cor: "#3a86ff", corBg: "rgba(58,134,255,0.14)" },
-    { chave: "respondidos",   titulo: "Respondidos", cor: "#22c55e", corBg: "rgba(34,197,94,0.14)" },
 ];
+
+// Sanfonas embaixo: casos encerrados (respondido) ou perdidos (venceu sem resposta).
+// Começam sempre fechadas — são consulta pontual, não o foco do dia a dia.
+const WA_ACORDEOES_PRAZO = [
+    { chave: "vencidos",    titulo: "Vencidos sem resposta", cor: "#64748b", corBg: "rgba(100,116,139,0.16)" },
+    { chave: "respondidos", titulo: "Respondidos",           cor: "#22c55e", corBg: "rgba(34,197,94,0.14)" },
+];
+
+const WA_GRUPOS_PRAZO = [...WA_COLUNAS_PRAZO, ...WA_ACORDEOES_PRAZO];
 
 function abrirWhatsappConversas(event) {
     if (event) event.preventDefault();
@@ -53,6 +63,30 @@ function abrirWhatsappConversas(event) {
     }
     mostrarTela("tela-whatsapp-conversas");
     _wacCarregarLista();
+}
+
+function _wacCards(itens, grupo) {
+    return itens.map(r => {
+        const nome = (r.nome_cliente || "").replace(/'/g, "\\'");
+        const iniciais = (r.nome_cliente || r.numero).trim().split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase();
+        const respondeu = grupo.chave === "respondidos";
+        const quando = respondeu ? new Date(r.ultima) : _wacVencimento(r.primeiro_envio, r.template_inicial);
+        const rotulo = respondeu ? "Respondeu" : (grupo.chave === "vencidos" ? "Venceu" : "Vence");
+        return `
+        <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}','${nome}')">
+            <div class="wac-card-avatar" style="background:${grupo.corBg};color:${grupo.cor}">${iniciais}</div>
+            <div class="wac-card-info">
+                <div class="wac-card-nome">${r.nome_cliente || "—"}</div>
+                <div class="wac-card-numero">${r.numero}</div>
+                <div class="wac-card-prazo">${rotulo} ${quando.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
+            </div>
+        </div>`;
+    }).join("");
+}
+
+function _wacAlternarAcordeao(chave) {
+    const el = document.getElementById(`wac-acordeao-${chave}`);
+    if (el) el.classList.toggle("aberto");
 }
 
 function _wacCarregarLista() {
@@ -72,34 +106,26 @@ function _wacCarregarLista() {
             WA_GRUPOS_PRAZO.forEach(g => { grupos[g.chave] = []; });
             rows.forEach(r => grupos[_wacStatusPrazo(r)].push(r));
 
-            document.getElementById("wac-lista").innerHTML = WA_GRUPOS_PRAZO.map(g => {
-                const itens = grupos[g.chave];
-                const cards = itens.map(r => {
-                    const nome = (r.nome_cliente || "").replace(/'/g, "\\'");
-                    const iniciais = (r.nome_cliente || r.numero).trim().split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase();
-                    const quando = g.chave === "respondidos"
-                        ? new Date(r.ultima)
-                        : _wacVencimento(r.primeiro_envio, r.template_inicial);
-                    const rotulo = g.chave === "respondidos" ? "Respondeu" : "Vence";
-                    return `
-                    <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}','${nome}')">
-                        <div class="wac-card-avatar" style="background:${g.corBg};color:${g.cor}">${iniciais}</div>
-                        <div class="wac-card-info">
-                            <div class="wac-card-nome">${r.nome_cliente || "—"}</div>
-                            <div class="wac-card-numero">${r.numero}</div>
-                            <div class="wac-card-prazo">${rotulo} ${quando.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
-                        </div>
-                    </div>`;
-                }).join("") || `<div class="wac-coluna-vazia">—</div>`;
-                return `
+            document.getElementById("wac-lista").innerHTML = WA_COLUNAS_PRAZO.map(g => `
                 <div class="wac-coluna">
                     <div class="wac-coluna-header">
                         <span class="wac-coluna-dot" style="background:${g.cor}"></span>
-                        <span>${g.titulo}</span><span class="wac-coluna-contagem">${itens.length}</span>
+                        <span>${g.titulo}</span><span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
                     </div>
-                    <div class="wac-coluna-cards">${cards}</div>
-                </div>`;
-            }).join("");
+                    <div class="wac-coluna-cards">${_wacCards(grupos[g.chave], g) || `<div class="wac-coluna-vazia">—</div>`}</div>
+                </div>`).join("");
+
+            // Sanfonas: sempre fecham ao entrar na tela, mesmo que estivessem abertas antes.
+            document.getElementById("wac-acordeoes").innerHTML = WA_ACORDEOES_PRAZO.map(g => `
+                <div class="wac-acordeao" id="wac-acordeao-${g.chave}">
+                    <button class="wac-acordeao-header" onclick="_wacAlternarAcordeao('${g.chave}')">
+                        <span class="wac-coluna-dot" style="background:${g.cor}"></span>
+                        <span>${g.titulo}</span>
+                        <span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
+                        <span class="wac-acordeao-seta">⌄</span>
+                    </button>
+                    <div class="wac-acordeao-corpo">${_wacCards(grupos[g.chave], g) || `<div class="wac-coluna-vazia">Nenhuma conversa aqui.</div>`}</div>
+                </div>`).join("");
         })
         .catch(() => { skFim(empty, "Erro ao carregar conversas."); });
 }
