@@ -14,22 +14,27 @@ const WA_PRAZO_POR_TEMPLATE = {
     reclamacao_anjun: 2,
 };
 
-// Dias restantes até o vencimento, contando por data de calendário (não por hora exata) —
-// mais intuitivo pra um prazo em "dias" (ex.: enviou às 23h, ainda conta o dia inteiro).
-function _wacDiasRestantes(primeiroEnvio, template) {
+// Vencimento exato: 48h corridas (2 × 24h) a partir do minuto certo do primeiro envio,
+// não da data do calendário — enviou 29/07 às 23h58, vence 31/07 às 23h58 em ponto.
+function _wacVencimento(primeiroEnvio, template) {
     const prazoDias = WA_PRAZO_POR_TEMPLATE[template] ?? WA_PRAZO_DIAS_PADRAO;
     const envio = new Date(primeiroEnvio);
-    const vencimento = new Date(envio.getFullYear(), envio.getMonth(), envio.getDate() + prazoDias);
-    const hoje = new Date();
-    const hojeSemHora = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-    return Math.round((vencimento - hojeSemHora) / (1000 * 60 * 60 * 24));
+    return new Date(envio.getTime() + prazoDias * 24 * 60 * 60 * 1000);
 }
 
+// O agrupamento em blocos (hoje/1 dia/2 dias) compara a DATA do vencimento exato acima
+// com a data de hoje — assim o corte de bucket cai num dia legível, mas o vencimento em
+// si continua sendo as 48h corridas de verdade (é o que aparece na hora certa na conversa).
 function _wacStatusPrazo(conversa) {
     if (conversa.respondido) return "respondidos";
-    const dias = _wacDiasRestantes(conversa.primeiro_envio, conversa.template_inicial);
-    if (dias <= 0) return "vencendo_hoje";
-    if (dias === 1) return "um_dia";
+    const vencimento = _wacVencimento(conversa.primeiro_envio, conversa.template_inicial);
+    const hoje = new Date();
+    const vencimentoData = new Date(vencimento.getFullYear(), vencimento.getMonth(), vencimento.getDate());
+    const hojeData = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const diasRestantes = Math.round((vencimentoData - hojeData) / (1000 * 60 * 60 * 24));
+
+    if (diasRestantes <= 0) return "vencendo_hoje";
+    if (diasRestantes === 1) return "um_dia";
     return "dois_dias";
 }
 
@@ -72,13 +77,16 @@ function _wacCarregarLista() {
                 if (!itens.length) return "";
                 const linhas = itens.map(r => {
                     const nome = (r.nome_cliente || "").replace(/'/g, "\\'");
+                    const rodape = g.chave === "respondidos"
+                        ? `Última msg: ${new Date(r.ultima).toLocaleString("pt-BR")}`
+                        : `Vence: ${_wacVencimento(r.primeiro_envio, r.template_inicial).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`;
                     return `
                     <div class="ed-tr-row" style="cursor:pointer;grid-template-columns:1fr auto" onclick="_wacAbrirConversa('${r.numero}','${nome}')">
                         <div>
                             <div class="ed-tr-name">${r.nome_cliente || "—"}</div>
                             <div style="font-size:12px;color:#64748b;font-family:monospace">${r.numero}</div>
                         </div>
-                        <div style="font-size:12px;color:#64748b">${new Date(r.ultima).toLocaleString("pt-BR")}</div>
+                        <div style="font-size:12px;color:#64748b">${rodape}</div>
                     </div>`;
                 }).join("");
                 return `
