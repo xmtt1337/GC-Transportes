@@ -2,6 +2,13 @@
 // Recria o visual do app do WhatsApp com os dados reais trocados com o cliente,
 // pra servir de "print" pro SAC mostrar pra transportadora sem precisar do celular.
 let _wacNumeroAtual = null;
+let _wacAutoRefresh = null;
+
+// Foto de perfil padrão (silhueta cinza do WhatsApp) — igual pra todo mundo, sem emoji.
+const WA_AVATAR_SVG = `<svg viewBox="0 0 212 212" width="100%" height="100%" aria-hidden="true">
+    <circle cx="106" cy="106" r="106" fill="#6a7175"/>
+    <path fill="#cfd5d9" d="M106 109c17 0 31-14 31-31s-14-31-31-31-31 14-31 31 14 31 31 31zm0 13c-25 0-56 12-56 31v14h112v-14c0-19-31-31-56-31z"/>
+</svg>`;
 
 // Prazo de resposta (em dias) por template — usado pra agrupar a lista de conversas
 // por urgência. Todos os scripts de reclamação hoje têm 2 dias; ajuste aqui se algum mudar.
@@ -67,13 +74,12 @@ function abrirWhatsappConversas(event) {
 
 function _wacCards(itens, grupo) {
     return itens.map(r => {
-        const iniciais = (r.nome_cliente || r.numero).trim().split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase();
         const respondeu = grupo.chave === "respondidos";
         const quando = respondeu ? new Date(r.ultima) : _wacVencimento(r.primeiro_envio, r.template_inicial);
         const rotulo = respondeu ? "Respondeu" : (grupo.chave === "vencidos" ? "Venceu" : "Vence");
         return `
         <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}')">
-            <div class="wac-card-avatar" style="background:${grupo.corBg};color:${grupo.cor}">${iniciais}</div>
+            <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
                 <div class="wac-card-nome">${r.nome_cliente || _wacFormatarNumero(r.numero)}</div>
                 <div class="wac-card-numero">${r.numero}</div>
@@ -137,6 +143,14 @@ function _wacAbrirConversa(numero) {
     document.getElementById("wac-chat-numero").innerText = "";
     mostrarTela("tela-whatsapp-conversa-chat");
     _wacCarregarConversa();
+    // Recarrega sozinho enquanto a conversa está aberta, pra resposta do cliente
+    // aparecer sem precisar sair e entrar de novo.
+    if (_wacAutoRefresh) clearInterval(_wacAutoRefresh);
+    _wacAutoRefresh = setInterval(() => {
+        const tela = document.getElementById("tela-whatsapp-conversa-chat");
+        if (!tela || !tela.classList.contains("active-view")) { clearInterval(_wacAutoRefresh); _wacAutoRefresh = null; return; }
+        _wacCarregarConversa(true);
+    }, 10000);
 }
 
 // 5549999276131 → +55 49 99927-6131
@@ -152,9 +166,10 @@ function _wacEscapar(s) {
     return div.innerHTML.replace(/\n/g, "<br>");
 }
 
-function _wacCarregarConversa() {
+// silencioso: recarrega sem piscar "Carregando..." (usado pelo auto-refresh)
+function _wacCarregarConversa(silencioso) {
     const body = document.getElementById("wac-chat-body");
-    body.innerHTML = `<div style="text-align:center;color:#5b6b73;font-size:13px;padding:20px">Carregando...</div>`;
+    if (!silencioso) body.innerHTML = `<div style="text-align:center;color:#5b6b73;font-size:13px;padding:20px">Carregando...</div>`;
 
     fetch(`${API}/admin/whatsapp/conversa/${_wacNumeroAtual}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
