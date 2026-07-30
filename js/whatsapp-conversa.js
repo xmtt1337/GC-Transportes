@@ -3,6 +3,43 @@
 // pra servir de "print" pro SAC mostrar pra transportadora sem precisar do celular.
 let _wacNumeroAtual = null;
 
+// Prazo de resposta (em dias) por template — usado pra agrupar a lista de conversas
+// por urgência. Todos os scripts de reclamação hoje têm 2 dias; ajuste aqui se algum mudar.
+const WA_PRAZO_DIAS_PADRAO = 2;
+const WA_PRAZO_POR_TEMPLATE = {
+    reclamacao_tiktok_jt: 2,
+    reclamacao_ml_jt: 2,
+    reclamacao_shopee: 2,
+    reclamacao_imile: 2,
+    reclamacao_anjun: 2,
+};
+
+// Dias restantes até o vencimento, contando por data de calendário (não por hora exata) —
+// mais intuitivo pra um prazo em "dias" (ex.: enviou às 23h, ainda conta o dia inteiro).
+function _wacDiasRestantes(primeiroEnvio, template) {
+    const prazoDias = WA_PRAZO_POR_TEMPLATE[template] ?? WA_PRAZO_DIAS_PADRAO;
+    const envio = new Date(primeiroEnvio);
+    const vencimento = new Date(envio.getFullYear(), envio.getMonth(), envio.getDate() + prazoDias);
+    const hoje = new Date();
+    const hojeSemHora = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    return Math.round((vencimento - hojeSemHora) / (1000 * 60 * 60 * 24));
+}
+
+function _wacStatusPrazo(conversa) {
+    if (conversa.respondido) return "respondidos";
+    const dias = _wacDiasRestantes(conversa.primeiro_envio, conversa.template_inicial);
+    if (dias <= 0) return "vencendo_hoje";
+    if (dias === 1) return "um_dia";
+    return "dois_dias";
+}
+
+const WA_GRUPOS_PRAZO = [
+    { chave: "vencendo_hoje", titulo: "Vencendo hoje", cor: "#ef4444" },
+    { chave: "um_dia",        titulo: "1 dia de prazo", cor: "#fbbf24" },
+    { chave: "dois_dias",     titulo: "2 dias de prazo (vencendo em mais de 1 dia)", cor: "#3a86ff" },
+    { chave: "respondidos",   titulo: "Respondidos", cor: "#22c55e" },
+];
+
 function abrirWhatsappConversas(event) {
     if (event) event.preventDefault();
     if (!window._gcUser || window._gcUser.role !== "dev") {
@@ -25,16 +62,30 @@ function _wacCarregarLista() {
             if (!Array.isArray(rows) || !rows.length) { skFim(empty, "Nenhuma conversa registrada ainda."); return; }
             empty.style.display = "none";
             result.style.display = "";
-            document.getElementById("wac-lista").innerHTML = rows.map(r => {
-                const nome = (r.nome_cliente || "").replace(/'/g, "\\'");
+
+            const grupos = {};
+            WA_GRUPOS_PRAZO.forEach(g => { grupos[g.chave] = []; });
+            rows.forEach(r => grupos[_wacStatusPrazo(r)].push(r));
+
+            document.getElementById("wac-lista").innerHTML = WA_GRUPOS_PRAZO.map(g => {
+                const itens = grupos[g.chave];
+                if (!itens.length) return "";
+                const linhas = itens.map(r => {
+                    const nome = (r.nome_cliente || "").replace(/'/g, "\\'");
+                    return `
+                    <div class="ed-tr-row" style="cursor:pointer;grid-template-columns:1fr auto" onclick="_wacAbrirConversa('${r.numero}','${nome}')">
+                        <div>
+                            <div class="ed-tr-name">${r.nome_cliente || "—"}</div>
+                            <div style="font-size:12px;color:#64748b;font-family:monospace">${r.numero}</div>
+                        </div>
+                        <div style="font-size:12px;color:#64748b">${new Date(r.ultima).toLocaleString("pt-BR")}</div>
+                    </div>`;
+                }).join("");
                 return `
-                <div class="ed-tr-row" style="cursor:pointer;grid-template-columns:1fr auto" onclick="_wacAbrirConversa('${r.numero}','${nome}')">
-                    <div>
-                        <div class="ed-tr-name">${r.nome_cliente || "—"}</div>
-                        <div style="font-size:12px;color:#64748b;font-family:monospace">${r.numero}</div>
-                    </div>
-                    <div style="font-size:12px;color:#64748b">${new Date(r.ultima).toLocaleString("pt-BR")}</div>
-                </div>`;
+                <div class="wac-grupo-header" style="border-left-color:${g.cor}">
+                    <span>${g.titulo}</span><span class="wac-grupo-contagem">${itens.length}</span>
+                </div>
+                <div class="ed-tr-list" style="margin-bottom:20px">${linhas}</div>`;
             }).join("");
         })
         .catch(() => { skFim(empty, "Erro ao carregar conversas."); });
