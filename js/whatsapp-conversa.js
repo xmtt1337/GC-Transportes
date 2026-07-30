@@ -210,7 +210,11 @@ function _wacResponderEnviar() {
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ ok, body }) => {
         input.disabled = false;
-        if (!ok) { gcAlert(body.error || "Erro ao enviar."); return; }
+        if (!ok) {
+            if (body.detalhe) console.error("[whatsapp] recusa da Meta:", body.detalhe);
+            gcAlert(body.error || "Erro ao enviar.");
+            return;
+        }
         input.value = "";
         input.focus();
         _wacCarregarConversa();
