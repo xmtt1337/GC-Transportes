@@ -12,6 +12,39 @@ function abrirWhatsappTeste(event) {
     _waCarregarHistorico();
 }
 
+// Registro do número como remetente da Cloud API — uma vez por número (erro #133010).
+function _waRegistrarNumero() {
+    const pin   = document.getElementById("wa-reg-pin").value.trim();
+    const msgEl = document.getElementById("wa-reg-msg");
+
+    if (!/^\d{6}$/.test(pin)) {
+        msgEl.style.color = "#ef4444";
+        msgEl.innerText = "O PIN precisa ter 6 dígitos.";
+        return;
+    }
+
+    msgEl.style.color = "#64748b";
+    msgEl.innerText = "Registrando...";
+
+    fetch(`${API}/admin/whatsapp/registrar-numero`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ pin })
+    })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ ok, body }) => {
+        if (!ok) {
+            if (body.detalhe) console.error("[whatsapp] recusa no registro:", body.detalhe);
+            msgEl.style.color = "#ef4444";
+            msgEl.innerText = body.error || "Erro ao registrar.";
+            return;
+        }
+        msgEl.style.color = "#22c55e";
+        msgEl.innerText = "Número registrado! Já pode enviar mensagens.";
+    })
+    .catch(() => { msgEl.style.color = "#ef4444"; msgEl.innerText = "Erro ao conectar com o servidor."; });
+}
+
 // ── Mensagens de reclamação por transportadora ──
 // Cada categoria vira um template aprovado na Meta (nome em "template"); os campos
 // abaixo viram os parâmetros {{1}}, {{2}}... na mesma ordem em que aparecem no texto.

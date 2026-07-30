@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260728s">
+<link rel="stylesheet" href="style.css?v=20260728t">
 </head>
 <body>
 
@@ -1646,6 +1646,20 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
             <div class="fech-body">
                 <div class="ed-section" style="max-width:640px;margin-bottom:20px">
+                    <div class="ed-section-title">Registrar número na Cloud API</div>
+                    <div style="font-size:12.5px;color:#94a3b8;line-height:1.5;margin-bottom:14px">
+                        Só precisa fazer uma vez por número. Resolve o erro <strong>#133010 (Account not registered)</strong>,
+                        que acontece quando o número está verificado no painel mas ainda não foi ativado como remetente.
+                        O PIN é a verificação em duas etapas do número — escolha 6 dígitos e guarde.
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                        <input type="text" id="wa-reg-pin" class="fech-select" style="width:130px;background-image:none;padding-right:14px" maxlength="6" placeholder="PIN 6 dígitos" inputmode="numeric">
+                        <button class="extrv-refresh-btn" onclick="_waRegistrarNumero()" style="padding:9px 16px">Registrar número</button>
+                        <span id="wa-reg-msg" style="font-size:13px"></span>
+                    </div>
+                </div>
+
+                <div class="ed-section" style="max-width:640px;margin-bottom:20px">
                     <div class="ed-section-title">Mensagem de reclamação por transportadora</div>
                     <div class="filtro-tabs" id="wa-rec-tabs" style="margin-bottom:16px">
                         <button type="button" class="filtro-tab active" data-cat="tiktok" onclick="_waRecEscolher('tiktok')">TikTok (J&T)</button>
@@ -2638,51 +2652,51 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260728s"></script>
-<script src="js/router.js?v=20260728s"></script>
-<script src="js/sidebar.js?v=20260728s"></script>
-<script src="js/nav.js?v=20260728s"></script>
-<script src="js/fechamentos.js?v=20260728s"></script>
-<script src="js/admin.js?v=20260728s"></script>
-<script src="js/conf-nf.js?v=20260728s"></script>
-<script src="js/trampay.js?v=20260728s"></script>
-<script src="js/usuarios.js?v=20260728s"></script>
-<script src="js/motoristas.js?v=20260728s"></script>
-<script src="js/pagamentos.js?v=20260728s"></script>
-<script src="js/notas-fiscais.js?v=20260728s"></script>
-<script src="js/dashboard.js?v=20260728s"></script>
-<script src="js/ent-dashboard.js?v=20260728s"></script>
-<script src="js/nota-fiscal.js?v=20260728s"></script>
-<script src="js/extravios.js?v=20260728s"></script>
-<script src="js/usuarios-gc.js?v=20260728s"></script>
-<script src="js/todos-usuarios.js?v=20260728s"></script>
-<script src="js/whatsapp-teste.js?v=20260728s"></script>
-<script src="js/whatsapp-conversa.js?v=20260728s"></script>
-<script src="js/modals.js?v=20260728s"></script>
-<script src="js/alimentar.js?v=20260728s"></script>
-<script src="js/fechamento-criar.js?v=20260728s"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260728s"></script>
-<script src="js/bipagens.js?v=20260728s"></script>
-<script src="js/pedidos.js?v=20260728s"></script>
-<script src="js/desempenho-bip.js?v=20260728s"></script>
-<script src="js/desempenho-hora.js?v=20260728s"></script>
-<script src="js/conferencias.js?v=20260728s"></script>
-<script src="js/antecipacoes.js?v=20260728s"></script>
-<script src="js/antecipacoes-admin.js?v=20260728s"></script>
-<script src="js/baixas.js?v=20260728s"></script>
-<script src="js/devolucoes.js?v=20260728s"></script>
-<script src="js/viagens.js?v=20260728s"></script>
-<script src="js/ocorrencias.js?v=20260728s"></script>
-<script src="js/ocorrencias-admin.js?v=20260728s"></script>
-<script src="js/localizacao.js?v=20260728s"></script>
-<script src="js/localizacao-admin.js?v=20260728s"></script>
-<script src="js/transferencias.js?v=20260728s"></script>
-<script src="js/transferencias-admin.js?v=20260728s"></script>
-<script src="js/motorista-devolucoes.js?v=20260728s"></script>
-<script src="js/etiquetas.js?v=20260728s"></script>
-<script src="js/videira.js?v=20260728s"></script>
-<script src="js/planejamento-videira.js?v=20260728s"></script>
-<script src="js/torre.js?v=20260728s"></script>
+<script src="js/core.js?v=20260728t"></script>
+<script src="js/router.js?v=20260728t"></script>
+<script src="js/sidebar.js?v=20260728t"></script>
+<script src="js/nav.js?v=20260728t"></script>
+<script src="js/fechamentos.js?v=20260728t"></script>
+<script src="js/admin.js?v=20260728t"></script>
+<script src="js/conf-nf.js?v=20260728t"></script>
+<script src="js/trampay.js?v=20260728t"></script>
+<script src="js/usuarios.js?v=20260728t"></script>
+<script src="js/motoristas.js?v=20260728t"></script>
+<script src="js/pagamentos.js?v=20260728t"></script>
+<script src="js/notas-fiscais.js?v=20260728t"></script>
+<script src="js/dashboard.js?v=20260728t"></script>
+<script src="js/ent-dashboard.js?v=20260728t"></script>
+<script src="js/nota-fiscal.js?v=20260728t"></script>
+<script src="js/extravios.js?v=20260728t"></script>
+<script src="js/usuarios-gc.js?v=20260728t"></script>
+<script src="js/todos-usuarios.js?v=20260728t"></script>
+<script src="js/whatsapp-teste.js?v=20260728t"></script>
+<script src="js/whatsapp-conversa.js?v=20260728t"></script>
+<script src="js/modals.js?v=20260728t"></script>
+<script src="js/alimentar.js?v=20260728t"></script>
+<script src="js/fechamento-criar.js?v=20260728t"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260728t"></script>
+<script src="js/bipagens.js?v=20260728t"></script>
+<script src="js/pedidos.js?v=20260728t"></script>
+<script src="js/desempenho-bip.js?v=20260728t"></script>
+<script src="js/desempenho-hora.js?v=20260728t"></script>
+<script src="js/conferencias.js?v=20260728t"></script>
+<script src="js/antecipacoes.js?v=20260728t"></script>
+<script src="js/antecipacoes-admin.js?v=20260728t"></script>
+<script src="js/baixas.js?v=20260728t"></script>
+<script src="js/devolucoes.js?v=20260728t"></script>
+<script src="js/viagens.js?v=20260728t"></script>
+<script src="js/ocorrencias.js?v=20260728t"></script>
+<script src="js/ocorrencias-admin.js?v=20260728t"></script>
+<script src="js/localizacao.js?v=20260728t"></script>
+<script src="js/localizacao-admin.js?v=20260728t"></script>
+<script src="js/transferencias.js?v=20260728t"></script>
+<script src="js/transferencias-admin.js?v=20260728t"></script>
+<script src="js/motorista-devolucoes.js?v=20260728t"></script>
+<script src="js/etiquetas.js?v=20260728t"></script>
+<script src="js/videira.js?v=20260728t"></script>
+<script src="js/planejamento-videira.js?v=20260728t"></script>
+<script src="js/torre.js?v=20260728t"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
