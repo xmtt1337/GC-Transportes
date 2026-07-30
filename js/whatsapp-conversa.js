@@ -67,16 +67,15 @@ function abrirWhatsappConversas(event) {
 
 function _wacCards(itens, grupo) {
     return itens.map(r => {
-        const nome = (r.nome_cliente || "").replace(/'/g, "\\'");
         const iniciais = (r.nome_cliente || r.numero).trim().split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase();
         const respondeu = grupo.chave === "respondidos";
         const quando = respondeu ? new Date(r.ultima) : _wacVencimento(r.primeiro_envio, r.template_inicial);
         const rotulo = respondeu ? "Respondeu" : (grupo.chave === "vencidos" ? "Venceu" : "Vence");
         return `
-        <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}','${nome}')">
+        <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}')">
             <div class="wac-card-avatar" style="background:${grupo.corBg};color:${grupo.cor}">${iniciais}</div>
             <div class="wac-card-info">
-                <div class="wac-card-nome">${r.nome_cliente || "—"}</div>
+                <div class="wac-card-nome">${r.nome_cliente || _wacFormatarNumero(r.numero)}</div>
                 <div class="wac-card-numero">${r.numero}</div>
                 <div class="wac-card-prazo">${rotulo} ${quando.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
             </div>
@@ -130,12 +129,21 @@ function _wacCarregarLista() {
         .catch(() => { skFim(empty, "Erro ao carregar conversas."); });
 }
 
-function _wacAbrirConversa(numero, nomeCliente) {
+// O cabeçalho mostra só o número, nunca o nome do cliente — é assim que o WhatsApp
+// exibe contato não salvo, e é o que dá credibilidade ao print enviado à transportadora.
+function _wacAbrirConversa(numero) {
     _wacNumeroAtual = numero;
-    document.getElementById("wac-chat-nome").innerText = nomeCliente || numero;
-    document.getElementById("wac-chat-numero").innerText = numero;
+    document.getElementById("wac-chat-nome").innerText = _wacFormatarNumero(numero);
+    document.getElementById("wac-chat-numero").innerText = "";
     mostrarTela("tela-whatsapp-conversa-chat");
     _wacCarregarConversa();
+}
+
+// 5549999276131 → +55 49 99927-6131
+function _wacFormatarNumero(numero) {
+    const n = String(numero).replace(/\D/g, "");
+    const m = n.match(/^55(\d{2})(\d{4,5})(\d{4})$/);
+    return m ? `+55 ${m[1]} ${m[2]}-${m[3]}` : `+${n}`;
 }
 
 function _wacEscapar(s) {
