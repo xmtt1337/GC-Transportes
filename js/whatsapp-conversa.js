@@ -33,6 +33,9 @@ function _wacVencimento(primeiroEnvio, template) {
 // com a data de hoje — assim o corte de bucket cai num dia legível, mas o vencimento em
 // si continua sendo as 48h corridas de verdade (é o que aparece na hora certa na conversa).
 function _wacStatusPrazo(conversa) {
+    // Cliente que nos procurou sem nunca termos mandado nada: não tem prazo correndo,
+    // mas precisa de atenção — fica numa coluna própria, não escondido nas sanfonas.
+    if (!conversa.primeiro_envio) return "recebidas";
     if (conversa.respondido) return "respondidos";
     const vencimento = _wacVencimento(conversa.primeiro_envio, conversa.template_inicial);
     const hoje = new Date();
@@ -46,8 +49,9 @@ function _wacStatusPrazo(conversa) {
     return "dois_dias";
 }
 
-// Colunas abertas: só o que ainda está correndo contra o prazo.
+// Colunas abertas: o que precisa de ação — quem nos procurou + o que corre contra o prazo.
 const WA_COLUNAS_PRAZO = [
+    { chave: "recebidas",     titulo: "Nos chamaram", cor: "#06b6d4", corBg: "rgba(6,182,212,0.14)" },
     { chave: "vencendo_hoje", titulo: "Vence hoje",  cor: "#ef4444", corBg: "rgba(239,68,68,0.14)" },
     { chave: "um_dia",        titulo: "1 dia",       cor: "#fbbf24", corBg: "rgba(251,191,36,0.14)" },
     { chave: "dois_dias",     titulo: "2 dias",      cor: "#3a86ff", corBg: "rgba(58,134,255,0.14)" },
@@ -74,9 +78,12 @@ function abrirWhatsappConversas(event) {
 
 function _wacCards(itens, grupo) {
     return itens.map(r => {
-        const respondeu = grupo.chave === "respondidos";
-        const quando = respondeu ? new Date(r.ultima) : _wacVencimento(r.primeiro_envio, r.template_inicial);
-        const rotulo = respondeu ? "Respondeu" : (grupo.chave === "vencidos" ? "Venceu" : "Vence");
+        // Quem nos procurou e quem já respondeu não têm prazo correndo — mostram a última mensagem.
+        const semPrazo = grupo.chave === "respondidos" || grupo.chave === "recebidas";
+        const quando = semPrazo ? new Date(r.ultima) : _wacVencimento(r.primeiro_envio, r.template_inicial);
+        const rotulo = grupo.chave === "recebidas" ? "Chegou"
+                     : grupo.chave === "respondidos" ? "Respondeu"
+                     : grupo.chave === "vencidos" ? "Venceu" : "Vence";
         return `
         <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}')">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
