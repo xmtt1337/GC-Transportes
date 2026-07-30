@@ -292,16 +292,52 @@ body {
     display: flex; align-items: center; justify-content: center; transition: background 0.15s;
 }
 .wac-compose-btn:hover { background: #2f6fe0; }
-.wac-grupo-header {
-    display: flex; align-items: center; justify-content: space-between;
-    background: rgba(255,255,255,0.03); border-left: 3px solid transparent;
-    border-radius: 8px; padding: 8px 14px; margin-bottom: 8px;
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--text-muted);
+/* Quadro estilo Kanban — uma coluna por bloco de prazo */
+.wac-kanban {
+    display: flex; gap: 16px; align-items: flex-start;
+    overflow-x: auto; padding-bottom: 8px;
 }
-.wac-grupo-contagem {
-    background: rgba(255,255,255,0.06); border-radius: 20px; padding: 1px 8px;
-    font-size: 11px; color: var(--text);
+.wac-coluna {
+    flex: 1 1 260px; min-width: 260px; max-width: 320px;
+    background: rgba(255,255,255,0.015); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 10px;
+}
+.wac-coluna-header {
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 2px solid transparent; padding-bottom: 10px;
+    font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text);
+}
+.wac-coluna-contagem {
+    background: rgba(255,255,255,0.08); border-radius: 20px; padding: 1px 9px;
+    font-size: 11px; color: var(--text); font-weight: 700;
+}
+.wac-coluna-cards { display: flex; flex-direction: column; gap: 8px; }
+.wac-coluna-vazia { font-size: 12px; color: var(--text-dim); padding: 14px 4px; text-align: center; }
+.wac-card {
+    background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--wac-cor);
+    border-radius: 10px; padding: 11px 12px; cursor: pointer;
+    transition: transform 0.12s, border-color 0.12s, background 0.12s;
+}
+.wac-card:hover { background: var(--surface-2); transform: translateY(-1px); }
+.wac-card-topo { display: flex; align-items: center; gap: 10px; }
+.wac-card-avatar {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    background: color-mix(in srgb, var(--wac-cor) 20%, transparent); color: var(--wac-cor);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+}
+.wac-card-info { min-width: 0; }
+.wac-card-nome { font-size: 13.5px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wac-card-numero { font-size: 11px; color: var(--text-muted); font-family: monospace; }
+.wac-card-rodape {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--text-muted);
+}
+.wac-card-rodape span:last-child { color: var(--text); font-weight: 600; }
+@media (max-width: 680px) {
+    .wac-coluna { min-width: 220px; }
 }
 @media (max-width: 480px) {
     .wac-tela.active-view { padding: 0; }

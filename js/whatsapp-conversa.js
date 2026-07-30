@@ -74,26 +74,32 @@ function _wacCarregarLista() {
 
             document.getElementById("wac-lista").innerHTML = WA_GRUPOS_PRAZO.map(g => {
                 const itens = grupos[g.chave];
-                if (!itens.length) return "";
-                const linhas = itens.map(r => {
+                const cards = itens.map(r => {
                     const nome = (r.nome_cliente || "").replace(/'/g, "\\'");
-                    const rodape = g.chave === "respondidos"
-                        ? `Última msg: ${new Date(r.ultima).toLocaleString("pt-BR")}`
-                        : `Vence: ${_wacVencimento(r.primeiro_envio, r.template_inicial).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`;
+                    const iniciais = (r.nome_cliente || r.numero).trim().split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase();
+                    const rodapeLabel = g.chave === "respondidos" ? "Última msg" : "Vence";
+                    const rodapeValor = g.chave === "respondidos"
+                        ? new Date(r.ultima).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+                        : _wacVencimento(r.primeiro_envio, r.template_inicial).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
                     return `
-                    <div class="ed-tr-row" style="cursor:pointer;grid-template-columns:1fr auto" onclick="_wacAbrirConversa('${r.numero}','${nome}')">
-                        <div>
-                            <div class="ed-tr-name">${r.nome_cliente || "—"}</div>
-                            <div style="font-size:12px;color:#64748b;font-family:monospace">${r.numero}</div>
+                    <div class="wac-card" style="--wac-cor:${g.cor}" onclick="_wacAbrirConversa('${r.numero}','${nome}')">
+                        <div class="wac-card-topo">
+                            <div class="wac-card-avatar">${iniciais}</div>
+                            <div class="wac-card-info">
+                                <div class="wac-card-nome">${r.nome_cliente || "—"}</div>
+                                <div class="wac-card-numero">${r.numero}</div>
+                            </div>
                         </div>
-                        <div style="font-size:12px;color:#64748b">${rodape}</div>
+                        <div class="wac-card-rodape"><span>${rodapeLabel}</span><span>${rodapeValor}</span></div>
                     </div>`;
-                }).join("");
+                }).join("") || `<div class="wac-coluna-vazia">Nenhuma conversa aqui.</div>`;
                 return `
-                <div class="wac-grupo-header" style="border-left-color:${g.cor}">
-                    <span>${g.titulo}</span><span class="wac-grupo-contagem">${itens.length}</span>
-                </div>
-                <div class="ed-tr-list" style="margin-bottom:20px">${linhas}</div>`;
+                <div class="wac-coluna">
+                    <div class="wac-coluna-header" style="border-color:${g.cor}">
+                        <span>${g.titulo}</span><span class="wac-coluna-contagem">${itens.length}</span>
+                    </div>
+                    <div class="wac-coluna-cards">${cards}</div>
+                </div>`;
             }).join("");
         })
         .catch(() => { skFim(empty, "Erro ao carregar conversas."); });
