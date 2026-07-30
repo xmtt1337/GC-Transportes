@@ -8,8 +8,33 @@ function abrirWhatsappTeste(event) {
         return;
     }
     mostrarTela("tela-whatsapp-teste");
+    _waCarregarStatus();
     _waRecRenderCampos();
     _waCarregarHistorico();
+}
+
+// Mostra qual número o servidor está usando pra enviar — trocamos de número no meio
+// do projeto, e vários erros da Meta só fazem sentido sabendo qual está configurado.
+function _waCarregarStatus() {
+    const el = document.getElementById("wa-status");
+    el.innerText = "Consultando...";
+
+    fetch(`${API}/admin/whatsapp/status`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => r.json())
+    .then(d => {
+        if (!d.configurado) { el.innerHTML = `<span style="color:#ef4444">Nenhum número configurado no servidor.</span>`; return; }
+        const m = d.meta || {};
+        if (m.error) {
+            el.innerHTML = `<span style="color:#ef4444">A Meta não reconheceu o ID ${d.phone_number_id}: ${m.error.message || "erro"}</span>`;
+            return;
+        }
+        const coexistencia = m.platform_type && m.platform_type !== "CLOUD_API";
+        el.innerHTML = `
+            <div><strong style="color:#e2e8f0">${m.display_phone_number || "—"}</strong> · ${m.verified_name || "—"}</div>
+            <div style="font-size:12px;margin-top:4px">ID: <span style="font-family:monospace">${d.phone_number_id}</span> · Plataforma: ${m.platform_type || "—"} · Verificação: ${m.code_verification_status || "—"}</div>
+            ${coexistencia ? `<div style="color:#fbbf24;font-size:12px;margin-top:6px">⚠ Esse número não é Cloud API puro (${m.platform_type}) — é o caso em que a Meta bloqueia registro e templates.</div>` : ""}`;
+    })
+    .catch(() => { el.innerHTML = `<span style="color:#ef4444">Erro ao consultar o servidor.</span>`; });
 }
 
 // Registro do número como remetente da Cloud API — uma vez por número (erro #133010).
