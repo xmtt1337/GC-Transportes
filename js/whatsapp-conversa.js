@@ -39,9 +39,9 @@ function _wacStatusPrazo(conversa) {
 }
 
 const WA_GRUPOS_PRAZO = [
-    { chave: "vencendo_hoje", titulo: "Vencendo hoje", cor: "#ef4444" },
-    { chave: "um_dia",        titulo: "1 dia de prazo", cor: "#fbbf24" },
-    { chave: "dois_dias",     titulo: "2 dias de prazo (vencendo em mais de 1 dia)", cor: "#3a86ff" },
+    { chave: "vencendo_hoje", titulo: "Vence hoje",  cor: "#ef4444" },
+    { chave: "um_dia",        titulo: "1 dia",       cor: "#fbbf24" },
+    { chave: "dois_dias",     titulo: "2 dias",      cor: "#3a86ff" },
     { chave: "respondidos",   titulo: "Respondidos", cor: "#22c55e" },
 ];
 
@@ -76,26 +76,22 @@ function _wacCarregarLista() {
                 const itens = grupos[g.chave];
                 const cards = itens.map(r => {
                     const nome = (r.nome_cliente || "").replace(/'/g, "\\'");
-                    const iniciais = (r.nome_cliente || r.numero).trim().split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase();
-                    const rodapeLabel = g.chave === "respondidos" ? "Última msg" : "Vence";
-                    const rodapeValor = g.chave === "respondidos"
-                        ? new Date(r.ultima).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
-                        : _wacVencimento(r.primeiro_envio, r.template_inicial).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+                    const quando = g.chave === "respondidos"
+                        ? new Date(r.ultima)
+                        : _wacVencimento(r.primeiro_envio, r.template_inicial);
                     return `
-                    <div class="wac-card" style="--wac-cor:${g.cor}" onclick="_wacAbrirConversa('${r.numero}','${nome}')">
-                        <div class="wac-card-topo">
-                            <div class="wac-card-avatar">${iniciais}</div>
-                            <div class="wac-card-info">
-                                <div class="wac-card-nome">${r.nome_cliente || "—"}</div>
-                                <div class="wac-card-numero">${r.numero}</div>
-                            </div>
+                    <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}','${nome}')">
+                        <div style="min-width:0">
+                            <div class="wac-card-nome">${r.nome_cliente || "—"}</div>
+                            <div class="wac-card-numero">${r.numero}</div>
                         </div>
-                        <div class="wac-card-rodape"><span>${rodapeLabel}</span><span>${rodapeValor}</span></div>
+                        <div class="wac-card-prazo">${quando.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
                     </div>`;
-                }).join("") || `<div class="wac-coluna-vazia">Nenhuma conversa aqui.</div>`;
+                }).join("") || `<div class="wac-coluna-vazia">—</div>`;
                 return `
                 <div class="wac-coluna">
-                    <div class="wac-coluna-header" style="border-color:${g.cor}">
+                    <div class="wac-coluna-header">
+                        <span class="wac-coluna-dot" style="background:${g.cor}"></span>
                         <span>${g.titulo}</span><span class="wac-coluna-contagem">${itens.length}</span>
                     </div>
                     <div class="wac-coluna-cards">${cards}</div>
