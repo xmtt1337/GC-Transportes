@@ -292,36 +292,45 @@ body {
     display: flex; align-items: center; justify-content: center; transition: background 0.15s;
 }
 .wac-compose-btn:hover { background: #2f6fe0; }
-/* Colunas por prazo — sem moldura, só título e lista */
+/* Funil por prazo — colunas divididas, cards compactos */
 .wac-kanban {
-    display: flex; gap: 28px; align-items: flex-start;
-    overflow-x: auto; padding-bottom: 8px;
+    display: flex; align-items: stretch;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow-x: auto;
 }
-.wac-coluna { flex: 1 1 220px; min-width: 200px; max-width: 280px; }
+.wac-coluna {
+    flex: 1 1 0; min-width: 205px;
+    border-right: 1px solid var(--border); padding: 14px 12px;
+}
+.wac-coluna:last-child { border-right: none; }
 .wac-coluna-header {
-    display: flex; align-items: baseline; gap: 7px;
-    padding-bottom: 7px; margin-bottom: 4px;
-    border-bottom: 1px solid var(--border);
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
-    color: var(--text-muted);
+    display: flex; align-items: center; gap: 7px;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-muted); margin-bottom: 12px;
 }
 .wac-coluna-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.wac-coluna-contagem { margin-left: auto; color: var(--text-dim); font-weight: 600; }
-.wac-coluna-cards { display: flex; flex-direction: column; }
-.wac-coluna-vazia { font-size: 12px; color: var(--text-dim); padding: 10px 0; }
+.wac-coluna-contagem { margin-left: auto; color: var(--text-dim); }
+.wac-coluna-cards { display: flex; flex-direction: column; gap: 7px; }
+.wac-coluna-vazia { font-size: 11.5px; color: var(--text-dim); padding: 6px 2px; }
 .wac-card {
-    padding: 9px 2px; cursor: pointer;
-    border-bottom: 1px solid rgba(255,255,255,0.035);
-    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 10px; cursor: pointer;
+    transition: border-color 0.12s;
 }
-.wac-card:hover .wac-card-nome { color: var(--blue); }
+.wac-card:hover { border-color: rgba(58,134,255,0.4); }
+.wac-card-avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+}
+.wac-card-info { min-width: 0; flex: 1; }
 .wac-card-nome {
-    font-size: 13px; font-weight: 500; color: var(--text);
+    font-size: 12.5px; font-weight: 600; color: var(--text);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    transition: color 0.12s;
 }
-.wac-card-numero { font-size: 11px; color: var(--text-dim); font-family: monospace; margin-top: 2px; }
-.wac-card-prazo { font-size: 11px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+.wac-card-numero { font-size: 10.5px; color: var(--text-dim); font-family: monospace; }
+.wac-card-prazo { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
 @media (max-width: 480px) {
     .wac-tela.active-view { padding: 0; }
     .wac-phone { max-width: 100%; max-height: 100%; border-radius: 0; border: none; }

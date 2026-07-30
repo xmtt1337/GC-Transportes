@@ -39,10 +39,10 @@ function _wacStatusPrazo(conversa) {
 }
 
 const WA_GRUPOS_PRAZO = [
-    { chave: "vencendo_hoje", titulo: "Vence hoje",  cor: "#ef4444" },
-    { chave: "um_dia",        titulo: "1 dia",       cor: "#fbbf24" },
-    { chave: "dois_dias",     titulo: "2 dias",      cor: "#3a86ff" },
-    { chave: "respondidos",   titulo: "Respondidos", cor: "#22c55e" },
+    { chave: "vencendo_hoje", titulo: "Vence hoje",  cor: "#ef4444", corBg: "rgba(239,68,68,0.14)" },
+    { chave: "um_dia",        titulo: "1 dia",       cor: "#fbbf24", corBg: "rgba(251,191,36,0.14)" },
+    { chave: "dois_dias",     titulo: "2 dias",      cor: "#3a86ff", corBg: "rgba(58,134,255,0.14)" },
+    { chave: "respondidos",   titulo: "Respondidos", cor: "#22c55e", corBg: "rgba(34,197,94,0.14)" },
 ];
 
 function abrirWhatsappConversas(event) {
@@ -76,16 +76,19 @@ function _wacCarregarLista() {
                 const itens = grupos[g.chave];
                 const cards = itens.map(r => {
                     const nome = (r.nome_cliente || "").replace(/'/g, "\\'");
+                    const iniciais = (r.nome_cliente || r.numero).trim().split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase();
                     const quando = g.chave === "respondidos"
                         ? new Date(r.ultima)
                         : _wacVencimento(r.primeiro_envio, r.template_inicial);
+                    const rotulo = g.chave === "respondidos" ? "Respondeu" : "Vence";
                     return `
                     <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}','${nome}')">
-                        <div style="min-width:0">
+                        <div class="wac-card-avatar" style="background:${g.corBg};color:${g.cor}">${iniciais}</div>
+                        <div class="wac-card-info">
                             <div class="wac-card-nome">${r.nome_cliente || "—"}</div>
                             <div class="wac-card-numero">${r.numero}</div>
+                            <div class="wac-card-prazo">${rotulo} ${quando.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
                         </div>
-                        <div class="wac-card-prazo">${quando.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
                     </div>`;
                 }).join("") || `<div class="wac-coluna-vazia">—</div>`;
                 return `
