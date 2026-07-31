@@ -342,7 +342,7 @@ function _wacCarregarConversa(silencioso) {
     const body = document.getElementById("wac-chat-body");
     if (!silencioso) body.innerHTML = `<div style="text-align:center;color:#5b6b73;font-size:13px;padding:20px">Carregando...</div>`;
 
-    fetch(`${API}/admin/whatsapp/conversa/${_wacNumeroAtual}`, { headers: { "Authorization": "Bearer " + token } })
+    return fetch(`${API}/admin/whatsapp/conversa/${_wacNumeroAtual}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(rows => {
             if (!Array.isArray(rows) || !rows.length) {
@@ -532,7 +532,7 @@ function _wacExcluirSelecionadas() {
             .then(({ ok, body }) => {
                 if (!ok) { gcAlert(body.error || "Erro ao excluir."); return; }
                 _wacLimparSelecao();
-                _wacCarregarConversa();
+                _wacCarregarConversa(true); // sem piscar a conversa toda
             })
             .catch(() => gcAlert("Erro ao conectar com o servidor."));
         },
@@ -562,7 +562,12 @@ function _wacResponderEnviar() {
         }
         input.value = "";
         input.focus();
-        _wacCarregarConversa();
+        // Recarrega sem piscar "Carregando..." e desce até a mensagem recém-enviada —
+        // a recarga completa fazia a conversa sumir e voltar a cada envio.
+        _wacCarregarConversa(true).then(() => {
+            const corpo = document.getElementById("wac-chat-body");
+            if (corpo) corpo.scrollTop = corpo.scrollHeight;
+        });
     })
     .catch(() => { input.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
 }
