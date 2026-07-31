@@ -9,6 +9,7 @@ let _wacPedidoAtual = "";         // pedido do card que abriu a conversa
 let _wacResolvidoAtual = false;
 let _wacRelogio = null;           // redesenha o funil pra acompanhar a passagem do tempo
 let _wacPrecisaDestacar = false;  // rolar até a mensagem do pedido só na abertura
+let _wacAba = "acareacao";        // "acareacao" (com prazo) | "outros" (só o contato)
 
 // Avatar padrão do sistema — igual pra todo mundo, sem emoji e sem imitar outro app.
 const WA_AVATAR_SVG = `<svg viewBox="0 0 212 212" width="100%" height="100%" aria-hidden="true">
@@ -186,12 +187,51 @@ function _wacFiltrar() {
     _wacRenderizar();
 }
 
+// Outros ativos: sem prazo, sem recebido/não recebido — só a conversa e quando foi.
+function _wacRenderizarOutros(itens) {
+    const el = document.getElementById("wac-lista-outros");
+    if (!itens.length) {
+        el.innerHTML = `<div class="wac-coluna-vazia">Nenhum ativo enviado ainda.</div>`;
+        return;
+    }
+    const fmt = d => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    el.innerHTML = itens.map(r => {
+        const pedidoEsc = (r.pedido || "").replace(/'/g, "\\'");
+        const aviso = r.tem_resposta_nova ? `<span class="wac-card-novo" title="Resposta não lida"></span>` : "";
+        const apoio = r.nome_cliente ? `${r.nome_cliente} · ${_wacFormatarNumero(r.numero)}` : _wacFormatarNumero(r.numero);
+        return `
+        <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',false)">
+            <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
+            <div class="wac-card-info">
+                <div class="wac-card-nome">${aviso}${r.pedido || _wacFormatarNumero(r.numero)}</div>
+                <div class="wac-card-numero">${apoio}</div>
+                <div class="wac-card-prazo">Última mensagem ${fmt(r.ultima)}</div>
+            </div>
+        </div>`;
+    }).join("");
+}
+
+function _wacTrocarAba(aba) {
+    _wacAba = aba;
+    document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.aba === aba));
+    _wacRenderizar();
+}
+
 function _wacRenderizar() {
     const termo = (document.getElementById("wac-busca")?.value || "").trim().toLowerCase();
-    const visiveis = !termo ? _wacDados : _wacDados.filter(r =>
+    const casaBusca = r => !termo ||
         (r.pedido || "").toLowerCase().includes(termo) ||
         (r.numero || "").toLowerCase().includes(termo) ||
-        (r.nome_cliente || "").toLowerCase().includes(termo));
+        (r.nome_cliente || "").toLowerCase().includes(termo);
+
+    document.getElementById("wac-visao-acareacao").style.display = _wacAba === "acareacao" ? "" : "none";
+    document.getElementById("wac-visao-outros").style.display    = _wacAba === "outros" ? "" : "none";
+
+    if (_wacAba === "outros") return _wacRenderizarOutros(_wacDados.filter(r => r.tipo === "outros" && casaBusca(r)));
+
+    // Acareação: quem tem prazo correndo + quem nos procurou sem pedido vinculado.
+    const visiveis = _wacDados.filter(r => r.tipo !== "outros" && casaBusca(r));
 
     const grupos = {};
     WA_GRUPOS_PRAZO.forEach(g => { grupos[g.chave] = []; });

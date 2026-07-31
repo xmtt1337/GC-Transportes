@@ -10,6 +10,7 @@ function abrirWhatsappTeste(event) {
     mostrarTela("tela-whatsapp-teste");
     _waCarregarStatus();
     _waRecRenderCampos();
+    _waOutrosRenderCampos();
     _waCarregarHistorico();
 }
 
@@ -76,6 +77,88 @@ function _waValidarTelefone(valor) {
     if (ddd < 11 || ddd > 99) return { ok: false, erro: `DDD inválido (${d.slice(0, 2)}).` };
     if (d.length === 11 && d[2] !== "9") return { ok: false, erro: "Celular com 9 dígitos precisa começar com 9 depois do DDD." };
     return { ok: true, e164: "55" + d };
+}
+
+// ── Outros ativos: contato simples, sem prazo nem acompanhamento ──
+const WA_ATIVO_OUTROS = {
+    template: "ativo_confirmacao_pedido",
+    campos: [
+        { id: "nome_cliente",  label: "Nome do cliente" },
+        { id: "numero_pedido", label: "Número do pedido" },
+        { id: "remetente",     label: "Remetente" },
+        { id: "produto",       label: "Produto" },
+    ],
+    montar: v => `Olá cliente ${v.nome_cliente || "___"}, tudo bem?
+Me chamo ${_waRecNomeAtendente()}, sou do time de SAC da Imile Delivery.
+Poderia me confirmar se você recebeu ele corretamente o seu pedido número ${v.numero_pedido || "___"}, remetente ${v.remetente || "___"}.
+PRODUTO: ${v.produto || "___"}
+
+Observação: não aceitamos áudios, apenas mensagens por escrito
+Aguardo seu retorno e agradeço desde já!`,
+    parametros: v => [v.nome_cliente, _waRecNomeAtendente(), v.numero_pedido, v.remetente, v.produto],
+};
+
+function _waOutrosRenderCampos() {
+    document.getElementById("wa-out-campos").innerHTML = WA_ATIVO_OUTROS.campos.map(c => `
+        <div>
+            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">${c.label}</label>
+            <input type="text" id="wa-out-campo-${c.id}" class="fech-select" style="width:100%;background-image:none;padding-right:14px" oninput="_waOutrosAtualizarPreview()">
+        </div>`).join("");
+    _waOutrosAtualizarPreview();
+}
+
+function _waOutrosValores() {
+    const v = {};
+    WA_ATIVO_OUTROS.campos.forEach(c => {
+        const el = document.getElementById(`wa-out-campo-${c.id}`);
+        v[c.id] = el ? el.value.trim() : "";
+    });
+    return v;
+}
+
+function _waOutrosAtualizarPreview() {
+    document.getElementById("wa-out-preview").innerText = WA_ATIVO_OUTROS.montar(_waOutrosValores());
+}
+
+function _waOutrosEnviar() {
+    const msgEl = document.getElementById("wa-out-msg");
+    const v = _waOutrosValores();
+
+    const tel = _waValidarTelefone(document.getElementById("wa-out-numero").value);
+    if (!tel.ok) { msgEl.style.color = "#ef4444"; msgEl.innerText = tel.erro; return; }
+    const faltando = WA_ATIVO_OUTROS.campos.filter(c => !v[c.id]);
+    if (faltando.length) {
+        msgEl.style.color = "#ef4444";
+        msgEl.innerText = "Preencha: " + faltando.map(c => c.label).join(", ");
+        return;
+    }
+
+    msgEl.style.color = "#64748b";
+    msgEl.innerText = "Enviando...";
+
+    fetch(`${API}/admin/whatsapp/enviar`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({
+            numero: tel.e164, template: WA_ATIVO_OUTROS.template,
+            parametros: WA_ATIVO_OUTROS.parametros(v), texto: WA_ATIVO_OUTROS.montar(v),
+            nome_cliente: v.nome_cliente || null, pedido: v.numero_pedido || null,
+            tipo: "outros" // sem prazo: não entra no funil de acareação
+        })
+    })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ ok, body }) => {
+        if (!ok) {
+            if (body.detalhe) console.error("[whatsapp] recusa da Meta:", body.detalhe);
+            msgEl.style.color = "#ef4444";
+            msgEl.innerText = body.error || "Erro ao enviar.";
+            return;
+        }
+        msgEl.style.color = "#22c55e";
+        msgEl.innerText = "Enviado! ID: " + (body.id || "—");
+        _waCarregarHistorico();
+    })
+    .catch(() => { msgEl.style.color = "#ef4444"; msgEl.innerText = "Erro ao conectar com o servidor."; });
 }
 
 // ── Mensagens de reclamação por transportadora ──
