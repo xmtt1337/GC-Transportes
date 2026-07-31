@@ -1,8 +1,8 @@
 // ───── WHATSAPP — TELA DE TESTE (SÓ DEV) ─────
 // Tela simples pra testar o disparo assim que o número/token entrarem no Render.
 // Nada de automação aqui ainda — é só um formulário manual pra validar a integração.
-// Cargos que fazem acareação: só eles veem a seção com prazo. Assim ninguém de fora
-// preenche um vencimento que depois não apareceria no funil — a origem do conflito.
+// Formulário de disparo é um só, pra todo mundo. O que muda por cargo: só quem faz
+// acareação define prazo — os demais mandam a mesma mensagem, sem vencimento correndo.
 const WA_ROLES_COM_PRAZO = ["sac", "dev"];
 const WA_ROLES_ATIVOS = ["sac", "dev", "admin"];
 
@@ -17,14 +17,13 @@ function abrirWhatsappTeste(event) {
 
     const comPrazo = WA_ROLES_COM_PRAZO.includes(role);
     const mostrar = (id, sim) => { const el = document.getElementById(id); if (el) el.style.display = sim ? "" : "none"; };
-    mostrar("wa-secao-acareacao", comPrazo);
+    mostrar("wa-secao-acareacao", true);
+    mostrar("wa-campo-prazo", comPrazo);
     mostrar("wa-secao-massa", comPrazo);
     mostrar("wa-secao-status", role === "dev"); // diagnóstico do número: só dev
 
     if (role === "dev") _waCarregarStatus();
-    if (comPrazo) _waRecRenderCampos();
-    _waOutrosRenderCampos();
-    _waCarregarHistorico();
+    _waRecRenderCampos();
 }
 
 // Mostra qual número o servidor está usando pra enviar — trocamos de número no meio
@@ -90,88 +89,6 @@ function _waValidarTelefone(valor) {
     if (ddd < 11 || ddd > 99) return { ok: false, erro: `DDD inválido (${d.slice(0, 2)}).` };
     if (d.length === 11 && d[2] !== "9") return { ok: false, erro: "Celular com 9 dígitos precisa começar com 9 depois do DDD." };
     return { ok: true, e164: "55" + d };
-}
-
-// ── Outros ativos: contato simples, sem prazo nem acompanhamento ──
-const WA_ATIVO_OUTROS = {
-    template: "ativo_confirmacao_pedido",
-    campos: [
-        { id: "nome_cliente",  label: "Nome do cliente" },
-        { id: "numero_pedido", label: "Número do pedido" },
-        { id: "remetente",     label: "Remetente" },
-        { id: "produto",       label: "Produto" },
-    ],
-    montar: v => `Olá cliente ${v.nome_cliente || "___"}, tudo bem?
-Me chamo ${_waRecNomeAtendente()}, sou do time de SAC da Imile Delivery.
-Poderia me confirmar se você recebeu ele corretamente o seu pedido número ${v.numero_pedido || "___"}, remetente ${v.remetente || "___"}.
-PRODUTO: ${v.produto || "___"}
-
-Observação: não aceitamos áudios, apenas mensagens por escrito
-Aguardo seu retorno e agradeço desde já!`,
-    parametros: v => [v.nome_cliente, _waRecNomeAtendente(), v.numero_pedido, v.remetente, v.produto],
-};
-
-function _waOutrosRenderCampos() {
-    document.getElementById("wa-out-campos").innerHTML = WA_ATIVO_OUTROS.campos.map(c => `
-        <div>
-            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">${c.label}</label>
-            <input type="text" id="wa-out-campo-${c.id}" class="fech-select" style="width:100%;background-image:none;padding-right:14px" oninput="_waOutrosAtualizarPreview()">
-        </div>`).join("");
-    _waOutrosAtualizarPreview();
-}
-
-function _waOutrosValores() {
-    const v = {};
-    WA_ATIVO_OUTROS.campos.forEach(c => {
-        const el = document.getElementById(`wa-out-campo-${c.id}`);
-        v[c.id] = el ? el.value.trim() : "";
-    });
-    return v;
-}
-
-function _waOutrosAtualizarPreview() {
-    document.getElementById("wa-out-preview").innerText = WA_ATIVO_OUTROS.montar(_waOutrosValores());
-}
-
-function _waOutrosEnviar() {
-    const msgEl = document.getElementById("wa-out-msg");
-    const v = _waOutrosValores();
-
-    const tel = _waValidarTelefone(document.getElementById("wa-out-numero").value);
-    if (!tel.ok) { msgEl.style.color = "#ef4444"; msgEl.innerText = tel.erro; return; }
-    const faltando = WA_ATIVO_OUTROS.campos.filter(c => !v[c.id]);
-    if (faltando.length) {
-        msgEl.style.color = "#ef4444";
-        msgEl.innerText = "Preencha: " + faltando.map(c => c.label).join(", ");
-        return;
-    }
-
-    msgEl.style.color = "#64748b";
-    msgEl.innerText = "Enviando...";
-
-    fetch(`${API}/admin/whatsapp/enviar`, {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({
-            numero: tel.e164, template: WA_ATIVO_OUTROS.template,
-            parametros: WA_ATIVO_OUTROS.parametros(v), texto: WA_ATIVO_OUTROS.montar(v),
-            nome_cliente: v.nome_cliente || null, pedido: v.numero_pedido || null,
-            tipo: "outros" // sem prazo: não entra no funil de acareação
-        })
-    })
-    .then(r => r.json().then(body => ({ ok: r.ok, body })))
-    .then(({ ok, body }) => {
-        if (!ok) {
-            if (body.detalhe) console.error("[whatsapp] recusa da Meta:", body.detalhe);
-            msgEl.style.color = "#ef4444";
-            msgEl.innerText = body.error || "Erro ao enviar.";
-            return;
-        }
-        msgEl.style.color = "#22c55e";
-        msgEl.innerText = "Enviado! ID: " + (body.id || "—");
-        _waCarregarHistorico();
-    })
-    .catch(() => { msgEl.style.color = "#ef4444"; msgEl.innerText = "Erro ao conectar com o servidor."; });
 }
 
 // ── Mensagens de reclamação por transportadora ──
@@ -317,7 +234,9 @@ function _waRecEnviar() {
     const tel = _waValidarTelefone(document.getElementById("wa-rec-numero").value);
     if (!tel.ok) { msgEl.style.color = "#ef4444"; msgEl.innerText = tel.erro; return; }
     const numero = tel.e164;
-    if (!prazo || prazo < 1) { msgEl.style.color = "#ef4444"; msgEl.innerText = "Informe o prazo em horas."; return; }
+    // Só cobra prazo de quem faz acareação — pros demais o campo nem aparece.
+    const comPrazo = WA_ROLES_COM_PRAZO.includes(window._gcUser && window._gcUser.role);
+    if (comPrazo && (!prazo || prazo < 1)) { msgEl.style.color = "#ef4444"; msgEl.innerText = "Informe o prazo em horas."; return; }
     const faltando = cfg.campos.filter(c => !v[c.id]);
     if (faltando.length) {
         msgEl.style.color = "#ef4444";
@@ -334,7 +253,7 @@ function _waRecEnviar() {
         body: JSON.stringify({
             numero, template: cfg.template, parametros: cfg.parametros(v),
             texto: cfg.montar(v), nome_cliente: v.nome_cliente || null,
-            pedido: v[cfg.campoPedido] || null, prazo_horas: prazo
+            pedido: v[cfg.campoPedido] || null, prazo_horas: comPrazo ? prazo : null
         })
     })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
@@ -347,7 +266,6 @@ function _waRecEnviar() {
         }
         msgEl.style.color = "#22c55e";
         msgEl.innerText = "Enviado! ID: " + (body.id || "—");
-        _waCarregarHistorico();
     })
     .catch(() => { msgEl.style.color = "#ef4444"; msgEl.innerText = "Erro ao conectar com o servidor."; });
 }
@@ -476,33 +394,4 @@ async function _waBulkEnviar() {
     progresso.style.color = falha ? "#fbbf24" : "#22c55e";
     progresso.innerText = `Concluído: ${ok} enviado${ok !== 1 ? "s" : ""}, ${falha} falha${falha !== 1 ? "s" : ""}.`;
     btn.textContent = "Escolha outro arquivo pra reenviar";
-    _waCarregarHistorico();
-}
-
-function _waCarregarHistorico() {
-    const el = document.getElementById("wa-historico");
-    skMostrar(el, "tabela", 4);
-    fetch(`${API}/admin/whatsapp/mensagens`, { headers: { "Authorization": "Bearer " + token } })
-    .then(r => r.json())
-    .then(rows => {
-        if (!Array.isArray(rows) || !rows.length) {
-            skFim(el, "Nenhum envio registrado ainda.");
-            return;
-        }
-        el.classList.remove("sk-mode");
-        el.innerHTML = `
-        <div class="ed-tr-header" style="grid-template-columns:130px 140px 70px 1fr">
-            <span>Número</span><span>Template</span><span>Status</span><span>Quando / por quem</span>
-        </div>
-        <div class="ed-tr-list">${rows.map(r => `
-            <div class="ed-tr-row" style="grid-template-columns:130px 140px 70px 1fr">
-                <div class="ed-tr-name" style="font-family:monospace">${r.numero}</div>
-                <div class="ed-tr-name">${r.template}</div>
-                <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:${r.sucesso ? "#22c55e" : "#ef4444"}">
-                    <span style="width:7px;height:7px;border-radius:50%;background:currentColor"></span>${r.sucesso ? "Ok" : "Falhou"}
-                </div>
-                <div style="font-size:12px;color:#64748b">${new Date(r.criado_em).toLocaleString("pt-BR")} · ${r.enviado_por_nome || "—"}</div>
-            </div>`).join("")}</div>`;
-    })
-    .catch(() => { skFim(el, "Erro ao carregar histórico."); });
 }

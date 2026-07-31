@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260801a">
+<link rel="stylesheet" href="style.css?v=20260801b">
 </head>
 <body>
 
@@ -1662,7 +1662,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 </div>
 
                 <div class="ed-section" id="wa-secao-acareacao" style="max-width:640px;margin-bottom:20px;display:none">
-                    <div class="ed-section-title">Acareação — por transportadora</div>
+                    <div class="ed-section-title">Disparo por transportadora</div>
                     <div class="filtro-tabs" id="wa-rec-tabs" style="margin-bottom:16px">
                         <button type="button" class="filtro-tab active" data-cat="tiktok" onclick="_waRecEscolher('tiktok')">TikTok (J&T)</button>
                         <button type="button" class="filtro-tab" data-cat="mercadolivre" onclick="_waRecEscolher('mercadolivre')">Mercado Livre (J&T)</button>
@@ -1675,7 +1675,7 @@ if (location.hostname === "xmtt1337.github.io") {
                             <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Número do cliente (com DDI)</label>
                             <input type="text" id="wa-rec-numero" class="fech-select" style="width:100%;background-image:none;padding-right:14px" placeholder="+55 49 9 9927-6131" oninput="_waMascaraTelefone(this)" autocomplete="off" autocorrect="off" spellcheck="false" name="wa-destinatario-gc">
                         </div>
-                        <div>
+                        <div id="wa-campo-prazo">
                             <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Prazo dado pela transportadora (horas)</label>
                             <input type="number" id="wa-rec-prazo" class="fech-select" style="width:130px;background-image:none;padding-right:14px" value="48" min="1" max="720">
                             <div style="font-size:11.5px;color:#64748b;margin-top:5px">Conta a partir do envio desta mensagem.</div>
@@ -1687,26 +1687,6 @@ if (location.hostname === "xmtt1337.github.io") {
                         </div>
                         <button class="extrv-refresh-btn" onclick="_waRecEnviar()" style="justify-content:center;padding:10px">Enviar mensagem</button>
                         <div id="wa-rec-msg" style="font-size:13px"></div>
-                    </div>
-                </div>
-
-                <div class="ed-section" style="max-width:640px;margin-bottom:20px">
-                    <div class="ed-section-title">Outros ativos — confirmação de pedido</div>
-                    <div style="font-size:12.5px;color:#64748b;line-height:1.5;margin-bottom:14px">
-                        Contato simples, sem prazo nem acompanhamento de vencimento.
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:14px">
-                        <div>
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Número do cliente (com DDI)</label>
-                            <input type="text" id="wa-out-numero" class="fech-select" style="width:100%;background-image:none;padding-right:14px" placeholder="+55 49 9 9927-6131" oninput="_waMascaraTelefone(this)" autocomplete="off" autocorrect="off" spellcheck="false" name="wa-out-destinatario-gc">
-                        </div>
-                        <div id="wa-out-campos" style="display:flex;flex-direction:column;gap:14px"></div>
-                        <div>
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Pré-visualização</label>
-                            <div id="wa-out-preview" style="white-space:pre-wrap;background:rgba(15,15,20,0.5);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;font-size:13px;color:#cbd5e1;line-height:1.5"></div>
-                        </div>
-                        <button class="extrv-refresh-btn" onclick="_waOutrosEnviar()" style="justify-content:center;padding:10px">Enviar mensagem</button>
-                        <div id="wa-out-msg" style="font-size:13px"></div>
                     </div>
                 </div>
 
@@ -1739,11 +1719,6 @@ if (location.hostname === "xmtt1337.github.io") {
                             <div id="wa-bulk-progresso" style="font-size:13px;margin-top:8px"></div>
                         </div>
                     </div>
-                </div>
-
-                <div class="ed-section" style="max-width:820px">
-                    <div class="ed-section-title">Últimos envios<span class="ed-legend" style="margin-left:auto"><a href="#" onclick="_waCarregarHistorico();return false" style="color:#3a86ff">atualizar</a></span></div>
-                    <div id="wa-historico"></div>
                 </div>
             </div>
         </div><!-- /tela-whatsapp-teste -->
@@ -2717,51 +2692,51 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260801a"></script>
-<script src="js/router.js?v=20260801a"></script>
-<script src="js/sidebar.js?v=20260801a"></script>
-<script src="js/nav.js?v=20260801a"></script>
-<script src="js/fechamentos.js?v=20260801a"></script>
-<script src="js/admin.js?v=20260801a"></script>
-<script src="js/conf-nf.js?v=20260801a"></script>
-<script src="js/trampay.js?v=20260801a"></script>
-<script src="js/usuarios.js?v=20260801a"></script>
-<script src="js/motoristas.js?v=20260801a"></script>
-<script src="js/pagamentos.js?v=20260801a"></script>
-<script src="js/notas-fiscais.js?v=20260801a"></script>
-<script src="js/dashboard.js?v=20260801a"></script>
-<script src="js/ent-dashboard.js?v=20260801a"></script>
-<script src="js/nota-fiscal.js?v=20260801a"></script>
-<script src="js/extravios.js?v=20260801a"></script>
-<script src="js/usuarios-gc.js?v=20260801a"></script>
-<script src="js/todos-usuarios.js?v=20260801a"></script>
-<script src="js/whatsapp-teste.js?v=20260801a"></script>
-<script src="js/whatsapp-conversa.js?v=20260801a"></script>
-<script src="js/modals.js?v=20260801a"></script>
-<script src="js/alimentar.js?v=20260801a"></script>
-<script src="js/fechamento-criar.js?v=20260801a"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260801a"></script>
-<script src="js/bipagens.js?v=20260801a"></script>
-<script src="js/pedidos.js?v=20260801a"></script>
-<script src="js/desempenho-bip.js?v=20260801a"></script>
-<script src="js/desempenho-hora.js?v=20260801a"></script>
-<script src="js/conferencias.js?v=20260801a"></script>
-<script src="js/antecipacoes.js?v=20260801a"></script>
-<script src="js/antecipacoes-admin.js?v=20260801a"></script>
-<script src="js/baixas.js?v=20260801a"></script>
-<script src="js/devolucoes.js?v=20260801a"></script>
-<script src="js/viagens.js?v=20260801a"></script>
-<script src="js/ocorrencias.js?v=20260801a"></script>
-<script src="js/ocorrencias-admin.js?v=20260801a"></script>
-<script src="js/localizacao.js?v=20260801a"></script>
-<script src="js/localizacao-admin.js?v=20260801a"></script>
-<script src="js/transferencias.js?v=20260801a"></script>
-<script src="js/transferencias-admin.js?v=20260801a"></script>
-<script src="js/motorista-devolucoes.js?v=20260801a"></script>
-<script src="js/etiquetas.js?v=20260801a"></script>
-<script src="js/videira.js?v=20260801a"></script>
-<script src="js/planejamento-videira.js?v=20260801a"></script>
-<script src="js/torre.js?v=20260801a"></script>
+<script src="js/core.js?v=20260801b"></script>
+<script src="js/router.js?v=20260801b"></script>
+<script src="js/sidebar.js?v=20260801b"></script>
+<script src="js/nav.js?v=20260801b"></script>
+<script src="js/fechamentos.js?v=20260801b"></script>
+<script src="js/admin.js?v=20260801b"></script>
+<script src="js/conf-nf.js?v=20260801b"></script>
+<script src="js/trampay.js?v=20260801b"></script>
+<script src="js/usuarios.js?v=20260801b"></script>
+<script src="js/motoristas.js?v=20260801b"></script>
+<script src="js/pagamentos.js?v=20260801b"></script>
+<script src="js/notas-fiscais.js?v=20260801b"></script>
+<script src="js/dashboard.js?v=20260801b"></script>
+<script src="js/ent-dashboard.js?v=20260801b"></script>
+<script src="js/nota-fiscal.js?v=20260801b"></script>
+<script src="js/extravios.js?v=20260801b"></script>
+<script src="js/usuarios-gc.js?v=20260801b"></script>
+<script src="js/todos-usuarios.js?v=20260801b"></script>
+<script src="js/whatsapp-teste.js?v=20260801b"></script>
+<script src="js/whatsapp-conversa.js?v=20260801b"></script>
+<script src="js/modals.js?v=20260801b"></script>
+<script src="js/alimentar.js?v=20260801b"></script>
+<script src="js/fechamento-criar.js?v=20260801b"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260801b"></script>
+<script src="js/bipagens.js?v=20260801b"></script>
+<script src="js/pedidos.js?v=20260801b"></script>
+<script src="js/desempenho-bip.js?v=20260801b"></script>
+<script src="js/desempenho-hora.js?v=20260801b"></script>
+<script src="js/conferencias.js?v=20260801b"></script>
+<script src="js/antecipacoes.js?v=20260801b"></script>
+<script src="js/antecipacoes-admin.js?v=20260801b"></script>
+<script src="js/baixas.js?v=20260801b"></script>
+<script src="js/devolucoes.js?v=20260801b"></script>
+<script src="js/viagens.js?v=20260801b"></script>
+<script src="js/ocorrencias.js?v=20260801b"></script>
+<script src="js/ocorrencias-admin.js?v=20260801b"></script>
+<script src="js/localizacao.js?v=20260801b"></script>
+<script src="js/localizacao-admin.js?v=20260801b"></script>
+<script src="js/transferencias.js?v=20260801b"></script>
+<script src="js/transferencias-admin.js?v=20260801b"></script>
+<script src="js/motorista-devolucoes.js?v=20260801b"></script>
+<script src="js/etiquetas.js?v=20260801b"></script>
+<script src="js/videira.js?v=20260801b"></script>
+<script src="js/planejamento-videira.js?v=20260801b"></script>
+<script src="js/torre.js?v=20260801b"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
