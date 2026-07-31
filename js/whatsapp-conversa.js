@@ -195,25 +195,50 @@ function _wacFiltrar() {
     _wacRenderizar();
 }
 
-// Outros ativos: sem prazo, sem recebido/não recebido — só a conversa e quando foi.
+// Outros ativos: mesma mecânica de colunas e arrastar da acareação, só que sem prazo —
+// o que separa aqui é o desfecho da entrega, não o tempo.
+const WA_COLUNAS_OUTROS = [
+    { chave: "aguardando",   titulo: "Aguardando",    resultado: null },
+    { chave: "entregue",     titulo: "Entregue",      resultado: "recebeu" },
+    { chave: "nao_entregue", titulo: "Não entregue",  resultado: "nao_recebeu" },
+];
+
 function _wacRenderizarOutros(itens) {
-    const el = document.getElementById("wac-lista-outros");
-    if (!itens.length) {
-        el.innerHTML = `<div class="wac-coluna-vazia">Nenhum ativo enviado ainda.</div>`;
-        return;
-    }
+    const grupos = { aguardando: [], entregue: [], nao_entregue: [] };
+    itens.forEach(r => {
+        if (!r.respondido) grupos.aguardando.push(r);
+        else if (r.resultado === "recebeu") grupos.entregue.push(r);
+        else grupos.nao_entregue.push(r);
+    });
+
+    document.getElementById("wac-lista-outros").innerHTML = WA_COLUNAS_OUTROS.map(g => `
+        <div class="wac-coluna">
+            <div class="wac-coluna-header">
+                <span>${g.titulo}</span><span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
+            </div>
+            <div class="wac-coluna-cards wac-drop"
+                 ondragover="_wacDropSobre(event)" ondragleave="_wacDropSaiu(event)"
+                 ondrop="_wacSoltar(event,${g.resultado ? `'${g.resultado}'` : "null"})">
+                ${_wacCardsOutros(grupos[g.chave]) || `<div class="wac-coluna-vazia">—</div>`}
+            </div>
+        </div>`).join("");
+}
+
+function _wacCardsOutros(itens) {
     const fmt = d => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-    el.innerHTML = itens.map(r => {
+    return itens.map(r => {
         const pedidoEsc = (r.pedido || "").replace(/'/g, "\\'");
-        const aviso = r.tem_resposta_nova ? `<span class="wac-card-novo" title="Resposta não lida"></span>` : "";
-        const apoio = _wacFormatarNumero(r.numero);
+        const aviso = r.tem_resposta_nova && !r.respondido ? `<span class="wac-card-novo" title="Resposta não lida"></span>` : "";
         const porQuem = r.enviado_por_nome ? `${r.enviado_por_nome} · ` : "";
         return `
-        <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',false)">
+        <div class="wac-card" draggable="true"
+             ondragstart="_wacArrastarInicio(event,'${r.numero}','${pedidoEsc}')"
+             ondragend="_wacArrastarFim(event)"
+             onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',${!!r.respondido})">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
                 <div class="wac-card-nome">${aviso}${r.pedido || _wacFormatarNumero(r.numero)}</div>
-                <div class="wac-card-numero">${apoio}</div>
+                <div class="wac-card-numero">${_wacFormatarNumero(r.numero)}</div>
                 <div class="wac-card-prazo">${porQuem}${fmt(r.ultima)}</div>
             </div>
         </div>`;
