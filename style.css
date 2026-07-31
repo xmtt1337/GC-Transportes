@@ -415,7 +415,7 @@ body {
 .wac-acordeao.aberto .wac-acordeao-seta { transform: rotate(180deg); }
 .wac-acordeao-corpo { display: none; padding: 0 16px 14px; }
 .wac-acordeao.aberto .wac-acordeao-corpo { display: block; max-height: 50vh; overflow-y: auto; }
-.wac-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 7px; }
+.wac-cards-grid { display: flex; flex-direction: column; gap: 7px; }
 /* Respondidos se divide em recebido / não recebido */
 .wac-sub-colunas { display: flex; gap: 24px; align-items: flex-start; }
 .wac-sub-coluna { flex: 1 1 0; min-width: 0; }
