@@ -81,17 +81,17 @@ function _wacStatusPrazo(conversa) {
 
 // Colunas abertas: o que precisa de ação — quem nos procurou + o que corre contra o prazo.
 const WA_COLUNAS_PRAZO = [
-    { chave: "recebidas",     titulo: "Nos chamaram",  cor: "#06b6d4", corBg: "rgba(6,182,212,0.14)" },
-    { chave: "vencendo_hoje", titulo: "Menos de 24h",  cor: "#ef4444", corBg: "rgba(239,68,68,0.14)" },
-    { chave: "um_dia",        titulo: "24h a 48h",     cor: "#fbbf24", corBg: "rgba(251,191,36,0.14)" },
-    { chave: "dois_dias",     titulo: "Mais de 48h",   cor: "#3a86ff", corBg: "rgba(58,134,255,0.14)" },
+    { chave: "recebidas",     titulo: "Nos chamaram" },
+    { chave: "vencendo_hoje", titulo: "Menos de 24h" },
+    { chave: "um_dia",        titulo: "24h a 48h" },
+    { chave: "dois_dias",     titulo: "Mais de 48h" },
 ];
 
 // Sanfonas embaixo: casos encerrados (respondido) ou perdidos (venceu sem resposta).
 // Começam sempre fechadas — são consulta pontual, não o foco do dia a dia.
 const WA_ACORDEOES_PRAZO = [
-    { chave: "vencidos",    titulo: "Vencidos sem resposta", cor: "#64748b", corBg: "rgba(100,116,139,0.16)" },
-    { chave: "respondidos", titulo: "Respondidos",           cor: "#22c55e", corBg: "rgba(34,197,94,0.14)" },
+    { chave: "vencidos",    titulo: "Vencidos sem resposta" },
+    { chave: "respondidos", titulo: "Respondidos" },
 ];
 
 const WA_GRUPOS_PRAZO = [...WA_COLUNAS_PRAZO, ...WA_ACORDEOES_PRAZO];
@@ -200,7 +200,6 @@ function _wacRenderizar() {
     document.getElementById("wac-lista").innerHTML = WA_COLUNAS_PRAZO.map(g => `
         <div class="wac-coluna">
             <div class="wac-coluna-header">
-                <span class="wac-coluna-dot" style="background:${g.cor}"></span>
                 <span>${g.titulo}</span><span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
             </div>
             <div class="wac-coluna-cards wac-drop"
@@ -219,10 +218,9 @@ function _wacRenderizar() {
             // Separa pelo resultado registrado na hora de marcar como respondido.
             const recebeu = itens.filter(r => r.resultado === "recebeu");
             const naoRecebeu = itens.filter(r => r.resultado !== "recebeu");
-            const sub = (titulo, cor, lista, valor) => `
+            const sub = (titulo, lista, valor) => `
                 <div class="wac-sub-coluna">
                     <div class="wac-sub-header">
-                        <span class="wac-coluna-dot" style="background:${cor}"></span>
                         <span>${titulo}</span><span class="wac-coluna-contagem">${lista.length}</span>
                     </div>
                     <div class="wac-cards-grid wac-drop"
@@ -231,8 +229,8 @@ function _wacRenderizar() {
                     </div>
                 </div>`;
             corpo = `<div class="wac-sub-colunas">
-                ${sub("Recebido", "#22c55e", recebeu, "recebeu")}
-                ${sub("Não recebido", "#ef4444", naoRecebeu, "nao_recebeu")}
+                ${sub("Recebido", recebeu, "recebeu")}
+                ${sub("Não recebido", naoRecebeu, "nao_recebeu")}
             </div>`;
         } else {
             corpo = `<div class="wac-cards-grid">${_wacCards(itens, g) || vazio}</div>`;
@@ -240,7 +238,6 @@ function _wacRenderizar() {
         return `
         <div class="wac-acordeao${termo && itens.length ? " aberto" : ""}" id="wac-acordeao-${g.chave}">
             <button class="wac-acordeao-header" onclick="_wacAlternarAcordeao('${g.chave}')">
-                <span class="wac-coluna-dot" style="background:${g.cor}"></span>
                 <span>${g.titulo}</span>
                 <span class="wac-coluna-contagem">${itens.length}</span>
                 <span class="wac-acordeao-seta">⌄</span>
