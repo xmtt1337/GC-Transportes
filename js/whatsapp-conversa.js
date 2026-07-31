@@ -10,23 +10,27 @@ const WA_AVATAR_SVG = `<svg viewBox="0 0 212 212" width="100%" height="100%" ari
     <path fill="#cfd5d9" d="M106 109c17 0 31-14 31-31s-14-31-31-31-31 14-31 31 14 31 31 31zm0 13c-25 0-56 12-56 31v14h112v-14c0-19-31-31-56-31z"/>
 </svg>`;
 
-// Prazo de resposta (em dias) por template — usado pra agrupar a lista de conversas
-// por urgência. Todos os scripts de reclamação hoje têm 2 dias; ajuste aqui se algum mudar.
-const WA_PRAZO_DIAS_PADRAO = 2;
-const WA_PRAZO_POR_TEMPLATE = {
-    reclamacao_tiktok_jt: 2,
-    reclamacao_ml_jt: 2,
-    reclamacao_shopee: 2,
-    reclamacao_imile: 2,
-    reclamacao_anjun: 2,
-};
+// Prazo padrão em horas, usado só para envios antigos, feitos antes do campo de prazo
+// existir. Hoje o prazo vem preenchido no disparo, por pedido.
+const WA_PRAZO_HORAS_PADRAO = 48;
 
-// Vencimento exato: 48h corridas (2 × 24h) a partir do minuto certo do primeiro envio,
-// não da data do calendário — enviou 29/07 às 23h58, vence 31/07 às 23h58 em ponto.
-function _wacVencimento(primeiroEnvio, template) {
-    const prazoDias = WA_PRAZO_POR_TEMPLATE[template] ?? WA_PRAZO_DIAS_PADRAO;
-    const envio = new Date(primeiroEnvio);
-    return new Date(envio.getTime() + prazoDias * 24 * 60 * 60 * 1000);
+// Vencimento exato: conta as horas do prazo a partir do minuto do envio.
+function _wacVencimento(primeiroEnvio, prazoHoras) {
+    const horas = prazoHoras || WA_PRAZO_HORAS_PADRAO;
+    return new Date(new Date(primeiroEnvio).getTime() + horas * 60 * 60 * 1000);
+}
+
+// "faltam 6h" / "faltam 40min" / "venceu há 3h" — precisão que o card de prazo curto exige.
+function _wacTempoRestante(vencimento) {
+    const ms = vencimento - new Date();
+    const venceu = ms < 0;
+    const totalMin = Math.floor(Math.abs(ms) / 60000);
+    const horas = Math.floor(totalMin / 60);
+    const min = totalMin % 60;
+    const texto = horas >= 24 ? `${Math.floor(horas / 24)}d ${horas % 24}h`
+                : horas >= 1  ? `${horas}h ${min}min`
+                : `${min}min`;
+    return venceu ? `venceu há ${texto}` : `faltam ${texto}`;
 }
 
 // O agrupamento em blocos (hoje/1 dia/2 dias) compara a DATA do vencimento exato acima
@@ -37,7 +41,7 @@ function _wacStatusPrazo(conversa) {
     // mas precisa de atenção — fica numa coluna própria, não escondido nas sanfonas.
     if (!conversa.primeiro_envio) return "recebidas";
     if (conversa.respondido) return "respondidos";
-    const vencimento = _wacVencimento(conversa.primeiro_envio, conversa.template_inicial);
+    const vencimento = _wacVencimento(conversa.primeiro_envio, conversa.prazo_horas);
     const hoje = new Date();
     const vencimentoData = new Date(vencimento.getFullYear(), vencimento.getMonth(), vencimento.getDate());
     const hojeData = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
@@ -77,20 +81,26 @@ function abrirWhatsappConversas(event) {
 }
 
 function _wacCards(itens, grupo) {
+    const fmt = d => d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
     return itens.map(r => {
         // Quem nos procurou e quem já respondeu não têm prazo correndo — mostram a última mensagem.
         const semPrazo = grupo.chave === "respondidos" || grupo.chave === "recebidas";
-        const quando = semPrazo ? new Date(r.ultima) : _wacVencimento(r.primeiro_envio, r.template_inicial);
-        const rotulo = grupo.chave === "recebidas" ? "Chegou"
-                     : grupo.chave === "respondidos" ? "Respondeu"
-                     : grupo.chave === "vencidos" ? "Venceu" : "Vence";
+        const vencimento = semPrazo ? null : _wacVencimento(r.primeiro_envio, r.prazo_horas);
+        const linhaPrazo = semPrazo
+            ? `${grupo.chave === "recebidas" ? "Chegou" : "Respondeu"} ${fmt(new Date(r.ultima))}`
+            : `${_wacTempoRestante(vencimento)} · ${fmt(vencimento)}`;
+        // O card é do PEDIDO; o cliente vira a linha de apoio.
+        const titulo = r.pedido || _wacFormatarNumero(r.numero);
+        const apoio  = r.pedido
+            ? (r.nome_cliente ? `${r.nome_cliente} · ${_wacFormatarNumero(r.numero)}` : _wacFormatarNumero(r.numero))
+            : (r.nome_cliente || "");
         return `
         <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}')">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
-                <div class="wac-card-nome">${r.nome_cliente || _wacFormatarNumero(r.numero)}</div>
-                <div class="wac-card-numero">${r.numero}</div>
-                <div class="wac-card-prazo">${rotulo} ${quando.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
+                <div class="wac-card-nome">${titulo}</div>
+                ${apoio ? `<div class="wac-card-numero">${apoio}</div>` : ""}
+                <div class="wac-card-prazo" ${vencimento && vencimento < new Date() ? 'style="color:#ef4444"' : ""}>${linhaPrazo}</div>
             </div>
         </div>`;
     }).join("");

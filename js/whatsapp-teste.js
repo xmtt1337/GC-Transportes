@@ -44,6 +44,7 @@ const WA_REC_TEMPLATES = {
     tiktok: {
         rotulo: "TikTok (J&T)",
         template: "reclamacao_tiktok_jt",
+        campoPedido: "codigo_pedido",
         campos: [
             { id: "nome_cliente", label: "Nome do cliente" },
             { id: "codigo_pedido", label: "Código do pedido" },
@@ -65,6 +66,7 @@ Para que possamos auxiliar, escolha uma das opções abaixo e responda apenas co
     mercadolivre: {
         rotulo: "Mercado Livre (J&T)",
         template: "reclamacao_ml_jt",
+        campoPedido: "id_pacote_jms",
         campos: [
             { id: "nome_cliente", label: "Nome do cliente" },
             { id: "nome_produto", label: "Nome do produto" },
@@ -86,6 +88,7 @@ Para que possamos auxiliar, escolha uma opção:
     shopee: {
         rotulo: "Shopee",
         template: "reclamacao_shopee",
+        campoPedido: "codigo_pedido",
         campos: [
             { id: "nome_cliente", label: "Nome do cliente" },
             { id: "codigo_pedido", label: "Código do pedido" },
@@ -96,6 +99,7 @@ Para que possamos auxiliar, escolha uma opção:
     imile: {
         rotulo: "iMile",
         template: "reclamacao_imile",
+        campoPedido: "numero_pedido",
         campos: [
             { id: "nome_cliente", label: "Nome do cliente" },
             { id: "numero_pedido", label: "Número do pedido" },
@@ -116,6 +120,7 @@ Aguardo seu retorno e agradeço desde já! ☺️`,
     anjun: {
         rotulo: "Anjun",
         template: "reclamacao_anjun",
+        campoPedido: "numero_pedido",
         campos: [
             { id: "nome_cliente", label: "Nome do cliente" },
             { id: "numero_pedido", label: "Número do pedido" },
@@ -169,10 +174,12 @@ function _waRecAtualizarPreview() {
 function _waRecEnviar() {
     const cfg    = WA_REC_TEMPLATES[_waRecCategoria];
     const numero = document.getElementById("wa-rec-numero").value.trim();
+    const prazo  = parseInt(document.getElementById("wa-rec-prazo").value, 10);
     const msgEl  = document.getElementById("wa-rec-msg");
     const v      = _waRecValores();
 
     if (!numero) { msgEl.style.color = "#ef4444"; msgEl.innerText = "Informe o número do cliente."; return; }
+    if (!prazo || prazo < 1) { msgEl.style.color = "#ef4444"; msgEl.innerText = "Informe o prazo em horas."; return; }
     const faltando = cfg.campos.filter(c => !v[c.id]);
     if (faltando.length) {
         msgEl.style.color = "#ef4444";
@@ -188,7 +195,8 @@ function _waRecEnviar() {
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
         body: JSON.stringify({
             numero, template: cfg.template, parametros: cfg.parametros(v),
-            texto: cfg.montar(v), nome_cliente: v.nome_cliente || null
+            texto: cfg.montar(v), nome_cliente: v.nome_cliente || null,
+            pedido: v[cfg.campoPedido] || null, prazo_horas: prazo
         })
     })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
