@@ -133,6 +133,7 @@ function _wacCards(itens, grupo) {
         const apoio  = r.pedido
             ? (r.nome_cliente ? `${r.nome_cliente} · ${_wacFormatarNumero(r.numero)}` : _wacFormatarNumero(r.numero))
             : (r.nome_cliente || "");
+        const porQuem = r.enviado_por_nome ? ` · ${r.enviado_por_nome}` : "";
         const pedidoEsc = (r.pedido || "").replace(/'/g, "\\'");
         // Ponto verde: cliente escreveu depois do nosso último envio — tem resposta pra ler.
         const aviso = r.tem_resposta_nova && !r.respondido ? `<span class="wac-card-novo" title="Resposta não lida"></span>` : "";
@@ -150,7 +151,7 @@ function _wacCards(itens, grupo) {
             <div class="wac-card-info">
                 <div class="wac-card-nome">${aviso}${titulo}</div>
                 ${apoio ? `<div class="wac-card-numero">${apoio}</div>` : ""}
-                <div class="wac-card-prazo" ${vencimento ? `style="color:${_wacCorPrazo(vencimento)}"` : ""}>${linhaPrazo}</div>
+                <div class="wac-card-prazo" ${vencimento ? `style="color:${_wacCorPrazo(vencimento)}"` : ""}>${linhaPrazo}${porQuem}</div>
             </div>
             ${acao}
         </div>`;
@@ -199,13 +200,14 @@ function _wacRenderizarOutros(itens) {
         const pedidoEsc = (r.pedido || "").replace(/'/g, "\\'");
         const aviso = r.tem_resposta_nova ? `<span class="wac-card-novo" title="Resposta não lida"></span>` : "";
         const apoio = r.nome_cliente ? `${r.nome_cliente} · ${_wacFormatarNumero(r.numero)}` : _wacFormatarNumero(r.numero);
+        const porQuem = r.enviado_por_nome ? `${r.enviado_por_nome} · ` : "";
         return `
         <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',false)">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
                 <div class="wac-card-nome">${aviso}${r.pedido || _wacFormatarNumero(r.numero)}</div>
                 <div class="wac-card-numero">${apoio}</div>
-                <div class="wac-card-prazo">Última mensagem ${fmt(r.ultima)}</div>
+                <div class="wac-card-prazo">${porQuem}${fmt(r.ultima)}</div>
             </div>
         </div>`;
     }).join("");
@@ -228,10 +230,15 @@ function _wacRenderizar() {
     document.getElementById("wac-visao-acareacao").style.display = _wacAba === "acareacao" ? "" : "none";
     document.getElementById("wac-visao-outros").style.display    = _wacAba === "outros" ? "" : "none";
 
-    if (_wacAba === "outros") return _wacRenderizarOutros(_wacDados.filter(r => r.tipo === "outros" && casaBusca(r)));
+    // Quem separa as duas visões é o CARGO de quem disparou: SAC faz acareação (com
+    // prazo); o resto do time faz outros ativos, que não têm cobrança de prazo.
+    // Conversa que chegou sozinha (sem envio nosso) fica na acareação, onde já existe
+    // a coluna "Nos chamaram".
+    const ehAcareacao = r => !r.enviado_por_role || r.enviado_por_role === "sac";
 
-    // Acareação: quem tem prazo correndo + quem nos procurou sem pedido vinculado.
-    const visiveis = _wacDados.filter(r => r.tipo !== "outros" && casaBusca(r));
+    if (_wacAba === "outros") return _wacRenderizarOutros(_wacDados.filter(r => !ehAcareacao(r) && casaBusca(r)));
+
+    const visiveis = _wacDados.filter(r => ehAcareacao(r) && casaBusca(r));
 
     const grupos = {};
     WA_GRUPOS_PRAZO.forEach(g => { grupos[g.chave] = []; });
@@ -341,7 +348,9 @@ function _wacCarregarConversa(silencioso) {
                 const check = m.direcao === "enviada" ? `<span class="wac-check">✓</span>` : "";
                 const sel   = _wacSelecionadas.has(m.id) ? " selecionada" : "";
                 const ped   = m.pedido ? ` data-pedido="${m.pedido}"` : "";
-                return `<div class="wac-bubble ${m.direcao}${sel}"${ped} onclick="_wacAlternarSelecao('${m.id}')">${_wacEscapar(m.texto)}<span class="wac-bubble-hora">${hora} ${check}</span></div>`;
+                // Quem do time disparou — várias pessoas usam o mesmo número da empresa.
+                const autor = m.autor ? `<span class="wac-bubble-autor">${_wacEscapar(m.autor)}</span>` : "";
+                return `<div class="wac-bubble ${m.direcao}${sel}"${ped} onclick="_wacAlternarSelecao('${m.id}')">${autor}${_wacEscapar(m.texto)}<span class="wac-bubble-hora">${hora} ${check}</span></div>`;
             }).join("");
             // Só desce sozinho na abertura; no auto-refresh respeita onde a pessoa estava.
             body.scrollTop = silencioso ? scrollAnterior : body.scrollHeight;
