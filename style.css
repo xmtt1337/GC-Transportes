@@ -284,6 +284,12 @@ body {
 .wac-check { color: var(--text-muted); }
 .wac-bubble { cursor: pointer; }
 .wac-bubble.selecionada { outline: 2px solid var(--blue); outline-offset: 2px; }
+/* Pisca a mensagem do pedido que abriu a conversa */
+.wac-bubble.destacada { animation: wacDestaque 2s ease; }
+@keyframes wacDestaque {
+    0%, 60%  { box-shadow: 0 0 0 3px rgba(251,191,36,0.55); }
+    100%     { box-shadow: 0 0 0 3px rgba(251,191,36,0); }
+}
 .wac-selecao-barra {
     flex-shrink: 0; display: flex; align-items: center; gap: 12px;
     background: var(--surface-2); border-bottom: 1px solid var(--border);
@@ -400,10 +406,18 @@ body {
 .wac-acordeao-seta { margin-left: 4px; font-size: 14px; transition: transform 0.18s; }
 .wac-acordeao.aberto .wac-acordeao-seta { transform: rotate(180deg); }
 .wac-acordeao-corpo { display: none; padding: 0 16px 14px; }
-.wac-acordeao.aberto .wac-acordeao-corpo {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 7px;
-    max-height: 50vh; overflow-y: auto;
+.wac-acordeao.aberto .wac-acordeao-corpo { display: block; max-height: 50vh; overflow-y: auto; }
+.wac-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 7px; }
+/* Respondidos se divide em recebido / não recebido */
+.wac-sub-colunas { display: flex; gap: 24px; align-items: flex-start; }
+.wac-sub-coluna { flex: 1 1 0; min-width: 0; }
+.wac-sub-header {
+    display: flex; align-items: center; gap: 7px;
+    padding-bottom: 7px; margin-bottom: 9px; border-bottom: 1px solid var(--border);
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+    color: #94a3b8;
 }
+@media (max-width: 680px) { .wac-sub-colunas { flex-direction: column; gap: 16px; } }
 @media (max-width: 480px) {
     .wac-tela.active-view { padding: 0; }
     .wac-phone { max-width: 100%; max-height: 100%; border-radius: 0; border: none; }

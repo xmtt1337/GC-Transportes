@@ -69,7 +69,7 @@ const WA_COLUNAS_PRAZO = [
 // Começam sempre fechadas — são consulta pontual, não o foco do dia a dia.
 const WA_ACORDEOES_PRAZO = [
     { chave: "vencidos",    titulo: "Vencidos sem resposta", cor: "#64748b", corBg: "rgba(100,116,139,0.16)" },
-    { chave: "respondidos", titulo: "Resolvidos",            cor: "#22c55e", corBg: "rgba(34,197,94,0.14)" },
+    { chave: "respondidos", titulo: "Respondidos",           cor: "#22c55e", corBg: "rgba(34,197,94,0.14)" },
 ];
 
 const WA_GRUPOS_PRAZO = [...WA_COLUNAS_PRAZO, ...WA_ACORDEOES_PRAZO];
@@ -90,12 +90,10 @@ function _wacCards(itens, grupo) {
         // Quem nos procurou e quem já respondeu não têm prazo correndo — mostram a última mensagem.
         const semPrazo = grupo.chave === "respondidos" || grupo.chave === "recebidas";
         const vencimento = semPrazo ? null : _wacVencimento(r.primeiro_envio, r.prazo_horas);
-        const rotuloResultado = r.resultado === "recebeu" ? "Recebeu"
-                              : r.resultado === "nao_recebeu" ? "Não recebeu" : null;
         const linhaPrazo = semPrazo
             ? (grupo.chave === "recebidas"
                 ? `Chegou ${fmt(new Date(r.ultima))}`
-                : `${rotuloResultado || "Resolvido"} · ${fmt(new Date(r.ultima))}`)
+                : `Respondido · ${fmt(new Date(r.ultima))}`)
             : `${_wacTempoRestante(vencimento)} · ${fmt(vencimento)}`;
         // O card é do PEDIDO; o cliente vira a linha de apoio.
         const titulo = r.pedido || _wacFormatarNumero(r.numero);
@@ -174,16 +172,40 @@ function _wacRenderizar() {
 
     // Sanfonas: fecham ao carregar a tela, mas ficam abertas durante a busca — senão
     // um resultado que caiu ali dentro ficaria escondido sem a pessoa perceber.
-    document.getElementById("wac-acordeoes").innerHTML = WA_ACORDEOES_PRAZO.map(g => `
-        <div class="wac-acordeao${termo && grupos[g.chave].length ? " aberto" : ""}" id="wac-acordeao-${g.chave}">
+    const vazio = `<div class="wac-coluna-vazia">Nenhuma conversa aqui.</div>`;
+    document.getElementById("wac-acordeoes").innerHTML = WA_ACORDEOES_PRAZO.map(g => {
+        const itens = grupos[g.chave];
+        let corpo;
+        if (g.chave === "respondidos") {
+            // Separa pelo resultado registrado na hora de marcar como respondido.
+            const recebeu = itens.filter(r => r.resultado === "recebeu");
+            const naoRecebeu = itens.filter(r => r.resultado !== "recebeu");
+            const sub = (titulo, cor, lista) => `
+                <div class="wac-sub-coluna">
+                    <div class="wac-sub-header">
+                        <span class="wac-coluna-dot" style="background:${cor}"></span>
+                        <span>${titulo}</span><span class="wac-coluna-contagem">${lista.length}</span>
+                    </div>
+                    <div class="wac-cards-grid">${_wacCards(lista, g) || vazio}</div>
+                </div>`;
+            corpo = `<div class="wac-sub-colunas">
+                ${sub("Recebido", "#22c55e", recebeu)}
+                ${sub("Não recebido", "#ef4444", naoRecebeu)}
+            </div>`;
+        } else {
+            corpo = `<div class="wac-cards-grid">${_wacCards(itens, g) || vazio}</div>`;
+        }
+        return `
+        <div class="wac-acordeao${termo && itens.length ? " aberto" : ""}" id="wac-acordeao-${g.chave}">
             <button class="wac-acordeao-header" onclick="_wacAlternarAcordeao('${g.chave}')">
                 <span class="wac-coluna-dot" style="background:${g.cor}"></span>
                 <span>${g.titulo}</span>
-                <span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
+                <span class="wac-coluna-contagem">${itens.length}</span>
                 <span class="wac-acordeao-seta">⌄</span>
             </button>
-            <div class="wac-acordeao-corpo">${_wacCards(grupos[g.chave], g) || `<div class="wac-coluna-vazia">Nenhuma conversa aqui.</div>`}</div>
-        </div>`).join("");
+            <div class="wac-acordeao-corpo">${corpo}</div>
+        </div>`;
+    }).join("");
 }
 
 // O cabeçalho mostra só o número, nunca o nome do cliente — contato não salvo, como
@@ -237,13 +259,26 @@ function _wacCarregarConversa(silencioso) {
                 const hora  = new Date(m.criado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
                 const check = m.direcao === "enviada" ? `<span class="wac-check">✓</span>` : "";
                 const sel   = _wacSelecionadas.has(m.id) ? " selecionada" : "";
-                return `<div class="wac-bubble ${m.direcao}${sel}" onclick="_wacAlternarSelecao('${m.id}')">${_wacEscapar(m.texto)}<span class="wac-bubble-hora">${hora} ${check}</span></div>`;
+                const ped   = m.pedido ? ` data-pedido="${m.pedido}"` : "";
+                return `<div class="wac-bubble ${m.direcao}${sel}"${ped} onclick="_wacAlternarSelecao('${m.id}')">${_wacEscapar(m.texto)}<span class="wac-bubble-hora">${hora} ${check}</span></div>`;
             }).join("");
             // Só desce sozinho na abertura; no auto-refresh respeita onde a pessoa estava.
             body.scrollTop = silencioso ? scrollAnterior : body.scrollHeight;
+            if (!silencioso) _wacDestacarPedido(body);
             _wacAtualizarBarraSelecao();
         })
         .catch(() => { body.innerHTML = `<div style="text-align:center;color:#ef4444;font-size:13px;padding:20px">Erro ao carregar conversa.</div>`; });
+}
+
+// Abriu por um card de pedido: leva direto pra mensagem daquele pedido e pisca nela,
+// senão numa conversa com vários pedidos a pessoa cairia no fim sem saber qual é qual.
+function _wacDestacarPedido(body) {
+    if (!_wacPedidoAtual) return;
+    const alvo = body.querySelector(`.wac-bubble[data-pedido="${CSS.escape(_wacPedidoAtual)}"]`);
+    if (!alvo) return;
+    alvo.scrollIntoView({ block: "center" });
+    alvo.classList.add("destacada");
+    setTimeout(() => alvo.classList.remove("destacada"), 2000);
 }
 
 // ── Marcação manual de resolvido ──
