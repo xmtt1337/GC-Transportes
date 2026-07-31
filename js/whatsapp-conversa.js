@@ -11,6 +11,9 @@ let _wacRelogio = null;           // redesenha o funil pra acompanhar a passagem
 let _wacPrecisaDestacar = false;  // rolar até a mensagem do pedido só na abertura
 let _wacAba = "acareacao";        // "acareacao" (com prazo) | "outros" (só o contato)
 
+// Cargos cujo disparo entra no funil de acareação. Os demais caem em "Outros ativos".
+const WA_ROLES_ACAREACAO = ["sac", "dev"];
+
 // Avatar padrão do sistema — igual pra todo mundo, sem emoji e sem imitar outro app.
 const WA_AVATAR_SVG = `<svg viewBox="0 0 212 212" width="100%" height="100%" aria-hidden="true">
     <circle cx="106" cy="106" r="106" fill="#1b2635"/>
@@ -99,10 +102,15 @@ const WA_GRUPOS_PRAZO = [...WA_COLUNAS_PRAZO, ...WA_ACORDEOES_PRAZO];
 
 function abrirWhatsappConversas(event) {
     if (event) event.preventDefault();
-    if (!window._gcUser || window._gcUser.role !== "dev") {
-        gcAlert("Acesso restrito a desenvolvedores.");
+    const role = window._gcUser && window._gcUser.role;
+    if (!WA_ROLES_ATIVOS.includes(role)) {
+        gcAlert("Você não tem acesso às conversas de ativos.");
         return;
     }
+    // Quem não faz acareação já entra na aba que lhe interessa.
+    if (!WA_ROLES_ACAREACAO.includes(role)) _wacAba = "outros";
+    document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.aba === _wacAba));
     mostrarTela("tela-whatsapp-conversas");
     _wacCarregarLista();
 
@@ -230,11 +238,11 @@ function _wacRenderizar() {
     document.getElementById("wac-visao-acareacao").style.display = _wacAba === "acareacao" ? "" : "none";
     document.getElementById("wac-visao-outros").style.display    = _wacAba === "outros" ? "" : "none";
 
-    // Quem separa as duas visões é o CARGO de quem disparou: SAC faz acareação (com
-    // prazo); o resto do time faz outros ativos, que não têm cobrança de prazo.
+    // Quem separa as duas visões é o CARGO de quem disparou: SAC e dev fazem acareação
+    // (com prazo); o resto do time faz outros ativos, que não têm cobrança de prazo.
     // Conversa que chegou sozinha (sem envio nosso) fica na acareação, onde já existe
     // a coluna "Nos chamaram".
-    const ehAcareacao = r => !r.enviado_por_role || r.enviado_por_role === "sac";
+    const ehAcareacao = r => !r.enviado_por_role || WA_ROLES_ACAREACAO.includes(r.enviado_por_role);
 
     if (_wacAba === "outros") return _wacRenderizarOutros(_wacDados.filter(r => !ehAcareacao(r) && casaBusca(r)));
 

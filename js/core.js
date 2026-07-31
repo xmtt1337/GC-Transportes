@@ -134,8 +134,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         }
         if (role === "dev") {
             show("menu-item-todos-usuarios"); // visão de todos os usuários do sistema — só dev
-            show("menu-ativos");    // disparo de ativos e conversas — só dev por enquanto
-            show("submenu-ativos");
         }
     }
 
@@ -164,6 +162,13 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     // acesso direto, como item dentro de Operação — entra na mesma lista/tabela compartilhada.
     if (role !== "entregador") {
         show("menu-item-pacotes-faltantes-op");
+    }
+
+    // Ativos (disparo e conversas): sac e dev fazem acareação, com prazo e funil;
+    // admin vê só os demais ativos. A própria tela decide o que mostrar por cargo.
+    if (["sac", "dev", "admin"].includes(role)) {
+        show("menu-ativos");
+        show("submenu-ativos");
     }
 
     renderHomeActions(role);

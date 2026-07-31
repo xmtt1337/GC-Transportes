@@ -1,15 +1,28 @@
 // ───── WHATSAPP — TELA DE TESTE (SÓ DEV) ─────
 // Tela simples pra testar o disparo assim que o número/token entrarem no Render.
 // Nada de automação aqui ainda — é só um formulário manual pra validar a integração.
+// Cargos que fazem acareação: só eles veem a seção com prazo. Assim ninguém de fora
+// preenche um vencimento que depois não apareceria no funil — a origem do conflito.
+const WA_ROLES_COM_PRAZO = ["sac", "dev"];
+const WA_ROLES_ATIVOS = ["sac", "dev", "admin"];
+
 function abrirWhatsappTeste(event) {
     if (event) event.preventDefault();
-    if (!window._gcUser || window._gcUser.role !== "dev") {
-        gcAlert("Acesso restrito a desenvolvedores.");
+    const role = window._gcUser && window._gcUser.role;
+    if (!WA_ROLES_ATIVOS.includes(role)) {
+        gcAlert("Você não tem acesso ao disparo de ativos.");
         return;
     }
     mostrarTela("tela-whatsapp-teste");
-    _waCarregarStatus();
-    _waRecRenderCampos();
+
+    const comPrazo = WA_ROLES_COM_PRAZO.includes(role);
+    const mostrar = (id, sim) => { const el = document.getElementById(id); if (el) el.style.display = sim ? "" : "none"; };
+    mostrar("wa-secao-acareacao", comPrazo);
+    mostrar("wa-secao-massa", comPrazo);
+    mostrar("wa-secao-status", role === "dev"); // diagnóstico do número: só dev
+
+    if (role === "dev") _waCarregarStatus();
+    if (comPrazo) _waRecRenderCampos();
     _waOutrosRenderCampos();
     _waCarregarHistorico();
 }
