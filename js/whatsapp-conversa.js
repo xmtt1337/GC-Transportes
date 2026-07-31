@@ -24,19 +24,21 @@ function _wacVencimento(primeiroEnvio, prazoHoras) {
     return new Date(new Date(primeiroEnvio).getTime() + horas * 60 * 60 * 1000);
 }
 
-// Cor do prazo em degradê: branco quando acabou de sair, âmbar na metade, vermelho
-// perto de vencer. Passa pelo âmbar porque branco→vermelho direto vira rosa no meio.
+// Cor do prazo em degradê por HORAS RESTANTES, alinhado com as colunas: 48h ou mais
+// branco, 24h âmbar, vencendo vermelho. É absoluto de propósito — faltar 2h é urgente
+// independente do prazo ter sido de 6h ou de 200h. Passa pelo âmbar porque
+// branco→vermelho direto vira rosa no meio.
 const _WAC_BRANCO = [226, 232, 240], _WAC_AMBAR = [251, 191, 36], _WAC_VERMELHO = [239, 68, 68];
+const _WAC_HORAS_ESCALA = 48;
 
 function _wacMisturar(a, b, t) {
     return a.map((v, i) => Math.round(v + (b[i] - v) * t));
 }
 
-function _wacCorPrazo(vencimento, prazoHoras) {
-    const totalMs = (prazoHoras || WA_PRAZO_HORAS_PADRAO) * 60 * 60 * 1000;
-    const restanteMs = vencimento - new Date();
-    if (restanteMs <= 0) return "#ef4444";
-    const r = Math.max(0, Math.min(1, restanteMs / totalMs));
+function _wacCorPrazo(vencimento) {
+    const horas = (vencimento - new Date()) / (60 * 60 * 1000);
+    if (horas <= 0) return "#ef4444";
+    const r = Math.min(1, horas / _WAC_HORAS_ESCALA); // 1 = 48h+, 0.5 = 24h, 0 = vencendo
     const c = r >= 0.5
         ? _wacMisturar(_WAC_AMBAR, _WAC_BRANCO, (r - 0.5) * 2)
         : _wacMisturar(_WAC_VERMELHO, _WAC_AMBAR, r * 2);
@@ -136,7 +138,7 @@ function _wacCards(itens, grupo) {
             <div class="wac-card-info">
                 <div class="wac-card-nome">${aviso}${titulo}</div>
                 ${apoio ? `<div class="wac-card-numero">${apoio}</div>` : ""}
-                <div class="wac-card-prazo" ${vencimento ? `style="color:${_wacCorPrazo(vencimento, r.prazo_horas)}"` : ""}>${linhaPrazo}</div>
+                <div class="wac-card-prazo" ${vencimento ? `style="color:${_wacCorPrazo(vencimento)}"` : ""}>${linhaPrazo}</div>
             </div>
             ${acao}
         </div>`;
