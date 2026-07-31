@@ -138,9 +138,8 @@ function _wacCards(itens, grupo) {
             : `${_wacTempoRestante(vencimento)} · ${fmt(vencimento)}`;
         // O card é do PEDIDO; o cliente vira a linha de apoio.
         const titulo = r.pedido || _wacFormatarNumero(r.numero);
-        const apoio  = r.pedido
-            ? (r.nome_cliente ? `${r.nome_cliente} · ${_wacFormatarNumero(r.numero)}` : _wacFormatarNumero(r.numero))
-            : (r.nome_cliente || "");
+        // Só código e número: o nome do cliente já está na conversa, e repetir aqui polui.
+        const apoio  = _wacFormatarNumero(r.numero);
         const porQuem = r.enviado_por_nome ? ` · ${r.enviado_por_nome}` : "";
         const pedidoEsc = (r.pedido || "").replace(/'/g, "\\'");
         // Ponto verde: cliente escreveu depois do nosso último envio — tem resposta pra ler.
@@ -207,7 +206,7 @@ function _wacRenderizarOutros(itens) {
     el.innerHTML = itens.map(r => {
         const pedidoEsc = (r.pedido || "").replace(/'/g, "\\'");
         const aviso = r.tem_resposta_nova ? `<span class="wac-card-novo" title="Resposta não lida"></span>` : "";
-        const apoio = r.nome_cliente ? `${r.nome_cliente} · ${_wacFormatarNumero(r.numero)}` : _wacFormatarNumero(r.numero);
+        const apoio = _wacFormatarNumero(r.numero);
         const porQuem = r.enviado_por_nome ? `${r.enviado_por_nome} · ` : "";
         return `
         <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',false)">
