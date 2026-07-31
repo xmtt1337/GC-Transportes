@@ -7,6 +7,7 @@ let _wacSelecionadas = new Set(); // ids ("e12"/"r5") marcados pra excluir
 let _wacDados = [];               // última resposta do servidor, pra filtrar sem re-buscar
 let _wacPedidoAtual = "";         // pedido do card que abriu a conversa
 let _wacResolvidoAtual = false;
+let _wacRelogio = null;           // redesenha o funil pra acompanhar a passagem do tempo
 
 // Avatar padrão do sistema — igual pra todo mundo, sem emoji e sem imitar outro app.
 const WA_AVATAR_SVG = `<svg viewBox="0 0 212 212" width="100%" height="100%" aria-hidden="true">
@@ -68,12 +69,16 @@ function _wacStatusPrazo(conversa) {
     if (conversa.respondido) return "respondidos";
     const vencimento = _wacVencimento(conversa.primeiro_envio, conversa.prazo_horas);
     const hoje = new Date();
+
+    // Vencido é pela hora exata, não pela data: passou das 10:20, às 10:21 já venceu —
+    // não faz sentido esperar a virada do dia pra sair da coluna de prazo.
+    if (vencimento <= hoje) return "vencidos";
+
     const vencimentoData = new Date(vencimento.getFullYear(), vencimento.getMonth(), vencimento.getDate());
     const hojeData = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
     const diasRestantes = Math.round((vencimentoData - hojeData) / (1000 * 60 * 60 * 24));
 
-    if (diasRestantes < 0)   return "vencidos";       // passou do prazo e o cliente nunca respondeu
-    if (diasRestantes === 0) return "vencendo_hoje";
+    if (diasRestantes <= 0)  return "vencendo_hoje";
     if (diasRestantes === 1) return "um_dia";
     return "dois_dias";
 }
@@ -103,6 +108,16 @@ function abrirWhatsappConversas(event) {
     }
     mostrarTela("tela-whatsapp-conversas");
     _wacCarregarLista();
+
+    // Redesenha de minuto em minuto: o tempo restante e a coluna dependem do relógio,
+    // então sem isso um pedido só "venceria" na próxima vez que a tela fosse aberta.
+    if (_wacRelogio) clearInterval(_wacRelogio);
+    _wacRelogio = setInterval(() => {
+        const tela = document.getElementById("tela-whatsapp-conversas");
+        if (!tela || !tela.classList.contains("active-view")) { clearInterval(_wacRelogio); _wacRelogio = null; return; }
+        if (_wacArrastando) return; // não redesenha no meio de um arrasto
+        _wacRenderizar();
+    }, 60000);
 }
 
 function _wacCards(itens, grupo) {
