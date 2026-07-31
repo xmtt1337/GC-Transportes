@@ -81,16 +81,15 @@ function _wacStatusPrazo(conversa) {
 
     if (horas <= 0)  return "vencidos";
     if (horas <= 24) return "vencendo_hoje";
-    if (horas <= 48) return "um_dia";
-    return "dois_dias";
+    return "mais_24h";
 }
 
-// Colunas abertas: o que corre contra o prazo. Quem nos procurou sem disparo nosso saiu
-// daqui e virou aba própria — não tem prazo nem transportadora, então poluía o funil.
+// Colunas abertas: o que corre contra o prazo. Duas bastam — o que vence dentro do dia
+// é o que exige ação, e separar o resto em 48h ou mais só espalhava card sem urgência.
+// Quem nos procurou sem disparo nosso saiu daqui e virou aba própria.
 const WA_COLUNAS_PRAZO = [
-    { chave: "vencendo_hoje", titulo: "Menos de 24h" },
-    { chave: "um_dia",        titulo: "24h a 48h" },
-    { chave: "dois_dias",     titulo: "Mais de 48h" },
+    { chave: "vencendo_hoje", titulo: "Vencendo hoje" },
+    { chave: "mais_24h",      titulo: "24h +" },
 ];
 
 // Segunda faixa de colunas: casos encerrados (respondido) ou perdidos (venceu sem
@@ -186,9 +185,54 @@ function _wacCarregarLista() {
         .catch(() => { skFim(empty, "Erro ao carregar conversas."); });
 }
 
+// ── Em qual aba cada conversa mora ──
+// Os três destinos são exaustivos e não se sobrepõem: sem envio nosso é "Nos chamaram";
+// o resto vai pelo CARGO de quem disparou, com SAC e dev na acareação (que tem prazo) e
+// o restante do time em outros ativos. Assim nenhuma conversa fica sem aba.
+const _wacSemEnvio    = r => !r.primeiro_envio;
+const _wacEhAcareacao = r => !r.enviado_por_role || WA_ROLES_ACAREACAO.includes(r.enviado_por_role);
+
+function _wacAbaDe(conversa) {
+    if (_wacSemEnvio(conversa)) return "chamaram";
+    return _wacEhAcareacao(conversa) ? "acareacao" : "outros";
+}
+
 // Busca local por pedido, número ou nome — os dados já estão carregados, não refaz requisição.
+function _wacCasaBusca(conversa, termo) {
+    return !termo ||
+        (conversa.pedido || "").toLowerCase().includes(termo) ||
+        (conversa.numero || "").toLowerCase().includes(termo) ||
+        (conversa.nome_cliente || "").toLowerCase().includes(termo);
+}
+
+function _wacTermoBusca() {
+    return (document.getElementById("wac-busca")?.value || "").trim().toLowerCase();
+}
+
 function _wacFiltrar() {
+    _wacIrOndeEsta();
     _wacRenderizar();
+}
+
+// Pesquisar um pedido que está em outra aba ou outra transportadora daria uma tela
+// vazia, como se ele não existisse. Em vez disso, leva a tela até onde o resultado está.
+function _wacIrOndeEsta() {
+    const termo = _wacTermoBusca();
+    if (!termo) return;
+
+    const achados = _wacDados.filter(r => _wacCasaBusca(r, termo));
+    if (!achados.length) return; // não existe mesmo: a tela vazia é a resposta certa
+
+    const naVisao = r => _wacAbaDe(r) === _wacAba &&
+        (_wacAba === "chamaram" || _wacTranspDe(r) === _wacTransp);
+    if (achados.some(naVisao)) return; // já está à vista, não mexe em nada
+
+    // Prefere o resultado da aba aberta: trocar só de transportadora desloca menos.
+    const alvo = achados.find(r => _wacAbaDe(r) === _wacAba) || achados[0];
+    _wacAba = _wacAbaDe(alvo);
+    if (_wacAba !== "chamaram") _wacTransp = _wacTranspDe(alvo);
+    document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.aba === _wacAba));
 }
 
 // Outros ativos e Nos chamaram: mesma mecânica de colunas e arrastar da acareação, só
@@ -303,28 +347,15 @@ function _wacRenderizarTranspTabs(itens) {
 }
 
 function _wacRenderizar() {
-    const termo = (document.getElementById("wac-busca")?.value || "").trim().toLowerCase();
-    const casaBusca = r => !termo ||
-        (r.pedido || "").toLowerCase().includes(termo) ||
-        (r.numero || "").toLowerCase().includes(termo) ||
-        (r.nome_cliente || "").toLowerCase().includes(termo);
+    const termo = _wacTermoBusca();
 
     document.getElementById("wac-visao-acareacao").style.display = _wacAba === "acareacao" ? "" : "none";
     document.getElementById("wac-visao-outros").style.display    = _wacAba === "outros" ? "" : "none";
     document.getElementById("wac-visao-chamaram").style.display  = _wacAba === "chamaram" ? "" : "none";
 
-    // Três destinos, e todo registro cai em exatamente um deles — nada fica sem aba:
-    // sem envio nosso é "Nos chamaram"; o resto vai pelo CARGO de quem disparou, com
-    // SAC e dev na acareação (com prazo) e o restante do time em outros ativos.
-    const semEnvio    = r => !r.primeiro_envio;
-    const ehAcareacao = r => !r.enviado_por_role || WA_ROLES_ACAREACAO.includes(r.enviado_por_role);
-    const daAbaAtual  = r => _wacAba === "chamaram" ? semEnvio(r)
-                           : _wacAba === "outros"   ? (!semEnvio(r) && !ehAcareacao(r))
-                           :                          (!semEnvio(r) && ehAcareacao(r));
-
     // A contagem da barra de transportadoras é do que a aba mostra, antes do filtro dela
     // mesma — senão a transportadora escolhida seria a única com número diferente de zero.
-    const daAba = _wacDados.filter(r => daAbaAtual(r) && casaBusca(r));
+    const daAba = _wacDados.filter(r => _wacAbaDe(r) === _wacAba && _wacCasaBusca(r, termo));
     _wacRenderizarTranspTabs(daAba); // pode definir _wacTransp, então vem antes do filtro
     const visiveis = _wacAba === "chamaram" ? daAba : daAba.filter(r => _wacTranspDe(r) === _wacTransp);
 
