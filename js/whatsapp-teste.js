@@ -210,6 +210,8 @@ function _waBulkLimpar() {
     if (prev) prev.style.display = "none";
     const prog = document.getElementById("wa-bulk-progresso");
     if (prog) prog.innerText = "";
+    const falhas = document.getElementById("wa-bulk-falhas");
+    if (falhas) { falhas.style.display = "none"; falhas.innerHTML = ""; }
 }
 
 function _waRecRenderCampos() {
@@ -372,6 +374,8 @@ function _waBulkArquivoSelecionado(event) {
             ? _waBulkLinhas.length + " destinatário" + (_waBulkLinhas.length !== 1 ? "s" : "") + " · modelo " + WA_REC_TEMPLATES[_waRecCategoria].rotulo
             : "Nenhuma linha válida. Confira se o arquivo é o modelo desta transportadora.";
         document.getElementById("wa-bulk-progresso").innerText = "";
+        const falhas = document.getElementById("wa-bulk-falhas");
+        falhas.style.display = "none"; falhas.innerHTML = ""; // resultado do arquivo anterior
         const btn = document.getElementById("wa-bulk-btn-enviar");
         btn.disabled = false;
         btn.textContent = "Enviar em massa";
@@ -463,4 +467,52 @@ async function _waBulkEnviar() {
     progresso.style.color = falha ? "#fbbf24" : "#22c55e";
     progresso.innerText = `Concluído: ${ok} enviado${ok !== 1 ? "s" : ""}, ${falha} falha${falha !== 1 ? "s" : ""}.`;
     btn.textContent = "Escolha outro arquivo pra reenviar";
+    _waBulkRenderizarFalhas();
+}
+
+// Resumo do que não saiu: a tabela acima fica longa e mistura sucesso com erro,
+// então as falhas ganham um bloco próprio, com o motivo de cada uma.
+function _waBulkRenderizarFalhas() {
+    const el = document.getElementById("wa-bulk-falhas");
+    const cfg = WA_REC_TEMPLATES[_waRecCategoria];
+    const falhas = _waBulkLinhas.filter(l => l.status === "erro");
+
+    if (!falhas.length) { el.style.display = "none"; el.innerHTML = ""; return; }
+
+    el.style.display = "";
+    el.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#ef4444">
+                ${falhas.length} não enviada${falhas.length !== 1 ? "s" : ""}
+            </div>
+            <button class="filtro-tab" onclick="_waBulkBaixarFalhas()">Baixar só as falhas (CSV)</button>
+        </div>
+        <div style="border:1px solid rgba(239,68,68,0.25);border-radius:10px;overflow:hidden">
+            ${falhas.map(l => `
+                <div style="display:flex;gap:12px;padding:9px 12px;border-top:1px solid rgba(255,255,255,0.04);font-size:12.5px">
+                    <span style="font-family:monospace;color:#e2e8f0;white-space:nowrap">${l.numero || "—"}</span>
+                    <span style="color:#94a3b8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.valores[cfg.campoPedido] || l.valores.nome_cliente || ""}</span>
+                    <span style="color:#ef4444;text-align:right">${l.erro || "Falhou"}</span>
+                </div>`).join("")}
+        </div>`;
+}
+
+// Devolve as falhas no mesmo formato do modelo: é só corrigir e subir de novo.
+function _waBulkBaixarFalhas() {
+    const cfg = WA_REC_TEMPLATES[_waRecCategoria];
+    const falhas = _waBulkLinhas.filter(l => l.status === "erro");
+    if (!falhas.length) return;
+
+    const linhas = [
+        [..._waBulkColunas(), "Motivo da falha"],
+        ...falhas.map(l => [l.numero, ...cfg.campos.map(c => l.valores[c.id] || ""), l.erro || "Falhou"]),
+    ];
+    const csv = "﻿" + linhas.map(l => l.map(_waBulkCsvEscapar).join(",")).join("\r\n") + "\r\n";
+
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `falhas_${cfg.template}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
