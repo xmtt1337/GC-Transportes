@@ -68,28 +68,23 @@ function _wacStatusPrazo(conversa) {
     // mas precisa de atenção — fica numa coluna própria, não escondido nas sanfonas.
     if (!conversa.primeiro_envio) return "recebidas";
     if (conversa.respondido) return "respondidos";
+    // Por horas restantes, não por data de calendário: faltando 21h o caso é urgente,
+    // mesmo que o vencimento caia "amanhã". É a mesma escala que colore o prazo.
     const vencimento = _wacVencimento(conversa.primeiro_envio, conversa.prazo_horas);
-    const hoje = new Date();
+    const horas = (vencimento - new Date()) / (60 * 60 * 1000);
 
-    // Vencido é pela hora exata, não pela data: passou das 10:20, às 10:21 já venceu —
-    // não faz sentido esperar a virada do dia pra sair da coluna de prazo.
-    if (vencimento <= hoje) return "vencidos";
-
-    const vencimentoData = new Date(vencimento.getFullYear(), vencimento.getMonth(), vencimento.getDate());
-    const hojeData = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-    const diasRestantes = Math.round((vencimentoData - hojeData) / (1000 * 60 * 60 * 24));
-
-    if (diasRestantes <= 0)  return "vencendo_hoje";
-    if (diasRestantes === 1) return "um_dia";
+    if (horas <= 0)  return "vencidos";
+    if (horas <= 24) return "vencendo_hoje";
+    if (horas <= 48) return "um_dia";
     return "dois_dias";
 }
 
 // Colunas abertas: o que precisa de ação — quem nos procurou + o que corre contra o prazo.
 const WA_COLUNAS_PRAZO = [
-    { chave: "recebidas",     titulo: "Nos chamaram", cor: "#06b6d4", corBg: "rgba(6,182,212,0.14)" },
-    { chave: "vencendo_hoje", titulo: "Vence hoje",  cor: "#ef4444", corBg: "rgba(239,68,68,0.14)" },
-    { chave: "um_dia",        titulo: "1 dia",       cor: "#fbbf24", corBg: "rgba(251,191,36,0.14)" },
-    { chave: "dois_dias",     titulo: "2 dias",      cor: "#3a86ff", corBg: "rgba(58,134,255,0.14)" },
+    { chave: "recebidas",     titulo: "Nos chamaram",  cor: "#06b6d4", corBg: "rgba(6,182,212,0.14)" },
+    { chave: "vencendo_hoje", titulo: "Menos de 24h",  cor: "#ef4444", corBg: "rgba(239,68,68,0.14)" },
+    { chave: "um_dia",        titulo: "24h a 48h",     cor: "#fbbf24", corBg: "rgba(251,191,36,0.14)" },
+    { chave: "dois_dias",     titulo: "Mais de 48h",   cor: "#3a86ff", corBg: "rgba(58,134,255,0.14)" },
 ];
 
 // Sanfonas embaixo: casos encerrados (respondido) ou perdidos (venceu sem resposta).
