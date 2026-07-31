@@ -212,6 +212,11 @@ function _waTransportadoraDe(template) {
     return WA_TEMPLATE_TRANSPORTADORA[template] || null;
 }
 
+// Ordem fixa das transportadoras que o disparo atende, na sequência em que aparecem no
+// formulário. Fixa de propósito: a barra de filtro não troca de posição conforme entra
+// ou sai conversa, então clicar no mesmo lugar sempre cai na mesma transportadora.
+const WA_TRANSPORTADORAS_ORDEM = [...new Set(Object.values(WA_REC_TEMPLATES).map(c => c.transportadora))];
+
 let _waRecCategoria = "tiktok";
 
 // Nome de quem está atendendo (Matheus/Amanda/"seu nome" nos scripts originais) vira

@@ -9,8 +9,9 @@ let _wacPedidoAtual = "";         // pedido do card que abriu a conversa
 let _wacResolvidoAtual = false;
 let _wacRelogio = null;           // redesenha o funil pra acompanhar a passagem do tempo
 let _wacPrecisaDestacar = false;  // rolar até a mensagem do pedido só na abertura
-let _wacAba = "acareacao";        // "acareacao" (com prazo) | "outros" (só o contato)
-let _wacTransp = "todas";         // transportadora selecionada na barra de filtro
+let _wacAba = "acareacao";        // "acareacao" (com prazo) | "outros" | "chamaram"
+let _wacTransp = null;            // transportadora selecionada; null = escolher no 1º render
+let _wacRevalidarTransp = false;  // trocou de aba: conferir se a escolhida tem conversa lá
 
 // Cargos cujo disparo entra no funil de acareação. Os demais caem em "Outros ativos".
 const WA_ROLES_ACAREACAO = ["sac", "dev"];
@@ -69,8 +70,8 @@ function _wacTempoRestante(vencimento) {
 // com a data de hoje — assim o corte de bucket cai num dia legível, mas o vencimento em
 // si continua sendo as 48h corridas de verdade (é o que aparece na hora certa na conversa).
 function _wacStatusPrazo(conversa) {
-    // Cliente que nos procurou sem nunca termos mandado nada: não tem prazo correndo,
-    // mas precisa de atenção — fica numa coluna própria, não escondido nas sanfonas.
+    // Sem envio nosso não há prazo correndo. Esses casos ficam na aba "Nos chamaram" e
+    // não chegam aqui; o retorno existe só pra nenhuma linha inesperada quebrar o funil.
     if (!conversa.primeiro_envio) return "recebidas";
     if (conversa.respondido) return "respondidos";
     // Por horas restantes, não por data de calendário: faltando 21h o caso é urgente,
@@ -84,9 +85,9 @@ function _wacStatusPrazo(conversa) {
     return "dois_dias";
 }
 
-// Colunas abertas: o que precisa de ação — quem nos procurou + o que corre contra o prazo.
+// Colunas abertas: o que corre contra o prazo. Quem nos procurou sem disparo nosso saiu
+// daqui e virou aba própria — não tem prazo nem transportadora, então poluía o funil.
 const WA_COLUNAS_PRAZO = [
-    { chave: "recebidas",     titulo: "Nos chamaram" },
     { chave: "vencendo_hoje", titulo: "Menos de 24h" },
     { chave: "um_dia",        titulo: "24h a 48h" },
     { chave: "dois_dias",     titulo: "Mais de 48h" },
@@ -110,6 +111,7 @@ function abrirWhatsappConversas(event) {
     }
     // Quem não faz acareação já entra na aba que lhe interessa.
     if (!WA_ROLES_ACAREACAO.includes(role)) _wacAba = "outros";
+    _wacTransp = null; // cada visita começa numa transportadora que tem trabalho
     document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.aba === _wacAba));
     mostrarTela("tela-whatsapp-conversas");
@@ -129,13 +131,11 @@ function abrirWhatsappConversas(event) {
 function _wacCards(itens, grupo) {
     const fmt = d => d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
     return itens.map(r => {
-        // Quem nos procurou e quem já respondeu não têm prazo correndo — mostram a última mensagem.
-        const semPrazo = grupo.chave === "respondidos" || grupo.chave === "recebidas";
+        // Quem já respondeu não tem prazo correndo — mostra a última mensagem no lugar.
+        const semPrazo = grupo.chave === "respondidos";
         const vencimento = semPrazo ? null : _wacVencimento(r.primeiro_envio, r.prazo_horas);
         const linhaPrazo = semPrazo
-            ? (grupo.chave === "recebidas"
-                ? `Chegou ${fmt(new Date(r.ultima))}`
-                : `Respondido · ${fmt(new Date(r.ultima))}`)
+            ? `Respondido · ${fmt(new Date(r.ultima))}`
             : `${_wacTempoRestante(vencimento)} · ${fmt(vencimento)}`;
         // O card é do PEDIDO; o cliente vira a linha de apoio.
         const titulo = r.pedido || _wacFormatarNumero(r.numero);
@@ -158,7 +158,7 @@ function _wacCards(itens, grupo) {
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
                 <div class="wac-card-nome">${aviso}${titulo}</div>
-                ${apoio ? `<div class="wac-card-numero">${_wacTranspEtiqueta(r)}${apoio}</div>` : ""}
+                ${apoio ? `<div class="wac-card-numero">${apoio}</div>` : ""}
                 <div class="wac-card-prazo" ${vencimento ? `style="color:${_wacCorPrazo(vencimento)}"` : ""}>${linhaPrazo}${porQuem}</div>
             </div>
             ${acao}
@@ -191,15 +191,22 @@ function _wacFiltrar() {
     _wacRenderizar();
 }
 
-// Outros ativos: mesma mecânica de colunas e arrastar da acareação, só que sem prazo —
-// o que separa aqui é o desfecho da entrega, não o tempo.
+// Outros ativos e Nos chamaram: mesma mecânica de colunas e arrastar da acareação, só
+// que sem prazo — o que separa aqui é o desfecho da entrega, não o tempo. Os títulos
+// mudam porque num caso nós procuramos o cliente e no outro foi ele que nos procurou.
 const WA_COLUNAS_OUTROS = [
     { chave: "aguardando",   titulo: "Aguardando",    resultado: null },
     { chave: "entregue",     titulo: "Entregue",      resultado: "recebeu" },
     { chave: "nao_entregue", titulo: "Não entregue",  resultado: "nao_recebeu" },
 ];
 
-function _wacRenderizarOutros(itens) {
+const WA_COLUNAS_CHAMARAM = [
+    { chave: "aguardando",   titulo: "Em aberto",     resultado: null },
+    { chave: "entregue",     titulo: "Recebido",      resultado: "recebeu" },
+    { chave: "nao_entregue", titulo: "Não recebido",  resultado: "nao_recebeu" },
+];
+
+function _wacRenderizarDesfecho(itens, alvoId, colunas) {
     const grupos = { aguardando: [], entregue: [], nao_entregue: [] };
     itens.forEach(r => {
         if (!r.respondido) grupos.aguardando.push(r);
@@ -207,7 +214,7 @@ function _wacRenderizarOutros(itens) {
         else grupos.nao_entregue.push(r);
     });
 
-    document.getElementById("wac-lista-outros").innerHTML = WA_COLUNAS_OUTROS.map(g => `
+    document.getElementById(alvoId).innerHTML = colunas.map(g => `
         <div class="wac-coluna">
             <div class="wac-coluna-header">
                 <span>${g.titulo}</span><span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
@@ -234,7 +241,7 @@ function _wacCardsOutros(itens) {
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
                 <div class="wac-card-nome">${aviso}${r.pedido || _wacFormatarNumero(r.numero)}</div>
-                <div class="wac-card-numero">${_wacTranspEtiqueta(r)}${_wacFormatarNumero(r.numero)}</div>
+                <div class="wac-card-numero">${_wacFormatarNumero(r.numero)}</div>
                 <div class="wac-card-prazo">${porQuem}${fmt(r.ultima)}</div>
             </div>
         </div>`;
@@ -243,7 +250,7 @@ function _wacCardsOutros(itens) {
 
 function _wacTrocarAba(aba) {
     _wacAba = aba;
-    _wacTransp = "todas"; // as transportadoras de cada aba são outras — filtro herdado só confundiria
+    _wacRevalidarTransp = true; // mantém a transportadora se ela tiver conversa na aba nova
     document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.aba === aba));
     _wacRenderizar();
@@ -262,39 +269,37 @@ function _wacFiltrarTransp(chave) {
     _wacRenderizar();
 }
 
-// A barra só lista transportadora que tem conversa, e some quando não há o que separar.
+// Barra fixa com todas as transportadoras do disparo. Sem "Todas": a tela é sempre a de
+// uma transportadora só. A contagem ao lado de cada uma é que mostra onde tem trabalho.
 function _wacRenderizarTranspTabs(itens) {
     const el = document.getElementById("wac-transp-tabs");
+    // "Nos chamaram" não veio de disparo nosso, então não tem transportadora pra separar.
+    if (_wacAba === "chamaram") { el.style.display = "none"; return; }
+    el.style.display = "";
+
     const contagem = {};
     itens.forEach(r => { const k = _wacTranspDe(r); contagem[k] = (contagem[k] || 0) + 1; });
 
-    const chaves = Object.keys(WA_TRANSPORTADORAS).filter(k => contagem[k]);
+    const chaves = [...WA_TRANSPORTADORAS_ORDEM];
+    // Rede de segurança: disparo com template fora do mapa (renomeado na Meta, por
+    // exemplo) não pode sumir da tela — ganha uma aba própria, e só quando existe.
     if (contagem.outras) chaves.push("outras");
 
-    if (chaves.length < 2) { el.style.display = "none"; _wacTransp = "todas"; return; }
-    el.style.display = "";
+    // Sem "Todas", a tela precisa começar em alguma transportadora: pega a primeira que
+    // tem conversa. Só reavalia na abertura e ao trocar de aba — durante o trabalho a
+    // seleção nunca pula sozinha, nem quando a busca esvazia a coluna.
+    if (_wacTransp === null || _wacRevalidarTransp) {
+        if (!contagem[_wacTransp]) _wacTransp = chaves.find(k => contagem[k]) || chaves[0];
+        _wacRevalidarTransp = false;
+    }
+    if (!chaves.includes(_wacTransp)) _wacTransp = chaves[0];
 
-    // Filtro apontando pra transportadora que sumiu (busca, ou último caso resolvido)
-    // deixaria a tela vazia sem explicação — volta pra "Todas".
-    if (_wacTransp !== "todas" && !chaves.includes(_wacTransp)) _wacTransp = "todas";
-
-    const botao = (chave, rotulo, cor, n) => `
-        <button type="button" class="wac-transp-tab${_wacTransp === chave ? " active" : ""}"
-                style="--transp-cor:${cor}" onclick="_wacFiltrarTransp('${chave}')">
-            <span class="wac-transp-ponto"></span>${rotulo}<span class="wac-transp-n">${n}</span>
-        </button>`;
-
-    el.innerHTML = botao("todas", "Todas", "#3a86ff", itens.length) + chaves.map(k => {
-        const t = WA_TRANSPORTADORAS[k] || { rotulo: "Sem transportadora", cor: "#64748b" };
-        return botao(k, t.rotulo, t.cor, contagem[k]);
+    el.innerHTML = chaves.map(k => {
+        const t = WA_TRANSPORTADORAS[k] || { rotulo: "Outras", cor: "#64748b" };
+        return `<button type="button" class="wac-transp-tab${_wacTransp === k ? " active" : ""}"
+                        style="--transp-cor:${t.cor}" onclick="_wacFiltrarTransp('${k}')"
+                >${t.rotulo}<span class="wac-transp-n">${contagem[k] || 0}</span></button>`;
     }).join("");
-}
-
-// Em "Todas" o card precisa dizer de qual transportadora é; já filtrado, seria repetição.
-function _wacTranspEtiqueta(conversa) {
-    if (_wacTransp !== "todas") return "";
-    const t = WA_TRANSPORTADORAS[_waTransportadoraDe(conversa.template_inicial)];
-    return t ? `<span class="wac-card-transp" style="color:${t.cor}">${t.rotulo}</span> · ` : "";
 }
 
 function _wacRenderizar() {
@@ -306,24 +311,30 @@ function _wacRenderizar() {
 
     document.getElementById("wac-visao-acareacao").style.display = _wacAba === "acareacao" ? "" : "none";
     document.getElementById("wac-visao-outros").style.display    = _wacAba === "outros" ? "" : "none";
+    document.getElementById("wac-visao-chamaram").style.display  = _wacAba === "chamaram" ? "" : "none";
 
-    // Quem separa as duas visões é o CARGO de quem disparou: SAC e dev fazem acareação
-    // (com prazo); o resto do time faz outros ativos, que não têm cobrança de prazo.
-    // Conversa que chegou sozinha (sem envio nosso) fica na acareação, onde já existe
-    // a coluna "Nos chamaram".
+    // Três destinos, e todo registro cai em exatamente um deles — nada fica sem aba:
+    // sem envio nosso é "Nos chamaram"; o resto vai pelo CARGO de quem disparou, com
+    // SAC e dev na acareação (com prazo) e o restante do time em outros ativos.
+    const semEnvio    = r => !r.primeiro_envio;
     const ehAcareacao = r => !r.enviado_por_role || WA_ROLES_ACAREACAO.includes(r.enviado_por_role);
+    const daAbaAtual  = r => _wacAba === "chamaram" ? semEnvio(r)
+                           : _wacAba === "outros"   ? (!semEnvio(r) && !ehAcareacao(r))
+                           :                          (!semEnvio(r) && ehAcareacao(r));
 
     // A contagem da barra de transportadoras é do que a aba mostra, antes do filtro dela
     // mesma — senão a transportadora escolhida seria a única com número diferente de zero.
-    const daAba = _wacDados.filter(r => (_wacAba === "outros" ? !ehAcareacao(r) : ehAcareacao(r)) && casaBusca(r));
-    _wacRenderizarTranspTabs(daAba);
-    const visiveis = daAba.filter(r => _wacTransp === "todas" || _wacTranspDe(r) === _wacTransp);
+    const daAba = _wacDados.filter(r => daAbaAtual(r) && casaBusca(r));
+    _wacRenderizarTranspTabs(daAba); // pode definir _wacTransp, então vem antes do filtro
+    const visiveis = _wacAba === "chamaram" ? daAba : daAba.filter(r => _wacTranspDe(r) === _wacTransp);
 
-    if (_wacAba === "outros") return _wacRenderizarOutros(visiveis);
+    if (_wacAba === "chamaram") return _wacRenderizarDesfecho(visiveis, "wac-lista-chamaram", WA_COLUNAS_CHAMARAM);
+    if (_wacAba === "outros")   return _wacRenderizarDesfecho(visiveis, "wac-lista-outros",   WA_COLUNAS_OUTROS);
 
     const grupos = {};
     WA_GRUPOS_PRAZO.forEach(g => { grupos[g.chave] = []; });
-    visiveis.forEach(r => grupos[_wacStatusPrazo(r)].push(r));
+    // Chave inesperada não pode derrubar o funil inteiro — cria o balde na hora.
+    visiveis.forEach(r => { const k = _wacStatusPrazo(r); (grupos[k] = grupos[k] || []).push(r); });
 
     document.getElementById("wac-lista").innerHTML = WA_COLUNAS_PRAZO.map(g => `
         <div class="wac-coluna">
