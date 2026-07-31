@@ -19,7 +19,9 @@ function abrirWhatsappTeste(event) {
     const mostrar = (id, sim) => { const el = document.getElementById(id); if (el) el.style.display = sim ? "" : "none"; };
     mostrar("wa-secao-acareacao", true);
     mostrar("wa-campo-prazo", comPrazo);
-    mostrar("wa-bulk-bloco", comPrazo);
+    // Massa é só pra quem faz outros ativos: acareação é caso a caso, cada uma com o
+    // prazo que a transportadora deu — disparar em lote não faz sentido ali.
+    mostrar("wa-bulk-bloco", !comPrazo);
     mostrar("wa-secao-status", role === "dev"); // diagnóstico do número: só dev
 
     if (role === "dev") _waCarregarStatus();
