@@ -4,6 +4,7 @@
 let _wacNumeroAtual = null;
 let _wacAutoRefresh = null;
 let _wacSelecionadas = new Set(); // ids ("e12"/"r5") marcados pra excluir
+let _wacDados = [];               // última resposta do servidor, pra filtrar sem re-buscar
 
 // Foto de perfil padrão (silhueta cinza do WhatsApp) — igual pra todo mundo, sem emoji.
 const WA_AVATAR_SVG = `<svg viewBox="0 0 212 212" width="100%" height="100%" aria-hidden="true">
@@ -122,35 +123,53 @@ function _wacCarregarLista() {
         .then(r => r.json())
         .then(rows => {
             if (!Array.isArray(rows) || !rows.length) { skFim(empty, "Nenhuma conversa registrada ainda."); return; }
+            _wacDados = rows;
+            const busca = document.getElementById("wac-busca");
+            if (busca) busca.value = "";
             empty.style.display = "none";
             result.style.display = "";
-
-            const grupos = {};
-            WA_GRUPOS_PRAZO.forEach(g => { grupos[g.chave] = []; });
-            rows.forEach(r => grupos[_wacStatusPrazo(r)].push(r));
-
-            document.getElementById("wac-lista").innerHTML = WA_COLUNAS_PRAZO.map(g => `
-                <div class="wac-coluna">
-                    <div class="wac-coluna-header">
-                        <span class="wac-coluna-dot" style="background:${g.cor}"></span>
-                        <span>${g.titulo}</span><span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
-                    </div>
-                    <div class="wac-coluna-cards">${_wacCards(grupos[g.chave], g) || `<div class="wac-coluna-vazia">—</div>`}</div>
-                </div>`).join("");
-
-            // Sanfonas: sempre fecham ao entrar na tela, mesmo que estivessem abertas antes.
-            document.getElementById("wac-acordeoes").innerHTML = WA_ACORDEOES_PRAZO.map(g => `
-                <div class="wac-acordeao" id="wac-acordeao-${g.chave}">
-                    <button class="wac-acordeao-header" onclick="_wacAlternarAcordeao('${g.chave}')">
-                        <span class="wac-coluna-dot" style="background:${g.cor}"></span>
-                        <span>${g.titulo}</span>
-                        <span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
-                        <span class="wac-acordeao-seta">⌄</span>
-                    </button>
-                    <div class="wac-acordeao-corpo">${_wacCards(grupos[g.chave], g) || `<div class="wac-coluna-vazia">Nenhuma conversa aqui.</div>`}</div>
-                </div>`).join("");
+            _wacRenderizar();
         })
         .catch(() => { skFim(empty, "Erro ao carregar conversas."); });
+}
+
+// Busca local por pedido, número ou nome — os dados já estão carregados, não refaz requisição.
+function _wacFiltrar() {
+    _wacRenderizar();
+}
+
+function _wacRenderizar() {
+    const termo = (document.getElementById("wac-busca")?.value || "").trim().toLowerCase();
+    const visiveis = !termo ? _wacDados : _wacDados.filter(r =>
+        (r.pedido || "").toLowerCase().includes(termo) ||
+        (r.numero || "").toLowerCase().includes(termo) ||
+        (r.nome_cliente || "").toLowerCase().includes(termo));
+
+    const grupos = {};
+    WA_GRUPOS_PRAZO.forEach(g => { grupos[g.chave] = []; });
+    visiveis.forEach(r => grupos[_wacStatusPrazo(r)].push(r));
+
+    document.getElementById("wac-lista").innerHTML = WA_COLUNAS_PRAZO.map(g => `
+        <div class="wac-coluna">
+            <div class="wac-coluna-header">
+                <span class="wac-coluna-dot" style="background:${g.cor}"></span>
+                <span>${g.titulo}</span><span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
+            </div>
+            <div class="wac-coluna-cards">${_wacCards(grupos[g.chave], g) || `<div class="wac-coluna-vazia">—</div>`}</div>
+        </div>`).join("");
+
+    // Sanfonas: fecham ao carregar a tela, mas ficam abertas durante a busca — senão
+    // um resultado que caiu ali dentro ficaria escondido sem a pessoa perceber.
+    document.getElementById("wac-acordeoes").innerHTML = WA_ACORDEOES_PRAZO.map(g => `
+        <div class="wac-acordeao${termo && grupos[g.chave].length ? " aberto" : ""}" id="wac-acordeao-${g.chave}">
+            <button class="wac-acordeao-header" onclick="_wacAlternarAcordeao('${g.chave}')">
+                <span class="wac-coluna-dot" style="background:${g.cor}"></span>
+                <span>${g.titulo}</span>
+                <span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
+                <span class="wac-acordeao-seta">⌄</span>
+            </button>
+            <div class="wac-acordeao-corpo">${_wacCards(grupos[g.chave], g) || `<div class="wac-coluna-vazia">Nenhuma conversa aqui.</div>`}</div>
+        </div>`).join("");
 }
 
 // O cabeçalho mostra só o número, nunca o nome do cliente — é assim que o WhatsApp
