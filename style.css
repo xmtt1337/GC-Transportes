@@ -312,6 +312,20 @@ body {
     display: inline-block; width: 7px; height: 7px; border-radius: 50%;
     background: #22c55e; margin-right: 6px; vertical-align: middle;
 }
+.wac-selecao-responder {
+    margin-left: auto; background: none; border: none; cursor: pointer; font-family: inherit;
+    color: #22c55e; font-size: 12.5px; font-weight: 700;
+}
+.wac-selecao-responder + .wac-selecao-excluir { margin-left: 0; }
+.wac-resultado-opcoes { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 4px; }
+.wac-resultado-btn {
+    padding: 11px 14px; border-radius: 10px; cursor: pointer; font-family: inherit;
+    font-size: 13.5px; font-weight: 600; text-align: left;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+    transition: border-color 0.12s, background 0.12s;
+}
+.wac-resultado-btn.recebeu:hover     { border-color: rgba(34,197,94,0.5);  background: rgba(34,197,94,0.08); }
+.wac-resultado-btn.nao-recebeu:hover { border-color: rgba(239,68,68,0.5); background: rgba(239,68,68,0.08); }
 .wac-compose {
     flex-shrink: 0; display: flex; align-items: center; gap: 8px;
     padding: 10px 12px; background: var(--surface-2); border-top: 1px solid var(--border);

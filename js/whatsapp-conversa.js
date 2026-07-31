@@ -90,8 +90,12 @@ function _wacCards(itens, grupo) {
         // Quem nos procurou e quem já respondeu não têm prazo correndo — mostram a última mensagem.
         const semPrazo = grupo.chave === "respondidos" || grupo.chave === "recebidas";
         const vencimento = semPrazo ? null : _wacVencimento(r.primeiro_envio, r.prazo_horas);
+        const rotuloResultado = r.resultado === "recebeu" ? "Recebeu"
+                              : r.resultado === "nao_recebeu" ? "Não recebeu" : null;
         const linhaPrazo = semPrazo
-            ? `${grupo.chave === "recebidas" ? "Chegou" : "Resolvido"} ${fmt(new Date(r.ultima))}`
+            ? (grupo.chave === "recebidas"
+                ? `Chegou ${fmt(new Date(r.ultima))}`
+                : `${rotuloResultado || "Resolvido"} · ${fmt(new Date(r.ultima))}`)
             : `${_wacTempoRestante(vencimento)} · ${fmt(vencimento)}`;
         // O card é do PEDIDO; o cliente vira a linha de apoio.
         const titulo = r.pedido || _wacFormatarNumero(r.numero);
@@ -261,6 +265,42 @@ function _wacAlternarResolvido() {
         if (!ok) { gcAlert(body.error || "Erro ao salvar."); return; }
         _wacResolvidoAtual = novo;
         _wacAtualizarBarraResolver();
+    })
+    .catch(() => gcAlert("Erro ao conectar com o servidor."));
+}
+
+// Marca o pedido como resolvido a partir da mensagem selecionada, registrando o que
+// a resposta significa — a mensagem escolhida fica guardada como prova da decisão.
+function _wacAbrirModalResultado() {
+    if (!_wacSelecionadas.size) return;
+    const n = _wacSelecionadas.size;
+    document.getElementById("wac-resultado-msg").innerText =
+        `${n} mensagem${n !== 1 ? "s" : ""} selecionada${n !== 1 ? "s" : ""}` +
+        (_wacPedidoAtual ? ` como resposta do pedido ${_wacPedidoAtual}.` : ".") +
+        " O que o cliente respondeu?";
+    document.getElementById("wac-resultado-overlay").style.display = "";
+}
+
+function _wacFecharModalResultado() {
+    document.getElementById("wac-resultado-overlay").style.display = "none";
+}
+
+function _wacConfirmarResultado(resultado) {
+    fetch(`${API}/admin/whatsapp/resolver`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({
+            pedido: _wacPedidoAtual, numero: _wacNumeroAtual, resolvido: true,
+            resultado, mensagem_ids: [..._wacSelecionadas]
+        })
+    })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ ok, body }) => {
+        if (!ok) { gcAlert(body.error || "Erro ao salvar."); return; }
+        _wacFecharModalResultado();
+        _wacResolvidoAtual = true;
+        _wacAtualizarBarraResolver();
+        _wacLimparSelecao();
     })
     .catch(() => gcAlert("Erro ao conectar com o servidor."));
 }
