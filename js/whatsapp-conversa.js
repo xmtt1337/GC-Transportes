@@ -6,10 +6,10 @@ let _wacAutoRefresh = null;
 let _wacSelecionadas = new Set(); // ids ("e12"/"r5") marcados pra excluir
 let _wacDados = [];               // última resposta do servidor, pra filtrar sem re-buscar
 
-// Foto de perfil padrão (silhueta cinza do WhatsApp) — igual pra todo mundo, sem emoji.
+// Avatar padrão do sistema — igual pra todo mundo, sem emoji e sem imitar outro app.
 const WA_AVATAR_SVG = `<svg viewBox="0 0 212 212" width="100%" height="100%" aria-hidden="true">
-    <circle cx="106" cy="106" r="106" fill="#6a7175"/>
-    <path fill="#cfd5d9" d="M106 109c17 0 31-14 31-31s-14-31-31-31-31 14-31 31 14 31 31 31zm0 13c-25 0-56 12-56 31v14h112v-14c0-19-31-31-56-31z"/>
+    <circle cx="106" cy="106" r="106" fill="#1b2635"/>
+    <path fill="#64748b" d="M106 109c17 0 31-14 31-31s-14-31-31-31-31 14-31 31 14 31 31 31zm0 13c-25 0-56 12-56 31v14h112v-14c0-19-31-31-56-31z"/>
 </svg>`;
 
 // Prazo padrão em horas, usado só para envios antigos, feitos antes do campo de prazo
@@ -219,7 +219,7 @@ function _wacCarregarConversa(silencioso) {
             const scrollAnterior = body.scrollTop;
             body.innerHTML = rows.map(m => {
                 const hora  = new Date(m.criado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-                const check = m.direcao === "enviada" ? `<span class="wac-check">✓✓</span>` : "";
+                const check = m.direcao === "enviada" ? `<span class="wac-check">✓</span>` : "";
                 const sel   = _wacSelecionadas.has(m.id) ? " selecionada" : "";
                 return `<div class="wac-bubble ${m.direcao}${sel}" onclick="_wacAlternarSelecao('${m.id}')">${_wacEscapar(m.texto)}<span class="wac-bubble-hora">${hora} ${check}</span></div>`;
             }).join("");

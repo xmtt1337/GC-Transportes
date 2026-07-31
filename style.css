@@ -237,8 +237,8 @@ body {
 .loc-item { padding: 10px 8px; border-radius: 8px; cursor: pointer; margin-bottom: 4px; }
 .loc-item:hover { background: rgba(255,255,255,0.04); }
 
-/* ===== WHATSAPP — RÉPLICA VISUAL DA CONVERSA (tema escuro, igual ao WhatsApp Web/App no modo escuro) ===== */
-/* A tela em si só centraliza; quem tem a cara de "celular" é o .wac-phone dentro dela */
+/* ===== ATIVOS — CONVERSA (visual próprio do sistema, sem imitar o app de origem) ===== */
+/* A tela em si só centraliza; o painel da conversa é o .wac-phone dentro dela */
 .wac-tela.active-view { align-items: center; justify-content: center; background: var(--bg); padding: 24px; }
 .wac-phone {
     width: 100%; max-width: 400px; height: 100%; max-height: 680px;
@@ -269,13 +269,19 @@ body {
     font-size: 13.5px; line-height: 1.35; color: var(--text);
     white-space: pre-wrap; word-break: break-word; position: relative;
 }
-.wac-bubble.enviada  { align-self: flex-end;   background: #144d37; border-top-right-radius: 0; }
-.wac-bubble.recebida { align-self: flex-start; background: var(--surface-2); border-top-left-radius: 0; }
+.wac-bubble.enviada  {
+    align-self: flex-end; background: rgba(58,134,255,0.13);
+    border: 1px solid rgba(58,134,255,0.22); border-bottom-right-radius: 2px;
+}
+.wac-bubble.recebida {
+    align-self: flex-start; background: var(--surface-2);
+    border: 1px solid var(--border); border-bottom-left-radius: 2px;
+}
 .wac-bubble-hora {
     float: right; margin: 4px 0 -3px 8px; font-size: 10.5px; color: var(--text-muted);
     display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;
 }
-.wac-check { color: #53bdeb; font-weight: 700; }
+.wac-check { color: var(--text-muted); }
 .wac-bubble { cursor: pointer; }
 .wac-bubble.selecionada { outline: 2px solid var(--blue); outline-offset: 2px; }
 .wac-selecao-barra {
