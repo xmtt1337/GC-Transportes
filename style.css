@@ -448,6 +448,16 @@ body {
 input.fech-select[type="date"] {
     background: rgba(11,16,26,0.9); padding: 9px 14px; color-scheme: dark;
 }
+/* O preenchimento automático do Chrome pinta o campo de branco/amarelo e ignora a cor
+   do texto — o box-shadow interno é o único jeito de recuperar o fundo escuro. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px rgba(11,16,26,0.9) inset;
+    -webkit-text-fill-color: #e2e8f0;
+    caret-color: #e2e8f0;
+    transition: background-color 9999s ease-out;
+}
 input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
 
 /* Desempenho — Quantidade x Hora */
