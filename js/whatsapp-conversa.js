@@ -260,13 +260,14 @@ function _wacAbrirConversa(numero, pedido, resolvido) {
     mostrarTela("tela-whatsapp-conversa-chat");
     _wacCarregarConversa();
     // Recarrega sozinho enquanto a conversa está aberta, pra resposta do cliente
-    // aparecer sem precisar sair e entrar de novo.
+    // aparecer sem precisar sair e entrar de novo. 30s é folgado pro ritmo de uma
+    // conversa e evita 360 consultas por hora numa aba esquecida aberta.
     if (_wacAutoRefresh) clearInterval(_wacAutoRefresh);
     _wacAutoRefresh = setInterval(() => {
         const tela = document.getElementById("tela-whatsapp-conversa-chat");
         if (!tela || !tela.classList.contains("active-view")) { clearInterval(_wacAutoRefresh); _wacAutoRefresh = null; return; }
         _wacCarregarConversa(true);
-    }, 10000);
+    }, 30000);
 }
 
 // 5549999276131 → +55 49 99927-6131
