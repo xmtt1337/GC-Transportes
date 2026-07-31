@@ -298,6 +298,20 @@ body {
     margin-left: auto; background: none; border: none; cursor: pointer; font-family: inherit;
     color: #ef4444; font-size: 12.5px; font-weight: 700;
 }
+.wac-resolver-barra {
+    flex-shrink: 0; display: flex; align-items: center; gap: 12px;
+    background: var(--surface-2); border-bottom: 1px solid var(--border);
+    padding: 8px 14px; font-size: 12px; color: var(--text-muted);
+}
+#wac-resolver-botao {
+    margin-left: auto; background: none; border: none; cursor: pointer; font-family: inherit;
+    color: #22c55e; font-size: 12px; font-weight: 700;
+}
+#wac-resolver-botao.reabrir { color: var(--text-muted); }
+.wac-card-novo {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: #22c55e; margin-right: 6px; vertical-align: middle;
+}
 .wac-compose {
     flex-shrink: 0; display: flex; align-items: center; gap: 8px;
     padding: 10px 12px; background: var(--surface-2); border-top: 1px solid var(--border);

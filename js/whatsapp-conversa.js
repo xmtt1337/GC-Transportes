@@ -5,6 +5,8 @@ let _wacNumeroAtual = null;
 let _wacAutoRefresh = null;
 let _wacSelecionadas = new Set(); // ids ("e12"/"r5") marcados pra excluir
 let _wacDados = [];               // última resposta do servidor, pra filtrar sem re-buscar
+let _wacPedidoAtual = "";         // pedido do card que abriu a conversa
+let _wacResolvidoAtual = false;
 
 // Avatar padrão do sistema — igual pra todo mundo, sem emoji e sem imitar outro app.
 const WA_AVATAR_SVG = `<svg viewBox="0 0 212 212" width="100%" height="100%" aria-hidden="true">
@@ -67,7 +69,7 @@ const WA_COLUNAS_PRAZO = [
 // Começam sempre fechadas — são consulta pontual, não o foco do dia a dia.
 const WA_ACORDEOES_PRAZO = [
     { chave: "vencidos",    titulo: "Vencidos sem resposta", cor: "#64748b", corBg: "rgba(100,116,139,0.16)" },
-    { chave: "respondidos", titulo: "Respondidos",           cor: "#22c55e", corBg: "rgba(34,197,94,0.14)" },
+    { chave: "respondidos", titulo: "Resolvidos",            cor: "#22c55e", corBg: "rgba(34,197,94,0.14)" },
 ];
 
 const WA_GRUPOS_PRAZO = [...WA_COLUNAS_PRAZO, ...WA_ACORDEOES_PRAZO];
@@ -89,18 +91,21 @@ function _wacCards(itens, grupo) {
         const semPrazo = grupo.chave === "respondidos" || grupo.chave === "recebidas";
         const vencimento = semPrazo ? null : _wacVencimento(r.primeiro_envio, r.prazo_horas);
         const linhaPrazo = semPrazo
-            ? `${grupo.chave === "recebidas" ? "Chegou" : "Respondeu"} ${fmt(new Date(r.ultima))}`
+            ? `${grupo.chave === "recebidas" ? "Chegou" : "Resolvido"} ${fmt(new Date(r.ultima))}`
             : `${_wacTempoRestante(vencimento)} · ${fmt(vencimento)}`;
         // O card é do PEDIDO; o cliente vira a linha de apoio.
         const titulo = r.pedido || _wacFormatarNumero(r.numero);
         const apoio  = r.pedido
             ? (r.nome_cliente ? `${r.nome_cliente} · ${_wacFormatarNumero(r.numero)}` : _wacFormatarNumero(r.numero))
             : (r.nome_cliente || "");
+        const pedidoEsc = (r.pedido || "").replace(/'/g, "\\'");
+        // Ponto verde: cliente escreveu depois do nosso último envio — tem resposta pra ler.
+        const aviso = r.tem_resposta_nova && !r.respondido ? `<span class="wac-card-novo" title="Resposta não lida"></span>` : "";
         return `
-        <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}')">
+        <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',${!!r.respondido})">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
-                <div class="wac-card-nome">${titulo}</div>
+                <div class="wac-card-nome">${aviso}${titulo}</div>
                 ${apoio ? `<div class="wac-card-numero">${apoio}</div>` : ""}
                 <div class="wac-card-prazo" ${vencimento && vencimento < new Date() ? 'style="color:#ef4444"' : ""}>${linhaPrazo}</div>
             </div>
@@ -172,11 +177,14 @@ function _wacRenderizar() {
         </div>`).join("");
 }
 
-// O cabeçalho mostra só o número, nunca o nome do cliente — é assim que o WhatsApp
-// exibe contato não salvo, e é o que dá credibilidade ao print enviado à transportadora.
-function _wacAbrirConversa(numero) {
+// O cabeçalho mostra só o número, nunca o nome do cliente — contato não salvo, como
+// aparece de verdade, o que dá credibilidade ao print enviado à transportadora.
+function _wacAbrirConversa(numero, pedido, resolvido) {
     _wacNumeroAtual = numero;
+    _wacPedidoAtual = pedido || "";
+    _wacResolvidoAtual = resolvido === true || resolvido === "true";
     _wacSelecionadas.clear();
+    _wacAtualizarBarraResolver();
     document.getElementById("wac-chat-nome").innerText = _wacFormatarNumero(numero);
     document.getElementById("wac-chat-numero").innerText = "";
     mostrarTela("tela-whatsapp-conversa-chat");
@@ -228,6 +236,33 @@ function _wacCarregarConversa(silencioso) {
             _wacAtualizarBarraSelecao();
         })
         .catch(() => { body.innerHTML = `<div style="text-align:center;color:#ef4444;font-size:13px;padding:20px">Erro ao carregar conversa.</div>`; });
+}
+
+// ── Marcação manual de resolvido ──
+function _wacAtualizarBarraResolver() {
+    const barra = document.getElementById("wac-resolver-barra");
+    if (!barra) return;
+    const rotulo = document.getElementById("wac-resolver-rotulo");
+    const botao  = document.getElementById("wac-resolver-botao");
+    rotulo.innerText = _wacPedidoAtual ? `Pedido ${_wacPedidoAtual}` : "Sem pedido vinculado";
+    botao.innerText  = _wacResolvidoAtual ? "Reabrir" : "Marcar como resolvido";
+    botao.classList.toggle("reabrir", _wacResolvidoAtual);
+}
+
+function _wacAlternarResolvido() {
+    const novo = !_wacResolvidoAtual;
+    fetch(`${API}/admin/whatsapp/resolver`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ pedido: _wacPedidoAtual, numero: _wacNumeroAtual, resolvido: novo })
+    })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ ok, body }) => {
+        if (!ok) { gcAlert(body.error || "Erro ao salvar."); return; }
+        _wacResolvidoAtual = novo;
+        _wacAtualizarBarraResolver();
+    })
+    .catch(() => gcAlert("Erro ao conectar com o servidor."));
 }
 
 // ── Seleção e exclusão de mensagens ──
