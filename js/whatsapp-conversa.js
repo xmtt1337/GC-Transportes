@@ -105,6 +105,10 @@ function _wacCards(itens, grupo) {
         const pedidoEsc = (r.pedido || "").replace(/'/g, "\\'");
         // Ponto verde: cliente escreveu depois do nosso último envio — tem resposta pra ler.
         const aviso = r.tem_resposta_nova && !r.respondido ? `<span class="wac-card-novo" title="Resposta não lida"></span>` : "";
+        // Ação direta no card: resolve sem precisar abrir a conversa (um pedido por vez).
+        const acao = r.respondido
+            ? `<button class="wac-card-acao reabrir" title="Reabrir pedido" onclick="_wacReabrirPeloCard(event,'${r.numero}','${pedidoEsc}')">↺</button>`
+            : `<button class="wac-card-acao" title="Marcar como resolvido" onclick="_wacResolverPeloCard(event,'${r.numero}','${pedidoEsc}')">✓</button>`;
         return `
         <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',${!!r.respondido})">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
@@ -113,6 +117,7 @@ function _wacCards(itens, grupo) {
                 ${apoio ? `<div class="wac-card-numero">${apoio}</div>` : ""}
                 <div class="wac-card-prazo" ${vencimento && vencimento < new Date() ? 'style="color:#ef4444"' : ""}>${linhaPrazo}</div>
             </div>
+            ${acao}
         </div>`;
     }).join("");
 }
@@ -188,7 +193,6 @@ function _wacAbrirConversa(numero, pedido, resolvido) {
     _wacPedidoAtual = pedido || "";
     _wacResolvidoAtual = resolvido === true || resolvido === "true";
     _wacSelecionadas.clear();
-    _wacAtualizarBarraResolver();
     document.getElementById("wac-chat-nome").innerText = _wacFormatarNumero(numero);
     document.getElementById("wac-chat-numero").innerText = "";
     mostrarTela("tela-whatsapp-conversa-chat");
@@ -243,37 +247,17 @@ function _wacCarregarConversa(silencioso) {
 }
 
 // ── Marcação manual de resolvido ──
-function _wacAtualizarBarraResolver() {
-    const barra = document.getElementById("wac-resolver-barra");
-    if (!barra) return;
-    const rotulo = document.getElementById("wac-resolver-rotulo");
-    const botao  = document.getElementById("wac-resolver-botao");
-    rotulo.innerText = _wacPedidoAtual ? `Pedido ${_wacPedidoAtual}` : "Sem pedido vinculado";
-    botao.innerText  = _wacResolvidoAtual ? "Reabrir" : "Marcar como resolvido";
-    botao.classList.toggle("reabrir", _wacResolvidoAtual);
-}
+// Vale tanto pelo card no funil (rápido, sem abrir a conversa) quanto pela mensagem
+// selecionada dentro do chat (aí a mensagem fica gravada como prova da decisão).
+let _wacResultadoAlvo = null; // { pedido, numero, mensagem_ids, noChat }
 
-function _wacAlternarResolvido() {
-    const novo = !_wacResolvidoAtual;
-    fetch(`${API}/admin/whatsapp/resolver`, {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ pedido: _wacPedidoAtual, numero: _wacNumeroAtual, resolvido: novo })
-    })
-    .then(r => r.json().then(body => ({ ok: r.ok, body })))
-    .then(({ ok, body }) => {
-        if (!ok) { gcAlert(body.error || "Erro ao salvar."); return; }
-        _wacResolvidoAtual = novo;
-        _wacAtualizarBarraResolver();
-    })
-    .catch(() => gcAlert("Erro ao conectar com o servidor."));
-}
-
-// Marca o pedido como resolvido a partir da mensagem selecionada, registrando o que
-// a resposta significa — a mensagem escolhida fica guardada como prova da decisão.
 function _wacAbrirModalResultado() {
     if (!_wacSelecionadas.size) return;
     const n = _wacSelecionadas.size;
+    _wacResultadoAlvo = {
+        pedido: _wacPedidoAtual, numero: _wacNumeroAtual,
+        mensagem_ids: [..._wacSelecionadas], noChat: true
+    };
     document.getElementById("wac-resultado-msg").innerText =
         `${n} mensagem${n !== 1 ? "s" : ""} selecionada${n !== 1 ? "s" : ""}` +
         (_wacPedidoAtual ? ` como resposta do pedido ${_wacPedidoAtual}.` : ".") +
@@ -281,26 +265,52 @@ function _wacAbrirModalResultado() {
     document.getElementById("wac-resultado-overlay").style.display = "";
 }
 
+// Aberto pelo botão de check no card do funil.
+function _wacResolverPeloCard(event, numero, pedido) {
+    event.stopPropagation(); // não abre a conversa junto
+    _wacResultadoAlvo = { pedido, numero, mensagem_ids: [], noChat: false };
+    document.getElementById("wac-resultado-msg").innerText =
+        (pedido ? `Pedido ${pedido}. ` : "") + "O que o cliente respondeu?";
+    document.getElementById("wac-resultado-overlay").style.display = "";
+}
+
+function _wacReabrirPeloCard(event, numero, pedido) {
+    event.stopPropagation();
+    fetch(`${API}/admin/whatsapp/resolver`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ pedido, numero, resolvido: false })
+    })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ ok, body }) => {
+        if (!ok) { gcAlert(body.error || "Erro ao reabrir."); return; }
+        _wacCarregarLista();
+    })
+    .catch(() => gcAlert("Erro ao conectar com o servidor."));
+}
+
 function _wacFecharModalResultado() {
     document.getElementById("wac-resultado-overlay").style.display = "none";
+    _wacResultadoAlvo = null;
 }
 
 function _wacConfirmarResultado(resultado) {
+    if (!_wacResultadoAlvo) return;
+    const alvo = _wacResultadoAlvo;
     fetch(`${API}/admin/whatsapp/resolver`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
         body: JSON.stringify({
-            pedido: _wacPedidoAtual, numero: _wacNumeroAtual, resolvido: true,
-            resultado, mensagem_ids: [..._wacSelecionadas]
+            pedido: alvo.pedido, numero: alvo.numero, resolvido: true,
+            resultado, mensagem_ids: alvo.mensagem_ids
         })
     })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ ok, body }) => {
         if (!ok) { gcAlert(body.error || "Erro ao salvar."); return; }
         _wacFecharModalResultado();
-        _wacResolvidoAtual = true;
-        _wacAtualizarBarraResolver();
-        _wacLimparSelecao();
+        if (alvo.noChat) { _wacResolvidoAtual = true; _wacLimparSelecao(); }
+        else _wacCarregarLista();
     })
     .catch(() => gcAlert("Erro ao conectar com o servidor."));
 }
