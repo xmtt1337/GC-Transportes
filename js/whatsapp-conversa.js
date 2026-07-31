@@ -108,7 +108,10 @@ function _wacCards(itens, grupo) {
             ? `<button class="wac-card-acao reabrir" title="Reabrir pedido" onclick="_wacReabrirPeloCard(event,'${r.numero}','${pedidoEsc}')">↺</button>`
             : `<button class="wac-card-acao" title="Marcar como resolvido" onclick="_wacResolverPeloCard(event,'${r.numero}','${pedidoEsc}')">✓</button>`;
         return `
-        <div class="wac-card" onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',${!!r.respondido})">
+        <div class="wac-card" draggable="true"
+             ondragstart="_wacArrastarInicio(event,'${r.numero}','${pedidoEsc}')"
+             ondragend="_wacArrastarFim(event)"
+             onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',${!!r.respondido})">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
                 <div class="wac-card-nome">${aviso}${titulo}</div>
@@ -167,7 +170,10 @@ function _wacRenderizar() {
                 <span class="wac-coluna-dot" style="background:${g.cor}"></span>
                 <span>${g.titulo}</span><span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
             </div>
-            <div class="wac-coluna-cards">${_wacCards(grupos[g.chave], g) || `<div class="wac-coluna-vazia">—</div>`}</div>
+            <div class="wac-coluna-cards wac-drop"
+                 ondragover="_wacDropSobre(event)" ondragleave="_wacDropSaiu(event)" ondrop="_wacSoltar(event,null)">
+                ${_wacCards(grupos[g.chave], g) || `<div class="wac-coluna-vazia">—</div>`}
+            </div>
         </div>`).join("");
 
     // Sanfonas: fecham ao carregar a tela, mas ficam abertas durante a busca — senão
@@ -180,17 +186,20 @@ function _wacRenderizar() {
             // Separa pelo resultado registrado na hora de marcar como respondido.
             const recebeu = itens.filter(r => r.resultado === "recebeu");
             const naoRecebeu = itens.filter(r => r.resultado !== "recebeu");
-            const sub = (titulo, cor, lista) => `
+            const sub = (titulo, cor, lista, valor) => `
                 <div class="wac-sub-coluna">
                     <div class="wac-sub-header">
                         <span class="wac-coluna-dot" style="background:${cor}"></span>
                         <span>${titulo}</span><span class="wac-coluna-contagem">${lista.length}</span>
                     </div>
-                    <div class="wac-cards-grid">${_wacCards(lista, g) || vazio}</div>
+                    <div class="wac-cards-grid wac-drop"
+                         ondragover="_wacDropSobre(event)" ondragleave="_wacDropSaiu(event)" ondrop="_wacSoltar(event,'${valor}')">
+                        ${_wacCards(lista, g) || vazio}
+                    </div>
                 </div>`;
             corpo = `<div class="wac-sub-colunas">
-                ${sub("Recebido", "#22c55e", recebeu)}
-                ${sub("Não recebido", "#ef4444", naoRecebeu)}
+                ${sub("Recebido", "#22c55e", recebeu, "recebeu")}
+                ${sub("Não recebido", "#ef4444", naoRecebeu, "nao_recebeu")}
             </div>`;
         } else {
             corpo = `<div class="wac-cards-grid">${_wacCards(itens, g) || vazio}</div>`;
@@ -279,6 +288,53 @@ function _wacDestacarPedido(body) {
     alvo.scrollIntoView({ block: "center" });
     alvo.classList.add("destacada");
     setTimeout(() => alvo.classList.remove("destacada"), 2000);
+}
+
+// ── Arrastar e soltar entre as colunas ──
+// Arrastar pra "Recebido"/"Não recebido" resolve o pedido; arrastar de volta pra uma
+// coluna de prazo reabre. É o mesmo endpoint do botão ✓, só que sem passar pelo modal.
+let _wacArrastando = null;
+
+function _wacArrastarInicio(ev, numero, pedido) {
+    _wacArrastando = { numero, pedido };
+    ev.dataTransfer.effectAllowed = "move";
+    ev.dataTransfer.setData("text/plain", pedido || numero);
+    ev.currentTarget.classList.add("arrastando");
+    // Abre a sanfona de respondidos: sem isso não haveria onde soltar.
+    const ac = document.getElementById("wac-acordeao-respondidos");
+    if (ac) ac.classList.add("aberto");
+}
+
+function _wacArrastarFim(ev) {
+    ev.currentTarget.classList.remove("arrastando");
+    _wacArrastando = null;
+    document.querySelectorAll(".wac-drop.sobre").forEach(e => e.classList.remove("sobre"));
+}
+
+function _wacDropSobre(ev) { ev.preventDefault(); ev.currentTarget.classList.add("sobre"); }
+function _wacDropSaiu(ev)  { ev.currentTarget.classList.remove("sobre"); }
+
+// resultado null = reabrir (voltou pra uma coluna de prazo)
+function _wacSoltar(ev, resultado) {
+    ev.preventDefault();
+    ev.currentTarget.classList.remove("sobre");
+    if (!_wacArrastando) return;
+    const { numero, pedido } = _wacArrastando;
+    _wacArrastando = null;
+
+    fetch(`${API}/admin/whatsapp/resolver`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify(resultado
+            ? { pedido, numero, resolvido: true, resultado, mensagem_ids: [] }
+            : { pedido, numero, resolvido: false })
+    })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ ok, body }) => {
+        if (!ok) { gcAlert(body.error || "Erro ao mover."); return; }
+        _wacCarregarLista();
+    })
+    .catch(() => gcAlert("Erro ao conectar com o servidor."));
 }
 
 // ── Marcação manual de resolvido ──
