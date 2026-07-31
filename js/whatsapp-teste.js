@@ -100,6 +100,7 @@ const WA_REC_TEMPLATES = {
     tiktok: {
         rotulo: "TikTok (J&T)",
         template: "reclamacao_tiktok_jt",
+        transportadora: "jt",
         campoPedido: "codigo_pedido",
         campos: [
             { id: "nome_cliente", label: "Nome do cliente" },
@@ -122,6 +123,7 @@ Para que possamos auxiliar, escolha uma das opções abaixo e responda apenas co
     mercadolivre: {
         rotulo: "Mercado Livre (J&T)",
         template: "reclamacao_ml_jt",
+        transportadora: "jt",
         campoPedido: "id_pacote_jms",
         campos: [
             { id: "nome_cliente", label: "Nome do cliente" },
@@ -144,6 +146,7 @@ Para que possamos auxiliar, escolha uma opção:
     shopee: {
         rotulo: "Shopee",
         template: "reclamacao_shopee",
+        transportadora: "shopee",
         campoPedido: "codigo_pedido",
         campos: [
             { id: "nome_cliente", label: "Nome do cliente" },
@@ -155,6 +158,7 @@ Para que possamos auxiliar, escolha uma opção:
     imile: {
         rotulo: "iMile",
         template: "reclamacao_imile",
+        transportadora: "imile",
         campoPedido: "numero_pedido",
         campos: [
             { id: "nome_cliente", label: "Nome do cliente" },
@@ -176,6 +180,7 @@ Aguardo seu retorno e agradeço desde já! ☺️`,
     anjun: {
         rotulo: "Anjun",
         template: "reclamacao_anjun",
+        transportadora: "anjun",
         campoPedido: "numero_pedido",
         campos: [
             { id: "nome_cliente", label: "Nome do cliente" },
@@ -186,6 +191,26 @@ Aguardo seu retorno e agradeço desde já! ☺️`,
         parametros: v => [v.nome_cliente, v.numero_pedido, v.plataforma],
     },
 };
+
+// Transportadora de cada template — é por ela que as conversas se separam no funil.
+// Mesmas cores do resto do sistema (bipagens, conferências, planejamento).
+const WA_TRANSPORTADORAS = {
+    jt:     { rotulo: "J&T",    cor: "#EF4444" },
+    shopee: { rotulo: "Shopee", cor: "#F97316" },
+    imile:  { rotulo: "iMile",  cor: "#9333EA" },
+    anjun:  { rotulo: "Anjun",  cor: "#22C55E" },
+};
+
+// Nome do template gravado no disparo → transportadora. Sai do próprio WA_REC_TEMPLATES,
+// então cadastrar transportadora nova continua sendo mexer num lugar só. Como deriva do
+// template, vale também pros disparos feitos antes desta separação existir.
+const WA_TEMPLATE_TRANSPORTADORA = Object.fromEntries(
+    Object.values(WA_REC_TEMPLATES).map(c => [c.template, c.transportadora])
+);
+
+function _waTransportadoraDe(template) {
+    return WA_TEMPLATE_TRANSPORTADORA[template] || null;
+}
 
 let _waRecCategoria = "tiktok";
 

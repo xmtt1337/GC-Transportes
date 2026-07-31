@@ -10,6 +10,7 @@ let _wacResolvidoAtual = false;
 let _wacRelogio = null;           // redesenha o funil pra acompanhar a passagem do tempo
 let _wacPrecisaDestacar = false;  // rolar até a mensagem do pedido só na abertura
 let _wacAba = "acareacao";        // "acareacao" (com prazo) | "outros" (só o contato)
+let _wacTransp = "todas";         // transportadora selecionada na barra de filtro
 
 // Cargos cujo disparo entra no funil de acareação. Os demais caem em "Outros ativos".
 const WA_ROLES_ACAREACAO = ["sac", "dev"];
@@ -157,7 +158,7 @@ function _wacCards(itens, grupo) {
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
                 <div class="wac-card-nome">${aviso}${titulo}</div>
-                ${apoio ? `<div class="wac-card-numero">${apoio}</div>` : ""}
+                ${apoio ? `<div class="wac-card-numero">${_wacTranspEtiqueta(r)}${apoio}</div>` : ""}
                 <div class="wac-card-prazo" ${vencimento ? `style="color:${_wacCorPrazo(vencimento)}"` : ""}>${linhaPrazo}${porQuem}</div>
             </div>
             ${acao}
@@ -233,7 +234,7 @@ function _wacCardsOutros(itens) {
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
                 <div class="wac-card-nome">${aviso}${r.pedido || _wacFormatarNumero(r.numero)}</div>
-                <div class="wac-card-numero">${_wacFormatarNumero(r.numero)}</div>
+                <div class="wac-card-numero">${_wacTranspEtiqueta(r)}${_wacFormatarNumero(r.numero)}</div>
                 <div class="wac-card-prazo">${porQuem}${fmt(r.ultima)}</div>
             </div>
         </div>`;
@@ -242,9 +243,58 @@ function _wacCardsOutros(itens) {
 
 function _wacTrocarAba(aba) {
     _wacAba = aba;
+    _wacTransp = "todas"; // as transportadoras de cada aba são outras — filtro herdado só confundiria
     document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.aba === aba));
     _wacRenderizar();
+}
+
+// ── Separação por transportadora ──
+// Vem do template usado no disparo, que já identifica a transportadora na hora de
+// enviar. Conversa que o cliente abriu sozinho não tem disparo nosso, logo não tem
+// transportadora — cai em "Sem transportadora" em vez de sumir do filtro.
+function _wacTranspDe(conversa) {
+    return _waTransportadoraDe(conversa.template_inicial) || "outras";
+}
+
+function _wacFiltrarTransp(chave) {
+    _wacTransp = chave;
+    _wacRenderizar();
+}
+
+// A barra só lista transportadora que tem conversa, e some quando não há o que separar.
+function _wacRenderizarTranspTabs(itens) {
+    const el = document.getElementById("wac-transp-tabs");
+    const contagem = {};
+    itens.forEach(r => { const k = _wacTranspDe(r); contagem[k] = (contagem[k] || 0) + 1; });
+
+    const chaves = Object.keys(WA_TRANSPORTADORAS).filter(k => contagem[k]);
+    if (contagem.outras) chaves.push("outras");
+
+    if (chaves.length < 2) { el.style.display = "none"; _wacTransp = "todas"; return; }
+    el.style.display = "";
+
+    // Filtro apontando pra transportadora que sumiu (busca, ou último caso resolvido)
+    // deixaria a tela vazia sem explicação — volta pra "Todas".
+    if (_wacTransp !== "todas" && !chaves.includes(_wacTransp)) _wacTransp = "todas";
+
+    const botao = (chave, rotulo, cor, n) => `
+        <button type="button" class="wac-transp-tab${_wacTransp === chave ? " active" : ""}"
+                style="--transp-cor:${cor}" onclick="_wacFiltrarTransp('${chave}')">
+            <span class="wac-transp-ponto"></span>${rotulo}<span class="wac-transp-n">${n}</span>
+        </button>`;
+
+    el.innerHTML = botao("todas", "Todas", "#3a86ff", itens.length) + chaves.map(k => {
+        const t = WA_TRANSPORTADORAS[k] || { rotulo: "Sem transportadora", cor: "#64748b" };
+        return botao(k, t.rotulo, t.cor, contagem[k]);
+    }).join("");
+}
+
+// Em "Todas" o card precisa dizer de qual transportadora é; já filtrado, seria repetição.
+function _wacTranspEtiqueta(conversa) {
+    if (_wacTransp !== "todas") return "";
+    const t = WA_TRANSPORTADORAS[_waTransportadoraDe(conversa.template_inicial)];
+    return t ? `<span class="wac-card-transp" style="color:${t.cor}">${t.rotulo}</span> · ` : "";
 }
 
 function _wacRenderizar() {
@@ -263,9 +313,13 @@ function _wacRenderizar() {
     // a coluna "Nos chamaram".
     const ehAcareacao = r => !r.enviado_por_role || WA_ROLES_ACAREACAO.includes(r.enviado_por_role);
 
-    if (_wacAba === "outros") return _wacRenderizarOutros(_wacDados.filter(r => !ehAcareacao(r) && casaBusca(r)));
+    // A contagem da barra de transportadoras é do que a aba mostra, antes do filtro dela
+    // mesma — senão a transportadora escolhida seria a única com número diferente de zero.
+    const daAba = _wacDados.filter(r => (_wacAba === "outros" ? !ehAcareacao(r) : ehAcareacao(r)) && casaBusca(r));
+    _wacRenderizarTranspTabs(daAba);
+    const visiveis = daAba.filter(r => _wacTransp === "todas" || _wacTranspDe(r) === _wacTransp);
 
-    const visiveis = _wacDados.filter(r => ehAcareacao(r) && casaBusca(r));
+    if (_wacAba === "outros") return _wacRenderizarOutros(visiveis);
 
     const grupos = {};
     WA_GRUPOS_PRAZO.forEach(g => { grupos[g.chave] = []; });

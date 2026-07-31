@@ -401,6 +401,26 @@ body {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .wac-card-numero { font-size: 11px; color: var(--text-muted); font-family: monospace; }
+.wac-card-transp { font-family: 'Inter', sans-serif; font-weight: 700; }
+
+/* Filtro por transportadora — cada uma se identifica pela própria cor, a mesma do
+   resto do sistema, em vez de mais uma fileira de abas azuis iguais à de cima. */
+.wac-transp-tabs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.wac-transp-tab {
+    display: flex; align-items: center; gap: 7px;
+    background: none; border: none; border-bottom: 2px solid transparent;
+    padding: 2px 0 5px; cursor: pointer; font-family: inherit;
+    font-size: 12.5px; font-weight: 600; color: #64748b;
+    margin-right: 10px; transition: color .15s, border-color .15s;
+}
+.wac-transp-tab:hover { color: #cbd5e1; }
+.wac-transp-tab.active { color: var(--transp-cor); border-bottom-color: var(--transp-cor); }
+.wac-transp-ponto {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    background: var(--transp-cor); opacity: 0.45; transition: opacity .15s;
+}
+.wac-transp-tab.active .wac-transp-ponto, .wac-transp-tab:hover .wac-transp-ponto { opacity: 1; }
+.wac-transp-n { font-size: 11px; color: var(--text-muted); font-weight: 600; }
 .wac-card-prazo { font-size: 11.5px; color: #94a3b8; font-weight: 500; margin-top: 3px; }
 
 @media (max-width: 680px) {
