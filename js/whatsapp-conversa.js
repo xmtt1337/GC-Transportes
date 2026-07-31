@@ -91,14 +91,14 @@ const WA_COLUNAS_PRAZO = [
     { chave: "dois_dias",     titulo: "Mais de 48h" },
 ];
 
-// Sanfonas embaixo: casos encerrados (respondido) ou perdidos (venceu sem resposta).
-// Começam sempre fechadas — são consulta pontual, não o foco do dia a dia.
-const WA_ACORDEOES_PRAZO = [
+// Segunda faixa de colunas: casos encerrados (respondido) ou perdidos (venceu sem
+// resposta). Ficam sempre abertas — é coluna igual à de cima, abrir e fechar só atrapalha.
+const WA_COLUNAS_FECHADAS = [
     { chave: "vencidos",    titulo: "Vencidos sem resposta" },
     { chave: "respondidos", titulo: "Respondidos" },
 ];
 
-const WA_GRUPOS_PRAZO = [...WA_COLUNAS_PRAZO, ...WA_ACORDEOES_PRAZO];
+const WA_GRUPOS_PRAZO = [...WA_COLUNAS_PRAZO, ...WA_COLUNAS_FECHADAS];
 
 function abrirWhatsappConversas(event) {
     if (event) event.preventDefault();
@@ -163,11 +163,6 @@ function _wacCards(itens, grupo) {
             ${acao}
         </div>`;
     }).join("");
-}
-
-function _wacAlternarAcordeao(chave) {
-    const el = document.getElementById(`wac-acordeao-${chave}`);
-    if (el) el.classList.toggle("aberto");
 }
 
 function _wacCarregarLista() {
@@ -287,43 +282,26 @@ function _wacRenderizar() {
             </div>
         </div>`).join("");
 
-    // Sanfonas: fecham ao carregar a tela, mas ficam abertas durante a busca — senão
-    // um resultado que caiu ali dentro ficaria escondido sem a pessoa perceber.
-    const vazio = `<div class="wac-coluna-vazia">Nenhuma conversa aqui.</div>`;
-    document.getElementById("wac-acordeoes").innerHTML = WA_ACORDEOES_PRAZO.map(g => {
-        const itens = grupos[g.chave];
-        let corpo;
-        if (g.chave === "respondidos") {
-            // Separa pelo resultado registrado na hora de marcar como respondido.
-            const recebeu = itens.filter(r => r.resultado === "recebeu");
-            const naoRecebeu = itens.filter(r => r.resultado !== "recebeu");
-            const sub = (titulo, lista, valor) => `
-                <div class="wac-sub-coluna">
-                    <div class="wac-sub-header">
-                        <span>${titulo}</span><span class="wac-coluna-contagem">${lista.length}</span>
-                    </div>
-                    <div class="wac-cards-grid wac-drop"
-                         ondragover="_wacDropSobre(event)" ondragleave="_wacDropSaiu(event)" ondrop="_wacSoltar(event,'${valor}')">
-                        ${_wacCards(lista, g) || vazio}
-                    </div>
-                </div>`;
-            corpo = `<div class="wac-sub-colunas">
-                ${sub("Recebido", recebeu, "recebeu")}
-                ${sub("Não recebido", naoRecebeu, "nao_recebeu")}
-            </div>`;
-        } else {
-            corpo = `<div class="wac-cards-grid">${_wacCards(itens, g) || vazio}</div>`;
-        }
-        return `
-        <div class="wac-acordeao${termo && itens.length ? " aberto" : ""}" id="wac-acordeao-${g.chave}">
-            <button class="wac-acordeao-header" onclick="_wacAlternarAcordeao('${g.chave}')">
-                <span>${g.titulo}</span>
-                <span class="wac-coluna-contagem">${itens.length}</span>
-                <span class="wac-acordeao-seta">⌄</span>
-            </button>
-            <div class="wac-acordeao-corpo">${corpo}</div>
-        </div>`;
-    }).join("");
+    // Segunda faixa, sempre visível. Os respondidos se abrem em duas colunas pelo
+    // desfecho — são elas que recebem o card quando alguém arrasta pra resolver.
+    const [gVencidos, gRespondidos] = WA_COLUNAS_FECHADAS;
+    const fechadas = [
+        { titulo: gVencidos.titulo, grupo: gVencidos,    itens: grupos.vencidos,                                          resultado: null },
+        { titulo: "Recebido",       grupo: gRespondidos, itens: grupos.respondidos.filter(r => r.resultado === "recebeu"), resultado: "recebeu" },
+        { titulo: "Não recebido",   grupo: gRespondidos, itens: grupos.respondidos.filter(r => r.resultado !== "recebeu"), resultado: "nao_recebeu" },
+    ];
+
+    document.getElementById("wac-lista-fechados").innerHTML = fechadas.map(c => `
+        <div class="wac-coluna">
+            <div class="wac-coluna-header">
+                <span>${c.titulo}</span><span class="wac-coluna-contagem">${c.itens.length}</span>
+            </div>
+            <div class="wac-coluna-cards wac-drop"
+                 ondragover="_wacDropSobre(event)" ondragleave="_wacDropSaiu(event)"
+                 ondrop="_wacSoltar(event,${c.resultado ? `'${c.resultado}'` : "null"})">
+                ${_wacCards(c.itens, c.grupo) || `<div class="wac-coluna-vazia">—</div>`}
+            </div>
+        </div>`).join("");
 }
 
 // O cabeçalho mostra só o número, nunca o nome do cliente — contato não salvo, como
@@ -418,9 +396,6 @@ function _wacArrastarInicio(ev, numero, pedido) {
     ev.dataTransfer.effectAllowed = "move";
     ev.dataTransfer.setData("text/plain", pedido || numero);
     ev.currentTarget.classList.add("arrastando");
-    // Abre a sanfona de respondidos: sem isso não haveria onde soltar.
-    const ac = document.getElementById("wac-acordeao-respondidos");
-    if (ac) ac.classList.add("aberto");
 }
 
 function _wacArrastarFim(ev) {
