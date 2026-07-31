@@ -37,6 +37,44 @@ function _waCarregarStatus() {
     .catch(() => { el.innerHTML = `<span style="color:#ef4444">Erro ao consultar o servidor.</span>`; });
 }
 
+// ── Telefone: máscara e validação ──
+// Guarda só os dígitos locais (DDD + número). O "55" é sempre nosso, nunca do que
+// foi digitado — colar "49 99927-6131" ou "5549999276131" dá no mesmo resultado.
+function _waDigitosLocais(valor) {
+    let d = String(valor || "").replace(/\D/g, "");
+    // Só tira o 55 da frente se o que sobrar tiver cara de número local (10 ou 11 dígitos).
+    // Sem isso, um número com DDD 55 (Santa Maria/RS) seria mutilado.
+    if (d.startsWith("55") && (d.length - 2 === 10 || d.length - 2 === 11)) d = d.slice(2);
+    return d.slice(0, 11);
+}
+
+function _waFormatarTelefone(valor) {
+    const d = _waDigitosLocais(valor);
+    if (!d) return "";
+    let out = "+55 " + d.slice(0, 2);
+    const resto = d.slice(2);
+    if (!resto) return out;
+    if (resto.length <= 4)      out += " " + resto;
+    else if (resto.length <= 8) out += " " + resto.slice(0, 4) + "-" + resto.slice(4);
+    else                        out += " " + resto.slice(0, 1) + " " + resto.slice(1, 5) + "-" + resto.slice(5);
+    return out;
+}
+
+function _waMascaraTelefone(input) {
+    input.value = _waFormatarTelefone(input.value);
+}
+
+// Devolve { ok, e164, erro } — e164 é o formato que a API espera (55 + DDD + número).
+function _waValidarTelefone(valor) {
+    const d = _waDigitosLocais(valor);
+    if (!d)               return { ok: false, erro: "Informe o número do cliente." };
+    if (d.length < 10)    return { ok: false, erro: "Número incompleto. Use DDD + número, ex: 49 9 9927-6131." };
+    const ddd = parseInt(d.slice(0, 2), 10);
+    if (ddd < 11 || ddd > 99) return { ok: false, erro: `DDD inválido (${d.slice(0, 2)}).` };
+    if (d.length === 11 && d[2] !== "9") return { ok: false, erro: "Celular com 9 dígitos precisa começar com 9 depois do DDD." };
+    return { ok: true, e164: "55" + d };
+}
+
 // ── Mensagens de reclamação por transportadora ──
 // Cada categoria vira um template aprovado na Meta (nome em "template"); os campos
 // abaixo viram os parâmetros {{1}}, {{2}}... na mesma ordem em que aparecem no texto.
@@ -173,12 +211,13 @@ function _waRecAtualizarPreview() {
 
 function _waRecEnviar() {
     const cfg    = WA_REC_TEMPLATES[_waRecCategoria];
-    const numero = document.getElementById("wa-rec-numero").value.trim();
     const prazo  = parseInt(document.getElementById("wa-rec-prazo").value, 10);
     const msgEl  = document.getElementById("wa-rec-msg");
     const v      = _waRecValores();
 
-    if (!numero) { msgEl.style.color = "#ef4444"; msgEl.innerText = "Informe o número do cliente."; return; }
+    const tel = _waValidarTelefone(document.getElementById("wa-rec-numero").value);
+    if (!tel.ok) { msgEl.style.color = "#ef4444"; msgEl.innerText = tel.erro; return; }
+    const numero = tel.e164;
     if (!prazo || prazo < 1) { msgEl.style.color = "#ef4444"; msgEl.innerText = "Informe o prazo em horas."; return; }
     const faltando = cfg.campos.filter(c => !v[c.id]);
     if (faltando.length) {
@@ -309,11 +348,18 @@ async function _waBulkEnviar() {
         progresso.style.color = "#64748b";
         progresso.innerText = `Enviando ${i + 1} de ${_waBulkLinhas.length}... (${ok} ok, ${falha} falhas)`;
 
+        const tel = _waValidarTelefone(linha.numero);
+        if (!tel.ok) {
+            linha.status = "erro"; linha.erro = tel.erro; falha++;
+            _waBulkRenderizar();
+            continue;
+        }
+
         try {
             const resp = await fetch(`${API}/admin/whatsapp/enviar`, {
                 method: "POST",
                 headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-                body: JSON.stringify({ numero: linha.numero, template, parametros: linha.texto ? [linha.texto] : [] })
+                body: JSON.stringify({ numero: tel.e164, template, parametros: linha.texto ? [linha.texto] : [] })
             });
             const body = await resp.json();
             if (resp.ok) { linha.status = "ok"; ok++; }
