@@ -3,6 +3,7 @@
 // pra servir de "print" pro SAC mostrar pra transportadora sem precisar do celular.
 let _wacNumeroAtual = null;
 let _wacAutoRefresh = null;
+let _wacSelecionadas = new Set(); // ids ("e12"/"r5") marcados pra excluir
 
 // Foto de perfil padrão (silhueta cinza do WhatsApp) — igual pra todo mundo, sem emoji.
 const WA_AVATAR_SVG = `<svg viewBox="0 0 212 212" width="100%" height="100%" aria-hidden="true">
@@ -156,6 +157,7 @@ function _wacCarregarLista() {
 // exibe contato não salvo, e é o que dá credibilidade ao print enviado à transportadora.
 function _wacAbrirConversa(numero) {
     _wacNumeroAtual = numero;
+    _wacSelecionadas.clear();
     document.getElementById("wac-chat-nome").innerText = _wacFormatarNumero(numero);
     document.getElementById("wac-chat-numero").innerText = "";
     mostrarTela("tela-whatsapp-conversa-chat");
@@ -195,14 +197,68 @@ function _wacCarregarConversa(silencioso) {
                 body.innerHTML = `<div style="text-align:center;color:#5b6b73;font-size:13px;padding:20px">Nenhuma mensagem encontrada.</div>`;
                 return;
             }
+            const scrollAnterior = body.scrollTop;
             body.innerHTML = rows.map(m => {
                 const hora  = new Date(m.criado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
                 const check = m.direcao === "enviada" ? `<span class="wac-check">✓✓</span>` : "";
-                return `<div class="wac-bubble ${m.direcao}">${_wacEscapar(m.texto)}<span class="wac-bubble-hora">${hora} ${check}</span></div>`;
+                const sel   = _wacSelecionadas.has(m.id) ? " selecionada" : "";
+                return `<div class="wac-bubble ${m.direcao}${sel}" onclick="_wacAlternarSelecao('${m.id}')">${_wacEscapar(m.texto)}<span class="wac-bubble-hora">${hora} ${check}</span></div>`;
             }).join("");
-            body.scrollTop = body.scrollHeight;
+            // Só desce sozinho na abertura; no auto-refresh respeita onde a pessoa estava.
+            body.scrollTop = silencioso ? scrollAnterior : body.scrollHeight;
+            _wacAtualizarBarraSelecao();
         })
         .catch(() => { body.innerHTML = `<div style="text-align:center;color:#ef4444;font-size:13px;padding:20px">Erro ao carregar conversa.</div>`; });
+}
+
+// ── Seleção e exclusão de mensagens ──
+function _wacAlternarSelecao(id) {
+    if (_wacSelecionadas.has(id)) _wacSelecionadas.delete(id);
+    else _wacSelecionadas.add(id);
+    document.querySelectorAll(".wac-bubble").forEach(b => {
+        const bid = (b.getAttribute("onclick") || "").match(/'([^']+)'/);
+        if (bid) b.classList.toggle("selecionada", _wacSelecionadas.has(bid[1]));
+    });
+    _wacAtualizarBarraSelecao();
+}
+
+function _wacAtualizarBarraSelecao() {
+    const barra = document.getElementById("wac-selecao-barra");
+    if (!barra) return;
+    const n = _wacSelecionadas.size;
+    barra.style.display = n ? "" : "none";
+    if (n) document.getElementById("wac-selecao-contagem").innerText =
+        `${n} mensagem${n !== 1 ? "s" : ""} selecionada${n !== 1 ? "s" : ""}`;
+}
+
+function _wacLimparSelecao() {
+    _wacSelecionadas.clear();
+    document.querySelectorAll(".wac-bubble.selecionada").forEach(b => b.classList.remove("selecionada"));
+    _wacAtualizarBarraSelecao();
+}
+
+function _wacExcluirSelecionadas() {
+    const ids = [..._wacSelecionadas];
+    if (!ids.length) return;
+    gcConfirm(
+        `Excluir ${ids.length} mensagem${ids.length !== 1 ? "s" : ""} do histórico do sistema? ` +
+        `Isso não apaga nada no WhatsApp do cliente — só some daqui e do print.`,
+        () => {
+            fetch(`${API}/admin/whatsapp/excluir-mensagens`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                body: JSON.stringify({ ids })
+            })
+            .then(r => r.json().then(body => ({ ok: r.ok, body })))
+            .then(({ ok, body }) => {
+                if (!ok) { gcAlert(body.error || "Erro ao excluir."); return; }
+                _wacLimparSelecao();
+                _wacCarregarConversa();
+            })
+            .catch(() => gcAlert("Erro ao conectar com o servidor."));
+        },
+        "Excluir mensagens", "Excluir"
+    );
 }
 
 // Resposta livre — só funciona dentro da janela de 24h aberta pelo cliente (sem template).
