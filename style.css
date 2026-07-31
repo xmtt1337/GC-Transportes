@@ -287,8 +287,8 @@ body {
 /* Pisca a mensagem do pedido que abriu a conversa */
 .wac-bubble.destacada { animation: wacDestaque 2s ease; }
 @keyframes wacDestaque {
-    0%, 60%  { box-shadow: 0 0 0 3px rgba(251,191,36,0.55); }
-    100%     { box-shadow: 0 0 0 3px rgba(251,191,36,0); }
+    0%, 60%  { box-shadow: 0 0 0 3px rgba(58,134,255,0.55); }
+    100%     { box-shadow: 0 0 0 3px rgba(58,134,255,0); }
 }
 .wac-selecao-barra {
     flex-shrink: 0; display: flex; align-items: center; gap: 12px;
@@ -327,7 +327,7 @@ body {
 }
 .wac-selecao-responder {
     margin-left: auto; background: none; border: none; cursor: pointer; font-family: inherit;
-    color: #22c55e; font-size: 12.5px; font-weight: 700;
+    color: var(--blue); font-size: 12.5px; font-weight: 700;
 }
 .wac-selecao-responder + .wac-selecao-excluir { margin-left: 0; }
 .wac-resultado-opcoes { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 4px; }

@@ -8,6 +8,7 @@ let _wacDados = [];               // última resposta do servidor, pra filtrar s
 let _wacPedidoAtual = "";         // pedido do card que abriu a conversa
 let _wacResolvidoAtual = false;
 let _wacRelogio = null;           // redesenha o funil pra acompanhar a passagem do tempo
+let _wacPrecisaDestacar = false;  // rolar até a mensagem do pedido só na abertura
 
 // Avatar padrão do sistema — igual pra todo mundo, sem emoji e sem imitar outro app.
 const WA_AVATAR_SVG = `<svg viewBox="0 0 212 212" width="100%" height="100%" aria-hidden="true">
@@ -260,6 +261,7 @@ function _wacAbrirConversa(numero, pedido, resolvido) {
     _wacNumeroAtual = numero;
     _wacPedidoAtual = pedido || "";
     _wacResolvidoAtual = resolvido === true || resolvido === "true";
+    _wacPrecisaDestacar = true; // só nesta abertura
     _wacSelecionadas.clear();
     document.getElementById("wac-chat-nome").innerText = _wacFormatarNumero(numero);
     document.getElementById("wac-chat-numero").innerText = "";
@@ -310,7 +312,12 @@ function _wacCarregarConversa(silencioso) {
             }).join("");
             // Só desce sozinho na abertura; no auto-refresh respeita onde a pessoa estava.
             body.scrollTop = silencioso ? scrollAnterior : body.scrollHeight;
-            if (!silencioso) _wacDestacarPedido(body);
+            // Vai até a mensagem do pedido uma única vez, ao abrir pelo card. Depois disso
+            // (ex.: mandou uma mensagem e a conversa recarregou) fica onde deveria: no fim.
+            if (!silencioso && _wacPrecisaDestacar) {
+                _wacPrecisaDestacar = false;
+                _wacDestacarPedido(body);
+            }
             _wacAtualizarBarraSelecao();
         })
         .catch(() => { body.innerHTML = `<div style="text-align:center;color:#ef4444;font-size:13px;padding:20px">Erro ao carregar conversa.</div>`; });
