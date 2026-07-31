@@ -41,7 +41,10 @@ function _waCarregarStatus() {
 // Guarda só os dígitos locais (DDD + número). O "55" é sempre nosso, nunca do que
 // foi digitado — colar "49 99927-6131" ou "5549999276131" dá no mesmo resultado.
 function _waDigitosLocais(valor) {
-    let d = String(valor || "").replace(/\D/g, "");
+    // Tira o "+55" que a própria máscara escreve — senão, a cada tecla ele seria lido
+    // como se fosse digitado e o número iria acumulando 55 na frente.
+    const semPrefixo = String(valor || "").trim().replace(/^\+\s*55\s*/, "");
+    let d = semPrefixo.replace(/\D/g, "");
     // Só tira o 55 da frente se o que sobrar tiver cara de número local (10 ou 11 dígitos).
     // Sem isso, um número com DDD 55 (Santa Maria/RS) seria mutilado.
     if (d.startsWith("55") && (d.length - 2 === 10 || d.length - 2 === 11)) d = d.slice(2);
