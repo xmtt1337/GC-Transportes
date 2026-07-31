@@ -103,10 +103,11 @@ function _wacCards(itens, grupo) {
         const pedidoEsc = (r.pedido || "").replace(/'/g, "\\'");
         // Ponto verde: cliente escreveu depois do nosso último envio — tem resposta pra ler.
         const aviso = r.tem_resposta_nova && !r.respondido ? `<span class="wac-card-novo" title="Resposta não lida"></span>` : "";
-        // Ação direta no card: resolve sem precisar abrir a conversa (um pedido por vez).
+        // Só os respondidos têm botão: reabrir arrastando exigiria mirar numa coluna de
+        // prazo específica, e a certa depende do vencimento — o botão evita esse chute.
         const acao = r.respondido
             ? `<button class="wac-card-acao reabrir" title="Reabrir pedido" onclick="_wacReabrirPeloCard(event,'${r.numero}','${pedidoEsc}')">↺</button>`
-            : `<button class="wac-card-acao" title="Marcar como resolvido" onclick="_wacResolverPeloCard(event,'${r.numero}','${pedidoEsc}')">✓</button>`;
+            : "";
         return `
         <div class="wac-card" draggable="true"
              ondragstart="_wacArrastarInicio(event,'${r.numero}','${pedidoEsc}')"
@@ -353,15 +354,6 @@ function _wacAbrirModalResultado() {
         `${n} mensagem${n !== 1 ? "s" : ""} selecionada${n !== 1 ? "s" : ""}` +
         (_wacPedidoAtual ? ` como resposta do pedido ${_wacPedidoAtual}.` : ".") +
         " O que o cliente respondeu?";
-    document.getElementById("wac-resultado-overlay").style.display = "";
-}
-
-// Aberto pelo botão de check no card do funil.
-function _wacResolverPeloCard(event, numero, pedido) {
-    event.stopPropagation(); // não abre a conversa junto
-    _wacResultadoAlvo = { pedido, numero, mensagem_ids: [], noChat: false };
-    document.getElementById("wac-resultado-msg").innerText =
-        (pedido ? `Pedido ${pedido}. ` : "") + "O que o cliente respondeu?";
     document.getElementById("wac-resultado-overlay").style.display = "";
 }
 
