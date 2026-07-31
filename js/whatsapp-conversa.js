@@ -24,6 +24,25 @@ function _wacVencimento(primeiroEnvio, prazoHoras) {
     return new Date(new Date(primeiroEnvio).getTime() + horas * 60 * 60 * 1000);
 }
 
+// Cor do prazo em degradê: branco quando acabou de sair, âmbar na metade, vermelho
+// perto de vencer. Passa pelo âmbar porque branco→vermelho direto vira rosa no meio.
+const _WAC_BRANCO = [226, 232, 240], _WAC_AMBAR = [251, 191, 36], _WAC_VERMELHO = [239, 68, 68];
+
+function _wacMisturar(a, b, t) {
+    return a.map((v, i) => Math.round(v + (b[i] - v) * t));
+}
+
+function _wacCorPrazo(vencimento, prazoHoras) {
+    const totalMs = (prazoHoras || WA_PRAZO_HORAS_PADRAO) * 60 * 60 * 1000;
+    const restanteMs = vencimento - new Date();
+    if (restanteMs <= 0) return "#ef4444";
+    const r = Math.max(0, Math.min(1, restanteMs / totalMs));
+    const c = r >= 0.5
+        ? _wacMisturar(_WAC_AMBAR, _WAC_BRANCO, (r - 0.5) * 2)
+        : _wacMisturar(_WAC_VERMELHO, _WAC_AMBAR, r * 2);
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
 // "faltam 6h" / "faltam 40min" / "venceu há 3h" — precisão que o card de prazo curto exige.
 function _wacTempoRestante(vencimento) {
     const ms = vencimento - new Date();
@@ -117,7 +136,7 @@ function _wacCards(itens, grupo) {
             <div class="wac-card-info">
                 <div class="wac-card-nome">${aviso}${titulo}</div>
                 ${apoio ? `<div class="wac-card-numero">${apoio}</div>` : ""}
-                <div class="wac-card-prazo" ${vencimento && vencimento < new Date() ? 'style="color:#ef4444"' : ""}>${linhaPrazo}</div>
+                <div class="wac-card-prazo" ${vencimento ? `style="color:${_wacCorPrazo(vencimento, r.prazo_horas)}"` : ""}>${linhaPrazo}</div>
             </div>
             ${acao}
         </div>`;
