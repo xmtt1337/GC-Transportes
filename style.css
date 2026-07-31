@@ -347,7 +347,7 @@ body {
 }
 .wac-card:hover { border-color: rgba(58,134,255,0.4); }
 .wac-card-avatar {
-    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
     display: flex; align-items: center; justify-content: center;
 }
 .wac-card-info { min-width: 0; flex: 1; }
