@@ -19,7 +19,7 @@ function abrirWhatsappTeste(event) {
     const mostrar = (id, sim) => { const el = document.getElementById(id); if (el) el.style.display = sim ? "" : "none"; };
     mostrar("wa-secao-acareacao", true);
     mostrar("wa-campo-prazo", comPrazo);
-    mostrar("wa-secao-massa", comPrazo);
+    mostrar("wa-bulk-bloco", comPrazo);
     mostrar("wa-secao-status", role === "dev"); // diagnóstico do número: só dev
 
     if (role === "dev") _waCarregarStatus();
@@ -198,6 +198,18 @@ function _waRecEscolher(cat) {
     document.querySelectorAll("#wa-rec-tabs .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.cat === cat));
     _waRecRenderCampos();
+    // Trocar de transportadora muda as colunas do CSV — o arquivo anterior não serve mais.
+    _waBulkLimpar();
+}
+
+function _waBulkLimpar() {
+    _waBulkLinhas = [];
+    const arq = document.getElementById("wa-bulk-arquivo");
+    if (arq) arq.value = "";
+    const prev = document.getElementById("wa-bulk-preview");
+    if (prev) prev.style.display = "none";
+    const prog = document.getElementById("wa-bulk-progresso");
+    if (prog) prog.innerText = "";
 }
 
 function _waRecRenderCampos() {
@@ -270,9 +282,45 @@ function _waRecEnviar() {
     .catch(() => { msgEl.style.color = "#ef4444"; msgEl.innerText = "Erro ao conectar com o servidor."; });
 }
 
-// ── Envio em massa via CSV (colunas: Numero,Texto) ──
-let _waBulkLinhas  = [];
+// ── Disparo em massa por CSV ──
+// O arquivo segue a transportadora selecionada: as colunas são exatamente os campos
+// daquele template, então não tem como preencher um campo que a mensagem não usa.
+let _waBulkLinhas   = [];
 let _waBulkEnviando = false;
+
+function _waBulkAlternar() {
+    const area = document.getElementById("wa-bulk-area");
+    const btn  = document.getElementById("wa-bulk-toggle");
+    const abrir = area.style.display === "none";
+    area.style.display = abrir ? "" : "none";
+    btn.textContent = abrir ? "Disparar em massa ▴" : "Disparar em massa ▾";
+    btn.classList.toggle("active", abrir);
+}
+
+// Colunas do arquivo: número + os campos do template escolhido.
+function _waBulkColunas() {
+    return ["Numero", ...WA_REC_TEMPLATES[_waRecCategoria].campos.map(c => c.label)];
+}
+
+function _waBulkCsvEscapar(v) {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function _waBulkBaixarModelo() {
+    const cfg = WA_REC_TEMPLATES[_waRecCategoria];
+    const colunas = _waBulkColunas();
+    const exemplo = ["+55 49 9 9927-6131", ...cfg.campos.map(c => "exemplo " + c.label.toLowerCase())];
+    // BOM na frente pro Excel abrir os acentos corretamente.
+    const csv = "﻿" + [colunas, exemplo].map(l => l.map(_waBulkCsvEscapar).join(",")).join("\r\n") + "\r\n";
+
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "modelo_" + cfg.template + ".csv";
+    a.click();
+    URL.revokeObjectURL(url);
+}
 
 function _waBulkSplitLinha(linha) {
     const vals = []; let cur = ""; let inQ = false;
@@ -288,18 +336,28 @@ function _waBulkSplitLinha(linha) {
     return vals.map(v => v.trim().replace(/^"|"$/g, ""));
 }
 
+const _waNorm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+
 function _waBulkParseCSV(texto) {
+    const cfg = WA_REC_TEMPLATES[_waRecCategoria];
     const linhas = texto.replace(/^﻿/, "").split(/\r?\n/).filter(l => l.trim());
-    if (!linhas.length) return [];
-    const cabecalho = _waBulkSplitLinha(linhas[0]).map(h => h.toLowerCase());
-    const idxNumero = cabecalho.findIndex(h => h.includes("numero") || h.includes("número"));
-    const idxTexto  = cabecalho.findIndex(h => h.includes("texto"));
-    if (idxNumero === -1) return [];
+    if (linhas.length < 2) return [];
+
+    const cabecalho = _waBulkSplitLinha(linhas[0]).map(_waNorm);
+    // Casa pelo nome da coluna; se o cabeçalho foi mexido, cai na ordem do modelo.
+    const idxDe = (rotulo, posicao) => {
+        const i = cabecalho.indexOf(_waNorm(rotulo));
+        return i !== -1 ? i : posicao;
+    };
+    const idxNumero = idxDe("Numero", 0);
+    const idxCampos = cfg.campos.map((c, i) => idxDe(c.label, i + 1));
 
     return linhas.slice(1).map(linha => {
         const vals = _waBulkSplitLinha(linha);
-        return { numero: (vals[idxNumero] || "").trim(), texto: (vals[idxTexto] || "").trim() };
-    }).filter(l => l.numero);
+        const valores = {};
+        cfg.campos.forEach((c, i) => { valores[c.id] = (vals[idxCampos[i]] || "").trim(); });
+        return { numero: (vals[idxNumero] || "").trim(), valores, status: "aguardando" };
+    }).filter(l => l.numero || Object.values(l.valores).some(v => v));
 }
 
 function _waBulkArquivoSelecionado(event) {
@@ -307,12 +365,12 @@ function _waBulkArquivoSelecionado(event) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-        _waBulkLinhas = _waBulkParseCSV(reader.result).map(l => ({ ...l, status: "aguardando" }));
+        _waBulkLinhas = _waBulkParseCSV(reader.result);
         _waBulkRenderizar();
         document.getElementById("wa-bulk-preview").style.display = _waBulkLinhas.length ? "" : "none";
         document.getElementById("wa-bulk-contagem").innerText = _waBulkLinhas.length
-            ? `${_waBulkLinhas.length} destinatário${_waBulkLinhas.length !== 1 ? "s" : ""} encontrado${_waBulkLinhas.length !== 1 ? "s" : ""} no arquivo.`
-            : "Nenhuma linha válida encontrada. Confira se o arquivo tem a coluna 'Numero'.";
+            ? _waBulkLinhas.length + " destinatário" + (_waBulkLinhas.length !== 1 ? "s" : "") + " · modelo " + WA_REC_TEMPLATES[_waRecCategoria].rotulo
+            : "Nenhuma linha válida. Confira se o arquivo é o modelo desta transportadora.";
         document.getElementById("wa-bulk-progresso").innerText = "";
         const btn = document.getElementById("wa-bulk-btn-enviar");
         btn.disabled = false;
@@ -321,37 +379,37 @@ function _waBulkArquivoSelecionado(event) {
     reader.readAsText(file, "utf-8");
 }
 
-function _waBulkStatusCor(status) {
-    if (status === "ok") return "#22c55e";
-    if (status === "erro") return "#ef4444";
-    if (status === "enviando") return "#fbbf24";
-    return "#64748b";
+function _waBulkStatusCor(s) {
+    return s === "ok" ? "#22c55e" : s === "erro" ? "#ef4444" : s === "enviando" ? "#fbbf24" : "#64748b";
 }
 function _waBulkStatusTexto(l) {
-    if (l.status === "ok") return "Enviado";
-    if (l.status === "erro") return l.erro || "Falhou";
-    if (l.status === "enviando") return "Enviando...";
-    return "Aguardando";
+    return l.status === "ok" ? "Enviado"
+         : l.status === "erro" ? (l.erro || "Falhou")
+         : l.status === "enviando" ? "Enviando..." : "Aguardando";
 }
 
 function _waBulkRenderizar() {
+    const cfg = WA_REC_TEMPLATES[_waRecCategoria];
+    document.getElementById("wa-bulk-thead").innerHTML = `
+        <tr style="text-align:left;color:#64748b">
+            <th style="padding:8px 10px">Número</th>
+            ${cfg.campos.map(c => `<th style="padding:8px 10px;white-space:nowrap">${c.label}</th>`).join("")}
+            <th style="padding:8px 10px">Status</th>
+        </tr>`;
     document.getElementById("wa-bulk-tbody").innerHTML = _waBulkLinhas.map(l => `
         <tr style="border-top:1px solid rgba(255,255,255,0.04)">
-            <td style="padding:7px 10px;font-family:monospace">${l.numero}</td>
-            <td style="padding:7px 10px;color:#94a3b8;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.texto || "—"}</td>
-            <td style="padding:7px 10px;color:${_waBulkStatusCor(l.status)};font-weight:600">${_waBulkStatusTexto(l)}</td>
+            <td style="padding:7px 10px;font-family:monospace;white-space:nowrap">${l.numero || "—"}</td>
+            ${cfg.campos.map(c => `<td style="padding:7px 10px;color:#94a3b8;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.valores[c.id] || "—"}</td>`).join("")}
+            <td style="padding:7px 10px;color:${_waBulkStatusCor(l.status)};font-weight:600;white-space:nowrap">${_waBulkStatusTexto(l)}</td>
         </tr>`).join("");
 }
 
 async function _waBulkEnviar() {
     if (_waBulkEnviando || !_waBulkLinhas.length) return;
-    const template = document.getElementById("wa-bulk-template").value.trim();
+    const cfg = WA_REC_TEMPLATES[_waRecCategoria];
     const progresso = document.getElementById("wa-bulk-progresso");
-    if (!template) {
-        progresso.style.color = "#ef4444";
-        progresso.innerText = "Informe o template antes de enviar.";
-        return;
-    }
+    const comPrazo = WA_ROLES_COM_PRAZO.includes(window._gcUser && window._gcUser.role);
+    const prazo = parseInt(document.getElementById("wa-rec-prazo").value, 10);
 
     _waBulkEnviando = true;
     const btn = document.getElementById("wa-bulk-btn-enviar");
@@ -360,23 +418,34 @@ async function _waBulkEnviar() {
     let ok = 0, falha = 0;
     for (let i = 0; i < _waBulkLinhas.length; i++) {
         const linha = _waBulkLinhas[i];
-        linha.status = "enviando";
-        _waBulkRenderizar();
         progresso.style.color = "#64748b";
         progresso.innerText = `Enviando ${i + 1} de ${_waBulkLinhas.length}... (${ok} ok, ${falha} falhas)`;
 
+        // Valida antes de gastar mensagem: número torto ou campo vazio nem chega na Meta.
         const tel = _waValidarTelefone(linha.numero);
-        if (!tel.ok) {
-            linha.status = "erro"; linha.erro = tel.erro; falha++;
+        const faltando = cfg.campos.filter(c => !linha.valores[c.id]);
+        if (!tel.ok || faltando.length) {
+            linha.status = "erro";
+            linha.erro = !tel.ok ? tel.erro : "Faltou: " + faltando.map(c => c.label).join(", ");
+            falha++;
             _waBulkRenderizar();
             continue;
         }
+
+        linha.status = "enviando";
+        _waBulkRenderizar();
 
         try {
             const resp = await fetch(`${API}/admin/whatsapp/enviar`, {
                 method: "POST",
                 headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-                body: JSON.stringify({ numero: tel.e164, template, parametros: linha.texto ? [linha.texto] : [] })
+                body: JSON.stringify({
+                    numero: tel.e164, template: cfg.template,
+                    parametros: cfg.parametros(linha.valores), texto: cfg.montar(linha.valores),
+                    nome_cliente: linha.valores.nome_cliente || null,
+                    pedido: linha.valores[cfg.campoPedido] || null,
+                    prazo_horas: comPrazo ? prazo : null
+                })
             });
             const body = await resp.json();
             if (resp.ok) { linha.status = "ok"; ok++; }
@@ -386,7 +455,7 @@ async function _waBulkEnviar() {
         }
         _waBulkRenderizar();
 
-        // Espaçamento entre envios — evita rajada instantânea e protege o quality rating do número.
+        // Espaçamento entre envios: evita rajada e protege a reputação do número.
         if (i < _waBulkLinhas.length - 1) await new Promise(r => setTimeout(r, 500));
     }
 

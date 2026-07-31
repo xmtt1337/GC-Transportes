@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260801e">
+<link rel="stylesheet" href="style.css?v=20260801f">
 </head>
 <body>
 
@@ -1687,36 +1687,29 @@ if (location.hostname === "xmtt1337.github.io") {
                         </div>
                         <button class="extrv-refresh-btn" onclick="_waRecEnviar()" style="justify-content:center;padding:10px">Enviar mensagem</button>
                         <div id="wa-rec-msg" style="font-size:13px"></div>
-                    </div>
-                </div>
 
-                <div class="ed-section" id="wa-secao-massa" style="max-width:640px;margin-bottom:20px;display:none">
-                    <div class="ed-section-title">Envio em massa (CSV)</div>
-                    <div style="display:flex;flex-direction:column;gap:14px">
-                        <div>
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Template (usado pra todo mundo do arquivo)</label>
-                            <input type="text" id="wa-bulk-template" class="fech-select" style="width:100%" placeholder="aviso_generico">
-                        </div>
-                        <div>
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Arquivo CSV — colunas: Numero,Texto</label>
-                            <input type="file" id="wa-bulk-arquivo" accept=".csv" onchange="_waBulkArquivoSelecionado(event)">
-                        </div>
-                        <div id="wa-bulk-preview" style="display:none">
-                            <div style="font-size:12.5px;color:#64748b;margin-bottom:8px" id="wa-bulk-contagem"></div>
-                            <div style="max-height:260px;overflow-y:auto;border:1px solid rgba(255,255,255,0.06);border-radius:10px">
-                                <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-                                    <thead>
-                                        <tr style="text-align:left;color:#64748b">
-                                            <th style="padding:8px 10px">Número</th>
-                                            <th style="padding:8px 10px">Texto</th>
-                                            <th style="padding:8px 10px">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="wa-bulk-tbody"></tbody>
-                                </table>
+                        <div id="wa-bulk-bloco" style="border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;margin-top:2px">
+                            <button class="filtro-tab" id="wa-bulk-toggle" onclick="_waBulkAlternar()" style="padding-left:0">Disparar em massa ▾</button>
+                            <div id="wa-bulk-area" style="display:none;margin-top:14px">
+                                <div style="font-size:12.5px;color:#94a3b8;line-height:1.5;margin-bottom:12px">
+                                    Baixe o modelo da transportadora selecionada, preencha uma linha por cliente e envie o arquivo de volta.
+                                </div>
+                                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+                                    <button class="extrv-refresh-btn" onclick="_waBulkBaixarModelo()" style="padding:9px 16px">Baixar modelo CSV</button>
+                                    <input type="file" id="wa-bulk-arquivo" accept=".csv" onchange="_waBulkArquivoSelecionado(event)">
+                                </div>
+                                <div id="wa-bulk-preview" style="display:none">
+                                    <div style="font-size:12.5px;color:#64748b;margin-bottom:8px" id="wa-bulk-contagem"></div>
+                                    <div style="max-height:260px;overflow-y:auto;overflow-x:auto;border:1px solid rgba(255,255,255,0.06);border-radius:10px">
+                                        <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+                                            <thead id="wa-bulk-thead"></thead>
+                                            <tbody id="wa-bulk-tbody"></tbody>
+                                        </table>
+                                    </div>
+                                    <button class="extrv-refresh-btn" id="wa-bulk-btn-enviar" onclick="_waBulkEnviar()" style="justify-content:center;padding:10px;margin-top:12px;width:100%">Enviar em massa</button>
+                                    <div id="wa-bulk-progresso" style="font-size:13px;margin-top:8px"></div>
+                                </div>
                             </div>
-                            <button class="extrv-refresh-btn" id="wa-bulk-btn-enviar" onclick="_waBulkEnviar()" style="justify-content:center;padding:10px;margin-top:12px;width:100%">Enviar em massa</button>
-                            <div id="wa-bulk-progresso" style="font-size:13px;margin-top:8px"></div>
                         </div>
                     </div>
                 </div>
@@ -2692,51 +2685,51 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260801e"></script>
-<script src="js/router.js?v=20260801e"></script>
-<script src="js/sidebar.js?v=20260801e"></script>
-<script src="js/nav.js?v=20260801e"></script>
-<script src="js/fechamentos.js?v=20260801e"></script>
-<script src="js/admin.js?v=20260801e"></script>
-<script src="js/conf-nf.js?v=20260801e"></script>
-<script src="js/trampay.js?v=20260801e"></script>
-<script src="js/usuarios.js?v=20260801e"></script>
-<script src="js/motoristas.js?v=20260801e"></script>
-<script src="js/pagamentos.js?v=20260801e"></script>
-<script src="js/notas-fiscais.js?v=20260801e"></script>
-<script src="js/dashboard.js?v=20260801e"></script>
-<script src="js/ent-dashboard.js?v=20260801e"></script>
-<script src="js/nota-fiscal.js?v=20260801e"></script>
-<script src="js/extravios.js?v=20260801e"></script>
-<script src="js/usuarios-gc.js?v=20260801e"></script>
-<script src="js/todos-usuarios.js?v=20260801e"></script>
-<script src="js/whatsapp-teste.js?v=20260801e"></script>
-<script src="js/whatsapp-conversa.js?v=20260801e"></script>
-<script src="js/modals.js?v=20260801e"></script>
-<script src="js/alimentar.js?v=20260801e"></script>
-<script src="js/fechamento-criar.js?v=20260801e"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260801e"></script>
-<script src="js/bipagens.js?v=20260801e"></script>
-<script src="js/pedidos.js?v=20260801e"></script>
-<script src="js/desempenho-bip.js?v=20260801e"></script>
-<script src="js/desempenho-hora.js?v=20260801e"></script>
-<script src="js/conferencias.js?v=20260801e"></script>
-<script src="js/antecipacoes.js?v=20260801e"></script>
-<script src="js/antecipacoes-admin.js?v=20260801e"></script>
-<script src="js/baixas.js?v=20260801e"></script>
-<script src="js/devolucoes.js?v=20260801e"></script>
-<script src="js/viagens.js?v=20260801e"></script>
-<script src="js/ocorrencias.js?v=20260801e"></script>
-<script src="js/ocorrencias-admin.js?v=20260801e"></script>
-<script src="js/localizacao.js?v=20260801e"></script>
-<script src="js/localizacao-admin.js?v=20260801e"></script>
-<script src="js/transferencias.js?v=20260801e"></script>
-<script src="js/transferencias-admin.js?v=20260801e"></script>
-<script src="js/motorista-devolucoes.js?v=20260801e"></script>
-<script src="js/etiquetas.js?v=20260801e"></script>
-<script src="js/videira.js?v=20260801e"></script>
-<script src="js/planejamento-videira.js?v=20260801e"></script>
-<script src="js/torre.js?v=20260801e"></script>
+<script src="js/core.js?v=20260801f"></script>
+<script src="js/router.js?v=20260801f"></script>
+<script src="js/sidebar.js?v=20260801f"></script>
+<script src="js/nav.js?v=20260801f"></script>
+<script src="js/fechamentos.js?v=20260801f"></script>
+<script src="js/admin.js?v=20260801f"></script>
+<script src="js/conf-nf.js?v=20260801f"></script>
+<script src="js/trampay.js?v=20260801f"></script>
+<script src="js/usuarios.js?v=20260801f"></script>
+<script src="js/motoristas.js?v=20260801f"></script>
+<script src="js/pagamentos.js?v=20260801f"></script>
+<script src="js/notas-fiscais.js?v=20260801f"></script>
+<script src="js/dashboard.js?v=20260801f"></script>
+<script src="js/ent-dashboard.js?v=20260801f"></script>
+<script src="js/nota-fiscal.js?v=20260801f"></script>
+<script src="js/extravios.js?v=20260801f"></script>
+<script src="js/usuarios-gc.js?v=20260801f"></script>
+<script src="js/todos-usuarios.js?v=20260801f"></script>
+<script src="js/whatsapp-teste.js?v=20260801f"></script>
+<script src="js/whatsapp-conversa.js?v=20260801f"></script>
+<script src="js/modals.js?v=20260801f"></script>
+<script src="js/alimentar.js?v=20260801f"></script>
+<script src="js/fechamento-criar.js?v=20260801f"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260801f"></script>
+<script src="js/bipagens.js?v=20260801f"></script>
+<script src="js/pedidos.js?v=20260801f"></script>
+<script src="js/desempenho-bip.js?v=20260801f"></script>
+<script src="js/desempenho-hora.js?v=20260801f"></script>
+<script src="js/conferencias.js?v=20260801f"></script>
+<script src="js/antecipacoes.js?v=20260801f"></script>
+<script src="js/antecipacoes-admin.js?v=20260801f"></script>
+<script src="js/baixas.js?v=20260801f"></script>
+<script src="js/devolucoes.js?v=20260801f"></script>
+<script src="js/viagens.js?v=20260801f"></script>
+<script src="js/ocorrencias.js?v=20260801f"></script>
+<script src="js/ocorrencias-admin.js?v=20260801f"></script>
+<script src="js/localizacao.js?v=20260801f"></script>
+<script src="js/localizacao-admin.js?v=20260801f"></script>
+<script src="js/transferencias.js?v=20260801f"></script>
+<script src="js/transferencias-admin.js?v=20260801f"></script>
+<script src="js/motorista-devolucoes.js?v=20260801f"></script>
+<script src="js/etiquetas.js?v=20260801f"></script>
+<script src="js/videira.js?v=20260801f"></script>
+<script src="js/planejamento-videira.js?v=20260801f"></script>
+<script src="js/torre.js?v=20260801f"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
