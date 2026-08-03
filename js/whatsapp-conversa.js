@@ -244,11 +244,12 @@ const WA_COLUNAS_OUTROS = [
     { chave: "nao_entregue", titulo: "Não entregue",  resultado: "nao_recebeu" },
 ];
 
-const WA_COLUNAS_CHAMARAM = [
-    { chave: "aguardando",   titulo: "Em aberto",     resultado: null },
-    { chave: "entregue",     titulo: "Recebido",      resultado: "recebeu" },
-    { chave: "nao_entregue", titulo: "Não recebido",  resultado: "nao_recebeu" },
-];
+// "Nos chamaram" é uma lista só: não tem prazo nem desfecho de entrega pra separar em
+// colunas — é o cliente que apareceu, e o que se faz com ele se resolve dentro da conversa.
+function _wacRenderizarChamaram(itens) {
+    document.getElementById("wac-lista-chamaram").innerHTML =
+        _wacCardsOutros(itens, false) || `<div class="wac-coluna-vazia">Nenhuma conversa aqui.</div>`;
+}
 
 function _wacRenderizarDesfecho(itens, alvoId, colunas) {
     const grupos = { aguardando: [], entregue: [], nao_entregue: [] };
@@ -271,16 +272,18 @@ function _wacRenderizarDesfecho(itens, alvoId, colunas) {
         </div>`).join("");
 }
 
-function _wacCardsOutros(itens) {
+// arrastavel = false na lista de "Nos chamaram": lá não existe coluna pra onde soltar.
+function _wacCardsOutros(itens, arrastavel = true) {
     const fmt = d => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
     return itens.map(r => {
         const pedidoEsc = (r.pedido || "").replace(/'/g, "\\'");
         const aviso = r.tem_resposta_nova && !r.respondido ? `<span class="wac-card-novo" title="Resposta não lida"></span>` : "";
         const porQuem = r.enviado_por_nome ? `${r.enviado_por_nome} · ` : "";
+        const arrasto = arrastavel
+            ? `draggable="true" ondragstart="_wacArrastarInicio(event,'${r.numero}','${pedidoEsc}')" ondragend="_wacArrastarFim(event)"`
+            : "";
         return `
-        <div class="wac-card" draggable="true"
-             ondragstart="_wacArrastarInicio(event,'${r.numero}','${pedidoEsc}')"
-             ondragend="_wacArrastarFim(event)"
+        <div class="wac-card" ${arrasto}
              onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',${!!r.respondido})">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
@@ -359,8 +362,8 @@ function _wacRenderizar() {
     _wacRenderizarTranspTabs(daAba); // pode definir _wacTransp, então vem antes do filtro
     const visiveis = _wacAba === "chamaram" ? daAba : daAba.filter(r => _wacTranspDe(r) === _wacTransp);
 
-    if (_wacAba === "chamaram") return _wacRenderizarDesfecho(visiveis, "wac-lista-chamaram", WA_COLUNAS_CHAMARAM);
-    if (_wacAba === "outros")   return _wacRenderizarDesfecho(visiveis, "wac-lista-outros",   WA_COLUNAS_OUTROS);
+    if (_wacAba === "chamaram") return _wacRenderizarChamaram(visiveis);
+    if (_wacAba === "outros")   return _wacRenderizarDesfecho(visiveis, "wac-lista-outros", WA_COLUNAS_OUTROS);
 
     const grupos = {};
     WA_GRUPOS_PRAZO.forEach(g => { grupos[g.chave] = []; });

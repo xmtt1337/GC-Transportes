@@ -384,6 +384,12 @@ body {
 /* Faixa de encerrados: é consulta, não o foco — ocupa menos altura que a de cima. */
 #wac-lista-fechados .wac-coluna-cards { max-height: 34vh; }
 .wac-coluna-vazia { font-size: 11.5px; color: var(--text-muted); padding: 6px 2px; }
+/* "Nos chamaram": lista corrida, sem colunas — não há prazo nem desfecho pra separar. */
+.wac-lista-simples {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 12px;
+}
 .wac-card {
     display: flex; align-items: center; gap: 10px; min-height: 62px; flex-shrink: 0;
     background: var(--bg); border: 1px solid var(--border);
