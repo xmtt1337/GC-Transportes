@@ -22,6 +22,7 @@ import json
 import os
 import queue
 import socket
+import sys
 import threading
 import time
 from datetime import datetime
@@ -61,6 +62,12 @@ def salvar_config(dados):
     os.makedirs(CONFIG_DIR, exist_ok=True)
     with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
         json.dump(dados, f, indent=2, ensure_ascii=False)
+
+
+def caminho_recurso(nome):
+    """Acha o arquivo tanto rodando pelo .py quanto de dentro do .exe."""
+    base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, nome)
 
 
 def quem_sou():
@@ -193,6 +200,9 @@ class ColadorApp:
     def __init__(self):
         self.cfg = carregar_config()
         self.quem = quem_sou()
+        # Numa máquina nova ainda não existe config: aceita a string pela
+        # variável de ambiente DATABASE_URL pra não ter que colar na mão.
+        self.url_inicial = self.cfg.get('database_url') or os.environ.get('DATABASE_URL', '')
 
         self.executando = False
         self.pausado = False
@@ -233,6 +243,10 @@ class ColadorApp:
         self.root.geometry("520x760")
         self.root.resizable(False, False)
         self.root.protocol("WM_DELETE_WINDOW", self.ao_fechar)
+        try:
+            self.root.iconbitmap(caminho_recurso('logo-gc.ico'))
+        except Exception:
+            pass
 
         frame = ctk.CTkScrollableFrame(
             self.root, corner_radius=12, border_width=1,
@@ -257,8 +271,8 @@ class ColadorApp:
             placeholder_text="postgresql://usuario:senha@ep-xxx.neon.tech/neondb?sslmode=require",
         )
         self.url_entry.pack(padx=12, pady=(4, 6))
-        if self.cfg.get('database_url'):
-            self.url_entry.insert(0, self.cfg['database_url'])
+        if self.url_inicial:
+            self.url_entry.insert(0, self.url_inicial)
 
         linha_conn = ctk.CTkFrame(frame, fg_color="transparent")
         linha_conn.pack(pady=(0, 4))
@@ -376,7 +390,7 @@ class ColadorApp:
             command=self.zerar_colados,
         ).pack(side="left", padx=4)
 
-        if self.cfg.get('database_url'):
+        if self.url_inicial:
             self.root.after(300, self.conectar)
 
     def ui(self, fn):

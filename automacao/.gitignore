@@ -3,3 +3,5 @@ credenciais_google.json
 downloads/
 __pycache__/
 *.pyc
+build/
+dist/
