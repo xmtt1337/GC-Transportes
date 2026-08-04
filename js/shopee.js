@@ -26,13 +26,17 @@ let _shrXpt      = null;    // XPT do polo da pessoa; null = sem polo ou polo se
 let _shrPoloAtual = null;   // { chave, label, xpt }
 let _shrDados    = [];      // recebimentos de hoje do XPT da pessoa
 let _shrFiltro   = "todos";
+let _shrPagina   = 1;
+const SHR_POR_PAGINA = 50;
 
 function abrirShopeeReceber(event) {
     if (event) event.preventDefault();
     _shrXpt = null;
     _shrPoloAtual = null;
     _shrFiltro = "todos";
+    _shrPagina = 1;
     document.getElementById("shr-codigo").value = "";
+    document.getElementById("shr-busca").value = "";
     _shrMsg("", null);
     _shrPintarXpt();
     _shrPintarFiltroTabs();
@@ -265,8 +269,20 @@ function _shrCarregarHoje() {
 
 function _shrTrocarFiltro(filtro) {
     _shrFiltro = filtro;
+    _shrPagina = 1; // trocar de filtro na página 7 cairia numa lista de 3 páginas
     _shrPintarFiltroTabs();
     _shrRenderizar();
+}
+
+function _shrBuscar() {
+    _shrPagina = 1;
+    _shrRenderizar();
+}
+
+function _shrTrocarPagina(passo) {
+    _shrPagina += passo;
+    _shrRenderizar();
+    document.getElementById("shr-lista-titulo").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function _shrPintarFiltroTabs() {
@@ -304,12 +320,34 @@ function _shrRenderizar() {
     document.getElementById("shr-lista-titulo").innerText =
         _shrXpt ? `Recebidos hoje · ${cidade}` : "Recebidos hoje";
 
-    const rows = _shrFiltro === "meus" ? _shrDados.filter(_shrEhMeu) : _shrDados;
+    // Aba e busca se somam; a busca pega código e quem recebeu, que é o que se procura
+    // quando alguém pergunta "esse pacote entrou?" ou "quanto o fulano bipou?".
+    const termo = (document.getElementById("shr-busca")?.value || "").trim().toLowerCase();
+    let rows = _shrFiltro === "meus" ? _shrDados.filter(_shrEhMeu) : _shrDados;
+    if (termo) rows = rows.filter(r =>
+        String(r.codigo || "").toLowerCase().includes(termo) ||
+        String(r.usuario_nome || "").toLowerCase().includes(termo));
+
     const podeRemover = _shrPodeRemover();
     const colunas = podeRemover ? 5 : 4;
     document.getElementById("shr-th-acao").style.display = podeRemover ? "" : "none";
 
-    document.getElementById("shr-tbody").innerHTML = rows.length ? rows.map(r => `
+    // Paginação: num dia cheio a tabela passa de mil linhas, e desenhar tudo trava a tela.
+    const paginas = Math.max(1, Math.ceil(rows.length / SHR_POR_PAGINA));
+    _shrPagina = Math.min(Math.max(1, _shrPagina), paginas);
+    const inicio = (_shrPagina - 1) * SHR_POR_PAGINA;
+    const pagina = rows.slice(inicio, inicio + SHR_POR_PAGINA);
+
+    const pag = document.getElementById("shr-paginacao");
+    pag.style.display = rows.length > SHR_POR_PAGINA ? "" : "none";
+    if (rows.length > SHR_POR_PAGINA) {
+        document.getElementById("shr-pag-info").innerText =
+            `${inicio + 1}–${Math.min(inicio + SHR_POR_PAGINA, rows.length)} de ${rows.length}`;
+        document.getElementById("shr-pag-ant").disabled  = _shrPagina <= 1;
+        document.getElementById("shr-pag-prox").disabled = _shrPagina >= paginas;
+    }
+
+    document.getElementById("shr-tbody").innerHTML = pagina.length ? pagina.map(r => `
         <tr>
             <td data-label="Código" style="font-family:monospace;font-weight:700;color:#e2e8f0">${_shrEsc(r.codigo)}</td>
             <td data-label="XPT"><span class="shr-xpt-tag ${r.xpt === "XPT_CFC" ? "cfc" : "via"}">${_shrEsc(r.xpt)}</span></td>
@@ -319,7 +357,106 @@ function _shrRenderizar() {
                 <button class="shr-del-btn" onclick="_shrRemover(${r.id},'${_shrEsc(r.codigo)}')" title="Remover este recebimento">Remover</button>
             </td>` : ""}
         </tr>`).join("")
-        : `<tr><td colspan="${colunas}" style="text-align:center;color:#64748b;padding:26px 10px">Nenhum recebimento nesse filtro.</td></tr>`;
+        : `<tr><td colspan="${colunas}" style="text-align:center;color:#64748b;padding:26px 10px">${
+            termo ? "Nenhum código encontrado." : "Nenhum recebimento nesse filtro."}</td></tr>`;
+}
+
+// ── Exportação em .xlsx ──
+// Os dados vêm do servidor (dia ou período, e opcionalmente de uma pessoa só); a planilha
+// é montada aqui, com a biblioteca que a página já carrega.
+function _shrAbrirExportar() {
+    const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+    document.getElementById("shr-exp-dia").value = hoje;
+    document.getElementById("shr-exp-de").value  = hoje;
+    document.getElementById("shr-exp-ate").value = hoje;
+    document.getElementById("shr-exp-erro").innerText = "";
+    document.getElementById("shr-exp-sub").innerText =
+        `Pacotes recebidos em ${(_shrPoloAtual && _shrPoloAtual.label) || "—"} (${_shrXpt || "—"}).`;
+    _shrExpModo("dia");
+
+    // Lista de quem já recebeu neste XPT — só quem tem registro, pra não oferecer nome
+    // que nunca vai devolver linha.
+    const sel = document.getElementById("shr-exp-usuario");
+    sel.innerHTML = `<option value="">Todos</option>`;
+    fetch(`${API}/shopee/usuarios`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(us => {
+            if (!Array.isArray(us)) return;
+            sel.innerHTML = `<option value="">Todos</option>` + us.map(u =>
+                `<option value="${u.usuario_id}">${_shrEsc(u.usuario_nome) || "—"}</option>`).join("");
+        })
+        .catch(() => {});
+
+    _abrirModal("modal-shr-exportar");
+}
+
+function _shrExpModo(modo) {
+    document.querySelectorAll("#shr-exp-modo .filtro-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.modo === modo));
+    document.getElementById("shr-exp-campo-dia").style.display     = modo === "dia" ? "" : "none";
+    document.getElementById("shr-exp-campo-periodo").style.display = modo === "dia" ? "none" : "";
+}
+
+function _shrExpPeriodo() {
+    const umDia = document.querySelector("#shr-exp-modo .filtro-tab.active")?.dataset.modo === "dia";
+    if (umDia) {
+        const d = document.getElementById("shr-exp-dia").value;
+        return { de: d, ate: d };
+    }
+    return { de: document.getElementById("shr-exp-de").value, ate: document.getElementById("shr-exp-ate").value };
+}
+
+function _shrExportar() {
+    const { de, ate } = _shrExpPeriodo();
+    const erro = document.getElementById("shr-exp-erro");
+    const btn  = document.getElementById("shr-exp-btn");
+    erro.innerText = "";
+    if (!de || !ate) { erro.innerText = "Escolha a data."; return; }
+
+    const usuarioId = document.getElementById("shr-exp-usuario").value;
+    const nomeUsuario = usuarioId
+        ? document.getElementById("shr-exp-usuario").selectedOptions[0].text
+        : "";
+
+    btn.disabled = true;
+    btn.textContent = "Gerando...";
+
+    const qs = new URLSearchParams({ de, ate });
+    if (usuarioId) qs.set("usuario_id", usuarioId);
+
+    fetch(`${API}/shopee/exportar?${qs}`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            btn.disabled = false;
+            btn.textContent = "Baixar .xlsx";
+            if (!ok) { erro.innerText = d.error || "Não foi possível exportar."; return; }
+            const linhas = d.linhas || [];
+            if (!linhas.length) { erro.innerText = "Nenhum recebimento nesse período."; return; }
+
+            const dados = linhas.map(r => ({
+                "Código":       r.codigo || "",
+                "XPT":          r.xpt || "",
+                "Recebido por": r.usuario_nome || "",
+                "Data":         r.dia ? r.dia.split("-").reverse().join("/") : "",
+                "Data / hora":  r.data_hora_brasilia || "",
+            }));
+            const ws = XLSX.utils.json_to_sheet(dados);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Recebimento");
+            const sufixo = de === ate ? de : `${de}_a_${ate}`;
+            const quem = nomeUsuario ? "_" + nomeUsuario.replace(/[^\wÀ-ÿ]+/g, "-") : "";
+            XLSX.writeFile(wb, `recebimento_shopee_${_shrXpt || "xpt"}_${sufixo}${quem}.xlsx`);
+
+            _fecharModal("modal-shr-exportar");
+            if (d.truncado) {
+                gcAlert(`A planilha saiu com as primeiras ${d.limite.toLocaleString("pt-BR")} linhas — o período escolhido tem mais que isso. Exporte em partes menores para não faltar nada.`);
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.textContent = "Baixar .xlsx";
+            erro.innerText = "Erro ao conectar com o servidor.";
+        });
 }
 
 // Remoção de bipe errado. Sem isso, o único conserto era mexer no banco na mão.

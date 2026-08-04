@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260801v">
+<link rel="stylesheet" href="style.css?v=20260801w">
 </head>
 <body>
 
@@ -95,7 +95,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 Shopee <span class="subgroup-arrow">▾</span>
             </li>
             <ul class="sub-submenu" id="subgroup-shopee-op">
-                <li><a href="#" data-rota="Operacao/ShopeeReceber" onclick="abrirShopeeReceber(event)">Receber</a></li>
+                <li><a href="#" data-rota="Operacao/ShopeeRecebimento" onclick="abrirShopeeReceber(event)">Recebimento</a></li>
             </ul>
             <li id="menu-item-etiquetas"><a href="#" data-rota="Operacao/Etiquetas" onclick="abrirEtiquetas(event)">Impressão de etiquetas</a></li>
             <li id="menu-item-pacotes-faltantes-op" style="display:none"><a href="#" data-rota="Ocorrencias/PacotesFaltantes" onclick="abrirPacotesFaltantes(event)">Registro de Pacotes Faltantes</a></li>
@@ -2151,7 +2151,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div class="bip-scan-card shr-scan-card">
                     <div class="bip-scan-title">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12.01"/><line x1="10" y1="12" x2="10" y2="12.01"/><line x1="13" y1="12" x2="13" y2="12.01"/><line x1="16" y1="12" x2="16" y2="12.01"/></svg>
-                        Receber Shopee
+                        Recebimento Shopee
                     </div>
 
                     <div class="shr-faixa" id="shr-faixa" style="display:none">
@@ -2178,12 +2178,22 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div class="shr-resumo" id="shr-resumo" style="display:none"></div>
 
                 <div id="shr-bloco-lista" style="display:none">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:12px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:12px">
                         <span class="ant-sol-title" id="shr-lista-titulo" style="border:none;padding:0;margin:0">Recebidos hoje</span>
-                        <div class="filtro-tabs" id="shr-filtro-tabs">
-                            <button type="button" class="filtro-tab active" data-filtro="todos" onclick="_shrTrocarFiltro('todos')">Todos</button>
-                            <button type="button" class="filtro-tab" data-filtro="meus" onclick="_shrTrocarFiltro('meus')">Só os meus</button>
+                        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                            <div class="filtro-tabs" id="shr-filtro-tabs">
+                                <button type="button" class="filtro-tab active" data-filtro="todos" onclick="_shrTrocarFiltro('todos')">Todos</button>
+                                <button type="button" class="filtro-tab" data-filtro="meus" onclick="_shrTrocarFiltro('meus')">Só os meus</button>
+                            </div>
+                            <button type="button" class="shr-export-btn" onclick="_shrAbrirExportar()">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Exportar
+                            </button>
                         </div>
+                    </div>
+                    <div class="adm-search-input-area" style="max-width:320px;margin-bottom:12px">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="shr-busca" placeholder="Buscar por código ou quem recebeu..." oninput="_shrBuscar()" autocomplete="off">
                     </div>
                     <div class="fechamento-empty" id="shr-empty">Carregando...</div>
                     <div id="shr-resultado" style="display:none">
@@ -2193,6 +2203,11 @@ if (location.hostname === "xmtt1337.github.io") {
                             </thead>
                             <tbody id="shr-tbody"></tbody>
                         </table>
+                        <div class="shr-paginacao" id="shr-paginacao" style="display:none">
+                            <button type="button" class="shr-pag-btn" id="shr-pag-ant" onclick="_shrTrocarPagina(-1)">← Anterior</button>
+                            <span class="shr-pag-info" id="shr-pag-info"></span>
+                            <button type="button" class="shr-pag-btn" id="shr-pag-prox" onclick="_shrTrocarPagina(1)">Próxima →</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2755,52 +2770,52 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260801v"></script>
-<script src="js/router.js?v=20260801v"></script>
-<script src="js/sidebar.js?v=20260801v"></script>
-<script src="js/nav.js?v=20260801v"></script>
-<script src="js/fechamentos.js?v=20260801v"></script>
-<script src="js/admin.js?v=20260801v"></script>
-<script src="js/conf-nf.js?v=20260801v"></script>
-<script src="js/trampay.js?v=20260801v"></script>
-<script src="js/usuarios.js?v=20260801v"></script>
-<script src="js/motoristas.js?v=20260801v"></script>
-<script src="js/pagamentos.js?v=20260801v"></script>
-<script src="js/notas-fiscais.js?v=20260801v"></script>
-<script src="js/dashboard.js?v=20260801v"></script>
-<script src="js/ent-dashboard.js?v=20260801v"></script>
-<script src="js/nota-fiscal.js?v=20260801v"></script>
-<script src="js/extravios.js?v=20260801v"></script>
-<script src="js/usuarios-gc.js?v=20260801v"></script>
-<script src="js/todos-usuarios.js?v=20260801v"></script>
-<script src="js/whatsapp-teste.js?v=20260801v"></script>
-<script src="js/whatsapp-conversa.js?v=20260801v"></script>
-<script src="js/modals.js?v=20260801v"></script>
-<script src="js/alimentar.js?v=20260801v"></script>
-<script src="js/fechamento-criar.js?v=20260801v"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260801v"></script>
-<script src="js/bipagens.js?v=20260801v"></script>
-<script src="js/pedidos.js?v=20260801v"></script>
-<script src="js/desempenho-bip.js?v=20260801v"></script>
-<script src="js/desempenho-hora.js?v=20260801v"></script>
-<script src="js/conferencias.js?v=20260801v"></script>
-<script src="js/antecipacoes.js?v=20260801v"></script>
-<script src="js/antecipacoes-admin.js?v=20260801v"></script>
-<script src="js/baixas.js?v=20260801v"></script>
-<script src="js/devolucoes.js?v=20260801v"></script>
-<script src="js/shopee.js?v=20260801v"></script>
-<script src="js/viagens.js?v=20260801v"></script>
-<script src="js/ocorrencias.js?v=20260801v"></script>
-<script src="js/ocorrencias-admin.js?v=20260801v"></script>
-<script src="js/localizacao.js?v=20260801v"></script>
-<script src="js/localizacao-admin.js?v=20260801v"></script>
-<script src="js/transferencias.js?v=20260801v"></script>
-<script src="js/transferencias-admin.js?v=20260801v"></script>
-<script src="js/motorista-devolucoes.js?v=20260801v"></script>
-<script src="js/etiquetas.js?v=20260801v"></script>
-<script src="js/videira.js?v=20260801v"></script>
-<script src="js/planejamento-videira.js?v=20260801v"></script>
-<script src="js/torre.js?v=20260801v"></script>
+<script src="js/core.js?v=20260801w"></script>
+<script src="js/router.js?v=20260801w"></script>
+<script src="js/sidebar.js?v=20260801w"></script>
+<script src="js/nav.js?v=20260801w"></script>
+<script src="js/fechamentos.js?v=20260801w"></script>
+<script src="js/admin.js?v=20260801w"></script>
+<script src="js/conf-nf.js?v=20260801w"></script>
+<script src="js/trampay.js?v=20260801w"></script>
+<script src="js/usuarios.js?v=20260801w"></script>
+<script src="js/motoristas.js?v=20260801w"></script>
+<script src="js/pagamentos.js?v=20260801w"></script>
+<script src="js/notas-fiscais.js?v=20260801w"></script>
+<script src="js/dashboard.js?v=20260801w"></script>
+<script src="js/ent-dashboard.js?v=20260801w"></script>
+<script src="js/nota-fiscal.js?v=20260801w"></script>
+<script src="js/extravios.js?v=20260801w"></script>
+<script src="js/usuarios-gc.js?v=20260801w"></script>
+<script src="js/todos-usuarios.js?v=20260801w"></script>
+<script src="js/whatsapp-teste.js?v=20260801w"></script>
+<script src="js/whatsapp-conversa.js?v=20260801w"></script>
+<script src="js/modals.js?v=20260801w"></script>
+<script src="js/alimentar.js?v=20260801w"></script>
+<script src="js/fechamento-criar.js?v=20260801w"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260801w"></script>
+<script src="js/bipagens.js?v=20260801w"></script>
+<script src="js/pedidos.js?v=20260801w"></script>
+<script src="js/desempenho-bip.js?v=20260801w"></script>
+<script src="js/desempenho-hora.js?v=20260801w"></script>
+<script src="js/conferencias.js?v=20260801w"></script>
+<script src="js/antecipacoes.js?v=20260801w"></script>
+<script src="js/antecipacoes-admin.js?v=20260801w"></script>
+<script src="js/baixas.js?v=20260801w"></script>
+<script src="js/devolucoes.js?v=20260801w"></script>
+<script src="js/shopee.js?v=20260801w"></script>
+<script src="js/viagens.js?v=20260801w"></script>
+<script src="js/ocorrencias.js?v=20260801w"></script>
+<script src="js/ocorrencias-admin.js?v=20260801w"></script>
+<script src="js/localizacao.js?v=20260801w"></script>
+<script src="js/localizacao-admin.js?v=20260801w"></script>
+<script src="js/transferencias.js?v=20260801w"></script>
+<script src="js/transferencias-admin.js?v=20260801w"></script>
+<script src="js/motorista-devolucoes.js?v=20260801w"></script>
+<script src="js/etiquetas.js?v=20260801w"></script>
+<script src="js/videira.js?v=20260801w"></script>
+<script src="js/planejamento-videira.js?v=20260801w"></script>
+<script src="js/torre.js?v=20260801w"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
@@ -3071,6 +3086,53 @@ if (location.hostname === "xmtt1337.github.io") {
 
     </div><!-- /main -->
 </div><!-- /content -->
+
+<!-- MODAL: EXPORTAR RECEBIMENTO SHOPEE -->
+<div class="usr-modal-overlay" id="modal-shr-exportar" onclick="_fecharModalSeBackdrop(event,'modal-shr-exportar')">
+    <div class="usr-modal">
+        <div class="usr-modal-title">Exportar recebimento</div>
+        <div class="usr-modal-sub" id="shr-exp-sub">Gera uma planilha .xlsx com os pacotes recebidos.</div>
+
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Quando</label>
+            <div class="filtro-tabs" id="shr-exp-modo">
+                <button type="button" class="filtro-tab active" data-modo="dia" onclick="_shrExpModo('dia')">Um dia</button>
+                <button type="button" class="filtro-tab" data-modo="periodo" onclick="_shrExpModo('periodo')">Período</button>
+            </div>
+        </div>
+
+        <div class="usr-modal-field" id="shr-exp-campo-dia">
+            <label class="usr-modal-label">Dia</label>
+            <input class="usr-modal-input" id="shr-exp-dia" type="date">
+        </div>
+
+        <div id="shr-exp-campo-periodo" style="display:none">
+            <div class="shr-exp-datas">
+                <div class="usr-modal-field" style="margin-bottom:0">
+                    <label class="usr-modal-label">De</label>
+                    <input class="usr-modal-input" id="shr-exp-de" type="date">
+                </div>
+                <div class="usr-modal-field" style="margin-bottom:0">
+                    <label class="usr-modal-label">Até</label>
+                    <input class="usr-modal-input" id="shr-exp-ate" type="date">
+                </div>
+            </div>
+        </div>
+
+        <div class="usr-modal-field" style="margin-top:14px">
+            <label class="usr-modal-label">Quem recebeu</label>
+            <select class="usr-modal-input" id="shr-exp-usuario" style="cursor:pointer">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <div class="usr-modal-error" id="shr-exp-erro"></div>
+        <div class="usr-modal-btns">
+            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-shr-exportar')">Cancelar</button>
+            <button class="usr-modal-btn-primary" id="shr-exp-btn" onclick="_shrExportar()">Baixar .xlsx</button>
+        </div>
+    </div>
+</div>
 
 <!-- MODAL: NOVO USUÁRIO GC -->
 <div class="usr-modal-overlay" id="modal-novo-usuario-gc" onclick="_fecharModalSeBackdrop(event,'modal-novo-usuario-gc')">
