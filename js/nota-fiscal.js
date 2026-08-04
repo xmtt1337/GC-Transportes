@@ -741,6 +741,30 @@ function _extrairCamposNota(raw) {
             }
         }
 
+        // ── DANFSe v2.0: a seção do tomador mudou de nome ──
+        // Virou "TOMADOR / ADQUIRENTE" no lugar de "TOMADOR DO SERVIÇO", então o bloco
+        // acima não achava a seção e o tomador acabava vindo de algum palpite genérico.
+        // Roda só quando esse cabeçalho existe: nota em layout antigo nem entra aqui.
+        const _v2Sec = t.match(/TOMADOR\s*\/\s*ADQUIRENTE(.{0,1200}?)(?=DESTINAT[AÁ]RIO\s*DA\s*OPERA|INTERMEDI[AÁ]RIO|SERVI[CÇ]O\s*PRESTADO|TRIBUTA[CÇ][ÃA]O|$)/i);
+        if (_v2Sec) {
+            // O PDF.js despeja os rótulos da linha inteira e só depois os valores:
+            // "Nome / Nome Empresarial  Município / Sigla UF  Código IBGE / CEP
+            //  GC TRANSPORTES LTDA  Caçador / SC  42.03006 / 89.510-620".
+            // Tirando os rótulos vizinhos primeiro, o nome fica logo após o label tanto
+            // nessa ordem quanto na intercalada (rótulo, valor, rótulo, valor).
+            const _v2Limpo = _v2Sec[1]
+                .replace(/Munic[íi]pio\s*\/\s*Sigla\s*UF(?:\s*\/\s*Pa[íi]s)?/gi, " ")
+                .replace(/C[óo]digo\s*IBGE\s*\/\s*CEP/gi, " ")
+                .replace(/Indicador\s*Municipal\s*\(?\s*Inscri[çc][ãa]o\s*\)?/gi, " ")
+                .replace(/\s{2,}/g, " ");
+            // O nome termina onde começa a cidade ("Caçador / SC"), o CEP ou o próximo rótulo.
+            const _v2Nome = _v2Limpo.match(/Nome\s*[\/|\\]?\s*(?:Nome\s*)?Empresarial\s*([\p{L}][^\n\r@]{2,79}?)(?=\s*(?:\S+\s*\/\s*[A-Z]{2}\b|\d{2}[.\/]|\bEndere|\bE-?mail|$))/iu);
+            if (_v2Nome) {
+                const _c = _v2Nome[1].trim();
+                if (_c.length >= 3 && !_reAdmin.test(_c) && !_isTextoInstrucao(_c)) tomador = _c;
+            }
+        }
+
         // Número da NFS-e — no layout DANFSe os 3 headers ficam na mesma linha antes dos valores
         // "Número da NFS-e Competência da NFS-e Data e Hora da emissão da NFS-e [5] [15/06/2026] ..."
         if (!numero_nf) {
