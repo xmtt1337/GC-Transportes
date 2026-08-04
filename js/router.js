@@ -20,6 +20,7 @@ const _ROTAS = {
     "Operacao/DevolucoesReceberAvulso": () => abrirDevolucoesReceberAvulso(),
     "Operacao/DevolucoesRegistro":      () => abrirDevolucoesRegistro(),
     "Operacao/ShopeeRecebimento":       () => abrirShopeeReceber(),
+    "Operacao/ShopeeRomaneiro":         () => abrirShopeeRomaneiro(),
     "Operacao/ShopeeReceber":           () => abrirShopeeReceber(), // rota antiga, mantida pra link salvo não quebrar
     "Operacao/Etiquetas":            () => abrirEtiquetas(),
     "Ocorrencias/PacotesFaltantes":  () => abrirPacotesFaltantes(),
