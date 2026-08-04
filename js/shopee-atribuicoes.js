@@ -22,6 +22,9 @@ let _scaOpcoes    = { cidades: [], clusters: [] };
 let _scaSessao    = null;
 let _scaBipagens  = [];
 let _scaFiltroAtual = "todos";
+let _scaFaltantes = [];      // o que o grupo tem e ainda não foi bipado
+let _scaTotalGrupo = 0;      // quantos pacotes o grupo tem no total
+let _scaFaltamCarregado = false;
 
 function abrirShopeeAtribuicoes(event) {
     if (event) event.preventDefault();
@@ -140,6 +143,29 @@ function _scaComecar() {
     });
 }
 
+// Carrega o que o grupo tem e ainda não foi bipado. Vem do servidor porque a lista pode
+// ser grande e sai do cruzamento com AT/Pedidos, que o navegador não tem.
+function _scaCarregarFaltantes(silencioso) {
+    if (!_scaSessao) return;
+    if (!silencioso) {
+        document.getElementById("sca-tbody").innerHTML =
+            `<tr><td colspan="5" style="text-align:center;color:#8494a9;padding:26px 10px">Carregando...</td></tr>`;
+    }
+    fetch(`${API}/shopee/conferencia/atribuicoes/sessao/${_scaSessao.id}/faltantes`, {
+        headers: { "Authorization": "Bearer " + token }
+    }).then(r => r.json())
+    .then(d => {
+        if (d && d.error) return;
+        _scaFaltantes = d.faltantes || [];
+        _scaTotalGrupo = d.total_grupo || 0;
+        _scaFaltamTruncado = !!d.truncado;
+        _scaFaltamCarregado = true;
+        _scaRenderizar();
+    })
+    .catch(() => {});
+}
+let _scaFaltamTruncado = false;
+
 function _scaAbrirSessao() {
     const s = _scaSessao;
     document.getElementById("sca-faixa-label").innerText = s.tipo === "cidade" ? "Conferindo cidade" : "Conferindo cluster";
@@ -147,9 +173,13 @@ function _scaAbrirSessao() {
     document.getElementById("sca-faixa-obs").innerText =
         `Aberta por ${s.usuario_nome || "—"}${s.encerrada_em ? " · encerrada" : ""}`;
     _scaMsg("", null);
+    _scaFaltantes = [];
+    _scaTotalGrupo = 0;
+    _scaFaltamCarregado = false;
     _scaPintarAbas();
     _scaRenderizar();
     _scaMostrarAndamento();
+    _scaCarregarFaltantes(true); // já entra sabendo quantos faltam
     const campo = document.getElementById("sca-codigo");
     campo.value = "";
     campo.disabled = !!s.encerrada_em;
@@ -217,6 +247,10 @@ function _scaBipar() {
                 d.resultado === "divergente" ? "erro" : "aviso");
         }
         _scaBipagens.unshift(d);
+        // Tira da lista de faltantes na hora, sem ida ao servidor: a cada bipe uma
+        // consulta deixaria a bipagem em rajada lenta.
+        const alvoCod = String(d.codigo || "").toUpperCase();
+        _scaFaltantes = _scaFaltantes.filter(f => String(f.codigo || "").toUpperCase() !== alvoCod);
         _scaRenderizar();
     })
     .catch(() => { _gcBeepErro(); _scaMsg("Erro ao conectar com o servidor.", "erro"); });
@@ -225,6 +259,8 @@ function _scaBipar() {
 function _scaFiltro(f) {
     _scaFiltroAtual = f;
     _scaPintarAbas();
+    // Recarrega ao abrir a aba: outra pessoa pode ter bipado no mesmo grupo enquanto isso.
+    if (f === "faltam") return _scaCarregarFaltantes(_scaFaltamCarregado);
     _scaRenderizar();
 }
 
@@ -245,11 +281,20 @@ function _scaRenderizar() {
             ${sub ? `<div class="paj-sublabel">${sub}</div>` : ""}
             <div class="paj-value"${cor ? ` style="color:${cor}"` : ""}>${valor}</div>
         </div>`;
+    const faltam = _scaFaltantes.length;
+    // Progresso do grupo, não da sessão: o que interessa é quanto do cluster/cidade já
+    // passou, e "12 bipados" sozinho não diz se acabou.
+    const pct = _scaTotalGrupo ? Math.round(((_scaTotalGrupo - faltam) / _scaTotalGrupo) * 100) : null;
+
     document.getElementById("sca-resumo").innerHTML =
         card("Bipados", total, _scaSessao ? _scaSessao.alvo : "") +
         card("Conferem", ok, "no grupo certo", ok ? "#22c55e" : null) +
         card("Grupo errado", div, "não são daqui", div ? "#ef4444" : null) +
-        card("Sem dado", semD, "não deu pra conferir", semD ? "#eab308" : null);
+        card("Sem dado", semD, "não deu pra conferir", semD ? "#eab308" : null) +
+        card("Faltam bipar",
+             _scaFaltamCarregado ? `${faltam}${pct !== null ? ` <span class="shr-pct">${pct}%</span>` : ""}` : "—",
+             _scaTotalGrupo ? `de ${_scaTotalGrupo} no grupo` : "no grupo",
+             faltam ? "#eab308" : (_scaFaltamCarregado ? "#22c55e" : null));
 
     // As abas contam sozinhas: sem isso a pessoa teria que contar linha pra saber
     // quantas divergências apareceram.
@@ -257,6 +302,15 @@ function _scaRenderizar() {
     if (abas[0]) abas[0].innerText = `Todos ${total}`;
     if (abas[1]) abas[1].innerText = `Divergentes ${div}`;
     if (abas[2]) abas[2].innerText = `Sem dado ${semD}`;
+    if (abas[3]) abas[3].innerText = `Faltam bipar${_scaFaltamCarregado ? " " + faltam : ""}`;
+
+    const btnCopiar = document.getElementById("sca-btn-copiar");
+    if (btnCopiar) btnCopiar.textContent = _scaFiltroAtual === "faltam" ? "Copiar faltantes" : "Copiar divergentes";
+
+    if (_scaFiltroAtual === "faltam") return _scaRenderFaltantes();
+
+    document.getElementById("sca-thead").innerHTML =
+        `<tr><th>Código</th><th>Resultado</th><th>Esperado</th><th>Encontrado</th><th>Hora</th></tr>`;
 
     let lista = _scaBipagens;
     if (_scaFiltroAtual === "divergente") lista = lista.filter(b => b.resultado === "divergente");
@@ -278,8 +332,54 @@ function _scaRenderizar() {
             total ? "Nada nesse filtro." : "Nenhum pacote bipado ainda."}</td></tr>`;
 }
 
-// A lista de divergentes é o que se leva pra separação corrigir.
-function _scaCopiarDivergentes() {
+// Faltantes: o cluster/cidade tem esses pacotes e eles ainda não passaram pela bipagem.
+// É a metade que a conferência não enxergava — divergência mostra o que veio errado,
+// isto mostra o que não veio.
+function _scaRenderFaltantes() {
+    const cidade = _scaSessao && _scaSessao.tipo === "cidade";
+    document.getElementById("sca-thead").innerHTML = cidade
+        ? `<tr><th>Código</th><th>Comprador</th><th>CEP</th><th>Motorista</th><th>Status</th></tr>`
+        : `<tr><th>Código</th><th>AT</th><th>Motorista</th><th>Cidade / Bairro</th><th>Status</th></tr>`;
+
+    const tbody = document.getElementById("sca-tbody");
+    if (!_scaFaltamCarregado) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#8494a9;padding:26px 10px">Carregando...</td></tr>`;
+        return;
+    }
+    if (!_scaFaltantes.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#22c55e;padding:26px 10px;font-weight:600">${
+            _scaTotalGrupo ? "Tudo bipado — não falta nenhum pacote deste grupo." : "O grupo não tem pacotes cadastrados."}</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = _scaFaltantes.map(f => cidade ? `
+        <tr>
+            <td data-label="Código" style="font-family:monospace;font-weight:700;color:#e2e8f0">${_scaEsc(f.codigo)}</td>
+            <td data-label="Comprador">${_scaEsc(f.buyer_nome) || "—"}</td>
+            <td data-label="CEP" style="color:#8494a9">${_scaEsc(f.zipcode_name) || "—"}</td>
+            <td data-label="Motorista">${_scaEsc(f.driver_nome) || "—"}</td>
+            <td data-label="Status" style="color:#8494a9">${_scaEsc(f.status) || "—"}</td>
+        </tr>` : `
+        <tr>
+            <td data-label="Código" style="font-family:monospace;font-weight:700;color:#e2e8f0">${_scaEsc(f.codigo)}</td>
+            <td data-label="AT" style="font-family:monospace">${_scaEsc(f.task_id) || "—"}</td>
+            <td data-label="Motorista">${_scaEsc(f.driver_nome) || "—"}</td>
+            <td data-label="Cidade / Bairro">${_scaEsc(f.cidade) || "—"}${f.bairro ? `<div style="font-size:11px;color:#8494a9">${_scaEsc(f.bairro)}</div>` : ""}</td>
+            <td data-label="Status" style="color:#8494a9">${_scaEsc(f.status) || "—"}</td>
+        </tr>`).join("") + (_scaFaltamTruncado
+        ? `<tr><td colspan="5" style="text-align:center;color:#eab308;padding:14px">Mostrando os primeiros ${_scaFaltantes.length} — o grupo tem mais que isso.</td></tr>`
+        : "");
+}
+
+// Copia o que a aba aberta mostra: divergentes pra separação corrigir, faltantes pra
+// procurar no galpão. São as duas listas que saem da tela pra alguém agir.
+function _scaCopiar() {
+    if (_scaFiltroAtual === "faltam") {
+        if (!_scaFaltantes.length) return gcAlert("Nenhum pacote faltando nesta conferência.");
+        const texto = _scaFaltantes.map(f => f.codigo).join("\n");
+        return navigator.clipboard.writeText(texto)
+            .then(() => _scaMsg(`${_scaFaltantes.length} código${_scaFaltantes.length !== 1 ? "s" : ""} que falta${_scaFaltantes.length !== 1 ? "m" : ""} copiado${_scaFaltantes.length !== 1 ? "s" : ""}.`, "aviso"))
+            .catch(() => gcAlert("Não foi possível copiar."));
+    }
     const div = _scaBipagens.filter(b => b.resultado === "divergente");
     if (!div.length) return gcAlert("Nenhuma divergência nesta conferência.");
     const texto = div.map(b => `${b.codigo}\t${b.encontrado || "—"}`).join("\n");
