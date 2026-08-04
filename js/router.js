@@ -19,6 +19,7 @@ const _ROTAS = {
     "Operacao/DevolucoesReceber":       () => abrirDevolucoesReceber(),
     "Operacao/DevolucoesReceberAvulso": () => abrirDevolucoesReceberAvulso(),
     "Operacao/DevolucoesRegistro":      () => abrirDevolucoesRegistro(),
+    "Operacao/ShopeeReceber":           () => abrirShopeeReceber(),
     "Operacao/Etiquetas":            () => abrirEtiquetas(),
     "Ocorrencias/PacotesFaltantes":  () => abrirPacotesFaltantes(),
     "TorreControle/PacotesFaltantes": () => abrirPacotesFaltantesAdmin(),

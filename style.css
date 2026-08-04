@@ -713,6 +713,18 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .painel-descontos {
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;
 }
+/* Resumo do recebimento Shopee: total do dia, por XPT e o que a pessoa bipou. */
+.shr-resumo {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px; margin-bottom: 18px;
+}
+/* Cor por XPT: na tabela corrida, ler a linha inteira pra saber o destino é lento. */
+.shr-xpt-tag {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 700; font-family: 'Inter', sans-serif;
+}
+.shr-xpt-tag.cfc { background: rgba(58,134,255,0.1);  border: 1px solid rgba(58,134,255,0.3);  color: #3a86ff; }
+.shr-xpt-tag.via { background: rgba(168,85,247,0.1);  border: 1px solid rgba(168,85,247,0.3);  color: #a855f7; }
 .pt-header-neg { color: #ef4444; }
 .pt-row span.val-neg { color: #ef4444 !important; font-weight: 600; }
 .paj-card {
