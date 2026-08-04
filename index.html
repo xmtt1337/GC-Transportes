@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260801r">
+<link rel="stylesheet" href="style.css?v=20260801s">
 </head>
 <body>
 
@@ -2147,29 +2147,29 @@ if (location.hostname === "xmtt1337.github.io") {
         <!-- TELA SHOPEE — RECEBER (BIPAGEM POR XPT) -->
         <div id="tela-shopee-receber" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
-                <div class="ant-form-wrap" style="margin-bottom:16px">
-                    <div class="ant-form-title">Receber Shopee</div>
-
-                    <div class="ant-field">
-                        <label class="ant-label">Recebendo no XPT</label>
-                        <div class="filtro-tabs" id="shr-xpt-tabs" style="margin-top:2px">
-                            <button type="button" class="filtro-tab" data-xpt="XPT_CFC" onclick="_shrEscolherXpt('XPT_CFC')">XPT_CFC</button>
-                            <button type="button" class="filtro-tab" data-xpt="XPT_VIA" onclick="_shrEscolherXpt('XPT_VIA')">XPT_VIA</button>
-                        </div>
+                <div class="bip-scan-card shr-scan-card">
+                    <div class="bip-scan-title">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12.01"/><line x1="10" y1="12" x2="10" y2="12.01"/><line x1="13" y1="12" x2="13" y2="12.01"/><line x1="16" y1="12" x2="16" y2="12.01"/></svg>
+                        Receber Shopee
                     </div>
 
-                    <div class="ant-field" id="shr-campo-codigo" style="display:none">
-                        <label class="ant-label">Código do pedido</label>
-                        <div class="bte-codigo-row">
-                            <input type="text" id="shr-codigo" class="ant-input" placeholder="Escaneie ou digite o código do pedido" style="flex:1" onkeydown="_shrCodigoEnter(event)" autocomplete="off">
-                            <button type="button" class="bte-scan-btn" onclick="_shrScanCodigo()" title="Escanear código do pedido">
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-                            </button>
-                        </div>
+                    <div class="shr-seg" id="shr-xpt-tabs">
+                        <button type="button" class="shr-seg-btn" data-xpt="XPT_CFC" onclick="_shrEscolherXpt('XPT_CFC')">XPT_CFC</button>
+                        <button type="button" class="shr-seg-btn" data-xpt="XPT_VIA" onclick="_shrEscolherXpt('XPT_VIA')">XPT_VIA</button>
                     </div>
 
-                    <div id="shr-aviso-xpt" class="dev-form-sub" style="margin-top:4px;color:#eab308">Escolha o XPT acima para começar a bipar.</div>
-                    <div id="shr-msg" style="display:none;margin-top:14px"></div>
+                    <div class="bip-search-wrap" id="shr-campo-codigo" style="display:none">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#3a86ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <input type="text" id="shr-codigo" placeholder="Bipar ou digitar código..."
+                            onkeydown="_shrCodigoEnter(event)"
+                            autocomplete="off" autocorrect="off" spellcheck="false">
+                        <button type="button" class="shr-scan-btn" onclick="_shrScanCodigo()" title="Escanear com a câmera">
+                            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="bip-scan-hint" id="shr-aviso-xpt">Escolha o XPT acima para começar a bipar.</div>
+                    <div id="shr-msg" style="display:none;margin-top:12px"></div>
                 </div>
 
                 <div class="shr-resumo" id="shr-resumo"></div>
@@ -2752,52 +2752,52 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260801r"></script>
-<script src="js/router.js?v=20260801r"></script>
-<script src="js/sidebar.js?v=20260801r"></script>
-<script src="js/nav.js?v=20260801r"></script>
-<script src="js/fechamentos.js?v=20260801r"></script>
-<script src="js/admin.js?v=20260801r"></script>
-<script src="js/conf-nf.js?v=20260801r"></script>
-<script src="js/trampay.js?v=20260801r"></script>
-<script src="js/usuarios.js?v=20260801r"></script>
-<script src="js/motoristas.js?v=20260801r"></script>
-<script src="js/pagamentos.js?v=20260801r"></script>
-<script src="js/notas-fiscais.js?v=20260801r"></script>
-<script src="js/dashboard.js?v=20260801r"></script>
-<script src="js/ent-dashboard.js?v=20260801r"></script>
-<script src="js/nota-fiscal.js?v=20260801r"></script>
-<script src="js/extravios.js?v=20260801r"></script>
-<script src="js/usuarios-gc.js?v=20260801r"></script>
-<script src="js/todos-usuarios.js?v=20260801r"></script>
-<script src="js/whatsapp-teste.js?v=20260801r"></script>
-<script src="js/whatsapp-conversa.js?v=20260801r"></script>
-<script src="js/modals.js?v=20260801r"></script>
-<script src="js/alimentar.js?v=20260801r"></script>
-<script src="js/fechamento-criar.js?v=20260801r"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260801r"></script>
-<script src="js/bipagens.js?v=20260801r"></script>
-<script src="js/pedidos.js?v=20260801r"></script>
-<script src="js/desempenho-bip.js?v=20260801r"></script>
-<script src="js/desempenho-hora.js?v=20260801r"></script>
-<script src="js/conferencias.js?v=20260801r"></script>
-<script src="js/antecipacoes.js?v=20260801r"></script>
-<script src="js/antecipacoes-admin.js?v=20260801r"></script>
-<script src="js/baixas.js?v=20260801r"></script>
-<script src="js/devolucoes.js?v=20260801r"></script>
-<script src="js/shopee.js?v=20260801r"></script>
-<script src="js/viagens.js?v=20260801r"></script>
-<script src="js/ocorrencias.js?v=20260801r"></script>
-<script src="js/ocorrencias-admin.js?v=20260801r"></script>
-<script src="js/localizacao.js?v=20260801r"></script>
-<script src="js/localizacao-admin.js?v=20260801r"></script>
-<script src="js/transferencias.js?v=20260801r"></script>
-<script src="js/transferencias-admin.js?v=20260801r"></script>
-<script src="js/motorista-devolucoes.js?v=20260801r"></script>
-<script src="js/etiquetas.js?v=20260801r"></script>
-<script src="js/videira.js?v=20260801r"></script>
-<script src="js/planejamento-videira.js?v=20260801r"></script>
-<script src="js/torre.js?v=20260801r"></script>
+<script src="js/core.js?v=20260801s"></script>
+<script src="js/router.js?v=20260801s"></script>
+<script src="js/sidebar.js?v=20260801s"></script>
+<script src="js/nav.js?v=20260801s"></script>
+<script src="js/fechamentos.js?v=20260801s"></script>
+<script src="js/admin.js?v=20260801s"></script>
+<script src="js/conf-nf.js?v=20260801s"></script>
+<script src="js/trampay.js?v=20260801s"></script>
+<script src="js/usuarios.js?v=20260801s"></script>
+<script src="js/motoristas.js?v=20260801s"></script>
+<script src="js/pagamentos.js?v=20260801s"></script>
+<script src="js/notas-fiscais.js?v=20260801s"></script>
+<script src="js/dashboard.js?v=20260801s"></script>
+<script src="js/ent-dashboard.js?v=20260801s"></script>
+<script src="js/nota-fiscal.js?v=20260801s"></script>
+<script src="js/extravios.js?v=20260801s"></script>
+<script src="js/usuarios-gc.js?v=20260801s"></script>
+<script src="js/todos-usuarios.js?v=20260801s"></script>
+<script src="js/whatsapp-teste.js?v=20260801s"></script>
+<script src="js/whatsapp-conversa.js?v=20260801s"></script>
+<script src="js/modals.js?v=20260801s"></script>
+<script src="js/alimentar.js?v=20260801s"></script>
+<script src="js/fechamento-criar.js?v=20260801s"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260801s"></script>
+<script src="js/bipagens.js?v=20260801s"></script>
+<script src="js/pedidos.js?v=20260801s"></script>
+<script src="js/desempenho-bip.js?v=20260801s"></script>
+<script src="js/desempenho-hora.js?v=20260801s"></script>
+<script src="js/conferencias.js?v=20260801s"></script>
+<script src="js/antecipacoes.js?v=20260801s"></script>
+<script src="js/antecipacoes-admin.js?v=20260801s"></script>
+<script src="js/baixas.js?v=20260801s"></script>
+<script src="js/devolucoes.js?v=20260801s"></script>
+<script src="js/shopee.js?v=20260801s"></script>
+<script src="js/viagens.js?v=20260801s"></script>
+<script src="js/ocorrencias.js?v=20260801s"></script>
+<script src="js/ocorrencias-admin.js?v=20260801s"></script>
+<script src="js/localizacao.js?v=20260801s"></script>
+<script src="js/localizacao-admin.js?v=20260801s"></script>
+<script src="js/transferencias.js?v=20260801s"></script>
+<script src="js/transferencias-admin.js?v=20260801s"></script>
+<script src="js/motorista-devolucoes.js?v=20260801s"></script>
+<script src="js/etiquetas.js?v=20260801s"></script>
+<script src="js/videira.js?v=20260801s"></script>
+<script src="js/planejamento-videira.js?v=20260801s"></script>
+<script src="js/torre.js?v=20260801s"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">

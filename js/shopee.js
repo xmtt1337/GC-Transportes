@@ -32,12 +32,25 @@ function _shrEscolherXpt(xpt) {
 }
 
 function _shrPintarXptTabs() {
-    document.querySelectorAll("#shr-xpt-tabs .filtro-tab").forEach(b =>
+    document.querySelectorAll("#shr-xpt-tabs .shr-seg-btn").forEach(b =>
         b.classList.toggle("active", b.dataset.xpt === _shrXpt));
     // Sem XPT não há onde registrar, então o campo de código nem aparece — é mais claro
     // que deixá-lo visível e recusar cada bipe depois.
     document.getElementById("shr-campo-codigo").style.display = _shrXpt ? "" : "none";
     document.getElementById("shr-aviso-xpt").style.display    = _shrXpt ? "none" : "";
+}
+
+// Pisca a borda do campo em verde ou vermelho. Quem bipa em rajada não lê a mensagem —
+// a cor no canto do olho é o que diz se o pacote entrou.
+let _shrFlashTimer = null;
+function _shrFlash(tipo) {
+    const wrap = document.getElementById("shr-campo-codigo");
+    if (!wrap) return;
+    clearTimeout(_shrFlashTimer);
+    wrap.classList.remove("flash-ok", "flash-err");
+    void wrap.offsetWidth; // força reflow pra reiniciar a transição
+    wrap.classList.add(tipo === "ok" ? "flash-ok" : "flash-err");
+    _shrFlashTimer = setTimeout(() => wrap.classList.remove("flash-ok", "flash-err"), 900);
 }
 
 // ── Bipagem ──
@@ -72,7 +85,7 @@ function _shrReceber() {
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
         if (!ok) {
-            _gcBeepErro();
+            _gcBeepErro(); _shrFlash("err");
             if (d.ja_recebido) {
                 return _shrMsg(
                     `<strong>${codigo}</strong> já foi recebido hoje em <strong>${d.xpt || "—"}</strong>` +
@@ -81,7 +94,7 @@ function _shrReceber() {
             }
             return _shrMsg(d.error || "Erro ao registrar.", "erro");
         }
-        _gcBeepSucesso();
+        _gcBeepSucesso(); _shrFlash("ok");
         _shrMsg(`✓ <strong>${d.codigo}</strong> recebido em <strong>${d.xpt}</strong>.`, "ok");
         // Insere na lista local em vez de recarregar: a cada bipe uma ida ao servidor
         // deixaria a bipagem em rajada lenta e acordaria o banco à toa.
