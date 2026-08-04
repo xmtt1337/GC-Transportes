@@ -24,6 +24,7 @@ const _ROTAS = {
     "Operacao/ShopeeAT":                () => abrirShopeeAT(),
     "Operacao/ShopeePedidos":           () => abrirShopeePedidos(),
     "Operacao/ShopeeLineHaul":          () => abrirShopeeLineHaul(),
+    "Operacao/ShopeeAtribuicoes":       () => abrirShopeeAtribuicoes(),
     "Operacao/ShopeeReceber":           () => abrirShopeeReceber(), // rota antiga, mantida pra link salvo não quebrar
     "Operacao/Etiquetas":            () => abrirEtiquetas(),
     "Ocorrencias/PacotesFaltantes":  () => abrirPacotesFaltantes(),
