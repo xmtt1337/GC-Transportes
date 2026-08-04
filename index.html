@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260801u">
+<link rel="stylesheet" href="style.css?v=20260801v">
 </head>
 <body>
 
@@ -1604,6 +1604,7 @@ if (location.hostname === "xmtt1337.github.io") {
                                 <tr>
                                     <th>Usuário</th>
                                     <th>Role</th>
+                                    <th>Polo</th>
                                     <th>Status</th>
                                     <th>Ações</th>
                                 </tr>
@@ -2153,9 +2154,10 @@ if (location.hostname === "xmtt1337.github.io") {
                         Receber Shopee
                     </div>
 
-                    <div class="shr-seg" id="shr-xpt-tabs">
-                        <button type="button" class="shr-seg-btn" data-xpt="XPT_CFC" onclick="_shrEscolherXpt('XPT_CFC')">XPT_CFC</button>
-                        <button type="button" class="shr-seg-btn" data-xpt="XPT_VIA" onclick="_shrEscolherXpt('XPT_VIA')">XPT_VIA</button>
+                    <div class="shr-faixa" id="shr-faixa" style="display:none">
+                        <span class="shr-faixa-label">Recebendo em</span>
+                        <span class="shr-faixa-xpt" id="shr-faixa-xpt">—</span>
+                        <span class="shr-faixa-obs" id="shr-faixa-obs"></span>
                     </div>
 
                     <div class="bip-search-wrap" id="shr-campo-codigo" style="display:none">
@@ -2168,28 +2170,30 @@ if (location.hostname === "xmtt1337.github.io") {
                         </button>
                     </div>
 
-                    <div class="bip-scan-hint" id="shr-aviso-xpt">Escolha o XPT acima para começar a bipar.</div>
+                    <div class="bip-scan-hint" id="shr-aviso-xpt">Carregando o seu XPT...</div>
                     <div class="bip-scan-hint" id="shr-dica-codigo" style="display:none">Código Shopee — BR seguido de 13 caracteres (ex.: BR266104829025G)</div>
                     <div id="shr-msg" style="display:none;margin-top:12px"></div>
                 </div>
 
-                <div class="shr-resumo" id="shr-resumo"></div>
+                <div class="shr-resumo" id="shr-resumo" style="display:none"></div>
 
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:12px">
-                    <span class="ant-sol-title" id="shr-lista-titulo" style="border:none;padding:0;margin:0">Recebidos hoje</span>
-                    <div class="filtro-tabs" id="shr-filtro-tabs">
-                        <button type="button" class="filtro-tab active" data-filtro="todos" onclick="_shrTrocarFiltro('todos')">Todos</button>
-                        <button type="button" class="filtro-tab" data-filtro="meus" onclick="_shrTrocarFiltro('meus')">Só os meus</button>
+                <div id="shr-bloco-lista" style="display:none">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:12px">
+                        <span class="ant-sol-title" id="shr-lista-titulo" style="border:none;padding:0;margin:0">Recebidos hoje</span>
+                        <div class="filtro-tabs" id="shr-filtro-tabs">
+                            <button type="button" class="filtro-tab active" data-filtro="todos" onclick="_shrTrocarFiltro('todos')">Todos</button>
+                            <button type="button" class="filtro-tab" data-filtro="meus" onclick="_shrTrocarFiltro('meus')">Só os meus</button>
+                        </div>
                     </div>
-                </div>
-                <div class="fechamento-empty" id="shr-empty">Carregando...</div>
-                <div id="shr-resultado" style="display:none">
-                    <table class="ant-hist-table">
-                        <thead>
-                            <tr><th>Código</th><th>XPT</th><th>Recebido por</th><th>Data / hora</th></tr>
-                        </thead>
-                        <tbody id="shr-tbody"></tbody>
-                    </table>
+                    <div class="fechamento-empty" id="shr-empty">Carregando...</div>
+                    <div id="shr-resultado" style="display:none">
+                        <table class="ant-hist-table">
+                            <thead>
+                                <tr><th>Código</th><th>XPT</th><th>Recebido por</th><th>Data / hora</th><th id="shr-th-acao" style="display:none"></th></tr>
+                            </thead>
+                            <tbody id="shr-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div><!-- /tela-shopee-receber -->
@@ -2751,52 +2755,52 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260801u"></script>
-<script src="js/router.js?v=20260801u"></script>
-<script src="js/sidebar.js?v=20260801u"></script>
-<script src="js/nav.js?v=20260801u"></script>
-<script src="js/fechamentos.js?v=20260801u"></script>
-<script src="js/admin.js?v=20260801u"></script>
-<script src="js/conf-nf.js?v=20260801u"></script>
-<script src="js/trampay.js?v=20260801u"></script>
-<script src="js/usuarios.js?v=20260801u"></script>
-<script src="js/motoristas.js?v=20260801u"></script>
-<script src="js/pagamentos.js?v=20260801u"></script>
-<script src="js/notas-fiscais.js?v=20260801u"></script>
-<script src="js/dashboard.js?v=20260801u"></script>
-<script src="js/ent-dashboard.js?v=20260801u"></script>
-<script src="js/nota-fiscal.js?v=20260801u"></script>
-<script src="js/extravios.js?v=20260801u"></script>
-<script src="js/usuarios-gc.js?v=20260801u"></script>
-<script src="js/todos-usuarios.js?v=20260801u"></script>
-<script src="js/whatsapp-teste.js?v=20260801u"></script>
-<script src="js/whatsapp-conversa.js?v=20260801u"></script>
-<script src="js/modals.js?v=20260801u"></script>
-<script src="js/alimentar.js?v=20260801u"></script>
-<script src="js/fechamento-criar.js?v=20260801u"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260801u"></script>
-<script src="js/bipagens.js?v=20260801u"></script>
-<script src="js/pedidos.js?v=20260801u"></script>
-<script src="js/desempenho-bip.js?v=20260801u"></script>
-<script src="js/desempenho-hora.js?v=20260801u"></script>
-<script src="js/conferencias.js?v=20260801u"></script>
-<script src="js/antecipacoes.js?v=20260801u"></script>
-<script src="js/antecipacoes-admin.js?v=20260801u"></script>
-<script src="js/baixas.js?v=20260801u"></script>
-<script src="js/devolucoes.js?v=20260801u"></script>
-<script src="js/shopee.js?v=20260801u"></script>
-<script src="js/viagens.js?v=20260801u"></script>
-<script src="js/ocorrencias.js?v=20260801u"></script>
-<script src="js/ocorrencias-admin.js?v=20260801u"></script>
-<script src="js/localizacao.js?v=20260801u"></script>
-<script src="js/localizacao-admin.js?v=20260801u"></script>
-<script src="js/transferencias.js?v=20260801u"></script>
-<script src="js/transferencias-admin.js?v=20260801u"></script>
-<script src="js/motorista-devolucoes.js?v=20260801u"></script>
-<script src="js/etiquetas.js?v=20260801u"></script>
-<script src="js/videira.js?v=20260801u"></script>
-<script src="js/planejamento-videira.js?v=20260801u"></script>
-<script src="js/torre.js?v=20260801u"></script>
+<script src="js/core.js?v=20260801v"></script>
+<script src="js/router.js?v=20260801v"></script>
+<script src="js/sidebar.js?v=20260801v"></script>
+<script src="js/nav.js?v=20260801v"></script>
+<script src="js/fechamentos.js?v=20260801v"></script>
+<script src="js/admin.js?v=20260801v"></script>
+<script src="js/conf-nf.js?v=20260801v"></script>
+<script src="js/trampay.js?v=20260801v"></script>
+<script src="js/usuarios.js?v=20260801v"></script>
+<script src="js/motoristas.js?v=20260801v"></script>
+<script src="js/pagamentos.js?v=20260801v"></script>
+<script src="js/notas-fiscais.js?v=20260801v"></script>
+<script src="js/dashboard.js?v=20260801v"></script>
+<script src="js/ent-dashboard.js?v=20260801v"></script>
+<script src="js/nota-fiscal.js?v=20260801v"></script>
+<script src="js/extravios.js?v=20260801v"></script>
+<script src="js/usuarios-gc.js?v=20260801v"></script>
+<script src="js/todos-usuarios.js?v=20260801v"></script>
+<script src="js/whatsapp-teste.js?v=20260801v"></script>
+<script src="js/whatsapp-conversa.js?v=20260801v"></script>
+<script src="js/modals.js?v=20260801v"></script>
+<script src="js/alimentar.js?v=20260801v"></script>
+<script src="js/fechamento-criar.js?v=20260801v"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260801v"></script>
+<script src="js/bipagens.js?v=20260801v"></script>
+<script src="js/pedidos.js?v=20260801v"></script>
+<script src="js/desempenho-bip.js?v=20260801v"></script>
+<script src="js/desempenho-hora.js?v=20260801v"></script>
+<script src="js/conferencias.js?v=20260801v"></script>
+<script src="js/antecipacoes.js?v=20260801v"></script>
+<script src="js/antecipacoes-admin.js?v=20260801v"></script>
+<script src="js/baixas.js?v=20260801v"></script>
+<script src="js/devolucoes.js?v=20260801v"></script>
+<script src="js/shopee.js?v=20260801v"></script>
+<script src="js/viagens.js?v=20260801v"></script>
+<script src="js/ocorrencias.js?v=20260801v"></script>
+<script src="js/ocorrencias-admin.js?v=20260801v"></script>
+<script src="js/localizacao.js?v=20260801v"></script>
+<script src="js/localizacao-admin.js?v=20260801v"></script>
+<script src="js/transferencias.js?v=20260801v"></script>
+<script src="js/transferencias-admin.js?v=20260801v"></script>
+<script src="js/motorista-devolucoes.js?v=20260801v"></script>
+<script src="js/etiquetas.js?v=20260801v"></script>
+<script src="js/videira.js?v=20260801v"></script>
+<script src="js/planejamento-videira.js?v=20260801v"></script>
+<script src="js/torre.js?v=20260801v"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
@@ -3089,6 +3093,16 @@ if (location.hostname === "xmtt1337.github.io") {
                     <option value="admin">Administrador</option>
                     <option value="dev">Dev</option>
                 </select>
+            </div>
+            <div class="usr-modal-field">
+                <label class="usr-modal-label">Polo / base</label>
+                <select class="usr-modal-input" id="ngc-polo" style="cursor:pointer">
+                    <option value="">Selecione o polo...</option>
+                    <option value="cacador">Caçador</option>
+                    <option value="videira">Videira</option>
+                    <option value="joacaba">Joaçaba</option>
+                </select>
+                <div style="font-size:11px;color:#4a6a8a;margin-top:5px">Define onde a pessoa recebe a Shopee. Joaçaba não recebe.</div>
             </div>
             <div class="usr-modal-error" id="ngc-erro"></div>
             <div id="ngc-duplicado" style="display:none;margin-top:10px;padding:13px 15px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.22);border-radius:12px">

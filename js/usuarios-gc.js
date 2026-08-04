@@ -9,7 +9,35 @@ const GC_ROLE_COLORS = {
     dev:     { bg: "rgba(168,85,247,0.12)",  color: "#a855f7" },
 };
 
+// Polos/bases. Joaçaba consta porque tem gente lotada lá, mas não recebe Shopee.
+const GC_POLOS = [
+    { chave: "cacador", label: "Caçador" },
+    { chave: "videira", label: "Videira" },
+    { chave: "joacaba", label: "Joaçaba" },
+];
+
 let _editRoleGC_id = null;
+
+// Troca direto no select: é correção pontual de cadastro, e um modal só pra isso seria
+// cerimônia. O select volta ao valor antigo se o servidor recusar.
+function _trocarPoloGC(id, polo, select) {
+    const anterior = select.dataset.anterior || "";
+    select.disabled = true;
+    fetch(`${API}/admin/usuarios/${id}`, {
+        method: "PATCH",
+        headers: { "Authorization": "Bearer " + localStorage.getItem("token"), "Content-Type": "application/json" },
+        body: JSON.stringify({ polo: polo || null })
+    }).then(r => r.json())
+    .then(data => {
+        select.disabled = false;
+        if (data.error) { select.value = anterior; gcAlert(data.error); return; }
+        select.dataset.anterior = polo;
+    }).catch(() => {
+        select.disabled = false;
+        select.value = anterior;
+        gcAlert("Erro ao alterar o polo.");
+    });
+}
 
 function abrirAdminUsuariosGC(event) {
     if (event) event.preventDefault();
@@ -52,6 +80,12 @@ function _carregarUsuariosGC() {
                 <td>
                     <span style="background:${rc.bg};color:${rc.color};border:1px solid ${rc.color}44;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">${rl}</span>
                 </td>
+                <td>
+                    <select class="gc-polo-select" data-anterior="${u.polo || ""}" onchange="_trocarPoloGC(${u.id}, this.value, this)">
+                        ${GC_POLOS.map(p => `<option value="${p.chave}"${u.polo === p.chave ? " selected" : ""}>${p.label}</option>`).join("")}
+                        <option value=""${!u.polo ? " selected" : ""}>— sem polo —</option>
+                    </select>
+                </td>
                 <td><span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span></td>
                 <td>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -71,6 +105,7 @@ function _abrirModalNovoUsuarioGC() {
     document.getElementById("ngc-nome").value   = "";
     document.getElementById("ngc-senha").value  = "";
     document.getElementById("ngc-role").value   = "user";
+    document.getElementById("ngc-polo").value   = ""; // sem padrão: escolher é o ponto
     document.getElementById("ngc-erro").innerText = "";
     document.getElementById("ngc-duplicado").style.display = "none";
     document.getElementById("ngc-form").style.display    = "";
@@ -84,18 +119,22 @@ function _salvarNovoUsuarioGC() {
     const name     = document.getElementById("ngc-nome").value.trim();
     const password = document.getElementById("ngc-senha").value.trim();
     const role     = document.getElementById("ngc-role").value;
+    const polo     = document.getElementById("ngc-polo").value;
     const erro     = document.getElementById("ngc-erro");
     const btn      = document.getElementById("ngc-btn-salvar");
     erro.innerText = "";
     document.getElementById("ngc-duplicado").style.display = "none";
     if (!name) { erro.innerText = "Informe o nome do usuário."; return; }
+    // Polo obrigatório aqui: é dele que sai o XPT do recebimento Shopee. Deixar em branco
+    // faria a pessoa cair na pergunta avulsa depois, que é o que se quer evitar.
+    if (!polo) { erro.innerText = "Escolha o polo/base do usuário."; return; }
     btn.disabled = true;
     btn.textContent = "Cadastrando...";
 
     fetch(`${API}/admin/usuarios`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
-        body: JSON.stringify({ name, password, role })
+        body: JSON.stringify({ name, password, role, polo })
     }).then(r => r.json())
     .then(data => {
         btn.disabled = false;
