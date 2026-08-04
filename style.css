@@ -746,10 +746,15 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     box-shadow: inset 0 0 0 1px rgba(168,85,247,0.4);
 }
 
-/* Resumo do recebimento Shopee: total do dia, por XPT e o que a pessoa bipou. */
+/* Resumo do recebimento Shopee: o total do XPT em uso e a parte que a pessoa bipou. */
 .shr-resumo {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 12px; margin-bottom: 18px;
+}
+/* Percentual junto do número, menor: é leitura de apoio, não um segundo total. */
+.shr-pct {
+    font-size: 13px; font-weight: 700; color: #3a86ff;
+    margin-left: 8px; letter-spacing: 0;
 }
 /* Cor por XPT: na tabela corrida, ler a linha inteira pra saber o destino é lento. */
 .shr-xpt-tag {

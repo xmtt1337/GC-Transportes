@@ -26,6 +26,7 @@ function _shrEscolherXpt(xpt) {
     _shrXpt = xpt;
     _shrPintarXptTabs();
     _shrMsg("", null);
+    _shrRenderizar(); // o resumo e a lista passam a ser desse XPT
     const campo = document.getElementById("shr-codigo");
     campo.focus();
     campo.select();
@@ -154,9 +155,11 @@ function _shrEhMeu(r) {
 }
 
 function _shrRenderizar() {
-    const meus = _shrDados.filter(_shrEhMeu).length;
-    const cfc  = _shrDados.filter(r => r.xpt === "XPT_CFC").length;
-    const via  = _shrDados.filter(r => r.xpt === "XPT_VIA").length;
+    // Escolhido o XPT, a tela inteira passa a ser sobre ele: quem está recebendo no VIA
+    // não tem o que fazer com o número do CFC, e dois totais na tela só confundem.
+    const noEscopo = _shrXpt ? _shrDados.filter(r => r.xpt === _shrXpt) : _shrDados;
+    const meus = noEscopo.filter(_shrEhMeu).length;
+    const pct  = noEscopo.length ? Math.round((meus / noEscopo.length) * 100) : null;
 
     const card = (rotulo, valor, sub) => `
         <div class="paj-card">
@@ -165,14 +168,14 @@ function _shrRenderizar() {
             <div class="paj-value">${valor}</div>
         </div>`;
     document.getElementById("shr-resumo").innerHTML =
-        card("Recebidos hoje", _shrDados.length) +
-        card("Você recebeu", meus, (window._gcUser && window._gcUser.displayName) || "") +
-        card("XPT_CFC", cfc) +
-        card("XPT_VIA", via);
+        card("Recebidos hoje", noEscopo.length, _shrXpt || "Todos os XPTs") +
+        card("Você recebeu", `${meus}${pct !== null ? ` <span class="shr-pct">${pct}%</span>` : ""}`,
+             _shrXpt ? `do total do ${_shrXpt}` : "do total de hoje");
 
-    let rows = _shrDados;
-    if (_shrFiltro === "meus") rows = rows.filter(_shrEhMeu);
-    else if (SHR_XPTS.includes(_shrFiltro)) rows = rows.filter(r => r.xpt === _shrFiltro);
+    document.getElementById("shr-lista-titulo").innerText =
+        _shrXpt ? `Recebidos hoje · ${_shrXpt}` : "Recebidos hoje";
+
+    const rows = _shrFiltro === "meus" ? noEscopo.filter(_shrEhMeu) : noEscopo;
 
     document.getElementById("shr-tbody").innerHTML = rows.length ? rows.map(r => `
         <tr>
