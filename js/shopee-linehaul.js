@@ -49,10 +49,23 @@ function _slhCarregar() {
         .then(r => r.json())
         .then(d => {
             if (d && d.error) { skFim(empty, d.error); return; }
+
+            // Cada XPT confere o seu: a tela é sempre de um polo só, e dizer qual evita
+            // alguém achar que está vendo a carga inteira e cobrar viagem que não é dele.
+            _slhFaixa(d);
+            if (d && d.sem_polo) {
+                skFim(empty, "Você ainda não tem polo definido. Abra o Recebimento Shopee para escolher.");
+                return;
+            }
+            if (d && d.polo_sem_xpt) {
+                skFim(empty, `O polo ${d.polo_label} não recebe Shopee, então não tem line haul para conferir.`);
+                return;
+            }
+
             _slhTos = (d && d.tos) || [];
             _slhForaTotal = (d && d.fora_da_lh) || 0;
             if (!_slhTos.length && !_slhForaTotal) {
-                skFim(empty, "Nenhum romaneiro enviado ainda. Alimente o Romaneiro Shopee primeiro.");
+                skFim(empty, "Nenhuma viagem com destino a este XPT ainda. Alimente o Romaneiro Shopee primeiro.");
                 _slhRenderResumo();
                 return;
             }
@@ -62,6 +75,16 @@ function _slhCarregar() {
             _slhRenderizar();
         })
         .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
+}
+
+function _slhFaixa(d) {
+    const faixa = document.getElementById("slh-faixa");
+    const temXpt = d && d.xpt;
+    faixa.style.display = (temXpt || (d && d.polo_label)) ? "" : "none";
+    faixa.className = "shr-faixa " + (temXpt ? "cfc" : "sem");
+    document.getElementById("slh-faixa-xpt").innerText = temXpt
+        ? `${d.polo_label} · ${d.xpt}`
+        : (d && d.polo_label) || "—";
 }
 
 let _slhForaTotal = 0;
