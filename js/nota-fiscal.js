@@ -773,5 +773,22 @@ function _extrairCamposNota(raw) {
         }
     }
 
+    // ── Confirmação pelo CNPJ da GC ──
+    // Ler o nome do tomador de uma tabela de PDF é frágil por natureza: cada prefeitura
+    // muda o rótulo, e o PDF.js embaralha a ordem de rótulos e valores. O CNPJ não muda —
+    // é o mesmo número em qualquer layout, hoje e nos que ainda vão aparecer. Então, se o
+    // CNPJ da GC está na nota e não é o de quem emitiu, o tomador é a GC, tenha o nome
+    // sido extraído ou não. Isso só transforma "não consegui ler" em acerto; não valida
+    // nota nenhuma que não traga o CNPJ da GC.
+    const _GC_CNPJ = "40595873000109";
+    const _digitos = s => String(s || "").replace(/\D/g, "");
+    if (!/gc.*transport/i.test(tomador) && _digitos(cnpj) !== _GC_CNPJ
+        && /40\.?595\.?873\/?0001-?09/.test(t)) {
+        tomador = "GC TRANSPORTES LTDA";
+    }
+
+    console.log("=== TOMADOR EXTRAÍDO ===");
+    console.log(tomador);
+
     return { emissao, cnpj, emissor, valor, tomador, numero_nf, chave_acesso };
 }
