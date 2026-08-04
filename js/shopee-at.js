@@ -154,17 +154,28 @@ function _satMapear(grid) {
     return { dados, faltando };
 }
 
+// O arquivo traz VÁRIAS ATs (um Task ID por AT), não uma só. Contar as ATs além das
+// linhas é o que faz a tela dizer a verdade sobre o que está sendo substituído.
+function _satContarAts(linhas) {
+    return new Set(linhas.map(l => String(l.task_id || "").trim()).filter(Boolean)).size;
+}
+
+function _satPlural(n, singular, plural) {
+    return `${n.toLocaleString("pt-BR")} ${n === 1 ? singular : plural}`;
+}
+
 function _satRenderPrevia(faltando) {
     const n = _satLinhas.length;
+    const ats = _satContarAts(_satLinhas);
     const estacoes = [...new Set(_satLinhas.map(l => l.station).filter(Boolean))];
     document.getElementById("sat-previa-titulo").innerText =
-        `Prévia · ${n} linha${n !== 1 ? "s" : ""} de ${_satArquivoNome}`;
+        `Prévia · ${_satPlural(ats, "AT", "ATs")} · ${_satPlural(n, "linha", "linhas")} de ${_satArquivoNome}`;
     document.getElementById("sat-sub").innerText = "Arraste o arquivo aqui ou clique para selecionar — .csv, .xlsx ou .xls";
 
-    // O aviso do que vai ser substituído é o ponto: enviar aqui apaga a AT anterior das
-    // estações do arquivo, e isso não pode ser descoberto depois.
+    // O aviso do que vai ser substituído é o ponto: enviar aqui apaga TODAS as ATs
+    // anteriores das estações do arquivo, e isso não pode ser descoberto depois.
     const avisos = [];
-    avisos.push(`Isto <strong>substitui</strong> a AT atual de: <strong>${_satEsc(estacoes.join(", "))}</strong>.`);
+    avisos.push(`Isto <strong>substitui todas as ATs</strong> de <strong>${_satEsc(estacoes.join(", "))}</strong> pelas ${_satPlural(ats, "AT", "ATs")} deste arquivo.`);
     if (faltando && faltando.length) {
         avisos.push(`Colunas não encontradas (vão entrar em branco): ${_satEsc(faltando.join(", "))}.`);
     }
@@ -186,7 +197,7 @@ function _satRenderPrevia(faltando) {
     document.getElementById("sat-previa").style.display = "";
     const btn = document.getElementById("sat-btn-enviar");
     btn.disabled = false;
-    btn.textContent = `Substituir por ${n} linha${n !== 1 ? "s" : ""}`;
+    btn.textContent = `Substituir por ${_satPlural(ats, "AT", "ATs")}`;
 }
 
 function _satCancelar() {
@@ -202,10 +213,12 @@ function _satCancelar() {
 function _satEnviar() {
     if (_satEnviando || !_satLinhas.length) return;
     const estacoes = [...new Set(_satLinhas.map(l => l.station).filter(Boolean))];
+    const ats = _satContarAts(_satLinhas);
 
-    // Confirmação explícita: substituir apaga o que estava lá, e não tem desfazer.
+    // Confirmação explícita: substituir apaga TODAS as ATs da estação, não só as que
+    // coincidirem com as do arquivo. Sem dizer isso, o tamanho do estrago fica escondido.
     gcConfirm(
-        `A AT atual de ${estacoes.join(", ")} vai ser apagada e trocada por estas ${_satLinhas.length} linhas.\n\nNão dá pra desfazer.`,
+        `Todas as ATs de ${estacoes.join(", ")} vão ser apagadas e trocadas pelas ${_satPlural(ats, "AT", "ATs")} deste arquivo (${_satPlural(_satLinhas.length, "linha", "linhas")}).\n\nNão dá pra desfazer.`,
         () => {
             _satEnviando = true;
             const btn = document.getElementById("sat-btn-enviar");
@@ -224,9 +237,9 @@ function _satEnviar() {
                     btn.textContent = "Substituir a AT";
                     return _satMsg(_satEsc(d.error) || "Não foi possível enviar.", "erro");
                 }
-                const n = d.gravadas;
                 _satCancelar();
-                _satMsg(`✓ AT substituída — ${n} linha${n !== 1 ? "s" : ""} em ${_satEsc((d.estacoes || []).join(", "))}.`, "ok");
+                _satMsg(`✓ ${_satPlural(d.ats || 0, "AT substituída", "ATs substituídas")} em ${
+                    _satEsc((d.estacoes || []).join(", "))} — ${_satPlural(d.gravadas, "linha", "linhas")}.`, "ok");
                 _satPagina = 1;
                 _satCarregar();
             })
@@ -278,7 +291,7 @@ function _satCarregar() {
 
             const linhas = d.linhas || [];
             document.getElementById("sat-lista-titulo").innerText =
-                `AT atual${d.polo_label ? " · " + d.polo_label : ""}`;
+                `ATs atuais${d.polo_label ? " · " + d.polo_label : ""}`;
 
             if (!linhas.length) {
                 skFim(empty, busca ? "Nenhuma linha encontrada nessa busca." : "Nenhuma AT enviada ainda para esta estação.");
@@ -331,15 +344,17 @@ function _satRenderUltima(d) {
     const u = d && d.ultima;
     if (!u || !u.importado_em) {
         el.className = "shr-ultima vazia";
-        el.innerHTML = `<span class="shr-ultima-label">AT</span>
+        el.innerHTML = `<span class="shr-ultima-label">ATs</span>
             <span class="shr-ultima-valor">Nenhum envio ainda</span>`;
         return;
     }
+    // ATs primeiro, linhas depois: quem olha quer saber quantas viagens estão carregadas,
+    // não quantas linhas o arquivo tinha.
     el.className = "shr-ultima";
     el.innerHTML = `
         <span class="shr-ultima-label">Atualizado</span>
         <span class="shr-ultima-valor">${_satDataHora(u.importado_em)}</span>
         <span class="shr-ultima-rel">${_satHaQuantoTempo(u.importado_em)}</span>
         <span class="shr-ultima-obs">${_satEsc(u.importado_por) || "—"}${u.arquivo ? " · " + _satEsc(u.arquivo) : ""} · ${
-            (d.total || 0).toLocaleString("pt-BR")} linha${d.total !== 1 ? "s" : ""}</span>`;
+            _satPlural(d.total_ats || 0, "AT", "ATs")} · ${_satPlural(d.total || 0, "linha", "linhas")}</span>`;
 }
