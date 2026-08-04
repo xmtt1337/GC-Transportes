@@ -763,6 +763,30 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 12px; margin-bottom: 18px;
 }
+/* Conferência LineHaul — barra de progresso por TO, como a planilha. */
+.slh-linha { cursor: pointer; transition: background .12s; }
+.slh-linha:hover { background: rgba(58,134,255,0.06); }
+.slh-pct { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; margin-bottom: 5px; }
+.slh-barra {
+    height: 6px; border-radius: 999px; overflow: hidden;
+    background: rgba(255,255,255,0.06); min-width: 90px;
+}
+.slh-barra-fill { height: 100%; border-radius: 999px; transition: width .3s ease; }
+
+/* Lista de códigos da TO — rola dentro do modal, senão uma TO de 300 pacotes empurra
+   os botões pra fora da tela. */
+.slh-to-lista { max-height: 46vh; overflow-y: auto; padding-right: 4px; }
+.slh-cod {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 8px 12px; border-radius: 8px; margin-bottom: 5px;
+    border: 1px solid var(--border); background: rgba(0,0,0,0.18);
+}
+.slh-cod.falta { border-color: rgba(239,68,68,0.25); background: rgba(239,68,68,0.05); }
+.slh-cod.ok    { border-color: rgba(34,197,94,0.22); background: rgba(34,197,94,0.04); }
+.slh-cod-num   { font-family: monospace; font-size: 12.5px; font-weight: 700; color: #e2e8f0; }
+.slh-cod-info  { font-size: 11.5px; color: #8494a9; text-align: right; }
+.slh-cod-info.falta { color: #ef4444; font-weight: 600; }
+
 /* Faixa "atualizado em" do romaneiro — é a primeira coisa que a pessoa vem conferir. */
 .shr-ultima {
     display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
