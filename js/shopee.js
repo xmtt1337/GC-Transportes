@@ -4,6 +4,17 @@
 // XPT a cada bipe seria um clique a mais por pacote, centenas por dia.
 const SHR_XPTS = ["XPT_CFC", "XPT_VIA"];
 
+// Código Shopee: "BR" + 13 caracteres (ex.: BR266104829025G, BR2661048290259). Barrar
+// aqui evita a ida ao servidor e o erro sai no mesmo instante do bipe — mas o servidor
+// valida de novo, porque é ele quem decide o que entra no banco.
+const SHR_CODIGO_RE = /^BR[A-Z0-9]{13}$/;
+
+// O código volta pra tela dentro de innerHTML; se vier torto do leitor, pode trazer
+// caractere que o navegador leria como marcação.
+function _shrEsc(txt) {
+    return String(txt || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
 let _shrXpt      = null;    // null = ainda não escolheu, campo de código fica escondido
 let _shrDados    = [];      // recebimentos de hoje, do time inteiro
 let _shrFiltro   = "todos";
@@ -39,6 +50,7 @@ function _shrPintarXptTabs() {
     // que deixá-lo visível e recusar cada bipe depois.
     document.getElementById("shr-campo-codigo").style.display = _shrXpt ? "" : "none";
     document.getElementById("shr-aviso-xpt").style.display    = _shrXpt ? "none" : "";
+    document.getElementById("shr-dica-codigo").style.display  = _shrXpt ? "" : "none";
 }
 
 // Pisca a borda do campo em verde ou vermelho. Quem bipa em rajada não lê a mensagem —
@@ -69,13 +81,17 @@ function _shrScanCodigo() {
 
 function _shrReceber() {
     const campo  = document.getElementById("shr-codigo");
-    const codigo = campo.value.trim();
+    const codigo = campo.value.trim().toUpperCase();
     // Limpa e devolve o foco na hora: o leitor dispara o próximo bipe antes da resposta
     // do servidor chegar, e um campo travado perderia pacote.
     campo.value = "";
     campo.focus();
     if (!codigo) return;
     if (!_shrXpt) { _gcBeepErro(); return _shrMsg("Escolha o XPT antes de bipar.", "aviso"); }
+    if (!SHR_CODIGO_RE.test(codigo)) {
+        _gcBeepErro(); _shrFlash("err");
+        return _shrMsg(`<strong>${_shrEsc(codigo)}</strong> não é um código válido — precisa ser BR seguido de 13 caracteres.`, "erro");
+    }
 
     const xptDoBipe = _shrXpt; // guarda: a pessoa pode trocar de XPT enquanto a resposta vem
 
@@ -89,14 +105,14 @@ function _shrReceber() {
             _gcBeepErro(); _shrFlash("err");
             if (d.ja_recebido) {
                 return _shrMsg(
-                    `<strong>${codigo}</strong> já foi recebido hoje em <strong>${d.xpt || "—"}</strong>` +
-                    `${d.usuario_nome ? " por " + d.usuario_nome : ""}${d.data_hora_brasilia ? " · " + d.data_hora_brasilia : ""}.`,
+                    `<strong>${_shrEsc(codigo)}</strong> já foi recebido hoje em <strong>${_shrEsc(d.xpt) || "—"}</strong>` +
+                    `${d.usuario_nome ? " por " + _shrEsc(d.usuario_nome) : ""}${d.data_hora_brasilia ? " · " + _shrEsc(d.data_hora_brasilia) : ""}.`,
                     "aviso");
             }
-            return _shrMsg(d.error || "Erro ao registrar.", "erro");
+            return _shrMsg(_shrEsc(d.error) || "Erro ao registrar.", "erro");
         }
         _gcBeepSucesso(); _shrFlash("ok");
-        _shrMsg(`✓ <strong>${d.codigo}</strong> recebido em <strong>${d.xpt}</strong>.`, "ok");
+        _shrMsg(`✓ <strong>${_shrEsc(d.codigo)}</strong> recebido em <strong>${_shrEsc(d.xpt)}</strong>.`, "ok");
         // Insere na lista local em vez de recarregar: a cada bipe uma ida ao servidor
         // deixaria a bipagem em rajada lenta e acordaria o banco à toa.
         _shrDados.unshift({
