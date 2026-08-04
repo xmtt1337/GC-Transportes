@@ -245,7 +245,7 @@ function _baixarPainelAdminPDF() {
             <div style="flex:1;background:#1b263b;border:1px solid rgba(58,134,255,0.13);border-radius:8px;padding:12px">
                 <div style="font-size:11px;font-weight:700;color:#f1f5f9;margin-bottom:8px">Extravios</div>
                 ${extVazio
-                    ? `<div style="font-size:11px;color:#4a6a8a;padding:6px 0">Nenhum extravio no período</div>`
+                    ? `<div style="font-size:11px;color:#7b98b5;padding:6px 0">Nenhum extravio no período</div>`
                     : extEls.map(el => {
                         const tr   = el.querySelector(".extr-transp")?.innerText || "—";
                         const cod  = el.querySelector(".extr-codigo")?.innerText || "—";
@@ -256,7 +256,7 @@ function _baixarPainelAdminPDF() {
                         return `<div style="background:rgba(15,15,20,0.55);border-radius:6px;padding:7px 9px;margin-bottom:5px">
                             <div style="display:flex;justify-content:space-between;margin-bottom:2px">
                                 <span style="font-size:10px;font-weight:700;color:#94a3b8">${tr}</span>
-                                <span style="font-size:9px;font-family:monospace;color:#64748b">${cod}</span>
+                                <span style="font-size:9px;font-family:monospace;color:#8494a9">${cod}</span>
                             </div>
                             <div style="font-size:10px;color:#7a8599;margin-bottom:2px">${end}</div>
                             <div style="font-size:11px;font-weight:700;color:${neg?"#f87171":"#94a3b8"}">${val}</div>
@@ -267,13 +267,13 @@ function _baixarPainelAdminPDF() {
                 <div style="font-size:11px;font-weight:700;color:#f1f5f9;margin-bottom:8px">Multas</div>
                 <table style="width:100%;border-collapse:collapse">
                     <thead><tr style="border-bottom:1px solid rgba(58,134,255,0.15)">
-                        <th style="text-align:left;font-size:9px;color:#4a6a8a;padding:3px 5px;font-weight:600">Transportadora</th>
-                        <th style="text-align:left;font-size:9px;color:#4a6a8a;padding:3px 5px;font-weight:600">Código</th>
-                        <th style="text-align:right;font-size:9px;color:#4a6a8a;padding:3px 5px;font-weight:600">Valor</th>
+                        <th style="text-align:left;font-size:9px;color:#7b98b5;padding:3px 5px;font-weight:600">Transportadora</th>
+                        <th style="text-align:left;font-size:9px;color:#7b98b5;padding:3px 5px;font-weight:600">Código</th>
+                        <th style="text-align:right;font-size:9px;color:#7b98b5;padding:3px 5px;font-weight:600">Valor</th>
                     </tr></thead>
                     <tbody>
                         ${multasVazio
-                            ? `<tr><td colspan="3" style="font-size:10px;color:#4a6a8a;padding:6px 5px">Nenhuma multa no período</td></tr>`
+                            ? `<tr><td colspan="3" style="font-size:10px;color:#7b98b5;padding:6px 5px">Nenhuma multa no período</td></tr>`
                             : multasRows.map(m =>
                                 `<tr style="border-bottom:1px solid rgba(58,134,255,0.08)">
                                     <td style="font-size:10px;font-family:monospace;color:#94a3b8;padding:4px 5px">${m.transp}</td>

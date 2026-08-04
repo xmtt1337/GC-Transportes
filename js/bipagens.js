@@ -252,12 +252,12 @@ function _bipSessaoRenderizar() {
         statsEl.innerHTML = Object.entries(porTransp)
             .sort((a, b) => b[1] - a[1])
             .map(([t, n]) => {
-                const cor = transpCores[t] || '#64748b';
+                const cor = transpCores[t] || '#8494a9';
                 return `<span class="bip-stat-chip" style="color:${cor};border-color:${cor}40;background:${cor}12">${transpNomes[t] || t} · ${n}</span>`;
             }).join('');
     }
     el.innerHTML = lista.map(item => {
-        const cor  = transpCores[item.transportadora] || '#64748b';
+        const cor  = transpCores[item.transportadora] || '#8494a9';
         const nome = transpNomes[item.transportadora] || item.transportadora || '—';
         return `
         <div class="bip-item">

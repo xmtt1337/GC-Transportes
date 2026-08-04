@@ -205,7 +205,7 @@ function _trfCarregarHistorico() {
                         <div style="font-size:16px;font-weight:800;color:#3a86ff;font-family:monospace">${v.numero}</div>
                         <div style="font-size:12px;color:#94a3b8;margin-top:2px">${v.data_viagem || "—"}</div>
                     </div>
-                    <span style="font-size:12px;color:#64748b">${(v.entregas || []).length} entrega${(v.entregas || []).length !== 1 ? "s" : ""} →</span>
+                    <span style="font-size:12px;color:#8494a9">${(v.entregas || []).length} entrega${(v.entregas || []).length !== 1 ? "s" : ""} →</span>
                 </div>`).join("");
         })
         .catch(() => { skFim(empty, "Erro ao carregar o histórico."); });
@@ -234,7 +234,7 @@ function _trfAbrirDetalheViagem(viagemId) {
                 ${e.tem_foto ? `<button class="abte-foto-btn" onclick="_trfaVerFoto(${e.id})">Foto</button>` : ""}
                 <button class="abte-foto-btn" onclick="_trfaVerAssinatura(${e.id})">Assinatura</button>
             </div>
-        </div>`).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhuma entrega nesta viagem.</div>`;
+        </div>`).join("") || `<div style="font-size:12.5px;color:#8494a9;padding:6px 0">Nenhuma entrega nesta viagem.</div>`;
 
     overlay.innerHTML = `<div class="usr-modal" style="max-width:540px;width:calc(100% - 32px)">
         <div style="max-height:70vh;overflow-y:auto">
@@ -243,9 +243,9 @@ function _trfAbrirDetalheViagem(viagemId) {
                     <div style="font-size:22px;font-weight:800;color:#3a86ff;font-family:monospace">${v.numero}</div>
                     <div style="font-size:12.5px;color:#94a3b8;margin-top:2px">${v.data_viagem || "—"}</div>
                 </div>
-                <button onclick="document.getElementById('trf-hist-modal-overlay').classList.remove('open')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">✕</button>
+                <button onclick="document.getElementById('trf-hist-modal-overlay').classList.remove('open')" style="background:none;border:none;color:#8494a9;font-size:20px;cursor:pointer;line-height:1">✕</button>
             </div>
-            <div style="font-size:11px;font-weight:700;color:#4a6a8a;text-transform:uppercase;letter-spacing:0.05em;margin:14px 0 8px">${(v.entregas || []).length} entrega${(v.entregas || []).length !== 1 ? "s" : ""}</div>
+            <div style="font-size:11px;font-weight:700;color:#7b98b5;text-transform:uppercase;letter-spacing:0.05em;margin:14px 0 8px">${(v.entregas || []).length} entrega${(v.entregas || []).length !== 1 ? "s" : ""}</div>
             ${entregasHtml}
         </div>
     </div>`;

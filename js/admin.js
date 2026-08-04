@@ -34,7 +34,7 @@ function _carregarPlanilhas() {
             return `
             <div class="admin-list-item" style="${ativo ? '' : 'opacity:0.45'}">
                 <div style="min-width:0;flex:1">
-                    <strong style="color:${ativo ? '#e2e8f0' : '#64748b'}">${mesNomes[r.mes]}/${r.ano} — ${r.quinzena}ª Quinzena</strong>
+                    <strong style="color:${ativo ? '#e2e8f0' : '#8494a9'}">${mesNomes[r.mes]}/${r.ano} — ${r.quinzena}ª Quinzena</strong>
                     ${!ativo ? `<span style="margin-left:8px;font-size:11px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.1);padding:2px 7px;border-radius:20px">Desativado</span>` : ''}
                     <div class="info">${r.spreadsheet_id}</div>
                 </div>
@@ -286,7 +286,7 @@ function _carregarHomeUser() {
                 <div class="user-desemp-gap-text">
                     Faltam <strong>${d.faltam.toLocaleString("pt-BR")}</strong> bipagem${d.faltam !== 1 ? "s" : ""}
                     para ultrapassar <em>${d.pessoaAcima.nome}</em>
-                    <span style="color:#3a5a7a;font-size:11px"> · ${d.pessoaAcima.total.toLocaleString("pt-BR")} bip.</span>
+                    <span style="color:#7b98b5;font-size:11px"> · ${d.pessoaAcima.total.toLocaleString("pt-BR")} bip.</span>
                 </div>
                </div>`
             : `<div class="user-desemp-first">
@@ -467,7 +467,7 @@ function carregarHomeNFStatus() {
                     </div>
                     <div style="flex:1;min-width:0">
                         <div style="font-size:14px;font-weight:600;color:#22c55e">Notas Fiscais em dia</div>
-                        <div style="font-size:12px;color:#64748b;margin-top:2px">Todos os períodos enviados</div>
+                        <div style="font-size:12px;color:#8494a9;margin-top:2px">Todos os períodos enviados</div>
                     </div>
                     <div style="font-size:11px;font-weight:700;color:#22c55e;white-space:nowrap">✓ OK</div>
                 </div>`;
@@ -479,7 +479,7 @@ function carregarHomeNFStatus() {
                     </div>
                     <div style="flex:1;min-width:0">
                         <div style="font-size:14px;font-weight:600;color:#fb923c">${pendentes} ${pendentes === 1 ? "nota pendente" : "notas pendentes"}</div>
-                        <div style="font-size:12px;color:#64748b;margin-top:2px">Clique para ver os períodos em aberto</div>
+                        <div style="font-size:12px;color:#8494a9;margin-top:2px">Clique para ver os períodos em aberto</div>
                     </div>
                     <div style="font-size:12px;font-weight:700;color:#fb923c;white-space:nowrap">Ver →</div>
                 </div>`;

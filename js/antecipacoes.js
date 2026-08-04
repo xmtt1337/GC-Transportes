@@ -84,7 +84,7 @@ function _antCardHtml(tipo, titulo, sub) {
         error: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
     };
     const cfg = {
-        lock:  { border: "#334155", bg: "rgba(51,65,85,0.35)",  cor: "#94a3b8" },
+        lock:  { border: "#707f96", bg: "rgba(51,65,85,0.35)",  cor: "#94a3b8" },
         wait:  { border: "#92400e", bg: "rgba(146,64,14,0.18)", cor: "#f59e0b" },
         clock: { border: "#1e3a8a", bg: "rgba(30,58,138,0.18)", cor: "#60a5fa" },
         ok:    { border: "#14532d", bg: "rgba(20,83,45,0.18)",  cor: "#22c55e" },
@@ -257,7 +257,7 @@ function _antCarregarHistorico() {
                 <td data-label="Valor NF">${vNF}</td>
                 <td data-label="Solicitado" style="color:#3a86ff;font-weight:600">${vAnt}</td>
                 <td data-label="Nº NF">${r.numero_nf || "—"}</td>
-                <td data-label="Data" style="color:#64748b;font-size:12px">${data}</td>
+                <td data-label="Data" style="color:#8494a9;font-size:12px">${data}</td>
             </tr>`;
         }).join("");
     }).catch(() => {});
@@ -270,7 +270,7 @@ function _antStatusBadge(status) {
         rejeitada: { color: "#ef4444", bg: "rgba(239,68,68,0.1)",    label: "Rejeitada" },
         paga:      { color: "#3a86ff", bg: "rgba(58,134,255,0.1)",   label: "Saldo na Trampay" },
     };
-    const s = map[status] || { color: "#64748b", bg: "rgba(100,116,139,0.1)", label: status };
+    const s = map[status] || { color: "#8494a9", bg: "rgba(100,116,139,0.1)", label: status };
     return `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:${s.color};background:${s.bg}">${s.label}</span>`;
 }
 
@@ -341,9 +341,9 @@ function _antEnviarSolicitacao() {
     const periodo = `${_antQuinzena}ª Quinzena de ${MESES[mes]}/${ano}`;
     const resumo = `
         <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:4px">
-            <div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#64748b">Período</span><strong style="color:#e2e8f0">${periodo}</strong></div>
-            <div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#64748b">Nota fiscal</span><strong style="color:#e2e8f0">Nº ${numeroNF}</strong></div>
-            <div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#64748b">Valor a antecipar</span><strong style="color:#4ade80;font-size:16px">${moedaJS(valor)}</strong></div>
+            <div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#8494a9">Período</span><strong style="color:#e2e8f0">${periodo}</strong></div>
+            <div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#8494a9">Nota fiscal</span><strong style="color:#e2e8f0">Nº ${numeroNF}</strong></div>
+            <div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#8494a9">Valor a antecipar</span><strong style="color:#4ade80;font-size:16px">${moedaJS(valor)}</strong></div>
         </div>
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);font-size:12.5px;color:#94a3b8">
             Após o envio, não será possível alterar os dados desta solicitação. Confirme se as informações estão corretas.
@@ -418,7 +418,7 @@ function _carregarMinhasSolicitacoes() {
                 <td data-label="Valor NF">${vNF}</td>
                 <td data-label="Solicitado" style="color:#3a86ff;font-weight:600">${vAnt}</td>
                 <td data-label="Status">${_antStatusBadge(r.status)}</td>
-                <td data-label="Data" style="color:#64748b;font-size:12px">${data}</td>
+                <td data-label="Data" style="color:#8494a9;font-size:12px">${data}</td>
             </tr>`;
         }).join("");
     }).catch(() => {

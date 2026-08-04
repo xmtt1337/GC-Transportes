@@ -19,7 +19,7 @@ const WA_ROLES_ACAREACAO = ["sac", "dev"];
 // Avatar padrão do sistema — igual pra todo mundo, sem emoji e sem imitar outro app.
 const WA_AVATAR_SVG = `<svg viewBox="0 0 212 212" width="100%" height="100%" aria-hidden="true">
     <circle cx="106" cy="106" r="106" fill="#1b2635"/>
-    <path fill="#64748b" d="M106 109c17 0 31-14 31-31s-14-31-31-31-31 14-31 31 14 31 31 31zm0 13c-25 0-56 12-56 31v14h112v-14c0-19-31-31-56-31z"/>
+    <path fill="#8494a9" d="M106 109c17 0 31-14 31-31s-14-31-31-31-31 14-31 31 14 31 31 31zm0 13c-25 0-56 12-56 31v14h112v-14c0-19-31-31-56-31z"/>
 </svg>`;
 
 // Prazo padrão em horas, usado só para envios antigos, feitos antes do campo de prazo
@@ -342,7 +342,7 @@ function _wacRenderizarTranspTabs(itens) {
     if (!chaves.includes(_wacTransp)) _wacTransp = chaves[0];
 
     el.innerHTML = chaves.map(k => {
-        const t = WA_TRANSPORTADORAS[k] || { rotulo: "Outras", cor: "#64748b" };
+        const t = WA_TRANSPORTADORAS[k] || { rotulo: "Outras", cor: "#8494a9" };
         return `<button type="button" class="wac-transp-tab${_wacTransp === k ? " active" : ""}"
                         style="--transp-cor:${t.cor}" onclick="_wacFiltrarTransp('${k}')"
                 >${t.rotulo}<span class="wac-transp-n">${contagem[k] || 0}</span></button>`;
@@ -442,13 +442,13 @@ function _wacEscapar(s) {
 // silencioso: recarrega sem piscar "Carregando..." (usado pelo auto-refresh)
 function _wacCarregarConversa(silencioso) {
     const body = document.getElementById("wac-chat-body");
-    if (!silencioso) body.innerHTML = `<div style="text-align:center;color:#5b6b73;font-size:13px;padding:20px">Carregando...</div>`;
+    if (!silencioso) body.innerHTML = `<div style="text-align:center;color:#8494a9;font-size:13px;padding:20px">Carregando...</div>`;
 
     return fetch(`${API}/admin/whatsapp/conversa/${_wacNumeroAtual}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(rows => {
             if (!Array.isArray(rows) || !rows.length) {
-                body.innerHTML = `<div style="text-align:center;color:#5b6b73;font-size:13px;padding:20px">Nenhuma mensagem encontrada.</div>`;
+                body.innerHTML = `<div style="text-align:center;color:#8494a9;font-size:13px;padding:20px">Nenhuma mensagem encontrada.</div>`;
                 return;
             }
             const scrollAnterior = body.scrollTop;

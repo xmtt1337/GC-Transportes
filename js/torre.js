@@ -57,7 +57,7 @@ function _taRenderizar(cfg) {
             <div style="flex-shrink:0;width:28px;height:28px;border-radius:50%;background:rgba(58,134,255,0.15);border:1.5px solid rgba(58,134,255,0.3);color:#5d9aff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">${i + 1}</div>
             <div style="flex:1;min-width:0">
                 <div style="font-size:13.5px;font-weight:700;color:#e2e8f0;margin-bottom:3px">${p.titulo}</div>
-                <div style="font-size:12.5px;color:#4a6a8a;line-height:1.5">${p.desc}</div>
+                <div style="font-size:12.5px;color:#7b98b5;line-height:1.5">${p.desc}</div>
                 ${p.link ? `<a href="${p.link.href}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:6px 12px;border-radius:8px;background:rgba(58,134,255,0.1);border:1px solid rgba(58,134,255,0.25);color:#5d9aff;font-size:12px;font-weight:600;text-decoration:none">
                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                     ${p.link.label}
@@ -68,7 +68,7 @@ function _taRenderizar(cfg) {
     el.innerHTML = `
         <div style="max-width:680px;margin:0 auto;padding:4px 0 40px">
             <div style="font-size:24px;font-weight:800;color:#f1f5f9;letter-spacing:-0.4px;margin-bottom:6px">${cfg.nome}</div>
-            <div style="font-size:13.5px;color:#4a6a8a;margin-bottom:28px;line-height:1.5">Siga os passos abaixo para baixar o relatório e enviá-lo para a base.</div>
+            <div style="font-size:13.5px;color:#7b98b5;margin-bottom:28px;line-height:1.5">Siga os passos abaixo para baixar o relatório e enviá-lo para a base.</div>
 
             <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">${passos}</div>
 
@@ -81,8 +81,8 @@ function _taRenderizar(cfg) {
                     <line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
                 <div style="font-size:15px;font-weight:600;color:#cbd5e1;margin-bottom:5px">Arraste o arquivo aqui</div>
-                <div style="font-size:12.5px;color:#334155">ou clique para selecionar do computador</div>
-                <div style="font-size:11px;color:#1e2e40;margin-top:6px">Aceita: .xlsx · .xls · .csv</div>
+                <div style="font-size:12.5px;color:#707f96">ou clique para selecionar do computador</div>
+                <div style="font-size:11px;color:#707f96;margin-top:6px">Aceita: .xlsx · .xls · .csv</div>
                 <input type="file" id="ta-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="_taArquivoSelecionado(this.files[0])">
             </div>
 
@@ -132,9 +132,9 @@ function _taArquivoSelecionado(f) {
             </div>
             <div style="flex:1;min-width:0">
                 <div style="font-size:13px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
-                <div style="font-size:11.5px;color:#4a6a8a;margin-top:2px">${kb} KB</div>
+                <div style="font-size:11.5px;color:#7b98b5;margin-top:2px">${kb} KB</div>
             </div>
-            <button onclick="_taRemoverArquivo()" style="background:none;border:none;color:#4a6a8a;cursor:pointer;font-size:18px;line-height:1;padding:0 4px">✕</button>
+            <button onclick="_taRemoverArquivo()" style="background:none;border:none;color:#7b98b5;cursor:pointer;font-size:18px;line-height:1;padding:0 4px">✕</button>
         </div>`;
     const btn = document.getElementById("ta-btn-enviar");
     btn.disabled = false;

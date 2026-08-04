@@ -81,7 +81,7 @@ function _renderAdmAntTabela(rows) {
         const finalizado = r.status === "paga" || r.status === "rejeitada";
         return `<tr>
             <td style="text-align:center"><input type="checkbox" class="adm-ant-cb" data-id="${r.id}" ${finalizado ? "disabled" : ""} onchange="_admAntOnCbChange()" style="cursor:${finalizado?"not-allowed":"pointer"};accent-color:#3a86ff;width:15px;height:15px;opacity:${finalizado?"0.3":"1"}"></td>
-            <td style="font-size:12px;color:#64748b">${data}</td>
+            <td style="font-size:12px;color:#8494a9">${data}</td>
             <td class="adm-nf-entregador">${r.usuario_nome || "—"}</td>
             <td style="color:#94a3b8">${qz}</td>
             <td>${vNF}</td>
@@ -105,7 +105,7 @@ function _admAntBadge(status) {
         rejeitada: { color: "#ef4444", bg: "rgba(239,68,68,0.1)",    label: "Rejeitada" },
         paga:      { color: "#3a86ff", bg: "rgba(58,134,255,0.1)",   label: "Trampay ✓" },
     };
-    const s = map[status] || { color: "#64748b", bg: "rgba(100,116,139,0.1)", label: status };
+    const s = map[status] || { color: "#8494a9", bg: "rgba(100,116,139,0.1)", label: status };
     return `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;color:${s.color};background:${s.bg}">${s.label}</span>`;
 }
 

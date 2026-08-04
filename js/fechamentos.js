@@ -212,7 +212,7 @@ function _carregarPainel() {
             } else {
                 const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
                 antRow.innerHTML = `
-                <div style="font-size:12px;color:#64748b;padding:4px 2px">
+                <div style="font-size:12px;color:#8494a9;padding:4px 2px">
                     Previsão de recebimento: <strong style="color:#94a3b8">${dataPrev}</strong>
                 </div>`;
             }
@@ -366,7 +366,7 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
         if (filtroTransp) lista = lista.filter(t => t.transportadora === filtroTransp);
         if (!lista.length) {
             const onde = filtroTransp ? `na ${_REL_DRIVER_LABELS[filtroTransp] || filtroTransp}` : "nos relatórios";
-            body.innerHTML = `<div style="color:#64748b;font-size:13px;padding:24px 0;text-align:center">Nenhuma entrega encontrada ${onde} nesse período.</div>`;
+            body.innerHTML = `<div style="color:#8494a9;font-size:13px;padding:24px 0;text-align:center">Nenhuma entrega encontrada ${onde} nesse período.</div>`;
             return;
         }
         _relDriverDados = { transportadoras: lista };
@@ -443,7 +443,7 @@ function _abrirRelatorioDriverCom(url, subtitulo, nomeArquivo, filtroTransp) {
                 ${temPrazo ? `
                 <div class="rd-prazo-row">
                     <span style="color:#22c55e">✓ ${t.dentro_prazo} no prazo</span>
-                    <span style="color:${t.fora_prazo ? "#ef4444" : "#64748b"}">✗ ${t.fora_prazo} fora do prazo</span>
+                    <span style="color:${t.fora_prazo ? "#ef4444" : "#8494a9"}">✗ ${t.fora_prazo} fora do prazo</span>
                 </div>` : ""}
                 ${t.usuarios.map(u => `
                     <div class="rd-usr-row">

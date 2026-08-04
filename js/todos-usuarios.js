@@ -112,7 +112,7 @@ function _tuRenderizar(rows) {
             <td style="font-family:monospace;font-size:12px">${u.username}</td>
             <td>${_TU_CARGO_LABELS[u.role] || u.role}</td>
             <td>
-                <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:${online ? "#22c55e" : "#64748b"}">
+                <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:${online ? "#22c55e" : "#8494a9"}">
                     <span style="width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0"></span>${online ? "Online" : "Offline"}
                 </span>
             </td>

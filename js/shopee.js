@@ -357,7 +357,7 @@ function _shrRenderizar() {
                 <button class="shr-del-btn" onclick="_shrRemover(${r.id},'${_shrEsc(r.codigo)}')" title="Remover este recebimento">Remover</button>
             </td>` : ""}
         </tr>`).join("")
-        : `<tr><td colspan="${colunas}" style="text-align:center;color:#64748b;padding:26px 10px">${
+        : `<tr><td colspan="${colunas}" style="text-align:center;color:#8494a9;padding:26px 10px">${
             termo ? "Nenhum código encontrado." : "Nenhum recebimento nesse filtro."}</td></tr>`;
 }
 

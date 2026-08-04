@@ -58,7 +58,7 @@ function _lerCsvTrampay(input) {
                 <td class="t-doc">${r.id_externo || "—"}</td>
                 <td class="t-pix">${r.chave_pix || "—"}</td>
                 <td>${r.chave_pix_tipo ? `<span class="pag-pix-badge">${r.chave_pix_tipo}</span>` : "—"}</td>
-                <td style="font-size:12px;color:#64748b">${r.data_criacao || "—"}</td>
+                <td style="font-size:12px;color:#8494a9">${r.data_criacao || "—"}</td>
             </tr>
         `).join("");
 
@@ -137,7 +137,7 @@ function _carregarEntregadoresTrampay() {
             : null;
         document.getElementById("trampay-ent-counter").innerHTML =
             `${data.length} entregador${data.length !== 1 ? "es" : ""} cadastrado${data.length !== 1 ? "s" : ""}` +
-            (lastImport ? ` &nbsp;·&nbsp; <span style="color:#4a6a8a">Último import: ${lastImport}</span>` : "");
+            (lastImport ? ` &nbsp;·&nbsp; <span style="color:#7b98b5">Último import: ${lastImport}</span>` : "");
         document.getElementById("trampay-ent-tbody").innerHTML = data.map(u => `
             <tr>
                 <td class="adm-nf-entregador">${u.nome || "—"}</td>
@@ -145,7 +145,7 @@ function _carregarEntregadoresTrampay() {
                 <td class="adm-nf-cnpj">${u.id_externo || "—"}</td>
                 <td class="pag-pix">${u.chave_pix || "—"}</td>
                 <td>${u.chave_pix ? `<span class="pag-pix-badge">${u.tipo_pix || "—"}</span>` : "—"}</td>
-                <td style="font-size:12px;color:#64748b">${u.data_criacao || "—"}</td>
+                <td style="font-size:12px;color:#8494a9">${u.data_criacao || "—"}</td>
             </tr>
         `).join("");
     }).catch(() => { skFim(empty, "Erro ao carregar entregadores Trampay."); });

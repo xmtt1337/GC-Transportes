@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260801x">
+<link rel="stylesheet" href="style.css?v=20260801y">
 </head>
 <body>
 
@@ -482,7 +482,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <polyline points="12 6 12 12 16 14"/>
             </svg>
             <div style="font-size:22px;font-weight:700;color:#e2e8f0">Em desenvolvimento</div>
-            <div style="font-size:14px;color:#64748b;text-align:center;max-width:280px">Esta funcionalidade ainda não está disponível.<br>Em breve será liberada.</div>
+            <div style="font-size:14px;color:#8494a9;text-align:center;max-width:280px">Esta funcionalidade ainda não está disponível.<br>Em breve será liberada.</div>
         </div>
 
         <!-- TELA FECHAMENTOS -->
@@ -713,14 +713,14 @@ if (location.hostname === "xmtt1337.github.io") {
                     <div class="adm-ent-resumo" id="adm-ent-resumo">
                         <span id="adm-ent-counter" style="font-size:13px;color:#94a3b8;font-weight:500"></span>
                         <div style="text-align:right">
-                            <div id="adm-ent-total-pacotes" style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:2px"></div>
+                            <div id="adm-ent-total-pacotes" style="font-size:11px;color:#8494a9;font-weight:500;margin-bottom:2px"></div>
                             <span id="adm-ent-total-geral" style="font-size:14px;font-weight:700;color:#34d399"></span>
                         </div>
                     </div>
                     <!-- Busca + chip selecionado -->
                     <div style="margin-bottom:14px">
                         <div class="adm-search-input-area" id="adm-search-input-area">
-                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                             <input type="text" id="adm-search-input" placeholder="Filtrar entregadores..." oninput="filtrarEntregadores()">
                         </div>
                         <div class="adm-selected-chip" id="adm-selected-chip" style="display:none;margin-top:8px">
@@ -735,7 +735,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div id="adm-fech-data" style="display:none">
 
                     <div id="adm-fech-topbar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:10px;flex-wrap:wrap">
-                        <button onclick="limparSelecaoEntregador()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:1px solid rgba(58,134,255,0.2);background:transparent;color:#64748b;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.color='#f1f5f9';this.style.borderColor='rgba(58,134,255,0.4)'" onmouseout="this.style.color='#64748b';this.style.borderColor='rgba(58,134,255,0.2)'">
+                        <button onclick="limparSelecaoEntregador()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:1px solid rgba(58,134,255,0.2);background:transparent;color:#8494a9;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.color='#f1f5f9';this.style.borderColor='rgba(58,134,255,0.4)'" onmouseout="this.style.color='#8494a9';this.style.borderColor='rgba(58,134,255,0.2)'">
                             ← Voltar para lista
                         </button>
                         <div id="adm-fech-topbar-info" style="flex:1;min-width:0"></div>
@@ -869,7 +869,7 @@ if (location.hostname === "xmtt1337.github.io") {
                         <span class="nf-filtro-label">Período do serviço</span>
                         <div class="nf-filtro-input" id="adm-nf-quinzena-btn" onclick="_admNFAbrirCalendario(event,'quinzena')">
                             <span class="txt" id="adm-nf-quinzena-txt">Escolha o período</span>
-                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#4a6a8a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#7b98b5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
                         </div>
                         <input type="hidden" id="adm-nf-periodo-de">
                         <input type="hidden" id="adm-nf-periodo-ate">
@@ -878,7 +878,7 @@ if (location.hostname === "xmtt1337.github.io") {
                         <span class="nf-filtro-label">Data de envio</span>
                         <div class="nf-filtro-input" id="adm-nf-filtro-envio-btn" onclick="_admNFAbrirCalendario(event,'envio')">
                             <span class="txt" id="adm-nf-filtro-envio-txt">Escolha o período</span>
-                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#4a6a8a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#7b98b5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
                         </div>
                         <input type="hidden" id="adm-nf-de">
                         <input type="hidden" id="adm-nf-ate">
@@ -887,7 +887,7 @@ if (location.hostname === "xmtt1337.github.io") {
                         <span class="nf-filtro-label">Data de emissão</span>
                         <div class="nf-filtro-input" id="adm-nf-filtro-emissao-btn" onclick="_admNFAbrirCalendario(event,'emissao')">
                             <span class="txt" id="adm-nf-filtro-emissao-txt">Escolha o período</span>
-                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#4a6a8a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#7b98b5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
                         </div>
                         <input type="hidden" id="adm-nf-emissao-de">
                         <input type="hidden" id="adm-nf-emissao-ate">
@@ -925,7 +925,7 @@ if (location.hostname === "xmtt1337.github.io") {
                     </div>
                     <div style="position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:12px 4px;flex-wrap:wrap;gap:10px;background:#0b0f18;border-top:1px solid rgba(255,255,255,0.06)">
                         <div style="display:flex;align-items:center;gap:8px">
-                            <span style="font-size:12.5px;color:#4a6a8a">Itens por página</span>
+                            <span style="font-size:12.5px;color:#7b98b5">Itens por página</span>
                             <select id="adm-nf-por-pagina" class="fech-select" style="width:auto" onchange="_admNFMudarPorPagina()">
                                 <option value="25">25</option>
                                 <option value="50">50</option>
@@ -933,7 +933,7 @@ if (location.hostname === "xmtt1337.github.io") {
                         </div>
                         <div style="display:flex;align-items:center;gap:10px">
                             <button onclick="_admNFPaginaAnterior()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">‹ Anterior</button>
-                            <span id="adm-nf-pagina-info" style="font-size:12.5px;color:#4a6a8a;white-space:nowrap"></span>
+                            <span id="adm-nf-pagina-info" style="font-size:12.5px;color:#7b98b5;white-space:nowrap"></span>
                             <button onclick="_admNFProximaPagina()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">Próxima ›</button>
                         </div>
                     </div>
@@ -988,7 +988,7 @@ if (location.hostname === "xmtt1337.github.io") {
                     </div>
                     <div style="position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:12px 4px;flex-wrap:wrap;gap:10px;background:#0b0f18;border-top:1px solid rgba(255,255,255,0.06)">
                         <div style="display:flex;align-items:center;gap:8px">
-                            <span style="font-size:12.5px;color:#4a6a8a">Itens por página</span>
+                            <span style="font-size:12.5px;color:#7b98b5">Itens por página</span>
                             <select id="conf-nf-por-pagina" class="fech-select" style="width:auto" onchange="_confNFMudarPorPagina()">
                                 <option value="25">25</option>
                                 <option value="50">50</option>
@@ -996,7 +996,7 @@ if (location.hostname === "xmtt1337.github.io") {
                         </div>
                         <div style="display:flex;align-items:center;gap:10px">
                             <button onclick="_confNFPaginaAnterior()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">‹ Anterior</button>
-                            <span id="conf-nf-pagina-info" style="font-size:12.5px;color:#4a6a8a;white-space:nowrap"></span>
+                            <span id="conf-nf-pagina-info" style="font-size:12.5px;color:#7b98b5;white-space:nowrap"></span>
                             <button onclick="_confNFProximaPagina()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">Próxima ›</button>
                         </div>
                     </div>
@@ -1035,7 +1035,7 @@ if (location.hostname === "xmtt1337.github.io") {
                             </button>
                             <div id="pag-status-pago" style="display:none;align-items:center;gap:10px;padding:8px 14px;border-radius:10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25)">
                                 <span style="color:#22c55e;font-size:13px;font-weight:700">✓ Pago em <span id="pag-pago-data"></span></span>
-                                <button onclick="_desfazerPagamento()" style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;padding:0;font-family:inherit;text-decoration:underline">Desfazer</button>
+                                <button onclick="_desfazerPagamento()" style="background:none;border:none;color:#8494a9;font-size:12px;cursor:pointer;padding:0;font-family:inherit;text-decoration:underline">Desfazer</button>
                             </div>
                             <button onclick="_baixarCsvPagamentos()" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.08);color:#34d399;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(52,211,153,0.16)'" onmouseout="this.style.background='rgba(52,211,153,0.08)'">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -1305,7 +1305,7 @@ if (location.hostname === "xmtt1337.github.io") {
         <div id="tela-extravios-busca" class="view tela-full">
             <div class="fech-header">
                 <div class="extrv-search-wrap" style="min-width:300px;max-width:520px">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input type="text" id="extrv-busca-input" placeholder="Digite o CÓDIGO do pedido..." oninput="_extrvBuscarCodigo()">
                     <button class="extrv-busca-clear" id="extrv-busca-clear" onclick="_extrvLimparBusca()" style="display:none">×</button>
                 </div>
@@ -1461,10 +1461,10 @@ if (location.hostname === "xmtt1337.github.io") {
                         <input type="hidden" id="ped-de">
                         <input type="hidden" id="ped-ate">
                         <button id="ped-filtro-btn" onclick="_pedAbrirCalendario(event,'filtro')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:rgba(11,16,26,0.9);color:#cbd5e1;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">
-                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#4a6a8a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#7b98b5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
                             <span id="ped-filtro-txt">Todos os períodos</span>
                         </button>
-                        <button onclick="_pedLimparFiltro()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit">Todos</button>
+                        <button onclick="_pedLimparFiltro()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#8494a9;font-size:13px;cursor:pointer;font-family:inherit">Todos</button>
                         <button id="ped-exportar-btn" onclick="_pedAbrirCalendario(event,'export')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.1);color:#5d9aff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(58,134,255,0.2)'" onmouseout="this.style.background='rgba(58,134,255,0.1)'">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             Exportar Pedidos
@@ -1476,9 +1476,9 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div class="fechamento-empty" id="ped-empty">Carregando...</div>
                 <div id="ped-lista" style="display:none">
                     <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap;gap:14px">
-                        <span id="ped-counter" style="font-size:13px;color:#4a6a8a;font-weight:500"></span>
+                        <span id="ped-counter" style="font-size:13px;color:#7b98b5;font-weight:500"></span>
                         <div class="adm-search-input-area" style="max-width:280px">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                             <input type="text" id="ped-filtro-input" placeholder="Filtrar por código..." oninput="_pedFiltrarLocal()">
                         </div>
                     </div>
@@ -1500,7 +1500,7 @@ if (location.hostname === "xmtt1337.github.io") {
                     </div>
                     <div style="position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:12px 4px;flex-wrap:wrap;gap:10px;background:#0b0f18;border-top:1px solid rgba(255,255,255,0.06)">
                         <div style="display:flex;align-items:center;gap:8px">
-                            <span style="font-size:12.5px;color:#4a6a8a">Itens por página</span>
+                            <span style="font-size:12.5px;color:#7b98b5">Itens por página</span>
                             <select id="ped-por-pagina" class="fech-select" style="width:auto" onchange="_pedMudarPorPagina()">
                                 <option value="25">25</option>
                                 <option value="50">50</option>
@@ -1508,7 +1508,7 @@ if (location.hostname === "xmtt1337.github.io") {
                         </div>
                         <div style="display:flex;align-items:center;gap:10px">
                             <button onclick="_pedPaginaAnterior()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">‹ Anterior</button>
-                            <span id="ped-pagina-info" style="font-size:12.5px;color:#4a6a8a;white-space:nowrap"></span>
+                            <span id="ped-pagina-info" style="font-size:12.5px;color:#7b98b5;white-space:nowrap"></span>
                             <button onclick="_pedProximaPagina()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">Próxima ›</button>
                         </div>
                     </div>
@@ -1621,7 +1621,7 @@ if (location.hostname === "xmtt1337.github.io") {
             <div class="fech-header">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Todos os Usuários</div>
-                    <span id="tu-counter" style="font-size:12.5px;color:#4a6a8a"></span>
+                    <span id="tu-counter" style="font-size:12.5px;color:#7b98b5"></span>
                 </div>
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:12px">
                     <div class="filtro-tabs" id="tu-filtro-chips">
@@ -1631,7 +1631,7 @@ if (location.hostname === "xmtt1337.github.io") {
                         <button type="button" class="filtro-tab" data-filtro="inativos" onclick="_tuFiltrar('inativos')">Contas inativas</button>
                     </div>
                     <div class="adm-search-input-area" style="max-width:280px">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input type="text" id="tu-filtro-input" placeholder="Filtrar por nome, usuário ou cargo..." oninput="_tuFiltrarLocal()">
                     </div>
                 </div>
@@ -1679,17 +1679,17 @@ if (location.hostname === "xmtt1337.github.io") {
                     </div>
                     <div style="display:flex;flex-direction:column;gap:14px">
                         <div>
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Número do cliente (com DDI)</label>
+                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8494a9;display:block;margin-bottom:6px">Número do cliente (com DDI)</label>
                             <input type="text" id="wa-rec-numero" class="fech-select" style="width:100%;background-image:none;padding-right:14px" placeholder="+55 49 9 9927-6131" oninput="_waMascaraTelefone(this)" autocomplete="off" autocorrect="off" spellcheck="false" name="wa-destinatario-gc">
                         </div>
                         <div id="wa-campo-prazo">
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Prazo dado pela transportadora (horas)</label>
+                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8494a9;display:block;margin-bottom:6px">Prazo dado pela transportadora (horas)</label>
                             <input type="number" id="wa-rec-prazo" class="fech-select" style="width:130px;background-image:none;padding-right:14px" value="48" min="1" max="720">
-                            <div style="font-size:11.5px;color:#64748b;margin-top:5px">Conta a partir do envio desta mensagem.</div>
+                            <div style="font-size:11.5px;color:#8494a9;margin-top:5px">Conta a partir do envio desta mensagem.</div>
                         </div>
                         <div id="wa-rec-campos" style="display:flex;flex-direction:column;gap:14px"></div>
                         <div>
-                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">Pré-visualização</label>
+                            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8494a9;display:block;margin-bottom:6px">Pré-visualização</label>
                             <div id="wa-rec-preview" style="white-space:pre-wrap;background:rgba(15,15,20,0.5);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;font-size:13px;color:#cbd5e1;line-height:1.5"></div>
                         </div>
                         <button class="extrv-refresh-btn" onclick="_waRecEnviar()" style="justify-content:center;padding:10px">Enviar mensagem</button>
@@ -1706,7 +1706,7 @@ if (location.hostname === "xmtt1337.github.io") {
                                     <input type="file" id="wa-bulk-arquivo" accept=".csv" onchange="_waBulkArquivoSelecionado(event)">
                                 </div>
                                 <div id="wa-bulk-preview" style="display:none">
-                                    <div style="font-size:12.5px;color:#64748b;margin-bottom:8px" id="wa-bulk-contagem"></div>
+                                    <div style="font-size:12.5px;color:#8494a9;margin-bottom:8px" id="wa-bulk-contagem"></div>
                                     <div style="max-height:260px;overflow-y:auto;overflow-x:auto;border:1px solid rgba(255,255,255,0.06);border-radius:10px">
                                         <table style="width:100%;border-collapse:collapse;font-size:12.5px">
                                             <thead id="wa-bulk-thead"></thead>
@@ -1730,7 +1730,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Conversas</div>
                     <div class="adm-search-input-area" style="max-width:300px">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input type="text" id="wac-busca" placeholder="Buscar por pedido, número ou nome..." oninput="_wacFiltrar()">
                     </div>
                 </div>
@@ -1766,7 +1766,7 @@ if (location.hostname === "xmtt1337.github.io") {
                     <div class="wac-chat-avatar">
                         <svg viewBox="0 0 212 212" width="36" height="36" aria-hidden="true">
                             <circle cx="106" cy="106" r="106" fill="#1b2635"/>
-                            <path fill="#64748b" d="M106 109c17 0 31-14 31-31s-14-31-31-31-31 14-31 31 14 31 31 31zm0 13c-25 0-56 12-56 31v14h112v-14c0-19-31-31-56-31z"/>
+                            <path fill="#8494a9" d="M106 109c17 0 31-14 31-31s-14-31-31-31-31 14-31 31 14 31 31 31zm0 13c-25 0-56 12-56 31v14h112v-14c0-19-31-31-56-31z"/>
                         </svg>
                     </div>
                     <div class="wac-chat-info">
@@ -1949,7 +1949,7 @@ if (location.hostname === "xmtt1337.github.io") {
             <!-- Viagem em andamento: fora da área que rola, fica sempre visível igual um cabeçalho -->
             <div id="dev-viagem-banner" style="display:none;flex-shrink:0;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 16px;margin:20px 0 0;border-radius:12px;background:#101c30;border:1px solid rgba(58,134,255,0.28)">
                 <div>
-                    <div style="font-size:10.5px;font-weight:700;color:#4a6a8a;text-transform:uppercase;letter-spacing:0.06em">Viagem em andamento</div>
+                    <div style="font-size:10.5px;font-weight:700;color:#7b98b5;text-transform:uppercase;letter-spacing:0.06em">Viagem em andamento</div>
                     <div style="font-size:15px;font-weight:800;color:#3a86ff;font-family:monospace" id="dev-viagem-numero">—</div>
                     <div style="font-size:12px;color:#94a3b8" id="dev-viagem-qtd">—</div>
                 </div>
@@ -2096,7 +2096,7 @@ if (location.hostname === "xmtt1337.github.io") {
                     <div class="ant-form-wrap" style="margin-bottom:16px">
                         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
                             <div>
-                                <div style="font-size:11px;font-weight:700;color:#4a6a8a;text-transform:uppercase;letter-spacing:0.06em">Viagem</div>
+                                <div style="font-size:11px;font-weight:700;color:#7b98b5;text-transform:uppercase;letter-spacing:0.06em">Viagem</div>
                                 <div style="font-size:20px;font-weight:800;color:#3a86ff;font-family:monospace" id="vr-cab-numero">—</div>
                                 <div style="font-size:12.5px;color:#94a3b8" id="vr-cab-entregador">—</div>
                             </div>
@@ -2192,7 +2192,7 @@ if (location.hostname === "xmtt1337.github.io") {
                         </div>
                     </div>
                     <div class="adm-search-input-area" style="max-width:320px;margin-bottom:12px">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input type="text" id="shr-busca" placeholder="Buscar por código ou quem recebeu..." oninput="_shrBuscar()" autocomplete="off">
                     </div>
                     <div class="fechamento-empty" id="shr-empty">Carregando...</div>
@@ -2344,7 +2344,7 @@ if (location.hostname === "xmtt1337.github.io") {
             <!-- Viagem do dia: fora da área que rola, fica sempre visível igual um cabeçalho -->
             <div id="trf-viagem-banner" style="display:none;flex-shrink:0;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 16px;margin:20px 0 0;border-radius:12px;background:#101c30;border:1px solid rgba(58,134,255,0.28)">
                 <div>
-                    <div style="font-size:10.5px;font-weight:700;color:#4a6a8a;text-transform:uppercase;letter-spacing:0.06em">Viagem de hoje</div>
+                    <div style="font-size:10.5px;font-weight:700;color:#7b98b5;text-transform:uppercase;letter-spacing:0.06em">Viagem de hoje</div>
                     <div style="font-size:15px;font-weight:800;color:#3a86ff;font-family:monospace" id="trf-viagem-numero">—</div>
                     <div style="font-size:12px;color:#94a3b8" id="trf-viagem-qtd">—</div>
                 </div>
@@ -2500,7 +2500,7 @@ if (location.hostname === "xmtt1337.github.io") {
                             <button type="button" onclick="_etqQtdDelta(-1)" style="width:42px;height:42px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.03);color:#cbd5e1;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">−</button>
                             <input type="number" id="etq-qtd" class="ant-input" value="1" min="1" max="60" style="max-width:90px;text-align:center">
                             <button type="button" onclick="_etqQtdDelta(1)" style="width:42px;height:42px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.03);color:#cbd5e1;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">+</button>
-                            <span style="font-size:12px;color:#64748b">1 etiqueta por volume (10×15 cm)</span>
+                            <span style="font-size:12px;color:#8494a9">1 etiqueta por volume (10×15 cm)</span>
                         </div>
                     </div>
 
@@ -2534,11 +2534,11 @@ if (location.hostname === "xmtt1337.github.io") {
                         <button type="button" class="filtro-tab" data-filtro="sem_registro" onclick="_drrTrocarFiltro('sem_registro')">Não registradas</button>
                     </div>
                     <div class="adm-search-input-area" style="max-width:300px">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input type="text" id="drr-busca" placeholder="Buscar por código, entregador, motivo..." oninput="_drrFiltrar()">
                     </div>
                 </div>
-                <span id="drr-total" style="display:block;font-size:13px;color:#4a6a8a;font-weight:500;margin-bottom:12px"></span>
+                <span id="drr-total" style="display:block;font-size:13px;color:#7b98b5;font-weight:500;margin-bottom:12px"></span>
                 <div class="fechamento-empty" id="drr-empty">Carregando...</div>
                 <div id="drr-resultado" style="display:none">
                     <table class="ant-hist-table">
@@ -2570,9 +2570,9 @@ if (location.hostname === "xmtt1337.github.io") {
                             Exportar
                         </button>
                         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-                            <span id="abte-counter" style="font-size:13px;color:#4a6a8a;font-weight:500"></span>
+                            <span id="abte-counter" style="font-size:13px;color:#7b98b5;font-weight:500"></span>
                             <div class="adm-search-input-area" style="max-width:280px">
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                                 <input type="text" id="abte-filtro-input" placeholder="Filtrar por código, cliente ou entregador..." oninput="_abteFiltrarLocal()">
                             </div>
                         </div>
@@ -2595,7 +2595,7 @@ if (location.hostname === "xmtt1337.github.io") {
                     </div>
                     <div style="position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:12px 4px;flex-wrap:wrap;gap:10px;background:#0b0f18;border-top:1px solid rgba(255,255,255,0.06)">
                         <div style="display:flex;align-items:center;gap:8px">
-                            <span style="font-size:12.5px;color:#4a6a8a">Itens por página</span>
+                            <span style="font-size:12.5px;color:#7b98b5">Itens por página</span>
                             <select id="abte-por-pagina" class="fech-select" style="width:auto" onchange="_abteMudarPorPagina()">
                                 <option value="25">25</option>
                                 <option value="50">50</option>
@@ -2603,7 +2603,7 @@ if (location.hostname === "xmtt1337.github.io") {
                         </div>
                         <div style="display:flex;align-items:center;gap:10px">
                             <button onclick="_abtePaginaAnterior()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">‹ Anterior</button>
-                            <span id="abte-pagina-info" style="font-size:12.5px;color:#4a6a8a;white-space:nowrap"></span>
+                            <span id="abte-pagina-info" style="font-size:12.5px;color:#7b98b5;white-space:nowrap"></span>
                             <button onclick="_abteProximaPagina()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">Próxima ›</button>
                         </div>
                     </div>
@@ -2625,9 +2625,9 @@ if (location.hostname === "xmtt1337.github.io") {
                             Exportar
                         </button>
                         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-                            <span id="pfa-counter" style="font-size:13px;color:#4a6a8a;font-weight:500"></span>
+                            <span id="pfa-counter" style="font-size:13px;color:#7b98b5;font-weight:500"></span>
                             <div class="adm-search-input-area" style="max-width:280px">
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                                 <input type="text" id="pfa-filtro-input" placeholder="Filtrar por código, entregador ou transportadora..." oninput="_pfaFiltrarLocal()">
                             </div>
                         </div>
@@ -2647,7 +2647,7 @@ if (location.hostname === "xmtt1337.github.io") {
                     </div>
                     <div style="position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:12px 4px;flex-wrap:wrap;gap:10px;background:#0b0f18;border-top:1px solid rgba(255,255,255,0.06)">
                         <div style="display:flex;align-items:center;gap:8px">
-                            <span style="font-size:12.5px;color:#4a6a8a">Itens por página</span>
+                            <span style="font-size:12.5px;color:#7b98b5">Itens por página</span>
                             <select id="pfa-por-pagina" class="fech-select" style="width:auto" onchange="_pfaMudarPorPagina()">
                                 <option value="25">25</option>
                                 <option value="50">50</option>
@@ -2655,7 +2655,7 @@ if (location.hostname === "xmtt1337.github.io") {
                         </div>
                         <div style="display:flex;align-items:center;gap:10px">
                             <button onclick="_pfaPaginaAnterior()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">‹ Anterior</button>
-                            <span id="pfa-pagina-info" style="font-size:12.5px;color:#4a6a8a;white-space:nowrap"></span>
+                            <span id="pfa-pagina-info" style="font-size:12.5px;color:#7b98b5;white-space:nowrap"></span>
                             <button onclick="_pfaProximaPagina()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">Próxima ›</button>
                         </div>
                     </div>
@@ -2674,7 +2674,7 @@ if (location.hostname === "xmtt1337.github.io") {
                             <button type="button" class="filtro-tab" data-filtro="ativos" onclick="_locFiltrar('ativos')">Ativos</button>
                             <button type="button" class="filtro-tab" data-filtro="inativos" onclick="_locFiltrar('inativos')">Ausentes</button>
                         </div>
-                        <span id="loc-counter" style="font-size:12.5px;color:#4a6a8a"></span>
+                        <span id="loc-counter" style="font-size:12.5px;color:#7b98b5"></span>
                     </div>
                 </div>
             </div>
@@ -2690,9 +2690,9 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Transferências</div>
                     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-                        <span id="trfa-counter" style="font-size:12.5px;color:#4a6a8a"></span>
+                        <span id="trfa-counter" style="font-size:12.5px;color:#7b98b5"></span>
                         <div class="adm-search-input-area" style="max-width:280px">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                             <input type="text" id="trfa-filtro-input" placeholder="Filtrar por motorista, destino ou nº da viagem..." oninput="_trfaFiltrarLocal()">
                         </div>
                     </div>
@@ -2739,7 +2739,7 @@ if (location.hostname === "xmtt1337.github.io") {
                     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
                         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
                             <div class="adm-nf-counter" id="adm-ant-counter"></div>
-                            <div id="adm-ant-total" style="font-size:13px;color:#64748b"></div>
+                            <div id="adm-ant-total" style="font-size:13px;color:#8494a9"></div>
                         </div>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
                             <button id="adm-ant-sel-btn" onclick="_admAntPagarSelecionadas()" style="display:none;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;border:1px solid rgba(34,197,94,0.35);background:rgba(34,197,94,0.08);color:#22c55e;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(34,197,94,0.16)'" onmouseout="this.style.background='rgba(34,197,94,0.08)'">
@@ -2775,52 +2775,52 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260801x"></script>
-<script src="js/router.js?v=20260801x"></script>
-<script src="js/sidebar.js?v=20260801x"></script>
-<script src="js/nav.js?v=20260801x"></script>
-<script src="js/fechamentos.js?v=20260801x"></script>
-<script src="js/admin.js?v=20260801x"></script>
-<script src="js/conf-nf.js?v=20260801x"></script>
-<script src="js/trampay.js?v=20260801x"></script>
-<script src="js/usuarios.js?v=20260801x"></script>
-<script src="js/motoristas.js?v=20260801x"></script>
-<script src="js/pagamentos.js?v=20260801x"></script>
-<script src="js/notas-fiscais.js?v=20260801x"></script>
-<script src="js/dashboard.js?v=20260801x"></script>
-<script src="js/ent-dashboard.js?v=20260801x"></script>
-<script src="js/nota-fiscal.js?v=20260801x"></script>
-<script src="js/extravios.js?v=20260801x"></script>
-<script src="js/usuarios-gc.js?v=20260801x"></script>
-<script src="js/todos-usuarios.js?v=20260801x"></script>
-<script src="js/whatsapp-teste.js?v=20260801x"></script>
-<script src="js/whatsapp-conversa.js?v=20260801x"></script>
-<script src="js/modals.js?v=20260801x"></script>
-<script src="js/alimentar.js?v=20260801x"></script>
-<script src="js/fechamento-criar.js?v=20260801x"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260801x"></script>
-<script src="js/bipagens.js?v=20260801x"></script>
-<script src="js/pedidos.js?v=20260801x"></script>
-<script src="js/desempenho-bip.js?v=20260801x"></script>
-<script src="js/desempenho-hora.js?v=20260801x"></script>
-<script src="js/conferencias.js?v=20260801x"></script>
-<script src="js/antecipacoes.js?v=20260801x"></script>
-<script src="js/antecipacoes-admin.js?v=20260801x"></script>
-<script src="js/baixas.js?v=20260801x"></script>
-<script src="js/devolucoes.js?v=20260801x"></script>
-<script src="js/shopee.js?v=20260801x"></script>
-<script src="js/viagens.js?v=20260801x"></script>
-<script src="js/ocorrencias.js?v=20260801x"></script>
-<script src="js/ocorrencias-admin.js?v=20260801x"></script>
-<script src="js/localizacao.js?v=20260801x"></script>
-<script src="js/localizacao-admin.js?v=20260801x"></script>
-<script src="js/transferencias.js?v=20260801x"></script>
-<script src="js/transferencias-admin.js?v=20260801x"></script>
-<script src="js/motorista-devolucoes.js?v=20260801x"></script>
-<script src="js/etiquetas.js?v=20260801x"></script>
-<script src="js/videira.js?v=20260801x"></script>
-<script src="js/planejamento-videira.js?v=20260801x"></script>
-<script src="js/torre.js?v=20260801x"></script>
+<script src="js/core.js?v=20260801y"></script>
+<script src="js/router.js?v=20260801y"></script>
+<script src="js/sidebar.js?v=20260801y"></script>
+<script src="js/nav.js?v=20260801y"></script>
+<script src="js/fechamentos.js?v=20260801y"></script>
+<script src="js/admin.js?v=20260801y"></script>
+<script src="js/conf-nf.js?v=20260801y"></script>
+<script src="js/trampay.js?v=20260801y"></script>
+<script src="js/usuarios.js?v=20260801y"></script>
+<script src="js/motoristas.js?v=20260801y"></script>
+<script src="js/pagamentos.js?v=20260801y"></script>
+<script src="js/notas-fiscais.js?v=20260801y"></script>
+<script src="js/dashboard.js?v=20260801y"></script>
+<script src="js/ent-dashboard.js?v=20260801y"></script>
+<script src="js/nota-fiscal.js?v=20260801y"></script>
+<script src="js/extravios.js?v=20260801y"></script>
+<script src="js/usuarios-gc.js?v=20260801y"></script>
+<script src="js/todos-usuarios.js?v=20260801y"></script>
+<script src="js/whatsapp-teste.js?v=20260801y"></script>
+<script src="js/whatsapp-conversa.js?v=20260801y"></script>
+<script src="js/modals.js?v=20260801y"></script>
+<script src="js/alimentar.js?v=20260801y"></script>
+<script src="js/fechamento-criar.js?v=20260801y"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260801y"></script>
+<script src="js/bipagens.js?v=20260801y"></script>
+<script src="js/pedidos.js?v=20260801y"></script>
+<script src="js/desempenho-bip.js?v=20260801y"></script>
+<script src="js/desempenho-hora.js?v=20260801y"></script>
+<script src="js/conferencias.js?v=20260801y"></script>
+<script src="js/antecipacoes.js?v=20260801y"></script>
+<script src="js/antecipacoes-admin.js?v=20260801y"></script>
+<script src="js/baixas.js?v=20260801y"></script>
+<script src="js/devolucoes.js?v=20260801y"></script>
+<script src="js/shopee.js?v=20260801y"></script>
+<script src="js/viagens.js?v=20260801y"></script>
+<script src="js/ocorrencias.js?v=20260801y"></script>
+<script src="js/ocorrencias-admin.js?v=20260801y"></script>
+<script src="js/localizacao.js?v=20260801y"></script>
+<script src="js/localizacao-admin.js?v=20260801y"></script>
+<script src="js/transferencias.js?v=20260801y"></script>
+<script src="js/transferencias-admin.js?v=20260801y"></script>
+<script src="js/motorista-devolucoes.js?v=20260801y"></script>
+<script src="js/etiquetas.js?v=20260801y"></script>
+<script src="js/videira.js?v=20260801y"></script>
+<script src="js/planejamento-videira.js?v=20260801y"></script>
+<script src="js/torre.js?v=20260801y"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
@@ -2936,7 +2936,7 @@ if (location.hostname === "xmtt1337.github.io") {
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0 0 20.49 15"/></svg>
                     Atualizar nomes (Driver → Usuário)
                 </button>
-                <span id="cf-atualizar-nomes-status" style="margin-left:10px;font-size:13px;color:#64748b"></span>
+                <span id="cf-atualizar-nomes-status" style="margin-left:10px;font-size:13px;color:#8494a9"></span>
             </div>
 
             <div class="ant-form-title" style="margin-bottom:14px">Selecione a transportadora</div>
@@ -2964,7 +2964,7 @@ if (location.hostname === "xmtt1337.github.io") {
 
             <div id="cf-ocorrencia-wrap" style="display:none;margin-top:28px;padding-top:22px;border-top:1px solid rgba(255,255,255,0.07)">
                 <div class="ant-form-title" style="margin-bottom:10px">Pedidos com ocorrência — <span id="cf-ocorrencia-transp-nome"></span></div>
-                <div style="font-size:13px;color:#64748b;margin-bottom:10px">Cole as colunas Driver Name / Order ID / OnHold Time direto da planilha.</div>
+                <div style="font-size:13px;color:#8494a9;margin-bottom:10px">Cole as colunas Driver Name / Order ID / OnHold Time direto da planilha.</div>
                 <textarea id="cf-ocorrencia-textarea" rows="6" style="width:100%;resize:vertical;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#e2e8f0;font-family:inherit;font-size:13px;padding:12px"></textarea>
                 <div style="margin-top:10px;display:flex;align-items:center;gap:12px">
                     <button onclick="_cfEnviarOcorrencias()" style="padding:9px 16px;border-radius:10px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Enviar</button>
@@ -2973,9 +2973,9 @@ if (location.hostname === "xmtt1337.github.io") {
 
                 <div style="margin-top:20px">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:14px">
-                        <span id="cf-ocorrencia-total" style="font-size:13px;color:#4a6a8a;font-weight:500"></span>
+                        <span id="cf-ocorrencia-total" style="font-size:13px;color:#7b98b5;font-weight:500"></span>
                         <div class="adm-search-input-area" style="max-width:280px">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                             <input type="text" id="cf-ocorrencia-busca" placeholder="Buscar por driver ou order ID..." oninput="_cfBuscarOcorrencias()">
                         </div>
                     </div>
@@ -3009,7 +3009,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div style="font-size:15px;font-weight:700;color:#e2e8f0">Planejamento de Rotas <span style="color:var(--text-muted);font-weight:600">— <span id="pv-titulo-unidade">Videira</span></span></div>
             </div>
             <div class="adm-search-input-area" style="max-width:260px">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4a6a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="text" id="pv-filtro-input" placeholder="Filtrar por bairro..." oninput="_pvFiltrarLocal()">
             </div>
         </div>
@@ -3129,7 +3129,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <input class="usr-modal-input" id="ngc-nome" type="text" placeholder="Nome completo" autocomplete="off">
             </div>
             <div class="usr-modal-field">
-                <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(opcional — deixe em branco para senha padrão)</span></label>
+                <label class="usr-modal-label">Senha <span style="color:#66829c;font-weight:400;text-transform:none">(opcional — deixe em branco para senha padrão)</span></label>
                 <input class="usr-modal-input" id="ngc-senha" type="text" placeholder="Deixe em branco para senha padrão" autocomplete="off">
             </div>
             <div class="usr-modal-field">
@@ -3148,7 +3148,7 @@ if (location.hostname === "xmtt1337.github.io") {
                     <option value="videira">Videira</option>
                     <option value="joacaba">Joaçaba</option>
                 </select>
-                <div style="font-size:11px;color:#4a6a8a;margin-top:5px">Define onde a pessoa recebe a Shopee. Joaçaba não recebe.</div>
+                <div style="font-size:11px;color:#7b98b5;margin-top:5px">Define onde a pessoa recebe a Shopee. Joaçaba não recebe.</div>
             </div>
             <div class="usr-modal-error" id="ngc-erro"></div>
             <div id="ngc-duplicado" style="display:none;margin-top:10px;padding:13px 15px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.22);border-radius:12px">
@@ -3166,7 +3166,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <div style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:6px">Usuário cadastrado!</div>
-            <div style="font-size:13px;color:#64748b;margin-bottom:20px">Anote o ID de acesso abaixo.</div>
+            <div style="font-size:13px;color:#8494a9;margin-bottom:20px">Anote o ID de acesso abaixo.</div>
             <div style="background:rgba(58,134,255,0.08);border:1px solid rgba(58,134,255,0.2);border-radius:12px;padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px">
                 <span id="ngc-id-gerado" style="font-size:22px;font-weight:700;color:#3a86ff;letter-spacing:1px"></span>
                 <button onclick="_copiarIDGC()" style="background:rgba(58,134,255,0.15);border:1px solid rgba(58,134,255,0.3);color:#3a86ff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s" onmouseover="this.style.background='rgba(58,134,255,0.25)'" onmouseout="this.style.background='rgba(58,134,255,0.15)'">Copiar</button>
@@ -3344,11 +3344,11 @@ if (location.hostname === "xmtt1337.github.io") {
             <div class="usr-modal-title">Novo Entregador</div>
             <div class="usr-modal-sub">O ID de acesso sera gerado automaticamente.</div>
             <div class="usr-modal-field">
-                <label class="usr-modal-label">Nome <span style="color:#2e4560;font-weight:400;text-transform:none">(conforme planilha)</span></label>
+                <label class="usr-modal-label">Nome <span style="color:#66829c;font-weight:400;text-transform:none">(conforme planilha)</span></label>
                 <input class="usr-modal-input" id="mne-nome" type="text" placeholder="Nome completo do entregador" autocomplete="off">
             </div>
             <div class="usr-modal-field">
-                <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(opcional — deixe em branco para senha padrão)</span></label>
+                <label class="usr-modal-label">Senha <span style="color:#66829c;font-weight:400;text-transform:none">(opcional — deixe em branco para senha padrão)</span></label>
                 <input class="usr-modal-input" id="mne-senha" type="text" placeholder="Deixe em branco para senha padrão" autocomplete="off">
             </div>
             <input type="hidden" id="mne-telefone" value="">
@@ -3369,7 +3369,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <div style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:6px">Entregador cadastrado!</div>
-            <div style="font-size:13px;color:#64748b;margin-bottom:20px">Anote o ID de acesso abaixo.</div>
+            <div style="font-size:13px;color:#8494a9;margin-bottom:20px">Anote o ID de acesso abaixo.</div>
             <div style="background:rgba(58,134,255,0.08);border:1px solid rgba(58,134,255,0.2);border-radius:12px;padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px">
                 <span id="mne-id-gerado" style="font-size:22px;font-weight:700;color:#3a86ff;letter-spacing:1px"></span>
                 <button onclick="_copiarID()" style="background:rgba(58,134,255,0.15);border:1px solid rgba(58,134,255,0.3);color:#3a86ff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s" onmouseover="this.style.background='rgba(58,134,255,0.25)'" onmouseout="this.style.background='rgba(58,134,255,0.15)'">Copiar</button>
@@ -3392,7 +3392,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <input class="usr-modal-input" id="mnm-nome" type="text" placeholder="Nome completo do motorista" autocomplete="off">
             </div>
             <div class="usr-modal-field">
-                <label class="usr-modal-label">Senha <span style="color:#2e4560;font-weight:400;text-transform:none">(opcional — deixe em branco para senha padrão)</span></label>
+                <label class="usr-modal-label">Senha <span style="color:#66829c;font-weight:400;text-transform:none">(opcional — deixe em branco para senha padrão)</span></label>
                 <input class="usr-modal-input" id="mnm-senha" type="text" placeholder="Deixe em branco para senha padrão" autocomplete="off">
             </div>
             <div class="usr-modal-error" id="mnm-erro"></div>
@@ -3412,7 +3412,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <div style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:6px">Motorista cadastrado!</div>
-            <div style="font-size:13px;color:#64748b;margin-bottom:20px">Anote o ID de acesso abaixo.</div>
+            <div style="font-size:13px;color:#8494a9;margin-bottom:20px">Anote o ID de acesso abaixo.</div>
             <div style="background:rgba(58,134,255,0.08);border:1px solid rgba(58,134,255,0.2);border-radius:12px;padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px">
                 <span id="mnm-id-gerado" style="font-size:22px;font-weight:700;color:#3a86ff;letter-spacing:1px"></span>
                 <button onclick="_copiarIDMotorista()" style="background:rgba(58,134,255,0.15);border:1px solid rgba(58,134,255,0.3);color:#3a86ff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s" onmouseover="this.style.background='rgba(58,134,255,0.25)'" onmouseout="this.style.background='rgba(58,134,255,0.15)'">Copiar</button>

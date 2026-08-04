@@ -42,7 +42,7 @@ async function _confAnexar(input, tipo) {
     const file = input.files[0];
     if (!file) return;
     const status = document.getElementById('conf-status');
-    status.innerHTML = '<div style="color:#64748b;font-size:13px">Lendo arquivo...</div>';
+    status.innerHTML = '<div style="color:#8494a9;font-size:13px">Lendo arquivo...</div>';
 
     try {
         const grid = await _confLerGrid(file);
@@ -136,7 +136,7 @@ function _confMostrarSeletor(headers, lower, tipo, grid) {
     document.getElementById('conf-status').innerHTML = `
         <div style="background:rgba(58,134,255,0.07);border:1px solid rgba(58,134,255,0.18);border-radius:12px;padding:16px 18px;margin-top:8px">
             <div style="font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:4px">Selecione as colunas — ${tipoLabel}</div>
-            <div style="font-size:12px;color:#64748b;margin-bottom:12px">Não conseguimos detectar automaticamente as colunas deste arquivo.</div>
+            <div style="font-size:12px;color:#8494a9;margin-bottom:12px">Não conseguimos detectar automaticamente as colunas deste arquivo.</div>
             <div style="display:grid;gap:10px">
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                     <label style="font-size:12px;color:#94a3b8;width:130px;flex-shrink:0">Código *</label>
@@ -165,7 +165,7 @@ function _confMostrarSeletor(headers, lower, tipo, grid) {
             </div>
             <div style="display:flex;gap:8px;margin-top:14px">
                 <button onclick="_confConfirmarSeletor()" style="padding:9px 20px;border-radius:9px;border:none;background:#3a86ff;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Analisar</button>
-                <button onclick="_confCancelarSeletor()" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#64748b;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">Cancelar</button>
+                <button onclick="_confCancelarSeletor()" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#8494a9;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">Cancelar</button>
             </div>
             <div id="conf-seletor-erro" style="color:#ef4444;font-size:12px;margin-top:8px"></div>
         </div>`;
@@ -226,7 +226,7 @@ function _confProcessarGrid(grid, barIdx, cidIdx, stsIdx, entIdx, tipo) {
 
     document.getElementById('conf-empty-msg').style.display = 'none';
     document.getElementById('conf-status').innerHTML =
-        `<div style="color:#64748b;font-size:13px">${pacotes.length.toLocaleString('pt-BR')} pacotes carregados (${tipo === 'na_rua' ? 'Na Rua' : 'Na Base'}).</div>`;
+        `<div style="color:#8494a9;font-size:13px">${pacotes.length.toLocaleString('pt-BR')} pacotes carregados (${tipo === 'na_rua' ? 'Na Rua' : 'Na Base'}).</div>`;
 
     _confAnalisarLocal();
 }
@@ -314,7 +314,7 @@ function _confRenderResultado({
                 <div style="font-size:20px;font-weight:700;color:#e2e8f0">${total.toLocaleString('pt-BR')}</div>
             </div>
             <div style="font-size:28px;font-weight:800;color:${cor};line-height:1">${pctRua}%</div>
-            <div style="font-size:12px;color:#64748b">na rua</div>
+            <div style="font-size:12px;color:#8494a9">na rua</div>
             ` : ''}
         </div>`;
 
@@ -404,7 +404,7 @@ function _confRenderResultado({
                 <span style="font-size:13px;color:#e2e8f0">${cidade}</span>
                 <span style="font-size:13px;font-weight:700;color:${cor}">${qtd.toLocaleString('pt-BR')}</span>
             </div>`).join('')
-            : '<div style="color:#64748b;font-size:13px;padding:8px">Nenhum dado disponível.</div>'}
+            : '<div style="color:#8494a9;font-size:13px;padding:8px">Nenhum dado disponível.</div>'}
         </div>`;
     }
 

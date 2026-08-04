@@ -38,7 +38,7 @@ async function _cfEnviarOcorrencias() {
         status.innerHTML = `<div style="color:#ef4444;font-size:13px">Nenhuma linha válida encontrada — cole o texto com as colunas separadas por tab.</div>`;
         return;
     }
-    status.innerHTML = `<div style="color:#64748b;font-size:13px">Enviando ${linhas.length} pedidos...</div>`;
+    status.innerHTML = `<div style="color:#8494a9;font-size:13px">Enviando ${linhas.length} pedidos...</div>`;
     try {
         const res = await fetch(`${API}/admin/pedidos-ocorrencia`, {
             method: "POST",
@@ -73,7 +73,7 @@ function _cfCarregarOcorrencias(busca) {
         .then(rows => {
             document.getElementById("cf-ocorrencia-total").innerText = `${rows.length} pedido${rows.length !== 1 ? "s" : ""}`;
             if (!rows.length) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#64748b;padding:16px">Nenhum pedido cadastrado.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#8494a9;padding:16px">Nenhum pedido cadastrado.</td></tr>`;
                 return;
             }
             tbody.innerHTML = rows.map(r => `

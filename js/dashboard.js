@@ -246,7 +246,7 @@ function buscarDashboard() {
                 },
                 scales: {
                     x: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
-                    y: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => v.toLocaleString("pt-BR") } }
+                    y: { grid: { color: "rgba(58,134,255,0.07)" }, border: { color: "rgba(58,134,255,0.1)" }, ticks: { color: "#7b98b5", font: { size: 11 }, callback: v => v.toLocaleString("pt-BR") } }
                 }
             }
         });

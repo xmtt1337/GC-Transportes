@@ -75,7 +75,7 @@ function _locRenderizar() {
     visiveis.forEach(r => {
         idsVisiveis.add(r.usuario_id);
         const ativo = r.segundos_atras <= _LOC_ATIVO_SEGUNDOS;
-        const cor = ativo ? "#22c55e" : "#64748b";
+        const cor = ativo ? "#22c55e" : "#8494a9";
         const icon = L.divIcon({
             className: "",
             html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid #0b0f18;box-shadow:0 0 0 3px ${cor}40"></div>`,
@@ -121,12 +121,12 @@ function _locRenderizar() {
             const ativo = r.segundos_atras <= _LOC_ATIVO_SEGUNDOS;
             return `<div class="loc-item" onclick="_locFocar(${r.usuario_id})">
                 <div style="display:flex;align-items:center;gap:7px">
-                    <span style="width:8px;height:8px;border-radius:50%;background:${ativo ? "#22c55e" : "#64748b"};flex-shrink:0"></span>
+                    <span style="width:8px;height:8px;border-radius:50%;background:${ativo ? "#22c55e" : "#8494a9"};flex-shrink:0"></span>
                     <span style="font-size:13px;font-weight:600;color:#e2e8f0">${r.usuario_nome || "—"}</span>
                 </div>
-                <div style="font-size:11.5px;color:#64748b;margin-left:15px">${_locTextoTempo(r.segundos_atras)}</div>
+                <div style="font-size:11.5px;color:#8494a9;margin-left:15px">${_locTextoTempo(r.segundos_atras)}</div>
             </div>`;
-        }).join("") || `<div style="color:#4a6a8a;font-size:13px;text-align:center;padding:20px 8px">Nenhum entregador${_locFiltro !== "todos" ? " nesse filtro" : " compartilhando localização ainda"}.</div>`;
+        }).join("") || `<div style="color:#7b98b5;font-size:13px;text-align:center;padding:20px 8px">Nenhum entregador${_locFiltro !== "todos" ? " nesse filtro" : " compartilhando localização ainda"}.</div>`;
 }
 
 function _locFocar(usuarioId) {

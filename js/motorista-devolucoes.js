@@ -97,7 +97,7 @@ function _motcCarregar() {
                         </div>
                         <div style="font-size:12.5px;color:#94a3b8;margin-top:3px">${v.entregador_nome || "—"}${v.entregador_username ? ` (${v.entregador_username})` : ""} · ${v.pedidos} pedido${v.pedidos !== 1 ? "s" : ""}</div>
                     </div>
-                    <div style="font-size:12px;color:#64748b;text-align:right">
+                    <div style="font-size:12px;color:#8494a9;text-align:right">
                         ${v.status === "recebida"
                             ? `Entregue em<br>${v.recebida_data_hora_brasilia || "—"}`
                             : `Coletada em<br>${v.em_transferencia_data_hora_brasilia || "—"}`}

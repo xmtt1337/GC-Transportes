@@ -48,7 +48,7 @@ function _vfCarregar() {
                         <div style="font-size:13px;font-weight:700;color:#e2e8f0;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.codigo || p.descricao || "—"}</div>
                         <div style="font-size:11.5px;color:#94a3b8">${p.transportadora || "—"}${p.motivo ? " · " + p.motivo : ""}</div>
                     </div>
-                </div>`).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhum pedido nesta viagem.</div>`;
+                </div>`).join("") || `<div style="font-size:12.5px;color:#8494a9;padding:6px 0">Nenhum pedido nesta viagem.</div>`;
         })
         .catch(() => _vfMsg("Erro ao carregar a viagem.", "erro"));
 }
@@ -197,7 +197,7 @@ function _vmRenderDetalhe(v) {
                 ? `<span style="font-size:11px;font-weight:700;color:#22c55e;flex-shrink:0">✓ Conferido</span>`
                 : (editavel ? `<button onclick="_vmRemoverPedido(${p.id})" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;flex-shrink:0" title="Remover (exclui o registro dessa devolução)">✕</button>` : `<span style="font-size:11px;color:#eab308;flex-shrink:0">Pendente</span>`)}
         </div>`;
-    }).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhum pedido nesta viagem.</div>`;
+    }).join("") || `<div style="font-size:12.5px;color:#8494a9;padding:6px 0">Nenhum pedido nesta viagem.</div>`;
 
     // Botões: 1 ação principal por estado (fechar/reabrir) em largura total,
     // utilitários (adicionar/fotos/imprimir) numa linha secundária uniforme.
@@ -223,14 +223,14 @@ function _vmRenderDetalhe(v) {
                 <div style="font-size:22px;font-weight:800;color:#3a86ff;font-family:monospace;line-height:1.2">${v.numero}</div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px">
                     ${_vmStatusBadge(v.status)}
-                    <span style="font-size:12px;color:#64748b">${v.data_hora_brasilia || "—"}</span>
+                    <span style="font-size:12px;color:#8494a9">${v.data_hora_brasilia || "—"}</span>
                 </div>
-                ${v.status === "recebida" && v.recebida_por ? `<div style="font-size:12px;color:#64748b;margin-top:5px">Recebida por ${v.recebida_por}${v.recebida_data_hora_brasilia ? " em " + v.recebida_data_hora_brasilia : ""}</div>` : ""}
+                ${v.status === "recebida" && v.recebida_por ? `<div style="font-size:12px;color:#8494a9;margin-top:5px">Recebida por ${v.recebida_por}${v.recebida_data_hora_brasilia ? " em " + v.recebida_data_hora_brasilia : ""}</div>` : ""}
             </div>
-            <button onclick="_vmFecharDetalhe()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1;padding:2px">✕</button>
+            <button onclick="_vmFecharDetalhe()" style="background:none;border:none;color:#8494a9;font-size:20px;cursor:pointer;line-height:1;padding:2px">✕</button>
         </div>
 
-        <div style="font-size:11px;font-weight:700;color:#4a6a8a;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">${(v.pedidos || []).length} pedido${(v.pedidos || []).length !== 1 ? "s" : ""}</div>
+        <div style="font-size:11px;font-weight:700;color:#7b98b5;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">${(v.pedidos || []).length} pedido${(v.pedidos || []).length !== 1 ? "s" : ""}</div>
         <div style="max-height:38vh;overflow-y:auto;margin-bottom:14px">${pedidosHtml}</div>
 
         <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:14px">
@@ -425,7 +425,7 @@ function _vrRenderPedidos() {
         const recebido = p.status === "recebido";
         return `
         <div style="display:flex;align-items:center;gap:10px;border:1px solid ${recebido ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)"};border-radius:10px;padding:11px 14px;margin-bottom:8px;background:${recebido ? "rgba(34,197,94,0.05)" : "transparent"}">
-            <div style="flex-shrink:0;color:${recebido ? "#22c55e" : "#475569"}">
+            <div style="flex-shrink:0;color:${recebido ? "#22c55e" : "#717f95"}">
                 ${recebido
                     ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
                     : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>`}
@@ -435,7 +435,7 @@ function _vrRenderPedidos() {
                 <div style="font-size:11.5px;color:#94a3b8">${p.transportadora || "—"}${p.motivo ? " · " + p.motivo : ""}</div>
             </div>
         </div>`;
-    }).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Esta viagem não tem pedidos.</div>`;
+    }).join("") || `<div style="font-size:12.5px;color:#8494a9;padding:6px 0">Esta viagem não tem pedidos.</div>`;
 }
 
 function _vrScanPedido() {
@@ -543,7 +543,7 @@ function _vraRenderLista() {
                 <div style="font-size:13px;font-weight:700;color:#e2e8f0;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.codigo || r.descricao || "—"}</div>
                 <div style="font-size:11.5px;color:#94a3b8">${r.transportadora || "—"}${r.motivo ? " · " + r.motivo : ""}${r.usuario_nome ? " · " + r.usuario_nome : ""}</div>
             </div>
-        </div>`).join("") || `<div style="font-size:12.5px;color:#64748b;padding:6px 0">Nenhum pedido recebido ainda nesta sessão.</div>`;
+        </div>`).join("") || `<div style="font-size:12.5px;color:#8494a9;padding:6px 0">Nenhum pedido recebido ainda nesta sessão.</div>`;
 }
 
 // Overlay genérico pra ver a foto da viagem (saca | caminhao) — usado pelo entregador
@@ -557,7 +557,7 @@ function _viagemVerFoto(id, tipo) {
     overlay.innerHTML = `
         <div style="max-width:520px;width:100%;background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;box-sizing:border-box;text-align:center">
             <div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:14px">${titulo}</div>
-            <div id="viagem-foto-loading" style="color:#64748b;font-size:13px;padding:40px 0">Carregando foto...</div>
+            <div id="viagem-foto-loading" style="color:#8494a9;font-size:13px;padding:40px 0">Carregando foto...</div>
             <img id="viagem-foto-img" style="display:none;max-width:100%;max-height:65vh;border-radius:10px">
             <button id="viagem-foto-fechar" style="margin-top:16px;width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Fechar</button>
         </div>`;

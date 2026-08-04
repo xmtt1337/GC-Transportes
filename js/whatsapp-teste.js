@@ -250,7 +250,7 @@ function _waRecRenderCampos() {
     const cfg = WA_REC_TEMPLATES[_waRecCategoria];
     document.getElementById("wa-rec-campos").innerHTML = cfg.campos.map(c => `
         <div>
-            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px">${c.label}</label>
+            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8494a9;display:block;margin-bottom:6px">${c.label}</label>
             <input type="text" id="wa-rec-campo-${c.id}" class="fech-select" style="width:100%" oninput="_waRecAtualizarPreview()">
         </div>`).join("");
     _waRecAtualizarPreview();
@@ -290,7 +290,7 @@ function _waRecEnviar() {
         return;
     }
 
-    msgEl.style.color = "#64748b";
+    msgEl.style.color = "#8494a9";
     msgEl.innerText = "Enviando...";
 
     fetch(`${API}/admin/whatsapp/enviar`, {
@@ -416,7 +416,7 @@ function _waBulkArquivoSelecionado(event) {
 }
 
 function _waBulkStatusCor(s) {
-    return s === "ok" ? "#22c55e" : s === "erro" ? "#ef4444" : s === "enviando" ? "#fbbf24" : "#64748b";
+    return s === "ok" ? "#22c55e" : s === "erro" ? "#ef4444" : s === "enviando" ? "#fbbf24" : "#8494a9";
 }
 function _waBulkStatusTexto(l) {
     return l.status === "ok" ? "Enviado"
@@ -427,7 +427,7 @@ function _waBulkStatusTexto(l) {
 function _waBulkRenderizar() {
     const cfg = WA_REC_TEMPLATES[_waRecCategoria];
     document.getElementById("wa-bulk-thead").innerHTML = `
-        <tr style="text-align:left;color:#64748b">
+        <tr style="text-align:left;color:#8494a9">
             <th style="padding:8px 10px">Número</th>
             ${cfg.campos.map(c => `<th style="padding:8px 10px;white-space:nowrap">${c.label}</th>`).join("")}
             <th style="padding:8px 10px">Status</th>
@@ -454,7 +454,7 @@ async function _waBulkEnviar() {
     let ok = 0, falha = 0;
     for (let i = 0; i < _waBulkLinhas.length; i++) {
         const linha = _waBulkLinhas[i];
-        progresso.style.color = "#64748b";
+        progresso.style.color = "#8494a9";
         progresso.innerText = `Enviando ${i + 1} de ${_waBulkLinhas.length}... (${ok} ok, ${falha} falhas)`;
 
         // Valida antes de gastar mensagem: número torto ou campo vazio nem chega na Meta.

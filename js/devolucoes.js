@@ -392,7 +392,7 @@ function _drVerFoto(id) {
     overlay.innerHTML = `
         <div style="max-width:520px;width:100%;background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;box-sizing:border-box;text-align:center">
             <div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:14px">Foto do pacote</div>
-            <div id="dr-foto-loading" style="color:#64748b;font-size:13px;padding:40px 0">Carregando foto...</div>
+            <div id="dr-foto-loading" style="color:#8494a9;font-size:13px;padding:40px 0">Carregando foto...</div>
             <img id="dr-foto-img" style="display:none;max-width:100%;max-height:65vh;border-radius:10px">
             <button id="dr-foto-fechar" style="margin-top:16px;width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Fechar</button>
         </div>`;
@@ -486,7 +486,7 @@ function _drrRenderizar(rows) {
 
     if (!pagina.length) {
         document.getElementById("drr-tbody").innerHTML =
-            `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:26px 10px">Nenhuma devolução nesse filtro.</td></tr>`;
+            `<tr><td colspan="7" style="text-align:center;color:#8494a9;padding:26px 10px">Nenhuma devolução nesse filtro.</td></tr>`;
         return;
     }
 
@@ -495,22 +495,22 @@ function _drrRenderizar(rows) {
             <td>${r.codigo || (r.descricao ? `<span style="color:#94a3b8">${r.descricao}</span>` : "—")}</td>
             <td>${r.transportadora || "—"}</td>
             <td>${r.motivo || "—"}</td>
-            <td>${r.viagem_numero ? `<span style="font-family:monospace;font-weight:700;color:#3a86ff">${r.viagem_numero}</span>` : `<span style="color:#475569">—</span>`}</td>
+            <td>${r.viagem_numero ? `<span style="font-family:monospace;font-weight:700;color:#3a86ff">${r.viagem_numero}</span>` : `<span style="color:#717f95">—</span>`}</td>
             <td>${r.sem_registro ? `
                 <span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;font-size:11.5px;font-weight:700">Não registrada pelo entregador</span>` : `
                 <div style="color:#e2e8f0">${r.usuario_nome || "—"}</div>
-                <div style="font-size:11.5px;color:#64748b">${r.data_hora_brasilia || "—"}</div>`}
+                <div style="font-size:11.5px;color:#8494a9">${r.data_hora_brasilia || "—"}</div>`}
             </td>
             <td>${r.status === "recebido" ? `
                 <div style="color:#22c55e;font-weight:600">${r.recebido_por || "Recebido"}</div>
-                <div style="font-size:11.5px;color:#64748b">${r.recebido_data_hora_brasilia || "—"}</div>`
+                <div style="font-size:11.5px;color:#8494a9">${r.recebido_data_hora_brasilia || "—"}</div>`
                 : _devStatusBadge(r)}
             </td>
             <td>${r.tem_foto ? `
                 <button class="abte-foto-btn" onclick="_drVerFoto(${r.id})">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     Ver foto
-                </button>` : `<span style="color:#475569">—</span>`}
+                </button>` : `<span style="color:#717f95">—</span>`}
             </td>
         </tr>
     `).join("");

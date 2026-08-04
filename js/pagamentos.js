@@ -88,7 +88,7 @@ function buscarPagamentos() {
             return `<tr>
                 <td class="adm-nf-entregador">${d.nome}</td>
                 <td class="pag-valor" style="color:#94a3b8">${d.total}</td>
-                <td class="pag-valor" style="color:${temAnt ? '#fb923c' : '#4a6a8a'}">${temAnt ? d.antecipado : '—'}</td>
+                <td class="pag-valor" style="color:${temAnt ? '#fb923c' : '#7b98b5'}">${temAnt ? d.antecipado : '—'}</td>
                 <td class="pag-valor" style="color:#22c55e;font-weight:700">${d.liquido || d.total}</td>
                 <td class="pag-doc">${d.documento || '<span class="pag-sem-cad">—</span>'}</td>
                 <td class="pag-pix">${d.chave_pix || '<span class="pag-sem-cad">—</span>'}</td>

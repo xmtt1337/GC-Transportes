@@ -134,7 +134,7 @@ function _extrvBuscarCodigo() {
         for (const [key, c] of Object.entries(statusColors)) {
             if (k.includes(key)) return c;
         }
-        return "#64748b";
+        return "#8494a9";
     }
     function bcField(lbl, val) {
         if (!val || !(val+"").trim()) return "";
@@ -185,7 +185,7 @@ function _extrvBuscarCodigo() {
     res.innerHTML = `<div class="ed-section">
         <div class="ed-section-title">
             Pesquisa por CÓDIGO
-            <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:#64748b;margin-left:4px">${matches.length} resultado${matches.length !== 1 ? "s" : ""} para "<em style="color:#f1f5f9">${q}</em>"</span>
+            <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:#8494a9;margin-left:4px">${matches.length} resultado${matches.length !== 1 ? "s" : ""} para "<em style="color:#f1f5f9">${q}</em>"</span>
         </div>
         <div class="extrv-busca-lista">${cards}</div>
     </div>`;
@@ -419,7 +419,7 @@ function _renderResumo(rows, allYear, C, mes) {
         "lost":          "#ef4444",
         "dmaged":        "#a78bfa",
         "damaged":       "#a78bfa",
-        "fora de abrangencia": "#64748b",
+        "fora de abrangencia": "#8494a9",
     };
     function sColor(s) {
         const k = _nk(s);
@@ -610,7 +610,7 @@ function _renderDescontos(rows, C) {
     let extHTML = extTop.map(([k,d]) => respRow(k, d, extMaxN, "ext")).join("");
     if (extResto.length) {
         extHTML += `<div class="ed-resp-row" style="padding-top:10px">
-            <div style="font-size:12px;color:#64748b">+ ${extResto.length} outros entregadores · ${restoN} oc. · ${_moeda(restoV)}</div>
+            <div style="font-size:12px;color:#8494a9">+ ${extResto.length} outros entregadores · ${restoN} oc. · ${_moeda(restoV)}</div>
         </div>`;
     }
 
@@ -727,7 +727,7 @@ function _renderContest(rows, C) {
     const vals = [totResol, demais].filter((_,i)=>[totResol,demais][i]>0);
     const lbls = ["Resolvidos","Demais registros"].filter((_,i)=>[totResol,demais][i]>0);
     const bgs  = ["rgba(34,197,94,0.82)","rgba(100,116,139,0.45)"].filter((_,i)=>[totResol,demais][i]>0);
-    const brd  = ["#22c55e","#64748b"].filter((_,i)=>[totResol,demais][i]>0);
+    const brd  = ["#22c55e","#8494a9"].filter((_,i)=>[totResol,demais][i]>0);
     _extrvChC = new Chart(ctx, {
         type:"doughnut",
         data:{ labels:lbls, datasets:[{data:vals,backgroundColor:bgs,borderColor:brd,borderWidth:2}] },

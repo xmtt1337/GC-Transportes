@@ -109,8 +109,8 @@ function _admNFRenderizarPagina() {
         const badgeTxt = nf.status === "confere" ? "✓ Confere" : nf.status === "diverge" ? "⚠ Diverge" : "—";
         const numPart   = nf.numero_nf ? `<div style="color:#94a3b8;font-size:11px;margin-bottom:3px">Nº ${nf.numero_nf}</div>` : "";
         const chavePart = nf.chave_acesso
-            ? `<div class="adm-nf-chave" style="font-family:monospace;font-size:10.5px;color:#64748b;word-break:break-all;line-height:1.5">${nf.chave_acesso}</div>`
-            : `<span style="color:#475569">—</span>`;
+            ? `<div class="adm-nf-chave" style="font-family:monospace;font-size:10.5px;color:#8494a9;word-break:break-all;line-height:1.5">${nf.chave_acesso}</div>`
+            : `<span style="color:#717f95">—</span>`;
 
         const isDup   = chaveCount[nf.chave_acesso] > 1;
         const notGC   = nf.tomador && !_isGC(nf.tomador);
@@ -130,7 +130,7 @@ function _admNFRenderizarPagina() {
             : "";
 
         const periodoLbl = nf.mes && nf.ano && nf.quinzena
-            ? `<div style="font-size:10.5px;color:#4a6a8a;margin-top:2px">${nf.quinzena}ª Qz ${String(nf.mes).padStart(2,"0")}/${nf.ano} · enviada ${nf.created_at ? new Date(nf.created_at).toLocaleDateString('pt-BR') : '—'}</div>`
+            ? `<div style="font-size:10.5px;color:#7b98b5;margin-top:2px">${nf.quinzena}ª Qz ${String(nf.mes).padStart(2,"0")}/${nf.ano} · enviada ${nf.created_at ? new Date(nf.created_at).toLocaleDateString('pt-BR') : '—'}</div>`
             : "";
 
         return `<tr${rowStyle}>
@@ -426,7 +426,7 @@ const _TRANSP_CHIPS = [
 function _renderEntregadoresGrid(lista) {
     const grid = document.getElementById("adm-ent-grid");
     if (!lista.length) {
-        grid.innerHTML = `<div style="grid-column:1/-1;padding:24px;text-align:center;color:#4a6a8a;font-size:13px">Nenhum entregador encontrado</div>`;
+        grid.innerHTML = `<div style="grid-column:1/-1;padding:24px;text-align:center;color:#7b98b5;font-size:13px">Nenhum entregador encontrado</div>`;
         return;
     }
     grid.innerHTML = lista.map(e => {
@@ -435,7 +435,7 @@ function _renderEntregadoresGrid(lista) {
         const negativo = (e.total_receber_num || 0) < 0;
         return `<div class="adm-ent-card" onclick="selecionarEntregadorAdmin('${nomeEsc}','${usernameEsc}')" data-nome="${nomeEsc}">
             <div class="adm-ent-card-nome" title="${e.nome}">${e.nome}</div>
-            ${e.username ? `<div style="font-size:10px;color:#4a6a8a;font-family:monospace;margin-top:2px">ID: ${e.username}</div>` : ""}
+            ${e.username ? `<div style="font-size:10px;color:#7b98b5;font-family:monospace;margin-top:2px">ID: ${e.username}</div>` : ""}
             <div class="adm-ent-card-valor" style="${negativo ? 'color:#ef4444' : ''}">${e.total_receber}</div>
             <div class="adm-ent-card-qtd">${parseInt(String(e.total_entregues || 0).replace(/\./g, "")) || 0} pacotes entregues</div>
         </div>`;
@@ -455,7 +455,7 @@ function selecionarEntregadorAdmin(nome, username) {
     const info = document.getElementById("adm-fech-topbar-info");
     if (info) {
         info.innerHTML = id
-            ? `<span style="font-size:11px;font-family:monospace;color:#3a5a7a;opacity:0.75;letter-spacing:0.5px">${id}</span>`
+            ? `<span style="font-size:11px;font-family:monospace;color:#7b98b5;opacity:0.75;letter-spacing:0.5px">${id}</span>`
             : "";
     }
     document.getElementById("adm-ent-section").style.display = "none";

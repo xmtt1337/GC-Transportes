@@ -60,7 +60,7 @@ function _alimentarRenderizar(arquivos) {
             <div style="background:rgba(58,134,255,0.06);border:1px solid rgba(58,134,255,0.15);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
                 <div style="min-width:0;flex:1">
                     <div style="font-size:14px;font-weight:600;color:#e2e8f0;word-break:break-all">${arq.nome_arquivo}</div>
-                    <div style="font-size:12px;color:#64748b;margin-top:3px">${data}${tamanho ? ' · ' + tamanho : ''}</div>
+                    <div style="font-size:12px;color:#8494a9;margin-top:3px">${data}${tamanho ? ' · ' + tamanho : ''}</div>
                 </div>
                 <div style="display:flex;gap:8px;flex-shrink:0">
                     <button onclick="_alimentarBaixar(${arq.id},'${nomeEsc}')" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.08);color:#34d399;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(52,211,153,0.18)'" onmouseout="this.style.background='rgba(52,211,153,0.08)'">Baixar</button>
@@ -82,7 +82,7 @@ async function _alimentarAnexar(input) {
     const file = input.files[0];
     if (!file) return;
     const status = document.getElementById('alimentar-upload-status');
-    status.innerHTML = '<div style="color:#64748b;font-size:13px">Lendo arquivo...</div>';
+    status.innerHTML = '<div style="color:#8494a9;font-size:13px">Lendo arquivo...</div>';
 
     try {
         const grid = await _alimentarLerGrid(file);
@@ -153,7 +153,7 @@ function _alimentarMostrarSeletorColunas(headers) {
             </div>
             <div style="display:flex;gap:8px;margin-top:14px">
                 <button onclick="_alimentarConfirmarUpload()" style="padding:9px 20px;border-radius:9px;border:none;background:#3a86ff;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Enviar</button>
-                <button onclick="_alimentarCancelarUpload()" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#64748b;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">Cancelar</button>
+                <button onclick="_alimentarCancelarUpload()" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#8494a9;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">Cancelar</button>
             </div>
             <div id="alimentar-col-erro" style="color:#ef4444;font-size:12px;margin-top:8px"></div>
         </div>`;
@@ -212,7 +212,7 @@ async function _alimentarEnviarComIndices(file, grid, barIdx, cepIdx, cidIdx, re
     }
 
     const status = document.getElementById('alimentar-upload-status');
-    status.innerHTML = `<div style="color:#64748b;font-size:13px">Enviando ${pacotes.length} pacotes...</div>`;
+    status.innerHTML = `<div style="color:#8494a9;font-size:13px">Enviando ${pacotes.length} pacotes...</div>`;
 
     try {
         const base64 = await new Promise((resolve, reject) => {

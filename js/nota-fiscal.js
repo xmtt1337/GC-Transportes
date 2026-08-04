@@ -60,7 +60,7 @@ function _renderNotaCard(nota) {
             </div>
             <div style="flex:1;min-width:0">
                 <span style="font-size:13px;font-weight:700;color:#22c55e">NF Enviada</span>
-                ${nota.chave_acesso || nota.numero_nf ? `<span style="font-size:11px;color:#64748b;margin-left:8px">${(nota.chave_acesso || nota.numero_nf).slice(0,20)}…</span>` : ""}
+                ${nota.chave_acesso || nota.numero_nf ? `<span style="font-size:11px;color:#8494a9;margin-left:8px">${(nota.chave_acesso || nota.numero_nf).slice(0,20)}…</span>` : ""}
             </div>
             <button class="nota-ver-btn" onclick="_verNotaModal()">Ver nota →</button>
             <button class="nota-remove-btn" onclick="_removerNota()">✕</button>
@@ -74,7 +74,7 @@ function _verNotaModal() {
     const n = _notaAtual;
     const statusHtml = _notaStatusHtml(n, false);
     const row = (lbl, val) =>
-        `<div class="nota-modal-row"><span class="nota-modal-lbl">${lbl}</span><span class="nota-modal-val" style="${!val||val==='—'?'color:#4a6a8a':''}">${val||'—'}</span></div>`;
+        `<div class="nota-modal-row"><span class="nota-modal-lbl">${lbl}</span><span class="nota-modal-val" style="${!val||val==='—'?'color:#7b98b5':''}">${val||'—'}</span></div>`;
     const overlay = document.createElement("div");
     overlay.className = "nota-modal-overlay";
     overlay.innerHTML = `

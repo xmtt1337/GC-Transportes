@@ -83,7 +83,7 @@ function _pedRenderizarPagina() {
 
     const tbody = document.getElementById('ped-tbody');
     tbody.innerHTML = pagina.map(r => {
-        const cor   = _PED_TRANSP_CORES[r.transportadora] || '#64748b';
+        const cor   = _PED_TRANSP_CORES[r.transportadora] || '#8494a9';
         const nome  = _PED_TRANSP_NOMES[r.transportadora] || r.transportadora || '—';
         const data  = r.bipado_em ? new Date(r.bipado_em).toLocaleString('pt-BR') : '—';
         const cep   = r.cep ? r.cep.slice(0,5) + '-' + r.cep.slice(5) : '—';
@@ -94,7 +94,7 @@ function _pedRenderizarPagina() {
             <td>${r.cidade || '—'}</td>
             <td style="font-family:monospace;font-size:12px">${cep}</td>
             <td style="font-size:12px;white-space:nowrap">${data}</td>
-            <td style="font-size:12px;color:#64748b">${r.usuario_nome || '—'}</td>
+            <td style="font-size:12px;color:#8494a9">${r.usuario_nome || '—'}</td>
         </tr>`;
     }).join('');
 

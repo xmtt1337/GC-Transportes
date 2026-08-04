@@ -34,7 +34,7 @@ function _carregarPlanilhasVideira() {
             <div class="admin-list-item">
                 <div>
                     <strong>${mesNomes[r.mes]}/${r.ano} — ${r.quinzena}ª Quinzena</strong>
-                    <div class="info" style="font-size:12px;color:#4a6a8a;margin-top:2px">${r.spreadsheet_id}</div>
+                    <div class="info" style="font-size:12px;color:#7b98b5;margin-top:2px">${r.spreadsheet_id}</div>
                 </div>
                 <button class="admin-del-btn" onclick="deletarPlanilhaVideira(${r.id})">Remover</button>
             </div>
@@ -246,9 +246,9 @@ function _renderPainelVideira(d) {
     const _periodoLabel = d.quinzena_ref || "Extravios";
     extEl.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.7px">
+            <div style="font-size:11px;font-weight:700;color:#717f95;text-transform:uppercase;letter-spacing:.7px">
                 Extravios do Período
-                <span style="font-size:10px;font-weight:500;color:#64748b;text-transform:none;letter-spacing:0;margin-left:6px">${lista.length} registro${lista.length !== 1 ? "s" : ""}</span>
+                <span style="font-size:10px;font-weight:500;color:#8494a9;text-transform:none;letter-spacing:0;margin-left:6px">${lista.length} registro${lista.length !== 1 ? "s" : ""}</span>
             </div>
             ${lista.length > 0 ? `
             <button onclick="_baixarExtraviosVdXlsx()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.07);color:#34d399;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s" onmouseover="this.style.background='rgba(52,211,153,0.16)'" onmouseout="this.style.background='rgba(52,211,153,0.07)'">
@@ -459,7 +459,7 @@ function _renderVdDash(raw) {
             },
             scales: {
                 x: { grid: { color: "rgba(34,197,94,0.07)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
-                y: { grid: { color: "rgba(34,197,94,0.07)" }, ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => moedaJS(v) } }
+                y: { grid: { color: "rgba(34,197,94,0.07)" }, ticks: { color: "#7b98b5", font: { size: 11 }, callback: v => moedaJS(v) } }
             }
         }
     });
@@ -491,7 +491,7 @@ function _renderVdDash(raw) {
             scales: {
                 x: { stacked: true, grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#aab4c8", font: { size: 11 } } },
                 y: { stacked: true, max: 100, grid: { color: "rgba(255,255,255,0.04)" },
-                    ticks: { color: "#4a6a8a", font: { size: 11 }, callback: v => v + "%" } }
+                    ticks: { color: "#7b98b5", font: { size: 11 }, callback: v => v + "%" } }
             }
         }
     });

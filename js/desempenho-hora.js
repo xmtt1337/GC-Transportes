@@ -68,14 +68,14 @@ function _desempHoraDonut(segmentos, totalDia) {
         const dash = pct * circum;
         const off  = -acum;
         acum += dash;
-        const cor = cores[s.transportadora] || '#4a6a8a';
+        const cor = cores[s.transportadora] || '#7b98b5';
         return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${cor}" stroke-width="${espessura}"
             stroke-dasharray="${dash.toFixed(2)} ${circum.toFixed(2)}"
             stroke-dashoffset="${off.toFixed(2)}"
             transform="rotate(-90 ${cx} ${cy})"/>`;
     }).join('');
     const legend = segmentos.map(s => {
-        const cor  = cores[s.transportadora] || '#4a6a8a';
+        const cor  = cores[s.transportadora] || '#7b98b5';
         const pct  = ((s.total / totalDia) * 100).toFixed(0);
         const nome = nomes[s.transportadora] || s.transportadora;
         return `<div class="dh-donut-item">

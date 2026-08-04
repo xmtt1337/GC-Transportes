@@ -103,16 +103,16 @@ function _cfAtualizarNomes() {
 function _cfRenderResumo(rows) {
     const el = document.getElementById("cf-resumo");
     if (!rows.length) {
-        el.innerHTML = `<div style="font-size:13px;color:#64748b">Nenhuma entrega cadastrada ainda para esse período.</div>`;
+        el.innerHTML = `<div style="font-size:13px;color:#8494a9">Nenhuma entrega cadastrada ainda para esse período.</div>`;
         return;
     }
     el.innerHTML = `
-        <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Já cadastrado nesse período</div>
+        <div style="font-size:11px;font-weight:700;color:#717f95;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Já cadastrado nesse período</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
             ${rows.map(r => `
                 <div style="padding:8px 14px;border-radius:10px;background:rgba(58,134,255,0.08);border:1px solid rgba(58,134,255,0.2);font-size:13px">
                     <strong style="color:#e2e8f0">${r.transportadora}</strong>
-                    <span style="color:#64748b"> — ${r.total} entrega${r.total !== 1 ? "s" : ""}</span>
+                    <span style="color:#8494a9"> — ${r.total} entrega${r.total !== 1 ? "s" : ""}</span>
                 </div>`).join("")}
         </div>`;
 }
@@ -138,7 +138,7 @@ async function _cfArquivoSelecionado(input) {
     const file = input.files[0];
     if (!file) return;
     const status = document.getElementById("cf-upload-status");
-    status.innerHTML = `<div style="color:#64748b;font-size:13px">Lendo arquivo...</div>`;
+    status.innerHTML = `<div style="color:#8494a9;font-size:13px">Lendo arquivo...</div>`;
 
     const cfg = _CF_TRANSPORTADORAS.find(t => t.key === _cfTranspAtual);
     if (!cfg) return;
@@ -148,7 +148,7 @@ async function _cfArquivoSelecionado(input) {
         if (!grid || grid.length < 2) throw new Error("Arquivo vazio ou inválido.");
         const linhas = cfg.parser(grid, cfg);
         if (!linhas.length) throw new Error("Nenhuma linha válida encontrada no arquivo.");
-        status.innerHTML = `<div style="color:#64748b;font-size:13px">Enviando ${linhas.length} entregas...</div>`;
+        status.innerHTML = `<div style="color:#8494a9;font-size:13px">Enviando ${linhas.length} entregas...</div>`;
         await _cfEnviarLinhas(linhas, cfg.transportadora);
         status.innerHTML = `<div style="color:#22c55e;font-size:13px">✓ ${linhas.length} entregas enviadas com sucesso!</div>`;
         input.value = "";
