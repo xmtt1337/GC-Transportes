@@ -424,10 +424,13 @@ function _drVerFoto(id) {
 // ───── REGISTRO (todas as devoluções — equipe da base) ─────
 let _drRegistroDados = [];
 let _drrFiltroAtual  = "todas";
+let _drrPagina       = 1;
+const DRR_POR_PAGINA = 50;
 
 function abrirDevolucoesRegistro(event) {
     if (event) event.preventDefault();
     document.getElementById("drr-busca").value = "";
+    _drrPagina = 1;
     _drrTrocarFiltro("todas", true); // cada visita começa na lista inteira
     mostrarTela("tela-devolucao-registro");
     _drrCarregar();
@@ -465,13 +468,29 @@ function _drrRenderizar(rows) {
     document.getElementById("drr-total").innerText =
         `${parcial} devoluç${total !== 1 ? "ões" : "ão"}`;
 
-    if (!rows.length) {
+    // Paginação: o registro guarda tudo desde sempre, e desenhar milhares de linhas de
+    // uma vez trava a tela.
+    const paginas = Math.max(1, Math.ceil(rows.length / DRR_POR_PAGINA));
+    _drrPagina = Math.min(Math.max(1, _drrPagina), paginas);
+    const inicio = (_drrPagina - 1) * DRR_POR_PAGINA;
+    const pagina = rows.slice(inicio, inicio + DRR_POR_PAGINA);
+
+    const pag = document.getElementById("drr-paginacao");
+    pag.style.display = rows.length > DRR_POR_PAGINA ? "" : "none";
+    if (rows.length > DRR_POR_PAGINA) {
+        document.getElementById("drr-pag-info").innerText =
+            `${inicio + 1}–${Math.min(inicio + DRR_POR_PAGINA, rows.length)} de ${rows.length}`;
+        document.getElementById("drr-pag-ant").disabled  = _drrPagina <= 1;
+        document.getElementById("drr-pag-prox").disabled = _drrPagina >= paginas;
+    }
+
+    if (!pagina.length) {
         document.getElementById("drr-tbody").innerHTML =
             `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:26px 10px">Nenhuma devolução nesse filtro.</td></tr>`;
         return;
     }
 
-    document.getElementById("drr-tbody").innerHTML = rows.map(r => `
+    document.getElementById("drr-tbody").innerHTML = pagina.map(r => `
         <tr>
             <td>${r.codigo || (r.descricao ? `<span style="color:#94a3b8">${r.descricao}</span>` : "—")}</td>
             <td>${r.transportadora || "—"}</td>
@@ -501,13 +520,21 @@ function _drrRenderizar(rows) {
 // não uma etapa dela —, então as abas são filtros, não fatias que somam o total.
 function _drrTrocarFiltro(filtro, silencioso) {
     _drrFiltroAtual = filtro;
+    _drrPagina = 1; // trocar de aba na página 7 cairia numa lista de 3 páginas
     document.querySelectorAll("#drr-filtro-chips .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.filtro === filtro));
     if (!silencioso) _drrAplicar();
 }
 
 function _drrFiltrar() {
+    _drrPagina = 1;
     _drrAplicar();
+}
+
+function _drrTrocarPagina(passo) {
+    _drrPagina += passo;
+    _drrAplicar();
+    document.getElementById("drr-total").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 // Aba e busca se somam: trocar de aba não apaga o que foi digitado, e digitar não

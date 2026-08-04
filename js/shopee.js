@@ -295,9 +295,9 @@ function _shrEhMeu(r) {
     return r.meu === true;
 }
 
-// Só admin e dev removem: é correção de erro, não parte da operação. Quem bipa avisa.
+// Só dev remove: é correção de erro, não parte da operação. Quem bipa avisa.
 function _shrPodeRemover() {
-    return ["admin", "dev"].includes(window._gcUser && window._gcUser.role);
+    return (window._gcUser && window._gcUser.role) === "dev";
 }
 
 function _shrRenderizar() {
@@ -364,15 +364,85 @@ function _shrRenderizar() {
 // ── Exportação em .xlsx ──
 // Os dados vêm do servidor (dia ou período, e opcionalmente de uma pessoa só); a planilha
 // é montada aqui, com a biblioteca que a página já carrega.
+// ── Calendário de intervalo ──
+// Mesmo desenho do de Pedidos. Não há "um dia" separado de "período": clicar numa data só
+// e baixar já é um dia — de e até saem iguais.
+const SHR_CAL_DOW   = ["D", "S", "T", "Q", "Q", "S", "S"];
+const SHR_CAL_MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                       "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+let _shrCalInicio = null, _shrCalFim = null, _shrCalMes = null;
+
+const _shrFmtData   = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const _shrParseData = s => { const [a, m, d] = s.split("-").map(Number); return new Date(a, m - 1, d); };
+
+function _shrCalMesAnterior() { _shrCalMes.setMonth(_shrCalMes.getMonth() - 1); _shrCalRender(); }
+function _shrCalMesProximo()  { _shrCalMes.setMonth(_shrCalMes.getMonth() + 1); _shrCalRender(); }
+
+function _shrCalClick(dataStr) {
+    const d = _shrParseData(dataStr);
+    // Intervalo fechado começa uma seleção nova; clique anterior ao início inverte as pontas.
+    if (!_shrCalInicio || _shrCalFim) { _shrCalInicio = d; _shrCalFim = null; }
+    else if (d < _shrCalInicio)       { _shrCalFim = _shrCalInicio; _shrCalInicio = d; }
+    else                              { _shrCalFim = d; }
+    _shrCalRender();
+    document.getElementById("shr-exp-erro").innerText = "";
+}
+
+function _shrCalRender() {
+    const ano = _shrCalMes.getFullYear(), mesIdx = _shrCalMes.getMonth();
+    const primeiroDiaSemana = new Date(ano, mesIdx, 1).getDay();
+    const diasNoMes  = new Date(ano, mesIdx + 1, 0).getDate();
+    const celulaIni  = new Date(ano, mesIdx, 1 - primeiroDiaSemana);
+    const total      = Math.ceil((primeiroDiaSemana + diasNoMes) / 7) * 7;
+    const ini = _shrCalInicio, fim = _shrCalFim;
+
+    let grid = "";
+    for (let i = 0; i < total; i++) {
+        const dia = new Date(celulaIni);
+        dia.setDate(celulaIni.getDate() + i);
+        let classes = "ped-cal-day" + (dia.getMonth() !== mesIdx ? " outro-mes" : "");
+        if (ini && fim) {
+            const t = dia.getTime();
+            if (t === ini.getTime() && t === fim.getTime()) classes += " intervalo-unico";
+            else if (t === ini.getTime()) classes += " intervalo-inicio";
+            else if (t === fim.getTime()) classes += " intervalo-fim";
+            else if (t > ini.getTime() && t < fim.getTime()) classes += " no-intervalo";
+        } else if (ini && dia.getTime() === ini.getTime()) {
+            classes += " intervalo-unico";
+        }
+        grid += `<div class="${classes}" onclick="_shrCalClick('${_shrFmtData(dia)}')">${dia.getDate()}</div>`;
+    }
+
+    const texto = !ini ? "Clique na data"
+        : !fim ? `${ini.toLocaleDateString("pt-BR")} — clique de novo para um período`
+        : ini.getTime() === fim.getTime() ? ini.toLocaleDateString("pt-BR")
+        : `${ini.toLocaleDateString("pt-BR")} — ${fim.toLocaleDateString("pt-BR")}`;
+
+    document.getElementById("shr-cal").innerHTML = `
+        <div class="ped-cal-header">
+            <button type="button" class="ped-cal-nav" onclick="_shrCalMesAnterior()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span>${SHR_CAL_MESES[mesIdx]} ${ano}</span>
+            <button type="button" class="ped-cal-nav" onclick="_shrCalMesProximo()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+        </div>
+        <div class="ped-cal-grid">${SHR_CAL_DOW.map(d => `<div class="ped-cal-dow">${d}</div>`).join("")}${grid}</div>
+        <div class="ped-cal-footer"><span class="ped-cal-range-txt">${texto}</span></div>`;
+}
+
 function _shrAbrirExportar() {
-    const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-    document.getElementById("shr-exp-dia").value = hoje;
-    document.getElementById("shr-exp-de").value  = hoje;
-    document.getElementById("shr-exp-ate").value = hoje;
+    const hoje = _shrParseData(new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }));
+    _shrCalInicio = hoje;
+    _shrCalFim    = hoje;
+    _shrCalMes    = new Date(hoje);
+    _shrCalMes.setDate(1);
+    _shrCalRender();
+
     document.getElementById("shr-exp-erro").innerText = "";
     document.getElementById("shr-exp-sub").innerText =
         `Pacotes recebidos em ${(_shrPoloAtual && _shrPoloAtual.label) || "—"} (${_shrXpt || "—"}).`;
-    _shrExpModo("dia");
 
     // Lista de quem já recebeu neste XPT — só quem tem registro, pra não oferecer nome
     // que nunca vai devolver linha.
@@ -390,28 +460,15 @@ function _shrAbrirExportar() {
     _abrirModal("modal-shr-exportar");
 }
 
-function _shrExpModo(modo) {
-    document.querySelectorAll("#shr-exp-modo .filtro-tab").forEach(b =>
-        b.classList.toggle("active", b.dataset.modo === modo));
-    document.getElementById("shr-exp-campo-dia").style.display     = modo === "dia" ? "" : "none";
-    document.getElementById("shr-exp-campo-periodo").style.display = modo === "dia" ? "none" : "";
-}
-
-function _shrExpPeriodo() {
-    const umDia = document.querySelector("#shr-exp-modo .filtro-tab.active")?.dataset.modo === "dia";
-    if (umDia) {
-        const d = document.getElementById("shr-exp-dia").value;
-        return { de: d, ate: d };
-    }
-    return { de: document.getElementById("shr-exp-de").value, ate: document.getElementById("shr-exp-ate").value };
-}
-
 function _shrExportar() {
-    const { de, ate } = _shrExpPeriodo();
     const erro = document.getElementById("shr-exp-erro");
     const btn  = document.getElementById("shr-exp-btn");
     erro.innerText = "";
-    if (!de || !ate) { erro.innerText = "Escolha a data."; return; }
+    if (!_shrCalInicio) { erro.innerText = "Clique numa data no calendário."; return; }
+
+    // Fim vazio = intervalo de um dia só. Não existe modo separado pra isso.
+    const de  = _shrFmtData(_shrCalInicio);
+    const ate = _shrFmtData(_shrCalFim || _shrCalInicio);
 
     const usuarioId = document.getElementById("shr-exp-usuario").value;
     const nomeUsuario = usuarioId

@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260801w">
+<link rel="stylesheet" href="style.css?v=20260801x">
 </head>
 <body>
 
@@ -2547,6 +2547,11 @@ if (location.hostname === "xmtt1337.github.io") {
                         </thead>
                         <tbody id="drr-tbody"></tbody>
                     </table>
+                    <div class="shr-paginacao" id="drr-paginacao" style="display:none">
+                        <button type="button" class="shr-pag-btn" id="drr-pag-ant" onclick="_drrTrocarPagina(-1)">← Anterior</button>
+                        <span class="shr-pag-info" id="drr-pag-info"></span>
+                        <button type="button" class="shr-pag-btn" id="drr-pag-prox" onclick="_drrTrocarPagina(1)">Próxima →</button>
+                    </div>
                 </div>
             </div>
         </div><!-- /tela-devolucao-registro -->
@@ -2770,52 +2775,52 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260801w"></script>
-<script src="js/router.js?v=20260801w"></script>
-<script src="js/sidebar.js?v=20260801w"></script>
-<script src="js/nav.js?v=20260801w"></script>
-<script src="js/fechamentos.js?v=20260801w"></script>
-<script src="js/admin.js?v=20260801w"></script>
-<script src="js/conf-nf.js?v=20260801w"></script>
-<script src="js/trampay.js?v=20260801w"></script>
-<script src="js/usuarios.js?v=20260801w"></script>
-<script src="js/motoristas.js?v=20260801w"></script>
-<script src="js/pagamentos.js?v=20260801w"></script>
-<script src="js/notas-fiscais.js?v=20260801w"></script>
-<script src="js/dashboard.js?v=20260801w"></script>
-<script src="js/ent-dashboard.js?v=20260801w"></script>
-<script src="js/nota-fiscal.js?v=20260801w"></script>
-<script src="js/extravios.js?v=20260801w"></script>
-<script src="js/usuarios-gc.js?v=20260801w"></script>
-<script src="js/todos-usuarios.js?v=20260801w"></script>
-<script src="js/whatsapp-teste.js?v=20260801w"></script>
-<script src="js/whatsapp-conversa.js?v=20260801w"></script>
-<script src="js/modals.js?v=20260801w"></script>
-<script src="js/alimentar.js?v=20260801w"></script>
-<script src="js/fechamento-criar.js?v=20260801w"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260801w"></script>
-<script src="js/bipagens.js?v=20260801w"></script>
-<script src="js/pedidos.js?v=20260801w"></script>
-<script src="js/desempenho-bip.js?v=20260801w"></script>
-<script src="js/desempenho-hora.js?v=20260801w"></script>
-<script src="js/conferencias.js?v=20260801w"></script>
-<script src="js/antecipacoes.js?v=20260801w"></script>
-<script src="js/antecipacoes-admin.js?v=20260801w"></script>
-<script src="js/baixas.js?v=20260801w"></script>
-<script src="js/devolucoes.js?v=20260801w"></script>
-<script src="js/shopee.js?v=20260801w"></script>
-<script src="js/viagens.js?v=20260801w"></script>
-<script src="js/ocorrencias.js?v=20260801w"></script>
-<script src="js/ocorrencias-admin.js?v=20260801w"></script>
-<script src="js/localizacao.js?v=20260801w"></script>
-<script src="js/localizacao-admin.js?v=20260801w"></script>
-<script src="js/transferencias.js?v=20260801w"></script>
-<script src="js/transferencias-admin.js?v=20260801w"></script>
-<script src="js/motorista-devolucoes.js?v=20260801w"></script>
-<script src="js/etiquetas.js?v=20260801w"></script>
-<script src="js/videira.js?v=20260801w"></script>
-<script src="js/planejamento-videira.js?v=20260801w"></script>
-<script src="js/torre.js?v=20260801w"></script>
+<script src="js/core.js?v=20260801x"></script>
+<script src="js/router.js?v=20260801x"></script>
+<script src="js/sidebar.js?v=20260801x"></script>
+<script src="js/nav.js?v=20260801x"></script>
+<script src="js/fechamentos.js?v=20260801x"></script>
+<script src="js/admin.js?v=20260801x"></script>
+<script src="js/conf-nf.js?v=20260801x"></script>
+<script src="js/trampay.js?v=20260801x"></script>
+<script src="js/usuarios.js?v=20260801x"></script>
+<script src="js/motoristas.js?v=20260801x"></script>
+<script src="js/pagamentos.js?v=20260801x"></script>
+<script src="js/notas-fiscais.js?v=20260801x"></script>
+<script src="js/dashboard.js?v=20260801x"></script>
+<script src="js/ent-dashboard.js?v=20260801x"></script>
+<script src="js/nota-fiscal.js?v=20260801x"></script>
+<script src="js/extravios.js?v=20260801x"></script>
+<script src="js/usuarios-gc.js?v=20260801x"></script>
+<script src="js/todos-usuarios.js?v=20260801x"></script>
+<script src="js/whatsapp-teste.js?v=20260801x"></script>
+<script src="js/whatsapp-conversa.js?v=20260801x"></script>
+<script src="js/modals.js?v=20260801x"></script>
+<script src="js/alimentar.js?v=20260801x"></script>
+<script src="js/fechamento-criar.js?v=20260801x"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260801x"></script>
+<script src="js/bipagens.js?v=20260801x"></script>
+<script src="js/pedidos.js?v=20260801x"></script>
+<script src="js/desempenho-bip.js?v=20260801x"></script>
+<script src="js/desempenho-hora.js?v=20260801x"></script>
+<script src="js/conferencias.js?v=20260801x"></script>
+<script src="js/antecipacoes.js?v=20260801x"></script>
+<script src="js/antecipacoes-admin.js?v=20260801x"></script>
+<script src="js/baixas.js?v=20260801x"></script>
+<script src="js/devolucoes.js?v=20260801x"></script>
+<script src="js/shopee.js?v=20260801x"></script>
+<script src="js/viagens.js?v=20260801x"></script>
+<script src="js/ocorrencias.js?v=20260801x"></script>
+<script src="js/ocorrencias-admin.js?v=20260801x"></script>
+<script src="js/localizacao.js?v=20260801x"></script>
+<script src="js/localizacao-admin.js?v=20260801x"></script>
+<script src="js/transferencias.js?v=20260801x"></script>
+<script src="js/transferencias-admin.js?v=20260801x"></script>
+<script src="js/motorista-devolucoes.js?v=20260801x"></script>
+<script src="js/etiquetas.js?v=20260801x"></script>
+<script src="js/videira.js?v=20260801x"></script>
+<script src="js/planejamento-videira.js?v=20260801x"></script>
+<script src="js/torre.js?v=20260801x"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
@@ -3094,29 +3099,8 @@ if (location.hostname === "xmtt1337.github.io") {
         <div class="usr-modal-sub" id="shr-exp-sub">Gera uma planilha .xlsx com os pacotes recebidos.</div>
 
         <div class="usr-modal-field">
-            <label class="usr-modal-label">Quando</label>
-            <div class="filtro-tabs" id="shr-exp-modo">
-                <button type="button" class="filtro-tab active" data-modo="dia" onclick="_shrExpModo('dia')">Um dia</button>
-                <button type="button" class="filtro-tab" data-modo="periodo" onclick="_shrExpModo('periodo')">Período</button>
-            </div>
-        </div>
-
-        <div class="usr-modal-field" id="shr-exp-campo-dia">
-            <label class="usr-modal-label">Dia</label>
-            <input class="usr-modal-input" id="shr-exp-dia" type="date">
-        </div>
-
-        <div id="shr-exp-campo-periodo" style="display:none">
-            <div class="shr-exp-datas">
-                <div class="usr-modal-field" style="margin-bottom:0">
-                    <label class="usr-modal-label">De</label>
-                    <input class="usr-modal-input" id="shr-exp-de" type="date">
-                </div>
-                <div class="usr-modal-field" style="margin-bottom:0">
-                    <label class="usr-modal-label">Até</label>
-                    <input class="usr-modal-input" id="shr-exp-ate" type="date">
-                </div>
-            </div>
+            <label class="usr-modal-label">Datas</label>
+            <div class="shr-cal" id="shr-cal"></div>
         </div>
 
         <div class="usr-modal-field" style="margin-top:14px">

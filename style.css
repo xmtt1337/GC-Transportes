@@ -738,8 +738,9 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     font-size: 15px; font-weight: 800; letter-spacing: .02em; color: var(--shr-cor);
 }
 .shr-faixa-obs { font-size: 11.5px; color: var(--text-dim); margin-left: auto; }
-.shr-faixa.cfc { --shr-cor: #3a86ff; --shr-cor-bg: rgba(58,134,255,0.08);  --shr-cor-bd: rgba(58,134,255,0.28); }
-.shr-faixa.via { --shr-cor: #a855f7; --shr-cor-bg: rgba(168,85,247,0.08);  --shr-cor-bd: rgba(168,85,247,0.28); }
+/* Um azul só para os dois XPTs: cada pessoa recebe num deles, então cor diferente por
+   XPT não distingue nada que ela já não saiba. */
+.shr-faixa.cfc, .shr-faixa.via { --shr-cor: #3a86ff; --shr-cor-bg: rgba(58,134,255,0.08); --shr-cor-bd: rgba(58,134,255,0.28); }
 /* Polo sem Shopee (Joaçaba): neutro, porque não há recebimento acontecendo. */
 .shr-faixa.sem { --shr-cor: #94a3b8; --shr-cor-bg: rgba(148,163,184,0.06); --shr-cor-bd: rgba(148,163,184,0.22); }
 .shr-escolha-opcoes { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
@@ -751,13 +752,11 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     background: rgba(0,0,0,0.25); border: 1.5px solid var(--border);
     transition: border-color .15s, background .15s, transform .12s;
 }
-.shr-escolha-btn:hover { transform: translateY(-2px); }
-.shr-escolha-btn[data-xpt="XPT_CFC"]:hover { border-color: rgba(58,134,255,0.5); background: rgba(58,134,255,0.07); }
-.shr-escolha-btn[data-xpt="XPT_VIA"]:hover { border-color: rgba(168,85,247,0.5); background: rgba(168,85,247,0.07); }
+.shr-escolha-btn:hover { transform: translateY(-2px); border-color: rgba(58,134,255,0.5); background: rgba(58,134,255,0.07); }
 .shr-escolha-cidade { display: block; font-size: 16px; font-weight: 800; color: #f1f5f9; margin-bottom: 4px; }
-.shr-escolha-cod    { display: block; font-size: 12px; font-weight: 700; letter-spacing: .06em; }
-.shr-escolha-btn[data-xpt="XPT_CFC"] .shr-escolha-cod { color: #3a86ff; }
-.shr-escolha-btn[data-xpt="XPT_VIA"] .shr-escolha-cod { color: #a855f7; }
+.shr-escolha-cod    { display: block; font-size: 12px; font-weight: 700; letter-spacing: .06em; color: #3a86ff; }
+/* Polo sem Shopee não ganha o azul: ele não é um destino de recebimento. */
+.shr-escolha-btn[data-xpt=""] .shr-escolha-cod { color: var(--text-muted); font-weight: 600; letter-spacing: 0; }
 
 /* Resumo do recebimento Shopee: o total do XPT em uso e a parte que a pessoa bipou. */
 .shr-resumo {
@@ -773,7 +772,13 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     transition: background .15s, border-color .15s;
 }
 .shr-export-btn:hover { background: rgba(58,134,255,0.16); border-color: rgba(58,134,255,0.5); }
-.shr-exp-datas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* Calendário de intervalo embutido no modal — mesmo desenho do de Pedidos, mas fixo no
+   card em vez de flutuando: aqui ele é o campo, não um popover sobre a tela. */
+.shr-cal {
+    background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px; overflow: hidden; user-select: none;
+}
+.shr-cal .ped-cal-footer { border-top: 1px solid rgba(255,255,255,0.045); padding: 11px 14px 12px; }
 
 .shr-paginacao {
     display: flex; align-items: center; justify-content: center; gap: 16px;
@@ -812,13 +817,13 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     font-size: 13px; font-weight: 700; color: #3a86ff;
     margin-left: 8px; letter-spacing: 0;
 }
-/* Cor por XPT: na tabela corrida, ler a linha inteira pra saber o destino é lento. */
+/* XPT na tabela: texto sublinhado, não pílula. Cada linha já é uma linha de tabela —
+   uma cápsula colorida em cima disso vira enfeite, não informação. */
 .shr-xpt-tag {
-    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    display: inline-block; padding-bottom: 2px;
+    border-bottom: 2px solid #3a86ff; color: #3a86ff;
     font-size: 11.5px; font-weight: 700; font-family: 'Inter', sans-serif;
 }
-.shr-xpt-tag.cfc { background: rgba(58,134,255,0.1);  border: 1px solid rgba(58,134,255,0.3);  color: #3a86ff; }
-.shr-xpt-tag.via { background: rgba(168,85,247,0.1);  border: 1px solid rgba(168,85,247,0.3);  color: #a855f7; }
 .pt-header-neg { color: #ef4444; }
 .pt-row span.val-neg { color: #ef4444 !important; font-weight: 600; }
 .paj-card {
