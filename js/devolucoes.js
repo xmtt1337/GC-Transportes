@@ -423,10 +423,12 @@ function _drVerFoto(id) {
 
 // ───── REGISTRO (todas as devoluções — equipe da base) ─────
 let _drRegistroDados = [];
+let _drrFiltroAtual  = "todas";
 
 function abrirDevolucoesRegistro(event) {
     if (event) event.preventDefault();
     document.getElementById("drr-busca").value = "";
+    _drrTrocarFiltro("todas", true); // cada visita começa na lista inteira
     mostrarTela("tela-devolucao-registro");
     _drrCarregar();
 }
@@ -448,7 +450,7 @@ function _drrCarregar() {
             _drRegistroDados = rows;
             empty.style.display = "none";
             result.style.display = "";
-            _drrRenderizar(rows);
+            _drrAplicar();
         })
         .catch(() => {
             skFim(empty, "Erro ao conectar com o servidor.");
@@ -456,8 +458,19 @@ function _drrCarregar() {
 }
 
 function _drrRenderizar(rows) {
+    // Com aba ou busca ativa mostra "12 de 84": sem o total, o número filtrado parece
+    // ser tudo o que existe.
+    const total = _drRegistroDados.length;
+    const parcial = rows.length !== total ? `${rows.length} de ${total}` : `${total}`;
     document.getElementById("drr-total").innerText =
-        `${rows.length} devoluç${rows.length !== 1 ? "ões" : "ão"}`;
+        `${parcial} devoluç${total !== 1 ? "ões" : "ão"}`;
+
+    if (!rows.length) {
+        document.getElementById("drr-tbody").innerHTML =
+            `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:26px 10px">Nenhuma devolução nesse filtro.</td></tr>`;
+        return;
+    }
+
     document.getElementById("drr-tbody").innerHTML = rows.map(r => `
         <tr>
             <td>${r.codigo || (r.descricao ? `<span style="color:#94a3b8">${r.descricao}</span>` : "—")}</td>
@@ -484,11 +497,33 @@ function _drrRenderizar(rows) {
     `).join("");
 }
 
+// Aba escolhida. "Não registradas" atravessa as outras duas — é uma marca da devolução,
+// não uma etapa dela —, então as abas são filtros, não fatias que somam o total.
+function _drrTrocarFiltro(filtro, silencioso) {
+    _drrFiltroAtual = filtro;
+    document.querySelectorAll("#drr-filtro-chips .filtro-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.filtro === filtro));
+    if (!silencioso) _drrAplicar();
+}
+
 function _drrFiltrar() {
+    _drrAplicar();
+}
+
+// Aba e busca se somam: trocar de aba não apaga o que foi digitado, e digitar não
+// devolve a lista pra "Todas".
+function _drrAplicar() {
+    let rows = _drRegistroDados;
+
+    if (_drrFiltroAtual === "pendentes")         rows = rows.filter(r => r.status !== "recebido");
+    else if (_drrFiltroAtual === "recebidas")    rows = rows.filter(r => r.status === "recebido");
+    else if (_drrFiltroAtual === "sem_registro") rows = rows.filter(r => r.sem_registro);
+
     const q = document.getElementById("drr-busca").value.trim().toLowerCase();
-    if (!q) return _drrRenderizar(_drRegistroDados);
-    _drrRenderizar(_drRegistroDados.filter(r =>
+    if (q) rows = rows.filter(r =>
         [r.codigo, r.descricao, r.transportadora, r.motivo, r.usuario_nome, r.recebido_por, r.viagem_numero]
             .some(v => String(v || "").toLowerCase().includes(q))
-    ));
+    );
+
+    _drrRenderizar(rows);
 }
