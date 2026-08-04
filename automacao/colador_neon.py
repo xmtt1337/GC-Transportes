@@ -1,0 +1,937 @@
+"""
+GC TRANSPORTES - COLADOR NEON
+
+Mesma ideia do BIPADOR (Utilidades/BIPADOR/bip.py): digita códigos um por um na
+janela que estava em foco. A diferença é que a lista não vem colada à mão — vem
+da tabela shopee_recebimentos do Neon, em lotes de 20.
+
+Garantia de "não repetir e não pular":
+  - o lote é RESERVADO com um único UPDATE ... RETURNING (atômico, com
+    SKIP LOCKED), então dois coladores rodando ao mesmo tempo nunca pegam o
+    mesmo código;
+  - o código só é marcado como COLADO depois de realmente ter sido digitado;
+  - se parar/travar no meio, o que sobrou da reserva é liberado e volta pra
+    fila — reserva órfã também expira sozinha em 15 minutos.
+
+Colunas de controle são criadas na primeira execução (ALTER TABLE idempotente):
+colado_em, colado_por, reservado_em, reservado_por.
+"""
+
+import ctypes
+import json
+import os
+import queue
+import socket
+import threading
+import time
+from datetime import datetime
+
+import customtkinter as ctk
+import keyboard
+import psycopg2
+import pyautogui
+import win32con
+import win32gui
+
+APP_ID = 'GC.Transportes.ColadorNeon.1.0'
+try:
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
+except Exception:
+    pass
+
+# Config fica no APPDATA, fora do repositório — a connection string do Neon é
+# credencial e não pode acabar num commit.
+CONFIG_DIR = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'GC_Colador')
+CONFIG_PATH = os.path.join(CONFIG_DIR, 'config.json')
+
+TABELA = 'shopee_recebimentos'
+RESERVA_EXPIRA = '15 minutes'
+ESPERA_NOVOS = 5  # segundos entre uma checagem e outra no modo contínuo
+
+
+def carregar_config():
+    try:
+        with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def salvar_config(dados):
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, indent=2, ensure_ascii=False)
+
+
+def quem_sou():
+    """Identifica esta máquina nas colunas reservado_por / colado_por."""
+    return f"{os.environ.get('USERNAME', 'user')}@{socket.gethostname()}"
+
+
+class Banco:
+    """Conexão psycopg2 que se reconecta sozinha.
+
+    O Neon derruba conexão ociosa e o colador fica parado entre lotes, então
+    toda query passa por aqui e tem direito a uma segunda tentativa com
+    conexão nova. Cada thread usa sua própria instância — cursor compartilhado
+    entre threads não é seguro.
+    """
+
+    def __init__(self, url):
+        self.url = url
+        self.conn = None
+
+    def _conexao(self):
+        if self.conn is None or self.conn.closed:
+            self.conn = psycopg2.connect(self.url, connect_timeout=15)
+            self.conn.autocommit = True
+        return self.conn
+
+    def executar(self, sql, params=None, retorna=True):
+        ultimo_erro = None
+        for tentativa in (1, 2):
+            try:
+                with self._conexao().cursor() as cur:
+                    cur.execute(sql, params or {})
+                    return cur.fetchall() if retorna else None
+            except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+                ultimo_erro = e
+                try:
+                    if self.conn:
+                        self.conn.close()
+                except Exception:
+                    pass
+                self.conn = None
+                if tentativa == 2:
+                    raise ultimo_erro
+
+    def fechar(self):
+        try:
+            if self.conn and not self.conn.closed:
+                self.conn.close()
+        except Exception:
+            pass
+        self.conn = None
+
+
+def preparar_schema(db):
+    """Cria as colunas de controle do colador. Idempotente."""
+    db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS colado_em TIMESTAMP", retorna=False)
+    db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS colado_por TEXT", retorna=False)
+    db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS reservado_em TIMESTAMP", retorna=False)
+    db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS reservado_por TEXT", retorna=False)
+    db.executar(
+        f"CREATE INDEX IF NOT EXISTS idx_shopee_receb_colador "
+        f"ON {TABELA} (dia, id) WHERE colado_em IS NULL",
+        retorna=False,
+    )
+
+
+FILTRO = """
+      AND (%(dia)s::text IS NULL OR dia = %(dia)s::text)
+      AND (%(xpt)s::text IS NULL OR xpt = %(xpt)s::text)
+"""
+
+SQL_RESERVAR = f"""
+UPDATE {TABELA}
+   SET reservado_em = NOW(), reservado_por = %(quem)s
+ WHERE id IN (
+       SELECT id
+         FROM {TABELA}
+        WHERE colado_em IS NULL
+          AND (reservado_em IS NULL
+               OR reservado_por = %(quem)s
+               OR reservado_em < NOW() - INTERVAL '{RESERVA_EXPIRA}')
+          {FILTRO}
+        ORDER BY id
+        LIMIT %(tam)s
+        FOR UPDATE SKIP LOCKED
+ )
+ RETURNING id, codigo
+"""
+
+SQL_CONFIRMAR = f"""
+UPDATE {TABELA}
+   SET colado_em = NOW(), colado_por = %(quem)s,
+       reservado_em = NULL, reservado_por = NULL
+ WHERE id = ANY(%(ids)s)
+"""
+
+SQL_LIBERAR = f"""
+UPDATE {TABELA}
+   SET reservado_em = NULL, reservado_por = NULL
+ WHERE id = ANY(%(ids)s) AND colado_em IS NULL
+"""
+
+SQL_CONTAR = f"""
+SELECT COUNT(*) FILTER (WHERE colado_em IS NULL) AS pendentes,
+       COUNT(*) FILTER (WHERE colado_em IS NOT NULL) AS colados,
+       COUNT(*) AS total
+  FROM {TABELA}
+ WHERE TRUE
+       {FILTRO}
+"""
+
+SQL_PULAR = f"""
+UPDATE {TABELA}
+   SET colado_em = NOW(), colado_por = %(quem)s || ' [pulado]',
+       reservado_em = NULL, reservado_por = NULL
+ WHERE colado_em IS NULL
+       {FILTRO}
+"""
+
+SQL_ZERAR = f"""
+UPDATE {TABELA}
+   SET colado_em = NULL, colado_por = NULL,
+       reservado_em = NULL, reservado_por = NULL
+ WHERE colado_em IS NOT NULL
+       {FILTRO}
+"""
+
+
+class ColadorApp:
+    def __init__(self):
+        self.cfg = carregar_config()
+        self.quem = quem_sou()
+
+        self.executando = False
+        self.pausado = False
+        self.parar_thread = False
+        self.thread_execucao = None
+        self.janela_ativa = None
+        self.control_window = None
+
+        self.lote = []            # [(id, codigo)] ainda não digitados do lote atual
+        self.reservados = set()   # ids reservados que ainda não viraram colados
+        self.num_lote = 0
+        self.colados_sessao = 0
+        self.pendentes_banco = None
+
+        self.url_atual = ''
+        self.filtros_exec = {'dia': None, 'xpt': None}
+        self.tam_lote_exec = 20
+        self.continuo_exec = True
+        self.xpt_confirmado = False
+
+        self.fila_ui = queue.Queue()
+        self.fila_confirmar = queue.Queue()
+        self.thread_confirmar = None
+        self.db = None            # conexão da thread de execução
+        self.db_ui = None         # conexão da UI (testar / contar / zerar)
+
+        self.setup_ui()
+        self.setup_atalhos()
+        self.bombear_ui()
+
+    # ------------------------------------------------------------------ UI
+    def setup_ui(self):
+        ctk.set_appearance_mode("Light")
+        ctk.set_default_color_theme("blue")
+
+        self.root = ctk.CTk()
+        self.root.title("GC TRANSPORTES - COLADOR NEON")
+        self.root.geometry("520x760")
+        self.root.resizable(False, False)
+        self.root.protocol("WM_DELETE_WINDOW", self.ao_fechar)
+
+        frame = ctk.CTkScrollableFrame(
+            self.root, corner_radius=12, border_width=1,
+            border_color="#d6e7ff", fg_color="#ffffff",
+        )
+        frame.pack(pady=16, padx=16, fill="both", expand=True)
+
+        ctk.CTkLabel(
+            frame, text="COLADOR NEON",
+            font=("Segoe UI", 20, "bold"), text_color="#2c7be5",
+        ).pack(pady=(6, 0))
+        ctk.CTkLabel(
+            frame, text=f"tabela {TABELA} · lotes reservados no banco",
+            font=("Segoe UI", 11), text_color="#7a8aa0",
+        ).pack(pady=(0, 14))
+
+        # --- conexão
+        ctk.CTkLabel(frame, text="Connection string do Neon:",
+                     font=("Segoe UI", 12), anchor="w").pack(fill="x", padx=12)
+        self.url_entry = ctk.CTkEntry(
+            frame, width=460, show="•",
+            placeholder_text="postgresql://usuario:senha@ep-xxx.neon.tech/neondb?sslmode=require",
+        )
+        self.url_entry.pack(padx=12, pady=(4, 6))
+        if self.cfg.get('database_url'):
+            self.url_entry.insert(0, self.cfg['database_url'])
+
+        linha_conn = ctk.CTkFrame(frame, fg_color="transparent")
+        linha_conn.pack(pady=(0, 4))
+        self.mostrar_var = ctk.BooleanVar(value=False)
+        ctk.CTkCheckBox(
+            linha_conn, text="mostrar", variable=self.mostrar_var,
+            command=lambda: self.url_entry.configure(show="" if self.mostrar_var.get() else "•"),
+            font=("Segoe UI", 11), checkbox_width=18, checkbox_height=18,
+        ).pack(side="left", padx=(0, 12))
+        ctk.CTkButton(linha_conn, text="Conectar e salvar", width=150,
+                      command=self.conectar).pack(side="left")
+
+        self.conn_label = ctk.CTkLabel(frame, text="Desconectado",
+                                       font=("Segoe UI", 11), text_color="#999999")
+        self.conn_label.pack(pady=(2, 12))
+
+        # --- filtros
+        filtros = ctk.CTkFrame(frame, fg_color="#f5f9ff", corner_radius=10)
+        filtros.pack(fill="x", padx=12, pady=(0, 12))
+
+        linha_dia = ctk.CTkFrame(filtros, fg_color="transparent")
+        linha_dia.pack(fill="x", padx=12, pady=(12, 6))
+        ctk.CTkLabel(linha_dia, text="Dia:", font=("Segoe UI", 12), width=50,
+                     anchor="w").pack(side="left")
+        self.dia_entry = ctk.CTkEntry(linha_dia, width=130, placeholder_text="AAAA-MM-DD")
+        self.dia_entry.insert(0, self.cfg.get('dia') or datetime.now().strftime('%Y-%m-%d'))
+        self.dia_entry.pack(side="left", padx=(0, 10))
+        self.todos_dias = ctk.BooleanVar(value=bool(self.cfg.get('todos_dias')))
+        ctk.CTkCheckBox(
+            linha_dia, text="todos os dias", variable=self.todos_dias,
+            command=self.ao_mudar_filtro, font=("Segoe UI", 11),
+            checkbox_width=18, checkbox_height=18,
+        ).pack(side="left")
+        self.dia_entry.bind("<FocusOut>", lambda _e: self.ao_mudar_filtro())
+        self.dia_entry.bind("<Return>", lambda _e: self.ao_mudar_filtro())
+
+        linha_xpt = ctk.CTkFrame(filtros, fg_color="transparent")
+        linha_xpt.pack(fill="x", padx=12, pady=(0, 12))
+        ctk.CTkLabel(linha_xpt, text="XPT:", font=("Segoe UI", 12), width=50,
+                     anchor="w").pack(side="left")
+        # Sem opção "Todos": XPT_CFC e XPT_VIA são recebidos em plataformas
+        # diferentes, misturar os dois na mesma janela colaria código no lugar
+        # errado. O XPT é perguntado na abertura e só muda por aqui.
+        self.xpt_menu = ctk.CTkOptionMenu(
+            linha_xpt, width=180, values=["XPT_CFC", "XPT_VIA"],
+            command=lambda _v: self.ao_trocar_xpt(),
+        )
+        self.xpt_menu.set(self.cfg.get('xpt') or "XPT_CFC")
+        self.xpt_menu.pack(side="left", padx=(0, 10))
+        ctk.CTkButton(linha_xpt, text="Atualizar contagem", width=150,
+                      fg_color="#8fa8c8", hover_color="#7891b0",
+                      command=self.ao_mudar_filtro).pack(side="left")
+
+        # --- modo contínuo
+        linha_modo = ctk.CTkFrame(frame, fg_color="transparent")
+        linha_modo.pack(fill="x", padx=12, pady=(0, 2))
+        self.modo_continuo = ctk.BooleanVar(value=self.cfg.get('modo_continuo', True))
+        ctk.CTkCheckBox(
+            linha_modo, variable=self.modo_continuo, font=("Segoe UI", 12),
+            text="Ficar aguardando e colar as bipagens novas conforme chegam",
+            command=self.persistir_config, checkbox_width=18, checkbox_height=18,
+        ).pack(side="left")
+
+        # --- lote e intervalo
+        linha_lote = ctk.CTkFrame(frame, fg_color="transparent")
+        linha_lote.pack(pady=(0, 4))
+        ctk.CTkLabel(linha_lote, text="Códigos por lote:",
+                     font=("Segoe UI", 12)).pack(side="left", padx=(0, 8))
+        self.lote_entry = ctk.CTkEntry(linha_lote, width=60)
+        self.lote_entry.insert(0, str(self.cfg.get('tamanho_lote', 20)))
+        self.lote_entry.pack(side="left")
+
+        linha_int = ctk.CTkFrame(frame, fg_color="transparent")
+        linha_int.pack(pady=8)
+        self.interval_label = ctk.CTkLabel(linha_int, text="Intervalo: 0.5 segundos",
+                                           font=("Segoe UI", 13))
+        self.interval_label.pack(side="left", padx=(0, 10))
+        self.interval_slider = ctk.CTkSlider(
+            linha_int, from_=0.3, to=1.5, number_of_steps=5,
+            command=self.update_interval_label,
+            button_color="#2c7be5", progress_color="#2c7be5", width=190,
+        )
+        self.interval_slider.set(float(self.cfg.get('intervalo', 0.5)))
+        self.interval_slider.pack(side="left")
+        self.update_interval_label(self.interval_slider.get())
+
+        # --- status
+        self.status_banco = ctk.CTkLabel(
+            frame, text="Conecte para ver quantos códigos faltam",
+            font=("Segoe UI", 13), text_color="#444444", justify="center",
+        )
+        self.status_banco.pack(pady=(12, 4))
+
+        self.status_sessao = ctk.CTkLabel(frame, text="", font=("Segoe UI", 12),
+                                          text_color="#2c7be5")
+        self.status_sessao.pack(pady=(0, 10))
+
+        ctk.CTkLabel(
+            frame,
+            text="▶ Insert = Iniciar/Pausar   ⏹ F9 = Parar\n"
+                 "Deixe a janela de destino em foco antes de apertar Insert.",
+            font=("Segoe UI", 12), text_color="#2c7be5", justify="center",
+        ).pack(pady=(4, 12))
+
+        manutencao = ctk.CTkFrame(frame, fg_color="transparent")
+        manutencao.pack(pady=(0, 12))
+        ctk.CTkButton(
+            manutencao, text="Começar do agora", width=150,
+            fg_color="#e8eef7", hover_color="#dbe5f2", text_color="#5b6b80",
+            command=self.comecar_do_agora,
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(
+            manutencao, text="Desmarcar colados", width=150,
+            fg_color="#e8eef7", hover_color="#dbe5f2", text_color="#5b6b80",
+            command=self.zerar_colados,
+        ).pack(side="left", padx=4)
+
+        if self.cfg.get('database_url'):
+            self.root.after(300, self.conectar)
+
+    def ui(self, fn):
+        """Enfileira uma atualização de tela vinda de outra thread.
+
+        Tk só pode ser tocado pela thread que roda o mainloop — chamar
+        after() de fora falha calado e a tela congela. Quem drena é o
+        bombear_ui(), que roda na thread certa.
+        """
+        self.fila_ui.put(fn)
+
+    def bombear_ui(self):
+        """Aplica na tela o que as threads pediram. Roda só na thread da UI."""
+        while True:
+            try:
+                fn = self.fila_ui.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                fn()
+            except Exception as e:
+                print(f"Erro ao atualizar a tela: {e}")
+        try:
+            self.root.after(80, self.bombear_ui)
+        except Exception:
+            pass
+
+    def setup_atalhos(self):
+        keyboard.on_press_key("insert", lambda _: self.toggle_execution())
+        keyboard.on_press_key("F9", lambda _: self.stop_execution())
+
+    def update_interval_label(self, valor):
+        intervalo = min([0.3, 0.5, 0.7, 1.0, 1.3, 1.5], key=lambda x: abs(x - valor))
+        self.interval_label.configure(text=f"Intervalo: {intervalo:.1f} segundos")
+        self.interval_slider.set(intervalo)
+
+    # -------------------------------------------------- janela de controle
+    def show_control_window(self):
+        if self.control_window is None or not self.control_window.winfo_exists():
+            self.control_window = ctk.CTkToplevel(self.root)
+            self.control_window.title("Colador")
+            self.control_window.geometry("300x140+{}+30".format(
+                self.root.winfo_screenwidth() - 320))
+            self.control_window.resizable(False, False)
+            self.control_window.attributes('-topmost', True)
+            self.control_window.protocol("WM_DELETE_WINDOW", self.hide_control_window)
+
+            self.control_label = ctk.CTkLabel(
+                self.control_window, text="", font=("Segoe UI", 14), justify="left")
+            self.control_label.pack(pady=15, padx=20)
+        else:
+            self.control_window.deiconify()
+
+    def hide_control_window(self):
+        if self.control_window is not None and self.control_window.winfo_exists():
+            self.control_window.withdraw()
+
+    def restore_window_focus(self):
+        try:
+            if self.janela_ativa:
+                win32gui.SetWindowPos(
+                    self.janela_ativa, win32con.HWND_TOP, 0, 0, 0, 0,
+                    win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE)
+                win32gui.SetForegroundWindow(self.janela_ativa)
+                time.sleep(0.1)
+        except Exception as e:
+            print(f"Erro ao restaurar foco: {e}")
+
+    # ----------------------------------------------------------- filtros
+    def filtros_atuais(self):
+        dia = None if self.todos_dias.get() else (self.dia_entry.get().strip() or None)
+        return {'dia': dia, 'xpt': self.xpt_menu.get() or None}
+
+    def tamanho_lote(self):
+        try:
+            return max(1, min(500, int(self.lote_entry.get().strip())))
+        except ValueError:
+            return 20
+
+    def persistir_config(self):
+        self.cfg.update({
+            'database_url': self.url_entry.get().strip(),
+            'dia': self.dia_entry.get().strip(),
+            'todos_dias': self.todos_dias.get(),
+            'xpt': self.xpt_menu.get(),
+            'tamanho_lote': self.tamanho_lote(),
+            'intervalo': round(self.interval_slider.get(), 1),
+            'modo_continuo': self.modo_continuo.get(),
+        })
+        try:
+            salvar_config(self.cfg)
+        except Exception as e:
+            print(f"Erro ao salvar config: {e}")
+
+    def ao_mudar_filtro(self):
+        self.persistir_config()
+        if self.db_ui:
+            self.contar_async()
+
+    # ---------------------------------------------------------- conexão
+    def conectar(self):
+        url = self.url_entry.get().strip()
+        if not url:
+            self.conn_label.configure(text="Cole a connection string do Neon",
+                                      text_color="#e74c3c")
+            return
+        self.conn_label.configure(text="Conectando...", text_color="#ff9900")
+
+        def tarefa():
+            try:
+                db = Banco(url)
+                preparar_schema(db)
+                # Carrega os XPTs que existem de fato, em vez de chutar.
+                xpts = [r[0] for r in db.executar(
+                    f"SELECT DISTINCT xpt FROM {TABELA} WHERE xpt IS NOT NULL ORDER BY xpt")]
+                self.db_ui = db
+                self.ui(lambda: self.conexao_ok(xpts))
+            except Exception as e:
+                msg = str(e).strip().split("\n")[0][:90]
+                self.ui(lambda: self.conn_label.configure(
+                    text=f"Falhou: {msg}", text_color="#e74c3c"))
+
+        threading.Thread(target=tarefa, daemon=True).start()
+
+    def conexao_ok(self, xpts):
+        self.conn_label.configure(text="Conectado ao Neon", text_color="#2ecc71")
+        valores = xpts or ["XPT_CFC", "XPT_VIA"]
+        atual = self.xpt_menu.get()
+        self.xpt_menu.configure(values=valores)
+        self.xpt_menu.set(atual if atual in valores else valores[0])
+        self.persistir_config()
+        self.contar_async()
+        if not self.xpt_confirmado:
+            self.perguntar_xpt()
+
+    def perguntar_xpt(self):
+        """Escolha do XPT no início da sessão — cada um vai numa plataforma."""
+        valores = list(self.xpt_menu.cget("values")) or ["XPT_CFC", "XPT_VIA"]
+
+        janela = ctk.CTkToplevel(self.root)
+        janela.title("Qual XPT?")
+        janela.geometry("400x260")
+        janela.resizable(False, False)
+        janela.attributes('-topmost', True)
+        janela.protocol("WM_DELETE_WINDOW", lambda: None)  # tem que escolher
+        janela.after(100, janela.grab_set)
+
+        ctk.CTkLabel(janela, text="Qual XPT você vai receber agora?",
+                     font=("Segoe UI", 16, "bold"), text_color="#2c7be5").pack(pady=(24, 4))
+        ctk.CTkLabel(janela, wraplength=340, justify="center", text_color="#7a8aa0",
+                     font=("Segoe UI", 12),
+                     text="Cada XPT é recebido numa plataforma diferente — o colador\n"
+                          "vai puxar só os códigos desse XPT.").pack(pady=(0, 18))
+
+        def escolher(valor):
+            self.xpt_menu.set(valor)
+            self.xpt_confirmado = True
+            janela.grab_release()
+            janela.destroy()
+            self.ao_mudar_filtro()
+
+        for valor in valores:
+            ctk.CTkButton(janela, text=valor, width=220, height=42,
+                          font=("Segoe UI", 14, "bold"),
+                          command=lambda v=valor: escolher(v)).pack(pady=5)
+
+    def ao_trocar_xpt(self):
+        """Trocar de XPT no meio da colagem misturaria plataformas — para antes."""
+        self.xpt_confirmado = True
+        if self.executando:
+            self.stop_execution()
+            self.status_sessao.configure(
+                text=f"Colagem parada — XPT mudou para {self.xpt_menu.get()}",
+                text_color="#ff9900")
+        self.ao_mudar_filtro()
+
+    def contar_async(self):
+        def tarefa():
+            try:
+                linha = self.db_ui.executar(SQL_CONTAR, self.filtros_atuais())[0]
+                self.ui(lambda: self.mostrar_contagem(*linha))
+            except Exception as e:
+                msg = str(e).strip().split("\n")[0][:90]
+                self.ui(lambda: self.status_banco.configure(
+                    text=f"Erro ao contar: {msg}", text_color="#e74c3c"))
+
+        threading.Thread(target=tarefa, daemon=True).start()
+
+    def mostrar_contagem(self, pendentes, colados, total):
+        self.pendentes_banco = pendentes
+        self.status_banco.configure(
+            text=f"{pendentes} a colar  ·  {colados} já colados  ·  {total} no filtro",
+            text_color="#444444" if pendentes else "#2ecc71",
+        )
+        self.atualizar_status()
+
+    # ------------------------------------------------------------ execução
+    def toggle_execution(self):
+        if not self.executando:
+            self.ui(self.iniciar)
+        else:
+            self.pausado = not self.pausado
+            self.ui(self.atualizar_status)
+
+    def iniciar(self):
+        if self.executando:
+            return
+        if not self.db_ui:
+            self.conn_label.configure(text="Conecte ao banco antes de iniciar",
+                                      text_color="#e74c3c")
+            return
+        if not self.xpt_confirmado:
+            self.status_sessao.configure(text="Escolha o XPT antes de iniciar",
+                                         text_color="#e74c3c")
+            self.perguntar_xpt()
+            return
+
+        try:
+            hwnd = win32gui.GetForegroundWindow()
+        except Exception:
+            hwnd = None
+
+        # Sem essa trava o colador digitaria dentro da própria janela.
+        if hwnd and hwnd in self.janelas_proprias():
+            self.status_sessao.configure(
+                text="Foque a janela de destino e aperte Insert de novo",
+                text_color="#e74c3c")
+            return
+
+        self.janela_ativa = hwnd
+        self.persistir_config()
+
+        # Congela o que as threads vão usar — widget de Tk não se lê de fora da
+        # thread da UI. O intervalo é exceção proposital: dá pra ajustar o
+        # slider com a colagem rodando, como no bipador.
+        self.url_atual = self.url_entry.get().strip()
+        self.filtros_exec = self.filtros_atuais()
+        self.tam_lote_exec = self.tamanho_lote()
+        self.continuo_exec = self.modo_continuo.get()
+
+        self.executando = True
+        self.pausado = False
+        self.parar_thread = False
+        self.colados_sessao = 0
+        self.num_lote = 0
+        self.lote = []
+
+        self.db = Banco(self.url_atual)
+        self.thread_confirmar = threading.Thread(target=self.loop_confirmacao, daemon=True)
+        self.thread_confirmar.start()
+
+        self.show_control_window()
+        self.atualizar_status()
+
+        self.thread_execucao = threading.Thread(target=self.loop_colagem, daemon=True)
+        self.thread_execucao.start()
+
+    def janelas_proprias(self):
+        hwnds = []
+        for janela in (self.root, self.control_window):
+            try:
+                if janela is None or not janela.winfo_exists():
+                    continue
+                hwnds.append(janela.winfo_id())
+                frame = janela.wm_frame()
+                hwnds.append(int(frame, 16) if str(frame).startswith('0x') else int(frame))
+            except Exception:
+                pass
+        return hwnds
+
+    def reservar_lote(self):
+        """Reserva o próximo lote. Um único UPDATE — ninguém pega os mesmos ids."""
+        params = dict(self.filtros_exec)
+        params.update({'quem': self.quem, 'tam': self.tam_lote_exec})
+        linhas = self.db.executar(SQL_RESERVAR, params)
+        self.reservados.update(r[0] for r in linhas)
+        return [(r[0], r[1]) for r in linhas]
+
+    def esperar(self, segundos):
+        """Sleep que responde a F9 e à pausa sem demorar pra acordar."""
+        fim = time.time() + segundos
+        while time.time() < fim and not self.parar_thread:
+            time.sleep(0.2)
+
+    def loop_colagem(self):
+        erro = None
+        try:
+            while not self.parar_thread:
+                if self.pausado:
+                    time.sleep(0.1)
+                    continue
+
+                if not self.lote:
+                    self.ui(lambda: self.atualizar_status("buscando lote..."))
+                    self.lote = self.reservar_lote()
+
+                    if not self.lote:
+                        if not self.continuo_exec:
+                            break  # acabou: nada pendente no filtro
+                        # Modo contínuo: fica de vigia. O que for bipado no
+                        # recebimento daqui pra frente entra no próximo lote —
+                        # e se ninguém bipa por um tempo, ele só espera; o que
+                        # acumular sai junto na próxima rodada.
+                        self.pendentes_banco = 0
+                        self.ui(lambda: self.atualizar_status(
+                            "aguardando bipagens novas"))
+                        self.esperar(ESPERA_NOVOS)
+                        continue
+
+                    self.num_lote += 1
+                    self.ui(self.atualizar_status)
+
+                registro_id, codigo = self.lote[0]
+                codigo = (codigo or '').strip()
+                if not codigo:
+                    self.lote.pop(0)
+                    self.reservados.discard(registro_id)
+                    continue
+
+                self.restore_window_focus()
+                if self.parar_thread:
+                    break
+
+                pyautogui.write(codigo)
+                pyautogui.press('enter')
+
+                # Só marca como colado depois de digitado — parar no meio não
+                # queima código nenhum.
+                self.lote.pop(0)
+                self.fila_confirmar.put(registro_id)
+                self.colados_sessao += 1
+                if self.pendentes_banco is not None:
+                    self.pendentes_banco = max(0, self.pendentes_banco - 1)
+                self.ui(self.atualizar_status)
+
+                time.sleep(self.interval_slider.get())
+        except Exception as e:
+            erro = str(e).strip().split("\n")[0][:90]
+        finally:
+            self.finalizar_execucao(erro)
+
+    def loop_confirmacao(self):
+        """Grava colado_em em segundo plano, agrupando ids, pra não atrasar a digitação."""
+        db = Banco(self.url_atual)
+        try:
+            while True:
+                item = self.fila_confirmar.get()
+                if item is None:
+                    break
+                ids = [item]
+                while len(ids) < 50:
+                    try:
+                        proximo = self.fila_confirmar.get_nowait()
+                    except queue.Empty:
+                        break
+                    if proximo is None:
+                        item = None
+                        break
+                    ids.append(proximo)
+                try:
+                    db.executar(SQL_CONFIRMAR, {'quem': self.quem, 'ids': ids}, retorna=False)
+                    self.reservados.difference_update(ids)
+                except Exception as e:
+                    # Devolve pra fila: melhor confirmar atrasado do que perder.
+                    print(f"Erro ao confirmar {len(ids)} códigos: {e}")
+                    for i in ids:
+                        self.fila_confirmar.put(i)
+                    time.sleep(2)
+                if item is None:
+                    break
+        finally:
+            db.fechar()
+
+    def finalizar_execucao(self, erro=None):
+        self.executando = False
+        self.pausado = False
+
+        # Devolve pra fila o que foi reservado e não chegou a ser digitado.
+        pendentes_lote = [rid for rid, _ in self.lote]
+        self.lote = []
+        self.fila_confirmar.put(None)
+        if self.thread_confirmar:
+            self.thread_confirmar.join(timeout=20)
+
+        try:
+            if pendentes_lote:
+                self.db.executar(SQL_LIBERAR, {'ids': pendentes_lote}, retorna=False)
+                self.reservados.difference_update(pendentes_lote)
+        except Exception as e:
+            print(f"Erro ao liberar reservas: {e}")
+        finally:
+            if self.db:
+                self.db.fechar()
+                self.db = None
+
+        def na_ui():
+            self.hide_control_window()
+            if erro:
+                self.status_sessao.configure(text=f"Parou por erro: {erro}",
+                                             text_color="#e74c3c")
+            else:
+                fim = "Parado" if self.continuo_exec else "Fila vazia"
+                self.status_sessao.configure(
+                    text=f"{fim} · {self.colados_sessao} códigos colados nesta sessão",
+                    text_color="#2ecc71")
+            if self.db_ui:
+                self.contar_async()
+
+        self.ui(na_ui)
+
+    def stop_execution(self):
+        self.parar_thread = True
+        self.pausado = False
+
+    def atualizar_status(self, extra=None):
+        if not self.executando:
+            return
+
+        linha = (f"lote {self.num_lote} · faltam {len(self.lote)} nele · "
+                 f"{self.colados_sessao} colados nesta sessão")
+        if self.pendentes_banco is not None:
+            linha += f" · {self.pendentes_banco} na fila"
+
+        if self.pausado:
+            cabecalho, cor = "PAUSADO", "#ff9900"
+        elif extra:
+            cabecalho, cor = extra, "#2c7be5"
+        else:
+            cabecalho, cor = "Colando", "#2ecc71"
+        self.status_sessao.configure(text=f"{cabecalho} · {linha}", text_color=cor)
+
+        if self.control_window is not None and self.control_window.winfo_exists():
+            if self.pausado:
+                atalhos = "⏸ Pausado\n▶ Insert = Continuar\n⏹ F9 = Parar"
+            elif extra:
+                atalhos = f"⏳ {extra}\n⏸ Insert = Pausar\n⏹ F9 = Parar"
+            else:
+                atalhos = "▶ Colando\n⏸ Insert = Pausar\n⏹ F9 = Parar"
+            self.control_label.configure(
+                text=f"{atalhos}\n{self.colados_sessao} colados · {self.xpt_menu.get()}",
+                text_color=cor)
+
+    # ------------------------------------------------------------ manutenção
+    def comecar_do_agora(self):
+        """Marca o que já existe como colado, pra colar só as bipagens novas.
+
+        Serve pra quando o dia já começou e você não quer que o colador despeje
+        todo o histórico de uma vez na plataforma.
+        """
+        if not self.db_ui or self.executando:
+            if self.executando:
+                self.status_sessao.configure(text="Pare a colagem antes disso",
+                                             text_color="#e74c3c")
+            return
+
+        filtros = self.filtros_atuais()
+        pendentes = self.pendentes_banco
+
+        def acao():
+            def tarefa():
+                try:
+                    self.db_ui.executar(SQL_PULAR, dict(filtros, quem=self.quem),
+                                        retorna=False)
+                    self.ui(self.contar_async)
+                    self.ui(lambda: self.status_sessao.configure(
+                        text="Histórico ignorado — só as bipagens novas serão coladas",
+                        text_color="#2c7be5"))
+                except Exception as e:
+                    msg = str(e).strip().split("\n")[0][:90]
+                    self.ui(lambda: self.status_sessao.configure(
+                        text=f"Erro: {msg}", text_color="#e74c3c"))
+
+            threading.Thread(target=tarefa, daemon=True).start()
+
+        self.confirmar(
+            titulo="Começar do agora",
+            texto=(f"Ignorar os {pendentes if pendentes is not None else ''} códigos "
+                   f"que já estão na fila de {self.descricao_filtro()}?\n\n"
+                   f"Eles serão marcados como colados sem passar pela plataforma. "
+                   f"Só o que for bipado a partir de agora será colado."),
+            rotulo="Ignorar histórico", cor="#ff9900", hover="#e08900", acao=acao)
+
+    def descricao_filtro(self):
+        filtros = self.filtros_atuais()
+        alvo = "todos os dias" if filtros['dia'] is None else f"{filtros['dia']}"
+        return f"{alvo} / {filtros['xpt']}"
+
+    def confirmar(self, titulo, texto, rotulo, cor, hover, acao):
+        janela = ctk.CTkToplevel(self.root)
+        janela.title(titulo)
+        janela.geometry("440x220")
+        janela.resizable(False, False)
+        janela.attributes('-topmost', True)
+        janela.after(100, janela.grab_set)
+        ctk.CTkLabel(janela, text=texto, wraplength=390, justify="left",
+                     font=("Segoe UI", 13)).pack(pady=22, padx=22)
+
+        botoes = ctk.CTkFrame(janela, fg_color="transparent")
+        botoes.pack(pady=4)
+
+        def confirmar_e_fechar():
+            janela.grab_release()
+            janela.destroy()
+            acao()
+
+        ctk.CTkButton(botoes, text=rotulo, width=150, fg_color=cor,
+                      hover_color=hover, command=confirmar_e_fechar).pack(side="left", padx=6)
+        ctk.CTkButton(botoes, text="Cancelar", width=130, fg_color="#8fa8c8",
+                      hover_color="#7891b0",
+                      command=janela.destroy).pack(side="left", padx=6)
+
+    def zerar_colados(self):
+        """Desmarca os colados do filtro atual, pra poder colar tudo de novo."""
+        if not self.db_ui:
+            return
+        if self.executando:
+            self.status_sessao.configure(text="Pare a colagem antes de desmarcar",
+                                         text_color="#e74c3c")
+            return
+
+        filtros = self.filtros_atuais()
+
+        def acao():
+            def tarefa():
+                try:
+                    self.db_ui.executar(SQL_ZERAR, filtros, retorna=False)
+                    self.ui(self.contar_async)
+                    self.ui(lambda: self.status_sessao.configure(
+                        text="Marcações removidas — a fila voltou ao início",
+                        text_color="#2c7be5"))
+                except Exception as e:
+                    msg = str(e).strip().split("\n")[0][:90]
+                    self.ui(lambda: self.status_sessao.configure(
+                        text=f"Erro ao desmarcar: {msg}", text_color="#e74c3c"))
+
+            threading.Thread(target=tarefa, daemon=True).start()
+
+        self.confirmar(
+            titulo="Desmarcar colados",
+            texto=(f"Desmarcar como colados os registros de {self.descricao_filtro()}?\n\n"
+                   f"Eles voltam pra fila e serão colados de novo na próxima execução."),
+            rotulo="Desmarcar", cor="#e74c3c", hover="#c0392b", acao=acao)
+
+    def ao_fechar(self):
+        self.parar_thread = True
+        if self.thread_execucao and self.thread_execucao.is_alive():
+            self.thread_execucao.join(timeout=10)
+        self.persistir_config()
+        if self.db_ui:
+            self.db_ui.fechar()
+        self.root.destroy()
+
+    def run(self):
+        self.root.mainloop()
+
+
+if __name__ == "__main__":
+    ColadorApp().run()
