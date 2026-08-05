@@ -85,7 +85,7 @@ function _scaTipo(tipo) {
 }
 
 function _scaPintarTipo() {
-    document.querySelectorAll("#sca-tipo .shr-seg-btn").forEach(b =>
+    document.querySelectorAll("#sca-tipo .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.tipo === _scaTipoAtual));
     document.getElementById("sca-campo-alvo").style.display = _scaTipoAtual ? "" : "none";
     document.getElementById("sca-btn-comecar").style.display = "none";
@@ -560,11 +560,23 @@ function _scaCarregarHistorico() {
             if (!Array.isArray(rows) || !rows.length) { skFim(empty, "Nenhuma conferência ainda."); return; }
             empty.style.display = "none";
             result.style.display = "";
-            document.getElementById("sca-hist-tbody").innerHTML = rows.map(s => `
+            document.getElementById("sca-hist-tbody").innerHTML = rows.map(s => {
+                // Conclusão do GRUPO por essa conferência: quantos dos pacotes do
+                // cluster/cidade ela conferiu. Sem o total do grupo não há o que calcular.
+                const pct = s.total_grupo ? _scaPct(s.ok, s.total_grupo) : null;
+                const cor = pct === null ? "#8494a9" : _scaCorPct(pct);
+                const frac = s.total_grupo ? (s.ok / s.total_grupo) * 100 : 0;
+                return `
                 <tr>
                     <td data-label="Conferência">
                         <div style="font-weight:700;color:#e2e8f0">${_scaEsc(s.alvo)}</div>
                         <div style="font-size:11px;color:#8494a9">${s.tipo === "cidade" ? "Cidade" : "Cluster"}${s.encerrada_em ? "" : " · em aberto"}</div>
+                    </td>
+                    <td data-label="Conclusão" style="min-width:130px">
+                        <div class="slh-pct" style="color:${cor}">${pct === null ? "—" : _scaPctTexto(pct)}</div>
+                        ${pct === null ? "" : `<div class="slh-barra"><div class="slh-barra-fill" style="width:${
+                            s.ok && frac < 1 ? 1 : Math.min(100, frac)}%;background:${cor}"></div></div>
+                        <div style="font-size:11px;color:#8494a9;margin-top:4px">${s.ok} de ${s.total_grupo}</div>`}
                     </td>
                     <td data-label="Bipados" style="font-variant-numeric:tabular-nums">${s.total}</td>
                     <td data-label="OK" style="font-variant-numeric:tabular-nums;color:#22c55e">${s.ok}</td>
@@ -573,7 +585,8 @@ function _scaCarregarHistorico() {
                     <td data-label="Quem / quando">${_scaEsc(s.usuario_nome) || "—"}
                         <div style="font-size:11px;color:#8494a9">${new Date(s.criado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</div></td>
                     <td><button class="adm-usr-action senha" onclick="_scaVerSessao(${s.id})">${s.encerrada_em ? "Ver" : "Continuar"}</button></td>
-                </tr>`).join("");
+                </tr>`;
+            }).join("");
         })
         .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
 }
