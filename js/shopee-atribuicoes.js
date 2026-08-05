@@ -98,19 +98,21 @@ function _scaPreencherAlvo() {
     const sel = document.getElementById("sca-alvo");
     const lista = cidade ? _scaOpcoes.cidades : _scaOpcoes.clusters;
 
-    // No cluster a quantidade de pacotes diz o tamanho do trabalho. Na cidade, o número de
-    // CEPs não diz nada sobre isso — a lista fica só com o nome.
+    // Os dois lados mostram o tamanho do trabalho: quantos pedidos naquela cidade, quantos
+    // pacotes naquele cluster. Só entra na lista quem tem o que conferir.
     sel.innerHTML = `<option value="">Selecione...</option>` + lista.map(o => {
         const valor = cidade ? o.cidade : o.cluster;
-        return `<option value="${_scaEsc(valor)}">${_scaEsc(valor)}${cidade ? "" : ` — ${o.pacotes} pacotes`}</option>`;
+        const qtd   = cidade ? `${o.pedidos} pedido${o.pedidos !== 1 ? "s" : ""}`
+                             : `${o.pacotes} pacote${o.pacotes !== 1 ? "s" : ""}`;
+        return `<option value="${_scaEsc(valor)}">${_scaEsc(valor)} — ${qtd}</option>`;
     }).join("");
 
     document.getElementById("sca-dica").innerText = lista.length
         ? (cidade
-            ? "A cidade vem da planilha de CEPs, a mesma da bipagem."
+            ? "A cidade de cada pedido vem do CEP, cruzado com a planilha de CEPs."
             : "O cluster vem da AT exportada da sua estação.")
         : (cidade
-            ? "Nenhuma cidade na planilha de CEPs. Sincronize os CEPs primeiro."
+            ? "Nenhum pedido com cidade identificada. Alimente Pedidos pesquisados primeiro."
             : "Nenhum cluster na AT. Alimente a AT Exportada primeiro.");
 }
 
