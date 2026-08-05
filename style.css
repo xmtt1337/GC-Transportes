@@ -763,6 +763,23 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 12px; margin-bottom: 18px;
 }
+/* Histórico de conferências: bloco próprio, recuado e mais apagado. Coladinho na visão
+   geral ele parecia continuação da tabela de cima — são duas coisas diferentes, uma é o
+   estado de agora e a outra é o que já foi feito. */
+.sca-secao {
+    margin-top: 30px; padding: 20px 20px 6px;
+    background: rgba(0,0,0,0.16); border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+.sca-secao-titulo {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; color: #8494a9;
+}
+/* Tabela do histórico um tom abaixo: quem está trabalhando olha a de cima. */
+.sca-secao .ant-hist-table th { color: #717f95; }
+.sca-secao .ant-hist-table td { font-size: 12.5px; }
+
 /* Escolha de vários clusters. Caixa de seleção mesmo, não chip: aqui a pessoa marca
    quantos quiser, e caixa marcada é o controle que diz isso sem precisar explicar. */
 .sca-multi {
