@@ -47,13 +47,15 @@ function _scaMostrarInicio() {
     document.getElementById("sca-inicio").style.display = "";
     document.getElementById("sca-andamento").style.display = "none";
     document.getElementById("sca-historico").style.display = "";
+    _scaCarregarVisao();
 }
 
 function _scaMostrarAndamento() {
     document.getElementById("sca-inicio").style.display = "none";
     document.getElementById("sca-andamento").style.display = "";
-    // O histórico sai da frente durante a conferência: quem está bipando não precisa dele,
-    // e a lista da sessão é o que tem que estar à mão.
+    // Visão geral e histórico saem da frente durante a conferência: quem está bipando
+    // precisa da lista da sessão à mão, não do panorama.
+    document.getElementById("sca-visao").style.display = "none";
     document.getElementById("sca-historico").style.display = "none";
 }
 
@@ -79,6 +81,7 @@ function _scaTipo(tipo) {
     _scaTipoAtual = tipo;
     _scaPintarTipo();
     _scaPreencherAlvo();
+    _scaCarregarVisao(); // a visão geral acompanha o tipo escolhido
 }
 
 function _scaPintarTipo() {
@@ -282,9 +285,12 @@ function _scaRenderizar() {
             <div class="paj-value"${cor ? ` style="color:${cor}"` : ""}>${valor}</div>
         </div>`;
     const faltam = _scaFaltantes.length;
-    // Progresso do grupo, não da sessão: o que interessa é quanto do cluster/cidade já
+    // Progresso do GRUPO, não da sessão: o que interessa é quanto do cluster/cidade já
     // passou, e "12 bipados" sozinho não diz se acabou.
-    const pct = _scaTotalGrupo ? Math.round(((_scaTotalGrupo - faltam) / _scaTotalGrupo) * 100) : null;
+    const conferidos = Math.max(0, _scaTotalGrupo - faltam);
+    const pct = _scaTotalGrupo ? Math.round((conferidos / _scaTotalGrupo) * 100) : null;
+    const pctFalta = pct === null ? null : 100 - pct;
+    _scaBarra(pct, pctFalta, conferidos, faltam);
 
     document.getElementById("sca-resumo").innerHTML =
         card("Bipados", total, _scaSessao ? _scaSessao.alvo : "") +
@@ -292,7 +298,7 @@ function _scaRenderizar() {
         card("Grupo errado", div, "não são daqui", div ? "#ef4444" : null) +
         card("Sem dado", semD, "não deu pra conferir", semD ? "#eab308" : null) +
         card("Faltam bipar",
-             _scaFaltamCarregado ? `${faltam}${pct !== null ? ` <span class="shr-pct">${pct}%</span>` : ""}` : "—",
+             _scaFaltamCarregado ? `${faltam}${pctFalta !== null ? ` <span class="shr-pct">${pctFalta}%</span>` : ""}` : "—",
              _scaTotalGrupo ? `de ${_scaTotalGrupo} no grupo` : "no grupo",
              faltam ? "#eab308" : (_scaFaltamCarregado ? "#22c55e" : null));
 
@@ -330,6 +336,112 @@ function _scaRenderizar() {
     }).join("")
         : `<tr><td colspan="5" style="text-align:center;color:#8494a9;padding:26px 10px">${
             total ? "Nada nesse filtro." : "Nenhum pacote bipado ainda."}</td></tr>`;
+}
+
+// Verde só em 100%: grupo em 99% ainda tem pacote pra achar, e pintar de verde faria
+// alguém parar de procurar.
+function _scaCorPct(pct) {
+    return pct >= 100 ? "#22c55e" : pct > 0 ? "#eab308" : "#ef4444";
+}
+
+// Barra de conclusão, acima do campo de bipagem. Mostra o quanto fechou e o quanto falta
+// pra 100% — os dois, porque a pergunta na esteira vem das duas formas.
+function _scaBarra(pct, pctFalta, conferidos, faltam) {
+    const bloco = document.getElementById("sca-progresso");
+    if (!_scaFaltamCarregado || pct === null) { bloco.style.display = "none"; return; }
+    bloco.style.display = "";
+    const cor = _scaCorPct(pct);
+    const el = document.getElementById("sca-prog-pct");
+    el.innerText = `${pct}%`;
+    el.style.color = cor;
+    document.getElementById("sca-prog-obs").innerText = faltam
+        ? `${conferidos} de ${_scaTotalGrupo} conferidos · faltam ${pctFalta}% (${faltam})`
+        : `${conferidos} de ${_scaTotalGrupo} conferidos · grupo completo`;
+    const barra = document.getElementById("sca-prog-barra");
+    barra.style.width = Math.min(100, pct) + "%";
+    barra.style.background = cor;
+}
+
+// ── Visão geral: todos os grupos e quanto de cada um já fechou ──
+let _scaVisao = [];
+
+function _scaCarregarVisao() {
+    const tipo = _scaTipoAtual || "cluster";
+    const bloco = document.getElementById("sca-visao");
+    const empty = document.getElementById("sca-visao-empty");
+    const result = document.getElementById("sca-visao-resultado");
+    bloco.style.display = "";
+    document.getElementById("sca-visao-titulo").innerText =
+        tipo === "cidade" ? "Visão geral das cidades" : "Visão geral dos clusters";
+    document.getElementById("sca-visao-col").innerText = tipo === "cidade" ? "Cidade" : "Cluster";
+    skMostrar(empty, "tabela");
+    empty.style.display = "";
+    result.style.display = "none";
+
+    fetch(`${API}/shopee/conferencia/atribuicoes/visao-geral?tipo=${tipo}`, {
+        headers: { "Authorization": "Bearer " + token }
+    }).then(r => r.json())
+    .then(d => {
+        if (d && d.error) { skFim(empty, d.error); return; }
+        if (d.sem_polo)     { skFim(empty, "Defina o seu polo para ver a conferência."); return; }
+        if (d.polo_sem_xpt) { skFim(empty, "Este polo não recebe Shopee."); return; }
+        _scaVisao = d.grupos || [];
+        _scaRenderVisao(tipo);
+    })
+    .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
+}
+
+function _scaRenderVisao(tipo) {
+    const empty  = document.getElementById("sca-visao-empty");
+    const result = document.getElementById("sca-visao-resultado");
+    if (!_scaVisao.length) {
+        skFim(empty, tipo === "cidade"
+            ? "Nenhuma cidade com pedidos. Alimente Pedidos pesquisados primeiro."
+            : "Nenhum cluster na AT. Alimente a AT Exportada primeiro.");
+        return;
+    }
+    empty.style.display = "none";
+    result.style.display = "";
+
+    // Total geral no cabeçalho: é a resposta pra "estamos perto de fechar o dia?".
+    const total = _scaVisao.reduce((a, g) => a + g.total, 0);
+    const conf  = _scaVisao.reduce((a, g) => a + g.conferidos, 0);
+    const pctGeral = total ? Math.round((conf / total) * 100) : 0;
+    const completos = _scaVisao.filter(g => g.conferidos >= g.total).length;
+    document.getElementById("sca-visao-obs").innerHTML =
+        `<strong style="color:${_scaCorPct(pctGeral)}">${pctGeral}%</strong> no total · ${conf} de ${total} · ${completos} de ${_scaVisao.length} fechado${completos !== 1 ? "s" : ""}`;
+
+    document.getElementById("sca-visao-tbody").innerHTML = _scaVisao.map(g => {
+        const pct = g.total ? Math.round((g.conferidos / g.total) * 100) : 0;
+        const falta = g.total - g.conferidos;
+        const cor = _scaCorPct(pct);
+        const nomeEsc = String(g.grupo || "").replace(/'/g, "\\'");
+        return `
+        <tr>
+            <td data-label="${tipo === "cidade" ? "Cidade" : "Cluster"}" style="font-weight:700;color:#e2e8f0">${_scaEsc(g.grupo)}</td>
+            <td data-label="Conclusão" style="min-width:150px">
+                <div class="slh-pct" style="color:${cor}">${pct}%${falta ? ` <span style="font-size:11px;font-weight:600;color:#8494a9">falta ${100 - pct}%</span>` : ""}</div>
+                <div class="slh-barra"><div class="slh-barra-fill" style="width:${Math.min(100, pct)}%;background:${cor}"></div></div>
+            </td>
+            <td data-label="Total" style="font-variant-numeric:tabular-nums">${g.total}</td>
+            <td data-label="Conferidos" style="font-variant-numeric:tabular-nums;color:#22c55e">${g.conferidos}</td>
+            <td data-label="Faltam" style="font-variant-numeric:tabular-nums;color:${falta ? "#eab308" : "#8494a9"};font-weight:${falta ? 700 : 400}">${falta}</td>
+            <td><button class="adm-usr-action senha" onclick="_scaComecarDaVisao('${nomeEsc}')">Conferir</button></td>
+        </tr>`;
+    }).join("");
+}
+
+// Atalho da visão geral: já entra na conferência daquele grupo, sem passar pelo seletor.
+function _scaComecarDaVisao(nome) {
+    if (!_scaTipoAtual) _scaTipoAtual = "cluster";
+    const sel = document.getElementById("sca-alvo");
+    if (![...sel.options].some(o => o.value === nome)) {
+        sel.innerHTML += `<option value="${_scaEsc(nome)}">${_scaEsc(nome)}</option>`;
+    }
+    sel.value = nome;
+    _scaPintarTipo();
+    _scaAlvoMudou();
+    _scaComecar();
 }
 
 // Faltantes: o cluster/cidade tem esses pacotes e eles ainda não passaram pela bipagem.

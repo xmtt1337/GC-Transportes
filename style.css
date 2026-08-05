@@ -763,6 +763,20 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 12px; margin-bottom: 18px;
 }
+/* Barra de conclusão da conferência — fica acima do campo de bipagem, à vista o tempo
+   todo: é ela que diz se o grupo acabou, sem a pessoa ter que somar cartão de cabeça. */
+.sca-progresso {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px;
+}
+.sca-prog-topo { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.sca-prog-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .12em; color: #8494a9;
+}
+.sca-prog-pct { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.sca-prog-obs { font-size: 12.5px; color: #8494a9; margin-left: auto; }
+
 /* Conferência LineHaul — barra de progresso por TO, como a planilha. */
 .slh-linha { cursor: pointer; transition: background .12s; }
 .slh-linha:hover { background: rgba(58,134,255,0.06); }
