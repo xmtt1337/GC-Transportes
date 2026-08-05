@@ -29,8 +29,9 @@ function _slhEsc(txt) {
     return String(txt ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
+// Porcentagem exata, no formato do sistema (duas casas, menos nas pontas). Ver gcPct.
 function _slhPct(recebidos, total) {
-    return total ? (recebidos / total) * 100 : 0;
+    return gcPct(recebidos, total) ?? 0;
 }
 
 // Verde só quando fechou. Antes disso é âmbar, mesmo em 99% — TO quase completa ainda é
@@ -87,8 +88,10 @@ function _slhCarregar() {
         .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
 }
 
-// Barra dos dias. Só aparecem dias que têm viagem, então clicar nunca leva a uma tela
-// vazia — e "Todas" fica por último, pra quem precisa do romaneiro inteiro.
+// Barra dos dias do ROMANEIRO — o dia em que a carga foi alimentada, não a data dentro do
+// número da TO. Chega TO de dias anteriores no romaneiro de hoje, e separar pela data da
+// TO não corresponderia ao que de fato chegou no galpão naquele dia.
+// Só aparecem dias que têm viagem, então clicar nunca leva a uma tela vazia.
 function _slhRenderDias(hoje) {
     const el = document.getElementById("slh-dias");
     if (!_slhDias.length) { el.style.display = "none"; return; }
@@ -103,7 +106,7 @@ function _slhRenderDias(hoje) {
     // Até 8 dias na barra: mais que isso vira lista de rolagem e a data de hoje se perde.
     el.innerHTML = _slhDias.slice(0, 8).map(d =>
         botao(d.dia, d.dia === hoje ? "Hoje" : br(d.dia), `${d.tos} TO${d.tos !== 1 ? "s" : ""}`)
-    ).join("") + botao("todas", "Todas as datas", "");
+    ).join("") + botao("todas", "Todos os romaneiros", "");
 }
 
 function _slhTrocarDia(dia) {
@@ -129,7 +132,7 @@ function _slhRenderResumo() {
     const total     = _slhTos.reduce((a, t) => a + t.total, 0);
     const recebidos = _slhTos.reduce((a, t) => a + t.recebidos, 0);
     const completas = _slhTos.filter(t => t.recebidos >= t.total && t.total > 0).length;
-    const pct = Math.round(_slhPct(recebidos, total));
+    const pct = _slhPct(recebidos, total);
 
     const card = (rotulo, valor, sub, cor) => `
         <div class="paj-card">
@@ -138,10 +141,10 @@ function _slhRenderResumo() {
             <div class="paj-value"${cor ? ` style="color:${cor}"` : ""}>${valor}</div>
         </div>`;
 
-    const rotuloDia = !_slhDia || _slhDia === "todas" ? "todas as datas"
-                    : _slhDia.split("-").reverse().join("/");
+    const rotuloDia = !_slhDia || _slhDia === "todas" ? "todos os romaneiros"
+                    : "romaneiro de " + _slhDia.split("-").reverse().join("/");
     document.getElementById("slh-resumo").innerHTML =
-        card("Recebido no total", `${pct}%`, `${recebidos.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}`, _slhCor(pct)) +
+        card("Recebido no total", gcPctTexto(pct), `${recebidos.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}`, _slhCor(pct)) +
         card("Viagens (TO)", _slhTos.length, `${completas} completa${completas !== 1 ? "s" : ""} · ${rotuloDia}`) +
         card("Falta receber", (total - recebidos).toLocaleString("pt-BR"), "pacotes") +
         card("Fora da LH", _slhForaTotal, "bipados sem romaneiro", _slhForaTotal ? "#eab308" : null);
@@ -232,7 +235,7 @@ function _slhRenderizar() {
                 ${t.rota_lh ? `<div style="font-size:11px;color:#8494a9">${_slhEsc(t.rota_lh)}</div>` : ""}
             </td>
             <td data-label="% Recebido" style="min-width:140px">
-                <div class="slh-pct" style="color:${cor}">${pct.toFixed(pct % 1 ? 1 : 0)}%</div>
+                <div class="slh-pct" style="color:${cor}">${gcPctTexto(pct)}</div>
                 <div class="slh-barra"><div class="slh-barra-fill" style="width:${Math.min(100, pct)}%;background:${cor}"></div></div>
             </td>
             <td data-label="Total na LH" style="font-variant-numeric:tabular-nums">${t.total}</td>

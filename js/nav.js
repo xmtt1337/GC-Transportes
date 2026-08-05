@@ -115,6 +115,23 @@ function _gcBeepErro() {
     _gcTocarTom([[0, 440, "square", 0.22], [0.24, 300, "square", 0.22]], 0.9);
 }
 
+// ── Porcentagem ──
+// Sempre com duas casas, menos quando fecha em 100% (ou 0%), que não precisa de decimal.
+// Arredondar para inteiro escondia progresso real: 2 de 455 vira "0%" e parece que nada
+// foi feito; 453 de 455 vira "100%" e parece que acabou.
+function gcPct(parte, total) {
+    if (!total) return null;
+    return (Number(parte) / Number(total)) * 100;
+}
+
+function gcPctTexto(pct) {
+    if (pct === null || pct === undefined || isNaN(pct)) return "—";
+    // Só as pontas exatas dispensam as casas; 99,996% continua mostrando que falta algo.
+    if (pct >= 100) return "100%";
+    if (pct <= 0)   return "0%";
+    return pct.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+}
+
 function _emBreve(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-em-breve");

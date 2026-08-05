@@ -415,20 +415,9 @@ function _scaCorPct(pct) {
     return pct >= 100 ? "#22c55e" : pct > 0 ? "#eab308" : "#ef4444";
 }
 
-// Porcentagem que não mente nas pontas. Arredondar direto faz 2 de 455 virar "0%" (como
-// se nada tivesse sido feito) e 453 de 455 virar "100%" (como se tivesse acabado). Perto
-// de 0 e de 100 a casa decimal entra; no meio, inteiro basta.
-function _scaPct(parte, total) {
-    if (!total) return null;
-    const v = (parte / total) * 100;
-    if (v > 0 && v < 1)     return Math.round(v * 10) / 10;   // 0,4% em vez de 0%
-    if (v > 99 && v < 100)  return Math.round(v * 10) / 10;   // 99,6% em vez de 100%
-    return Math.round(v);
-}
-
-function _scaPctTexto(pct) {
-    return pct === null ? "—" : `${pct.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
-}
+// Porcentagem exata, no formato do sistema (duas casas, menos nas pontas). Ver gcPct.
+const _scaPct = gcPct;
+const _scaPctTexto = gcPctTexto;
 
 // Barra de conclusão, acima do campo de bipagem. Mostra o quanto fechou e o quanto falta
 // pra 100% — os dois, porque a pergunta na esteira vem das duas formas.
