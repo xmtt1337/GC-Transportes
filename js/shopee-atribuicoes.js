@@ -92,50 +92,88 @@ function _scaPintarTipo() {
     if (!_scaTipoAtual) document.getElementById("sca-dica").innerText = "Escolha o tipo de conferência para começar.";
 }
 
+// Cluster aceita vários numa conferência só — é comum uma pessoa cobrir mais de um.
+// Cidade continua uma por vez.
+let _scaSelecionados = [];
+
 function _scaPreencherAlvo() {
     const cidade = _scaTipoAtual === "cidade";
-    document.getElementById("sca-alvo-label").innerText = cidade ? "Cidade" : "Cluster";
-    const sel = document.getElementById("sca-alvo");
+    document.getElementById("sca-alvo-label").innerText = cidade ? "Cidade" : "Clusters";
+    const sel   = document.getElementById("sca-alvo");
+    const multi = document.getElementById("sca-multi");
     const lista = cidade ? _scaOpcoes.cidades : _scaOpcoes.clusters;
+    _scaSelecionados = [];
+
+    sel.style.display   = cidade ? "" : "none";
+    multi.style.display = cidade ? "none" : "";
 
     // Os dois lados mostram o tamanho do trabalho: quantos pedidos naquela cidade, quantos
     // pacotes naquele cluster. Só entra na lista quem tem o que conferir.
-    sel.innerHTML = `<option value="">Selecione...</option>` + lista.map(o => {
-        const valor = cidade ? o.cidade : o.cluster;
-        const qtd   = cidade ? `${o.pedidos} pedido${o.pedidos !== 1 ? "s" : ""}`
-                             : `${o.pacotes} pacote${o.pacotes !== 1 ? "s" : ""}`;
-        return `<option value="${_scaEsc(valor)}">${_scaEsc(valor)} — ${qtd}</option>`;
-    }).join("");
+    if (cidade) {
+        sel.innerHTML = `<option value="">Selecione...</option>` + lista.map(o =>
+            `<option value="${_scaEsc(o.cidade)}">${_scaEsc(o.cidade)} — ${o.pedidos} pedido${o.pedidos !== 1 ? "s" : ""}</option>`).join("");
+    } else {
+        multi.innerHTML = lista.length ? `
+            <div class="sca-multi-acoes">
+                <button type="button" onclick="_scaMarcarTodos(true)">Marcar todos</button>
+                <button type="button" onclick="_scaMarcarTodos(false)">Limpar</button>
+            </div>` + lista.map(o => `
+            <label class="sca-multi-item" data-cluster="${_scaEsc(o.cluster)}">
+                <input type="checkbox" value="${_scaEsc(o.cluster)}" onchange="_scaAlvoMudou()">
+                <span>${_scaEsc(o.cluster)}</span>
+                <span class="sca-multi-qtd">${o.pacotes} pacote${o.pacotes !== 1 ? "s" : ""}</span>
+            </label>`).join("") : "";
+    }
 
     document.getElementById("sca-dica").innerText = lista.length
         ? (cidade
             ? "A cidade de cada pedido vem do CEP, cruzado com a planilha de CEPs."
-            : "O cluster vem da AT exportada da sua estação.")
+            : "Marque um ou mais clusters — a conferência aceita todos de uma vez.")
         : (cidade
             ? "Nenhum pedido com cidade identificada. Alimente Pedidos pesquisados primeiro."
             : "Nenhum cluster na AT. Alimente a AT Exportada primeiro.");
+    _scaAlvoMudou();
+}
+
+function _scaMarcarTodos(marcar) {
+    document.querySelectorAll("#sca-multi input[type=checkbox]").forEach(c => { c.checked = marcar; });
+    _scaAlvoMudou();
 }
 
 function _scaAlvoMudou() {
-    const v = document.getElementById("sca-alvo").value;
-    document.getElementById("sca-btn-comecar").style.display = v ? "" : "none";
+    if (_scaTipoAtual === "cidade") {
+        const v = document.getElementById("sca-alvo").value;
+        _scaSelecionados = v ? [v] : [];
+    } else {
+        _scaSelecionados = [...document.querySelectorAll("#sca-multi input[type=checkbox]")]
+            .filter(c => c.checked).map(c => c.value);
+        document.querySelectorAll("#sca-multi .sca-multi-item").forEach(l =>
+            l.classList.toggle("marcado", _scaSelecionados.includes(l.dataset.cluster)));
+    }
+    const btn = document.getElementById("sca-btn-comecar");
+    btn.style.display = _scaSelecionados.length ? "" : "none";
+    // O botão diz quantos vão entrar: com vários marcados, "Começar" sozinho não deixaria
+    // claro se a conferência é de um ou de todos.
+    btn.textContent = _scaSelecionados.length > 1
+        ? `Começar conferência (${_scaSelecionados.length} clusters)`
+        : "Começar conferência";
 }
 
 function _scaComecar() {
-    const alvo = document.getElementById("sca-alvo").value;
-    if (!_scaTipoAtual || !alvo) return;
+    if (!_scaTipoAtual || !_scaSelecionados.length) return;
     const btn = document.getElementById("sca-btn-comecar");
+    const rotulo = btn.textContent;
     btn.disabled = true;
     btn.textContent = "Abrindo...";
 
     fetch(`${API}/shopee/conferencia/atribuicoes/sessao`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: _scaTipoAtual, alvo })
+        body: JSON.stringify({ tipo: _scaTipoAtual, alvos: _scaSelecionados })
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
         btn.disabled = false;
-        btn.textContent = "Começar conferência";
+        btn.textContent = rotulo;
         if (!ok) return gcAlert(d.error || "Não foi possível abrir a conferência.");
         _scaSessao = d;
         _scaBipagens = [];
@@ -146,7 +184,7 @@ function _scaComecar() {
     })
     .catch(() => {
         btn.disabled = false;
-        btn.textContent = "Começar conferência";
+        btn.textContent = rotulo;
         gcAlert("Erro ao conectar com o servidor.");
     });
 }
@@ -482,15 +520,11 @@ function _scaRenderVisao(tipo) {
 }
 
 // Atalho da visão geral: já entra na conferência daquele grupo, sem passar pelo seletor.
+// Sempre um grupo só — quem quer vários marca na lista.
 function _scaComecarDaVisao(nome) {
     if (!_scaTipoAtual) _scaTipoAtual = "cluster";
-    const sel = document.getElementById("sca-alvo");
-    if (![...sel.options].some(o => o.value === nome)) {
-        sel.innerHTML += `<option value="${_scaEsc(nome)}">${_scaEsc(nome)}</option>`;
-    }
-    sel.value = nome;
+    _scaSelecionados = [nome];
     _scaPintarTipo();
-    _scaAlvoMudou();
     _scaComecar();
 }
 
