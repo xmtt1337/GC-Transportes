@@ -7,6 +7,8 @@ let _slhTos     = [];
 let _slhFora    = [];      // bipados que não estão em romaneiro nenhum
 let _slhFiltro  = "todas";
 let _slhPagina  = 1;
+let _slhDia     = "";      // dia da viagem em foco; "todas" = romaneiro inteiro
+let _slhDias    = [];      // dias que existem no romaneiro deste XPT
 const SLH_POR_PAGINA = 50;
 
 let _slhToAtual = null;    // { numero_to, linhas: [...] } do modal aberto
@@ -45,10 +47,16 @@ function _slhCarregar() {
     result.style.display = "none";
     document.getElementById("slh-resumo").innerHTML = "";
 
-    fetch(`${API}/shopee/conferencia/linehaul`, { headers: { "Authorization": "Bearer " + token } })
+    const qs = _slhDia ? `?dia=${encodeURIComponent(_slhDia)}` : "";
+    fetch(`${API}/shopee/conferencia/linehaul${qs}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(d => {
             if (d && d.error) { skFim(empty, d.error); return; }
+            // O servidor decide o dia da primeira carga (hoje, ou o mais recente que tem
+            // viagem) — a tela só passa a mandar depois que a pessoa escolhe.
+            _slhDia  = d.dia || "";
+            _slhDias = d.dias || [];
+            _slhRenderDias(d.hoje);
 
             // Cada XPT confere o seu: a tela é sempre de um polo só, e dizer qual evita
             // alguém achar que está vendo a carga inteira e cobrar viagem que não é dele.
@@ -65,7 +73,9 @@ function _slhCarregar() {
             _slhTos = (d && d.tos) || [];
             _slhForaTotal = (d && d.fora_da_lh) || 0;
             if (!_slhTos.length && !_slhForaTotal) {
-                skFim(empty, "Nenhuma viagem com destino a este XPT ainda. Alimente o Romaneiro Shopee primeiro.");
+                skFim(empty, _slhDias.length
+                    ? "Nenhuma viagem nesse dia."
+                    : "Nenhuma viagem com destino a este XPT ainda. Alimente o Romaneiro Shopee primeiro.");
                 _slhRenderResumo();
                 return;
             }
@@ -75,6 +85,32 @@ function _slhCarregar() {
             _slhRenderizar();
         })
         .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
+}
+
+// Barra dos dias. Só aparecem dias que têm viagem, então clicar nunca leva a uma tela
+// vazia — e "Todas" fica por último, pra quem precisa do romaneiro inteiro.
+function _slhRenderDias(hoje) {
+    const el = document.getElementById("slh-dias");
+    if (!_slhDias.length) { el.style.display = "none"; return; }
+    el.style.display = "";
+
+    const br = s => s ? s.split("-").reverse().join("/") : "";
+    const botao = (valor, rotulo, sub) => `
+        <button type="button" class="filtro-tab${_slhDia === valor ? " active" : ""}" onclick="_slhTrocarDia('${valor}')">
+            ${rotulo}${sub ? ` <span style="font-size:11px;color:#8494a9;font-weight:600">${sub}</span>` : ""}
+        </button>`;
+
+    // Até 8 dias na barra: mais que isso vira lista de rolagem e a data de hoje se perde.
+    el.innerHTML = _slhDias.slice(0, 8).map(d =>
+        botao(d.dia, d.dia === hoje ? "Hoje" : br(d.dia), `${d.tos} TO${d.tos !== 1 ? "s" : ""}`)
+    ).join("") + botao("todas", "Todas as datas", "");
+}
+
+function _slhTrocarDia(dia) {
+    _slhDia = dia;
+    _slhPagina = 1;
+    _slhFora = [];
+    _slhCarregar();
 }
 
 function _slhFaixa(d) {
@@ -102,9 +138,11 @@ function _slhRenderResumo() {
             <div class="paj-value"${cor ? ` style="color:${cor}"` : ""}>${valor}</div>
         </div>`;
 
+    const rotuloDia = !_slhDia || _slhDia === "todas" ? "todas as datas"
+                    : _slhDia.split("-").reverse().join("/");
     document.getElementById("slh-resumo").innerHTML =
         card("Recebido no total", `${pct}%`, `${recebidos.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}`, _slhCor(pct)) +
-        card("Viagens (TO)", _slhTos.length, `${completas} completa${completas !== 1 ? "s" : ""}`) +
+        card("Viagens (TO)", _slhTos.length, `${completas} completa${completas !== 1 ? "s" : ""} · ${rotuloDia}`) +
         card("Falta receber", (total - recebidos).toLocaleString("pt-BR"), "pacotes") +
         card("Fora da LH", _slhForaTotal, "bipados sem romaneiro", _slhForaTotal ? "#eab308" : null);
 }
