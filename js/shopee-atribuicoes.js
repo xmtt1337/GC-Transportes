@@ -288,8 +288,10 @@ function _scaRenderizar() {
     // Progresso do GRUPO, não da sessão: o que interessa é quanto do cluster/cidade já
     // passou, e "12 bipados" sozinho não diz se acabou.
     const conferidos = Math.max(0, _scaTotalGrupo - faltam);
-    const pct = _scaTotalGrupo ? Math.round((conferidos / _scaTotalGrupo) * 100) : null;
-    const pctFalta = pct === null ? null : 100 - pct;
+    // Cada lado sai da própria divisão, não de "100 menos o outro" — senão a correção de
+    // ponta feita num deles apareceria invertida no outro.
+    const pct = _scaPct(conferidos, _scaTotalGrupo);
+    const pctFalta = _scaPct(faltam, _scaTotalGrupo);
     _scaBarra(pct, pctFalta, conferidos, faltam);
 
     document.getElementById("sca-resumo").innerHTML =
@@ -298,7 +300,7 @@ function _scaRenderizar() {
         card("Grupo errado", div, "não são daqui", div ? "#ef4444" : null) +
         card("Sem dado", semD, "não deu pra conferir", semD ? "#eab308" : null) +
         card("Faltam bipar",
-             _scaFaltamCarregado ? `${faltam}${pctFalta !== null ? ` <span class="shr-pct">${pctFalta}%</span>` : ""}` : "—",
+             _scaFaltamCarregado ? `${faltam}${pctFalta !== null ? ` <span class="shr-pct">${_scaPctTexto(pctFalta)}</span>` : ""}` : "—",
              _scaTotalGrupo ? `de ${_scaTotalGrupo} no grupo` : "no grupo",
              faltam ? "#eab308" : (_scaFaltamCarregado ? "#22c55e" : null));
 
@@ -338,10 +340,25 @@ function _scaRenderizar() {
             total ? "Nada nesse filtro." : "Nenhum pacote bipado ainda."}</td></tr>`;
 }
 
-// Verde só em 100%: grupo em 99% ainda tem pacote pra achar, e pintar de verde faria
-// alguém parar de procurar.
+// Verde só em 100% de verdade: grupo em 99,6% ainda tem pacote pra achar, e pintar de
+// verde faria alguém parar de procurar.
 function _scaCorPct(pct) {
     return pct >= 100 ? "#22c55e" : pct > 0 ? "#eab308" : "#ef4444";
+}
+
+// Porcentagem que não mente nas pontas. Arredondar direto faz 2 de 455 virar "0%" (como
+// se nada tivesse sido feito) e 453 de 455 virar "100%" (como se tivesse acabado). Perto
+// de 0 e de 100 a casa decimal entra; no meio, inteiro basta.
+function _scaPct(parte, total) {
+    if (!total) return null;
+    const v = (parte / total) * 100;
+    if (v > 0 && v < 1)     return Math.round(v * 10) / 10;   // 0,4% em vez de 0%
+    if (v > 99 && v < 100)  return Math.round(v * 10) / 10;   // 99,6% em vez de 100%
+    return Math.round(v);
+}
+
+function _scaPctTexto(pct) {
+    return pct === null ? "—" : `${pct.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
 }
 
 // Barra de conclusão, acima do campo de bipagem. Mostra o quanto fechou e o quanto falta
@@ -352,13 +369,16 @@ function _scaBarra(pct, pctFalta, conferidos, faltam) {
     bloco.style.display = "";
     const cor = _scaCorPct(pct);
     const el = document.getElementById("sca-prog-pct");
-    el.innerText = `${pct}%`;
+    el.innerText = _scaPctTexto(pct);
     el.style.color = cor;
     document.getElementById("sca-prog-obs").innerText = faltam
-        ? `${conferidos} de ${_scaTotalGrupo} conferidos · faltam ${pctFalta}% (${faltam})`
+        ? `${conferidos} de ${_scaTotalGrupo} conferidos · faltam ${_scaPctTexto(pctFalta)} (${faltam})`
         : `${conferidos} de ${_scaTotalGrupo} conferidos · grupo completo`;
+    // A barra usa a fração real: com pouca coisa conferida ela mostra um fiapo em vez de
+    // sumir, que é o que confirma na tela que a bipagem está entrando.
     const barra = document.getElementById("sca-prog-barra");
-    barra.style.width = Math.min(100, pct) + "%";
+    const frac = _scaTotalGrupo ? (conferidos / _scaTotalGrupo) * 100 : 0;
+    barra.style.width = (conferidos && frac < 1 ? 1 : Math.min(100, frac)) + "%";
     barra.style.background = cor;
 }
 
@@ -406,22 +426,24 @@ function _scaRenderVisao(tipo) {
     // Total geral no cabeçalho: é a resposta pra "estamos perto de fechar o dia?".
     const total = _scaVisao.reduce((a, g) => a + g.total, 0);
     const conf  = _scaVisao.reduce((a, g) => a + g.conferidos, 0);
-    const pctGeral = total ? Math.round((conf / total) * 100) : 0;
+    const pctGeral = _scaPct(conf, total) ?? 0;
     const completos = _scaVisao.filter(g => g.conferidos >= g.total).length;
     document.getElementById("sca-visao-obs").innerHTML =
-        `<strong style="color:${_scaCorPct(pctGeral)}">${pctGeral}%</strong> no total · ${conf} de ${total} · ${completos} de ${_scaVisao.length} fechado${completos !== 1 ? "s" : ""}`;
+        `<strong style="color:${_scaCorPct(pctGeral)}">${_scaPctTexto(pctGeral)}</strong> no total · ${conf} de ${total} · ${completos} de ${_scaVisao.length} fechado${completos !== 1 ? "s" : ""}`;
 
     document.getElementById("sca-visao-tbody").innerHTML = _scaVisao.map(g => {
-        const pct = g.total ? Math.round((g.conferidos / g.total) * 100) : 0;
+        const pct = _scaPct(g.conferidos, g.total) ?? 0;
         const falta = g.total - g.conferidos;
+        const pctFalta = _scaPct(falta, g.total);
         const cor = _scaCorPct(pct);
+        const frac = g.total ? (g.conferidos / g.total) * 100 : 0;
         const nomeEsc = String(g.grupo || "").replace(/'/g, "\\'");
         return `
         <tr>
             <td data-label="${tipo === "cidade" ? "Cidade" : "Cluster"}" style="font-weight:700;color:#e2e8f0">${_scaEsc(g.grupo)}</td>
             <td data-label="Conclusão" style="min-width:150px">
-                <div class="slh-pct" style="color:${cor}">${pct}%${falta ? ` <span style="font-size:11px;font-weight:600;color:#8494a9">falta ${100 - pct}%</span>` : ""}</div>
-                <div class="slh-barra"><div class="slh-barra-fill" style="width:${Math.min(100, pct)}%;background:${cor}"></div></div>
+                <div class="slh-pct" style="color:${cor}">${_scaPctTexto(pct)}${falta ? ` <span style="font-size:11px;font-weight:600;color:#8494a9">falta ${_scaPctTexto(pctFalta)}</span>` : ""}</div>
+                <div class="slh-barra"><div class="slh-barra-fill" style="width:${g.conferidos && frac < 1 ? 1 : Math.min(100, frac)}%;background:${cor}"></div></div>
             </td>
             <td data-label="Total" style="font-variant-numeric:tabular-nums">${g.total}</td>
             <td data-label="Conferidos" style="font-variant-numeric:tabular-nums;color:#22c55e">${g.conferidos}</td>
