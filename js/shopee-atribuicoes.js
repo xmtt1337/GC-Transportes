@@ -289,7 +289,10 @@ function _scaBipar() {
                 _scaEsc(d.status_pedido) || "—"}</strong> — ainda não foi recebido no hub.`, "aviso");
         } else if (d.resultado === "ok") {
             _gcBeepSucesso(); _scaFlash("ok");
-            _scaMsg(`✓ <strong>${_scaEsc(d.codigo)}</strong> confere com <strong>${_scaEsc(d.esperado)}</strong>.`, "ok");
+            // O detalhe só vem preenchido quando o CEP está em mais de uma cidade — nesse
+            // caso o bipe confere, mas a pessoa precisa saber que a planilha está ambígua.
+            _scaMsg(`✓ <strong>${_scaEsc(d.codigo)}</strong> confere com <strong>${_scaEsc(d.esperado)}</strong>.${
+                d.detalhe ? ` <span style="color:#eab308">${_scaEsc(d.detalhe)}</span>` : ""}`, "ok");
         } else {
             // Divergência e "não encontrado" apitam igual: os dois param a esteira.
             _gcBeepErro(); _scaFlash("err");
@@ -551,7 +554,10 @@ function _scaRenderFaltantes() {
         <tr>
             <td data-label="Código" style="font-family:monospace;font-weight:700;color:#e2e8f0">${_scaEsc(f.codigo)}</td>
             <td data-label="Comprador">${_scaEsc(f.buyer_nome) || "—"}</td>
-            <td data-label="CEP" style="color:#8494a9">${_scaEsc(f.zipcode_name) || "—"}</td>
+            <td data-label="CEP" style="color:#8494a9">${_scaEsc(f.zipcode_name) || "—"}
+                ${f.qtd_cidades > 1
+                    ? `<div style="font-size:11px;color:#eab308;font-weight:600" title="Esse CEP está cadastrado em mais de uma cidade na planilha">⚠ ${_scaEsc(f.cidades_cep)}</div>`
+                    : f.cidade_cep ? `<div style="font-size:11px;color:#8494a9">${_scaEsc(f.cidade_cep)}</div>` : ""}</td>
             <td data-label="Motorista">${_scaEsc(f.driver_nome) || "—"}</td>
             <td data-label="Status" style="color:#8494a9">${_scaEsc(f.status) || "—"}</td>
         </tr>` : `
