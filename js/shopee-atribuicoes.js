@@ -137,6 +137,8 @@ function _scaComecar() {
         _scaSessao = d;
         _scaBipagens = [];
         _scaFiltroAtual = "todos";
+        // Conferência já aberta é retomada, não recomeçada — carrega o que já foi bipado.
+        if (d.reaproveitada) return _scaVerSessao(d.id, true);
         _scaAbrirSessao();
     })
     .catch(() => {
@@ -591,7 +593,7 @@ function _scaCarregarHistorico() {
         .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
 }
 
-function _scaVerSessao(id) {
+function _scaVerSessao(id, retomada) {
     fetch(`${API}/shopee/conferencia/atribuicoes/sessao/${id}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(d => {
@@ -600,6 +602,12 @@ function _scaVerSessao(id) {
             _scaBipagens = d.bipagens || [];
             _scaFiltroAtual = "todos";
             _scaAbrirSessao();
+            // Deixa claro que não começou do zero: os números já vêm preenchidos, e sem
+            // aviso pareceria que a conferência anterior sumiu.
+            if (retomada && _scaBipagens.length) {
+                _scaMsg(`Continuando a conferência de <strong>${_scaEsc(d.sessao.alvo)}</strong> que já estava aberta — ${
+                    _scaBipagens.length} pacote${_scaBipagens.length !== 1 ? "s" : ""} já bipado${_scaBipagens.length !== 1 ? "s" : ""}.`, "aviso");
+            }
         })
         .catch(() => gcAlert("Erro ao abrir a conferência."));
 }
