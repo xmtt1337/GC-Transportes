@@ -98,10 +98,11 @@ function _scaPreencherAlvo() {
     const sel = document.getElementById("sca-alvo");
     const lista = cidade ? _scaOpcoes.cidades : _scaOpcoes.clusters;
 
+    // No cluster a quantidade de pacotes diz o tamanho do trabalho. Na cidade, o número de
+    // CEPs não diz nada sobre isso — a lista fica só com o nome.
     sel.innerHTML = `<option value="">Selecione...</option>` + lista.map(o => {
         const valor = cidade ? o.cidade : o.cluster;
-        const qtd   = cidade ? `${o.ceps} CEPs` : `${o.pacotes} pacotes`;
-        return `<option value="${_scaEsc(valor)}">${_scaEsc(valor)} — ${qtd}</option>`;
+        return `<option value="${_scaEsc(valor)}">${_scaEsc(valor)}${cidade ? "" : ` — ${o.pacotes} pacotes`}</option>`;
     }).join("");
 
     document.getElementById("sca-dica").innerText = lista.length
