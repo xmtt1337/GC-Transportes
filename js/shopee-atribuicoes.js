@@ -243,14 +243,24 @@ function _scaBipar() {
             return _scaMsg(_scaEsc(d.error) || "Erro ao bipar.", "erro");
         }
         const info = SCA_RESULTADOS[d.resultado] || { rotulo: d.resultado, cor: "#eab308" };
-        if (d.resultado === "ok") {
+        if (d.resultado === "ok" && d.status_ok === false) {
+            // Cidade certa, mas o pacote não deu entrada no hub. Apita como erro porque
+            // também para a esteira — só que o motivo é outro, e a mensagem diz qual.
+            _gcBeepErro(); _scaFlash("err");
+            _scaMsg(`⚠ <strong>${_scaEsc(d.codigo)}</strong> é de ${_scaEsc(d.esperado)}, mas o status é <strong>${
+                _scaEsc(d.status_pedido) || "—"}</strong> — ainda não foi recebido no hub.`, "aviso");
+        } else if (d.resultado === "ok") {
             _gcBeepSucesso(); _scaFlash("ok");
             _scaMsg(`✓ <strong>${_scaEsc(d.codigo)}</strong> confere com <strong>${_scaEsc(d.esperado)}</strong>.`, "ok");
         } else {
             // Divergência e "não encontrado" apitam igual: os dois param a esteira.
             _gcBeepErro(); _scaFlash("err");
+            // Divergência de grupo é o problema principal; o status entra como complemento
+            // quando também estiver errado, pra pessoa não descobrir isso depois.
+            const extraStatus = d.status_ok === false
+                ? ` E o status é <strong>${_scaEsc(d.status_pedido) || "—"}</strong>, não recebido no hub.` : "";
             _scaMsg(d.resultado === "divergente"
-                ? `⚠ <strong>${_scaEsc(d.codigo)}</strong> é de <strong>${_scaEsc(d.encontrado)}</strong>, não de ${_scaEsc(d.esperado)}.`
+                ? `⚠ <strong>${_scaEsc(d.codigo)}</strong> é de <strong>${_scaEsc(d.encontrado)}</strong>, não de ${_scaEsc(d.esperado)}.${extraStatus}`
                 : `⚠ <strong>${_scaEsc(d.codigo)}</strong> — ${_scaEsc(d.detalhe || info.rotulo)}`,
                 d.resultado === "divergente" ? "erro" : "aviso");
         }
@@ -289,6 +299,9 @@ function _scaRenderizar() {
             ${sub ? `<div class="paj-sublabel">${sub}</div>` : ""}
             <div class="paj-value"${cor ? ` style="color:${cor}"` : ""}>${valor}</div>
         </div>`;
+    // Pacote que chegou ao grupo certo mas não deu entrada no hub. Independe do resultado
+    // da cidade — pode estar no grupo certo e ainda assim ser anomalia.
+    const statusPend = _scaBipagens.filter(b => b.status_ok === false).length;
     const faltam = _scaFaltantes.length;
     // Progresso do GRUPO, não da sessão: o que interessa é quanto do cluster/cidade já
     // passou, e "12 bipados" sozinho não diz se acabou.
@@ -304,6 +317,7 @@ function _scaRenderizar() {
         card("Conferem", ok, "no grupo certo", ok ? "#22c55e" : null) +
         card("Grupo errado", div, "não são daqui", div ? "#ef4444" : null) +
         card("Sem dado", semD, "não deu pra conferir", semD ? "#eab308" : null) +
+        card("Status pendente", statusPend, "não recebidos no hub", statusPend ? "#eab308" : null) +
         card("Faltam bipar",
              _scaFaltamCarregado ? `${faltam}${pctFalta !== null ? ` <span class="shr-pct">${_scaPctTexto(pctFalta)}</span>` : ""}` : "—",
              _scaTotalGrupo ? `de ${_scaTotalGrupo} no grupo` : "no grupo",
@@ -315,7 +329,8 @@ function _scaRenderizar() {
     if (abas[0]) abas[0].innerText = `Todos ${total}`;
     if (abas[1]) abas[1].innerText = `Divergentes ${div}`;
     if (abas[2]) abas[2].innerText = `Sem dado ${semD}`;
-    if (abas[3]) abas[3].innerText = `Faltam bipar${_scaFaltamCarregado ? " " + faltam : ""}`;
+    if (abas[3]) abas[3].innerText = `Status pendente ${statusPend}`;
+    if (abas[4]) abas[4].innerText = `Faltam bipar${_scaFaltamCarregado ? " " + faltam : ""}`;
 
     const btnCopiar = document.getElementById("sca-btn-copiar");
     if (btnCopiar) btnCopiar.textContent = _scaFiltroAtual === "faltam" ? "Copiar faltantes" : "Copiar divergentes";
@@ -328,13 +343,21 @@ function _scaRenderizar() {
     let lista = _scaBipagens;
     if (_scaFiltroAtual === "divergente") lista = lista.filter(b => b.resultado === "divergente");
     if (_scaFiltroAtual === "sem_dado")   lista = lista.filter(b => !["ok", "divergente"].includes(b.resultado));
+    if (_scaFiltroAtual === "status")     lista = lista.filter(b => b.status_ok === false);
 
     document.getElementById("sca-tbody").innerHTML = lista.length ? lista.map(b => {
         const info = SCA_RESULTADOS[b.resultado] || { rotulo: b.resultado, cor: "#eab308" };
+        // Código em amarelo quando o pedido não deu entrada no hub — a cor é do CÓDIGO, e
+        // não da linha, porque a linha já usa cor pra dizer se o grupo está certo.
+        const statusRuim = b.status_ok === false;
+        const apoio = [
+            b.cep ? `CEP ${_scaEsc(b.cep)}` : "",
+            b.status_pedido ? `<span${statusRuim ? ' style="color:#eab308;font-weight:700"' : ""}>${_scaEsc(b.status_pedido)}</span>` : "",
+        ].filter(Boolean).join(" · ");
         return `
         <tr${b.resultado === "divergente" ? ' style="background:rgba(239,68,68,0.06)"' : ""}>
-            <td data-label="Código" style="font-family:monospace;font-weight:700;color:#e2e8f0">${_scaEsc(b.codigo)}
-                ${b.cep ? `<div style="font-size:11px;color:#8494a9;font-family:'Inter',sans-serif">CEP ${_scaEsc(b.cep)}</div>` : ""}</td>
+            <td data-label="Código" style="font-family:monospace;font-weight:700;color:${statusRuim ? "#eab308" : "#e2e8f0"}">${_scaEsc(b.codigo)}
+                ${apoio ? `<div style="font-size:11px;color:#8494a9;font-family:'Inter',sans-serif;font-weight:400">${apoio}</div>` : ""}</td>
             <td data-label="Resultado"><span style="color:${info.cor};font-weight:700">${info.rotulo}</span></td>
             <td data-label="Esperado" style="color:#8494a9">${_scaEsc(b.esperado) || "—"}</td>
             <td data-label="Encontrado" style="color:${b.resultado === "divergente" ? "#ef4444" : "#8494a9"};font-weight:${b.resultado === "divergente" ? 700 : 400}">${_scaEsc(b.encontrado) || "—"}</td>
