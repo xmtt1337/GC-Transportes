@@ -548,6 +548,118 @@ function _scaEncerrar() {
     );
 }
 
+// ── Filtro do histórico: período e busca ──
+// Mesmo calendário de intervalo das outras telas. Sem modo "um dia" separado: clicar numa
+// data só e aplicar já é um dia, porque de e até saem iguais.
+const SCA_CAL_DOW   = ["D", "S", "T", "Q", "Q", "S", "S"];
+const SCA_CAL_MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                       "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+let _scaHistDe = "", _scaHistAte = "", _scaHistBuscaTimer = null;
+let _scaCalIni = null, _scaCalFim = null, _scaCalMes = null;
+
+const _scaFmtData   = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const _scaParseData = s => { const [a, m, d] = s.split("-").map(Number); return new Date(a, m - 1, d); };
+const _scaDataBr    = s => s ? s.split("-").reverse().join("/") : "";
+
+function _scaHistAbrirCal() {
+    const cal = document.getElementById("sca-hist-cal");
+    const abrir = cal.style.display === "none";
+    cal.style.display = abrir ? "" : "none";
+    if (!abrir) return;
+    _scaCalIni = _scaHistDe ? _scaParseData(_scaHistDe) : null;
+    _scaCalFim = _scaHistAte ? _scaParseData(_scaHistAte) : null;
+    _scaCalMes = new Date(_scaCalIni || new Date());
+    _scaCalMes.setDate(1);
+    _scaCalRender();
+}
+
+function _scaCalMesAnterior() { _scaCalMes.setMonth(_scaCalMes.getMonth() - 1); _scaCalRender(); }
+function _scaCalMesProximo()  { _scaCalMes.setMonth(_scaCalMes.getMonth() + 1); _scaCalRender(); }
+
+function _scaCalClick(dataStr) {
+    const d = _scaParseData(dataStr);
+    if (!_scaCalIni || _scaCalFim) { _scaCalIni = d; _scaCalFim = null; }
+    else if (d < _scaCalIni)       { _scaCalFim = _scaCalIni; _scaCalIni = d; }
+    else                           { _scaCalFim = d; }
+    _scaCalRender();
+    // Com as duas pontas escolhidas já aplica: obrigar um "confirmar" seria um clique a
+    // mais pra fazer o que a pessoa acabou de dizer que queria.
+    if (_scaCalIni && _scaCalFim) _scaHistAplicarPeriodo();
+}
+
+function _scaCalRender() {
+    const ano = _scaCalMes.getFullYear(), mesIdx = _scaCalMes.getMonth();
+    const primeiro = new Date(ano, mesIdx, 1).getDay();
+    const dias = new Date(ano, mesIdx + 1, 0).getDate();
+    const celIni = new Date(ano, mesIdx, 1 - primeiro);
+    const total = Math.ceil((primeiro + dias) / 7) * 7;
+    const ini = _scaCalIni, fim = _scaCalFim;
+
+    let grid = "";
+    for (let i = 0; i < total; i++) {
+        const dia = new Date(celIni);
+        dia.setDate(celIni.getDate() + i);
+        let cls = "ped-cal-day" + (dia.getMonth() !== mesIdx ? " outro-mes" : "");
+        if (ini && fim) {
+            const t = dia.getTime();
+            if (t === ini.getTime() && t === fim.getTime()) cls += " intervalo-unico";
+            else if (t === ini.getTime()) cls += " intervalo-inicio";
+            else if (t === fim.getTime()) cls += " intervalo-fim";
+            else if (t > ini.getTime() && t < fim.getTime()) cls += " no-intervalo";
+        } else if (ini && dia.getTime() === ini.getTime()) cls += " intervalo-unico";
+        grid += `<div class="${cls}" onclick="_scaCalClick('${_scaFmtData(dia)}')">${dia.getDate()}</div>`;
+    }
+    const texto = !ini ? "Clique na data"
+        : !fim ? `${ini.toLocaleDateString("pt-BR")} — clique de novo para um período`
+        : ini.getTime() === fim.getTime() ? ini.toLocaleDateString("pt-BR")
+        : `${ini.toLocaleDateString("pt-BR")} — ${fim.toLocaleDateString("pt-BR")}`;
+
+    document.getElementById("sca-hist-cal").innerHTML = `
+        <div class="ped-cal-header">
+            <button type="button" class="ped-cal-nav" onclick="_scaCalMesAnterior()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span>${SCA_CAL_MESES[mesIdx]} ${ano}</span>
+            <button type="button" class="ped-cal-nav" onclick="_scaCalMesProximo()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+        </div>
+        <div class="ped-cal-grid">${SCA_CAL_DOW.map(d => `<div class="ped-cal-dow">${d}</div>`).join("")}${grid}</div>
+        <div class="ped-cal-footer"><span class="ped-cal-range-txt">${texto}</span></div>`;
+}
+
+function _scaHistAplicarPeriodo() {
+    _scaHistDe  = _scaCalIni ? _scaFmtData(_scaCalIni) : "";
+    _scaHistAte = _scaFmtData(_scaCalFim || _scaCalIni);
+    document.getElementById("sca-hist-cal").style.display = "none";
+    _scaPintarFiltroHist();
+    _scaCarregarHistorico();
+}
+
+function _scaHistLimpar() {
+    _scaHistDe = ""; _scaHistAte = "";
+    _scaCalIni = null; _scaCalFim = null;
+    document.getElementById("sca-hist-busca").value = "";
+    document.getElementById("sca-hist-cal").style.display = "none";
+    _scaPintarFiltroHist();
+    _scaCarregarHistorico();
+}
+
+function _scaPintarFiltroHist() {
+    const btn = document.getElementById("sca-hist-periodo");
+    btn.textContent = _scaHistDe
+        ? (_scaHistDe === _scaHistAte ? _scaDataBr(_scaHistDe) : `${_scaDataBr(_scaHistDe)} — ${_scaDataBr(_scaHistAte)}`)
+        : "Qualquer data";
+    const temFiltro = !!_scaHistDe || !!(document.getElementById("sca-hist-busca")?.value || "").trim();
+    document.getElementById("sca-hist-limpar").style.display = temFiltro ? "" : "none";
+}
+
+function _scaHistBuscar() {
+    // Espera a digitação parar: a busca é no servidor.
+    clearTimeout(_scaHistBuscaTimer);
+    _scaHistBuscaTimer = setTimeout(() => { _scaPintarFiltroHist(); _scaCarregarHistorico(); }, 350);
+}
+
 // ── Conferências anteriores ──
 function _scaCarregarHistorico() {
     const empty  = document.getElementById("sca-hist-empty");
@@ -556,10 +668,21 @@ function _scaCarregarHistorico() {
     empty.style.display = "";
     result.style.display = "none";
 
-    fetch(`${API}/shopee/conferencia/atribuicoes/sessoes`, { headers: { "Authorization": "Bearer " + token } })
+    const qs = new URLSearchParams();
+    if (_scaHistDe)  qs.set("de", _scaHistDe);
+    if (_scaHistAte) qs.set("ate", _scaHistAte);
+    const busca = (document.getElementById("sca-hist-busca")?.value || "").trim();
+    if (busca) qs.set("busca", busca);
+
+    fetch(`${API}/shopee/conferencia/atribuicoes/sessoes?${qs}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(rows => {
-            if (!Array.isArray(rows) || !rows.length) { skFim(empty, "Nenhuma conferência ainda."); return; }
+            if (!Array.isArray(rows) || !rows.length) {
+                skFim(empty, (_scaHistDe || busca)
+                    ? "Nenhuma conferência nesse filtro."
+                    : "Nenhuma conferência ainda.");
+                return;
+            }
             empty.style.display = "none";
             result.style.display = "";
             document.getElementById("sca-hist-tbody").innerHTML = rows.map(s => {
