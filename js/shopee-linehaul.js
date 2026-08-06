@@ -29,9 +29,17 @@ function _slhEsc(txt) {
     return String(txt ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
-// Porcentagem exata, no formato do sistema (duas casas, menos nas pontas). Ver gcPct.
+// Porcentagem exata: duas casas sempre, menos em 0% e 100%. Definida aqui de propósito —
+// depender de função de outro arquivo deixa a tela refém do cache dele.
 function _slhPct(recebidos, total) {
-    return gcPct(recebidos, total) ?? 0;
+    return total ? (Number(recebidos) / Number(total)) * 100 : 0;
+}
+
+function _slhPctTexto(pct) {
+    if (pct === null || pct === undefined || isNaN(pct)) return "—";
+    if (pct >= 100) return "100%";
+    if (pct <= 0)   return "0%";
+    return pct.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
 }
 
 // Verde só quando fechou. Antes disso é âmbar, mesmo em 99% — TO quase completa ainda é
@@ -144,7 +152,7 @@ function _slhRenderResumo() {
     const rotuloDia = !_slhDia || _slhDia === "todas" ? "todos os romaneiros"
                     : "romaneiro de " + _slhDia.split("-").reverse().join("/");
     document.getElementById("slh-resumo").innerHTML =
-        card("Recebido no total", gcPctTexto(pct), `${recebidos.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}`, _slhCor(pct)) +
+        card("Recebido no total", _slhPctTexto(pct), `${recebidos.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}`, _slhCor(pct)) +
         card("Viagens (TO)", _slhTos.length, `${completas} completa${completas !== 1 ? "s" : ""} · ${rotuloDia}`) +
         card("Falta receber", (total - recebidos).toLocaleString("pt-BR"), "pacotes") +
         card("Fora da LH", _slhForaTotal, "bipados sem romaneiro", _slhForaTotal ? "#eab308" : null);
@@ -235,7 +243,7 @@ function _slhRenderizar() {
                 ${t.rota_lh ? `<div style="font-size:11px;color:#8494a9">${_slhEsc(t.rota_lh)}</div>` : ""}
             </td>
             <td data-label="% Recebido" style="min-width:140px">
-                <div class="slh-pct" style="color:${cor}">${gcPctTexto(pct)}</div>
+                <div class="slh-pct" style="color:${cor}">${_slhPctTexto(pct)}</div>
                 <div class="slh-barra"><div class="slh-barra-fill" style="width:${Math.min(100, pct)}%;background:${cor}"></div></div>
             </td>
             <td data-label="Total na LH" style="font-variant-numeric:tabular-nums">${t.total}</td>

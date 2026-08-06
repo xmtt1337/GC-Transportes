@@ -415,9 +415,21 @@ function _scaCorPct(pct) {
     return pct >= 100 ? "#22c55e" : pct > 0 ? "#eab308" : "#ef4444";
 }
 
-// Porcentagem exata, no formato do sistema (duas casas, menos nas pontas). Ver gcPct.
-const _scaPct = gcPct;
-const _scaPctTexto = gcPctTexto;
+// Porcentagem exata: duas casas sempre, menos em 0% e 100%, que não precisam. Arredondar
+// para inteiro escondia progresso real — 2 de 455 virava "0%".
+// Definida aqui, e não importada de outro arquivo: uma referência a função de fora no topo
+// do módulo derruba o arquivo inteiro se aquele outro estiver em cache antigo.
+function _scaPct(parte, total) {
+    if (!total) return null;
+    return (Number(parte) / Number(total)) * 100;
+}
+
+function _scaPctTexto(pct) {
+    if (pct === null || pct === undefined || isNaN(pct)) return "—";
+    if (pct >= 100) return "100%";
+    if (pct <= 0)   return "0%";
+    return pct.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+}
 
 // Barra de conclusão, acima do campo de bipagem. Mostra o quanto fechou e o quanto falta
 // pra 100% — os dois, porque a pergunta na esteira vem das duas formas.

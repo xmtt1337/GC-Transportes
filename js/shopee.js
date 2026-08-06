@@ -9,6 +9,15 @@ const SHR_CODIGO_RE = /^BR[A-Z0-9]{13}$/;
 
 // O código volta pra tela dentro de innerHTML; se vier torto do leitor, pode trazer
 // caractere que o navegador leria como marcação.
+// Porcentagem exata: duas casas, menos em 0% e 100%. Local pra nao depender do cache de
+// outro arquivo.
+function _shrPctTexto(pct) {
+    if (pct === null || pct === undefined || isNaN(pct)) return "—";
+    if (pct >= 100) return "100%";
+    if (pct <= 0)   return "0%";
+    return pct.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+}
+
 function _shrEsc(txt) {
     return String(txt || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
@@ -304,7 +313,7 @@ function _shrRenderizar() {
     // A lista já vem só do XPT da pessoa — o servidor filtra, então aqui não há o que
     // separar. O total é o do XPT dela, e o percentual é a fatia que ela bipou.
     const meus = _shrDados.filter(_shrEhMeu).length;
-    const pct  = gcPct(meus, _shrDados.length);
+    const pct  = _shrDados.length ? (meus / _shrDados.length) * 100 : null;
     const cidade = (_shrPoloAtual && _shrPoloAtual.label) || "";
 
     const card = (rotulo, valor, sub) => `
@@ -315,7 +324,7 @@ function _shrRenderizar() {
         </div>`;
     document.getElementById("shr-resumo").innerHTML =
         card("Recebidos hoje", _shrDados.length, cidade) +
-        card("Você recebeu", `${meus}${pct !== null ? ` <span class="shr-pct">${gcPctTexto(pct)}</span>` : ""}`, "do total de hoje");
+        card("Você recebeu", `${meus}${pct !== null ? ` <span class="shr-pct">${_shrPctTexto(pct)}</span>` : ""}`, "do total de hoje");
 
     document.getElementById("shr-lista-titulo").innerText =
         _shrXpt ? `Recebidos hoje · ${cidade}` : "Recebidos hoje";
