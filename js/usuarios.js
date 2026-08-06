@@ -23,6 +23,7 @@ function _carregarUsuarios() {
         empty.style.display = "none";
         res.style.display = "";
         const podeFaltante = ["admin", "dev", "sac"].includes((window._gcUser && window._gcUser.role) || "");
+        const podeNF       = ["admin", "dev", "finance"].includes((window._gcUser && window._gcUser.role) || "");
         document.getElementById("adm-usr-tbody").innerHTML = users.map(u => `
             <tr>
                 <td>
@@ -34,7 +35,11 @@ function _carregarUsuarios() {
                         </div>
                     </div>
                 </td>
-                <td><span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span></td>
+                <td>
+                    <span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span>
+                    ${u.senha_temporaria ? `<span class="adm-usr-badge senha-temp" title="Ainda não trocou a senha temporária — não consegue entrar até trocar">Senha pendente</span>` : ""}
+                    ${u.isento_nf ? `<span class="adm-usr-badge nf-isento" title="Vê os fechamentos mesmo com nota fiscal pendente da quinzena anterior">Sem trava de NF</span>` : ""}
+                </td>
                 <td>
                     <div class="adm-usr-editar-wrap">
                         <button class="adm-usr-action senha" onclick="_toggleMenuUsuario(event,${u.id})">Editar ▾</button>
@@ -42,6 +47,7 @@ function _carregarUsuarios() {
                             <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleAtivoUsuario(${u.id},${!u.active})">${u.active ? 'Inativar' : 'Ativar'}</button>
                             <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_resetarSenha(${u.id},'${u.username.replace(/'/g,"\\'")}')">Resetar senha</button>
                             ${podeFaltante ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleFaltante(${u.id},${!u.pode_pacote_faltante})">${u.pode_pacote_faltante ? 'Desativar' : 'Ativar'} formulário de faltante</button>` : ""}
+                            ${podeNF ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleIsentoNF(${u.id},${!u.isento_nf},'${(u.name || u.username).replace(/'/g,"\\'")}')">${u.isento_nf ? 'Voltar a exigir NF' : 'Liberar fechamento sem NF'}</button>` : ""}
                         </div>
                     </div>
                 </td>
@@ -159,6 +165,27 @@ function _toggleAtivoUsuario(id, active, aoTerminar) {
         if (data.error) { gcAlert(data.error); return; }
         (aoTerminar || _carregarUsuarios)();
     }).catch(() => gcAlert("Erro ao atualizar usuário."));
+}
+
+// Liberar cobra confirmação; voltar a exigir não. Liberar afrouxa uma regra de cobrança, e
+// é o tipo de clique que passa batido no menu se não avisar o que está fazendo.
+function _toggleIsentoNF(id, valor, nome) {
+    const aplicar = () => {
+        const tok = localStorage.getItem("token");
+        fetch(`${API}/admin/usuarios/${id}`, {
+            method: "PATCH",
+            headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
+            body: JSON.stringify({ isento_nf: valor })
+        }).then(r => r.json())
+        .then(data => {
+            if (data.error) { gcAlert(data.error); return; }
+            _carregarUsuarios();
+        }).catch(() => gcAlert("Erro ao atualizar a permissão."));
+    };
+    if (!valor) return aplicar();
+    gcConfirm(
+        `Liberar "${nome}" do bloqueio de nota fiscal?\n\nEle passa a ver os fechamentos mesmo com a NF da quinzena anterior pendente, com valor divergente ou com tomador errado.`,
+        aplicar, "Liberar fechamento sem NF", "Liberar");
 }
 
 function _toggleFaltante(id, valor) {
