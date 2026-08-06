@@ -615,6 +615,17 @@ function mostrarErro(msg) {
     document.getElementById("erroMsg").classList.add("show");
 }
 
+// O modelo do celular não vem no User-Agent — o Chrome congelou isso por privacidade. Vem
+// daqui, e só em navegador Chromium: iPhone não entrega modelo em lugar nenhum, porque o
+// Safari não tem esta API e o User-Agent do iOS diz apenas "iPhone".
+async function _dicaAparelho() {
+    if (!navigator.userAgentData) return null;
+    try {
+        const hi = await navigator.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]);
+        return { model: hi.model || null, platform: hi.platform || null, platformVersion: hi.platformVersion || null };
+    } catch { return null; }
+}
+
 async function login() {
     document.getElementById("erroMsg").classList.remove("show");
     const username = document.getElementById("usuario").value.trim();
@@ -630,7 +641,7 @@ async function login() {
         const res  = await fetch("https://sistema-backend-i4uh.onrender.com/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username, password, client_hints: await _dicaAparelho() })
         });
         const data = await res.json();
         if (data.success) {
@@ -869,7 +880,7 @@ async function _definirSenha() {
         const entrar = await fetch("https://sistema-backend-i4uh.onrender.com/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: _senhaUsuario, password: nova })
+            body: JSON.stringify({ username: _senhaUsuario, password: nova, client_hints: await _dicaAparelho() })
         });
         const d2 = await entrar.json();
         if (d2 && d2.token) {

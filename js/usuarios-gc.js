@@ -71,9 +71,10 @@ function _carregarUsuariosGC() {
                 <td>
                     <div style="display:flex;align-items:center;gap:10px">
                         <div class="adm-usr-avatar">${(u.name || u.username).slice(0,2).toUpperCase()}</div>
-                        <div>
+                        <div style="min-width:0">
                             <div style="font-weight:600;color:#e2e8f0">${u.name || "—"}</div>
                             <div style="font-size:11px;color:#7b98b5;margin-top:2px">${['dev','finance','sac'].includes(u.role) ? '••••••' : u.username}</div>
+                            ${_aparelhoLinha(u)}
                         </div>
                     </div>
                 </td>
