@@ -392,6 +392,52 @@ body {
 <div class="login-right">
 
     <!-- PAINEL REDEFINIR SENHA (sobrepõe o formulário) -->
+    <!-- Troca obrigatória: a senha ainda é a temporária que o admin entregou. Não passa por
+         e-mail — quem prova identidade aqui é a senha atual, que a pessoa acabou de digitar. -->
+    <div class="reset-panel" id="senhaPanel">
+        <div class="reset-card">
+            <form autocomplete="off" onsubmit="_definirSenha(); return false;">
+
+                <button type="button" class="reset-back" onclick="_cancelarDefinirSenha()">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                    Voltar ao login
+                </button>
+
+                <div class="reset-icon-wrap">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+
+                <div class="form-eyebrow">Segurança</div>
+                <div class="form-title">Defina sua senha</div>
+                <div class="form-sub" id="senhaSub">Sua senha ainda é a temporária. Escolha uma nova para entrar.</div>
+
+                <div id="senhaErroMsg" class="erro-msg">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span id="senhaErroTexto"></span>
+                </div>
+
+                <div class="field">
+                    <label for="s-nova">Nova senha</label>
+                    <div class="input-wrap">
+                        <input type="password" id="s-nova" placeholder="Mínimo de 6 caracteres" autocomplete="new-password">
+                        <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="s-conf">Repita a nova senha</label>
+                    <div class="input-wrap">
+                        <input type="password" id="s-conf" placeholder="Digite de novo" autocomplete="new-password">
+                        <svg class="field-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                </div>
+
+                <button type="submit" class="login-btn" id="senhaBtn">Definir senha e entrar</button>
+
+            </form>
+        </div>
+    </div>
+
     <div class="reset-panel" id="resetPanel">
         <div class="reset-card">
             <form autocomplete="off" onsubmit="_resetSubmit(); return false;">
@@ -523,10 +569,11 @@ async function login() {
         });
         const data = await res.json();
         if (data.success) {
+            // Senha temporária não vem com token: o servidor só destrava depois da troca.
             if (data.require_password_change) {
                 btn.disabled = false;
                 btn.innerHTML = "Entrar";
-                abrirReset(true, username);
+                _abrirDefinirSenha(username, password, data.name);
                 return;
             }
             localStorage.setItem("token", data.token);
@@ -540,6 +587,74 @@ async function login() {
 
     btn.disabled = false;
     btn.innerHTML = "Entrar";
+}
+
+// ── Troca obrigatória da senha temporária ──
+// A senha atual fica só em memória: veio do campo do login que a pessoa acabou de preencher.
+let _senhaUsuario = "", _senhaAtual = "";
+
+function _abrirDefinirSenha(username, senhaAtual, nome) {
+    _senhaUsuario = username;
+    _senhaAtual   = senhaAtual;
+    document.getElementById("senhaPanel").classList.add("active");
+    document.getElementById("senhaErroMsg").classList.remove("show");
+    document.getElementById("s-nova").value = "";
+    document.getElementById("s-conf").value = "";
+    document.getElementById("senhaSub").innerText = nome
+        ? `${nome.split(" ")[0]}, sua senha ainda é a temporária. Escolha uma nova para entrar.`
+        : "Sua senha ainda é a temporária. Escolha uma nova para entrar.";
+    document.getElementById("s-nova").focus();
+}
+
+function _cancelarDefinirSenha() {
+    _senhaUsuario = _senhaAtual = "";
+    document.getElementById("senhaPanel").classList.remove("active");
+    document.getElementById("senha").value = "";
+}
+
+function _senhaErro(msg) {
+    document.getElementById("senhaErroTexto").innerText = msg;
+    document.getElementById("senhaErroMsg").classList.add("show");
+}
+
+async function _definirSenha() {
+    document.getElementById("senhaErroMsg").classList.remove("show");
+    const nova = document.getElementById("s-nova").value;
+    const conf = document.getElementById("s-conf").value;
+    if (nova.length < 6)  { _senhaErro("A senha nova deve ter pelo menos 6 caracteres."); return; }
+    if (nova !== conf)    { _senhaErro("As duas senhas não são iguais."); return; }
+    if (nova === _senhaAtual) { _senhaErro("A senha nova tem que ser diferente da temporária."); return; }
+
+    const btn = document.getElementById("senhaBtn");
+    btn.disabled = true;
+    btn.innerHTML = `<div class="spinner"></div> Salvando...`;
+    try {
+        const res = await fetch("https://sistema-backend-i4uh.onrender.com/minha-senha", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: _senhaUsuario, senha_atual: _senhaAtual, senha_nova: nova })
+        });
+        const data = await res.json();
+        if (!res.ok) { _senhaErro(data.error || "Não foi possível trocar a senha."); return; }
+        // Entra com a senha nova: o login agora devolve token, porque a conta destravou.
+        const entrar = await fetch("https://sistema-backend-i4uh.onrender.com/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: _senhaUsuario, password: nova })
+        });
+        const d2 = await entrar.json();
+        if (d2 && d2.token) {
+            localStorage.setItem("token", d2.token);
+            window.location.href = "index.html";
+            return;
+        }
+        _senhaErro("Senha alterada. Entre novamente com a senha nova.");
+    } catch {
+        _senhaErro("Erro ao conectar com o servidor.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = "Definir senha e entrar";
+    }
 }
 
 let _resetForcado = false;

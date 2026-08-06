@@ -100,6 +100,7 @@ function _salvarNovoMotorista() {
         }
         if (data.error) { erro.innerText = data.error; return; }
         document.getElementById("mnm-id-gerado").innerText = data.username;
+        document.getElementById("mnm-senha-gerada").innerText = data.senha_temporaria || "—";
         document.getElementById("mnm-copiado").innerText   = "";
         document.getElementById("mnm-form").style.display    = "none";
         document.getElementById("mnm-sucesso").style.display = "";
@@ -114,7 +115,16 @@ function _salvarNovoMotorista() {
 function _copiarIDMotorista() {
     const id = document.getElementById("mnm-id-gerado").innerText;
     navigator.clipboard.writeText(id).then(() => {
-        document.getElementById("mnm-copiado").innerText = "✓ Copiado!";
+        document.getElementById("mnm-copiado").innerText = "✓ ID copiado!";
+        setTimeout(() => { document.getElementById("mnm-copiado").innerText = ""; }, 2000);
+    });
+}
+
+function _copiarSenhaMotorista() {
+    const id    = document.getElementById("mnm-id-gerado").innerText;
+    const senha = document.getElementById("mnm-senha-gerada").innerText;
+    navigator.clipboard.writeText(`Usuário: ${id}\nSenha: ${senha}`).then(() => {
+        document.getElementById("mnm-copiado").innerText = "✓ Usuário e senha copiados!";
         setTimeout(() => { document.getElementById("mnm-copiado").innerText = ""; }, 2000);
     });
 }

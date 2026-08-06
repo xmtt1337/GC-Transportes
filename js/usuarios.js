@@ -100,6 +100,7 @@ function _salvarNovoEntregador() {
         }
         if (data.error) { erro.innerText = data.error; return; }
         document.getElementById("mne-id-gerado").innerText = data.username;
+        document.getElementById("mne-senha-gerada").innerText = data.senha_temporaria || "—";
         document.getElementById("mne-copiado").innerText   = "";
         document.getElementById("mne-form").style.display    = "none";
         document.getElementById("mne-sucesso").style.display = "";
@@ -114,13 +115,22 @@ function _salvarNovoEntregador() {
 function _copiarID() {
     const id = document.getElementById("mne-id-gerado").innerText;
     navigator.clipboard.writeText(id).then(() => {
-        document.getElementById("mne-copiado").innerText = "✓ Copiado!";
+        document.getElementById("mne-copiado").innerText = "✓ ID copiado!";
+        setTimeout(() => { document.getElementById("mne-copiado").innerText = ""; }, 2000);
+    });
+}
+
+function _copiarSenhaEntregador() {
+    const id    = document.getElementById("mne-id-gerado").innerText;
+    const senha = document.getElementById("mne-senha-gerada").innerText;
+    navigator.clipboard.writeText(`Usuário: ${id}\nSenha: ${senha}`).then(() => {
+        document.getElementById("mne-copiado").innerText = "✓ Usuário e senha copiados!";
         setTimeout(() => { document.getElementById("mne-copiado").innerText = ""; }, 2000);
     });
 }
 
 function _resetarTodasSenhas() {
-    gcConfirm("Resetar a senha de TODOS os entregadores para a senha padrão?\n\nEsta ação não pode ser desfeita.", () => {
+    gcConfirm("Gerar uma senha temporária nova para TODOS os entregadores?\n\nCada um recebe uma senha diferente, e todas aparecem uma única vez na tela seguinte. Quem não receber a sua fica sem entrar até você gerar de novo.", () => {
         const tok = localStorage.getItem("token");
         fetch(`${API}/admin/usuarios/reset-todas-senhas`, {
             method: "PUT",
@@ -128,21 +138,25 @@ function _resetarTodasSenhas() {
         }).then(r => r.json())
         .then(data => {
             if (data.error) { gcAlert(data.error); return; }
-            gcAlert(`Senhas resetadas com sucesso para ${data.total || "todos os"} entregadores.`);
+            if (!data.senhas || !data.senhas.length) return gcAlert("Nenhum entregador para resetar.");
+            gcSenhaGerada(data.senhas, `${data.senhas.length} senhas geradas`);
         }).catch(() => gcAlert("Erro ao resetar senhas."));
-    }, "Confirmar Reset em Massa", "Resetar Todas");
+    }, "Confirmar Reset em Massa", "Gerar todas");
 }
 
 function _resetarSenha(id, username) {
-    gcConfirm(`Resetar a senha de "${username}" para a senha padrão?`, () => {
+    gcConfirm(`Gerar uma senha temporária nova para "${username}"?\n\nA senha atual deixa de funcionar na hora, e você vai precisar entregar a nova para a pessoa.`, () => {
         const tok = localStorage.getItem("token");
         fetch(`${API}/admin/usuarios/${id}/reset-senha`, {
             method: "PUT",
             headers: { "Authorization": "Bearer " + tok }
         }).then(r => r.json())
-        .then(data => { if (data.error) gcAlert(data.error); })
+        .then(data => {
+            if (data.error) return gcAlert(data.error);
+            gcSenhaGerada({ username: data.username || username, name: data.name, senha_temporaria: data.senha_temporaria });
+        })
         .catch(() => gcAlert("Erro ao resetar senha."));
-    }, null, "Resetar");
+    }, null, "Gerar senha");
 }
 
 function _toggleAtivoUsuario(id, active, aoTerminar) {

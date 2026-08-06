@@ -2189,6 +2189,9 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .adm-usr-badge.operador   { color: #94a3b8; }
 .adm-usr-badge.ativo   { color: #22c55e; }
 .adm-usr-badge.inativo { color: #8494a9; }
+/* Quem ainda está na senha temporária não entra. Fica ao lado do "Ativo" porque a conta
+   está ativa mesmo — o que falta é a pessoa trocar a senha que o admin entregou. */
+.adm-usr-badge.senha-temp { color: #eab308; margin-left: 10px; font-size: 12px; }
 .adm-usr-action {
     padding: 5px 11px; border-radius: 8px; border: 1px solid; font-size: 11px; font-weight: 600;
     cursor: pointer; background: transparent; transition: opacity 0.2s; white-space: nowrap;

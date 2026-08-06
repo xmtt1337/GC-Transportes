@@ -86,7 +86,10 @@ function _carregarUsuariosGC() {
                         <option value=""${!u.polo ? " selected" : ""}>— sem polo —</option>
                     </select>
                 </td>
-                <td><span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span></td>
+                <td>
+                    <span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span>
+                    ${u.senha_temporaria ? `<span class="adm-usr-badge senha-temp" title="Ainda não trocou a senha temporária — não consegue entrar até trocar">Senha pendente</span>` : ""}
+                </td>
                 <td>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
                         <button class="adm-usr-action senha" onclick="_abrirEditarRoleGC(${u.id},'${u.role}','${nomeEsc}')">Editar Role</button>
@@ -146,6 +149,7 @@ function _salvarNovoUsuarioGC() {
         }
         if (data.error) { erro.innerText = data.error; return; }
         document.getElementById("ngc-id-gerado").innerText = data.username;
+        document.getElementById("ngc-senha-gerada").innerText = data.senha_temporaria || "—";
         document.getElementById("ngc-copiado").innerText   = "";
         document.getElementById("ngc-form").style.display    = "none";
         document.getElementById("ngc-sucesso").style.display = "";
@@ -160,7 +164,17 @@ function _salvarNovoUsuarioGC() {
 function _copiarIDGC() {
     const id = document.getElementById("ngc-id-gerado").innerText;
     navigator.clipboard.writeText(id).then(() => {
-        document.getElementById("ngc-copiado").innerText = "✓ Copiado!";
+        document.getElementById("ngc-copiado").innerText = "✓ ID copiado!";
+        setTimeout(() => { document.getElementById("ngc-copiado").innerText = ""; }, 2000);
+    });
+}
+
+function _copiarSenhaGC() {
+    // Copia usuário e senha juntos: separados, quem recebe no WhatsApp junta errado.
+    const id    = document.getElementById("ngc-id-gerado").innerText;
+    const senha = document.getElementById("ngc-senha-gerada").innerText;
+    navigator.clipboard.writeText(`Usuário: ${id}\nSenha: ${senha}`).then(() => {
+        document.getElementById("ngc-copiado").innerText = "✓ Usuário e senha copiados!";
         setTimeout(() => { document.getElementById("ngc-copiado").innerText = ""; }, 2000);
     });
 }
@@ -218,15 +232,18 @@ function _toggleAtivoGC(id, active) {
 }
 
 function _resetarSenhaGC(id, username) {
-    gcConfirm(`Resetar a senha de "${username}" para a senha padrão?`, () => {
+    gcConfirm(`Gerar uma senha temporária nova para "${username}"?\n\nA senha atual deixa de funcionar na hora, e você vai precisar entregar a nova para a pessoa.`, () => {
         const tok = localStorage.getItem("token");
         fetch(`${API}/admin/usuarios/${id}/reset-senha`, {
             method: "PUT",
             headers: { "Authorization": "Bearer " + tok }
         }).then(r => r.json())
-        .then(data => { if (data.error) gcAlert(data.error); else gcAlert("Senha resetada com sucesso."); })
+        .then(data => {
+            if (data.error) return gcAlert(data.error);
+            gcSenhaGerada({ username: data.username || username, name: data.name, senha_temporaria: data.senha_temporaria });
+        })
         .catch(() => gcAlert("Erro ao resetar senha."));
-    }, null, "Resetar");
+    }, null, "Gerar senha");
 }
 
 function _deletarUsuarioGC(id, username) {

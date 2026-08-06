@@ -7,6 +7,61 @@ const _gcBtnsStyle    = "display:flex;gap:10px;justify-content:flex-end";
 const _gcBtnOkStyle   = "background:#3a86ff;color:#fff;border:none;border-radius:9px;padding:9px 22px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit";
 const _gcBtnCxStyle   = "background:rgba(255,255,255,0.05);color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:9px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit";
 
+// Senha temporária aparece uma vez só — não fica guardada em lugar de onde dê pra consultar
+// depois, de propósito. Por isso este modal existe separado do gcAlert: ele obriga a olhar,
+// facilita copiar, e avisa que fechar sem anotar significa gerar outra.
+function gcSenhaGerada(lista, titulo) {
+    const linhas = Array.isArray(lista) ? lista : [lista];
+    const texto = linhas.map(l => `${l.name || l.username}\nUsuário: ${l.username}\nSenha: ${l.senha_temporaria}`).join("\n\n");
+    const umSo = linhas.length === 1;
+
+    return new Promise(resolve => {
+        const overlay = document.createElement("div");
+        overlay.setAttribute("style", _gcOverlayStyle);
+        const corpo = umSo
+            ? `<div style="text-align:center;margin:18px 0 20px">
+                   <div style="font-size:12px;color:#8494a9;margin-bottom:4px">${_gcEsc(linhas[0].name || "")}</div>
+                   <div style="font-size:13px;color:#cbd5e1;margin-bottom:12px">Usuário <strong style="color:#e2e8f0">${_gcEsc(linhas[0].username)}</strong></div>
+                   <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:26px;font-weight:700;letter-spacing:.06em;color:#3a86ff;background:rgba(58,134,255,0.1);border:1px solid rgba(58,134,255,0.3);border-radius:10px;padding:14px 10px">${_gcEsc(linhas[0].senha_temporaria)}</div>
+               </div>`
+            : `<div style="max-height:260px;overflow-y:auto;margin:16px 0 18px;border:1px solid rgba(255,255,255,0.1);border-radius:10px">
+                   ${linhas.map(l => `
+                   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,0.06)">
+                       <div style="min-width:0">
+                           <div style="font-size:12.5px;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_gcEsc(l.name || l.username)}</div>
+                           <div style="font-size:11px;color:#8494a9">${_gcEsc(l.username)}</div>
+                       </div>
+                       <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;font-weight:700;color:#3a86ff;flex-shrink:0">${_gcEsc(l.senha_temporaria)}</div>
+                   </div>`).join("")}
+               </div>`;
+
+        overlay.innerHTML = `<div style="${_gcCardStyle};max-width:${umSo ? 420 : 520}px">
+            <div style="${_gcTitleStyle}">${_gcEsc(titulo || (umSo ? "Senha temporária gerada" : `${linhas.length} senhas geradas`))}</div>
+            <div style="font-size:13px;color:#94a3b8;line-height:1.6">Anote agora e entregue ${umSo ? "à pessoa" : "a cada pessoa"}. Depois de fechar, esta senha não aparece mais — só resetando de novo.</div>
+            ${corpo}
+            <div style="${_gcBtnsStyle}">
+                <button data-copiar style="${_gcBtnCxStyle}">Copiar</button>
+                <button data-ok style="${_gcBtnOkStyle}">Anotei</button>
+            </div>
+        </div>`;
+
+        const btnCopiar = overlay.querySelector("[data-copiar]");
+        btnCopiar.addEventListener("click", () => {
+            navigator.clipboard.writeText(texto).then(() => {
+                btnCopiar.innerText = "Copiado!";
+                setTimeout(() => { btnCopiar.innerText = "Copiar"; }, 1800);
+            }).catch(() => { btnCopiar.innerText = "Não consegui copiar"; });
+        });
+        // Sem fechar clicando fora: aqui um clique errado custa a senha.
+        overlay.querySelector("[data-ok]").addEventListener("click", () => { overlay.remove(); resolve(); });
+        document.body.appendChild(overlay);
+    });
+}
+
+function _gcEsc(t) {
+    return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
 function gcAlert(msg, titulo) {
     return new Promise(resolve => {
         const overlay = document.createElement("div");
