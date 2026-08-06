@@ -392,6 +392,71 @@ body {
 <div class="login-right">
 
     <!-- PAINEL REDEFINIR SENHA (sobrepõe o formulário) -->
+    <!-- Cadastro de e-mail, logo depois de entrar. Só aparece aqui, com a pessoa já
+         autenticada: é a senha que prova quem ela é. O código confirma só que o endereço
+         existe e foi digitado certo. -->
+    <div class="reset-panel" id="emailPanel">
+        <div class="reset-card">
+            <form autocomplete="off" onsubmit="_emailSubmit(); return false;">
+
+                <button type="button" class="reset-back" onclick="_emailSair()">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                    Sair
+                </button>
+
+                <div class="reset-icon-wrap">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+                </div>
+
+                <div class="form-eyebrow">Segurança</div>
+                <div class="form-title" id="emailTitle">Confirme seu e-mail</div>
+                <div class="form-sub" id="emailSub">É por ele que você recupera a senha se esquecer. Sem isso, só o administrador consegue te destravar.</div>
+
+                <div id="emailErroMsg" class="erro-msg">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span id="emailErroTexto"></span>
+                </div>
+                <div id="emailSucessoMsg" class="sucesso-msg">
+                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span id="emailSucessoTexto"></span>
+                </div>
+
+                <div class="field" id="e-email-wrap">
+                    <label for="e-email">Seu e-mail</label>
+                    <div class="input-wrap">
+                        <input type="email" id="e-email" placeholder="seuemail@exemplo.com" autocomplete="off" oninput="_emailLimparAviso()">
+                        <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+                    </div>
+                </div>
+
+                <!-- Sugestão de domínio: "gmila.com" é um endereço válido, então não dá pra
+                     recusar — dá pra perguntar. -->
+                <div id="e-sugestao" style="display:none;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.28);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+                    <div style="font-size:13px;color:#eab308;margin-bottom:10px" id="e-sugestao-texto"></div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <button type="button" id="e-sugestao-usar" style="background:#eab308;color:#111827;border:none;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit"></button>
+                        <button type="button" onclick="_emailManter()" style="background:rgba(255,255,255,0.06);color:#94a3b8;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">Está certo, pode enviar</button>
+                    </div>
+                </div>
+
+                <div class="field" id="e-codigo-wrap" style="display:none">
+                    <label for="e-codigo">Código recebido</label>
+                    <div class="input-wrap">
+                        <input type="text" id="e-codigo" placeholder="000000" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="letter-spacing:.4em;font-size:19px;font-weight:700">
+                        <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                </div>
+
+                <button type="submit" class="login-btn" id="emailBtn">Enviar código</button>
+
+                <div class="forgot" id="e-trocar" style="display:none">
+                    <a href="#" onclick="_emailVoltarEndereco(); return false;">Usar outro e-mail</a>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
     <!-- Troca obrigatória: a senha ainda é a temporária que o admin entregou. Não passa por
          e-mail — quem prova identidade aqui é a senha atual, que a pessoa acabou de digitar. -->
     <div class="reset-panel" id="senhaPanel">
@@ -576,6 +641,14 @@ async function login() {
                 _abrirDefinirSenha(username, password, data.name);
                 return;
             }
+            // Sem e-mail cadastrado a sessão não começa: o token só vai pro localStorage
+            // depois da confirmação.
+            if (data.tem_email === false) {
+                btn.disabled = false;
+                btn.innerHTML = "Entrar";
+                _abrirEmailPanel(data.token, data.name);
+                return;
+            }
             localStorage.setItem("token", data.token);
             window.location.href = "index.html";
             return;
@@ -587,6 +660,159 @@ async function login() {
 
     btn.disabled = false;
     btn.innerHTML = "Entrar";
+}
+
+// ── Cadastro de e-mail ──
+// O token fica em memória até o e-mail ser confirmado. Só entra no localStorage depois —
+// é o que faz "não cadastrou = volta pro login" valer de verdade, e não ser só uma tela
+// que dá pra fechar.
+const API_URL = "https://sistema-backend-i4uh.onrender.com";
+let _emailToken = "", _emailEtapa = "endereco", _emailConfirmado = false;
+
+// Mesmo critério do servidor, repetido aqui só pra responder na hora. Quem manda é o
+// servidor: isto é conveniência, não barreira.
+const _EMAIL_RE = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,24}$/;
+
+function _abrirEmailPanel(token, nome) {
+    _emailToken = token;
+    _emailEtapa = "endereco";
+    _emailConfirmado = false;
+    document.getElementById("emailPanel").classList.add("active");
+    document.getElementById("emailErroMsg").classList.remove("show");
+    document.getElementById("emailSucessoMsg").classList.remove("show");
+    document.getElementById("e-email").value = "";
+    document.getElementById("e-codigo").value = "";
+    document.getElementById("emailSub").innerText = nome
+        ? `${nome.split(" ")[0]}, é pelo e-mail que você recupera a senha se esquecer. Sem isso, só o administrador consegue te destravar.`
+        : "É por ele que você recupera a senha se esquecer. Sem isso, só o administrador consegue te destravar.";
+    _emailPintarEtapa();
+    document.getElementById("e-email").focus();
+}
+
+function _emailPintarEtapa() {
+    const codigo = _emailEtapa === "codigo";
+    document.getElementById("e-email-wrap").style.display  = codigo ? "none" : "";
+    document.getElementById("e-codigo-wrap").style.display = codigo ? "" : "none";
+    document.getElementById("e-trocar").style.display      = codigo ? "" : "none";
+    document.getElementById("emailBtn").innerHTML = codigo ? "Confirmar e entrar" : "Enviar código";
+    document.getElementById("emailTitle").innerText = codigo ? "Digite o código" : "Confirme seu e-mail";
+    if (!codigo) document.getElementById("e-sugestao").style.display = "none";
+}
+
+function _emailErro(msg) {
+    document.getElementById("emailSucessoMsg").classList.remove("show");
+    document.getElementById("emailErroTexto").innerText = msg;
+    document.getElementById("emailErroMsg").classList.add("show");
+}
+
+function _emailOk(msg) {
+    document.getElementById("emailErroMsg").classList.remove("show");
+    document.getElementById("emailSucessoTexto").innerText = msg;
+    document.getElementById("emailSucessoMsg").classList.add("show");
+}
+
+function _emailLimparAviso() {
+    document.getElementById("e-sugestao").style.display = "none";
+    _emailConfirmado = false;
+}
+
+// Aceitar a sugestão troca o campo; recusar manda de novo dizendo que é proposital.
+function _emailManter() {
+    _emailConfirmado = true;
+    document.getElementById("e-sugestao").style.display = "none";
+    _emailSubmit();
+}
+
+function _emailVoltarEndereco() {
+    _emailEtapa = "endereco";
+    _emailConfirmado = false;
+    document.getElementById("emailErroMsg").classList.remove("show");
+    document.getElementById("emailSucessoMsg").classList.remove("show");
+    _emailPintarEtapa();
+    document.getElementById("e-email").focus();
+}
+
+function _emailSair() {
+    // Sem e-mail confirmado não há sessão: o token some junto com a tela.
+    _emailToken = "";
+    document.getElementById("emailPanel").classList.remove("active");
+    document.getElementById("senha").value = "";
+}
+
+function _emailSubmit() {
+    return _emailEtapa === "codigo" ? _emailConfirmarCodigo() : _emailEnviarCodigo();
+}
+
+async function _emailEnviarCodigo() {
+    const email = document.getElementById("e-email").value.trim().toLowerCase();
+    if (!email) { _emailErro("Informe o seu e-mail."); return; }
+    if (!_EMAIL_RE.test(email)) { _emailErro("E-mail inválido. Confira se está escrito certo."); return; }
+
+    const btn = document.getElementById("emailBtn");
+    btn.disabled = true;
+    btn.innerHTML = `<div class="spinner"></div> Enviando...`;
+    try {
+        const res = await fetch(`${API_URL}/meu-email/solicitar`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + _emailToken, "Content-Type": "application/json" },
+            body: JSON.stringify({ email, confirmado: _emailConfirmado })
+        });
+        const d = await res.json();
+        // 409 com sugestão não é erro: é o servidor perguntando se o domínio é aquele mesmo.
+        if (res.status === 409 && d.confirmar && d.sugestao) {
+            document.getElementById("e-sugestao-texto").innerText = d.error;
+            const usar = document.getElementById("e-sugestao-usar");
+            usar.innerText = `Usar ${d.sugestao}`;
+            usar.onclick = () => {
+                document.getElementById("e-email").value = d.sugestao;
+                document.getElementById("e-sugestao").style.display = "none";
+                _emailConfirmado = false;
+                _emailEnviarCodigo();
+            };
+            document.getElementById("e-sugestao").style.display = "";
+            return;
+        }
+        if (!res.ok) {
+            _emailErro(d.error || "Não foi possível enviar o código.");
+            // Domínio impossível vem com a correção junto: preenche pra pessoa só conferir.
+            if (d.sugestao) document.getElementById("e-email").value = d.sugestao;
+            return;
+        }
+        _emailEtapa = "codigo";
+        _emailPintarEtapa();
+        _emailOk(`Código enviado para ${d.email}. Ele vale por 15 minutos.`);
+        document.getElementById("e-codigo").focus();
+    } catch {
+        _emailErro("Erro ao conectar com o servidor.");
+    } finally {
+        btn.disabled = false;
+        _emailPintarEtapa();
+    }
+}
+
+async function _emailConfirmarCodigo() {
+    const codigo = document.getElementById("e-codigo").value.replace(/\D/g, "");
+    if (codigo.length !== 6) { _emailErro("Digite os 6 dígitos do código."); return; }
+
+    const btn = document.getElementById("emailBtn");
+    btn.disabled = true;
+    btn.innerHTML = `<div class="spinner"></div> Confirmando...`;
+    try {
+        const res = await fetch(`${API_URL}/meu-email/confirmar`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + _emailToken, "Content-Type": "application/json" },
+            body: JSON.stringify({ codigo })
+        });
+        const d = await res.json();
+        if (!res.ok) { _emailErro(d.error || "Código inválido."); return; }
+        localStorage.setItem("token", _emailToken);
+        window.location.href = "index.html";
+    } catch {
+        _emailErro("Erro ao conectar com o servidor.");
+    } finally {
+        btn.disabled = false;
+        _emailPintarEtapa();
+    }
 }
 
 // ── Troca obrigatória da senha temporária ──
@@ -644,6 +870,10 @@ async function _definirSenha() {
         });
         const d2 = await entrar.json();
         if (d2 && d2.token) {
+            document.getElementById("senhaPanel").classList.remove("active");
+            // Trocou a senha e ainda não tem e-mail: emenda direto no cadastro, senão a
+            // pessoa entra e a cobrança fica pra próxima vez que ela sair.
+            if (d2.tem_email === false) { _abrirEmailPanel(d2.token, d2.name); return; }
             localStorage.setItem("token", d2.token);
             window.location.href = "index.html";
             return;
