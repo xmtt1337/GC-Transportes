@@ -1025,13 +1025,17 @@ function mostrarResetErro(msg) {
 // Chegou aqui derrubado por sessão vencida: diz o motivo, senão parece que o sistema caiu
 // sozinho. Consome a marca pra não repetir o aviso num F5 depois.
 (function () {
-    let motivo = null;
-    try { motivo = sessionStorage.getItem("gc_saida"); sessionStorage.removeItem("gc_saida"); } catch {}
-    if (motivo === "expirou") {
-        mostrarErro("Sua sessão expirou por tempo de uso. Entre novamente.");
-        const u = localStorage.getItem("ultimo_usuario");
-        if (u) { document.getElementById("usuario").value = u; document.getElementById("senha").focus(); }
-    }
+    let motivo = null, texto = null;
+    try {
+        motivo = sessionStorage.getItem("gc_saida");
+        texto  = sessionStorage.getItem("gc_saida_texto");
+        sessionStorage.removeItem("gc_saida");
+        sessionStorage.removeItem("gc_saida_texto");
+    } catch {}
+    if (!motivo) return;
+    mostrarErro(texto || "Sua sessão expirou por tempo de uso. Entre novamente.");
+    const u = localStorage.getItem("ultimo_usuario");
+    if (u) { document.getElementById("usuario").value = u; document.getElementById("senha").focus(); }
 })();
 
 </script>

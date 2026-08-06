@@ -1,5 +1,7 @@
 const API   = "https://sistema-backend-i4uh.onrender.com";
-const token = localStorage.getItem("token");
+// `let` e não `const`: a sessão se renova enquanto a pessoa trabalha, e todos os arquivos
+// leem esta mesma variável na hora de montar o cabeçalho.
+let token = localStorage.getItem("token");
 
 if (!token) window.location.href = "login.html";
 
@@ -10,22 +12,38 @@ if (!token) window.location.href = "login.html";
 // login de uma vez, com o motivo explicado lá.
 let _gcSaindo = false;
 
-function _gcForcarSaida(motivo) {
+function _gcForcarSaida(motivo, texto) {
     // Várias telas disparam requisição junto; sem esta trava seriam vários redirects.
     if (_gcSaindo) return;
     _gcSaindo = true;
     try { localStorage.removeItem("token"); } catch {}
-    try { sessionStorage.setItem("gc_saida", motivo || "expirou"); } catch {}
+    try {
+        sessionStorage.setItem("gc_saida", motivo || "expirou");
+        // Motivo específico (conta desativada, senha redefinida) vale mais que o genérico.
+        if (texto) sessionStorage.setItem("gc_saida_texto", texto);
+    } catch {}
     // replace e não href: voltar pra uma tela sem sessão não leva a lugar nenhum.
     window.location.replace("login.html");
 }
 
 const _gcFetchOriginal = window.fetch.bind(window);
 window.fetch = async function (entrada, opcoes) {
+    const alvo = typeof entrada === "string" ? entrada : (entrada && entrada.url) || "";
+    // Troca o token do cabeçalho pelo atual. Várias telas montam a requisição com o valor
+    // que leram quando carregaram; depois de uma renovação esse valor está velho, e sem
+    // esta linha a pessoa seria deslogada justamente por estar trabalhando.
+    if (alvo.startsWith(API) && opcoes && opcoes.headers && token) {
+        const h = opcoes.headers;
+        if (h instanceof Headers) {
+            if (h.has("Authorization")) h.set("Authorization", "Bearer " + token);
+        } else if (h.Authorization || h.authorization) {
+            delete h.authorization;
+            h.Authorization = "Bearer " + token;
+        }
+    }
     const resp = await _gcFetchOriginal(entrada, opcoes);
     if (resp.status === 401 || resp.status === 403) {
-        const url = typeof entrada === "string" ? entrada : (entrada && entrada.url) || "";
-        if (url.startsWith(API)) {
+        if (alvo.startsWith(API) && !alvo.includes("/renovar-token")) {
             try {
                 // clone porque ler o corpo aqui consumiria o que a tela ainda vai ler.
                 const { error } = await resp.clone().json();
@@ -37,6 +55,60 @@ window.fetch = async function (entrada, opcoes) {
     }
     return resp;
 };
+
+// ───── RENOVAÇÃO DA SESSÃO ─────
+// Renova só enquanto a pessoa está de fato usando. Renovar por relógio faria uma aba
+// esquecida aberta manter a sessão viva pra sempre — pior que o problema original.
+let _gcUltimaAtividade = Date.now();
+let _gcRenovando = false;
+
+["click", "keydown", "scroll", "touchstart"].forEach(ev =>
+    window.addEventListener(ev, () => { _gcUltimaAtividade = Date.now(); }, { passive: true, capture: true }));
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) { _gcUltimaAtividade = Date.now(); _gcChecarSessao(); }
+});
+
+// Quando o token vence, lido do próprio token. Evita guardar a data em paralelo e ela
+// dessincronizar do que o servidor realmente emitiu.
+function _gcTokenExpiraEm(t) {
+    try {
+        const payload = JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        return (payload.exp || 0) * 1000;
+    } catch { return 0; }
+}
+
+const _GC_ATIVIDADE_MS = 30 * 60 * 1000;  // "está trabalhando" = mexeu na última meia hora
+const _GC_MARGEM_MS    = 2 * 60 * 60 * 1000; // renova faltando 2h, com folga pra falha de rede
+
+async function _gcChecarSessao() {
+    if (_gcRenovando || _gcSaindo || !token) return;
+    const expira = _gcTokenExpiraEm(token);
+    if (!expira) return;
+    if (expira - Date.now() > _GC_MARGEM_MS) return;                       // ainda tem prazo
+    if (Date.now() - _gcUltimaAtividade > _GC_ATIVIDADE_MS) return;        // parou de usar
+
+    _gcRenovando = true;
+    try {
+        const resp = await fetch(API + "/renovar-token", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token },
+        });
+        if (resp.ok) {
+            const d = await resp.json();
+            if (d.token) { token = d.token; localStorage.setItem("token", d.token); }
+        } else if (resp.status === 401) {
+            // Teto de 24h, conta desativada ou senha resetada: a sessão acabou pra valer.
+            const d = await resp.json().catch(() => ({}));
+            _gcForcarSaida(d.error === "sessao_max" ? "expirou" : "revogada", d.motivo);
+        }
+        // Outros erros (500, rede) ficam quietos: tenta de novo no próximo ciclo, e ainda
+        // sobra prazo justamente por causa da margem de 2h.
+    } catch { /* rede caiu; próxima tentativa */ }
+    finally { _gcRenovando = false; }
+}
+
+setInterval(_gcChecarSessao, 5 * 60 * 1000);
+_gcChecarSessao();
 
 fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
 .then(res => { if (!res.ok) throw new Error(); return res.json(); })
