@@ -35,6 +35,8 @@ function abrirShopeeAtribuicoes(event) {
     _scaOpcoes = { cidades: [], clusters: [] };
     _scaOpcoesCarregadas = false;
     _scaDicaFixa = "";
+    _scaVisaoDia = "";       // reabre sempre no dia atual, não no que ficou aberto da última vez
+    _scaVisaoRetrato = false;
     _scaSessao = null;
     _scaBipagens = [];
     _scaFiltroAtual = "todos";
@@ -118,10 +120,10 @@ function _scaAlternarSelecao(forcar) {
 }
 
 function _scaPintarSelecao() {
-    const aberto = _scaSelecaoAberta && !!_scaTipoAtual;
+    const aberto = _scaSelecaoAberta && !!_scaTipoAtual && !_scaVisaoRetrato;
     const btn = document.getElementById("sca-abrir");
     document.getElementById("sca-selecao").style.display = aberto ? "" : "none";
-    btn.style.display = _scaTipoAtual ? "" : "none";
+    btn.style.display = (_scaTipoAtual && !_scaVisaoRetrato) ? "" : "none";
     btn.classList.toggle("aberto", aberto);
     document.getElementById("sca-abrir-txt").innerText = aberto
         ? "Fechar"
@@ -132,6 +134,7 @@ function _scaPintarSelecao() {
 function _scaDicaPadrao() {
     const dica = document.getElementById("sca-dica");
     if (_scaDicaFixa)          { dica.innerText = _scaDicaFixa; return; }
+    if (_scaVisaoRetrato)      { dica.innerText = "Você está vendo um dia fechado. Volte para o dia atual na visão geral para conferir."; return; }
     if (!_scaTipoAtual)        { dica.innerText = "Escolha o tipo de conferência para começar."; return; }
     // Sem as opções na mão ainda, "Nenhum cluster na AT" seria mentira por um instante.
     if (!_scaOpcoesCarregadas) { dica.innerText = "Carregando as opções..."; return; }
@@ -521,7 +524,19 @@ function _scaBarra(pct, pctFalta, conferidos, faltam) {
 }
 
 // ── Visão geral: todos os grupos e quanto de cada um já fechou ──
+// O servidor guarda um retrato por dia, então dá pra voltar. Dia vazio = o dia corrente dos
+// dados, o único calculado ao vivo — nos outros a AT já foi substituída e só resta o retrato.
+// "Corrente" não é a data de hoje: se a AT de hoje ainda não entrou, o dia dos dados é o da
+// última importação.
 let _scaVisao = [];
+let _scaVisaoDia = "";      // "" = dia corrente dos dados
+let _scaVisaoAtual = "";
+let _scaVisaoRetrato = false;
+
+function _scaTrocarDiaVisao(dia) {
+    _scaVisaoDia = dia === _scaVisaoAtual ? "" : dia;
+    _scaCarregarVisao();
+}
 
 function _scaCarregarVisao() {
     const tipo = _scaTipoAtual || "cluster";
@@ -536,26 +551,48 @@ function _scaCarregarVisao() {
     empty.style.display = "";
     result.style.display = "none";
 
-    fetch(`${API}/shopee/conferencia/atribuicoes/visao-geral?tipo=${tipo}`, {
+    const q = _scaVisaoDia ? `&dia=${encodeURIComponent(_scaVisaoDia)}` : "";
+    fetch(`${API}/shopee/conferencia/atribuicoes/visao-geral?tipo=${tipo}${q}`, {
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json())
     .then(d => {
         if (d && d.error) { skFim(empty, d.error); return; }
         if (d.sem_polo)     { skFim(empty, "Defina o seu polo para ver a conferência."); return; }
         if (d.polo_sem_xpt) { skFim(empty, "Este polo não recebe Shopee."); return; }
+        _scaVisaoAtual = d.dia_atual || "";
+        _scaVisaoRetrato = !!d.retrato;
+        _scaRenderDiasVisao(d.dias || [], d.dia);
         _scaVisao = d.grupos || [];
         _scaRenderVisao(tipo);
     })
     .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
 }
 
+// Lista de dias com retrato guardado. O dia corrente é o único que ainda muda, por isso vem
+// marcado — sem isso a pessoa olha um dia fechado achando que está vendo o de agora.
+function _scaRenderDiasVisao(dias, atual) {
+    const sel = document.getElementById("sca-visao-dia");
+    if (!sel) return;
+    sel.innerHTML = dias.map(d => {
+        const br = d.split("-").reverse().join("/");
+        return `<option value="${_scaEsc(d)}"${d === atual ? " selected" : ""}>${d === _scaVisaoAtual ? `Atual · ${br}` : br}</option>`;
+    }).join("");
+    sel.value = atual || _scaVisaoAtual;
+    document.getElementById("sca-visao-retrato").style.display = _scaVisaoRetrato ? "" : "none";
+    // O seletor de grupo não serve num dia fechado — recolhe e a dica avisa o porquê.
+    if (_scaVisaoRetrato) _scaSelecaoAberta = false;
+    _scaPintarSelecao();
+}
+
 function _scaRenderVisao(tipo) {
     const empty  = document.getElementById("sca-visao-empty");
     const result = document.getElementById("sca-visao-resultado");
     if (!_scaVisao.length) {
-        skFim(empty, tipo === "cidade"
-            ? "Nenhuma cidade com pedidos. Alimente Pedidos pesquisados primeiro."
-            : "Nenhum cluster na AT. Alimente a AT Exportada primeiro.");
+        skFim(empty, _scaVisaoRetrato
+            ? "Nenhum retrato guardado para este dia."
+            : (tipo === "cidade"
+                ? "Nenhuma cidade com pedidos. Alimente Pedidos pesquisados primeiro."
+                : "Nenhum cluster na AT. Alimente a AT Exportada primeiro."));
         return;
     }
     empty.style.display = "none";
@@ -569,6 +606,8 @@ function _scaRenderVisao(tipo) {
     document.getElementById("sca-visao-obs").innerHTML =
         `<strong style="color:${_scaCorPct(pctGeral)}">${_scaPctTexto(pctGeral)}</strong> no total · ${conf} de ${total} · ${completos} de ${_scaVisao.length} fechado${completos !== 1 ? "s" : ""}`;
 
+    // Dia fechado não tem "Conferir": a AT daquele dia já foi substituída, e abrir sessão
+    // dali cairia em cima da AT de hoje conferindo pacote errado.
     document.getElementById("sca-visao-tbody").innerHTML = _scaVisao.map(g => {
         const pct = _scaPct(g.conferidos, g.total) ?? 0;
         const falta = g.total - g.conferidos;
@@ -586,7 +625,7 @@ function _scaRenderVisao(tipo) {
             <td data-label="Total" style="font-variant-numeric:tabular-nums">${g.total}</td>
             <td data-label="Conferidos" style="font-variant-numeric:tabular-nums;color:#22c55e">${g.conferidos}</td>
             <td data-label="Faltam" style="font-variant-numeric:tabular-nums;color:${falta ? "#eab308" : "#8494a9"};font-weight:${falta ? 700 : 400}">${falta}</td>
-            <td><button class="adm-usr-action senha" onclick="_scaComecarDaVisao('${nomeEsc}', this)">Conferir</button></td>
+            <td>${_scaVisaoRetrato ? "" : `<button class="adm-usr-action senha" onclick="_scaComecarDaVisao('${nomeEsc}', this)">Conferir</button>`}</td>
         </tr>`;
     }).join("");
 }
@@ -596,6 +635,7 @@ function _scaRenderVisao(tipo) {
 let _scaBotaoLinha = null;
 
 function _scaComecarDaVisao(nome, botao) {
+    if (_scaVisaoRetrato) return; // dia fechado: o botão nem é desenhado, mas não custa travar
     if (!_scaTipoAtual) _scaTipoAtual = "cluster";
     _scaSelecionados = [nome];
     _scaPintarTipo();
