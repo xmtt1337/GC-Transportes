@@ -129,20 +129,9 @@ function _copiarSenhaEntregador() {
     });
 }
 
-function _resetarTodasSenhas() {
-    gcConfirm("Gerar uma senha temporária nova para TODOS os entregadores?\n\nCada um recebe uma senha diferente, e todas aparecem uma única vez na tela seguinte. Quem não receber a sua fica sem entrar até você gerar de novo.", () => {
-        const tok = localStorage.getItem("token");
-        fetch(`${API}/admin/usuarios/reset-todas-senhas`, {
-            method: "PUT",
-            headers: { "Authorization": "Bearer " + tok }
-        }).then(r => r.json())
-        .then(data => {
-            if (data.error) { gcAlert(data.error); return; }
-            if (!data.senhas || !data.senhas.length) return gcAlert("Nenhum entregador para resetar.");
-            gcSenhaGerada(data.senhas, `${data.senhas.length} senhas geradas`);
-        }).catch(() => gcAlert("Erro ao resetar senhas."));
-    }, "Confirmar Reset em Massa", "Gerar todas");
-}
+// Reset em massa removido: com senha única por pessoa ele travava todo mundo de uma vez e
+// gerava uma lista de dezenas de senhas pra distribuir na mão. Agora é um de cada vez, na
+// linha do usuário, quando a pessoa avisa que não consegue entrar.
 
 function _resetarSenha(id, username) {
     gcConfirm(`Gerar uma senha temporária nova para "${username}"?\n\nA senha atual deixa de funcionar na hora, e você vai precisar entregar a nova para a pessoa.`, () => {
