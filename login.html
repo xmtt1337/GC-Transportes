@@ -634,6 +634,9 @@ async function login() {
         });
         const data = await res.json();
         if (data.success) {
+            // Guarda o usuário (nunca a senha) pra repreencher quando a sessão vencer —
+            // quem foi derrubado no meio do expediente não precisa digitar o GC de novo.
+            try { localStorage.setItem("ultimo_usuario", username); } catch {}
             // Senha temporária não vem com token: o servidor só destrava depois da troca.
             if (data.require_password_change) {
                 btn.disabled = false;
@@ -1018,6 +1021,18 @@ function mostrarResetErro(msg) {
     document.getElementById("resetErroMsg").classList.add("show");
     document.getElementById("resetSucessoMsg").classList.remove("show");
 }
+
+// Chegou aqui derrubado por sessão vencida: diz o motivo, senão parece que o sistema caiu
+// sozinho. Consome a marca pra não repetir o aviso num F5 depois.
+(function () {
+    let motivo = null;
+    try { motivo = sessionStorage.getItem("gc_saida"); sessionStorage.removeItem("gc_saida"); } catch {}
+    if (motivo === "expirou") {
+        mostrarErro("Sua sessão expirou por tempo de uso. Entre novamente.");
+        const u = localStorage.getItem("ultimo_usuario");
+        if (u) { document.getElementById("usuario").value = u; document.getElementById("senha").focus(); }
+    }
+})();
 
 </script>
 

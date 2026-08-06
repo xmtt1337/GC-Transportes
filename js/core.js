@@ -3,6 +3,41 @@ const token = localStorage.getItem("token");
 
 if (!token) window.location.href = "login.html";
 
+// ───── SESSÃO EXPIRADA ─────
+// O token vale 8 horas. Quando vence no meio do expediente, cada tela mostrava um
+// "Token inválido" solto e o sistema seguia como se nada tivesse acontecido — a pessoa
+// ficava clicando sem entender por que nada respondia. Aqui a sessão morta derruba pro
+// login de uma vez, com o motivo explicado lá.
+let _gcSaindo = false;
+
+function _gcForcarSaida(motivo) {
+    // Várias telas disparam requisição junto; sem esta trava seriam vários redirects.
+    if (_gcSaindo) return;
+    _gcSaindo = true;
+    try { localStorage.removeItem("token"); } catch {}
+    try { sessionStorage.setItem("gc_saida", motivo || "expirou"); } catch {}
+    // replace e não href: voltar pra uma tela sem sessão não leva a lugar nenhum.
+    window.location.replace("login.html");
+}
+
+const _gcFetchOriginal = window.fetch.bind(window);
+window.fetch = async function (entrada, opcoes) {
+    const resp = await _gcFetchOriginal(entrada, opcoes);
+    if (resp.status === 401 || resp.status === 403) {
+        const url = typeof entrada === "string" ? entrada : (entrada && entrada.url) || "";
+        if (url.startsWith(API)) {
+            try {
+                // clone porque ler o corpo aqui consumiria o que a tela ainda vai ler.
+                const { error } = await resp.clone().json();
+                // Só sessão derruba. "Acesso negado" é falta de permissão pra aquela tela —
+                // a sessão está viva, e deslogar aí seria expulsar quem clicou no lugar errado.
+                if (/token/i.test(error || "")) _gcForcarSaida("expirou");
+            } catch { /* corpo não-JSON não permite afirmar que é a sessão */ }
+        }
+    }
+    return resp;
+};
+
 fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
 .then(res => { if (!res.ok) throw new Error(); return res.json(); })
 .then(data => {
