@@ -104,8 +104,8 @@ function _scaPreencherAlvo() {
     const lista = cidade ? _scaOpcoes.cidades : _scaOpcoes.clusters;
     _scaSelecionados = [];
 
-    sel.style.display   = cidade ? "" : "none";
-    multi.style.display = cidade ? "none" : "";
+    sel.style.display = cidade ? "" : "none";
+    document.getElementById("sca-multi-bloco").style.display = cidade ? "none" : "";
 
     // Os dois lados mostram o tamanho do trabalho: quantos pedidos naquela cidade, quantos
     // pacotes naquele cluster. Só entra na lista quem tem o que conferir.
@@ -113,16 +113,14 @@ function _scaPreencherAlvo() {
         sel.innerHTML = `<option value="">Selecione...</option>` + lista.map(o =>
             `<option value="${_scaEsc(o.cidade)}">${_scaEsc(o.cidade)} — ${o.pedidos} pedido${o.pedidos !== 1 ? "s" : ""}</option>`).join("");
     } else {
-        multi.innerHTML = lista.length ? `
-            <div class="sca-multi-acoes">
-                <button type="button" onclick="_scaMarcarTodos(true)">Marcar todos</button>
-                <button type="button" onclick="_scaMarcarTodos(false)">Limpar</button>
-            </div>` + lista.map(o => `
-            <label class="sca-multi-item" data-cluster="${_scaEsc(o.cluster)}">
+        // "pct" em vez de "pacotes" por extenso: o rótulo compete com o nome do cluster
+        // numa coluna estreita, e o número é o que interessa.
+        multi.innerHTML = lista.map(o => `
+            <label class="sca-multi-item" data-cluster="${_scaEsc(o.cluster)}" title="${_scaEsc(o.cluster)} — ${o.pacotes} pacote${o.pacotes !== 1 ? "s" : ""}">
                 <input type="checkbox" value="${_scaEsc(o.cluster)}" onchange="_scaAlvoMudou()">
                 <span>${_scaEsc(o.cluster)}</span>
-                <span class="sca-multi-qtd">${o.pacotes} pacote${o.pacotes !== 1 ? "s" : ""}</span>
-            </label>`).join("") : "";
+                <span class="sca-multi-qtd">${o.pacotes}</span>
+            </label>`).join("");
     }
 
     document.getElementById("sca-dica").innerText = lista.length
@@ -145,10 +143,18 @@ function _scaAlvoMudou() {
         const v = document.getElementById("sca-alvo").value;
         _scaSelecionados = v ? [v] : [];
     } else {
-        _scaSelecionados = [...document.querySelectorAll("#sca-multi input[type=checkbox]")]
-            .filter(c => c.checked).map(c => c.value);
+        const caixas = [...document.querySelectorAll("#sca-multi input[type=checkbox]")];
+        _scaSelecionados = caixas.filter(c => c.checked).map(c => c.value);
         document.querySelectorAll("#sca-multi .sca-multi-item").forEach(l =>
             l.classList.toggle("marcado", _scaSelecionados.includes(l.dataset.cluster)));
+        // Contagem fora da rolagem: com a lista compacta, o que está marcado pode estar
+        // fora da parte visível.
+        const resumo = document.getElementById("sca-multi-resumo");
+        if (resumo) {
+            resumo.innerText = caixas.length
+                ? `${_scaSelecionados.length} de ${caixas.length} marcado${_scaSelecionados.length !== 1 ? "s" : ""}`
+                : "Nenhum cluster na AT";
+        }
     }
     const btn = document.getElementById("sca-btn-comecar");
     btn.style.display = _scaSelecionados.length ? "" : "none";
