@@ -28,7 +28,13 @@ let _scaFaltamCarregado = false;
 
 function abrirShopeeAtribuicoes(event) {
     if (event) event.preventDefault();
-    _scaTipoAtual = null;
+    // Abre já em "Por cluster": a visão geral entra mostrando os clusters de qualquer jeito,
+    // e sem aba marcada a tela parecia esperar um clique que não era necessário.
+    _scaTipoAtual = "cluster";
+    _scaSelecaoAberta = false;
+    _scaOpcoes = { cidades: [], clusters: [] };
+    _scaOpcoesCarregadas = false;
+    _scaDicaFixa = "";
     _scaSessao = null;
     _scaBipagens = [];
     _scaFiltroAtual = "todos";
@@ -47,6 +53,7 @@ function _scaMostrarInicio() {
     document.getElementById("sca-inicio").style.display = "";
     document.getElementById("sca-andamento").style.display = "none";
     document.getElementById("sca-historico").style.display = "";
+    _scaAlternarSelecao(false); // volta enxuto: quem termina uma conferência olha a visão geral
     _scaCarregarVisao();
 }
 
@@ -64,21 +71,29 @@ function _scaCarregarOpcoes() {
         .then(r => r.json())
         .then(d => {
             if (d.sem_polo) {
-                document.getElementById("sca-dica").innerText = "Você ainda não tem polo definido. Abra o Recebimento Shopee para escolher.";
+                _scaDicaFixa = "Você ainda não tem polo definido. Abra o Recebimento Shopee para escolher.";
+                document.getElementById("sca-dica").innerText = _scaDicaFixa;
                 return;
             }
             if (d.polo_sem_xpt) {
-                document.getElementById("sca-dica").innerText = `O polo ${d.polo_label} não recebe Shopee, então não há atribuições para conferir.`;
+                _scaDicaFixa = `O polo ${d.polo_label} não recebe Shopee, então não há atribuições para conferir.`;
+                document.getElementById("sca-dica").innerText = _scaDicaFixa;
                 return;
             }
+            _scaDicaFixa = "";
             _scaOpcoes = { cidades: d.cidades || [], clusters: d.clusters || [] };
+            _scaOpcoesCarregadas = true;
             if (_scaTipoAtual) _scaPreencherAlvo();
         })
-        .catch(() => { document.getElementById("sca-dica").innerText = "Erro ao carregar as opções."; });
+        .catch(() => {
+            _scaDicaFixa = "Erro ao carregar as opções.";
+            document.getElementById("sca-dica").innerText = _scaDicaFixa;
+        });
 }
 
 function _scaTipo(tipo) {
     _scaTipoAtual = tipo;
+    _scaSelecaoAberta = false; // trocar de tipo recomeça pela visão geral, não pelo seletor
     _scaPintarTipo();
     _scaPreencherAlvo();
     _scaCarregarVisao(); // a visão geral acompanha o tipo escolhido
@@ -87,9 +102,55 @@ function _scaTipo(tipo) {
 function _scaPintarTipo() {
     document.querySelectorAll("#sca-tipo .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.tipo === _scaTipoAtual));
-    document.getElementById("sca-campo-alvo").style.display = _scaTipoAtual ? "" : "none";
-    document.getElementById("sca-btn-comecar").style.display = "none";
-    if (!_scaTipoAtual) document.getElementById("sca-dica").innerText = "Escolha o tipo de conferência para começar.";
+    _scaPintarSelecao();
+}
+
+// O seletor é o caminho secundário: serve pra marcar vários clusters ou pra achar um grupo
+// pelo nome. O caminho de todo dia é o botão "Conferir" da visão geral, então ele nasce
+// fechado e o cartão de cima ocupa duas linhas em vez de meia tela.
+let _scaSelecaoAberta = false;
+let _scaDicaFixa = "";          // aviso de polo/erro que não pode ser sobrescrito pela dica normal
+let _scaOpcoesCarregadas = false;
+
+function _scaAlternarSelecao(forcar) {
+    _scaSelecaoAberta = typeof forcar === "boolean" ? forcar : !_scaSelecaoAberta;
+    _scaPintarSelecao();
+}
+
+function _scaPintarSelecao() {
+    const aberto = _scaSelecaoAberta && !!_scaTipoAtual;
+    const btn = document.getElementById("sca-abrir");
+    document.getElementById("sca-selecao").style.display = aberto ? "" : "none";
+    btn.style.display = _scaTipoAtual ? "" : "none";
+    btn.classList.toggle("aberto", aberto);
+    document.getElementById("sca-abrir-txt").innerText = aberto
+        ? "Fechar"
+        : (_scaTipoAtual === "cluster" ? "Conferir vários clusters" : "Escolher pela lista");
+    _scaDicaPadrao();
+}
+
+function _scaDicaPadrao() {
+    const dica = document.getElementById("sca-dica");
+    if (_scaDicaFixa)          { dica.innerText = _scaDicaFixa; return; }
+    if (!_scaTipoAtual)        { dica.innerText = "Escolha o tipo de conferência para começar."; return; }
+    // Sem as opções na mão ainda, "Nenhum cluster na AT" seria mentira por um instante.
+    if (!_scaOpcoesCarregadas) { dica.innerText = "Carregando as opções..."; return; }
+
+    const cidade = _scaTipoAtual === "cidade";
+    const lista  = cidade ? _scaOpcoes.cidades : _scaOpcoes.clusters;
+    if (!lista.length) {
+        dica.innerText = cidade
+            ? "Nenhum pedido com cidade identificada. Alimente Pedidos pesquisados primeiro."
+            : "Nenhum cluster na AT. Alimente a AT Exportada primeiro.";
+    } else if (_scaSelecaoAberta) {
+        dica.innerText = cidade
+            ? "A cidade de cada pedido vem do CEP, cruzado com a planilha de CEPs."
+            : "Marque um ou mais clusters — a conferência aceita todos de uma vez.";
+    } else {
+        dica.innerText = cidade
+            ? "Clique em Conferir na linha da cidade que você vai conferir."
+            : "Clique em Conferir na linha do cluster, ou abra a seleção para conferir vários de uma vez.";
+    }
 }
 
 // Cluster aceita vários numa conferência só — é comum uma pessoa cobrir mais de um.
@@ -123,13 +184,7 @@ function _scaPreencherAlvo() {
             </label>`).join("");
     }
 
-    document.getElementById("sca-dica").innerText = lista.length
-        ? (cidade
-            ? "A cidade de cada pedido vem do CEP, cruzado com a planilha de CEPs."
-            : "Marque um ou mais clusters — a conferência aceita todos de uma vez.")
-        : (cidade
-            ? "Nenhum pedido com cidade identificada. Alimente Pedidos pesquisados primeiro."
-            : "Nenhum cluster na AT. Alimente a AT Exportada primeiro.");
+    _scaDicaPadrao();
     _scaAlvoMudou();
 }
 
@@ -171,6 +226,15 @@ function _scaComecar() {
     const rotulo = btn.textContent;
     btn.disabled = true;
     btn.textContent = "Abrindo...";
+    // Quando a conferência veio pelo botão da linha, é ele que precisa voltar ao normal
+    // se der erro — o do seletor está escondido.
+    const linha = _scaBotaoLinha;
+    const restaurar = () => {
+        btn.disabled = false;
+        btn.textContent = rotulo;
+        if (linha) { linha.disabled = false; linha.textContent = "Conferir"; }
+        _scaBotaoLinha = null;
+    };
 
     fetch(`${API}/shopee/conferencia/atribuicoes/sessao`, {
         method: "POST",
@@ -178,8 +242,7 @@ function _scaComecar() {
         body: JSON.stringify({ tipo: _scaTipoAtual, alvos: _scaSelecionados })
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
-        btn.disabled = false;
-        btn.textContent = rotulo;
+        restaurar();
         if (!ok) return gcAlert(d.error || "Não foi possível abrir a conferência.");
         _scaSessao = d;
         _scaBipagens = [];
@@ -189,8 +252,7 @@ function _scaComecar() {
         _scaAbrirSessao();
     })
     .catch(() => {
-        btn.disabled = false;
-        btn.textContent = rotulo;
+        restaurar();
         gcAlert("Erro ao conectar com o servidor.");
     });
 }
@@ -524,17 +586,23 @@ function _scaRenderVisao(tipo) {
             <td data-label="Total" style="font-variant-numeric:tabular-nums">${g.total}</td>
             <td data-label="Conferidos" style="font-variant-numeric:tabular-nums;color:#22c55e">${g.conferidos}</td>
             <td data-label="Faltam" style="font-variant-numeric:tabular-nums;color:${falta ? "#eab308" : "#8494a9"};font-weight:${falta ? 700 : 400}">${falta}</td>
-            <td><button class="adm-usr-action senha" onclick="_scaComecarDaVisao('${nomeEsc}')">Conferir</button></td>
+            <td><button class="adm-usr-action senha" onclick="_scaComecarDaVisao('${nomeEsc}', this)">Conferir</button></td>
         </tr>`;
     }).join("");
 }
 
 // Atalho da visão geral: já entra na conferência daquele grupo, sem passar pelo seletor.
-// Sempre um grupo só — quem quer vários marca na lista.
-function _scaComecarDaVisao(nome) {
+// É o caminho principal da tela. Sempre um grupo só — quem quer vários abre a seleção.
+let _scaBotaoLinha = null;
+
+function _scaComecarDaVisao(nome, botao) {
     if (!_scaTipoAtual) _scaTipoAtual = "cluster";
     _scaSelecionados = [nome];
     _scaPintarTipo();
+    // O botão da linha é o único retorno visual daqui: sem isso a pessoa clica de novo
+    // achando que não pegou.
+    if (botao) { botao.disabled = true; botao.textContent = "Abrindo..."; }
+    _scaBotaoLinha = botao || null;
     _scaComecar();
 }
 

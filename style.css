@@ -763,6 +763,37 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 12px; margin-bottom: 18px;
 }
+/* Cartão de início enxuto: título, tipo e o atalho da seleção numa linha só. O caminho
+   normal é clicar em "Conferir" na visão geral, então o seletor não precisa ficar aberto
+   ocupando meia tela — quem vai marcar vários abre pelo botão. */
+.sca-inicio-topo {
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+}
+.sca-inicio-topo .bip-scan-title { margin-bottom: 0; }
+.sca-inicio-topo .filtro-tabs { padding-left: 20px; border-left: 1px solid var(--border); }
+.sca-abrir {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+    background: none; border: none; padding: 0; cursor: pointer; font-family: inherit;
+    font-size: 12.5px; font-weight: 600; color: #3a86ff;
+}
+.sca-abrir:hover { text-decoration: underline; }
+.sca-abrir-seta { transition: transform .18s; }
+.sca-abrir.aberto .sca-abrir-seta { transform: rotate(180deg); }
+/* Em tela estreita a linha quebra e o risquinho divisor fica solto no meio do nada. */
+@media (max-width: 680px) {
+    .sca-inicio-topo { gap: 12px; }
+    .sca-inicio-topo .filtro-tabs { padding-left: 0; border-left: none; }
+    .sca-abrir { margin-left: 0; }
+}
+
+/* Visão geral em painel próprio: é a tela principal daqui, e sem moldura ela encostava
+   no cartão de cima e parecia parte dele. */
+.sca-painel {
+    margin-top: 22px; padding: 18px 20px 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
 /* Histórico de conferências: bloco próprio, recuado e mais apagado. Coladinho na visão
    geral ele parecia continuação da tabela de cima — são duas coisas diferentes, uma é o
    estado de agora e a outra é o que já foi feito. */
