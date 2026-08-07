@@ -598,9 +598,15 @@ function _scaRenderVisao(tipo) {
     }
     empty.style.display = "none";
     result.style.display = "";
-    // Cidade não tem entregador fixo, então a coluna some junto com as células.
+    // Cidade não tem entregador, então a coluna some junto com as células.
     const thEnt = document.getElementById("sca-visao-th-ent");
     if (thEnt) thEnt.style.display = tipo === "cluster" ? "" : "none";
+    // Copiar só faz sentido no dia aberto: dia fechado não recebe atribuição nova.
+    const btnCopiar = document.getElementById("sca-copiar-ent");
+    if (btnCopiar) {
+        const faltaAlguem = _scaVisao.some(g => !_scaEntregadores[_scaChave(g.grupo)]);
+        btnCopiar.style.display = (tipo === "cluster" && !_scaVisaoRetrato && faltaAlguem) ? "" : "none";
+    }
 
     // Total geral no cabeçalho: é a resposta pra "estamos perto de fechar o dia?".
     const total = _scaVisao.reduce((a, g) => a + g.total, 0);
@@ -649,10 +655,43 @@ function _scaChave(v) {
 
 function _scaCelulaEntregador(grupo, nomeEsc) {
     const e = _scaEntregadores[_scaChave(grupo)];
-    if (e && e.nome) {
-        return `<button class="sca-entregador definido" onclick="_scaAbrirEntregador('${nomeEsc}')" title="Trocar o entregador de ${_scaEsc(grupo)}">${_scaEsc(e.nome)}</button>`;
+    // Dia fechado é registro: mostra quem saiu naquele dia, sem deixar reescrever.
+    if (_scaVisaoRetrato) {
+        return e && e.nome
+            ? `<span style="font-size:12px;color:#93c5fd">${_scaEsc(e.nome)}</span>`
+            : `<span style="font-size:12px;color:#5c6b80">—</span>`;
     }
-    return `<button class="sca-entregador" onclick="_scaAbrirEntregador('${nomeEsc}')" title="Definir o entregador de ${_scaEsc(grupo)}">+ atribuir</button>`;
+    if (e && e.nome) {
+        return `<button class="sca-entregador definido" onclick="_scaAbrirEntregador('${nomeEsc}')" title="Trocar o entregador de ${_scaEsc(grupo)} hoje">${_scaEsc(e.nome)}</button>`;
+    }
+    return `<button class="sca-entregador" onclick="_scaAbrirEntregador('${nomeEsc}')" title="Definir o entregador de ${_scaEsc(grupo)} hoje">+ atribuir</button>`;
+}
+
+// Repetir o dia anterior. A atribuição é diária, mas na prática muda pouco — o que muda são
+// os clusters de quem faltou. Copiar e ajustar é bem mais rápido que preencher tudo de novo.
+function _scaCopiarEntregadores() {
+    gcConfirm(
+        "Repetir as atribuições do último dia que teve entregadores?\n\nQuem já foi atribuído hoje não é alterado — a cópia só preenche os clusters que ainda estão vazios.",
+        () => {
+            const btn = document.getElementById("sca-copiar-ent");
+            const rotulo = btn ? btn.textContent : "";
+            if (btn) { btn.disabled = true; btn.textContent = "Copiando..."; }
+            fetch(`${API}/shopee/conferencia/atribuicoes/entregador/copiar`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+            }).then(r => r.json().then(d => ({ ok: r.ok, d })))
+            .then(({ ok, d }) => {
+                if (btn) { btn.disabled = false; btn.textContent = rotulo; }
+                if (!ok) return gcAlert(d.error || "Não foi possível copiar.");
+                if (!d.copiados) return gcAlert("Nada a copiar: todos os clusters já têm entregador hoje.");
+                gcAlert(`${d.copiados} cluster${d.copiados !== 1 ? "s" : ""} preenchido${d.copiados !== 1 ? "s" : ""} com as atribuições de ${d.de.split("-").reverse().join("/")}.`);
+                _scaCarregarVisao();
+            })
+            .catch(() => {
+                if (btn) { btn.disabled = false; btn.textContent = rotulo; }
+                gcAlert("Erro ao conectar com o servidor.");
+            });
+        }, "Repetir dia anterior", "Repetir");
 }
 
 function _scaAbrirEntregador(cluster) {
@@ -703,7 +742,9 @@ function _scaSalvarEntregador(remover) {
     fetch(`${API}/shopee/conferencia/atribuicoes/entregador`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ cluster: _scaClusterEditando, entregador_nome: nome, entregador_id: id })
+        // Manda o dia que está na tela: se ele não for o dia atual, o servidor recusa em vez
+        // de gravar em cima do registro de outro dia.
+        body: JSON.stringify({ cluster: _scaClusterEditando, dia: _scaVisaoDia || _scaVisaoAtual, entregador_nome: nome, entregador_id: id })
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
         btn.disabled = false;
