@@ -126,6 +126,18 @@ body {
 .submenu a:hover::before  { background: #3a86ff; border-color: #3a86ff; }
 .submenu a.active::before { background: #3a86ff; border-color: #3a86ff; }
 
+/* ── Shopee ──
+   Menu próprio, então usa o laranja da transportadora (#F97316, o mesmo dos gráficos
+   e do card de perfil) no lugar do azul padrão. Sem isso ele virava só mais uma linha
+   idêntica às outras, e a razão de ter saído de dentro de Operação não aparecia. */
+#menu-shopee:hover                { background: rgba(249,115,22,0.08); }
+#menu-shopee.active               { box-shadow: inset 3px 0 0 #F97316; }
+#menu-shopee.open  .menu-icon,
+#menu-shopee.active .menu-icon    { color: #F97316; }
+#submenu-shopee a.active          { background: rgba(249,115,22,0.08); }
+#submenu-shopee a:hover::before,
+#submenu-shopee a.active::before  { background: #F97316; border-color: #F97316; }
+
 .sidebar-footer {
     padding: 8px 6px; border-top: 1px solid var(--border);
     display: flex; justify-content: center; flex-shrink: 0;

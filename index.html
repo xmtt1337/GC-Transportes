@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260807l">
+<link rel="stylesheet" href="style.css?v=20260807m">
 </head>
 <body>
 
@@ -91,29 +91,41 @@ if (location.hostname === "xmtt1337.github.io") {
                 <li><a href="#" data-rota="Operacao/DevolucoesReceberAvulso" onclick="abrirDevolucoesReceberAvulso(event)">Receber Avulso</a></li>
                 <li><a href="#" data-rota="Operacao/DevolucoesRegistro" onclick="abrirDevolucoesRegistro(event)">Registro</a></li>
             </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Shopee <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="subgroup-shopee-op">
-                <li><a href="#" data-rota="Operacao/ShopeeRecebimento" onclick="abrirShopeeReceber(event)">Recebimento</a></li>
-                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
-                    Alimentar <span class="subgroup-arrow">▾</span>
-                </li>
-                <ul class="sub-sub-submenu" id="subgroup-shopee-alimentar">
-                    <li><a href="#" data-rota="Operacao/ShopeeRomaneiro" onclick="abrirShopeeRomaneiro(event)">Romaneiro Shopee</a></li>
-                    <li><a href="#" data-rota="Operacao/ShopeeAT" onclick="abrirShopeeAT(event)">AT Exportada</a></li>
-                    <li><a href="#" data-rota="Operacao/ShopeePedidos" onclick="abrirShopeePedidos(event)">Pedidos pesquisados</a></li>
-                </ul>
-                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
-                    Conferência <span class="subgroup-arrow">▾</span>
-                </li>
-                <ul class="sub-sub-submenu" id="subgroup-shopee-conferencia">
-                    <li><a href="#" data-rota="Operacao/ShopeeLineHaul" onclick="abrirShopeeLineHaul(event)">LineHaul</a></li>
-                    <li><a href="#" data-rota="Operacao/ShopeeAtribuicoes" onclick="abrirShopeeAtribuicoes(event)">Atribuições</a></li>
-                </ul>
-            </ul>
             <li id="menu-item-etiquetas"><a href="#" data-rota="Operacao/Etiquetas" onclick="abrirEtiquetas(event)">Impressão de etiquetas</a></li>
             <li id="menu-item-pacotes-faltantes-op" style="display:none"><a href="#" data-rota="Ocorrencias/PacotesFaltantes" onclick="abrirPacotesFaltantes(event)">Registro de Pacotes Faltantes</a></li>
+        </ul>
+
+        <!-- Shopee é menu próprio, e não um grupo dentro de Operação: era o único fluxo que
+             precisava de um 4º nível (Operação > Shopee > Alimentar > tela), o que deixava os
+             links com ~66px de recuo numa sidebar de 250px. Aqui ele fica com a mesma
+             profundidade de todos os outros menus. Visibilidade acompanha Operação — quem não
+             enxerga uma, não enxerga a outra (core.js). -->
+        <li class="menu-item" data-menu="shopee" id="menu-shopee" onclick="toggleMenu(this)">
+            <svg class="menu-icon" viewBox="0 0 24 24">
+                <path d="M4 7h16l-1.2 12.1A2 2 0 0 1 16.8 21H7.2a2 2 0 0 1-2-1.9L4 7z"/>
+                <path d="M8.5 10V6.5a3.5 3.5 0 0 1 7 0V10"/>
+            </svg>
+            <span class="label">Shopee</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Shopee</span>
+        </li>
+        <ul class="submenu" data-menu="shopee" id="submenu-shopee">
+            <li><a href="#" data-rota="Shopee/Recebimento" onclick="abrirShopeeReceber(event)">Recebimento</a></li>
+            <li class="subgroup-header" onclick="toggleSubGroup(this)">
+                Alimentar <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="subgroup-shopee-alimentar">
+                <li><a href="#" data-rota="Shopee/Romaneiro" onclick="abrirShopeeRomaneiro(event)">Romaneiro</a></li>
+                <li><a href="#" data-rota="Shopee/AT" onclick="abrirShopeeAT(event)">AT Exportada</a></li>
+                <li><a href="#" data-rota="Shopee/Pedidos" onclick="abrirShopeePedidos(event)">Pedidos pesquisados</a></li>
+            </ul>
+            <li class="subgroup-header" onclick="toggleSubGroup(this)">
+                Conferência <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="subgroup-shopee-conferencia">
+                <li><a href="#" data-rota="Shopee/LineHaul" onclick="abrirShopeeLineHaul(event)">LineHaul</a></li>
+                <li><a href="#" data-rota="Shopee/Atribuicoes" onclick="abrirShopeeAtribuicoes(event)">Atribuições</a></li>
+            </ul>
         </ul>
 
         <li class="menu-item" data-menu="pedidos" id="menu-pedidos" onclick="toggleMenu(this)">
@@ -3270,58 +3282,58 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260807l"></script>
-<script src="js/router.js?v=20260807l"></script>
-<script src="js/sidebar.js?v=20260807l"></script>
-<script src="js/nav.js?v=20260807l"></script>
-<script src="js/fechamentos.js?v=20260807l"></script>
-<script src="js/admin.js?v=20260807l"></script>
-<script src="js/conf-nf.js?v=20260807l"></script>
-<script src="js/trampay.js?v=20260807l"></script>
-<script src="js/usuarios.js?v=20260807l"></script>
-<script src="js/motoristas.js?v=20260807l"></script>
-<script src="js/pagamentos.js?v=20260807l"></script>
-<script src="js/notas-fiscais.js?v=20260807l"></script>
-<script src="js/dashboard.js?v=20260807l"></script>
-<script src="js/ent-dashboard.js?v=20260807l"></script>
-<script src="js/nota-fiscal.js?v=20260807l"></script>
-<script src="js/extravios.js?v=20260807l"></script>
-<script src="js/usuarios-gc.js?v=20260807l"></script>
-<script src="js/todos-usuarios.js?v=20260807l"></script>
-<script src="js/whatsapp-teste.js?v=20260807l"></script>
-<script src="js/whatsapp-conversa.js?v=20260807l"></script>
-<script src="js/modals.js?v=20260807l"></script>
-<script src="js/alimentar.js?v=20260807l"></script>
-<script src="js/fechamento-criar.js?v=20260807l"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260807l"></script>
-<script src="js/bipagens.js?v=20260807l"></script>
-<script src="js/pedidos.js?v=20260807l"></script>
-<script src="js/desempenho-bip.js?v=20260807l"></script>
-<script src="js/desempenho-hora.js?v=20260807l"></script>
-<script src="js/conferencias.js?v=20260807l"></script>
-<script src="js/antecipacoes.js?v=20260807l"></script>
-<script src="js/antecipacoes-admin.js?v=20260807l"></script>
-<script src="js/baixas.js?v=20260807l"></script>
-<script src="js/devolucoes.js?v=20260807l"></script>
-<script src="js/shopee.js?v=20260807l"></script>
-<script src="js/shopee-romaneiro.js?v=20260807l"></script>
-<script src="js/shopee-at.js?v=20260807l"></script>
-<script src="js/shopee-pedidos.js?v=20260807l"></script>
-<script src="js/shopee-linehaul.js?v=20260807l"></script>
-<script src="js/shopee-atribuicoes.js?v=20260807l"></script>
-<script src="js/entregador-conferencia.js?v=20260807l"></script>
-<script src="js/viagens.js?v=20260807l"></script>
-<script src="js/ocorrencias.js?v=20260807l"></script>
-<script src="js/ocorrencias-admin.js?v=20260807l"></script>
-<script src="js/localizacao.js?v=20260807l"></script>
-<script src="js/localizacao-admin.js?v=20260807l"></script>
-<script src="js/transferencias.js?v=20260807l"></script>
-<script src="js/transferencias-admin.js?v=20260807l"></script>
-<script src="js/motorista-devolucoes.js?v=20260807l"></script>
-<script src="js/etiquetas.js?v=20260807l"></script>
-<script src="js/videira.js?v=20260807l"></script>
-<script src="js/planejamento-videira.js?v=20260807l"></script>
-<script src="js/torre.js?v=20260807l"></script>
+<script src="js/core.js?v=20260807m"></script>
+<script src="js/router.js?v=20260807m"></script>
+<script src="js/sidebar.js?v=20260807m"></script>
+<script src="js/nav.js?v=20260807m"></script>
+<script src="js/fechamentos.js?v=20260807m"></script>
+<script src="js/admin.js?v=20260807m"></script>
+<script src="js/conf-nf.js?v=20260807m"></script>
+<script src="js/trampay.js?v=20260807m"></script>
+<script src="js/usuarios.js?v=20260807m"></script>
+<script src="js/motoristas.js?v=20260807m"></script>
+<script src="js/pagamentos.js?v=20260807m"></script>
+<script src="js/notas-fiscais.js?v=20260807m"></script>
+<script src="js/dashboard.js?v=20260807m"></script>
+<script src="js/ent-dashboard.js?v=20260807m"></script>
+<script src="js/nota-fiscal.js?v=20260807m"></script>
+<script src="js/extravios.js?v=20260807m"></script>
+<script src="js/usuarios-gc.js?v=20260807m"></script>
+<script src="js/todos-usuarios.js?v=20260807m"></script>
+<script src="js/whatsapp-teste.js?v=20260807m"></script>
+<script src="js/whatsapp-conversa.js?v=20260807m"></script>
+<script src="js/modals.js?v=20260807m"></script>
+<script src="js/alimentar.js?v=20260807m"></script>
+<script src="js/fechamento-criar.js?v=20260807m"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260807m"></script>
+<script src="js/bipagens.js?v=20260807m"></script>
+<script src="js/pedidos.js?v=20260807m"></script>
+<script src="js/desempenho-bip.js?v=20260807m"></script>
+<script src="js/desempenho-hora.js?v=20260807m"></script>
+<script src="js/conferencias.js?v=20260807m"></script>
+<script src="js/antecipacoes.js?v=20260807m"></script>
+<script src="js/antecipacoes-admin.js?v=20260807m"></script>
+<script src="js/baixas.js?v=20260807m"></script>
+<script src="js/devolucoes.js?v=20260807m"></script>
+<script src="js/shopee.js?v=20260807m"></script>
+<script src="js/shopee-romaneiro.js?v=20260807m"></script>
+<script src="js/shopee-at.js?v=20260807m"></script>
+<script src="js/shopee-pedidos.js?v=20260807m"></script>
+<script src="js/shopee-linehaul.js?v=20260807m"></script>
+<script src="js/shopee-atribuicoes.js?v=20260807m"></script>
+<script src="js/entregador-conferencia.js?v=20260807m"></script>
+<script src="js/viagens.js?v=20260807m"></script>
+<script src="js/ocorrencias.js?v=20260807m"></script>
+<script src="js/ocorrencias-admin.js?v=20260807m"></script>
+<script src="js/localizacao.js?v=20260807m"></script>
+<script src="js/localizacao-admin.js?v=20260807m"></script>
+<script src="js/transferencias.js?v=20260807m"></script>
+<script src="js/transferencias-admin.js?v=20260807m"></script>
+<script src="js/motorista-devolucoes.js?v=20260807m"></script>
+<script src="js/etiquetas.js?v=20260807m"></script>
+<script src="js/videira.js?v=20260807m"></script>
+<script src="js/planejamento-videira.js?v=20260807m"></script>
+<script src="js/torre.js?v=20260807m"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">

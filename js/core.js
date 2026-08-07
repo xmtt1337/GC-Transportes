@@ -165,6 +165,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     if (role === "entregador") {
         hide("menu-operacao");
         hide("submenu-operacao");
+        hide("menu-shopee");
+        hide("submenu-shopee");
         hide("menu-pedidos");
         hide("submenu-pedidos");
         hide("menu-conferencias");
@@ -192,6 +194,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     if (role === "motorista") {
         hide("menu-operacao");
         hide("submenu-operacao");
+        hide("menu-shopee");
+        hide("submenu-shopee");
         hide("menu-pedidos");
         hide("submenu-pedidos");
         hide("menu-conferencias");
@@ -257,6 +261,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     if (role === "ADM Videira") {
         hide("menu-operacao");
         hide("submenu-operacao");
+        hide("menu-shopee");
+        hide("submenu-shopee");
         hide("menu-pedidos");
         hide("submenu-pedidos");
         hide("menu-conferencias");
