@@ -561,6 +561,7 @@ function _scaCarregarVisao() {
         if (d.polo_sem_xpt) { skFim(empty, "Este polo não recebe Shopee."); return; }
         _scaVisaoAtual = d.dia_atual || "";
         _scaVisaoRetrato = !!d.retrato;
+        _scaEntregadores = d.entregadores || {};
         _scaRenderDiasVisao(d.dias || [], d.dia);
         _scaVisao = d.grupos || [];
         _scaRenderVisao(tipo);
@@ -597,6 +598,9 @@ function _scaRenderVisao(tipo) {
     }
     empty.style.display = "none";
     result.style.display = "";
+    // Cidade não tem entregador fixo, então a coluna some junto com as células.
+    const thEnt = document.getElementById("sca-visao-th-ent");
+    if (thEnt) thEnt.style.display = tipo === "cluster" ? "" : "none";
 
     // Total geral no cabeçalho: é a resposta pra "estamos perto de fechar o dia?".
     const total = _scaVisao.reduce((a, g) => a + g.total, 0);
@@ -625,9 +629,104 @@ function _scaRenderVisao(tipo) {
             <td data-label="Total" style="font-variant-numeric:tabular-nums">${g.total}</td>
             <td data-label="Conferidos" style="font-variant-numeric:tabular-nums;color:#22c55e">${g.conferidos}</td>
             <td data-label="Faltam" style="font-variant-numeric:tabular-nums;color:${falta ? "#eab308" : "#8494a9"};font-weight:${falta ? 700 : 400}">${falta}</td>
+            ${tipo === "cluster" ? `<td data-label="Entregador">${_scaCelulaEntregador(g.grupo, nomeEsc)}</td>` : ""}
             <td>${_scaVisaoRetrato ? "" : `<button class="adm-usr-action senha" onclick="_scaComecarDaVisao('${nomeEsc}', this)">Conferir</button>`}</td>
         </tr>`;
     }).join("");
+}
+
+// ── Entregador responsável por cluster ──
+// Fica na visão geral porque é ali que se olha cluster por cluster. Quando falta pacote,
+// a primeira pergunta é "de quem é esse cluster?" — e a resposta tinha que sair de fora
+// do sistema, na memória de alguém.
+let _scaEntregadores = {};   // chave normalizada do cluster -> { id, nome }
+let _scaListaEntregadores = null;
+let _scaClusterEditando = null;
+
+function _scaChave(v) {
+    return String(v || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function _scaCelulaEntregador(grupo, nomeEsc) {
+    const e = _scaEntregadores[_scaChave(grupo)];
+    if (e && e.nome) {
+        return `<button class="sca-entregador definido" onclick="_scaAbrirEntregador('${nomeEsc}')" title="Trocar o entregador de ${_scaEsc(grupo)}">${_scaEsc(e.nome)}</button>`;
+    }
+    return `<button class="sca-entregador" onclick="_scaAbrirEntregador('${nomeEsc}')" title="Definir o entregador de ${_scaEsc(grupo)}">+ atribuir</button>`;
+}
+
+function _scaAbrirEntregador(cluster) {
+    _scaClusterEditando = cluster;
+    document.getElementById("sca-ent-cluster").innerText = cluster;
+    document.getElementById("sca-ent-erro").style.display = "none";
+    _abrirModal("modal-sca-entregador");
+
+    const sel = document.getElementById("sca-ent-select");
+    const atual = _scaEntregadores[_scaChave(cluster)];
+    // Botão de remover só aparece se há o que remover.
+    document.getElementById("sca-ent-remover").style.display = atual ? "" : "none";
+
+    const preencher = () => {
+        sel.innerHTML = `<option value="">Selecione o entregador...</option>` +
+            _scaListaEntregadores.map(e =>
+                `<option value="${_scaEsc(e.nome)}" data-id="${_scaEsc(e.id)}">${_scaEsc(e.nome)}</option>`).join("");
+        if (atual) sel.value = atual.nome;
+    };
+    if (_scaListaEntregadores) return preencher();
+
+    sel.innerHTML = `<option>Carregando...</option>`;
+    fetch(`${API}/etiquetas/entregadores`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(lista => {
+            _scaListaEntregadores = Array.isArray(lista) ? lista : [];
+            preencher();
+        })
+        .catch(() => { sel.innerHTML = `<option value="">Erro ao carregar a lista</option>`; });
+}
+
+function _scaSalvarEntregador(remover) {
+    const sel = document.getElementById("sca-ent-select");
+    const nome = remover ? "" : sel.value;
+    const opt  = sel.selectedOptions[0];
+    const id   = remover ? "" : (opt ? opt.dataset.id || "" : "");
+    if (!remover && !nome) {
+        const erro = document.getElementById("sca-ent-erro");
+        erro.innerText = "Escolha um entregador.";
+        erro.style.display = "";
+        return;
+    }
+    const btn = document.getElementById(remover ? "sca-ent-remover" : "sca-ent-salvar");
+    const rotulo = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = remover ? "Removendo..." : "Salvando...";
+
+    fetch(`${API}/shopee/conferencia/atribuicoes/entregador`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ cluster: _scaClusterEditando, entregador_nome: nome, entregador_id: id })
+    }).then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+        btn.disabled = false;
+        btn.textContent = rotulo;
+        if (!ok) {
+            const erro = document.getElementById("sca-ent-erro");
+            erro.innerText = d.error || "Não foi possível salvar.";
+            erro.style.display = "";
+            return;
+        }
+        const chave = _scaChave(_scaClusterEditando);
+        if (nome) _scaEntregadores[chave] = { id, nome };
+        else delete _scaEntregadores[chave];
+        _fecharModal("modal-sca-entregador");
+        _scaRenderVisao(_scaTipoAtual || "cluster");
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.textContent = rotulo;
+        const erro = document.getElementById("sca-ent-erro");
+        erro.innerText = "Erro ao conectar com o servidor.";
+        erro.style.display = "";
+    });
 }
 
 // Atalho da visão geral: já entra na conferência daquele grupo, sem passar pelo seletor.

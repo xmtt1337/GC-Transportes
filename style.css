@@ -786,6 +786,22 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     .sca-abrir { margin-left: 0; }
 }
 
+/* Entregador do cluster, na visão geral. Sem ninguém definido fica apagado e discreto — é
+   um convite, não um alerta; cluster sem entregador é situação normal no começo do dia. */
+.sca-entregador {
+    background: none; border: 1px dashed var(--border); border-radius: 8px;
+    padding: 4px 10px; cursor: pointer; font-family: inherit;
+    font-size: 12px; font-weight: 600; color: #7b8ea6;
+    max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    transition: border-color .15s, color .15s;
+}
+.sca-entregador:hover { border-color: rgba(58,134,255,0.5); color: #cbd5e1; }
+.sca-entregador.definido {
+    border-style: solid; border-color: rgba(58,134,255,0.3);
+    background: rgba(58,134,255,0.08); color: #93c5fd;
+}
+.sca-entregador.definido:hover { border-color: #3a86ff; color: #dbeafe; }
+
 /* Seletor de dia da visão geral. Fica colado no título porque é ele que diz de quando é o
    quadro — solto num canto, dava pra ler o dia 5 achando que era hoje. */
 .sca-dia {
