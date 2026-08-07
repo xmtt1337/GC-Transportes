@@ -630,6 +630,20 @@ function _wacEscapar(s) {
     return div.innerHTML.replace(/\n/g, "<br>");
 }
 
+// Texto do separador de dia. "Hoje"/"Ontem" acompanhados da data, não sozinhos: o print
+// desta tela é enviado pra transportadora, e "Hoje" num arquivo salvo não diz nada — quem
+// abrir amanhã não tem como saber a que dia se referia.
+function _wacDiaSeparador(data) {
+    const dia = data.toLocaleDateString("pt-BR");
+    const hoje = new Date();
+    const mesmoDia = (a, b) => a.toDateString() === b.toDateString();
+    if (mesmoDia(data, hoje)) return `Hoje · ${dia}`;
+    const ontem = new Date(hoje);
+    ontem.setDate(ontem.getDate() - 1);
+    if (mesmoDia(data, ontem)) return `Ontem · ${dia}`;
+    return dia;
+}
+
 // silencioso: recarrega sem piscar "Carregando..." (usado pelo auto-refresh)
 function _wacCarregarConversa(silencioso) {
     const body = document.getElementById("wac-chat-body");
@@ -643,14 +657,29 @@ function _wacCarregarConversa(silencioso) {
                 return;
             }
             const scrollAnterior = body.scrollTop;
+            // Separador de data a cada virada de dia, como no app. A bolha mostrava só a
+            // hora, então uma conversa de vários dias virava uma fila de horários soltos —
+            // e esta tela existe pra virar print de prova, onde a data é o principal.
+            let diaAnterior = null;
             body.innerHTML = rows.map(m => {
-                const hora  = new Date(m.criado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+                const quando = new Date(m.criado_em);
+                const dia = quando.toDateString();
+                let separador = "";
+                if (dia !== diaAnterior) {
+                    diaAnterior = dia;
+                    separador = `<div class="wac-chat-dia"><span>${_wacDiaSeparador(quando)}</span></div>`;
+                }
+                const hora  = quando.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+                // Data completa no title: quem for conferir um print não precisa contar os
+                // separadores pra cima até achar de que dia é aquela mensagem.
+                const completa = quando.toLocaleString("pt-BR");
                 const check = m.direcao === "enviada" ? `<span class="wac-check">✓</span>` : "";
                 const sel   = _wacSelecionadas.has(m.id) ? " selecionada" : "";
                 const ped   = m.pedido ? ` data-pedido="${m.pedido}"` : "";
                 // Quem do time disparou — várias pessoas usam o mesmo número da empresa.
                 const autor = m.autor ? `<span class="wac-bubble-autor">${_wacEscapar(m.autor)}</span>` : "";
-                return `<div class="wac-bubble ${m.direcao}${sel}"${ped} onclick="_wacAlternarSelecao('${m.id}')">${autor}${_wacEscapar(m.texto)}<span class="wac-bubble-hora">${hora} ${check}</span></div>`;
+                return separador +
+                    `<div class="wac-bubble ${m.direcao}${sel}"${ped} onclick="_wacAlternarSelecao('${m.id}')">${autor}${_wacEscapar(m.texto)}<span class="wac-bubble-hora" title="${completa}">${hora} ${check}</span></div>`;
             }).join("");
             // Só desce sozinho na abertura; no auto-refresh respeita onde a pessoa estava.
             body.scrollTop = silencioso ? scrollAnterior : body.scrollHeight;
