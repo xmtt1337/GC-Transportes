@@ -101,13 +101,18 @@ const WA_COLUNAS_FECHADAS = [
 
 const WA_GRUPOS_PRAZO = [...WA_COLUNAS_PRAZO, ...WA_COLUNAS_FECHADAS];
 
-function abrirWhatsappConversas(event) {
+// Conversa pedida pela URL, quando a pessoa entrou por um link direto. Fica guardada até a
+// lista chegar: sem os dados carregados não dá pra saber de qual conversa o código é.
+let _wacAlvoUrl = null;   // { tipo, transp, codigo }
+
+function abrirWhatsappConversas(event, alvo) {
     if (event) event.preventDefault();
     const role = window._gcUser && window._gcUser.role;
     if (!WA_ROLES_ATIVOS.includes(role)) {
         gcAlert("Você não tem acesso às conversas de ativos.");
         return;
     }
+    _wacAlvoUrl = alvo || null;
     // Quem não faz acareação já entra na aba que lhe interessa.
     if (!WA_ROLES_ACAREACAO.includes(role)) _wacAba = "outros";
     _wacTransp = null; // cada visita começa numa transportadora que tem trabalho
@@ -217,8 +222,59 @@ function _wacCarregarLista() {
             empty.style.display = "none";
             result.style.display = "";
             _wacRenderizar();
+            if (_wacAlvoUrl) _wacAbrirDaUrl(_wacAlvoUrl);
         })
         .catch(() => { skFim(empty, "Erro ao carregar conversas."); });
+}
+
+// ── Link direto para uma conversa ──
+// Ativos/Conversas/<Tipo>/<Transportadora>/<Código>
+//
+// O código é o que identifica de verdade; tipo e transportadora entram no caminho pra ele
+// ser legível ao ser colado num chamado. Por isso a busca é pelo CÓDIGO, e tipo/
+// transportadora só desempatam quando o mesmo código aparece em mais de uma conversa —
+// um link antigo continua abrindo mesmo depois de o caso ter mudado de aba.
+const WA_TIPO_ROTA = { acareacao: "Acareacao", outros: "Ativos", chamaram: "Chamaram" };
+
+// "J&T" → "JT", "iMile" → "iMile": o rótulo já existe, e tirar o que não é letra/número
+// evita ter que manter uma segunda lista só pra URL.
+function _wacTranspRota(chave) {
+    const t = WA_TRANSPORTADORAS[chave];
+    return ((t && t.rotulo) || "Outras").replace(/[^A-Za-z0-9]/g, "");
+}
+
+function _wacRotaDaConversa(conversa, numero, pedido) {
+    const tipo   = WA_TIPO_ROTA[conversa ? _wacAbaDe(conversa) : "outros"] || "Ativos";
+    const transp = _wacTranspRota(conversa ? _wacTranspDe(conversa) : "outras");
+    // Conversa que o cliente abriu sozinho não tem pedido — aí o número é o que identifica.
+    const codigo = (pedido || numero || "").trim();
+    return `Ativos/Conversas/${tipo}/${transp}/${encodeURIComponent(codigo)}`;
+}
+
+function _wacAbrirDaUrl(alvo) {
+    _wacAlvoUrl = null; // só vale na entrada; recarregar a lista depois não reabre sozinho
+    const codigo = String(alvo.codigo || "").trim().toLowerCase();
+    if (!codigo) return;
+
+    const casaCodigo = r => (r.pedido || "").toLowerCase() === codigo ||
+                            (r.numero || "").toLowerCase() === codigo;
+    const achados = _wacDados.filter(casaCodigo);
+    if (!achados.length) {
+        // Link de um caso que não existe mais (ou de outro ambiente): em vez de abrir a lista
+        // como se nada tivesse sido pedido, joga o código na busca — a tela vazia passa a
+        // dizer "procurei por isto e não achei".
+        const busca = document.getElementById("wac-busca");
+        if (busca) { busca.value = alvo.codigo; _wacFiltrar(); }
+        return;
+    }
+
+    const tipoAlvo   = String(alvo.tipo || "").toLowerCase();
+    const transpAlvo = String(alvo.transp || "").toLowerCase();
+    const exato = achados.find(r =>
+        (WA_TIPO_ROTA[_wacAbaDe(r)] || "").toLowerCase() === tipoAlvo &&
+        _wacTranspRota(_wacTranspDe(r)).toLowerCase() === transpAlvo);
+    const r = exato || achados[0];
+    _wacAbrirConversa(r.numero, r.pedido || "", !!r.respondido);
 }
 
 // ── Em qual aba cada conversa mora ──
@@ -482,7 +538,10 @@ function _wacAbrirConversa(numero, pedido, resolvido) {
     _wacSelecionadas.clear();
     document.getElementById("wac-chat-nome").innerText = _wacFormatarNumero(numero);
     document.getElementById("wac-chat-numero").innerText = "";
-    mostrarTela("tela-whatsapp-conversa-chat");
+    // A rota vai explícita: a tela do chat não tem entrada em _TELA_ROTAS porque a URL dela
+    // depende de QUAL conversa está aberta, não só da tela.
+    const conversa = _wacDados.find(r => r.numero === numero && (r.pedido || "") === (pedido || ""));
+    mostrarTela("tela-whatsapp-conversa-chat", _wacRotaDaConversa(conversa, numero, pedido));
     _wacCarregarConversa();
     // Recarrega sozinho enquanto a conversa está aberta, pra resposta do cliente
     // aparecer sem precisar sair e entrar de novo. 30s é folgado pro ritmo de uma

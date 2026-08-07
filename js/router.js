@@ -82,6 +82,23 @@ const _ROTAS = {
     "Extravios/Dashboard":           () => abrirExtraviosDash(),
 };
 
+// Rotas com PARÂMETRO no caminho. O mapa acima é de correspondência exata, e essas não
+// podem ser: o fim do caminho é conteúdo (o código do pedido), não o nome de uma tela.
+//
+// `base` é a rota curta correspondente — é ela que fica marcada no menu lateral, já que o
+// link do menu aponta pra lista e não pra uma conversa específica.
+const _ROTAS_PADRAO = [
+    {
+        // Ativos/Conversas/<Tipo>/<Transportadora>/<Código>
+        // ex.: Ativos/Conversas/Ativos/Shopee/BR252525256454
+        base: "Ativos/Conversas",
+        re: /^Ativos\/Conversas\/([^/]+)\/([^/]+)\/(.+)$/,
+        abrir: (tipo, transp, codigo) => abrirWhatsappConversas(null, {
+            tipo, transp, codigo: decodeURIComponent(codigo),
+        }),
+    },
+];
+
 // tela-id -> rota "padrão", usada por mostrarTela(id) quando a tela não é parametrizada
 // por transportadora/unidade (essas passam a rota explícita direto pro mostrarTela)
 const _TELA_ROTAS = {
@@ -161,10 +178,20 @@ function _rotaAbrirAtual() {
     caminho = caminho.replace(/^\/+|\/+$/g, "");
     if (caminho === "index.html") caminho = "";
     if (!caminho) return; // raiz — fica na home, que já é a tela padrão
+
     const abrir = _ROTAS[caminho];
-    if (!abrir) return;
-    abrir();
-    _marcarSubmenuAtivo(caminho);
+    if (abrir) { abrir(); _marcarSubmenuAtivo(caminho); return; }
+
+    // Correspondência exata falhou: tenta as rotas com parâmetro. Marca a rota BASE no menu,
+    // porque o link do menu é o da lista — procurar por um data-rota com o código do pedido
+    // dentro nunca acharia nada, e a conversa abriria com o menu sem destaque nenhum.
+    for (const p of _ROTAS_PADRAO) {
+        const m = caminho.match(p.re);
+        if (!m) continue;
+        p.abrir(...m.slice(1));
+        _marcarSubmenuAtivo(p.base);
+        return;
+    }
 }
 
 // Destaca no menu lateral o link correspondente à rota aberta (o mesmo efeito que já
