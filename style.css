@@ -346,16 +346,16 @@ body {
     font-size: 11px; font-weight: 800; color: #22c55e;
     font-variant-numeric: tabular-nums;
 }
-/* Conversa com mensagem por ler: um "L" verde no lado direito e embaixo.
+/* Conversa com mensagem por ler: um "L" verde no lado esquerdo e embaixo.
    Os três cantos que o L encosta vão a zero — com o raio de 10px do card as pontas
-   curvavam e o traço deixava de ser reto. Só o canto de cima à esquerda continua redondo.
+   curvavam e o traço deixava de ser reto. Só o canto de cima à direita continua redondo.
    O traço é box-shadow, não borda mais grossa: assim o card não muda de tamanho ao passar
    de lido pra não lido e a coluna inteira não dança. */
 .wac-card.nao-lida {
-    border-radius: 10px 0 0 0;
-    border-right-color: #22c55e;
+    border-radius: 0 10px 0 0;
+    border-left-color: #22c55e;
     border-bottom-color: #22c55e;
-    box-shadow: inset -3px 0 0 #22c55e, inset 0 -3px 0 #22c55e;
+    box-shadow: inset 2px 0 0 #22c55e, inset 0 -2px 0 #22c55e;
 }
 .wac-card.nao-lida .wac-card-nome { color: #f1f5f9; font-weight: 700; }
 
