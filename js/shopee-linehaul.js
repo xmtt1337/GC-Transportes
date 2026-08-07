@@ -5,6 +5,8 @@
 
 let _slhTos     = [];
 let _slhFora    = [];      // bipados que não estão em romaneiro nenhum
+let _slhNaoBip  = [];      // do romaneiro do dia, os que ainda não foram bipados
+let _slhNaoBipTruncado = false;
 let _slhFiltro  = "todas";
 let _slhPagina  = 1;
 let _slhDia     = "";      // dia da viagem em foco; "todas" = romaneiro inteiro
@@ -18,6 +20,10 @@ function abrirShopeeLineHaul(event) {
     if (event) event.preventDefault();
     _slhFiltro = "todas";
     _slhPagina = 1;
+    // As duas listas sob demanda são de um dia específico: guardá-las entre visitas faria
+    // a tela reabrir mostrando o dia anterior até alguém trocar de aba.
+    _slhFora   = [];
+    _slhNaoBip = [];
     const busca = document.getElementById("slh-busca");
     if (busca) busca.value = "";
     _slhPintarTabs();
@@ -120,13 +126,17 @@ function _slhRenderDias(hoje) {
 function _slhTrocarDia(dia) {
     _slhDia = dia;
     _slhPagina = 1;
-    _slhFora = [];
+    _slhFora   = [];
+    _slhNaoBip = [];
     _slhCarregar();
 }
+
+let _slhXpt = "";          // XPT do polo de quem está olhando — vai no nome do arquivo exportado
 
 function _slhFaixa(d) {
     const faixa = document.getElementById("slh-faixa");
     const temXpt = d && d.xpt;
+    _slhXpt = (d && d.xpt) || "";
     faixa.style.display = (temXpt || (d && d.polo_label)) ? "" : "none";
     faixa.className = "shr-faixa " + (temXpt ? "cfc" : "sem");
     document.getElementById("slh-faixa-xpt").innerText = temXpt
@@ -162,14 +172,18 @@ function _slhTrocarFiltro(filtro) {
     _slhFiltro = filtro;
     _slhPagina = 1;
     _slhPintarTabs();
-    // "Fora da LH" é outra lista, com outras colunas — busca sob demanda.
-    if (filtro === "fora" && !_slhFora.length) return _slhCarregarFora();
+    // "Fora da LH" e "Pedidos não bipados" são outras listas, com outras colunas — cada uma
+    // busca sob demanda, na primeira vez que a aba é aberta.
+    if (filtro === "fora"       && !_slhFora.length)   return _slhCarregarFora();
+    if (filtro === "naobipados" && !_slhNaoBip.length) return _slhCarregarNaoBipados();
     _slhRenderizar();
 }
 
 function _slhPintarTabs() {
     document.querySelectorAll("#slh-tabs .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.filtro === _slhFiltro));
+    const btn = document.getElementById("slh-exportar");
+    if (btn) btn.style.display = _slhFiltro === "naobipados" ? "" : "none";
 }
 
 function _slhBuscar() { _slhPagina = 1; _slhRenderizar(); }
@@ -180,6 +194,12 @@ function _slhTrocarPagina(passo) {
     document.getElementById("slh-resumo").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+// O `dia` vai junto porque as duas listas seguem o mesmo recorte da barra de dias: sem ele
+// o servidor devolve o acumulado de todos os tempos, que não é o que a tela está mostrando.
+function _slhQsDia() {
+    return _slhDia ? `?dia=${encodeURIComponent(_slhDia)}` : "";
+}
+
 function _slhCarregarFora() {
     const empty  = document.getElementById("slh-empty");
     const result = document.getElementById("slh-resultado");
@@ -187,13 +207,38 @@ function _slhCarregarFora() {
     empty.style.display = "";
     result.style.display = "none";
 
-    fetch(`${API}/shopee/conferencia/fora-da-lh`, { headers: { "Authorization": "Bearer " + token } })
+    fetch(`${API}/shopee/conferencia/fora-da-lh${_slhQsDia()}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(rows => {
             _slhFora = Array.isArray(rows) ? rows : [];
+            if (_slhFiltro !== "fora") return; // trocou de aba no meio do caminho
             empty.style.display = "none";
             result.style.display = "";
             _slhRenderizar();
+        })
+        .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
+}
+
+function _slhCarregarNaoBipados() {
+    const empty  = document.getElementById("slh-empty");
+    const result = document.getElementById("slh-resultado");
+    skMostrar(empty, "tabela");
+    empty.style.display = "";
+    result.style.display = "none";
+
+    fetch(`${API}/shopee/conferencia/nao-bipados${_slhQsDia()}`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(d => {
+            if (d && d.error) { skFim(empty, d.error); return; }
+            _slhNaoBip = (d && d.linhas) || [];
+            _slhNaoBipTruncado = !!(d && d.truncado);
+            if (_slhFiltro !== "naobipados") return;
+            empty.style.display = "none";
+            result.style.display = "";
+            _slhRenderizar();
+            if (_slhNaoBipTruncado) {
+                gcAlert(`A lista saiu com os primeiros ${(d.limite || 0).toLocaleString("pt-BR")} pedidos — esse romaneiro tem mais que isso. Filtre por um dia só para ver tudo.`);
+            }
         })
         .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
 }
@@ -217,6 +262,25 @@ function _slhRenderizar() {
                 <td data-label="Quando" style="color:#8494a9">${_slhEsc(r.data_hora_brasilia) || "—"}</td>
             </tr>`).join("")
             : `<tr><td colspan="4" style="text-align:center;color:#8494a9;padding:26px 10px">Nenhum bipado fora do romaneiro.</td></tr>`;
+        return;
+    }
+
+    if (_slhFiltro === "naobipados") {
+        const rows = _slhNaoBip.filter(r => !termo ||
+            [r.codigo, r.numero_to, r.rota_lh, r.destino].some(v => String(v || "").toLowerCase().includes(termo)));
+        thead.innerHTML = `<tr><th>Código</th><th>TO (LH)</th><th>Rota</th><th>Destino</th></tr>`;
+        const pagina = _slhPaginar(rows, 4);
+        tbody.innerHTML = pagina.length ? pagina.map(r => {
+            const toEsc = _slhEsc(r.numero_to).replace(/'/g, "\\'");
+            return `
+            <tr class="slh-linha" onclick="_slhAbrirTo('${toEsc}')" title="Ver os códigos desta TO">
+                <td data-label="Código" style="font-family:monospace;font-weight:700;color:#e2e8f0">${_slhEsc(r.codigo)}</td>
+                <td data-label="TO" style="font-family:monospace;color:#8494a9">${_slhEsc(r.numero_to)}</td>
+                <td data-label="Rota" style="color:#8494a9">${_slhEsc(r.rota_lh) || "—"}</td>
+                <td data-label="Destino" style="color:#8494a9">${_slhEsc(r.destino) || "—"}</td>
+            </tr>`;
+        }).join("")
+            : `<tr><td colspan="4" style="text-align:center;color:#8494a9;padding:26px 10px">Tudo do romaneiro foi bipado.</td></tr>`;
         return;
     }
 
@@ -346,6 +410,33 @@ function _slhRenderTo() {
     const btn = document.getElementById("slh-to-copiar");
     btn.disabled = !faltam.length;
     btn.textContent = faltam.length ? `Copiar os ${faltam.length} que faltam` : "Nada a copiar";
+}
+
+// Exporta os não bipados em .xlsx — é a lista que se manda pra Shopee cobrar, e copiar TO
+// por TO pelo modal era o único jeito antes. Sai o que a tabela está mostrando (a busca
+// conta), e não só a página aberta: exportar 50 de 300 seria uma pegadinha silenciosa.
+function _slhExportarNaoBipados() {
+    const termo = (document.getElementById("slh-busca")?.value || "").trim().toLowerCase();
+    const rows = _slhNaoBip.filter(r => !termo ||
+        [r.codigo, r.numero_to, r.rota_lh, r.destino].some(v => String(v || "").toLowerCase().includes(termo)));
+
+    if (!rows.length) return gcAlert("Não há pedidos não bipados para exportar.");
+
+    const dados = rows.map(r => ({
+        "Código":              r.codigo || "",
+        "TO (LH)":             r.numero_to || "",
+        "Rota":                r.rota_lh || "",
+        "Origem":              r.origem || "",
+        "Destino":             r.destino || "",
+        "Horário de entrega":  r.horario_entrega || "",
+        "Romaneiro":           r.dia_lh ? r.dia_lh.split("-").reverse().join("/") : "",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dados);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Não bipados");
+    const sufixo = !_slhDia || _slhDia === "todas" ? "todos-os-romaneiros" : _slhDia;
+    XLSX.writeFile(wb, `pedidos_nao_bipados_${_slhXpt || "xpt"}_${sufixo}.xlsx`);
 }
 
 // Copiar a lista dos faltantes: é o que se manda pra transportadora cobrar.
