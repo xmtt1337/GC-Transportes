@@ -196,11 +196,12 @@ function _wacCards(itens, grupo) {
              onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',${!!r.respondido})">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
-                <div class="wac-card-nome">${titulo}${aviso}</div>
+                <div class="wac-card-nome">${titulo}</div>
                 ${apoio ? `<div class="wac-card-numero">${apoio}</div>` : ""}
                 <div class="wac-card-prazo" ${vencimento ? `style="color:${_wacCorPrazo(vencimento)}"` : ""}>${linhaPrazo}${porQuem}</div>
                 ${linhaData}
             </div>
+            ${aviso}
             ${acao}
         </div>`;
     }).join("");
@@ -378,11 +379,12 @@ function _wacCardsOutros(itens, arrastavel = true) {
              onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',${!!r.respondido})">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
-                <div class="wac-card-nome">${r.pedido || _wacFormatarNumero(r.numero)}${aviso}</div>
+                <div class="wac-card-nome">${r.pedido || _wacFormatarNumero(r.numero)}</div>
                 <div class="wac-card-numero">${_wacFormatarNumero(r.numero)}</div>
                 <div class="wac-card-prazo">${porQuem}${_wacDataCurta(r.ultima)}${
                     r.nao_lidas ? "" : r.lido_em ? " · lida" : ""}</div>
             </div>
+            ${aviso}
         </div>`;
     }).join("");
 }
