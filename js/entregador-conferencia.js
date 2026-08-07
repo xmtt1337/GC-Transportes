@@ -269,11 +269,17 @@ function _cenRenderizar() {
         <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:${aMais ? "#ef4444" : "#8494a9"}">${aMais}</span><span class="shr-resumo-lbl">A mais</span></div>`;
 
     const pct = _cenTotalGrupo ? (ok / _cenTotalGrupo) * 100 : 0;
-    const cor = faltam === 0 && _cenTotalGrupo ? "#22c55e" : "#eab308";
+    const cor = !_cenTotalGrupo ? "#8494a9" : faltam === 0 ? "#22c55e" : "#eab308";
     document.getElementById("cen-prog-pct").innerText = _cenPctTexto(pct);
     document.getElementById("cen-prog-pct").style.color = cor;
-    document.getElementById("cen-prog-obs").innerText =
-        `${ok} de ${_cenTotalGrupo} conferidos${faltam ? ` · faltam ${faltam}` : " · tudo conferido"}`;
+    // Sem nenhum pacote no grupo não dá pra dizer "tudo conferido": é a mesma tela de quem
+    // acabou de conferir 200 pacotes, e foi exatamente assim que a rota vazia passou dias
+    // parecendo rota concluída.
+    // Vai junto o que foi procurado: cluster que a AT não tem é o caso mais comum aqui, e
+    // ver o nome na tela resolve em segundos o que sem ele vira "o sistema está zerado".
+    document.getElementById("cen-prog-obs").innerText = _cenTotalGrupo
+        ? `${ok} de ${_cenTotalGrupo} conferidos${faltam ? ` · faltam ${faltam}` : " · tudo conferido"}`
+        : `Nenhum pacote na AT para ${_cenSessao && _cenSessao.alvo ? _cenSessao.alvo : "os seus clusters"} — avise a operação.`;
     const barra = document.getElementById("cen-prog-barra");
     barra.style.width = (ok && pct < 1 ? 1 : Math.min(100, pct)) + "%";
     barra.style.background = cor;
