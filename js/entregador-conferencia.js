@@ -14,6 +14,7 @@ const CEN_RESULTADOS = {
 };
 
 let _cenSessao = null;
+let _cenRota = {};
 let _cenBipagens = [];
 let _cenFaltantes = [];
 let _cenTotalGrupo = 0;
@@ -44,7 +45,9 @@ function _cenMostrarAndamento() {
     document.getElementById("cen-andamento").style.display = "";
 }
 
-// ── Meus clusters do dia ──
+// ── Minha rota do dia ──
+// Os clusters aparecem como detalhamento, não como botões: a conferência é uma só, da rota
+// inteira. Ele vê quanto falta de cada um sem ter que entrar e sair de cada cluster.
 function _cenCarregarClusters() {
     const empty = document.getElementById("cen-empty");
     const res   = document.getElementById("cen-lista");
@@ -65,11 +68,12 @@ function _cenCarregarClusters() {
         res.style.display = "";
         document.getElementById("cen-dia").innerText = d.dia ? d.dia.split("-").reverse().join("/") : "";
 
+        _cenPintarRota(d.rota || {}, lista.length);
+
         document.getElementById("cen-tbody").innerHTML = lista.map(c => {
             const pct = c.total ? (c.conferidos / c.total) * 100 : 0;
             const falta = Math.max(0, c.total - c.conferidos);
             const cor = falta === 0 && c.total ? "#22c55e" : c.conferidos ? "#eab308" : "#8494a9";
-            const nomeEsc = String(c.cluster || "").replace(/'/g, "\\'");
             return `
             <tr>
                 <td data-label="Cluster" style="font-weight:700;color:#e2e8f0">${_cenEsc(c.cluster)}</td>
@@ -80,11 +84,31 @@ function _cenCarregarClusters() {
                 <td data-label="Pacotes" style="font-variant-numeric:tabular-nums">${c.total}</td>
                 <td data-label="Bipados" style="font-variant-numeric:tabular-nums;color:#22c55e">${c.conferidos}</td>
                 <td data-label="Faltam" style="font-variant-numeric:tabular-nums;color:${falta ? "#eab308" : "#8494a9"};font-weight:${falta ? 700 : 400}">${falta}</td>
-                <td><button class="adm-usr-action senha" onclick="_cenAbrirCluster('${nomeEsc}', this)">${c.encerrada ? "Ver" : c.sessao_id ? "Continuar" : "Conferir"}</button></td>
             </tr>`;
         }).join("");
     })
     .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
+}
+
+function _cenPintarRota(rota, qtdClusters) {
+    _cenRota = rota;
+    const total  = rota.total || 0;
+    const feitos = rota.conferidos || 0;
+    const falta  = Math.max(0, total - feitos);
+    const pct    = total ? (feitos / total) * 100 : 0;
+    const cor    = falta === 0 && total ? "#22c55e" : feitos ? "#eab308" : "#8494a9";
+
+    document.getElementById("cen-rota-pct").innerText = _cenPctTexto(pct);
+    document.getElementById("cen-rota-pct").style.color = cor;
+    document.getElementById("cen-rota-obs").innerText =
+        `${qtdClusters} cluster${qtdClusters !== 1 ? "s" : ""} · ${total} pacote${total !== 1 ? "s" : ""}` +
+        (falta ? ` · faltam ${falta}` : total ? " · tudo conferido" : "");
+    const barra = document.getElementById("cen-rota-barra");
+    barra.style.width = (feitos && pct < 1 ? 1 : Math.min(100, pct)) + "%";
+    barra.style.background = cor;
+
+    document.getElementById("cen-rota-btn").textContent =
+        rota.encerrada ? "Ver conferência" : rota.sessao_id ? "Continuar conferência" : "Conferir rota";
 }
 
 // Percentual exato, no formato 0,00% — 100% sem casas, que é como o resto do sistema mostra.
@@ -95,23 +119,39 @@ function _cenPctTexto(pct) {
     return pct.toFixed(2).replace(".", ",") + "%";
 }
 
-function _cenAbrirCluster(cluster, botao) {
+function _cenAbrirRota(botao) {
+    // Rota já encerrada abre em modo consulta, direto pelo id. Chamar o POST aqui abriria
+    // uma conferência nova do mesmo dia em cima de uma que a pessoa já fechou.
+    if (_cenRota.encerrada && _cenRota.sessao_id) {
+        _cenSessao = { id: _cenRota.sessao_id, alvo: _cenRota.alvo, encerrada_em: true };
+        _cenBipagens = [];
+        _cenFaltantes = [];
+        _cenTotalGrupo = 0;
+        _cenFiltro = "todos";
+        _cenAbrirSessao();
+        return;
+    }
+    const rotulo = botao ? botao.textContent : "";
     if (botao) { botao.disabled = true; botao.textContent = "Abrindo..."; }
     fetch(`${API}/entregador/conferencia/sessao`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ cluster })
+        body: "{}"
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
-        if (botao) { botao.disabled = false; botao.textContent = "Conferir"; }
+        if (botao) { botao.disabled = false; botao.textContent = rotulo; }
         if (!ok) return gcAlert(d.error || "Não foi possível abrir a conferência.");
         _cenSessao = d;
         _cenBipagens = [];
+        // Zerados junto com a sessão: sobra de uma conferência anterior mostraria faltante
+        // de outra rota enquanto a lista nova não chega.
+        _cenFaltantes = [];
+        _cenTotalGrupo = 0;
         _cenFiltro = "todos";
         _cenAbrirSessao();
     })
     .catch(() => {
-        if (botao) { botao.disabled = false; botao.textContent = "Conferir"; }
+        if (botao) { botao.disabled = false; botao.textContent = rotulo; }
         gcAlert("Erro ao conectar com o servidor.");
     });
 }
@@ -120,23 +160,35 @@ function _cenAbrirSessao() {
     _cenMostrarAndamento();
     document.getElementById("cen-faixa-alvo").innerText = _cenSessao.alvo || "—";
     document.getElementById("cen-msg").style.display = "none";
+
+    // Conferência fechada é só consulta: some o campo de bipar e o botão de encerrar, senão
+    // a pessoa bipa e leva erro do servidor sem entender por quê.
+    const fechada = !!_cenSessao.encerrada_em;
+    document.getElementById("cen-bipar-card").style.display = fechada ? "none" : "";
+    document.getElementById("cen-encerrar-btn").style.display = fechada ? "none" : "";
+
+    _cenRenderizar();
     _cenCarregarSessao();
     _cenCarregarFaltantes();
-    const campo = document.getElementById("cen-codigo");
-    campo.value = "";
-    campo.focus();
+    if (!fechada) {
+        const campo = document.getElementById("cen-codigo");
+        campo.value = "";
+        campo.focus();
+    }
 }
 
+// Erro aqui aparece na tela. Engolir calado deixava a conferência com tudo zerado e cara de
+// "não tem nada pra conferir" — que é exatamente o oposto do que estava acontecendo.
 function _cenCarregarSessao() {
     if (!_cenSessao) return;
     fetch(`${API}/shopee/conferencia/atribuicoes/sessao/${_cenSessao.id}`, {
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json())
     .then(d => {
-        if (d && d.error) return;
+        if (d && d.error) return _cenMsg(d.error, "erro");
         _cenBipagens = d.bipagens || [];
         _cenRenderizar();
-    }).catch(() => {});
+    }).catch(() => _cenMsg("Erro ao carregar o que já foi bipado.", "erro"));
 }
 
 function _cenCarregarFaltantes() {
@@ -145,11 +197,11 @@ function _cenCarregarFaltantes() {
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json())
     .then(d => {
-        if (d && d.error) return;
+        if (d && d.error) return _cenMsg(d.error, "erro");
         _cenFaltantes = d.faltantes || [];
         _cenTotalGrupo = d.total_grupo || 0;
         _cenRenderizar();
-    }).catch(() => {});
+    }).catch(() => _cenMsg("Erro ao carregar os faltantes.", "erro"));
 }
 
 // ── Bipagem ──
@@ -272,8 +324,8 @@ function _cenEncerrar() {
     if (!_cenSessao) return;
     const faltam = _cenFaltantes.length;
     const msg = faltam
-        ? `Encerrar a conferência de ${_cenSessao.alvo}?\n\nAinda faltam ${faltam} pacote${faltam !== 1 ? "s" : ""} sem bipar. Depois de encerrar não dá pra bipar mais nessa conferência.`
-        : `Encerrar a conferência de ${_cenSessao.alvo}?\n\nTodos os pacotes foram conferidos.`;
+        ? `Encerrar a conferência da sua rota?\n\nAinda faltam ${faltam} pacote${faltam !== 1 ? "s" : ""} sem bipar. Depois de encerrar não dá pra bipar mais nessa conferência.`
+        : `Encerrar a conferência da sua rota?\n\nTodos os pacotes foram conferidos.`;
     gcConfirm(msg, () => {
         fetch(`${API}/shopee/conferencia/atribuicoes/encerrar`, {
             method: "POST",
