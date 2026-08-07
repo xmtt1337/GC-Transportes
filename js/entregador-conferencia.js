@@ -17,6 +17,7 @@ let _cenSessao = null;
 let _cenRota = {};
 let _cenBipagens = [];
 let _cenFaltantes = [];
+let _cenAlvos = [];
 let _cenTotalGrupo = 0;
 let _cenFiltro = "todos";
 
@@ -200,6 +201,10 @@ function _cenCarregarFaltantes() {
         if (d && d.error) return _cenMsg(d.error, "erro");
         _cenFaltantes = d.faltantes || [];
         _cenTotalGrupo = d.total_grupo || 0;
+        // Os alvos como o SERVIDOR os leu. Só servem quando a rota vem vazia, e aí valem
+        // muito: separam "a AT não tem esse cluster" de "a lista de clusters foi lida
+        // errada", que na tela são idênticos.
+        _cenAlvos = Array.isArray(d.alvos) ? d.alvos : [];
         _cenRenderizar();
     }).catch(() => _cenMsg("Erro ao carregar os faltantes.", "erro"));
 }
@@ -275,12 +280,15 @@ function _cenRenderizar() {
     // Sem nenhum pacote no grupo não dá pra dizer "tudo conferido": é a mesma tela de quem
     // acabou de conferir 200 pacotes, e foi exatamente assim que a rota vazia passou dias
     // parecendo rota concluída.
-    // Vai junto QUAL cluster foi procurado — é o que a AT não tinha, não o entregador (que
-    // nem existe na AT). Sem o nome do cluster na tela isso vira "o sistema está zerado".
-    const alvo = _cenSessao && _cenSessao.alvo ? _cenSessao.alvo : "";
+    // Vem dos alvos que o servidor leu, um por um entre colchetes. Se aparecer um item só
+    // com vírgula dentro — [C-01, C-02] em vez de [C-01] [C-02] — o problema não é a AT, é
+    // a leitura da lista de clusters, e dá pra ver isso da tela do celular.
+    const alvos = _cenAlvos.length
+        ? _cenAlvos.map(a => `[${a}]`).join(" ")
+        : (_cenSessao && _cenSessao.alvo ? _cenSessao.alvo : "da sua rota");
     document.getElementById("cen-prog-obs").innerText = _cenTotalGrupo
         ? `${ok} de ${_cenTotalGrupo} conferidos${faltam ? ` · faltam ${faltam}` : " · tudo conferido"}`
-        : `A AT de hoje não tem nenhum pacote nos clusters ${alvo || "da sua rota"} — avise a operação.`;
+        : `A AT de hoje não tem pacote nos clusters ${alvos} — avise a operação.`;
     const barra = document.getElementById("cen-prog-barra");
     barra.style.width = (ok && pct < 1 ? 1 : Math.min(100, pct)) + "%";
     barra.style.background = cor;
