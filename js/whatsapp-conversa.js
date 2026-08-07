@@ -127,6 +127,38 @@ function abrirWhatsappConversas(event) {
     }, 60000);
 }
 
+// Data da conversa em texto curto. O card mostrava só o vencimento (acareação) ou a hora
+// crua (outros), então não dava pra saber de QUE DIA era a conversa sem abrir.
+// "Hoje"/"Ontem" por extenso porque são os dois que se procura; o ano só entra quando a
+// conversa é de outro ano, senão ocupa espaço sem informar nada.
+function _wacDataCurta(valor) {
+    if (!valor) return "—";
+    const d = new Date(valor);
+    if (isNaN(d.getTime())) return "—";
+    const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const hoje = new Date();
+    const mesmoDia = (a, b) => a.toDateString() === b.toDateString();
+    if (mesmoDia(d, hoje)) return `Hoje ${hora}`;
+    const ontem = new Date(hoje);
+    ontem.setDate(ontem.getDate() - 1);
+    if (mesmoDia(d, ontem)) return `Ontem ${hora}`;
+    const dia = d.toLocaleDateString("pt-BR",
+        d.getFullYear() === hoje.getFullYear()
+            ? { day: "2-digit", month: "2-digit" }
+            : { day: "2-digit", month: "2-digit", year: "numeric" });
+    return `${dia} ${hora}`;
+}
+
+// O selo de não lidas. Conta as mensagens que o cliente mandou depois da última vez que
+// ESTA pessoa abriu a conversa — o ponto verde de antes só dizia "tem resposta", e ficava
+// aceso mesmo depois de alguém já ter lido tudo.
+function _wacSeloNaoLidas(r) {
+    const n = Number(r.nao_lidas) || 0;
+    if (!n) return "";
+    const titulo = n === 1 ? "1 mensagem que você ainda não leu" : `${n} mensagens que você ainda não leu`;
+    return `<span class="wac-card-naolidas" title="${titulo}">${n > 99 ? "99+" : n}</span>`;
+}
+
 function _wacCards(itens, grupo) {
     const fmt = d => d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
     return itens.map(r => {
@@ -142,23 +174,27 @@ function _wacCards(itens, grupo) {
         const apoio  = _wacFormatarNumero(r.numero);
         const porQuem = r.enviado_por_nome ? ` · ${r.enviado_por_nome}` : "";
         const pedidoEsc = (r.pedido || "").replace(/'/g, "\\'");
-        // Ponto verde: cliente escreveu depois do nosso último envio — tem resposta pra ler.
-        const aviso = r.tem_resposta_nova && !r.respondido ? `<span class="wac-card-novo" title="Resposta não lida"></span>` : "";
+        const aviso = _wacSeloNaoLidas(r);
+        // Data da última movimentação da conversa, separada da linha de prazo — são coisas
+        // diferentes e antes só a segunda aparecia.
+        const linhaData = `<div class="wac-card-data">${_wacDataCurta(r.ultima)}${
+            r.nao_lidas ? "" : r.lido_em ? " · lida" : ""}</div>`;
         // Só os respondidos têm botão: reabrir arrastando exigiria mirar numa coluna de
         // prazo específica, e a certa depende do vencimento — o botão evita esse chute.
         const acao = r.respondido
             ? `<button class="wac-card-acao reabrir" title="Reabrir pedido" onclick="_wacReabrirPeloCard(event,'${r.numero}','${pedidoEsc}')">↺</button>`
             : "";
         return `
-        <div class="wac-card" draggable="true"
+        <div class="wac-card${r.nao_lidas ? " nao-lida" : ""}" draggable="true"
              ondragstart="_wacArrastarInicio(event,'${r.numero}','${pedidoEsc}')"
              ondragend="_wacArrastarFim(event)"
              onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',${!!r.respondido})">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
-                <div class="wac-card-nome">${aviso}${titulo}</div>
+                <div class="wac-card-nome">${titulo}${aviso}</div>
                 ${apoio ? `<div class="wac-card-numero">${apoio}</div>` : ""}
                 <div class="wac-card-prazo" ${vencimento ? `style="color:${_wacCorPrazo(vencimento)}"` : ""}>${linhaPrazo}${porQuem}</div>
+                ${linhaData}
             </div>
             ${acao}
         </div>`;
@@ -274,25 +310,58 @@ function _wacRenderizarDesfecho(itens, alvoId, colunas) {
 
 // arrastavel = false na lista de "Nos chamaram": lá não existe coluna pra onde soltar.
 function _wacCardsOutros(itens, arrastavel = true) {
-    const fmt = d => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
     return itens.map(r => {
         const pedidoEsc = (r.pedido || "").replace(/'/g, "\\'");
-        const aviso = r.tem_resposta_nova && !r.respondido ? `<span class="wac-card-novo" title="Resposta não lida"></span>` : "";
+        const aviso = _wacSeloNaoLidas(r);
         const porQuem = r.enviado_por_nome ? `${r.enviado_por_nome} · ` : "";
         const arrasto = arrastavel
             ? `draggable="true" ondragstart="_wacArrastarInicio(event,'${r.numero}','${pedidoEsc}')" ondragend="_wacArrastarFim(event)"`
             : "";
         return `
-        <div class="wac-card" ${arrasto}
+        <div class="wac-card${r.nao_lidas ? " nao-lida" : ""}" ${arrasto}
              onclick="_wacAbrirConversa('${r.numero}','${pedidoEsc}',${!!r.respondido})">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
             <div class="wac-card-info">
-                <div class="wac-card-nome">${aviso}${r.pedido || _wacFormatarNumero(r.numero)}</div>
+                <div class="wac-card-nome">${r.pedido || _wacFormatarNumero(r.numero)}${aviso}</div>
                 <div class="wac-card-numero">${_wacFormatarNumero(r.numero)}</div>
-                <div class="wac-card-prazo">${porQuem}${fmt(r.ultima)}</div>
+                <div class="wac-card-prazo">${porQuem}${_wacDataCurta(r.ultima)}${
+                    r.nao_lidas ? "" : r.lido_em ? " · lida" : ""}</div>
             </div>
         </div>`;
     }).join("");
+}
+
+// ── Relatório ──
+// Um botão por aba, e cada um leva a aba INTEIRA (todas as transportadoras juntas) — não o
+// que está filtrado na tela. O relatório é da operação toda; exportar só a transportadora
+// aberta seria uma pegadinha silenciosa em cima de um filtro que existe pra trabalhar.
+function _wacExportar(aba) {
+    const itens = _wacDados.filter(r => _wacAbaDe(r) === aba);
+    const rotulo = aba === "acareacao" ? "Acareação" : "Outros ativos";
+    if (!itens.length) return gcAlert(`Nenhuma conversa em ${rotulo.toLowerCase()} para exportar.`);
+
+    const dados = itens.map(r => {
+        const t = WA_TRANSPORTADORAS[_wacTranspDe(r)];
+        // Três estados, não dois: "Não" é o cliente ter dito que não recebeu, e é diferente
+        // de ninguém ter marcado nada ainda. Juntar os dois num "Não" contaria como não
+        // entregue todo caso que só está esperando resposta.
+        const entregue = !r.respondido ? "Pendente"
+                       : r.resultado === "recebeu" ? "Sim"
+                       : r.resultado === "nao_recebeu" ? "Não"
+                       : "Pendente";
+        return {
+            "Tipo":           rotulo,
+            "Transportadora": (t && t.rotulo) || "Sem transportadora",
+            "Código":         r.pedido || "",
+            "Entregue":       entregue,
+        };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(dados);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, aba === "acareacao" ? "Acareações" : "Outros ativos");
+    const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+    XLSX.writeFile(wb, `ativos_${aba === "acareacao" ? "acareacoes" : "outros"}_${hoje}.xlsx`);
 }
 
 function _wacTrocarAba(aba) {

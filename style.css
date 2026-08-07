@@ -336,10 +336,23 @@ body {
     box-shadow: inset 0 0 0 2px rgba(58,134,255,0.45);
 }
 .wac-card-acao.reabrir:hover { color: var(--text); border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.05); }
-.wac-card-novo {
-    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
-    background: #22c55e; margin-right: 6px; vertical-align: middle;
+/* Não lidas: quantas mensagens o cliente mandou depois da última vez que ESTA pessoa abriu
+   a conversa. Substitui o ponto verde, que só dizia "tem resposta" e continuava aceso
+   mesmo depois de alguém ter lido tudo — não dava pra separar o que falta ver. */
+.wac-card-naolidas {
+    display: inline-block; min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 999px; background: #22c55e; color: #052e16;
+    font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
+    margin-left: 6px; vertical-align: middle; font-variant-numeric: tabular-nums;
 }
+/* Conversa com mensagem por ler puxa o olho: nome em branco e uma barra verde na borda.
+   Numa coluna cheia, o selo sozinho se perde entre os cards. */
+.wac-card.nao-lida { box-shadow: inset 3px 0 0 #22c55e; }
+.wac-card.nao-lida .wac-card-nome { color: #f1f5f9; font-weight: 700; }
+
+/* Data da conversa. Ficava só o vencimento (acareação) ou a hora crua (outros), então não
+   dava pra saber de que dia era a conversa sem abrir. */
+.wac-card-data { font-size: 11px; color: #717f95; margin-top: 2px; }
 .wac-selecao-responder {
     margin-left: auto; background: none; border: none; cursor: pointer; font-family: inherit;
     color: var(--blue); font-size: 12.5px; font-weight: 700;
