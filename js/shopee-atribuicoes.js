@@ -272,14 +272,20 @@ function _scaCarregarFaltantes(silencioso) {
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json())
     .then(d => {
-        if (d && d.error) return;
+        // Erro aqui aparece. Calado, a lista de faltantes ficava vazia com cara de "não
+        // falta nada" — que é o pior jeito possível de essa tela errar.
+        if (d && d.error) { _scaFaltamCarregado = true; _scaRenderizar(); return _scaMsg(_scaEsc(d.error), "erro"); }
         _scaFaltantes = d.faltantes || [];
         _scaTotalGrupo = d.total_grupo || 0;
         _scaFaltamTruncado = !!d.truncado;
         _scaFaltamCarregado = true;
         _scaRenderizar();
     })
-    .catch(() => {});
+    .catch(() => {
+        _scaFaltamCarregado = true;
+        _scaRenderizar();
+        _scaMsg("Erro ao carregar os faltantes.", "erro");
+    });
 }
 let _scaFaltamTruncado = false;
 
