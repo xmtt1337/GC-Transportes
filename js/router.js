@@ -89,12 +89,20 @@ const _ROTAS = {
 // link do menu aponta pra lista e não pra uma conversa específica.
 const _ROTAS_PADRAO = [
     {
-        // Ativos/Conversas/<Tipo>/<Transportadora>/<Código>
-        // ex.: Ativos/Conversas/Ativos/Shopee/BR252525256454
+        // Ativos/Conversas/<Tipo>[/<Transportadora>[/<Código>]]
+        //
+        // Os dois últimos são opcionais porque a URL acompanha CADA passo da tela, e não só
+        // o destino final: clicar na aba já muda o caminho, escolher a transportadora
+        // acrescenta um pedaço, e abrir a conversa acrescenta o último. Assim o "voltar" do
+        // navegador desfaz um clique por vez, em vez de pular da conversa pra fora da tela.
+        //
+        //   Ativos/Conversas/Ativos
+        //   Ativos/Conversas/Ativos/Shopee
+        //   Ativos/Conversas/Ativos/Shopee/BR252525256454
         base: "Ativos/Conversas",
-        re: /^Ativos\/Conversas\/([^/]+)\/([^/]+)\/(.+)$/,
+        re: /^Ativos\/Conversas\/([^/]+)(?:\/([^/]+))?(?:\/(.+))?$/,
         abrir: (tipo, transp, codigo) => abrirWhatsappConversas(null, {
-            tipo, transp, codigo: decodeURIComponent(codigo),
+            tipo, transp, codigo: codigo ? decodeURIComponent(codigo) : null,
         }),
     },
 ];
@@ -163,11 +171,16 @@ const _TELA_ROTAS = {
 // ex. telas internas/modais) não mexe na URL atual. Só roda no GitHub Pages de
 // verdade — local (Live Server etc.) o site não mora em /GC-Transportes/, então
 // reescrever a URL aqui só quebraria os caminhos relativos (sem o <base> compensando).
-function _rotaAtualizarUrl(rota) {
+// `substituir` troca a entrada atual em vez de empilhar uma nova. Serve pro que a tela
+// decide sozinha (ex.: a transportadora que ela escolhe quando ninguém pediu nenhuma):
+// isso ajusta a URL sem virar um passo pra trás que o usuário nunca deu.
+function _rotaAtualizarUrl(rota, substituir) {
     if (location.hostname !== "xmtt1337.github.io") return;
     if (rota === undefined || rota === null) return;
     const destino = rota ? `${_ROTA_BASE}/${rota}` : `${_ROTA_BASE}/`;
-    if (location.pathname !== destino) history.pushState({ rota }, "", destino);
+    if (location.pathname === destino) return;
+    if (substituir) history.replaceState({ rota }, "", destino);
+    else history.pushState({ rota }, "", destino);
 }
 
 // Lê a URL atual e abre a tela correspondente — chamado uma vez após o login carregar

@@ -112,13 +112,22 @@ function abrirWhatsappConversas(event, alvo) {
         gcAlert("Você não tem acesso às conversas de ativos.");
         return;
     }
-    _wacAlvoUrl = alvo || null;
+    // Só o código fica pendente pra depois da lista chegar; aba e transportadora dá pra
+    // resolver agora, e assim a tela já abre no lugar certo em vez de piscar no padrão.
+    _wacAlvoUrl = alvo && alvo.codigo ? alvo : null;
+
     // Quem não faz acareação já entra na aba que lhe interessa.
     if (!WA_ROLES_ACAREACAO.includes(role)) _wacAba = "outros";
+    const abaUrl = alvo && alvo.tipo && _wacAbaDaRota(alvo.tipo);
+    if (abaUrl) _wacAba = abaUrl;
+
     _wacTransp = null; // cada visita começa numa transportadora que tem trabalho
+    const transpUrl = alvo && alvo.transp && _wacTranspDaRota(alvo.transp);
+    if (transpUrl) { _wacTransp = transpUrl; _wacRevalidarTransp = false; }
+
     document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.aba === _wacAba));
-    mostrarTela("tela-whatsapp-conversas");
+    mostrarTela("tela-whatsapp-conversas", _wacRotaLista());
     _wacCarregarLista();
 
     // Redesenha de minuto em minuto: o tempo restante e a coluna dependem do relógio,
@@ -242,6 +251,36 @@ const WA_TIPO_ROTA = { acareacao: "Acareacao", outros: "Ativos", chamaram: "Cham
 function _wacTranspRota(chave) {
     const t = WA_TRANSPORTADORAS[chave];
     return ((t && t.rotulo) || "Outras").replace(/[^A-Za-z0-9]/g, "");
+}
+
+// Caminho → estado da tela. Sem distinguir maiúscula: link digitado ou colado torto tem
+// que abrir igual.
+const _wacIgual = (a, b) => String(a || "").toLowerCase() === String(b || "").toLowerCase();
+
+function _wacAbaDaRota(tipo) {
+    return Object.keys(WA_TIPO_ROTA).find(k => _wacIgual(WA_TIPO_ROTA[k], tipo)) || null;
+}
+
+function _wacTranspDaRota(transp) {
+    if (_wacIgual(transp, "Outras")) return "outras";
+    return Object.keys(WA_TRANSPORTADORAS).find(k => _wacIgual(_wacTranspRota(k), transp)) || null;
+}
+
+// Rota da LISTA, no ponto em que a tela está: sempre a aba, e a transportadora quando já
+// há uma escolhida. É o que faz a URL crescer clique a clique em vez de pular da lista
+// direto pro caminho completo da conversa.
+function _wacRotaLista() {
+    const partes = ["Ativos/Conversas", WA_TIPO_ROTA[_wacAba] || "Ativos"];
+    // "Nos chamaram" não veio de disparo nosso: não tem transportadora, e a barra some.
+    if (_wacAba !== "chamaram" && _wacTransp) partes.push(_wacTranspRota(_wacTransp));
+    return partes.join("/");
+}
+
+// `automatico` = a tela decidiu sozinha (a transportadora que ela escolhe quando ninguém
+// pediu nenhuma). Nesse caso a URL é corrigida sem empilhar um passo pra trás que a pessoa
+// nunca deu — só clique vira entrada no histórico.
+function _wacAtualizarUrl(automatico) {
+    if (typeof _rotaAtualizarUrl === "function") _rotaAtualizarUrl(_wacRotaLista(), !!automatico);
 }
 
 function _wacRotaDaConversa(conversa, numero, pedido) {
@@ -427,7 +466,8 @@ function _wacTrocarAba(aba) {
     _wacRevalidarTransp = true; // mantém a transportadora se ela tiver conversa na aba nova
     document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.aba === aba));
-    _wacRenderizar();
+    _wacRenderizar();   // pode trocar a transportadora, então a URL sai depois
+    _wacAtualizarUrl();
 }
 
 // ── Separação por transportadora ──
@@ -441,6 +481,7 @@ function _wacTranspDe(conversa) {
 function _wacFiltrarTransp(chave) {
     _wacTransp = chave;
     _wacRenderizar();
+    _wacAtualizarUrl();
 }
 
 // Barra fixa com todas as transportadoras do disparo. Sem "Todas": a tela é sempre a de
@@ -467,6 +508,10 @@ function _wacRenderizarTranspTabs(itens) {
         _wacRevalidarTransp = false;
     }
     if (!chaves.includes(_wacTransp)) _wacTransp = chaves[0];
+    // Escolha da própria tela, não da pessoa: a URL passa a mostrar a transportadora que
+    // está à vista, mas substituindo a entrada atual — senão o "voltar" teria que desfazer
+    // um passo que ninguém deu.
+    _wacAtualizarUrl(true);
 
     el.innerHTML = chaves.map(k => {
         const t = WA_TRANSPORTADORAS[k] || { rotulo: "Outras", cor: "#8494a9" };
