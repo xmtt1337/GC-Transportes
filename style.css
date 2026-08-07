@@ -339,15 +339,24 @@ body {
 /* Não lidas: quantas mensagens o cliente mandou depois da última vez que ESTA pessoa abriu
    a conversa. Substitui o ponto verde, que só dizia "tem resposta" e continuava aceso
    mesmo depois de alguém ter lido tudo — não dava pra separar o que falta ver. */
+/* Só o número, em verde. Nada de pílula: o card já é pequeno e mais uma forma
+   arredondada dentro dele só embolava. */
 .wac-card-naolidas {
-    display: inline-block; min-width: 18px; height: 18px; padding: 0 5px;
-    border-radius: 999px; background: #22c55e; color: #052e16;
-    font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
-    margin-left: 6px; vertical-align: middle; font-variant-numeric: tabular-nums;
+    display: inline-block; margin-left: 6px; vertical-align: middle;
+    font-size: 11px; font-weight: 800; color: #22c55e;
+    font-variant-numeric: tabular-nums;
 }
-/* Conversa com mensagem por ler puxa o olho: nome em branco e uma barra verde na borda.
-   Numa coluna cheia, o selo sozinho se perde entre os cards. */
-.wac-card.nao-lida { box-shadow: inset 3px 0 0 #22c55e; }
+/* Conversa com mensagem por ler: um "L" verde no lado direito e embaixo.
+   Os três cantos que o L encosta vão a zero — com o raio de 10px do card as pontas
+   curvavam e o traço deixava de ser reto. Só o canto de cima à esquerda continua redondo.
+   O traço é box-shadow, não borda mais grossa: assim o card não muda de tamanho ao passar
+   de lido pra não lido e a coluna inteira não dança. */
+.wac-card.nao-lida {
+    border-radius: 10px 0 0 0;
+    border-right-color: #22c55e;
+    border-bottom-color: #22c55e;
+    box-shadow: inset -3px 0 0 #22c55e, inset 0 -3px 0 #22c55e;
+}
 .wac-card.nao-lida .wac-card-nome { color: #f1f5f9; font-weight: 700; }
 
 /* Data da conversa. Ficava só o vencimento (acareação) ou a hora crua (outros), então não
