@@ -129,9 +129,25 @@ function abrirWhatsappConversas(event, alvo) {
         b.classList.toggle("active", b.dataset.aba === _wacAba));
     mostrarTela("tela-whatsapp-conversas", _wacRotaLista());
     _wacCarregarLista();
+    _wacIniciarRelogio();
+}
 
-    // Redesenha de minuto em minuto: o tempo restante e a coluna dependem do relógio,
-    // então sem isso um pedido só "venceria" na próxima vez que a tela fosse aberta.
+// Voltar da conversa NÃO é uma visita nova: a aba e a transportadora que a pessoa estava
+// vendo continuam valendo. O "←" chamava abrirWhatsappConversas(), que zera a
+// transportadora por ser o começo de uma visita — a lista reabria na primeira que tivesse
+// conversa, então sair de uma conversa da Shopee caía no J&T.
+function _wacVoltarParaLista() {
+    _wacAlvoUrl = null;
+    document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.aba === _wacAba));
+    mostrarTela("tela-whatsapp-conversas", _wacRotaLista());
+    _wacCarregarLista();
+    _wacIniciarRelogio();
+}
+
+// Redesenha de minuto em minuto: o tempo restante e a coluna dependem do relógio, então
+// sem isso um pedido só "venceria" na próxima vez que a tela fosse aberta.
+function _wacIniciarRelogio() {
     if (_wacRelogio) clearInterval(_wacRelogio);
     _wacRelogio = setInterval(() => {
         const tela = document.getElementById("tela-whatsapp-conversas");
