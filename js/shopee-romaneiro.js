@@ -14,9 +14,15 @@ const SHL_COLUNAS = [
     { id: "rota_lh",         label: "Rota de LH",         nomes: ["rota de lh", "rota lh"] },
 ];
 
-let _shlLinhas  = [];   // linhas lidas do arquivo, aguardando envio
-let _shlArquivoNome = "";
+// Arquivos lidos e aguardando envio: [{ nome, linhas, faltando }]. A carga de um dia chega
+// repartida em várias planilhas, então a tela acumula até a pessoa mandar tudo de uma vez.
+let _shlArquivos = [];
 let _shlEnviando = false;
+
+const _shlTotalLinhas = () => _shlArquivos.reduce((s, a) => s + a.linhas.length, 0);
+
+// Mesmo teto do servidor (LH_MAX_LINHAS). Vale pelo total do envio, não por arquivo.
+const SHL_MAX_LINHAS = 20000;
 
 function abrirShopeeRomaneiro(event) {
     if (event) event.preventDefault();
@@ -24,14 +30,14 @@ function abrirShopeeRomaneiro(event) {
     mostrarTela("tela-shopee-romaneiro");
     _shlCarregarHistorico();
 
-    // Arrastar o arquivo em cima do quadro também vale — é como o resto do sistema faz.
+    // Arrastar os arquivos em cima do quadro também vale — é como o resto do sistema faz.
     const area = document.getElementById("shl-upload-area");
     area.ondragover  = e => { e.preventDefault(); area.classList.add("drag-over"); };
     area.ondragleave = () => area.classList.remove("drag-over");
     area.ondrop      = e => {
         e.preventDefault();
         area.classList.remove("drag-over");
-        if (e.dataTransfer.files[0]) _shlLerArquivo(e.dataTransfer.files[0]);
+        if (e.dataTransfer.files && e.dataTransfer.files.length) _shlLerVarios(e.dataTransfer.files);
     };
 }
 
@@ -52,27 +58,53 @@ function _shlMsg(msg, tipo) {
 }
 
 function _shlArquivo(input) {
-    if (input.files[0]) _shlLerArquivo(input.files[0]);
+    if (input.files && input.files.length) _shlLerVarios(input.files);
     input.value = ""; // permite reenviar o mesmo arquivo sem recarregar a tela
 }
 
-async function _shlLerArquivo(file) {
+// Lê um atrás do outro e só então redesenha. Um arquivo com problema não derruba os outros:
+// ele entra na lista de recusados e o resto segue — no meio de cinco planilhas, perder as
+// quatro boas porque uma veio torta seria o pior desfecho possível.
+async function _shlLerVarios(fileList) {
     _shlMsg("", null);
-    _shlArquivoNome = file.name;
-    document.getElementById("shl-sub").innerText = `Lendo ${file.name}...`;
+    const arquivos = Array.from(fileList);
+    const recusados = [];
+    const avisos = [];
 
-    try {
-        const grid = await _shlLerGrid(file);
-        const linhas = _shlMapear(grid);
-        if (linhas.erro) { _shlCancelar(); return _shlMsg(linhas.erro, "erro"); }
-        if (!linhas.dados.length) { _shlCancelar(); return _shlMsg("O arquivo não tem nenhuma linha preenchida.", "aviso"); }
-
-        _shlLinhas = linhas.dados;
-        _shlRenderPrevia(linhas.faltando);
-    } catch (err) {
-        _shlCancelar();
-        _shlMsg("Não foi possível ler o arquivo: " + _shlEsc(err.message), "erro");
+    for (const file of arquivos) {
+        document.getElementById("shl-sub").innerText = `Lendo ${file.name}...`;
+        // Mesmo arquivo escolhido duas vezes viraria linha duplicada no romaneiro.
+        if (_shlArquivos.some(a => a.nome === file.name)) {
+            recusados.push(`${file.name} (já está na lista)`);
+            continue;
+        }
+        try {
+            const grid = await _shlLerGrid(file);
+            const lidas = _shlMapear(grid);
+            if (lidas.erro)            { recusados.push(`${file.name} (${lidas.erro})`); continue; }
+            if (!lidas.dados.length)   { recusados.push(`${file.name} (nenhuma linha preenchida)`); continue; }
+            if (lidas.faltando.length) avisos.push(`${file.name}: ${lidas.faltando.join(", ")}`);
+            _shlArquivos.push({ nome: file.name, linhas: lidas.dados, faltando: lidas.faltando });
+        } catch (err) {
+            recusados.push(`${file.name} (${err.message})`);
+        }
     }
+
+    _shlRenderPrevia();
+    const partes = [];
+    if (_shlTotalLinhas() > SHL_MAX_LINHAS) {
+        partes.push(`São <strong>${_shlTotalLinhas().toLocaleString("pt-BR")}</strong> linhas no total e o limite por envio é ${
+            SHL_MAX_LINHAS.toLocaleString("pt-BR")}. Tire alguns arquivos e mande em duas vezes.`);
+    }
+    if (recusados.length) partes.push(`Não entraram: <strong>${_shlEsc(recusados.join(" · "))}</strong>.`);
+    if (avisos.length)    partes.push(`Colunas não encontradas (entram em branco) — ${_shlEsc(avisos.join(" · "))}.`);
+    if (partes.length)    _shlMsg(partes.join("<br>"), _shlArquivos.length ? "aviso" : "erro");
+}
+
+function _shlRemoverArquivo(indice) {
+    _shlArquivos.splice(indice, 1);
+    if (!_shlArquivos.length) return _shlCancelar();
+    _shlRenderPrevia();
 }
 
 // Mesma leitura do Alimentar: XLSX resolve .xlsx e .csv, e o `raw:false` mantém hora e
@@ -130,45 +162,64 @@ function _shlMapear(grid) {
     return { dados, faltando };
 }
 
-function _shlRenderPrevia(faltando) {
-    const n = _shlLinhas.length;
+const _SHL_SUB_PADRAO = "Arraste os arquivos aqui ou clique para selecionar — pode escolher vários de uma vez (.xlsx, .xls ou .csv)";
+
+function _shlRenderPrevia() {
+    if (!_shlArquivos.length) return _shlCancelar();
+    const n = _shlTotalLinhas();
+    const qtd = _shlArquivos.length;
     document.getElementById("shl-previa-titulo").innerText =
-        `Prévia · ${n} linha${n !== 1 ? "s" : ""} de ${_shlArquivoNome}`;
-    document.getElementById("shl-sub").innerText = "Arraste o arquivo aqui ou clique para selecionar — .xlsx, .xls ou .csv";
+        `Prévia · ${n} linha${n !== 1 ? "s" : ""} em ${qtd} arquivo${qtd !== 1 ? "s" : ""}`;
+    document.getElementById("shl-sub").innerText = _SHL_SUB_PADRAO;
 
-    if (faltando && faltando.length) {
-        _shlMsg(`Estas colunas não foram encontradas e vão entrar em branco: <strong>${_shlEsc(faltando.join(", "))}</strong>.`, "aviso");
-    }
+    // Um cartão por arquivo, com o que dá pra remover antes de enviar: quem junta cinco
+    // planilhas precisa poder tirar a errada sem recomeçar a seleção inteira.
+    document.getElementById("shl-arquivos").innerHTML = _shlArquivos.map((a, i) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(255,255,255,0.02);margin-bottom:8px">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#3a86ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span style="flex:1;min-width:0;font-size:13px;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_shlEsc(a.nome)}</span>
+            <span style="font-size:12.5px;color:#8494a9;font-variant-numeric:tabular-nums;flex:none">${a.linhas.length} linha${a.linhas.length !== 1 ? "s" : ""}</span>
+            <button type="button" onclick="_shlRemoverArquivo(${i})" title="Tirar este arquivo"
+                    style="flex:none;border:none;background:none;color:#8494a9;cursor:pointer;font-size:17px;line-height:1;padding:2px 4px;font-family:inherit">&times;</button>
+        </div>`).join("");
 
-    // Mostra as 20 primeiras: a prévia é pra conferir se as colunas casaram, não pra ler
-    // o arquivo inteiro.
-    const amostra = _shlLinhas.slice(0, 20);
+    // Mostra as 20 primeiras do conjunto: a prévia é pra conferir se as colunas casaram,
+    // não pra ler os arquivos inteiros. A coluna Arquivo diz de qual planilha é cada linha.
+    const todas = _shlArquivos.flatMap(a => a.linhas.map(l => ({ ...l, _arq: a.nome })));
+    const amostra = todas.slice(0, 20);
     document.getElementById("shl-previa-tbody").innerHTML = amostra.map(l => `
         <tr>${SHL_COLUNAS.map(c =>
-            `<td data-label="${c.label}">${_shlEsc(l[c.id]) || '<span style="color:#717f95">—</span>'}</td>`).join("")}</tr>
+            `<td data-label="${c.label}">${_shlEsc(l[c.id]) || '<span style="color:#717f95">—</span>'}</td>`).join("")}
+           <td data-label="Arquivo" style="color:#8494a9;font-size:12px">${_shlEsc(l._arq)}</td></tr>
     `).join("") + (n > amostra.length
-        ? `<tr><td colspan="${SHL_COLUNAS.length}" style="text-align:center;color:#8494a9;padding:14px">
+        ? `<tr><td colspan="${SHL_COLUNAS.length + 1}" style="text-align:center;color:#8494a9;padding:14px">
              + ${n - amostra.length} linha${n - amostra.length !== 1 ? "s" : ""} que não cabem na prévia</td></tr>`
         : "");
 
     document.getElementById("shl-previa").style.display = "";
+    // Barra aqui em vez de deixar o servidor recusar: juntando arquivos é fácil passar do
+    // limite, e descobrir isso depois de esperar o envio inteiro é o pior momento.
     const btn = document.getElementById("shl-btn-enviar");
-    btn.disabled = false;
-    btn.textContent = `Enviar ${n} linha${n !== 1 ? "s" : ""}`;
+    const passou = n > SHL_MAX_LINHAS;
+    btn.disabled = passou;
+    btn.textContent = passou
+        ? `${n.toLocaleString("pt-BR")} linhas — passou do limite`
+        : `Enviar ${n} linha${n !== 1 ? "s" : ""}`;
 }
 
 function _shlCancelar() {
-    _shlLinhas = [];
-    _shlArquivoNome = "";
+    _shlArquivos = [];
     _shlMsg("", null);
     const previa = document.getElementById("shl-previa");
     if (previa) previa.style.display = "none";
+    const lista = document.getElementById("shl-arquivos");
+    if (lista) lista.innerHTML = "";
     const sub = document.getElementById("shl-sub");
-    if (sub) sub.innerText = "Arraste o arquivo aqui ou clique para selecionar — .xlsx, .xls ou .csv";
+    if (sub) sub.innerText = _SHL_SUB_PADRAO;
 }
 
 function _shlEnviar() {
-    if (_shlEnviando || !_shlLinhas.length) return;
+    if (_shlEnviando || !_shlArquivos.length) return;
     _shlEnviando = true;
     const btn = document.getElementById("shl-btn-enviar");
     btn.disabled = true;
@@ -177,7 +228,7 @@ function _shlEnviar() {
     fetch(`${API}/shopee/lh`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ arquivo: _shlArquivoNome, linhas: _shlLinhas })
+        body: JSON.stringify({ arquivos: _shlArquivos.map(a => ({ arquivo: a.nome, linhas: a.linhas })) })
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
         _shlEnviando = false;
@@ -187,8 +238,10 @@ function _shlEnviar() {
             return _shlMsg(_shlEsc(d.error) || "Não foi possível enviar.", "erro");
         }
         const n = d.gravadas;
+        const qtd = (d.arquivos || []).length;
         _shlCancelar();
-        _shlMsg(`✓ ${n} linha${n !== 1 ? "s" : ""} enviada${n !== 1 ? "s" : ""}.`, "ok");
+        _shlMsg(`✓ ${n} linha${n !== 1 ? "s" : ""} enviada${n !== 1 ? "s" : ""}${
+            qtd > 1 ? ` de ${qtd} arquivos` : ""}.`, "ok");
         _shlCarregarHistorico();
     })
     .catch(() => {
@@ -215,13 +268,39 @@ function _shlCarregarHistorico() {
             if (!imps.length) { skFim(empty, "Nenhum romaneiro enviado ainda."); return; }
             empty.style.display = "none";
             result.style.display = "";
-            document.getElementById("shl-hist-tbody").innerHTML = imps.map(i => `
+
+            // Agrupado por dia, com o total do dia no cabeçalho. Numa lista corrida de
+            // arquivos não dá pra ver se a carga de hoje já entrou inteira — que é a única
+            // pergunta que se faz olhando esta tela.
+            const porDia = new Map();
+            for (const i of imps) {
+                const dia = i.dia || "—";
+                if (!porDia.has(dia)) porDia.set(dia, []);
+                porDia.get(dia).push(i);
+            }
+            const totaisDia = Object.fromEntries(((d && d.dias) || []).map(x => [x.dia, x]));
+            const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+
+            document.getElementById("shl-hist-tbody").innerHTML = [...porDia.entries()].map(([dia, lista]) => {
+                const resumo = totaisDia[dia];
+                const linhasDia = resumo ? resumo.linhas : lista.reduce((s, i) => s + i.linhas, 0);
+                const envios = resumo ? resumo.envios : lista.length;
+                return `
+                <tr class="shl-dia-linha">
+                    <td colspan="4" style="background:rgba(58,134,255,0.07);border-top:1px solid rgba(58,134,255,0.18);padding:9px 12px">
+                        <span style="font-weight:700;color:#93c5fd;font-size:13px">${_shlDiaTexto(dia, hoje)}</span>
+                        <span style="color:#8494a9;font-size:12.5px;margin-left:8px">
+                            ${envios} arquivo${envios !== 1 ? "s" : ""} · ${linhasDia.toLocaleString("pt-BR")} linha${linhasDia !== 1 ? "s" : ""}
+                        </span>
+                    </td>
+                </tr>` + lista.map(i => `
                 <tr>
                     <td data-label="Arquivo">${_shlEsc(i.arquivo) || "—"}</td>
                     <td data-label="Linhas" style="font-variant-numeric:tabular-nums">${i.linhas}</td>
                     <td data-label="Enviado por">${_shlEsc(i.importado_por) || "—"}</td>
                     <td data-label="Quando" style="color:#8494a9">${_shlDataHora(i.importado_em)}</td>
                 </tr>`).join("");
+            }).join("");
         })
         .catch(() => {
             skFim(empty, "Erro ao conectar com o servidor.");
@@ -232,6 +311,18 @@ function _shlCarregarHistorico() {
 function _shlDataHora(iso) {
     if (!iso) return "—";
     return new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+}
+
+// "Hoje" e "Ontem" por extenso: são os dois dias que alguém procura de fato nesta tela, e
+// achá-los pela data exige comparar com o calendário de cabeça.
+function _shlDiaTexto(dia, hoje) {
+    if (!dia || dia === "—") return "Sem data";
+    const br = dia.split("-").reverse().join("/");
+    if (dia === hoje) return `Hoje · ${br}`;
+    const ontem = new Date(hoje + "T12:00:00");
+    ontem.setDate(ontem.getDate() - 1);
+    if (dia === ontem.toISOString().slice(0, 10)) return `Ontem · ${br}`;
+    return br;
 }
 
 // "Há quanto tempo" junto da data: o que interessa é saber se o romaneiro de hoje já
