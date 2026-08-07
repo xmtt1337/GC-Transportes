@@ -25,30 +25,121 @@ function _cenEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
+let _cenDia = null;   // dia aberto no passo 2; null = está na lista de dias
+
 function abrirConfEntregador(event) {
     if (event) event.preventDefault();
     _cenSessao = null;
     _cenBipagens = [];
     _cenFaltantes = [];
     _cenFiltro = "todos";
-    _cenMostrarInicio();
+    _cenDia = null;
+    _cenMostrarDias();
     mostrarTela("tela-conf-entregador");
-    _cenCarregarClusters();
+    _cenCarregarDias();
+}
+
+// Três telas dentro da mesma view: os dias, os clusters do dia e a conferência em si.
+function _cenMostrarDias() {
+    document.getElementById("cen-dias").style.display = "";
+    document.getElementById("cen-inicio").style.display = "none";
+    document.getElementById("cen-andamento").style.display = "none";
 }
 
 function _cenMostrarInicio() {
+    document.getElementById("cen-dias").style.display = "none";
     document.getElementById("cen-inicio").style.display = "";
     document.getElementById("cen-andamento").style.display = "none";
 }
 
 function _cenMostrarAndamento() {
+    document.getElementById("cen-dias").style.display = "none";
     document.getElementById("cen-inicio").style.display = "none";
     document.getElementById("cen-andamento").style.display = "";
 }
 
-// ── Minha rota do dia ──
+// ── Passo 1: os dias ──
+// Só o resumo de cada dia. O detalhe dos clusters fica pro dia que ele abrir — antes tudo
+// vinha junto e a tela nascia com um bloco por cluster antes de ele escolher nada.
+function _cenCarregarDias() {
+    const empty = document.getElementById("cen-dias-empty");
+    const res   = document.getElementById("cen-dias-lista");
+    skMostrar(empty, "tabela");
+    empty.style.display = "";
+    res.style.display = "none";
+
+    fetch(`${API}/entregador/conferencia/dias`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => r.json())
+    .then(d => {
+        if (d && d.error) { skFim(empty, d.error); return; }
+        const dias = (d && d.dias) || [];
+        if (!dias.length) {
+            skFim(empty, "Nenhuma rota atribuída a você. Fale com a operação.");
+            return;
+        }
+        empty.style.display = "none";
+        res.style.display = "";
+
+        const hoje = d.hoje;
+        res.innerHTML = dias.map(x => {
+            const pct = x.pacotes ? (x.conferidos / x.pacotes) * 100 : 0;
+            const cor = x.pacotes && x.conferidos >= x.pacotes ? "#22c55e" : x.conferidos ? "#eab308" : "#8494a9";
+            // "pacotes" vem null quando a AT daquele dia já foi substituída e a conferência
+            // nunca foi encerrada — não dá pra reconstituir, então mostra "—" em vez de 0,
+            // que pareceria uma rota vazia.
+            const qtd = x.pacotes === null || x.pacotes === undefined
+                ? "— pacotes"
+                : `${x.pacotes} pacote${x.pacotes !== 1 ? "s" : ""}`;
+            const marca = x.encerrada
+                ? `<span class="cen-dia-tag ok">Encerrada</span>`
+                : x.sessao_id ? `<span class="cen-dia-tag andamento">Em andamento</span>` : "";
+            return `
+            <button type="button" class="cen-dia-card" onclick="_cenAbrirDia('${x.dia}')">
+                <div class="cen-dia-topo">
+                    <span class="cen-dia-nome">${_cenEsc(_cenDiaTexto(x.dia, hoje))}</span>
+                    <span class="cen-dia-pct" style="color:${cor}">${x.pacotes ? _cenPctTexto(pct) : ""}</span>
+                </div>
+                <div class="cen-dia-obs">
+                    ${x.clusters} cluster${x.clusters !== 1 ? "s" : ""} · ${qtd}${marca}
+                </div>
+                <div class="slh-barra"><div class="slh-barra-fill" style="width:${
+                    x.conferidos && pct < 1 ? 1 : Math.min(100, pct)}%;background:${cor}"></div></div>
+            </button>`;
+        }).join("");
+    })
+    .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
+}
+
+// "Hoje" e "Ontem" por extenso: são os dois que ele procura de fato, e achá-los pela data
+// exige comparar com o calendário de cabeça.
+function _cenDiaTexto(dia, hoje) {
+    if (!dia) return "Sem data";
+    const br = dia.split("-").reverse().join("/");
+    if (dia === hoje) return `Hoje · ${br}`;
+    const ontem = new Date(hoje + "T12:00:00");
+    ontem.setDate(ontem.getDate() - 1);
+    if (dia === ontem.toISOString().slice(0, 10)) return `Ontem · ${br}`;
+    return br;
+}
+
+function _cenAbrirDia(dia) {
+    _cenDia = dia;
+    _cenMostrarInicio();
+    _cenCarregarClusters();
+}
+
+function _cenVoltarDias() {
+    _cenDia = null;
+    _cenSessao = null;
+    _cenMostrarDias();
+    _cenCarregarDias();
+}
+
+// ── Passo 2: os clusters do dia ──
 // Os clusters aparecem como detalhamento, não como botões: a conferência é uma só, da rota
 // inteira. Ele vê quanto falta de cada um sem ter que entrar e sair de cada cluster.
+// Em linha compacta, não em tabela de 5 colunas: no celular cada linha daquela tabela virava
+// um cartão de cinco pares rótulo/valor, e com 4 clusters a tela não cabia mais.
 function _cenCarregarClusters() {
     const empty = document.getElementById("cen-empty");
     const res   = document.getElementById("cen-lista");
@@ -56,13 +147,14 @@ function _cenCarregarClusters() {
     empty.style.display = "";
     res.style.display = "none";
 
-    fetch(`${API}/entregador/conferencia/clusters`, { headers: { "Authorization": "Bearer " + token } })
+    const qs = _cenDia ? `?dia=${encodeURIComponent(_cenDia)}` : "";
+    fetch(`${API}/entregador/conferencia/clusters${qs}`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
     .then(d => {
         if (d && d.error) { skFim(empty, d.error); return; }
         const lista = d.clusters || [];
         if (!lista.length) {
-            skFim(empty, "Nenhum cluster atribuído a você hoje. Fale com a operação.");
+            skFim(empty, "Nenhum cluster atribuído a você nesse dia. Fale com a operação.");
             return;
         }
         empty.style.display = "none";
@@ -71,21 +163,19 @@ function _cenCarregarClusters() {
 
         _cenPintarRota(d.rota || {}, lista.length);
 
-        document.getElementById("cen-tbody").innerHTML = lista.map(c => {
+        document.getElementById("cen-clusters").innerHTML = lista.map(c => {
             const pct = c.total ? (c.conferidos / c.total) * 100 : 0;
             const falta = Math.max(0, c.total - c.conferidos);
             const cor = falta === 0 && c.total ? "#22c55e" : c.conferidos ? "#eab308" : "#8494a9";
             return `
-            <tr>
-                <td data-label="Cluster" style="font-weight:700;color:#e2e8f0">${_cenEsc(c.cluster)}</td>
-                <td data-label="Conclusão" style="min-width:140px">
-                    <div class="slh-pct" style="color:${cor}">${_cenPctTexto(pct)}</div>
-                    <div class="slh-barra"><div class="slh-barra-fill" style="width:${c.conferidos && pct < 1 ? 1 : Math.min(100, pct)}%;background:${cor}"></div></div>
-                </td>
-                <td data-label="Pacotes" style="font-variant-numeric:tabular-nums">${c.total}</td>
-                <td data-label="Bipados" style="font-variant-numeric:tabular-nums;color:#22c55e">${c.conferidos}</td>
-                <td data-label="Faltam" style="font-variant-numeric:tabular-nums;color:${falta ? "#eab308" : "#8494a9"};font-weight:${falta ? 700 : 400}">${falta}</td>
-            </tr>`;
+            <div class="cen-cluster">
+                <div class="cen-cluster-topo">
+                    <span class="cen-cluster-nome">${_cenEsc(c.cluster)}</span>
+                    <span class="cen-cluster-num" style="color:${cor}">${c.conferidos} / ${c.total}</span>
+                </div>
+                <div class="slh-barra"><div class="slh-barra-fill" style="width:${
+                    c.conferidos && pct < 1 ? 1 : Math.min(100, pct)}%;background:${cor}"></div></div>
+            </div>`;
         }).join("");
     })
     .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
@@ -109,7 +199,7 @@ function _cenPintarRota(rota, qtdClusters) {
     barra.style.background = cor;
 
     document.getElementById("cen-rota-btn").textContent =
-        rota.encerrada ? "Ver conferência" : rota.sessao_id ? "Continuar conferência" : "Conferir rota";
+        rota.encerrada ? "Ver conferência" : rota.sessao_id ? "Continuar conferência" : "Começar conferência";
 }
 
 // Percentual exato, no formato 0,00% — 100% sem casas, que é como o resto do sistema mostra.
@@ -137,7 +227,7 @@ function _cenAbrirRota(botao) {
     fetch(`${API}/entregador/conferencia/sessao`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: "{}"
+        body: JSON.stringify({ dia: _cenDia })
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
         if (botao) { botao.disabled = false; botao.textContent = rotulo; }

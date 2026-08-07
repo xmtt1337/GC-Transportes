@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260807o">
+<link rel="stylesheet" href="style.css?v=20260807p">
 </head>
 <body>
 
@@ -2301,7 +2301,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div id="shl-hist-resultado" style="display:none">
                     <table class="ant-hist-table">
                         <thead>
-                            <tr><th>Arquivo</th><th>Linhas</th><th>Enviado por</th><th>Quando</th></tr>
+                            <tr><th>Arquivo</th><th>Linhas</th><th>Enviado por</th><th>Quando</th><th id="shl-th-acao" style="display:none"></th></tr>
                         </thead>
                         <tbody id="shl-hist-tbody"></tbody>
                     </table>
@@ -2703,14 +2703,30 @@ if (location.hostname === "xmtt1337.github.io") {
         <div id="tela-conf-entregador" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
 
-                <!-- Minha rota do dia -->
-                <div id="cen-inicio">
+                <!-- Passo 1: os dias em que ele teve rota. A tela abria direto no detalhe do
+                     dia mais recente, com uma tabela de 5 colunas por cluster — no celular
+                     isso vira um bloco enorme por cluster, antes de ele ter escolhido nada. -->
+                <div id="cen-dias">
                     <div class="bip-scan-card shr-scan-card">
                         <div class="bip-scan-title">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                            Minha rota — <span id="cen-dia" style="margin-left:4px"></span>
+                            Minhas conferências
                         </div>
-                        <div class="bip-scan-hint">Uma conferência só, com todos os seus clusters juntos. Bipe os pacotes na ordem que achar — o que faltar e o que vier a mais aparece na hora.</div>
+                        <div class="bip-scan-hint">Escolha o dia da rota para ver os seus clusters.</div>
+                    </div>
+
+                    <div class="fechamento-empty" id="cen-dias-empty">Carregando...</div>
+                    <div id="cen-dias-lista" style="display:none"></div>
+                </div>
+
+                <!-- Passo 2: os clusters do dia escolhido, e o botão de começar -->
+                <div id="cen-inicio" style="display:none">
+                    <div class="shr-faixa cfc">
+                        <span class="shr-faixa-label">Rota de</span>
+                        <span class="shr-faixa-xpt" id="cen-dia">—</span>
+                        <span class="shr-faixa-obs">
+                            <button type="button" class="shr-pag-btn" onclick="_cenVoltarDias()">← Meus dias</button>
+                        </span>
                     </div>
 
                     <div class="fechamento-empty" id="cen-empty">Carregando...</div>
@@ -2726,15 +2742,10 @@ if (location.hostname === "xmtt1337.github.io") {
 
                         <div style="margin:14px 0 18px">
                             <button type="button" class="usr-modal-btn-primary" id="cen-rota-btn"
-                                    style="width:100%" onclick="_cenAbrirRota(this)">Conferir rota</button>
+                                    style="width:100%" onclick="_cenAbrirRota(this)">Começar conferência</button>
                         </div>
 
-                        <table class="ant-hist-table">
-                            <thead>
-                                <tr><th>Cluster</th><th>Conclusão</th><th>Pacotes</th><th>Bipados</th><th>Faltam</th></tr>
-                            </thead>
-                            <tbody id="cen-tbody"></tbody>
-                        </table>
+                        <div id="cen-clusters"></div>
                     </div>
                 </div>
 
@@ -3355,60 +3366,60 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260807o"></script>
-<script src="js/router.js?v=20260807o"></script>
-<script src="js/sidebar.js?v=20260807o"></script>
-<script src="js/nav.js?v=20260807o"></script>
-<script src="js/fechamentos.js?v=20260807o"></script>
-<script src="js/admin.js?v=20260807o"></script>
-<script src="js/conf-nf.js?v=20260807o"></script>
-<script src="js/trampay.js?v=20260807o"></script>
-<script src="js/usuarios.js?v=20260807o"></script>
-<script src="js/motoristas.js?v=20260807o"></script>
-<script src="js/pagamentos.js?v=20260807o"></script>
-<script src="js/notas-fiscais.js?v=20260807o"></script>
-<script src="js/dashboard.js?v=20260807o"></script>
-<script src="js/ent-dashboard.js?v=20260807o"></script>
-<script src="js/nota-fiscal.js?v=20260807o"></script>
-<script src="js/extravios.js?v=20260807o"></script>
-<script src="js/usuarios-gc.js?v=20260807o"></script>
-<script src="js/todos-usuarios.js?v=20260807o"></script>
-<script src="js/whatsapp-teste.js?v=20260807o"></script>
-<script src="js/whatsapp-conversa.js?v=20260807o"></script>
-<script src="js/modals.js?v=20260807o"></script>
-<script src="js/alimentar.js?v=20260807o"></script>
-<script src="js/fechamento-criar.js?v=20260807o"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260807o"></script>
-<script src="js/bipagens.js?v=20260807o"></script>
-<script src="js/pedidos.js?v=20260807o"></script>
-<script src="js/desempenho-bip.js?v=20260807o"></script>
-<script src="js/desempenho-hora.js?v=20260807o"></script>
-<script src="js/conferencias.js?v=20260807o"></script>
-<script src="js/antecipacoes.js?v=20260807o"></script>
-<script src="js/antecipacoes-admin.js?v=20260807o"></script>
-<script src="js/baixas.js?v=20260807o"></script>
-<script src="js/devolucoes.js?v=20260807o"></script>
-<script src="js/shopee-polo.js?v=20260807o"></script>
-<script src="js/shopee.js?v=20260807o"></script>
-<script src="js/shopee-romaneiro.js?v=20260807o"></script>
-<script src="js/shopee-at.js?v=20260807o"></script>
-<script src="js/shopee-pedidos.js?v=20260807o"></script>
-<script src="js/shopee-linehaul.js?v=20260807o"></script>
-<script src="js/shopee-atribuicoes.js?v=20260807o"></script>
-<script src="js/shopee-retidos.js?v=20260807o"></script>
-<script src="js/entregador-conferencia.js?v=20260807o"></script>
-<script src="js/viagens.js?v=20260807o"></script>
-<script src="js/ocorrencias.js?v=20260807o"></script>
-<script src="js/ocorrencias-admin.js?v=20260807o"></script>
-<script src="js/localizacao.js?v=20260807o"></script>
-<script src="js/localizacao-admin.js?v=20260807o"></script>
-<script src="js/transferencias.js?v=20260807o"></script>
-<script src="js/transferencias-admin.js?v=20260807o"></script>
-<script src="js/motorista-devolucoes.js?v=20260807o"></script>
-<script src="js/etiquetas.js?v=20260807o"></script>
-<script src="js/videira.js?v=20260807o"></script>
-<script src="js/planejamento-videira.js?v=20260807o"></script>
-<script src="js/torre.js?v=20260807o"></script>
+<script src="js/core.js?v=20260807p"></script>
+<script src="js/router.js?v=20260807p"></script>
+<script src="js/sidebar.js?v=20260807p"></script>
+<script src="js/nav.js?v=20260807p"></script>
+<script src="js/fechamentos.js?v=20260807p"></script>
+<script src="js/admin.js?v=20260807p"></script>
+<script src="js/conf-nf.js?v=20260807p"></script>
+<script src="js/trampay.js?v=20260807p"></script>
+<script src="js/usuarios.js?v=20260807p"></script>
+<script src="js/motoristas.js?v=20260807p"></script>
+<script src="js/pagamentos.js?v=20260807p"></script>
+<script src="js/notas-fiscais.js?v=20260807p"></script>
+<script src="js/dashboard.js?v=20260807p"></script>
+<script src="js/ent-dashboard.js?v=20260807p"></script>
+<script src="js/nota-fiscal.js?v=20260807p"></script>
+<script src="js/extravios.js?v=20260807p"></script>
+<script src="js/usuarios-gc.js?v=20260807p"></script>
+<script src="js/todos-usuarios.js?v=20260807p"></script>
+<script src="js/whatsapp-teste.js?v=20260807p"></script>
+<script src="js/whatsapp-conversa.js?v=20260807p"></script>
+<script src="js/modals.js?v=20260807p"></script>
+<script src="js/alimentar.js?v=20260807p"></script>
+<script src="js/fechamento-criar.js?v=20260807p"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260807p"></script>
+<script src="js/bipagens.js?v=20260807p"></script>
+<script src="js/pedidos.js?v=20260807p"></script>
+<script src="js/desempenho-bip.js?v=20260807p"></script>
+<script src="js/desempenho-hora.js?v=20260807p"></script>
+<script src="js/conferencias.js?v=20260807p"></script>
+<script src="js/antecipacoes.js?v=20260807p"></script>
+<script src="js/antecipacoes-admin.js?v=20260807p"></script>
+<script src="js/baixas.js?v=20260807p"></script>
+<script src="js/devolucoes.js?v=20260807p"></script>
+<script src="js/shopee-polo.js?v=20260807p"></script>
+<script src="js/shopee.js?v=20260807p"></script>
+<script src="js/shopee-romaneiro.js?v=20260807p"></script>
+<script src="js/shopee-at.js?v=20260807p"></script>
+<script src="js/shopee-pedidos.js?v=20260807p"></script>
+<script src="js/shopee-linehaul.js?v=20260807p"></script>
+<script src="js/shopee-atribuicoes.js?v=20260807p"></script>
+<script src="js/shopee-retidos.js?v=20260807p"></script>
+<script src="js/entregador-conferencia.js?v=20260807p"></script>
+<script src="js/viagens.js?v=20260807p"></script>
+<script src="js/ocorrencias.js?v=20260807p"></script>
+<script src="js/ocorrencias-admin.js?v=20260807p"></script>
+<script src="js/localizacao.js?v=20260807p"></script>
+<script src="js/localizacao-admin.js?v=20260807p"></script>
+<script src="js/transferencias.js?v=20260807p"></script>
+<script src="js/transferencias-admin.js?v=20260807p"></script>
+<script src="js/motorista-devolucoes.js?v=20260807p"></script>
+<script src="js/etiquetas.js?v=20260807p"></script>
+<script src="js/videira.js?v=20260807p"></script>
+<script src="js/planejamento-videira.js?v=20260807p"></script>
+<script src="js/torre.js?v=20260807p"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">

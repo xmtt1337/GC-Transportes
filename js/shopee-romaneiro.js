@@ -280,6 +280,9 @@ function _shlCarregarHistorico() {
             }
             const totaisDia = Object.fromEntries(((d && d.dias) || []).map(x => [x.dia, x]));
             const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+            const podeRemover = _shlPodeRemover();
+            const colunas = podeRemover ? 5 : 4;
+            document.getElementById("shl-th-acao").style.display = podeRemover ? "" : "none";
 
             document.getElementById("shl-hist-tbody").innerHTML = [...porDia.entries()].map(([dia, lista]) => {
                 const resumo = totaisDia[dia];
@@ -287,7 +290,7 @@ function _shlCarregarHistorico() {
                 const envios = resumo ? resumo.envios : lista.length;
                 return `
                 <tr class="shl-dia-linha">
-                    <td colspan="4" style="background:rgba(58,134,255,0.07);border-top:1px solid rgba(58,134,255,0.18);padding:9px 12px">
+                    <td colspan="${colunas}" style="background:rgba(58,134,255,0.07);border-top:1px solid rgba(58,134,255,0.18);padding:9px 12px">
                         <span style="font-weight:700;color:#93c5fd;font-size:13px">${_shlDiaTexto(dia, hoje)}</span>
                         <span style="color:#8494a9;font-size:12.5px;margin-left:8px">
                             ${envios} arquivo${envios !== 1 ? "s" : ""} · ${linhasDia.toLocaleString("pt-BR")} linha${linhasDia !== 1 ? "s" : ""}
@@ -299,6 +302,10 @@ function _shlCarregarHistorico() {
                     <td data-label="Linhas" style="font-variant-numeric:tabular-nums">${i.linhas}</td>
                     <td data-label="Enviado por">${_shlEsc(i.importado_por) || "—"}</td>
                     <td data-label="Quando" style="color:#8494a9">${_shlDataHora(i.importado_em)}</td>
+                    ${podeRemover ? `<td data-label="" style="text-align:right">
+                        <button class="shr-del-btn" title="Remover este envio"
+                                onclick="_shlRemover('${_shlEsc(i.importado_em)}','${_shlEsc(i.arquivo).replace(/'/g, "\\'")}',${i.linhas})">Remover</button>
+                    </td>` : ""}
                 </tr>`).join("");
             }).join("");
         })
@@ -306,6 +313,33 @@ function _shlCarregarHistorico() {
             skFim(empty, "Erro ao conectar com o servidor.");
             _shlRenderUltima(null, null);
         });
+}
+
+// Só admin e dev removem. Apagar linhas de romaneiro muda o "faltam" da conferência de
+// LineHaul: é conserto de envio repetido, não parte do dia a dia de quem alimenta.
+function _shlPodeRemover() {
+    return ["admin", "dev"].includes((window._gcUser && window._gcUser.role) || "");
+}
+
+// Remove o envio inteiro — as linhas daquele arquivo saem do romaneiro junto.
+function _shlRemover(importadoEm, arquivo, linhas) {
+    gcConfirm(
+        `Remover o envio "${arquivo}"?\n\nAs ${Number(linhas).toLocaleString("pt-BR")} linhas dele saem do romaneiro, e a conferência de LineHaul passa a não esperar mais esses pacotes. Para desfazer, é só enviar o arquivo de novo.`,
+        () => {
+            fetch(`${API}/shopee/lh/importacao?importado_em=${encodeURIComponent(importadoEm)}`, {
+                method: "DELETE",
+                headers: { "Authorization": "Bearer " + token }
+            }).then(r => r.json().then(d => ({ ok: r.ok, d })))
+            .then(({ ok, d }) => {
+                if (!ok) return gcAlert(d.error || "Não foi possível remover.");
+                _shlMsg(`✓ Envio "${_shlEsc(arquivo)}" removido — ${Number(d.linhas || linhas).toLocaleString("pt-BR")} linhas saíram do romaneiro.`, "ok");
+                _shlCarregarHistorico();
+            })
+            .catch(() => gcAlert("Erro ao conectar com o servidor."));
+        },
+        "Remover envio",
+        "Sim, remover"
+    );
 }
 
 function _shlDataHora(iso) {
