@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260807n">
+<link rel="stylesheet" href="style.css?v=20260807o">
 </head>
 <body>
 
@@ -125,6 +125,12 @@ if (location.hostname === "xmtt1337.github.io") {
             <ul class="sub-submenu" id="subgroup-shopee-conferencia">
                 <li><a href="#" data-rota="Shopee/LineHaul" onclick="abrirShopeeLineHaul(event)">LineHaul</a></li>
                 <li><a href="#" data-rota="Shopee/Atribuicoes" onclick="abrirShopeeAtribuicoes(event)">Atribuições</a></li>
+            </ul>
+            <li class="subgroup-header" onclick="toggleSubGroup(this)">
+                Pacotes Retidos <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="subgroup-shopee-retidos">
+                <li><a href="#" data-rota="Shopee/ItemAvariado" onclick="abrirShopeeAvariado(event)">Item Avariado</a></li>
             </ul>
         </ul>
 
@@ -2463,6 +2469,61 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-shopee-linehaul -->
 
+        <!-- TELA SHOPEE — PACOTES RETIDOS → ITEM AVARIADO -->
+        <!-- Bipar aqui tira o pacote de TODA conferência (galpão e entregador), por isso o
+             aviso fica em destaque no card: quem bipa precisa saber que não é só um registro. -->
+        <div id="tela-shopee-avariado" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div class="bip-scan-card shr-scan-card">
+                    <div class="bip-scan-title">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
+                        Item avariado
+                    </div>
+
+                    <div class="shr-faixa" id="sav-faixa" style="display:none">
+                        <span class="shr-faixa-label">Retendo em</span>
+                        <span class="shr-faixa-xpt" id="sav-faixa-xpt">—</span>
+                        <span class="shr-faixa-obs" id="sav-faixa-obs"></span>
+                    </div>
+
+                    <div class="bip-search-wrap" id="sav-campo-codigo" style="display:none">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
+                        <input type="text" id="sav-codigo" placeholder="Bipar ou digitar código do item avariado..."
+                            onkeydown="_savCodigoEnter(event)"
+                            autocomplete="off" autocorrect="off" spellcheck="false">
+                        <button type="button" class="shr-scan-btn" onclick="_savScanCodigo()" title="Escanear com a câmera">
+                            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="bip-scan-hint" id="sav-aviso-xpt">Carregando o seu XPT...</div>
+                    <div class="bip-scan-hint sav-alerta" id="sav-dica-codigo" style="display:none">
+                        O pacote bipado aqui deixa de contar em <strong>qualquer conferência</strong> — a de cluster da operação e a do entregador. Só um desenvolvedor consegue desfazer.
+                    </div>
+                    <div id="sav-msg" style="display:none;margin-top:12px"></div>
+                </div>
+
+                <div class="shr-resumo" id="sav-resumo" style="display:none"></div>
+
+                <div id="sav-bloco-lista" style="display:none">
+                    <span class="ant-sol-title" id="sav-lista-titulo" style="border:none;padding:0;margin:0 0 12px;display:block">Itens avariados</span>
+                    <div class="adm-search-input-area" style="max-width:320px;margin-bottom:12px">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="sav-busca" placeholder="Buscar por código ou quem bipou..." oninput="_savBuscar()" autocomplete="off">
+                    </div>
+                    <div class="fechamento-empty" id="sav-empty">Carregando...</div>
+                    <div id="sav-resultado" style="display:none">
+                        <table class="ant-hist-table">
+                            <thead>
+                                <tr><th>Código</th><th>Bipado por</th><th>Data / hora</th><th id="sav-th-acao" style="display:none"></th></tr>
+                            </thead>
+                            <tbody id="sav-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-shopee-avariado -->
+
         <!-- TELA SHOPEE — CONFERÊNCIA DE ATRIBUIÇÕES -->
         <div id="tela-shopee-atribuicoes" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
@@ -3291,58 +3352,59 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260807n"></script>
-<script src="js/router.js?v=20260807n"></script>
-<script src="js/sidebar.js?v=20260807n"></script>
-<script src="js/nav.js?v=20260807n"></script>
-<script src="js/fechamentos.js?v=20260807n"></script>
-<script src="js/admin.js?v=20260807n"></script>
-<script src="js/conf-nf.js?v=20260807n"></script>
-<script src="js/trampay.js?v=20260807n"></script>
-<script src="js/usuarios.js?v=20260807n"></script>
-<script src="js/motoristas.js?v=20260807n"></script>
-<script src="js/pagamentos.js?v=20260807n"></script>
-<script src="js/notas-fiscais.js?v=20260807n"></script>
-<script src="js/dashboard.js?v=20260807n"></script>
-<script src="js/ent-dashboard.js?v=20260807n"></script>
-<script src="js/nota-fiscal.js?v=20260807n"></script>
-<script src="js/extravios.js?v=20260807n"></script>
-<script src="js/usuarios-gc.js?v=20260807n"></script>
-<script src="js/todos-usuarios.js?v=20260807n"></script>
-<script src="js/whatsapp-teste.js?v=20260807n"></script>
-<script src="js/whatsapp-conversa.js?v=20260807n"></script>
-<script src="js/modals.js?v=20260807n"></script>
-<script src="js/alimentar.js?v=20260807n"></script>
-<script src="js/fechamento-criar.js?v=20260807n"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260807n"></script>
-<script src="js/bipagens.js?v=20260807n"></script>
-<script src="js/pedidos.js?v=20260807n"></script>
-<script src="js/desempenho-bip.js?v=20260807n"></script>
-<script src="js/desempenho-hora.js?v=20260807n"></script>
-<script src="js/conferencias.js?v=20260807n"></script>
-<script src="js/antecipacoes.js?v=20260807n"></script>
-<script src="js/antecipacoes-admin.js?v=20260807n"></script>
-<script src="js/baixas.js?v=20260807n"></script>
-<script src="js/devolucoes.js?v=20260807n"></script>
-<script src="js/shopee.js?v=20260807n"></script>
-<script src="js/shopee-romaneiro.js?v=20260807n"></script>
-<script src="js/shopee-at.js?v=20260807n"></script>
-<script src="js/shopee-pedidos.js?v=20260807n"></script>
-<script src="js/shopee-linehaul.js?v=20260807n"></script>
-<script src="js/shopee-atribuicoes.js?v=20260807n"></script>
-<script src="js/entregador-conferencia.js?v=20260807n"></script>
-<script src="js/viagens.js?v=20260807n"></script>
-<script src="js/ocorrencias.js?v=20260807n"></script>
-<script src="js/ocorrencias-admin.js?v=20260807n"></script>
-<script src="js/localizacao.js?v=20260807n"></script>
-<script src="js/localizacao-admin.js?v=20260807n"></script>
-<script src="js/transferencias.js?v=20260807n"></script>
-<script src="js/transferencias-admin.js?v=20260807n"></script>
-<script src="js/motorista-devolucoes.js?v=20260807n"></script>
-<script src="js/etiquetas.js?v=20260807n"></script>
-<script src="js/videira.js?v=20260807n"></script>
-<script src="js/planejamento-videira.js?v=20260807n"></script>
-<script src="js/torre.js?v=20260807n"></script>
+<script src="js/core.js?v=20260807o"></script>
+<script src="js/router.js?v=20260807o"></script>
+<script src="js/sidebar.js?v=20260807o"></script>
+<script src="js/nav.js?v=20260807o"></script>
+<script src="js/fechamentos.js?v=20260807o"></script>
+<script src="js/admin.js?v=20260807o"></script>
+<script src="js/conf-nf.js?v=20260807o"></script>
+<script src="js/trampay.js?v=20260807o"></script>
+<script src="js/usuarios.js?v=20260807o"></script>
+<script src="js/motoristas.js?v=20260807o"></script>
+<script src="js/pagamentos.js?v=20260807o"></script>
+<script src="js/notas-fiscais.js?v=20260807o"></script>
+<script src="js/dashboard.js?v=20260807o"></script>
+<script src="js/ent-dashboard.js?v=20260807o"></script>
+<script src="js/nota-fiscal.js?v=20260807o"></script>
+<script src="js/extravios.js?v=20260807o"></script>
+<script src="js/usuarios-gc.js?v=20260807o"></script>
+<script src="js/todos-usuarios.js?v=20260807o"></script>
+<script src="js/whatsapp-teste.js?v=20260807o"></script>
+<script src="js/whatsapp-conversa.js?v=20260807o"></script>
+<script src="js/modals.js?v=20260807o"></script>
+<script src="js/alimentar.js?v=20260807o"></script>
+<script src="js/fechamento-criar.js?v=20260807o"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260807o"></script>
+<script src="js/bipagens.js?v=20260807o"></script>
+<script src="js/pedidos.js?v=20260807o"></script>
+<script src="js/desempenho-bip.js?v=20260807o"></script>
+<script src="js/desempenho-hora.js?v=20260807o"></script>
+<script src="js/conferencias.js?v=20260807o"></script>
+<script src="js/antecipacoes.js?v=20260807o"></script>
+<script src="js/antecipacoes-admin.js?v=20260807o"></script>
+<script src="js/baixas.js?v=20260807o"></script>
+<script src="js/devolucoes.js?v=20260807o"></script>
+<script src="js/shopee.js?v=20260807o"></script>
+<script src="js/shopee-romaneiro.js?v=20260807o"></script>
+<script src="js/shopee-at.js?v=20260807o"></script>
+<script src="js/shopee-pedidos.js?v=20260807o"></script>
+<script src="js/shopee-linehaul.js?v=20260807o"></script>
+<script src="js/shopee-atribuicoes.js?v=20260807o"></script>
+<script src="js/shopee-retidos.js?v=20260807o"></script>
+<script src="js/entregador-conferencia.js?v=20260807o"></script>
+<script src="js/viagens.js?v=20260807o"></script>
+<script src="js/ocorrencias.js?v=20260807o"></script>
+<script src="js/ocorrencias-admin.js?v=20260807o"></script>
+<script src="js/localizacao.js?v=20260807o"></script>
+<script src="js/localizacao-admin.js?v=20260807o"></script>
+<script src="js/transferencias.js?v=20260807o"></script>
+<script src="js/transferencias-admin.js?v=20260807o"></script>
+<script src="js/motorista-devolucoes.js?v=20260807o"></script>
+<script src="js/etiquetas.js?v=20260807o"></script>
+<script src="js/videira.js?v=20260807o"></script>
+<script src="js/planejamento-videira.js?v=20260807o"></script>
+<script src="js/torre.js?v=20260807o"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">

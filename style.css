@@ -2709,6 +2709,18 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 }
 .bip-scan-hint { font-size: 11px; color: var(--text-dim); margin-top: 10px; }
 
+/* Item avariado: a dica não é informativa, é um aviso — bipar ali tira o pacote de todas
+   as conferências e só dev desfaz. Em cinza-claro, do tamanho das outras, ninguém lia. */
+.bip-scan-hint.sav-alerta {
+    font-size: 12px; line-height: 1.5;
+    color: #fcd34d;
+    background: rgba(234,179,8,0.08);
+    border: 1px solid rgba(234,179,8,0.22);
+    border-radius: 9px;
+    padding: 9px 12px;
+}
+.bip-scan-hint.sav-alerta strong { color: #fde68a; }
+
 /* Search input */
 .bip-search-wrap {
     display: flex; align-items: center; gap: 12px;
