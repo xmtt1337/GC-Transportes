@@ -711,16 +711,24 @@ function _scaAbrirEntregador(cluster) {
                 `<option value="${_scaEsc(e.nome)}" data-id="${_scaEsc(e.id)}">${_scaEsc(e.nome)}</option>`).join("");
         if (atual) sel.value = atual.nome;
     };
-    if (_scaListaEntregadores) return preencher();
+    // Mostra o que já tem na mão pra não piscar vazio, mas SEMPRE rebusca. A lista mora numa
+    // planilha que muda o tempo todo: cadastrar alguém e não achar no seletor até dar F5 é
+    // um bug que ninguém liga ao cache — a pessoa conclui que o cadastro não funcionou.
+    if (_scaListaEntregadores) preencher();
+    else sel.innerHTML = `<option>Carregando...</option>`;
 
-    sel.innerHTML = `<option>Carregando...</option>`;
     fetch(`${API}/etiquetas/entregadores`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(lista => {
-            _scaListaEntregadores = Array.isArray(lista) ? lista : [];
-            preencher();
+            if (!Array.isArray(lista)) return;
+            _scaListaEntregadores = lista;
+            // Só redesenha se a tela ainda está no mesmo cluster: a resposta pode chegar
+            // depois de a pessoa fechar e abrir outro.
+            if (_scaClusterEditando === cluster) preencher();
         })
-        .catch(() => { sel.innerHTML = `<option value="">Erro ao carregar a lista</option>`; });
+        .catch(() => {
+            if (!_scaListaEntregadores) sel.innerHTML = `<option value="">Erro ao carregar a lista</option>`;
+        });
 }
 
 function _scaSalvarEntregador(remover) {
