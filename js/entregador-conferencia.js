@@ -216,18 +216,29 @@ function _cenCodigoEnter(e) {
 
 function _cenScan() {
     // Mesmo leitor das Baixas: detector nativo → ZBar → ZXing. Não vale reimplementar.
-    _bteAbrirScanner(codigo => {
-        document.getElementById("cen-codigo").value = codigo;
-        _cenBipar();
+    // Contínuo e em tela cheia: quem confere uma rota inteira bipa dezenas de pacotes
+    // seguidos, e reabrir a câmera a cada um era o gargalo.
+    _bteAbrirScanner(codigo => _cenBipar(codigo), {
+        continuo: true,
+        areaCheia: true,
+        titulo: "Bipando a rota",
     });
 }
 
-function _cenBipar() {
+function _cenEscaneando() {
+    return !!document.getElementById("bte-scan-overlay");
+}
+
+function _cenBipar(codigoLido) {
     const campo = document.getElementById("cen-codigo");
-    const codigo = campo.value.trim().toUpperCase();
+    const codigo = String(codigoLido != null ? codigoLido : campo.value).trim().toUpperCase();
+    // Com a câmera aberta o campo fica atrás do overlay: focar ali sobe o teclado do
+    // celular por cima da imagem. Digitando na mão o foco continua voltando pro campo.
+    if (codigoLido == null) {
+        campo.value = "";
+        campo.focus();
+    }
     if (!codigo || !_cenSessao) return;
-    campo.value = "";
-    campo.focus();
 
     fetch(`${API}/shopee/conferencia/atribuicoes/bipar`, {
         method: "POST",
@@ -235,19 +246,45 @@ function _cenBipar() {
         body: JSON.stringify({ codigo, sessao_id: _cenSessao.id })
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
-        if (!ok) return _cenMsg(d.error || "Não foi possível bipar.", "erro");
-        _cenMsg(d.detalhe || (CEN_RESULTADOS[d.resultado] || {}).rotulo || "", d.resultado === "ok" ? "ok" : "erro");
+        if (!ok) {
+            // Já bipado é aviso, não erro: o pacote está na rota, só passou duas vezes.
+            const tipo = d.ja_bipado ? "aviso" : "erro";
+            return _cenResposta(d.error || "Não foi possível bipar.", tipo);
+        }
+        const rotulo = (CEN_RESULTADOS[d.resultado] || {}).rotulo || "";
+        _cenResposta(d.detalhe || rotulo, d.resultado === "ok" ? "ok" : "erro");
         // Recarrega dos dois lados: o bipado entra na lista e sai dos faltantes.
         _cenCarregarSessao();
         _cenCarregarFaltantes();
     })
-    .catch(() => _cenMsg("Erro ao conectar com o servidor.", "erro"));
+    .catch(() => _cenResposta("Erro ao conectar com o servidor.", "erro"));
+}
+
+// Som, cor e texto do bipe. O som é o que importa de verdade: conferindo pacote na mão,
+// ninguém olha a tela a cada bipe — é pelo apito que se percebe que algo saiu errado.
+function _cenResposta(msg, tipo) {
+    if (tipo === "ok") { _gcBeepSucesso(); } else { _gcBeepErro(); }
+    _cenFlash(tipo);
+    _cenMsg(msg, tipo);
+    // Com a câmera cobrindo a tela, a resposta tem que aparecer dentro do overlay.
+    if (_cenEscaneando()) _bteScanStatus(msg || (tipo === "ok" ? "Confere" : "Erro"), tipo);
+}
+
+let _cenFlashTimer = null;
+function _cenFlash(tipo) {
+    const wrap = document.getElementById("cen-campo-codigo");
+    if (!wrap) return;
+    clearTimeout(_cenFlashTimer);
+    wrap.classList.remove("flash-ok", "flash-err");
+    void wrap.offsetWidth;   // reinicia a animação quando dois bipes vêm em sequência
+    wrap.classList.add(tipo === "ok" ? "flash-ok" : "flash-err");
+    _cenFlashTimer = setTimeout(() => wrap.classList.remove("flash-ok", "flash-err"), 900);
 }
 
 function _cenMsg(msg, tipo) {
     const el = document.getElementById("cen-msg");
     if (!msg) { el.style.display = "none"; return; }
-    const cor = tipo === "ok" ? "#22c55e" : "#ef4444";
+    const cor = tipo === "ok" ? "#22c55e" : tipo === "aviso" ? "#eab308" : "#ef4444";
     el.style.display = "";
     el.innerHTML = `<div style="background:${cor}1a;border:1px solid ${cor}55;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;color:${cor}">${_cenEsc(msg)}</div>`;
     clearTimeout(_cenMsgTimer);

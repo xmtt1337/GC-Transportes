@@ -316,6 +316,11 @@ function _scaMsg(msg, tipo) {
     const cor = cores[tipo] || cores.ok;
     el.style.cssText = `display:block;padding:11px 15px;border-radius:10px;background:${cor}14;border:1px solid ${cor}33;color:${cor};font-size:13.5px`;
     el.innerHTML = msg;
+    // Com a câmera em tela cheia esta mensagem fica atrás do overlay. Espelhar aqui pega
+    // todos os casos de uma vez, em vez de lembrar de avisar o scanner em cada ramo do bipe.
+    if (document.getElementById("bte-scan-overlay")) {
+        _bteScanStatus(String(msg).replace(/<[^>]*>/g, "").trim(), tipo);
+    }
 }
 
 let _scaFlashTimer = null;
@@ -333,17 +338,26 @@ function _scaCodigoEnter(e) {
 }
 
 function _scaScan() {
-    _bteAbrirScanner(texto => { document.getElementById("sca-codigo").value = texto; _scaBipar(); });
+    // Contínuo e em tela cheia, igual à do entregador: é a mesma conferência, do outro
+    // lado do balcão, e quem separa também bipa pacote atrás de pacote.
+    _bteAbrirScanner(texto => _scaBipar(texto), {
+        continuo: true,
+        areaCheia: true,
+        titulo: "Conferindo " + (_scaSessao && _scaSessao.alvo ? _scaSessao.alvo : ""),
+    });
 }
 
-function _scaBipar() {
+function _scaBipar(codigoLido) {
     if (!_scaSessao || _scaSessao.encerrada_em) return;
     const campo = document.getElementById("sca-codigo");
-    const codigo = campo.value.trim().toUpperCase();
+    const codigo = String(codigoLido != null ? codigoLido : campo.value).trim().toUpperCase();
     // Limpa e devolve o foco antes da resposta: o leitor dispara o próximo bipe na
-    // sequência, e um campo travado perderia pacote.
-    campo.value = "";
-    campo.focus();
+    // sequência, e um campo travado perderia pacote. Vindo da câmera não se toca no foco:
+    // o campo está atrás do overlay e focar ali sobe o teclado por cima da imagem.
+    if (codigoLido == null) {
+        campo.value = "";
+        campo.focus();
+    }
     if (!codigo) return;
 
     fetch(`${API}/shopee/conferencia/atribuicoes/bipar`, {

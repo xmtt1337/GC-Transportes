@@ -487,18 +487,55 @@ const _BTE_DETECT_H = 0.45;
 // o texto lido, em vez do comportamento padrão (preencher o campo das baixas).
 let _bteScanCallback = null;
 
-function _bteAbrirScanner(callback) {
+// Opções por chamada. O padrão é o comportamento antigo — mira retangular e fecha no
+// primeiro código —, então quem chama com um argumento só não muda em nada.
+//
+//   areaCheia — lê o frame inteiro, sem retângulo. Na conferência a etiqueta chega em
+//               qualquer posição e mirar custa mais tempo do que ler errado custaria.
+//   continuo  — não fecha ao ler: bipa um atrás do outro. Fechar e reabrir a cada pacote
+//               era o gargalo real de quem confere 200 numa rota.
+const _BTE_SCAN_PADRAO = { continuo: false, areaCheia: false, titulo: "" };
+let _bteScanOpcoes = { ..._BTE_SCAN_PADRAO };
+let _bteScanUltimo = "";      // último código aceito, pro modo contínuo não repetir
+let _bteScanUltimoEm = 0;
+let _bteScanLidos = 0;
+// Mesmo código na frente da câmera continua sendo lido a cada frame. Só vale de novo
+// depois desta janela — abaixo disso é o mesmo pacote, não o próximo.
+const _BTE_SCAN_REPETE_MS = 2500;
+
+function _bteAbrirScanner(callback, opcoes) {
     _bteScanCallback = typeof callback === "function" ? callback : null;
+    _bteScanOpcoes   = { ..._BTE_SCAN_PADRAO, ...(opcoes || {}) };
+    _bteScanUltimo   = "";
+    _bteScanUltimoEm = 0;
+    _bteScanLidos    = 0;
     if (document.getElementById("bte-scan-overlay")) return;
     if (typeof ZXingBrowser === "undefined") {
         gcAlert("Leitor de código indisponível no momento. Digite o código manualmente.");
         return;
     }
 
+    const cheia = _bteScanOpcoes.areaCheia;
     const overlay = document.createElement("div");
     overlay.id = "bte-scan-overlay";
-    overlay.setAttribute("style", "position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(7,9,14,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box");
-    overlay.innerHTML = `
+    overlay.setAttribute("style", cheia
+        ? "position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:#000;display:flex;flex-direction:column"
+        : "position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(7,9,14,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box");
+
+    // Câmera inteira: o vídeo ocupa a tela e os controles flutuam por cima. Sem retângulo —
+    // o frame todo é decodificado, então marcar uma área só mentiria sobre onde mirar.
+    overlay.innerHTML = cheia ? `
+        <video id="bte-scan-video" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;background:#000" muted playsinline></video>
+        <div style="position:relative;padding:16px 16px 14px;background:linear-gradient(rgba(0,0,0,0.75),rgba(0,0,0,0))">
+            <div style="font-size:15px;font-weight:700;color:#f1f5f9">${_bteScanOpcoes.titulo || "Aponte para o código"}</div>
+            <div id="bte-scan-sub" style="font-size:12.5px;color:#94a3b8;margin-top:3px">Pode apontar de qualquer ângulo — a câmera lê a tela toda.</div>
+        </div>
+        <div style="flex:1"></div>
+        <div style="position:relative;padding:14px 16px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,0.8))">
+            <div id="bte-scan-status" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:12px;font-size:14px;font-weight:700;text-align:center"></div>
+            <div id="bte-scan-erro" style="color:#f87171;font-size:13px;margin-bottom:10px;display:none"></div>
+            <button id="bte-scan-cancelar" style="width:100%;padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.18);background:rgba(17,24,39,0.85);color:#e2e8f0;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Concluir</button>
+        </div>` : `
         <div style="width:100%;max-width:420px;background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;box-sizing:border-box">
             <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:14px">Alinhe o código dentro da área marcada</div>
             <div style="position:relative;width:100%;border-radius:10px;overflow:hidden">
@@ -575,7 +612,10 @@ function _bteScanLoop() {
         return;
     }
     const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
-    const sw = Math.round(vw * _BTE_DETECT_W), sh = Math.round(vh * _BTE_DETECT_H);
+    // Área cheia decodifica o frame inteiro; o modo com mira segue recortando a faixa.
+    const fw = _bteScanOpcoes.areaCheia ? 1 : _BTE_DETECT_W;
+    const fh = _bteScanOpcoes.areaCheia ? 1 : _BTE_DETECT_H;
+    const sw = Math.round(vw * fw), sh = Math.round(vh * fh);
     const sx = Math.round((vw - sw) / 2), sy = Math.round((vh - sh) / 2);
 
     if (!_bteScanCanvas) _bteScanCanvas = document.createElement("canvas");
@@ -584,6 +624,21 @@ function _bteScanLoop() {
 
     _bteScanDecodificar(_bteScanCanvas).then(texto => {
         if (!_bteScanReader) return; // scanner foi fechado enquanto decodificava
+        if (texto && _bteScanOpcoes.continuo) {
+            // Contínuo: segue lendo. O mesmo código fica na frente da câmera por vários
+            // frames, então só vale de novo depois da janela de repetição — senão um
+            // pacote parado na mão viraria dezenas de bipes.
+            const agora = Date.now();
+            const repetido = texto === _bteScanUltimo && (agora - _bteScanUltimoEm) < _BTE_SCAN_REPETE_MS;
+            if (!repetido) {
+                _bteScanUltimo = texto;
+                _bteScanUltimoEm = agora;
+                _bteScanLidos++;
+                if (_bteScanCallback) _bteScanCallback(texto);
+            }
+            _bteScanTimer = setTimeout(_bteScanLoop, 120);
+            return;
+        }
         if (texto) {
             const cb = _bteScanCallback; // guarda antes: fechar o scanner limpa o callback
             _bteFecharScanner();
@@ -594,6 +649,22 @@ function _bteScanLoop() {
         }
         _bteScanTimer = setTimeout(_bteScanLoop, 120);
     });
+}
+
+// Feedback do bipe dentro do overlay. Em tela cheia a câmera cobre a página, então a
+// resposta do servidor tem que aparecer aqui — sem isso a pessoa bipa às cegas.
+function _bteScanStatus(msg, tipo) {
+    const el = document.getElementById("bte-scan-status");
+    if (!el) return;
+    if (!msg) { el.style.display = "none"; return; }
+    const cor = tipo === "ok" ? "#22c55e" : tipo === "aviso" ? "#eab308" : "#ef4444";
+    el.style.display = "";
+    el.style.background = cor + "22";
+    el.style.border = `1px solid ${cor}66`;
+    el.style.color = cor;
+    el.textContent = msg;
+    const sub = document.getElementById("bte-scan-sub");
+    if (sub) sub.textContent = `${_bteScanLidos} bipado${_bteScanLidos !== 1 ? "s" : ""} nesta sessão`;
 }
 
 function _bteCarregarZbar() {
@@ -618,7 +689,9 @@ function _bteMaisCentral(candidatos, canvas) {
         if (!c.texto) continue;
         const x = (c.x == null) ? cx : c.x;
         const y = (c.y == null) ? cy : c.y;
-        if (Math.abs(y - cy) > canvas.height * 0.35) continue;
+        // Sem mira não há "fora da mira": descartar por altura aqui jogaria fora justamente
+        // o código que a pessoa apontou de canto, que é o ponto de ler a tela inteira.
+        if (!_bteScanOpcoes.areaCheia && Math.abs(y - cy) > canvas.height * 0.35) continue;
         const d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
         if (d < melhorDist) { melhorDist = d; melhor = c.texto; }
     }
@@ -689,6 +762,8 @@ function _bteFecharScanner() {
     _bteScanReader   = null;
     _bteDetector     = null;
     _bteScanCallback = null;
+    _bteScanOpcoes   = { ..._BTE_SCAN_PADRAO };
+    _bteScanUltimo   = "";
     const overlay = document.getElementById("bte-scan-overlay");
     if (overlay) overlay.remove();
     document.removeEventListener("keydown", _bteScanEscKey);
