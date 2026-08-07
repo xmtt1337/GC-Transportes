@@ -251,13 +251,27 @@ function _cenBipar(codigoLido) {
             const tipo = d.ja_bipado ? "aviso" : "erro";
             return _cenResposta(d.error || "Não foi possível bipar.", tipo);
         }
-        const rotulo = (CEN_RESULTADOS[d.resultado] || {}).rotulo || "";
-        _cenResposta(d.detalhe || rotulo, d.resultado === "ok" ? "ok" : "erro");
+        _cenResposta(_cenTextoResultado(d), d.resultado === "ok" ? "ok" : "erro");
         // Recarrega dos dois lados: o bipado entra na lista e sai dos faltantes.
         _cenCarregarSessao();
         _cenCarregarFaltantes();
     })
     .catch(() => _cenResposta("Erro ao conectar com o servidor.", "erro"));
+}
+
+// O que a mensagem do bipe diz.
+//
+// Pacote de outro cluster tem que dizer DE QUAL. "Outra rota" sozinho não resolve nada com
+// o pacote na mão: é o número do cluster que decide se ele volta pro galpão ou vai pro
+// colega que leva aquele cluster. A conferência da operação já mostrava isso; a do
+// entregador mostrava só o rótulo genérico, e ele é quem está longe do galpão.
+function _cenTextoResultado(d) {
+    const rotulo = (CEN_RESULTADOS[d.resultado] || {}).rotulo || "";
+    if (d.resultado === "ok") return d.detalhe || "Confere";
+    if (d.resultado === "divergente" && d.encontrado) {
+        return `Esse pacote é do ${d.encontrado} — não é da sua rota`;
+    }
+    return d.detalhe || rotulo;
 }
 
 // Som, cor e texto do bipe. O som é o que importa de verdade: conferindo pacote na mão,
@@ -349,14 +363,16 @@ function _cenRenderizar() {
             if (_cenFiltro === "amais") return !["ok", "divergente"].includes(b.resultado);
             return true;
         });
-        document.getElementById("cen-thead").innerHTML = `<tr><th>Código</th><th>Resultado</th><th>Onde está</th><th>Hora</th></tr>`;
+        // "Cluster do pacote" e não "Onde está": a conferência do entregador é sempre por
+        // cluster, e é esse número que ele precisa ler pra saber o que fazer com o pacote.
+        document.getElementById("cen-thead").innerHTML = `<tr><th>Código</th><th>Resultado</th><th>Cluster do pacote</th><th>Hora</th></tr>`;
         linhas = filtradas.map(b => {
             const r = CEN_RESULTADOS[b.resultado] || { rotulo: b.resultado, cor: "#8494a9" };
             return `
             <tr>
                 <td data-label="Código" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#e2e8f0">${_cenEsc(b.codigo)}</td>
                 <td data-label="Resultado"><span style="color:${r.cor};font-weight:700;font-size:12.5px">${r.rotulo}</span></td>
-                <td data-label="Onde está">${_cenEsc(b.encontrado || "—")}</td>
+                <td data-label="Cluster do pacote">${_cenEsc(b.encontrado || "—")}</td>
                 <td data-label="Hora" style="font-size:12px;color:#8494a9">${_cenEsc((b.data_hora_brasilia || "").split(" ")[1] || "")}</td>
             </tr>`;
         });
