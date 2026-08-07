@@ -22,15 +22,8 @@ function _shrEsc(txt) {
     return String(txt || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
-// Polos e o XPT de cada um. Joaçaba consta porque tem gente lotada lá, mas não recebe
-// Shopee — daí xpt null, em vez de um código inventado que criaria uma contagem fantasma.
-const SHR_POLOS = [
-    { chave: "cacador", label: "Caçador", xpt: "XPT_CFC" },
-    { chave: "videira", label: "Videira", xpt: "XPT_VIA" },
-    { chave: "joacaba", label: "Joaçaba", xpt: null },
-];
-const _shrPolo = chave => SHR_POLOS.find(p => p.chave === chave) || null;
-
+// A lista de polos e a escolha inicial moram em shopee-polo.js: são de todas as telas da
+// Shopee, não só desta, e a pergunta agora aparece já no clique do menu.
 let _shrXpt      = null;    // XPT do polo da pessoa; null = sem polo ou polo sem Shopee
 let _shrPoloAtual = null;   // { chave, label, xpt }
 let _shrDados    = [];      // recebimentos de hoje do XPT da pessoa
@@ -52,95 +45,22 @@ function abrirShopeeReceber(event) {
     mostrarTela("tela-shopee-receber");
 
     // O XPT vem do polo do cadastro, não de um clique a cada uso: escolher toda vez era
-    // justamente o que deixava passar bipe no lugar errado.
-    fetch(`${API}/shopee/meu-xpt`, { headers: { "Authorization": "Bearer " + token } })
-        .then(r => r.json())
-        .then(d => {
-            if (!d || !d.polo) return _shrPerguntarPolo(); // cadastrado antes do polo existir
-            _shrPoloAtual = _shrPolo(d.polo);
-            _shrXpt = d.xpt || null;
-            _shrPintarXpt();
-            if (_shrXpt) _shrCarregarHoje();
-        })
-        .catch(() => {
-            document.getElementById("shr-aviso-xpt").innerText = "Não foi possível carregar o seu polo. Recarregue a página.";
-        });
-}
-
-// ── Escolha inicial, uma única vez ──
-// Só aparece pra quem foi cadastrado antes do polo existir. Quem entra a partir de agora
-// já vem com o polo do cadastro e nunca vê isto. O aviso de que fica salvo é o ponto: sem
-// ele a pessoa clica em qualquer um pra passar da tela e o erro dura até alguém reparar.
-function _shrPerguntarPolo() {
-    document.getElementById("shr-aviso-xpt").innerText = "Escolha o seu polo para começar.";
-
-    const overlay = document.createElement("div");
-    overlay.id = "shr-escolha-overlay";
-    overlay.setAttribute("style", _gcOverlayStyle);
-    overlay.innerHTML = `
-        <div style="${_gcCardStyle}">
-            <div style="${_gcTitleStyle}">Qual é o seu polo?</div>
-            <div style="${_gcMsgStyle}">Escolha a base em que você trabalha. Ela fica salva no seu cadastro e passa a valer em todos os recebimentos — se errar, só um administrador consegue trocar.</div>
-            <div class="shr-escolha-opcoes">
-                ${SHR_POLOS.map(p => `
-                    <button type="button" class="shr-escolha-btn" data-polo="${p.chave}" data-xpt="${p.xpt || ""}">
-                        <span class="shr-escolha-cidade">${p.label}</span>
-                        <span class="shr-escolha-cod">${p.xpt || "não recebe Shopee"}</span>
-                    </button>`).join("")}
-            </div>
-            <div id="shr-escolha-erro" style="display:none;font-size:12.5px;color:#ef4444;margin-bottom:12px"></div>
-        </div>`;
-    document.body.appendChild(overlay);
-
-    overlay.querySelectorAll(".shr-escolha-btn").forEach(btn => {
-        btn.addEventListener("click", () => _shrConfirmarPolo(btn.dataset.polo, overlay));
+    // justamente o que deixava passar bipe no lugar errado. Quem ainda não tem polo cai na
+    // escolha (shopee-polo.js) — normalmente ela já apareceu no clique do menu.
+    document.getElementById("shr-aviso-xpt").innerText = "Carregando o seu XPT...";
+    gcPoloGarantir(info => {
+        _shrPoloAtual = gcPoloPorChave(info.polo);
+        _shrXpt = info.xpt || null;
+        _shrPintarXpt();
+        if (_shrXpt) _shrCarregarHoje();
+    }).then(info => {
+        if (info === null) {
+            document.getElementById("shr-aviso-xpt").innerText =
+                "Não foi possível carregar o seu polo. Recarregue a página.";
+        } else if (info && !info.polo) {
+            document.getElementById("shr-aviso-xpt").innerText = "Escolha o seu polo para começar.";
+        }
     });
-}
-
-function _shrConfirmarPolo(chave, overlay) {
-    const polo = _shrPolo(chave);
-    if (!polo) return;
-    const detalhe = polo.xpt
-        ? `Você vai receber os pacotes da Shopee em ${polo.label} (${polo.xpt}).`
-        : `${polo.label} não recebe Shopee — você não vai bipar pacotes nesta tela.`;
-
-    // Confirmação antes de gravar: é escolha de uma vez só, e um clique errado aqui custa
-    // uma ida ao administrador.
-    gcConfirm(
-        `${detalhe}\n\nIsso fica salvo no seu cadastro. Depois, só um administrador pode alterar.`,
-        () => {
-            const erro = overlay.querySelector("#shr-escolha-erro");
-            const botoes = overlay.querySelectorAll(".shr-escolha-btn");
-            botoes.forEach(b => b.disabled = true);
-
-            fetch(`${API}/shopee/meu-polo`, {
-                method: "POST",
-                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-                body: JSON.stringify({ polo: chave })
-            }).then(r => r.json().then(d => ({ ok: r.ok, d })))
-            .then(({ ok, d }) => {
-                // 409 = já tinha polo (outra aba, ou o admin definiu). Segue com o que vale.
-                if (!ok && !d.polo) {
-                    botoes.forEach(b => b.disabled = false);
-                    erro.style.display = "";
-                    erro.innerText = d.error || "Não foi possível salvar. Tente de novo.";
-                    return;
-                }
-                _shrPoloAtual = _shrPolo(d.polo || chave);
-                _shrXpt = (_shrPoloAtual && _shrPoloAtual.xpt) || null;
-                overlay.remove();
-                _shrPintarXpt();
-                if (_shrXpt) _shrCarregarHoje();
-            })
-            .catch(() => {
-                botoes.forEach(b => b.disabled = false);
-                erro.style.display = "";
-                erro.innerText = "Erro de conexão. Tente de novo.";
-            });
-        },
-        "Confirmar polo",
-        "Sim, é esse"
-    );
 }
 
 function _shrPintarXpt() {
@@ -228,7 +148,15 @@ function _shrReceber() {
             }
             // Cadastro sem polo (admin limpou, ou a tela estava aberta desde antes):
             // pergunta de novo em vez de deixar a pessoa bipando contra um erro fixo.
-            if (d.sem_polo) { _shrXpt = null; _shrPoloAtual = null; _shrPintarXpt(); _shrPerguntarPolo(); }
+            if (d.sem_polo) {
+                _shrXpt = null; _shrPoloAtual = null; _shrPintarXpt();
+                gcPoloPerguntar(info => {
+                    _shrPoloAtual = gcPoloPorChave(info.polo);
+                    _shrXpt = info.xpt || null;
+                    _shrPintarXpt();
+                    if (_shrXpt) _shrCarregarHoje();
+                });
+            }
             // Polo mudou pra um que não recebe: tira o campo do caminho.
             if (d.polo_sem_xpt) { _shrXpt = null; _shrPintarXpt(); }
             return _shrMsg(_shrEsc(d.error) || "Erro ao registrar.", "erro");

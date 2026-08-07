@@ -100,7 +100,10 @@ if (location.hostname === "xmtt1337.github.io") {
              links com ~66px de recuo numa sidebar de 250px. Aqui ele fica com a mesma
              profundidade de todos os outros menus. Visibilidade acompanha Operação — quem não
              enxerga uma, não enxerga a outra (core.js). -->
-        <li class="menu-item" data-menu="shopee" id="menu-shopee" onclick="toggleMenu(this)">
+        <!-- gcPoloGarantir no clique: o polo é o que decide o XPT de tudo aqui dentro, então
+             a pergunta vem já na abertura do menu — antes era só dentro do Recebimento, e
+             quem entrava por outra tela levava um aviso mandando abrir aquela primeiro. -->
+        <li class="menu-item" data-menu="shopee" id="menu-shopee" onclick="toggleMenu(this); gcPoloGarantir()">
             <svg class="menu-icon" viewBox="0 0 24 24">
                 <path d="M4 7h16l-1.2 12.1A2 2 0 0 1 16.8 21H7.2a2 2 0 0 1-2-1.9L4 7z"/>
                 <path d="M8.5 10V6.5a3.5 3.5 0 0 1 7 0V10"/>
@@ -3385,6 +3388,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="js/antecipacoes-admin.js?v=20260807o"></script>
 <script src="js/baixas.js?v=20260807o"></script>
 <script src="js/devolucoes.js?v=20260807o"></script>
+<script src="js/shopee-polo.js?v=20260807o"></script>
 <script src="js/shopee.js?v=20260807o"></script>
 <script src="js/shopee-romaneiro.js?v=20260807o"></script>
 <script src="js/shopee-at.js?v=20260807o"></script>

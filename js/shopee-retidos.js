@@ -31,19 +31,22 @@ function abrirShopeeAvariado(event) {
     _savPintarXpt();
     mostrarTela("tela-shopee-avariado");
 
-    // O XPT vem do polo do cadastro, igual ao Recebimento — não se escolhe a cada uso.
-    fetch(`${API}/shopee/meu-xpt`, { headers: { "Authorization": "Bearer " + token } })
-        .then(r => r.json())
-        .then(d => {
-            _savPoloLabel = (d && d.polo_label) || "";
-            _savXpt = (d && d.xpt) || null;
-            _savPintarXpt(!d || !d.polo);
-            if (_savXpt) _savCarregarHistorico();
-        })
-        .catch(() => {
+    // O XPT vem do polo do cadastro, igual ao Recebimento — não se escolhe a cada uso. Quem
+    // ainda não tem polo cai na escolha compartilhada (shopee-polo.js), sem precisar sair
+    // desta tela.
+    gcPoloGarantir(info => {
+        _savPoloLabel = info.polo_label || "";
+        _savXpt = info.xpt || null;
+        _savPintarXpt(false);
+        if (_savXpt) _savCarregarHistorico();
+    }).then(info => {
+        if (info === null) {
             document.getElementById("sav-aviso-xpt").innerText =
                 "Não foi possível carregar o seu polo. Recarregue a página.";
-        });
+        } else if (info && !info.polo) {
+            _savPintarXpt(true);
+        }
+    });
 }
 
 function _savEsc(txt) {
@@ -73,7 +76,7 @@ function _savPintarXpt(semPolo) {
     } else {
         aviso.style.display = "";
         aviso.innerText = semPolo
-            ? "Você ainda não tem polo definido. Abra o Recebimento Shopee para escolher."
+            ? "Escolha o seu polo para começar."
             : temPolo
                 ? `O polo ${_savPoloLabel} não recebe Shopee. Se isso estiver errado, fale com um administrador.`
                 : "Carregando o seu XPT...";
