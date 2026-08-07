@@ -5,6 +5,7 @@ const _ROTA_BASE = "/GC-Transportes";
 // caminho da URL -> função que abre a tela correspondente
 const _ROTAS = {
     "Baixas/TotalExpress":           () => abrirBaixaTotalExpress(),
+    "Conferencia/Shopee":            () => abrirConfEntregador(),
     "Devolucoes/Nova":               () => abrirDevolucaoNova(),
     "Devolucoes/Enviadas":           () => abrirDevolucoesEnviadas(),
     "Devolucoes/MinhasViagens":      () => abrirViagemMinhas(),
@@ -76,6 +77,7 @@ const _ROTAS = {
 const _TELA_ROTAS = {
     "tela-home":                 "",
     "tela-baixa-te":             "Baixas/TotalExpress",
+    "tela-conf-entregador":      "Conferencia/Shopee",
     "tela-admin-baixas-te":      "Baixas/TotalExpress",
     "tela-devolucao-nova":       "Devolucoes/Nova",
     "tela-devolucao-enviadas":   "Devolucoes/Enviadas",

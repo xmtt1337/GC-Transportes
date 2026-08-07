@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260807b">
+<link rel="stylesheet" href="style.css?v=20260807c">
 </head>
 <body>
 
@@ -178,6 +178,20 @@ if (location.hostname === "xmtt1337.github.io") {
         <ul class="submenu" data-menu="adiantamentos" id="submenu-adiantamentos" style="display:none">
             <li><a href="#" data-rota="Adiantamentos/Solicitar" onclick="abrirAntecipacoes(event)">Solicitar Antecipação</a></li>
             <li><a href="#" data-rota="Adiantamentos/Minhas" onclick="abrirMinhasSolicitacoes(event)">Minhas Solicitações</a></li>
+        </ul>
+
+        <!-- Conferência do entregador: os clusters que ele leva hoje. Menu próprio porque
+             "Conferências" existente é da operação e mostra o galpão inteiro. -->
+        <li class="menu-item" data-menu="confentregador" id="menu-conf-entregador" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+            <span class="label">Conferência</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Conferência</span>
+        </li>
+        <ul class="submenu" data-menu="confentregador" id="submenu-conf-entregador" style="display:none">
+            <li><a href="#" data-rota="Conferencia/Shopee" onclick="abrirConfEntregador(event)">Shopee</a></li>
         </ul>
 
         <li class="menu-item" data-menu="baixas" id="menu-baixas" onclick="toggleMenu(this)" style="display:none">
@@ -2599,6 +2613,86 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div>
 
+        <!-- TELA CONFERÊNCIA DO ENTREGADOR — SHOPEE -->
+        <div id="tela-conf-entregador" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+
+                <!-- Meus clusters do dia -->
+                <div id="cen-inicio">
+                    <div class="bip-scan-card shr-scan-card">
+                        <div class="bip-scan-title">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            Meus clusters — <span id="cen-dia" style="margin-left:4px"></span>
+                        </div>
+                        <div class="bip-scan-hint">Confira os pacotes de cada cluster antes de sair. O que faltar e o que vier a mais aparece na hora.</div>
+                    </div>
+
+                    <div class="fechamento-empty" id="cen-empty">Carregando...</div>
+                    <div id="cen-lista" style="display:none">
+                        <table class="ant-hist-table">
+                            <thead>
+                                <tr><th>Cluster</th><th>Conclusão</th><th>Pacotes</th><th>Bipados</th><th>Faltam</th><th></th></tr>
+                            </thead>
+                            <tbody id="cen-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Conferindo um cluster -->
+                <div id="cen-andamento" style="display:none">
+                    <div class="shr-faixa cfc">
+                        <span class="shr-faixa-label">Conferindo</span>
+                        <span class="shr-faixa-xpt" id="cen-faixa-alvo">—</span>
+                        <span class="shr-faixa-obs">
+                            <button type="button" class="shr-pag-btn" onclick="_cenVoltar()">← Meus clusters</button>
+                        </span>
+                    </div>
+
+                    <div class="sca-progresso">
+                        <div class="sca-prog-topo">
+                            <span class="sca-prog-label">Conclusão</span>
+                            <span class="sca-prog-pct" id="cen-prog-pct">0%</span>
+                            <span class="sca-prog-obs" id="cen-prog-obs"></span>
+                        </div>
+                        <div class="slh-barra"><div class="slh-barra-fill" id="cen-prog-barra" style="width:0%"></div></div>
+                    </div>
+
+                    <div class="bip-scan-card shr-scan-card">
+                        <div class="bip-scan-title">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12.01"/><line x1="10" y1="12" x2="10" y2="12.01"/><line x1="13" y1="12" x2="13" y2="12.01"/><line x1="16" y1="12" x2="16" y2="12.01"/></svg>
+                            Bipar pacote
+                        </div>
+                        <div class="bip-search-wrap">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#3a86ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <input type="text" id="cen-codigo" placeholder="Bipar ou digitar código..."
+                                onkeydown="_cenCodigoEnter(event)" autocomplete="off" autocorrect="off" spellcheck="false">
+                            <button type="button" class="shr-scan-btn" onclick="_cenScan()" title="Escanear com a câmera">
+                                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                            </button>
+                        </div>
+                        <div id="cen-msg" style="display:none;margin-top:12px"></div>
+                    </div>
+
+                    <div class="shr-resumo" id="cen-resumo"></div>
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:12px">
+                        <div class="filtro-tabs" id="cen-abas">
+                            <button type="button" class="filtro-tab active" data-f="todos" onclick="_cenFiltro_('todos')">Bipados</button>
+                            <button type="button" class="filtro-tab" data-f="faltam" onclick="_cenFiltro_('faltam')">Faltam</button>
+                            <button type="button" class="filtro-tab" data-f="divergente" onclick="_cenFiltro_('divergente')">Outra rota</button>
+                            <button type="button" class="filtro-tab" data-f="amais" onclick="_cenFiltro_('amais')">A mais</button>
+                        </div>
+                        <button type="button" class="usr-modal-btn-primary" onclick="_cenEncerrar()">Encerrar conferência</button>
+                    </div>
+                    <table class="ant-hist-table">
+                        <thead id="cen-thead"></thead>
+                        <tbody id="cen-tbody-bip"></tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
         <!-- TELA VIAGEM — FECHAR (ENTREGADOR) -->
         <div id="tela-viagem-fechar" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
@@ -3161,57 +3255,58 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260807b"></script>
-<script src="js/router.js?v=20260807b"></script>
-<script src="js/sidebar.js?v=20260807b"></script>
-<script src="js/nav.js?v=20260807b"></script>
-<script src="js/fechamentos.js?v=20260807b"></script>
-<script src="js/admin.js?v=20260807b"></script>
-<script src="js/conf-nf.js?v=20260807b"></script>
-<script src="js/trampay.js?v=20260807b"></script>
-<script src="js/usuarios.js?v=20260807b"></script>
-<script src="js/motoristas.js?v=20260807b"></script>
-<script src="js/pagamentos.js?v=20260807b"></script>
-<script src="js/notas-fiscais.js?v=20260807b"></script>
-<script src="js/dashboard.js?v=20260807b"></script>
-<script src="js/ent-dashboard.js?v=20260807b"></script>
-<script src="js/nota-fiscal.js?v=20260807b"></script>
-<script src="js/extravios.js?v=20260807b"></script>
-<script src="js/usuarios-gc.js?v=20260807b"></script>
-<script src="js/todos-usuarios.js?v=20260807b"></script>
-<script src="js/whatsapp-teste.js?v=20260807b"></script>
-<script src="js/whatsapp-conversa.js?v=20260807b"></script>
-<script src="js/modals.js?v=20260807b"></script>
-<script src="js/alimentar.js?v=20260807b"></script>
-<script src="js/fechamento-criar.js?v=20260807b"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260807b"></script>
-<script src="js/bipagens.js?v=20260807b"></script>
-<script src="js/pedidos.js?v=20260807b"></script>
-<script src="js/desempenho-bip.js?v=20260807b"></script>
-<script src="js/desempenho-hora.js?v=20260807b"></script>
-<script src="js/conferencias.js?v=20260807b"></script>
-<script src="js/antecipacoes.js?v=20260807b"></script>
-<script src="js/antecipacoes-admin.js?v=20260807b"></script>
-<script src="js/baixas.js?v=20260807b"></script>
-<script src="js/devolucoes.js?v=20260807b"></script>
-<script src="js/shopee.js?v=20260807b"></script>
-<script src="js/shopee-romaneiro.js?v=20260807b"></script>
-<script src="js/shopee-at.js?v=20260807b"></script>
-<script src="js/shopee-pedidos.js?v=20260807b"></script>
-<script src="js/shopee-linehaul.js?v=20260807b"></script>
-<script src="js/shopee-atribuicoes.js?v=20260807b"></script>
-<script src="js/viagens.js?v=20260807b"></script>
-<script src="js/ocorrencias.js?v=20260807b"></script>
-<script src="js/ocorrencias-admin.js?v=20260807b"></script>
-<script src="js/localizacao.js?v=20260807b"></script>
-<script src="js/localizacao-admin.js?v=20260807b"></script>
-<script src="js/transferencias.js?v=20260807b"></script>
-<script src="js/transferencias-admin.js?v=20260807b"></script>
-<script src="js/motorista-devolucoes.js?v=20260807b"></script>
-<script src="js/etiquetas.js?v=20260807b"></script>
-<script src="js/videira.js?v=20260807b"></script>
-<script src="js/planejamento-videira.js?v=20260807b"></script>
-<script src="js/torre.js?v=20260807b"></script>
+<script src="js/core.js?v=20260807c"></script>
+<script src="js/router.js?v=20260807c"></script>
+<script src="js/sidebar.js?v=20260807c"></script>
+<script src="js/nav.js?v=20260807c"></script>
+<script src="js/fechamentos.js?v=20260807c"></script>
+<script src="js/admin.js?v=20260807c"></script>
+<script src="js/conf-nf.js?v=20260807c"></script>
+<script src="js/trampay.js?v=20260807c"></script>
+<script src="js/usuarios.js?v=20260807c"></script>
+<script src="js/motoristas.js?v=20260807c"></script>
+<script src="js/pagamentos.js?v=20260807c"></script>
+<script src="js/notas-fiscais.js?v=20260807c"></script>
+<script src="js/dashboard.js?v=20260807c"></script>
+<script src="js/ent-dashboard.js?v=20260807c"></script>
+<script src="js/nota-fiscal.js?v=20260807c"></script>
+<script src="js/extravios.js?v=20260807c"></script>
+<script src="js/usuarios-gc.js?v=20260807c"></script>
+<script src="js/todos-usuarios.js?v=20260807c"></script>
+<script src="js/whatsapp-teste.js?v=20260807c"></script>
+<script src="js/whatsapp-conversa.js?v=20260807c"></script>
+<script src="js/modals.js?v=20260807c"></script>
+<script src="js/alimentar.js?v=20260807c"></script>
+<script src="js/fechamento-criar.js?v=20260807c"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260807c"></script>
+<script src="js/bipagens.js?v=20260807c"></script>
+<script src="js/pedidos.js?v=20260807c"></script>
+<script src="js/desempenho-bip.js?v=20260807c"></script>
+<script src="js/desempenho-hora.js?v=20260807c"></script>
+<script src="js/conferencias.js?v=20260807c"></script>
+<script src="js/antecipacoes.js?v=20260807c"></script>
+<script src="js/antecipacoes-admin.js?v=20260807c"></script>
+<script src="js/baixas.js?v=20260807c"></script>
+<script src="js/devolucoes.js?v=20260807c"></script>
+<script src="js/shopee.js?v=20260807c"></script>
+<script src="js/shopee-romaneiro.js?v=20260807c"></script>
+<script src="js/shopee-at.js?v=20260807c"></script>
+<script src="js/shopee-pedidos.js?v=20260807c"></script>
+<script src="js/shopee-linehaul.js?v=20260807c"></script>
+<script src="js/shopee-atribuicoes.js?v=20260807c"></script>
+<script src="js/entregador-conferencia.js?v=20260807c"></script>
+<script src="js/viagens.js?v=20260807c"></script>
+<script src="js/ocorrencias.js?v=20260807c"></script>
+<script src="js/ocorrencias-admin.js?v=20260807c"></script>
+<script src="js/localizacao.js?v=20260807c"></script>
+<script src="js/localizacao-admin.js?v=20260807c"></script>
+<script src="js/transferencias.js?v=20260807c"></script>
+<script src="js/transferencias-admin.js?v=20260807c"></script>
+<script src="js/motorista-devolucoes.js?v=20260807c"></script>
+<script src="js/etiquetas.js?v=20260807c"></script>
+<script src="js/videira.js?v=20260807c"></script>
+<script src="js/planejamento-videira.js?v=20260807c"></script>
+<script src="js/torre.js?v=20260807c"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
