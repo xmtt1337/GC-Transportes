@@ -24,6 +24,9 @@ function _carregarUsuarios() {
         res.style.display = "";
         const podeFaltante = ["admin", "dev", "sac"].includes((window._gcUser && window._gcUser.role) || "");
         const podeNF       = ["admin", "dev", "finance"].includes((window._gcUser && window._gcUser.role) || "");
+        // Mesma alçada de quem cria motorista: quem não pode cadastrar um não deveria poder
+        // transformar um entregador em um por outra porta.
+        const podeMotorista = ["admin", "dev", "finance"].includes((window._gcUser && window._gcUser.role) || "");
         document.getElementById("adm-usr-tbody").innerHTML = users.map(u => `
             <tr>
                 <td>
@@ -40,6 +43,7 @@ function _carregarUsuarios() {
                     <span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span>
                     ${u.senha_temporaria ? `<span class="adm-usr-badge senha-temp" title="Ainda não trocou a senha temporária — não consegue entrar até trocar">Senha pendente</span>` : ""}
                     ${u.isento_nf ? `<span class="adm-usr-badge nf-isento" title="Vê os fechamentos mesmo com nota fiscal pendente da quinzena anterior">Sem trava de NF</span>` : ""}
+                    ${u.faz_motorista ? `<span class="adm-usr-badge nf-isento" title="Além da rota, tem acesso a Transferências e Devoluções do motorista">Também motorista</span>` : ""}
                 </td>
                 <td>
                     <div class="adm-usr-editar-wrap">
@@ -49,6 +53,7 @@ function _carregarUsuarios() {
                             <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_resetarSenha(${u.id},'${u.username.replace(/'/g,"\\'")}')">Resetar senha</button>
                             ${podeFaltante ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleFaltante(${u.id},${!u.pode_pacote_faltante})">${u.pode_pacote_faltante ? 'Desativar' : 'Ativar'} formulário de faltante</button>` : ""}
                             ${podeNF ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleIsentoNF(${u.id},${!u.isento_nf},'${(u.name || u.username).replace(/'/g,"\\'")}')">${u.isento_nf ? 'Voltar a exigir NF' : 'Liberar fechamento sem NF'}</button>` : ""}
+                            ${podeMotorista ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleFazMotorista(${u.id},${!u.faz_motorista},'${(u.name || u.username).replace(/'/g,"\\'")}')">${u.faz_motorista ? 'Tirar telas de motorista' : 'Liberar telas de motorista'}</button>` : ""}
                         </div>
                     </div>
                 </td>
@@ -187,6 +192,31 @@ function _toggleIsentoNF(id, valor, nome) {
     gcConfirm(
         `Liberar "${nome}" do bloqueio de nota fiscal?\n\nEle passa a ver os fechamentos mesmo com a NF da quinzena anterior pendente, com valor divergente ou com tomador errado.`,
         aplicar, "Liberar fechamento sem NF", "Liberar");
+}
+
+// Confirma antes: liberar dá acesso a telas de outra função, e tirar no meio do dia deixa
+// quem está rodando uma transferência sem conseguir terminá-la.
+function _toggleFazMotorista(id, valor, nome) {
+    const aplicar = () => {
+        const tok = localStorage.getItem("token");
+        fetch(`${API}/admin/usuarios/${id}`, {
+            method: "PATCH",
+            headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
+            body: JSON.stringify({ faz_motorista: valor })
+        }).then(r => r.json())
+        .then(data => {
+            if (data.error) { gcAlert(data.error); return; }
+            _carregarUsuarios();
+        }).catch(() => gcAlert("Erro ao atualizar a permissão."));
+    };
+    gcConfirm(
+        valor
+            ? `Liberar as telas de motorista para ${nome}?\n\nEle continua entregador — só ganha Transferências e Devoluções do motorista no menu. Vale no próximo clique, sem precisar sair e entrar.`
+            : `Tirar as telas de motorista de ${nome}?\n\nEle perde o acesso a Transferências e Devoluções do motorista. O que já foi registrado continua no histórico.`,
+        aplicar,
+        valor ? "Liberar telas de motorista" : "Tirar telas de motorista",
+        valor ? "Liberar" : "Tirar"
+    );
 }
 
 function _toggleFaltante(id, valor) {

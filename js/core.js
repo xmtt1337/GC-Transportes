@@ -132,6 +132,16 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
 
     const show = (id) => { const el = document.getElementById(id); if (el) el.style.display = ""; };
     const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = "none"; };
+    // Troca o rótulo de um menu (e o tooltip da barra recolhida). Serve pros casos em que
+    // dois menus só convivem na tela de alguém — aí um deles precisa de outro nome.
+    const _renomearMenu = (id, texto) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const label = el.querySelector(".label");
+        const tip   = el.querySelector(".menu-tooltip");
+        if (label) label.innerText = texto;
+        if (tip)   tip.innerText = texto;
+    };
 
     // ── Menus comuns para roles com acesso operacional ──
     const _showOperacional = () => {
@@ -186,6 +196,20 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         if (data.usuario.pode_pacote_faltante) {
             show("menu-ocorrencias");
             show("submenu-ocorrencias");
+        }
+        // Quem leva rota e também roda transferência ganha as duas telas do motorista
+        // (toggle em Cadastros → Entregadores, "Editar" → Liberar telas de motorista).
+        // Continua sendo entregador: fechamento, NF e conferência de rota seguem iguais.
+        if (data.usuario.faz_motorista) {
+            show("menu-transferencias");
+            show("submenu-transferencias");
+            show("menu-devolucoes-motorista");
+            show("submenu-devolucoes-motorista");
+            // Os dois menus se chamam "Devoluções" e têm o mesmo ícone, mas são coisas
+            // opostas: no do entregador ele REGISTRA o pacote que não entregou; no do
+            // motorista ele RECOLHE as devoluções que os outros registraram. Lado a lado
+            // viravam dois itens idênticos, e a pessoa escolheria no chute.
+            _renomearMenu("menu-devolucoes-motorista", "Coleta de devoluções");
         }
         document.getElementById("welcome-name").innerText = displayName.split(" ")[0];
         _locIniciarCompartilhamento(); // controle de veículo — só ativa se já tiver permissão de localização concedida
