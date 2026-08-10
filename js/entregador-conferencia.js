@@ -135,6 +135,81 @@ function _cenVoltarDias() {
     _cenCarregarDias();
 }
 
+// ── Busca de pacote no histórico dele ──
+// A pergunta é sempre a mesma: "esse pedido era meu, e eu bipei?". Sem isso a resposta
+// exigia abrir a conferência de cada dia e procurar na lista à mão.
+function _cenBuscaEnter(e) {
+    if (e.key === "Enter") { e.preventDefault(); _cenBuscar(); }
+}
+
+function _cenBuscaScan() {
+    // Uma leitura só: aqui ele quer conferir UM pacote, não bipar em série.
+    _bteAbrirScanner(codigo => {
+        document.getElementById("cen-busca").value = codigo;
+        _cenBuscar();
+    }, { areaCheia: true, titulo: "Procurar pacote" });
+}
+
+function _cenBuscar() {
+    const campo = document.getElementById("cen-busca");
+    const el = document.getElementById("cen-busca-res");
+    const q = campo.value.trim();
+    if (!q) { el.style.display = "none"; el.innerHTML = ""; return; }
+
+    el.style.display = "";
+    el.innerHTML = `<div class="fechamento-empty">Procurando...</div>`;
+    fetch(`${API}/entregador/conferencia/buscar?q=${encodeURIComponent(q)}`, {
+        headers: { "Authorization": "Bearer " + token }
+    }).then(r => r.json())
+    .then(d => {
+        if (d && d.error)  return _cenBuscaAviso(d.error);
+        if (d.curto)       return _cenBuscaAviso("Digite pelo menos 3 caracteres do código.");
+        const lista = d.resultados || [];
+        if (!lista.length) {
+            // Não achar é resposta, não erro: esse pacote nunca passou pela rota dele nem
+            // pelo bipe dele — que é exatamente o que ele precisa saber pra devolver.
+            return _cenBuscaAviso(`Nenhum pacote com "${_cenEsc(q)}" nas suas rotas. Ele não foi atribuído a você nem bipado por você.`);
+        }
+        el.innerHTML = lista.map(_cenBuscaCartao).join("");
+    })
+    .catch(() => _cenBuscaAviso("Erro ao conectar com o servidor."));
+}
+
+function _cenBuscaAviso(msg) {
+    document.getElementById("cen-busca-res").innerHTML =
+        `<div class="fechamento-empty">${_cenEsc(msg)}</div>`;
+}
+
+function _cenBuscaCartao(r) {
+    const br = s => s ? String(s).split("-").reverse().join("/") : "—";
+    // Três situações, e o cabeçalho já dá a resposta sem ele ter que ler o resto.
+    const info = !r.bipado
+        ? { cor: "#eab308", titulo: "Não bipado", obs: r.na_rota ? "Estava na sua rota e não foi bipado." : "Não é da sua rota." }
+        : r.resultado === "ok"
+            ? { cor: "#22c55e", titulo: "Você bipou · confere", obs: "Pacote da sua rota, conferido." }
+            : r.resultado === "divergente"
+                ? { cor: "#ef4444", titulo: "Você bipou · outra rota", obs: `Esse pacote é do ${r.encontrado || "outro cluster"}.` }
+                : { cor: "#eab308", titulo: "Você bipou · sem cadastro", obs: (CEN_RESULTADOS[r.resultado] || {}).rotulo || "" };
+
+    const linha = (rotulo, valor) => `
+        <div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:12.5px">
+            <span style="color:#8494a9">${rotulo}</span>
+            <span style="color:#e2e8f0;text-align:right">${_cenEsc(valor || "—")}</span>
+        </div>`;
+
+    return `
+    <div style="border:1px solid ${info.cor}44;border-left:3px solid ${info.cor};border-radius:12px;padding:14px;margin-bottom:10px;background:${info.cor}0d">
+        <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#e2e8f0;margin-bottom:3px">${_cenEsc(r.codigo)}</div>
+        <div style="font-weight:700;color:${info.cor};font-size:13.5px;margin-bottom:2px">${info.titulo}</div>
+        <div style="font-size:12px;color:#8494a9;margin-bottom:10px">${_cenEsc(info.obs)}</div>
+        ${linha("Dia da rota", br(r.dia))}
+        ${linha("Cluster", r.cluster)}
+        ${linha("Atribuído em", r.atribuido_em)}
+        ${linha("Bipado em", r.bipado_em)}
+        ${r.cidade ? linha("Cidade / bairro", r.cidade) : ""}
+    </div>`;
+}
+
 // ── Passo 2: os clusters do dia ──
 // Os clusters aparecem como detalhamento, não como botões: a conferência é uma só, da rota
 // inteira. Ele vê quanto falta de cada um sem ter que entrar e sair de cada cluster.
