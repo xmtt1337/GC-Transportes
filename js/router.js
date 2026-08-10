@@ -27,6 +27,7 @@ const _ROTAS = {
     "Shopee/Pedidos":                () => abrirShopeePedidos(),
     "Shopee/LineHaul":               () => abrirShopeeLineHaul(),
     "Shopee/Atribuicoes":            () => abrirShopeeAtribuicoes(),
+    "Shopee/ConfEntregadores":       () => abrirShopeeConfEntregadores(),
     "Shopee/ItemAvariado":           () => abrirShopeeAvariado(),
     // Rotas antigas de quando Shopee era um grupo dentro de Operação. Mantidas só pra
     // link salvo/favorito não quebrar — a tela abre, mas o menu não fica marcado, porque
@@ -135,6 +136,7 @@ const _TELA_ROTAS = {
     "tela-shopee-pedidos":       "Shopee/Pedidos",
     "tela-shopee-linehaul":      "Shopee/LineHaul",
     "tela-shopee-atribuicoes":   "Shopee/Atribuicoes",
+    "tela-shopee-conf-entregadores": "Shopee/ConfEntregadores",
     "tela-shopee-avariado":      "Shopee/ItemAvariado",
     "tela-bipagens":             "Operacao/Bipagem",
     "tela-desempenho-bip":       "Operacao/DesempenhoUsuario",

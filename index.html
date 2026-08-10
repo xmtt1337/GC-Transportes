@@ -36,7 +36,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260807x">
+<link rel="stylesheet" href="style.css?v=20260810a">
 </head>
 <body>
 
@@ -128,6 +128,7 @@ if (location.hostname === "xmtt1337.github.io") {
             <ul class="sub-submenu" id="subgroup-shopee-conferencia">
                 <li><a href="#" data-rota="Shopee/LineHaul" onclick="abrirShopeeLineHaul(event)">LineHaul</a></li>
                 <li><a href="#" data-rota="Shopee/Atribuicoes" onclick="abrirShopeeAtribuicoes(event)">Atribuições</a></li>
+                <li><a href="#" data-rota="Shopee/ConfEntregadores" onclick="abrirShopeeConfEntregadores(event)">Entregadores</a></li>
             </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Pacotes Retidos <span class="subgroup-arrow">▾</span>
@@ -2323,6 +2324,70 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-shopee-romaneiro -->
 
+        <!-- TELA SHOPEE — CONFERÊNCIA > ENTREGADORES (o que eles bipam no app deles) -->
+        <div id="tela-shopee-conf-entregadores" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div class="shr-faixa cfc" id="sce-faixa" style="display:none">
+                    <span class="shr-faixa-label">Base</span>
+                    <span class="shr-faixa-xpt" id="sce-faixa-xpt">—</span>
+                </div>
+
+                <!-- Lista de entregadores do dia -->
+                <div id="sce-lista-wrap">
+                    <div class="bip-scan-card shr-scan-card">
+                        <div class="bip-scan-title">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+                            Conferências dos entregadores
+                        </div>
+                        <div class="bip-scan-hint">O que cada entregador bipou no aplicativo dele, por dia. Aqui é só acompanhamento — quem confere a rota é ele.</div>
+                    </div>
+
+                    <div class="filtro-tabs" id="sce-dias" style="display:none;margin-bottom:14px"></div>
+
+                    <div class="fechamento-empty" id="sce-empty">Carregando...</div>
+                    <div id="sce-resultado" style="display:none">
+                        <div class="shr-resumo" id="sce-resumo"></div>
+                        <div id="sce-entregadores"></div>
+                    </div>
+                </div>
+
+                <!-- Pedidos de uma conferência -->
+                <div id="sce-detalhe" style="display:none">
+                    <div class="shr-faixa cfc">
+                        <span class="shr-faixa-label">Conferência de</span>
+                        <span class="shr-faixa-xpt" id="sce-det-nome">—</span>
+                        <span class="shr-faixa-obs">
+                            <button type="button" class="shr-pag-btn" onclick="_sceVoltar()">← Entregadores</button>
+                        </span>
+                    </div>
+
+                    <div style="font-size:12.5px;color:#8494a9;margin:2px 0 14px" id="sce-det-sub"></div>
+
+                    <div class="sca-progresso">
+                        <div class="sca-prog-topo">
+                            <span class="sca-prog-label">Conclusão</span>
+                            <span class="sca-prog-pct" id="sce-det-pct">0%</span>
+                            <span class="sca-prog-obs" id="sce-det-obs"></span>
+                        </div>
+                        <div class="slh-barra"><div class="slh-barra-fill" id="sce-det-barra" style="width:0%"></div></div>
+                    </div>
+
+                    <div class="shr-resumo" id="sce-det-resumo"></div>
+
+                    <div class="filtro-tabs" id="sce-det-abas" style="margin-bottom:10px">
+                        <button type="button" class="filtro-tab active" data-f="todos" onclick="_sceFiltro_('todos')">Bipados</button>
+                        <button type="button" class="filtro-tab" data-f="faltam" onclick="_sceFiltro_('faltam')">Faltam</button>
+                        <button type="button" class="filtro-tab" data-f="divergente" onclick="_sceFiltro_('divergente')">Outra rota</button>
+                        <button type="button" class="filtro-tab" data-f="amais" onclick="_sceFiltro_('amais')">A mais</button>
+                    </div>
+                    <table class="ant-hist-table">
+                        <thead id="sce-det-thead"></thead>
+                        <tbody id="sce-det-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div><!-- /tela-shopee-conf-entregadores -->
+
         <!-- TELA SHOPEE — AT EXPORTADA (SUBSTITUI A ANTERIOR) -->
         <div id="tela-shopee-at" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
@@ -3380,60 +3445,61 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260807x"></script>
-<script src="js/router.js?v=20260807x"></script>
-<script src="js/sidebar.js?v=20260807x"></script>
-<script src="js/nav.js?v=20260807x"></script>
-<script src="js/fechamentos.js?v=20260807x"></script>
-<script src="js/admin.js?v=20260807x"></script>
-<script src="js/conf-nf.js?v=20260807x"></script>
-<script src="js/trampay.js?v=20260807x"></script>
-<script src="js/usuarios.js?v=20260807x"></script>
-<script src="js/motoristas.js?v=20260807x"></script>
-<script src="js/pagamentos.js?v=20260807x"></script>
-<script src="js/notas-fiscais.js?v=20260807x"></script>
-<script src="js/dashboard.js?v=20260807x"></script>
-<script src="js/ent-dashboard.js?v=20260807x"></script>
-<script src="js/nota-fiscal.js?v=20260807x"></script>
-<script src="js/extravios.js?v=20260807x"></script>
-<script src="js/usuarios-gc.js?v=20260807x"></script>
-<script src="js/todos-usuarios.js?v=20260807x"></script>
-<script src="js/whatsapp-teste.js?v=20260807x"></script>
-<script src="js/whatsapp-conversa.js?v=20260807x"></script>
-<script src="js/modals.js?v=20260807x"></script>
-<script src="js/alimentar.js?v=20260807x"></script>
-<script src="js/fechamento-criar.js?v=20260807x"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260807x"></script>
-<script src="js/bipagens.js?v=20260807x"></script>
-<script src="js/pedidos.js?v=20260807x"></script>
-<script src="js/desempenho-bip.js?v=20260807x"></script>
-<script src="js/desempenho-hora.js?v=20260807x"></script>
-<script src="js/conferencias.js?v=20260807x"></script>
-<script src="js/antecipacoes.js?v=20260807x"></script>
-<script src="js/antecipacoes-admin.js?v=20260807x"></script>
-<script src="js/baixas.js?v=20260807x"></script>
-<script src="js/devolucoes.js?v=20260807x"></script>
-<script src="js/shopee-polo.js?v=20260807x"></script>
-<script src="js/shopee.js?v=20260807x"></script>
-<script src="js/shopee-romaneiro.js?v=20260807x"></script>
-<script src="js/shopee-at.js?v=20260807x"></script>
-<script src="js/shopee-pedidos.js?v=20260807x"></script>
-<script src="js/shopee-linehaul.js?v=20260807x"></script>
-<script src="js/shopee-atribuicoes.js?v=20260807x"></script>
-<script src="js/shopee-retidos.js?v=20260807x"></script>
-<script src="js/entregador-conferencia.js?v=20260807x"></script>
-<script src="js/viagens.js?v=20260807x"></script>
-<script src="js/ocorrencias.js?v=20260807x"></script>
-<script src="js/ocorrencias-admin.js?v=20260807x"></script>
-<script src="js/localizacao.js?v=20260807x"></script>
-<script src="js/localizacao-admin.js?v=20260807x"></script>
-<script src="js/transferencias.js?v=20260807x"></script>
-<script src="js/transferencias-admin.js?v=20260807x"></script>
-<script src="js/motorista-devolucoes.js?v=20260807x"></script>
-<script src="js/etiquetas.js?v=20260807x"></script>
-<script src="js/videira.js?v=20260807x"></script>
-<script src="js/planejamento-videira.js?v=20260807x"></script>
-<script src="js/torre.js?v=20260807x"></script>
+<script src="js/core.js?v=20260810a"></script>
+<script src="js/router.js?v=20260810a"></script>
+<script src="js/sidebar.js?v=20260810a"></script>
+<script src="js/nav.js?v=20260810a"></script>
+<script src="js/fechamentos.js?v=20260810a"></script>
+<script src="js/admin.js?v=20260810a"></script>
+<script src="js/conf-nf.js?v=20260810a"></script>
+<script src="js/trampay.js?v=20260810a"></script>
+<script src="js/usuarios.js?v=20260810a"></script>
+<script src="js/motoristas.js?v=20260810a"></script>
+<script src="js/pagamentos.js?v=20260810a"></script>
+<script src="js/notas-fiscais.js?v=20260810a"></script>
+<script src="js/dashboard.js?v=20260810a"></script>
+<script src="js/ent-dashboard.js?v=20260810a"></script>
+<script src="js/nota-fiscal.js?v=20260810a"></script>
+<script src="js/extravios.js?v=20260810a"></script>
+<script src="js/usuarios-gc.js?v=20260810a"></script>
+<script src="js/todos-usuarios.js?v=20260810a"></script>
+<script src="js/whatsapp-teste.js?v=20260810a"></script>
+<script src="js/whatsapp-conversa.js?v=20260810a"></script>
+<script src="js/modals.js?v=20260810a"></script>
+<script src="js/alimentar.js?v=20260810a"></script>
+<script src="js/fechamento-criar.js?v=20260810a"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260810a"></script>
+<script src="js/bipagens.js?v=20260810a"></script>
+<script src="js/pedidos.js?v=20260810a"></script>
+<script src="js/desempenho-bip.js?v=20260810a"></script>
+<script src="js/desempenho-hora.js?v=20260810a"></script>
+<script src="js/conferencias.js?v=20260810a"></script>
+<script src="js/antecipacoes.js?v=20260810a"></script>
+<script src="js/antecipacoes-admin.js?v=20260810a"></script>
+<script src="js/baixas.js?v=20260810a"></script>
+<script src="js/devolucoes.js?v=20260810a"></script>
+<script src="js/shopee-polo.js?v=20260810a"></script>
+<script src="js/shopee.js?v=20260810a"></script>
+<script src="js/shopee-romaneiro.js?v=20260810a"></script>
+<script src="js/shopee-at.js?v=20260810a"></script>
+<script src="js/shopee-pedidos.js?v=20260810a"></script>
+<script src="js/shopee-linehaul.js?v=20260810a"></script>
+<script src="js/shopee-atribuicoes.js?v=20260810a"></script>
+<script src="js/shopee-retidos.js?v=20260810a"></script>
+<script src="js/shopee-conf-entregadores.js?v=20260810a"></script>
+<script src="js/entregador-conferencia.js?v=20260810a"></script>
+<script src="js/viagens.js?v=20260810a"></script>
+<script src="js/ocorrencias.js?v=20260810a"></script>
+<script src="js/ocorrencias-admin.js?v=20260810a"></script>
+<script src="js/localizacao.js?v=20260810a"></script>
+<script src="js/localizacao-admin.js?v=20260810a"></script>
+<script src="js/transferencias.js?v=20260810a"></script>
+<script src="js/transferencias-admin.js?v=20260810a"></script>
+<script src="js/motorista-devolucoes.js?v=20260810a"></script>
+<script src="js/etiquetas.js?v=20260810a"></script>
+<script src="js/videira.js?v=20260810a"></script>
+<script src="js/planejamento-videira.js?v=20260810a"></script>
+<script src="js/torre.js?v=20260810a"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
