@@ -166,18 +166,40 @@ function _nrFaixaDe(linha) {
 
 // ── Tabela dinâmica ──
 // `campo` é a dimensão das linhas (entregador ou cidade); as colunas são sempre as faixas.
+// A chave de agrupamento é normalizada (sem acento, sem caixa); o rótulo mostrado é a
+// grafia que mais aparece no arquivo. Entregador vem de campo controlado da transportadora
+// e é sempre igual, mas CIDADE eu extraio de endereço escrito à mão: "Concórdia",
+// "Concordia" e "CONCÓRDIA" são o mesmo município e viravam três linhas, cada uma com um
+// pedaço do número — que é a soma que não fechava.
+const NR_SEM_INFO = "— sem informação —";
+
+function _nrChaveDim(valor) {
+    const t = String(valor || "").trim();
+    if (!t) return NR_SEM_INFO;
+    return t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ");
+}
+
 function _nrPivot(linhas, campo) {
     const mapa = new Map();
     linhas.forEach(l => {
         const faixa = _nrFaixaDe(l);
         if (!faixa) return;
-        const chave = (l[campo] || "").trim() || "— sem informação —";
+        const bruto = String(l[campo] || "").trim();
+        const chave = _nrChaveDim(bruto);
         if (!mapa.has(chave)) {
-            mapa.set(chave, { nome: chave, total: 0, ...Object.fromEntries(NR_FAIXAS.map(f => [f.chave, 0])) });
+            mapa.set(chave, { chave, nome: bruto || NR_SEM_INFO, grafias: new Map(), total: 0,
+                              ...Object.fromEntries(NR_FAIXAS.map(f => [f.chave, 0])) });
         }
         const linha = mapa.get(chave);
+        if (bruto) linha.grafias.set(bruto, (linha.grafias.get(bruto) || 0) + 1);
         linha[faixa.chave]++;
         linha.total++;
+    });
+    // Entre as grafias do mesmo município, mostra a mais frequente — costuma ser a correta,
+    // com acento, porque o erro de digitação é a exceção.
+    mapa.forEach(l => {
+        if (!l.grafias.size) return;
+        l.nome = [...l.grafias.entries()].sort((a, b) => b[1] - a[1])[0][0];
     });
     // Ordena pelo que exige ação: mais atrasado primeiro, e o total desempata. Ordem
     // alfabética deixaria o pior caso no meio da lista.
@@ -237,6 +259,10 @@ function _nrTabela(alvoId, linhas, campo, rotuloDim) {
     // O total é sempre a soma do que está À VISTA. Esconder "No prazo" e o total continuar
     // contando com ele faria as colunas não fecharem com a última — e o motivo de esconder
     // é justamente olhar só o atraso.
+    // Linha sem prazo legível não entra em faixa nenhuma, então também não entra na tabela.
+    // O aviso existe pra soma bater com o "na rua" do topo — sem ele a diferença aparecia
+    // como erro de conta, e não como o que é: pacote que o arquivo trouxe sem prazo.
+    const foraDasFaixas = linhas.filter(l => !_nrFaixaDe(l)).length;
     const totalLinha = l => faixas.reduce((soma, f) => soma + l[f.chave], 0);
     const totais = faixas.map(f => dados.reduce((s, l) => s + l[f.chave], 0));
     const totalGeral = dados.reduce((s, l) => s + totalLinha(l), 0);
@@ -253,7 +279,7 @@ function _nrTabela(alvoId, linhas, campo, rotuloDim) {
             </thead>
             <tbody>
                 ${dados.map(l => `
-                <tr data-valor="${_nrEsc(l.nome)}">
+                <tr data-valor="${_nrEsc(l.chave)}">
                     <td data-label="${_nrEsc(rotuloDim)}" class="nr-dim" title="Clique para ocultar esta linha">${_nrEsc(l.nome)}</td>
                     ${faixas.map(f => l[f.chave]
                         ? `<td data-label="${f.rotulo}" class="nr-num nr-click" data-faixa="${f.chave}">${l[f.chave]}</td>`
@@ -269,7 +295,10 @@ function _nrTabela(alvoId, linhas, campo, rotuloDim) {
                 </tr>
             </tfoot>
         </table>
-        </div>`;
+        </div>` + (foraDasFaixas
+            ? `<div class="nr-rodape-nota">${foraDasFaixas.toLocaleString("pt-BR")} pacote${
+                foraDasFaixas !== 1 ? "s" : ""} sem prazo no arquivo — fora das faixas acima.</div>`
+            : "");
 
     // Delegação em vez de onclick por célula: nome de entregador e de cidade vem com
     // apóstrofo ("Herval D'Oeste") e acento, e montar a chamada dentro do atributo exigiria
@@ -308,8 +337,7 @@ function _nrLigarBarra(el, campo) {
 function _nrAbrirPacotes(campo, valor, faixaChave, rotuloDim) {
     const faixa = NR_FAIXAS.find(f => f.chave === faixaChave);
     _nrPacotes = _nrLinhas.filter(l => {
-        const chave = (l[campo] || "").trim() || "— sem informação —";
-        if (chave !== valor) return false;
+        if (_nrChaveDim(l[campo]) !== valor) return false;
         const f = _nrFaixaDe(l);
         if (!f) return false;                       // sem prazo não entra em faixa nenhuma
         // Total da linha = as faixas à vista, o mesmo que o número clicado somou.
@@ -379,48 +407,64 @@ function _nrPacExportar() {
 }
 
 function _nrRenderizar() {
-    const linhas = _nrLinhas;
+    // Ocultar uma faixa é um recorte da TELA, não um enfeite da tabela: o corte é feito uma
+    // vez aqui e tudo abaixo deriva dele. Antes só a tabela obedecia, e os cards do topo
+    // seguiam contando o que a pessoa tinha acabado de mandar sumir.
+    const faixas = _nrFaixasVisiveis();
+    const visiveisSet = new Set(faixas.map(f => f.chave));
+    const linhas = _nrLinhas.filter(l => {
+        const f = _nrFaixaDe(l);
+        return f && visiveisSet.has(f.chave);
+    });
+    const semPrazo = _nrLinhas.filter(l => !_nrFaixaDe(l)).length;
 
     const porFaixa = Object.fromEntries(NR_FAIXAS.map(f => [f.chave, 0]));
-    let semPrazo = 0;
-    linhas.forEach(l => {
-        const f = _nrFaixaDe(l);
-        if (f) porFaixa[f.chave]++; else semPrazo++;
-    });
-    const comPrazo  = linhas.length - semPrazo;
-    const atrasados = porFaixa.d1 + porFaixa.d2 + porFaixa.d3 + porFaixa.d4;
-    const pctPrazo  = comPrazo ? (porFaixa.no_prazo / comPrazo) * 100 : 0;
+    linhas.forEach(l => { porFaixa[_nrFaixaDe(l).chave]++; });
+
+    const atrasados = ["d1", "d2", "d3", "d4"].reduce((s, k) => s + porFaixa[k], 0);
+    const noPrazoVisivel = visiveisSet.has("no_prazo");
+    const pctPrazo = linhas.length ? (porFaixa.no_prazo / linhas.length) * 100 : 0;
 
     // Um número lidera a tela: é o que exige ação. O total entra como contexto dele, e não
     // como um card do mesmo tamanho — quatro números de peso igual não dizem por onde começar.
-    // Figuras proporcionais aqui (sem tabular-nums): em corpo grande, dígito de largura fixa
-    // faz "121" parecer frouxo. Tabular fica só nas colunas da tabela, que alinham na vertical.
+    // Figuras proporcionais (sem tabular-nums): em corpo grande, dígito de largura fixa faz
+    // "121" parecer frouxo. Tabular fica só nas colunas da tabela, que alinham na vertical.
+    const ocultas = NR_FAIXAS.length - faixas.length;
     document.getElementById("nr-hero-valor").innerText = atrasados.toLocaleString("pt-BR");
     document.getElementById("nr-hero-sub").innerText =
-        `de ${linhas.length.toLocaleString("pt-BR")} na rua${semPrazo ? ` · ${semPrazo} sem prazo no arquivo` : ""}`;
+        `de ${linhas.length.toLocaleString("pt-BR")} ${ocultas ? "no recorte" : "na rua"}` +
+        (semPrazo && !ocultas ? ` · ${semPrazo} sem prazo no arquivo` : "") +
+        (ocultas ? ` · ${ocultas} faixa${ocultas !== 1 ? "s" : ""} oculta${ocultas !== 1 ? "s" : ""}` : "");
 
-    // Medidor da parcela no prazo: o trilho é um passo mais claro da mesma rampa, então o
-    // estado se lê na barra inteira e não só no pedaço preenchido.
-    const fill = document.getElementById("nr-meter-fill");
-    fill.style.width = Math.max(0, Math.min(100, pctPrazo)).toFixed(1) + "%";
-    fill.style.background = pctPrazo >= 80 ? "#22c55e" : pctPrazo >= 50 ? "#eab308" : "#ef4444";
-    document.getElementById("nr-meter-legenda").innerText =
-        `${porFaixa.no_prazo.toLocaleString("pt-BR")} ainda no prazo · ${_nrPct(pctPrazo)}`;
+    // O medidor mede a parcela no prazo; escondida essa faixa, ele não tem o que medir.
+    const meter = document.getElementById("nr-meter-fill").parentElement;
+    const legenda = document.getElementById("nr-meter-legenda");
+    meter.style.display = noPrazoVisivel ? "" : "none";
+    legenda.style.display = noPrazoVisivel ? "" : "none";
+    if (noPrazoVisivel) {
+        const fill = document.getElementById("nr-meter-fill");
+        fill.style.width = Math.max(0, Math.min(100, pctPrazo)).toFixed(1) + "%";
+        fill.style.background = pctPrazo >= 80 ? "#22c55e" : pctPrazo >= 50 ? "#eab308" : "#ef4444";
+        legenda.innerText = `${porFaixa.no_prazo.toLocaleString("pt-BR")} ainda no prazo · ${_nrPct(pctPrazo)}`;
+    }
 
+    // Os tiles também acompanham: faixa oculta some daqui, não aparece zerada.
     const tile = (rotulo, valor, sub, cor) => `
         <div class="nr-tile">
             <div class="nr-tile-label">${rotulo}</div>
             <div class="nr-tile-valor"${cor ? ` style="color:${cor}"` : ""}>${valor}</div>
             <div class="nr-tile-sub">${sub}</div>
         </div>`;
-    const ate3 = porFaixa.d1 + porFaixa.d2 + porFaixa.d3;
-    document.getElementById("nr-tiles").innerHTML =
-        tile("No prazo", porFaixa.no_prazo.toLocaleString("pt-BR"), "ainda não venceram") +
-        tile("1 a 3 dias", ate3.toLocaleString("pt-BR"), "atraso recente", ate3 ? "#eab308" : null) +
-        tile("4 dias ou mais", porFaixa.d4.toLocaleString("pt-BR"), "atraso grave", porFaixa.d4 ? "#ef4444" : null);
+    const recentes = ["d1", "d2", "d3"].filter(k => visiveisSet.has(k));
+    const ate3 = recentes.reduce((s, k) => s + porFaixa[k], 0);
+    let tiles = "";
+    if (noPrazoVisivel) tiles += tile("No prazo", porFaixa.no_prazo.toLocaleString("pt-BR"), "ainda não venceram");
+    if (recentes.length) tiles += tile("1 a 3 dias", ate3.toLocaleString("pt-BR"), "atraso recente", ate3 ? "#eab308" : null);
+    if (visiveisSet.has("d4")) tiles += tile("4 dias ou mais", porFaixa.d4.toLocaleString("pt-BR"), "atraso grave", porFaixa.d4 ? "#ef4444" : null);
+    document.getElementById("nr-tiles").innerHTML = tiles;
 
     // UMA tabela, alternada pela aba. Empilhar as duas dobrava a altura da página.
-    _nrTabela("nr-tabela", linhas, _nrDim, _nrDim === "entregador" ? "Entregador" : "Cidade");
+    _nrTabela("nr-tabela", _nrLinhas, _nrDim, _nrDim === "entregador" ? "Entregador" : "Cidade");
     const rotDim = _nrDim === "entregador" ? "entregador" : "cidade";
     document.getElementById("nr-gr-vol-titulo").innerText = `Volume por ${rotDim}`;
     document.getElementById("nr-gr-mix-titulo").innerText = `Composição do atraso por ${rotDim}`;
@@ -769,13 +813,17 @@ function _nrMapear(grid) {
 // no começo do endereço ("Rua X, 1246 - Centro, Concórdia - SC, 89700055, Brasil").
 function _nrPartesEndereco(endereco) {
     const txt = String(endereco || "");
-    const m = txt.match(/,\s*([^,]+?)\s*-\s*([A-Za-z]{2})\s*,\s*(\d{5}-?\d{3})\b/);
-    if (!m) return { cidade: "", uf: "", cep: "" };
-    return {
-        cidade: m[1].trim(),
-        uf: m[2].toUpperCase(),
-        cep: m[3].replace(/\D/g, ""),
-    };
+    // 1ª tentativa: ancorada no par "UF, CEP", que é o trecho mais previsível do texto.
+    let m = txt.match(/,\s*([^,]+?)\s*-\s*([A-Za-z]{2})\s*,\s*(\d{5}-?\d{3})/);
+    if (m) return { cidade: m[1].trim(), uf: m[2].toUpperCase(), cep: m[3].replace(/\D/g, "") };
+
+    // 2ª: endereço sem CEP. Sem ele a âncora é o "- UF" seguido de vírgula ou fim do texto.
+    // Perder a cidade inteira por falta de CEP jogava a linha em "sem informação", e era
+    // isso que fazia a tabela por cidade não fechar com a de entregador.
+    m = txt.match(/,\s*([^,]+?)\s*-\s*([A-Za-z]{2})\s*(?:,|$)/);
+    if (m) return { cidade: m[1].trim(), uf: m[2].toUpperCase(), cep: "" };
+
+    return { cidade: "", uf: "", cep: "" };
 }
 
 function _nrPintarPrevia() {

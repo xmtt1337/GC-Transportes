@@ -3945,3 +3945,4 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
     margin-bottom: 12px; padding: 9px 13px; border-radius: 9px; font-size: 12.5px;
     background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.22); color: #fcd34d;
 }
+.nr-rodape-nota { font-size: 11.5px; color: #7b8ba3; margin-top: 8px; }
