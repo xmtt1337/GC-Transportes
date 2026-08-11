@@ -45,7 +45,6 @@ const _TELA_TITULOS = {
     "tela-pacotes-faltantes":          "Pacotes Faltantes",
     "tela-pacotes-faltantes-registro": "Meus Pacotes Faltantes",
     "tela-torre-pacotes-faltantes": "Pacotes Faltantes",
-    "tela-torre-mapa":              "Localização dos Entregadores",
     "tela-torre-transferencias":    "Transferências",
     "tela-transferencia-nova":      "Registrar Entrega",
     "tela-transferencia-historico": "Histórico de Transferências",

@@ -212,7 +212,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
             _renomearMenu("menu-devolucoes-motorista", "Coleta de devoluções");
         }
         document.getElementById("welcome-name").innerText = displayName.split(" ")[0];
-        _locIniciarCompartilhamento(); // controle de veículo — só ativa se já tiver permissão de localização concedida
     }
 
     if (role === "motorista") {
@@ -247,7 +246,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-baixas");
         show("submenu-baixas");
         show("bip-sync-btn");
-        hide("menu-item-mapa-localizacao"); // localização de entregador é só pra dev
         // sem: financeiro, fechamento (só dev e finance)
     }
 
@@ -267,7 +265,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
             show("btn-add-motorista");
         }
         if (role === "finance") {
-            hide("menu-item-mapa-localizacao"); // localização de entregador é sensível — só dev
         }
         if (role === "dev") {
             show("menu-item-todos-usuarios"); // visão de todos os usuários do sistema — só dev
@@ -279,7 +276,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         _showCadastros(); // sac fica acima do admin na gestão de entregadores
         _showTorreControle(); // pacotes faltantes/transferências: admin, dev, sac e finance veem
         hide("menu-item-etiquetas"); // etiquetas é só do pessoal operacional (user até dev)
-        hide("menu-item-mapa-localizacao"); // localização de entregador é sensível — só dev
     }
 
     if (role === "ADM Videira") {
