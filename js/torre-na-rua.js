@@ -60,7 +60,7 @@ let _nrGraficos = {};      // instâncias do Chart.js, pra destruir antes de red
 // volta. Guardar em localStorage faria alguém abrir a tela dias depois sem entender por
 // que falta entregador na lista — e o único jeito de descobrir seria achar este código.
 let _nrColsOcultas   = new Set();                                   // faixas — valem pras duas tabelas
-let _nrLinhasOcultas = { entregador: new Set(), cidade: new Set() }; // linhas — por tabela
+let _nrLinhasOcultas = { entregador: new Map(), cidade: new Map() }; // linhas — chave -> rótulo
 let _nrDim      = "entregador";  // dimensão da tabela: uma de cada vez, alternada por aba
 let _nrPacotes  = [];      // pedidos da célula aberta no modal
 let _nrPacTitulo = "";
@@ -210,8 +210,10 @@ const _nrFaixasVisiveis = () => NR_FAIXAS.filter(f => !_nrColsOcultas.has(f.chav
 
 function _nrOcultarCol(chave) { _nrColsOcultas.add(chave); _nrRenderizar(); }
 function _nrMostrarCol(chave) { _nrColsOcultas.delete(chave); _nrRenderizar(); }
-function _nrOcultarLinha(campo, valor) { _nrLinhasOcultas[campo].add(valor); _nrRenderizar(); }
-function _nrMostrarLinha(campo, valor) { _nrLinhasOcultas[campo].delete(valor); _nrRenderizar(); }
+// Guarda a CHAVE normalizada (é por ela que a linha é identificada) junto do rótulo que
+// estava na tela — o chip precisa mostrar "Concórdia", não a chave "concordia".
+function _nrOcultarLinha(campo, chave, nome) { _nrLinhasOcultas[campo].set(chave, nome || chave); _nrRenderizar(); }
+function _nrMostrarLinha(campo, chave) { _nrLinhasOcultas[campo].delete(chave); _nrRenderizar(); }
 
 function _nrMostrarTudo(campo) {
     _nrColsOcultas.clear();
@@ -223,7 +225,7 @@ function _nrMostrarTudo(campo) {
 // não sobra nada na tela dizendo que ela existe.
 function _nrBarraOcultos(campo) {
     const cols = [...NR_COLUNAS_OCULTAS_ORDEM()];
-    const linhas = [..._nrLinhasOcultas[campo]];
+    const linhas = [..._nrLinhasOcultas[campo].entries()];
     if (!cols.length && !linhas.length) return "";
     const chip = (rotulo, acao) =>
         `<button type="button" class="nr-oculto-chip" data-acao="${acao}">${_nrEsc(rotulo)}<span>+</span></button>`;
@@ -231,7 +233,7 @@ function _nrBarraOcultos(campo) {
         <div class="nr-ocultos">
             <span class="nr-ocultos-label">Ocultos</span>
             ${cols.map(f => chip(f.rotulo, "col:" + f.chave)).join("")}
-            ${linhas.map(v => chip(v, "linha:" + v)).join("")}
+            ${linhas.map(([chave, nome]) => chip(nome, "linha:" + chave)).join("")}
             <button type="button" class="nr-ocultos-tudo" data-acao="tudo">mostrar tudo</button>
         </div>`;
 }
@@ -242,7 +244,7 @@ const NR_COLUNAS_OCULTAS_ORDEM = () => NR_FAIXAS.filter(f => _nrColsOcultas.has(
 function _nrTabela(alvoId, linhas, campo, rotuloDim) {
     const el = document.getElementById(alvoId);
     const faixas = _nrFaixasVisiveis();
-    const dados = _nrPivot(linhas, campo).filter(l => !_nrLinhasOcultas[campo].has(l.nome));
+    const dados = _nrPivot(linhas, campo).filter(l => !_nrLinhasOcultas[campo].has(l.chave));
     const barra = _nrBarraOcultos(campo);
 
     if (!faixas.length) {
@@ -279,7 +281,7 @@ function _nrTabela(alvoId, linhas, campo, rotuloDim) {
             </thead>
             <tbody>
                 ${dados.map(l => `
-                <tr data-valor="${_nrEsc(l.chave)}">
+                <tr data-valor="${_nrEsc(l.chave)}" data-nome="${_nrEsc(l.nome)}">
                     <td data-label="${_nrEsc(rotuloDim)}" class="nr-dim" title="Clique para ocultar esta linha">${_nrEsc(l.nome)}</td>
                     ${faixas.map(f => l[f.chave]
                         ? `<td data-label="${f.rotulo}" class="nr-num nr-click" data-faixa="${f.chave}">${l[f.chave]}</td>`
@@ -308,7 +310,10 @@ function _nrTabela(alvoId, linhas, campo, rotuloDim) {
         if (th) return _nrOcultarCol(th.dataset.col);
 
         const dim = ev.target.closest("td.nr-dim");
-        if (dim) return _nrOcultarLinha(campo, dim.closest("tr").dataset.valor);
+        if (dim) {
+            const tr = dim.closest("tr");
+            return _nrOcultarLinha(campo, tr.dataset.valor, tr.dataset.nome);
+        }
 
         const td = ev.target.closest("td.nr-click");
         if (!td) return;
