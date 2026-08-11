@@ -814,7 +814,7 @@ function _nrMapear(grid) {
 function _nrPartesEndereco(endereco) {
     const txt = String(endereco || "");
     // 1ª tentativa: ancorada no par "UF, CEP", que é o trecho mais previsível do texto.
-    let m = txt.match(/,\s*([^,]+?)\s*-\s*([A-Za-z]{2})\s*,\s*(\d{5}-?\d{3})/);
+    let m = txt.match(/,\s*([^,]+?)\s*-\s*([A-Za-z]{2})\s*,\s*(\d{5}-?\d{3})/);
     if (m) return { cidade: m[1].trim(), uf: m[2].toUpperCase(), cep: m[3].replace(/\D/g, "") };
 
     // 2ª: endereço sem CEP. Sem ele a âncora é o "- UF" seguido de vírgula ou fim do texto.
