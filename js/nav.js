@@ -44,6 +44,7 @@ const _TELA_TITULOS = {
     "tela-etiquetas":            "Impressão de Etiquetas",
     "tela-pacotes-faltantes":          "Pacotes Faltantes",
     "tela-pacotes-faltantes-registro": "Meus Pacotes Faltantes",
+    "tela-torre-na-rua":            "Na Rua",
     "tela-torre-pacotes-faltantes": "Pacotes Faltantes",
     "tela-torre-transferencias":    "Transferências",
     "tela-transferencia-nova":      "Registrar Entrega",

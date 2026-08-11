@@ -3779,3 +3779,63 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .ta-msg.show { opacity: 1; transform: translateY(0); }
 .ta-msg-ok  { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); color: #34d399; }
 .ta-msg-err { background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); color: #f87171; }
+
+/* ===== TORRE DE CONTROLE — NA RUA ===== */
+.nr-topo {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.nr-topo .wac-transp-tabs { margin-bottom: 0; }
+.nr-btn-upload { display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0; }
+
+.nr-status-tabs { flex-wrap: wrap; margin: 16px 0 4px; }
+/* A contagem ao lado do status é o que diz onde tem trabalho — sem ela o chip é só um
+   nome e a pessoa precisa clicar em cada um pra descobrir qual tem volume. */
+.nr-chip-n {
+    margin-left: 6px; font-size: 10.5px; font-weight: 700; opacity: 0.65;
+    font-variant-numeric: tabular-nums;
+}
+.nr-secao { border: none; padding: 0; margin: 26px 0 10px; display: block; }
+
+/* Tabela dinâmica: os números são a leitura principal, então vão tabulares e alinhados
+   à direita — coluna de número desalinhada obriga a comparar dígito por dígito. */
+.nr-pivot .nr-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nr-pivot th.nr-num { text-align: right; }
+.nr-pivot .nr-num.zero { color: #4a5568; }
+.nr-pivot .nr-total { font-weight: 700; color: #e2e8f0; }
+.nr-pivot tfoot td {
+    border-top: 1px solid rgba(255,255,255,0.12);
+    font-weight: 700; color: #cbd5e1; background: rgba(255,255,255,0.02);
+}
+/* Quadradinho da cor da faixa no cabeçalho: é o que liga a coluna da tabela à barra do
+   gráfico logo abaixo, sem precisar de legenda repetida. */
+.nr-chip-cor {
+    display: inline-block; width: 8px; height: 8px; border-radius: 2px;
+    margin-right: 6px; vertical-align: middle;
+}
+
+.nr-previa-topo {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin: 16px 0 10px;
+}
+.nr-aviso {
+    margin-bottom: 12px; padding: 9px 13px; border-radius: 9px; font-size: 12.5px;
+    background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.22); color: #fcd34d;
+}
+
+.nr-graficos {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 14px; margin: 26px 0 8px;
+}
+.nr-grafico-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px 12px;
+}
+.nr-grafico-titulo { font-size: 13px; font-weight: 700; color: #cbd5e1; margin-bottom: 14px; }
+/* Altura fixa: o Chart.js precisa de um container com altura definida, senão ele cresce
+   a cada redesenho até a página virar um rolo. */
+.nr-grafico-area { position: relative; height: 260px; }
+.nr-grafico-vazio {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: #8494a9; text-align: center;
+}
