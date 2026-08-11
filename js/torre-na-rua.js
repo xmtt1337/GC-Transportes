@@ -39,16 +39,28 @@ const NR_FAIXAS = [
     { chave: "d4",       rotulo: "4 dias +", ate: Infinity },
 ];
 
-// Rampa ordinal de um hue só, clara→escura na direção contrária à gravidade do fundo: no
-// escuro o passo mais claro é o que salta, e é o que tem mais dias de atraso. Validada
-// contra a superfície #0f1520 (monotonia de luminância, degrau visível e contraste).
-const NR_CORES = {
-    no_prazo: "#184f95",
-    d1:       "#256abf",
-    d2:       "#3987e5",
-    d3:       "#6da7ec",
-    d4:       "#9ec5f4",
+// Uma rampa ordinal por transportadora, no hue da marca. Os degraus de luminância são os
+// mesmos em todas (copiados da rampa azul de referência), então a legibilidade não muda de
+// uma pra outra — só a cor. As seis passaram no validador contra a superfície #0f1520:
+// monotonia de luminância, degrau visível entre passos e contraste da ponta clara.
+//
+// Sem amarelo/vermelho de severidade: "dias de atraso" é uma escala ORDENADA, e escala
+// ordenada pede um hue só. Misturar cor de status aí gasta o vermelho — que no sistema
+// significa erro — pra dizer o que a posição na escala já diz.
+const NR_RAMPAS = {
+    loggi:         ["#06577c", "#0673a4", "#0e91cc", "#51aee4", "#90caef"],
+    anjun:         ["#006229", "#038138", "#21a04d", "#6ab87b", "#9ed0a6"],
+    jt:            ["#892c2a", "#b13f3c", "#d75852", "#e4857d", "#f1aea8"],
+    imile:         ["#5f3b8a", "#7c51b1", "#9a6bd6", "#b291e1", "#cbb6ec"],
+    shopee:        ["#833600", "#ab4a00", "#d26218", "#e08c60", "#edb396"],
+    total_express: ["#405269", "#5a6d85", "#7588a2", "#91a6c0", "#aec4df"],
 };
+
+// chave da faixa -> cor, na rampa da transportadora aberta.
+function _nrCores() {
+    const r = NR_RAMPAS[_nrTransp] || NR_RAMPAS.loggi;
+    return Object.fromEntries(NR_FAIXAS.map((f, i) => [f.chave, r[i]]));
+}
 
 let _nrTransp   = "loggi";
 let _nrLinhas   = [];      // retrato carregado do servidor
@@ -243,6 +255,7 @@ const NR_COLUNAS_OCULTAS_ORDEM = () => NR_FAIXAS.filter(f => _nrColsOcultas.has(
 
 function _nrTabela(alvoId, linhas, campo, rotuloDim) {
     const el = document.getElementById(alvoId);
+    const cores = _nrCores();
     const faixas = _nrFaixasVisiveis();
     const dados = _nrPivot(linhas, campo).filter(l => !_nrLinhasOcultas[campo].has(l.chave));
     const barra = _nrBarraOcultos(campo);
@@ -275,7 +288,7 @@ function _nrTabela(alvoId, linhas, campo, rotuloDim) {
             <thead>
                 <tr>
                     <th>${_nrEsc(rotuloDim)}</th>
-                    ${faixas.map(f => `<th class="nr-num nr-th-col" data-col="${f.chave}" title="Clique para ocultar esta coluna"><span class="nr-chip-cor" style="background:${NR_CORES[f.chave]}"></span>${f.rotulo}</th>`).join("")}
+                    ${faixas.map(f => `<th class="nr-num nr-th-col" data-col="${f.chave}" title="Clique para ocultar esta coluna"><span class="nr-chip-cor" style="background:${cores[f.chave]}"></span>${f.rotulo}</th>`).join("")}
                     <th class="nr-num">Total</th>
                 </tr>
             </thead>
@@ -373,12 +386,13 @@ function _nrPacRender() {
     }
     el.innerHTML = lista.map(l => {
         const dias = _nrDiasAtraso(l.prazo);
-        const cor = dias >= 4 ? "#ef4444" : dias >= 1 ? "#eab308" : "#8494a9";
+        const f = _nrFaixaDe(l);
+        const cor = f ? _nrCores()[f.chave] : "#4a5568";
         return `
         <div class="nr-pac-item">
             <div class="nr-pac-topo">
                 <span class="nr-pac-cod">${_nrEsc(l.codigo_barras) || _nrEsc(l.id_pacote) || "—"}</span>
-                <span class="nr-pac-dias" style="color:${cor}">${
+                <span class="nr-pac-dias"><i class="nr-pac-ponto" style="background:${cor}"></i>${
                     dias === null ? "sem prazo" : dias <= 0 ? "no prazo" : `${dias} dia${dias !== 1 ? "s" : ""}`}</span>
             </div>
             <div class="nr-pac-nome">${_nrEsc(l.destinatario) || "—"}</div>
@@ -449,23 +463,29 @@ function _nrRenderizar() {
     if (noPrazoVisivel) {
         const fill = document.getElementById("nr-meter-fill");
         fill.style.width = Math.max(0, Math.min(100, pctPrazo)).toFixed(1) + "%";
-        fill.style.background = pctPrazo >= 80 ? "#22c55e" : pctPrazo >= 50 ? "#eab308" : "#ef4444";
+        // Cor da marca, não semáforo: o medidor mostra uma proporção, e verde/amarelo/vermelho
+        // fariam ela parecer uma nota — sendo que o que é "bom" aqui depende da operação.
+        fill.style.background = _nrCfg().cor;
         legenda.innerText = `${porFaixa.no_prazo.toLocaleString("pt-BR")} ainda no prazo · ${_nrPct(pctPrazo)}`;
     }
 
     // Os tiles também acompanham: faixa oculta some daqui, não aparece zerada.
+    // Valor em tinta de texto; quem carrega a identidade é o quadradinho ao lado do rótulo,
+    // na mesma cor da coluna da tabela e da barra do gráfico. Numero colorido competia com
+    // o hero e, em passo escuro da rampa, ficava ilegível.
+    const cores = _nrCores();
     const tile = (rotulo, valor, sub, cor) => `
         <div class="nr-tile">
-            <div class="nr-tile-label">${rotulo}</div>
-            <div class="nr-tile-valor"${cor ? ` style="color:${cor}"` : ""}>${valor}</div>
+            <div class="nr-tile-label"><span class="nr-chip-cor" style="background:${cor}"></span>${rotulo}</div>
+            <div class="nr-tile-valor">${valor}</div>
             <div class="nr-tile-sub">${sub}</div>
         </div>`;
     const recentes = ["d1", "d2", "d3"].filter(k => visiveisSet.has(k));
     const ate3 = recentes.reduce((s, k) => s + porFaixa[k], 0);
     let tiles = "";
-    if (noPrazoVisivel) tiles += tile("No prazo", porFaixa.no_prazo.toLocaleString("pt-BR"), "ainda não venceram");
-    if (recentes.length) tiles += tile("1 a 3 dias", ate3.toLocaleString("pt-BR"), "atraso recente", ate3 ? "#eab308" : null);
-    if (visiveisSet.has("d4")) tiles += tile("4 dias ou mais", porFaixa.d4.toLocaleString("pt-BR"), "atraso grave", porFaixa.d4 ? "#ef4444" : null);
+    if (noPrazoVisivel) tiles += tile("No prazo", porFaixa.no_prazo.toLocaleString("pt-BR"), "ainda não venceram", cores.no_prazo);
+    if (recentes.length) tiles += tile("1 a 3 dias", ate3.toLocaleString("pt-BR"), "atraso recente", cores.d2);
+    if (visiveisSet.has("d4")) tiles += tile("4 dias ou mais", porFaixa.d4.toLocaleString("pt-BR"), "atraso grave", cores.d4);
     document.getElementById("nr-tiles").innerHTML = tiles;
 
     // UMA tabela, alternada pela aba. Empilhar as duas dobrava a altura da página.
@@ -508,6 +528,7 @@ function _nrGraficar(linhas, porFaixa) {
     _nrDestruirGraficos();
     if (typeof Chart === "undefined") return;
     const faixas = _nrFaixasVisiveis();
+    const cores = _nrCores();
 
     // 1. Distribuição — escala ordenada, então rampa de um hue só.
     _nrGraficos.faixas = new Chart(document.getElementById("nr-gr-faixas"), {
@@ -516,7 +537,7 @@ function _nrGraficar(linhas, porFaixa) {
             labels: faixas.map(f => f.rotulo),
             datasets: [{
                 data: faixas.map(f => porFaixa[f.chave]),
-                backgroundColor: faixas.map(f => NR_CORES[f.chave]),
+                backgroundColor: faixas.map(f => cores[f.chave]),
                 borderRadius: { topLeft: 4, topRight: 4 },
                 borderSkipped: "bottom",
                 maxBarThickness: 24,
@@ -544,6 +565,7 @@ function _nrGraficar(linhas, porFaixa) {
 // cai — a mesma rampa do resto da tela. Assim a virada entre "no prazo" e "atrasado"
 // aparece sozinha, sem precisar de uma linha de referência marcando hoje.
 function _nrGraficoPrazos(linhas) {
+    const cores = _nrCores();
     const porDia = new Map();
     linhas.forEach(l => {
         if (!l.prazo) return;
@@ -563,7 +585,7 @@ function _nrGraficoPrazos(linhas) {
     const dias = [...porDia.keys()].sort().slice(-21);
     const corDoDia = dia => {
         const f = _nrFaixaDe({ prazo: dia + "T12:00:00" });
-        return f ? NR_CORES[f.chave] : "#4a5568";
+        return f ? cores[f.chave] : "#4a5568";
     };
 
     _nrGraficos.prazos = new Chart(document.getElementById("nr-gr-prazos"), {
@@ -642,6 +664,7 @@ function _nrGraficoVolume(linhas) {
 // horizontal porque os nomes são longos, com vão de 2px na cor da superfície entre os
 // segmentos — é o vão que separa, não um contorno.
 function _nrGraficoMix(linhas, faixas) {
+    const cores = _nrCores();
     const atrasadas = faixas.filter(f => f.chave !== "no_prazo");
     const dados = _nrPivot(linhas, _nrDim)
         .map(l => ({ ...l, atraso: atrasadas.reduce((s, f) => s + l[f.chave], 0) }))
@@ -653,7 +676,7 @@ function _nrGraficoMix(linhas, faixas) {
     vazio.style.display = dados.length ? "none" : "";
     // Cinco séries empilhadas precisam de legenda — a cor sozinha não diz qual é qual.
     document.getElementById("nr-gr-mix-legenda").innerHTML = dados.length
-        ? atrasadas.map(f => '<span class="nr-leg"><i style="background:' + NR_CORES[f.chave] + '"></i>' + f.rotulo + "</span>").join("")
+        ? atrasadas.map(f => '<span class="nr-leg"><i style="background:' + cores[f.chave] + '"></i>' + f.rotulo + "</span>").join("")
         : "";
     if (!dados.length || !atrasadas.length) return;
 
@@ -664,7 +687,7 @@ function _nrGraficoMix(linhas, faixas) {
             datasets: atrasadas.map((f, i) => ({
                 label: f.rotulo,
                 data: dados.map(l => l[f.chave]),
-                backgroundColor: NR_CORES[f.chave],
+                backgroundColor: cores[f.chave],
                 borderColor: NR_SUPERFICIE,
                 borderWidth: { top: 0, bottom: 0, left: 0, right: 2 }, // o vão de 2px
                 borderSkipped: false,
