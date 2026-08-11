@@ -56,6 +56,11 @@ let _nrMeta     = {};      // { importado_em, importado_por }
 let _nrArquivo  = null;    // { nome, linhas } lido e aguardando envio
 let _nrEnviando = false;
 let _nrGraficos = {};      // instâncias do Chart.js, pra destruir antes de redesenhar
+// O que está escondido. Só em memória, de propósito: recarregar a página traz tudo de
+// volta. Guardar em localStorage faria alguém abrir a tela dias depois sem entender por
+// que falta entregador na lista — e o único jeito de descobrir seria achar este código.
+let _nrColsOcultas   = new Set();                                   // faixas — valem pras duas tabelas
+let _nrLinhasOcultas = { entregador: new Set(), cidade: new Set() }; // linhas — por tabela
 let _nrPacotes  = [];      // pedidos da célula aberta no modal
 let _nrPacTitulo = "";
 
@@ -169,33 +174,81 @@ function _nrPivot(linhas, campo) {
     return [...mapa.values()].sort((a, b) => (b.d4 - a.d4) || (b.d3 - a.d3) || (b.total - a.total));
 }
 
+const _nrFaixasVisiveis = () => NR_FAIXAS.filter(f => !_nrColsOcultas.has(f.chave));
+
+function _nrOcultarCol(chave) { _nrColsOcultas.add(chave); _nrRenderizar(); }
+function _nrMostrarCol(chave) { _nrColsOcultas.delete(chave); _nrRenderizar(); }
+function _nrOcultarLinha(campo, valor) { _nrLinhasOcultas[campo].add(valor); _nrRenderizar(); }
+function _nrMostrarLinha(campo, valor) { _nrLinhasOcultas[campo].delete(valor); _nrRenderizar(); }
+
+function _nrMostrarTudo(campo) {
+    _nrColsOcultas.clear();
+    if (campo) _nrLinhasOcultas[campo].clear();
+    _nrRenderizar();
+}
+
+// Barra do que foi escondido. Sem ela, ocultar seria um caminho sem volta: a coluna some e
+// não sobra nada na tela dizendo que ela existe.
+function _nrBarraOcultos(campo) {
+    const cols = [...NR_COLUNAS_OCULTAS_ORDEM()];
+    const linhas = [..._nrLinhasOcultas[campo]];
+    if (!cols.length && !linhas.length) return "";
+    const chip = (rotulo, acao) =>
+        `<button type="button" class="nr-oculto-chip" data-acao="${acao}">${_nrEsc(rotulo)}<span>+</span></button>`;
+    return `
+        <div class="nr-ocultos">
+            <span class="nr-ocultos-label">Ocultos</span>
+            ${cols.map(f => chip(f.rotulo, "col:" + f.chave)).join("")}
+            ${linhas.map(v => chip(v, "linha:" + v)).join("")}
+            <button type="button" class="nr-ocultos-tudo" data-acao="tudo">mostrar tudo</button>
+        </div>`;
+}
+
+// Mantém a ordem das faixas na barra, em vez da ordem em que foram clicadas.
+const NR_COLUNAS_OCULTAS_ORDEM = () => NR_FAIXAS.filter(f => _nrColsOcultas.has(f.chave));
+
 function _nrTabela(alvoId, linhas, campo, rotuloDim) {
-    const dados = _nrPivot(linhas, campo);
     const el = document.getElementById(alvoId);
-    if (!dados.length) {
-        el.innerHTML = `<div class="fechamento-empty">Nada para mostrar neste recorte.</div>`;
+    const faixas = _nrFaixasVisiveis();
+    const dados = _nrPivot(linhas, campo).filter(l => !_nrLinhasOcultas[campo].has(l.nome));
+    const barra = _nrBarraOcultos(campo);
+
+    if (!faixas.length) {
+        el.innerHTML = barra + `<div class="fechamento-empty">Todas as colunas estão ocultas.</div>`;
+        _nrLigarBarra(el, campo);
         return;
     }
-    const totais = NR_FAIXAS.map(f => dados.reduce((s, l) => s + l[f.chave], 0));
-    const totalGeral = dados.reduce((s, l) => s + l.total, 0);
+    if (!dados.length) {
+        el.innerHTML = barra + `<div class="fechamento-empty">Nada para mostrar.</div>`;
+        _nrLigarBarra(el, campo);
+        return;
+    }
 
-    el.innerHTML = `
-        <table class="ant-hist-table nr-pivot" data-campo="${campo}" data-dim="${_nrEsc(rotuloDim)}">
+    // O total é sempre a soma do que está À VISTA. Esconder "No prazo" e o total continuar
+    // contando com ele faria as colunas não fecharem com a última — e o motivo de esconder
+    // é justamente olhar só o atraso.
+    const totalLinha = l => faixas.reduce((soma, f) => soma + l[f.chave], 0);
+    const totais = faixas.map(f => dados.reduce((s, l) => s + l[f.chave], 0));
+    const totalGeral = dados.reduce((s, l) => s + totalLinha(l), 0);
+
+    el.innerHTML = barra + `
+        <div class="nr-tabela-scroll">
+        <table class="ant-hist-table nr-pivot">
             <thead>
                 <tr>
                     <th>${_nrEsc(rotuloDim)}</th>
-                    ${NR_FAIXAS.map(f => `<th class="nr-num"><span class="nr-chip-cor" style="background:${NR_CORES[f.chave]}"></span>${f.rotulo}</th>`).join("")}
+                    ${faixas.map(f => `<th class="nr-num nr-th-col" data-col="${f.chave}" title="Clique para ocultar esta coluna"><span class="nr-chip-cor" style="background:${NR_CORES[f.chave]}"></span>${f.rotulo}</th>`).join("")}
                     <th class="nr-num">Total</th>
                 </tr>
             </thead>
             <tbody>
                 ${dados.map(l => `
                 <tr data-valor="${_nrEsc(l.nome)}">
-                    <td data-label="${_nrEsc(rotuloDim)}">${_nrEsc(l.nome)}</td>
-                    ${NR_FAIXAS.map(f => l[f.chave]
+                    <td data-label="${_nrEsc(rotuloDim)}" class="nr-dim" title="Clique para ocultar esta linha">${_nrEsc(l.nome)}</td>
+                    ${faixas.map(f => l[f.chave]
                         ? `<td data-label="${f.rotulo}" class="nr-num nr-click" data-faixa="${f.chave}">${l[f.chave]}</td>`
                         : `<td data-label="${f.rotulo}" class="nr-num zero">—</td>`).join("")}
-                    <td data-label="Total" class="nr-num nr-total nr-click" data-faixa="">${l.total}</td>
+                    <td data-label="Total" class="nr-num nr-total nr-click" data-faixa="">${totalLinha(l)}</td>
                 </tr>`).join("")}
             </tbody>
             <tfoot>
@@ -205,16 +258,37 @@ function _nrTabela(alvoId, linhas, campo, rotuloDim) {
                     <td class="nr-num nr-total">${totalGeral}</td>
                 </tr>
             </tfoot>
-        </table>`;
+        </table>
+        </div>`;
 
     // Delegação em vez de onclick por célula: nome de entregador e de cidade vem com
     // apóstrofo ("Herval D'Oeste") e acento, e montar a chamada dentro do atributo exigiria
     // escapar isso à mão em toda linha — um nome novo quebraria a tabela inteira.
     el.querySelector("table").onclick = ev => {
+        const th = ev.target.closest("th.nr-th-col");
+        if (th) return _nrOcultarCol(th.dataset.col);
+
+        const dim = ev.target.closest("td.nr-dim");
+        if (dim) return _nrOcultarLinha(campo, dim.closest("tr").dataset.valor);
+
         const td = ev.target.closest("td.nr-click");
         if (!td) return;
-        const tr = td.closest("tr");
-        _nrAbrirPacotes(campo, tr.dataset.valor, td.dataset.faixa, rotuloDim);
+        _nrAbrirPacotes(campo, td.closest("tr").dataset.valor, td.dataset.faixa, rotuloDim);
+    };
+    _nrLigarBarra(el, campo);
+}
+
+function _nrLigarBarra(el, campo) {
+    const barra = el.querySelector(".nr-ocultos");
+    if (!barra) return;
+    barra.onclick = ev => {
+        const btn = ev.target.closest("[data-acao]");
+        if (!btn) return;
+        const acao = btn.dataset.acao;
+        if (acao === "tudo") return _nrMostrarTudo(campo);
+        const [tipo, ...resto] = acao.split(":");
+        const valor = resto.join(":");   // nome pode ter ":" dentro
+        if (tipo === "col") _nrMostrarCol(valor); else _nrMostrarLinha(campo, valor);
     };
 }
 
@@ -228,7 +302,8 @@ function _nrAbrirPacotes(campo, valor, faixaChave, rotuloDim) {
         if (chave !== valor) return false;
         const f = _nrFaixaDe(l);
         if (!f) return false;                       // sem prazo não entra em faixa nenhuma
-        return !faixaChave || f.chave === faixaChave;  // total da linha = todas as faixas
+        // Total da linha = as faixas à vista, o mesmo que o número clicado somou.
+        return faixaChave ? f.chave === faixaChave : !_nrColsOcultas.has(f.chave);
     });
     _nrPacTitulo = `${valor} · ${faixa ? faixa.rotulo : "todos"}`;
     document.getElementById("nr-pac-titulo").innerText = valor;
@@ -333,13 +408,16 @@ function _nrGraficar(linhas, porFaixa) {
     const eixo = { color: "#8494a9", font: { size: 11 } };
     const grade = { color: "rgba(255,255,255,0.06)" };
 
+    // O gráfico segue as colunas à vista: esconder "No prazo" na tabela e ele continuar na
+    // barra ao lado deixaria as duas leituras contando coisas diferentes.
+    const faixas = _nrFaixasVisiveis();
     _nrGraficos.faixas = new Chart(document.getElementById("nr-gr-faixas"), {
         type: "bar",
         data: {
-            labels: NR_FAIXAS.map(f => f.rotulo),
+            labels: faixas.map(f => f.rotulo),
             datasets: [{
-                data: NR_FAIXAS.map(f => porFaixa[f.chave]),
-                backgroundColor: NR_FAIXAS.map(f => NR_CORES[f.chave]),
+                data: faixas.map(f => porFaixa[f.chave]),
+                backgroundColor: faixas.map(f => NR_CORES[f.chave]),
                 borderRadius: 4,      // ponta arredondada só no fim da barra
                 borderSkipped: "bottom",
                 maxBarThickness: 54,

@@ -3801,11 +3801,37 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 
 /* A tabela rola por dentro em vez de esticar a página: com 60 entregadores os gráficos
    ficavam a três telas de distância do número que os explica. */
-.nr-tabela-wrap {
+.nr-tabela-scroll {
     max-height: 340px; overflow: auto;
     border: 1px solid var(--border); border-radius: 10px;
 }
-.nr-tabela-wrap .ant-hist-table { margin: 0; border: none; }
+.nr-tabela-scroll .ant-hist-table { margin: 0; border: none; }
+
+/* Ocultar coluna / linha. Some ao recarregar a página de propósito — é um recorte pra
+   olhar agora, não uma configuração. */
+.nr-th-col { cursor: pointer; user-select: none; }
+.nr-th-col:hover { color: #fff; }
+.nr-th-col:hover::after { content: "  d7"; opacity: 0.6; }
+.nr-dim { cursor: pointer; }
+.nr-dim:hover { color: #fff; text-decoration: line-through; text-decoration-color: #ef4444; }
+
+.nr-ocultos {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    margin-bottom: 8px; font-size: 11.5px;
+}
+.nr-ocultos-label { color: #717f95; margin-right: 2px; }
+.nr-oculto-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 999px; cursor: pointer; font-family: inherit;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    color: #8494a9; font-size: 11.5px;
+}
+.nr-oculto-chip:hover { color: #e2e8f0; border-color: rgba(58,134,255,0.4); }
+.nr-oculto-chip span { font-size: 13px; line-height: 1; opacity: 0.7; }
+.nr-ocultos-tudo {
+    background: none; border: none; cursor: pointer; font-family: inherit;
+    color: var(--blue); font-size: 11.5px; font-weight: 600; padding: 3px 4px;
+}
 .nr-pivot th, .nr-pivot td { padding: 7px 10px; font-size: 12.5px; }
 /* Cabeçalho e rodapé fixos: rolando a lista, some a referência de qual coluna é qual e
    qual é o total — que é justamente o que se compara. */
