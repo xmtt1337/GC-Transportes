@@ -138,13 +138,11 @@ function _nrCarregar() {
 }
 
 function _nrPintarMeta(meta) {
-    document.getElementById("nr-faixa-transp").innerText = _nrCfg().rotulo;
-    const obs = document.getElementById("nr-faixa-obs");
-    if (!meta || !meta.importado_em) { obs.innerText = "Nenhum relatório enviado"; return; }
+    const el = document.getElementById("nr-atualizado");
+    if (!meta || !meta.importado_em) { el.innerText = "nenhum relatório enviado"; return; }
     const d = new Date(meta.importado_em);
-    obs.innerText = `${_nrLinhas.length.toLocaleString("pt-BR")} pacotes · atualizado ${
-        d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit",
-                                    hour: "2-digit", minute: "2-digit" })}${
+    el.innerText = `atualizado ${d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo",
+        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}${
         meta.importado_por ? " · " + meta.importado_por : ""}`;
 }
 
@@ -389,46 +387,80 @@ function _nrRenderizar() {
         const f = _nrFaixaDe(l);
         if (f) porFaixa[f.chave]++; else semPrazo++;
     });
+    const comPrazo  = linhas.length - semPrazo;
     const atrasados = porFaixa.d1 + porFaixa.d2 + porFaixa.d3 + porFaixa.d4;
+    const pctPrazo  = comPrazo ? (porFaixa.no_prazo / comPrazo) * 100 : 0;
 
-    // Quatro números, e sempre os mesmos quatro. "Sem prazo" era um quinto card que só
-    // aparecia às vezes — a fila mudava de tamanho entre uma transportadora e outra, e a
-    // pessoa perdia a referência de onde cada número estava. Ele vira nota no card do total.
-    const card = (rotulo, valor, sub, cor) => `
-        <div class="paj-card">
-            <div class="paj-label">${rotulo}</div>
-            ${sub ? `<div class="paj-sublabel">${sub}</div>` : ""}
-            <div class="paj-value"${cor ? ` style="color:${cor}"` : ""}>${valor}</div>
+    // Um número lidera a tela: é o que exige ação. O total entra como contexto dele, e não
+    // como um card do mesmo tamanho — quatro números de peso igual não dizem por onde começar.
+    // Figuras proporcionais aqui (sem tabular-nums): em corpo grande, dígito de largura fixa
+    // faz "121" parecer frouxo. Tabular fica só nas colunas da tabela, que alinham na vertical.
+    document.getElementById("nr-hero-valor").innerText = atrasados.toLocaleString("pt-BR");
+    document.getElementById("nr-hero-sub").innerText =
+        `de ${linhas.length.toLocaleString("pt-BR")} na rua${semPrazo ? ` · ${semPrazo} sem prazo no arquivo` : ""}`;
+
+    // Medidor da parcela no prazo: o trilho é um passo mais claro da mesma rampa, então o
+    // estado se lê na barra inteira e não só no pedaço preenchido.
+    const fill = document.getElementById("nr-meter-fill");
+    fill.style.width = Math.max(0, Math.min(100, pctPrazo)).toFixed(1) + "%";
+    fill.style.background = pctPrazo >= 80 ? "#22c55e" : pctPrazo >= 50 ? "#eab308" : "#ef4444";
+    document.getElementById("nr-meter-legenda").innerText =
+        `${porFaixa.no_prazo.toLocaleString("pt-BR")} ainda no prazo · ${_nrPct(pctPrazo)}`;
+
+    const tile = (rotulo, valor, sub, cor) => `
+        <div class="nr-tile">
+            <div class="nr-tile-label">${rotulo}</div>
+            <div class="nr-tile-valor"${cor ? ` style="color:${cor}"` : ""}>${valor}</div>
+            <div class="nr-tile-sub">${sub}</div>
         </div>`;
-    document.getElementById("nr-resumo").innerHTML =
-        card("Na rua", linhas.length.toLocaleString("pt-BR"),
-             semPrazo ? `${semPrazo} sem prazo no arquivo` : "no retrato atual") +
-        card("No prazo", porFaixa.no_prazo.toLocaleString("pt-BR"), "ainda não venceram") +
-        card("Atrasados", atrasados.toLocaleString("pt-BR"), "já passaram do prazo", atrasados ? "#eab308" : null) +
-        card("4 dias ou mais", porFaixa.d4.toLocaleString("pt-BR"), "atraso mais grave", porFaixa.d4 ? "#ef4444" : null);
+    const ate3 = porFaixa.d1 + porFaixa.d2 + porFaixa.d3;
+    document.getElementById("nr-tiles").innerHTML =
+        tile("No prazo", porFaixa.no_prazo.toLocaleString("pt-BR"), "ainda não venceram") +
+        tile("1 a 3 dias", ate3.toLocaleString("pt-BR"), "atraso recente", ate3 ? "#eab308" : null) +
+        tile("4 dias ou mais", porFaixa.d4.toLocaleString("pt-BR"), "atraso grave", porFaixa.d4 ? "#ef4444" : null);
 
-    // UMA tabela, alternada pela aba. Empilhar as duas dobrava a altura da página e jogava
-    // os gráficos pra longe do número que eles explicam.
+    // UMA tabela, alternada pela aba. Empilhar as duas dobrava a altura da página.
     _nrTabela("nr-tabela", linhas, _nrDim, _nrDim === "entregador" ? "Entregador" : "Cidade");
-    document.getElementById("nr-gr-ent-titulo").innerText =
-        _nrDim === "entregador" ? "Quem concentra o atraso" : "Onde o atraso se concentra";
+    const rotDim = _nrDim === "entregador" ? "entregador" : "cidade";
+    document.getElementById("nr-gr-vol-titulo").innerText = `Volume por ${rotDim}`;
+    document.getElementById("nr-gr-mix-titulo").innerText = `Composição do atraso por ${rotDim}`;
     _nrGraficar(linhas, porFaixa);
 }
 
+function _nrPct(p) {
+    if (!isFinite(p)) return "—";
+    if (p >= 100) return "100%";
+    if (p <= 0) return "0%";
+    return p.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+}
+
 // ── Gráficos ──
-// Duas leituras que a tabela não dá de relance: o formato da distribuição e quem concentra
-// o atraso. Uma série em cada, então nenhum precisa de legenda — o título já diz o que é.
-function _nrGraficar(linhas, porFaixa) {
+// Quatro perguntas diferentes, nenhuma respondida pela tabela de relance:
+//   1. qual o formato do atraso    2. o que vence quando
+//   3. quem tem volume             4. quem tem atraso VELHO — que não é o mesmo que muito
+//
+// Especificações comuns: barra fina com a ponta arredondada só na saída do dado, grade
+// hairline sólida e recuada, e a separação entre segmentos feita por vão na cor da
+// superfície — nunca por contorno, que seria tinta sem dado.
+const NR_SUPERFICIE = "#0f1520";
+const NR_EIXO  = { color: "#7b8ba3", font: { size: 11 } };
+const NR_GRADE = { color: "rgba(255,255,255,0.055)", drawTicks: false };
+const NR_BASE  = {
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 220 },
+};
+
+function _nrDestruirGraficos() {
     Object.values(_nrGraficos).forEach(g => { try { g.destroy(); } catch (_) {} });
     _nrGraficos = {};
+}
+
+function _nrGraficar(linhas, porFaixa) {
+    _nrDestruirGraficos();
     if (typeof Chart === "undefined") return;
-
-    const eixo = { color: "#8494a9", font: { size: 11 } };
-    const grade = { color: "rgba(255,255,255,0.06)" };
-
-    // O gráfico segue as colunas à vista: esconder "No prazo" na tabela e ele continuar na
-    // barra ao lado deixaria as duas leituras contando coisas diferentes.
     const faixas = _nrFaixasVisiveis();
+
+    // 1. Distribuição — escala ordenada, então rampa de um hue só.
     _nrGraficos.faixas = new Chart(document.getElementById("nr-gr-faixas"), {
         type: "bar",
         data: {
@@ -436,62 +468,184 @@ function _nrGraficar(linhas, porFaixa) {
             datasets: [{
                 data: faixas.map(f => porFaixa[f.chave]),
                 backgroundColor: faixas.map(f => NR_CORES[f.chave]),
-                borderRadius: 4,      // ponta arredondada só no fim da barra
+                borderRadius: { topLeft: 4, topRight: 4 },
                 borderSkipped: "bottom",
-                maxBarThickness: 54,
+                maxBarThickness: 24,
             }],
         },
         options: {
-            responsive: true, maintainAspectRatio: false,
+            ...NR_BASE,
             plugins: {
                 legend: { display: false },
-                tooltip: { callbacks: { label: c => `${c.parsed.y.toLocaleString("pt-BR")} pacotes` } },
+                tooltip: { callbacks: { label: c => c.parsed.y.toLocaleString("pt-BR") + " pacotes" } },
             },
             scales: {
-                x: { ticks: eixo, grid: { display: false } },
-                y: { ticks: eixo, grid: grade, beginAtZero: true },
+                x: { ticks: NR_EIXO, grid: { display: false } },
+                y: { ticks: NR_EIXO, grid: NR_GRADE, beginAtZero: true },
             },
         },
     });
 
-    // Oito barras: é pra achar o gargalo, não pra listar todo mundo — a tabela acima já tem
-    // a lista inteira, e com mais que isso os rótulos ficam ilegíveis na altura do card.
-    // Segue a dimensão da aba, senão a tabela fala de cidade e o gráfico ao lado de gente.
-    const porEnt = _nrPivot(linhas, _nrDim)
-        .map(l => ({ nome: l.nome, atraso: l.d1 + l.d2 + l.d3 + l.d4 }))
+    _nrGraficoPrazos(linhas);
+    _nrGraficoVolume(linhas);
+    _nrGraficoMix(linhas, faixas);
+}
+
+// 2. Vencimentos por dia. Cada coluna é uma data de prazo, pintada pela faixa em que ela
+// cai — a mesma rampa do resto da tela. Assim a virada entre "no prazo" e "atrasado"
+// aparece sozinha, sem precisar de uma linha de referência marcando hoje.
+function _nrGraficoPrazos(linhas) {
+    const porDia = new Map();
+    linhas.forEach(l => {
+        if (!l.prazo) return;
+        const d = new Date(l.prazo);
+        if (isNaN(d.getTime())) return;
+        const chave = d.getFullYear() + "-" +
+                      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+                      String(d.getDate()).padStart(2, "0");
+        porDia.set(chave, (porDia.get(chave) || 0) + 1);
+    });
+    const vazio = document.getElementById("nr-gr-prazos-vazio");
+    vazio.style.display = porDia.size ? "none" : "";
+    if (!porDia.size) return;
+
+    // Os 21 dias mais recentes: além disso os rótulos se sobrepõem, e a cauda antiga — que
+    // é sempre um punhado de pacotes — rouba a largura de onde está o volume.
+    const dias = [...porDia.keys()].sort().slice(-21);
+    const corDoDia = dia => {
+        const f = _nrFaixaDe({ prazo: dia + "T12:00:00" });
+        return f ? NR_CORES[f.chave] : "#4a5568";
+    };
+
+    _nrGraficos.prazos = new Chart(document.getElementById("nr-gr-prazos"), {
+        type: "bar",
+        data: {
+            labels: dias.map(d => d.slice(8, 10) + "/" + d.slice(5, 7)),
+            datasets: [{
+                data: dias.map(d => porDia.get(d)),
+                backgroundColor: dias.map(corDoDia),
+                borderRadius: { topLeft: 4, topRight: 4 },
+                borderSkipped: "bottom",
+                maxBarThickness: 18,
+            }],
+        },
+        options: {
+            ...NR_BASE,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: {
+                    title: c => "Prazo " + c[0].label,
+                    label: c => c.parsed.y.toLocaleString("pt-BR") + " pacotes",
+                } },
+            },
+            scales: {
+                x: { ticks: { ...NR_EIXO, maxRotation: 0 }, grid: { display: false } },
+                y: { ticks: NR_EIXO, grid: NR_GRADE, beginAtZero: true },
+            },
+        },
+    });
+}
+
+// 3. Volume — uma série só, então um hue só. Pintar cada barra por tamanho gastaria a cor
+// repetindo o que o comprimento da barra já diz.
+function _nrGraficoVolume(linhas) {
+    const faixas = _nrFaixasVisiveis();
+    const dados = _nrPivot(linhas, _nrDim)
+        .map(l => ({ nome: l.nome, total: faixas.reduce((s, f) => s + l[f.chave], 0) }))
+        .filter(l => l.total > 0)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 8);
+    const vazio = document.getElementById("nr-gr-vol-vazio");
+    vazio.style.display = dados.length ? "none" : "";
+    if (!dados.length) return;
+
+    _nrGraficos.volume = new Chart(document.getElementById("nr-gr-volume"), {
+        type: "bar",
+        data: {
+            labels: dados.map(l => _nrEncurtar(l.nome)),
+            datasets: [{
+                data: dados.map(l => l.total),
+                backgroundColor: "#3987e5",
+                borderRadius: { topRight: 4, bottomRight: 4 },
+                borderSkipped: "left",
+                maxBarThickness: 18,
+            }],
+        },
+        options: {
+            ...NR_BASE, indexAxis: "y",
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: {
+                    title: c => dados[c[0].dataIndex].nome,
+                    label: c => c.parsed.x.toLocaleString("pt-BR") + " pacotes",
+                } },
+            },
+            scales: {
+                x: { ticks: NR_EIXO, grid: NR_GRADE, beginAtZero: true },
+                y: { ticks: { ...NR_EIXO, autoSkip: false }, grid: { display: false } },
+            },
+        },
+    });
+}
+
+// 4. Composição do atraso. Volume alto não é o mesmo problema que atraso velho: quem tem
+// 40 pacotes de 1 dia está trabalhando; quem tem 8 de 4+ dias está travado. Empilhada na
+// horizontal porque os nomes são longos, com vão de 2px na cor da superfície entre os
+// segmentos — é o vão que separa, não um contorno.
+function _nrGraficoMix(linhas, faixas) {
+    const atrasadas = faixas.filter(f => f.chave !== "no_prazo");
+    const dados = _nrPivot(linhas, _nrDim)
+        .map(l => ({ ...l, atraso: atrasadas.reduce((s, f) => s + l[f.chave], 0) }))
         .filter(l => l.atraso > 0)
         .sort((a, b) => b.atraso - a.atraso)
         .slice(0, 8);
 
-    const vazio = document.getElementById("nr-gr-ent-vazio");
-    vazio.style.display = porEnt.length ? "none" : "";
-    if (!porEnt.length) return;
+    const vazio = document.getElementById("nr-gr-mix-vazio");
+    vazio.style.display = dados.length ? "none" : "";
+    // Cinco séries empilhadas precisam de legenda — a cor sozinha não diz qual é qual.
+    document.getElementById("nr-gr-mix-legenda").innerHTML = dados.length
+        ? atrasadas.map(f => '<span class="nr-leg"><i style="background:' + NR_CORES[f.chave] + '"></i>' + f.rotulo + "</span>").join("")
+        : "";
+    if (!dados.length || !atrasadas.length) return;
 
-    _nrGraficos.entregadores = new Chart(document.getElementById("nr-gr-entregadores"), {
+    _nrGraficos.mix = new Chart(document.getElementById("nr-gr-mix"), {
         type: "bar",
         data: {
-            labels: porEnt.map(l => l.nome),
-            datasets: [{
-                data: porEnt.map(l => l.atraso),
-                backgroundColor: "#3987e5",
-                borderRadius: 4,
-                borderSkipped: "start",
-                maxBarThickness: 22,
-            }],
+            labels: dados.map(l => _nrEncurtar(l.nome)),
+            datasets: atrasadas.map((f, i) => ({
+                label: f.rotulo,
+                data: dados.map(l => l[f.chave]),
+                backgroundColor: NR_CORES[f.chave],
+                borderColor: NR_SUPERFICIE,
+                borderWidth: { top: 0, bottom: 0, left: 0, right: 2 }, // o vão de 2px
+                borderSkipped: false,
+                borderRadius: i === atrasadas.length - 1 ? { topRight: 4, bottomRight: 4 } : 0,
+                maxBarThickness: 18,
+            })),
         },
         options: {
-            indexAxis: "y",
-            responsive: true, maintainAspectRatio: false,
+            ...NR_BASE, indexAxis: "y",
             plugins: {
                 legend: { display: false },
-                tooltip: { callbacks: { label: c => `${c.parsed.x.toLocaleString("pt-BR")} atrasados` } },
+                tooltip: { callbacks: { title: c => dados[c[0].dataIndex].nome } },
             },
             scales: {
-                x: { ticks: eixo, grid: grade, beginAtZero: true },
-                y: { ticks: { ...eixo, autoSkip: false }, grid: { display: false } },
+                x: { stacked: true, ticks: NR_EIXO, grid: NR_GRADE, beginAtZero: true },
+                y: { stacked: true, ticks: { ...NR_EIXO, autoSkip: false }, grid: { display: false } },
             },
         },
     });
+}
+
+// Nome comprido vira "Ana Lucia A." no eixo; o nome inteiro fica no tooltip. Cortar no meio
+// de uma palavra é o que transforma o eixo numa parede de texto ilegível.
+function _nrEncurtar(nome) {
+    const t = String(nome || "").trim();
+    if (t.length <= 18) return t;
+    const partes = t.split(/\s+/);
+    if (partes.length < 2) return t.slice(0, 17) + "…";
+    const inicial = partes.length > 2 ? " " + partes[partes.length - 1][0] + "." : "";
+    return partes[0] + " " + partes[1].slice(0, 8) + inicial;
 }
 
 // ── Envio do relatório ──

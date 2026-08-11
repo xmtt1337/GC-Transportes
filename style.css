@@ -3781,47 +3781,120 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .ta-msg-err { background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); color: #f87171; }
 
 /* ===== TORRE DE CONTROLE — NA RUA ===== */
-/* Mesma linguagem da tela de LineHaul: faixa de contexto, abas de texto, cards e uma
-   tabela. A tela tinha componentes próprios (chips coloridos, botão primário, meta em
-   bloco) que não existem em nenhuma outra — e era isso que a fazia parecer de outro
-   sistema. */
+/* Hierarquia: um número lidera, o apoio fica menor ao lado, os gráficos abaixo e a tabela
+   por último. Antes eram quatro cards de peso igual — nenhum liderava, e a tela não dizia
+   por onde começar a ler. */
+.nr-cab {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.nr-cab-dir { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.nr-atualizado { font-size: 11.5px; color: #6b7a91; }
+
+.nr-topo-painel {
+    display: grid; grid-template-columns: minmax(240px, 340px) 1fr;
+    gap: 14px; align-items: stretch; margin-bottom: 20px;
+}
+@media (max-width: 780px) { .nr-topo-painel { grid-template-columns: 1fr; } }
+
+.nr-hero {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px 16px;
+    display: flex; flex-direction: column; justify-content: center;
+}
+.nr-hero-label {
+    font-size: 10px; font-weight: 700; color: #6b7a91;
+    text-transform: uppercase; letter-spacing: .12em;
+}
+/* Figuras proporcionais, não tabulares: em corpo grande o dígito de largura fixa faz
+   "121" parecer frouxo. Tabular fica só nas colunas da tabela, que alinham na vertical. */
+.nr-hero-valor {
+    font-size: 46px; font-weight: 800; line-height: 1.05; color: #f1f5f9;
+    letter-spacing: -0.03em; margin: 6px 0 2px;
+}
+.nr-hero-sub { font-size: 12px; color: #8494a9; margin-bottom: 14px; }
+
+/* Medidor: o trilho é a mesma família do preenchimento, um passo mais escuro, pra que o
+   estado se leia na barra inteira e não só no pedaço cheio. */
+.nr-meter {
+    height: 6px; border-radius: 999px; overflow: hidden;
+    background: rgba(148,163,184,0.14);
+}
+.nr-meter-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+.nr-meter-legenda { font-size: 11px; color: #7b8ba3; margin-top: 7px; }
+
+.nr-tiles {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px;
+}
+.nr-tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px;
+    display: flex; flex-direction: column; justify-content: center;
+}
+.nr-tile-label {
+    font-size: 10px; font-weight: 700; color: #6b7a91;
+    text-transform: uppercase; letter-spacing: .1em;
+}
+.nr-tile-valor { font-size: 26px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.02em; margin: 5px 0 1px; }
+.nr-tile-sub { font-size: 11px; color: #7b8ba3; }
+
+.nr-graficos {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 14px; margin-bottom: 22px;
+}
+.nr-grafico-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px 14px;
+}
+.nr-grafico-titulo { font-size: 12.5px; font-weight: 700; color: #cbd5e1; }
+/* Altura com folga pro eixo: container apertado espreme o plot e corta os rótulos. */
+.nr-grafico-area { position: relative; height: 250px; margin-top: 12px; }
+.nr-grafico-vazio {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 12.5px; color: #7b8ba3; text-align: center;
+}
+/* Legenda só onde há mais de uma série: nos gráficos de série única o título já nomeia
+   o que está ali, e uma legenda de um item é ruído. */
+.nr-grafico-legenda { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+.nr-leg { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #8494a9; }
+.nr-leg i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
 .nr-barra {
     display: flex; align-items: center; justify-content: space-between;
-    gap: 14px; flex-wrap: wrap; margin: 16px 0 12px;
+    gap: 14px; flex-wrap: wrap; margin-bottom: 10px;
 }
 .nr-barra .filtro-tabs { flex-wrap: wrap; }
-.nr-dica { font-size: 11.5px; color: #717f95; }
+.nr-dica { font-size: 11.5px; color: #6b7a91; }
 
-/* A tabela rola por dentro em vez de esticar a página: com 60 entregadores os gráficos
-   ficavam a três telas de distância do número que os explica. */
+/* A tabela rola por dentro em vez de esticar a página: com 60 entregadores o resto da
+   tela ficava a três rolagens de distância. */
 .nr-tabela-scroll {
-    max-height: 360px; overflow: auto;
-    border: 1px solid var(--border); border-radius: 10px;
+    max-height: 380px; overflow: auto;
+    border: 1px solid var(--border); border-radius: 12px;
 }
 .nr-tabela-scroll .ant-hist-table { margin: 0; border: none; }
-.nr-pivot th, .nr-pivot td { padding: 8px 12px; font-size: 12.5px; }
-/* Cabeçalho e rodapé fixos: rolando a lista, some a referência de qual coluna é qual e
+.nr-pivot th, .nr-pivot td { padding: 9px 14px; font-size: 12.5px; }
+/* Cabeçalho e rodapé fixos: rolando a lista some a referência de qual coluna é qual e de
    qual é o total — que é justamente o que se compara. */
 .nr-pivot thead th {
-    position: sticky; top: 0; z-index: 2;
-    background: #131b28; white-space: nowrap; font-weight: 600;
+    position: sticky; top: 0; z-index: 2; background: #131b28;
+    white-space: nowrap; font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: .06em; color: #8494a9;
 }
 .nr-pivot tfoot td {
-    position: sticky; bottom: 0; z-index: 2;
-    background: #131b28; border-top: 1px solid rgba(255,255,255,0.12);
+    position: sticky; bottom: 0; z-index: 2; background: #131b28;
+    border-top: 1px solid rgba(255,255,255,0.1);
     font-weight: 700; color: #cbd5e1;
 }
 .nr-pivot .nr-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .nr-pivot th.nr-num { text-align: right; }
-.nr-pivot .nr-num.zero { color: #3d4759; }
+.nr-pivot .nr-num.zero { color: #3a4557; }
 .nr-pivot .nr-total { font-weight: 700; color: #e2e8f0; }
-.nr-pivot tbody tr:hover td { background: rgba(255,255,255,0.03); }
-/* Número que abre a lista de pedidos. Sublinhado pontilhado no hover em vez de link azul:
-   a coluna inteira azul tiraria a referência de onde estão os valores. */
+.nr-pivot tbody tr:hover td { background: rgba(255,255,255,0.025); }
+/* Número que abre a lista de pedidos. Sublinhado pontilhado no hover, não link azul: a
+   coluna inteira azul tiraria a referência de onde estão os valores. */
 .nr-pivot .nr-click { cursor: pointer; }
 .nr-pivot .nr-click:hover { color: #fff; text-decoration: underline dotted; text-underline-offset: 3px; }
-/* Quadradinho da cor da faixa no cabeçalho: liga a coluna da tabela à barra do gráfico
-   logo abaixo, sem repetir uma legenda. */
 .nr-chip-cor {
     display: inline-block; width: 8px; height: 8px; border-radius: 2px;
     margin-right: 6px; vertical-align: middle;
@@ -3830,7 +3903,7 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 /* Ocultar coluna / linha. Some ao recarregar a página de propósito — é um recorte pra
    olhar agora, não uma configuração. */
 .nr-th-col { cursor: pointer; user-select: none; }
-.nr-th-col:hover { color: #fff; }
+.nr-th-col:hover { color: #e2e8f0; }
 .nr-dim { cursor: pointer; }
 .nr-dim:hover { color: #fff; text-decoration: line-through; text-decoration-color: #ef4444; }
 
@@ -3838,7 +3911,7 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
     display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
     margin-bottom: 8px; font-size: 11.5px;
 }
-.nr-ocultos-label { color: #717f95; margin-right: 2px; }
+.nr-ocultos-label { color: #6b7a91; margin-right: 2px; }
 .nr-oculto-chip {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 3px 9px; border-radius: 999px; cursor: pointer; font-family: inherit;
@@ -3850,23 +3923,6 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .nr-ocultos-tudo {
     background: none; border: none; cursor: pointer; font-family: inherit;
     color: var(--blue); font-size: 11.5px; font-weight: 600; padding: 3px 4px;
-}
-
-.nr-graficos {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    gap: 14px; margin: 22px 0 8px;
-}
-.nr-grafico-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 16px 18px 14px;
-}
-.nr-grafico-titulo { font-size: 12.5px; font-weight: 700; color: #cbd5e1; margin-bottom: 14px; }
-/* Altura fixa com folga pro eixo: o Chart.js precisa de container com altura definida,
-   e apertado demais ele espreme o plot e corta os rótulos do eixo. */
-.nr-grafico-area { position: relative; height: 280px; }
-.nr-grafico-vazio {
-    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    font-size: 13px; color: #8494a9; text-align: center;
 }
 
 /* ── Pedidos de uma célula ── */
