@@ -61,6 +61,7 @@ let _nrGraficos = {};      // instâncias do Chart.js, pra destruir antes de red
 // que falta entregador na lista — e o único jeito de descobrir seria achar este código.
 let _nrColsOcultas   = new Set();                                   // faixas — valem pras duas tabelas
 let _nrLinhasOcultas = { entregador: new Set(), cidade: new Set() }; // linhas — por tabela
+let _nrDim      = "entregador";  // dimensão da tabela: uma de cada vez, alternada por aba
 let _nrPacotes  = [];      // pedidos da célula aberta no modal
 let _nrPacTitulo = "";
 
@@ -81,18 +82,30 @@ const _nrNorm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
 const _nrCfg = () => NR_TRANSPORTADORAS.find(t => t.chave === _nrTransp) || NR_TRANSPORTADORAS[0];
 
 // ── Seletor de transportadora ──
+// Abas de texto, e não chips coloridos: a cor aqui não distingue dado nenhum (só uma
+// transportadora aparece por vez), então seria decoração competindo com os números.
 function _nrPintarTranspTabs() {
     document.getElementById("nr-transp-tabs").innerHTML = NR_TRANSPORTADORAS.map(t => `
-        <button type="button" class="wac-transp-tab${_nrTransp === t.chave ? " active" : ""}"
-                style="--transp-cor:${t.cor}" onclick="_nrTrocarTransp('${t.chave}')">${_nrEsc(t.rotulo)}</button>
+        <button type="button" class="filtro-tab${_nrTransp === t.chave ? " active" : ""}"
+                onclick="_nrTrocarTransp('${t.chave}')">${_nrEsc(t.rotulo)}</button>
     `).join("");
 }
 
 function _nrTrocarTransp(chave) {
     if (_nrTransp === chave) return;
     _nrTransp = chave;
+    _nrColsOcultas.clear();
+    _nrLinhasOcultas.entregador.clear();
+    _nrLinhasOcultas.cidade.clear();
     _nrPintarTranspTabs();
     _nrCarregar();
+}
+
+function _nrTrocarDim(dim) {
+    _nrDim = dim;
+    document.querySelectorAll("#nr-dim-tabs .filtro-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.dim === dim));
+    _nrRenderizar();
 }
 
 // ── Retrato atual ──
@@ -125,15 +138,14 @@ function _nrCarregar() {
 }
 
 function _nrPintarMeta(meta) {
-    const el = document.getElementById("nr-meta");
-    if (!meta || !meta.importado_em) { el.innerHTML = ""; return; }
+    document.getElementById("nr-faixa-transp").innerText = _nrCfg().rotulo;
+    const obs = document.getElementById("nr-faixa-obs");
+    if (!meta || !meta.importado_em) { obs.innerText = "Nenhum relatório enviado"; return; }
     const d = new Date(meta.importado_em);
-    // Uma linha só, ao lado do botão: a data do retrato é contexto do número, não um bloco
-    // próprio disputando espaço com ele.
-    el.innerHTML = `${_nrLinhas.length.toLocaleString("pt-BR")} pacotes · ${
+    obs.innerText = `${_nrLinhas.length.toLocaleString("pt-BR")} pacotes · atualizado ${
         d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit",
                                     hour: "2-digit", minute: "2-digit" })}${
-        meta.importado_por ? " · " + _nrEsc(meta.importado_por) : ""}`;
+        meta.importado_por ? " · " + meta.importado_por : ""}`;
 }
 
 // ── Dias de atraso ──
@@ -371,7 +383,6 @@ function _nrPacExportar() {
 function _nrRenderizar() {
     const linhas = _nrLinhas;
 
-    // Cards do topo: o total e o que já passou de 3 dias, que é o que exige ação hoje.
     const porFaixa = Object.fromEntries(NR_FAIXAS.map(f => [f.chave, 0]));
     let semPrazo = 0;
     linhas.forEach(l => {
@@ -379,6 +390,10 @@ function _nrRenderizar() {
         if (f) porFaixa[f.chave]++; else semPrazo++;
     });
     const atrasados = porFaixa.d1 + porFaixa.d2 + porFaixa.d3 + porFaixa.d4;
+
+    // Quatro números, e sempre os mesmos quatro. "Sem prazo" era um quinto card que só
+    // aparecia às vezes — a fila mudava de tamanho entre uma transportadora e outra, e a
+    // pessoa perdia a referência de onde cada número estava. Ele vira nota no card do total.
     const card = (rotulo, valor, sub, cor) => `
         <div class="paj-card">
             <div class="paj-label">${rotulo}</div>
@@ -386,14 +401,17 @@ function _nrRenderizar() {
             <div class="paj-value"${cor ? ` style="color:${cor}"` : ""}>${valor}</div>
         </div>`;
     document.getElementById("nr-resumo").innerHTML =
-        card("Na rua", linhas.length.toLocaleString("pt-BR"), _nrCfg().rotulo) +
+        card("Na rua", linhas.length.toLocaleString("pt-BR"),
+             semPrazo ? `${semPrazo} sem prazo no arquivo` : "no retrato atual") +
         card("No prazo", porFaixa.no_prazo.toLocaleString("pt-BR"), "ainda não venceram") +
         card("Atrasados", atrasados.toLocaleString("pt-BR"), "já passaram do prazo", atrasados ? "#eab308" : null) +
-        card("4 dias ou mais", porFaixa.d4.toLocaleString("pt-BR"), "atraso mais grave", porFaixa.d4 ? "#ef4444" : null) +
-        (semPrazo ? card("Sem prazo", semPrazo.toLocaleString("pt-BR"), "fora das faixas") : "");
+        card("4 dias ou mais", porFaixa.d4.toLocaleString("pt-BR"), "atraso mais grave", porFaixa.d4 ? "#ef4444" : null);
 
-    _nrTabela("nr-tabela-entregador", linhas, "entregador", "Entregador");
-    _nrTabela("nr-tabela-cidade",     linhas, "cidade",     "Cidade");
+    // UMA tabela, alternada pela aba. Empilhar as duas dobrava a altura da página e jogava
+    // os gráficos pra longe do número que eles explicam.
+    _nrTabela("nr-tabela", linhas, _nrDim, _nrDim === "entregador" ? "Entregador" : "Cidade");
+    document.getElementById("nr-gr-ent-titulo").innerText =
+        _nrDim === "entregador" ? "Quem concentra o atraso" : "Onde o atraso se concentra";
     _nrGraficar(linhas, porFaixa);
 }
 
@@ -436,13 +454,14 @@ function _nrGraficar(linhas, porFaixa) {
         },
     });
 
-    // Top 10: a barra é pra achar o gargalo, não pra listar todo mundo — a tabela acima já
-    // tem a lista inteira, e 60 barras não cabem em tela nenhuma.
-    const porEnt = _nrPivot(linhas, "entregador")
+    // Oito barras: é pra achar o gargalo, não pra listar todo mundo — a tabela acima já tem
+    // a lista inteira, e com mais que isso os rótulos ficam ilegíveis na altura do card.
+    // Segue a dimensão da aba, senão a tabela fala de cidade e o gráfico ao lado de gente.
+    const porEnt = _nrPivot(linhas, _nrDim)
         .map(l => ({ nome: l.nome, atraso: l.d1 + l.d2 + l.d3 + l.d4 }))
         .filter(l => l.atraso > 0)
         .sort((a, b) => b.atraso - a.atraso)
-        .slice(0, 10);
+        .slice(0, 8);
 
     const vazio = document.getElementById("nr-gr-ent-vazio");
     vazio.style.display = porEnt.length ? "none" : "";

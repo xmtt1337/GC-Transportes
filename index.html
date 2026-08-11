@@ -34,7 +34,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260811d">
+<link rel="stylesheet" href="style.css?v=20260811e">
 </head>
 <body>
 
@@ -3360,21 +3360,24 @@ if (location.hostname === "xmtt1337.github.io") {
         </div><!-- /tela-torre-transferencias -->
 
         <!-- TELA TORRE DE CONTROLE — NA RUA -->
-        <!-- O relatório é enviado aqui mesmo, e não numa tela "Alimentar" separada: quem
-             olha o número é quem percebe que ele está velho, e mandar essa pessoa procurar
-             outro caminho no menu era o que fazia o dado envelhecer. -->
+        <!-- Mesma linguagem da tela de LineHaul: faixa de contexto, abas de texto, cards de
+             resumo e UMA tabela. O relatório é enviado aqui mesmo — quem olha o número é
+             quem percebe que ele está velho. -->
         <div id="tela-torre-na-rua" class="view tela-full">
-            <div class="fech-body" style="padding-top:20px">
+            <div class="fech-body" style="padding-top:24px">
 
-                <div class="nr-topo">
-                    <div class="wac-transp-tabs" id="nr-transp-tabs"></div>
-                    <div class="nr-topo-dir">
-                        <span class="nr-meta" id="nr-meta"></span>
-                        <button type="button" class="shr-export-btn" onclick="_nrAbrirUpload()">
-                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                            Enviar relatório
-                        </button>
-                    </div>
+                <div class="shr-faixa cfc" id="nr-faixa">
+                    <span class="shr-faixa-label">Na rua</span>
+                    <span class="shr-faixa-xpt" id="nr-faixa-transp">—</span>
+                    <span class="shr-faixa-obs" id="nr-faixa-obs"></span>
+                </div>
+
+                <div class="nr-barra">
+                    <div class="filtro-tabs" id="nr-transp-tabs"></div>
+                    <button type="button" class="shr-export-btn" onclick="_nrAbrirUpload()">
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Enviar relatório
+                    </button>
                 </div>
 
                 <div class="fechamento-empty" id="nr-empty">Carregando...</div>
@@ -3382,16 +3385,15 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div id="nr-resultado" style="display:none">
                     <div class="shr-resumo" id="nr-resumo"></div>
 
-                    <div class="nr-secao-topo">
-                        <span class="ant-sol-title nr-secao">Por entregador</span>
+                    <div class="nr-barra">
+                        <div class="filtro-tabs" id="nr-dim-tabs">
+                            <button type="button" class="filtro-tab active" data-dim="entregador" onclick="_nrTrocarDim('entregador')">Por entregador</button>
+                            <button type="button" class="filtro-tab" data-dim="cidade" onclick="_nrTrocarDim('cidade')">Por cidade</button>
+                        </div>
                         <span class="nr-dica">clique num número para ver os pedidos</span>
                     </div>
-                    <div class="nr-tabela-wrap" id="nr-tabela-entregador"></div>
 
-                    <div class="nr-secao-topo">
-                        <span class="ant-sol-title nr-secao">Por cidade</span>
-                    </div>
-                    <div class="nr-tabela-wrap" id="nr-tabela-cidade"></div>
+                    <div id="nr-tabela"></div>
 
                     <div class="nr-graficos">
                         <div class="nr-grafico-card">
@@ -3399,7 +3401,7 @@ if (location.hostname === "xmtt1337.github.io") {
                             <div class="nr-grafico-area"><canvas id="nr-gr-faixas"></canvas></div>
                         </div>
                         <div class="nr-grafico-card">
-                            <div class="nr-grafico-titulo">Quem concentra o atraso — top 10</div>
+                            <div class="nr-grafico-titulo" id="nr-gr-ent-titulo">Quem concentra o atraso</div>
                             <div class="nr-grafico-area">
                                 <canvas id="nr-gr-entregadores"></canvas>
                                 <div class="nr-grafico-vazio" id="nr-gr-ent-vazio" style="display:none">Nenhum pacote atrasado.</div>
@@ -3523,60 +3525,60 @@ if (location.hostname === "xmtt1337.github.io") {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=20260811d"></script>
-<script src="js/router.js?v=20260811d"></script>
-<script src="js/sidebar.js?v=20260811d"></script>
-<script src="js/nav.js?v=20260811d"></script>
-<script src="js/fechamentos.js?v=20260811d"></script>
-<script src="js/admin.js?v=20260811d"></script>
-<script src="js/conf-nf.js?v=20260811d"></script>
-<script src="js/trampay.js?v=20260811d"></script>
-<script src="js/usuarios.js?v=20260811d"></script>
-<script src="js/motoristas.js?v=20260811d"></script>
-<script src="js/pagamentos.js?v=20260811d"></script>
-<script src="js/notas-fiscais.js?v=20260811d"></script>
-<script src="js/dashboard.js?v=20260811d"></script>
-<script src="js/ent-dashboard.js?v=20260811d"></script>
-<script src="js/nota-fiscal.js?v=20260811d"></script>
-<script src="js/extravios.js?v=20260811d"></script>
-<script src="js/usuarios-gc.js?v=20260811d"></script>
-<script src="js/todos-usuarios.js?v=20260811d"></script>
-<script src="js/whatsapp-teste.js?v=20260811d"></script>
-<script src="js/whatsapp-conversa.js?v=20260811d"></script>
-<script src="js/modals.js?v=20260811d"></script>
-<script src="js/alimentar.js?v=20260811d"></script>
-<script src="js/fechamento-criar.js?v=20260811d"></script>
-<script src="js/pedidos-ocorrencia.js?v=20260811d"></script>
-<script src="js/bipagens.js?v=20260811d"></script>
-<script src="js/pedidos.js?v=20260811d"></script>
-<script src="js/desempenho-bip.js?v=20260811d"></script>
-<script src="js/desempenho-hora.js?v=20260811d"></script>
-<script src="js/conferencias.js?v=20260811d"></script>
-<script src="js/antecipacoes.js?v=20260811d"></script>
-<script src="js/antecipacoes-admin.js?v=20260811d"></script>
-<script src="js/baixas.js?v=20260811d"></script>
-<script src="js/devolucoes.js?v=20260811d"></script>
-<script src="js/shopee-polo.js?v=20260811d"></script>
-<script src="js/shopee.js?v=20260811d"></script>
-<script src="js/shopee-romaneiro.js?v=20260811d"></script>
-<script src="js/shopee-at.js?v=20260811d"></script>
-<script src="js/shopee-pedidos.js?v=20260811d"></script>
-<script src="js/shopee-linehaul.js?v=20260811d"></script>
-<script src="js/shopee-atribuicoes.js?v=20260811d"></script>
-<script src="js/shopee-retidos.js?v=20260811d"></script>
-<script src="js/shopee-conf-entregadores.js?v=20260811d"></script>
-<script src="js/entregador-conferencia.js?v=20260811d"></script>
-<script src="js/viagens.js?v=20260811d"></script>
-<script src="js/ocorrencias.js?v=20260811d"></script>
-<script src="js/ocorrencias-admin.js?v=20260811d"></script>
-<script src="js/transferencias.js?v=20260811d"></script>
-<script src="js/transferencias-admin.js?v=20260811d"></script>
-<script src="js/motorista-devolucoes.js?v=20260811d"></script>
-<script src="js/etiquetas.js?v=20260811d"></script>
-<script src="js/videira.js?v=20260811d"></script>
-<script src="js/planejamento-videira.js?v=20260811d"></script>
-<script src="js/torre.js?v=20260811d"></script>
-<script src="js/torre-na-rua.js?v=20260811d"></script>
+<script src="js/core.js?v=20260811e"></script>
+<script src="js/router.js?v=20260811e"></script>
+<script src="js/sidebar.js?v=20260811e"></script>
+<script src="js/nav.js?v=20260811e"></script>
+<script src="js/fechamentos.js?v=20260811e"></script>
+<script src="js/admin.js?v=20260811e"></script>
+<script src="js/conf-nf.js?v=20260811e"></script>
+<script src="js/trampay.js?v=20260811e"></script>
+<script src="js/usuarios.js?v=20260811e"></script>
+<script src="js/motoristas.js?v=20260811e"></script>
+<script src="js/pagamentos.js?v=20260811e"></script>
+<script src="js/notas-fiscais.js?v=20260811e"></script>
+<script src="js/dashboard.js?v=20260811e"></script>
+<script src="js/ent-dashboard.js?v=20260811e"></script>
+<script src="js/nota-fiscal.js?v=20260811e"></script>
+<script src="js/extravios.js?v=20260811e"></script>
+<script src="js/usuarios-gc.js?v=20260811e"></script>
+<script src="js/todos-usuarios.js?v=20260811e"></script>
+<script src="js/whatsapp-teste.js?v=20260811e"></script>
+<script src="js/whatsapp-conversa.js?v=20260811e"></script>
+<script src="js/modals.js?v=20260811e"></script>
+<script src="js/alimentar.js?v=20260811e"></script>
+<script src="js/fechamento-criar.js?v=20260811e"></script>
+<script src="js/pedidos-ocorrencia.js?v=20260811e"></script>
+<script src="js/bipagens.js?v=20260811e"></script>
+<script src="js/pedidos.js?v=20260811e"></script>
+<script src="js/desempenho-bip.js?v=20260811e"></script>
+<script src="js/desempenho-hora.js?v=20260811e"></script>
+<script src="js/conferencias.js?v=20260811e"></script>
+<script src="js/antecipacoes.js?v=20260811e"></script>
+<script src="js/antecipacoes-admin.js?v=20260811e"></script>
+<script src="js/baixas.js?v=20260811e"></script>
+<script src="js/devolucoes.js?v=20260811e"></script>
+<script src="js/shopee-polo.js?v=20260811e"></script>
+<script src="js/shopee.js?v=20260811e"></script>
+<script src="js/shopee-romaneiro.js?v=20260811e"></script>
+<script src="js/shopee-at.js?v=20260811e"></script>
+<script src="js/shopee-pedidos.js?v=20260811e"></script>
+<script src="js/shopee-linehaul.js?v=20260811e"></script>
+<script src="js/shopee-atribuicoes.js?v=20260811e"></script>
+<script src="js/shopee-retidos.js?v=20260811e"></script>
+<script src="js/shopee-conf-entregadores.js?v=20260811e"></script>
+<script src="js/entregador-conferencia.js?v=20260811e"></script>
+<script src="js/viagens.js?v=20260811e"></script>
+<script src="js/ocorrencias.js?v=20260811e"></script>
+<script src="js/ocorrencias-admin.js?v=20260811e"></script>
+<script src="js/transferencias.js?v=20260811e"></script>
+<script src="js/transferencias-admin.js?v=20260811e"></script>
+<script src="js/motorista-devolucoes.js?v=20260811e"></script>
+<script src="js/etiquetas.js?v=20260811e"></script>
+<script src="js/videira.js?v=20260811e"></script>
+<script src="js/planejamento-videira.js?v=20260811e"></script>
+<script src="js/torre.js?v=20260811e"></script>
+<script src="js/torre-na-rua.js?v=20260811e"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
