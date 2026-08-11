@@ -16,6 +16,11 @@ const NR_TRANSPORTADORAS = [
 // Colunas do relatório, por transportadora. `nomes` são as grafias já vistas — o cabeçalho
 // muda de acento e de caixa entre um export e outro, então o casamento é pelo nome
 // normalizado, nunca pela posição da coluna.
+// Duas formas de chegar no prazo, e o mapa de colunas diz qual:
+//   - `prazo` na lista  -> o relatório já traz a data de vencimento (caso da Loggi)
+//   - `data_recebimento` -> o servidor calcula recebimento + SLA da cidade, lido da planilha
+// Pra ligar uma transportadora nova basta acrescentar a lista dela aqui; o resto da tela
+// (faixas, tabelas, gráficos, polo) não muda.
 const NR_COLUNAS = {
     loggi: [
         { id: "destinatario",  nomes: ["nome do destinatario", "destinatario"] },
@@ -26,6 +31,15 @@ const NR_COLUNAS = {
         { id: "entregador",    nomes: ["entregador", "motorista"] },
         { id: "status",        nomes: ["status do pacote", "status"] },
     ],
+    // Modelo pras próximas — sem prazo no arquivo, com a data de recebimento no lugar:
+    // anjun: [
+    //     { id: "codigo_barras",     nomes: ["codigo de barras", "codigo"] },
+    //     { id: "destinatario",      nomes: ["destinatario", "nome do destinatario"] },
+    //     { id: "cidade",            nomes: ["cidade"] },
+    //     { id: "entregador",        nomes: ["entregador", "motorista"] },
+    //     { id: "data_recebimento",  nomes: ["data recebimento", "data de recebimento", "recebido em"] },
+    //     { id: "status",            nomes: ["status", "status do pacote"] },
+    // ],
 };
 
 // Faixas de dias. `ate` é o limite superior inclusivo; a última é aberta.
@@ -72,8 +86,11 @@ let _nrGraficos = {};      // instâncias do Chart.js, pra destruir antes de red
 // volta. Guardar em localStorage faria alguém abrir a tela dias depois sem entender por
 // que falta entregador na lista — e o único jeito de descobrir seria achar este código.
 let _nrColsOcultas   = new Set();                                   // faixas — valem pras duas tabelas
-let _nrLinhasOcultas = { entregador: new Map(), cidade: new Map() }; // linhas — chave -> rótulo
-let _nrDim      = "entregador";  // dimensão da tabela: uma de cada vez, alternada por aba
+let _nrLinhasOcultas = { entregador: new Map(), cidade: new Map(), polo: new Map() }; // chave -> rótulo
+// Dimensões da tabela, uma de cada vez. Polo não vem em relatório nenhum: sai da planilha
+// de prazos, pela cidade — é o mesmo cruzamento que dá o SLA.
+const NR_DIMENSOES = { entregador: "Entregador", cidade: "Cidade", polo: "Polo" };
+let _nrDim      = "entregador";
 let _nrPacotes  = [];      // pedidos da célula aberta no modal
 let _nrPacTitulo = "";
 
@@ -82,6 +99,7 @@ function abrirTorreNaRua(event) {
     mostrarTela("tela-torre-na-rua");
     _nrPintarTranspTabs();
     _nrCarregar();
+    _nrCarregarSla();
 }
 
 function _nrEsc(txt) {
@@ -107,10 +125,10 @@ function _nrTrocarTransp(chave) {
     if (_nrTransp === chave) return;
     _nrTransp = chave;
     _nrColsOcultas.clear();
-    _nrLinhasOcultas.entregador.clear();
-    _nrLinhasOcultas.cidade.clear();
+    Object.values(_nrLinhasOcultas).forEach(m => m.clear());
     _nrPintarTranspTabs();
     _nrCarregar();
+    _nrPintarSla();
 }
 
 function _nrTrocarDim(dim) {
@@ -156,6 +174,71 @@ function _nrPintarMeta(meta) {
     el.innerText = `atualizado ${d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo",
         day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}${
         meta.importado_por ? " · " + meta.importado_por : ""}`;
+}
+
+// ── Prazos por cidade (planilha do Google) ──
+// A Loggi traz o prazo pronto no relatório. As outras não: vêm com a data de recebimento, e
+// o prazo sai de "recebimento + SLA da cidade". Esse SLA mora numa planilha, uma aba por
+// transportadora, e o botão relê ela.
+//
+// O cálculo em si é do servidor, não daqui: ele já tem a tabela na mão na hora de gravar, e
+// fazer a tela buscar o SLA pra calcular antes de enviar criaria dois lugares fazendo a
+// mesma conta — que é como as duas param de bater.
+function _nrSincronizarSla(botao) {
+    const rotulo = botao.innerHTML;
+    botao.disabled = true;
+    botao.textContent = "Lendo planilha...";
+    fetch(`${API}/torre/na-rua/sla/sincronizar`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token },
+    }).then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+        botao.disabled = false;
+        botao.innerHTML = rotulo;
+        if (!ok) return gcAlert(d.error || "Não foi possível ler a planilha de prazos.");
+        // O resumo por aba diz o que entrou e o que ficou de fora — aba renomeada na
+        // planilha some sem erro nenhum, e sem esse retorno ninguém descobriria.
+        const abas = (d.abas || []).filter(a => a.cidades).map(a => `${a.aba}: ${a.cidades}`).join("\n");
+        const problemas = (d.abas || []).filter(a => a.erro).map(a => `${a.aba} — ${a.erro}`);
+        gcAlert(
+            `${d.cidades.toLocaleString("pt-BR")} cidades lidas.\n\n${abas}` +
+            (problemas.length ? `\n\nNão entraram:\n${problemas.join("\n")}` : ""),
+            "Prazos atualizados"
+        );
+        _nrCarregarSla();
+    })
+    .catch(() => {
+        botao.disabled = false;
+        botao.innerHTML = rotulo;
+        gcAlert("Erro ao conectar com o servidor.");
+    });
+}
+
+// Situação dos prazos, mostrada junto do "atualizado". Sem isso, uma transportadora sem
+// cidade cadastrada só apareceria como um monte de pacote sem prazo, e não daria pra saber
+// que o problema é a planilha.
+let _nrSla = null;
+
+function _nrCarregarSla() {
+    fetch(`${API}/torre/na-rua/sla`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(d => { _nrSla = d && !d.error ? d : null; _nrPintarSla(); })
+        .catch(() => {});
+}
+
+function _nrPintarSla() {
+    const el = document.getElementById("nr-sla-info");
+    if (!el) return;
+    if (!_nrSla) { el.innerText = ""; return; }
+    const meu = (_nrSla.por_transportadora || []).find(t => t.transportadora === _nrTransp);
+    if (_nrTransp === "loggi") {
+        // A Loggi calcula pelo próprio relatório; a planilha só entra pro polo.
+        el.innerText = meu ? `prazo do relatório · ${meu.cidades} cidades com polo` : "prazo do relatório";
+        return;
+    }
+    el.innerText = meu
+        ? `prazo por planilha · ${meu.cidades} cidades`
+        : "sem prazos na planilha para esta transportadora";
 }
 
 // ── Dias de atraso ──
@@ -489,8 +572,8 @@ function _nrRenderizar() {
     document.getElementById("nr-tiles").innerHTML = tiles;
 
     // UMA tabela, alternada pela aba. Empilhar as duas dobrava a altura da página.
-    _nrTabela("nr-tabela", _nrLinhas, _nrDim, _nrDim === "entregador" ? "Entregador" : "Cidade");
-    const rotDim = _nrDim === "entregador" ? "entregador" : "cidade";
+    _nrTabela("nr-tabela", _nrLinhas, _nrDim, NR_DIMENSOES[_nrDim]);
+    const rotDim = NR_DIMENSOES[_nrDim].toLowerCase();
     document.getElementById("nr-gr-vol-titulo").innerText = `Volume por ${rotDim}`;
     document.getElementById("nr-gr-mix-titulo").innerText = `Composição do atraso por ${rotDim}`;
     _nrGraficar(linhas, porFaixa);
@@ -784,7 +867,9 @@ function _nrLerArquivo(file) {
             const lido = _nrMapear(grid);
             if (lido.erro) return _nrMsg(_nrEsc(lido.erro), "erro");
             if (!lido.dados.length) return _nrMsg("O arquivo não tem nenhuma linha preenchida.", "erro");
-            _nrArquivo = { nome: file.name, linhas: lido.dados };
+            // Guarda se o arquivo traz prazo: é o que decide o rótulo da prévia e, no
+            // servidor, se o prazo vem do arquivo ou do SLA da cidade.
+            _nrArquivo = { nome: file.name, linhas: lido.dados, temPrazo: (NR_COLUNAS[_nrTransp] || []).some(c => c.id === "prazo") };
             if (lido.faltando.length) {
                 _nrMsg(`Colunas não encontradas (entram em branco): <strong>${_nrEsc(lido.faltando.join(", "))}</strong>.`, "aviso");
             }
@@ -801,7 +886,7 @@ function _nrLerArquivo(file) {
 // em branco antes da tabela) e casa as colunas pelo nome normalizado.
 function _nrMapear(grid) {
     const cols = NR_COLUNAS[_nrTransp];
-    if (!cols) return { erro: `O relatório da ${_nrCfg().rotulo} ainda não está configurado.` };
+    if (!cols) return { erro: `O relatório da ${_nrCfg().rotulo} ainda não está configurado. Me mande um arquivo de exemplo para eu mapear as colunas.` };
 
     let cabIdx = -1, indices = null;
     for (let i = 0; i < Math.min(grid.length, 10); i++) {
@@ -829,7 +914,13 @@ function _nrMapear(grid) {
             obj[col.id] = idx === undefined ? "" : String(linha[idx] ?? "").trim();
         }
         if (!Object.values(obj).some(v => v)) continue; // linha vazia no fim do arquivo
-        Object.assign(obj, _nrPartesEndereco(obj.endereco));
+        // Cidade só sai do endereço quando o relatório não tem coluna própria — a Loggi não
+        // tem, as outras têm. Sobrescrever a coluna com o palpite do endereço seria trocar
+        // um dado certo por um extraído.
+        const partes = _nrPartesEndereco(obj.endereco);
+        obj.uf  = obj.uf  || partes.uf;
+        obj.cep = obj.cep || partes.cep;
+        obj.cidade = (obj.cidade || "").trim() || partes.cidade;
         dados.push(obj);
     }
     return { dados, faltando };
@@ -875,13 +966,14 @@ function _nrPintarPrevia() {
         </div>
         ${semCidade ? `<div class="nr-aviso">Em ${semCidade} linha${semCidade !== 1 ? "s" : ""} não consegui identificar a cidade pelo endereço — elas entram como "sem informação" na tabela por cidade.</div>` : ""}
         <table class="ant-hist-table">
-            <thead><tr><th>Entregador</th><th>Cidade</th><th>Prazo</th><th>Status</th><th>Código</th></tr></thead>
+            <thead><tr><th>Entregador</th><th>Cidade</th><th>${_nrArquivo.temPrazo ? "Prazo" : "Recebimento"}</th><th>Status</th><th>Código</th></tr></thead>
             <tbody>
                 ${amostra.map(l => `
                 <tr>
                     <td data-label="Entregador">${_nrEsc(l.entregador) || "—"}</td>
                     <td data-label="Cidade">${_nrEsc(l.cidade) || '<span style="color:#717f95">—</span>'}</td>
-                    <td data-label="Prazo">${_nrEsc(_nrDataCurta(l.prazo))}</td>
+                    <td data-label="${_nrArquivo.temPrazo ? "Prazo" : "Recebimento"}">${
+                        _nrEsc(_nrDataCurta(_nrArquivo.temPrazo ? l.prazo : l.data_recebimento))}</td>
                     <td data-label="Status">${_nrEsc(l.status) || "—"}</td>
                     <td data-label="Código" style="font-family:monospace;font-size:11.5px">${_nrEsc(l.codigo_barras) || "—"}</td>
                 </tr>`).join("")}
@@ -932,6 +1024,15 @@ function _nrEnviar() {
                 }
                 _fecharModal("modal-nr-upload");
                 _nrCarregar();
+                // Cidade fora da planilha vira pacote sem prazo. Avisar na hora do envio é o
+                // único momento em que dá pra ligar a causa ao efeito — depois vira só um
+                // número esquisito na tela.
+                if (d.sem_sla) {
+                    gcAlert(`${d.sem_sla.toLocaleString("pt-BR")} pacotes ficaram sem prazo: a cidade deles não está na planilha desta transportadora (${d.cidades_no_sla} cidades cadastradas).
+
+Eles aparecem na nota abaixo da tabela, fora das faixas.`,
+                        "Cidades sem prazo");
+                }
             })
             .catch(() => {
                 _nrEnviando = false;
