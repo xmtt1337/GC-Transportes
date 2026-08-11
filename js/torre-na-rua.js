@@ -53,15 +53,14 @@ const NR_CORES = {
 let _nrTransp   = "loggi";
 let _nrLinhas   = [];      // retrato carregado do servidor
 let _nrMeta     = {};      // { importado_em, importado_por }
-let _nrStatus   = "todos"; // recorte por status do pacote
 let _nrArquivo  = null;    // { nome, linhas } lido e aguardando envio
 let _nrEnviando = false;
 let _nrGraficos = {};      // instâncias do Chart.js, pra destruir antes de redesenhar
+let _nrPacotes  = [];      // pedidos da célula aberta no modal
+let _nrPacTitulo = "";
 
 function abrirTorreNaRua(event) {
     if (event) event.preventDefault();
-    _nrStatus = "todos";
-    _nrFecharUpload();
     mostrarTela("tela-torre-na-rua");
     _nrPintarTranspTabs();
     _nrCarregar();
@@ -87,8 +86,6 @@ function _nrPintarTranspTabs() {
 function _nrTrocarTransp(chave) {
     if (_nrTransp === chave) return;
     _nrTransp = chave;
-    _nrStatus = "todos";
-    _nrFecharUpload();
     _nrPintarTranspTabs();
     _nrCarregar();
 }
@@ -124,19 +121,14 @@ function _nrCarregar() {
 
 function _nrPintarMeta(meta) {
     const el = document.getElementById("nr-meta");
-    if (!meta || !meta.importado_em) {
-        el.className = "shr-ultima vazia";
-        el.innerHTML = `<span class="shr-ultima-label">${_nrEsc(_nrCfg().rotulo)}</span>
-            <span class="shr-ultima-valor">Nenhum relatório enviado</span>`;
-        return;
-    }
+    if (!meta || !meta.importado_em) { el.innerHTML = ""; return; }
     const d = new Date(meta.importado_em);
-    el.className = "shr-ultima";
-    el.innerHTML = `
-        <span class="shr-ultima-label">Atualizado</span>
-        <span class="shr-ultima-valor">${d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</span>
-        <span class="shr-ultima-obs">${_nrEsc(meta.importado_por) || "—"} · ${
-            _nrLinhas.length.toLocaleString("pt-BR")} pacote${_nrLinhas.length !== 1 ? "s" : ""}</span>`;
+    // Uma linha só, ao lado do botão: a data do retrato é contexto do número, não um bloco
+    // próprio disputando espaço com ele.
+    el.innerHTML = `${_nrLinhas.length.toLocaleString("pt-BR")} pacotes · ${
+        d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit",
+                                    hour: "2-digit", minute: "2-digit" })}${
+        meta.importado_por ? " · " + _nrEsc(meta.importado_por) : ""}`;
 }
 
 // ── Dias de atraso ──
@@ -155,27 +147,6 @@ function _nrFaixaDe(linha) {
     const dias = _nrDiasAtraso(linha.prazo);
     if (dias === null) return null;           // sem prazo legível: fica fora das faixas
     return NR_FAIXAS.find(f => dias <= f.ate) || NR_FAIXAS[NR_FAIXAS.length - 1];
-}
-
-// ── Recorte por status ──
-// Os chips saem dos valores que o próprio arquivo trouxe. Fixar uma lista aqui daria uma
-// tela que some com pacote sempre que a transportadora inventar um status novo.
-function _nrStatusDisponiveis() {
-    const cont = new Map();
-    _nrLinhas.forEach(l => {
-        const s = (l.status || "—").trim() || "—";
-        cont.set(s, (cont.get(s) || 0) + 1);
-    });
-    return [...cont.entries()].sort((a, b) => b[1] - a[1]);
-}
-
-function _nrVisiveis() {
-    return _nrStatus === "todos" ? _nrLinhas : _nrLinhas.filter(l => (l.status || "—").trim() === _nrStatus);
-}
-
-function _nrFiltrarStatus(s) {
-    _nrStatus = s;
-    _nrRenderizar();
 }
 
 // ── Tabela dinâmica ──
@@ -209,7 +180,7 @@ function _nrTabela(alvoId, linhas, campo, rotuloDim) {
     const totalGeral = dados.reduce((s, l) => s + l.total, 0);
 
     el.innerHTML = `
-        <table class="ant-hist-table nr-pivot">
+        <table class="ant-hist-table nr-pivot" data-campo="${campo}" data-dim="${_nrEsc(rotuloDim)}">
             <thead>
                 <tr>
                     <th>${_nrEsc(rotuloDim)}</th>
@@ -219,10 +190,12 @@ function _nrTabela(alvoId, linhas, campo, rotuloDim) {
             </thead>
             <tbody>
                 ${dados.map(l => `
-                <tr>
+                <tr data-valor="${_nrEsc(l.nome)}">
                     <td data-label="${_nrEsc(rotuloDim)}">${_nrEsc(l.nome)}</td>
-                    ${NR_FAIXAS.map(f => `<td data-label="${f.rotulo}" class="nr-num${l[f.chave] ? "" : " zero"}">${l[f.chave] || "—"}</td>`).join("")}
-                    <td data-label="Total" class="nr-num nr-total">${l.total}</td>
+                    ${NR_FAIXAS.map(f => l[f.chave]
+                        ? `<td data-label="${f.rotulo}" class="nr-num nr-click" data-faixa="${f.chave}">${l[f.chave]}</td>`
+                        : `<td data-label="${f.rotulo}" class="nr-num zero">—</td>`).join("")}
+                    <td data-label="Total" class="nr-num nr-total nr-click" data-faixa="">${l.total}</td>
                 </tr>`).join("")}
             </tbody>
             <tfoot>
@@ -233,20 +206,95 @@ function _nrTabela(alvoId, linhas, campo, rotuloDim) {
                 </tr>
             </tfoot>
         </table>`;
+
+    // Delegação em vez de onclick por célula: nome de entregador e de cidade vem com
+    // apóstrofo ("Herval D'Oeste") e acento, e montar a chamada dentro do atributo exigiria
+    // escapar isso à mão em toda linha — um nome novo quebraria a tabela inteira.
+    el.querySelector("table").onclick = ev => {
+        const td = ev.target.closest("td.nr-click");
+        if (!td) return;
+        const tr = td.closest("tr");
+        _nrAbrirPacotes(campo, tr.dataset.valor, td.dataset.faixa, rotuloDim);
+    };
+}
+
+// ── Pedidos por trás de um número ──
+// A tabela responde "quantos"; a pergunta seguinte é sempre "quais". Sem isso a pessoa
+// via 12 pacotes com 4 dias de atraso e não tinha como descobrir de quem cobrar.
+function _nrAbrirPacotes(campo, valor, faixaChave, rotuloDim) {
+    const faixa = NR_FAIXAS.find(f => f.chave === faixaChave);
+    _nrPacotes = _nrLinhas.filter(l => {
+        const chave = (l[campo] || "").trim() || "— sem informação —";
+        if (chave !== valor) return false;
+        const f = _nrFaixaDe(l);
+        if (!f) return false;                       // sem prazo não entra em faixa nenhuma
+        return !faixaChave || f.chave === faixaChave;  // total da linha = todas as faixas
+    });
+    _nrPacTitulo = `${valor} · ${faixa ? faixa.rotulo : "todos"}`;
+    document.getElementById("nr-pac-titulo").innerText = valor;
+    document.getElementById("nr-pac-sub").innerText =
+        `${rotuloDim} · ${faixa ? faixa.rotulo : "todas as faixas"} · ${_nrPacotes.length} pacote${_nrPacotes.length !== 1 ? "s" : ""}`;
+    document.getElementById("nr-pac-busca").value = "";
+    _nrPacRender();
+    _abrirModal("modal-nr-pacotes");
+}
+
+function _nrPacFiltrados() {
+    const termo = (document.getElementById("nr-pac-busca")?.value || "").trim().toLowerCase();
+    if (!termo) return _nrPacotes;
+    return _nrPacotes.filter(l => [l.codigo_barras, l.id_pacote, l.destinatario, l.cidade, l.status]
+        .some(v => String(v || "").toLowerCase().includes(termo)));
+}
+
+function _nrPacRender() {
+    const lista = _nrPacFiltrados();
+    const el = document.getElementById("nr-pac-lista");
+    if (!lista.length) {
+        el.innerHTML = `<div class="fechamento-empty">Nenhum pedido neste filtro.</div>`;
+        return;
+    }
+    el.innerHTML = lista.map(l => {
+        const dias = _nrDiasAtraso(l.prazo);
+        const cor = dias >= 4 ? "#ef4444" : dias >= 1 ? "#eab308" : "#8494a9";
+        return `
+        <div class="nr-pac-item">
+            <div class="nr-pac-topo">
+                <span class="nr-pac-cod">${_nrEsc(l.codigo_barras) || _nrEsc(l.id_pacote) || "—"}</span>
+                <span class="nr-pac-dias" style="color:${cor}">${
+                    dias === null ? "sem prazo" : dias <= 0 ? "no prazo" : `${dias} dia${dias !== 1 ? "s" : ""}`}</span>
+            </div>
+            <div class="nr-pac-nome">${_nrEsc(l.destinatario) || "—"}</div>
+            <div class="nr-pac-obs">${_nrEsc(l.cidade) || "—"}${l.status ? " · " + _nrEsc(l.status) : ""}${
+                l.prazo ? " · prazo " + _nrEsc(_nrDataCurta(l.prazo)) : ""}</div>
+        </div>`;
+    }).join("");
+}
+
+function _nrPacExportar() {
+    const lista = _nrPacFiltrados();
+    if (!lista.length) return gcAlert("Nenhum pedido para exportar.");
+    const dados = lista.map(l => ({
+        "Código":       l.codigo_barras || "",
+        "Id do pacote": l.id_pacote || "",
+        "Destinatário": l.destinatario || "",
+        "Cidade":       l.cidade || "",
+        "UF":           l.uf || "",
+        "CEP":          l.cep || "",
+        "Entregador":   l.entregador || "",
+        "Prazo":        _nrDataCurta(l.prazo),
+        "Dias":         _nrDiasAtraso(l.prazo) ?? "",
+        "Status":       l.status || "",
+        "Endereço":     l.endereco || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(dados);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Na rua");
+    const limpo = _nrPacTitulo.replace(/[^\wÀ-ɏ]+/g, "-").replace(/^-|-$/g, "");
+    XLSX.writeFile(wb, `na_rua_${_nrTransp}_${limpo}.xlsx`);
 }
 
 function _nrRenderizar() {
-    // Chips de status, com a contagem de cada um.
-    const disp = _nrStatusDisponiveis();
-    document.getElementById("nr-status-tabs").innerHTML =
-        `<button type="button" class="filtro-tab${_nrStatus === "todos" ? " active" : ""}"
-                 onclick="_nrFiltrarStatus('todos')">Todos <span class="nr-chip-n">${_nrLinhas.length}</span></button>` +
-        disp.map(([s, n]) => `
-            <button type="button" class="filtro-tab${_nrStatus === s ? " active" : ""}"
-                    onclick="_nrFiltrarStatus('${_nrEsc(s).replace(/'/g, "\\'")}')">${_nrEsc(s)} <span class="nr-chip-n">${n}</span></button>
-        `).join("");
-
-    const linhas = _nrVisiveis();
+    const linhas = _nrLinhas;
 
     // Cards do topo: o total e o que já passou de 3 dias, que é o que exige ação hoje.
     const porFaixa = Object.fromEntries(NR_FAIXAS.map(f => [f.chave, 0]));
@@ -351,7 +399,6 @@ function _nrGraficar(linhas, porFaixa) {
 
 // ── Envio do relatório ──
 function _nrAbrirUpload() {
-    document.getElementById("nr-upload").style.display = "";
     document.getElementById("nr-upload-titulo").innerText = `Relatório da ${_nrCfg().rotulo}`;
     _nrMsg("", null);
     _nrArquivo = null;
@@ -365,13 +412,7 @@ function _nrAbrirUpload() {
         area.classList.remove("drag-over");
         if (e.dataTransfer.files && e.dataTransfer.files.length) _nrLerArquivo(e.dataTransfer.files[0]);
     };
-    document.getElementById("nr-upload").scrollIntoView({ behavior: "smooth", block: "nearest" });
-}
-
-function _nrFecharUpload() {
-    const el = document.getElementById("nr-upload");
-    if (el) el.style.display = "none";
-    _nrArquivo = null;
+    _abrirModal("modal-nr-upload");
 }
 
 function _nrEscolherArquivo(input) {
@@ -562,7 +603,7 @@ function _nrEnviar() {
                     btn.textContent = `Enviar ${n.toLocaleString("pt-BR")} linhas`;
                     return _nrMsg(_nrEsc(d.error) || "Não foi possível enviar.", "erro");
                 }
-                _nrFecharUpload();
+                _fecharModal("modal-nr-upload");
                 _nrCarregar();
             })
             .catch(() => {

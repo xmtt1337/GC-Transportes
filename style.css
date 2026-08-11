@@ -3781,34 +3781,54 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .ta-msg-err { background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); color: #f87171; }
 
 /* ===== TORRE DE CONTROLE — NA RUA ===== */
+/* Barra do topo: seletor à esquerda, contexto + ação à direita, tudo numa linha só.
+   Antes o botão era primário e do tamanho de um "salvar", competindo com os números
+   que são o conteúdo da tela. */
 .nr-topo {
     display: flex; align-items: center; justify-content: space-between;
-    gap: 14px; flex-wrap: wrap; margin-bottom: 14px;
+    gap: 14px; flex-wrap: wrap; margin-bottom: 18px;
 }
 .nr-topo .wac-transp-tabs { margin-bottom: 0; }
-.nr-btn-upload { display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.nr-topo-dir { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.nr-meta { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
-.nr-status-tabs { flex-wrap: wrap; margin: 16px 0 4px; }
-/* A contagem ao lado do status é o que diz onde tem trabalho — sem ela o chip é só um
-   nome e a pessoa precisa clicar em cada um pra descobrir qual tem volume. */
-.nr-chip-n {
-    margin-left: 6px; font-size: 10.5px; font-weight: 700; opacity: 0.65;
-    font-variant-numeric: tabular-nums;
+.nr-secao-topo {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    margin: 24px 0 8px;
 }
-.nr-secao { border: none; padding: 0; margin: 26px 0 10px; display: block; }
+.nr-secao { border: none; padding: 0; margin: 0; }
+.nr-dica { font-size: 11.5px; color: #717f95; }
 
-/* Tabela dinâmica: os números são a leitura principal, então vão tabulares e alinhados
-   à direita — coluna de número desalinhada obriga a comparar dígito por dígito. */
+/* A tabela rola por dentro em vez de esticar a página: com 60 entregadores os gráficos
+   ficavam a três telas de distância do número que os explica. */
+.nr-tabela-wrap {
+    max-height: 340px; overflow: auto;
+    border: 1px solid var(--border); border-radius: 10px;
+}
+.nr-tabela-wrap .ant-hist-table { margin: 0; border: none; }
+.nr-pivot th, .nr-pivot td { padding: 7px 10px; font-size: 12.5px; }
+/* Cabeçalho e rodapé fixos: rolando a lista, some a referência de qual coluna é qual e
+   qual é o total — que é justamente o que se compara. */
+.nr-pivot thead th {
+    position: sticky; top: 0; z-index: 2;
+    background: #131b28; white-space: nowrap;
+}
+.nr-pivot tfoot td {
+    position: sticky; bottom: 0; z-index: 2;
+    background: #131b28; border-top: 1px solid rgba(255,255,255,0.12);
+    font-weight: 700; color: #cbd5e1;
+}
 .nr-pivot .nr-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .nr-pivot th.nr-num { text-align: right; }
-.nr-pivot .nr-num.zero { color: #4a5568; }
+.nr-pivot .nr-num.zero { color: #3d4759; }
 .nr-pivot .nr-total { font-weight: 700; color: #e2e8f0; }
-.nr-pivot tfoot td {
-    border-top: 1px solid rgba(255,255,255,0.12);
-    font-weight: 700; color: #cbd5e1; background: rgba(255,255,255,0.02);
-}
-/* Quadradinho da cor da faixa no cabeçalho: é o que liga a coluna da tabela à barra do
-   gráfico logo abaixo, sem precisar de legenda repetida. */
+/* Número que abre a lista de pedidos. Sublinhado pontilhado no hover em vez de link azul:
+   a coluna inteira ficaria azul e o olho perderia a referência de onde estão os valores. */
+.nr-pivot .nr-click { cursor: pointer; }
+.nr-pivot .nr-click:hover { color: #fff; text-decoration: underline dotted; text-underline-offset: 3px; }
+.nr-pivot tbody tr:hover td { background: rgba(255,255,255,0.03); }
+/* Quadradinho da cor da faixa no cabeçalho: liga a coluna da tabela à barra do gráfico
+   logo abaixo, sem repetir uma legenda. */
 .nr-chip-cor {
     display: inline-block; width: 8px; height: 8px; border-radius: 2px;
     margin-right: 6px; vertical-align: middle;
@@ -3824,18 +3844,30 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 }
 
 .nr-graficos {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
     gap: 14px; margin: 26px 0 8px;
 }
 .nr-grafico-card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 12px; padding: 16px 18px 12px;
 }
-.nr-grafico-titulo { font-size: 13px; font-weight: 700; color: #cbd5e1; margin-bottom: 14px; }
-/* Altura fixa: o Chart.js precisa de um container com altura definida, senão ele cresce
-   a cada redesenho até a página virar um rolo. */
-.nr-grafico-area { position: relative; height: 260px; }
+.nr-grafico-titulo { font-size: 12.5px; font-weight: 700; color: #cbd5e1; margin-bottom: 14px; }
+/* Altura fixa: o Chart.js precisa de container com altura definida, senão cresce a cada
+   redesenho até a página virar um rolo. */
+.nr-grafico-area { position: relative; height: 250px; }
 .nr-grafico-vazio {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     font-size: 13px; color: #8494a9; text-align: center;
 }
+
+/* ── Pedidos de uma célula ── */
+.nr-pac-lista { max-height: 46vh; overflow-y: auto; }
+.nr-pac-item {
+    padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px;
+    margin-bottom: 6px; background: rgba(255,255,255,0.02);
+}
+.nr-pac-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.nr-pac-cod { font-family: monospace; font-size: 12px; font-weight: 700; color: #e2e8f0; word-break: break-all; }
+.nr-pac-dias { font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.nr-pac-nome { font-size: 12.5px; color: #cbd5e1; margin-top: 3px; }
+.nr-pac-obs  { font-size: 11.5px; color: #8494a9; margin-top: 2px; }
