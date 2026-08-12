@@ -372,18 +372,22 @@ function _scaBipar(codigoLido) {
             return _scaMsg(_scaEsc(d.error) || "Erro ao bipar.", "erro");
         }
         const info = SCA_RESULTADOS[d.resultado] || { rotulo: d.resultado, cor: "#eab308" };
+        // Bipe repetido não é mais um "já foi bipado" seco: o servidor reavaliou o pacote e
+        // mandou a situação de agora. O aviso vai junto pra pessoa não achar que somou mais
+        // um ao total — mas quem manda no apito é o problema, não a repetição.
+        const rep = d.repetido ? ` <span style="color:#8494a9">(bipado de novo)</span>` : "";
         if (d.resultado === "ok" && d.status_ok === false) {
             // Cidade certa, mas o pacote não deu entrada no hub. Apita como erro porque
             // também para a esteira — só que o motivo é outro, e a mensagem diz qual.
             _gcBeepErro(); _scaFlash("err");
             _scaMsg(`⚠ <strong>${_scaEsc(d.codigo)}</strong> é de ${_scaEsc(d.esperado)}, mas o status é <strong>${
-                _scaEsc(d.status_pedido) || "—"}</strong> — ainda não foi recebido no hub.`, "aviso");
+                _scaEsc(d.status_pedido) || "—"}</strong> — ainda não foi recebido no hub.${rep}`, "aviso");
         } else if (d.resultado === "ok") {
             _gcBeepSucesso(); _scaFlash("ok");
             // O detalhe só vem preenchido quando o CEP está em mais de uma cidade — nesse
             // caso o bipe confere, mas a pessoa precisa saber que a planilha está ambígua.
-            _scaMsg(`✓ <strong>${_scaEsc(d.codigo)}</strong> confere com <strong>${_scaEsc(d.esperado)}</strong>.${
-                d.detalhe ? ` <span style="color:#eab308">${_scaEsc(d.detalhe)}</span>` : ""}`, "ok");
+            _scaMsg(`✓ <strong>${_scaEsc(d.codigo)}</strong> ${d.repetido ? "já estava conferido" : "confere"} com <strong>${
+                _scaEsc(d.esperado)}</strong>.${d.detalhe ? ` <span style="color:#eab308">${_scaEsc(d.detalhe)}</span>` : ""}`, "ok");
         } else {
             // Divergência e "não encontrado" apitam igual: os dois param a esteira.
             _gcBeepErro(); _scaFlash("err");
@@ -392,10 +396,15 @@ function _scaBipar(codigoLido) {
             const extraStatus = d.status_ok === false
                 ? ` E o status é <strong>${_scaEsc(d.status_pedido) || "—"}</strong>, não recebido no hub.` : "";
             _scaMsg(d.resultado === "divergente"
-                ? `⚠ <strong>${_scaEsc(d.codigo)}</strong> é de <strong>${_scaEsc(d.encontrado)}</strong>, não de ${_scaEsc(d.esperado)}.${extraStatus}`
-                : `⚠ <strong>${_scaEsc(d.codigo)}</strong> — ${_scaEsc(d.detalhe || info.rotulo)}`,
+                ? `⚠ <strong>${_scaEsc(d.codigo)}</strong> é de <strong>${_scaEsc(d.encontrado)}</strong>, não de ${_scaEsc(d.esperado)}.${extraStatus}${rep}`
+                : `⚠ <strong>${_scaEsc(d.codigo)}</strong> — ${_scaEsc(d.detalhe || info.rotulo)}${extraStatus}${rep}`,
                 d.resultado === "divergente" ? "erro" : "aviso");
         }
+        // Repetido substitui a linha que já existe em vez de somar outra: é o mesmo pacote,
+        // reavaliado. Duas linhas do mesmo código inflariam os cartões do topo.
+        const alvoRep = String(d.codigo || "").toUpperCase();
+        const jaNaLista = _scaBipagens.findIndex(b => String(b.codigo || "").toUpperCase() === alvoRep);
+        if (jaNaLista >= 0) _scaBipagens.splice(jaNaLista, 1);
         _scaBipagens.unshift(d);
         // Tira da lista de faltantes na hora, sem ida ao servidor: a cada bipe uma
         // consulta deixaria a bipagem em rajada lenta.

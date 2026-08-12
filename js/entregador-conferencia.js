@@ -432,11 +432,20 @@ function _cenBipar(codigoLido) {
 // entregador mostrava só o rótulo genérico, e ele é quem está longe do galpão.
 function _cenTextoResultado(d) {
     const rotulo = (CEN_RESULTADOS[d.resultado] || {}).rotulo || "";
-    if (d.resultado === "ok") return d.detalhe || "Confere";
-    if (d.resultado === "divergente" && d.encontrado) {
-        return `Esse pacote é do ${d.encontrado} — não é da sua rota`;
+    const rep = d.repetido ? " (bipado de novo)" : "";
+    if (d.resultado === "ok") {
+        // Pacote na rota certa que não consta recebido no hub. Vale dizer — é a explicação
+        // de por que ele pode sumir do sistema depois —, mas não apita erro: ele está com o
+        // pacote na mão, e alarme aqui só faria ele parar sem ter o que resolver na rua.
+        if (d.status_ok === false) {
+            return `Confere, mas o status é ${d.status_pedido || "—"} — não consta recebido no hub${rep}`;
+        }
+        return (d.detalhe || (d.repetido ? "Já estava conferido" : "Confere")) + (d.detalhe ? rep : "");
     }
-    return d.detalhe || rotulo;
+    if (d.resultado === "divergente" && d.encontrado) {
+        return `Esse pacote é do ${d.encontrado} — não é da sua rota${rep}`;
+    }
+    return (d.detalhe || rotulo) + rep;
 }
 
 // Som, cor e texto do bipe. O som é o que importa de verdade: conferindo pacote na mão,
