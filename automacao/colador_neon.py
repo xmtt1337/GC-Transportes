@@ -35,6 +35,7 @@ import win32gui
 
 from ponte_navegador import PORTA_PADRAO, Ponte
 
+VERSAO = '2.0'   # subir junto com mudança de comportamento
 APP_ID = 'GC.Transportes.ColadorNeon.1.0'
 try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
@@ -329,7 +330,7 @@ class ColadorApp:
         ctk.set_default_color_theme("blue")
 
         self.root = ctk.CTk()
-        self.root.title("GC TRANSPORTES - COLADOR NEON")
+        self.root.title(f"GC TRANSPORTES - COLADOR NEON v{VERSAO}")
         self.root.geometry("520x760")
         self.root.resizable(False, False)
         self.root.protocol("WM_DELETE_WINDOW", self.ao_fechar)
@@ -348,8 +349,11 @@ class ColadorApp:
             frame, text="COLADOR NEON",
             font=("Segoe UI", 20, "bold"), text_color="#2c7be5",
         ).pack(pady=(6, 0))
+        # A versão fica à vista porque é fácil abrir uma cópia velha do .exe e
+        # achar que a mudança não veio.
         ctk.CTkLabel(
-            frame, text=f"tabela {TABELA} · lotes reservados no banco",
+            frame,
+            text=f"v{VERSAO} · controle por botão · tabela {TABELA}",
             font=("Segoe UI", 11), text_color="#7a8aa0",
         ).pack(pady=(0, 14))
 
