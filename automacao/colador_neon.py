@@ -48,6 +48,31 @@ CONFIG_PATH = os.path.join(CONFIG_DIR, 'config.json')
 TABELA = 'shopee_recebimentos'
 RESERVA_EXPIRA = '15 minutes'
 ESPERA_NOVOS = 5  # segundos entre uma checagem e outra no modo contínuo
+CARENCIA_PADRAO = 60  # segundos de folga entre receber e atribuir no SPX
+
+# Os dois trabalhos que o colador faz no SPX, cada um com suas colunas de
+# controle. O AT Cluster é o mesmo código do recebimento, colado depois — e o
+# "depois" não é um delay no relógio: ele só enxerga o que o recebimento já
+# marcou como colado. Se o recebimento parar, o AT para junto em vez de
+# atribuir pacote que o SPX ainda não recebeu.
+MODOS = {
+    'Recebimento': {
+        'colado_em': 'colado_em',
+        'colado_por': 'colado_por',
+        'reservado_em': 'reservado_em',
+        'reservado_por': 'reservado_por',
+        'depende_de': None,
+        'explicacao': 'recebe os pacotes no SPX',
+    },
+    'AT Cluster': {
+        'colado_em': 'at_colado_em',
+        'colado_por': 'at_colado_por',
+        'reservado_em': 'at_reservado_em',
+        'reservado_por': 'at_reservado_por',
+        'depende_de': 'colado_em',
+        'explicacao': 'atribui no SPX o que já foi recebido',
+    },
+}
 
 
 def carregar_config():
@@ -122,16 +147,21 @@ class Banco:
 
 
 def preparar_schema(db):
-    """Cria as colunas de controle do colador. Idempotente."""
-    db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS colado_em TIMESTAMP", retorna=False)
-    db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS colado_por TEXT", retorna=False)
-    db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS reservado_em TIMESTAMP", retorna=False)
-    db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS reservado_por TEXT", retorna=False)
-    db.executar(
-        f"CREATE INDEX IF NOT EXISTS idx_shopee_receb_colador "
-        f"ON {TABELA} (dia, id) WHERE colado_em IS NULL",
-        retorna=False,
-    )
+    """Cria as colunas de controle dos dois modos. Idempotente."""
+    for modo, c in MODOS.items():
+        db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS {c['colado_em']} TIMESTAMP",
+                    retorna=False)
+        db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS {c['colado_por']} TEXT",
+                    retorna=False)
+        db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS {c['reservado_em']} TIMESTAMP",
+                    retorna=False)
+        db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS {c['reservado_por']} TEXT",
+                    retorna=False)
+        db.executar(
+            f"CREATE INDEX IF NOT EXISTS idx_shopee_receb_{c['colado_em']} "
+            f"ON {TABELA} (dia, id) WHERE {c['colado_em']} IS NULL",
+            retorna=False,
+        )
 
 
 FILTRO = """
@@ -139,16 +169,32 @@ FILTRO = """
       AND (%(xpt)s::text IS NULL OR xpt = %(xpt)s::text)
 """
 
-SQL_RESERVAR = f"""
+def _disponivel(modo):
+    """O que este modo pode colar agora.
+
+    No AT Cluster inclui a dependência do recebimento: só entra o que já foi
+    colado lá e passou da carência, pro SPX ter tido tempo de processar.
+    """
+    c = MODOS[modo]
+    cond = f"{c['colado_em']} IS NULL"
+    if c['depende_de']:
+        cond += (f" AND {c['depende_de']} IS NOT NULL"
+                 f" AND {c['depende_de']} < NOW() - make_interval(secs => %(carencia)s)")
+    return cond
+
+
+def sql_reservar(modo):
+    c = MODOS[modo]
+    return f"""
 UPDATE {TABELA}
-   SET reservado_em = NOW(), reservado_por = %(quem)s
+   SET {c['reservado_em']} = NOW(), {c['reservado_por']} = %(quem)s
  WHERE id IN (
        SELECT id
          FROM {TABELA}
-        WHERE colado_em IS NULL
-          AND (reservado_em IS NULL
-               OR reservado_por = %(quem)s
-               OR reservado_em < NOW() - INTERVAL '{RESERVA_EXPIRA}')
+        WHERE {_disponivel(modo)}
+          AND ({c['reservado_em']} IS NULL
+               OR {c['reservado_por']} = %(quem)s
+               OR {c['reservado_em']} < NOW() - INTERVAL '{RESERVA_EXPIRA}')
           {FILTRO}
         ORDER BY id
         LIMIT %(tam)s
@@ -157,41 +203,60 @@ UPDATE {TABELA}
  RETURNING id, codigo
 """
 
-SQL_CONFIRMAR = f"""
+
+def sql_confirmar(modo):
+    c = MODOS[modo]
+    return f"""
 UPDATE {TABELA}
-   SET colado_em = NOW(), colado_por = %(quem)s,
-       reservado_em = NULL, reservado_por = NULL
+   SET {c['colado_em']} = NOW(), {c['colado_por']} = %(quem)s,
+       {c['reservado_em']} = NULL, {c['reservado_por']} = NULL
  WHERE id = ANY(%(ids)s)
 """
 
-SQL_LIBERAR = f"""
+
+def sql_liberar(modo):
+    c = MODOS[modo]
+    return f"""
 UPDATE {TABELA}
-   SET reservado_em = NULL, reservado_por = NULL
- WHERE id = ANY(%(ids)s) AND colado_em IS NULL
+   SET {c['reservado_em']} = NULL, {c['reservado_por']} = NULL
+ WHERE id = ANY(%(ids)s) AND {c['colado_em']} IS NULL
 """
 
-SQL_CONTAR = f"""
-SELECT COUNT(*) FILTER (WHERE colado_em IS NULL) AS pendentes,
-       COUNT(*) FILTER (WHERE colado_em IS NOT NULL) AS colados,
+
+def sql_contar(modo):
+    """pendentes = dá pra colar agora; travados = esperando o estágio anterior."""
+    c = MODOS[modo]
+    travados = (f"COUNT(*) FILTER (WHERE {c['colado_em']} IS NULL "
+                f"AND {c['depende_de']} IS NULL)") if c['depende_de'] else "0"
+    return f"""
+SELECT COUNT(*) FILTER (WHERE {_disponivel(modo)}) AS pendentes,
+       COUNT(*) FILTER (WHERE {c['colado_em']} IS NOT NULL) AS colados,
+       {travados} AS travados,
        COUNT(*) AS total
   FROM {TABELA}
  WHERE TRUE
        {FILTRO}
 """
 
-SQL_PULAR = f"""
+
+def sql_pular(modo):
+    c = MODOS[modo]
+    return f"""
 UPDATE {TABELA}
-   SET colado_em = NOW(), colado_por = %(quem)s || ' [pulado]',
-       reservado_em = NULL, reservado_por = NULL
- WHERE colado_em IS NULL
+   SET {c['colado_em']} = NOW(), {c['colado_por']} = %(quem)s || ' [pulado]',
+       {c['reservado_em']} = NULL, {c['reservado_por']} = NULL
+ WHERE {c['colado_em']} IS NULL
        {FILTRO}
 """
 
-SQL_ZERAR = f"""
+
+def sql_zerar(modo):
+    c = MODOS[modo]
+    return f"""
 UPDATE {TABELA}
-   SET colado_em = NULL, colado_por = NULL,
-       reservado_em = NULL, reservado_por = NULL
- WHERE colado_em IS NOT NULL
+   SET {c['colado_em']} = NULL, {c['colado_por']} = NULL,
+       {c['reservado_em']} = NULL, {c['reservado_por']} = NULL
+ WHERE {c['colado_em']} IS NOT NULL
        {FILTRO}
 """
 
@@ -221,7 +286,9 @@ class ColadorApp:
         self.filtros_exec = {'dia': None, 'xpt': None}
         self.tam_lote_exec = 20
         self.continuo_exec = True
+        self.modo_exec = 'Recebimento'
         self.xpt_confirmado = False
+        self.modo_confirmado = False
 
         self.fila_ui = queue.Queue()
         self.fila_confirmar = queue.Queue()
@@ -288,6 +355,35 @@ class ColadorApp:
         self.conn_label = ctk.CTkLabel(frame, text="Desconectado",
                                        font=("Segoe UI", 11), text_color="#999999")
         self.conn_label.pack(pady=(2, 12))
+
+        # --- modo (o que este computador vai fazer no SPX)
+        caixa_modo = ctk.CTkFrame(frame, fg_color="#eef4ff", corner_radius=10)
+        caixa_modo.pack(fill="x", padx=12, pady=(0, 10))
+        linha_modo_sel = ctk.CTkFrame(caixa_modo, fg_color="transparent")
+        linha_modo_sel.pack(fill="x", padx=12, pady=(12, 4))
+        ctk.CTkLabel(linha_modo_sel, text="Modo:", font=("Segoe UI", 12, "bold"),
+                     width=50, anchor="w").pack(side="left")
+        self.modo_menu = ctk.CTkOptionMenu(
+            linha_modo_sel, width=200, values=list(MODOS),
+            command=lambda _v: self.ao_trocar_modo(),
+        )
+        self.modo_menu.set(self.cfg.get('modo') or 'Recebimento')
+        self.modo_menu.pack(side="left")
+        self.modo_desc = ctk.CTkLabel(caixa_modo, text="", font=("Segoe UI", 11),
+                                      text_color="#7a8aa0")
+        self.modo_desc.pack(padx=12, anchor="w")
+
+        self.linha_carencia = ctk.CTkFrame(caixa_modo, fg_color="transparent")
+        self.linha_carencia.pack(fill="x", padx=12, pady=(6, 12))
+        ctk.CTkLabel(self.linha_carencia, text="Só atribuir o recebido há mais de",
+                     font=("Segoe UI", 11)).pack(side="left")
+        self.carencia_entry = ctk.CTkEntry(self.linha_carencia, width=55)
+        self.carencia_entry.insert(0, str(self.cfg.get('carencia', CARENCIA_PADRAO)))
+        self.carencia_entry.pack(side="left", padx=6)
+        self.carencia_entry.bind("<FocusOut>", lambda _e: self.ao_mudar_filtro())
+        self.carencia_entry.bind("<Return>", lambda _e: self.ao_mudar_filtro())
+        ctk.CTkLabel(self.linha_carencia, text="segundos",
+                     font=("Segoe UI", 11)).pack(side="left")
 
         # --- filtros
         filtros = ctk.CTkFrame(frame, fg_color="#f5f9ff", corner_radius=10)
@@ -390,6 +486,7 @@ class ColadorApp:
             command=self.zerar_colados,
         ).pack(side="left", padx=4)
 
+        self.atualizar_visual_modo()
         if self.url_inicial:
             self.root.after(300, self.conectar)
 
@@ -460,9 +557,39 @@ class ColadorApp:
             print(f"Erro ao restaurar foco: {e}")
 
     # ----------------------------------------------------------- filtros
+    def modo_atual(self):
+        return self.modo_menu.get() if self.modo_menu.get() in MODOS else 'Recebimento'
+
+    def carencia(self):
+        try:
+            return max(0, min(3600, int(self.carencia_entry.get().strip())))
+        except ValueError:
+            return CARENCIA_PADRAO
+
     def filtros_atuais(self):
         dia = None if self.todos_dias.get() else (self.dia_entry.get().strip() or None)
-        return {'dia': dia, 'xpt': self.xpt_menu.get() or None}
+        return {'dia': dia, 'xpt': self.xpt_menu.get() or None, 'carencia': self.carencia()}
+
+    def atualizar_visual_modo(self):
+        """Deixa na cara qual trabalho este computador está fazendo."""
+        modo = self.modo_atual()
+        self.modo_desc.configure(text=MODOS[modo]['explicacao'])
+        # A carência só existe pra quem depende de outro estágio.
+        if MODOS[modo]['depende_de']:
+            self.linha_carencia.pack(fill="x", padx=12, pady=(6, 12))
+        else:
+            self.linha_carencia.pack_forget()
+
+    def ao_trocar_modo(self):
+        """Trocar de trabalho no meio da colagem embaralharia as duas filas."""
+        self.modo_confirmado = True
+        if self.executando:
+            self.stop_execution()
+            self.status_sessao.configure(
+                text=f"Colagem parada — modo mudou para {self.modo_atual()}",
+                text_color="#ff9900")
+        self.atualizar_visual_modo()
+        self.ao_mudar_filtro()
 
     def tamanho_lote(self):
         try:
@@ -479,6 +606,8 @@ class ColadorApp:
             'tamanho_lote': self.tamanho_lote(),
             'intervalo': round(self.interval_slider.get(), 1),
             'modo_continuo': self.modo_continuo.get(),
+            'modo': self.modo_atual(),
+            'carencia': self.carencia(),
         })
         try:
             salvar_config(self.cfg)
@@ -523,39 +652,77 @@ class ColadorApp:
         self.xpt_menu.set(atual if atual in valores else valores[0])
         self.persistir_config()
         self.contar_async()
-        if not self.xpt_confirmado:
+        if not self.modo_confirmado:
+            self.perguntar_modo()
+        elif not self.xpt_confirmado:
             self.perguntar_xpt()
+
+    def _dialogo_escolha(self, titulo, pergunta, ajuda, opcoes, ao_escolher, altura=280):
+        """Diálogo de botão grande que não fecha sem uma escolha."""
+        janela = ctk.CTkToplevel(self.root)
+        janela.title(titulo)
+        janela.geometry(f"420x{altura}")
+        janela.resizable(False, False)
+        janela.attributes('-topmost', True)
+        janela.protocol("WM_DELETE_WINDOW", lambda: None)
+        janela.after(100, janela.grab_set)
+
+        ctk.CTkLabel(janela, text=pergunta, font=("Segoe UI", 16, "bold"),
+                     text_color="#2c7be5").pack(pady=(24, 4))
+        ctk.CTkLabel(janela, text=ajuda, wraplength=360, justify="center",
+                     font=("Segoe UI", 12), text_color="#7a8aa0").pack(pady=(0, 16))
+
+        def escolher(valor):
+            janela.grab_release()
+            janela.destroy()
+            ao_escolher(valor)
+
+        for valor, legenda in opcoes:
+            botao = ctk.CTkFrame(janela, fg_color="transparent")
+            botao.pack(pady=4)
+            ctk.CTkButton(botao, text=valor, width=240, height=44,
+                          font=("Segoe UI", 14, "bold"),
+                          command=lambda v=valor: escolher(v)).pack()
+            if legenda:
+                ctk.CTkLabel(botao, text=legenda, font=("Segoe UI", 11),
+                             text_color="#7a8aa0").pack()
+
+    def perguntar_modo(self):
+        """Primeira pergunta da sessão: receber ou atribuir."""
+        def escolheu(valor):
+            self.modo_menu.set(valor)
+            self.modo_confirmado = True
+            self.atualizar_visual_modo()
+            self.persistir_config()
+            if not self.xpt_confirmado:
+                self.perguntar_xpt()
+            else:
+                self.ao_mudar_filtro()
+
+        self._dialogo_escolha(
+            titulo="O que este computador vai fazer?",
+            pergunta="O que este computador vai fazer?",
+            ajuda="O AT Cluster só cola o que o Recebimento já colou — "
+                  "não tem como atribuir na frente do recebimento.",
+            opcoes=[(m, MODOS[m]['explicacao']) for m in MODOS],
+            ao_escolher=escolheu, altura=300)
 
     def perguntar_xpt(self):
         """Escolha do XPT no início da sessão — cada um vai numa plataforma."""
         valores = list(self.xpt_menu.cget("values")) or ["XPT_CFC", "XPT_VIA"]
 
-        janela = ctk.CTkToplevel(self.root)
-        janela.title("Qual XPT?")
-        janela.geometry("400x260")
-        janela.resizable(False, False)
-        janela.attributes('-topmost', True)
-        janela.protocol("WM_DELETE_WINDOW", lambda: None)  # tem que escolher
-        janela.after(100, janela.grab_set)
-
-        ctk.CTkLabel(janela, text="Qual XPT você vai receber agora?",
-                     font=("Segoe UI", 16, "bold"), text_color="#2c7be5").pack(pady=(24, 4))
-        ctk.CTkLabel(janela, wraplength=340, justify="center", text_color="#7a8aa0",
-                     font=("Segoe UI", 12),
-                     text="Cada XPT é recebido numa plataforma diferente — o colador\n"
-                          "vai puxar só os códigos desse XPT.").pack(pady=(0, 18))
-
-        def escolher(valor):
+        def escolheu(valor):
             self.xpt_menu.set(valor)
             self.xpt_confirmado = True
-            janela.grab_release()
-            janela.destroy()
             self.ao_mudar_filtro()
 
-        for valor in valores:
-            ctk.CTkButton(janela, text=valor, width=220, height=42,
-                          font=("Segoe UI", 14, "bold"),
-                          command=lambda v=valor: escolher(v)).pack(pady=5)
+        self._dialogo_escolha(
+            titulo="Qual XPT?",
+            pergunta=f"Qual XPT, no modo {self.modo_atual()}?",
+            ajuda="Cada XPT é tratado numa plataforma diferente — "
+                  "o colador vai puxar só os códigos desse XPT.",
+            opcoes=[(v, None) for v in valores],
+            ao_escolher=escolheu, altura=260)
 
     def ao_trocar_xpt(self):
         """Trocar de XPT no meio da colagem misturaria plataformas — para antes."""
@@ -568,9 +735,11 @@ class ColadorApp:
         self.ao_mudar_filtro()
 
     def contar_async(self):
+        modo = self.modo_atual()
+
         def tarefa():
             try:
-                linha = self.db_ui.executar(SQL_CONTAR, self.filtros_atuais())[0]
+                linha = self.db_ui.executar(sql_contar(modo), self.filtros_atuais())[0]
                 self.ui(lambda: self.mostrar_contagem(*linha))
             except Exception as e:
                 msg = str(e).strip().split("\n")[0][:90]
@@ -579,12 +748,13 @@ class ColadorApp:
 
         threading.Thread(target=tarefa, daemon=True).start()
 
-    def mostrar_contagem(self, pendentes, colados, total):
+    def mostrar_contagem(self, pendentes, colados, travados, total):
         self.pendentes_banco = pendentes
+        texto = f"{pendentes} a colar  ·  {colados} já colados  ·  {total} no filtro"
+        if travados:
+            texto += f"\n{travados} ainda esperando o recebimento"
         self.status_banco.configure(
-            text=f"{pendentes} a colar  ·  {colados} já colados  ·  {total} no filtro",
-            text_color="#444444" if pendentes else "#2ecc71",
-        )
+            text=texto, text_color="#444444" if pendentes else "#2ecc71")
         self.atualizar_status()
 
     # ------------------------------------------------------------ execução
@@ -601,6 +771,11 @@ class ColadorApp:
         if not self.db_ui:
             self.conn_label.configure(text="Conecte ao banco antes de iniciar",
                                       text_color="#e74c3c")
+            return
+        if not self.modo_confirmado:
+            self.status_sessao.configure(text="Escolha o modo antes de iniciar",
+                                         text_color="#e74c3c")
+            self.perguntar_modo()
             return
         if not self.xpt_confirmado:
             self.status_sessao.configure(text="Escolha o XPT antes de iniciar",
@@ -630,6 +805,7 @@ class ColadorApp:
         self.filtros_exec = self.filtros_atuais()
         self.tam_lote_exec = self.tamanho_lote()
         self.continuo_exec = self.modo_continuo.get()
+        self.modo_exec = self.modo_atual()
 
         self.executando = True
         self.pausado = False
@@ -665,7 +841,7 @@ class ColadorApp:
         """Reserva o próximo lote. Um único UPDATE — ninguém pega os mesmos ids."""
         params = dict(self.filtros_exec)
         params.update({'quem': self.quem, 'tam': self.tam_lote_exec})
-        linhas = self.db.executar(SQL_RESERVAR, params)
+        linhas = self.db.executar(sql_reservar(self.modo_exec), params)
         self.reservados.update(r[0] for r in linhas)
         return [(r[0], r[1]) for r in linhas]
 
@@ -695,8 +871,10 @@ class ColadorApp:
                         # e se ninguém bipa por um tempo, ele só espera; o que
                         # acumular sai junto na próxima rodada.
                         self.pendentes_banco = 0
-                        self.ui(lambda: self.atualizar_status(
-                            "aguardando bipagens novas"))
+                        espera = ("aguardando o recebimento colar"
+                                  if MODOS[self.modo_exec]['depende_de']
+                                  else "aguardando bipagens novas")
+                        self.ui(lambda: self.atualizar_status(espera))
                         self.esperar(ESPERA_NOVOS)
                         continue
 
@@ -751,7 +929,8 @@ class ColadorApp:
                         break
                     ids.append(proximo)
                 try:
-                    db.executar(SQL_CONFIRMAR, {'quem': self.quem, 'ids': ids}, retorna=False)
+                    db.executar(sql_confirmar(self.modo_exec),
+                                {'quem': self.quem, 'ids': ids}, retorna=False)
                     self.reservados.difference_update(ids)
                 except Exception as e:
                     # Devolve pra fila: melhor confirmar atrasado do que perder.
@@ -777,7 +956,8 @@ class ColadorApp:
 
         try:
             if pendentes_lote:
-                self.db.executar(SQL_LIBERAR, {'ids': pendentes_lote}, retorna=False)
+                self.db.executar(sql_liberar(self.modo_exec), {'ids': pendentes_lote},
+                                 retorna=False)
                 self.reservados.difference_update(pendentes_lote)
         except Exception as e:
             print(f"Erro ao liberar reservas: {e}")
@@ -830,7 +1010,8 @@ class ColadorApp:
             else:
                 atalhos = "▶ Colando\n⏸ Insert = Pausar\n⏹ F9 = Parar"
             self.control_label.configure(
-                text=f"{atalhos}\n{self.colados_sessao} colados · {self.xpt_menu.get()}",
+                text=(f"{atalhos}\n{self.modo_exec} · {self.xpt_menu.get()}"
+                      f" · {self.colados_sessao} colados"),
                 text_color=cor)
 
     # ------------------------------------------------------------ manutenção
@@ -848,11 +1029,12 @@ class ColadorApp:
 
         filtros = self.filtros_atuais()
         pendentes = self.pendentes_banco
+        modo = self.modo_atual()
 
         def acao():
             def tarefa():
                 try:
-                    self.db_ui.executar(SQL_PULAR, dict(filtros, quem=self.quem),
+                    self.db_ui.executar(sql_pular(modo), dict(filtros, quem=self.quem),
                                         retorna=False)
                     self.ui(self.contar_async)
                     self.ui(lambda: self.status_sessao.configure(
@@ -876,7 +1058,7 @@ class ColadorApp:
     def descricao_filtro(self):
         filtros = self.filtros_atuais()
         alvo = "todos os dias" if filtros['dia'] is None else f"{filtros['dia']}"
-        return f"{alvo} / {filtros['xpt']}"
+        return f"{alvo} / {filtros['xpt']} / {self.modo_atual()}"
 
     def confirmar(self, titulo, texto, rotulo, cor, hover, acao):
         janela = ctk.CTkToplevel(self.root)
@@ -912,11 +1094,12 @@ class ColadorApp:
             return
 
         filtros = self.filtros_atuais()
+        modo = self.modo_atual()
 
         def acao():
             def tarefa():
                 try:
-                    self.db_ui.executar(SQL_ZERAR, filtros, retorna=False)
+                    self.db_ui.executar(sql_zerar(modo), filtros, retorna=False)
                     self.ui(self.contar_async)
                     self.ui(lambda: self.status_sessao.configure(
                         text="Marcações removidas — a fila voltou ao início",
