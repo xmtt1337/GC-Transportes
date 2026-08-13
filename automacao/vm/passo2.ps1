@@ -32,6 +32,21 @@ if ($ramGB -lt 6) {
     Info "Da pra continuar, mas espere lentidao nos dois lados."
 }
 
+# --- CPU velha demais pro Windows 11? ----------------------------------
+# O Windows 11 exige Intel de 8a geracao pra cima. TPM e Secure Boot a VM
+# resolve sozinha, mas a checagem de processador olha a CPU fisica e barra.
+# Heuristica: modelo Core iN-XXXX cujo primeiro digito e 2..7.
+$cpuNome = (Get-CimInstance Win32_Processor | Select-Object -First 1).Name
+$cpuAntiga = $false
+if ($cpuNome -match 'Core.*i[3579]-([2-7])\d{3}') { $cpuAntiga = $true }
+if ($cpuAntiga) {
+    Aviso "CPU antiga pro Windows 11: $($cpuNome.Trim())"
+    Info "A instalacao vai reclamar. O passo abaixo ensina a contornar -"
+    Info "e um procedimento normal, so libera a checagem de processador."
+} else {
+    Ok "CPU: $($cpuNome.Trim())"
+}
+
 # --- disco -------------------------------------------------------------
 $c = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
 $livreGB = [math]::Round($c.FreeSpace / 1GB, 1)
@@ -130,12 +145,13 @@ Write-Host ""
 
 if ($Simular) {
     Aviso "MODO SIMULACAO - nenhuma VM sera criada"
-    Fim; return
+    Info "Abaixo, as instrucoes que apareceriam depois de criar:"
+} else {
+    $resp = Read-Host "Pode criar? (S/N)"
+    if ($resp -notmatch '^[SsYy]') { Aviso "Cancelado."; Fim; return }
 }
 
-$resp = Read-Host "Pode criar? (S/N)"
-if ($resp -notmatch '^[SsYy]') { Aviso "Cancelado."; Fim; return }
-
+if (-not $Simular) {
 try {
     New-Item -ItemType Directory -Force "C:\VMs" | Out-Null
     New-VM -Name $Nome -Generation 2 -MemoryStartupBytes ($vmRamGB * 1GB) `
@@ -170,28 +186,59 @@ try {
     Info "(ele pede administrador sozinho)."
     Fim; return
 }
+}
 
 Write-Host ""
-Manual @(
-    "A janela da VM abriu. Agora instale o Windows dentro dela:",
-    "",
-    "  1. Se aparecer 'Press any key to boot from CD', APERTE UMA TECLA rapido",
-    "",
-    "  2. Na tela da chave do produto, clique em:",
-    "       'Nao tenho a chave do produto'",
-    "     e escolha Windows 11 PRO",
-    "",
-    "  3. Aceite os termos > Instalacao Personalizada > selecione o disco > Avancar",
-    "",
-    "  4. Quando pedir CONTA MICROSOFT e voce quiser conta local:",
-    "       - aperte Shift + F10 (abre uma janela preta)",
-    "       - digite:  start ms-cxh:localonly",
-    "       - crie o usuario e a senha",
-    "",
-    "  5. A instalacao demora uns 20-30 minutos e reinicia sozinha algumas vezes",
-    "",
-    "QUANDO O WINDOWS DA VM ESTIVER NA AREA DE TRABALHO:",
-    "  copie a pasta deste pendrive para DENTRO da VM e rode la o",
-    "  3-DENTRO-DA-VM.bat"
+# Cada etapa e um bloco de linhas e a numeracao sai daqui, pra nao dessincronizar
+# quando a etapa do bypass entra ou nao.
+$etapas = @()
+$etapas += ,@("Se aparecer 'Press any key to boot from CD', APERTE UMA TECLA rapido")
+
+if ($cpuAntiga) {
+    $etapas += ,@(
+        "LIBERAR A CHECAGEM DE REQUISITOS",
+        "A CPU desta maquina e de 2012 e o Windows 11 recusa instalar sem isso.",
+        "",
+        "Na PRIMEIRA tela da instalacao, aperte Shift + F10.",
+        "Abre uma janela preta. Digite estas 4 linhas, uma por vez:",
+        "",
+        "  reg add HKLM\SYSTEM\Setup\LabConfig /v BypassTPMCheck /t REG_DWORD /d 1 /f",
+        "  reg add HKLM\SYSTEM\Setup\LabConfig /v BypassSecureBootCheck /t REG_DWORD /d 1 /f",
+        "  reg add HKLM\SYSTEM\Setup\LabConfig /v BypassCPUCheck /t REG_DWORD /d 1 /f",
+        "  reg add HKLM\SYSTEM\Setup\LabConfig /v BypassRAMCheck /t REG_DWORD /d 1 /f",
+        "",
+        "Digite exit pra fechar e siga a instalacao.",
+        "Se a mensagem 'Este PC nao atende aos requisitos' aparecer depois,",
+        "volte com Shift+F10 e rode as mesmas linhas."
+    )
+}
+
+$etapas += ,@(
+    "Na tela da chave, clique em 'Nao tenho a chave do produto'",
+    "e escolha Windows 11 PRO"
 )
+$etapas += ,@("Aceite os termos > Instalacao Personalizada > escolha o disco > Avancar")
+$etapas += ,@(
+    "Quando pedir CONTA MICROSOFT, pra criar conta local:",
+    "  - aperte Shift + F10",
+    "  - digite:  start ms-cxh:localonly",
+    "  - crie o usuario e a senha"
+)
+$etapas += ,@("A instalacao leva uns 20-30 min e reinicia sozinha algumas vezes")
+
+$linhas = @("A janela da VM abriu. Agora instale o Windows dentro dela:", "")
+$n = 0
+foreach ($etapa in $etapas) {
+    $n++
+    $linhas += "  $n. $($etapa[0])"
+    if ($etapa.Count -gt 1) {
+        foreach ($extra in $etapa[1..($etapa.Count - 1)]) { $linhas += "     $extra" }
+    }
+    $linhas += ""
+}
+$linhas += "QUANDO O WINDOWS DA VM ESTIVER NA AREA DE TRABALHO:"
+$linhas += "  copie a pasta deste pendrive para DENTRO da VM e rode la o"
+$linhas += "  3-DENTRO-DA-VM.bat"
+
+Manual $linhas
 Fim

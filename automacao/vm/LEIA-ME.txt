@@ -44,6 +44,21 @@ O QUE VOCE PRECISA TER ANTES
   - A connection string do Neon (a mesma do sistema)
 
 -----------------------------------------------------------
+NA PC-07 TEM UM DETALHE
+-----------------------------------------------------------
+
+  A CPU dela e um i7-3770, de 2012. O Windows 11 exige
+  processador de 8a geracao pra cima e vai recusar instalar
+  com 'Este PC nao atende aos requisitos minimos'.
+
+  Isso e contornavel e o passo 2 mostra as 4 linhas que
+  voce digita durante a instalacao (Shift+F10). Nao precisa
+  decorar nada - esta tudo na tela na hora certa.
+
+  Fora isso a maquina passa folgada: 16 GB de RAM (a VM
+  pega 6) e 75 GB livres no disco.
+
+-----------------------------------------------------------
 DEPOIS QUE ESTIVER RODANDO
 -----------------------------------------------------------
 
