@@ -1,0 +1,68 @@
+===========================================================
+  VM PRO COLADOR - AT CLUSTER
+===========================================================
+
+Pra que serve: criar uma maquina virtual que roda o colador
+no modo AT Cluster. Como a VM tem a tela dela, o macro digita
+la dentro e voce continua usando o computador normalmente.
+
+-----------------------------------------------------------
+ORDEM DOS ARQUIVOS
+-----------------------------------------------------------
+
+  0-CHECAR-MAQUINA.bat   Diz se a maquina aguenta a VM.
+                         Rode este primeiro. Nao muda nada.
+
+  1-LIGAR-HYPERV.bat     Liga o Hyper-V. Pede reinicio.
+
+  ---> REINICIE A MAQUINA <---
+
+  2-CRIAR-VM.bat         Cria a VM e comeca a instalacao
+                         do Windows dentro dela.
+
+  ---> INSTALE O WINDOWS NA VM (uns 30 min) <---
+
+  3-DENTRO-DA-VM.bat     Copie a pasta pra DENTRO da VM e
+                         rode este LA DENTRO, nao aqui fora.
+
+Todos pedem administrador sozinhos - e so confirmar.
+Quando algum passo precisar de voce, ele para e escreve
+na tela, em amarelo, exatamente o que fazer.
+
+-----------------------------------------------------------
+O QUE VOCE PRECISA TER ANTES
+-----------------------------------------------------------
+
+  - 40 GB livres no disco C:
+  - 8 GB de RAM (o passo 2 divide sozinho)
+  - Windows Pro (o Home nao tem Hyper-V - o passo 1 avisa
+    e te manda pro VirtualBox)
+  - A ISO do Windows 11 (uns 6 GB) na pasta Downloads.
+    ATENCAO: aquele pendrive WIN11 NAO serve aqui. Ele e um
+    instalador bootavel; a VM precisa do arquivo .iso.
+    O passo 2 abre a pagina de download se nao achar.
+  - A connection string do Neon (a mesma do sistema)
+
+-----------------------------------------------------------
+DEPOIS QUE ESTIVER RODANDO
+-----------------------------------------------------------
+
+  Minimize a janela da VM e use o computador normalmente.
+  Nao precisa deixar ela aparecendo - a tela dela e virtual
+  e continua existindo minimizada.
+
+  Se fechar a janela no X, a VM CONTINUA LIGADA. Pra abrir
+  de novo: Gerenciador do Hyper-V > botao direito na VM >
+  Conectar.
+
+-----------------------------------------------------------
+SE O COLADOR PARAR SOZINHO DENTRO DA VM
+-----------------------------------------------------------
+
+  A causa quase sempre e a tela da VM ter bloqueado. Com a
+  sessao bloqueada nao existe area de trabalho ativa e o
+  macro digita no vazio.
+
+  Conserto: dentro da VM, Configuracoes > Contas > Opcoes de
+  entrada > 'Exigir entrada' = Nunca. O passo 3 ja desliga o
+  protetor de tela, mas essa opcao so da pra mudar na mao.
