@@ -24,10 +24,13 @@
   const RECONECTAR_MS = 3000;
 
   // O campo do SPX nao tem id, name nem classe: o placeholder e o que sobra.
-  // Se a Shopee mudar esse texto, e aqui que quebra primeiro.
+  // Cada tela usa um texto - e nem todas estao traduzidas. Se a Shopee mudar
+  // esses textos, e aqui que quebra primeiro.
   const SELETORES = [
-    'input[placeholder="Por favor, insira"]',
+    'input[placeholder="Por favor, insira"]',      // Entrada > Recebimento
+    'input[placeholder="Please Scan or Input"]',   // Entrega > Sorting Task (AT Cluster)
     'input[placeholder*="insira"]',
+    'input[placeholder*="Scan"]',
     'input[placeholder*="rastreamento"]',
   ];
 

@@ -81,7 +81,10 @@ MODOS = {
         'reservado_por': 'at_reservado_por',
         'depende_de': 'colado_em',
         'explicacao': 'atribui no SPX o que já foi recebido',
-        'pagina': '',   # preencher com um pedaço da URL da tela de AT Cluster
+        # Entrega > Sorting Task Management > Detalhe da tarefa.
+        # "detail" também aparece na URL, mas casaria com qualquer tela de
+        # detalhe do SPX e as duas abas voltariam a brigar.
+        'pagina': 'sorting-task',
     },
 }
 
