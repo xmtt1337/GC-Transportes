@@ -23,6 +23,18 @@ INSTALAR (uma vez por maquina)
   3. Clique em "Carregar sem compactacao"
   4. Escolha ESTA pasta (extensao-colador)
   5. Deve aparecer "GC Colador - ponte SPX" na lista
+  6. DE F5 NA ABA DO SPX
+
+  O passo 6 e o que mais confunde: a extensao so entra em
+  pagina carregada DEPOIS dela. Se o SPX ja estava aberto,
+  nada acontece e nenhum erro aparece.
+
+  A partir da versao 1.1 a extensao tenta se injetar sozinha
+  nas abas do SPX ja abertas, mas se nao colar nada, o F5
+  continua sendo a primeira coisa a tentar.
+
+  MESMA COISA ao atualizar a extensao: depois de clicar no
+  botao de recarregar em chrome://extensions, de F5 no SPX.
 
 -----------------------------------------------------------
 USAR

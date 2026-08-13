@@ -8,6 +8,15 @@
 (() => {
   'use strict';
 
+  // O script entra por dois caminhos: o normal do manifest e a injeção do
+  // background nas abas que já estavam abertas. Sem esta trava, a aba abriria
+  // duas conexões e o colador derrubaria uma com a outra sem parar.
+  if (window.__gcColadorAtivo) {
+    console.log('[GC Colador] já estava rodando nesta aba');
+    return;
+  }
+  window.__gcColadorAtivo = true;
+
   const PORTA = 9876;
   const RECONECTAR_MS = 3000;
 
