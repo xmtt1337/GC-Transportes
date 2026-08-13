@@ -3,21 +3,40 @@
 <head>
   <meta charset="utf-8">
   <style>
-    body { width: 260px; font-family: "Segoe UI", sans-serif; padding: 14px; margin: 0; }
-    h1 { font-size: 15px; color: #2c7be5; margin: 0 0 10px; }
-    p  { font-size: 12px; color: #444; line-height: 1.5; margin: 0 0 8px; }
-    code { background: #f0f4fa; padding: 1px 4px; border-radius: 3px; font-size: 11px; }
-    .dica { color: #7a8aa0; font-size: 11px; border-top: 1px solid #e6ecf5; padding-top: 8px; }
+    body { width: 330px; font-family: "Segoe UI", sans-serif; padding: 14px; margin: 0; }
+    h1 { font-size: 15px; color: #2c7be5; margin: 0 0 4px; }
+    p  { font-size: 12px; color: #444; line-height: 1.5; margin: 0 0 10px; }
+    .url { font-size: 11px; color: #555; background: #f5f7fa; padding: 6px 8px;
+           border-radius: 4px; word-break: break-all; margin-bottom: 10px; }
+    .rotulo { font-size: 11px; font-weight: 600; color: #7a8aa0; margin-bottom: 4px; }
+    button.trecho { display: block; width: 100%; text-align: left; margin: 0 0 5px;
+                    padding: 7px 9px; font-size: 12px; font-family: Consolas, monospace;
+                    background: #eef4ff; border: 1px solid #d6e3f5; border-radius: 4px;
+                    cursor: pointer; }
+    button.trecho:hover { background: #dceafd; }
+    .copiado { color: #2ecc71; font-size: 11px; font-weight: 600; height: 14px; }
+    .dica { color: #7a8aa0; font-size: 11px; border-top: 1px solid #e6ecf5;
+            padding-top: 8px; margin-top: 4px; }
+    code { background: #f0f4fa; padding: 1px 4px; border-radius: 3px; }
   </style>
 </head>
 <body>
   <h1>GC Colador — ponte SPX</h1>
-  <p>Esta extensão recebe os códigos do <b>ColadorNeon</b> e escreve no campo do SPX.</p>
-  <p>Deixe a aba do SPX aberta na tela de bipagem. Não precisa ficar em foco.</p>
+  <p>Recebe os códigos do <b>ColadorNeon</b> e escreve no campo do SPX.</p>
+
+  <div class="rotulo">Aba atual</div>
+  <div class="url" id="url">—</div>
+
+  <div class="rotulo">Cole um destes no campo<br>"Só na página cuja URL contém"</div>
+  <div id="trechos"></div>
+  <div class="copiado" id="copiado"></div>
+
   <p class="dica">
-    Conecta em <code>ws://127.0.0.1:9876</code>.<br>
-    Se não colar nada: confira se o ColadorNeon está aberto e com a saída
-    <b>Navegador</b> selecionada.
+    Cada colador aberto fica com a aba da tela dele. Portas
+    <code>9876</code>–<code>9885</code>, só locais.<br>
+    Não colou nada? Dê <b>F5</b> na aba do SPX.
   </p>
+
+  <script src="popup.js"></script>
 </body>
 </html>

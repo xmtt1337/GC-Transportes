@@ -884,6 +884,16 @@ class ColadorApp:
             return
 
         if self.saida_atual() == SAIDA_NAVEGADOR:
+            # Sem filtro, este colador aceita qualquer aba do SPX — e aí, com
+            # dois abertos, um fisga a aba do outro e o código vai pra tela
+            # errada. Melhor não deixar começar do que descobrir depois.
+            if not self.pagina_alvo():
+                self.status_sessao.configure(
+                    text="Preencha 'Só na página cuja URL contém' — sem isso este "
+                         "colador pega a aba de qualquer tela do SPX",
+                    text_color="#e74c3c")
+                return
+
             # Pela extensão não existe foco: o alvo é a aba, não a janela.
             self.janela_ativa = None
             try:
