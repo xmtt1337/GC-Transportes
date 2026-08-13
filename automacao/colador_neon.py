@@ -35,7 +35,7 @@ import win32gui
 
 from ponte_navegador import PORTA_PADRAO, Ponte
 
-VERSAO = '2.2'   # subir junto com mudança de comportamento
+VERSAO = '2.3'   # subir junto com mudança de comportamento
 APP_ID = 'GC.Transportes.ColadorNeon.1.0'
 try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
@@ -508,7 +508,7 @@ class ColadorApp:
                                            font=("Segoe UI", 13))
         self.interval_label.pack(side="left", padx=(0, 10))
         self.interval_slider = ctk.CTkSlider(
-            linha_int, from_=0.3, to=1.5, number_of_steps=5,
+            linha_int, from_=0, to=1.5, number_of_steps=15,
             command=self.update_interval_label,
             button_color="#2c7be5", progress_color="#2c7be5", width=190,
         )
@@ -613,8 +613,8 @@ class ColadorApp:
             self.dica_foco.configure(text="")
 
     def update_interval_label(self, valor):
-        intervalo = min([0.3, 0.5, 0.7, 1.0, 1.3, 1.5], key=lambda x: abs(x - valor))
-        self.interval_label.configure(text=f"Intervalo: {intervalo:.1f} segundos")
+        intervalo = round(valor * 10) / 10
+        self.interval_label.configure(text=f"Respiro: {intervalo:.1f}s entre códigos")
         self.interval_slider.set(intervalo)
 
     # -------------------------------------------------- janela de controle
@@ -671,9 +671,9 @@ class ColadorApp:
             texto = ("A extensão do Chrome escreve no campo do SPX. Não precisa de "
                      "foco, dá pra usar a máquina, e a aba confirma se o código entrou.")
             self.linha_pagina.pack(fill="x", padx=12, pady=(0, 12))
-            # O intervalo não vale aqui: o próximo código sai quando o SPX
-            # libera o campo, não quando o cronômetro manda.
-            self.linha_intervalo.pack_forget()
+            # Volta a valer aqui: descobrimos que o SPX não sinaliza quando
+            # termina, então o respiro entre códigos é o que segura o ritmo.
+            self.linha_intervalo.pack(pady=8)
         else:
             texto = ("Digita na janela que estiver em foco, como o bipador. "
                      "Prende a máquina e só um colador roda por vez.")
@@ -1142,10 +1142,7 @@ class ColadorApp:
                 # Pelo navegador quem dá o ritmo é o SPX: a extensão só devolve
                 # o "ok" quando o campo destrava. Somar o intervalo do slider
                 # em cima disso era só espera jogada fora.
-                if self.saida_exec == SAIDA_NAVEGADOR:
-                    time.sleep(0.05)
-                else:
-                    time.sleep(self.interval_slider.get())
+                time.sleep(self.interval_slider.get())
         except Exception as e:
             erro = str(e).strip().split("\n")[0][:90]
         finally:

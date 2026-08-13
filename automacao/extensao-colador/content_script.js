@@ -22,6 +22,9 @@
   // Cluster rodam juntos sem trocar os códigos.
   const PORTAS = [9876, 9877, 9878, 9879, 9880, 9881, 9882, 9883, 9884, 9885];
   const RECONECTAR_MS = 3000;
+  // Quanto esperar por um sinal de que o SPX processou. Se ele não sinalizar
+  // nada nesse tempo, seguimos — esperar mais não traz informação nenhuma.
+  const ESPERA_MAX_MS = 500;
 
   // O campo do SPX nao tem id, name nem classe: o placeholder e o que sobra.
   // Cada tela usa um texto - e nem todas estao traduzidas. Se a Shopee mudar
@@ -38,13 +41,25 @@
   let ligado = true;
 
   // --- achar o campo ----------------------------------------------------
+  // Guarda o ultimo encontrado: procurar de novo a cada 30ms custa caro, porque
+  // offsetParent forca o navegador a recalcular layout numa pagina pesada.
+  let campoEmCache = null;
+
   function acharCampo() {
+    if (campoEmCache && campoEmCache.isConnected &&
+        (campoEmCache.offsetParent !== null || campoEmCache === document.activeElement)) {
+      return campoEmCache;
+    }
     for (const sel of SELETORES) {
       // Ignora o que esta escondido: o SPX mantem campos de abas inativas no DOM.
       for (const el of document.querySelectorAll(sel)) {
-        if (el.offsetParent !== null || el === document.activeElement) return el;
+        if (el.offsetParent !== null || el === document.activeElement) {
+          campoEmCache = el;
+          return el;
+        }
       }
     }
+    campoEmCache = null;
     return null;
   }
 
@@ -125,22 +140,30 @@
     const dorme = (ms) => new Promise((r) => setTimeout(r, ms));
     const olhar = () => acharCampo() || campo;
 
-    // 1) Comecou a trabalhar? Trava o campo, ou ja limpa o valor.
+    // O SPX nao trava o campo nem limpa o valor: ele SELECIONA o texto, pro
+    // proximo bipe sobrescrever. Essa selecao e o sinal de que terminou, e
+    // chega em poucos centenas de ms. Antes esperavamos uma trava que nunca
+    // vinha e cada codigo levava ~1,9s de espera vazia.
+    const selecionou = (a) =>
+      a.value === codigo && a.selectionStart === 0 && a.selectionEnd === codigo.length;
+
     let travou = false;
-    const limiteInicio = Date.now() + 1200;
-    while (Date.now() < limiteInicio) {
-      await dorme(30);
+    const limite = Date.now() + ESPERA_MAX_MS;
+    while (Date.now() < limite) {
+      await dorme(20);
       const atual = olhar();
       if (atual.disabled) { travou = true; break; }
       if (atual.value !== codigo) return 'campo limpou';
+      try {
+        if (selecionou(atual)) return 'texto selecionado';
+      } catch (e) { /* selectionStart nao existe em todo tipo de input */ }
     }
 
-    // 2) Travou: espera liberar. Este e o unico ponto que pode demorar,
-    //    e a demora e do SPX, nao nossa.
-    if (!travou) return 'nao travou (SPX nao sinalizou)';
+    // Se travou, a espera passa a ser do SPX de verdade - aí vale esperar.
+    if (!travou) return `sem sinal em ${ESPERA_MAX_MS}ms`;
     const limiteFim = Date.now() + 15000;
     while (Date.now() < limiteFim) {
-      await dorme(30);
+      await dorme(20);
       if (!olhar().disabled) return 'destravou';
     }
     return 'ESTOUROU 15s travado';
