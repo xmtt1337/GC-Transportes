@@ -376,18 +376,24 @@ function _scaBipar(codigoLido) {
         // mandou a situação de agora. O aviso vai junto pra pessoa não achar que somou mais
         // um ao total — mas quem manda no apito é o problema, não a repetição.
         const rep = d.repetido ? ` <span style="color:#8494a9">(bipado de novo)</span>` : "";
+        // O pacote não tinha entrada no hub e a conferência acabou de criar. Precisa
+        // aparecer: é uma bipagem que o sistema fez em nome da pessoa, e daqui ela sai pro
+        // colador digitar na plataforma da Shopee.
+        const receb = d.recebimento_criado
+            ? ` <span style="color:#3a86ff">Entrada no hub registrada agora — não tinha bipe de recebimento.</span>`
+            : "";
         if (d.resultado === "ok" && d.status_ok === false) {
             // Cidade certa, mas o pacote não deu entrada no hub. Apita como erro porque
             // também para a esteira — só que o motivo é outro, e a mensagem diz qual.
             _gcBeepErro(); _scaFlash("err");
             _scaMsg(`⚠ <strong>${_scaEsc(d.codigo)}</strong> é de ${_scaEsc(d.esperado)}, mas o status é <strong>${
-                _scaEsc(d.status_pedido) || "—"}</strong> — ainda não foi recebido no hub.${rep}`, "aviso");
+                _scaEsc(d.status_pedido) || "—"}</strong> — ainda não foi recebido no hub.${rep}${receb}`, "aviso");
         } else if (d.resultado === "ok") {
             _gcBeepSucesso(); _scaFlash("ok");
             // O detalhe só vem preenchido quando o CEP está em mais de uma cidade — nesse
             // caso o bipe confere, mas a pessoa precisa saber que a planilha está ambígua.
             _scaMsg(`✓ <strong>${_scaEsc(d.codigo)}</strong> ${d.repetido ? "já estava conferido" : "confere"} com <strong>${
-                _scaEsc(d.esperado)}</strong>.${d.detalhe ? ` <span style="color:#eab308">${_scaEsc(d.detalhe)}</span>` : ""}`, "ok");
+                _scaEsc(d.esperado)}</strong>.${d.detalhe ? ` <span style="color:#eab308">${_scaEsc(d.detalhe)}</span>` : ""}${rep}${receb}`, "ok");
         } else {
             // Divergência e "não encontrado" apitam igual: os dois param a esteira.
             _gcBeepErro(); _scaFlash("err");
@@ -396,8 +402,8 @@ function _scaBipar(codigoLido) {
             const extraStatus = d.status_ok === false
                 ? ` E o status é <strong>${_scaEsc(d.status_pedido) || "—"}</strong>, não recebido no hub.` : "";
             _scaMsg(d.resultado === "divergente"
-                ? `⚠ <strong>${_scaEsc(d.codigo)}</strong> é de <strong>${_scaEsc(d.encontrado)}</strong>, não de ${_scaEsc(d.esperado)}.${extraStatus}${rep}`
-                : `⚠ <strong>${_scaEsc(d.codigo)}</strong> — ${_scaEsc(d.detalhe || info.rotulo)}${extraStatus}${rep}`,
+                ? `⚠ <strong>${_scaEsc(d.codigo)}</strong> é de <strong>${_scaEsc(d.encontrado)}</strong>, não de ${_scaEsc(d.esperado)}.${extraStatus}${rep}${receb}`
+                : `⚠ <strong>${_scaEsc(d.codigo)}</strong> — ${_scaEsc(d.detalhe || info.rotulo)}${extraStatus}${rep}${receb}`,
                 d.resultado === "divergente" ? "erro" : "aviso");
         }
         // Repetido substitui a linha que já existe em vez de somar outra: é o mesmo pacote,
