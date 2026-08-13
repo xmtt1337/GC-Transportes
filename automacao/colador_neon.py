@@ -28,7 +28,6 @@ import time
 from datetime import datetime
 
 import customtkinter as ctk
-import keyboard
 import psycopg2
 import pyautogui
 import win32con
@@ -51,6 +50,7 @@ TABELA = 'shopee_recebimentos'
 RESERVA_EXPIRA = '15 minutes'
 ESPERA_NOVOS = 5  # segundos entre uma checagem e outra no modo contínuo
 CARENCIA_PADRAO = 60  # segundos de folga entre receber e atribuir no SPX
+SEGUNDOS_PARA_FOCAR = 4  # tempo pra clicar na janela de destino no modo teclado
 
 # Por onde o código chega no SPX. O teclado exige a janela em foco e prende a
 # máquina num macro só; o navegador escreve direto no campo pela extensão,
@@ -321,7 +321,6 @@ class ColadorApp:
         self.db_ui = None         # conexão da UI (testar / contar / zerar)
 
         self.setup_ui()
-        self.setup_atalhos()
         self.bombear_ui()
 
     # ------------------------------------------------------------------ UI
@@ -522,12 +521,24 @@ class ColadorApp:
                                           text_color="#2c7be5")
         self.status_sessao.pack(pady=(0, 10))
 
-        ctk.CTkLabel(
-            frame,
-            text="▶ Insert = Iniciar/Pausar   ⏹ F9 = Parar\n"
-                 "Deixe a janela de destino em foco antes de apertar Insert.",
-            font=("Segoe UI", 12), text_color="#2c7be5", justify="center",
-        ).pack(pady=(4, 12))
+        # Botões, e não atalho de teclado: atalho global dispara em todos os
+        # coladores abertos ao mesmo tempo, então iniciar um pausava o outro.
+        botoes = ctk.CTkFrame(frame, fg_color="transparent")
+        botoes.pack(pady=(6, 4))
+        self.botao_iniciar = ctk.CTkButton(
+            botoes, text="▶  Iniciar", width=180, height=42,
+            font=("Segoe UI", 15, "bold"), command=self.toggle_execution)
+        self.botao_iniciar.pack(side="left", padx=5)
+        self.botao_parar = ctk.CTkButton(
+            botoes, text="⏹  Parar", width=110, height=42,
+            font=("Segoe UI", 14), fg_color="#8fa8c8", hover_color="#7891b0",
+            state="disabled", command=self.stop_execution)
+        self.botao_parar.pack(side="left", padx=5)
+
+        self.dica_foco = ctk.CTkLabel(
+            frame, text="", font=("Segoe UI", 11), text_color="#7a8aa0",
+            justify="center", wraplength=440)
+        self.dica_foco.pack(pady=(0, 10))
 
         manutencao = ctk.CTkFrame(frame, fg_color="transparent")
         manutencao.pack(pady=(0, 12))
@@ -544,6 +555,7 @@ class ColadorApp:
 
         self.atualizar_visual_modo()
         self.atualizar_visual_saida()
+        self.atualizar_botoes()
         if self.url_inicial:
             self.root.after(300, self.conectar)
 
@@ -572,9 +584,27 @@ class ColadorApp:
         except Exception:
             pass
 
-    def setup_atalhos(self):
-        keyboard.on_press_key("insert", lambda _: self.toggle_execution())
-        keyboard.on_press_key("F9", lambda _: self.stop_execution())
+    def atualizar_botoes(self):
+        """Deixa o botão principal contar a história: iniciar, pausar, continuar."""
+        if not self.executando:
+            self.botao_iniciar.configure(text="▶  Iniciar", state="normal",
+                                         fg_color=["#3B8ED0", "#1F6AA5"])
+            self.botao_parar.configure(state="disabled")
+        elif self.pausado:
+            self.botao_iniciar.configure(text="▶  Continuar", state="normal",
+                                         fg_color=["#3B8ED0", "#1F6AA5"])
+            self.botao_parar.configure(state="normal")
+        else:
+            self.botao_iniciar.configure(text="⏸  Pausar", state="normal",
+                                         fg_color="#e8a33d", hover_color="#d18f2b")
+            self.botao_parar.configure(state="normal")
+
+        if self.saida_atual() == SAIDA_TECLADO and not self.executando:
+            self.dica_foco.configure(
+                text=f"No modo teclado, você tem {SEGUNDOS_PARA_FOCAR}s depois de clicar "
+                     f"em Iniciar para clicar na janela onde os códigos devem cair.")
+        else:
+            self.dica_foco.configure(text="")
 
     def update_interval_label(self, valor):
         intervalo = min([0.3, 0.5, 0.7, 1.0, 1.3, 1.5], key=lambda x: abs(x - valor))
@@ -593,8 +623,20 @@ class ColadorApp:
             self.control_window.protocol("WM_DELETE_WINDOW", self.hide_control_window)
 
             self.control_label = ctk.CTkLabel(
-                self.control_window, text="", font=("Segoe UI", 14), justify="left")
-            self.control_label.pack(pady=15, padx=20)
+                self.control_window, text="", font=("Segoe UI", 13), justify="left")
+            self.control_label.pack(pady=(12, 6), padx=16)
+
+            # Com o colador minimizado, é por aqui que se pausa.
+            barra = ctk.CTkFrame(self.control_window, fg_color="transparent")
+            barra.pack(pady=(0, 10))
+            self.control_pausar = ctk.CTkButton(
+                barra, text="⏸ Pausar", width=110, height=32,
+                font=("Segoe UI", 12), command=self.toggle_execution)
+            self.control_pausar.pack(side="left", padx=4)
+            ctk.CTkButton(barra, text="⏹ Parar", width=90, height=32,
+                          font=("Segoe UI", 12), fg_color="#8fa8c8",
+                          hover_color="#7891b0",
+                          command=self.stop_execution).pack(side="left", padx=4)
         else:
             self.control_window.deiconify()
 
@@ -654,6 +696,7 @@ class ColadorApp:
             self.status_sessao.configure(text="Colagem parada — a saída mudou",
                                          text_color="#ff9900")
         self.atualizar_visual_saida()
+        self.atualizar_botoes()
         self.persistir_config()
 
     def modo_atual(self):
@@ -867,6 +910,7 @@ class ColadorApp:
         else:
             self.pausado = not self.pausado
             self.ui(self.atualizar_status)
+            self.ui(self.atualizar_botoes)
 
     def iniciar(self):
         if self.executando:
@@ -912,19 +956,38 @@ class ColadorApp:
                 self.status_sessao.configure(text=str(e)[:110], text_color="#e74c3c")
                 return
         else:
-            try:
-                hwnd = win32gui.GetForegroundWindow()
-            except Exception:
-                hwnd = None
+            # Sem atalho de teclado, clicar em Iniciar deixa o colador em foco.
+            # A contagem dá tempo de clicar na janela que deve receber.
+            self.contar_para_focar(SEGUNDOS_PARA_FOCAR)
+            return
 
-            # Sem essa trava o colador digitaria dentro da própria janela.
-            if hwnd and hwnd in self.janelas_proprias():
-                self.status_sessao.configure(
-                    text="Foque a janela de destino e aperte Insert de novo",
-                    text_color="#e74c3c")
-                return
+        self._comecar()
 
-            self.janela_ativa = hwnd
+    def contar_para_focar(self, restam):
+        if restam > 0:
+            self.botao_iniciar.configure(text=f"clique na janela… {restam}",
+                                         state="disabled")
+            self.root.after(1000, lambda: self.contar_para_focar(restam - 1))
+            return
+
+        try:
+            hwnd = win32gui.GetForegroundWindow()
+        except Exception:
+            hwnd = None
+
+        # Sem essa trava o colador digitaria dentro da própria janela.
+        if hwnd and hwnd in self.janelas_proprias():
+            self.status_sessao.configure(
+                text="A janela em foco é a do próprio colador — clique na janela "
+                     "de destino durante a contagem",
+                text_color="#e74c3c")
+            self.atualizar_botoes()
+            return
+
+        self.janela_ativa = hwnd
+        self._comecar()
+
+    def _comecar(self):
         self.persistir_config()
 
         # Congela o que as threads vão usar — widget de Tk não se lê de fora da
@@ -950,6 +1013,7 @@ class ColadorApp:
 
         self.show_control_window()
         self.atualizar_status()
+        self.atualizar_botoes()
 
         self.thread_execucao = threading.Thread(target=self.loop_colagem, daemon=True)
         self.thread_execucao.start()
@@ -976,7 +1040,7 @@ class ColadorApp:
         return [(r[0], r[1]) for r in linhas]
 
     def esperar(self, segundos):
-        """Sleep que responde a F9 e à pausa sem demorar pra acordar."""
+        """Sleep que responde ao Parar e à pausa sem demorar pra acordar."""
         fim = time.time() + segundos
         while time.time() < fim and not self.parar_thread:
             time.sleep(0.2)
@@ -1114,6 +1178,7 @@ class ColadorApp:
 
         def na_ui():
             self.hide_control_window()
+            self.atualizar_botoes()
             if erro:
                 self.status_sessao.configure(text=f"Parou por erro: {erro}",
                                              text_color="#e74c3c")
@@ -1150,15 +1215,18 @@ class ColadorApp:
 
         if self.control_window is not None and self.control_window.winfo_exists():
             if self.pausado:
-                atalhos = "⏸ Pausado\n▶ Insert = Continuar\n⏹ F9 = Parar"
+                situacao = "⏸ Pausado"
             elif extra:
-                atalhos = f"⏳ {extra}\n⏸ Insert = Pausar\n⏹ F9 = Parar"
+                situacao = f"⏳ {extra}"
             else:
-                atalhos = "▶ Colando\n⏸ Insert = Pausar\n⏹ F9 = Parar"
+                situacao = "▶ Colando"
             self.control_label.configure(
-                text=(f"{atalhos}\n{self.modo_exec} · {self.xpt_menu.get()}"
+                text=(f"{situacao}\n{self.modo_exec} · {self.xpt_menu.get()}"
                       f" · {self.colados_sessao} colados"),
                 text_color=cor)
+            if hasattr(self, 'control_pausar'):
+                self.control_pausar.configure(
+                    text="▶ Continuar" if self.pausado else "⏸ Pausar")
 
     # ------------------------------------------------------------ manutenção
     def comecar_do_agora(self):

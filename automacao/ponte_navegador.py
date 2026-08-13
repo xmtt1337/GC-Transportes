@@ -31,6 +31,12 @@ PORTA_PADRAO = 9876   # 9999 é da extensão BRS HTML Bridge, não mexer
 PORTAS = range(9876, 9886)  # cada colador aberto ocupa uma; a extensão varre todas
 TIMEOUT_RESPOSTA = 30  # segundos esperando a aba confirmar um código
 
+# Só aceita conexão vinda da página do SPX. O navegador põe o Origin sozinho e
+# não deixa forjar, então qualquer outra coisa que fale nesta porta é barrada.
+# Sem isso, um programa qualquer conectando aqui recebe códigos de verdade e,
+# respondendo "ok", faz o colador marcar colado_em sem nada ter entrado no SPX.
+ORIGEM_ESPERADA = 'https://spx.shopee.com.br'
+
 
 class Ponte:
     """Servidor WebSocket local. Uma instância por colador aberto.
@@ -40,13 +46,14 @@ class Ponte:
     aba responder, o que mantém o loop de colagem igual ao do teclado.
     """
 
-    def __init__(self, porta=None, filtro_pagina="", papel=""):
+    def __init__(self, porta=None, filtro_pagina="", papel="", origem=ORIGEM_ESPERADA):
         # porta=None procura a primeira livre: assim dá pra abrir um colador
         # por tarefa (recebimento numa aba, AT Cluster em outra) sem configurar
         # nada. O filtro_pagina é o que impede um roubar o código do outro.
         self.porta = porta
         self.filtro_pagina = (filtro_pagina or "").strip().lower()
         self.papel = papel
+        self.origem = origem   # "" desliga a checagem (só pra teste)
         self.loop = None
         self.servidor = None
         self.thread = None
@@ -115,6 +122,15 @@ class Ponte:
         await self.servidor.wait_closed()
 
     async def _atender(self, conexao):
+        if self.origem and self._origem_da(conexao) != self.origem:
+            # Não é a aba do SPX. Fecha calado: se respondesse "ok" nos códigos,
+            # eles seriam marcados como colados sem existir no sistema.
+            try:
+                await conexao.close()
+            except Exception:
+                pass
+            return
+
         aceita = False
         try:
             async for bruto in conexao:
@@ -162,6 +178,18 @@ class Ponte:
                 self.pagina = None
                 if self.ao_desconectar:
                     self.ao_desconectar()
+
+    @staticmethod
+    def _origem_da(conexao):
+        """Lê o header Origin, que muda de lugar conforme a versão da lib."""
+        try:
+            pedido = getattr(conexao, 'request', None)
+            cabecalhos = getattr(pedido, 'headers', None)
+            if cabecalhos is None:
+                cabecalhos = getattr(conexao, 'request_headers', {})
+            return cabecalhos.get('Origin') or cabecalhos.get('origin') or ''
+        except Exception:
+            return ''
 
     def parar(self):
         self._parar.set()
