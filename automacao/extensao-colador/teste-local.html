@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Simulador do campo do SPX</title>
+<style>
+  body { font-family: "Segoe UI", sans-serif; max-width: 760px; margin: 30px auto; color: #222; }
+  h1 { color: #2c7be5; font-size: 20px; }
+  .aviso { background: #fff8e6; border-left: 4px solid #f0ad4e; padding: 12px; font-size: 13px; }
+  .campo { margin: 20px 0; padding: 16px; background: #f5f9ff; border-radius: 8px; }
+  input { padding: 8px; width: 320px; font-size: 15px; border: 1px solid #c8d6e8; border-radius: 4px; }
+  input:disabled { background: #e9edf2; color: #999; }
+  #status { font-weight: bold; margin-left: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 10px; }
+  th, td { border: 1px solid #dbe3ee; padding: 6px 10px; text-align: left; }
+  th { background: #eef4ff; }
+  .ok { color: #2ecc71; } .falha { color: #e74c3c; }
+</style>
+</head>
+<body>
+<h1>Simulador do campo do SPX</h1>
+
+<div class="aviso">
+  Serve pra testar o colador <b>sem tocar no SPX de verdade</b>. Imita o que o
+  sistema faz: aceita o código, <b>desabilita o campo por 800&nbsp;ms</b> enquanto
+  "processa", limpa e reabilita.
+  <br><br>
+  Para funcionar, o <code>content_script.js</code> precisa estar rodando aqui —
+  carregue esta página com a extensão instalada, ou veja o LEIA-ME.
+</div>
+
+<div class="campo">
+  <label>SPX TN (Número de rastreamento)</label><br>
+  <input id="campo" type="text" placeholder="Por favor, insira" autocomplete="off">
+  <span id="status">aguardando</span>
+</div>
+
+<table>
+  <thead><tr><th>#</th><th>Código recebido</th><th>Horário</th></tr></thead>
+  <tbody id="lista"></tbody>
+</table>
+
+<script>
+  const campo = document.getElementById('campo');
+  const status = document.getElementById('status');
+  const lista = document.getElementById('lista');
+  let n = 0;
+
+  // O React guarda o valor num tracker interno; quem escreve por .value direto
+  // é ignorado. Isto imita esse comportamento pra o teste ser honesto.
+  let valorInterno = '';
+  const descritor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  Object.defineProperty(campo, 'value', {
+    get() { return valorInterno; },
+    set(v) { valorInterno = v; descritor.set.call(campo, v); },
+  });
+  campo.addEventListener('input', () => { valorInterno = descritor.get.call(campo); });
+
+  campo.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const codigo = campo.value.trim();
+    if (!codigo) return;
+
+    n++;
+    const linha = lista.insertRow();
+    linha.innerHTML = `<td>${n}</td><td>${codigo}</td>` +
+                      `<td>${new Date().toLocaleTimeString('pt-BR')}</td>`;
+
+    // Igual ao SPX: trava o campo enquanto processa.
+    campo.disabled = true;
+    status.textContent = 'processando...';
+    status.className = '';
+    setTimeout(() => {
+      campo.value = '';
+      campo.disabled = false;
+      status.textContent = `${n} recebidos`;
+      status.className = 'ok';
+    }, 800);
+  });
+</script>
+</body>
+</html>

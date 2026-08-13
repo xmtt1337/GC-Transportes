@@ -34,6 +34,8 @@ import pyautogui
 import win32con
 import win32gui
 
+from ponte_navegador import PORTA_PADRAO, Ponte
+
 APP_ID = 'GC.Transportes.ColadorNeon.1.0'
 try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
@@ -49,6 +51,13 @@ TABELA = 'shopee_recebimentos'
 RESERVA_EXPIRA = '15 minutes'
 ESPERA_NOVOS = 5  # segundos entre uma checagem e outra no modo contínuo
 CARENCIA_PADRAO = 60  # segundos de folga entre receber e atribuir no SPX
+
+# Por onde o código chega no SPX. O teclado exige a janela em foco e prende a
+# máquina num macro só; o navegador escreve direto no campo pela extensão,
+# então várias abas colam ao mesmo tempo, em segundo plano — e a aba ainda
+# responde se o código entrou, o que o teclado nunca soube dizer.
+SAIDA_TECLADO = 'Teclado (janela em foco)'
+SAIDA_NAVEGADOR = 'Navegador (extensão)'
 
 # Os dois trabalhos que o colador faz no SPX, cada um com suas colunas de
 # controle. O AT Cluster é o mesmo código do recebimento, colado depois — e o
@@ -287,6 +296,8 @@ class ColadorApp:
         self.tam_lote_exec = 20
         self.continuo_exec = True
         self.modo_exec = 'Recebimento'
+        self.saida_exec = SAIDA_TECLADO
+        self.ponte = None
         self.xpt_confirmado = False
         self.modo_confirmado = False
 
@@ -355,6 +366,23 @@ class ColadorApp:
         self.conn_label = ctk.CTkLabel(frame, text="Desconectado",
                                        font=("Segoe UI", 11), text_color="#999999")
         self.conn_label.pack(pady=(2, 12))
+
+        # --- para onde o codigo vai
+        caixa_saida = ctk.CTkFrame(frame, fg_color="#f5f9ff", corner_radius=10)
+        caixa_saida.pack(fill="x", padx=12, pady=(0, 10))
+        linha_saida = ctk.CTkFrame(caixa_saida, fg_color="transparent")
+        linha_saida.pack(fill="x", padx=12, pady=(12, 4))
+        ctk.CTkLabel(linha_saida, text="Colar por:", font=("Segoe UI", 12, "bold"),
+                     width=80, anchor="w").pack(side="left")
+        self.saida_menu = ctk.CTkOptionMenu(
+            linha_saida, width=180, values=[SAIDA_TECLADO, SAIDA_NAVEGADOR],
+            command=lambda _v: self.ao_trocar_saida(),
+        )
+        self.saida_menu.set(self.cfg.get('saida') or SAIDA_TECLADO)
+        self.saida_menu.pack(side="left")
+        self.saida_desc = ctk.CTkLabel(caixa_saida, text="", font=("Segoe UI", 11),
+                                       text_color="#7a8aa0", justify="left", wraplength=440)
+        self.saida_desc.pack(padx=12, pady=(0, 12), anchor="w")
 
         # --- modo (o que este computador vai fazer no SPX)
         caixa_modo = ctk.CTkFrame(frame, fg_color="#eef4ff", corner_radius=10)
@@ -487,6 +515,7 @@ class ColadorApp:
         ).pack(side="left", padx=4)
 
         self.atualizar_visual_modo()
+        self.atualizar_visual_saida()
         if self.url_inicial:
             self.root.after(300, self.conectar)
 
@@ -557,6 +586,27 @@ class ColadorApp:
             print(f"Erro ao restaurar foco: {e}")
 
     # ----------------------------------------------------------- filtros
+    def saida_atual(self):
+        return self.saida_menu.get() if self.saida_menu.get() in (
+            SAIDA_TECLADO, SAIDA_NAVEGADOR) else SAIDA_TECLADO
+
+    def atualizar_visual_saida(self):
+        if self.saida_atual() == SAIDA_NAVEGADOR:
+            texto = ("A extensão do Chrome escreve no campo do SPX. Não precisa de "
+                     "foco, dá pra usar a máquina, e a aba confirma se o código entrou.")
+        else:
+            texto = ("Digita na janela que estiver em foco, como o bipador. "
+                     "Prende a máquina e só um colador roda por vez.")
+        self.saida_desc.configure(text=texto)
+
+    def ao_trocar_saida(self):
+        if self.executando:
+            self.stop_execution()
+            self.status_sessao.configure(text="Colagem parada — a saída mudou",
+                                         text_color="#ff9900")
+        self.atualizar_visual_saida()
+        self.persistir_config()
+
     def modo_atual(self):
         return self.modo_menu.get() if self.modo_menu.get() in MODOS else 'Recebimento'
 
@@ -608,6 +658,7 @@ class ColadorApp:
             'modo_continuo': self.modo_continuo.get(),
             'modo': self.modo_atual(),
             'carencia': self.carencia(),
+            'saida': self.saida_atual(),
         })
         try:
             salvar_config(self.cfg)
@@ -783,19 +834,30 @@ class ColadorApp:
             self.perguntar_xpt()
             return
 
-        try:
-            hwnd = win32gui.GetForegroundWindow()
-        except Exception:
-            hwnd = None
+        if self.saida_atual() == SAIDA_NAVEGADOR:
+            # Pela extensão não existe foco: o alvo é a aba, não a janela.
+            self.janela_ativa = None
+            try:
+                if self.ponte is None:
+                    self.ponte = Ponte()
+                self.ponte.iniciar()
+            except OSError as e:
+                self.status_sessao.configure(text=str(e)[:110], text_color="#e74c3c")
+                return
+        else:
+            try:
+                hwnd = win32gui.GetForegroundWindow()
+            except Exception:
+                hwnd = None
 
-        # Sem essa trava o colador digitaria dentro da própria janela.
-        if hwnd and hwnd in self.janelas_proprias():
-            self.status_sessao.configure(
-                text="Foque a janela de destino e aperte Insert de novo",
-                text_color="#e74c3c")
-            return
+            # Sem essa trava o colador digitaria dentro da própria janela.
+            if hwnd and hwnd in self.janelas_proprias():
+                self.status_sessao.configure(
+                    text="Foque a janela de destino e aperte Insert de novo",
+                    text_color="#e74c3c")
+                return
 
-        self.janela_ativa = hwnd
+            self.janela_ativa = hwnd
         self.persistir_config()
 
         # Congela o que as threads vão usar — widget de Tk não se lê de fora da
@@ -806,6 +868,7 @@ class ColadorApp:
         self.tam_lote_exec = self.tamanho_lote()
         self.continuo_exec = self.modo_continuo.get()
         self.modo_exec = self.modo_atual()
+        self.saida_exec = self.saida_atual()
 
         self.executando = True
         self.pausado = False
@@ -888,12 +951,28 @@ class ColadorApp:
                     self.reservados.discard(registro_id)
                     continue
 
-                self.restore_window_focus()
-                if self.parar_thread:
-                    break
+                if self.saida_exec == SAIDA_NAVEGADOR:
+                    # Aba caiu (F5, troca de tela) não é erro: ela reconecta
+                    # sozinha em 3s. Espera sem consumir o código.
+                    if not self.ponte.conectada:
+                        self.ui(lambda: self.atualizar_status("esperando a aba do SPX"))
+                        self.esperar(2)
+                        continue
 
-                pyautogui.write(codigo)
-                pyautogui.press('enter')
+                    entrou, motivo = self.ponte.enviar_codigo(codigo)
+                    if self.parar_thread:
+                        break
+                    # A aba recusou de fato: parar é melhor do que insistir e
+                    # marcar como colado o que não entrou.
+                    if not entrou:
+                        raise RuntimeError(f"{codigo}: {motivo}")
+                else:
+                    self.restore_window_focus()
+                    if self.parar_thread:
+                        break
+
+                    pyautogui.write(codigo)
+                    pyautogui.press('enter')
 
                 # Só marca como colado depois de digitado — parar no meio não
                 # queima código nenhum.
@@ -1124,6 +1203,8 @@ class ColadorApp:
         self.persistir_config()
         if self.db_ui:
             self.db_ui.fechar()
+        if self.ponte:
+            self.ponte.parar()
         self.root.destroy()
 
     def run(self):

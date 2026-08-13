@@ -1,0 +1,187 @@
+"""
+Ponte entre o colador (Python) e a aba do SPX (extensão do Chrome).
+
+Por que existe: digitar com pyautogui exige que a janela esteja em foco, então
+só um macro roda por vez e a máquina fica ocupada. Escrevendo direto no campo
+pela extensão, várias abas colam ao mesmo tempo, em segundo plano.
+
+E tem um ganho que o teclado não dá: a aba responde se o código entrou. O
+Python só marca colado_em no Neon depois desse "ok" — hoje ele marca por fé.
+
+Protocolo (JSON por mensagem):
+  aba   -> {"tipo":"ola", "pagina":"..."}          ao conectar
+  py    -> {"tipo":"colar", "id":123, "codigo":"BR..."}
+  aba   -> {"tipo":"ok",   "id":123}               escreveu e o campo liberou
+  aba   -> {"tipo":"erro", "id":123, "motivo":"campo sumiu"}
+  py    -> {"tipo":"ping"} / aba -> {"tipo":"pong"}
+
+A connection string do Neon não passa por aqui: quem fala com o banco é o
+Python. Importa porque a extensão roda dentro da página da Shopee.
+"""
+
+import asyncio
+import json
+import queue
+import threading
+import time
+
+import websockets
+
+PORTA_PADRAO = 9876   # 9999 é da extensão BRS HTML Bridge, não mexer
+TIMEOUT_RESPOSTA = 30  # segundos esperando a aba confirmar um código
+
+
+class Ponte:
+    """Servidor WebSocket local. Uma instância por colador aberto.
+
+    Roda o asyncio numa thread separada — a UI do colador é Tk e não convive
+    com event loop no mesmo lugar. Quem chama enviar_codigo() bloqueia até a
+    aba responder, o que mantém o loop de colagem igual ao do teclado.
+    """
+
+    def __init__(self, porta=PORTA_PADRAO):
+        self.porta = porta
+        self.loop = None
+        self.servidor = None
+        self.thread = None
+        self.conexao = None          # a aba conectada agora
+        self.pagina = None           # URL que a aba informou
+        self.respostas = queue.Queue()
+        self.ao_conectar = None      # callbacks opcionais pra UI
+        self.ao_desconectar = None
+        self._parar = threading.Event()
+        self._proximo_id = 0
+
+    # ------------------------------------------------------------ ciclo
+    def iniciar(self):
+        if self.thread and self.thread.is_alive():
+            return
+        self._parar.clear()
+        pronto = threading.Event()
+        erro = {}
+
+        def rodar():
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+            try:
+                self.loop.run_until_complete(self._servir(pronto, erro))
+            except Exception as e:
+                erro['e'] = e
+                pronto.set()
+            finally:
+                try:
+                    self.loop.close()
+                except Exception:
+                    pass
+
+        self.thread = threading.Thread(target=rodar, daemon=True)
+        self.thread.start()
+        pronto.wait(timeout=10)
+        if erro.get('e'):
+            raise erro['e']
+
+    async def _servir(self, pronto, erro):
+        try:
+            self.servidor = await websockets.serve(
+                self._atender, "127.0.0.1", self.porta,
+                ping_interval=20, ping_timeout=20)
+        except OSError as e:
+            erro['e'] = OSError(
+                f"Não consegui abrir a porta {self.porta}. "
+                f"Outro colador já está usando ela? ({e})")
+            pronto.set()
+            return
+        pronto.set()
+        while not self._parar.is_set():
+            await asyncio.sleep(0.2)
+        self.servidor.close()
+        await self.servidor.wait_closed()
+
+    async def _atender(self, conexao):
+        # Uma aba por vez: se outra conectar, a antiga cai. Duas abas colando
+        # da mesma fila embaralhariam a ordem dos códigos.
+        if self.conexao is not None:
+            try:
+                await self.conexao.close()
+            except Exception:
+                pass
+        self.conexao = conexao
+        try:
+            async for bruto in conexao:
+                try:
+                    msg = json.loads(bruto)
+                except Exception:
+                    continue
+                tipo = msg.get('tipo')
+                if tipo == 'ola':
+                    self.pagina = msg.get('pagina')
+                    if self.ao_conectar:
+                        self.ao_conectar(self.pagina)
+                elif tipo in ('ok', 'erro'):
+                    self.respostas.put(msg)
+                elif tipo == 'pong':
+                    pass
+        except Exception:
+            pass
+        finally:
+            if self.conexao is conexao:
+                self.conexao = None
+                self.pagina = None
+                if self.ao_desconectar:
+                    self.ao_desconectar()
+
+    def parar(self):
+        self._parar.set()
+        if self.thread:
+            self.thread.join(timeout=5)
+        self.conexao = None
+        self.pagina = None
+
+    # ------------------------------------------------------------- envio
+    @property
+    def conectada(self):
+        return self.conexao is not None
+
+    def enviar_codigo(self, codigo, timeout=TIMEOUT_RESPOSTA):
+        """Manda um código pra aba e espera ela confirmar.
+
+        Retorna (True, None) se entrou, (False, motivo) se não. O motivo sobe
+        pra tela do colador em vez de virar um código perdido em silêncio.
+        """
+        if not self.conectada:
+            return False, "nenhuma aba do SPX conectada"
+
+        self._proximo_id += 1
+        ident = self._proximo_id
+
+        # Descarta resposta atrasada de um código anterior, senão ela seria
+        # lida como se fosse a deste.
+        while not self.respostas.empty():
+            try:
+                self.respostas.get_nowait()
+            except queue.Empty:
+                break
+
+        mensagem = json.dumps({'tipo': 'colar', 'id': ident, 'codigo': codigo})
+        try:
+            futuro = asyncio.run_coroutine_threadsafe(
+                self.conexao.send(mensagem), self.loop)
+            futuro.result(timeout=5)
+        except Exception as e:
+            return False, f"falha ao enviar: {str(e)[:60]}"
+
+        limite = time.time() + timeout
+        while time.time() < limite:
+            try:
+                resposta = self.respostas.get(timeout=0.2)
+            except queue.Empty:
+                if not self.conectada:
+                    return False, "a aba desconectou no meio"
+                continue
+            if resposta.get('id') != ident:
+                continue          # resposta de outro código, ignora
+            if resposta.get('tipo') == 'ok':
+                return True, None
+            return False, resposta.get('motivo') or "a aba recusou"
+
+        return False, f"a aba não respondeu em {timeout}s"

@@ -1,0 +1,81 @@
+===========================================================
+  GC COLADOR - PONTE PRO SPX
+===========================================================
+
+O que muda: em vez do colador DIGITAR na janela em foco, a
+extensao escreve direto no campo do SPX.
+
+Com isso:
+  - nao precisa deixar a janela em foco: da pra usar o PC
+  - varias abas colam ao mesmo tempo, sem uma atrapalhar a
+    outra (era o motivo das VMs - nao precisa mais)
+  - a aba RESPONDE se o codigo entrou, e so entao o Neon e
+    marcado. Antes o colador marcava no escuro.
+  - ele espera o campo destravar. O SPX desabilita o campo
+    enquanto processa, e digitar nessa hora perdia o codigo.
+
+-----------------------------------------------------------
+INSTALAR (uma vez por maquina)
+-----------------------------------------------------------
+
+  1. Chrome > enderaco:  chrome://extensions
+  2. Ligue "Modo do desenvolvedor" (canto superior direito)
+  3. Clique em "Carregar sem compactacao"
+  4. Escolha ESTA pasta (extensao-colador)
+  5. Deve aparecer "GC Colador - ponte SPX" na lista
+
+-----------------------------------------------------------
+USAR
+-----------------------------------------------------------
+
+  1. Abra o ColadorNeon.exe
+  2. Em "Colar por:", escolha  Navegador (extensao)
+  3. Escolha modo (Recebimento / AT Cluster) e XPT
+  4. Abra a aba do SPX na tela de bipagem
+  5. Aperte INSERT
+
+  Nao precisa clicar no campo. Nao precisa deixar a aba na
+  frente. Pode minimizar o Chrome.
+
+-----------------------------------------------------------
+TESTAR SEM MEXER NO SPX
+-----------------------------------------------------------
+
+  Abra o teste-local.html desta pasta no Chrome. Ele imita o
+  campo do SPX, inclusive travando por 800ms a cada codigo.
+  Os codigos colados aparecem na tabela.
+
+  Para a extensao alcancar esse arquivo, adicione em
+  manifest.json, na linha "matches":
+      "file:///*"
+  e recarregue a extensao. Tire depois do teste.
+
+-----------------------------------------------------------
+SE NAO COLAR NADA
+-----------------------------------------------------------
+
+  - O ColadorNeon esta aberto e com a saida "Navegador"?
+    A extensao so conecta quando ele esta rodando.
+
+  - A aba esta em spx.shopee.com.br? A extensao so entra
+    nesse endereco (esta em manifest.json > matches).
+
+  - F12 > Console na aba do SPX: deve aparecer
+    "[GC Colador] conectado ao colador"
+
+  - Se aparecer erro de campo nao encontrado, o SPX mudou o
+    texto do campo. O seletor esta em content_script.js, na
+    lista SELETORES - hoje ele procura o placeholder
+    "Por favor, insira".
+
+-----------------------------------------------------------
+DETALHE TECNICO
+-----------------------------------------------------------
+
+  A conexao e um WebSocket em 127.0.0.1:9876, so local. A
+  senha do Neon NAO passa por aqui: quem fala com o banco e
+  o Python. Isso importa porque este script roda dentro da
+  pagina da Shopee.
+
+  A porta 9999 e da outra extensao (BRS HTML Bridge), por
+  isso usamos 9876.
