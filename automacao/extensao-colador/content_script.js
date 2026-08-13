@@ -88,7 +88,12 @@
   }
 
   async function colar(codigo) {
+    // Cronometra cada fase: sem isso, "esta lento" nao diz se a espera e do
+    // SPX processando ou do campo demorando a liberar.
+    const t0 = Date.now();
+
     const campo = await esperarCampoLivre();
+    const tCampo = Date.now() - t0;
     if (!campo) return { ok: false, motivo: 'campo nao encontrado ou preso desabilitado' };
 
     escrever(campo, codigo);
@@ -99,9 +104,15 @@
       return { ok: false, motivo: `o campo ficou com "${campo.value}"` };
     }
 
+    const t1 = Date.now();
     apertarEnter(campo);
-    await esperarProcessar(campo, codigo);
-    return { ok: true };   // o SPX mostra na tela o erro dele, se houver
+    const detalhe = await esperarProcessar(campo, codigo);
+    const tProcesso = Date.now() - t1;
+    const total = Date.now() - t0;
+
+    console.log(`[GC Colador] ${codigo}  total ${total}ms` +
+                `  (campo livre ${tCampo}ms + SPX ${tProcesso}ms)  ${detalhe}`);
+    return { ok: true, ms: total };   // o SPX mostra na tela o erro dele, se houver
   }
 
   // Espera o SPX terminar de processar o codigo.
@@ -121,17 +132,18 @@
       await dorme(30);
       const atual = olhar();
       if (atual.disabled) { travou = true; break; }
-      if (atual.value !== codigo) return;   // limpou: ja terminou
+      if (atual.value !== codigo) return 'campo limpou';
     }
 
     // 2) Travou: espera liberar. Este e o unico ponto que pode demorar,
     //    e a demora e do SPX, nao nossa.
-    if (!travou) return;
+    if (!travou) return 'nao travou (SPX nao sinalizou)';
     const limiteFim = Date.now() + 15000;
     while (Date.now() < limiteFim) {
       await dorme(30);
-      if (!olhar().disabled) return;
+      if (!olhar().disabled) return 'destravou';
     }
+    return 'ESTOUROU 15s travado';
   }
 
   // --- conexao com o Python --------------------------------------------

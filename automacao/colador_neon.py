@@ -35,7 +35,7 @@ import win32gui
 
 from ponte_navegador import PORTA_PADRAO, Ponte
 
-VERSAO = '2.1'   # subir junto com mudança de comportamento
+VERSAO = '2.2'   # subir junto com mudança de comportamento
 APP_ID = 'GC.Transportes.ColadorNeon.1.0'
 try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
@@ -304,6 +304,7 @@ class ColadorApp:
         self.num_lote = 0
         self.colados_sessao = 0
         self.pendentes_banco = None
+        self.tempos = []
 
         self.url_atual = ''
         self.filtros_exec = {'dia': None, 'xpt': None}
@@ -1015,6 +1016,7 @@ class ColadorApp:
         self.colados_sessao = 0
         self.num_lote = 0
         self.lote = []
+        self.tempos = []
 
         self.db = Banco(self.url_atual)
         self.thread_confirmar = threading.Thread(target=self.loop_confirmacao, daemon=True)
@@ -1047,6 +1049,18 @@ class ColadorApp:
         linhas = self.db.executar(sql_reservar(self.modo_exec), params)
         self.reservados.update(r[0] for r in linhas)
         return [(r[0], r[1]) for r in linhas]
+
+    def registrar_tempo(self, segundos):
+        """Guarda os últimos tempos por código, pra tela mostrar o ritmo real."""
+        self.tempos.append(segundos)
+        if len(self.tempos) > 20:
+            self.tempos.pop(0)
+
+    def ritmo(self):
+        if not self.tempos:
+            return ""
+        media = sum(self.tempos) / len(self.tempos)
+        return f" · {media:.1f}s por código"
 
     def esperar(self, segundos):
         """Sleep que responde ao Parar e à pausa sem demorar pra acordar."""
@@ -1099,7 +1113,9 @@ class ColadorApp:
                         self.esperar(2)
                         continue
 
+                    inicio_codigo = time.time()
                     entrou, motivo = self.ponte.enviar_codigo(codigo)
+                    self.registrar_tempo(time.time() - inicio_codigo)
                     if self.parar_thread:
                         break
                     # A aba recusou de fato: parar é melhor do que insistir e
@@ -1219,6 +1235,7 @@ class ColadorApp:
                  f"{self.colados_sessao} colados nesta sessão")
         if self.pendentes_banco is not None:
             linha += f" · {self.pendentes_banco} na fila"
+        linha += self.ritmo()
 
         if self.pausado:
             cabecalho, cor = "PAUSADO", "#ff9900"
