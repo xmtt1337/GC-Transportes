@@ -35,7 +35,7 @@ import win32gui
 
 from ponte_navegador import PORTA_PADRAO, Ponte
 
-VERSAO = '2.0'   # subir junto com mudança de comportamento
+VERSAO = '2.1'   # subir junto com mudança de comportamento
 APP_ID = 'GC.Transportes.ColadorNeon.1.0'
 try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
@@ -500,8 +500,9 @@ class ColadorApp:
         self.lote_entry.insert(0, str(self.cfg.get('tamanho_lote', 20)))
         self.lote_entry.pack(side="left")
 
-        linha_int = ctk.CTkFrame(frame, fg_color="transparent")
-        linha_int.pack(pady=8)
+        self.linha_intervalo = ctk.CTkFrame(frame, fg_color="transparent")
+        self.linha_intervalo.pack(pady=8)
+        linha_int = self.linha_intervalo
         self.interval_label = ctk.CTkLabel(linha_int, text="Intervalo: 0.5 segundos",
                                            font=("Segoe UI", 13))
         self.interval_label.pack(side="left", padx=(0, 10))
@@ -669,10 +670,14 @@ class ColadorApp:
             texto = ("A extensão do Chrome escreve no campo do SPX. Não precisa de "
                      "foco, dá pra usar a máquina, e a aba confirma se o código entrou.")
             self.linha_pagina.pack(fill="x", padx=12, pady=(0, 12))
+            # O intervalo não vale aqui: o próximo código sai quando o SPX
+            # libera o campo, não quando o cronômetro manda.
+            self.linha_intervalo.pack_forget()
         else:
             texto = ("Digita na janela que estiver em foco, como o bipador. "
                      "Prende a máquina e só um colador roda por vez.")
             self.linha_pagina.pack_forget()
+            self.linha_intervalo.pack(pady=8)
         self.saida_desc.configure(text=texto)
 
     def pagina_alvo(self):
@@ -1118,7 +1123,13 @@ class ColadorApp:
                     self.pendentes_banco = max(0, self.pendentes_banco - 1)
                 self.ui(self.atualizar_status)
 
-                time.sleep(self.interval_slider.get())
+                # Pelo navegador quem dá o ritmo é o SPX: a extensão só devolve
+                # o "ok" quando o campo destrava. Somar o intervalo do slider
+                # em cima disso era só espera jogada fora.
+                if self.saida_exec == SAIDA_NAVEGADOR:
+                    time.sleep(0.05)
+                else:
+                    time.sleep(self.interval_slider.get())
         except Exception as e:
             erro = str(e).strip().split("\n")[0][:90]
         finally:

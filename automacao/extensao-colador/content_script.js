@@ -100,17 +100,38 @@
     }
 
     apertarEnter(campo);
+    await esperarProcessar(campo, codigo);
+    return { ok: true };   // o SPX mostra na tela o erro dele, se houver
+  }
 
-    // Espera o SPX processar. Ele desabilita o campo enquanto trabalha; quando
-    // reabilita (ou quando limpa o valor), terminou.
-    const fim = Date.now() + 15000;
-    while (Date.now() < fim) {
-      await new Promise(r => setTimeout(r, 100));
-      const atual = acharCampo();
-      if (!atual) break;
-      if (!atual.disabled && atual.value !== codigo) return { ok: true };
+  // Espera o SPX terminar de processar o codigo.
+  //
+  // O sinal confiavel e o campo TRAVAR e destravar. Antes esperavamos o valor
+  // mudar, mas o SPX deixa o codigo escrito (so seleciona o texto pro proximo
+  // bipe sobrescrever) - a condicao nunca acontecia e cada codigo comia os 15s
+  // inteiros de timeout.
+  async function esperarProcessar(campo, codigo) {
+    const dorme = (ms) => new Promise((r) => setTimeout(r, ms));
+    const olhar = () => acharCampo() || campo;
+
+    // 1) Comecou a trabalhar? Trava o campo, ou ja limpa o valor.
+    let travou = false;
+    const limiteInicio = Date.now() + 1200;
+    while (Date.now() < limiteInicio) {
+      await dorme(30);
+      const atual = olhar();
+      if (atual.disabled) { travou = true; break; }
+      if (atual.value !== codigo) return;   // limpou: ja terminou
     }
-    return { ok: true };   // seguiu em frente; o SPX mostra o erro dele na tela
+
+    // 2) Travou: espera liberar. Este e o unico ponto que pode demorar,
+    //    e a demora e do SPX, nao nossa.
+    if (!travou) return;
+    const limiteFim = Date.now() + 15000;
+    while (Date.now() < limiteFim) {
+      await dorme(30);
+      if (!olhar().disabled) return;
+    }
   }
 
   // --- conexao com o Python --------------------------------------------
