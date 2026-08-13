@@ -35,7 +35,7 @@ import win32gui
 
 from ponte_navegador import PORTA_PADRAO, Ponte
 
-VERSAO = '2.3'   # subir junto com mudança de comportamento
+VERSAO = '2.4'   # subir junto com mudança de comportamento
 APP_ID = 'GC.Transportes.ColadorNeon.1.0'
 try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
@@ -1370,6 +1370,13 @@ class ColadorApp:
         if self.ponte:
             self.ponte.parar()
         self.root.destroy()
+
+        # Fechar a janela estava deixando o processo vivo em segundo plano: o
+        # servidor WebSocket e o loop asyncio seguram a saída, e aí o .exe fica
+        # travado pra substituir e a porta ocupada pro próximo colador. Como
+        # config, banco e ponte já foram encerrados acima, sair na marra aqui
+        # não perde nada.
+        os._exit(0)
 
     def run(self):
         self.root.mainloop()
