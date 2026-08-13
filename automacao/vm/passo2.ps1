@@ -5,7 +5,8 @@ param(
     [string]$Nome = "Colador-AT",
     [string]$Iso  = "",
     [int]$MemoriaGB = 0,      # 0 = decide sozinho pela RAM da maquina
-    [switch]$Dinamica         # a VM pega so o que usa - bom pra varias VMs juntas
+    [switch]$Dinamica,        # a VM pega so o que usa - bom pra varias VMs juntas
+    [switch]$IniciarComWindows # maquina dedicada: a VM sobe junto com o Windows
 )
 
 . "$PSScriptRoot\comum.ps1"
@@ -200,8 +201,16 @@ try {
     Ok "ISO conectada e boot ajustado pra ela"
 
     # Sem isso a VM tenta hibernar junto com o host e o macro para.
-    Set-VM -Name $Nome -AutomaticStopAction Shutdown -AutomaticStartAction Nothing
-    Ok "Configurada pra desligar direito quando o host desligar"
+    if ($IniciarComWindows) {
+        # Maquina dedicada: liga o PC e as VMs sobem sozinhas, em fila pra nao
+        # disputarem disco e CPU no boot.
+        Set-VM -Name $Nome -AutomaticStopAction Shutdown `
+               -AutomaticStartAction Start -AutomaticStartDelay 60
+        Ok "Configurada pra subir junto com o Windows (60s depois do boot)"
+    } else {
+        Set-VM -Name $Nome -AutomaticStopAction Shutdown -AutomaticStartAction Nothing
+        Ok "Configurada pra desligar direito quando o host desligar"
+    }
 
     Start-VM $Nome
     Ok "VM ligada"
