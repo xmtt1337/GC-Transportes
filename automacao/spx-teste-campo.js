@@ -5,9 +5,10 @@
 //
 // COMO USAR
 //   1. Abra a tela do SPX onde voce bipa os codigos
-//   2. CLIQUE no campo onde o codigo e digitado (o cursor tem que estar nele)
-//   3. F12 > aba Console
-//   4. Cole este arquivo inteiro e Enter
+//   2. F12 > aba Console
+//   3. Cole este arquivo inteiro e de Enter
+//      (se o Chrome pedir, digite  allow pasting  e Enter antes)
+//   4. Ele da 5 SEGUNDOS: clique no campo do codigo nesse tempo
 //   5. Me mande o que aparecer no console
 //
 // Ele NAO envia nada: so escreve um codigo de teste no campo e conta o que
@@ -15,13 +16,29 @@
 
 (() => {
   const CODIGO_TESTE = 'BR00TESTE12345';
-  const campo = document.activeElement;
+  const ESPERA = 5;
 
   console.log('%c=== TESTE DE CAMPO - SPX ===', 'font-size:14px;font-weight:bold;color:#2c7be5');
+  console.log(`%cCLIQUE NO CAMPO DO CODIGO AGORA - ${ESPERA} segundos`,
+              'font-size:13px;font-weight:bold;color:#e67e22');
+
+  let resta = ESPERA;
+  const relogio = setInterval(() => {
+    resta--;
+    if (resta > 0) console.log(`  ${resta}...`);
+  }, 1000);
+
+  setTimeout(() => {
+    clearInterval(relogio);
+    testar();
+  }, ESPERA * 1000);
+
+  function testar() {
+  const campo = document.activeElement;
 
   if (!campo || !['INPUT', 'TEXTAREA'].includes(campo.tagName)) {
-    console.error('Nenhum campo de texto esta focado.');
-    console.log('Clique DENTRO do campo onde voce digita o codigo e rode de novo.');
+    console.error('Nenhum campo de texto ficou focado.');
+    console.log('Rode de novo e clique DENTRO do campo do codigo durante a contagem.');
     return;
   }
 
@@ -88,4 +105,5 @@
   }
 
   console.log('Me mande um print deste console inteiro.');
+  }
 })();
