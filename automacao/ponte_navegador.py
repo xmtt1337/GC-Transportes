@@ -28,6 +28,7 @@ import time
 import websockets
 
 PORTA_PADRAO = 9876   # 9999 é da extensão BRS HTML Bridge, não mexer
+PORTAS = range(9876, 9886)  # cada colador aberto ocupa uma; a extensão varre todas
 TIMEOUT_RESPOSTA = 30  # segundos esperando a aba confirmar um código
 
 
@@ -39,8 +40,13 @@ class Ponte:
     aba responder, o que mantém o loop de colagem igual ao do teclado.
     """
 
-    def __init__(self, porta=PORTA_PADRAO):
+    def __init__(self, porta=None, filtro_pagina="", papel=""):
+        # porta=None procura a primeira livre: assim dá pra abrir um colador
+        # por tarefa (recebimento numa aba, AT Cluster em outra) sem configurar
+        # nada. O filtro_pagina é o que impede um roubar o código do outro.
         self.porta = porta
+        self.filtro_pagina = (filtro_pagina or "").strip().lower()
+        self.papel = papel
         self.loop = None
         self.servidor = None
         self.thread = None
@@ -81,14 +87,25 @@ class Ponte:
             raise erro['e']
 
     async def _servir(self, pronto, erro):
-        try:
-            self.servidor = await websockets.serve(
-                self._atender, "127.0.0.1", self.porta,
-                ping_interval=20, ping_timeout=20)
-        except OSError as e:
-            erro['e'] = OSError(
-                f"Não consegui abrir a porta {self.porta}. "
-                f"Outro colador já está usando ela? ({e})")
+        tentativas = [self.porta] if self.porta else list(PORTAS)
+        ultimo = None
+        for porta in tentativas:
+            try:
+                self.servidor = await websockets.serve(
+                    self._atender, "127.0.0.1", porta,
+                    ping_interval=20, ping_timeout=20)
+                self.porta = porta
+                break
+            except OSError as e:
+                ultimo = e
+                continue
+        if self.servidor is None:
+            if len(tentativas) == 1:
+                erro['e'] = OSError(f"A porta {tentativas[0]} está ocupada ({ultimo})")
+            else:
+                erro['e'] = OSError(
+                    f"Nenhuma porta livre entre {PORTAS[0]} e {PORTAS[-1]}. "
+                    f"Quantos coladores estão abertos? ({ultimo})")
             pronto.set()
             return
         pronto.set()
@@ -98,14 +115,7 @@ class Ponte:
         await self.servidor.wait_closed()
 
     async def _atender(self, conexao):
-        # Uma aba por vez: se outra conectar, a antiga cai. Duas abas colando
-        # da mesma fila embaralhariam a ordem dos códigos.
-        if self.conexao is not None:
-            try:
-                await self.conexao.close()
-            except Exception:
-                pass
-        self.conexao = conexao
+        aceita = False
         try:
             async for bruto in conexao:
                 try:
@@ -113,10 +123,33 @@ class Ponte:
                 except Exception:
                     continue
                 tipo = msg.get('tipo')
+
                 if tipo == 'ola':
-                    self.pagina = msg.get('pagina')
+                    pagina = msg.get('pagina') or ''
+                    # A aba se apresenta e o colador diz se ela é dele. Sem
+                    # isso, o colador do recebimento pegaria a aba do AT
+                    # Cluster (ou o contrário) e os códigos iriam pro lugar
+                    # errado — que é o conflito de rodar dois ao mesmo tempo.
+                    if self.filtro_pagina and self.filtro_pagina not in pagina.lower():
+                        await conexao.send(json.dumps({
+                            'tipo': 'recusado', 'papel': self.papel,
+                            'filtro': self.filtro_pagina}))
+                        return
+                    await conexao.send(json.dumps({'tipo': 'aceito', 'papel': self.papel}))
+
+                    # Só derruba a anterior depois de ter uma aba de verdade:
+                    # antes, uma aba recusada já matava a que estava colando.
+                    if self.conexao is not None and self.conexao is not conexao:
+                        try:
+                            await self.conexao.close()
+                        except Exception:
+                            pass
+                    self.conexao = conexao
+                    aceita = True
+                    self.pagina = pagina
                     if self.ao_conectar:
-                        self.ao_conectar(self.pagina)
+                        self.ao_conectar(pagina)
+
                 elif tipo in ('ok', 'erro'):
                     self.respostas.put(msg)
                 elif tipo == 'pong':
@@ -124,7 +157,7 @@ class Ponte:
         except Exception:
             pass
         finally:
-            if self.conexao is conexao:
+            if aceita and self.conexao is conexao:
                 self.conexao = None
                 self.pagina = None
                 if self.ao_desconectar:

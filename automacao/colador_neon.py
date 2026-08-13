@@ -72,6 +72,7 @@ MODOS = {
         'reservado_por': 'reservado_por',
         'depende_de': None,
         'explicacao': 'recebe os pacotes no SPX',
+        'pagina': 'singleReceiveNew',
     },
     'AT Cluster': {
         'colado_em': 'at_colado_em',
@@ -80,6 +81,7 @@ MODOS = {
         'reservado_por': 'at_reservado_por',
         'depende_de': 'colado_em',
         'explicacao': 'atribui no SPX o que já foi recebido',
+        'pagina': '',   # preencher com um pedaço da URL da tela de AT Cluster
     },
 }
 
@@ -93,9 +95,17 @@ def carregar_config():
 
 
 def salvar_config(dados):
+    """Grava num temporário e troca de nome.
+
+    Vários coladores abertos dividem este arquivo. Escrevendo por cima, dois
+    fechando ao mesmo tempo deixariam um JSON pela metade e o próximo abriria
+    sem connection string nenhuma.
+    """
     os.makedirs(CONFIG_DIR, exist_ok=True)
-    with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
+    temporario = f"{CONFIG_PATH}.{os.getpid()}.tmp"
+    with open(temporario, 'w', encoding='utf-8') as f:
         json.dump(dados, f, indent=2, ensure_ascii=False)
+    os.replace(temporario, CONFIG_PATH)
 
 
 def caminho_recurso(nome):
@@ -382,7 +392,22 @@ class ColadorApp:
         self.saida_menu.pack(side="left")
         self.saida_desc = ctk.CTkLabel(caixa_saida, text="", font=("Segoe UI", 11),
                                        text_color="#7a8aa0", justify="left", wraplength=440)
-        self.saida_desc.pack(padx=12, pady=(0, 12), anchor="w")
+        self.saida_desc.pack(padx=12, pady=(0, 6), anchor="w")
+
+        # Com mais de um colador aberto, é isto que decide qual aba é de quem.
+        self.linha_pagina = ctk.CTkFrame(caixa_saida, fg_color="transparent")
+        self.linha_pagina.pack(fill="x", padx=12, pady=(0, 12))
+        ctk.CTkLabel(self.linha_pagina, text="Só na página cuja URL contém:",
+                     font=("Segoe UI", 11)).pack(side="left")
+        self.pagina_entry = ctk.CTkEntry(self.linha_pagina, width=170,
+                                         placeholder_text="ex: singleReceiveNew")
+        if self.cfg.get('pagina'):
+            self.pagina_entry.insert(0, self.cfg['pagina'])
+        self.pagina_entry.pack(side="left", padx=6)
+        self.pagina_entry.bind("<FocusOut>", lambda _e: self.persistir_config())
+        self.porta_label = ctk.CTkLabel(self.linha_pagina, text="", font=("Segoe UI", 11),
+                                        text_color="#2c7be5")
+        self.porta_label.pack(side="left", padx=4)
 
         # --- modo (o que este computador vai fazer no SPX)
         caixa_modo = ctk.CTkFrame(frame, fg_color="#eef4ff", corner_radius=10)
@@ -594,10 +619,31 @@ class ColadorApp:
         if self.saida_atual() == SAIDA_NAVEGADOR:
             texto = ("A extensão do Chrome escreve no campo do SPX. Não precisa de "
                      "foco, dá pra usar a máquina, e a aba confirma se o código entrou.")
+            self.linha_pagina.pack(fill="x", padx=12, pady=(0, 12))
         else:
             texto = ("Digita na janela que estiver em foco, como o bipador. "
                      "Prende a máquina e só um colador roda por vez.")
+            self.linha_pagina.pack_forget()
         self.saida_desc.configure(text=texto)
+
+    def pagina_alvo(self):
+        return self.pagina_entry.get().strip()
+
+    def sugerir_pagina(self):
+        """Ajusta o filtro de página conforme o modo.
+
+        Não mexe se você digitou um valor próprio — só troca quando o campo
+        está vazio ou tem a sugestão de outro modo, que é o caso de quem
+        acabou de trocar de Recebimento para AT Cluster.
+        """
+        atual = self.pagina_entry.get().strip()
+        conhecidas = {m['pagina'] for m in MODOS.values() if m.get('pagina')}
+        if atual and atual not in conhecidas:
+            return
+        self.pagina_entry.delete(0, 'end')
+        sugestao = MODOS[self.modo_atual()].get('pagina') or ''
+        if sugestao:
+            self.pagina_entry.insert(0, sugestao)
 
     def ao_trocar_saida(self):
         if self.executando:
@@ -639,6 +685,7 @@ class ColadorApp:
                 text=f"Colagem parada — modo mudou para {self.modo_atual()}",
                 text_color="#ff9900")
         self.atualizar_visual_modo()
+        self.sugerir_pagina()
         self.ao_mudar_filtro()
 
     def tamanho_lote(self):
@@ -659,6 +706,7 @@ class ColadorApp:
             'modo': self.modo_atual(),
             'carencia': self.carencia(),
             'saida': self.saida_atual(),
+            'pagina': self.pagina_alvo(),
         })
         try:
             salvar_config(self.cfg)
@@ -744,6 +792,7 @@ class ColadorApp:
             self.modo_menu.set(valor)
             self.modo_confirmado = True
             self.atualizar_visual_modo()
+            self.sugerir_pagina()
             self.persistir_config()
             if not self.xpt_confirmado:
                 self.perguntar_xpt()
@@ -838,9 +887,14 @@ class ColadorApp:
             # Pela extensão não existe foco: o alvo é a aba, não a janela.
             self.janela_ativa = None
             try:
-                if self.ponte is None:
-                    self.ponte = Ponte()
+                # Ponte nova a cada início: o filtro de página e o papel podem
+                # ter mudado desde a última vez.
+                if self.ponte:
+                    self.ponte.parar()
+                self.ponte = Ponte(filtro_pagina=self.pagina_alvo(),
+                                   papel=f"{self.modo_atual()} / {self.xpt_menu.get()}")
                 self.ponte.iniciar()
+                self.porta_label.configure(text=f"porta {self.ponte.porta}")
             except OSError as e:
                 self.status_sessao.configure(text=str(e)[:110], text_color="#e74c3c")
                 return

@@ -17,7 +17,10 @@
   }
   window.__gcColadorAtivo = true;
 
-  const PORTA = 9876;
+  // Cada colador aberto ocupa uma porta. A aba varre todas e fica com o
+  // colador que disser que ela é dele — é assim que o recebimento e o AT
+  // Cluster rodam juntos sem trocar os códigos.
+  const PORTAS = [9876, 9877, 9878, 9879, 9880, 9881, 9882, 9883, 9884, 9885];
   const RECONECTAR_MS = 3000;
 
   // O campo do SPX nao tem id, name nem classe: o placeholder e o que sobra.
@@ -108,19 +111,51 @@
   }
 
   // --- conexao com o Python --------------------------------------------
-  function conectar() {
-    if (!ligado) return;
-    try {
-      ws = new WebSocket(`ws://127.0.0.1:${PORTA}`);
-    } catch (e) {
-      return setTimeout(conectar, RECONECTAR_MS);
-    }
+  // Tenta uma porta: resolve com o socket se o colador aceitar esta pagina,
+  // ou com null se recusar / nao houver ninguem ouvindo.
+  function tentarPorta(porta) {
+    return new Promise((resolve) => {
+      let socket;
+      try {
+        socket = new WebSocket(`ws://127.0.0.1:${porta}`);
+      } catch (e) {
+        return resolve(null);
+      }
 
-    ws.onopen = () => {
-      console.log('[GC Colador] conectado ao colador');
-      ws.send(JSON.stringify({ tipo: 'ola', pagina: location.href }));
-    };
+      const desistir = setTimeout(() => {
+        try { socket.close(); } catch {}
+        resolve(null);
+      }, 2000);
 
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ tipo: 'ola', pagina: location.href }));
+      };
+
+      socket.onmessage = (evento) => {
+        let msg;
+        try { msg = JSON.parse(evento.data); } catch { return; }
+
+        if (msg.tipo === 'aceito') {
+          clearTimeout(desistir);
+          socket.onmessage = null;
+          console.log(`[GC Colador] conectado na porta ${porta}` +
+                      (msg.papel ? ` (${msg.papel})` : ''));
+          return resolve(socket);
+        }
+        if (msg.tipo === 'recusado') {
+          clearTimeout(desistir);
+          try { socket.close(); } catch {}
+          return resolve(null);
+        }
+      };
+
+      socket.onerror = () => { clearTimeout(desistir); resolve(null); };
+      socket.onclose = () => { clearTimeout(desistir); resolve(null); };
+    });
+  }
+
+  function escutar(socket) {
+    ws = socket;
     ws.onmessage = async (evento) => {
       let msg;
       try { msg = JSON.parse(evento.data); } catch { return; }
@@ -140,13 +175,22 @@
         ws.send(JSON.stringify({ tipo: 'erro', id: msg.id, motivo: String(e).slice(0, 80) }));
       }
     };
-
     ws.onclose = () => {
       ws = null;
-      if (ligado) setTimeout(conectar, RECONECTAR_MS);
+      console.log('[GC Colador] colador desconectou');
+      if (ligado) setTimeout(procurarColador, RECONECTAR_MS);
     };
     ws.onerror = () => { if (ws) ws.close(); };
   }
 
-  conectar();
+  async function procurarColador() {
+    if (!ligado || ws) return;
+    for (const porta of PORTAS) {
+      const socket = await tentarPorta(porta);
+      if (socket) return escutar(socket);
+    }
+    setTimeout(procurarColador, RECONECTAR_MS);
+  }
+
+  procurarColador();
 })();
