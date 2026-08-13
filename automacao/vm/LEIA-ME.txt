@@ -44,6 +44,33 @@ O QUE VOCE PRECISA TER ANTES
   - A connection string do Neon (a mesma do sistema)
 
 -----------------------------------------------------------
+QUANTA MEMORIA DAR PRA VM
+-----------------------------------------------------------
+
+  Sozinho, o passo 2 da 6 GB numa maquina de 16 GB. Nao e
+  obrigatorio: Windows 11 + navegador + colador roda bem em
+  4 GB, e em 3 GB roda mais devagar.
+
+  Isso importa se voce quer VARIAS VMs (uma pra cada macro,
+  ja que cada macro precisa da sua tela). Na PC-07:
+
+     6 GB por VM  ->  cabe 1
+     4 GB por VM  ->  cabem 2
+     3 GB por VM  ->  cabem 3
+
+  Pra escolher, abra o Prompt de Comando na pasta e rode:
+
+     2-CRIAR-VM.bat -Dinamica -MemoriaGB 4 -Nome Colador-AT2
+
+  -MemoriaGB  quanto dar pra VM
+  -Dinamica   a VM devolve memoria quando esta parada
+              (use sempre que for rodar mais de uma junta)
+  -Nome       cada VM precisa de um nome diferente
+
+  Da pra mudar a memoria depois: Gerenciador do Hyper-V,
+  com a VM DESLIGADA, botao direito > Configuracoes.
+
+-----------------------------------------------------------
 NA PC-07 TEM UM DETALHE
 -----------------------------------------------------------
 

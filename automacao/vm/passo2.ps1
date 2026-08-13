@@ -3,7 +3,9 @@
 param(
     [switch]$Simular,
     [string]$Nome = "Colador-AT",
-    [string]$Iso  = ""
+    [string]$Iso  = "",
+    [int]$MemoriaGB = 0,      # 0 = decide sozinho pela RAM da maquina
+    [switch]$Dinamica         # a VM pega so o que usa - bom pra varias VMs juntas
 )
 
 . "$PSScriptRoot\comum.ps1"
@@ -24,12 +26,28 @@ Ok "Hyper-V ligado"
 # --- memoria -----------------------------------------------------------
 $cs = Get-CimInstance Win32_ComputerSystem
 $ramGB = [math]::Round($cs.TotalPhysicalMemory / 1GB, 1)
-# Metade da RAM pra VM, no minimo 3 GB (abaixo disso o Windows 11 sofre).
-$vmRamGB = if ($ramGB -ge 12) { 6 } elseif ($ramGB -ge 8) { 4 } else { 3 }
-Write-Host "  RAM da maquina: $ramGB GB  ->  a VM vai usar $vmRamGB GB"
+# 4 GB e o suficiente pra Windows 11 + navegador + colador. 6 so quando sobra
+# memoria de verdade; 3 e o piso, abaixo disso o Windows 11 sofre.
+if ($MemoriaGB -gt 0) {
+    $vmRamGB = [math]::Max(2, $MemoriaGB)
+    Write-Host "  RAM da maquina: $ramGB GB  ->  a VM vai usar $vmRamGB GB (voce escolheu)"
+} else {
+    $vmRamGB = if ($ramGB -ge 12) { 6 } elseif ($ramGB -ge 8) { 4 } else { 3 }
+    Write-Host "  RAM da maquina: $ramGB GB  ->  a VM vai usar $vmRamGB GB"
+}
 if ($ramGB -lt 6) {
     Aviso "Com menos de 6 GB a VM e o Windows daqui vao brigar por memoria."
     Info "Da pra continuar, mas espere lentidao nos dois lados."
+}
+# Pra rodar mais de uma VM ao mesmo tempo, o que manda e sobrar memoria pro
+# host: cada VM come o que reservou, mesmo parada, quando nao e dinamica.
+$cabem = [math]::Floor(($ramGB - 4) / $vmRamGB)
+if ($cabem -ge 1) {
+    $frase = if ($cabem -eq 1) { "cabe 1 VM" } else { "cabem $cabem VMs" }
+    Info "Com $vmRamGB GB por VM, $frase nesta maquina (deixando 4 GB pro host)."
+    if (-not $Dinamica) {
+        Info "Pra rodar varias juntas, use:  2-CRIAR-VM.bat -Dinamica -MemoriaGB 4"
+    }
 }
 
 # --- CPU velha demais pro Windows 11? ----------------------------------
@@ -137,7 +155,7 @@ Ok "Rede virtual: $($switch.Name)"
 Write-Host ""
 Write-Host "  Vou criar a VM assim:" -ForegroundColor White
 Write-Host "    Nome    : $Nome"
-Write-Host "    Memoria : $vmRamGB GB"
+Write-Host "    Memoria : $vmRamGB GB $(if ($Dinamica) { '(dinamica, minimo 2 GB)' } else { '(fixa)' })"
 Write-Host "    CPU     : 2 nucleos"
 Write-Host "    Disco   : 60 GB (dinamico - so ocupa o que usar)"
 Write-Host "    Rede    : $($switch.Name)"
@@ -160,8 +178,17 @@ try {
     Ok "VM criada"
 
     Set-VMProcessor $Nome -Count 2
-    Set-VMMemory $Nome -DynamicMemoryEnabled $false
-    Ok "2 nucleos, memoria fixa"
+    if ($Dinamica) {
+        # Minimo baixo pra VM ociosa devolver memoria pro host; o teto e o que
+        # ela pode pegar quando o navegador aperta.
+        Set-VMMemory $Nome -DynamicMemoryEnabled $true `
+                     -MinimumBytes 2GB -StartupBytes ($vmRamGB * 1GB) `
+                     -MaximumBytes ($vmRamGB * 1GB)
+        Ok "2 nucleos, memoria dinamica de 2 a $vmRamGB GB"
+    } else {
+        Set-VMMemory $Nome -DynamicMemoryEnabled $false
+        Ok "2 nucleos, $vmRamGB GB fixos"
+    }
 
     # Windows 11 exige TPM. Sem estas duas linhas a instalacao recusa.
     Set-VMKeyProtector -VMName $Nome -NewLocalKeyProtector
