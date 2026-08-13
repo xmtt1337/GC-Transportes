@@ -401,9 +401,14 @@ function _scaBipar(codigoLido) {
             // quando também estiver errado, pra pessoa não descobrir isso depois.
             const extraStatus = d.status_ok === false
                 ? ` E o status é <strong>${_scaEsc(d.status_pedido) || "—"}</strong>, não recebido no hub.` : "";
+            // Sem cadastro não é "pacote errado" — é o sistema dizendo que não sabe
+            // responder. Quem está com o pacote na mão precisa de instrução, não de
+            // diagnóstico: e a instrução nomeia o grupo, porque quem bipa em rajada não
+            // lembra de cabeça qual conferência está aberta.
+            const manual = ` <strong>Conferir manualmente se a rota é de ${_scaEsc(d.esperado)}.</strong>`;
             _scaMsg(d.resultado === "divergente"
                 ? `⚠ <strong>${_scaEsc(d.codigo)}</strong> é de <strong>${_scaEsc(d.encontrado)}</strong>, não de ${_scaEsc(d.esperado)}.${extraStatus}${rep}${receb}`
-                : `⚠ <strong>${_scaEsc(d.codigo)}</strong> — ${_scaEsc(d.detalhe || info.rotulo)}${extraStatus}${rep}${receb}`,
+                : `⚠ <strong>${_scaEsc(d.codigo)}</strong> — ${_scaEsc(d.detalhe || info.rotulo)}${manual}${extraStatus}${rep}${receb}`,
                 d.resultado === "divergente" ? "erro" : "aviso");
         }
         // Repetido substitui a linha que já existe em vez de somar outra: é o mesmo pacote,

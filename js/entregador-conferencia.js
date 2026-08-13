@@ -445,7 +445,10 @@ function _cenTextoResultado(d) {
     if (d.resultado === "divergente" && d.encontrado) {
         return `Esse pacote é do ${d.encontrado} — não é da sua rota${rep}`;
     }
-    return (d.detalhe || rotulo) + rep;
+    // O sistema não achou o pacote no cadastro: não dá pra dizer se é da rota ou não. Vira
+    // instrução em vez de diagnóstico — parado com o pacote na mão, "não está na AT" sozinho
+    // não diz o que fazer com ele.
+    return `${d.detalhe || rotulo} — conferir manualmente se a rota é de ${d.esperado || "um dos seus clusters"}${rep}`;
 }
 
 // Som, cor e texto do bipe. O som é o que importa de verdade: conferindo pacote na mão,
