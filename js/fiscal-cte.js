@@ -90,8 +90,44 @@ async function abrirCTes(event) {
         area.innerHTML = _htmlListagem();
         await _carregarListaCTe();
     } catch (e) {
-        area.innerHTML = `<div class="aviso-bloqueio"><strong>Não foi possível abrir.</strong><p>${_esc(e.message)}</p></div>`;
+        area.innerHTML = _htmlSemAcesso(e.message);
     }
+}
+
+/**
+ * O menu fica visível para dev/finance, mas emitir exige vínculo com uma
+ * empresa fiscal (fiscal_empresa_usuarios). Sem isso o backend recusa — e é
+ * assim que tem que ser. O que a tela pode fazer é explicar o próximo passo em
+ * vez de mostrar um 403 seco.
+ */
+function _htmlSemAcesso(mensagem) {
+    const semVinculo = /não está vinculado|não encontrada/i.test(mensagem || "");
+    if (!semVinculo) {
+        return `<div class="aviso-bloqueio"><strong>Não foi possível abrir.</strong><p>${_esc(mensagem)}</p></div>`;
+    }
+    return `
+    <h2>CT-e</h2>
+    <div class="aviso-bloqueio">
+        <strong>O módulo fiscal ainda não está configurado para o seu usuário.</strong>
+        <p>${_esc(mensagem)}</p>
+    </div>
+    <div class="aviso-info">
+        <p>Para emitir CT-e, faltam estes passos — nesta ordem:</p>
+        <ol>
+            <li><b>Cadastrar a empresa fiscal</b> (CNPJ, inscrição estadual, endereço
+                com código IBGE do município e UF).</li>
+            <li><b>Vincular o usuário à empresa</b>, marcando o que ele pode fazer:
+                emitir, cancelar e configurar.</li>
+            <li><b>Enviar o certificado digital A1</b> (.pfx e senha) da empresa.</li>
+            <li><b>Configurar a tributação IBS/CBS</b> com os valores do contador
+                (CST, cClassTrib e alíquotas).</li>
+        </ol>
+        <p class="dica">
+            Esses dados são cadastrais e fiscais reais — o sistema não os preenche
+            sozinho de propósito. Enquanto faltarem, a emissão fica bloqueada em vez
+            de gerar um CT-e incorreto.
+        </p>
+    </div>`;
 }
 
 function _htmlListagem() {

@@ -171,6 +171,13 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-torrecontrole");
         show("submenu-torrecontrole");
     };
+    // Fiscal (CT-e). Ver o menu não é o mesmo que poder emitir: o backend ainda
+    // exige vínculo em fiscal_empresa_usuarios com pode_emitir. Aqui só decide
+    // quem enxerga a opção.
+    const _showFiscal = () => {
+        show("menu-fiscal");
+        show("submenu-fiscal");
+    };
 
     if (role === "entregador") {
         hide("menu-operacao");
@@ -254,6 +261,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         _showFechamentosAdmin();
         _showPlanejamento();
         _showFinanceiro();
+        _showFiscal();
         _showCadastros();
         _showExtravios();
         _showTorreControle();
