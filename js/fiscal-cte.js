@@ -83,8 +83,9 @@ async function _cteApi(caminho, opcoes = {}) {
 // ══════════════════════════════════════════════ LISTAGEM
 async function abrirCTes(event) {
     if (event) event.preventDefault();
-    const area = document.getElementById("conteudo");
-    area.innerHTML = "<p>Carregando CT-es…</p>";
+    mostrarTela("tela-fiscal-ctes");
+    const area = document.getElementById("fiscal-ctes-conteudo");
+    area.innerHTML = "<p class='carregando'>Carregando CT-es…</p>";
     try {
         _cteContexto = await _cteApi("/fiscal/cte/contexto");
         area.innerHTML = _htmlListagem();
@@ -215,7 +216,8 @@ function _linhaCTe(c) {
 }
 
 async function verCTe(id) {
-    const area = document.getElementById("conteudo");
+    mostrarTela("tela-fiscal-ctes");
+    const area = document.getElementById("fiscal-ctes-conteudo");
     area.innerHTML = "<p>Carregando…</p>";
     try {
         const c = await _cteApi(`/fiscal/cte/${id}`);
@@ -247,8 +249,9 @@ async function baixarXmlCTe(id) {
 
 // ══════════════════════════════════════════════ FORMULÁRIO
 async function abrirNovoCTe(id = null) {
-    const area = document.getElementById("conteudo");
-    area.innerHTML = "<p>Carregando…</p>";
+    mostrarTela("tela-fiscal-novo-cte");
+    const area = document.getElementById("fiscal-novo-cte-conteudo");
+    area.innerHTML = "<p class='carregando'>Carregando…</p>";
     try {
         if (!_cteContexto) _cteContexto = await _cteApi("/fiscal/cte/contexto");
         if (id) {
@@ -271,7 +274,7 @@ async function abrirNovoCTe(id = null) {
 }
 
 function _renderFormulario() {
-    const area = document.getElementById("conteudo");
+    const area = document.getElementById("fiscal-novo-cte-conteudo");
     area.innerHTML = `
     <div class="cabecalho-tela">
         <h2>${_cteAtual.id ? `Editar CT-e #${_cteAtual.id}` : "Novo CT-e"}</h2>

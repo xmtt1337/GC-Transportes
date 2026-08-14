@@ -16,8 +16,9 @@ const _CERT_ESTADOS = {
 
 async function abrirFiscalCertificado(event) {
     if (event) event.preventDefault();
-    const area = document.getElementById("conteudo");
-    area.innerHTML = "<p>Carregando certificado…</p>";
+    mostrarTela("tela-fiscal-certificado");
+    const area = document.getElementById("fiscal-certificado-conteudo");
+    area.innerHTML = "<p class='carregando'>Carregando certificado…</p>";
     try {
         const s = await _cteApi("/fiscal/certificado");
         area.innerHTML = _htmlCertificado(s);

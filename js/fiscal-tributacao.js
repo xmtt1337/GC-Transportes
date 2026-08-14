@@ -213,8 +213,9 @@ async function abrirFiscalConfigTributaria(event) {
     const empresaId = window._fiscalEmpresaAtual;
     if (!empresaId) return alert("Selecione a empresa fiscal primeiro.");
 
-    const area = document.getElementById("conteudo");
-    area.innerHTML = "<p>Carregando configuração fiscal…</p>";
+    mostrarTela("tela-fiscal-tributacao");
+    const area = document.getElementById("fiscal-tributacao-conteudo");
+    area.innerHTML = "<p class='carregando'>Carregando configuração fiscal…</p>";
 
     try {
         const r = await fetch(`${API}/fiscal/empresas/${empresaId}/tributacao`, {
