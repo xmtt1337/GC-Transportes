@@ -1,5 +1,6 @@
 // ───── NAVEGAÇÃO ENTRE TELAS ─────
 const _TELA_TITULOS = {
+    "tela-fiscal-empresas":      "Empresa emitente",
     "tela-fiscal-ctes":          "CT-e",
     "tela-fiscal-novo-cte":      "Novo CT-e",
     "tela-fiscal-certificado":   "Certificado Digital",
