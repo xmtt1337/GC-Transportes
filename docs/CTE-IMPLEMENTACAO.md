@@ -20,7 +20,8 @@ Atualizado em 13/08/2026, ao final da **Fase 2**.
 | Assinatura XMLDSig | ✅ testado |
 | Máquina de estados | ✅ testado |
 | Schemas oficiais versionados + hash | ✅ 20 arquivos |
-| 46 testes automatizados | ✅ passando |
+| Grupo IBS/CBS (estrutura, cálculo, config) | ✅ testado contra XSD |
+| 74 testes automatizados | ✅ passando |
 
 ---
 
@@ -50,15 +51,27 @@ isolamento entre empresas.
 preenchidas e falha com erro explícito quando faltam — não completa com valor
 plausível, porque CT-e autorizado com tributação errada é pior do que rejeitado.
 
-### 1. Grupo IBS/CBS — Reforma Tributária (mais urgente)
+### 1. Grupo IBS/CBS — VALORES (a infraestrutura já existe)
 
-A NT 2026.002 (04/08/2026) tornou obrigatório o grupo `IBSCBS`. **Não está
-implementado.** Precisa de definição contábil sobre: base de cálculo, alíquotas
-estadual e municipal, diferimento, redução, crédito presumido e cashback
-aplicáveis à operação da transportadora.
+A estrutura do grupo está implementada e validada contra o XSD oficial. O que
+falta são os **valores**, que só o contador pode definir:
 
-Sem isso, a emissão em produção não é possível — e provavelmente nem em
-homologação, dependendo de como o SVRS está validando.
+| Campo | O que é | Quem define |
+|---|---|---|
+| `cst` | CST do IBS/CBS (3 dígitos) | contador |
+| `c_class_trib` | Classificação tributária (6 dígitos) | contador |
+| `aliquota_ibs_uf` | Alíquota do IBS estadual | UF |
+| `aliquota_ibs_mun` | Alíquota do IBS municipal | município |
+| `aliquota_cbs` | Alíquota da CBS | federal |
+| `exigir_ibscbs` | Se a operação exige o grupo | contador |
+
+Cadastro em **Fiscal → Configurações fiscais**. Sem isso, a emissão é
+bloqueada com a mensagem "Configuração fiscal IBS/CBS não cadastrada para esta
+empresa" — o sistema não preenche zero nem valor plausível.
+
+Também dependem de definição, quando aplicáveis: redução (`pRedAliq`,
+`pAliqEfet`), diferimento (`pDif`, `vDif`), devolução/cashback (`vDevTrib`),
+estorno de crédito, tributação regular e compra governamental.
 
 ### 2. Regime tributário e grupo de ICMS
 O XML repassa `dados.imposto` como veio. Falta definir se a empresa é Simples
@@ -150,7 +163,7 @@ projeto para as etiquetas.
 1. **Só modelo 57.** CT-e OS (67) e GTV-e não implementados.
 2. **Só modal rodoviário** exercitado. Os schemas dos outros modais estão no
    pacote, mas a geração não monta os grupos deles.
-3. **Sem IBS/CBS** (ver pendência 1).
+3. **IBS/CBS sem valores configurados** — estrutura pronta, valores pendentes (ver pendência 1).
 4. **Contingência não implementada.** `tpEmis` é sempre 1 (normal).
 5. **Sem inutilização de numeração.**
 6. **A assinatura foi testada com certificado autoassinado**, não com um A1

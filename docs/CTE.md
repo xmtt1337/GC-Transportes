@@ -36,10 +36,9 @@ O leiaute do CT-e **está mudando agora** por causa da Reforma Tributária:
 - NT 2026.001-RTC v1.01 — 02/03/2026
 - NT 2025.001-RTC v1.14b — 30/04/2026
 
-O grupo `IBSCBS` (base de cálculo, alíquotas estadual/municipal, diferimento,
-cashback, alíquota zero em ZFM) passou a ser exigido em 2026. **Isso ainda não
-está implementado** e é o principal item pendente de validação fiscal — ver
-`CTE-IMPLEMENTACAO.md`.
+O grupo `IBSCBS` passou a ser exigido em 2026. **A infraestrutura está
+implementada** (seção 10); o que falta são os **valores fiscais**, que dependem
+do contador — ver `CTE-IMPLEMENTACAO.md`.
 
 Por isso os schemas são versionados em pasta própria e a versão usada fica
 gravada em cada CT-e (`cte.versao_leiaute`, `cte.pacote_schemas`): um documento
@@ -88,7 +87,11 @@ sistema-backend/modules/fiscal/
 │   └── schemas/4.00/svrs-2026-08-13/
 │       ├── VERSAO.json     origem, data, SHA-256 de cada arquivo
 │       └── xsd/*.xsd       20 schemas oficiais
-└── testes/fase2.test.js    46 testes
+├── tributacao/
+│   ├── ibscbs-leiaute.js   estrutura do grupo, lida do XSD
+│   ├── ibscbs.js           monta, valida e calcula IBS/CBS
+│   └── config-tributaria.js  configuração por empresa, versionada
+└── testes/                 74 testes (fase2 + ibscbs)
 ```
 
 O módulo é acoplado ao `server.js` por uma única linha (as migrations). Não foi
@@ -178,7 +181,7 @@ transmitir documento fiscal real.
 
 ```bash
 cd sistema-backend
-npm test                        # 46 testes da Fase 2
+npm test                        # 74 testes
 ```
 
 Cobre: ambiente/URLs, cofre, certificado (válido, vencido, senha errada, de
@@ -187,3 +190,78 @@ validação XSD contra schema oficial e assinatura digital.
 
 Os testes geram um certificado autoassinado em memória — não é preciso ter um A1
 real para rodá-los.
+
+---
+
+## 10. Grupo IBS/CBS (Reforma Tributária)
+
+### Onde fica
+
+`infCte > imposto > IBSCBS` — tipo `TTribCTe`, definido em
+`DFeTiposBasicos_v1.00.xsd`. Há ainda `vPrest > vTotDFe`
+(= vTPrest + total IBS + total CBS).
+
+### Estrutura, lida do XSD oficial
+
+```
+IBSCBS (TTribCTe)          minOccurs=0 no schema
+├── CST            \d{3}   OBRIGATÓRIO
+├── cClassTrib     \d{6}   OBRIGATÓRIO
+├── indDoacao      "1"     opcional
+├── gIBSCBS (TCIBS)        opcional no schema
+│   ├── vBC                OBRIGATÓRIO
+│   ├── gIBSUF             OBRIGATÓRIO
+│   │   ├── pIBSUF         OBRIGATÓRIO   (alíquota)
+│   │   ├── gDif           opcional      (pDif, vDif)
+│   │   ├── gDevTrib       opcional      (vDevTrib — cashback)
+│   │   ├── gRed           opcional      (pRedAliq, pAliqEfet)
+│   │   └── vIBSUF         OBRIGATÓRIO
+│   ├── gIBSMun            OBRIGATÓRIO   (mesma estrutura, pIBSMun/vIBSMun)
+│   ├── vIBS               OBRIGATÓRIO   (soma UF + Municipal)
+│   ├── gCBS               OBRIGATÓRIO   (pCBS, gDif, gDevTrib, gRed, vCBS)
+│   ├── gTribRegular       opcional      (8 campos)
+│   └── gTribCompraGov     opcional      (6 campos)
+└── gEstornoCred           opcional      (vIBSEstCred, vCBSEstCred)
+```
+
+Tipos: percentual `TDec_0302_04RTC` (até 4 casas), monetário `TDec1302RTC`
+(2 casas).
+
+### ⚠️ Duas obrigatoriedades diferentes
+
+O **XSD aceita** CT-e sem o grupo (`minOccurs="0"`). A **NT 2026.002 exige** o
+preenchimento em 2026, e isso é regra de validação da SEFAZ — rejeição, não
+erro de schema.
+
+Por isso a exigência é a chave `exigir_ibscbs` na configuração da empresa, e não
+uma constante no código: validar contra o XSD não basta para saber se o
+documento será aceito.
+
+### O que o schema NÃO valida
+
+`TCST` é apenas `\d{3}` e `TcClassTrib` é `\d{6}` — **não há lista de valores
+válidos no XSD**. Um CST inexistente passa no schema e é rejeitado pela SEFAZ.
+A escolha do código é decisão fiscal.
+
+### Configuração por empresa
+
+Tabela `fiscal_config_tributaria`, versionada por vigência (nova alíquota entra
+como linha nova, não sobrescreve). Nenhum valor tem padrão no código.
+
+| Campo | Origem |
+|---|---|
+| `cst`, `c_class_trib` | contador |
+| `aliquota_ibs_uf` | UF |
+| `aliquota_ibs_mun` | município |
+| `aliquota_cbs` | federal |
+| `exigir_ibscbs` | decisão fiscal |
+
+Alterar exige vínculo com `pode_configurar` na empresa — não basta ser admin.
+
+### Cálculo
+
+`vIBSUF = vBC × pIBSUF ÷ 100` (idem municipal e CBS), `vIBS = vIBSUF + vIBSMun`.
+É a aritmética implícita nos próprios campos do leiaute.
+
+Com redução (`gRed`), usa-se `pAliqEfet` como informada — o sistema **não
+recalcula** a redução por conta própria.
