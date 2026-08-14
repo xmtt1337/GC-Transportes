@@ -4022,3 +4022,8 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .totais-trib { display:flex; gap:18px; flex-wrap:wrap; margin-top:12px;
                padding-top:10px; border-top:1px solid #e6ecf5; font-size:13px; }
 .rodape-versao { color:#7a8aa0; font-size:11px; margin-top:14px; }
+.btn-perigo { background:#e74c3c; color:#fff; border:none; padding:7px 14px;
+              border-radius:5px; cursor:pointer; font-size:13px; }
+.btn-perigo:hover { background:#c0392b; }
+input[type=file] { padding:6px; border:1px dashed #c8d6e8; border-radius:5px;
+                   background:#fafcff; font-size:13px; }

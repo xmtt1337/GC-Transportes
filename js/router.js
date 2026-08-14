@@ -6,6 +6,7 @@ const _ROTA_BASE = "/GC-Transportes";
 const _ROTAS = {
     "Fiscal/CTes":                   () => abrirCTes(),
     "Fiscal/NovoCTe":                () => abrirNovoCTe(),
+    "Fiscal/Certificado":            () => abrirFiscalCertificado(),
     "Fiscal/Configuracoes":          () => abrirFiscalConfigTributaria(),
     "Baixas/TotalExpress":           () => abrirBaixaTotalExpress(),
     "Conferencia/Shopee":            () => abrirConfEntregador(),
