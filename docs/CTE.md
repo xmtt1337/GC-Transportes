@@ -3,9 +3,10 @@
 Emissão de Conhecimento de Transporte Eletrônico (modelo 57) integrada à SEFAZ,
 dentro do próprio sistema.
 
-> **Estado atual: Fase 2 concluída.** Geração de XML, validação XSD, assinatura
-> digital e cofre do certificado estão prontos e testados. **A comunicação com a
-> SEFAZ ainda não foi implementada** (Fase 3). Nada é transmitido hoje.
+> **Estado atual: Fase 3, etapa 1.** Geração de XML, validação XSD, assinatura,
+> cofre do certificado e **consulta de status do serviço** prontos e testados.
+> **Nenhum CT-e é emitido nem transmitido** — só o serviço de status, que não
+> gera documento.
 
 ---
 
@@ -265,3 +266,64 @@ Alterar exige vínculo com `pode_configurar` na empresa — não basta ser admin
 
 Com redução (`gRed`), usa-se `pAliqEfet` como informada — o sistema **não
 recalcula** a redução por conta própria.
+
+---
+
+## 11. Comunicação com a SEFAZ (SOAP)
+
+Especificação confirmada no **MOC CT-e 4.00 (agosto/2022)**, seção 3.2.2:
+
+| Item | Valor | Fonte |
+|---|---|---|
+| Transporte | TLS 1.2 com **autenticação mútua** | MOC 4.00 §3.2.2 |
+| Protocolo | **SOAP 1.2**, Document/Literal | MOC 4.00 §3.2.2 |
+| Campo da mensagem | `cteDadosMsg` | MOC 4.00 §3.2.2 |
+| Cabeçalho | **não existe na 4.00** | MOC 4.00 (zero ocorrências de `cteCabecMsg`) |
+
+⚠️ **O `cteCabecMsg` do MOC 2.00 foi eliminado.** No 4.00, "a versão do leiaute
+e o código da UF serão obtidos nos dados informados no leiaute da mensagem" —
+por isso o `cUF` está dentro do `consStatServCTe`, e não em header SOAP.
+
+### CteStatusServicoV4 (MOC 4.00 §4.6)
+
+- Nome do serviço: `CTeStatusServicoV4` · Método: `cteStatusServicoCT`
+- Processo síncrono, XML sem compactação
+- Envio `consStatServCTe`: `tpAmb`, `cUF`, `xServ` (fixo `STATUS`) + `versao`
+- Retorno `retConsStatServCTe`: `tpAmb`, `verAplic`, `cStat`, `xMotivo`, `cUF`,
+  `dhRecbto`, e opcionais `tMed`, `dhRetorno`, `xObs`
+
+### ⚠️ Namespace — pendente de confirmação
+
+O MOC só exemplifica o namespace de **um** serviço:
+`http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSinc` — note que aparece
+**sem o sufixo "V4"**, embora o "Nome Serviço" seja `CTeRecepcaoSincV4`.
+
+O WSDL, que resolveria a dúvida, **exige certificado cliente** (HTTP 403 sem
+ele). Por isso o namespace fica configurável, com as duas formas registradas em
+`sefaz/servicos.js`, e existe:
+
+```bash
+node modules/fiscal/sefaz/verificar-wsdl.js <fiscal_empresa_id>
+```
+
+que baixa o WSDL com o certificado da empresa e compara. **Rodar isso antes de
+emitir qualquer documento.** Se divergir, ele indica a variável a definir
+(`FISCAL_NS_CTESTATUSSERVICOV4=...`), sem alterar código.
+
+### Rota
+
+`POST /fiscal/cte/status-servico` — exige JWT e vínculo com a empresa
+(`pode_emitir` ou `pode_configurar`).
+
+O frontend **não informa** empresa, CNPJ, endpoint, ambiente nem certificado:
+tudo é resolvido no backend a partir do vínculo do usuário. Se ele operar em
+mais de uma empresa, o id informado é conferido contra o vínculo.
+
+Nesta etapa, **só homologação** — produção é recusada com HTTP 409.
+
+### Log e auditoria
+
+`fiscal_sefaz_log` guarda serviço, ambiente, URL, HTTP status, duração e o
+request/response **mascarados**: `X509Certificate`, `SignatureValue`, `Modulus`,
+CNPJ/CPF (parcial), telefone e e-mail saem antes de gravar, e o XML é truncado.
+`fiscal_auditoria` registra usuário, operação, resultado, código e IP.
