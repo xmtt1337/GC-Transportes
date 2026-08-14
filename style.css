@@ -3951,3 +3951,74 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
     background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.22); color: #fcd34d;
 }
 .nr-rodape-nota { font-size: 11.5px; color: #7b8ba3; margin-top: 8px; }
+
+/* ═══════════════════ MÓDULO FISCAL (CT-e) ═══════════════════ */
+.cabecalho-tela { display:flex; justify-content:space-between; align-items:center;
+                  gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+
+.secao-form { background:#fff; border:1px solid #e6ecf5; border-radius:10px;
+              padding:16px 18px; margin-bottom:14px; }
+.secao-form h3 { margin:0 0 12px; color:#2c7be5; font-size:16px; }
+.secao-form h4 { margin:14px 0 6px; font-size:14px; color:#5b6b80; }
+.secao-form .opcional { color:#7a8aa0; font-weight:400; font-size:12px; }
+
+.linha-form { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+.linha-form label { display:flex; flex-direction:column; font-size:12px;
+                    color:#5b6b80; gap:4px; flex:1 1 160px; }
+.linha-form label.largo { flex:2 1 320px; }
+.linha-form input, .linha-form select, .secao-form textarea {
+    padding:7px 9px; border:1px solid #c8d6e8; border-radius:5px;
+    font-size:13px; font-family:inherit; }
+.linha-form input:disabled { background:#f0f3f7; color:#7a8aa0; }
+.secao-form textarea { width:100%; resize:vertical; }
+
+/* passos do formulário */
+.passos-cte { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+.passos-cte .passo { padding:6px 11px; border:1px solid #d6e3f5; background:#f5f9ff;
+                     border-radius:16px; font-size:12px; cursor:pointer; color:#5b6b80; }
+.passos-cte .passo:hover { background:#e8f0fd; }
+.passos-cte .passo.ativo { background:#2c7be5; color:#fff; border-color:#2c7be5; font-weight:600; }
+
+.acoes-rodape { display:flex; gap:10px; justify-content:flex-end;
+                margin:16px 0; flex-wrap:wrap; }
+
+/* avisos */
+.aviso-info, .aviso-bloqueio, .aviso-sucesso {
+    border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:13px; line-height:1.5; }
+.aviso-info     { background:#eef4ff; border-left:4px solid #2c7be5; }
+.aviso-bloqueio { background:#fff4f4; border-left:4px solid #e74c3c; }
+.aviso-sucesso  { background:#eefaf933; border-left:4px solid #2ecc71; background:#f0fbf4; }
+.aviso-bloqueio ul, .aviso-info ul { margin:8px 0 0 18px; }
+.dica { color:#7a8aa0; font-size:12px; margin-top:8px; }
+
+/* conferência */
+.conf-grade { display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr));
+              gap:10px; margin-top:12px; }
+.conf-bloco { background:#f7fafd; border:1px solid #e6ecf5; border-radius:8px;
+              padding:10px 12px; font-size:12.5px; line-height:1.55; }
+.conf-bloco b { color:#2c7be5; }
+
+/* listagem */
+.filtros-cte { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;
+               background:#f7fafd; border:1px solid #e6ecf5; border-radius:8px;
+               padding:12px; margin-bottom:14px; }
+.filtros-cte label { display:flex; flex-direction:column; font-size:12px;
+                     color:#5b6b80; gap:4px; }
+.filtros-cte input, .filtros-cte select { padding:6px 8px; border:1px solid #c8d6e8;
+                                          border-radius:5px; font-size:13px; }
+
+.badge-status { display:inline-block; padding:3px 9px; border-radius:11px;
+                color:#fff; font-size:11px; font-weight:600; white-space:nowrap; }
+.mono-pequeno { font-family:Consolas, monospace; font-size:11px; color:#5b6b80;
+                word-break:break-all; }
+.vazio { color:#7a8aa0; text-align:center; padding:26px; }
+
+/* tributação */
+.grupo-trib { border:1px solid #e6ecf5; border-radius:8px; padding:10px 14px; margin-bottom:10px; }
+.grupo-trib legend { font-size:12px; color:#2c7be5; font-weight:600; padding:0 6px; }
+.grupo-trib .calculado { font-size:12px; color:#5b6b80; margin-left:10px; }
+.grupo-opcional { margin-top:10px; font-size:13px; }
+.grupo-opcional summary { cursor:pointer; color:#2c7be5; }
+.totais-trib { display:flex; gap:18px; flex-wrap:wrap; margin-top:12px;
+               padding-top:10px; border-top:1px solid #e6ecf5; font-size:13px; }
+.rodape-versao { color:#7a8aa0; font-size:11px; margin-top:14px; }

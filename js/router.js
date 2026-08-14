@@ -4,6 +4,9 @@ const _ROTA_BASE = "/GC-Transportes";
 
 // caminho da URL -> função que abre a tela correspondente
 const _ROTAS = {
+    "Fiscal/CTes":                   () => abrirCTes(),
+    "Fiscal/NovoCTe":                () => abrirNovoCTe(),
+    "Fiscal/Configuracoes":          () => abrirFiscalConfigTributaria(),
     "Baixas/TotalExpress":           () => abrirBaixaTotalExpress(),
     "Conferencia/Shopee":            () => abrirConfEntregador(),
     "Devolucoes/Nova":               () => abrirDevolucaoNova(),

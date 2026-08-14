@@ -378,6 +378,25 @@ if (location.hostname === "xmtt1337.github.io") {
             <li><a href="#" data-rota="Financeiro/Pagamentos" onclick="abrirAdminPagamentos(event)">Pagamentos</a></li>
         </ul>
 
+        <li class="menu-item" data-menu="fiscal" id="menu-fiscal" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6M8 13h8M8 17h5"/>
+            </svg>
+            <span class="label">Fiscal</span>
+            <span class="arrow">&#9662;</span>
+            <span class="menu-tooltip">Fiscal</span>
+        </li>
+        <ul class="submenu" data-menu="fiscal" id="submenu-fiscal">
+            <li class="subgroup-header" onclick="toggleSubGroup(this)">
+                CT-e <span class="subgroup-arrow">&#9662;</span>
+            </li>
+            <ul class="sub-submenu">
+                <li><a href="#" data-rota="Fiscal/CTes" onclick="abrirCTes(event)">CT-es</a></li>
+                <li><a href="#" data-rota="Fiscal/NovoCTe" onclick="abrirNovoCTe(); return false;">Novo CT-e</a></li>
+            </ul>
+            <li><a href="#" data-rota="Fiscal/Configuracoes" onclick="abrirFiscalConfigTributaria(event)">Configurações fiscais</a></li>
+        </ul>
         <li class="menu-item" data-menu="cadastros" id="menu-cadastros" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -4251,5 +4270,7 @@ if (location.hostname === "xmtt1337.github.io") {
 </div>
 
 
+    <script src="js/fiscal-tributacao.js?v=20260813b"></script>
+    <script src="js/fiscal-cte.js?v=20260813b"></script>
 </body>
 </html>
