@@ -44,6 +44,7 @@ const _CTE_TOMADORES = [
 
 let _cteContexto = null;
 let _cteAtual = { id: null, dados: {} };
+let _ctePerfilAplicado = null;   // o que o perfil de operação preencheu
 let _cteSecao = 0;
 
 const _CTE_SECOES = [
@@ -264,7 +265,18 @@ async function abrirNovoCTe(id = null) {
                 }));
             }
         } else {
-            _cteAtual = { id: null, dados: { documentos: [] }, status: "RASCUNHO" };
+            // O rascunho em branco vem do backend já preenchido pelo perfil de
+            // operação — é o mesmo caminho que a importação da API vai usar.
+            let inicial = { documentos: [] };
+            _ctePerfilAplicado = null;
+            try {
+                const r = await _cteApi("/fiscal/cte/novo");
+                inicial = r.dados || inicial;
+                if (r.perfil && (r.campos_do_perfil || []).length) {
+                    _ctePerfilAplicado = { nome: r.perfil.nome, campos: r.campos_do_perfil };
+                }
+            } catch { /* sem perfil configurado: formulário em branco, como antes */ }
+            _cteAtual = { id: null, dados: inicial, status: "RASCUNHO" };
         }
         _cteSecao = 0;
         _renderFormulario();
@@ -283,6 +295,14 @@ function _renderFormulario() {
             <button onclick="abrirCTes()">← Lista</button>
         </div>
     </div>
+
+    ${_ctePerfilAplicado ? `
+    <div class="aviso-info">
+        <strong>${_esc(_ctePerfilAplicado.campos.length)} campo(s) preenchidos pelo perfil
+        "${_esc(_ctePerfilAplicado.nome)}".</strong>
+        <p>Tudo continua editável — confira antes de validar. Para mudar o que vem
+           pronto, use <b>Fiscal → Perfil de operação</b>.</p>
+    </div>` : ""}
 
     <div class="passos-cte">
         ${_CTE_SECOES.map((s, i) =>

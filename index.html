@@ -403,6 +403,7 @@ if (location.hostname === "xmtt1337.github.io") {
                 <li><a href="#" data-rota="Fiscal/Certificado" onclick="abrirFiscalCertificado(event)">Certificado Digital</a></li>
                 <li><a href="#" data-rota="Fiscal/Configuracoes" onclick="abrirFiscalConfigTributaria(event)">Tributação IBS/CBS</a></li>
                 <li><a href="#" data-rota="Fiscal/Numeracao" onclick="abrirFiscalNumeracao(event)">Numeração</a></li>
+                <li><a href="#" data-rota="Fiscal/Perfil" onclick="abrirFiscalPerfil(event)">Perfil de operação</a></li>
             </ul>
         </ul>
         <li class="menu-item" data-menu="cadastros" id="menu-cadastros" onclick="toggleMenu(this)" style="display:none">
@@ -1486,6 +1487,10 @@ if (location.hostname === "xmtt1337.github.io") {
 
         <div id="tela-fiscal-numeracao" class="view tela-full">
             <div id="fiscal-numeracao-conteudo"></div>
+        </div>
+
+        <div id="tela-fiscal-perfil" class="view tela-full">
+            <div id="fiscal-perfil-conteudo"></div>
         </div>
 
         <div id="tela-bipagens" class="view tela-full">
@@ -4304,9 +4309,10 @@ if (location.hostname === "xmtt1337.github.io") {
 
 
     <script src="js/fiscal-tributacao.js?v=20260813e"></script>
-    <script src="js/fiscal-cte.js?v=20260815c"></script>
+    <script src="js/fiscal-cte.js?v=20260815d"></script>
     <script src="js/fiscal-empresa.js?v=20260815b"></script>
     <script src="js/fiscal-numeracao.js?v=20260815a"></script>
+    <script src="js/fiscal-perfil.js?v=20260815a"></script>
     <script src="js/fiscal-certificado.js?v=20260813e"></script>
 </body>
 </html>
