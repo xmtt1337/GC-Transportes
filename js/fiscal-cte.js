@@ -555,11 +555,13 @@ function _htmlSecao(i) {
             <div class="secao-form">
                 <h3>Modal rodoviário</h3>
                 <div class="linha-form">
-                    ${_campo("modal.rntrc", "RNTRC", { maxlength: 8, placeholder: "registro na ANTT" })}
+                    ${_campo("modal.rntrc", "RNTRC", { maxlength: 8, placeholder: "8 dígitos ou ISENTO" })}
                 </div>
                 <p class="dica">
-                    O RNTRC é obrigatório no modal rodoviário — sem ele a SEFAZ rejeita
-                    o CT-e. É o registro da transportadora na ANTT.
+                    O RNTRC é o Registro Nacional de Transportadores Rodoviários de
+                    Carga, emitido pela ANTT, e é obrigatório no modal rodoviário —
+                    sem ele a SEFAZ rejeita o CT-e. O leiaute aceita
+                    <b>8 dígitos</b> ou a palavra <b>ISENTO</b>.
                 </p>
             </div>
 
