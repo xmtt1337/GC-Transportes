@@ -25,7 +25,8 @@ Atualizado em 15/08/2026.
 | Grupo de ICMS montado a partir do CST | ✅ mapa lido do XSD |
 | `docAnt`, `infDoc/infNFe`, `infModal/rodo` | ✅ testados |
 | Controle de numeração por série/ambiente | ✅ com trava anti-duplicidade |
-| 189 testes automatizados | ✅ passando (2 pulados: exigem certificado real) |
+| Perfil de operação (preenchimento automático) | ✅ e é a costura da API |
+| 199 testes automatizados | ✅ passando (2 pulados: exigem certificado real) |
 
 ---
 
@@ -148,6 +149,29 @@ conferir no Portal Nacional qual Pacote de Liberação corresponde aos arquivos 
 ---
 
 ## Decisões técnicas
+
+### O preenchimento automático acontece no backend, não na tela
+
+`modules/fiscal/perfil-operacao.js` guarda por empresa os valores que se repetem
+em todo CT-e (CFOP, tipo de serviço, origem da prestação, CST/alíquota do ICMS,
+RNTRC) e o `GET /fiscal/cte/novo` devolve o rascunho já preenchido.
+
+Podia ter sido feito na tela, com menos código. Foi feito no backend porque é o
+mesmo ponto por onde a **importação da API da Shopee** vai passar: o importador
+monta o que sabe do pedido — chaves de NF-e, destinatário, valores — e chama
+`aplicar(perfil, dadosDoPedido)`. O que veio do pedido vence; o perfil completa
+o resto. Nada mais no sistema precisa mudar para isso funcionar.
+
+Três garantias, com teste para cada uma:
+
+- o perfil **nunca** sobrescreve campo já preenchido — quem digitou vence;
+- só os campos da lista `CAMPOS` são gravados, para um perfil mal preenchido não
+  injetar estrutura estranha no documento fiscal;
+- sem perfil configurado, o formulário abre em branco como antes.
+
+E nenhum valor fiscal está no código: o perfil é preenchido por quem configura a
+empresa. A tela oferece uma sugestão com a origem de cada valor, mas nada é
+gravado sem alguém conferir e salvar.
 
 ### Validação XSD em WebAssembly, não binding nativo
 `libxmljs2` funciona, mas depende de `node-gyp` ou de prebuild por versão de
