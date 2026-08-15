@@ -49,7 +49,7 @@ let _cteSecao = 0;
 const _CTE_SECOES = [
     "Identificação", "Remetente", "Expedidor", "Recebedor", "Destinatário",
     "Tomador", "Carga", "Valores", "Tributação", "Documentos",
-    "Observações", "Conferência",
+    "Modal e CT-e anterior", "Observações", "Conferência",
 ];
 
 // ─────────────────────────────────────────── helpers de tela
@@ -548,7 +548,47 @@ function _htmlSecao(i) {
             </div>`;
         }
 
-        case 10: return `
+        case 10: {
+            const anteriores = d.docAnt ? (Array.isArray(d.docAnt) ? d.docAnt : [d.docAnt]) : [];
+            const a = anteriores[0] || {};
+            return `
+            <div class="secao-form">
+                <h3>Modal rodoviário</h3>
+                <div class="linha-form">
+                    ${_campo("modal.rntrc", "RNTRC", { maxlength: 8, placeholder: "registro na ANTT" })}
+                </div>
+                <p class="dica">
+                    O RNTRC é obrigatório no modal rodoviário — sem ele a SEFAZ rejeita
+                    o CT-e. É o registro da transportadora na ANTT.
+                </p>
+            </div>
+
+            <div class="secao-form">
+                <h3>CT-e anterior <small class="opcional">(redespacho e subcontratação)</small></h3>
+                <p class="dica">
+                    Em redespacho, este CT-e precisa apontar para o documento que
+                    originou a prestação — o CT-e "guarda-chuva" do embarcador.
+                    Deixe em branco nas operações que não têm documento anterior.
+                </p>
+                <div class="linha-form">
+                    ${_campo("docAnt.cnpj", "CNPJ do emitente anterior", { maxlength: 18 })}
+                    ${_campo("docAnt.ie", "Inscrição estadual")}
+                    ${_campo("docAnt.uf", "UF", { maxlength: 2 })}
+                </div>
+                <div class="linha-form">
+                    ${_campo("docAnt.nome", "Razão social do emitente anterior", { largura: "largo" })}
+                </div>
+                <div class="linha-form">
+                    ${_campo("docAnt.chave", "Chave do CT-e anterior", {
+                        maxlength: 44, largura: "largo", placeholder: "44 dígitos" })}
+                </div>
+                ${(a.chaves || []).length > 1 ? `<p class="dica">
+                    Este rascunho tem ${(a.chaves || []).length} chaves anteriores gravadas;
+                    o campo acima mostra a primeira.</p>` : ""}
+            </div>`;
+        }
+
+        case 11: return `
         <div class="secao-form">
             <h3>Observações e informações adicionais</h3>
             <label>Observações gerais
@@ -559,7 +599,7 @@ function _htmlSecao(i) {
             </label>
         </div>`;
 
-        case 11: return _htmlConferencia(d, _cteAtual);
+        case 12: return _htmlConferencia(d, _cteAtual);
         default: return "";
     }
 }
@@ -624,6 +664,10 @@ function _htmlConferencia(d, cte = {}) {
             <div class="conf-bloco"><b>Documentos</b><br>
                 ${(d.documentos || []).length} NF-e vinculada(s)
             </div>
+            <div class="conf-bloco"><b>Modal / CT-e anterior</b><br>
+                RNTRC ${_esc((d.modal && d.modal.rntrc) || "—")}<br>
+                <span class="mono-pequeno">${_esc(_chaveAnterior(d) || "sem documento anterior")}</span>
+            </div>
             <div class="conf-bloco"><b>Tributação</b><br>
                 ICMS CST ${_esc(d.imposto_cst || "—")}<br>
                 ${cte.valor_ibs != null ? `IBS ${_fmtBRL(cte.valor_ibs)} · CBS ${_fmtBRL(cte.valor_cbs)}`
@@ -631,6 +675,13 @@ function _htmlConferencia(d, cte = {}) {
             </div>
         </div>
     </div>`;
+}
+
+/** Chave do CT-e anterior, aceitando docAnt como objeto ou lista. */
+function _chaveAnterior(d) {
+    const a = Array.isArray(d.docAnt) ? d.docAnt[0] : d.docAnt;
+    if (!a) return null;
+    return a.chave || (a.chaves || [])[0] || null;
 }
 
 /**
@@ -650,6 +701,46 @@ function _pendenciasLocais(d) {
     if (!(d.vPrest && d.vPrest.vRec)) faltando.push("Valor a receber");
     if (!(d.remetente && (d.remetente.cnpj || d.remetente.cpf))) faltando.push("Remetente");
     if (!(d.destinatario && (d.destinatario.cnpj || d.destinatario.cpf))) faltando.push("Destinatário");
+
+    // Endereço das partes: o schema exige, não é opcional.
+    for (const [chave, rotulo] of [["remetente", "Remetente"], ["destinatario", "Destinatário"],
+                                   ["expedidor", "Expedidor"], ["recebedor", "Recebedor"]]) {
+        const p = d[chave];
+        if (!p || (!p.cnpj && !p.cpf)) continue;
+        const e = p.endereco || {};
+        if (!e.logradouro || !e.numero || !e.bairro || !e.codigo_municipio || !e.municipio || !e.uf) {
+            faltando.push(`Endereço completo do ${rotulo.toLowerCase()}`);
+        }
+    }
+
+    // Carga: proPred e ao menos uma medida são obrigatórios no leiaute.
+    const carga = d.carga || {};
+    if (!carga.produto_predominante) faltando.push("Produto predominante da carga");
+    if (!carga.quantidade && !carga.peso) faltando.push("Quantidade ou peso da carga");
+    else if (!carga.tipo_medida) faltando.push("Tipo de medida da carga (ex: PESO BRUTO)");
+
+    // Modal rodoviário exige RNTRC.
+    if (String(ide.modal || "01") === "01" && !(d.modal && d.modal.rntrc)) {
+        faltando.push("RNTRC (modal rodoviário)");
+    }
+
+    // Redespacho (tpServ 2) e subcontratação (tpServ 1) referenciam o CT-e anterior.
+    const anterior = Array.isArray(d.docAnt) ? d.docAnt[0] : d.docAnt;
+    if (["1", "2"].includes(String(ide.tpServ))) {
+        if (!anterior || !(anterior.chave || (anterior.chaves || []).length)) {
+            faltando.push("Chave do CT-e anterior (redespacho/subcontratação)");
+        }
+    }
+    if (anterior && (anterior.chave || (anterior.chaves || []).length)) {
+        if (!anterior.cnpj) faltando.push("CNPJ do emitente do CT-e anterior");
+        if (!anterior.ie) faltando.push("Inscrição estadual do emitente do CT-e anterior");
+        if (!anterior.uf) faltando.push("UF do emitente do CT-e anterior");
+        if (!anterior.nome) faltando.push("Razão social do emitente do CT-e anterior");
+    }
+
+    // ICMS: sem CST o backend não sabe qual grupo do leiaute montar.
+    if (!d.imposto_cst) faltando.push("CST do ICMS");
+
     return faltando;
 }
 

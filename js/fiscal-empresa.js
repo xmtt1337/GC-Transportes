@@ -98,12 +98,13 @@ async function abrirFormEmpresa(id = null) {
                        value="${_esc(e.cnpj || "")}"></label>
             <label>Inscrição estadual *
                 <input id="emp-ie" value="${_esc(e.ie || "")}"></label>
-            <label>CRT (regime tributário)
+            <label>CRT (regime tributário) *
                 <select id="emp-crt">
                     <option value="">Selecione…</option>
                     <option value="1" ${String(e.crt) === "1" ? "selected" : ""}>1 — Simples Nacional</option>
                     <option value="2" ${String(e.crt) === "2" ? "selected" : ""}>2 — Simples Nacional, excesso de sublimite</option>
                     <option value="3" ${String(e.crt) === "3" ? "selected" : ""}>3 — Regime Normal</option>
+                    <option value="4" ${String(e.crt) === "4" ? "selected" : ""}>4 — MEI</option>
                 </select></label>
             <label>Telefone
                 <input id="emp-telefone" value="${_esc(e.telefone || "")}"></label>
