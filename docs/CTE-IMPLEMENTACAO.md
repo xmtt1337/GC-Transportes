@@ -27,9 +27,13 @@ Atualizado em 13/08/2026, ao final da **Fase 2**.
 
 ## O que ainda falta
 
-### Fase 3 — SEFAZ (não iniciada)
+### Fase 3 — SEFAZ (etapa 1 concluída e validada)
+
+✅ **CteStatusServicoV4 funcionando contra a SVRS real** (15/08/2026,
+`cStat 107`). Isso valida certificado, mTLS, SOAP, namespace e parser.
+
+Falta:
 - Envelope SOAP e transmissão com mTLS
-- `CTeStatusServicoV4` (primeiro teste de conectividade + certificado)
 - `CTeRecepcaoSincV4` (autorização)
 - `CTeConsultaV4`
 - Tratamento de rejeições e códigos de retorno

@@ -3,9 +3,13 @@
 Emissão de Conhecimento de Transporte Eletrônico (modelo 57) integrada à SEFAZ,
 dentro do próprio sistema.
 
-> **Estado atual: Fase 3, etapa 1.** Geração de XML, validação XSD, assinatura,
-> cofre do certificado e **consulta de status do serviço** prontos e testados.
-> **Nenhum CT-e é emitido nem transmitido** — só o serviço de status, que não
+> **Estado atual: Fase 3, etapa 1 — VALIDADA CONTRA A SEFAZ REAL.**
+> Em 15/08/2026 a SVRS respondeu `cStat 107 — Serviço em Operação` em
+> homologação (1758 ms, `verAplic RS20240708154036`).
+>
+> Isso confirmou de uma vez: certificado A1, mTLS com as raízes ICP-Brasil,
+> envelope SOAP 1.2, namespace, método `cteStatusServicoCT` e leitura da
+> resposta. **Nenhum CT-e é emitido nem transmitido** — o serviço de status não
 > gera documento.
 
 ---
@@ -292,7 +296,16 @@ por isso o `cUF` está dentro do `consStatServCTe`, e não em header SOAP.
 - Retorno `retConsStatServCTe`: `tpAmb`, `verAplic`, `cStat`, `xMotivo`, `cUF`,
   `dhRecbto`, e opcionais `tMed`, `dhRetorno`, `xObs`
 
-### ⚠️ Namespace — pendente de confirmação
+### Namespace — CONFIRMADO na prática (15/08/2026)
+
+`http://www.portalfiscal.inf.br/cte/wsdl/CTeStatusServicoV4` — **com** o sufixo
+"V4" — funcionou contra a SVRS. Namespace errado devolve SOAP Fault, não
+`cStat 107`, então a resposta bem-sucedida é a prova.
+
+O histórico da dúvida fica registrado abaixo porque os demais serviços ainda
+não foram exercitados, e o exemplo do MOC continua ambíguo para eles.
+
+### ⚠️ Como a dúvida surgiu
 
 O MOC só exemplifica o namespace de **um** serviço:
 `http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSinc` — note que aparece
@@ -320,6 +333,34 @@ tudo é resolvido no backend a partir do vínculo do usuário. Se ele operar em
 mais de uma empresa, o id informado é conferido contra o vínculo.
 
 Nesta etapa, **só homologação** — produção é recusada com HTTP 409.
+
+### Certificado do servidor: raízes da ICP-Brasil
+
+O Node traz o bundle da Mozilla, que **não** inclui a hierarquia brasileira. A
+SVRS apresenta:
+
+```
+*.svrs.rs.gov.br  ←  AC do SERPRO SSLv1  ←  AC Raiz Brasileira v10
+```
+
+Sem a raiz v10 a conexão falha com `unable to get local issuer certificate` —
+erro que parece do certificado A1, mas é da validação do servidor **deles**.
+
+As 9 raízes (v5 a v13) estão em `modules/fiscal/sefaz/cas/`, baixadas do
+[repositório do ITI](https://www.gov.br/iti/pt-br/assuntos/repositorio). São
+certificados públicos, sem chave privada. Elas são **somadas** às CAs padrão —
+substituir o bundle quebraria todo o resto do HTTPS do sistema.
+
+`rejectUnauthorized` fica ligado. Desligar aceitaria qualquer servidor se
+passando pela SEFAZ.
+
+Diagnóstico: `node modules/fiscal/sefaz/diagnostico-tls.js`
+
+### Certificado A1 com empacotamento legado
+
+Muitos A1 da ICP-Brasil usam algoritmos antigos (RC2-40) que o OpenSSL 3
+recusa com `Unsupported PKCS12 PFX data`. O `node-forge` lê (é JS puro), então
+o TLS recebe **chave e certificado em PEM**, não o `.pfx` bruto.
 
 ### Log e auditoria
 
