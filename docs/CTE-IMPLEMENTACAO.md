@@ -24,7 +24,8 @@ Atualizado em 15/08/2026.
 | **CT-e completo validado no XSD oficial** | ✅ redespacho ponta a ponta |
 | Grupo de ICMS montado a partir do CST | ✅ mapa lido do XSD |
 | `docAnt`, `infDoc/infNFe`, `infModal/rodo` | ✅ testados |
-| 177 testes automatizados | ✅ passando (2 pulados: exigem certificado real) |
+| Controle de numeração por série/ambiente | ✅ com trava anti-duplicidade |
+| 189 testes automatizados | ✅ passando (2 pulados: exigem certificado real) |
 
 ---
 
@@ -115,7 +116,27 @@ Remetente, expedidor, recebedor ou destinatário — muda o XML e a tributação
 ### 6. Dados cadastrais da empresa
 CNPJ, IE, razão social, endereço completo, código IBGE do município, CRT.
 
-### 7. Série e numeração inicial
+### 7. Série e numeração inicial — RESOLVIDO (15/08/2026)
+
+A GC **já emitiu 260 CT-e na série 4** por outro sistema. Isso invalidou a
+premissa original do módulo, que começava toda série no número 1: o primeiro
+documento emitido aqui sairia com número já usado, e a SEFAZ rejeitaria um a um.
+
+O que mudou:
+
+- `modules/fiscal/numeracao.js` — lê e define o próximo número por
+  empresa/modelo/série/ambiente, com auditoria de cada alteração
+- **Produção sem numeração configurada não emite.** `reservarNumero` recusa com
+  erro explícito em vez de silenciosamente começar do 1. Homologação continua
+  criando a série sozinha, porque documento de teste não tem valor fiscal
+- Não é possível apontar para um número que ESTA base já emitiu — os emitidos
+  por outro sistema não têm como ser conferidos, e por isso a alteração fica
+  registrada com o antes, o depois e a justificativa
+- Tela em **Fiscal → Numeração**, exige a permissão "Configurar"
+
+Situação da GC: série **4**, próximo número **261** em produção.
+
+### 7b. Observação antiga (mantida para contexto)
 Se a empresa já emitiu CT-e por outro sistema, a numeração precisa continuar de
 onde parou.
 
