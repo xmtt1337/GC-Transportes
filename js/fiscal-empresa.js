@@ -138,7 +138,7 @@ async function abrirFormEmpresa(id = null) {
             Consulte o código IBGE em
             <a href="https://www.ibge.gov.br/explica/codigos-dos-municipios.php"
                target="_blank" rel="noopener">ibge.gov.br</a>.
-            Caçador/SC, por exemplo, é 4204202.
+            Caçador/SC é 4203006.
         </p>
     </div>
 
