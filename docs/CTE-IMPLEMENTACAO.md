@@ -1,6 +1,6 @@
 # CT-e — Estado da implementação
 
-Atualizado em 13/08/2026, ao final da **Fase 2**.
+Atualizado em 15/08/2026.
 
 ---
 
@@ -21,7 +21,10 @@ Atualizado em 13/08/2026, ao final da **Fase 2**.
 | Máquina de estados | ✅ testado |
 | Schemas oficiais versionados + hash | ✅ 20 arquivos |
 | Grupo IBS/CBS (estrutura, cálculo, config) | ✅ testado contra XSD |
-| 74 testes automatizados | ✅ passando |
+| **CT-e completo validado no XSD oficial** | ✅ redespacho ponta a ponta |
+| Grupo de ICMS montado a partir do CST | ✅ mapa lido do XSD |
+| `docAnt`, `infDoc/infNFe`, `infModal/rodo` | ✅ testados |
+| 177 testes automatizados | ✅ passando (2 pulados: exigem certificado real) |
 
 ---
 
@@ -40,8 +43,9 @@ Falta:
 - Retry controlado (sem retry cego em transmissão)
 - Log de request/response sanitizado
 
-### Fase 4 — Frontend (não iniciada)
-Menu FISCAL, listagem, formulário, detalhes, DACTE.
+### Fase 4 — Frontend (em andamento)
+Menu FISCAL, listagem, formulário e cadastro de empresa/certificado: prontos.
+Falta: detalhes do documento emitido e DACTE.
 
 ### Fase 5 — Complementos
 Eventos (cancelamento, carta de correção), auditoria ligada às rotas, testes de
@@ -78,6 +82,21 @@ Também dependem de definição, quando aplicáveis: redução (`pRedAliq`,
 estorno de crédito, tributação regular e compra governamental.
 
 ### 2. Regime tributário e grupo de ICMS
+
+O **mapa CST → grupo** (`tributacao/icms.js`) foi lido das enumerações do
+próprio XSD, não escolhido por nós:
+
+| CST | Grupo |
+|---|---|
+| 00 | `ICMS00` |
+| 20 | `ICMS20` |
+| 40, 41, 51 | `ICMS45` |
+| 60 | `ICMS60` |
+| 90 | `ICMS90` (ou `ICMSOutraUF` / `ICMSSN`, informados explicitamente) |
+
+Quem escolhe o CST continua sendo o contador. O módulo só traduz para a
+estrutura correta e recusa CST que não exista no leiaute.
+
 O XML repassa `dados.imposto` como veio. Falta definir se a empresa é Simples
 Nacional (CSOSN) ou Normal (CST), e qual grupo se aplica: `ICMS00`, `ICMS20`,
 `ICMS45`, `ICMS60`, `ICMS90`, `ICMSOutraUF` ou `ICMSSN`.
@@ -123,6 +142,26 @@ que o WASM não enxerga o filesystem. Está encapsulado em `validacao-xsd.js`.
 
 Também foi fixado `engines.node` no `package.json` para o Render não trocar de
 runtime sem aviso.
+
+### O XML foi acertado contra o schema, não contra a intuição
+
+Até 15/08/2026 nenhum teste montava um CT-e **inteiro** e o submetia ao XSD —
+só pedaços. Ao fazer isso, o schema apontou seis erros de estrutura que
+passariam despercebidos até a primeira rejeição da SEFAZ:
+
+| O que estava | O que o schema exige |
+|---|---|
+| `<imposto>` | `<imp>` |
+| `vTotDFe` dentro de `vPrest` | dentro de `<imp>`, depois de `IBSCBS` |
+| `emit` sem `CRT` | `CRT` obrigatório, último filho de `emit` |
+| `enderEmit` com `cPais`/`xPais` | `TEndeEmi` tem `fone`, não tem país |
+| endereço opcional em `rem`/`dest` | obrigatório em todas as partes |
+| `xFant` em todas as partes | só `rem` tem `xFant`; só `dest` tem `ISUF` |
+| alíquota `0.1` | 2 a 4 casas: `0.10` |
+
+Lição registrada aqui de propósito: teste de estrutura fiscal que não passa pelo
+XSD oficial prova pouco. O arquivo `testes/cte-completo.test.js` existe para que
+essa classe de erro não volte.
 
 ### Grupos fiscais repassados como objeto, não montados no código
 `imposto` e `infCTeNorm` são escritos a partir de um objeto JS preservando a
