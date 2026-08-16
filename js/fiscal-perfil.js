@@ -26,8 +26,6 @@ const _PERFIL_GRUPOS = [
     { titulo: "Modal rodoviário", campos: ["modal.rntrc"] },
     { titulo: "Carga", campos: [
         "carga.produto_predominante", "carga.tipo_medida", "carga.unidade"] },
-    { titulo: "Emitente do CT-e anterior (redespacho)", campos: [
-        "docAnt.nome", "docAnt.cnpj", "docAnt.ie", "docAnt.uf"] },
 ];
 
 let _perfilAtual = null;
