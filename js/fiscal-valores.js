@@ -224,7 +224,7 @@ async function _valConfirmarLote() {
             <p>
                 ${novos} serão buscados na Shopee e criados agora ·
                 ${jaExistem} já existem e só terão o valor atualizado<br>
-                Total da planilha: <b>${_fmtBRL(previa.soma)}</b> ·
+                Total da planilha: <b>${_fmtBRL(previa.soma_planilha)}</b> ·
                 ${previa.ignoradas} linha(s) sem código ou sem valor
             </p>
             <p class="dica">
@@ -380,8 +380,8 @@ function _htmlRelatorioValores(r) {
     <div class="${r.simulado ? "aviso-info" : "aviso-sucesso"}">
         <strong>${r.simulado ? "Conferência — nada foi gravado ainda." : "Valores aplicados."}</strong>
         <p>
-            ${r.atualizados.length} ${r.simulado ? "seriam preenchidos" : "preenchidos"} ·
-            total ${_fmtBRL(r.soma)}<br>
+            ${r.atualizados.length} ${r.simulado ? "seriam preenchidos" : "preenchidos"}
+            (${_fmtBRL(r.soma)}) · planilha inteira ${_fmtBRL(r.soma_planilha)}<br>
             ${r.ja_tinham.length} já tinham valor ·
             ${r.nao_encontrados.length} sem rascunho ·
             ${r.nao_editaveis.length} já emitidos ·
