@@ -96,8 +96,37 @@ async function abrirFiscalValores(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-fiscal-valores");
     _valPlanilha = null;
+    _valItens = null;
     _valRelatorio = null;
+    if (_valPolling) { clearInterval(_valPolling); _valPolling = null; }
     document.getElementById("fiscal-valores-conteudo").innerHTML = _htmlValores();
+
+    // Se houver importação rodando, mostra ela em vez de uma tela em branco —
+    // quem fechou o navegador ontem volta e quer saber como ficou.
+    try {
+        const lista = await _cteApi("/fiscal/importacao");
+        const ativa = (lista || []).find((i) => i.situacao === "PROCESSANDO");
+        if (ativa) _valAcompanhar(ativa.id);
+        else if ((lista || []).length) _valMostrarHistorico(lista);
+    } catch { /* sem histórico: segue a tela normal */ }
+}
+
+function _valMostrarHistorico(lista) {
+    document.getElementById("val-resultado").innerHTML = `
+    <details class="secao-form">
+        <summary><b>Importações anteriores</b> — ${lista.length}</summary>
+        <table class="tabela">
+            <thead><tr><th>Quando</th><th>Planilha</th><th>Situação</th>
+                       <th>Progresso</th><th></th></tr></thead>
+            <tbody>${lista.map((i) => `<tr>
+                <td>${_fmtData(i.criado_em)}</td>
+                <td>${_esc(i.nome || "—")}</td>
+                <td>${_esc(i.situacao)}</td>
+                <td>${(i.feitos || 0).toLocaleString("pt-BR")} / ${(i.total || 0).toLocaleString("pt-BR")}</td>
+                <td><button onclick="_valAcompanhar(${i.id})">Ver</button></td>
+            </tr>`).join("")}</tbody>
+        </table>
+    </details>`;
 }
 
 function _htmlValores() {
@@ -246,9 +275,9 @@ function _valMostrarEtapas() {
         </div>
         <p class="dica">
             <b>Conferir</b> só olha os rascunhos que já existem, sem gravar nada.
-            <b>Criar os CT-e</b> busca na Shopee os códigos que ainda não têm
-            rascunho, cria cada um e já põe o valor — perguntando a quantidade
-            antes. São rascunhos: nada é enviado à SEFAZ aqui.
+            <b>Criar os CT-e</b> manda a planilha para a fila do servidor, que
+            busca cada código na Shopee, cria o rascunho e põe o valor. Pergunta
+            a quantidade antes. São rascunhos: nada é enviado à SEFAZ aqui.
         </p>
     </div>`;
 }
@@ -316,11 +345,11 @@ async function _valEnviar() {
     </div>
 
     ${local.itens.length > 5000 ? `
-    <div class="aviso-bloqueio">
-        <strong>Atenção ao tamanho.</strong>
-        <p>São ${local.itens.length.toLocaleString("pt-BR")} códigos. Cada um é uma
-           consulta à API da Shopee — isso leva <b>horas</b> e a aba precisa ficar
-           aberta. Se a planilha for histórica, filtre por período antes.</p>
+    <div class="aviso-info">
+        <strong>São ${local.itens.length.toLocaleString("pt-BR")} códigos.</strong>
+        <p>Cada um é uma consulta à API da Shopee, então isso leva horas — mas roda
+           <b>no servidor</b>. Depois de enviar você pode fechar o navegador; volte
+           aqui quando quiser para ver onde está.</p>
     </div>` : ""}`;
 }
 
@@ -353,11 +382,10 @@ async function _valConfirmarLote() {
             Códigos que já têm rascunho só terão o valor atualizado — não duplicam.
             São criados como <b>rascunho</b>: nada é enviado à SEFAZ aqui.
         </p>
-        ${horas > 0.5 ? `<p><b>Isso deve levar cerca de ${horas < 1
+        ${horas > 0.5 ? `<p><b>Deve levar cerca de ${horas < 1
             ? Math.round(horas * 60) + " minutos"
-            : horas.toFixed(1).replace(".", ",") + " horas"}</b>, e a aba precisa
-            ficar aberta. Dá para parar no meio e continuar depois — o que já foi
-            criado não se perde.</p>` : ""}
+            : horas.toFixed(1).replace(".", ",") + " horas"}</b>, processando no
+            servidor. Pode fechar o navegador depois de enviar.</p>` : ""}
         <div class="acoes-rodape">
             <button onclick="document.getElementById('val-resultado').innerHTML=''">Cancelar</button>
             <button class="btn-primario" onclick="_valImportarLote()">
@@ -367,22 +395,22 @@ async function _valConfirmarLote() {
     </div>`;
 }
 
-// ── importação em lote: a planilha inteira, em pedaços de 25 códigos
+// ── envia para a FILA do servidor
 //
-// Cada código é uma chamada à API da Shopee. Mandar mil de uma vez estouraria
-// o tempo limite do request e não daria como mostrar progresso — então a tela
-// fatia, acumula o resultado e deixa parar no meio.
-const _VAL_TAMANHO_LOTE = 25;
-let _valCancelar = false;
+// A operação real são ~8 mil CT-e por dia. Um laço no navegador exigiria a aba
+// aberta por horas, e qualquer queda de rede ou computador dormindo perderia o
+// trabalho. A planilha é enfileirada e o servidor processa; esta tela só
+// acompanha, e fechar o navegador não interrompe nada.
+
+const _VAL_BLOCO_ENVIO = 2000;
+let _valImportacaoId = null;
+let _valPolling = null;
 
 async function _valImportarLote() {
     const alvo = document.getElementById("val-resultado");
     if (!_valItens) {
         try { _valProcessarLocal(); }
-        catch (e) {
-            alvo.innerHTML = `<div class="aviso-bloqueio">${_esc(e.message)}</div>`;
-            return;
-        }
+        catch (e) { alvo.innerHTML = `<div class="aviso-bloqueio">${_esc(e.message)}</div>`; return; }
     }
     const itens = _valItens;
     if (!itens.length) {
@@ -390,130 +418,109 @@ async function _valImportarLote() {
         return;
     }
 
-    _valCancelar = false;
     const sobrescrever = document.getElementById("val-sobrescrever").checked;
-    const total = itens.length;
-    const acumulado = { criado: 0, valor_atualizado: 0, ja_existia: 0,
-                        nao_editavel: 0, nao_encontrado: 0, erro: 0, invalido: 0, soma: 0 };
-    const problemas = [];
-    let feitos = 0;
+    alvo.innerHTML = "<p class='carregando'>Preparando a importação…</p>";
 
-    const pintar = () => {
-        const pct = Math.round((feitos / total) * 100);
-        alvo.innerHTML = `
-        <div class="aviso-info">
-            <strong>${feitos === total ? "Concluído" : "Processando…"} ${feitos.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")} (${pct}%)</strong>
-            <div style="background:#1e2a3d;border-radius:6px;height:10px;margin:10px 0;overflow:hidden">
-                <div style="background:#3b82f6;height:100%;width:${pct}%;transition:width .2s"></div>
-            </div>
-            <p>
-                ${acumulado.criado} rascunho(s) criado(s) ·
-                ${acumulado.valor_atualizado} valor(es) atualizado(s) ·
-                total ${_fmtBRL(acumulado.soma)}<br>
-                ${acumulado.ja_existia} já estavam prontos ·
-                ${acumulado.nao_encontrado} não achados na Shopee ·
-                ${acumulado.nao_editavel} já emitidos ·
-                ${acumulado.erro + acumulado.invalido} com erro
-            </p>
-            ${feitos < total ? `<button onclick="_valCancelar=true">Parar</button>` : ""}
-        </div>
-        ${problemas.length ? `
-        <details class="secao-form" ${feitos === total ? "open" : ""}>
-            <summary><b>Códigos com problema</b> — ${problemas.length}</summary>
-            <table class="tabela">
-                <thead><tr><th>Código</th><th>Situação</th><th>Detalhe</th></tr></thead>
-                <tbody>${problemas.slice(0, 200).map((p) => `<tr>
-                    <td class="mono-pequeno">${_esc(p.codigo)}</td>
-                    <td>${_esc(p.situacao)}</td>
-                    <td>${_esc(p.detalhe || "")}</td>
-                </tr>`).join("")}</tbody>
-            </table>
-            ${problemas.length > 200 ? `<p class="dica">Mostrando 200 de ${problemas.length}.</p>` : ""}
-        </details>` : ""}
-        ${feitos === total ? `
-        <div class="acoes-rodape"><button onclick="abrirCTes()">Ver os CT-e →</button></div>` : ""}`;
-    };
+    try {
+        const imp = await _cteApi("/fiscal/importacao", {
+            method: "POST",
+            body: JSON.stringify({ nome: _valPlanilha.nome, sobrescrever }),
+        });
+        _valImportacaoId = imp.id;
 
-    pintar();
-
-    for (let i = 0; i < itens.length; i += _VAL_TAMANHO_LOTE) {
-        if (_valCancelar) break;
-        const pedaco = itens.slice(i, i + _VAL_TAMANHO_LOTE);
-        try {
-            const r = await _cteApi("/fiscal/cte/importar-lote", {
-                method: "POST",
-                body: JSON.stringify({ itens: pedaco, sobrescrever }),
+        // Envia em blocos: 120 mil códigos num corpo só não passa.
+        for (let i = 0; i < itens.length; i += _VAL_BLOCO_ENVIO) {
+            const bloco = itens.slice(i, i + _VAL_BLOCO_ENVIO);
+            await _cteApi(`/fiscal/importacao/${imp.id}/itens`, {
+                method: "POST", body: JSON.stringify({ itens: bloco }),
             });
-            for (const [k, v] of Object.entries(r.resumo)) {
-                if (acumulado[k] !== undefined) acumulado[k] += v;
-            }
-            for (const res of r.resultados) {
-                if (["nao_encontrado", "erro", "invalido", "nao_editavel"].includes(res.situacao)) {
-                    problemas.push(res);
-                }
-            }
-        } catch (e) {
-            // Um pedaço que falha não interrompe o resto.
-            pedaco.forEach((it) => problemas.push({
-                codigo: it.codigo, situacao: "erro", detalhe: e.message }));
-            acumulado.erro += pedaco.length;
+            const pct = Math.round(Math.min(i + bloco.length, itens.length) / itens.length * 100);
+            alvo.innerHTML = `<div class="aviso-info">
+                <strong>Enviando a planilha… ${pct}%</strong>
+                <p>${Math.min(i + bloco.length, itens.length).toLocaleString("pt-BR")}
+                   de ${itens.length.toLocaleString("pt-BR")}</p></div>`;
         }
-        feitos += pedaco.length;
-        pintar();
+
+        await _cteApi(`/fiscal/importacao/${imp.id}/iniciar`, {
+            method: "POST", body: JSON.stringify({}) });
+
+        _valAcompanhar(imp.id);
+    } catch (e) {
+        alvo.innerHTML = `<div class="aviso-bloqueio">
+            <strong>Não foi possível enfileirar.</strong><p>${_esc(e.message)}</p></div>`;
     }
+}
+
+function _valAcompanhar(id) {
+    _valImportacaoId = id;
+    if (_valPolling) clearInterval(_valPolling);
+    const atualizar = async () => {
+        try {
+            const p = await _cteApi(`/fiscal/importacao/${id}`);
+            _valPintarProgresso(p);
+            if (["CONCLUIDA", "CANCELADA"].includes(p.importacao.situacao)) {
+                clearInterval(_valPolling); _valPolling = null;
+            }
+        } catch (e) { /* rede instável não pode parar o acompanhamento */ }
+    };
+    atualizar();
+    _valPolling = setInterval(atualizar, 5000);
+}
+
+function _valPintarProgresso(p) {
+    const alvo = document.getElementById("val-resultado");
+    const s = p.por_situacao || {};
+    const n = (k) => (s[k] ? s[k].n : 0);
+    const pct = p.total ? Math.round((p.feitos / p.total) * 100) : 0;
+    const emAndamento = p.importacao.situacao === "PROCESSANDO";
+
+    alvo.innerHTML = `
+    <div class="${emAndamento ? "aviso-info" : "aviso-sucesso"}">
+        <strong>${emAndamento ? "Processando no servidor" : p.importacao.situacao} —
+            ${p.feitos.toLocaleString("pt-BR")} de ${p.total.toLocaleString("pt-BR")} (${pct}%)</strong>
+        <div style="background:#1e2a3d;border-radius:6px;height:10px;margin:10px 0;overflow:hidden">
+            <div style="background:#3b82f6;height:100%;width:${pct}%;transition:width .3s"></div>
+        </div>
+        <p>
+            ${n("CRIADO").toLocaleString("pt-BR")} criados ·
+            ${n("ATUALIZADO").toLocaleString("pt-BR")} atualizados ·
+            ${n("JA_EXISTIA").toLocaleString("pt-BR")} já prontos<br>
+            ${n("NAO_ENCONTRADO").toLocaleString("pt-BR")} não achados na Shopee ·
+            ${n("NAO_EDITAVEL").toLocaleString("pt-BR")} já emitidos ·
+            ${n("ERRO").toLocaleString("pt-BR")} com erro ·
+            ${n("PENDENTE").toLocaleString("pt-BR")} na fila
+        </p>
+        ${emAndamento ? `<p class="dica">
+            <b>Pode fechar esta aba.</b> O servidor continua processando; volte aqui
+            depois para ver como ficou.</p>
+            <button onclick="_valCancelarImportacao(${p.importacao.id})">Cancelar importação</button>`
+        : `<div class="acoes-rodape"><button onclick="abrirCTes()">Ver os CT-e →</button></div>`}
+    </div>
+
+    ${(p.problemas || []).length ? `
+    <details class="secao-form">
+        <summary><b>Códigos com problema</b> — ${p.problemas.length}</summary>
+        <table class="tabela">
+            <thead><tr><th>Código</th><th>Situação</th><th>Detalhe</th></tr></thead>
+            <tbody>${p.problemas.map((x) => `<tr>
+                <td class="mono-pequeno">${_esc(x.codigo)}</td>
+                <td>${_esc(x.situacao)}</td>
+                <td class="dica">${_esc(x.detalhe || "")}</td>
+            </tr>`).join("")}</tbody>
+        </table>
+    </details>` : ""}`;
+}
+
+async function _valCancelarImportacao(id) {
+    if (!confirm("Parar esta importação? O que já foi criado continua salvo.")) return;
+    try {
+        await _cteApi(`/fiscal/importacao/${id}/cancelar`,
+                      { method: "POST", body: JSON.stringify({}) });
+        _valAcompanhar(id);
+    } catch (e) { alert(e.message); }
 }
 
 function _valCol(id) {
     const el = document.getElementById(id);
     return el && el.value !== "" ? Number(el.value) : null;
-}
-
-function _htmlRelatorioValores(r) {
-    const bloco = (titulo, itens, extra = () => "") => !itens.length ? "" : `
-        <details class="secao-form">
-            <summary><b>${_esc(titulo)}</b> — ${itens.length}</summary>
-            <table class="tabela">
-                <thead><tr><th>Código</th><th>Valor</th><th>Observação</th></tr></thead>
-                <tbody>${itens.slice(0, 200).map((i) => `<tr>
-                    <td class="mono-pequeno">${_esc(i.codigo)}</td>
-                    <td style="white-space:nowrap">${_fmtBRL(i.valor)}</td>
-                    <td class="dica">${extra(i)}</td>
-                </tr>`).join("")}</tbody>
-            </table>
-            ${itens.length > 200 ? `<p class="dica">Mostrando 200 de ${itens.length}.</p>` : ""}
-        </details>`;
-
-    return `
-    <div class="${r.simulado ? "aviso-info" : "aviso-sucesso"}">
-        <strong>${r.simulado ? "Conferência — nada foi gravado ainda." : "Valores aplicados."}</strong>
-        <p>
-            ${r.atualizados.length} ${r.simulado ? "seriam preenchidos" : "preenchidos"}
-            (${_fmtBRL(r.soma)}) · planilha inteira ${_fmtBRL(r.soma_planilha)}<br>
-            ${r.ja_tinham.length} já tinham valor ·
-            ${r.nao_encontrados.length} sem rascunho ·
-            ${r.nao_editaveis.length} já emitidos ·
-            ${r.ignoradas} linha(s) ignorada(s)
-        </p>
-        <p class="dica">Colunas usadas: <b>${_esc(r.colunas.nomes.codigo)}</b> e
-           <b>${_esc(r.colunas.nomes.valor)}</b>.</p>
-    </div>
-
-    ${bloco(r.simulado ? "Serão preenchidos" : "Preenchidos", r.atualizados,
-            (i) => i.valor_anterior != null ? `antes: ${_fmtBRL(i.valor_anterior)}` : "")}
-    ${bloco("Já tinham valor (não alterados)", r.ja_tinham,
-            (i) => `atual: ${_fmtBRL(i.valor_atual)}`)}
-    ${bloco("Sem rascunho importado", r.nao_encontrados,
-            () => "importe o pedido antes")}
-    ${bloco("Já emitidos (intocados)", r.nao_editaveis, (i) => _esc(i.status))}
-
-    ${r.simulado && r.atualizados.length ? `
-    <div class="acoes-rodape">
-        <button class="btn-primario" onclick="_valEnviar(false)">
-            Aplicar ${r.atualizados.length} valor(es) →
-        </button>
-    </div>` : ""}
-    ${!r.simulado ? `
-    <div class="acoes-rodape">
-        <button onclick="abrirCTes()">Ver os CT-e →</button>
-    </div>` : ""}`;
 }
