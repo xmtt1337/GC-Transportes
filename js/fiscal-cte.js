@@ -21,10 +21,11 @@ const _CTE_ESTADOS = {
 
 // Listas do leiaute do CT-e. São códigos fixos do layout (não são regra
 // tributária): tipo de CT-e, tipo de serviço e quem é o tomador.
+// tpCTe (TFinCTe): o leiaute 4.00 aceita SÓ 0, 1 e 3 — não existe "2".
+// Conferido no XSD oficial; há teste no backend que falha se isso mudar.
 const _CTE_TIPOS = [
     { v: "0", t: "0 — Normal" },
     { v: "1", t: "1 — Complemento de valores" },
-    { v: "2", t: "2 — Anulação" },
     { v: "3", t: "3 — Substituto" },
 ];
 const _CTE_SERVICOS = [
