@@ -37,7 +37,17 @@ function _htmlValores() {
     </div>
 
     <div class="secao-form">
-        <h3>1. Escolher a planilha</h3>
+        <h3>1. A planilha</h3>
+        <div class="linha-form">
+            <label class="largo">Link da planilha (Google Sheets)
+                <input id="val-link" placeholder="cole o link compartilhado da planilha"
+                       onkeydown="if(event.key==='Enter')_valLerLink()"></label>
+            <button onclick="_valLerLink()">Ler do link</button>
+        </div>
+        <p class="dica">
+            A planilha precisa estar compartilhada como <b>"qualquer pessoa com o
+            link"</b>. Se preferir, escolha o arquivo direto:
+        </p>
         <input type="file" id="val-arquivo" accept=".xlsx,.xls,.csv"
                onchange="_valLerArquivo(this)">
         <div id="val-info-arquivo"></div>
@@ -45,6 +55,52 @@ function _htmlValores() {
 
     <div id="val-etapas"></div>
     <div id="val-resultado"></div>`;
+}
+
+/**
+ * Converte o link do Google Sheets na URL de exportação CSV.
+ *
+ * O link que a pessoa copia do navegador é o de edição; o que dá para ler é o
+ * de export. A aba (gid) vem no fragmento (#gid=) ou na query.
+ */
+function _valUrlCsv(link) {
+    const l = String(link || "").trim();
+    if (!l) return null;
+    if (/\/export\?/.test(l)) return l;      // já é link de exportação
+
+    const id = (l.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/) || [])[1];
+    if (!id) return null;
+    const gid = (l.match(/[#&?]gid=(\d+)/) || [])[1] || "0";
+    return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+}
+
+async function _valLerLink() {
+    const link = document.getElementById("val-link").value;
+    const info = document.getElementById("val-info-arquivo");
+    const url = _valUrlCsv(link);
+    if (!url) {
+        info.innerHTML = `<div class="aviso-bloqueio">
+            Link não reconhecido. Cole o link da planilha do Google Sheets.</div>`;
+        return;
+    }
+    info.innerHTML = "<p class='carregando'>Lendo a planilha…</p>";
+    try {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`A planilha respondeu ${r.status}. ` +
+            `Confira se está compartilhada como "qualquer pessoa com o link".`);
+        const texto = await r.text();
+        const wb = XLSX.read(texto, { type: "string" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
+        _valPlanilha = { nome: "planilha do link", linhas };
+        info.innerHTML = `<div class="aviso-sucesso">
+            <strong>Planilha lida do link.</strong>
+            <p>${linhas.length - 1} linha(s) além do cabeçalho.</p></div>`;
+        _valMostrarEtapas();
+    } catch (e) {
+        info.innerHTML = `<div class="aviso-bloqueio">
+            <strong>Não consegui ler a planilha.</strong><p>${_esc(e.message)}</p></div>`;
+    }
 }
 
 /** Lê a planilha no navegador. O arquivo não sai daqui. */
@@ -102,8 +158,8 @@ function _valMostrarEtapas() {
         </div>
         <div class="acoes-rodape">
             <button onclick="_valEnviar(true)">Conferir (não grava)</button>
-            <button class="btn-primario" onclick="_valImportarLote()">
-                Importar e preencher tudo →
+            <button class="btn-primario" onclick="_valConfirmarLote()">
+                Criar os CT-e →
             </button>
         </div>
         <p class="dica">
@@ -136,6 +192,56 @@ async function _valEnviar(simular) {
     } catch (e) {
         alvo.innerHTML = `<div class="aviso-bloqueio">
             <strong>Não foi possível processar.</strong><p>${_esc(e.message)}</p></div>`;
+    }
+}
+
+/**
+ * Pergunta antes de criar. Uma planilha de repasse tem mais de mil linhas, e
+ * confirmar a quantidade é a última chance de perceber que subiu o arquivo
+ * errado — depois são mil rascunhos para limpar.
+ */
+async function _valConfirmarLote() {
+    const alvo = document.getElementById("val-resultado");
+    alvo.innerHTML = "<p class='carregando'>Conferindo a planilha…</p>";
+    try {
+        const previa = await _cteApi("/fiscal/cte/valores-planilha", {
+            method: "POST",
+            body: JSON.stringify({
+                linhas: _valPlanilha.linhas,
+                coluna_codigo: _valCol("val-col-codigo"),
+                coluna_valor: _valCol("val-col-valor"),
+                simular: true,
+            }),
+        });
+        const jaExistem = previa.atualizados.length + previa.ja_tinham.length
+                        + previa.nao_editaveis.length;
+        const novos = previa.nao_encontrados.length;
+        const total = jaExistem + novos;
+
+        alvo.innerHTML = `
+        <div class="aviso-info">
+            <strong>Criar ${total} CT-e?</strong>
+            <p>
+                ${novos} serão buscados na Shopee e criados agora ·
+                ${jaExistem} já existem e só terão o valor atualizado<br>
+                Total da planilha: <b>${_fmtBRL(previa.soma)}</b> ·
+                ${previa.ignoradas} linha(s) sem código ou sem valor
+            </p>
+            <p class="dica">
+                Colunas: <b>${_esc(previa.colunas.nomes.codigo)}</b> e
+                <b>${_esc(previa.colunas.nomes.valor)}</b>.
+                São criados como <b>rascunho</b> — nada é enviado à SEFAZ aqui.
+            </p>
+            <div class="acoes-rodape">
+                <button onclick="document.getElementById('val-resultado').innerHTML=''">Cancelar</button>
+                <button class="btn-primario" onclick="_valImportarLote()">
+                    Sim, criar ${total} →
+                </button>
+            </div>
+        </div>`;
+    } catch (e) {
+        alvo.innerHTML = `<div class="aviso-bloqueio">
+            <strong>Não consegui ler a planilha.</strong><p>${_esc(e.message)}</p></div>`;
     }
 }
 

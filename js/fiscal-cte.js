@@ -164,7 +164,7 @@ function _htmlListagem() {
         </label>
         <label>Número <input type="number" id="f-numero" style="width:100px"></label>
         <label>Série <input type="number" id="f-serie" style="width:80px"></label>
-        <label>Busca <input id="f-busca" placeholder="chave, tomador, destinatário"></label>
+        <label>Busca <input id="f-busca" placeholder="código Shopee, chave, tomador, destinatário"></label>
         <button onclick="_carregarListaCTe()">Filtrar</button>
     </div>
 
@@ -189,7 +189,8 @@ async function _carregarListaCTe() {
         alvo.innerHTML = `
         <table class="tabela">
             <thead><tr>
-                <th>Nº</th><th>Série</th><th>Status</th><th>Tomador / Destinatário</th>
+                <th>Código Shopee</th><th>Nº</th><th>Série</th><th>Status</th>
+                <th>Tomador / Destinatário</th>
                 <th>Origem → Destino</th><th>Valor</th><th>Criado</th><th>Chave</th><th>Ações</th>
             </tr></thead>
             <tbody>${lista.map(_linhaCTe).join("")}</tbody>
@@ -204,6 +205,9 @@ function _linhaCTe(c) {
     const nome = c.tomador_nome || c.destinatario_nome || c.remetente_nome || "—";
     const rota = [c.municipio_inicio, c.municipio_fim].filter(Boolean).join(" → ") || "—";
     return `<tr>
+        <td class="mono-pequeno">${c.codigo_shopee
+            ? `<a href="#" onclick="abrirNovoCTe(${c.id});return false">${_esc(c.codigo_shopee)}</a>`
+            : "—"}</td>
         <td>${c.numero ?? "—"}</td>
         <td>${c.serie ?? "—"}</td>
         <td>${_badgeStatus(c.status)}</td>
