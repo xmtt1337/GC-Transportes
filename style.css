@@ -3956,6 +3956,19 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 /* Usa as variáveis do tema (--surface, --border, --text…) em vez de cores
    fixas: a primeira versão saiu com fundo branco e sumiu no tema escuro. */
 
+/* As telas fiscais colocam tudo num container so, sem cabecalho fixo. Como
+   .tela-full.active-view tem overflow:hidden (feito para telas que rolam por
+   dentro), o conteudo longo era simplesmente cortado - o formulario do CT-e e
+   o perfil de operacao nao davam para rolar. */
+.conteudo-fiscal {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+    padding-right: 6px;
+}
+
 .cabecalho-tela { display:flex; justify-content:space-between; align-items:center;
                   gap:12px; flex-wrap:wrap; margin-bottom:16px; }
 .cabecalho-tela h2 { color:var(--text); font-size:19px; font-weight:600; }
