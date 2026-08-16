@@ -121,6 +121,17 @@ const _ROTAS_PADRAO = [
 // por transportadora/unidade (essas passam a rota explícita direto pro mostrarTela)
 const _TELA_ROTAS = {
     "tela-home":                 "",
+    // Telas fiscais. Sem estas linhas a URL nao acompanhava a navegacao: ficava
+    // a rota da tela anterior, o menu marcava o item errado e recarregar levava
+    // para outro lugar.
+    "tela-fiscal-ctes":          "Fiscal/CTes",
+    "tela-fiscal-novo-cte":      "Fiscal/NovoCTe",
+    "tela-fiscal-empresas":      "Fiscal/Empresas",
+    "tela-fiscal-certificado":   "Fiscal/Certificado",
+    "tela-fiscal-tributacao":    "Fiscal/Configuracoes",
+    "tela-fiscal-numeracao":     "Fiscal/Numeracao",
+    "tela-fiscal-perfil":        "Fiscal/Perfil",
+    "tela-fiscal-valores":       "Fiscal/Valores",
     "tela-baixa-te":             "Baixas/TotalExpress",
     "tela-conf-entregador":      "Conferencia/Shopee",
     "tela-admin-baixas-te":      "Baixas/TotalExpress",
