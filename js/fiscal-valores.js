@@ -30,9 +30,10 @@ function _htmlValores() {
         <p>A planilha é casada pela coluna
            <b>3PL Tracking Number / Número Etiqueta / Ordem (Shopee)</b>, e o valor
            vem de <b>Valor Final à Receber</b>.</p>
-        <p>Só entra em rascunho já importado da Shopee. Código sem rascunho aparece
-           no relatório — <b>a planilha não cria CT-e</b>. Documento já autorizado
-           não é tocado.</p>
+        <p>Códigos que ainda não têm rascunho são buscados na Shopee e criados na
+           hora — <b>como rascunho</b>, que ainda passa por validação e emissão.
+           Documento já emitido não é tocado, e reenviar a mesma planilha não
+           duplica nada.</p>
     </div>
 
     <div class="secao-form">
@@ -100,8 +101,17 @@ function _valMostrarEtapas() {
             </label>
         </div>
         <div class="acoes-rodape">
-            <button class="btn-primario" onclick="_valEnviar(true)">Conferir (não grava)</button>
+            <button onclick="_valEnviar(true)">Conferir (não grava)</button>
+            <button class="btn-primario" onclick="_valImportarLote()">
+                Importar e preencher tudo →
+            </button>
         </div>
+        <p class="dica">
+            <b>Conferir</b> só olha os rascunhos que já existem.
+            <b>Importar e preencher tudo</b> busca na Shopee os códigos que ainda
+            não têm rascunho, cria cada um e já põe o valor. Cria rascunho —
+            nada é enviado à SEFAZ.
+        </p>
     </div>`;
 }
 
@@ -110,17 +120,13 @@ async function _valEnviar(simular) {
     const alvo = document.getElementById("val-resultado");
     alvo.innerHTML = `<p class='carregando'>${simular ? "Conferindo" : "Aplicando"}…</p>`;
 
-    const col = (id) => {
-        const v = document.getElementById(id);
-        return v && v.value !== "" ? Number(v.value) : null;
-    };
     try {
         const r = await _cteApi("/fiscal/cte/valores-planilha", {
             method: "POST",
             body: JSON.stringify({
                 linhas: _valPlanilha.linhas,
-                coluna_codigo: col("val-col-codigo"),
-                coluna_valor: col("val-col-valor"),
+                coluna_codigo: _valCol("val-col-codigo"),
+                coluna_valor: _valCol("val-col-valor"),
                 sobrescrever: document.getElementById("val-sobrescrever").checked,
                 simular,
             }),
@@ -131,6 +137,122 @@ async function _valEnviar(simular) {
         alvo.innerHTML = `<div class="aviso-bloqueio">
             <strong>Não foi possível processar.</strong><p>${_esc(e.message)}</p></div>`;
     }
+}
+
+// ── importação em lote: a planilha inteira, em pedaços de 25 códigos
+//
+// Cada código é uma chamada à API da Shopee. Mandar mil de uma vez estouraria
+// o tempo limite do request e não daria como mostrar progresso — então a tela
+// fatia, acumula o resultado e deixa parar no meio.
+const _VAL_TAMANHO_LOTE = 25;
+let _valCancelar = false;
+
+async function _valImportarLote() {
+    if (!_valPlanilha) return;
+    const alvo = document.getElementById("val-resultado");
+
+    // Reaproveita a leitura do backend para achar as colunas e normalizar valores.
+    let itens;
+    try {
+        const previa = await _cteApi("/fiscal/cte/valores-planilha", {
+            method: "POST",
+            body: JSON.stringify({
+                linhas: _valPlanilha.linhas,
+                coluna_codigo: _valCol("val-col-codigo"),
+                coluna_valor: _valCol("val-col-valor"),
+                simular: true,
+            }),
+        });
+        itens = [...previa.atualizados, ...previa.ja_tinham,
+                 ...previa.nao_encontrados, ...previa.nao_editaveis]
+            .map((i) => ({ codigo: i.codigo, valor: i.valor }));
+    } catch (e) {
+        alvo.innerHTML = `<div class="aviso-bloqueio">
+            <strong>Não consegui ler a planilha.</strong><p>${_esc(e.message)}</p></div>`;
+        return;
+    }
+
+    if (!itens.length) {
+        alvo.innerHTML = `<div class="aviso-bloqueio">Nenhuma linha utilizável.</div>`;
+        return;
+    }
+
+    _valCancelar = false;
+    const sobrescrever = document.getElementById("val-sobrescrever").checked;
+    const total = itens.length;
+    const acumulado = { criado: 0, valor_atualizado: 0, ja_existia: 0,
+                        nao_editavel: 0, nao_encontrado: 0, erro: 0, invalido: 0, soma: 0 };
+    const problemas = [];
+    let feitos = 0;
+
+    const pintar = () => {
+        const pct = Math.round((feitos / total) * 100);
+        alvo.innerHTML = `
+        <div class="aviso-info">
+            <strong>${feitos === total ? "Concluído" : "Processando…"} ${feitos} de ${total} (${pct}%)</strong>
+            <div style="background:#1e2a3d;border-radius:6px;height:10px;margin:10px 0;overflow:hidden">
+                <div style="background:#3b82f6;height:100%;width:${pct}%;transition:width .2s"></div>
+            </div>
+            <p>
+                ${acumulado.criado} rascunho(s) criado(s) ·
+                ${acumulado.valor_atualizado} valor(es) atualizado(s) ·
+                total ${_fmtBRL(acumulado.soma)}<br>
+                ${acumulado.ja_existia} já estavam prontos ·
+                ${acumulado.nao_encontrado} não achados na Shopee ·
+                ${acumulado.nao_editavel} já emitidos ·
+                ${acumulado.erro + acumulado.invalido} com erro
+            </p>
+            ${feitos < total ? `<button onclick="_valCancelar=true">Parar</button>` : ""}
+        </div>
+        ${problemas.length ? `
+        <details class="secao-form" ${feitos === total ? "open" : ""}>
+            <summary><b>Códigos com problema</b> — ${problemas.length}</summary>
+            <table class="tabela">
+                <thead><tr><th>Código</th><th>Situação</th><th>Detalhe</th></tr></thead>
+                <tbody>${problemas.slice(0, 200).map((p) => `<tr>
+                    <td class="mono-pequeno">${_esc(p.codigo)}</td>
+                    <td>${_esc(p.situacao)}</td>
+                    <td>${_esc(p.detalhe || "")}</td>
+                </tr>`).join("")}</tbody>
+            </table>
+            ${problemas.length > 200 ? `<p class="dica">Mostrando 200 de ${problemas.length}.</p>` : ""}
+        </details>` : ""}
+        ${feitos === total ? `
+        <div class="acoes-rodape"><button onclick="abrirCTes()">Ver os CT-e →</button></div>` : ""}`;
+    };
+
+    pintar();
+
+    for (let i = 0; i < itens.length; i += _VAL_TAMANHO_LOTE) {
+        if (_valCancelar) break;
+        const pedaco = itens.slice(i, i + _VAL_TAMANHO_LOTE);
+        try {
+            const r = await _cteApi("/fiscal/cte/importar-lote", {
+                method: "POST",
+                body: JSON.stringify({ itens: pedaco, sobrescrever }),
+            });
+            for (const [k, v] of Object.entries(r.resumo)) {
+                if (acumulado[k] !== undefined) acumulado[k] += v;
+            }
+            for (const res of r.resultados) {
+                if (["nao_encontrado", "erro", "invalido", "nao_editavel"].includes(res.situacao)) {
+                    problemas.push(res);
+                }
+            }
+        } catch (e) {
+            // Um pedaço que falha não interrompe o resto.
+            pedaco.forEach((it) => problemas.push({
+                codigo: it.codigo, situacao: "erro", detalhe: e.message }));
+            acumulado.erro += pedaco.length;
+        }
+        feitos += pedaco.length;
+        pintar();
+    }
+}
+
+function _valCol(id) {
+    const el = document.getElementById(id);
+    return el && el.value !== "" ? Number(el.value) : null;
 }
 
 function _htmlRelatorioValores(r) {
