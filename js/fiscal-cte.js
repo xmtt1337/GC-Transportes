@@ -257,9 +257,24 @@ async function baixarXmlCTe(id) {
 // Dele saem o docAnt, as chaves de NF-e, o destinatário e o destino. Valores e
 // tributação não vêm de lá: são de outra operação (interestadual, ICMS
 // diferido) e seriam errados aqui.
-function abrirImportarShopee() {
+async function abrirImportarShopee() {
     mostrarTela("tela-fiscal-novo-cte");
-    document.getElementById("fiscal-novo-cte-conteudo").innerHTML = `
+    const area = document.getElementById("fiscal-novo-cte-conteudo");
+    area.innerHTML = "<p class='carregando'>Carregando…</p>";
+
+    // O formulário precisa do contexto (empresa, ambiente, tributação). Quem
+    // entra por aqui pelo menu nunca passou pela lista, onde ele era carregado
+    // — sem isto o botão "Abrir o CT-e preenchido" estourava em silêncio.
+    try {
+        if (!_cteContexto) _cteContexto = await _cteApi("/fiscal/cte/contexto");
+    } catch (e) {
+        area.innerHTML = typeof _htmlSemAcesso === "function"
+            ? _htmlSemAcesso(e.message)
+            : `<div class="aviso-bloqueio"><p>${_esc(e.message)}</p></div>`;
+        return;
+    }
+
+    area.innerHTML = `
     <div class="cabecalho-tela">
         <h2>Importar pedido da Shopee</h2>
         <button onclick="abrirCTes()">← Lista</button>
@@ -323,8 +338,15 @@ async function importarDaShopee() {
 
 let _cteImportado = null;
 
-function _abrirRascunhoImportado() {
+async function _abrirRascunhoImportado() {
     if (!_cteImportado) return;
+    try {
+        if (!_cteContexto) _cteContexto = await _cteApi("/fiscal/cte/contexto");
+    } catch (e) {
+        document.getElementById("resultado-importacao").innerHTML =
+            `<div class="aviso-bloqueio"><p>${_esc(e.message)}</p></div>`;
+        return;
+    }
     _cteAtual = { id: null, dados: _cteImportado.dados, status: "RASCUNHO" };
     _ctePerfilAplicado = _cteImportado.perfil && (_cteImportado.campos_do_perfil || []).length
         ? { nome: _cteImportado.perfil.nome, campos: _cteImportado.campos_do_perfil }
