@@ -13,7 +13,7 @@ const _PERFIL_GRUPOS = [
         "ide.modal", "ide.serie"] },
     { titulo: "Origem da prestação", campos: [
         "ide.xMunIni", "ide.cMunIni", "ide.UFIni"] },
-    { titulo: "Tomador do serviço (quando toma = 4 \"Outros\")", campos: [
+    { titulo: "Tomador do serviço (quando toma = 4 \"Outros\")", botao: "cnpj-tomador", campos: [
         "tomador.nome", "tomador.cnpj", "tomador.ie",
         "tomador.endereco.logradouro", "tomador.endereco.numero",
         "tomador.endereco.bairro", "tomador.endereco.municipio",
@@ -92,6 +92,19 @@ function _htmlPerfil(r) {
     ${_PERFIL_GRUPOS.map((g) => `
     <div class="secao-form">
         <h3>${_esc(g.titulo)}</h3>
+        ${g.botao === "cnpj-tomador" && pode ? `
+        <div class="aviso-info">
+            <strong>Não precisa digitar tudo.</strong>
+            <p>Informe o CNPJ do tomador e clique em buscar — razão social,
+               endereço e código IBGE vêm da Receita. Confira antes de salvar.</p>
+            <div class="linha-form">
+                <label>CNPJ para buscar
+                    <input id="busca-cnpj-tomador" maxlength="18" placeholder="só números"
+                           onkeydown="if(event.key==='Enter')buscarCnpjTomador()"></label>
+                <button onclick="buscarCnpjTomador()">Buscar na Receita</button>
+            </div>
+            <div id="resultado-cnpj-tomador"></div>
+        </div>` : ""}
         <div class="linha-form">${g.campos.map(input).join("")}</div>
     </div>`).join("")}
 
@@ -141,6 +154,52 @@ function _preencherSugestaoPerfil() {
             Campos preenchidos. <b>Confira</b> — em especial CFOP, CST e alíquota,
             que são decisão do contador — e clique em Salvar perfil.
         </div>`;
+}
+
+/**
+ * Preenche os campos do tomador a partir do CNPJ.
+ *
+ * Só escreve na tela — nada é gravado sem alguém conferir e clicar em Salvar.
+ * O cadastro da Receita pode estar desatualizado, e a inscrição estadual não
+ * vem nele.
+ */
+async function buscarCnpjTomador() {
+    const cnpj = (document.getElementById("busca-cnpj-tomador").value || "").replace(/\D/g, "");
+    const alvo = document.getElementById("resultado-cnpj-tomador");
+    if (cnpj.length !== 14) {
+        alvo.innerHTML = `<div class="aviso-bloqueio">CNPJ precisa ter 14 dígitos.</div>`;
+        return;
+    }
+    alvo.innerHTML = "<p class='carregando'>Consultando a Receita…</p>";
+    try {
+        const d = await _cteApi(`/fiscal/cnpj/${cnpj}`);
+        const por = {
+            "tomador.cnpj": d.cnpj,
+            "tomador.nome": d.razao_social,
+            "tomador.endereco.logradouro": d.logradouro,
+            "tomador.endereco.numero": d.numero,
+            "tomador.endereco.bairro": d.bairro,
+            "tomador.endereco.municipio": d.municipio,
+            "tomador.endereco.codigo_municipio": d.codigo_municipio,
+            "tomador.endereco.uf": d.uf,
+            "tomador.endereco.cep": d.cep,
+        };
+        let preenchidos = 0;
+        for (const [caminho, valor] of Object.entries(por)) {
+            if (!valor) continue;
+            const el = document.getElementById("perfil-" + caminho.replace(/\./g, "_"));
+            if (el) { el.value = valor; preenchidos++; }
+        }
+        alvo.innerHTML = `<div class="aviso-sucesso">
+            <strong>${_esc(d.razao_social || cnpj)}</strong>
+            <p>${preenchidos} campo(s) preenchidos · situação ${_esc(d.situacao || "—")}</p>
+            ${(d.avisos || []).length ? `<ul>${d.avisos.map((a) => `<li>${_esc(a)}</li>`).join("")}</ul>` : ""}
+            <p class="dica">Confira e clique em <b>Salvar perfil</b>.</p>
+        </div>`;
+    } catch (e) {
+        alvo.innerHTML = `<div class="aviso-bloqueio">
+            <strong>Não foi possível consultar.</strong><p>${_esc(e.message)}</p></div>`;
+    }
 }
 
 async function salvarPerfilOperacao() {
