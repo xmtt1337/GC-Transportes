@@ -12,6 +12,7 @@ const _ROTAS = {
     "Fiscal/Configuracoes":          () => abrirFiscalConfigTributaria(),
     "Fiscal/Numeracao":              () => abrirFiscalNumeracao(),
     "Fiscal/Perfil":                 () => abrirFiscalPerfil(),
+    "Fiscal/Valores":                () => abrirFiscalValores(),
     "Baixas/TotalExpress":           () => abrirBaixaTotalExpress(),
     "Conferencia/Shopee":            () => abrirConfEntregador(),
     "Devolucoes/Nova":               () => abrirDevolucaoNova(),
