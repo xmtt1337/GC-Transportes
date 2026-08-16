@@ -163,10 +163,10 @@ function _valMostrarEtapas() {
             </button>
         </div>
         <p class="dica">
-            <b>Conferir</b> só olha os rascunhos que já existem.
-            <b>Importar e preencher tudo</b> busca na Shopee os códigos que ainda
-            não têm rascunho, cria cada um e já põe o valor. Cria rascunho —
-            nada é enviado à SEFAZ.
+            <b>Conferir</b> só olha os rascunhos que já existem, sem gravar nada.
+            <b>Criar os CT-e</b> busca na Shopee os códigos que ainda não têm
+            rascunho, cria cada um e já põe o valor — perguntando a quantidade
+            antes. São rascunhos: nada é enviado à SEFAZ aqui.
         </p>
     </div>`;
 }
@@ -366,11 +366,11 @@ function _htmlRelatorioValores(r) {
         <details class="secao-form">
             <summary><b>${_esc(titulo)}</b> — ${itens.length}</summary>
             <table class="tabela">
-                <thead><tr><th>Código</th><th>Valor</th><th></th></tr></thead>
+                <thead><tr><th>Código</th><th>Valor</th><th>Observação</th></tr></thead>
                 <tbody>${itens.slice(0, 200).map((i) => `<tr>
                     <td class="mono-pequeno">${_esc(i.codigo)}</td>
-                    <td>${_fmtBRL(i.valor)}</td>
-                    <td>${extra(i)}</td>
+                    <td style="white-space:nowrap">${_fmtBRL(i.valor)}</td>
+                    <td class="dica">${extra(i)}</td>
                 </tr>`).join("")}</tbody>
             </table>
             ${itens.length > 200 ? `<p class="dica">Mostrando 200 de ${itens.length}.</p>` : ""}
