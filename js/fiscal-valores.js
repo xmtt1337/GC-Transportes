@@ -8,7 +8,89 @@
 // o servidor vão só as linhas, nunca o arquivo.
 
 let _valPlanilha = null;   // { nome, linhas }
+let _valItens = null;      // [{codigo, valor}] já lidos AQUI
+let _valColunas = null;
 let _valRelatorio = null;
+
+// ── leitura da planilha no navegador
+//
+// Antes eu mandava as linhas todas para o servidor lerem lá. Com a planilha
+// real — 118 mil linhas — o corpo da requisição não passa, e a tela só dizia
+// "Failed to fetch". Agora a planilha é lida aqui e para o servidor vão só os
+// códigos que estão sendo processados, 25 por vez.
+//
+// As regras abaixo são as mesmas de modules/fiscal/shopee/valores-planilha.js.
+
+const _VAL_COLS_CODIGO = [
+    "3pltrackingnumbernumeroetiquetaordemshopee", "3pltrackingnumber",
+    "numeroetiqueta", "trackingnumber", "ordemshopee", "codigo",
+];
+const _VAL_COLS_VALOR = [
+    "valorfinalareceber", "valorfinal", "valorareceber", "valorreceber",
+];
+
+function _valNormalizar(s) {
+    return String(s == null ? "" : s)
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Aceita "R$ 4,00", "4.00000", "1.234,56" e número. */
+function _valLerValor(bruto) {
+    if (bruto === null || bruto === undefined || bruto === "") return null;
+    if (typeof bruto === "number") return isFinite(bruto) ? bruto : null;
+    let t = String(bruto).trim().replace(/[R$\s ]/gi, "");
+    if (!t) return null;
+    if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+    const n = Number(t);
+    return isFinite(n) ? Math.round(n * 100) / 100 : null;
+}
+
+function _valAcharColuna(cabecalhoNorm, candidatas) {
+    for (const c of candidatas) {
+        const i = cabecalhoNorm.indexOf(c);
+        if (i >= 0) return i;
+    }
+    for (const c of candidatas) {
+        const i = cabecalhoNorm.findIndex((h) => h.includes(c));
+        if (i >= 0) return i;
+    }
+    return -1;
+}
+
+/** Lê a planilha carregada e guarda os itens. Devolve o resumo. */
+function _valProcessarLocal() {
+    const linhas = _valPlanilha.linhas;
+    const cabecalho = linhas[0] || [];
+    const norm = cabecalho.map(_valNormalizar);
+
+    const iCod = _valCol("val-col-codigo") ?? _valAcharColuna(norm, _VAL_COLS_CODIGO);
+    const iVal = _valCol("val-col-valor") ?? _valAcharColuna(norm, _VAL_COLS_VALOR);
+
+    if (iCod < 0 || iVal < 0) {
+        throw new Error(
+            `Não achei a coluna ${iCod < 0 ? "do código" : "do valor"}. ` +
+            `Escolha à mão nos campos acima.`);
+    }
+
+    const itens = [];
+    const vistos = new Set();
+    let ignoradas = 0;
+    for (let i = 1; i < linhas.length; i++) {
+        const linha = linhas[i] || [];
+        const codigo = String(linha[iCod] == null ? "" : linha[iCod]).trim();
+        const valor = _valLerValor(linha[iVal]);
+        if (!codigo || valor === null) { ignoradas++; continue; }
+        if (vistos.has(codigo)) { ignoradas++; continue; }   // repetido: o 1º vale
+        vistos.add(codigo);
+        itens.push({ codigo, valor });
+    }
+
+    _valItens = itens;
+    _valColunas = { codigo: cabecalho[iCod], valor: cabecalho[iVal] };
+    const soma = Math.round(itens.reduce((t, i) => t + i.valor, 0) * 100) / 100;
+    return { itens, ignoradas, soma, colunas: _valColunas };
+}
 
 async function abrirFiscalValores(event) {
     if (event) event.preventDefault();
@@ -157,7 +239,7 @@ function _valMostrarEtapas() {
             </label>
         </div>
         <div class="acoes-rodape">
-            <button onclick="_valEnviar(true)">Conferir (não grava)</button>
+            <button onclick="_valEnviar()">Conferir (não grava)</button>
             <button class="btn-primario" onclick="_valConfirmarLote()">
                 Criar os CT-e →
             </button>
@@ -171,28 +253,75 @@ function _valMostrarEtapas() {
     </div>`;
 }
 
-async function _valEnviar(simular) {
+/**
+ * Conferência: lê a planilha AQUI e checa uma amostra no servidor.
+ *
+ * Checar os 118 mil códigos contra o banco antes de começar levaria mais tempo
+ * que processá-los. A amostra mostra que as colunas estão certas e como o
+ * sistema vai tratar os códigos; o relatório real sai durante o processamento.
+ */
+const _VAL_AMOSTRA = 50;
+
+async function _valEnviar() {
     if (!_valPlanilha) return;
     const alvo = document.getElementById("val-resultado");
-    alvo.innerHTML = `<p class='carregando'>${simular ? "Conferindo" : "Aplicando"}…</p>`;
+    alvo.innerHTML = "<p class='carregando'>Lendo a planilha…</p>";
 
+    let local;
     try {
-        const r = await _cteApi("/fiscal/cte/valores-planilha", {
-            method: "POST",
-            body: JSON.stringify({
-                linhas: _valPlanilha.linhas,
-                coluna_codigo: _valCol("val-col-codigo"),
-                coluna_valor: _valCol("val-col-valor"),
-                sobrescrever: document.getElementById("val-sobrescrever").checked,
-                simular,
-            }),
-        });
-        _valRelatorio = r;
-        alvo.innerHTML = _htmlRelatorioValores(r);
+        local = _valProcessarLocal();
     } catch (e) {
         alvo.innerHTML = `<div class="aviso-bloqueio">
-            <strong>Não foi possível processar.</strong><p>${_esc(e.message)}</p></div>`;
+            <strong>Não consegui ler a planilha.</strong><p>${_esc(e.message)}</p></div>`;
+        return;
     }
+
+    const amostra = local.itens.slice(0, _VAL_AMOSTRA);
+    let r = null;
+    try {
+        r = await _cteApi("/fiscal/cte/valores-planilha", {
+            method: "POST",
+            body: JSON.stringify({
+                linhas: [["codigo", "valor"], ...amostra.map((i) => [i.codigo, i.valor])],
+                coluna_codigo: 0, coluna_valor: 1, simular: true,
+            }),
+        });
+    } catch (e) {
+        alvo.innerHTML = `<div class="aviso-bloqueio">
+            <strong>Não foi possível conferir a amostra.</strong><p>${_esc(e.message)}</p></div>`;
+        return;
+    }
+
+    alvo.innerHTML = `
+    <div class="aviso-info">
+        <strong>Planilha lida — nada foi gravado.</strong>
+        <p>
+            <b>${local.itens.length.toLocaleString("pt-BR")}</b> código(s) ·
+            total <b>${_fmtBRL(local.soma)}</b> ·
+            ${local.ignoradas.toLocaleString("pt-BR")} linha(s) ignorada(s)
+            (sem código, sem valor ou repetidas)
+        </p>
+        <p class="dica">Colunas: <b>${_esc(local.colunas.codigo)}</b> e
+           <b>${_esc(local.colunas.valor)}</b>.</p>
+    </div>
+
+    <div class="aviso-info">
+        <strong>Amostra dos ${amostra.length} primeiros, conferida no servidor:</strong>
+        <p>
+            ${r.atualizados.length} já têm rascunho esperando valor ·
+            ${r.ja_tinham.length} já com valor ·
+            ${r.nao_encontrados.length} ainda serão buscados na Shopee ·
+            ${r.nao_editaveis.length} já emitidos
+        </p>
+    </div>
+
+    ${local.itens.length > 5000 ? `
+    <div class="aviso-bloqueio">
+        <strong>Atenção ao tamanho.</strong>
+        <p>São ${local.itens.length.toLocaleString("pt-BR")} códigos. Cada um é uma
+           consulta à API da Shopee — isso leva <b>horas</b> e a aba precisa ficar
+           aberta. Se a planilha for histórica, filtre por período antes.</p>
+    </div>` : ""}`;
 }
 
 /**
@@ -202,47 +331,40 @@ async function _valEnviar(simular) {
  */
 async function _valConfirmarLote() {
     const alvo = document.getElementById("val-resultado");
-    alvo.innerHTML = "<p class='carregando'>Conferindo a planilha…</p>";
+    let local;
     try {
-        const previa = await _cteApi("/fiscal/cte/valores-planilha", {
-            method: "POST",
-            body: JSON.stringify({
-                linhas: _valPlanilha.linhas,
-                coluna_codigo: _valCol("val-col-codigo"),
-                coluna_valor: _valCol("val-col-valor"),
-                simular: true,
-            }),
-        });
-        const jaExistem = previa.atualizados.length + previa.ja_tinham.length
-                        + previa.nao_editaveis.length;
-        const novos = previa.nao_encontrados.length;
-        const total = jaExistem + novos;
-
-        alvo.innerHTML = `
-        <div class="aviso-info">
-            <strong>Criar ${total} CT-e?</strong>
-            <p>
-                ${novos} serão buscados na Shopee e criados agora ·
-                ${jaExistem} já existem e só terão o valor atualizado<br>
-                Total da planilha: <b>${_fmtBRL(previa.soma_planilha)}</b> ·
-                ${previa.ignoradas} linha(s) sem código ou sem valor
-            </p>
-            <p class="dica">
-                Colunas: <b>${_esc(previa.colunas.nomes.codigo)}</b> e
-                <b>${_esc(previa.colunas.nomes.valor)}</b>.
-                São criados como <b>rascunho</b> — nada é enviado à SEFAZ aqui.
-            </p>
-            <div class="acoes-rodape">
-                <button onclick="document.getElementById('val-resultado').innerHTML=''">Cancelar</button>
-                <button class="btn-primario" onclick="_valImportarLote()">
-                    Sim, criar ${total} →
-                </button>
-            </div>
-        </div>`;
+        local = _valProcessarLocal();
     } catch (e) {
         alvo.innerHTML = `<div class="aviso-bloqueio">
             <strong>Não consegui ler a planilha.</strong><p>${_esc(e.message)}</p></div>`;
+        return;
     }
+
+    const n = local.itens.length;
+    const horas = (n * 0.4) / 3600;   // ~0,4s por código, com 4 em paralelo
+    alvo.innerHTML = `
+    <div class="aviso-info">
+        <strong>Criar ${n.toLocaleString("pt-BR")} CT-e?</strong>
+        <p>
+            Total da planilha: <b>${_fmtBRL(local.soma)}</b> ·
+            ${local.ignoradas.toLocaleString("pt-BR")} linha(s) ignorada(s)
+        </p>
+        <p class="dica">
+            Códigos que já têm rascunho só terão o valor atualizado — não duplicam.
+            São criados como <b>rascunho</b>: nada é enviado à SEFAZ aqui.
+        </p>
+        ${horas > 0.5 ? `<p><b>Isso deve levar cerca de ${horas < 1
+            ? Math.round(horas * 60) + " minutos"
+            : horas.toFixed(1).replace(".", ",") + " horas"}</b>, e a aba precisa
+            ficar aberta. Dá para parar no meio e continuar depois — o que já foi
+            criado não se perde.</p>` : ""}
+        <div class="acoes-rodape">
+            <button onclick="document.getElementById('val-resultado').innerHTML=''">Cancelar</button>
+            <button class="btn-primario" onclick="_valImportarLote()">
+                Sim, criar ${n.toLocaleString("pt-BR")} →
+            </button>
+        </div>
+    </div>`;
 }
 
 // ── importação em lote: a planilha inteira, em pedaços de 25 códigos
@@ -254,30 +376,15 @@ const _VAL_TAMANHO_LOTE = 25;
 let _valCancelar = false;
 
 async function _valImportarLote() {
-    if (!_valPlanilha) return;
     const alvo = document.getElementById("val-resultado");
-
-    // Reaproveita a leitura do backend para achar as colunas e normalizar valores.
-    let itens;
-    try {
-        const previa = await _cteApi("/fiscal/cte/valores-planilha", {
-            method: "POST",
-            body: JSON.stringify({
-                linhas: _valPlanilha.linhas,
-                coluna_codigo: _valCol("val-col-codigo"),
-                coluna_valor: _valCol("val-col-valor"),
-                simular: true,
-            }),
-        });
-        itens = [...previa.atualizados, ...previa.ja_tinham,
-                 ...previa.nao_encontrados, ...previa.nao_editaveis]
-            .map((i) => ({ codigo: i.codigo, valor: i.valor }));
-    } catch (e) {
-        alvo.innerHTML = `<div class="aviso-bloqueio">
-            <strong>Não consegui ler a planilha.</strong><p>${_esc(e.message)}</p></div>`;
-        return;
+    if (!_valItens) {
+        try { _valProcessarLocal(); }
+        catch (e) {
+            alvo.innerHTML = `<div class="aviso-bloqueio">${_esc(e.message)}</div>`;
+            return;
+        }
     }
-
+    const itens = _valItens;
     if (!itens.length) {
         alvo.innerHTML = `<div class="aviso-bloqueio">Nenhuma linha utilizável.</div>`;
         return;
@@ -295,7 +402,7 @@ async function _valImportarLote() {
         const pct = Math.round((feitos / total) * 100);
         alvo.innerHTML = `
         <div class="aviso-info">
-            <strong>${feitos === total ? "Concluído" : "Processando…"} ${feitos} de ${total} (${pct}%)</strong>
+            <strong>${feitos === total ? "Concluído" : "Processando…"} ${feitos.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")} (${pct}%)</strong>
             <div style="background:#1e2a3d;border-radius:6px;height:10px;margin:10px 0;overflow:hidden">
                 <div style="background:#3b82f6;height:100%;width:${pct}%;transition:width .2s"></div>
             </div>
