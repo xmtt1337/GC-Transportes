@@ -138,7 +138,10 @@ function _htmlListagem() {
     return `
     <div class="cabecalho-tela">
         <h2>CT-e</h2>
-        <button class="btn-primario" onclick="abrirNovoCTe()">+ Novo CT-e</button>
+        <div>
+            <button onclick="abrirImportarShopee()">↓ Importar da Shopee</button>
+            <button class="btn-primario" onclick="abrirNovoCTe()">+ Novo CT-e</button>
+        </div>
     </div>
     <div class="aviso-info">
         Ambiente: <b>${_esc(_cteContexto.empresa.ambiente)}</b> ·
@@ -246,6 +249,88 @@ async function baixarXmlCTe(id) {
     const xml = await r.text();
     const janela = window.open("", "_blank");
     janela.document.write(`<pre>${_esc(xml)}</pre>`);
+}
+
+// ══════════════════════════════════════════════ IMPORTAR DA SHOPEE
+//
+// A API da Shopee devolve o CT-e AUTORIZADO do trecho anterior (emitente SHPX).
+// Dele saem o docAnt, as chaves de NF-e, o destinatário e o destino. Valores e
+// tributação não vêm de lá: são de outra operação (interestadual, ICMS
+// diferido) e seriam errados aqui.
+function abrirImportarShopee() {
+    mostrarTela("tela-fiscal-novo-cte");
+    document.getElementById("fiscal-novo-cte-conteudo").innerHTML = `
+    <div class="cabecalho-tela">
+        <h2>Importar pedido da Shopee</h2>
+        <button onclick="abrirCTes()">← Lista</button>
+    </div>
+
+    <div class="aviso-info">
+        <strong>Informe o código do pedido e o resto vem preenchido.</strong>
+        <p>O sistema busca na Shopee o CT-e do trecho anterior e usa o que é
+           fato do documento: emitente e chave para o <b>CT-e anterior</b>,
+           chaves das <b>NF-e</b>, <b>destinatário</b> com endereço e o
+           <b>município de destino</b>.</p>
+        <p><b>Valor do frete e tributação não são importados</b> — os da Shopee
+           são de outra operação. Eles vêm do seu perfil e do que você digitar.</p>
+    </div>
+
+    <div class="secao-form">
+        <div class="linha-form">
+            <label class="largo">Código do pedido
+                <input id="imp-codigo" placeholder="ex: BR2663151947183"
+                       onkeydown="if(event.key==='Enter')importarDaShopee()"></label>
+        </div>
+        <div class="acoes-rodape">
+            <button class="btn-primario" onclick="importarDaShopee()">Buscar na Shopee</button>
+        </div>
+    </div>
+    <div id="resultado-importacao"></div>`;
+    const campo = document.getElementById("imp-codigo");
+    if (campo) campo.focus();
+}
+
+async function importarDaShopee() {
+    const codigo = (document.getElementById("imp-codigo").value || "").trim();
+    const alvo = document.getElementById("resultado-importacao");
+    if (!codigo) { alvo.innerHTML = `<div class="aviso-bloqueio">Informe o código do pedido.</div>`; return; }
+
+    alvo.innerHTML = "<p class='carregando'>Consultando a Shopee…</p>";
+    try {
+        const r = await _cteApi("/fiscal/cte/importar",
+                                { method: "POST", body: JSON.stringify({ codigo }) });
+        const o = r.origem || {};
+        alvo.innerHTML = `
+        <div class="aviso-sucesso">
+            <strong>CT-e anterior encontrado.</strong>
+            <p>${_esc(o.emitente_anterior || "—")} · ${_esc(o.trecho_anterior || "")}<br>
+               <span class="mono-pequeno">${_esc(o.chave_cte_anterior || "")}</span><br>
+               ${_esc(o.nfe_encontradas || 0)} NF-e · protocolo ${_esc(o.protocolo || "—")}</p>
+        </div>
+        ${(r.avisos || []).length ? `<div class="aviso-info">
+            <strong>Confira antes de validar:</strong>
+            <ul>${r.avisos.map((a) => `<li>${_esc(a)}</li>`).join("")}</ul>
+        </div>` : ""}
+        <div class="acoes-rodape">
+            <button class="btn-primario" onclick="_abrirRascunhoImportado()">Abrir o CT-e preenchido →</button>
+        </div>`;
+        _cteImportado = r;
+    } catch (e) {
+        alvo.innerHTML = `<div class="aviso-bloqueio">
+            <strong>Não foi possível importar.</strong><p>${_esc(e.message)}</p></div>`;
+    }
+}
+
+let _cteImportado = null;
+
+function _abrirRascunhoImportado() {
+    if (!_cteImportado) return;
+    _cteAtual = { id: null, dados: _cteImportado.dados, status: "RASCUNHO" };
+    _ctePerfilAplicado = _cteImportado.perfil && (_cteImportado.campos_do_perfil || []).length
+        ? { nome: _cteImportado.perfil.nome, campos: _cteImportado.campos_do_perfil }
+        : null;
+    _cteSecao = 0;
+    _renderFormulario();
 }
 
 // ══════════════════════════════════════════════ FORMULÁRIO
