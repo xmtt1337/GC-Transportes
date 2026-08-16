@@ -13,6 +13,14 @@ const _PERFIL_GRUPOS = [
         "ide.modal", "ide.serie"] },
     { titulo: "Origem da prestação", campos: [
         "ide.xMunIni", "ide.cMunIni", "ide.UFIni"] },
+    { titulo: "Tomador do serviço (quando toma = 4 \"Outros\")", campos: [
+        "tomador.nome", "tomador.cnpj", "tomador.ie",
+        "tomador.endereco.logradouro", "tomador.endereco.numero",
+        "tomador.endereco.bairro", "tomador.endereco.municipio",
+        "tomador.endereco.codigo_municipio", "tomador.endereco.uf",
+        "tomador.endereco.cep"] },
+    { titulo: "Valores (só se o frete for fixo por pacote)", campos: [
+        "vPrest.vTPrest", "vPrest.vRec"] },
     { titulo: "ICMS", campos: [
         "imposto_regime", "imposto_cst", "imposto_aliquota"] },
     { titulo: "Modal rodoviário", campos: ["modal.rntrc"] },
@@ -68,7 +76,8 @@ function _htmlPerfil(r) {
         <p>Só entram onde o campo está vazio — o que você digitar no documento
            sempre vence. E tudo continua visível e editável no formulário: não
            existe valor invisível indo para o XML.</p>
-        <p class="dica">Deixe em branco o que varia de um CT-e para outro.</p>
+        <p class="dica">Deixe em branco o que varia de um CT-e para outro — o
+           valor do frete, por exemplo, só vale aqui se for sempre o mesmo.</p>
     </div>
 
     ${!_perfilAtual ? `
@@ -115,6 +124,7 @@ function _preencherSugestaoPerfil() {
         "ide.xMunIni": "CACADOR",
         "ide.cMunIni": "4203006",
         "ide.UFIni": "SC",
+        "ide.toma": "4",
         "imposto_regime": "3",
         "imposto_cst": "00",
         "imposto_aliquota": "17",
