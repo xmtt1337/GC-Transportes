@@ -38,6 +38,17 @@ const _VAL_COLS_CIDADE = [
     "municipio", "destino", "cidadedestino",
 ];
 
+// Componentes do valor do serviço — o FAQ da Shopee exige o desmembramento
+// (frete, GRIS, ad valorem, pedágio) e a planilha de repasse já traz cada um.
+// O nome que vai no XML é o da esquerda; a planilha é reconhecida pela direita.
+const _VAL_COMPONENTES = [
+    { nome: "FRETE",      colunas: ["fretecalculado", "frete", "valorfrete"] },
+    { nome: "AD VALOREM", colunas: ["adv", "advalorem", "adevalorem"] },
+    { nome: "GRIS",       colunas: ["gris"] },
+    { nome: "PEDAGIO",    colunas: ["pedagio", "valorpedagio"] },
+    { nome: "OUTROS",     colunas: ["outrosvalores", "outros"] },
+];
+
 function _valNormalizar(s) {
     return String(s == null ? "" : s)
         .normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -77,6 +88,12 @@ function _valProcessarLocal() {
     const iVal = _valCol("val-col-valor") ?? _valAcharColuna(norm, _VAL_COLS_VALOR);
     const iCid = _valCol("val-col-cidade") ?? _valAcharColuna(norm, _VAL_COLS_CIDADE);
 
+    // Onde cada componente está, se estiver. Coluna ausente não vira zero:
+    // um componente que a planilha não traz simplesmente não existe.
+    const colsComp = _VAL_COMPONENTES
+        .map((c) => ({ nome: c.nome, i: _valAcharColuna(norm, c.colunas) }))
+        .filter((c) => c.i >= 0);
+
     if (iCod < 0 || iVal < 0) {
         throw new Error(
             `Não achei a coluna ${iCod < 0 ? "do código" : "do valor"}. ` +
@@ -95,7 +112,15 @@ function _valProcessarLocal() {
         if (vistos.has(codigo)) { ignoradas++; continue; }   // repetido: o 1º vale
         vistos.add(codigo);
         const cidade = iCid >= 0 ? String(linha[iCid] == null ? "" : linha[iCid]).trim() : "";
-        todos.push({ codigo, valor, cidade });
+
+        // Só componentes com valor entram: Comp com zero polui o documento, e
+        // o schema não aceita valor negativo (por isso desconto fica de fora).
+        const componentes = colsComp
+            .map((c) => ({ nome: c.nome, valor: _valLerValor(linha[c.i]) }))
+            .filter((c) => c.valor !== null && c.valor > 0);
+
+        todos.push({ codigo, valor, cidade,
+                     ...(componentes.length ? { componentes } : {}) });
         if (cidade) {
             const k = _valNormalizar(cidade);
             const atual = porCidade.get(k) || { cidade, n: 0, soma: 0 };
@@ -114,9 +139,22 @@ function _valProcessarLocal() {
     _valColunas = {
         codigo: cabecalho[iCod], valor: cabecalho[iVal],
         cidade: iCid >= 0 ? cabecalho[iCid] : null,
+        componentes: colsComp.map((c) => `${c.nome} (${cabecalho[c.i]})`),
     };
     const soma = Math.round(itens.reduce((t, i) => t + i.valor, 0) * 100) / 100;
-    return { itens, ignoradas, soma, excluidos, total: todos.length, colunas: _valColunas };
+
+    // Os componentes precisam somar o valor do serviço. Quando não somam, algo
+    // que a Shopee cobra não está nas colunas — e um CT-e cujo Comp não fecha
+    // com o vTPrest pode ser rejeitado. Melhor descobrir aqui.
+    let divergentes = 0;
+    for (const i of itens) {
+        if (!i.componentes) continue;
+        const s = Math.round(i.componentes.reduce((t, c) => t + c.valor, 0) * 100) / 100;
+        if (Math.abs(s - i.valor) > 0.01) divergentes++;
+    }
+
+    return { itens, ignoradas, soma, excluidos, divergentes,
+             total: todos.length, colunas: _valColunas };
 }
 
 async function abrirFiscalValores(event) {
@@ -368,7 +406,14 @@ async function _valEnviar() {
             (sem código, sem valor ou repetidas)
         </p>
         <p class="dica">Colunas: <b>${_esc(local.colunas.codigo)}</b> e
-           <b>${_esc(local.colunas.valor)}</b>.</p>
+           <b>${_esc(local.colunas.valor)}</b>.
+           ${(local.colunas.componentes || []).length
+             ? `<br>Componentes: ${_esc(local.colunas.componentes.join(" · "))}`
+             : "<br>Nenhuma coluna de componente reconhecida."}</p>
+        ${local.divergentes ? `<p style="color:#e8a33d">
+            <b>${local.divergentes.toLocaleString("pt-BR")}</b> linha(s) em que os
+            componentes não somam o valor final. O CT-e pode ser rejeitado assim —
+            confira se falta alguma coluna.</p>` : ""}
     </div>
 
     <div class="aviso-info">
