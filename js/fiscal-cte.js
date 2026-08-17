@@ -434,6 +434,13 @@ function _renderFormulario() {
             : `<button class="btn-primario" onclick="validarCTe()">Validar e preparar para emissão</button>`}
     </div>
     <div id="resultado-validacao"></div>`;
+
+    // A prévia dos tributos vem do servidor e depende do valor do frete, então
+    // é recalculada a cada render — quem muda o valor na seção Valores vê o
+    // efeito ao chegar na Tributação.
+    if (typeof fiscalCalcularPreviaTributacao === "function") {
+        fiscalCalcularPreviaTributacao();
+    }
 }
 
 function irParaSecaoCTe(i) {
@@ -452,6 +459,7 @@ function _campo(caminho, rotulo, opcoes = {}) {
         opcoes.maxlength ? `maxlength="${opcoes.maxlength}"` : "",
         opcoes.step ? `step="${opcoes.step}"` : "",
         opcoes.placeholder ? `placeholder="${_esc(opcoes.placeholder)}"` : "",
+        opcoes.extra || "",
     ].filter(Boolean).join(" ");
     return `<label class="${opcoes.largura || ""}">${_esc(rotulo)}
         <input ${attrs} value="${_esc(valor)}"></label>`;
@@ -615,7 +623,9 @@ function _htmlSecao(i) {
             <div class="secao-form">
                 <h3>Valores da prestação</h3>
                 <div class="linha-form">
-                    ${_campo("vPrest.vTPrest", "Valor total da prestação", { tipo: "number", step: "0.01" })}
+                    ${_campo("vPrest.vTPrest", "Valor total da prestação", {
+                        tipo: "number", step: "0.01",
+                        extra: `oninput="fiscalCalcularPreviaTributacao()"` })}
                     ${_campo("vPrest.vRec", "Valor a receber", { tipo: "number", step: "0.01" })}
                 </div>
                 <h4>Componentes</h4>

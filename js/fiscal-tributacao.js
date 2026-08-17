@@ -142,38 +142,59 @@ function fiscalSecaoTributacao(situacao, valores = {}) {
  * configuração vigente. Duplicar a regra aqui abriria espaço para a tela
  * mostrar um valor e o documento sair com outro.
  */
+let _tribPreviaTimer = null;
+
 function fiscalCalcularPreviaTributacao() {
-    const num = (id) => {
+    // Debounce: a pessoa digita o valor do frete dígito a dígito.
+    clearTimeout(_tribPreviaTimer);
+    _tribPreviaTimer = setTimeout(_tribBuscarPrevia, 350);
+}
+
+async function _tribBuscarPrevia() {
+    const escrever = (id, texto) => {
         const el = document.getElementById(id);
-        const v = el ? parseFloat(el.value) : NaN;
-        return isNaN(v) ? null : v;
+        if (el) el.textContent = texto;
     };
-    const base = num("trib-vbc");
-    const efetiva = num("trib-paliqefet");   // redução, quando informada, manda
+    const limpar = () => ["trib-v-ibs-uf", "trib-v-ibs-mun", "trib-v-cbs",
+                          "trib-total-ibs", "trib-total-cbs", "trib-vtotdfe"]
+        .forEach((id) => escrever(id, "—"));
 
-    const calc = (aliq) => (base === null || aliq === null)
-        ? null : Math.round(base * (efetiva ?? aliq) / 100 * 100) / 100;
+    // Junta o que a tela tem agora: o backend precisa do valor da prestação e
+    // dos campos de ICMS para chegar à base do IBS/CBS.
+    if (typeof _coletarSecao === "function") _coletarSecao();
+    const dados = (typeof _cteAtual !== "undefined" && _cteAtual) ? _cteAtual.dados : null;
+    if (!dados || !(dados.vPrest && dados.vPrest.vTPrest)) { limpar(); return; }
 
-    const vUF = calc(num("trib-p-ibs-uf"));
-    const vMun = calc(num("trib-p-ibs-mun"));
-    const vCBS = calc(num("trib-p-cbs"));
+    try {
+        const r = await _cteApi("/fiscal/cte/previa-tributos", {
+            method: "POST", body: JSON.stringify({ dados }),
+        });
 
-    const escrever = (id, valor) => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = valor === null ? "—" : _fmtMoeda(valor);
-    };
-    escrever("trib-v-ibs-uf", vUF);
-    escrever("trib-v-ibs-mun", vMun);
-    escrever("trib-v-cbs", vCBS);
+        // ICMS: base e valor são calculados, então aparecem nos campos como
+        // valor mesmo — a pessoa vê quanto de imposto o documento carrega
+        // antes de validar, e pode sobrescrever se o contador pedir.
+        const icms = r.icms;
+        const preencherSeVazio = (id, valor) => {
+            const el = document.getElementById(id);
+            if (el && !el.value && valor !== undefined && valor !== null) el.value = valor;
+        };
+        if (icms) {
+            preencherSeVazio("c-imposto_vbc", icms.vBC ?? icms.vBCOutraUF);
+            preencherSeVazio("c-imposto_valor", icms.vICMS ?? icms.vICMSOutraUF);
+        }
 
-    const totalIBS = (vUF !== null && vMun !== null) ? Math.round((vUF + vMun) * 100) / 100 : null;
-    escrever("trib-total-ibs", totalIBS);
-    escrever("trib-total-cbs", vCBS);
-
-    const vTPrest = num("cte-vtprest");
-    escrever("trib-vtotdfe",
-        (vTPrest !== null && totalIBS !== null && vCBS !== null)
-            ? Math.round((vTPrest + totalIBS + vCBS) * 100) / 100 : null);
+        const t = r.ibscbs;
+        if (!t) { limpar(); return; }
+        preencherSeVazio("trib-vbc", t.base);
+        escrever("trib-v-ibs-uf", _fmtMoeda(t.ibs_uf.valor));
+        escrever("trib-v-ibs-mun", _fmtMoeda(t.ibs_mun.valor));
+        escrever("trib-v-cbs", _fmtMoeda(t.cbs.valor));
+        escrever("trib-total-ibs", _fmtMoeda(t.v_ibs));
+        escrever("trib-total-cbs", _fmtMoeda(t.v_cbs));
+        escrever("trib-vtotdfe", r.vTotDFe ? _fmtMoeda(Number(r.vTotDFe)) : "—");
+    } catch {
+        limpar();   // rede instável não pode deixar número velho na tela
+    }
 }
 
 /** Coleta o que a seção preencheu, para enviar ao backend. */
