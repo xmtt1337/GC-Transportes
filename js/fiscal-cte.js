@@ -142,6 +142,8 @@ function _htmlListagem() {
     <div class="cabecalho-tela">
         <h2>CT-e</h2>
         <div>
+            <button onclick="loteCTe('validar')">Validar em lote</button>
+            <button onclick="loteCTe('emitir')">Emitir em lote</button>
             <button onclick="abrirImportarShopee()">↓ Importar da Shopee</button>
             <button class="btn-primario" onclick="abrirNovoCTe()">+ Novo CT-e</button>
         </div>
@@ -150,8 +152,9 @@ function _htmlListagem() {
         Ambiente: <b>${_esc(_cteContexto.empresa.ambiente)}</b> ·
         Empresa: <b>${_esc(_cteContexto.empresa.razao_social)}</b> ·
         Leiaute ${_esc(_cteContexto.versao_leiaute)}
-        <br>A transmissão para a SEFAZ ainda não está habilitada — nesta etapa o
-        CT-e é validado e fica pronto para emissão.
+        ${_cteContexto.empresa.ambiente === "homologacao"
+          ? "<br>Homologação: os documentos são transmitidos e autorizados pela SEFAZ de verdade, mas não têm validade fiscal."
+          : ""}
     </div>
 
     <div class="filtros-cte">
@@ -1071,6 +1074,102 @@ function _htmlMemoriaCalculo(r) {
  * Confirma antes porque não tem volta: documento autorizado não se apaga, só
  * se cancela — e cancelamento tem prazo e regra própria.
  */
+// ── lote
+//
+// Validar é local: roda em pedaços de 50, em paralelo no servidor.
+// Emitir fala com a SEFAZ e produz documento com validade: vai de 20 em 20,
+// um por vez lá dentro, e PARA na primeira rejeição — se um foi recusado, os
+// seguintes saíram do mesmo perfil e provavelmente têm o mesmo defeito.
+const _LOTE_VALIDAR = 50;
+const _LOTE_EMITIR = 20;
+let _loteParar = false;
+
+async function loteCTe(acao) {
+    const emitindo = acao === "emitir";
+    const alvo = document.getElementById("lista-cte");
+
+    let ids;
+    try {
+        const r = await _cteApi(`/fiscal/cte/lote/elegiveis?acao=${acao}&limite=500`);
+        ids = r.ids || [];
+    } catch (e) { alert(e.message); return; }
+
+    if (!ids.length) {
+        alert(emitindo ? "Nenhum CT-e pronto para emitir."
+                       : "Nenhum rascunho para validar.");
+        return;
+    }
+
+    const aviso = emitindo
+        ? `Transmitir ${ids.length} CT-e para a SEFAZ?
+
+` +
+          `Documento autorizado não se apaga, só se cancela. O lote para na ` +
+          `primeira rejeição.`
+        : `Validar ${ids.length} CT-e?
+
+Nada é enviado à SEFAZ — só monta o ` +
+          `XML e confere no schema.`;
+    if (!confirm(aviso)) return;
+
+    _loteParar = false;
+    const tamanho = emitindo ? _LOTE_EMITIR : _LOTE_VALIDAR;
+    const acumulado = { total: 0, ok: 0, falhou: 0 };
+    const problemas = [];
+    let interrompido = null;
+
+    const pintar = (feitos) => {
+        const pct = Math.round((feitos / ids.length) * 100);
+        alvo.innerHTML = `
+        <div class="aviso-info">
+            <strong>${interrompido ? "Interrompido" : feitos >= ids.length ? "Concluído" : "Processando"} —
+                ${feitos} de ${ids.length} (${pct}%)</strong>
+            <div style="background:#1e2a3d;border-radius:6px;height:10px;margin:10px 0;overflow:hidden">
+                <div style="background:${interrompido ? "#e8a33d" : "#3b82f6"};height:100%;width:${pct}%"></div>
+            </div>
+            <p>${acumulado.ok} ${emitindo ? "autorizados" : "prontos"} ·
+               ${acumulado.falhou} com pendência</p>
+            ${interrompido ? `<p style="color:#e8a33d">${_esc(interrompido)}</p>` : ""}
+            ${feitos < ids.length && !interrompido
+                ? `<button onclick="_loteParar=true">Parar</button>` : ""}
+        </div>
+        ${problemas.length ? `
+        <details class="secao-form" open>
+            <summary><b>Com pendência</b> — ${problemas.length}</summary>
+            <table class="tabela">
+                <thead><tr><th>CT-e</th><th>Situação</th><th>Motivo</th></tr></thead>
+                <tbody>${problemas.slice(0, 100).map((p) => `<tr>
+                    <td>#${p.id}</td><td>${_esc(p.status || "")}</td>
+                    <td class="dica">${_esc((p.problemas || [p.motivo] || []).join(" · "))}</td>
+                </tr>`).join("")}</tbody>
+            </table>
+        </details>` : ""}
+        ${feitos >= ids.length || interrompido
+            ? `<div class="acoes-rodape"><button onclick="_carregarListaCTe(0)">Ver a lista</button></div>` : ""}`;
+    };
+
+    pintar(0);
+    for (let i = 0; i < ids.length; i += tamanho) {
+        if (_loteParar) { interrompido = "Parado por você."; pintar(i); break; }
+        const pedaco = ids.slice(i, i + tamanho);
+        try {
+            const r = await _cteApi(`/fiscal/cte/lote/${acao}`, {
+                method: "POST", body: JSON.stringify({ ids: pedaco }),
+            });
+            acumulado.ok += r.resumo.ok;
+            acumulado.falhou += r.resumo.falhou;
+            for (const x of r.resultados) if (!x.ok) problemas.push(x);
+            if (r.interrompido) { interrompido = r.motivo_parada; pintar(i + r.resultados.length); break; }
+        } catch (e) {
+            interrompido = e.message;
+            pintar(i);
+            break;
+        }
+        pintar(Math.min(i + tamanho, ids.length));
+    }
+    if (!interrompido) pintar(ids.length);
+}
+
 async function emitirCTe(id) {
     if (!confirm("Transmitir este CT-e para a SEFAZ?\n\n" +
                  "Um documento autorizado não pode ser apagado, apenas cancelado.")) return;
