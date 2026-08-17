@@ -8,8 +8,10 @@
 // o servidor vão só as linhas, nunca o arquivo.
 
 let _valPlanilha = null;   // { nome, linhas }
-let _valItens = null;      // [{codigo, valor}] já lidos AQUI
+let _valItens = null;      // [{codigo, valor, cidade}] já lidos AQUI
 let _valColunas = null;
+let _valCidades = null;    // [{cidade, n}] achadas na planilha
+let _valExcluidas = new Set();
 let _valRelatorio = null;
 
 // ── leitura da planilha no navegador
@@ -27,6 +29,13 @@ const _VAL_COLS_CODIGO = [
 ];
 const _VAL_COLS_VALOR = [
     "valorfinalareceber", "valorfinal", "valorareceber", "valorreceber",
+];
+// Cidade de entrega: quando a planilha traz, o filtro acontece AQUI, antes de
+// enfileirar. Cada código excluído é uma consulta à API da Shopee que deixa de
+// ser feita — em 120 mil linhas, isso é hora de processamento a menos.
+const _VAL_COLS_CIDADE = [
+    "cidadeentrega", "cidadedeentrega", "cidade", "municipioentrega",
+    "municipio", "destino", "cidadedestino",
 ];
 
 function _valNormalizar(s) {
@@ -66,6 +75,7 @@ function _valProcessarLocal() {
 
     const iCod = _valCol("val-col-codigo") ?? _valAcharColuna(norm, _VAL_COLS_CODIGO);
     const iVal = _valCol("val-col-valor") ?? _valAcharColuna(norm, _VAL_COLS_VALOR);
+    const iCid = _valCol("val-col-cidade") ?? _valAcharColuna(norm, _VAL_COLS_CIDADE);
 
     if (iCod < 0 || iVal < 0) {
         throw new Error(
@@ -73,8 +83,9 @@ function _valProcessarLocal() {
             `Escolha à mão nos campos acima.`);
     }
 
-    const itens = [];
+    const todos = [];
     const vistos = new Set();
+    const porCidade = new Map();
     let ignoradas = 0;
     for (let i = 1; i < linhas.length; i++) {
         const linha = linhas[i] || [];
@@ -83,13 +94,29 @@ function _valProcessarLocal() {
         if (!codigo || valor === null) { ignoradas++; continue; }
         if (vistos.has(codigo)) { ignoradas++; continue; }   // repetido: o 1º vale
         vistos.add(codigo);
-        itens.push({ codigo, valor });
+        const cidade = iCid >= 0 ? String(linha[iCid] == null ? "" : linha[iCid]).trim() : "";
+        todos.push({ codigo, valor, cidade });
+        if (cidade) {
+            const k = _valNormalizar(cidade);
+            const atual = porCidade.get(k) || { cidade, n: 0, soma: 0 };
+            atual.n++; atual.soma += valor;
+            porCidade.set(k, atual);
+        }
     }
 
+    _valCidades = [...porCidade.values()].sort((a, b) => b.n - a.n);
+    // O filtro vale para o que vai ser enfileirado; os excluídos nem chegam
+    // a virar consulta à Shopee.
+    const itens = todos.filter((i) => !_valExcluidas.has(_valNormalizar(i.cidade)));
+    const excluidos = todos.length - itens.length;
+
     _valItens = itens;
-    _valColunas = { codigo: cabecalho[iCod], valor: cabecalho[iVal] };
+    _valColunas = {
+        codigo: cabecalho[iCod], valor: cabecalho[iVal],
+        cidade: iCid >= 0 ? cabecalho[iCid] : null,
+    };
     const soma = Math.round(itens.reduce((t, i) => t + i.valor, 0) * 100) / 100;
-    return { itens, ignoradas, soma, colunas: _valColunas };
+    return { itens, ignoradas, soma, excluidos, total: todos.length, colunas: _valColunas };
 }
 
 async function abrirFiscalValores(event) {
@@ -97,6 +124,8 @@ async function abrirFiscalValores(event) {
     mostrarTela("tela-fiscal-valores");
     _valPlanilha = null;
     _valItens = null;
+    _valCidades = null;
+    _valExcluidas = new Set();
     _valRelatorio = null;
     if (_valPolling) { clearInterval(_valPolling); _valPolling = null; }
     document.getElementById("fiscal-valores-conteudo").innerHTML = _htmlValores();
@@ -263,20 +292,16 @@ function _valMostrarEtapas() {
                     <option value="">Reconhecer pelo nome</option>
                     ${cabecalho.map((c) => `<option value="${c.i}">${_esc(c.nome)}</option>`).join("")}
                 </select></label>
+            <label>Coluna da cidade
+                <select id="val-col-cidade">
+                    <option value="">Reconhecer pelo nome</option>
+                    ${cabecalho.map((c) => `<option value="${c.i}">${_esc(c.nome)}</option>`).join("")}
+                </select></label>
             <label class="check">
                 <input type="checkbox" id="val-sobrescrever"> Trocar valores já preenchidos
             </label>
         </div>
-        <div class="linha-form">
-            <label class="largo">Cidades onde a GC não entrega (separadas por vírgula)
-                <input id="val-cidades-excluidas"
-                       placeholder="ex: Cacador, Videira"></label>
-        </div>
-        <p class="dica">
-            Pedidos com destino nessas cidades são pulados — se a Shopee entrega
-            direto, não houve prestação da GC e o CT-e documentaria transporte
-            que não existiu. Eles aparecem no relatório como ignorados, não somem.
-        </p>
+        <div id="val-cidades"></div>
         <div class="acoes-rodape">
             <button onclick="_valEnviar()">Conferir (não grava)</button>
             <button class="btn-primario" onclick="_valConfirmarLote()">
@@ -331,12 +356,14 @@ async function _valEnviar() {
         return;
     }
 
+    _valPintarCidades();
     alvo.innerHTML = `
     <div class="aviso-info">
         <strong>Planilha lida — nada foi gravado.</strong>
         <p>
-            <b>${local.itens.length.toLocaleString("pt-BR")}</b> código(s) ·
-            total <b>${_fmtBRL(local.soma)}</b> ·
+            <b>${local.itens.length.toLocaleString("pt-BR")}</b> código(s) a processar ·
+            total <b>${_fmtBRL(local.soma)}</b><br>
+            ${local.excluidos.toLocaleString("pt-BR")} de cidade excluída ·
             ${local.ignoradas.toLocaleString("pt-BR")} linha(s) ignorada(s)
             (sem código, sem valor ou repetidas)
         </p>
@@ -368,6 +395,49 @@ async function _valEnviar() {
  * confirmar a quantidade é a última chance de perceber que subiu o arquivo
  * errado — depois são mil rascunhos para limpar.
  */
+/**
+ * Lista as cidades da planilha para marcar quais não geram CT-e.
+ *
+ * Marcar aqui é melhor que filtrar depois: o pedido excluído nem vira consulta
+ * à API da Shopee. Em 120 mil linhas, é hora de processamento a menos.
+ */
+function _valPintarCidades() {
+    const area = document.getElementById("val-cidades");
+    if (!area) return;
+    if (!_valCidades || !_valCidades.length) {
+        area.innerHTML = `<p class="dica">
+            A planilha não tem coluna de cidade reconhecida — escolha acima se
+            houver, ou todos os códigos serão processados.</p>`;
+        return;
+    }
+    area.innerHTML = `
+    <details class="secao-form" open>
+        <summary><b>Cidades na planilha</b> — ${_valCidades.length}</summary>
+        <p class="dica">
+            Marque as cidades onde a <b>GC não faz a entrega</b>. Elas não geram
+            CT-e e nem são consultadas na Shopee — se eles entregam direto, não
+            houve prestação nossa e o CT-e documentaria transporte inexistente.
+        </p>
+        <div class="linha-form" style="flex-wrap:wrap;gap:8px">
+            ${_valCidades.map((c) => {
+                const k = _valNormalizar(c.cidade);
+                return `<label class="check" style="flex:0 0 auto;min-width:220px">
+                    <input type="checkbox" value="${_esc(k)}"
+                           ${_valExcluidas.has(k) ? "checked" : ""}
+                           onchange="_valMarcarCidade(this)">
+                    ${_esc(c.cidade)} <span class="dica">(${c.n.toLocaleString("pt-BR")} ·
+                    ${_fmtBRL(c.soma)})</span></label>`;
+            }).join("")}
+        </div>
+    </details>`;
+}
+
+function _valMarcarCidade(el) {
+    if (el.checked) _valExcluidas.add(el.value);
+    else _valExcluidas.delete(el.value);
+    _valEnviar();   // recalcula a contagem com a exclusão
+}
+
 async function _valConfirmarLote() {
     const alvo = document.getElementById("val-resultado");
     let local;
@@ -385,8 +455,10 @@ async function _valConfirmarLote() {
     <div class="aviso-info">
         <strong>Criar ${n.toLocaleString("pt-BR")} CT-e?</strong>
         <p>
-            Total da planilha: <b>${_fmtBRL(local.soma)}</b> ·
-            ${local.ignoradas.toLocaleString("pt-BR")} linha(s) ignorada(s)
+            Total: <b>${_fmtBRL(local.soma)}</b>
+            ${local.excluidos ? ` · ${local.excluidos.toLocaleString("pt-BR")}
+                fora, de cidade excluída` : ""}
+            · ${local.ignoradas.toLocaleString("pt-BR")} linha(s) ignorada(s)
         </p>
         <p class="dica">
             Códigos que já têm rascunho só terão o valor atualizado — não duplicam.
@@ -434,11 +506,9 @@ async function _valImportarLote() {
     try {
         const imp = await _cteApi("/fiscal/importacao", {
             method: "POST",
-            body: JSON.stringify({
-                nome: _valPlanilha.nome, sobrescrever,
-                cidades_excluidas: (document.getElementById("val-cidades-excluidas").value || "")
-                    .split(",").map((c) => c.trim()).filter(Boolean),
-            }),
+            // O filtro por cidade já foi aplicado aqui, na leitura da planilha:
+            // o que não vai ser emitido nem chega a ser enfileirado.
+            body: JSON.stringify({ nome: _valPlanilha.nome, sobrescrever }),
         });
         _valImportacaoId = imp.id;
 
