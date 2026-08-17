@@ -218,7 +218,8 @@ function _linhaCTe(c) {
         <td class="mono-pequeno">${c.chave_acesso ? _esc(c.chave_acesso) : "—"}</td>
         <td>
             ${editavel
-                ? `<button onclick="abrirNovoCTe(${c.id})">Editar</button>`
+                ? `<button onclick="abrirNovoCTe(${c.id})">Editar</button>
+                   <button class="btn-primario" onclick="validarCTeDaLista(${c.id})">Validar</button>`
                 : `<button onclick="verCTe(${c.id})">Visualizar</button>`}
         </td>
     </tr>`;
@@ -404,6 +405,7 @@ function _renderFormulario() {
         <h2>${_cteAtual.id ? `Editar CT-e #${_cteAtual.id}` : "Novo CT-e"}</h2>
         <div>
             <button onclick="salvarRascunhoCTe()">Salvar rascunho</button>
+            <button class="btn-primario" onclick="validarCTe()">Validar</button>
             <button onclick="abrirCTes()">← Lista</button>
         </div>
     </div>
@@ -894,6 +896,30 @@ async function salvarRascunhoCTe() {
         _renderFormulario();
     } catch (e) {
         alert("Não foi possível salvar: " + e.message);
+    }
+}
+
+/**
+ * Valida sem abrir o formulário.
+ *
+ * O botão da lista existe porque validar 10 rascunhos importados não deveria
+ * exigir abrir cada um e clicar "Próximo" treze vezes até a Conferência.
+ */
+async function validarCTeDaLista(id) {
+    const alvo = document.getElementById("lista-cte");
+    const antes = alvo.innerHTML;
+    try {
+        const r = await _cteApi(`/fiscal/cte/${id}/validar`, { method: "POST" });
+        if (r.ok) {
+            alert(`CT-e pronto para emissão.\n\nNúmero ${r.numero}\nChave ${r.chave}`);
+        } else {
+            alert(`${r.problemas.length} pendência(s):\n\n` +
+                  r.problemas.map((p) => "• " + p.mensagem).join("\n"));
+        }
+        await _carregarListaCTe();
+    } catch (e) {
+        alvo.innerHTML = antes;
+        alert("Erro ao validar: " + e.message);
     }
 }
 
