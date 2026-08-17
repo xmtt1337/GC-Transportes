@@ -714,7 +714,11 @@ function _htmlSecao(i) {
             return `
             <div class="secao-form">
                 <h3>Documentos fiscais transportados</h3>
-                <p class="dica">Informe as NF-e vinculadas a este CT-e.</p>
+                <p class="dica">
+                    Só a chave vai no XML — o leiaute do CT-e não tem campo para
+                    número, série nem valor da NF-e. Número e série aparecem aqui
+                    porque estão dentro da própria chave.
+                </p>
                 <table class="tabela" id="tabela-docs">
                     <thead><tr><th>Chave de acesso (44)</th><th>Número</th><th>Série</th><th>Valor</th><th></th></tr></thead>
                     <tbody>
