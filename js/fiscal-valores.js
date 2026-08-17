@@ -12,6 +12,8 @@ let _valItens = null;      // [{codigo, valor, cidade}] já lidos AQUI
 let _valColunas = null;
 let _valCidades = null;    // [{cidade, n}] achadas na planilha
 let _valExcluidas = new Set();
+let _valTipos = null;      // [{tipo, n}] achados na planilha
+let _valTiposIncluidos = null;   // null = ainda não escolhido
 let _valRelatorio = null;
 
 // ── leitura da planilha no navegador
@@ -57,6 +59,13 @@ const _VAL_COLS_CIDADE = [
 // de outra natureza. Foi assim que apareceu o caso de Caçador e Videira, onde
 // a alíquota é 5% (ISS, intramunicipal) e não 17% (ICMS, intermunicipal).
 const _VAL_COLS_ALIQUOTA = ["aliquotaicmsiss", "aliquotaicms", "aliquota"];
+
+// Tipo do serviço: a planilha mistura ENTREGA e COLETA. São operações
+// diferentes — coleta não é o redespacho que este módulo emite —, então só
+// entra o que for marcado aqui. O filtro acontece na leitura, antes de
+// consultar a API: linha que não entra não vira consulta.
+const _VAL_COLS_TIPO = ["tipodoservico", "tiposervico", "tipo", "servico"];
+const _VAL_TIPO_PADRAO = /entrega/i;
 
 const _VAL_COMPONENTES = [
     { nome: "FRETE",      colunas: ["fretecalculado", "frete", "valorfrete"] },
@@ -110,6 +119,7 @@ function _valProcessarLocal() {
         .map((c) => ({ nome: c.nome, i: _valAcharColuna(norm, c.colunas) }))
         .filter((c) => c.i >= 0);
     const iAliq = _valAcharColuna(norm, _VAL_COLS_ALIQUOTA);
+    const iTipo = _valAcharColuna(norm, _VAL_COLS_TIPO);
 
     if (iCod < 0 || iVal < 0) {
         throw new Error(
@@ -140,7 +150,9 @@ function _valProcessarLocal() {
         let aliquota = iAliq >= 0 ? _valLerValor(linha[iAliq]) : null;
         if (aliquota !== null && aliquota > 0 && aliquota < 1) aliquota = aliquota * 100;
 
-        todos.push({ codigo, valor, cidade,
+        const tipo = iTipo >= 0 ? String(linha[iTipo] == null ? "" : linha[iTipo]).trim() : "";
+
+        todos.push({ codigo, valor, cidade, tipo,
                      ...(aliquota !== null ? { aliquota } : {}),
                      ...(componentes.length ? { componentes } : {}) });
         if (cidade) {
@@ -151,10 +163,30 @@ function _valProcessarLocal() {
         }
     }
 
+    // Tipos de serviço encontrados. Na primeira leitura, só ENTREGA entra —
+    // coleta é outra operação e emitir CT-e de redespacho nela seria errado.
+    const porTipo = new Map();
+    for (const i of todos) {
+        if (!i.tipo) continue;
+        const k = _valNormalizar(i.tipo);
+        const atual = porTipo.get(k) || { tipo: i.tipo, n: 0, soma: 0 };
+        atual.n++; atual.soma += i.valor;
+        porTipo.set(k, atual);
+    }
+    _valTipos = [...porTipo.values()].sort((a, b) => b.n - a.n);
+    if (_valTiposIncluidos === null) {
+        _valTiposIncluidos = new Set(
+            _valTipos.filter((t) => _VAL_TIPO_PADRAO.test(t.tipo))
+                     .map((t) => _valNormalizar(t.tipo)));
+    }
+
     _valCidades = [...porCidade.values()].sort((a, b) => b.n - a.n);
     // O filtro vale para o que vai ser enfileirado; os excluídos nem chegam
     // a virar consulta à Shopee.
-    const itens = todos.filter((i) => !_valExcluidas.has(_valNormalizar(i.cidade)));
+    const itens = todos.filter((i) =>
+        !_valExcluidas.has(_valNormalizar(i.cidade)) &&
+        // Sem coluna de tipo, tudo entra: planilha antiga não deve quebrar.
+        (!_valTipos.length || !i.tipo || _valTiposIncluidos.has(_valNormalizar(i.tipo))));
     const excluidos = todos.length - itens.length;
 
     _valItens = itens;
@@ -202,6 +234,8 @@ async function abrirFiscalValores(event) {
     _valItens = null;
     _valCidades = null;
     _valExcluidas = new Set();
+    _valTipos = null;
+    _valTiposIncluidos = null;
     _valRelatorio = null;
     if (_valPolling) { clearInterval(_valPolling); _valPolling = null; }
     document.getElementById("fiscal-valores-conteudo").innerHTML = _htmlValores();
@@ -377,6 +411,7 @@ function _valMostrarEtapas() {
                 <input type="checkbox" id="val-sobrescrever"> Trocar valores já preenchidos
             </label>
         </div>
+        <div id="val-tipos"></div>
         <div id="val-cidades"></div>
         <div class="acoes-rodape">
             <button onclick="_valEnviar()">Conferir (não grava)</button>
@@ -432,6 +467,7 @@ async function _valEnviar() {
         return;
     }
 
+    _valPintarTipos();
     _valPintarCidades();
     alvo.innerHTML = `
     <div class="aviso-info">
@@ -439,7 +475,7 @@ async function _valEnviar() {
         <p>
             <b>${local.itens.length.toLocaleString("pt-BR")}</b> código(s) a processar ·
             total <b>${_fmtBRL(local.soma)}</b><br>
-            ${local.excluidos.toLocaleString("pt-BR")} de cidade excluída ·
+            ${local.excluidos.toLocaleString("pt-BR")} fora (cidade ou tipo de serviço) ·
             ${local.ignoradas.toLocaleString("pt-BR")} linha(s) ignorada(s)
             (sem código, sem valor ou repetidas)
         </p>
@@ -493,6 +529,39 @@ async function _valEnviar() {
  * Marcar aqui é melhor que filtrar depois: o pedido excluído nem vira consulta
  * à API da Shopee. Em 120 mil linhas, é hora de processamento a menos.
  */
+/** Tipos de serviço da planilha, para escolher quais geram CT-e. */
+function _valPintarTipos() {
+    const area = document.getElementById("val-tipos");
+    if (!area) return;
+    if (!_valTipos || !_valTipos.length) { area.innerHTML = ""; return; }
+
+    area.innerHTML = `
+    <details class="secao-form" open>
+        <summary><b>Tipo do serviço</b> — ${_valTipos.length}</summary>
+        <p class="dica">
+            Só o que estiver marcado gera CT-e. Coleta é operação diferente do
+            redespacho que este módulo emite.
+        </p>
+        <div class="linha-form" style="flex-wrap:wrap;gap:8px">
+            ${_valTipos.map((t) => {
+                const k = _valNormalizar(t.tipo);
+                return `<label class="check" style="flex:0 0 auto;min-width:220px">
+                    <input type="checkbox" value="${_esc(k)}"
+                           ${_valTiposIncluidos.has(k) ? "checked" : ""}
+                           onchange="_valMarcarTipo(this)">
+                    ${_esc(t.tipo)} <span class="dica">(${t.n.toLocaleString("pt-BR")} ·
+                    ${_fmtBRL(t.soma)})</span></label>`;
+            }).join("")}
+        </div>
+    </details>`;
+}
+
+function _valMarcarTipo(el) {
+    if (el.checked) _valTiposIncluidos.add(el.value);
+    else _valTiposIncluidos.delete(el.value);
+    _valEnviar();
+}
+
 function _valPintarCidades() {
     const area = document.getElementById("val-cidades");
     if (!area) return;
