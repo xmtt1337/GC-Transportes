@@ -39,12 +39,22 @@ const _VAL_COLS_CIDADE = [
 ];
 
 // Componentes do valor do serviço — o FAQ da Shopee exige o desmembramento
-// (frete, GRIS, ad valorem, pedágio) e a planilha de repasse já traz cada um.
-// O nome que vai no XML é o da esquerda; a planilha é reconhecida pela direita.
+// (frete, GRIS, ad valorem, pedágio) e a planilha traz cada um em coluna.
+//
+// ATENÇÃO, as colunas NÃO são somáveis. Conferido em 32 linhas da planilha:
+//
+//     (Frete/Tarifa Base + GRIS) ÷ (1 − alíquota) = Frete Calculado
+//              2,46203 + 0,02797 = 2,49 ÷ 0,83    = 3,00
+//
+// Ou seja, o "Frete Calculado" JÁ CONTÉM o GRIS, com o ICMS por dentro. Somar
+// os dois como componentes contaria o GRIS duas vezes e o total não fecharia.
+//
+// Por isso o FRETE vem do "Frete Calculado" e o GRIS não entra separado até
+// alguém decidir como discriminá-lo (o valor bruto seria GRIS ÷ (1 − alíquota),
+// mas isso é decisão fiscal, não conta que eu possa tomar sozinho).
 const _VAL_COMPONENTES = [
     { nome: "FRETE",      colunas: ["fretecalculado", "frete", "valorfrete"] },
     { nome: "AD VALOREM", colunas: ["adv", "advalorem", "adevalorem"] },
-    { nome: "GRIS",       colunas: ["gris"] },
     { nome: "PEDAGIO",    colunas: ["pedagio", "valorpedagio"] },
     { nome: "OUTROS",     colunas: ["outrosvalores", "outros"] },
 ];
