@@ -640,10 +640,14 @@ function _htmlSecao(i) {
             </div>
             <div class="linha-form">
                 ${_campo("carga.quantidade", "Quantidade", { tipo: "number", step: "0.0001" })}
-                ${_campo("carga.unidade", "Unidade", { placeholder: "KG, UN, M3…" })}
-                ${_campo("carga.tipo_medida", "Tipo de medida", { placeholder: "PESO BRUTO, CUBAGEM…" })}
-                ${_campo("carga.peso", "Peso", { tipo: "number", step: "0.0001" })}
+                ${_campo("carga.unidade", "Unidade (cUnid)", { placeholder: "01 = KG" })}
+                ${_campo("carga.tipo_medida", "Tipo de medida", { placeholder: "PESO BRUTO, PESO CUBADO…" })}
             </div>
+            <p class="dica">
+                O peso é esta trinca: quantidade + unidade + tipo de medida. O
+                leiaute não tem campo de peso separado — 01 é KG, 02 TON, 03
+                unidade, 00 M³.
+            </p>
         </div>`;
 
         case 7: {
