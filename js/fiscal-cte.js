@@ -848,7 +848,7 @@ function _htmlConferencia(d, cte = {}) {
             </div>
             <div class="conf-bloco"><b>Carga</b><br>
                 ${_esc((d.carga && d.carga.produto_predominante) || "—")}<br>
-                ${_esc((d.carga && d.carga.peso) || "—")} ${_esc((d.carga && d.carga.unidade) || "")}
+                ${_esc(_cargaMedida(d.carga))}
             </div>
             <div class="conf-bloco"><b>Documentos</b><br>
                 ${(d.documentos || []).length} NF-e vinculada(s)
@@ -864,6 +864,19 @@ function _htmlConferencia(d, cte = {}) {
             </div>
         </div>
     </div>`;
+}
+
+/** Resume a medida da carga, venha ela em campo solto ou na lista. */
+function _cargaMedida(carga) {
+    if (!carga) return "—";
+    if ((carga.quantidades || []).length) {
+        return carga.quantidades
+            .map((q) => `${q.quantidade ?? q.qCarga ?? "?"} ${q.tpMed || q.tipo_medida || ""}`.trim())
+            .join(" · ");
+    }
+    const q = carga.quantidade ?? carga.peso;
+    if (q === undefined || q === null || q === "") return "—";
+    return `${q} ${carga.tipo_medida || carga.unidade || ""}`.trim();
 }
 
 /** Chave do CT-e anterior, aceitando docAnt como objeto ou lista. */
@@ -905,8 +918,11 @@ function _pendenciasLocais(d) {
     // Carga: proPred e ao menos uma medida são obrigatórios no leiaute.
     const carga = d.carga || {};
     if (!carga.produto_predominante) faltando.push("Produto predominante da carga");
-    if (!carga.quantidade && !carga.peso) faltando.push("Quantidade ou peso da carga");
-    else if (!carga.tipo_medida) faltando.push("Tipo de medida da carga (ex: PESO BRUTO)");
+    const temMedida = carga.quantidade || carga.peso || (carga.quantidades || []).length;
+    if (!temMedida) faltando.push("Quantidade ou peso da carga");
+    else if (!carga.tipo_medida && !(carga.quantidades || []).length) {
+        faltando.push("Tipo de medida da carga (ex: PESO BRUTO)");
+    }
 
     // Modal rodoviário exige RNTRC.
     if (String(ide.modal || "01") === "01" && !(d.modal && d.modal.rntrc)) {
