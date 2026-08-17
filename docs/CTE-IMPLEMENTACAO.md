@@ -32,18 +32,29 @@ Atualizado em 15/08/2026.
 
 ## O que ainda falta
 
-### Fase 3 — SEFAZ (etapa 1 concluída e validada)
+### Fase 3 — SEFAZ
 
-✅ **CteStatusServicoV4 funcionando contra a SVRS real** (15/08/2026,
-`cStat 107`). Isso valida certificado, mTLS, SOAP, namespace e parser.
+✅ **3.1 — CteStatusServicoV4** contra a SVRS real (15/08/2026, `cStat 107`).
+Validou certificado, mTLS, SOAP, namespace e parser.
+
+✅ **3.2 — Transmissão** (17/08/2026, autorizada pelo usuário). O caminho:
+assina o `infCte` → revalida no XSD **exigindo** o `ds:Signature` → transmite
+por `CTeRecepcaoSincV4` → interpreta `cStat` → grava protocolo e monta o
+`cteProc`. Log de request/response sanitizado em `fiscal_sefaz_log`.
+
+- `100` autoriza · `110/301/302` denegam · **o resto rejeita**, inclusive
+  código desconhecido — tratar código novo como autorização faria o sistema
+  dar por emitido o que a SEFAZ não aceitou.
+- Falha de comunicação **não** é rejeição: vai para `ERRO_COMUNICACAO`, porque
+  o documento pode ter chegado. A saída é consultar pela chave, nunca reenviar.
+- **Sem retry automático**, como combinado desde o começo.
+- **Produção segue bloqueada** por trava literal em `emissao.js`.
 
 Falta:
-- Envelope SOAP e transmissão com mTLS
-- `CTeRecepcaoSincV4` (autorização)
-- `CTeConsultaV4`
-- Tratamento de rejeições e códigos de retorno
-- Retry controlado (sem retry cego em transmissão)
-- Log de request/response sanitizado
+- `CTeConsultaV4` (consultar pela chave — necessário depois de erro de comunicação)
+- Emissão em lote (hoje é um a um pela listagem)
+- O pacote de schemas da SVRS não traz `retCTe_v4.00.xsd`: a resposta é
+  interpretada pela estrutura do `TProtCTe`, sem validação XSD
 
 ### Fase 4 — Frontend (em andamento)
 Menu FISCAL, listagem, formulário e cadastro de empresa/certificado: prontos.
