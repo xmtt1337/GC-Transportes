@@ -4021,15 +4021,20 @@ input[type=file] { padding:9px; border:1px dashed var(--border-blue);
 .btn-perigo { background:rgba(231,76,60,.15) !important; color:#ff6b5b !important;
               border-color:rgba(231,76,60,.35) !important; }
 
-/* avisos */
+/* avisos — texto corrido, sem caixa colorida.
+   O informativo fica discreto como nota de rodapé; erro e sucesso mantêm cor,
+   porque ali a cor é o próprio recado. */
 .aviso-info, .aviso-bloqueio, .aviso-sucesso {
-    border-radius:var(--radius-sm); padding:13px 15px; margin-bottom:14px;
-    font-size:13px; line-height:1.6; color:var(--text); }
-.aviso-info     { background:rgba(58,134,255,.08);  border-left:3px solid var(--blue); }
-.aviso-bloqueio { background:rgba(231,76,60,.08);   border-left:3px solid #e74c3c; }
-.aviso-sucesso  { background:rgba(46,204,113,.08);  border-left:3px solid #2ecc71; }
-.aviso-bloqueio ul, .aviso-info ul, .aviso-info ol { margin:8px 0 0 20px; }
-.aviso-bloqueio li, .aviso-info li { margin-bottom:5px; }
+    padding:0; margin:0 0 12px; font-size:13px; line-height:1.55; }
+.aviso-info     { color:var(--text-muted); }
+.aviso-bloqueio { color:#ff6b5b; }
+.aviso-sucesso  { color:#2ecc71; }
+.aviso-info strong, .aviso-bloqueio strong, .aviso-sucesso strong {
+    display:block; margin-bottom:2px; font-weight:600; }
+.aviso-info p, .aviso-bloqueio p, .aviso-sucesso p { margin:2px 0; }
+.aviso-bloqueio p, .aviso-sucesso p { color:var(--text-muted); }
+.aviso-bloqueio ul, .aviso-info ul, .aviso-info ol { margin:4px 0 0 18px; }
+.aviso-bloqueio li, .aviso-info li { margin-bottom:3px; color:var(--text-muted); }
 .dica { color:var(--text-dim); font-size:12px; margin-top:8px; }
 .secao-form code, .aviso-info code, .aviso-bloqueio code {
     background:var(--surface-2); padding:1px 5px; border-radius:4px;
