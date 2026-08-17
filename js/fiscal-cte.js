@@ -47,6 +47,8 @@ let _cteContexto = null;
 let _cteAtual = { id: null, dados: {} };
 let _ctePerfilAplicado = null;   // o que o perfil de operação preencheu
 let _cteSecao = 0;
+let _ctePagina = 0;
+const _CTE_POR_PAGINA = 100;
 
 const _CTE_SECOES = [
     "Identificação", "Remetente", "Expedidor", "Recebedor", "Destinatário",
@@ -165,13 +167,14 @@ function _htmlListagem() {
         <label>Número <input type="number" id="f-numero" style="width:100px"></label>
         <label>Série <input type="number" id="f-serie" style="width:80px"></label>
         <label>Busca <input id="f-busca" placeholder="código Shopee, chave, tomador, destinatário"></label>
-        <button onclick="_carregarListaCTe()">Filtrar</button>
+        <button onclick="_carregarListaCTe(0)">Filtrar</button>
     </div>
 
     <div id="lista-cte"><p>Carregando…</p></div>`;
 }
 
-async function _carregarListaCTe() {
+async function _carregarListaCTe(pagina = 0) {
+    _ctePagina = Math.max(0, pagina);
     const alvo = document.getElementById("lista-cte");
     alvo.innerHTML = "<p>Carregando…</p>";
     const p = new URLSearchParams();
@@ -180,21 +183,46 @@ async function _carregarListaCTe() {
         const el = document.getElementById(id);
         if (el && el.value) p.set(chave, el.value);
     }
+    p.set("limite", _CTE_POR_PAGINA);
+    p.set("pagina", _ctePagina);
+
     try {
-        const lista = await _cteApi("/fiscal/cte?" + p.toString());
-        if (!lista.length) {
+        const r = await _cteApi("/fiscal/cte?" + p.toString());
+        const itens = r.itens || [];
+        const total = r.total ?? itens.length;
+
+        if (!total) {
             alvo.innerHTML = `<p class="vazio">Nenhum CT-e encontrado. Clique em "Novo CT-e" para começar.</p>`;
             return;
         }
+
+        const de = _ctePagina * _CTE_POR_PAGINA + 1;
+        const ate = de + itens.length - 1;
+        const ultima = Math.max(0, Math.ceil(total / _CTE_POR_PAGINA) - 1);
+
+        // A contagem existe porque a lista corta em 100: sem ela, depois de
+        // importar milhares parecia que a importação não tinha trazido tudo.
         alvo.innerHTML = `
+        <p class="dica">
+            Mostrando <b>${de.toLocaleString("pt-BR")}–${ate.toLocaleString("pt-BR")}</b>
+            de <b>${total.toLocaleString("pt-BR")}</b> CT-e
+            ${ultima > 0 ? ` · página ${_ctePagina + 1} de ${ultima + 1}` : ""}
+        </p>
         <table class="tabela">
             <thead><tr>
                 <th>Código Shopee</th><th>Nº</th><th>Série</th><th>Status</th>
                 <th>Tomador / Destinatário</th>
                 <th>Origem → Destino</th><th>Valor</th><th>Criado</th><th>Chave</th><th>Ações</th>
             </tr></thead>
-            <tbody>${lista.map(_linhaCTe).join("")}</tbody>
-        </table>`;
+            <tbody>${itens.map(_linhaCTe).join("")}</tbody>
+        </table>
+        ${ultima > 0 ? `
+        <div class="acoes-rodape">
+            <button onclick="_carregarListaCTe(${_ctePagina - 1})"
+                    ${_ctePagina === 0 ? "disabled" : ""}>← Anterior</button>
+            <button onclick="_carregarListaCTe(${_ctePagina + 1})"
+                    ${_ctePagina >= ultima ? "disabled" : ""}>Próxima →</button>
+        </div>` : ""}`;
     } catch (e) {
         alvo.innerHTML = `<p class="erro">${_esc(e.message)}</p>`;
     }
@@ -979,12 +1007,17 @@ async function validarCTeDaLista(id) {
     try {
         const r = await _cteApi(`/fiscal/cte/${id}/validar`, { method: "POST" });
         if (r.ok) {
-            alert(`CT-e pronto para emissão.\n\nNúmero ${r.numero}\nChave ${r.chave}`);
+            const ic = r.icms ? Object.values(r.icms)[0] : null;
+            alert(`CT-e pronto para emissão.\n\n` +
+                  `Número ${r.numero}\nChave ${r.chave}\n\n` +
+                  (ic ? `ICMS: ${ic.vBC} x ${ic.pICMS}% = ${ic.vICMS}\n` : "") +
+                  (r.tributos ? `IBS/CBS: base ${r.tributos.base.toFixed(2)} · ` +
+                      `IBS ${r.tributos.v_ibs.toFixed(2)} · CBS ${r.tributos.v_cbs.toFixed(2)}` : ""));
         } else {
             alert(`${r.problemas.length} pendência(s):\n\n` +
                   r.problemas.map((p) => "• " + p.mensagem).join("\n"));
         }
-        await _carregarListaCTe();
+        await _carregarListaCTe(_ctePagina);   // não volta para a primeira página
     } catch (e) {
         alvo.innerHTML = antes;
         alert("Erro ao validar: " + e.message);
