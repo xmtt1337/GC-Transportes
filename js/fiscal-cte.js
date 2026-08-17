@@ -855,7 +855,8 @@ function _htmlConferencia(d, cte = {}) {
             </div>
             <div class="conf-bloco"><b>Modal / CT-e anterior</b><br>
                 RNTRC ${_esc((d.modal && d.modal.rntrc) || "—")}<br>
-                <span class="mono-pequeno">${_esc(_chaveAnterior(d) || "sem documento anterior")}</span>
+                <span class="mono-pequeno">${_esc(_chaveAnterior(d) || "sem documento anterior")}</span><br>
+                ${_relacaoTomadorEmitenteAnterior(d)}
             </div>
             <div class="conf-bloco"><b>Tributação</b><br>
                 ICMS CST ${_esc(d.imposto_cst || "—")}<br>
@@ -864,6 +865,35 @@ function _htmlConferencia(d, cte = {}) {
             </div>
         </div>
     </div>`;
+}
+
+/**
+ * Diz se quem paga o frete é quem emitiu o CT-e anterior.
+ *
+ * Os oito primeiros dígitos do CNPJ são a raiz — identificam a EMPRESA. Os
+ * quatro seguintes são o estabelecimento. Duas filiais da mesma empresa têm a
+ * mesma raiz e ordem diferente, e isso é normal: quem emite o documento do
+ * trecho anterior não precisa ser quem paga o nosso frete.
+ *
+ * Mostrar a comparação evita a conferência manual dígito a dígito — e faz
+ * saltar aos olhos o caso que merece atenção, que é raiz diferente.
+ */
+function _relacaoTomadorEmitenteAnterior(d) {
+    const so = (v) => String(v || "").replace(/\D/g, "");
+    const anterior = Array.isArray(d.docAnt) ? d.docAnt[0] : d.docAnt;
+    const tomador = so(d.tomador && d.tomador.cnpj);
+    const emitente = so(anterior && anterior.cnpj);
+    if (tomador.length !== 14 || emitente.length !== 14) return "";
+
+    if (tomador === emitente) {
+        return `<span class="dica">Tomador é o mesmo estabelecimento que emitiu o CT-e anterior.</span>`;
+    }
+    if (tomador.slice(0, 8) === emitente.slice(0, 8)) {
+        return `<span class="dica">Tomador e emitente do CT-e anterior são a mesma empresa,
+                filiais diferentes (${_esc(tomador.slice(8, 12))} × ${_esc(emitente.slice(8, 12))}).</span>`;
+    }
+    return `<span style="color:#e8a33d">Tomador e emitente do CT-e anterior são
+            <b>empresas diferentes</b> — confira se está certo.</span>`;
 }
 
 /** Resume a medida da carga, venha ela em campo solto ou na lista. */
