@@ -635,6 +635,7 @@ function _htmlSecao(i) {
             <h3>Carga</h3>
             <div class="linha-form">
                 ${_campo("carga.produto_predominante", "Produto predominante", { largura: "largo" })}
+                ${_campo("carga.outras_caracteristicas", "Outras características", { largura: "largo" })}
                 ${_campo("carga.valor_carga", "Valor da carga", { tipo: "number", step: "0.01" })}
             </div>
             <div class="linha-form">
@@ -848,7 +849,8 @@ function _htmlConferencia(d, cte = {}) {
             </div>
             <div class="conf-bloco"><b>Carga</b><br>
                 ${_esc((d.carga && d.carga.produto_predominante) || "—")}<br>
-                ${_esc(_cargaMedida(d.carga))}
+                ${_esc(_cargaMedida(d.carga))}<br>
+                ${d.carga && d.carga.valor_carga ? _fmtBRL(d.carga.valor_carga) : "—"}
             </div>
             <div class="conf-bloco"><b>Documentos</b><br>
                 ${(d.documentos || []).length} NF-e vinculada(s)
