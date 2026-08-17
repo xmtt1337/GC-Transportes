@@ -14,6 +14,7 @@ let _valCidades = null;    // [{cidade, n}] achadas na planilha
 let _valExcluidas = new Set();
 let _valTipos = null;      // [{tipo, n}] achados na planilha
 let _valTiposIncluidos = null;   // null = ainda não escolhido
+let _valNomeResidual = null;     // nome do componente que fecha a conta
 let _valRelatorio = null;
 
 // ── leitura da planilha no navegador
@@ -140,11 +141,13 @@ function _valProcessarLocal() {
         vistos.add(codigo);
         const cidade = iCid >= 0 ? String(linha[iCid] == null ? "" : linha[iCid]).trim() : "";
 
-        // Só componentes com valor entram: Comp com zero polui o documento, e
-        // o schema não aceita valor negativo (por isso desconto fica de fora).
+        // Componente com zero entra: o FAQ pede os itens discriminados, e
+        // mostrar que o ad valorem foi considerado e deu zero é mais claro que
+        // omitir. Negativo fica de fora — vComp não aceita, por isso desconto
+        // não vira componente.
         const componentes = colsComp
             .map((c) => ({ nome: c.nome, valor: _valLerValor(linha[c.i]) }))
-            .filter((c) => c.valor !== null && c.valor > 0);
+            .filter((c) => c.valor !== null && c.valor >= 0);
 
         // A alíquota vem em fração (0,17) ou percentual (17): normalizamos.
         let aliquota = iAliq >= 0 ? _valLerValor(linha[iAliq]) : null;
@@ -207,6 +210,20 @@ function _valProcessarLocal() {
         if (Math.abs(s - i.valor) > 0.01) divergentes++;
     }
 
+    // Fecha os componentes com o valor pago, do mesmo jeito que o servidor faz
+    // na importação — assim a prévia mostra o mesmo que vai sair no documento.
+    if (_valNomeResidual) {
+        for (const i of itens) {
+            if (!i.componentes) continue;
+            const s2 = Math.round(i.componentes.reduce((t, c) => t + c.valor, 0) * 100) / 100;
+            const resto = Math.round((i.valor - s2) * 100) / 100;
+            if (resto > 0.001) {
+                i.componentes = [...i.componentes,
+                                 { nome: _valNomeResidual.slice(0, 15), valor: resto }];
+            }
+        }
+    }
+
     // Agrupa as alíquotas encontradas, por cidade. Alíquota diferente da que a
     // empresa usa costuma significar operação de outra natureza — e emitir CT-e
     // ali seria declarar o imposto errado.
@@ -229,6 +246,7 @@ function _valProcessarLocal() {
 
 async function abrirFiscalValores(event) {
     if (event) event.preventDefault();
+    _valNomeResidual = null;
     mostrarTela("tela-fiscal-valores");
     _valPlanilha = null;
     _valItens = null;
@@ -242,6 +260,14 @@ async function abrirFiscalValores(event) {
 
     // Se houver importação rodando, mostra ela em vez de uma tela em branco —
     // quem fechou o navegador ontem volta e quer saber como ficou.
+    // O nome do componente que fecha a conta vem do perfil: a prévia precisa
+    // dele para mostrar o mesmo total que a importação vai gravar.
+    try {
+        const perfil = await _cteApi("/fiscal/perfil-operacao");
+        const dados = ((perfil.perfis || [])[0] || {}).dados || {};
+        _valNomeResidual = dados["componente_residual"] || null;
+    } catch { /* sem perfil: a prévia mostra só o que a planilha traz */ }
+
     try {
         const lista = await _cteApi("/fiscal/importacao");
         const ativa = (lista || []).find((i) => i.situacao === "PROCESSANDO");
@@ -484,6 +510,12 @@ async function _valEnviar() {
            ${(local.colunas.componentes || []).length
              ? `<br>Componentes: ${_esc(local.colunas.componentes.join(" · "))}`
              : "<br>Nenhuma coluna de componente reconhecida."}</p>
+        ${local.itens.length && local.itens[0].componentes ? `<p class="dica">
+            Componentes do primeiro pedido:
+            ${local.itens[0].componentes.map((c) =>
+                `${_esc(c.nome)} ${_fmtBRL(c.valor)}`).join(" · ")}
+            = <b>${_fmtBRL(local.itens[0].componentes.reduce((t, c) => t + c.valor, 0))}</b>
+        </p>` : ""}
         ${(local.aliquotas || []).length > 1 ? `<p style="color:#e8a33d">
             <b>A planilha tem ${local.aliquotas.length} alíquotas diferentes.</b><br>
             ${local.aliquotas.map((a) => `${a.aliquota.toFixed(2)}% —
