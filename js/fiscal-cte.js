@@ -247,8 +247,10 @@ function _linhaCTe(c) {
         <td>
             ${editavel
                 ? `<button onclick="abrirNovoCTe(${c.id})">Editar</button>
-                   <button class="btn-primario" onclick="validarCTeDaLista(${c.id})">Validar</button>`
+                   <button onclick="validarCTeDaLista(${c.id})">Validar</button>`
                 : `<button onclick="verCTe(${c.id})">Visualizar</button>`}
+            ${c.status === "PRONTO_PARA_EMISSAO"
+                ? `<button class="btn-primario" onclick="emitirCTe(${c.id})">Emitir</button>` : ""}
         </td>
     </tr>`;
 }
@@ -1061,6 +1063,35 @@ function _htmlMemoriaCalculo(r) {
     ${t ? `<p class="dica">
         A base do IBS/CBS é a prestação menos o ICMS — por isso ela é menor que
         o valor do frete.</p>` : ""}`;
+}
+
+/**
+ * Transmite o CT-e para a SEFAZ.
+ *
+ * Confirma antes porque não tem volta: documento autorizado não se apaga, só
+ * se cancela — e cancelamento tem prazo e regra própria.
+ */
+async function emitirCTe(id) {
+    if (!confirm("Transmitir este CT-e para a SEFAZ?\n\n" +
+                 "Um documento autorizado não pode ser apagado, apenas cancelado.")) return;
+
+    const alvo = document.getElementById("lista-cte");
+    const antes = alvo.innerHTML;
+    alvo.innerHTML = "<p class='carregando'>Transmitindo para a SEFAZ…</p>";
+    try {
+        const r = await _cteApi(`/fiscal/cte/${id}/emitir`, { method: "POST" });
+        if (r.ok) {
+            alert(`CT-e AUTORIZADO.\n\nProtocolo ${r.protocolo}\nChave ${r.chave}\n` +
+                  `cStat ${r.cStat} — ${r.motivo}`);
+        } else {
+            alert(`${r.status}\n\ncStat ${r.cStat || "—"} — ${r.motivo || "sem motivo"}` +
+                  (r.problemas ? `\n\n${r.problemas.slice(0, 5).join("\n")}` : ""));
+        }
+        await _carregarListaCTe(_ctePagina);
+    } catch (e) {
+        alvo.innerHTML = antes;
+        alert("Não foi possível transmitir:\n\n" + e.message);
+    }
 }
 
 async function validarCTeDaLista(id) {
