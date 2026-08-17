@@ -652,9 +652,18 @@ function _htmlSecao(i) {
                     ${_campo("imposto_cst", "CST / CSOSN", { maxlength: 4 })}
                 </div>
                 <div class="linha-form">
-                    ${_campo("imposto_vbc", "Base de cálculo", { tipo: "number", step: "0.01" })}
+                    ${_campo("imposto_vbc", "Base de cálculo", {
+                        tipo: "number", step: "0.01",
+                        placeholder: "em branco = valor do frete" })}
                     ${_campo("imposto_aliquota", "Alíquota (%)", { tipo: "number", step: "0.01" })}
-                    ${_campo("imposto_valor", "Valor do ICMS", { tipo: "number", step: "0.01" })}
+                    ${_campo("imposto_valor", "Valor do ICMS", {
+                        tipo: "number", step: "0.01",
+                        placeholder: "em branco = base × alíquota" })}
+                </div>
+                <p class="dica">
+                    Base e valor ficam em branco de propósito: são calculados na
+                    validação, a partir do valor do frete. Preencha só para
+                    sobrescrever num documento específico.
                 </div>
             </div>
             ${typeof fiscalSecaoTributacao === "function"
@@ -907,6 +916,53 @@ async function salvarRascunhoCTe() {
  * O botão da lista existe porque validar 10 rascunhos importados não deveria
  * exigir abrir cada um e clicar "Próximo" treze vezes até a Conferência.
  */
+/**
+ * Memória de cálculo do documento validado.
+ *
+ * Base e valor do ICMS, e a base do IBS/CBS, são calculados no servidor e não
+ * voltam para os campos do formulário — eles são derivados do valor do frete.
+ * Sem mostrar aqui, a pessoa validaria um documento fiscal sem nunca ver
+ * quanto de imposto ele carrega.
+ */
+function _htmlMemoriaCalculo(r) {
+    const icms = r.icms ? Object.values(r.icms)[0] : null;
+    const t = r.tributos;
+    if (!icms && !t) return "";
+
+    return `
+    <table class="tabela" style="margin-top:10px">
+        <thead><tr><th>Tributo</th><th>Base</th><th>Alíquota</th><th>Valor</th></tr></thead>
+        <tbody>
+            ${icms ? `<tr>
+                <td>ICMS (CST ${_esc(icms.CST || "—")})</td>
+                <td>${_fmtBRL(icms.vBC ?? icms.vBCOutraUF)}</td>
+                <td>${_esc(icms.pICMS ?? icms.pICMSOutraUF ?? "—")}%</td>
+                <td>${_fmtBRL(icms.vICMS ?? icms.vICMSOutraUF)}</td>
+            </tr>` : ""}
+            ${t ? `
+            <tr>
+                <td>IBS estadual</td><td>${_fmtBRL(t.base)}</td>
+                <td>${_esc(t.ibs_uf.aliquota)}%</td><td>${_fmtBRL(t.ibs_uf.valor)}</td>
+            </tr>
+            <tr>
+                <td>IBS municipal</td><td>${_fmtBRL(t.base)}</td>
+                <td>${_esc(t.ibs_mun.aliquota)}%</td><td>${_fmtBRL(t.ibs_mun.valor)}</td>
+            </tr>
+            <tr>
+                <td>CBS</td><td>${_fmtBRL(t.base)}</td>
+                <td>${_esc(t.cbs.aliquota)}%</td><td>${_fmtBRL(t.cbs.valor)}</td>
+            </tr>` : ""}
+            ${r.valor_total_dfe ? `<tr>
+                <td colspan="3"><b>Total do documento (vTotDFe)</b></td>
+                <td><b>${_fmtBRL(r.valor_total_dfe)}</b></td>
+            </tr>` : ""}
+        </tbody>
+    </table>
+    ${t ? `<p class="dica">
+        A base do IBS/CBS é a prestação menos o ICMS — por isso ela é menor que
+        o valor do frete.</p>` : ""}`;
+}
+
 async function validarCTeDaLista(id) {
     const alvo = document.getElementById("lista-cte");
     const antes = alvo.innerHTML;
