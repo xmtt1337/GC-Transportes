@@ -52,6 +52,12 @@ const _VAL_COLS_CIDADE = [
 // Por isso o FRETE vem do "Frete Calculado" e o GRIS não entra separado até
 // alguém decidir como discriminá-lo (o valor bruto seria GRIS ÷ (1 − alíquota),
 // mas isso é decisão fiscal, não conta que eu possa tomar sozinho).
+// Alíquota que a Shopee apurou. Não vai para o CT-e — serve de conferência:
+// quando ela difere da configurada, a operação daquela linha provavelmente é
+// de outra natureza. Foi assim que apareceu o caso de Caçador e Videira, onde
+// a alíquota é 5% (ISS, intramunicipal) e não 17% (ICMS, intermunicipal).
+const _VAL_COLS_ALIQUOTA = ["aliquotaicmsiss", "aliquotaicms", "aliquota"];
+
 const _VAL_COMPONENTES = [
     { nome: "FRETE",      colunas: ["fretecalculado", "frete", "valorfrete"] },
     { nome: "AD VALOREM", colunas: ["adv", "advalorem", "adevalorem"] },
@@ -103,6 +109,7 @@ function _valProcessarLocal() {
     const colsComp = _VAL_COMPONENTES
         .map((c) => ({ nome: c.nome, i: _valAcharColuna(norm, c.colunas) }))
         .filter((c) => c.i >= 0);
+    const iAliq = _valAcharColuna(norm, _VAL_COLS_ALIQUOTA);
 
     if (iCod < 0 || iVal < 0) {
         throw new Error(
@@ -129,7 +136,12 @@ function _valProcessarLocal() {
             .map((c) => ({ nome: c.nome, valor: _valLerValor(linha[c.i]) }))
             .filter((c) => c.valor !== null && c.valor > 0);
 
+        // A alíquota vem em fração (0,17) ou percentual (17): normalizamos.
+        let aliquota = iAliq >= 0 ? _valLerValor(linha[iAliq]) : null;
+        if (aliquota !== null && aliquota > 0 && aliquota < 1) aliquota = aliquota * 100;
+
         todos.push({ codigo, valor, cidade,
+                     ...(aliquota !== null ? { aliquota } : {}),
                      ...(componentes.length ? { componentes } : {}) });
         if (cidade) {
             const k = _valNormalizar(cidade);
@@ -163,7 +175,23 @@ function _valProcessarLocal() {
         if (Math.abs(s - i.valor) > 0.01) divergentes++;
     }
 
-    return { itens, ignoradas, soma, excluidos, divergentes,
+    // Agrupa as alíquotas encontradas, por cidade. Alíquota diferente da que a
+    // empresa usa costuma significar operação de outra natureza — e emitir CT-e
+    // ali seria declarar o imposto errado.
+    const porAliquota = new Map();
+    for (const i of itens) {
+        if (i.aliquota === undefined || i.aliquota === null) continue;
+        const k = i.aliquota.toFixed(2);
+        const atual = porAliquota.get(k) || { aliquota: i.aliquota, n: 0, cidades: new Set() };
+        atual.n++;
+        if (i.cidade) atual.cidades.add(i.cidade);
+        porAliquota.set(k, atual);
+    }
+    const aliquotas = [...porAliquota.values()]
+        .map((a) => ({ ...a, cidades: [...a.cidades].slice(0, 8) }))
+        .sort((a, b) => b.n - a.n);
+
+    return { itens, ignoradas, soma, excluidos, divergentes, aliquotas,
              total: todos.length, colunas: _valColunas };
 }
 
@@ -420,6 +448,15 @@ async function _valEnviar() {
            ${(local.colunas.componentes || []).length
              ? `<br>Componentes: ${_esc(local.colunas.componentes.join(" · "))}`
              : "<br>Nenhuma coluna de componente reconhecida."}</p>
+        ${(local.aliquotas || []).length > 1 ? `<p style="color:#e8a33d">
+            <b>A planilha tem ${local.aliquotas.length} alíquotas diferentes.</b><br>
+            ${local.aliquotas.map((a) => `${a.aliquota.toFixed(2)}% —
+                ${a.n.toLocaleString("pt-BR")} pedido(s)${a.cidades.length
+                    ? ` (${_esc(a.cidades.join(", "))})` : ""}`).join("<br>")}
+            <br>Alíquota diferente costuma ser operação de outra natureza:
+            transporte dentro do mesmo município é ISS, entre municípios é ICMS.
+            Confira com o contador antes de emitir CT-e para todas.
+        </p>` : ""}
         ${local.divergentes ? `<p style="color:#e8a33d">
             <b>${local.divergentes.toLocaleString("pt-BR")}</b> linha(s) em que os
             componentes não somam o valor final. O CT-e pode ser rejeitado assim —
