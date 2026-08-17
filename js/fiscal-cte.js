@@ -647,6 +647,8 @@ function _htmlSecao(i) {
                         { v: "normal", t: "Normal (CST)" },
                         { v: "simples", t: "Simples Nacional (CSOSN)" },
                     ])}
+                    <!-- Regime aqui é o grupo de ICMS a montar, não o CRT do
+                         cadastro da empresa: são coisas diferentes. -->
                     ${_campo("imposto_cst", "CST / CSOSN", { maxlength: 4 })}
                 </div>
                 <div class="linha-form">
