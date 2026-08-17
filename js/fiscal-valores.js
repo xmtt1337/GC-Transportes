@@ -267,6 +267,16 @@ function _valMostrarEtapas() {
                 <input type="checkbox" id="val-sobrescrever"> Trocar valores já preenchidos
             </label>
         </div>
+        <div class="linha-form">
+            <label class="largo">Cidades onde a GC não entrega (separadas por vírgula)
+                <input id="val-cidades-excluidas"
+                       placeholder="ex: Cacador, Videira"></label>
+        </div>
+        <p class="dica">
+            Pedidos com destino nessas cidades são pulados — se a Shopee entrega
+            direto, não houve prestação da GC e o CT-e documentaria transporte
+            que não existiu. Eles aparecem no relatório como ignorados, não somem.
+        </p>
         <div class="acoes-rodape">
             <button onclick="_valEnviar()">Conferir (não grava)</button>
             <button class="btn-primario" onclick="_valConfirmarLote()">
@@ -424,7 +434,11 @@ async function _valImportarLote() {
     try {
         const imp = await _cteApi("/fiscal/importacao", {
             method: "POST",
-            body: JSON.stringify({ nome: _valPlanilha.nome, sobrescrever }),
+            body: JSON.stringify({
+                nome: _valPlanilha.nome, sobrescrever,
+                cidades_excluidas: (document.getElementById("val-cidades-excluidas").value || "")
+                    .split(",").map((c) => c.trim()).filter(Boolean),
+            }),
         });
         _valImportacaoId = imp.id;
 
@@ -485,6 +499,7 @@ function _valPintarProgresso(p) {
             ${n("CRIADO").toLocaleString("pt-BR")} criados ·
             ${n("ATUALIZADO").toLocaleString("pt-BR")} atualizados ·
             ${n("JA_EXISTIA").toLocaleString("pt-BR")} já prontos<br>
+            ${n("IGNORADO_CIDADE").toLocaleString("pt-BR")} de cidade excluída ·
             ${n("NAO_ENCONTRADO").toLocaleString("pt-BR")} não achados na Shopee ·
             ${n("NAO_EDITAVEL").toLocaleString("pt-BR")} já emitidos ·
             ${n("ERRO").toLocaleString("pt-BR")} com erro ·
