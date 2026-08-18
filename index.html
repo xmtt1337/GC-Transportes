@@ -34,7 +34,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260817a">
+<link rel="stylesheet" href="style.css?v=20260818a">
 </head>
 <body>
 
@@ -464,6 +464,7 @@ if (location.hostname === "xmtt1337.github.io") {
             <span class="menu-tooltip">Extravios</span>
         </li>
         <ul class="submenu" data-menu="extravios" id="submenu-extravios" style="display:none">
+            <li><a href="#" data-rota="Extravios/Registros" onclick="abrirExtraviosRegistros(event)">Registros</a></li>
             <li><a href="#" data-rota="Extravios/Pesquisar" onclick="abrirExtraviosBusca(event)">Pesquisar</a></li>
             <li><a href="#" data-rota="Extravios/Dashboard" onclick="abrirExtraviosDash(event)">Dashboard</a></li>
         </ul>
@@ -1420,6 +1421,36 @@ if (location.hostname === "xmtt1337.github.io") {
                 </div>
             </div>
         </div><!-- /tela-extravios-dash -->
+
+        <!-- TELA EXTRAVIOS — REGISTROS (cadastro e edição na planilha) -->
+        <div id="tela-extravios-registros" class="view tela-full">
+            <div class="fech-header">
+                <div class="extrv-reg-toolbar">
+                    <div class="extrv-search-wrap" style="min-width:240px;max-width:420px;flex:1">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="extrvreg-busca" placeholder="Código, responsável, endereço..." oninput="_extrvRegBuscar()">
+                    </div>
+                    <button class="extrv-reg-btn" onclick="_extrvRegLimparFiltros()">Limpar</button>
+                    <button class="extrv-reg-btn" onclick="_extrvRegCarregar()">Atualizar</button>
+                    <button class="extrv-reg-btn primario" onclick="_extrvRegAbrirModal(null)">Novo extravio</button>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="extrv-reg-filtros">
+                    <select id="extrvreg-f-status" onchange="_extrvRegFiltrar()"></select>
+                    <select id="extrvreg-f-transp" onchange="_extrvRegFiltrar()"></select>
+                    <select id="extrvreg-f-cidade" onchange="_extrvRegFiltrar()"></select>
+                    <select id="extrvreg-f-completude" onchange="_extrvRegFiltrar()">
+                        <option value="">Completos e incompletos</option>
+                        <option value="incompletos">Só incompletos</option>
+                        <option value="completos">Só completos</option>
+                    </select>
+                </div>
+                <div class="extrv-reg-resumo" id="extrvreg-resumo"></div>
+                <div class="extrv-reg-grid" id="extrvreg-lista"></div>
+                <div class="extrv-reg-paginacao" id="extrvreg-paginacao"></div>
+            </div>
+        </div><!-- /tela-extravios-registros -->
 
         <!-- TELA CONFERÊNCIAS -->
         <div id="tela-conferencias" class="view tela-full">
@@ -3619,7 +3650,7 @@ if (location.hostname === "xmtt1337.github.io") {
         </div><!-- /tela-admin-antecipacoes -->
 
 <script src="js/core.js?v=20260813e"></script>
-<script src="js/router.js?v=20260816c"></script>
+<script src="js/router.js?v=20260818a"></script>
 <script src="js/sidebar.js?v=20260812c"></script>
 <script src="js/nav.js?v=20260813e"></script>
 <script src="js/fechamentos.js?v=20260812c"></script>
@@ -3634,6 +3665,7 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="js/ent-dashboard.js?v=20260812c"></script>
 <script src="js/nota-fiscal.js?v=20260812c"></script>
 <script src="js/extravios.js?v=20260812c"></script>
+<script src="js/extravios-registros.js?v=20260818a"></script>
 <script src="js/usuarios-gc.js?v=20260812c"></script>
 <script src="js/todos-usuarios.js?v=20260812c"></script>
 <script src="js/whatsapp-teste.js?v=20260812c"></script>

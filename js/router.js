@@ -88,6 +88,7 @@ const _ROTAS = {
     "Ativos/Conversas":             () => abrirWhatsappConversas(),
     "Cadastros/TrampayEntregadores": () => abrirEntregadoresTrampay(),
     "Videira/Dashboard":             () => abrirVideiraDash(),
+    "Extravios/Registros":           () => abrirExtraviosRegistros(),
     "Extravios/Pesquisar":           () => abrirExtraviosBusca(),
     "Extravios/Dashboard":           () => abrirExtraviosDash(),
 };
@@ -185,6 +186,7 @@ const _TELA_ROTAS = {
     "tela-whatsapp-teste":       "Ativos/Disparar",
     "tela-whatsapp-conversas":   "Ativos/Conversas",
     "tela-trampay-entregadores": "Cadastros/TrampayEntregadores",
+    "tela-extravios-registros":  "Extravios/Registros",
     "tela-extravios-busca":      "Extravios/Pesquisar",
     "tela-extravios-dash":       "Extravios/Dashboard",
 };
