@@ -4129,7 +4129,7 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .extrv-reg-lista { border-top: 1px solid var(--border); }
 .extrv-reg-linha-item {
     display: grid;
-    grid-template-columns: minmax(160px, 240px) 150px minmax(140px, 1fr) 56px;
+    grid-template-columns: minmax(160px, 240px) 150px 92px minmax(140px, 1fr) 56px;
     align-items: baseline; gap: 16px;
     padding: 12px 4px; border-bottom: 1px solid var(--border);
     cursor: pointer; transition: background .1s;
@@ -4157,6 +4157,7 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 }
 /* Quem está completo não precisa dizer nada: a coluna fica vazia. */
 .extrv-reg-pend { font-size: 12.5px; color: #fbbf24; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.extrv-reg-origem { font-size: 12px; color: var(--text-dim); }
 .extrv-reg-num { font-size: 12px; color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; }
 
 .extrv-reg-vazio, .extrv-reg-carregando {
@@ -4265,8 +4266,9 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
     .extrv-reg-linha-item { grid-template-columns: 1fr auto; gap: 4px 16px; }
     .extrv-reg-cabecalho { display: none; }
     .extrv-reg-status { grid-column: 2; grid-row: 1; text-align: right; }
-    .extrv-reg-pend { grid-column: 1 / -1; grid-row: 2; }
-    .extrv-reg-num { grid-column: 2; grid-row: 2; }
+    .extrv-reg-origem { grid-column: 1; grid-row: 2; }
+    .extrv-reg-pend { grid-column: 1 / -1; grid-row: 3; }
+    .extrv-reg-num { grid-column: 2; grid-row: 2; text-align: right; }
     .extrv-reg-autoria { width: 100%; margin: 0 0 8px; }
     .extrv-reg-modal-rodape { flex-wrap: wrap; }
 }

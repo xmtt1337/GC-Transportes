@@ -17,7 +17,7 @@ const EXTRVREG_CAMPOS_ROTULO = {
 };
 
 let _extrvRegOpcoes   = null;
-let _extrvRegEstado   = { pagina: 1, busca: "", status: "", transportadora: "", cidade: "", completude: "" };
+let _extrvRegEstado   = { pagina: 1, busca: "", status: "", transportadora: "", cidade: "", completude: "", origem: "" };
 let _extrvRegBuscaTmr = null;
 let _extrvRegCodigoTmr = null;
 let _extrvRegCarregando = false;
@@ -90,6 +90,7 @@ function _extrvRegFiltrar() {
     _extrvRegEstado.transportadora = document.getElementById("extrvreg-f-transp").value;
     _extrvRegEstado.cidade         = document.getElementById("extrvreg-f-cidade").value;
     _extrvRegEstado.completude     = document.getElementById("extrvreg-f-completude").value;
+    _extrvRegEstado.origem         = document.getElementById("extrvreg-f-origem").value;
     _extrvRegEstado.pagina = 1;
     _extrvRegCarregar();
 }
@@ -105,9 +106,9 @@ function _extrvRegBuscar() {
 
 function _extrvRegLimparFiltros() {
     document.getElementById("extrvreg-busca").value = "";
-    ["extrvreg-f-status", "extrvreg-f-transp", "extrvreg-f-cidade", "extrvreg-f-completude"]
+    ["extrvreg-f-status", "extrvreg-f-transp", "extrvreg-f-cidade", "extrvreg-f-completude", "extrvreg-f-origem"]
         .forEach(id => { document.getElementById(id).value = ""; });
-    _extrvRegEstado = { pagina: 1, busca: "", status: "", transportadora: "", cidade: "", completude: "" };
+    _extrvRegEstado = { pagina: 1, busca: "", status: "", transportadora: "", cidade: "", completude: "", origem: "" };
     _extrvRegCarregar();
 }
 
@@ -153,7 +154,7 @@ function _extrvRegRender(dados) {
     } else {
         alvo.innerHTML =
             `<div class="extrv-reg-linha-item extrv-reg-cabecalho">
-                <div>Código</div><div>Status</div><div>Falta preencher</div><div class="extrv-reg-num">Linha</div>
+                <div>Código</div><div>Status</div><div>Origem</div><div>Falta preencher</div><div class="extrv-reg-num">Linha</div>
              </div>` +
             dados.itens.map(_extrvRegItemHtml).join("");
     }
@@ -182,6 +183,7 @@ function _extrvRegItemHtml(r) {
     <div class="extrv-reg-linha-item" data-linha="${r.linha}" onclick="_extrvRegAbrirModal(${r.linha})">
         <div class="extrv-reg-cod">${_extrvRegEsc(r.codigo || "sem código")}${dup}</div>
         <div class="extrv-reg-status">${_extrvRegEsc(r.status || "—")}</div>
+        <div class="extrv-reg-origem">${r.origem === "sistema" ? "sistema" : "planilha"}</div>
         <div class="extrv-reg-pend">${pendencia}</div>
         <div class="extrv-reg-num">${r.linha}</div>
     </div>`;
@@ -467,5 +469,70 @@ async function _extrvRegSalvar() {
         _extrvRegSalvando = false;
         const b = document.getElementById("extrvreg-salvar");
         if (b) { b.disabled = false; b.textContent = rotuloOriginal; }
+    }
+}
+
+/* ───────────────────────── Exportar ───────────────────────── */
+
+/**
+ * Baixa em XLSX o conjunto inteiro do filtro atual — não só a página aberta.
+ * Usa o SheetJS que o site já carrega, igual aos outros módulos.
+ */
+async function _extrvRegExportar() {
+    const acao = document.getElementById("extrvreg-exportar");
+    if (acao.disabled) return;
+
+    const rotulo = acao.textContent;
+    acao.disabled = true;
+    acao.textContent = "Exportando...";
+
+    try {
+        const q = new URLSearchParams();
+        Object.keys(_extrvRegEstado).forEach(k => {
+            if (_extrvRegEstado[k] && k !== "pagina") q.set(k, _extrvRegEstado[k]);
+        });
+        q.set("todos", "1");
+
+        const dados = await _extrvRegApi("/extravios/registros?" + q.toString());
+        if (!dados.itens.length) {
+            gcAlert("Nenhum registro para exportar com esses filtros.", "Extravios");
+            return;
+        }
+
+        const linhas = dados.itens.map(r => ({
+            "Código": r.codigo,
+            "Status": r.status,
+            "Transportadora": r.transportadora,
+            "Data": r.data,
+            "Hora": r.hora,
+            "Cidade": r.cidade,
+            "Duplicado?": r.duplicado,
+            "Valor": r.valor,
+            "Responsável": r.responsavel,
+            "Endereço": r.endereco,
+            "Causa do problema": r.causa,
+            "Data desconto": r.dataDesconto,
+            "Para desconto?": r.paraDesconto,
+            "Última atualização": r.atualizadoEm,
+            "Usuário": r.usuario,
+            "Origem": r.origem === "sistema" ? "Sistema" : "Planilha",
+            "Falta preencher": r.faltando.map(c => (EXTRVREG_CAMPOS_ROTULO[c] || c).toLowerCase()).join(", "),
+            "Linha": r.linha
+        }));
+
+        const planilha = XLSX.utils.json_to_sheet(linhas);
+        const arquivo = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(arquivo, planilha, "Extravios");
+
+        const hoje = new Date();
+        const carimbo = hoje.getFullYear() + "-" +
+            String(hoje.getMonth() + 1).padStart(2, "0") + "-" +
+            String(hoje.getDate()).padStart(2, "0");
+        XLSX.writeFile(arquivo, "extravios_" + carimbo + ".xlsx");
+    } catch (err) {
+        gcAlert(err.message, "Extravios");
+    } finally {
+        acao.disabled = false;
+        acao.textContent = rotulo;
     }
 }
