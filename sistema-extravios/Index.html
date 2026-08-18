@@ -20,16 +20,16 @@
 
     <nav class="nav" id="navegacao">
       <button class="nav-item ativo" data-view="dashboard" type="button">
-        <span class="icone">📊</span> Dashboard
+        Dashboard
       </button>
       <button class="nav-item" data-view="formulario" type="button">
-        <span class="icone">➕</span> Registrar extravio
+        Registrar extravio
       </button>
       <button class="nav-item" data-view="extravios" type="button">
-        <span class="icone">📦</span> Extravios
+        Extravios
       </button>
       <button class="nav-item" data-view="historico" type="button">
-        <span class="icone">📋</span> Histórico
+        Histórico
       </button>
     </nav>
 
@@ -42,7 +42,11 @@
   <!-- ================= CONTEÚDO ================= -->
   <div class="conteudo">
     <header class="topbar">
-      <button class="btn-icone btn-menu" id="btnMenu" type="button" aria-label="Abrir menu">☰</button>
+      <button class="btn-icone btn-menu" id="btnMenu" type="button" aria-label="Abrir menu">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+          <path d="M2 4h12M2 8h12M2 12h12"/>
+        </svg>
+      </button>
       <div class="topbar-titulo" id="tituloTopo">Dashboard</div>
       <div class="topbar-usuario">
         <span class="email" id="usuarioEmail">—</span>

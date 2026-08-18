@@ -109,8 +109,7 @@
     }, 0);
 
     if (!maximo) {
-      el.transportadoras.innerHTML = '<div class="vazio"><span class="emoji">📦</span>' +
-        '<strong>Nenhum registro no período</strong>Ajuste o filtro de datas para ver os números.</div>';
+      el.transportadoras.innerHTML = '<div class="vazio"><strong>Nenhum registro no período</strong>Ajuste o filtro de datas para ver os números.</div>';
     } else {
       el.transportadoras.innerHTML = dados.porTransportadora.map(function (item) {
         const largura = maximo ? Math.max((item.quantidade / maximo) * 100, item.quantidade ? 2 : 0) : 0;

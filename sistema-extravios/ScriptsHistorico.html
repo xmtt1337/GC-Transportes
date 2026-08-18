@@ -33,7 +33,7 @@
     App.api('apiListarHistorico', filtros())
       .then(function (resposta) {
         if (!resposta.ok) {
-          el('hisCorpo').innerHTML = App.linhaVazia(COLUNAS, 'Não foi possível carregar', resposta.mensagem, '⚠️');
+          el('hisCorpo').innerHTML = App.linhaVazia(COLUNAS, 'Não foi possível carregar', resposta.mensagem);
           App.toast(resposta.mensagem, 'erro');
           return;
         }
@@ -41,7 +41,7 @@
         estado.carregado = true;
       })
       .catch(function (erro) {
-        el('hisCorpo').innerHTML = App.linhaVazia(COLUNAS, 'Não foi possível carregar', erro.message, '⚠️');
+        el('hisCorpo').innerHTML = App.linhaVazia(COLUNAS, 'Não foi possível carregar', erro.message);
         App.toast(erro.message, 'erro');
       })
       .then(function () {
@@ -56,8 +56,7 @@
       el('hisCorpo').innerHTML = App.linhaVazia(
         COLUNAS,
         'Nenhum evento encontrado',
-        'O histórico é preenchido automaticamente a cada registro ou alteração.',
-        '📋'
+        'O histórico é preenchido automaticamente a cada registro ou alteração.'
       );
     } else {
       el('hisCorpo').innerHTML = dados.itens.map(function (h) {

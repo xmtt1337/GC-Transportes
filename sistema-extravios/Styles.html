@@ -93,7 +93,6 @@ button { font: inherit; }
 }
 .nav-item:hover { background: var(--sidebar-2); color: #FFFFFF; }
 .nav-item.ativo { background: var(--acento); color: #FFFFFF; }
-.nav-item .icone { font-size: 15px; line-height: 1; width: 18px; text-align: center; }
 
 .rodape-sidebar { padding: 14px 18px; border-top: 1px solid rgba(255, 255, 255, .07); font-size: 11px; color: #64748B; }
 
@@ -267,9 +266,6 @@ select.entrada { cursor: pointer; appearance: none; background-image: url("data:
 .barra-filtros { display: grid; grid-template-columns: minmax(180px, 1.6fr) repeat(4, minmax(120px, 1fr)) auto; gap: 10px; align-items: end; }
 .filtro { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .filtro label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-3); font-weight: 600; }
-.campo-busca { position: relative; }
-.campo-busca .entrada { padding-left: 32px; }
-.campo-busca .lupa { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--tinta-3); font-size: 13px; pointer-events: none; }
 
 /* ==================================================================
    Tabela
@@ -298,7 +294,6 @@ table.tabela tbody tr.sem-hover:hover { background: transparent; }
 .truncar-md { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .vazio { padding: 44px 20px; text-align: center; color: var(--tinta-3); }
-.vazio .emoji { font-size: 30px; display: block; margin-bottom: 8px; }
 .vazio strong { display: block; color: var(--tinta-2); font-weight: 600; margin-bottom: 3px; }
 
 .esqueleto { height: 14px; border-radius: 4px; background: linear-gradient(90deg, #EEF2F7 25%, #E2E8F0 37%, #EEF2F7 63%); background-size: 400% 100%; animation: brilho 1.3s ease infinite; }
@@ -370,7 +365,6 @@ table.tabela tbody tr.sem-hover:hover { background: transparent; }
 .toast-erro { border-left-color: var(--perigo); }
 .toast-aviso { border-left-color: var(--alerta); }
 .toast-info { border-left-color: var(--acento); }
-.toast .icone { font-size: 15px; line-height: 1.2; }
 .toast .texto { font-size: 13px; color: var(--tinta-1); flex: 1; }
 @keyframes entrarToast { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
 @keyframes sairToast { to { opacity: 0; transform: translateX(18px); } }

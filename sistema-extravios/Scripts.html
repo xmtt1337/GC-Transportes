@@ -144,7 +144,7 @@ const App = (function () {
      Toasts
      ================================================================ */
 
-  const ICONES_TOAST = { sucesso: '✅', erro: '⛔', aviso: '⚠️', info: 'ℹ️' };
+  const TIPOS_TOAST = ['sucesso', 'erro', 'aviso', 'info'];
 
   /**
    * @param {string} mensagem
@@ -155,11 +155,10 @@ const App = (function () {
     const container = document.getElementById('toasts');
     if (!container) return;
 
-    const classe = ICONES_TOAST[tipo] ? tipo : 'info';
+    const classe = TIPOS_TOAST.indexOf(tipo) >= 0 ? tipo : 'info';
     const elemento = document.createElement('div');
     elemento.className = 'toast toast-' + classe;
-    elemento.innerHTML = '<span class="icone">' + ICONES_TOAST[classe] + '</span>' +
-      '<span class="texto">' + Fmt.esc(mensagem) + '</span>';
+    elemento.innerHTML = '<span class="texto">' + Fmt.esc(mensagem) + '</span>';
     container.appendChild(elemento);
 
     const tempo = duracao || (classe === 'erro' ? 6000 : 3800);
@@ -333,10 +332,10 @@ const App = (function () {
   }
 
   /** Linha de tabela indicando ausência de dados. */
-  function linhaVazia(colunas, titulo, texto, emoji) {
+  function linhaVazia(colunas, titulo, texto) {
     return '<tr class="sem-hover"><td colspan="' + colunas + '">' +
-      '<div class="vazio"><span class="emoji">' + (emoji || '📭') + '</span>' +
-      '<strong>' + Fmt.esc(titulo) + '</strong>' + Fmt.esc(texto || '') + '</div></td></tr>';
+      '<div class="vazio"><strong>' + Fmt.esc(titulo) + '</strong>' +
+      Fmt.esc(texto || '') + '</div></td></tr>';
   }
 
   /** Linhas de esqueleto durante o carregamento. */

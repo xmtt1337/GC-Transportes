@@ -64,7 +64,7 @@
     App.api('apiListarExtravios', filtros())
       .then(function (resposta) {
         if (!resposta.ok) {
-          el('extCorpo').innerHTML = App.linhaVazia(COLUNAS, 'Não foi possível carregar', resposta.mensagem, '⚠️');
+          el('extCorpo').innerHTML = App.linhaVazia(COLUNAS, 'Não foi possível carregar', resposta.mensagem);
           App.toast(resposta.mensagem, 'erro');
           return;
         }
@@ -72,7 +72,7 @@
         estado.carregado = true;
       })
       .catch(function (erro) {
-        el('extCorpo').innerHTML = App.linhaVazia(COLUNAS, 'Não foi possível carregar', erro.message, '⚠️');
+        el('extCorpo').innerHTML = App.linhaVazia(COLUNAS, 'Não foi possível carregar', erro.message);
         App.toast(erro.message, 'erro');
       })
       .then(function () {
