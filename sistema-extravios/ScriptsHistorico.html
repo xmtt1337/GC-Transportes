@@ -1,0 +1,128 @@
+<script>
+/**
+ * ScriptsHistorico.html — auditoria de criações e alterações de status.
+ */
+(function () {
+
+  const Fmt = App.Fmt;
+  const COLUNAS = 7;
+
+  const estado = {
+    pagina: 1,
+    porPagina: 25,
+    carregado: false,
+    carregando: false
+  };
+
+  function el(id) { return document.getElementById(id); }
+
+  function filtros() {
+    return {
+      busca: el('hisBusca').value,
+      acao: el('hisAcao').value,
+      pagina: estado.pagina,
+      porPagina: estado.porPagina
+    };
+  }
+
+  function carregar() {
+    if (estado.carregando) return;
+    estado.carregando = true;
+    el('hisCorpo').innerHTML = App.linhasCarregando(COLUNAS, 6);
+
+    App.api('apiListarHistorico', filtros())
+      .then(function (resposta) {
+        if (!resposta.ok) {
+          el('hisCorpo').innerHTML = App.linhaVazia(COLUNAS, 'Não foi possível carregar', resposta.mensagem, '⚠️');
+          App.toast(resposta.mensagem, 'erro');
+          return;
+        }
+        desenhar(resposta);
+        estado.carregado = true;
+      })
+      .catch(function (erro) {
+        el('hisCorpo').innerHTML = App.linhaVazia(COLUNAS, 'Não foi possível carregar', erro.message, '⚠️');
+        App.toast(erro.message, 'erro');
+      })
+      .then(function () {
+        estado.carregando = false;
+      });
+  }
+
+  function desenhar(dados) {
+    estado.pagina = dados.pagina;
+
+    if (!dados.itens.length) {
+      el('hisCorpo').innerHTML = App.linhaVazia(
+        COLUNAS,
+        'Nenhum evento encontrado',
+        'O histórico é preenchido automaticamente a cada registro ou alteração.',
+        '📋'
+      );
+    } else {
+      el('hisCorpo').innerHTML = dados.itens.map(function (h) {
+        return '<tr data-id="' + h.idExtravio + '">' +
+          '<td data-rotulo="ID extravio" class="col-id">#' + h.idExtravio + '</td>' +
+          '<td data-rotulo="Data/hora">' + Fmt.esc(Fmt.ou(h.dataHora)) + '</td>' +
+          '<td data-rotulo="Usuário" class="truncar-md">' + Fmt.esc(Fmt.ou(h.usuario)) + '</td>' +
+          '<td data-rotulo="Ação">' + Fmt.esc(h.acao) + '</td>' +
+          '<td data-rotulo="Status anterior">' + (h.statusAnterior ? App.badgeStatus(h.statusAnterior) : '—') + '</td>' +
+          '<td data-rotulo="Novo status">' + (h.novoStatus ? App.badgeStatus(h.novoStatus) : '—') + '</td>' +
+          '<td data-rotulo="Observação" class="truncar">' + Fmt.esc(Fmt.ou(h.observacao)) + '</td>' +
+          '</tr>';
+      }).join('');
+
+      el('hisCorpo').querySelectorAll('tr[data-id]').forEach(function (linha) {
+        linha.addEventListener('click', function () {
+          const id = linha.getAttribute('data-id');
+          if (id && id !== '0') App.abrirDetalhes(id);
+        });
+      });
+    }
+
+    el('hisPaginaInfo').textContent = 'Página ' + dados.pagina + ' de ' + dados.paginas;
+    el('hisAnterior').disabled = dados.pagina <= 1;
+    el('hisProxima').disabled = dados.pagina >= dados.paginas;
+    el('hisResumo').innerHTML = '<span>Eventos: <strong>' + Fmt.numero(dados.total) + '</strong></span>';
+  }
+
+  App.registrarView('historico', {
+    aoIniciar: function () {
+      const recarregarDaPrimeira = function () {
+        estado.pagina = 1;
+        carregar();
+      };
+
+      el('hisBusca').addEventListener('input', App.debounce(recarregarDaPrimeira, 350));
+      el('hisAcao').addEventListener('change', recarregarDaPrimeira);
+      el('hisAtualizar').addEventListener('click', carregar);
+      el('hisLimpar').addEventListener('click', function () {
+        el('hisBusca').value = '';
+        el('hisAcao').value = '';
+        recarregarDaPrimeira();
+      });
+
+      el('hisAnterior').addEventListener('click', function () {
+        if (estado.pagina > 1) {
+          estado.pagina--;
+          carregar();
+        }
+      });
+
+      el('hisProxima').addEventListener('click', function () {
+        estado.pagina++;
+        carregar();
+      });
+    },
+
+    aoEntrar: function () {
+      if (!estado.carregado) carregar();
+    }
+  });
+
+  App.invalidarHistorico = function () {
+    estado.carregado = false;
+    if (App.estado.viewAtual === 'historico') carregar();
+  };
+})();
+</script>

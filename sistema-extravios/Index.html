@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Controle de Extravios · GC Transportes</title>
+  <?!= include('Styles'); ?>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="marca">
+      <div class="marca-nome">GC Transportes</div>
+      <div class="marca-sub">Controle de extravios</div>
+    </div>
+
+    <nav class="nav" id="navegacao">
+      <button class="nav-item ativo" data-view="dashboard" type="button">
+        <span class="icone">📊</span> Dashboard
+      </button>
+      <button class="nav-item" data-view="formulario" type="button">
+        <span class="icone">➕</span> Registrar extravio
+      </button>
+      <button class="nav-item" data-view="extravios" type="button">
+        <span class="icone">📦</span> Extravios
+      </button>
+      <button class="nav-item" data-view="historico" type="button">
+        <span class="icone">📋</span> Histórico
+      </button>
+    </nav>
+
+    <div class="rodape-sidebar">
+      <div id="rodapeVersao">v1.0.0</div>
+    </div>
+  </aside>
+  <div class="overlay-sidebar" id="overlaySidebar" hidden></div>
+
+  <!-- ================= CONTEÚDO ================= -->
+  <div class="conteudo">
+    <header class="topbar">
+      <button class="btn-icone btn-menu" id="btnMenu" type="button" aria-label="Abrir menu">☰</button>
+      <div class="topbar-titulo" id="tituloTopo">Dashboard</div>
+      <div class="topbar-usuario">
+        <span class="email" id="usuarioEmail">—</span>
+        <span class="avatar" id="usuarioAvatar">?</span>
+      </div>
+    </header>
+
+    <main class="main">
+      <?!= include('Dashboard'); ?>
+      <?!= include('ExtravioForm'); ?>
+      <?!= include('Extravios'); ?>
+      <?!= include('Historico'); ?>
+    </main>
+  </div>
+</div>
+
+<!-- ================= MODAL GENÉRICO ================= -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-fundo" data-fechar-modal></div>
+  <div class="modal-caixa" id="modalCaixa" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+    <div class="modal-cabecalho">
+      <h3 id="modalTitulo">Detalhes</h3>
+      <button class="fechar" type="button" data-fechar-modal aria-label="Fechar">×</button>
+    </div>
+    <div class="modal-corpo" id="modalCorpo"></div>
+    <div class="modal-rodape" id="modalRodape"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+  window.DADOS_INICIAIS = <?!= dadosIniciais ?>;
+</script>
+
+<?!= include('Scripts'); ?>
+<?!= include('ScriptsDashboard'); ?>
+<?!= include('ScriptsForm'); ?>
+<?!= include('ScriptsExtravios'); ?>
+<?!= include('ScriptsHistorico'); ?>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () { App.iniciar(); });
+</script>
+
+</body>
+</html>

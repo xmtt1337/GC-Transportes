@@ -1,0 +1,79 @@
+<section class="view" id="view-extravios">
+
+  <div class="cabecalho-view">
+    <div>
+      <h1>Extravios</h1>
+      <p class="subtitulo">Clique em uma linha para ver os detalhes</p>
+    </div>
+    <div class="barra-acoes">
+      <button class="btn btn-secundario" id="extAtualizar" type="button">↻ Atualizar</button>
+      <button class="btn btn-primario" id="extNovo" type="button">➕ Registrar extravio</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-corpo">
+      <div class="barra-filtros">
+        <div class="filtro">
+          <label for="extBusca">Buscar</label>
+          <div class="campo-busca">
+            <span class="lupa">🔎</span>
+            <input class="entrada" type="search" id="extBusca" placeholder="Código, ID ou responsável">
+          </div>
+        </div>
+        <div class="filtro">
+          <label for="extStatus">Status</label>
+          <select class="entrada" id="extStatus"></select>
+        </div>
+        <div class="filtro">
+          <label for="extTransportadora">Transportadora</label>
+          <select class="entrada" id="extTransportadora"></select>
+        </div>
+        <div class="filtro">
+          <label for="extInicio">De</label>
+          <input class="entrada" type="date" id="extInicio">
+        </div>
+        <div class="filtro">
+          <label for="extFim">Até</label>
+          <input class="entrada" type="date" id="extFim">
+        </div>
+        <button class="btn btn-secundario" id="extLimpar" type="button">Limpar</button>
+      </div>
+    </div>
+
+    <div class="envelope-tabela">
+      <table class="tabela" id="extTabela">
+        <thead>
+          <tr>
+            <th class="ordenavel" data-ordenar="id">ID <span class="seta">▼</span></th>
+            <th class="ordenavel" data-ordenar="status">Status <span class="seta">▼</span></th>
+            <th class="ordenavel" data-ordenar="transportadora">Transportadora <span class="seta">▼</span></th>
+            <th class="ordenavel ordenado" data-ordenar="data">Data <span class="seta">▼</span></th>
+            <th class="ordenavel" data-ordenar="codigo">Código <span class="seta">▼</span></th>
+            <th class="ordenavel col-num" data-ordenar="valor">Valor <span class="seta">▼</span></th>
+            <th class="ordenavel" data-ordenar="responsavel">Responsável <span class="seta">▼</span></th>
+            <th>Endereço</th>
+            <th>Causa</th>
+            <th>Data desconto</th>
+          </tr>
+        </thead>
+        <tbody id="extCorpo"></tbody>
+      </table>
+    </div>
+
+    <div class="card-rodape">
+      <div class="resumo-rodape" id="extResumo"></div>
+      <div class="paginacao">
+        <select class="entrada btn-pequeno" id="extPorPagina" style="width:auto">
+          <option value="25">25 / página</option>
+          <option value="50">50 / página</option>
+          <option value="100">100 / página</option>
+        </select>
+        <button class="btn btn-secundario btn-pequeno" id="extAnterior" type="button">← Anterior</button>
+        <span class="info" id="extPaginaInfo">—</span>
+        <button class="btn btn-secundario btn-pequeno" id="extProxima" type="button">Próxima →</button>
+      </div>
+    </div>
+  </div>
+
+</section>

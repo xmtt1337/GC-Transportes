@@ -1,0 +1,78 @@
+<section class="view ativa" id="view-dashboard">
+
+  <div class="cabecalho-view">
+    <div>
+      <h1>Dashboard</h1>
+      <p class="subtitulo">Visão geral dos extravios registrados</p>
+    </div>
+    <div class="barra-acoes">
+      <div class="filtro">
+        <label for="dashInicio">De</label>
+        <input class="entrada" type="date" id="dashInicio">
+      </div>
+      <div class="filtro">
+        <label for="dashFim">Até</label>
+        <input class="entrada" type="date" id="dashFim">
+      </div>
+      <button class="btn btn-secundario" id="dashLimpar" type="button">Limpar</button>
+      <button class="btn btn-secundario" id="dashAtualizar" type="button">↻ Atualizar</button>
+    </div>
+  </div>
+
+  <div id="dashCarregando" class="carregando-bloco">
+    <span class="spinner spinner-escuro"></span> Carregando indicadores…
+  </div>
+
+  <div id="dashConteudo" hidden>
+
+    <!-- Contadores -->
+    <div class="grade-kpi" id="dashKpis"></div>
+
+    <!-- Valores -->
+    <div class="card" style="margin-top:16px">
+      <div class="card-cabecalho">
+        <h2>Valores</h2>
+        <span class="dica" id="dashPeriodoTexto">Todo o período</span>
+      </div>
+      <div class="card-corpo">
+        <div class="grade-kpi" id="dashValores"></div>
+      </div>
+    </div>
+
+    <!-- Por transportadora -->
+    <div class="card">
+      <div class="card-cabecalho">
+        <h2>Quantidade por transportadora</h2>
+        <span class="dica">Registros no período selecionado</span>
+      </div>
+      <div class="card-corpo">
+        <div class="lista-barras" id="dashTransportadoras"></div>
+      </div>
+    </div>
+
+    <!-- Últimos registros -->
+    <div class="card">
+      <div class="card-cabecalho">
+        <h2>Últimos registros</h2>
+        <button class="btn btn-fantasma btn-pequeno" id="dashVerTodos" type="button">Ver todos →</button>
+      </div>
+      <div class="envelope-tabela">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Status</th>
+              <th>Transportadora</th>
+              <th>Data</th>
+              <th>Código</th>
+              <th class="col-num">Valor</th>
+              <th>Responsável</th>
+            </tr>
+          </thead>
+          <tbody id="dashUltimos"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</section>

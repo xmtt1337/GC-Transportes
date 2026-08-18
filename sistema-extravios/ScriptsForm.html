@@ -1,0 +1,369 @@
+<script>
+/**
+ * ScriptsForm.html — formulário de registro de extravio.
+ * A validação daqui é apenas para retorno imediato; a decisão final é do
+ * servidor (inclusive a checagem de código duplicado).
+ */
+(function () {
+
+  const Fmt = App.Fmt;
+  let enviando = false;
+  let duplicadoAtual = null;
+
+  const CAMPOS = ['status', 'transportadora', 'codigo', 'data', 'hora', 'valor',
+    'responsavel', 'endereco', 'causa', 'dataDesconto'];
+
+  function el(id) { return document.getElementById(id); }
+
+  /* ================================================================
+     Montagem
+     ================================================================ */
+
+  function preencherListas(config) {
+    App.preencherSelect(el('campoStatus'), config.status, { selecionado: config.statusPadrao });
+    App.preencherSelect(el('campoTransportadora'), config.transportadoras, { vazio: 'Selecione…' });
+    App.preencherSelect(el('campoResponsavel'), config.responsaveis, { vazio: 'Selecione…' });
+
+    const sugestoes = el('sugestoesCausa');
+    sugestoes.innerHTML = (config.causas || []).map(function (causa) {
+      return '<button type="button" class="chip" data-causa="' + Fmt.esc(causa) + '">' + Fmt.esc(causa) + '</button>';
+    }).join('');
+    sugestoes.querySelectorAll('[data-causa]').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        el('campoCausa').value = chip.getAttribute('data-causa');
+        limparErro('causa');
+        el('campoCausa').focus();
+      });
+    });
+
+    if (!config.responsaveis || !config.responsaveis.length) {
+      App.toast('Nenhum entregador cadastrado. Adicione nomes na aba ENTREGADORES.', 'aviso', 8000);
+    }
+  }
+
+  function valoresPadrao() {
+    const agora = new Date();
+    el('campoStatus').value = App.estado.config.statusPadrao;
+    el('campoData').value = App.estado.config.hoje ||
+      agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
+    el('campoHora').value = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+    atualizarRotuloDesconto();
+  }
+
+  /* ================================================================
+     Erros de campo
+     ================================================================ */
+
+  function limparErros() {
+    CAMPOS.forEach(limparErro);
+    esconderDuplicado();
+  }
+
+  function limparErro(campo) {
+    const bloco = document.querySelector('[data-campo="' + campo + '"]');
+    if (!bloco) return;
+    bloco.classList.remove('com-erro');
+    const alvo = bloco.querySelector('.erro-campo');
+    if (alvo) alvo.textContent = '';
+  }
+
+  function mostrarErros(erros) {
+    let primeiro = null;
+    Object.keys(erros).forEach(function (campo) {
+      const bloco = document.querySelector('[data-campo="' + campo + '"]');
+      if (!bloco) return;
+      bloco.classList.add('com-erro');
+      const alvo = bloco.querySelector('.erro-campo');
+      if (alvo) alvo.textContent = erros[campo];
+      if (!primeiro) primeiro = bloco.querySelector('.entrada');
+    });
+    if (primeiro) primeiro.focus();
+  }
+
+  /* ================================================================
+     Coleta e validação local
+     ================================================================ */
+
+  function coletar() {
+    return {
+      status: el('campoStatus').value,
+      transportadora: el('campoTransportadora').value,
+      codigo: el('campoCodigo').value.trim().toUpperCase(),
+      data: el('campoData').value,
+      hora: el('campoHora').value,
+      valor: el('campoValor').value,
+      responsavel: el('campoResponsavel').value,
+      endereco: el('campoEndereco').value.trim(),
+      causa: el('campoCausa').value.trim(),
+      dataDesconto: el('campoDataDesconto').value
+    };
+  }
+
+  function validar(dados) {
+    const erros = {};
+    const config = App.estado.config;
+
+    if (!dados.transportadora) erros.transportadora = 'Selecione a transportadora.';
+    if (!dados.data) erros.data = 'Informe a data do extravio.';
+    if (!dados.hora) erros.hora = 'Informe a hora do extravio.';
+
+    if (!dados.codigo) {
+      erros.codigo = 'Informe o código do objeto.';
+    } else if (dados.codigo.length < 3) {
+      erros.codigo = 'O código deve ter pelo menos 3 caracteres.';
+    } else if (!/^[A-Z0-9._\-\/#+]+$/.test(dados.codigo.replace(/\s+/g, ''))) {
+      erros.codigo = 'Código inválido: use apenas letras, números e os sinais - _ . / #';
+    }
+
+    const valorNumerico = Number(String(dados.valor).replace(/[^\d,]/g, '').replace(',', '.'));
+    if (!String(dados.valor).trim()) {
+      erros.valor = 'Informe o valor do objeto.';
+    } else if (!isFinite(valorNumerico)) {
+      erros.valor = 'Valor inválido. Exemplo: R$ 25,50.';
+    } else if (valorNumerico > config.valorMaximo) {
+      erros.valor = 'Valor acima do limite permitido (' + Fmt.moeda(config.valorMaximo) + ').';
+    }
+
+    if (!dados.responsavel) erros.responsavel = 'Selecione o responsável.';
+    if (!dados.endereco) {
+      erros.endereco = 'Informe o endereço.';
+    } else if (dados.endereco.length < 5) {
+      erros.endereco = 'Endereço muito curto.';
+    }
+    if (!dados.causa) erros.causa = 'Descreva a causa do problema.';
+
+    if (config.exigirDataDesconto && dados.status === config.statusParaDesconto && !dados.dataDesconto) {
+      erros.dataDesconto = 'Com o status "' + config.statusParaDesconto + '", informe a data do desconto.';
+    }
+
+    return erros;
+  }
+
+  /* ================================================================
+     Aviso de duplicidade
+     ================================================================ */
+
+  function mostrarDuplicado(resposta) {
+    duplicadoAtual = resposta.duplicado || null;
+    const alerta = el('alertaDuplicado');
+    if (!duplicadoAtual) return;
+
+    const ocorrencias = resposta.ocorrencias || 1;
+    el('duplicadoTexto').textContent = ocorrencias > 1
+      ? 'Este código aparece ' + ocorrencias + ' vezes no sistema. Registro mais recente:'
+      : 'Já existe um registro com este código:';
+
+    el('duplicadoDados').innerHTML =
+      dadoMini('ID', '#' + duplicadoAtual.id) +
+      dadoMini('Status', duplicadoAtual.status) +
+      dadoMini('Transportadora', duplicadoAtual.transportadora) +
+      dadoMini('Data', Fmt.data(duplicadoAtual.data)) +
+      dadoMini('Responsável', duplicadoAtual.responsavel);
+
+    alerta.classList.add('visivel');
+    alerta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const bloco = document.querySelector('[data-campo="codigo"]');
+    if (bloco) bloco.classList.add('com-erro');
+  }
+
+  function dadoMini(rotulo, valor) {
+    return '<div class="dado-mini"><div class="rotulo">' + Fmt.esc(rotulo) + '</div>' +
+      '<div class="valor">' + Fmt.esc(Fmt.ou(valor)) + '</div></div>';
+  }
+
+  function esconderDuplicado() {
+    el('alertaDuplicado').classList.remove('visivel');
+    duplicadoAtual = null;
+  }
+
+  /* ================================================================
+     Envio
+     ================================================================ */
+
+  function definirCarregando(ligado) {
+    enviando = ligado;
+    const botao = el('btnSalvar');
+    botao.disabled = ligado;
+    el('btnLimparForm').disabled = ligado;
+    botao.innerHTML = ligado
+      ? '<span class="spinner"></span> Salvando…'
+      : 'Registrar extravio';
+  }
+
+  function enviar(evento) {
+    if (evento) evento.preventDefault();
+    if (enviando) return;
+
+    limparErros();
+    const dados = coletar();
+    const erros = validar(dados);
+
+    if (Object.keys(erros).length) {
+      mostrarErros(erros);
+      App.toast('Confira os campos destacados.', 'aviso');
+      return;
+    }
+
+    definirCarregando(true);
+
+    App.api('apiCriarExtravio', dados)
+      .then(function (resposta) {
+        if (resposta.ok) {
+          App.toast(resposta.mensagem, 'sucesso');
+          el('formUltimoSalvo').textContent = 'Último registro salvo: #' + resposta.registro.id +
+            ' · ' + resposta.registro.codigo;
+          limparFormulario(true);
+          if (typeof App.atualizarDashboard === 'function') App.atualizarDashboard();
+          if (typeof App.invalidarListaExtravios === 'function') App.invalidarListaExtravios();
+          return;
+        }
+
+        if (resposta.tipo === 'duplicado') {
+          mostrarDuplicado(resposta);
+          App.toast(resposta.mensagem, 'erro');
+          return;
+        }
+
+        if (resposta.tipo === 'validacao' && resposta.erros) {
+          mostrarErros(resposta.erros);
+          App.toast(resposta.mensagem, 'aviso');
+          return;
+        }
+
+        App.toast(resposta.mensagem || 'Não foi possível salvar o registro. Tente novamente.', 'erro');
+      })
+      .catch(function (erro) {
+        App.toast(erro.message, 'erro');
+      })
+      .then(function () {
+        definirCarregando(false);
+      });
+  }
+
+  function limparFormulario(manterContexto) {
+    limparErros();
+    el('campoCodigo').value = '';
+    el('campoValor').value = '';
+    el('campoEndereco').value = '';
+    el('campoCausa').value = '';
+    el('campoDataDesconto').value = '';
+
+    if (!manterContexto) {
+      el('campoTransportadora').value = '';
+      el('campoResponsavel').value = '';
+      valoresPadrao();
+    } else {
+      el('campoStatus').value = App.estado.config.statusPadrao;
+      atualizarRotuloDesconto();
+    }
+
+    el('campoCodigo').focus();
+  }
+
+  function atualizarRotuloDesconto() {
+    const config = App.estado.config;
+    const obrigatoria = config.exigirDataDesconto && el('campoStatus').value === config.statusParaDesconto;
+    const rotulo = el('rotuloDataDesconto');
+    rotulo.textContent = obrigatoria ? '*' : '(opcional)';
+    rotulo.className = obrigatoria ? 'obrigatorio' : 'opcional';
+  }
+
+  /* ================================================================
+     Registro da view
+     ================================================================ */
+
+  App.registrarView('formulario', {
+    aoIniciar: function (config) {
+      preencherListas(config);
+      valoresPadrao();
+
+      el('formExtravio').addEventListener('submit', enviar);
+
+      el('btnLimparForm').addEventListener('click', function () {
+        App.confirmar({
+          titulo: 'Limpar formulário',
+          mensagem: 'Os dados digitados serão descartados. Deseja continuar?',
+          confirmar: 'Limpar'
+        }).then(function (confirmado) {
+          if (confirmado) limparFormulario(false);
+        });
+      });
+
+      el('campoValor').addEventListener('input', function (evento) {
+        const posicaoFinal = evento.target.selectionStart === evento.target.value.length;
+        evento.target.value = App.mascararMoeda(evento.target.value);
+        if (posicaoFinal) {
+          evento.target.selectionStart = evento.target.selectionEnd = evento.target.value.length;
+        }
+      });
+
+      el('campoCodigo').addEventListener('input', function (evento) {
+        evento.target.value = evento.target.value.toUpperCase().replace(/\s+/g, '');
+        esconderDuplicado();
+      });
+
+      el('campoStatus').addEventListener('change', atualizarRotuloDesconto);
+
+      CAMPOS.forEach(function (campo) {
+        const bloco = document.querySelector('[data-campo="' + campo + '"]');
+        if (!bloco) return;
+        const entrada = bloco.querySelector('.entrada');
+        if (!entrada) return;
+        entrada.addEventListener('input', function () { limparErro(campo); });
+        entrada.addEventListener('change', function () { limparErro(campo); });
+      });
+
+      el('duplicadoFechar').addEventListener('click', function () {
+        esconderDuplicado();
+        limparErro('codigo');
+      });
+
+      el('duplicadoVerDetalhes').addEventListener('click', function () {
+        if (duplicadoAtual) App.abrirDetalhes(duplicadoAtual.id);
+      });
+
+      el('duplicadoUsarMulta').addEventListener('click', function () {
+        const config = App.estado.config;
+        App.confirmar({
+          titulo: 'Registrar como ' + config.statusMulta,
+          mensagem: 'O código já existe, mas registros com status "' + config.statusMulta +
+            '" podem repetir. Deseja mudar o status para "' + config.statusMulta + '" e salvar?',
+          confirmar: 'Sim, registrar'
+        }).then(function (confirmado) {
+          if (!confirmado) return;
+          el('campoStatus').value = config.statusMulta;
+          atualizarRotuloDesconto();
+          esconderDuplicado();
+          enviar();
+        });
+      });
+
+      el('formRecarregarListas').addEventListener('click', function () {
+        const botao = el('formRecarregarListas');
+        botao.disabled = true;
+        App.api('apiRecarregarListas')
+          .then(function (resposta) {
+            if (!resposta.ok) {
+              App.toast(resposta.mensagem, 'erro');
+              return;
+            }
+            App.estado.config.status = resposta.status;
+            App.estado.config.transportadoras = resposta.transportadoras;
+            App.estado.config.responsaveis = resposta.responsaveis;
+            App.estado.config.causas = resposta.causas;
+            preencherListas(App.estado.config);
+            if (typeof App.recarregarFiltrosExtravios === 'function') App.recarregarFiltrosExtravios();
+            App.toast('Listas atualizadas.', 'sucesso');
+          })
+          .catch(function (erro) { App.toast(erro.message, 'erro'); })
+          .then(function () { botao.disabled = false; });
+      });
+    },
+
+    aoEntrar: function () {
+      setTimeout(function () { el('campoCodigo').focus(); }, 120);
+    }
+  });
+})();
+</script>

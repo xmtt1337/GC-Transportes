@@ -1,0 +1,406 @@
+<script>
+/**
+ * ScriptsExtravios.html — listagem, filtros, ordenação, paginação e detalhes.
+ */
+(function () {
+
+  const Fmt = App.Fmt;
+  const COLUNAS = 10;
+
+  const estado = {
+    pagina: 1,
+    porPagina: 25,
+    ordenarPor: 'data',
+    ordem: 'desc',
+    carregado: false,
+    carregando: false
+  };
+
+  function el(id) { return document.getElementById(id); }
+
+  /* ================================================================
+     Filtros
+     ================================================================ */
+
+  function filtros() {
+    return {
+      busca: el('extBusca').value,
+      status: el('extStatus').value,
+      transportadora: el('extTransportadora').value,
+      dataInicio: el('extInicio').value,
+      dataFim: el('extFim').value,
+      ordenarPor: estado.ordenarPor,
+      ordem: estado.ordem,
+      pagina: estado.pagina,
+      porPagina: estado.porPagina
+    };
+  }
+
+  function preencherFiltros() {
+    const config = App.estado.config;
+    App.preencherSelect(el('extStatus'), config.status, { vazio: 'Todos' });
+    App.preencherSelect(el('extTransportadora'), config.transportadoras, { vazio: 'Todas' });
+  }
+
+  function limparFiltros() {
+    el('extBusca').value = '';
+    el('extStatus').value = '';
+    el('extTransportadora').value = '';
+    el('extInicio').value = '';
+    el('extFim').value = '';
+    estado.pagina = 1;
+    carregar();
+  }
+
+  /* ================================================================
+     Carregamento da tabela
+     ================================================================ */
+
+  function carregar() {
+    if (estado.carregando) return;
+    estado.carregando = true;
+    el('extCorpo').innerHTML = App.linhasCarregando(COLUNAS, 6);
+
+    App.api('apiListarExtravios', filtros())
+      .then(function (resposta) {
+        if (!resposta.ok) {
+          el('extCorpo').innerHTML = App.linhaVazia(COLUNAS, 'Não foi possível carregar', resposta.mensagem, '⚠️');
+          App.toast(resposta.mensagem, 'erro');
+          return;
+        }
+        desenhar(resposta);
+        estado.carregado = true;
+      })
+      .catch(function (erro) {
+        el('extCorpo').innerHTML = App.linhaVazia(COLUNAS, 'Não foi possível carregar', erro.message, '⚠️');
+        App.toast(erro.message, 'erro');
+      })
+      .then(function () {
+        estado.carregando = false;
+      });
+  }
+
+  function desenhar(dados) {
+    estado.pagina = dados.pagina;
+
+    if (!dados.itens.length) {
+      el('extCorpo').innerHTML = App.linhaVazia(
+        COLUNAS,
+        'Nenhum extravio encontrado',
+        'Ajuste os filtros ou registre um novo extravio.'
+      );
+    } else {
+      el('extCorpo').innerHTML = dados.itens.map(function (r) {
+        return '<tr data-id="' + r.id + '">' +
+          '<td data-rotulo="ID" class="col-id">#' + r.id + '</td>' +
+          '<td data-rotulo="Status">' + App.badgeStatus(r.status) + '</td>' +
+          '<td data-rotulo="Transportadora">' + App.marcaTransportadora(r.transportadora) + '</td>' +
+          '<td data-rotulo="Data">' + Fmt.data(r.data) + (r.hora ? ' <small style="color:var(--tinta-3)">' + Fmt.esc(r.hora) + '</small>' : '') + '</td>' +
+          '<td data-rotulo="Código"><strong>' + Fmt.esc(r.codigo) + '</strong></td>' +
+          '<td data-rotulo="Valor" class="col-num">' + Fmt.moeda(r.valor) + '</td>' +
+          '<td data-rotulo="Responsável" class="truncar-md">' + Fmt.esc(Fmt.ou(r.responsavel)) + '</td>' +
+          '<td data-rotulo="Endereço" class="truncar">' + Fmt.esc(Fmt.ou(r.endereco)) + '</td>' +
+          '<td data-rotulo="Causa" class="truncar">' + Fmt.esc(Fmt.ou(r.causa)) + '</td>' +
+          '<td data-rotulo="Data desconto">' + (r.dataDesconto ? Fmt.data(r.dataDesconto) : '—') + '</td>' +
+          '</tr>';
+      }).join('');
+
+      el('extCorpo').querySelectorAll('tr[data-id]').forEach(function (linha) {
+        linha.addEventListener('click', function () {
+          abrirDetalhes(linha.getAttribute('data-id'));
+        });
+      });
+    }
+
+    el('extPaginaInfo').textContent = 'Página ' + dados.pagina + ' de ' + dados.paginas;
+    el('extAnterior').disabled = dados.pagina <= 1;
+    el('extProxima').disabled = dados.pagina >= dados.paginas;
+
+    el('extResumo').innerHTML =
+      '<span>Registros: <strong>' + Fmt.numero(dados.total) + '</strong></span>' +
+      '<span>Valor total: <strong>' + Fmt.moeda(dados.valorTotal) + '</strong></span>' +
+      '<span>Para desconto: <strong>' + Fmt.moeda(dados.valorParaDesconto) + '</strong></span>';
+
+    document.querySelectorAll('#extTabela th.ordenavel').forEach(function (th) {
+      const campo = th.getAttribute('data-ordenar');
+      const ativo = campo === estado.ordenarPor;
+      th.classList.toggle('ordenado', ativo);
+      const seta = th.querySelector('.seta');
+      if (seta) seta.textContent = estado.ordem === 'asc' ? '▲' : '▼';
+    });
+  }
+
+  /* ================================================================
+     Detalhes
+     ================================================================ */
+
+  function detalhe(rotulo, valor, largo) {
+    return '<div class="detalhe' + (largo ? ' largo' : '') + '">' +
+      '<div class="rotulo">' + Fmt.esc(rotulo) + '</div>' +
+      '<div class="valor">' + valor + '</div></div>';
+  }
+
+  function abrirDetalhes(id) {
+    App.abrirModal({
+      titulo: 'Extravio #' + id,
+      corpo: '<div class="carregando-bloco"><span class="spinner spinner-escuro"></span> Carregando detalhes…</div>',
+      rodape: ''
+    });
+
+    App.api('apiObterExtravio', id)
+      .then(function (resposta) {
+        if (!resposta.ok) {
+          App.fecharModal();
+          App.toast(resposta.mensagem, 'erro');
+          return;
+        }
+        desenharDetalhes(resposta.registro, resposta.historico);
+      })
+      .catch(function (erro) {
+        App.fecharModal();
+        App.toast(erro.message, 'erro');
+      });
+  }
+
+  function desenharDetalhes(registro, historico) {
+    const config = App.estado.config;
+
+    const corpo =
+      '<div class="grade-detalhes">' +
+      detalhe('Status', App.badgeStatus(registro.status)) +
+      detalhe('Transportadora', App.marcaTransportadora(registro.transportadora)) +
+      detalhe('Código', '<strong>' + Fmt.esc(registro.codigo) + '</strong>') +
+      detalhe('Data e hora', Fmt.data(registro.data) + ' às ' + Fmt.esc(Fmt.ou(registro.hora, '--:--'))) +
+      detalhe('Valor', '<strong>' + Fmt.moeda(registro.valor) + '</strong>') +
+      detalhe('Responsável', Fmt.esc(Fmt.ou(registro.responsavel))) +
+      detalhe('Data do desconto', registro.dataDesconto ? Fmt.data(registro.dataDesconto) : '—') +
+      detalhe('Registrado em', Fmt.esc(Fmt.ou(registro.dataRegistro))) +
+      detalhe('Registrado por', Fmt.esc(Fmt.ou(registro.usuario))) +
+      detalhe('Endereço', Fmt.esc(Fmt.ou(registro.endereco)), true) +
+      detalhe('Causa do problema', Fmt.esc(Fmt.ou(registro.causa)).replace(/\n/g, '<br>'), true) +
+      '</div>' +
+
+      '<div class="secao" style="margin-top:22px;padding-top:22px;border-top:1px dashed var(--borda)">' +
+      '<div class="secao-titulo">Alterar status</div>' +
+      '<div class="grade-campos">' +
+      '<div class="campo c6" data-campo-modal="status">' +
+      '<label for="modalStatus">Novo status</label>' +
+      '<select class="entrada" id="modalStatus"></select>' +
+      '<span class="erro-campo"></span></div>' +
+      '<div class="campo c6" data-campo-modal="dataDesconto">' +
+      '<label for="modalDataDesconto">Data desconto</label>' +
+      '<input class="entrada" type="date" id="modalDataDesconto" value="' + Fmt.esc(registro.dataDesconto || '') + '">' +
+      '<span class="erro-campo"></span></div>' +
+      '<div class="campo c12" data-campo-modal="observacao">' +
+      '<label for="modalObservacao">Observação <span class="opcional">(opcional)</span></label>' +
+      '<input class="entrada" type="text" id="modalObservacao" maxlength="500" placeholder="Motivo da alteração">' +
+      '<span class="erro-campo"></span></div>' +
+      '</div></div>' +
+
+      '<div class="secao" style="margin-top:22px;padding-top:22px;border-top:1px dashed var(--borda)">' +
+      '<div class="secao-titulo">Histórico deste registro</div>' +
+      renderizarHistorico(historico) +
+      '</div>';
+
+    App.abrirModal({
+      titulo: 'Extravio #' + registro.id,
+      corpo: corpo,
+      rodape: '',
+      aoAbrir: function () {
+        App.preencherSelect(document.getElementById('modalStatus'), config.status, { selecionado: registro.status });
+        montarRodapePadrao(registro);
+      }
+    });
+  }
+
+  function renderizarHistorico(historico) {
+    if (!historico || !historico.length) {
+      return '<p style="color:var(--tinta-3);font-size:12.5px">Nenhum evento registrado.</p>';
+    }
+    return '<ul class="linha-tempo">' + historico.map(function (h) {
+      const transicao = h.statusAnterior
+        ? Fmt.esc(h.statusAnterior) + ' → ' + Fmt.esc(h.novoStatus)
+        : Fmt.esc(h.novoStatus);
+      return '<li>' +
+        '<span class="marcador" style="background:' + App.corStatus(h.novoStatus) + '"></span>' +
+        '<div class="conteudo">' +
+        '<div class="titulo">' + Fmt.esc(h.acao) + ' · ' + transicao + '</div>' +
+        '<div class="meta">' + Fmt.esc(h.dataHora) + ' · ' + Fmt.esc(Fmt.ou(h.usuario)) + '</div>' +
+        (h.observacao ? '<div class="obs">' + Fmt.esc(h.observacao) + '</div>' : '') +
+        '</div></li>';
+    }).join('') + '</ul>';
+  }
+
+  /**
+   * A confirmação acontece dentro do próprio modal (trocando só o rodapé),
+   * porque abrir um segundo modal substituiria o conteúdo deste.
+   */
+  function montarRodapePadrao(registro) {
+    const rodape = document.getElementById('modalRodape');
+    rodape.innerHTML =
+      '<button class="btn btn-secundario" type="button" data-fechar-modal>Fechar</button>' +
+      '<button class="btn btn-primario" type="button" id="modalSalvarStatus">Salvar alteração</button>';
+    document.getElementById('modalSalvarStatus').addEventListener('click', function () {
+      pedirConfirmacao(registro);
+    });
+  }
+
+  function limparErrosModal() {
+    document.querySelectorAll('[data-campo-modal]').forEach(function (bloco) {
+      bloco.classList.remove('com-erro');
+      const alvo = bloco.querySelector('.erro-campo');
+      if (alvo) alvo.textContent = '';
+    });
+  }
+
+  function pedirConfirmacao(registro) {
+    limparErrosModal();
+    const novoStatus = document.getElementById('modalStatus').value;
+    const rodape = document.getElementById('modalRodape');
+
+    rodape.innerHTML =
+      '<span class="dica" style="margin-right:auto;text-align:left">Confirmar a mudança de "' +
+      Fmt.esc(registro.status) + '" para "' + Fmt.esc(novoStatus) + '"?</span>' +
+      '<button class="btn btn-secundario" type="button" id="modalCancelarAlteracao">Cancelar</button>' +
+      '<button class="btn btn-primario" type="button" id="modalConfirmarAlteracao">Sim, alterar</button>';
+
+    document.getElementById('modalCancelarAlteracao').addEventListener('click', function () {
+      montarRodapePadrao(registro);
+    });
+    document.getElementById('modalConfirmarAlteracao').addEventListener('click', function () {
+      executarAlteracao(registro);
+    });
+  }
+
+  function executarAlteracao(registro) {
+    const botaoConfirmar = document.getElementById('modalConfirmarAlteracao');
+    const botaoCancelar = document.getElementById('modalCancelarAlteracao');
+    if (!botaoConfirmar || botaoConfirmar.disabled) return;
+
+    botaoConfirmar.disabled = true;
+    botaoConfirmar.innerHTML = '<span class="spinner"></span> Salvando…';
+    if (botaoCancelar) botaoCancelar.disabled = true;
+
+    App.api('apiAtualizarStatus', {
+      id: registro.id,
+      status: document.getElementById('modalStatus').value,
+      dataDesconto: document.getElementById('modalDataDesconto').value,
+      observacao: document.getElementById('modalObservacao').value
+    })
+      .then(function (resposta) {
+        if (resposta.ok) {
+          App.fecharModal();
+          App.toast(resposta.mensagem, 'sucesso');
+          carregar();
+          if (typeof App.atualizarDashboard === 'function') App.atualizarDashboard();
+          if (typeof App.invalidarHistorico === 'function') App.invalidarHistorico();
+          return;
+        }
+
+        if (resposta.tipo === 'validacao' && resposta.erros) {
+          Object.keys(resposta.erros).forEach(function (campo) {
+            const bloco = document.querySelector('[data-campo-modal="' + campo + '"]');
+            if (!bloco) return;
+            bloco.classList.add('com-erro');
+            const alvo = bloco.querySelector('.erro-campo');
+            if (alvo) alvo.textContent = resposta.erros[campo];
+          });
+          App.toast(resposta.mensagem, 'aviso');
+        } else {
+          App.toast(resposta.mensagem, resposta.tipo === 'sem_mudanca' ? 'info' : 'erro');
+        }
+        montarRodapePadrao(registro);
+      })
+      .catch(function (erro) {
+        App.toast(erro.message, 'erro');
+        montarRodapePadrao(registro);
+      });
+  }
+
+  /* ================================================================
+     Registro da view
+     ================================================================ */
+
+  App.registrarView('extravios', {
+    aoIniciar: function (config) {
+      preencherFiltros();
+      estado.porPagina = config.itensPorPagina || 25;
+
+      const opcaoPadrao = el('extPorPagina').querySelector('option[value="' + estado.porPagina + '"]');
+      if (opcaoPadrao) {
+        el('extPorPagina').value = String(estado.porPagina);
+      } else {
+        const nova = document.createElement('option');
+        nova.value = String(estado.porPagina);
+        nova.textContent = estado.porPagina + ' / página';
+        el('extPorPagina').insertBefore(nova, el('extPorPagina').firstChild);
+        el('extPorPagina').value = String(estado.porPagina);
+      }
+
+      const recarregarDaPrimeira = function () {
+        estado.pagina = 1;
+        carregar();
+      };
+
+      el('extBusca').addEventListener('input', App.debounce(recarregarDaPrimeira, 350));
+      el('extStatus').addEventListener('change', recarregarDaPrimeira);
+      el('extTransportadora').addEventListener('change', recarregarDaPrimeira);
+      el('extInicio').addEventListener('change', recarregarDaPrimeira);
+      el('extFim').addEventListener('change', recarregarDaPrimeira);
+      el('extLimpar').addEventListener('click', limparFiltros);
+      el('extAtualizar').addEventListener('click', carregar);
+      el('extNovo').addEventListener('click', function () { App.navegar('formulario'); });
+
+      el('extPorPagina').addEventListener('change', function () {
+        estado.porPagina = Number(el('extPorPagina').value) || 25;
+        estado.pagina = 1;
+        carregar();
+      });
+
+      el('extAnterior').addEventListener('click', function () {
+        if (estado.pagina > 1) {
+          estado.pagina--;
+          carregar();
+        }
+      });
+
+      el('extProxima').addEventListener('click', function () {
+        estado.pagina++;
+        carregar();
+      });
+
+      document.querySelectorAll('#extTabela th.ordenavel').forEach(function (th) {
+        th.addEventListener('click', function () {
+          const campo = th.getAttribute('data-ordenar');
+          if (estado.ordenarPor === campo) {
+            estado.ordem = estado.ordem === 'asc' ? 'desc' : 'asc';
+          } else {
+            estado.ordenarPor = campo;
+            estado.ordem = campo === 'valor' || campo === 'data' || campo === 'id' ? 'desc' : 'asc';
+          }
+          estado.pagina = 1;
+          carregar();
+        });
+      });
+    },
+
+    aoEntrar: function (parametros) {
+      if (parametros && parametros.status) {
+        el('extStatus').value = parametros.status;
+        estado.pagina = 1;
+        carregar();
+        return;
+      }
+      if (!estado.carregado) carregar();
+    }
+  });
+
+  /* Ganchos usados por outras telas. */
+  App.abrirDetalhes = abrirDetalhes;
+  App.invalidarListaExtravios = function () {
+    estado.carregado = false;
+    if (App.estado.viewAtual === 'extravios') carregar();
+  };
+  App.recarregarFiltrosExtravios = preencherFiltros;
+})();
+</script>

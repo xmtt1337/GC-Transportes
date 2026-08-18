@@ -1,0 +1,62 @@
+<section class="view" id="view-historico">
+
+  <div class="cabecalho-view">
+    <div>
+      <h1>Histórico</h1>
+      <p class="subtitulo">Todas as criações e alterações de status</p>
+    </div>
+    <div class="barra-acoes">
+      <button class="btn btn-secundario" id="hisAtualizar" type="button">↻ Atualizar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-corpo">
+      <div class="barra-filtros" style="grid-template-columns:minmax(180px,2fr) minmax(140px,1fr) auto">
+        <div class="filtro">
+          <label for="hisBusca">Buscar</label>
+          <div class="campo-busca">
+            <span class="lupa">🔎</span>
+            <input class="entrada" type="search" id="hisBusca" placeholder="ID do extravio, usuário ou status">
+          </div>
+        </div>
+        <div class="filtro">
+          <label for="hisAcao">Ação</label>
+          <select class="entrada" id="hisAcao">
+            <option value="">Todas</option>
+            <option value="CRIAÇÃO">Criação</option>
+            <option value="ALTERAÇÃO DE STATUS">Alteração de status</option>
+          </select>
+        </div>
+        <button class="btn btn-secundario" id="hisLimpar" type="button">Limpar</button>
+      </div>
+    </div>
+
+    <div class="envelope-tabela">
+      <table class="tabela" id="hisTabela">
+        <thead>
+          <tr>
+            <th>ID extravio</th>
+            <th>Data/hora</th>
+            <th>Usuário</th>
+            <th>Ação</th>
+            <th>Status anterior</th>
+            <th>Novo status</th>
+            <th>Observação</th>
+          </tr>
+        </thead>
+        <tbody id="hisCorpo"></tbody>
+      </table>
+    </div>
+
+    <div class="card-rodape">
+      <div class="resumo-rodape" id="hisResumo"></div>
+      <div class="paginacao">
+        <button class="btn btn-secundario btn-pequeno" id="hisAnterior" type="button">← Anterior</button>
+        <span class="info" id="hisPaginaInfo">—</span>
+        <button class="btn btn-secundario btn-pequeno" id="hisProxima" type="button">Próxima →</button>
+      </div>
+    </div>
+  </div>
+
+</section>

@@ -1,0 +1,453 @@
+<script>
+/**
+ * Scripts.html — núcleo da interface.
+ * Roteamento, comunicação com o Apps Script, toasts, modal e formatação.
+ */
+const App = (function () {
+
+  const estado = {
+    config: null,
+    viewAtual: null,
+    views: {}
+  };
+
+  const TITULOS = {
+    dashboard: 'Dashboard',
+    formulario: 'Registrar extravio',
+    extravios: 'Extravios',
+    historico: 'Histórico'
+  };
+
+  /* ================================================================
+     Comunicação com o servidor
+     ================================================================ */
+
+  /**
+   * Envolve google.script.run em uma Promise.
+   * @param {string} funcao Nome da função no Apps Script.
+   * @param {...*} args
+   * @return {Promise<Object>}
+   */
+  function api(funcao) {
+    const args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function (resolver, rejeitar) {
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        rejeitar(new Error('Não foi possível falar com o servidor.'));
+        return;
+      }
+      const executor = google.script.run
+        .withSuccessHandler(function (resposta) {
+          if (!resposta) {
+            rejeitar(new Error('O servidor não respondeu. Tente novamente.'));
+            return;
+          }
+          resolver(resposta);
+        })
+        .withFailureHandler(function (erro) {
+          console.error(funcao, erro);
+          rejeitar(new Error('Falha de comunicação com o servidor. Verifique sua conexão e tente novamente.'));
+        });
+
+      if (typeof executor[funcao] !== 'function') {
+        rejeitar(new Error('Ação indisponível.'));
+        return;
+      }
+      executor[funcao].apply(executor, args);
+    });
+  }
+
+  /* ================================================================
+     Formatação
+     ================================================================ */
+
+  const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formatadorNumero = new Intl.NumberFormat('pt-BR');
+
+  const Fmt = {
+    /** @param {number} valor */
+    moeda: function (valor) {
+      const n = Number(valor);
+      return formatadorMoeda.format(isFinite(n) ? n : 0);
+    },
+    /** @param {number} valor */
+    numero: function (valor) {
+      const n = Number(valor);
+      return formatadorNumero.format(isFinite(n) ? n : 0);
+    },
+    /** "yyyy-MM-dd" -> "dd/MM/yyyy" */
+    data: function (iso) {
+      if (!iso) return '—';
+      const partes = String(iso).split('-');
+      if (partes.length !== 3) return String(iso);
+      return partes[2] + '/' + partes[1] + '/' + partes[0];
+    },
+    /** Escapa HTML. */
+    esc: function (valor) {
+      if (valor === null || valor === undefined) return '';
+      return String(valor)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    },
+    /** Texto ou travessão quando vazio. */
+    ou: function (valor, alternativa) {
+      const texto = valor === null || valor === undefined ? '' : String(valor).trim();
+      return texto ? texto : (alternativa === undefined ? '—' : alternativa);
+    }
+  };
+
+  /**
+   * Máscara monetária brasileira baseada nos dígitos digitados.
+   * @param {string} bruto
+   * @return {string}
+   */
+  function mascararMoeda(bruto) {
+    const digitos = String(bruto || '').replace(/\D/g, '').replace(/^0+/, '');
+    if (!digitos) return '';
+    const centavos = digitos.padStart(3, '0');
+    const inteiro = centavos.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return 'R$ ' + inteiro + ',' + centavos.slice(-2);
+  }
+
+  /* ================================================================
+     Cores e badges
+     ================================================================ */
+
+  function corStatus(status) {
+    const cores = (estado.config && estado.config.coresStatus) || {};
+    return cores[status] || '#64748B';
+  }
+
+  function corTransportadora(nome) {
+    const cores = (estado.config && estado.config.coresTransportadora) || {};
+    return cores[nome] || '#64748B';
+  }
+
+  /** Badge de status: cor + texto (a identidade nunca depende só da cor). */
+  function badgeStatus(status) {
+    const cor = corStatus(status);
+    return '<span class="badge badge-neutro">' +
+      '<span class="badge-ponto" style="background:' + cor + '"></span>' +
+      Fmt.esc(Fmt.ou(status)) + '</span>';
+  }
+
+  /** Transportadora com marcador colorido antes do nome. */
+  function marcaTransportadora(nome) {
+    if (!nome) return '—';
+    return '<span class="barra-nome"><span class="barra-chave" style="background:' +
+      corTransportadora(nome) + '"></span><span>' + Fmt.esc(nome) + '</span></span>';
+  }
+
+  /* ================================================================
+     Toasts
+     ================================================================ */
+
+  const ICONES_TOAST = { sucesso: '✅', erro: '⛔', aviso: '⚠️', info: 'ℹ️' };
+
+  /**
+   * @param {string} mensagem
+   * @param {string=} tipo sucesso | erro | aviso | info
+   * @param {number=} duracao
+   */
+  function toast(mensagem, tipo, duracao) {
+    const container = document.getElementById('toasts');
+    if (!container) return;
+
+    const classe = ICONES_TOAST[tipo] ? tipo : 'info';
+    const elemento = document.createElement('div');
+    elemento.className = 'toast toast-' + classe;
+    elemento.innerHTML = '<span class="icone">' + ICONES_TOAST[classe] + '</span>' +
+      '<span class="texto">' + Fmt.esc(mensagem) + '</span>';
+    container.appendChild(elemento);
+
+    const tempo = duracao || (classe === 'erro' ? 6000 : 3800);
+    setTimeout(function () {
+      elemento.classList.add('saindo');
+      setTimeout(function () { elemento.remove(); }, 180);
+    }, tempo);
+  }
+
+  /* ================================================================
+     Modal
+     ================================================================ */
+
+  let aoFecharModal = null;
+
+  /**
+   * @param {{titulo: string, corpo: string, rodape: string=, estreita: boolean=,
+   *          aoAbrir: function=, aoFechar: function=}} opcoes
+   */
+  function abrirModal(opcoes) {
+    const modal = document.getElementById('modal');
+    document.getElementById('modalTitulo').textContent = opcoes.titulo || '';
+    document.getElementById('modalCorpo').innerHTML = opcoes.corpo || '';
+    document.getElementById('modalRodape').innerHTML = opcoes.rodape || '';
+    document.getElementById('modalCaixa').classList.toggle('estreita', !!opcoes.estreita);
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    aoFecharModal = opcoes.aoFechar || null;
+    if (typeof opcoes.aoAbrir === 'function') opcoes.aoAbrir();
+  }
+
+  function fecharModal() {
+    const modal = document.getElementById('modal');
+    if (!modal || modal.hidden) return;
+    modal.hidden = true;
+    document.body.style.overflow = '';
+    const callback = aoFecharModal;
+    aoFecharModal = null;
+    if (typeof callback === 'function') callback();
+  }
+
+  /**
+   * Confirmação antes de ações importantes.
+   * @param {{titulo: string, mensagem: string, confirmar: string=, perigo: boolean=}} opcoes
+   * @return {Promise<boolean>}
+   */
+  function confirmar(opcoes) {
+    return new Promise(function (resolver) {
+      let respondido = false;
+
+      abrirModal({
+        titulo: opcoes.titulo || 'Confirmar',
+        estreita: true,
+        corpo: '<p style="color:var(--tinta-2);line-height:1.6">' + Fmt.esc(opcoes.mensagem || '') + '</p>',
+        rodape: '<button class="btn btn-secundario" type="button" data-confirmar="nao">Cancelar</button>' +
+          '<button class="btn ' + (opcoes.perigo ? 'btn-perigo' : 'btn-primario') + '" type="button" data-confirmar="sim">' +
+          Fmt.esc(opcoes.confirmar || 'Confirmar') + '</button>',
+        aoAbrir: function () {
+          const rodape = document.getElementById('modalRodape');
+          rodape.querySelectorAll('[data-confirmar]').forEach(function (botao) {
+            botao.addEventListener('click', function () {
+              respondido = true;
+              fecharModal();
+              resolver(botao.getAttribute('data-confirmar') === 'sim');
+            });
+          });
+        },
+        aoFechar: function () {
+          if (!respondido) resolver(false);
+        }
+      });
+    });
+  }
+
+  /* ================================================================
+     Navegação
+     ================================================================ */
+
+  /**
+   * @param {string} nome
+   * @param {{aoIniciar: function=, aoEntrar: function=}} definicao
+   */
+  function registrarView(nome, definicao) {
+    estado.views[nome] = definicao || {};
+  }
+
+  /**
+   * @param {string} nome
+   * @param {Object=} parametros Repassados para aoEntrar().
+   */
+  function navegar(nome, parametros) {
+    if (!TITULOS[nome]) nome = 'dashboard';
+
+    document.querySelectorAll('.view').forEach(function (secao) {
+      secao.classList.toggle('ativa', secao.id === 'view-' + nome);
+    });
+    document.querySelectorAll('.nav-item').forEach(function (item) {
+      item.classList.toggle('ativo', item.getAttribute('data-view') === nome);
+    });
+    document.getElementById('tituloTopo').textContent = TITULOS[nome];
+
+    estado.viewAtual = nome;
+    fecharSidebar();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const view = estado.views[nome];
+    if (view && typeof view.aoEntrar === 'function') {
+      try {
+        view.aoEntrar(parametros || {});
+      } catch (erro) {
+        console.error('aoEntrar(' + nome + ')', erro);
+      }
+    }
+  }
+
+  function abrirSidebar() {
+    document.getElementById('sidebar').classList.add('aberta');
+    document.getElementById('overlaySidebar').hidden = false;
+  }
+
+  function fecharSidebar() {
+    document.getElementById('sidebar').classList.remove('aberta');
+    document.getElementById('overlaySidebar').hidden = true;
+  }
+
+  /* ================================================================
+     Utilidades
+     ================================================================ */
+
+  /**
+   * @param {function} funcao
+   * @param {number} espera
+   * @return {function}
+   */
+  function debounce(funcao, espera) {
+    let temporizador = null;
+    return function () {
+      const contexto = this;
+      const args = arguments;
+      clearTimeout(temporizador);
+      temporizador = setTimeout(function () { funcao.apply(contexto, args); }, espera);
+    };
+  }
+
+  /**
+   * Preenche um <select> a partir de uma lista.
+   * @param {HTMLSelectElement} select
+   * @param {string[]} itens
+   * @param {{vazio: string=, selecionado: string=}=} opcoes
+   */
+  function preencherSelect(select, itens, opcoes) {
+    if (!select) return;
+    const config = opcoes || {};
+    const anterior = config.selecionado !== undefined ? config.selecionado : select.value;
+
+    select.innerHTML = '';
+    if (config.vazio !== undefined) {
+      const vazio = document.createElement('option');
+      vazio.value = '';
+      vazio.textContent = config.vazio;
+      select.appendChild(vazio);
+    }
+    (itens || []).forEach(function (item) {
+      const opcao = document.createElement('option');
+      opcao.value = item;
+      opcao.textContent = item;
+      select.appendChild(opcao);
+    });
+
+    if (anterior && itens && itens.indexOf(anterior) >= 0) select.value = anterior;
+  }
+
+  /** Linha de tabela indicando ausência de dados. */
+  function linhaVazia(colunas, titulo, texto, emoji) {
+    return '<tr class="sem-hover"><td colspan="' + colunas + '">' +
+      '<div class="vazio"><span class="emoji">' + (emoji || '📭') + '</span>' +
+      '<strong>' + Fmt.esc(titulo) + '</strong>' + Fmt.esc(texto || '') + '</div></td></tr>';
+  }
+
+  /** Linhas de esqueleto durante o carregamento. */
+  function linhasCarregando(colunas, quantidade) {
+    let html = '';
+    for (let i = 0; i < (quantidade || 5); i++) {
+      html += '<tr class="sem-hover">';
+      for (let c = 0; c < colunas; c++) {
+        html += '<td><div class="esqueleto" style="width:' + (45 + ((i + c) % 5) * 11) + '%"></div></td>';
+      }
+      html += '</tr>';
+    }
+    return html;
+  }
+
+  /* ================================================================
+     Inicialização
+     ================================================================ */
+
+  function aplicarConfig(config) {
+    estado.config = config;
+
+    const email = config.usuario || 'não identificado';
+    document.getElementById('usuarioEmail').textContent = email;
+    document.getElementById('usuarioAvatar').textContent = (email[0] || '?').toUpperCase();
+    document.getElementById('rodapeVersao').textContent = 'v' + (config.app ? config.app.versao : '1.0.0');
+
+    const campoUsuario = document.getElementById('formUsuario');
+    if (campoUsuario) campoUsuario.textContent = email;
+  }
+
+  function iniciar() {
+    // Dados embutidos pelo servidor; sem eles, busca de novo.
+    const iniciais = window.DADOS_INICIAIS;
+    if (iniciais && iniciais.ok) {
+      aplicarConfig(iniciais);
+      iniciarViews();
+    } else {
+      api('apiBootstrap')
+        .then(function (resposta) {
+          if (!resposta.ok) throw new Error(resposta.mensagem);
+          aplicarConfig(resposta);
+          iniciarViews();
+        })
+        .catch(function (erro) {
+          toast(erro.message || 'Não foi possível carregar o sistema.', 'erro', 9000);
+        });
+    }
+
+    ligarEventosGlobais();
+  }
+
+  function iniciarViews() {
+    Object.keys(estado.views).forEach(function (nome) {
+      const view = estado.views[nome];
+      if (view && typeof view.aoIniciar === 'function') {
+        try {
+          view.aoIniciar(estado.config);
+        } catch (erro) {
+          console.error('aoIniciar(' + nome + ')', erro);
+        }
+      }
+    });
+    navegar('dashboard');
+  }
+
+  function ligarEventosGlobais() {
+    document.querySelectorAll('.nav-item').forEach(function (item) {
+      item.addEventListener('click', function () {
+        navegar(item.getAttribute('data-view'));
+      });
+    });
+
+    document.getElementById('btnMenu').addEventListener('click', abrirSidebar);
+    document.getElementById('overlaySidebar').addEventListener('click', fecharSidebar);
+
+    document.getElementById('modal').addEventListener('click', function (evento) {
+      if (evento.target.hasAttribute('data-fechar-modal')) fecharModal();
+    });
+
+    document.addEventListener('keydown', function (evento) {
+      if (evento.key === 'Escape') fecharModal();
+    });
+  }
+
+  /* ================================================================
+     API pública
+     ================================================================ */
+
+  return {
+    iniciar: iniciar,
+    estado: estado,
+    api: api,
+    Fmt: Fmt,
+    mascararMoeda: mascararMoeda,
+    corStatus: corStatus,
+    corTransportadora: corTransportadora,
+    badgeStatus: badgeStatus,
+    marcaTransportadora: marcaTransportadora,
+    toast: toast,
+    abrirModal: abrirModal,
+    fecharModal: fecharModal,
+    confirmar: confirmar,
+    registrarView: registrarView,
+    navegar: navegar,
+    debounce: debounce,
+    preencherSelect: preencherSelect,
+    linhaVazia: linhaVazia,
+    linhasCarregando: linhasCarregando,
+    /** Substituído por ScriptsExtravios.html. */
+    abrirDetalhes: function () {}
+  };
+})();
+</script>

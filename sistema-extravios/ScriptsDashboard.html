@@ -1,0 +1,189 @@
+<script>
+/**
+ * ScriptsDashboard.html — indicadores gerais.
+ * Barras horizontais: cada linha carrega nome + valor em texto, então a
+ * identidade nunca depende apenas da cor.
+ */
+(function () {
+
+  const Fmt = App.Fmt;
+  let carregado = false;
+
+  function elementos() {
+    return {
+      carregando: document.getElementById('dashCarregando'),
+      conteudo: document.getElementById('dashConteudo'),
+      kpis: document.getElementById('dashKpis'),
+      valores: document.getElementById('dashValores'),
+      transportadoras: document.getElementById('dashTransportadoras'),
+      ultimos: document.getElementById('dashUltimos'),
+      periodo: document.getElementById('dashPeriodoTexto'),
+      inicio: document.getElementById('dashInicio'),
+      fim: document.getElementById('dashFim')
+    };
+  }
+
+  function filtros() {
+    const el = elementos();
+    return { dataInicio: el.inicio.value, dataFim: el.fim.value };
+  }
+
+  function carregar() {
+    const el = elementos();
+    el.carregando.hidden = false;
+    el.conteudo.hidden = true;
+
+    App.api('apiDashboard', filtros())
+      .then(function (resposta) {
+        if (!resposta.ok) {
+          App.toast(resposta.mensagem, 'erro');
+          el.carregando.innerHTML = '<span>Não foi possível carregar os indicadores.</span>';
+          return;
+        }
+        desenhar(resposta);
+        el.carregando.hidden = true;
+        el.conteudo.hidden = false;
+        carregado = true;
+      })
+      .catch(function (erro) {
+        App.toast(erro.message, 'erro');
+        el.carregando.innerHTML = '<span>Não foi possível carregar os indicadores.</span>';
+      });
+  }
+
+  function desenhar(dados) {
+    const el = elementos();
+
+    /* ---- Contadores ---- */
+    let html = '<div class="kpi destaque">' +
+      '<div class="kpi-rotulo">Total de registros</div>' +
+      '<div class="kpi-valor">' + Fmt.numero(dados.total) + '</div>' +
+      '<div class="kpi-nota">' + Fmt.moeda(dados.valorTotal) + ' em objetos</div>' +
+      '</div>';
+
+    dados.porStatus.forEach(function (item) {
+      const proporcao = dados.total ? Math.round((item.quantidade / dados.total) * 100) : 0;
+      html += '<div class="kpi clicavel" data-status="' + Fmt.esc(item.nome) + '" role="button" tabindex="0">' +
+        '<div class="kpi-rotulo">' +
+        '<span class="kpi-ponto" style="background:' + App.corStatus(item.nome) + '"></span>' +
+        Fmt.esc(item.nome) + '</div>' +
+        '<div class="kpi-valor">' + Fmt.numero(item.quantidade) + '</div>' +
+        '<div class="kpi-nota">' + proporcao + '% · ' + Fmt.moeda(item.valor) + '</div>' +
+        '</div>';
+    });
+    el.kpis.innerHTML = html;
+
+    el.kpis.querySelectorAll('[data-status]').forEach(function (card) {
+      const irParaLista = function () {
+        App.navegar('extravios', { status: card.getAttribute('data-status') });
+      };
+      card.addEventListener('click', irParaLista);
+      card.addEventListener('keydown', function (evento) {
+        if (evento.key === 'Enter' || evento.key === ' ') {
+          evento.preventDefault();
+          irParaLista();
+        }
+      });
+    });
+
+    /* ---- Valores ---- */
+    const media = dados.total ? dados.valorTotal / dados.total : 0;
+    el.valores.innerHTML =
+      '<div class="kpi"><div class="kpi-rotulo">Valor total dos registros</div>' +
+      '<div class="kpi-valor">' + Fmt.moeda(dados.valorTotal) + '</div>' +
+      '<div class="kpi-nota">' + Fmt.numero(dados.total) + ' registros</div></div>' +
+
+      '<div class="kpi"><div class="kpi-rotulo">' +
+      '<span class="kpi-ponto" style="background:' + App.corStatus(App.estado.config.statusParaDesconto) + '"></span>' +
+      'Valor para desconto</div>' +
+      '<div class="kpi-valor">' + Fmt.moeda(dados.valorParaDesconto) + '</div>' +
+      '<div class="kpi-nota">Status "' + Fmt.esc(App.estado.config.statusParaDesconto) + '"</div></div>' +
+
+      '<div class="kpi"><div class="kpi-rotulo">Valor médio por registro</div>' +
+      '<div class="kpi-valor">' + Fmt.moeda(media) + '</div>' +
+      '<div class="kpi-nota">Média do período</div></div>';
+
+    /* ---- Barras por transportadora ---- */
+    const maximo = dados.porTransportadora.reduce(function (maior, item) {
+      return Math.max(maior, item.quantidade);
+    }, 0);
+
+    if (!maximo) {
+      el.transportadoras.innerHTML = '<div class="vazio"><span class="emoji">📦</span>' +
+        '<strong>Nenhum registro no período</strong>Ajuste o filtro de datas para ver os números.</div>';
+    } else {
+      el.transportadoras.innerHTML = dados.porTransportadora.map(function (item) {
+        const largura = maximo ? Math.max((item.quantidade / maximo) * 100, item.quantidade ? 2 : 0) : 0;
+        return '<div class="barra-linha">' +
+          '<div class="barra-nome">' +
+          '<span class="barra-chave" style="background:' + App.corTransportadora(item.nome) + '"></span>' +
+          '<span>' + Fmt.esc(item.nome) + '</span></div>' +
+          '<div class="barra-trilho">' +
+          '<div class="barra-preenchimento" style="width:' + largura + '%;background:' + App.corTransportadora(item.nome) + '"></div>' +
+          '</div>' +
+          '<div class="barra-valor">' + Fmt.numero(item.quantidade) +
+          '<small>' + Fmt.moeda(item.valor) + '</small></div>' +
+          '</div>';
+      }).join('');
+    }
+
+    /* ---- Período ---- */
+    if (dados.periodo.dataInicio || dados.periodo.dataFim) {
+      el.periodo.textContent = 'De ' + (dados.periodo.dataInicio ? Fmt.data(dados.periodo.dataInicio) : 'início') +
+        ' até ' + (dados.periodo.dataFim ? Fmt.data(dados.periodo.dataFim) : 'hoje');
+    } else {
+      el.periodo.textContent = 'Todo o período';
+    }
+
+    /* ---- Últimos registros ---- */
+    if (!dados.ultimos.length) {
+      el.ultimos.innerHTML = App.linhaVazia(7, 'Nenhum extravio registrado ainda', 'Use "Registrar extravio" para começar.');
+    } else {
+      el.ultimos.innerHTML = dados.ultimos.map(function (r) {
+        return '<tr data-id="' + r.id + '">' +
+          '<td data-rotulo="ID" class="col-id">#' + r.id + '</td>' +
+          '<td data-rotulo="Status">' + App.badgeStatus(r.status) + '</td>' +
+          '<td data-rotulo="Transportadora">' + App.marcaTransportadora(r.transportadora) + '</td>' +
+          '<td data-rotulo="Data">' + Fmt.data(r.data) + '</td>' +
+          '<td data-rotulo="Código">' + Fmt.esc(r.codigo) + '</td>' +
+          '<td data-rotulo="Valor" class="col-num">' + Fmt.moeda(r.valor) + '</td>' +
+          '<td data-rotulo="Responsável" class="truncar-md">' + Fmt.esc(Fmt.ou(r.responsavel)) + '</td>' +
+          '</tr>';
+      }).join('');
+
+      el.ultimos.querySelectorAll('tr[data-id]').forEach(function (linha) {
+        linha.addEventListener('click', function () {
+          App.abrirDetalhes(linha.getAttribute('data-id'));
+        });
+      });
+    }
+  }
+
+  App.registrarView('dashboard', {
+    aoIniciar: function () {
+      document.getElementById('dashAtualizar').addEventListener('click', carregar);
+      document.getElementById('dashInicio').addEventListener('change', carregar);
+      document.getElementById('dashFim').addEventListener('change', carregar);
+      document.getElementById('dashVerTodos').addEventListener('click', function () {
+        App.navegar('extravios');
+      });
+      document.getElementById('dashLimpar').addEventListener('click', function () {
+        document.getElementById('dashInicio').value = '';
+        document.getElementById('dashFim').value = '';
+        carregar();
+      });
+    },
+    aoEntrar: function () {
+      if (!carregado) carregar();
+    },
+    /** Chamado após salvar/alterar um registro. */
+    invalidar: function () { carregado = false; }
+  });
+
+  // Permite que outras telas forcem a atualização do painel.
+  App.atualizarDashboard = function () {
+    carregado = false;
+    if (App.estado.viewAtual === 'dashboard') carregar();
+  };
+})();
+</script>

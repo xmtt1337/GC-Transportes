@@ -1,0 +1,138 @@
+<section class="view" id="view-formulario">
+
+  <div class="cabecalho-view">
+    <div>
+      <h1>Registrar extravio</h1>
+      <p class="subtitulo">Todos os campos marcados com <span class="obrigatorio">*</span> são obrigatórios</p>
+    </div>
+    <div class="barra-acoes">
+      <button class="btn btn-fantasma btn-pequeno" id="formRecarregarListas" type="button" title="Recarregar transportadoras e entregadores">
+        ↻ Atualizar listas
+      </button>
+    </div>
+  </div>
+
+  <!-- Aviso de código duplicado -->
+  <div class="alerta alerta-erro" id="alertaDuplicado">
+    <div class="alerta-titulo">⚠️ Este código já está registrado.</div>
+    <div class="alerta-corpo">
+      <div id="duplicadoTexto">Já existe um registro com este código no sistema.</div>
+      <div class="grade-duplicado" id="duplicadoDados"></div>
+      <div class="barra-acoes" style="margin-top:12px">
+        <button class="btn btn-secundario btn-pequeno" id="duplicadoVerDetalhes" type="button">Ver registro existente</button>
+        <button class="btn btn-secundario btn-pequeno" id="duplicadoUsarMulta" type="button">Registrar como Multa</button>
+        <button class="btn btn-fantasma btn-pequeno" id="duplicadoFechar" type="button">Dispensar</button>
+      </div>
+    </div>
+  </div>
+
+  <form id="formExtravio" novalidate autocomplete="off">
+    <div class="card">
+      <div class="card-cabecalho">
+        <h2>Dados do extravio</h2>
+        <span class="dica">Registrado por <span id="formUsuario">—</span></span>
+      </div>
+
+      <div class="card-corpo">
+
+        <!-- Seção 1: identificação -->
+        <div class="secao">
+          <div class="secao-titulo">Identificação</div>
+          <div class="grade-campos">
+
+            <div class="campo c4" data-campo="status">
+              <label for="campoStatus">Status</label>
+              <select class="entrada" id="campoStatus" name="status"></select>
+              <span class="dica-campo">Padrão: Pendente</span>
+              <span class="erro-campo"></span>
+            </div>
+
+            <div class="campo c4" data-campo="transportadora">
+              <label for="campoTransportadora">Transportadora <span class="obrigatorio">*</span></label>
+              <select class="entrada" id="campoTransportadora" name="transportadora"></select>
+              <span class="erro-campo"></span>
+            </div>
+
+            <div class="campo c4" data-campo="codigo">
+              <label for="campoCodigo">Código do objeto <span class="obrigatorio">*</span></label>
+              <input class="entrada" type="text" id="campoCodigo" name="codigo" placeholder="Ex.: ABC123456BR" maxlength="60" spellcheck="false">
+              <span class="erro-campo"></span>
+            </div>
+
+            <div class="campo c3" data-campo="data">
+              <label for="campoData">Data <span class="obrigatorio">*</span></label>
+              <input class="entrada" type="date" id="campoData" name="data">
+              <span class="erro-campo"></span>
+            </div>
+
+            <div class="campo c3" data-campo="hora">
+              <label for="campoHora">Hora <span class="obrigatorio">*</span></label>
+              <input class="entrada" type="time" id="campoHora" name="hora">
+              <span class="erro-campo"></span>
+            </div>
+
+            <div class="campo c3" data-campo="valor">
+              <label for="campoValor">Valor <span class="obrigatorio">*</span></label>
+              <input class="entrada" type="text" id="campoValor" name="valor" placeholder="R$ 0,00" inputmode="numeric">
+              <span class="erro-campo"></span>
+            </div>
+
+            <div class="campo c3" data-campo="responsavel">
+              <label for="campoResponsavel">Responsável <span class="obrigatorio">*</span></label>
+              <select class="entrada" id="campoResponsavel" name="responsavel"></select>
+              <span class="erro-campo"></span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Seção 2: ocorrência -->
+        <div class="secao">
+          <div class="secao-titulo">Ocorrência</div>
+          <div class="grade-campos">
+
+            <div class="campo c12" data-campo="endereco">
+              <label for="campoEndereco">Endereço <span class="obrigatorio">*</span></label>
+              <input class="entrada" type="text" id="campoEndereco" name="endereco" placeholder="Rua, número, bairro, cidade" maxlength="250">
+              <span class="erro-campo"></span>
+            </div>
+
+            <div class="campo c12" data-campo="causa">
+              <label for="campoCausa">Causa do problema <span class="obrigatorio">*</span></label>
+              <textarea class="entrada" id="campoCausa" name="causa" rows="3" maxlength="500" placeholder="Descreva o que aconteceu"></textarea>
+              <div class="sugestoes" id="sugestoesCausa"></div>
+              <span class="erro-campo"></span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Seção 3: desconto -->
+        <div class="secao">
+          <div class="secao-titulo">Desconto</div>
+          <div class="grade-campos">
+            <div class="campo c4" data-campo="dataDesconto">
+              <label for="campoDataDesconto">
+                Data desconto
+                <span class="opcional" id="rotuloDataDesconto">(opcional)</span>
+              </label>
+              <input class="entrada" type="date" id="campoDataDesconto" name="dataDesconto">
+              <span class="dica-campo">Obrigatória quando o status for "Para desconto".</span>
+              <span class="erro-campo"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="card-rodape">
+        <span class="dica" id="formUltimoSalvo"></span>
+        <div class="barra-acoes">
+          <button class="btn btn-secundario" type="button" id="btnLimparForm">Limpar</button>
+          <button class="btn btn-primario" type="submit" id="btnSalvar">Registrar extravio</button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+</section>
