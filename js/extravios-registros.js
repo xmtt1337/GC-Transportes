@@ -1,10 +1,14 @@
-// ───── EXTRAVIOS — REGISTROS (cards, cadastro e edição) ─────
+// ───── EXTRAVIOS — REGISTROS (lista, cadastro e edição) ─────
 //
 // Grava direto na planilha de extravios pelo backend (/extravios/*), que é o
 // único ponto do sistema com permissão de escrita no Google Sheets.
 //
 // As telas Pesquisar e Dashboard (extravios.js) continuam lendo o CSV público —
 // não foram tocadas. Este módulo é só o cadastro/edição.
+//
+// "Data desconto" e "Para desconto?" não são preenchidas aqui: quem cuida
+// disso é o financeiro, direto na planilha. O sistema grava quem salvou e
+// quando, nas colunas Ultima atualização e usuario.
 
 const EXTRVREG_CAMPOS_ROTULO = {
     status: "Status", transportadora: "Transportadora", data: "Data", hora: "Hora",
@@ -26,6 +30,7 @@ const EXTRVREG_CORES_STATUS = {
 let _extrvRegOpcoes   = null;
 let _extrvRegEstado   = { pagina: 1, busca: "", status: "", transportadora: "", cidade: "", completude: "" };
 let _extrvRegBuscaTmr = null;
+let _extrvRegCodigoTmr = null;
 let _extrvRegCarregando = false;
 let _extrvRegEditando = null;   // linha em edição; null = registro novo
 let _extrvRegSalvando = false;  // trava contra duplo clique
@@ -127,14 +132,14 @@ function _extrvRegIrPara(pagina) {
     document.getElementById("tela-extravios-registros").scrollTo({ top: 0, behavior: "smooth" });
 }
 
-/* ───────────────────────── Cards ───────────────────────── */
+/* ───────────────────────── Lista ───────────────────────── */
 
 async function _extrvRegCarregar() {
     if (_extrvRegCarregando) return;
     _extrvRegCarregando = true;
 
     const alvo = document.getElementById("extrvreg-lista");
-    alvo.innerHTML = `<div class="extrv-reg-vazio">Carregando registros da planilha...</div>`;
+    alvo.innerHTML = `<div class="extrv-reg-carregando"><span class="extrv-reg-spinner"></span>Carregando registros...</div>`;
 
     const q = new URLSearchParams();
     Object.keys(_extrvRegEstado).forEach(k => { if (_extrvRegEstado[k]) q.set(k, _extrvRegEstado[k]); });
@@ -161,7 +166,11 @@ function _extrvRegRender(dados) {
     if (!dados.itens.length) {
         alvo.innerHTML = `<div class="extrv-reg-vazio">Nenhum registro encontrado com esses filtros.</div>`;
     } else {
-        alvo.innerHTML = dados.itens.map(_extrvRegCardHtml).join("");
+        alvo.innerHTML =
+            `<div class="extrv-reg-linha-item extrv-reg-cabecalho">
+                <div>Código</div><div>Status</div><div>Pendência</div><div class="extrv-reg-num">Linha</div>
+             </div>` +
+            dados.itens.map(_extrvRegItemHtml).join("");
     }
 
     const nav = document.getElementById("extrvreg-paginacao");
@@ -175,61 +184,75 @@ function _extrvRegRender(dados) {
     }
 }
 
-function _extrvRegCardHtml(r) {
+function _extrvRegItemHtml(r) {
     const cor = _extrvRegCorStatus(r.status);
 
-    const faltando = r.faltando.length
-        ? `<div class="extrv-reg-faltando">Falta preencher: ${r.faltando.map(c => _extrvRegEsc(EXTRVREG_CAMPOS_ROTULO[c] || c)).join(", ")}</div>`
-        : "";
+    const pendencia = r.faltando.length
+        ? `<span class="extrv-reg-pendente">Falta ${r.faltando.map(c => _extrvRegEsc((EXTRVREG_CAMPOS_ROTULO[c] || c).toLowerCase())).join(", ")}</span>`
+        : `<span class="extrv-reg-completo">completo</span>`;
 
     const dup = String(r.duplicado || "").toUpperCase() === "DUPLICADO"
-        ? `<span class="extrv-reg-badge extrv-reg-badge-dup">DUPLICADO</span>` : "";
-
-    const linhaInfo = (rotulo, valor) =>
-        `<div class="extrv-reg-linha"><span>${rotulo}</span><b>${_extrvRegEsc(valor || "—")}</b></div>`;
+        ? `<span class="extrv-reg-dup">duplicado</span>` : "";
 
     return `
-    <div class="extrv-reg-card ${r.completo ? "" : "incompleto"}" onclick="_extrvRegAbrirModal(${r.linha})">
-        <div class="extrv-reg-card-topo">
-            <span class="extrv-reg-codigo">${_extrvRegEsc(r.codigo || "(sem código)")}</span>
-            <div class="extrv-reg-badges">
-                ${dup}
-                <span class="extrv-reg-badge" style="color:${cor};border-color:${cor}44;background:${cor}18">${_extrvRegEsc(r.status || "—")}</span>
-            </div>
+    <div class="extrv-reg-linha-item" data-linha="${r.linha}" onclick="_extrvRegAbrirModal(${r.linha})">
+        <div class="extrv-reg-cod">${_extrvRegEsc(r.codigo || "(sem código)")}${dup}</div>
+        <div class="extrv-reg-status">
+            <span class="extrv-reg-marca" style="background:${cor}"></span>${_extrvRegEsc(r.status || "—")}
         </div>
-        <div class="extrv-reg-card-corpo">
-            ${linhaInfo("Transportadora", r.transportadora)}
-            ${linhaInfo("Data", (r.data || "") + (r.hora ? " " + r.hora : ""))}
-            ${linhaInfo("Cidade", r.cidade)}
-            ${linhaInfo("Valor", r.valor)}
-            ${linhaInfo("Responsável", r.responsavel)}
-            ${r.dataDesconto ? linhaInfo("Desconto", r.dataDesconto) : ""}
-        </div>
-        ${faltando}
-        <div class="extrv-reg-card-rodape">linha ${r.linha} da planilha</div>
+        <div class="extrv-reg-pend">${pendencia}</div>
+        <div class="extrv-reg-num">${r.linha}</div>
     </div>`;
 }
 
-/* ───────────────────────── Modal de cadastro/edição ───────────────────────── */
+/* ───────────────────────── Modal ───────────────────────── */
+
+function _extrvRegRemoverOverlay() {
+    const o = document.getElementById("extrvreg-overlay");
+    if (o) o.remove();
+}
+
+/** Feedback imediato: o registro vem do servidor e pode demorar. */
+function _extrvRegOverlayCarregando() {
+    _extrvRegRemoverOverlay();
+    const overlay = document.createElement("div");
+    overlay.className = "extrv-reg-overlay";
+    overlay.id = "extrvreg-overlay";
+    overlay.innerHTML = `
+        <div class="extrv-reg-modal extrv-reg-modal-carregando">
+            <span class="extrv-reg-spinner"></span>
+            <span>Carregando registro...</span>
+        </div>`;
+    document.body.appendChild(overlay);
+}
 
 async function _extrvRegAbrirModal(linha) {
     _extrvRegEditando = linha || null;
-    let registro = null;
 
-    if (linha) {
-        try {
-            registro = await _extrvRegApi("/extravios/registros/" + linha);
-        } catch (err) {
-            _extrvRegEditando = null;
-            gcAlert(err.message, "Extravios");
-            return;
-        }
+    if (!linha) {
+        _extrvRegMontarModal(null);
+        return;
     }
 
-    _extrvRegMontarModal(registro);
+    const item = document.querySelector(`.extrv-reg-linha-item[data-linha="${linha}"]`);
+    if (item) item.classList.add("abrindo");
+    _extrvRegOverlayCarregando();
+
+    try {
+        const registro = await _extrvRegApi("/extravios/registros/" + linha);
+        _extrvRegMontarModal(registro);
+    } catch (err) {
+        _extrvRegRemoverOverlay();
+        _extrvRegEditando = null;
+        gcAlert(err.message, "Extravios");
+    } finally {
+        if (item) item.classList.remove("abrindo");
+    }
 }
 
 function _extrvRegMontarModal(r) {
+    _extrvRegRemoverOverlay();
+
     const existente = r || {};
     const novo = !_extrvRegEditando;
 
@@ -238,9 +261,9 @@ function _extrvRegMontarModal(r) {
             (lista || []).map(i => `<option value="${_extrvRegEsc(i)}"${String(i) === String(atual || "") ? " selected" : ""}>${_extrvRegEsc(i)}</option>`)
         ).join("");
 
-    const dataIso = existente.dataIso || "";
-    const desconto = existente.dataDesconto || "";
-    const ehQuinzena = /^Q[12]/i.test(desconto);
+    const autoria = existente.atualizadoEm || existente.usuario
+        ? `<div class="extrv-reg-autoria">Última alteração: ${_extrvRegEsc(existente.atualizadoEm || "—")}${existente.usuario ? " por " + _extrvRegEsc(existente.usuario) : ""}</div>`
+        : "";
 
     const overlay = document.createElement("div");
     overlay.className = "extrv-reg-overlay";
@@ -252,7 +275,7 @@ function _extrvRegMontarModal(r) {
                 <div class="extrv-reg-modal-titulo">${novo ? "Novo extravio" : "Editar extravio"}</div>
                 <div class="extrv-reg-modal-sub">${novo ? "Vai para a primeira linha vazia da planilha" : "Linha " + _extrvRegEditando + " da planilha"}</div>
             </div>
-            <button class="extrv-reg-fechar" onclick="_extrvRegFecharModal()">×</button>
+            <button class="extrv-reg-fechar" onclick="_extrvRegFecharModal()">&times;</button>
         </div>
 
         <div class="extrv-reg-aviso" id="extrvreg-aviso"></div>
@@ -285,7 +308,7 @@ function _extrvRegMontarModal(r) {
 
             <div class="extrv-reg-campo c3">
                 <label>Data ${novo ? "<i>*</i>" : ""}</label>
-                <input type="date" id="extrvreg-data" value="${_extrvRegEsc(dataIso)}">
+                <input type="date" id="extrvreg-data" value="${_extrvRegEsc(existente.dataIso || "")}">
                 <span class="extrv-reg-erro" data-erro="data"></span>
             </div>
             <div class="extrv-reg-campo c3">
@@ -317,27 +340,10 @@ function _extrvRegMontarModal(r) {
                 <textarea id="extrvreg-causa" rows="2" maxlength="500">${_extrvRegEsc(existente.causa || "")}</textarea>
                 <span class="extrv-reg-erro" data-erro="causa"></span>
             </div>
-
-            <div class="extrv-reg-campo c6">
-                <label>Desconto <i class="opc">(opcional)</i></label>
-                <select id="extrvreg-desconto-tipo" onchange="_extrvRegTrocarDesconto()">
-                    <option value=""${!desconto ? " selected" : ""}>Sem desconto</option>
-                    <option value="quinzena"${ehQuinzena ? " selected" : ""}>Quinzena</option>
-                    <option value="data"${desconto && !ehQuinzena ? " selected" : ""}>Data específica</option>
-                </select>
-            </div>
-            <div class="extrv-reg-campo c6">
-                <label>&nbsp;</label>
-                <select id="extrvreg-desconto-quinzena" style="display:${ehQuinzena ? "block" : "none"}">
-                    ${(_extrvRegOpcoes.quinzenas || []).map(q => `<option value="${q}"${q === desconto ? " selected" : ""}>${q}</option>`).join("")}
-                </select>
-                <input type="date" id="extrvreg-desconto-data" style="display:${desconto && !ehQuinzena ? "block" : "none"}"
-                       value="${_extrvRegEsc(desconto && !ehQuinzena ? _extrvRegParaIso(desconto) : "")}">
-                <span class="extrv-reg-erro" data-erro="dataDesconto"></span>
-            </div>
         </div>
 
         <div class="extrv-reg-modal-rodape">
+            ${autoria}
             <button class="extrv-reg-btn" onclick="_extrvRegFecharModal()">Cancelar</button>
             <button class="extrv-reg-btn primario" id="extrvreg-salvar" onclick="_extrvRegSalvar()">
                 ${novo ? "Registrar extravio" : "Salvar alterações"}
@@ -351,21 +357,9 @@ function _extrvRegMontarModal(r) {
 }
 
 function _extrvRegFecharModal() {
-    const o = document.getElementById("extrvreg-overlay");
-    if (o) o.remove();
+    _extrvRegRemoverOverlay();
     _extrvRegEditando = null;
     _extrvRegSalvando = false;
-}
-
-function _extrvRegTrocarDesconto() {
-    const tipo = document.getElementById("extrvreg-desconto-tipo").value;
-    document.getElementById("extrvreg-desconto-quinzena").style.display = tipo === "quinzena" ? "block" : "none";
-    document.getElementById("extrvreg-desconto-data").style.display     = tipo === "data" ? "block" : "none";
-}
-
-function _extrvRegParaIso(br) {
-    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(br || "").trim());
-    return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
 }
 
 function _extrvRegMascaraValor(input) {
@@ -385,8 +379,8 @@ async function _extrvRegChecarCodigo() {
     const codigo = document.getElementById("extrvreg-codigo").value.trim();
     if (codigo.length < 3) { dica.textContent = ""; dica.className = "extrv-reg-dica"; return; }
 
-    clearTimeout(_extrvRegBuscaTmr);
-    _extrvRegBuscaTmr = setTimeout(async () => {
+    clearTimeout(_extrvRegCodigoTmr);
+    _extrvRegCodigoTmr = setTimeout(async () => {
         try {
             const q = new URLSearchParams({ status: document.getElementById("extrvreg-status").value });
             if (_extrvRegEditando) q.set("ignorarLinha", _extrvRegEditando);
@@ -409,11 +403,6 @@ async function _extrvRegChecarCodigo() {
 /* ───────────────────────── Salvar ───────────────────────── */
 
 function _extrvRegColetar() {
-    const tipo = document.getElementById("extrvreg-desconto-tipo").value;
-    let dataDesconto = "";
-    if (tipo === "quinzena") dataDesconto = document.getElementById("extrvreg-desconto-quinzena").value;
-    else if (tipo === "data") dataDesconto = document.getElementById("extrvreg-desconto-data").value;
-
     return {
         status:         document.getElementById("extrvreg-status").value,
         transportadora: document.getElementById("extrvreg-transportadora").value,
@@ -424,8 +413,7 @@ function _extrvRegColetar() {
         valor:          document.getElementById("extrvreg-valor").value.trim(),
         responsavel:    document.getElementById("extrvreg-responsavel").value.trim(),
         endereco:       document.getElementById("extrvreg-endereco").value.trim(),
-        causa:          document.getElementById("extrvreg-causa").value.trim(),
-        dataDesconto:   dataDesconto
+        causa:          document.getElementById("extrvreg-causa").value.trim()
     };
 }
 
@@ -467,10 +455,10 @@ async function _extrvRegSalvar() {
     if (_extrvRegSalvando) return;
 
     const botao = document.getElementById("extrvreg-salvar");
-    const rotuloOriginal = botao.textContent;
+    const rotuloOriginal = botao.textContent.trim();
     _extrvRegSalvando = true;
     botao.disabled = true;
-    botao.textContent = "Salvando...";
+    botao.innerHTML = `<span class="extrv-reg-spinner"></span>Salvando...`;
 
     _extrvRegLimparErros();
 
