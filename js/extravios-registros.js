@@ -10,6 +10,13 @@
 // disso é o financeiro, direto na planilha. O sistema grava quem salvou e
 // quando, nas colunas Ultima atualização e usuario.
 
+const EXTRVREG_SITUACAO = {
+    pendencia: "Pendência",
+    resolvido: "Resolvido",
+    desconto: "Para desconto",
+    outro: "Fora dos 5 status"
+};
+
 const EXTRVREG_CAMPOS_ROTULO = {
     status: "Status", transportadora: "Transportadora", data: "Data", hora: "Hora",
     cidade: "Cidade", codigo: "Código", valor: "Valor", responsavel: "Responsável",
@@ -80,7 +87,7 @@ function _extrvRegPreencherFiltros() {
         sel.innerHTML = `<option value="">${rotuloVazio}</option>` +
             itens.map(i => `<option value="${_extrvRegEsc(i)}">${_extrvRegEsc(i)}</option>`).join("");
     };
-    encher("extrvreg-f-status", _extrvRegOpcoes.status, "Todos os status");
+    encher("extrvreg-f-status", _extrvRegOpcoes.statusExistentes, "Todos os status");
     encher("extrvreg-f-transp", _extrvRegOpcoes.transportadoras, "Todas as transportadoras");
     encher("extrvreg-f-cidade", _extrvRegOpcoes.cidades, "Todas as cidades");
 }
@@ -143,10 +150,19 @@ async function _extrvRegCarregar() {
 function _extrvRegRender(dados) {
     const r = dados.resumo;
     const filtrado = dados.encontrados !== r.total;
-    document.getElementById("extrvreg-resumo").innerHTML =
-        `<span><b>${(filtrado ? dados.encontrados : r.total).toLocaleString("pt-BR")}</b> ` +
-        `${filtrado ? "de " + r.total.toLocaleString("pt-BR") + " registros" : "registros"}</span>` +
-        `<span class="pendente"><b>${r.incompletos.toLocaleString("pt-BR")}</b> a completar</span>`;
+    const n = v => v.toLocaleString("pt-BR");
+
+    let resumo =
+        `<span><b>${n(filtrado ? dados.encontrados : r.total)}</b> ` +
+        `${filtrado ? "de " + n(r.total) + " registros" : "registros"}</span>` +
+        `<span><b>${n(r.pendencia)}</b> pendência</span>` +
+        `<span><b>${n(r.resolvido)}</b> resolvidos</span>` +
+        `<span><b>${n(r.desconto)}</b> para desconto</span>`;
+    // Status antigos que não estão mais no formulário. Some quando zerar.
+    if (r.outro) resumo += `<span><b>${n(r.outro)}</b> fora dos 5 status</span>`;
+    if (r.incompletos) resumo += `<span class="pendente"><b>${n(r.incompletos)}</b> a completar</span>`;
+
+    document.getElementById("extrvreg-resumo").innerHTML = resumo;
 
     const alvo = document.getElementById("extrvreg-lista");
     if (!dados.itens.length) {
@@ -246,6 +262,13 @@ function _extrvRegMontarModal(r) {
             (lista || []).map(i => `<option value="${_extrvRegEsc(i)}"${String(i) === String(atual || "") ? " selected" : ""}>${_extrvRegEsc(i)}</option>`)
         ).join("");
 
+    // Editando um registro com status antigo, o valor dele entra na lista para
+    // não ser trocado sem querer ao salvar.
+    const statusDisponiveis = _extrvRegOpcoes.status.slice();
+    if (existente.status && !statusDisponiveis.some(x => x === existente.status)) {
+        statusDisponiveis.unshift(existente.status);
+    }
+
     const autoria = existente.atualizadoEm || existente.usuario
         ? `<div class="extrv-reg-autoria">Última alteração: ${_extrvRegEsc(existente.atualizadoEm || "—")}${existente.usuario ? " por " + _extrvRegEsc(existente.usuario) : ""}</div>`
         : "";
@@ -275,7 +298,7 @@ function _extrvRegMontarModal(r) {
             </div>
             <div class="extrv-reg-campo c6">
                 <label>Status ${obrigatorio}</label>
-                <select id="extrvreg-status" onchange="_extrvRegChecarCodigo()">${opcao(_extrvRegOpcoes.status, existente.status)}</select>
+                <select id="extrvreg-status" onchange="_extrvRegChecarCodigo()">${opcao(statusDisponiveis, existente.status)}</select>
                 <span class="extrv-reg-erro" data-erro="status"></span>
             </div>
 
@@ -322,7 +345,9 @@ function _extrvRegMontarModal(r) {
 
             <div class="extrv-reg-campo c12">
                 <label>Causa do problema ${obrigatorio}</label>
-                <textarea id="extrvreg-causa" rows="2" maxlength="500">${_extrvRegEsc(existente.causa || "")}</textarea>
+                <input type="text" id="extrvreg-causa" list="extrvreg-causas" maxlength="500"
+                       value="${_extrvRegEsc(existente.causa || "")}" placeholder="Escolha uma ou escreva">
+                <datalist id="extrvreg-causas">${(_extrvRegOpcoes.causas || []).map(c => `<option value="${_extrvRegEsc(c)}">`).join("")}</datalist>
                 <span class="extrv-reg-erro" data-erro="causa"></span>
             </div>
         </div>
@@ -516,6 +541,7 @@ async function _extrvRegExportar() {
             "Última atualização": r.atualizadoEm,
             "Usuário": r.usuario,
             "Origem": r.origem === "sistema" ? "Sistema" : "Planilha",
+            "Situação": EXTRVREG_SITUACAO[r.situacao] || r.situacao,
             "Falta preencher": r.faltando.map(c => (EXTRVREG_CAMPOS_ROTULO[c] || c).toLowerCase()).join(", "),
             "Linha": r.linha
         }));
