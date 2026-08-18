@@ -4091,9 +4091,10 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .extrv-reg-filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 16px 0; }
 
 .extrv-reg-filtros select {
-    background: transparent; color: var(--text-muted);
+    background: var(--bg); color: var(--text-muted);
     border: 1px solid var(--border); border-radius: 2px;
     padding: 6px 8px; font-size: 12.5px; outline: none; cursor: pointer;
+    color-scheme: dark;
 }
 .extrv-reg-filtros select:hover { color: var(--text); border-color: var(--border-blue); }
 .extrv-reg-filtros select:focus { color: var(--text); border-color: var(--blue); }
@@ -4240,7 +4241,14 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
     border: 1px solid var(--border); border-radius: 2px;
     padding: 8px 10px; font-size: 13px; font-family: 'Inter', sans-serif;
     outline: none; transition: border-color .1s;
+    /* Faz o calendário e o relógio nativos virem escuros. */
+    color-scheme: dark;
 }
+/* O select precisa de fundo sólido: o popup nativo herda daqui, e transparente
+   vira branco com o texto claro por cima — ilegível. */
+.extrv-reg-campo select { background: var(--surface); }
+.extrv-reg-campo select option,
+.extrv-reg-filtros select option { background: var(--surface); color: var(--text); }
 .extrv-reg-campo textarea { resize: vertical; min-height: 56px; }
 .extrv-reg-campo input:focus,
 .extrv-reg-campo select:focus,
