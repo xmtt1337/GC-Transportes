@@ -1,0 +1,1065 @@
+<title>Contrato de Emissão de CT-e</title>
+<style>
+  :root{
+    --paper:#FCFBF8; --surface:#F4F2ED; --sunk:#EEEBE4;
+    --ink:#1B1E22; --ink-2:#4E555E; --ink-3:#7C848D;
+    --rule:#DCD7CD; --rule-2:#C6C0B4;
+    --accent:#1A4E5A; --accent-soft:#E2EDEF; --accent-line:#9FC2C9;
+    --alert:#8A3324; --alert-soft:#F7EAE5;
+    --font-serif:"Palatino Linotype","Book Antiqua",Palatino,"Iowan Old Style","Hoefler Text",Georgia,serif;
+    --font-ui:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    --font-mono:"Cascadia Mono",Consolas,"SFMono-Regular",ui-monospace,"Roboto Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#15181B; --surface:#1C2126; --sunk:#22282E;
+      --ink:#E9E7E1; --ink-2:#A9B1B9; --ink-3:#79828B;
+      --rule:#2E343A; --rule-2:#3B434A;
+      --accent:#77B7C3; --accent-soft:#16323A; --accent-line:#2E5A66;
+      --alert:#E09079; --alert-soft:#36211B;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#15181B; --surface:#1C2126; --sunk:#22282E;
+    --ink:#E9E7E1; --ink-2:#A9B1B9; --ink-3:#79828B;
+    --rule:#2E343A; --rule-2:#3B434A;
+    --accent:#77B7C3; --accent-soft:#16323A; --accent-line:#2E5A66;
+    --alert:#E09079; --alert-soft:#36211B;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:var(--font-serif); font-size:16px; line-height:1.62;
+    margin:0; padding:0 1.25rem 6rem;
+    -webkit-font-smoothing:antialiased;
+  }
+  .doc{max-width:47rem; margin:0 auto}
+
+  /* painel de instrucoes (nao imprime) */
+  .guia{
+    font-family:var(--font-ui); font-size:.86rem; line-height:1.55;
+    background:var(--surface); border:1px solid var(--rule);
+    border-left:3px solid var(--accent);
+    padding:1.15rem 1.35rem; margin:2.5rem 0 3.5rem;
+    display:flex; flex-direction:column; gap:.7rem;
+  }
+  .guia h3{
+    font-family:var(--font-ui); font-size:.7rem; letter-spacing:.13em;
+    text-transform:uppercase; color:var(--accent); margin:0; font-weight:600;
+  }
+  .guia p{margin:0; color:var(--ink-2)}
+  .guia ul{margin:0; padding-left:1.1rem; color:var(--ink-2); display:flex; flex-direction:column; gap:.35rem}
+  .guia strong{color:var(--ink); font-weight:600}
+  .guia code{font-family:var(--font-mono); font-size:.82em; background:var(--sunk); padding:.1em .35em; border-radius:2px}
+
+  /* cabecalho do documento */
+  header.folha{border-top:2px solid var(--ink); padding-top:1.4rem; margin-bottom:3rem}
+  .eyebrow{
+    font-family:var(--font-ui); font-size:.68rem; font-weight:600;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--accent);
+    display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+  }
+  .eyebrow span:last-child{color:var(--ink-3); font-weight:500}
+  h1{
+    font-family:var(--font-serif); font-weight:400; font-size:clamp(1.6rem,4.2vw,2.15rem);
+    line-height:1.22; text-wrap:balance; margin:1.1rem 0 0; letter-spacing:-.01em;
+  }
+  .subtitulo{
+    font-family:var(--font-ui); font-size:.9rem; color:var(--ink-2);
+    margin:.8rem 0 0; max-width:38rem;
+  }
+
+  /* partes */
+  .partes{display:flex; flex-direction:column; gap:1.1rem; margin:2.2rem 0 0}
+  .parte{border-top:1px solid var(--rule); padding-top:.9rem}
+  .parte .papel{
+    font-family:var(--font-ui); font-size:.68rem; font-weight:600; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); display:block; margin-bottom:.45rem;
+  }
+  .parte p{margin:0; font-size:.97rem}
+
+  /* sumario */
+  nav.sumario{
+    margin:3rem 0; padding:1.2rem 1.4rem; background:var(--surface);
+    border:1px solid var(--rule); font-family:var(--font-ui);
+  }
+  nav.sumario h3{
+    font-size:.68rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 .85rem; font-weight:600;
+  }
+  nav.sumario ol{
+    list-style:none; margin:0; padding:0; columns:2; column-gap:2rem; font-size:.85rem;
+  }
+  nav.sumario li{margin-bottom:.3rem; break-inside:avoid}
+  nav.sumario a{color:var(--ink-2); text-decoration:none; display:flex; gap:.55rem}
+  nav.sumario a:hover{color:var(--accent)}
+  nav.sumario .num{font-family:var(--font-mono); font-size:.78rem; color:var(--ink-3); min-width:1.9rem}
+  @media (max-width:600px){nav.sumario ol{columns:1}}
+
+  /* considerandos */
+  .considerandos{margin:2.5rem 0 3rem; padding-left:1.1rem; border-left:2px solid var(--accent-line)}
+  .considerandos p{margin:0 0 .8rem; font-size:.97rem; color:var(--ink-2)}
+  .considerandos p strong{color:var(--ink); font-variant:small-caps; letter-spacing:.02em}
+  .resolvem{margin:0; font-size:.97rem}
+
+  /* clausulas */
+  section.clausula{margin:0 0 2.6rem}
+  section.clausula > h2{
+    font-family:var(--font-ui); font-size:.98rem; font-weight:600; line-height:1.4;
+    margin:0 0 1.1rem; padding-bottom:.5rem; border-bottom:1px solid var(--rule-2);
+    display:flex; gap:.7rem; align-items:baseline; text-wrap:balance;
+  }
+  section.clausula > h2 .cn{
+    font-family:var(--font-mono); font-size:.72rem; font-weight:400; letter-spacing:.06em;
+    color:var(--accent); text-transform:uppercase; white-space:nowrap;
+  }
+  .item{
+    display:grid; grid-template-columns:3.1rem 1fr; gap:0 .8rem;
+    margin-bottom:.85rem; break-inside:avoid;
+  }
+  .item > .n{
+    font-family:var(--font-mono); font-size:.78rem; color:var(--accent);
+    text-align:right; padding-top:.32em; font-variant-numeric:tabular-nums;
+  }
+  .item > div > p{margin:0 0 .6rem}
+  .item > div > p:last-child{margin-bottom:0}
+  ol.alineas{
+    counter-reset:alinea; list-style:none; margin:.55rem 0 0; padding:0;
+    display:flex; flex-direction:column; gap:.45rem;
+  }
+  ol.alineas li{
+    display:grid; grid-template-columns:1.7rem 1fr; gap:.4rem; font-size:.96rem;
+  }
+  ol.alineas li::before{
+    content:"(" counter(alinea,lower-alpha) ")"; counter-increment:alinea;
+    font-family:var(--font-mono); font-size:.76rem; color:var(--ink-3); padding-top:.22em;
+  }
+  @media (max-width:560px){
+    .item{grid-template-columns:2.4rem 1fr; gap:0 .5rem}
+    body{font-size:15px}
+  }
+
+  /* destaque */
+  .destaque{
+    background:var(--accent-soft); border:1px solid var(--accent-line);
+    padding:.85rem 1rem; margin:.7rem 0 .2rem; font-size:.94rem;
+  }
+  .destaque .tag{
+    font-family:var(--font-ui); font-size:.64rem; font-weight:700; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); display:block; margin-bottom:.35rem;
+  }
+  .destaque p{margin:0}
+
+  /* campos preenchiveis */
+  .f{
+    font-family:var(--font-mono); font-size:.88em; color:var(--ink-2);
+    border-bottom:1px dotted var(--rule-2); padding:0 .35em;
+    white-space:nowrap; letter-spacing:.05em;
+  }
+
+  /* tabelas */
+  .tabela-wrap{overflow-x:auto; margin:1.2rem 0; border:1px solid var(--rule)}
+  table{
+    width:100%; border-collapse:collapse; font-family:var(--font-ui);
+    font-size:.86rem; background:var(--paper); min-width:28rem;
+  }
+  th{
+    text-align:left; font-weight:600; font-size:.68rem; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--accent); background:var(--surface);
+    padding:.6rem .8rem; border-bottom:1px solid var(--rule-2); white-space:nowrap;
+  }
+  td{padding:.62rem .8rem; border-bottom:1px solid var(--rule); vertical-align:top; color:var(--ink-2)}
+  tbody tr:last-child td{border-bottom:none}
+  td:first-child{color:var(--ink); font-weight:500}
+  .num-col{font-variant-numeric:tabular-nums; white-space:nowrap}
+
+  /* exemplo de calculo */
+  .calculo{
+    font-family:var(--font-mono); font-size:.8rem; line-height:1.75;
+    background:var(--sunk); border:1px solid var(--rule); padding:.9rem 1.1rem;
+    margin:1.1rem 0; white-space:pre; overflow-x:auto; color:var(--ink-2);
+  }
+
+  /* anexos */
+  .anexo{margin-top:4.5rem; break-before:page; padding-top:1.4rem; border-top:2px solid var(--ink)}
+  .anexo > h2{
+    font-family:var(--font-serif); font-weight:400; font-size:1.35rem;
+    margin:.9rem 0 .4rem; line-height:1.3;
+  }
+  .anexo > .rotulo{
+    font-family:var(--font-ui); font-size:.68rem; font-weight:600; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--accent);
+  }
+  .anexo > .chapeu{font-family:var(--font-ui); font-size:.88rem; color:var(--ink-2); margin:0 0 1.6rem}
+  .anexo h3{
+    font-family:var(--font-ui); font-size:.8rem; font-weight:600; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--ink); margin:2rem 0 .8rem;
+    padding-bottom:.4rem; border-bottom:1px solid var(--rule);
+  }
+  .anexo p{font-size:.95rem}
+  .anexo ul{font-size:.95rem; color:var(--ink-2); padding-left:1.2rem}
+  .anexo ul li{margin-bottom:.4rem}
+
+  /* assinaturas */
+  .assinaturas{margin-top:3.5rem; break-inside:avoid}
+  .local-data{font-size:.97rem; margin:0 0 3rem}
+  .grid-ass{display:grid; grid-template-columns:1fr 1fr; gap:3rem 2.5rem}
+  @media (max-width:560px){.grid-ass{grid-template-columns:1fr; gap:2.5rem}}
+  .linha-ass{border-top:1px solid var(--ink); padding-top:.5rem}
+  .linha-ass .quem{
+    font-family:var(--font-ui); font-size:.74rem; font-weight:600;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--ink);
+  }
+  .linha-ass .det{font-family:var(--font-ui); font-size:.76rem; color:var(--ink-3); margin-top:.25rem; line-height:1.5}
+
+  footer.rodape{
+    margin-top:4rem; padding-top:1.2rem; border-top:1px solid var(--rule);
+    font-family:var(--font-ui); font-size:.72rem; color:var(--ink-3);
+    display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+  }
+
+  a{color:var(--accent)}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  /* impressao */
+  @page{size:A4; margin:18mm 16mm}
+  @media print{
+    :root{
+      --paper:#fff; --surface:#fff; --sunk:#f6f6f4;
+      --ink:#000; --ink-2:#1a1a1a; --ink-3:#4a4a4a;
+      --rule:#c9c9c9; --rule-2:#8a8a8a;
+      --accent:#123c46; --accent-soft:#f2f6f7; --accent-line:#8fb2b9;
+    }
+    body{font-size:10.5pt; padding:0; background:#fff}
+    .doc{max-width:none}
+    .no-print{display:none !important}
+    .item,.assinaturas,.tabela-wrap,.destaque{break-inside:avoid}
+    section.clausula > h2{break-after:avoid}
+    .anexo{break-before:page}
+    footer.rodape{break-before:avoid}
+  }
+</style>
+
+<div class="doc">
+
+<div class="guia no-print">
+  <h3>Como usar esta minuta</h3>
+  <p>Este é o seu contrato-padrão. Os campos <span class="f">pontilhados</span> são preenchidos a cada cliente; o resto vale para todos.</p>
+  <ul>
+    <li><strong>Para imprimir ou gerar PDF:</strong> <code>Ctrl + P</code>. Este quadro não sai na impressão e cada anexo já começa em página nova.</li>
+    <li><strong>O Anexo III é a peça que mais protege você.</strong> É ele que registra, por escrito e com assinatura do contador do cliente, quem definiu a tributação. Não emita em produção sem ele preenchido.</li>
+    <li><strong>Antes do primeiro cliente,</strong> peça uma leitura a um advogado da sua região. O texto está correto quanto ao CT-e, mas quem responde pelo contrato é quem assina.</li>
+  </ul>
+</div>
+
+<header class="folha">
+  <div class="eyebrow">
+    <span>Prestação de serviços &middot; Documento fiscal eletrônico</span>
+    <span>Contrato nº <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></span>
+  </div>
+  <h1>Contrato de Prestação de Serviços de Emissão de Conhecimento de Transporte Eletrônico (CT-e) e de Licença de Uso de Sistema</h1>
+  <p class="subtitulo">Emissão de CT-e modelo 57 em nome e por conta da CONTRATANTE, remunerada mensalmente por mensalidade com franquia de documentos e valor por CT-e excedente.</p>
+
+  <div class="partes">
+    <div class="parte">
+      <span class="papel">Contratada &middot; prestadora do serviço</span>
+      <p><span class="f">RAZÃO SOCIAL DA SUA EMPRESA</span>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº <span class="f">&nbsp;&nbsp;.&nbsp;&nbsp;&nbsp;.&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;</span>, com sede na <span class="f">endereço completo</span>, <span class="f">município</span>/<span class="f">UF</span>, CEP <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;</span>, neste ato representada na forma de seu contrato social por <span class="f">nome do representante</span>, CPF nº <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>, doravante <strong>CONTRATADA</strong>;</p>
+    </div>
+    <div class="parte">
+      <span class="papel">Contratante &middot; empresa de transporte</span>
+      <p><span class="f">RAZÃO SOCIAL DO CLIENTE</span>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº <span class="f">&nbsp;&nbsp;.&nbsp;&nbsp;&nbsp;.&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;</span>, Inscrição Estadual nº <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>, RNTRC nº <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>, com sede na <span class="f">endereço completo</span>, <span class="f">município</span>/<span class="f">UF</span>, CEP <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;</span>, neste ato representada na forma de seu contrato social por <span class="f">nome do representante</span>, CPF nº <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>, doravante <strong>CONTRATANTE</strong>;</p>
+    </div>
+  </div>
+</header>
+
+<nav class="sumario no-print">
+  <h3>Índice</h3>
+  <ol>
+    <li><a href="#c1"><span class="num">1</span> Definições</a></li>
+    <li><a href="#c2"><span class="num">2</span> Objeto e escopo</a></li>
+    <li><a href="#c3"><span class="num">3</span> Responsabilidade fiscal</a></li>
+    <li><a href="#c4"><span class="num">4</span> Certificado digital e acessos</a></li>
+    <li><a href="#c5"><span class="num">5</span> Série e numeração</a></li>
+    <li><a href="#c6"><span class="num">6</span> Obrigações da contratada</a></li>
+    <li><a href="#c7"><span class="num">7</span> Obrigações da contratante</a></li>
+    <li><a href="#c8"><span class="num">8</span> Remuneração e pagamento</a></li>
+    <li><a href="#c9"><span class="num">9</span> Nível de serviço e suporte</a></li>
+    <li><a href="#c10"><span class="num">10</span> Limitação de responsabilidade</a></li>
+    <li><a href="#c11"><span class="num">11</span> Proteção de dados</a></li>
+    <li><a href="#c12"><span class="num">12</span> Confidencialidade</a></li>
+    <li><a href="#c13"><span class="num">13</span> Propriedade intelectual</a></li>
+    <li><a href="#c14"><span class="num">14</span> Guarda e portabilidade</a></li>
+    <li><a href="#c15"><span class="num">15</span> Vigência e rescisão</a></li>
+    <li><a href="#c16"><span class="num">16</span> Disposições gerais</a></li>
+    <li><a href="#c17"><span class="num">17</span> Foro</a></li>
+    <li><a href="#a1"><span class="num">A I</span> Plano comercial</a></li>
+    <li><a href="#a2"><span class="num">A II</span> Nível de serviço</a></li>
+    <li><a href="#a3"><span class="num">A III</span> Parametrização fiscal</a></li>
+    <li><a href="#a4"><span class="num">A IV</span> Certificado digital</a></li>
+    <li><a href="#a5"><span class="num">A V</span> Dados pessoais</a></li>
+  </ol>
+</nav>
+
+<div class="considerandos">
+  <p><strong>Considerando que</strong> a CONTRATANTE exerce atividade de transporte de cargas e está obrigada, pela legislação tributária, à emissão do Conhecimento de Transporte Eletrônico &mdash; CT-e, modelo 57;</p>
+  <p><strong>Considerando que</strong> a CONTRATADA é titular e mantém sistema próprio de emissão de CT-e integrado aos serviços de autorização da Administração Tributária, e presta serviços de operação desse sistema em favor de terceiros;</p>
+  <p><strong>Considerando que</strong> a CONTRATANTE deseja delegar à CONTRATADA a execução material da emissão de seus CT-e, permanecendo, para todos os efeitos legais e fiscais, como emitente e única responsável tributária pelos documentos emitidos;</p>
+  <p class="resolvem">As partes, por seus representantes legais, resolvem celebrar o presente contrato, que se regerá pelas cláusulas seguintes e pela legislação aplicável.</p>
+</div>
+
+<section class="clausula" id="c1">
+  <h2><span class="cn">Cláusula 1ª</span> Definições</h2>
+  <div class="item"><span class="n">1.1</span><div>
+    <p>Para os fins deste contrato, os termos abaixo têm o seguinte significado:</p>
+    <ol class="alineas">
+      <li><strong>CT-e:</strong> Conhecimento de Transporte Eletrônico, modelo 57, documento fiscal de existência apenas digital, emitido e armazenado eletronicamente, cuja validade jurídica depende da assinatura digital do emitente e da autorização de uso pela Administração Tributária.</li>
+      <li><strong>SEFAZ ou Autorizador:</strong> o órgão da Administração Tributária responsável pela autorização de uso do CT-e na unidade federada da CONTRATANTE, diretamente ou por autorizador virtual.</li>
+      <li><strong>Autorização de Uso:</strong> a resposta do Autorizador que concede a autorização do documento, identificada pelo código de status 100 e pelo respectivo protocolo.</li>
+      <li><strong>Rejeição:</strong> a resposta do Autorizador que recusa o documento, por qualquer motivo, sem gerar documento fiscal válido.</li>
+      <li><strong>Evento:</strong> registro posterior vinculado a um CT-e autorizado, tal como cancelamento, carta de correção eletrônica ou demais eventos previstos na legislação.</li>
+      <li><strong>DACTE:</strong> o Documento Auxiliar do CT-e, representação impressa ou digital do documento autorizado.</li>
+      <li><strong>Certificado Digital:</strong> o certificado padrão ICP-Brasil, tipo A1, de titularidade da CONTRATANTE, utilizado para assinatura e transmissão dos documentos.</li>
+      <li><strong>Sistema:</strong> a plataforma de emissão de CT-e de titularidade da CONTRATADA, incluindo software, banco de dados, interfaces e documentação.</li>
+      <li><strong>Ambiente de Homologação:</strong> ambiente de testes do Autorizador, no qual os documentos emitidos não têm validade fiscal.</li>
+      <li><strong>Ambiente de Produção:</strong> ambiente no qual os documentos emitidos têm plena validade fiscal.</li>
+      <li><strong>Franquia:</strong> a quantidade de CT-e autorizados por ciclo de faturamento já compreendida na mensalidade, conforme o Anexo I.</li>
+      <li><strong>Excedente:</strong> cada CT-e autorizado que ultrapasse a Franquia no mesmo ciclo de faturamento.</li>
+      <li><strong>Ciclo de Faturamento:</strong> o período compreendido entre o primeiro e o último dia de cada mês civil.</li>
+      <li><strong>Parâmetros Fiscais:</strong> o conjunto de definições tributárias e cadastrais indicadas pela CONTRATANTE no Anexo III e utilizadas pelo Sistema no preenchimento dos documentos.</li>
+      <li><strong>Dias úteis:</strong> dias de segunda a sexta-feira, excluídos feriados nacionais e os feriados do município da sede da CONTRATADA.</li>
+    </ol>
+  </div></div>
+</section>
+
+<section class="clausula" id="c2">
+  <h2><span class="cn">Cláusula 2ª</span> Objeto e escopo dos serviços</h2>
+  <div class="item"><span class="n">2.1</span><div>
+    <p>Constitui objeto deste contrato, de forma indissociável:</p>
+    <ol class="alineas">
+      <li>a concessão à CONTRATANTE de licença de uso, não exclusiva, intransferível e por prazo limitado à vigência contratual, do Sistema de emissão de CT-e de titularidade da CONTRATADA, disponibilizado como serviço acessível pela internet; e</li>
+      <li>a prestação, pela CONTRATADA, dos serviços de operação da emissão de CT-e modelo 57, executados em nome, por conta e sob ordem da CONTRATANTE.</li>
+    </ol>
+  </div></div>
+  <div class="item"><span class="n">2.2</span><div>
+    <p>Compreendem-se nos serviços, sem custo adicional ao previsto no Anexo I:</p>
+    <ol class="alineas">
+      <li>cadastro da CONTRATANTE como empresa emitente e configuração de seu perfil de operação;</li>
+      <li>instalação e custódia do Certificado Digital, na forma da Cláusula 4ª;</li>
+      <li>configuração da série e da numeração, na forma da Cláusula 5ª;</li>
+      <li>geração do arquivo XML no leiaute vigente, sua assinatura digital e sua validação contra o schema oficial;</li>
+      <li>transmissão ao Autorizador, leitura da resposta e registro do protocolo;</li>
+      <li>geração e disponibilização do DACTE e do XML autorizado, com download a qualquer tempo;</li>
+      <li>registro dos eventos de cancelamento e de carta de correção eletrônica, quando solicitados pela CONTRATANTE e admitidos pela legislação;</li>
+      <li>consulta da situação do documento junto ao Autorizador pela chave de acesso;</li>
+      <li>manutenção corretiva e evolutiva do Sistema, inclusive adequação a Notas Técnicas e alterações de leiaute publicadas pela Administração Tributária, observada a Cláusula 8.11;</li>
+      <li>suporte técnico e operacional nos termos do Anexo II.</li>
+    </ol>
+  </div></div>
+  <div class="item"><span class="n">2.3</span><div>
+    <p>Não estão compreendidos no objeto, salvo contratação em aditivo próprio:</p>
+    <ol class="alineas">
+      <li>consultoria, assessoria ou planejamento tributário, bem como a definição de qualquer critério de tributação;</li>
+      <li>escrituração fiscal e contábil, apuração, declaração ou recolhimento de tributos e entrega de obrigações acessórias, inclusive EFD;</li>
+      <li>representação ou defesa da CONTRATANTE em procedimento de fiscalização, autuação ou processo administrativo ou judicial;</li>
+      <li>emissão de MDF-e, NF-e, NFS-e, CT-e OS (modelo 67), GTV-e ou qualquer outro documento fiscal distinto do CT-e modelo 57;</li>
+      <li>aquisição, renovação ou revogação do Certificado Digital;</li>
+      <li>inscrição, alteração ou regularização cadastral da CONTRATANTE perante qualquer órgão, inclusive RNTRC, inscrição estadual e credenciamento como emitente;</li>
+      <li>a prestação do serviço de transporte em si, que permanece integralmente a cargo da CONTRATANTE;</li>
+      <li>integrações com sistemas de terceiros não expressamente descritas no Anexo I;</li>
+      <li>fornecimento de equipamentos, impressoras, conexão de internet ou infraestrutura local.</li>
+    </ol>
+  </div></div>
+  <div class="item"><span class="n">2.4</span><div>
+    <p>A emissão iniciará no Ambiente de Homologação. A liberação do Ambiente de Produção depende, cumulativamente, da entrega do Anexo III devidamente preenchido e assinado e da aprovação escrita, pela CONTRATANTE, de ao menos um documento emitido em homologação.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c3">
+  <h2><span class="cn">Cláusula 3ª</span> Natureza do serviço e responsabilidade fiscal</h2>
+  <div class="item"><span class="n">3.1</span><div>
+    <p>A CONTRATADA atua exclusivamente como prestadora de serviço técnico e administrativo e como mandatária da CONTRATANTE para a prática do ato material de emissão. O CT-e é emitido em nome, por conta, por ordem e com o Certificado Digital da CONTRATANTE, que figura como emitente perante a Administração Tributária e perante terceiros.</p>
+    <div class="destaque">
+      <span class="tag">Cláusula essencial</span>
+      <p>A CONTRATADA não é, em nenhuma hipótese, contribuinte, responsável tributária, substituta ou solidária em relação aos documentos emitidos por força deste contrato, nem transportadora, nem depositária legal dos documentos fiscais da CONTRATANTE.</p>
+    </div>
+  </div></div>
+  <div class="item"><span class="n">3.2</span><div>
+    <p>A CONTRATANTE permanece única e exclusivamente responsável, perante o Fisco e terceiros, por:</p>
+    <ol class="alineas">
+      <li>a veracidade, a exatidão e a integridade de todos os dados fornecidos, inclusive os de remetente, destinatário, expedidor, recebedor e tomador;</li>
+      <li>a definição do CFOP, da natureza da operação, do tipo do serviço, do tipo do CT-e e da figura do tomador;</li>
+      <li>a definição do CST, da base de cálculo, das alíquotas e dos valores de ICMS, IBS, CBS e demais tributos incidentes, bem como do regime tributário aplicável;</li>
+      <li>os valores da prestação, dos componentes do frete e dos documentos transportados;</li>
+      <li>a correta vinculação de documentos anteriores, notas fiscais e demais documentos;</li>
+      <li>o cumprimento de todas as obrigações principais e acessórias decorrentes dos documentos emitidos;</li>
+      <li>a licitude e a efetiva ocorrência da prestação de serviço documentada.</li>
+    </ol>
+  </div></div>
+  <div class="item"><span class="n">3.3</span><div>
+    <p>Os Parâmetros Fiscais serão configurados no Sistema exclusivamente conforme instrução escrita da CONTRATANTE, formalizada no Anexo III e firmada por seu representante legal e por seu profissional de contabilidade. Toda alteração posterior seguirá o mesmo rito, por escrito, e produzirá efeitos apenas para os documentos emitidos após a sua implementação.</p>
+  </div></div>
+  <div class="item"><span class="n">3.4</span><div>
+    <p>A CONTRATADA não define, não sugere, não confere e não valida a tributação aplicável, ainda que disponha de conhecimento técnico sobre o leiaute do documento. Eventual orientação de natureza técnica prestada pela CONTRATADA não constitui aconselhamento tributário nem transfere a ela qualquer responsabilidade.</p>
+  </div></div>
+  <div class="item"><span class="n">3.5</span><div>
+    <p>O Sistema recusa a emissão quando ausente parâmetro obrigatório, em vez de completá-lo com valor presumido. As partes reconhecem expressamente que esse comportamento é característica de segurança do Sistema e não constitui defeito, indisponibilidade ou descumprimento contratual.</p>
+  </div></div>
+  <div class="item"><span class="n">3.6</span><div>
+    <p>Havendo alteração da legislação ou publicação de Nota Técnica que modifique o leiaute ou as regras de validação do CT-e, a CONTRATADA implementará a adequação técnica dentro dos prazos oficiais, quando tecnicamente viável, e comunicará à CONTRATANTE as informações que dependam de nova definição. A definição dos valores e critérios permanece, em qualquer caso, a cargo da CONTRATANTE.</p>
+  </div></div>
+  <div class="item"><span class="n">3.7</span><div>
+    <p>A CONTRATANTE obriga-se a conferir os documentos emitidos e a comunicar qualquer divergência em tempo hábil para o registro do evento corretivo, observados os prazos da legislação, notadamente o prazo de cancelamento do CT-e. Não comunicada a divergência nesse prazo, o documento reputa-se conferido e aceito pela CONTRATANTE.</p>
+  </div></div>
+  <div class="item"><span class="n">3.8</span><div>
+    <p>Verificada divergência entre a instrução escrita recebida e o documento efetivamente emitido, por erro imputável à CONTRATADA, esta providenciará a correção sem qualquer custo para a CONTRATANTE, por meio de cancelamento, carta de correção ou nova emissão, desde que ainda admitido pela legislação, arcando com os custos operacionais dos eventos correspondentes.</p>
+  </div></div>
+  <div class="item"><span class="n">3.9</span><div>
+    <p>A CONTRATANTE obriga-se a não utilizar o Sistema para documentar operação simulada, inexistente ou de qualquer forma inidônea, e responde regressivamente perante a CONTRATADA por toda e qualquer autuação, multa, custo ou dano que esta venha a sofrer em razão da inobservância deste item.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c4">
+  <h2><span class="cn">Cláusula 4ª</span> Certificado digital, credenciais e acessos</h2>
+  <div class="item"><span class="n">4.1</span><div>
+    <p>A CONTRATANTE fornecerá à CONTRATADA seu Certificado Digital tipo A1, válido e vigente, acompanhado da respectiva senha, declarando ser sua legítima titular e estar autorizada a utilizá-lo para a finalidade deste contrato.</p>
+  </div></div>
+  <div class="item"><span class="n">4.2</span><div>
+    <p>A entrega do Certificado Digital é acompanhada do Termo de Custódia e Autorização de Uso constante do Anexo IV, que autoriza expressamente a CONTRATADA a utilizá-lo, de forma restrita, para a assinatura e a transmissão dos documentos fiscais objeto deste contrato.</p>
+  </div></div>
+  <div class="item"><span class="n">4.3</span><div>
+    <p>A CONTRATADA obriga-se a armazenar o Certificado Digital e a respectiva senha de forma cifrada, com criptografia forte, restringindo o acesso ao pessoal estritamente necessário e assegurando que a senha jamais seja registrada em texto claro em logs, mensagens ou relatórios.</p>
+  </div></div>
+  <div class="item"><span class="n">4.4</span><div>
+    <p>É vedado à CONTRATADA utilizar o Certificado Digital para qualquer finalidade diversa da prevista neste contrato, bem como cedê-lo, copiá-lo ou torná-lo acessível a terceiros, sob pena de rescisão imediata por justa causa e responsabilização integral pelos danos causados.</p>
+  </div></div>
+  <div class="item"><span class="n">4.5</span><div>
+    <p>A aquisição, a renovação e a manutenção da validade do Certificado Digital são de responsabilidade exclusiva da CONTRATANTE, que deverá providenciar a substituição com antecedência mínima de 10 (dez) dias corridos do vencimento. A expiração, a revogação ou a invalidade do certificado impede tecnicamente a emissão e não caracteriza indisponibilidade do Sistema nem descumprimento pela CONTRATADA.</p>
+  </div></div>
+  <div class="item"><span class="n">4.6</span><div>
+    <p>As credenciais de acesso ao Sistema são pessoais e intransferíveis. A CONTRATANTE é responsável por sua guarda, pela definição dos usuários autorizados e por todos os atos praticados com suas credenciais, devendo comunicar imediatamente qualquer suspeita de comprometimento.</p>
+  </div></div>
+  <div class="item"><span class="n">4.7</span><div>
+    <p>Encerrado o contrato por qualquer motivo, a CONTRATADA eliminará definitivamente o Certificado Digital e a respectiva senha de seus sistemas no prazo de 10 (dez) dias corridos, confirmando a eliminação por escrito. Recomenda-se à CONTRATANTE, ainda assim, promover a revogação do certificado junto à autoridade certificadora.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c5">
+  <h2><span class="cn">Cláusula 5ª</span> Série, numeração e integridade dos documentos</h2>
+  <div class="item"><span class="n">5.1</span><div>
+    <p>Será destinada ao Sistema uma série de CT-e de uso exclusivo, indicada no Anexo III juntamente com o último número já utilizado pela CONTRATANTE, informação que esta declara verdadeira e da qual assume integral responsabilidade.</p>
+  </div></div>
+  <div class="item"><span class="n">5.2</span><div>
+    <p>A CONTRATANTE obriga-se a não emitir documentos na mesma série por qualquer outro sistema ou meio. O descumprimento deste item, que pode gerar duplicidade de numeração e rejeição de documentos, é de responsabilidade exclusiva da CONTRATANTE.</p>
+  </div></div>
+  <div class="item"><span class="n">5.3</span><div>
+    <p>O Sistema mantém controle sequencial da numeração, com trava de duplicidade. Em caso de falha de comunicação com o Autorizador, o documento não será retransmitido automaticamente: sua situação será verificada por consulta à chave de acesso, de modo a evitar duplicidade de emissão.</p>
+  </div></div>
+  <div class="item"><span class="n">5.4</span><div>
+    <p>Havendo quebra de sequência ou necessidade de inutilização de numeração, a CONTRATADA comunicará a CONTRATANTE e providenciará o registro cabível, mediante autorização escrita desta.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c6">
+  <h2><span class="cn">Cláusula 6ª</span> Obrigações da contratada</h2>
+  <div class="item"><span class="n">6.1</span><div>
+    <p>Além das demais obrigações previstas neste contrato, a CONTRATADA obriga-se a:</p>
+    <ol class="alineas">
+      <li>executar os serviços com diligência, zelo técnico e observância da legislação aplicável ao CT-e;</li>
+      <li>emitir os documentos estritamente conforme os dados e os Parâmetros Fiscais fornecidos pela CONTRATANTE, sem alteração de conteúdo por iniciativa própria;</li>
+      <li>manter o Sistema atualizado quanto ao leiaute e às regras de validação vigentes, nos termos da Cláusula 3.6;</li>
+      <li>manter o Sistema disponível nos níveis previstos no Anexo II;</li>
+      <li>disponibilizar à CONTRATANTE, a qualquer tempo e sem custo, o download do XML autorizado, do protocolo, dos eventos e do DACTE de seus documentos;</li>
+      <li>disponibilizar relatório de quantidade de documentos autorizados por período, acessível a qualquer tempo, que servirá de base ao faturamento;</li>
+      <li>comunicar imediatamente à CONTRATANTE qualquer falha, indisponibilidade relevante ou incidente de segurança que afete os serviços;</li>
+      <li>manter sigilo sobre todas as informações da CONTRATANTE, nos termos da Cláusula 12ª;</li>
+      <li>adotar medidas técnicas e administrativas de segurança da informação compatíveis com a natureza dos dados tratados;</li>
+      <li>prestar suporte técnico nos prazos do Anexo II;</li>
+      <li>emitir o documento fiscal correspondente aos serviços prestados e manter sua regularidade fiscal e trabalhista.</li>
+    </ol>
+  </div></div>
+</section>
+
+<section class="clausula" id="c7">
+  <h2><span class="cn">Cláusula 7ª</span> Obrigações da contratante</h2>
+  <div class="item"><span class="n">7.1</span><div>
+    <p>Além das demais obrigações previstas neste contrato, a CONTRATANTE obriga-se a:</p>
+    <ol class="alineas">
+      <li>pagar pontualmente a remuneração ajustada no Anexo I;</li>
+      <li>fornecer, de forma completa, exata e tempestiva, todos os dados necessários à emissão dos documentos;</li>
+      <li>preencher, assinar e manter atualizado o Anexo III, com a anuência de seu profissional de contabilidade;</li>
+      <li>fornecer e manter válido o Certificado Digital, nos termos da Cláusula 4ª;</li>
+      <li>manter sua regularidade cadastral e fiscal, inclusive inscrição estadual, credenciamento como emitente de CT-e e RNTRC;</li>
+      <li>conferir os documentos emitidos e comunicar divergências nos prazos da Cláusula 3.7;</li>
+      <li>comunicar por escrito, em até 5 (cinco) dias corridos, qualquer alteração de dados cadastrais, de endereço, de regime tributário, de série, de contador responsável ou de representante legal;</li>
+      <li>indicar preposto responsável pela relação com a CONTRATADA, com poderes para solicitar emissões, cancelamentos e alterações de parametrização;</li>
+      <li>utilizar o Sistema de acordo com este contrato e com a legislação, abstendo-se de qualquer uso indevido;</li>
+      <li>realizar, por sua conta, o download e a guarda dos arquivos XML pelo prazo legal, nos termos da Cláusula 14ª;</li>
+      <li>dispor de infraestrutura própria, inclusive conexão de internet e equipamentos, para acesso ao Sistema.</li>
+    </ol>
+  </div></div>
+</section>
+
+<section class="clausula" id="c8">
+  <h2><span class="cn">Cláusula 8ª</span> Remuneração, faturamento e pagamento</h2>
+  <div class="item"><span class="n">8.1</span><div>
+    <p>Pelos serviços objeto deste contrato, a CONTRATANTE pagará à CONTRATADA a remuneração fixada no <strong>Anexo I &mdash; Plano Comercial</strong>, composta de: (i) taxa de implantação, devida uma única vez; (ii) mensalidade, que já compreende a Franquia de documentos; e (iii) valor unitário por CT-e Excedente.</p>
+  </div></div>
+  <div class="item"><span class="n">8.2</span><div>
+    <p>A taxa de implantação remunera o cadastro da empresa emitente, a instalação e a configuração do Certificado Digital, a configuração de série e numeração, a parametrização fiscal, os testes em homologação e o treinamento inicial de usuários. É devida uma única vez, na forma do Anexo I, e não é restituível após iniciada a implantação, ainda que o contrato venha a ser encerrado.</p>
+  </div></div>
+  <div class="item"><span class="n">8.3</span><div>
+    <p>A mensalidade é devida por Ciclo de Faturamento, integralmente e de forma independente da quantidade de documentos efetivamente emitidos, e compreende a Franquia contratada. A Franquia não é cumulativa: a parcela não utilizada em um ciclo não é transferida para os ciclos seguintes nem gera crédito ou restituição.</p>
+  </div></div>
+  <div class="item"><span class="n">8.4</span><div>
+    <p>Ultrapassada a Franquia no mesmo ciclo, cada documento adicional será cobrado pelo valor unitário de Excedente previsto no Anexo I.</p>
+    <div class="calculo">Exemplo, considerando mensalidade de R$ 490,00,
+franquia de 100 CT-e e excedente de R$ 3,50:
+
+   62 CT-e no mes   ->  R$ 490,00
+  100 CT-e no mes   ->  R$ 490,00
+  148 CT-e no mes   ->  R$ 490,00 + (48 x 3,50)  =  R$ 658,00</div>
+  </div></div>
+  <div class="item"><span class="n">8.5</span><div>
+    <p>Para fins de contagem dos documentos do ciclo:</p>
+    <ol class="alineas">
+      <li>computa-se cada CT-e que tenha obtido Autorização de Uso no Ambiente de Produção, pela data e hora da autorização;</li>
+      <li>não são computados os documentos rejeitados, denegados ou emitidos no Ambiente de Homologação;</li>
+      <li>não são computados os documentos cancelados por erro imputável à CONTRATADA, na forma da Cláusula 3.8;</li>
+      <li>são computados normalmente os documentos cancelados a pedido da CONTRATANTE, uma vez que o serviço foi integralmente prestado;</li>
+      <li>não há cobrança em separado por registro de eventos, cartas de correção, reimpressão de DACTE, consultas ou downloads;</li>
+      <li>o relatório do Sistema, acessível à CONTRATANTE a qualquer tempo, é a fonte oficial da contagem.</li>
+    </ol>
+  </div></div>
+  <div class="item"><span class="n">8.6</span><div>
+    <p>O Ciclo de Faturamento corresponde ao mês civil. Até o 5º (quinto) dia útil do mês seguinte, a CONTRATADA emitirá o documento fiscal de serviço acompanhado do relatório de documentos autorizados, com vencimento no dia indicado no Anexo I ou, não sendo dia útil, no primeiro dia útil subsequente.</p>
+  </div></div>
+  <div class="item"><span class="n">8.7</span><div>
+    <p>No primeiro ciclo, a mensalidade e a Franquia serão calculadas proporcionalmente aos dias de vigência, contados da liberação do Ambiente de Produção.</p>
+  </div></div>
+  <div class="item"><span class="n">8.8</span><div>
+    <p>Os valores do Anexo I compreendem os tributos incidentes sobre a prestação. Havendo retenção tributária exigida por lei, o valor retido será deduzido do pagamento, mediante entrega do respectivo comprovante à CONTRATADA.</p>
+  </div></div>
+  <div class="item"><span class="n">8.9</span><div>
+    <p>O pagamento em atraso sujeitará a CONTRATANTE a multa moratória de 2% (dois por cento) sobre o valor devido, juros de mora de 1% (um por cento) ao mês, calculados <em>pro rata die</em>, e atualização monetária pelo IPCA/IBGE, sem prejuízo das despesas de cobrança, protesto e honorários advocatícios.</p>
+  </div></div>
+  <div class="item"><span class="n">8.10</span><div>
+    <p>Decorridos 10 (dez) dias corridos de atraso, e mediante aviso escrito com antecedência mínima de 5 (cinco) dias, a CONTRATADA poderá suspender a emissão de novos documentos até a integral quitação. A suspensão não interrompe a exigibilidade dos valores vencidos nem a contagem do prazo para rescisão por justa causa.</p>
+    <div class="destaque">
+      <span class="tag">Ressalva permanente</span>
+      <p>Ainda que suspenso o serviço, permanecerão disponíveis à CONTRATANTE, sem qualquer condicionamento a pagamento, o acesso e o download dos arquivos XML, protocolos e DACTE já emitidos, por serem documentos fiscais de titularidade da CONTRATANTE.</p>
+    </div>
+  </div></div>
+  <div class="item"><span class="n">8.11</span><div>
+    <p>Os valores serão reajustados anualmente, na menor periodicidade permitida em lei, contada da data de assinatura, pela variação positiva do IPCA/IBGE ou, na sua falta, pelo índice que legalmente o substituir.</p>
+  </div></div>
+  <div class="item"><span class="n">8.12</span><div>
+    <p>Sobrevindo alteração legislativa, tarifa pública nova ou exigência técnica da Administração Tributária que altere significativamente o custo da prestação, qualquer das partes poderá requerer a revisão dos valores, negociada de boa-fé no prazo de 30 (trinta) dias. Não havendo acordo, qualquer das partes poderá rescindir o contrato sem ônus, mediante aviso escrito.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c9">
+  <h2><span class="cn">Cláusula 9ª</span> Nível de serviço e suporte</h2>
+  <div class="item"><span class="n">9.1</span><div>
+    <p>A CONTRATADA compromete-se a manter o Sistema disponível em, no mínimo, 99% (noventa e nove por cento) do tempo de cada Ciclo de Faturamento, apurado mensalmente e excluídas as hipóteses da Cláusula 9.2, prestando suporte nos prazos do Anexo II.</p>
+  </div></div>
+  <div class="item"><span class="n">9.2</span><div>
+    <p>Não são computadas como indisponibilidade, por não decorrerem de ato da CONTRATADA:</p>
+    <ol class="alineas">
+      <li>a indisponibilidade, lentidão, instabilidade ou alteração unilateral dos serviços do Autorizador ou de qualquer órgão público;</li>
+      <li>as janelas de manutenção programada, comunicadas com antecedência mínima de 24 (vinte e quatro) horas;</li>
+      <li>falhas de conexão, energia, equipamentos, navegador ou infraestrutura da CONTRATANTE;</li>
+      <li>a recusa de emissão decorrente de dados incorretos, parâmetros ausentes ou certificado vencido ou revogado;</li>
+      <li>a suspensão por inadimplemento, na forma da Cláusula 8.10;</li>
+      <li>caso fortuito, força maior, ataques cibernéticos de terceiros e falhas de provedores de infraestrutura de terceiros, desde que a CONTRATADA adote as medidas de mitigação a seu alcance.</li>
+    </ol>
+  </div></div>
+  <div class="item"><span class="n">9.3</span><div>
+    <p>Apurada disponibilidade inferior à contratada, a CONTRATANTE fará jus a crédito na fatura seguinte, mediante solicitação escrita em até 15 (quinze) dias do encerramento do ciclo, nos seguintes percentuais da mensalidade: 10% (dez por cento) para disponibilidade entre 95% e 99%; e 20% (vinte por cento) para disponibilidade inferior a 95%. O crédito previsto neste item é a única e integral compensação devida pelo descumprimento do nível de serviço.</p>
+  </div></div>
+  <div class="item"><span class="n">9.4</span><div>
+    <p>A obtenção da Autorização de Uso constitui obrigação de meio, e não de resultado, uma vez que a decisão compete exclusivamente à Administração Tributária. A CONTRATADA obriga-se a transmitir corretamente o documento e a informar de imediato a resposta obtida.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c10">
+  <h2><span class="cn">Cláusula 10</span> Limitação de responsabilidade</h2>
+  <div class="item"><span class="n">10.1</span><div>
+    <p>A CONTRATADA não responde por:</p>
+    <ol class="alineas">
+      <li>indisponibilidade, lentidão ou alteração dos serviços do Autorizador, nem pelas consequências operacionais delas decorrentes;</li>
+      <li>rejeição, denegação ou autuação decorrente de dado, valor ou parâmetro fiscal fornecido ou definido pela CONTRATANTE;</li>
+      <li>multa, tributo, juros ou penalidade exigidos da CONTRATANTE, salvo quando decorrentes exclusivamente de erro material comprovadamente imputável à CONTRATADA;</li>
+      <li>decisões operacionais, comerciais ou fiscais tomadas pela CONTRATANTE;</li>
+      <li>perda de dados causada por ato, omissão ou credencial da CONTRATANTE ou de seus usuários.</li>
+    </ol>
+  </div></div>
+  <div class="item"><span class="n">10.2</span><div>
+    <p>Nenhuma das partes responderá por danos indiretos, lucros cessantes, perda de oportunidade, perda de receita ou danos por ricochete.</p>
+  </div></div>
+  <div class="item"><span class="n">10.3</span><div>
+    <p>A responsabilidade total e agregada da CONTRATADA, por todo e qualquer fato relacionado a este contrato, fica limitada ao valor efetivamente pago pela CONTRATANTE nos 12 (doze) meses anteriores ao fato gerador da responsabilidade.</p>
+  </div></div>
+  <div class="item"><span class="n">10.4</span><div>
+    <p>A limitação da Cláusula 10.3 não se aplica em caso de dolo, de violação do dever de confidencialidade ou de descumprimento da legislação de proteção de dados imputável exclusivamente à CONTRATADA.</p>
+  </div></div>
+  <div class="item"><span class="n">10.5</span><div>
+    <p>A CONTRATANTE manterá a CONTRATADA indene de qualquer reclamação, autuação, condenação ou custo, inclusive honorários, decorrente de fato a ela imputável, notadamente das hipóteses das Cláusulas 3.2, 3.9 e 5.2.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c11">
+  <h2><span class="cn">Cláusula 11</span> Proteção de dados pessoais</h2>
+  <div class="item"><span class="n">11.1</span><div>
+    <p>No tratamento de dados pessoais decorrente deste contrato, a CONTRATANTE atua como <strong>controladora</strong> e a CONTRATADA como <strong>operadora</strong>, nos termos da Lei nº 13.709/2018 (LGPD), observado o Anexo V.</p>
+  </div></div>
+  <div class="item"><span class="n">11.2</span><div>
+    <p>A CONTRATADA tratará os dados pessoais exclusivamente para a execução deste contrato e conforme as instruções documentadas da CONTRATANTE, abstendo-se de utilizá-los para finalidade própria, de comercializá-los ou de compartilhá-los com terceiros, salvo determinação legal ou judicial.</p>
+  </div></div>
+  <div class="item"><span class="n">11.3</span><div>
+    <p>A CONTRATANTE declara dispor de base legal adequada para o tratamento e responde pela licitude da coleta e pela informação aos titulares.</p>
+  </div></div>
+  <div class="item"><span class="n">11.4</span><div>
+    <p>A CONTRATADA poderá contratar suboperadores para hospedagem, comunicação e infraestrutura, mantendo-os sujeitos a obrigações de proteção de dados não inferiores às deste contrato e permanecendo integralmente responsável perante a CONTRATANTE. A relação dos suboperadores consta do Anexo V e sua alteração será comunicada previamente.</p>
+  </div></div>
+  <div class="item"><span class="n">11.5</span><div>
+    <p>Ocorrendo incidente de segurança que possa acarretar risco ou dano relevante aos titulares, a CONTRATADA comunicará a CONTRATANTE em até 24 (vinte e quatro) horas do conhecimento do fato, com as informações necessárias ao cumprimento do art. 48 da LGPD.</p>
+  </div></div>
+  <div class="item"><span class="n">11.6</span><div>
+    <p>A CONTRATADA auxiliará a CONTRATANTE, na medida de sua atuação como operadora, no atendimento a requisições de titulares e a determinações da Autoridade Nacional de Proteção de Dados.</p>
+  </div></div>
+  <div class="item"><span class="n">11.7</span><div>
+    <p>Encerrado o contrato, a CONTRATADA eliminará os dados pessoais tratados, salvo aqueles cuja guarda seja exigida por obrigação legal ou regulatória, observado o prazo de portabilidade da Cláusula 14.3.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c12">
+  <h2><span class="cn">Cláusula 12</span> Confidencialidade</h2>
+  <div class="item"><span class="n">12.1</span><div>
+    <p>Cada parte obriga-se a manter em sigilo todas as informações a que tiver acesso em razão deste contrato, inclusive dados de clientes, tabelas de preço, volumes, informações fiscais, credenciais, arquitetura e funcionamento do Sistema, utilizando-as apenas para a execução do contrato.</p>
+  </div></div>
+  <div class="item"><span class="n">12.2</span><div>
+    <p>Não se sujeitam ao dever de sigilo as informações que sejam ou se tornem públicas sem violação deste contrato, que já fossem legitimamente conhecidas pela parte receptora ou cuja divulgação seja exigida por lei ou ordem de autoridade competente, caso em que a parte requerida comunicará previamente a outra, salvo vedação legal.</p>
+  </div></div>
+  <div class="item"><span class="n">12.3</span><div>
+    <p>O dever de confidencialidade vigora durante a vigência contratual e pelos 5 (cinco) anos seguintes ao seu encerramento.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c13">
+  <h2><span class="cn">Cláusula 13</span> Propriedade intelectual</h2>
+  <div class="item"><span class="n">13.1</span><div>
+    <p>O Sistema, seu código-fonte, estrutura de banco de dados, interfaces, documentação, marcas e demais elementos são de propriedade exclusiva da CONTRATADA, protegidos pelas Leis nº 9.609/1998 e nº 9.610/1998. Este contrato não transfere qualquer direito de propriedade.</p>
+  </div></div>
+  <div class="item"><span class="n">13.2</span><div>
+    <p>A licença concedida é não exclusiva, intransferível, revogável, limitada à vigência contratual e restrita ao CNPJ da CONTRATANTE e às inscrições indicadas no Anexo III.</p>
+  </div></div>
+  <div class="item"><span class="n">13.3</span><div>
+    <p>É vedado à CONTRATANTE, direta ou indiretamente: realizar engenharia reversa, descompilação ou tentativa de obtenção do código-fonte; copiar, reproduzir ou criar obra derivada; ceder, sublicenciar, locar, revender ou disponibilizar o acesso a terceiros; e utilizar o Sistema para emitir documentos de pessoa jurídica não identificada neste contrato.</p>
+  </div></div>
+  <div class="item"><span class="n">13.4</span><div>
+    <p>Os dados cadastrais, os arquivos XML, os protocolos e os documentos emitidos são de titularidade exclusiva da CONTRATANTE.</p>
+  </div></div>
+  <div class="item"><span class="n">13.5</span><div>
+    <p>Sugestões, críticas e pedidos de melhoria apresentados pela CONTRATANTE e eventualmente incorporados ao Sistema integram-no como parte da propriedade da CONTRATADA, sem gerar direito a remuneração, coautoria ou exclusividade.</p>
+  </div></div>
+  <div class="item"><span class="n">13.6</span><div>
+    <p>A citação do nome ou da marca da CONTRATANTE como referência comercial pela CONTRATADA depende de autorização expressa, assinalada no Anexo I, revogável a qualquer tempo por comunicação escrita.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c14">
+  <h2><span class="cn">Cláusula 14</span> Guarda e portabilidade dos documentos</h2>
+  <div class="item"><span class="n">14.1</span><div>
+    <p>Durante a vigência, a CONTRATADA manterá armazenados os arquivos XML autorizados, os protocolos e os eventos, disponibilizando-os para consulta e download a qualquer tempo, sem custo adicional.</p>
+  </div></div>
+  <div class="item"><span class="n">14.2</span><div>
+    <p>A guarda legal dos documentos fiscais eletrônicos, pelo prazo exigido pela legislação tributária, é obrigação exclusiva da CONTRATANTE, que declara ciência de que a CONTRATADA não é depositária legal e se compromete a realizar periodicamente o download e a guarda dos arquivos em ambiente próprio.</p>
+  </div></div>
+  <div class="item"><span class="n">14.3</span><div>
+    <p>Encerrado o contrato, a CONTRATADA manterá disponível, pelo prazo de 30 (trinta) dias corridos, a exportação integral dos arquivos XML e do relatório de documentos emitidos, em formato original e legível por máquina, independentemente do motivo do encerramento. Findo esse prazo, os dados poderão ser eliminados.</p>
+  </div></div>
+  <div class="item"><span class="n">14.4</span><div>
+    <p>A migração para outro sistema é de responsabilidade da CONTRATANTE, obrigando-se a CONTRATADA a fornecer os arquivos e as informações técnicas necessárias, sem obrigação de desenvolver integrações específicas.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c15">
+  <h2><span class="cn">Cláusula 15</span> Vigência e rescisão</h2>
+  <div class="item"><span class="n">15.1</span><div>
+    <p>Este contrato vigora por prazo indeterminado, a partir da data de sua assinatura, sem prazo mínimo de permanência e sem multa por encerramento.</p>
+  </div></div>
+  <div class="item"><span class="n">15.2</span><div>
+    <p>Qualquer das partes poderá denunciá-lo imotivadamente, mediante aviso escrito com antecedência mínima de 30 (trinta) dias, permanecendo devidas as obrigações vencidas e as proporcionais ao período de aviso.</p>
+  </div></div>
+  <div class="item"><span class="n">15.3</span><div>
+    <p>O contrato poderá ser rescindido de imediato, por justa causa e sem aviso prévio, na ocorrência de:</p>
+    <ol class="alineas">
+      <li>inadimplemento de qualquer valor por prazo superior a 30 (trinta) dias corridos;</li>
+      <li>uso do Sistema para finalidade ilícita, para documentar operação simulada ou em desacordo com a Cláusula 13.3;</li>
+      <li>violação do dever de confidencialidade ou da legislação de proteção de dados;</li>
+      <li>uso indevido do Certificado Digital pela CONTRATADA;</li>
+      <li>decretação de falência, deferimento de recuperação judicial ou insolvência de qualquer das partes;</li>
+      <li>descumprimento de obrigação essencial não sanada em 15 (quinze) dias contados de notificação escrita.</li>
+    </ol>
+  </div></div>
+  <div class="item"><span class="n">15.4</span><div>
+    <p>Encerrado o contrato: tornam-se imediatamente exigíveis os valores devidos até a data do encerramento, inclusive os excedentes do período; a taxa de implantação não é restituível; a CONTRATADA disponibilizará a exportação prevista na Cláusula 14.3 e eliminará o Certificado Digital na forma da Cláusula 4.7.</p>
+  </div></div>
+  <div class="item"><span class="n">15.5</span><div>
+    <p>Sobrevivem ao encerramento, pelos prazos respectivos, as Cláusulas 3ª, 10, 11, 12, 13, 14 e 17.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c16">
+  <h2><span class="cn">Cláusula 16</span> Disposições gerais</h2>
+  <div class="item"><span class="n">16.1</span><div>
+    <p>Este contrato não estabelece vínculo empregatício, societário, de representação comercial, de associação ou de responsabilidade solidária entre as partes, respondendo cada uma, isoladamente, por seus empregados, prepostos, tributos e encargos.</p>
+  </div></div>
+  <div class="item"><span class="n">16.2</span><div>
+    <p>A contratação não é exclusiva, sendo facultado a ambas as partes contratar com terceiros objeto idêntico ou semelhante.</p>
+  </div></div>
+  <div class="item"><span class="n">16.3</span><div>
+    <p>Nenhuma das partes poderá ceder ou transferir este contrato sem anuência escrita da outra, ressalvada a cessão decorrente de reorganização societária, mediante comunicação prévia.</p>
+  </div></div>
+  <div class="item"><span class="n">16.4</span><div>
+    <p>As comunicações entre as partes serão feitas por escrito, reputando-se válidas as enviadas aos endereços de correio eletrônico indicados no Anexo I, cuja atualização é ônus de cada parte.</p>
+  </div></div>
+  <div class="item"><span class="n">16.5</span><div>
+    <p>A tolerância quanto ao descumprimento de qualquer obrigação constitui mera liberalidade, não implicando novação, renúncia ou alteração do ajustado.</p>
+  </div></div>
+  <div class="item"><span class="n">16.6</span><div>
+    <p>A eventual nulidade ou ineficácia de qualquer cláusula não prejudica as demais, que permanecem em pleno vigor, obrigando-se as partes a substituir a disposição afetada por outra de efeito equivalente.</p>
+  </div></div>
+  <div class="item"><span class="n">16.7</span><div>
+    <p>Os Anexos I a V integram este contrato para todos os fins. Em caso de divergência, prevalece o corpo do contrato, salvo quanto a preços e condições de pagamento, em que prevalece o Anexo I, e quanto a níveis de serviço, em que prevalece o Anexo II.</p>
+  </div></div>
+  <div class="item"><span class="n">16.8</span><div>
+    <p>Qualquer alteração deste contrato somente será válida se formalizada por termo aditivo escrito, assinado por ambas as partes, ressalvada a atualização do Anexo III, que se opera pelo rito da Cláusula 3.3.</p>
+  </div></div>
+  <div class="item"><span class="n">16.9</span><div>
+    <p>As partes declaram conhecer e obrigam-se a observar a Lei nº 12.846/2013 e demais normas anticorrupção, bem como a não utilizar trabalho infantil, forçado ou análogo ao de escravo, direta ou indiretamente.</p>
+  </div></div>
+  <div class="item"><span class="n">16.10</span><div>
+    <p>Nenhuma parte responde pelo descumprimento decorrente de caso fortuito ou força maior, nos termos do art. 393 do Código Civil, obrigando-se a comunicar o fato de imediato e a retomar as obrigações tão logo cessado o impedimento.</p>
+  </div></div>
+  <div class="item"><span class="n">16.11</span><div>
+    <p>As partes reconhecem a validade e a eficácia da assinatura eletrônica deste contrato e de seus anexos, inclusive por plataforma que não utilize certificado ICP-Brasil, nos termos do art. 10, § 2º, da MP nº 2.200-2/2001 e da Lei nº 14.063/2020, renunciando ao direito de impugná-lo por essa razão.</p>
+  </div></div>
+  <div class="item"><span class="n">16.12</span><div>
+    <p>Este contrato, assinado pelas partes e por duas testemunhas, constitui título executivo extrajudicial, nos termos do art. 784, inciso III, do Código de Processo Civil.</p>
+  </div></div>
+</section>
+
+<section class="clausula" id="c17">
+  <h2><span class="cn">Cláusula 17</span> Foro</h2>
+  <div class="item"><span class="n">17.1</span><div>
+    <p>Fica eleito o foro da comarca de <span class="f">município</span>/<span class="f">UF</span>, sede da CONTRATADA, com renúncia a qualquer outro, por mais privilegiado que seja, para dirimir as questões oriundas deste contrato.</p>
+  </div></div>
+  <div class="item"><span class="n">17.2</span><div>
+    <p>E, por estarem justas e contratadas, as partes assinam o presente instrumento, juntamente com duas testemunhas.</p>
+  </div></div>
+</section>
+
+<div class="assinaturas">
+  <p class="local-data"><span class="f">município</span>/<span class="f">UF</span>, <span class="f">&nbsp;&nbsp;&nbsp;</span> de <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> de <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>.</p>
+  <div class="grid-ass">
+    <div class="linha-ass">
+      <div class="quem">Contratada</div>
+      <div class="det">Nome:<br>CPF:<br>Cargo:</div>
+    </div>
+    <div class="linha-ass">
+      <div class="quem">Contratante</div>
+      <div class="det">Nome:<br>CPF:<br>Cargo:</div>
+    </div>
+    <div class="linha-ass">
+      <div class="quem">Testemunha 1</div>
+      <div class="det">Nome:<br>CPF:</div>
+    </div>
+    <div class="linha-ass">
+      <div class="quem">Testemunha 2</div>
+      <div class="det">Nome:<br>CPF:</div>
+    </div>
+  </div>
+</div>
+
+<section class="anexo" id="a1">
+  <div class="rotulo">Anexo I</div>
+  <h2>Plano comercial e contatos</h2>
+  <p class="chapeu">Valores, ciclo de cobrança e canais oficiais de comunicação entre as partes.</p>
+
+  <h3>Remuneração</h3>
+  <div class="tabela-wrap">
+    <table>
+      <thead><tr><th>Item</th><th>Valor</th><th>Condição</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Taxa de implantação</td>
+          <td class="num-col">R$ <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+          <td>Devida uma única vez. <span class="f">50% na assinatura e 50% na liberação da produção</span></td>
+        </tr>
+        <tr>
+          <td>Mensalidade</td>
+          <td class="num-col">R$ <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+          <td>Por ciclo de faturamento, já compreendida a franquia abaixo</td>
+        </tr>
+        <tr>
+          <td>Franquia inclusa</td>
+          <td class="num-col"><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> CT-e</td>
+          <td>Por ciclo, não cumulativa entre meses</td>
+        </tr>
+        <tr>
+          <td>CT-e excedente</td>
+          <td class="num-col">R$ <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+          <td>Por documento autorizado acima da franquia</td>
+        </tr>
+        <tr>
+          <td>Reajuste</td>
+          <td class="num-col">IPCA/IBGE</td>
+          <td>Anual, contado da assinatura</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Faturamento</h3>
+  <div class="tabela-wrap">
+    <table>
+      <tbody>
+        <tr><td>Ciclo de faturamento</td><td>Do dia 1º ao último dia de cada mês civil</td></tr>
+        <tr><td>Emissão da fatura</td><td>Até o 5º dia útil do mês seguinte, com o relatório de documentos autorizados</td></tr>
+        <tr><td>Vencimento</td><td>Dia <span class="f">&nbsp;&nbsp;&nbsp;</span> do mês seguinte, ou primeiro dia útil subsequente</td></tr>
+        <tr><td>Forma de pagamento</td><td><span class="f">PIX / boleto bancário / transferência</span></td></tr>
+        <tr><td>Chave PIX ou dados bancários</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Escopo específico contratado</h3>
+  <div class="tabela-wrap">
+    <table>
+      <tbody>
+        <tr><td>Usuários inclusos</td><td><span class="f">&nbsp;&nbsp;&nbsp;</span> usuários nomeados</td></tr>
+        <tr><td>Integrações contratadas</td><td><span class="f">nenhuma / descrever</span></td></tr>
+        <tr><td>Importação de dados em lote</td><td><span class="f">sim / não &mdash; descrever origem</span></td></tr>
+        <tr><td>Uso do nome como referência comercial</td><td><span class="f">autorizado / não autorizado</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Contatos oficiais</h3>
+  <div class="tabela-wrap">
+    <table>
+      <thead><tr><th>Assunto</th><th>Contratada</th><th>Contratante</th></tr></thead>
+      <tbody>
+        <tr><td>Operacional</td><td><span class="f">nome / e-mail / telefone</span></td><td><span class="f">nome / e-mail / telefone</span></td></tr>
+        <tr><td>Financeiro</td><td><span class="f">nome / e-mail</span></td><td><span class="f">nome / e-mail</span></td></tr>
+        <tr><td>Fiscal e contábil</td><td>&mdash;</td><td><span class="f">contador / CRC / e-mail</span></td></tr>
+        <tr><td>Encarregado de dados (LGPD)</td><td><span class="f">nome / e-mail</span></td><td><span class="f">nome / e-mail</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="anexo" id="a2">
+  <div class="rotulo">Anexo II</div>
+  <h2>Nível de serviço e suporte</h2>
+  <p class="chapeu">Disponibilidade acordada, canais de atendimento e prazos de resposta por gravidade.</p>
+
+  <h3>Disponibilidade</h3>
+  <p>Disponibilidade mensal mínima do Sistema: <strong>99%</strong>, apurada por ciclo de faturamento, excluídas as hipóteses da Cláusula 9.2. Janela de manutenção programada: aos sábados e domingos, entre 22h e 6h, comunicada com no mínimo 24 horas de antecedência.</p>
+
+  <h3>Canais e horário</h3>
+  <div class="tabela-wrap">
+    <table>
+      <tbody>
+        <tr><td>Canal principal</td><td><span class="f">e-mail / WhatsApp / telefone</span></td></tr>
+        <tr><td>Horário de atendimento</td><td>Dias úteis, das <span class="f">08h</span> às <span class="f">18h</span></td></tr>
+        <tr><td>Plantão para severidade 1</td><td><span class="f">sim / não &mdash; horário</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Prazos por severidade</h3>
+  <div class="tabela-wrap">
+    <table>
+      <thead><tr><th>Sev.</th><th>Situação</th><th>1ª resposta</th><th>Solução ou contorno</th></tr></thead>
+      <tbody>
+        <tr><td>S1 &mdash; Crítica</td><td>Emissão totalmente interrompida por falha do Sistema</td><td class="num-col">1 hora útil</td><td class="num-col">4 horas úteis</td></tr>
+        <tr><td>S2 &mdash; Alta</td><td>Emissão parcialmente comprometida ou erro recorrente</td><td class="num-col">4 horas úteis</td><td class="num-col">1 dia útil</td></tr>
+        <tr><td>S3 &mdash; Média</td><td>Erro pontual sem impedir a emissão; dúvida operacional</td><td class="num-col">1 dia útil</td><td class="num-col">3 dias úteis</td></tr>
+        <tr><td>S4 &mdash; Baixa</td><td>Pedido de melhoria, relatório ou orientação</td><td class="num-col">3 dias úteis</td><td>Conforme planejamento</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Os prazos contam do registro do chamado pelo canal oficial, com a descrição do problema e os dados necessários à reprodução. Chamados sobre indisponibilidade do Autorizador são acompanhados e informados, mas não se sujeitam a prazo de solução.</p>
+</section>
+
+<section class="anexo" id="a3">
+  <div class="rotulo">Anexo III</div>
+  <h2>Ficha de parametrização fiscal</h2>
+  <p class="chapeu">Definições fiscais fornecidas pela CONTRATANTE, nos termos da Cláusula 3.3. Documento obrigatório para a liberação do ambiente de produção.</p>
+
+  <h3>Identificação do emitente</h3>
+  <div class="tabela-wrap">
+    <table>
+      <tbody>
+        <tr><td>Razão social</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>CNPJ</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>Inscrição estadual</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>Município / código IBGE / UF</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>RNTRC</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>CRT &mdash; regime tributário</td><td><span class="f">1 Simples / 2 Simples excesso / 3 Regime normal</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Série e numeração</h3>
+  <div class="tabela-wrap">
+    <table>
+      <tbody>
+        <tr><td>Série exclusiva do Sistema</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>Último número já utilizado</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>Próximo número a emitir</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Operação padrão</h3>
+  <div class="tabela-wrap">
+    <table>
+      <tbody>
+        <tr><td>CFOP</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>Natureza da operação</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>Tipo do CT-e</td><td><span class="f">normal / complemento / substituição</span></td></tr>
+        <tr><td>Tipo do serviço</td><td><span class="f">normal / subcontratação / redespacho / redespacho intermediário</span></td></tr>
+        <tr><td>Tomador do serviço</td><td><span class="f">remetente / expedidor / recebedor / destinatário / outros</span></td></tr>
+        <tr><td>Modal</td><td><span class="f">rodoviário</span></td></tr>
+        <tr><td>Município de início da prestação</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>Município de fim da prestação</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Tributação</h3>
+  <div class="tabela-wrap">
+    <table>
+      <thead><tr><th>Tributo</th><th>CST / classificação</th><th>Alíquota</th><th>Base de cálculo</th></tr></thead>
+      <tbody>
+        <tr><td>ICMS</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;</span>%</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>IBS &mdash; estadual</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;</span>%</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>IBS &mdash; municipal</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;</span>%</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>CBS</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;</span>%</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>Classificação tributária</td><td colspan="3"><span class="f">cClassTrib &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Observações e regras específicas: <span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>
+
+  <h3>Declaração</h3>
+  <p>A CONTRATANTE declara que as informações acima foram por ela definidas, com o apoio de seu profissional de contabilidade, que respondem à realidade de suas operações e que serão utilizadas pela CONTRATADA no preenchimento automático dos documentos, nos termos das Cláusulas 3.2 a 3.4. Compromete-se a comunicar por escrito qualquer alteração, ciente de que a modificação só produz efeitos para documentos emitidos após sua implementação.</p>
+
+  <div class="assinaturas">
+    <div class="grid-ass">
+      <div class="linha-ass">
+        <div class="quem">Representante legal da contratante</div>
+        <div class="det">Nome:<br>CPF:</div>
+      </div>
+      <div class="linha-ass">
+        <div class="quem">Profissional de contabilidade</div>
+        <div class="det">Nome:<br>CRC:<br>E-mail:</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="anexo" id="a4">
+  <div class="rotulo">Anexo IV</div>
+  <h2>Termo de custódia e autorização de uso do certificado digital</h2>
+  <p class="chapeu">Autorização expressa para uso do certificado A1 na assinatura e transmissão dos documentos fiscais.</p>
+
+  <h3>Certificado entregue</h3>
+  <div class="tabela-wrap">
+    <table>
+      <tbody>
+        <tr><td>Titular</td><td><span class="f">razão social e CNPJ</span></td></tr>
+        <tr><td>Tipo</td><td>A1 &mdash; arquivo, padrão ICP-Brasil</td></tr>
+        <tr><td>Autoridade certificadora</td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>Validade</td><td>De <span class="f">&nbsp;&nbsp;/&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;</span> até <span class="f">&nbsp;&nbsp;/&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+        <tr><td>Data da entrega</td><td><span class="f">&nbsp;&nbsp;/&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Termos</h3>
+  <ul>
+    <li>A CONTRATANTE declara ser a legítima titular do certificado e estar autorizada a permitir seu uso para a finalidade deste contrato.</li>
+    <li>Autoriza expressamente a CONTRATADA a utilizá-lo <strong>exclusivamente</strong> para assinar digitalmente e transmitir à Administração Tributária os CT-e e respectivos eventos emitidos em seu nome, vedado qualquer outro uso.</li>
+    <li>A CONTRATADA obriga-se a armazená-lo de forma cifrada, com acesso restrito, sem registrar a senha em texto claro em qualquer log, mensagem ou relatório.</li>
+    <li>A autorização vigora enquanto vigorar o contrato e pode ser revogada a qualquer tempo por comunicação escrita, hipótese em que a emissão será imediatamente interrompida.</li>
+    <li>Encerrado o contrato ou revogada a autorização, a CONTRATADA eliminará definitivamente o arquivo e a senha em até 10 dias corridos, confirmando a eliminação por escrito.</li>
+    <li>A renovação do certificado é responsabilidade da CONTRATANTE, que deverá entregar o novo arquivo com antecedência mínima de 10 dias do vencimento.</li>
+  </ul>
+
+  <div class="assinaturas">
+    <div class="grid-ass">
+      <div class="linha-ass">
+        <div class="quem">Contratante &mdash; titular do certificado</div>
+        <div class="det">Nome:<br>CPF:</div>
+      </div>
+      <div class="linha-ass">
+        <div class="quem">Contratada &mdash; recebedora</div>
+        <div class="det">Nome:<br>CPF:</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="anexo" id="a5">
+  <div class="rotulo">Anexo V</div>
+  <h2>Tratamento de dados pessoais</h2>
+  <p class="chapeu">Detalhamento do tratamento realizado pela CONTRATADA na qualidade de operadora, nos termos da Cláusula 11.</p>
+
+  <div class="tabela-wrap">
+    <table>
+      <tbody>
+        <tr><td>Finalidade</td><td>Emissão, transmissão, guarda e disponibilização de CT-e e respectivos eventos, em nome da CONTRATANTE</td></tr>
+        <tr><td>Natureza do tratamento</td><td>Coleta, armazenamento, processamento, transmissão à Administração Tributária, disponibilização à CONTRATANTE e eliminação</td></tr>
+        <tr><td>Categorias de titulares</td><td>Representantes legais, prepostos e usuários da CONTRATANTE; motoristas; pessoas físicas que figurem como remetente, destinatário, expedidor, recebedor ou tomador</td></tr>
+        <tr><td>Categorias de dados</td><td>Nome, CPF ou CNPJ, endereço, telefone, e-mail, dados de habilitação e de veículo, quando exigidos pelo leiaute do documento</td></tr>
+        <tr><td>Dados sensíveis</td><td>Não há tratamento previsto</td></tr>
+        <tr><td>Duração</td><td>Durante a vigência do contrato, mais o prazo de portabilidade da Cláusula 14.3 e os prazos de guarda exigidos por lei</td></tr>
+        <tr><td>Transferência internacional</td><td><span class="f">não há / indicar país e salvaguarda</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Suboperadores</h3>
+  <div class="tabela-wrap">
+    <table>
+      <thead><tr><th>Suboperador</th><th>Serviço prestado</th><th>Localização</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f">provedor de hospedagem</span></td><td>Hospedagem da aplicação e do banco de dados</td><td><span class="f">país</span></td></tr>
+        <tr><td><span class="f">provedor de e-mail</span></td><td>Envio de mensagens transacionais</td><td><span class="f">país</span></td></tr>
+        <tr><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td><span class="f">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td><span class="f">país</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Medidas de segurança</h3>
+  <ul>
+    <li>Criptografia do certificado digital e das respectivas senhas em repouso, com chave sob controle exclusivo da CONTRATADA.</li>
+    <li>Tráfego cifrado entre o navegador, a aplicação e os serviços da Administração Tributária.</li>
+    <li>Controle de acesso por usuário nomeado, com segregação de permissões de emissão, cancelamento e configuração.</li>
+    <li>Isolamento lógico dos dados por empresa emitente, de modo que nenhuma consulta retorne documentos de empresa diversa.</li>
+    <li>Sanitização de registros de log, para que dados sensíveis e senhas não sejam neles gravados.</li>
+    <li>Rotina de cópia de segurança do banco de dados e registro de auditoria das operações relevantes.</li>
+  </ul>
+</section>
+
+<footer class="rodape">
+  <span>Contrato de prestação de serviços de emissão de CT-e &mdash; modelo 57</span>
+  <span>Versão 1.0</span>
+</footer>
+
+</div>
