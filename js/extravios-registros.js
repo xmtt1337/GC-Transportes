@@ -16,17 +16,6 @@ const EXTRVREG_CAMPOS_ROTULO = {
     endereco: "Endereço", causa: "Causa"
 };
 
-const EXTRVREG_CORES_STATUS = {
-    "pendente":       "#fbbf24",
-    "resolvido":      "#22c55e",
-    "para desconto":  "#3a86ff",
-    "multa":          "#a78bfa",
-    "lost":           "#ef4444",
-    "contestado":     "#06b6d4",
-    "dmaged":         "#f97316",
-    "em análise":     "#8494a9"
-};
-
 let _extrvRegOpcoes   = null;
 let _extrvRegEstado   = { pagina: 1, busca: "", status: "", transportadora: "", cidade: "", completude: "" };
 let _extrvRegBuscaTmr = null;
@@ -82,10 +71,6 @@ function _extrvRegEsc(v) {
         .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-function _extrvRegCorStatus(status) {
-    return EXTRVREG_CORES_STATUS[String(status || "").trim().toLowerCase()] || "#8494a9";
-}
-
 /* ───────────────────────── Filtros ───────────────────────── */
 
 function _extrvRegPreencherFiltros() {
@@ -129,7 +114,7 @@ function _extrvRegLimparFiltros() {
 function _extrvRegIrPara(pagina) {
     _extrvRegEstado.pagina = pagina;
     _extrvRegCarregar();
-    document.getElementById("tela-extravios-registros").scrollTo({ top: 0, behavior: "smooth" });
+    document.getElementById("tela-extravios-registros").scrollTo(0, 0);
 }
 
 /* ───────────────────────── Lista ───────────────────────── */
@@ -156,11 +141,11 @@ async function _extrvRegCarregar() {
 
 function _extrvRegRender(dados) {
     const r = dados.resumo;
+    const filtrado = dados.encontrados !== r.total;
     document.getElementById("extrvreg-resumo").innerHTML =
-        `<span><b>${r.total.toLocaleString("pt-BR")}</b> registros</span>` +
-        `<span class="extrv-reg-ok"><b>${r.completos.toLocaleString("pt-BR")}</b> completos</span>` +
-        `<span class="extrv-reg-alerta"><b>${r.incompletos.toLocaleString("pt-BR")}</b> incompletos</span>` +
-        `<span>${dados.encontrados.toLocaleString("pt-BR")} no filtro atual</span>`;
+        `<span><b>${(filtrado ? dados.encontrados : r.total).toLocaleString("pt-BR")}</b> ` +
+        `${filtrado ? "de " + r.total.toLocaleString("pt-BR") + " registros" : "registros"}</span>` +
+        `<span class="pendente"><b>${r.incompletos.toLocaleString("pt-BR")}</b> a completar</span>`;
 
     const alvo = document.getElementById("extrvreg-lista");
     if (!dados.itens.length) {
@@ -168,7 +153,7 @@ function _extrvRegRender(dados) {
     } else {
         alvo.innerHTML =
             `<div class="extrv-reg-linha-item extrv-reg-cabecalho">
-                <div>Código</div><div>Status</div><div>Pendência</div><div class="extrv-reg-num">Linha</div>
+                <div>Código</div><div>Status</div><div>Falta preencher</div><div class="extrv-reg-num">Linha</div>
              </div>` +
             dados.itens.map(_extrvRegItemHtml).join("");
     }
@@ -178,28 +163,25 @@ function _extrvRegRender(dados) {
         nav.innerHTML = "";
     } else {
         nav.innerHTML =
-            `<button class="extrv-reg-btn" ${dados.pagina <= 1 ? "disabled" : ""} onclick="_extrvRegIrPara(${dados.pagina - 1})">Anterior</button>` +
-            `<span class="extrv-reg-pag-info">Página ${dados.pagina} de ${dados.paginas}</span>` +
-            `<button class="extrv-reg-btn" ${dados.pagina >= dados.paginas ? "disabled" : ""} onclick="_extrvRegIrPara(${dados.pagina + 1})">Próxima</button>`;
+            `<button class="extrv-reg-acao" ${dados.pagina <= 1 ? "disabled" : ""} onclick="_extrvRegIrPara(${dados.pagina - 1})">Anterior</button>` +
+            `<button class="extrv-reg-acao" ${dados.pagina >= dados.paginas ? "disabled" : ""} onclick="_extrvRegIrPara(${dados.pagina + 1})">Próxima</button>` +
+            `<span>Página ${dados.pagina} de ${dados.paginas}</span>`;
     }
 }
 
 function _extrvRegItemHtml(r) {
-    const cor = _extrvRegCorStatus(r.status);
-
+    // Registro completo deixa a coluna vazia: silêncio já diz que não falta nada.
     const pendencia = r.faltando.length
-        ? `<span class="extrv-reg-pendente">Falta ${r.faltando.map(c => _extrvRegEsc((EXTRVREG_CAMPOS_ROTULO[c] || c).toLowerCase())).join(", ")}</span>`
-        : `<span class="extrv-reg-completo">completo</span>`;
+        ? _extrvRegEsc(r.faltando.map(c => (EXTRVREG_CAMPOS_ROTULO[c] || c).toLowerCase()).join(", "))
+        : "";
 
     const dup = String(r.duplicado || "").toUpperCase() === "DUPLICADO"
         ? `<span class="extrv-reg-dup">duplicado</span>` : "";
 
     return `
     <div class="extrv-reg-linha-item" data-linha="${r.linha}" onclick="_extrvRegAbrirModal(${r.linha})">
-        <div class="extrv-reg-cod">${_extrvRegEsc(r.codigo || "(sem código)")}${dup}</div>
-        <div class="extrv-reg-status">
-            <span class="extrv-reg-marca" style="background:${cor}"></span>${_extrvRegEsc(r.status || "—")}
-        </div>
+        <div class="extrv-reg-cod">${_extrvRegEsc(r.codigo || "sem código")}${dup}</div>
+        <div class="extrv-reg-status">${_extrvRegEsc(r.status || "—")}</div>
         <div class="extrv-reg-pend">${pendencia}</div>
         <div class="extrv-reg-num">${r.linha}</div>
     </div>`;
@@ -256,6 +238,7 @@ function _extrvRegMontarModal(r) {
     const existente = r || {};
     const novo = !_extrvRegEditando;
 
+    const obrigatorio = novo ? ' <i>(obrigatório)</i>' : "";
     const opcao = (lista, atual) =>
         ["<option value=\"\">Selecione...</option>"].concat(
             (lista || []).map(i => `<option value="${_extrvRegEsc(i)}"${String(i) === String(atual || "") ? " selected" : ""}>${_extrvRegEsc(i)}</option>`)
@@ -282,61 +265,61 @@ function _extrvRegMontarModal(r) {
 
         <div class="extrv-reg-form">
             <div class="extrv-reg-campo c6">
-                <label>Código ${novo ? "<i>*</i>" : ""}</label>
+                <label>Código ${obrigatorio}</label>
                 <input type="text" id="extrvreg-codigo" value="${_extrvRegEsc(existente.codigo || "")}"
                        oninput="this.value=this.value.toUpperCase().replace(/\\s+/g,'');_extrvRegChecarCodigo()">
                 <span class="extrv-reg-erro" data-erro="codigo"></span>
                 <span class="extrv-reg-dica" id="extrvreg-dica-codigo"></span>
             </div>
             <div class="extrv-reg-campo c6">
-                <label>Status ${novo ? "<i>*</i>" : ""}</label>
+                <label>Status ${obrigatorio}</label>
                 <select id="extrvreg-status" onchange="_extrvRegChecarCodigo()">${opcao(_extrvRegOpcoes.status, existente.status)}</select>
                 <span class="extrv-reg-erro" data-erro="status"></span>
             </div>
 
             <div class="extrv-reg-campo c6">
-                <label>Transportadora ${novo ? "<i>*</i>" : ""}</label>
+                <label>Transportadora ${obrigatorio}</label>
                 <select id="extrvreg-transportadora">${opcao(_extrvRegOpcoes.transportadoras, existente.transportadora)}</select>
                 <span class="extrv-reg-erro" data-erro="transportadora"></span>
             </div>
             <div class="extrv-reg-campo c6">
-                <label>Cidade ${novo ? "<i>*</i>" : ""}</label>
+                <label>Cidade ${obrigatorio}</label>
                 <input type="text" id="extrvreg-cidade" list="extrvreg-cidades" value="${_extrvRegEsc(existente.cidade || "")}" placeholder="Caçador, Videira...">
                 <datalist id="extrvreg-cidades">${(_extrvRegOpcoes.cidades || []).map(c => `<option value="${_extrvRegEsc(c)}">`).join("")}</datalist>
                 <span class="extrv-reg-erro" data-erro="cidade"></span>
             </div>
 
             <div class="extrv-reg-campo c3">
-                <label>Data ${novo ? "<i>*</i>" : ""}</label>
+                <label>Data ${obrigatorio}</label>
                 <input type="date" id="extrvreg-data" value="${_extrvRegEsc(existente.dataIso || "")}">
                 <span class="extrv-reg-erro" data-erro="data"></span>
             </div>
             <div class="extrv-reg-campo c3">
-                <label>Hora ${novo ? "<i>*</i>" : ""}</label>
+                <label>Hora ${obrigatorio}</label>
                 <input type="time" id="extrvreg-hora" value="${_extrvRegEsc(existente.horaIso || "")}">
                 <span class="extrv-reg-erro" data-erro="hora"></span>
             </div>
             <div class="extrv-reg-campo c6">
-                <label>Valor ${novo ? "<i>*</i>" : ""}</label>
+                <label>Valor ${obrigatorio}</label>
                 <input type="text" id="extrvreg-valor" value="${_extrvRegEsc(existente.valor || "")}" placeholder="R$ 0,00" oninput="_extrvRegMascaraValor(this)">
                 <span class="extrv-reg-erro" data-erro="valor"></span>
             </div>
 
             <div class="extrv-reg-campo c12">
-                <label>Responsável ${novo ? "<i>*</i>" : ""}</label>
+                <label>Responsável ${obrigatorio}</label>
                 <input type="text" id="extrvreg-responsavel" list="extrvreg-responsaveis" value="${_extrvRegEsc(existente.responsavel || "")}" placeholder="Nome - Cidade">
                 <datalist id="extrvreg-responsaveis">${(_extrvRegOpcoes.responsaveis || []).map(c => `<option value="${_extrvRegEsc(c)}">`).join("")}</datalist>
                 <span class="extrv-reg-erro" data-erro="responsavel"></span>
             </div>
 
             <div class="extrv-reg-campo c12">
-                <label>Endereço ${novo ? "<i>*</i>" : ""}</label>
+                <label>Endereço ${obrigatorio}</label>
                 <input type="text" id="extrvreg-endereco" value="${_extrvRegEsc(existente.endereco || "")}" maxlength="250">
                 <span class="extrv-reg-erro" data-erro="endereco"></span>
             </div>
 
             <div class="extrv-reg-campo c12">
-                <label>Causa do problema ${novo ? "<i>*</i>" : ""}</label>
+                <label>Causa do problema ${obrigatorio}</label>
                 <textarea id="extrvreg-causa" rows="2" maxlength="500">${_extrvRegEsc(existente.causa || "")}</textarea>
                 <span class="extrv-reg-erro" data-erro="causa"></span>
             </div>
@@ -344,8 +327,8 @@ function _extrvRegMontarModal(r) {
 
         <div class="extrv-reg-modal-rodape">
             ${autoria}
-            <button class="extrv-reg-btn" onclick="_extrvRegFecharModal()">Cancelar</button>
-            <button class="extrv-reg-btn primario" id="extrvreg-salvar" onclick="_extrvRegSalvar()">
+            <button class="extrv-reg-acao" onclick="_extrvRegFecharModal()">Cancelar</button>
+            <button class="extrv-reg-btn" id="extrvreg-salvar" onclick="_extrvRegSalvar()">
                 ${novo ? "Registrar extravio" : "Salvar alterações"}
             </button>
         </div>
@@ -387,8 +370,8 @@ async function _extrvRegChecarCodigo() {
             const r = await _extrvRegApi("/extravios/codigo/" + encodeURIComponent(codigo) + "?" + q.toString());
 
             if (!r.existe) {
-                dica.textContent = "Código inédito.";
-                dica.className = "extrv-reg-dica ok";
+                dica.textContent = "";
+                dica.className = "extrv-reg-dica";
             } else if (r.permitido) {
                 dica.textContent = `Já existe ${r.ocorrencias}x — será gravado como DUPLICADO (liberado pela Multa).`;
                 dica.className = "extrv-reg-dica alerta";
@@ -448,7 +431,7 @@ function _extrvRegMostrarDuplicidade(dados) {
 
     aviso.innerHTML = `<div class="extrv-reg-aviso-titulo">${_extrvRegEsc(dados.error)}</div>${linhas}`;
     aviso.style.display = "block";
-    aviso.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    aviso.scrollIntoView({ block: "nearest" });
 }
 
 async function _extrvRegSalvar() {
