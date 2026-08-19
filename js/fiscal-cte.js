@@ -254,6 +254,7 @@ function _linhaCTe(c) {
                 : `<button onclick="verCTe(${c.id})">Visualizar</button>`}
             ${c.status === "PRONTO_PARA_EMISSAO"
                 ? `<button class="btn-primario" onclick="emitirCTe(${c.id})">Emitir</button>` : ""}
+            ${c.chave_acesso ? `<button onclick="baixarDacte(${c.id})">PDF</button>` : ""}
         </td>
     </tr>`;
 }
