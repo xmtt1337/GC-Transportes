@@ -208,8 +208,16 @@ function _dCaixaParte(titulo, p, opcoes) {
         "</div>";
 }
 
-function _dacteIcms(d) {
-    const grupo = d.imposto && d.imposto.ICMS;
+/**
+ * ICMS da folha, na ordem em que a informação existe.
+ *
+ * O formulário só grava CST e alíquota — base e valor são calculados na
+ * validação. O grupo montado fica na coluna `icms` do CT-e; é dele que a folha
+ * tira base e valor. Sem essa primeira fonte o DACTE saía com "17,00" de
+ * alíquota e os outros dois campos em branco.
+ */
+function _dacteIcms(d, cte) {
+    const grupo = ((cte && cte.icms) || d.imposto || {}).ICMS;
     if (grupo) {
         const nome = Object.keys(grupo)[0];
         const c = grupo[nome] || {};
@@ -222,11 +230,15 @@ function _dacteIcms(d) {
             pRedBC: c.pRedBC,
         };
     }
-    // Rascunho ainda não validado: mostra os campos soltos da tela.
+    // Rascunho ainda não validado: mostra os campos soltos da tela. Base e
+    // valor podem faltar aqui — é o preço de imprimir um documento que ainda
+    // não passou pela validação, não um campo perdido.
     const cst = d.imposto_cst ? String(d.imposto_cst) : "";
     return {
         cst: _DACTE_CST[cst] || cst,
-        vBC: d.imposto_vbc, pICMS: d.imposto_aliquota, vICMS: d.imposto_valor,
+        vBC: _dTem(d.imposto_vbc) ? d.imposto_vbc : (cte && cte.base_icms),
+        pICMS: d.imposto_aliquota,
+        vICMS: _dTem(d.imposto_valor) ? d.imposto_valor : (cte && cte.valor_icms),
         pRedBC: undefined,
     };
 }
@@ -234,17 +246,32 @@ function _dacteIcms(d) {
 const _DACTE_UNIDADES = { "00": "M3", "01": "KG", "02": "TON", "03": "UNIDADE",
                           "04": "LITROS", "05": "MMBTU" };
 
-/** Medidas da carga; o DACTE reserva três caixas "TP MED / UN. MED". */
+/**
+ * Medidas da carga, repartidas como o DACTE espera.
+ *
+ * A folha tem três caixas "TP MED / UN. MED" e mais duas dedicadas: CUBAGEM,
+ * sempre em m³, e QTDE(VOL), em unidades. O CT-e manda tudo junto em infQ, e é
+ * o código da unidade (00 = M3, 03 = UNIDADE) que diz para onde cada medida
+ * vai — senão a cubagem apareceria como se fosse peso.
+ */
 function _dacteMedidas(carga) {
     const lista = Array.isArray(carga.quantidades) && carga.quantidades.length
         ? carga.quantidades
         : (_dTem(carga.quantidade)
             ? [{ cUnid: carga.unidade, tpMed: carga.tipo_medida, quantidade: carga.quantidade }]
             : []);
-    return lista.map((q) => ({
-        tipo: q.tpMed || "",
-        valor: _dNum(q.quantidade, 3) + " " + (_DACTE_UNIDADES[q.cUnid] || ""),
-    }));
+
+    const r = { medidas: [], cubagem: "", qtde: "" };
+    for (const q of lista) {
+        const unidade = String(q.cUnid || "");
+        if (unidade === "00" && !r.cubagem) { r.cubagem = _dNum(q.quantidade, 4); continue; }
+        if (unidade === "03" && !r.qtde) { r.qtde = _dNum(q.quantidade, 0); continue; }
+        r.medidas.push({
+            tipo: q.tpMed || "",
+            valor: _dNum(q.quantidade, 3) + " " + (_DACTE_UNIDADES[unidade] || ""),
+        });
+    }
+    return r;
 }
 
 /** CNPJ do emitente da NF-e sai da própria chave: posições 7 a 20. */
@@ -264,7 +291,7 @@ function _dacteHtml(pacote) {
     const autorizado = cte.status === "AUTORIZADO";
     const comps = (d.vPrest && d.vPrest.componentes) || [];
     const carga = d.carga || {};
-    const icms = _dacteIcms(d);
+    const icms = _dacteIcms(d, cte);
 
     // IBS/CBS: o grupo fica montado em `cte.ibscbs`, na forma do schema.
     const ib = cte.ibscbs || {};
@@ -394,9 +421,20 @@ function _dacteHtml(pacote) {
     }
     const linhasDoc = pares.map((p) => _dLin(celulaDoc(p[0]), celulaDoc(p[1]))).join("");
 
+    // A data prevista vem do dPrev de cada NF-e transportada. O importador já a
+    // lê e guarda junto do documento; é a mesma para o embarque todo, então a
+    // primeira que existir é a do CT-e.
+    const dataPrevista = (() => {
+        for (const x of documentos) {
+            const v = (x.dados && x.dados.data_prevista) || x.data_prevista;
+            if (_dTem(v)) return String(v).slice(0, 10).split("-").reverse().join("/");
+        }
+        return "";
+    })();
+
     const medidas = _dacteMedidas(carga);
     const celulaMedida = (i) => {
-        const m = medidas[i];
+        const m = medidas.medidas[i];
         return '<div class="dc" style="flex:1 1 0"><span class="dr">TP MED / UN. MED</span>' +
             '<span class="dv">' + (m ? _dEsc(m.tipo) : "&nbsp;") + "</span>" +
             '<span class="dv dforte">' + (m ? _dEsc(m.valor) : "&nbsp;") + "</span></div>";
@@ -445,8 +483,8 @@ function _dacteHtml(pacote) {
             ) +
             _dLin(
                 celulaMedida(0), celulaMedida(1), celulaMedida(2),
-                _dCel("CUBAGEM(M3)", "", { largura: "24mm" }),
-                _dCel("QTDE(VOL)", "", { largura: "22mm" })
+                _dCel("CUBAGEM(M3)", medidas.cubagem, { largura: "24mm", num: true }),
+                _dCel("QTDE(VOL)", medidas.qtde, { largura: "22mm", num: true })
             ) +
             _dLin(
                 _dCel("NOME DA SEGURADORA", "", { peso: 2 }),
@@ -505,7 +543,7 @@ function _dacteHtml(pacote) {
             _dLin(
                 _dCel("RNTRC DA EMPRESA", (d.modal && d.modal.rntrc) || ""),
                 _dCel("CIOT", ""),
-                _dCel("DATA PREVISTA DE ENTREGA", "")
+                _dCel("DATA PREVISTA DE ENTREGA", dataPrevista)
             ) +
             '<div class="dlegenda">ESTE CONHECIMENTO DE TRANSPORTE ATENDE À LEGISLAÇÃO ' +
             "DE TRANSPORTE RODOVIÁRIO EM VIGOR</div>" +

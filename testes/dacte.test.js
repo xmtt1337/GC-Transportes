@@ -305,3 +305,62 @@ test("os totais ficam ao lado dos componentes, nao embaixo", () => {
     assert.ok(trecho.includes("VALOR TOTAL DO SERVIÇO"));
     assert.ok(trecho.includes("VALOR A RECEBER"));
 });
+
+// ── de onde a folha tira o ICMS
+//
+// A tela grava so CST e aliquota; base e valor saem da validacao e ficam na
+// coluna `icms`. Sem ler dali, o DACTE saia com "17,00" e dois campos vazios.
+test("base e valor do ICMS vem do grupo guardado no CT-e", () => {
+    const p = pacote();
+    delete p.cte.dados.imposto;             // como fica um CT-e vindo da tela
+    p.cte.dados.imposto_cst = "00";
+    p.cte.dados.imposto_aliquota = "17";
+    p.cte.icms = { ICMS: { ICMS00: { CST: "00", vBC: "4.00", pICMS: "17.00",
+                                     vICMS: "0.68" } } };
+    const html = api._dacteHtml(p);
+    assert.ok(html.includes("00 - Tributação normal ICMS"));
+    assert.ok(html.includes("4,00"), "base de calculo");
+    assert.ok(html.includes("0,68"), "valor do ICMS");
+});
+
+test("rascunho sem validacao ainda mostra o que houver", () => {
+    const p = pacote();
+    delete p.cte.dados.imposto;
+    p.cte.dados.imposto_cst = "00";
+    p.cte.dados.imposto_aliquota = "17";
+    p.cte.base_icms = "4.00";
+    p.cte.valor_icms = "0.68";
+    const html = api._dacteHtml(p);
+    assert.ok(html.includes("17,00"));
+    assert.ok(html.includes("0,68"), "cai para a coluna solta quando nao ha grupo");
+});
+
+test("cubagem e quantidade de volumes saem das proprias unidades", () => {
+    const p = pacote();
+    delete p.cte.dados.carga.unidade;
+    delete p.cte.dados.carga.tipo_medida;
+    delete p.cte.dados.carga.quantidade;
+    p.cte.dados.carga.quantidades = [
+        { cUnid: "01", tpMed: "PESO BRUTO", quantidade: "3.998" },
+        { cUnid: "00", tpMed: "CUBAGEM", quantidade: "0.0125" },
+        { cUnid: "03", tpMed: "VOLUMES", quantidade: "2" },
+    ];
+    const html = api._dacteHtml(p);
+    assert.ok(html.includes("3,998 KG"), "peso na caixa de TP MED");
+    assert.ok(html.includes("0,0125"), "cubagem na coluna dela");
+    // a cubagem nao pode aparecer como se fosse peso
+    assert.ok(!html.includes("0,013 M3"));
+    assert.ok(/QTDE\(VOL\)<\/span><span class="dv">2</.test(html), "quantidade de volumes");
+});
+
+test("data prevista de entrega sai do dPrev da NF-e transportada", () => {
+    const p = pacote();
+    p.documentos = [{
+        tipo_documento: "NFe",
+        chave_nfe: "42260500000000000272550010000001231000000012",
+        serie: "1", numero: "123",
+        dados: { data_prevista: "2026-08-22" },
+    }];
+    const html = api._dacteHtml(p);
+    assert.ok(html.includes("22/08/2026"), "a data prevista nao foi puxada");
+});
