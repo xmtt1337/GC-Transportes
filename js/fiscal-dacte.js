@@ -107,41 +107,87 @@ const _dCep = (v) => {
 const _dChave = (v) => String(v || "").replace(/\D/g, "").replace(/(\d{4})(?=\d)/g, "$1 ").trim();
 const _dData = (v) => v ? new Date(v).toLocaleString("pt-BR") : "";
 
-const _DACTE_TIPOS = { 0: "NORMAL", 1: "COMPLEMENTO", 3: "SUBSTITUTO" };
+// ── rótulos
+//
+// O texto é o que o DACTE realmente imprime. As descrições de CST vêm da
+// documentação do próprio XSD (cteTiposBasico_v4.00.xsd), não de memória.
+const _DACTE_TIPOS = {
+    0: "CT-e Normal", 1: "CT-e de Complemento de Valores", 3: "CT-e de Substituição",
+};
 const _DACTE_SERVICOS = {
-    0: "NORMAL", 1: "SUBCONTRATACAO", 2: "REDESPACHO",
-    3: "REDESPACHO INTERMEDIARIO", 4: "SERVICO VINCULADO A MULTIMODAL",
+    0: "Normal", 1: "Subcontratação", 2: "Redespacho",
+    3: "Redespacho Intermediário", 4: "Serviço Vinculado a Multimodal",
 };
 const _DACTE_TOMADORES = {
     0: "REMETENTE", 1: "EXPEDIDOR", 2: "RECEBEDOR", 3: "DESTINATARIO", 4: "OUTROS",
 };
+const _DACTE_CST = {
+    "00": "00 - tributação normal ICMS",
+    "20": "20 - tributação com BC reduzida do ICMS",
+    "40": "40 - ICMS isento, não tributado ou diferido",
+    "41": "41 - ICMS isento, não tributado ou diferido",
+    "51": "51 - ICMS diferido",
+    "60": "60 - ICMS cobrado por substituição tributária",
+    "90": "90 - ICMS outros",
+};
 
-/** Bloco rotulado — é assim que o DACTE apresenta cada campo. */
-function _dCampo(rotulo, valor, largura) {
+// Logo só sai na folha da empresa dona dele. Carimbar a marca da GC no DACTE
+// de outro emitente seria falsificar a origem do documento.
+const _DACTE_CNPJ_GC = "40595873000109";
+const _DACTE_LOGO_GC = "img/Transportadoras/GC%20preto%20sem%20fundo.png";
+
+const _dDig = (v) => String(v || "").replace(/\D/g, "");
+
+/** Célula rotulada: rótulo miúdo em cima, valor embaixo. É o átomo do DACTE. */
+function _dCel(rotulo, valor, opcoes) {
+    const o = opcoes || {};
     const vazio = valor === "" || valor === null || valor === undefined;
-    return '<div class="dc" style="' + (largura ? "flex:0 0 " + largura + ";" : "flex:1;") + '">' +
-           '<span class="dr">' + _dEsc(rotulo) + '</span>' +
-           '<span class="dv">' + (vazio ? "&nbsp;" : _dEsc(valor)) + '</span></div>';
+    const estilo = o.largura ? "flex:0 0 " + o.largura : "flex:" + (o.peso || 1);
+    return '<div class="dc" style="' + estilo + '">' +
+        '<span class="dr">' + _dEsc(rotulo) + "</span>" +
+        '<span class="dv' + (o.centro ? " dcentro" : "") + (o.forte ? " dforte" : "") +
+        (o.num ? " dnum" : "") + '">' + (vazio ? "&nbsp;" : _dEsc(valor)) + "</span></div>";
 }
 
-function _dParte(titulo, p) {
-    if (!p) return "";
-    const temAlgo = p.cnpj || p.cpf || p.nome || p.razao_social;
-    if (!temAlgo) return "";
-    const e = p.endereco || {};
-    const local = [e.municipio, e.uf].filter(Boolean).join(" / ");
-    const rua = [e.logradouro, e.numero, e.complemento].filter(Boolean).join(", ");
-    return '<div class="dsec"><div class="dtit">' + _dEsc(titulo) + '</div>' +
-        '<div class="dlinha">' +
-            _dCampo("Razao social / Nome", p.nome || p.razao_social || "") +
-            _dCampo("CNPJ / CPF", _dDoc(p.cnpj || p.cpf), "150px") +
-            _dCampo("Inscricao estadual", p.ie || "", "120px") +
-        '</div><div class="dlinha">' +
-            _dCampo("Endereco", rua) +
-            _dCampo("Bairro", e.bairro || "", "130px") +
-            _dCampo("Municipio / UF", local, "160px") +
-            _dCampo("CEP", _dCep(e.cep), "80px") +
-        '</div></div>';
+const _dLin = (...celulas) => '<div class="dlin">' + celulas.join("") + "</div>";
+const _dTit = (texto) => '<div class="dtit">' + _dEsc(texto) + "</div>";
+
+/** Par rótulo/valor em linha — o formato das colunas de remetente e afins. */
+function _dKv(rotulo, valor) {
+    const vazio = valor === "" || valor === null || valor === undefined;
+    return '<div class="dkv"><span class="dk">' + _dEsc(rotulo) + "</span>" +
+        '<span class="dkval">' + (vazio ? "&nbsp;" : _dEsc(valor)) + "</span></div>";
+}
+
+const _dEnderecoLinha = (e) => {
+    if (!e) return "";
+    const rua = [e.logradouro, e.numero].filter(Boolean).join(", ");
+    const resto = [e.complemento, e.bairro].filter(Boolean).join(" - ");
+    return [rua, resto].filter(Boolean).join("  ");
+};
+
+const _dMunUf = (e) => (e ? [e.municipio, e.uf].filter(Boolean).join("/") : "");
+
+/**
+ * Coluna de uma parte (remetente, destinatário, expedidor, recebedor).
+ *
+ * Sai mesmo vazia: no DACTE as quatro caixas são fixas, e a ausência do
+ * expedidor é informação — quem confere a carga precisa ver o campo em branco,
+ * não a caixa sumida.
+ */
+function _dColunaParte(titulo, p) {
+    const parte = p || {};
+    const e = parte.endereco || {};
+    return '<div class="dcol">' + _dTit(titulo) +
+        '<div class="dnome">' + _dEsc(parte.nome || parte.razao_social || "") + "&nbsp;</div>" +
+        _dKv("ENDEREÇO", _dEnderecoLinha(e)) +
+        _dKv("MUNICÍPIO", _dMunUf(e)) +
+        _dKv("CEP", _dCep(e.cep)) +
+        _dKv("CNPJ/CPF", _dDoc(parte.cnpj || parte.cpf)) +
+        _dKv("INSC.ESTADUAL", parte.ie || "") +
+        _dKv("PAIS", e.pais || (e.uf ? "BRASIL" : "")) +
+        _dKv("FONE", parte.telefone || "") +
+        "</div>";
 }
 
 function _dacteIcms(d) {
@@ -149,25 +195,41 @@ function _dacteIcms(d) {
     if (grupo) {
         const nome = Object.keys(grupo)[0];
         const c = grupo[nome] || {};
+        const cst = c.CST || "";
         return {
-            cst: nome + " — CST " + (c.CST || ""),
+            cst: nome === "ICMSSN" ? "90 - ICMS Simples Nacional" : (_DACTE_CST[cst] || cst),
             vBC: c.vBC !== undefined ? c.vBC : c.vBCOutraUF,
             pICMS: c.pICMS !== undefined ? c.pICMS : c.pICMSOutraUF,
             vICMS: c.vICMS !== undefined ? c.vICMS : c.vICMSOutraUF,
+            pRedBC: c.pRedBC,
         };
     }
     // Rascunho ainda não validado: mostra os campos soltos da tela.
+    const cst = d.imposto_cst ? String(d.imposto_cst) : "";
     return {
-        cst: d.imposto_cst ? "CST " + d.imposto_cst : "",
+        cst: _DACTE_CST[cst] || cst,
         vBC: d.imposto_vbc, pICMS: d.imposto_aliquota, vICMS: d.imposto_valor,
+        pRedBC: undefined,
     };
 }
 
-function _dacteChaveAnterior(d) {
-    const a = Array.isArray(d.docAnt) ? d.docAnt[0] : d.docAnt;
-    if (!a) return "";
-    return a.chave || (a.chaves || [])[0] || "";
+/** Medidas da carga, no formato "01-KG 801,000" do DACTE. */
+function _dacteMedidas(carga) {
+    const lista = Array.isArray(carga.quantidades) && carga.quantidades.length
+        ? carga.quantidades
+        : (carga.quantidade !== undefined && carga.quantidade !== null
+            ? [{ cUnid: carga.unidade, tpMed: carga.tipo_medida, quantidade: carga.quantidade }]
+            : []);
+    return lista
+        .map((q) => [q.cUnid, q.tpMed].filter(Boolean).join("-") + "  " + _dNum(q.quantidade, 3))
+        .join("   ");
 }
+
+/** CNPJ do emitente da NF-e sai da própria chave: posições 7 a 20. */
+const _dCnpjDaChave = (chave) => {
+    const d = _dDig(chave);
+    return d.length === 44 ? _dDoc(d.slice(6, 20)) : "";
+};
 
 /** Monta a folha inteira. */
 function _dacteHtml(pacote) {
@@ -182,165 +244,288 @@ function _dacteHtml(pacote) {
     const carga = d.carga || {};
     const icms = _dacteIcms(d);
 
-    const linhasComp = comps.length
-        ? comps.map((c) => '<tr><td>' + _dEsc(c.nome) + '</td><td class="dnum">' +
-                           _dNum(c.valor) + '</td></tr>').join("")
-        : '<tr><td colspan="2">&nbsp;</td></tr>';
+    // IBS/CBS: o grupo fica montado em `cte.ibscbs`, na forma do schema.
+    const ib = cte.ibscbs || {};
+    const g = ib.gIBSCBS || {};
+    const uf = g.gIBSUF || {};
+    const mun = g.gIBSMun || {};
+    const cbs = g.gCBS || {};
 
-    const linhasDoc = documentos.length
-        ? documentos.map((x) => '<tr><td>' + _dEsc(x.tipo_documento || "NFe") + '</td>' +
-              '<td>' + _dEsc([x.serie, x.numero].filter(Boolean).join(" / ")) + '</td>' +
-              '<td class="dmono">' + _dEsc(x.chave_nfe || "") + '</td></tr>').join("")
-        : '<tr><td colspan="3">&nbsp;</td></tr>';
+    const numero = cte.numero === null || cte.numero === undefined ? "" : String(cte.numero);
+    const numeroLongo = numero ? numero.padStart(9, "0").replace(/(\d{3})(?=\d)/g, "$1.") : "";
+
+    // ── canhoto: o recibo que o destinatário assina e devolve
+    const canhoto =
+        '<div class="dcanhoto">' +
+            '<div class="dcanhoto-esq">' +
+                '<div class="ddeclaro">DECLARO QUE RECEBI OS VOLUMES DESTE CONHECIMENTO EM ' +
+                "PERFEITO ESTADO PELO QUE DOU POR CUMPRIDO O PRESENTE CONTRATO DE TRANSPORTE</div>" +
+                _dLin(
+                    _dCel("Nome:", "", { peso: 2 }),
+                    _dCel("ASSINATURA/CARIMBO", "", { peso: 2 }),
+                    _dCel("CHEGADA DATA/HORA", "___/___/______   ___:___", { largura: "42mm" }),
+                    _dCel("SAÍDA DATA/HORA", "___/___/______   ___:___", { largura: "42mm" })
+                ) +
+            "</div>" +
+            '<div class="dcanhoto-dir">' +
+                '<div class="dcanhoto-cte">CT-e</div>' +
+                '<div class="dcanhoto-num">N°: ' + _dEsc(numeroLongo) + "</div>" +
+                '<div class="dcanhoto-num">SÉRIE: ' + _dEsc(cte.serie === null || cte.serie === undefined ? "" : cte.serie) + "</div>" +
+                '<div class="dcanhoto-rg">RG/CPF: ____________________</div>' +
+            "</div>" +
+        "</div>" +
+        '<div class="dcorte"></div>';
+
+    // ── cabeçalho de três colunas
+    const logo = _dDig(emitente.cnpj) === _DACTE_CNPJ_GC
+        ? '<img class="dlogo" src="' + _DACTE_LOGO_GC + '" alt="">'
+        : "";
+
+    const cabecalho =
+        '<div class="dcab">' +
+            '<div class="dcab-emit">' + _dTit("IDENTIFICAÇÃO DO EMITENTE") +
+                '<div class="demit">' + logo +
+                    '<div class="demit-txt">' +
+                        '<div class="demit-nome">' + _dEsc(emitente.razao_social || "") + "</div>" +
+                        _dEsc([emitente.logradouro, emitente.numero].filter(Boolean).join(", ")) + "<br>" +
+                        _dEsc([emitente.complemento, emitente.bairro].filter(Boolean).join(" - ")) + "<br>" +
+                        _dEsc([emitente.municipio, emitente.uf].filter(Boolean).join("/")) +
+                        (emitente.cep ? " - CEP: " + _dEsc(_dCep(emitente.cep)) : "") + "<br>" +
+                        (emitente.telefone ? "Fone: " + _dEsc(emitente.telefone) + "<br>" : "") +
+                        "CNPJ: " + _dEsc(_dDoc(emitente.cnpj)) + "<br>" +
+                        "Inscrição Estadual: " + _dEsc(emitente.ie || "") +
+                    "</div>" +
+                "</div>" +
+            "</div>" +
+
+            '<div class="dcab-meio">' +
+                '<div class="ddacte">DACTE</div>' +
+                '<div class="ddacte-sub">Documento Auxiliar do Conhecimento de ' +
+                "Transporte Eletrônico</div>" +
+                _dLin(_dCel("Modal", "Rodoviário", { centro: true })) +
+                _dLin(
+                    _dCel("MODELO", cte.modelo || "57", { centro: true }),
+                    _dCel("SERIE", cte.serie === null || cte.serie === undefined ? "" : cte.serie, { centro: true }),
+                    _dCel("NÚMERO", numero, { centro: true, forte: true }),
+                    _dCel("FOLHA", "1/1", { centro: true })
+                ) +
+                _dLin(_dCel("DATA E HORA DE EMISSÃO",
+                    _dData(cte.data_emissao || cte.criado_em), { centro: true })) +
+                _dLin(
+                    _dCel("TIPO DO CT-e", _DACTE_TIPOS[ide.tpCTe] || ""),
+                    _dCel("TIPO DO SERVIÇO", _DACTE_SERVICOS[ide.tpServ] || "")
+                ) +
+            "</div>" +
+
+            '<div class="dcab-dir">' +
+                '<div class="dbarras">' + _dacteBarras(cte.chave_acesso) + "</div>" +
+                _dLin(_dCel("Chave de Acesso", _dChave(cte.chave_acesso), { centro: true })) +
+                _dLin(
+                    _dCel("TOMADOR DO SERVIÇO", _DACTE_TOMADORES[ide.toma] || ""),
+                    _dCel("INDICADOR DE CT-E GLOBALIZADO",
+                        String(ide.indGlobalizado) === "1" ? "SIM" : "NÃO", { largura: "34mm", centro: true })
+                ) +
+                '<div class="dconsulta">Consulta de autenticidade no portal nacional do CT-e, ' +
+                "no site da Sefaz Autorizadora ou em http://www.cte.fazenda.gov.br/portal</div>" +
+            "</div>" +
+        "</div>";
+
+    // ── componentes: o DACTE imprime quatro pares Nome/Valor por linha
+    const grupos = [];
+    for (let i = 0; i < Math.max(comps.length, 4); i += 4) grupos.push(comps.slice(i, i + 4));
+    const linhasComp = grupos.map((g) => _dLin(
+        ...[0, 1, 2, 3].map((k) => {
+            const c = g[k];
+            return '<div class="dc dpar" style="flex:1">' +
+                '<span class="dr">Nome</span><span class="dv">' +
+                (c ? _dEsc(c.nome) : "&nbsp;") + "</span></div>" +
+                '<div class="dc" style="flex:0 0 22mm">' +
+                '<span class="dr">Valor</span><span class="dv dnum">' +
+                (c ? _dNum(c.valor) : "&nbsp;") + "</span></div>";
+        })
+    )).join("");
+
+    // ── documentos originários: duas colunas de três campos, como no MOC
+    const pares = [];
+    for (let i = 0; i < Math.max(documentos.length, 2); i += 2) pares.push(documentos.slice(i, i + 2));
+    const celulaDoc = (x) => x
+        ? _dCel("TP DOC.", x.tipo_documento || "", { largura: "18mm" }) +
+          _dCel("CNPJ/CPF EMIT.", _dCnpjDaChave(x.chave_nfe), { largura: "34mm" }) +
+          _dCel("SÉRIE/NRO DOC.", [x.serie, x.numero].filter(Boolean).join(" / "))
+        : _dCel("TP DOC.", "", { largura: "18mm" }) +
+          _dCel("CNPJ/CPF EMIT.", "", { largura: "34mm" }) +
+          _dCel("SÉRIE/NRO DOC.", "");
+    const linhasDoc = pares
+        .map((p) => _dLin(celulaDoc(p[0]), celulaDoc(p[1])))
+        .join("");
 
     return '<div class="dacte">' +
-      (homolog ? '<div class="dmarca">SEM VALOR FISCAL — AMBIENTE DE HOMOLOGACAO</div>' : "") +
+        (homolog ? '<div class="dmarca">SEM VALOR FISCAL — HOMOLOGAÇÃO</div>' : "") +
 
-      '<div class="dtopo">' +
-        '<div class="dtopo-emit">' +
-          '<div class="demit-nome">' + _dEsc(emitente.razao_social || "") + '</div>' +
-          '<div class="demit-end">' +
-            _dEsc([emitente.logradouro, emitente.numero].filter(Boolean).join(", ")) + '<br>' +
-            _dEsc(emitente.bairro || "") + " — " + _dEsc(emitente.municipio || "") +
-            "/" + _dEsc(emitente.uf || "") +
-            (emitente.cep ? " — CEP " + _dEsc(_dCep(emitente.cep)) : "") + '<br>' +
-            "CNPJ " + _dEsc(_dDoc(emitente.cnpj)) + " — IE " + _dEsc(emitente.ie || "") +
-            (emitente.telefone ? "<br>Fone " + _dEsc(emitente.telefone) : "") +
-          '</div>' +
-        '</div>' +
+        canhoto +
+        cabecalho +
 
-        '<div class="dtopo-doc">' +
-          '<div class="ddacte">DACTE</div>' +
-          '<div class="ddacte-sub">Documento Auxiliar do Conhecimento<br>de Transporte Eletronico</div>' +
-          '<div class="dlinha">' +
-            _dCampo("Modelo", cte.modelo || "57") +
-            _dCampo("Serie", cte.serie === null || cte.serie === undefined ? "" : cte.serie) +
-            _dCampo("Numero", cte.numero === null || cte.numero === undefined ? "" : cte.numero) +
-            _dCampo("Folha", "1/1") +
-          '</div><div class="dlinha">' +
-            _dCampo("Modal", "RODOVIARIO") +
-            _dCampo("Tipo do CT-e", _DACTE_TIPOS[ide.tpCTe] || "") +
-            _dCampo("Tipo do servico", _DACTE_SERVICOS[ide.tpServ] || "") +
-          '</div>' +
-        '</div>' +
+        _dLin(
+            _dCel("CFOP - NATUREZA DA PRESTAÇÃO",
+                [ide.CFOP, ide.natOp].filter(Boolean).join("-"), { peso: 2 }),
+            _dCel(autorizado ? "PROTOCOLO DE AUTORIZAÇÃO DE USO" : "SITUAÇÃO DO DOCUMENTO",
+                autorizado
+                    ? [cte.protocolo, _dData(cte.data_autorizacao)].filter(Boolean).join("  ")
+                    : cte.status || "")
+        ) +
+        _dLin(
+            _dCel("ORIGEM DA PRESTAÇÃO", [ide.xMunIni, ide.UFIni].filter(Boolean).join("/")),
+            _dCel("DESTINO DA PRESTAÇÃO", [ide.xMunFim, ide.UFFim].filter(Boolean).join("/"))
+        ) +
 
-        '<div class="dtopo-chave">' +
-          '<div class="dbarras">' + _dacteBarras(cte.chave_acesso) + '</div>' +
-          '<div class="dlinha">' + _dCampo("Chave de acesso", _dChave(cte.chave_acesso)) + '</div>' +
-          '<div class="dconsulta">Consulta de autenticidade no portal nacional do CT-e, ' +
-          'no site da SEFAZ autorizadora, ou em www.cte.fazenda.gov.br</div>' +
-        '</div>' +
-      '</div>' +
+        '<div class="dlin dpartes">' +
+            _dColunaParte("REMETENTE", d.remetente) +
+            _dColunaParte("DESTINATÁRIO", d.destinatario) +
+        "</div>" +
+        '<div class="dlin dpartes">' +
+            _dColunaParte("EXPEDIDOR", d.expedidor) +
+            _dColunaParte("RECEBEDOR", d.recebedor) +
+        "</div>" +
 
-      '<div class="dlinha">' +
-        _dCampo(autorizado ? "Protocolo de autorizacao de uso"
-                           : "Situacao (documento ainda nao autorizado)",
-                autorizado ? (cte.protocolo || "") + " — " + _dData(cte.data_autorizacao)
-                           : cte.status) +
-        _dCampo("Emissao", _dData(cte.data_emissao || cte.criado_em), "170px") +
-      '</div>' +
+        _dLin(
+            _dCel("Tomador:", (d.tomador && (d.tomador.nome || d.tomador.razao_social)) || "", { peso: 2 }),
+            _dCel("MUNICÍPIO", _dMunUf(d.tomador && d.tomador.endereco)),
+            _dCel("CEP", _dCep(d.tomador && d.tomador.endereco && d.tomador.endereco.cep), { largura: "24mm" })
+        ) +
+        _dLin(
+            _dCel("Endereço:", _dEnderecoLinha(d.tomador && d.tomador.endereco), { peso: 2 }),
+            _dCel("CPF/CNPJ:", _dDoc(d.tomador && (d.tomador.cnpj || d.tomador.cpf)), { largura: "34mm" }),
+            _dCel("INSC.ESTADUAL", (d.tomador && d.tomador.ie) || "", { largura: "28mm" }),
+            _dCel("PAIS", d.tomador ? "BRASIL" : "", { largura: "20mm" }),
+            _dCel("FONE", (d.tomador && d.tomador.telefone) || "", { largura: "28mm" })
+        ) +
 
-      '<div class="dlinha">' +
-        _dCampo("CFOP — Natureza da prestacao", (ide.CFOP || "") + " — " + (ide.natOp || "")) +
-      '</div>' +
-      '<div class="dlinha">' +
-        _dCampo("Inicio da prestacao", (ide.xMunIni || "") + " / " + (ide.UFIni || "")) +
-        _dCampo("Termino da prestacao", (ide.xMunFim || "") + " / " + (ide.UFFim || "")) +
-        _dCampo("Tomador", _DACTE_TOMADORES[ide.toma] || "", "150px") +
-      '</div>' +
+        _dLin(
+            _dCel("PRODUTO PREDOMINANTE", carga.produto_predominante || "", { peso: 2 }),
+            _dCel("OUTRAS CARACTERISTICAS DA CARGA", carga.outras_caracteristicas || "", { peso: 2 }),
+            _dCel("VALOR TOTAL DA MERCADORIA", _dNum(carga.valor_carga), { largura: "32mm", num: true }),
+            _dCel("Unidade/Quantidade", _dacteMedidas(carga), { largura: "38mm" })
+        ) +
 
-      _dParte("Remetente", d.remetente) +
-      _dParte("Destinatario", d.destinatario) +
-      _dParte("Expedidor", d.expedidor) +
-      _dParte("Recebedor", d.recebedor) +
-      _dParte("Tomador do servico", d.tomador) +
+        _dTit("COMPONENTES DO VALOR DA PRESTAÇÃO DO SERVIÇO") +
+        linhasComp +
+        _dLin(
+            _dCel("VALOR TOTAL DO SERVIÇO", _dNum(d.vPrest && d.vPrest.vTPrest), { num: true, forte: true }),
+            _dCel("VALOR A RECEBER", _dNum(d.vPrest && d.vPrest.vRec), { num: true, forte: true })
+        ) +
 
-      '<div class="dsec"><div class="dtit">Produtos transportados</div>' +
-        '<div class="dlinha">' +
-          _dCampo("Produto predominante", carga.produto_predominante || "") +
-          _dCampo("Outras caracteristicas", carga.outras_caracteristicas || "") +
-          _dCampo("Valor total da carga", _dNum(carga.valor_carga), "130px") +
-        '</div><div class="dlinha">' +
-          _dCampo("Quantidade", _dNum(carga.quantidade !== undefined ? carga.quantidade : carga.peso, 4), "130px") +
-          _dCampo("Unidade", carga.unidade || "", "90px") +
-          _dCampo("Tipo de medida", carga.tipo_medida || "") +
-        '</div></div>' +
+        _dTit("INFORMAÇÕES RELATIVAS AO IMPOSTO") +
+        _dLin(
+            _dCel("SITUAÇÃO TRIBUTÁRIA", icms.cst, { peso: 2 }),
+            _dCel("BASE DE CALCULO", _dNum(icms.vBC), { num: true }),
+            _dCel("ALIQ. ICMS", _dNum(icms.pICMS), { num: true, largura: "22mm" }),
+            _dCel("VALOR DO ICMS", _dNum(icms.vICMS), { num: true }),
+            _dCel("% RED.BC", _dNum(icms.pRedBC), { num: true, largura: "20mm" })
+        ) +
+        _dLin(
+            _dCel("Código Situação Tributária do IBS/CBS",
+                [ib.CST, ib.cClassTrib].filter(Boolean).join(" / "), { peso: 2 }),
+            _dCel("v. BC IBS/CBS", _dNum(g.vBC), { num: true }),
+            _dCel("p. IBS UF", _dNum(uf.pIBSUF, 4), { num: true }),
+            _dCel("v. IBS UF", _dNum(uf.vIBSUF), { num: true }),
+            _dCel("p. IBS Mun", _dNum(mun.pIBSMun, 4), { num: true }),
+            _dCel("v. IBS Mun.", _dNum(mun.vIBSMun), { num: true }),
+            _dCel("p. CBS", _dNum(cbs.pCBS, 4), { num: true }),
+            _dCel("v. CBS", _dNum(cbs.vCBS), { num: true })
+        ) +
 
-      '<div class="dsec"><div class="dtit">Componentes do valor da prestacao do servico</div>' +
-        '<table class="dtab"><thead><tr><th>Nome</th><th class="dnum">Valor</th></tr></thead>' +
-        '<tbody>' + linhasComp + '</tbody></table>' +
-        '<div class="dlinha">' +
-          _dCampo("Valor total da prestacao", _dNum(d.vPrest && d.vPrest.vTPrest)) +
-          _dCampo("Valor a receber", _dNum(d.vPrest && d.vPrest.vRec)) +
-        '</div></div>' +
+        _dTit("INFORMAÇÕES SOBRE OS VEÍCULOS NOVOS TRANSPORTADOS") +
+        _dLin(
+            _dCel("Chassi:", ""), _dCel("Cod. Cor:", ""), _dCel("Cor:", ""),
+            _dCel("Marca:", ""), _dCel("Valor Unitário Veículo:", ""),
+            _dCel("Valor Frete Veículo:", "")
+        ) +
 
-      '<div class="dsec"><div class="dtit">Informacoes relativas ao imposto</div>' +
-        '<div class="dlinha">' +
-          _dCampo("Situacao tributaria", icms.cst) +
-          _dCampo("Base de calculo", _dNum(icms.vBC), "130px") +
-          _dCampo("Aliquota ICMS", icms.pICMS ? _dNum(icms.pICMS) + "%" : "", "110px") +
-          _dCampo("Valor do ICMS", _dNum(icms.vICMS), "130px") +
-        '</div>' +
-        ((cte.valor_ibs !== null && cte.valor_ibs !== undefined) ||
-         (cte.valor_cbs !== null && cte.valor_cbs !== undefined)
-          ? '<div class="dlinha">' +
-              _dCampo("Valor do IBS", _dNum(cte.valor_ibs), "150px") +
-              _dCampo("Valor da CBS", _dNum(cte.valor_cbs), "150px") +
-              _dCampo("Valor total do documento", _dNum(cte.valor_total_dfe)) +
-            '</div>'
-          : "") +
-      '</div>' +
+        _dTit("DOCUMENTOS ORIGINÁRIOS") +
+        linhasDoc +
 
-      '<div class="dsec"><div class="dtit">Documentos originarios</div>' +
-        '<table class="dtab"><thead><tr><th>Tipo</th><th>Serie / Numero</th>' +
-        '<th>Chave de acesso</th></tr></thead><tbody>' + linhasDoc + '</tbody></table></div>' +
+        _dTit("OBSERVAÇÕES GERAIS") +
+        '<div class="dobs">' + _dEsc((d.compl && d.compl.xObs) || "") + "&nbsp;</div>" +
 
-      '<div class="dsec"><div class="dtit">Modal rodoviario</div>' +
-        '<div class="dlinha">' +
-          _dCampo("RNTRC da empresa", (d.modal && d.modal.rntrc) || "") +
-          _dCampo("CT-e anterior (redespacho)", _dacteChaveAnterior(d)) +
-        '</div></div>' +
+        _dTit("INFORMAÇÕES ESPECÍFICAS DO MODAL RODOVIÁRIO") +
+        _dLin(
+            _dCel("RNTRC DA EMPRESA", (d.modal && d.modal.rntrc) || ""),
+            _dCel("DATA PREV. ENTREGA", "")
+        ) +
 
-      '<div class="dsec"><div class="dtit">Observacoes</div>' +
-        '<div class="dobs">' + _dEsc((d.compl && d.compl.xObs) || "") + '&nbsp;</div></div>' +
-    '</div>';
+        '<div class="dlin dreserva">' +
+            '<div class="dc" style="flex:1"><span class="dr">USO EXCLUSIVO DO EMISSOR DO CT-e</span>' +
+            '<span class="dv">&nbsp;</span></div>' +
+            '<div class="dc" style="flex:1"><span class="dr">RESERVADO AO FISCO</span>' +
+            '<span class="dv">&nbsp;</span></div>' +
+        "</div>" +
+
+        '<div class="drodape">Data/Hora Impressão: ' +
+        _dEsc(new Date().toLocaleString("pt-BR")) + "</div>" +
+    "</div>";
 }
 
 const _DACTE_CSS = [
-".dacte { position:relative; width:190mm; background:#fff; color:#000;",
-"  font-family:Arial, Helvetica, sans-serif; font-size:7.5pt; line-height:1.25; }",
-".dacte * { box-sizing:border-box; }",
-".dmarca { position:absolute; top:38%; left:0; right:0; text-align:center;",
-"  font-size:20pt; font-weight:700; color:rgba(200,0,0,.16);",
-"  transform:rotate(-20deg); pointer-events:none; z-index:5; letter-spacing:1px; }",
-".dtopo { display:flex; border:1px solid #000; }",
-".dtopo-emit { flex:1.1; padding:5px 6px; border-right:1px solid #000; }",
-".demit-nome { font-size:9.5pt; font-weight:700; margin-bottom:3px; }",
-".demit-end { font-size:7pt; }",
-".dtopo-doc { flex:1; border-right:1px solid #000; text-align:center; }",
-".ddacte { font-size:15pt; font-weight:700; margin-top:4px; }",
-".ddacte-sub { font-size:6.5pt; margin-bottom:4px; }",
-".dtopo-chave { flex:1.15; padding:4px; }",
-".dbarras { text-align:center; margin-bottom:3px; }",
-".dbarras svg { max-width:100%; height:auto; }",
-".dconsulta { font-size:6pt; text-align:center; margin-top:3px; }",
-".dlinha { display:flex; }",
-".dc { border:1px solid #000; border-top:0; border-left:0; padding:2px 4px; min-width:0; }",
-".dlinha > .dc:last-child { border-right:0; }",
-".dr { display:block; font-size:5.8pt; text-transform:uppercase; color:#333; }",
-".dv { display:block; font-size:7.5pt; font-weight:600; word-break:break-word; }",
-".dsec { border:1px solid #000; border-top:0; }",
-".dtit { background:#e8e8e8; font-size:6.5pt; font-weight:700; text-transform:uppercase;",
-"  padding:2px 5px; border-bottom:1px solid #000; }",
-".dtab { width:100%; border-collapse:collapse; font-size:7pt; }",
-".dtab th, .dtab td { border-bottom:1px solid #000; border-right:1px solid #000;",
-"  padding:2px 5px; text-align:left; }",
-".dtab th { background:#f3f3f3; font-size:6pt; text-transform:uppercase; }",
-".dtab tr:last-child td { border-bottom:0; }",
-".dtab th:last-child, .dtab td:last-child { border-right:0; }",
-".dnum { text-align:right; }",
-'.dmono { font-family:Consolas, "Courier New", monospace; font-size:6.5pt; }',
-".dobs { padding:4px 5px; min-height:26px; font-size:7pt; }",
+    ".dacte { position:relative; width:190mm; background:#fff; color:#000;",
+    "  font-family:Arial, Helvetica, sans-serif; font-size:6.5pt; line-height:1.15; }",
+    ".dacte * { box-sizing:border-box; }",
+    ".dmarca { position:absolute; top:42%; left:0; right:0; text-align:center;",
+    "  font-size:26pt; font-weight:700; color:rgba(190,0,0,.13);",
+    "  transform:rotate(-22deg); pointer-events:none; z-index:5; letter-spacing:2px; }",
+
+    /* canhoto */
+    ".dcanhoto { display:flex; border:1px solid #000; }",
+    ".dcanhoto-esq { flex:1; border-right:1px solid #000; }",
+    ".ddeclaro { padding:3px 4px; font-size:6pt; border-bottom:1px solid #000; }",
+    ".dcanhoto-dir { flex:0 0 46mm; padding:4px 6px; text-align:center; }",
+    ".dcanhoto-cte { font-size:13pt; font-weight:700; line-height:1.1; }",
+    ".dcanhoto-num { font-size:8pt; font-weight:700; }",
+    ".dcanhoto-rg { font-size:6.5pt; margin-top:4px; }",
+    ".dcorte { border-top:1px dashed #555; margin:2px 0 3px; }",
+
+    /* cabeçalho */
+    ".dcab { display:flex; border:1px solid #000; }",
+    ".dcab-emit { flex:1.05; border-right:1px solid #000; display:flex; flex-direction:column; }",
+    ".demit { display:flex; gap:5px; padding:4px 5px; font-size:6.3pt; }",
+    ".dlogo { width:17mm; height:17mm; object-fit:contain; flex:0 0 auto; }",
+    ".demit-txt { min-width:0; }",
+    ".demit-nome { font-size:8.5pt; font-weight:700; margin-bottom:2px; }",
+    ".dcab-meio { flex:1; border-right:1px solid #000; display:flex; flex-direction:column; }",
+    ".ddacte { font-size:16pt; font-weight:700; text-align:center; margin-top:3px; }",
+    ".ddacte-sub { font-size:6pt; text-align:center; padding:0 6px 3px; }",
+    ".dcab-dir { flex:1.25; display:flex; flex-direction:column; }",
+    ".dbarras { text-align:center; padding:4px 3px 2px; }",
+    ".dbarras svg { max-width:100%; height:12mm; }",
+    ".dconsulta { font-size:5.6pt; text-align:center; padding:3px 4px; flex:1; }",
+
+    /* célula rotulada */
+    ".dlin { display:flex; border:1px solid #000; border-top:0; }",
+    ".dcab .dlin, .dcanhoto .dlin { border-left:0; border-right:0; border-bottom:0;",
+    "  border-top:1px solid #000; }",
+    ".dc { border-right:1px solid #000; padding:1px 3px; min-width:0; overflow:hidden; }",
+    ".dlin > .dc:last-child, .dlin > *:last-child > .dc:last-child { border-right:0; }",
+    ".dr { display:block; font-size:5.2pt; text-transform:uppercase; color:#000;",
+    "  letter-spacing:.2px; white-space:nowrap; overflow:hidden; }",
+    ".dv { display:block; font-size:7pt; min-height:9pt; word-break:break-word; }",
+    ".dforte { font-weight:700; font-size:8pt; }",
+    ".dcentro { text-align:center; }",
+    ".dnum { text-align:right; }",
+    ".dpar { border-right:0; }",
+
+    /* seções */
+    ".dtit { background:#dcdcdc; font-size:6pt; font-weight:700; text-transform:uppercase;",
+    "  padding:1px 4px; border:1px solid #000; border-top:0; }",
+    ".dpartes { padding:0; }",
+    ".dcol { flex:1; min-width:0; border-right:1px solid #000; }",
+    ".dpartes > .dcol:last-child { border-right:0; }",
+    ".dcol .dtit { border-left:0; border-right:0; }",
+    ".dnome { font-size:7.5pt; font-weight:700; padding:1px 4px; }",
+    ".dkv { display:flex; padding:0 4px; font-size:6.4pt; }",
+    ".dk { flex:0 0 24mm; text-transform:uppercase; font-size:5.6pt; padding-top:.5pt; }",
+    ".dkval { flex:1; min-width:0; word-break:break-word; }",
+    ".dobs { border:1px solid #000; border-top:0; padding:3px 4px; min-height:22px; font-size:6.5pt; }",
+    ".dreserva .dc { min-height:34px; }",
+    ".drodape { font-size:5.6pt; text-align:right; padding-top:2px; }",
 ].join("\n");
 
 /**
