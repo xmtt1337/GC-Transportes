@@ -109,21 +109,23 @@ const _dData = (v) => v ? new Date(v).toLocaleString("pt-BR") : "";
 
 // ── rótulos
 //
-// O texto é o que o DACTE realmente imprime. As descrições de CST vêm da
-// documentação do próprio XSD (cteTiposBasico_v4.00.xsd), não de memória.
+// O texto é o que o DACTE realmente imprime. A referência é um DACTE
+// autorizado da MESMA operação (redespacho da Shopee, CFOP 5351, tomador
+// SHPX): mesmos blocos, mesma ordem, mesmos rótulos. As descrições de CST vêm
+// da documentação do próprio XSD, não de memória.
 const _DACTE_TIPOS = {
-    0: "CT-e Normal", 1: "CT-e de Complemento de Valores", 3: "CT-e de Substituição",
+    0: "Normal", 1: "Complemento de Valores", 3: "Substituição",
 };
 const _DACTE_SERVICOS = {
     0: "Normal", 1: "Subcontratação", 2: "Redespacho",
     3: "Redespacho Intermediário", 4: "Serviço Vinculado a Multimodal",
 };
 const _DACTE_TOMADORES = {
-    0: "REMETENTE", 1: "EXPEDIDOR", 2: "RECEBEDOR", 3: "DESTINATARIO", 4: "OUTROS",
+    0: "Remetente", 1: "Expedidor", 2: "Recebedor", 3: "Destinatário", 4: "Outros",
 };
 const _DACTE_CST = {
-    "00": "00 - tributação normal ICMS",
-    "20": "20 - tributação com BC reduzida do ICMS",
+    "00": "00 - Tributação normal ICMS",
+    "20": "20 - Tributação com BC reduzida do ICMS",
     "40": "40 - ICMS isento, não tributado ou diferido",
     "41": "41 - ICMS isento, não tributado ou diferido",
     "51": "51 - ICMS diferido",
@@ -134,58 +136,70 @@ const _DACTE_CST = {
 // Logo só sai na folha da empresa dona dele. Carimbar a marca da GC no DACTE
 // de outro emitente seria falsificar a origem do documento.
 const _DACTE_CNPJ_GC = "40595873000109";
-const _DACTE_LOGO_GC = "img/Transportadoras/GC%20preto%20sem%20fundo.png";
+const _DACTE_LOGO_GC = "img/logo-dacte.png";
 
 const _dDig = (v) => String(v || "").replace(/\D/g, "");
+const _dTem = (v) => v !== "" && v !== null && v !== undefined;
 
-/** Célula rotulada: rótulo miúdo em cima, valor embaixo. É o átomo do DACTE. */
+/**
+ * Célula do formulário: rótulo miúdo em cima, valor embaixo.
+ *
+ * É o único átomo da folha. O DACTE não tem "seções bonitas" — tem uma grade
+ * de campos rotulados, e é isso que faz o documento parecer um documento.
+ */
 function _dCel(rotulo, valor, opcoes) {
     const o = opcoes || {};
-    const vazio = valor === "" || valor === null || valor === undefined;
-    const estilo = o.largura ? "flex:0 0 " + o.largura : "flex:" + (o.peso || 1);
-    return '<div class="dc" style="' + estilo + '">' +
-        '<span class="dr">' + _dEsc(rotulo) + "</span>" +
-        '<span class="dv' + (o.centro ? " dcentro" : "") + (o.forte ? " dforte" : "") +
-        (o.num ? " dnum" : "") + '">' + (vazio ? "&nbsp;" : _dEsc(valor)) + "</span></div>";
+    const estilo = o.largura ? "flex:0 0 " + o.largura : "flex:" + (o.peso || 1) + " 1 0";
+    const classe = ["dc", o.centro ? "dcentro" : "", o.num ? "dnum" : "",
+                    o.alto ? "dalto" : ""].filter(Boolean).join(" ");
+    return '<div class="' + classe + '" style="' + estilo + '">' +
+        (rotulo ? '<span class="dr">' + _dEsc(rotulo) + "</span>" : "") +
+        '<span class="dv' + (o.forte ? " dforte" : "") + '">' +
+        (_dTem(valor) ? _dEsc(valor) : "&nbsp;") + "</span></div>";
 }
 
-const _dLin = (...celulas) => '<div class="dlin">' + celulas.join("") + "</div>";
-const _dTit = (texto) => '<div class="dtit">' + _dEsc(texto) + "</div>";
-
-/** Par rótulo/valor em linha — o formato das colunas de remetente e afins. */
-function _dKv(rotulo, valor) {
-    const vazio = valor === "" || valor === null || valor === undefined;
-    return '<div class="dkv"><span class="dk">' + _dEsc(rotulo) + "</span>" +
-        '<span class="dkval">' + (vazio ? "&nbsp;" : _dEsc(valor)) + "</span></div>";
-}
+const _dLin = (...c) => '<div class="dl">' + c.join("") + "</div>";
+// Linha que absorve a sobra da página. A base é `auto`, não 0: a linha nunca
+// fica menor que o conteúdo — só cresce. Com base 0 as caixas de remetente e
+// destinatário ficariam do tamanho da sobra, e endereço longo seria cortado.
+const _dLinCresce = (peso, ...c) =>
+    '<div class="dl" style="flex:' + peso + ' 1 auto">' + c.join("") + "</div>";
 
 const _dEnderecoLinha = (e) => {
     if (!e) return "";
     const rua = [e.logradouro, e.numero].filter(Boolean).join(", ");
     const resto = [e.complemento, e.bairro].filter(Boolean).join(" - ");
-    return [rua, resto].filter(Boolean).join("  ");
+    return [rua, resto].filter(Boolean).join(" - ");
 };
 
-const _dMunUf = (e) => (e ? [e.municipio, e.uf].filter(Boolean).join("/") : "");
+const _dMunUf = (e) => (e ? [e.municipio, e.uf].filter(Boolean).join(" - ") : "");
+
+/** Linha "RÓTULO  valor" dentro das caixas de partes. */
+const _dKv = (rotulo, valor) =>
+    '<div class="dkv"><span class="dk">' + _dEsc(rotulo) + "</span>" +
+    '<span class="dkv-v">' + (_dTem(valor) ? _dEsc(valor) : "&nbsp;") + "</span></div>";
 
 /**
- * Coluna de uma parte (remetente, destinatário, expedidor, recebedor).
+ * Caixa de uma parte (remetente, destinatário, expedidor, recebedor).
  *
  * Sai mesmo vazia: no DACTE as quatro caixas são fixas, e a ausência do
  * expedidor é informação — quem confere a carga precisa ver o campo em branco,
  * não a caixa sumida.
  */
-function _dColunaParte(titulo, p) {
+function _dCaixaParte(titulo, p, opcoes) {
     const parte = p || {};
     const e = parte.endereco || {};
-    return '<div class="dcol">' + _dTit(titulo) +
-        '<div class="dnome">' + _dEsc(parte.nome || parte.razao_social || "") + "&nbsp;</div>" +
+    const o = opcoes || {};
+    return '<div class="dc dparte" style="flex:' + (o.peso || 1) + ' 1 0">' +
+        '<span class="dr">' + _dEsc(titulo) + "</span>" +
+        '<span class="dv dforte">' +
+        (_dEsc(parte.nome || parte.razao_social || "") || "&nbsp;") + "</span>" +
         _dKv("ENDEREÇO", _dEnderecoLinha(e)) +
         _dKv("MUNICÍPIO", _dMunUf(e)) +
         _dKv("CEP", _dCep(e.cep)) +
         _dKv("CNPJ/CPF", _dDoc(parte.cnpj || parte.cpf)) +
-        _dKv("INSC.ESTADUAL", parte.ie || "") +
-        _dKv("PAIS", e.pais || (e.uf ? "BRASIL" : "")) +
+        _dKv("INSCRIÇÃO ESTADUAL", parte.ie || "") +
+        _dKv("PAÍS", e.pais || (e.uf ? "BRASIL" : "")) +
         _dKv("FONE", parte.telefone || "") +
         "</div>";
 }
@@ -213,16 +227,18 @@ function _dacteIcms(d) {
     };
 }
 
-/** Medidas da carga, no formato "01-KG 801,000" do DACTE. */
+/** Medidas da carga: o DACTE reserva três caixas "TP MED / UN. MED". */
 function _dacteMedidas(carga) {
     const lista = Array.isArray(carga.quantidades) && carga.quantidades.length
         ? carga.quantidades
-        : (carga.quantidade !== undefined && carga.quantidade !== null
+        : (_dTem(carga.quantidade)
             ? [{ cUnid: carga.unidade, tpMed: carga.tipo_medida, quantidade: carga.quantidade }]
             : []);
-    return lista
-        .map((q) => [q.cUnid, q.tpMed].filter(Boolean).join("-") + "  " + _dNum(q.quantidade, 3))
-        .join("   ");
+    return lista.slice(0, 3).map((q) => ({
+        rotulo: q.tpMed || "TP MED / UN. MED",
+        valor: _dNum(q.quantidade, 3) + (q.cUnid === "01" ? " KG"
+             : q.cUnid === "00" ? " M3" : q.cUnid === "03" ? " UN" : ""),
+    }));
 }
 
 /** CNPJ do emitente da NF-e sai da própria chave: posições 7 a 20. */
@@ -246,287 +262,304 @@ function _dacteHtml(pacote) {
 
     // IBS/CBS: o grupo fica montado em `cte.ibscbs`, na forma do schema.
     const ib = cte.ibscbs || {};
-    const g = ib.gIBSCBS || {};
-    const uf = g.gIBSUF || {};
-    const mun = g.gIBSMun || {};
-    const cbs = g.gCBS || {};
+    const gib = ib.gIBSCBS || {};
+    const guf = gib.gIBSUF || {};
+    const gmun = gib.gIBSMun || {};
+    const gcbs = gib.gCBS || {};
+    const temIbsCbs = _dTem(ib.CST) || _dTem(gib.vBC);
 
-    const numero = cte.numero === null || cte.numero === undefined ? "" : String(cte.numero);
-    const numeroLongo = numero ? numero.padStart(9, "0").replace(/(\d{3})(?=\d)/g, "$1.") : "";
+    const numero = _dTem(cte.numero) ? String(cte.numero) : "";
+    const serie = _dTem(cte.serie) ? String(cte.serie) : "";
+    const numeroLongo = numero
+        ? numero.padStart(9, "0").replace(/(\d{3})(?=\d)/g, "$1.") : "";
 
     // ── canhoto: o recibo que o destinatário assina e devolve
     const canhoto =
         '<div class="dcanhoto">' +
             '<div class="dcanhoto-esq">' +
-                '<div class="ddeclaro">DECLARO QUE RECEBI OS VOLUMES DESTE CONHECIMENTO EM ' +
-                "PERFEITO ESTADO PELO QUE DOU POR CUMPRIDO O PRESENTE CONTRATO DE TRANSPORTE</div>" +
-                _dLin(
-                    _dCel("Nome:", "", { peso: 2 }),
-                    _dCel("ASSINATURA/CARIMBO", "", { peso: 2 }),
-                    _dCel("CHEGADA DATA/HORA", "___/___/______   ___:___", { largura: "42mm" }),
-                    _dCel("SAÍDA DATA/HORA", "___/___/______   ___:___", { largura: "42mm" })
-                ) +
+                '<div class="ddeclaro">DECLARO QUE RECEBI OS VOLUMES DESTE CONHECIMENTO ' +
+                "EM PERFEITO ESTADO PELO QUE DOU POR CUMPRIDO O PRESENTE CONTRATO DE " +
+                "TRANSPORTE</div>" +
+                '<div class="dl dl-fim">' +
+                    _dCel("NOME", "", { peso: 2, alto: true }) +
+                    _dCel("ASSINATURA / CARIMBO", "", { peso: 2, alto: true }) +
+                    _dCel("TÉRMINO DA PRESTAÇÃO - DATA/HORA", "", { peso: 2, alto: true }) +
+                    _dCel("INÍCIO DA PRESTAÇÃO - DATA/HORA", "", { peso: 2, alto: true }) +
+                    _dCel("RG", "", { largura: "26mm", alto: true }) +
+                "</div>" +
             "</div>" +
             '<div class="dcanhoto-dir">' +
-                '<div class="dcanhoto-cte">CT-e</div>' +
-                '<div class="dcanhoto-num">N°: ' + _dEsc(numeroLongo) + "</div>" +
-                '<div class="dcanhoto-num">SÉRIE: ' + _dEsc(cte.serie === null || cte.serie === undefined ? "" : cte.serie) + "</div>" +
-                '<div class="dcanhoto-rg">RG/CPF: ____________________</div>' +
+                '<div class="dcanhoto-cte">CT-E</div>' +
+                '<div class="dcanhoto-lin">Nº. DOCUMENTO&nbsp; <b>' +
+                _dEsc(numeroLongo) + "</b></div>" +
+                '<div class="dcanhoto-lin">SÉRIE&nbsp; <b>' + _dEsc(serie) + "</b></div>" +
             "</div>" +
         "</div>" +
         '<div class="dcorte"></div>';
 
-    // ── cabeçalho de três colunas
+    // ── cabeçalho
     const logo = _dDig(emitente.cnpj) === _DACTE_CNPJ_GC
         ? '<img class="dlogo" src="' + _DACTE_LOGO_GC + '" alt="">'
         : "";
 
     const cabecalho =
-        '<div class="dcab">' +
-            '<div class="dcab-emit">' + _dTit("IDENTIFICAÇÃO DO EMITENTE") +
-                '<div class="demit">' + logo +
-                    '<div class="demit-txt">' +
-                        '<div class="demit-nome">' + _dEsc(emitente.razao_social || "") + "</div>" +
-                        _dEsc([emitente.logradouro, emitente.numero].filter(Boolean).join(", ")) + "<br>" +
-                        _dEsc([emitente.complemento, emitente.bairro].filter(Boolean).join(" - ")) + "<br>" +
-                        _dEsc([emitente.municipio, emitente.uf].filter(Boolean).join("/")) +
-                        (emitente.cep ? " - CEP: " + _dEsc(_dCep(emitente.cep)) : "") + "<br>" +
-                        (emitente.telefone ? "Fone: " + _dEsc(emitente.telefone) + "<br>" : "") +
-                        "CNPJ: " + _dEsc(_dDoc(emitente.cnpj)) + "<br>" +
-                        "Inscrição Estadual: " + _dEsc(emitente.ie || "") +
-                    "</div>" +
+        '<div class="dl">' +
+            '<div class="dc demit" style="flex:1.15 1 0">' + logo +
+                '<div class="demit-txt">' +
+                    '<div class="demit-nome">' + _dEsc(emitente.razao_social || "") + "</div>" +
+                    _dEsc([emitente.logradouro, emitente.numero].filter(Boolean).join(", ")) + "<br>" +
+                    _dEsc([emitente.bairro, _dCep(emitente.cep), emitente.municipio, emitente.uf]
+                        .filter(Boolean).join(" - ")) + "<br>" +
+                    (emitente.telefone ? "Fone/Fax: " + _dEsc(emitente.telefone) + "<br>" : "") +
+                    "CNPJ/CPF: " + _dEsc(_dDoc(emitente.cnpj)) +
+                    "&nbsp;&nbsp;&nbsp;Insc.Estadual: " + _dEsc(emitente.ie || "") +
                 "</div>" +
             "</div>" +
 
-            '<div class="dcab-meio">' +
+            '<div class="dc dmeio" style="flex:1 1 0">' +
                 '<div class="ddacte">DACTE</div>' +
-                '<div class="ddacte-sub">Documento Auxiliar do Conhecimento de ' +
-                "Transporte Eletrônico</div>" +
-                _dLin(_dCel("Modal", "Rodoviário", { centro: true })) +
-                _dLin(
-                    _dCel("MODELO", cte.modelo || "57", { centro: true }),
-                    _dCel("SERIE", cte.serie === null || cte.serie === undefined ? "" : cte.serie, { centro: true }),
-                    _dCel("NÚMERO", numero, { centro: true, forte: true }),
-                    _dCel("FOLHA", "1/1", { centro: true })
-                ) +
-                _dLin(_dCel("DATA E HORA DE EMISSÃO",
-                    _dData(cte.data_emissao || cte.criado_em), { centro: true })) +
-                _dLin(
-                    _dCel("TIPO DO CT-e", _DACTE_TIPOS[ide.tpCTe] || ""),
-                    _dCel("TIPO DO SERVIÇO", _DACTE_SERVICOS[ide.tpServ] || "")
-                ) +
+                '<div class="ddacte-sub">Documento Auxiliar do Conhecimento<br>' +
+                "de Transporte Eletrônico</div>" +
+                '<div class="dmodal"><span class="dr">MODAL</span>' +
+                '<span class="dv">Rodoviário</span></div>' +
             "</div>" +
 
-            '<div class="dcab-dir">' +
+            '<div class="dc dchave" style="flex:1.35 1 0">' +
                 '<div class="dbarras">' + _dacteBarras(cte.chave_acesso) + "</div>" +
-                _dLin(_dCel("Chave de Acesso", _dChave(cte.chave_acesso), { centro: true })) +
-                _dLin(
-                    _dCel("TOMADOR DO SERVIÇO", _DACTE_TOMADORES[ide.toma] || ""),
-                    _dCel("INDICADOR DE CT-E GLOBALIZADO",
-                        String(ide.indGlobalizado) === "1" ? "SIM" : "NÃO", { largura: "34mm", centro: true })
-                ) +
-                '<div class="dconsulta">Consulta de autenticidade no portal nacional do CT-e, ' +
-                "no site da Sefaz Autorizadora ou em http://www.cte.fazenda.gov.br/portal</div>" +
+                '<div class="dchave-rot">CHAVE DE ACESSO</div>' +
+                '<div class="dchave-num">' + _dEsc(_dChave(cte.chave_acesso)) + "</div>" +
+                '<div class="dconsulta">Consulta de autenticidade no portal nacional do ' +
+                "CT-e, no site da Sefaz Autorizadora, ou em http://www.cte.fazenda.gov.br" +
+                "</div>" +
             "</div>" +
-        "</div>";
+        "</div>" +
 
-    // ── componentes: o DACTE imprime quatro pares Nome/Valor por linha
+        _dLin(
+            _dCel("TIPO DO CTE", _DACTE_TIPOS[ide.tpCTe] || ""),
+            _dCel("TIPO DO SERVIÇO", _DACTE_SERVICOS[ide.tpServ] || ""),
+            _dCel("TOMADOR DO SERVIÇO", _DACTE_TOMADORES[ide.toma] || ""),
+            _dCel("MODELO", cte.modelo || "57", { largura: "14mm", centro: true }),
+            _dCel("SÉRIE", serie, { largura: "14mm", centro: true }),
+            _dCel("NÚMERO", numero, { largura: "24mm", centro: true, forte: true }),
+            _dCel("FL", "1/1", { largura: "12mm", centro: true }),
+            _dCel("DATA E HORA DE EMISSÃO",
+                _dData(cte.data_emissao || cte.criado_em), { largura: "38mm" })
+        ) +
+
+        _dLin(
+            _dCel(autorizado ? "PROTOCOLO DE AUTORIZAÇÃO DE USO" : "SITUAÇÃO DO DOCUMENTO",
+                autorizado
+                    ? [cte.protocolo, _dData(cte.data_autorizacao)].filter(Boolean).join(" - ")
+                    : cte.status || "", { peso: 2 }),
+            _dCel("INSC. SUFRAMA DO DESTINATÁRIO",
+                (d.destinatario && d.destinatario.isuf) || "")
+        );
+
+    // ── componentes: três pares NOME/VALOR por linha, como no documento real
     const grupos = [];
-    for (let i = 0; i < Math.max(comps.length, 4); i += 4) grupos.push(comps.slice(i, i + 4));
+    for (let i = 0; i < Math.max(comps.length, 3); i += 3) grupos.push(comps.slice(i, i + 3));
     const linhasComp = grupos.map((g) => _dLin(
-        ...[0, 1, 2, 3].map((k) => {
+        ...[0, 1, 2].map((k) => {
             const c = g[k];
-            return '<div class="dc dpar" style="flex:1">' +
-                '<span class="dr">Nome</span><span class="dv">' +
-                (c ? _dEsc(c.nome) : "&nbsp;") + "</span></div>" +
-                '<div class="dc" style="flex:0 0 22mm">' +
-                '<span class="dr">Valor</span><span class="dv dnum">' +
-                (c ? _dNum(c.valor) : "&nbsp;") + "</span></div>";
+            return _dCel("NOME", c ? c.nome : "", { peso: 2 }) +
+                   _dCel("VALOR", c ? _dNum(c.valor) : "", { largura: "26mm", num: true });
         })
     )).join("");
 
-    // ── documentos originários: duas colunas de três campos, como no MOC
+    // ── documentos originários: duas colunas de três campos
+    const celulaDoc = (x) =>
+        _dCel("TIPO DOC", x ? (x.tipo_documento || "") : "", { largura: "18mm" }) +
+        _dCel("CNPJ/CHAVE", x ? (x.chave_nfe || _dCnpjDaChave(x.chave_nfe)) : "", { peso: 3 }) +
+        _dCel("SÉRIE/NRO. DOCUMENTO",
+            x ? [x.serie, x.numero].filter(Boolean).join("/") : "", { largura: "32mm" });
     const pares = [];
-    for (let i = 0; i < Math.max(documentos.length, 2); i += 2) pares.push(documentos.slice(i, i + 2));
-    const celulaDoc = (x) => x
-        ? _dCel("TP DOC.", x.tipo_documento || "", { largura: "18mm" }) +
-          _dCel("CNPJ/CPF EMIT.", _dCnpjDaChave(x.chave_nfe), { largura: "34mm" }) +
-          _dCel("SÉRIE/NRO DOC.", [x.serie, x.numero].filter(Boolean).join(" / "))
-        : _dCel("TP DOC.", "", { largura: "18mm" }) +
-          _dCel("CNPJ/CPF EMIT.", "", { largura: "34mm" }) +
-          _dCel("SÉRIE/NRO DOC.", "");
-    const linhasDoc = pares
-        .map((p) => _dLin(celulaDoc(p[0]), celulaDoc(p[1])))
-        .join("");
+    for (let i = 0; i < Math.max(documentos.length, 2); i += 2) {
+        pares.push(documentos.slice(i, i + 2));
+    }
+    const linhasDoc = pares.map((p) => _dLin(celulaDoc(p[0]), celulaDoc(p[1]))).join("");
+
+    const medidas = _dacteMedidas(carga);
+    const celulaMedida = (i) => _dCel(
+        medidas[i] ? "TP MED / UN. MED — " + medidas[i].rotulo : "TP MED / UN. MED",
+        medidas[i] ? medidas[i].valor : "");
 
     return '<div class="dacte">' +
         (homolog ? '<div class="dmarca">SEM VALOR FISCAL — HOMOLOGAÇÃO</div>' : "") +
-
         canhoto +
-        cabecalho +
 
-        _dLin(
-            _dCel("CFOP - NATUREZA DA PRESTAÇÃO",
-                [ide.CFOP, ide.natOp].filter(Boolean).join("-"), { peso: 2 }),
-            _dCel(autorizado ? "PROTOCOLO DE AUTORIZAÇÃO DE USO" : "SITUAÇÃO DO DOCUMENTO",
-                autorizado
-                    ? [cte.protocolo, _dData(cte.data_autorizacao)].filter(Boolean).join("  ")
-                    : cte.status || "")
-        ) +
-        _dLin(
-            _dCel("ORIGEM DA PRESTAÇÃO", [ide.xMunIni, ide.UFIni].filter(Boolean).join("/")),
-            _dCel("DESTINO DA PRESTAÇÃO", [ide.xMunFim, ide.UFFim].filter(Boolean).join("/"))
-        ) +
+        '<div class="dcorpo">' +
+            cabecalho +
 
-        '<div class="dlin dpartes">' +
-            _dColunaParte("REMETENTE", d.remetente) +
-            _dColunaParte("DESTINATÁRIO", d.destinatario) +
+            _dLin(_dCel("CFOP - NATUREZA DA PRESTAÇÃO",
+                [ide.CFOP, ide.natOp].filter(Boolean).join(" - "))) +
+
+            _dLin(
+                _dCel("INÍCIO DA PRESTAÇÃO",
+                    [ide.xMunIni, ide.UFIni].filter(Boolean).join(" - ")),
+                _dCel("TÉRMINO DA PRESTAÇÃO",
+                    [ide.xMunFim, ide.UFFim].filter(Boolean).join(" - "))
+            ) +
+
+            _dLinCresce(1.4,
+                _dCaixaParte("REMETENTE", d.remetente),
+                _dCaixaParte("DESTINATÁRIO", d.destinatario)
+            ) +
+            _dLinCresce(1.4,
+                _dCaixaParte("EXPEDIDOR", d.expedidor),
+                _dCaixaParte("RECEBEDOR", d.recebedor)
+            ) +
+            _dLinCresce(1,
+                _dCaixaParte("TOMADOR DO SERVIÇO", d.tomador, { peso: 2 })
+            ) +
+
+            _dLin(
+                _dCel("PRODUTO PREDOMINANTE", carga.produto_predominante || "", { peso: 2 }),
+                _dCel("OUTRAS CARACTERÍSTICAS DA CARGA",
+                    carga.outras_caracteristicas || "", { peso: 2 }),
+                _dCel("VALOR TOTAL DA MERCADORIA", _dNum(carga.valor_carga),
+                    { largura: "34mm", num: true })
+            ) +
+            _dLin(celulaMedida(0), celulaMedida(1), celulaMedida(2)) +
+
+            _dLin(
+                _dCel("NOME DA SEGURADORA", "", { peso: 2 }),
+                _dCel("RESPONSÁVEL", ""),
+                _dCel("NÚMERO DA APÓLICE", ""),
+                _dCel("NÚMERO DA AVERBAÇÃO", "")
+            ) +
+
+            _dLin(_dCel("COMPONENTES DO VALOR DA PRESTAÇÃO DO SERVIÇO", "")) +
+            linhasComp +
+            _dLin(
+                _dCel("VALOR TOTAL DO SERVIÇO", _dNum(d.vPrest && d.vPrest.vTPrest),
+                    { num: true, forte: true }),
+                _dCel("VALOR A RECEBER", _dNum(d.vPrest && d.vPrest.vRec),
+                    { num: true, forte: true })
+            ) +
+
+            _dLin(_dCel("INFORMAÇÕES RELATIVAS AO IMPOSTO", "")) +
+            _dLin(
+                _dCel("SITUAÇÃO TRIBUTÁRIA", icms.cst, { peso: 3 }),
+                _dCel("BASE DE CALCULO", _dNum(icms.vBC), { num: true }),
+                _dCel("ALÍQ ICMS", _dNum(icms.pICMS), { num: true }),
+                _dCel("VALOR ICMS", _dNum(icms.vICMS), { num: true }),
+                _dCel("% RED. BC ICMS", _dNum(icms.pRedBC), { num: true }),
+                _dCel("ICMS ST", "", { num: true })
+            ) +
+            (temIbsCbs
+                ? _dLin(
+                    _dCel("CST IBS/CBS",
+                        [ib.CST, ib.cClassTrib].filter(Boolean).join(" / "), { peso: 2 }),
+                    _dCel("V. BC IBS/CBS", _dNum(gib.vBC), { num: true }),
+                    _dCel("P. IBS UF", _dNum(guf.pIBSUF, 4), { num: true }),
+                    _dCel("V. IBS UF", _dNum(guf.vIBSUF), { num: true }),
+                    _dCel("P. IBS MUN", _dNum(gmun.pIBSMun, 4), { num: true }),
+                    _dCel("V. IBS MUN", _dNum(gmun.vIBSMun), { num: true }),
+                    _dCel("P. CBS", _dNum(gcbs.pCBS, 4), { num: true }),
+                    _dCel("V. CBS", _dNum(gcbs.vCBS), { num: true })
+                )
+                : "") +
+
+            _dLin(_dCel("DOCUMENTOS ORIGINÁRIOS", "")) +
+            linhasDoc +
+
+            _dLinCresce(1,
+                _dCel("OBSERVAÇÕES", (d.compl && d.compl.xObs) || "", { alto: true })
+            ) +
+
+            _dLin(_dCel("DADOS ESPECÍFICOS DO MODAL RODOVIÁRIO - CARGA FRACIONADA", "")) +
+            _dLin(
+                _dCel("RNTRC DA EMPRESA", (d.modal && d.modal.rntrc) || ""),
+                _dCel("CIOT", ""),
+                _dCel("DATA PREVISTA DE ENTREGA", "")
+            ) +
+            _dLin(_dCel("", "ESTE CONHECIMENTO DE TRANSPORTE ATENDE À LEGISLAÇÃO DE " +
+                "TRANSPORTE RODOVIÁRIO EM VIGOR", { centro: true })) +
+
+            '<div class="dl dl-fim" style="flex:1.3 1 0">' +
+                _dCel("USO EXCLUSIVO DO EMISSOR DO CT-E", "", { alto: true }) +
+                _dCel("RESERVADO AO FISCO", "", { alto: true }) +
+            "</div>" +
         "</div>" +
-        '<div class="dlin dpartes">' +
-            _dColunaParte("EXPEDIDOR", d.expedidor) +
-            _dColunaParte("RECEBEDOR", d.recebedor) +
-        "</div>" +
 
-        _dLin(
-            _dCel("Tomador:", (d.tomador && (d.tomador.nome || d.tomador.razao_social)) || "", { peso: 2 }),
-            _dCel("MUNICÍPIO", _dMunUf(d.tomador && d.tomador.endereco)),
-            _dCel("CEP", _dCep(d.tomador && d.tomador.endereco && d.tomador.endereco.cep), { largura: "24mm" })
-        ) +
-        _dLin(
-            _dCel("Endereço:", _dEnderecoLinha(d.tomador && d.tomador.endereco), { peso: 2 }),
-            _dCel("CPF/CNPJ:", _dDoc(d.tomador && (d.tomador.cnpj || d.tomador.cpf)), { largura: "34mm" }),
-            _dCel("INSC.ESTADUAL", (d.tomador && d.tomador.ie) || "", { largura: "28mm" }),
-            _dCel("PAIS", d.tomador ? "BRASIL" : "", { largura: "20mm" }),
-            _dCel("FONE", (d.tomador && d.tomador.telefone) || "", { largura: "28mm" })
-        ) +
-
-        _dLin(
-            _dCel("PRODUTO PREDOMINANTE", carga.produto_predominante || "", { peso: 2 }),
-            _dCel("OUTRAS CARACTERISTICAS DA CARGA", carga.outras_caracteristicas || "", { peso: 2 }),
-            _dCel("VALOR TOTAL DA MERCADORIA", _dNum(carga.valor_carga), { largura: "32mm", num: true }),
-            _dCel("Unidade/Quantidade", _dacteMedidas(carga), { largura: "38mm" })
-        ) +
-
-        _dTit("COMPONENTES DO VALOR DA PRESTAÇÃO DO SERVIÇO") +
-        linhasComp +
-        _dLin(
-            _dCel("VALOR TOTAL DO SERVIÇO", _dNum(d.vPrest && d.vPrest.vTPrest), { num: true, forte: true }),
-            _dCel("VALOR A RECEBER", _dNum(d.vPrest && d.vPrest.vRec), { num: true, forte: true })
-        ) +
-
-        _dTit("INFORMAÇÕES RELATIVAS AO IMPOSTO") +
-        _dLin(
-            _dCel("SITUAÇÃO TRIBUTÁRIA", icms.cst, { peso: 2 }),
-            _dCel("BASE DE CALCULO", _dNum(icms.vBC), { num: true }),
-            _dCel("ALIQ. ICMS", _dNum(icms.pICMS), { num: true, largura: "22mm" }),
-            _dCel("VALOR DO ICMS", _dNum(icms.vICMS), { num: true }),
-            _dCel("% RED.BC", _dNum(icms.pRedBC), { num: true, largura: "20mm" })
-        ) +
-        _dLin(
-            _dCel("Código Situação Tributária do IBS/CBS",
-                [ib.CST, ib.cClassTrib].filter(Boolean).join(" / "), { peso: 2 }),
-            _dCel("v. BC IBS/CBS", _dNum(g.vBC), { num: true }),
-            _dCel("p. IBS UF", _dNum(uf.pIBSUF, 4), { num: true }),
-            _dCel("v. IBS UF", _dNum(uf.vIBSUF), { num: true }),
-            _dCel("p. IBS Mun", _dNum(mun.pIBSMun, 4), { num: true }),
-            _dCel("v. IBS Mun.", _dNum(mun.vIBSMun), { num: true }),
-            _dCel("p. CBS", _dNum(cbs.pCBS, 4), { num: true }),
-            _dCel("v. CBS", _dNum(cbs.vCBS), { num: true })
-        ) +
-
-        _dTit("INFORMAÇÕES SOBRE OS VEÍCULOS NOVOS TRANSPORTADOS") +
-        _dLin(
-            _dCel("Chassi:", ""), _dCel("Cod. Cor:", ""), _dCel("Cor:", ""),
-            _dCel("Marca:", ""), _dCel("Valor Unitário Veículo:", ""),
-            _dCel("Valor Frete Veículo:", "")
-        ) +
-
-        _dTit("DOCUMENTOS ORIGINÁRIOS") +
-        linhasDoc +
-
-        _dTit("OBSERVAÇÕES GERAIS") +
-        '<div class="dobs">' + _dEsc((d.compl && d.compl.xObs) || "") + "&nbsp;</div>" +
-
-        _dTit("INFORMAÇÕES ESPECÍFICAS DO MODAL RODOVIÁRIO") +
-        _dLin(
-            _dCel("RNTRC DA EMPRESA", (d.modal && d.modal.rntrc) || ""),
-            _dCel("DATA PREV. ENTREGA", "")
-        ) +
-
-        '<div class="dlin dreserva">' +
-            '<div class="dc" style="flex:1"><span class="dr">USO EXCLUSIVO DO EMISSOR DO CT-e</span>' +
-            '<span class="dv">&nbsp;</span></div>' +
-            '<div class="dc" style="flex:1"><span class="dr">RESERVADO AO FISCO</span>' +
-            '<span class="dv">&nbsp;</span></div>' +
-        "</div>" +
-
-        '<div class="drodape">Data/Hora Impressão: ' +
+        '<div class="drodape">Impresso em ' +
         _dEsc(new Date().toLocaleString("pt-BR")) + "</div>" +
     "</div>";
 }
 
+// A folha tem tamanho fixo: 200 × 287 mm é o A4 menos 5 mm de margem de cada
+// lado. É o que faz o DACTE ocupar a página inteira em vez de ficar uma
+// tirinha no alto — as linhas com flex crescem para consumir a sobra.
 const _DACTE_CSS = [
-    ".dacte { position:relative; width:190mm; background:#fff; color:#000;",
-    "  font-family:Arial, Helvetica, sans-serif; font-size:6.5pt; line-height:1.15; }",
+    ".dacte { position:relative; width:200mm; height:287mm; background:#fff; color:#000;",
+    "  display:flex; flex-direction:column;",
+    "  font-family:Arial, Helvetica, sans-serif; font-size:6.6pt; line-height:1.18; }",
     ".dacte * { box-sizing:border-box; }",
-    ".dmarca { position:absolute; top:42%; left:0; right:0; text-align:center;",
-    "  font-size:26pt; font-weight:700; color:rgba(190,0,0,.13);",
-    "  transform:rotate(-22deg); pointer-events:none; z-index:5; letter-spacing:2px; }",
+    ".dmarca { position:absolute; top:44%; left:0; right:0; text-align:center;",
+    "  font-size:30pt; font-weight:700; color:rgba(170,0,0,.10);",
+    "  transform:rotate(-24deg); pointer-events:none; z-index:5; letter-spacing:3px; }",
+
+    /* grade: uma única linha fina separando tudo */
+    ".dcanhoto, .dcorpo { border:0.6pt solid #000; }",
+    ".dl { display:flex; border-bottom:0.6pt solid #000; }",
+    ".dl-fim, .dcorpo > .dl:last-child { border-bottom:0; }",
+    ".dc { border-right:0.6pt solid #000; padding:1.2mm 1.4mm 0.8mm; min-width:0;",
+    "  overflow:hidden; display:flex; flex-direction:column; }",
+    ".dl > .dc:last-child { border-right:0; }",
+    ".dr { display:block; font-size:5.1pt; text-transform:uppercase; letter-spacing:.15px;",
+    "  color:#000; white-space:nowrap; overflow:hidden; margin-bottom:.4mm; }",
+    ".dv { display:block; font-size:7.2pt; word-break:break-word; }",
+    ".dforte { font-weight:700; }",
+    ".dcentro { text-align:center; }",
+    ".dnum .dv { text-align:right; }",
+    ".dalto { min-height:11mm; }",
 
     /* canhoto */
-    ".dcanhoto { display:flex; border:1px solid #000; }",
-    ".dcanhoto-esq { flex:1; border-right:1px solid #000; }",
-    ".ddeclaro { padding:3px 4px; font-size:6pt; border-bottom:1px solid #000; }",
-    ".dcanhoto-dir { flex:0 0 46mm; padding:4px 6px; text-align:center; }",
-    ".dcanhoto-cte { font-size:13pt; font-weight:700; line-height:1.1; }",
-    ".dcanhoto-num { font-size:8pt; font-weight:700; }",
-    ".dcanhoto-rg { font-size:6.5pt; margin-top:4px; }",
-    ".dcorte { border-top:1px dashed #555; margin:2px 0 3px; }",
+    ".dcanhoto { display:flex; flex:0 0 auto; }",
+    ".dcanhoto-esq { flex:1; display:flex; flex-direction:column;",
+    "  border-right:0.6pt solid #000; }",
+    ".ddeclaro { padding:1.2mm 1.4mm; font-size:6pt; border-bottom:0.6pt solid #000; }",
+    ".dcanhoto-esq > .dl { flex:1; }",
+    ".dcanhoto-dir { flex:0 0 44mm; padding:1.6mm; text-align:center;",
+    "  display:flex; flex-direction:column; justify-content:center; }",
+    ".dcanhoto-cte { font-size:12pt; font-weight:700; line-height:1.1; }",
+    ".dcanhoto-lin { font-size:7pt; margin-top:.6mm; }",
+    ".dcanhoto-lin b { font-size:8.5pt; }",
+    ".dcorte { flex:0 0 auto; border-top:0.6pt dashed #666; margin:1.6mm 0; }",
+
+    /* corpo */
+    ".dcorpo { flex:1; display:flex; flex-direction:column; min-height:0; }",
 
     /* cabeçalho */
-    ".dcab { display:flex; border:1px solid #000; }",
-    ".dcab-emit { flex:1.05; border-right:1px solid #000; display:flex; flex-direction:column; }",
-    ".demit { display:flex; gap:5px; padding:4px 5px; font-size:6.3pt; }",
-    ".dlogo { width:17mm; height:17mm; object-fit:contain; flex:0 0 auto; }",
-    ".demit-txt { min-width:0; }",
-    ".demit-nome { font-size:8.5pt; font-weight:700; margin-bottom:2px; }",
-    ".dcab-meio { flex:1; border-right:1px solid #000; display:flex; flex-direction:column; }",
-    ".ddacte { font-size:16pt; font-weight:700; text-align:center; margin-top:3px; }",
-    ".ddacte-sub { font-size:6pt; text-align:center; padding:0 6px 3px; }",
-    ".dcab-dir { flex:1.25; display:flex; flex-direction:column; }",
-    ".dbarras { text-align:center; padding:4px 3px 2px; }",
-    ".dbarras svg { max-width:100%; height:12mm; }",
-    ".dconsulta { font-size:5.6pt; text-align:center; padding:3px 4px; flex:1; }",
+    ".demit { flex-direction:row !important; gap:2mm; align-items:flex-start;",
+    "  padding:1.6mm 1.6mm; }",
+    ".dlogo { flex:0 0 auto; width:24mm; height:auto; }",
+    ".demit-txt { min-width:0; font-size:6.4pt; line-height:1.3; }",
+    ".demit-nome { font-size:9pt; font-weight:700; margin-bottom:.6mm; }",
+    ".dmeio { align-items:center; justify-content:center; text-align:center;",
+    "  padding:1.4mm 1.6mm; }",
+    ".ddacte { font-size:15pt; font-weight:700; letter-spacing:1px; }",
+    ".ddacte-sub { font-size:6.2pt; margin:.4mm 0 1.4mm; }",
+    ".dmodal { width:100%; border-top:0.6pt solid #000; padding-top:.8mm; }",
+    ".dchave { padding:1.2mm 1.6mm; }",
+    ".dbarras { text-align:center; }",
+    ".dbarras svg { max-width:100%; height:11mm; }",
+    ".dchave-rot { font-size:5.1pt; text-transform:uppercase; margin-top:.8mm; }",
+    ".dchave-num { font-size:7.4pt; font-weight:700; letter-spacing:.2px;",
+    "  word-break:break-all; }",
+    ".dconsulta { font-size:5.4pt; margin-top:1mm; }",
 
-    /* célula rotulada */
-    ".dlin { display:flex; border:1px solid #000; border-top:0; }",
-    ".dcab .dlin, .dcanhoto .dlin { border-left:0; border-right:0; border-bottom:0;",
-    "  border-top:1px solid #000; }",
-    ".dc { border-right:1px solid #000; padding:1px 3px; min-width:0; overflow:hidden; }",
-    ".dlin > .dc:last-child, .dlin > *:last-child > .dc:last-child { border-right:0; }",
-    ".dr { display:block; font-size:5.2pt; text-transform:uppercase; color:#000;",
-    "  letter-spacing:.2px; white-space:nowrap; overflow:hidden; }",
-    ".dv { display:block; font-size:7pt; min-height:9pt; word-break:break-word; }",
-    ".dforte { font-weight:700; font-size:8pt; }",
-    ".dcentro { text-align:center; }",
-    ".dnum { text-align:right; }",
-    ".dpar { border-right:0; }",
+    /* caixas de partes */
+    ".dparte { padding-bottom:1.2mm; }",
+    ".dparte .dv { margin-bottom:.6mm; }",
+    ".dkv { display:flex; font-size:6.2pt; line-height:1.35; }",
+    ".dk { flex:0 0 26mm; text-transform:uppercase; font-size:5.1pt; padding-top:.35mm;",
+    "  white-space:nowrap; }",
+    ".dkv-v { flex:1; min-width:0; word-break:break-word; }",
 
-    /* seções */
-    ".dtit { background:#dcdcdc; font-size:6pt; font-weight:700; text-transform:uppercase;",
-    "  padding:1px 4px; border:1px solid #000; border-top:0; }",
-    ".dpartes { padding:0; }",
-    ".dcol { flex:1; min-width:0; border-right:1px solid #000; }",
-    ".dpartes > .dcol:last-child { border-right:0; }",
-    ".dcol .dtit { border-left:0; border-right:0; }",
-    ".dnome { font-size:7.5pt; font-weight:700; padding:1px 4px; }",
-    ".dkv { display:flex; padding:0 4px; font-size:6.4pt; }",
-    ".dk { flex:0 0 24mm; text-transform:uppercase; font-size:5.6pt; padding-top:.5pt; }",
-    ".dkval { flex:1; min-width:0; word-break:break-word; }",
-    ".dobs { border:1px solid #000; border-top:0; padding:3px 4px; min-height:22px; font-size:6.5pt; }",
-    ".dreserva .dc { min-height:34px; }",
-    ".drodape { font-size:5.6pt; text-align:right; padding-top:2px; }",
+    ".drodape { flex:0 0 auto; font-size:5.4pt; text-align:right; padding-top:1mm; }",
 ].join("\n");
+
 
 /**
  * Gera e baixa o DACTE em PDF.
@@ -556,7 +589,10 @@ async function baixarDacte(id) {
 
     try {
         await html2pdf().set({
-            margin: [8, 8, 8, 8],
+            // 5 mm de margem: a folha foi desenhada com 200 × 287 mm, que é
+            // exatamente o A4 menos essas margens. Mexer aqui sem mexer no CSS
+            // faz o DACTE encolher no meio da página ou vazar para a segunda.
+            margin: [5, 5, 5, 5],
             filename: nome,
             image: { type: "jpeg", quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false },

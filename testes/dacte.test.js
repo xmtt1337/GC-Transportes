@@ -113,33 +113,40 @@ function pacote(extra) {
 // conferente procura na folha. Sumiu um, a folha deixou de ser um DACTE.
 const BLOCOS = [
     "DECLARO QUE RECEBI OS VOLUMES DESTE CONHECIMENTO",
-    "IDENTIFICAÇÃO DO EMITENTE",
+    "ASSINATURA / CARIMBO",
+    "TÉRMINO DA PRESTAÇÃO - DATA/HORA",
+    "INÍCIO DA PRESTAÇÃO - DATA/HORA",
+    "Nº. DOCUMENTO", "SÉRIE",
     "DACTE",
-    "Documento Auxiliar do Conhecimento de Transporte Eletrônico",
-    "MODELO", "SERIE", "NÚMERO", "FOLHA",
-    "DATA E HORA DE EMISSÃO",
-    "TIPO DO CT-e", "TIPO DO SERVIÇO",
-    "Chave de Acesso",
-    "TOMADOR DO SERVIÇO",
-    "INDICADOR DE CT-E GLOBALIZADO",
-    "CFOP - NATUREZA DA PRESTAÇÃO",
+    "Documento Auxiliar do Conhecimento",
+    "MODAL",
+    "CHAVE DE ACESSO",
+    "Consulta de autenticidade no portal nacional do CT-e",
+    "TIPO DO CTE", "TIPO DO SERVIÇO", "TOMADOR DO SERVIÇO",
+    "MODELO", "NÚMERO", "FL", "DATA E HORA DE EMISSÃO",
     "PROTOCOLO DE AUTORIZAÇÃO DE USO",
-    "ORIGEM DA PRESTAÇÃO", "DESTINO DA PRESTAÇÃO",
+    "INSC. SUFRAMA DO DESTINATÁRIO",
+    "CFOP - NATUREZA DA PRESTAÇÃO",
+    "INÍCIO DA PRESTAÇÃO", "TÉRMINO DA PRESTAÇÃO",
     "REMETENTE", "DESTINATÁRIO", "EXPEDIDOR", "RECEBEDOR",
+    "INSCRIÇÃO ESTADUAL", "PAÍS", "FONE",
     "PRODUTO PREDOMINANTE",
-    "OUTRAS CARACTERISTICAS DA CARGA",
+    "OUTRAS CARACTERÍSTICAS DA CARGA",
     "VALOR TOTAL DA MERCADORIA",
+    "TP MED / UN. MED",
+    "NOME DA SEGURADORA", "RESPONSÁVEL", "NÚMERO DA APÓLICE", "NÚMERO DA AVERBAÇÃO",
     "COMPONENTES DO VALOR DA PRESTAÇÃO DO SERVIÇO",
     "VALOR TOTAL DO SERVIÇO", "VALOR A RECEBER",
     "INFORMAÇÕES RELATIVAS AO IMPOSTO",
-    "SITUAÇÃO TRIBUTÁRIA", "BASE DE CALCULO", "ALIQ. ICMS", "VALOR DO ICMS",
-    "Código Situação Tributária do IBS/CBS",
-    "INFORMAÇÕES SOBRE OS VEÍCULOS NOVOS TRANSPORTADOS",
-    "DOCUMENTOS ORIGINÁRIOS",
-    "OBSERVAÇÕES GERAIS",
-    "INFORMAÇÕES ESPECÍFICAS DO MODAL RODOVIÁRIO",
-    "RNTRC DA EMPRESA",
-    "USO EXCLUSIVO DO EMISSOR DO CT-e",
+    "SITUAÇÃO TRIBUTÁRIA", "BASE DE CALCULO", "ALÍQ ICMS", "VALOR ICMS",
+    "% RED. BC ICMS", "ICMS ST",
+    "CST IBS/CBS", "V. BC IBS/CBS", "P. CBS", "V. CBS",
+    "DOCUMENTOS ORIGINÁRIOS", "TIPO DOC", "CNPJ/CHAVE", "SÉRIE/NRO. DOCUMENTO",
+    "OBSERVAÇÕES",
+    "DADOS ESPECÍFICOS DO MODAL RODOVIÁRIO - CARGA FRACIONADA",
+    "RNTRC DA EMPRESA", "CIOT", "DATA PREVISTA DE ENTREGA",
+    "ESTE CONHECIMENTO DE TRANSPORTE ATENDE",
+    "USO EXCLUSIVO DO EMISSOR DO CT-E",
     "RESERVADO AO FISCO",
 ];
 
@@ -153,8 +160,8 @@ test("a folha tem todos os blocos do DACTE", () => {
 test("o canhoto traz numero e serie destacados", () => {
     const html = api._dacteHtml(pacote());
     assert.ok(html.includes("000.000.261"), "numero do canhoto sem os zeros a esquerda");
-    assert.ok(html.includes("SÉRIE: 4"));
-    assert.ok(html.includes("RG/CPF"));
+    assert.ok(/SÉRIE&nbsp; <b>4<\/b>/.test(html), "serie do canhoto");
+    assert.ok(html.includes(">RG<"));
 });
 
 test("a chave sai agrupada de quatro em quatro", () => {
@@ -187,7 +194,7 @@ test("o IBS/CBS sai do grupo montado, com CST e aliquotas", () => {
 
 test("a situacao tributaria do ICMS sai descrita, nao so o codigo", () => {
     const html = api._dacteHtml(pacote());
-    assert.ok(html.includes("00 - tributação normal ICMS"));
+    assert.ok(html.includes("00 - Tributação normal ICMS"));
 });
 
 test("documento originario mostra o CNPJ tirado da propria chave", () => {
@@ -205,11 +212,11 @@ test("homologacao marca a folha; producao nao", () => {
 
 test("o logo da GC so entra na folha da GC", () => {
     const outra = pacote();
-    assert.ok(!api._dacteHtml(outra).includes("GC%20preto"), "logo da GC em emitente alheio");
+    assert.ok(!api._dacteHtml(outra).includes("logo-dacte.png"), "logo da GC em emitente alheio");
 
     const daGc = pacote();
     daGc.emitente.cnpj = "40595873000109";
-    assert.ok(api._dacteHtml(daGc).includes("GC%20preto"));
+    assert.ok(api._dacteHtml(daGc).includes("logo-dacte.png"));
 });
 
 test("as caixas de expedidor e recebedor saem mesmo vazias", () => {
@@ -248,5 +255,6 @@ test("chave que nao tem 44 digitos nao vira codigo de barras", () => {
 test("o CSS acompanha a folha", () => {
     assert.ok(api._DACTE_CSS.includes(".dacte"));
     assert.ok(api._DACTE_CSS.includes(".dcanhoto"));
-    assert.ok(api._DACTE_CSS.includes("190mm"), "a folha precisa caber no A4");
+    assert.ok(api._DACTE_CSS.includes("200mm") && api._DACTE_CSS.includes("287mm"),
+        "a folha precisa ocupar o A4 inteiro");
 });
