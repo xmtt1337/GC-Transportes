@@ -255,6 +255,53 @@ test("chave que nao tem 44 digitos nao vira codigo de barras", () => {
 test("o CSS acompanha a folha", () => {
     assert.ok(api._DACTE_CSS.includes(".dacte"));
     assert.ok(api._DACTE_CSS.includes(".dcanhoto"));
-    assert.ok(api._DACTE_CSS.includes("200mm") && api._DACTE_CSS.includes("287mm"),
+    assert.ok(api._DACTE_CSS.includes("200mm") && api._DACTE_CSS.includes("285mm"),
         "a folha precisa ocupar o A4 inteiro");
+});
+
+// ── o que o usuário apontou olhando o PDF impresso
+//
+// Cada teste aqui nasceu de um defeito real na folha gerada. São baratos e
+// pegam exatamente a classe de erro que só aparece depois de imprimir.
+
+test("nome e valor do componente ficam no MESMO quadro", () => {
+    const html = api._dacteHtml(pacote());
+    // uma caixa por coluna, com cabeçalho NOME/VALOR e as linhas dentro dela
+    const caixas = html.match(/<div class="dc dcomp"[\s\S]*?<\/div><\/div>/g) || [];
+    assert.strictEqual(caixas.length, 3, "o DACTE tem três caixas de componentes");
+    const comFrete = caixas.find((c) => c.includes("FRETE"));
+    assert.ok(comFrete, "FRETE sumiu");
+    assert.ok(comFrete.includes("3,00"),
+        "o valor tem que estar no mesmo quadro que o nome");
+});
+
+test("CNPJ e inscricao estadual do emitente nao dividem linha", () => {
+    const html = api._dacteHtml(pacote());
+    // estavam na mesma linha com nbsp, o que fazia um texto montar no outro
+    assert.ok(/CNPJ\/CPF: [^<]*<br>Insc\. Estadual:/.test(html),
+        "CNPJ e IE precisam de linhas separadas");
+});
+
+test("a folha e travada em uma pagina", () => {
+    // altura fixa + overflow hidden: conteudo que passar e cortado aqui, nunca
+    // empurrado para uma segunda pagina em branco
+    assert.ok(api._DACTE_CSS.includes("height:285mm"));
+    assert.ok(/\.dacte \{[^}]*overflow:hidden/.test(api._DACTE_CSS));
+});
+
+test("o logo entra com altura automatica, sem esticar", () => {
+    // o html2canvas ignora object-fit; largura fixa + height:auto e o que
+    // preserva a proporcao na rasterizacao
+    assert.ok(/\.dlogo \{[^}]*height:auto/.test(api._DACTE_CSS));
+    assert.ok(!/\.dlogo \{[^}]*object-fit/.test(api._DACTE_CSS));
+});
+
+test("os totais ficam ao lado dos componentes, nao embaixo", () => {
+    const html = api._dacteHtml(pacote());
+    const bloco = html.slice(html.indexOf("COMPONENTES DO VALOR"));
+    const fim = bloco.indexOf("INFORMAÇÕES RELATIVAS AO IMPOSTO");
+    const trecho = bloco.slice(0, fim);
+    assert.ok(trecho.includes("dtotais"), "faltou a coluna de totais");
+    assert.ok(trecho.includes("VALOR TOTAL DO SERVIÇO"));
+    assert.ok(trecho.includes("VALOR A RECEBER"));
 });
