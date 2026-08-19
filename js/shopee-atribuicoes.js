@@ -379,7 +379,9 @@ function _scaBipar(codigoLido) {
         // O pacote não tinha entrada no hub e a conferência acabou de criar. Precisa
         // aparecer: é uma bipagem que o sistema fez em nome da pessoa, e daqui ela sai pro
         // colador digitar na plataforma da Shopee.
-        const receb = d.recebimento_criado
+        // Em pacote desconhecido o próprio detalhe já diz que foi pro Recebimento; repetir
+        // aqui só empurraria a instrução ("confira o pacote") pra fora da vista.
+        const receb = d.recebimento_criado && !d.desconhecido
             ? ` <span style="color:#3a86ff">Entrada no hub registrada agora — não tinha bipe de recebimento.</span>`
             : "";
         if (d.resultado === "ok" && d.status_ok === false) {
@@ -405,7 +407,12 @@ function _scaBipar(codigoLido) {
             // responder. Quem está com o pacote na mão precisa de instrução, não de
             // diagnóstico: e a instrução nomeia o grupo, porque quem bipa em rajada não
             // lembra de cabeça qual conferência está aberta.
-            const manual = ` <strong>Conferir manualmente se a rota é de ${_scaEsc(d.esperado)}.</strong>`;
+            // Código fora dos dois cadastros agora vai pro Recebimento sozinho. A instrução
+            // muda: não é "confira a rota", é "olhe o pacote" — pode nem ser Shopee, e é a
+            // pessoa com ele na mão a única que consegue decidir isso.
+            const manual = d.desconhecido
+                ? ""
+                : ` <strong>Conferir manualmente se a rota é de ${_scaEsc(d.esperado)}.</strong>`;
             _scaMsg(d.resultado === "divergente"
                 ? `⚠ <strong>${_scaEsc(d.codigo)}</strong> é de <strong>${_scaEsc(d.encontrado)}</strong>, não de ${_scaEsc(d.esperado)}.${extraStatus}${rep}${receb}`
                 : `⚠ <strong>${_scaEsc(d.codigo)}</strong> — ${_scaEsc(d.detalhe || info.rotulo)}${manual}${extraStatus}${rep}${receb}`,
