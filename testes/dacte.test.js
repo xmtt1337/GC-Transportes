@@ -365,18 +365,23 @@ test("data prevista de entrega sai do dPrev da NF-e transportada", () => {
     assert.ok(html.includes("22/08/2026"), "a data prevista nao foi puxada");
 });
 
-test("em homologacao o remetente da folha e o mesmo do XML transmitido", () => {
+test("em homologacao as partes da folha sao as mesmas do XML transmitido", () => {
     const p = pacote();
     p.cte.ambiente = "homologacao";
     const html = api._dacteHtml(p);
-    assert.ok(html.includes("CTE EMITIDO EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL"),
-        "a SEFAZ exige essa razao social no remetente em homologacao (rejeicao 646)");
-    assert.ok(!html.includes("REMETENTE TESTE"),
-        "papel e XML nao podem divergir");
+    const frase = "CTE EMITIDO EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL";
+    // rejeicao 646 (remetente) e 649 (destinatario); vale para as partes todas
+    const quantas = (html.match(new RegExp(frase, "g")) || []).length;
+    assert.ok(quantas >= 3, "remetente, destinatario e tomador da fixture");
+    assert.ok(!html.includes("REMETENTE TESTE"), "papel e XML nao podem divergir");
+    assert.ok(!html.includes("DESTINATARIO TESTE"));
+    assert.ok(!html.includes("TOMADOR TESTE"));
 });
 
-test("em producao o remetente da folha e o de verdade", () => {
+test("em producao as partes da folha sao as de verdade", () => {
     const html = api._dacteHtml(pacote());   // fixture e producao
     assert.ok(html.includes("REMETENTE TESTE"));
+    assert.ok(html.includes("DESTINATARIO TESTE"));
+    assert.ok(html.includes("TOMADOR TESTE"));
     assert.ok(!html.includes("CTE EMITIDO EM AMBIENTE DE HOMOLOGACAO"));
 });

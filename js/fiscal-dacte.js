@@ -299,12 +299,18 @@ function _dacteHtml(pacote) {
     const carga = d.carga || {};
     const icms = _dacteIcms(d, cte);
 
-    // O XML de homologação leva a razão social exigida pela SEFAZ no remetente;
-    // a folha acompanha, para papel e documento dizerem a mesma coisa.
-    const remetente = homolog && d.remetente
-        ? Object.assign({}, d.remetente, { nome: _DACTE_XNOME_HOMOLOGACAO,
-                                           razao_social: _DACTE_XNOME_HOMOLOGACAO })
-        : d.remetente;
+    // O XML de homologação leva a razão social exigida pela SEFAZ em TODAS as
+    // partes nomeadas; a folha acompanha, para papel e documento dizerem a
+    // mesma coisa. Em produção sai o nome de verdade.
+    const emHomologacao = (p) => (homolog && p
+        ? Object.assign({}, p, { nome: _DACTE_XNOME_HOMOLOGACAO,
+                                 razao_social: _DACTE_XNOME_HOMOLOGACAO })
+        : p);
+    const remetente = emHomologacao(d.remetente);
+    const destinatario = emHomologacao(d.destinatario);
+    const expedidor = emHomologacao(d.expedidor);
+    const recebedor = emHomologacao(d.recebedor);
+    const tomador = emHomologacao(d.tomador);
 
     // IBS/CBS: o grupo fica montado em `cte.ibscbs`, na forma do schema.
     const ib = cte.ibscbs || {};
@@ -477,14 +483,14 @@ function _dacteHtml(pacote) {
 
             _dLinCresce(1.3,
                 _dCaixaParte("REMETENTE", remetente),
-                _dCaixaParte("DESTINATÁRIO", d.destinatario)
+                _dCaixaParte("DESTINATÁRIO", destinatario)
             ) +
             _dLinCresce(1.3,
-                _dCaixaParte("EXPEDIDOR", d.expedidor),
-                _dCaixaParte("RECEBEDOR", d.recebedor)
+                _dCaixaParte("EXPEDIDOR", expedidor),
+                _dCaixaParte("RECEBEDOR", recebedor)
             ) +
             _dLinCresce(1,
-                _dCaixaParte("TOMADOR DO SERVIÇO", d.tomador, { peso: 2 })
+                _dCaixaParte("TOMADOR DO SERVIÇO", tomador, { peso: 2 })
             ) +
 
             _dLin(
