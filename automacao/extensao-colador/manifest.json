@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GC Colador - ponte SPX",
-  "version": "1.6",
+  "version": "1.7",
   "description": "Recebe os codigos do colador (Python local) e escreve no campo do SPX, sem precisar da janela em foco.",
   "permissions": ["scripting", "activeTab"],
   "host_permissions": ["https://spx.shopee.com.br/*"],

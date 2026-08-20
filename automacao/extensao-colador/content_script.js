@@ -65,13 +65,24 @@
 
   // O SPX desabilita o campo enquanto processa o codigo anterior. Escrever
   // nesse intervalo joga o codigo fora - por isso esperamos ele voltar.
+  //
+  // Desiste por TEMPO **e** por numero de tentativas, nao so por relogio: numa
+  // aba em segundo plano o Chrome estica setTimeout pra 1x/s (e 1x/min depois
+  // de 5 min oculta), entao os 15s de relogio passavam com duas ou tres olhadas
+  // no campo e a gente devolvia "campo preso desabilitado" com o SPX bipando
+  // normal. Contar tentativas nao muda nada no caso normal - a 100ms, 15s ja
+  // sao 150 olhadas.
+  const MIN_TENTATIVAS = 30;
+
   function esperarCampoLivre(limiteMs = 15000) {
     return new Promise((resolve) => {
       const fim = Date.now() + limiteMs;
+      let tentativas = 0;
       (function tentar() {
+        tentativas++;
         const campo = acharCampo();
         if (campo && !campo.disabled && !campo.readOnly) return resolve(campo);
-        if (Date.now() > fim) return resolve(null);
+        if (Date.now() > fim && tentativas >= MIN_TENTATIVAS) return resolve(null);
         setTimeout(tentar, 100);
       })();
     });

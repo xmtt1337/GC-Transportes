@@ -29,7 +29,23 @@ import websockets
 
 PORTA_PADRAO = 9876   # 9999 é da extensão BRS HTML Bridge, não mexer
 PORTAS = range(9876, 9886)  # cada colador aberto ocupa uma; a extensão varre todas
-TIMEOUT_RESPOSTA = 30  # segundos esperando a aba confirmar um código
+# Quanto o Python espera a aba confirmar UM código. 0 = sem limite.
+#
+# Era 30s, e isso derrubava a sessão com o SPX bipando normal: o lado da aba
+# pode legitimamente levar mais que isso (esperarCampoLivre 15s + 0,5s de
+# sinal + 15s de campo travado = ~30,5s), e a aba em segundo plano ainda leva
+# o throttling de timer do Chrome (setTimeout vira 1x/s, e 1x/min depois de
+# 5 min oculta) — a resposta chega, só que tarde.
+#
+# Quem de fato precisa ser detectado é a aba MORRER, e isso não se mede com
+# relógio: o WebSocket cai (F5, aba fechada, Chrome fechado) e o laço abaixo
+# sai na hora por `not self.conectada`. O relógio só acertava por acidente.
+TIMEOUT_RESPOSTA = 0
+
+# Depois de tanto tempo no mesmo código, avisa quem chamou pra tela não ficar
+# muda enquanto espera.
+AVISAR_DEMORA = 30
+INTERVALO_AVISO = 5
 
 # Só aceita conexão vinda da página do SPX. O navegador põe o Origin sozinho e
 # não deixa forjar, então qualquer outra coisa que fale nesta porta é barrada.
@@ -203,11 +219,17 @@ class Ponte:
     def conectada(self):
         return self.conexao is not None
 
-    def enviar_codigo(self, codigo, timeout=TIMEOUT_RESPOSTA):
+    def enviar_codigo(self, codigo, timeout=TIMEOUT_RESPOSTA,
+                      cancelado=None, ao_demorar=None):
         """Manda um código pra aba e espera ela confirmar.
 
         Retorna (True, None) se entrou, (False, motivo) se não. O motivo sobe
         pra tela do colador em vez de virar um código perdido em silêncio.
+
+        timeout=0 espera o tempo que for, enquanto a aba estiver conectada.
+        Como isso pode bloquear, `cancelado` é obrigatório na prática: é o que
+        deixa o botão Parar funcionar. `ao_demorar(segundos)` é chamado de
+        tempos em tempos numa espera longa, pra tela dizer o que está havendo.
         """
         if not self.conectada:
             return False, "nenhuma aba do SPX conectada"
@@ -231,13 +253,24 @@ class Ponte:
         except Exception as e:
             return False, f"falha ao enviar: {str(e)[:60]}"
 
-        limite = time.time() + timeout
-        while time.time() < limite:
+        inicio = time.time()
+        limite = (inicio + timeout) if timeout else None
+        proximo_aviso = inicio + AVISAR_DEMORA
+        while limite is None or time.time() < limite:
+            if cancelado and cancelado():
+                return False, "parado"
             try:
                 resposta = self.respostas.get(timeout=0.2)
             except queue.Empty:
                 if not self.conectada:
                     return False, "a aba desconectou no meio"
+                agora = time.time()
+                if ao_demorar and agora >= proximo_aviso:
+                    proximo_aviso = agora + INTERVALO_AVISO
+                    try:
+                        ao_demorar(int(agora - inicio))
+                    except Exception:
+                        pass
                 continue
             if resposta.get('id') != ident:
                 continue          # resposta de outro código, ignora

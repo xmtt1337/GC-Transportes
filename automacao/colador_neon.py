@@ -35,7 +35,7 @@ import win32gui
 
 from ponte_navegador import PORTA_PADRAO, Ponte
 
-VERSAO = '2.4'   # subir junto com mudança de comportamento
+VERSAO = '2.5'   # subir junto com mudança de comportamento
 APP_ID = 'GC.Transportes.ColadorNeon.1.0'
 try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
@@ -1114,7 +1114,15 @@ class ColadorApp:
                         continue
 
                     inicio_codigo = time.time()
-                    entrou, motivo = self.ponte.enviar_codigo(codigo)
+
+                    def avisar_demora(segundos, cod=codigo):
+                        self.ui(lambda: self.atualizar_status(
+                            f"esperando a aba confirmar {cod} ({segundos}s)"))
+
+                    entrou, motivo = self.ponte.enviar_codigo(
+                        codigo,
+                        cancelado=lambda: self.parar_thread,
+                        ao_demorar=avisar_demora)
                     self.registrar_tempo(time.time() - inicio_codigo)
                     if self.parar_thread:
                         break
