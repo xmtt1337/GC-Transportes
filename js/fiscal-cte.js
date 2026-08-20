@@ -256,6 +256,8 @@ function _linhaCTe(c) {
                 ? `<button class="btn-primario" onclick="emitirCTe(${c.id})">Emitir</button>` : ""}
             ${c.chave_acesso ? `<button onclick="baixarDacte(${c.id})">PDF</button>` : ""}
             ${c.status !== "RASCUNHO" ? `<button onclick="baixarXmlCTe(${c.id})">XML</button>` : ""}
+            ${String(c.codigo_rejeicao) === "539"
+                ? `<button onclick="liberarNumeroCTe(${c.id})">Novo número</button>` : ""}
         </td>
     </tr>`;
 }
@@ -1312,5 +1314,28 @@ async function baixarXmlCTe(id) {
     if (tipo && tipo !== "autorizado") {
         alert("Atencao: este CT-e ainda nao foi autorizado.\n\n" +
               "O arquivo baixado e o XML " + tipo + ", que NAO tem valor fiscal.");
+    }
+}
+
+/**
+ * Devolve o número do CT-e para que ele receba outro.
+ *
+ * Só faz sentido depois da rejeição 539: aquele número já pertence a outro
+ * documento na SEFAZ, então corrigir os dados não resolve — o documento
+ * precisa de um número novo. Nas outras rejeições o número continua válido, e
+ * o certo é corrigir e retransmitir com o mesmo.
+ */
+async function liberarNumeroCTe(id) {
+    const aviso = "Este CT-e volta para rascunho e pega um número novo na " +
+                  "próxima validação.\n\nO número atual será abandonado. Continuar?";
+    if (!confirm(aviso)) return;
+
+    try {
+        const r = await _cteApi("/fiscal/cte/" + id + "/liberar-numero", { method: "POST" });
+        alert("Número " + r.numero_anterior + " abandonado.\n\n" +
+              "Valide o CT-e de novo para ele pegar o próximo da sequência.");
+        await abrirCTes();
+    } catch (e) {
+        alert("Não foi possível: " + e.message);
     }
 }
