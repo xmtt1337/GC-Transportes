@@ -258,6 +258,10 @@ function _linhaCTe(c) {
             ${c.status !== "RASCUNHO" ? `<button onclick="baixarXmlCTe(${c.id})">XML</button>` : ""}
             ${String(c.codigo_rejeicao) === "539"
                 ? `<button onclick="liberarNumeroCTe(${c.id})">Novo número</button>` : ""}
+            ${c.chave_acesso
+                ? `<button onclick="consultarCTe(${c.id})">Consultar</button>` : ""}
+            ${c.status === "AUTORIZADO"
+                ? `<button onclick="cancelarCTe(${c.id})">Cancelar</button>` : ""}
         </td>
     </tr>`;
 }
@@ -1337,5 +1341,93 @@ async function liberarNumeroCTe(id) {
         await abrirCTes();
     } catch (e) {
         alert("Não foi possível: " + e.message);
+    }
+}
+
+/**
+ * Pergunta à SEFAZ o que ela tem para a chave deste CT-e.
+ *
+ * É a saída para transmissão que falhou sem retorno: em vez de reenviar — que
+ * duplicaria um documento que talvez tenha chegado —, consulta-se. Se lá
+ * estiver autorizado e aqui não, o estado local é corrigido sozinho.
+ */
+async function consultarCTe(id) {
+    let r;
+    try {
+        r = await _cteApi("/fiscal/cte/consultar", {
+            method: "POST",
+            body: JSON.stringify({ cte_id: id }),
+        });
+    } catch (e) {
+        alert("Não foi possível consultar:\n\n" + e.message);
+        return;
+    }
+
+    const linhas = [
+        "Consulta: " + (r.cStat || "—") + " — " + (r.xMotivo || "sem motivo"),
+    ];
+    if (r.protocolo) {
+        linhas.push("");
+        linhas.push("Documento: " + (r.situacao || "—"));
+        linhas.push("Protocolo: " + r.protocolo);
+        if (r.dhRecbto) linhas.push("Autorizado em: " + _fmtData(r.dhRecbto));
+    } else {
+        linhas.push("");
+        linhas.push("A SEFAZ não tem protocolo de autorização para esta chave.");
+    }
+    for (const ev of r.eventos || []) {
+        linhas.push("Evento " + ev.tipo + ": " + (ev.descricao || ev.cStat || ""));
+    }
+    if (r.reconciliacao && r.reconciliacao.reconciliado) {
+        linhas.push("");
+        linhas.push("Corrigido aqui: " + r.reconciliacao.de + " → " + r.reconciliacao.para);
+    }
+    alert(linhas.join("\n"));
+
+    if (r.reconciliacao && r.reconciliacao.reconciliado) await abrirCTes();
+}
+
+/**
+ * Cancela um CT-e autorizado.
+ *
+ * O documento não some: fica registrado o evento de cancelamento e o CT-e
+ * passa a constar como cancelado — é assim que a SEFAZ trabalha.
+ */
+async function cancelarCTe(id) {
+    const justificativa = prompt(
+        "Cancelar este CT-e.\n\n" +
+        "A justificativa vai para a SEFAZ e precisa ter de 15 a 255 caracteres.\n" +
+        "Ela fica gravada no documento — escreva o motivo de verdade.");
+    if (justificativa === null) return;
+
+    const texto = justificativa.trim();
+    if (texto.length < 15) {
+        alert("A justificativa precisa de pelo menos 15 caracteres — esta tem " +
+              texto.length + ".");
+        return;
+    }
+    if (!confirm("Confirma o cancelamento?\n\nIsso é registrado na SEFAZ e não " +
+                 "se desfaz.")) {
+        return;
+    }
+
+    try {
+        const r = await _cteApi("/fiscal/cte/" + id + "/cancelar", {
+            method: "POST",
+            body: JSON.stringify({ justificativa: texto }),
+        });
+        if (r.ok) {
+            alert("CT-e cancelado.\n\ncStat " + (r.cStat || "—") + " — " +
+                  (r.xMotivo || "") + "\nProtocolo do evento: " + (r.protocolo || "—"));
+        } else {
+            alert("A SEFAZ NÃO registrou o cancelamento.\n\ncStat " +
+                  (r.cStat || "—") + " — " + (r.xMotivo || r.motivo || "sem motivo") +
+                  "\n\nO CT-e continua valendo.");
+        }
+        await abrirCTes();
+    } catch (e) {
+        alert("Não foi possível cancelar:\n\n" + e.message +
+              "\n\nSe a falha foi de comunicação, consulte pela chave antes de " +
+              "tentar de novo: o evento pode ter sido registrado.");
     }
 }
