@@ -255,6 +255,7 @@ function _linhaCTe(c) {
             ${c.status === "PRONTO_PARA_EMISSAO"
                 ? `<button class="btn-primario" onclick="emitirCTe(${c.id})">Emitir</button>` : ""}
             ${c.chave_acesso ? `<button onclick="baixarDacte(${c.id})">PDF</button>` : ""}
+            ${c.status !== "RASCUNHO" ? `<button onclick="baixarXmlCTe(${c.id})">XML</button>` : ""}
         </td>
     </tr>`;
 }
@@ -276,18 +277,20 @@ async function verCTe(id) {
         ${c.xml ? "" : `<p class="dica">O XML aparece aqui depois da validação.</p>`}
         <div class="acoes-rodape">
             ${c.status === "PRONTO_PARA_EMISSAO"
-                ? `<button onclick="baixarXmlCTe(${c.id})">Ver XML gerado</button>` : ""}
+                ? `<button onclick="verXmlCTe(${c.id})">Ver XML gerado</button>` : ""}
         </div>`;
     } catch (e) {
         area.innerHTML = `<p class="erro">${_esc(e.message)}</p>`;
     }
 }
 
-async function baixarXmlCTe(id) {
+/** Abre o XML numa aba, para conferir na tela. Baixar é `baixarXmlCTe`. */
+async function verXmlCTe(id) {
     const r = await fetch(`${API}/fiscal/cte/${id}/xml`, { headers: { Authorization: "Bearer " + token } });
     if (!r.ok) { alert("XML indisponível. Valide o CT-e primeiro."); return; }
     const xml = await r.text();
     const janela = window.open("", "_blank");
+    if (!janela) { alert("O navegador bloqueou a aba. Use o botão XML para baixar."); return; }
     janela.document.write(`<pre>${_esc(xml)}</pre>`);
 }
 
@@ -1238,8 +1241,9 @@ async function validarCTe() {
                 <p>XML gerado e validado no schema oficial ${_esc(r.versao_leiaute)}
                    (pacote ${_esc(r.pacote_schemas)}).</p>
                 ${r.tributos ? `<p>IBS ${_fmtBRL(r.tributos.v_ibs)} · CBS ${_fmtBRL(r.tributos.v_cbs)}</p>` : ""}
-                <p class="dica">A transmissão para a SEFAZ ainda não está habilitada.</p>
-                <button onclick="baixarXmlCTe(${_cteAtual.id})">Ver XML</button>
+                <p class="dica">Pronto para transmitir: use o botão Emitir na listagem.</p>
+                <button onclick="verXmlCTe(${_cteAtual.id})">Ver XML</button>
+                <button onclick="baixarXmlCTe(${_cteAtual.id})">Baixar XML</button>
             </div>`;
         } else {
             alvo.innerHTML = `
@@ -1251,5 +1255,62 @@ async function validarCTe() {
         }
     } catch (e) {
         alvo.innerHTML = `<div class="aviso-bloqueio"><strong>Erro:</strong><p>${_esc(e.message)}</p></div>`;
+    }
+}
+
+/**
+ * Baixa o XML do CT-e.
+ *
+ * Não dá para usar um link direto: a rota exige o token no cabeçalho, e
+ * <a href> não manda cabeçalho. Então busca com fetch, vira blob e o download
+ * é disparado a partir dele.
+ *
+ * O nome do arquivo vem do servidor (Content-Disposition), que é quem sabe se
+ * entregou o autorizado, o assinado ou o rascunho.
+ */
+async function baixarXmlCTe(id) {
+    let resposta;
+    try {
+        resposta = await fetch(API + "/fiscal/cte/" + id + "/xml", {
+            headers: { Authorization: "Bearer " + token },
+        });
+    } catch (e) {
+        alert("Nao foi possivel baixar o XML: " + e.message);
+        return;
+    }
+
+    if (!resposta.ok) {
+        let msg = "Erro " + resposta.status;
+        try {
+            const corpo = await resposta.json();
+            if (corpo && corpo.error) msg = corpo.error;
+        } catch (e) { /* resposta sem JSON: fica o status */ }
+        alert("Nao foi possivel baixar o XML:\n\n" + msg);
+        return;
+    }
+
+    const disposicao = resposta.headers.get("Content-Disposition") || "";
+    const casado = disposicao.match(/filename="([^"]+)"/);
+    const nome = casado ? casado[1] : "CTe-" + id + ".xml";
+
+    const tipo = resposta.headers.get("X-Cte-Xml");
+    const texto = await resposta.text();
+
+    const url = URL.createObjectURL(new Blob([texto], { type: "application/xml" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = nome;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    // Revoga depois do clique: revogar na hora cancela o download em alguns
+    // navegadores, que ainda não leram o blob quando a URL some.
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+    // Avisa quando o arquivo NÃO é o autorizado — quem baixa costuma querer o
+    // documento com protocolo, e receber o rascunho sem saber é pior que o erro.
+    if (tipo && tipo !== "autorizado") {
+        alert("Atencao: este CT-e ainda nao foi autorizado.\n\n" +
+              "O arquivo baixado e o XML " + tipo + ", que NAO tem valor fiscal.");
     }
 }
