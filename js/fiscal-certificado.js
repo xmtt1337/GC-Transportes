@@ -66,7 +66,14 @@ function _htmlCertificado(s) {
                 ${c.dias_restantes != null
                     ? `<b style="color:${c.dias_restantes <= 30 ? "#e74c3c" : "#2ecc71"}">${c.dias_restantes}</b>`
                     : "—"}</div>
-            <div class="conf-bloco"><b>Ambiente</b><br>${_esc(s.ambiente || "homologacao")}</div>
+            <div class="conf-bloco"><b>Emitindo em</b><br>
+                ${s.ambiente === "producao"
+                    ? `<b style="color:#e74c3c">PRODUÇÃO</b>`
+                    : "homologação"}
+                ${s.producao_liberada_em
+                    ? `<br><span class="dica">liberada em ${_fmtData(s.producao_liberada_em)}` +
+                      `${s.producao_liberada_por ? ` por ${_esc(s.producao_liberada_por)}` : ""}</span>`
+                    : ""}</div>
             <div class="conf-bloco"><b>Enviado em</b><br>${_fmtData(s.enviado_em)}</div>
         </div>
 
@@ -98,16 +105,17 @@ function _htmlCertificado(s) {
             <label>Senha do certificado
                 <input type="password" id="cert-senha" autocomplete="new-password">
             </label>
-            <label>Ambiente
+            <label>Enviado como
                 <select id="cert-ambiente">
                     <option value="homologacao">Homologação</option>
-                    <option value="producao">Produção (ainda bloqueado)</option>
+                    <option value="producao">Produção</option>
                 </select>
             </label>
         </div>
         <p class="dica">
-            A produção ainda não está liberada: escolher essa opção resulta em recusa
-            até a validação completa ser concluída.
+            O A1 da ICP-Brasil não tem ambiente: o mesmo certificado assina
+            homologação e produção. Este campo é só registro de como o arquivo
+            foi enviado — quem decide onde se emite é a liberação da empresa.
         </p>
 
         <div class="acoes-rodape">
