@@ -2645,7 +2645,13 @@ if (location.hostname === "xmtt1337.github.io") {
                 <div class="bip-scan-card shr-scan-card">
                     <div class="bip-scan-title">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
-                        Item avariado
+                        <span id="sav-titulo">Item avariado</span>
+                    </div>
+
+                    <!-- Os dois motivos de retenção: o gesto é o mesmo, muda o porquê. -->
+                    <div class="filtro-tabs" id="sav-abas" style="margin-bottom:14px">
+                        <button type="button" class="filtro-tab active" data-tipo="avariado" onclick="_savTrocarTipo('avariado')">Item avariado</button>
+                        <button type="button" class="filtro-tab" data-tipo="interceptado" onclick="_savTrocarTipo('interceptado')">Interceptar</button>
                     </div>
 
                     <div class="shr-faixa" id="sav-faixa" style="display:none">
@@ -3695,10 +3701,10 @@ if (location.hostname === "xmtt1337.github.io") {
 <script src="js/shopee-at.js?v=20260812c"></script>
 <script src="js/shopee-pedidos.js?v=20260812c"></script>
 <script src="js/shopee-linehaul.js?v=20260812c"></script>
-<script src="js/shopee-atribuicoes.js?v=20260819e"></script>
-<script src="js/shopee-retidos.js?v=20260812c"></script>
+<script src="js/shopee-atribuicoes.js?v=20260819f"></script>
+<script src="js/shopee-retidos.js?v=20260819f"></script>
 <script src="js/shopee-conf-entregadores.js?v=20260812c"></script>
-<script src="js/entregador-conferencia.js?v=20260812c"></script>
+<script src="js/entregador-conferencia.js?v=20260819f"></script>
 <script src="js/viagens.js?v=20260812c"></script>
 <script src="js/ocorrencias.js?v=20260812c"></script>
 <script src="js/ocorrencias-admin.js?v=20260812c"></script>

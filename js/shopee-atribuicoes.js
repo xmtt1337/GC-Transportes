@@ -384,7 +384,14 @@ function _scaBipar(codigoLido) {
         const receb = d.recebimento_criado && !d.desconhecido
             ? ` <span style="color:#3a86ff">Entrada no hub registrada agora — não tinha bipe de recebimento.</span>`
             : "";
-        if (d.resultado === "ok" && d.status_ok === false) {
+        // Pacote voltando para na hora, dê no que der o resto: ele pode estar no cluster
+        // certo e ainda assim não poder subir na carga. Por isso este ramo vem antes — se
+        // ficasse depois, "confere" apareceria em verde e ninguém leria o resto.
+        if (d.interceptar) {
+            _gcBeepErro(); _scaFlash("err");
+            _scaMsg(`⛔ <strong>${_scaEsc(d.codigo)}</strong> — <strong>NÃO ENVIE NA CARGA.</strong> ${
+                _scaEsc(d.detalhe)} Separe e registre em Retidos → Interceptar.${rep}`, "erro");
+        } else if (d.resultado === "ok" && d.status_ok === false) {
             // Cidade certa, mas o pacote não deu entrada no hub. Apita como erro porque
             // também para a esteira — só que o motivo é outro, e a mensagem diz qual.
             _gcBeepErro(); _scaFlash("err");

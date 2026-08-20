@@ -10,9 +10,31 @@
 // do bipe, mas o servidor valida de novo — é ele quem decide o que entra no banco.
 const SAV_CODIGO_RE = /^BR[A-Z0-9]{13}$/;
 
-// O tipo de retenção desta tela. Trocar esta constante é o que separa "Item avariado" de
-// "Interceptado" quando a segunda tela existir.
-const SAV_TIPO = "avariado";
+// Os dois motivos de retenção vivem na mesma tela, em abas. É o mesmo gesto (bipar pra tirar
+// o pacote da rua) e a mesma lista — duas telas duplicariam tudo pra trocar uma palavra.
+const SAV_TIPOS = {
+    avariado:     { label: "Item avariado", verbo: "avariado",     vazio: "Nenhum item avariado registrado ainda." },
+    interceptado: { label: "Interceptar",   verbo: "interceptado", vazio: "Nenhum pacote interceptado ainda." },
+};
+let _savTipo = "avariado";
+const _savT = () => SAV_TIPOS[_savTipo];
+
+function _savPintarAbas() {
+    document.querySelectorAll("#sav-abas .filtro-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.tipo === _savTipo));
+    document.getElementById("sav-titulo").innerText = _savT().label;
+}
+
+function _savTrocarTipo(tipo) {
+    if (!SAV_TIPOS[tipo] || tipo === _savTipo) return;
+    _savTipo = tipo;
+    _savPintarAbas();
+    document.getElementById("sav-busca").value = "";
+    _savMsg("", null);
+    _savDados = [];
+    _savDias = [];
+    if (_savXpt) _savCarregarHistorico();
+}
 
 let _savXpt       = null;   // XPT do polo de quem está bipando; null = sem polo ou polo sem Shopee
 let _savPoloLabel = "";
@@ -25,6 +47,8 @@ function abrirShopeeAvariado(event) {
     _savPoloLabel = "";
     _savDados = [];
     _savDias  = [];
+    _savTipo = "avariado";   // reabre sempre na primeira aba
+    _savPintarAbas();
     document.getElementById("sav-codigo").value = "";
     document.getElementById("sav-busca").value = "";
     _savMsg("", null);
@@ -140,7 +164,7 @@ function _savBipar() {
     fetch(`${API}/shopee/retidos`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ codigo, tipo: SAV_TIPO })
+        body: JSON.stringify({ codigo, tipo: _savTipo })
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
         if (!ok) {
@@ -157,7 +181,7 @@ function _savBipar() {
             return _savMsg(_savEsc(d.error) || "Erro ao registrar.", "erro");
         }
         _gcBeepSucesso(); _savFlash("ok");
-        _savMsg(`✓ <strong>${_savEsc(d.codigo)}</strong> retido como avariado — saiu de todas as conferências.`, "ok");
+        _savMsg(`✓ <strong>${_savEsc(d.codigo)}</strong> retido como ${_savT().verbo} — saiu de todas as conferências.`, "ok");
         // Entra na lista local em vez de recarregar: a cada bipe uma ida ao servidor
         // deixaria a bipagem em rajada lenta e acordaria o banco à toa.
         _savDados.unshift({
@@ -190,7 +214,7 @@ function _savCarregarHistorico() {
     result.style.display = "none";
     document.getElementById("sav-resumo").innerHTML = "";
 
-    fetch(`${API}/shopee/retidos?tipo=${encodeURIComponent(SAV_TIPO)}`, {
+    fetch(`${API}/shopee/retidos?tipo=${encodeURIComponent(_savTipo)}`, {
         headers: { "Authorization": "Bearer " + token }
     })
         .then(r => r.json())
@@ -256,7 +280,7 @@ function _savRenderizar() {
     const tbody = document.getElementById("sav-tbody");
     if (!rows.length) {
         tbody.innerHTML = `<tr><td colspan="${colunas}" style="text-align:center;color:#8494a9;padding:26px 10px">${
-            termo ? "Nenhum código encontrado." : "Nenhum item avariado registrado ainda."}</td></tr>`;
+            termo ? "Nenhum código encontrado." : _savT().vazio}</td></tr>`;
         return;
     }
 
@@ -280,7 +304,7 @@ function _savRenderizar() {
             <td colspan="${colunas}" style="background:rgba(234,179,8,0.07);border-top:1px solid rgba(234,179,8,0.18);padding:9px 12px">
                 <span style="font-weight:700;color:#fcd34d;font-size:13px">${_savDiaTexto(dia, hoje)}</span>
                 <span style="color:#8494a9;font-size:12.5px;margin-left:8px">
-                    ${n.toLocaleString("pt-BR")} item${n !== 1 ? "s" : ""} avariado${n !== 1 ? "s" : ""}
+                    ${n.toLocaleString("pt-BR")} pacote${n !== 1 ? "s" : ""} ${_savT().verbo}${n !== 1 ? "s" : ""}
                 </span>
             </td>
         </tr>` + lista.map(r => `
@@ -297,7 +321,7 @@ function _savRenderizar() {
 
 function _savRemover(id, codigo) {
     gcConfirm(
-        `Tirar ${codigo} da retenção?\n\nEle volta a contar nas conferências e pode ser bipado como avariado de novo.`,
+        `Tirar ${codigo} da retenção?\n\nEle volta a contar nas conferências e pode ser bipado de novo.`,
         () => {
             fetch(`${API}/shopee/retidos/${id}`, {
                 method: "DELETE",

@@ -416,7 +416,9 @@ function _cenBipar(codigoLido) {
             const tipo = d.ja_bipado ? "aviso" : "erro";
             return _cenResposta(d.error || "Não foi possível bipar.", tipo);
         }
-        _cenResposta(_cenTextoResultado(d), d.resultado === "ok" ? "ok" : "erro");
+        // Pacote voltando apita erro mesmo estando na rota certa: ele não pode subir no
+        // carro, e verde aqui seria o sinal oposto do que precisa acontecer.
+        _cenResposta(_cenTextoResultado(d), !d.interceptar && d.resultado === "ok" ? "ok" : "erro");
         // Recarrega dos dois lados: o bipado entra na lista e sai dos faltantes.
         _cenCarregarSessao();
         _cenCarregarFaltantes();
@@ -433,6 +435,8 @@ function _cenBipar(codigoLido) {
 function _cenTextoResultado(d) {
     const rotulo = (CEN_RESULTADOS[d.resultado] || {}).rotulo || "";
     const rep = d.repetido ? " (bipado de novo)" : "";
+    // Vem antes de tudo: é a única resposta que muda o que ele faz com o pacote agora.
+    if (d.interceptar) return "NÃO LEVE — " + (d.detalhe || "este pacote está voltando") + " Devolva ao galpão." + rep;
     if (d.resultado === "ok") {
         // Pacote na rota certa que não consta recebido no hub. Vale dizer — é a explicação
         // de por que ele pode sumir do sistema depois —, mas não apita erro: ele está com o
