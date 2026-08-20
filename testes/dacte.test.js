@@ -364,3 +364,19 @@ test("data prevista de entrega sai do dPrev da NF-e transportada", () => {
     const html = api._dacteHtml(p);
     assert.ok(html.includes("22/08/2026"), "a data prevista nao foi puxada");
 });
+
+test("em homologacao o remetente da folha e o mesmo do XML transmitido", () => {
+    const p = pacote();
+    p.cte.ambiente = "homologacao";
+    const html = api._dacteHtml(p);
+    assert.ok(html.includes("CTE EMITIDO EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL"),
+        "a SEFAZ exige essa razao social no remetente em homologacao (rejeicao 646)");
+    assert.ok(!html.includes("REMETENTE TESTE"),
+        "papel e XML nao podem divergir");
+});
+
+test("em producao o remetente da folha e o de verdade", () => {
+    const html = api._dacteHtml(pacote());   // fixture e producao
+    assert.ok(html.includes("REMETENTE TESTE"));
+    assert.ok(!html.includes("CTE EMITIDO EM AMBIENTE DE HOMOLOGACAO"));
+});

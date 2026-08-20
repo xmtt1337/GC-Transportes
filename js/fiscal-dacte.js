@@ -136,6 +136,12 @@ const _DACTE_CST = {
 // Logo só sai na folha da empresa dona dele. Carimbar a marca da GC no DACTE
 // de outro emitente seria falsificar a origem do documento.
 const _DACTE_CNPJ_GC = "40595873000109";
+
+// Em homologação a SEFAZ exige esta razão social no remetente (rejeição 646),
+// e o XML transmitido sai com ela. A folha repete: DACTE que mostra um
+// remetente diferente do documento que foi transmitido confere errado.
+const _DACTE_XNOME_HOMOLOGACAO =
+    "CTE EMITIDO EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL";
 const _DACTE_LOGO_GC = "img/logo-dacte.png";
 
 const _dDig = (v) => String(v || "").replace(/\D/g, "");
@@ -292,6 +298,13 @@ function _dacteHtml(pacote) {
     const comps = (d.vPrest && d.vPrest.componentes) || [];
     const carga = d.carga || {};
     const icms = _dacteIcms(d, cte);
+
+    // O XML de homologação leva a razão social exigida pela SEFAZ no remetente;
+    // a folha acompanha, para papel e documento dizerem a mesma coisa.
+    const remetente = homolog && d.remetente
+        ? Object.assign({}, d.remetente, { nome: _DACTE_XNOME_HOMOLOGACAO,
+                                           razao_social: _DACTE_XNOME_HOMOLOGACAO })
+        : d.remetente;
 
     // IBS/CBS: o grupo fica montado em `cte.ibscbs`, na forma do schema.
     const ib = cte.ibscbs || {};
@@ -463,7 +476,7 @@ function _dacteHtml(pacote) {
             ) +
 
             _dLinCresce(1.3,
-                _dCaixaParte("REMETENTE", d.remetente),
+                _dCaixaParte("REMETENTE", remetente),
                 _dCaixaParte("DESTINATÁRIO", d.destinatario)
             ) +
             _dLinCresce(1.3,
