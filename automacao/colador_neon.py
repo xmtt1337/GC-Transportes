@@ -35,7 +35,7 @@ import win32gui
 
 from ponte_navegador import PORTA_PADRAO, Ponte
 
-VERSAO = '2.5'   # subir junto com mudança de comportamento
+VERSAO = '2.6'   # subir junto com mudança de comportamento
 APP_ID = 'GC.Transportes.ColadorNeon.1.0'
 try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
@@ -52,6 +52,14 @@ RESERVA_EXPIRA = '15 minutes'
 ESPERA_NOVOS = 5  # segundos entre uma checagem e outra no modo contínuo
 CARENCIA_PADRAO = 60  # segundos de folga entre receber e atribuir no SPX
 SEGUNDOS_PARA_FOCAR = 4  # tempo pra clicar na janela de destino no modo teclado
+
+# O colador roda a madrugada inteira sem ninguém olhando, então tropeço não
+# pode virar sessão parada: aba descartada pelo Chrome, Neon derrubando conexão
+# ociosa, SPX fora do ar por um minuto — tudo isso passa sozinho. A sessão só
+# termina quando alguém aperta Parar ou a fila acaba.
+ESPERA_RETENTATIVA = 2      # base do backoff, em segundos
+ESPERA_MAX_RETENTATIVA = 30  # teto: nunca dormir mais que isso sem reavaliar
+TENTATIVAS_ANTES_DE_ADIAR = 10  # depois disso o código vai pro fim do lote
 
 # Por onde o código chega no SPX. O teclado exige a janela em foco e prende a
 # máquina num macro só; o navegador escreve direto no campo pela extensão,
@@ -88,6 +96,49 @@ MODOS = {
         'pagina': 'sorting-task',
     },
 }
+
+
+# Enquanto o colador estiver colando, o Windows nao pode suspender a maquina:
+# de madrugada ninguem esta la pra acordar ela, e o SPX, o Chrome e o Neon
+# somem juntos. ES_CONTINUOUS vale ate ser limpo, e vale POR THREAD - por isso
+# quem chama e a thread de colagem, que vive exatamente o tempo da sessao.
+ES_CONTINUOUS = 0x80000000
+ES_SYSTEM_REQUIRED = 0x00000001
+ES_AWAYMODE_REQUIRED = 0x00000040
+
+
+def impedir_suspensao():
+    """Segura a maquina acordada. A tela pode apagar; o sistema nao dorme."""
+    try:
+        ctypes.windll.kernel32.SetThreadExecutionState(
+            ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED)
+    except Exception:
+        pass   # sem isso o colador ainda funciona, so nao segura o sono
+
+
+def liberar_suspensao():
+    try:
+        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+    except Exception:
+        pass
+
+
+def espera_retentativa(tentativas):
+    """Quanto dormir antes de tentar de novo. Cresce e para de crescer.
+
+    Sem teto, uma noite de tropecos viraria uma espera de horas; sem
+    crescimento, o colador martelaria um SPX fora do ar dez vezes por segundo.
+    """
+    return min(ESPERA_RETENTATIVA * max(1, tentativas), ESPERA_MAX_RETENTATIVA)
+
+
+def deve_adiar(falhas, tamanho_lote):
+    """Se so este codigo trava, manda ele pro fim do lote e anda a fila.
+
+    So faz sentido com outro codigo pra tentar: com um codigo so no lote,
+    trocar de lugar nao muda nada e o certo e continuar insistindo nele.
+    """
+    return falhas >= TENTATIVAS_ANTES_DE_ADIAR and tamanho_lote > 1
 
 
 def carregar_config():
@@ -1068,10 +1119,34 @@ class ColadorApp:
         while time.time() < fim and not self.parar_thread:
             time.sleep(0.2)
 
+    def contornar(self, motivo, tentativas):
+        """Trata um tropeço sem derrubar a sessão: mostra e espera pra tentar de novo.
+
+        Nada do que chega aqui é erro do código em si — código que o SPX
+        recusa ele mostra na tela dele e a extensão devolve 'ok'. O que chega
+        aqui é sempre infraestrutura (aba caiu, campo sumiu, Neon dormiu), e
+        infraestrutura volta sozinha. O backoff existe pra não martelar: cresce
+        até ESPERA_MAX_RETENTATIVA e para de crescer.
+        """
+        espera = espera_retentativa(tentativas)
+        texto = f"{motivo} · tentando de novo em {espera}s (tentativa {tentativas})"
+        self.ui(lambda: self.atualizar_status(texto))
+        print(f"[contornado] {texto}")
+        self.esperar(espera)
+
     def loop_colagem(self):
         erro = None
+        falhas = 0        # tropeços seguidos no código da vez
+        falhas_volta = 0  # tropeços seguidos numa volta inteira do laço
+        impedir_suspensao()
         try:
             while not self.parar_thread:
+              # Uma volta do laço não derruba a sessão. O colador roda a noite
+              # inteira sem ninguém por perto: Neon dormindo, SPX fora do ar
+              # por um minuto, aba descartada pelo Chrome — tudo isso tem que
+              # virar espera e nova tentativa, não "Parou por erro" às 3h da
+              # manhã com 900 códigos na fila.
+              try:
                 if self.pausado:
                     time.sleep(0.1)
                     continue
@@ -1093,9 +1168,11 @@ class ColadorApp:
                                   else "aguardando bipagens novas")
                         self.ui(lambda: self.atualizar_status(espera))
                         self.esperar(ESPERA_NOVOS)
+                        falhas_volta = 0
                         continue
 
                     self.num_lote += 1
+                    falhas_volta = 0
                     self.ui(self.atualizar_status)
 
                 registro_id, codigo = self.lote[0]
@@ -1106,8 +1183,9 @@ class ColadorApp:
                     continue
 
                 if self.saida_exec == SAIDA_NAVEGADOR:
-                    # Aba caiu (F5, troca de tela) não é erro: ela reconecta
-                    # sozinha em 3s. Espera sem consumir o código.
+                    # Aba caiu (F5, troca de tela, Chrome descartou a aba) não
+                    # é erro: ela reconecta sozinha em 3s. Espera sem consumir
+                    # o código.
                     if not self.ponte.conectada:
                         self.ui(lambda: self.atualizar_status("esperando a aba do SPX"))
                         self.esperar(2)
@@ -1126,10 +1204,23 @@ class ColadorApp:
                     self.registrar_tempo(time.time() - inicio_codigo)
                     if self.parar_thread:
                         break
-                    # A aba recusou de fato: parar é melhor do que insistir e
-                    # marcar como colado o que não entrou.
+
                     if not entrou:
-                        raise RuntimeError(f"{codigo}: {motivo}")
+                        # Não é o código que foi recusado: o que o SPX não
+                        # aceita ele mostra na tela dele, e a extensão devolve
+                        # "ok" do mesmo jeito. O que cai aqui é sempre a via —
+                        # aba desconectou no meio, campo sumiu, falha ao
+                        # enviar — e via volta sozinha. O código não foi
+                        # consumido, então repetir não duplica nem pula nada.
+                        falhas += 1
+                        self.contornar(f"{codigo}: {motivo}", falhas)
+                        if deve_adiar(falhas, len(self.lote)):
+                            # Se travou só neste código, manda pro fim do lote
+                            # e anda a fila em vez de ficar preso nele.
+                            self.lote.append(self.lote.pop(0))
+                            falhas = 0
+                        continue
+                    falhas = 0
                 else:
                     self.restore_window_focus()
                     if self.parar_thread:
@@ -1146,14 +1237,23 @@ class ColadorApp:
                 if self.pendentes_banco is not None:
                     self.pendentes_banco = max(0, self.pendentes_banco - 1)
                 self.ui(self.atualizar_status)
+                falhas_volta = 0
 
                 # Pelo navegador quem dá o ritmo é o SPX: a extensão só devolve
                 # o "ok" quando o campo destrava. Somar o intervalo do slider
                 # em cima disso era só espera jogada fora.
                 time.sleep(self.interval_slider.get())
+              except Exception as e:
+                # Rede de proteção da volta: erro de banco (o Neon derruba
+                # conexão ociosa), de rede, ou qualquer coisa inesperada.
+                # Espera e tenta de novo em vez de morrer — o lote segue
+                # reservado e nenhum código foi consumido.
+                falhas_volta += 1
+                self.contornar(str(e).strip().split("\n")[0][:70], falhas_volta)
         except Exception as e:
             erro = str(e).strip().split("\n")[0][:90]
         finally:
+            liberar_suspensao()
             self.finalizar_execucao(erro)
 
     def loop_confirmacao(self):
