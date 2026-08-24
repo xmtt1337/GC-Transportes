@@ -93,17 +93,11 @@ function _scaCarregarOpcoes() {
         });
 }
 
-function _scaTipo(tipo) {
-    _scaTipoAtual = tipo;
-    _scaSelecaoAberta = false; // trocar de tipo recomeça pela visão geral, não pelo seletor
-    _scaPintarTipo();
-    _scaPreencherAlvo();
-    _scaCarregarVisao(); // a visão geral acompanha o tipo escolhido
-}
-
+// A conferência por CIDADE saiu da tela: agora só se confere por cluster. O tipo continua
+// existindo no resto do código porque as conferências de cidade já feitas seguem no
+// histórico, e abrir uma delas tem que continuar funcionando — o que acabou foi a escolha,
+// não a leitura do que já existe.
 function _scaPintarTipo() {
-    document.querySelectorAll("#sca-tipo .filtro-tab").forEach(b =>
-        b.classList.toggle("active", b.dataset.tipo === _scaTipoAtual));
     _scaPintarSelecao();
 }
 
@@ -920,7 +914,9 @@ function _scaEncerrar() {
             }).then(() => {
                 _scaSessao = null;
                 _scaBipagens = [];
-                _scaTipoAtual = null;
+                // Antes voltava a null pra pessoa reescolher a aba. Sem aba, null só
+                // esconderia o seletor de clusters e a tela ficaria sem saída.
+                _scaTipoAtual = "cluster";
                 _scaPintarTipo();
                 _scaMostrarInicio();
                 _scaCarregarHistorico();
