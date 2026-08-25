@@ -8,7 +8,7 @@
 // (ex.: /GC-Transportes/Baixas/TotalExpress). Redireciona pro index.html preservando
 // o caminho como query string; o index.html restaura a URL bonita a partir dela.
 (function () {
-    var base  = "/GC-Transportes/";
+    var base  = location.hostname === "xmtt1337.github.io" ? "/GC-Transportes/" : "/";
     var path  = location.pathname;
     var resto = path.indexOf(base) === 0 ? path.slice(base.length) : path.replace(/^\//, "");
     location.replace(base + "?_rota=" + encodeURIComponent(resto + location.search + location.hash));

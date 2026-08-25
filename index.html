@@ -3,16 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <script>
-// Tudo isso (URL-base fixa + restaurar rota vinda do 404.html) só faz sentido no
-// GitHub Pages de verdade, onde o site sempre mora em /GC-Transportes/. Rodando
-// local (Live Server, preview etc.) isso quebraria os caminhos relativos, então
-// só entra em ação nesse host específico.
-if (location.hostname === "xmtt1337.github.io") {
+// Tudo isso (URL-base fixa + restaurar rota vinda do 404.html) só faz sentido nos
+// hosts de produção: no domínio próprio o site mora na raiz, no github.io antigo
+// ele mora em /GC-Transportes/. Rodando local (Live Server, preview etc.) a pasta
+// servida varia, então fora dessa lista nada disso entra em ação.
+var _BASES = {
+    "xmtt.com.br":        "/",
+    "www.xmtt.com.br":    "/",
+    "xmtt1337.github.io": "/GC-Transportes/"
+};
+var _BASE = _BASES[location.hostname];
+if (_BASE) {
     // Fixa a URL-base pra tudo que é caminho relativo (style.css, js/*, img/*) — sem
     // isso, quando a URL vira /Planejamento/Cacador esses caminhos passam a resolver
     // como se "Planejamento" fosse uma pasta, e tudo (CSS incluso) dá 404.
     var base = document.createElement("base");
-    base.href = "/GC-Transportes/";
+    base.href = _BASE;
     document.head.appendChild(base);
 
     // GitHub Pages não roteia no servidor: o 404.html redireciona pra cá com o
@@ -20,7 +26,7 @@ if (location.hostname === "xmtt1337.github.io") {
     var params = new URLSearchParams(location.search);
     var rota = params.get("_rota");
     if (rota !== null) {
-        history.replaceState(null, "", "/GC-Transportes/" + rota);
+        history.replaceState(null, "", _BASE + rota);
     }
 }
 </script>
@@ -3658,7 +3664,7 @@ if (location.hostname === "xmtt1337.github.io") {
         </div><!-- /tela-admin-antecipacoes -->
 
 <script src="js/core.js?v=20260813e"></script>
-<script src="js/router.js?v=20260818a"></script>
+<script src="js/router.js?v=20260825a"></script>
 <script src="js/sidebar.js?v=20260812d"></script>
 <script src="js/nav.js?v=20260813e"></script>
 <script src="js/fechamentos.js?v=20260812d"></script>

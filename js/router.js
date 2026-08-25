@@ -1,6 +1,10 @@
 // ───── ROTEADOR DE URL (abrir uma tela direto por link) ─────
-// Ex.: https://xmtt1337.github.io/GC-Transportes/Baixas/TotalExpress
-const _ROTA_BASE = "/GC-Transportes";
+// Ex.: https://xmtt.com.br/Baixas/TotalExpress
+// No domínio próprio o site mora na raiz; no github.io antigo, em /GC-Transportes.
+// Fora desses hosts (Live Server, preview) o roteador não mexe na URL — a pasta
+// servida varia e reescrever o caminho só quebraria os links relativos.
+const _ROTA_HOSTS = ["xmtt.com.br", "www.xmtt.com.br", "xmtt1337.github.io"];
+const _ROTA_BASE  = location.hostname === "xmtt1337.github.io" ? "/GC-Transportes" : "";
 
 // caminho da URL -> função que abre a tela correspondente
 const _ROTAS = {
@@ -192,14 +196,14 @@ const _TELA_ROTAS = {
 };
 
 // Atualiza a URL sem recarregar a página. rota=undefined (tela sem entrada no mapa,
-// ex. telas internas/modais) não mexe na URL atual. Só roda no GitHub Pages de
-// verdade — local (Live Server etc.) o site não mora em /GC-Transportes/, então
-// reescrever a URL aqui só quebraria os caminhos relativos (sem o <base> compensando).
+// ex. telas internas/modais) não mexe na URL atual. Só roda nos hosts de produção —
+// local (Live Server etc.) o site não mora num caminho fixo, então reescrever a URL
+// aqui só quebraria os caminhos relativos (sem o <base> compensando).
 // `substituir` troca a entrada atual em vez de empilhar uma nova. Serve pro que a tela
 // decide sozinha (ex.: a transportadora que ela escolhe quando ninguém pediu nenhuma):
 // isso ajusta a URL sem virar um passo pra trás que o usuário nunca deu.
 function _rotaAtualizarUrl(rota, substituir) {
-    if (location.hostname !== "xmtt1337.github.io") return;
+    if (!_ROTA_HOSTS.includes(location.hostname)) return;
     if (rota === undefined || rota === null) return;
     const destino = rota ? `${_ROTA_BASE}/${rota}` : `${_ROTA_BASE}/`;
     if (location.pathname === destino) return;
