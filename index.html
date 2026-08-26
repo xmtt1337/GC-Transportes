@@ -41,7 +41,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=30260824b">
+<link rel="stylesheet" href="style.css?v=20260820e">
 </head>
 <body>
 
@@ -96,7 +96,6 @@ if (_BASE) {
                 <li><a href="#" data-rota="Operacao/DevolucoesReceberAvulso" onclick="abrirDevolucoesReceberAvulso(event)">Receber Avulso</a></li>
                 <li><a href="#" data-rota="Operacao/DevolucoesRegistro" onclick="abrirDevolucoesRegistro(event)">Registro</a></li>
             </ul>
-            <li id="menu-item-custodia"><a href="#" data-rota="Operacao/Custodia" onclick="abrirCustodia(event)">Custódia de pacotes</a></li>
             <li id="menu-item-etiquetas"><a href="#" data-rota="Operacao/Etiquetas" onclick="abrirEtiquetas(event)">Impressão de etiquetas</a></li>
             <li id="menu-item-pacotes-faltantes-op" style="display:none"><a href="#" data-rota="Ocorrencias/PacotesFaltantes" onclick="abrirPacotesFaltantes(event)">Registro de Pacotes Faltantes</a></li>
         </ul>
@@ -277,6 +276,20 @@ if (_BASE) {
             <li><a href="#" data-rota="Ativos/Conversas" onclick="abrirWhatsappConversas(event)">Conversas</a></li>
         </ul>
 
+        <li class="menu-item" data-menu="custodia" id="menu-custodia" onclick="toggleMenu(this)">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="8" width="18" height="12" rx="2"/>
+                <path d="M3 12h18"/>
+                <path d="M7 8V6a5 5 0 0 1 10 0v2"/>
+                <circle cx="12" cy="16" r="1.2"/>
+            </svg>
+            <span class="label">Custódia</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Custódia</span>
+        </li>
+        <ul class="submenu" data-menu="custodia" id="submenu-custodia">
+            <li><a href="#" data-rota="Custodia/Pacotes" onclick="abrirCustodia(event)">Entrada e saída</a></li>
+        </ul>
         <li class="menu-item" data-menu="transferencias" id="menu-transferencias" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="1" y="3" width="15" height="13"/>
@@ -2423,16 +2436,18 @@ if (_BASE) {
         <div id="tela-custodia" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
 
-                <div class="shr-resumo" id="cus-resumo"></div>
-
                 <div class="bip-scan-card shr-scan-card">
-                    <div class="bip-scan-title" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-                        <span id="cus-modo">Registrando ENTRADA</span>
-                        <div class="filtro-tabs" id="cus-tipo" style="margin-left:auto">
-                            <button type="button" class="filtro-tab active" data-tipo="entrada" onclick="_cusTrocarTipo('entrada')">Entrada</button>
-                            <button type="button" class="filtro-tab" data-tipo="saida" onclick="_cusTrocarTipo('saida')">Saída</button>
-                        </div>
+                    <div class="cus-modos" id="cus-modos">
+                        <button type="button" class="cus-modo-btn entrada ativo" data-tipo="entrada" onclick="_cusTrocarTipo('entrada')">
+                            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>
+                            ENTRADA
+                        </button>
+                        <button type="button" class="cus-modo-btn saida" data-tipo="saida" onclick="_cusTrocarTipo('saida')">
+                            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+                            SAÍDA
+                        </button>
                     </div>
+
                     <div class="bip-search-wrap" id="cus-campo">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#3a86ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         <input type="text" id="cus-codigo" placeholder="Bipar ou digitar o código..."
@@ -2441,10 +2456,14 @@ if (_BASE) {
                             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
                         </button>
                     </div>
-                    <input type="text" id="cus-obs" class="usr-modal-input" style="margin-top:10px"
-                           placeholder="Observação (opcional) — fica junto do registro" autocomplete="off">
-                    <div id="cus-msg" style="display:none;margin-top:12px"></div>
+
+                    <div class="paj-label" style="margin:14px 0 8px">Observação</div>
+                    <div class="cus-chips" id="cus-chips"></div>
+
+                    <div id="cus-msg" style="display:none;margin-top:14px"></div>
                 </div>
+
+                <div class="shr-resumo" id="cus-resumo"></div>
 
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:12px">
                     <div class="filtro-tabs" id="cus-abas">
@@ -2454,7 +2473,6 @@ if (_BASE) {
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                         <input type="text" id="cus-busca" class="usr-modal-input" style="width:190px"
                                placeholder="Buscar código..." oninput="_cusFiltrar(this.value)" autocomplete="off">
-                        <button type="button" class="shr-pag-btn" onclick="_cusExportarEstoque()">Exportar estoque</button>
                         <button type="button" class="usr-modal-btn-primary" onclick="_cusAbrirExportar()">Exportar XLSX</button>
                     </div>
                 </div>
@@ -3715,8 +3733,8 @@ if (_BASE) {
             </div>
         </div><!-- /tela-admin-antecipacoes -->
 
-<script src="js/core.js?v=30260813e"></script>
-<script src="js/router.js?v=30260825a"></script>
+<script src="js/core.js?v=20260820e"></script>
+<script src="js/router.js?v=20260820e"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
 <script src="js/nav.js?v=30260813e"></script>
 <script src="js/fechamentos.js?v=30260812d"></script>
@@ -3748,7 +3766,7 @@ if (_BASE) {
 <script src="js/antecipacoes.js?v=30260812d"></script>
 <script src="js/antecipacoes-admin.js?v=30260812d"></script>
 <script src="js/baixas.js?v=30260812d"></script>
-<script src="js/custodia.js?v=20260820d"></script>
+<script src="js/custodia.js?v=20260820e"></script>
 <script src="js/devolucoes.js?v=30260812d"></script>
 <script src="js/shopee-polo.js?v=30260812d"></script>
 <script src="js/shopee.js?v=30260812d"></script>
@@ -3758,8 +3776,8 @@ if (_BASE) {
 <script src="js/shopee-linehaul.js?v=30260812d"></script>
 <script src="js/shopee-atribuicoes.js?v=30260820d"></script>
 <script src="js/shopee-retidos.js?v=30260819f"></script>
-<script src="js/shopee-conf-entregadores.js?v=30260812d"></script>
-<script src="js/entregador-conferencia.js?v=30260820d"></script>
+<script src="js/shopee-conf-entregadores.js?v=20260820e"></script>
+<script src="js/entregador-conferencia.js?v=20260820e"></script>
 <script src="js/viagens.js?v=30260812d"></script>
 <script src="js/ocorrencias.js?v=30260812d"></script>
 <script src="js/ocorrencias-admin.js?v=30260812d"></script>
@@ -4263,54 +4281,88 @@ if (_BASE) {
 <!-- MODAL: EXPORTAR PACOTES FALTANTES (ADMIN/DEV) -->
 <div class="usr-modal-overlay" id="modal-cus-exportar" onclick="_fecharModalSeBackdrop(event,'modal-cus-exportar')">
     <div class="usr-modal">
-        <div class="usr-modal-title">Exportar movimentos da custódia</div>
-        <div class="usr-modal-sub">Deixe os filtros em branco para exportar todos.</div>
+        <div class="usr-modal-title">Exportar custódia</div>
+        <div class="usr-modal-sub">Escolha o que exportar. Os filtros valem para o histórico de movimentos.</div>
 
         <div class="usr-modal-field">
-            <label class="usr-modal-label">Período (data do movimento)</label>
-            <div class="drp-wrap" id="cus-drp-wrap">
-                <button type="button" class="drp-trigger" onclick="_cusDrpToggle()">
-                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                    <span id="cus-drp-label" style="flex:1;text-align:left">Todo o período</span>
-                </button>
-                <div class="drp-panel" id="cus-drp-panel" style="display:none">
-                    <div class="drp-panel-head">
-                        <button type="button" class="drp-nav" onclick="_cusDrpMudarMes(-1)">&lsaquo;</button>
-                        <span id="cus-drp-mes-label"></span>
-                        <button type="button" class="drp-nav" onclick="_cusDrpMudarMes(1)">&rsaquo;</button>
-                    </div>
-                    <div class="drp-grid-dow">
-                        <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
-                    </div>
-                    <div class="drp-grid" id="cus-drp-grid"></div>
-                    <div class="drp-panel-foot">
-                        <button type="button" class="drp-limpar" onclick="_cusDrpLimpar()">Limpar</button>
-                        <button type="button" class="drp-aplicar" onclick="_cusDrpAplicar()">Aplicar</button>
+            <label class="usr-modal-label">O que exportar</label>
+            <select class="usr-modal-input" id="cus-exp-fonte" onchange="_cusExpTrocarFonte()">
+                <option value="movimentos">Histórico de movimentos (entradas e saídas)</option>
+                <option value="estoque">Pacotes em custódia agora</option>
+            </select>
+        </div>
+
+        <div id="cus-exp-filtros">
+            <div class="usr-modal-field">
+                <label class="usr-modal-label">Período (data do movimento)</label>
+                <div class="drp-wrap" id="cus-drp-wrap">
+                    <button type="button" class="drp-trigger" onclick="_cusDrpToggle()">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        <span id="cus-drp-label" style="flex:1;text-align:left">Todo o período</span>
+                    </button>
+                    <div class="drp-panel" id="cus-drp-panel" style="display:none">
+                        <div class="drp-panel-head">
+                            <button type="button" class="drp-nav" onclick="_cusDrpMudarMes(-1)">&lsaquo;</button>
+                            <span id="cus-drp-mes-label"></span>
+                            <button type="button" class="drp-nav" onclick="_cusDrpMudarMes(1)">&rsaquo;</button>
+                        </div>
+                        <div class="drp-grid-dow">
+                            <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+                        </div>
+                        <div class="drp-grid" id="cus-drp-grid"></div>
+                        <div class="drp-panel-foot">
+                            <button type="button" class="drp-limpar" onclick="_cusDrpLimpar()">Limpar</button>
+                            <button type="button" class="drp-aplicar" onclick="_cusDrpAplicar()">Aplicar</button>
+                        </div>
                     </div>
                 </div>
+                <input type="hidden" id="cus-exp-de">
+                <input type="hidden" id="cus-exp-ate">
             </div>
-            <input type="hidden" id="cus-exp-de">
-            <input type="hidden" id="cus-exp-ate">
-        </div>
-        <div class="usr-modal-field">
-            <label class="usr-modal-label">Movimento</label>
-            <select class="usr-modal-input" id="cus-exp-tipo">
-                <option value="">Entradas e saídas</option>
-                <option value="entrada">Só entradas</option>
-                <option value="saida">Só saídas</option>
-            </select>
-        </div>
-        <div class="usr-modal-field">
-            <label class="usr-modal-label">Usuário</label>
-            <select class="usr-modal-input" id="cus-exp-usuario">
-                <option value="">Todos os usuários</option>
-            </select>
+            <div class="usr-modal-field">
+                <label class="usr-modal-label">Movimento</label>
+                <select class="usr-modal-input" id="cus-exp-tipo">
+                    <option value="">Entradas e saídas</option>
+                    <option value="entrada">Só entradas</option>
+                    <option value="saida">Só saídas</option>
+                </select>
+            </div>
+            <div class="usr-modal-field">
+                <label class="usr-modal-label">Usuário</label>
+                <select class="usr-modal-input" id="cus-exp-usuario">
+                    <option value="">Todos os usuários</option>
+                </select>
+            </div>
+            <div class="usr-modal-field">
+                <label class="usr-modal-label">Observação</label>
+                <select class="usr-modal-input" id="cus-exp-obs">
+                    <option value="">Todas as observações</option>
+                </select>
+            </div>
         </div>
 
         <div class="usr-modal-error" id="cus-exp-erro"></div>
         <div class="usr-modal-btns">
             <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-cus-exportar')">Cancelar</button>
             <button class="usr-modal-btn-primary" onclick="_cusExportar()">Exportar XLSX</button>
+        </div>
+    </div>
+</div>
+
+<div class="usr-modal-overlay" id="modal-cus-obs" onclick="_fecharModalSeBackdrop(event,'modal-cus-obs')">
+    <div class="usr-modal">
+        <div class="usr-modal-title">Nova observação</div>
+        <div class="usr-modal-sub">Fica salva na lista para todo mundo usar depois.</div>
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Texto</label>
+            <input type="text" class="usr-modal-input" id="cus-obs-nova" maxlength="60"
+                   placeholder="Ex.: Avaria, Cliente ausente, Aguardando retirada"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();_cusSalvarObs();}">
+        </div>
+        <div class="usr-modal-error" id="cus-obs-erro"></div>
+        <div class="usr-modal-btns">
+            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-cus-obs')">Cancelar</button>
+            <button class="usr-modal-btn-primary" onclick="_cusSalvarObs()">Salvar</button>
         </div>
     </div>
 </div>

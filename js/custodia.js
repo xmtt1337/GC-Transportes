@@ -3,9 +3,11 @@
 // e a saída quando é retirado — o estoque é o que entrou e ainda não saiu.
 //
 // Uma tela só, de propósito: quem está no balcão com o pacote na mão escolhe entrada ou
-// saída uma vez e bipa em sequência, sem trocar de aba entre um pacote e outro.
+// saída uma vez e bipa em sequência, sem trocar de tela entre um pacote e outro.
 
 let _cusDados = { estoque: [], movimentos: [], resumo: {} };
+let _cusObs   = [];        // observações rápidas cadastradas
+let _cusObsSel = "";       // a que está marcada agora
 let _cusTipo  = "entrada";
 let _cusAba   = "estoque";
 let _cusBusca = "";
@@ -17,14 +19,16 @@ function _cusEsc(t) {
 
 function abrirCustodia(event) {
     if (event) event.preventDefault();
-    _cusTipo  = "entrada";
-    _cusAba   = "estoque";
-    _cusBusca = "";
+    _cusTipo   = "entrada";
+    _cusAba    = "estoque";
+    _cusBusca  = "";
+    _cusObsSel = "";
     const busca = document.getElementById("cus-busca");
     if (busca) busca.value = "";
     mostrarTela("tela-custodia");
     _cusPintarTipo();
     _cusPintarAbas();
+    _cusCarregarObs();
     _cusCarregar();
     const campo = document.getElementById("cus-codigo");
     if (campo) { campo.value = ""; campo.focus(); }
@@ -40,18 +44,74 @@ function _cusTrocarTipo(tipo) {
 }
 
 function _cusPintarTipo() {
-    document.querySelectorAll("#cus-tipo .filtro-tab").forEach(b =>
-        b.classList.toggle("active", b.dataset.tipo === _cusTipo));
-    const entrada = _cusTipo === "entrada";
-    // O campo inteiro muda de cara junto com o modo. Bipar 40 pacotes seguidos no modo
-    // errado é o erro mais caro que dá pra cometer aqui, e um rótulo pequeno no topo da
-    // tela não segura a atenção de quem está olhando pro pacote, não pro monitor.
-    const modo = document.getElementById("cus-modo");
-    modo.innerText = entrada ? "Registrando ENTRADA" : "Registrando SAÍDA";
-    modo.style.color = entrada ? "#22c55e" : "#eab308";
-    document.getElementById("cus-codigo").placeholder = entrada
-        ? "Bipar ou digitar o código que está entrando..."
-        : "Bipar ou digitar o código que está saindo...";
+    document.querySelectorAll("#cus-modos .cus-modo-btn").forEach(b =>
+        b.classList.toggle("ativo", b.dataset.tipo === _cusTipo));
+    // O texto do campo acompanha o modo. Bipar uma leva de pacotes no modo errado é o erro
+    // mais caro daqui, e o botão aceso sozinho não segura a atenção de quem está olhando
+    // pro pacote, não pro monitor.
+    document.getElementById("cus-codigo").placeholder = _cusTipo === "entrada"
+        ? "Bipar ou digitar o código que está ENTRANDO..."
+        : "Bipar ou digitar o código que está SAINDO...";
+}
+
+// ── Observações rápidas ──
+// O motivo de guardar um pacote se repete o dia inteiro. Digitar à mão toda vez é trabalho
+// jogado fora, então os chips são o caminho normal e a lista mora no banco: quem cadastrar
+// "Avaria" hoje resolve pros outros também.
+function _cusCarregarObs() {
+    fetch(`${API}/custodia/observacoes`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => r.json())
+    .then(d => { _cusObs = Array.isArray(d) ? d : []; _cusPintarChips(); })
+    .catch(() => { _cusObs = []; _cusPintarChips(); });
+}
+
+function _cusPintarChips() {
+    const el = document.getElementById("cus-chips");
+    if (!el) return;
+    el.innerHTML = _cusObs.map(o =>
+        `<button type="button" class="cus-chip${_cusObsSel === o.texto ? " ativo" : ""}"
+                 onclick="_cusEscolherObs('${_cusEsc(o.texto).replace(/'/g, "\\'")}')">${_cusEsc(o.texto)}</button>`
+    ).join("") +
+    `<button type="button" class="cus-chip nova" onclick="_cusAbrirNovaObs()">+ nova</button>`;
+}
+
+// Clicar de novo no mesmo chip desmarca: é comum o pacote seguinte não ter observação
+// nenhuma, e sem como desmarcar a pessoa carregaria o motivo do anterior sem perceber.
+function _cusEscolherObs(texto) {
+    _cusObsSel = (_cusObsSel === texto) ? "" : texto;
+    _cusPintarChips();
+    const campo = document.getElementById("cus-codigo");
+    if (campo) campo.focus();
+}
+
+function _cusAbrirNovaObs() {
+    document.getElementById("cus-obs-nova").value = "";
+    document.getElementById("cus-obs-erro").textContent = "";
+    _abrirModal("modal-cus-obs");
+    setTimeout(() => document.getElementById("cus-obs-nova").focus(), 60);
+}
+
+function _cusSalvarObs() {
+    const texto = document.getElementById("cus-obs-nova").value.trim();
+    const erro  = document.getElementById("cus-obs-erro");
+    erro.textContent = "";
+    if (!texto) { erro.textContent = "Escreva a observação."; return; }
+
+    fetch(`${API}/custodia/observacoes`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ texto })
+    }).then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+        if (!ok) { erro.textContent = d.error || "Não foi possível salvar."; return; }
+        _fecharModal("modal-cus-obs");
+        // Já deixa marcada: quem acabou de cadastrar é porque vai usar agora.
+        _cusObsSel = (d.observacao && d.observacao.texto) || texto;
+        _cusCarregarObs();
+        const campo = document.getElementById("cus-codigo");
+        if (campo) campo.focus();
+    })
+    .catch(() => { erro.textContent = "Erro ao conectar com o servidor."; });
 }
 
 // ── Bipagem ──
@@ -75,17 +135,18 @@ function _cusRegistrar(codigoLido) {
     if (codigoLido == null) { campo.value = ""; campo.focus(); }
     if (!codigo) return;
 
-    const obsEl = document.getElementById("cus-obs");
     fetch(`${API}/custodia/movimento`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ codigo, tipo: _cusTipo, observacao: obsEl ? obsEl.value.trim() : "" })
+        body: JSON.stringify({ codigo, tipo: _cusTipo, observacao: _cusObsSel })
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
         if (!ok) return _cusResposta(d.error || "Não foi possível registrar.", "erro");
         const m = d.movimento || {};
-        _cusResposta(`${codigo} — ${m.tipo === "entrada" ? "entrou na" : "saiu da"} custódia.`, "ok");
-        if (obsEl) obsEl.value = "";
+        _cusResposta(`${codigo} — ${m.tipo === "entrada" ? "entrou na" : "saiu da"} custódia.${
+            _cusObsSel ? " (" + _cusObsSel + ")" : ""}`, "ok");
+        // A observação NÃO se limpa: quem está recebendo uma leva de devolução bipa vinte
+        // seguidos com o mesmo motivo, e reescolher a cada pacote seria o oposto de atalho.
         _cusCarregar(true);
     })
     .catch(() => _cusResposta("Erro ao conectar com o servidor.", "erro"));
@@ -133,12 +194,18 @@ function _cusCarregar(silencioso) {
     .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
 }
 
+// Cartão no mesmo componente do resto do sistema (.paj-card dentro do grid .shr-resumo).
 function _cusRenderResumo() {
     const r = _cusDados.resumo || {};
-    document.getElementById("cus-resumo").innerHTML = `
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:#3a86ff">${r.em_custodia || 0}</span><span class="shr-resumo-lbl">Em custódia</span></div>
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:#22c55e">${r.entradas_hoje || 0}</span><span class="shr-resumo-lbl">Entradas hoje</span></div>
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:#eab308">${r.saidas_hoje || 0}</span><span class="shr-resumo-lbl">Saídas hoje</span></div>`;
+    const card = (rotulo, valor, classe) => `
+        <div class="paj-card ${classe || ""}">
+            <div class="paj-label">${rotulo}</div>
+            <div class="paj-value">${valor}</div>
+        </div>`;
+    document.getElementById("cus-resumo").innerHTML =
+        card("Em custódia", r.em_custodia || 0) +
+        card("Entradas hoje", r.entradas_hoje || 0, "positivo") +
+        card("Saídas hoje", r.saidas_hoje || 0);
 }
 
 // ── Abas e lista ──
@@ -166,8 +233,8 @@ function _cusRenderLista() {
         : bruto;
 
     document.getElementById("cus-thead").innerHTML = estoque
-        ? `<tr><th>Código</th><th>Guardado por</th><th>Entrou em</th><th>Observação</th></tr>`
-        : `<tr><th>Código</th><th>Movimento</th><th>Usuário</th><th>Data/Hora</th><th>Observação</th></tr>`;
+        ? `<tr><th>Código</th><th>Observação</th><th>Guardado por</th><th>Entrou em</th></tr>`
+        : `<tr><th>Código</th><th>Movimento</th><th>Observação</th><th>Usuário</th><th>Data/Hora</th></tr>`;
 
     const colunas = estoque ? 4 : 5;
     if (!lista.length) {
@@ -178,23 +245,28 @@ function _cusRenderLista() {
         return;
     }
 
+    const cod = c => `<td data-label="Código" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#e2e8f0">${_cusEsc(c)}</td>`;
+    const obs = o => `<td data-label="Observação">${o
+        ? `<span class="cus-chip ativo" style="cursor:default">${_cusEsc(o)}</span>`
+        : `<span style="color:#717f95">—</span>`}</td>`;
+
     // A tela mostra o começo da lista; o arquivo inteiro sai pela exportação. Despejar
     // milhares de linhas aqui trava o navegador e não ajuda ninguém a achar nada.
     const mostrar = lista.slice(0, 300);
     document.getElementById("cus-tbody").innerHTML = mostrar.map(l => estoque ? `
         <tr>
-            <td data-label="Código" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#e2e8f0">${_cusEsc(l.codigo)}</td>
+            ${cod(l.codigo)}
+            ${obs(l.observacao)}
             <td data-label="Guardado por">${_cusEsc(l.usuario_nome) || "—"}</td>
             <td data-label="Entrou em" style="color:#8494a9;font-size:12.5px">${_cusEsc(l.data_hora_brasilia) || "—"}</td>
-            <td data-label="Observação" style="color:#8494a9;font-size:12.5px">${_cusEsc(l.observacao) || "—"}</td>
         </tr>` : `
         <tr>
-            <td data-label="Código" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#e2e8f0">${_cusEsc(l.codigo)}</td>
+            ${cod(l.codigo)}
             <td data-label="Movimento"><span style="color:${l.tipo === "entrada" ? "#22c55e" : "#eab308"};font-weight:700;font-size:12.5px">${
                 l.tipo === "entrada" ? "Entrada" : "Saída"}</span></td>
+            ${obs(l.observacao)}
             <td data-label="Usuário">${_cusEsc(l.usuario_nome) || "—"}</td>
             <td data-label="Data/Hora" style="color:#8494a9;font-size:12.5px">${_cusEsc(l.data_hora_brasilia) || "—"}</td>
-            <td data-label="Observação" style="color:#8494a9;font-size:12.5px">${_cusEsc(l.observacao) || "—"}</td>
         </tr>`).join("") + (lista.length > mostrar.length
         ? `<tr><td colspan="${colunas}" style="text-align:center;color:#8494a9;padding:14px">
              + ${lista.length - mostrar.length} não mostrados — use a exportação para ver tudo</td></tr>`
@@ -202,8 +274,11 @@ function _cusRenderLista() {
 }
 
 // ───── EXPORTAÇÃO ─────
-// Mesmo componente de intervalo de datas do Registro de Pacotes Faltantes. O filtro é feito
-// aqui no navegador sobre o que já foi carregado: mexer no seletor não custa ida ao servidor.
+// Um botão só. Antes eram dois — "estoque" e "movimentos" — e ninguém adivinha a diferença
+// olhando pro rótulo; agora a escolha é a primeira pergunta dentro do modal.
+//
+// O filtro roda aqui no navegador sobre o que já foi carregado, igual ao de Pacotes
+// Faltantes: mexer no seletor não custa uma ida ao servidor a cada ajuste.
 
 function _cusDataISO(dataHoraBrasilia) {
     const m = String(dataHoraBrasilia || "").match(/^(\d{2})\/(\d{2})\/(\d{4})/);
@@ -211,10 +286,17 @@ function _cusDataISO(dataHoraBrasilia) {
 }
 
 function _cusAbrirExportar() {
-    const usuarios = [...new Set((_cusDados.movimentos || []).map(r => r.usuario_nome).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const movs = _cusDados.movimentos || [];
+    const usuarios = [...new Set(movs.map(r => r.usuario_nome).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    // As observações do filtro saem do que foi usado de fato, não da lista cadastrada: o que
+    // interessa é filtrar o que existe no histórico.
+    const obsUsadas = [...new Set(movs.map(r => r.observacao).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+
     document.getElementById("cus-exp-usuario").innerHTML =
         `<option value="">Todos os usuários</option>` + usuarios.map(u => `<option value="${_cusEsc(u)}">${_cusEsc(u)}</option>`).join("");
+    document.getElementById("cus-exp-obs").innerHTML =
+        `<option value="">Todas as observações</option>` + obsUsadas.map(o => `<option value="${_cusEsc(o)}">${_cusEsc(o)}</option>`).join("");
+    document.getElementById("cus-exp-fonte").value = _cusAba === "estoque" ? "estoque" : "movimentos";
     document.getElementById("cus-exp-tipo").value = "";
     document.getElementById("cus-exp-de").value  = "";
     document.getElementById("cus-exp-ate").value = "";
@@ -224,20 +306,44 @@ function _cusAbrirExportar() {
     _cusDrpMesRef = new Date();
     _cusDrpInicio = null;
     _cusDrpFim    = null;
+    _cusExpTrocarFonte();
     _abrirModal("modal-cus-exportar");
 }
 
+// Estoque é uma foto de agora: período, tipo de movimento e usuário não querem dizer nada
+// ali, e deixar os campos à mostra sugeriria um filtro que não existe.
+function _cusExpTrocarFonte() {
+    const estoque = document.getElementById("cus-exp-fonte").value === "estoque";
+    document.getElementById("cus-exp-filtros").style.display = estoque ? "none" : "";
+}
+
 function _cusExportar() {
+    const erroEl = document.getElementById("cus-exp-erro");
+    erroEl.textContent = "";
+
+    if (document.getElementById("cus-exp-fonte").value === "estoque") {
+        const lista = _cusDados.estoque || [];
+        if (!lista.length) { erroEl.textContent = "Não há pacotes em custódia para exportar."; return; }
+        const linhas = lista.map(r => ({
+            "Código":       r.codigo || "",
+            "Observação":   r.observacao || "",
+            "Guardado por": r.usuario_nome || "",
+            "Entrou em":    r.data_hora_brasilia || "",
+        }));
+        _cusBaixar(linhas, "Em custódia", ["Custodia_Estoque", new Date().toISOString().slice(0, 10)]);
+        return;
+    }
+
     const de   = document.getElementById("cus-exp-de").value;
     const ate  = document.getElementById("cus-exp-ate").value;
     const tipo = document.getElementById("cus-exp-tipo").value;
     const usr  = document.getElementById("cus-exp-usuario").value;
-    const erroEl = document.getElementById("cus-exp-erro");
-    erroEl.textContent = "";
+    const obs  = document.getElementById("cus-exp-obs").value;
 
     const filtrados = (_cusDados.movimentos || []).filter(r => {
         if (tipo && r.tipo !== tipo) return false;
         if (usr && r.usuario_nome !== usr) return false;
+        if (obs && (r.observacao || "") !== obs) return false;
         if (de || ate) {
             const iso = _cusDataISO(r.data_hora_brasilia);
             if (!iso) return false;
@@ -247,47 +353,32 @@ function _cusExportar() {
         return true;
     });
 
-    if (!filtrados.length) {
-        erroEl.textContent = "Nenhum movimento encontrado com esses filtros.";
-        return;
-    }
+    if (!filtrados.length) { erroEl.textContent = "Nenhum movimento encontrado com esses filtros."; return; }
 
     // Ordem cronológica no arquivo: a tela mostra o mais recente primeiro, mas planilha de
     // movimentação se lê do começo pro fim.
     const linhas = filtrados.slice().reverse().map(r => ({
         "Código":     r.codigo || "",
         "Movimento":  r.tipo === "entrada" ? "Entrada" : "Saída",
+        "Observação": r.observacao || "",
         "Usuário":    r.usuario_nome || "",
         "Data/Hora":  r.data_hora_brasilia || "",
-        "Observação": r.observacao || "",
     }));
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhas), "Custódia");
-
-    const nome = ["Custodia"];
+    const nome = ["Custodia_Movimentos"];
     if (tipo) nome.push(tipo === "entrada" ? "Entradas" : "Saidas");
-    if (usr)  nome.push(usr.replace(/[\\/:*?"<>|]/g, ""));
+    if (usr)  nome.push(usr);
+    if (obs)  nome.push(obs);
     if (de || ate) nome.push(`${de || "inicio"}_a_${ate || "fim"}`);
-    XLSX.writeFile(wb, nome.join("_") + ".xlsx");
-
-    _fecharModal("modal-cus-exportar");
+    _cusBaixar(linhas, "Custódia", nome);
 }
 
-// Exporta o estoque atual — a pergunta "o que está guardado agora" é diferente de "o que
-// movimentou no período", e sair só com o histórico obrigaria a montar a conta na mão.
-function _cusExportarEstoque() {
-    const lista = _cusDados.estoque || [];
-    if (!lista.length) return gcAlert("Não há pacotes em custódia para exportar.");
-    const linhas = lista.map(r => ({
-        "Código":       r.codigo || "",
-        "Guardado por": r.usuario_nome || "",
-        "Entrou em":    r.data_hora_brasilia || "",
-        "Observação":   r.observacao || "",
-    }));
+function _cusBaixar(linhas, aba, partesNome) {
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhas), "Em custódia");
-    XLSX.writeFile(wb, "Custodia_Estoque_" + new Date().toISOString().slice(0, 10) + ".xlsx");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhas), aba);
+    const nome = partesNome.map(p => String(p).replace(/[\\/:*?"<>|]/g, "")).join("_");
+    XLSX.writeFile(wb, nome + ".xlsx");
+    _fecharModal("modal-cus-exportar");
 }
 
 // ── Seletor de intervalo de datas (mesmo componente visual das outras telas) ──

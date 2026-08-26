@@ -4280,3 +4280,42 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
     .extrv-reg-autoria { width: 100%; margin: 0 0 8px; }
     .extrv-reg-modal-rodape { flex-wrap: wrap; }
 }
+
+/* ───── CUSTÓDIA ─────
+   Entrada e saída não podem ser uma abinha de canto: bipar uma leva de pacotes no modo
+   errado é o erro mais caro da tela, e o modo escolhido precisa ser a primeira coisa que
+   a pessoa vê. Por isso são dois botões grandes, lado a lado, ocupando a largura toda. */
+.cus-modos {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
+}
+.cus-modo-btn {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    padding: 15px 12px; border-radius: 12px; cursor: pointer; font-family: inherit;
+    font-size: 14px; font-weight: 700; letter-spacing: .02em;
+    background: rgba(14,22,40,0.7); border: 1px solid rgba(255,255,255,0.08);
+    color: #8494a9; transition: background .15s, border-color .15s, color .15s;
+}
+.cus-modo-btn:hover { border-color: rgba(255,255,255,0.18); color: #c7d3e3; }
+.cus-modo-btn.ativo.entrada {
+    background: rgba(34,197,94,0.14); border-color: rgba(34,197,94,0.55); color: #22c55e;
+}
+.cus-modo-btn.ativo.saida {
+    background: rgba(234,179,8,0.14); border-color: rgba(234,179,8,0.55); color: #eab308;
+}
+
+/* Observações rápidas: o motivo de guardar um pacote se repete o dia inteiro, então digitar
+   à mão toda vez é trabalho jogado fora. Os chips são o caminho normal; o campo livre fica
+   pra exceção. */
+.cus-chips { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.cus-chip {
+    padding: 6px 13px; border-radius: 999px; cursor: pointer; font-family: inherit;
+    font-size: 12.5px; font-weight: 600; white-space: nowrap;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09);
+    color: #8494a9; transition: background .13s, border-color .13s, color .13s;
+}
+.cus-chip:hover { border-color: rgba(58,134,255,0.45); color: #c7d3e3; }
+.cus-chip.ativo {
+    background: rgba(58,134,255,0.16); border-color: rgba(58,134,255,0.6); color: #7fb2ff;
+}
+.cus-chip.nova { border-style: dashed; color: #707f96; }
+.cus-chip.nova:hover { color: #7fb2ff; }

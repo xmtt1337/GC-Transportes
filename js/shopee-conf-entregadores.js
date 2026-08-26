@@ -125,10 +125,10 @@ function _sceRenderResumo() {
     const encerradas = _sceLista.filter(e => e.encerrada).length;
 
     document.getElementById("sce-resumo").innerHTML = `
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:#22c55e">${feitos}</span><span class="shr-resumo-lbl">Conferidos</span></div>
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:${faltam ? "#eab308" : "#8494a9"}">${faltam}</span><span class="shr-resumo-lbl">Faltam</span></div>
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:${naoComecou ? "#ef4444" : "#8494a9"}">${naoComecou}</span><span class="shr-resumo-lbl">Não começaram</span></div>
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:#8494a9">${encerradas}</span><span class="shr-resumo-lbl">Encerradas</span></div>`;
+        <div class="paj-card"><div class="paj-label">Conferidos</div><div class="paj-value" style="color:#22c55e">${feitos}</div></div>
+        <div class="paj-card"><div class="paj-label">Faltam</div><div class="paj-value" style="color:${faltam ? "#eab308" : "#8494a9"}">${faltam}</div></div>
+        <div class="paj-card"><div class="paj-label">Não começaram</div><div class="paj-value" style="color:${naoComecou ? "#ef4444" : "#8494a9"}">${naoComecou}</div></div>
+        <div class="paj-card"><div class="paj-label">Encerradas</div><div class="paj-value" style="color:#8494a9">${encerradas}</div></div>`;
 }
 
 function _sceRenderLista() {
@@ -242,9 +242,9 @@ function _sceRenderDetalhe() {
     barra.style.background = cor;
 
     document.getElementById("sce-det-resumo").innerHTML = `
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:#22c55e">${ok}</span><span class="shr-resumo-lbl">Conferem</span></div>
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:${falt.length ? "#eab308" : "#8494a9"}">${falt.length}</span><span class="shr-resumo-lbl">Faltam</span></div>
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:${outra + semDado ? "#ef4444" : "#8494a9"}">${outra + semDado}</span><span class="shr-resumo-lbl">A mais</span></div>`;
+        <div class="paj-card"><div class="paj-label">Conferem</div><div class="paj-value" style="color:#22c55e">${ok}</div></div>
+        <div class="paj-card"><div class="paj-label">Faltam</div><div class="paj-value" style="color:${falt.length ? "#eab308" : "#8494a9"}">${falt.length}</div></div>
+        <div class="paj-card"><div class="paj-label">A mais</div><div class="paj-value" style="color:${outra + semDado ? "#ef4444" : "#8494a9"}">${outra + semDado}</div></div>`;
 
     document.querySelectorAll("#sce-det-abas .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.f === _sceFiltro));

@@ -188,6 +188,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         hide("submenu-pedidos");
         hide("menu-conferencias");
         hide("submenu-conferencias");
+        hide("menu-custodia");
+        hide("submenu-custodia");
         show("menu-fechamentos");
         show("submenu-fechamentos");
         show("menu-adiantamentos");
@@ -230,6 +232,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         hide("submenu-pedidos");
         hide("menu-conferencias");
         hide("submenu-conferencias");
+        hide("menu-custodia");
+        hide("submenu-custodia");
         show("menu-transferencias");
         show("submenu-transferencias");
         show("menu-devolucoes-motorista");
@@ -295,6 +299,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         hide("submenu-pedidos");
         hide("menu-conferencias");
         hide("submenu-conferencias");
+        hide("menu-custodia");
+        hide("submenu-custodia");
         show("menu-videira");
         show("submenu-videira");
         // Alimentar só para dev

@@ -501,9 +501,9 @@ function _cenRenderizar() {
     const aMais = outra + semDado;
 
     document.getElementById("cen-resumo").innerHTML = `
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:#22c55e">${ok}</span><span class="shr-resumo-lbl">Conferem</span></div>
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:${faltam ? "#eab308" : "#8494a9"}">${faltam}</span><span class="shr-resumo-lbl">Faltam</span></div>
-        <div class="shr-resumo-item"><span class="shr-resumo-num" style="color:${aMais ? "#ef4444" : "#8494a9"}">${aMais}</span><span class="shr-resumo-lbl">A mais</span></div>`;
+        <div class="paj-card"><div class="paj-label">Conferem</div><div class="paj-value" style="color:#22c55e">${ok}</div></div>
+        <div class="paj-card"><div class="paj-label">Faltam</div><div class="paj-value" style="color:${faltam ? "#eab308" : "#8494a9"}">${faltam}</div></div>
+        <div class="paj-card"><div class="paj-label">A mais</div><div class="paj-value" style="color:${aMais ? "#ef4444" : "#8494a9"}">${aMais}</div></div>`;
 
     const pct = _cenTotalGrupo ? (ok / _cenTotalGrupo) * 100 : 0;
     const cor = !_cenTotalGrupo ? "#8494a9" : faltam === 0 ? "#22c55e" : "#eab308";
