@@ -204,7 +204,7 @@ function _cusRenderResumo() {
         </div>`;
     document.getElementById("cus-resumo").innerHTML =
         card("Em custódia", r.em_custodia || 0) +
-        card("Entradas hoje", r.entradas_hoje || 0, "positivo") +
+        card("Entradas hoje", r.entradas_hoje || 0) +
         card("Saídas hoje", r.saidas_hoje || 0);
 }
 
@@ -246,8 +246,10 @@ function _cusRenderLista() {
     }
 
     const cod = c => `<td data-label="Código" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#e2e8f0">${_cusEsc(c)}</td>`;
+    // Sublinhado e não etiqueta: numa coluna de tabela o badge vira um borrão colorido por
+    // linha e disputa atenção com o código, que é o que se lê primeiro.
     const obs = o => `<td data-label="Observação">${o
-        ? `<span class="cus-chip ativo" style="cursor:default">${_cusEsc(o)}</span>`
+        ? `<span style="color:#c7d3e3;text-decoration:underline;text-decoration-color:rgba(58,134,255,0.55);text-underline-offset:3px">${_cusEsc(o)}</span>`
         : `<span style="color:#717f95">—</span>`}</td>`;
 
     // A tela mostra o começo da lista; o arquivo inteiro sai pela exportação. Despejar
