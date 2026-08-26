@@ -4288,7 +4288,8 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
    está, não só qual botão foi apertado por último.
 
    O -1px é o truque que gruda: a borda de baixo da aba ativa fica escondida sob a borda de
-   cima do painel, e os dois viram uma peça só. */
+   cima do painel, e os dois viram uma peça só. A cor é o azul do sistema nas duas: quem diz
+   o modo é a aba que está aberta e o texto do campo, não um semáforo na borda. */
 .cus-tabs {
     display: flex; gap: 3px; margin-bottom: -1px; position: relative; z-index: 6;
 }
@@ -4305,10 +4306,9 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .cus-tab.ativa {
     background: linear-gradient(150deg, rgba(20,28,44,0.98) 0%, rgba(11,16,26,1) 60%);
     border-color: rgba(58,134,255,0.2);
+    color: #7fb2ff;
     padding-bottom: 13px;   /* cobre a borda do painel */
 }
-.cus-tab.ativa.entrada { color: #22c55e; border-color: rgba(34,197,94,0.4); }
-.cus-tab.ativa.saida   { color: #eab308; border-color: rgba(234,179,8,0.4); }
 /* As abas cobrem a largura toda, então os dois cantos de cima do painel ficam retos: ele
    continua a aba, não recomeça. */
 .cus-painel { border-top-left-radius: 0; border-top-right-radius: 0; }
