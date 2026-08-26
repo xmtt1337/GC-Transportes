@@ -531,9 +531,9 @@ body {
                 </div>
 
                 <div class="field">
-                    <label for="r-usuario">Usuário</label>
+                    <label for="r-usuario">Usuário ou e-mail</label>
                     <div class="input-wrap">
-                        <input type="text" id="r-usuario" placeholder="Seu usuário" autocomplete="off">
+                        <input type="text" id="r-usuario" placeholder="Seu usuário ou e-mail" autocomplete="off">
                         <svg class="field-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     </div>
                 </div>
@@ -568,9 +568,9 @@ body {
         <input type="password" style="display:none">
 
         <div class="field">
-            <label for="usuario">Usuário</label>
+            <label for="usuario">Usuário ou e-mail</label>
             <div class="input-wrap">
-                <input type="text" id="usuario" placeholder="Seu usuário" autocomplete="off" name="c1">
+                <input type="text" id="usuario" placeholder="Seu usuário ou e-mail" autocomplete="off" name="c1">
                 <svg class="field-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
         </div>
@@ -633,7 +633,7 @@ async function login() {
     const password = document.getElementById("senha").value;
     const btn = document.getElementById("loginBtn");
 
-    if (!username || !password) { mostrarErro("Preencha usuário e senha."); return; }
+    if (!username || !password) { mostrarErro("Preencha o usuário (ou e-mail) e a senha."); return; }
 
     btn.disabled = true;
     btn.innerHTML = `<div class="spinner"></div> Entrando...`;
@@ -653,7 +653,7 @@ async function login() {
             if (data.require_password_change) {
                 btn.disabled = false;
                 btn.innerHTML = "Entrar";
-                _abrirDefinirSenha(username, password, data.name);
+                _abrirDefinirSenha(data.username || username, password, data.name);
                 return;
             }
             // Sem e-mail cadastrado a sessão não começa: o token só vai pro localStorage
@@ -922,12 +922,12 @@ function abrirReset(forcado, username) {
     if (forcado) {
         document.getElementById("resetBackBtn").style.display = "none";
         document.getElementById("resetTitle").innerText = "Defina sua senha";
-        document.getElementById("resetSub").innerText   = "Por segurança, sua senha ainda é a padrão. Informe seu usuário para continuar.";
+        document.getElementById("resetSub").innerText   = "Por segurança, sua senha ainda é a padrão. Informe seu usuário ou e-mail para continuar.";
         if (username) verificarUsuarioReset();
     } else {
         document.getElementById("resetBackBtn").style.display = "";
         document.getElementById("resetTitle").innerText = "Esqueci minha senha";
-        document.getElementById("resetSub").innerText   = "Informe seu usuário para continuar.";
+        document.getElementById("resetSub").innerText   = "Informe seu usuário ou e-mail para continuar.";
     }
 }
 
@@ -935,7 +935,7 @@ async function verificarUsuarioReset() {
     document.getElementById("resetErroMsg").classList.remove("show");
     const username = document.getElementById("r-usuario").value.trim();
     const btn = document.getElementById("resetBtnVerificar");
-    if (!username) { mostrarResetErro("Preencha seu usuário."); return; }
+    if (!username) { mostrarResetErro("Preencha seu usuário ou e-mail."); return; }
 
     btn.disabled  = true;
     btn.innerHTML = `<span class="spinner"></span>`;
@@ -944,13 +944,13 @@ async function verificarUsuarioReset() {
         const res  = await fetch(`https://sistema-backend-i4uh.onrender.com/esqueci-senha/verificar-usuario?username=${encodeURIComponent(username)}`);
         const data = await res.json();
         if (!res.ok) {
-            mostrarResetErro(data.error || "Usuário não encontrado.");
+            mostrarResetErro(data.error || "Usuário ou e-mail não encontrado.");
             btn.disabled  = false;
             btn.innerHTML = "Continuar";
             return;
         }
         if (!data.tem_email && !_resetForcado) {
-            mostrarResetErro("Este usuário não tem e-mail cadastrado. Fale com o administrador para redefinir a senha.");
+            mostrarResetErro("Esta conta não tem e-mail cadastrado. Fale com o administrador para redefinir a senha.");
             btn.disabled  = false;
             btn.innerHTML = "Continuar";
             return;
