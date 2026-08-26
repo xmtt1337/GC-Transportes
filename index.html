@@ -41,7 +41,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260820e">
+<link rel="stylesheet" href="style.css?v=20260820f">
 </head>
 <body>
 
@@ -2436,17 +2436,17 @@ if (_BASE) {
         <div id="tela-custodia" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
 
-                <div class="bip-scan-card shr-scan-card">
-                    <div class="cus-modos" id="cus-modos">
-                        <button type="button" class="cus-modo-btn entrada ativo" data-tipo="entrada" onclick="_cusTrocarTipo('entrada')">
-                            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>
-                            ENTRADA
-                        </button>
-                        <button type="button" class="cus-modo-btn saida" data-tipo="saida" onclick="_cusTrocarTipo('saida')">
-                            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
-                            SAÍDA
-                        </button>
-                    </div>
+                <div class="cus-tabs" id="cus-modos">
+                    <button type="button" class="cus-tab entrada ativa" data-tipo="entrada" onclick="_cusTrocarTipo('entrada')">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>
+                        ENTRADA
+                    </button>
+                    <button type="button" class="cus-tab saida" data-tipo="saida" onclick="_cusTrocarTipo('saida')">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+                        SAÍDA
+                    </button>
+                </div>
+                <div class="bip-scan-card shr-scan-card cus-painel">
 
                     <div class="bip-search-wrap" id="cus-campo">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#3a86ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -3766,7 +3766,7 @@ if (_BASE) {
 <script src="js/antecipacoes.js?v=30260812d"></script>
 <script src="js/antecipacoes-admin.js?v=30260812d"></script>
 <script src="js/baixas.js?v=30260812d"></script>
-<script src="js/custodia.js?v=20260820e"></script>
+<script src="js/custodia.js?v=20260820f"></script>
 <script src="js/devolucoes.js?v=30260812d"></script>
 <script src="js/shopee-polo.js?v=30260812d"></script>
 <script src="js/shopee.js?v=30260812d"></script>

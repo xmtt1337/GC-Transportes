@@ -44,11 +44,11 @@ function _cusTrocarTipo(tipo) {
 }
 
 function _cusPintarTipo() {
-    document.querySelectorAll("#cus-modos .cus-modo-btn").forEach(b =>
-        b.classList.toggle("ativo", b.dataset.tipo === _cusTipo));
-    // O texto do campo acompanha o modo. Bipar uma leva de pacotes no modo errado é o erro
-    // mais caro daqui, e o botão aceso sozinho não segura a atenção de quem está olhando
-    // pro pacote, não pro monitor.
+    document.querySelectorAll("#cus-modos .cus-tab").forEach(b =>
+        b.classList.toggle("ativa", b.dataset.tipo === _cusTipo));
+    // O texto do campo acompanha a aba. Bipar uma leva de pacotes no modo errado é o erro
+    // mais caro daqui, e a aba sozinha não segura a atenção de quem está olhando pro pacote,
+    // não pro monitor.
     document.getElementById("cus-codigo").placeholder = _cusTipo === "entrada"
         ? "Bipar ou digitar o código que está ENTRANDO..."
         : "Bipar ou digitar o código que está SAINDO...";

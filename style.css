@@ -4282,30 +4282,40 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 }
 
 /* ───── CUSTÓDIA ─────
-   Entrada e saída não podem ser uma abinha de canto: bipar uma leva de pacotes no modo
-   errado é o erro mais caro da tela, e o modo escolhido precisa ser a primeira coisa que
-   a pessoa vê. Por isso são dois botões grandes, lado a lado, ocupando a largura toda. */
-.cus-modos {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
+   Entrada e saída como aba de navegador: a escolhida se funde com o painel de baixo, a
+   outra fica solta e apagada atrás. Bipar uma leva de pacotes no modo errado é o erro mais
+   caro da tela — e aba tem uma vantagem que botão não tem: mostra em qual "lugar" a pessoa
+   está, não só qual botão foi apertado por último.
+
+   O -1px é o truque que gruda: a borda de baixo da aba ativa fica escondida sob a borda de
+   cima do painel, e os dois viram uma peça só. */
+.cus-tabs {
+    display: flex; gap: 3px; margin-bottom: -1px; position: relative; z-index: 6;
 }
-.cus-modo-btn {
-    display: flex; align-items: center; justify-content: center; gap: 9px;
-    padding: 15px 12px; border-radius: 12px; cursor: pointer; font-family: inherit;
-    font-size: 14px; font-weight: 700; letter-spacing: .02em;
-    background: rgba(14,22,40,0.7); border: 1px solid rgba(255,255,255,0.08);
-    color: #8494a9; transition: background .15s, border-color .15s, color .15s;
+.cus-tab {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    flex: 1; padding: 12px 18px; cursor: pointer; font-family: inherit;
+    font-size: 13px; font-weight: 800; letter-spacing: .06em;
+    color: #63728a; background: rgba(11,16,26,0.55);
+    border: 1px solid transparent; border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    transition: color .14s, background .14s;
 }
-.cus-modo-btn:hover { border-color: rgba(255,255,255,0.18); color: #c7d3e3; }
-.cus-modo-btn.ativo.entrada {
-    background: rgba(34,197,94,0.14); border-color: rgba(34,197,94,0.55); color: #22c55e;
+.cus-tab:hover { color: #9fb0c6; background: rgba(20,28,44,0.75); }
+.cus-tab.ativa {
+    background: linear-gradient(150deg, rgba(20,28,44,0.98) 0%, rgba(11,16,26,1) 60%);
+    border-color: rgba(58,134,255,0.2);
+    padding-bottom: 13px;   /* cobre a borda do painel */
 }
-.cus-modo-btn.ativo.saida {
-    background: rgba(234,179,8,0.14); border-color: rgba(234,179,8,0.55); color: #eab308;
-}
+.cus-tab.ativa.entrada { color: #22c55e; border-color: rgba(34,197,94,0.4); }
+.cus-tab.ativa.saida   { color: #eab308; border-color: rgba(234,179,8,0.4); }
+/* As abas cobrem a largura toda, então os dois cantos de cima do painel ficam retos: ele
+   continua a aba, não recomeça. */
+.cus-painel { border-top-left-radius: 0; border-top-right-radius: 0; }
 
 /* Observações rápidas: o motivo de guardar um pacote se repete o dia inteiro, então digitar
-   à mão toda vez é trabalho jogado fora. Os chips são o caminho normal; o campo livre fica
-   pra exceção. */
+   à mão toda vez é trabalho jogado fora. Os chips são o caminho normal; o "+ nova" fica pra
+   exceção que vale a pena guardar. */
 .cus-chips { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
 .cus-chip {
     padding: 6px 13px; border-radius: 999px; cursor: pointer; font-family: inherit;
