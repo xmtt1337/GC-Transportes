@@ -14,6 +14,7 @@ const _TELA_TITULOS = {
     "tela-trampay-entregadores": "Entregadores",
     "tela-admin-usuarios":       "Entregadores",
     "tela-admin-motoristas":     "Motoristas",
+    "tela-custodia":             "Custódia de pacotes",
     "tela-admin-usuarios-gc":    "Usuários",
     "tela-todos-usuarios":       "Todos os Usuários",
     "tela-dashboard":            "Dashboard",
