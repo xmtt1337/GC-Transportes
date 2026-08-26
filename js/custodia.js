@@ -296,7 +296,9 @@ function _cusAbrirExportar() {
         `<option value="">Todos os usuários</option>` + usuarios.map(u => `<option value="${_cusEsc(u)}">${_cusEsc(u)}</option>`).join("");
     document.getElementById("cus-exp-obs").innerHTML =
         `<option value="">Todas as observações</option>` + obsUsadas.map(o => `<option value="${_cusEsc(o)}">${_cusEsc(o)}</option>`).join("");
-    document.getElementById("cus-exp-fonte").value = _cusAba === "estoque" ? "estoque" : "movimentos";
+    // Abre sempre no histórico. Herdar a aba parecia esperto, mas quem abre o modal pelo
+    // botão espera ver o calendário — e ele sumia sem explicação quando a aba era estoque.
+    document.getElementById("cus-exp-fonte").value = "movimentos";
     document.getElementById("cus-exp-tipo").value = "";
     document.getElementById("cus-exp-de").value  = "";
     document.getElementById("cus-exp-ate").value = "";
@@ -315,6 +317,9 @@ function _cusAbrirExportar() {
 function _cusExpTrocarFonte() {
     const estoque = document.getElementById("cus-exp-fonte").value === "estoque";
     document.getElementById("cus-exp-filtros").style.display = estoque ? "none" : "";
+    // Some com os filtros mas diz por quê: campo que desaparece sem explicação faz a pessoa
+    // achar que a tela quebrou, que foi exatamente o que aconteceu com o calendário.
+    document.getElementById("cus-exp-nota").style.display = estoque ? "" : "none";
 }
 
 function _cusExportar() {
