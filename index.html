@@ -417,6 +417,7 @@ if (_BASE) {
                 <li><a href="#" data-rota="Fiscal/NovoCTe" onclick="abrirNovoCTe(); return false;">Novo CT-e</a></li>
                 <li><a href="#" data-rota="Fiscal/ImportarShopee" onclick="abrirImportarShopee(); return false;">Importar da Shopee</a></li>
                 <li><a href="#" data-rota="Fiscal/Valores" onclick="abrirFiscalValores(event)">Valores do frete</a></li>
+                <li><a href="#" data-rota="SPX/AgencyRouter" onclick="abrirAgencyRouter(event)">Agency Router (SPX)</a></li>
             </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Configurações <span class="subgroup-arrow">&#9662;</span>
@@ -1539,6 +1540,10 @@ if (_BASE) {
 
         <div id="tela-fiscal-certificado" class="view tela-full">
             <div id="fiscal-certificado-conteudo" class="conteudo-fiscal"></div>
+        </div>
+
+        <div id="tela-agency-router" class="view tela-full">
+            <div id="agency-router-conteudo" class="conteudo-fiscal"></div>
         </div>
 
         <div id="tela-fiscal-tributacao" class="view tela-full">
@@ -4530,5 +4535,6 @@ if (_BASE) {
     <script src="js/fiscal-valores.js?v=30260817e"></script>
     <script src="js/fiscal-dacte.js?v=30260820b"></script>
     <script src="js/fiscal-certificado.js?v=30260820a"></script>
+    <script src="js/agency-router.js?v=20260827a"></script>
 </body>
 </html>
