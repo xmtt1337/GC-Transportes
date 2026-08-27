@@ -3779,7 +3779,7 @@ if (_BASE) {
 <script src="js/shopee-at.js?v=30260812d"></script>
 <script src="js/shopee-pedidos.js?v=30260812d"></script>
 <script src="js/shopee-linehaul.js?v=30260812d"></script>
-<script src="js/shopee-atribuicoes.js?v=30260820d"></script>
+<script src="js/shopee-atribuicoes.js?v=30260827a"></script>
 <script src="js/shopee-retidos.js?v=30260819f"></script>
 <script src="js/shopee-conf-entregadores.js?v=20260820e"></script>
 <script src="js/entregador-conferencia.js?v=20260820e"></script>
@@ -4190,6 +4190,20 @@ if (_BASE) {
             </select>
         </div>
         <div class="usr-modal-error" id="sca-ent-erro" style="display:none"></div>
+        <!-- "Cadastrei e nao aparece aqui": em vez de mandar conferir a planilha
+             no escuro, o sistema conta o que leu dela e o que descartou. -->
+        <div style="margin-top:10px">
+            <a href="#" id="sca-ent-diag-link" style="font-size:12px;color:#7b98b5;text-decoration:none"
+               onclick="_scaDiagAbrir(event)">Nao achou alguem na lista?</a>
+            <div id="sca-ent-diag" style="display:none;margin-top:10px">
+                <div style="display:flex;gap:8px">
+                    <input class="usr-modal-input" id="sca-ent-diag-nome" placeholder="Nome como esta na planilha"
+                           autocomplete="off" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_scaDiagBuscar();}">
+                    <button class="usr-modal-btn-cancel" onclick="_scaDiagBuscar()">Procurar</button>
+                </div>
+                <div id="sca-ent-diag-saida" style="margin-top:10px;font-size:12px;line-height:1.6;color:#94a9bd;max-height:220px;overflow:auto"></div>
+            </div>
+        </div>
         <div class="usr-modal-btns">
             <button class="usr-modal-btn-cancel" id="sca-ent-remover" style="display:none" onclick="_scaSalvarEntregador(true)">Remover</button>
             <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-sca-entregador')">Cancelar</button>

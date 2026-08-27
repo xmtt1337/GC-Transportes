@@ -746,6 +746,7 @@ function _scaAbrirEntregador(cluster) {
     _scaClusterEditando = cluster;
     document.getElementById("sca-ent-cluster").innerText = cluster;
     document.getElementById("sca-ent-erro").style.display = "none";
+    _scaDiagFechar();
     _abrirModal("modal-sca-entregador");
 
     const sel = document.getElementById("sca-ent-select");
@@ -777,6 +778,85 @@ function _scaAbrirEntregador(cluster) {
         .catch(() => {
             if (!_scaListaEntregadores) sel.innerHTML = `<option value="">Erro ao carregar a lista</option>`;
         });
+}
+
+// ───── "Nao achou alguem na lista?" ─────
+// O seletor descarta em silencio quem esta na planilha sem as duas colunas
+// preenchidas: quem cadastrou so o nome nao aparece aqui e nao recebe aviso
+// nenhum. Isto mostra o que o servidor leu da planilha, linha por linha, em vez
+// de mandar a pessoa conferir no escuro.
+const _SCA_DIAG_ROTULO = "Não achou alguém na lista?";
+
+function _scaDiagFechar() {
+    const painel = document.getElementById("sca-ent-diag");
+    if (!painel) return;
+    painel.style.display = "none";
+    document.getElementById("sca-ent-diag-saida").innerHTML = "";
+    document.getElementById("sca-ent-diag-nome").value = "";
+    document.getElementById("sca-ent-diag-link").innerText = _SCA_DIAG_ROTULO;
+}
+
+function _scaDiagAbrir(event) {
+    if (event) event.preventDefault();
+    const painel = document.getElementById("sca-ent-diag");
+    const abrindo = painel.style.display === "none";
+    if (!abrindo) { _scaDiagFechar(); return; }
+    painel.style.display = "";
+    document.getElementById("sca-ent-diag-link").innerText = "Fechar";
+    // Já busca sem termo: o resumo sozinho costuma resolver, porque mostra as
+    // linhas descartadas com nome e motivo.
+    _scaDiagBuscar();
+}
+
+function _scaDiagBuscar() {
+    const nome  = document.getElementById("sca-ent-diag-nome").value.trim();
+    const saida = document.getElementById("sca-ent-diag-saida");
+    saida.innerHTML = "Lendo a planilha...";
+
+    const url = `${API}/etiquetas/entregadores/diagnostico` + (nome ? `?nome=${encodeURIComponent(nome)}` : "");
+    fetch(url, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json().then(b => ({ ok: r.ok, b })))
+        .then(({ ok, b }) => {
+            saida.innerHTML = ok
+                ? _scaDiagHtml(b)
+                : `<span style="color:#f87171">${_scaEsc(b.error || "Erro ao ler a planilha.")}</span>`;
+        })
+        .catch(() => { saida.innerHTML = `<span style="color:#f87171">Erro ao conectar com o servidor.</span>`; });
+}
+
+function _scaDiagHtml(d) {
+    const partes = [];
+    partes.push(`Planilha <strong>${_scaEsc(d.planilha_titulo || d.planilha_id)}</strong>, aba <strong>${_scaEsc(d.aba)}</strong>.`);
+    partes.push(`${d.linhas_lidas} linha(s) lidas · <strong>${d.no_seletor}</strong> no seletor.`);
+
+    if (d.procurado) {
+        if (!d.achados || !d.achados.length) {
+            // O caso mais chato de achar: tudo certo do lado de quem cadastrou,
+            // porque o cadastro foi feito em OUTRO arquivo.
+            partes.push(`<span style="color:#f87171">Nenhuma linha desta planilha contém "${_scaEsc(d.procurado)}". Confira se foi nela mesma que você cadastrou.</span>`);
+        } else {
+            d.achados.forEach(a => {
+                const cor = a.no_seletor ? "#22c55e" : "#f59e0b";
+                partes.push(`<div style="margin-top:6px;padding-left:8px;border-left:2px solid ${cor}">`
+                    + `Linha <strong>${a.linha}</strong> — ${_scaEsc(a.explicacao)}<br>`
+                    + a.colunas.map(c => `${c.coluna}: ${_scaEsc(c.valor)}`).join(" · ")
+                    + `</div>`);
+            });
+        }
+        return partes.join("<br>");
+    }
+
+    if (d.descartadas && d.descartadas.length) {
+        partes.push(`<span style="color:#f59e0b">${d.descartadas.length} linha(s) fora do seletor:</span>`);
+        d.descartadas.slice(0, 20).forEach(x => {
+            const quem = x.nome || x.usuario || "(em branco)";
+            partes.push(`· Linha ${x.linha} — ${_scaEsc(quem)} — ${_scaEsc(x.explicacao)}`);
+        });
+        if (d.descartadas.length > 20) partes.push(`… e mais ${d.descartadas.length - 20}.`);
+    } else {
+        partes.push("Nenhuma linha descartada — a planilha está toda preenchida.");
+    }
+    return partes.join("<br>");
 }
 
 function _scaSalvarEntregador(remover) {
