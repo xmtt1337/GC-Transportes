@@ -238,6 +238,9 @@ function _cenCarregarClusters() {
 
         _cenPintarRota(d.rota || {}, lista.length);
 
+        // As ATs ficam numa lista plana e os botões carregam o índice: assim o
+        // Task ID e o SVG do QR não precisam ser costurados dentro de um onclick.
+        _cenAts = [];
         document.getElementById("cen-clusters").innerHTML = lista.map(c => {
             const pct = c.total ? (c.conferidos / c.total) * 100 : 0;
             const falta = Math.max(0, c.total - c.conferidos);
@@ -250,10 +253,58 @@ function _cenCarregarClusters() {
                 </div>
                 <div class="slh-barra"><div class="slh-barra-fill" style="width:${
                     c.conferidos && pct < 1 ? 1 : Math.min(100, pct)}%;background:${cor}"></div></div>
+                ${_cenAtsHtml(c)}
             </div>`;
         }).join("");
     })
     .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
+}
+
+// ── AT (Task ID) da rota ──
+// A AT é o que identifica a tarefa da rota no sistema da Shopee. O entregador
+// precisa dela na mão no galpão: pra ditar, pra colar em outro app e pra mostrar
+// o QR no leitor. Ela vem pronta do servidor, QR e tudo — o celular na rua não
+// depende de baixar biblioteca nenhuma pra desenhar o código.
+let _cenAts = [];
+
+function _cenAtsHtml(cluster) {
+    const ats = cluster.ats || [];
+    if (!ats.length) return "";
+    return ats.map(at => {
+        const i = _cenAts.push(at) - 1;
+        return `
+        <div class="cen-at">
+            <span class="cen-at-rot">AT</span>
+            <span class="cen-at-id">${_cenEsc(at.task_id)}</span>
+            <button type="button" class="cen-at-btn" onclick="_cenCopiarAt(this,${i})">Copiar</button>
+            ${at.qr ? `<button type="button" class="cen-at-btn" onclick="_cenVerQr(${i})">QR Code</button>` : ""}
+        </div>`;
+    }).join("");
+}
+
+function _cenCopiarAt(btn, i) {
+    const at = _cenAts[i];
+    if (!at) return;
+    const rotulo = btn.innerText;
+    navigator.clipboard.writeText(at.task_id).then(() => {
+        btn.innerText = "Copiado!";
+        btn.classList.add("copiado");
+        setTimeout(() => { btn.innerText = rotulo; btn.classList.remove("copiado"); }, 1800);
+    }).catch(() => {
+        // Sem área de transferência (navegador antigo, página sem HTTPS) ainda dá
+        // pra copiar no dedo: o QR abre com a AT selecionável do lado.
+        btn.innerText = "Não consegui copiar";
+        setTimeout(() => { btn.innerText = rotulo; }, 2200);
+    });
+}
+
+function _cenVerQr(i) {
+    const at = _cenAts[i];
+    if (!at || !at.qr) return;
+    document.getElementById("cen-qr-id").innerText = at.task_id;
+    document.getElementById("cen-qr-caixa").innerHTML = at.qr;
+    document.getElementById("cen-qr-copiar").onclick = function () { _cenCopiarAt(this, i); };
+    _abrirModal("modal-cen-qr");
 }
 
 function _cenPintarRota(rota, qtdClusters) {

@@ -2769,6 +2769,44 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .cen-cluster-nome { font-size: 13.5px; font-weight: 700; color: #e2e8f0; }
 .cen-cluster-num  { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
+/* AT (Task ID) da rota do cluster. O entregador precisa dela na mão no galpão —
+   pra ditar, colar num app ou mostrar o QR na tela. Quebra em duas linhas no
+   celular estreito em vez de espremer o código, que é o que importa ler. */
+.cen-at {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    margin-top: 9px; padding-top: 9px;
+    border-top: 1px dashed rgba(255,255,255,0.09);
+}
+.cen-at-rot {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em; color: #7b98b5;
+}
+.cen-at-id {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12.5px; color: #e2e8f0; font-weight: 600;
+    word-break: break-all; flex: 1 1 auto; min-width: 0;
+}
+.cen-at-btn {
+    flex: 0 0 auto;
+    background: rgba(58,134,255,0.12); border: 1px solid rgba(58,134,255,0.32);
+    color: #9dc2ff; border-radius: 7px; padding: 4px 10px;
+    font-size: 11.5px; font-weight: 600; cursor: pointer;
+}
+.cen-at-btn:active { background: rgba(58,134,255,0.24); }
+.cen-at-btn.copiado { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.4); color: #86efac; }
+
+/* O QR precisa de fundo claro e de tamanho: é lido por leitor de mão, muitas
+   vezes de longe e com a tela do celular no brilho baixo. */
+.cen-qr-caixa {
+    background: #fff; border-radius: 12px; padding: 12px;
+    margin: 0 auto 14px; width: min(280px, 70vw);
+}
+.cen-qr-caixa svg { display: block; width: 100%; height: auto; }
+.cen-qr-id {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px; color: #e2e8f0; text-align: center;
+    word-break: break-all; margin-bottom: 4px;
+}
+
 /* Item avariado: a dica não é informativa, é um aviso — bipar ali tira o pacote de todas
    as conferências e só dev desfaz. Em cinza-claro, do tamanho das outras, ninguém lia. */
 .bip-scan-hint.sav-alerta {

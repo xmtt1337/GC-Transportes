@@ -41,7 +41,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260820h">
+<link rel="stylesheet" href="style.css?v=20260827a">
 </head>
 <body>
 
@@ -3782,7 +3782,7 @@ if (_BASE) {
 <script src="js/shopee-atribuicoes.js?v=30260827b"></script>
 <script src="js/shopee-retidos.js?v=30260819f"></script>
 <script src="js/shopee-conf-entregadores.js?v=20260820e"></script>
-<script src="js/entregador-conferencia.js?v=20260820e"></script>
+<script src="js/entregador-conferencia.js?v=30260827a"></script>
 <script src="js/viagens.js?v=30260812d"></script>
 <script src="js/ocorrencias.js?v=30260812d"></script>
 <script src="js/ocorrencias-admin.js?v=30260812d"></script>
@@ -4174,6 +4174,21 @@ if (_BASE) {
         <div class="usr-modal-btns">
             <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-editar-role-gc')">Cancelar</button>
             <button class="usr-modal-btn-primary" id="erg-btn-salvar" onclick="_salvarRoleGC()">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: QR CODE DA AT (conferencia do entregador) -->
+<div class="usr-modal-overlay" id="modal-cen-qr" onclick="_fecharModalSeBackdrop(event,'modal-cen-qr')">
+    <div class="usr-modal">
+        <div class="usr-modal-title">QR Code da AT</div>
+        <div class="cen-qr-id" id="cen-qr-id"></div>
+        <!-- O SVG vem pronto do servidor, com fundo branco proprio: QR escuro em
+             tema escuro nenhum leitor le. -->
+        <div class="cen-qr-caixa" id="cen-qr-caixa"></div>
+        <div class="usr-modal-btns">
+            <button class="usr-modal-btn-cancel" id="cen-qr-copiar">Copiar AT</button>
+            <button class="usr-modal-btn-primary" onclick="_fecharModal('modal-cen-qr')">Fechar</button>
         </div>
     </div>
 </div>
