@@ -3779,7 +3779,7 @@ if (_BASE) {
 <script src="js/shopee-at.js?v=30260812d"></script>
 <script src="js/shopee-pedidos.js?v=30260812d"></script>
 <script src="js/shopee-linehaul.js?v=30260812d"></script>
-<script src="js/shopee-atribuicoes.js?v=30260827a"></script>
+<script src="js/shopee-atribuicoes.js?v=30260827b"></script>
 <script src="js/shopee-retidos.js?v=30260819f"></script>
 <script src="js/shopee-conf-entregadores.js?v=20260820e"></script>
 <script src="js/entregador-conferencia.js?v=20260820e"></script>
@@ -4185,9 +4185,15 @@ if (_BASE) {
         <div class="usr-modal-sub" style="color:#e2e8f0;font-size:14px;font-weight:600;margin-bottom:16px" id="sca-ent-cluster"></div>
         <div class="usr-modal-field">
             <label class="usr-modal-label">Entregador</label>
-            <select class="usr-modal-input" id="sca-ent-select" style="cursor:pointer">
+            <!-- Sao ~300 nomes: sem filtro, achar alguem no <select> e rolagem no olho. -->
+            <input class="usr-modal-input" id="sca-ent-busca" placeholder="Filtrar por nome ou cidade..."
+                   autocomplete="off" style="margin-bottom:8px"
+                   oninput="_scaEntPreencher()"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();_scaEntEscolherPrimeiro();}">
+            <select class="usr-modal-input" id="sca-ent-select" size="1" style="cursor:pointer">
                 <option value="">Carregando...</option>
             </select>
+            <div id="sca-ent-conta" style="margin-top:6px;font-size:11px;color:#7b98b5"></div>
         </div>
         <div class="usr-modal-error" id="sca-ent-erro" style="display:none"></div>
         <!-- "Cadastrei e nao aparece aqui": em vez de mandar conferir a planilha

@@ -742,6 +742,61 @@ function _scaCopiarEntregadores() {
         }, "Repetir dia anterior", "Repetir");
 }
 
+// Quem já estava atribuído ao cluster que está aberto. Fica fora da função porque
+// o filtro redesenha o <select> a cada tecla e precisa saber o que reselecionar.
+let _scaEntAtual = null;
+
+/**
+ * Filtra a lista de entregadores pelo que foi digitado.
+ *
+ * Cada palavra digitada precisa aparecer em algum lugar do nome, em qualquer
+ * ordem: "gavazzo deiv" e "deiv cac" acham "Deivid Artur Gavazzo - Caçador".
+ * É o que faz o filtro servir tanto pra procurar pessoa quanto pra listar a
+ * cidade inteira, já que o nome exibido termina em " - Cidade".
+ */
+function _scaFiltrarEntregadores(lista, termo) {
+    const palavras = _scaChave(termo).split(" ").filter(Boolean);
+    if (!palavras.length) return (lista || []).slice();
+    return (lista || []).filter(e => {
+        const alvo = _scaChave(e.nome);
+        return palavras.every(p => alvo.includes(p));
+    });
+}
+
+/** Redesenha o <select> com o que sobrou do filtro, preservando a escolha. */
+function _scaEntPreencher() {
+    const sel   = document.getElementById("sca-ent-select");
+    const busca = document.getElementById("sca-ent-busca");
+    const conta = document.getElementById("sca-ent-conta");
+    const todos = _scaListaEntregadores || [];
+
+    // A escolha atual da tela vem antes da atribuição salva: se a pessoa já
+    // clicou em outro nome, filtrar de novo não pode desfazer o clique.
+    const anterior = sel.value || (_scaEntAtual ? _scaEntAtual.nome : "");
+    const lista = _scaFiltrarEntregadores(todos, busca ? busca.value : "");
+
+    sel.innerHTML = `<option value="">Selecione o entregador...</option>` +
+        lista.map(e => `<option value="${_scaEsc(e.nome)}" data-id="${_scaEsc(e.id)}">${_scaEsc(e.nome)}</option>`).join("");
+
+    // Só sobrou um: escolhe sozinho, senão a pessoa digita o nome inteiro e
+    // ainda precisa abrir a lista pra clicar no único item.
+    if (lista.length === 1) sel.value = lista[0].nome;
+    else if (anterior && lista.some(e => e.nome === anterior)) sel.value = anterior;
+
+    if (!conta) return;
+    if (!todos.length)          conta.innerText = "";
+    else if (!lista.length)     conta.innerText = "Nenhum nome com esse filtro (" + todos.length + " no total).";
+    else if (lista.length === todos.length) conta.innerText = todos.length + " entregadores.";
+    else                        conta.innerText = lista.length + " de " + todos.length + ".";
+}
+
+/** Enter no filtro pega o primeiro da lista — o atalho de quem já sabe o nome. */
+function _scaEntEscolherPrimeiro() {
+    const sel = document.getElementById("sca-ent-select");
+    const primeira = [...sel.options].find(o => o.value);
+    if (primeira) sel.value = primeira.value;
+}
+
 function _scaAbrirEntregador(cluster) {
     _scaClusterEditando = cluster;
     document.getElementById("sca-ent-cluster").innerText = cluster;
@@ -749,22 +804,29 @@ function _scaAbrirEntregador(cluster) {
     _scaDiagFechar();
     _abrirModal("modal-sca-entregador");
 
-    const sel = document.getElementById("sca-ent-select");
+    const sel   = document.getElementById("sca-ent-select");
+    const busca = document.getElementById("sca-ent-busca");
     const atual = _scaEntregadores[_scaChave(cluster)];
+    _scaEntAtual = atual || null;
+
+    // Cada cluster começa com o filtro limpo: sobra de busca do cluster anterior
+    // faz a lista nascer curta sem motivo aparente.
+    busca.value = "";
     // Botão de remover só aparece se há o que remover.
     document.getElementById("sca-ent-remover").style.display = atual ? "" : "none";
 
-    const preencher = () => {
-        sel.innerHTML = `<option value="">Selecione o entregador...</option>` +
-            _scaListaEntregadores.map(e =>
-                `<option value="${_scaEsc(e.nome)}" data-id="${_scaEsc(e.id)}">${_scaEsc(e.nome)}</option>`).join("");
-        if (atual) sel.value = atual.nome;
-    };
     // Mostra o que já tem na mão pra não piscar vazio, mas SEMPRE rebusca. A lista mora numa
     // planilha que muda o tempo todo: cadastrar alguém e não achar no seletor até dar F5 é
     // um bug que ninguém liga ao cache — a pessoa conclui que o cadastro não funcionou.
-    if (_scaListaEntregadores) preencher();
-    else sel.innerHTML = `<option>Carregando...</option>`;
+    if (_scaListaEntregadores) _scaEntPreencher();
+    else {
+        sel.innerHTML = `<option>Carregando...</option>`;
+        document.getElementById("sca-ent-conta").innerText = "";
+    }
+
+    // No celular o foco automático sobe o teclado e come a tela toda; no
+    // computador é o contrário, poder digitar direto é o ganho todo do filtro.
+    if (window.innerWidth > 700) setTimeout(() => busca.focus(), 60);
 
     fetch(`${API}/etiquetas/entregadores`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
@@ -773,7 +835,7 @@ function _scaAbrirEntregador(cluster) {
             _scaListaEntregadores = lista;
             // Só redesenha se a tela ainda está no mesmo cluster: a resposta pode chegar
             // depois de a pessoa fechar e abrir outro.
-            if (_scaClusterEditando === cluster) preencher();
+            if (_scaClusterEditando === cluster) _scaEntPreencher();
         })
         .catch(() => {
             if (!_scaListaEntregadores) sel.innerHTML = `<option value="">Erro ao carregar a lista</option>`;
