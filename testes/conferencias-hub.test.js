@@ -55,6 +55,10 @@ test("toda tela do mapa aponta pra uma sub-aba ou acao que existe", () => {
                 `${tela}: acao "${conf.acao}" nao existe`);
             return;
         }
+        // Tela pode legitimamente nao pertencer a sub-aba nenhuma (a de arquivo,
+        // por exemplo, atende cinco transportadoras). O que nao pode e apontar
+        // pra uma sub que nao existe.
+        if (!conf.sub) return;
         const transp = conf.transp || "shopee";
         const subs = api._CHUB_SUBS[transp] || [];
         if (!subs.length) return;
@@ -113,18 +117,18 @@ test("so a Shopee mostra sub-abas", () => {
     const shopee = api._chubHtml("shopee", { transp: "shopee", sub: "linehaul" });
     assert.match(shopee, /chub-subs/);
     assert.match(shopee, /class="chub-sub active"[^>]*onclick="_chubIrSub\('linehaul'\)"/);
-    // Tres sub-abas depois de "Entregadores" ter saido daqui.
-    assert.strictEqual(api._CHUB_SUBS.shopee.length, 3);
+    // Duas sub-abas: "Entregadores" virou acao e "Por arquivo" saiu.
+    assert.strictEqual(api._CHUB_SUBS.shopee.length, 2);
 
     // Nas outras a linha de baixo nem existe, em vez de nascer vazia.
     const imile = api._chubHtml("imile", { sub: "arquivo" });
     assert.ok(!imile.includes("chub-subs"));
 });
 
-test("a conferencia por arquivo da Shopee continua alcancavel", () => {
-    // Ela existia no menu antigo; se sumisse da barra, ninguem chegaria mais na
-    // tela de comparar arquivo da Shopee.
-    assert.ok(api._CHUB_SUBS.shopee.some(s => s.chave === "arquivo"));
+test("a Shopee nao oferece conferencia por arquivo", () => {
+    // A conferencia dela e Line Haul e Atribuicoes, que saem dos dados que ela
+    // exporta. A por arquivo e o recurso de quem nao exporta nada.
+    assert.deepEqual(api._CHUB_SUBS.shopee.map(s => s.chave), ["linehaul", "atribuicoes"]);
 });
 
 test('o botao "Alimentar" so aparece em quem tem arquivo pra alimentar', () => {

@@ -33,9 +33,10 @@ const _CHUB_SUBS = {
     shopee: [
         { chave: "linehaul",    rotulo: "Line Haul",   abrir: () => abrirShopeeLineHaul() },
         { chave: "atribuicoes", rotulo: "Atribuições", abrir: () => abrirShopeeAtribuicoes() },
-        // A conferência por arquivo da Shopee continua existindo: é a mesma das
-        // outras transportadoras, e tirá-la daqui deixaria a tela inalcançável.
-        { chave: "arquivo",     rotulo: "Por arquivo", abrir: () => abrirConferencias(null, "shopee") },
+        // Sem "Por arquivo": a conferência da Shopee é a de Line Haul e a de
+        // Atribuições, que saem dos dados que ela exporta. A por arquivo é o
+        // recurso das transportadoras que não exportam nada. A tela continua
+        // existindo e a rota Conferencias/Shopee segue valendo por URL.
     ],
 };
 
@@ -50,7 +51,11 @@ const _CHUB_ACOES = [
 // Telas que ganham a barra. tela-conferencias atende as cinco transportadoras, e
 // por isso a transportadora dela sai de _confTransp, não deste mapa.
 const _CHUB_TELAS = {
-    "tela-conferencias":             { sub: "arquivo" },
+    // Sem sub-aba: a conferência por arquivo é a única das transportadoras que
+    // não exportam dados, e a Shopee não oferece mais essa opção. Quem chegar
+    // aqui por URL vê a aba da transportadora marcada e nenhuma sub — que é a
+    // verdade: esta tela não é uma das conferências da Shopee.
+    "tela-conferencias":             {},
     "tela-shopee-linehaul":          { transp: "shopee", sub: "linehaul" },
     "tela-shopee-atribuicoes":       { transp: "shopee", sub: "atribuicoes" },
     "tela-shopee-conf-entregadores": { acao: "entregadores" },
