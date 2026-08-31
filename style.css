@@ -2847,6 +2847,11 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
    Substituiu a fita horizontal de datas. O painel abre no fluxo normal, não
    flutuando: o corpo da tela rola com overflow, e um popup posicionado saía
    cortado pela borda dele. */
+/* O contêiner é BLOCO, não flex. Ele herdava .filtro-tabs (display:flex) da
+   fita antiga, e aí a linha do botão e o painel do calendário viravam dois
+   itens lado a lado: o calendário nascia solto no meio da tela, esticado pelo
+   align-items:stretch. */
+.slh-cal { display: block; }
 .slh-cal-linha {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
