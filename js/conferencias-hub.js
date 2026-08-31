@@ -295,7 +295,6 @@ function _chubQuando(iso) {
 const _CHUB_FONTES_ABRIR = {
     romaneiro: () => abrirShopeeRomaneiro(),
     at:        () => abrirShopeeAT(),
-    pedidos:   () => abrirShopeePedidos(),
 };
 
 function _chubAbrirFonte(chave) {

@@ -125,7 +125,10 @@ if (_BASE) {
             <ul class="sub-submenu" id="subgroup-shopee-alimentar">
                 <li><a href="#" data-rota="Shopee/Romaneiro" onclick="abrirShopeeRomaneiro(event)">Romaneiro</a></li>
                 <li><a href="#" data-rota="Shopee/AT" onclick="abrirShopeeAT(event)">AT Exportada</a></li>
-                <li><a href="#" data-rota="Shopee/Pedidos" onclick="abrirShopeePedidos(event)">Pedidos pesquisados</a></li>
+                <!-- "Pedidos pesquisados" saiu do menu: a operação parou de alimentar
+                     esse arquivo. A tela e a rota Shopee/Pedidos continuam existindo
+                     (alcançáveis por URL) porque a tabela guarda o status de entrada
+                     no hub, que a conferência por cluster ainda consulta. -->
             </ul>
             <!-- As conferências da Shopee saíram daqui: viraram abas do menu
                  "Conferências". As URLs (Shopee/LineHaul, Shopee/Atribuicoes,
@@ -3775,7 +3778,7 @@ if (_BASE) {
 <script src="js/desempenho-bip.js?v=30260812d"></script>
 <script src="js/desempenho-hora.js?v=30260812d"></script>
 <script src="js/conferencias.js?v=30260812d"></script>
-<script src="js/conferencias-hub.js?v=30260827b"></script>
+<script src="js/conferencias-hub.js?v=30260827c"></script>
 <script src="js/antecipacoes.js?v=30260812d"></script>
 <script src="js/antecipacoes-admin.js?v=30260812d"></script>
 <script src="js/baixas.js?v=30260812d"></script>
