@@ -95,18 +95,22 @@ function _sceFaixa(d) {
     document.getElementById("sce-faixa-xpt").innerText = `${d.polo_label} · ${d.xpt}`;
 }
 
-// Só aparecem dias que têm entregador atribuído, então clicar nunca leva a uma tela vazia.
+// Só aparecem dias que têm entregador atribuído, então clicar nunca leva a uma
+// tela vazia. O calendário é o componente compartilhado (js/calendario-dias.js),
+// o mesmo do Line Haul — a fita de 8 dias que estava aqui escondia qualquer dia
+// mais antigo que o oitavo.
 function _sceRenderDias(hoje) {
-    const el = document.getElementById("sce-dias");
-    if (!_sceDias.length) { el.style.display = "none"; return; }
-    el.style.display = "";
-    const br = s => s ? s.split("-").reverse().join("/") : "";
-    // Até 8 dias na barra: mais que isso vira rolagem e a data de hoje se perde.
-    el.innerHTML = _sceDias.slice(0, 8).map(d => `
-        <button type="button" class="filtro-tab${_sceDia === d.dia ? " active" : ""}" onclick="_sceTrocarDia('${d.dia}')">
-            ${d.dia === hoje ? "Hoje" : br(d.dia)}
-            <span style="font-size:11px;color:#8494a9;font-weight:600">${d.entregadores} entregador${d.entregadores !== 1 ? "es" : ""}</span>
-        </button>`).join("");
+    gcCalMontar({
+        alvo: "sce-dias",
+        dias: _sceDias.map(d => ({
+            dia: d.dia,
+            sub: d.entregadores + " entregador" + (d.entregadores !== 1 ? "es" : ""),
+        })),
+        dia: _sceDia,
+        hoje: hoje || "",
+        legenda: "O número menor é quantos entregadores tinham rota no dia.",
+        aoEscolher: _sceTrocarDia,
+    });
 }
 
 function _sceTrocarDia(dia) {

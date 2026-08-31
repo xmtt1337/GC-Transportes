@@ -103,258 +103,27 @@ function _slhCarregar() {
         .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
 }
 
-// ───── CALENDÁRIO DOS DIAS DO ROMANEIRO ─────
+// O calendário é o componente compartilhado (js/calendario-dias.js): a tela de
+// Entregadores pedia o mesmo seletor, e duas cópias de um calendário divergem
+// no primeiro ajuste.
 //
 // O dia é o em que a CARGA FOI ALIMENTADA, não a data dentro do número da TO.
 // Chega TO de dias anteriores no romaneiro de hoje, e separar pela data da TO
 // não corresponderia ao que de fato chegou no galpão naquele dia.
-//
-// Era uma fita horizontal com os 8 dias mais recentes. Duas coisas quebravam:
-// procurar um dia mais antigo que o oitavo era impossível, e a fita ocupava uma
-// faixa inteira da tela pra mostrar uma semana. Num calendário o mês todo cabe
-// no mesmo espaço, e dá pra voltar quanto quiser.
-//
-// Dia sem romaneiro fica apagado e não clica — continua valendo que clicar
-// nunca leva a uma tela vazia.
-
-const _SLH_MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-                    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-const _SLH_DOW = ["D", "S", "T", "Q", "Q", "S", "S"];
-
-let _slhCalMes = "";       // "YYYY-MM" que o calendário está mostrando
-let _slhCalAberto = false;
-
-function _slhBr(s) {
-    return s ? s.split("-").reverse().join("/") : "";
-}
-
-/** "YYYY-MM" do dia escolhido; o de hoje quando não há dia escolhido. */
-function _slhMesDe(dia, hoje) {
-    const base = /^\d{4}-\d{2}-\d{2}$/.test(dia || "") ? dia : (hoje || "");
-    return /^\d{4}-\d{2}/.test(base) ? base.slice(0, 7) : "";
-}
-
-/** Mês vizinho. Feito na mão pra virar o ano sozinho e não depender de fuso. */
-function _slhMesVizinho(mes, passo) {
-    const partes = String(mes || "").split("-").map(Number);
-    const ano = partes[0], m = partes[1];
-    if (!ano || !m) return mes;
-    const total = (ano * 12) + (m - 1) + passo;
-    return String(Math.floor(total / 12)).padStart(4, "0") + "-"
-         + String((total % 12) + 1).padStart(2, "0");
-}
-
-/**
- * As células do mês, na ordem em que entram na grade.
- *
- * Devolve dados, não HTML: é o pedaço que dá pra testar sem navegador, e é onde
- * mora o erro chato de calendário — o dia cair na coluna errada do dia da
- * semana, que ninguém percebe olhando de relance.
- *
- * @param {string} mes "YYYY-MM"
- * @param {Array<{dia: string, tos: number}>} dias Dias que têm romaneiro.
- * @param {string} hoje
- * @param {string} selecionado
- * @return {Array<Object>} Vazias no começo ({vazio:true}) e depois uma por dia.
- */
-function _slhCalGrade(mes, dias, hoje, selecionado) {
-    if (!/^\d{4}-\d{2}$/.test(mes || "")) return [];
-    const partes = mes.split("-").map(Number);
-    const ano = partes[0], m = partes[1];
-
-    const tosPorDia = {};
-    (dias || []).forEach(d => { if (d && d.dia) tosPorDia[d.dia] = d.tos; });
-
-    // new Date(ano, mes, dia) é horário local — não passa por UTC, então não
-    // escorrega um dia como new Date("2026-08-01") faria.
-    const primeiroDow = new Date(ano, m - 1, 1).getDay();
-    const totalDias   = new Date(ano, m, 0).getDate();
-
-    const celulas = [];
-    for (let i = 0; i < primeiroDow; i++) celulas.push({ vazio: true });
-    for (let n = 1; n <= totalDias; n++) {
-        const dia = mes + "-" + String(n).padStart(2, "0");
-        const tos = tosPorDia[dia];
-        celulas.push({
-            dia,
-            numero: n,
-            tos: tos || 0,
-            tem: tos !== undefined,
-            hoje: dia === hoje,
-            selecionado: dia === selecionado,
-        });
-    }
-    return celulas;
-}
-
-/** O que o botão que abre o calendário mostra. */
-function _slhCalRotulo(hoje) {
-    if (!_slhDia || _slhDia === "todas") return { titulo: "Todos os romaneiros", sub: "" };
-    const achado = _slhDias.find(d => d.dia === _slhDia);
-    const tos = achado ? achado.tos : null;
-    return {
-        titulo: _slhDia === hoje ? "Hoje" : _slhBr(_slhDia),
-        sub: tos === null ? "" : tos + " TO" + (tos !== 1 ? "s" : ""),
-    };
-}
-
 function _slhRenderDias(hoje) {
-    const el = document.getElementById("slh-dias");
-    if (!_slhDias.length) { el.style.display = "none"; _slhCalFechar(); return; }
-    el.style.display = "";
     _slhHoje = hoje || "";
-    if (!_slhCalMes) _slhCalMes = _slhMesDe(_slhDia, hoje);
-
-    const r = _slhCalRotulo(hoje);
-    el.innerHTML = `
-        <div class="slh-cal-linha">
-            <button type="button" class="slh-cal-btn${_slhCalAberto ? " aberto" : ""}" onclick="_slhCalAlternar()">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2"/>
-                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                    <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                <span class="slh-cal-btn-txt">${_slhEsc(r.titulo)}</span>
-                ${r.sub ? `<span class="slh-cal-btn-sub">${_slhEsc(r.sub)}</span>` : ""}
-                <span class="slh-cal-seta">▾</span>
-            </button>
-        </div>`;
-
-    if (_slhCalAberto) _slhCalDesenharPop();
+    gcCalMontar({
+        alvo: "slh-dias",
+        dias: _slhDias.map(d => ({ dia: d.dia, sub: d.tos + " TO" + (d.tos !== 1 ? "s" : "") })),
+        dia: _slhDia,
+        hoje: _slhHoje,
+        legenda: "O número menor é quantas TOs chegaram no dia.",
+        aoEscolher: _slhTrocarDia,
+    });
 }
-
-function _slhCalPainel(hoje) {
-    const grade = _slhCalGrade(_slhCalMes, _slhDias, hoje, _slhDia);
-    const partes = String(_slhCalMes).split("-").map(Number);
-    const titulo = (_SLH_MESES[partes[1] - 1] || "") + " de " + (partes[0] || "");
-
-    const celulas = grade.map(c => {
-        if (c.vazio) return `<span class="slh-cal-dia vazio"></span>`;
-        const classes = ["slh-cal-dia", c.tem ? "tem" : "sem"];
-        if (c.hoje) classes.push("hoje");
-        if (c.selecionado) classes.push("sel");
-        // Dia sem romaneiro não vira botão: clicar levaria a uma tela vazia.
-        if (!c.tem) return `<span class="${classes.join(" ")}">${c.numero}</span>`;
-        const plural = c.tos !== 1 ? "s" : "";
-        return `<button type="button" class="${classes.join(" ")}" onclick="_slhTrocarDia('${c.dia}')"
-                        title="${c.tos} TO${plural}">${c.numero}<small>${c.tos}</small></button>`;
-    }).join("");
-
-    const temHoje = _slhDias.some(d => d.dia === hoje);
-    return `
-        <div class="slh-cal-topo">
-            <button type="button" class="slh-cal-nav" onclick="_slhCalMover(-1)" aria-label="Mês anterior">‹</button>
-            <span class="slh-cal-mes">${_slhEsc(titulo)}</span>
-            <button type="button" class="slh-cal-nav" onclick="_slhCalMover(1)" aria-label="Próximo mês">›</button>
-        </div>
-        <div class="slh-cal-grade">
-            ${_SLH_DOW.map(d => `<span class="slh-cal-dow">${d}</span>`).join("")}
-            ${celulas}
-        </div>
-        <div class="slh-cal-rodape">
-            <span class="slh-cal-legenda">O número menor é quantas TOs chegaram no dia.</span>
-            ${temHoje ? `<button type="button" class="slh-cal-hoje" onclick="_slhTrocarDia('${hoje}')">Hoje</button>` : ""}
-        </div>`;
-}
-
-// ── O card flutuante ──
-//
-// O calendário mora no <body>, não dentro da tela. O corpo da tela rola com
-// overflow: um painel posicionado lá dentro sairia cortado pela borda, e no
-// fluxo normal ele empurrava os cartões de resumo pra baixo toda vez que abria.
-// É o mesmo caminho que o combo de entregador do Planejamento já usa.
-
-function _slhCalPop() {
-    let pop = document.getElementById("slh-cal-pop");
-    if (!pop) {
-        pop = document.createElement("div");
-        pop.id = "slh-cal-pop";
-        pop.className = "slh-cal-pop";
-        document.body.appendChild(pop);
-    }
-    return pop;
-}
-
-function _slhCalDesenharPop() {
-    const pop = _slhCalPop();
-    pop.innerHTML = _slhCalPainel(_slhHoje);
-    pop.style.display = "block";
-    _slhCalPosicionar();
-}
-
-/**
- * Encosta o card no botão que o abriu.
- *
- * position: fixed, então as contas são em coordenadas de viewport — é o que
- * faz o card ficar certo mesmo com a tela rolada. Vira pra cima quando não
- * cabe embaixo: no celular o botão costuma estar na metade de baixo da tela, e
- * um card de 380px abrindo pra baixo ficaria metade fora.
- */
-function _slhCalPosicionar() {
-    const btn = document.querySelector("#slh-dias .slh-cal-btn");
-    const pop = document.getElementById("slh-cal-pop");
-    if (!btn || !pop || pop.style.display === "none") return;
-
-    const r = btn.getBoundingClientRect();
-    const margem = 8;
-    const largura = pop.offsetWidth;
-    const altura = pop.offsetHeight;
-
-    let left = Math.min(r.left, window.innerWidth - largura - margem);
-    left = Math.max(left, margem);
-
-    let top = r.bottom + 6;
-    if (top + altura > window.innerHeight - margem) {
-        const acima = r.top - altura - 6;
-        top = acima >= margem ? acima : Math.max(margem, window.innerHeight - altura - margem);
-    }
-
-    pop.style.left = left + "px";
-    pop.style.top = top + "px";
-}
-
-function _slhCalFechar() {
-    _slhCalAberto = false;
-    const pop = document.getElementById("slh-cal-pop");
-    if (pop) { pop.style.display = "none"; pop.innerHTML = ""; }
-    const btn = document.querySelector("#slh-dias .slh-cal-btn");
-    if (btn) btn.classList.remove("aberto");
-}
-
-function _slhCalAlternar() {
-    if (_slhCalAberto) { _slhCalFechar(); return; }
-    _slhCalAberto = true;
-    // Reabrir sempre volta pro mês do dia escolhido: quem navegou até março e
-    // fechou sem escolher não quer reabrir em março.
-    _slhCalMes = _slhMesDe(_slhDia, _slhHoje);
-    _slhRenderDias(_slhHoje);
-}
-
-function _slhCalMover(passo) {
-    _slhCalMes = _slhMesVizinho(_slhCalMes, passo);
-    _slhCalDesenharPop();
-}
-
-// Redes de segurança: qualquer coisa que mova o botão de lugar ou tire o foco
-// da página fecha o card, em vez de deixá-lo pairando sobre outra tela.
-document.addEventListener("pointerdown", e => {
-    if (!_slhCalAberto) return;
-    const pop = document.getElementById("slh-cal-pop");
-    if (pop && pop.contains(e.target)) return;
-    if (e.target.closest && e.target.closest("#slh-dias .slh-cal-btn")) return;
-    _slhCalFechar();
-});
-document.addEventListener("keydown", e => { if (e.key === "Escape") _slhCalFechar(); });
-// Captura porque quem rola é o corpo da tela, não a janela — sem o true o
-// evento nunca chegaria aqui.
-window.addEventListener("scroll", () => { if (_slhCalAberto) _slhCalFechar(); }, true);
-window.addEventListener("resize", _slhCalPosicionar);
-window.addEventListener("blur", () => _slhCalFechar());
 
 function _slhTrocarDia(dia) {
     _slhDia = dia;
-    _slhCalFechar();
     _slhPagina = 1;
     _slhFora   = [];
     _slhNaoBip = [];
