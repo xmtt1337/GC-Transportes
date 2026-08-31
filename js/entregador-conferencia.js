@@ -242,17 +242,26 @@ function _cenCarregarClusters() {
         // Task ID e o SVG do QR não precisam ser costurados dentro de um onclick.
         _cenAts = [];
         document.getElementById("cen-clusters").innerHTML = lista.map(c => {
-            const pct = c.total ? (c.conferidos / c.total) * 100 : 0;
-            const falta = Math.max(0, c.total - c.conferidos);
-            const cor = falta === 0 && c.total ? "#22c55e" : c.conferidos ? "#eab308" : "#8494a9";
+            // total null = a carga daquele dia não existe mais pra conferir (a AT
+            // é substituída a cada importação e a conferência ficou em aberto, sem
+            // retrato). Mostra o que ele bipou e para por aí: barra cheia sobre um
+            // total inventado é pior do que barra nenhuma.
+            const semTotal = c.total === null || c.total === undefined;
+            const pct = !semTotal && c.total ? (c.conferidos / c.total) * 100 : 0;
+            const falta = semTotal ? 0 : Math.max(0, c.total - c.conferidos);
+            const cor = semTotal ? "#8494a9"
+                      : falta === 0 && c.total ? "#22c55e" : c.conferidos ? "#eab308" : "#8494a9";
+            const numero = semTotal
+                ? `${c.conferidos} conferido${c.conferidos !== 1 ? "s" : ""}`
+                : `${c.conferidos} / ${c.total}`;
             return `
             <div class="cen-cluster">
                 <div class="cen-cluster-topo">
                     <span class="cen-cluster-nome">${_cenEsc(c.cluster)}</span>
-                    <span class="cen-cluster-num" style="color:${cor}">${c.conferidos} / ${c.total}</span>
+                    <span class="cen-cluster-num" style="color:${cor}">${numero}</span>
                 </div>
                 <div class="slh-barra"><div class="slh-barra-fill" style="width:${
-                    c.conferidos && pct < 1 ? 1 : Math.min(100, pct)}%;background:${cor}"></div></div>
+                    semTotal ? 0 : (c.conferidos && pct < 1 ? 1 : Math.min(100, pct))}%;background:${cor}"></div></div>
                 ${_cenAtsHtml(c)}
             </div>`;
         }).join("");
@@ -309,19 +318,26 @@ function _cenVerQr(i) {
 
 function _cenPintarRota(rota, qtdClusters) {
     _cenRota = rota;
-    const total  = rota.total || 0;
+    // Ver comentário no cartão do cluster: null é "não dá mais pra saber", que é
+    // diferente de zero. Sem isso a rota de um dia antigo abria em 100% com os
+    // bipes daquele dia contra a carga de hoje.
+    const semTotal = rota.total === null || rota.total === undefined;
+    const total  = semTotal ? 0 : (rota.total || 0);
     const feitos = rota.conferidos || 0;
-    const falta  = Math.max(0, total - feitos);
-    const pct    = total ? (feitos / total) * 100 : 0;
-    const cor    = falta === 0 && total ? "#22c55e" : feitos ? "#eab308" : "#8494a9";
+    const falta  = semTotal ? 0 : Math.max(0, total - feitos);
+    const pct    = !semTotal && total ? (feitos / total) * 100 : 0;
+    const cor    = semTotal ? "#8494a9"
+                 : falta === 0 && total ? "#22c55e" : feitos ? "#eab308" : "#8494a9";
 
-    document.getElementById("cen-rota-pct").innerText = _cenPctTexto(pct);
+    document.getElementById("cen-rota-pct").innerText = semTotal ? "—" : _cenPctTexto(pct);
     document.getElementById("cen-rota-pct").style.color = cor;
-    document.getElementById("cen-rota-obs").innerText =
-        `${qtdClusters} cluster${qtdClusters !== 1 ? "s" : ""} · ${total} pacote${total !== 1 ? "s" : ""}` +
-        (falta ? ` · faltam ${falta}` : total ? " · tudo conferido" : "");
+    document.getElementById("cen-rota-obs").innerText = semTotal
+        ? `${qtdClusters} cluster${qtdClusters !== 1 ? "s" : ""} · ${feitos} conferido${feitos !== 1 ? "s" : ""}`
+          + " · a carga desse dia não está mais no sistema"
+        : `${qtdClusters} cluster${qtdClusters !== 1 ? "s" : ""} · ${total} pacote${total !== 1 ? "s" : ""}`
+          + (falta ? ` · faltam ${falta}` : total ? " · tudo conferido" : "");
     const barra = document.getElementById("cen-rota-barra");
-    barra.style.width = (feitos && pct < 1 ? 1 : Math.min(100, pct)) + "%";
+    barra.style.width = (semTotal ? 0 : (feitos && pct < 1 ? 1 : Math.min(100, pct))) + "%";
     barra.style.background = cor;
 
     document.getElementById("cen-rota-btn").textContent =
