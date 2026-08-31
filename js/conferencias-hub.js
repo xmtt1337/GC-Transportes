@@ -14,13 +14,16 @@
 // link direto (xmtt.com.br/Shopee/Atribuicoes) ou pelo botão voltar do navegador,
 // e não só quando ela clica na aba.
 
-// Cores iguais às do resto do sistema (planejamento, bipagens, conferências).
+// Sem cor por transportadora: a aba usa o azul do sistema, como o resto. Cor
+// aqui competiria com as cores que JÁ significam alguma coisa nas telas de
+// baixo — progresso, situação do pacote — e a aba não precisa de cor pra dizer
+// qual está aberta.
 const _CHUB_TRANSP = [
-    { chave: "shopee", rotulo: "Shopee", cor: "#F97316" },
-    { chave: "loggi",  rotulo: "Loggi",  cor: "#12A5E8" },
-    { chave: "anjun",  rotulo: "Anjun",  cor: "#22C55E" },
-    { chave: "imile",  rotulo: "Imile",  cor: "#9333EA" },
-    { chave: "jt",     rotulo: "J&T",    cor: "#EF4444" },
+    { chave: "shopee", rotulo: "Shopee" },
+    { chave: "loggi",  rotulo: "Loggi"  },
+    { chave: "anjun",  rotulo: "Anjun"  },
+    { chave: "imile",  rotulo: "Imile"  },
+    { chave: "jt",     rotulo: "J&T"    },
 ];
 
 // A Shopee tem mais de um tipo de conferência porque é a única que exporta os
@@ -28,14 +31,21 @@ const _CHUB_TRANSP = [
 // linha de sub-abas aparece só nela, em vez de nascer vazia nas demais.
 const _CHUB_SUBS = {
     shopee: [
-        { chave: "linehaul",     rotulo: "Line Haul",    abrir: () => abrirShopeeLineHaul() },
-        { chave: "atribuicoes",  rotulo: "Atribuições",  abrir: () => abrirShopeeAtribuicoes() },
-        { chave: "entregadores", rotulo: "Entregadores", abrir: () => abrirShopeeConfEntregadores() },
+        { chave: "linehaul",    rotulo: "Line Haul",   abrir: () => abrirShopeeLineHaul() },
+        { chave: "atribuicoes", rotulo: "Atribuições", abrir: () => abrirShopeeAtribuicoes() },
         // A conferência por arquivo da Shopee continua existindo: é a mesma das
         // outras transportadoras, e tirá-la daqui deixaria a tela inalcançável.
-        { chave: "arquivo",      rotulo: "Por arquivo",  abrir: () => abrirConferencias(null, "shopee") },
+        { chave: "arquivo",     rotulo: "Por arquivo", abrir: () => abrirConferencias(null, "shopee") },
     ],
 };
+
+// O que NÃO é de uma transportadora só. "Entregadores" mostra o que cada
+// entregador está conferindo, e a conferência dele pega a rota inteira — os
+// pacotes das várias transportadoras que ele leva no mesmo carro. Por isso sai
+// de dentro da Shopee: ali dizia que a coisa era da Shopee, e não é.
+const _CHUB_ACOES = [
+    { chave: "entregadores", rotulo: "Entregadores", abrir: () => abrirShopeeConfEntregadores() },
+];
 
 // Telas que ganham a barra. tela-conferencias atende as cinco transportadoras, e
 // por isso a transportadora dela sai de _confTransp, não deste mapa.
@@ -43,7 +53,7 @@ const _CHUB_TELAS = {
     "tela-conferencias":             { sub: "arquivo" },
     "tela-shopee-linehaul":          { transp: "shopee", sub: "linehaul" },
     "tela-shopee-atribuicoes":       { transp: "shopee", sub: "atribuicoes" },
-    "tela-shopee-conf-entregadores": { transp: "shopee", sub: "entregadores" },
+    "tela-shopee-conf-entregadores": { acao: "entregadores" },
     "tela-alimentar":                { alimentar: true },
 };
 
@@ -124,24 +134,30 @@ function _chubPintar(telaId) {
 }
 
 function _chubHtml(transp, conf) {
-    const cor = _chubInfo(transp).cor;
+    // Tela que vale pra todas as transportadoras não marca aba nenhuma: marcar
+    // uma diria que a pessoa está dentro daquela transportadora, e não está.
+    const transversal = !!(conf.alimentar || conf.acao);
+    const abaAtiva = transversal ? null : transp;
+
     const abas = _CHUB_TRANSP.map(t => `
-        <button type="button" class="chub-tab${t.chave === transp ? " active" : ""}"
-                style="--chub-c:${t.cor}" onclick="_chubIr('${t.chave}')">${_chubEsc(t.rotulo)}</button>`).join("");
+        <button type="button" class="chub-tab${t.chave === abaAtiva ? " active" : ""}"
+                onclick="_chubIr('${t.chave}')">${_chubEsc(t.rotulo)}</button>`).join("");
 
     const subs = _CHUB_SUBS[transp] || [];
-    // Na tela de alimentar nenhuma sub-aba fica marcada: ela não é uma
-    // conferência, é o que sustenta todas elas.
-    const subAtiva = conf.alimentar ? null : conf.sub;
+    const subAtiva = transversal ? null : conf.sub;
     const linhaSubs = subs.length ? `
         <div class="chub-subs">
             ${subs.map(s => `
                 <button type="button" class="chub-sub${s.chave === subAtiva ? " active" : ""}"
-                        style="--chub-c:${cor}" onclick="_chubIrSub('${s.chave}')">${_chubEsc(s.rotulo)}</button>`).join("")}
+                        onclick="_chubIrSub('${s.chave}')">${_chubEsc(s.rotulo)}</button>`).join("")}
         </div>` : "";
 
+    const acoes = _CHUB_ACOES.map(a => `
+        <button type="button" class="chub-acao${conf.acao === a.chave ? " active" : ""}"
+                onclick="_chubAcao('${a.chave}')">${_chubEsc(a.rotulo)}</button>`).join("");
+
     const alimentar = _chubTemAlimentar(transp) ? `
-        <button type="button" class="chub-alimentar${conf.alimentar ? " active" : ""}" onclick="abrirAlimentar(event)">
+        <button type="button" class="chub-acao${conf.alimentar ? " active" : ""}" onclick="abrirAlimentar(event)">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
                  stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -150,7 +166,13 @@ function _chubHtml(transp, conf) {
             Alimentar<span class="chub-badge" id="chub-badge" style="display:none"></span>
         </button>` : "";
 
-    return `<div class="chub-topo"><div class="chub-tabs">${abas}</div>${alimentar}</div>${linhaSubs}`;
+    return `<div class="chub-topo"><div class="chub-tabs">${abas}</div>`
+        + `<div class="chub-acoes">${acoes}${alimentar}</div></div>${linhaSubs}`;
+}
+
+function _chubAcao(chave) {
+    const acao = _CHUB_ACOES.find(a => a.chave === chave);
+    if (acao) acao.abrir();
 }
 
 // ───── "Alimentar" ─────

@@ -2771,15 +2771,19 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 
 /* ───── BARRA DAS CONFERÊNCIAS ─────
    Desenhada dentro de cada tela de conferência (ver conferencias-hub.js), então
-   precisa do mesmo respiro lateral que o cabeçalho das telas e ficar colada no
-   topo: é ela que diz onde a pessoa está. */
+   precisa do mesmo respiro lateral do cabeçalho das telas.
+
+   Sem cor por transportadora: azul do sistema em tudo, igual ao resto. Uma cor
+   por transportadora aqui competiria com as cores que JÁ significam alguma
+   coisa nas telas de baixo (progresso, situação do pacote) — e a aba não
+   precisa de cor pra dizer qual está aberta, o preenchimento já diz. */
 .chub {
     /* flex-shrink: 0 porque .tela-full.active-view e uma coluna flex: sem isso a
        barra seria espremida pelo corpo da tela ate sumir. Nao e sticky - quem
        rola e o .fech-body, entao a barra ja fica parada no topo por natureza. */
     flex-shrink: 0; width: 100%;
     padding: 12px 22px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid var(--border);
 }
 .chub-topo {
     display: flex; align-items: center; justify-content: space-between;
@@ -2788,33 +2792,37 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 /* Rola na horizontal no celular em vez de quebrar em duas fileiras: com as
    abas empilhadas o conteúdo da tela nascia meia tela abaixo. */
 .chub-tabs {
-    display: flex; gap: 6px; overflow-x: auto; flex: 1 1 auto;
+    display: flex; gap: 4px; overflow-x: auto; flex: 1 1 auto;
     scrollbar-width: none; -ms-overflow-style: none;
 }
 .chub-tabs::-webkit-scrollbar { display: none; }
 .chub-tab {
     flex: 0 0 auto;
-    background: transparent; border: 1px solid transparent; border-radius: 8px 8px 0 0;
-    color: #8494a9; padding: 8px 14px 9px;
+    background: transparent; border: none; border-bottom: 2px solid transparent;
+    color: var(--text-muted); padding: 8px 14px 9px;
     font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
-    border-bottom: 2px solid transparent; transition: color .15s, background .15s;
+    transition: color .15s;
 }
-.chub-tab:hover { color: #cbd5e1; background: rgba(255,255,255,0.03); }
-.chub-tab.active {
-    color: var(--chub-c); border-bottom-color: var(--chub-c);
-    background: color-mix(in srgb, var(--chub-c) 10%, transparent);
-}
-.chub-alimentar {
-    flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px;
-    margin-bottom: 6px;
-    background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.35);
-    color: #34d399; border-radius: 10px; padding: 8px 14px;
+.chub-tab:hover:not(.active) { color: #cbd5e1; }
+.chub-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+/* Botões que não são transportadora: valem para todas elas. Ficam do outro lado
+   da barra justamente pra não parecerem mais uma transportadora na fila. */
+.chub-acoes { display: flex; gap: 8px; flex: 0 0 auto; margin-bottom: 6px; }
+.chub-acao {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    color: var(--text-muted); border-radius: var(--radius-sm); padding: 8px 14px;
     font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer;
+    transition: color .15s, border-color .15s;
 }
-.chub-alimentar:hover  { background: rgba(52,211,153,0.16); }
-.chub-alimentar.active { background: rgba(52,211,153,0.2); }
-/* O número de fontes atrasadas. Em vermelho porque é pendência, não contagem:
-   verde no botão inteiro faria a pendência passar batida. */
+.chub-acao:hover { color: #cbd5e1; border-color: var(--border-blue); }
+.chub-acao.active {
+    color: var(--blue); border-color: var(--border-blue);
+    background: rgba(58,134,255,0.1);
+}
+/* O número de fontes atrasadas. Vermelho porque é pendência, não contagem:
+   na cor do botão a pendência passaria batida. */
 .chub-badge {
     min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px;
     background: #ef4444; color: #fff;
@@ -2827,15 +2835,13 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .chub-subs::-webkit-scrollbar { display: none; }
 .chub-sub {
     flex: 0 0 auto;
-    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-    color: #8494a9; border-radius: 999px; padding: 5px 13px;
+    background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-muted); border-radius: 99px; padding: 6px 14px;
     font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+    transition: all .2s ease;
 }
-.chub-sub:hover { color: #cbd5e1; }
-.chub-sub.active {
-    color: #fff; border-color: transparent;
-    background: color-mix(in srgb, var(--chub-c) 82%, #000);
-}
+.chub-sub:hover:not(.active) { color: #cbd5e1; }
+.chub-sub.active { background: var(--blue); border-color: transparent; color: #fff; }
 
 /* Cartões do painel "Alimentar". A tarja colorida à esquerda é o estado da
    carga: dá pra varrer a tela e ver o que falta sem ler cada cartão. */

@@ -20,8 +20,8 @@ const vm = require("node:vm");
 // navegar.
 const arquivo = path.join(__dirname, "..", "js", "conferencias-hub.js");
 const fonte = fs.readFileSync(arquivo, "utf8") +
-    "\n;globalThis.__chub = { _CHUB_TRANSP, _CHUB_SUBS, _CHUB_TELAS, _chubHtml, _chubCardHtml," +
-    " _chubInfo, _chubTemAlimentar, _chubQuando, _chubEsc };";
+    "\n;globalThis.__chub = { _CHUB_TRANSP, _CHUB_SUBS, _CHUB_ACOES, _CHUB_TELAS, _chubHtml," +
+    " _chubCardHtml, _chubInfo, _chubTemAlimentar, _chubQuando, _chubEsc };";
 
 const contexto = vm.createContext({ globalThis: undefined, console });
 contexto.globalThis = contexto;
@@ -45,11 +45,16 @@ function fonteTeste(extra) {
     }, extra);
 }
 
-test("toda tela do mapa aponta pra uma sub-aba que existe", () => {
-    // Sub-aba inventada no mapa = nenhuma aba marcada, e a pessoa não sabe onde
-    // está. É o erro mais fácil de cometer ao adicionar tela nova.
+test("toda tela do mapa aponta pra uma sub-aba ou acao que existe", () => {
+    // Chave inventada no mapa = nenhuma aba marcada, e a pessoa nao sabe onde
+    // esta. E o erro mais facil de cometer ao adicionar tela nova.
     Object.entries(api._CHUB_TELAS).forEach(([tela, conf]) => {
         if (conf.alimentar) return;
+        if (conf.acao) {
+            assert.ok(api._CHUB_ACOES.some(a => a.chave === conf.acao),
+                `${tela}: acao "${conf.acao}" nao existe`);
+            return;
+        }
         const transp = conf.transp || "shopee";
         const subs = api._CHUB_SUBS[transp] || [];
         if (!subs.length) return;
@@ -58,10 +63,34 @@ test("toda tela do mapa aponta pra uma sub-aba que existe", () => {
     });
 });
 
-test("toda transportadora tem cor propria", () => {
-    const cores = api._CHUB_TRANSP.map(t => t.cor);
-    assert.strictEqual(new Set(cores).size, cores.length, "duas transportadoras com a mesma cor");
-    api._CHUB_TRANSP.forEach(t => assert.match(t.cor, /^#[0-9A-Fa-f]{6}$/));
+test("a barra nao pinta cor por transportadora", () => {
+    // Cor aqui competiria com as cores que ja significam estado nas telas de
+    // baixo (progresso, situacao do pacote). A aba aberta se distingue pelo
+    // preenchimento, nao pela cor da transportadora.
+    api._CHUB_TRANSP.forEach(t => assert.strictEqual(t.cor, undefined));
+    const html = api._chubHtml("shopee", { transp: "shopee", sub: "linehaul" });
+    assert.ok(!html.includes("--chub-c"), "sobrou variavel de cor por transportadora");
+    assert.ok(!/#[0-9A-Fa-f]{6}/.test(html), "sobrou cor fixa no HTML da barra");
+});
+
+test('"Entregadores" e acao, nao sub-aba da Shopee', () => {
+    // A conferencia do entregador pega a rota inteira - os pacotes das varias
+    // transportadoras que ele leva no mesmo carro. Dentro da Shopee, dizia que
+    // a coisa era da Shopee.
+    assert.ok(!api._CHUB_SUBS.shopee.some(s => s.chave === "entregadores"));
+    assert.ok(api._CHUB_ACOES.some(a => a.chave === "entregadores"));
+    const html = api._chubHtml("shopee", { transp: "shopee", sub: "linehaul" });
+    assert.match(html, /class="chub-acao"[^>]*onclick="_chubAcao\('entregadores'\)"/);
+});
+
+test("tela transversal nao marca aba de transportadora nenhuma", () => {
+    // Marcar uma diria que a pessoa esta dentro daquela transportadora.
+    ["tela-shopee-conf-entregadores", "tela-alimentar"].forEach(tela => {
+        const html = api._chubHtml("shopee", api._CHUB_TELAS[tela]);
+        assert.ok(!html.includes('class="chub-tab active"'), tela + " marcou aba");
+    });
+    assert.match(api._chubHtml("shopee", api._CHUB_TELAS["tela-shopee-conf-entregadores"]),
+        /class="chub-acao active"[^>]*onclick="_chubAcao\('entregadores'\)"/);
 });
 
 test("a aba da transportadora aberta vem marcada, e so ela", () => {
@@ -84,6 +113,8 @@ test("so a Shopee mostra sub-abas", () => {
     const shopee = api._chubHtml("shopee", { transp: "shopee", sub: "linehaul" });
     assert.match(shopee, /chub-subs/);
     assert.match(shopee, /class="chub-sub active"[^>]*onclick="_chubIrSub\('linehaul'\)"/);
+    // Tres sub-abas depois de "Entregadores" ter saido daqui.
+    assert.strictEqual(api._CHUB_SUBS.shopee.length, 3);
 
     // Nas outras a linha de baixo nem existe, em vez de nascer vazia.
     const imile = api._chubHtml("imile", { sub: "arquivo" });
@@ -97,8 +128,8 @@ test("a conferencia por arquivo da Shopee continua alcancavel", () => {
 });
 
 test('o botao "Alimentar" so aparece em quem tem arquivo pra alimentar', () => {
-    assert.match(api._chubHtml("shopee", { transp: "shopee", sub: "linehaul" }), /chub-alimentar/);
-    assert.ok(!api._chubHtml("anjun", { sub: "arquivo" }).includes("chub-alimentar"));
+    assert.match(api._chubHtml("shopee", { transp: "shopee", sub: "linehaul" }), /Alimentar</);
+    assert.ok(!api._chubHtml("anjun", { sub: "arquivo" }).includes("Alimentar<"));
     assert.strictEqual(api._chubTemAlimentar("shopee"), true);
     assert.strictEqual(api._chubTemAlimentar("loggi"), false);
 });
@@ -108,7 +139,7 @@ test("na tela de alimentar nenhuma sub-aba fica marcada", () => {
     // esta conferindo quando ela esta carregando arquivo.
     const html = api._chubHtml("shopee", { alimentar: true });
     assert.ok(!html.includes('class="chub-sub active"'));
-    assert.match(html, /class="chub-alimentar active"/);
+    assert.match(html, /class="chub-acao active"[^>]*onclick="abrirAlimentar/);
 });
 
 test("transportadora desconhecida cai na primeira, sem quebrar", () => {
