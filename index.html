@@ -41,7 +41,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260827a">
+<link rel="stylesheet" href="style.css?v=20260827b">
 </head>
 <body>
 
@@ -127,14 +127,10 @@ if (_BASE) {
                 <li><a href="#" data-rota="Shopee/AT" onclick="abrirShopeeAT(event)">AT Exportada</a></li>
                 <li><a href="#" data-rota="Shopee/Pedidos" onclick="abrirShopeePedidos(event)">Pedidos pesquisados</a></li>
             </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Conferência <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="subgroup-shopee-conferencia">
-                <li><a href="#" data-rota="Shopee/LineHaul" onclick="abrirShopeeLineHaul(event)">LineHaul</a></li>
-                <li><a href="#" data-rota="Shopee/Atribuicoes" onclick="abrirShopeeAtribuicoes(event)">Atribuições</a></li>
-                <li><a href="#" data-rota="Shopee/ConfEntregadores" onclick="abrirShopeeConfEntregadores(event)">Entregadores</a></li>
-            </ul>
+            <!-- As conferências da Shopee saíram daqui: viraram abas do menu
+                 "Conferências". As URLs (Shopee/LineHaul, Shopee/Atribuicoes,
+                 Shopee/ConfEntregadores) continuam valendo — link salvo e
+                 histórico do navegador seguem abrindo a tela certa. -->
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Pacotes Retidos <span class="subgroup-arrow">▾</span>
             </li>
@@ -158,23 +154,18 @@ if (_BASE) {
             <li><a href="#" onclick="_emBreve(event)">Na Rua</a></li>
         </ul>
 
-        <li class="menu-item" data-menu="conferencias" id="menu-conferencias" onclick="toggleMenu(this)">
+        <!-- Um item só, sem submenu: a transportadora virou aba dentro da tela.
+             Cada uma que entrasse aqui deixaria a barra lateral mais alta sem
+             dizer nada de novo. -->
+        <li class="menu-item" data-menu="conferencias" id="menu-conferencias" onclick="abrirConferenciasHub(event)">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
                 <rect x="9" y="3" width="6" height="4" rx="1"/>
                 <path d="M9 12l2 2 4-4"/>
             </svg>
             <span class="label">Conferências</span>
-            <span class="arrow">▾</span>
             <span class="menu-tooltip">Conferências</span>
         </li>
-        <ul class="submenu" data-menu="conferencias" id="submenu-conferencias">
-            <li><a href="#" data-rota="Conferencias/Loggi" onclick="abrirConferencias(event,'loggi')">Loggi</a></li>
-            <li><a href="#" data-rota="Conferencias/JT" onclick="abrirConferencias(event,'jt')">J&amp;T</a></li>
-            <li><a href="#" data-rota="Conferencias/Anjun" onclick="abrirConferencias(event,'anjun')">Anjun</a></li>
-            <li><a href="#" data-rota="Conferencias/Imile" onclick="abrirConferencias(event,'imile')">Imile</a></li>
-            <li><a href="#" data-rota="Conferencias/Shopee" onclick="abrirConferencias(event,'shopee')">Shopee</a></li>
-        </ul>
 
         <li class="menu-item" data-menu="fechamentos" id="menu-fechamentos" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24">
@@ -1481,6 +1472,22 @@ if (_BASE) {
         </div><!-- /tela-extravios-registros -->
 
         <!-- TELA CONFERÊNCIAS -->
+        <!-- ALIMENTAR: o que a operação precisa carregar hoje. A barra de abas
+             das conferências é desenhada aqui dentro por mostrarTela(). -->
+        <div id="tela-alimentar" class="view tela-full">
+            <div class="fech-header">
+                <div style="font-size:15px;font-weight:700;color:#e2e8f0" id="alim-titulo">Alimentar</div>
+                <div style="font-size:12.5px;color:var(--text-muted);margin-top:4px">
+                    Sem a carga do dia a conferência não tem com o que comparar — e mostra zero pacote,
+                    o que parece defeito de outra coisa.
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="alim-empty">Carregando...</div>
+                <div id="alim-lista" style="display:none"></div>
+            </div>
+        </div>
+
         <div id="tela-conferencias" class="view tela-full">
             <div class="fech-header">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -3739,9 +3746,9 @@ if (_BASE) {
         </div><!-- /tela-admin-antecipacoes -->
 
 <script src="js/core.js?v=20260820e"></script>
-<script src="js/router.js?v=20260820e"></script>
+<script src="js/router.js?v=30260827a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=20260820i"></script>
+<script src="js/nav.js?v=30260827a"></script>
 <script src="js/fechamentos.js?v=30260812d"></script>
 <script src="js/admin.js?v=30260812d"></script>
 <script src="js/conf-nf.js?v=30260812d"></script>
@@ -3768,6 +3775,7 @@ if (_BASE) {
 <script src="js/desempenho-bip.js?v=30260812d"></script>
 <script src="js/desempenho-hora.js?v=30260812d"></script>
 <script src="js/conferencias.js?v=30260812d"></script>
+<script src="js/conferencias-hub.js?v=30260827a"></script>
 <script src="js/antecipacoes.js?v=30260812d"></script>
 <script src="js/antecipacoes-admin.js?v=30260812d"></script>
 <script src="js/baixas.js?v=30260812d"></script>

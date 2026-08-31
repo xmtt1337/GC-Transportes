@@ -2769,6 +2769,109 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .cen-cluster-nome { font-size: 13.5px; font-weight: 700; color: #e2e8f0; }
 .cen-cluster-num  { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
+/* ───── BARRA DAS CONFERÊNCIAS ─────
+   Desenhada dentro de cada tela de conferência (ver conferencias-hub.js), então
+   precisa do mesmo respiro lateral que o cabeçalho das telas e ficar colada no
+   topo: é ela que diz onde a pessoa está. */
+.chub {
+    /* flex-shrink: 0 porque .tela-full.active-view e uma coluna flex: sem isso a
+       barra seria espremida pelo corpo da tela ate sumir. Nao e sticky - quem
+       rola e o .fech-body, entao a barra ja fica parada no topo por natureza. */
+    flex-shrink: 0; width: 100%;
+    padding: 12px 22px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.chub-topo {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+}
+/* Rola na horizontal no celular em vez de quebrar em duas fileiras: com as
+   abas empilhadas o conteúdo da tela nascia meia tela abaixo. */
+.chub-tabs {
+    display: flex; gap: 6px; overflow-x: auto; flex: 1 1 auto;
+    scrollbar-width: none; -ms-overflow-style: none;
+}
+.chub-tabs::-webkit-scrollbar { display: none; }
+.chub-tab {
+    flex: 0 0 auto;
+    background: transparent; border: 1px solid transparent; border-radius: 8px 8px 0 0;
+    color: #8494a9; padding: 8px 14px 9px;
+    font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+    border-bottom: 2px solid transparent; transition: color .15s, background .15s;
+}
+.chub-tab:hover { color: #cbd5e1; background: rgba(255,255,255,0.03); }
+.chub-tab.active {
+    color: var(--chub-c); border-bottom-color: var(--chub-c);
+    background: color-mix(in srgb, var(--chub-c) 10%, transparent);
+}
+.chub-alimentar {
+    flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px;
+    margin-bottom: 6px;
+    background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.35);
+    color: #34d399; border-radius: 10px; padding: 8px 14px;
+    font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer;
+}
+.chub-alimentar:hover  { background: rgba(52,211,153,0.16); }
+.chub-alimentar.active { background: rgba(52,211,153,0.2); }
+/* O número de fontes atrasadas. Em vermelho porque é pendência, não contagem:
+   verde no botão inteiro faria a pendência passar batida. */
+.chub-badge {
+    min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px;
+    background: #ef4444; color: #fff;
+    font-size: 11px; font-weight: 700; line-height: 17px; text-align: center;
+}
+.chub-subs {
+    display: flex; gap: 4px; overflow-x: auto; padding: 8px 0 10px;
+    scrollbar-width: none; -ms-overflow-style: none;
+}
+.chub-subs::-webkit-scrollbar { display: none; }
+.chub-sub {
+    flex: 0 0 auto;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    color: #8494a9; border-radius: 999px; padding: 5px 13px;
+    font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+}
+.chub-sub:hover { color: #cbd5e1; }
+.chub-sub.active {
+    color: #fff; border-color: transparent;
+    background: color-mix(in srgb, var(--chub-c) 82%, #000);
+}
+
+/* Cartões do painel "Alimentar". A tarja colorida à esquerda é o estado da
+   carga: dá pra varrer a tela e ver o que falta sem ler cada cartão. */
+.alim-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-left: 3px solid var(--alim-c);
+    border-radius: 12px; padding: 15px 17px; margin-bottom: 12px;
+}
+.alim-card-topo {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap; margin-bottom: 6px;
+}
+.alim-card-nome { font-size: 14.5px; font-weight: 700; color: #e2e8f0; }
+.alim-card-tag {
+    font-size: 11px; font-weight: 700; color: var(--alim-c);
+    background: color-mix(in srgb, var(--alim-c) 14%, transparent);
+    border-radius: 999px; padding: 3px 10px;
+}
+.alim-card-desc { font-size: 12.5px; color: #94a9bd; line-height: 1.5; }
+.alim-card-sustenta { color: #7b98b5; margin-top: 2px; }
+.alim-card-meta {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    font-size: 12px; color: #8494a9; margin-top: 9px;
+}
+.alim-card-meta strong { color: #cbd5e1; font-weight: 600; }
+.alim-card-modo {
+    font-size: 11.5px; color: #7b98b5; margin-top: 7px; font-style: italic;
+}
+.alim-card-btn { width: 100%; margin-top: 13px; }
+
+@media (max-width: 700px) {
+    .chub { padding: 10px 14px 0; }
+    .chub-alimentar { padding: 7px 11px; font-size: 12px; }
+}
+
 /* AT (Task ID) da rota do cluster. O entregador precisa dela na mão no galpão —
    pra ditar, colar num app ou mostrar o QR na tela. Quebra em duas linhas no
    celular estreito em vez de espremer o código, que é o que importa ler. */
