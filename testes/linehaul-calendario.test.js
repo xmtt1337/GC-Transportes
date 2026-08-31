@@ -21,7 +21,15 @@ const arquivo = path.join(__dirname, "..", "js", "shopee-linehaul.js");
 const fonte = fs.readFileSync(arquivo, "utf8") +
     "\n;globalThis.__slh = { _slhCalGrade, _slhMesVizinho, _slhMesDe, _slhBr };";
 
-const contexto = vm.createContext({ globalThis: undefined, console, Date });
+// O arquivo registra ouvintes no topo - as redes de seguranca que fecham o
+// calendario no Escape, no scroll e ao perder o foco. Stubs bastam pra ele
+// carregar: os testes exercitam so as funcoes puras, que nao tocam em DOM.
+const naoFazNada = () => {};
+const contexto = vm.createContext({
+    globalThis: undefined, console, Date,
+    document: { addEventListener: naoFazNada },
+    window: { addEventListener: naoFazNada },
+});
 contexto.globalThis = contexto;
 vm.runInContext(fonte, contexto, { filename: "shopee-linehaul.js" });
 const api = contexto.__slh;

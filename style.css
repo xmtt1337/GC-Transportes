@@ -2867,10 +2867,21 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .slh-cal-btn-sub { font-size: 11.5px; color: var(--text-muted); font-weight: 600; }
 .slh-cal-seta { font-size: 10px; color: var(--text-muted); }
 
-.slh-cal-painel {
-    margin-top: 10px; width: min(340px, 100%);
+/* O card flutuante. Mora no <body> e é position: fixed — o corpo da tela rola
+   com overflow, e um painel posicionado lá dentro sairia cortado pela borda.
+   No fluxo normal ele empurrava os cartões de resumo pra baixo toda vez que
+   abria, que é o que o card resolve. */
+.slh-cal-pop {
+    position: fixed; z-index: 1200; display: none;
+    width: min(340px, calc(100vw - 16px));
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 12px 14px 10px;
+    box-shadow: 0 18px 44px rgba(0,0,0,0.55);
+    animation: slhCalEntra .14s ease-out;
+}
+@keyframes slhCalEntra {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 .slh-cal-topo {
     display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;

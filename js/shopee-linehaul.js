@@ -200,13 +200,12 @@ function _slhCalRotulo(hoje) {
 
 function _slhRenderDias(hoje) {
     const el = document.getElementById("slh-dias");
-    if (!_slhDias.length) { el.style.display = "none"; return; }
+    if (!_slhDias.length) { el.style.display = "none"; _slhCalFechar(); return; }
     el.style.display = "";
     _slhHoje = hoje || "";
     if (!_slhCalMes) _slhCalMes = _slhMesDe(_slhDia, hoje);
 
     const r = _slhCalRotulo(hoje);
-
     el.innerHTML = `
         <div class="slh-cal-linha">
             <button type="button" class="slh-cal-btn${_slhCalAberto ? " aberto" : ""}" onclick="_slhCalAlternar()">
@@ -220,8 +219,9 @@ function _slhRenderDias(hoje) {
                 ${r.sub ? `<span class="slh-cal-btn-sub">${_slhEsc(r.sub)}</span>` : ""}
                 <span class="slh-cal-seta">▾</span>
             </button>
-        </div>
-        ${_slhCalAberto ? _slhCalPainel(hoje) : ""}`;
+        </div>`;
+
+    if (_slhCalAberto) _slhCalDesenharPop();
 }
 
 function _slhCalPainel(hoje) {
@@ -243,39 +243,118 @@ function _slhCalPainel(hoje) {
 
     const temHoje = _slhDias.some(d => d.dia === hoje);
     return `
-        <div class="slh-cal-painel">
-            <div class="slh-cal-topo">
-                <button type="button" class="slh-cal-nav" onclick="_slhCalMover(-1)" aria-label="Mês anterior">‹</button>
-                <span class="slh-cal-mes">${_slhEsc(titulo)}</span>
-                <button type="button" class="slh-cal-nav" onclick="_slhCalMover(1)" aria-label="Próximo mês">›</button>
-            </div>
-            <div class="slh-cal-grade">
-                ${_SLH_DOW.map(d => `<span class="slh-cal-dow">${d}</span>`).join("")}
-                ${celulas}
-            </div>
-            <div class="slh-cal-rodape">
-                <span class="slh-cal-legenda">O número menor é quantas TOs chegaram no dia.</span>
-                ${temHoje ? `<button type="button" class="slh-cal-hoje" onclick="_slhTrocarDia('${hoje}')">Hoje</button>` : ""}
-            </div>
+        <div class="slh-cal-topo">
+            <button type="button" class="slh-cal-nav" onclick="_slhCalMover(-1)" aria-label="Mês anterior">‹</button>
+            <span class="slh-cal-mes">${_slhEsc(titulo)}</span>
+            <button type="button" class="slh-cal-nav" onclick="_slhCalMover(1)" aria-label="Próximo mês">›</button>
+        </div>
+        <div class="slh-cal-grade">
+            ${_SLH_DOW.map(d => `<span class="slh-cal-dow">${d}</span>`).join("")}
+            ${celulas}
+        </div>
+        <div class="slh-cal-rodape">
+            <span class="slh-cal-legenda">O número menor é quantas TOs chegaram no dia.</span>
+            ${temHoje ? `<button type="button" class="slh-cal-hoje" onclick="_slhTrocarDia('${hoje}')">Hoje</button>` : ""}
         </div>`;
 }
 
+// ── O card flutuante ──
+//
+// O calendário mora no <body>, não dentro da tela. O corpo da tela rola com
+// overflow: um painel posicionado lá dentro sairia cortado pela borda, e no
+// fluxo normal ele empurrava os cartões de resumo pra baixo toda vez que abria.
+// É o mesmo caminho que o combo de entregador do Planejamento já usa.
+
+function _slhCalPop() {
+    let pop = document.getElementById("slh-cal-pop");
+    if (!pop) {
+        pop = document.createElement("div");
+        pop.id = "slh-cal-pop";
+        pop.className = "slh-cal-pop";
+        document.body.appendChild(pop);
+    }
+    return pop;
+}
+
+function _slhCalDesenharPop() {
+    const pop = _slhCalPop();
+    pop.innerHTML = _slhCalPainel(_slhHoje);
+    pop.style.display = "block";
+    _slhCalPosicionar();
+}
+
+/**
+ * Encosta o card no botão que o abriu.
+ *
+ * position: fixed, então as contas são em coordenadas de viewport — é o que
+ * faz o card ficar certo mesmo com a tela rolada. Vira pra cima quando não
+ * cabe embaixo: no celular o botão costuma estar na metade de baixo da tela, e
+ * um card de 380px abrindo pra baixo ficaria metade fora.
+ */
+function _slhCalPosicionar() {
+    const btn = document.querySelector("#slh-dias .slh-cal-btn");
+    const pop = document.getElementById("slh-cal-pop");
+    if (!btn || !pop || pop.style.display === "none") return;
+
+    const r = btn.getBoundingClientRect();
+    const margem = 8;
+    const largura = pop.offsetWidth;
+    const altura = pop.offsetHeight;
+
+    let left = Math.min(r.left, window.innerWidth - largura - margem);
+    left = Math.max(left, margem);
+
+    let top = r.bottom + 6;
+    if (top + altura > window.innerHeight - margem) {
+        const acima = r.top - altura - 6;
+        top = acima >= margem ? acima : Math.max(margem, window.innerHeight - altura - margem);
+    }
+
+    pop.style.left = left + "px";
+    pop.style.top = top + "px";
+}
+
+function _slhCalFechar() {
+    _slhCalAberto = false;
+    const pop = document.getElementById("slh-cal-pop");
+    if (pop) { pop.style.display = "none"; pop.innerHTML = ""; }
+    const btn = document.querySelector("#slh-dias .slh-cal-btn");
+    if (btn) btn.classList.remove("aberto");
+}
+
 function _slhCalAlternar() {
-    _slhCalAberto = !_slhCalAberto;
+    if (_slhCalAberto) { _slhCalFechar(); return; }
+    _slhCalAberto = true;
     // Reabrir sempre volta pro mês do dia escolhido: quem navegou até março e
     // fechou sem escolher não quer reabrir em março.
-    if (_slhCalAberto) _slhCalMes = _slhMesDe(_slhDia, _slhHoje);
+    _slhCalMes = _slhMesDe(_slhDia, _slhHoje);
     _slhRenderDias(_slhHoje);
 }
 
 function _slhCalMover(passo) {
     _slhCalMes = _slhMesVizinho(_slhCalMes, passo);
-    _slhRenderDias(_slhHoje);
+    _slhCalDesenharPop();
 }
+
+// Redes de segurança: qualquer coisa que mova o botão de lugar ou tire o foco
+// da página fecha o card, em vez de deixá-lo pairando sobre outra tela.
+document.addEventListener("pointerdown", e => {
+    if (!_slhCalAberto) return;
+    const pop = document.getElementById("slh-cal-pop");
+    if (pop && pop.contains(e.target)) return;
+    if (e.target.closest && e.target.closest("#slh-dias .slh-cal-btn")) return;
+    _slhCalFechar();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") _slhCalFechar(); });
+// Captura porque quem rola é o corpo da tela, não a janela — sem o true o
+// evento nunca chegaria aqui.
+window.addEventListener("scroll", () => { if (_slhCalAberto) _slhCalFechar(); }, true);
+window.addEventListener("resize", _slhCalPosicionar);
+window.addEventListener("blur", () => _slhCalFechar());
 
 function _slhTrocarDia(dia) {
     _slhDia = dia;
-    _slhCalAberto = false;
+    _slhCalFechar();
     _slhPagina = 1;
     _slhFora   = [];
     _slhNaoBip = [];
