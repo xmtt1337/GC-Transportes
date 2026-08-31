@@ -206,7 +206,6 @@ function _slhRenderDias(hoje) {
     if (!_slhCalMes) _slhCalMes = _slhMesDe(_slhDia, hoje);
 
     const r = _slhCalRotulo(hoje);
-    const todas = !_slhDia || _slhDia === "todas";
 
     el.innerHTML = `
         <div class="slh-cal-linha">
@@ -221,8 +220,6 @@ function _slhRenderDias(hoje) {
                 ${r.sub ? `<span class="slh-cal-btn-sub">${_slhEsc(r.sub)}</span>` : ""}
                 <span class="slh-cal-seta">▾</span>
             </button>
-            <button type="button" class="slh-cal-todos${todas ? " active" : ""}"
-                    onclick="_slhTrocarDia('todas')">Todos os romaneiros</button>
         </div>
         ${_slhCalAberto ? _slhCalPainel(hoje) : ""}`;
 }

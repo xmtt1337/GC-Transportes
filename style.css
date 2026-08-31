@@ -2866,18 +2866,9 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .slh-cal-btn.aberto { color: var(--blue); }
 .slh-cal-btn-sub { font-size: 11.5px; color: var(--text-muted); font-weight: 600; }
 .slh-cal-seta { font-size: 10px; color: var(--text-muted); }
-.slh-cal-todos {
-    background: transparent; border: 1px solid var(--border);
-    color: var(--text-muted); border-radius: var(--radius-sm); padding: 9px 14px;
-    font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
-}
-.slh-cal-todos:hover { color: #cbd5e1; }
-.slh-cal-todos.active {
-    background: rgba(58,134,255,0.1); border-color: var(--border-blue); color: var(--blue);
-}
 
 .slh-cal-painel {
-    margin-top: 10px; width: min(330px, 100%);
+    margin-top: 10px; width: min(340px, 100%);
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 12px 14px 10px;
 }
@@ -2900,10 +2891,16 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     padding-bottom: 4px;
 }
 /* Mesma caixa pra dia clicável e dia apagado: alturas diferentes fariam as
-   semanas dançarem conforme o mês tem ou não romaneiro. */
+   semanas dançarem conforme o mês tem ou não romaneiro.
+
+   Altura FIXA, não aspect-ratio. Com aspect-ratio o item de grid pede largura
+   a partir da altura da linha e, como min-width padrão é auto, a coluna cresce
+   junto: a grade estourava a largura do painel e os dias de sábado saíam pra
+   fora da borda. min-width:0 fecha a outra metade do mesmo problema. */
 .slh-cal-dia {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    aspect-ratio: 1; border-radius: 8px; border: 1px solid transparent;
+    min-width: 0; height: 40px;
+    border-radius: 8px; border: 1px solid transparent;
     font-family: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.1;
     background: transparent; padding: 0;
 }
