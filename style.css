@@ -2883,8 +2883,12 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 }
 .slh-cal-nav:hover { color: var(--text); border-color: var(--border-blue); }
 
+/* minmax(0, 1fr), nao 1fr: o "1fr" puro guarda um minimo automatico do tamanho
+   do conteudo, e qualquer propriedade da celula que peca largura (aspect-ratio
+   era o caso) infla a coluna e estoura o painel. Com minmax(0,...) a coluna nao
+   pode crescer alem de 1/7, aconteca o que acontecer dentro dela. */
 .slh-cal-grade {
-    display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+    display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px;
 }
 .slh-cal-dow {
     text-align: center; font-size: 10px; font-weight: 700; color: var(--text-dim);
