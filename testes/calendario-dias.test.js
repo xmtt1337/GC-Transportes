@@ -41,9 +41,9 @@ const api = contexto.__cal;
 /** Dias com romaneiro, no formato que o servidor devolve. */
 function dias() {
     return [
-        { dia: "2026-08-31", sub: "33 TOs" },
-        { dia: "2026-08-30", sub: "102 TOs" },
-        { dia: "2026-08-24", sub: "63 TOs" },
+        { dia: "2026-08-31", sub: "33",  resumo: "33 TOs" },
+        { dia: "2026-08-30", sub: "102", resumo: "102 TOs" },
+        { dia: "2026-08-24", sub: "63",  resumo: "63 TOs" },
     ];
 }
 
@@ -76,15 +76,34 @@ test("o texto miudo acompanha o dia", () => {
     // É o dado que a fita antiga mostrava (TOs, entregadores); se sumir, o
     // calendário vira um passo a mais sem nada em troca.
     const grade = soDias(api.gcCalGrade("2026-08", dias(), "", ""));
-    assert.strictEqual(grade.find((c) => c.dia === "2026-08-30").sub, "102 TOs");
-    assert.strictEqual(grade.find((c) => c.dia === "2026-08-24").sub, "63 TOs");
+    // O miudo da celula e curto; a frase inteira vive no resumo, que alimenta o
+    // botao e a dica. "19 entregadores" dentro de um quadrado de 40px vazava por
+    // cima dos dias vizinhos.
+    assert.strictEqual(grade.find((c) => c.dia === "2026-08-30").sub, "102");
+    assert.strictEqual(grade.find((c) => c.dia === "2026-08-30").resumo, "102 TOs");
+    assert.strictEqual(grade.find((c) => c.dia === "2026-08-24").sub, "63");
 });
 
-test("dia sem romaneiro vem zerado e marcado como sem", () => {
+test("dia sem dado vem vazio e marcado como sem", () => {
     const grade = soDias(api.gcCalGrade("2026-08", dias(), "", ""));
     const vinte = grade.find((c) => c.dia === "2026-08-20");
     assert.strictEqual(vinte.tem, false);
     assert.strictEqual(vinte.sub, "");
+    assert.strictEqual(vinte.resumo, "");
+});
+
+test("sem sub, a celula fica so com o numero do dia", () => {
+    // E o caso da tela de Entregadores: a contagem so cabe no botao.
+    const grade = soDias(api.gcCalGrade("2026-08", [{ dia: "2026-08-10", resumo: "19 entregadores" }], "", ""));
+    const dez = grade.find((c) => c.dia === "2026-08-10");
+    assert.strictEqual(dez.tem, true);
+    assert.strictEqual(dez.sub, "", "nada de miudo dentro da celula");
+    assert.strictEqual(dez.resumo, "19 entregadores");
+});
+
+test("sem resumo, o botao cai pro sub", () => {
+    const grade = soDias(api.gcCalGrade("2026-08", [{ dia: "2026-08-10", sub: "7" }], "", ""));
+    assert.strictEqual(grade.find((c) => c.dia === "2026-08-10").resumo, "7");
 });
 
 test("hoje e o dia escolhido sao marcados separadamente", () => {
@@ -102,6 +121,7 @@ test("dia com romaneiro que caia num mes zero-padded nao se perde", () => {
     // "2026-09-05" tem que casar com o dia 5, nao com "2026-09-5".
     const grade = soDias(api.gcCalGrade("2026-09", [{ dia: "2026-09-05", sub: "7" }], "", ""));
     assert.strictEqual(grade.find((c) => c.numero === 5).sub, "7");
+    assert.strictEqual(grade.find((c) => c.numero === 5).tem, true);
 });
 
 test("mes invalido devolve grade vazia em vez de quebrar", () => {

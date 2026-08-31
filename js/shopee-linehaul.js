@@ -114,7 +114,12 @@ function _slhRenderDias(hoje) {
     _slhHoje = hoje || "";
     gcCalMontar({
         alvo: "slh-dias",
-        dias: _slhDias.map(d => ({ dia: d.dia, sub: d.tos + " TO" + (d.tos !== 1 ? "s" : "") })),
+        // Na célula cabe o número; "TOs" fica no botão e na dica do dia.
+        dias: _slhDias.map(d => ({
+            dia: d.dia,
+            sub: String(d.tos),
+            resumo: d.tos + " TO" + (d.tos !== 1 ? "s" : ""),
+        })),
         dia: _slhDia,
         hoje: _slhHoje,
         legenda: "O número menor é quantas TOs chegaram no dia.",

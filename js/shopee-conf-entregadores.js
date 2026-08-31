@@ -102,13 +102,15 @@ function _sceFaixa(d) {
 function _sceRenderDias(hoje) {
     gcCalMontar({
         alvo: "sce-dias",
+        // Sem miúdo na célula: "19 entregadores" não cabe num quadrado de 40px e
+        // vazava por cima dos dias vizinhos. A contagem fica no botão e na dica
+        // de cada dia, onde há espaço pra ela.
         dias: _sceDias.map(d => ({
             dia: d.dia,
-            sub: d.entregadores + " entregador" + (d.entregadores !== 1 ? "es" : ""),
+            resumo: d.entregadores + " entregador" + (d.entregadores !== 1 ? "es" : ""),
         })),
         dia: _sceDia,
         hoje: hoje || "",
-        legenda: "O número menor é quantos entregadores tinham rota no dia.",
         aoEscolher: _sceTrocarDia,
     });
 }

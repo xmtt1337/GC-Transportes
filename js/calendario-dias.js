@@ -56,7 +56,7 @@ function gcCalMesVizinho(mes, passo) {
  * semana, que ninguém percebe olhando de relance.
  *
  * @param {string} mes "YYYY-MM"
- * @param {Array<{dia: string, sub?: string}>} dias Dias que têm dado.
+ * @param {Array<{dia: string, sub?: string, resumo?: string}>} dias Dias que têm dado.
  * @param {string} hoje
  * @param {string} selecionado
  * @return {Array<Object>} Vazias no começo ({vazio:true}) e depois uma por dia.
@@ -82,7 +82,11 @@ function gcCalGrade(mes, dias, hoje, selecionado) {
         celulas.push({
             dia,
             numero: n,
+            // `sub` é o miúdo DENTRO da célula e precisa ser curto — cabe um
+            // número, não uma frase. `resumo` é o texto do botão e da dica, onde
+            // sobra espaço pra "19 entregadores".
             sub: achado ? String(achado.sub ?? "") : "",
+            resumo: achado ? String(achado.resumo ?? achado.sub ?? "") : "",
             tem: !!achado,
             hoje: dia === hoje,
             selecionado: dia === selecionado,
@@ -96,7 +100,8 @@ function gcCalGrade(mes, dias, hoje, selecionado) {
  *
  * @param {Object} cfg
  * @param {string} cfg.alvo Id do contêiner (um <div> vazio na tela).
- * @param {Array<{dia: string, sub?: string}>} cfg.dias Dias que existem.
+ * @param {Array<{dia: string, sub?: string, resumo?: string}>} cfg.dias Dias que existem.
+ *        `sub` = miúdo na célula (curto); `resumo` = texto do botão e da dica.
  * @param {string} cfg.dia Dia escolhido.
  * @param {string} cfg.hoje
  * @param {Function} cfg.aoEscolher Chamado com o dia clicado.
@@ -113,7 +118,7 @@ function gcCalMontar(cfg) {
 
     const escolhido = (cfg.dias || []).find(d => d.dia === cfg.dia);
     const titulo = !cfg.dia ? "Escolher dia" : cfg.dia === cfg.hoje ? "Hoje" : gcCalBr(cfg.dia);
-    const sub = escolhido ? String(escolhido.sub ?? "") : "";
+    const sub = escolhido ? String(escolhido.resumo ?? escolhido.sub ?? "") : "";
 
     el.innerHTML = `
         <div class="slh-cal-linha">
@@ -147,7 +152,7 @@ function _gcCalPainel() {
         // Dia sem dado não vira botão: clicar levaria a uma tela vazia.
         if (!c.tem) return `<span class="${classes.join(" ")}">${c.numero}</span>`;
         return `<button type="button" class="${classes.join(" ")}" onclick="gcCalEscolher('${c.dia}')"
-                        title="${_gcCalEsc(c.sub)}">${c.numero}${c.sub ? `<small>${_gcCalEsc(c.sub)}</small>` : ""}</button>`;
+                        title="${_gcCalEsc(c.resumo)}">${c.numero}${c.sub ? `<small>${_gcCalEsc(c.sub)}</small>` : ""}</button>`;
     }).join("");
 
     const temHoje = (cfg.dias || []).some(d => d.dia === cfg.hoje);
