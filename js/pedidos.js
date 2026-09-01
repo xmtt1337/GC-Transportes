@@ -9,7 +9,7 @@ const _PED_TRANSP_CORES = { loggi:'#12A5E8', anjun:'#22C55E', imile:'#9333EA', j
 function abrirPesquisarPedidos(event) {
     if (event) event.preventDefault();
     mostrarTela('tela-pesquisar-pedidos');
-    document.getElementById('titulo-pagina').innerText = 'Pedidos bipados';
+    document.getElementById('titulo-pagina').innerText = 'Histórico de pedidos';
     _pedCarregar();
 }
 

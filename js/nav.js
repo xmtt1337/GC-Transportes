@@ -34,7 +34,7 @@ const _TELA_TITULOS = {
     "tela-shopee-atribuicoes":   "Shopee — Atribuições",
     "tela-shopee-avariado":      "Shopee — Item Avariado",
     "tela-bipagens":             "Separação",
-    "tela-pesquisar-pedidos":    "Pesquisar Pedidos",
+    "tela-pesquisar-pedidos":    "Histórico de pedidos",
     "tela-desempenho-bip":       "Desempenho",
     "tela-alimentar":            "Alimentar",
     "tela-antecipacoes":         "Solicitar Antecipação",
