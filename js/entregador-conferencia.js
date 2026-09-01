@@ -340,8 +340,11 @@ function _cenPintarRota(rota, qtdClusters) {
     barra.style.width = (semTotal ? 0 : (feitos && pct < 1 ? 1 : Math.min(100, pct))) + "%";
     barra.style.background = cor;
 
+    const novos = (rota.clusters_novos || []).length;
     document.getElementById("cen-rota-btn").textContent =
-        rota.encerrada ? "Ver conferência" : rota.sessao_id ? "Continuar conferência" : "Começar conferência";
+        novos ? `Conferir ${novos} cluster${novos !== 1 ? "s" : ""} que chegou depois`
+        : rota.encerrada ? "Ver conferência"
+        : rota.sessao_id ? "Continuar conferência" : "Começar conferência";
 }
 
 // Percentual exato, no formato 0,00% — 100% sem casas, que é como o resto do sistema mostra.
@@ -355,7 +358,13 @@ function _cenPctTexto(pct) {
 function _cenAbrirRota(botao) {
     // Rota já encerrada abre em modo consulta, direto pelo id. Chamar o POST aqui abriria
     // uma conferência nova do mesmo dia em cima de uma que a pessoa já fechou.
-    if (_cenRota.encerrada && _cenRota.sessao_id) {
+    //
+    // A exceção é ter chegado cluster DEPOIS de ele encerrar: aí o POST é o caminho
+    // certo, porque o servidor reabre a mesma sessão com o cluster novo dentro.
+    // Sem isso ele via o cluster na lista e a tela só oferecia "Ver conferência" —
+    // e a conferência fechada recusa bipe.
+    const chegouCluster = (_cenRota.clusters_novos || []).length > 0;
+    if (_cenRota.encerrada && _cenRota.sessao_id && !chegouCluster) {
         _cenSessao = { id: _cenRota.sessao_id, alvo: _cenRota.alvo, encerrada_em: true };
         _cenBipagens = [];
         _cenFaltantes = [];
