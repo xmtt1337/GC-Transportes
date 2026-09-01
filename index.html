@@ -42,6 +42,45 @@ if (_BASE) {
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
 <link rel="stylesheet" href="style.css?v=20260901a">
+
+<!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
+     Todo asset tem ?v=, mas quem CARREGA os ?v= é este arquivo — e ele não tem
+     versão nenhuma. Uma cópia em cache do index.html prende o site inteiro numa
+     versão antiga: bumpar o ?v= de um script não adianta, porque o index velho
+     continua pedindo o script velho. O sintoma é sempre o mesmo: a correção
+     está publicada, o servidor serve certo, e a pessoa continua vendo o bug.
+
+     O carimbo abaixo é trocado pelo commit no deploy (ver .github/workflows).
+     Se a versão publicada em versao.json não bater com a desta página, ela
+     recarrega uma vez. O sessionStorage impede laço: se depois de recarregar
+     ainda não bater, para e deixa como está — melhor uma tela velha do que uma
+     tela que recarrega sozinha pra sempre. -->
+<meta name="gc-versao" content="__VERSAO__">
+<script>
+(function () {
+    var meta = document.querySelector('meta[name="gc-versao"]');
+    var daPagina = meta ? meta.getAttribute("content") : null;
+    // A sentinela é montada em pedaços de propósito: o sed do deploy troca
+    // TODA ocorrência do carimbo, e se ela aparecesse inteira aqui viraria o
+    // mesmo valor do meta — a comparação daria sempre igual e a checagem
+    // morreria em silêncio, que é justamente o que ela existe pra evitar.
+    var SEM_CARIMBO = "__" + "VERSAO" + "__";
+    // Sem carimbo (arquivo aberto direto do repo, fora do deploy) não há o que comparar.
+    if (!daPagina || daPagina === SEM_CARIMBO) return;
+
+    fetch("versao.json", { cache: "no-store" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+            if (!d || !d.versao || d.versao === daPagina) return;
+            var tentada = null;
+            try { tentada = sessionStorage.getItem("gc_versao_tentada"); } catch (e) {}
+            if (tentada === d.versao) return;
+            try { sessionStorage.setItem("gc_versao_tentada", d.versao); } catch (e) {}
+            location.reload();
+        })
+        .catch(function () {});
+}());
+</script>
 </head>
 <body>
 

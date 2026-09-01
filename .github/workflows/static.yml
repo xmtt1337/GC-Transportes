@@ -33,6 +33,16 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      # Carimba a versao publicada. O index.html nao tem ?v= e por isso fica
+      # preso no cache do navegador, prendendo junto todos os assets numa versao
+      # antiga. Com o carimbo, a propria pagina percebe que esta velha e
+      # recarrega uma vez. Ver o comentario no <head> do index.html.
+      - name: Carimbar versao
+        run: |
+          VERSAO="${GITHUB_SHA::7}"
+          echo "{\"versao\":\"$VERSAO\"}" > versao.json
+          sed -i "s/__VERSAO__/$VERSAO/g" index.html
+          echo "Publicando versao $VERSAO"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
