@@ -300,17 +300,23 @@ async function _pedExportarComDatas(de, ate) {
     btn.innerText = 'Exportando...';
 
     try {
-        let url = API + '/pedidos/lista';
-        if (de && ate) url += `?de=${de}&ate=${ate}`;
+        // exportar=1: o Excel leva o período INTEIRO. O teto da tela existe pro
+        // navegador conseguir desenhar a tabela, e planilha cortada pela metade
+        // é pior do que demorar pra gerar.
+        let url = API + '/pedidos/lista?exportar=1';
+        if (de && ate) url += `&de=${de}&ate=${ate}`;
 
         const res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
         const corpo = await res.json();
         if (!res.ok) throw new Error(corpo.error);
         const dados = corpo.eventos || [];
         if (!dados.length) { alert('Nenhum registro nesse período.'); btn.disabled = false; btn.innerHTML = txtOriginal; return; }
-        // O teto da consulta vale pro Excel também: exportar 5.000 achando que
-        // são todos é pior do que saber que foi cortado.
-        if (corpo.truncado) alert(`A exportação traz os ${corpo.teto.toLocaleString('pt-BR')} mais recentes. Reduza o período para levar tudo.`);
+        // Sem corte, mas com aviso quando o volume é o bastante pra travar o
+        // navegador na hora de montar a planilha. Quem decide é quem exporta.
+        if (dados.length > 50000 &&
+            !confirm(`São ${dados.length.toLocaleString('pt-BR')} registros. Gerar a planilha pode demorar e travar o navegador. Continuar?`)) {
+            btn.disabled = false; btn.innerHTML = txtOriginal; return;
+        }
 
         const rows = dados.map(r => ({
             'Código':     r.codigo       || '',
