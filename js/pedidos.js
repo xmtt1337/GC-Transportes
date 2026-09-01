@@ -136,7 +136,8 @@ function _pedRenderizar(rows, filtrando) {
         document.getElementById('ped-counter').innerText = 'Nenhum registro com esse filtro';
         document.getElementById('ped-tbody').innerHTML =
             `<tr><td colspan="5" style="text-align:center;padding:26px;color:#8494a9">
-                Nenhum registro com esse filtro.
+                Nenhum registro com esse filtro nos carregados.
+                Digite o código inteiro para procurar no sistema todo.
                 <button type="button" onclick="_pedLimparBusca()"
                         style="margin-left:10px;background:rgba(58,134,255,0.1);border:1px solid rgba(58,134,255,0.35);color:#5d9aff;border-radius:8px;padding:5px 12px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Limpar busca</button>
             </td></tr>`;
@@ -197,20 +198,98 @@ function _pedProximaPagina() {
     _pedRenderizarPagina();
 }
 
+// Tamanho mínimo pra valer uma ida ao servidor. Abaixo disso o termo é vago
+// demais — "BR2" casaria com meia base — e a busca por código não ajudaria.
+const _PED_MIN_BUSCA = 6;
+
+let _pedBuscaTimer = null;
+let _pedBuscaAtual = 0;   // corrida: só a resposta da última digitação vale
+
+/**
+ * Filtra o que está na tela e, se não achar nada, pergunta ao servidor.
+ *
+ * O filtro local sozinho MENTIA: ele só enxerga os registros carregados, que
+ * têm teto de 5.000. Um código real, mas mais antigo que os 5.000 últimos,
+ * aparecia como "nenhum registro" — e "não achei aqui" virava "não existe",
+ * que é a pior resposta possível numa tela de investigação.
+ *
+ * A busca no servidor não tem teto nem período: vai na view inteira.
+ */
 function _pedFiltrarLocal() {
-    const termo = document.getElementById('ped-filtro-input').value.trim().toLowerCase();
+    const bruto = document.getElementById('ped-filtro-input').value.trim();
+    const termo = bruto.toLowerCase();
+
+    clearTimeout(_pedBuscaTimer);
+    _pedBuscaAtual++;
+
     if (!termo) { _pedRenderizar(_pedDados); return; }
+
     const filtrado = _pedDados.filter(r =>
         (r.codigo       || '').toLowerCase().includes(termo) ||
         (r.etapa_rotulo || '').toLowerCase().includes(termo) ||
         (r.detalhe      || '').toLowerCase().includes(termo) ||
         (r.usuario      || '').toLowerCase().includes(termo)
     );
-    _pedRenderizar(filtrado, true);
+    if (filtrado.length) { _pedRenderizar(filtrado, true); return; }
+
+    if (bruto.length < _PED_MIN_BUSCA) { _pedRenderizar([], true); return; }
+
+    // Nada na página: pode ser código antigo. Pergunta ao servidor, com uma
+    // pausa pra não disparar uma consulta por tecla digitada.
+    _pedRenderizarBuscando(bruto);
+    const meu = _pedBuscaAtual;
+    _pedBuscaTimer = setTimeout(() => _pedBuscarNoServidor(bruto, meu), 400);
+}
+
+function _pedRenderizarBuscando(termo) {
+    document.getElementById('ped-empty').style.display = 'none';
+    document.getElementById('ped-lista').style.display = '';
+    document.getElementById('ped-counter').innerText = 'Procurando no sistema inteiro...';
+    document.getElementById('ped-tbody').innerHTML =
+        `<tr><td colspan="5" style="text-align:center;padding:26px;color:#8494a9">Procurando ${_pedEsc(termo)} fora do período carregado...</td></tr>`;
+    document.getElementById('ped-pagina-info').innerText = '';
+}
+
+function _pedBuscarNoServidor(termo, meu) {
+    fetch(API + '/pedidos/buscar?codigo=' + encodeURIComponent(termo), {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json().then(b => ({ ok: r.ok, b })))
+    .then(({ ok, b }) => {
+        // Chegou depois de a pessoa continuar digitando: a resposta é de outro
+        // termo e mostrá-la seria pior do que não mostrar nada.
+        if (meu !== _pedBuscaAtual) return;
+        if (!ok || !Array.isArray(b) || !b.length) {
+            _pedRenderizarNadaNoSistema(termo);
+            return;
+        }
+        _pedRenderizar(b.map(_pedCompat), true);
+        document.getElementById('ped-counter').innerText =
+            `${b.length} registro${b.length !== 1 ? 's' : ''} de ${termo} — busca no sistema inteiro`;
+    })
+    .catch(() => {
+        if (meu !== _pedBuscaAtual) return;
+        document.getElementById('ped-tbody').innerHTML =
+            `<tr><td colspan="5" style="text-align:center;padding:26px;color:#8494a9">Erro ao conectar com o servidor.</td></tr>`;
+    });
+}
+
+function _pedRenderizarNadaNoSistema(termo) {
+    document.getElementById('ped-counter').innerText = 'Nada encontrado';
+    document.getElementById('ped-tbody').innerHTML =
+        `<tr><td colspan="5" style="text-align:center;padding:26px;color:#8494a9">
+            <strong style="color:#cbd5e1">${_pedEsc(termo)}</strong> nunca foi bipado no sistema —
+            nem no recebimento, nem em conferência nenhuma.
+            <button type="button" onclick="_pedLimparBusca()"
+                    style="margin-left:10px;background:rgba(58,134,255,0.1);border:1px solid rgba(58,134,255,0.35);color:#5d9aff;border-radius:8px;padding:5px 12px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Limpar busca</button>
+        </td></tr>`;
+    document.getElementById('ped-pagina-info').innerText = '';
 }
 
 function _pedLimparBusca() {
     document.getElementById('ped-filtro-input').value = '';
+    clearTimeout(_pedBuscaTimer);
+    _pedBuscaAtual++;
     _pedRenderizar(_pedDados);
 }
 
