@@ -2949,6 +2949,49 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     font-family: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
 }
 
+/* ───── SHOPEE > STUCK ─────
+   A tabela tem nove colunas e a Justificativa é a única editável. O seletor é
+   estreito de propósito: a frase inteira tem até 70 caracteres e empurraria as
+   outras colunas pra fora da tela — o texto completo fica no title. */
+.sst-tabela td, .sst-tabela th { white-space: nowrap; }
+.sst-just {
+    max-width: 190px; width: 100%;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 5px 8px;
+    font-family: inherit; font-size: 12px; cursor: pointer;
+}
+.sst-just:hover  { border-color: var(--border-blue); }
+.sst-just:disabled { opacity: .5; cursor: progress; }
+/* Verde por um instante = gravou na planilha. Sem isso não há como saber se o
+   clique chegou lá, e a pessoa clica de novo. */
+.sst-just.ok   { border-color: rgba(34,197,94,0.6); }
+.sst-just.erro { border-color: rgba(239,68,68,0.6); }
+
+.sst-hist-btn {
+    background: rgba(58,134,255,0.1); border: 1px solid var(--border-blue);
+    color: var(--blue); border-radius: 8px; padding: 5px 12px;
+    font-family: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+}
+.sst-hist-btn:hover { background: rgba(58,134,255,0.2); }
+
+/* Linha do tempo do pedido. A tarja colorida à esquerda é a etapa: dá pra
+   varrer a lista e ver "passou pelo recebimento, nunca foi conferido". */
+.sst-evento {
+    border-left: 3px solid var(--sst-c);
+    background: rgba(255,255,255,0.02);
+    border-radius: 0 10px 10px 0; padding: 10px 14px; margin-bottom: 8px;
+}
+.sst-evento-topo {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap;
+}
+.sst-evento-etapa { font-size: 13px; font-weight: 700; color: var(--sst-c); }
+.sst-evento-quando {
+    font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.sst-evento-detalhe { font-size: 12.5px; color: #cbd5e1; margin-top: 3px; }
+.sst-evento-quem { font-size: 11.5px; color: var(--text-dim); margin-top: 3px; }
+
 /* Cartões do painel "Alimentar". A tarja colorida à esquerda é o estado da
    carga: dá pra varrer a tela e ver o que falta sem ler cada cartão. */
 .alim-card {

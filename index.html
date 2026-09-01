@@ -41,7 +41,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260827h">
+<link rel="stylesheet" href="style.css?v=20260901a">
 </head>
 <body>
 
@@ -140,6 +140,7 @@ if (_BASE) {
             <ul class="sub-submenu" id="subgroup-shopee-retidos">
                 <li><a href="#" data-rota="Shopee/ItemAvariado" onclick="abrirShopeeAvariado(event)">Item Avariado</a></li>
             </ul>
+            <li><a href="#" data-rota="Shopee/Stuck" onclick="abrirShopeeStuck(event)">Stuck</a></li>
         </ul>
 
         <li class="menu-item" data-menu="pedidos" id="menu-pedidos" onclick="toggleMenu(this)">
@@ -2734,6 +2735,46 @@ if (_BASE) {
         <!-- TELA SHOPEE — PACOTES RETIDOS → ITEM AVARIADO -->
         <!-- Bipar aqui tira o pacote de TODA conferência (galpão e entregador), por isso o
              aviso fica em destaque no card: quem bipa precisa saber que não é só um registro. -->
+        <!-- SHOPEE > STUCK: os pedidos parados, direto da planilha da operacao da
+             Shopee. A unica coluna que o sistema escreve la e a Justificativa. -->
+        <div id="tela-shopee-stuck" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                    <div>
+                        <div style="font-size:15px;font-weight:700;color:#e2e8f0">Pedidos parados (Stuck)</div>
+                        <div style="font-size:12.5px;color:var(--text-muted);margin-top:3px">
+                            Base <strong id="sst-estacao">—</strong> · a justificativa vai direto para a planilha da Shopee.
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                        <span id="sst-contador" style="font-size:12px;color:var(--text-muted)"></span>
+                        <div class="adm-search-input-area" style="max-width:260px">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="sst-busca" placeholder="Pedido, cidade, motorista..." autocomplete="off" oninput="_sstFiltrar()">
+                        </div>
+                        <button type="button" class="shr-pag-btn" onclick="_sstCarregar()">Recarregar</button>
+                    </div>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="sst-empty">Carregando...</div>
+                <div id="sst-conteudo" style="display:none">
+                    <div class="adm-nf-wrap">
+                        <table class="adm-nf-table sst-tabela">
+                            <thead>
+                                <tr>
+                                    <th>Estacao</th><th>Cidade</th><th>Pedido</th><th>Status</th>
+                                    <th style="text-align:center">Dias</th><th>Motorista</th><th>Valor</th>
+                                    <th>Justificativa</th><th>Historico</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sst-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="tela-shopee-avariado" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
                 <div class="bip-scan-card shr-scan-card">
@@ -3752,9 +3793,9 @@ if (_BASE) {
         </div><!-- /tela-admin-antecipacoes -->
 
 <script src="js/core.js?v=20260820e"></script>
-<script src="js/router.js?v=30260901b"></script>
+<script src="js/router.js?v=30260901c"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=30260901a"></script>
+<script src="js/nav.js?v=30260901b"></script>
 <script src="js/fechamentos.js?v=30260812d"></script>
 <script src="js/admin.js?v=30260812d"></script>
 <script src="js/conf-nf.js?v=30260812d"></script>
@@ -3797,6 +3838,7 @@ if (_BASE) {
 <script src="js/shopee-atribuicoes.js?v=30260827b"></script>
 <script src="js/shopee-retidos.js?v=30260819f"></script>
 <script src="js/shopee-conf-entregadores.js?v=30260827b"></script>
+<script src="js/shopee-stuck.js?v=30260901a"></script>
 <script src="js/entregador-conferencia.js?v=30260901a"></script>
 <script src="js/viagens.js?v=30260812d"></script>
 <script src="js/ocorrencias.js?v=30260812d"></script>
@@ -4189,6 +4231,18 @@ if (_BASE) {
         <div class="usr-modal-btns">
             <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-editar-role-gc')">Cancelar</button>
             <button class="usr-modal-btn-primary" id="erg-btn-salvar" onclick="_salvarRoleGC()">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: HISTORICO DO PEDIDO (Shopee > Stuck) -->
+<div class="usr-modal-overlay" id="modal-sst-historico" onclick="_fecharModalSeBackdrop(event,'modal-sst-historico')">
+    <div class="usr-modal" style="max-width:560px">
+        <div class="usr-modal-title">Histórico do pedido</div>
+        <div class="usr-modal-sub" id="sst-hist-codigo" style="font-family:ui-monospace,Menlo,Consolas,monospace;color:#e2e8f0;font-weight:600"></div>
+        <div id="sst-hist-corpo" style="max-height:60vh;overflow:auto;margin-top:14px"></div>
+        <div class="usr-modal-btns">
+            <button class="usr-modal-btn-primary" onclick="_fecharModal('modal-sst-historico')">Fechar</button>
         </div>
     </div>
 </div>
