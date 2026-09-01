@@ -143,7 +143,7 @@ test("na tela de alimentar nenhuma sub-aba fica marcada", () => {
     // esta conferindo quando ela esta carregando arquivo.
     const html = api._chubHtml("shopee", { alimentar: true });
     assert.ok(!html.includes('class="chub-sub active"'));
-    assert.match(html, /class="chub-acao active"[^>]*onclick="abrirAlimentar/);
+    assert.match(html, /class="chub-acao active"[^>]*onclick="abrirPainelAlimentar/);
 });
 
 test("transportadora desconhecida cai na primeira, sem quebrar", () => {

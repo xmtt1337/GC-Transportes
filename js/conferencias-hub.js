@@ -162,7 +162,7 @@ function _chubHtml(transp, conf) {
                 onclick="_chubAcao('${a.chave}')">${_chubEsc(a.rotulo)}</button>`).join("");
 
     const alimentar = _chubTemAlimentar(transp) ? `
-        <button type="button" class="chub-acao${conf.alimentar ? " active" : ""}" onclick="abrirAlimentar(event)">
+        <button type="button" class="chub-acao${conf.alimentar ? " active" : ""}" onclick="abrirPainelAlimentar(event)">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
                  stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -215,7 +215,12 @@ function _chubCarregarStatus(transp, forcar) {
     });
 }
 
-function abrirAlimentar(event) {
+// Nome com "Painel" de proposito: abrirAlimentar ja existe no alimentar.js, que
+// e a tela de Alimentar Separacao do menu Operacao (a que abastece as bipagens).
+// Como este arquivo carrega depois, uma funcao de mesmo nome SOBRESCREVE a outra
+// em silencio - e foi o que aconteceu: clicar em "Alimentar separacao > Loggi"
+// abria este painel.
+function abrirPainelAlimentar(event) {
     if (event) event.preventDefault();
     document.getElementById("alim-titulo").innerText = "Alimentar — " + _chubInfo(_chubTransp).rotulo;
     mostrarTela("tela-alimentar", "Conferencias/Alimentar");
