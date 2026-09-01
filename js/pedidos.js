@@ -35,6 +35,27 @@ const _PED_ETAPA_CORES = {
 
 let _pedTruncado = 0;
 
+/**
+ * Resposta antiga (só bipagem de separação) no formato novo.
+ *
+ * COMPATIBILIDADE TEMPORÁRIA: dá pra apagar isto depois que o servidor novo
+ * estiver de pé há um tempo. Sem o mapeamento, as linhas antigas apareceriam
+ * com Etapa, O que foi e Quem em branco — o que parece tela quebrada, pior do
+ * que a lista vazia que já acontecia.
+ */
+function _pedCompat(r) {
+    if (r && r.etapa) return r;
+    return {
+        codigo:       r.codigo,
+        etapa:        'bipagem',
+        etapa_rotulo: 'Bipagem de separação',
+        detalhe:      [r.transportadora, r.entregador, r.cidade].filter(Boolean).join(' · '),
+        usuario:      r.usuario_nome || null,
+        quando:       r.bipado_em || null,
+        quando_texto: null,
+    };
+}
+
 function _pedEsc(t) {
     return String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
@@ -75,10 +96,16 @@ async function _pedCarregar() {
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        // A resposta agora traz o corte junto: sete fontes num mês passam fácil
-        // do teto, e cortar em silêncio faria a lista parecer completa.
-        _pedDados = data.eventos || [];
-        _pedTruncado = data.truncado ? (data.teto || 0) : 0;
+        // A resposta traz o corte junto: sete fontes num mês passam fácil do
+        // teto, e cortar em silêncio faria a lista parecer completa.
+        //
+        // Aceita as duas formas de propósito. O site publica antes do servidor
+        // (GitHub Pages é rápido, o Render sobe depois), e nessa janela a tela
+        // nova recebia a resposta antiga em forma de array — `data.eventos` dava
+        // undefined e a lista nascia VAZIA, como se não houvesse bipagem
+        // nenhuma. Página em cache faz o mesmo.
+        _pedDados = (Array.isArray(data) ? data : (data.eventos || [])).map(_pedCompat);
+        _pedTruncado = (!Array.isArray(data) && data.truncado) ? (data.teto || 0) : 0;
         _pedRenderizar(_pedDados);
     } catch (err) {
         emptyEl.innerText = err.name === 'AbortError'
@@ -87,12 +114,35 @@ async function _pedCarregar() {
     }
 }
 
-function _pedRenderizar(rows) {
+/**
+ * @param {Array} rows Registros a mostrar.
+ * @param {boolean=} filtrando Veio de um filtro digitado, não do carregamento.
+ *
+ * A diferença importa: o campo de busca mora DENTRO de #ped-lista. Esconder a
+ * lista quando o filtro não acha nada levava o campo junto — e a pessoa ficava
+ * sem como apagar o termo ou procurar outro código. Filtro vazio agora mantém
+ * a lista de pé e explica dentro da tabela.
+ */
+function _pedRenderizar(rows, filtrando) {
     const emptyEl = document.getElementById('ped-empty');
     const listaEl = document.getElementById('ped-lista');
 
     _pedFiltrados = rows;
     _pedPagina = 1;
+
+    if (!rows.length && filtrando) {
+        emptyEl.style.display = 'none';
+        listaEl.style.display = '';
+        document.getElementById('ped-counter').innerText = 'Nenhum registro com esse filtro';
+        document.getElementById('ped-tbody').innerHTML =
+            `<tr><td colspan="5" style="text-align:center;padding:26px;color:#8494a9">
+                Nenhum registro com esse filtro.
+                <button type="button" onclick="_pedLimparBusca()"
+                        style="margin-left:10px;background:rgba(58,134,255,0.1);border:1px solid rgba(58,134,255,0.35);color:#5d9aff;border-radius:8px;padding:5px 12px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Limpar busca</button>
+            </td></tr>`;
+        document.getElementById('ped-pagina-info').innerText = '';
+        return;
+    }
 
     if (!rows.length) {
         skFim(emptyEl, 'Nenhum pedido bipado no período.');
@@ -156,7 +206,12 @@ function _pedFiltrarLocal() {
         (r.detalhe      || '').toLowerCase().includes(termo) ||
         (r.usuario      || '').toLowerCase().includes(termo)
     );
-    _pedRenderizar(filtrado);
+    _pedRenderizar(filtrado, true);
+}
+
+function _pedLimparBusca() {
+    document.getElementById('ped-filtro-input').value = '';
+    _pedRenderizar(_pedDados);
 }
 
 async function _pedExportarComDatas(de, ate) {
