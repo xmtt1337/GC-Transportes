@@ -34,6 +34,30 @@ const _PED_ETAPA_CORES = {
 };
 
 let _pedTruncado = 0;
+let _pedEtapa = '';
+
+/**
+ * Preenche o seletor com as etapas que o servidor conhece.
+ *
+ * A lista vem de la de proposito: etapa nova na view aparece aqui sozinha, sem
+ * ninguem lembrar de copiar a chave pro frontend.
+ */
+function _pedMontarEtapas(etapas) {
+    const sel = document.getElementById('ped-etapa');
+    if (!sel || !etapas.length || sel.dataset.montado === '1') return;
+    sel.innerHTML = '<option value="">Todas as etapas</option>'
+        + etapas.map(e => `<option value="${_pedEsc(e.chave)}">${_pedEsc(e.rotulo)}</option>`).join('');
+    sel.value = _pedEtapa;
+    sel.dataset.montado = '1';
+}
+
+function _pedMudarEtapa() {
+    _pedEtapa = document.getElementById('ped-etapa').value;
+    // Recarrega em vez de filtrar na tela: filtrar aqui só olharia os carregados,
+    // e "todos os faltantes" viraria "os faltantes que couberam no teto".
+    document.getElementById('ped-filtro-input').value = '';
+    _pedCarregar();
+}
 
 /**
  * Resposta antiga (só bipagem de separação) no formato novo.
@@ -82,8 +106,10 @@ async function _pedCarregar() {
     listaEl.style.display = 'none';
 
     try {
-        let url = API + '/pedidos/lista';
-        if (de && ate) url += `?de=${de}&ate=${ate}`;
+        const params = [];
+        if (de && ate) { params.push('de=' + de, 'ate=' + ate); }
+        if (_pedEtapa) params.push('etapa=' + encodeURIComponent(_pedEtapa));
+        const url = API + '/pedidos/lista' + (params.length ? '?' + params.join('&') : '');
 
         const controller = new AbortController();
         const timeout    = setTimeout(() => controller.abort(), 20000);
@@ -105,6 +131,7 @@ async function _pedCarregar() {
         // undefined e a lista nascia VAZIA, como se não houvesse bipagem
         // nenhuma. Página em cache faz o mesmo.
         _pedDados = (Array.isArray(data) ? data : (data.eventos || [])).map(_pedCompat);
+        _pedMontarEtapas(Array.isArray(data) ? [] : (data.etapas || []));
         _pedTruncado = (!Array.isArray(data) && data.truncado) ? (data.teto || 0) : 0;
         _pedRenderizar(_pedDados);
     } catch (err) {
@@ -154,7 +181,9 @@ function _pedRenderizar(rows, filtrando) {
 
     document.getElementById('ped-counter').innerText =
         `${rows.length.toLocaleString('pt-BR')} registro${rows.length !== 1 ? 's' : ''}`
-        + (_pedTruncado ? ` (teto de ${_pedTruncado.toLocaleString('pt-BR')} — reduza o período)` : '');
+        + (_pedTruncado
+            ? ` de ${_pedTruncado.toLocaleString('pt-BR')} carregados — a busca por texto só olha estes; reduza o período ou filtre por etapa`
+            : '');
     emptyEl.style.display = 'none';
     listaEl.style.display = '';
     _pedRenderizarPagina();
@@ -305,6 +334,7 @@ async function _pedExportarComDatas(de, ate) {
         // é pior do que demorar pra gerar.
         let url = API + '/pedidos/lista?exportar=1';
         if (de && ate) url += `&de=${de}&ate=${ate}`;
+        if (_pedEtapa) url += '&etapa=' + encodeURIComponent(_pedEtapa);
 
         const res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
         const corpo = await res.json();
