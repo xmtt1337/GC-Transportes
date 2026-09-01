@@ -1476,8 +1476,11 @@ if (_BASE) {
 
         <!-- TELA CONFERÊNCIAS -->
         <!-- ALIMENTAR: o que a operação precisa carregar hoje. A barra de abas
-             das conferências é desenhada aqui dentro por mostrarTela(). -->
-        <div id="tela-alimentar" class="view tela-full">
+             das conferências é desenhada aqui dentro por mostrarTela().
+             O id NÃO pode ser "tela-alimentar": esse já é o da Alimentar
+             separação (menu Operação), e getElementById devolve o primeiro do
+             DOM — a separação abria esta tela no lugar da dela. -->
+        <div id="tela-painel-alimentar" class="view tela-full">
             <div class="fech-header">
                 <div style="font-size:15px;font-weight:700;color:#e2e8f0" id="alim-titulo">Alimentar</div>
                 <div style="font-size:12.5px;color:var(--text-muted);margin-top:4px">
@@ -3749,9 +3752,9 @@ if (_BASE) {
         </div><!-- /tela-admin-antecipacoes -->
 
 <script src="js/core.js?v=20260820e"></script>
-<script src="js/router.js?v=30260901a"></script>
+<script src="js/router.js?v=30260901b"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=30260827a"></script>
+<script src="js/nav.js?v=30260901a"></script>
 <script src="js/fechamentos.js?v=30260812d"></script>
 <script src="js/admin.js?v=30260812d"></script>
 <script src="js/conf-nf.js?v=30260812d"></script>
@@ -3778,7 +3781,7 @@ if (_BASE) {
 <script src="js/desempenho-bip.js?v=30260812d"></script>
 <script src="js/desempenho-hora.js?v=30260812d"></script>
 <script src="js/conferencias.js?v=30260812d"></script>
-<script src="js/conferencias-hub.js?v=30260901a"></script>
+<script src="js/conferencias-hub.js?v=30260901b"></script>
 <script src="js/antecipacoes.js?v=30260812d"></script>
 <script src="js/antecipacoes-admin.js?v=30260812d"></script>
 <script src="js/baixas.js?v=30260812d"></script>

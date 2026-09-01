@@ -89,7 +89,7 @@ test('"Entregadores" e acao, nao sub-aba da Shopee', () => {
 
 test("tela transversal nao marca aba de transportadora nenhuma", () => {
     // Marcar uma diria que a pessoa esta dentro daquela transportadora.
-    ["tela-shopee-conf-entregadores", "tela-alimentar"].forEach(tela => {
+    ["tela-shopee-conf-entregadores", "tela-painel-alimentar"].forEach(tela => {
         const html = api._chubHtml("shopee", api._CHUB_TELAS[tela]);
         assert.ok(!html.includes('class="chub-tab active"'), tela + " marcou aba");
     });

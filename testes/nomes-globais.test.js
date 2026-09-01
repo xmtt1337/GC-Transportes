@@ -48,6 +48,24 @@ test("nenhum nome global e declarado em dois arquivos", () => {
         "mesmo nome declarado em mais de um arquivo:\n  " + colisoes.join("\n  "));
 });
 
+// O mesmo problema, uma camada abaixo: dois elementos com o mesmo id.
+// getElementById devolve o PRIMEIRO do DOM, então a tela que declarou o id
+// depois nunca aparece — e quem chama mostrarTela() com aquele id abre a outra.
+// Foi assim que "Alimentar separação > Loggi" passou a abrir o painel das
+// Conferências mesmo com a URL certa: os dois <div> se chamavam
+// "tela-alimentar".
+test("nenhum id se repete no index.html", () => {
+    const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+    const vistos = new Map();
+    const re = /\sid="([A-Za-z0-9_-]+)"/g;
+    let m;
+    while ((m = re.exec(html)) !== null) {
+        vistos.set(m[1], (vistos.get(m[1]) || 0) + 1);
+    }
+    const repetidos = [...vistos.entries()].filter(([, n]) => n > 1).map(([id, n]) => `${id} (${n}x)`);
+    assert.deepStrictEqual(repetidos, [], "id repetido no index.html: " + repetidos.join(", "));
+});
+
 test("o detector enxerga os dois tipos de declaracao", () => {
     // Sem isto, o teste acima poderia passar por não estar achando nada.
     const nomes = declaracoesGlobais([

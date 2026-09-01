@@ -161,7 +161,7 @@ const _TELA_ROTAS = {
     "tela-transferencia-historico": "Transferencias/Historico",
     "tela-motorista-buscar":        "DevolucoesMotorista/Buscar",
     "tela-motorista-cargas":        "DevolucoesMotorista/MinhasCargas",
-    "tela-alimentar":            "Conferencias/Alimentar",
+    "tela-painel-alimentar":     "Conferencias/Alimentar",
     "tela-shopee-receber":       "Shopee/Recebimento",
     "tela-shopee-romaneiro":     "Shopee/Romaneiro",
     "tela-shopee-at":            "Shopee/AT",

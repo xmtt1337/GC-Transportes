@@ -59,7 +59,7 @@ const _CHUB_TELAS = {
     "tela-shopee-linehaul":          { transp: "shopee", sub: "linehaul" },
     "tela-shopee-atribuicoes":       { transp: "shopee", sub: "atribuicoes" },
     "tela-shopee-conf-entregadores": { acao: "entregadores" },
-    "tela-alimentar":                { alimentar: true },
+    "tela-painel-alimentar":         { alimentar: true },
 };
 
 let _chubTransp = "shopee";   // aba aberta agora
@@ -223,7 +223,7 @@ function _chubCarregarStatus(transp, forcar) {
 function abrirPainelAlimentar(event) {
     if (event) event.preventDefault();
     document.getElementById("alim-titulo").innerText = "Alimentar — " + _chubInfo(_chubTransp).rotulo;
-    mostrarTela("tela-alimentar", "Conferencias/Alimentar");
+    mostrarTela("tela-painel-alimentar", "Conferencias/Alimentar");
     // Sempre rebusca: a pessoa costuma voltar aqui logo depois de alimentar, e
     // uma resposta em cache diria que ainda falta o que ela acabou de mandar.
     _chubPintarCarregando();
