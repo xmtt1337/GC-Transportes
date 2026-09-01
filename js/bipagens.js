@@ -88,7 +88,8 @@ async function _bipBuscarCep(cep) {
         const linhas = Array.isArray(data) ? data : [data];
         el.innerHTML = _bipRenderCepCards(linhas);
         const cepLimpo = cep.replace(/\D/g,'');
-        _bipRegistrar(cepLimpo, { transportadora: 'cep', cidade: (linhas[0] || {}).cidade, cep: cepLimpo });
+        // Nao registra: bipar um CEP nao e bipagem de pacote nenhum, e a linha
+        // so sujava a busca de pedidos. A consulta continua funcionando.
     } catch {
         _bipMostrarErro(el, 'Erro ao conectar ao servidor.');
     }
@@ -107,7 +108,7 @@ async function _bipBuscarCodigo(codigo) {
         // Backend detectou que era CEP, não barcode
         if (data.tipo === 'cep') {
             el.innerHTML = _bipRenderCepCards(data.resultados);
-            _bipRegistrar(codigo, { transportadora: 'cep', cidade: (data.resultados[0] || {}).cidade, cep: codigo });
+            // Idem: o codigo caiu na busca por CEP, entao nao ha pacote pra registrar.
             return;
         }
 

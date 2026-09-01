@@ -20,6 +20,36 @@ function _pedLimparFiltro() {
     _pedCarregar();
 }
 
+// Cor por ETAPA, não por transportadora: a lista agora mistura recebimento,
+// conferência, devolução e custódia, e é a etapa que diz o que aconteceu.
+const _PED_ETAPA_CORES = {
+    recebimento:            '#12A5E8',
+    conferencia_operacao:   '#3a86ff',
+    conferencia_entregador: '#22c55e',
+    retido:                 '#ef4444',
+    bipagem:                '#8494a9',
+    devolucao:              '#f59e0b',
+    faltante:               '#ef4444',
+    custodia:               '#9333EA',
+};
+
+let _pedTruncado = 0;
+
+function _pedEsc(t) {
+    return String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+/**
+ * Quando aconteceu. O texto gravado no bipe manda, quando existe: ele já veio
+ * no fuso de Brasília, do aparelho de quem bipou. O timestamp é a reserva.
+ */
+function _pedQuando(r) {
+    if (r.quando_texto) return r.quando_texto;
+    if (!r.quando) return '—';
+    const d = new Date(r.quando);
+    return isNaN(d.getTime()) ? '—' : d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+}
+
 async function _pedCarregar() {
     const de  = document.getElementById('ped-de').value;
     const ate = document.getElementById('ped-ate').value;
@@ -45,8 +75,11 @@ async function _pedCarregar() {
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        _pedDados = data;
-        _pedRenderizar(data);
+        // A resposta agora traz o corte junto: sete fontes num mês passam fácil
+        // do teto, e cortar em silêncio faria a lista parecer completa.
+        _pedDados = data.eventos || [];
+        _pedTruncado = data.truncado ? (data.teto || 0) : 0;
+        _pedRenderizar(_pedDados);
     } catch (err) {
         emptyEl.innerText = err.name === 'AbortError'
             ? 'O servidor demorou muito para responder. Tente novamente.'
@@ -68,7 +101,9 @@ function _pedRenderizar(rows) {
         return;
     }
 
-    document.getElementById('ped-counter').innerText = `${rows.length.toLocaleString('pt-BR')} registro${rows.length !== 1 ? 's' : ''}`;
+    document.getElementById('ped-counter').innerText =
+        `${rows.length.toLocaleString('pt-BR')} registro${rows.length !== 1 ? 's' : ''}`
+        + (_pedTruncado ? ` (teto de ${_pedTruncado.toLocaleString('pt-BR')} — reduza o período)` : '');
     emptyEl.style.display = 'none';
     listaEl.style.display = '';
     _pedRenderizarPagina();
@@ -82,21 +117,13 @@ function _pedRenderizarPagina() {
     const pagina = _pedFiltrados.slice(inicio, inicio + _pedPorPagina);
 
     const tbody = document.getElementById('ped-tbody');
-    tbody.innerHTML = pagina.map(r => {
-        const cor   = _PED_TRANSP_CORES[r.transportadora] || '#8494a9';
-        const nome  = _PED_TRANSP_NOMES[r.transportadora] || r.transportadora || '—';
-        const data  = r.bipado_em ? new Date(r.bipado_em).toLocaleString('pt-BR') : '—';
-        const cep   = r.cep ? r.cep.slice(0,5) + '-' + r.cep.slice(5) : '—';
-        return `<tr>
-            <td style="font-size:12px;color:#94a3b8;font-family:monospace">${r.codigo || '—'}</td>
-            <td><span style="font-weight:600;color:${cor}">${nome}</span></td>
-            <td>${r.entregador || '—'}</td>
-            <td>${r.cidade || '—'}</td>
-            <td style="font-family:monospace;font-size:12px">${cep}</td>
-            <td style="font-size:12px;white-space:nowrap">${data}</td>
-            <td style="font-size:12px;color:#8494a9">${r.usuario_nome || '—'}</td>
-        </tr>`;
-    }).join('');
+    tbody.innerHTML = pagina.map(r => `<tr>
+            <td style="font-size:12px;color:#94a3b8;font-family:monospace">${_pedEsc(r.codigo) || '—'}</td>
+            <td><span style="font-weight:600;color:${_PED_ETAPA_CORES[r.etapa] || '#8494a9'}">${_pedEsc(r.etapa_rotulo)}</span></td>
+            <td>${_pedEsc(r.detalhe) || '—'}</td>
+            <td style="font-size:12px;white-space:nowrap">${_pedEsc(_pedQuando(r))}</td>
+            <td style="font-size:12px;color:#8494a9">${_pedEsc(r.usuario) || '—'}</td>
+        </tr>`).join('');
 
     document.getElementById('ped-pagina-info').innerText = `Página ${_pedPagina} de ${totalPaginas}`;
 }
@@ -125,9 +152,9 @@ function _pedFiltrarLocal() {
     if (!termo) { _pedRenderizar(_pedDados); return; }
     const filtrado = _pedDados.filter(r =>
         (r.codigo       || '').toLowerCase().includes(termo) ||
-        (r.entregador   || '').toLowerCase().includes(termo) ||
-        (r.cidade       || '').toLowerCase().includes(termo) ||
-        (r.usuario_nome || '').toLowerCase().includes(termo)
+        (r.etapa_rotulo || '').toLowerCase().includes(termo) ||
+        (r.detalhe      || '').toLowerCase().includes(termo) ||
+        (r.usuario      || '').toLowerCase().includes(termo)
     );
     _pedRenderizar(filtrado);
 }
@@ -143,18 +170,20 @@ async function _pedExportarComDatas(de, ate) {
         if (de && ate) url += `?de=${de}&ate=${ate}`;
 
         const res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
-        const dados = await res.json();
-        if (!res.ok) throw new Error(dados.error);
-        if (!dados.length) { alert('Nenhum pedido bipado nesse período.'); btn.disabled = false; btn.innerHTML = txtOriginal; return; }
+        const corpo = await res.json();
+        if (!res.ok) throw new Error(corpo.error);
+        const dados = corpo.eventos || [];
+        if (!dados.length) { alert('Nenhum registro nesse período.'); btn.disabled = false; btn.innerHTML = txtOriginal; return; }
+        // O teto da consulta vale pro Excel também: exportar 5.000 achando que
+        // são todos é pior do que saber que foi cortado.
+        if (corpo.truncado) alert(`A exportação traz os ${corpo.teto.toLocaleString('pt-BR')} mais recentes. Reduza o período para levar tudo.`);
 
         const rows = dados.map(r => ({
-            'Código':         r.codigo        || '',
-            'Transportadora': _PED_TRANSP_NOMES[r.transportadora] || r.transportadora || '',
-            'Entregador':     r.entregador    || '',
-            'Cidade':         r.cidade        || '',
-            'CEP':            r.cep ? r.cep.slice(0,5) + '-' + r.cep.slice(5) : '',
-            'Bipado em':      r.bipado_em ? new Date(r.bipado_em).toLocaleString('pt-BR') : '',
-            'Bipado por':     r.usuario_nome  || '',
+            'Código':     r.codigo       || '',
+            'Etapa':      r.etapa_rotulo || '',
+            'O que foi':  r.detalhe      || '',
+            'Quando':     _pedQuando(r),
+            'Quem':       r.usuario      || '',
         }));
 
         const ws = XLSX.utils.json_to_sheet(rows);
