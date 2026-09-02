@@ -320,6 +320,10 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("submenu-ativos");
     }
 
+    // Central de Atendimento: o balãozinho do canto, pra todo cargo. Quem decide
+    // se esta conta o vê ou vê o menu do suporte é o servidor — ver js/atendimento.js.
+    if (typeof atdIniciar === "function") atdIniciar();
+
     renderHomeActions(role);
 
     const badgeLabels = {

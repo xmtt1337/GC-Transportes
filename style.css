@@ -4638,3 +4638,218 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 }
 .cus-chip.nova { border-style: dashed; color: #707f96; }
 .cus-chip.nova:hover { color: #7fb2ff; }
+
+/* ===== CENTRAL DE ATENDIMENTO =====
+   O balãozinho do canto (todo cargo) e a caixa de conversas do suporte.
+   z-index abaixo do .gc-overlay (9990): um gcAlert precisa cobrir o painel. */
+.atd-launcher {
+    position: fixed; right: 22px; bottom: 22px; z-index: 9000;
+    width: 54px; height: 54px; border-radius: 50%; border: none; cursor: pointer;
+    background: linear-gradient(145deg, #3a86ff, #2563eb);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 10px 30px rgba(37,99,235,0.45), 0 2px 8px rgba(0,0,0,0.4);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.atd-launcher:hover  { transform: translateY(-2px) scale(1.04); box-shadow: 0 14px 36px rgba(37,99,235,0.55); }
+.atd-launcher:active { transform: scale(0.96); }
+.atd-launcher.aberto { background: linear-gradient(145deg, #24314a, #1b2635); }
+/* O X so existe com o painel aberto; o headset, so com ele fechado. */
+.atd-launcher .atd-ico-fechar { display: none; }
+.atd-launcher.aberto .atd-ico-chat   { display: none; }
+.atd-launcher.aberto .atd-ico-fechar { display: block; }
+
+.atd-badge {
+    position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px;
+    padding: 0 5px; border-radius: 999px; background: #ef4444; color: #fff;
+    font-size: 11px; font-weight: 700; line-height: 20px; text-align: center;
+    border: 2px solid #0b0f18; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+/* Mesmo contador, dentro do menu lateral (a conta do suporte nao tem balaozinho).
+   Posicionado em cima do item, e nao no fluxo: com a barra recolhida o rotulo tem
+   largura zero, e um contador no fluxo sumiria junto - justamente quando a barra
+   recolhida e o unico lugar onde da pra ver que alguem esta esperando. */
+.atd-badge-menu {
+    position: absolute; top: 7px; right: 9px;
+    min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
+    background: #ef4444; color: #fff; font-size: 10px; font-weight: 700;
+    line-height: 17px; text-align: center; border: 2px solid #080c13;
+    transition: right 0.32s ease, top 0.32s ease;
+}
+.sidebar.expanded .atd-badge-menu { top: 50%; right: 38px; margin-top: -8.5px; }
+
+.atd-painel {
+    position: fixed; right: 22px; bottom: 88px; z-index: 9001;
+    width: 372px; max-width: calc(100vw - 32px);
+    height: 540px; max-height: calc(100vh - 128px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--surface); border: 1px solid var(--border-blue);
+    border-radius: var(--radius); box-shadow: 0 28px 70px rgba(0,0,0,0.6);
+    animation: atdSubir 0.16s ease;
+}
+@keyframes atdSubir { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+.atd-painel-head {
+    flex-shrink: 0; display: flex; align-items: center; gap: 11px;
+    padding: 12px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border);
+}
+.atd-painel-avatar {
+    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(58,134,255,0.14); border: 1px solid rgba(58,134,255,0.28);
+    display: flex; align-items: center; justify-content: center; color: var(--blue);
+}
+.atd-painel-info { min-width: 0; flex: 1; }
+.atd-painel-nome { font-size: 13.5px; font-weight: 700; color: var(--text); }
+.atd-painel-sub  { font-size: 11.5px; color: var(--text-muted); }
+.atd-painel-fechar {
+    background: none; border: none; color: var(--text-muted); font-size: 16px;
+    cursor: pointer; padding: 4px 6px; line-height: 1; border-radius: 6px;
+}
+.atd-painel-fechar:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+.atd-painel-body, .atd-adm-body {
+    flex: 1; min-height: 0; overflow-y: auto; background: var(--bg);
+    padding: 16px 16px 12px; display: flex; flex-direction: column; gap: 6px;
+}
+
+.atd-bolha {
+    max-width: 78%; padding: 7px 10px 8px; border-radius: 10px;
+    font-size: 13.5px; line-height: 1.42; color: var(--text);
+    white-space: pre-wrap; word-break: break-word;
+}
+.atd-bolha.minha {
+    align-self: flex-end; background: rgba(58,134,255,0.14);
+    border: 1px solid rgba(58,134,255,0.24); border-bottom-right-radius: 3px;
+}
+.atd-bolha.dele {
+    align-self: flex-start; background: var(--surface-2);
+    border: 1px solid var(--border); border-bottom-left-radius: 3px;
+}
+.atd-bolha-autor { display: block; font-size: 11px; font-weight: 700; color: var(--blue); margin-bottom: 3px; }
+.atd-bolha-hora {
+    float: right; margin: 4px 0 -3px 8px; font-size: 10.5px;
+    color: var(--text-muted); white-space: nowrap;
+}
+.atd-dia { align-self: center; margin: 10px 0 6px; max-width: 100%; }
+.atd-dia span {
+    display: inline-block; padding: 3px 11px; border-radius: 999px;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    font-size: 10.5px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
+}
+.atd-aviso { text-align: center; color: var(--text-muted); font-size: 13px; padding: 20px 14px; }
+.atd-aviso.erro { color: #ef4444; }
+.atd-vazio { margin: auto; text-align: center; padding: 18px 22px; }
+.atd-vazio-titulo { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.atd-vazio-texto  { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; }
+
+.atd-compose {
+    flex-shrink: 0; display: flex; align-items: flex-end; gap: 8px;
+    padding: 10px 12px; background: var(--surface-2); border-top: 1px solid var(--border);
+}
+.atd-compose textarea {
+    flex: 1; min-width: 0; resize: none; max-height: 110px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 16px;
+    padding: 9px 13px; color: var(--text); font-size: 13.5px; line-height: 1.4;
+    outline: none; font-family: inherit; transition: border-color 0.15s;
+}
+.atd-compose textarea:focus { border-color: var(--blue); }
+.atd-compose button {
+    width: 34px; height: 34px; border-radius: 50%; background: var(--blue); border: none;
+    color: #fff; font-size: 13px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+}
+.atd-compose button:hover:not(:disabled) { background: #2f6fe0; }
+.atd-compose button:disabled { opacity: 0.5; cursor: default; }
+
+/* -- Tela do suporte: lista + conversa -- */
+.atd-tela.active-view { padding: 18px; background: var(--bg); }
+.atd-adm {
+    flex: 1; min-height: 0; display: flex; overflow: hidden;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.atd-adm-lista {
+    width: 320px; flex-shrink: 0; display: flex; flex-direction: column;
+    min-height: 0; border-right: 1px solid var(--border);
+}
+.atd-adm-abas { padding: 12px 16px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.atd-adm-itens { flex: 1; min-height: 0; overflow-y: auto; padding: 6px; }
+
+.atd-adm-item {
+    display: flex; gap: 10px; padding: 10px 11px; border-radius: var(--radius-sm);
+    cursor: pointer; transition: background 0.14s; border: 1px solid transparent;
+}
+.atd-adm-item:hover { background: rgba(255,255,255,0.035); }
+.atd-adm-item.ativa { background: rgba(58,134,255,0.09); border-color: var(--border-blue); }
+.atd-adm-avatar {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(58,134,255,0.12); border: 1px solid rgba(58,134,255,0.22);
+    color: #7fb2ff; font-size: 12.5px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+}
+.atd-adm-item-corpo { min-width: 0; flex: 1; }
+.atd-adm-item-topo, .atd-adm-item-baixo { display: flex; align-items: center; gap: 8px; }
+.atd-adm-nome {
+    flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.atd-adm-item.nova .atd-adm-nome { color: #f1f5f9; font-weight: 700; }
+.atd-adm-quando { font-size: 10.5px; color: var(--text-dim); flex-shrink: 0; }
+.atd-adm-resumo {
+    flex: 1; min-width: 0; font-size: 12px; color: var(--text-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px;
+}
+.atd-adm-eu { color: var(--text-dim); }
+.atd-adm-naolidas {
+    flex-shrink: 0; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+    background: #ef4444; color: #fff; font-size: 10.5px; font-weight: 700;
+    line-height: 18px; text-align: center;
+}
+.atd-adm-item-meta { display: flex; align-items: center; gap: 7px; margin-top: 5px; }
+.atd-adm-role {
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    padding: 2px 6px; border-radius: 5px; border: 1px solid transparent;
+}
+.atd-adm-username { font-size: 10.5px; color: var(--text-dim); }
+
+.atd-adm-chat { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.atd-adm-conversa { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.atd-adm-chat-head {
+    flex-shrink: 0; display: flex; align-items: center; gap: 11px;
+    padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border);
+}
+.atd-adm-chat-info { min-width: 0; flex: 1; }
+.atd-adm-chat-nome { font-size: 14px; font-weight: 600; color: var(--text); }
+.atd-adm-chat-sub  { display: flex; align-items: center; gap: 7px; margin-top: 3px; }
+.atd-adm-btn {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-muted);
+    font-size: 11.5px; font-weight: 600; padding: 6px 12px; border-radius: 8px;
+    cursor: pointer; font-family: inherit; transition: 0.15s; flex-shrink: 0;
+}
+.atd-adm-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.07); }
+.atd-adm-voltar { display: none; background: none; border: none; color: var(--text); font-size: 19px; cursor: pointer; padding: 0 2px; line-height: 1; }
+.atd-adm-nenhuma {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; color: var(--text-muted); font-size: 13.5px; text-align: center; padding: 24px;
+}
+
+@media (max-width: 860px) {
+    .atd-adm-lista { width: 264px; }
+}
+@media (max-width: 680px) {
+    .atd-tela.active-view { padding: 0; }
+    .atd-adm { border-radius: 0; border-left: none; border-right: none; position: relative; }
+    .atd-adm-lista { width: 100%; border-right: none; }
+    /* Lista e conversa nao cabem lado a lado: a conversa cobre a lista, e a seta
+       de voltar (so visivel aqui) devolve pra ela. */
+    .atd-adm-chat {
+        display: none; position: absolute; inset: 0; z-index: 2; background: var(--surface);
+    }
+    .atd-adm-chat.aberto { display: flex; }
+    .atd-adm-voltar { display: block; }
+
+    .atd-launcher { right: 16px; bottom: 16px; width: 50px; height: 50px; }
+    .atd-painel {
+        right: 8px; left: 8px; bottom: 78px; width: auto; max-width: none;
+        height: auto; top: 12px; max-height: none;
+    }
+}

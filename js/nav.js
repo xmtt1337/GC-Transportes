@@ -62,6 +62,7 @@ const _TELA_TITULOS = {
     "tela-videira-alimentar":    "Alimentar Fechamento",
     "tela-videira-painel":       "Meu Fechamento",
     "tela-videira-dash":         "Dashboard",
+    "tela-atendimento":          "Atendimento",
     "tela-em-breve":             "Em Breve",
     "tela-torre-alimentar":      "Alimentar",
     "tela-criar-fechamento":     "Criar Fechamento",
