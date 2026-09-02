@@ -1909,9 +1909,13 @@ if (_BASE) {
 
                 <div class="ed-section" id="wa-secao-acareacao" style="max-width:640px;margin-bottom:20px;display:none">
                     <div class="ed-section-title">Disparo por transportadora</div>
-                    <!-- Montadas por _waRecRenderTabs(): a lista de modelos depende do cargo, e
-                         modelo restrito não pode ficar escrito na página só escondido por CSS. -->
-                    <div class="filtro-tabs" id="wa-rec-tabs" style="margin-bottom:16px"></div>
+                    <div class="filtro-tabs" id="wa-rec-tabs" style="margin-bottom:16px">
+                        <button type="button" class="filtro-tab active" data-cat="tiktok" onclick="_waRecEscolher('tiktok')">TikTok (J&T)</button>
+                        <button type="button" class="filtro-tab" data-cat="mercadolivre" onclick="_waRecEscolher('mercadolivre')">Mercado Livre (J&T)</button>
+                        <button type="button" class="filtro-tab" data-cat="shopee" onclick="_waRecEscolher('shopee')">Shopee</button>
+                        <button type="button" class="filtro-tab" data-cat="imile" onclick="_waRecEscolher('imile')">iMile</button>
+                        <button type="button" class="filtro-tab" data-cat="anjun" onclick="_waRecEscolher('anjun')">Anjun</button>
+                    </div>
                     <div style="display:flex;flex-direction:column;gap:14px">
                         <div>
                             <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8494a9;display:block;margin-bottom:6px">Número do cliente (com DDI)</label>
@@ -3982,7 +3986,7 @@ if (_BASE) {
 <script src="js/extravios-registros.js?v=30260818e"></script>
 <script src="js/usuarios-gc.js?v=30260812d"></script>
 <script src="js/todos-usuarios.js?v=30260812d"></script>
-<script src="js/whatsapp-teste.js?v=20260819h"></script>
+<script src="js/whatsapp-teste.js?v=20260819i"></script>
 <script src="js/whatsapp-conversa.js?v=20260819g"></script>
 <script src="js/modals.js?v=30260812d"></script>
 <script src="js/alimentar.js?v=30260812d"></script>

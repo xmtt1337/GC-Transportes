@@ -17,7 +17,6 @@ function abrirWhatsappTeste(event) {
 
     const comPrazo = WA_ROLES_COM_PRAZO.includes(role);
     const mostrar = (id, sim) => { const el = document.getElementById(id); if (el) el.style.display = sim ? "" : "none"; };
-    _waRecRenderTabs();   // a lista de modelos depende do cargo
     mostrar("wa-secao-acareacao", true);
     mostrar("wa-campo-prazo", comPrazo);
     // Massa é só pra quem faz outros ativos: acareação é caso a caso, cada uma com o
@@ -144,18 +143,24 @@ Para que possamos auxiliar, escolha uma opção:
 5- Recebi um produto diferente do comprado.`,
         parametros: v => [v.nome_cliente, _waRecNomeAtendente(), v.nome_produto, v.id_pacote_jms, v.data_entrega],
     },
+    // Template confirmacao_entrega na Meta: a transportadora está escrita no corpo aprovado
+    // ("parceira da SHOPEE"), não é mais {{variável}} — então este modelo é só para Shopee,
+    // igual reclamacao_shopee era. Vale para os dois cargos: SAC continua com um modelo por
+    // transportadora, e nos demais ativos ele substitui o antigo (mais simples, sem CPF).
     shopee: {
         rotulo: "Shopee",
-        template: "reclamacao_shopee",
-        // Só acareação: nos demais ativos quem faz esse papel é a confirmação de entrega.
-        apenasAcareacao: true,
+        template: "confirmacao_entrega",
         transportadora: "shopee",
         campoPedido: "codigo_pedido",
         campos: [
             { id: "nome_cliente", label: "Nome do cliente" },
             { id: "codigo_pedido", label: "Código do pedido" },
         ],
-        montar: v => `Olá, ${v.nome_cliente || "___"} !Aqui é da transportadora GCTRANSPORTES, parceira da Shopee e responsável pela entrega do seu pedido ${v.codigo_pedido || "___"}. Por gentileza, pode confirmar a entrega do seu pedido preenchendo os dados abaixo:【1】Nome completo do destinatário:【2】CPF:【3】Seu pedido foi recebido?: SIM ou NÃO【4】 A solicitação de reembolso foi cancelada via app?*: SIM ou NÃO【Nota】*Caso seu pedido tenha sido entregue e a solicitação de reembolso ainda está aberta, pedimos que prossiga com o cancelamento do reembolso via app. Agradecemos pela atenção!`,
+        montar: v => `Olá, ${v.nome_cliente || "___"}!
+Aqui é da GCTRANSPORTES, parceira da SHOPEE e responsável pela entrega do seu pedido ${v.codigo_pedido || "___"}.
+Por gentileza, poderia confirmar a entrega preenchendo os dados abaixo?
+ [1]  Nome completo do destinatário:
+ [2]  Seu pedido foi recebido?: SIM ou NÃO`,
         parametros: v => [v.nome_cliente, v.codigo_pedido],
     },
     imile: {
@@ -193,49 +198,7 @@ Aguardo seu retorno e agradeço desde já! ☺️`,
         montar: v => `Olá, ${v.nome_cliente || "___"} ! Faço parte da equipe de parceiros da Anjun Express, transportadora responsável pela entrega do seu pedido. O motivo do meu contato é para falarmos a respeito do pedido ${v.numero_pedido || "___"}, do qual foi aberto uma reclamação. Plataforma: ${v.plataforma || "___"} Por gentileza, poderia confirmar o recebimento do seu pedido preenchendo os dados abaixo? .CPF: .Seu pedido foi entregue? Responda com SIM ou NÃO.`,
         parametros: v => [v.nome_cliente, v.numero_pedido, v.plataforma],
     },
-    // Confirmação de entrega — só pra quem faz "Outros ativos". É contato, não cobrança:
-    // não abre prazo e não entra no funil de acareação.
-    //
-    // Diferente dos demais, a transportadora aqui é VARIÁVEL do template ({{2}}), não está
-    // no nome dele. Um template só atende todas as transportadoras — por isso o campo é uma
-    // escolha, e não texto livre: é ela que separa a conversa no funil depois.
-    confirmacao: {
-        rotulo: "Confirmação de entrega",
-        template: "confirmacao_entrega",
-        transportadora: null,               // vem do campo, não do template
-        campoTransportadora: "transportadora",
-        apenasOutrosAtivos: true,
-        campoPedido: "codigo_pedido",
-        campos: [
-            { id: "nome_cliente",   label: "Nome do cliente" },
-            { id: "transportadora", label: "Transportadora", opcoes: () => WA_TRANSPORTADORAS_ORDEM },
-            { id: "codigo_pedido",  label: "Código do pedido" },
-        ],
-        montar: v => `Olá, ${v.nome_cliente || "___"} !
-Aqui é da GC Transportes, parceira da ${_waRotuloTransp(v.transportadora)} e responsável pela entrega do seu pedido ${v.codigo_pedido || "___"}.
-
-Poderia confirmar se seu pedido foi recebido?`,
-        parametros: v => [v.nome_cliente, _waRotuloTransp(v.transportadora), v.codigo_pedido],
-    },
 };
-
-// Aceita a chave interna ("shopee") OU o rótulo que aparece na tela ("Shopee", "J&T").
-// O seletor manda a chave, mas o CSV do disparo em massa é preenchido à mão e vem com o
-// rótulo — era isso que fazia a mensagem sair com "parceira da ___".
-function _waTranspChave(valor) {
-    const norm = v => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase().replace(/[^a-z0-9]/g, "");
-    const alvo = norm(valor);
-    if (!alvo) return null;
-    return Object.keys(WA_TRANSPORTADORAS)
-        .find(k => norm(k) === alvo || norm(WA_TRANSPORTADORAS[k].rotulo) === alvo) || null;
-}
-
-// Rótulo que vai no texto da mensagem ("Shopee", "J&T").
-function _waRotuloTransp(valor) {
-    const k = _waTranspChave(valor);
-    return k ? WA_TRANSPORTADORAS[k].rotulo : "___";
-}
 
 // Transportadora de cada template — é por ela que as conversas se separam no funil.
 // Mesmas cores do resto do sistema (bipagens, conferências, planejamento).
@@ -260,35 +223,9 @@ function _waTransportadoraDe(template) {
 // Ordem fixa das transportadoras que o disparo atende, na sequência em que aparecem no
 // formulário. Fixa de propósito: a barra de filtro não troca de posição conforme entra
 // ou sai conversa, então clicar no mesmo lugar sempre cai na mesma transportadora.
-// filter(Boolean): modelo cuja transportadora vem de campo entra aqui com null, e o null
-// virava uma opção vazia na lista.
-const WA_TRANSPORTADORAS_ORDEM = [...new Set(Object.values(WA_REC_TEMPLATES).map(c => c.transportadora).filter(Boolean))];
+const WA_TRANSPORTADORAS_ORDEM = [...new Set(Object.values(WA_REC_TEMPLATES).map(c => c.transportadora))];
 
 let _waRecCategoria = "tiktok";
-
-// Quem define prazo é quem faz acareação; quem não define produz "Outros ativos". É a mesma
-// divisão, então reaproveita WA_ROLES_COM_PRAZO em vez de manter outra cópia da lista.
-function _waRecDisponiveis() {
-    const role = (window._gcUser && window._gcUser.role) || "";
-    const fazAcareacao = WA_ROLES_COM_PRAZO.includes(role);
-    // A diferença é só no Shopee: na acareação ele é o modelo de reclamação, que pede CPF e
-    // confirmação de reembolso; nos demais ativos é a confirmação de entrega, que só pergunta
-    // se chegou. Os outros modelos são os mesmos pros dois lados.
-    return Object.entries(WA_REC_TEMPLATES)
-        .filter(([, cfg]) => fazAcareacao ? !cfg.apenasOutrosAtivos : !cfg.apenasAcareacao)
-        .map(([id, cfg]) => ({ id, rotulo: cfg.rotulo }));
-}
-
-// As abas vêm do mapa, não do HTML: template restrito a um cargo não pode ficar escrito na
-// página e só escondido por CSS — quem abre o inspetor clica nele do mesmo jeito.
-function _waRecRenderTabs() {
-    const el = document.getElementById("wa-rec-tabs");
-    if (!el) return;
-    const lista = _waRecDisponiveis();
-    if (!lista.some(x => x.id === _waRecCategoria)) _waRecCategoria = lista[0] ? lista[0].id : null;
-    el.innerHTML = lista.map(x =>
-        `<button type="button" class="filtro-tab${x.id === _waRecCategoria ? " active" : ""}" data-cat="${x.id}" onclick="_waRecEscolher('${x.id}')">${x.rotulo}</button>`).join("");
-}
 
 // Nome de quem está atendendo (Matheus/Amanda/"seu nome" nos scripts originais) vira
 // o nome de quem está logado no sistema, em vez de fixo ou de precisar digitar toda hora.
@@ -319,20 +256,11 @@ function _waBulkLimpar() {
 
 function _waRecRenderCampos() {
     const cfg = WA_REC_TEMPLATES[_waRecCategoria];
-    document.getElementById("wa-rec-campos").innerHTML = cfg.campos.map(c => {
-        // Campo com opções é escolha, não digitação: a transportadora precisa cair numa das
-        // chaves conhecidas, senão a conversa não acha a coluna dela no funil.
-        const controle = c.opcoes
-            ? `<select id="wa-rec-campo-${c.id}" class="fech-select" style="width:100%" onchange="_waRecAtualizarPreview()">
-                   ${c.opcoes().map(k => `<option value="${k}">${_waRotuloTransp(k)}</option>`).join("")}
-               </select>`
-            : `<input type="text" id="wa-rec-campo-${c.id}" class="fech-select" style="width:100%" oninput="_waRecAtualizarPreview()">`;
-        return `
+    document.getElementById("wa-rec-campos").innerHTML = cfg.campos.map(c => `
         <div>
             <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8494a9;display:block;margin-bottom:6px">${c.label}</label>
-            ${controle}
-        </div>`;
-    }).join("");
+            <input type="text" id="wa-rec-campo-${c.id}" class="fech-select" style="width:100%" oninput="_waRecAtualizarPreview()">
+        </div>`).join("");
     _waRecAtualizarPreview();
 }
 
@@ -382,7 +310,7 @@ function _waRecEnviar() {
             pedido: v[cfg.campoPedido] || null, prazo_horas: comPrazo ? prazo : null,
             // Quando a transportadora é campo do template, ela vai explícita — o nome do
             // template não a identifica, e é ela que separa a conversa no funil.
-            transportadora: cfg.campoTransportadora ? _waTranspChave(v[cfg.campoTransportadora]) : cfg.transportadora
+            transportadora: cfg.transportadora
         })
     })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
@@ -543,15 +471,9 @@ async function _waBulkEnviar() {
         // Valida antes de gastar mensagem: número torto ou campo vazio nem chega na Meta.
         const tel = _waValidarTelefone(linha.numero);
         const faltando = cfg.campos.filter(c => !linha.valores[c.id]);
-        // Transportadora escrita errada no CSV vira "___" no meio da mensagem, e a mensagem
-        // já foi cobrada quando alguém percebe. Barra antes de gastar.
-        const transpBruta = cfg.campoTransportadora ? linha.valores[cfg.campoTransportadora] : null;
-        const transpInvalida = cfg.campoTransportadora && transpBruta && !_waTranspChave(transpBruta);
-        if (!tel.ok || faltando.length || transpInvalida) {
+        if (!tel.ok || faltando.length) {
             linha.status = "erro";
-            linha.erro = !tel.ok ? tel.erro
-                : faltando.length ? "Faltou: " + faltando.map(c => c.label).join(", ")
-                : `Transportadora "${transpBruta}" não existe. Use: ${WA_TRANSPORTADORAS_ORDEM.map(_waRotuloTransp).join(", ")}.`;
+            linha.erro = !tel.ok ? tel.erro : "Faltou: " + faltando.map(c => c.label).join(", ");
             falha++;
             _waBulkRenderizar();
             continue;
