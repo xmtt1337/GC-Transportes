@@ -4647,10 +4647,13 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
     width: 54px; height: 54px; border-radius: 50%; border: none; cursor: pointer;
     background: linear-gradient(145deg, #3a86ff, #2563eb);
     color: #fff; display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 10px 30px rgba(37,99,235,0.45), 0 2px 8px rgba(0,0,0,0.4);
+    /* Sombra PRETA, nao azul: um halo colorido em volta do botao dava aquele
+       brilho de neon que nao combina com o resto do painel. A sombra escura
+       continua descolando o botao do fundo, sem acender nada. */
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
     transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-.atd-launcher:hover  { transform: translateY(-2px) scale(1.04); box-shadow: 0 14px 36px rgba(37,99,235,0.55); }
+.atd-launcher:hover  { transform: translateY(-2px) scale(1.04); box-shadow: 0 9px 22px rgba(0,0,0,0.5); }
 .atd-launcher:active { transform: scale(0.96); }
 .atd-launcher.aberto { background: linear-gradient(145deg, #24314a, #1b2635); }
 /* O X so existe com o painel aberto; o headset, so com ele fechado. */
