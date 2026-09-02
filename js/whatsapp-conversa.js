@@ -491,7 +491,10 @@ function _wacTrocarAba(aba) {
 // enviar. Conversa que o cliente abriu sozinho não tem disparo nosso, logo não tem
 // transportadora — cai em "Sem transportadora" em vez de sumir do filtro.
 function _wacTranspDe(conversa) {
-    return _waTransportadoraDe(conversa.template_inicial) || "outras";
+    // Gravada no disparo tem prioridade: o modelo de confirmação de entrega atende todas as
+    // transportadoras com um template só, então o nome dele não diz qual é. A dedução pelo
+    // template continua valendo pros modelos antigos, que não têm o campo gravado.
+    return conversa.transportadora || _waTransportadoraDe(conversa.template_inicial) || "outras";
 }
 
 function _wacFiltrarTransp(chave) {
