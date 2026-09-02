@@ -147,6 +147,8 @@ Para que possamos auxiliar, escolha uma opção:
     shopee: {
         rotulo: "Shopee",
         template: "reclamacao_shopee",
+        // Só acareação: nos demais ativos quem faz esse papel é a confirmação de entrega.
+        apenasAcareacao: true,
         transportadora: "shopee",
         campoPedido: "codigo_pedido",
         campos: [
@@ -217,9 +219,22 @@ Poderia confirmar se seu pedido foi recebido?`,
     },
 };
 
-// Rótulo que vai no texto da mensagem ("Shopee", "J&T"), a partir da chave interna.
-function _waRotuloTransp(chave) {
-    return (WA_TRANSPORTADORAS[chave] && WA_TRANSPORTADORAS[chave].rotulo) || "___";
+// Aceita a chave interna ("shopee") OU o rótulo que aparece na tela ("Shopee", "J&T").
+// O seletor manda a chave, mas o CSV do disparo em massa é preenchido à mão e vem com o
+// rótulo — era isso que fazia a mensagem sair com "parceira da ___".
+function _waTranspChave(valor) {
+    const norm = v => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase().replace(/[^a-z0-9]/g, "");
+    const alvo = norm(valor);
+    if (!alvo) return null;
+    return Object.keys(WA_TRANSPORTADORAS)
+        .find(k => norm(k) === alvo || norm(WA_TRANSPORTADORAS[k].rotulo) === alvo) || null;
+}
+
+// Rótulo que vai no texto da mensagem ("Shopee", "J&T").
+function _waRotuloTransp(valor) {
+    const k = _waTranspChave(valor);
+    return k ? WA_TRANSPORTADORAS[k].rotulo : "___";
 }
 
 // Transportadora de cada template — é por ela que as conversas se separam no funil.
@@ -256,8 +271,11 @@ let _waRecCategoria = "tiktok";
 function _waRecDisponiveis() {
     const role = (window._gcUser && window._gcUser.role) || "";
     const fazAcareacao = WA_ROLES_COM_PRAZO.includes(role);
+    // A diferença é só no Shopee: na acareação ele é o modelo de reclamação, que pede CPF e
+    // confirmação de reembolso; nos demais ativos é a confirmação de entrega, que só pergunta
+    // se chegou. Os outros modelos são os mesmos pros dois lados.
     return Object.entries(WA_REC_TEMPLATES)
-        .filter(([, cfg]) => !cfg.apenasOutrosAtivos || !fazAcareacao)
+        .filter(([, cfg]) => fazAcareacao ? !cfg.apenasOutrosAtivos : !cfg.apenasAcareacao)
         .map(([id, cfg]) => ({ id, rotulo: cfg.rotulo }));
 }
 
@@ -364,7 +382,7 @@ function _waRecEnviar() {
             pedido: v[cfg.campoPedido] || null, prazo_horas: comPrazo ? prazo : null,
             // Quando a transportadora é campo do template, ela vai explícita — o nome do
             // template não a identifica, e é ela que separa a conversa no funil.
-            transportadora: cfg.campoTransportadora ? v[cfg.campoTransportadora] : cfg.transportadora
+            transportadora: cfg.campoTransportadora ? _waTranspChave(v[cfg.campoTransportadora]) : cfg.transportadora
         })
     })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
@@ -525,9 +543,15 @@ async function _waBulkEnviar() {
         // Valida antes de gastar mensagem: número torto ou campo vazio nem chega na Meta.
         const tel = _waValidarTelefone(linha.numero);
         const faltando = cfg.campos.filter(c => !linha.valores[c.id]);
-        if (!tel.ok || faltando.length) {
+        // Transportadora escrita errada no CSV vira "___" no meio da mensagem, e a mensagem
+        // já foi cobrada quando alguém percebe. Barra antes de gastar.
+        const transpBruta = cfg.campoTransportadora ? linha.valores[cfg.campoTransportadora] : null;
+        const transpInvalida = cfg.campoTransportadora && transpBruta && !_waTranspChave(transpBruta);
+        if (!tel.ok || faltando.length || transpInvalida) {
             linha.status = "erro";
-            linha.erro = !tel.ok ? tel.erro : "Faltou: " + faltando.map(c => c.label).join(", ");
+            linha.erro = !tel.ok ? tel.erro
+                : faltando.length ? "Faltou: " + faltando.map(c => c.label).join(", ")
+                : `Transportadora "${transpBruta}" não existe. Use: ${WA_TRANSPORTADORAS_ORDEM.map(_waRotuloTransp).join(", ")}.`;
             falha++;
             _waBulkRenderizar();
             continue;
