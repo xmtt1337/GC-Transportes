@@ -31,7 +31,8 @@ const DIR = path.join(__dirname, "..", "js");
 const fonte = fs.readFileSync(path.join(DIR, "atendimento.js"), "utf8")
     + "\n" + fs.readFileSync(path.join(DIR, "atendimento-admin.js"), "utf8")
     + "\n;globalThis.__atd = { _atdEscapar, _atdHora, _atdDiaSeparador, _atdQuandoCurto,"
-    + " _atdBadgeTexto, _atdBlocos, _atdHtmlConversa, _atdaIniciais, _atdaCrachaRole };";
+    + " _atdBadgeTexto, _atdBlocos, _atdHtmlConversa, _atdaIniciais, _atdaCrachaRole,"
+    + " _atdaChaveBusca, _atdaFiltrarCandidatos };";
 
 const contexto = vm.createContext({ globalThis: undefined, console });
 contexto.globalThis = contexto;
@@ -175,4 +176,67 @@ test("o cracha de cargo usa a cor do cargo e some quando nao ha cargo", () => {
     assert.ok(api._atdaCrachaRole("cargo-novo").includes("#8494a9"));
     assert.strictEqual(api._atdaCrachaRole(""), "");
     assert.strictEqual(api._atdaCrachaRole(null), "");
+});
+
+// ───── seletor de nova conversa ─────
+
+/** Entregador no formato que /atendimento/candidatos devolve. */
+function cand(usuario_id, nome, username, tem_conversa) {
+    return { usuario_id, nome, username, role: "entregador", tem_conversa: !!tem_conversa };
+}
+
+const ENTREGADORES = [
+    cand(1, "João da Silva", "GC1000001"),
+    cand(2, "Maria Antônia Souza", "GC1000002", true),
+    cand(3, "Ubiratã Gonçalves", "GC1000003"),
+    cand(4, "Carlos Silva Junior", "GC1000004"),
+];
+
+test("busca vazia devolve todo mundo, numa copia", () => {
+    const r = api._atdaFiltrarCandidatos(ENTREGADORES, "");
+    assert.strictEqual(r.length, 4);
+    // Cópia: a lista original é o cache do seletor, e filtrar não pode encolhê-lo
+    // — a próxima letra apagada precisa de todos os nomes de volta.
+    assert.notStrictEqual(r, ENTREGADORES);
+    assert.strictEqual(api._atdaFiltrarCandidatos(ENTREGADORES, "   ").length, 4);
+    assert.strictEqual(api._atdaFiltrarCandidatos(null, "").length, 0);
+});
+
+test("acento nao atrapalha nos dois sentidos", () => {
+    // Ninguém digita "Ubiratã" com o til quando está com pressa...
+    assert.deepStrictEqual(
+        Array.from(api._atdaFiltrarCandidatos(ENTREGADORES, "ubirata"), c => c.usuario_id), [3]);
+    // ...e quem digita com acento também tem que achar.
+    assert.deepStrictEqual(
+        Array.from(api._atdaFiltrarCandidatos(ENTREGADORES, "Antônia"), c => c.usuario_id), [2]);
+});
+
+test("a caixa das letras nao conta na busca", () => {
+    assert.strictEqual(api._atdaFiltrarCandidatos(ENTREGADORES, "MARIA").length, 1);
+    assert.strictEqual(api._atdaFiltrarCandidatos(ENTREGADORES, "joão").length, 1);
+});
+
+test("da pra achar pelo usuario, nao so pelo nome", () => {
+    // O suporte costuma ter o ID em mãos (veio de um fechamento, de uma NF).
+    assert.deepStrictEqual(
+        Array.from(api._atdaFiltrarCandidatos(ENTREGADORES, "GC1000004"), c => c.usuario_id), [4]);
+});
+
+test("as palavras valem em qualquer ordem", () => {
+    // Quem digita "silva joao" está procurando "João da Silva" — busca por frase
+    // inteira não acharia, porque tem um "da" no meio.
+    assert.deepStrictEqual(
+        Array.from(api._atdaFiltrarCandidatos(ENTREGADORES, "silva joao"), c => c.usuario_id), [1]);
+    // E "silva" sozinho pega os dois Silva.
+    assert.strictEqual(api._atdaFiltrarCandidatos(ENTREGADORES, "silva").length, 2);
+});
+
+test("busca sem resultado devolve lista vazia, nao a lista toda", () => {
+    assert.strictEqual(api._atdaFiltrarCandidatos(ENTREGADORES, "ninguem com esse nome").length, 0);
+});
+
+test("chave de busca normaliza espaco, acento e caixa", () => {
+    assert.strictEqual(api._atdaChaveBusca("  JOÃO  "), "joao");
+    assert.strictEqual(api._atdaChaveBusca(null), "");
+    assert.strictEqual(api._atdaChaveBusca(undefined), "");
 });

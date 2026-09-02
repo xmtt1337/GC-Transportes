@@ -40,6 +40,143 @@ function _atdaIniciais(nome) {
     return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
 }
 
+// ── Puxar conversa com quem ainda não escreveu ──
+//
+// O entregador não fica com o sistema aberto o dia inteiro; quando o suporte
+// precisa falar com ele (fechamento, NF, pacote faltante), não dá pra esperar
+// que ele escreva primeiro. Quem pode ser chamado é o servidor que diz — a
+// lista vem pronta de /atendimento/candidatos.
+
+// Quantos nomes desenhar de uma vez. A lista inteira caberia, mas 500 linhas de
+// cara não ajudam ninguém a achar uma pessoa: o corte empurra pra busca, que é
+// como se acha alguém de verdade.
+const _ATDA_CANDIDATOS_MOSTRA = 60;
+
+let _atdaCandidatos = [];
+
+/** Texto comparável: sem acento, sem caixa, sem espaço nas pontas. */
+function _atdaChaveBusca(texto) {
+    return String(texto == null ? "" : texto)
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase().trim();
+}
+
+/**
+ * Filtra o seletor pelo que foi digitado, em nome OU username.
+ *
+ * Cada palavra é procurada por conta própria, em qualquer ordem: quem digita
+ * "silva joao" está procurando "João da Silva", e uma busca por frase inteira
+ * não acharia. Sem acento dos dois lados — ninguém digita "Ubiratã" com o til
+ * quando está com pressa.
+ */
+function _atdaFiltrarCandidatos(lista, busca) {
+    const chave = _atdaChaveBusca(busca);
+    const todos = lista || [];
+    if (!chave) return todos.slice();
+    const termos = chave.split(/\s+/);
+    return todos.filter(c => {
+        const alvo = _atdaChaveBusca(`${c.nome} ${c.username}`);
+        return termos.every(t => alvo.includes(t));
+    });
+}
+
+function _atdaAbrirNova() {
+    const busca = document.getElementById("atd-novo-busca");
+    const alvo  = document.getElementById("atd-novo-lista");
+    if (busca) busca.value = "";
+    if (alvo)  alvo.innerHTML = `<div class="atd-aviso">Carregando...</div>`;
+    _abrirModal("modal-atd-novo");
+    if (busca) setTimeout(() => busca.focus(), 80);
+
+    fetch(`${API}/atendimento/candidatos`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json().then(corpo => ({ ok: r.ok, corpo })))
+        .then(({ ok, corpo }) => {
+            if (!alvo) return;
+            if (!ok) { alvo.innerHTML = `<div class="atd-aviso erro">${_atdEscapar(corpo.error || "Erro ao carregar.")}</div>`; return; }
+            _atdaCandidatos = corpo.candidatos || [];
+            _atdaPintarCandidatos();
+        })
+        .catch(() => {
+            if (alvo) alvo.innerHTML = `<div class="atd-aviso erro">Erro ao conectar com o servidor.</div>`;
+        });
+}
+
+function _atdaPintarCandidatos() {
+    const alvo  = document.getElementById("atd-novo-lista");
+    const busca = document.getElementById("atd-novo-busca");
+    if (!alvo) return;
+
+    const achados = _atdaFiltrarCandidatos(_atdaCandidatos, busca ? busca.value : "");
+    if (!achados.length) {
+        alvo.innerHTML = `<div class="atd-aviso">${_atdaCandidatos.length
+            ? "Ninguém com esse nome."
+            : "Nenhum entregador ativo cadastrado."}</div>`;
+        return;
+    }
+
+    const mostra = achados.slice(0, _ATDA_CANDIDATOS_MOSTRA);
+    const sobra  = achados.length - mostra.length;
+    alvo.innerHTML = mostra.map(c => `
+        <div class="atd-novo-item" onclick="_atdaEscolherCandidato(${c.usuario_id})">
+            <div class="atd-adm-avatar">${_atdEscapar(_atdaIniciais(c.nome))}</div>
+            <div class="atd-novo-item-corpo">
+                <div class="atd-adm-nome">${_atdEscapar(c.nome)}</div>
+                <div class="atd-adm-item-meta">${_atdaCrachaRole(c.role)}
+                    <span class="atd-adm-username">${_atdEscapar(c.username)}</span></div>
+            </div>
+            ${c.tem_conversa ? `<span class="atd-novo-jatem">já conversaram</span>` : ""}
+        </div>`).join("")
+        + (sobra ? `<div class="atd-aviso">e mais ${sobra} — refine a busca.</div>` : "");
+}
+
+function _atdaEscolherCandidato(usuarioId) {
+    const cand = _atdaCandidatos.find(c => c.usuario_id === usuarioId);
+    if (!cand) return;
+    _fecharModal("modal-atd-novo");
+
+    // Já está na lista carregada: abre a conversa de verdade, com o histórico.
+    // Nada de conversa duplicada — é uma por pessoa, no banco e aqui.
+    const existente = _atdaConversas.find(c => c.usuario_id === usuarioId);
+    if (existente) { _atdaAbrirConversa(existente.id); return; }
+
+    // Ainda não existe: fica em espera até o primeiro envio criá-la.
+    _atdaAtual = {
+        id: null,
+        usuario_id: cand.usuario_id,
+        usuario_nome: cand.nome,
+        usuario_username: cand.username,
+        usuario_role: cand.role,
+        arquivada: false,
+    };
+    const painel = document.getElementById("atd-adm-chat");
+    if (painel) painel.classList.add("aberto");
+    _atdaPintarCabecalho();
+    _atdaPintarLista();
+
+    const body = document.getElementById("atd-adm-body");
+    if (body) {
+        body.innerHTML = `<div class="atd-vazio">
+            <div class="atd-vazio-titulo">Nenhuma mensagem ainda</div>
+            <div class="atd-vazio-texto">${cand.tem_conversa
+                ? "Vocês já conversaram antes — o histórico volta assim que você enviar."
+                : "Escreva abaixo para começar a conversa."}</div>
+        </div>`;
+    }
+    // O relógio já roda: enquanto não houver id ele não faz requisição nenhuma
+    // (ver _atdaCarregarConversa), e passa a valer sozinho depois do 1º envio.
+    if (_atdaTimerChat) clearInterval(_atdaTimerChat);
+    _atdaTimerChat = setInterval(() => {
+        const tela = document.getElementById("tela-atendimento");
+        if (!tela || !tela.classList.contains("active-view") || !_atdaAtual) {
+            clearInterval(_atdaTimerChat); _atdaTimerChat = null; return;
+        }
+        _atdaCarregarConversa(true);
+    }, _ATDA_INTERVALO_CHAT);
+
+    const campo = document.getElementById("atd-adm-input");
+    if (campo) setTimeout(() => campo.focus(), 60);
+}
+
 function abrirAtendimento(event) {
     if (event) event.preventDefault();
     // Espera a resposta de /atendimento/status antes de decidir. Um link direto
@@ -185,11 +322,19 @@ function _atdaPintarCabecalho() {
         sub.innerHTML = `${_atdaCrachaRole(_atdaAtual.usuario_role)}
             <span class="atd-adm-username">${_atdEscapar(_atdaAtual.usuario_username || "")}</span>`;
     }
-    if (btn) btn.innerText = _atdaAtual.arquivada ? "Reabrir" : "Arquivar";
+    if (btn) {
+        btn.innerText = _atdaAtual.arquivada ? "Reabrir" : "Arquivar";
+        // Não dá pra arquivar o que ainda não existe: a conversa só nasce no
+        // primeiro envio. O botão volta assim que ela é criada.
+        btn.style.display = _atdaAtual.id ? "" : "none";
+    }
 }
 
 function _atdaCarregarConversa(silencioso) {
     if (!_atdaAtual) return;
+    // Conversa que o suporte puxou pelo seletor e ainda não existe no banco: não
+    // há o que buscar, e a tela já mostra o convite pra escrever a primeira.
+    if (!_atdaAtual.id) return;
     const body = document.getElementById("atd-adm-body");
     if (!body) return;
     if (!silencioso) body.innerHTML = `<div class="atd-aviso">Carregando...</div>`;
@@ -237,18 +382,35 @@ function _atdaEnviar() {
     _atdaEnviando = true;
     const botao = document.getElementById("atd-adm-enviar");
     if (botao) botao.disabled = true;
-    const id = _atdaAtual.id;
 
-    fetch(`${API}/atendimento/conversas/${id}/mensagem`, {
+    // Conversa puxada pelo seletor ainda não tem id — é o primeiro envio que a
+    // cria, e por isso vai por outra rota, com o usuário no corpo. Do segundo
+    // envio em diante é a rota normal de resposta.
+    const nova = !_atdaAtual.id;
+    const url = nova ? `${API}/atendimento/conversas`
+                     : `${API}/atendimento/conversas/${_atdaAtual.id}/mensagem`;
+    const carga = nova ? { usuario_id: _atdaAtual.usuario_id, texto } : { texto };
+
+    fetch(url, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ texto }),
+        body: JSON.stringify(carga),
     })
         .then(r => r.json().then(corpo => ({ ok: r.ok, corpo })))
         .then(({ ok, corpo }) => {
             if (!ok) { gcAlert(corpo.error || "Não consegui enviar a resposta."); return; }
             campo.value = "";
             _atdaAjustarAltura(campo);
+            if (nova && _atdaAtual) {
+                _atdaAtual.id = corpo.conversa_id;
+                // Conversa recém-criada (ou reaberta) está sempre em "Abertas".
+                // Ficar na aba de arquivadas esconderia justo o que acabou de nascer.
+                if (_atdaAba !== "abertas") {
+                    _atdaAba = "abertas";
+                    document.querySelectorAll("#atd-adm-abas .filtro-tab").forEach(b =>
+                        b.classList.toggle("active", b.dataset.aba === "abertas"));
+                }
+            }
             return _atdaCarregarConversa(true).then(() => _atdaCarregarLista(true));
         })
         .catch(() => gcAlert("Erro ao conectar com o servidor."))

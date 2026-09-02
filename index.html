@@ -41,7 +41,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260902g">
+<link rel="stylesheet" href="style.css?v=20260902h">
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
      Todo asset tem ?v=, mas quem CARREGA os ?v= é este arquivo — e ele não tem
@@ -2066,6 +2066,13 @@ if (_BASE) {
                             <button type="button" class="filtro-tab active" data-aba="abertas" onclick="_atdaTrocarAba('abertas')">Abertas</button>
                             <button type="button" class="filtro-tab" data-aba="arquivadas" onclick="_atdaTrocarAba('arquivadas')">Arquivadas</button>
                         </div>
+                        <!-- Puxar conversa com quem ainda não escreveu (entregador). -->
+                        <button type="button" class="atd-novo-btn" onclick="_atdaAbrirNova()" title="Nova conversa">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Nova
+                        </button>
                     </div>
                     <div class="atd-adm-itens" id="atd-adm-itens"></div>
                 </div>
@@ -2100,6 +2107,22 @@ if (_BASE) {
                 </div>
             </div>
         </div><!-- /tela-atendimento -->
+
+        <!-- SELETOR DE NOVA CONVERSA (SUPORTE) — quem pode ser chamado vem do
+             servidor, em /atendimento/candidatos. A busca é local, sobre a lista
+             já carregada: responde a cada tecla sem uma ida ao servidor por letra. -->
+        <div class="usr-modal-overlay" id="modal-atd-novo" onclick="_fecharModalSeBackdrop(event,'modal-atd-novo')">
+            <div class="usr-modal atd-novo-modal">
+                <div class="usr-modal-title">Nova conversa</div>
+                <div class="usr-modal-sub">Escolha o entregador. Quem tem outro cargo entra na lista sozinho, assim que escrever.</div>
+                <input class="usr-modal-input" id="atd-novo-busca" type="text" autocomplete="off"
+                       placeholder="Buscar por nome ou usuário..." oninput="_atdaPintarCandidatos()">
+                <div class="atd-novo-lista" id="atd-novo-lista"></div>
+                <div class="usr-modal-btns">
+                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-atd-novo')">Cancelar</button>
+                </div>
+            </div>
+        </div>
 
         <!-- TELA ANTECIPAÇÃO (ENTREGADOR) -->
         <div id="tela-antecipacoes" class="view tela-full">
@@ -3947,7 +3970,7 @@ if (_BASE) {
 <script src="js/sidebar.js?v=30260812d"></script>
 <script src="js/nav.js?v=30260902f"></script>
 <script src="js/atendimento.js?v=30260902f"></script>
-<script src="js/atendimento-admin.js?v=30260902f"></script>
+<script src="js/atendimento-admin.js?v=30260902h"></script>
 <script src="js/fechamentos.js?v=30260812d"></script>
 <script src="js/admin.js?v=30260901a"></script>
 <script src="js/conf-nf.js?v=30260812d"></script>
