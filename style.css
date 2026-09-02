@@ -2990,7 +2990,20 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums;
 }
 .sst-evento-detalhe { font-size: 12.5px; color: #cbd5e1; margin-top: 3px; }
-.sst-evento-quem { font-size: 11.5px; color: var(--text-dim); margin-top: 3px; }
+.sst-evento-rodape {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap; margin-top: 3px;
+}
+.sst-evento-quem { font-size: 11.5px; color: var(--text-dim); }
+/* Verde do WhatsApp: o botao leva pra conversa, e a cor diz isso antes do
+   texto. So aparece pra sac/dev/admin - ver _sstConversaHtml. */
+.sst-conversa-btn {
+    flex: 0 0 auto;
+    background: rgba(37,211,102,0.12); border: 1px solid rgba(37,211,102,0.4);
+    color: #4ade80; border-radius: 7px; padding: 4px 11px;
+    font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.sst-conversa-btn:hover { background: rgba(37,211,102,0.22); }
 
 /* Cartões do painel "Alimentar". A tarja colorida à esquerda é o estado da
    carga: dá pra varrer a tela e ver o que falta sem ler cada cartão. */

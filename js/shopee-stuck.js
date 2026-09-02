@@ -163,6 +163,8 @@ function _sstSalvar(sel, indice) {
 // resposta estava espalhada por sete telas.
 
 const _SST_CORES = {
+    ativo:                  "#25D366",
+    baixa:                  "#34d399",
     recebimento:            "#12A5E8",
     conferencia_operacao:   "#3a86ff",
     conferencia_entregador: "#22c55e",
@@ -173,7 +175,10 @@ const _SST_CORES = {
     custodia:               "#9333EA",
 };
 
+let _sstCodigoAberto = "";
+
 function _sstAbrirHistorico(codigo) {
+    _sstCodigoAberto = codigo;
     document.getElementById("sst-hist-codigo").innerText = codigo;
     document.getElementById("sst-hist-corpo").innerHTML =
         `<div class="fechamento-empty" style="padding:20px">Carregando...</div>`;
@@ -204,6 +209,33 @@ function _sstAbrirHistorico(codigo) {
     });
 }
 
+/**
+ * O botão de abrir a conversa do ativo.
+ *
+ * Só aparece pra quem pode: Conversas é restrito a sac, dev e admin
+ * (verificarAtivos no servidor), enquanto o Stuck é aberto a toda a operação.
+ * Mostrar o botão pra quem levaria "Você não tem acesso" é pior do que não
+ * mostrar — a pessoa clica achando que é falha do sistema.
+ *
+ * O evento em si continua visível pra todos: saber que houve um ativo e o que
+ * o cliente respondeu é informação sobre o pacote, não conteúdo de conversa.
+ */
+function _sstConversaHtml(e, codigo) {
+    if (e.etapa !== "ativo") return "";
+    var role = window._gcUser && window._gcUser.role;
+    if (typeof WA_ROLES_ATIVOS === "undefined" || !WA_ROLES_ATIVOS.includes(role)) return "";
+    return `<button type="button" class="sst-conversa-btn"
+                    onclick="_sstAbrirConversa('${_sstEsc(codigo)}')">Ver conversa</button>`;
+}
+
+function _sstAbrirConversa(codigo) {
+    _fecharModal("modal-sst-historico");
+    // A tela de Conversas resolve aba e transportadora sozinha a partir do
+    // código — por isso só ele vai. Ela também confere o cargo de novo, então
+    // um link colado por engano não passa.
+    abrirWhatsappConversas(null, { codigo: codigo });
+}
+
 function _sstEventoHtml(e) {
     const cor = _SST_CORES[e.etapa] || "#8494a9";
     return `
@@ -213,7 +245,10 @@ function _sstEventoHtml(e) {
             <span class="sst-evento-quando">${_sstEsc(_sstQuando(e))}</span>
         </div>
         ${e.detalhe ? `<div class="sst-evento-detalhe">${_sstEsc(e.detalhe)}</div>` : ""}
-        <div class="sst-evento-quem">${e.usuario ? _sstEsc(e.usuario) : "—"}</div>
+        <div class="sst-evento-rodape">
+            <span class="sst-evento-quem">${e.usuario ? _sstEsc(e.usuario) : "—"}</span>
+            ${_sstConversaHtml(e, e.codigo || _sstCodigoAberto)}
+        </div>
     </div>`;
 }
 
