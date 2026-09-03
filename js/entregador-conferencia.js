@@ -180,6 +180,8 @@ function _cenBuscaAviso(msg) {
         `<div class="fechamento-empty">${_cenEsc(msg)}</div>`;
 }
 
+// Canto reto do lado da tarja: com border-radius nos quatro cantos a barra colorida
+// acompanha a curva e vira uma gota. Tarja é linha, não enfeite.
 function _cenBuscaCartao(r) {
     const br = s => s ? String(s).split("-").reverse().join("/") : "—";
     // Três situações, e o cabeçalho já dá a resposta sem ele ter que ler o resto.
@@ -198,7 +200,7 @@ function _cenBuscaCartao(r) {
         </div>`;
 
     return `
-    <div style="border:1px solid ${info.cor}44;border-left:3px solid ${info.cor};border-radius:12px;padding:14px;margin-bottom:10px;background:${info.cor}0d">
+    <div style="border:1px solid ${info.cor}44;border-left:3px solid ${info.cor};border-radius:0 12px 12px 0;padding:14px;margin-bottom:10px;background:${info.cor}0d">
         <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#e2e8f0;margin-bottom:3px">${_cenEsc(r.codigo)}</div>
         <div style="font-weight:700;color:${info.cor};font-size:13.5px;margin-bottom:2px">${info.titulo}</div>
         <div style="font-size:12px;color:#8494a9;margin-bottom:10px">${_cenEsc(info.obs)}</div>

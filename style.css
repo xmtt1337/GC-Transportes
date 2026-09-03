@@ -3011,7 +3011,9 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     background: rgba(255,255,255,0.02);
     border: 1px solid rgba(255,255,255,0.07);
     border-left: 3px solid var(--alim-c);
-    border-radius: 12px; padding: 15px 17px; margin-bottom: 12px;
+    /* Canto reto do lado da tarja, igual ao .sst-evento: arredondar ali faz a barra
+       colorida acompanhar a curva e virar uma gota. */
+    border-radius: 0 12px 12px 0; padding: 15px 17px; margin-bottom: 12px;
 }
 .alim-card-topo {
     display: flex; align-items: center; justify-content: space-between;
