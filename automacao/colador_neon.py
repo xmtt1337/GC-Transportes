@@ -35,7 +35,7 @@ import win32gui
 
 from ponte_navegador import PORTA_PADRAO, Ponte
 
-VERSAO = '2.7'   # subir junto com mudança de comportamento
+VERSAO = '2.8'   # subir junto com mudança de comportamento
 APP_ID = 'GC.Transportes.ColadorNeon.1.0'
 try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
@@ -47,7 +47,19 @@ except Exception:
 CONFIG_DIR = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'GC_Colador')
 CONFIG_PATH = os.path.join(CONFIG_DIR, 'config.json')
 
-TABELA = 'shopee_recebimentos'
+# As duas filas que o colador atende, na ordem em que ele procura trabalho.
+#
+# Os entregadores ganharam fila propria porque a trava de duplicado por dia e
+# uma so por tabela: o galpao receber um codigo impedia o entregador de pedir AT
+# pra ele. Sao coisas diferentes - um diz "recebi este pacote", o outro "preciso
+# de AT pra este" - e o segundo continua valendo com o primeiro ja feito.
+#
+# As colunas de controle sao iguais nas duas, entao daqui pra frente o colador
+# nao precisa saber de qual fila o codigo veio: ele cola do mesmo jeito.
+FILAS = ['shopee_recebimentos', 'entregador_pedidos_at']
+
+# Onde ainda se fala de "a" tabela: rotulo da janela e a lista de XPTs.
+TABELA = FILAS[0]
 RESERVA_EXPIRA = '15 minutes'
 ESPERA_NOVOS = 5  # segundos entre uma checagem e outra no modo contínuo
 CARENCIA_PADRAO = 60  # segundos de folga entre receber e atribuir no SPX
@@ -141,6 +153,39 @@ def deve_adiar(falhas, tamanho_lote):
     return falhas >= TENTATIVAS_ANTES_DE_ADIAR and tamanho_lote > 1
 
 
+# O .exe é compilado sem console (console=False no .spec), então sys.stdout não
+# existe e todo print some. Isso passou despercebido até a primeira madrugada em
+# que precisamos saber o que tinha acontecido — e não havia como saber. O log em
+# arquivo é a única memória que sobra depois que a janela fecha.
+LOG_PATH = os.path.join(CONFIG_DIR, 'colador.log')
+LOG_MAX_BYTES = 2 * 1024 * 1024
+
+
+def registrar(linha):
+    """Escreve no log e no console, quando houver console."""
+    texto = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  {linha}"
+    try:
+        print(texto)
+    except Exception:
+        pass
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        # Corta pela metade ao passar do teto: um arquivo que cresce pra sempre
+        # numa máquina de galpão acaba sendo o problema, não a solução.
+        try:
+            if os.path.getsize(LOG_PATH) > LOG_MAX_BYTES:
+                with open(LOG_PATH, 'r', encoding='utf-8', errors='replace') as f:
+                    sobra = f.readlines()[-2000:]
+                with open(LOG_PATH, 'w', encoding='utf-8') as f:
+                    f.writelines(sobra)
+        except FileNotFoundError:
+            pass
+        with open(LOG_PATH, 'a', encoding='utf-8') as f:
+            f.write(texto + '\n')
+    except Exception:
+        pass   # log é conveniência: não pode derrubar colagem nenhuma
+
+
 def carregar_config():
     try:
         with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
@@ -221,28 +266,47 @@ class Banco:
 
 
 def preparar_schema(db):
-    """Cria as colunas de controle dos dois modos. Idempotente."""
-    # O número da AT que o SPX cria no instante da colagem. Fica aqui, e não na
-    # at_exportada, porque aquela tabela é o arquivo importado depois — a AT
-    # que o entregador precisa ver é a de agora, no segundo em que nasceu.
-    db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS at_numero TEXT",
-                retorna=False)
-    db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS at_numero_em TIMESTAMP",
-                retorna=False)
-    for modo, c in MODOS.items():
-        db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS {c['colado_em']} TIMESTAMP",
+    """Cria as colunas de controle dos dois modos, nas duas filas. Idempotente.
+
+    A fila dos entregadores o backend também cria (modules/at/migrations.js) —
+    aqui é rede de segurança pro colador não depender da ordem em que as duas
+    coisas sobem.
+    """
+    for i, tabela in enumerate(FILAS):
+        # A fila dos entregadores pode ainda não existir se o backend novo não
+        # subiu: sem isto o colador morreria na abertura por causa dela.
+        db.executar(f"""
+            CREATE TABLE IF NOT EXISTS {tabela} (
+                id                  SERIAL PRIMARY KEY,
+                codigo              TEXT NOT NULL,
+                xpt                 TEXT NOT NULL,
+                usuario_id          INTEGER,
+                usuario_nome        TEXT,
+                dia                 TEXT,
+                data_hora_brasilia  TEXT,
+                criado_em           TIMESTAMP DEFAULT NOW()
+            )""", retorna=False)
+        # O número da AT que o SPX cria no instante da colagem. Fica aqui, e não
+        # na at_exportada, porque aquela tabela é o arquivo importado depois — a
+        # AT que o entregador precisa ver é a de agora, no segundo em que nasceu.
+        db.executar(f"ALTER TABLE {tabela} ADD COLUMN IF NOT EXISTS at_numero TEXT",
                     retorna=False)
-        db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS {c['colado_por']} TEXT",
+        db.executar(f"ALTER TABLE {tabela} ADD COLUMN IF NOT EXISTS at_numero_em TIMESTAMP",
                     retorna=False)
-        db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS {c['reservado_em']} TIMESTAMP",
-                    retorna=False)
-        db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS {c['reservado_por']} TEXT",
-                    retorna=False)
-        db.executar(
-            f"CREATE INDEX IF NOT EXISTS idx_shopee_receb_{c['colado_em']} "
-            f"ON {TABELA} (dia, id) WHERE {c['colado_em']} IS NULL",
-            retorna=False,
-        )
+        for modo, c in MODOS.items():
+            db.executar(f"ALTER TABLE {tabela} ADD COLUMN IF NOT EXISTS {c['colado_em']} TIMESTAMP",
+                        retorna=False)
+            db.executar(f"ALTER TABLE {tabela} ADD COLUMN IF NOT EXISTS {c['colado_por']} TEXT",
+                        retorna=False)
+            db.executar(f"ALTER TABLE {tabela} ADD COLUMN IF NOT EXISTS {c['reservado_em']} TIMESTAMP",
+                        retorna=False)
+            db.executar(f"ALTER TABLE {tabela} ADD COLUMN IF NOT EXISTS {c['reservado_por']} TEXT",
+                        retorna=False)
+            db.executar(
+                f"CREATE INDEX IF NOT EXISTS idx_fila{i}_{c['colado_em']} "
+                f"ON {tabela} (dia, id) WHERE {c['colado_em']} IS NULL",
+                retorna=False,
+            )
 
 
 FILTRO = """
@@ -264,14 +328,14 @@ def _disponivel(modo):
     return cond
 
 
-def sql_reservar(modo):
+def sql_reservar(modo, tabela):
     c = MODOS[modo]
     return f"""
-UPDATE {TABELA}
+UPDATE {tabela}
    SET {c['reservado_em']} = NOW(), {c['reservado_por']} = %(quem)s
  WHERE id IN (
        SELECT id
-         FROM {TABELA}
+         FROM {tabela}
         WHERE {_disponivel(modo)}
           AND ({c['reservado_em']} IS NULL
                OR {c['reservado_por']} = %(quem)s
@@ -285,34 +349,40 @@ UPDATE {TABELA}
 """
 
 
-def sql_confirmar(modo):
+def sql_confirmar(modo, tabela):
     c = MODOS[modo]
     return f"""
-UPDATE {TABELA}
+UPDATE {tabela}
    SET {c['colado_em']} = NOW(), {c['colado_por']} = %(quem)s,
        {c['reservado_em']} = NULL, {c['reservado_por']} = NULL
  WHERE id = ANY(%(ids)s)
 """
 
 
-SQL_GRAVAR_AT = f"""
-UPDATE {TABELA}
+def sql_gravar_at(tabela):
+    """A AT do pacote, gravada na fila em que ele estiver.
+
+    Roda nas duas: o mesmo código pode estar na fila do galpão e na do
+    entregador no mesmo dia, e é a mesma AT do mesmo pacote nos dois casos.
+    """
+    return f"""
+UPDATE {tabela}
    SET at_numero = %(at)s, at_numero_em = NOW()
  WHERE dia = %(dia)s AND UPPER(codigo) = UPPER(%(codigo)s)
        AND at_numero IS NULL
 """
 
 
-def sql_liberar(modo):
+def sql_liberar(modo, tabela):
     c = MODOS[modo]
     return f"""
-UPDATE {TABELA}
+UPDATE {tabela}
    SET {c['reservado_em']} = NULL, {c['reservado_por']} = NULL
  WHERE id = ANY(%(ids)s) AND {c['colado_em']} IS NULL
 """
 
 
-def sql_contar(modo):
+def sql_contar(modo, tabela):
     """pendentes = dá pra colar agora; travados = esperando o estágio anterior."""
     c = MODOS[modo]
     travados = (f"COUNT(*) FILTER (WHERE {c['colado_em']} IS NULL "
@@ -322,16 +392,16 @@ SELECT COUNT(*) FILTER (WHERE {_disponivel(modo)}) AS pendentes,
        COUNT(*) FILTER (WHERE {c['colado_em']} IS NOT NULL) AS colados,
        {travados} AS travados,
        COUNT(*) AS total
-  FROM {TABELA}
+  FROM {tabela}
  WHERE TRUE
        {FILTRO}
 """
 
 
-def sql_pular(modo):
+def sql_pular(modo, tabela):
     c = MODOS[modo]
     return f"""
-UPDATE {TABELA}
+UPDATE {tabela}
    SET {c['colado_em']} = NOW(), {c['colado_por']} = %(quem)s || ' [pulado]',
        {c['reservado_em']} = NULL, {c['reservado_por']} = NULL
  WHERE {c['colado_em']} IS NULL
@@ -339,10 +409,10 @@ UPDATE {TABELA}
 """
 
 
-def sql_zerar(modo):
+def sql_zerar(modo, tabela):
     c = MODOS[modo]
     return f"""
-UPDATE {TABELA}
+UPDATE {tabela}
    SET {c['colado_em']} = NULL, {c['colado_por']} = NULL,
        {c['reservado_em']} = NULL, {c['reservado_por']} = NULL
  WHERE {c['colado_em']} IS NOT NULL
@@ -966,8 +1036,14 @@ class ColadorApp:
 
         def tarefa():
             try:
-                linha = self.db_ui.executar(sql_contar(modo), self.filtros_atuais())[0]
-                self.ui(lambda: self.mostrar_contagem(*linha))
+                filtros = self.filtros_atuais()
+                # Soma as duas filas: pra quem olha a tela, o que importa é
+                # quanto falta colar, não em qual tabela o código está.
+                somas = [0, 0, 0, 0]
+                for tabela in FILAS:
+                    linha = self.db_ui.executar(sql_contar(modo, tabela), filtros)[0]
+                    somas = [a + (b or 0) for a, b in zip(somas, linha)]
+                self.ui(lambda: self.mostrar_contagem(*somas))
             except Exception as e:
                 msg = str(e).strip().split("\n")[0][:90]
                 self.ui(lambda: self.status_banco.configure(
@@ -1086,6 +1162,7 @@ class ColadorApp:
         self.pausado = False
         self.parar_thread = False
         self.colados_sessao = 0
+        self.ats_sessao = 0
         self.num_lote = 0
         self.lote = []
         self.tempos = []
@@ -1117,12 +1194,24 @@ class ColadorApp:
         return hwnds
 
     def reservar_lote(self):
-        """Reserva o próximo lote. Um único UPDATE — ninguém pega os mesmos ids."""
+        """Reserva o próximo lote. Um único UPDATE — ninguém pega os mesmos ids.
+
+        Procura fila por fila, na ordem de FILAS, e para na primeira que tiver
+        trabalho. Não junta as duas no mesmo lote de propósito: o UPDATE ...
+        RETURNING que garante que ninguém pega o mesmo código é por tabela, e
+        misturar exigiria uma transação em volta pra manter essa garantia.
+
+        Como o lote acaba e ele volta aqui, as duas filas andam de qualquer
+        jeito — a do galpão só tem prioridade dentro de cada rodada.
+        """
         params = dict(self.filtros_exec)
         params.update({'quem': self.quem, 'tam': self.tam_lote_exec})
-        linhas = self.db.executar(sql_reservar(self.modo_exec), params)
-        self.reservados.update(r[0] for r in linhas)
-        return [(r[0], r[1]) for r in linhas]
+        for tabela in FILAS:
+            linhas = self.db.executar(sql_reservar(self.modo_exec, tabela), params)
+            if linhas:
+                self.reservados.update((tabela, r[0]) for r in linhas)
+                return [(tabela, r[0], r[1]) for r in linhas]
+        return []
 
     def registrar_tempo(self, segundos):
         """Guarda os últimos tempos por código, pra tela mostrar o ritmo real."""
@@ -1154,7 +1243,7 @@ class ColadorApp:
         espera = espera_retentativa(tentativas)
         texto = f"{motivo} · tentando de novo em {espera}s (tentativa {tentativas})"
         self.ui(lambda: self.atualizar_status(texto))
-        print(f"[contornado] {texto}")
+        registrar(f"[contornado] {texto}")
         self.esperar(espera)
 
     def loop_colagem(self):
@@ -1198,11 +1287,11 @@ class ColadorApp:
                     falhas_volta = 0
                     self.ui(self.atualizar_status)
 
-                registro_id, codigo = self.lote[0]
+                tabela, registro_id, codigo = self.lote[0]
                 codigo = (codigo or '').strip()
                 if not codigo:
                     self.lote.pop(0)
-                    self.reservados.discard(registro_id)
+                    self.reservados.discard((tabela, registro_id))
                     continue
 
                 if self.saida_exec == SAIDA_NAVEGADOR:
@@ -1255,7 +1344,7 @@ class ColadorApp:
                 # Só marca como colado depois de digitado — parar no meio não
                 # queima código nenhum.
                 self.lote.pop(0)
-                self.fila_confirmar.put(registro_id)
+                self.fila_confirmar.put((tabela, registro_id))
                 self.colados_sessao += 1
                 if self.pendentes_banco is not None:
                     self.pendentes_banco = max(0, self.pendentes_banco - 1)
@@ -1303,12 +1392,17 @@ class ColadorApp:
                     break
                 codigo, at = item
                 try:
-                    db.executar(SQL_GRAVAR_AT,
-                                {'at': at, 'dia': self.dia_exec_at(), 'codigo': codigo},
-                                retorna=False)
-                    print(f"[AT] {codigo} -> {at}")
+                    # Nas duas filas: o mesmo pacote pode estar na do galpão e
+                    # na do entregador no mesmo dia, e a AT é a mesma.
+                    for tabela in FILAS:
+                        db.executar(sql_gravar_at(tabela),
+                                    {'at': at, 'dia': self.dia_exec_at(), 'codigo': codigo},
+                                    retorna=False)
+                    self.ats_sessao += 1
+                    self.ui(self.atualizar_status)
+                    registrar(f"[AT] {codigo} -> {at}")
                 except Exception as e:
-                    print(f"Erro ao gravar a AT de {codigo}: {e}")
+                    registrar(f"[AT] ERRO ao gravar {codigo}: {e}")
                     self.fila_at.put((codigo, at))
                     time.sleep(2)
         finally:
@@ -1331,8 +1425,8 @@ class ColadorApp:
                 item = self.fila_confirmar.get()
                 if item is None:
                     break
-                ids = [item]
-                while len(ids) < 50:
+                pares = [item]
+                while len(pares) < 50:
                     try:
                         proximo = self.fila_confirmar.get_nowait()
                     except queue.Empty:
@@ -1340,16 +1434,22 @@ class ColadorApp:
                     if proximo is None:
                         item = None
                         break
-                    ids.append(proximo)
+                    pares.append(proximo)
+                # Um UPDATE por fila: as duas tabelas têm as mesmas colunas,
+                # mas continuam sendo tabelas diferentes.
+                porFila = {}
+                for tabela, rid in pares:
+                    porFila.setdefault(tabela, []).append(rid)
                 try:
-                    db.executar(sql_confirmar(self.modo_exec),
-                                {'quem': self.quem, 'ids': ids}, retorna=False)
-                    self.reservados.difference_update(ids)
+                    for tabela, ids in porFila.items():
+                        db.executar(sql_confirmar(self.modo_exec, tabela),
+                                    {'quem': self.quem, 'ids': ids}, retorna=False)
+                    self.reservados.difference_update(pares)
                 except Exception as e:
                     # Devolve pra fila: melhor confirmar atrasado do que perder.
-                    print(f"Erro ao confirmar {len(ids)} códigos: {e}")
-                    for i in ids:
-                        self.fila_confirmar.put(i)
+                    registrar(f"Erro ao confirmar {len(pares)} códigos: {e}")
+                    for par in pares:
+                        self.fila_confirmar.put(par)
                     time.sleep(2)
                 if item is None:
                     break
@@ -1361,7 +1461,7 @@ class ColadorApp:
         self.pausado = False
 
         # Devolve pra fila o que foi reservado e não chegou a ser digitado.
-        pendentes_lote = [rid for rid, _ in self.lote]
+        pendentes_lote = [(tabela, rid) for tabela, rid, _ in self.lote]
         self.lote = []
         self.fila_confirmar.put(None)
         if self.thread_confirmar:
@@ -1372,11 +1472,15 @@ class ColadorApp:
 
         try:
             if pendentes_lote:
-                self.db.executar(sql_liberar(self.modo_exec), {'ids': pendentes_lote},
-                                 retorna=False)
+                porFila = {}
+                for tabela, rid in pendentes_lote:
+                    porFila.setdefault(tabela, []).append(rid)
+                for tabela, ids in porFila.items():
+                    self.db.executar(sql_liberar(self.modo_exec, tabela), {'ids': ids},
+                                     retorna=False)
                 self.reservados.difference_update(pendentes_lote)
         except Exception as e:
-            print(f"Erro ao liberar reservas: {e}")
+            registrar(f"Erro ao liberar reservas: {e}")
         finally:
             if self.db:
                 self.db.fechar()
@@ -1408,6 +1512,11 @@ class ColadorApp:
 
         linha = (f"lote {self.num_lote} · faltam {len(self.lote)} nele · "
                  f"{self.colados_sessao} colados nesta sessão")
+        # A AT capturada aparece aqui porque é o único jeito de saber, olhando a
+        # janela, se a extensão está pegando o número. Sem isso, "a AT não chegou
+        # no site" não distingue extensão velha de colador desconectado.
+        if self.modo_exec == 'AT Cluster' or self.ats_sessao:
+            linha += f" · {self.ats_sessao} ATs capturadas"
         if self.pendentes_banco is not None:
             linha += f" · {self.pendentes_banco} na fila"
         linha += self.ritmo()
@@ -1455,8 +1564,9 @@ class ColadorApp:
         def acao():
             def tarefa():
                 try:
-                    self.db_ui.executar(sql_pular(modo), dict(filtros, quem=self.quem),
-                                        retorna=False)
+                    for tabela in FILAS:
+                        self.db_ui.executar(sql_pular(modo, tabela),
+                                            dict(filtros, quem=self.quem), retorna=False)
                     self.ui(self.contar_async)
                     self.ui(lambda: self.status_sessao.configure(
                         text="Histórico ignorado — só as bipagens novas serão coladas",
@@ -1520,7 +1630,8 @@ class ColadorApp:
         def acao():
             def tarefa():
                 try:
-                    self.db_ui.executar(sql_zerar(modo), filtros, retorna=False)
+                    for tabela in FILAS:
+                        self.db_ui.executar(sql_zerar(modo, tabela), filtros, retorna=False)
                     self.ui(self.contar_async)
                     self.ui(lambda: self.status_sessao.configure(
                         text="Marcações removidas — a fila voltou ao início",
