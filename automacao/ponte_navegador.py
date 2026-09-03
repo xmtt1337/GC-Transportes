@@ -119,9 +119,16 @@ class Ponte:
         ultimo = None
         for porta in tentativas:
             try:
+                # Prazo folgado de propósito. Com 20s o servidor derrubava a
+                # aba por atraso no pong — e o SPX é pesado, então esse atraso
+                # acontece. Cada queda dessas abre um buraco de alguns segundos
+                # em que a AT nasce e não tem pra quem ir.
+                #
+                # Prazo curto não protegia de nada aqui: a conexão é local
+                # (127.0.0.1), e aba fechada o próprio TCP acusa na hora.
                 self.servidor = await websockets.serve(
                     self._atender, "127.0.0.1", porta,
-                    ping_interval=20, ping_timeout=20)
+                    ping_interval=30, ping_timeout=120)
                 self.porta = porta
                 break
             except OSError as e:

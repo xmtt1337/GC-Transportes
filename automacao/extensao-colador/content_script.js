@@ -182,18 +182,48 @@
 
   // --- a AT vinda do interceptador --------------------------------------
   // O interceptador roda no mundo da pagina e nao alcanca o WebSocket daqui;
-  // postMessage e a unica ponte entre os dois mundos. Sem colador conectado a
-  // AT se perde, e tudo bem: quem grava no Neon e o Python.
+  // postMessage e a unica ponte entre os dois mundos.
+  //
+  // A AT ESPERA o colador voltar. Antes ela era jogada fora quando o socket nao
+  // estava aberto, e era exatamente o que acontecia: a conexao cai e reconecta
+  // a cada poucos segundos, e a AT nasce num desses buracos - capturada no
+  // console, perdida no caminho. Reenviar e seguro: o UPDATE no Neon so grava
+  // se at_numero ainda estiver vazio.
+  const atsPendentes = [];
+  const MAX_PENDENTES = 200;   // teto de memoria; o normal e ficar em zero
+
+  function mandarAt(codigo, at) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+    try {
+      ws.send(JSON.stringify({ tipo: 'at', codigo, at }));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function guardarAt(codigo, at) {
+    if (atsPendentes.some(p => p.codigo === codigo && p.at === at)) return;
+    atsPendentes.push({ codigo, at });
+    if (atsPendentes.length > MAX_PENDENTES) atsPendentes.shift();
+    console.log(`[GC Colador] AT na espera do colador (${atsPendentes.length}):`, codigo, at);
+  }
+
+  function drenarAts() {
+    while (atsPendentes.length) {
+      const p = atsPendentes[0];
+      if (!mandarAt(p.codigo, p.at)) return;   // caiu de novo: fica pra proxima
+      atsPendentes.shift();
+      console.log('[GC Colador] AT atrasada entregue:', p.codigo, p.at);
+    }
+  }
+
   window.addEventListener('message', (evento) => {
     if (evento.source !== window) return;
     if (evento.origin !== location.origin) return;
     const d = evento.data;
     if (!d || d.__gcColadorAt !== true) return;
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.log('[GC Colador] AT capturada sem colador conectado:', d.codigo, d.at);
-      return;
-    }
-    ws.send(JSON.stringify({ tipo: 'at', codigo: d.codigo, at: d.at }));
+    if (!mandarAt(d.codigo, d.at)) guardarAt(d.codigo, d.at);
   });
 
   // --- conexao com o Python --------------------------------------------
@@ -242,6 +272,8 @@
 
   function escutar(socket) {
     ws = socket;
+    // O que ficou esperando durante a queda vai agora, antes de qualquer coisa.
+    drenarAts();
     ws.onmessage = async (evento) => {
       let msg;
       try { msg = JSON.parse(evento.data); } catch { return; }

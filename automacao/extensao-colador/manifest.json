@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GC Colador - ponte SPX",
-  "version": "1.9",
+  "version": "2.0",
   "description": "Recebe os codigos do colador (Python local), escreve no campo do SPX e captura a AT no instante em que ela nasce.",
   "permissions": [
     "scripting",
