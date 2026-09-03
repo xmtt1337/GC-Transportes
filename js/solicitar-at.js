@@ -124,7 +124,7 @@ function _solatEnviar() {
             // A rota pode ter mudado com a tela aberta (ele saiu da rota, virou o dia):
             // repinta em vez de deixar bipando contra um erro fixo.
             if (d.sem_rota) { _solatXpt = null; _solatPintarXpt(); }
-            if (d.ja_recebido) {
+            if (d.ja_pedido) {
                 return _solatMsg(
                     `<strong>${_solatEsc(codigo)}</strong> ${_solatEsc(d.error)}` +
                     `${d.usuario_nome ? " (" + _solatEsc(d.usuario_nome) + ")" : ""}`,
