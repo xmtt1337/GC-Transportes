@@ -10,10 +10,11 @@
 
 const SOLAT_CODIGO_RE = /^BR[A-Z0-9]{13}$/;
 
+// Dois estados, não três: pra quem está na rua, "recebido no SPX mas ainda sem AT"
+// e "nem recebido" são a mesma espera. O que muda a vida dele é ter a AT ou não.
 const SOLAT_STATUS = {
-    aguardando: { rotulo: "Aguardando o galpão", cor: "#eab308" },
-    recebido:   { rotulo: "Recebido no SPX",     cor: "#3a86ff" },
-    atribuido:  { rotulo: "AT criada",           cor: "#22c55e" },
+    criando: { rotulo: "Criando", cor: "#eab308" },
+    criada:  { rotulo: "Criada",  cor: "#22c55e" },
 };
 
 let _solatXpt = null;      // XPT da rota de hoje; null = sem rota hoje
@@ -61,7 +62,6 @@ function _solatPintarXpt() {
     // Sem rota hoje não há XPT, e sem XPT não há onde lançar: o campo sai do caminho em
     // vez de aceitar o bipe e recusar cada um depois.
     document.getElementById("solat-campo-codigo").style.display = _solatXpt ? "" : "none";
-    document.getElementById("solat-dica-codigo").style.display  = _solatXpt ? "" : "none";
 
     const aviso = document.getElementById("solat-aviso");
     if (_solatXpt) {
@@ -136,7 +136,7 @@ function _solatEnviar() {
         _solatMsg(`✓ <strong>${_solatEsc(d.codigo)}</strong> na fila do galpão.`, "ok");
         // Entra na lista local em vez de recarregar: uma ida ao servidor por bipe deixaria
         // a rajada lenta. O andamento real chega no próximo "Atualizar".
-        _solatItens.unshift({ id: d.id, codigo: d.codigo, status: "aguardando" });
+        _solatItens.unshift({ id: d.id, codigo: d.codigo, status: "criando", at: null });
         _solatRenderizar();
     })
     .catch(() => { _gcBeepErro(); _solatMsg("Erro ao conectar com o servidor.", "erro"); });
@@ -167,9 +167,9 @@ function _solatRenderizar() {
     empty.style.display = "none";
     result.style.display = "";
 
-    const pendentes = _solatItens.filter(i => i.status === "aguardando").length;
+    const criando = _solatItens.filter(i => i.status === "criando").length;
     document.getElementById("solat-lista-titulo").innerText =
-        `Pedidos de hoje · ${_solatItens.length}` + (pendentes ? ` · ${pendentes} na fila` : "");
+        `Pedidos de hoje · ${_solatItens.length}` + (criando ? ` · ${criando} criando` : "");
 
     document.getElementById("solat-tbody").innerHTML = _solatItens.map(i => {
         const s = SOLAT_STATUS[i.status] || { rotulo: i.status, cor: "#8494a9" };
@@ -181,6 +181,7 @@ function _solatRenderizar() {
                     ${s.rotulo}
                 </span>
             </td>
+            <td data-label="AT">${i.at ? `<strong>${_solatEsc(i.at)}</strong>` : "—"}</td>
         </tr>`;
     }).join("");
 }
