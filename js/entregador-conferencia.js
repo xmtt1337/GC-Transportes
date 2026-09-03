@@ -240,6 +240,11 @@ function _cenCarregarClusters() {
 
         _cenPintarRota(d.rota || {}, lista.length);
 
+        // O servidor só manda `ats` com a rota encerrada — antes disso o campo vem vazio
+        // de propósito, pra forçar conferir tudo antes de pegar a tarefa pra sair. O aviso
+        // aqui é só a explicação; quem trava o dado é o backend, não esta linha.
+        document.getElementById("cen-ats-aviso").style.display = (d.rota && d.rota.encerrada) ? "none" : "";
+
         // As ATs ficam numa lista plana e os botões carregam o índice: assim o
         // Task ID e o SVG do QR não precisam ser costurados dentro de um onclick.
         _cenAts = [];

@@ -3197,6 +3197,12 @@ if (_BASE) {
                                     style="width:100%" onclick="_cenAbrirRota(this)">Começar conferência</button>
                         </div>
 
+                        <!-- Só aparece antes de encerrar: depois disso as ATs já estão
+                             visíveis dentro de cada cluster, e o aviso não faz mais sentido. -->
+                        <div class="bip-scan-hint" id="cen-ats-aviso" style="display:none;margin:0 0 14px">
+                            As ATs (Task ID e QR Code) de cada cluster aparecem aqui depois que você encerrar a conferência da rota.
+                        </div>
+
                         <div id="cen-clusters"></div>
                     </div>
                 </div>
@@ -4014,7 +4020,7 @@ if (_BASE) {
 <script src="js/shopee-retidos.js?v=30260819f"></script>
 <script src="js/shopee-conf-entregadores.js?v=30260827b"></script>
 <script src="js/shopee-stuck.js?v=30260902a"></script>
-<script src="js/entregador-conferencia.js?v=20260826a"></script>
+<script src="js/entregador-conferencia.js?v=20260826b"></script>
 <script src="js/viagens.js?v=30260812d"></script>
 <script src="js/ocorrencias.js?v=30260812d"></script>
 <script src="js/ocorrencias-admin.js?v=30260812d"></script>
