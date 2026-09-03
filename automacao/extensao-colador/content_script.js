@@ -180,6 +180,22 @@
     return 'ESTOUROU 15s travado';
   }
 
+  // --- a AT vinda do interceptador --------------------------------------
+  // O interceptador roda no mundo da pagina e nao alcanca o WebSocket daqui;
+  // postMessage e a unica ponte entre os dois mundos. Sem colador conectado a
+  // AT se perde, e tudo bem: quem grava no Neon e o Python.
+  window.addEventListener('message', (evento) => {
+    if (evento.source !== window) return;
+    if (evento.origin !== location.origin) return;
+    const d = evento.data;
+    if (!d || d.__gcColadorAt !== true) return;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.log('[GC Colador] AT capturada sem colador conectado:', d.codigo, d.at);
+      return;
+    }
+    ws.send(JSON.stringify({ tipo: 'at', codigo: d.codigo, at: d.at }));
+  });
+
   // --- conexao com o Python --------------------------------------------
   // Tenta uma porta: resolve com o socket se o colador aceitar esta pagina,
   // ou com null se recusar / nao houver ninguem ouvindo.

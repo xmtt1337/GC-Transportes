@@ -10,6 +10,13 @@ async function injetarNasAbasAbertas() {
   for (const aba of abas) {
     protegerDoDescarte(aba.id);
     try {
+      // O interceptador vai no mundo da pagina; o content_script no isolado.
+      // Injetar so um dos dois deixa a captura da AT pela metade.
+      await chrome.scripting.executeScript({
+        target: { tabId: aba.id },
+        files: ['interceptador.js'],
+        world: 'MAIN',
+      });
       await chrome.scripting.executeScript({
         target: { tabId: aba.id },
         files: ['content_script.js'],

@@ -13,6 +13,7 @@ Protocolo (JSON por mensagem):
   py    -> {"tipo":"colar", "id":123, "codigo":"BR..."}
   aba   -> {"tipo":"ok",   "id":123}               escreveu e o campo liberou
   aba   -> {"tipo":"erro", "id":123, "motivo":"campo sumiu"}
+  aba   -> {"tipo":"at", "codigo":"BR...", "at":"AT..."}   a AT que acabou de nascer
   py    -> {"tipo":"ping"} / aba -> {"tipo":"pong"}
 
 A connection string do Neon não passa por aqui: quem fala com o banco é o
@@ -78,6 +79,10 @@ class Ponte:
         self.respostas = queue.Queue()
         self.ao_conectar = None      # callbacks opcionais pra UI
         self.ao_desconectar = None
+        # Chamado quando a aba avisa a AT que o SPX acabou de criar. Vem por
+        # fora do par pergunta/resposta do colar: o SPX cria a AT na chamada
+        # dele, no tempo dele, e nao necessariamente antes do "ok" do campo.
+        self.ao_capturar_at = None
         self._parar = threading.Event()
         self._proximo_id = 0
 
@@ -184,6 +189,17 @@ class Ponte:
 
                 elif tipo in ('ok', 'erro'):
                     self.respostas.put(msg)
+                elif tipo == 'at':
+                    # Fora da fila de respostas de propósito: se entrasse nela,
+                    # enviar_codigo leria a AT achando que é a confirmação do
+                    # código que está esperando.
+                    codigo = (msg.get('codigo') or '').strip()
+                    at = (msg.get('at') or '').strip()
+                    if codigo and at and self.ao_capturar_at:
+                        try:
+                            self.ao_capturar_at(codigo, at)
+                        except Exception:
+                            pass   # AT perdida não pode derrubar a colagem
                 elif tipo == 'pong':
                     pass
         except Exception:

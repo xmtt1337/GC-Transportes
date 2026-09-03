@@ -35,7 +35,7 @@ import win32gui
 
 from ponte_navegador import PORTA_PADRAO, Ponte
 
-VERSAO = '2.6'   # subir junto com mudança de comportamento
+VERSAO = '2.7'   # subir junto com mudança de comportamento
 APP_ID = 'GC.Transportes.ColadorNeon.1.0'
 try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
@@ -222,6 +222,13 @@ class Banco:
 
 def preparar_schema(db):
     """Cria as colunas de controle dos dois modos. Idempotente."""
+    # O número da AT que o SPX cria no instante da colagem. Fica aqui, e não na
+    # at_exportada, porque aquela tabela é o arquivo importado depois — a AT
+    # que o entregador precisa ver é a de agora, no segundo em que nasceu.
+    db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS at_numero TEXT",
+                retorna=False)
+    db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS at_numero_em TIMESTAMP",
+                retorna=False)
     for modo, c in MODOS.items():
         db.executar(f"ALTER TABLE {TABELA} ADD COLUMN IF NOT EXISTS {c['colado_em']} TIMESTAMP",
                     retorna=False)
@@ -285,6 +292,14 @@ UPDATE {TABELA}
    SET {c['colado_em']} = NOW(), {c['colado_por']} = %(quem)s,
        {c['reservado_em']} = NULL, {c['reservado_por']} = NULL
  WHERE id = ANY(%(ids)s)
+"""
+
+
+SQL_GRAVAR_AT = f"""
+UPDATE {TABELA}
+   SET at_numero = %(at)s, at_numero_em = NOW()
+ WHERE dia = %(dia)s AND UPPER(codigo) = UPPER(%(codigo)s)
+       AND at_numero IS NULL
 """
 
 
@@ -370,6 +385,11 @@ class ColadorApp:
         self.fila_ui = queue.Queue()
         self.fila_confirmar = queue.Queue()
         self.thread_confirmar = None
+        # A AT chega quando o SPX responde, fora do ritmo da colagem — por isso
+        # fila própria: ela não pode entrar na frente de uma confirmação nem
+        # segurar a colagem esperando o Neon.
+        self.fila_at = queue.Queue()
+        self.thread_at = None
         self.db = None            # conexão da thread de execução
         self.db_ui = None         # conexão da UI (testar / contar / zerar)
 
@@ -1011,6 +1031,7 @@ class ColadorApp:
                     self.ponte.parar()
                 self.ponte = Ponte(filtro_pagina=self.pagina_alvo(),
                                    papel=f"{self.modo_atual()} / {self.xpt_menu.get()}")
+                self.ponte.ao_capturar_at = self.guardar_at
                 self.ponte.iniciar()
                 self.porta_label.configure(text=f"porta {self.ponte.porta}")
             except OSError as e:
@@ -1072,6 +1093,8 @@ class ColadorApp:
         self.db = Banco(self.url_atual)
         self.thread_confirmar = threading.Thread(target=self.loop_confirmacao, daemon=True)
         self.thread_confirmar.start()
+        self.thread_at = threading.Thread(target=self.loop_at, daemon=True)
+        self.thread_at.start()
 
         self.show_control_window()
         self.atualizar_status()
@@ -1256,6 +1279,50 @@ class ColadorApp:
             liberar_suspensao()
             self.finalizar_execucao(erro)
 
+    def guardar_at(self, codigo, at):
+        """Enfileira a AT que a aba capturou. Chamado da thread da ponte.
+
+        Só enfileira: gravar aqui seguraria o WebSocket da aba enquanto o Neon
+        responde, e o próximo código ficaria esperando um UPDATE que não tem
+        nada a ver com ele.
+        """
+        self.fila_at.put((codigo, at))
+
+    def loop_at(self):
+        """Grava as ATs capturadas, uma a uma, fora do caminho da colagem.
+
+        Erro aqui não pode parar nada: a AT é informação a mais: sem ela o
+        pedido continua recebido e atribuído, só não aparece o número na tela
+        do entregador. Por isso devolve pra fila e segue.
+        """
+        db = Banco(self.url_atual)
+        try:
+            while True:
+                item = self.fila_at.get()
+                if item is None:
+                    break
+                codigo, at = item
+                try:
+                    db.executar(SQL_GRAVAR_AT,
+                                {'at': at, 'dia': self.dia_exec_at(), 'codigo': codigo},
+                                retorna=False)
+                    print(f"[AT] {codigo} -> {at}")
+                except Exception as e:
+                    print(f"Erro ao gravar a AT de {codigo}: {e}")
+                    self.fila_at.put((codigo, at))
+                    time.sleep(2)
+        finally:
+            db.fechar()
+
+    def dia_exec_at(self):
+        """O dia em que a linha do código foi criada — é a chave junto do código.
+
+        Usa o filtro do dia quando ele existe; em "todos os dias" cai no de
+        hoje, que é quando a colagem está acontecendo.
+        """
+        dia = (self.filtros_exec or {}).get('dia')
+        return dia or datetime.now().strftime('%Y-%m-%d')
+
     def loop_confirmacao(self):
         """Grava colado_em em segundo plano, agrupando ids, pra não atrasar a digitação."""
         db = Banco(self.url_atual)
@@ -1299,6 +1366,9 @@ class ColadorApp:
         self.fila_confirmar.put(None)
         if self.thread_confirmar:
             self.thread_confirmar.join(timeout=20)
+        self.fila_at.put(None)
+        if self.thread_at:
+            self.thread_at.join(timeout=10)
 
         try:
             if pendentes_lote:

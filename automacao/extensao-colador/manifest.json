@@ -1,17 +1,37 @@
 {
   "manifest_version": 3,
   "name": "GC Colador - ponte SPX",
-  "version": "1.8",
-  "description": "Recebe os codigos do colador (Python local) e escreve no campo do SPX, sem precisar da janela em foco.",
-  "permissions": ["scripting", "activeTab"],
-  "host_permissions": ["https://spx.shopee.com.br/*"],
+  "version": "1.9",
+  "description": "Recebe os codigos do colador (Python local), escreve no campo do SPX e captura a AT no instante em que ela nasce.",
+  "permissions": [
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://spx.shopee.com.br/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://spx.shopee.com.br/*"],
-      "js": ["content_script.js"],
+      "matches": [
+        "https://spx.shopee.com.br/*"
+      ],
+      "js": [
+        "interceptador.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://spx.shopee.com.br/*"
+      ],
+      "js": [
+        "content_script.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
