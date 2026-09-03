@@ -1,0 +1,130 @@
+===========================================================
+  GC - MACROS DO SPX
+===========================================================
+
+Duas pecas, e so isso:
+
+  ColadorNeon.exe      o programa
+  extensao-colador\    a extensao do Chrome
+
+As DUAS precisam estar rodando. Sozinho, o programa nao
+alcanca a tela do SPX; sozinha, a extensao nao sabe quais
+codigos colar.
+
+
+-----------------------------------------------------------
+INSTALAR (uma vez por maquina)
+-----------------------------------------------------------
+
+1) A EXTENSAO
+
+   a. Copie a pasta  extensao-colador  para o computador
+      (ex.: C:\GC\extensao-colador).
+
+      NAO carregue direto do pendrive: se alguem tirar o
+      pendrive, a extensao morre no meio do expediente.
+
+   b. Chrome > endereco:  chrome://extensions
+   c. Ligue "Modo do desenvolvedor" (canto superior direito)
+   d. "Carregar sem compactacao" > escolha a pasta copiada
+   e. Deve aparecer "GC Colador - ponte SPX"
+   f. DE F5 NA ABA DO SPX
+
+   O passo (f) e o que mais confunde. A extensao so entra em
+   pagina carregada DEPOIS dela: se o SPX ja estava aberto,
+   nada acontece e nenhum erro aparece.
+
+2) O PROGRAMA
+
+   a. Copie o ColadorNeon.exe para o computador
+   b. Abra. Se o Windows avisar que nao conhece o arquivo:
+      "Mais informacoes" > "Executar assim mesmo"
+      (se der tela azul do Defender, e isso; o .exe nao e
+      assinado)
+   c. Cole a connection string do Neon no campo do topo.
+      Fica salva - so se faz isso uma vez.
+
+
+-----------------------------------------------------------
+USAR NO DIA A DIA
+-----------------------------------------------------------
+
+Abra o ColadorNeon.exe DUAS VEZES. E o mesmo programa: uma
+janela para cada trabalho.
+
+  Janela 1 - Modo: Recebimento
+             Aba do SPX na tela de recebimento
+
+  Janela 2 - Modo: AT Cluster
+             Aba do SPX na tela de cluster (criar AT)
+
+Nas duas: "Colar por" = Navegador (extensao).
+
+Cada janela pega uma porta e so aceita a aba da tela dela -
+e o que impede uma roubar o codigo da outra.
+
+Deixe "Ficar aguardando" marcado: o que os entregadores
+pedirem pelo site entra na fila sozinho, e o colador pega
+sem ninguem precisar olhar.
+
+
+-----------------------------------------------------------
+O QUE ELE FAZ SOZINHO
+-----------------------------------------------------------
+
+- Nao repete e nao pula codigo, mesmo com dois coladores
+  rodando ao mesmo tempo.
+- Nao para por tropeco: aba caida, SPX fora do ar ou Neon
+  dormindo viram espera e nova tentativa. So termina quando
+  alguem aperta Parar ou a fila acaba.
+- Segura a maquina acordada enquanto cola (nao adianta ela
+  dormir de madrugada com a fila cheia).
+- Guarda o numero da AT no segundo em que o SPX cria ela, e
+  o entregador ve esse numero no site.
+
+
+-----------------------------------------------------------
+SE NAO COLAR NADA
+-----------------------------------------------------------
+
+- O ColadorNeon esta aberto, com a saida "Navegador"?
+  A extensao so conecta quando ele esta rodando.
+
+- A aba esta em spx.shopee.com.br?
+
+- Deu F5 na aba depois de instalar/atualizar a extensao?
+  Essa e a causa em nove de cada dez vezes.
+
+- F12 > Console na aba do SPX. Deve aparecer:
+      [GC Colador] conectado ao colador
+      [GC Colador] interceptador da AT ligado
+
+
+-----------------------------------------------------------
+SE A AT NAO APARECER PRO ENTREGADOR
+-----------------------------------------------------------
+
+Os codigos colam mas o numero da AT nao chega ao site:
+
+- F12 > Console, na aba do CLUSTER. A cada pedido deve sair:
+      [GC Colador] AT capturada: BR... -> AT...
+
+- Nao aparece nada? A extensao provavelmente esta velha.
+  Recarregue em chrome://extensions e DE F5.
+
+- Aparece "AT capturada" mas nao chega no site? Entao e o
+  colador: veja se a janela do AT Cluster esta aberta e
+  conectada nessa aba.
+
+
+-----------------------------------------------------------
+AO ATUALIZAR
+-----------------------------------------------------------
+
+  1. Feche o ColadorNeon.exe
+  2. Troque o .exe e a pasta extensao-colador
+  3. chrome://extensions > botao de recarregar na GC Colador
+  4. F5 NA ABA DO SPX
+  5. Abra o ColadorNeon.exe de novo
+
+O passo 4 nao e opcional.

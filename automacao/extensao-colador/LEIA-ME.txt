@@ -13,6 +13,28 @@ Com isso:
     marcado. Antes o colador marcava no escuro.
   - ele espera o campo destravar. O SPX desabilita o campo
     enquanto processa, e digitar nessa hora perdia o codigo.
+  - ela PEGA O NUMERO DA AT no segundo em que o SPX cria ela,
+    e o entregador ve esse numero no site. Antes so dava pra
+    saber a AT depois de importar o arquivo da Shopee.
+
+A CAPTURA DA AT (interceptador.js)
+
+  Quando o pedido e colado na tela de cluster, o SPX chama a
+  propria API e a resposta ja traz a AT:
+
+    POST .../assisted_sorting/delivery/order/add
+    enviado : {"fleet_order_id":"BR262699568359N", ...}
+    resposta: data.at_no = "AT202609049AXFA"
+
+  O interceptador le essa resposta e manda pro colador, que
+  grava no Neon. Ele e um arquivo separado do content_script
+  porque roda no MUNDO DA PAGINA ("world": "MAIN" no
+  manifest): content script roda isolado, e o fetch que ele
+  enxerga NAO e o que o SPX usa - trocar o fetch la nao
+  interceptaria nada. Os dois conversam por postMessage.
+
+  Se a Shopee renomear essa rota ou o campo at_no, e em
+  interceptador.js (ROTA_CRIA_AT e CAMPOS_AT) que se ajusta.
 
 -----------------------------------------------------------
 INSTALAR (uma vez por maquina)
