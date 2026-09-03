@@ -254,6 +254,24 @@ if (_BASE) {
             <li><a href="#" data-rota="Conferencia/Shopee" onclick="abrirConfEntregador(event)">Shopee</a></li>
         </ul>
 
+        <!-- Solicitar AT: o pacote que caiu na mão do entregador sem passar pelo
+             recebimento nem pela atribuição no SPX. Menu próprio, e não um item
+             dentro de "Conferência", porque ali ele CONFERE o que já é dele; aqui
+             ele PEDE que um pacote passe a ser. -->
+        <li class="menu-item" data-menu="atribuicoesent" id="menu-atribuicoes-ent" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="7" width="18" height="14" rx="2"/>
+                <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                <path d="M12 12v5"/><path d="M9.5 14.5 12 12l2.5 2.5"/>
+            </svg>
+            <span class="label">Atribuições</span>
+            <span class="arrow">&#9662;</span>
+            <span class="menu-tooltip">Atribuições</span>
+        </li>
+        <ul class="submenu" data-menu="atribuicoesent" id="submenu-atribuicoes-ent" style="display:none">
+            <li><a href="#" data-rota="Atribuicoes/SolicitarAT" onclick="abrirSolicitarAT(event)">Solicitar AT</a></li>
+        </ul>
+
         <li class="menu-item" data-menu="baixas" id="menu-baixas" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -3262,6 +3280,50 @@ if (_BASE) {
             </div>
         </div>
 
+        <!-- TELA ATRIBUIÇÕES — SOLICITAR AT (ENTREGADOR) -->
+        <div id="tela-solicitar-at" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div class="bip-scan-card">
+                    <div class="bip-scan-title">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M12 12v5"/><path d="M9.5 14.5 12 12l2.5 2.5"/></svg>
+                        Solicitar AT
+                    </div>
+
+                    <div class="shr-faixa" id="solat-faixa" style="display:none">
+                        <span class="shr-faixa-label">Sua rota hoje</span>
+                        <span class="shr-faixa-xpt" id="solat-faixa-xpt">—</span>
+                        <span class="shr-faixa-obs">O XPT vem da sua rota</span>
+                    </div>
+
+                    <div class="bip-search-wrap" id="solat-campo-codigo" style="display:none">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#3a86ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <input type="text" id="solat-codigo" placeholder="Bipar ou digitar código..."
+                            onkeydown="_solatCodigoEnter(event)"
+                            autocomplete="off" autocorrect="off" spellcheck="false">
+                        <button type="button" class="shr-scan-btn" onclick="_solatScanCodigo()" title="Escanear com a câmera">
+                            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="bip-scan-hint" id="solat-aviso" style="display:none"></div>
+                    <div class="bip-scan-hint" id="solat-dica-codigo" style="display:none">O pacote entra na fila do galpão: primeiro o recebimento no SPX, depois a AT. Código Shopee — BR seguido de 13 caracteres.</div>
+                    <div id="solat-msg" style="display:none;margin-top:12px"></div>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:12px">
+                    <span class="ant-sol-title" id="solat-lista-titulo" style="border:none;padding:0;margin:0">Pedidos de hoje</span>
+                    <button type="button" class="shr-pag-btn" onclick="_solatCarregarHoje()">Atualizar andamento</button>
+                </div>
+                <div class="fechamento-empty" id="solat-empty">Carregando...</div>
+                <div id="solat-resultado" style="display:none">
+                    <table class="ant-hist-table">
+                        <thead><tr><th>Código</th><th>Andamento</th></tr></thead>
+                        <tbody id="solat-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div><!-- /tela-solicitar-at -->
+
         <!-- TELA VIAGEM — FECHAR (ENTREGADOR) -->
         <div id="tela-viagem-fechar" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
@@ -4021,6 +4083,7 @@ if (_BASE) {
 <script src="js/shopee-conf-entregadores.js?v=30260827b"></script>
 <script src="js/shopee-stuck.js?v=30260902a"></script>
 <script src="js/entregador-conferencia.js?v=20260826b"></script>
+<script src="js/solicitar-at.js?v=20260903a"></script>
 <script src="js/viagens.js?v=30260812d"></script>
 <script src="js/ocorrencias.js?v=30260812d"></script>
 <script src="js/ocorrencias-admin.js?v=30260812d"></script>

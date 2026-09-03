@@ -200,6 +200,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("submenu-devolucoes");
         show("menu-conf-entregador");
         show("submenu-conf-entregador");
+        show("menu-atribuicoes-ent");
+        show("submenu-atribuicoes-ent");
         // Ocorrências → Pacotes Faltantes: só aparece pro entregador liberado
         // (toggle em Cadastros → Entregadores, "Editar" → Ativar formulário de faltante)
         if (data.usuario.pode_pacote_faltante) {

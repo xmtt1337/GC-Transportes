@@ -26,6 +26,7 @@ const _TELA_TITULOS = {
     "tela-extravios-dash":       "Extravios",
     "tela-extravios-busca":      "Pesquisar Extravio",
     "tela-conferencias":         "Conferências",
+    "tela-solicitar-at":         "Solicitar AT",
     "tela-shopee-receber":       "Shopee — Recebimento",
     "tela-shopee-romaneiro":     "Shopee — Romaneiro",
     "tela-shopee-at":            "Shopee — AT Exportada",
