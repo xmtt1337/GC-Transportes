@@ -1382,10 +1382,16 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 }
 
 /* ===== HOME REDESIGN ===== */
+/* A home rola. O overflow:hidden que estava aqui existia so pra matar a barra
+   fantasma da .logo-central, mas ela e absoluta ancorada na .main, entao nunca
+   contou pro scroll desta tela — o hidden so cortava os cartoes de verdade.
+   No celular o entregador perdia o ultimo cartao e o aviso de NF sem poder rolar. */
 #tela-home {
     align-items: flex-start !important;
     justify-content: flex-start !important;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 .logo-central {
     width: 340px; height: auto; opacity: 0.04; position: absolute;
@@ -1669,6 +1675,9 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 @media (max-width: 680px) {
     .home-greeting { font-size: 26px; }
     .home-actions  { gap: 6px; }
+    /* Respiro no fim da rolagem: a barra do navegador do celular sobe e desce por
+       cima dos ultimos pixels, e sem isso o ultimo cartao fica grudado nela. */
+    .home-container { padding-bottom: 28px; }
 }
 
 /* ===== ADMIN RESUMO QUINZENA ===== */
