@@ -19,6 +19,24 @@ const SOLAT_STATUS = {
 
 let _solatXpt = null;      // XPT da rota de hoje; null = sem rota hoje
 let _solatItens = [];
+let _solatEstimativa = 45; // segundos; vem medido do servidor
+let _solatTimerBusca = null;
+let _solatTimerBarra = null;
+
+// De quanto em quanto tempo perguntar o andamento ao servidor.
+//
+// Só roda enquanto houver pedido em "criando" — e para sozinho quando o último
+// fica pronto. Cada ida dessas é uma consulta ao banco, e banco acordado à toa
+// é o que a gente está justamente tentando não fazer.
+const SOLAT_INTERVALO_BUSCA = 3000;
+
+// A barra anda sozinha, sem falar com o servidor: é só relógio local. Por isso
+// pode ser suave sem custar nada.
+const SOLAT_INTERVALO_BARRA = 250;
+
+// A barra não passa disso enquanto a AT não chegou. Chegar a 100% e ficar
+// parada seria a tela dizendo que acabou quando não acabou.
+const SOLAT_TETO_BARRA = 92;
 
 function _solatEsc(txt) {
     return String(txt || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -36,6 +54,86 @@ function abrirSolicitarAT(event) {
     _solatCarregarHoje();
 }
 
+/** A tela ainda é a que está aberta? */
+function _solatNaTela() {
+    const tela = document.getElementById("tela-solicitar-at");
+    return !!tela && tela.classList.contains("active-view");
+}
+
+// Os dois relógios param quando não há mais nada em "criando" — e voltam
+// sozinhos no próximo bipe. Deixar rodando com tudo pronto seria consulta ao
+// banco pra confirmar o que já se sabe.
+function _solatAjustarRelogios() {
+    const criando = _solatItens.some(i => i.status === "criando");
+
+    if (criando && !_solatTimerBusca) {
+        _solatTimerBusca = setInterval(() => {
+            // Saiu da tela: desliga tudo. Sem isto os relógios continuariam
+            // consultando o servidor com ele em outra parte do site — e é
+            // banco acordado à toa, que é o que estamos tentando não fazer.
+            if (!_solatNaTela()) return _solatParar();
+            // Aba escondida no bolso não precisa perguntar nada: quando ele
+            // voltar pra tela, o próprio retorno já busca.
+            if (document.hidden) return;
+            _solatCarregarHoje();
+        }, SOLAT_INTERVALO_BUSCA);
+    } else if (!criando && _solatTimerBusca) {
+        clearInterval(_solatTimerBusca);
+        _solatTimerBusca = null;
+    }
+
+    if (criando && !_solatTimerBarra) {
+        _solatTimerBarra = setInterval(() => {
+            if (!_solatNaTela()) return _solatParar();
+            _solatPintarBarras();
+        }, SOLAT_INTERVALO_BARRA);
+    } else if (!criando && _solatTimerBarra) {
+        clearInterval(_solatTimerBarra);
+        _solatTimerBarra = null;
+    }
+}
+
+// Sair da tela desliga tudo: sem isto os relógios continuariam consultando o
+// servidor com o entregador em outra parte do site.
+function _solatParar() {
+    if (_solatTimerBusca) { clearInterval(_solatTimerBusca); _solatTimerBusca = null; }
+    if (_solatTimerBarra) { clearInterval(_solatTimerBarra); _solatTimerBarra = null; }
+}
+
+// Quanto falta, em fração de 0 a 1, pelo relógio local.
+function _solatAndamento(item) {
+    if (!item.criado_em) return 0;
+    const decorrido = (Date.now() - new Date(item.criado_em).getTime()) / 1000;
+    if (!isFinite(decorrido) || decorrido < 0) return 0;
+    return Math.min(1, decorrido / Math.max(1, _solatEstimativa));
+}
+
+function _solatSegundos(item) {
+    if (!item.criado_em) return 0;
+    return Math.max(0, Math.round((Date.now() - new Date(item.criado_em).getTime()) / 1000));
+}
+
+// Só mexe na largura e no texto das barras. Redesenhar a tabela quatro vezes
+// por segundo piscaria a tela e perderia o toque no meio de um rolagem.
+function _solatPintarBarras() {
+    for (const item of _solatItens) {
+        if (item.status !== "criando") continue;
+        const fill = document.getElementById(`solat-barra-${item.id}`);
+        const txt = document.getElementById(`solat-tempo-${item.id}`);
+        if (!fill) continue;
+        const frac = _solatAndamento(item);
+        fill.style.width = Math.min(SOLAT_TETO_BARRA, frac * 100) + "%";
+        const passou = frac >= 1;
+        // Passou do previsto: para de prometer e passa a contar o que já se foi.
+        fill.style.background = passou ? "#eab308" : "#3a86ff";
+        if (txt) {
+            txt.innerText = passou
+                ? `${_solatSegundos(item)}s — está demorando mais que o normal`
+                : `${_solatSegundos(item)}s de ~${_solatEstimativa}s`;
+        }
+    }
+}
+
 // O mesmo GET responde as duas perguntas: se ele tem rota hoje (daí sai o XPT) e o que
 // ele já pediu. Uma ida só ao servidor — quem abre isso está na rua, com rede ruim.
 function _solatCarregarHoje() {
@@ -45,6 +143,7 @@ function _solatCarregarHoje() {
     .then(d => {
         _solatXpt = d.xpt || null;
         _solatItens = d.itens || [];
+        if (d.estimativa_segundos) _solatEstimativa = d.estimativa_segundos;
         _solatPintarXpt();
         _solatRenderizar();
     })
@@ -136,7 +235,10 @@ function _solatEnviar() {
         _solatMsg(`✓ <strong>${_solatEsc(d.codigo)}</strong> na fila do galpão.`, "ok");
         // Entra na lista local em vez de recarregar: uma ida ao servidor por bipe deixaria
         // a rajada lenta. O andamento real chega no próximo "Atualizar".
-        _solatItens.unshift({ id: d.id, codigo: d.codigo, status: "criando", at: null });
+        _solatItens.unshift({
+            id: d.id, codigo: d.codigo, status: "criando", at: null,
+            criado_em: new Date().toISOString(), levou_segundos: null,
+        });
         _solatRenderizar();
     })
     .catch(() => { _gcBeepErro(); _solatMsg("Erro ao conectar com o servidor.", "erro"); });
@@ -173,15 +275,33 @@ function _solatRenderizar() {
 
     document.getElementById("solat-tbody").innerHTML = _solatItens.map(i => {
         const s = SOLAT_STATUS[i.status] || { rotulo: i.status, cor: "#8494a9" };
+        const andamento = i.status === "criando"
+            ? `<div style="min-width:150px">
+                   <span style="display:inline-flex;align-items:center;gap:6px;color:${s.cor}">
+                       <span style="width:7px;height:7px;border-radius:50%;background:${s.cor}"></span>
+                       ${s.rotulo}
+                   </span>
+                   <div class="slh-barra" style="margin-top:6px">
+                       <div class="slh-barra-fill" id="solat-barra-${i.id}"
+                            style="width:0%;background:#3a86ff"></div>
+                   </div>
+                   <div id="solat-tempo-${i.id}"
+                        style="font-size:11px;color:#7b98b5;margin-top:4px">0s de ~${_solatEstimativa}s</div>
+               </div>`
+            // Pronto: no lugar da barra, quanto ESTE levou. É o número que
+            // deixa claro se hoje está melhor ou pior que o normal.
+            : `<span style="display:inline-flex;align-items:center;gap:6px;color:${s.cor}">
+                   <span style="width:7px;height:7px;border-radius:50%;background:${s.cor}"></span>
+                   ${s.rotulo}${i.levou_segundos !== null && i.levou_segundos !== undefined
+                       ? ` <span style="color:#7b98b5;font-size:11px">em ${i.levou_segundos}s</span>` : ""}
+               </span>`;
         return `<tr>
             <td data-label="Código"><strong>${_solatEsc(i.codigo)}</strong></td>
-            <td data-label="Andamento">
-                <span style="display:inline-flex;align-items:center;gap:6px;color:${s.cor}">
-                    <span style="width:7px;height:7px;border-radius:50%;background:${s.cor}"></span>
-                    ${s.rotulo}
-                </span>
-            </td>
+            <td data-label="Andamento">${andamento}</td>
             <td data-label="AT">${i.at ? `<strong>${_solatEsc(i.at)}</strong>` : "—"}</td>
         </tr>`;
     }).join("");
+
+    _solatPintarBarras();
+    _solatAjustarRelogios();
 }
