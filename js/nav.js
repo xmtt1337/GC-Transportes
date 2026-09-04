@@ -161,6 +161,51 @@ function _emBreve(event) {
     mostrarTela("tela-em-breve");
 }
 
+// ───── COPIAR PARA A ÁREA DE TRANSFERÊNCIA ─────
+// navigator.clipboard só existe em contexto seguro (HTTPS ou localhost). Este
+// site é servido em HTTP, então lá ele nem aparece — e quem chamou direto caía
+// no catch com "não consegui copiar", que era o botão simplesmente não
+// funcionando no celular do entregador.
+//
+// O caminho antigo (execCommand) não tem essa exigência e funciona em HTTP. Ele
+// está obsoleto, mas obsoleto que copia vale mais que moderno que não roda.
+// Quando o domínio ganhar certificado, o de cima passa a ser usado sozinho.
+function gcCopiar(texto) {
+    const valor = String(texto == null ? "" : texto);
+    if (!valor) return Promise.reject(new Error("nada pra copiar"));
+
+    if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(valor).catch(() => _gcCopiarAntigo(valor));
+    }
+    return _gcCopiarAntigo(valor);
+}
+
+function _gcCopiarAntigo(valor) {
+    return new Promise((resolve, reject) => {
+        const campo = document.createElement("textarea");
+        campo.value = valor;
+        // readonly pra não abrir o teclado no celular; fora da tela pra não
+        // piscar nem empurrar o layout.
+        campo.setAttribute("readonly", "");
+        campo.style.position = "fixed";
+        campo.style.top = "-1000px";
+        campo.style.opacity = "0";
+        document.body.appendChild(campo);
+        try {
+            campo.select();
+            // O Safari do iPhone ignora select() sozinho: sem isto o botão não
+            // copia nada em metade dos celulares da rua.
+            campo.setSelectionRange(0, valor.length);
+            const deu = document.execCommand("copy");
+            deu ? resolve() : reject(new Error("o navegador recusou"));
+        } catch (e) {
+            reject(e);
+        } finally {
+            document.body.removeChild(campo);
+        }
+    });
+}
+
 // ───── EXTRAVIOS CARDS ─────
 function _renderExtravios(lista, containerId, showWa) {
     const el = document.getElementById(containerId);

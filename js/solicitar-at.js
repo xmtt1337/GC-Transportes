@@ -46,6 +46,7 @@ function abrirSolicitarAT(event) {
     if (event) event.preventDefault();
     _solatXpt = null;
     _solatItens = [];
+    _solatDesenhado = null;
     document.getElementById("solat-codigo").value = "";
     _solatMsg("", null);
     document.getElementById("solat-empty").innerText = "Carregando...";
@@ -244,6 +245,25 @@ function _solatEnviar() {
     .catch(() => { _gcBeepErro(); _solatMsg("Erro ao conectar com o servidor.", "erro"); });
 }
 
+// Copiar a AT: ela sai daqui pro app do SPX, pro WhatsApp do supervisor, pro
+// que for. Digitar "AT202609049AXFA" no celular, na rua, com pressa, é pedir
+// erro de um caractere que ninguém acha depois.
+function _solatCopiarAt(botao, at) {
+    const rotulo = botao.innerText;
+    gcCopiar(at).then(() => {
+        botao.innerText = "Copiado!";
+        botao.classList.add("copiado");
+        setTimeout(() => {
+            botao.innerText = rotulo;
+            botao.classList.remove("copiado");
+        }, 1800);
+    }).catch(() => {
+        // Sobrou o dedo: a AT continua na tela, selecionável.
+        botao.innerText = "Não consegui";
+        setTimeout(() => { botao.innerText = rotulo; }, 2200);
+    });
+}
+
 function _solatMsg(msg, tipo) {
     const el = document.getElementById("solat-msg");
     if (!msg) { el.style.display = "none"; el.innerHTML = ""; return; }
@@ -254,9 +274,27 @@ function _solatMsg(msg, tipo) {
     el.innerHTML = msg;
 }
 
+// Assinatura do que está na tela. O que muda de segundo em segundo (o tempo
+// corrido, a largura da barra) não entra: aquilo é pintado à parte.
+function _solatAssinatura() {
+    return _solatItens.map(i => `${i.id}|${i.status}|${i.at || ""}`).join(";");
+}
+
+let _solatDesenhado = null;
+
 function _solatRenderizar() {
     const empty  = document.getElementById("solat-empty");
     const result = document.getElementById("solat-resultado");
+
+    // Redesenhar a cada 3s sem nada ter mudado apagaria o "Copiado!" no meio do
+    // aviso, e faria a tabela piscar debaixo do dedo de quem está rolando.
+    const assinatura = _solatAssinatura();
+    if (assinatura === _solatDesenhado && _solatItens.length) {
+        _solatPintarBarras();
+        _solatAjustarRelogios();
+        return;
+    }
+    _solatDesenhado = assinatura;
 
     if (!_solatItens.length) {
         empty.style.display = "";
@@ -298,7 +336,13 @@ function _solatRenderizar() {
         return `<tr>
             <td data-label="Código"><strong>${_solatEsc(i.codigo)}</strong></td>
             <td data-label="Andamento">${andamento}</td>
-            <td data-label="AT">${i.at ? `<strong>${_solatEsc(i.at)}</strong>` : "—"}</td>
+            <td data-label="AT">${i.at
+                ? `<span style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap">
+                       <strong>${_solatEsc(i.at)}</strong>
+                       <button type="button" class="cen-at-btn"
+                               onclick="_solatCopiarAt(this,'${_solatEsc(i.at)}')">Copiar</button>
+                   </span>`
+                : "—"}</td>
         </tr>`;
     }).join("");
 
