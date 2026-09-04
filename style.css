@@ -230,6 +230,7 @@ body {
 .fech-body {
     flex: 1; min-height: 0; min-width: 0;
     overflow-y: auto; overflow-x: hidden;
+    overscroll-behavior: contain;
     padding-top: 14px;
     scrollbar-width: thin;
     scrollbar-color: rgba(58,134,255,0.3) transparent;
@@ -1308,7 +1309,17 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 /* ── /VIDEIRA PAINEL ─────────────────────────────────────────────── */
 
 @media (max-width: 680px) {
-    body { height: 100dvh; }
+    /* svh, nao dvh.
+       dvh e a altura VIVA da viewport: ela muda sozinha conforme a barra de
+       endereco do Chrome no Android desliza pra fora e volta. Como a casca
+       inteira (body > .content > .main > tela) e medida a partir dela, cada
+       centimetro de barra redimensionava o app no meio da rolagem. Isso fecha
+       um laco: rola -> a barra some -> a tela cresce -> o conteudo cabe ->
+       a rolagem zera -> a barra volta -> a tela encolhe -> rola de novo.
+       O usuario ve a tela tremendo, e so em alguns celulares — os que escondem
+       a barra ao rolar. svh e a altura com a barra sempre visivel: nao se mexe.
+       A primeira linha e o fallback pra quem nao conhece svh. */
+    body { height: 100vh; height: 100svh; }
 
     .sidebar {
         position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
@@ -1391,6 +1402,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     justify-content: flex-start !important;
     overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
 }
 .logo-central {
