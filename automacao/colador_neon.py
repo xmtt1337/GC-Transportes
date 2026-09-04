@@ -50,7 +50,7 @@ CONFIG_PATH = os.path.join(CONFIG_DIR, 'config.json')
 # As duas filas que o colador atende, na ordem em que ele procura trabalho.
 #
 # Os entregadores ganharam fila propria porque a trava de duplicado por dia e
-# uma so por tabela: o galpao receber um codigo impedia o entregador de pedir AT
+# uma so por tabela: a operacao receber um codigo impedia o entregador de pedir AT
 # pra ele. Sao coisas diferentes - um diz "recebi este pacote", o outro "preciso
 # de AT pra este" - e o segundo continua valendo com o primeiro ja feito.
 #
@@ -171,7 +171,7 @@ def registrar(linha):
     try:
         os.makedirs(CONFIG_DIR, exist_ok=True)
         # Corta pela metade ao passar do teto: um arquivo que cresce pra sempre
-        # numa máquina de galpão acaba sendo o problema, não a solução.
+        # numa máquina da operação acaba sendo o problema, não a solução.
         try:
             if os.path.getsize(LOG_PATH) > LOG_MAX_BYTES:
                 with open(LOG_PATH, 'r', encoding='utf-8', errors='replace') as f:
@@ -362,7 +362,7 @@ UPDATE {tabela}
 def sql_gravar_at(tabela):
     """A AT do pacote, gravada na fila em que ele estiver.
 
-    Roda nas duas: o mesmo código pode estar na fila do galpão e na do
+    Roda nas duas: o mesmo código pode estar na fila da operação e na do
     entregador no mesmo dia, e é a mesma AT do mesmo pacote nos dois casos.
     """
     return f"""
@@ -1202,7 +1202,7 @@ class ColadorApp:
         misturar exigiria uma transação em volta pra manter essa garantia.
 
         Como o lote acaba e ele volta aqui, as duas filas andam de qualquer
-        jeito — a do galpão só tem prioridade dentro de cada rodada.
+        jeito — a da operação só tem prioridade dentro de cada rodada.
         """
         params = dict(self.filtros_exec)
         params.update({'quem': self.quem, 'tam': self.tam_lote_exec})
@@ -1392,7 +1392,7 @@ class ColadorApp:
                     break
                 codigo, at = item
                 try:
-                    # Nas duas filas: o mesmo pacote pode estar na do galpão e
+                    # Nas duas filas: o mesmo pacote pode estar na da operação e
                     # na do entregador no mesmo dia, e a AT é a mesma.
                     for tabela in FILAS:
                         db.executar(sql_gravar_at(tabela),
