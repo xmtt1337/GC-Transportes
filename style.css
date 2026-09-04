@@ -3963,19 +3963,39 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
     padding: 16px;
     animation: gcFadeIn 0.15s ease;
 }
-/* ===== SKELETON LOADER ===== */
+/* ===== SKELETON LOADER =====
+   O brilho anda por transform, nao por background-position.
+   background-position nao e propriedade composta: mexer nela obriga o navegador
+   a REPINTAR o gradiente de 1200px de cada .sk, sessenta vezes por segundo. Um
+   skTabela(7) monta 40 .sk, e skMostrar aparece em 54 lugares — inclusive nas
+   telas de Fechamentos e Conferencias do entregador. No desktop passa batido;
+   no celular o rasterizador nao acompanha e a tela sai desenhada pela metade,
+   que e o piscar que ele filmou.
+   Com transform o compositor so desloca uma camada ja pronta: nada e repintado.
+   Medido com a CPU 20x mais lenta (perfil de celular fraco), 40 elementos:
+   antes ~20fps com quadros de ate 600ms; depois ~60fps sem quadro longo. */
 @keyframes sk-shimmer {
-    from { background-position: -600px 0; }
-    to   { background-position:  600px 0; }
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(100%); }
 }
 .sk {
-    background: linear-gradient(90deg,
-        rgba(255,255,255,0.04) 25%,
-        rgba(255,255,255,0.09) 50%,
-        rgba(255,255,255,0.04) 75%);
-    background-size: 1200px 100%;
-    animation: sk-shimmer 1.6s infinite linear;
+    position: relative;
+    overflow: hidden;
+    background: rgba(255,255,255,0.05);
     border-radius: 6px;
+}
+.sk::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg,
+        rgba(255,255,255,0) 0%,
+        rgba(255,255,255,0.09) 50%,
+        rgba(255,255,255,0) 100%);
+    animation: sk-shimmer 1.6s infinite linear;
+}
+/* Quem pediu menos movimento no sistema fica so com a barra parada. */
+@media (prefers-reduced-motion: reduce) {
+    .sk::after { animation: none; }
 }
 .sk-mode, .fechamento-empty.sk-mode {
     background: transparent; border: none; padding: 0;
