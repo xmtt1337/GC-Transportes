@@ -1,9 +1,9 @@
 // ───── ATRIBUIÇÕES → SOLICITAR AT ─────
 // O entregador bipa, na rua, o pacote que chegou na mão dele sem ter passado pelo
-// recebimento nem pela atribuição no SPX. O código entra na MESMA fila do galpão, e
+// recebimento nem pela atribuição no SPX. O código entra na MESMA fila da operação, e
 // quem cola no SPX é o colador que já roda lá — um pro Recebimento, outro pra AT.
 // Por isso a tela não confirma "pronto": ela mostra o ANDAMENTO de cada pedido, que
-// só avança quando o colador do galpão passa por ele.
+// só avança quando o colador passa por ele.
 //
 // Sem seletor de XPT de propósito: o entregador não tem polo no cadastro, e o XPT sai
 // da rota que ele já tem hoje. Deixar escolher seria deixar errar.
@@ -232,7 +232,7 @@ function _solatEnviar() {
             return _solatMsg(_solatEsc(d.error) || "Erro ao pedir.", "erro");
         }
         _gcBeepSucesso(); _solatFlash("ok");
-        _solatMsg(`✓ <strong>${_solatEsc(d.codigo)}</strong> na fila do galpão.`, "ok");
+        _solatMsg(`✓ <strong>${_solatEsc(d.codigo)}</strong> na fila.`, "ok");
         // Entra na lista local em vez de recarregar: uma ida ao servidor por bipe deixaria
         // a rajada lenta. O andamento real chega no próximo "Atualizar".
         _solatItens.unshift({
