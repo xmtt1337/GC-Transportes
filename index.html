@@ -27,6 +27,13 @@ if (_BASE) {
     var rota = params.get("_rota");
     if (rota !== null) {
         history.replaceState(null, "", _BASE + rota);
+    } else if (params.has("_v")) {
+        // ?_v= é só o empurrão que a autoverificação de versão dá pra furar o
+        // cache do index (ver o script logo abaixo do <title>). Cumprida a
+        // função, sai da barra de endereço: ninguém precisa vê-lo nem colá-lo.
+        params.delete("_v");
+        var resto = params.toString();
+        history.replaceState(null, "", location.pathname + (resto ? "?" + resto : "") + location.hash);
     }
 }
 </script>
@@ -41,7 +48,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260904d">
+<link rel="stylesheet" href="style.css?v=20260904e">
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
      Todo asset tem ?v=, mas quem CARREGA os ?v= é este arquivo — e ele não tem
@@ -76,7 +83,19 @@ if (_BASE) {
             try { tentada = sessionStorage.getItem("gc_versao_tentada"); } catch (e) {}
             if (tentada === d.versao) return;
             try { sessionStorage.setItem("gc_versao_tentada", d.versao); } catch (e) {}
-            location.reload();
+            // location.reload() não resolvia. O GitHub Pages manda o index com
+            // Cache-Control: max-age=600, então durante dez minutos o recarregar
+            // é atendido pelo próprio cache: volta a MESMA página velha, que
+            // continua pedindo o style.css e os js velhos. E é pior do que não
+            // fazer nada, porque a trava logo acima já marcou esta versão como
+            // tentada — a checagem desiste e o aparelho fica preso no antigo até
+            // o cache vencer sozinho. Foi assim que correção publicada passou
+            // horas sem chegar no celular do entregador.
+            // Com ?_v= a URL muda, o cache não tem essa entrada, e a busca vai à
+            // rede. O parâmetro é apagado da barra pelo script do topo da página.
+            var url = new URL(location.href);
+            url.searchParams.set("_v", d.versao);
+            location.replace(url.href);
         })
         .catch(function () {});
 }());
