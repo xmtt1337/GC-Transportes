@@ -10,6 +10,26 @@
 
 const SOLAT_CODIGO_RE = /^BR[A-Z0-9]{13}$/;
 
+// DESATIVADO em 2026-09-05 a pedido do dono, até segunda ordem (custo de
+// compute no Neon — o colador perguntando ao banco a cada 5s nunca deixava
+// ele suspender). O menu já não mostra mais este item pro entregador
+// (js/core.js); esta trava é só pra quem chegar aqui por link salvo ou pelo
+// histórico do navegador — sem ela a tela pareceria funcionar e só falharia
+// na hora de bipar, o que confunde mais do que avisar na entrada.
+// Pra reativar: virar pra false (e destravar o menu em core.js).
+const SOLAT_DESATIVADO = true;
+
+function _solatMostrarDesativado() {
+    document.getElementById("solat-faixa").style.display = "none";
+    document.getElementById("solat-campo-codigo").style.display = "none";
+    const aviso = document.getElementById("solat-aviso");
+    aviso.style.display = "";
+    aviso.innerText = "Solicitar AT está temporariamente desativado. Fale com a operação.";
+    document.getElementById("solat-msg").style.display = "none";
+    document.getElementById("solat-empty").innerText = "";
+    document.getElementById("solat-resultado").style.display = "none";
+}
+
 // Dois estados, não três: pra quem está na rua, "recebido no SPX mas ainda sem AT"
 // e "nem recebido" são a mesma espera. O que muda a vida dele é ter a AT ou não.
 const SOLAT_STATUS = {
@@ -44,6 +64,9 @@ function _solatEsc(txt) {
 
 function abrirSolicitarAT(event) {
     if (event) event.preventDefault();
+    mostrarTela("tela-solicitar-at");
+    if (SOLAT_DESATIVADO) return _solatMostrarDesativado();
+
     _solatXpt = null;
     _solatItens = [];
     _solatDesenhado = null;
@@ -51,7 +74,6 @@ function abrirSolicitarAT(event) {
     _solatMsg("", null);
     document.getElementById("solat-empty").innerText = "Carregando...";
     document.getElementById("solat-resultado").style.display = "none";
-    mostrarTela("tela-solicitar-at");
     _solatCarregarHoje();
 }
 

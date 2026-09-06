@@ -1321,11 +1321,23 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
        A primeira linha e o fallback pra quem nao conhece svh. */
     body { height: 100vh; height: 100svh; }
 
+    /* will-change avisa o navegador ANTES da animacao comecar: ele promove e
+       rasteriza a camada com antecedencia, em vez de fazer isso na hora, correndo
+       contra o primeiro quadro. Sem isso, num celular fraco, o menu abre com a
+       parte de baixo pintada pela metade — o fundo do drawer nao cobriu ainda, e o
+       que aparece por baixo e a propria home sem nenhum escurecimento, porque o
+       quadro daquele pedaco da tela ainda e o de antes do menu abrir. Foi visto
+       cortando o menu logo apos "Baixas", sumindo com "Devolucoes", "Ocorrencias"
+       e o rodape "Atualizar" — que existem no DOM o tempo todo, so nao tinham sido
+       pintados ainda no quadro que virou print. Mesma familia do problema do
+       shimmer do esqueleto: rasterizador que nao acompanha a tempo do primeiro
+       quadro. */
     .sidebar {
         position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
         transform: translateX(-100%);
         width: 260px !important; min-width: 260px !important;
         transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        will-change: transform;
     }
     .sidebar.expanded { transform: translateX(0); }
     .sidebar.expanded .menu-item { padding: 13px 18px; justify-content: flex-start; gap: 13px; }
@@ -1338,6 +1350,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
         display: block; position: fixed; inset: 0; z-index: 90;
         background: rgba(0,0,0,0.5); opacity: 0; pointer-events: none;
         transition: opacity 0.25s ease;
+        will-change: opacity;
     }
     .sidebar-backdrop.active { opacity: 1; pointer-events: auto; }
 

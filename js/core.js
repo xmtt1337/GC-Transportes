@@ -200,8 +200,15 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("submenu-devolucoes");
         show("menu-conf-entregador");
         show("submenu-conf-entregador");
-        show("menu-atribuicoes-ent");
-        show("submenu-atribuicoes-ent");
+        // Atribuições → Solicitar AT: RETIRADO do menu do entregador em
+        // 2026-09-05 a pedido do dono, até segunda ordem (custo de compute no
+        // Neon — o colador perguntando ao banco a cada 5s nunca deixava ele
+        // suspender). O elemento já nasce com display:none no index.html;
+        // sem este show() ele nunca aparece pro entregador.
+        // Pra reativar: descomentar as duas linhas abaixo E remover
+        // `ativo: false` do wiring de modules/at/solicitar em server.js.
+        // show("menu-atribuicoes-ent");
+        // show("submenu-atribuicoes-ent");
         // Ocorrências → Pacotes Faltantes: só aparece pro entregador liberado
         // (toggle em Cadastros → Entregadores, "Editar" → Ativar formulário de faltante)
         if (data.usuario.pode_pacote_faltante) {
