@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>GC — Teste do menu</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="style.css?v=20260906a">
+
+<!-- Esta página é a casca REAL do app: mesmo body flex, mesmo 100svh, mesmo
+     overflow hidden, mesmo drawer fixed com transition de transform. Nada é
+     sobrescrito — ao contrário do diag.html, que precisava virar página normal
+     pra mostrar o relatório.
+
+     A diferença é o quadro de leitura no rodapé: ele mede o drawer A CADA
+     QUADRO enquanto o menu está aberto, e guarda o PIOR valor visto. Se o menu
+     abrir cortado, o número do corte fica registrado ali, mesmo que o defeito
+     dure só um instante. A medição estática do diag.html não pegaria isso. -->
+<style>
+    #t-leitura {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 99999;
+        background: #000; border-top: 2px solid #3a86ff;
+        padding: 8px 10px; font: 700 12px/1.45 ui-monospace, Menlo, Consolas, monospace;
+        color: #e2e8f0; white-space: pre-wrap;
+    }
+    #t-leitura .ok  { color: #22c55e; }
+    #t-leitura .mal { color: #ef4444; }
+    #t-abrir {
+        position: fixed; right: 14px; bottom: 96px; z-index: 99998;
+        background: #3a86ff; color: #fff; border: none; border-radius: 999px;
+        padding: 14px 22px; font: 700 15px/1 system-ui, sans-serif; cursor: pointer;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    }
+</style>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+    <div class="logo"><img src="img/logobranca2.png" alt="" class="logo-img"></div>
+    <ul class="menu">
+        <li class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span class="label">Fechamentos</span><span class="arrow">&#9662;</span></li>
+        <li class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span class="label">Adiantamentos</span><span class="arrow">&#9662;</span></li>
+        <li class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="label">Confer&ecirc;ncia</span><span class="arrow">&#9662;</span></li>
+        <li class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg><span class="label">Atribui&ccedil;&otilde;es</span><span class="arrow">&#9662;</span></li>
+        <li class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span class="label">Baixas</span><span class="arrow">&#9662;</span></li>
+        <li class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span class="label">Devolu&ccedil;&otilde;es</span><span class="arrow">&#9662;</span></li>
+        <li class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span class="label">Ocorr&ecirc;ncias</span><span class="arrow">&#9662;</span></li>
+    </ul>
+    <div class="sidebar-footer">
+        <button class="sidebar-reload-btn"><span>Atualizar</span></button>
+        <button class="hamburger-btn">&#8249;</button>
+    </div>
+</nav>
+
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+<div class="content">
+    <div class="topbar">
+        <div class="topbar-left">
+            <button class="topbar-mobile-menu" id="t-hamburguer" aria-label="Menu">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <h1>Teste do menu</h1>
+        </div>
+    </div>
+    <div class="main">
+        <div id="tela-home" class="view active-view">
+            <div class="home-container">
+                <div class="home-eyebrow">Painel de Controle</div>
+                <div class="home-greeting">Teste</div>
+                <div class="home-role-badge"><span class="role-dot" style="background:#22c55e"></span>Entregador</div>
+                <div class="home-actions" id="t-cartoes"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button id="t-abrir">Abrir o menu</button>
+<div id="t-leitura">medindo&hellip;</div>
+
+<script>
+(function () {
+    // Cartões só pra a home ter altura e poder rolar — rolar é o que faz a barra
+    // do navegador subir e descer, e é aí que a altura da tela muda.
+    var c = '';
+    for (var i = 0; i < 5; i++) {
+        c += '<div class="home-action-card" style="--ac:#3a86ff">'
+           + '<div class="hac-icon" style="background:rgba(58,134,255,0.12)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg></div>'
+           + '<div class="hac-body"><div class="hac-title">Cart&atilde;o ' + (i + 1) + '</div>'
+           + '<div class="hac-desc">Conte&uacute;do de teste pra a tela ter altura e rolar.</div></div>'
+           + '<div class="hac-go">Abrir &rarr;</div></div>';
+    }
+    document.getElementById('t-cartoes').innerHTML = c;
+
+    var sb   = document.getElementById('sidebar');
+    var bd   = document.getElementById('sidebar-backdrop');
+    var leit = document.getElementById('t-leitura');
+
+    function abrir() {
+        var vai = !sb.classList.contains('expanded');
+        sb.classList.toggle('expanded', vai);
+        bd.classList.toggle('active', vai);
+        document.getElementById('t-abrir').textContent = vai ? 'Fechar o menu' : 'Abrir o menu';
+    }
+    document.getElementById('t-abrir').addEventListener('click', abrir);
+    document.getElementById('t-hamburguer').addEventListener('click', abrir);
+    bd.addEventListener('click', abrir);
+
+    // Pior caso visto: o defeito pode durar um quadro só, e um print tirado
+    // depois nao mostraria nada. Guardando o pior, o numero fica na tela.
+    var piorFalta = 0, piorQuando = '-', vistoAberto = false;
+
+    function medir() {
+        var ih = window.innerHeight;
+        var r  = sb.getBoundingClientRect();
+        var rod = sb.querySelector('.sidebar-footer').getBoundingClientRect();
+        var aberto = sb.classList.contains('expanded');
+        var falta = Math.round(ih - r.height);
+
+        if (aberto) {
+            vistoAberto = true;
+            if (falta > piorFalta) {
+                piorFalta = falta;
+                piorQuando = 'com o menu aberto';
+            }
+        }
+
+        var okAltura = Math.abs(r.height - ih) <= 2;
+        var okRodape = rod.top >= 0 && rod.bottom <= ih + 2;
+        var okPior   = piorFalta <= 2;
+
+        leit.innerHTML =
+            'tela ' + window.innerWidth + 'x' + ih
+          + '   menu ' + Math.round(r.width) + 'x' + Math.round(r.height)
+          + '   ' + (aberto ? 'ABERTO' : 'fechado') + '\n'
+          + 'altura bate: <b class="' + (okAltura ? 'ok' : 'mal') + '">' + (okAltura ? 'SIM' : 'NAO, falta ' + falta + 'px') + '</b>'
+          + '   rodape: <b class="' + (okRodape ? 'ok' : 'mal') + '">' + (okRodape ? 'ok' : 'FORA') + '</b>\n'
+          + 'pior visto: <b class="' + (okPior ? 'ok' : 'mal') + '">'
+          + (vistoAberto ? (okPior ? 'nenhuma falha' : 'faltou ' + piorFalta + 'px ' + piorQuando) : '(abra o menu)')
+          + '</b>';
+
+        requestAnimationFrame(medir);
+    }
+    requestAnimationFrame(medir);
+}());
+</script>
+</body>
+</html>
