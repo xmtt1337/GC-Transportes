@@ -26,31 +26,6 @@ function bloco(seletor) {
     return css.slice(abre + 1, fecha);
 }
 
-/**
- * A regra `body { ... }` de dentro do @media do celular.
- *
- * Tem varios blocos `@media (max-width: 680px)` no style.css, entao nao dá pra
- * pegar o primeiro. E o seletor tem que ser `body` sozinho: procurar só por
- * "body {" casaria com ".fech-body {" e o teste passaria olhando a regra errada.
- */
-function regraDoBody() {
-    const marca = "@media (max-width: 680px) {";
-    const soBody = /(?:^|\n)\s*body\s*\{([^}]*)\}/;
-    let de = 0;
-    for (;;) {
-        const i = css.indexOf(marca, de);
-        assert.notStrictEqual(i, -1, "nenhum @media (max-width: 680px) declara o body");
-        let nivel = 0, j = i + marca.length - 1;
-        for (; j < css.length; j++) {
-            if (css[j] === "{") nivel++;
-            else if (css[j] === "}" && --nivel === 0) break;
-        }
-        const achou = soBody.exec(css.slice(i + marca.length, j));
-        if (achou) return achou[1];
-        de = j;
-    }
-}
-
 test("#tela-home rola na vertical", () => {
     const regra = bloco("#tela-home");
     assert.match(regra, /overflow-y:\s*auto/,
@@ -80,23 +55,20 @@ test("as telas .tela-full seguem com corpo proprio, sem rolagem na casca", () =>
 
 // ── Altura da casca no celular ──────────────────────────────────────────────
 //
-// Estes sao os testes do "tela tremendo". A casca inteira (body > .content >
-// .main > tela) e medida a partir da altura do body. Se essa altura for viva —
-// dvh — ela muda sozinha quando a barra de endereco do Chrome no Android
-// desliza pra fora, e o app inteiro se redimensiona no meio da rolagem.
-
-test("body no celular usa svh, nunca dvh", () => {
-    const decl = regraDoBody();
-    assert.match(decl, /height:\s*100svh/,
-        "a altura da casca precisa ser 100svh — fixa, com a barra do navegador contada");
-    assert.doesNotMatch(decl, /height:\s*100dvh/,
-        "100dvh redimensiona o app a cada centimetro de barra do navegador: a tela treme");
-});
-
-test("body mantem fallback pra quem nao conhece svh", () => {
-    assert.match(regraDoBody(), /height:\s*100vh;\s*height:\s*100svh/,
-        "o 100vh antes do 100svh e o fallback; sem ele navegador antigo fica sem altura");
-});
+// Aqui moravam dois testes que exigiam 100svh no lugar de 100dvh. Saíram junto
+// com a mudança: eu tinha trocado dvh por svh pra matar um tremor que NUNCA
+// consegui reproduzir, nem em navegador nem em aparelho emulado.
+//
+// A troca saiu cara. svh é a altura com a barra do navegador sempre visível —
+// 734px no aparelho do entregador — enquanto a tela chega a 790px quando a
+// barra some. A casca inteira congelava nos 734 e os elementos position: fixed
+// continuavam acompanhando os 790. Cinquenta e seis pixels de descompasso no
+// app todo, e a descrição que voltou foi "parecendo glitch".
+//
+// Lição que fica: teste que fixa uma decisão não medida só serve pra tornar o
+// erro mais difícil de desfazer. O que sobrou aqui embaixo é diferente — o
+// overscroll-behavior é o que impede a rolagem interna de encadear no documento
+// e mexer na barra do navegador, que era a causa real por trás do tremor.
 
 test("as areas rolaveis nao encadeiam a rolagem no documento", () => {
     // O encadeamento e o gatilho: ao chegar no fim da lista, o arrasto passa pro

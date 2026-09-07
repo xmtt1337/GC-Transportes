@@ -1,16 +1,6 @@
 ﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
 
 :root {
-    /* O site e escuro; sem declarar isso o navegador nao sabe.
-       No Chrome do Android, uma pagina que nao se declara escura fica elegivel
-       ao Modo Escuro Automatico, que aplica FILTRO por cima dos elementos pra
-       tentar escurecer o que ele acha que e claro. Num site que ja e escuro isso
-       so pode piorar — e filtro num ancestral vira bloco de contencao pra
-       position: fixed, que e exatamente o que o menu lateral do celular usa.
-       Declarar aqui tira a pagina da mira e ainda acerta controles nativos
-       (campos, selects, barra de rolagem), que ja pediam isso em 3 pontos soltos. */
-    color-scheme: dark;
-
     --bg:        #0b0f18;
     --surface:   #0f1520;
     --surface-2: #131b28;
@@ -23,12 +13,6 @@
     --radius:    14px;
     --radius-sm: 10px;
 }
-
-/* Trava o inflamento automatico de fonte do Chrome no Android. Ele mexe no
-   tamanho do texto por conta propria quando julga a pagina "nao adaptada", e o
-   layout do menu depende da altura dos itens pra caber. Isto NAO atrapalha quem
-   aumentou a fonte nas configuracoes do aparelho: essa escolha continua valendo. */
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
@@ -1325,35 +1309,23 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 /* ── /VIDEIRA PAINEL ─────────────────────────────────────────────── */
 
 @media (max-width: 680px) {
-    /* svh, nao dvh.
-       dvh e a altura VIVA da viewport: ela muda sozinha conforme a barra de
-       endereco do Chrome no Android desliza pra fora e volta. Como a casca
-       inteira (body > .content > .main > tela) e medida a partir dela, cada
-       centimetro de barra redimensionava o app no meio da rolagem. Isso fecha
-       um laco: rola -> a barra some -> a tela cresce -> o conteudo cabe ->
-       a rolagem zera -> a barra volta -> a tela encolhe -> rola de novo.
-       O usuario ve a tela tremendo, e so em alguns celulares — os que escondem
-       a barra ao rolar. svh e a altura com a barra sempre visivel: nao se mexe.
-       A primeira linha e o fallback pra quem nao conhece svh. */
-    body { height: 100vh; height: 100svh; }
+    /* Volta pro 100dvh.
+       Eu tinha trocado por svh pra matar um tremor que NUNCA consegui
+       reproduzir. So que svh e a altura com a barra do navegador sempre
+       visivel — 734px neste aparelho — enquanto a tela chega a 790 quando a
+       barra some. A casca inteira (body > .content > .main > tela) congelava
+       nos 734 e os elementos position: fixed continuavam acompanhando os 790:
+       56px de descompasso no app todo, que e o "parecendo glitch".
+       dvh acompanha a tela de verdade. O tremor que dvh pode causar vem do
+       encadeamento da rolagem interna pro documento — e isso quem segura e o
+       overscroll-behavior: contain, que fica. */
+    body { height: 100dvh; }
 
-    /* will-change avisa o navegador ANTES da animacao comecar: ele promove e
-       rasteriza a camada com antecedencia, em vez de fazer isso na hora, correndo
-       contra o primeiro quadro. Sem isso, num celular fraco, o menu abre com a
-       parte de baixo pintada pela metade — o fundo do drawer nao cobriu ainda, e o
-       que aparece por baixo e a propria home sem nenhum escurecimento, porque o
-       quadro daquele pedaco da tela ainda e o de antes do menu abrir. Foi visto
-       cortando o menu logo apos "Baixas", sumindo com "Devolucoes", "Ocorrencias"
-       e o rodape "Atualizar" — que existem no DOM o tempo todo, so nao tinham sido
-       pintados ainda no quadro que virou print. Mesma familia do problema do
-       shimmer do esqueleto: rasterizador que nao acompanha a tempo do primeiro
-       quadro. */
     .sidebar {
         position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
         transform: translateX(-100%);
         width: 260px !important; min-width: 260px !important;
         transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-        will-change: transform;
     }
     .sidebar.expanded { transform: translateX(0); }
     .sidebar.expanded .menu-item { padding: 13px 18px; justify-content: flex-start; gap: 13px; }
@@ -1366,26 +1338,11 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
         display: block; position: fixed; inset: 0; z-index: 90;
         background: rgba(0,0,0,0.5); opacity: 0; pointer-events: none;
         transition: opacity 0.25s ease;
-        will-change: opacity;
     }
     .sidebar-backdrop.active { opacity: 1; pointer-events: auto; }
 
     .topbar-mobile-menu { display: flex; }
 
-    /* Topbar sem backdrop-filter no celular.
-       backdrop-filter obriga o navegador a promover a camada e reler o fundo da
-       pagina a cada quadro. Em GPU de celular isso e caro e, em driver ruim,
-       sai errado: a ordem das camadas inverte e sobra faixa desenhada com o
-       quadro velho. E o que aparece quando o menu esta aberto — o fundo do
-       drawer para no meio, mas os itens dele continuam desenhados na posicao
-       certa, por cima dos cartoes. Explica tambem o "so em alguns celulares":
-       depende do driver.
-       Aqui o desfoque nao custa nem aparece: a topbar fica sobre fundo chapado.
-       Fundo solido no lugar, mesma cor de antes ja resolvida sobre a pagina. */
-    .topbar {
-        background: #0a0f19;
-        backdrop-filter: none; -webkit-backdrop-filter: none;
-    }
 
     .content { padding: 12px; }
     .topbar { height: 52px; padding: 0 12px; margin-bottom: 12px; border-radius: 12px; }
