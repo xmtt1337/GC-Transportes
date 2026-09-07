@@ -50,6 +50,36 @@ if (_BASE) {
 
 <link rel="stylesheet" href="style.css?v=20260907a">
 
+<!-- ───── CHAVE DE TESTE DO CSS ─────
+     Abrindo o site com ?css=antigo, esta pagina carrega o style.css do dia
+     27/08 no lugar do atual. Serve pra responder de uma vez uma pergunta que eu
+     nao consegui responder de fora: o defeito do celular esta no CSS ou nao?
+
+     Sem isso a gente fica no escuro — eu nao reproduzo o bug em navegador
+     nenhum, nem em aparelho emulado, e ja errei quatro palpites seguidos. Com
+     isso e um teste: abre com o parametro, olha, e o resultado elimina metade
+     do problema de vez.
+
+     Some sozinho da barra de endereco (o script do topo limpa), nao muda nada
+     pra quem abre normal, e sai daqui assim que a duvida for resolvida. -->
+<script>
+(function () {
+    if (!/[?&]css=antigo/.test(location.search)) return;
+    var l = document.querySelector('link[rel="stylesheet"][href*="style.css"]');
+    if (l) l.setAttribute("href", "style-20260827.css");
+    // Aviso na tela: sem isto e facil testar, esquecer, e depois jurar que o
+    // site "voltou a funcionar sozinho" com o CSS velho rodando.
+    document.addEventListener("DOMContentLoaded", function () {
+        var t = document.createElement("div");
+        t.textContent = "CSS DE TESTE (27/08) — recarregue sem ?css=antigo pra voltar";
+        t.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:999999;"
+            + "background:#b45309;color:#fff;font:700 12px/1.4 system-ui,sans-serif;"
+            + "padding:8px 10px;text-align:center";
+        document.body.appendChild(t);
+    });
+}());
+</script>
+
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
      Todo asset tem ?v=, mas quem CARREGA os ?v= é este arquivo — e ele não tem
      versão nenhuma. Uma cópia em cache do index.html prende o site inteiro numa
