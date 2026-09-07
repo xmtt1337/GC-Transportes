@@ -26,6 +26,47 @@
     location.replace("https://" + location.host + location.pathname + location.search + location.hash);
 }());
 </script>
+<script>
+// ----- CAPTURADOR DE ERROS (TEMPORARIO) -----
+// O CSS foi descartado como causa: abrir com ?css=antigo (CSS de 27/08) deu o
+// mesmo defeito. Logo o problema esta no JS/HTML, e este site carrega 71
+// scripts. Se UM quebra em runtime, o que vem depois pode nem rodar, e a tela
+// fica pela metade sem nenhuma pista visivel. Este bloco escuta todo erro de
+// JS, promessa rejeitada e recurso que falha ao carregar, e escreve numa tarja
+// vermelha no rodape. Fica invisivel se nao houver erro. Sai quando o bug fechar.
+(function () {
+    var erros = [];
+    var NL = String.fromCharCode(10);
+    function mostrar() {
+        var el = document.getElementById("gc-erro-tarja");
+        if (!el) {
+            el = document.createElement("div");
+            el.id = "gc-erro-tarja";
+            el.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:2147483647;"
+                + "background:#b91c1c;color:#fff;font:700 12px/1.45 ui-monospace,Menlo,Consolas,monospace;"
+                + "padding:8px 10px;max-height:48vh;overflow:auto;white-space:pre-wrap;word-break:break-word;"
+                + "box-shadow:0 -4px 16px rgba(0,0,0,0.5)";
+            (document.body || document.documentElement).appendChild(el);
+        }
+        el.textContent = "ERRO NO APP (" + erros.length + ") - mande este print:" + NL + NL + erros.join(NL + NL);
+    }
+    window.addEventListener("error", function (e) {
+        if (e && e.target && (e.target.src || e.target.href)) {
+            erros.push("NAO CARREGOU: " + (e.target.src || e.target.href));
+        } else if (e) {
+            var arq = (e.filename || "?").split("/").pop();
+            erros.push((e.message || "erro") + NL + "  em " + arq + ":" + (e.lineno || "?") + ":" + (e.colno || "?"));
+        }
+        mostrar();
+    }, true);
+    window.addEventListener("unhandledrejection", function (e) {
+        var r = e && e.reason;
+        erros.push("PROMESSA REJEITADA: " + (r && r.message ? r.message : String(r)));
+        mostrar();
+    });
+}());
+</script>
+
 
 <script>
 // Tudo isso (URL-base fixa + restaurar rota vinda do 404.html) só faz sentido nos
