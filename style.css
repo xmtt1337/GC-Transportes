@@ -1,6 +1,16 @@
 ﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
 
 :root {
+    /* O site e escuro; sem declarar isso o navegador nao sabe.
+       No Chrome do Android, uma pagina que nao se declara escura fica elegivel
+       ao Modo Escuro Automatico, que aplica FILTRO por cima dos elementos pra
+       tentar escurecer o que ele acha que e claro. Num site que ja e escuro isso
+       so pode piorar — e filtro num ancestral vira bloco de contencao pra
+       position: fixed, que e exatamente o que o menu lateral do celular usa.
+       Declarar aqui tira a pagina da mira e ainda acerta controles nativos
+       (campos, selects, barra de rolagem), que ja pediam isso em 3 pontos soltos. */
+    color-scheme: dark;
+
     --bg:        #0b0f18;
     --surface:   #0f1520;
     --surface-2: #131b28;
@@ -13,6 +23,12 @@
     --radius:    14px;
     --radius-sm: 10px;
 }
+
+/* Trava o inflamento automatico de fonte do Chrome no Android. Ele mexe no
+   tamanho do texto por conta propria quando julga a pagina "nao adaptada", e o
+   layout do menu depende da altura dos itens pra caber. Isto NAO atrapalha quem
+   aumentou a fonte nas configuracoes do aparelho: essa escolha continua valendo. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
