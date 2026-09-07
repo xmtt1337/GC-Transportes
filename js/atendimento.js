@@ -14,6 +14,29 @@
 // De quanto em quanto tempo o balãozinho fechado confere se chegou resposta. Um
 // minuto é folgado pro ritmo de um suporte interno e não faz a aba esquecida
 // aberta martelar o servidor o dia inteiro.
+// ─────────────────────────────────────────────────────────────────────────────
+// CHAVE DE DESLIGAR — TEMPORARIA, PRA ISOLAR UM BUG
+//
+// O dono relatou que o app "fica todo bugado, parecendo glitch" no celular dos
+// entregadores, e lembrou que comecou no dia em que este atendimento entrou
+// (2026-09-02). E a melhor pista que apareceu depois de muita tentativa errada
+// minha, e da pra testar sem adivinhar: desliga o atendimento pra quem NAO e do
+// suporte e ve se para.
+//
+// Duas coisas que o atendimento poe em TODA tela, pra TODO cargo, e que
+// nenhuma outra parte do sistema fazia antes dele:
+//   1. Um botao position: fixed no canto, sempre presente, em cima de tudo.
+//   2. Um fetch de minuto em minuto, em toda tela, pro backend.
+// E medido: com o painel aberto no celular ele cobre 84% da tela com fundo
+// quase preto (378x644 numa tela de 394x734), o que sozinho ja explica alguem
+// achar que o sistema morreu se abrir sem querer.
+//
+// COMO REATIVAR: trocar para false. Uma linha, nada mais.
+// Se o defeito continuar com isto ligado, o atendimento esta inocente e a
+// investigacao volta pra outro lado — o que tambem e resposta.
+const _ATD_DESLIGADO = true;
+// ─────────────────────────────────────────────────────────────────────────────
+
 const _ATD_INTERVALO_BADGE = 60000;
 // Com o painel ABERTO a conversa está na frente da pessoa; aí vale recarregar
 // mais de perto, como em qualquer chat.
@@ -133,6 +156,24 @@ function _atdHtmlConversa(mensagens, meuLado, agora) {
 // conta vê o balãozinho (todo mundo) ou o menu "Atendimento" (só o suporte) —
 // e quem responde isso é o servidor, não uma lista de nomes no navegador.
 function atdIniciar() {
+    // Desligado: sem botao e sem consulta de minuto em minuto. A conta do
+    // suporte segue com o menu "Atendimento" normalmente — quem some e so o
+    // balaozinho de quem pede ajuda, que e o que esta em toda tela de todo mundo.
+    if (_ATD_DESLIGADO) {
+        _atdPronto = fetch(API + "/atendimento/status", { headers: { "Authorization": "Bearer " + token } })
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(d => {
+                _atdSuporte = !!d.suporte;
+                if (!_atdSuporte) return;
+                const menu = document.getElementById("menu-atendimento");
+                const sub  = document.getElementById("submenu-atendimento");
+                if (menu) menu.style.display = "";
+                if (sub)  sub.style.display  = "";
+                _atdPintarBadge(d.nao_lidas);
+            })
+            .catch(() => {});
+        return;
+    }
     _atdPronto = fetch(API + "/atendimento/status", { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.ok ? r.json() : Promise.reject())
         .then(d => {
