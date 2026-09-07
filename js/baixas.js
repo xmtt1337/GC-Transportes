@@ -569,6 +569,27 @@ function _bteAbrirScanner(callback, opcoes) {
     // detector nativo existe mas decepciona; o ZBar cobre esses e o Safari/iPhone.
     _bteCarregarZbar().catch(() => {});
 
+    const _bteScanErro = (msg) => {
+        const erroEl = overlay.querySelector("#bte-scan-erro");
+        if (!erroEl) return;
+        erroEl.textContent = msg;
+        erroEl.style.display = "";
+    };
+
+    // navigator.mediaDevices NÃO existe fora de contexto seguro (http://). Sem
+    // esta guarda, a chamada abaixo estourava um TypeError SÍNCRONO: o .catch()
+    // nunca rodava, a mensagem de erro nunca aparecia, e sobrava só o overlay —
+    // que é #000 de tela cheia com z-index 99999. Ou seja, o aparelho inteiro
+    // preto, mudo, sem explicação. Foi a "tela toda preta" que o entregador
+    // filmou. A página agora força https, mas a guarda fica: uma tela preta e
+    // muda é cara demais pra depender de uma linha de defesa só.
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        _bteScanErro(window.isSecureContext
+            ? "Este navegador não dá acesso à câmera."
+            : "A câmera só funciona em endereço seguro. Abra o site em https:// e tente de novo.");
+        return;
+    }
+
     navigator.mediaDevices.getUserMedia({
         // 1080p: código de barras denso precisa de mais pixels por barra que QR code
         video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 }, focusMode: "continuous" }
@@ -579,9 +600,7 @@ function _bteAbrirScanner(callback, opcoes) {
         _bteAfinarCamera(stream);
         _bteScanTimer = setTimeout(_bteScanLoop, 300);
     }).catch(() => {
-        const erroEl = overlay.querySelector("#bte-scan-erro");
-        erroEl.textContent = "Não foi possível acessar a câmera. Verifique as permissões do navegador.";
-        erroEl.style.display = "";
+        _bteScanErro("Não foi possível acessar a câmera. Verifique as permissões do navegador.");
     });
 }
 

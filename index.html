@@ -3,6 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <script>
+// ───── HTTPS OBRIGATORIO ─────
+// O site responde tambem em http:// puro — o "Enforce HTTPS" do GitHub Pages
+// esta desligado, e conferido: http://xmtt.com.br devolve 200, sem redirecionar.
+// Quem abre assim perde coisas EM SILENCIO:
+//   - localStorage e por origem. http:// e https:// sao origens diferentes, e a
+//     sessao salva numa nao existe na outra.
+//   - fora de contexto seguro o navegador nao entrega camera nem clipboard.
+//     navigator.mediaDevices nem existe, entao o scanner estourava um TypeError
+//     antes do .catch() e deixava o overlay PRETO de tela cheia na tela. Era a
+//     "tela toda preta" que o entregador filmou.
+//   - o token ia em texto puro na rede.
+// Explica tambem o "pra uns buga e pra outros nao": depende de qual endereco a
+// pessoa abriu ou salvou nos favoritos.
+// Isto aqui e o remendo do lado do navegador, e vem antes de tudo pra nada
+// carregar em http. O certo continua sendo ligar o Enforce HTTPS no GitHub.
+(function () {
+    if (location.protocol !== "http:") return;
+    var h = location.hostname;
+    // Local (Live Server, preview) segue em http de proposito.
+    if (h === "localhost" || h === "127.0.0.1" || h === "" || /^\d+\.\d+\.\d+\.\d+$/.test(h)) return;
+    location.replace("https://" + location.host + location.pathname + location.search + location.hash);
+}());
+</script>
+
+<script>
 // Tudo isso (URL-base fixa + restaurar rota vinda do 404.html) só faz sentido nos
 // hosts de produção: no domínio próprio o site mora na raiz, no github.io antigo
 // ele mora em /GC-Transportes/. Rodando local (Live Server, preview etc.) a pasta
@@ -4114,7 +4139,7 @@ if (_BASE) {
 <script src="js/conferencias-hub.js?v=30260901b"></script>
 <script src="js/antecipacoes.js?v=30260812d"></script>
 <script src="js/antecipacoes-admin.js?v=30260812d"></script>
-<script src="js/baixas.js?v=30260812d"></script>
+<script src="js/baixas.js?v=20260907b"></script>
 <script src="js/custodia.js?v=20260820i"></script>
 <script src="js/devolucoes.js?v=30260812d"></script>
 <script src="js/shopee-polo.js?v=30260812d"></script>

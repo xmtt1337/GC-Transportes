@@ -2,6 +2,31 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<script>
+// ───── HTTPS OBRIGATORIO ─────
+// O site responde tambem em http:// puro — o "Enforce HTTPS" do GitHub Pages
+// esta desligado, e conferido: http://xmtt.com.br devolve 200, sem redirecionar.
+// Quem abre assim perde coisas EM SILENCIO:
+//   - localStorage e por origem. http:// e https:// sao origens diferentes, e a
+//     sessao salva numa nao existe na outra.
+//   - fora de contexto seguro o navegador nao entrega camera nem clipboard.
+//     navigator.mediaDevices nem existe, entao o scanner estourava um TypeError
+//     antes do .catch() e deixava o overlay PRETO de tela cheia na tela. Era a
+//     "tela toda preta" que o entregador filmou.
+//   - o token ia em texto puro na rede.
+// Explica tambem o "pra uns buga e pra outros nao": depende de qual endereco a
+// pessoa abriu ou salvou nos favoritos.
+// Isto aqui e o remendo do lado do navegador, e vem antes de tudo pra nada
+// carregar em http. O certo continua sendo ligar o Enforce HTTPS no GitHub.
+(function () {
+    if (location.protocol !== "http:") return;
+    var h = location.hostname;
+    // Local (Live Server, preview) segue em http de proposito.
+    if (h === "localhost" || h === "127.0.0.1" || h === "" || /^\d+\.\d+\.\d+\.\d+$/.test(h)) return;
+    location.replace("https://" + location.host + location.pathname + location.search + location.hash);
+}());
+</script>
+
 <title>Login · GC Transportes</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="img/favicon-xm.svg?v=3">
