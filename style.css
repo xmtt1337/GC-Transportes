@@ -1,6 +1,15 @@
 ﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
 
 :root {
+    /* O site e escuro. Declarar isso desliga o Modo Escuro Automatico do
+       Chrome no Android, que aplica um FILTRO por cima da pagina pra tentar
+       escurecer o que ele acha claro. Esse filtro num ancestral vira bloco de
+       contencao pra position: fixed -- e a sidebar do celular, que e fixed,
+       deixa de cobrir a tela e aparece cortada. Chrome fazia isso; Firefox
+       nao, e por isso bugava so num. A meta color-scheme no <head> e a peca
+       principal; esta aqui reforca e acerta os controles nativos. */
+    color-scheme: dark;
+
     --bg:        #0b0f18;
     --surface:   #0f1520;
     --surface-2: #131b28;
