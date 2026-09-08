@@ -8,7 +8,7 @@
 // renderizava quebrado. Firefox nao tem auto-dark, entao nunca bugou la.
 //
 // A defesa e declarar que o site ja e escuro. A meta no <head> e a peca
-// principal (vale ate com ?css=antigo, porque esta no HTML, nao no CSS); o
+// principal (vale mesmo se o CSS falhar, porque esta no HTML, nao no CSS); o
 // color-scheme no :root reforca e acerta os controles nativos.
 
 const test = require("node:test");
