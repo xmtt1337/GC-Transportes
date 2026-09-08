@@ -27,43 +27,65 @@
 }());
 </script>
 <script>
-// ----- CAPTURADOR DE ERROS (TEMPORARIO) -----
-// O CSS foi descartado como causa: abrir com ?css=antigo (CSS de 27/08) deu o
-// mesmo defeito. Logo o problema esta no JS/HTML, e este site carrega 71
-// scripts. Se UM quebra em runtime, o que vem depois pode nem rodar, e a tela
-// fica pela metade sem nenhuma pista visivel. Este bloco escuta todo erro de
-// JS, promessa rejeitada e recurso que falha ao carregar, e escreve numa tarja
-// vermelha no rodape. Fica invisivel se nao houver erro. Sai quando o bug fechar.
+// ----- SONDA DE DIAGNOSTICO (TEMPORARIA) -----
+// O CSS foi descartado: abrir com ?css=antigo (CSS de 27/08) deu o mesmo
+// defeito. E a diag.html, que carrega o MESMO css, renderiza certo no aparelho
+// dele. Logo o CSS aplica; o que quebra esta no JS/HTML em runtime. Esta sonda
+// mede o estado REAL no aparelho e so aparece se algo estiver errado:
+//   - erro de JS, promessa rejeitada, ou recurso que nao carregou;
+//   - mais de uma tela .active-view ao mesmo tempo (telas empilhando -> os
+//     cards da home vazando pra todas as telas, que foi o relato);
+//   - a sidebar sem position:fixed no celular (o CSS nao pegou naquele item).
+// Fica invisivel quando esta tudo bem. Sai quando o bug fechar.
 (function () {
-    var erros = [];
     var NL = String.fromCharCode(10);
-    function mostrar() {
-        var el = document.getElementById("gc-erro-tarja");
+    var erros = [];
+    function pintar(titulo, linhas) {
+        var el = document.getElementById("gc-diag-tarja");
         if (!el) {
             el = document.createElement("div");
-            el.id = "gc-erro-tarja";
+            el.id = "gc-diag-tarja";
             el.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:2147483647;"
                 + "background:#b91c1c;color:#fff;font:700 12px/1.45 ui-monospace,Menlo,Consolas,monospace;"
-                + "padding:8px 10px;max-height:48vh;overflow:auto;white-space:pre-wrap;word-break:break-word;"
+                + "padding:8px 10px;max-height:50vh;overflow:auto;white-space:pre-wrap;word-break:break-word;"
                 + "box-shadow:0 -4px 16px rgba(0,0,0,0.5)";
             (document.body || document.documentElement).appendChild(el);
         }
-        el.textContent = "ERRO NO APP (" + erros.length + ") - mande este print:" + NL + NL + erros.join(NL + NL);
+        el.textContent = titulo + NL + linhas.join(NL);
+    }
+    function reportar() {
+        var linhas = [];
+        if (erros.length) { linhas.push("ERROS DE JS:"); erros.forEach(function (e) { linhas.push("  " + e); }); }
+        var ativas = document.querySelectorAll(".view.active-view, .tela-full.active-view");
+        var nomes = [];
+        for (var i = 0; i < ativas.length; i++) nomes.push(ativas[i].id || "(sem id)");
+        var telasEmpilhando = ativas.length > 1;
+        if (telasEmpilhando) linhas.push("TELAS ATIVAS AO MESMO TEMPO: " + nomes.join(", "));
+        var sb = document.getElementById("sidebar");
+        var pos = sb ? getComputedStyle(sb).position : "(sem sidebar)";
+        var mobile = window.matchMedia("(max-width: 680px)").matches;
+        var cssFalhou = mobile && sb && pos !== "fixed";
+        if (cssFalhou) linhas.push("SIDEBAR position=" + pos + " (esperado fixed no celular -> CSS nao aplicou)");
+        var ruim = erros.length > 0 || telasEmpilhando || cssFalhou;
+        if (ruim) {
+            linhas.push("tela " + window.innerWidth + "x" + window.innerHeight
+                + "  telas ativas=" + ativas.length + "  sidebar=" + pos);
+            pintar("PROBLEMA DETECTADO - mande este print:", linhas);
+        }
     }
     window.addEventListener("error", function (e) {
-        if (e && e.target && (e.target.src || e.target.href)) {
-            erros.push("NAO CARREGOU: " + (e.target.src || e.target.href));
-        } else if (e) {
-            var arq = (e.filename || "?").split("/").pop();
-            erros.push((e.message || "erro") + NL + "  em " + arq + ":" + (e.lineno || "?") + ":" + (e.colno || "?"));
-        }
-        mostrar();
+        if (e && e.target && (e.target.src || e.target.href)) erros.push("NAO CARREGOU: " + (e.target.src || e.target.href));
+        else if (e) { var arq = (e.filename || "?").split("/").pop(); erros.push((e.message || "erro") + " @ " + arq + ":" + (e.lineno || "?")); }
+        reportar();
     }, true);
     window.addEventListener("unhandledrejection", function (e) {
-        var r = e && e.reason;
-        erros.push("PROMESSA REJEITADA: " + (r && r.message ? r.message : String(r)));
-        mostrar();
+        var r = e && e.reason; erros.push("PROMESSA: " + (r && r.message ? r.message : String(r))); reportar();
     });
+    // Sonda de saude: roda um tempo depois do load e repete, porque o empilhamento
+    // de telas pode acontecer so depois de navegar, nao logo na abertura.
+    function agendar() { setInterval(reportar, 1500); reportar(); }
+    if (document.readyState === "complete") agendar();
+    else window.addEventListener("load", function () { setTimeout(agendar, 800); });
 }());
 </script>
 
