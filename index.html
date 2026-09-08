@@ -67,11 +67,22 @@
     }
     function relatorio() {
         var vis = visiveis(), pos = posSidebar();
+        var sb = document.getElementById("sidebar");
+        var r = sb ? sb.getBoundingClientRect() : null;
+        // rect REAL da sidebar: se o computed diz fixed mas ela nao cobre a tela
+        // (top!=0 ou height<tela), um ancestral quebrou o fixed. Se cobre certo
+        // mas ainda aparece bugada, o defeito e de PINTURA, nao de layout.
+        var rectTxt = r ? (Math.round(r.left) + "," + Math.round(r.top) + " " + Math.round(r.width) + "x" + Math.round(r.height)) : "?";
+        var cobre = r ? (Math.abs(r.top) <= 2 && r.height >= window.innerHeight - 2 ? "cobre a tela" : "NAO cobre (top=" + Math.round(r.top) + " h=" + Math.round(r.height) + " vs tela " + window.innerHeight + ")") : "?";
+        var cssLink = document.querySelector('link[rel="stylesheet"][href*="style.css"]');
+        var cssVer = cssLink ? cssLink.getAttribute("href") : "?";
         return [
             "=== DIAGNOSTICO GC ===",
             "pagina: " + ((document.querySelector("meta[name=gc-versao]") || {}).content || "?"),
+            "css: " + cssVer,
             "tela: " + window.innerWidth + "x" + window.innerHeight + " media680=" + window.matchMedia("(max-width: 680px)").matches,
             "AGORA: telas=" + vis.length + " (" + vis.join(", ") + ") sidebar=" + pos,
+            "sidebar rect: " + rectTxt + " -> " + cobre,
             "PIOR NO LOAD: telas=" + pior.telas + " (" + pior.nomes.join(", ") + ") aos " + pior.quando + "ms",
             "sidebar ja SEM fixed? " + (pior.sbRuim ? ("SIM (" + pior.sbPos + ")") : "nao"),
             "estabilizou aos: " + (estabilizou ? (estabilizou + "ms") : "?"),
