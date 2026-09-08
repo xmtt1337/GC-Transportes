@@ -94,6 +94,7 @@ async function abrirCTes(event) {
         _cteContexto = await _cteApi("/fiscal/cte/contexto");
         area.innerHTML = _htmlListagem();
         await _carregarListaCTe();
+        _carregarFilaEmissaoStatus();
     } catch (e) {
         area.innerHTML = _htmlSemAcesso(e.message);
     }
@@ -156,6 +157,7 @@ function _htmlListagem() {
           ? "<br>Homologação: os documentos são transmitidos e autorizados pela SEFAZ de verdade, mas não têm validade fiscal."
           : ""}
     </div>
+    <div id="fila-emissao-status" class="aviso-info" style="display:none"></div>
 
     <div class="filtros-cte">
         <label>De <input type="date" id="f-de" value="${trintaDias}"></label>
@@ -174,6 +176,40 @@ function _htmlListagem() {
     </div>
 
     <div id="lista-cte"><p>Carregando…</p></div>`;
+}
+
+/**
+ * Status da fila de emissão automática (worker em segundo plano).
+ *
+ * Só aparece quando há algo relevante a mostrar — nenhum CT-e pronto para
+ * emitir e nenhuma empresa pausada é o dia a dia, e mostrar uma caixa vazia
+ * o tempo todo é ruído. Falha ao buscar não trava a tela: é um extra, não
+ * o fluxo principal de CT-e.
+ */
+async function _carregarFilaEmissaoStatus() {
+    const alvo = document.getElementById("fila-emissao-status");
+    if (!alvo) return;
+    try {
+        const s = await _cteApi("/fiscal/emissao/fila/situacao");
+        const partes = [];
+        if (s.prontos_para_emitir > 0 || s.em_andamento > 0) {
+            partes.push(
+                `Fila de emissão automática: <b>${s.prontos_para_emitir}</b> aguardando, ` +
+                `<b>${s.em_andamento}</b> em transmissão agora ` +
+                `(até ${s.concorrencia} simultâneas).`);
+        }
+        if (s.empresas_pausadas && s.empresas_pausadas.length) {
+            partes.push(
+                `<span style="color:#e74c3c">⚠ ${s.empresas_pausadas.length} empresa(s) com ` +
+                `emissão automática pausada por rejeições seguidas — verifique antes que a ` +
+                `pausa acabe sozinha.</span>`);
+        }
+        if (!partes.length) { alvo.style.display = "none"; return; }
+        alvo.innerHTML = partes.join(" ");
+        alvo.style.display = "";
+    } catch (e) {
+        alvo.style.display = "none";
+    }
 }
 
 async function _carregarListaCTe(pagina = 0) {
