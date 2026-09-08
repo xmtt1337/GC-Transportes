@@ -27,17 +27,19 @@
 }());
 </script>
 <script>
-// ----- SONDA DE DIAGNOSTICO (TEMPORARIA, SEMPRE VISIVEL) -----
-// Versao anterior so aparecia se detectasse problema, e voltou "nao apareceu a
-// tarja" -- o que e ambiguo: pode ser que esteja tudo bem, que a sonda nao viu o
-// problema, ou que o aparelho esteja com versao velha em cache. Entao agora ela
-// fica SEMPRE visivel, discreta, no rodape, mostrando os numeros reais deste
-// aparelho, com um botao que copia um relatorio completo pra colar no WhatsApp.
-// Assim, bugado ou nao, sempre volta informacao -- e por texto, que eu leio
-// inteiro. Some quando o bug fechar.
+// ----- SONDA / GRAVADOR DE VOO (TEMPORARIA) -----
+// O diag na home veio TUDO OK, entao o estado estavel e bom: o defeito que ele
+// fotografou (telas empilhadas, sidebar cortada) e TRANSITORIO, no carregamento,
+// e some quando estabiliza -- um diag tirado depois nao pega. Esta sonda GRAVA o
+// pior estado desde que a pagina abriu: amostra rapido nos primeiros segundos e
+// guarda o maior numero de telas visiveis ao mesmo tempo, se a sidebar apareceu
+// sem position:fixed, e quando. Copiar traz esse historico. Some quando fechar.
 (function () {
     var NL = String.fromCharCode(10);
+    var t0 = Date.now();
     var erros = [];
+    var pior = { telas: 0, nomes: [], sbRuim: false, sbPos: "", quando: 0 };
+    var estabilizou = 0;
     window.addEventListener("error", function (e) {
         if (e && e.target && (e.target.src || e.target.href)) erros.push("NAO CARREGOU: " + (e.target.src || e.target.href));
         else if (e) { var arq = (e.filename || "?").split("/").pop(); erros.push((e.message || "erro") + " @ " + arq + ":" + (e.lineno || "?")); }
@@ -45,52 +47,41 @@
     window.addEventListener("unhandledrejection", function (e) {
         var r = e && e.reason; erros.push("PROMESSA: " + (r && r.message ? r.message : String(r)));
     });
-    function versao() {
-        var m = document.querySelector("meta[name=gc-versao]");
-        return m ? m.getAttribute("content") : "?";
-    }
-    function telasVisiveis() {
-        var vs = document.querySelectorAll(".view, .tela-full");
-        var out = [];
+    function visiveis() {
+        var vs = document.querySelectorAll(".view, .tela-full"), out = [];
         for (var i = 0; i < vs.length; i++) {
             var cs = getComputedStyle(vs[i]);
             if (cs.display !== "none" && vs[i].offsetParent !== null) out.push(vs[i].id || "(sem id)");
         }
         return out;
     }
-    function coleta() {
-        var sb = document.getElementById("sidebar");
-        var cs = sb ? getComputedStyle(sb) : null;
-        var r = sb ? sb.getBoundingClientRect() : null;
-        var vis = telasVisiveis();
-        return {
-            versaoCore: (document.querySelector('script[src*="core.js"]') || {}).src || "?",
-            versaoPagina: versao(),
-            tela: window.innerWidth + "x" + window.innerHeight,
-            dpr: window.devicePixelRatio,
-            media680: window.matchMedia("(max-width: 680px)").matches,
-            telasVisiveis: vis,
-            sidebarPos: cs ? cs.position : "?",
-            sidebarWxH: r ? (Math.round(r.width) + "x" + Math.round(r.height)) : "?",
-            erros: erros.slice()
-        };
+    function posSidebar() { var sb = document.getElementById("sidebar"); return sb ? getComputedStyle(sb).position : "?"; }
+    function amostra() {
+        var ms = Date.now() - t0, vis = visiveis(), pos = posSidebar();
+        var mob = window.matchMedia("(max-width: 680px)").matches;
+        if (vis.length > pior.telas) { pior.telas = vis.length; pior.nomes = vis; pior.quando = ms; }
+        if (mob && document.getElementById("sidebar") && pos !== "fixed") { pior.sbRuim = true; pior.sbPos = pos; }
+        if (!estabilizou && vis.length <= 1 && (!mob || pos === "fixed")) estabilizou = ms;
+        pintar(vis, pos);
     }
     function relatorio() {
-        var d = coleta();
+        var vis = visiveis(), pos = posSidebar();
         return [
             "=== DIAGNOSTICO GC ===",
-            "pagina: " + d.versaoPagina,
-            "core: " + d.versaoCore.split("/").pop(),
-            "tela: " + d.tela + " dpr " + d.dpr + " media680=" + d.media680,
-            "telas visiveis (" + d.telasVisiveis.length + "): " + d.telasVisiveis.join(", "),
-            "sidebar: " + d.sidebarPos + " " + d.sidebarWxH,
-            "erros JS (" + d.erros.length + "):",
-        ].concat(d.erros.length ? d.erros.map(function (e) { return "  " + e; }) : ["  (nenhum)"])
-         .concat(["ua: " + navigator.userAgent]).join(NL);
+            "pagina: " + ((document.querySelector("meta[name=gc-versao]") || {}).content || "?"),
+            "tela: " + window.innerWidth + "x" + window.innerHeight + " media680=" + window.matchMedia("(max-width: 680px)").matches,
+            "AGORA: telas=" + vis.length + " (" + vis.join(", ") + ") sidebar=" + pos,
+            "PIOR NO LOAD: telas=" + pior.telas + " (" + pior.nomes.join(", ") + ") aos " + pior.quando + "ms",
+            "sidebar ja SEM fixed? " + (pior.sbRuim ? ("SIM (" + pior.sbPos + ")") : "nao"),
+            "estabilizou aos: " + (estabilizou ? (estabilizou + "ms") : "?"),
+            "erros JS (" + erros.length + "): " + (erros.length ? erros.join(" | ") : "nenhum"),
+            "ua: " + navigator.userAgent
+        ].join(NL);
     }
-    function pintar() {
-        var d = coleta();
-        var ruim = d.erros.length > 0 || d.telasVisiveis.length > 1 || (d.media680 && d.sidebarPos !== "fixed");
+    function pintar(vis, pos) {
+        var mob = window.matchMedia("(max-width: 680px)").matches;
+        var agora = erros.length > 0 || vis.length > 1 || (mob && pos !== "fixed");
+        var houve = pior.telas > 1 || pior.sbRuim || erros.length > 0;
         var bar = document.getElementById("gc-diag-bar");
         if (!bar) {
             bar = document.createElement("div");
@@ -105,28 +96,22 @@
             btn.style.cssText = "flex-shrink:0;background:#fff;color:#111;border:none;border-radius:6px;padding:5px 12px;font:700 11px system-ui;cursor:pointer";
             btn.addEventListener("click", function () {
                 var texto = relatorio();
-                function ok() { btn.textContent = "copiado!"; setTimeout(function(){ btn.textContent = "copiar"; }, 1500); }
-                if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(texto).then(ok, caiFallback); }
-                else caiFallback();
-                function caiFallback() {
-                    var ta = document.createElement("textarea"); ta.value = texto;
-                    ta.style.cssText = "position:fixed;top:-1000px;opacity:0"; document.body.appendChild(ta);
-                    ta.select(); try { document.execCommand("copy"); ok(); } catch (e) { btn.textContent = "erro"; }
-                    document.body.removeChild(ta);
-                }
+                function ok() { btn.textContent = "copiado!"; setTimeout(function () { btn.textContent = "copiar"; }, 1500); }
+                if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(texto).then(ok, fb); } else fb();
+                function fb() { var ta = document.createElement("textarea"); ta.value = texto; ta.style.cssText = "position:fixed;top:-1000px;opacity:0"; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); ok(); } catch (e) { btn.textContent = "erro"; } document.body.removeChild(ta); }
             });
             bar.appendChild(txt); bar.appendChild(btn);
             (document.body || document.documentElement).appendChild(bar);
         }
-        bar.style.background = ruim ? "#b91c1c" : "#166534";
         bar.style.color = "#fff";
+        bar.style.background = houve ? "#b91c1c" : (agora ? "#b45309" : "#166534");
         document.getElementById("gc-diag-txt").textContent =
-            (ruim ? "PROBLEMA " : "ok ") + "v" + d.versaoPagina
-            + " telas:" + d.telasVisiveis.length + " sb:" + d.sidebarPos + " err:" + d.erros.length;
+            (houve ? "PROBLEMA pior:" + pior.telas + "telas@" + pior.quando + "ms " : "ok ")
+            + "agora:" + vis.length + " sb:" + pos + " err:" + erros.length;
     }
-    function agendar() { setInterval(pintar, 1500); pintar(); }
-    if (document.readyState === "complete") agendar();
-    else window.addEventListener("load", function () { setTimeout(agendar, 800); });
+    var r = 0;
+    var iv = setInterval(function () { amostra(); if (++r > 60) { clearInterval(iv); setInterval(amostra, 1500); } }, 100);
+    amostra();
 }());
 </script>
 
