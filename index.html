@@ -27,63 +27,104 @@
 }());
 </script>
 <script>
-// ----- SONDA DE DIAGNOSTICO (TEMPORARIA) -----
-// O CSS foi descartado: abrir com ?css=antigo (CSS de 27/08) deu o mesmo
-// defeito. E a diag.html, que carrega o MESMO css, renderiza certo no aparelho
-// dele. Logo o CSS aplica; o que quebra esta no JS/HTML em runtime. Esta sonda
-// mede o estado REAL no aparelho e so aparece se algo estiver errado:
-//   - erro de JS, promessa rejeitada, ou recurso que nao carregou;
-//   - mais de uma tela .active-view ao mesmo tempo (telas empilhando -> os
-//     cards da home vazando pra todas as telas, que foi o relato);
-//   - a sidebar sem position:fixed no celular (o CSS nao pegou naquele item).
-// Fica invisivel quando esta tudo bem. Sai quando o bug fechar.
+// ----- SONDA DE DIAGNOSTICO (TEMPORARIA, SEMPRE VISIVEL) -----
+// Versao anterior so aparecia se detectasse problema, e voltou "nao apareceu a
+// tarja" -- o que e ambiguo: pode ser que esteja tudo bem, que a sonda nao viu o
+// problema, ou que o aparelho esteja com versao velha em cache. Entao agora ela
+// fica SEMPRE visivel, discreta, no rodape, mostrando os numeros reais deste
+// aparelho, com um botao que copia um relatorio completo pra colar no WhatsApp.
+// Assim, bugado ou nao, sempre volta informacao -- e por texto, que eu leio
+// inteiro. Some quando o bug fechar.
 (function () {
     var NL = String.fromCharCode(10);
     var erros = [];
-    function pintar(titulo, linhas) {
-        var el = document.getElementById("gc-diag-tarja");
-        if (!el) {
-            el = document.createElement("div");
-            el.id = "gc-diag-tarja";
-            el.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:2147483647;"
-                + "background:#b91c1c;color:#fff;font:700 12px/1.45 ui-monospace,Menlo,Consolas,monospace;"
-                + "padding:8px 10px;max-height:50vh;overflow:auto;white-space:pre-wrap;word-break:break-word;"
-                + "box-shadow:0 -4px 16px rgba(0,0,0,0.5)";
-            (document.body || document.documentElement).appendChild(el);
-        }
-        el.textContent = titulo + NL + linhas.join(NL);
-    }
-    function reportar() {
-        var linhas = [];
-        if (erros.length) { linhas.push("ERROS DE JS:"); erros.forEach(function (e) { linhas.push("  " + e); }); }
-        var ativas = document.querySelectorAll(".view.active-view, .tela-full.active-view");
-        var nomes = [];
-        for (var i = 0; i < ativas.length; i++) nomes.push(ativas[i].id || "(sem id)");
-        var telasEmpilhando = ativas.length > 1;
-        if (telasEmpilhando) linhas.push("TELAS ATIVAS AO MESMO TEMPO: " + nomes.join(", "));
-        var sb = document.getElementById("sidebar");
-        var pos = sb ? getComputedStyle(sb).position : "(sem sidebar)";
-        var mobile = window.matchMedia("(max-width: 680px)").matches;
-        var cssFalhou = mobile && sb && pos !== "fixed";
-        if (cssFalhou) linhas.push("SIDEBAR position=" + pos + " (esperado fixed no celular -> CSS nao aplicou)");
-        var ruim = erros.length > 0 || telasEmpilhando || cssFalhou;
-        if (ruim) {
-            linhas.push("tela " + window.innerWidth + "x" + window.innerHeight
-                + "  telas ativas=" + ativas.length + "  sidebar=" + pos);
-            pintar("PROBLEMA DETECTADO - mande este print:", linhas);
-        }
-    }
     window.addEventListener("error", function (e) {
         if (e && e.target && (e.target.src || e.target.href)) erros.push("NAO CARREGOU: " + (e.target.src || e.target.href));
         else if (e) { var arq = (e.filename || "?").split("/").pop(); erros.push((e.message || "erro") + " @ " + arq + ":" + (e.lineno || "?")); }
-        reportar();
     }, true);
     window.addEventListener("unhandledrejection", function (e) {
-        var r = e && e.reason; erros.push("PROMESSA: " + (r && r.message ? r.message : String(r))); reportar();
+        var r = e && e.reason; erros.push("PROMESSA: " + (r && r.message ? r.message : String(r)));
     });
-    // Sonda de saude: roda um tempo depois do load e repete, porque o empilhamento
-    // de telas pode acontecer so depois de navegar, nao logo na abertura.
-    function agendar() { setInterval(reportar, 1500); reportar(); }
+    function versao() {
+        var m = document.querySelector("meta[name=gc-versao]");
+        return m ? m.getAttribute("content") : "?";
+    }
+    function telasVisiveis() {
+        var vs = document.querySelectorAll(".view, .tela-full");
+        var out = [];
+        for (var i = 0; i < vs.length; i++) {
+            var cs = getComputedStyle(vs[i]);
+            if (cs.display !== "none" && vs[i].offsetParent !== null) out.push(vs[i].id || "(sem id)");
+        }
+        return out;
+    }
+    function coleta() {
+        var sb = document.getElementById("sidebar");
+        var cs = sb ? getComputedStyle(sb) : null;
+        var r = sb ? sb.getBoundingClientRect() : null;
+        var vis = telasVisiveis();
+        return {
+            versaoCore: (document.querySelector('script[src*="core.js"]') || {}).src || "?",
+            versaoPagina: versao(),
+            tela: window.innerWidth + "x" + window.innerHeight,
+            dpr: window.devicePixelRatio,
+            media680: window.matchMedia("(max-width: 680px)").matches,
+            telasVisiveis: vis,
+            sidebarPos: cs ? cs.position : "?",
+            sidebarWxH: r ? (Math.round(r.width) + "x" + Math.round(r.height)) : "?",
+            erros: erros.slice()
+        };
+    }
+    function relatorio() {
+        var d = coleta();
+        return [
+            "=== DIAGNOSTICO GC ===",
+            "pagina: " + d.versaoPagina,
+            "core: " + d.versaoCore.split("/").pop(),
+            "tela: " + d.tela + " dpr " + d.dpr + " media680=" + d.media680,
+            "telas visiveis (" + d.telasVisiveis.length + "): " + d.telasVisiveis.join(", "),
+            "sidebar: " + d.sidebarPos + " " + d.sidebarWxH,
+            "erros JS (" + d.erros.length + "):",
+        ].concat(d.erros.length ? d.erros.map(function (e) { return "  " + e; }) : ["  (nenhum)"])
+         .concat(["ua: " + navigator.userAgent]).join(NL);
+    }
+    function pintar() {
+        var d = coleta();
+        var ruim = d.erros.length > 0 || d.telasVisiveis.length > 1 || (d.media680 && d.sidebarPos !== "fixed");
+        var bar = document.getElementById("gc-diag-bar");
+        if (!bar) {
+            bar = document.createElement("div");
+            bar.id = "gc-diag-bar";
+            bar.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:2147483647;"
+                + "font:700 11px/1.35 ui-monospace,Menlo,Consolas,monospace;padding:6px 8px;"
+                + "display:flex;align-items:center;gap:8px;box-shadow:0 -2px 10px rgba(0,0,0,0.4)";
+            var txt = document.createElement("div");
+            txt.id = "gc-diag-txt"; txt.style.cssText = "flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
+            var btn = document.createElement("button");
+            btn.textContent = "copiar";
+            btn.style.cssText = "flex-shrink:0;background:#fff;color:#111;border:none;border-radius:6px;padding:5px 12px;font:700 11px system-ui;cursor:pointer";
+            btn.addEventListener("click", function () {
+                var texto = relatorio();
+                function ok() { btn.textContent = "copiado!"; setTimeout(function(){ btn.textContent = "copiar"; }, 1500); }
+                if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(texto).then(ok, caiFallback); }
+                else caiFallback();
+                function caiFallback() {
+                    var ta = document.createElement("textarea"); ta.value = texto;
+                    ta.style.cssText = "position:fixed;top:-1000px;opacity:0"; document.body.appendChild(ta);
+                    ta.select(); try { document.execCommand("copy"); ok(); } catch (e) { btn.textContent = "erro"; }
+                    document.body.removeChild(ta);
+                }
+            });
+            bar.appendChild(txt); bar.appendChild(btn);
+            (document.body || document.documentElement).appendChild(bar);
+        }
+        bar.style.background = ruim ? "#b91c1c" : "#166534";
+        bar.style.color = "#fff";
+        document.getElementById("gc-diag-txt").textContent =
+            (ruim ? "PROBLEMA " : "ok ") + "v" + d.versaoPagina
+            + " telas:" + d.telasVisiveis.length + " sb:" + d.sidebarPos + " err:" + d.erros.length;
+    }
+    function agendar() { setInterval(pintar, 1500); pintar(); }
     if (document.readyState === "complete") agendar();
     else window.addEventListener("load", function () { setTimeout(agendar, 800); });
 }());
