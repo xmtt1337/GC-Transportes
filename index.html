@@ -83,11 +83,23 @@
         else cobre = "aberto mas POSICAO ERRADA (x=" + Math.round(r.left) + " top=" + Math.round(r.top) + " h=" + Math.round(r.height) + " vs tela " + window.innerHeight + ")";
         var cssLink = document.querySelector('link[rel="stylesheet"][href*="style.css"]');
         var cssVer = cssLink ? cssLink.getAttribute("href") : "?";
+        // Fonte inflada: config de acessibilidade do Chrome (escala do texto) faz
+        // 14px virar 20+ e estoura o layout -- e o Firefox tem config separada,
+        // o que explicaria bugar num e no outro nao. Mede uma sonda de 14px.
+        var sonda = document.createElement("span");
+        sonda.style.cssText = "position:absolute;left:-9999px;font-size:14px";
+        sonda.textContent = "M";
+        document.body.appendChild(sonda);
+        var fpx = parseFloat(getComputedStyle(sonda).fontSize);
+        document.body.removeChild(sonda);
+        var vv = window.visualViewport;
         return [
             "=== DIAGNOSTICO GC ===",
             "pagina: " + ((document.querySelector("meta[name=gc-versao]") || {}).content || "?"),
             "css: " + cssVer,
             "tela: " + window.innerWidth + "x" + window.innerHeight + " media680=" + window.matchMedia("(max-width: 680px)").matches,
+            "zoom: dpr=" + window.devicePixelRatio + (vv ? " visualScale=" + vv.scale.toFixed(2) : ""),
+            "fonte 14px medida: " + fpx.toFixed(1) + "px" + (Math.abs(fpx - 14) > 0.6 ? " <<< INFLADA " + (fpx / 14).toFixed(2) + "x" : " (ok)"),
             "AGORA: telas=" + vis.length + " (" + vis.join(", ") + ") sidebar=" + pos,
             "sidebar rect: " + rectTxt + " -> " + cobre,
             "PIOR NO LOAD: telas=" + pior.telas + " (" + pior.nomes.join(", ") + ") aos " + pior.quando + "ms",
