@@ -73,7 +73,14 @@
         // (top!=0 ou height<tela), um ancestral quebrou o fixed. Se cobre certo
         // mas ainda aparece bugada, o defeito e de PINTURA, nao de layout.
         var rectTxt = r ? (Math.round(r.left) + "," + Math.round(r.top) + " " + Math.round(r.width) + "x" + Math.round(r.height)) : "?";
-        var cobre = r ? (Math.abs(r.top) <= 2 && r.height >= window.innerHeight - 2 ? "cobre a tela" : "NAO cobre (top=" + Math.round(r.top) + " h=" + Math.round(r.height) + " vs tela " + window.innerHeight + ")") : "?";
+        // left<0 e o menu FECHADO (translateX -100%), estado normal. So faz sentido
+        // falar em "cobre a tela" quando ele esta aberto (expanded).
+        var aberta = sb && sb.classList.contains("expanded");
+        var cobre;
+        if (!r) cobre = "?";
+        else if (!aberta) cobre = "menu fechado (normal)";
+        else if (Math.abs(r.left) <= 2 && Math.abs(r.top) <= 2 && r.height >= window.innerHeight - 2) cobre = "aberto, cobre certo";
+        else cobre = "aberto mas POSICAO ERRADA (x=" + Math.round(r.left) + " top=" + Math.round(r.top) + " h=" + Math.round(r.height) + " vs tela " + window.innerHeight + ")";
         var cssLink = document.querySelector('link[rel="stylesheet"][href*="style.css"]');
         var cssVer = cssLink ? cssLink.getAttribute("href") : "?";
         return [
