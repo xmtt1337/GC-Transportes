@@ -284,6 +284,10 @@ function _bteEnviarBaixa() {
             .then(d => {
                 btn.disabled = false; btn.textContent = "Enviar Baixa";
                 if (d.error) {
+                    // Faltava aqui: o texto já saía vermelho, mas nenhum erro deste envio
+                    // tocava som — inclusive o de pacote retido, que precisa ser ouvido tanto
+                    // quanto lido, porque quem bipa em sequência não está olhando a tela.
+                    _gcBeepErro();
                     if (d.ja_baixado) { _bteCodigoDuplicado = true; return _bteMostrarMsg(_bteMsgJaBaixado(d), "erro"); }
                     return _bteMostrarMsg(d.error, "erro");
                 }
