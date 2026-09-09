@@ -4,6 +4,7 @@
 // Reaproveita helpers globais: _bteComprimirImagem, _gcBeepSucesso/_gcBeepErro,
 // mostrarTela, gcAlert, API, token.
 let _trfDestinos      = [];  // [{id, nome}] — mesma planilha de cadastro usada nas Etiquetas
+let _trfDestinoSelecionado = null; // {id, nome} — só é setado quando o motorista escolhe um item da lista
 let _trfFotoBase64    = null;
 let _trfFotoMimeType  = null;
 let _trfSignaturePad  = null;
@@ -55,22 +56,59 @@ function _trfCarregarDestinos() {
         .then(rows => {
             if (!Array.isArray(rows)) return;
             _trfDestinos = rows;
-            document.getElementById("trf-destino-datalist").innerHTML =
-                rows.map(d => `<option value="${d.id.replace(/"/g, "&quot;")}">${d.nome.replace(/</g, "&lt;")}</option>`).join("");
         })
         .catch(() => _trfMsg("Erro ao carregar a lista de destinos.", "erro"));
 }
 
 function _trfDestinoAtual() {
-    const id = document.getElementById("trf-destino").value.trim();
-    return _trfDestinos.find(d => d.id === id) || null;
+    return _trfDestinoSelecionado;
+}
+
+// Normaliza (minúsculo + sem acento) pra busca funcionar mesmo sem o teclado do
+// celular acertar acentuação. Sem <datalist> nativo (não abre em vários celulares),
+// o filtro e o dropdown de sugestões são feitos aqui na mão.
+function _trfNormalizar(txt) {
+    return (txt || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
 function _trfDestinoMudou() {
-    const d = _trfDestinoAtual();
+    const input = document.getElementById("trf-destino");
+    const lista = document.getElementById("trf-destino-lista");
     const row = document.getElementById("trf-destino-id-row");
-    if (d) { row.style.display = ""; document.getElementById("trf-destino-id").innerText = d.id; }
+
+    if (_trfDestinoSelecionado && input.value.trim() !== _trfDestinoSelecionado.nome) {
+        _trfDestinoSelecionado = null;
+    }
+    if (_trfDestinoSelecionado) { row.style.display = ""; document.getElementById("trf-destino-id").innerText = _trfDestinoSelecionado.id; }
     else row.style.display = "none";
+
+    const termo = _trfNormalizar(input.value);
+    const opcoes = termo
+        ? _trfDestinos.filter(d => _trfNormalizar(d.id).includes(termo) || _trfNormalizar(d.nome).includes(termo))
+        : _trfDestinos;
+
+    if (!opcoes.length) {
+        lista.innerHTML = `<div class="trf-destino-lista-vazio">${_trfDestinos.length ? "Nenhum destino encontrado" : "Carregando destinos…"}</div>`;
+    } else {
+        lista.innerHTML = opcoes.slice(0, 50).map(d =>
+            `<div class="trf-destino-lista-item" onmousedown="event.preventDefault();_trfSelecionarDestino('${d.id.replace(/'/g, "\\'")}')">${d.nome.replace(/</g, "&lt;")}<small>ID: ${d.id.replace(/</g, "&lt;")}</small></div>`
+        ).join("");
+    }
+    lista.style.display = "";
+}
+
+function _trfSelecionarDestino(id) {
+    const d = _trfDestinos.find(d => d.id === id);
+    if (!d) return;
+    _trfDestinoSelecionado = d;
+    document.getElementById("trf-destino").value = d.nome;
+    document.getElementById("trf-destino-id-row").style.display = "";
+    document.getElementById("trf-destino-id").innerText = d.id;
+    _trfDestinoFecharLista();
+}
+
+function _trfDestinoFecharLista() {
+    document.getElementById("trf-destino-lista").style.display = "none";
 }
 
 function _trfTirarFoto() {
@@ -117,8 +155,10 @@ function _trfMsg(msg, tipo) {
 function _trfLimparForm() {
     _trfFotoBase64 = null;
     _trfFotoMimeType = null;
+    _trfDestinoSelecionado = null;
     document.getElementById("trf-destino").value = "";
     document.getElementById("trf-destino-id-row").style.display = "none";
+    _trfDestinoFecharLista();
     document.getElementById("trf-foto-input").value = "";
     document.getElementById("trf-foto-preview").src = "";
     document.getElementById("trf-foto-tile").classList.remove("tem-foto");

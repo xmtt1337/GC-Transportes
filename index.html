@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260909a">
+<link rel="stylesheet" href="style.css?v=20260909b">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -3525,8 +3525,11 @@ if (_BASE) {
 
                     <div class="dev-sec">
                         <div class="dev-sec-head"><span class="dev-sec-num">1</span> Destino</div>
-                        <input list="trf-destino-datalist" id="trf-destino" class="ant-input" placeholder="Digite o ID ou o nome do destino…" autocomplete="off" oninput="_trfDestinoMudou()">
-                        <datalist id="trf-destino-datalist"></datalist>
+                        <div style="position:relative">
+                            <input type="text" id="trf-destino" class="ant-input" placeholder="Digite o ID ou o nome do destino…" autocomplete="off"
+                                oninput="_trfDestinoMudou()" onfocus="_trfDestinoMudou()" onblur="_trfDestinoFecharLista()">
+                            <div id="trf-destino-lista" class="trf-destino-lista" style="display:none"></div>
+                        </div>
                         <div id="trf-destino-id-row" style="display:none;margin-top:10px;font-size:13px;color:#94a3b8">ID: <strong id="trf-destino-id" style="color:#3a86ff;font-family:monospace;font-size:14px">—</strong></div>
                     </div>
 
@@ -4136,7 +4139,7 @@ if (_BASE) {
 <script src="js/viagens.js?v=30260812d"></script>
 <script src="js/ocorrencias.js?v=30260812d"></script>
 <script src="js/ocorrencias-admin.js?v=30260812d"></script>
-<script src="js/transferencias.js?v=30260812d"></script>
+<script src="js/transferencias.js?v=30260909a"></script>
 <script src="js/transferencias-admin.js?v=30260812d"></script>
 <script src="js/motorista-devolucoes.js?v=30260812d"></script>
 <script src="js/etiquetas.js?v=30260812d"></script>
