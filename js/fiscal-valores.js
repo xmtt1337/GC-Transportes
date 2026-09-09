@@ -777,7 +777,12 @@ function _valPintarProgresso(p) {
 
     ${(p.problemas || []).length ? `
     <details class="secao-form">
-        <summary><b>Códigos com problema</b> — ${p.problemas.length}</summary>
+        <summary style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+            <span><b>Códigos com problema</b> — ${p.problemas.length}${p.problemas.length >= 200
+                ? ` (mostrando os 200 primeiros — baixe o relatório para ver todos)` : ""}</span>
+            <button onclick="event.preventDefault(); _valBaixarRelatorioProblemas(${p.importacao.id})">
+                ↓ Baixar relatório (CSV)</button>
+        </summary>
         <table class="tabela">
             <thead><tr><th>Código</th><th>Situação</th><th>Detalhe</th></tr></thead>
             <tbody>${p.problemas.map((x) => `<tr>
@@ -787,6 +792,38 @@ function _valPintarProgresso(p) {
             </tr>`).join("")}</tbody>
         </table>
     </details>` : ""}`;
+}
+
+/**
+ * Relatório em CSV de todos os códigos com problema — não só os 200 que a
+ * tela mostra. Ponto e vírgula como separador e BOM UTF-8 na frente: é o que
+ * o Excel em português espera para abrir acentos certos sem configurar nada.
+ */
+async function _valBaixarRelatorioProblemas(importacaoId) {
+    let dados;
+    try {
+        dados = await _cteApi(`/fiscal/importacao/${importacaoId}?limite=1000`);
+    } catch (e) {
+        alert("Não consegui buscar o relatório: " + e.message);
+        return;
+    }
+    const linhas = dados.problemas || [];
+    if (!linhas.length) { alert("Nenhum código com problema para baixar."); return; }
+
+    const linhaCsv = (campos) => campos.map((c) =>
+        `"${String(c ?? "").replace(/"/g, '""')}"`).join(";");
+    const csv = [linhaCsv(["Código", "Situação", "Detalhe"]),
+        ...linhas.map((x) => linhaCsv([x.codigo, x.situacao, x.detalhe || ""]))].join("\r\n");
+
+    const blob = new Blob([String.fromCharCode(0xFEFF) + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `importacao-${importacaoId}-problemas-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
 }
 
 async function _valCancelarImportacao(id) {
