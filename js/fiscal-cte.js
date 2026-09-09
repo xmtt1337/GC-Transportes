@@ -146,6 +146,7 @@ function _htmlListagem() {
             <button onclick="loteCTe('validar')">Validar em lote</button>
             <button onclick="loteCTe('emitir')">Emitir em lote</button>
             <button onclick="abrirImportarShopee()">↓ Importar da Shopee</button>
+            <button onclick="_exportarCTeCsv()">↓ Exportar relatório</button>
             <button class="btn-primario" onclick="abrirNovoCTe()">+ Novo CT-e</button>
         </div>
     </div>
@@ -274,6 +275,59 @@ async function _carregarListaCTe(pagina = 0) {
     } catch (e) {
         alvo.innerHTML = `<p class="erro">${_esc(e.message)}</p>`;
     }
+}
+
+/**
+ * Exporta em CSV os CT-e que batem no filtro atual da tela (mesmos campos
+ * De/Até/Status/Número/Série/Busca — não só a página visível).
+ *
+ * "Fatura" e "Prefeitura NFSe" saem em branco de propósito: a GC não
+ * preenche fatura no CT-e nem emite NFS-e hoje — só CT-e. As colunas ficam
+ * no relatório porque foram pedidas, prontas para quando (se) existir dado
+ * pra preencher ali; não inventamos valor pra não deixar em branco.
+ */
+async function _exportarCTeCsv() {
+    const p = new URLSearchParams();
+    for (const [id, chave] of [["f-de", "de"], ["f-ate", "ate"], ["f-status", "status"],
+                               ["f-numero", "numero"], ["f-serie", "serie"], ["f-busca", "busca"]]) {
+        const el = document.getElementById(id);
+        if (el && el.value) p.set(chave, el.value);
+    }
+
+    let dados;
+    try {
+        dados = await _cteApi("/fiscal/cte/exportar?" + p.toString());
+    } catch (e) {
+        alert("Não consegui gerar o relatório: " + e.message);
+        return;
+    }
+    const itens = dados.itens || [];
+    if (!itens.length) { alert("Nenhum CT-e encontrado com esse filtro."); return; }
+
+    const linhaCsv = (campos) => campos.map((c) =>
+        `"${String(c ?? "").replace(/"/g, '""')}"`).join(";");
+    const csv = [
+        linhaCsv(["Código BR", "Data emissão CT-e/NF", "Fatura", "Número CT-e", "Número NF",
+                  "Série CT-e/NF", "Chave de acesso CT-e", "Motivo rejeição CT-e", "Prefeitura NFSe"]),
+        ...itens.map((x) => linhaCsv([
+            x.codigo_shopee,
+            x.data_autorizacao ? new Date(x.data_autorizacao).toLocaleString("pt-BR") : "",
+            "", // Fatura — GC não preenche esse grupo do CT-e hoje
+            x.numero_cte, x.numero_nf, x.serie_cte,
+            x.chave_acesso, x.motivo_rejeicao,
+            "", // Prefeitura NFSe — GC não emite NFS-e hoje, só CT-e
+        ])),
+    ].join("\r\n");
+
+    const blob = new Blob([String.fromCharCode(0xFEFF) + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ct-e-relatorio-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
 }
 
 function _linhaCTe(c) {
