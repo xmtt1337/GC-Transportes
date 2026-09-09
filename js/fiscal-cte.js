@@ -179,35 +179,44 @@ function _htmlListagem() {
 }
 
 /**
- * Status da fila de emissão automática (worker em segundo plano).
+ * Status das filas automáticas em segundo plano: validação e emissão.
  *
- * Só aparece quando há algo relevante a mostrar — nenhum CT-e pronto para
- * emitir e nenhuma empresa pausada é o dia a dia, e mostrar uma caixa vazia
- * o tempo todo é ruído. Falha ao buscar não trava a tela: é um extra, não
- * o fluxo principal de CT-e.
+ * Só aparece quando há algo relevante a mostrar — nada pendente e nenhuma
+ * empresa pausada é o dia a dia, e mostrar uma caixa vazia o tempo todo é
+ * ruído. Falha ao buscar não trava a tela: é um extra, não o fluxo principal
+ * de CT-e.
  */
 async function _carregarFilaEmissaoStatus() {
     const alvo = document.getElementById("fila-emissao-status");
     if (!alvo) return;
     try {
-        const s = await _cteApi("/fiscal/emissao/fila/situacao");
+        const [v, e] = await Promise.all([
+            _cteApi("/fiscal/validacao/fila/situacao"),
+            _cteApi("/fiscal/emissao/fila/situacao"),
+        ]);
         const partes = [];
-        if (s.prontos_para_emitir > 0 || s.em_andamento > 0) {
+        if (v.pendentes_de_validar > 0) {
             partes.push(
-                `Fila de emissão automática: <b>${s.prontos_para_emitir}</b> aguardando, ` +
-                `<b>${s.em_andamento}</b> em transmissão agora ` +
-                `(até ${s.concorrencia} simultâneas).`);
+                `Fila de validação automática: <b>${v.pendentes_de_validar}</b> pendente(s) ` +
+                `(até ${v.concorrencia} simultâneas).`);
         }
-        if (s.empresas_pausadas && s.empresas_pausadas.length) {
+        if (e.prontos_para_emitir > 0 || e.em_andamento > 0) {
             partes.push(
-                `<span style="color:#e74c3c">⚠ ${s.empresas_pausadas.length} empresa(s) com ` +
-                `emissão automática pausada por rejeições seguidas — verifique antes que a ` +
-                `pausa acabe sozinha.</span>`);
+                `Fila de emissão automática: <b>${e.prontos_para_emitir}</b> aguardando, ` +
+                `<b>${e.em_andamento}</b> em transmissão agora ` +
+                `(até ${e.concorrencia} simultâneas).`);
+        }
+        const pausadas = [...(v.empresas_pausadas || []), ...(e.empresas_pausadas || [])];
+        if (pausadas.length) {
+            partes.push(
+                `<span style="color:#e74c3c">⚠ ${pausadas.length} empresa(s) com validação ou ` +
+                `emissão automática pausada por reprovações/rejeições seguidas — verifique antes ` +
+                `que a pausa acabe sozinha.</span>`);
         }
         if (!partes.length) { alvo.style.display = "none"; return; }
         alvo.innerHTML = partes.join(" ");
         alvo.style.display = "";
-    } catch (e) {
+    } catch (err) {
         alvo.style.display = "none";
     }
 }
