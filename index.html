@@ -531,6 +531,7 @@ if (_BASE) {
             </li>
             <ul class="sub-submenu">
                 <li><a href="#" data-rota="Fiscal/CTes" onclick="abrirCTes(event)">CT-es</a></li>
+                <li><a href="#" data-rota="Fiscal/Acompanhamento" onclick="abrirFiscalAcompanhamento(event)">Acompanhamento</a></li>
                 <li><a href="#" data-rota="Fiscal/NovoCTe" onclick="abrirNovoCTe(); return false;">Novo CT-e</a></li>
                 <li><a href="#" data-rota="Fiscal/ImportarShopee" onclick="abrirImportarShopee(); return false;">Importar da Shopee</a></li>
                 <li><a href="#" data-rota="Fiscal/Valores" onclick="abrirFiscalValores(event)">Valores do frete</a></li>
@@ -1668,6 +1669,10 @@ if (_BASE) {
 
         <div id="tela-fiscal-ctes" class="view tela-full">
             <div id="fiscal-ctes-conteudo" class="conteudo-fiscal"></div>
+        </div>
+
+        <div id="tela-fiscal-acompanhamento" class="view tela-full">
+            <div id="fiscal-acompanhamento-conteudo" class="conteudo-fiscal"></div>
         </div>
 
         <div id="tela-fiscal-novo-cte" class="view tela-full">
@@ -4921,6 +4926,7 @@ if (_BASE) {
 
     <script src="js/fiscal-tributacao.js?v=30260817a"></script>
     <script src="js/fiscal-cte.js?v=30260909a"></script>
+    <script src="js/fiscal-acompanhamento.js?v=30260909a"></script>
     <script src="js/fiscal-empresa.js?v=30260815b"></script>
     <script src="js/fiscal-numeracao.js?v=30260815a"></script>
     <script src="js/fiscal-perfil.js?v=30260816c"></script>

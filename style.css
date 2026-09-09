@@ -4642,6 +4642,117 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
     .extrv-reg-modal-rodape { flex-wrap: wrap; }
 }
 
+/* ───── ACOMPANHAMENTO (dashboard do pipeline de CT-e) ─────
+   Importação, validação e emissão rodam sozinhas em segundo plano — esta
+   tela existe pra responder "como estão indo" sem abrir o console nem
+   contar linha por linha na lista. Pensada pra ficar aberta numa aba e
+   atualizar sozinha (polling), não pra ficar clicando em nada. */
+.acomp-topo {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 14px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.acomp-topo h2 { color: var(--text); font-size: 19px; font-weight: 600; margin: 0 0 4px; }
+.acomp-subtitulo { color: var(--text-muted); font-size: 12.5px; }
+.acomp-atualizacao {
+    display: flex; align-items: center; gap: 7px;
+    color: var(--text-dim); font-size: 11.5px; white-space: nowrap;
+}
+.acomp-dot-viva {
+    width: 7px; height: 7px; border-radius: 50%; background: #2ecc71;
+    box-shadow: 0 0 0 0 rgba(46,204,113,.55);
+    animation: acomp-pulso 2s infinite;
+}
+@keyframes acomp-pulso {
+    0%   { box-shadow: 0 0 0 0 rgba(46,204,113,.55); }
+    70%  { box-shadow: 0 0 0 6px rgba(46,204,113,0); }
+    100% { box-shadow: 0 0 0 0 rgba(46,204,113,0); }
+}
+
+/* números grandes: visão geral em 3 segundos */
+.acomp-resumo {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px; margin-bottom: 18px;
+}
+.acomp-resumo-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+}
+.acomp-resumo-num { font-size: 26px; font-weight: 700; color: var(--text); line-height: 1.15; }
+.acomp-resumo-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.acomp-resumo-card.acomp-cor-ok .acomp-resumo-num { color: #2ecc71; }
+.acomp-resumo-card.acomp-cor-alerta .acomp-resumo-num { color: #e8a33d; }
+.acomp-resumo-card.acomp-cor-erro .acomp-resumo-num { color: #e74c3c; }
+
+/* funil: mostra onde os documentos estão empacando na cadeia */
+.acomp-funil {
+    display: flex; align-items: stretch; gap: 6px; overflow-x: auto;
+    margin-bottom: 18px; padding-bottom: 4px;
+}
+.acomp-funil-etapa {
+    flex: 1 1 140px; min-width: 130px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-top: 3px solid var(--etapa-c, var(--text-dim));
+    border-radius: var(--radius-sm); padding: 12px 14px;
+    cursor: pointer; transition: transform .12s, border-color .12s;
+}
+.acomp-funil-etapa:hover { transform: translateY(-2px); border-color: var(--etapa-c, var(--border-blue)); }
+.acomp-funil-num { font-size: 22px; font-weight: 700; color: var(--text); }
+.acomp-funil-label { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
+.acomp-funil-seta {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim); font-size: 16px; flex: 0 0 auto; padding: 0 2px;
+}
+
+/* grade com todos os status — tarja lateral colorida indica o estado, canto
+   reto do lado da tarja pra barra não ondular na curva. */
+.acomp-grade-status {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 10px; margin-bottom: 20px;
+}
+.acomp-card-status {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-left: 4px solid var(--status-c, var(--text-dim));
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 12px 14px; cursor: pointer; transition: background .12s;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.acomp-card-status:hover { background: rgba(255,255,255,0.05); }
+.acomp-card-status-label { font-size: 12.5px; color: var(--text-muted); }
+.acomp-card-status-num { font-size: 20px; font-weight: 700; color: var(--text); }
+
+/* filas automáticas: uma pra validação, uma pra emissão */
+.acomp-filas {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+}
+.acomp-fila-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+}
+.acomp-fila-topo { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.acomp-fila-titulo { font-size: 14px; font-weight: 600; color: var(--text); }
+.acomp-fila-status-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.acomp-fila-status-dot.rodando { background: #2ecc71; }
+.acomp-fila-status-dot.parada { background: #7a8aa0; }
+.acomp-fila-metricas { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 4px; }
+.acomp-fila-metrica-num { font-size: 18px; font-weight: 700; color: var(--text); }
+.acomp-fila-metrica-label { font-size: 11px; color: var(--text-dim); }
+.acomp-fila-pausada {
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+}
+.acomp-fila-pausada-item {
+    display: flex; justify-content: space-between; gap: 8px;
+    font-size: 12px; color: #e8a33d; padding: 3px 0;
+}
+.acomp-fila-ok { font-size: 12px; color: var(--text-dim); }
+
+@media (max-width: 760px) {
+    .acomp-funil { flex-wrap: wrap; }
+    .acomp-funil-etapa { flex: 1 1 44%; }
+    .acomp-funil-seta { display: none; }
+}
+
 /* ───── CUSTÓDIA ─────
    Entrada e saída como aba de navegador: a escolhida se funde com o painel de baixo, a
    outra fica solta e apagada atrás. Bipar uma leva de pacotes no modo errado é o erro mais
