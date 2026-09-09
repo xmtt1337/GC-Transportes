@@ -285,6 +285,10 @@ async function _carregarListaCTe(pagina = 0) {
  * preenche fatura no CT-e nem emite NFS-e hoje — só CT-e. As colunas ficam
  * no relatório porque foram pedidas, prontas para quando (se) existir dado
  * pra preencher ali; não inventamos valor pra não deixar em branco.
+ *
+ * "Status" existe porque, sem ele, um CT-e sem Data de emissão E sem Motivo
+ * de rejeição parece inexplicável — mas é só um que ainda não foi transmitido
+ * (Pronto, Assinando…), não um estado quebrado.
  */
 async function _exportarCTeCsv() {
     const p = new URLSearchParams();
@@ -307,13 +311,14 @@ async function _exportarCTeCsv() {
     const linhaCsv = (campos) => campos.map((c) =>
         `"${String(c ?? "").replace(/"/g, '""')}"`).join(";");
     const csv = [
-        linhaCsv(["Código BR", "Data emissão CT-e/NF", "Fatura", "Número CT-e", "Número NF",
+        linhaCsv(["Código BR", "Status", "Data emissão CT-e/NF", "Fatura", "Número CT-e",
                   "Série CT-e/NF", "Chave de acesso CT-e", "Motivo rejeição CT-e", "Prefeitura NFSe"]),
         ...itens.map((x) => linhaCsv([
             x.codigo_shopee,
+            (_CTE_ESTADOS[x.status] && _CTE_ESTADOS[x.status].rotulo) || x.status,
             x.data_autorizacao ? new Date(x.data_autorizacao).toLocaleString("pt-BR") : "",
             "", // Fatura — GC não preenche esse grupo do CT-e hoje
-            x.numero_cte, x.numero_nf, x.serie_cte,
+            x.numero_cte, x.serie_cte,
             x.chave_acesso, x.motivo_rejeicao,
             "", // Prefeitura NFSe — GC não emite NFS-e hoje, só CT-e
         ])),
