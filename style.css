@@ -4692,7 +4692,10 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
     flex: 1 1 140px; min-width: 130px;
     background: var(--surface); border: 1px solid var(--border);
     border-top: 3px solid var(--etapa-c, var(--text-dim));
-    border-radius: var(--radius-sm); padding: 12px 14px;
+    /* Canto reto do lado da tarja (aqui, em cima) — arredondar ali faz a
+       barra colorida acompanhar a curva e virar uma gota, igual ao problema
+       já resolvido em .sst-evento/.alim-card com border-left. */
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm); padding: 12px 14px;
     cursor: pointer; transition: transform .12s, border-color .12s;
 }
 .acomp-funil-etapa:hover { transform: translateY(-2px); border-color: var(--etapa-c, var(--border-blue)); }
