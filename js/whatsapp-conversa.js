@@ -391,10 +391,10 @@ function _wacIrOndeEsta() {
 // que sem prazo — o que separa aqui é o desfecho da entrega, não o tempo. Os títulos
 // mudam porque num caso nós procuramos o cliente e no outro foi ele que nos procurou.
 //
-// Entregue e Não entregue vivem dentro do grupo visual "Respondidas" — ver o wrapper
-// wac-coluna-grupo em _wacRenderizarDesfecho. Continuam listadas aqui porque cada uma
-// ainda é uma coluna de verdade pro drag-and-drop (drop em Entregue grava resultado
-// diferente de drop em Não entregue); só o agrupamento no HTML muda.
+// Entregue e Não entregue ganham o rótulo visual "Respondidas" pairando acima delas —
+// ver .wac-respondidas-rotulo em _wacRenderizarDesfecho. Continuam listadas aqui porque
+// cada uma ainda é uma coluna de verdade pro drag-and-drop (drop em Entregue grava
+// resultado diferente de drop em Não entregue); só a legenda que as une é visual.
 const WA_COLUNAS_OUTROS = [
     { chave: "novas_respostas", titulo: "Novas respostas", resultado: undefined, semDrop: true },
     { chave: "aguardando",      titulo: "Aguardando",      resultado: null },
@@ -422,11 +422,14 @@ function _wacRenderizarDesfecho(itens, alvoId, colunas) {
         else grupos.aguardando.push(r);
     });
 
-    // Coluna simples: Novas respostas e Aguardando, uma ao lado da outra.
-    const colunaHTML = g => `
-        <div class="wac-coluna${g.semDrop ? " wac-coluna-novas" : ""}">
+    // Destaque só quando há de fato algo novo: coluna vazia não é urgência nenhuma, e
+    // ficar sempre verde treinava o olho a ignorar a cor — ela parava de significar algo.
+    const colunaHTML = g => {
+        const n = grupos[g.chave].length;
+        return `
+        <div class="wac-coluna${g.semDrop && n > 0 ? " wac-coluna-novas" : ""}">
             <div class="wac-coluna-header">
-                <span>${g.titulo}</span><span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
+                <span>${g.titulo}</span><span class="wac-coluna-contagem">${n}</span>
             </div>
             <div class="wac-coluna-cards${g.semDrop ? "" : " wac-drop"}"${g.semDrop ? "" : `
                  ondragover="_wacDropSobre(event)" ondragleave="_wacDropSaiu(event)"
@@ -434,25 +437,20 @@ function _wacRenderizarDesfecho(itens, alvoId, colunas) {
                 ${_wacCardsOutros(grupos[g.chave]) || `<div class="wac-coluna-vazia">—</div>`}
             </div>
         </div>`;
+    };
 
     const [novas, aguardando, entregue, naoEntregue] = colunas;
     const totalRespondidas = grupos.entregue.length + grupos.nao_entregue.length;
 
-    // Entregue e Não entregue moram dentro do bloco "Respondidas": duas sub-colunas com o
-    // MESMO drag-and-drop de antes (dropar numa ainda grava o resultado dela), só que
-    // visualmente agrupadas como um único destino, em vez de disputar espaço com as
-    // colunas em aberto (Novas respostas / Aguardando) na mesma fileira.
+    // "Respondidas" é um rótulo pairando um degrau acima, não uma quinta coluna: assim os
+    // cabeçalhos de Entregue/Não entregue ficam na MESMA linha que Novas respostas/
+    // Aguardando (o grid é quem posiciona — ver #wac-lista-outros no CSS), em vez de
+    // nascerem mais abaixo por causa de um cabeçalho de grupo extra empurrando tudo.
+    // Entregue/Não entregue continuam colunas de drop de verdade: soltar numa ou noutra
+    // ainda grava o resultado certo, só a legenda que as une virou algo visual.
     document.getElementById(alvoId).innerHTML =
-        colunaHTML(novas) + colunaHTML(aguardando) + `
-        <div class="wac-coluna-grupo">
-            <div class="wac-coluna-header">
-                <span>Respondidas</span><span class="wac-coluna-contagem">${totalRespondidas}</span>
-            </div>
-            <div class="wac-coluna-grupo-sub">
-                ${colunaHTML(entregue)}
-                ${colunaHTML(naoEntregue)}
-            </div>
-        </div>`;
+        `<div class="wac-respondidas-rotulo">Respondidas<span class="wac-coluna-contagem">${totalRespondidas}</span></div>` +
+        colunaHTML(novas) + colunaHTML(aguardando) + colunaHTML(entregue) + colunaHTML(naoEntregue);
 }
 
 // arrastavel = false na lista de "Nos chamaram": lá não existe coluna pra onde soltar.
