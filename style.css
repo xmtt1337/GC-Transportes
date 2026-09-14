@@ -429,7 +429,11 @@ body {
    duas sub-colunas dentro; min-width dobrado pelo mesmo motivo. */
 .wac-coluna-grupo { flex: 2 1 0; min-width: 320px; padding: 14px 12px; border-right: 1px solid var(--border); }
 .wac-coluna-grupo:last-child { border-right: none; }
-.wac-coluna-grupo .wac-coluna-header { margin-bottom: 10px; }
+/* "Respondidas" centralizado: o bloco é largo (carrega duas sub-colunas), e o título
+   preso à esquerda como nas colunas simples ficava perdido longe do centro visual. A
+   contagem sai do fluxo (position:absolute) pra não empurrar o texto pra fora do centro. */
+.wac-coluna-grupo .wac-coluna-header { margin-bottom: 10px; position: relative; justify-content: center; }
+.wac-coluna-grupo .wac-coluna-header .wac-coluna-contagem { position: absolute; right: 0; margin-left: 0; }
 .wac-coluna-grupo-sub { display: flex; gap: 14px; }
 .wac-coluna-grupo-sub .wac-coluna { flex: 1 1 0; min-width: 0; padding: 0; border-right: none; }
 .wac-coluna-grupo-sub .wac-coluna:first-child { border-right: 1px solid var(--border); padding-right: 14px; }

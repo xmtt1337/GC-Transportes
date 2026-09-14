@@ -209,12 +209,23 @@ const WA_TRANSPORTADORAS = {
     anjun:  { rotulo: "Anjun",  cor: "#22C55E" },
 };
 
-// Nome do template gravado no disparo → transportadora. Sai do próprio WA_REC_TEMPLATES,
-// então cadastrar transportadora nova continua sendo mexer num lugar só. Como deriva do
-// template, vale também pros disparos feitos antes desta separação existir.
-const WA_TEMPLATE_TRANSPORTADORA = Object.fromEntries(
-    Object.values(WA_REC_TEMPLATES).map(c => [c.template, c.transportadora])
-);
+// Nomes de template que já foram trocados/renomeados, mas continuam gravados em conversas
+// antigas — deduzir só de WA_REC_TEMPLATES (o mapa atual) esquece esses nomes assim que o
+// template muda, e o histórico inteiro daquele nome cai em "outras" de uma hora pra outra.
+// Foi o que aconteceu em 14/09/2026: Shopee trocou de "reclamacao_shopee" pra
+// "confirmacao_entrega", e ~900 conversas de meses anteriores sumiram da aba Shopee.
+const WA_TEMPLATE_TRANSPORTADORA_LEGADO = {
+    reclamacao_shopee: "shopee",
+};
+
+// Nome do template gravado no disparo → transportadora. A parte de WA_REC_TEMPLATES sai
+// dele mesmo, então cadastrar transportadora nova continua sendo mexer num lugar só; o
+// legado entra por cima e nunca é sobrescrito por um template ativo (não há colisão de
+// nome entre os dois hoje, mas a ordem do spread garante isso mesmo se um dia houver).
+const WA_TEMPLATE_TRANSPORTADORA = {
+    ...WA_TEMPLATE_TRANSPORTADORA_LEGADO,
+    ...Object.fromEntries(Object.values(WA_REC_TEMPLATES).map(c => [c.template, c.transportadora])),
+};
 
 function _waTransportadoraDe(template) {
     return WA_TEMPLATE_TRANSPORTADORA[template] || null;
