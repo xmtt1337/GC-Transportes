@@ -441,9 +441,12 @@ body {
    entra quando a coluna tem algo dentro (ver o `n > 0` no JS) — sempre verde, mesmo vazia,
    treinava o olho a ignorar a cor: ela parava de significar "olha aqui" de verdade. Vazia,
    cai no mesmo cinza neutro das outras três. Sem wac-drop: soltar aqui não é uma ação
-   válida, então nem convida. */
-.wac-coluna-novas .wac-coluna-header { background: #22c55e; color: #06210f; }
-.wac-coluna-novas .wac-coluna-header .wac-coluna-contagem { color: #06210f; font-weight: 800; }
+   válida, então nem convida.
+   Prefixado com #wac-lista-outros: sem o ID aqui a especificidade (0,2,0) perdia pra
+   #wac-lista-outros .wac-coluna-header (1,1,0) — ID sempre pesa mais que classe, não
+   importa a ordem no arquivo — e o verde nunca aparecia, nem com item na coluna. */
+#wac-lista-outros .wac-coluna-novas .wac-coluna-header { background: #22c55e; color: #06210f; }
+#wac-lista-outros .wac-coluna-novas .wac-coluna-header .wac-coluna-contagem { color: #06210f; font-weight: 800; }
 /* "Respondidas": única célula na cor de destaque do sistema (--blue), pra chamar o olho
    pro rótulo do grupo — que é o elemento novo — sem competir com Entregue/Não entregue,
    que ficam no mesmo neutro dos outros headers comuns. */
@@ -466,6 +469,22 @@ body {
 /* Faixa de encerrados: é consulta, não o foco — ocupa menos altura que a de cima. */
 #wac-lista-fechados .wac-coluna-cards { max-height: 34vh; }
 .wac-coluna-vazia { font-size: 11.5px; color: var(--text-muted); padding: 6px 2px; }
+/* Paginação por coluna: 50 cards por vez, senão uma coluna com centenas/milhares deles
+   trava o navegador montando o DOM inteiro de uma tacada. Compacta de propósito — a coluna
+   tem só 205px, o rodapé de paginação de página inteira (.shr-paginacao) não cabe aqui. */
+.wac-coluna-paginacao {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);
+}
+.wac-pag-btn {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 6px;
+    color: #94a3b8; cursor: pointer; font-family: inherit; line-height: 1;
+    font-size: 12px; font-weight: 700; padding: 4px 9px;
+    transition: border-color .15s, color .15s;
+}
+.wac-pag-btn:hover:not(:disabled) { border-color: rgba(58,134,255,0.4); color: #cbd5e1; }
+.wac-pag-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.wac-pag-info { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 /* "Nos chamaram": lista corrida, sem colunas — não há prazo nem desfecho pra separar. */
 .wac-lista-simples {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px;

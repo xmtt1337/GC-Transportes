@@ -13,6 +13,42 @@ let _wacAba = "acareacao";        // "acareacao" (com prazo) | "outros" | "chama
 let _wacTransp = null;            // transportadora selecionada; null = escolher no 1º render
 let _wacRevalidarTransp = false;  // trocou de aba: conferir se a escolhida tem conversa lá
 
+// ── Paginação por coluna ──
+// Coluna com centenas/milhares de cards trava o navegador ao montar o DOM inteiro de uma
+// vez. 50 por página resolve sem esconder nada — dá pra folhear, só não carrega tudo junto.
+const WAC_POR_PAGINA = 50;
+let _wacPaginaColuna = {};
+
+// A chave leva a aba e a transportadora: "Aguardando" de Shopee e "Aguardando" de iMile são
+// contagens diferentes, e sem isso trocar de transportadora podia abrir direto na página 4
+// de uma lista que nem chega a ter 4 páginas.
+function _wacPaginar(chaveCurta, itens) {
+    const chave = `${_wacAba}:${_wacTransp}:${chaveCurta}`;
+    const totalPaginas = Math.max(1, Math.ceil(itens.length / WAC_POR_PAGINA));
+    let pagina = _wacPaginaColuna[chave] || 1;
+    if (pagina > totalPaginas) pagina = totalPaginas; // filtro/busca encolheu a lista
+    if (pagina < 1) pagina = 1;
+    _wacPaginaColuna[chave] = pagina;
+    const inicio = (pagina - 1) * WAC_POR_PAGINA;
+    return { chave, pagina, totalPaginas, itensPagina: itens.slice(inicio, inicio + WAC_POR_PAGINA) };
+}
+
+function _wacTrocarPaginaColuna(chave, delta) {
+    _wacPaginaColuna[chave] = (_wacPaginaColuna[chave] || 1) + delta;
+    _wacRenderizar();
+}
+
+// Some sozinha com 1 página só — não faz sentido ocupar espaço da coluna com um "1/1" fixo.
+function _wacPaginacaoHTML(chave, pagina, totalPaginas) {
+    if (totalPaginas <= 1) return "";
+    return `
+    <div class="wac-coluna-paginacao">
+        <button type="button" class="wac-pag-btn" ${pagina <= 1 ? "disabled" : ""} onclick="_wacTrocarPaginaColuna('${chave}',-1)">‹</button>
+        <span class="wac-pag-info">${pagina}/${totalPaginas}</span>
+        <button type="button" class="wac-pag-btn" ${pagina >= totalPaginas ? "disabled" : ""} onclick="_wacTrocarPaginaColuna('${chave}',1)">›</button>
+    </div>`;
+}
+
 // Cargos cujo disparo entra no funil de acareação. Os demais caem em "Outros ativos".
 const WA_ROLES_ACAREACAO = ["sac", "dev"];
 
@@ -405,8 +441,10 @@ const WA_COLUNAS_OUTROS = [
 // "Nos chamaram" é uma lista só: não tem prazo nem desfecho de entrega pra separar em
 // colunas — é o cliente que apareceu, e o que se faz com ele se resolve dentro da conversa.
 function _wacRenderizarChamaram(itens) {
+    const { itensPagina, pagina, totalPaginas, chave } = _wacPaginar("chamaram", itens);
     document.getElementById("wac-lista-chamaram").innerHTML =
-        _wacCardsOutros(itens, false) || `<div class="wac-coluna-vazia">Nenhuma conversa aqui.</div>`;
+        (_wacCardsOutros(itensPagina, false) || `<div class="wac-coluna-vazia">Nenhuma conversa aqui.</div>`)
+        + _wacPaginacaoHTML(chave, pagina, totalPaginas);
 }
 
 function _wacRenderizarDesfecho(itens, alvoId, colunas) {
@@ -426,6 +464,7 @@ function _wacRenderizarDesfecho(itens, alvoId, colunas) {
     // ficar sempre verde treinava o olho a ignorar a cor — ela parava de significar algo.
     const colunaHTML = g => {
         const n = grupos[g.chave].length;
+        const { itensPagina, pagina, totalPaginas, chave } = _wacPaginar(g.chave, grupos[g.chave]);
         return `
         <div class="wac-coluna${g.semDrop && n > 0 ? " wac-coluna-novas" : ""}">
             <div class="wac-coluna-header">
@@ -434,8 +473,9 @@ function _wacRenderizarDesfecho(itens, alvoId, colunas) {
             <div class="wac-coluna-cards${g.semDrop ? "" : " wac-drop"}"${g.semDrop ? "" : `
                  ondragover="_wacDropSobre(event)" ondragleave="_wacDropSaiu(event)"
                  ondrop="_wacSoltar(event,${g.resultado ? `'${g.resultado}'` : "null"})"`}>
-                ${_wacCardsOutros(grupos[g.chave]) || `<div class="wac-coluna-vazia">—</div>`}
+                ${_wacCardsOutros(itensPagina) || `<div class="wac-coluna-vazia">—</div>`}
             </div>
+            ${_wacPaginacaoHTML(chave, pagina, totalPaginas)}
         </div>`;
     };
 
@@ -594,27 +634,36 @@ function _wacRenderizar() {
     // Chave inesperada não pode derrubar o funil inteiro — cria o balde na hora.
     visiveis.forEach(r => { const k = _wacStatusPrazo(r); (grupos[k] = grupos[k] || []).push(r); });
 
-    document.getElementById("wac-lista").innerHTML = WA_COLUNAS_PRAZO.map(g => `
+    document.getElementById("wac-lista").innerHTML = WA_COLUNAS_PRAZO.map(g => {
+        const { itensPagina, pagina, totalPaginas, chave } = _wacPaginar(g.chave, grupos[g.chave]);
+        return `
         <div class="wac-coluna">
             <div class="wac-coluna-header">
                 <span>${g.titulo}</span><span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
             </div>
             <div class="wac-coluna-cards wac-drop"
                  ondragover="_wacDropSobre(event)" ondragleave="_wacDropSaiu(event)" ondrop="_wacSoltar(event,null)">
-                ${_wacCards(grupos[g.chave], g) || `<div class="wac-coluna-vazia">—</div>`}
+                ${_wacCards(itensPagina, g) || `<div class="wac-coluna-vazia">—</div>`}
             </div>
-        </div>`).join("");
+            ${_wacPaginacaoHTML(chave, pagina, totalPaginas)}
+        </div>`;
+    }).join("");
 
     // Segunda faixa, sempre visível. Os respondidos se abrem em duas colunas pelo
     // desfecho — são elas que recebem o card quando alguém arrasta pra resolver.
+    // `chavePag` é distinta de `grupo`: "Recebido" e "Não recebido" vêm do MESMO
+    // grupos.respondidos filtrado de dois jeitos — sem uma chave própria pra cada
+    // exibição, as duas dividiriam a mesma página, uma roubando a paginação da outra.
     const [gVencidos, gRespondidos] = WA_COLUNAS_FECHADAS;
     const fechadas = [
-        { titulo: gVencidos.titulo, grupo: gVencidos,    itens: grupos.vencidos,                                          resultado: null },
-        { titulo: "Recebido",       grupo: gRespondidos, itens: grupos.respondidos.filter(r => r.resultado === "recebeu"), resultado: "recebeu" },
-        { titulo: "Não recebido",   grupo: gRespondidos, itens: grupos.respondidos.filter(r => r.resultado !== "recebeu"), resultado: "nao_recebeu" },
+        { titulo: gVencidos.titulo, grupo: gVencidos,    chavePag: "vencidos",     itens: grupos.vencidos,                                          resultado: null },
+        { titulo: "Recebido",       grupo: gRespondidos, chavePag: "recebido",     itens: grupos.respondidos.filter(r => r.resultado === "recebeu"), resultado: "recebeu" },
+        { titulo: "Não recebido",   grupo: gRespondidos, chavePag: "nao_recebido", itens: grupos.respondidos.filter(r => r.resultado !== "recebeu"), resultado: "nao_recebeu" },
     ];
 
-    document.getElementById("wac-lista-fechados").innerHTML = fechadas.map(c => `
+    document.getElementById("wac-lista-fechados").innerHTML = fechadas.map(c => {
+        const { itensPagina, pagina, totalPaginas, chave } = _wacPaginar(c.chavePag, c.itens);
+        return `
         <div class="wac-coluna">
             <div class="wac-coluna-header">
                 <span>${c.titulo}</span><span class="wac-coluna-contagem">${c.itens.length}</span>
@@ -622,9 +671,11 @@ function _wacRenderizar() {
             <div class="wac-coluna-cards wac-drop"
                  ondragover="_wacDropSobre(event)" ondragleave="_wacDropSaiu(event)"
                  ondrop="_wacSoltar(event,${c.resultado ? `'${c.resultado}'` : "null"})">
-                ${_wacCards(c.itens, c.grupo) || `<div class="wac-coluna-vazia">—</div>`}
+                ${_wacCards(itensPagina, c.grupo) || `<div class="wac-coluna-vazia">—</div>`}
             </div>
-        </div>`).join("");
+            ${_wacPaginacaoHTML(chave, pagina, totalPaginas)}
+        </div>`;
+    }).join("");
 }
 
 // O cabeçalho mostra só o número, nunca o nome do cliente — contato não salvo, como
