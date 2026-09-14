@@ -391,11 +391,10 @@ function _wacIrOndeEsta() {
 // que sem prazo — o que separa aqui é o desfecho da entrega, não o tempo. Os títulos
 // mudam porque num caso nós procuramos o cliente e no outro foi ele que nos procurou.
 //
-// "Novas respostas" fica antes de tudo: é o eixo de ATENÇÃO (leu ou não), não o de
-// desfecho — por isso ela puxa card de qualquer uma das outras três colunas, mesmo já
-// tendo desfecho marcado, e devolve pra coluna certa assim que alguém abre a conversa
-// (o que marca como lida). semDrop: não é um estado que se escolhe arrastando; sai
-// sozinha quando lida, então soltar ali não teria efeito nenhum previsível.
+// Entregue e Não entregue vivem dentro do grupo visual "Respondidas" — ver o wrapper
+// wac-coluna-grupo em _wacRenderizarDesfecho. Continuam listadas aqui porque cada uma
+// ainda é uma coluna de verdade pro drag-and-drop (drop em Entregue grava resultado
+// diferente de drop em Não entregue); só o agrupamento no HTML muda.
 const WA_COLUNAS_OUTROS = [
     { chave: "novas_respostas", titulo: "Novas respostas", resultado: undefined, semDrop: true },
     { chave: "aguardando",      titulo: "Aguardando",      resultado: null },
@@ -413,16 +412,18 @@ function _wacRenderizarChamaram(itens) {
 function _wacRenderizarDesfecho(itens, alvoId, colunas) {
     const grupos = { novas_respostas: [], aguardando: [], entregue: [], nao_entregue: [] };
     itens.forEach(r => {
-        // Não lida vence qualquer desfecho: é "tem algo novo pra olhar", independente de
-        // já estar marcado como Entregue/Não entregue. Some daqui assim que a conversa é
-        // aberta (o que zera nao_lidas), e cai na coluna que o desfecho dela já dizia.
-        if (Number(r.nao_lidas) > 0) grupos.novas_respostas.push(r);
-        else if (!r.respondido) grupos.aguardando.push(r);
-        else if (r.resultado === "recebeu") grupos.entregue.push(r);
-        else grupos.nao_entregue.push(r);
+        // Desfecho vence: uma vez resolvido — por QUALQUER pessoa do time — o card é do
+        // resultado, ponto final. nao_lidas é por usuário (cada um tem seu próprio registro
+        // de leitura em whatsapp_leituras): sem essa prioridade, quem já viu e marcou como
+        // Entregue continuaria preso em "Novas respostas" pra todo colega que não abriu
+        // aquela conversa — o card nunca sairia de lá pra ninguém além de quem resolveu.
+        if (r.respondido) (r.resultado === "recebeu" ? grupos.entregue : grupos.nao_entregue).push(r);
+        else if (Number(r.nao_lidas) > 0) grupos.novas_respostas.push(r);
+        else grupos.aguardando.push(r);
     });
 
-    document.getElementById(alvoId).innerHTML = colunas.map(g => `
+    // Coluna simples: Novas respostas e Aguardando, uma ao lado da outra.
+    const colunaHTML = g => `
         <div class="wac-coluna${g.semDrop ? " wac-coluna-novas" : ""}">
             <div class="wac-coluna-header">
                 <span>${g.titulo}</span><span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
@@ -432,7 +433,26 @@ function _wacRenderizarDesfecho(itens, alvoId, colunas) {
                  ondrop="_wacSoltar(event,${g.resultado ? `'${g.resultado}'` : "null"})"`}>
                 ${_wacCardsOutros(grupos[g.chave]) || `<div class="wac-coluna-vazia">—</div>`}
             </div>
-        </div>`).join("");
+        </div>`;
+
+    const [novas, aguardando, entregue, naoEntregue] = colunas;
+    const totalRespondidas = grupos.entregue.length + grupos.nao_entregue.length;
+
+    // Entregue e Não entregue moram dentro do bloco "Respondidas": duas sub-colunas com o
+    // MESMO drag-and-drop de antes (dropar numa ainda grava o resultado dela), só que
+    // visualmente agrupadas como um único destino, em vez de disputar espaço com as
+    // colunas em aberto (Novas respostas / Aguardando) na mesma fileira.
+    document.getElementById(alvoId).innerHTML =
+        colunaHTML(novas) + colunaHTML(aguardando) + `
+        <div class="wac-coluna-grupo">
+            <div class="wac-coluna-header">
+                <span>Respondidas</span><span class="wac-coluna-contagem">${totalRespondidas}</span>
+            </div>
+            <div class="wac-coluna-grupo-sub">
+                ${colunaHTML(entregue)}
+                ${colunaHTML(naoEntregue)}
+            </div>
+        </div>`;
 }
 
 // arrastavel = false na lista de "Nos chamaram": lá não existe coluna pra onde soltar.

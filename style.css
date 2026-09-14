@@ -423,6 +423,16 @@ body {
 .wac-coluna-novas { background: rgba(34,197,94,0.05); }
 .wac-coluna-novas .wac-coluna-header { color: #22c55e; }
 .wac-coluna-novas .wac-coluna-contagem { color: #22c55e; font-weight: 800; }
+/* "Respondidas": Entregue e Não entregue continuam colunas de drop de verdade — soltar
+   numa ou noutra ainda grava o resultado dela — só que agrupadas num bloco só, pra não
+   disputar espaço com Novas respostas/Aguardando na mesma fileira. flex:2 porque carrega
+   duas sub-colunas dentro; min-width dobrado pelo mesmo motivo. */
+.wac-coluna-grupo { flex: 2 1 0; min-width: 320px; padding: 14px 12px; border-right: 1px solid var(--border); }
+.wac-coluna-grupo:last-child { border-right: none; }
+.wac-coluna-grupo .wac-coluna-header { margin-bottom: 10px; }
+.wac-coluna-grupo-sub { display: flex; gap: 14px; }
+.wac-coluna-grupo-sub .wac-coluna { flex: 1 1 0; min-width: 0; padding: 0; border-right: none; }
+.wac-coluna-grupo-sub .wac-coluna:first-child { border-right: 1px solid var(--border); padding-right: 14px; }
 /* Cada coluna rola por conta própria: com muitos cards a página não estica e a faixa
    de encerrados continua alcançável logo abaixo do quadro. */
 .wac-coluna-cards {
