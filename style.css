@@ -417,6 +417,12 @@ body {
     color: #94a3b8; margin-bottom: 12px;
 }
 .wac-coluna-contagem { margin-left: auto; color: var(--text); font-size: 12px; }
+/* "Novas respostas": mesmo verde do selo de não lida no card, agora na coluna inteira —
+   é o que precisa de atenção primeiro, então o destaque tem que aparecer antes de abrir
+   qualquer card. Sem wac-drop: soltar aqui não é uma ação válida, então nem convida pra isso. */
+.wac-coluna-novas { background: rgba(34,197,94,0.05); }
+.wac-coluna-novas .wac-coluna-header { color: #22c55e; }
+.wac-coluna-novas .wac-coluna-contagem { color: #22c55e; font-weight: 800; }
 /* Cada coluna rola por conta própria: com muitos cards a página não estica e a faixa
    de encerrados continua alcançável logo abaixo do quadro. */
 .wac-coluna-cards {

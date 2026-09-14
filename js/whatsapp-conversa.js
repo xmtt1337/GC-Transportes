@@ -390,10 +390,17 @@ function _wacIrOndeEsta() {
 // Outros ativos e Nos chamaram: mesma mecânica de colunas e arrastar da acareação, só
 // que sem prazo — o que separa aqui é o desfecho da entrega, não o tempo. Os títulos
 // mudam porque num caso nós procuramos o cliente e no outro foi ele que nos procurou.
+//
+// "Novas respostas" fica antes de tudo: é o eixo de ATENÇÃO (leu ou não), não o de
+// desfecho — por isso ela puxa card de qualquer uma das outras três colunas, mesmo já
+// tendo desfecho marcado, e devolve pra coluna certa assim que alguém abre a conversa
+// (o que marca como lida). semDrop: não é um estado que se escolhe arrastando; sai
+// sozinha quando lida, então soltar ali não teria efeito nenhum previsível.
 const WA_COLUNAS_OUTROS = [
-    { chave: "aguardando",   titulo: "Aguardando",    resultado: null },
-    { chave: "entregue",     titulo: "Entregue",      resultado: "recebeu" },
-    { chave: "nao_entregue", titulo: "Não entregue",  resultado: "nao_recebeu" },
+    { chave: "novas_respostas", titulo: "Novas respostas", resultado: undefined, semDrop: true },
+    { chave: "aguardando",      titulo: "Aguardando",      resultado: null },
+    { chave: "entregue",        titulo: "Entregue",        resultado: "recebeu" },
+    { chave: "nao_entregue",    titulo: "Não entregue",    resultado: "nao_recebeu" },
 ];
 
 // "Nos chamaram" é uma lista só: não tem prazo nem desfecho de entrega pra separar em
@@ -404,21 +411,25 @@ function _wacRenderizarChamaram(itens) {
 }
 
 function _wacRenderizarDesfecho(itens, alvoId, colunas) {
-    const grupos = { aguardando: [], entregue: [], nao_entregue: [] };
+    const grupos = { novas_respostas: [], aguardando: [], entregue: [], nao_entregue: [] };
     itens.forEach(r => {
-        if (!r.respondido) grupos.aguardando.push(r);
+        // Não lida vence qualquer desfecho: é "tem algo novo pra olhar", independente de
+        // já estar marcado como Entregue/Não entregue. Some daqui assim que a conversa é
+        // aberta (o que zera nao_lidas), e cai na coluna que o desfecho dela já dizia.
+        if (Number(r.nao_lidas) > 0) grupos.novas_respostas.push(r);
+        else if (!r.respondido) grupos.aguardando.push(r);
         else if (r.resultado === "recebeu") grupos.entregue.push(r);
         else grupos.nao_entregue.push(r);
     });
 
     document.getElementById(alvoId).innerHTML = colunas.map(g => `
-        <div class="wac-coluna">
+        <div class="wac-coluna${g.semDrop ? " wac-coluna-novas" : ""}">
             <div class="wac-coluna-header">
                 <span>${g.titulo}</span><span class="wac-coluna-contagem">${grupos[g.chave].length}</span>
             </div>
-            <div class="wac-coluna-cards wac-drop"
+            <div class="wac-coluna-cards${g.semDrop ? "" : " wac-drop"}"${g.semDrop ? "" : `
                  ondragover="_wacDropSobre(event)" ondragleave="_wacDropSaiu(event)"
-                 ondrop="_wacSoltar(event,${g.resultado ? `'${g.resultado}'` : "null"})">
+                 ondrop="_wacSoltar(event,${g.resultado ? `'${g.resultado}'` : "null"})"`}>
                 ${_wacCardsOutros(grupos[g.chave]) || `<div class="wac-coluna-vazia">—</div>`}
             </div>
         </div>`).join("");
