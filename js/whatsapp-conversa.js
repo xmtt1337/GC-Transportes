@@ -431,9 +431,12 @@ function _wacIrOndeEsta() {
 // ver .wac-respondidas-rotulo em _wacRenderizarDesfecho. Continuam listadas aqui porque
 // cada uma ainda é uma coluna de verdade pro drag-and-drop (drop em Entregue grava
 // resultado diferente de drop em Não entregue); só a legenda que as une é visual.
+// semGrupo: essas duas não têm "Respondidas" pairando acima — precisam esticar por cima do
+// espaço reservado pra esse rótulo (senão sobra um vão vazio mostrando o fundo do card por
+// trás, já que a altura da linha do rótulo é da FILEIRA inteira, não só das colunas 3-4).
 const WA_COLUNAS_OUTROS = [
-    { chave: "novas_respostas", titulo: "Novas respostas", resultado: undefined, semDrop: true },
-    { chave: "aguardando",      titulo: "Aguardando",      resultado: null },
+    { chave: "novas_respostas", titulo: "Novas respostas", resultado: undefined, semDrop: true, semGrupo: true },
+    { chave: "aguardando",      titulo: "Aguardando",      resultado: null, semGrupo: true },
     { chave: "entregue",        titulo: "Entregue",        resultado: "recebeu" },
     { chave: "nao_entregue",    titulo: "Não entregue",    resultado: "nao_recebeu" },
 ];
@@ -466,7 +469,7 @@ function _wacRenderizarDesfecho(itens, alvoId, colunas) {
         const n = grupos[g.chave].length;
         const { itensPagina, pagina, totalPaginas, chave } = _wacPaginar(g.chave, grupos[g.chave]);
         return `
-        <div class="wac-coluna${g.semDrop && n > 0 ? " wac-coluna-novas" : ""}">
+        <div class="wac-coluna${g.semGrupo ? " wac-coluna-solo" : ""}${g.semDrop && n > 0 ? " wac-coluna-novas" : ""}">
             <div class="wac-coluna-header">
                 <span>${g.titulo}</span><span class="wac-coluna-contagem">${n}</span>
             </div>

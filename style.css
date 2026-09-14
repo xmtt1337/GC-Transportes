@@ -429,6 +429,13 @@ body {
    si e com o resto da tela. */
 #wac-lista-outros { display: grid; grid-template-columns: repeat(4, minmax(205px, 1fr)); }
 #wac-lista-outros .wac-coluna { grid-row: 2; }
+/* Novas respostas/Aguardando não têm rótulo pairando acima, mas a LINHA do grid onde esse
+   rótulo mora existe pra toda a fileira, não só nas colunas 3-4 — sem isso, sobrava um vão
+   vazio ali em cima mostrando o fundo do card por trás. Esticam por cima desse espaço
+   (grid-row:1/3) e o header é empurrado pra base (margin-top:auto), ficando na mesma altura
+   exata do header de Entregue/Não entregue, em vez de nascer mais acima. */
+#wac-lista-outros .wac-coluna-solo { grid-row: 1 / 3; display: flex; flex-direction: column; }
+#wac-lista-outros .wac-coluna-solo .wac-coluna-header { margin-top: auto; }
 /* margin negativo: o header vaza até a borda da coluna (o padding de 12px de .wac-coluna
    ficaria como uma moldura clara em volta da cor, quebrando o efeito de célula cheia). */
 #wac-lista-outros .wac-coluna-header {
