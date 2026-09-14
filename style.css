@@ -432,11 +432,19 @@ body {
    virou um rótulo visual, sem afetar onde soltar o card. */
 #wac-lista-outros { display: grid; grid-template-columns: repeat(4, minmax(205px, 1fr)); }
 #wac-lista-outros .wac-coluna { grid-row: 2; }
+/* Aba de pasta: corpo próprio (fundo mais claro que o kanban, bordas nos três lados) que
+   "morde" a borda de cima de Entregue/Não entregue — margin-bottom negativo fecha esse
+   encontro, e sem borda embaixo ela funde com o conteúdo em vez de ficar separada dele. */
 .wac-respondidas-rotulo {
     grid-row: 1; grid-column: 3 / 5;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
+    align-self: end; justify-self: center;
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface-2); border: 1px solid var(--border); border-bottom: none;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    padding: 5px 16px; margin-bottom: -1px;
+    box-shadow: 0 -3px 8px rgba(0,0,0,0.18);
     font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
-    color: #8494a9; padding: 8px 12px 0;
+    color: #8494a9; position: relative; z-index: 1;
 }
 .wac-respondidas-rotulo .wac-coluna-contagem { margin-left: 0; color: #8494a9; font-size: 10px; }
 /* Cada coluna rola por conta própria: com muitos cards a página não estica e a faixa
