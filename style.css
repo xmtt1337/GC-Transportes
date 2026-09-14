@@ -424,27 +424,27 @@ body {
 .wac-coluna-novas { background: rgba(34,197,94,0.05); }
 .wac-coluna-novas .wac-coluna-header { color: #22c55e; }
 .wac-coluna-novas .wac-coluna-contagem { color: #22c55e; font-weight: 800; }
-/* Outros ativos: grid de 4 colunas em vez de flex. "Respondidas" paira um degrau acima de
-   Entregue/Não entregue (grid-row:1, span das colunas 3-4) — assim os CABEÇALHOS das 4
-   colunas ficam todos na mesma altura (grid-row:2), em vez de Entregue/Não entregue
-   nascerem mais abaixo por causa de um cabeçalho de grupo extra empurrando o conteúdo.
-   Entregue/Não entregue continuam colunas de drop de verdade — só a legenda que as une
-   virou um rótulo visual, sem afetar onde soltar o card. */
+/* Outros ativos: grid de 4 colunas em vez de flex. "Respondidas" fica logo acima de
+   Entregue/Não entregue (grid-row:1, span das colunas 3-4), moldurado — assim os
+   CABEÇALHOS das 4 colunas ficam todos na mesma altura (grid-row:2), em vez de
+   Entregue/Não entregue nascerem mais abaixo por causa de um cabeçalho de grupo extra
+   empurrando o conteúdo. Entregue/Não entregue continuam colunas de drop de verdade —
+   só a legenda que as une virou um rótulo visual, sem afetar onde soltar o card. */
 #wac-lista-outros { display: grid; grid-template-columns: repeat(4, minmax(205px, 1fr)); }
 #wac-lista-outros .wac-coluna { grid-row: 2; }
-/* Aba de pasta: corpo próprio (fundo mais claro que o kanban, bordas nos três lados) que
-   "morde" a borda de cima de Entregue/Não entregue — margin-bottom negativo fecha esse
-   encontro, e sem borda embaixo ela funde com o conteúdo em vez de ficar separada dele. */
+/* Moldura, não aba: um contorno fino (bracket aberto embaixo) abraçando a largura toda de
+   Entregue/Não entregue, sem fundo nem sombra — é uma linha que indica "isto é um grupo",
+   não uma peça física grudada por cima. Reto embaixo pra não sobrar borda solta encostando
+   sem fechar em lugar nenhum. */
 .wac-respondidas-rotulo {
     grid-row: 1; grid-column: 3 / 5;
-    align-self: end; justify-self: center;
-    display: flex; align-items: center; gap: 6px;
-    background: var(--surface-2); border: 1px solid var(--border); border-bottom: none;
+    align-self: end;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    border: 1px solid var(--border); border-bottom: none;
     border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-    padding: 5px 16px; margin-bottom: -1px;
-    box-shadow: 0 -3px 8px rgba(0,0,0,0.18);
+    padding: 6px 12px;
     font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
-    color: #8494a9; position: relative; z-index: 1;
+    color: #8494a9;
 }
 .wac-respondidas-rotulo .wac-coluna-contagem { margin-left: 0; color: #8494a9; font-size: 10px; }
 /* Cada coluna rola por conta própria: com muitos cards a página não estica e a faixa
