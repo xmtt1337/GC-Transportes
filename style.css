@@ -417,36 +417,41 @@ body {
     color: #94a3b8; margin-bottom: 12px;
 }
 .wac-coluna-contagem { margin-left: auto; color: var(--text); font-size: 12px; }
-/* "Novas respostas": mesmo verde do selo de não lida no card, agora na coluna inteira. Só
-   entra quando a coluna tem algo dentro (ver o `n > 0` no JS) — sempre verde, mesmo vazia,
-   treinava o olho a ignorar a cor: ela parava de significar "olha aqui" de verdade.
-   Sem wac-drop: soltar aqui não é uma ação válida, então nem convida pra isso. */
-.wac-coluna-novas { background: rgba(34,197,94,0.05); }
-.wac-coluna-novas .wac-coluna-header { color: #22c55e; }
-.wac-coluna-novas .wac-coluna-contagem { color: #22c55e; font-weight: 800; }
-/* Outros ativos: grid de 4 colunas em vez de flex. "Respondidas" fica logo acima de
-   Entregue/Não entregue (grid-row:1, span das colunas 3-4), moldurado — assim os
-   CABEÇALHOS das 4 colunas ficam todos na mesma altura (grid-row:2), em vez de
-   Entregue/Não entregue nascerem mais abaixo por causa de um cabeçalho de grupo extra
-   empurrando o conteúdo. Entregue/Não entregue continuam colunas de drop de verdade —
-   só a legenda que as une virou um rótulo visual, sem afetar onde soltar o card. */
+/* Outros ativos: grid de 4 colunas em vez de flex, com cabeçalho em duas fileiras tipo
+   planilha — "Respondidas" numa célula mesclada por cima de Entregue/Não entregue (mais
+   escura, é a categoria-mãe), e os 4 títulos reais numa fileira só, todos na mesma altura,
+   cada um com fundo próprio. Entregue/Não entregue continuam colunas de drop de verdade —
+   só o header que ganhou uma faixa colorida por cima, sem afetar onde soltar o card. */
 #wac-lista-outros { display: grid; grid-template-columns: repeat(4, minmax(205px, 1fr)); }
 #wac-lista-outros .wac-coluna { grid-row: 2; }
-/* Moldura, não aba: um contorno fino (bracket aberto embaixo) abraçando a largura toda de
-   Entregue/Não entregue, sem fundo nem sombra — é uma linha que indica "isto é um grupo",
-   não uma peça física grudada por cima. Reto embaixo pra não sobrar borda solta encostando
-   sem fechar em lugar nenhum. */
+/* margin negativo: o header vaza até a borda da coluna (o padding de 12px de .wac-coluna
+   ficaria como uma moldura clara em volta da cor, quebrando o efeito de célula cheia). */
+#wac-lista-outros .wac-coluna-header {
+    justify-content: center; margin: -14px -12px 12px; padding: 9px 10px;
+    background: rgba(58,134,255,0.14); border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    color: #dbe7ff;
+}
+#wac-lista-outros .wac-coluna-header .wac-coluna-contagem { color: #dbe7ff; margin-left: 0; }
+/* "Novas respostas": mesmo verde do selo de não lida no card, agora a célula inteira. Só
+   entra quando a coluna tem algo dentro (ver o `n > 0` no JS) — sempre verde, mesmo vazia,
+   treinava o olho a ignorar a cor: ela parava de significar "olha aqui" de verdade. Vazia,
+   cai no mesmo azul neutro das outras três, em vez de ficar sem cor nenhuma (destoando do
+   visual de tabela). Sem wac-drop: soltar aqui não é uma ação válida, então nem convida. */
+.wac-coluna-novas .wac-coluna-header { background: rgba(34,197,94,0.22); color: #eafff2; }
+.wac-coluna-novas .wac-coluna-header .wac-coluna-contagem { color: #eafff2; }
+/* "Respondidas": célula mesclada por cima de Entregue/Não entregue, mais escura que os
+   headers individuais — é o mesmo degradê "grupo mais forte, filhos mais claros" que uma
+   tabela dinâmica usa pra mostrar hierarquia sem precisar de moldura ou texto explicando. */
 .wac-respondidas-rotulo {
     grid-row: 1; grid-column: 3 / 5;
     align-self: end;
     display: flex; align-items: center; justify-content: center; gap: 6px;
-    border: 1px solid var(--border); border-bottom: none;
-    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: rgba(58,134,255,0.32); border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     padding: 6px 12px;
     font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
-    color: #8494a9;
+    color: #fff;
 }
-.wac-respondidas-rotulo .wac-coluna-contagem { margin-left: 0; color: #8494a9; font-size: 10px; }
+.wac-respondidas-rotulo .wac-coluna-contagem { margin-left: 0; color: #fff; }
 /* Cada coluna rola por conta própria: com muitos cards a página não estica e a faixa
    de encerrados continua alcançável logo abaixo do quadro. */
 .wac-coluna-cards {
