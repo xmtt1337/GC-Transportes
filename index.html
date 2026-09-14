@@ -514,6 +514,7 @@ if (_BASE) {
             <li><a href="#" data-rota="Financeiro/ConferenciaNF" onclick="abrirConfNFs(event)">Conferência NF</a></li>
             <li><a href="#" data-rota="Financeiro/Antecipacoes" onclick="abrirAdminAntecipacoes(event)">Antecipações</a></li>
             <li><a href="#" data-rota="Financeiro/Pagamentos" onclick="abrirAdminPagamentos(event)">Pagamentos</a></li>
+            <li><a href="#" data-rota="Financeiro/Faturas" onclick="abrirGeradorFaturas(event)">Gerador de Faturas</a></li>
         </ul>
 
         <li class="menu-item" data-menu="fiscal" id="menu-fiscal" onclick="toggleMenu(this)" style="display:none">
@@ -1272,6 +1273,63 @@ if (_BASE) {
                 </div>
             </div>
         </div><!-- /tela-admin-pagamentos -->
+
+        <!-- TELA GERADOR DE FATURAS -->
+        <div id="tela-faturas" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div id="fat-form-wrap" class="ant-form-wrap">
+                    <div class="ant-form-title">Gerar Fatura — GC Transportes → Shopee</div>
+                    <div class="ant-form-grid">
+                        <div class="ant-field">
+                            <label class="ant-label">Nº da Fatura *</label>
+                            <input type="text" id="fat-numero" class="ant-input" placeholder="Ex: 015">
+                        </div>
+                        <div class="ant-field">
+                            <label class="ant-label">Data da Emissão *</label>
+                            <input type="date" id="fat-emissao" class="ant-input">
+                        </div>
+                    </div>
+                    <div class="ant-form-grid">
+                        <div class="ant-field">
+                            <label class="ant-label">Valor (R$) *</label>
+                            <input type="number" id="fat-valor" class="ant-input" min="0.01" step="0.01" placeholder="0,00">
+                        </div>
+                        <div class="ant-field">
+                            <label class="ant-label">Referência / PO *</label>
+                            <input type="text" id="fat-referencia" class="ant-input" placeholder="Ex: SPXBR-PR-105508">
+                        </div>
+                    </div>
+                    <div style="font-size:12px;color:#8494a9;margin:2px 0 14px">
+                        Vencimento e valor por extenso são calculados automaticamente — vencimento 1 mês após a emissão.
+                    </div>
+                    <div id="fat-form-msg" class="ant-form-msg" style="display:none"></div>
+                    <button onclick="_fatGerar()" id="fat-gerar-btn" class="ant-submit-btn">Gerar e Baixar PDF</button>
+                </div>
+
+                <div style="margin-top:28px">
+                    <div class="ant-sol-title" style="margin-bottom:14px">Faturas Geradas</div>
+                    <div class="fechamento-empty" id="fat-empty">Carregando...</div>
+                    <div id="fat-resultado" style="display:none">
+                        <div class="adm-nf-wrap">
+                            <table class="adm-nf-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nº Fatura</th>
+                                        <th>Referência / PO</th>
+                                        <th>Valor</th>
+                                        <th>Emissão</th>
+                                        <th>Vencimento</th>
+                                        <th>Gerado por</th>
+                                        <th>PDF</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fat-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-faturas -->
 
         <!-- TELA IMPORTAR TRAMPAY -->
 
@@ -4086,9 +4144,9 @@ if (_BASE) {
 </div>
 
 <script src="js/core.js?v=20260905a"></script>
-<script src="js/router.js?v=30260902f"></script>
+<script src="js/router.js?v=20260914a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=20260904a"></script>
+<script src="js/nav.js?v=20260914a"></script>
 <script src="js/atendimento.js?v=20260907a"></script>
 <script src="js/atendimento-admin.js?v=30260902h"></script>
 <script src="js/fechamentos.js?v=30260812d"></script>
@@ -4098,6 +4156,7 @@ if (_BASE) {
 <script src="js/usuarios.js?v=30260812d"></script>
 <script src="js/motoristas.js?v=30260812d"></script>
 <script src="js/pagamentos.js?v=30260812d"></script>
+<script src="js/faturas.js?v=20260914a"></script>
 <script src="js/notas-fiscais.js?v=30260812d"></script>
 <script src="js/dashboard.js?v=30260812d"></script>
 <script src="js/ent-dashboard.js?v=30260812d"></script>

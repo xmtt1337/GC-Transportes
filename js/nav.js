@@ -13,6 +13,7 @@ const _TELA_TITULOS = {
     "tela-admin-nfs":            "Notas Fiscais",
     "tela-conf-nfs":             "Conferência NF",
     "tela-admin-pagamentos":     "Pagamentos",
+    "tela-faturas":              "Gerador de Faturas",
     "tela-trampay-entregadores": "Entregadores",
     "tela-admin-usuarios":       "Entregadores",
     "tela-admin-motoristas":     "Motoristas",

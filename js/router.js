@@ -90,6 +90,7 @@ const _ROTAS = {
     "Financeiro/ConferenciaNF":      () => abrirConfNFs(),
     "Financeiro/Antecipacoes":       () => abrirAdminAntecipacoes(),
     "Financeiro/Pagamentos":         () => abrirAdminPagamentos(),
+    "Financeiro/Faturas":            () => abrirGeradorFaturas(),
     "Cadastros/Entregadores":        () => abrirAdminUsuarios(),
     "Cadastros/Motoristas":          () => abrirAdminMotoristas(),
     "Cadastros/Usuarios":            () => abrirAdminUsuariosGC(),
