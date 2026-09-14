@@ -418,35 +418,40 @@ body {
 }
 .wac-coluna-contagem { margin-left: auto; color: var(--text); font-size: 12px; }
 /* Outros ativos: grid de 4 colunas em vez de flex, com cabeçalho em duas fileiras tipo
-   planilha — "Respondidas" numa célula mesclada por cima de Entregue/Não entregue (mais
-   escura, é a categoria-mãe), e os 4 títulos reais numa fileira só, todos na mesma altura,
-   cada um com fundo próprio. Entregue/Não entregue continuam colunas de drop de verdade —
-   só o header que ganhou uma faixa colorida por cima, sem afetar onde soltar o card. */
+   planilha — "Respondidas" numa célula mesclada por cima de Entregue/Não entregue, e os
+   4 títulos reais numa fileira só, todos na mesma altura, cada um com fundo próprio.
+   Entregue/Não entregue continuam colunas de drop de verdade — só o header que ganhou
+   uma faixa colorida por cima, sem afetar onde soltar o card.
+   Cor SÓLIDA, não translúcida: rgba sobre o fundo escuro do sistema saía lavado, sem o
+   punch de tabela que a referência tinha. Só duas cores de destaque de verdade (o azul do
+   sistema pro rótulo do grupo, o verde já usado pra "tem coisa nova") — os 3 headers
+   comuns ficam num cinza-azulado neutro, senão quatro tons de azul active brigando entre
+   si e com o resto da tela. */
 #wac-lista-outros { display: grid; grid-template-columns: repeat(4, minmax(205px, 1fr)); }
 #wac-lista-outros .wac-coluna { grid-row: 2; }
 /* margin negativo: o header vaza até a borda da coluna (o padding de 12px de .wac-coluna
    ficaria como uma moldura clara em volta da cor, quebrando o efeito de célula cheia). */
 #wac-lista-outros .wac-coluna-header {
     justify-content: center; margin: -14px -12px 12px; padding: 9px 10px;
-    background: rgba(58,134,255,0.14); border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-    color: #dbe7ff;
+    background: #1c2536; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    color: #cbd5e1;
 }
-#wac-lista-outros .wac-coluna-header .wac-coluna-contagem { color: #dbe7ff; margin-left: 0; }
+#wac-lista-outros .wac-coluna-header .wac-coluna-contagem { color: #cbd5e1; margin-left: 0; }
 /* "Novas respostas": mesmo verde do selo de não lida no card, agora a célula inteira. Só
    entra quando a coluna tem algo dentro (ver o `n > 0` no JS) — sempre verde, mesmo vazia,
    treinava o olho a ignorar a cor: ela parava de significar "olha aqui" de verdade. Vazia,
-   cai no mesmo azul neutro das outras três, em vez de ficar sem cor nenhuma (destoando do
-   visual de tabela). Sem wac-drop: soltar aqui não é uma ação válida, então nem convida. */
-.wac-coluna-novas .wac-coluna-header { background: rgba(34,197,94,0.22); color: #eafff2; }
-.wac-coluna-novas .wac-coluna-header .wac-coluna-contagem { color: #eafff2; }
-/* "Respondidas": célula mesclada por cima de Entregue/Não entregue, mais escura que os
-   headers individuais — é o mesmo degradê "grupo mais forte, filhos mais claros" que uma
-   tabela dinâmica usa pra mostrar hierarquia sem precisar de moldura ou texto explicando. */
+   cai no mesmo cinza neutro das outras três. Sem wac-drop: soltar aqui não é uma ação
+   válida, então nem convida. */
+.wac-coluna-novas .wac-coluna-header { background: #22c55e; color: #06210f; }
+.wac-coluna-novas .wac-coluna-header .wac-coluna-contagem { color: #06210f; font-weight: 800; }
+/* "Respondidas": única célula na cor de destaque do sistema (--blue), pra chamar o olho
+   pro rótulo do grupo — que é o elemento novo — sem competir com Entregue/Não entregue,
+   que ficam no mesmo neutro dos outros headers comuns. */
 .wac-respondidas-rotulo {
     grid-row: 1; grid-column: 3 / 5;
     align-self: end;
     display: flex; align-items: center; justify-content: center; gap: 6px;
-    background: rgba(58,134,255,0.32); border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: var(--blue); border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     padding: 6px 12px;
     font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
     color: #fff;
