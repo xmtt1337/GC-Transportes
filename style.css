@@ -447,19 +447,20 @@ body {
    importa a ordem no arquivo — e o verde nunca aparecia, nem com item na coluna. */
 #wac-lista-outros .wac-coluna-novas .wac-coluna-header { background: #22c55e; color: #06210f; }
 #wac-lista-outros .wac-coluna-novas .wac-coluna-header .wac-coluna-contagem { color: #06210f; font-weight: 800; }
-/* "Respondidas": única célula na cor de destaque do sistema (--blue), pra chamar o olho
-   pro rótulo do grupo — que é o elemento novo — sem competir com Entregue/Não entregue,
-   que ficam no mesmo neutro dos outros headers comuns. */
+/* "Respondidas": azul marinho escuro, não var(--blue) — aquele é o azul de botão de ação
+   (vibrante, claro), feito pra saltar aos olhos num fundo escuro; aqui é só um cabeçalho de
+   coluna, e o mesmo tom ficava "clarinho" demais, destoando do resto do tema dark. Ainda se
+   diferencia do cinza neutro dos outros 3 headers, só que sem brilhar. */
 .wac-respondidas-rotulo {
     grid-row: 1; grid-column: 3 / 5;
     align-self: end;
     display: flex; align-items: center; justify-content: center; gap: 6px;
-    background: var(--blue); border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: #22345c; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     padding: 6px 12px;
     font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
-    color: #fff;
+    color: #c9d6f0;
 }
-.wac-respondidas-rotulo .wac-coluna-contagem { margin-left: 0; color: #fff; }
+.wac-respondidas-rotulo .wac-coluna-contagem { margin-left: 0; color: #c9d6f0; }
 /* Cada coluna rola por conta própria: com muitos cards a página não estica e a faixa
    de encerrados continua alcançável logo abaixo do quadro. */
 .wac-coluna-cards {
