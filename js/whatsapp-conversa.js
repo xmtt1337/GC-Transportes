@@ -242,7 +242,11 @@ function _wacCarregarLista() {
         .then(r => r.json())
         .then(rows => {
             if (!Array.isArray(rows) || !rows.length) { skFim(empty, "Nenhuma conversa registrada ainda."); return; }
-            _wacDados = rows;
+            // Mais recente primeiro, em todas as abas. `ultima` já vem pronta do servidor —
+            // é o maior entre nosso último envio e a resposta do cliente, então tanto disparar
+            // quanto o cliente responder sobem o card. Um sort aqui, na origem dos dados, cobre
+            // sozinho todas as colunas: filter() preserva a ordem de quem sobrevive ao filtro.
+            _wacDados = [...rows].sort((a, b) => new Date(b.ultima || 0) - new Date(a.ultima || 0));
             const busca = document.getElementById("wac-busca");
             if (busca) busca.value = "";
             empty.style.display = "none";
