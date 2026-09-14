@@ -427,7 +427,12 @@ body {
    sistema pro rótulo do grupo, o verde já usado pra "tem coisa nova") — os 3 headers
    comuns ficam num cinza-azulado neutro, senão quatro tons de azul active brigando entre
    si e com o resto da tela. */
-#wac-lista-outros { display: grid; grid-template-columns: repeat(4, minmax(205px, 1fr)); }
+/* Linha 1 (onde "Respondidas" mora) com altura FIXA, não "auto": com auto, o grid calculava
+   essa altura de dois jeitos diferentes — pelo conteúdo de "Respondidas" numas colunas, e
+   pelo que sobrava do span de Novas respostas/Aguardando nas outras — e as duas contas não
+   batiam, deixando o lado direito mais alto que o esquerdo. Fixando o valor, a soma
+   linha1+linha2 fica idêntica nas 4 colunas, span ou não. */
+#wac-lista-outros { display: grid; grid-template-columns: repeat(4, minmax(205px, 1fr)); grid-template-rows: 30px auto; }
 #wac-lista-outros .wac-coluna { grid-row: 2; }
 /* Novas respostas/Aguardando não têm rótulo pairando acima, mas a LINHA do grid onde esse
    rótulo mora existe pra toda a fileira, não só nas colunas 3-4 — sem isso, sobrava um vão
