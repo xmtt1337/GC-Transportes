@@ -22,6 +22,20 @@
              padding-top: 9px; margin: 4px 0 0; }
     .estado { font-size: 11px; min-height: 15px; color: #2a8c4a; font-weight: 600; }
     .estado.ruim { color: #d8431f; }
+
+    fieldset { border: 1px solid #e0e6ef; border-radius: 7px; margin: 12px 0 8px;
+               padding: 9px 11px 11px; }
+    legend { font-size: 11px; font-weight: 700; color: #62718a; padding: 0 5px;
+             text-transform: uppercase; letter-spacing: .04em; }
+    .linha { display: flex; align-items: center; gap: 6px; margin: 6px 0; font-size: 12px; }
+    .linha input[type="radio"] { margin: 0; flex: none; }
+    .linha input[type="number"] { width: 46px; }
+    .linha input[type="text"] { flex: 1; min-width: 0; }
+    input[type="number"], input[type="text"] { font: inherit; font-size: 12px;
+             padding: 3px 6px; border: 1px solid #d7dee8; border-radius: 4px; }
+    input:disabled { background: #f4f6f9; color: #a7b2c2; }
+    .proxima { font-size: 11px; color: #62718a; margin-top: 8px; min-height: 14px; }
+    .proxima b { color: #24303f; }
   </style>
 </head>
 <body>
@@ -37,9 +51,30 @@
   </ul>
 
   <button id="rodar">▶ Rodar alimentação</button>
+  <div class="estado" id="estado"></div>
+
+  <fieldset>
+    <legend>Sozinho</legend>
+    <div class="linha">
+      <input type="radio" name="modo" id="modo-off" value="off">
+      <label for="modo-off">Desligado — só quando eu mandar</label>
+    </div>
+    <div class="linha">
+      <input type="radio" name="modo" id="modo-intervalo" value="intervalo">
+      <label for="modo-intervalo">A cada</label>
+      <input type="number" id="horas" min="1" max="24" step="1" value="1">
+      <label for="horas">hora(s)</label>
+    </div>
+    <div class="linha">
+      <input type="radio" name="modo" id="modo-horarios" value="horarios">
+      <label for="modo-horarios">Às</label>
+      <input type="text" id="horarios" placeholder="8, 12, 16" maxlength="60">
+    </div>
+    <div class="proxima" id="proxima"></div>
+  </fieldset>
+
   <button id="ensinar" class="calmo">Ensinar a setinha</button>
   <button id="diagnostico" class="calmo">Diagnóstico (copiar)</button>
-  <div class="estado" id="estado"></div>
 
   <p class="aviso">
     O acompanhamento aparece na própria tela do SPX — pode fechar esta janelinha.
@@ -52,6 +87,7 @@
     <b>Alt+M</b> ensina o item, com o menu aberto
   </p>
 
+  <script src="logica.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

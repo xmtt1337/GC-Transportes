@@ -133,6 +133,42 @@ test('escolherTarefaNova aguenta espaco sobrando no nome lido da tela', () => {
   assert.strictEqual(alvo.quando, '2026-09-15 12:07:50');
 });
 
+test('lerHorarios entende o que a pessoa escreveu do jeito dela', () => {
+  assert.deepStrictEqual(L.lerHorarios('8, 12, 16'), [8, 12, 16]);
+  assert.deepStrictEqual(L.lerHorarios('8 12 16'), [8, 12, 16]);
+  assert.deepStrictEqual(L.lerHorarios('8h, 12h e 16h'), [8, 12, 16]);
+  assert.deepStrictEqual(L.lerHorarios('16, 8, 12'), [8, 12, 16], 'ordena');
+  assert.deepStrictEqual(L.lerHorarios('8, 8, 12'), [8, 12], 'sem repetir');
+});
+
+test('lerHorarios joga fora hora que nao existe', () => {
+  assert.deepStrictEqual(L.lerHorarios('25, 40, 12'), [12]);
+  assert.deepStrictEqual(L.lerHorarios(''), []);
+  assert.deepStrictEqual(L.lerHorarios('toda hora'), []);
+});
+
+test('minutosAteProximaHora pega a proxima do dia', () => {
+  const noveEMeia = 9 * 60 + 30;
+  // 9:30 -> proxima e 12:00, daqui a 2h30
+  assert.strictEqual(L.minutosAteProximaHora([8, 12, 16], noveEMeia), 150);
+});
+
+test('minutosAteProximaHora vira o dia quando todas ja passaram', () => {
+  const dezoitoHoras = 18 * 60;
+  // 18:00 -> a proxima e as 8 de amanha, daqui a 14h
+  assert.strictEqual(L.minutosAteProximaHora([8, 12, 16], dezoitoHoras), 14 * 60);
+});
+
+test('minutosAteProximaHora nao remarca pra agora mesmo', () => {
+  // Disparou as 8:00 em ponto: sem folga, o proximo alarme seria daqui a zero
+  // minuto e a alimentacao rodaria duas vezes seguidas.
+  assert.strictEqual(L.minutosAteProximaHora([8, 12, 16], 8 * 60), 4 * 60);
+});
+
+test('minutosAteProximaHora sem horario nenhum nao agenda nada', () => {
+  assert.strictEqual(L.minutosAteProximaHora([], 600), null);
+});
+
 test('EH_MOMENTO so casa com a linha inteira do carimbo', () => {
   assert.ok(L.EH_MOMENTO.test('2026-09-15 12:07:50'));
   assert.ok(!L.EH_MOMENTO.test('Br Assignment Task 2026-09-15 12:07:50'));

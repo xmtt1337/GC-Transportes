@@ -104,8 +104,40 @@
       .sort((a, b) => (momentoDaTarefa(b.quando) || 0) - (momentoDaTarefa(a.quando) || 0))[0];
   }
 
+  // ── agenda ─────────────────────────────────────────────────────────────
+  // "8, 12 e 16h" -> [8, 12, 16]. Le os numeros do que a pessoa escreveu em
+  // vez de exigir um formato: ninguem lembra de formato, e recusar o que foi
+  // digitado do "jeito errado" e como nao ter o campo.
+  function lerHorarios(texto) {
+    const numeros = String(texto == null ? '' : texto).match(/\d{1,2}/g) || [];
+    const horas = numeros.map(Number).filter((h) => h >= 0 && h <= 23);
+    return [...new Set(horas)].sort((a, b) => a - b);
+  }
+
+  // Quantos minutos faltam pra proxima hora cheia da lista, a partir de um
+  // relogio dado (minutos desde a meia-noite).
+  //
+  // Conta em minutos de proposito, em vez de montar uma data no fuso de
+  // Brasilia: montar data em outro fuso e onde isso costuma errar por uma
+  // hora, e um agendamento que dispara uma hora cedo ninguem percebe.
+  function minutosAteProximaHora(horas, minutosAgora) {
+    const limpas = lerHorarios(horas.join ? horas.join(',') : horas);
+    if (!limpas.length) return null;
+    let menor = Infinity;
+    for (const h of limpas) {
+      let falta = h * 60 - minutosAgora;
+      // O "ja passou" tem folga de meio minuto: sem ela, o disparo das 8:00
+      // remarcaria pra daqui a zero minuto e rodaria duas vezes seguidas.
+      if (falta <= 0.5) falta += 24 * 60;
+      menor = Math.min(menor, falta);
+    }
+    return menor;
+  }
+
   const logica = {
     NOME_RELATORIO,
+    lerHorarios,
+    minutosAteProximaHora,
     MESES_PT,
     MESES_EN,
     FORMATOS_DATA,

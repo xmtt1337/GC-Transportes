@@ -31,6 +31,77 @@ document.getElementById('rodar').addEventListener('click', async () => {
   if (r && r.ok) { dizer('rodando — veja na tela do SPX'); setTimeout(() => window.close(), 900); }
 });
 
+// ── agenda ──────────────────────────────────────────────────────────────
+const campos = {
+  off: document.getElementById('modo-off'),
+  intervalo: document.getElementById('modo-intervalo'),
+  horarios: document.getElementById('modo-horarios'),
+  horas: document.getElementById('horas'),
+  lista: document.getElementById('horarios'),
+  proxima: document.getElementById('proxima'),
+};
+
+const modoEscolhido = () =>
+  ['off', 'intervalo', 'horarios'].find((m) => campos[m].checked) || 'off';
+
+const lerHorarios = window.XMMacro.logica.lerHorarios;
+
+function mostrarProxima(quando) {
+  if (!quando) { campos.proxima.textContent = ''; return; }
+  const data = new Date(quando);
+  const hora = data.toLocaleTimeString('pt-BR', {
+    timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+  const hoje = new Date().toDateString() === data.toDateString();
+  campos.proxima.innerHTML = `Próxima: <b>${hoje ? 'hoje' : 'amanhã'} às ${hora}</b>` +
+                             ' <span style="opacity:.7">(horário de Brasília)</span>';
+}
+
+function ajustarCampos() {
+  const modo = modoEscolhido();
+  campos.horas.disabled = modo !== 'intervalo';
+  campos.lista.disabled = modo !== 'horarios';
+}
+
+async function salvarAgenda() {
+  ajustarCampos();
+  const modo = modoEscolhido();
+  const agenda = {
+    modo,
+    horas: Math.min(24, Math.max(1, Number(campos.horas.value) || 1)),
+    horarios: lerHorarios(campos.lista.value),
+  };
+  if (modo === 'horarios' && !agenda.horarios.length) {
+    campos.proxima.textContent = 'Escreva ao menos uma hora, como 8, 12, 16.';
+    return;
+  }
+  await chrome.storage.local.set({ agenda });
+  const r = await chrome.runtime.sendMessage({ xmAgenda: 'reagendar' });
+  if (modo === 'off') { campos.proxima.textContent = ''; return; }
+  mostrarProxima(r && r.proxima);
+}
+
+async function carregarAgenda() {
+  const guardado = await chrome.storage.local.get(['agenda', 'proxima', 'ultimoDisparo']);
+  const agenda = guardado.agenda || { modo: 'off', horas: 1, horarios: [] };
+  campos[agenda.modo] ? (campos[agenda.modo].checked = true) : (campos.off.checked = true);
+  campos.horas.value = agenda.horas || 1;
+  campos.lista.value = (agenda.horarios || []).join(', ');
+  ajustarCampos();
+  if (agenda.modo !== 'off') mostrarProxima(guardado.proxima);
+  // O ultimo disparo automatico e o unico jeito de saber que ele rodou de
+  // madrugada - e, principalmente, que NAO rodou porque a aba estava fechada.
+  if (guardado.ultimoDisparo && guardado.ultimoDisparo.texto.startsWith('não rodou')) {
+    dizer(guardado.ultimoDisparo.texto, true);
+  }
+}
+
+for (const el of [campos.off, campos.intervalo, campos.horarios]) {
+  el.addEventListener('change', salvarAgenda);
+}
+campos.horas.addEventListener('change', salvarAgenda);
+campos.lista.addEventListener('change', salvarAgenda);
+carregarAgenda();
+
 document.getElementById('ensinar').addEventListener('click', async () => {
   dizer('');
   const r = await mandar('ensinar');

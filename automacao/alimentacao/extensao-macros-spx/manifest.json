@@ -1,12 +1,16 @@
 {
   "manifest_version": 3,
   "name": "XM Macros SPX",
-  "version": "1.7",
+  "version": "1.8",
   "description": "Macros da rotina do SPX. Alimentação: filtra o dia, marca tudo, exporta a AT e baixa o relatório certo.",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "alarms"
   ],
+  "background": {
+    "service_worker": "fundo.js"
+  },
   "host_permissions": [
     "https://spx.shopee.com.br/*"
   ],

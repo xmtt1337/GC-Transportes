@@ -65,6 +65,30 @@ Pra abortar no meio: botao "Parar" no quadro.
 
 
 -----------------------------------------------------------
+RODAR SOZINHO
+-----------------------------------------------------------
+
+No popup, em "Sozinho", escolha um dos dois:
+
+  A cada X hora(s)   conta a partir de agora. Ligou as 14:20
+                     com 2 horas? Roda 16:20, 18:20, 20:20...
+
+  As 8, 12, 16       horario de BRASILIA, nao o relogio da
+                     maquina. Escreva as horas separadas por
+                     virgula, do jeito que sair: "8, 12, 16",
+                     "8h 12h 16h" - ele le os numeros.
+
+O popup mostra a proxima. Pode fechar tudo: o agendamento vive
+fora dele e sobrevive ao Chrome sendo reiniciado (alarme
+perdido com o navegador fechado dispara logo depois de abrir).
+
+A UNICA coisa que ele precisa: a aba do SPX ABERTA, na tela
+Atribuicao de Entrega. Sem aba nao tem onde clicar - e nesse
+caso o popup avisa, da proxima vez que voce abrir, que nao
+rodou e por que.
+
+
+-----------------------------------------------------------
 QUAL RELATORIO ELE BAIXA
 -----------------------------------------------------------
 
@@ -130,11 +154,14 @@ PRA QUEM MEXE NO CODIGO
 
 Fonte: GC Transportes / automacao / alimentacao / extensao-macros-spx
 
-  logica.js       regras puras (datas, escolha do relatorio)
+  logica.js       regras puras (datas, relatorio, horarios)
   spx.js          achar/clicar/esperar na tela do SPX
-  rede.js         conta chamadas em voo (mundo da pagina)
+  rede.js         conta chamadas em voo e contorna o bloqueio
+                  de pop-up no download (mundo da pagina)
   painel.js       o quadro que aparece na tela
+  aprender.js     o modo ensinar
   alimentacao.js  o macro, passo a passo
   diagnostico.js  o relatorio do botao Diagnostico
+  fundo.js        o agendador (service worker)
 
 Testes:  node --test automacao/alimentacao/testes/test_macro_alimentacao.test.js
