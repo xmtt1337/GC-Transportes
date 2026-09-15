@@ -59,9 +59,10 @@
     diz('contador selecionadas', String(A.quantasSelecionadas()));
     linhas.push('');
 
+    diz('checkbox do cabecalho', resumo(A.checkboxDoCabecalho()));
     const setas = A.candidatosSeta();
     diz('candidatos a setinha', String(setas.length));
-    setas.forEach((el, i) => diz(`  ${i + 1}`, caminho(el)));
+    setas.forEach((el, i) => diz(`  ${i + 1}`, `${caminho(el)}  texto="${L.normalizar(el.textContent).slice(0, 12)}"`));
     linhas.push('');
 
     const icones = A.candidatosIconePainel();

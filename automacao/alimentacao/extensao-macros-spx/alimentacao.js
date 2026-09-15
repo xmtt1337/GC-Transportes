@@ -247,16 +247,43 @@
   // Por isso o primeiro palpite e elementFromPoint, que devolve o que o mouse
   // acertaria naquele ponto - seja svg, span ou um "^" escrito. Procurar por
   // "icone sem texto" errava justamente quando a seta e um caractere.
+  // O checkbox do cabecalho da tabela.
+  //
+  // NAO da pra procurar por input[type=checkbox] visivel: o design system do
+  // SPX (ssc-react) deixa o input de verdade com opacity 0 atras de um span
+  // desenhado - foi por isso que a primeira versao achava zero candidato e
+  // nem chegava a procurar a setinha. Quem tem caixa na tela e o span.
+  function checkboxDoCabecalho() {
+    const dentro = document.querySelector('[class*="pro-table"], table') || document;
+    const achados = [];
+    for (const el of dentro.querySelectorAll('[class*="checkbox"], input[type="checkbox"]')) {
+      if (!S.visivel(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 6 || r.width > 44 || r.height < 6 || r.height > 44) continue;
+      achados.push({ el, topo: r.top });
+    }
+    achados.sort((a, b) => a.topo - b.topo);
+    return achados.length ? achados[0].el : null;   // o mais alto e o do cabecalho
+  }
+
   function candidatosSeta() {
-    const checks = [...document.querySelectorAll('input[type="checkbox"]')]
-      .filter(S.visivel)
-      .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
-    const cabecalho = checks[0];
-    if (!cabecalho) return [];
+    const saida = [];
+    const cabecalho = checkboxDoCabecalho();
+
+    // O proprio gatilho do menu, quando o design system o nomeia. Em tabela
+    // desse tipo ele costuma ser a "selection-extra" ao lado do checkbox.
+    for (const seletor of ['[class*="selection-extra"]',
+                           '[class*="selection-column"] [class*="dropdown"]',
+                           '[class*="pro-table"] [class*="dropdown-trigger"]']) {
+      for (const el of document.querySelectorAll(seletor)) {
+        if (S.visivel(el) && !saida.includes(el)) saida.push(el);
+      }
+    }
+
+    if (!cabecalho) return saida.slice(0, 10);
 
     const borda = cabecalho.getBoundingClientRect();
     const meio = borda.top + borda.height / 2;
-    const saida = [];
     const juntar = (el) => {
       if (!el || saida.includes(el) || el === cabecalho) return;
       // Nao clicar em nada que envolva o checkbox: acertar ele marca so a
@@ -303,10 +330,22 @@
     return achados[0] || null;
   }
 
+  // "0 Task(s) Selected" nao mora num elemento so: o numero vem num span e o
+  // resto em outro. Procurar so em folha com o texto inteiro devolvia nada, e
+  // a espera do contador estourava mesmo com a selecao tendo dado certo.
+  // Por isso aqui vale qualquer elemento - e fica o de texto mais curto, que
+  // e o que embrulha exatamente essa frase.
   function quantasSelecionadas() {
-    const achado = folhaComRegex(/^([\d.,]+)\s+task\(s\)\s+selected/i);
-    if (!achado) return null;
-    return Number(achado.m[1].replace(/[.,]/g, ''));
+    const padrao = /(?:^|\s)([\d.,]+)\s*task\(s\)\s*selected/i;
+    let melhor = null;
+    for (const el of document.querySelectorAll('*')) {
+      const texto = L.normalizar(el.textContent);
+      if (texto.length > 60) continue;
+      const casou = texto.match(padrao);
+      if (!casou || !S.visivel(el)) continue;
+      if (!melhor || texto.length < melhor.texto.length) melhor = { texto, numero: casou[1] };
+    }
+    return melhor ? Number(melhor.numero.replace(/[.,]/g, '')) : null;
   }
 
   async function selecionarTodasPaginas(total) {
@@ -578,7 +617,7 @@
   }
 
   G.alimentacao = { rodar, lerTarefas, acharPainelTarefas, acharFiltroData, candidatosSeta,
-                    candidatosIconePainel, quantasSelecionadas };
+                    candidatosIconePainel, quantasSelecionadas, checkboxDoCabecalho };
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
