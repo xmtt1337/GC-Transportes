@@ -115,6 +115,17 @@ test('escolherTarefaNova fica com a mais recente quando nascem duas', () => {
   assert.strictEqual(alvo.quando, '2026-09-15 12:09:11');
 });
 
+test('escolherTarefaNova acompanha o carimbo que muda quando fica pronto', () => {
+  // Visto na tela real: a linha nasce com a hora do pedido (18:38:21) e passa
+  // pra hora em que terminou (18:38:23). Por isso quem espera precisa
+  // reprocurar a cada volta - guardar a linha achada na primeira e ficar
+  // esperando por ela e esperar por algo que deixa de existir.
+  const nascendo = [{ nome: 'Br Assignment Task', quando: '2026-09-15 18:38:21' }, ...ANTES];
+  const pronta = [{ nome: 'Br Assignment Task', quando: '2026-09-15 18:38:23' }, ...ANTES];
+  assert.strictEqual(L.escolherTarefaNova(ANTES, nascendo, L.NOME_RELATORIO).quando, '2026-09-15 18:38:21');
+  assert.strictEqual(L.escolherTarefaNova(ANTES, pronta, L.NOME_RELATORIO).quando, '2026-09-15 18:38:23');
+});
+
 test('escolherTarefaNova aguenta espaco sobrando no nome lido da tela', () => {
   const agora = [{ nome: '  Br Assignment Task ', quando: '2026-09-15 12:07:50' }, ...ANTES];
   const alvo = L.escolherTarefaNova(ANTES, agora, L.NOME_RELATORIO);

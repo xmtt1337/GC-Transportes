@@ -568,7 +568,7 @@
 
   async function esperarRelatorio(antes) {
     const fim = Date.now() + ESPERA_RELATORIO_MS;
-    let alvo = null;
+    let avisado = '';
     let ultimoAviso = '';
     let reabertoEm = Date.now();
 
@@ -577,18 +577,20 @@
       if (!painel) throw new Error('o painel "Última tarefa" fechou e não abriu de novo');
       const agora = lerTarefas(painel);
 
-      if (!alvo) {
-        const nova = L.escolherTarefaNova(antes, agora, L.NOME_RELATORIO);
-        if (nova) {
-          alvo = { nome: nova.nome, quando: nova.quando };
-          P.nota(`relatório novo: ${alvo.nome} — ${alvo.quando}`);
+      // Reprocura a cada volta em vez de guardar a linha achada na primeira.
+      //
+      // O carimbo da linha MUDA quando ela fica pronta: nasce com a hora do
+      // pedido e passa pra hora em que terminou (18:38:21 -> 18:38:23). Fixar
+      // a linha pelo carimbo era procurar por algo que deixa de existir, e o
+      // macro ficava em "gerando..." pra sempre com o arquivo pronto na tela.
+      const nova = L.escolherTarefaNova(antes, agora, L.NOME_RELATORIO);
+      if (nova) {
+        if (nova.quando !== avisado) {
+          P.nota(`relatório novo: ${nova.nome} — ${nova.quando}`);
+          avisado = nova.quando;
         }
-      }
-
-      if (alvo) {
-        const linha = agora.find((t) => L.chaveTarefa(t) === L.chaveTarefa(alvo));
-        if (linha && linha.pronto) return linha;
-        const aviso = linha && linha.progresso ? linha.progresso : 'gerando…';
+        if (nova.pronto) return nova;
+        const aviso = nova.progresso || 'gerando…';
         if (aviso !== ultimoAviso) { P.nota(aviso); ultimoAviso = aviso; }
       }
 
