@@ -64,6 +64,7 @@
 
     diz('checkbox do cabecalho', resumo(A.checkboxDoCabecalho()));
     diz('setinha ensinada', G.aprender.seletorDe('seta') || 'nada ensinado ainda');
+    diz('item ensinado', G.aprender.seletorDe('item') || 'nada ensinado ainda');
     // Quantos elementos cada seletor pega e se eles passam nos filtros: e o
     // que diz se o problema e o seletor nao casar ou o filtro derrubar.
     for (const seletor of A.SELETORES_SETA) {
@@ -81,6 +82,21 @@
     const icones = A.candidatosIconePainel();
     diz('candidatos a icone do painel', String(icones.length));
     icones.forEach((el, i) => diz(`  ${i + 1}`, caminho(el)));
+
+    // Com o menu aberto (Alt+X), isto mostra se o item existe e se ele passa
+    // nos testes do macro. E a resposta pra "o clique nao abriu" x "abriu e eu
+    // nao enxerguei" - as duas falham igual na tela.
+    linhas.push('');
+    const comTexto = [];
+    for (const el of document.querySelectorAll('*')) {
+      const t = L.normalizar(el.textContent);
+      if (t.length > 80 || !L.chave(t).includes('select all')) continue;
+      comTexto.push(el);
+    }
+    diz('elementos com "select all"', String(comTexto.length));
+    comTexto.slice(0, 6).forEach((el, i) =>
+      diz(`  ${i + 1}`, `"${L.normalizar(el.textContent).slice(0, 34)}" visivel=${S.visivel(el)} ` +
+                        `caixa=${el.getClientRects().length > 0} ${caminho(el)}`));
 
     const painel = A.acharPainelTarefas();
     diz('painel Ultima tarefa', painel ? 'ABERTO — ' + caminho(painel) : 'fechado');
@@ -102,4 +118,35 @@
   }
 
   G.diagnostico = diagnostico;
+
+  // ── atalhos ──────────────────────────────────────────────────────────────
+  // Existem por um motivo especifico: abrir o popup da extensao TIRA O FOCO da
+  // pagina e fecha o menu do SPX. Ou seja, pelo popup e impossivel fotografar
+  // a tela com o menu aberto - que e justamente o estado que interessa quando
+  // o macro para no "Select All in All Pages".
+  //
+  //   Alt+X  copia o diagnostico
+  //   Alt+S  ensinar a Setinha
+  //   Alt+M  ensinar o item do Menu (com o menu aberto)
+  async function copiarDiagnostico() {
+    const texto = diagnostico();
+    try {
+      await navigator.clipboard.writeText(texto);
+      G.aprender.faixa('Diagnóstico copiado — é só colar na conversa.', '#16a34a');
+    } catch (e) {
+      // Sem permissao de area de transferencia o console resolve.
+      G.aprender.faixa('Não consegui copiar — abra o F12 &gt; Console, está impresso lá.', '#b45309');
+    }
+    setTimeout(G.aprender.fecharFaixa, 5000);
+  }
+
+  document.addEventListener('keydown', (evento) => {
+    if (!evento.altKey || evento.ctrlKey || evento.metaKey) return;
+    const tecla = String(evento.key || '').toLowerCase();
+    if (tecla === 'x') copiarDiagnostico();
+    else if (tecla === 's') G.aprender.ensinar('seta');
+    else if (tecla === 'm') G.aprender.ensinar('item');
+    else return;
+    evento.preventDefault();
+  }, true);
 })(typeof window !== 'undefined' ? window : globalThis);

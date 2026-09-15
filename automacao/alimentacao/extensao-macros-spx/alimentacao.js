@@ -279,8 +279,15 @@
   function candidatosSeta() {
     const saida = [];
     // O que a pessoa ensinou vem primeiro: ela viu a tela, eu nao.
+    //
+    // Com os dois pais junto: quem clica acerta o desenho (o <svg>), mas quem
+    // escuta o clique costuma ser o <span> de fora. O evento borbulha, entao
+    // na maioria das vezes tanto faz - mas quando nao faz, e por isso.
     for (const el of G.aprender.elementosEnsinados('seta')) {
-      if (el && !saida.includes(el)) saida.push(el);
+      if (!el) continue;
+      for (const alvo of [el, el.parentElement, el.parentElement && el.parentElement.parentElement]) {
+        if (alvo && !saida.includes(alvo) && !/^(th|td|tr)$/i.test(alvo.tagName)) saida.push(alvo);
+      }
     }
     // Quando o seletor nomeia o elemento, ele vale por si: os filtros abaixo
     // sao pra PALPITE, e aplicar eles no alvo nomeado ja custou uma rodada -
@@ -322,6 +329,13 @@
   // Casa por texto inteiro e, se nao achar, por "contem" - o SPX as vezes
   // pendura um contador ou um icone dentro do mesmo item do menu.
   function acharItemTodasPaginas() {
+    // Ensinado primeiro. Aqui basta OCUPAR ESPACO na tela, uma exigencia mais
+    // fraca que "visivel": menu fechado costuma ficar display:none (sem caixa,
+    // recusado), mas menu abrindo com animacao passa um instante em opacity 0
+    // - e recusar nesse instante e o mesmo que nao ter achado.
+    const ensinado = G.aprender.elementosEnsinados('item')
+      .find((el) => el.isConnected && el.getClientRects().length);
+    if (ensinado) return ensinado;
     const exato = S.acharBotao(TEXTO_TODAS_PAGINAS) || S.folhaVisivelComTexto(TEXTO_TODAS_PAGINAS);
     if (exato) return exato;
     const alvo = L.chave(TEXTO_TODAS_PAGINAS);

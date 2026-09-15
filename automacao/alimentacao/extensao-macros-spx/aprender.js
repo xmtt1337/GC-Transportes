@@ -122,7 +122,8 @@
 
   // ── ensinar ────────────────────────────────────────────────────────────
   const ROTULOS = {
-    seta: 'a setinha ao lado do checkbox do cabeçalho (a que abre "Select All in All Pages")',
+    seta: 'a setinha ao lado do checkbox do cabeçalho (a que abre o menu)',
+    item: 'o "Select All in All Pages" — com o menu já aberto',
   };
 
   function ensinar(qual) {
@@ -191,7 +192,8 @@
     cancelar = () => { limpar(); fecharFaixa(); };
   }
 
-  G.aprender = { carregar, ensinar, seletorDe, elementosEnsinados, seletorEstavel, ensinados: () => ensinados };
+  G.aprender = { carregar, ensinar, seletorDe, elementosEnsinados, seletorEstavel,
+                 faixa, fecharFaixa, ensinados: () => ensinados };
 
   carregar();
 })(typeof window !== 'undefined' ? window : globalThis);
