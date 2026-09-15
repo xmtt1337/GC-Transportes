@@ -442,10 +442,18 @@ body {
 #wac-lista-outros .wac-coluna-solo { grid-row: 1 / 3; display: flex; flex-direction: column; }
 /* margin-top:auto sozinho só empurrava o TEXTO pra baixo — o fundo colorido do header
    continuava com a altura natural dele, e o espaço vazio acima (agora dentro da coluna
-   esticada, mas ainda sem cor) seguia mostrando o cinza do card por trás. flex:1 faz o
-   próprio header (fundo incluído) crescer e preencher tudo; align-items:flex-end deixa o
-   texto na base dele, alinhado com a mesma altura Y do texto de Entregue/Não entregue. */
-#wac-lista-outros .wac-coluna-solo .wac-coluna-header { flex: 1; align-items: flex-end; }
+   esticada, mas ainda sem cor) seguia mostrando o cinza do card por trás.
+   BUG que isso causava: um flex:1 no header cresce pra preencher o que sobra na coluna
+   INTEIRA (30px da linha 1 + a linha 2 auto) — e a linha 2 é dimensionada pelo conteúdo
+   de Entregue/Não entregue, que com centenas de itens bate no max-height de 52vh. O
+   header "herdava" quase esse tanto todo de altura, virando uma faixa colorida gigante
+   que vazava por cima do quadro (acima até da barra de abas J&T/Shopee/iMile/Anjun).
+   Fixo é o jeito certo: padding-top de exatamente 30px (a altura da linha 1) cresce o
+   fundo sempre o mesmo tanto, nunca "o que sobrar". Quem absorve a diferença de altura
+   entre colunas agora é o card list (flex:1 1 auto), não o header — uma coluna mais curta
+   sobra espaço vazio embaixo da lista, não um header gigante em cima. */
+#wac-lista-outros .wac-coluna-solo .wac-coluna-header { flex: 0 0 auto; padding-top: calc(9px + 30px); }
+#wac-lista-outros .wac-coluna-solo .wac-coluna-cards { flex: 1 1 auto; }
 /* margin negativo: o header vaza até a borda da coluna (o padding de 12px de .wac-coluna
    ficaria como uma moldura clara em volta da cor, quebrando o efeito de célula cheia). */
 #wac-lista-outros .wac-coluna-header {
