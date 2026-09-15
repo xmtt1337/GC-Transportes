@@ -527,6 +527,14 @@
     await S.dormir(350);
   }
 
+  const CARIMBOS = /\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/g;
+  const quantosCarimbos = (texto) => (texto.match(CARIMBOS) || []).length;
+
+  const temAcao = (caixa) =>
+    !!(S.acharBotao('Baixar', { dentro: caixa }) ||
+       S.acharBotao('Download', { dentro: caixa }) ||
+       /\d{1,3}\s*%/.test(L.normalizar(caixa.textContent)));
+
   function lerTarefas(painel) {
     const linhas = [];
     const vistos = new Set();
@@ -535,13 +543,26 @@
       const quando = L.normalizar(el.textContent);
       if (!L.EH_MOMENTO.test(quando)) continue;
 
+      // Sobe ate a caixa que tem o carimbo E o que fazer com ele.
+      //
+      // Parar no primeiro ancestral com texto pegava so o bloquinho de
+      // "nome + data": o botao Baixar fica na coluna ao lado, fora dele, e a
+      // linha era lida como "ainda gerando" com o arquivo pronto na tela.
+      //
+      // Quem diz que ja subiu demais e o numero de carimbos: dois significa
+      // que duas linhas foram engolidas na mesma caixa, e ai o nome e o botao
+      // passam a ser de qualquer uma delas.
       let caixa = el.parentElement;
       let linha = null;
-      for (let i = 0; i < 6 && caixa; i++, caixa = caixa.parentElement) {
+      let reserva = null;
+      for (let i = 0; i < 7 && caixa; i++, caixa = caixa.parentElement) {
         const texto = L.normalizar(caixa.textContent);
-        if (texto.length > quando.length && texto.length <= 200 &&
-            /[a-z]/i.test(texto.split(quando).join(''))) { linha = caixa; break; }
+        if (quantosCarimbos(texto) !== 1 || texto.length > 400) break;
+        if (texto.length <= quando.length) continue;
+        if (!reserva) reserva = caixa;
+        if (temAcao(caixa)) { linha = caixa; break; }
       }
+      linha = linha || reserva;
       if (!linha || vistos.has(linha)) continue;
       vistos.add(linha);
 

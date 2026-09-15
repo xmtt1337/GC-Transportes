@@ -111,7 +111,8 @@
       const tarefas = A.lerTarefas(painel);
       diz('  linhas lidas', String(tarefas.length));
       tarefas.forEach((t, i) =>
-        diz(`  ${i + 1}`, `"${t.nome}" | ${t.quando} | ${t.pronto ? 'BAIXAR' : (t.progresso || 'gerando')}`));
+        diz(`  ${i + 1}`, `"${t.nome}" | ${t.quando} | ` +
+                          `${t.pronto ? 'BAIXAR' : (t.progresso || 'gerando')} | caixa: ${caminho(t.el)}`));
     }
 
     linhas.push('');
