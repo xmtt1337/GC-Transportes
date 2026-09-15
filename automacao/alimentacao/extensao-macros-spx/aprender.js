@@ -37,8 +37,8 @@
     return ensinados;
   }
 
-  async function guardar(qual, seletor) {
-    ensinados[qual] = seletor;
+  async function guardar(qual, ficha) {
+    ensinados[qual] = ficha;
     try {
       await chrome.storage.local.set({ [CHAVE]: ensinados });
     } catch (e) {
@@ -46,16 +46,32 @@
     }
   }
 
-  const seletorDe = (qual) => ensinados[qual] || null;
+  // Aceita tambem o formato antigo, quando so o seletor era guardado.
+  const fichaDe = (qual) => {
+    const guardado = ensinados[qual];
+    if (!guardado) return null;
+    return typeof guardado === 'string' ? { seletor: guardado, texto: '' } : guardado;
+  };
 
+  const seletorDe = (qual) => (fichaDe(qual) || {}).seletor || null;
+  const textoDe = (qual) => (fichaDe(qual) || {}).texto || '';
+
+  // O TEXTO desempata, e nao e detalhe: no menu do SPX, "Select All in Current
+  // Page" e "Select All in All Pages" sao o mesmo div.selection-menu-item, com
+  // o mesmo caminho ate a raiz. Escolher pelo seletor sozinho pegava o
+  // primeiro - marcava a pagina atual e exportava 20 linhas de 78.
   function elementosEnsinados(qual) {
-    const seletor = seletorDe(qual);
-    if (!seletor) return [];
+    const ficha = fichaDe(qual);
+    if (!ficha || !ficha.seletor) return [];
+    let achados;
     try {
-      return [...document.querySelectorAll(seletor)];
+      achados = [...document.querySelectorAll(ficha.seletor)];
     } catch (e) {
       return [];   // seletor guardado de uma versao antiga da tela
     }
+    if (!ficha.texto) return achados;
+    const iguais = achados.filter((el) => L.chave(el.textContent) === L.chave(ficha.texto));
+    return iguais.length ? iguais : [];
   }
 
   // ── montar o seletor ───────────────────────────────────────────────────
@@ -145,12 +161,17 @@
       if (!alvo || alvo.id === 'xm-macro-ensinar') return;
 
       const seletor = seletorEstavel(alvo);
+      const texto = L.normalizar(alvo.textContent).slice(0, 80);
       limpar();
-      guardar(qual, seletor).then(() => {
-        console.log(`[XM Macros] aprendi "${qual}": ${seletor}`);
-        faixa(`Aprendido: <code>${seletor}</code><br>` +
-              '<span class="dica">Agora é só rodar o macro.</span>', '#16a34a');
-        setTimeout(fecharFaixa, 6000);
+      guardar(qual, { seletor, texto }).then(() => {
+        console.log(`[XM Macros] aprendi "${qual}": ${seletor}` + (texto ? `  texto="${texto}"` : ''));
+        const quantos = document.querySelectorAll(seletor).length;
+        faixa(`Aprendido: <code>${seletor}</code>` +
+              (texto ? `<br><span class="dica">texto: “${texto}”` +
+                       (quantos > 1 ? ` — ${quantos} elementos casam com o caminho, o texto desempata` : '') +
+                       '</span>' : '') +
+              '<br><span class="dica">Agora é só rodar o macro.</span>', '#16a34a');
+        setTimeout(fecharFaixa, 8000);
       });
     };
 
@@ -192,7 +213,7 @@
     cancelar = () => { limpar(); fecharFaixa(); };
   }
 
-  G.aprender = { carregar, ensinar, seletorDe, elementosEnsinados, seletorEstavel,
+  G.aprender = { carregar, ensinar, seletorDe, textoDe, elementosEnsinados, seletorEstavel,
                  faixa, fecharFaixa, ensinados: () => ensinados };
 
   carregar();

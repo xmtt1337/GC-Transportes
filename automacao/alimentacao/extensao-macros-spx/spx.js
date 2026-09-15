@@ -45,8 +45,14 @@
   }
 
   // ── achar ──────────────────────────────────────────────────────────────
+  // checkVisibility olha a linhagem inteira; a conta na mao so olhava o
+  // proprio elemento. A diferenca apareceu no menu do SPX: o popup fechado
+  // continua no DOM, com caixa e tudo, e quem carrega o "escondido" e um pai.
   function visivel(el) {
     if (!el || !el.isConnected) return false;
+    if (typeof el.checkVisibility === 'function') {
+      return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+    }
     if (!el.getClientRects().length) return false;
     const e = getComputedStyle(el);
     return e.visibility !== 'hidden' && e.opacity !== '0';

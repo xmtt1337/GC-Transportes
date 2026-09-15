@@ -329,12 +329,10 @@
   // Casa por texto inteiro e, se nao achar, por "contem" - o SPX as vezes
   // pendura um contador ou um icone dentro do mesmo item do menu.
   function acharItemTodasPaginas() {
-    // Ensinado primeiro. Aqui basta OCUPAR ESPACO na tela, uma exigencia mais
-    // fraca que "visivel": menu fechado costuma ficar display:none (sem caixa,
-    // recusado), mas menu abrindo com animacao passa um instante em opacity 0
-    // - e recusar nesse instante e o mesmo que nao ter achado.
-    const ensinado = G.aprender.elementosEnsinados('item')
-      .find((el) => el.isConnected && el.getClientRects().length);
+    // Ensinado primeiro, mas so quando o menu esta mesmo aberto: o popup do
+    // SPX fica no DOM depois de fechado, com caixa e tudo - quem carrega o
+    // "escondido" e um pai, e so checkVisibility enxerga isso.
+    const ensinado = G.aprender.elementosEnsinados('item').find(S.visivel);
     if (ensinado) return ensinado;
     const exato = S.acharBotao(TEXTO_TODAS_PAGINAS) || S.folhaVisivelComTexto(TEXTO_TODAS_PAGINAS);
     if (exato) return exato;
@@ -389,17 +387,29 @@
     await S.dormir(700);
     await S.esperarRede({ base, limite: 60000 });
 
-    const n = await S.esperar(() => quantasSelecionadas() || null, {
-      oque: 'o contador "Task(s) Selected" sair do zero',
-      limite: 60000,
-      intervalo: 500,
-    });
-
-    // Marcou so a pagina atual? Isso acontece quando o clique acerta o
-    // checkbox em vez da setinha - e e o erro caro: o export sairia com 20
-    // linhas de 78 e o arquivo abriria normalmente, so que pela metade.
-    if (total && n < total) {
-      throw new Error(`marcou ${n} de ${total} — pegou só a página atual, não todas`);
+    // Espera chegar ao TOTAL, nao so sair do zero.
+    //
+    // Uma tentativa anterior que marcou a pagina atual deixa o contador em 20
+    // antes mesmo deste clique; aceitar "maior que zero" devolveria esse 20 na
+    // hora e o macro seguiria exportando um terco do dia. Quem decide e o
+    // numero que a busca achou.
+    let n = null;
+    try {
+      n = await S.esperar(() => {
+        const q = quantasSelecionadas();
+        return q && (!total || q >= total) ? q : null;
+      }, {
+        oque: total ? `o contador chegar a ${total}` : 'o contador "Task(s) Selected" sair do zero',
+        limite: 60000,
+        intervalo: 400,
+      });
+    } catch (e) {
+      const q = quantasSelecionadas();
+      // Marcou so a pagina atual: o clique pegou "Select All in Current Page"
+      // ou o proprio checkbox. E o erro caro - o arquivo abriria normalmente,
+      // so que com um pedaco do dia.
+      if (q) throw new Error(`marcou ${q} de ${total} — pegou só a página atual, não todas`);
+      throw e;
     }
     P.nota(`${n} selecionadas`);
   }

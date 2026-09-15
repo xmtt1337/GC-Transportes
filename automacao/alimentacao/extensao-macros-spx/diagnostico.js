@@ -63,8 +63,14 @@
     linhas.push('');
 
     diz('checkbox do cabecalho', resumo(A.checkboxDoCabecalho()));
-    diz('setinha ensinada', G.aprender.seletorDe('seta') || 'nada ensinado ainda');
-    diz('item ensinado', G.aprender.seletorDe('item') || 'nada ensinado ainda');
+    for (const qual of ['seta', 'item']) {
+      const seletor = G.aprender.seletorDe(qual);
+      if (!seletor) { diz(`${qual} ensinado`, 'nada ensinado ainda'); continue; }
+      const quantos = (() => { try { return document.querySelectorAll(seletor).length; } catch (e) { return -1; } })();
+      diz(`${qual} ensinado`, `${seletor}`);
+      diz('  ', `casa com ${quantos} | texto guardado: "${G.aprender.textoDe(qual) || '(nenhum)'}" ` +
+                `| resolve pra ${G.aprender.elementosEnsinados(qual).length}`);
+    }
     // Quantos elementos cada seletor pega e se eles passam nos filtros: e o
     // que diz se o problema e o seletor nao casar ou o filtro derrubar.
     for (const seletor of A.SELETORES_SETA) {
