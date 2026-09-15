@@ -266,51 +266,48 @@
     return achados.length ? achados[0].el : null;   // o mais alto e o do cabecalho
   }
 
+  // Onde a seta mora hoje, do mais especifico pro mais generico. O primeiro e
+  // o que o SPX usa agora; os outros sao grafias do mesmo componente, pra
+  // aguentar uma renomeacao sem virar caca ao tesouro de novo.
+  const SELETORES_SETA = [
+    '[class*="table-row-selection"] [class*="icon-down"]',
+    '[class*="selection-extra"]',
+    '[class*="selection-column"] [class*="dropdown"]',
+    '[class*="pro-table"] [class*="dropdown-trigger"]',
+  ];
+
   function candidatosSeta() {
     const saida = [];
-    const cabecalho = checkboxDoCabecalho();
-
-    // O proprio gatilho do menu, quando o design system o nomeia. Em tabela
-    // desse tipo ele costuma ser a "selection-extra" ao lado do checkbox.
-    for (const seletor of ['[class*="selection-extra"]',
-                           '[class*="selection-column"] [class*="dropdown"]',
-                           '[class*="pro-table"] [class*="dropdown-trigger"]']) {
-      for (const el of document.querySelectorAll(seletor)) {
-        if (S.visivel(el) && !saida.includes(el)) saida.push(el);
-      }
-    }
-
-    if (!cabecalho) return saida.slice(0, 10);
-
-    const borda = cabecalho.getBoundingClientRect();
-    const meio = borda.top + borda.height / 2;
+    // Duas coisas vizinhas da seta nao podem ser clicadas por engano:
+    //   o checkbox - marca so a pagina atual, e o export sai pela metade;
+    //   o cabecalho de coluna - ordena a tabela e recarrega tudo.
+    // Nenhum dos dois abre menu nenhum, entao nao se perde nada recusando.
     const juntar = (el) => {
-      if (!el || saida.includes(el) || el === cabecalho) return;
-      // Nao clicar em nada que envolva o checkbox: acertar ele marca so a
-      // pagina atual, e o macro seguiria exportando 20 linhas de 78.
-      if (el.contains(cabecalho)) return;
+      if (!el || saida.includes(el)) return;
+      if (/^(th|td|tr|table|thead|tbody)$/i.test(el.tagName)) return;
+      if (el.closest('[class*="checkbox"]')) return;
+      if (L.normalizar(el.textContent) !== '') return;
+      if (!S.visivel(el)) return;
       saida.push(el);
     };
 
-    for (const dx of [9, 15, 21, 27, 34]) juntar(document.elementFromPoint(borda.right + dx, meio));
-
-    const celula = cabecalho.closest('th, td, [class*="cell"]') || cabecalho.parentElement;
-    const perto = [celula, celula.nextElementSibling, celula.previousElementSibling].filter(Boolean);
-    const vizinhos = [];
-    for (const area of perto) {
-      for (const el of area.querySelectorAll('*')) {
-        if (!S.visivel(el)) continue;
-        if (el === cabecalho || el.contains(cabecalho)) continue;
-        // Texto curto passa: a seta as vezes e um "^" de verdade, escrito.
-        if (L.normalizar(el.textContent).length > 3) continue;
-        const r = el.getBoundingClientRect();
-        if (r.width < 5 || r.width > 44 || r.height < 5 || r.height > 44) continue;
-        vizinhos.push({ el, distancia: Math.abs(r.left - borda.right) });
+    for (const seletor of SELETORES_SETA) {
+      for (const el of document.querySelectorAll(seletor)) {
+        juntar(el);
+        juntar(el.parentElement);   // o gatilho costuma ser o span de fora
       }
     }
-    vizinhos.sort((a, b) => a.distancia - b.distancia);
-    vizinhos.forEach((v) => juntar(v.el));
-    return saida.slice(0, 10);
+
+    // Reserva: o que o mouse acertaria logo a direita do checkbox.
+    const cabecalho = checkboxDoCabecalho();
+    if (cabecalho) {
+      const borda = cabecalho.getBoundingClientRect();
+      const meio = borda.top + borda.height / 2;
+      for (const dx of [9, 14, 19, 24]) {
+        juntar(document.elementFromPoint(borda.right + dx, meio));
+      }
+    }
+    return saida.slice(0, 8);
   }
 
   // Casa por texto inteiro e, se nao achar, por "contem" - o SPX as vezes
