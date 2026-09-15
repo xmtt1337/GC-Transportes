@@ -6,6 +6,12 @@ Uma peca so: a extensao do Chrome. Nao tem programa pra abrir,
 nao usa o Neon, nao fala com o ColadorNeon. Ela e independente
 do colador - da pra ter as duas instaladas ao mesmo tempo.
 
+Esta e a PRIMEIRA metade da alimentacao: ela exporta a AT do
+dia e baixa o arquivo. Quem pega dali e manda pro sistema e o
+GC Vigia (vigia_alimentacao.py, veja LEIA-ME-VIGIA.txt) - a
+extensao nao alcanca a pasta de downloads. As duas funcionam
+sozinhas; juntas, a alimentacao acontece sem ninguem tocar.
+
 
 -----------------------------------------------------------
 INSTALAR (uma vez por maquina)

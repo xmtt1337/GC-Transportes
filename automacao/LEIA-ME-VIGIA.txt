@@ -1,0 +1,156 @@
+===========================================================
+  GC VIGIA  -  Alimentacao Shopee (parte 2)
+===========================================================
+
+A alimentacao tem duas metades:
+
+  1. extensao-macros-spx   exporta a AT do dia no SPX e baixa
+                           o arquivo (roda no Chrome)
+  2. vigia_alimentacao.py  ve o arquivo cair na pasta e manda
+                           pro sistema (roda na maquina)
+
+Sao independentes. A extensao nao alcanca a pasta de
+downloads; o vigia nao sabe abrir o SPX. Uma so das duas ja
+serve pra alguma coisa - mas juntas a alimentacao acontece
+sem ninguem tocar.
+
+
+-----------------------------------------------------------
+O QUE O VIGIA FAZ
+-----------------------------------------------------------
+
+Fica olhando a pasta de downloads. Quando aparece um arquivo
+chamado  br_assignment_task_*  (.xlsx ou .csv):
+
+  espera o download terminar de verdade
+  le o arquivo
+  manda pro sistema, na mesma rota do site
+      (Alimentar > AT Exportada)
+  avisa na bandeja o que gravou
+
+E o mesmo envio que alguem faria a mao no site. Nada de novo
+acontece no banco - so acontece sozinho.
+
+IMPORTANTE: esse envio SUBSTITUI todas as ATs das estacoes
+que vierem no arquivo. E a foto de agora, nao historico.
+Mandar duas vezes nao duplica: reescreve.
+
+
+-----------------------------------------------------------
+INSTALAR
+-----------------------------------------------------------
+
+1. Duplo clique em  rodar_vigia.bat
+   (instala o que faltar e abre o programa)
+
+2. Na primeira vez abre a janela de configuracao. Preencha:
+
+     Usuario e senha  a MESMA conta que voce usa no site.
+                      Precisa ser da operacao - conta de
+                      entregador nao pode alimentar.
+     Pasta vigiada    onde o Chrome salva os downloads.
+                      Ja vem preenchida com a pasta padrao.
+
+3. "Testar e salvar". Ele entra no sistema pra conferir antes
+   de guardar - se a senha estiver errada, voce descobre
+   agora, e nao amanha quando o arquivo nao subir.
+
+4. Some da tela. Ele vive no icone da bandeja (perto do
+   relogio, as vezes escondido na setinha "^").
+
+Pra ele abrir sozinho toda vez que a maquina ligar: botao
+direito no icone > "Iniciar com o Windows".
+
+
+-----------------------------------------------------------
+O ICONE DIZ TUDO
+-----------------------------------------------------------
+
+  verde     tudo certo, esperando arquivo
+  laranja   enviando agora
+  vermelho  deu errado no ultimo envio
+  cinza     falta configurar usuario e senha
+
+O vermelho FICA vermelho ate o proximo envio dar certo. E de
+proposito: programa escondido que falha calado e pior que
+programa que nao existe.
+
+Passe o mouse no icone pra ver a ultima coisa que aconteceu.
+Botao direito tem:
+
+  Enviar um arquivo...    escolher na mao (util se o
+                          automatico falhou)
+  Abrir a pasta vigiada
+  Abrir o registro        o historico completo
+  Configurar...
+  Iniciar com o Windows
+  Sair
+
+
+-----------------------------------------------------------
+O QUE ELE NAO MANDA
+-----------------------------------------------------------
+
+- O "Br AT Romaneio V2". E outro relatorio, do outro botao do
+  SPX. So o br_assignment_task_ entra.
+
+- O que ja estava na pasta quando ele foi instalado pela
+  primeira vez. Sao downloads de dias anteriores - mandar
+  aquilo substituiria a AT de hoje pela de um dia velho.
+
+- O mesmo arquivo duas vezes. A comparacao e pelo CONTEUDO,
+  nao pelo nome: o "arquivo (1).xlsx" que o Chrome cria
+  quando voce baixa de novo nao vai outra vez. Mas rodar o
+  macro mais tarde gera um relatorio diferente, e esse vai.
+
+
+-----------------------------------------------------------
+SE NAO SUBIR
+-----------------------------------------------------------
+
+Icone vermelho > "Abrir o registro". A ultima linha diz o
+motivo. Os comuns:
+
+- "nao alcancei o servidor"
+  O sistema dorme quando ninguem usa e demora quase um minuto
+  pra acordar. O vigia ja tenta de novo sozinho, umas 8 vezes,
+  esperando cada vez mais. So desiste depois de umas 2 horas.
+
+- "usuario ou senha nao confere"
+  Trocou a senha no site? Configurar... > preencher de novo.
+
+- "a senha desse usuario e temporaria"
+  Entre no site, troque a senha, depois reconfigure aqui.
+
+- "o servidor recusou a conta"
+  A conta e de entregador. Use uma da operacao.
+
+- "nao achei o cabecalho da AT neste arquivo"
+  O arquivo baixado nao e a AT - ou a Shopee renomeou as
+  colunas. Abra o arquivo e confira se tem "Task ID" e
+  "Station name".
+
+Nao abriu nada ao clicar no .bat? Provavelmente ja esta
+rodando: so pode haver um vigia por maquina (dois mandariam
+o mesmo arquivo duas vezes). Procure o icone na bandeja.
+
+
+-----------------------------------------------------------
+PRA QUEM MEXE NO CODIGO
+-----------------------------------------------------------
+
+  alimentacao_at.py       le o arquivo e monta as linhas
+  vigia_alimentacao.py    vigia, envia, bandeja, config
+
+Config e registro ficam em  %APPDATA%\GC_Vigia  - fora do
+repositorio, porque ali dentro tem senha.
+
+alimentacao_at.py e o gemeo de meusite/js/shopee-at.js. Os
+dois PRECISAM concordar na lista de colunas: se a Shopee
+renomear uma e so um lado for arrumado, o envio continua
+dando certo e o campo entra vazio. Ninguem ve erro nenhum -
+so o numero errado na conferencia do dia seguinte.
+
+Testes:
+  cd automacao
+  python -m unittest testes.test_alimentacao_at testes.test_vigia_alimentacao
