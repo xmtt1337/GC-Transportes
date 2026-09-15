@@ -13,11 +13,11 @@ async function abaDoSpx() {
   return aba;
 }
 
-async function mandar(gcMacro) {
+async function mandar(xmMacro) {
   const aba = await abaDoSpx();
   if (!aba) { dizer('abra a aba do SPX primeiro', true); return null; }
   try {
-    return await chrome.tabs.sendMessage(aba.id, { gcMacro });
+    return await chrome.tabs.sendMessage(aba.id, { xmMacro });
   } catch (e) {
     // Erro sempre igual: a aba estava aberta antes da extensao entrar.
     dizer('dê F5 na aba do SPX e tente de novo', true);

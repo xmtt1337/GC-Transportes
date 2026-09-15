@@ -10,7 +10,7 @@
 (function (raiz) {
   'use strict';
 
-  const G = (raiz.GCMacro = raiz.GCMacro || {});
+  const G = (raiz.XMMacro = raiz.XMMacro || {});
 
   const ESTILO = `
     :host { all: initial; }
@@ -63,7 +63,7 @@
   function montar(titulo) {
     desmontar();
     const host = document.createElement('div');
-    host.id = 'gc-macro-painel';
+    host.id = 'xm-macro-painel';
     document.documentElement.appendChild(host);
     raizSombra = host.attachShadow({ mode: 'open' });
 
@@ -75,7 +75,7 @@
     caixa.innerHTML = `
       <div class="topo">
         <div>
-          <div class="marca">GC Macros</div>
+          <div class="marca">XM Macros</div>
           <div class="titulo"></div>
         </div>
       </div>
@@ -102,7 +102,7 @@
   function desmontar() {
     if (relogio) clearInterval(relogio);
     relogio = null;
-    const antigo = document.getElementById('gc-macro-painel');
+    const antigo = document.getElementById('xm-macro-painel');
     if (antigo) antigo.remove();
     raizSombra = listaEl = cronoEl = botaoEl = passoAtual = null;
   }
@@ -130,20 +130,20 @@
     abrir(titulo, quandoParar) {
       aoParar = quandoParar;
       montar(titulo);
-      console.log(`[GC Macros] ${titulo}: comecou`);
+      console.log(`[XM Macros] ${titulo}: comecou`);
     },
 
     passo(texto) {
       if (!listaEl) return;
       fecharAnterior();
       passoAtual = linha('fazendo', '▸', texto);
-      console.log(`[GC Macros] ${texto}`);
+      console.log(`[XM Macros] ${texto}`);
     },
 
     nota(texto) {
       if (!listaEl) return;
       linha('', '·', texto);
-      console.log(`[GC Macros]   ${texto}`);
+      console.log(`[XM Macros]   ${texto}`);
     },
 
     ok(texto) {
@@ -153,7 +153,7 @@
       linha('pronto', '✔', texto);
       if (botaoEl) { botaoEl.textContent = 'Fechar'; botaoEl.classList.remove('parar'); }
       aoParar = desmontar;
-      console.log(`[GC Macros] ${texto}`);
+      console.log(`[XM Macros] ${texto}`);
     },
 
     erro(texto) {
@@ -167,7 +167,7 @@
       linha('ruim', '✕', texto);
       if (botaoEl) { botaoEl.textContent = 'Fechar'; botaoEl.classList.remove('parar'); }
       aoParar = desmontar;
-      console.error(`[GC Macros] ${texto}`);
+      console.error(`[XM Macros] ${texto}`);
     },
 
     fechar: desmontar,

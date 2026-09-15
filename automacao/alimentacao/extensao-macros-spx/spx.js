@@ -8,7 +8,7 @@
 (function (raiz) {
   'use strict';
 
-  const G = (raiz.GCMacro = raiz.GCMacro || {});
+  const G = (raiz.XMMacro = raiz.XMMacro || {});
   const L = G.logica;
 
   class Parado extends Error {}
@@ -159,7 +159,7 @@
   raiz.addEventListener('message', (evento) => {
     if (evento.source !== raiz) return;
     const d = evento.data;
-    if (!d || d.__gcMacroRede !== true) return;
+    if (!d || d.__xmMacroRede !== true) return;
     rede.ativas = d.ativas;
     rede.viu = true;
     rede.mudou = Date.now();

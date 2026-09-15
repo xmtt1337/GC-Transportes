@@ -124,7 +124,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = logica;
   } else {
-    raiz.GCMacro = raiz.GCMacro || {};
-    raiz.GCMacro.logica = logica;
+    raiz.XMMacro = raiz.XMMacro || {};
+    raiz.XMMacro.logica = logica;
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

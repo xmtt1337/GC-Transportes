@@ -11,13 +11,13 @@
 (() => {
   'use strict';
 
-  if (window.__gcMacroRede) return;
-  window.__gcMacroRede = true;
+  if (window.__xmMacroRede) return;
+  window.__xmMacroRede = true;
 
   let ativas = 0;
 
   function avisar() {
-    window.postMessage({ __gcMacroRede: true, ativas }, window.location.origin);
+    window.postMessage({ __xmMacroRede: true, ativas }, window.location.origin);
   }
 
   function entrou() { ativas++; avisar(); }
@@ -53,5 +53,5 @@
   };
 
   avisar();
-  console.log('[GC Macros] espiao de rede ligado');
+  console.log('[XM Macros] espiao de rede ligado');
 })();

@@ -1,5 +1,5 @@
 ===========================================================
-  GC MACROS SPX  -  Alimentacao Shopee
+  XM MACROS SPX  -  Alimentacao Shopee
 ===========================================================
 
 Uma peca so: a extensao do Chrome. Nao tem programa pra abrir,
@@ -8,7 +8,7 @@ do colador - da pra ter as duas instaladas ao mesmo tempo.
 
 Esta e a PRIMEIRA metade da alimentacao: ela exporta a AT do
 dia e baixa o arquivo. Quem pega dali e manda pro sistema e o
-GC Vigia (vigia_alimentacao.py, veja LEIA-ME-VIGIA.txt) - a
+XM Vigia (o LEIA-ME.txt da pasta de cima explica) - a
 extensao nao alcanca a pasta de downloads. As duas funcionam
 sozinhas; juntas, a alimentacao acontece sem ninguem tocar.
 
@@ -18,7 +18,7 @@ INSTALAR (uma vez por maquina)
 -----------------------------------------------------------
 
 1. Copie a pasta  extensao-macros-spx  para o computador
-   (ex.: C:\GC\extensao-macros-spx).
+   (ex.: C:\XM\extensao-macros-spx).
 
    NAO carregue direto do pendrive: se alguem tirar o
    pendrive, a extensao morre no meio do expediente.
@@ -26,7 +26,7 @@ INSTALAR (uma vez por maquina)
 2. Chrome > endereco:  chrome://extensions
 3. Ligue "Modo do desenvolvedor" (canto superior direito)
 4. "Carregar sem compactacao" > escolha a pasta copiada
-5. Deve aparecer "GC Macros SPX"
+5. Deve aparecer "XM Macros SPX"
 6. DE F5 NA ABA DO SPX
 
 O passo 6 e o que mais confunde. A extensao so entra em pagina
@@ -109,8 +109,8 @@ Antes disso, o basico:
   Essa e a causa em nove de cada dez vezes.
 
 - F12 > Console. Deve aparecer:
-      [GC Macros] espiao de rede ligado
-      [GC Macros] alimentacao Shopee pronta
+      [XM Macros] espiao de rede ligado
+      [XM Macros] alimentacao Shopee pronta
 
 
 -----------------------------------------------------------
@@ -118,7 +118,7 @@ AO ATUALIZAR
 -----------------------------------------------------------
 
   1. Troque a pasta extensao-macros-spx
-  2. chrome://extensions > botao de recarregar na GC Macros
+  2. chrome://extensions > botao de recarregar na XM Macros
   3. F5 NA ABA DO SPX
 
 O passo 3 nao e opcional.
@@ -128,7 +128,7 @@ O passo 3 nao e opcional.
 PRA QUEM MEXE NO CODIGO
 -----------------------------------------------------------
 
-Fonte: GC Transportes / automacao / extensao-macros-spx
+Fonte: GC Transportes / automacao / alimentacao / extensao-macros-spx
 
   logica.js       regras puras (datas, escolha do relatorio)
   spx.js          achar/clicar/esperar na tela do SPX
@@ -137,4 +137,4 @@ Fonte: GC Transportes / automacao / extensao-macros-spx
   alimentacao.js  o macro, passo a passo
   diagnostico.js  o relatorio do botao Diagnostico
 
-Testes:  node --test automacao/testes/test_macro_alimentacao.test.js
+Testes:  node --test automacao/alimentacao/testes/test_macro_alimentacao.test.js

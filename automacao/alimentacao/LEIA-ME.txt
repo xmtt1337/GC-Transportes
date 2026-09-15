@@ -1,5 +1,5 @@
 ===========================================================
-  GC VIGIA  -  Alimentacao Shopee (parte 2)
+  XM VIGIA  -  Alimentacao Shopee (parte 2)
 ===========================================================
 
 A alimentacao tem duas metades:
@@ -142,7 +142,7 @@ PRA QUEM MEXE NO CODIGO
   alimentacao_at.py       le o arquivo e monta as linhas
   vigia_alimentacao.py    vigia, envia, bandeja, config
 
-Config e registro ficam em  %APPDATA%\GC_Vigia  - fora do
+Config e registro ficam em  %APPDATA%\XM_Vigia  - fora do
 repositorio, porque ali dentro tem senha.
 
 alimentacao_at.py e o gemeo de meusite/js/shopee-at.js. Os
@@ -152,5 +152,5 @@ dando certo e o campo entra vazio. Ninguem ve erro nenhum -
 so o numero errado na conferencia do dia seguinte.
 
 Testes:
-  cd automacao
+  cd automacao\alimentacao
   python -m unittest testes.test_alimentacao_at testes.test_vigia_alimentacao

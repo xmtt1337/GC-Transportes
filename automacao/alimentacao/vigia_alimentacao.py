@@ -44,7 +44,7 @@ import alimentacao_at as at
 
 # ── onde as coisas moram ────────────────────────────────────────────────────
 # Fora do repositorio: aqui dentro tem senha.
-CONFIG_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "GC_Vigia")
+CONFIG_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "XM_Vigia")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 ENVIADOS_PATH = os.path.join(CONFIG_DIR, "enviados.json")
 LOG_PATH = os.path.join(CONFIG_DIR, "vigia.log")
@@ -472,7 +472,7 @@ class Vigia:
 
 # ── iniciar com o Windows ───────────────────────────────────────────────────
 CHAVE_RUN = r"Software\Microsoft\Windows\CurrentVersion\Run"
-NOME_RUN = "GC Vigia Alimentacao"
+NOME_RUN = "XM Vigia Alimentacao"
 
 
 def _comando_autostart():
@@ -543,8 +543,8 @@ class App:
 
         import pystray
         self.pystray = pystray
-        self.icone = pystray.Icon("gc_vigia", desenhar_icone(self.estado),
-                                  "GC Vigia — alimentação Shopee", self._menu())
+        self.icone = pystray.Icon("xm_vigia", desenhar_icone(self.estado),
+                                  "XM Vigia — alimentação Shopee", self._menu())
 
     # ── avisos ──────────────────────────────────────────────────────────
     def avisar(self, titulo, texto, erro=False):
@@ -552,7 +552,7 @@ class App:
         self.estado = "erro" if erro else "ok"
         try:
             self.icone.icon = desenhar_icone(self.estado)
-            self.icone.title = f"GC Vigia — {self.vigia.ultimo}"[:127]
+            self.icone.title = f"XM Vigia — {self.vigia.ultimo}"[:127]
             self.icone.notify(texto, titulo)
             self.icone.update_menu()
         except Exception:
@@ -629,7 +629,7 @@ class App:
         ctk = self.ctk
         janela = ctk.CTkToplevel(self.raiz)
         self.janela_aberta = janela
-        janela.title("GC Vigia — alimentação Shopee")
+        janela.title("XM Vigia — alimentação Shopee")
         janela.geometry("460x420")
         janela.resizable(False, False)
         janela.attributes("-topmost", True)

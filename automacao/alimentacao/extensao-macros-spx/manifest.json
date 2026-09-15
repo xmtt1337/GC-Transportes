@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "GC Macros SPX",
+  "name": "XM Macros SPX",
   "version": "1.0",
   "description": "Macros da rotina do SPX. Alimentação: filtra o dia, marca tudo, exporta a AT e baixa o relatório certo.",
   "permissions": [
@@ -38,6 +38,6 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "GC Macros SPX"
+    "default_title": "XM Macros SPX"
   }
 }

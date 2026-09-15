@@ -16,7 +16,7 @@
 (function (raiz) {
   'use strict';
 
-  const G = (raiz.GCMacro = raiz.GCMacro || {});
+  const G = (raiz.XMMacro = raiz.XMMacro || {});
   const L = G.logica;
   const S = G.spx;
   const P = G.painel;
@@ -542,12 +542,12 @@
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
-      if (!msg || !msg.gcMacro) return;
-      if (msg.gcMacro === 'alimentacao') { rodar(); responder({ ok: true }); }
-      if (msg.gcMacro === 'diagnostico') { responder({ ok: true, texto: G.diagnostico() }); }
+      if (!msg || !msg.xmMacro) return;
+      if (msg.xmMacro === 'alimentacao') { rodar(); responder({ ok: true }); }
+      if (msg.xmMacro === 'diagnostico') { responder({ ok: true, texto: G.diagnostico() }); }
       return true;
     });
   }
 
-  console.log('[GC Macros] alimentação Shopee pronta — clique no ícone da extensão');
+  console.log('[XM Macros] alimentação Shopee pronta — clique no ícone da extensão');
 })(typeof window !== 'undefined' ? window : globalThis);

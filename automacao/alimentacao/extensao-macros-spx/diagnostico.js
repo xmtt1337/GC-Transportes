@@ -10,7 +10,7 @@
 (function (raiz) {
   'use strict';
 
-  const G = (raiz.GCMacro = raiz.GCMacro || {});
+  const G = (raiz.XMMacro = raiz.XMMacro || {});
   const L = G.logica;
   const S = G.spx;
   const A = G.alimentacao;
@@ -37,7 +37,7 @@
     const linhas = [];
     const diz = (rotulo, valor) => linhas.push(`${rotulo.padEnd(26)} ${valor}`);
 
-    linhas.push('=== GC Macros - diagnostico da tela ===');
+    linhas.push('=== XM Macros - diagnostico da tela ===');
     diz('url', location.href);
     diz('hoje', `${p.dia}/${p.mes}/${p.ano}`);
     diz('espiao de rede', S.rede.viu ? `ligado (${S.rede.ativas} em voo)` : 'NAO REPORTOU');
