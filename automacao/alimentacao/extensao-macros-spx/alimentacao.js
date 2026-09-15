@@ -634,8 +634,24 @@
     const botao = S.acharBotao('Baixar', { dentro: linha.el }) ||
                   S.acharBotao('Download', { dentro: linha.el });
     if (!botao) throw new Error('o relatório ficou pronto mas o botão "Baixar" sumiu');
+
+    const barrados = S.download.bloqueados;
     S.clicar(botao);
-    await S.dormir(1500);
+    await S.dormir(2500);
+
+    // O navegador barra janela aberta por clique de macro (nao ha "ativacao do
+    // usuario"). rede.js contorna baixando por dentro da pagina; o que nao
+    // pode e o macro dizer "baixado" sem contar que isso aconteceu.
+    if (S.download.bloqueados > barrados) {
+      const contornou = S.download.contornados > 0;
+      P.nota(contornou
+        ? 'o Chrome barrou a janela do download — baixei por dentro da página'
+        : 'o Chrome barrou a janela do download e não consegui contornar');
+      if (!contornou) {
+        throw new Error('libere pop-ups para spx.shopee.com.br e rode de novo');
+      }
+      await S.dormir(2500);
+    }
   }
 
   // ── o macro ────────────────────────────────────────────────────────────

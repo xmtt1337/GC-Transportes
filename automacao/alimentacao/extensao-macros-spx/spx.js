@@ -162,10 +162,21 @@
   // velha, longo demais faz o macro levar o dobro do tempo.
   const rede = { ativas: 0, viu: false, mudou: Date.now() };
 
+  // Quantas vezes o navegador barrou a janela do download, e se rede.js
+  // conseguiu contornar. Sem esse recado o macro dizia "baixado" com a pasta
+  // de downloads vazia.
+  const download = { bloqueados: 0, contornados: 0 };
+
   raiz.addEventListener('message', (evento) => {
     if (evento.source !== raiz) return;
     const d = evento.data;
-    if (!d || d.__xmMacroRede !== true) return;
+    if (!d) return;
+    if (d.__xmMacroDownload === true) {
+      download.bloqueados++;
+      if (d.contornado) download.contornados++;
+      return;
+    }
+    if (d.__xmMacroRede !== true) return;
     rede.ativas = d.ativas;
     rede.viu = true;
     rede.mudou = Date.now();
@@ -201,7 +212,7 @@
     dormir, esperar, visivel, desabilitado,
     folhasComTexto, folhaVisivelComTexto, acharBotao,
     clicar, escrever, apertarEnter, apertarEsc, tecla,
-    rede, esperarRede,
+    rede, esperarRede, download,
   });
 
   G.spx = spx;

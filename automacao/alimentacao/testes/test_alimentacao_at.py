@@ -56,6 +56,11 @@ class NomeDoArquivo(unittest.TestCase):
         # Nasce do outro botao do SPX e abre igualzinho no Excel
         self.assertFalse(at.eh_arquivo_alvo("br_at_romaneio_v2_20260915.xlsx"))
 
+    def test_recusa_o_romaneio_que_usa_o_mesmo_prefixo(self):
+        # Nome real visto na pasta de downloads: o Romaneio desce com o MESMO
+        # prefixo do relatorio da alimentacao, so com "romaneio" no meio
+        self.assertFalse(at.eh_arquivo_alvo("br_assignment_task_romaneio_20260915.csv"))
+
     def test_recusa_download_pela_metade(self):
         self.assertFalse(at.eh_arquivo_alvo("br_assignment_task_1.xlsx.crdownload"))
 

@@ -50,9 +50,15 @@ OBRIGATORIOS = ("task_id", "station")
 # escrito nao e cabecalho de nada.
 MINIMO_DE_COLUNAS = 5
 
-# O arquivo que o macro da alimentacao baixa. O painel do SPX tambem gera o
-# "Br AT Romaneio V2", que e outro relatorio e nao entra aqui.
+# O arquivo que o macro da alimentacao baixa.
+#
+# O outro botao do SPX gera o Romaneio - e ele desce como
+# "br_assignment_task_romaneio_*.csv", ou seja, com o MESMO prefixo. So o
+# prefixo deixaria ele entrar. As colunas sao outras (ATs, ROTA, SEQ, PARADA,
+# em portugues), entao a leitura ia recusar depois; mas recusar depois vira
+# alarme vermelho na bandeja por um arquivo que nunca foi pra ca.
 PREFIXO = "br_assignment_task_"
+FORA = ("romaneio",)
 EXTENSOES = (".xlsx", ".csv")
 
 # Teto do backend por envio (AT_MAX_LINHAS no server.js). Conferir aqui evita
@@ -72,7 +78,9 @@ def normalizar(valor):
 
 def eh_arquivo_alvo(caminho):
     nome = os.path.basename(str(caminho)).lower().replace(" ", "_")
-    return nome.startswith(PREFIXO) and nome.endswith(EXTENSOES)
+    if not nome.startswith(PREFIXO) or not nome.endswith(EXTENSOES):
+        return False
+    return not any(palavra in nome for palavra in FORA)
 
 
 def texto_da_celula(valor):
