@@ -278,23 +278,32 @@
 
   function candidatosSeta() {
     const saida = [];
-    // Duas coisas vizinhas da seta nao podem ser clicadas por engano:
-    //   o checkbox - marca so a pagina atual, e o export sai pela metade;
-    //   o cabecalho de coluna - ordena a tabela e recarrega tudo.
-    // Nenhum dos dois abre menu nenhum, entao nao se perde nada recusando.
-    const juntar = (el) => {
+    // O que a pessoa ensinou vem primeiro: ela viu a tela, eu nao.
+    for (const el of G.aprender.elementosEnsinados('seta')) {
+      if (el && !saida.includes(el)) saida.push(el);
+    }
+    // Quando o seletor nomeia o elemento, ele vale por si: os filtros abaixo
+    // sao pra PALPITE, e aplicar eles no alvo nomeado ja custou uma rodada -
+    // derrubaram justamente a seta que o seletor tinha achado.
+    //
+    // No palpite eles ficam, porque ali a vizinhanca e perigosa: o checkbox
+    // marca so a pagina atual (export sai pela metade) e o cabecalho de
+    // coluna ordena a tabela e recarrega tudo. Nenhum dos dois abre menu.
+    const juntar = (el, nomeado) => {
       if (!el || saida.includes(el)) return;
       if (/^(th|td|tr|table|thead|tbody)$/i.test(el.tagName)) return;
-      if (el.closest('[class*="checkbox"]')) return;
-      if (L.normalizar(el.textContent) !== '') return;
-      if (!S.visivel(el)) return;
+      if (!nomeado) {
+        if (el.closest('[class*="checkbox"]')) return;
+        if (L.normalizar(el.textContent) !== '') return;
+        if (!S.visivel(el)) return;
+      }
       saida.push(el);
     };
 
     for (const seletor of SELETORES_SETA) {
       for (const el of document.querySelectorAll(seletor)) {
-        juntar(el);
-        juntar(el.parentElement);   // o gatilho costuma ser o span de fora
+        juntar(el, true);
+        juntar(el.parentElement, true);   // o gatilho costuma ser o span de fora
       }
     }
 
@@ -358,8 +367,8 @@
       }
     }
     if (!item) {
-      throw new Error(`não achei "${TEXTO_TODAS_PAGINAS}". Abra a setinha do cabeçalho ` +
-                      'à mão (o menu aberto já basta) e rode de novo.');
+      throw new Error(`não achei "${TEXTO_TODAS_PAGINAS}". No popup da extensão, ` +
+                      'clique em "Ensinar a setinha" e depois na setinha do cabeçalho.');
     }
     const base = S.rede.ativas;
     S.clicar(item);
@@ -581,6 +590,7 @@
     P.abrir('Alimentação Shopee', () => { S.parar = true; });
 
     try {
+      await G.aprender.carregar();
       if (!location.href.includes('delivery-assignment')) {
         P.nota('atenção: esta não parece a tela Atribuição de Entrega');
       }
@@ -614,13 +624,15 @@
   }
 
   G.alimentacao = { rodar, lerTarefas, acharPainelTarefas, acharFiltroData, candidatosSeta,
-                    candidatosIconePainel, quantasSelecionadas, checkboxDoCabecalho };
+                    candidatosIconePainel, quantasSelecionadas, checkboxDoCabecalho,
+                    SELETORES_SETA };
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
       if (!msg || !msg.xmMacro) return;
       if (msg.xmMacro === 'alimentacao') { rodar(); responder({ ok: true }); }
       if (msg.xmMacro === 'diagnostico') { responder({ ok: true, texto: G.diagnostico() }); }
+      if (msg.xmMacro === 'ensinar') { G.aprender.ensinar(msg.qual || 'seta'); responder({ ok: true }); }
       return true;
     });
   }

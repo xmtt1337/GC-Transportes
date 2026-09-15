@@ -1,0 +1,197 @@
+// MODO ENSINAR - a pessoa aponta, o macro guarda.
+//
+// Por que existe: a tela do SPX nao tem id, nome nem texto em metade dos
+// botoes, e a unica forma de achar alguns deles era deduzir pela vizinhanca.
+// Deduzir erra, e cada erro custa uma ida e volta ("manda o diagnostico") com
+// alguem parado esperando.
+//
+// Aqui o caminho e o contrario: quem esta na frente da tela clica no botao, e
+// o seletor daquele elemento fica guardado. Da proxima vez o macro vai direto
+// nele. Se a Shopee mudar o layout, ensina de novo em dez segundos - nao
+// precisa de nova versao da extensao.
+//
+// O clique de ensino NAO passa pra pagina: ele e interceptado na captura, pra
+// ninguem abrir menu ou marcar checkbox sem querer durante o aprendizado.
+
+(function (raiz) {
+  'use strict';
+
+  const G = (raiz.XMMacro = raiz.XMMacro || {});
+  const L = G.logica;
+  const S = G.spx;
+
+  const CHAVE = 'ensinados';
+  const LIMITE_MS = 45000;
+
+  let ensinados = {};
+  let cancelar = null;
+
+  // ── guardar ────────────────────────────────────────────────────────────
+  async function carregar() {
+    try {
+      const guardado = await chrome.storage.local.get(CHAVE);
+      ensinados = guardado[CHAVE] || {};
+    } catch (e) {
+      ensinados = {};
+    }
+    return ensinados;
+  }
+
+  async function guardar(qual, seletor) {
+    ensinados[qual] = seletor;
+    try {
+      await chrome.storage.local.set({ [CHAVE]: ensinados });
+    } catch (e) {
+      console.warn('[XM Macros] nao consegui guardar o que foi ensinado', e);
+    }
+  }
+
+  const seletorDe = (qual) => ensinados[qual] || null;
+
+  function elementosEnsinados(qual) {
+    const seletor = seletorDe(qual);
+    if (!seletor) return [];
+    try {
+      return [...document.querySelectorAll(seletor)];
+    } catch (e) {
+      return [];   // seletor guardado de uma versao antiga da tela
+    }
+  }
+
+  // ── montar o seletor ───────────────────────────────────────────────────
+  // Classe com hash de build ("index_tabela__ic7IM") muda a cada deploy da
+  // Shopee; guardar ela seria ensinar algo que expira sozinho.
+  function classesUteis(el) {
+    // Em SVG className NAO e string, e um SVGAnimatedString - por isso o
+    // getAttribute em vez do atalho.
+    const bruto = typeof el.className === 'string'
+      ? el.className
+      : (el.getAttribute && el.getAttribute('class')) || '';
+    return String(bruto).split(/\s+/)
+      .filter((c) => c && !/[0-9a-f]{5,}/i.test(c) && !/\d{3,}/.test(c))
+      .slice(0, 3);
+  }
+
+  function pedaco(el) {
+    const tag = (el.tagName || '').toLowerCase();
+    const classes = classesUteis(el);
+    return classes.length ? tag + '.' + classes.join('.') : tag;
+  }
+
+  // Sobe do elemento clicado ate o caminho ficar unico na pagina. Para de
+  // subir assim que der - caminho curto sobrevive melhor a remendo de layout.
+  function seletorEstavel(alvo) {
+    const partes = [];
+    let el = alvo;
+    for (let i = 0; i < 6 && el && el !== document.body; i++, el = el.parentElement) {
+      partes.unshift(pedaco(el));
+      const tentativa = partes.join(' ');
+      try {
+        if (document.querySelectorAll(tentativa).length === 1) return tentativa;
+      } catch (e) {
+        return partes.join(' ');
+      }
+    }
+    return partes.join(' ');
+  }
+
+  // ── a faixa que aparece na tela ────────────────────────────────────────
+  function faixa(texto, cor) {
+    fecharFaixa();
+    const host = document.createElement('div');
+    host.id = 'xm-macro-ensinar';
+    document.documentElement.appendChild(host);
+    const sombra = host.attachShadow({ mode: 'open' });
+    sombra.innerHTML = `
+      <style>
+        .barra { position: fixed; top: 0; left: 0; right: 0; z-index: 2147483647;
+                 background: ${cor}; color: #fff; padding: 11px 16px;
+                 font: 600 13px/1.4 "Segoe UI", system-ui, sans-serif;
+                 text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,.3); }
+        .dica { font-weight: 400; opacity: .85; font-size: 12px; }
+      </style>
+      <div class="barra"></div>`;
+    sombra.querySelector('.barra').innerHTML = texto;
+    return host;
+  }
+
+  function fecharFaixa() {
+    const antigo = document.getElementById('xm-macro-ensinar');
+    if (antigo) antigo.remove();
+  }
+
+  // ── ensinar ────────────────────────────────────────────────────────────
+  const ROTULOS = {
+    seta: 'a setinha ao lado do checkbox do cabeçalho (a que abre "Select All in All Pages")',
+  };
+
+  function ensinar(qual) {
+    if (cancelar) cancelar();
+
+    faixa(`Clique ${ROTULOS[qual] || 'no elemento'}.<br>` +
+          '<span class="dica">O clique não vai valer na página — é só pra eu aprender. Esc cancela.</span>',
+          '#ee4d2d');
+
+    const aoClicar = (evento) => {
+      // Na captura e antes de tudo: o clique nao pode abrir menu nem marcar
+      // checkbox, senao ensinar mexeria na tela de verdade.
+      evento.preventDefault();
+      evento.stopPropagation();
+      if (evento.stopImmediatePropagation) evento.stopImmediatePropagation();
+
+      const caminho = typeof evento.composedPath === 'function' ? evento.composedPath() : [];
+      const alvo = caminho[0] || evento.target;
+      if (!alvo || alvo.id === 'xm-macro-ensinar') return;
+
+      const seletor = seletorEstavel(alvo);
+      limpar();
+      guardar(qual, seletor).then(() => {
+        console.log(`[XM Macros] aprendi "${qual}": ${seletor}`);
+        faixa(`Aprendido: <code>${seletor}</code><br>` +
+              '<span class="dica">Agora é só rodar o macro.</span>', '#16a34a');
+        setTimeout(fecharFaixa, 6000);
+      });
+    };
+
+    const aoTeclar = (evento) => {
+      if (evento.key === 'Escape') {
+        limpar();
+        fecharFaixa();
+      }
+    };
+
+    function limpar() {
+      document.removeEventListener('click', aoClicar, true);
+      document.removeEventListener('mousedown', engolir, true);
+      document.removeEventListener('pointerdown', engolir, true);
+      document.removeEventListener('keydown', aoTeclar, true);
+      clearTimeout(relogio);
+      cancelar = null;
+    }
+
+    // O mousedown tambem precisa morrer aqui: parte dos componentes do SPX
+    // abre no mousedown, e ai o menu apareceria antes do click chegar.
+    const engolir = (evento) => {
+      evento.preventDefault();
+      evento.stopPropagation();
+      if (evento.stopImmediatePropagation) evento.stopImmediatePropagation();
+    };
+
+    document.addEventListener('click', aoClicar, true);
+    document.addEventListener('mousedown', engolir, true);
+    document.addEventListener('pointerdown', engolir, true);
+    document.addEventListener('keydown', aoTeclar, true);
+
+    const relogio = setTimeout(() => {
+      limpar();
+      faixa('Tempo esgotado — clique em "Ensinar" de novo.', '#64748b');
+      setTimeout(fecharFaixa, 4000);
+    }, LIMITE_MS);
+
+    cancelar = () => { limpar(); fecharFaixa(); };
+  }
+
+  G.aprender = { carregar, ensinar, seletorDe, elementosEnsinados, seletorEstavel, ensinados: () => ensinados };
+
+  carregar();
+})(typeof window !== 'undefined' ? window : globalThis);

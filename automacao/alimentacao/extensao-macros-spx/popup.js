@@ -31,6 +31,13 @@ document.getElementById('rodar').addEventListener('click', async () => {
   if (r && r.ok) { dizer('rodando — veja na tela do SPX'); setTimeout(() => window.close(), 900); }
 });
 
+document.getElementById('ensinar').addEventListener('click', async () => {
+  dizer('');
+  const r = await mandar('ensinar');
+  // O popup precisa sair da frente: o proximo clique da pessoa e o que vale.
+  if (r && r.ok) window.close();
+});
+
 document.getElementById('diagnostico').addEventListener('click', async () => {
   dizer('');
   const r = await mandar('diagnostico');

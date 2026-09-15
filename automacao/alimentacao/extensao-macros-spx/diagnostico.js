@@ -38,6 +38,9 @@
     const diz = (rotulo, valor) => linhas.push(`${rotulo.padEnd(26)} ${valor}`);
 
     linhas.push('=== XM Macros - diagnostico da tela ===');
+    // Sem isto nao da pra saber se a pessoa recarregou a extensao depois de
+    // um conserto - e "continua igual" pode ser so a versao velha rodando.
+    try { diz('versao da extensao', chrome.runtime.getManifest().version); } catch (e) { /* fora da extensao */ }
     diz('url', location.href);
     diz('hoje', `${p.dia}/${p.mes}/${p.ano}`);
     diz('espiao de rede', S.rede.viu ? `ligado (${S.rede.ativas} em voo)` : 'NAO REPORTOU');
@@ -60,6 +63,16 @@
     linhas.push('');
 
     diz('checkbox do cabecalho', resumo(A.checkboxDoCabecalho()));
+    diz('setinha ensinada', G.aprender.seletorDe('seta') || 'nada ensinado ainda');
+    // Quantos elementos cada seletor pega e se eles passam nos filtros: e o
+    // que diz se o problema e o seletor nao casar ou o filtro derrubar.
+    for (const seletor of A.SELETORES_SETA) {
+      const achados = [...document.querySelectorAll(seletor)];
+      const primeiro = achados[0];
+      diz(`  ${seletor}`, achados.length
+        ? `${achados.length} — ${caminho(primeiro)} visivel=${S.visivel(primeiro)}`
+        : '0');
+    }
     const setas = A.candidatosSeta();
     diz('candidatos a setinha', String(setas.length));
     setas.forEach((el, i) => diz(`  ${i + 1}`, `${caminho(el)}  texto="${L.normalizar(el.textContent).slice(0, 12)}"`));
