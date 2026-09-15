@@ -1,0 +1,553 @@
+// MACRO: ALIMENTACAO SHOPEE
+//
+// Faz na tela Entrega > Atribuicao de Entrega, na ordem:
+//   1. poe a data de HOJE nos dois campos de "Horario de Criacao"
+//   2. clica em Procurar
+//   3. abre a setinha do cabecalho e marca "Select All in All Pages"
+//   4. clica em Exportar AT
+//   5. espera o "Br Assignment Task" ficar pronto no painel Ultima tarefa e
+//      baixa ELE - nao o "Br AT Romaneio V2", nem o da rodada de ontem
+//
+// O passo 5 e o unico que pode errar em silencio: os dois relatorios abrem no
+// Excel do mesmo jeito, e so os numeros denunciam. Por isso o painel e lido
+// ANTES do clique em Exportar: o relatorio certo e, por definicao, o que nao
+// estava la.
+
+(function (raiz) {
+  'use strict';
+
+  const G = (raiz.GCMacro = raiz.GCMacro || {});
+  const L = G.logica;
+  const S = G.spx;
+  const P = G.painel;
+
+  const ROTULO_DATA = 'Horário de Criação';
+  const TEXTO_TODAS_PAGINAS = 'Select All in All Pages';
+  const ESPERA_RELATORIO_MS = 30 * 60 * 1000;
+
+  let rodando = false;
+
+  // ── achar coisas na tela ───────────────────────────────────────────────
+  function folhaComRegex(re, opcoes) {
+    const o = opcoes || {};
+    for (const el of (o.dentro || document).querySelectorAll('*')) {
+      if (el.children.length) continue;
+      if (!S.visivel(el)) continue;
+      const m = L.normalizar(el.textContent).match(re);
+      if (!m) continue;
+      if (o.filtro && !o.filtro(el)) continue;
+      return { el, m };
+    }
+    return null;
+  }
+
+  const ehInicio = (c) => /in[ií]cio|inicio|start/i.test(c.placeholder || '');
+  const ehFim = (c) => /final|fim|end/i.test(c.placeholder || '');
+
+  function depoisDe(referencia, lista) {
+    return lista.find((el) =>
+      referencia.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) || null;
+  }
+
+  // O par de campos de data que pertence a ESTE rotulo.
+  //
+  // A tela tem tres filtros de periodo iguais lado a lado (Data de Entrega,
+  // Horario Designado ao Motorista, Horario de Criacao) e nenhum deles tem id.
+  // O caminho e subir do rotulo ate a primeira caixa que tenha os dois campos;
+  // se essa caixa engoliu o filtro vizinho, vale o par que vem DEPOIS do rotulo
+  // na ordem da pagina.
+  function acharFiltroData(rotulo) {
+    for (const r of S.folhasComTexto(rotulo).filter(S.visivel)) {
+      let caixa = r.parentElement;
+      for (let i = 0; i < 8 && caixa; i++, caixa = caixa.parentElement) {
+        const campos = [...caixa.querySelectorAll('input')].filter(S.visivel);
+        const inicios = campos.filter(ehInicio);
+        const fins = campos.filter(ehFim);
+        if (!inicios.length || !fins.length) continue;
+        return {
+          inicio: depoisDe(r, inicios) || inicios[0],
+          fim: depoisDe(r, fins) || fins[0],
+          caixa,
+        };
+      }
+    }
+    return null;
+  }
+
+  async function abrirMaisFiltros() {
+    for (const texto of ['Mais', 'More', 'Expandir', 'Mostrar mais']) {
+      const b = S.acharBotao(texto) || S.folhaVisivelComTexto(texto);
+      if (b) { S.clicar(b); await S.dormir(600); return true; }
+    }
+    return false;
+  }
+
+  // ── 1. data de hoje ────────────────────────────────────────────────────
+  // Todo o texto do cabecalho do calendario, sem o que esta dentro da grade.
+  // Sem essa separacao o painel de outubro passa por setembro: a grade dele
+  // tambem tem um "09" escrito (o dia 9), e ai qualquer teste de mes acerta.
+  function cabecalhoDoMes(caixa, tabela) {
+    const partes = [];
+    const it = document.createTreeWalker(caixa, NodeFilter.SHOW_TEXT);
+    let no;
+    while ((no = it.nextNode())) {
+      if (tabela.contains(no)) break;
+      const t = L.normalizar(no.nodeValue);
+      if (t) partes.push(t);
+    }
+    return partes.join(' ');
+  }
+
+  function acharPainelDoMes(p) {
+    const grades = [...document.querySelectorAll('table')]
+      .filter((t) => S.visivel(t) && t.querySelectorAll('td').length >= 28);
+    for (const tabela of grades) {
+      let caixa = tabela.parentElement;
+      for (let i = 0; i < 4 && caixa; i++, caixa = caixa.parentElement) {
+        const cabecalho = cabecalhoDoMes(caixa, tabela);
+        if (cabecalho.length <= 40 && L.mesCombina(cabecalho, p)) return { tabela, caixa };
+      }
+    }
+    return null;
+  }
+
+  function celulaDoDia(tabela, p) {
+    const celulas = [...tabela.querySelectorAll('td')];
+
+    const porAtributo = celulas.find((td) =>
+      ['title', 'data-date', 'aria-label'].some((a) => {
+        const v = td.getAttribute(a);
+        return v && L.dataConfere(v, p);
+      }));
+    if (porAtributo) return porAtributo;
+
+    // Sem atributo sobra a posicao. O texto sozinho nao serve: a grade tem 6
+    // semanas inteiras, entao as pontas sao dias do mes vizinho.
+    for (const primeiroDia of [0, 1]) {
+      const i = L.indiceNaGrade(p.anoNumero, p.mesNumero, p.diaNumero, primeiroDia);
+      const td = celulas[i];
+      if (td && Number(L.normalizar(td.textContent)) === p.diaNumero) return td;
+    }
+    return null;
+  }
+
+  function miolo(td) {
+    let el = td;
+    while (el.children.length === 1) el = el.children[0];
+    return el;
+  }
+
+  async function clicarDia(p) {
+    const painelMes = acharPainelDoMes(p);
+    if (!painelMes) return false;
+    const td = celulaDoDia(painelMes.tabela, p);
+    if (!td) return false;
+    S.clicar(miolo(td));
+    await S.dormir(400);
+    return true;
+  }
+
+  async function porDataPeloCalendario(filtro, p) {
+    S.clicar(filtro.inicio);
+    await S.dormir(500);
+    if (!(await clicarDia(p))) return false;
+
+    // depois do primeiro clique o calendario ja espera o fim do periodo; se
+    // tiver fechado, e so reabrir pelo outro campo
+    if (!acharPainelDoMes(p)) {
+      S.clicar(filtro.fim);
+      await S.dormir(500);
+    }
+    if (!(await clicarDia(p))) return false;
+
+    // Alguns pickers so confirmam no OK. A busca fica presa ao calendario que
+    // ainda esta aberto: um "OK" solto na tela seria de outra caixa qualquer.
+    const aberto = acharPainelDoMes(p);
+    if (aberto) {
+      const ok = S.acharBotao('OK', { dentro: aberto.caixa.parentElement || aberto.caixa });
+      if (ok) { S.clicar(ok); await S.dormir(400); }
+    }
+
+    await S.dormir(300);
+    return L.dataConfere(filtro.inicio.value, p) && L.dataConfere(filtro.fim.value, p);
+  }
+
+  async function porDataDigitando(filtro, p) {
+    for (const formato of L.FORMATOS_DATA) {
+      const texto = formato(p);
+      S.clicar(filtro.inicio);
+      await S.dormir(200);
+      S.escrever(filtro.inicio, texto);
+      await S.dormir(250);
+      S.apertarEnter(filtro.inicio);
+      await S.dormir(350);
+
+      S.clicar(filtro.fim);
+      await S.dormir(200);
+      S.escrever(filtro.fim, texto);
+      await S.dormir(250);
+      S.apertarEnter(filtro.fim);
+      await S.dormir(500);
+
+      if (L.dataConfere(filtro.inicio.value, p) && L.dataConfere(filtro.fim.value, p)) {
+        P.nota(`formato aceito: ${texto}`);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async function porDataDeHoje() {
+    const p = L.partesDaData(new Date());
+    let filtro = acharFiltroData(ROTULO_DATA);
+    if (!filtro) {
+      await abrirMaisFiltros();
+      filtro = acharFiltroData(ROTULO_DATA);
+    }
+    if (!filtro) throw new Error(`não achei o filtro "${ROTULO_DATA}" na tela`);
+
+    if (L.dataConfere(filtro.inicio.value, p) && L.dataConfere(filtro.fim.value, p)) {
+      P.nota(`já estava em ${p.dia}/${p.mes}/${p.ano}`);
+      return;
+    }
+
+    if (await porDataPeloCalendario(filtro, p)) {
+      P.nota(`${p.dia}/${p.mes}/${p.ano} até ${p.dia}/${p.mes}/${p.ano}`);
+      return;
+    }
+    P.nota('calendário não deu — digitando a data');
+    if (await porDataDigitando(filtro, p)) {
+      P.nota(`${p.dia}/${p.mes}/${p.ano} até ${p.dia}/${p.mes}/${p.ano}`);
+      return;
+    }
+    throw new Error(`não consegui pôr a data de hoje em "${ROTULO_DATA}"`);
+  }
+
+  // ── 2. procurar ────────────────────────────────────────────────────────
+  async function procurar() {
+    const botao = S.acharBotao('Procurar') || S.acharBotao('Search') || S.acharBotao('Buscar');
+    if (!botao) throw new Error('não achei o botão "Procurar"');
+    const base = S.rede.ativas;
+    S.clicar(botao);
+    await S.dormir(700);
+    await S.esperarRede({ base, limite: 90000 });
+    await S.dormir(700);
+
+    const total = folhaComRegex(/^total:\s*([\d.,]+)/i);
+    if (total) P.nota(`${total.m[1]} tarefas no período`);
+  }
+
+  // ── 3. marcar tudo ─────────────────────────────────────────────────────
+  // A setinha fica colada no checkbox do cabecalho e nao tem texto nenhum -
+  // e so um icone. Entao a busca e por vizinhanca: os iconezinhos sem texto
+  // que estao na celula do checkbox ou na do lado, do mais perto pro mais
+  // longe, ate um deles abrir o menu.
+  function candidatosSeta() {
+    const checks = [...document.querySelectorAll('input[type="checkbox"]')]
+      .filter(S.visivel)
+      .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+    const cabecalho = checks[0];
+    if (!cabecalho) return [];
+
+    const celula = cabecalho.closest('th, td, [class*="cell"]') || cabecalho.parentElement;
+    const perto = [celula, celula.nextElementSibling, celula.previousElementSibling].filter(Boolean);
+    const borda = cabecalho.getBoundingClientRect();
+
+    const saida = [];
+    for (const area of perto) {
+      for (const el of area.querySelectorAll('*')) {
+        if (!S.visivel(el)) continue;
+        if (el === cabecalho || el.contains(cabecalho)) continue;
+        if (L.normalizar(el.textContent) !== '') continue;   // tem texto: nao e icone
+        const r = el.getBoundingClientRect();
+        if (r.width < 5 || r.width > 44 || r.height < 5 || r.height > 44) continue;
+        saida.push({ el, distancia: Math.abs(r.left - borda.right) });
+      }
+    }
+    saida.sort((a, b) => a.distancia - b.distancia);
+    return saida.slice(0, 8).map((c) => c.el);
+  }
+
+  const acharItemTodasPaginas = () =>
+    S.acharBotao(TEXTO_TODAS_PAGINAS) || S.folhaVisivelComTexto(TEXTO_TODAS_PAGINAS);
+
+  function quantasSelecionadas() {
+    const achado = folhaComRegex(/^([\d.,]+)\s+task\(s\)\s+selected/i);
+    if (!achado) return null;
+    return Number(achado.m[1].replace(/[.,]/g, ''));
+  }
+
+  async function selecionarTodasPaginas() {
+    let item = acharItemTodasPaginas();
+    if (!item) {
+      for (const seta of candidatosSeta()) {
+        S.clicar(seta);
+        await S.dormir(450);
+        item = acharItemTodasPaginas();
+        if (item) break;
+        S.apertarEsc();
+        await S.dormir(200);
+      }
+    }
+    if (!item) {
+      throw new Error(`não achei "${TEXTO_TODAS_PAGINAS}" — a setinha do cabeçalho mudou de lugar`);
+    }
+    const base = S.rede.ativas;
+    S.clicar(item);
+    await S.dormir(700);
+    await S.esperarRede({ base, limite: 60000 });
+
+    const n = await S.esperar(() => quantasSelecionadas() || null, {
+      oque: 'o contador "Task(s) Selected" sair do zero',
+      limite: 60000,
+      intervalo: 500,
+    });
+    P.nota(`${n} selecionadas`);
+  }
+
+  // ── 4. exportar ────────────────────────────────────────────────────────
+  const TEXTOS_CONFIRMA = ['OK', 'Ok', 'Confirmar', 'Confirm', 'Sim', 'Yes', 'Exportar', 'Export'];
+
+  async function confirmarSeAparecer() {
+    const dialogos = [...document.querySelectorAll('[role="dialog"], [class*="modal"], [class*="dialog"]')]
+      .filter(S.visivel);
+    for (const d of dialogos) {
+      for (const texto of TEXTOS_CONFIRMA) {
+        const b = S.acharBotao(texto, { dentro: d });
+        if (b && !S.desabilitado(b)) {
+          P.nota(`confirmando "${L.normalizar(b.textContent)}"`);
+          S.clicar(b);
+          await S.dormir(700);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  async function exportarAt() {
+    const botao = await S.esperar(() => {
+      const b = S.acharBotao('Exportar AT', { comeca: true }) ||
+                S.acharBotao('Export AT', { comeca: true });
+      return b && !S.desabilitado(b) ? b : null;
+    }, { oque: 'o botão "Exportar AT" liberar', limite: 45000 });
+
+    const base = S.rede.ativas;
+    S.clicar(botao);
+    await S.dormir(900);
+    await confirmarSeAparecer();
+    await S.esperarRede({ base, limite: 60000 });
+  }
+
+  // ── 5. painel Ultima tarefa ────────────────────────────────────────────
+  const NOMES_DO_PAINEL = ['Última tarefa', 'Ultima tarefa', 'Latest Task', 'Last task'];
+
+  function acharPainelTarefas() {
+    let titulo = null;
+    for (const nome of NOMES_DO_PAINEL) {
+      titulo = S.folhaVisivelComTexto(nome);
+      if (titulo) break;
+    }
+    if (!titulo) return null;
+    let caixa = titulo.parentElement;
+    for (let i = 0; i < 8 && caixa; i++, caixa = caixa.parentElement) {
+      if (L.chave(caixa.textContent).includes('exportar')) return caixa;
+    }
+    return titulo.parentElement;
+  }
+
+  // O icone do painel fica no topo, entre o sininho e o seletor de idioma.
+  // Nenhum dos dois tem texto, entao a ancora possivel e o idioma: o que
+  // interessa esta a esquerda dele.
+  function candidatosIconePainel() {
+    const idioma = folhaComRegex(/^(portugu[êe]s|english|bahasa|ti[ếe]ng|中文)/i, {
+      filtro: (el) => el.getBoundingClientRect().top < 120,
+    });
+    const limiteX = idioma
+      ? idioma.el.getBoundingClientRect().left
+      : raiz.innerWidth;
+
+    const vistos = new Set();
+    const saida = [];
+    for (const el of document.querySelectorAll('svg, i, [class*="icon"], button, [role="button"]')) {
+      if (!S.visivel(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.top > 120 || r.width < 8 || r.width > 48 || r.height < 8 || r.height > 48) continue;
+      if (r.right > limiteX + 6) continue;
+      if (r.left < raiz.innerWidth * 0.5) continue;
+      const alvo = el.closest('button, [role="button"], [class*="icon"]') || el;
+      if (vistos.has(alvo)) continue;
+      vistos.add(alvo);
+      saida.push({ el: alvo, x: alvo.getBoundingClientRect().left });
+    }
+    saida.sort((a, b) => b.x - a.x);   // do mais perto do idioma pra esquerda
+    return saida.slice(0, 5).map((c) => c.el);
+  }
+
+  async function abrirPainelTarefas() {
+    const jaAberto = acharPainelTarefas();
+    if (jaAberto) return jaAberto;
+    for (const icone of candidatosIconePainel()) {
+      S.clicar(icone);
+      await S.dormir(650);
+      const painel = acharPainelTarefas();
+      if (painel) return painel;
+      S.apertarEsc();
+      await S.dormir(250);
+    }
+    return null;
+  }
+
+  async function fecharPainelTarefas() {
+    if (!acharPainelTarefas()) return;
+    S.apertarEsc();
+    await S.dormir(350);
+    if (!acharPainelTarefas()) return;
+    // Esc nem sempre fecha esse tipo de dropdown; um clique no vazio do topo
+    // resolve sem acertar nenhum botao da tela.
+    S.clicar(document.body);
+    await S.dormir(350);
+  }
+
+  function lerTarefas(painel) {
+    const linhas = [];
+    const vistos = new Set();
+    for (const el of painel.querySelectorAll('*')) {
+      if (el.children.length) continue;
+      const quando = L.normalizar(el.textContent);
+      if (!L.EH_MOMENTO.test(quando)) continue;
+
+      let caixa = el.parentElement;
+      let linha = null;
+      for (let i = 0; i < 6 && caixa; i++, caixa = caixa.parentElement) {
+        const texto = L.normalizar(caixa.textContent);
+        if (texto.length > quando.length && texto.length <= 200 &&
+            /[a-z]/i.test(texto.split(quando).join(''))) { linha = caixa; break; }
+      }
+      if (!linha || vistos.has(linha)) continue;
+      vistos.add(linha);
+
+      const texto = L.normalizar(linha.textContent);
+      const baixar = S.acharBotao('Baixar', { dentro: linha }) ||
+                     S.acharBotao('Download', { dentro: linha });
+      const porcento = texto.match(/(\d{1,3})\s*%/);
+      linhas.push({
+        nome: L.normalizar(texto.split(quando)[0]),
+        quando,
+        pronto: !!baixar,
+        progresso: porcento ? porcento[1] + '%' : null,
+        el: linha,
+      });
+    }
+    return linhas;
+  }
+
+  async function lerTarefasAgora() {
+    const painel = await abrirPainelTarefas();
+    if (!painel) throw new Error('não consegui abrir o painel "Última tarefa"');
+    return lerTarefas(painel);
+  }
+
+  async function esperarRelatorio(antes) {
+    const fim = Date.now() + ESPERA_RELATORIO_MS;
+    let alvo = null;
+    let ultimoAviso = '';
+    let reabertoEm = Date.now();
+
+    for (;;) {
+      const painel = await abrirPainelTarefas();
+      if (!painel) throw new Error('o painel "Última tarefa" fechou e não abriu de novo');
+      const agora = lerTarefas(painel);
+
+      if (!alvo) {
+        const nova = L.escolherTarefaNova(antes, agora, L.NOME_RELATORIO);
+        if (nova) {
+          alvo = { nome: nova.nome, quando: nova.quando };
+          P.nota(`relatório novo: ${alvo.nome} — ${alvo.quando}`);
+        }
+      }
+
+      if (alvo) {
+        const linha = agora.find((t) => L.chaveTarefa(t) === L.chaveTarefa(alvo));
+        if (linha && linha.pronto) return linha;
+        const aviso = linha && linha.progresso ? linha.progresso : 'gerando…';
+        if (aviso !== ultimoAviso) { P.nota(aviso); ultimoAviso = aviso; }
+      }
+
+      if (Date.now() > fim) {
+        throw new Error('o relatório não ficou pronto em 30 min — baixe à mão no painel');
+      }
+      await S.dormir(3000);
+
+      // Se o painel nao se atualizar sozinho, ficariamos olhando pro 0% pra
+      // sempre. Fechar e abrir de novo forca o SPX a reconsultar.
+      if (Date.now() - reabertoEm > 45000) {
+        await fecharPainelTarefas();
+        await S.dormir(400);
+        reabertoEm = Date.now();
+      }
+    }
+  }
+
+  async function baixar(linha) {
+    const botao = S.acharBotao('Baixar', { dentro: linha.el }) ||
+                  S.acharBotao('Download', { dentro: linha.el });
+    if (!botao) throw new Error('o relatório ficou pronto mas o botão "Baixar" sumiu');
+    S.clicar(botao);
+    await S.dormir(1500);
+  }
+
+  // ── o macro ────────────────────────────────────────────────────────────
+  async function rodar() {
+    if (rodando) { P.nota('já está rodando'); return; }
+    rodando = true;
+    S.parar = false;
+    P.abrir('Alimentação Shopee', () => { S.parar = true; });
+
+    try {
+      if (!location.href.includes('delivery-assignment')) {
+        P.nota('atenção: esta não parece a tela Atribuição de Entrega');
+      }
+
+      P.passo('1/5 · data de hoje em "Horário de Criação"');
+      await porDataDeHoje();
+
+      P.passo('2/5 · Procurar');
+      await procurar();
+
+      P.passo('3/5 · Select All in All Pages');
+      await selecionarTodasPaginas();
+
+      P.passo('4/5 · Exportar AT');
+      const antes = await lerTarefasAgora();
+      await fecharPainelTarefas();
+      await exportarAt();
+
+      P.passo('5/5 · esperando o relatório ficar pronto');
+      const alvo = await esperarRelatorio(antes);
+      await baixar(alvo);
+
+      P.ok(`baixado: ${alvo.nome} — ${alvo.quando}`);
+    } catch (e) {
+      if (e instanceof S.Parado) P.erro('parado por você');
+      else P.erro(e.message || String(e));
+    } finally {
+      rodando = false;
+      S.parar = false;
+    }
+  }
+
+  G.alimentacao = { rodar, lerTarefas, acharPainelTarefas, acharFiltroData, candidatosSeta,
+                    candidatosIconePainel, quantasSelecionadas };
+
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
+      if (!msg || !msg.gcMacro) return;
+      if (msg.gcMacro === 'alimentacao') { rodar(); responder({ ok: true }); }
+      if (msg.gcMacro === 'diagnostico') { responder({ ok: true, texto: G.diagnostico() }); }
+      return true;
+    });
+  }
+
+  console.log('[GC Macros] alimentação Shopee pronta — clique no ícone da extensão');
+})(typeof window !== 'undefined' ? window : globalThis);

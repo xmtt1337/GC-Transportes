@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { width: 300px; margin: 0; padding: 14px;
+           font: 13px/1.45 "Segoe UI", system-ui, sans-serif; color: #24303f; }
+    h1 { font-size: 14px; margin: 0 0 2px; color: #ee4d2d; }
+    .marca { font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+             color: #8a97a8; margin-bottom: 12px; }
+    button { display: block; width: 100%; box-sizing: border-box; margin-bottom: 8px;
+             padding: 9px 12px; font: inherit; font-weight: 600; cursor: pointer;
+             border-radius: 6px; border: 1px solid #ee4d2d; background: #ee4d2d;
+             color: #fff; text-align: left; }
+    button:hover { background: #d8431f; }
+    button.calmo { background: #f4f6f9; color: #46566b; border-color: #d7dee8;
+                   font-weight: 500; }
+    button.calmo:hover { background: #e9edf3; }
+    .passos { font-size: 11px; color: #62718a; line-height: 1.6; margin: 2px 0 12px;
+              padding-left: 16px; }
+    .aviso { font-size: 11px; color: #8a97a8; border-top: 1px solid #e8edf3;
+             padding-top: 9px; margin: 4px 0 0; }
+    .estado { font-size: 11px; min-height: 15px; color: #2a8c4a; font-weight: 600; }
+    .estado.ruim { color: #d8431f; }
+  </style>
+</head>
+<body>
+  <h1>Alimentação Shopee</h1>
+  <div class="marca">GC Macros · SPX</div>
+
+  <ul class="passos">
+    <li>data de hoje em Horário de Criação</li>
+    <li>Procurar</li>
+    <li>Select All in All Pages</li>
+    <li>Exportar AT</li>
+    <li>baixa o <b>Br Assignment Task</b> quando ficar pronto</li>
+  </ul>
+
+  <button id="rodar">▶ Rodar alimentação</button>
+  <button id="diagnostico" class="calmo">Diagnóstico (copiar)</button>
+  <div class="estado" id="estado"></div>
+
+  <p class="aviso">
+    O acompanhamento aparece na própria tela do SPX — pode fechar esta janelinha.
+    Deixe o Chrome <b>sem</b> “perguntar onde salvar cada arquivo”.
+  </p>
+
+  <script src="popup.js"></script>
+</body>
+</html>

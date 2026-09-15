@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "GC Macros SPX",
+  "version": "1.0",
+  "description": "Macros da rotina do SPX. Alimentação: filtra o dia, marca tudo, exporta a AT e baixa o relatório certo.",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://spx.shopee.com.br/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://spx.shopee.com.br/*"
+      ],
+      "js": [
+        "rede.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://spx.shopee.com.br/*"
+      ],
+      "js": [
+        "logica.js",
+        "spx.js",
+        "painel.js",
+        "alimentacao.js",
+        "diagnostico.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "GC Macros SPX"
+  }
+}

@@ -1,0 +1,134 @@
+===========================================================
+  GC MACROS SPX  -  Alimentacao Shopee
+===========================================================
+
+Uma peca so: a extensao do Chrome. Nao tem programa pra abrir,
+nao usa o Neon, nao fala com o ColadorNeon. Ela e independente
+do colador - da pra ter as duas instaladas ao mesmo tempo.
+
+
+-----------------------------------------------------------
+INSTALAR (uma vez por maquina)
+-----------------------------------------------------------
+
+1. Copie a pasta  extensao-macros-spx  para o computador
+   (ex.: C:\GC\extensao-macros-spx).
+
+   NAO carregue direto do pendrive: se alguem tirar o
+   pendrive, a extensao morre no meio do expediente.
+
+2. Chrome > endereco:  chrome://extensions
+3. Ligue "Modo do desenvolvedor" (canto superior direito)
+4. "Carregar sem compactacao" > escolha a pasta copiada
+5. Deve aparecer "GC Macros SPX"
+6. DE F5 NA ABA DO SPX
+
+O passo 6 e o que mais confunde. A extensao so entra em pagina
+carregada DEPOIS dela: se o SPX ja estava aberto, nada
+acontece e nenhum erro aparece.
+
+7. Chrome > Configuracoes > Downloads:
+   DESLIGUE "Perguntar onde salvar cada arquivo".
+   Com isso ligado, o macro clica em Baixar e o Chrome fica
+   esperando alguem escolher a pasta - parece travado.
+
+
+-----------------------------------------------------------
+USAR
+-----------------------------------------------------------
+
+1. Abra  Entrega > Atribuicao de Entrega  no SPX
+2. Clique no icone da extensao > "Rodar alimentacao"
+3. Pode fechar a janelinha do Chrome: o acompanhamento
+   aparece num quadro na propria tela do SPX
+
+Ele faz, nessa ordem:
+
+  1. poe a data de HOJE nos dois campos de Horario de Criacao
+  2. clica em Procurar
+  3. abre a setinha do cabecalho e marca
+     "Select All in All Pages"
+  4. clica em Exportar AT
+  5. fica olhando o painel "Ultima tarefa" ate o relatorio
+     ficar pronto e clica em Baixar
+
+Nao precisa ficar na aba. Pode trabalhar em outra janela - so
+nao FECHE a aba do SPX nem de F5 nela enquanto roda.
+
+Pra abortar no meio: botao "Parar" no quadro.
+
+
+-----------------------------------------------------------
+QUAL RELATORIO ELE BAIXA
+-----------------------------------------------------------
+
+O painel "Ultima tarefa" mistura dois relatorios parecidos:
+
+  Br Assignment Task   <- e este, o da alimentacao
+  Br AT Romaneio V2    <- este e do outro botao
+
+E os dois ficam na lista por 7 dias, entao tem varios "Br
+Assignment Task" ao mesmo tempo - o de hoje e o de ontem.
+
+Por isso o macro le a lista ANTES de clicar em Exportar. O
+relatorio certo e, por definicao, o unico "Br Assignment
+Task" que NAO estava la antes. Se ele nao aparecer, o macro
+para e avisa - nunca baixa "o que parece".
+
+No fim, o quadro mostra o nome e a hora do que baixou.
+Confira essa hora se bater duvida.
+
+
+-----------------------------------------------------------
+SE PARAR NO MEIO
+-----------------------------------------------------------
+
+O quadro na tela diz em qual dos 5 passos parou. Quase sempre
+e porque a Shopee mexeu no layout e algum botao saiu do
+lugar. Para descobrir qual:
+
+  1. Clique no icone da extensao
+  2. "Diagnostico (copiar)"
+  3. Cole o texto na conversa
+
+Sai a lista do que ele consegue enxergar na tela agora - o
+que aparece como "NAO ACHOU" e o que quebrou.
+
+Antes disso, o basico:
+
+- A aba esta em  spx.shopee.com.br  e na tela
+  Entrega > Atribuicao de Entrega?
+
+- Deu F5 depois de instalar/atualizar a extensao?
+  Essa e a causa em nove de cada dez vezes.
+
+- F12 > Console. Deve aparecer:
+      [GC Macros] espiao de rede ligado
+      [GC Macros] alimentacao Shopee pronta
+
+
+-----------------------------------------------------------
+AO ATUALIZAR
+-----------------------------------------------------------
+
+  1. Troque a pasta extensao-macros-spx
+  2. chrome://extensions > botao de recarregar na GC Macros
+  3. F5 NA ABA DO SPX
+
+O passo 3 nao e opcional.
+
+
+-----------------------------------------------------------
+PRA QUEM MEXE NO CODIGO
+-----------------------------------------------------------
+
+Fonte: GC Transportes / automacao / extensao-macros-spx
+
+  logica.js       regras puras (datas, escolha do relatorio)
+  spx.js          achar/clicar/esperar na tela do SPX
+  rede.js         conta chamadas em voo (mundo da pagina)
+  painel.js       o quadro que aparece na tela
+  alimentacao.js  o macro, passo a passo
+  diagnostico.js  o relatorio do botao Diagnostico
+
+Testes:  node --test automacao/testes/test_macro_alimentacao.test.js
