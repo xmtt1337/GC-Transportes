@@ -234,14 +234,19 @@
     await S.dormir(700);
 
     const total = folhaComRegex(/^total:\s*([\d.,]+)/i);
-    if (total) P.nota(`${total.m[1]} tarefas no período`);
+    if (!total) return null;
+    P.nota(`${total.m[1]} tarefas no período`);
+    return Number(total.m[1].replace(/[.,]/g, ''));
   }
 
   // ── 3. marcar tudo ─────────────────────────────────────────────────────
-  // A setinha fica colada no checkbox do cabecalho e nao tem texto nenhum -
-  // e so um icone. Entao a busca e por vizinhanca: os iconezinhos sem texto
-  // que estao na celula do checkbox ou na do lado, do mais perto pro mais
-  // longe, ate um deles abrir o menu.
+  // A setinha fica colada no checkbox do cabecalho e nao tem id, nome nem
+  // texto que sirva de ancora. O que se sabe dela e a POSICAO: ela encosta no
+  // checkbox, do lado direito.
+  //
+  // Por isso o primeiro palpite e elementFromPoint, que devolve o que o mouse
+  // acertaria naquele ponto - seja svg, span ou um "^" escrito. Procurar por
+  // "icone sem texto" errava justamente quando a seta e um caractere.
   function candidatosSeta() {
     const checks = [...document.querySelectorAll('input[type="checkbox"]')]
       .filter(S.visivel)
@@ -249,27 +254,54 @@
     const cabecalho = checks[0];
     if (!cabecalho) return [];
 
+    const borda = cabecalho.getBoundingClientRect();
+    const meio = borda.top + borda.height / 2;
+    const saida = [];
+    const juntar = (el) => {
+      if (!el || saida.includes(el) || el === cabecalho) return;
+      // Nao clicar em nada que envolva o checkbox: acertar ele marca so a
+      // pagina atual, e o macro seguiria exportando 20 linhas de 78.
+      if (el.contains(cabecalho)) return;
+      saida.push(el);
+    };
+
+    for (const dx of [9, 15, 21, 27, 34]) juntar(document.elementFromPoint(borda.right + dx, meio));
+
     const celula = cabecalho.closest('th, td, [class*="cell"]') || cabecalho.parentElement;
     const perto = [celula, celula.nextElementSibling, celula.previousElementSibling].filter(Boolean);
-    const borda = cabecalho.getBoundingClientRect();
-
-    const saida = [];
+    const vizinhos = [];
     for (const area of perto) {
       for (const el of area.querySelectorAll('*')) {
         if (!S.visivel(el)) continue;
         if (el === cabecalho || el.contains(cabecalho)) continue;
-        if (L.normalizar(el.textContent) !== '') continue;   // tem texto: nao e icone
+        // Texto curto passa: a seta as vezes e um "^" de verdade, escrito.
+        if (L.normalizar(el.textContent).length > 3) continue;
         const r = el.getBoundingClientRect();
         if (r.width < 5 || r.width > 44 || r.height < 5 || r.height > 44) continue;
-        saida.push({ el, distancia: Math.abs(r.left - borda.right) });
+        vizinhos.push({ el, distancia: Math.abs(r.left - borda.right) });
       }
     }
-    saida.sort((a, b) => a.distancia - b.distancia);
-    return saida.slice(0, 8).map((c) => c.el);
+    vizinhos.sort((a, b) => a.distancia - b.distancia);
+    vizinhos.forEach((v) => juntar(v.el));
+    return saida.slice(0, 10);
   }
 
-  const acharItemTodasPaginas = () =>
-    S.acharBotao(TEXTO_TODAS_PAGINAS) || S.folhaVisivelComTexto(TEXTO_TODAS_PAGINAS);
+  // Casa por texto inteiro e, se nao achar, por "contem" - o SPX as vezes
+  // pendura um contador ou um icone dentro do mesmo item do menu.
+  function acharItemTodasPaginas() {
+    const exato = S.acharBotao(TEXTO_TODAS_PAGINAS) || S.folhaVisivelComTexto(TEXTO_TODAS_PAGINAS);
+    if (exato) return exato;
+    const alvo = L.chave(TEXTO_TODAS_PAGINAS);
+    const achados = [];
+    for (const el of document.querySelectorAll('*')) {
+      if (!L.chave(el.textContent).includes(alvo)) continue;
+      if (!S.visivel(el)) continue;
+      achados.push(el);
+    }
+    // O menor: o maior e a tela inteira, que tambem "contem" esse texto.
+    achados.sort((a, b) => L.normalizar(a.textContent).length - L.normalizar(b.textContent).length);
+    return achados[0] || null;
+  }
 
   function quantasSelecionadas() {
     const achado = folhaComRegex(/^([\d.,]+)\s+task\(s\)\s+selected/i);
@@ -277,20 +309,21 @@
     return Number(achado.m[1].replace(/[.,]/g, ''));
   }
 
-  async function selecionarTodasPaginas() {
+  async function selecionarTodasPaginas(total) {
     let item = acharItemTodasPaginas();
     if (!item) {
       for (const seta of candidatosSeta()) {
         S.clicar(seta);
-        await S.dormir(450);
+        await S.dormir(650);
         item = acharItemTodasPaginas();
         if (item) break;
         S.apertarEsc();
-        await S.dormir(200);
+        await S.dormir(250);
       }
     }
     if (!item) {
-      throw new Error(`não achei "${TEXTO_TODAS_PAGINAS}" — a setinha do cabeçalho mudou de lugar`);
+      throw new Error(`não achei "${TEXTO_TODAS_PAGINAS}". Abra a setinha do cabeçalho ` +
+                      'à mão (o menu aberto já basta) e rode de novo.');
     }
     const base = S.rede.ativas;
     S.clicar(item);
@@ -302,6 +335,13 @@
       limite: 60000,
       intervalo: 500,
     });
+
+    // Marcou so a pagina atual? Isso acontece quando o clique acerta o
+    // checkbox em vez da setinha - e e o erro caro: o export sairia com 20
+    // linhas de 78 e o arquivo abriria normalmente, so que pela metade.
+    if (total && n < total) {
+      throw new Error(`marcou ${n} de ${total} — pegou só a página atual, não todas`);
+    }
     P.nota(`${n} selecionadas`);
   }
 
@@ -513,10 +553,10 @@
       await porDataDeHoje();
 
       P.passo('2/5 · Procurar');
-      await procurar();
+      const total = await procurar();
 
       P.passo('3/5 · Select All in All Pages');
-      await selecionarTodasPaginas();
+      await selecionarTodasPaginas(total);
 
       P.passo('4/5 · Exportar AT');
       const antes = await lerTarefasAgora();
