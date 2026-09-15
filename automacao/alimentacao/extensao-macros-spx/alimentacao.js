@@ -336,16 +336,25 @@
     if (ensinado) return ensinado;
     const exato = S.acharBotao(TEXTO_TODAS_PAGINAS) || S.folhaVisivelComTexto(TEXTO_TODAS_PAGINAS);
     if (exato) return exato;
+
+    // Ultimo recurso: casar por "contem". Com um limite de tamanho junto, que
+    // nao e detalhe - o popup do SPX fica no DOM depois de fechado e o
+    // container de fora continua visivel, com o texto dos DOIS itens grudado
+    // ("Select All in Current PageSelect All in All Pages"). Sem o limite ele
+    // vencia essa busca com o menu ainda fechado, e o macro clicava nesse
+    // container - que nao faz nada - em vez de abrir o menu.
     const alvo = L.chave(TEXTO_TODAS_PAGINAS);
+    const tetoDeTexto = TEXTO_TODAS_PAGINAS.length + 10;
     const achados = [];
     for (const el of document.querySelectorAll('*')) {
-      if (!L.chave(el.textContent).includes(alvo)) continue;
+      const texto = L.normalizar(el.textContent);
+      if (texto.length > tetoDeTexto) continue;
+      if (!L.chave(texto).includes(alvo)) continue;
       if (!S.visivel(el)) continue;
-      achados.push(el);
+      achados.push({ el, tamanho: texto.length });
     }
-    // O menor: o maior e a tela inteira, que tambem "contem" esse texto.
-    achados.sort((a, b) => L.normalizar(a.textContent).length - L.normalizar(b.textContent).length);
-    return achados[0] || null;
+    achados.sort((a, b) => a.tamanho - b.tamanho);
+    return achados.length ? achados[0].el : null;
   }
 
   // "0 Task(s) Selected" nao mora num elemento so: o numero vem num span e o
@@ -649,7 +658,7 @@
 
   G.alimentacao = { rodar, lerTarefas, acharPainelTarefas, acharFiltroData, candidatosSeta,
                     candidatosIconePainel, quantasSelecionadas, checkboxDoCabecalho,
-                    SELETORES_SETA };
+                    SELETORES_SETA, acharItemTodasPaginas };
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {

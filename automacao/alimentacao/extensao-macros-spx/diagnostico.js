@@ -57,8 +57,9 @@
     diz('botao Procurar', resumo(S.acharBotao('Procurar')));
     diz('botao Exportar AT', resumo(S.acharBotao('Exportar AT', { comeca: true })));
     diz('botao Exportar Romaneio', resumo(S.acharBotao('Exportar Romaneio', { comeca: true })));
-    diz('menu todas as paginas', resumo(S.acharBotao('Select All in All Pages') ||
-                                        S.folhaVisivelComTexto('Select All in All Pages')));
+    // O que o macro vai clicar de verdade. Com o menu fechado isto TEM que
+    // dar "NAO ACHOU": achar algo aqui e o popup fantasma que fica no DOM.
+    diz('menu todas as paginas', resumo(A.acharItemTodasPaginas()));
     diz('contador selecionadas', String(A.quantasSelecionadas()));
     linhas.push('');
 
