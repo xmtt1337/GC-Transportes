@@ -159,6 +159,42 @@ class Deteccao(BaseDoVigia):
         self.assertEqual(vigia.fila, [])
 
 
+class ChegouAgora(BaseDoVigia):
+    """So entra o que foi baixado enquanto o vigia estava olhando.
+
+    Aconteceu de verdade: no dia em que o filtro de nome abriu pra pegar o
+    segundo relatorio, anos de export antigo na pasta viraram novidade de uma
+    vez e ~29 mil linhas foram parar no banco. "Nunca vi esse conteudo" nao e
+    o mesmo que "chegou agora".
+    """
+
+    def envelhecer(self, caminho, dias):
+        quando = time.time() - dias * 86400
+        os.utime(caminho, (quando, quando))
+
+    def test_download_antigo_da_pasta_nao_entra(self):
+        caminho = self.escrever("br_assignment_task_de_agosto.csv")
+        self.envelhecer(caminho, 20)
+        vigia = self.criar_vigia()
+        self.varrer(vigia)
+        self.assertEqual(vigia.fila, [])
+
+    def test_download_de_agora_entra(self):
+        self.escrever("br_assignment_task_de_agora.csv")
+        vigia = self.criar_vigia()
+        self.varrer(vigia)
+        self.assertEqual(len(vigia.fila), 1)
+
+    def test_download_de_pouco_antes_do_vigia_abrir_ainda_entra(self):
+        # Baixou e reiniciou o vigia logo depois: o arquivo nao pode se perder
+        caminho = self.escrever("br_assignment_task_recente.csv")
+        quando = time.time() - 600
+        os.utime(caminho, (quando, quando))
+        vigia = self.criar_vigia()
+        self.varrer(vigia)
+        self.assertEqual(len(vigia.fila), 1)
+
+
 class PrimeiraExecucao(BaseDoVigia):
     def test_o_que_ja_estava_na_pasta_nao_e_enviado(self):
         # Downloads de antes do programa existir. Reenviar substituiria a AT de
@@ -217,7 +253,7 @@ class Envio(BaseDoVigia):
         # pedidos pesquisados nem se conhece ainda), entao a pasta traz coisa
         # que nao e nossa. Alarme vermelho aqui ensinaria a ignorar alarme
         # vermelho - o que estraga o aviso que importa.
-        self.escrever("br_qualquer_coisa.csv", "Coluna A,Coluna B\n1,2\n")
+        self.escrever("export_return_order_estranho.csv", "Coluna A,Coluna B\n1,2\n")
         backend = BackendDublado()
         vigia = self.criar_vigia(backend)
         self.varrer(vigia)

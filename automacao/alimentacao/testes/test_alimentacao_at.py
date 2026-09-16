@@ -166,15 +166,19 @@ class Mapeamento(unittest.TestCase):
             at.mapear([["Coluna A", "Coluna B"], ["1", "2"]])
 
 
+# Recorte do cabecalho REAL do export_return_order_*.csv (ele tem 63 colunas).
+#
+# O "Order ID" aqui e o numero de RASTREAMENTO, e o pedido e o "Shopee Order
+# SN" - ao contrario do que os nomes sugerem, e ao contrario de como a tela
+# chama os dois ("SPX TN" e "Order SN").
 CABECALHO_PESQUISADOS = [
-    "SPX TN (Número de rastreamento)", "Order SN", "Endereço do comprador",
-    "Estado do Comprador", "Cidade do Comprador", "Bairro do Comprador",
-    "Status do pedido",
+    "Order ID", "SLS Tracking Number", "Shopee Order SN", "Buyer Name",
+    "Driver Name", "Delivered Time", "Status", "Current Station",
 ]
 
 LINHA_PESQUISADOS = [
-    "BR000000000001N", "2609166FFUXSTC", "Rua Teste 100", "SC", "Curitibanos",
-    "Centro", "Created",
+    "BR000000000001N", "BR000000000001N", "260912SE1D2WSR", "Fulana de Tal",
+    "LUIZ GUSTAVO", "15-09-2026 11:53", "Delivered", "XPT_SC_Cacador",
 ]
 
 
@@ -210,11 +214,12 @@ class Identificacao(unittest.TestCase):
 
 
 class NomeGeneroso(unittest.TestCase):
-    def test_aceita_qualquer_export_do_spx_pra_depois_olhar_dentro(self):
-        # O nome do arquivo de pedidos pesquisados ainda nao e conhecido; o
-        # filtro de nome so evita ler a pasta de downloads inteira.
-        self.assertTrue(at.eh_arquivo_alvo("br_order_tracking_20260915.csv"))
-        self.assertTrue(at.eh_arquivo_alvo("br_assignment_task_20260915.csv"))
+    def test_aceita_os_dois_relatorios_pra_depois_olhar_dentro(self):
+        # Nomes reais: a AT desce como br_*, os pedidos pesquisados como
+        # export_return_order_* - o SPX chama esse export de "Return Order"
+        # mesmo vindo do botao "Exportar pedidos pesquisados".
+        self.assertTrue(at.eh_arquivo_alvo("br_assignment_task_20260916.csv"))
+        self.assertTrue(at.eh_arquivo_alvo("export_return_order_2026-09-16_11-27-00.csv"))
 
     def test_continua_recusando_o_romaneio_pelo_nome(self):
         self.assertFalse(at.eh_arquivo_alvo("br_assignment_task_romaneio_20260915.csv"))
@@ -222,6 +227,13 @@ class NomeGeneroso(unittest.TestCase):
     def test_recusa_o_que_nao_e_export_do_spx(self):
         self.assertFalse(at.eh_arquivo_alvo("relatorio_interno.xlsx"))
         self.assertFalse(at.eh_arquivo_alvo("br_qualquer.pdf"))
+
+    def test_recusa_export_do_spx_que_nao_e_nosso(self):
+        # A pasta de downloads tem anos de export_forward_order_*, baixados a
+        # mao pra outra finalidade. Quando o filtro aceitava so "export_", todos
+        # viraram novidade de uma vez e foram parar no banco.
+        self.assertFalse(at.eh_arquivo_alvo("export_forward_order_2026-08-29_02-00-38.csv"))
+        self.assertFalse(at.eh_arquivo_alvo("br_outro_relatorio_qualquer.csv"))
 
 
 class Resumo(unittest.TestCase):
@@ -301,8 +313,9 @@ class ArquivoDeVerdade(unittest.TestCase):
         tipo, linhas, _ = at.ler_qualquer(pesquisados)
         self.assertEqual(tipo, "pesquisados")
         self.assertEqual(linhas[0]["codigo"], "BR000000000001N")
-        self.assertEqual(linhas[0]["order_sn"], "2609166FFUXSTC")
-        self.assertEqual(linhas[0]["status"], "Created")
+        self.assertEqual(linhas[0]["order_sn"], "260912SE1D2WSR",
+                         "o pedido e o Shopee Order SN, nao o Order ID")
+        self.assertEqual(linhas[0]["status"], "Delivered")
 
     def test_pedido_pesquisado_leva_a_linha_inteira_do_arquivo(self):
         # As colunas que ainda nao foram nomeadas nao podem se perder: promover
@@ -311,8 +324,8 @@ class ArquivoDeVerdade(unittest.TestCase):
             "br_order_tracking_x.csv",
             ",".join(CABECALHO_PESQUISADOS) + "\n" + ",".join(LINHA_PESQUISADOS) + "\n")
         _, linhas, _ = at.ler_qualquer(caminho)
-        self.assertEqual(linhas[0]["dados"]["Cidade do Comprador"], "Curitibanos")
-        self.assertEqual(linhas[0]["dados"]["Endereço do comprador"], "Rua Teste 100")
+        self.assertEqual(linhas[0]["dados"]["Driver Name"], "LUIZ GUSTAVO")
+        self.assertEqual(linhas[0]["dados"]["Delivered Time"], "15-09-2026 11:53")
 
     def test_arquivo_de_outro_assunto_nao_e_erro_e_sim_tipo_nenhum(self):
         # A pasta de downloads tem de tudo; nao reconhecer nao pode virar alarme

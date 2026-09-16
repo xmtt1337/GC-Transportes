@@ -46,30 +46,43 @@ CAMPOS = [
 OBRIGATORIOS = ("task_id", "station")
 
 # Colunas do relatorio de pedidos pesquisados (Pedidos > Rastreio de pedidos >
-# Exportar pedidos pesquisados).
+# Exportar pedidos pesquisados), conferidas no arquivo de verdade
+# (export_return_order_*.csv).
 #
-# So tres colunas sao nomeadas: o que interessa e o numero de rastreamento, que
-# liga o pedido de volta a AT. O resto da linha vai inteiro pra coluna `dados`,
-# em JSON - promover coluna depois e barato, e chutar agora o nome de coluna que
-# ninguem viu ainda so criaria campo vazio com nome errado.
+# So tres sao nomeadas: o que interessa e o numero de rastreamento, que liga o
+# pedido de volta a AT. As outras sessenta colunas vao inteiras pra `dados`, em
+# JSON - promover coluna depois e barato.
+#
+# ATENCAO ao "Order ID": nesse relatorio ele e o NUMERO DE RASTREAMENTO
+# (BR2633884...N), e nao o numero do pedido - quem faz o papel de pedido e o
+# "Shopee Order SN" (260912SE1D2WSR). Na tela os dois aparecem como "SPX TN" e
+# "Order SN", e no arquivo trocam de nome. Mapear pelo palpite trocava os dois
+# de lugar, e o codigo que liga tudo de volta a AT entraria errado.
 CAMPOS_PESQUISADOS = [
-    ("codigo", "SPX TN", (
-        "spx tn", "spx tn (numero de rastreamento)", "spx tracking num",
-        "spx tracking number", "numero de rastreamento spx", "numero de rastreamento",
-        "tracking number", "tracking no")),
-    ("order_sn", "Order SN", ("order sn", "numero do pedido", "order id")),
-    ("status", "Status do pedido", ("status do pedido", "order status", "status")),
+    ("codigo", "Order ID", (
+        "order id", "spx tn", "spx tn (numero de rastreamento)", "spx tracking num",
+        "spx tracking number", "sls tracking number", "numero de rastreamento spx",
+        "numero de rastreamento", "tracking number", "tracking no")),
+    ("order_sn", "Shopee Order SN", (
+        "shopee order sn", "order sn", "numero do pedido")),
+    ("status", "Status", ("status", "status do pedido", "order status")),
 ]
 OBRIGATORIOS_PESQUISADOS = ("codigo",)
 
-# Os dois tipos que o vigia sabe receber, na ordem em que sao testados.
+# Os dois tipos que o vigia sabe receber, na ordem em que sao testados:
+#   (tipo, campos, obrigatorios, quantas colunas conhecidas bastam)
 #
 # A AT vem primeiro porque o arquivo dela TAMBEM tem numero de rastreamento: se
 # a pesquisa fosse testada antes, todo arquivo de AT passaria por relatorio de
 # pedidos pesquisados e entraria na tabela errada.
+#
+# O minimo do relatorio de pesquisados e 2 e nao 3: so tres colunas dele sao
+# nomeadas, e exigir as tres seria quebrar a leitura inteira se a Shopee
+# renomear uma. O codigo continua obrigatorio - sem ele a linha nao serve pra
+# nada mesmo.
 TIPOS = [
-    ("at", CAMPOS, OBRIGATORIOS),
-    ("pesquisados", CAMPOS_PESQUISADOS, OBRIGATORIOS_PESQUISADOS),
+    ("at", CAMPOS, OBRIGATORIOS, 5),
+    ("pesquisados", CAMPOS_PESQUISADOS, OBRIGATORIOS_PESQUISADOS, 2),
 ]
 
 # Quantas colunas conhecidas precisam aparecer pra uma linha valer como
@@ -85,7 +98,12 @@ MINIMO_DE_COLUNAS = 5
 # em portugues), entao a leitura ia recusar depois; mas recusar depois vira
 # alarme vermelho na bandeja por um arquivo que nunca foi pra ca.
 PREFIXO = "br_assignment_task_"
-PREFIXO_GERAL = "br_"
+# Os comecos dos DOIS relatorios que interessam, e so eles.
+#
+# "export_" sozinho era largo demais: a pasta de downloads tem anos de
+# export_forward_order_* que alguem baixou a mao, e todos viraram novidade no
+# dia em que o filtro abriu. Relatorio que nao e nosso nao deve nem ser aberto.
+PREFIXOS = ("br_assignment_task_", "export_return_order_")
 FORA = ("romaneio",)
 EXTENSOES = (".xlsx", ".csv")
 
@@ -108,13 +126,11 @@ def eh_arquivo_alvo(caminho):
     """Vale a pena ABRIR este arquivo? Quem decide o que ele e, depois, e o
     cabecalho - o nome so evita ler a pasta de downloads inteira.
 
-    O prefixo e generoso de proposito: os exports do SPX comecam com "br_", e o
-    nome de cada relatorio muda com o tempo. Exigir o nome exato do arquivo da
-    AT deixaria o de pedidos pesquisados de fora, que e justamente o que ainda
-    nao se conhece.
+    Os dois relatorios comecam diferente ("br_" e "export_"), e o nome completo
+    de cada um muda com o tempo - por isso so o comeco entra aqui.
     """
     nome = os.path.basename(str(caminho)).lower().replace(" ", "_")
-    if not nome.startswith(PREFIXO_GERAL) or not nome.endswith(EXTENSOES):
+    if not nome.startswith(PREFIXOS) or not nome.endswith(EXTENSOES):
         return False
     return not any(palavra in nome for palavra in FORA)
 
@@ -147,7 +163,7 @@ def _celula(linha, indice):
     return texto_da_celula(linha[indice])
 
 
-def achar_cabecalho(grade, campos=None, obrigatorios=None):
+def achar_cabecalho(grade, campos=None, obrigatorios=None, minimo=None):
     """Em qual linha esta o cabecalho e onde cada coluna caiu.
 
     Procura nas 10 primeiras porque o export as vezes vem com titulo e linha em
@@ -155,8 +171,8 @@ def achar_cabecalho(grade, campos=None, obrigatorios=None):
     """
     campos = CAMPOS if campos is None else campos
     obrigatorios = OBRIGATORIOS if obrigatorios is None else obrigatorios
-    # Relatorio com poucas colunas nomeadas nao tem como bater o minimo geral.
-    minimo = min(MINIMO_DE_COLUNAS, len(campos))
+    minimo = MINIMO_DE_COLUNAS if minimo is None else minimo
+    minimo = min(minimo, len(campos))
 
     for i in range(min(len(grade), 10)):
         nomes = [normalizar(c) for c in (grade[i] or [])]
@@ -177,20 +193,20 @@ def identificar(grade):
     Pelo CONTEUDO, e nao pelo nome: o nome do arquivo depende de como a Shopee
     batiza o export do dia, e ja mudou. As colunas sao o que o relatorio e.
     """
-    for tipo, campos, obrigatorios in TIPOS:
-        indice, _ = achar_cabecalho(grade, campos, obrigatorios)
+    for tipo, campos, obrigatorios, minimo in TIPOS:
+        indice, _ = achar_cabecalho(grade, campos, obrigatorios, minimo)
         if indice >= 0:
             return tipo
     return None
 
 
 def mapear(grade, campos=None, obrigatorios=None, rotulo_do_tipo="da AT",
-           conteudo=("task_id", "codigo")):
+           conteudo=("task_id", "codigo"), minimo=None):
     """A grade crua do arquivo -> (linhas pro backend, colunas que faltaram)."""
     campos = CAMPOS if campos is None else campos
     obrigatorios = OBRIGATORIOS if obrigatorios is None else obrigatorios
 
-    indice_cabecalho, indices = achar_cabecalho(grade, campos, obrigatorios)
+    indice_cabecalho, indices = achar_cabecalho(grade, campos, obrigatorios, minimo)
     if indice_cabecalho < 0:
         esperadas = ", ".join(r for c, r, _ in campos if c in obrigatorios)
         raise ArquivoInvalido(
@@ -300,7 +316,7 @@ def ler_qualquer(caminho):
     else:
         linhas, faltando = mapear(grade, CAMPOS_PESQUISADOS, OBRIGATORIOS_PESQUISADOS,
                                   rotulo_do_tipo="dos pedidos pesquisados",
-                                  conteudo=("codigo",))
+                                  conteudo=("codigo",), minimo=2)
     _conferir(linhas)
     return tipo, linhas, faltando
 

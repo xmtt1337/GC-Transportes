@@ -101,6 +101,15 @@ ESPERA_PARADO_S = 3
 # Tentativas de envio antes de desistir. Render dorme no plano free e demora
 # quase um minuto pra acordar - desistir na primeira seria desistir do normal.
 MAX_TENTATIVAS = 8
+# Quanto tempo antes de o vigia abrir um arquivo ainda conta como "chegou
+# agora". Serve pro download que aconteceu enquanto ele estava sendo
+# reiniciado.
+#
+# A REGRA EXISTE porque "novo" nao pode significar so "nunca vi esse conteudo":
+# no dia em que o filtro de nome abriu pra pegar o segundo relatorio, anos de
+# download antigo viraram novidade de uma vez e foram todos pro banco. Arquivo
+# so entra se chegou enquanto o vigia estava olhando.
+GRACA_S = 3600
 ESPERAS_S = [15, 30, 60, 120, 300, 300, 600]
 # Um envio carrega o dia inteiro de uma estacao: dezenas de milhares de linhas.
 TIMEOUT = (15, 420)
@@ -410,6 +419,7 @@ class Vigia:
         self.trava = threading.Lock()
         self._tamanhos = {}
         self._impressoes = {}
+        self.desde = time.time() - GRACA_S
         self.ultimo = "esperando arquivo"
 
     def comecar(self):
@@ -482,10 +492,24 @@ class Vigia:
         self._impressoes[caminho] = (marca, chave)
         return chave
 
+    def _chegou_agora(self, caminho):
+        """Foi baixado enquanto o vigia estava olhando?
+
+        Sem isto, qualquer mudanca no filtro de nome transforma a pasta inteira
+        em novidade - foi o que aconteceu quando o segundo relatorio entrou e
+        anos de download antigo foram parar no banco de uma vez.
+        """
+        try:
+            return os.path.getmtime(caminho) >= self.desde
+        except OSError:
+            return False
+
     def _varrer(self):
         vistos = []
         for caminho in self._arquivos():
             vistos.append(caminho)
+            if not self._chegou_agora(caminho):
+                continue
             if not self._parado(caminho):
                 continue
             try:
