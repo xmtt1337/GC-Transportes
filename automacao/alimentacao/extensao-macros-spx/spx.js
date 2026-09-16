@@ -150,6 +150,33 @@
     return true;
   }
 
+  // Clique no ELEMENTO QUE ESTA POR CIMA daquele ponto, com o caminho todo do
+  // mouse: entrar, mover, apertar, soltar.
+  //
+  // O clicar() normal dispara no elemento que a busca achou. Em menu que abre
+  // por hover isso nao basta - o item so aceita o clique depois que o ponteiro
+  // "chegou" nele, e quem recebe o evento pode ser outra camada desenhada por
+  // cima. elementFromPoint devolve o que o mouse acertaria de verdade.
+  function clicarNoPonto(el) {
+    if (!el) return false;
+    try { el.scrollIntoView({ block: 'center' }); } catch (e) { /* segue */ }
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    const alvo = document.elementFromPoint(x, y) || el;
+    const onde = { bubbles: true, cancelable: true, composed: true, button: 0,
+                   clientX: x, clientY: y };
+
+    for (const tipo of ['pointerover', 'mouseover', 'pointermove', 'mousemove',
+                        'pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
+      const Evento = tipo.startsWith('pointer') && raiz.PointerEvent ? raiz.PointerEvent : MouseEvent;
+      alvo.dispatchEvent(new Evento(tipo, onde));
+    }
+    if (typeof alvo.click === 'function') alvo.click();
+    else alvo.dispatchEvent(new MouseEvent('click', onde));
+    return true;
+  }
+
   // Escrever de um jeito que o React enxergue: mexer no .value direto nao
   // avisa o estado dele, e o valor some no proximo render.
   function escrever(campo, texto) {
@@ -258,7 +285,7 @@
   Object.assign(spx, {
     dormir, esperar, visivel, desabilitado, irParaTela,
     folhasComTexto, folhaVisivelComTexto, acharBotao,
-    clicar, passarMouse, escrever, apertarEnter, apertarEsc, tecla,
+    clicar, clicarNoPonto, passarMouse, escrever, apertarEnter, apertarEsc, tecla,
     rede, esperarRede, download,
   });
 

@@ -215,15 +215,46 @@
     // Passar o mouse antes: em menu que abre por hover, o item so fica ativo
     // quando o ponteiro chega nele.
     S.passarMouse(item);
-    await S.dormir(200);
-    S.clicar(item);
+    await S.dormir(250);
+    S.clicarNoPonto(item);
     await S.dormir(900);
     await S.esperarRede({ base, limite: 60000 });
 
-    // Fecha o menu pra ele nao ficar por cima do painel de tarefas no passo
-    // seguinte. Se nao fechar, nao e problema: o passo seguinte le o painel.
+    // Fecha o menu pra ele nao ficar por cima do painel de tarefas.
     S.apertarEsc();
     await S.dormir(300);
+  }
+
+  /**
+   * Pede a exportacao ate uma tarefa NASCER no painel.
+   *
+   * O clique nesse menu e intermitente - numa rodada pegou de primeira, na
+   * seguinte nao pegou nenhuma vez. E nao ha nada na tela que diga se pegou: o
+   * menu nao fecha, nenhum aviso aparece.
+   *
+   * Entao a confirmacao e o resultado de verdade: uma tarefa nova no painel
+   * "Ultima tarefa". Repetir so depois de olhar la evita as duas coisas que ja
+   * aconteceram - pedir tres vezes achando que falhou, e nao pedir nenhuma
+   * achando que deu certo.
+   */
+  async function pedirExportacao(antes) {
+    const T = G.painelDeTarefas;
+    for (const tentativa of [1, 2, 3]) {
+      await exportarPesquisados();
+      if (tentativa > 1) P.nota(`pedindo de novo (${tentativa}ª vez)`);
+
+      await S.dormir(4000);
+      const agora = await T.lerTarefasAgora();
+      const nova = L.escolherTarefaNova(antes, agora, null);
+      await T.fecharPainelTarefas();
+
+      if (nova) {
+        P.nota(`pedido aceito: ${nova.nome} — ${nova.quando}`);
+        return nova;
+      }
+      P.nota('o clique não pegou — nenhuma tarefa nasceu');
+    }
+    throw new Error('pedi a exportação 3 vezes e nenhuma tarefa nasceu no painel');
   }
 
   // ── o macro ────────────────────────────────────────────────────────────
@@ -251,7 +282,7 @@
       await T.fecharPainelTarefas();
 
       P.passo('4/5 · Exportar pedidos pesquisados');
-      await exportarPesquisados();
+      await pedirExportacao(antes);
 
       P.passo('5/5 · esperando o relatório ficar pronto');
       // Sem nome alvo: o nome que o SPX da a este relatorio ainda nao se
