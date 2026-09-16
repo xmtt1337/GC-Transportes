@@ -245,7 +245,7 @@
 
       await S.dormir(4000);
       const agora = await T.lerTarefasAgora();
-      const nova = L.escolherTarefaNova(antes, agora, null);
+      const nova = L.escolherTarefaNova(antes, agora, L.NOME_PESQUISADOS);
       await T.fecharPainelTarefas();
 
       if (nova) {
@@ -285,11 +285,13 @@
       await pedirExportacao(antes);
 
       P.passo('5/5 · esperando o relatório ficar pronto');
-      // Sem nome alvo: o nome que o SPX da a este relatorio ainda nao se
-      // conhece. A regra que importa continua valendo - a tarefa certa e a que
-      // nao estava la antes do clique - e o quadro mostra o nome que achou,
-      // que e como esse nome fica conhecido.
-      const alvo = await T.esperarRelatorio(antes, null);
+      // Pelo NOME, e nao "qualquer tarefa nova".
+      //
+      // Enquanto o nome nao se conhecia, este macro aceitava qualquer tarefa
+      // que nao estivesse la antes - e com os dois macros rodando juntos, a
+      // tarefa nova era a do outro: ele baixava o Br Assignment Task achando
+      // que era o dele.
+      const alvo = await T.esperarRelatorio(antes, L.NOME_PESQUISADOS);
       await T.baixar(alvo);
 
       P.ok(`baixado: ${alvo.nome} — ${alvo.quando}`);

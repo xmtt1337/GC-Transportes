@@ -126,6 +126,28 @@ test('escolherTarefaNova acompanha o carimbo que muda quando fica pronto', () =>
   assert.strictEqual(L.escolherTarefaNova(ANTES, pronta, L.NOME_RELATORIO).quando, '2026-09-15 18:38:23');
 });
 
+test('cada macro so aceita o relatorio DELE', () => {
+  // Os dois macros podem estar rodando ao mesmo tempo, e o painel de tarefas e
+  // o mesmo. Sem o nome, o de pedidos pesquisados pegava o "Br Assignment
+  // Task" que o outro tinha acabado de pedir e baixava o arquivo errado -
+  // dois macros clicando no mesmo botao Baixar, dois arquivos identicos.
+  const agora = [
+    { nome: 'Br Assignment Task', quando: '2026-09-16 10:25:46' },
+    { nome: 'Return Order', quando: '2026-09-16 10:25:41' },
+    ...ANTES,
+  ];
+  assert.strictEqual(
+    L.escolherTarefaNova(ANTES, agora, L.NOME_RELATORIO).nome, 'Br Assignment Task');
+  assert.strictEqual(
+    L.escolherTarefaNova(ANTES, agora, L.NOME_PESQUISADOS).nome, 'Return Order');
+});
+
+test('o relatorio de pedidos pesquisados se chama Return Order', () => {
+  // Nome real, visto no painel: o export do botao "Exportar pedidos
+  // pesquisados" nasce com esse nome, que nao da pra adivinhar.
+  assert.strictEqual(L.NOME_PESQUISADOS, 'Return Order');
+});
+
 test('escolherTarefaNova com nome null serve qualquer tarefa nova', () => {
   // O macro de pedidos pesquisados nao sabe como o SPX batiza o relatorio
   // dele. A regra que importa continua valendo: nao estava la antes do clique.

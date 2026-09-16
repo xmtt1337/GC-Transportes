@@ -15,6 +15,16 @@
   // por isso o nome e comparado inteiro, nunca por "contem".
   const NOME_RELATORIO = 'Br Assignment Task';
 
+  // O nome que o SPX da ao export de pedidos pesquisados. E "Return Order"
+  // mesmo vindo do botao "Exportar pedidos pesquisados" - nao ha como adivinhar
+  // isso, so vendo acontecer.
+  //
+  // Enquanto nao se sabia, o macro esperava por "qualquer tarefa que nao estava
+  // la antes". Com os dois macros rodando juntos, a tarefa nova que apareceu
+  // foi a do OUTRO macro, e ele baixou o relatorio errado: dois arquivos
+  // identicos, dois macros clicando no mesmo botao Baixar.
+  const NOME_PESQUISADOS = 'Return Order';
+
   const normalizar = (t) => String(t == null ? '' : t).replace(/\s+/g, ' ').trim();
 
   // Comparacao de texto de tela: sem acento, sem caixa, sem espaco sobrando.
@@ -139,6 +149,7 @@
 
   const logica = {
     NOME_RELATORIO,
+    NOME_PESQUISADOS,
     lerHorarios,
     minutosAteProximaHora,
     MESES_PT,
