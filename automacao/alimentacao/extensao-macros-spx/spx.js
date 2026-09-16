@@ -129,6 +129,27 @@
     return true;
   }
 
+  // Passar o mouse por cima, sem clicar.
+  //
+  // Existe porque nem todo menu abre no clique: dropdown desse tipo costuma
+  // abrir no HOVER, e ai o clique sozinho nao faz nada - o menu nunca aparece
+  // e o macro conclui que o item nao existe.
+  function passarMouse(el) {
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    const onde = {
+      bubbles: true, cancelable: true, composed: true,
+      clientX: r.left + r.width / 2, clientY: r.top + r.height / 2,
+    };
+    for (const tipo of ['pointerover', 'mouseover', 'pointerenter', 'mouseenter', 'mousemove']) {
+      const Evento = tipo.startsWith('pointer') && raiz.PointerEvent ? raiz.PointerEvent : MouseEvent;
+      // enter nao borbulha de verdade; mandar com bubbles false imita melhor
+      const opcoes = tipo.endsWith('enter') ? { ...onde, bubbles: false } : onde;
+      el.dispatchEvent(new Evento(tipo, opcoes));
+    }
+    return true;
+  }
+
   // Escrever de um jeito que o React enxergue: mexer no .value direto nao
   // avisa o estado dele, e o valor some no proximo render.
   function escrever(campo, texto) {
@@ -234,7 +255,7 @@
   Object.assign(spx, {
     dormir, esperar, visivel, desabilitado, irParaTela,
     folhasComTexto, folhaVisivelComTexto, acharBotao,
-    clicar, escrever, apertarEnter, apertarEsc, tecla,
+    clicar, passarMouse, escrever, apertarEnter, apertarEsc, tecla,
     rede, esperarRede, download,
   });
 

@@ -140,20 +140,48 @@
   }
 
   // ── 4. exportar ────────────────────────────────────────────────────────
-  const acharItemExportar = () =>
-    S.acharBotao(TEXTO_EXPORTAR_PESQUISADOS) ||
-    S.folhaVisivelComTexto(TEXTO_EXPORTAR_PESQUISADOS);
+  function acharItemExportar() {
+    const exato = S.acharBotao(TEXTO_EXPORTAR_PESQUISADOS) ||
+                  S.folhaVisivelComTexto(TEXTO_EXPORTAR_PESQUISADOS);
+    if (exato) return exato;
+
+    // Com teto de tamanho, pelo mesmo motivo do outro menu: o container do
+    // dropdown "contem" o texto de todos os itens juntos, e clicar nele nao
+    // faz nada.
+    const alvo = L.chave(TEXTO_EXPORTAR_PESQUISADOS);
+    const teto = TEXTO_EXPORTAR_PESQUISADOS.length + 10;
+    const achados = [];
+    for (const el of document.querySelectorAll('*')) {
+      const texto = L.normalizar(el.textContent);
+      if (texto.length > teto || !L.chave(texto).includes(alvo)) continue;
+      if (!S.visivel(el)) continue;
+      achados.push({ el, tamanho: texto.length });
+    }
+    achados.sort((a, b) => a.tamanho - b.tamanho);
+    return achados.length ? achados[0].el : null;
+  }
+
+  async function abrirMenuExportar() {
+    const abre = S.acharBotao(TEXTO_EXPORTAR) ||
+                 S.acharBotao(TEXTO_EXPORTAR, { comeca: true });
+    if (!abre) throw new Error(`não achei o botão "${TEXTO_EXPORTAR}"`);
+
+    // Hover ANTES do clique: esta tela usa outro design system (ssc-dropdown,
+    // nao ssc-react), e dropdown desse tipo abre ao passar o mouse. Com clique
+    // sozinho o menu nunca aparecia e o macro concluia que o item nao existe.
+    for (const tentar of [() => S.passarMouse(abre), () => S.clicar(abre)]) {
+      tentar();
+      const item = await S.esperar(acharItemExportar, {
+        oque: 'o menu Exportar abrir', limite: 4000, intervalo: 250,
+      }).catch(() => null);
+      if (item) return item;
+    }
+    return null;
+  }
 
   async function exportarPesquisados() {
     let item = acharItemExportar();
-    if (!item) {
-      const abre = S.acharBotao(TEXTO_EXPORTAR) ||
-                   S.acharBotao(TEXTO_EXPORTAR, { comeca: true });
-      if (!abre) throw new Error(`não achei o botão "${TEXTO_EXPORTAR}"`);
-      S.clicar(abre);
-      await S.dormir(700);
-      item = acharItemExportar();
-    }
+    if (!item) item = await abrirMenuExportar();
     if (!item) {
       throw new Error(`não achei "${TEXTO_EXPORTAR_PESQUISADOS}" no menu Exportar`);
     }
