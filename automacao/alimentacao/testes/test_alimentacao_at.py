@@ -166,6 +166,64 @@ class Mapeamento(unittest.TestCase):
             at.mapear([["Coluna A", "Coluna B"], ["1", "2"]])
 
 
+CABECALHO_PESQUISADOS = [
+    "SPX TN (Número de rastreamento)", "Order SN", "Endereço do comprador",
+    "Estado do Comprador", "Cidade do Comprador", "Bairro do Comprador",
+    "Status do pedido",
+]
+
+LINHA_PESQUISADOS = [
+    "BR000000000001N", "2609166FFUXSTC", "Rua Teste 100", "SC", "Curitibanos",
+    "Centro", "Created",
+]
+
+
+class Identificacao(unittest.TestCase):
+    """Qual relatorio e o arquivo, olhando o cabecalho e nao o nome.
+
+    O nome do arquivo depende de como a Shopee batiza o export do dia, e ja
+    mudou. As colunas sao o que o relatorio E.
+    """
+
+    def test_reconhece_a_at(self):
+        self.assertEqual(at.identificar(grade_de_teste()), "at")
+
+    def test_reconhece_os_pedidos_pesquisados(self):
+        grade = [CABECALHO_PESQUISADOS, LINHA_PESQUISADOS]
+        self.assertEqual(at.identificar(grade), "pesquisados")
+
+    def test_a_AT_nunca_passa_por_pedidos_pesquisados(self):
+        # O arquivo da AT TAMBEM tem numero de rastreamento. Se a pesquisa
+        # fosse testada antes, toda AT entraria na tabela errada - e o sintoma
+        # seria a tabela da AT vazia com a de pesquisados cheia.
+        self.assertEqual(at.identificar(grade_de_teste()), "at")
+
+    def test_arquivo_de_outro_assunto_nao_e_nenhum_dos_dois(self):
+        self.assertIsNone(at.identificar([["Coluna A", "Coluna B"], ["1", "2"]]))
+
+    def test_romaneio_nao_e_nenhum_dos_dois(self):
+        # Colunas reais do Romaneio, em portugues
+        romaneio = [["ATs", "ROTA", "SEQ", "PARADA", "NÚMERO DO PEDIDO",
+                     "ENDEREÇO COMPLETO", "BAIRRO", "CIDADE", "CEP"],
+                    ["AT1", "R1", "1", "P1", "123", "Rua X", "Centro", "Curitibanos", "89500"]]
+        self.assertIsNone(at.identificar(romaneio))
+
+
+class NomeGeneroso(unittest.TestCase):
+    def test_aceita_qualquer_export_do_spx_pra_depois_olhar_dentro(self):
+        # O nome do arquivo de pedidos pesquisados ainda nao e conhecido; o
+        # filtro de nome so evita ler a pasta de downloads inteira.
+        self.assertTrue(at.eh_arquivo_alvo("br_order_tracking_20260915.csv"))
+        self.assertTrue(at.eh_arquivo_alvo("br_assignment_task_20260915.csv"))
+
+    def test_continua_recusando_o_romaneio_pelo_nome(self):
+        self.assertFalse(at.eh_arquivo_alvo("br_assignment_task_romaneio_20260915.csv"))
+
+    def test_recusa_o_que_nao_e_export_do_spx(self):
+        self.assertFalse(at.eh_arquivo_alvo("relatorio_interno.xlsx"))
+        self.assertFalse(at.eh_arquivo_alvo("br_qualquer.pdf"))
+
+
 class Resumo(unittest.TestCase):
     def test_conta_ats_e_nao_so_linhas(self):
         # Um Task ID por AT: o arquivo traz varias ATs, com varios pacotes cada
@@ -228,6 +286,40 @@ class ArquivoDeVerdade(unittest.TestCase):
         with self.assertRaises(at.ArquivoInvalido) as erro:
             at.ler_arquivo(caminho)
         self.assertIn("xlsx", str(erro.exception))
+
+    def test_ler_qualquer_separa_os_dois_relatorios(self):
+        da_at = self._escrever("br_assignment_task_x.csv",
+                               ",".join(CABECALHO) + "\n" + ",".join(LINHA) + "\n")
+        pesquisados = self._escrever(
+            "br_order_tracking_x.csv",
+            ",".join(CABECALHO_PESQUISADOS) + "\n" + ",".join(LINHA_PESQUISADOS) + "\n")
+
+        tipo, linhas, _ = at.ler_qualquer(da_at)
+        self.assertEqual(tipo, "at")
+        self.assertEqual(linhas[0]["task_id"], "AT202609159TTTD")
+
+        tipo, linhas, _ = at.ler_qualquer(pesquisados)
+        self.assertEqual(tipo, "pesquisados")
+        self.assertEqual(linhas[0]["codigo"], "BR000000000001N")
+        self.assertEqual(linhas[0]["order_sn"], "2609166FFUXSTC")
+        self.assertEqual(linhas[0]["status"], "Created")
+
+    def test_pedido_pesquisado_leva_a_linha_inteira_do_arquivo(self):
+        # As colunas que ainda nao foram nomeadas nao podem se perder: promover
+        # coluna depois e barato, reimportar tudo nao e.
+        caminho = self._escrever(
+            "br_order_tracking_x.csv",
+            ",".join(CABECALHO_PESQUISADOS) + "\n" + ",".join(LINHA_PESQUISADOS) + "\n")
+        _, linhas, _ = at.ler_qualquer(caminho)
+        self.assertEqual(linhas[0]["dados"]["Cidade do Comprador"], "Curitibanos")
+        self.assertEqual(linhas[0]["dados"]["Endereço do comprador"], "Rua Teste 100")
+
+    def test_arquivo_de_outro_assunto_nao_e_erro_e_sim_tipo_nenhum(self):
+        # A pasta de downloads tem de tudo; nao reconhecer nao pode virar alarme
+        caminho = self._escrever("br_outra_coisa.csv", "Coluna A,Coluna B\n1,2\n")
+        tipo, linhas, _ = at.ler_qualquer(caminho)
+        self.assertIsNone(tipo)
+        self.assertEqual(linhas, [])
 
     def test_xlsx_de_verdade(self):
         import openpyxl

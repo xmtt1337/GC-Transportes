@@ -1,14 +1,29 @@
 ===========================================================
-  XM MACROS SPX  -  AT Exportada
+  XM MACROS SPX
 ===========================================================
 
-ESCOPO: so a tela  Entrega > Atribuicao de Entrega  do SPX,
-alimentando  Alimentar > AT Exportada  no sistema.
+Dois macros, cada um numa tela, um alimentando o outro:
 
-NAO faz Romaneiro, NAO faz nenhuma outra alimentacao. Se um
-dia tiver macro pra essas, sera outro macro dentro da mesma
-extensao. Esta escrito assim porque "alimentacao" sozinho
-sugere que cobre tudo, e nao cobre.
+  1. AT EXPORTADA
+     Tela: Entrega > Atribuicao de Entrega
+     Filtra o dia, marca tudo, exporta a AT e baixa.
+
+  2. PEDIDOS PESQUISADOS
+     Tela: Pedidos > Rastreio de pedidos
+     Pega os pedidos NOVOS que a AT trouxe, joga na Pesquisa
+     em lote e baixa o resultado.
+
+Os dois gravam em tabelas proprias dos macros. NAO encostam
+na at_exportada, que a equipe alimenta a mao pelo site e que
+sustenta a conferencia do dia - essa continua igual, e
+alimentar a mao continua sendo necessario.
+
+NAO fazem Romaneiro nem nenhuma outra alimentacao.
+
+O macro 2 precisa do XM VIGIA aberto na bandeja: e ele que
+sabe quais pedidos ainda nao foram pesquisados. A extensao
+nao alcanca banco nem backend - quem tem o login do sistema
+e o vigia. Mesmo arranjo do ColadorNeon.
 
 Uma peca so: a extensao do Chrome. Nao tem programa pra abrir,
 nao usa o Neon, nao fala com o ColadorNeon. Ela e independente
@@ -51,8 +66,10 @@ acontece e nenhum erro aparece.
 USAR
 -----------------------------------------------------------
 
+MACRO 1 - AT EXPORTADA
+
 1. Abra  Entrega > Atribuicao de Entrega  no SPX
-2. Clique no icone da extensao > "Rodar alimentacao"
+2. Clique no icone da extensao > "1 - AT Exportada"
 3. Pode fechar a janelinha do Chrome: o acompanhamento
    aparece num quadro na propria tela do SPX
 
@@ -65,6 +82,27 @@ Ele faz, nessa ordem:
   4. clica em Exportar AT
   5. fica olhando o painel "Ultima tarefa" ate o relatorio
      ficar pronto e clica em Baixar
+
+
+MACRO 2 - PEDIDOS PESQUISADOS
+
+Rode DEPOIS do macro 1, e com o XM Vigia aberto na bandeja.
+
+1. Abra  Pedidos > Rastreio de pedidos  no SPX
+2. Clique no icone da extensao > "2 - Pedidos Pesquisados"
+
+Ele faz, nessa ordem:
+
+  1. pergunta ao vigia quais pedidos ainda nao foram
+     pesquisados (ate 10 mil por vez, que e o teto do SPX)
+  2. abre a Pesquisa em lote e cola os codigos
+  3. clica em Enviar
+  4. Exportar > Exportar pedidos pesquisados
+  5. espera no painel "Ultima tarefa" e baixa
+
+Se ele disser "nao ha pedido novo pra pesquisar", e porque
+tudo que a AT trouxe ja foi pesquisado - rode o macro 1
+primeiro, ou espere a AT do dia mudar.
 
 Nao precisa ficar na aba. Pode trabalhar em outra janela - so
 nao FECHE a aba do SPX nem de F5 nela enquanto roda.

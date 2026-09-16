@@ -42,7 +42,9 @@ import socket
 import sys
 import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from logging.handlers import RotatingFileHandler
+from urllib.parse import parse_qs, urlparse
 
 import requests
 
@@ -73,6 +75,19 @@ ORIGEM = "XM Vigia (automático)"
 # sem avisar - de hora em hora, com o agendamento ligado. O macro tem tabela
 # propria; a operacao continua exatamente como sempre foi.
 ROTA_CARGA = "/macros/at-exportada"
+ROTA_PESQUISADOS = "/macros/pedidos-pesquisados"
+ROTA_PENDENTES = "/macros/at-exportada/pendentes"
+
+# Onde cada relatorio entra. A chave e o tipo que alimentacao_at.identificar
+# devolve olhando o cabecalho do arquivo.
+DESTINO = {"at": ROTA_CARGA, "pesquisados": ROTA_PESQUISADOS}
+
+# Porta do atendimento a extensao, so em 127.0.0.1.
+#
+# A extensao nao alcanca banco nem backend - ela so sabe mexer na tela do SPX.
+# Quem tem o login e este programa. Mesmo arranjo do ColadorNeon: o programa e
+# o cerebro, a extensao sao as maos. Assim a senha fica num lugar so.
+PORTA_ATENDIMENTO = 49732
 
 def _downloads_padrao():
     return os.path.join(os.path.expanduser("~"), "Downloads")
@@ -312,13 +327,13 @@ class Backend:
         except requests.RequestException as e:
             raise ErroDeEnvio(f"nao alcancei o servidor: {e}") from e
 
-    def enviar_at(self, nome_arquivo, linhas):
+    def enviar(self, rota, nome_arquivo, linhas):
         corpo = {"arquivo": nome_arquivo, "linhas": linhas}
 
         for tentativa in (1, 2):
             if not self.token:
                 self.entrar()
-            r = self._post(ROTA_CARGA, corpo)
+            r = self._post(rota, corpo)
 
             # Token invalido volta como 403 (server.js:196), nao 401. Uma
             # relogada resolve; se voltar de novo, e o papel da conta.
@@ -332,7 +347,7 @@ class Backend:
             # Corpo comprimido recusado: manda de novo sem comprimir, pra nao
             # depender de como o servidor esta configurado hoje.
             if r.status_code in (400, 413, 415) and len(json.dumps(corpo)) > LIMITE_GZIP:
-                r = self._post(ROTA_CARGA, corpo, comprimir=False)
+                r = self._post(rota, corpo, comprimir=False)
             if r.status_code >= 500:
                 raise ErroDeEnvio(f"servidor respondeu {r.status_code}")
             try:
@@ -342,6 +357,35 @@ class Backend:
             if not r.ok or resposta.get("error"):
                 raise ErroDeEnvio(resposta.get("error") or f"servidor respondeu {r.status_code}")
             return resposta
+
+        raise ErroDeEnvio("nao consegui autenticar")
+
+    def pendentes(self, limite=10000):
+        """Os codigos da AT que ainda nao foram pesquisados.
+
+        E o que o macro de pedidos pesquisados cola na Pesquisa em lote do SPX.
+        """
+        for tentativa in (1, 2):
+            if not self.token:
+                self.entrar()
+            try:
+                r = requests.get(self._url(f"{ROTA_PENDENTES}?limite={int(limite)}"),
+                                 headers={"Authorization": f"Bearer {self.token}"},
+                                 timeout=TIMEOUT, verify=self.ca)
+            except requests.RequestException as e:
+                raise ErroDeEnvio(f"nao alcancei o servidor: {e}") from e
+
+            if r.status_code in (401, 403) and tentativa == 1:
+                self.token = None
+                continue
+            if r.status_code in (401, 403):
+                raise ErroDeConta("o servidor recusou a conta")
+            if not r.ok:
+                raise ErroDeEnvio(f"servidor respondeu {r.status_code}")
+            try:
+                return r.json()
+            except ValueError as e:
+                raise ErroDeEnvio("resposta ilegivel do servidor") from e
 
         raise ErroDeEnvio("nao consegui autenticar")
 
@@ -502,7 +546,7 @@ class Vigia:
             return
 
         try:
-            linhas, faltando = at.ler_arquivo(pendente.caminho)
+            tipo, linhas, faltando = at.ler_qualquer(pendente.caminho)
         except at.ArquivoInvalido as e:
             self._tirar(pendente)
             self.registro.marcar(pendente.chave, nome=nome, resultado=f"recusado: {e}")
@@ -514,16 +558,29 @@ class Vigia:
             log.warning("nao consegui abrir %s: %s", nome, e)
             return
 
+        # Nao e nenhum dos relatorios conhecidos. Isso NAO e erro: o filtro de
+        # nome e generoso de proposito, e a pasta de downloads tem de tudo.
+        # Alarme vermelho aqui ensinaria a ignorar alarme vermelho.
+        if tipo is None:
+            self._tirar(pendente)
+            self.registro.marcar(pendente.chave, nome=nome, resultado="nao e relatorio conhecido")
+            log.info("ignorado (nao e AT nem pedidos pesquisados): %s", nome)
+            return
+
         numeros = at.resumo(linhas)
         estacoes = ", ".join(numeros["estacoes"]) or "sem estacao"
         if faltando:
             log.warning("colunas ausentes em %s (entram vazias): %s", nome, ", ".join(faltando))
 
+        rotulo = "AT exportada" if tipo == "at" else "pedidos pesquisados"
+        detalhe = (f"{numeros['ats']} ATs · {numeros['linhas']} linhas · {estacoes}"
+                   if tipo == "at" else f"{numeros['linhas']} pedidos")
+
         self.ultimo = f"enviando {nome}"
-        self.avisar("Enviando", f"{nome}\n{numeros['ats']} ATs · {numeros['linhas']} linhas · {estacoes}")
+        self.avisar("Enviando", f"{nome}\n{rotulo}: {detalhe}")
 
         try:
-            resposta = self.backend.enviar_at(f"{nome} — {ORIGEM}", linhas)
+            resposta = self.backend.enviar(DESTINO[tipo], f"{nome} — {ORIGEM}", linhas)
         except ErroDeConta as e:
             self._tirar(pendente)
             self.avisar("Login recusado", f"{e}\nAbra Configurar na bandeja.", erro=True)
@@ -544,11 +601,22 @@ class Vigia:
 
         self._tirar(pendente)
         gravadas = resposta.get("gravadas", numeros["linhas"])
-        ats = resposta.get("ats", numeros["ats"])
+
+        if tipo == "at":
+            ats = resposta.get("ats", numeros["ats"])
+            falta = resposta.get("a_pesquisar")
+            resumo_texto = (f"{ats} ATs · {gravadas} linhas · {estacoes}" +
+                            (f"\n{falta} a pesquisar" if falta is not None else ""))
+            self.ultimo = f"AT: {ats} ATs às {time.strftime('%H:%M')}"
+        else:
+            ligados = resposta.get("ligados_a_at", 0)
+            marcados = resposta.get("marcados_como_pesquisados", 0)
+            resumo_texto = f"{gravadas} pedidos · {ligados} ligados a uma AT · {marcados} marcados"
+            self.ultimo = f"pesquisados: {gravadas} às {time.strftime('%H:%M')}"
+
         self.registro.marcar(pendente.chave, nome=nome,
-                             resultado=f"{ats} ATs, {gravadas} linhas, {estacoes}")
-        self.ultimo = f"{nome} · {ats} ATs às {time.strftime('%H:%M')}"
-        self.avisar("Alimentado", f"{nome}\n{ats} ATs · {gravadas} linhas · {estacoes}")
+                             resultado=f"{rotulo}: {resumo_texto}".replace("\n", " · "))
+        self.avisar("Alimentado", f"{nome}\n{resumo_texto}")
 
     # ── envio manual, pelo menu ─────────────────────────────────────────
     def enfileirar(self, caminho):
@@ -561,6 +629,76 @@ class Vigia:
             self.fila = [p for p in self.fila if p.chave != chave]
             self.fila.append(Pendente(caminho, chave))
         log.info("envio manual: %s", os.path.basename(caminho))
+
+
+# ── atendimento a extensao ──────────────────────────────────────────────────
+# A extensao so sabe mexer na tela do SPX: nao alcanca banco nem backend, e
+# guardar a senha do sistema dentro dela seria uma segunda copia da credencial
+# pra manter em dia. Entao ela pergunta aqui.
+#
+# So escuta em 127.0.0.1 - nao aceita conexao de fora da maquina. E responde
+# com o cabecalho de CORS que a extensao precisa; sem ele o Chrome bloqueia a
+# resposta e o erro que aparece la e "failed to fetch", que nao conta nada.
+class Atendimento(BaseHTTPRequestHandler):
+    vigia = None
+
+    def _responder(self, codigo, corpo):
+        dados = json.dumps(corpo, ensure_ascii=False).encode("utf-8")
+        self.send_response(codigo)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
+        self.send_header("Content-Length", str(len(dados)))
+        self.end_headers()
+        self.wfile.write(dados)
+
+    def do_OPTIONS(self):
+        self._responder(204, {})
+
+    def do_GET(self):
+        caminho = urlparse(self.path)
+        if caminho.path == "/ping":
+            return self._responder(200, {"vigia": "de pe", "ultimo": self.vigia.ultimo})
+        if caminho.path != "/pendentes":
+            return self._responder(404, {"error": "nao conheco esse caminho"})
+
+        limite = 10000
+        try:
+            pedido = parse_qs(caminho.query).get("limite", [""])[0]
+            if pedido:
+                limite = max(1, min(10000, int(pedido)))
+        except ValueError:
+            pass
+
+        try:
+            resposta = self.vigia.backend.pendentes(limite)
+        except (ErroDeConta, ErroDeEnvio) as e:
+            return self._responder(503, {"error": str(e)})
+        except Exception as e:
+            log.exception("erro ao buscar pendentes")
+            return self._responder(500, {"error": str(e)})
+
+        log.info("extensao pediu pendentes: %d de %d",
+                 len(resposta.get("codigos", [])), resposta.get("total", 0))
+        return self._responder(200, resposta)
+
+    def log_message(self, formato, *args):
+        # O log padrao do http.server escreve no stderr, que num pythonw nao
+        # existe - e escrever nele derruba o atendimento.
+        pass
+
+
+def abrir_atendimento(vigia):
+    Atendimento.vigia = vigia
+    try:
+        servidor = ThreadingHTTPServer(("127.0.0.1", PORTA_ATENDIMENTO), Atendimento)
+    except OSError as e:
+        log.warning("nao consegui abrir a porta %d pra extensao: %s", PORTA_ATENDIMENTO, e)
+        return None
+    threading.Thread(target=servidor.serve_forever, daemon=True).start()
+    log.info("atendendo a extensao em 127.0.0.1:%d", PORTA_ATENDIMENTO)
+    return servidor
 
 
 # ── iniciar com o Windows ───────────────────────────────────────────────────
@@ -818,6 +956,7 @@ class App:
     # ── vida ────────────────────────────────────────────────────────────
     def rodar(self):
         self.vigia.comecar()
+        abrir_atendimento(self.vigia)
         threading.Thread(target=self.icone.run, daemon=True).start()
         if not configurado(self.cfg):
             self.raiz.after(600, self._janela_config)

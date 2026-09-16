@@ -45,12 +45,14 @@ class BackendDublado:
         self.enviados = []
         self.token = None
 
-    def enviar_at(self, nome, linhas):
+    def enviar(self, rota, nome, linhas):
         if self.erro:
             raise self.erro
         self.enviados.append((nome, len(linhas)))
+        self.rotas = getattr(self, "rotas", [])
+        self.rotas.append(rota)
         return {"success": True, "gravadas": len(linhas), "ats": 1,
-                "estacoes": ["XPT_SC_Cacador"]}
+                "estacoes": ["XPT_SC_Cacador"], "a_pesquisar": len(linhas)}
 
 
 class BaseDoVigia(unittest.TestCase):
@@ -210,15 +212,30 @@ class Envio(BaseDoVigia):
         self.varrer(vigia)
         self.assertEqual(vigia.fila, [])
 
-    def test_arquivo_de_outro_relatorio_e_recusado_sem_tentar_de_novo(self):
-        self.escrever("br_assignment_task_estranho.csv", "Coluna A,Coluna B\n1,2\n")
+    def test_arquivo_de_outro_assunto_sai_da_fila_sem_alarme(self):
+        # O filtro de nome e generoso de proposito (o nome do relatorio de
+        # pedidos pesquisados nem se conhece ainda), entao a pasta traz coisa
+        # que nao e nossa. Alarme vermelho aqui ensinaria a ignorar alarme
+        # vermelho - o que estraga o aviso que importa.
+        self.escrever("br_qualquer_coisa.csv", "Coluna A,Coluna B\n1,2\n")
         backend = BackendDublado()
         vigia = self.criar_vigia(backend)
         self.varrer(vigia)
         vigia._processar(vigia.fila[0])
 
         self.assertEqual(backend.enviados, [])
-        self.assertEqual(vigia.fila, [])
+        self.assertEqual(vigia.fila, [], "sai da fila, nao fica tentando")
+        self.assertEqual([a for a in self.avisos if a[2]], [], "nenhum aviso de erro")
+
+    def test_relatorio_conhecido_mas_quebrado_avisa(self):
+        # Cabecalho certo, nenhuma linha: isso E problema, e precisa aparecer
+        self.escrever("br_assignment_task_vazio.csv", CABECALHO + "\n")
+        backend = BackendDublado()
+        vigia = self.criar_vigia(backend)
+        self.varrer(vigia)
+        vigia._processar(vigia.fila[0])
+
+        self.assertEqual(backend.enviados, [])
         self.assertTrue(self.avisos[-1][2], "o aviso tem que sair como erro")
 
     def test_falha_de_rede_espera_e_tenta_de_novo(self):
@@ -287,6 +304,10 @@ class Destino(unittest.TestCase):
 
     def test_a_carga_vai_pra_tabela_do_macro(self):
         self.assertEqual(va.ROTA_CARGA, "/macros/at-exportada")
+
+    def test_cada_relatorio_vai_pra_sua_tabela(self):
+        self.assertEqual(va.DESTINO["at"], "/macros/at-exportada")
+        self.assertEqual(va.DESTINO["pesquisados"], "/macros/pedidos-pesquisados")
 
     def test_nenhum_caminho_do_envio_aponta_pra_tabela_da_equipe(self):
         # Ja aconteceu: a repeticao sem gzip tinha ficado com a rota antiga

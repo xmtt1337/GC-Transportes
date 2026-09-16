@@ -126,6 +126,18 @@ test('escolherTarefaNova acompanha o carimbo que muda quando fica pronto', () =>
   assert.strictEqual(L.escolherTarefaNova(ANTES, pronta, L.NOME_RELATORIO).quando, '2026-09-15 18:38:23');
 });
 
+test('escolherTarefaNova com nome null serve qualquer tarefa nova', () => {
+  // O macro de pedidos pesquisados nao sabe como o SPX batiza o relatorio
+  // dele. A regra que importa continua valendo: nao estava la antes do clique.
+  const agora = [{ nome: 'Um Nome Qualquer', quando: '2026-09-15 12:07:50' }, ...ANTES];
+  const alvo = L.escolherTarefaNova(ANTES, agora, null);
+  assert.strictEqual(alvo.nome, 'Um Nome Qualquer');
+});
+
+test('escolherTarefaNova com nome null ainda ignora o que ja estava la', () => {
+  assert.strictEqual(L.escolherTarefaNova(ANTES, ANTES, null), null);
+});
+
 test('escolherTarefaNova aguenta espaco sobrando no nome lido da tela', () => {
   const agora = [{ nome: '  Br Assignment Task ', quando: '2026-09-15 12:07:50' }, ...ANTES];
   const alvo = L.escolherTarefaNova(ANTES, agora, L.NOME_RELATORIO);

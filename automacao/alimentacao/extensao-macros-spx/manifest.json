@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "XM Macros SPX",
-  "version": "1.9",
-  "description": "Macros da rotina do SPX. Alimentação: filtra o dia, marca tudo, exporta a AT e baixa o relatório certo.",
+  "version": "2.0",
+  "description": "Macros da rotina do SPX: AT Exportada (exporta e baixa a AT do dia) e Pedidos Pesquisados (pesquisa em lote os pedidos novos dessa AT).",
   "permissions": [
     "activeTab",
     "storage",
@@ -12,7 +12,8 @@
     "service_worker": "fundo.js"
   },
   "host_permissions": [
-    "https://spx.shopee.com.br/*"
+    "https://spx.shopee.com.br/*",
+    "http://127.0.0.1/*"
   ],
   "content_scripts": [
     {
@@ -36,6 +37,7 @@
         "painel.js",
         "aprender.js",
         "alimentacao.js",
+        "pedidos.js",
         "diagnostico.js"
       ],
       "run_at": "document_idle",

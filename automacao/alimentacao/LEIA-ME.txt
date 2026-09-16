@@ -28,9 +28,27 @@ Fica olhando a pasta de downloads. Quando aparece um arquivo
 chamado  br_assignment_task_*  (.xlsx ou .csv):
 
   espera o download terminar de verdade
-  le o arquivo
-  manda pro sistema, na tabela do macro
+  le o arquivo e descobre QUAL relatorio e ele
+  manda pra tabela certa do macro
   avisa na bandeja o que gravou
+
+Ele reconhece dois relatorios, pelo CABECALHO e nao pelo nome
+do arquivo (o nome muda com o tempo, as colunas sao o que o
+relatorio e):
+
+  AT exportada          -> macro_at_exportada
+  Pedidos pesquisados   -> macro_pedidos_pesquisados
+
+Arquivo que nao e nenhum dos dois ele ignora em silencio -
+a pasta de downloads tem de tudo, e alarme vermelho pra isso
+ensinaria a ignorar alarme vermelho.
+
+ELE TAMBEM ATENDE A EXTENSAO, em 127.0.0.1:49732. O macro de
+Pedidos Pesquisados pergunta ali quais pedidos ainda nao
+foram pesquisados. A extensao nao alcanca banco nem backend;
+quem tem o login e este programa. Mesmo arranjo do
+ColadorNeon, e e o que evita uma segunda copia da senha.
+A porta so aceita conexao da propria maquina.
 
 A CARGA NAO ENCOSTA NA at_exportada. Aquela tabela e a que a
 equipe alimenta a mao, pelo site, e que sustenta a conferencia

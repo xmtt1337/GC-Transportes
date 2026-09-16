@@ -45,6 +45,33 @@ CAMPOS = [
 # Sem estes dois nao da pra saber o que e a linha nem qual AT substituir.
 OBRIGATORIOS = ("task_id", "station")
 
+# Colunas do relatorio de pedidos pesquisados (Pedidos > Rastreio de pedidos >
+# Exportar pedidos pesquisados).
+#
+# So tres colunas sao nomeadas: o que interessa e o numero de rastreamento, que
+# liga o pedido de volta a AT. O resto da linha vai inteiro pra coluna `dados`,
+# em JSON - promover coluna depois e barato, e chutar agora o nome de coluna que
+# ninguem viu ainda so criaria campo vazio com nome errado.
+CAMPOS_PESQUISADOS = [
+    ("codigo", "SPX TN", (
+        "spx tn", "spx tn (numero de rastreamento)", "spx tracking num",
+        "spx tracking number", "numero de rastreamento spx", "numero de rastreamento",
+        "tracking number", "tracking no")),
+    ("order_sn", "Order SN", ("order sn", "numero do pedido", "order id")),
+    ("status", "Status do pedido", ("status do pedido", "order status", "status")),
+]
+OBRIGATORIOS_PESQUISADOS = ("codigo",)
+
+# Os dois tipos que o vigia sabe receber, na ordem em que sao testados.
+#
+# A AT vem primeiro porque o arquivo dela TAMBEM tem numero de rastreamento: se
+# a pesquisa fosse testada antes, todo arquivo de AT passaria por relatorio de
+# pedidos pesquisados e entraria na tabela errada.
+TIPOS = [
+    ("at", CAMPOS, OBRIGATORIOS),
+    ("pesquisados", CAMPOS_PESQUISADOS, OBRIGATORIOS_PESQUISADOS),
+]
+
 # Quantas colunas conhecidas precisam aparecer pra uma linha valer como
 # cabecalho. Serve contra o falso positivo: uma linha de titulo com "Status"
 # escrito nao e cabecalho de nada.
@@ -58,6 +85,7 @@ MINIMO_DE_COLUNAS = 5
 # em portugues), entao a leitura ia recusar depois; mas recusar depois vira
 # alarme vermelho na bandeja por um arquivo que nunca foi pra ca.
 PREFIXO = "br_assignment_task_"
+PREFIXO_GERAL = "br_"
 FORA = ("romaneio",)
 EXTENSOES = (".xlsx", ".csv")
 
@@ -77,8 +105,16 @@ def normalizar(valor):
 
 
 def eh_arquivo_alvo(caminho):
+    """Vale a pena ABRIR este arquivo? Quem decide o que ele e, depois, e o
+    cabecalho - o nome so evita ler a pasta de downloads inteira.
+
+    O prefixo e generoso de proposito: os exports do SPX comecam com "br_", e o
+    nome de cada relatorio muda com o tempo. Exigir o nome exato do arquivo da
+    AT deixaria o de pedidos pesquisados de fora, que e justamente o que ainda
+    nao se conhece.
+    """
     nome = os.path.basename(str(caminho)).lower().replace(" ", "_")
-    if not nome.startswith(PREFIXO) or not nome.endswith(EXTENSOES):
+    if not nome.startswith(PREFIXO_GERAL) or not nome.endswith(EXTENSOES):
         return False
     return not any(palavra in nome for palavra in FORA)
 
@@ -111,42 +147,65 @@ def _celula(linha, indice):
     return texto_da_celula(linha[indice])
 
 
-def achar_cabecalho(grade):
+def achar_cabecalho(grade, campos=None, obrigatorios=None):
     """Em qual linha esta o cabecalho e onde cada coluna caiu.
 
     Procura nas 10 primeiras porque o export as vezes vem com titulo e linha em
     branco antes da tabela.
     """
+    campos = CAMPOS if campos is None else campos
+    obrigatorios = OBRIGATORIOS if obrigatorios is None else obrigatorios
+    # Relatorio com poucas colunas nomeadas nao tem como bater o minimo geral.
+    minimo = min(MINIMO_DE_COLUNAS, len(campos))
+
     for i in range(min(len(grade), 10)):
         nomes = [normalizar(c) for c in (grade[i] or [])]
         indices = {}
-        for chave, _rotulo, grafias in CAMPOS:
+        for chave, _rotulo, grafias in campos:
             for j, nome in enumerate(nomes):
                 if nome in grafias:
                     indices[chave] = j
                     break
-        if all(o in indices for o in OBRIGATORIOS) and len(indices) >= MINIMO_DE_COLUNAS:
+        if all(o in indices for o in obrigatorios) and len(indices) >= minimo:
             return i, indices
     return -1, None
 
 
-def mapear(grade):
+def identificar(grade):
+    """Qual relatorio e este arquivo, olhando o cabecalho. None se nao for nenhum.
+
+    Pelo CONTEUDO, e nao pelo nome: o nome do arquivo depende de como a Shopee
+    batiza o export do dia, e ja mudou. As colunas sao o que o relatorio e.
+    """
+    for tipo, campos, obrigatorios in TIPOS:
+        indice, _ = achar_cabecalho(grade, campos, obrigatorios)
+        if indice >= 0:
+            return tipo
+    return None
+
+
+def mapear(grade, campos=None, obrigatorios=None, rotulo_do_tipo="da AT",
+           conteudo=("task_id", "codigo")):
     """A grade crua do arquivo -> (linhas pro backend, colunas que faltaram)."""
-    indice_cabecalho, indices = achar_cabecalho(grade)
+    campos = CAMPOS if campos is None else campos
+    obrigatorios = OBRIGATORIOS if obrigatorios is None else obrigatorios
+
+    indice_cabecalho, indices = achar_cabecalho(grade, campos, obrigatorios)
     if indice_cabecalho < 0:
+        esperadas = ", ".join(r for c, r, _ in campos if c in obrigatorios)
         raise ArquivoInvalido(
-            "nao achei o cabecalho da AT neste arquivo - "
-            "ele precisa ter pelo menos as colunas Task ID e Station name")
+            f"nao achei o cabecalho {rotulo_do_tipo} neste arquivo - "
+            f"ele precisa ter pelo menos as colunas {esperadas}")
 
     cabecalho = grade[indice_cabecalho] or []
-    faltando = [rotulo for chave, rotulo, _ in CAMPOS if chave not in indices]
+    faltando = [rotulo for chave, rotulo, _ in campos if chave not in indices]
 
     linhas = []
     for i in range(indice_cabecalho + 1, len(grade)):
         bruta = grade[i] or []
-        registro = {chave: _celula(bruta, indices.get(chave)) for chave, _r, _g in CAMPOS}
+        registro = {chave: _celula(bruta, indices.get(chave)) for chave, _r, _g in campos}
         # Linha vazia do fim do arquivo: o Excel costuma trazer varias.
-        if not registro["task_id"] and not registro["codigo"]:
+        if not any(registro.get(c) for c in conteudo):
             continue
 
         # A linha inteira do arquivo vai junto, inclusive as colunas que o
@@ -209,15 +268,41 @@ def ler_grade(caminho):
     raise ArquivoInvalido(f"nao sei ler arquivo {extensao}")
 
 
-def ler_arquivo(caminho):
-    """O caminho do arquivo -> (linhas, colunas que faltaram)."""
-    linhas, faltando = mapear(ler_grade(caminho))
+def _conferir(linhas):
     if not linhas:
         raise ArquivoInvalido("o arquivo nao tem nenhuma linha preenchida")
     if len(linhas) > MAX_LINHAS:
         raise ArquivoInvalido(
             f"{len(linhas)} linhas - o limite por envio e {MAX_LINHAS}")
+
+
+def ler_arquivo(caminho):
+    """O caminho do arquivo da AT -> (linhas, colunas que faltaram)."""
+    linhas, faltando = mapear(ler_grade(caminho))
+    _conferir(linhas)
     return linhas, faltando
+
+
+def ler_qualquer(caminho):
+    """O caminho -> (tipo, linhas, colunas que faltaram).
+
+    Tipo None quer dizer "nao e nenhum dos relatorios que sei ler" - e isso NAO
+    e erro: a pasta de downloads tem de tudo, e o filtro de nome e generoso de
+    proposito. Erro e um arquivo do tipo certo que nao da pra ler.
+    """
+    grade = ler_grade(caminho)
+    tipo = identificar(grade)
+    if tipo is None:
+        return None, [], []
+
+    if tipo == "at":
+        linhas, faltando = mapear(grade)
+    else:
+        linhas, faltando = mapear(grade, CAMPOS_PESQUISADOS, OBRIGATORIOS_PESQUISADOS,
+                                  rotulo_do_tipo="dos pedidos pesquisados",
+                                  conteudo=("codigo",))
+    _conferir(linhas)
+    return tipo, linhas, faltando
 
 
 def resumo(linhas):

@@ -110,10 +110,42 @@ chrome.alarms.onAlarm.addListener(async (alarme) => {
   }
 });
 
+// ── ponte com o XM Vigia ────────────────────────────────────────────────────
+// A extensao nao alcanca banco nem backend; quem tem o login e o vigia, que
+// roda na maquina. O pedido sai DAQUI, e nao do content script, porque pagina
+// HTTPS falando com http://127.0.0.1 esbarra no bloqueio de rede privada do
+// Chrome - e o erro que chega la e um "failed to fetch" que nao conta nada.
+const VIGIA = 'http://127.0.0.1:49732';
+
+async function pendentesDoVigia(limite) {
+  const quanto = Math.max(1, Math.min(10000, Number(limite) || 10000));
+  const corte = AbortSignal.timeout ? AbortSignal.timeout(120000) : undefined;
+  const r = await fetch(`${VIGIA}/pendentes?limite=${quanto}`, { signal: corte });
+  if (!r.ok) {
+    let motivo = `respondeu ${r.status}`;
+    try {
+      const corpo = await r.json();
+      if (corpo && corpo.error) motivo = corpo.error;
+    } catch (e) { /* corpo sem JSON nao muda o que dizer */ }
+    throw new Error(motivo);
+  }
+  return r.json();
+}
+
 chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
-  if (!msg || msg.xmAgenda !== 'reagendar') return;
-  reagendar().then((quando) => responder({ ok: true, proxima: quando }));
-  return true;   // resposta assincrona
+  if (!msg) return;
+
+  if (msg.xmAgenda === 'reagendar') {
+    reagendar().then((quando) => responder({ ok: true, proxima: quando }));
+    return true;   // resposta assincrona
+  }
+
+  if (msg.xmMacro === 'pendentes') {
+    pendentesDoVigia(msg.limite).then(
+      (d) => responder({ ok: true, ...d }),
+      (e) => responder({ ok: false, error: String(e.message || e) }));
+    return true;
+  }
 });
 
 chrome.runtime.onInstalled.addListener(() => { reagendar(); });

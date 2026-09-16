@@ -25,11 +25,14 @@ async function mandar(xmMacro) {
   }
 }
 
-document.getElementById('rodar').addEventListener('click', async () => {
+async function rodarMacro(qual) {
   dizer('');
-  const r = await mandar('alimentacao');
+  const r = await mandar(qual);
   if (r && r.ok) { dizer('rodando — veja na tela do SPX'); setTimeout(() => window.close(), 900); }
-});
+}
+
+document.getElementById('rodar').addEventListener('click', () => rodarMacro('alimentacao'));
+document.getElementById('rodar-pedidos').addEventListener('click', () => rodarMacro('pedidos'));
 
 // ── agenda ──────────────────────────────────────────────────────────────
 const campos = {

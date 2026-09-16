@@ -93,11 +93,14 @@
   // Sem a segunda condicao o macro baixaria o relatorio da rodada anterior
   // enquanto o novo ainda esta em 0% - e ninguem perceberia, porque o arquivo
   // abre normalmente e so os numeros e que estao velhos.
+  // nomeAlvo null: serve qualquer tarefa nova. E o caso do relatorio cujo nome
+  // ainda nao se conhece - continua valendo a regra que importa (nao estava la
+  // antes do clique), so sem a segunda peneira.
   function escolherTarefaNova(antes, agora, nomeAlvo) {
-    const nome = normalizar(nomeAlvo || NOME_RELATORIO);
+    const nome = nomeAlvo === null ? null : normalizar(nomeAlvo || NOME_RELATORIO);
     const vistas = new Set((antes || []).map(chaveTarefa));
     const novas = (agora || []).filter(
-      (t) => normalizar(t.nome) === nome && !vistas.has(chaveTarefa(t)));
+      (t) => (nome === null || normalizar(t.nome) === nome) && !vistas.has(chaveTarefa(t)));
     if (!novas.length) return null;
     return novas
       .slice()

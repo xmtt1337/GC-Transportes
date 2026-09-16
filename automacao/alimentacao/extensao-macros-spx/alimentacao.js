@@ -592,7 +592,7 @@
     return lerTarefas(painel);
   }
 
-  async function esperarRelatorio(antes) {
+  async function esperarRelatorio(antes, nomeAlvo) {
     const fim = Date.now() + ESPERA_RELATORIO_MS;
     let avisado = '';
     let ultimoAviso = '';
@@ -609,7 +609,8 @@
       // pedido e passa pra hora em que terminou (18:38:21 -> 18:38:23). Fixar
       // a linha pelo carimbo era procurar por algo que deixa de existir, e o
       // macro ficava em "gerando..." pra sempre com o arquivo pronto na tela.
-      const nova = L.escolherTarefaNova(antes, agora, L.NOME_RELATORIO);
+      const nova = L.escolherTarefaNova(antes, agora,
+        nomeAlvo === undefined ? L.NOME_RELATORIO : nomeAlvo);
       if (nova) {
         if (nova.quando !== avisado) {
           P.nota(`relatório novo: ${nova.nome} — ${nova.quando}`);
@@ -703,6 +704,13 @@
   G.alimentacao = { rodar, lerTarefas, acharPainelTarefas, acharFiltroData, candidatosSeta,
                     candidatosIconePainel, quantasSelecionadas, checkboxDoCabecalho,
                     SELETORES_SETA, acharItemTodasPaginas };
+
+  // O painel "Ultima tarefa" e o mesmo nas duas telas do SPX, e esperar um
+  // relatorio ficar pronto tem as mesmas armadilhas (o carimbo que muda, o
+  // botao Baixar que mora fora do bloco de nome+data, o pop-up bloqueado).
+  // O macro de pedidos pesquisados usa estas daqui em vez de repetir tudo.
+  G.painelDeTarefas = { abrirPainelTarefas, fecharPainelTarefas, lerTarefas,
+                        lerTarefasAgora, esperarRelatorio, baixar, folhaComRegex };
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
