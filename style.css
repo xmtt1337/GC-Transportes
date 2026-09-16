@@ -4322,6 +4322,18 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .nr-leg { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #8494a9; }
 .nr-leg i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 
+/* Pendentes (Delivering) que ainda podem virar Delivered hoje — tarja azul,
+   canto reto do lado da tarja pra barra não ondular na curva. */
+.snr-pend-lista { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; margin-top: 4px; }
+.snr-pend-item {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07);
+    border-left: 4px solid #3a86ff; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 10px 14px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.snr-pend-codigo { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; font-weight: 700; color: #e2e8f0; flex: none; }
+.snr-pend-endereco { font-size: 12.5px; color: #cbd5e1; flex: 1 1 220px; min-width: 180px; }
+.snr-pend-extra { color: #7b8ba3; font-size: 11px; margin-left: 6px; }
+
 .nr-barra {
     display: flex; align-items: center; justify-content: space-between;
     gap: 14px; flex-wrap: wrap; margin-bottom: 10px;

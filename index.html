@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260915a">
+<link rel="stylesheet" href="style.css?v=20260916b">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -4006,6 +4006,25 @@ if (_BASE) {
                             </span>
                         </div>
                         <div style="font-size:12.5px;color:#8494a9;margin:2px 0 14px" id="snr-det-sub"></div>
+
+                        <div class="nr-graficos">
+                            <div class="nr-grafico-card">
+                                <div class="nr-grafico-titulo">Status dos pedidos</div>
+                                <div class="nr-grafico-area" style="height:200px"><canvas id="snr-gr-status"></canvas></div>
+                                <div class="nr-grafico-legenda" id="snr-gr-status-legenda"></div>
+                                <div style="font-size:11.5px;color:#7b8ba3;margin-top:10px;line-height:1.5" id="snr-gr-status-sub"></div>
+                            </div>
+                            <div class="nr-grafico-card">
+                                <div class="nr-grafico-titulo">Performance do entregador</div>
+                                <div class="nr-grafico-area" style="height:200px"><canvas id="snr-gr-performance"></canvas></div>
+                                <div class="nr-grafico-legenda" id="snr-gr-performance-legenda"></div>
+                                <div style="font-size:11.5px;color:#7b8ba3;margin-top:10px;line-height:1.5" id="snr-gr-performance-sub"></div>
+                            </div>
+                        </div>
+
+                        <div id="snr-pendentes-wrap" style="margin-bottom:18px"></div>
+
+                        <div class="nr-grafico-titulo" style="margin-bottom:10px">Todos os pedidos</div>
                         <table class="ant-hist-table">
                             <thead><tr><th>Código</th><th>AT</th><th>Endereço</th><th>Cluster</th><th>Status</th></tr></thead>
                             <tbody id="snr-det-tbody"></tbody>
@@ -4233,7 +4252,7 @@ if (_BASE) {
 <script src="js/planejamento-videira.js?v=30260812d"></script>
 <script src="js/torre.js?v=30260812d"></script>
 <script src="js/torre-na-rua.js?v=30260916a"></script>
-<script src="js/shopee-na-rua.js?v=30260916a"></script>
+<script src="js/shopee-na-rua.js?v=30260916b"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">

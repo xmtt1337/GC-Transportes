@@ -151,9 +151,208 @@ function _snrVoltar() {
     _snrMostrarLista();
 }
 
+// ── Status agregados: Delivered / Delivering / OnHold ──
+// Delivering é o único que ainda não fechou — por isso ele fica de fora da
+// taxa de sucesso (que só faz sentido entre Delivered e OnHold, que já
+// terminaram), mas conta CONTRA na performance: pra quem paga a diária pelo
+// desempenho do dia, pedido que ainda não foi entregue é pedido que ainda
+// não rendeu, não importa se é falha ou só demora.
+const SNR_COR_ENTREGUE  = "#22c55e";
+const SNR_COR_PENDENTE  = "#3a86ff";
+const SNR_COR_INSUCESSO = "#ef4444";
+
+function _snrBucketStatus(status) {
+    const s = String(status || "").toLowerCase();
+    if (s.includes("delivered")) return "entregue";
+    if (s.includes("onhold") || s.includes("on hold") || s.includes("on_hold")) return "insucesso";
+    if (s.includes("delivering")) return "pendente";
+    return null; // status anterior a "na rua" (Hub_Assigned etc.) - fora dessa conta
+}
+
+function _snrStats(pedidos) {
+    const c = { entregue: 0, pendente: 0, insucesso: 0 };
+    pedidos.forEach(p => { const b = _snrBucketStatus(p.status); if (b) c[b]++; });
+    const total = c.entregue + c.pendente + c.insucesso;
+    const finalizados = c.entregue + c.insucesso;
+    return {
+        ...c, total, finalizados,
+        pctEntregue:  total ? c.entregue  / total * 100 : 0,
+        pctPendente:  total ? c.pendente  / total * 100 : 0,
+        pctInsucesso: total ? c.insucesso / total * 100 : 0,
+        taxaSucesso:  finalizados ? c.entregue  / finalizados * 100 : null,
+        taxaFalha:    finalizados ? c.insucesso / finalizados * 100 : null,
+        performance:  total ? c.entregue / total * 100 : null,
+    };
+}
+
+function _snrPct(p) {
+    if (p === null || p === undefined || !isFinite(p)) return "—";
+    if (p <= 0) return "0%";
+    if (p >= 100) return "100%";
+    return p.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+}
+
+// Verde/amarelo/vermelho por faixa — o mesmo corte de bom/ok/ruim usado pra
+// decidir a diária. Aqui é só pra colorir o número; a conta é a mesma.
+function _snrCorPerformance(p) {
+    if (p === null) return "#8494a9";
+    if (p >= 90) return SNR_COR_ENTREGUE;
+    if (p >= 75) return "#eab308";
+    return SNR_COR_INSUCESSO;
+}
+
+// ── Gráficos + lista de pendentes (tudo calculado no que já veio no detalhe,
+// sem precisar de outra chamada ao servidor) ──
+let _snrGraficos = {};
+let _snrPluginPronto = false;
+
+function _snrDestruirGraficos() {
+    Object.values(_snrGraficos).forEach(g => { try { g.destroy(); } catch (_) {} });
+    _snrGraficos = {};
+}
+
+// Número grande no meio do anel — Chart.js não desenha isso sozinho. Plugin
+// registrado uma vez só; charts que não passam `snrCenterText` nas opções
+// não são afetados (opts vem undefined e o afterDraw sai de imediato).
+function _snrRegistrarPlugin() {
+    if (_snrPluginPronto || typeof Chart === "undefined") return;
+    Chart.register({
+        id: "snrCenterText",
+        afterDraw(chart, args, opts) {
+            if (!opts || !opts.valor) return;
+            const { ctx, chartArea: { left, right, top, bottom } } = chart;
+            const cx = (left + right) / 2, cy = (top + bottom) / 2;
+            ctx.save();
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = "700 25px Inter, sans-serif";
+            ctx.fillStyle = opts.cor || "#e2e8f0";
+            ctx.fillText(opts.valor, cx, cy - (opts.rotulo ? 10 : 0));
+            if (opts.rotulo) {
+                ctx.font = "600 10.5px Inter, sans-serif";
+                ctx.fillStyle = "#7b8ba3";
+                ctx.fillText(opts.rotulo, cx, cy + 12);
+            }
+            ctx.restore();
+        },
+    });
+    _snrPluginPronto = true;
+}
+
+function _snrGraficarStatus(pedidos) {
+    _snrDestruirGraficos();
+    const st = _snrStats(pedidos);
+
+    if (typeof Chart !== "undefined") {
+        _snrRegistrarPlugin();
+
+        // 1. Distribuição — os três status como chegam da Shopee, sem mexer.
+        _snrGraficos.status = new Chart(document.getElementById("snr-gr-status"), {
+            type: "doughnut",
+            data: {
+                labels: ["Delivered", "Delivering", "OnHold"],
+                datasets: [{
+                    data: [st.entregue, st.pendente, st.insucesso],
+                    backgroundColor: [SNR_COR_ENTREGUE, SNR_COR_PENDENTE, SNR_COR_INSUCESSO],
+                    borderColor: "#0f1520",
+                    borderWidth: 3,
+                }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: "72%",
+                animation: { duration: 220 },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: c =>
+                        `${c.label}: ${c.parsed} (${_snrPct(st.total ? c.parsed / st.total * 100 : 0)})` } },
+                    snrCenterText: { valor: String(st.total), rotulo: st.total === 1 ? "pedido" : "pedidos", cor: "#e2e8f0" },
+                },
+            },
+        });
+
+        // 2. Performance — Delivered contra tudo que ainda não fechou entregue.
+        // É a mesma conta usada na precificação diária por performance.
+        const naoEntregue = st.pendente + st.insucesso;
+        _snrGraficos.performance = new Chart(document.getElementById("snr-gr-performance"), {
+            type: "doughnut",
+            data: {
+                labels: ["Delivered", "OnHold + Delivering"],
+                datasets: [{
+                    data: [st.entregue, naoEntregue],
+                    backgroundColor: [SNR_COR_ENTREGUE, SNR_COR_INSUCESSO],
+                    borderColor: "#0f1520",
+                    borderWidth: 3,
+                }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: "72%",
+                animation: { duration: 220 },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: c =>
+                        `${c.label}: ${c.parsed} (${_snrPct(st.total ? c.parsed / st.total * 100 : 0)})` } },
+                    snrCenterText: { valor: _snrPct(st.performance), rotulo: "performance", cor: _snrCorPerformance(st.performance) },
+                },
+            },
+        });
+    }
+
+    document.getElementById("snr-gr-status-legenda").innerHTML = `
+        <span class="nr-leg"><i style="background:${SNR_COR_ENTREGUE}"></i>Delivered · ${st.entregue} (${_snrPct(st.pctEntregue)})</span>
+        <span class="nr-leg"><i style="background:${SNR_COR_PENDENTE}"></i>Delivering · ${st.pendente} (${_snrPct(st.pctPendente)})</span>
+        <span class="nr-leg"><i style="background:${SNR_COR_INSUCESSO}"></i>OnHold · ${st.insucesso} (${_snrPct(st.pctInsucesso)})</span>`;
+    document.getElementById("snr-gr-status-sub").innerText = st.finalizados
+        ? `Entre os finalizados (Delivered + OnHold): ${_snrPct(st.taxaSucesso)} entregue e ${_snrPct(st.taxaFalha)} onhold. Delivering ainda não entra nessa conta — ainda não finalizou.`
+        : "Nenhum pedido finalizado ainda hoje.";
+
+    document.getElementById("snr-gr-performance-legenda").innerHTML = `
+        <span class="nr-leg"><i style="background:${SNR_COR_ENTREGUE}"></i>Delivered · ${st.entregue}</span>
+        <span class="nr-leg"><i style="background:${SNR_COR_INSUCESSO}"></i>OnHold + Delivering · ${st.pendente + st.insucesso}</span>`;
+    document.getElementById("snr-gr-performance-sub").innerText =
+        "Mesma porcentagem usada na precificação diária por performance: Delivered sobre o total. Delivering ainda pendente entra contra — hoje ainda não fechou entregue.";
+
+    _snrRenderPendentes(pedidos);
+}
+
+// Só os Delivering: são os únicos que ainda dá tempo de virar Delivered
+// hoje. OnHold já fechou perdido, então listar ele aqui não ajudaria em nada
+// — quem trata OnHold é outra tela.
+function _snrRenderPendentes(pedidos) {
+    const wrap = document.getElementById("snr-pendentes-wrap");
+    const pendentes = pedidos.filter(p => _snrBucketStatus(p.status) === "pendente");
+
+    if (!pendentes.length) {
+        wrap.innerHTML = `
+        <div class="nr-grafico-card">
+            <div class="nr-grafico-titulo">Pendentes que afetam a performance</div>
+            <div style="font-size:12.5px;color:#7b8ba3;margin-top:10px">Nenhum — tudo já finalizou (Delivered ou OnHold).</div>
+        </div>`;
+        return;
+    }
+
+    wrap.innerHTML = `
+    <div class="nr-grafico-card">
+        <div class="nr-grafico-titulo">Pendentes que afetam a performance · ${pendentes.length}</div>
+        <div style="font-size:11.5px;color:#7b8ba3;margin:4px 0 2px">Delivering — ainda dá tempo de virar Delivered hoje.</div>
+        <div class="snr-pend-lista">
+            ${pendentes.map(p => {
+                const endereco = [p.endereco, p.complemento].filter(Boolean).join(" — ") || "Endereço não encontrado na AT";
+                const extra = [p.bairro, p.cidade].filter(Boolean).join(" · ");
+                return `
+                <div class="snr-pend-item">
+                    <span class="snr-pend-codigo">${_snrEsc(p.codigo)}</span>
+                    <span class="snr-pend-endereco">${_snrEsc(endereco)}${extra ? `<span class="snr-pend-extra">${_snrEsc(extra)}</span>` : ""}</span>
+                </div>`;
+            }).join("")}
+        </div>
+    </div>`;
+}
+
 function _snrRenderDetalhe() {
     if (!_snrDet) return;
     const pedidos = _snrDet.pedidos || [];
+
+    _snrGraficarStatus(pedidos);
 
     document.getElementById("snr-det-tbody").innerHTML = pedidos.length
         ? pedidos.map(p => {
