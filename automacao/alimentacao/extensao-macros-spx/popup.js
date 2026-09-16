@@ -25,10 +25,18 @@ async function mandar(xmMacro) {
   }
 }
 
+// Passa pelo service worker, e nao direto pra aba: e ele que sabe abrir o SPX
+// quando nao ha aba nenhuma, e recarregar a que foi aberta antes da extensao.
+// O popup nao pode fazer isso - ele fecha antes de a pagina carregar.
 async function rodarMacro(qual) {
-  dizer('');
-  const r = await mandar(qual);
-  if (r && r.ok) { dizer('rodando — veja na tela do SPX'); setTimeout(() => window.close(), 900); }
+  dizer('abrindo o SPX…');
+  const r = await chrome.runtime.sendMessage({ xmRodar: qual, focar: true });
+  if (r && r.ok) {
+    dizer('rodando — veja na tela do SPX');
+    setTimeout(() => window.close(), 900);
+  } else {
+    dizer((r && r.error) || 'não consegui iniciar', true);
+  }
 }
 
 document.getElementById('rodar').addEventListener('click', () => rodarMacro('alimentacao'));
@@ -39,7 +47,7 @@ const campos = {
   off: document.getElementById('modo-off'),
   intervalo: document.getElementById('modo-intervalo'),
   horarios: document.getElementById('modo-horarios'),
-  horas: document.getElementById('horas'),
+  minutos: document.getElementById('minutos'),
   lista: document.getElementById('horarios'),
   proxima: document.getElementById('proxima'),
 };
@@ -61,7 +69,7 @@ function mostrarProxima(quando) {
 
 function ajustarCampos() {
   const modo = modoEscolhido();
-  campos.horas.disabled = modo !== 'intervalo';
+  campos.minutos.disabled = modo !== 'intervalo';
   campos.lista.disabled = modo !== 'horarios';
 }
 
@@ -70,7 +78,7 @@ async function salvarAgenda() {
   const modo = modoEscolhido();
   const agenda = {
     modo,
-    horas: Math.min(24, Math.max(1, Number(campos.horas.value) || 1)),
+    minutos: Math.min(1440, Math.max(1, Number(campos.minutos.value) || 60)),
     horarios: lerHorarios(campos.lista.value),
   };
   if (modo === 'horarios' && !agenda.horarios.length) {
@@ -85,9 +93,10 @@ async function salvarAgenda() {
 
 async function carregarAgenda() {
   const guardado = await chrome.storage.local.get(['agenda', 'proxima', 'ultimoDisparo']);
-  const agenda = guardado.agenda || { modo: 'off', horas: 1, horarios: [] };
+  const agenda = guardado.agenda || { modo: 'off', minutos: 60, horarios: [] };
   campos[agenda.modo] ? (campos[agenda.modo].checked = true) : (campos.off.checked = true);
-  campos.horas.value = agenda.horas || 1;
+  // horas: formato antigo, de quando o intervalo era em horas
+  campos.minutos.value = agenda.minutos || (agenda.horas || 0) * 60 || 60;
   campos.lista.value = (agenda.horarios || []).join(', ');
   ajustarCampos();
   if (agenda.modo !== 'off') mostrarProxima(guardado.proxima);
@@ -101,7 +110,7 @@ async function carregarAgenda() {
 for (const el of [campos.off, campos.intervalo, campos.horarios]) {
   el.addEventListener('change', salvarAgenda);
 }
-campos.horas.addEventListener('change', salvarAgenda);
+campos.minutos.addEventListener('change', salvarAgenda);
 campos.lista.addEventListener('change', salvarAgenda);
 carregarAgenda();
 

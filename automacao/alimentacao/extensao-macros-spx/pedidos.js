@@ -194,12 +194,16 @@
     return null;
   }
 
-  // O menu fechou depois do clique? E o unico sinal, na tela, de que o item foi
-  // de fato acionado. Sem conferir isso o macro dava o passo por feito com o
-  // menu ainda aberto e nada exportado - e so ia descobrir no fim, esperando
-  // pra sempre por um relatorio que nunca foi pedido.
-  const menuFechou = () => !acharItemExportar();
-
+  // CLICA UMA VEZ SO.
+  //
+  // A primeira versao conferia se o menu fechava depois do clique, e tentava de
+  // novo quando nao fechava. Este menu NAO fecha ao clicar no item: o clique
+  // funcionou, o relatorio foi pedido, e o macro pediu outros dois por achar
+  // que tinha falhado.
+  //
+  // Nao existe sinal de sucesso nesta tela - o sinal e a tarefa aparecer no
+  // painel "Ultima tarefa", e quem confere isso e o passo seguinte, que
+  // desiste em 90s se nada nascer. Inventar um sinal proximo saiu caro.
   async function exportarPesquisados() {
     let item = acharItemExportar();
     if (!item) item = await abrirMenuExportar();
@@ -208,26 +212,18 @@
     }
 
     const base = S.rede.ativas;
-    for (const tentativa of [1, 2, 3]) {
-      const alvo = acharItemExportar();
-      if (!alvo) break;   // fechou: foi acionado
-      // Passar o mouse antes de clicar: em menu que abre por hover, o item so
-      // fica "ativo" quando o ponteiro chega nele.
-      S.passarMouse(alvo);
-      await S.dormir(200);
-      S.clicar(alvo);
-      const fechou = await S.esperar(menuFechou, {
-        oque: 'o menu Exportar fechar', limite: 3000, intervalo: 250,
-      }).catch(() => false);
-      if (fechou) break;
-      if (tentativa === 3) {
-        throw new Error('cliquei em "Exportar pedidos pesquisados" e o menu não fechou — ' +
-                        'o clique não pegou');
-      }
-    }
-
+    // Passar o mouse antes: em menu que abre por hover, o item so fica ativo
+    // quando o ponteiro chega nele.
+    S.passarMouse(item);
+    await S.dormir(200);
+    S.clicar(item);
     await S.dormir(900);
     await S.esperarRede({ base, limite: 60000 });
+
+    // Fecha o menu pra ele nao ficar por cima do painel de tarefas no passo
+    // seguinte. Se nao fechar, nao e problema: o passo seguinte le o painel.
+    S.apertarEsc();
+    await S.dormir(300);
   }
 
   // ── o macro ────────────────────────────────────────────────────────────

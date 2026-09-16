@@ -236,6 +236,9 @@
   // Quem diz que chegou NAO e a URL, e sim achar na tela um elemento que so
   // existe la. URL de SPA muda na hora; o conteudo demora - e agir no meio do
   // caminho e clicar no que ainda esta na tela anterior.
+  // Troca de tela DENTRO do SPX. Quem leva a aba pro SPX quando ela esta em
+  // outro site e o service worker: ali da pra navegar e esperar carregar, e
+  // aqui nao - o content script morre junto com o reload.
   async function irParaTela(hashAlvo, reconhecer, nomeDaTela) {
     if (!/(^|\.)spx\.shopee\.com\.br$/i.test(raiz.location.hostname)) {
       throw new Error('esta aba não é do SPX');

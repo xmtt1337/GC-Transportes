@@ -22,7 +22,17 @@ const NOME_ALARME = 'alimentacao';
 const CHAVE = 'agenda';
 const FUSO = 'America/Sao_Paulo';
 
-const PADRAO = { modo: 'off', horas: 1, horarios: [] };
+// `minutos` substituiu `horas`: de hora em hora era grosso demais pra quem quer
+// a AT acompanhando o dia. O campo antigo ainda e lido, pra quem ja tinha
+// agendamento salvo nao perder ele numa atualizacao.
+const PADRAO = { modo: 'off', minutos: 60, horarios: [] };
+// O Chrome nao dispara alarme mais rapido que isso.
+const MINIMO_MINUTOS = 1;
+
+function minutosDaAgenda(agenda) {
+  const guardado = Number(agenda.minutos) || (Number(agenda.horas) || 0) * 60;
+  return Math.max(MINIMO_MINUTOS, guardado || 60);
+}
 
 async function lerAgenda() {
   try {
@@ -56,7 +66,7 @@ async function reagendar() {
   const agenda = await lerAgenda();
 
   if (agenda.modo === 'intervalo') {
-    const minutos = Math.max(1, Number(agenda.horas) || 1) * 60;
+    const minutos = minutosDaAgenda(agenda);
     chrome.alarms.create(NOME_ALARME, { delayInMinutes: minutos, periodInMinutes: minutos });
   } else if (agenda.modo === 'horarios') {
     const quando = proximaHoraFixa(agenda.horarios);
@@ -77,26 +87,84 @@ async function anotar(texto) {
   console.log('[XM Macros] ' + texto);
 }
 
-async function disparar() {
+const RAIZ_SPX = 'https://spx.shopee.com.br/';
+const TELA_DE = {
+  alimentacao: '#/delivery-assignment/list',
+  pedidos: '#/orderTracking',
+};
+
+const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Espera a aba terminar de carregar, mais uma folga pro SPA se montar. */
+async function esperarCarregar(abaId, limite = 60000) {
+  const fim = Date.now() + limite;
+  while (Date.now() < fim) {
+    const aba = await chrome.tabs.get(abaId).catch(() => null);
+    if (!aba) return false;
+    if (aba.status === 'complete') { await dormir(2500); return true; }
+    await dormir(400);
+  }
+  return false;
+}
+
+/**
+ * A aba onde o macro vai rodar, ja no SPX.
+ *
+ * Leva pro endereco INTEIRO quando ela esta em outro site: trocar so o hash
+ * nao sai do lugar se a aba nem no SPX estava. Isso recarrega a pagina - por
+ * isso acontece aqui, e nao no content script, que morre junto com o reload.
+ */
+async function abaDoSpx(qual) {
   let abas = [];
   try {
-    abas = await chrome.tabs.query({ url: 'https://spx.shopee.com.br/*' });
+    abas = await chrome.tabs.query({ url: `${RAIZ_SPX}*` });
   } catch (e) {
     abas = [];
   }
-  // A tela certa primeiro, pra nao tirar ninguem de onde esta trabalhando; mas
-  // qualquer aba do SPX serve, porque o macro abre a tela dele sozinho.
-  const aba = abas.find((t) => String(t.url || '').includes('delivery-assignment')) || abas[0];
+
+  const tela = TELA_DE[qual] || TELA_DE.alimentacao;
+  // A que ja esta na tela certa primeiro, pra nao tirar ninguem de onde esta
+  // trabalhando; senao qualquer aba do SPX, que o macro troca de tela sozinho.
+  const aba = abas.find((t) => String(t.url || '').includes(tela.replace('#/', ''))) || abas[0];
+  if (aba) return aba;
+
+  // Nenhuma aba do SPX: abre uma, em segundo plano pra nao roubar a tela de
+  // quem estiver usando o computador.
+  const nova = await chrome.tabs.create({ url: RAIZ_SPX + tela, active: false });
+  await esperarCarregar(nova.id);
+  return nova;
+}
+
+async function disparar(qual = 'alimentacao', focar = false) {
+  const aba = await abaDoSpx(qual);
   if (!aba) {
-    await anotar('não rodou: nenhuma aba do SPX aberta');
-    return;
+    await anotar('não rodou: não consegui abrir o SPX');
+    return false;
+  }
+  // Quando foi a pessoa que mandou rodar, traz a aba pra frente - ela quer ver.
+  // No disparo agendado, nao: roubar a tela de quem esta trabalhando e pior do
+  // que rodar escondido.
+  if (focar) {
+    await chrome.tabs.update(aba.id, { active: true }).catch(() => {});
+    await chrome.windows.update(aba.windowId, { focused: true }).catch(() => {});
   }
   try {
-    await chrome.tabs.sendMessage(aba.id, { xmMacro: 'alimentacao', agendado: true });
-    await anotar('disparado na aba do SPX');
+    await chrome.tabs.sendMessage(aba.id, { xmMacro: qual, agendado: true });
+    await anotar(`disparado: ${qual}`);
+    return true;
   } catch (e) {
-    // Sempre a mesma causa: a aba foi aberta antes da extensao entrar.
-    await anotar('não rodou: dê F5 na aba do SPX');
+    // A aba existe mas a extensao nao entrou nela (foi aberta antes). Recarregar
+    // resolve - e como quem manda aqui e o service worker, da pra esperar.
+    try {
+      await chrome.tabs.reload(aba.id);
+      await esperarCarregar(aba.id);
+      await chrome.tabs.sendMessage(aba.id, { xmMacro: qual, agendado: true });
+      await anotar(`disparado: ${qual} (depois de recarregar a aba)`);
+      return true;
+    } catch (e2) {
+      await anotar(`não rodou: ${String(e2.message || e2)}`);
+      return false;
+    }
   }
 }
 
@@ -139,6 +207,13 @@ chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
   if (msg.xmAgenda === 'reagendar') {
     reagendar().then((quando) => responder({ ok: true, proxima: quando }));
     return true;   // resposta assincrona
+  }
+
+  if (msg.xmRodar) {
+    disparar(msg.xmRodar, !!msg.focar).then(
+      (ok) => responder({ ok }),
+      (e) => responder({ ok: false, error: String(e.message || e) }));
+    return true;
   }
 
   if (msg.xmMacro === 'pendentes') {
