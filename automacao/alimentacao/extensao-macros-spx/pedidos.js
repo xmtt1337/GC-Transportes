@@ -307,7 +307,10 @@
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
-      if (msg && msg.xmMacro === 'pedidos') { rodar(); responder({ ok: true }); }
+      if (msg && msg.xmMacro === 'pedidos') {
+        if (rodando) responder({ ok: false, error: 'os Pedidos Pesquisados já estão rodando' });
+        else { rodar(); responder({ ok: true }); }
+      }
     });
   }
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -755,7 +755,12 @@
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
       if (!msg || !msg.xmMacro) return;
-      if (msg.xmMacro === 'alimentacao') { rodar(); responder({ ok: true }); }
+      if (msg.xmMacro === 'alimentacao') {
+        // Responde se ACEITOU. Sem isso o popup dizia "rodando" pra um comeco
+        // que nao aconteceu, e a pessoa ficava esperando.
+        if (rodando) responder({ ok: false, error: 'a AT Exportada já está rodando' });
+        else { rodar(); responder({ ok: true }); }
+      }
       if (msg.xmMacro === 'diagnostico') { responder({ ok: true, texto: G.diagnostico() }); }
       if (msg.xmMacro === 'ensinar') { G.aprender.ensinar(msg.qual || 'seta'); responder({ ok: true }); }
       return true;

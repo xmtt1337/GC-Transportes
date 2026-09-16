@@ -7,10 +7,13 @@
 // abrir de novo.
 //
 // Dois modos, porque as duas perguntas sao diferentes:
-//   intervalo  "de X em X horas a partir de agora"
+//   intervalo  "de X em X minutos a partir de agora"
 //   horarios   "todo dia as 8, as 12 e as 16" - em horario de Brasilia, e nao
 //              no relogio da maquina: maquina com fuso errado rodaria na hora
 //              errada e ninguem ligaria uma coisa na outra.
+//
+// Ele tambem e quem abre o SPX: o content script nao pode, porque morre junto
+// com o reload, e o popup fecha antes de a pagina carregar.
 
 // A conta dos horarios mora na logica, junto com o resto do que da pra testar
 // sem navegador - agendar pra hora errada e erro que so aparece no dia
@@ -97,6 +100,9 @@ const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Espera a aba terminar de carregar, mais uma folga pro SPA se montar. */
 async function esperarCarregar(abaId, limite = 60000) {
+  // A navegacao nao comeca no mesmo instante: sem esta folga, a primeira olhada
+  // pega a pagina ANTERIOR ainda em "complete" e o macro sai clicando nela.
+  await dormir(600);
   const fim = Date.now() + limite;
   while (Date.now() < fim) {
     const aba = await chrome.tabs.get(abaId).catch(() => null);
@@ -108,11 +114,15 @@ async function esperarCarregar(abaId, limite = 60000) {
 }
 
 /**
- * A aba onde o macro vai rodar, ja no SPX.
+ * A aba onde o macro vai rodar, ja na tela dele.
  *
- * Leva pro endereco INTEIRO quando ela esta em outro site: trocar so o hash
- * nao sai do lugar se a aba nem no SPX estava. Isso recarrega a pagina - por
- * isso acontece aqui, e nao no content script, que morre junto com o reload.
+ * CADA MACRO FICA NA PROPRIA ABA. Antes, quando nao havia aba na tela certa,
+ * ele pegava qualquer aba do SPX - e essa era justamente a do outro macro, que
+ * era entao arrastado pra outra tela no meio do trabalho. Os dois brigavam
+ * pela mesma aba.
+ *
+ * Se nao houver aba na tela do macro, abre uma nova em vez de sequestrar a do
+ * vizinho. No maximo sobra uma aba por macro, reusada nas proximas vezes.
  */
 async function abaDoSpx(qual) {
   let abas = [];
@@ -123,13 +133,21 @@ async function abaDoSpx(qual) {
   }
 
   const tela = TELA_DE[qual] || TELA_DE.alimentacao;
-  // A que ja esta na tela certa primeiro, pra nao tirar ninguem de onde esta
-  // trabalhando; senao qualquer aba do SPX, que o macro troca de tela sozinho.
-  const aba = abas.find((t) => String(t.url || '').includes(tela.replace('#/', ''))) || abas[0];
-  if (aba) return aba;
+  const marca = tela.replace('#/', '');
+  const jaNaTela = abas.find((t) => String(t.url || '').includes(marca));
+  if (jaNaTela) return jaNaTela;
 
-  // Nenhuma aba do SPX: abre uma, em segundo plano pra nao roubar a tela de
-  // quem estiver usando o computador.
+  // Aba do SPX que nao seja de nenhum macro (ninguem trabalhando nela) pode ser
+  // aproveitada; a do outro macro, nao.
+  const ocupadas = Object.values(TELA_DE).map((t) => t.replace('#/', ''));
+  const livre = abas.find((t) => !ocupadas.some((o) => String(t.url || '').includes(o)));
+  if (livre) {
+    await chrome.tabs.update(livre.id, { url: RAIZ_SPX + tela });
+    await esperarCarregar(livre.id);
+    return livre;
+  }
+
+  // Em segundo plano pra nao roubar a tela de quem estiver usando o computador.
   const nova = await chrome.tabs.create({ url: RAIZ_SPX + tela, active: false });
   await esperarCarregar(nova.id);
   return nova;
@@ -138,8 +156,9 @@ async function abaDoSpx(qual) {
 async function disparar(qual = 'alimentacao', focar = false) {
   const aba = await abaDoSpx(qual);
   if (!aba) {
-    await anotar('não rodou: não consegui abrir o SPX');
-    return false;
+    const motivo = 'não consegui abrir o SPX';
+    await anotar('não rodou: ' + motivo);
+    return { ok: false, error: motivo };
   }
   // Quando foi a pessoa que mandou rodar, traz a aba pra frente - ela quer ver.
   // No disparo agendado, nao: roubar a tela de quem esta trabalhando e pior do
@@ -149,9 +168,16 @@ async function disparar(qual = 'alimentacao', focar = false) {
     await chrome.windows.update(aba.windowId, { focused: true }).catch(() => {});
   }
   try {
-    await chrome.tabs.sendMessage(aba.id, { xmMacro: qual, agendado: true });
+    const r = await chrome.tabs.sendMessage(aba.id, { xmMacro: qual, agendado: true });
+    // O macro recusa quando ja esta rodando. Sem olhar a resposta, o popup
+    // dizia "rodando" e a pessoa ficava esperando um segundo comeco que nao vem.
+    if (r && r.ok === false) {
+      const motivo = r.error || 'o macro recusou';
+      await anotar('não rodou: ' + motivo);
+      return { ok: false, error: motivo };
+    }
     await anotar(`disparado: ${qual}`);
-    return true;
+    return { ok: true };
   } catch (e) {
     // A aba existe mas a extensao nao entrou nela (foi aberta antes). Recarregar
     // resolve - e como quem manda aqui e o service worker, da pra esperar.
@@ -160,10 +186,11 @@ async function disparar(qual = 'alimentacao', focar = false) {
       await esperarCarregar(aba.id);
       await chrome.tabs.sendMessage(aba.id, { xmMacro: qual, agendado: true });
       await anotar(`disparado: ${qual} (depois de recarregar a aba)`);
-      return true;
+      return { ok: true };
     } catch (e2) {
-      await anotar(`não rodou: ${String(e2.message || e2)}`);
-      return false;
+      const motivo = String(e2.message || e2);
+      await anotar('não rodou: ' + motivo);
+      return { ok: false, error: motivo };
     }
   }
 }
@@ -211,7 +238,7 @@ chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
 
   if (msg.xmRodar) {
     disparar(msg.xmRodar, !!msg.focar).then(
-      (ok) => responder({ ok }),
+      (r) => responder(r),
       (e) => responder({ ok: false, error: String(e.message || e) }));
     return true;
   }
