@@ -147,8 +147,16 @@
       return Number(achado.m[1].replace(/[.,]/g, '')) || null;
     }, { oque: 'a busca terminar ("Esperado N" no rodapé)', limite: 180000, intervalo: 700 });
 
+    // Ja visto rodando certo: o numero bate exato com o que foi mandado
+    // (1799 codigos -> "Esperado 1799"). Uma vez a tela mostrou "Esperado
+    // 1055316" pra uma busca de 3252 codigos - visivel, nao e erro de
+    // seletor, e um estado ruim de verdade da pagina. Exportar dali não
+    // exportaria os pedidos certos, e foi exatamente nessa rodada que o
+    // clique em Exportar tambem parou de pegar - para aqui em vez de gastar
+    // minutos tentando exportar um numero que nao e o nosso.
     if (quantos !== codigos.length) {
-      P.nota(`atenção: a tela diz ${quantos}, mandei ${codigos.length}`);
+      throw new Error(`a busca deu "Esperado ${quantos}", mas mandei ${codigos.length} códigos — ` +
+                      'a página ficou num estado estranho. Rode de novo.');
     }
     P.nota(`busca pronta: ${quantos} pedidos`);
     await S.dormir(800);
