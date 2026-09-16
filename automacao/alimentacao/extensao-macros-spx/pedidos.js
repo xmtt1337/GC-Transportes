@@ -61,38 +61,68 @@
   }
 
   // ── 2 e 3. pesquisa em lote ────────────────────────────────────────────
-  function acharCaixaDeLote() {
-    const caixas = [...document.querySelectorAll('textarea')].filter(S.visivel);
-    if (caixas.length) return caixas[0];
-    // Alguns desenhos usam input grande em vez de textarea.
-    return [...document.querySelectorAll('input[type="text"]')]
+  // A CAIXA SO PODE SER PROCURADA DENTRO DO DIALOGO.
+  //
+  // Procurar na pagina inteira ja colou os 1804 codigos no campo "Shop ID":
+  // ele tambem e um textarea, estava visivel, e era o primeiro. O dialogo nem
+  // chegou a abrir. Achar um campo nao quer dizer estar na tela certa - o
+  // mesmo engano do popup que fica no DOM depois de fechado.
+  const EH_DIALOGO = '[role="dialog"], [class*="modal"], [class*="dialog"], [class*="popup"]';
+  const EH_CAMPO = 'textarea, input[type="text"]';
+  const ehCampoDeRastreio = (c) => /rastreamento|tracking/i.test(c.placeholder || '');
+
+  function acharDialogoDeLote() {
+    const abertos = [...document.querySelectorAll(EH_DIALOGO)]
       .filter(S.visivel)
-      .find((c) => /rastreamento|tracking/i.test(c.placeholder || '')) || null;
+      .filter((d) => [...d.querySelectorAll(EH_CAMPO)].some(S.visivel));
+    if (!abertos.length) return null;
+
+    // O que se anuncia como a Pesquisa em lote, pelo titulo.
+    const alvo = L.chave(TEXTO_LOTE);
+    const porTitulo = abertos.find((d) => L.chave(d.textContent).includes(alvo));
+    if (porTitulo) return porTitulo;
+
+    // Ou o que tem o campo pedindo numero de rastreamento.
+    return abertos.find((d) =>
+      [...d.querySelectorAll(EH_CAMPO)].some(ehCampoDeRastreio)) || null;
+  }
+
+  function acharCaixaDeLote(dialogo) {
+    if (!dialogo) return null;
+    const campos = [...dialogo.querySelectorAll(EH_CAMPO)].filter(S.visivel);
+    return campos.find(ehCampoDeRastreio) || campos.find((c) => c.tagName === 'TEXTAREA') ||
+           campos[0] || null;
   }
 
   async function abrirPesquisaEmLote() {
-    if (acharCaixaDeLote()) return acharCaixaDeLote();
-    const botao = S.acharBotao(TEXTO_LOTE) || S.folhaVisivelComTexto(TEXTO_LOTE);
-    if (!botao) throw new Error(`não achei o botão "${TEXTO_LOTE}"`);
-    S.clicar(botao);
-    await S.dormir(800);
-    return await S.esperar(acharCaixaDeLote, {
-      oque: 'a caixa da Pesquisa em lote abrir', limite: 15000 });
+    let dialogo = acharDialogoDeLote();
+    if (!dialogo) {
+      const botao = S.acharBotao(TEXTO_LOTE) || S.folhaVisivelComTexto(TEXTO_LOTE);
+      if (!botao) throw new Error(`não achei o botão "${TEXTO_LOTE}" (o da lupa)`);
+      S.clicar(botao);
+      await S.dormir(900);
+      dialogo = await S.esperar(acharDialogoDeLote, {
+        oque: 'a janela da Pesquisa em lote abrir', limite: 15000 });
+    }
+    const caixa = acharCaixaDeLote(dialogo);
+    if (!caixa) {
+      throw new Error('a janela da Pesquisa em lote abriu mas não achei a caixa de texto dela');
+    }
+    return { dialogo, caixa };
   }
 
   async function colarEEnviar(codigos) {
-    const caixa = await abrirPesquisaEmLote();
+    const { dialogo, caixa } = await abrirPesquisaEmLote();
     // Uma por linha: e o que a propria caixa pede.
     S.escrever(caixa, codigos.join('\n'));
     await S.dormir(400);
 
-    if (!caixa.value || caixa.value.split('\n').filter(Boolean).length !== codigos.length) {
-      throw new Error(`a caixa ficou com ${caixa.value.split('\n').filter(Boolean).length} ` +
-                      `códigos em vez de ${codigos.length}`);
+    const colados = String(caixa.value || '').split('\n').filter(Boolean).length;
+    if (colados !== codigos.length) {
+      throw new Error(`a caixa ficou com ${colados} códigos em vez de ${codigos.length}`);
     }
 
     // Preso ao dialogo: "Enviar" solto na tela seria de outra caixa qualquer.
-    const dialogo = caixa.closest('[role="dialog"], [class*="modal"], [class*="dialog"]') || document;
     const enviar = S.acharBotao('Enviar', { dentro: dialogo }) ||
                    S.acharBotao('Submit', { dentro: dialogo });
     if (!enviar) throw new Error('não achei o botão "Enviar" da Pesquisa em lote');
@@ -174,7 +204,8 @@
     }
   }
 
-  G.pedidos = { rodar, pedirCodigos, acharCaixaDeLote, acharItemExportar };
+  G.pedidos = { rodar, pedirCodigos, acharDialogoDeLote, acharCaixaDeLote, acharItemExportar,
+                TEXTO_LOTE, TEXTO_EXPORTAR, TEXTO_EXPORTAR_PESQUISADOS };
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {

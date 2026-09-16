@@ -105,6 +105,30 @@
       diz(`  ${i + 1}`, `"${L.normalizar(el.textContent).slice(0, 34)}" visivel=${S.visivel(el)} ` +
                         `caixa=${el.getClientRects().length > 0} ${caminho(el)}`));
 
+    // ── tela de Rastreio de pedidos (macro 2) ────────────────────────────
+    if (location.href.includes('orderTracking') || G.pedidos.acharDialogoDeLote()) {
+      linhas.push('');
+      const D = G.pedidos;
+      diz('botao Pesquisa em lote', resumo(S.acharBotao(D.TEXTO_LOTE) ||
+                                          S.folhaVisivelComTexto(D.TEXTO_LOTE)));
+      const dialogo = D.acharDialogoDeLote();
+      diz('dialogo da Pesquisa em lote', dialogo ? 'ABERTO — ' + caminho(dialogo) : 'fechado');
+      const caixa = D.acharCaixaDeLote(dialogo);
+      diz('caixa dos codigos', caixa
+        ? `${caminho(caixa)} placeholder="${(caixa.placeholder || '').slice(0, 40)}"`
+        : 'NAO ACHOU');
+      diz('botao Exportar', resumo(S.acharBotao(D.TEXTO_EXPORTAR)));
+      diz('item Exportar pesquisados', resumo(D.acharItemExportar()));
+      // Todo campo grande da tela, pra flagrar o que quase levou os codigos
+      // por engano: o Shop ID tambem e um textarea.
+      const grandes = [...document.querySelectorAll('textarea')].filter(S.visivel);
+      diz('textareas visiveis na tela', String(grandes.length));
+      grandes.slice(0, 5).forEach((el, i) =>
+        diz(`  ${i + 1}`, `placeholder="${(el.placeholder || '').slice(0, 30)}" ` +
+                          `dentro de dialogo=${!!el.closest('[role="dialog"], [class*="modal"], [class*="dialog"], [class*="popup"]')} ` +
+                          `${caminho(el)}`));
+    }
+
     const painel = A.acharPainelTarefas();
     diz('painel Ultima tarefa', painel ? 'ABERTO — ' + caminho(painel) : 'fechado');
     if (painel) {
