@@ -277,6 +277,26 @@ class Envio(BaseDoVigia):
         self.assertEqual(len(vigia.fila), 1)
 
 
+class Destino(unittest.TestCase):
+    """Em qual tabela a carga entra.
+
+    Nao e detalhe de rota: /shopee/at grava na at_exportada, que a equipe
+    alimenta a mao. Mandar pra la substitui o trabalho de alguem sem avisar, de
+    hora em hora, e o sintoma seria a conferencia mudando sozinha.
+    """
+
+    def test_a_carga_vai_pra_tabela_do_macro(self):
+        self.assertEqual(va.ROTA_CARGA, "/macros/at-exportada")
+
+    def test_nenhum_caminho_do_envio_aponta_pra_tabela_da_equipe(self):
+        # Ja aconteceu: a repeticao sem gzip tinha ficado com a rota antiga
+        # escrita na mao, entao o envio so escapava pra tabela errada quando o
+        # corpo comprimido era recusado - o caso raro, o que ninguem testa.
+        import inspect
+        fonte = inspect.getsource(va.Backend)
+        self.assertNotIn('"/shopee/at"', fonte)
+
+
 class Config(unittest.TestCase):
     def test_so_esta_configurado_com_usuario_senha_e_pasta(self):
         self.assertFalse(va.configurado({"usuario": "x", "senha": "", "pasta": "c:/"}))

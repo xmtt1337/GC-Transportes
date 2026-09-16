@@ -29,12 +29,14 @@ chamado  br_assignment_task_*  (.xlsx ou .csv):
 
   espera o download terminar de verdade
   le o arquivo
-  manda pro sistema, na mesma rota do site
-      (Alimentar > AT Exportada)
+  manda pro sistema, na tabela do macro
   avisa na bandeja o que gravou
 
-E o mesmo envio que alguem faria a mao no site. Nada de novo
-acontece no banco - so acontece sozinho.
+A CARGA NAO ENCOSTA NA at_exportada. Aquela tabela e a que a
+equipe alimenta a mao, pelo site, e que sustenta a conferencia
+do dia - continua exatamente como sempre foi, e alimentar a
+mao continua sendo necessario. O macro escreve na tabela dele
+(macro_at_exportada).
 
 De onde veio a carga fica registrado: o sistema guarda o nome
 do arquivo com "XM Vigia (automatico)" junto, e o site mostra

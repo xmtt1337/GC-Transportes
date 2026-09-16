@@ -9,18 +9,24 @@ O que ele faz, sozinho, sem janela:
     ve chegar  br_assignment_task_*.xlsx  na pasta de downloads
     espera o download terminar de verdade
     le o arquivo com o MESMO mapeamento de colunas que o site usa
-    manda pra POST /shopee/at  (a mesma rota do Alimentar > AT Exportada)
+    manda pra POST /macros/at-exportada  (tabela propria do macro)
     avisa na bandeja se deu certo ou nao
 
-Esse envio SUBSTITUI as ATs das estacoes que vierem no arquivo - e a foto de
+A CARGA NAO ENCOSTA NA at_exportada. Aquela tabela e alimentada a mao pela
+equipe e sustenta a conferencia do dia; o macro tem tabela propria
+(macro_at_exportada). A operacao continua exatamente como sempre foi.
+
+Esse envio SUBSTITUI a AT das estacoes que vierem no arquivo - e a foto de
 agora, nao historico. Quem faz a troca e o backend, numa transacao so: se
-falhar no meio, o que estava la continua valendo.
+falhar no meio, o que estava la continua valendo. O que atravessa a
+substituicao e a memoria de quando cada codigo apareceu e se ele ja foi
+pesquisado - e disso que o macro seguinte depende.
 
 POR QUE PASSA PELO BACKEND, E NAO DIRETO NO NEON
-Escrever direto na at_exportada seria menos codigo aqui e uma segunda verdade
-no sistema: a rota do backend apaga e insere na mesma transacao, confere o
-limite de linhas, carimba quem importou e e a mesma coisa que o site faz ha
-meses. Duplicar isso em Python significaria manter os dois iguais pra sempre.
+Escrever direto no banco seria menos codigo aqui e uma segunda verdade no
+sistema: a rota apaga e insere na mesma transacao, confere o limite de linhas
+e carimba quem importou. Duplicar isso em Python significaria manter os dois
+iguais pra sempre.
 
 RODA ESCONDIDO - e isso e um risco conhecido: programa silencioso que falha
 nao e notado. Por isso o icone fica VERMELHO ate o proximo envio dar certo, e
@@ -59,6 +65,14 @@ BACKEND_PADRAO = "https://sistema-backend-i4uh.onrender.com"
 # quando o numero sai estranho, a primeira pergunta e sempre "isso veio de
 # onde?". O campo so e exibido; nada no sistema decide nada a partir dele.
 ORIGEM = "XM Vigia (automático)"
+
+# Onde a carga entra. E /macros/at-exportada, NAO /shopee/at.
+#
+# A /shopee/at grava na at_exportada, que a equipe alimenta a mao e que sustenta
+# a conferencia do dia. O macro escrevendo la substituia o trabalho de alguem
+# sem avisar - de hora em hora, com o agendamento ligado. O macro tem tabela
+# propria; a operacao continua exatamente como sempre foi.
+ROTA_CARGA = "/macros/at-exportada"
 
 def _downloads_padrao():
     return os.path.join(os.path.expanduser("~"), "Downloads")
@@ -234,7 +248,7 @@ class Backend:
         for tentativa in (1, 2):
             if not self.token:
                 self.entrar()
-            r = self._post("/shopee/at", corpo)
+            r = self._post(ROTA_CARGA, corpo)
 
             # Token invalido volta como 403 (server.js:196), nao 401. Uma
             # relogada resolve; se voltar de novo, e o papel da conta.
@@ -248,7 +262,7 @@ class Backend:
             # Corpo comprimido recusado: manda de novo sem comprimir, pra nao
             # depender de como o servidor esta configurado hoje.
             if r.status_code in (400, 413, 415) and len(json.dumps(corpo)) > LIMITE_GZIP:
-                r = self._post("/shopee/at", corpo, comprimir=False)
+                r = self._post(ROTA_CARGA, corpo, comprimir=False)
             if r.status_code >= 500:
                 raise ErroDeEnvio(f"servidor respondeu {r.status_code}")
             try:
