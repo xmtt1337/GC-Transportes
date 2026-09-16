@@ -4,13 +4,20 @@ O que se protege aqui e o erro que nao aparece: se uma coluna deixar de casar,
 o envio continua dando "sucesso" e o campo entra vazio no banco. Ninguem ve
 nada ate a conferencia do dia seguinte sair errada.
 
-O outro e o filtro de nome. O painel do SPX gera dois relatorios parecidos, e
-mandar o Romaneio pra rota da AT substituiria a AT do dia por lixo.
+O relatorio da AT e o ROMANEIO ("Exportar Romaneio", tarefa "Br AT Romaneio
+V2") - nao o "Exportar AT" (Br Assignment Task). O nome do ARQUIVO nao muda
+entre os dois ("br_assignment_task_romaneio_*" e so um "_romaneio" a mais no
+mesmo prefixo), so o CONTEUDO muda: o Romaneio e em portugues e usa "NÚMERO
+DO PEDIDO" onde o outro usa "SPX tracking num". O modulo aceita as duas
+grafias, e os testes abaixo travam contra o cabecalho real dos dois formatos.
 
-Dados de TESTE, inventados.
+Dados de TESTE, inventados (com o cabecalho REAL do Romaneio, conferido no
+arquivo baixado em 2026-09-16).
 """
 
+import csv
 import datetime
+import io
 import os
 import sys
 import tempfile
@@ -21,6 +28,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import alimentacao_at as at  # noqa: E402
 
 
+# ── formato antigo (Br Assignment Task / "Exportar AT"), em ingles ──────────
+# Nao baixamos mais este relatorio pelo macro, mas o modulo continua
+# reconhecendo o formato - por robustez, caso alguem suba um arquivo assim a
+# mao.
 CABECALHO = [
     "Task ID", "Station name", "Corridor-Cage/Route", "Cage", "SPX tracking num",
     "TO number", "Driver name", "Driver ID", "Agency", "Delivery Date", "Zipcode",
@@ -40,10 +51,37 @@ def grade_de_teste(linhas=1):
     return [CABECALHO] + [list(LINHA) for _ in range(linhas)]
 
 
+# ── formato atual (Br AT Romaneio V2 / "Exportar Romaneio"), em portugues ───
+# Cabecalho REAL, na ordem real (18 colunas): so 10 tem chave em CAMPOS, as
+# outras (SEQ, PARADA, ENDEREÇO COMPLETO...) vao inteiras pra `dados`.
+CABECALHO_ROMANEIO = [
+    "ATs", "ROTA", "SEQ", "PARADA", "NÚMERO DO PEDIDO", "ENDEREÇO COMPLETO",
+    "COMPLEMENTO", "TIPO DE LOCALIZAÇÃO", "BAIRRO", "CIDADE", "CEP", "KM",
+    "TOTAL DE PEDIDOS", "TOTAL DE PARADAS", "TIPO DE VEÍCULO REAL", "ESTAÇÃO",
+    "CORREDOR-GAIOLA", "NOME DO CLUSTER",
+]
+
+LINHA_ROMANEIO = [
+    "AT202609169VJDF", "CTB-2", "1", "1", "BR2646115097408",
+    "Dinarte José Rodrigues 339, 339", "", "-", "Martello", "Caçador",
+    "89510-806", "12.3", "1", "3", "FIORINO", "XPT_SC_Caçador",
+    "C-16", "CTB-2",
+]
+
+
+def grade_romaneio(linhas=1):
+    return [CABECALHO_ROMANEIO] + [list(LINHA_ROMANEIO) for _ in range(linhas)]
+
+
 class NomeDoArquivo(unittest.TestCase):
     def test_aceita_o_relatorio_da_alimentacao(self):
         self.assertTrue(at.eh_arquivo_alvo("br_assignment_task_20260915.xlsx"))
         self.assertTrue(at.eh_arquivo_alvo("br_assignment_task_20260915.csv"))
+
+    def test_aceita_o_romaneio_com_o_mesmo_prefixo(self):
+        # Nome real visto na pasta de downloads: o SPX so acrescenta
+        # "_romaneio" ao mesmo prefixo do outro relatorio.
+        self.assertTrue(at.eh_arquivo_alvo("br_assignment_task_romaneio_20260916.csv"))
 
     def test_aceita_a_copia_que_o_chrome_renomeia(self):
         # Baixar duas vezes no mesmo dia vira "arquivo (1).xlsx"
@@ -51,15 +89,6 @@ class NomeDoArquivo(unittest.TestCase):
 
     def test_nao_liga_pra_caixa_nem_pro_caminho(self):
         self.assertTrue(at.eh_arquivo_alvo(r"C:\Users\x\Downloads\BR_Assignment_Task_1.XLSX"))
-
-    def test_recusa_o_romaneio(self):
-        # Nasce do outro botao do SPX e abre igualzinho no Excel
-        self.assertFalse(at.eh_arquivo_alvo("br_at_romaneio_v2_20260915.xlsx"))
-
-    def test_recusa_o_romaneio_que_usa_o_mesmo_prefixo(self):
-        # Nome real visto na pasta de downloads: o Romaneio desce com o MESMO
-        # prefixo do relatorio da alimentacao, so com "romaneio" no meio
-        self.assertFalse(at.eh_arquivo_alvo("br_assignment_task_romaneio_20260915.csv"))
 
     def test_recusa_download_pela_metade(self):
         self.assertFalse(at.eh_arquivo_alvo("br_assignment_task_1.xlsx.crdownload"))
@@ -92,6 +121,13 @@ class Cabecalho(unittest.TestCase):
         self.assertEqual(indice, 0)
         self.assertEqual(indices["task_id"], 0)
         self.assertEqual(indices["station"], 1)
+
+    def test_acha_no_cabecalho_do_romaneio(self):
+        indice, indices = at.achar_cabecalho(grade_romaneio())
+        self.assertEqual(indice, 0)
+        self.assertEqual(indices["task_id"], 0)
+        self.assertEqual(indices["codigo"], 4)
+        self.assertEqual(indices["station"], 15)
 
     def test_acha_depois_de_titulo_e_linha_em_branco(self):
         grade = [["Relatorio de atribuicao"], [], CABECALHO, list(LINHA)]
@@ -147,7 +183,7 @@ class Mapeamento(unittest.TestCase):
         linha = [v for i, v in enumerate(LINHA) if i != indice]
         linhas, faltando = at.mapear([sem_cluster, linha])
         self.assertEqual(linhas[0]["cluster"], "")
-        self.assertIn("Cluster", faltando)
+        self.assertIn("Cluster / Nome do Cluster", faltando)
 
     def test_linha_vazia_do_fim_do_arquivo_nao_entra(self):
         grade = grade_de_teste() + [[""] * len(CABECALHO), []]
@@ -166,11 +202,43 @@ class Mapeamento(unittest.TestCase):
             at.mapear([["Coluna A", "Coluna B"], ["1", "2"]])
 
 
-# Recorte do cabecalho REAL do export_return_order_*.csv (ele tem 63 colunas).
-#
-# O "Order ID" aqui e o numero de RASTREAMENTO, e o pedido e o "Shopee Order
-# SN" - ao contrario do que os nomes sugerem, e ao contrario de como a tela
-# chama os dois ("SPX TN" e "Order SN").
+class MapeamentoRomaneio(unittest.TestCase):
+    """O formato que o macro baixa hoje - colunas em portugues."""
+
+    def test_monta_as_mesmas_chaves_a_partir_do_romaneio(self):
+        linhas, faltando = at.mapear(grade_romaneio())
+        self.assertEqual(len(linhas), 1)
+        linha = linhas[0]
+        self.assertEqual(linha["task_id"], "AT202609169VJDF")
+        self.assertEqual(linha["station"], "XPT_SC_Caçador")
+        self.assertEqual(linha["codigo"], "BR2646115097408",
+                         "o codigo vem do NÚMERO DO PEDIDO, nao do SPX tracking num")
+        self.assertEqual(linha["cage"], "C-16")
+        self.assertEqual(linha["cluster"], "CTB-2")
+        self.assertEqual(linha["cidade"], "Caçador")
+        self.assertEqual(linha["bairro"], "Martello")
+        self.assertEqual(linha["zipcode"], "89510-806")
+        self.assertEqual(linha["qtd_pedidos"], "1")
+        self.assertEqual(linha["rota"], "CTB-2")
+
+    def test_colunas_so_do_romaneio_vao_para_os_dados_crus(self):
+        # SEQ, PARADA, ENDEREÇO COMPLETO... nao tem chave em CAMPOS, mas nao
+        # podem se perder: promover uma coluna depois tem que ser barato.
+        linhas, _ = at.mapear(grade_romaneio())
+        dados = linhas[0]["dados"]
+        self.assertEqual(dados["SEQ"], "1")
+        self.assertEqual(dados["ENDEREÇO COMPLETO"], "Dinarte José Rodrigues 339, 339")
+        self.assertEqual(dados["TIPO DE VEÍCULO REAL"], "FIORINO")
+
+    def test_colunas_que_so_o_formato_ingles_tem_ficam_vazias_sem_travar(self):
+        # Driver name/ID, Agency, status, os tres carimbos de hora: nenhum
+        # existe no Romaneio. Faltar nao pode impedir o resto de entrar.
+        linhas, faltando = at.mapear(grade_romaneio())
+        self.assertEqual(linhas[0]["driver_nome"], "")
+        self.assertEqual(linhas[0]["status"], "")
+        self.assertIn("Driver name", faltando)
+
+
 CABECALHO_PESQUISADOS = [
     "Order ID", "SLS Tracking Number", "Shopee Order SN", "Buyer Name",
     "Driver Name", "Delivered Time", "Status", "Current Station",
@@ -189,8 +257,11 @@ class Identificacao(unittest.TestCase):
     mudou. As colunas sao o que o relatorio E.
     """
 
-    def test_reconhece_a_at(self):
+    def test_reconhece_a_at_no_formato_ingles(self):
         self.assertEqual(at.identificar(grade_de_teste()), "at")
+
+    def test_reconhece_a_at_no_formato_romaneio(self):
+        self.assertEqual(at.identificar(grade_romaneio()), "at")
 
     def test_reconhece_os_pedidos_pesquisados(self):
         grade = [CABECALHO_PESQUISADOS, LINHA_PESQUISADOS]
@@ -201,28 +272,21 @@ class Identificacao(unittest.TestCase):
         # fosse testada antes, toda AT entraria na tabela errada - e o sintoma
         # seria a tabela da AT vazia com a de pesquisados cheia.
         self.assertEqual(at.identificar(grade_de_teste()), "at")
+        self.assertEqual(at.identificar(grade_romaneio()), "at")
 
     def test_arquivo_de_outro_assunto_nao_e_nenhum_dos_dois(self):
         self.assertIsNone(at.identificar([["Coluna A", "Coluna B"], ["1", "2"]]))
 
-    def test_romaneio_nao_e_nenhum_dos_dois(self):
-        # Colunas reais do Romaneio, em portugues
-        romaneio = [["ATs", "ROTA", "SEQ", "PARADA", "NÚMERO DO PEDIDO",
-                     "ENDEREÇO COMPLETO", "BAIRRO", "CIDADE", "CEP"],
-                    ["AT1", "R1", "1", "P1", "123", "Rua X", "Centro", "Curitibanos", "89500"]]
-        self.assertIsNone(at.identificar(romaneio))
-
 
 class NomeGeneroso(unittest.TestCase):
-    def test_aceita_os_dois_relatorios_pra_depois_olhar_dentro(self):
-        # Nomes reais: a AT desce como br_*, os pedidos pesquisados como
-        # export_return_order_* - o SPX chama esse export de "Return Order"
-        # mesmo vindo do botao "Exportar pedidos pesquisados".
+    def test_aceita_os_relatorios_que_interessam_pra_depois_olhar_dentro(self):
+        # Nomes reais: a AT (nos dois formatos) desce como br_assignment_task_*,
+        # os pedidos pesquisados como export_return_order_* - o SPX chama esse
+        # export de "Return Order" mesmo vindo do botao "Exportar pedidos
+        # pesquisados".
         self.assertTrue(at.eh_arquivo_alvo("br_assignment_task_20260916.csv"))
+        self.assertTrue(at.eh_arquivo_alvo("br_assignment_task_romaneio_20260916.csv"))
         self.assertTrue(at.eh_arquivo_alvo("export_return_order_2026-09-16_11-27-00.csv"))
-
-    def test_continua_recusando_o_romaneio_pelo_nome(self):
-        self.assertFalse(at.eh_arquivo_alvo("br_assignment_task_romaneio_20260915.csv"))
 
     def test_recusa_o_que_nao_e_export_do_spx(self):
         self.assertFalse(at.eh_arquivo_alvo("relatorio_interno.xlsx"))
@@ -258,6 +322,14 @@ class Resumo(unittest.TestCase):
         linhas, _ = at.mapear(grade)
         self.assertEqual(at.resumo(linhas)["estacoes"],
                          ["XPT_SC_Cacador", "XPT_SC_Videira"])
+
+
+def _texto_csv(linhas, separador=","):
+    """Monta o texto do CSV com o modulo csv, pra aguentar campo com virgula
+    dentro (o endereco do Romaneio real tem uma: "Rua X, 339")."""
+    saida = io.StringIO()
+    csv.writer(saida, delimiter=separador).writerows(linhas)
+    return saida.getvalue()
 
 
 class ArquivoDeVerdade(unittest.TestCase):
@@ -299,16 +371,28 @@ class ArquivoDeVerdade(unittest.TestCase):
             at.ler_arquivo(caminho)
         self.assertIn("xlsx", str(erro.exception))
 
+    def test_romaneio_de_verdade_com_endereco_que_tem_virgula(self):
+        # O campo com virgula dentro e exatamente o que quebraria um
+        # split(",") ingenuo - por isso o arquivo e escrito com o modulo csv.
+        conteudo = _texto_csv([CABECALHO_ROMANEIO, LINHA_ROMANEIO])
+        caminho = self._escrever("br_assignment_task_romaneio_20260916.csv", conteudo)
+
+        tipo, linhas, faltando = at.ler_qualquer(caminho)
+        self.assertEqual(tipo, "at")
+        self.assertEqual(linhas[0]["codigo"], "BR2646115097408")
+        self.assertEqual(linhas[0]["station"], "XPT_SC_Caçador")
+        self.assertEqual(linhas[0]["dados"]["ENDEREÇO COMPLETO"],
+                         "Dinarte José Rodrigues 339, 339")
+
     def test_ler_qualquer_separa_os_dois_relatorios(self):
-        da_at = self._escrever("br_assignment_task_x.csv",
-                               ",".join(CABECALHO) + "\n" + ",".join(LINHA) + "\n")
+        da_at = self._escrever(
+            "br_assignment_task_romaneio_x.csv", _texto_csv([CABECALHO_ROMANEIO, LINHA_ROMANEIO]))
         pesquisados = self._escrever(
-            "br_order_tracking_x.csv",
-            ",".join(CABECALHO_PESQUISADOS) + "\n" + ",".join(LINHA_PESQUISADOS) + "\n")
+            "export_return_order_x.csv", _texto_csv([CABECALHO_PESQUISADOS, LINHA_PESQUISADOS]))
 
         tipo, linhas, _ = at.ler_qualquer(da_at)
         self.assertEqual(tipo, "at")
-        self.assertEqual(linhas[0]["task_id"], "AT202609159TTTD")
+        self.assertEqual(linhas[0]["task_id"], "AT202609169VJDF")
 
         tipo, linhas, _ = at.ler_qualquer(pesquisados)
         self.assertEqual(tipo, "pesquisados")
@@ -321,8 +405,7 @@ class ArquivoDeVerdade(unittest.TestCase):
         # As colunas que ainda nao foram nomeadas nao podem se perder: promover
         # coluna depois e barato, reimportar tudo nao e.
         caminho = self._escrever(
-            "br_order_tracking_x.csv",
-            ",".join(CABECALHO_PESQUISADOS) + "\n" + ",".join(LINHA_PESQUISADOS) + "\n")
+            "export_return_order_x.csv", _texto_csv([CABECALHO_PESQUISADOS, LINHA_PESQUISADOS]))
         _, linhas, _ = at.ler_qualquer(caminho)
         self.assertEqual(linhas[0]["dados"]["Driver Name"], "LUIZ GUSTAVO")
         self.assertEqual(linhas[0]["dados"]["Delivered Time"], "15-09-2026 11:53")

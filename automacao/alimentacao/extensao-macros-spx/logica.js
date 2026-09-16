@@ -13,7 +13,10 @@
   // O relatorio da alimentacao. O painel de tarefas mistura ele com o
   // "Br AT Romaneio V2", que nasce do outro botao e abre igualzinho no Excel -
   // por isso o nome e comparado inteiro, nunca por "contem".
-  const NOME_RELATORIO = 'Br Assignment Task';
+  // O relatorio da AT e o Romaneio (botao "Exportar Romaneio"), nao o
+  // "Exportar AT" (Br Assignment Task): aquele e em ingles e nao traz a coluna
+  // que liga o pacote a AT do jeito que a conferencia precisa.
+  const NOME_RELATORIO = 'Br AT Romaneio V2';
 
   // O nome que o SPX da ao export de pedidos pesquisados. E "Return Order"
   // mesmo vindo do botao "Exportar pedidos pesquisados" - nao ha como adivinhar

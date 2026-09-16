@@ -9,11 +9,12 @@
 //   1. poe a data de HOJE nos dois campos de "Horario de Criacao"
 //   2. clica em Procurar
 //   3. abre a setinha do cabecalho e marca "Select All in All Pages"
-//   4. clica em Exportar AT
-//   5. espera o "Br Assignment Task" ficar pronto no painel Ultima tarefa e
-//      baixa ELE - nao o "Br AT Romaneio V2", nem o da rodada de ontem
+//   4. clica em Exportar Romaneio
+//   5. espera o "Br AT Romaneio V2" ficar pronto no painel Ultima tarefa e
+//      baixa ELE - nao o "Br Assignment Task" (outro botao, outro relatorio),
+//      nem o da rodada de ontem
 //
-// O passo 5 e o unico que pode errar em silencio: os dois relatorios abrem no
+// O passo 5 e o unico que pode errar em silencio: os relatorios abrem no
 // Excel do mesmo jeito, e so os numeros denunciam. Por isso o painel e lido
 // ANTES do clique em Exportar: o relatorio certo e, por definicao, o que nao
 // estava la.
@@ -477,12 +478,19 @@
     return false;
   }
 
+  // O botao e "Exportar Romaneio", e nao "Exportar AT".
+  //
+  // O relatorio de "Exportar AT" (Br Assignment Task) e em ingles e nao tem a
+  // coluna que liga o pacote a AT do jeito que a conferencia precisa; quem
+  // serve e o Romaneio (Br AT Romaneio V2), em portugues, com "NÚMERO DO
+  // PEDIDO" fazendo esse papel. Passo 3 (marcar tudo) nao muda - e a mesma
+  // tabela, so o botao de exportar e outro.
   async function exportarAt() {
     const botao = await S.esperar(() => {
-      const b = S.acharBotao('Exportar AT', { comeca: true }) ||
-                S.acharBotao('Export AT', { comeca: true });
+      const b = S.acharBotao('Exportar Romaneio', { comeca: true }) ||
+                S.acharBotao('Export Romaneio', { comeca: true });
       return b && !S.desabilitado(b) ? b : null;
-    }, { oque: 'o botão "Exportar AT" liberar', limite: 45000 });
+    }, { oque: 'o botão "Exportar Romaneio" liberar', limite: 45000 });
 
     const base = S.rede.ativas;
     S.clicar(botao);
@@ -767,7 +775,7 @@
       P.passo('3/5 · Select All in All Pages');
       await selecionarTodasPaginas(total);
 
-      P.passo('4/5 · Exportar AT');
+      P.passo('4/5 · Exportar Romaneio');
       const antes = await lerTarefasAgora();
       await fecharPainelTarefas();
       await exportarAt();

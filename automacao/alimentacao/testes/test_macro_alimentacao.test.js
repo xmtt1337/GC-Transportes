@@ -84,14 +84,18 @@ test('momentoDaTarefa le o carimbo do painel e ordena', () => {
   assert.strictEqual(L.momentoDaTarefa('gerando…'), null);
 });
 
+// O relatorio da AT e o Romaneio (L.NOME_RELATORIO = 'Br AT Romaneio V2'), nao
+// o "Br Assignment Task" - esse e do OUTRO botao ("Exportar AT", que nao
+// usamos), e o macro tem que ignorar ele do mesmo jeito que ignora o Return
+// Order do macro de pedidos pesquisados.
 const ANTES = [
-  { nome: 'Br AT Romaneio V2', quando: '2026-09-15 11:56:01' },
-  { nome: 'Br Assignment Task', quando: '2026-09-15 11:54:42' },
-  { nome: 'Br Assignment Task', quando: '2026-09-15 10:41:43' },
+  { nome: 'Br Assignment Task', quando: '2026-09-15 11:56:01' },
+  { nome: 'Br AT Romaneio V2', quando: '2026-09-15 11:54:42' },
+  { nome: 'Br AT Romaneio V2', quando: '2026-09-15 10:41:43' },
 ];
 
 test('escolherTarefaNova pega o relatorio que nasceu depois do clique', () => {
-  const agora = [{ nome: 'Br Assignment Task', quando: '2026-09-15 12:07:50' }, ...ANTES];
+  const agora = [{ nome: 'Br AT Romaneio V2', quando: '2026-09-15 12:07:50' }, ...ANTES];
   const alvo = L.escolherTarefaNova(ANTES, agora, L.NOME_RELATORIO);
   assert.strictEqual(alvo.quando, '2026-09-15 12:07:50');
 });
@@ -100,15 +104,15 @@ test('escolherTarefaNova nao devolve o relatorio da rodada anterior', () => {
   assert.strictEqual(L.escolherTarefaNova(ANTES, ANTES, L.NOME_RELATORIO), null);
 });
 
-test('escolherTarefaNova ignora o Romaneio, que nasce do outro botao', () => {
-  const agora = [{ nome: 'Br AT Romaneio V2', quando: '2026-09-15 12:07:50' }, ...ANTES];
+test('escolherTarefaNova ignora o Br Assignment Task, que nasce do outro botao', () => {
+  const agora = [{ nome: 'Br Assignment Task', quando: '2026-09-15 12:07:50' }, ...ANTES];
   assert.strictEqual(L.escolherTarefaNova(ANTES, agora, L.NOME_RELATORIO), null);
 });
 
 test('escolherTarefaNova fica com a mais recente quando nascem duas', () => {
   const agora = [
-    { nome: 'Br Assignment Task', quando: '2026-09-15 12:07:50' },
-    { nome: 'Br Assignment Task', quando: '2026-09-15 12:09:11' },
+    { nome: 'Br AT Romaneio V2', quando: '2026-09-15 12:07:50' },
+    { nome: 'Br AT Romaneio V2', quando: '2026-09-15 12:09:11' },
     ...ANTES,
   ];
   const alvo = L.escolherTarefaNova(ANTES, agora, L.NOME_RELATORIO);
@@ -120,26 +124,32 @@ test('escolherTarefaNova acompanha o carimbo que muda quando fica pronto', () =>
   // pra hora em que terminou (18:38:23). Por isso quem espera precisa
   // reprocurar a cada volta - guardar a linha achada na primeira e ficar
   // esperando por ela e esperar por algo que deixa de existir.
-  const nascendo = [{ nome: 'Br Assignment Task', quando: '2026-09-15 18:38:21' }, ...ANTES];
-  const pronta = [{ nome: 'Br Assignment Task', quando: '2026-09-15 18:38:23' }, ...ANTES];
+  const nascendo = [{ nome: 'Br AT Romaneio V2', quando: '2026-09-15 18:38:21' }, ...ANTES];
+  const pronta = [{ nome: 'Br AT Romaneio V2', quando: '2026-09-15 18:38:23' }, ...ANTES];
   assert.strictEqual(L.escolherTarefaNova(ANTES, nascendo, L.NOME_RELATORIO).quando, '2026-09-15 18:38:21');
   assert.strictEqual(L.escolherTarefaNova(ANTES, pronta, L.NOME_RELATORIO).quando, '2026-09-15 18:38:23');
 });
 
 test('cada macro so aceita o relatorio DELE', () => {
   // Os dois macros podem estar rodando ao mesmo tempo, e o painel de tarefas e
-  // o mesmo. Sem o nome, o de pedidos pesquisados pegava o "Br Assignment
-  // Task" que o outro tinha acabado de pedir e baixava o arquivo errado -
-  // dois macros clicando no mesmo botao Baixar, dois arquivos identicos.
+  // o mesmo. Sem o nome, o de pedidos pesquisados pegava o "Br AT Romaneio V2"
+  // que o outro tinha acabado de pedir e baixava o arquivo errado - dois
+  // macros clicando no mesmo botao Baixar, dois arquivos identicos.
   const agora = [
-    { nome: 'Br Assignment Task', quando: '2026-09-16 10:25:46' },
+    { nome: 'Br AT Romaneio V2', quando: '2026-09-16 10:25:46' },
     { nome: 'Return Order', quando: '2026-09-16 10:25:41' },
     ...ANTES,
   ];
   assert.strictEqual(
-    L.escolherTarefaNova(ANTES, agora, L.NOME_RELATORIO).nome, 'Br Assignment Task');
+    L.escolherTarefaNova(ANTES, agora, L.NOME_RELATORIO).nome, 'Br AT Romaneio V2');
   assert.strictEqual(
     L.escolherTarefaNova(ANTES, agora, L.NOME_PESQUISADOS).nome, 'Return Order');
+});
+
+test('o relatorio da AT exportada se chama Br AT Romaneio V2', () => {
+  // Nome real: vem do botao "Exportar Romaneio", nao do "Exportar AT" (esse
+  // gera "Br Assignment Task", em ingles, que nao usamos mais).
+  assert.strictEqual(L.NOME_RELATORIO, 'Br AT Romaneio V2');
 });
 
 test('o relatorio de pedidos pesquisados se chama Return Order', () => {
@@ -161,7 +171,7 @@ test('escolherTarefaNova com nome null ainda ignora o que ja estava la', () => {
 });
 
 test('escolherTarefaNova aguenta espaco sobrando no nome lido da tela', () => {
-  const agora = [{ nome: '  Br Assignment Task ', quando: '2026-09-15 12:07:50' }, ...ANTES];
+  const agora = [{ nome: '  Br AT Romaneio V2 ', quando: '2026-09-15 12:07:50' }, ...ANTES];
   const alvo = L.escolherTarefaNova(ANTES, agora, L.NOME_RELATORIO);
   assert.ok(alvo);
   assert.strictEqual(alvo.quando, '2026-09-15 12:07:50');

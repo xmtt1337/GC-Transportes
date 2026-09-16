@@ -84,7 +84,7 @@ Ele faz, nessa ordem:
   2. clica em Procurar
   3. abre a setinha do cabecalho e marca
      "Select All in All Pages"
-  4. clica em Exportar AT
+  4. clica em Exportar Romaneio
   5. fica olhando o painel "Ultima tarefa" ate o relatorio
      ficar pronto e clica em Baixar
 
@@ -149,16 +149,18 @@ QUAL RELATORIO ELE BAIXA
 
 O painel "Ultima tarefa" mistura dois relatorios parecidos:
 
-  Br Assignment Task   <- e este, o da alimentacao
-  Br AT Romaneio V2    <- este e do outro botao
+  Br AT Romaneio V2    <- e este, o da alimentacao (botao
+                          "Exportar Romaneio")
+  Br Assignment Task   <- este e do outro botao ("Exportar
+                          AT"), em ingles - nao usamos
 
-E os dois ficam na lista por 7 dias, entao tem varios "Br
-Assignment Task" ao mesmo tempo - o de hoje e o de ontem.
+E os dois ficam na lista por 7 dias, entao tem varios "Br AT
+Romaneio V2" ao mesmo tempo - o de hoje e o de ontem.
 
 Por isso o macro le a lista ANTES de clicar em Exportar. O
-relatorio certo e, por definicao, o unico "Br Assignment
-Task" que NAO estava la antes. Se ele nao aparecer, o macro
-para e avisa - nunca baixa "o que parece".
+relatorio certo e, por definicao, o unico "Br AT Romaneio V2"
+que NAO estava la antes. Se ele nao aparecer, o macro para e
+avisa - nunca baixa "o que parece".
 
 No fim, o quadro mostra o nome e a hora do que baixou.
 Confira essa hora se bater duvida.

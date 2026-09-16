@@ -1,13 +1,17 @@
 """Le o arquivo da AT exportada e monta as linhas que o backend espera.
 
-Este arquivo e o gemeo do meusite/js/shopee-at.js. O site faz exatamente isto
-no navegador quando alguem usa Alimentar > AT Exportada; aqui a mesma coisa
-acontece sozinha, a partir do arquivo que cai na pasta de downloads.
+O relatorio da AT e o ROMANEIO (botao "Exportar Romaneio", tarefa "Br AT
+Romaneio V2" no painel) - nao o "Exportar AT" (Br Assignment Task). O Romaneio
+vem em portugues e traz "NÚMERO DO PEDIDO" fazendo o papel de codigo; o outro e
+em ingles e usa "SPX tracking num". CAMPOS reconhece as duas grafias, porque o
+mesmo campo logico (task_id, station, codigo...) pode chegar com qualquer um
+dos dois nomes - quem decidiu trocar de relatorio foi a operacao, depois de ver
+que o Romaneio e o que a conferencia realmente usa.
 
-Os dois PRECISAM concordar. Se a Shopee renomear uma coluna e so um lado for
-arrumado, o envio continua funcionando e a coluna entra vazia - ninguem ve erro
-nenhum, so o numero errado na conferencia dias depois. Por isso a tabela de
-nomes abaixo e copia fiel da de la, e os testes travam isso.
+Se a Shopee renomear uma coluna, o envio continua funcionando e ela entra
+vazia - ninguem ve erro nenhum, so o numero errado na conferencia dias depois.
+Por isso os nomes ficam explicitos aqui, e os testes travam contra o cabecalho
+real do arquivo.
 """
 
 import csv
@@ -16,27 +20,39 @@ import re
 import unicodedata
 from datetime import date, datetime
 
-# Cabecalhos do arquivo exportado pela Shopee.
+# Cabecalhos do relatorio da AT.
 #   (chave que o backend espera, rotulo pra mensagem, grafias ja vistas)
-# O casamento e sem acento e sem caixa: o export muda entre uma versao e outra.
+#
+# Cada linha tem grafias em INGLES (Br Assignment Task, o "Exportar AT" que nao
+# usamos mais) e em PORTUGUES (Br AT Romaneio V2, o "Exportar Romaneio" que o
+# macro baixa hoje) - o casamento e sem acento e sem caixa, e aceita as duas
+# porque e mais barato que manter dois mapeamentos.
+#
+# Colunas que so existem no Romaneio (SEQ, PARADA, ENDEREÇO COMPLETO, TIPO DE
+# VEICULO REAL...) nao tem chave aqui e mesmo assim nao se perdem: toda a linha
+# crua do arquivo vai pra coluna `dados`, promover uma delas depois e barato.
 CAMPOS = [
-    ("task_id",              "Task ID",                      ("task id",)),
-    ("station",              "Station name",                 ("station name", "station")),
-    ("rota",                 "Corridor-Cage/Route",          ("corridor-cage/route", "corridor cage/route", "route")),
-    ("cage",                 "Cage",                         ("cage",)),
-    ("codigo",               "SPX tracking num",             ("spx tracking num", "spx tracking number", "spx tracking")),
+    ("task_id",              "Task ID / ATs",                ("task id", "ats")),
+    ("station",              "Station name / Estação",       ("station name", "station", "estacao")),
+    ("rota",                 "Route / Rota",                 ("corridor-cage/route", "corridor cage/route", "route", "rota")),
+    ("cage",                 "Cage / Corredor-Gaiola",       ("cage", "corredor-gaiola")),
+    ("codigo",               "SPX tracking num / Número do Pedido",
+                                                              ("spx tracking num", "spx tracking number", "spx tracking",
+                                                               "numero do pedido")),
     ("numero_to",            "TO number",                    ("to number",)),
     ("driver_nome",          "Driver name",                  ("driver name",)),
     ("driver_id",            "Driver ID",                    ("driver id",)),
     ("agency",               "Agency",                       ("agency",)),
     ("delivery_date",        "Delivery Date",                ("delivery date",)),
-    ("zipcode",              "Zipcode",                      ("zipcode", "zip code")),
-    ("qtd_pedidos",          "Number of order/TO",           ("number of order/to", "number of order / to")),
+    ("zipcode",              "Zipcode / CEP",                ("zipcode", "zip code", "cep")),
+    ("qtd_pedidos",          "Number of order/TO / Total de Pedidos",
+                                                              ("number of order/to", "number of order / to",
+                                                               "total de pedidos")),
     ("qtd_atribuidos",       "Number of assigned orders/TO", ("number of assigned orders/to",)),
     ("status",               "Status",                       ("status",)),
-    ("cidade",               "City",                         ("city",)),
-    ("cluster",              "Cluster",                      ("cluster",)),
-    ("bairro",               "Neighborhood",                 ("neighborhood",)),
+    ("cidade",               "City / Cidade",                ("city", "cidade")),
+    ("cluster",              "Cluster / Nome do Cluster",    ("cluster", "nome do cluster")),
+    ("bairro",               "Neighborhood / Bairro",        ("neighborhood", "bairro")),
     ("create_time",          "Create Time",                  ("create time",)),
     ("complete_time",        "Complete time",                ("complete time",)),
     ("driver_assigned_time", "Driver Assigned Time",         ("driver assigned time",)),
@@ -90,13 +106,11 @@ TIPOS = [
 # escrito nao e cabecalho de nada.
 MINIMO_DE_COLUNAS = 5
 
-# O arquivo que o macro da alimentacao baixa.
-#
-# O outro botao do SPX gera o Romaneio - e ele desce como
-# "br_assignment_task_romaneio_*.csv", ou seja, com o MESMO prefixo. So o
-# prefixo deixaria ele entrar. As colunas sao outras (ATs, ROTA, SEQ, PARADA,
-# em portugues), entao a leitura ia recusar depois; mas recusar depois vira
-# alarme vermelho na bandeja por um arquivo que nunca foi pra ca.
+# O arquivo que o macro da alimentacao baixa e "br_assignment_task_romaneio_*"
+# - o nome do arquivo NAO muda quando o relatorio troca de "Br Assignment
+# Task" pra "Br AT Romaneio V2"; o SPX so acrescenta "_romaneio" ao mesmo
+# prefixo. Ambos entram aqui de proposito: quem decide o TIPO e o cabecalho
+# (identificar()), nao o nome do arquivo.
 PREFIXO = "br_assignment_task_"
 # Os comecos dos DOIS relatorios que interessam, e so eles.
 #
@@ -104,7 +118,6 @@ PREFIXO = "br_assignment_task_"
 # export_forward_order_* que alguem baixou a mao, e todos viraram novidade no
 # dia em que o filtro abriu. Relatorio que nao e nosso nao deve nem ser aberto.
 PREFIXOS = ("br_assignment_task_", "export_return_order_")
-FORA = ("romaneio",)
 EXTENSOES = (".xlsx", ".csv")
 
 # Teto do backend por envio (AT_MAX_LINHAS no server.js). Conferir aqui evita
@@ -130,9 +143,7 @@ def eh_arquivo_alvo(caminho):
     de cada um muda com o tempo - por isso so o comeco entra aqui.
     """
     nome = os.path.basename(str(caminho)).lower().replace(" ", "_")
-    if not nome.startswith(PREFIXOS) or not nome.endswith(EXTENSOES):
-        return False
-    return not any(palavra in nome for palavra in FORA)
+    return nome.startswith(PREFIXOS) and nome.endswith(EXTENSOES)
 
 
 def texto_da_celula(valor):
