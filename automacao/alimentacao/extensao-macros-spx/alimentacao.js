@@ -511,6 +511,29 @@
   // O icone do painel fica no topo, entre o sininho e o seletor de idioma.
   // Nenhum dos dois tem texto, entao a ancora possivel e o idioma: o que
   // interessa esta a esquerda dele.
+  // O sininho fica colado no icone de tarefas e abre "Ultima Notificacao", que
+  // nao serve pra nada aqui. As classes separam os dois: o de tarefas e
+  // "task-notify"; o sininho e "ticket-notify" com "bell-container" dentro.
+  function pontoDoIcone(el) {
+    const classes = [];
+    let n = el;
+    for (let i = 0; i < 4 && n; i++, n = n.parentElement) {
+      classes.push(typeof n.className === 'string'
+        ? n.className
+        : (n.getAttribute && n.getAttribute('class')) || '');
+    }
+    const texto = classes.join(' ').toLowerCase();
+    let ponto = 0;
+    if (texto.includes('task')) ponto += 3;
+    if (texto.includes('bell')) ponto -= 4;
+    if (texto.includes('ticket')) ponto -= 4;
+    return ponto;
+  }
+
+  // O icone que funcionou nesta rodada. Achar de novo a cada volta e o que
+  // fazia ele acertar o sininho no meio de um trabalho que ja estava indo bem.
+  let iconeQueFunciona = null;
+
   function candidatosIconePainel() {
     const idioma = folhaComRegex(/^(portugu[êe]s|english|bahasa|ti[ếe]ng|中文)/i, {
       filtro: (el) => el.getBoundingClientRect().top < 120,
@@ -530,21 +553,34 @@
       const alvo = el.closest('button, [role="button"], [class*="icon"]') || el;
       if (vistos.has(alvo)) continue;
       vistos.add(alvo);
-      saida.push({ el: alvo, x: alvo.getBoundingClientRect().left });
+      saida.push({ el: alvo, x: alvo.getBoundingClientRect().left, ponto: pontoDoIcone(alvo) });
     }
-    saida.sort((a, b) => b.x - a.x);   // do mais perto do idioma pra esquerda
+    // Quem parece ser o de tarefas primeiro; a posicao so desempata.
+    saida.sort((a, b) => (b.ponto - a.ponto) || (b.x - a.x));
     return saida.slice(0, 5).map((c) => c.el);
   }
 
   async function abrirPainelTarefas() {
     const jaAberto = acharPainelTarefas();
     if (jaAberto) return jaAberto;
-    for (const icone of candidatosIconePainel()) {
+
+    // O que ja funcionou nesta rodada vem primeiro: procurar de novo a cada
+    // volta e o que fazia ele acertar o sininho no meio de um trabalho que ja
+    // estava indo bem, e ai desistir achando que o painel sumiu.
+    const tentar = [];
+    if (iconeQueFunciona && iconeQueFunciona.isConnected) tentar.push(iconeQueFunciona);
+    for (const c of candidatosIconePainel()) if (!tentar.includes(c)) tentar.push(c);
+
+    for (const icone of tentar) {
       S.clicar(icone);
       await S.dormir(650);
       const painel = acharPainelTarefas();
-      if (painel) return painel;
+      if (painel) { iconeQueFunciona = icone; return painel; }
+      // Abriu o painel errado (o do sininho): fecha direito antes da proxima
+      // tentativa, senao ele fica por cima e engole o clique seguinte.
       S.apertarEsc();
+      await S.dormir(250);
+      S.clicar(document.body);
       await S.dormir(250);
     }
     return null;
@@ -654,7 +690,11 @@
         }
         if (nova.pronto) return nova;
         const aviso = nova.progresso || 'gerando…';
-        if (aviso !== ultimoAviso) { P.nota(aviso); ultimoAviso = aviso; }
+        if (aviso !== ultimoAviso) {
+          P.nota(aviso);
+          ultimoAviso = aviso;
+          reabertoEm = Date.now();   // mexeu: o painel esta vivo
+        }
       } else if (Date.now() - comecou > ESPERA_NASCER_MS) {
         throw new Error('nenhum relatório novo apareceu no painel — ' +
                         'o clique em Exportar não chegou a pedir nada');
@@ -665,9 +705,14 @@
       }
       await S.dormir(3000);
 
-      // Se o painel nao se atualizar sozinho, ficariamos olhando pro 0% pra
-      // sempre. Fechar e abrir de novo forca o SPX a reconsultar.
-      if (Date.now() - reabertoEm > 45000) {
+      // Reabrir o painel SO quando ele para de se atualizar sozinho.
+      //
+      // Antes era de 45 em 45 segundos, sempre. Cada reabertura e uma chance de
+      // clicar no icone errado (o sininho fica colado no de tarefas), e fazer
+      // isso no meio de um acompanhamento que estava indo bem nao tinha por que.
+      // O painel se atualiza sozinho: o progresso muda na tela.
+      if (Date.now() - reabertoEm > 120000) {
+        P.nota('o painel parou de atualizar — reabrindo');
         await fecharPainelTarefas();
         await S.dormir(400);
         reabertoEm = Date.now();
