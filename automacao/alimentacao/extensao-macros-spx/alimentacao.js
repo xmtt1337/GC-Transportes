@@ -33,6 +33,15 @@
 
   let rodando = false;
 
+  // Como se sabe que a tela carregou.
+  //
+  // NAO serve o filtro de data: ele fica escondido quando o painel de filtros
+  // esta recolhido, que e o estado normal - e ai o macro espera pra sempre por
+  // algo que so aparece depois de ele mesmo clicar em "Mais". O que esta
+  // sempre na tela e o botao de buscar.
+  const achouATela = () => !!(S.acharBotao('Procurar') || S.acharBotao('Search') ||
+                              S.acharBotao('Buscar'));
+
   // ── achar coisas na tela ───────────────────────────────────────────────
   function folhaComRegex(re, opcoes) {
     const o = opcoes || {};
@@ -220,8 +229,14 @@
     const p = L.partesDaData(new Date());
     let filtro = acharFiltroData(ROTULO_DATA);
     if (!filtro) {
-      await abrirMaisFiltros();
-      filtro = acharFiltroData(ROTULO_DATA);
+      // O painel de filtros vem recolhido, e este filtro esta na parte
+      // escondida. Nao e excecao: e o estado normal da tela.
+      P.nota('abrindo o resto dos filtros');
+      if (await abrirMaisFiltros()) {
+        filtro = await S.esperar(() => acharFiltroData(ROTULO_DATA), {
+          oque: `o filtro "${ROTULO_DATA}" aparecer`, limite: 12000, intervalo: 300,
+        }).catch(() => null);
+      }
     }
     if (!filtro) throw new Error(`não achei o filtro "${ROTULO_DATA}" na tela`);
 
@@ -685,8 +700,7 @@
       await G.aprender.carregar();
 
       P.passo('abrindo Entrega › Atribuição de Entrega');
-      const mudou = await S.irParaTela(TELA, () => !!acharFiltroData(ROTULO_DATA),
-                                       'Atribuição de Entrega');
+      const mudou = await S.irParaTela(TELA, achouATela, 'Atribuição de Entrega');
       P.nota(mudou ? 'tela aberta' : 'já estava nela');
 
       P.passo('1/5 · data de hoje em "Horário de Criação"');
