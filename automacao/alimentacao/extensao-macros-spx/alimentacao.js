@@ -1,6 +1,11 @@
-// MACRO: ALIMENTACAO SHOPEE
+// MACRO: AT EXPORTADA
 //
-// Faz na tela Entrega > Atribuicao de Entrega, na ordem:
+// ESCOPO: so a tela Entrega > Atribuicao de Entrega do SPX, alimentando
+// Alimentar > AT Exportada no sistema. Nao faz Romaneiro nem nenhuma outra
+// alimentacao - esses sao outros macros, quando existirem. Esta escrito aqui
+// porque "alimentacao" sozinho sugere que ele cobre tudo, e nao cobre.
+//
+// Faz, na ordem:
 //   1. poe a data de HOJE nos dois campos de "Horario de Criacao"
 //   2. clica em Procurar
 //   3. abre a setinha do cabecalho e marca "Select All in All Pages"
@@ -659,7 +664,7 @@
     if (rodando) { P.nota('já está rodando'); return; }
     rodando = true;
     S.parar = false;
-    P.abrir('Alimentação Shopee', () => { S.parar = true; });
+    P.abrir('AT Exportada', () => { S.parar = true; });
 
     try {
       await G.aprender.carregar();
@@ -709,5 +714,5 @@
     });
   }
 
-  console.log('[XM Macros] alimentação Shopee pronta — clique no ícone da extensão');
+  console.log('[XM Macros] AT Exportada pronta — clique no ícone da extensão');
 })(typeof window !== 'undefined' ? window : globalThis);

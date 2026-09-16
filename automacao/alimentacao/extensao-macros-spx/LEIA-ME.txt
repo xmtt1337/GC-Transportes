@@ -1,6 +1,14 @@
 ===========================================================
-  XM MACROS SPX  -  Alimentacao Shopee
+  XM MACROS SPX  -  AT Exportada
 ===========================================================
+
+ESCOPO: so a tela  Entrega > Atribuicao de Entrega  do SPX,
+alimentando  Alimentar > AT Exportada  no sistema.
+
+NAO faz Romaneiro, NAO faz nenhuma outra alimentacao. Se um
+dia tiver macro pra essas, sera outro macro dentro da mesma
+extensao. Esta escrito assim porque "alimentacao" sozinho
+sugere que cobre tudo, e nao cobre.
 
 Uma peca so: a extensao do Chrome. Nao tem programa pra abrir,
 nao usa o Neon, nao fala com o ColadorNeon. Ela e independente

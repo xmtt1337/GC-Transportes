@@ -184,6 +184,20 @@ class PrimeiraExecucao(BaseDoVigia):
 
 
 class Envio(BaseDoVigia):
+    def test_o_sistema_recebe_de_onde_veio_a_carga(self):
+        # Sem a marca, carga automatica e carga subida a mao ficam identicas na
+        # tela do site - e "isso veio de onde?" e sempre a primeira pergunta
+        # quando o numero sai estranho.
+        self.escrever("br_assignment_task_20260915.csv")
+        backend = BackendDublado()
+        vigia = self.criar_vigia(backend)
+        self.varrer(vigia)
+        vigia._processar(vigia.fila[0])
+
+        enviado = backend.enviados[0][0]
+        self.assertIn("br_assignment_task_20260915.csv", enviado)
+        self.assertIn(va.ORIGEM, enviado)
+
     def test_sucesso_marca_e_nao_repete(self):
         self.escrever("br_assignment_task_20260915.csv")
         backend = BackendDublado()

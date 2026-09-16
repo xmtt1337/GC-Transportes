@@ -51,6 +51,15 @@ LOG_PATH = os.path.join(CONFIG_DIR, "vigia.log")
 
 BACKEND_PADRAO = "https://sistema-backend-i4uh.onrender.com"
 
+# Vai junto do nome do arquivo no campo "arquivo" da at_exportada, que e o que
+# o site mostra como procedencia da carga.
+#
+# Sem isso, uma carga automatica e uma carga que alguem subiu a mao ficam
+# identicas na tela - as duas so dizem o nome do arquivo e o nome da conta. E
+# quando o numero sai estranho, a primeira pergunta e sempre "isso veio de
+# onde?". O campo so e exibido; nada no sistema decide nada a partir dele.
+ORIGEM = "XM Vigia (automático)"
+
 def _downloads_padrao():
     return os.path.join(os.path.expanduser("~"), "Downloads")
 
@@ -430,7 +439,7 @@ class Vigia:
         self.avisar("Enviando", f"{nome}\n{numeros['ats']} ATs · {numeros['linhas']} linhas · {estacoes}")
 
         try:
-            resposta = self.backend.enviar_at(nome, linhas)
+            resposta = self.backend.enviar_at(f"{nome} — {ORIGEM}", linhas)
         except ErroDeConta as e:
             self._tirar(pendente)
             self.avisar("Login recusado", f"{e}\nAbra Configurar na bandeja.", erro=True)

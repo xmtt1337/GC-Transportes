@@ -1,8 +1,13 @@
 ===========================================================
-  XM VIGIA  -  Alimentacao Shopee (parte 2)
+  XM VIGIA  -  AT Exportada (parte 2)
 ===========================================================
 
-A alimentacao tem duas metades:
+ESCOPO: so a AT Exportada da Shopee. O par de macros abaixo
+cobre UMA alimentacao - a da tela Entrega > Atribuicao de
+Entrega. Romaneiro e o resto continuam a mao, e serao outros
+macros se um dia forem feitos.
+
+A alimentacao da AT tem duas metades:
 
   1. extensao-macros-spx   exporta a AT do dia no SPX e baixa
                            o arquivo (roda no Chrome)
@@ -30,6 +35,18 @@ chamado  br_assignment_task_*  (.xlsx ou .csv):
 
 E o mesmo envio que alguem faria a mao no site. Nada de novo
 acontece no banco - so acontece sozinho.
+
+De onde veio a carga fica registrado: o sistema guarda o nome
+do arquivo com "XM Vigia (automatico)" junto, e o site mostra
+isso como procedencia. Sem essa marca, carga automatica e
+carga subida a mao ficam identicas na tela - e "isso veio de
+onde?" e sempre a primeira pergunta quando o numero sai
+estranho.
+
+Quem aparece como responsavel e a conta usada no login. Se
+quiser separar melhor ainda, crie uma conta so pra automacao
+(da operacao, nao de entregador) e configure o vigia com ela:
+ai o proprio nome de quem importou ja diz que foi o robo.
 
 IMPORTANTE: esse envio SUBSTITUI todas as ATs das estacoes
 que vierem no arquivo. E a foto de agora, nao historico.
