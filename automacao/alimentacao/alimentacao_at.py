@@ -82,6 +82,10 @@ CAMPOS_PESQUISADOS = [
     ("order_sn", "Shopee Order SN", (
         "shopee order sn", "order sn", "numero do pedido")),
     ("status", "Status", ("status", "status do pedido", "order status")),
+    # Vem pronto no proprio arquivo - a tela "por entregador" (Torre de
+    # Controle > Na Rua > Shopee) agrupa por aqui, sem precisar de join com a AT.
+    ("driver_nome", "Driver Name", ("driver name", "nome do motorista")),
+    ("driver_id", "Driver ID", ("driver id",)),
 ]
 OBRIGATORIOS_PESQUISADOS = ("codigo",)
 
