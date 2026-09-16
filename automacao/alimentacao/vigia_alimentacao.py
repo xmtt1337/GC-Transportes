@@ -94,6 +94,74 @@ LIMITE_GZIP = 512 * 1024
 
 PORTA_TRAVA = 49731   # so pra garantir um vigia por maquina
 
+# Antivirus com "protecao web" fica no meio das conexoes HTTPS: ele abre a
+# conexao, olha o conteudo e reapresenta com um certificado PROPRIO. Esse
+# certificado esta na loja do Windows, mas nao no pacote do certifi que o
+# requests usa por padrao - e ai todo envio morre com
+# "unable to get local issuer certificate", como se o servidor estivesse fora.
+#
+# O sintoma engana: parece problema de rede ou de servidor, e nao e. Acontece
+# numa maquina e nao na do lado, dependendo do antivirus instalado.
+CERTIFICADOS_DE_ANTIVIRUS = [
+    r"C:\ProgramData\Avast Software\Avast\wscert.pem",
+    r"C:\ProgramData\AVG\Antivirus\wscert.pem",
+    r"C:\ProgramData\Kaspersky Lab\AVP\Data\Cert\(fake)Kaspersky Anti-Virus personal root certificate.cer",
+    r"C:\ProgramData\ESET\ESET Security\Certs\root.pem",
+]
+VARIAVEIS_DE_CERTIFICADO = ("REQUESTS_CA_BUNDLE", "SSL_CERT_FILE", "NODE_EXTRA_CA_CERTS")
+
+
+def caminhos_de_certificado(ambiente=None, existe=os.path.exists):
+    """Os PEMs extras que esta maquina tem, sem repetir."""
+    ambiente = os.environ if ambiente is None else ambiente
+    achados = []
+    for nome in VARIAVEIS_DE_CERTIFICADO:
+        caminho = (ambiente.get(nome) or "").strip().strip('"')
+        if caminho and existe(caminho):
+            achados.append(caminho)
+    achados.extend(c for c in CERTIFICADOS_DE_ANTIVIRUS if existe(c))
+
+    saida = []
+    vistos = set()
+    for caminho in achados:
+        chave = os.path.normcase(os.path.abspath(caminho))
+        if chave not in vistos:
+            vistos.add(chave)
+            saida.append(caminho)
+    return saida
+
+
+def bundle_de_certificados():
+    """certifi MAIS as raizes locais, num arquivo so.
+
+    Os dois juntos, e nao so o do antivirus: quando ele nao esta no meio da
+    conexao, quem vale e a lista normal. Um pacote com raiz demais so amplia o
+    que se aceita como valido - o perigoso seria desligar a verificacao.
+    """
+    try:
+        import certifi
+        base = certifi.where()
+    except ImportError:
+        return True   # sem certifi, o requests que decida
+
+    extras = caminhos_de_certificado()
+    if not extras:
+        return base
+
+    destino = os.path.join(CONFIG_DIR, "certificados.pem")
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        partes = []
+        for caminho in [base] + extras:
+            with open(caminho, "rb") as f:
+                partes.append(f.read())
+        with open(destino, "wb") as f:
+            f.write(b"\n".join(partes))
+        return destino
+    except OSError:
+        log.warning("nao consegui montar o pacote de certificados; usando so o certifi")
+        return base
+
 log = logging.getLogger("vigia")
 
 
@@ -196,6 +264,7 @@ class Backend:
     def __init__(self, ler_config):
         self.ler_config = ler_config
         self.token = None
+        self.ca = bundle_de_certificados()
 
     def _url(self, rota):
         return self.ler_config().get("backend", BACKEND_PADRAO).rstrip("/") + rota
@@ -205,7 +274,7 @@ class Backend:
         try:
             r = requests.post(self._url("/login"),
                               json={"username": cfg["usuario"], "password": cfg["senha"]},
-                              timeout=TIMEOUT)
+                              timeout=TIMEOUT, verify=self.ca)
         except requests.RequestException as e:
             raise ErroDeEnvio(f"nao alcancei o servidor: {e}") from e
 
@@ -238,7 +307,8 @@ class Backend:
             dados = gzip.compress(dados, 6)
             cabecalhos["Content-Encoding"] = "gzip"
         try:
-            return requests.post(self._url(rota), data=dados, headers=cabecalhos, timeout=TIMEOUT)
+            return requests.post(self._url(rota), data=dados, headers=cabecalhos,
+                                 timeout=TIMEOUT, verify=self.ca)
         except requests.RequestException as e:
             raise ErroDeEnvio(f"nao alcancei o servidor: {e}") from e
 

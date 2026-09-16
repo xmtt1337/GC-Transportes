@@ -297,6 +297,44 @@ class Destino(unittest.TestCase):
         self.assertNotIn('"/shopee/at"', fonte)
 
 
+class Certificados(unittest.TestCase):
+    """O pacote de raizes usado nas conexoes.
+
+    Antivirus com protecao web fica NO MEIO da conexao HTTPS e reapresenta o
+    servidor com um certificado proprio. Ele esta na loja do Windows, mas nao no
+    certifi que o requests usa - e todo envio morre com "unable to get local
+    issuer certificate", que parece problema de rede ou de servidor e nao e.
+    Aconteceu nesta maquina, com o Avast, e nao acontece na maquina do lado.
+    """
+
+    def test_pega_o_certificado_do_antivirus_e_as_variaveis(self):
+        ambiente = {"REQUESTS_CA_BUNDLE": r"C:\meu\bundle.pem"}
+        achados = va.caminhos_de_certificado(ambiente, existe=lambda c: True)
+        self.assertIn(r"C:\meu\bundle.pem", achados)
+        self.assertIn(r"C:\ProgramData\Avast Software\Avast\wscert.pem", achados)
+
+    def test_ignora_o_que_nao_existe_na_maquina(self):
+        achados = va.caminhos_de_certificado({}, existe=lambda c: False)
+        self.assertEqual(achados, [])
+
+    def test_nao_repete_o_mesmo_arquivo(self):
+        # A mesma raiz aparece em variavel E na lista fixa ao mesmo tempo, e as
+        # vezes escrita diferente: o Avast poe "Avast\\wscert.pem", com a barra
+        # dobrada, na NODE_EXTRA_CA_CERTS desta maquina.
+        caminho = r"C:\ProgramData\Avast Software\Avast\wscert.pem"
+        ambiente = {"REQUESTS_CA_BUNDLE": caminho,
+                    "SSL_CERT_FILE": caminho.upper(),
+                    "NODE_EXTRA_CA_CERTS": caminho.replace("Avast\\w", "Avast\\\\w")}
+        achados = va.caminhos_de_certificado(ambiente, existe=lambda c: True)
+        do_avast = [c for c in achados if "avast" in c.lower()]
+        self.assertEqual(len(do_avast), 1, f"o Avast entrou mais de uma vez: {do_avast}")
+
+    def test_aspas_sobrando_na_variavel_nao_atrapalham(self):
+        ambiente = {"SSL_CERT_FILE": '"C:\\meu\\bundle.pem"'}
+        achados = va.caminhos_de_certificado(ambiente, existe=lambda c: True)
+        self.assertIn(r"C:\meu\bundle.pem", achados)
+
+
 class Config(unittest.TestCase):
     def test_so_esta_configurado_com_usuario_senha_e_pasta(self):
         self.assertFalse(va.configurado({"usuario": "x", "senha": "", "pasta": "c:/"}))
