@@ -47,7 +47,13 @@
     linhas.push('');
 
     const filtro = A.acharFiltroData('Horário de Criação');
-    diz('filtro Horario de Criacao', filtro ? 'achou' : 'NAO ACHOU');
+    // Sem o "achou/nao achou" do expandir, "NAO ACHOU" fica ambiguo: pode ser
+    // a Shopee ter mexido no rotulo, ou so o painel de filtros estar recolhido
+    // - que e o normal, e o macro resolve sozinho clicando em Mais.
+    const mais = A.acharMaisFiltros();
+    diz('filtro Horario de Criacao', filtro
+      ? 'achou'
+      : `NAO ACHOU (painel recolhido? expandir: ${mais ? '"' + L.normalizar(mais.textContent) + '"' : 'NAO ACHOU'})`);
     if (filtro) {
       diz('  campo inicio', `placeholder="${filtro.inicio.placeholder}" valor="${filtro.inicio.value}"`);
       diz('  campo fim', `placeholder="${filtro.fim.placeholder}" valor="${filtro.fim.value}"`);

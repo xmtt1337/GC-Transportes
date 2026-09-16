@@ -23,6 +23,19 @@
   const CHAVE = 'ensinados';
   const LIMITE_MS = 45000;
 
+  // O que cada coisa ensinada PRECISA dizer.
+  //
+  // Ensinar apontando pro lugar errado e facil - um clique meio segundo fora e
+  // o "Select All in All Pages" vira "Criar tarefa de atribuicao", que foi o
+  // que aconteceu. E seletor errado guardado e PIOR que nenhum: sem ele o
+  // macro procura e erra na cara; com ele, clica com confianca no botao
+  // errado, e esse aqui cria tarefa de atribuicao de verdade.
+  //
+  // A seta nao entra: ela e um icone, nao tem texto pra conferir.
+  const TEXTO_ESPERADO = {
+    item: 'Select All in All Pages',
+  };
+
   let ensinados = {};
   let cancelar = null;
 
@@ -60,9 +73,24 @@
   // Page" e "Select All in All Pages" sao o mesmo div.selection-menu-item, com
   // o mesmo caminho ate a raiz. Escolher pelo seletor sozinho pegava o
   // primeiro - marcava a pagina atual e exportava 20 linhas de 78.
+  function esquecer(qual) {
+    delete ensinados[qual];
+    try { chrome.storage.local.set({ [CHAVE]: ensinados }); } catch (e) { /* nada a fazer */ }
+  }
+
   function elementosEnsinados(qual) {
     const ficha = fichaDe(qual);
     if (!ficha || !ficha.seletor) return [];
+
+    // Ensino que nao bate com o esperado se apaga sozinho, em vez de ficar
+    // guardado esperando o dia de clicar no botao errado.
+    const esperado = TEXTO_ESPERADO[qual];
+    if (esperado && L.chave(ficha.texto) !== L.chave(esperado)) {
+      console.warn(`[XM Macros] o "${qual}" estava ensinado em "${ficha.texto}", ` +
+                   `que nao e "${esperado}" - esquecendo`);
+      esquecer(qual);
+      return [];
+    }
     let achados;
     try {
       achados = [...document.querySelectorAll(ficha.seletor)];
@@ -162,6 +190,19 @@
 
       const seletor = seletorEstavel(alvo);
       const texto = L.normalizar(alvo.textContent).slice(0, 80);
+
+      // Recusa na hora o que claramente nao e o que se pediu. Avisar depois,
+      // quando o macro ja clicou, nao serve de nada.
+      const esperado = TEXTO_ESPERADO[qual];
+      if (esperado && L.chave(texto) !== L.chave(esperado)) {
+        limpar();
+        faixa(`Isso é “${texto || 'sem texto'}”, não “${esperado}”.<br>` +
+              '<span class="dica">Nada foi guardado. Aperte Alt+M e clique no item certo.</span>',
+              '#b45309');
+        setTimeout(fecharFaixa, 7000);
+        return;
+      }
+
       limpar();
       guardar(qual, { seletor, texto }).then(() => {
         console.log(`[XM Macros] aprendi "${qual}": ${seletor}` + (texto ? `  texto="${texto}"` : ''));

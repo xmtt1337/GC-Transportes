@@ -80,12 +80,25 @@
     return null;
   }
 
-  async function abrirMaisFiltros() {
-    for (const texto of ['Mais', 'More', 'Expandir', 'Mostrar mais']) {
-      const b = S.acharBotao(texto) || S.folhaVisivelComTexto(texto);
-      if (b) { S.clicar(b); await S.dormir(600); return true; }
+  // O "Mais" que abre o resto dos filtros. Com prefixo tambem, porque o rotulo
+  // costuma vir com a setinha grudada ("Mais ˅").
+  const TEXTOS_MAIS = ['Mais', 'More', 'Expandir', 'Mostrar mais'];
+
+  function acharMaisFiltros() {
+    for (const texto of TEXTOS_MAIS) {
+      const b = S.acharBotao(texto) || S.folhaVisivelComTexto(texto) ||
+                S.acharBotao(texto, { comeca: true });
+      if (b) return b;
     }
-    return false;
+    return null;
+  }
+
+  async function abrirMaisFiltros() {
+    const b = acharMaisFiltros();
+    if (!b) return false;
+    S.clicar(b);
+    await S.dormir(700);
+    return true;
   }
 
   // ── 1. data de hoje ────────────────────────────────────────────────────
@@ -706,7 +719,7 @@
 
   G.alimentacao = { rodar, lerTarefas, acharPainelTarefas, acharFiltroData, candidatosSeta,
                     candidatosIconePainel, quantasSelecionadas, checkboxDoCabecalho,
-                    SELETORES_SETA, acharItemTodasPaginas };
+                    SELETORES_SETA, acharItemTodasPaginas, acharMaisFiltros };
 
   // O painel "Ultima tarefa" e o mesmo nas duas telas do SPX, e esperar um
   // relatorio ficar pronto tem as mesmas armadilhas (o carimbo que muda, o
