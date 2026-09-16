@@ -621,7 +621,14 @@
     return lerTarefas(painel);
   }
 
+  // Quanto se espera pela tarefa APARECER no painel. Ela nasce logo, em 0%; o
+  // que demora e ela ficar pronta. Separar os dois prazos distingue "ainda
+  // gerando" de "o clique em Exportar nao chegou a pedir nada" - que antes
+  // ficava meia hora parecendo trabalho em andamento.
+  const ESPERA_NASCER_MS = 90 * 1000;
+
   async function esperarRelatorio(antes, nomeAlvo) {
+    const comecou = Date.now();
     const fim = Date.now() + ESPERA_RELATORIO_MS;
     let avisado = '';
     let ultimoAviso = '';
@@ -648,6 +655,9 @@
         if (nova.pronto) return nova;
         const aviso = nova.progresso || 'gerando…';
         if (aviso !== ultimoAviso) { P.nota(aviso); ultimoAviso = aviso; }
+      } else if (Date.now() - comecou > ESPERA_NASCER_MS) {
+        throw new Error('nenhum relatório novo apareceu no painel — ' +
+                        'o clique em Exportar não chegou a pedir nada');
       }
 
       if (Date.now() > fim) {

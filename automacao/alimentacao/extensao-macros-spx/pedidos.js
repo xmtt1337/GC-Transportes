@@ -135,8 +135,23 @@
     const base = S.rede.ativas;
     S.clicar(enviar);
     await S.dormir(900);
-    await S.esperarRede({ base, limite: 120000 });
-    await S.dormir(900);
+    await S.esperarRede({ base, limite: 180000 });
+
+    // Esperar a REDE acalmar nao basta: com milhares de codigos a tela ainda
+    // esta montando a lista quando as chamadas param, e exportar no meio disso
+    // nao exporta nada. O rodape "Esperado N" so aparece com o resultado
+    // pronto - e o N tem que ser o que foi mandado.
+    const quantos = await S.esperar(() => {
+      const achado = G.painelDeTarefas.folhaComRegex(/esperado\s+([\d.,]+)/i);
+      if (!achado) return null;
+      return Number(achado.m[1].replace(/[.,]/g, '')) || null;
+    }, { oque: 'a busca terminar ("Esperado N" no rodapé)', limite: 180000, intervalo: 700 });
+
+    if (quantos !== codigos.length) {
+      P.nota(`atenção: a tela diz ${quantos}, mandei ${codigos.length}`);
+    }
+    P.nota(`busca pronta: ${quantos} pedidos`);
+    await S.dormir(800);
   }
 
   // ── 4. exportar ────────────────────────────────────────────────────────
@@ -179,6 +194,12 @@
     return null;
   }
 
+  // O menu fechou depois do clique? E o unico sinal, na tela, de que o item foi
+  // de fato acionado. Sem conferir isso o macro dava o passo por feito com o
+  // menu ainda aberto e nada exportado - e so ia descobrir no fim, esperando
+  // pra sempre por um relatorio que nunca foi pedido.
+  const menuFechou = () => !acharItemExportar();
+
   async function exportarPesquisados() {
     let item = acharItemExportar();
     if (!item) item = await abrirMenuExportar();
@@ -187,7 +208,24 @@
     }
 
     const base = S.rede.ativas;
-    S.clicar(item);
+    for (const tentativa of [1, 2, 3]) {
+      const alvo = acharItemExportar();
+      if (!alvo) break;   // fechou: foi acionado
+      // Passar o mouse antes de clicar: em menu que abre por hover, o item so
+      // fica "ativo" quando o ponteiro chega nele.
+      S.passarMouse(alvo);
+      await S.dormir(200);
+      S.clicar(alvo);
+      const fechou = await S.esperar(menuFechou, {
+        oque: 'o menu Exportar fechar', limite: 3000, intervalo: 250,
+      }).catch(() => false);
+      if (fechou) break;
+      if (tentativa === 3) {
+        throw new Error('cliquei em "Exportar pedidos pesquisados" e o menu não fechou — ' +
+                        'o clique não pegou');
+      }
+    }
+
     await S.dormir(900);
     await S.esperarRede({ base, limite: 60000 });
   }
