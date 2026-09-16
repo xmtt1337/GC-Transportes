@@ -98,8 +98,26 @@ function abrirTorreNaRua(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-torre-na-rua");
     _nrPintarTranspTabs();
+    _nrAplicarTransp(true);
+}
+
+// Shopee não tem upload nem planilha de prazo: o XM Vigia já alimenta o
+// sistema sozinho, e a aba vira outro fluxo inteiro (mora em
+// shopee-na-rua.js, não aqui). As outras transportadoras seguem no
+// upload+pivô de sempre — só quem chegou por último decide qual dos dois
+// aparece.
+function _nrAplicarTransp(inicial) {
+    const shopee = _nrTransp === "shopee";
+    document.getElementById("nr-cab-dir").style.display = shopee ? "none" : "";
+    document.getElementById("nr-shopee-wrap").style.display = shopee ? "" : "none";
+    if (shopee) {
+        document.getElementById("nr-empty").style.display = "none";
+        document.getElementById("nr-resultado").style.display = "none";
+        _snrMostrar();
+        return;
+    }
     _nrCarregar();
-    _nrCarregarSla();
+    if (inicial) _nrCarregarSla(); else _nrPintarSla();
 }
 
 function _nrEsc(txt) {
@@ -127,8 +145,7 @@ function _nrTrocarTransp(chave) {
     _nrColsOcultas.clear();
     Object.values(_nrLinhasOcultas).forEach(m => m.clear());
     _nrPintarTranspTabs();
-    _nrCarregar();
-    _nrPintarSla();
+    _nrAplicarTransp(false);
 }
 
 function _nrTrocarDim(dim) {

@@ -134,7 +134,7 @@ if (_BASE) {
 <nav class="sidebar" id="sidebar">
 
     <div class="logo" onclick="irParaHome()" style="cursor:pointer" title="Início">
-        <img src="img/logobranca2.png" alt="Logo GC" class="logo-img">
+        <img src="img/branca completa.png" alt="Logo GC" class="logo-img">
     </div>
 
     <ul class="menu">
@@ -3914,7 +3914,7 @@ if (_BASE) {
 
                 <div class="nr-cab">
                     <div class="filtro-tabs" id="nr-transp-tabs"></div>
-                    <div class="nr-cab-dir">
+                    <div class="nr-cab-dir" id="nr-cab-dir">
                         <span class="nr-atualizado" id="nr-atualizado"></span>
                         <span class="nr-atualizado" id="nr-sla-info"></span>
                         <button type="button" class="shr-export-btn" onclick="_nrAbrirUpload()">
@@ -3984,6 +3984,33 @@ if (_BASE) {
                     </div>
 
                     <div id="nr-tabela"></div>
+                </div>
+
+                <!-- Shopee: sem upload - lê macro_pedidos_pesquisados / macro_at_exportada sozinho -->
+                <div id="nr-shopee-wrap" style="display:none">
+                    <div id="snr-lista-wrap">
+                        <div class="slh-cal" id="snr-dias" style="display:none;margin-bottom:14px"></div>
+                        <div class="fechamento-empty" id="snr-empty">Carregando...</div>
+                        <div id="snr-resultado" style="display:none">
+                            <div class="shr-resumo" id="snr-resumo"></div>
+                            <div id="snr-entregadores"></div>
+                        </div>
+                    </div>
+
+                    <div id="snr-detalhe" style="display:none">
+                        <div class="shr-faixa cfc">
+                            <span class="shr-faixa-label">Entregador</span>
+                            <span class="shr-faixa-xpt" id="snr-det-nome">—</span>
+                            <span class="shr-faixa-obs">
+                                <button type="button" class="shr-pag-btn" onclick="_snrVoltar()">← Entregadores</button>
+                            </span>
+                        </div>
+                        <div style="font-size:12.5px;color:#8494a9;margin:2px 0 14px" id="snr-det-sub"></div>
+                        <table class="ant-hist-table">
+                            <thead><tr><th>Código</th><th>AT</th><th>Endereço</th><th>Cluster</th><th>Status</th></tr></thead>
+                            <tbody id="snr-det-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div><!-- /tela-torre-na-rua -->
@@ -4146,7 +4173,7 @@ if (_BASE) {
 <script src="js/core.js?v=20260905a"></script>
 <script src="js/router.js?v=20260914a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=20260914a"></script>
+<script src="js/nav.js?v=20260904a"></script>
 <script src="js/atendimento.js?v=20260907a"></script>
 <script src="js/atendimento-admin.js?v=30260902h"></script>
 <script src="js/fechamentos.js?v=30260812d"></script>
@@ -4205,7 +4232,8 @@ if (_BASE) {
 <script src="js/videira.js?v=30260812d"></script>
 <script src="js/planejamento-videira.js?v=30260812d"></script>
 <script src="js/torre.js?v=30260812d"></script>
-<script src="js/torre-na-rua.js?v=30260812d"></script>
+<script src="js/torre-na-rua.js?v=30260916a"></script>
+<script src="js/shopee-na-rua.js?v=30260916a"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
