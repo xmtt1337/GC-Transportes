@@ -4,8 +4,10 @@
 
 ESCOPO: so a AT Exportada da Shopee. O par de macros abaixo
 cobre UMA alimentacao - a da tela Entrega > Atribuicao de
-Entrega. Romaneiro e o resto continuam a mao, e serao outros
-macros se um dia forem feitos.
+Entrega. O relatorio que alimenta a AT e o Romaneio ("Exportar
+Romaneio", nao "Exportar AT" - o porque esta no LEIA-ME da
+extensao). O resto continua a mao, e sera outro macro se um
+dia for feito.
 
 A alimentacao da AT tem duas metades:
 
@@ -25,7 +27,8 @@ O QUE O VIGIA FAZ
 -----------------------------------------------------------
 
 Fica olhando a pasta de downloads. Quando aparece um arquivo
-chamado  br_assignment_task_*  (.xlsx ou .csv):
+chamado  br_assignment_task_*  ou  export_return_order_*
+(.xlsx ou .csv):
 
   espera o download terminar de verdade
   le o arquivo e descobre QUAL relatorio e ele
@@ -68,9 +71,13 @@ quiser separar melhor ainda, crie uma conta so pra automacao
 (da operacao, nao de entregador) e configure o vigia com ela:
 ai o proprio nome de quem importou ja diz que foi o robo.
 
-IMPORTANTE: esse envio SUBSTITUI todas as ATs das estacoes
-que vierem no arquivo. E a foto de agora, nao historico.
-Mandar duas vezes nao duplica: reescreve.
+IMPORTANTE: esse envio ACUMULA. Nao apaga nada, nao atualiza
+nada - cada rodada vira linhas novas, mesmo pro mesmo pacote
+de uma exportacao de minutos atras. E assim que da pra ver
+como uma AT mudou ao longo do dia. Mandar o mesmo ARQUIVO duas
+vezes nao duplica (o backend confere pelo nome antes de
+gravar), mas duas exportacoes diferentes do mesmo pacote sao
+duas linhas, de proposito.
 
 
 -----------------------------------------------------------
@@ -128,12 +135,10 @@ Botao direito tem:
 O QUE ELE NAO MANDA
 -----------------------------------------------------------
 
-- O "Br AT Romaneio V2". E outro relatorio, do outro botao do
-  SPX. So o br_assignment_task_ entra.
-
 - O que ja estava na pasta quando ele foi instalado pela
-  primeira vez. Sao downloads de dias anteriores - mandar
-  aquilo substituiria a AT de hoje pela de um dia velho.
+  primeira vez. Sao downloads de dias anteriores - entrariam
+  como historico do mesmo jeito que o resto, so que de um dia
+  velho fingindo ser de agora.
 
 - O mesmo arquivo duas vezes. A comparacao e pelo CONTEUDO,
   nao pelo nome: o "arquivo (1).xlsx" que o Chrome cria
@@ -164,8 +169,8 @@ motivo. Os comuns:
 
 - "nao achei o cabecalho da AT neste arquivo"
   O arquivo baixado nao e a AT - ou a Shopee renomeou as
-  colunas. Abra o arquivo e confira se tem "Task ID" e
-  "Station name".
+  colunas. Abra o arquivo e confira se tem "ATs" e "ESTAÇÃO"
+  (Romaneio) ou "Task ID" e "Station name" (o formato antigo).
 
 Nao abriu nada ao clicar no .bat? Provavelmente ja esta
 rodando: so pode haver um vigia por maquina (dois mandariam
@@ -182,11 +187,13 @@ PRA QUEM MEXE NO CODIGO
 Config e registro ficam em  %APPDATA%\XM_Vigia  - fora do
 repositorio, porque ali dentro tem senha.
 
-alimentacao_at.py e o gemeo de meusite/js/shopee-at.js. Os
-dois PRECISAM concordar na lista de colunas: se a Shopee
-renomear uma e so um lado for arrumado, o envio continua
-dando certo e o campo entra vazio. Ninguem ve erro nenhum -
-so o numero errado na conferencia do dia seguinte.
+alimentacao_at.py reconhece dois formatos de coluna pro mesmo
+campo logico: o do Romaneio (em portugues, o que o macro baixa
+hoje) e o antigo em ingles (Br Assignment Task, por robustez).
+Se a Shopee renomear uma coluna, o envio continua dando certo
+e o campo entra vazio - ninguem ve erro nenhum, so o numero
+errado na conferencia do dia seguinte. Por isso os testes
+travam contra o cabecalho REAL de cada formato.
 
 Testes:
   cd automacao\alimentacao

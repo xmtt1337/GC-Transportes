@@ -16,17 +16,18 @@ A CARGA NAO ENCOSTA NA at_exportada. Aquela tabela e alimentada a mao pela
 equipe e sustenta a conferencia do dia; o macro tem tabela propria
 (macro_at_exportada). A operacao continua exatamente como sempre foi.
 
-Esse envio SUBSTITUI a AT das estacoes que vierem no arquivo - e a foto de
-agora, nao historico. Quem faz a troca e o backend, numa transacao so: se
-falhar no meio, o que estava la continua valendo. O que atravessa a
-substituicao e a memoria de quando cada codigo apareceu e se ele ja foi
-pesquisado - e disso que o macro seguinte depende.
+Esse envio ACUMULA - nao apaga nada, nao atualiza nada. Cada rodada vira
+linhas novas, mesmo pro mesmo pacote de uma exportacao anterior; e assim que
+da pra ver como uma AT mudou ao longo do dia. "O que ainda falta pesquisar"
+nao e uma marcacao (nao ha coluna pra isso): e uma pergunta feita na hora,
+comparando quando o pacote apareceu pela ultima vez na AT com quando ele foi
+pesquisado pela ultima vez.
 
 POR QUE PASSA PELO BACKEND, E NAO DIRETO NO NEON
 Escrever direto no banco seria menos codigo aqui e uma segunda verdade no
-sistema: a rota apaga e insere na mesma transacao, confere o limite de linhas
-e carimba quem importou. Duplicar isso em Python significaria manter os dois
-iguais pra sempre.
+sistema: a rota confere se aquele arquivo ja entrou antes (pra retentativa de
+rede nao duplicar a carga inteira), insere na transacao e confere o limite de
+linhas. Duplicar isso em Python significaria manter os dois iguais pra sempre.
 
 RODA ESCONDIDO - e isso e um risco conhecido: programa silencioso que falha
 nao e notado. Por isso o icone fica VERMELHO ate o proximo envio dar certo, e
@@ -626,6 +627,17 @@ class Vigia:
         self._tirar(pendente)
         gravadas = resposta.get("gravadas", numeros["linhas"])
 
+        # As duas tabelas ACUMULAM: nada e apagado nem atualizado, cada envio
+        # vira linha nova. "ja_importado" e o backend dizendo que este arquivo
+        # (pelo nome) ja tinha entrado antes - a retentativa do vigia depois
+        # de uma resposta perdida no caminho, por exemplo. Sem isto, o aviso
+        # diria "gravado" de novo pra um envio que nao gravou nada.
+        if resposta.get("ja_importado"):
+            self.ultimo = f"{nome} · já estava gravado"
+            self.registro.marcar(pendente.chave, nome=nome, resultado=f"{rotulo}: já importado antes")
+            self.avisar("Já estava gravado", f"{nome}\neste arquivo já tinha sido importado")
+            return
+
         if tipo == "at":
             ats = resposta.get("ats", numeros["ats"])
             falta = resposta.get("a_pesquisar")
@@ -634,8 +646,7 @@ class Vigia:
             self.ultimo = f"AT: {ats} ATs às {time.strftime('%H:%M')}"
         else:
             ligados = resposta.get("ligados_a_at", 0)
-            marcados = resposta.get("marcados_como_pesquisados", 0)
-            resumo_texto = f"{gravadas} pedidos · {ligados} ligados a uma AT · {marcados} marcados"
+            resumo_texto = f"{gravadas} pedidos · {ligados} ligados a uma AT"
             self.ultimo = f"pesquisados: {gravadas} às {time.strftime('%H:%M')}"
 
         self.registro.marcar(pendente.chave, nome=nome,

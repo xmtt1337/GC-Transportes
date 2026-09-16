@@ -40,8 +40,9 @@ def csv_valido(task="AT202609159TTTD"):
 
 
 class BackendDublado:
-    def __init__(self, erro=None):
+    def __init__(self, erro=None, ja_importado=False):
         self.erro = erro
+        self.ja_importado = ja_importado
         self.enviados = []
         self.token = None
 
@@ -51,6 +52,11 @@ class BackendDublado:
         self.enviados.append((nome, len(linhas)))
         self.rotas = getattr(self, "rotas", [])
         self.rotas.append(rota)
+        if self.ja_importado:
+            # As tabelas acumulam: o backend confere pelo NOME do arquivo antes
+            # de gravar, pra uma retentativa de rede nao duplicar a carga
+            # inteira. Isto simula a resposta desse caso.
+            return {"success": True, "ja_importado": True, "gravadas": len(linhas)}
         return {"success": True, "gravadas": len(linhas), "ats": 1,
                 "estacoes": ["XPT_SC_Cacador"], "a_pesquisar": len(linhas)}
 
@@ -247,6 +253,20 @@ class Envio(BaseDoVigia):
         self.assertEqual(vigia.fila, [])
         self.varrer(vigia)
         self.assertEqual(vigia.fila, [])
+
+    def test_ja_importado_sai_da_fila_sem_erro_e_sem_reenviar(self):
+        # As tabelas acumulam - o backend recusou porque este ARQUIVO ja tinha
+        # entrado (retentativa de rede depois de um commit que o vigia nao
+        # chegou a confirmar). Isso e sucesso, nao falha: o dado ja esta la.
+        self.escrever("br_assignment_task_20260915.csv")
+        backend = BackendDublado(ja_importado=True)
+        vigia = self.criar_vigia(backend)
+        self.varrer(vigia)
+        vigia._processar(vigia.fila[0])
+
+        self.assertEqual(vigia.fila, [], "sai da fila como sucesso")
+        self.assertFalse(self.avisos[-1][2], "nao e erro - o dado ja esta gravado")
+        self.assertIn("já estava gravado", self.avisos[-1][0].lower() + self.avisos[-1][1].lower())
 
     def test_arquivo_de_outro_assunto_sai_da_fila_sem_alarme(self):
         # O filtro de nome e generoso de proposito (o nome do relatorio de
