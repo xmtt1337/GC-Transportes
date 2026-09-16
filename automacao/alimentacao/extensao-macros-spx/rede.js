@@ -75,8 +75,28 @@
     }
   }
 
+  // O mesmo endereco pedido duas vezes em poucos segundos e o MESMO download.
+  //
+  // Acontece: uma rodada baixou dois arquivos identicos (mesmo sha1) com seis
+  // segundos de diferenca. Nao faz mal - o vigia compara por conteudo e ignora
+  // o segundo -, mas enche a pasta de downloads de copia e confunde quem olha.
+  //
+  // O log conta cada chamada com endereco e hora: se o dobro voltar, o console
+  // diz se foi a pagina pedindo duas vezes ou outra coisa.
+  const ultimoAberto = { endereco: '', quando: 0 };
+  const JANELA_REPETIDO_MS = 10000;
+
   const abrirOriginal = window.open;
   window.open = function (endereco, ...resto) {
+    const alvo = String(endereco || '');
+    const agora = Date.now();
+    const repetido = alvo && alvo === ultimoAberto.endereco &&
+                     agora - ultimoAberto.quando < JANELA_REPETIDO_MS;
+    console.log(`[XM Macros] window.open${repetido ? ' (REPETIDO, ignorado)' : ''}:`, alvo);
+    if (repetido) return null;
+    ultimoAberto.endereco = alvo;
+    ultimoAberto.quando = agora;
+
     let janela = null;
     try {
       janela = abrirOriginal.apply(this, [endereco, ...resto]);
@@ -84,8 +104,8 @@
       janela = null;
     }
     if (!janela && endereco) {
-      const deu = baixarEscondido(String(endereco));
-      console.log('[XM Macros] pop-up bloqueado; baixando por dentro da página:', String(endereco));
+      const deu = baixarEscondido(alvo);
+      console.log('[XM Macros] pop-up bloqueado; baixando por dentro da página:', alvo);
       window.postMessage({ __xmMacroDownload: true, bloqueado: true, contornado: deu },
                          window.location.origin);
     }
