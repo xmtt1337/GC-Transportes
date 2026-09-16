@@ -208,8 +208,31 @@
     }
   }
 
+  // ── ir pra tela certa ──────────────────────────────────────────────────
+  // Troca so o hash, sem recarregar a pagina. Um F5 de verdade mataria o macro
+  // no meio: o content script e recarregado junto e o que estava rodando some.
+  //
+  // Quem diz que chegou NAO e a URL, e sim achar na tela um elemento que so
+  // existe la. URL de SPA muda na hora; o conteudo demora - e agir no meio do
+  // caminho e clicar no que ainda esta na tela anterior.
+  async function irParaTela(hashAlvo, reconhecer, nomeDaTela) {
+    if (!/(^|\.)spx\.shopee\.com\.br$/i.test(raiz.location.hostname)) {
+      throw new Error('esta aba não é do SPX');
+    }
+    const jaEstava = !!reconhecer();
+    if (!jaEstava) {
+      const base = rede.ativas;
+      raiz.location.hash = hashAlvo;
+      await dormir(1200);
+      await esperarRede({ base, limite: 60000 });
+    }
+    await esperar(reconhecer, {
+      oque: `a tela ${nomeDaTela} carregar`, limite: 45000, intervalo: 400 });
+    return !jaEstava;
+  }
+
   Object.assign(spx, {
-    dormir, esperar, visivel, desabilitado,
+    dormir, esperar, visivel, desabilitado, irParaTela,
     folhasComTexto, folhaVisivelComTexto, acharBotao,
     clicar, escrever, apertarEnter, apertarEsc, tecla,
     rede, esperarRede, download,

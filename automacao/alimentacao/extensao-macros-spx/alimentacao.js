@@ -26,6 +26,7 @@
   const S = G.spx;
   const P = G.painel;
 
+  const TELA = '#/delivery-assignment/list';
   const ROTULO_DATA = 'Horário de Criação';
   const TEXTO_TODAS_PAGINAS = 'Select All in All Pages';
   const ESPERA_RELATORIO_MS = 30 * 60 * 1000;
@@ -669,9 +670,11 @@
 
     try {
       await G.aprender.carregar();
-      if (!location.href.includes('delivery-assignment')) {
-        P.nota('atenção: esta não parece a tela Atribuição de Entrega');
-      }
+
+      P.passo('abrindo Entrega › Atribuição de Entrega');
+      const mudou = await S.irParaTela(TELA, () => !!acharFiltroData(ROTULO_DATA),
+                                       'Atribuição de Entrega');
+      P.nota(mudou ? 'tela aberta' : 'já estava nela');
 
       P.passo('1/5 · data de hoje em "Horário de Criação"');
       await porDataDeHoje();

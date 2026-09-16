@@ -66,10 +66,15 @@ acontece e nenhum erro aparece.
 USAR
 -----------------------------------------------------------
 
+Cada macro ABRE A TELA DELE sozinho - basta estar em
+qualquer pagina do SPX. Ele troca de tela sem recarregar
+(um F5 mataria o macro no meio), e so comeca quando a tela
+nova terminou de carregar de verdade.
+
+
 MACRO 1 - AT EXPORTADA
 
-1. Abra  Entrega > Atribuicao de Entrega  no SPX
-2. Clique no icone da extensao > "1 - AT Exportada"
+1. Clique no icone da extensao > "1 - AT Exportada"
 3. Pode fechar a janelinha do Chrome: o acompanhamento
    aparece num quadro na propria tela do SPX
 
@@ -88,8 +93,7 @@ MACRO 2 - PEDIDOS PESQUISADOS
 
 Rode DEPOIS do macro 1, e com o XM Vigia aberto na bandeja.
 
-1. Abra  Pedidos > Rastreio de pedidos  no SPX
-2. Clique no icone da extensao > "2 - Pedidos Pesquisados"
+1. Clique no icone da extensao > "2 - Pedidos Pesquisados"
 
 Ele faz, nessa ordem:
 

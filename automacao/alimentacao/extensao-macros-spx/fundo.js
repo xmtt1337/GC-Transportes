@@ -84,7 +84,8 @@ async function disparar() {
   } catch (e) {
     abas = [];
   }
-  // A tela certa primeiro; se nao houver, qualquer aba do SPX serve pra tentar.
+  // A tela certa primeiro, pra nao tirar ninguem de onde esta trabalhando; mas
+  // qualquer aba do SPX serve, porque o macro abre a tela dele sozinho.
   const aba = abas.find((t) => String(t.url || '').includes('delivery-assignment')) || abas[0];
   if (!aba) {
     await anotar('não rodou: nenhuma aba do SPX aberta');

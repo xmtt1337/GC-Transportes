@@ -31,6 +31,7 @@
   const S = G.spx;
   const P = G.painel;
 
+  const TELA = '#/orderTracking';
   const TEXTO_LOTE = 'Pesquisa em lote';
   const TEXTO_EXPORTAR = 'Exportar';
   const TEXTO_EXPORTAR_PESQUISADOS = 'Exportar pedidos pesquisados';
@@ -38,6 +39,10 @@
   const MAX_POR_VEZ = 10000;
 
   let rodando = false;
+
+  // O botao da lupa e o que so existe nesta tela - e por ele que se sabe que
+  // ela terminou de carregar, e nao pela URL.
+  const achouATela = () => !!(S.acharBotao(TEXTO_LOTE) || S.folhaVisivelComTexto(TEXTO_LOTE));
 
   // ── 1. os codigos ──────────────────────────────────────────────────────
   async function pedirCodigos() {
@@ -169,9 +174,9 @@
     const T = G.painelDeTarefas;
 
     try {
-      if (!location.href.includes('orderTracking')) {
-        P.nota('atenção: esta não parece a tela Rastreio de pedidos');
-      }
+      P.passo('abrindo Pedidos › Rastreio de pedidos');
+      const mudou = await S.irParaTela(TELA, achouATela, 'Rastreio de pedidos');
+      P.nota(mudou ? 'tela aberta' : 'já estava nela');
 
       P.passo('1/5 · pedindo os códigos ao vigia');
       const codigos = await pedirCodigos();
