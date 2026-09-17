@@ -16,6 +16,14 @@ let _sstbEnviando = false;
 let _sstbPedidos = [];      // pedidos da faixa aberta no modal
 let _sstbPedFaixa = null;
 
+// Filtro de coluna (estilo planilha) do Status e do Último usuário. `null`
+// quer dizer "sem filtro" (tudo visível) — igual o Google Sheets, que trata
+// "tudo marcado" como equivalente a não filtrar.
+let _sstbStatusSel = null;
+let _sstbUsuarioSel = null;
+let _sstbOrdStatus = null;   // "asc" | "desc" | null
+let _sstbOrdUsuario = null;
+
 function _sstbEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
@@ -25,6 +33,12 @@ function abrirShopeeStuckBacklog(event) {
     mostrarTela("tela-shopee-stuck-backlog", "Shopee/Stuck/Backlog");
     document.getElementById("sstb-busca").value = "";
     _sstbFiltro = "";
+    _sstbStatusSel = null;
+    _sstbUsuarioSel = null;
+    _sstbOrdStatus = null;
+    _sstbOrdUsuario = null;
+    document.getElementById("sstb-th-status")?.classList.remove("ativo");
+    document.getElementById("sstb-th-usuario")?.classList.remove("ativo");
     _sstbCarregar();
 }
 
@@ -71,10 +85,49 @@ function _sstbFiltrar() {
     _sstbRenderizar();
 }
 
+// Busca por texto + os dois filtros de coluna, combinados (E lógico) — e a
+// ordenação de qualquer um dos dois, se estiver ativa. É esta lista (já
+// filtrada) que alimenta a tabela E os cards de dias parado: filtrar por
+// status também recorta quantos pedidos aparecem em cada faixa.
 function _sstbVisiveis() {
     const termo = String(_sstbFiltro || "").trim().toLowerCase();
-    if (!termo) return _sstbRegistros;
-    return _sstbRegistros.filter(r => String(r.shipment_id || "").toLowerCase().includes(termo));
+    let lista = _sstbRegistros;
+    if (termo) lista = lista.filter(r => String(r.shipment_id || "").toLowerCase().includes(termo));
+    if (_sstbStatusSel) lista = lista.filter(r => _sstbStatusSel.has(String(r.latest_status || "").trim()));
+    if (_sstbUsuarioSel) lista = lista.filter(r => _sstbUsuarioSel.has(String(r.latest_user_name || "").trim()));
+    if (_sstbOrdStatus) lista = [...lista].sort((a, b) => colfCompara(a.latest_status, b.latest_status, _sstbOrdStatus));
+    else if (_sstbOrdUsuario) lista = [...lista].sort((a, b) => colfCompara(a.latest_user_name, b.latest_user_name, _sstbOrdUsuario));
+    return lista;
+}
+
+function _sstbAbrirFiltroStatus(btn) {
+    colfAbrir(btn, {
+        valores: _sstbRegistros.map(r => r.latest_status || ""),
+        selecionados: _sstbStatusSel,
+        ordenar: { atual: _sstbOrdStatus },
+        aoAplicar: (sel, ordem) => {
+            _sstbStatusSel = sel;
+            _sstbOrdStatus = ordem;
+            if (ordem) _sstbOrdUsuario = null; // só uma ordenação ativa por vez
+            btn.classList.toggle("ativo", !!sel);
+            _sstbRenderizar();
+        },
+    });
+}
+
+function _sstbAbrirFiltroUsuario(btn) {
+    colfAbrir(btn, {
+        valores: _sstbRegistros.map(r => r.latest_user_name || ""),
+        selecionados: _sstbUsuarioSel,
+        ordenar: { atual: _sstbOrdUsuario },
+        aoAplicar: (sel, ordem) => {
+            _sstbUsuarioSel = sel;
+            _sstbOrdUsuario = ordem;
+            if (ordem) _sstbOrdStatus = null;
+            btn.classList.toggle("ativo", !!sel);
+            _sstbRenderizar();
+        },
+    });
 }
 
 // ── Faixas de dias parado ──
@@ -115,8 +168,10 @@ function _sstbRenderizar() {
         ? `${_sstbRegistros.length} pedido${_sstbRegistros.length !== 1 ? "s" : ""} no backlog`
         : `${lista.length} de ${_sstbRegistros.length}`;
 
+    // Conta em cima da lista JÁ FILTRADA: filtrar por status ou usuário tem
+    // que recortar os cards de dias parado junto, não só a tabela embaixo.
     const porFaixa = Object.fromEntries(SSTB_FAIXAS.map(f => [f.chave, 0]));
-    _sstbRegistros.forEach(r => { porFaixa[_sstbFaixaDe(r.dias).chave]++; });
+    lista.forEach(r => { porFaixa[_sstbFaixaDe(r.dias).chave]++; });
     // O card é clicável: mostra os pedidos daquela faixa, igual o Na Rua faz
     // clicando num número da tabela dinâmica.
     document.getElementById("sstb-tiles").innerHTML = SSTB_FAIXAS.map(f => `
@@ -149,7 +204,9 @@ function _sstbLinhaHtml(r) {
 function _sstbAbrirPedidos(chave) {
     const faixa = SSTB_FAIXAS.find(f => f.chave === chave);
     _sstbPedFaixa = faixa;
-    _sstbPedidos = _sstbRegistros.filter(r => _sstbFaixaDe(r.dias).chave === chave);
+    // Da lista JÁ FILTRADA: o card mostra a contagem depois do filtro, então
+    // clicar nele tem que abrir os MESMOS pedidos que esse número representa.
+    _sstbPedidos = _sstbVisiveis().filter(r => _sstbFaixaDe(r.dias).chave === chave);
     document.getElementById("sstb-ped-titulo").innerText = faixa ? faixa.rotulo : "Pedidos";
     document.getElementById("sstb-ped-sub").innerText =
         `${_sstbPedidos.length} pedido${_sstbPedidos.length !== 1 ? "s" : ""}`;

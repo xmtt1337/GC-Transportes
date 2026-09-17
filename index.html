@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260917b">
+<link rel="stylesheet" href="style.css?v=20260917c">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -3028,7 +3028,8 @@ if (_BASE) {
                         <table class="adm-nf-table sst-tabela">
                             <thead>
                                 <tr>
-                                    <th>Estacao</th><th>Cidade</th><th>Pedido</th><th>Status</th>
+                                    <th>Estacao</th><th>Cidade</th><th>Pedido</th>
+                                    <th><span class="colf-th">Status<button type="button" class="colf-btn" id="sst-th-status" onclick="_sstAbrirFiltroStatus(this)" title="Filtrar / ordenar"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button></span></th>
                                     <th style="text-align:center">Dias</th><th>Motorista</th><th>Valor</th>
                                     <th>Justificativa</th><th>Historico</th>
                                 </tr>
@@ -3073,7 +3074,13 @@ if (_BASE) {
                     <div class="adm-nf-wrap">
                         <table class="adm-nf-table sst-tabela">
                             <thead>
-                                <tr><th>Pedido</th><th>Status</th><th style="text-align:center">Dias parado</th><th>Último usuário</th><th>Histórico</th></tr>
+                                <tr>
+                                    <th>Pedido</th>
+                                    <th><span class="colf-th">Status<button type="button" class="colf-btn" id="sstb-th-status" onclick="_sstbAbrirFiltroStatus(this)" title="Filtrar / ordenar"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button></span></th>
+                                    <th style="text-align:center">Dias parado</th>
+                                    <th><span class="colf-th">Último usuário<button type="button" class="colf-btn" id="sstb-th-usuario" onclick="_sstbAbrirFiltroUsuario(this)" title="Filtrar / ordenar"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button></span></th>
+                                    <th>Histórico</th>
+                                </tr>
                             </thead>
                             <tbody id="sstb-tbody"></tbody>
                         </table>
@@ -4280,6 +4287,7 @@ if (_BASE) {
 </div>
 
 <script src="js/core.js?v=20260905a"></script>
+<script src="js/col-filtro.js?v=20260917a"></script>
 <script src="js/router.js?v=20260914a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
 <script src="js/nav.js?v=20260904a"></script>
@@ -4328,8 +4336,8 @@ if (_BASE) {
 <script src="js/shopee-atribuicoes.js?v=30260917a"></script>
 <script src="js/shopee-retidos.js?v=30260819f"></script>
 <script src="js/shopee-conf-entregadores.js?v=30260827b"></script>
-<script src="js/shopee-stuck.js?v=30260902a"></script>
-<script src="js/shopee-stuck-backlog.js?v=20260917b"></script>
+<script src="js/shopee-stuck.js?v=20260917a"></script>
+<script src="js/shopee-stuck-backlog.js?v=20260917c"></script>
 <script src="js/entregador-conferencia.js?v=20260826b"></script>
 <script src="js/solicitar-at.js?v=20260905a"></script>
 <script src="js/viagens.js?v=30260812d"></script>

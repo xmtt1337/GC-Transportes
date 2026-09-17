@@ -12,6 +12,11 @@ let _sstRegistros = [];
 let _sstJustificativas = [];
 let _sstFiltro = "";
 
+// Filtro de coluna (estilo planilha) do Status. `null` é "sem filtro" — igual
+// o Google Sheets, que trata "tudo marcado" como equivalente a não filtrar.
+let _sstStatusSel = null;
+let _sstOrdStatus = null; // "asc" | "desc" | null
+
 function _sstEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
@@ -21,6 +26,9 @@ function abrirShopeeStuck(event) {
     mostrarTela("tela-shopee-stuck", "Shopee/Stuck");
     document.getElementById("sst-busca").value = "";
     _sstFiltro = "";
+    _sstStatusSel = null;
+    _sstOrdStatus = null;
+    document.getElementById("sst-th-status")?.classList.remove("ativo");
     _sstCarregar();
 }
 
@@ -61,9 +69,27 @@ function _sstFiltrar() {
 /** Casa o termo em qualquer coluna: quem procura tem o código OU o motorista. */
 function _sstVisiveis() {
     const termo = String(_sstFiltro || "").trim().toLowerCase();
-    if (!termo) return _sstRegistros;
-    return _sstRegistros.filter(r =>
-        Object.values(r).some(v => String(v ?? "").toLowerCase().includes(termo)));
+    let lista = _sstRegistros;
+    if (termo) {
+        lista = lista.filter(r => Object.values(r).some(v => String(v ?? "").toLowerCase().includes(termo)));
+    }
+    if (_sstStatusSel) lista = lista.filter(r => _sstStatusSel.has(String(r.tracking_status || "").trim()));
+    if (_sstOrdStatus) lista = [...lista].sort((a, b) => colfCompara(a.tracking_status, b.tracking_status, _sstOrdStatus));
+    return lista;
+}
+
+function _sstAbrirFiltroStatus(btn) {
+    colfAbrir(btn, {
+        valores: _sstRegistros.map(r => r.tracking_status || ""),
+        selecionados: _sstStatusSel,
+        ordenar: { atual: _sstOrdStatus },
+        aoAplicar: (sel, ordem) => {
+            _sstStatusSel = sel;
+            _sstOrdStatus = ordem;
+            btn.classList.toggle("ativo", !!sel);
+            _sstRenderizar();
+        },
+    });
 }
 
 function _sstRenderizar() {
