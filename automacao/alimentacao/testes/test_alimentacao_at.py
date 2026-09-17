@@ -300,6 +300,86 @@ class NomeGeneroso(unittest.TestCase):
         self.assertFalse(at.eh_arquivo_alvo("br_outro_relatorio_qualquer.csv"))
 
 
+class Backlog(unittest.TestCase):
+    """backlogs.xlsx - Painel > Entrega/Devolucao > AMH-LM > Delivery V3.0.
+
+    Sem CAMPOS conhecidos (ninguem viu o cabecalho de verdade ainda), entao a
+    linha inteira vira `dados` e a identificacao e pelo NOME do arquivo, nao
+    pelo cabecalho - ao contrario da AT e dos pedidos pesquisados.
+    """
+
+    def test_eh_arquivo_alvo_aceita_o_nome_e_as_copias_numeradas(self):
+        self.assertTrue(at.eh_arquivo_alvo("backlogs.xlsx"))
+        self.assertTrue(at.eh_arquivo_alvo("backlogs (1).xlsx"))
+        self.assertTrue(at.eh_arquivo_alvo("backlogs (12).xlsx"))
+
+    def test_mapear_backlog_guarda_a_linha_inteira_em_dados(self):
+        grade = [
+            ["Estação", "SPX TN", "Idade", "Para"],
+            ["XPT_SC_Caçador", "BR000000000001N", "3-6 Dias", "Buyer"],
+            ["XPT_SC_Videira", "BR000000000002N", ">6 Days", "Seller"],
+        ]
+        linhas = at.mapear_backlog(grade)
+        self.assertEqual(len(linhas), 2)
+        self.assertEqual(linhas[0], {"dados": {
+            "Estação": "XPT_SC_Caçador", "SPX TN": "BR000000000001N",
+            "Idade": "3-6 Dias", "Para": "Buyer",
+        }})
+        # Nenhuma chave nomeada (nem "codigo", nem "task_id") - so `dados`.
+        self.assertEqual(list(linhas[1].keys()), ["dados"])
+
+    def test_mapear_backlog_cabecalho_e_sempre_a_linha_0(self):
+        # Ao contrario da AT e dos pedidos pesquisados, NAO escaneia as
+        # primeiras linhas procurando titulo/linha em branco: o arquivo real
+        # baixado no hub veio direto no cabecalho, com uma UNICA coluna
+        # ("Station ID") - com so 1 celula preenchida nao da pra distinguir
+        # titulo de cabecalho de verdade, entao a linha 0 e sempre o
+        # cabecalho.
+        grade = [["Station ID"], ["XPT_SC_Caçador"]]
+        linhas = at.mapear_backlog(grade)
+        self.assertEqual(linhas, [{"dados": {"Station ID": "XPT_SC_Caçador"}}])
+
+    def test_mapear_backlog_arquivo_so_com_cabecalho_e_sem_linha_de_dado(self):
+        # O caso real: os dois arquivos baixados no hub vieram so com
+        # "Station ID" e nenhuma linha embaixo - lista vazia aqui, e quem
+        # transforma isso num erro pro usuario ver e ler_arquivo/_conferir.
+        self.assertEqual(at.mapear_backlog([["Station ID"]]), [])
+
+    def test_mapear_backlog_pula_linha_totalmente_vazia_no_fim(self):
+        grade = [["Estação", "SPX TN"], ["XPT_SC_Caçador", "BR000000000001N"], ["", ""]]
+        self.assertEqual(len(at.mapear_backlog(grade)), 1)
+
+    def test_mapear_backlog_sem_cabecalho_reconhecivel_e_invalido(self):
+        with self.assertRaises(at.ArquivoInvalido):
+            at.mapear_backlog([[""], [""], [""]])
+
+    def test_ler_qualquer_backlog_so_com_cabecalho_e_recusado_com_mensagem_clara(self):
+        # Aconteceu de verdade: os dois primeiros arquivos baixados no hub
+        # vieram so com "Station ID", sem nenhuma linha de dado embaixo. Isso
+        # tem que virar "arquivo vazio" pro usuario, nao "nao achei
+        # cabecalho" (que sugeriria um problema no proprio parser).
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "backlogs.csv")
+            with open(caminho, "w", encoding="utf-8") as f:
+                f.write("Station ID\n")
+            with self.assertRaises(at.ArquivoInvalido) as ctx:
+                at.ler_qualquer(caminho)
+        self.assertIn("nenhuma linha preenchida", str(ctx.exception))
+
+    def test_ler_qualquer_identifica_backlog_pelo_nome_do_arquivo(self):
+        # Mesmo com um cabecalho parecido com o dos outros dois relatorios, o
+        # nome do arquivo decide - backlog nao passa pela identificacao por
+        # conteudo (identificar()), que so conhece "at" e "pesquisados".
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "backlogs (1).csv")
+            with open(caminho, "w", encoding="utf-8") as f:
+                f.write("Estação;SPX TN\nXPT_SC_Caçador;BR000000000001N\n")
+            tipo, linhas, faltando = at.ler_qualquer(caminho)
+        self.assertEqual(tipo, "backlog")
+        self.assertEqual(faltando, [])
+        self.assertEqual(linhas, [{"dados": {"Estação": "XPT_SC_Caçador", "SPX TN": "BR000000000001N"}}])
+
+
 class Resumo(unittest.TestCase):
     def test_conta_ats_e_nao_so_linhas(self):
         # Um Task ID por AT: o arquivo traz varias ATs, com varios pacotes cada

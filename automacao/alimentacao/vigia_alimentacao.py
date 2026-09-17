@@ -77,11 +77,13 @@ ORIGEM = "XM Vigia (automático)"
 # propria; a operacao continua exatamente como sempre foi.
 ROTA_CARGA = "/macros/at-exportada"
 ROTA_PESQUISADOS = "/macros/pedidos-pesquisados"
+ROTA_BACKLOG = "/macros/backlog-shopee"
 ROTA_PENDENTES = "/macros/at-exportada/pendentes"
 
-# Onde cada relatorio entra. A chave e o tipo que alimentacao_at.identificar
-# devolve olhando o cabecalho do arquivo.
-DESTINO = {"at": ROTA_CARGA, "pesquisados": ROTA_PESQUISADOS}
+# Onde cada relatorio entra. A chave e o tipo que alimentacao_at.ler_qualquer
+# devolve (pelo cabecalho pra AT e pedidos pesquisados; pelo nome do arquivo
+# pro backlog).
+DESTINO = {"at": ROTA_CARGA, "pesquisados": ROTA_PESQUISADOS, "backlog": ROTA_BACKLOG}
 
 # Porta do atendimento a extensao, so em 127.0.0.1.
 #
@@ -589,7 +591,7 @@ class Vigia:
         if tipo is None:
             self._tirar(pendente)
             self.registro.marcar(pendente.chave, nome=nome, resultado="nao e relatorio conhecido")
-            log.info("ignorado (nao e AT nem pedidos pesquisados): %s", nome)
+            log.info("ignorado (nao e AT, pedidos pesquisados nem backlog): %s", nome)
             return
 
         numeros = at.resumo(linhas)
@@ -597,9 +599,14 @@ class Vigia:
         if faltando:
             log.warning("colunas ausentes em %s (entram vazias): %s", nome, ", ".join(faltando))
 
-        rotulo = "AT exportada" if tipo == "at" else "pedidos pesquisados"
-        detalhe = (f"{numeros['ats']} ATs · {numeros['linhas']} linhas · {estacoes}"
-                   if tipo == "at" else f"{numeros['linhas']} pedidos")
+        ROTULO_TIPO = {"at": "AT exportada", "pesquisados": "pedidos pesquisados", "backlog": "backlog"}
+        rotulo = ROTULO_TIPO.get(tipo, tipo)
+        if tipo == "at":
+            detalhe = f"{numeros['ats']} ATs · {numeros['linhas']} linhas · {estacoes}"
+        elif tipo == "pesquisados":
+            detalhe = f"{numeros['linhas']} pedidos"
+        else:
+            detalhe = f"{numeros['linhas']} linhas"
 
         self.ultimo = f"enviando {nome}"
         self.avisar("Enviando", f"{nome}\n{rotulo}: {detalhe}")
@@ -644,10 +651,13 @@ class Vigia:
             resumo_texto = (f"{ats} ATs · {gravadas} linhas · {estacoes}" +
                             (f"\n{falta} a pesquisar" if falta is not None else ""))
             self.ultimo = f"AT: {ats} ATs às {time.strftime('%H:%M')}"
-        else:
+        elif tipo == "pesquisados":
             ligados = resposta.get("ligados_a_at", 0)
             resumo_texto = f"{gravadas} pedidos · {ligados} ligados a uma AT"
             self.ultimo = f"pesquisados: {gravadas} às {time.strftime('%H:%M')}"
+        else:
+            resumo_texto = f"{gravadas} linhas"
+            self.ultimo = f"backlog: {gravadas} linhas às {time.strftime('%H:%M')}"
 
         self.registro.marcar(pendente.chave, nome=nome,
                              resultado=f"{rotulo}: {resumo_texto}".replace("\n", " · "))

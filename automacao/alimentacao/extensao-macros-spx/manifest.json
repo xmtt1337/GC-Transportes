@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "XM Macros SPX",
-  "version": "3.6",
-  "description": "Macros da rotina do SPX: AT Exportada (exporta e baixa a AT do dia) e Pedidos Pesquisados (pesquisa em lote os pedidos novos dessa AT).",
+  "version": "3.7",
+  "description": "Macros da rotina do SPX: AT Exportada (exporta e baixa a AT do dia), Pedidos Pesquisados (pesquisa em lote os pedidos novos dessa AT) e Backlog (baixa o backlog do hub).",
   "permissions": [
     "activeTab",
     "storage",
@@ -38,6 +38,7 @@
         "aprender.js",
         "alimentacao.js",
         "pedidos.js",
+        "backlog.js",
         "diagnostico.js"
       ],
       "run_at": "document_idle",

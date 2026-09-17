@@ -13,11 +13,11 @@ async function abaDoSpx() {
   return aba;
 }
 
-async function mandar(xmMacro) {
+async function mandar(xmMacro, extra) {
   const aba = await abaDoSpx();
   if (!aba) { dizer('abra a aba do SPX primeiro', true); return null; }
   try {
-    return await chrome.tabs.sendMessage(aba.id, { xmMacro });
+    return await chrome.tabs.sendMessage(aba.id, { xmMacro, ...extra });
   } catch (e) {
     // Erro sempre igual: a aba estava aberta antes da extensao entrar.
     dizer('dê F5 na aba do SPX e tente de novo', true);
@@ -41,6 +41,7 @@ async function rodarMacro(qual) {
 
 document.getElementById('rodar').addEventListener('click', () => rodarMacro('alimentacao'));
 document.getElementById('rodar-pedidos').addEventListener('click', () => rodarMacro('pedidos'));
+document.getElementById('rodar-backlog').addEventListener('click', () => rodarMacro('backlog'));
 
 // ── agenda ──────────────────────────────────────────────────────────────
 const campos = {
@@ -118,6 +119,12 @@ document.getElementById('ensinar').addEventListener('click', async () => {
   dizer('');
   const r = await mandar('ensinar');
   // O popup precisa sair da frente: o proximo clique da pessoa e o que vale.
+  if (r && r.ok) window.close();
+});
+
+document.getElementById('ensinar-backlog').addEventListener('click', async () => {
+  dizer('');
+  const r = await mandar('ensinar', { qual: 'backlog' });
   if (r && r.ok) window.close();
 });
 

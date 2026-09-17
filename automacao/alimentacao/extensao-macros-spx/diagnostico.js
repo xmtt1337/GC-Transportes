@@ -70,7 +70,7 @@
     linhas.push('');
 
     diz('checkbox do cabecalho', resumo(A.checkboxDoCabecalho()));
-    for (const qual of ['seta', 'item']) {
+    for (const qual of ['seta', 'item', 'backlog']) {
       const seletor = G.aprender.seletorDe(qual);
       if (!seletor) { diz(`${qual} ensinado`, 'nada ensinado ainda'); continue; }
       const quantos = (() => { try { return document.querySelectorAll(seletor).length; } catch (e) { return -1; } })();
@@ -135,6 +135,14 @@
                           `${caminho(el)}`));
     }
 
+    // ── tela AMH-LM (macro 3) ─────────────────────────────────────────────
+    if (location.href.includes('all-mile-hub') || location.href.includes('dashboard')) {
+      linhas.push('');
+      diz('texto "Backlog" na tela', resumo(S.folhaVisivelComTexto(G.backlog.TEXTO_BACKLOG)));
+      const botaoBacklog = G.backlog.acharBotaoBaixar();
+      diz('botão de baixar (ensinado)', botaoBacklog ? resumo(botaoBacklog) : 'NAO ACHOU (ensine com Alt+B)');
+    }
+
     const painel = A.acharPainelTarefas();
     diz('painel Ultima tarefa', painel ? 'ABERTO — ' + caminho(painel) : 'fechado');
     if (painel) {
@@ -166,6 +174,7 @@
   //   Alt+X  copia o diagnostico
   //   Alt+S  ensinar a Setinha
   //   Alt+M  ensinar o item do Menu (com o menu aberto)
+  //   Alt+B  ensinar o icone de Baixar do Backlog
   async function copiarDiagnostico() {
     const texto = diagnostico();
     try {
@@ -184,6 +193,7 @@
     if (tecla === 'x') copiarDiagnostico();
     else if (tecla === 's') G.aprender.ensinar('seta');
     else if (tecla === 'm') G.aprender.ensinar('item');
+    else if (tecla === 'b') G.aprender.ensinar('backlog');
     else return;
     evento.preventDefault();
   }, true);

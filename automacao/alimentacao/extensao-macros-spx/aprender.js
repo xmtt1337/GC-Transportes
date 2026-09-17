@@ -168,6 +168,7 @@
   const ROTULOS = {
     seta: 'a setinha ao lado do checkbox do cabeçalho (a que abre o menu)',
     item: 'o "Select All in All Pages" — com o menu já aberto',
+    backlog: 'o ícone de baixar ao lado do card "Backlog" (Painel › Entrega/Devolução › AMH-LM › Delivery V3.0)',
   };
 
   function ensinar(qual) {

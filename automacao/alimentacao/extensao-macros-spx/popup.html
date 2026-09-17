@@ -49,11 +49,14 @@
     <b>1. AT Exportada</b> — tela Entrega › Atribuição de Entrega.
     Filtra o dia, marca tudo, exporta e baixa a AT.<br><br>
     <b>2. Pedidos Pesquisados</b> — tela Pedidos › Rastreio de pedidos.
-    Pega os pedidos novos daquela AT, pesquisa em lote e baixa.
+    Pega os pedidos novos daquela AT, pesquisa em lote e baixa.<br><br>
+    <b>3. Backlog</b> — Painel › Entrega/Devolução › AMH-LM › Delivery V3.0.
+    Clica no ícone de baixar do card "Backlog" — o clique já dispara o download.
   </p>
 
   <button id="rodar">▶ 1 · AT Exportada</button>
   <button id="rodar-pedidos">▶ 2 · Pedidos Pesquisados</button>
+  <button id="rodar-backlog">▶ 3 · Backlog</button>
   <div class="estado" id="estado"></div>
 
   <fieldset>
@@ -77,6 +80,7 @@
   </fieldset>
 
   <button id="ensinar" class="calmo">Ensinar a setinha</button>
+  <button id="ensinar-backlog" class="calmo">Ensinar o Backlog</button>
   <button id="diagnostico" class="calmo">Diagnóstico (copiar)</button>
 
   <p class="aviso">
@@ -87,7 +91,7 @@
   <p class="aviso">
     Na tela do SPX, sem abrir esta janelinha (que fecha o menu da página):<br>
     <b>Alt+X</b> copia o diagnóstico · <b>Alt+S</b> ensina a setinha ·
-    <b>Alt+M</b> ensina o item, com o menu aberto
+    <b>Alt+M</b> ensina o item, com o menu aberto · <b>Alt+B</b> ensina o Backlog
   </p>
 
   <script src="logica.js"></script>

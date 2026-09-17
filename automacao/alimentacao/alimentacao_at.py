@@ -116,12 +116,19 @@ MINIMO_DE_COLUNAS = 5
 # prefixo. Ambos entram aqui de proposito: quem decide o TIPO e o cabecalho
 # (identificar()), nao o nome do arquivo.
 PREFIXO = "br_assignment_task_"
-# Os comecos dos DOIS relatorios que interessam, e so eles.
+# Os comecos dos relatorios que interessam, e so eles.
 #
 # "export_" sozinho era largo demais: a pasta de downloads tem anos de
 # export_forward_order_* que alguem baixou a mao, e todos viraram novidade no
 # dia em que o filtro abriu. Relatorio que nao e nosso nao deve nem ser aberto.
-PREFIXOS = ("br_assignment_task_", "export_return_order_")
+#
+# "backlogs" e o terceiro: Painel > Entrega/Devolucao > AMH-LM > Delivery V3.0,
+# o iconezinho de baixar ao lado do card "Backlog". Sempre com esse nome exato
+# (a Shopee so acrescenta "(1)", "(2)"... quando ja existe um igual na pasta),
+# entao aqui o nome do arquivo decide o tipo - ao contrario da AT e dos
+# pedidos pesquisados, que sao identificados pelo CABECALHO porque o nome dos
+# dois ja mudou com o tempo.
+PREFIXOS = ("br_assignment_task_", "export_return_order_", "backlogs")
 EXTENSOES = (".xlsx", ".csv")
 
 # Teto do backend por envio (AT_MAX_LINHAS no server.js). Conferir aqui evita
@@ -253,6 +260,42 @@ def mapear(grade, campos=None, obrigatorios=None, rotulo_do_tipo="da AT",
     return linhas, faltando
 
 
+def mapear_backlog(grade):
+    """A grade crua do backlogs.xlsx -> linhas pro backend.
+
+    Sem CAMPOS aqui de proposito: ninguem sabe ainda quais colunas esse
+    relatorio traz (e a Shopee pode trocar sem avisar, como ja fez com os
+    outros dois). Em vez de adivinhar nome de coluna e arriscar o mesmo erro
+    de "Driver Name" vindo vazio por causa de grafia errada, a linha INTEIRA
+    vira `dados` - promover uma coluna especifica fica pra quando alguem
+    pedir, olhando o que chegou de verdade.
+
+    O cabecalho e SEMPRE a linha 0, sem escanear as primeiras linhas
+    procurando titulo ou linha em branco (como a AT e os pedidos pesquisados
+    fazem) - o arquivo real baixado no hub veio direto no cabecalho, com uma
+    UNICA coluna ("Station ID"). Com so 1 coluna nao da pra distinguir
+    "titulo" de "cabecalho de verdade" pela quantidade de celulas
+    preenchidas (as duas teriam 1), entao nem vale tentar - se um dia
+    aparecer um arquivo com titulo antes, ajusta aqui olhando pro que chegou.
+    """
+    if not grade or not any(texto_da_celula(c) for c in (grade[0] or [])):
+        raise ArquivoInvalido("nao achei um cabecalho no arquivo de backlog")
+
+    cabecalho = grade[0] or []
+    linhas = []
+    for i in range(1, len(grade)):
+        bruta = grade[i] or []
+        completo = {}
+        for j, nome in enumerate(cabecalho):
+            chave = str(nome or "").strip()
+            if chave:
+                completo[chave] = _celula(bruta, j)
+        if not any(completo.values()):
+            continue
+        linhas.append({"dados": completo})
+    return linhas
+
+
 def _grade_csv(caminho):
     with open(caminho, "rb") as f:
         bruto = f.read()
@@ -321,6 +364,14 @@ def ler_qualquer(caminho):
     e erro: a pasta de downloads tem de tudo, e o filtro de nome e generoso de
     proposito. Erro e um arquivo do tipo certo que nao da pra ler.
     """
+    # Backlog e pelo NOME, nao pelo cabecalho - e o unico dos tres sem CAMPOS
+    # conhecidos pra identificar por conteudo (ver mapear_backlog).
+    nome = os.path.basename(str(caminho)).lower()
+    if nome.startswith("backlogs"):
+        linhas = mapear_backlog(ler_grade(caminho))
+        _conferir(linhas)
+        return "backlog", linhas, []
+
     grade = ler_grade(caminho)
     tipo = identificar(grade)
     if tipo is None:

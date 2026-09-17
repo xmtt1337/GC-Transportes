@@ -364,6 +364,7 @@ class Destino(unittest.TestCase):
     def test_cada_relatorio_vai_pra_sua_tabela(self):
         self.assertEqual(va.DESTINO["at"], "/macros/at-exportada")
         self.assertEqual(va.DESTINO["pesquisados"], "/macros/pedidos-pesquisados")
+        self.assertEqual(va.DESTINO["backlog"], "/macros/backlog-shopee")
 
     def test_nenhum_caminho_do_envio_aponta_pra_tabela_da_equipe(self):
         # Ja aconteceu: a repeticao sem gzip tinha ficado com a rota antiga

@@ -94,6 +94,7 @@ const RAIZ_SPX = 'https://spx.shopee.com.br/';
 const TELA_DE = {
   alimentacao: '#/delivery-assignment/list',
   pedidos: '#/orderTracking',
+  backlog: '#/dashboard/all-mile-hub/lm',
 };
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
