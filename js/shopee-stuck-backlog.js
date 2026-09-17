@@ -163,10 +163,10 @@ const SSTB_FAIXAS = [
     { chave: "d5", rotulo: "5 dias",    min: 5, max: 5 },
     { chave: "d6", rotulo: "6 dias +",  min: 6, max: Infinity },
 ];
-// Mesmo hue do Na Rua (NR_RAMPAS.shopee), esticado pra 6 degraus: mais claro
-// é mais grave — num fundo escuro, é o claro que chama atenção primeiro.
+// Do laranja apagado (1 dia, ainda ameno) até o laranja cheio da marca Shopee
+// (6+, o pior caso) — quanto mais grave, mais forte a cor, não mais clara.
 const SSTB_CORES = {
-    d1: "#833600", d2: "#9c4200", d3: "#ab4a00", d4: "#d26218", d5: "#e08c60", d6: "#f0b088",
+    d1: "#f5d9c2", d2: "#f6c5a0", d3: "#f7b07d", d4: "#f79c5b", d5: "#f88738", d6: "#f97316",
 };
 
 function _sstbFaixaDe(dias) {
@@ -205,7 +205,7 @@ function _sstbRenderizar() {
     }).join("");
 
     document.getElementById("sstb-tbody").innerHTML = lista.map(r => _sstbLinhaHtml(r)).join("");
-    _sstbGraficar(listaTiles, lista, porFaixa);
+    _sstbGraficar(lista, porFaixa);
 }
 
 function _sstbLinhaHtml(r) {
@@ -223,11 +223,12 @@ function _sstbLinhaHtml(r) {
 }
 
 // ── Gráficos ──
-// Dois recortes que os cards e a tabela não respondem de relance:
-//   1. o formato do backlog por tempo parado (mesma informação dos cards, em
-//      barra — mais fácil de comparar 6 valores de uma vez do que 6 cards);
-//   2. quem tem mais pedido parado com o recorte atual, pra saber com quem
-//      cobrar primeiro.
+// Três recortes que os cards e a tabela não respondem de relance:
+//   1. o formato do backlog por tempo parado, em barra — mais fácil de
+//      comparar 6 valores de uma vez do que 6 cards;
+//   2. a mesma distribuição, em proporção do total (a rosca responde "que
+//      fatia do backlog" em vez de "quantos", que a barra já cobre);
+//   3. quantos pedidos há em cada status, na visão atual (já filtrada).
 const SSTB_EIXO  = { color: "#7b8ba3", font: { size: 11 } };
 const SSTB_GRADE = { color: "rgba(255,255,255,0.055)", drawTicks: false };
 const SSTB_GRAF_BASE = { responsive: true, maintainAspectRatio: false, animation: { duration: 220 } };
@@ -238,24 +239,27 @@ function _sstbDestruirGraficos() {
     _sstbGraficos = {};
 }
 
-// Nome comprido ("[3799071]MURILO BROL FERREIRA") vira só o essencial no
-// eixo; o nome inteiro continua no tooltip.
-function _sstbEncurtar(nome) {
-    const t = String(nome || "").replace(/^\[\d+\]\s*/, "").trim();
-    return t.length <= 20 ? t : t.slice(0, 19) + "…";
+// Texto comprido vira só o essencial no eixo; o texto inteiro continua no
+// tooltip. Nasceu pra nome de usuário ("[3799071]MURILO BROL...") mas serve
+// igual pra status escrito à mão que fugir do tamanho normal.
+function _sstbEncurtar(texto) {
+    const t = String(texto || "").replace(/^\[\d+\]\s*/, "").trim();
+    return t.length <= 24 ? t : t.slice(0, 23) + "…";
 }
 
-function _sstbGraficar(listaTiles, listaFiltrada, porFaixa) {
+function _sstbGraficar(listaFiltrada, porFaixa) {
     _sstbDestruirGraficos();
     if (typeof Chart === "undefined") return;
+    const cores = SSTB_FAIXAS.map(f => SSTB_CORES[f.chave]);
 
+    // 1. Barra — pedidos por dias parado.
     _sstbGraficos.dias = new Chart(document.getElementById("sstb-gr-dias"), {
         type: "bar",
         data: {
             labels: SSTB_FAIXAS.map(f => f.rotulo),
             datasets: [{
                 data: SSTB_FAIXAS.map(f => porFaixa[f.chave]),
-                backgroundColor: SSTB_FAIXAS.map(f => SSTB_CORES[f.chave]),
+                backgroundColor: cores,
                 borderRadius: { topLeft: 4, topRight: 4 },
                 borderSkipped: "bottom",
                 maxBarThickness: 34,
@@ -274,29 +278,57 @@ function _sstbGraficar(listaTiles, listaFiltrada, porFaixa) {
         },
     });
 
-    // Top usuários NA VISÃO ATUAL (com o filtro de dias, se houver um ativo):
-    // filtrar por "6 dias +" e olhar este gráfico já responde "de quem é a
-    // maior parte desse backlog velho".
-    const porUsuario = new Map();
-    listaFiltrada.forEach(r => {
-        const nome = String(r.latest_user_name || "").trim();
-        if (nome) porUsuario.set(nome, (porUsuario.get(nome) || 0) + 1);
+    // 2. Rosca — a mesma distribuição, em fatia do total. Legenda própria (o
+    // plugin padrão do Chart.js não segue a tipografia do resto da tela).
+    const legendaEl = document.getElementById("sstb-gr-dias-legenda");
+    if (legendaEl) {
+        legendaEl.innerHTML = SSTB_FAIXAS
+            .map(f => `<span class="nr-leg"><i style="background:${SSTB_CORES[f.chave]}"></i>${f.rotulo}</span>`)
+            .join("");
+    }
+    _sstbGraficos.rosca = new Chart(document.getElementById("sstb-gr-dias-rosca"), {
+        type: "doughnut",
+        data: {
+            labels: SSTB_FAIXAS.map(f => f.rotulo),
+            datasets: [{
+                data: SSTB_FAIXAS.map(f => porFaixa[f.chave]),
+                backgroundColor: cores,
+                borderColor: "#0f1520",
+                borderWidth: 2,
+            }],
+        },
+        options: {
+            ...SSTB_GRAF_BASE,
+            cutout: "62%",
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed.toLocaleString("pt-BR")} pedidos` } },
+            },
+        },
     });
-    const topUsuarios = [...porUsuario.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-    const vazio = document.getElementById("sstb-gr-usr-vazio");
-    if (vazio) vazio.style.display = topUsuarios.length ? "none" : "";
-    if (!topUsuarios.length) return;
 
-    _sstbGraficos.usuarios = new Chart(document.getElementById("sstb-gr-usuarios"), {
+    // 3. Quantidade por status, na visão atual (já filtrada) — filtrar por
+    // "6 dias +" e olhar este gráfico já responde "o que está travando".
+    const porStatus = new Map();
+    listaFiltrada.forEach(r => {
+        const st = String(r.latest_status || "").trim() || "(sem status)";
+        porStatus.set(st, (porStatus.get(st) || 0) + 1);
+    });
+    const statusOrdenado = [...porStatus.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const vazioStatus = document.getElementById("sstb-gr-status-vazio");
+    if (vazioStatus) vazioStatus.style.display = statusOrdenado.length ? "none" : "";
+    if (!statusOrdenado.length) return;
+
+    _sstbGraficos.status = new Chart(document.getElementById("sstb-gr-status"), {
         type: "bar",
         data: {
-            labels: topUsuarios.map(([nome]) => _sstbEncurtar(nome)),
+            labels: statusOrdenado.map(([st]) => _sstbEncurtar(st)),
             datasets: [{
-                data: topUsuarios.map(([, n]) => n),
+                data: statusOrdenado.map(([, n]) => n),
                 backgroundColor: "#F97316",
                 borderRadius: { topRight: 4, bottomRight: 4 },
                 borderSkipped: "left",
-                maxBarThickness: 18,
+                maxBarThickness: 20,
             }],
         },
         options: {
@@ -304,7 +336,7 @@ function _sstbGraficar(listaTiles, listaFiltrada, porFaixa) {
             plugins: {
                 legend: { display: false },
                 tooltip: { callbacks: {
-                    title: c => topUsuarios[c[0].dataIndex][0],
+                    title: c => statusOrdenado[c[0].dataIndex][0],
                     label: c => c.parsed.x.toLocaleString("pt-BR") + " pedidos",
                 } },
             },
