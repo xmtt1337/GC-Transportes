@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260917a">
+<link rel="stylesheet" href="style.css?v=20260917b">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -3073,7 +3073,7 @@ if (_BASE) {
                     <div class="adm-nf-wrap">
                         <table class="adm-nf-table sst-tabela">
                             <thead>
-                                <tr><th>Pedido</th><th style="text-align:center">Dias parado</th><th>Histórico</th></tr>
+                                <tr><th>Pedido</th><th>Status</th><th style="text-align:center">Dias parado</th><th>Último usuário</th><th>Histórico</th></tr>
                             </thead>
                             <tbody id="sstb-tbody"></tbody>
                         </table>
@@ -3103,6 +3103,22 @@ if (_BASE) {
                 <div class="usr-modal-btns">
                     <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-sstb-upload')">Fechar</button>
                     <button class="usr-modal-btn-primary" id="sstb-btn-enviar" style="display:none" onclick="_sstbEnviar()">Enviar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pedidos de uma faixa de dias parado (card clicado) -->
+        <div class="usr-modal-overlay" id="modal-sstb-pedidos" onclick="_fecharModalSeBackdrop(event,'modal-sstb-pedidos')">
+            <div class="usr-modal" style="max-width:520px">
+                <div class="usr-modal-title" id="sstb-ped-titulo">Pedidos</div>
+                <div class="usr-modal-sub" id="sstb-ped-sub"></div>
+                <div class="adm-search-input-area" style="max-width:100%;margin:12px 0">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="sstb-ped-busca" placeholder="Buscar por pedido, status ou usuário..." oninput="_sstbPedRender()" autocomplete="off">
+                </div>
+                <div class="nr-pac-lista" id="sstb-ped-lista"></div>
+                <div class="usr-modal-btns">
+                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-sstb-pedidos')">Fechar</button>
                 </div>
             </div>
         </div>
@@ -4313,7 +4329,7 @@ if (_BASE) {
 <script src="js/shopee-retidos.js?v=30260819f"></script>
 <script src="js/shopee-conf-entregadores.js?v=30260827b"></script>
 <script src="js/shopee-stuck.js?v=30260902a"></script>
-<script src="js/shopee-stuck-backlog.js?v=20260917a"></script>
+<script src="js/shopee-stuck-backlog.js?v=20260917b"></script>
 <script src="js/entregador-conferencia.js?v=20260826b"></script>
 <script src="js/solicitar-at.js?v=20260905a"></script>
 <script src="js/viagens.js?v=30260812d"></script>

@@ -4298,6 +4298,8 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
     border-radius: 12px; padding: 16px 18px;
     display: flex; flex-direction: column; justify-content: center;
 }
+.nr-tile-click { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.nr-tile-click:hover { border-color: rgba(255,255,255,0.22); background: rgba(255,255,255,0.03); }
 .nr-tile-label {
     font-size: 10px; font-weight: 700; color: #6b7a91;
     text-transform: uppercase; letter-spacing: .1em;

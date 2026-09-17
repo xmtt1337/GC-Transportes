@@ -13,6 +13,8 @@ let _sstbRegistros = [];
 let _sstbFiltro = "";
 let _sstbArquivo = null;    // { nome, linhas } lido e aguardando envio
 let _sstbEnviando = false;
+let _sstbPedidos = [];      // pedidos da faixa aberta no modal
+let _sstbPedFaixa = null;
 
 function _sstbEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -78,13 +80,22 @@ function _sstbVisiveis() {
 // ── Faixas de dias parado ──
 // Sempre 1 dia ou mais (o filtro do envio já garante isso), então sem "no
 // prazo" nenhum — só a escala de gravidade, num hue só, igual o Na Rua faz.
+// Uma faixa por dia até 5, e só a partir daí abre "6 dias +": individualizar
+// pra sempre deixaria a última faixa cada vez mais rara de acontecer, e o
+// resto do backlog (que é a maioria) sem nenhuma granularidade.
 const SSTB_FAIXAS = [
     { chave: "d1", rotulo: "1 dia",     min: 1, max: 1 },
     { chave: "d2", rotulo: "2 dias",    min: 2, max: 2 },
     { chave: "d3", rotulo: "3 dias",    min: 3, max: 3 },
-    { chave: "d4", rotulo: "4 dias +",  min: 4, max: Infinity },
+    { chave: "d4", rotulo: "4 dias",    min: 4, max: 4 },
+    { chave: "d5", rotulo: "5 dias",    min: 5, max: 5 },
+    { chave: "d6", rotulo: "6 dias +",  min: 6, max: Infinity },
 ];
-const SSTB_CORES = { d1: "#e08c60", d2: "#d26218", d3: "#ab4a00", d4: "#833600" };
+// Mesmo hue do Na Rua (NR_RAMPAS.shopee), esticado pra 6 degraus: mais claro
+// é mais grave — num fundo escuro, é o claro que chama atenção primeiro.
+const SSTB_CORES = {
+    d1: "#833600", d2: "#9c4200", d3: "#ab4a00", d4: "#d26218", d5: "#e08c60", d6: "#f0b088",
+};
 
 function _sstbFaixaDe(dias) {
     const inteiro = Math.floor(dias);
@@ -106,32 +117,89 @@ function _sstbRenderizar() {
 
     const porFaixa = Object.fromEntries(SSTB_FAIXAS.map(f => [f.chave, 0]));
     _sstbRegistros.forEach(r => { porFaixa[_sstbFaixaDe(r.dias).chave]++; });
+    // O card é clicável: mostra os pedidos daquela faixa, igual o Na Rua faz
+    // clicando num número da tabela dinâmica.
     document.getElementById("sstb-tiles").innerHTML = SSTB_FAIXAS.map(f => `
-        <div class="nr-tile">
+        <div class="nr-tile nr-tile-click" onclick="_sstbAbrirPedidos('${f.chave}')" title="Ver pedidos com ${f.rotulo.toLowerCase()} parado">
             <div class="nr-tile-label"><span class="nr-chip-cor" style="background:${SSTB_CORES[f.chave]}"></span>${f.rotulo}</div>
             <div class="nr-tile-valor">${porFaixa[f.chave].toLocaleString("pt-BR")}</div>
             <div class="nr-tile-sub">pedido${porFaixa[f.chave] !== 1 ? "s" : ""}</div>
         </div>`).join("");
 
-    document.getElementById("sstb-tbody").innerHTML = lista.map(r => {
+    document.getElementById("sstb-tbody").innerHTML = lista.map(r => _sstbLinhaHtml(r)).join("");
+}
+
+function _sstbLinhaHtml(r) {
+    const cor = SSTB_CORES[_sstbFaixaDe(r.dias).chave];
+    return `
+    <tr>
+        <td data-label="Pedido" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600;color:#e2e8f0">${_sstbEsc(r.shipment_id)}</td>
+        <td data-label="Status">${_sstbEsc(r.latest_status) || "—"}</td>
+        <td data-label="Dias parado" style="text-align:center"><i class="nr-pac-ponto" style="background:${cor}"></i>${_sstbFormatarDias(r.dias)}</td>
+        <td data-label="Último usuário">${_sstbEsc(r.latest_user_name) || "—"}</td>
+        <td data-label="Histórico">
+            <button type="button" class="sst-hist-btn" onclick="_sstAbrirHistorico('${_sstbEsc(r.shipment_id)}')">Visualizar</button>
+        </td>
+    </tr>`;
+}
+
+// ── Pedidos por trás do card ──
+// O card responde "quantos"; a pergunta seguinte é sempre "quais" — sem isso
+// via 108 pedidos com 4 dias parado e não tinha como saber quais são.
+function _sstbAbrirPedidos(chave) {
+    const faixa = SSTB_FAIXAS.find(f => f.chave === chave);
+    _sstbPedFaixa = faixa;
+    _sstbPedidos = _sstbRegistros.filter(r => _sstbFaixaDe(r.dias).chave === chave);
+    document.getElementById("sstb-ped-titulo").innerText = faixa ? faixa.rotulo : "Pedidos";
+    document.getElementById("sstb-ped-sub").innerText =
+        `${_sstbPedidos.length} pedido${_sstbPedidos.length !== 1 ? "s" : ""}`;
+    document.getElementById("sstb-ped-busca").value = "";
+    _sstbPedRender();
+    _abrirModal("modal-sstb-pedidos");
+}
+
+function _sstbPedFiltrados() {
+    const termo = (document.getElementById("sstb-ped-busca")?.value || "").trim().toLowerCase();
+    if (!termo) return _sstbPedidos;
+    return _sstbPedidos.filter(r => [r.shipment_id, r.latest_status, r.latest_user_name]
+        .some(v => String(v || "").toLowerCase().includes(termo)));
+}
+
+function _sstbPedRender() {
+    const lista = _sstbPedFiltrados();
+    const el = document.getElementById("sstb-ped-lista");
+    if (!lista.length) {
+        el.innerHTML = `<div class="fechamento-empty">Nenhum pedido neste filtro.</div>`;
+        return;
+    }
+    el.innerHTML = lista.map(r => {
         const cor = SSTB_CORES[_sstbFaixaDe(r.dias).chave];
         return `
-        <tr>
-            <td data-label="Pedido" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600;color:#e2e8f0">${_sstbEsc(r.shipment_id)}</td>
-            <td data-label="Dias parado" style="text-align:center"><i class="nr-pac-ponto" style="background:${cor}"></i>${_sstbFormatarDias(r.dias)}</td>
-            <td data-label="Histórico">
-                <button type="button" class="sst-hist-btn" onclick="_sstAbrirHistorico('${_sstbEsc(r.shipment_id)}')">Visualizar</button>
-            </td>
-        </tr>`;
+        <div class="nr-pac-item">
+            <div class="nr-pac-topo">
+                <span class="nr-pac-cod">${_sstbEsc(r.shipment_id)}</span>
+                <span class="nr-pac-dias"><i class="nr-pac-ponto" style="background:${cor}"></i>${_sstbFormatarDias(r.dias)}</span>
+            </div>
+            <div class="nr-pac-obs">${_sstbEsc(r.latest_status) || "sem status"}${
+                r.latest_user_name ? " · " + _sstbEsc(r.latest_user_name) : ""}</div>
+            <div class="nr-pac-obs" style="margin-top:5px">
+                <button type="button" class="sst-hist-btn" onclick="_sstAbrirHistorico('${_sstbEsc(r.shipment_id)}')">Ver histórico</button>
+            </div>
+        </div>`;
     }).join("");
 }
 
 // ── Envio do arquivo ──
-// Colunas do arquivo: só duas, casadas pelo NOME normalizado — igual todo
-// upload do sistema, pra não depender da ordem das colunas no export.
+// Colunas do arquivo, casadas pelo NOME normalizado — igual todo upload do
+// sistema, pra não depender da ordem das colunas no export. Shipment ID e LM
+// Hub Days são obrigatórias (sem elas não dá pra filtrar nem listar o
+// pedido); Status e Último usuário são só contexto e entram em branco se o
+// arquivo não trouxer.
 const SSTB_COLUNAS = [
-    { id: "shipment_id", nomes: ["shipment id", "shipmentid", "shipment_id"] },
-    { id: "lm_hub_days", nomes: ["lm hub days", "lm_hub_days", "lm hub ageing days"] },
+    { id: "shipment_id",      nomes: ["shipment id", "shipmentid", "shipment_id"], obrigatoria: true },
+    { id: "lm_hub_days",      nomes: ["lm hub days", "lm_hub_days", "lm hub ageing days"], obrigatoria: true },
+    { id: "latest_status",    nomes: ["latest status", "latest_status"], obrigatoria: false },
+    { id: "latest_user_name", nomes: ["latest user name", "latest_user_name", "latest username"], obrigatoria: false },
 ];
 
 const _sstbNorm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -219,20 +287,22 @@ function _sstbLerArquivo(file) {
     reader.readAsArrayBuffer(file);
 }
 
-// Acha o cabeçalho nas 10 primeiras linhas e casa as duas colunas pelo nome
-// normalizado. O corte de "1 dia ou mais" já é aplicado aqui, na prévia — o
-// servidor reaplica o mesmo corte na importação, não confia só no navegador.
+// Acha o cabeçalho nas 10 primeiras linhas e casa as colunas pelo nome
+// normalizado — aceita o cabeçalho assim que as OBRIGATÓRIAS forem achadas,
+// as opcionais entram se estiverem lá. O corte de "1 dia ou mais" já é
+// aplicado aqui, na prévia — o servidor reaplica o mesmo corte na
+// importação, não confia só no navegador.
 function _sstbMapear(grid) {
     let cabIdx = -1, indices = null;
     for (let i = 0; i < Math.min(grid.length, 10); i++) {
         const cab = (grid[i] || []).map(_sstbNorm);
         const tentativa = {};
-        let achou = 0;
         for (const col of SSTB_COLUNAS) {
             const idx = cab.findIndex(c => col.nomes.includes(c));
-            if (idx >= 0) { tentativa[col.id] = idx; achou++; }
+            if (idx >= 0) tentativa[col.id] = idx;
         }
-        if (achou === SSTB_COLUNAS.length) { cabIdx = i; indices = tentativa; break; }
+        const temObrigatorias = SSTB_COLUNAS.filter(c => c.obrigatoria).every(c => tentativa[c.id] !== undefined);
+        if (temObrigatorias) { cabIdx = i; indices = tentativa; break; }
     }
     if (cabIdx < 0) {
         return { erro: "Não encontrei as colunas Shipment ID e LM Hub Days no arquivo." };
@@ -248,7 +318,9 @@ function _sstbMapear(grid) {
         if (!shipment || !Number.isFinite(bruto)) { invalidas++; continue; }
         const dias = Math.round(bruto * 100) / 100;
         if (dias < 1) { foraDoFiltro++; continue; }
-        dados.push({ shipment_id: shipment, lm_hub_days: dias });
+        const status  = indices.latest_status    !== undefined ? String(linha[indices.latest_status] ?? "").trim() : "";
+        const usuario = indices.latest_user_name !== undefined ? String(linha[indices.latest_user_name] ?? "").trim() : "";
+        dados.push({ shipment_id: shipment, lm_hub_days: dias, latest_status: status, latest_user_name: usuario });
     }
     return { dados, foraDoFiltro, invalidas };
 }
@@ -272,14 +344,16 @@ function _sstbPintarPrevia() {
             <button type="button" class="usr-modal-btn-cancel" onclick="_sstbDescartar()">Descartar</button>
         </div>
         <table class="ant-hist-table">
-            <thead><tr><th>Shipment ID</th><th>LM Hub Days</th></tr></thead>
+            <thead><tr><th>Shipment ID</th><th>LM Hub Days</th><th>Latest Status</th><th>Latest User Name</th></tr></thead>
             <tbody>
                 ${amostra.map(l => `
                 <tr>
                     <td data-label="Shipment ID" style="font-family:monospace;font-size:11.5px">${_sstbEsc(l.shipment_id)}</td>
                     <td data-label="LM Hub Days">${_sstbFormatarDias(l.lm_hub_days)}</td>
+                    <td data-label="Latest Status">${_sstbEsc(l.latest_status) || "—"}</td>
+                    <td data-label="Latest User Name">${_sstbEsc(l.latest_user_name) || "—"}</td>
                 </tr>`).join("")}
-                ${n > amostra.length ? `<tr><td colspan="2" style="text-align:center;color:#8494a9;padding:12px">
+                ${n > amostra.length ? `<tr><td colspan="4" style="text-align:center;color:#8494a9;padding:12px">
                     + ${(n - amostra.length).toLocaleString("pt-BR")} linhas que não cabem na prévia</td></tr>` : ""}
             </tbody>
         </table>`;
