@@ -514,6 +514,42 @@ class ArquivoDeVerdade(unittest.TestCase):
         self.assertEqual(linhas[0]["driver_id"], "138666")
         self.assertEqual(linhas[0]["delivery_date"], "2026-09-15")
 
+    def test_xlsx_com_dimension_errada_le_todas_as_linhas_mesmo_assim(self):
+        # Aconteceu de verdade com o backlogs.xlsx do AMH-LM: o export escreve
+        # <dimension ref="A1"/> (so a celula A1) mesmo a planilha tendo 1389
+        # linhas de verdade. Com read_only=True o openpyxl confia nessa tag
+        # pra saber onde parar e devolvia 1 linha de um arquivo de 1389 - o
+        # arquivo nunca esteve vazio, so lido errado. Reproduz aqui trocando
+        # a dimension de um arquivo bom por uma errada, sem depender do
+        # arquivo baixado (que nao mora no repositorio).
+        import openpyxl
+        import zipfile
+
+        caminho = os.path.join(self.pasta.name, "backlogs_dimension_errada.xlsx")
+        livro = openpyxl.Workbook()
+        aba = livro.active
+        aba.append(["Station ID", "Shipment ID"])
+        aba.append(["7326", "BR2600079584190"])
+        aba.append(["7326", "BR260014642533C"])
+        livro.save(caminho)
+
+        with zipfile.ZipFile(caminho, "r") as z:
+            conteudos = {n: z.read(n) for n in z.namelist()}
+        sheet = conteudos["xl/worksheets/sheet1.xml"].decode("utf-8")
+        inicio = sheet.index('<dimension ref="') + len('<dimension ref="')
+        fim = sheet.index('"', inicio)
+        quebrado = sheet[:inicio] + "A1" + sheet[fim:]
+        self.assertNotEqual(sheet, quebrado, "o teste so vale se a troca mudou a dimension de verdade")
+        conteudos["xl/worksheets/sheet1.xml"] = quebrado.encode("utf-8")
+
+        with zipfile.ZipFile(caminho, "w", zipfile.ZIP_DEFLATED) as z:
+            for nome, dado in conteudos.items():
+                z.writestr(nome, dado)
+
+        grade = at.ler_grade(caminho)
+        self.assertEqual(len(grade), 3)
+        self.assertEqual(grade[2], ["7326", "BR260014642533C"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

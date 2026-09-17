@@ -322,7 +322,14 @@ def _grade_csv(caminho):
 def _grade_xlsx(caminho):
     import openpyxl
 
-    livro = openpyxl.load_workbook(caminho, read_only=True, data_only=True)
+    # SEM read_only: o backlogs.xlsx do AMH-LM sai com a tag <dimension
+    # ref="A1"> errada (deveria dizer ate onde a planilha vai, e diz so a
+    # celula A1) - com read_only=True o openpyxl confia nessa tag pra saber
+    # onde parar de ler e devolve UMA linha de um arquivo que tinha 1389.
+    # Sem read_only ele le as tags <row> de verdade, sem se importar com o
+    # que <dimension> diz. Mais lento pra arquivo grande, mas o teto e
+    # MAX_LINHAS (50 mil) - nesse tamanho o custo extra nao aparece.
+    livro = openpyxl.load_workbook(caminho, read_only=False, data_only=True)
     try:
         aba = livro[livro.sheetnames[0]]
         return [list(linha) for linha in aba.iter_rows(values_only=True)]
