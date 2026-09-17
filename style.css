@@ -2503,6 +2503,11 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 /* ===== RELATÓRIO DETALHADO POR DRIVER (modal) ===== */
 #modal-relatorio-driver .usr-modal { max-width: 540px; }
 #rd-body { max-height: 55vh; overflow-y: auto; margin: 14px 0 4px; }
+
+/* Backlog do Stuck: a prévia pode trazer bem mais que 8 linhas de largura de
+   coluna, e o .usr-modal base não tem limite de altura — sem isso o card
+   cresce pra fora da tela (título e botão de enviar ficam inacessíveis). */
+#modal-sstb-upload .usr-modal { max-height: calc(100vh - 48px); overflow-y: auto; }
 .rd-chart-card {
     display: flex; align-items: center; gap: 18px;
     border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
