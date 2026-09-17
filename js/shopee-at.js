@@ -238,8 +238,15 @@ function _satEnviar() {
                     return _satMsg(_satEsc(d.error) || "Não foi possível enviar.", "erro");
                 }
                 _satCancelar();
+                // Visível de propósito: sem isso não tinha como saber, olhando só a tela, se a
+                // reavaliação de bipagens rodou, achou algo pra corrigir, ou falhou calada.
+                const corrigidas = d.bipagens_corrigidas
+                    ? ` · ${_satPlural(d.bipagens_corrigidas, "bipagem reavaliada", "bipagens reavaliadas")}`
+                    : "";
+                const erro = d.recalculo_erro ? ` (reavaliação falhou: ${_satEsc(d.recalculo_erro)})` : "";
                 _satMsg(`✓ ${_satPlural(d.ats || 0, "AT substituída", "ATs substituídas")} em ${
-                    _satEsc((d.estacoes || []).join(", "))} — ${_satPlural(d.gravadas, "linha", "linhas")}.`, "ok");
+                    _satEsc((d.estacoes || []).join(", "))} — ${_satPlural(d.gravadas, "linha", "linhas")}.${corrigidas}${erro}`,
+                    d.recalculo_erro ? "aviso" : "ok");
                 _satPagina = 1;
                 _satCarregar();
             })
