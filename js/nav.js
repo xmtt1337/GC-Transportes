@@ -1,6 +1,7 @@
 // ───── NAVEGAÇÃO ENTRE TELAS ─────
 const _TELA_TITULOS = {
     "tela-shopee-stuck":         "Shopee — Stuck",
+    "tela-shopee-stuck-backlog": "Shopee — Stuck — Backlog",
     "tela-painel-alimentar":     "Alimentar",
     "tela-fiscal-empresas":      "Empresa emitente",
     "tela-fiscal-ctes":          "CT-e",

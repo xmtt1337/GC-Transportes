@@ -45,6 +45,7 @@ const _ROTAS = {
     "Shopee/ConfEntregadores":       () => abrirShopeeConfEntregadores(),
     "Shopee/ItemAvariado":           () => abrirShopeeAvariado(),
     "Shopee/Stuck":                  () => abrirShopeeStuck(),
+    "Shopee/Stuck/Backlog":          () => abrirShopeeStuckBacklog(),
     // Rotas antigas de quando Shopee era um grupo dentro de Operação. Mantidas só pra
     // link salvo/favorito não quebrar — a tela abre, mas o menu não fica marcado, porque
     // nenhum link tem mais esse data-rota.
@@ -176,6 +177,7 @@ const _TELA_ROTAS = {
     "tela-shopee-conf-entregadores": "Shopee/ConfEntregadores",
     "tela-shopee-avariado":      "Shopee/ItemAvariado",
     "tela-shopee-stuck":         "Shopee/Stuck",
+    "tela-shopee-stuck-backlog": "Shopee/Stuck/Backlog",
     "tela-bipagens":             "Operacao/Bipagem",
     "tela-desempenho-bip":       "Operacao/DesempenhoUsuario",
     "tela-desempenho-hora":      "Operacao/DesempenhoHora",
