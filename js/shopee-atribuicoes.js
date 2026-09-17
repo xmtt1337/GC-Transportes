@@ -241,12 +241,14 @@ function _scaComecar() {
     .then(({ ok, d }) => {
         restaurar();
         if (!ok) return gcAlert(d.error || "Não foi possível abrir a conferência.");
-        _scaSessao = d;
-        _scaBipagens = [];
         _scaFiltroAtual = "todos";
-        // Conferência já aberta é retomada, não recomeçada — carrega o que já foi bipado.
-        if (d.reaproveitada) return _scaVerSessao(d.id, true, d.adicionados);
-        _scaAbrirSessao();
+        // Sempre busca a sessão no servidor, mesmo quando "nasceu" agora (reaproveitada:
+        // false só quer dizer que não havia sessão ABERTA pra estender — o grupo pode muito
+        // bem ter uma sessão de hoje já ENCERRADA, com pacotes bipados, que /sessao/:id
+        // enxerga como irmã e /sessao (POST) não, porque só essa reaproveita as abertas. Sem
+        // isso a tela abria "0 bipados" pra um cluster que já tinha 100+ conferidos, e só se
+        // acertava se a pessoa saísse e clicasse Conferir de novo.
+        _scaVerSessao(d.id, d.reaproveitada, d.adicionados);
     })
     .catch(() => {
         restaurar();
