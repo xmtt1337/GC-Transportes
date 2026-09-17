@@ -36,6 +36,48 @@ function _snrMostrar() {
     _snrCarregar();
 }
 
+// ── Última atualização ──
+// importado_em chega como TEXTO puro ("2026-09-16 21:08:40.774"), de
+// propósito: é um TIMESTAMP sem fuso gravado em horário de Brasília
+// (comoBrasilia, no backend). Rodar isso por `new Date(...)` aqui reabriria
+// o mesmo bug de fuso já corrigido na escrita - o navegador reinterpretaria
+// esses dígitos usando o fuso de QUEM ESTÁ VENDO a tela, que pode não ser
+// Brasília. Por isso vira texto na mão, e o "há quanto tempo" já chega
+// pronto do servidor (calculado dentro do Postgres).
+function _snrDataHora(texto) {
+    const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/.exec(String(texto || ""));
+    if (!m) return "—";
+    const [, , mes, dia, h, mi] = m;
+    return `${dia}/${mes} ${h}:${mi}`;
+}
+
+function _snrRelativo(seg) {
+    if (seg === null || seg === undefined || !isFinite(seg)) return "";
+    const min = Math.floor(Math.max(seg, 0) / 60);
+    if (min < 1) return "agora mesmo";
+    if (min < 60) return `há ${min} min`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `há ${h}h`;
+    const d = Math.floor(h / 24);
+    return d === 1 ? "ontem" : `há ${d} dias`;
+}
+
+function _snrRenderUltima(atualizado) {
+    const el = document.getElementById("snr-ultima");
+    if (!atualizado || !atualizado.importado_em) {
+        el.className = "shr-ultima vazia";
+        el.innerHTML = `<span class="shr-ultima-label">Pedidos pesquisados</span>
+            <span class="shr-ultima-valor">Nenhuma importação ainda</span>`;
+        return;
+    }
+    el.className = "shr-ultima";
+    el.innerHTML = `
+        <span class="shr-ultima-label">Atualizado</span>
+        <span class="shr-ultima-valor">${_snrDataHora(atualizado.importado_em)}</span>
+        <span class="shr-ultima-rel">${_snrRelativo(atualizado.segundos_atras)}</span>
+        <span class="shr-ultima-obs">XM Vigia (automático)</span>`;
+}
+
 // ── Lista de entregadores do dia ──
 function _snrCarregar() {
     const empty = document.getElementById("snr-empty");
@@ -55,6 +97,7 @@ function _snrCarregar() {
         _snrDia  = d.dia || "";
         _snrDias = d.dias || [];
         _snrRenderDias(d.hoje);
+        _snrRenderUltima(d.atualizado);
 
         _snrLista = d.entregadores || [];
         if (!_snrLista.length) {
