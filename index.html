@@ -226,8 +226,13 @@ if (_BASE) {
             <ul class="sub-submenu" id="subgroup-shopee-retidos">
                 <li><a href="#" data-rota="Shopee/ItemAvariado" onclick="abrirShopeeAvariado(event)">Item Avariado</a></li>
             </ul>
-            <li><a href="#" data-rota="Shopee/Stuck" onclick="abrirShopeeStuck(event)">Stuck</a></li>
-            <li><a href="#" data-rota="Shopee/Stuck/Backlog" onclick="abrirShopeeStuckBacklog(event)">Stuck — Backlog</a></li>
+            <li class="subgroup-header" onclick="toggleSubGroup(this)">
+                Stuck <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="subgroup-shopee-stuck">
+                <li><a href="#" data-rota="Shopee/Stuck" onclick="abrirShopeeStuck(event)">Planilha Andre</a></li>
+                <li><a href="#" data-rota="Shopee/Stuck/Backlog" onclick="abrirShopeeStuckBacklog(event)">Backlog</a></li>
+            </ul>
         </ul>
 
         <li class="menu-item" data-menu="pedidos" id="menu-pedidos" onclick="toggleMenu(this)">
