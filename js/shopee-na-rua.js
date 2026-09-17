@@ -18,6 +18,16 @@ function _snrEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
+// Só "rua, número" - o que vem depois da segunda vírgula (complemento,
+// referência, observação) some. O ENDEREÇO COMPLETO da AT já vem com tudo
+// junto numa string só ("Rua X, 117, CASA 1 - casa da esquina"), e o
+// complemento de novo no fim (que às vezes SÓ repete o que já tava aí)
+// deixava a linha comprida demais pra bater o olho numa lista de pendentes.
+function _snrRuaNumero(endereco) {
+    const partes = String(endereco || "").split(",").map(s => s.trim()).filter(Boolean);
+    return partes.slice(0, 2).join(", ");
+}
+
 function _snrMostrarLista() {
     document.getElementById("snr-lista-wrap").style.display = "";
     document.getElementById("snr-detalhe").style.display = "none";
@@ -379,7 +389,7 @@ function _snrRenderPendentes(pedidos) {
         <div style="font-size:11.5px;color:#7b8ba3;margin:4px 0 2px">Delivering — ainda dá tempo de virar Delivered hoje.</div>
         <div class="snr-pend-lista">
             ${pendentes.map(p => {
-                const endereco = [p.endereco, p.complemento].filter(Boolean).join(" — ") || "Endereço não encontrado na AT";
+                const endereco = _snrRuaNumero(p.endereco) || "Endereço não encontrado na AT";
                 const extra = [p.bairro, p.cidade].filter(Boolean).join(" · ");
                 return `
                 <div class="snr-pend-item">
@@ -402,7 +412,7 @@ function _snrRenderDetalhe() {
             // Endereço só existe quando o código bateu com uma linha da AT que
             // tem essa informação (o Romaneio) — pedido mais velho, ligado a
             // uma AT de antes disso, fica sem endereço, e é isso mesmo.
-            const endereco = [p.endereco, p.complemento].filter(Boolean).join(" — ") || "—";
+            const endereco = _snrRuaNumero(p.endereco) || "—";
             return `
             <tr>
                 <td data-label="Código" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#e2e8f0">${_snrEsc(p.codigo)}</td>
