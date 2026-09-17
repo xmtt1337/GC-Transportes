@@ -13,8 +13,6 @@ let _sstbRegistros = [];
 let _sstbFiltro = "";
 let _sstbArquivo = null;    // { nome, linhas } lido e aguardando envio
 let _sstbEnviando = false;
-let _sstbPedidos = [];      // pedidos da faixa aberta no modal
-let _sstbPedFaixa = null;
 
 // Filtro de coluna (estilo planilha) do Status e do Último usuário. `null`
 // quer dizer "sem filtro" (tudo visível) — igual o Google Sheets, que trata
@@ -23,6 +21,10 @@ let _sstbStatusSel = null;
 let _sstbUsuarioSel = null;
 let _sstbOrdStatus = null;   // "asc" | "desc" | null
 let _sstbOrdUsuario = null;
+
+// Filtro por faixa de dias parado — clicar num card filtra a tabela por
+// aquela faixa (em vez de abrir uma lista à parte). `null` é "todas".
+let _sstbDiasSel = null;
 
 function _sstbEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -37,6 +39,7 @@ function abrirShopeeStuckBacklog(event) {
     _sstbUsuarioSel = null;
     _sstbOrdStatus = null;
     _sstbOrdUsuario = null;
+    _sstbDiasSel = null;
     document.getElementById("sstb-th-status")?.classList.remove("ativo");
     document.getElementById("sstb-th-usuario")?.classList.remove("ativo");
     _sstbCarregar();
@@ -85,19 +88,35 @@ function _sstbFiltrar() {
     _sstbRenderizar();
 }
 
-// Busca por texto + os dois filtros de coluna, combinados (E lógico) — e a
+// Busca por texto + os filtros de coluna, combinados (E lógico) — e a
 // ordenação de qualquer um dos dois, se estiver ativa. É esta lista (já
-// filtrada) que alimenta a tabela E os cards de dias parado: filtrar por
-// status também recorta quantos pedidos aparecem em cada faixa.
-function _sstbVisiveis() {
+// filtrada) que alimenta a tabela: filtrar por status/usuário/dias recorta
+// tudo junto, não só a tabela.
+//
+// `semFiltroDias` existe pra alimentar os CARDS e o gráfico de dias parado:
+// eles têm que continuar mostrando as 6 faixas inteiras (só recortadas por
+// status/usuário/busca) mesmo com um card já selecionado — senão, ao clicar
+// em "3 dias", as outras faixas zerariam e a visão geral desapareceria.
+function _sstbVisiveis(opts) {
+    const semFiltroDias = opts && opts.semFiltroDias;
     const termo = String(_sstbFiltro || "").trim().toLowerCase();
     let lista = _sstbRegistros;
     if (termo) lista = lista.filter(r => String(r.shipment_id || "").toLowerCase().includes(termo));
     if (_sstbStatusSel) lista = lista.filter(r => _sstbStatusSel.has(String(r.latest_status || "").trim()));
     if (_sstbUsuarioSel) lista = lista.filter(r => _sstbUsuarioSel.has(String(r.latest_user_name || "").trim()));
+    if (!semFiltroDias && _sstbDiasSel) lista = lista.filter(r => _sstbDiasSel.has(_sstbFaixaDe(r.dias).chave));
     if (_sstbOrdStatus) lista = [...lista].sort((a, b) => colfCompara(a.latest_status, b.latest_status, _sstbOrdStatus));
     else if (_sstbOrdUsuario) lista = [...lista].sort((a, b) => colfCompara(a.latest_user_name, b.latest_user_name, _sstbOrdUsuario));
     return lista;
+}
+
+// Clicar num card filtra a tabela por aquela faixa; clicar de novo no MESMO
+// card (já sozinho selecionado) limpa o filtro — é o padrão de "clicar pra
+// recortar, clicar de novo pra voltar" que o resto do sistema já usa.
+function _sstbClicarFaixa(chave) {
+    const jaEraSoEssa = _sstbDiasSel && _sstbDiasSel.size === 1 && _sstbDiasSel.has(chave);
+    _sstbDiasSel = jaEraSoEssa ? null : new Set([chave]);
+    _sstbRenderizar();
 }
 
 function _sstbAbrirFiltroStatus(btn) {
@@ -163,25 +182,30 @@ function _sstbFormatarDias(dias) {
 }
 
 function _sstbRenderizar() {
-    const lista = _sstbVisiveis();
+    const lista = _sstbVisiveis();                          // tabela e contador (com o filtro de dias)
+    const listaTiles = _sstbVisiveis({ semFiltroDias: true }); // cards e gráfico (sem o próprio filtro de dias)
+
     document.getElementById("sstb-contador").innerText = lista.length === _sstbRegistros.length
         ? `${_sstbRegistros.length} pedido${_sstbRegistros.length !== 1 ? "s" : ""} no backlog`
         : `${lista.length} de ${_sstbRegistros.length}`;
 
-    // Conta em cima da lista JÁ FILTRADA: filtrar por status ou usuário tem
-    // que recortar os cards de dias parado junto, não só a tabela embaixo.
     const porFaixa = Object.fromEntries(SSTB_FAIXAS.map(f => [f.chave, 0]));
-    lista.forEach(r => { porFaixa[_sstbFaixaDe(r.dias).chave]++; });
-    // O card é clicável: mostra os pedidos daquela faixa, igual o Na Rua faz
-    // clicando num número da tabela dinâmica.
-    document.getElementById("sstb-tiles").innerHTML = SSTB_FAIXAS.map(f => `
-        <div class="nr-tile nr-tile-click" onclick="_sstbAbrirPedidos('${f.chave}')" title="Ver pedidos com ${f.rotulo.toLowerCase()} parado">
+    listaTiles.forEach(r => { porFaixa[_sstbFaixaDe(r.dias).chave]++; });
+
+    // O card FILTRA a tabela por aquela faixa (não abre mais uma lista à
+    // parte) — fica marcado enquanto o filtro dele estiver ativo.
+    document.getElementById("sstb-tiles").innerHTML = SSTB_FAIXAS.map(f => {
+        const ativa = _sstbDiasSel && _sstbDiasSel.has(f.chave);
+        return `
+        <div class="nr-tile nr-tile-click${ativa ? " nr-tile-selecionada" : ""}" onclick="_sstbClicarFaixa('${f.chave}')" title="Filtrar por ${f.rotulo.toLowerCase()} parado">
             <div class="nr-tile-label"><span class="nr-chip-cor" style="background:${SSTB_CORES[f.chave]}"></span>${f.rotulo}</div>
             <div class="nr-tile-valor">${porFaixa[f.chave].toLocaleString("pt-BR")}</div>
             <div class="nr-tile-sub">pedido${porFaixa[f.chave] !== 1 ? "s" : ""}</div>
-        </div>`).join("");
+        </div>`;
+    }).join("");
 
     document.getElementById("sstb-tbody").innerHTML = lista.map(r => _sstbLinhaHtml(r)).join("");
+    _sstbGraficar(listaTiles, lista, porFaixa);
 }
 
 function _sstbLinhaHtml(r) {
@@ -198,52 +222,98 @@ function _sstbLinhaHtml(r) {
     </tr>`;
 }
 
-// ── Pedidos por trás do card ──
-// O card responde "quantos"; a pergunta seguinte é sempre "quais" — sem isso
-// via 108 pedidos com 4 dias parado e não tinha como saber quais são.
-function _sstbAbrirPedidos(chave) {
-    const faixa = SSTB_FAIXAS.find(f => f.chave === chave);
-    _sstbPedFaixa = faixa;
-    // Da lista JÁ FILTRADA: o card mostra a contagem depois do filtro, então
-    // clicar nele tem que abrir os MESMOS pedidos que esse número representa.
-    _sstbPedidos = _sstbVisiveis().filter(r => _sstbFaixaDe(r.dias).chave === chave);
-    document.getElementById("sstb-ped-titulo").innerText = faixa ? faixa.rotulo : "Pedidos";
-    document.getElementById("sstb-ped-sub").innerText =
-        `${_sstbPedidos.length} pedido${_sstbPedidos.length !== 1 ? "s" : ""}`;
-    document.getElementById("sstb-ped-busca").value = "";
-    _sstbPedRender();
-    _abrirModal("modal-sstb-pedidos");
+// ── Gráficos ──
+// Dois recortes que os cards e a tabela não respondem de relance:
+//   1. o formato do backlog por tempo parado (mesma informação dos cards, em
+//      barra — mais fácil de comparar 6 valores de uma vez do que 6 cards);
+//   2. quem tem mais pedido parado com o recorte atual, pra saber com quem
+//      cobrar primeiro.
+const SSTB_EIXO  = { color: "#7b8ba3", font: { size: 11 } };
+const SSTB_GRADE = { color: "rgba(255,255,255,0.055)", drawTicks: false };
+const SSTB_GRAF_BASE = { responsive: true, maintainAspectRatio: false, animation: { duration: 220 } };
+let _sstbGraficos = {};
+
+function _sstbDestruirGraficos() {
+    Object.values(_sstbGraficos).forEach(g => { try { g.destroy(); } catch (_) {} });
+    _sstbGraficos = {};
 }
 
-function _sstbPedFiltrados() {
-    const termo = (document.getElementById("sstb-ped-busca")?.value || "").trim().toLowerCase();
-    if (!termo) return _sstbPedidos;
-    return _sstbPedidos.filter(r => [r.shipment_id, r.latest_status, r.latest_user_name]
-        .some(v => String(v || "").toLowerCase().includes(termo)));
+// Nome comprido ("[3799071]MURILO BROL FERREIRA") vira só o essencial no
+// eixo; o nome inteiro continua no tooltip.
+function _sstbEncurtar(nome) {
+    const t = String(nome || "").replace(/^\[\d+\]\s*/, "").trim();
+    return t.length <= 20 ? t : t.slice(0, 19) + "…";
 }
 
-function _sstbPedRender() {
-    const lista = _sstbPedFiltrados();
-    const el = document.getElementById("sstb-ped-lista");
-    if (!lista.length) {
-        el.innerHTML = `<div class="fechamento-empty">Nenhum pedido neste filtro.</div>`;
-        return;
-    }
-    el.innerHTML = lista.map(r => {
-        const cor = SSTB_CORES[_sstbFaixaDe(r.dias).chave];
-        return `
-        <div class="nr-pac-item">
-            <div class="nr-pac-topo">
-                <span class="nr-pac-cod">${_sstbEsc(r.shipment_id)}</span>
-                <span class="nr-pac-dias"><i class="nr-pac-ponto" style="background:${cor}"></i>${_sstbFormatarDias(r.dias)}</span>
-            </div>
-            <div class="nr-pac-obs">${_sstbEsc(r.latest_status) || "sem status"}${
-                r.latest_user_name ? " · " + _sstbEsc(r.latest_user_name) : ""}</div>
-            <div class="nr-pac-obs" style="margin-top:5px">
-                <button type="button" class="sst-hist-btn" onclick="_sstAbrirHistorico('${_sstbEsc(r.shipment_id)}')">Ver histórico</button>
-            </div>
-        </div>`;
-    }).join("");
+function _sstbGraficar(listaTiles, listaFiltrada, porFaixa) {
+    _sstbDestruirGraficos();
+    if (typeof Chart === "undefined") return;
+
+    _sstbGraficos.dias = new Chart(document.getElementById("sstb-gr-dias"), {
+        type: "bar",
+        data: {
+            labels: SSTB_FAIXAS.map(f => f.rotulo),
+            datasets: [{
+                data: SSTB_FAIXAS.map(f => porFaixa[f.chave]),
+                backgroundColor: SSTB_FAIXAS.map(f => SSTB_CORES[f.chave]),
+                borderRadius: { topLeft: 4, topRight: 4 },
+                borderSkipped: "bottom",
+                maxBarThickness: 34,
+            }],
+        },
+        options: {
+            ...SSTB_GRAF_BASE,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => c.parsed.y.toLocaleString("pt-BR") + " pedidos" } },
+            },
+            scales: {
+                x: { ticks: SSTB_EIXO, grid: { display: false } },
+                y: { ticks: SSTB_EIXO, grid: SSTB_GRADE, beginAtZero: true },
+            },
+        },
+    });
+
+    // Top usuários NA VISÃO ATUAL (com o filtro de dias, se houver um ativo):
+    // filtrar por "6 dias +" e olhar este gráfico já responde "de quem é a
+    // maior parte desse backlog velho".
+    const porUsuario = new Map();
+    listaFiltrada.forEach(r => {
+        const nome = String(r.latest_user_name || "").trim();
+        if (nome) porUsuario.set(nome, (porUsuario.get(nome) || 0) + 1);
+    });
+    const topUsuarios = [...porUsuario.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const vazio = document.getElementById("sstb-gr-usr-vazio");
+    if (vazio) vazio.style.display = topUsuarios.length ? "none" : "";
+    if (!topUsuarios.length) return;
+
+    _sstbGraficos.usuarios = new Chart(document.getElementById("sstb-gr-usuarios"), {
+        type: "bar",
+        data: {
+            labels: topUsuarios.map(([nome]) => _sstbEncurtar(nome)),
+            datasets: [{
+                data: topUsuarios.map(([, n]) => n),
+                backgroundColor: "#F97316",
+                borderRadius: { topRight: 4, bottomRight: 4 },
+                borderSkipped: "left",
+                maxBarThickness: 18,
+            }],
+        },
+        options: {
+            ...SSTB_GRAF_BASE, indexAxis: "y",
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: {
+                    title: c => topUsuarios[c[0].dataIndex][0],
+                    label: c => c.parsed.x.toLocaleString("pt-BR") + " pedidos",
+                } },
+            },
+            scales: {
+                x: { ticks: SSTB_EIXO, grid: SSTB_GRADE, beginAtZero: true },
+                y: { ticks: { ...SSTB_EIXO, autoSkip: false }, grid: { display: false } },
+            },
+        },
+    });
 }
 
 // ── Envio do arquivo ──
