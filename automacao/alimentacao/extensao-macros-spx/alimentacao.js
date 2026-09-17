@@ -785,6 +785,20 @@
       await baixar(alvo);
 
       P.ok(`baixado: ${alvo.nome} — ${alvo.quando}`);
+
+      // Emenda com o macro 2: e exatamente o "abro AT Exportada, espero o
+      // download, ai abro Pedidos Pesquisados" que se fazia na mao. So dai
+      // faz sentido - pedidos pesquisados sem AT nova pra render e so pesquisar
+      // o que ja estava pendente antes, sem ganho nenhum.
+      //
+      // Roda a parte, sem esperar (nao trava o "rodando=false" do finally): a
+      // folga de 15s e so pro XM Vigia notar o arquivo, processar e mandar pro
+      // backend antes do macro 2 perguntar "tem pedido novo?" - sem ela, a
+      // resposta seria sempre nao, porque o download acabou de terminar agora.
+      (async () => {
+        await S.dormir(15000);
+        chrome.runtime.sendMessage({ xmRodar: 'pedidos' }).catch(() => {});
+      })();
     } catch (e) {
       if (e instanceof S.Parado) P.erro('parado por você');
       else P.erro(e.message || String(e));
