@@ -130,7 +130,10 @@ function colfAbrir(anchorEl, opts) {
         const dentro = e.composedPath ? e.composedPath().includes(el) : el.contains(e.target);
         if (!dentro) _colfFechar();
     };
-    const onScroll = () => _colfFechar();
+    // window com capture=true pega até o scroll da lista interna (.colf-lista
+    // tem overflow-y próprio) — sem o filtro por alvo, rolar os valores fechava
+    // o próprio popover no meio do uso.
+    const onScroll = e => { if (!el.contains(e.target)) _colfFechar(); };
     // Registrado só no próximo tick: senão o MESMO clique que abriu o popover,
     // ainda borbulhando até o document, já dispararia o fechamento na hora.
     setTimeout(() => {
