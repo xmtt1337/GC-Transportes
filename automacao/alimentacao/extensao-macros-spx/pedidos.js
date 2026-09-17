@@ -139,24 +139,29 @@
 
     // Esperar a REDE acalmar nao basta: com milhares de codigos a tela ainda
     // esta montando a lista quando as chamadas param, e exportar no meio disso
-    // nao exporta nada. O rodape "Esperado N" so aparece com o resultado
-    // pronto - e o N tem que ser o que foi mandado.
-    const quantos = await S.esperar(() => {
-      const achado = G.painelDeTarefas.folhaComRegex(/esperado\s+([\d.,]+)/i);
-      if (!achado) return null;
-      return Number(achado.m[1].replace(/[.,]/g, '')) || null;
-    }, { oque: 'a busca terminar ("Esperado N" no rodapé)', limite: 180000, intervalo: 700 });
-
-    // Ja visto rodando certo: o numero bate exato com o que foi mandado
-    // (1799 codigos -> "Esperado 1799"). Uma vez a tela mostrou "Esperado
-    // 1055316" pra uma busca de 3252 codigos - visivel, nao e erro de
-    // seletor, e um estado ruim de verdade da pagina. Exportar dali não
-    // exportaria os pedidos certos, e foi exatamente nessa rodada que o
-    // clique em Exportar tambem parou de pegar - para aqui em vez de gastar
-    // minutos tentando exportar um numero que nao e o nosso.
-    if (quantos !== codigos.length) {
-      throw new Error(`a busca deu "Esperado ${quantos}", mas mandei ${codigos.length} códigos — ` +
-                      'a página ficou num estado estranho. Rode de novo.');
+    // nao exporta nada. O rodape "Esperado N" e o sinal de pronto - mas ele
+    // pisca por numeros que NAO sao o nosso enquanto a conta ainda esta sendo
+    // feita (visto de verdade: "Esperado 1055090" pra uma busca de 3256
+    // codigos, que sozinho virou "Esperado 3256" pouco depois, sem clique
+    // nenhum). Um numero errado ali nao e a pagina quebrada - e ela ainda
+    // carregando. Por isso o ESPERAR e pelo numero CERTO, nao pelo primeiro
+    // que aparecer; so vira erro de verdade se em 180s ele nunca chegar la.
+    let ultimoVisto = null;
+    let quantos;
+    try {
+      quantos = await S.esperar(() => {
+        const achado = G.painelDeTarefas.folhaComRegex(/esperado\s+([\d.,]+)/i);
+        if (!achado) return null;
+        const n = Number(achado.m[1].replace(/[.,]/g, '')) || null;
+        ultimoVisto = n;
+        return n === codigos.length ? n : null;
+      }, { oque: `a busca fechar em "Esperado ${codigos.length}" no rodapé`, limite: 180000, intervalo: 700 });
+    } catch (e) {
+      if (e instanceof S.Parado) throw e;
+      throw new Error(ultimoVisto === null
+        ? 'a busca não terminou a tempo — não achei "Esperado N" no rodapé em 180s'
+        : `a busca ficou em "Esperado ${ultimoVisto}" e nunca fechou em ${codigos.length} em 180s — ` +
+          'rode de novo');
     }
     P.nota(`busca pronta: ${quantos} pedidos`);
     await S.dormir(800);
