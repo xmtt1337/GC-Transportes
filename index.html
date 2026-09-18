@@ -4092,6 +4092,45 @@ if (_BASE) {
                     <div id="snr-lista-wrap">
                         <div class="shr-ultima" id="snr-ultima">Carregando...</div>
                         <div class="slh-cal" id="snr-dias" style="display:none;margin-bottom:14px"></div>
+
+                        <!-- Visão geral do dia inteiro - todos os pedidos, de todo mundo, com
+                             filtro. Os tiles e o gráfico contam sempre o dia inteiro (não o
+                             filtro da tabela), pra não esconder a visão geral que eles dão. -->
+                        <div id="snr-geral-wrap" style="display:none;margin-bottom:24px">
+                            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+                                <div class="nr-grafico-titulo" style="font-size:13.5px">Visão geral do dia</div>
+                                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                                    <span id="snr-geral-contador" style="font-size:12px;color:var(--text-muted)"></span>
+                                    <div class="adm-search-input-area" style="max-width:260px">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        <input type="text" id="snr-geral-busca" placeholder="Código, entregador, endereço..." autocomplete="off" oninput="_snrGeralFiltrar()">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="nr-tiles" id="snr-geral-tiles" style="margin-bottom:18px"></div>
+
+                            <div class="nr-grafico-card" style="margin-bottom:18px">
+                                <div class="nr-grafico-titulo">Pedidos por status</div>
+                                <div class="nr-grafico-area"><canvas id="snr-geral-gr-status"></canvas></div>
+                            </div>
+
+                            <div class="adm-nf-wrap">
+                                <table class="adm-nf-table sst-tabela">
+                                    <thead>
+                                        <tr>
+                                            <th><span class="colf-th">Entregador<button type="button" class="colf-btn" id="snr-th-geral-entregador" onclick="_snrAbrirFiltroGeralEntregador(this)" title="Filtrar"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button></span></th>
+                                            <th>Código</th>
+                                            <th><span class="colf-th">Status<button type="button" class="colf-btn" id="snr-th-geral-status" onclick="_snrAbrirFiltroGeralStatus(this)" title="Filtrar"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button></span></th>
+                                            <th>Endereço</th>
+                                            <th><span class="colf-th">Cluster<button type="button" class="colf-btn" id="snr-th-geral-cluster" onclick="_snrAbrirFiltroGeralCluster(this)" title="Filtrar"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button></span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="snr-geral-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
                         <div class="fechamento-empty" id="snr-empty">Carregando...</div>
                         <div id="snr-resultado" style="display:none">
                             <div class="shr-resumo" id="snr-resumo"></div>
@@ -4356,7 +4395,7 @@ if (_BASE) {
 <script src="js/planejamento-videira.js?v=30260812d"></script>
 <script src="js/torre.js?v=30260812d"></script>
 <script src="js/torre-na-rua.js?v=30260916a"></script>
-<script src="js/shopee-na-rua.js?v=30260917a"></script>
+<script src="js/shopee-na-rua.js?v=20260917b"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">

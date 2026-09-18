@@ -115,12 +115,14 @@ function _snrCarregar() {
                 ? "Nenhum pedido pesquisado nesse dia."
                 : "Nenhum pedido pesquisado ainda. O macro de Pedidos Pesquisados alimenta isso sozinho.");
             document.getElementById("snr-resumo").innerHTML = "";
+            _snrGeralLimpar();
             return;
         }
         empty.style.display = "none";
         res.style.display = "";
         _snrRenderResumo();
         _snrRenderLista();
+        _snrCarregarGeral();
     })
     .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
 }
@@ -158,11 +160,18 @@ function _snrRenderResumo() {
 function _snrRenderLista() {
     document.getElementById("snr-entregadores").innerHTML = _snrLista.map(e => {
         const semEntregador = e.nome === "Sem entregador";
+        // % de conclusão AGORA, sem precisar abrir o detalhe: Delivered sobre
+        // o total de hoje — mesma conta de _snrStats, só que já computada pelo
+        // servidor (entregadoresDoDia) pra cada entregador de uma vez.
+        const pct = e.total ? (e.entregues / e.total * 100) : null;
         return `
         <div style="border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:10px;background:rgba(255,255,255,0.02)">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                 <span style="font-weight:700;color:${semEntregador ? "#eab308" : "#e2e8f0"};font-size:14px;flex:1;min-width:140px">
                     ${_snrEsc(e.nome)}
+                </span>
+                <span style="font-size:12px;font-weight:700;color:${_snrCorPerformance(pct)}" title="Delivered sobre o total de hoje">
+                    ${_snrPct(pct)} concluído
                 </span>
                 <span style="font-variant-numeric:tabular-nums;font-weight:700;color:#93c5fd;font-size:15px;flex:none">
                     ${e.total} pedido${e.total !== 1 ? "s" : ""}
@@ -399,6 +408,167 @@ function _snrRenderPendentes(pedidos) {
             }).join("")}
         </div>
     </div>`;
+}
+
+// ── Visão geral do dia (todos os pedidos, de todo mundo, com filtro) ──
+// Complementa a lista de entregadores: aqui dá pra ver e filtrar o dia
+// inteiro sem entrar entregador por entregador — status (Hub_Assigned
+// incluído, não só Delivered/Delivering/OnHold), quem é o entregador e qual
+// o endereço, tudo numa tabela só.
+let _snrTodos = [];
+let _snrGeralStatusSel = null;
+let _snrGeralEntregadorSel = null;
+let _snrGeralClusterSel = null;
+let _snrGeralBusca = "";
+let _snrGeralGrafico = null;
+
+function _snrGeralLimpar() {
+    _snrTodos = [];
+    document.getElementById("snr-geral-wrap").style.display = "none";
+}
+
+function _snrCarregarGeral() {
+    fetch(`${API}/shopee-na-rua/pedidos?dia=${encodeURIComponent(_snrDia)}`, {
+        headers: { "Authorization": "Bearer " + token }
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (!d || d.error) { _snrGeralLimpar(); return; }
+        _snrTodos = d.pedidos || [];
+        _snrGeralStatusSel = null;
+        _snrGeralEntregadorSel = null;
+        _snrGeralClusterSel = null;
+        _snrGeralBusca = "";
+        const buscaEl = document.getElementById("snr-geral-busca");
+        if (buscaEl) buscaEl.value = "";
+        document.getElementById("snr-th-geral-status")?.classList.remove("ativo");
+        document.getElementById("snr-th-geral-entregador")?.classList.remove("ativo");
+        document.getElementById("snr-th-geral-cluster")?.classList.remove("ativo");
+        document.getElementById("snr-geral-wrap").style.display = _snrTodos.length ? "" : "none";
+        if (_snrTodos.length) _snrRenderGeral();
+    })
+    .catch(() => _snrGeralLimpar());
+}
+
+function _snrGeralFiltrar() {
+    _snrGeralBusca = document.getElementById("snr-geral-busca").value;
+    _snrRenderGeral();
+}
+
+function _snrGeralVisiveis() {
+    const termo = String(_snrGeralBusca || "").trim().toLowerCase();
+    let lista = _snrTodos;
+    if (termo) {
+        lista = lista.filter(p => [p.codigo, p.entregador, p.endereco, p.cluster]
+            .some(v => String(v || "").toLowerCase().includes(termo)));
+    }
+    if (_snrGeralStatusSel) lista = lista.filter(p => _snrGeralStatusSel.has(String(p.status || "").trim()));
+    if (_snrGeralEntregadorSel) lista = lista.filter(p => _snrGeralEntregadorSel.has(String(p.entregador || "").trim()));
+    if (_snrGeralClusterSel) lista = lista.filter(p => _snrGeralClusterSel.has(String(p.cluster || "").trim()));
+    return lista;
+}
+
+function _snrAbrirFiltroGeralStatus(btn) {
+    colfAbrir(btn, {
+        valores: _snrTodos.map(p => p.status || ""),
+        selecionados: _snrGeralStatusSel,
+        aoAplicar: (sel) => { _snrGeralStatusSel = sel; btn.classList.toggle("ativo", !!sel); _snrRenderGeral(); },
+    });
+}
+function _snrAbrirFiltroGeralEntregador(btn) {
+    colfAbrir(btn, {
+        valores: _snrTodos.map(p => p.entregador || ""),
+        selecionados: _snrGeralEntregadorSel,
+        aoAplicar: (sel) => { _snrGeralEntregadorSel = sel; btn.classList.toggle("ativo", !!sel); _snrRenderGeral(); },
+    });
+}
+function _snrAbrirFiltroGeralCluster(btn) {
+    colfAbrir(btn, {
+        valores: _snrTodos.map(p => p.cluster || ""),
+        selecionados: _snrGeralClusterSel,
+        aoAplicar: (sel) => { _snrGeralClusterSel = sel; btn.classList.toggle("ativo", !!sel); _snrRenderGeral(); },
+    });
+}
+
+// Cor por bucket conhecido; qualquer status fora desses (Hub_Assigned e
+// qualquer outro que a Shopee inventar) cai num cinza neutro — mas continua
+// contando e aparecendo, nunca some da visão geral.
+function _snrGeralCorStatus(status) {
+    const s = String(status || "").toLowerCase();
+    if (s.includes("delivered")) return SNR_COR_ENTREGUE;
+    if (s.includes("onhold") || s.includes("on hold") || s.includes("on_hold")) return SNR_COR_INSUCESSO;
+    if (s.includes("delivering")) return SNR_COR_PENDENTE;
+    return "#8494a9";
+}
+
+function _snrRenderGeral() {
+    const lista = _snrGeralVisiveis();
+    document.getElementById("snr-geral-contador").innerText = lista.length === _snrTodos.length
+        ? `${_snrTodos.length} pedido${_snrTodos.length !== 1 ? "s" : ""}`
+        : `${lista.length} de ${_snrTodos.length}`;
+
+    // Tiles e gráfico contam o DIA INTEIRO (sem o filtro da própria tabela) —
+    // filtrar por um status não pode zerar os outros tiles, senão a visão
+    // geral desaparece bem na hora que ela é mais útil.
+    const porStatus = new Map();
+    _snrTodos.forEach(p => {
+        const st = String(p.status || "").trim() || "(sem status)";
+        porStatus.set(st, (porStatus.get(st) || 0) + 1);
+    });
+    const statusOrdenado = [...porStatus.entries()].sort((a, b) => b[1] - a[1]);
+
+    document.getElementById("snr-geral-tiles").innerHTML = statusOrdenado.map(([st, n]) => `
+        <div class="nr-tile">
+            <div class="nr-tile-label"><span class="nr-chip-cor" style="background:${_snrGeralCorStatus(st)}"></span>${_snrEsc(st)}</div>
+            <div class="nr-tile-valor">${n.toLocaleString("pt-BR")}</div>
+            <div class="nr-tile-sub">pedido${n !== 1 ? "s" : ""}</div>
+        </div>`).join("");
+
+    _snrGeralGraficar(statusOrdenado);
+
+    document.getElementById("snr-geral-tbody").innerHTML = lista.length ? lista.map(p => {
+        const endereco = _snrRuaNumero(p.endereco) || "—";
+        return `
+        <tr>
+            <td data-label="Entregador">${_snrEsc(p.entregador)}</td>
+            <td data-label="Código" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#e2e8f0">${_snrEsc(p.codigo)}</td>
+            <td data-label="Status"><i class="nr-pac-ponto" style="background:${_snrGeralCorStatus(p.status)}"></i>${_snrEsc(p.status) || "—"}</td>
+            <td data-label="Endereço">${_snrEsc(endereco)}${p.bairro ? `<br><span style="color:#8494a9;font-size:11.5px">${_snrEsc(p.bairro)}${p.cidade ? " · " + _snrEsc(p.cidade) : ""}</span>` : ""}</td>
+            <td data-label="Cluster">${_snrEsc(p.cluster || "—")}</td>
+        </tr>`;
+    }).join("") : `<tr><td colspan="5" style="text-align:center;color:#8494a9;padding:20px">Nenhum pedido neste filtro.</td></tr>`;
+}
+
+function _snrGeralGraficar(statusOrdenado) {
+    if (_snrGeralGrafico) { try { _snrGeralGrafico.destroy(); } catch (_) {} _snrGeralGrafico = null; }
+    if (typeof Chart === "undefined") return;
+    const canvas = document.getElementById("snr-geral-gr-status");
+    if (!canvas) return;
+    _snrGeralGrafico = new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: statusOrdenado.map(([st]) => st),
+            datasets: [{
+                data: statusOrdenado.map(([, n]) => n),
+                backgroundColor: statusOrdenado.map(([st]) => _snrGeralCorStatus(st)),
+                borderRadius: { topRight: 4, bottomRight: 4 },
+                borderSkipped: "left",
+                maxBarThickness: 22,
+            }],
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, indexAxis: "y",
+            animation: { duration: 220 },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => c.parsed.x.toLocaleString("pt-BR") + " pedidos" } },
+            },
+            scales: {
+                x: { ticks: { color: "#7b8ba3", font: { size: 11 } }, grid: { color: "rgba(255,255,255,0.055)" }, beginAtZero: true },
+                y: { ticks: { color: "#7b8ba3", font: { size: 11 }, autoSkip: false }, grid: { display: false } },
+            },
+        },
+    });
 }
 
 function _snrRenderDetalhe() {
