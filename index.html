@@ -4095,7 +4095,32 @@ if (_BASE) {
 
                         <div class="fechamento-empty" id="snr-empty">Carregando...</div>
                         <div id="snr-resultado" style="display:none">
-                            <div class="shr-resumo" id="snr-resumo"></div>
+                            <div class="nr-graficos" style="margin-bottom:18px">
+                                <div class="nr-grafico-card">
+                                    <div class="nr-grafico-titulo">Pedidos por status (hoje)</div>
+                                    <div class="nr-grafico-area" style="height:220px"><canvas id="snr-ger-gr-status"></canvas></div>
+                                    <div class="nr-grafico-legenda" id="snr-ger-gr-status-legenda"></div>
+                                    <div style="font-size:11px;color:#7b8ba3;margin-top:6px">Clique num status pra ver os pedidos.</div>
+                                </div>
+                                <div class="nr-grafico-card">
+                                    <div class="nr-grafico-titulo">Delivering por entregador</div>
+                                    <div class="nr-grafico-area"><canvas id="snr-ger-gr-deliv-col"></canvas></div>
+                                </div>
+                                <div class="nr-grafico-card">
+                                    <div class="nr-grafico-titulo">Delivering por entregador (proporção)</div>
+                                    <div class="nr-grafico-area" style="height:220px"><canvas id="snr-ger-gr-deliv-pizza"></canvas></div>
+                                    <div class="nr-grafico-legenda" id="snr-ger-gr-deliv-pizza-legenda"></div>
+                                </div>
+                            </div>
+
+                            <div id="snr-ger-status-lista-wrap" style="display:none;margin-bottom:18px">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                                    <div class="nr-grafico-titulo" id="snr-ger-status-lista-titulo">Pedidos</div>
+                                    <button type="button" class="usr-modal-btn-cancel" onclick="_snrFecharStatusLista()">Fechar</button>
+                                </div>
+                                <div class="nr-pac-lista" id="snr-ger-status-lista"></div>
+                            </div>
+
                             <div id="snr-entregadores"></div>
                         </div>
                     </div>
@@ -4363,7 +4388,7 @@ if (_BASE) {
 <script src="js/planejamento-videira.js?v=30260812d"></script>
 <script src="js/torre.js?v=30260812d"></script>
 <script src="js/torre-na-rua.js?v=30260916a"></script>
-<script src="js/shopee-na-rua.js?v=20260918c"></script>
+<script src="js/shopee-na-rua.js?v=20260918d"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">

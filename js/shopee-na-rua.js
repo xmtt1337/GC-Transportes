@@ -13,6 +13,9 @@ let _snrDia   = "";
 let _snrDias  = [];
 let _snrLista = [];
 let _snrDet   = null;   // { nome, dia, pedidos: [...] }
+let _snrTodos = [];     // pedidos crus do dia inteiro — só buscado quando alguém clica um status
+let _snrStatusClicado = null;
+let _snrGeralGraficos = {};
 
 function _snrEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -110,17 +113,18 @@ function _snrCarregar() {
         _snrRenderUltima(d.atualizado);
 
         _snrLista = d.entregadores || [];
+        _snrTodos = []; // limpa o cache de pedidos crus — troca de dia, troca a carga
+        _snrFecharStatusLista();
         if (!_snrLista.length) {
             skFim(empty, _snrDias.length
                 ? "Nenhum pedido pesquisado nesse dia."
                 : "Nenhum pedido pesquisado ainda. O macro de Pedidos Pesquisados alimenta isso sozinho.");
-            document.getElementById("snr-resumo").innerHTML = "";
             return;
         }
         empty.style.display = "none";
         res.style.display = "";
-        _snrRenderResumo();
         _snrRenderLista();
+        _snrRenderGeral();
     })
     .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
 }
@@ -143,16 +147,6 @@ function _snrRenderDias(hoje) {
 function _snrTrocarDia(dia) {
     _snrDia = dia;
     _snrCarregar();
-}
-
-function _snrRenderResumo() {
-    const totalPedidos = _snrLista.reduce((s, e) => s + e.total, 0);
-    const semEntregador = _snrLista.find(e => e.nome === "Sem entregador");
-
-    document.getElementById("snr-resumo").innerHTML = `
-        <div class="paj-card"><div class="paj-label">Pedidos</div><div class="paj-value">${totalPedidos}</div></div>
-        <div class="paj-card"><div class="paj-label">Entregadores</div><div class="paj-value">${_snrLista.filter(e => e.nome !== "Sem entregador").length}</div></div>
-        <div class="paj-card"><div class="paj-label">Sem entregador</div><div class="paj-value" style="color:${semEntregador ? "#eab308" : "#8494a9"}">${semEntregador ? semEntregador.total : 0}</div></div>`;
 }
 
 // Quantos pedidos do entregador ainda estão "na rua" (Delivering) — a soma
@@ -192,6 +186,218 @@ function _snrRenderLista() {
             </div>
         </div>`;
     }).join("");
+}
+
+// ── Visão geral do dia (todos os entregadores somados) ──
+// Dois gráficos: distribuição de status (clicável — mostra os pedidos daquele
+// status embaixo) e quem tem mais pedido Delivering agora, em coluna e em
+// pizza. Rampa sequencial de azul (um hue só, validada contra o fundo escuro
+// do sistema com scripts/validate_palette.js da skill de dataviz) em vez de
+// cor por categoria: é "quem tem mais", uma classificação, não identidades
+// que precisam ser diferenciáveis à vontade — por isso também corta em Top 5
+// + Outros, não tenta uma cor por entregador.
+const SNR_RAMPA_AZUL = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95"];
+
+function _snrStatusGeralContagem() {
+    const porStatus = new Map();
+    _snrLista.forEach(e => {
+        (e.status || []).forEach(s => {
+            const st = String(s.status || "").trim() || "(sem status)";
+            porStatus.set(st, (porStatus.get(st) || 0) + s.total);
+        });
+    });
+    return [...porStatus.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+function _snrCorStatusGeral(status) {
+    const b = _snrBucketStatus(status);
+    if (b === "entregue") return SNR_COR_ENTREGUE;
+    if (b === "pendente") return SNR_COR_PENDENTE;
+    if (b === "insucesso") return SNR_COR_INSUCESSO;
+    return "#8494a9"; // Hub_Assigned e qualquer status anterior a "na rua"
+}
+
+function _snrDestruirGraficosGerais() {
+    Object.values(_snrGeralGraficos).forEach(g => { try { g.destroy(); } catch (_) {} });
+    _snrGeralGraficos = {};
+}
+
+function _snrRenderGeral() {
+    _snrDestruirGraficosGerais();
+    _snrGraficarStatusGeral();
+    _snrGraficarDeliveringPorEntregador();
+}
+
+function _snrGraficarStatusGeral() {
+    const dados = _snrStatusGeralContagem();
+    const total = dados.reduce((s, [, n]) => s + n, 0);
+
+    document.getElementById("snr-ger-gr-status-legenda").innerHTML = dados.map(([st, n]) => `
+        <span class="nr-leg" style="cursor:pointer" onclick="_snrClicarStatus('${_snrEsc(st).replace(/'/g, "\\'")}')">
+            <i style="background:${_snrCorStatusGeral(st)}"></i>${_snrEsc(st)} · ${n.toLocaleString("pt-BR")}
+        </span>`).join("");
+
+    if (typeof Chart === "undefined" || !dados.length) return;
+    _snrRegistrarPlugin();
+    _snrGeralGraficos.status = new Chart(document.getElementById("snr-ger-gr-status"), {
+        type: "doughnut",
+        data: {
+            labels: dados.map(([st]) => st),
+            datasets: [{
+                data: dados.map(([, n]) => n),
+                backgroundColor: dados.map(([st]) => _snrCorStatusGeral(st)),
+                borderColor: "#0f1520",
+                borderWidth: 2,
+            }],
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: "68%",
+            animation: { duration: 220 },
+            onClick: (evt, els) => { if (els.length) _snrClicarStatus(dados[els[0].index][0]); },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c =>
+                    `${c.label}: ${c.parsed.toLocaleString("pt-BR")} (${_snrPct(total ? c.parsed / total * 100 : 0)})` } },
+                snrCenterText: { valor: total.toLocaleString("pt-BR"), rotulo: total === 1 ? "pedido" : "pedidos", cor: "#e2e8f0" },
+            },
+        },
+    });
+}
+
+// Clicar num status (legenda ou fatia) lista os pedidos daquele status,
+// somando todo mundo — busca os pedidos crus só na primeira vez (fica em
+// cache em _snrTodos até trocar de dia).
+function _snrClicarStatus(status) {
+    _snrStatusClicado = status;
+    document.getElementById("snr-ger-status-lista-wrap").style.display = "";
+    document.getElementById("snr-ger-status-lista-titulo").innerText = `Pedidos — ${status}`;
+
+    if (_snrTodos.length) return _snrPintarStatusLista();
+
+    document.getElementById("snr-ger-status-lista").innerHTML = `<div class="fechamento-empty">Carregando...</div>`;
+    fetch(`${API}/shopee-na-rua/pedidos?dia=${encodeURIComponent(_snrDia)}`, {
+        headers: { "Authorization": "Bearer " + token }
+    }).then(r => r.json())
+    .then(d => {
+        _snrTodos = (d && !d.error) ? (d.pedidos || []) : [];
+        _snrPintarStatusLista();
+    })
+    .catch(() => {
+        document.getElementById("snr-ger-status-lista").innerHTML =
+            `<div class="fechamento-empty">Erro ao conectar com o servidor.</div>`;
+    });
+}
+
+function _snrFecharStatusLista() {
+    _snrStatusClicado = null;
+    const wrap = document.getElementById("snr-ger-status-lista-wrap");
+    if (wrap) wrap.style.display = "none";
+}
+
+function _snrPintarStatusLista() {
+    const pedidos = _snrTodos.filter(p => String(p.status || "").trim() === _snrStatusClicado);
+    const el = document.getElementById("snr-ger-status-lista");
+    if (!pedidos.length) {
+        el.innerHTML = `<div class="fechamento-empty">Nenhum pedido com esse status.</div>`;
+        return;
+    }
+    el.innerHTML = pedidos.map(p => {
+        const endereco = _snrRuaNumero(p.endereco) || "—";
+        return `
+        <div class="nr-pac-item">
+            <div class="nr-pac-topo">
+                <span class="nr-pac-cod">${_snrEsc(p.codigo)}</span>
+                <span style="font-size:12px;color:#93c5fd;font-weight:600">${_snrEsc(p.entregador)}</span>
+            </div>
+            <div class="nr-pac-obs">${_snrEsc(endereco)}${p.bairro ? " · " + _snrEsc(p.bairro) : ""}</div>
+        </div>`;
+    }).join("");
+}
+
+// Top 12 em coluna (leaderboard — dá pra ler todo mundo relevante de uma vez)
+// e Top 5 + Outros na pizza (mais que isso e a fatia vira ruído ilegível).
+function _snrDeliveringPorEntregador(limite) {
+    return _snrLista
+        .map(e => ({ nome: e.nome, pendentes: _snrPendentes(e) }))
+        .filter(e => e.pendentes > 0)
+        .sort((a, b) => b.pendentes - a.pendentes)
+        .slice(0, limite);
+}
+
+function _snrEncurtarNome(nome) {
+    const t = String(nome || "").trim();
+    if (t.length <= 14) return t;
+    const partes = t.split(/\s+/);
+    if (partes.length < 2) return t.slice(0, 13) + "…";
+    return partes[0] + " " + partes[1][0] + ".";
+}
+
+function _snrGraficarDeliveringPorEntregador() {
+    if (typeof Chart === "undefined") return;
+
+    const coluna = _snrDeliveringPorEntregador(12);
+    if (coluna.length) {
+        _snrGeralGraficos.delivCol = new Chart(document.getElementById("snr-ger-gr-deliv-col"), {
+            type: "bar",
+            data: {
+                labels: coluna.map(e => _snrEncurtarNome(e.nome)),
+                datasets: [{
+                    data: coluna.map(e => e.pendentes),
+                    backgroundColor: SNR_COR_PENDENTE,
+                    borderRadius: { topLeft: 4, topRight: 4 },
+                    borderSkipped: "bottom",
+                    maxBarThickness: 28,
+                }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                animation: { duration: 220 },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: {
+                        title: c => coluna[c[0].dataIndex].nome,
+                        label: c => c.parsed.y.toLocaleString("pt-BR") + " delivering",
+                    } },
+                },
+                scales: {
+                    x: { ticks: { color: "#7b8ba3", font: { size: 10.5 }, maxRotation: 40, minRotation: 40 }, grid: { display: false } },
+                    y: { ticks: { color: "#7b8ba3", font: { size: 11 } }, grid: { color: "rgba(255,255,255,0.055)" }, beginAtZero: true },
+                },
+            },
+        });
+    }
+
+    // Top 5 + Outros: cor por RANKING (rampa sequencial), não por identidade —
+    // um 8º entregador nunca vira "mais uma cor", vira parte de "Outros".
+    const todos = _snrDeliveringPorEntregador(Infinity);
+    const top5 = todos.slice(0, 5);
+    const outrosTotal = todos.slice(5).reduce((s, e) => s + e.pendentes, 0);
+    const fatias = outrosTotal ? [...top5, { nome: "Outros", pendentes: outrosTotal }] : top5;
+    if (!fatias.length) return;
+
+    document.getElementById("snr-ger-gr-deliv-pizza-legenda").innerHTML = fatias.map((e, i) => `
+        <span class="nr-leg"><i style="background:${SNR_RAMPA_AZUL[i]}"></i>${_snrEsc(e.nome)} · ${e.pendentes}</span>`).join("");
+
+    _snrGeralGraficos.delivPizza = new Chart(document.getElementById("snr-ger-gr-deliv-pizza"), {
+        type: "doughnut",
+        data: {
+            labels: fatias.map(e => e.nome),
+            datasets: [{
+                data: fatias.map(e => e.pendentes),
+                backgroundColor: fatias.map((_, i) => SNR_RAMPA_AZUL[i]),
+                borderColor: "#0f1520",
+                borderWidth: 2,
+            }],
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: "55%",
+            animation: { duration: 220 },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed.toLocaleString("pt-BR")}` } },
+            },
+        },
+    });
 }
 
 // ── Detalhe: os pedidos de um entregador ──
