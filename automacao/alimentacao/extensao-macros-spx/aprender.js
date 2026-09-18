@@ -112,6 +112,14 @@
       ? el.className
       : (el.getAttribute && el.getAttribute('class')) || '';
     return String(bruto).split(/\s+/)
+      // O CSS Modules da Shopee sufixa a classe com um hash de build
+      // ("index_download-action-icon__2izcz", "index_tabela__ic7IM") - o
+      // hash muda a cada deploy, e guardar ele foi o que fez um ensino de
+      // ontem parar de casar hoje. Os filtros de hex/digito abaixo nao
+      // pegam esse formato (o hash mistura letra fora de a-f com digito
+      // avulso), entao o corte e ANTES deles: tudo depois do "__" some,
+      // sobra so a parte que o proprio nome do componente da.
+      .map((c) => c.replace(/__.+$/, ''))
       .filter((c) => c && !/[0-9a-f]{5,}/i.test(c) && !/\d{3,}/.test(c))
       .slice(0, 3);
   }
