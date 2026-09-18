@@ -422,6 +422,28 @@ function _snrRenderPendentes(pedidos) {
     </div>`;
 }
 
+function _snrCsvEscapar(v) {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function _snrExportarCsv() {
+    if (!_snrDet || !_snrDet.pedidos || !_snrDet.pedidos.length) return gcAlert("Nenhum pedido para exportar.");
+    const colunas = ["Código", "AT", "Endereço", "Bairro", "Cidade", "Status"];
+    const linhas = _snrDet.pedidos.map(p => [
+        p.codigo, p.task_id || "", _snrRuaNumero(p.endereco), p.bairro || "", p.cidade || "", p.status || "",
+    ]);
+    // BOM na frente pro Excel abrir os acentos corretamente.
+    const csv = "﻿" + [colunas, ...linhas].map(l => l.map(_snrCsvEscapar).join(",")).join("\r\n") + "\r\n";
+
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pedidos_${String(_snrDet.nome).replace(/[^\wÀ-ɏ]+/g, "-")}_${_snrDia}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
 function _snrRenderDetalhe() {
     if (!_snrDet) return;
     const pedidos = _snrDet.pedidos || [];
@@ -439,9 +461,8 @@ function _snrRenderDetalhe() {
                 <td data-label="Código" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#e2e8f0">${_snrEsc(p.codigo)}</td>
                 <td data-label="AT">${_snrEsc(p.task_id || "—")}</td>
                 <td data-label="Endereço">${_snrEsc(endereco)}${p.bairro ? `<br><span style="color:#8494a9;font-size:11.5px">${_snrEsc(p.bairro)}${p.cidade ? " · " + _snrEsc(p.cidade) : ""}</span>` : ""}</td>
-                <td data-label="Cluster">${_snrEsc(p.cluster || "—")}</td>
                 <td data-label="Status">${_snrEsc(p.status || "—")}</td>
             </tr>`;
         }).join("")
-        : `<tr><td colspan="5" style="text-align:center;color:#8494a9;padding:20px">Nada aqui.</td></tr>`;
+        : `<tr><td colspan="4" style="text-align:center;color:#8494a9;padding:20px">Nada aqui.</td></tr>`;
 }

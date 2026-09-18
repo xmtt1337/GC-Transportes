@@ -4127,9 +4127,15 @@ if (_BASE) {
 
                         <div id="snr-pendentes-wrap" style="margin-bottom:18px"></div>
 
-                        <div class="nr-grafico-titulo" style="margin-bottom:10px">Todos os pedidos</div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                            <div class="nr-grafico-titulo">Todos os pedidos</div>
+                            <button type="button" class="shr-export-btn" onclick="_snrExportarCsv()">
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Exportar CSV
+                            </button>
+                        </div>
                         <table class="ant-hist-table">
-                            <thead><tr><th>Código</th><th>AT</th><th>Endereço</th><th>Cluster</th><th>Status</th></tr></thead>
+                            <thead><tr><th>Código</th><th>AT</th><th>Endereço</th><th>Status</th></tr></thead>
                             <tbody id="snr-det-tbody"></tbody>
                         </table>
                     </div>
@@ -4357,7 +4363,7 @@ if (_BASE) {
 <script src="js/planejamento-videira.js?v=30260812d"></script>
 <script src="js/torre.js?v=30260812d"></script>
 <script src="js/torre-na-rua.js?v=30260916a"></script>
-<script src="js/shopee-na-rua.js?v=20260918b"></script>
+<script src="js/shopee-na-rua.js?v=20260918c"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
