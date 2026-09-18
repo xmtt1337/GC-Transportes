@@ -155,18 +155,32 @@ function _snrRenderResumo() {
         <div class="paj-card"><div class="paj-label">Sem entregador</div><div class="paj-value" style="color:${semEntregador ? "#eab308" : "#8494a9"}">${semEntregador ? semEntregador.total : 0}</div></div>`;
 }
 
+// Quantos pedidos do entregador ainda estão "na rua" (Delivering) — a soma
+// vem da quebra por status que entregadoresDoDia já manda, sem precisar
+// abrir o detalhe pra saber quantos faltam fechar hoje.
+function _snrPendentes(e) {
+    return (e.status || []).reduce((s, x) => s + (_snrBucketStatus(x.status) === "pendente" ? x.total : 0), 0);
+}
+
 function _snrRenderLista() {
-    document.getElementById("snr-entregadores").innerHTML = _snrLista.map(e => {
+    // Ordem de quem tem mais coisa pra resolver agora, não de quem tem mais
+    // pedido no total — total alto com tudo já entregue não pede atenção.
+    const lista = [..._snrLista].sort((a, b) => _snrPendentes(b) - _snrPendentes(a));
+    document.getElementById("snr-entregadores").innerHTML = lista.map(e => {
         const semEntregador = e.nome === "Sem entregador";
         // % de conclusão AGORA, sem precisar abrir o detalhe: Delivered sobre
         // o total de hoje — mesma conta de _snrStats, só que já computada pelo
         // servidor (entregadoresDoDia) pra cada entregador de uma vez.
         const pct = e.total ? (e.entregues / e.total * 100) : null;
+        const pendentes = _snrPendentes(e);
         return `
         <div style="border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:10px;background:rgba(255,255,255,0.02)">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                 <span style="font-weight:700;color:${semEntregador ? "#eab308" : "#e2e8f0"};font-size:14px;flex:1;min-width:140px">
                     ${_snrEsc(e.nome)}
+                </span>
+                <span style="font-size:12px;font-weight:700;color:${SNR_COR_PENDENTE}" title="Delivering — ainda na rua">
+                    ${pendentes} pendente${pendentes !== 1 ? "s" : ""}
                 </span>
                 <span style="font-size:12px;font-weight:700;color:${_snrCorPerformance(pct)}" title="Delivered sobre o total de hoje">
                     ${_snrPct(pct)} concluído
