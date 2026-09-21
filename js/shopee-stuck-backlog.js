@@ -31,6 +31,14 @@ let _sstbDiasSel = null;
 // novo no mesmo card volta. `null` é "todas".
 let _sstbRespSel = null;
 
+// Paginação: 50 pedidos por página, aqui no navegador (filtro e ordenação já
+// moram aqui). O backlog já passa de 480 linhas e pode passar de milhares —
+// desenhar tudo de uma vez é o que a tela de Devoluções evita do mesmo jeito.
+// Só a TABELA pagina: cards, filtros, gráficos e o relatório continuam
+// contando o backlog inteiro (a página é só quanto se desenha por vez).
+const SSTB_POR_PAGINA = 50;
+let _sstbPagina = 1;
+
 function _sstbEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
@@ -46,6 +54,7 @@ function abrirShopeeStuckBacklog(event) {
     _sstbOrdUsuario = null;
     _sstbDiasSel = null;
     _sstbRespSel = null;
+    _sstbPagina = 1;
     document.getElementById("sstb-th-status")?.classList.remove("ativo");
     document.getElementById("sstb-th-usuario")?.classList.remove("ativo");
     _sstbCarregar();
@@ -67,6 +76,7 @@ function _sstbCarregar() {
                 return;
             }
             _sstbRegistros = b.registros || [];
+            _sstbPagina = 1;   // dado novo: a lista pode ter encolhido, e a página 4 talvez nem exista mais
             document.getElementById("sstb-estacao").innerText = b.estacao || "—";
             _sstbPintarMeta(b);
             if (!_sstbRegistros.length) {
@@ -91,7 +101,17 @@ function _sstbPintarMeta(b) {
 
 function _sstbFiltrar() {
     _sstbFiltro = document.getElementById("sstb-busca").value;
+    _sstbPagina = 1;   // todo recorte novo volta pra primeira página
     _sstbRenderizar();
+}
+
+// Trocar de página só muda o que a TABELA desenha. Sobe até a faixa de filtros
+// (o topo da tabela) pra quem clicou "Próxima" lá embaixo não ficar olhando o
+// fim da página nova.
+function _sstbTrocarPagina(passo) {
+    _sstbPagina += passo;
+    _sstbRenderizar();
+    document.getElementById("sstb-resp-filtro")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // Busca por texto + os filtros de coluna, combinados (E lógico) — e a
@@ -127,6 +147,7 @@ function _sstbVisiveis(opts) {
 function _sstbClicarFaixa(chave) {
     const jaEraSoEssa = _sstbDiasSel && _sstbDiasSel.size === 1 && _sstbDiasSel.has(chave);
     _sstbDiasSel = jaEraSoEssa ? null : new Set([chave]);
+    _sstbPagina = 1;
     _sstbRenderizar();
 }
 
@@ -134,12 +155,14 @@ function _sstbClicarFaixa(chave) {
 // juntos", ou seja, tirar o recorte de faixa.
 function _sstbClicarTotal() {
     _sstbDiasSel = null;
+    _sstbPagina = 1;
     _sstbRenderizar();
 }
 
 function _sstbClicarResposta(chave) {
     const jaEraSoEssa = _sstbRespSel && _sstbRespSel.size === 1 && _sstbRespSel.has(chave);
     _sstbRespSel = jaEraSoEssa ? null : new Set([chave]);
+    _sstbPagina = 1;
     _sstbRenderizar();
 }
 
@@ -153,6 +176,7 @@ function _sstbAbrirFiltroStatus(btn) {
             _sstbOrdStatus = ordem;
             if (ordem) _sstbOrdUsuario = null; // só uma ordenação ativa por vez
             btn.classList.toggle("ativo", !!sel);
+            _sstbPagina = 1;
             _sstbRenderizar();
         },
     });
@@ -168,6 +192,7 @@ function _sstbAbrirFiltroUsuario(btn) {
             _sstbOrdUsuario = ordem;
             if (ordem) _sstbOrdStatus = null;
             btn.classList.toggle("ativo", !!sel);
+            _sstbPagina = 1;
             _sstbRenderizar();
         },
     });
@@ -280,7 +305,24 @@ function _sstbRenderizar() {
                `<i style="background:${x.cor}"></i>${x.rotulo}<b>${porResp[x.chave].toLocaleString("pt-BR")}</b></button>`;
     }).join("");
 
-    document.getElementById("sstb-tbody").innerHTML = lista.map(r => _sstbLinhaHtml(r)).join("");
+    // Só a fatia da página vai pra tabela; o gráfico de status (e os cards)
+    // seguem contando a lista INTEIRA, senão trocar de página mudaria os números.
+    const paginas = Math.max(1, Math.ceil(lista.length / SSTB_POR_PAGINA));
+    _sstbPagina = Math.min(Math.max(1, _sstbPagina), paginas);
+    const inicio = (_sstbPagina - 1) * SSTB_POR_PAGINA;
+    const pagina = lista.slice(inicio, inicio + SSTB_POR_PAGINA);
+
+    // Rodapé só aparece quando não cabe numa página só.
+    const pag = document.getElementById("sstb-paginacao");
+    pag.style.display = lista.length > SSTB_POR_PAGINA ? "" : "none";
+    if (lista.length > SSTB_POR_PAGINA) {
+        document.getElementById("sstb-pag-info").innerText =
+            `${inicio + 1}–${Math.min(inicio + SSTB_POR_PAGINA, lista.length)} de ${lista.length.toLocaleString("pt-BR")}`;
+        document.getElementById("sstb-pag-ant").disabled  = _sstbPagina <= 1;
+        document.getElementById("sstb-pag-prox").disabled = _sstbPagina >= paginas;
+    }
+
+    document.getElementById("sstb-tbody").innerHTML = pagina.map(r => _sstbLinhaHtml(r)).join("");
     _sstbGraficar(lista, porFaixa);
 }
 
