@@ -17,6 +17,23 @@ const SCA_RESULTADOS = {
     sem_cluster: { rotulo: "Sem cluster",   cor: "#eab308" },
 };
 
+// Só pacote com status de RETORNO ("Return Hub Received", "Returned"...) é erro. Qualquer
+// outro status que não seja Hub_Received (em trânsito, on hold, já saiu) não é problema da
+// conferência: o pacote está na rota certa, e apitar erro aqui parava a esteira à toa. O
+// servidor diz se voltando via `interceptar` — a regra do "return" vive só lá.
+function _scaEhRetorno(b) {
+    return !!(b && b.interceptar);
+}
+
+// Como a resposta de um bipe deve soar e aparecer. Retorno vem antes de tudo: ele pode estar
+// no cluster certo e ainda assim não poder subir na carga, então "confere" não pode ganhar.
+function _scaTomDoBipe(d) {
+    if (_scaEhRetorno(d)) return "retorno";
+    if (d.resultado === "ok") return "ok";
+    if (d.resultado === "divergente") return "divergente";
+    return "sem_dado";
+}
+
 let _scaTipoAtual = null;
 let _scaOpcoes    = { cidades: [], clusters: [] };
 let _scaSessao    = null;
@@ -382,18 +399,15 @@ function _scaBipar(codigoLido) {
             : "";
         // Pacote voltando para na hora, dê no que der o resto: ele pode estar no cluster
         // certo e ainda assim não poder subir na carga. Por isso este ramo vem antes — se
-        // ficasse depois, "confere" apareceria em verde e ninguém leria o resto.
-        if (d.interceptar) {
+        // ficasse depois, "confere" apareceria em verde e ninguém leria o resto. É também o
+        // ÚNICO status que apita erro: status "não recebido no hub" que não seja retorno
+        // cai em "confere" normal (ver _scaTomDoBipe).
+        const tom = _scaTomDoBipe(d);
+        if (tom === "retorno") {
             _gcBeepErro(); _scaFlash("err");
             _scaMsg(`⛔ <strong>${_scaEsc(d.codigo)}</strong> — <strong>NÃO ENVIE NA CARGA.</strong> ${
                 _scaEsc(d.detalhe)} Separe e registre em Retidos → Interceptar.${rep}`, "erro");
-        } else if (d.resultado === "ok" && d.status_ok === false) {
-            // Cidade certa, mas o pacote não deu entrada no hub. Apita como erro porque
-            // também para a esteira — só que o motivo é outro, e a mensagem diz qual.
-            _gcBeepErro(); _scaFlash("err");
-            _scaMsg(`⚠ <strong>${_scaEsc(d.codigo)}</strong> é de ${_scaEsc(d.esperado)}, mas o status é <strong>${
-                _scaEsc(d.status_pedido) || "—"}</strong> — ainda não foi recebido no hub.${rep}${receb}`, "aviso");
-        } else if (d.resultado === "ok") {
+        } else if (tom === "ok") {
             _gcBeepSucesso(); _scaFlash("ok");
             // O detalhe só vem preenchido quando o CEP está em mais de uma cidade — nesse
             // caso o bipe confere, mas a pessoa precisa saber que a planilha está ambígua.
@@ -402,10 +416,6 @@ function _scaBipar(codigoLido) {
         } else {
             // Divergência e "não encontrado" apitam igual: os dois param a esteira.
             _gcBeepErro(); _scaFlash("err");
-            // Divergência de grupo é o problema principal; o status entra como complemento
-            // quando também estiver errado, pra pessoa não descobrir isso depois.
-            const extraStatus = d.status_ok === false
-                ? ` E o status é <strong>${_scaEsc(d.status_pedido) || "—"}</strong>, não recebido no hub.` : "";
             // Sem cadastro não é "pacote errado" — é o sistema dizendo que não sabe
             // responder. Quem está com o pacote na mão precisa de instrução, não de
             // diagnóstico: e a instrução nomeia o grupo, porque quem bipa em rajada não
@@ -416,10 +426,10 @@ function _scaBipar(codigoLido) {
             const manual = d.desconhecido
                 ? ""
                 : ` <strong>Conferir manualmente se a rota é de ${_scaEsc(d.esperado)}.</strong>`;
-            _scaMsg(d.resultado === "divergente"
-                ? `⚠ <strong>${_scaEsc(d.codigo)}</strong> é de <strong>${_scaEsc(d.encontrado)}</strong>, não de ${_scaEsc(d.esperado)}.${extraStatus}${rep}${receb}`
-                : `⚠ <strong>${_scaEsc(d.codigo)}</strong> — ${_scaEsc(d.detalhe || info.rotulo)}${manual}${extraStatus}${rep}${receb}`,
-                d.resultado === "divergente" ? "erro" : "aviso");
+            _scaMsg(tom === "divergente"
+                ? `⚠ <strong>${_scaEsc(d.codigo)}</strong> é de <strong>${_scaEsc(d.encontrado)}</strong>, não de ${_scaEsc(d.esperado)}.${rep}${receb}`
+                : `⚠ <strong>${_scaEsc(d.codigo)}</strong> — ${_scaEsc(d.detalhe || info.rotulo)}${manual}${rep}${receb}`,
+                tom === "divergente" ? "erro" : "aviso");
         }
         // Repetido substitui a linha que já existe em vez de somar outra: é o mesmo pacote,
         // reavaliado. Duas linhas do mesmo código inflariam os cartões do topo.
@@ -461,9 +471,10 @@ function _scaRenderizar() {
             ${sub ? `<div class="paj-sublabel">${sub}</div>` : ""}
             <div class="paj-value"${cor ? ` style="color:${cor}"` : ""}>${valor}</div>
         </div>`;
-    // Pacote que chegou ao grupo certo mas não deu entrada no hub. Independe do resultado
-    // da cidade — pode estar no grupo certo e ainda assim ser anomalia.
-    const statusPend = _scaBipagens.filter(b => b.status_ok === false).length;
+    // Pacote com status de retorno. Independe do resultado do grupo — pode estar no grupo
+    // certo e ainda assim não poder subir na carga. É o único status tratado como problema:
+    // "não recebido no hub" que não seja retorno não aparece aqui.
+    const retorno = _scaBipagens.filter(_scaEhRetorno).length;
     const faltam = _scaFaltantes.length;
     // Progresso do GRUPO, não da sessão: o que interessa é quanto do cluster/cidade já
     // passou, e "12 bipados" sozinho não diz se acabou.
@@ -479,7 +490,7 @@ function _scaRenderizar() {
         card("Conferem", ok, "no grupo certo", ok ? "#22c55e" : null) +
         card("Grupo errado", div, "não são daqui", div ? "#ef4444" : null) +
         card("Sem dado", semD, "não deu pra conferir", semD ? "#eab308" : null) +
-        card("Status pendente", statusPend, "não recebidos no hub", statusPend ? "#eab308" : null) +
+        card("Retorno", retorno, "voltando — não enviar", retorno ? "#ef4444" : null) +
         card("Faltam bipar",
              _scaFaltamCarregado ? `${faltam}${pctFalta !== null ? ` <span class="shr-pct">${_scaPctTexto(pctFalta)}</span>` : ""}` : "—",
              _scaTotalGrupo ? `de ${_scaTotalGrupo} no grupo` : "no grupo",
@@ -491,7 +502,7 @@ function _scaRenderizar() {
     if (abas[0]) abas[0].innerText = `Todos ${total}`;
     if (abas[1]) abas[1].innerText = `Divergentes ${div}`;
     if (abas[2]) abas[2].innerText = `Sem dado ${semD}`;
-    if (abas[3]) abas[3].innerText = `Status pendente ${statusPend}`;
+    if (abas[3]) abas[3].innerText = `Retorno ${retorno}`;
     if (abas[4]) abas[4].innerText = `Faltam bipar${_scaFaltamCarregado ? " " + faltam : ""}`;
 
     const btnCopiar = document.getElementById("sca-btn-copiar");
@@ -505,20 +516,21 @@ function _scaRenderizar() {
     let lista = _scaBipagens;
     if (_scaFiltroAtual === "divergente") lista = lista.filter(b => b.resultado === "divergente");
     if (_scaFiltroAtual === "sem_dado")   lista = lista.filter(b => !["ok", "divergente"].includes(b.resultado));
-    if (_scaFiltroAtual === "status")     lista = lista.filter(b => b.status_ok === false);
+    if (_scaFiltroAtual === "retorno")    lista = lista.filter(_scaEhRetorno);
 
     document.getElementById("sca-tbody").innerHTML = lista.length ? lista.map(b => {
         const info = SCA_RESULTADOS[b.resultado] || { rotulo: b.resultado, cor: "#eab308" };
-        // Código em amarelo quando o pedido não deu entrada no hub — a cor é do CÓDIGO, e
-        // não da linha, porque a linha já usa cor pra dizer se o grupo está certo.
-        const statusRuim = b.status_ok === false;
+        // Código em vermelho só quando o pedido está voltando — a cor é do CÓDIGO, e não da
+        // linha, porque a linha já usa cor pra dizer se o grupo está certo. O status dos
+        // demais aparece na cor normal: informação, não alerta.
+        const voltando = _scaEhRetorno(b);
         const apoio = [
             b.cep ? `CEP ${_scaEsc(b.cep)}` : "",
-            b.status_pedido ? `<span${statusRuim ? ' style="color:#eab308;font-weight:700"' : ""}>${_scaEsc(b.status_pedido)}</span>` : "",
+            b.status_pedido ? `<span${voltando ? ' style="color:#ef4444;font-weight:700"' : ""}>${_scaEsc(b.status_pedido)}</span>` : "",
         ].filter(Boolean).join(" · ");
         return `
-        <tr${b.resultado === "divergente" ? ' style="background:rgba(239,68,68,0.06)"' : ""}>
-            <td data-label="Código" style="font-family:monospace;font-weight:700;color:${statusRuim ? "#eab308" : "#e2e8f0"}">${_scaEsc(b.codigo)}
+        <tr${b.resultado === "divergente" || voltando ? ' style="background:rgba(239,68,68,0.06)"' : ""}>
+            <td data-label="Código" style="font-family:monospace;font-weight:700;color:${voltando ? "#ef4444" : "#e2e8f0"}">${_scaEsc(b.codigo)}
                 ${apoio ? `<div style="font-size:11px;color:#8494a9;font-family:'Inter',sans-serif;font-weight:400">${apoio}</div>` : ""}</td>
             <td data-label="Resultado"><span style="color:${info.cor};font-weight:700">${info.rotulo}</span></td>
             <td data-label="Esperado" style="color:#8494a9">${_scaEsc(b.esperado) || "—"}</td>
