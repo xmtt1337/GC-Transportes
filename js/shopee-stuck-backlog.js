@@ -196,9 +196,9 @@ const SSTB_CORES = {
 // ── Resposta do cliente ──
 // O servidor devolve `resposta` já classificada (modules/stuck-backlog/
 // resposta.js) — aqui só se desenha. A ordem é a do pedido de quem usa: o que
-// ainda falta perguntar/fechar primeiro. A cor É o estado (verde recebeu,
-// vermelho não recebeu, âmbar esperando, cinza ninguém perguntou) — não é
-// enfeite, e é a mesma leitura do Histórico do pedido.
+// ainda falta perguntar/fechar primeiro. A cor é só um pontinho (verde
+// recebeu, vermelho não recebeu, âmbar esperando, cinza ninguém perguntou);
+// o resto fica na cor normal do texto — a tela já tem cor demais.
 const SSTB_RESPOSTAS = [
     { chave: "sem_resposta", rotulo: "Sem resposta", cor: "#eab308",
       dica: "Mandaram o Ativo (mensagem) pro cliente, mas ninguém registrou se ele recebeu" },
@@ -210,10 +210,15 @@ const SSTB_RESPOSTAS = [
       dica: "Ninguém mandou mensagem (Ativo) pra esse cliente ainda" },
 ];
 
+// "Sem ativo" é a maioria das linhas (quase todo o backlog nunca foi
+// perguntado): repetir o mesmo selo cinza em cada uma só faz barulho. Vira um
+// traço apagado — a linha só "fala" quando há algo a dizer. O filtro em cima da
+// tabela e o relatório continuam separando esses pedidos.
 function _sstbRespostaHtml(chave) {
     const def = SSTB_RESPOSTAS.find(x => x.chave === chave);
     if (!def) return "—";
-    return `<span class="sstb-resp" style="color:${def.cor}" title="${_sstbEsc(def.dica)}"><i style="background:${def.cor}"></i>${def.rotulo}</span>`;
+    if (chave === "sem_ativo") return `<span class="sstb-resp-vazio" title="${_sstbEsc(def.dica)}">—</span>`;
+    return `<span class="sstb-resp" title="${_sstbEsc(def.dica)}"><i style="background:${def.cor}"></i>${def.rotulo}</span>`;
 }
 
 function _sstbFaixaDe(dias) {
@@ -261,21 +266,18 @@ function _sstbRenderizar() {
         </div>`;
     }).join("");
 
-    // Resposta do cliente: os cards ignoram o PRÓPRIO filtro (senão, ao marcar
-    // "Não recebeu", os outros três zerariam) mas respeitam dias, status,
-    // usuário e busca.
+    // Resposta do cliente: uma faixa fina de filtros em cima da tabela, e não
+    // uma fileira de cards — quatro cards grandes a mais sujavam a tela. Cada
+    // pílula ignora o PRÓPRIO filtro (senão, ao marcar "Não recebeu", as outras
+    // três zerariam) mas respeita dias, status, usuário e busca.
     const porResp = Object.fromEntries(SSTB_RESPOSTAS.map(x => [x.chave, 0]));
     _sstbVisiveis({ semFiltroResposta: true }).forEach(r => {
         if (porResp[r.resposta] !== undefined) porResp[r.resposta]++;
     });
-    document.getElementById("sstb-tiles-resp").innerHTML = SSTB_RESPOSTAS.map(x => {
+    document.getElementById("sstb-resp-filtro").innerHTML = SSTB_RESPOSTAS.map(x => {
         const ativa = _sstbRespSel && _sstbRespSel.has(x.chave);
-        return `
-        <div class="nr-tile nr-tile-click${ativa ? " nr-tile-selecionada" : ""}" onclick="_sstbClicarResposta('${x.chave}')" title="${_sstbEsc(x.dica)}">
-            <div class="nr-tile-label"><span class="nr-chip-cor" style="background:${x.cor}"></span>${x.rotulo}</div>
-            <div class="nr-tile-valor">${porResp[x.chave].toLocaleString("pt-BR")}</div>
-            <div class="nr-tile-sub">pedido${porResp[x.chave] !== 1 ? "s" : ""}</div>
-        </div>`;
+        return `<button type="button" class="sstb-pill${ativa ? " sel" : ""}" onclick="_sstbClicarResposta('${x.chave}')" title="${_sstbEsc(x.dica)}">` +
+               `<i style="background:${x.cor}"></i>${x.rotulo}<b>${porResp[x.chave].toLocaleString("pt-BR")}</b></button>`;
     }).join("");
 
     document.getElementById("sstb-tbody").innerHTML = lista.map(r => _sstbLinhaHtml(r)).join("");

@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260921a">
+<link rel="stylesheet" href="style.css?v=20260921b">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -3076,10 +3076,6 @@ if (_BASE) {
                 <div id="sstb-conteudo" style="display:none">
                     <div class="nr-tiles" id="sstb-tiles" style="margin-bottom:18px"></div>
 
-                    <div class="sstb-secao-titulo">Resposta do cliente</div>
-                    <div class="sstb-secao-sub">O que foi registrado no WhatsApp (Ativos) de cada pedido do backlog. Clique num card para filtrar a tabela.</div>
-                    <div class="nr-tiles" id="sstb-tiles-resp" style="margin-bottom:18px"></div>
-
                     <div class="nr-graficos">
                         <div class="nr-grafico-card">
                             <div class="nr-grafico-titulo">Pedidos por dias parado</div>
@@ -3097,6 +3093,11 @@ if (_BASE) {
                                 <div class="nr-grafico-vazio" id="sstb-gr-status-vazio" style="display:none">Sem status no arquivo.</div>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="sstb-filtro-resp">
+                        <span class="sstb-filtro-rotulo">Resposta do cliente</span>
+                        <div class="sstb-pills" id="sstb-resp-filtro"></div>
                     </div>
 
                     <div class="adm-nf-wrap">
@@ -4383,7 +4384,7 @@ if (_BASE) {
 <script src="js/shopee-retidos.js?v=30260819f"></script>
 <script src="js/shopee-conf-entregadores.js?v=30260827b"></script>
 <script src="js/shopee-stuck.js?v=20260917a"></script>
-<script src="js/shopee-stuck-backlog.js?v=20260921a"></script>
+<script src="js/shopee-stuck-backlog.js?v=20260921b"></script>
 <script src="js/entregador-conferencia.js?v=20260826b"></script>
 <script src="js/solicitar-at.js?v=20260905a"></script>
 <script src="js/viagens.js?v=30260812d"></script>
