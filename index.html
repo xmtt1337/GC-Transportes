@@ -367,7 +367,10 @@ if (_BASE) {
             <li><a href="#" data-rota="Ocorrencias/PacotesFaltantes" onclick="abrirPacotesFaltantes(event)">Pacotes Faltantes</a></li>
         </ul>
 
-        <li class="menu-item" data-menu="ativos" id="menu-ativos" onclick="toggleMenu(this)" style="display:none">
+        <!-- gcPoloGarantir no clique: as conversas são separadas por polo, então quem ainda não
+             escolheu o seu é perguntado já na abertura do menu — a pergunta volta a cada clique
+             enquanto não for respondida. -->
+        <li class="menu-item" data-menu="ativos" id="menu-ativos" onclick="toggleMenu(this); gcPoloGarantir()" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
             </svg>
@@ -4360,8 +4363,8 @@ if (_BASE) {
 <script src="js/extravios-registros.js?v=30260818e"></script>
 <script src="js/usuarios-gc.js?v=30260812d"></script>
 <script src="js/todos-usuarios.js?v=30260812d"></script>
-<script src="js/whatsapp-teste.js?v=20260914a"></script>
-<script src="js/whatsapp-conversa.js?v=20260914f"></script>
+<script src="js/whatsapp-teste.js?v=20260921d"></script>
+<script src="js/whatsapp-conversa.js?v=20260921d"></script>
 <script src="js/modals.js?v=30260812d"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
 <script src="js/fechamento-criar.js?v=30260812d"></script>
@@ -4377,7 +4380,7 @@ if (_BASE) {
 <script src="js/baixas.js?v=20260908a"></script>
 <script src="js/custodia.js?v=20260820i"></script>
 <script src="js/devolucoes.js?v=30260812d"></script>
-<script src="js/shopee-polo.js?v=30260812d"></script>
+<script src="js/shopee-polo.js?v=20260921d"></script>
 <script src="js/shopee.js?v=30260812d"></script>
 <script src="js/shopee-romaneiro.js?v=30260812d"></script>
 <script src="js/shopee-at.js?v=30260917b"></script>

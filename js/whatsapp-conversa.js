@@ -164,6 +164,9 @@ function abrirWhatsappConversas(event, alvo) {
     document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.aba === _wacAba));
     mostrarTela("tela-whatsapp-conversas", _wacRotaLista());
+    // As conversas são separadas por polo: quem ainda não escolheu o seu é perguntado aqui
+    // também, e não só no clique do menu — entrar por um link direto não passa por ele.
+    gcPoloGarantir();
     _wacCarregarLista();
     _wacIniciarRelogio();
 }
@@ -268,7 +271,23 @@ function _wacCards(itens, grupo) {
     }).join("");
 }
 
-function _wacCarregarLista() {
+// O servidor devolve só as conversas do polo de quem pede. Sem polo escolhido ele não devolve
+// lista nenhuma (polo_pendente): perguntar de novo é o que faz a lista aparecer, e uma lista
+// vazia sem explicação pareceria que não há conversa alguma.
+function _wacPedirPolo(vazio, jaPediu) {
+    skFim(vazio, "Escolha o seu polo para ver as conversas.");
+    // Uma tentativa só: se depois de escolher o servidor ainda disser que falta, é outro
+    // problema, e repetir só faria a tela piscar.
+    if (jaPediu) return;
+    gcPoloInvalidar();
+    gcPoloCarregar().then(info => {
+        if (info && info.polo) return _wacCarregarLista(true);
+        gcPoloQuandoEscolher(() => _wacCarregarLista(true));
+        gcPoloPerguntar();
+    }).catch(() => {});
+}
+
+function _wacCarregarLista(jaPediuPolo) {
     const empty  = document.getElementById("wac-lista-empty");
     const result = document.getElementById("wac-lista-resultado");
     skMostrar(empty, "cards");
@@ -277,6 +296,7 @@ function _wacCarregarLista() {
     fetch(`${API}/admin/whatsapp/conversas`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(rows => {
+            if (rows && rows.polo_pendente) { _wacPedirPolo(empty, jaPediuPolo); return; }
             if (!Array.isArray(rows) || !rows.length) { skFim(empty, "Nenhuma conversa registrada ainda."); return; }
             // Mais recente primeiro, em todas as abas. `ultima` já vem pronta do servidor —
             // é o maior entre nosso último envio e a resposta do cliente, então tanto disparar
@@ -742,6 +762,12 @@ function _wacCarregarConversa(silencioso) {
     return fetch(`${API}/admin/whatsapp/conversa/${_wacNumeroAtual}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(rows => {
+            // Conversa de outro polo (ou polo ainda não escolhido): o servidor recusa, e o
+            // motivo dele é a explicação — "Nenhuma mensagem" seria mentira.
+            if (rows && !Array.isArray(rows) && rows.error) {
+                body.innerHTML = `<div style="text-align:center;color:#ef4444;font-size:13px;padding:20px">${_wacEscapar(rows.error)}</div>`;
+                return;
+            }
             if (!Array.isArray(rows) || !rows.length) {
                 body.innerHTML = `<div style="text-align:center;color:#8494a9;font-size:13px;padding:20px">Nenhuma mensagem encontrada.</div>`;
                 return;

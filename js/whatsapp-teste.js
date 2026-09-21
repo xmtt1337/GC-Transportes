@@ -14,6 +14,9 @@ function abrirWhatsappTeste(event) {
         return;
     }
     mostrarTela("tela-whatsapp-teste");
+    // O disparo nasce no polo de quem manda, e o servidor recusa quem ainda não escolheu o
+    // seu — melhor perguntar ao abrir do que depois de preencher o formulário inteiro.
+    gcPoloGarantir();
 
     const comPrazo = WA_ROLES_COM_PRAZO.includes(role);
     const mostrar = (id, sim) => { const el = document.getElementById(id); if (el) el.style.display = sim ? "" : "none"; };
@@ -330,6 +333,7 @@ function _waRecEnviar() {
             if (body.detalhe) console.error("[whatsapp] recusa da Meta:", body.detalhe);
             msgEl.style.color = "#ef4444";
             msgEl.innerText = body.error || "Erro ao enviar.";
+            if (body.polo_pendente) { gcPoloInvalidar(); gcPoloGarantir(); }
             return;
         }
         msgEl.style.color = "#22c55e";

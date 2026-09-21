@@ -24,6 +24,15 @@ let _gcPoloPromessa = null;
 
 const gcPoloAtual = () => _gcPolo;
 
+// Esquece o que estava guardado: quando o servidor diz que o polo falta, o valor daqui já
+// não vale (um administrador pode ter tirado o polo no meio da sessão).
+const gcPoloInvalidar = () => { _gcPolo = null; };
+
+// Pra quem precisa esperar a escolha sem ter sido quem abriu a pergunta. Ela pode já estar
+// aberta — vinda do clique no menu — e aí o callback de gcPoloPerguntar() nem seria guardado.
+const _gcPoloAoEscolher = [];
+const gcPoloQuandoEscolher = fn => { _gcPoloAoEscolher.push(fn); };
+
 function gcPoloCarregar(forcar) {
     if (!forcar && _gcPolo) return Promise.resolve(_gcPolo);
     // Dois cliques rápidos no menu não viram duas requisições — e, mais importante, não
@@ -115,6 +124,7 @@ function _gcPoloConfirmar(chave, overlay, onEscolhido) {
                 };
                 overlay.remove();
                 if (onEscolhido) onEscolhido(_gcPolo);
+                _gcPoloAoEscolher.splice(0).forEach(fn => fn(_gcPolo));
             })
             .catch(() => {
                 botoes.forEach(b => b.disabled = false);
