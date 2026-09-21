@@ -17,18 +17,18 @@ const SCA_RESULTADOS = {
     sem_cluster: { rotulo: "Sem cluster",   cor: "#eab308" },
 };
 
-// Só pacote com status de RETORNO ("Return Hub Received", "Returned"...) é erro. Qualquer
-// outro status que não seja Hub_Received (em trânsito, on hold, já saiu) não é problema da
-// conferência: o pacote está na rota certa, e apitar erro aqui parava a esteira à toa. O
-// servidor diz se voltando via `interceptar` — a regra do "return" vive só lá.
-function _scaEhRetorno(b) {
-    return !!(b && b.interceptar);
+// O cluster forçado que o servidor cria pros pacotes em retorno (Return_Hub_Received). Não sai
+// da AT: não tem entregador e não se atribui a ninguém.
+const SCA_INTERCEPTADOS = "Interceptados";
+
+function _scaEhInterceptados(grupo) {
+    return _scaChave(grupo) === _scaChave(SCA_INTERCEPTADOS);
 }
 
-// Como a resposta de um bipe deve soar e aparecer. Retorno vem antes de tudo: ele pode estar
-// no cluster certo e ainda assim não poder subir na carga, então "confere" não pode ganhar.
+// Como a resposta de um bipe deve soar e aparecer. Só o RESULTADO decide: status "não recebido
+// no hub" (em trânsito, on hold...) não é erro. Pacote em retorno nem chega aqui — o servidor
+// recusa (409, tratado em _scaErroDoBipe) e manda bipar no cluster Interceptados.
 function _scaTomDoBipe(d) {
-    if (_scaEhRetorno(d)) return "retorno";
     if (d.resultado === "ok") return "ok";
     if (d.resultado === "divergente") return "divergente";
     return "sem_dado";
@@ -410,17 +410,11 @@ function _scaBipar(codigoLido) {
         const receb = d.recebimento_criado && !d.desconhecido
             ? ` <span style="color:#3a86ff">Entrada no hub registrada agora — não tinha bipe de recebimento.</span>`
             : "";
-        // Pacote voltando para na hora, dê no que der o resto: ele pode estar no cluster
-        // certo e ainda assim não poder subir na carga. Por isso este ramo vem antes — se
-        // ficasse depois, "confere" apareceria em verde e ninguém leria o resto. É também o
-        // ÚNICO status que apita erro: status "não recebido no hub" que não seja retorno
-        // cai em "confere" normal (ver _scaTomDoBipe).
+        // Só o resultado do grupo decide o apito: status "não recebido no hub" que não seja
+        // retorno confere normal (ver _scaTomDoBipe). Pacote em retorno é recusado pelo
+        // servidor antes de chegar aqui.
         const tom = _scaTomDoBipe(d);
-        if (tom === "retorno") {
-            _gcBeepErro(); _scaFlash("err");
-            _scaMsg(`⛔ <strong>${_scaEsc(d.codigo)}</strong> — <strong>NÃO ENVIE NA CARGA.</strong> ${
-                _scaEsc(d.detalhe)} Separe e registre em Retidos → Interceptar.${rep}`, "erro");
-        } else if (tom === "ok") {
+        if (tom === "ok") {
             _gcBeepSucesso(); _scaFlash("ok");
             // O detalhe só vem preenchido quando o CEP está em mais de uma cidade — nesse
             // caso o bipe confere, mas a pessoa precisa saber que a planilha está ambígua.
@@ -484,10 +478,6 @@ function _scaRenderizar() {
             ${sub ? `<div class="paj-sublabel">${sub}</div>` : ""}
             <div class="paj-value"${cor ? ` style="color:${cor}"` : ""}>${valor}</div>
         </div>`;
-    // Pacote com status de retorno. Independe do resultado do grupo — pode estar no grupo
-    // certo e ainda assim não poder subir na carga. É o único status tratado como problema:
-    // "não recebido no hub" que não seja retorno não aparece aqui.
-    const retorno = _scaBipagens.filter(_scaEhRetorno).length;
     const faltam = _scaFaltantes.length;
     // Progresso do GRUPO, não da sessão: o que interessa é quanto do cluster/cidade já
     // passou, e "12 bipados" sozinho não diz se acabou.
@@ -503,7 +493,6 @@ function _scaRenderizar() {
         card("Conferem", ok, "no grupo certo", ok ? "#22c55e" : null) +
         card("Grupo errado", div, "não são daqui", div ? "#ef4444" : null) +
         card("Sem dado", semD, "não deu pra conferir", semD ? "#eab308" : null) +
-        card("Retorno", retorno, "voltando — não enviar", retorno ? "#ef4444" : null) +
         card("Faltam bipar",
              _scaFaltamCarregado ? `${faltam}${pctFalta !== null ? ` <span class="shr-pct">${_scaPctTexto(pctFalta)}</span>` : ""}` : "—",
              _scaTotalGrupo ? `de ${_scaTotalGrupo} no grupo` : "no grupo",
@@ -515,8 +504,7 @@ function _scaRenderizar() {
     if (abas[0]) abas[0].innerText = `Todos ${total}`;
     if (abas[1]) abas[1].innerText = `Divergentes ${div}`;
     if (abas[2]) abas[2].innerText = `Sem dado ${semD}`;
-    if (abas[3]) abas[3].innerText = `Retorno ${retorno}`;
-    if (abas[4]) abas[4].innerText = `Faltam bipar${_scaFaltamCarregado ? " " + faltam : ""}`;
+    if (abas[3]) abas[3].innerText = `Faltam bipar${_scaFaltamCarregado ? " " + faltam : ""}`;
 
     const btnCopiar = document.getElementById("sca-btn-copiar");
     if (btnCopiar) btnCopiar.textContent = _scaFiltroAtual === "faltam" ? "Copiar faltantes" : "Copiar divergentes";
@@ -529,21 +517,18 @@ function _scaRenderizar() {
     let lista = _scaBipagens;
     if (_scaFiltroAtual === "divergente") lista = lista.filter(b => b.resultado === "divergente");
     if (_scaFiltroAtual === "sem_dado")   lista = lista.filter(b => !["ok", "divergente"].includes(b.resultado));
-    if (_scaFiltroAtual === "retorno")    lista = lista.filter(_scaEhRetorno);
 
     document.getElementById("sca-tbody").innerHTML = lista.length ? lista.map(b => {
         const info = SCA_RESULTADOS[b.resultado] || { rotulo: b.resultado, cor: "#eab308" };
-        // Código em vermelho só quando o pedido está voltando — a cor é do CÓDIGO, e não da
-        // linha, porque a linha já usa cor pra dizer se o grupo está certo. O status dos
-        // demais aparece na cor normal: informação, não alerta.
-        const voltando = _scaEhRetorno(b);
+        // O status do pedido aparece como informação, na cor normal: só o resultado do grupo
+        // pinta a linha.
         const apoio = [
             b.cep ? `CEP ${_scaEsc(b.cep)}` : "",
-            b.status_pedido ? `<span${voltando ? ' style="color:#ef4444;font-weight:700"' : ""}>${_scaEsc(b.status_pedido)}</span>` : "",
+            b.status_pedido ? `<span>${_scaEsc(b.status_pedido)}</span>` : "",
         ].filter(Boolean).join(" · ");
         return `
-        <tr${b.resultado === "divergente" || voltando ? ' style="background:rgba(239,68,68,0.06)"' : ""}>
-            <td data-label="Código" style="font-family:monospace;font-weight:700;color:${voltando ? "#ef4444" : "#e2e8f0"}">${_scaEsc(b.codigo)}
+        <tr${b.resultado === "divergente" ? ' style="background:rgba(239,68,68,0.06)"' : ""}>
+            <td data-label="Código" style="font-family:monospace;font-weight:700;color:#e2e8f0">${_scaEsc(b.codigo)}
                 ${apoio ? `<div style="font-size:11px;color:#8494a9;font-family:'Inter',sans-serif;font-weight:400">${apoio}</div>` : ""}</td>
             <td data-label="Resultado"><span style="color:${info.cor};font-weight:700">${info.rotulo}</span></td>
             <td data-label="Esperado" style="color:#8494a9">${_scaEsc(b.esperado) || "—"}</td>
@@ -679,7 +664,7 @@ function _scaRenderVisao(tipo) {
     // Copiar só faz sentido no dia aberto: dia fechado não recebe atribuição nova.
     const btnCopiar = document.getElementById("sca-copiar-ent");
     if (btnCopiar) {
-        const faltaAlguem = _scaVisao.some(g => !_scaEntregadores[_scaChave(g.grupo)]);
+        const faltaAlguem = _scaVisao.some(g => !_scaEhInterceptados(g.grupo) && !_scaEntregadores[_scaChave(g.grupo)]);
         btnCopiar.style.display = (tipo === "cluster" && !_scaVisaoRetrato && faltaAlguem) ? "" : "none";
     }
 
@@ -729,6 +714,8 @@ function _scaChave(v) {
 }
 
 function _scaCelulaEntregador(grupo, nomeEsc) {
+    // O Interceptados não é rota de ninguém: não tem "+ atribuir".
+    if (_scaEhInterceptados(grupo)) return `<span style="font-size:12px;color:#5c6b80">—</span>`;
     const e = _scaEntregadores[_scaChave(grupo)];
     // Dia fechado é registro: mostra quem saiu naquele dia, sem deixar reescrever.
     if (_scaVisaoRetrato) {
