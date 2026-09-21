@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260917d">
+<link rel="stylesheet" href="style.css?v=20260921a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -3063,6 +3063,10 @@ if (_BASE) {
                             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             Enviar arquivo
                         </button>
+                        <button type="button" class="shr-export-btn" id="sstb-btn-baixar" onclick="_sstbBaixar()" title="Baixa o backlog inteiro, todos os dias juntos, com a resposta do cliente de cada pedido">
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Baixar relatório
+                        </button>
                         <button type="button" class="shr-pag-btn" onclick="_sstbCarregar()">Recarregar</button>
                     </div>
                 </div>
@@ -3071,6 +3075,10 @@ if (_BASE) {
                 <div class="fechamento-empty" id="sstb-empty">Carregando...</div>
                 <div id="sstb-conteudo" style="display:none">
                     <div class="nr-tiles" id="sstb-tiles" style="margin-bottom:18px"></div>
+
+                    <div class="sstb-secao-titulo">Resposta do cliente</div>
+                    <div class="sstb-secao-sub">O que foi registrado no WhatsApp (Ativos) de cada pedido do backlog. Clique num card para filtrar a tabela.</div>
+                    <div class="nr-tiles" id="sstb-tiles-resp" style="margin-bottom:18px"></div>
 
                     <div class="nr-graficos">
                         <div class="nr-grafico-card">
@@ -3099,6 +3107,7 @@ if (_BASE) {
                                     <th><span class="colf-th">Status<button type="button" class="colf-btn" id="sstb-th-status" onclick="_sstbAbrirFiltroStatus(this)" title="Filtrar / ordenar"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button></span></th>
                                     <th style="text-align:center">Dias parado</th>
                                     <th><span class="colf-th">Último usuário<button type="button" class="colf-btn" id="sstb-th-usuario" onclick="_sstbAbrirFiltroUsuario(this)" title="Filtrar / ordenar"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button></span></th>
+                                    <th>Resposta do cliente</th>
                                     <th>Histórico</th>
                                 </tr>
                             </thead>
@@ -4374,7 +4383,7 @@ if (_BASE) {
 <script src="js/shopee-retidos.js?v=30260819f"></script>
 <script src="js/shopee-conf-entregadores.js?v=30260827b"></script>
 <script src="js/shopee-stuck.js?v=20260917a"></script>
-<script src="js/shopee-stuck-backlog.js?v=20260917e"></script>
+<script src="js/shopee-stuck-backlog.js?v=20260921a"></script>
 <script src="js/entregador-conferencia.js?v=20260826b"></script>
 <script src="js/solicitar-at.js?v=20260905a"></script>
 <script src="js/viagens.js?v=30260812d"></script>

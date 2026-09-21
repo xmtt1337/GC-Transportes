@@ -26,6 +26,11 @@ let _sstbOrdUsuario = null;
 // aquela faixa (em vez de abrir uma lista à parte). `null` é "todas".
 let _sstbDiasSel = null;
 
+// Filtro pela resposta do cliente (sem resposta / recebeu / não recebeu / sem
+// ativo) — mesmo padrão dos cards de dias: clicar recorta a tabela, clicar de
+// novo no mesmo card volta. `null` é "todas".
+let _sstbRespSel = null;
+
 function _sstbEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
@@ -40,6 +45,7 @@ function abrirShopeeStuckBacklog(event) {
     _sstbOrdStatus = null;
     _sstbOrdUsuario = null;
     _sstbDiasSel = null;
+    _sstbRespSel = null;
     document.getElementById("sstb-th-status")?.classList.remove("ativo");
     document.getElementById("sstb-th-usuario")?.classList.remove("ativo");
     _sstbCarregar();
@@ -97,14 +103,19 @@ function _sstbFiltrar() {
 // eles têm que continuar mostrando as 6 faixas inteiras (só recortadas por
 // status/usuário/busca) mesmo com um card já selecionado — senão, ao clicar
 // em "3 dias", as outras faixas zerariam e a visão geral desapareceria.
+// `semFiltroResposta` é o mesmo raciocínio pros cards de resposta do cliente.
+// Cada grupo de cards ignora o PRÓPRIO filtro e respeita o do outro: com "6
+// dias +" marcado, os cards de resposta contam só os de 6+.
 function _sstbVisiveis(opts) {
     const semFiltroDias = opts && opts.semFiltroDias;
+    const semFiltroResposta = opts && opts.semFiltroResposta;
     const termo = String(_sstbFiltro || "").trim().toLowerCase();
     let lista = _sstbRegistros;
     if (termo) lista = lista.filter(r => String(r.shipment_id || "").toLowerCase().includes(termo));
     if (_sstbStatusSel) lista = lista.filter(r => _sstbStatusSel.has(String(r.latest_status || "").trim()));
     if (_sstbUsuarioSel) lista = lista.filter(r => _sstbUsuarioSel.has(String(r.latest_user_name || "").trim()));
     if (!semFiltroDias && _sstbDiasSel) lista = lista.filter(r => _sstbDiasSel.has(_sstbFaixaDe(r.dias).chave));
+    if (!semFiltroResposta && _sstbRespSel) lista = lista.filter(r => _sstbRespSel.has(r.resposta));
     if (_sstbOrdStatus) lista = [...lista].sort((a, b) => colfCompara(a.latest_status, b.latest_status, _sstbOrdStatus));
     else if (_sstbOrdUsuario) lista = [...lista].sort((a, b) => colfCompara(a.latest_user_name, b.latest_user_name, _sstbOrdUsuario));
     return lista;
@@ -116,6 +127,19 @@ function _sstbVisiveis(opts) {
 function _sstbClicarFaixa(chave) {
     const jaEraSoEssa = _sstbDiasSel && _sstbDiasSel.size === 1 && _sstbDiasSel.has(chave);
     _sstbDiasSel = jaEraSoEssa ? null : new Set([chave]);
+    _sstbRenderizar();
+}
+
+// O card "Total" soma todos os dias (1 a 6+): clicar nele é "todos os dias
+// juntos", ou seja, tirar o recorte de faixa.
+function _sstbClicarTotal() {
+    _sstbDiasSel = null;
+    _sstbRenderizar();
+}
+
+function _sstbClicarResposta(chave) {
+    const jaEraSoEssa = _sstbRespSel && _sstbRespSel.size === 1 && _sstbRespSel.has(chave);
+    _sstbRespSel = jaEraSoEssa ? null : new Set([chave]);
     _sstbRenderizar();
 }
 
@@ -169,6 +193,29 @@ const SSTB_CORES = {
     d1: "#f5d9c2", d2: "#f6c5a0", d3: "#f7b07d", d4: "#f79c5b", d5: "#f88738", d6: "#f97316",
 };
 
+// ── Resposta do cliente ──
+// O servidor devolve `resposta` já classificada (modules/stuck-backlog/
+// resposta.js) — aqui só se desenha. A ordem é a do pedido de quem usa: o que
+// ainda falta perguntar/fechar primeiro. A cor É o estado (verde recebeu,
+// vermelho não recebeu, âmbar esperando, cinza ninguém perguntou) — não é
+// enfeite, e é a mesma leitura do Histórico do pedido.
+const SSTB_RESPOSTAS = [
+    { chave: "sem_resposta", rotulo: "Sem resposta", cor: "#eab308",
+      dica: "Mandaram o Ativo (mensagem) pro cliente, mas ninguém registrou se ele recebeu" },
+    { chave: "recebeu",      rotulo: "Recebeu",      cor: "#22c55e",
+      dica: "O cliente respondeu — ou alguém registrou — que RECEBEU o pedido" },
+    { chave: "nao_recebeu",  rotulo: "Não recebeu",  cor: "#ef4444",
+      dica: "O cliente respondeu — ou alguém registrou — que NÃO recebeu o pedido" },
+    { chave: "sem_ativo",    rotulo: "Sem ativo",    cor: "#8494a9",
+      dica: "Ninguém mandou mensagem (Ativo) pra esse cliente ainda" },
+];
+
+function _sstbRespostaHtml(chave) {
+    const def = SSTB_RESPOSTAS.find(x => x.chave === chave);
+    if (!def) return "—";
+    return `<span class="sstb-resp" style="color:${def.cor}" title="${_sstbEsc(def.dica)}"><i style="background:${def.cor}"></i>${def.rotulo}</span>`;
+}
+
 function _sstbFaixaDe(dias) {
     const inteiro = Math.floor(dias);
     return SSTB_FAIXAS.find(f => inteiro >= f.min && inteiro <= f.max) || SSTB_FAIXAS[SSTB_FAIXAS.length - 1];
@@ -194,13 +241,40 @@ function _sstbRenderizar() {
 
     // O card FILTRA a tabela por aquela faixa (não abre mais uma lista à
     // parte) — fica marcado enquanto o filtro dele estiver ativo.
-    document.getElementById("sstb-tiles").innerHTML = SSTB_FAIXAS.map(f => {
+    //
+    // O "Total" vai na frente: é a soma de TODOS os dias (1 a 6+), o número
+    // que o resto dos cards divide. Fica marcado quando nenhuma faixa está
+    // recortando, e clicar nele volta a esse estado.
+    const totalHtml = `
+        <div class="nr-tile nr-tile-click${_sstbDiasSel ? "" : " nr-tile-selecionada"}" onclick="_sstbClicarTotal()" title="Todos os dias juntos, de 1 a 6+">
+            <div class="nr-tile-label"><span class="nr-chip-cor" style="background:#e2e8f0"></span>Total</div>
+            <div class="nr-tile-valor">${listaTiles.length.toLocaleString("pt-BR")}</div>
+            <div class="nr-tile-sub">pedido${listaTiles.length !== 1 ? "s" : ""} · 1 a 6+ dias</div>
+        </div>`;
+    document.getElementById("sstb-tiles").innerHTML = totalHtml + SSTB_FAIXAS.map(f => {
         const ativa = _sstbDiasSel && _sstbDiasSel.has(f.chave);
         return `
         <div class="nr-tile nr-tile-click${ativa ? " nr-tile-selecionada" : ""}" onclick="_sstbClicarFaixa('${f.chave}')" title="Filtrar por ${f.rotulo.toLowerCase()} parado">
             <div class="nr-tile-label"><span class="nr-chip-cor" style="background:${SSTB_CORES[f.chave]}"></span>${f.rotulo}</div>
             <div class="nr-tile-valor">${porFaixa[f.chave].toLocaleString("pt-BR")}</div>
             <div class="nr-tile-sub">pedido${porFaixa[f.chave] !== 1 ? "s" : ""}</div>
+        </div>`;
+    }).join("");
+
+    // Resposta do cliente: os cards ignoram o PRÓPRIO filtro (senão, ao marcar
+    // "Não recebeu", os outros três zerariam) mas respeitam dias, status,
+    // usuário e busca.
+    const porResp = Object.fromEntries(SSTB_RESPOSTAS.map(x => [x.chave, 0]));
+    _sstbVisiveis({ semFiltroResposta: true }).forEach(r => {
+        if (porResp[r.resposta] !== undefined) porResp[r.resposta]++;
+    });
+    document.getElementById("sstb-tiles-resp").innerHTML = SSTB_RESPOSTAS.map(x => {
+        const ativa = _sstbRespSel && _sstbRespSel.has(x.chave);
+        return `
+        <div class="nr-tile nr-tile-click${ativa ? " nr-tile-selecionada" : ""}" onclick="_sstbClicarResposta('${x.chave}')" title="${_sstbEsc(x.dica)}">
+            <div class="nr-tile-label"><span class="nr-chip-cor" style="background:${x.cor}"></span>${x.rotulo}</div>
+            <div class="nr-tile-valor">${porResp[x.chave].toLocaleString("pt-BR")}</div>
+            <div class="nr-tile-sub">pedido${porResp[x.chave] !== 1 ? "s" : ""}</div>
         </div>`;
     }).join("");
 
@@ -216,10 +290,81 @@ function _sstbLinhaHtml(r) {
         <td data-label="Status">${_sstbEsc(r.latest_status) || "—"}</td>
         <td data-label="Dias parado" style="text-align:center"><i class="nr-pac-ponto" style="background:${cor}"></i>${_sstbFormatarDias(r.dias)}</td>
         <td data-label="Último usuário">${_sstbEsc(r.latest_user_name) || "—"}</td>
+        <td data-label="Resposta do cliente">${_sstbRespostaHtml(r.resposta)}</td>
         <td data-label="Histórico">
             <button type="button" class="sst-hist-btn" onclick="_sstAbrirHistorico('${_sstbEsc(r.shipment_id)}')">Visualizar</button>
         </td>
     </tr>`;
+}
+
+// ── Relatório (download) ──
+// Sempre o backlog INTEIRO, todos os dias juntos — de propósito, sem olhar os
+// filtros da tela: quem baixa quer o retrato completo pra trabalhar no Excel
+// (que filtra melhor do que a gente), e um relatório que muda conforme o card
+// que ficou marcado seria uma armadilha.
+//
+// Duas abas: "Pedidos" (uma linha por pedido, é o que se filtra) e "Resumo"
+// (dias parado x resposta do cliente, com o total geral no fim).
+//
+// Sem telefone nem nome do cliente, de propósito: o relatório circula por
+// e-mail e planilha, e o código do pedido basta pra achar quem for.
+
+function _sstbDataHora(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo",
+        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function _sstbMontarRelatorio(registros) {
+    const rotuloResp = Object.fromEntries(SSTB_RESPOSTAS.map(x => [x.chave, x.rotulo]));
+    const ordenados = [...registros].sort((a, b) =>
+        b.dias - a.dias || String(a.shipment_id).localeCompare(String(b.shipment_id)));
+
+    const pedidos = ordenados.map(r => ({
+        "Pedido":                   r.shipment_id,
+        "Dias parado":              Math.floor(r.dias),
+        "Faixa":                    _sstbFaixaDe(r.dias).rotulo,
+        "Status":                   r.latest_status || "",
+        "Último usuário":           r.latest_user_name || "",
+        "Resposta do cliente":      rotuloResp[r.resposta] || "",
+        "Ativo enviado em":         _sstbDataHora(r.ativo_em),
+        "Ativo enviado por":        r.ativo_por || "",
+        "Resposta registrada em":   _sstbDataHora(r.respondido_em),
+        "Resposta registrada por":  r.respondido_por || "",
+    }));
+
+    const conta = (lista, chave) => lista.filter(r => r.resposta === chave).length;
+    const resumo = [["Dias parado", ...SSTB_RESPOSTAS.map(x => x.rotulo), "Total"]];
+    SSTB_FAIXAS.forEach(f => {
+        const doGrupo = registros.filter(r => _sstbFaixaDe(r.dias).chave === f.chave);
+        resumo.push([f.rotulo, ...SSTB_RESPOSTAS.map(x => conta(doGrupo, x.chave)), doGrupo.length]);
+    });
+    resumo.push(["Total (todos os dias)", ...SSTB_RESPOSTAS.map(x => conta(registros, x.chave)), registros.length]);
+
+    return { pedidos, resumo };
+}
+
+function _sstbBaixar() {
+    if (!_sstbRegistros.length) return gcAlert("Não há backlog carregado pra baixar.");
+    if (typeof XLSX === "undefined") return gcAlert("A biblioteca de planilha não carregou. Recarregue a página e tente de novo.");
+
+    const { pedidos, resumo } = _sstbMontarRelatorio(_sstbRegistros);
+    const wb = XLSX.utils.book_new();
+
+    const abaPedidos = XLSX.utils.json_to_sheet(pedidos);
+    abaPedidos["!cols"] = [{ wch: 18 }, { wch: 11 }, { wch: 10 }, { wch: 16 }, { wch: 34 },
+                           { wch: 20 }, { wch: 18 }, { wch: 26 }, { wch: 22 }, { wch: 26 }];
+    XLSX.utils.book_append_sheet(wb, abaPedidos, "Pedidos");
+
+    const abaResumo = XLSX.utils.aoa_to_sheet(resumo);
+    abaResumo["!cols"] = [{ wch: 22 }, { wch: 14 }, { wch: 10 }, { wch: 13 }, { wch: 11 }, { wch: 9 }];
+    XLSX.utils.book_append_sheet(wb, abaResumo, "Resumo");
+
+    const base = String(document.getElementById("sstb-estacao").innerText || "").replace(/[^\w-]+/g, "_");
+    const dia = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+    XLSX.writeFile(wb, `backlog_resposta_cliente_${base}_${dia}.xlsx`);
 }
 
 // ── Gráficos ──

@@ -4389,6 +4389,14 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .nr-leg { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #8494a9; }
 .nr-leg i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 
+/* Backlog > resposta do cliente. A cor e o estado (verde recebeu, vermelho nao
+   recebeu, ambar esperando, cinza ninguem perguntou) - o mesmo que o Historico
+   do pedido conta. */
+.sstb-resp { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.sstb-resp i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.sstb-secao-titulo { font-size: 12.5px; font-weight: 700; color: #cbd5e1; }
+.sstb-secao-sub { font-size: 11.5px; color: #7b8ba3; margin: 3px 0 10px; }
+
 /* Pendentes (Delivering) que ainda podem virar Delivered hoje — tarja azul,
    canto reto do lado da tarja pra barra não ondular na curva. */
 .snr-pend-lista { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; margin-top: 4px; }
