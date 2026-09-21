@@ -319,6 +319,71 @@ class Envio(BaseDoVigia):
         self.assertTrue(self.avisos[-1][2])
         self.assertIn("Nao consegui enviar", self.avisos[-1][0])
 
+    def test_erro_temporario_insiste_alem_do_limite_normal(self):
+        # Segunda de manha a rede do galpao negou conexao por uns 25 min e o
+        # vigia desistiu do arquivo depois de 8 tentativas - ele ficou parado
+        # na pasta, e o sistema mostrando o dado de sexta. Rede fora e 5xx
+        # passam sozinhos: vale insistir por horas, nao por minutos.
+        self.escrever("br_assignment_task_20260915.csv")
+        erro = va.ErroDeEnvio("nao alcancei o servidor: Permission denied", temporario=True)
+        vigia = self.criar_vigia(BackendDublado(erro))
+        self.varrer(vigia)
+        pendente = vigia.fila[0]
+        for _ in range(va.MAX_TENTATIVAS + 5):
+            pendente.nao_antes = 0
+            vigia._processar(pendente)
+
+        self.assertEqual(vigia.fila, [pendente], "continua na fila depois do limite normal")
+        self.assertEqual([a for a in self.avisos if a[2]], [], "e sem alarme de erro")
+
+    def test_erro_temporario_tambem_desiste_um_dia(self):
+        # Insistir nao pode ser pra sempre: depois do limite longo ele avisa em
+        # vermelho e pede o envio manual, igual a antes.
+        self.escrever("br_assignment_task_20260915.csv")
+        erro = va.ErroDeEnvio("servidor respondeu 503", temporario=True)
+        vigia = self.criar_vigia(BackendDublado(erro))
+        self.varrer(vigia)
+        pendente = vigia.fila[0]
+        for _ in range(va.MAX_TENTATIVAS_TEMPORARIO):
+            pendente.nao_antes = 0
+            vigia._processar(pendente)
+
+        self.assertEqual(vigia.fila, [])
+        self.assertTrue(self.avisos[-1][2])
+        self.assertIn("Nao consegui enviar", self.avisos[-1][0])
+
+    def test_recusa_do_servidor_nao_insiste(self):
+        # 413/400: o mesmo arquivo vai ser recusado igual toda vez. Reenviar
+        # 14 MB a cada 10 min por horas so gasta banda - desiste no limite
+        # curto, como sempre.
+        self.escrever("br_assignment_task_20260915.csv")
+        erro = va.ErroDeEnvio("resposta ilegivel do servidor (413)")
+        self.assertFalse(erro.temporario, "recusa nao e temporaria por padrao")
+        vigia = self.criar_vigia(BackendDublado(erro))
+        self.varrer(vigia)
+        pendente = vigia.fila[0]
+        for _ in range(va.MAX_TENTATIVAS):
+            pendente.nao_antes = 0
+            vigia._processar(pendente)
+
+        self.assertEqual(vigia.fila, [])
+        self.assertTrue(self.avisos[-1][2])
+
+    def test_balao_enviando_so_na_primeira_tentativa(self):
+        # Com a insistencia longa, um balao "Enviando" a cada 10 min por horas
+        # viraria ruido - o que importa no meio e o erro, quando desiste.
+        self.escrever("br_assignment_task_20260915.csv")
+        erro = va.ErroDeEnvio("nao alcancei o servidor", temporario=True)
+        vigia = self.criar_vigia(BackendDublado(erro))
+        self.varrer(vigia)
+        pendente = vigia.fila[0]
+        for _ in range(4):
+            pendente.nao_antes = 0
+            vigia._processar(pendente)
+
+        enviando = [a for a in self.avisos if a[0] == "Enviando"]
+        self.assertEqual(len(enviando), 1)
+
     def test_login_errado_nao_fica_tentando(self):
         self.escrever("br_assignment_task_20260915.csv")
         vigia = self.criar_vigia(BackendDublado(va.ErroDeConta("senha nao confere")))

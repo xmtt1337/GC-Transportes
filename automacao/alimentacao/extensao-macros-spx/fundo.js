@@ -22,6 +22,12 @@ importScripts('logica.js');
 const L = self.XMMacro.logica;
 
 const NOME_ALARME = 'alimentacao';
+// O Backlog tem alarme proprio, e MAIS LENTO que o da AT: o card do hub so
+// atualiza de tempos em tempos na Shopee, e cada rodada grava o snapshot
+// inteiro (1 a 4 mil linhas). De 5 em 5 min seriam ~290 copias quase iguais
+// por dia - o banco ja passa de 2 GB. Um numero so pra mexer se precisar.
+const NOME_ALARME_BACKLOG = 'backlog';
+const MINUTOS_BACKLOG = 60;
 const CHAVE = 'agenda';
 const FUSO = 'America/Sao_Paulo';
 
@@ -64,13 +70,27 @@ function proximaHoraFixa(horas) {
   return falta === null ? null : Date.now() + falta * 60000;
 }
 
+// Em quantos minutos o Backlog deve rodar de novo, contando da ULTIMA vez que
+// rodou (a manual conta). Sem isso, cada reagendar() - abrir o Chrome, mexer no
+// popup - recomecaria a contagem do zero e ele nunca chegaria a rodar.
+async function minutosParaOBacklog() {
+  const guardado = await chrome.storage.local.get('ultimoBacklog');
+  const decorrido = guardado.ultimoBacklog
+    ? (Date.now() - guardado.ultimoBacklog) / 60000
+    : MINUTOS_BACKLOG;   // nunca rodou: roda ja, no proximo minuto
+  return Math.max(1, Math.ceil(MINUTOS_BACKLOG - decorrido));
+}
+
 async function reagendar() {
   await chrome.alarms.clear(NOME_ALARME);
+  await chrome.alarms.clear(NOME_ALARME_BACKLOG);
   const agenda = await lerAgenda();
 
   if (agenda.modo === 'intervalo') {
     const minutos = minutosDaAgenda(agenda);
     chrome.alarms.create(NOME_ALARME, { delayInMinutes: minutos, periodInMinutes: minutos });
+    chrome.alarms.create(NOME_ALARME_BACKLOG, {
+      delayInMinutes: await minutosParaOBacklog(), periodInMinutes: MINUTOS_BACKLOG });
   } else if (agenda.modo === 'horarios') {
     const quando = proximaHoraFixa(agenda.horarios);
     // Sem periodInMinutes: cada disparo marca o proximo. Um periodo fixo de 24h
@@ -81,6 +101,13 @@ async function reagendar() {
   const alarme = await chrome.alarms.get(NOME_ALARME);
   await chrome.storage.local.set({ proxima: alarme ? alarme.scheduledTime : null });
   return alarme ? alarme.scheduledTime : null;
+}
+
+// Disparo bem-sucedido: alem do registro, o Backlog guarda QUANDO rodou - e o
+// que o proximo agendamento usa pra nao repetir cedo demais.
+async function anotarDisparo(qual, extra) {
+  await anotar(`disparado: ${qual}${extra || ''}`);
+  if (qual === 'backlog') await chrome.storage.local.set({ ultimoBacklog: Date.now() });
 }
 
 async function anotar(texto) {
@@ -177,7 +204,7 @@ async function disparar(qual = 'alimentacao', focar = false) {
       await anotar('não rodou: ' + motivo);
       return { ok: false, error: motivo };
     }
-    await anotar(`disparado: ${qual}`);
+    await anotarDisparo(qual);
     return { ok: true };
   } catch (e) {
     // A aba existe mas a extensao nao entrou nela (foi aberta antes). Recarregar
@@ -186,7 +213,7 @@ async function disparar(qual = 'alimentacao', focar = false) {
       await chrome.tabs.reload(aba.id);
       await esperarCarregar(aba.id);
       await chrome.tabs.sendMessage(aba.id, { xmMacro: qual, agendado: true });
-      await anotar(`disparado: ${qual} (depois de recarregar a aba)`);
+      await anotarDisparo(qual, ' (depois de recarregar a aba)');
       return { ok: true };
     } catch (e2) {
       const motivo = String(e2.message || e2);
@@ -197,11 +224,15 @@ async function disparar(qual = 'alimentacao', focar = false) {
 }
 
 chrome.alarms.onAlarm.addListener(async (alarme) => {
+  if (alarme.name === NOME_ALARME_BACKLOG) { await disparar('backlog'); return; }
   if (alarme.name !== NOME_ALARME) return;
   await disparar();
   const agenda = await lerAgenda();
-  if (agenda.modo === 'horarios') await reagendar();
-  else {
+  if (agenda.modo === 'horarios') {
+    // Nos horarios fixos nao ha alarme proprio do Backlog: ele roda junto.
+    await disparar('backlog');
+    await reagendar();
+  } else {
     const atual = await chrome.alarms.get(NOME_ALARME);
     await chrome.storage.local.set({ proxima: atual ? atual.scheduledTime : null });
   }

@@ -78,6 +78,12 @@
     try { chrome.storage.local.set({ [CHAVE]: ensinados }); } catch (e) { /* nada a fazer */ }
   }
 
+  // ".nome__hash" -> [class*="nome"]. So mexe em classe com "__" (o padrao
+  // de sufixo de build do CSS Modules); o resto do seletor fica igual.
+  function seletorTolerante(seletor) {
+    return seletor.replace(/\.([\w-]+?)__[\w-]+/g, '[class*="$1"]');
+  }
+
   function elementosEnsinados(qual) {
     const ficha = fichaDe(qual);
     if (!ficha || !ficha.seletor) return [];
@@ -96,6 +102,17 @@
       achados = [...document.querySelectorAll(ficha.seletor)];
     } catch (e) {
       return [];   // seletor guardado de uma versao antiga da tela
+    }
+    // O que foi ensinado ANTES do corte do hash ainda carrega o sufixo de build
+    // ("...icon__2izcz"), e a Shopee troca esse sufixo a cada deploy - o
+    // seletor para de casar sem ninguem mexer em nada. Com o macro rodando
+    // sozinho isso vira "nao achou o icone" toda hora, ate alguem reensinar.
+    // Entao, se nao casou, tenta de novo com o hash trocado por "contem o nome".
+    if (!achados.length) {
+      const tolerante = seletorTolerante(ficha.seletor);
+      if (tolerante !== ficha.seletor) {
+        try { achados = [...document.querySelectorAll(tolerante)]; } catch (e) { /* segue vazio */ }
+      }
     }
     if (!ficha.texto) return achados;
     const iguais = achados.filter((el) => L.chave(el.textContent) === L.chave(ficha.texto));

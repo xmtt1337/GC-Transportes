@@ -104,6 +104,10 @@ ESPERA_PARADO_S = 3
 # Tentativas de envio antes de desistir. Render dorme no plano free e demora
 # quase um minuto pra acordar - desistir na primeira seria desistir do normal.
 MAX_TENTATIVAS = 8
+# Erro TEMPORARIO (rede fora, servidor 5xx) insiste bem mais: depois das 7
+# esperas da lista abaixo cada nova tentativa espera o ultimo valor (10 min),
+# entao 80 tentativas cobrem umas 12 horas - um turno inteiro.
+MAX_TENTATIVAS_TEMPORARIO = 80
 # Quanto tempo antes de o vigia abrir um arquivo ainda conta como "chegou
 # agora". Serve pro download que aconteceu enquanto ele estava sendo
 # reiniciado.
@@ -280,7 +284,19 @@ class Registro:
 
 # ── backend ─────────────────────────────────────────────────────────────────
 class ErroDeEnvio(Exception):
-    """Falhou agora; tentar de novo faz sentido."""
+    """Falhou agora; tentar de novo faz sentido.
+
+    `temporario` separa duas familias que pedem paciencias muito diferentes:
+    rede fora do ar e servidor 5xx PASSAM SOZINHOS (segunda de manha o
+    "Permission denied" de conexao durou uns 25 min e o vigia ja tinha
+    desistido do arquivo - que ficou parado na pasta), entao vale insistir por
+    horas. Recusa do servidor (413, 400...) nao passa: o mesmo arquivo vai ser
+    recusado igual toda vez, e reenviar 14 MB a cada 10 min so gasta banda.
+    """
+
+    def __init__(self, mensagem, temporario=False):
+        super().__init__(mensagem)
+        self.temporario = temporario
 
 
 class ErroDeConta(Exception):
@@ -303,10 +319,10 @@ class Backend:
                               json={"username": cfg["usuario"], "password": cfg["senha"]},
                               timeout=TIMEOUT, verify=self.ca)
         except requests.RequestException as e:
-            raise ErroDeEnvio(f"nao alcancei o servidor: {e}") from e
+            raise ErroDeEnvio(f"nao alcancei o servidor: {e}", temporario=True) from e
 
         if r.status_code >= 500:
-            raise ErroDeEnvio(f"servidor respondeu {r.status_code}")
+            raise ErroDeEnvio(f"servidor respondeu {r.status_code}", temporario=True)
         try:
             corpo = r.json()
         except ValueError as e:
@@ -337,7 +353,7 @@ class Backend:
             return requests.post(self._url(rota), data=dados, headers=cabecalhos,
                                  timeout=TIMEOUT, verify=self.ca)
         except requests.RequestException as e:
-            raise ErroDeEnvio(f"nao alcancei o servidor: {e}") from e
+            raise ErroDeEnvio(f"nao alcancei o servidor: {e}", temporario=True) from e
 
     def enviar(self, rota, nome_arquivo, linhas):
         corpo = {"arquivo": nome_arquivo, "linhas": linhas}
@@ -361,7 +377,7 @@ class Backend:
             if r.status_code in (400, 413, 415) and len(json.dumps(corpo)) > LIMITE_GZIP:
                 r = self._post(rota, corpo, comprimir=False)
             if r.status_code >= 500:
-                raise ErroDeEnvio(f"servidor respondeu {r.status_code}")
+                raise ErroDeEnvio(f"servidor respondeu {r.status_code}", temporario=True)
             try:
                 resposta = r.json()
             except ValueError as e:
@@ -385,7 +401,7 @@ class Backend:
                                  headers={"Authorization": f"Bearer {self.token}"},
                                  timeout=TIMEOUT, verify=self.ca)
             except requests.RequestException as e:
-                raise ErroDeEnvio(f"nao alcancei o servidor: {e}") from e
+                raise ErroDeEnvio(f"nao alcancei o servidor: {e}", temporario=True) from e
 
             if r.status_code in (401, 403) and tentativa == 1:
                 self.token = None
@@ -609,7 +625,10 @@ class Vigia:
             detalhe = f"{numeros['linhas']} linhas"
 
         self.ultimo = f"enviando {nome}"
-        self.avisar("Enviando", f"{nome}\n{rotulo}: {detalhe}")
+        # So na primeira: com a insistencia longa, um balao "Enviando" a cada
+        # 10 min por horas viraria ruido.
+        if pendente.tentativas == 0:
+            self.avisar("Enviando", f"{nome}\n{rotulo}: {detalhe}")
 
         try:
             resposta = self.backend.enviar(DESTINO[tipo], f"{nome} — {ORIGEM}", linhas)
@@ -619,7 +638,8 @@ class Vigia:
             return
         except ErroDeEnvio as e:
             pendente.tentativas += 1
-            if pendente.tentativas >= MAX_TENTATIVAS:
+            limite = MAX_TENTATIVAS_TEMPORARIO if e.temporario else MAX_TENTATIVAS
+            if pendente.tentativas >= limite:
                 self._tirar(pendente)
                 self.registro.marcar(pendente.chave, nome=nome, resultado=f"desisti: {e}")
                 self.avisar("Nao consegui enviar", f"{nome}\n{e}\nUse 'Enviar um arquivo' pra tentar de novo.", erro=True)
