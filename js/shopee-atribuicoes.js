@@ -34,6 +34,19 @@ function _scaTomDoBipe(d) {
     return "sem_dado";
 }
 
+// Mensagem de um bipe que o SERVIDOR recusou (resposta não-ok). Pacote em retorno chega aqui
+// como 409 com `pedido_retido` — não é gravado na conferência, e a mensagem do servidor já
+// traz o que fazer com ele. Vermelho e com ⛔, pra não se confundir com aviso comum.
+function _scaErroDoBipe(codigo, d) {
+    if (d.ja_bipado) {
+        return { html: `<strong>${_scaEsc(codigo)}</strong> já foi bipado nesta conferência.`, tipo: "aviso" };
+    }
+    if (d.pedido_retido) {
+        return { html: `⛔ <strong>${_scaEsc(codigo)}</strong> — ${_scaEsc(d.error)}`, tipo: "erro" };
+    }
+    return { html: _scaEsc(d.error) || "Erro ao bipar.", tipo: "erro" };
+}
+
 let _scaTipoAtual = null;
 let _scaOpcoes    = { cidades: [], clusters: [] };
 let _scaSessao    = null;
@@ -381,8 +394,8 @@ function _scaBipar(codigoLido) {
     .then(({ ok, d }) => {
         if (!ok) {
             _gcBeepErro(); _scaFlash("err");
-            if (d.ja_bipado) return _scaMsg(`<strong>${_scaEsc(codigo)}</strong> já foi bipado nesta conferência.`, "aviso");
-            return _scaMsg(_scaEsc(d.error) || "Erro ao bipar.", "erro");
+            const erro = _scaErroDoBipe(codigo, d);
+            return _scaMsg(erro.html, erro.tipo);
         }
         const info = SCA_RESULTADOS[d.resultado] || { rotulo: d.resultado, cor: "#eab308" };
         // Bipe repetido não é mais um "já foi bipado" seco: o servidor reavaliou o pacote e

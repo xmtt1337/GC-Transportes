@@ -16,7 +16,7 @@ const vm = require("node:vm");
 
 const arquivo = path.join(__dirname, "..", "js", "shopee-atribuicoes.js");
 const fonte = fs.readFileSync(arquivo, "utf8") +
-    "\n;globalThis.__sca = { _scaTomDoBipe, _scaEhRetorno };";
+    "\n;globalThis.__sca = { _scaTomDoBipe, _scaEhRetorno, _scaErroDoBipe };";
 
 const contexto = vm.createContext({ globalThis: undefined, console });
 contexto.globalThis = contexto;
@@ -75,4 +75,28 @@ test("_scaEhRetorno só olha interceptar, nunca status_ok", () => {
     assert.strictEqual(api._scaEhRetorno({ status_ok: false }), false);
     assert.strictEqual(api._scaEhRetorno(null), false);
     assert.strictEqual(api._scaEhRetorno(undefined), false);
+});
+
+test("bipe recusado por retorno vira erro vermelho com o motivo do servidor", () => {
+    const d = { pedido_retido: true, status: "Return_Hub_Received",
+        error: "Pedido retido (Return_Hub_Received) — favor não expedir. Separe e registre em Retidos → Interceptar." };
+    const r = api._scaErroDoBipe("BR0000000000001", d);
+    assert.strictEqual(r.tipo, "erro");
+    assert.ok(r.html.startsWith("⛔"), "começa com o ⛔");
+    assert.ok(r.html.includes("BR0000000000001"));
+    assert.ok(r.html.includes("favor não expedir"));
+    assert.ok(r.html.includes("Retidos"));
+});
+
+test("já bipado continua sendo só aviso; erro comum mostra a mensagem do servidor", () => {
+    assert.strictEqual(api._scaErroDoBipe("BR1", { ja_bipado: true }).tipo, "aviso");
+    const comum = api._scaErroDoBipe("BR1", { error: "Sessão não encontrada." });
+    assert.strictEqual(comum.tipo, "erro");
+    assert.strictEqual(comum.html, "Sessão não encontrada.");
+    assert.strictEqual(api._scaErroDoBipe("BR1", {}).html, "Erro ao bipar.");
+});
+
+test("a mensagem do servidor é escapada (nada de HTML solto na tela)", () => {
+    const r = api._scaErroDoBipe("BR1", { pedido_retido: true, error: "<img src=x onerror=alert(1)>" });
+    assert.ok(!r.html.includes("<img"));
 });
