@@ -277,6 +277,12 @@ async function abrirFiscalValores(event) {
 }
 
 function _valMostrarHistorico(lista) {
+    // ABERTA = a planilha foi lida e os códigos já foram enviados pro
+    // servidor (ficam gravados, item por item), mas "iniciar" nunca foi
+    // chamado — geralmente porque a aba fechou/o PC desligou bem entre o
+    // envio do último bloco e esse último clique. Os itens não se perdem;
+    // só falta destravar. Reenviar a planilha de novo NÃO reprocessaria
+    // esses, porque "iniciar" é o que liga o worker — por isso o botão.
     document.getElementById("val-resultado").innerHTML = `
     <details class="secao-form">
         <summary><b>Importações anteriores</b> — ${lista.length}</summary>
@@ -288,10 +294,30 @@ function _valMostrarHistorico(lista) {
                 <td>${_esc(i.nome || "—")}</td>
                 <td>${_esc(i.situacao)}</td>
                 <td>${(i.feitos || 0).toLocaleString("pt-BR")} / ${(i.total || 0).toLocaleString("pt-BR")}</td>
-                <td><button onclick="_valAcompanhar(${i.id})">Ver</button></td>
+                <td>
+                    ${i.situacao === "ABERTA"
+                        ? `<button class="btn-primario" onclick="_valRetomar(${i.id})">Retomar</button>`
+                        : ""}
+                    <button onclick="_valAcompanhar(${i.id})">Ver</button>
+                </td>
             </tr>`).join("")}</tbody>
         </table>
     </details>`;
+}
+
+/**
+ * Retoma uma importação que ficou ABERTA — os itens já estão gravados no
+ * servidor (foram enviados antes de travar), só falta ligar o worker.
+ * Não reenvia nada: é só o mesmo POST /iniciar que o fluxo normal já chama
+ * sozinho no final do envio.
+ */
+async function _valRetomar(id) {
+    try {
+        await _cteApi(`/fiscal/importacao/${id}/iniciar`, { method: "POST", body: JSON.stringify({}) });
+        _valAcompanhar(id);
+    } catch (e) {
+        alert("Não consegui retomar: " + e.message);
+    }
 }
 
 function _htmlValores() {
