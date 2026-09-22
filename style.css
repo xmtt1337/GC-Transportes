@@ -5306,8 +5306,23 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
     letter-spacing: 0.08em; color: #707f96; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .aq-table td { padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); color: #cbd5e1; }
-.aq-table td.aq-num { text-align: right; font-variant-numeric: tabular-nums; }
+.aq-table th.aq-num, .aq-table td.aq-num { text-align: right; font-variant-numeric: tabular-nums; }
 .aq-table tbody tr:hover { background: rgba(58,134,255,0.04); }
+
+/* Tabela "dia a dia": com muita transportadora as colunas não podem espremer a ponto de
+   ficar ilegível — a tabela cresce (min-width por coluna) e quem rola é o wrapper
+   (overflow-x no HTML), com a coluna do dia fixa pra continuar servindo de referência. */
+#aqq-pivot-wrap table {
+    width: max-content; min-width: 100%;
+}
+#aqq-pivot-wrap th, #aqq-pivot-wrap td {
+    white-space: nowrap; min-width: 76px;
+}
+.aq-pivot-dia {
+    position: sticky; left: 0; z-index: 2; min-width: 56px !important;
+    background: #0f1520; box-shadow: 1px 0 0 rgba(255,255,255,0.08);
+}
+.aq-table-subtotal .aq-pivot-dia { background: #16233a; }
 .aq-table-del {
     background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 13px;
     font-family: inherit; padding: 4px 8px; opacity: 0.75;

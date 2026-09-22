@@ -282,7 +282,7 @@ function _aqQRenderResumoTransportadoras(transportadoras) {
     }
     wrap.innerHTML = `
         <table class="aq-table">
-            <thead><tr><th>Transportadora</th><th>Qtd</th><th>Valor est.</th></tr></thead>
+            <thead><tr><th>Transportadora</th><th class="aq-num">Qtd</th><th class="aq-num">Valor est.</th></tr></thead>
             <tbody>
                 ${transportadoras.map(t => `
                     <tr><td>${t.rotulo}</td><td class="aq-num">${t.quantidade_total}</td><td class="aq-num">${_aqMoeda(t.valor_estimado)}</td></tr>
@@ -307,16 +307,19 @@ function _aqQRenderPivot() {
     const transportadoras = [...new Set(_aqQLancamentos.map(l => l.transportadora))]
         .sort((a, b) => cfgRotuloAnotacoes(a).localeCompare(cfgRotuloAnotacoes(b), "pt-BR"));
     const porDia = {};
+    const valorPorDia = {};
     _aqQLancamentos.forEach(l => {
         const dia = l.dia.slice(0, 10);
         if (!porDia[dia]) porDia[dia] = {};
         porDia[dia][l.transportadora] = (porDia[dia][l.transportadora] || 0) + l.quantidade;
+        valorPorDia[dia] = (valorPorDia[dia] || 0) + l.quantidade * Number(l.valor_unit_no_lancamento || 0);
     });
     const dias = Object.keys(porDia).sort();
 
     const totalPorTransp = {};
     transportadoras.forEach(t => totalPorTransp[t] = 0);
     let totalGeral = 0;
+    let valorGeral = 0;
 
     const linhas = dias.map(dia => {
         let totalDia = 0;
@@ -327,13 +330,14 @@ function _aqQRenderPivot() {
             return `<td class="aq-num">${qtd || "—"}</td>`;
         }).join("");
         totalGeral += totalDia;
-        return `<tr><td>${dia.slice(8, 10)}/${dia.slice(5, 7)}</td>${celulas}<td class="aq-num" style="font-weight:700">${totalDia}</td></tr>`;
+        valorGeral += valorPorDia[dia];
+        return `<tr><td class="aq-pivot-dia">${dia.slice(8, 10)}/${dia.slice(5, 7)}</td>${celulas}<td class="aq-num" style="font-weight:700">${totalDia}</td><td class="aq-num">${_aqMoeda(valorPorDia[dia])}</td></tr>`;
     }).join("");
 
-    const rodape = `<tr class="aq-table-subtotal"><td>Total</td>${transportadoras.map(t => `<td class="aq-num">${totalPorTransp[t]}</td>`).join("")}<td class="aq-num">${totalGeral}</td></tr>`;
+    const rodape = `<tr class="aq-table-subtotal"><td class="aq-pivot-dia">Total</td>${transportadoras.map(t => `<td class="aq-num">${totalPorTransp[t]}</td>`).join("")}<td class="aq-num">${totalGeral}</td><td class="aq-num">${_aqMoeda(valorGeral)}</td></tr>`;
 
     document.getElementById("aqq-pivot-head").innerHTML =
-        `<tr><th>Dia</th>${transportadoras.map(t => `<th>${cfgRotuloAnotacoes(t)}</th>`).join("")}<th>Total</th></tr>`;
+        `<tr><th class="aq-pivot-dia">Dia</th>${transportadoras.map(t => `<th class="aq-num">${cfgRotuloAnotacoes(t)}</th>`).join("")}<th class="aq-num">Total</th><th class="aq-num">Valor</th></tr>`;
     document.getElementById("aqq-pivot-body").innerHTML = linhas + rodape;
 }
 
