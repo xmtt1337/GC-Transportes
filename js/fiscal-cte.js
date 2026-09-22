@@ -172,7 +172,11 @@ function _htmlListagem() {
         </label>
         <label>Número <input type="number" id="f-numero" style="width:100px"></label>
         <label>Série <input type="number" id="f-serie" style="width:80px"></label>
-        <label>Busca <input id="f-busca" placeholder="código Shopee, chave, tomador, destinatário"></label>
+        <label>Busca <textarea id="f-busca" rows="1"
+            style="resize:vertical;min-height:34px;font-family:inherit;font-size:inherit"
+            placeholder="código Shopee, chave, tomador, destinatário"
+            title="Cole vários códigos (um por linha, ou separados por vírgula) para buscar só esses"
+        ></textarea></label>
         <button onclick="_carregarListaCTe(0)">Filtrar</button>
     </div>
 
