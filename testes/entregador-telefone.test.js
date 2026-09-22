@@ -1,9 +1,8 @@
-// Testes de js/entregador-telefone.js — máscara/formatação de telefone e a linha da tabela.
+// Testes de js/entregador-telefone.js — formatação do telefone lido da planilha.
 //
-// A validação "de verdade" (rejeitar DDD inválido etc.) mora no servidor
-// (modules/entregador-telefone/testes/validacao.test.js), já que é ele quem decide se
-// grava. Aqui só o que é específico do navegador: a máscara que a pessoa vê digitando, e
-// formatar o e164 salvo de volta pra tela.
+// A tela é só leitura (o telefone vem ao vivo do servidor, que já lê a planilha "Dados
+// entregadores/CLT's" e valida o número — ver modules/entregador-telefone/testes/). Aqui
+// só o que é do navegador: formatar o e164 que chegou pra exibição.
 //
 // Dados de TESTE, inventados.
 
@@ -15,39 +14,14 @@ const vm = require("node:vm");
 
 const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "entregador-telefone.js"), "utf8");
 const ctx = vm.createContext({ console });
-vm.runInContext(fonte + "\n;globalThis.__etf = { digitos: _etfDigitosLocais, mascara: _etfFormatarDigitando, formatar: _etfFormatarNumero };", ctx, { filename: "entregador-telefone.js" });
+vm.runInContext(fonte + "\n;globalThis.__etf = { formatar: _etfFormatarNumero };", ctx, { filename: "entregador-telefone.js" });
 const api = ctx.__etf;
 
-// ── _etfDigitosLocais ────────────────────────────────────────────────────
-test("tira mascara e o +55 da frente", () => {
-  assert.strictEqual(api.digitos("+55 49 9 9927-6131"), "49999276131");
-});
-
-test("nao mexe em numero sem prefixo 55 explicito, mas ainda tira se sobrar cara de local", () => {
-  assert.strictEqual(api.digitos("5549999276131"), "49999276131");
-});
-
-// ── _etfFormatarDigitando (o que a pessoa ve enquanto digita) ────────────
-test("vai formatando conforme os digitos chegam", () => {
-  assert.strictEqual(api.mascara("4"), "+55 4");
-  assert.strictEqual(api.mascara("49"), "+55 49");
-  assert.strictEqual(api.mascara("4999"), "+55 49 99");
-  assert.strictEqual(api.mascara("499992"), "+55 49 9992");
-  assert.strictEqual(api.mascara("49999276"), "+55 49 9992-76");
-  assert.strictEqual(api.mascara("4999927613"), "+55 49 9992-7613");
-  assert.strictEqual(api.mascara("49999276131"), "+55 49 9 9927-6131");
-});
-
-test("campo vazio fica vazio, nao mostra so o +55", () => {
-  assert.strictEqual(api.mascara(""), "");
-});
-
-// ── _etfFormatarNumero (o e164 salvo, de volta pra leitura) ──────────────
-test("formata celular de 11 digitos salvo", () => {
+test("formata celular de 11 digitos", () => {
   assert.strictEqual(api.formatar("5549999276131"), "+55 49 9 9927-6131");
 });
 
-test("formata fixo de 10 digitos salvo", () => {
+test("formata fixo de 10 digitos", () => {
   assert.strictEqual(api.formatar("554933334444"), "+55 49 3333-4444");
 });
 

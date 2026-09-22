@@ -2245,9 +2245,11 @@ if (_BASE) {
             </div>
         </div>
 
-        <!-- TELEFONES DOS ENTREGADORES (só dev) — um telefone por NOME PADRÃO DO SISTEMA (o
-             mesmo nome já corrigido pela Conversão de nomes), não por login/usuário — um
-             entregador com 5 grafias diferentes tem um número só. -->
+        <!-- TELEFONES DOS ENTREGADORES (só dev) — LEITURA. O telefone vem AO VIVO da planilha
+             "Dados entregadores/CLT's" (a mesma que valida fechamento), casado pelo NOME PADRÃO
+             DO SISTEMA (o mesmo já corrigido pela Conversão de nomes) — não por login/usuário,
+             então um entregador com 5 grafias diferentes cai no mesmo número. Não edita nada
+             aqui: corrigir telefone é na planilha; corrigir nome é na Conversão de nomes. -->
         <div id="tela-entregador-telefone" class="view tela-full">
             <div class="fech-header">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -2263,13 +2265,14 @@ if (_BASE) {
                     </div>
                 </div>
                 <div id="etf-resumo" style="font-size:12.5px;color:#8494a9;margin-top:8px"></div>
+                <div id="etf-diagnostico" style="font-size:11.5px;color:#66829c;margin-top:4px"></div>
             </div>
             <div class="fech-body">
                 <div class="fechamento-empty" id="etf-empty">Carregando...</div>
                 <div id="etf-resultado" style="display:none">
                     <div class="adm-nf-wrap">
                         <table class="ant-hist-table">
-                            <thead><tr><th>Entregador</th><th>Telefone</th><th>Ações</th></tr></thead>
+                            <thead><tr><th>Entregador</th><th>Telefone</th></tr></thead>
                             <tbody id="etf-tbody"></tbody>
                         </table>
                     </div>
@@ -2277,24 +2280,6 @@ if (_BASE) {
                 </div>
             </div>
         </div><!-- /tela-entregador-telefone -->
-
-        <!-- Editar o telefone de um entregador -->
-        <div class="usr-modal-overlay" id="modal-etf-editar" onclick="_fecharModalSeBackdrop(event,'modal-etf-editar')">
-            <div class="usr-modal">
-                <div class="usr-modal-title">Telefone</div>
-                <div class="usr-modal-sub" id="etf-editar-nome"></div>
-                <div class="usr-modal-field">
-                    <label class="usr-modal-label">Telefone (WhatsApp)</label>
-                    <input class="usr-modal-input" id="etf-editar-telefone" type="text" placeholder="+55 49 9 9927-6131" oninput="_etfMascaraTelefone(this)" autocomplete="off">
-                </div>
-                <div class="usr-modal-error" id="etf-editar-erro"></div>
-                <div class="usr-modal-btns">
-                    <button class="usr-modal-btn-cancel" id="etf-editar-remover" style="display:none;color:#ef4444;border-color:rgba(239,68,68,0.35)" onclick="_etfRemover()">Remover telefone</button>
-                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-etf-editar')">Cancelar</button>
-                    <button class="usr-modal-btn-primary" id="etf-editar-salvar" onclick="_etfSalvar()">Salvar</button>
-                </div>
-            </div>
-        </div>
 
         <!-- TELA TODOS OS USUÁRIOS (SÓ DEV) -->
         <div id="tela-todos-usuarios" class="view tela-full">
@@ -4669,7 +4654,7 @@ if (_BASE) {
 <script src="js/extravios-registros.js?v=30260818e"></script>
 <script src="js/usuarios-gc.js?v=20260922b"></script>
 <script src="js/nomes-padrao.js?v=20260922a"></script>
-<script src="js/entregador-telefone.js?v=20260922a"></script>
+<script src="js/entregador-telefone.js?v=20260922b"></script>
 <script src="js/todos-usuarios.js?v=30260812d"></script>
 <script src="js/whatsapp-teste.js?v=20260921d"></script>
 <script src="js/whatsapp-conversa.js?v=20260921d"></script>
