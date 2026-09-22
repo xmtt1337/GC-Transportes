@@ -828,7 +828,10 @@ function _valPintarProgresso(p) {
 async function _valBaixarRelatorioProblemas(importacaoId) {
     let dados;
     try {
-        dados = await _cteApi(`/fiscal/importacao/${importacaoId}?limite=1000`);
+        // O backend tem um teto próprio (bem mais alto que este número —
+        // ver LIMITE_PROBLEMAS em fila-importacao.js); pedir um valor bem
+        // grande aqui só garante que o "Math.min" do lado de lá é quem manda.
+        dados = await _cteApi(`/fiscal/importacao/${importacaoId}?limite=100000`);
     } catch (e) {
         alert("Não consegui buscar o relatório: " + e.message);
         return;
