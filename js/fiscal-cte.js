@@ -146,7 +146,7 @@ function _htmlListagem() {
             <button onclick="loteCTe('validar')">Validar em lote</button>
             <button onclick="loteCTe('emitir')">Emitir em lote</button>
             <button onclick="abrirImportarShopee()">↓ Importar da Shopee</button>
-            <button onclick="_exportarCTeCsv()">↓ Exportar relatório</button>
+            <button onclick="_abrirModalExportarCTe()">↓ Exportar relatório</button>
             <button class="btn-primario" onclick="abrirNovoCTe()">+ Novo CT-e</button>
         </div>
     </div>
@@ -278,8 +278,33 @@ async function _carregarListaCTe(pagina = 0) {
 }
 
 /**
- * Exporta em CSV os CT-e que batem no filtro atual da tela (mesmos campos
- * De/Até/Status/Número/Série/Busca — não só a página visível).
+ * Abre o modal de exportação — pedir De/Até (e o resto) ANTES de gerar existe
+ * porque, sem isso, o botão exportava com o que estivesse (ou não) preenchido
+ * nos filtros da lista por trás, e ninguém escolhia o período de propósito.
+ * Com dezenas de milhares de CT-e acumulados, "todo o período" de uma vez
+ * pesa — melhor a pessoa decidir o recorte na hora de exportar.
+ *
+ * Pré-preenche com o que já está nos filtros da lista, só como ponto de
+ * partida — dá pra ajustar ou limpar no modal antes de baixar.
+ */
+function _abrirModalExportarCTe() {
+    const sel = document.getElementById("cte-exp-status");
+    if (sel && sel.options.length <= 1) {
+        sel.innerHTML = `<option value="">Todos</option>` +
+            Object.entries(_CTE_ESTADOS).map(([k, v]) => `<option value="${k}">${_esc(v.rotulo)}</option>`).join("");
+    }
+    for (const [origem, destino] of [["f-de", "cte-exp-de"], ["f-ate", "cte-exp-ate"],
+                                      ["f-status", "cte-exp-status"], ["f-numero", "cte-exp-numero"],
+                                      ["f-serie", "cte-exp-serie"], ["f-busca", "cte-exp-busca"]]) {
+        const de = document.getElementById(origem), para = document.getElementById(destino);
+        if (de && para) para.value = de.value;
+    }
+    document.getElementById("cte-exp-erro").textContent = "";
+    _abrirModal("modal-cte-exportar");
+}
+
+/**
+ * Gera o CSV com o filtro escolhido no modal.
  *
  * "Fatura" e "Prefeitura NFSe" saem em branco de propósito: a GC não
  * preenche fatura no CT-e nem emite NFS-e hoje — só CT-e. As colunas ficam
@@ -290,23 +315,40 @@ async function _carregarListaCTe(pagina = 0) {
  * de rejeição parece inexplicável — mas é só um que ainda não foi transmitido
  * (Pronto, Assinando…), não um estado quebrado.
  */
-async function _exportarCTeCsv() {
+async function _confirmarExportarCTeCsv() {
+    const erroEl = document.getElementById("cte-exp-erro");
+    erroEl.textContent = "";
+    const btn = document.getElementById("cte-exp-btn");
+
     const p = new URLSearchParams();
-    for (const [id, chave] of [["f-de", "de"], ["f-ate", "ate"], ["f-status", "status"],
-                               ["f-numero", "numero"], ["f-serie", "serie"], ["f-busca", "busca"]]) {
+    for (const [id, chave] of [["cte-exp-de", "de"], ["cte-exp-ate", "ate"], ["cte-exp-status", "status"],
+                               ["cte-exp-numero", "numero"], ["cte-exp-serie", "serie"], ["cte-exp-busca", "busca"]]) {
         const el = document.getElementById(id);
         if (el && el.value) p.set(chave, el.value);
     }
 
+    btn.disabled = true;
+    btn.textContent = "Gerando…";
     let dados;
     try {
         dados = await _cteApi("/fiscal/cte/exportar?" + p.toString());
     } catch (e) {
-        alert("Não consegui gerar o relatório: " + e.message);
+        erroEl.textContent = "Não consegui gerar o relatório: " + e.message;
+        btn.disabled = false; btn.textContent = "Baixar CSV";
         return;
     }
+    btn.disabled = false;
+    btn.textContent = "Baixar CSV";
+
     const itens = dados.itens || [];
-    if (!itens.length) { alert("Nenhum CT-e encontrado com esse filtro."); return; }
+    if (!itens.length) { erroEl.textContent = "Nenhum CT-e encontrado com esse filtro."; return; }
+
+    // O backend tem um teto (ver rascunho.listarParaExportar) — se bateu
+    // exatamente nele, é sinal de que pode ter ficado CT-e de fora.
+    if (dados.truncado) {
+        erroEl.textContent = `Atenção: tem mais CT-e do que o relatório consegue trazer de uma vez ` +
+            `(${itens.length.toLocaleString("pt-BR")}). Estreite o período (De/Até) e exporte em partes.`;
+    }
 
     const linhaCsv = (campos) => campos.map((c) =>
         `"${String(c ?? "").replace(/"/g, '""')}"`).join(";");
@@ -327,12 +369,15 @@ async function _exportarCTeCsv() {
     const blob = new Blob([String.fromCharCode(0xFEFF) + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
+    const de = document.getElementById("cte-exp-de").value || "inicio";
+    const ate = document.getElementById("cte-exp-ate").value || "fim";
     a.href = url;
-    a.download = `ct-e-relatorio-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `ct-e-relatorio-${de}_a_${ate}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    if (!dados.truncado) _fecharModal("modal-cte-exportar");
 }
 
 function _linhaCTe(c) {

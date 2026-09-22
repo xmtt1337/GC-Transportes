@@ -4703,6 +4703,51 @@ if (_BASE) {
     </div>
 </div>
 
+<!-- MODAL: EXPORTAR RELATÓRIO DE CT-E -->
+<div class="usr-modal-overlay" id="modal-cte-exportar" onclick="_fecharModalSeBackdrop(event,'modal-cte-exportar')">
+    <div class="usr-modal">
+        <div class="usr-modal-title">Exportar relatório de CT-e</div>
+        <div class="usr-modal-sub">Sem data marcada, exporta todo o período — pode ser bem grande.</div>
+
+        <div class="usr-modal-field" style="display:flex;gap:10px">
+            <div style="flex:1">
+                <label class="usr-modal-label">De</label>
+                <input class="usr-modal-input" type="date" id="cte-exp-de">
+            </div>
+            <div style="flex:1">
+                <label class="usr-modal-label">Até</label>
+                <input class="usr-modal-input" type="date" id="cte-exp-ate">
+            </div>
+        </div>
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Status</label>
+            <select class="usr-modal-input" id="cte-exp-status" style="cursor:pointer">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="usr-modal-field" style="display:flex;gap:10px">
+            <div style="flex:1">
+                <label class="usr-modal-label">Número</label>
+                <input class="usr-modal-input" type="number" id="cte-exp-numero">
+            </div>
+            <div style="flex:1">
+                <label class="usr-modal-label">Série</label>
+                <input class="usr-modal-input" type="number" id="cte-exp-serie">
+            </div>
+        </div>
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Busca</label>
+            <input class="usr-modal-input" id="cte-exp-busca" placeholder="código Shopee, chave, tomador, destinatário">
+        </div>
+
+        <div class="usr-modal-error" id="cte-exp-erro"></div>
+        <div class="usr-modal-btns">
+            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-cte-exportar')">Cancelar</button>
+            <button class="usr-modal-btn-primary" id="cte-exp-btn" onclick="_confirmarExportarCTeCsv()">Baixar CSV</button>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL: NOVO USUÁRIO GC -->
 <div class="usr-modal-overlay" id="modal-novo-usuario-gc" onclick="_fecharModalSeBackdrop(event,'modal-novo-usuario-gc')">
     <div class="usr-modal">
@@ -5187,7 +5232,7 @@ if (_BASE) {
 
 
     <script src="js/fiscal-tributacao.js?v=30260817a"></script>
-    <script src="js/fiscal-cte.js?v=30260909c"></script>
+    <script src="js/fiscal-cte.js?v=30260922a"></script>
     <script src="js/fiscal-acompanhamento.js?v=30260909a"></script>
     <script src="js/fiscal-empresa.js?v=30260815b"></script>
     <script src="js/fiscal-numeracao.js?v=30260815a"></script>
