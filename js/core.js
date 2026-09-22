@@ -218,7 +218,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         // Anotações de Quantidade: só aparece pro entregador liberado
         // (toggle em Cadastros → Entregadores, "Editar" → Ativar Anotações de Quantidade).
         if (data.usuario.pode_anotar_quantidade) {
-            show("menu-item-anotacoes-ent");
+            show("menu-anotacoes");
+            show("submenu-anotacoes");
         }
         // Quem leva rota e também roda transferência ganha as duas telas do motorista
         // (toggle em Cadastros → Entregadores, "Editar" → Liberar telas de motorista).
