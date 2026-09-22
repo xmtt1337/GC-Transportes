@@ -93,19 +93,36 @@ function _aqExcluirTransportadora(id, nome) {
     );
 }
 
+const _AQ_OUTRA = "__outra__";
+
 function _aqAbrirModalAdicionar() {
     const sel = document.getElementById("aq-modal-transp-select");
-    sel.innerHTML = _aqDisponiveis.map(t => `<option value="${t.codigo}">${t.rotulo}</option>`).join("");
+    // _aqDisponiveis já vem em ordem alfabética do backend; "Outra" fica sempre por último,
+    // fora da ordenação — não é uma transportadora, é a porta pra digitar uma.
+    sel.innerHTML = _aqDisponiveis.map(t => `<option value="${t.codigo}">${t.rotulo}</option>`).join("")
+        + `<option value="${_AQ_OUTRA}">+ Outra transportadora (digitar nome)</option>`;
+    document.getElementById("aq-modal-transp-custom").value = "";
+    document.getElementById("aq-modal-transp-custom-wrap").style.display = "none";
     document.getElementById("aq-modal-transp-valor").value = "";
     document.getElementById("aq-modal-transp-erro").innerText = "";
     _abrirModal("modal-aq-transportadora");
 }
 
+function _aqModalTranspMudouSelect() {
+    const ehOutra = document.getElementById("aq-modal-transp-select").value === _AQ_OUTRA;
+    const wrap = document.getElementById("aq-modal-transp-custom-wrap");
+    wrap.style.display = ehOutra ? "" : "none";
+    if (ehOutra) document.getElementById("aq-modal-transp-custom").focus();
+}
+
 function _aqSalvarNovaTransportadora() {
-    const transportadora = document.getElementById("aq-modal-transp-select").value;
+    const selecionado = document.getElementById("aq-modal-transp-select").value;
+    const transportadora = selecionado === _AQ_OUTRA
+        ? document.getElementById("aq-modal-transp-custom").value.trim()
+        : selecionado;
     const valor_pacote = Number(document.getElementById("aq-modal-transp-valor").value || 0);
     const erro = document.getElementById("aq-modal-transp-erro");
-    if (!transportadora) { erro.innerText = "Escolha uma transportadora."; return; }
+    if (!transportadora) { erro.innerText = "Escolha ou digite uma transportadora."; return; }
     if (!Number.isFinite(valor_pacote) || valor_pacote < 0) { erro.innerText = "Informe um valor por pacote válido."; return; }
     const tok = localStorage.getItem("token");
     fetch(`${API}/entregador/anotacoes/transportadoras`, {
@@ -380,7 +397,7 @@ const _AQ_ROTULOS = {
     spx: "Shopee / SPX Express", imile: "iMile", anjun: "Anjun", total_express: "Total Express",
     abatti: "Abatti", jt_express: "J&T Express", loggi: "Loggi", magalog: "Magalog",
     azul_cargo: "Azul Cargo Express", sequoia: "Sequoia", jadlog: "Jadlog", redesul: "RedeSul",
-    dialogo: "Diálogo", direct: "Direct",
+    dialogo: "Diálogo", direct: "Direct", pacotes_grandes: "Pacotes Grandes",
 };
 function cfgRotuloAnotacoes(codigo) {
     return _AQ_ROTULOS[codigo] || codigo;

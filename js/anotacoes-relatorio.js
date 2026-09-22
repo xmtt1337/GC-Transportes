@@ -25,6 +25,7 @@ const _AR_CATALOGO = [
     { codigo: "redesul",       rotulo: "RedeSul" },
     { codigo: "dialogo",       rotulo: "Diálogo" },
     { codigo: "direct",        rotulo: "Direct" },
+    { codigo: "pacotes_grandes", rotulo: "Pacotes Grandes" },
 ];
 
 function abrirAnotacoesRelatorio(event) {
@@ -51,8 +52,9 @@ function _arIniciarSelects() {
     document.getElementById("ar-btn-2q").classList.toggle("active", _arQuinzena === 2);
 
     const selTransp = document.getElementById("ar-sel-transportadora");
+    const catalogoOrdenado = [..._AR_CATALOGO].sort((a, b) => a.rotulo.localeCompare(b.rotulo, "pt-BR"));
     selTransp.innerHTML = `<option value="">Todas as transportadoras</option>` +
-        _AR_CATALOGO.map(t => `<option value="${t.codigo}">${t.rotulo}</option>`).join("");
+        catalogoOrdenado.map(t => `<option value="${t.codigo}">${t.rotulo}</option>`).join("");
 }
 
 function _arCarregarEntregadores() {

@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260922b">
+<link rel="stylesheet" href="style.css?v=20260922c">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -1493,7 +1493,11 @@ if (_BASE) {
                 <div class="usr-modal-sub">Escolha a transportadora e a sua estimativa de valor por pacote.</div>
                 <div class="usr-modal-field">
                     <label class="usr-modal-label">Transportadora</label>
-                    <select class="usr-modal-input" id="aq-modal-transp-select"></select>
+                    <select class="usr-modal-input" id="aq-modal-transp-select" onchange="_aqModalTranspMudouSelect()"></select>
+                </div>
+                <div class="usr-modal-field" id="aq-modal-transp-custom-wrap" style="display:none">
+                    <label class="usr-modal-label">Nome da transportadora</label>
+                    <input class="usr-modal-input" id="aq-modal-transp-custom" type="text" maxlength="40" placeholder="Digite o nome">
                 </div>
                 <div class="usr-modal-field">
                     <label class="usr-modal-label">Valor por pacote (R$)</label>
@@ -4515,8 +4519,8 @@ if (_BASE) {
 <script src="js/notas-fiscais.js?v=30260812d"></script>
 <script src="js/dashboard.js?v=30260812d"></script>
 <script src="js/ent-dashboard.js?v=30260812d"></script>
-<script src="js/anotacoes-entregador.js?v=30260922d"></script>
-<script src="js/anotacoes-relatorio.js?v=30260922a"></script>
+<script src="js/anotacoes-entregador.js?v=30260922e"></script>
+<script src="js/anotacoes-relatorio.js?v=30260922b"></script>
 <script src="js/nota-fiscal.js?v=30260812d"></script>
 <script src="js/extravios.js?v=30260812d"></script>
 <script src="js/extravios-registros.js?v=30260818e"></script>
