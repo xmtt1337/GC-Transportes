@@ -2130,8 +2130,10 @@ if (_BASE) {
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Usuários</div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        <!-- Só dev: quem edita o de→para de nome de entregador é o mesmo tanto que edita cadastro. -->
+                        <!-- Só dev: quem edita o de→para de nome de entregador e o telefone dele é o
+                             mesmo tanto que edita cadastro. -->
                         <button class="usr-modal-btn-cancel" id="btn-conversao-nomes" style="display:none" onclick="abrirNomesPadrao(event)">Conversão de nomes</button>
+                        <button class="usr-modal-btn-cancel" id="btn-entregador-telefone" style="display:none" onclick="abrirEntregadorTelefone(event)">Telefones dos entregadores</button>
                         <button class="adm-usr-add-btn" onclick="_abrirModalNovoUsuarioGC()">+ Usuário</button>
                     </div>
                 </div>
@@ -2239,6 +2241,57 @@ if (_BASE) {
                 <div class="usr-modal-btns">
                     <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-cnp-importar')">Fechar</button>
                     <button class="usr-modal-btn-primary" id="cnp-import-btn" style="display:none;background:#ef4444;border-color:#ef4444" onclick="_cnpImportarEnviar()">Substituir tudo</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TELEFONES DOS ENTREGADORES (só dev) — um telefone por NOME PADRÃO DO SISTEMA (o
+             mesmo nome já corrigido pela Conversão de nomes), não por login/usuário — um
+             entregador com 5 grafias diferentes tem um número só. -->
+        <div id="tela-entregador-telefone" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Telefones dos entregadores</div>
+                    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+                        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#8494a9;cursor:pointer">
+                            <input type="checkbox" id="etf-so-falta" onchange="_etfCarregar()">Só quem falta
+                        </label>
+                        <div class="adm-search-input-area" style="max-width:260px">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="etf-busca" placeholder="Buscar nome..." oninput="_etfBuscar()" autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+                <div id="etf-resumo" style="font-size:12.5px;color:#8494a9;margin-top:8px"></div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="etf-empty">Carregando...</div>
+                <div id="etf-resultado" style="display:none">
+                    <div class="adm-nf-wrap">
+                        <table class="ant-hist-table">
+                            <thead><tr><th>Entregador</th><th>Telefone</th><th>Ações</th></tr></thead>
+                            <tbody id="etf-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div id="etf-truncado" style="display:none;font-size:12px;color:#8494a9;padding:10px 4px">Mostrando os 300 primeiros — refine a busca pra achar outro.</div>
+                </div>
+            </div>
+        </div><!-- /tela-entregador-telefone -->
+
+        <!-- Editar o telefone de um entregador -->
+        <div class="usr-modal-overlay" id="modal-etf-editar" onclick="_fecharModalSeBackdrop(event,'modal-etf-editar')">
+            <div class="usr-modal">
+                <div class="usr-modal-title">Telefone</div>
+                <div class="usr-modal-sub" id="etf-editar-nome"></div>
+                <div class="usr-modal-field">
+                    <label class="usr-modal-label">Telefone (WhatsApp)</label>
+                    <input class="usr-modal-input" id="etf-editar-telefone" type="text" placeholder="+55 49 9 9927-6131" oninput="_etfMascaraTelefone(this)" autocomplete="off">
+                </div>
+                <div class="usr-modal-error" id="etf-editar-erro"></div>
+                <div class="usr-modal-btns">
+                    <button class="usr-modal-btn-cancel" id="etf-editar-remover" style="display:none;color:#ef4444;border-color:rgba(239,68,68,0.35)" onclick="_etfRemover()">Remover telefone</button>
+                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-etf-editar')">Cancelar</button>
+                    <button class="usr-modal-btn-primary" id="etf-editar-salvar" onclick="_etfSalvar()">Salvar</button>
                 </div>
             </div>
         </div>
@@ -4593,7 +4646,7 @@ if (_BASE) {
 
 <script src="js/core.js?v=20260922a"></script>
 <script src="js/col-filtro.js?v=20260917b"></script>
-<script src="js/router.js?v=20260922b"></script>
+<script src="js/router.js?v=20260922c"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
 <script src="js/nav.js?v=20260904a"></script>
 <script src="js/atendimento.js?v=20260907a"></script>
@@ -4614,8 +4667,9 @@ if (_BASE) {
 <script src="js/nota-fiscal.js?v=30260812d"></script>
 <script src="js/extravios.js?v=30260812d"></script>
 <script src="js/extravios-registros.js?v=30260818e"></script>
-<script src="js/usuarios-gc.js?v=20260922a"></script>
+<script src="js/usuarios-gc.js?v=20260922b"></script>
 <script src="js/nomes-padrao.js?v=20260922a"></script>
+<script src="js/entregador-telefone.js?v=20260922a"></script>
 <script src="js/todos-usuarios.js?v=30260812d"></script>
 <script src="js/whatsapp-teste.js?v=20260921d"></script>
 <script src="js/whatsapp-conversa.js?v=20260921d"></script>

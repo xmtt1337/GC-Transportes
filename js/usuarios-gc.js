@@ -42,9 +42,13 @@ function _trocarPoloGC(id, polo, select) {
 function abrirAdminUsuariosGC(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-admin-usuarios-gc");
-    // Só dev edita a Conversão de nomes — mesmo controle de quem mexe em cadastro de gente.
-    const btn = document.getElementById("btn-conversao-nomes");
-    if (btn) btn.style.display = (window._gcUser && window._gcUser.role === "dev") ? "" : "none";
+    // Só dev edita a Conversão de nomes e o telefone dos entregadores — mesmo controle de
+    // quem mexe em cadastro de gente.
+    const souDev = window._gcUser && window._gcUser.role === "dev";
+    const btnNomes = document.getElementById("btn-conversao-nomes");
+    if (btnNomes) btnNomes.style.display = souDev ? "" : "none";
+    const btnTelefone = document.getElementById("btn-entregador-telefone");
+    if (btnTelefone) btnTelefone.style.display = souDev ? "" : "none";
     _carregarUsuariosGC();
 }
 
