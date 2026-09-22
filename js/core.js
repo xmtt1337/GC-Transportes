@@ -215,6 +215,11 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
             show("menu-ocorrencias");
             show("submenu-ocorrencias");
         }
+        // Anotações de Quantidade: só aparece pro entregador liberado
+        // (toggle em Cadastros → Entregadores, "Editar" → Ativar Anotações de Quantidade).
+        if (data.usuario.pode_anotar_quantidade) {
+            show("menu-item-anotacoes-ent");
+        }
         // Quem leva rota e também roda transferência ganha as duas telas do motorista
         // (toggle em Cadastros → Entregadores, "Editar" → Liberar telas de motorista).
         // Continua sendo entregador: fechamento, NF e conferência de rota seguem iguais.
@@ -289,6 +294,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         }
         if (role === "dev") {
             show("menu-item-todos-usuarios"); // visão de todos os usuários do sistema — só dev
+            show("menu-item-anotacoes-relatorio"); // relatório consolidado de Anotações de Quantidade — só dev
         }
     }
 

@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260921c">
+<link rel="stylesheet" href="style.css?v=20260922a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -275,6 +275,7 @@ if (_BASE) {
         <ul class="submenu" data-menu="fechamentos" id="submenu-fechamentos" style="display:none">
             <li><a href="#" data-rota="Fechamentos/Meus" onclick="abrirFechamentos(event)">Meus Fechamentos</a></li>
             <li><a href="#" data-rota="Fechamentos/Dashboard" onclick="abrirEntDashboard(event)">Dashboard</a></li>
+            <li id="menu-item-anotacoes-ent" style="display:none"><a href="#" data-rota="Fechamentos/Anotacoes" onclick="abrirAnotacoesQuantidade(event)">Anotações de Quantidade</a></li>
             <li><a href="#" data-rota="Fechamentos/NotasFiscais" onclick="abrirMinhasNFs(event)">Notas Fiscais</a></li>
         </ul>
 
@@ -578,6 +579,7 @@ if (_BASE) {
                 <li><a href="#" data-rota="Cadastros/Motoristas" onclick="abrirAdminMotoristas(event)">Motoristas</a></li>
                 <li><a href="#" data-rota="Cadastros/Usuarios" onclick="abrirAdminUsuariosGC(event)">Usuários</a></li>
                 <li id="menu-item-todos-usuarios" style="display:none"><a href="#" data-rota="Cadastros/TodosUsuarios" onclick="abrirTodosUsuarios(event)">Todos os Usuários</a></li>
+                <li id="menu-item-anotacoes-relatorio" style="display:none"><a href="#" data-rota="Cadastros/AnotacoesRelatorio" onclick="abrirAnotacoesRelatorio(event)">Anotações de Quantidade</a></li>
             </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Trampay <span class="subgroup-arrow">▾</span>
@@ -1395,6 +1397,126 @@ if (_BASE) {
                 </div>
             </div>
         </div><!-- /tela-trampay-entregadores -->
+
+        <!-- TELA ENTREGADOR: ANOTAÇÕES DE QUANTIDADE -->
+        <div id="tela-anotacoes-entregador" class="view tela-full">
+            <div class="fech-header">
+                <div class="fech-period-row">
+                    <select class="fech-select" id="aq-sel-mes" onchange="_aqFiltrarPeriodo()">
+                        <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>    <option value="4">Abril</option>
+                        <option value="5">Maio</option>     <option value="6">Junho</option>
+                        <option value="7">Julho</option>    <option value="8">Agosto</option>
+                        <option value="9">Setembro</option> <option value="10">Outubro</option>
+                        <option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    <select class="fech-select" id="aq-sel-ano" onchange="_aqFiltrarPeriodo()"></select>
+                </div>
+                <div class="quinzena-toggle">
+                    <button class="quinzena-btn" id="aq-btn-1q" onclick="_aqSelecionarQuinzena(1)">1ª Quinzena &nbsp;(1 – 15)</button>
+                    <button class="quinzena-btn" id="aq-btn-2q" onclick="_aqSelecionarQuinzena(2)">2ª Quinzena &nbsp;(16 – fim)</button>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="painel-banner banner-positivo">
+                    <div class="pb-left">
+                        <div class="pb-eyebrow">Estimativa de ganho na quinzena</div>
+                        <div class="pb-valor" id="aq-total-valor">R$ 0,00</div>
+                        <div class="pb-sub">Quantidade × valor/pacote que você mesmo configurou — é uma referência pessoal, não é o fechamento oficial.</div>
+                    </div>
+                    <div class="pb-divider"></div>
+                    <div class="pb-right">
+                        <div class="pb-ent-label">Pacotes anotados</div>
+                        <div class="pb-ent-valor" id="aq-total-qtd">0</div>
+                        <div class="pb-ent-sub">nesta quinzena</div>
+                    </div>
+                </div>
+
+                <div class="painel-section-title">Minhas transportadoras</div>
+                <div class="aq-transp-list" id="aq-transp-list"></div>
+                <button class="aq-add-btn" id="aq-add-btn" onclick="_aqAbrirModalAdicionar()">+ Adicionar transportadora</button>
+
+                <div class="painel-section-title" style="margin-top:24px">Lançar quantidade do dia</div>
+                <div class="aq-day-card">
+                    <input type="date" class="fech-select" id="aq-dia" onchange="_aqCarregarDia()" style="margin-bottom:10px;width:100%">
+                    <div id="aq-dia-form"></div>
+                </div>
+
+                <div class="painel-section-title" style="margin-top:24px">Lançamentos da quinzena</div>
+                <div class="fechamento-empty" id="aq-lista-empty">Nenhum lançamento nesta quinzena ainda.</div>
+                <table class="aq-table" id="aq-lista-table" style="display:none">
+                    <thead><tr><th>Dia</th><th>Transportadora</th><th>Qtd</th><th>Valor est.</th><th></th></tr></thead>
+                    <tbody id="aq-lista-tbody"></tbody>
+                </table>
+            </div>
+        </div><!-- /tela-anotacoes-entregador -->
+
+        <!-- MODAL: ADICIONAR TRANSPORTADORA (Anotações de Quantidade) -->
+        <div class="usr-modal-overlay" id="modal-aq-transportadora" onclick="_fecharModalSeBackdrop(event,'modal-aq-transportadora')">
+            <div class="usr-modal">
+                <div class="usr-modal-title">Adicionar transportadora</div>
+                <div class="usr-modal-sub">Escolha a transportadora e a sua estimativa de valor por pacote.</div>
+                <div class="usr-modal-field">
+                    <label class="usr-modal-label">Transportadora</label>
+                    <select class="usr-modal-input" id="aq-modal-transp-select"></select>
+                </div>
+                <div class="usr-modal-field">
+                    <label class="usr-modal-label">Valor por pacote (R$)</label>
+                    <input class="usr-modal-input" id="aq-modal-transp-valor" type="number" min="0" step="0.01" placeholder="0,00">
+                </div>
+                <div class="usr-modal-error" id="aq-modal-transp-erro"></div>
+                <div class="usr-modal-btns">
+                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-aq-transportadora')">Cancelar</button>
+                    <button class="usr-modal-btn-primary" onclick="_aqSalvarNovaTransportadora()">Adicionar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TELA DEV: RELATÓRIO ANOTAÇÕES DE QUANTIDADE -->
+        <div id="tela-anotacoes-relatorio" class="view tela-full">
+            <div class="fech-header">
+                <div class="fech-period-row">
+                    <select class="fech-select" id="ar-sel-mes" onchange="_arFiltrarPeriodo()">
+                        <option value="1">Janeiro</option>  <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>    <option value="4">Abril</option>
+                        <option value="5">Maio</option>     <option value="6">Junho</option>
+                        <option value="7">Julho</option>    <option value="8">Agosto</option>
+                        <option value="9">Setembro</option> <option value="10">Outubro</option>
+                        <option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    <select class="fech-select" id="ar-sel-ano" onchange="_arFiltrarPeriodo()"></select>
+                </div>
+                <div class="quinzena-toggle">
+                    <button class="quinzena-btn" id="ar-btn-1q" onclick="_arSelecionarQuinzena(1)">1ª Quinzena &nbsp;(1 – 15)</button>
+                    <button class="quinzena-btn" id="ar-btn-2q" onclick="_arSelecionarQuinzena(2)">2ª Quinzena &nbsp;(16 – fim)</button>
+                </div>
+                <div class="aq-filtros">
+                    <select class="fech-select" id="ar-sel-entregador" onchange="_arAplicarFiltros()"><option value="">Todos os entregadores</option></select>
+                    <select class="fech-select" id="ar-sel-transportadora" onchange="_arAplicarFiltros()"><option value="">Todas as transportadoras</option></select>
+                    <button class="aq-add-btn" style="width:auto;padding:10px 16px" onclick="_arExportarCsv()">Exportar CSV</button>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="painel-banner banner-positivo">
+                    <div class="pb-left">
+                        <div class="pb-eyebrow">Total estimado no período</div>
+                        <div class="pb-valor" id="ar-total-valor">R$ 0,00</div>
+                        <div class="pb-sub">Soma das estimativas que cada entregador configurou — referência, não é o fechamento oficial.</div>
+                    </div>
+                    <div class="pb-divider"></div>
+                    <div class="pb-right">
+                        <div class="pb-ent-label">Pacotes anotados</div>
+                        <div class="pb-ent-valor" id="ar-total-qtd">0</div>
+                        <div class="pb-ent-sub">no período</div>
+                    </div>
+                </div>
+                <div class="fechamento-empty" id="ar-empty">Carregando...</div>
+                <table class="aq-table" id="ar-table" style="display:none">
+                    <thead><tr><th>Entregador</th><th>Transportadora</th><th>Qtd</th><th>Valor est.</th></tr></thead>
+                    <tbody id="ar-tbody"></tbody>
+                </table>
+            </div>
+        </div><!-- /tela-anotacoes-relatorio -->
 
         <!-- TELA ADMIN USUÁRIOS -->
         <div id="tela-admin-usuarios" class="view tela-full">
@@ -4351,13 +4473,15 @@ if (_BASE) {
 <script src="js/admin.js?v=30260901a"></script>
 <script src="js/conf-nf.js?v=30260812d"></script>
 <script src="js/trampay.js?v=30260812d"></script>
-<script src="js/usuarios.js?v=30260812d"></script>
+<script src="js/usuarios.js?v=30260922a"></script>
 <script src="js/motoristas.js?v=30260812d"></script>
 <script src="js/pagamentos.js?v=30260812d"></script>
 <script src="js/faturas.js?v=20260914a"></script>
 <script src="js/notas-fiscais.js?v=30260812d"></script>
 <script src="js/dashboard.js?v=30260812d"></script>
 <script src="js/ent-dashboard.js?v=30260812d"></script>
+<script src="js/anotacoes-entregador.js?v=30260922a"></script>
+<script src="js/anotacoes-relatorio.js?v=30260922a"></script>
 <script src="js/nota-fiscal.js?v=30260812d"></script>
 <script src="js/extravios.js?v=30260812d"></script>
 <script src="js/extravios-registros.js?v=30260818e"></script>

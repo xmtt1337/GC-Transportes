@@ -5254,6 +5254,76 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .atd-novo-item:hover { background: rgba(58,134,255,0.1); }
 .atd-novo-item-corpo { min-width: 0; flex: 1; }
 .atd-novo-item .atd-adm-item-meta { margin-top: 3px; }
+/* ===== ANOTAÇÕES DE QUANTIDADE (entregador + relatório do dev) ===== */
+.aq-transp-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.aq-transp-card {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(27,38,59,0.9); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px; padding: 12px 14px;
+}
+.aq-transp-nome { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; color: #e2e8f0; }
+.aq-transp-valor-wrap { display: flex; align-items: center; gap: 6px; color: #717f95; font-size: 12px; white-space: nowrap; }
+.aq-transp-valor-input {
+    width: 78px; background: rgba(255,255,255,0.04); border: 1px solid rgba(58,134,255,0.18);
+    color: #f1f5f9; border-radius: 8px; padding: 7px 9px; font-size: 13px;
+    font-family: inherit; outline: none; text-align: right;
+}
+.aq-transp-valor-input:focus { border-color: rgba(58,134,255,0.5); box-shadow: 0 0 0 3px rgba(58,134,255,0.1); }
+.aq-transp-del {
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgba(239,68,68,0.3);
+    background: transparent; color: #ef4444; cursor: pointer; font-size: 15px; line-height: 1;
+    flex-shrink: 0; transition: background 0.2s;
+}
+.aq-transp-del:hover { background: rgba(239,68,68,0.12); }
+.aq-add-btn {
+    width: 100%; padding: 11px; border-radius: 12px; border: 1px dashed rgba(58,134,255,0.35);
+    background: rgba(58,134,255,0.05); color: #3a86ff; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: background 0.2s;
+}
+.aq-add-btn:hover { background: rgba(58,134,255,0.12); }
+
+.aq-day-card {
+    background: rgba(27,38,59,0.9); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px; padding: 14px; margin-bottom: 4px;
+}
+.aq-qty-row {
+    display: flex; align-items: center; gap: 12px; padding: 9px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.aq-qty-row:last-child { border-bottom: none; }
+.aq-qty-nome { flex: 1; font-size: 13px; color: #cbd5e1; font-weight: 500; }
+.aq-qty-input {
+    width: 70px; background: rgba(255,255,255,0.04); border: 1px solid rgba(58,134,255,0.18);
+    color: #f1f5f9; border-radius: 8px; padding: 7px 9px; font-size: 13px;
+    font-family: inherit; outline: none; text-align: center;
+}
+.aq-qty-input:focus { border-color: rgba(58,134,255,0.5); box-shadow: 0 0 0 3px rgba(58,134,255,0.1); }
+.aq-qty-empty { font-size: 12px; color: #717f95; padding: 6px 0; }
+
+.aq-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
+.aq-table th {
+    text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #707f96; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.aq-table td { padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); color: #cbd5e1; }
+.aq-table td.aq-num { text-align: right; font-variant-numeric: tabular-nums; }
+.aq-table tbody tr:hover { background: rgba(58,134,255,0.04); }
+.aq-table-del {
+    background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 13px;
+    font-family: inherit; padding: 4px 8px; opacity: 0.75;
+}
+.aq-table-del:hover { opacity: 1; }
+.aq-table-subtotal td {
+    background: rgba(58,134,255,0.05); color: #93c5fd; font-weight: 700;
+    border-bottom: 1px solid rgba(58,134,255,0.15);
+}
+
+.aq-filtros { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+@media (max-width: 680px) {
+    .aq-transp-card { flex-wrap: wrap; }
+    .aq-filtros { flex-direction: column; }
+}
+
 .atd-novo-jatem {
     flex-shrink: 0; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
     letter-spacing: .05em; color: #8494a9; border: 1px solid var(--border);

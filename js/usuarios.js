@@ -27,6 +27,8 @@ function _carregarUsuarios() {
         // Mesma alçada de quem cria motorista: quem não pode cadastrar um não deveria poder
         // transformar um entregador em um por outra porta.
         const podeMotorista = ["admin", "dev", "finance"].includes((window._gcUser && window._gcUser.role) || "");
+        // Anotações de Quantidade é o entregador quem preenche e configura — só dev ativa.
+        const podeAnotar = (window._gcUser && window._gcUser.role) === "dev";
         document.getElementById("adm-usr-tbody").innerHTML = users.map(u => `
             <tr>
                 <td>
@@ -44,6 +46,7 @@ function _carregarUsuarios() {
                     ${u.senha_temporaria ? `<span class="adm-usr-badge senha-temp" title="Ainda não trocou a senha temporária — não consegue entrar até trocar">Senha pendente</span>` : ""}
                     ${u.isento_nf ? `<span class="adm-usr-badge nf-isento" title="Vê os fechamentos mesmo com nota fiscal pendente da quinzena anterior">Sem trava de NF</span>` : ""}
                     ${u.faz_motorista ? `<span class="adm-usr-badge nf-isento" title="Além da rota, tem acesso a Transferências e Devoluções do motorista">Também motorista</span>` : ""}
+                    ${u.pode_anotar_quantidade ? `<span class="adm-usr-badge nf-isento" title="Pode registrar quantidade entregue por transportadora e ver a estimativa de ganho">Anotações de quantidade</span>` : ""}
                 </td>
                 <td>
                     <div class="adm-usr-editar-wrap">
@@ -54,6 +57,7 @@ function _carregarUsuarios() {
                             ${podeFaltante ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleFaltante(${u.id},${!u.pode_pacote_faltante})">${u.pode_pacote_faltante ? 'Desativar' : 'Ativar'} formulário de faltante</button>` : ""}
                             ${podeNF ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleIsentoNF(${u.id},${!u.isento_nf},'${(u.name || u.username).replace(/'/g,"\\'")}')">${u.isento_nf ? 'Voltar a exigir NF' : 'Liberar fechamento sem NF'}</button>` : ""}
                             ${podeMotorista ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleFazMotorista(${u.id},${!u.faz_motorista},'${(u.name || u.username).replace(/'/g,"\\'")}')">${u.faz_motorista ? 'Tirar telas de motorista' : 'Liberar telas de motorista'}</button>` : ""}
+                            ${podeAnotar ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleAnotaQuantidade(${u.id},${!u.pode_anotar_quantidade},'${(u.name || u.username).replace(/'/g,"\\'")}')">${u.pode_anotar_quantidade ? 'Desativar' : 'Ativar'} Anotações de Quantidade</button>` : ""}
                         </div>
                     </div>
                 </td>
@@ -216,6 +220,31 @@ function _toggleFazMotorista(id, valor, nome) {
         aplicar,
         valor ? "Liberar telas de motorista" : "Tirar telas de motorista",
         valor ? "Liberar" : "Tirar"
+    );
+}
+
+// Confirma antes: liga uma tela nova de entrada de dados pro entregador, e desligar some
+// com o menu dele sem apagar o que já foi lançado.
+function _toggleAnotaQuantidade(id, valor, nome) {
+    const aplicar = () => {
+        const tok = localStorage.getItem("token");
+        fetch(`${API}/admin/usuarios/${id}`, {
+            method: "PATCH",
+            headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
+            body: JSON.stringify({ pode_anotar_quantidade: valor })
+        }).then(r => r.json())
+        .then(data => {
+            if (data.error) { gcAlert(data.error); return; }
+            _carregarUsuarios();
+        }).catch(() => gcAlert("Erro ao atualizar a permissão."));
+    };
+    gcConfirm(
+        valor
+            ? `Ativar Anotações de Quantidade para ${nome}?\n\nEle passa a poder registrar, por conta própria, a quantidade entregue por transportadora e configurar sua estimativa de valor por pacote.`
+            : `Desativar Anotações de Quantidade para ${nome}?\n\nEle perde o acesso à tela. O que já foi lançado continua no histórico.`,
+        aplicar,
+        valor ? "Ativar Anotações de Quantidade" : "Desativar Anotações de Quantidade",
+        valor ? "Ativar" : "Desativar"
     );
 }
 
