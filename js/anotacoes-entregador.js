@@ -122,14 +122,47 @@ function _aqSalvarNovaTransportadora() {
 
 // ══════════════════════════ TELA: ANOTAÇÕES POR DIA ══════════════════════════
 
-let _aqDiaLancamentos = []; // lançamentos da quinzena do dia selecionado, pra achar os do dia exato
+let _aqDiaLancamentos = [];    // lançamentos da quinzena do dia selecionado, pra achar os do dia exato
+let _aqDiaSelecionado = new Date().toISOString().slice(0, 10);
 
 function abrirAnotacoesPorDia(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-aq-por-dia");
-    const input = document.getElementById("aq-dia");
-    if (!input.value) input.value = new Date().toISOString().slice(0, 10);
+    _aqMontarCalendarioDia();
     _aqCarregarTransportadoras(() => _aqCarregarDia());
+}
+
+// Calendário compartilhado (js/calendario-dias.js) em vez do <input type="date"> nativo do
+// navegador. Uso invertido do padrão original dele: lá só dia COM dado é clicável (Line
+// Haul, Conferência); aqui é o oposto — o entregador precisa poder escolher um dia que ainda
+// não tem nada lançado. Por isso todo dia da janela entra em `dias` como selecionável.
+function _aqMontarCalendarioDia() {
+    const hoje = new Date().toISOString().slice(0, 10);
+    gcCalMontar({
+        alvo: "aq-dia-cal",
+        dias: _aqDiasDoCalendario(),
+        dia: _aqDiaSelecionado,
+        hoje,
+        legenda: "Escolha o dia pra lançar a quantidade",
+        aoEscolher: (dia) => {
+            _aqDiaSelecionado = dia;
+            _aqMontarCalendarioDia();
+            _aqCarregarDia();
+        },
+    });
+}
+
+// Janela de 60 dias pra trás e pra frente — cobre esquecer de lançar de ontem sem deixar o
+// calendário com anos de dias soltos.
+function _aqDiasDoCalendario() {
+    const dias = [];
+    const base = new Date();
+    for (let i = -60; i <= 60; i++) {
+        const d = new Date(base);
+        d.setDate(d.getDate() + i);
+        dias.push({ dia: d.toISOString().slice(0, 10) });
+    }
+    return dias;
 }
 
 function _aqQuinzenaDoDia(diaISO) {
@@ -138,7 +171,7 @@ function _aqQuinzenaDoDia(diaISO) {
 }
 
 function _aqCarregarDia() {
-    const dia = document.getElementById("aq-dia").value;
+    const dia = _aqDiaSelecionado;
     if (!dia) return;
     const { mes, ano, quinzena } = _aqQuinzenaDoDia(dia);
     document.getElementById("aq-dia-periodo-info").innerText =
@@ -157,7 +190,7 @@ function _aqCarregarDia() {
 function _aqRenderDiaForm() {
     const wrap = document.getElementById("aq-dia-form");
     if (!wrap) return;
-    const dia = document.getElementById("aq-dia").value;
+    const dia = _aqDiaSelecionado;
     if (!_aqMinhas.length) {
         wrap.innerHTML = `<div class="aq-qty-empty">Adicione uma transportadora em "Transportadoras" pra poder lançar quantidade.</div>`;
         return;
@@ -171,7 +204,7 @@ function _aqRenderDiaForm() {
                        id="aq-qtd-${t.id}" placeholder="0"
                        value="${existente ? existente.quantidade : ""}"
                        onblur="_aqSalvarQtd(${t.id})">
-                ${existente ? `<button class="aq-table-del" onclick="_aqExcluirLancamentoDoDia(${existente.id})">Excluir</button>` : ""}
+                ${existente ? `<button class="aq-transp-del" title="Excluir lançamento" onclick="_aqExcluirLancamentoDoDia(${existente.id})">✕</button>` : `<span style="width:30px"></span>`}
             </div>
         `;
     }).join("");
@@ -179,10 +212,10 @@ function _aqRenderDiaForm() {
 
 function _aqSalvarQtd(transportadoraId) {
     const input = document.getElementById(`aq-qtd-${transportadoraId}`);
-    if (input.value === "") return; // vazio não lança nada — apagar um lançamento é pelo botão Excluir
+    if (input.value === "") return; // vazio não lança nada — apagar um lançamento é pelo botão ✕
     const quantidade = parseInt(input.value, 10);
     if (!Number.isInteger(quantidade) || quantidade < 0) { gcAlert("Quantidade inválida."); return; }
-    const dia = document.getElementById("aq-dia").value;
+    const dia = _aqDiaSelecionado;
     const tok = localStorage.getItem("token");
     fetch(`${API}/entregador/anotacoes/lancamentos`, {
         method: "PUT",
