@@ -42,6 +42,9 @@ function _trocarPoloGC(id, polo, select) {
 function abrirAdminUsuariosGC(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-admin-usuarios-gc");
+    // Só dev edita a Conversão de nomes — mesmo controle de quem mexe em cadastro de gente.
+    const btn = document.getElementById("btn-conversao-nomes");
+    if (btn) btn.style.display = (window._gcUser && window._gcUser.role === "dev") ? "" : "none";
     _carregarUsuariosGC();
 }
 

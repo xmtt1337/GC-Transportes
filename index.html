@@ -2129,7 +2129,11 @@ if (_BASE) {
             <div class="fech-header">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Usuários</div>
-                    <button class="adm-usr-add-btn" onclick="_abrirModalNovoUsuarioGC()">+ Usuário</button>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <!-- Só dev: quem edita o de→para de nome de entregador é o mesmo tanto que edita cadastro. -->
+                        <button class="usr-modal-btn-cancel" id="btn-conversao-nomes" style="display:none" onclick="abrirNomesPadrao(event)">Conversão de nomes</button>
+                        <button class="adm-usr-add-btn" onclick="_abrirModalNovoUsuarioGC()">+ Usuário</button>
+                    </div>
                 </div>
             </div>
             <div class="fech-body">
@@ -2152,6 +2156,92 @@ if (_BASE) {
                 </div>
             </div>
         </div><!-- /tela-admin-usuarios-gc -->
+
+        <!-- CONVERSÃO DE NOMES (só dev) — de→para entre o nome que a transportadora manda e
+             o nome padrão do sistema. Chega aqui por Cadastros > Usuários > Conversão de nomes. -->
+        <div id="tela-nomes-padrao" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Conversão de nomes</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                        <div class="adm-search-input-area" style="max-width:260px">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="cnp-busca" placeholder="Buscar nome..." oninput="_cnpBuscar()" autocomplete="off">
+                        </div>
+                        <button class="usr-modal-btn-cancel" onclick="_cnpAbrirImportar()">Importar planilha</button>
+                        <button class="adm-usr-add-btn" onclick="_cnpAbrirNovo()">+ Adicionar</button>
+                    </div>
+                </div>
+                <div id="cnp-resumo" style="font-size:12.5px;color:#8494a9;margin-top:8px"></div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="cnp-empty">Carregando...</div>
+                <div id="cnp-resultado" style="display:none">
+                    <div class="adm-nf-wrap">
+                        <table class="ant-hist-table">
+                            <thead>
+                                <tr><th>Como a transportadora escreve</th><th></th><th>Nome no sistema</th><th>Ações</th></tr>
+                            </thead>
+                            <tbody id="cnp-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div id="cnp-truncado" style="display:none;font-size:12px;color:#8494a9;padding:10px 4px">Mostrando os 300 primeiros — refine a busca pra achar outro.</div>
+                </div>
+                <div id="cnp-ambiguos-wrap" style="display:none">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                        <div style="font-size:13px;color:#8494a9">Cada um destes aponta pra mais de um nome no sistema — a correção automática não escolhe sozinha, então eles precisam ser arrumados (editar ou excluir na lista) até sobrar um só por nome.</div>
+                        <button class="usr-modal-btn-cancel" onclick="_cnpFecharAmbiguos()">← Voltar à lista</button>
+                    </div>
+                    <div id="cnp-ambiguos-lista"></div>
+                </div>
+            </div>
+        </div><!-- /tela-nomes-padrao -->
+
+        <!-- Adicionar / editar um par -->
+        <div class="usr-modal-overlay" id="modal-cnp-editar" onclick="_fecharModalSeBackdrop(event,'modal-cnp-editar')">
+            <div class="usr-modal">
+                <div class="usr-modal-title" id="cnp-editar-titulo">Novo par</div>
+                <div class="usr-modal-sub">Como a transportadora escreve o nome, e qual é o nome padrão dele no sistema.</div>
+                <div class="usr-modal-field">
+                    <label class="usr-modal-label">Nome como a transportadora manda</label>
+                    <input class="usr-modal-input" id="cnp-editar-origem" type="text" placeholder="Ex.: Adaiane.silva" autocomplete="off">
+                </div>
+                <div class="usr-modal-field">
+                    <label class="usr-modal-label">Nome no sistema</label>
+                    <input class="usr-modal-input" id="cnp-editar-sistema" type="text" placeholder="Ex.: Adaiane da Silva - Videira" autocomplete="off">
+                </div>
+                <div class="usr-modal-error" id="cnp-editar-erro"></div>
+                <div class="usr-modal-btns">
+                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-cnp-editar')">Cancelar</button>
+                    <button class="usr-modal-btn-primary" id="cnp-editar-salvar" onclick="_cnpSalvar()">Salvar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Importar planilha (SUBSTITUI a lista inteira) -->
+        <div class="usr-modal-overlay" id="modal-cnp-importar" onclick="_fecharModalSeBackdrop(event,'modal-cnp-importar')">
+            <div class="usr-modal" style="max-width:680px">
+                <div class="usr-modal-title">Importar planilha</div>
+                <div class="usr-modal-sub" style="color:#eab308">Isso substitui a lista inteira — os pares que não estiverem na planilha somem. Não pode ser desfeito.</div>
+
+                <div class="trampay-upload-area" id="cnp-upload-area" style="margin-top:14px">
+                    <input type="file" id="cnp-file" accept=".csv,.xlsx,.xls" style="display:none" onchange="_cnpEscolherArquivo(this)">
+                    <div class="nota-upload-icon" style="margin:0 auto 10px">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#3a86ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+                    </div>
+                    <div class="nota-upload-sub">Arraste o arquivo aqui ou clique para selecionar — colunas "Usuário Transportadora" e "Nome Sistema"</div>
+                    <div class="nota-upload-btn" style="margin-top:12px" onclick="document.getElementById('cnp-file').click()">Selecionar arquivo</div>
+                </div>
+
+                <div id="cnp-import-erro" style="display:none"></div>
+                <div id="cnp-import-previa"></div>
+
+                <div class="usr-modal-btns">
+                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-cnp-importar')">Fechar</button>
+                    <button class="usr-modal-btn-primary" id="cnp-import-btn" style="display:none;background:#ef4444;border-color:#ef4444" onclick="_cnpImportarEnviar()">Substituir tudo</button>
+                </div>
+            </div>
+        </div>
 
         <!-- TELA TODOS OS USUÁRIOS (SÓ DEV) -->
         <div id="tela-todos-usuarios" class="view tela-full">
@@ -4503,7 +4593,7 @@ if (_BASE) {
 
 <script src="js/core.js?v=20260922a"></script>
 <script src="js/col-filtro.js?v=20260917b"></script>
-<script src="js/router.js?v=20260922a"></script>
+<script src="js/router.js?v=20260922b"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
 <script src="js/nav.js?v=20260904a"></script>
 <script src="js/atendimento.js?v=20260907a"></script>
@@ -4524,7 +4614,8 @@ if (_BASE) {
 <script src="js/nota-fiscal.js?v=30260812d"></script>
 <script src="js/extravios.js?v=30260812d"></script>
 <script src="js/extravios-registros.js?v=30260818e"></script>
-<script src="js/usuarios-gc.js?v=30260812d"></script>
+<script src="js/usuarios-gc.js?v=20260922a"></script>
+<script src="js/nomes-padrao.js?v=20260922a"></script>
 <script src="js/todos-usuarios.js?v=30260812d"></script>
 <script src="js/whatsapp-teste.js?v=20260921d"></script>
 <script src="js/whatsapp-conversa.js?v=20260921d"></script>
