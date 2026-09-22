@@ -230,17 +230,19 @@ async function _carregarListaCTe(pagina = 0) {
     _ctePagina = Math.max(0, pagina);
     const alvo = document.getElementById("lista-cte");
     alvo.innerHTML = "<p>Carregando…</p>";
-    const p = new URLSearchParams();
+    const corpo = { limite: _CTE_POR_PAGINA, pagina: _ctePagina };
     for (const [id, chave] of [["f-de", "de"], ["f-ate", "ate"], ["f-status", "status"],
                                ["f-numero", "numero"], ["f-serie", "serie"], ["f-busca", "busca"]]) {
         const el = document.getElementById(id);
-        if (el && el.value) p.set(chave, el.value);
+        if (el && el.value) corpo[chave] = el.value;
     }
-    p.set("limite", _CTE_POR_PAGINA);
-    p.set("pagina", _ctePagina);
 
     try {
-        const r = await _cteApi("/fiscal/cte?" + p.toString());
+        // POST, não GET: a Busca aceita colar centenas/milhares de códigos
+        // (ver codigosDaBusca no backend) — numa query string isso passa do
+        // limite de tamanho de URL do navegador/proxy e falha com "Failed to
+        // fetch" antes de chegar no servidor. Corpo de POST não tem esse teto.
+        const r = await _cteApi("/fiscal/cte/buscar", { method: "POST", body: JSON.stringify(corpo) });
         const itens = r.itens || [];
         const total = r.total ?? itens.length;
 
@@ -324,18 +326,21 @@ async function _confirmarExportarCTeCsv() {
     erroEl.textContent = "";
     const btn = document.getElementById("cte-exp-btn");
 
-    const p = new URLSearchParams();
+    const corpo = {};
     for (const [id, chave] of [["cte-exp-de", "de"], ["cte-exp-ate", "ate"], ["cte-exp-status", "status"],
                                ["cte-exp-numero", "numero"], ["cte-exp-serie", "serie"], ["cte-exp-busca", "busca"]]) {
         const el = document.getElementById(id);
-        if (el && el.value) p.set(chave, el.value);
+        if (el && el.value) corpo[chave] = el.value;
     }
 
     btn.disabled = true;
     btn.textContent = "Gerando…";
     let dados;
     try {
-        dados = await _cteApi("/fiscal/cte/exportar?" + p.toString());
+        // POST, não GET: a Busca aceita colar centenas/milhares de códigos —
+        // numa query string isso passa do limite de tamanho de URL do
+        // navegador/proxy e falha com "Failed to fetch" antes de sair daqui.
+        dados = await _cteApi("/fiscal/cte/exportar", { method: "POST", body: JSON.stringify(corpo) });
     } catch (e) {
         erroEl.textContent = "Não consegui gerar o relatório: " + e.message;
         btn.disabled = false; btn.textContent = "Baixar CSV";
