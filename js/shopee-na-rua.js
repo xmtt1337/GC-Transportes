@@ -21,6 +21,28 @@ function _snrEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
+// Chart.js não herda a fonte da página (cai em Helvetica) e o tooltip padrão é
+// uma caixa preta translúcida de canto bem redondo. Passado por gráfico, e não
+// em Chart.defaults, pra não mexer nos gráficos das outras telas.
+const SNR_FONTE = "Inter, sans-serif";
+const SNR_TOOLTIP = {
+    backgroundColor: "#1a2334", borderColor: "rgba(255,255,255,0.12)", borderWidth: 1,
+    padding: 10, cornerRadius: 6, boxPadding: 4, titleColor: "#f1f5f9", bodyColor: "#cbd5e1",
+};
+
+// Uma linha de legenda: quadradinho de cor, nome, contagem e %. Com `status`
+// vira botão (clicar lista os pedidos daquele status).
+function _snrLegLinha({ cor, nome, n, pct, status }) {
+    const miolo = `<i style="background:${cor}"></i>
+        <span class="snr-leg-nome">${_snrEsc(nome)}</span>
+        <span class="snr-leg-n">${Number(n).toLocaleString("pt-BR")}</span>
+        <span class="snr-leg-pct">${pct === undefined ? "" : _snrPct(pct)}</span>`;
+    return status === undefined
+        ? `<div class="snr-leg-lin">${miolo}</div>`
+        : `<button type="button" class="snr-leg-lin${status === _snrStatusClicado ? " sel" : ""}"
+                   data-status="${_snrEsc(status)}" onclick="_snrClicarStatus(this.dataset.status)">${miolo}</button>`;
+}
+
 // Só "rua, número" - o que vem depois da segunda vírgula (complemento,
 // referência, observação) some. O ENDEREÇO COMPLETO da AT já vem com tudo
 // junto numa string só ("Rua X, 117, CASA 1 - casa da esquina"), e o
@@ -39,6 +61,10 @@ function _snrMostrarLista() {
 function _snrMostrarDetalhe() {
     document.getElementById("snr-lista-wrap").style.display = "none";
     document.getElementById("snr-detalhe").style.display = "";
+    // A lista é comprida e a linha clicada costuma estar lá embaixo: sem isto o
+    // detalhe abre no meio da página, com o nome do entregador fora da tela.
+    const corpo = document.querySelector("#tela-torre-na-rua .fech-body");
+    if (corpo) corpo.scrollTop = 0;
 }
 
 // Chamado pela aba "Shopee" dentro de Na Rua (torre-na-rua.js), no lugar do
@@ -78,17 +104,16 @@ function _snrRelativo(seg) {
 function _snrRenderUltima(atualizado) {
     const el = document.getElementById("snr-ultima");
     if (!atualizado || !atualizado.importado_em) {
-        el.className = "shr-ultima vazia";
-        el.innerHTML = `<span class="shr-ultima-label">Pedidos pesquisados</span>
-            <span class="shr-ultima-valor">Nenhuma importação ainda</span>`;
+        el.className = "snr-ultima vazia";
+        el.innerHTML = `<span>Pedidos pesquisados: nenhuma importação ainda</span>`;
         return;
     }
-    el.className = "shr-ultima";
+    const rel = _snrRelativo(atualizado.segundos_atras);
+    el.className = "snr-ultima";
     el.innerHTML = `
-        <span class="shr-ultima-label">Atualizado</span>
-        <span class="shr-ultima-valor">${_snrDataHora(atualizado.importado_em)}</span>
-        <span class="shr-ultima-rel">${_snrRelativo(atualizado.segundos_atras)}</span>
-        <span class="shr-ultima-obs">XM Vigia (automático)</span>`;
+        <span>Atualizado <b>${_snrDataHora(atualizado.importado_em)}</b></span>
+        ${rel ? `<span class="rel">${rel}</span>` : ""}
+        <span>XM Vigia (automático)</span>`;
 }
 
 // ── Lista de entregadores do dia ──
@@ -156,37 +181,65 @@ function _snrPendentes(e) {
     return (e.status || []).reduce((s, x) => s + (_snrBucketStatus(x.status) === "pendente" ? x.total : 0), 0);
 }
 
+// Fatias da barra de andamento de um entregador: entregue / na rua / onhold e,
+// à parte, o que ainda nem saiu pra rua (Hub_Assigned e afins). Só entra fatia
+// que tem pedido — a barra nunca reserva espaço pra status zerado.
+function _snrSegmentosBarra(e) {
+    const c = { entregue: 0, pendente: 0, insucesso: 0, outros: 0 };
+    (e.status || []).forEach(s => { c[_snrBucketStatus(s.status) || "outros"] += s.total; });
+    return [
+        { nome: "Delivered",  total: c.entregue,   cor: SNR_COR_ENTREGUE },
+        { nome: "Delivering", total: c.pendente,   cor: SNR_COR_PENDENTE },
+        { nome: "OnHold",     total: c.insucesso,  cor: SNR_COR_INSUCESSO },
+        { nome: "Outros",     total: c.outros,     cor: SNR_COR_OUTROS },
+    ].filter(x => x.total > 0);
+}
+
+const _SNR_ICONE_SINO = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>`;
+
 function _snrRenderLista() {
     // Ordem de quem tem mais coisa pra resolver agora, não de quem tem mais
     // pedido no total — total alto com tudo já entregue não pede atenção.
     const lista = [..._snrLista].sort((a, b) => _snrPendentes(b) - _snrPendentes(a));
-    document.getElementById("snr-entregadores").innerHTML = lista.map(e => {
+    // O nome viaja em data-nome (e não dentro do onclick): aspas e barra no
+    // nome de alguém não quebram o atributo, e a linha inteira vira clicável.
+    const linhas = lista.map(e => {
         const semEntregador = e.nome === "Sem entregador";
         // % de conclusão AGORA, sem precisar abrir o detalhe: Delivered sobre
-        // o total de hoje — mesma conta de _snrStats, só que já computada pelo
+        // o total do dia — mesma conta de _snrStats, só que já computada pelo
         // servidor (entregadoresDoDia) pra cada entregador de uma vez.
         const pct = e.total ? (e.entregues / e.total * 100) : null;
         const pendentes = _snrPendentes(e);
+        const segmentos = _snrSegmentosBarra(e);
+        const dica = segmentos.map(s => `${s.nome} ${s.total}`).join(" · ");
+        const abrir = "event.stopPropagation();_snrAbrirDetalhe(this.closest('[data-nome]').dataset.nome)";
+        const alertar = semEntregador ? "" : `
+            <button type="button" class="snr-btn snr-alerta${pendentes ? "" : " quieto"}"
+                    title="${pendentes ? "Mandar o aviso de rota incompleta no WhatsApp agora" : "Nada na rua agora — o aviso avulso ainda pode ser mandado"}"
+                    onclick="event.stopPropagation();_snrAlertar(this.closest('[data-nome]').dataset.nome)">${_SNR_ICONE_SINO}Alertar</button>`;
         return `
-        <div style="border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:10px;background:rgba(255,255,255,0.02)">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                <span style="font-weight:700;color:${semEntregador ? "#eab308" : "#e2e8f0"};font-size:14px;flex:1;min-width:140px">
-                    ${_snrEsc(e.nome)}
-                </span>
-                <span style="font-size:12px;font-weight:700;color:${SNR_COR_PENDENTE}" title="Delivering — ainda na rua">
-                    ${pendentes} pendente${pendentes !== 1 ? "s" : ""}
-                </span>
-                <span style="font-size:12px;font-weight:700;color:${_snrCorPerformance(pct)}" title="Delivered sobre o total de hoje">
-                    ${_snrPct(pct)} concluído
-                </span>
-                <span style="font-variant-numeric:tabular-nums;font-weight:700;color:#93c5fd;font-size:15px;flex:none">
-                    ${e.total} pedido${e.total !== 1 ? "s" : ""}
-                </span>
-                ${semEntregador ? "" : `<button class="adm-usr-action" style="flex:none;border-color:rgba(234,179,8,0.4);color:#eab308" onclick="_snrAlertar('${_snrEsc(e.nome).replace(/'/g, "\\'")}')">Alertar</button>`}
-                <button class="adm-usr-action senha" style="flex:none" onclick="_snrAbrirDetalhe('${_snrEsc(e.nome).replace(/'/g, "\\'")}')">Ver pedidos</button>
+        <div class="snr-lin" data-nome="${_snrEsc(e.nome)}" onclick="_snrAbrirDetalhe(this.dataset.nome)">
+            <div class="snr-c-nome${semEntregador ? " sem" : ""}" title="${_snrEsc(e.nome)}">${_snrEsc(e.nome)}</div>
+            <div class="snr-c-barra"><div class="snr-prog" title="${_snrEsc(dica)}">${
+                segmentos.map(s => `<span style="flex:${s.total};background:${s.cor}"></span>`).join("")}</div></div>
+            <div class="snr-c-num${pendentes ? "" : " zero"}" data-label="Na rua" title="Delivering — ainda na rua">${pendentes}</div>
+            <div class="snr-c-num" data-label="Concluído" style="color:${_snrCorPerformance(pct)};font-weight:600" title="Delivered sobre o total do dia">${_snrPct(pct)}</div>
+            <div class="snr-c-num forte" data-label="Pedidos">${e.total}</div>
+            <div class="snr-c-acoes">${alertar}
+                <button type="button" class="snr-link" onclick="${abrir}">Ver pedidos ›</button>
             </div>
         </div>`;
     }).join("");
+
+    document.getElementById("snr-entregadores").innerHTML = `
+    <div class="snr-lista">
+        <div class="snr-lista-cab">
+            <span>Entregador</span><span>Andamento</span>
+            <span class="snr-c-num">Na rua</span><span class="snr-c-num">Concluído</span><span class="snr-c-num">Pedidos</span>
+            <span></span>
+        </div>
+        ${linhas}
+    </div>`;
 }
 
 // ── Alertar: dispara o mesmo aviso de rota incompleta da rodada automática (19:05/22:05),
@@ -246,7 +299,7 @@ function _snrCorStatusGeral(status) {
     if (b === "entregue") return SNR_COR_ENTREGUE;
     if (b === "pendente") return SNR_COR_PENDENTE;
     if (b === "insucesso") return SNR_COR_INSUCESSO;
-    return "#8494a9"; // Hub_Assigned e qualquer status anterior a "na rua"
+    return SNR_COR_OUTROS; // Hub_Assigned e qualquer status anterior a "na rua"
 }
 
 function _snrDestruirGraficosGerais() {
@@ -264,10 +317,8 @@ function _snrGraficarStatusGeral() {
     const dados = _snrStatusGeralContagem();
     const total = dados.reduce((s, [, n]) => s + n, 0);
 
-    document.getElementById("snr-ger-gr-status-legenda").innerHTML = dados.map(([st, n]) => `
-        <span class="nr-leg" style="cursor:pointer" onclick="_snrClicarStatus('${_snrEsc(st).replace(/'/g, "\\'")}')">
-            <i style="background:${_snrCorStatusGeral(st)}"></i>${_snrEsc(st)} · ${n.toLocaleString("pt-BR")}
-        </span>`).join("");
+    document.getElementById("snr-ger-gr-status-legenda").innerHTML = dados.map(([st, n]) =>
+        _snrLegLinha({ cor: _snrCorStatusGeral(st), nome: st, n, pct: total ? n / total * 100 : 0, status: st })).join("");
 
     if (typeof Chart === "undefined" || !dados.length) return;
     _snrRegistrarPlugin();
@@ -284,11 +335,12 @@ function _snrGraficarStatusGeral() {
         },
         options: {
             responsive: true, maintainAspectRatio: false, cutout: "68%",
+            font: { family: SNR_FONTE },
             animation: { duration: 220 },
             onClick: (evt, els) => { if (els.length) _snrClicarStatus(dados[els[0].index][0]); },
             plugins: {
                 legend: { display: false },
-                tooltip: { callbacks: { label: c =>
+                tooltip: { ...SNR_TOOLTIP, callbacks: { label: c =>
                     `${c.label}: ${c.parsed.toLocaleString("pt-BR")} (${_snrPct(total ? c.parsed / total * 100 : 0)})` } },
                 snrCenterText: { valor: total.toLocaleString("pt-BR"), rotulo: total === 1 ? "pedido" : "pedidos", cor: "#e2e8f0" },
             },
@@ -303,10 +355,11 @@ function _snrClicarStatus(status) {
     _snrStatusClicado = status;
     document.getElementById("snr-ger-status-lista-wrap").style.display = "";
     document.getElementById("snr-ger-status-lista-titulo").innerText = `Pedidos — ${status}`;
+    _snrMarcarStatusLegenda();
 
     if (_snrTodos.length) return _snrPintarStatusLista();
 
-    document.getElementById("snr-ger-status-lista").innerHTML = `<div class="fechamento-empty">Carregando...</div>`;
+    document.getElementById("snr-ger-status-lista").innerHTML = `<div class="snr-vazio">Carregando...</div>`;
     fetch(`${API}/shopee-na-rua/pedidos?dia=${encodeURIComponent(_snrDia)}`, {
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json())
@@ -316,32 +369,41 @@ function _snrClicarStatus(status) {
     })
     .catch(() => {
         document.getElementById("snr-ger-status-lista").innerHTML =
-            `<div class="fechamento-empty">Erro ao conectar com o servidor.</div>`;
+            `<div class="snr-vazio">Erro ao conectar com o servidor.</div>`;
     });
+}
+
+// Realça, na legenda, o status cuja lista está aberta (ou tira o realce de todos).
+function _snrMarcarStatusLegenda() {
+    document.querySelectorAll("#snr-ger-gr-status-legenda .snr-leg-lin").forEach(b =>
+        b.classList.toggle("sel", _snrStatusClicado !== null && b.dataset.status === _snrStatusClicado));
 }
 
 function _snrFecharStatusLista() {
     _snrStatusClicado = null;
+    _snrMarcarStatusLegenda();
     const wrap = document.getElementById("snr-ger-status-lista-wrap");
     if (wrap) wrap.style.display = "none";
 }
 
 function _snrPintarStatusLista() {
-    const pedidos = _snrTodos.filter(p => String(p.status || "").trim() === _snrStatusClicado);
+    // A legenda chama de "(sem status)" o que chega vazio — o filtro tem que
+    // usar o mesmo nome, senão clicar nele listaria sempre "nenhum pedido".
+    const pedidos = _snrTodos.filter(p => (String(p.status || "").trim() || "(sem status)") === _snrStatusClicado);
     const el = document.getElementById("snr-ger-status-lista");
+    document.getElementById("snr-ger-status-lista-titulo").innerText =
+        `Pedidos — ${_snrStatusClicado} · ${pedidos.length.toLocaleString("pt-BR")}`;
     if (!pedidos.length) {
-        el.innerHTML = `<div class="fechamento-empty">Nenhum pedido com esse status.</div>`;
+        el.innerHTML = `<div class="snr-vazio">Nenhum pedido com esse status.</div>`;
         return;
     }
     el.innerHTML = pedidos.map(p => {
         const endereco = _snrRuaNumero(p.endereco) || "—";
         return `
-        <div class="nr-pac-item">
-            <div class="nr-pac-topo">
-                <span class="nr-pac-cod">${_snrEsc(p.codigo)}</span>
-                <span style="font-size:12px;color:#93c5fd;font-weight:600">${_snrEsc(p.entregador)}</span>
-            </div>
-            <div class="nr-pac-obs">${_snrEsc(endereco)}${p.bairro ? " · " + _snrEsc(p.bairro) : ""}</div>
+        <div class="snr-pac">
+            <span class="snr-pac-cod">${_snrEsc(p.codigo)}</span>
+            <span class="snr-pac-end">${_snrEsc(endereco)}${p.bairro ? `<small>${_snrEsc(p.bairro)}</small>` : ""}</span>
+            <span class="snr-pac-quem">${_snrEsc(p.entregador)}</span>
         </div>`;
     }).join("");
 }
@@ -358,16 +420,24 @@ function _snrDeliveringPorEntregador(limite) {
 
 function _snrEncurtarNome(nome) {
     const t = String(nome || "").trim();
-    if (t.length <= 14) return t;
+    if (t.length <= 20) return t;
     const partes = t.split(/\s+/);
-    if (partes.length < 2) return t.slice(0, 13) + "…";
+    if (partes.length < 2) return t.slice(0, 19) + "…";
     return partes[0] + " " + partes[1][0] + ".";
 }
 
 function _snrGraficarDeliveringPorEntregador() {
     if (typeof Chart === "undefined") return;
+    _snrRegistrarPlugin();
 
+    // Barras na horizontal, com o número na ponta: o nome cabe inteiro do lado
+    // esquerdo (na coluna vertical ele girava 40°) e o valor dispensa eixo e
+    // grade. A altura do painel acompanha quantas barras há, pra a barra não
+    // ficar gorda com dois entregadores nem espremida com doze.
     const coluna = _snrDeliveringPorEntregador(12);
+    document.getElementById("snr-ger-deliv-col-area").style.height = coluna.length ? `${coluna.length * 30 + 8}px` : "";
+    document.getElementById("snr-ger-gr-deliv-col").style.display = coluna.length ? "" : "none";
+    document.getElementById("snr-ger-deliv-col-vazio").style.display = coluna.length ? "none" : "";
     if (coluna.length) {
         _snrGeralGraficos.delivCol = new Chart(document.getElementById("snr-ger-gr-deliv-col"), {
             type: "bar",
@@ -376,24 +446,28 @@ function _snrGraficarDeliveringPorEntregador() {
                 datasets: [{
                     data: coluna.map(e => e.pendentes),
                     backgroundColor: SNR_COR_PENDENTE,
-                    borderRadius: { topLeft: 4, topRight: 4 },
-                    borderSkipped: "bottom",
-                    maxBarThickness: 28,
+                    borderRadius: { topRight: 3, bottomRight: 3 },
+                    borderSkipped: "start",
+                    barThickness: 14,
                 }],
             },
             options: {
+                indexAxis: "y",
                 responsive: true, maintainAspectRatio: false,
+                font: { family: SNR_FONTE },
                 animation: { duration: 220 },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: {
+                    snrValorNaBarra: { ativo: true },
+                    tooltip: { ...SNR_TOOLTIP, callbacks: {
                         title: c => coluna[c[0].dataIndex].nome,
-                        label: c => c.parsed.y.toLocaleString("pt-BR") + " delivering",
+                        label: c => c.parsed.x.toLocaleString("pt-BR") + " delivering",
                     } },
                 },
                 scales: {
-                    x: { ticks: { color: "#7b8ba3", font: { size: 10.5 }, maxRotation: 40, minRotation: 40 }, grid: { display: false } },
-                    y: { ticks: { color: "#7b8ba3", font: { size: 11 } }, grid: { color: "rgba(255,255,255,0.055)" }, beginAtZero: true },
+                    x: { display: false, beginAtZero: true, grace: "12%" },
+                    y: { grid: { display: false }, border: { display: false },
+                         ticks: { color: "#c3cddc", font: { size: 12 } } },
                 },
             },
         });
@@ -405,10 +479,16 @@ function _snrGraficarDeliveringPorEntregador() {
     const top5 = todos.slice(0, 5);
     const outrosTotal = todos.slice(5).reduce((s, e) => s + e.pendentes, 0);
     const fatias = outrosTotal ? [...top5, { nome: "Outros", pendentes: outrosTotal }] : top5;
-    if (!fatias.length) return;
+    const totalFatias = fatias.reduce((s, e) => s + e.pendentes, 0);
 
-    document.getElementById("snr-ger-gr-deliv-pizza-legenda").innerHTML = fatias.map((e, i) => `
-        <span class="nr-leg"><i style="background:${SNR_RAMPA_AZUL[i]}"></i>${_snrEsc(e.nome)} · ${e.pendentes}</span>`).join("");
+    // Sem ninguém na rua: some a rosca e a legenda velha (de outro dia) junto —
+    // antes ela ficava ali, mentindo, quando se trocava pra um dia sem Delivering.
+    document.getElementById("snr-ger-gr-deliv-pizza").parentElement.style.display = fatias.length ? "" : "none";
+    document.getElementById("snr-ger-gr-deliv-pizza-legenda").innerHTML = fatias.length
+        ? fatias.map((e, i) => _snrLegLinha({
+            cor: SNR_RAMPA_AZUL[i], nome: e.nome, n: e.pendentes, pct: e.pendentes / totalFatias * 100 })).join("")
+        : `<div class="snr-vazio">Ninguém com pedido na rua agora.</div>`;
+    if (!fatias.length) return;
 
     _snrGeralGraficos.delivPizza = new Chart(document.getElementById("snr-ger-gr-deliv-pizza"), {
         type: "doughnut",
@@ -422,11 +502,13 @@ function _snrGraficarDeliveringPorEntregador() {
             }],
         },
         options: {
-            responsive: true, maintainAspectRatio: false, cutout: "55%",
+            responsive: true, maintainAspectRatio: false, cutout: "62%",
+            font: { family: SNR_FONTE },
             animation: { duration: 220 },
             plugins: {
                 legend: { display: false },
-                tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed.toLocaleString("pt-BR")}` } },
+                tooltip: { ...SNR_TOOLTIP, callbacks: { label: c => `${c.label}: ${c.parsed.toLocaleString("pt-BR")}` } },
+                snrCenterText: { valor: totalFatias.toLocaleString("pt-BR"), rotulo: "na rua", cor: "#e2e8f0" },
             },
         },
     });
@@ -438,7 +520,7 @@ function _snrAbrirDetalhe(nome) {
     document.getElementById("snr-det-nome").innerText = nome;
     document.getElementById("snr-det-sub").innerText = gcCalBr(_snrDia);
     document.getElementById("snr-det-tbody").innerHTML =
-        `<tr><td colspan="5" style="text-align:center;color:#8494a9;padding:22px">Carregando...</td></tr>`;
+        `<tr><td colspan="4" style="text-align:center;color:#8494a9;padding:22px">Carregando...</td></tr>`;
 
     fetch(`${API}/shopee-na-rua/entregador?dia=${encodeURIComponent(_snrDia)}&nome=${encodeURIComponent(nome)}`, {
         headers: { "Authorization": "Bearer " + token }
@@ -446,7 +528,7 @@ function _snrAbrirDetalhe(nome) {
     .then(d => {
         if (d && d.error) {
             document.getElementById("snr-det-tbody").innerHTML =
-                `<tr><td colspan="5" style="text-align:center;color:#ef4444;padding:22px">${_snrEsc(d.error)}</td></tr>`;
+                `<tr><td colspan="4" style="text-align:center;color:#ef4444;padding:22px">${_snrEsc(d.error)}</td></tr>`;
             return;
         }
         _snrDet = d;
@@ -454,7 +536,7 @@ function _snrAbrirDetalhe(nome) {
     })
     .catch(() => {
         document.getElementById("snr-det-tbody").innerHTML =
-            `<tr><td colspan="5" style="text-align:center;color:#ef4444;padding:22px">Erro ao conectar com o servidor.</td></tr>`;
+            `<tr><td colspan="4" style="text-align:center;color:#ef4444;padding:22px">Erro ao conectar com o servidor.</td></tr>`;
     });
 }
 
@@ -472,6 +554,7 @@ function _snrVoltar() {
 const SNR_COR_ENTREGUE  = "#22c55e";
 const SNR_COR_PENDENTE  = "#3a86ff";
 const SNR_COR_INSUCESSO = "#ef4444";
+const SNR_COR_OUTROS    = "#64748b"; // ainda nem saiu pra rua (Hub_Assigned etc.)
 
 function _snrBucketStatus(status) {
     const s = String(status || "").toLowerCase();
@@ -537,14 +620,32 @@ function _snrRegistrarPlugin() {
             ctx.save();
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.font = "700 25px Inter, sans-serif";
+            ctx.font = `700 25px ${SNR_FONTE}`;
             ctx.fillStyle = opts.cor || "#e2e8f0";
             ctx.fillText(opts.valor, cx, cy - (opts.rotulo ? 10 : 0));
             if (opts.rotulo) {
-                ctx.font = "600 10.5px Inter, sans-serif";
+                ctx.font = `600 10.5px ${SNR_FONTE}`;
                 ctx.fillStyle = "#7b8ba3";
                 ctx.fillText(opts.rotulo, cx, cy + 12);
             }
+            ctx.restore();
+        },
+    });
+    // Número na ponta da barra horizontal — dispensa eixo e grade. Só desenha
+    // quando o gráfico liga `snrValorNaBarra.ativo`; nos outros, sai de imediato.
+    Chart.register({
+        id: "snrValorNaBarra",
+        afterDatasetsDraw(chart, args, opts) {
+            if (!opts || !opts.ativo) return;
+            const { ctx } = chart;
+            ctx.save();
+            ctx.font = `600 12px ${SNR_FONTE}`;
+            ctx.fillStyle = "#e2e8f0";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
+            chart.getDatasetMeta(0).data.forEach((barra, i) => {
+                ctx.fillText(String(chart.data.datasets[0].data[i]), barra.x + 8, barra.y);
+            });
             ctx.restore();
         },
     });
@@ -572,10 +673,11 @@ function _snrGraficarStatus(pedidos) {
             },
             options: {
                 responsive: true, maintainAspectRatio: false, cutout: "72%",
+                font: { family: SNR_FONTE },
                 animation: { duration: 220 },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: c =>
+                    tooltip: { ...SNR_TOOLTIP, callbacks: { label: c =>
                         `${c.label}: ${c.parsed} (${_snrPct(st.total ? c.parsed / st.total * 100 : 0)})` } },
                     snrCenterText: { valor: String(st.total), rotulo: st.total === 1 ? "pedido" : "pedidos", cor: "#e2e8f0" },
                 },
@@ -598,10 +700,11 @@ function _snrGraficarStatus(pedidos) {
             },
             options: {
                 responsive: true, maintainAspectRatio: false, cutout: "72%",
+                font: { family: SNR_FONTE },
                 animation: { duration: 220 },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: c =>
+                    tooltip: { ...SNR_TOOLTIP, callbacks: { label: c =>
                         `${c.label}: ${c.parsed} (${_snrPct(st.total ? c.parsed / st.total * 100 : 0)})` } },
                     snrCenterText: { valor: _snrPct(st.performance), rotulo: "performance", cor: _snrCorPerformance(st.performance) },
                 },
@@ -609,17 +712,17 @@ function _snrGraficarStatus(pedidos) {
         });
     }
 
-    document.getElementById("snr-gr-status-legenda").innerHTML = `
-        <span class="nr-leg"><i style="background:${SNR_COR_ENTREGUE}"></i>Delivered · ${st.entregue} (${_snrPct(st.pctEntregue)})</span>
-        <span class="nr-leg"><i style="background:${SNR_COR_PENDENTE}"></i>Delivering · ${st.pendente} (${_snrPct(st.pctPendente)})</span>
-        <span class="nr-leg"><i style="background:${SNR_COR_INSUCESSO}"></i>OnHold · ${st.insucesso} (${_snrPct(st.pctInsucesso)})</span>`;
+    document.getElementById("snr-gr-status-legenda").innerHTML =
+        _snrLegLinha({ cor: SNR_COR_ENTREGUE,  nome: "Delivered",  n: st.entregue,  pct: st.pctEntregue }) +
+        _snrLegLinha({ cor: SNR_COR_PENDENTE,  nome: "Delivering", n: st.pendente,   pct: st.pctPendente }) +
+        _snrLegLinha({ cor: SNR_COR_INSUCESSO, nome: "OnHold",     n: st.insucesso,  pct: st.pctInsucesso });
     document.getElementById("snr-gr-status-sub").innerText = st.finalizados
         ? `Entre os finalizados (Delivered + OnHold): ${_snrPct(st.taxaSucesso)} entregue e ${_snrPct(st.taxaFalha)} onhold. Delivering ainda não entra nessa conta — ainda não finalizou.`
         : "Nenhum pedido finalizado ainda hoje.";
 
-    document.getElementById("snr-gr-performance-legenda").innerHTML = `
-        <span class="nr-leg"><i style="background:${SNR_COR_ENTREGUE}"></i>Delivered · ${st.entregue}</span>
-        <span class="nr-leg"><i style="background:${SNR_COR_INSUCESSO}"></i>OnHold + Delivering · ${st.pendente + st.insucesso}</span>`;
+    document.getElementById("snr-gr-performance-legenda").innerHTML =
+        _snrLegLinha({ cor: SNR_COR_ENTREGUE,  nome: "Delivered",           n: st.entregue,                 pct: st.pctEntregue }) +
+        _snrLegLinha({ cor: SNR_COR_INSUCESSO, nome: "OnHold + Delivering", n: st.pendente + st.insucesso,  pct: st.pctPendente + st.pctInsucesso });
     document.getElementById("snr-gr-performance-sub").innerText =
         "Mesma porcentagem usada na precificação diária por performance: Delivered sobre o total. Delivering ainda pendente entra contra — hoje ainda não fechou entregue.";
 
@@ -635,29 +738,29 @@ function _snrRenderPendentes(pedidos) {
 
     if (!pendentes.length) {
         wrap.innerHTML = `
-        <div class="nr-grafico-card">
-            <div class="nr-grafico-titulo">Pendentes que afetam a performance</div>
-            <div style="font-size:12.5px;color:#7b8ba3;margin-top:10px">Nenhum — tudo já finalizou (Delivered ou OnHold).</div>
-        </div>`;
+        <section class="snr-painel snr-pend">
+            <h3 class="snr-painel-titulo">Pendentes que afetam a performance</h3>
+            <p class="snr-vazio">Nenhum — tudo já finalizou (Delivered ou OnHold).</p>
+        </section>`;
         return;
     }
 
     wrap.innerHTML = `
-    <div class="nr-grafico-card">
-        <div class="nr-grafico-titulo">Pendentes que afetam a performance · ${pendentes.length}</div>
-        <div style="font-size:11.5px;color:#7b8ba3;margin:4px 0 2px">Delivering — ainda dá tempo de virar Delivered hoje.</div>
-        <div class="snr-pend-lista">
+    <section class="snr-painel snr-pend">
+        <h3 class="snr-painel-titulo">Pendentes que afetam a performance · ${pendentes.length}</h3>
+        <p class="snr-pend-sub">Delivering — ainda dá tempo de virar Delivered hoje.</p>
+        <div class="snr-pac-lista">
             ${pendentes.map(p => {
                 const endereco = _snrRuaNumero(p.endereco) || "Endereço não encontrado na AT";
                 const extra = [p.bairro, p.cidade].filter(Boolean).join(" · ");
                 return `
-                <div class="snr-pend-item">
-                    <span class="snr-pend-codigo">${_snrEsc(p.codigo)}</span>
-                    <span class="snr-pend-endereco">${_snrEsc(endereco)}${extra ? `<span class="snr-pend-extra">${_snrEsc(extra)}</span>` : ""}</span>
+                <div class="snr-pac solo">
+                    <span class="snr-pac-cod">${_snrEsc(p.codigo)}</span>
+                    <span class="snr-pac-end">${_snrEsc(endereco)}${extra ? `<small>${_snrEsc(extra)}</small>` : ""}</span>
                 </div>`;
             }).join("")}
         </div>
-    </div>`;
+    </section>`;
 }
 
 function _snrCsvEscapar(v) {
@@ -686,6 +789,8 @@ function _snrRenderDetalhe() {
     if (!_snrDet) return;
     const pedidos = _snrDet.pedidos || [];
 
+    document.getElementById("snr-det-sub").innerText =
+        `${gcCalBr(_snrDia)} · ${pedidos.length.toLocaleString("pt-BR")} pedido${pedidos.length !== 1 ? "s" : ""}`;
     _snrGraficarStatus(pedidos);
 
     document.getElementById("snr-det-tbody").innerHTML = pedidos.length
@@ -696,10 +801,10 @@ function _snrRenderDetalhe() {
             const endereco = _snrRuaNumero(p.endereco) || "—";
             return `
             <tr>
-                <td data-label="Código" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#e2e8f0">${_snrEsc(p.codigo)}</td>
+                <td data-label="Código" class="cod">${_snrEsc(p.codigo)}</td>
                 <td data-label="AT">${_snrEsc(p.task_id || "—")}</td>
-                <td data-label="Endereço">${_snrEsc(endereco)}${p.bairro ? `<br><span style="color:#8494a9;font-size:11.5px">${_snrEsc(p.bairro)}${p.cidade ? " · " + _snrEsc(p.cidade) : ""}</span>` : ""}</td>
-                <td data-label="Status">${_snrEsc(p.status || "—")}</td>
+                <td data-label="Endereço"><span class="snr-end">${_snrEsc(endereco)}${p.bairro ? `<br><span class="sub">${_snrEsc(p.bairro)}${p.cidade ? " · " + _snrEsc(p.cidade) : ""}</span>` : ""}</span></td>
+                <td data-label="Status"><span class="snr-st" style="--c:${_snrCorStatusGeral(p.status)}">${_snrEsc(p.status || "—")}</span></td>
             </tr>`;
         }).join("")
         : `<tr><td colspan="4" style="text-align:center;color:#8494a9;padding:20px">Nada aqui.</td></tr>`;

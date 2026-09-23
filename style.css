@@ -4415,17 +4415,176 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .sstb-resp i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
 .sstb-resp-vazio { color: #4b5a70; }
 
-/* Pendentes (Delivering) que ainda podem virar Delivered hoje — tarja azul,
-   canto reto do lado da tarja pra barra não ondular na curva. */
-.snr-pend-lista { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; margin-top: 4px; }
-.snr-pend-item {
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07);
-    border-left: 4px solid #3a86ff; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    padding: 10px 14px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+/* ===== NA RUA > SHOPEE =====
+   Visual próprio, só classes snr-*: as outras transportadoras de Na Rua seguem com os cards
+   e botões compartilhados (.nr-grafico-card, .shr-export-btn...), então nada daqui vaza pra
+   elas. A ideia é a lista de entregadores ser UMA tabela com colunas alinhadas (dá pra
+   comparar de relance), e não um card por pessoa com o texto colorido solto à direita.
+   Cantos de 6-8px em vez de 12+, botão sólido em vez de contorno translúcido colorido. */
+.snr { --snr-linha: rgba(255,255,255,0.07); --snr-mudo: #6b7a91; --snr-suave: #9aa8bd; --snr-alerta: #f0b429; }
+.snr button:focus-visible { outline: 2px solid #6ea8ff; outline-offset: 2px; }
+
+/* Topo: dia à esquerda, "atualizado" à direita, em texto corrido — sem faixa azul. */
+.snr-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 16px; }
+#snr-dias .slh-cal-btn { border-radius: 6px; background: transparent; border-color: rgba(255,255,255,0.12); padding: 7px 12px; }
+#snr-dias .slh-cal-btn:hover, #snr-dias .slh-cal-btn.aberto { border-color: rgba(58,134,255,0.5); }
+.snr-ultima { margin-left: auto; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 12.5px; color: var(--snr-suave); }
+.snr-ultima b { color: #f1f5f9; font-weight: 600; font-variant-numeric: tabular-nums; }
+.snr-ultima .rel { color: #6ea8ff; }
+.snr-ultima > span + span::before { content: "·"; margin-right: 6px; color: #4b5a70; }
+
+/* Painéis do resumo. Três larguras diferentes de propósito: o gráfico de barras tem nome
+   de gente, precisa de mais chão que as duas roscas. */
+.snr-paineis {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: 12px; margin-bottom: 20px;
 }
-.snr-pend-codigo { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; font-weight: 700; color: #e2e8f0; flex: none; }
-.snr-pend-endereco { font-size: 12.5px; color: #cbd5e1; flex: 1 1 220px; min-width: 180px; }
-.snr-pend-extra { color: #7b8ba3; font-size: 11px; margin-left: 6px; }
+.snr-paineis-det { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.snr-painel {
+    background: var(--surface); border: 1px solid var(--snr-linha);
+    border-radius: 8px; padding: 16px 18px 14px; min-width: 0;
+}
+.snr-painel-titulo { font-size: 13px; font-weight: 600; color: #e2e8f0; margin: 0; }
+.snr-painel-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.snr-area { position: relative; height: 240px; margin-top: 14px; }
+.snr-area-rosca { height: 180px; }
+/* Detalhe: os painéis são largos, então rosca à esquerda e legenda ao lado — a legenda
+   esticada na largura toda deixava o nome a um palmo do número. */
+.snr-det-corpo { display: flex; align-items: center; gap: 28px; margin-top: 14px; }
+.snr-det-corpo .snr-area { flex: none; width: 170px; height: 170px; margin: 0; }
+.snr-det-corpo .snr-leg-lista { flex: 1; min-width: 0; margin: 0; }
+.snr-dica, .snr-nota { font-size: 12px; color: var(--snr-mudo); line-height: 1.5; margin-top: 10px; }
+.snr-nota:empty { display: none; }
+
+/* Legenda em linhas (nome, contagem, %) no lugar dos quadradinhos soltos em fila. */
+.snr-leg-lista { display: flex; flex-direction: column; margin-top: 14px; }
+.snr-leg-lin {
+    display: flex; align-items: center; gap: 10px; width: calc(100% + 16px); margin: 0 -8px;
+    padding: 6px 8px; border: 0; border-radius: 6px; background: none;
+    font: inherit; font-size: 13px; color: #cbd5e1; text-align: left;
+}
+button.snr-leg-lin { cursor: pointer; transition: background .12s; }
+button.snr-leg-lin:hover { background: rgba(255,255,255,0.05); }
+.snr-leg-lin.sel { background: rgba(58,134,255,0.12); }
+.snr-leg-lin i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.snr-leg-nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.snr-leg-n { font-weight: 600; color: #e2e8f0; font-variant-numeric: tabular-nums; }
+.snr-leg-pct { width: 54px; text-align: right; font-size: 12px; color: var(--snr-mudo); font-variant-numeric: tabular-nums; }
+
+/* Botões: sólidos, sem contorno translúcido colorido. O Alertar manda WhatsApp de verdade,
+   então é o único com cor de aviso — mas só no sino; o âmbar cheio aparece no hover, senão
+   uma coluna de botões amarelos gritaria mais que os números que a lista quer mostrar. */
+.snr-btn {
+    display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px;
+    font: inherit; font-size: 12.5px; font-weight: 600; color: #cbd5e1; white-space: nowrap;
+    background: #1a2334; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+    cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+}
+.snr-btn:hover { background: #222d42; border-color: rgba(255,255,255,0.2); color: #f1f5f9; }
+.snr-alerta { gap: 6px; padding: 7px 12px; color: #e2e8f0; }
+.snr-alerta svg { color: var(--snr-alerta); }
+.snr-alerta:hover, .snr-alerta:hover svg { color: #231a00; }
+.snr-alerta:hover { background: var(--snr-alerta); border-color: var(--snr-alerta); }
+/* Sem nada na rua não há o que cobrar: continua clicável (o aviso avulso não depende de
+   critério), mas some do caminho do olho. */
+.snr-alerta.quieto, .snr-alerta.quieto svg { color: var(--snr-mudo); }
+.snr-alerta.quieto { background: transparent; border-color: transparent; font-weight: 500; }
+.snr-alerta.quieto:hover { background: rgba(255,255,255,0.05); border-color: transparent; }
+.snr-alerta.quieto:hover, .snr-alerta.quieto:hover svg { color: var(--snr-suave); }
+.snr-link {
+    display: inline-flex; align-items: center; gap: 3px; padding: 7px 4px;
+    font: inherit; font-size: 12.5px; font-weight: 600; color: #6ea8ff; white-space: nowrap;
+    background: none; border: 0; cursor: pointer;
+}
+.snr-link:hover { color: #9cc3ff; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Lista de entregadores: uma tabela só, colunas alinhadas. */
+.snr-lista { background: var(--surface); border: 1px solid var(--snr-linha); border-radius: 8px; overflow: hidden; }
+.snr-lista-cab, .snr-lin {
+    display: grid; align-items: center; gap: 0 18px; padding: 0 16px;
+    grid-template-columns: minmax(150px, 1.3fr) minmax(120px, 2fr) 56px 84px 64px 210px;
+}
+.snr-lista-cab { padding-top: 10px; padding-bottom: 8px; font-size: 12px; font-weight: 600; color: var(--snr-mudo); border-bottom: 1px solid var(--snr-linha); }
+.snr-lin { padding-top: 11px; padding-bottom: 11px; border-top: 1px solid var(--snr-linha); cursor: pointer; transition: background .12s; }
+.snr-lista-cab + .snr-lin { border-top: 0; }
+.snr-lin:hover { background: rgba(255,255,255,0.03); }
+.snr-c-nome { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; color: #e2e8f0; }
+.snr-c-nome.sem { color: var(--snr-alerta); }
+.snr-c-num { text-align: right; font-size: 13.5px; color: #cbd5e1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.snr-c-num.forte { font-weight: 700; color: #f1f5f9; }
+.snr-c-num.zero { color: #465468; }
+.snr-lista-cab .snr-c-num { font-size: 12px; font-weight: 600; color: var(--snr-mudo); }
+.snr-c-acoes { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+/* Andamento: uma barra só, entregue / na rua / onhold / resto. Canto quase reto. */
+.snr-prog { display: flex; gap: 1px; height: 8px; border-radius: 2px; overflow: hidden; background: rgba(255,255,255,0.06); }
+.snr-prog span { display: block; min-width: 2px; }
+
+/* Detalhe do entregador */
+.snr-voltar {
+    display: inline-flex; align-items: center; gap: 4px; margin-bottom: 8px; padding: 4px 8px 4px 0;
+    font: inherit; font-size: 13px; font-weight: 600; color: var(--snr-suave);
+    background: none; border: 0; cursor: pointer;
+}
+.snr-voltar:hover { color: #f1f5f9; }
+.snr-det-cab { display: flex; align-items: baseline; gap: 4px 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.snr-det-nome { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; color: #f1f5f9; }
+.snr-det-sub { font-size: 13px; color: var(--snr-mudo); }
+
+/* Listas de pedido (pendentes do entregador, pedidos de um status): linhas com filete, não
+   um card por pedido. Sangram até a borda do painel pra o filete correr de ponta a ponta. */
+.snr-pend, .snr-status-lista { margin-bottom: 20px; }
+.snr-pend-sub { font-size: 12.5px; color: var(--snr-mudo); margin: 3px 0 0; }
+.snr-pac-lista { max-height: 340px; overflow-y: auto; margin: 10px -18px -14px; }
+.snr-status-lista .snr-pac-lista { max-height: 46vh; }
+.snr-pac {
+    display: grid; grid-template-columns: 170px minmax(0, 1fr) auto; gap: 4px 16px; align-items: baseline;
+    padding: 9px 18px; border-top: 1px solid var(--snr-linha);
+}
+.snr-pac.solo { grid-template-columns: 170px minmax(0, 1fr); }
+.snr-pac:hover { background: rgba(255,255,255,0.03); }
+.snr-pac-cod { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; font-weight: 600; color: #e2e8f0; word-break: break-all; }
+.snr-pac-end { min-width: 0; font-size: 13px; color: #cbd5e1; }
+.snr-pac-end small { margin-left: 6px; font-size: 12px; color: var(--snr-mudo); }
+.snr-pac-quem { font-size: 12.5px; color: var(--snr-suave); text-align: right; }
+.snr-vazio { padding: 6px 0 2px; font-size: 13px; color: var(--snr-mudo); }
+.snr-vazio-centro { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0; text-align: center; }
+.snr-pac-lista .snr-vazio { padding: 12px 18px 4px; border-top: 1px solid var(--snr-linha); }
+
+.snr-tabela-cab { margin: 22px 0 10px; }
+.snr-tabela-wrap { background: var(--surface); border: 1px solid var(--snr-linha); border-radius: 8px; overflow: hidden; }
+.snr-tabela .cod { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; font-weight: 600; color: #e2e8f0; }
+.snr-tabela .sub { color: var(--snr-mudo); font-size: 12px; }
+.snr-st { display: inline-flex; align-items: center; gap: 7px; }
+.snr-st::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--c, #8494a9); flex: none; }
+@media (min-width: 681px) {
+    .snr-tabela th { padding: 10px 16px; font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--snr-mudo); }
+    .snr-tabela td { padding: 9px 16px; }
+}
+
+@media (max-width: 1100px) {
+    .snr-paineis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .snr-paineis > :nth-child(2) { order: 3; grid-column: 1 / -1; }
+}
+@media (max-width: 680px) {
+    .snr-paineis, .snr-paineis-det { grid-template-columns: minmax(0, 1fr); }
+    .snr-paineis > :nth-child(2) { order: 0; }
+    .snr-det-corpo { flex-direction: column; align-items: stretch; gap: 14px; }
+    .snr-det-corpo .snr-area { align-self: center; }
+    .snr-ultima { margin-left: 0; }
+    /* Quebrando em duas linhas, o "·" ficava solto no começo da segunda. */
+    .snr-ultima:not(.vazia) > span:last-child { display: none; }
+    .snr-tabela .snr-end { display: block; text-align: right; }
+    .snr-lista-cab { display: none; }
+    .snr-lin { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; padding: 14px 16px; }
+    .snr-c-nome, .snr-c-barra, .snr-c-acoes { grid-column: 1 / -1; }
+    .snr-c-num { text-align: left; font-size: 15px; }
+    .snr-c-num::before { content: attr(data-label); display: block; font-size: 11px; font-weight: 500; color: var(--snr-mudo); }
+    .snr-c-acoes { justify-content: flex-start; }
+    .snr-pac, .snr-pac.solo { grid-template-columns: minmax(0, 1fr); }
+    .snr-pac-quem { text-align: left; }
+    /* Tabela vira card por linha (regra compartilhada): o invólucro com borda dobraria a caixa. */
+    .snr-tabela-wrap { background: none; border: 0; border-radius: 0; }
+}
 
 .nr-barra {
     display: flex; align-items: center; justify-content: space-between;

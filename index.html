@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260922c">
+<link rel="stylesheet" href="style.css?v=20260923a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -4457,82 +4457,95 @@ if (_BASE) {
                     <div id="nr-tabela"></div>
                 </div>
 
-                <!-- Shopee: sem upload - lê macro_pedidos_pesquisados / macro_at_exportada sozinho -->
-                <div id="nr-shopee-wrap" style="display:none">
+                <!-- Shopee: sem upload - lê macro_pedidos_pesquisados / macro_at_exportada sozinho.
+                     Visual próprio (classes snr-*): as outras transportadoras seguem com os cards de
+                     sempre, então nada aqui mexe em CSS compartilhado. -->
+                <div id="nr-shopee-wrap" class="snr" style="display:none">
                     <div id="snr-lista-wrap">
-                        <div class="shr-ultima" id="snr-ultima">Carregando...</div>
-                        <div class="slh-cal" id="snr-dias" style="display:none;margin-bottom:14px"></div>
+                        <div class="snr-topo">
+                            <div class="slh-cal" id="snr-dias" style="display:none"></div>
+                            <div class="snr-ultima" id="snr-ultima">Carregando...</div>
+                        </div>
 
                         <div class="fechamento-empty" id="snr-empty">Carregando...</div>
                         <div id="snr-resultado" style="display:none">
-                            <div class="nr-graficos" style="margin-bottom:18px">
-                                <div class="nr-grafico-card">
-                                    <div class="nr-grafico-titulo">Pedidos por status (hoje)</div>
-                                    <div class="nr-grafico-area" style="height:220px"><canvas id="snr-ger-gr-status"></canvas></div>
-                                    <div class="nr-grafico-legenda" id="snr-ger-gr-status-legenda"></div>
-                                    <div style="font-size:11px;color:#7b8ba3;margin-top:6px">Clique num status pra ver os pedidos.</div>
-                                </div>
-                                <div class="nr-grafico-card">
-                                    <div class="nr-grafico-titulo">Delivering por entregador</div>
-                                    <div class="nr-grafico-area"><canvas id="snr-ger-gr-deliv-col"></canvas></div>
-                                </div>
-                                <div class="nr-grafico-card">
-                                    <div class="nr-grafico-titulo">Delivering por entregador (proporção)</div>
-                                    <div class="nr-grafico-area" style="height:220px"><canvas id="snr-ger-gr-deliv-pizza"></canvas></div>
-                                    <div class="nr-grafico-legenda" id="snr-ger-gr-deliv-pizza-legenda"></div>
-                                </div>
+                            <div class="snr-paineis">
+                                <section class="snr-painel">
+                                    <h3 class="snr-painel-titulo">Status do dia</h3>
+                                    <div class="snr-area snr-area-rosca"><canvas id="snr-ger-gr-status"></canvas></div>
+                                    <div class="snr-leg-lista" id="snr-ger-gr-status-legenda"></div>
+                                    <p class="snr-dica">Clique num status pra ver os pedidos.</p>
+                                </section>
+                                <section class="snr-painel">
+                                    <h3 class="snr-painel-titulo">Na rua por entregador</h3>
+                                    <div class="snr-area" id="snr-ger-deliv-col-area">
+                                        <canvas id="snr-ger-gr-deliv-col"></canvas>
+                                        <div class="snr-vazio snr-vazio-centro" id="snr-ger-deliv-col-vazio" style="display:none">Ninguém com pedido na rua agora.</div>
+                                    </div>
+                                </section>
+                                <section class="snr-painel">
+                                    <h3 class="snr-painel-titulo">Divisão do que está na rua</h3>
+                                    <div class="snr-area snr-area-rosca"><canvas id="snr-ger-gr-deliv-pizza"></canvas></div>
+                                    <div class="snr-leg-lista" id="snr-ger-gr-deliv-pizza-legenda"></div>
+                                </section>
                             </div>
 
-                            <div id="snr-ger-status-lista-wrap" style="display:none;margin-bottom:18px">
-                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-                                    <div class="nr-grafico-titulo" id="snr-ger-status-lista-titulo">Pedidos</div>
-                                    <button type="button" class="usr-modal-btn-cancel" onclick="_snrFecharStatusLista()">Fechar</button>
+                            <section class="snr-painel snr-status-lista" id="snr-ger-status-lista-wrap" style="display:none">
+                                <div class="snr-painel-cab">
+                                    <h3 class="snr-painel-titulo" id="snr-ger-status-lista-titulo">Pedidos</h3>
+                                    <button type="button" class="snr-btn" onclick="_snrFecharStatusLista()">Fechar</button>
                                 </div>
-                                <div class="nr-pac-lista" id="snr-ger-status-lista"></div>
-                            </div>
+                                <div class="snr-pac-lista" id="snr-ger-status-lista"></div>
+                            </section>
 
                             <div id="snr-entregadores"></div>
                         </div>
                     </div>
 
                     <div id="snr-detalhe" style="display:none">
-                        <div class="shr-faixa cfc">
-                            <span class="shr-faixa-label">Entregador</span>
-                            <span class="shr-faixa-xpt" id="snr-det-nome">—</span>
-                            <span class="shr-faixa-obs">
-                                <button type="button" class="shr-pag-btn" onclick="_snrVoltar()">← Entregadores</button>
-                            </span>
-                        </div>
-                        <div style="font-size:12.5px;color:#8494a9;margin:2px 0 14px" id="snr-det-sub"></div>
-
-                        <div class="nr-graficos">
-                            <div class="nr-grafico-card">
-                                <div class="nr-grafico-titulo">Status dos pedidos</div>
-                                <div class="nr-grafico-area" style="height:200px"><canvas id="snr-gr-status"></canvas></div>
-                                <div class="nr-grafico-legenda" id="snr-gr-status-legenda"></div>
-                                <div style="font-size:11.5px;color:#7b8ba3;margin-top:10px;line-height:1.5" id="snr-gr-status-sub"></div>
-                            </div>
-                            <div class="nr-grafico-card">
-                                <div class="nr-grafico-titulo">Performance do entregador</div>
-                                <div class="nr-grafico-area" style="height:200px"><canvas id="snr-gr-performance"></canvas></div>
-                                <div class="nr-grafico-legenda" id="snr-gr-performance-legenda"></div>
-                                <div style="font-size:11.5px;color:#7b8ba3;margin-top:10px;line-height:1.5" id="snr-gr-performance-sub"></div>
-                            </div>
+                        <button type="button" class="snr-voltar" onclick="_snrVoltar()">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                            Entregadores
+                        </button>
+                        <div class="snr-det-cab">
+                            <h2 class="snr-det-nome" id="snr-det-nome">—</h2>
+                            <span class="snr-det-sub" id="snr-det-sub"></span>
                         </div>
 
-                        <div id="snr-pendentes-wrap" style="margin-bottom:18px"></div>
+                        <div class="snr-paineis snr-paineis-det">
+                            <section class="snr-painel">
+                                <h3 class="snr-painel-titulo">Status dos pedidos</h3>
+                                <div class="snr-det-corpo">
+                                    <div class="snr-area snr-area-rosca"><canvas id="snr-gr-status"></canvas></div>
+                                    <div class="snr-leg-lista" id="snr-gr-status-legenda"></div>
+                                </div>
+                                <p class="snr-nota" id="snr-gr-status-sub"></p>
+                            </section>
+                            <section class="snr-painel">
+                                <h3 class="snr-painel-titulo">Performance do entregador</h3>
+                                <div class="snr-det-corpo">
+                                    <div class="snr-area snr-area-rosca"><canvas id="snr-gr-performance"></canvas></div>
+                                    <div class="snr-leg-lista" id="snr-gr-performance-legenda"></div>
+                                </div>
+                                <p class="snr-nota" id="snr-gr-performance-sub"></p>
+                            </section>
+                        </div>
 
-                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-                            <div class="nr-grafico-titulo">Todos os pedidos</div>
-                            <button type="button" class="shr-export-btn" onclick="_snrExportarCsv()">
-                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <div id="snr-pendentes-wrap"></div>
+
+                        <div class="snr-painel-cab snr-tabela-cab">
+                            <h3 class="snr-painel-titulo">Todos os pedidos</h3>
+                            <button type="button" class="snr-btn" onclick="_snrExportarCsv()">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                 Exportar CSV
                             </button>
                         </div>
-                        <table class="ant-hist-table">
-                            <thead><tr><th>Código</th><th>AT</th><th>Endereço</th><th>Status</th></tr></thead>
-                            <tbody id="snr-det-tbody"></tbody>
-                        </table>
+                        <div class="snr-tabela-wrap">
+                            <table class="ant-hist-table snr-tabela">
+                                <thead><tr><th>Código</th><th>AT</th><th>Endereço</th><th>Status</th></tr></thead>
+                                <tbody id="snr-det-tbody"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -4763,7 +4776,7 @@ if (_BASE) {
 <script src="js/planejamento-videira.js?v=30260812d"></script>
 <script src="js/torre.js?v=30260812d"></script>
 <script src="js/torre-na-rua.js?v=30260916a"></script>
-<script src="js/shopee-na-rua.js?v=20260923a"></script>
+<script src="js/shopee-na-rua.js?v=20260923b"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
