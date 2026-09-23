@@ -9,9 +9,12 @@ let _wacPedidoAtual = "";         // pedido do card que abriu a conversa
 let _wacResolvidoAtual = false;
 let _wacRelogio = null;           // redesenha o funil pra acompanhar a passagem do tempo
 let _wacPrecisaDestacar = false;  // rolar até a mensagem do pedido só na abertura
-let _wacAba = "acareacao";        // "acareacao" (com prazo) | "outros" | "chamaram"
+let _wacAba = "acareacao";        // "acareacao" (com prazo) | "outros" | "chamaram" | "entregadores"
 let _wacTransp = null;            // transportadora selecionada; null = escolher no 1º render
 let _wacRevalidarTransp = false;  // trocou de aba: conferir se a escolhida tem conversa lá
+let _wacEntDados = [];            // última resposta de /admin/avisos-entregador
+let _wacEntDias = [];             // os dias que têm aviso registrado, pro seletor
+let _wacEntCarregado = false;     // já veio alguma resposta? (evita _wacEntRenderizar prematuro)
 
 // ── Paginação por coluna ──
 // Coluna com centenas/milhares de cards trava o navegador ao montar o DOM inteiro de uma
@@ -297,7 +300,13 @@ function _wacCarregarLista(jaPediuPolo) {
         .then(r => r.json())
         .then(rows => {
             if (rows && rows.polo_pendente) { _wacPedirPolo(empty, jaPediuPolo); return; }
-            if (!Array.isArray(rows) || !rows.length) { skFim(empty, "Nenhuma conversa registrada ainda."); return; }
+            if (!Array.isArray(rows) || !rows.length) {
+                // "Entregadores" não depende de conversa nenhuma — sem isso, quem entrasse
+                // direto nessa aba com zero conversas de cliente veria a aba errada vazia.
+                if (_wacAba === "entregadores") { _wacRenderizar(); if (_wacAlvoUrl) _wacAbrirDaUrl(_wacAlvoUrl); return; }
+                skFim(empty, "Nenhuma conversa registrada ainda.");
+                return;
+            }
             // Mais recente primeiro, em todas as abas. `ultima` já vem pronta do servidor —
             // é o maior entre nosso último envio e a resposta do cliente, então tanto disparar
             // quanto o cliente responder sobem o card. Um sort aqui, na origem dos dados, cobre
@@ -320,7 +329,7 @@ function _wacCarregarLista(jaPediuPolo) {
 // ser legível ao ser colado num chamado. Por isso a busca é pelo CÓDIGO, e tipo/
 // transportadora só desempatam quando o mesmo código aparece em mais de uma conversa —
 // um link antigo continua abrindo mesmo depois de o caso ter mudado de aba.
-const WA_TIPO_ROTA = { acareacao: "Acareacao", outros: "Ativos", chamaram: "Chamaram" };
+const WA_TIPO_ROTA = { acareacao: "Acareacao", outros: "Ativos", chamaram: "Chamaram", entregadores: "Entregadores" };
 
 // "J&T" → "JT", "iMile" → "iMile": o rótulo já existe, e tirar o que não é letra/número
 // evita ter que manter uma segunda lista só pra URL.
@@ -347,8 +356,9 @@ function _wacTranspDaRota(transp) {
 // direto pro caminho completo da conversa.
 function _wacRotaLista() {
     const partes = ["Ativos/Conversas", WA_TIPO_ROTA[_wacAba] || "Ativos"];
-    // "Nos chamaram" não veio de disparo nosso: não tem transportadora, e a barra some.
-    if (_wacAba !== "chamaram" && _wacTransp) partes.push(_wacTranspRota(_wacTransp));
+    // "Nos chamaram" não veio de disparo nosso, e "Entregadores" não é conversa com
+    // cliente — nenhum dos dois tem transportadora, e a barra some.
+    if (_wacAba !== "chamaram" && _wacAba !== "entregadores" && _wacTransp) partes.push(_wacTranspRota(_wacTransp));
     return partes.join("/");
 }
 
@@ -418,7 +428,9 @@ function _wacTermoBusca() {
 }
 
 function _wacFiltrar() {
-    _wacIrOndeEsta();
+    // "Entregadores" não é conversa — não faz sentido _wacIrOndeEsta() pular pra outra aba
+    // atrás do termo em _wacDados, que nem é o que essa aba mostra.
+    if (_wacAba !== "entregadores") _wacIrOndeEsta();
     _wacRenderizar();
 }
 
@@ -573,11 +585,105 @@ function _wacExportar(aba) {
     XLSX.writeFile(wb, `ativos_${aba === "acareacao" ? "acareacoes" : "outros"}_${hoje}.xlsx`);
 }
 
+// ── Entregadores (aviso automático de rota incompleta) ──
+// Não é conversa: é o registro de um aviso que o próprio sistema mandou (19:05 e 22:05,
+// ver modules/avisos-entregador). Sem prazo, sem resolver, sem transportadora — só quem
+// recebeu o quê, quando, e se deu certo.
+function _wacEntCarregar(dia) {
+    _wacEntCarregado = false;
+    document.getElementById("wac-ent-lista").innerHTML = `<div class="fechamento-empty">Carregando...</div>`;
+
+    const role = window._gcUser && window._gcUser.role;
+    document.getElementById("wac-ent-manual").style.display = role === "dev" ? "flex" : "none";
+
+    const params = dia ? `?dia=${encodeURIComponent(dia)}` : "";
+    fetch(`${API}/admin/avisos-entregador${params}`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            if (!ok) {
+                document.getElementById("wac-ent-lista").innerHTML =
+                    `<div class="fechamento-empty">${_wacEscapar(d.error || "Erro ao carregar.")}</div>`;
+                return;
+            }
+            _wacEntDados = d.linhas || [];
+            _wacEntDias = d.dias || [];
+            _wacEntCarregado = true;
+            _wacEntPintarSeletorDia(dia || "");
+            _wacEntRenderizar();
+        })
+        .catch(() => {
+            document.getElementById("wac-ent-lista").innerHTML =
+                `<div class="fechamento-empty">Erro ao conectar com o servidor.</div>`;
+        });
+}
+
+function _wacEntPintarSeletorDia(diaAtual) {
+    const sel = document.getElementById("wac-ent-dia");
+    sel.innerHTML = `<option value="">Todos os dias</option>` +
+        _wacEntDias.map(d => `<option value="${d}"${d === diaAtual ? " selected" : ""}>${_wacDataCurta(d + "T12:00:00")}</option>`).join("");
+}
+
+function _wacEntRenderizar() {
+    if (!_wacEntCarregado) return; // ainda carregando — _wacEntCarregar cuida da tela nesse meio-tempo
+    const termo = _wacTermoBusca();
+    const linhas = _wacEntDados.filter(l => !termo || (l.nome_entregador || "").toLowerCase().includes(termo));
+    const el = document.getElementById("wac-ent-lista");
+
+    if (!linhas.length) {
+        el.innerHTML = `<div class="fechamento-empty">${termo ? "Nenhum entregador encontrado." : "Nenhum aviso registrado ainda."}</div>`;
+        return;
+    }
+
+    const CRITERIO_LABEL = { abaixo_90: "abaixo de 90%", delivering_mais_1: "2+ em Delivering" };
+    el.innerHTML = `<div class="wac-lista-simples">${linhas.map(l => `
+        <div class="wac-card" style="cursor:default">
+            <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
+            <div class="wac-card-info">
+                <div class="wac-card-nome">${_wacEscapar(l.nome_entregador)}</div>
+                <div class="wac-card-numero">${_wacEscapar(l.rodada)} · ${_wacEscapar(CRITERIO_LABEL[l.criterio] || l.criterio)}</div>
+                <div class="wac-card-prazo" style="color:${l.sucesso ? "#22c55e" : "#ef4444"}">
+                    ${l.sucesso ? "Enviado" : "Erro: " + _wacEscapar(l.erro || "não enviado")}
+                </div>
+                <div class="wac-card-data">${_wacDataCurta(l.criado_em)}</div>
+            </div>
+        </div>`).join("")}</div>`;
+}
+
+// Rodada manual — só dev, mesmo endpoint que o agendamento automático usa. Confirma antes
+// porque isso manda WhatsApp de verdade, pros entregadores que estiverem elegíveis agora.
+function _wacEntDispararManual(rodada) {
+    gcConfirm(
+        `Disparar a rodada ${rodada} agora?\n\nIsso manda WhatsApp de verdade pra quem estiver elegível neste momento — não é uma simulação.`,
+        () => {
+            fetch(`${API}/admin/avisos-entregador/rodada`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                body: JSON.stringify({ rodada })
+            })
+                .then(r => r.json().then(d => ({ ok: r.ok, d })))
+                .then(({ ok, d }) => {
+                    if (!ok) return gcAlert(d.error || "Não foi possível disparar.");
+                    gcAlert(
+                        d.disparou ? `${d.avaliados} entregador${d.avaliados !== 1 ? "es" : ""} avaliado${d.avaliados !== 1 ? "s" : ""}.` : `Não disparou: ${d.motivo}`,
+                        "Rodada executada"
+                    );
+                    _wacEntCarregar(document.getElementById("wac-ent-dia").value || "");
+                })
+                .catch(() => gcAlert("Erro ao conectar com o servidor."));
+        },
+        "Disparar rodada",
+        "Sim, disparar"
+    );
+}
+
 function _wacTrocarAba(aba) {
     _wacAba = aba;
     _wacRevalidarTransp = true; // mantém a transportadora se ela tiver conversa na aba nova
     document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.aba === aba));
+    // Dado e endpoint próprios — sem isso a aba trocaria mas ficaria esperando um fetch
+    // que nunca é pedido (_wacEntRenderizar não busca nada sozinho, só redesenha).
+    if (aba === "entregadores") _wacEntCarregar();
     _wacRenderizar();   // pode trocar a transportadora, então a URL sai depois
     _wacAtualizarUrl();
 }
@@ -638,6 +744,18 @@ function _wacRenderizarTranspTabs(itens) {
 
 function _wacRenderizar() {
     const termo = _wacTermoBusca();
+
+    // "Entregadores" não é conversa (não tem cliente, não tem pedido pra resolver) — é o
+    // registro do aviso automático de rota incompleta. Dado próprio, endpoint próprio,
+    // sem nada a ver com _wacDados/_wacCarregarLista — por isso sai cedo daqui.
+    document.getElementById("wac-visao-entregadores").style.display = _wacAba === "entregadores" ? "" : "none";
+    if (_wacAba === "entregadores") {
+        document.getElementById("wac-lista-empty").style.display = "none";
+        document.getElementById("wac-lista-resultado").style.display = "none";
+        document.getElementById("wac-transp-tabs").style.display = "none";
+        _wacEntRenderizar();
+        return;
+    }
 
     document.getElementById("wac-visao-acareacao").style.display = _wacAba === "acareacao" ? "" : "none";
     document.getElementById("wac-visao-outros").style.display    = _wacAba === "outros" ? "" : "none";
