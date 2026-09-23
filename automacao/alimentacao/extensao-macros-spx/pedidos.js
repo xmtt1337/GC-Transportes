@@ -35,10 +35,32 @@
   const TEXTO_LOTE = 'Pesquisa em lote';
   const TEXTO_EXPORTAR = 'Exportar';
   const TEXTO_EXPORTAR_PESQUISADOS = 'Exportar pedidos pesquisados';
-  // O SPX aceita ate 10 mil por vez - esta escrito na propria caixa.
-  const MAX_POR_VEZ = 10000;
+  // O SPX aceita ate 10 mil por vez (esta escrito na propria caixa), mas um
+  // lote desse tamanho demora demais pra "Esperado" fechar - e qualquer coisa
+  // no meio (F5, aba trocada, PC dormindo) derruba a rodada inteira, sem
+  // aproveitar nada dela. Visto de verdade em 23/09/2026: 8 tentativas
+  // seguidas de pesquisar "10000 de 12248" ao longo de 5h, NENHUMA completou,
+  // e o pendente ficou empacado o tempo todo. Lote menor termina rapido, e
+  // rodar() abaixo repete quantas rodadas forem precisas pra dar conta do
+  // resto - cada rodada concluida ja fica salva, entao uma interrupcao no
+  // meio perde so o lote atual, nao o trabalho inteiro.
+  const MAX_POR_VEZ = 2000;
+  // Teto de rodadas dentro de um unico clique - nunca fica girando pra
+  // sempre se algo estiver mesmo quebrado (ex.: pendente que nunca some).
+  const MAX_RODADAS = 8;
+  // Folga pro XM Vigia notar o arquivo baixado, processar e mandar pro
+  // backend antes da proxima rodada perguntar "ainda tem pendente?" - mesma
+  // ideia e mesmo tempo do encadeamento AT -> Pedidos em alimentacao.js.
+  const ESPERA_ENTRE_RODADAS_MS = 15000;
 
   let rodando = false;
+
+  // Pura, sem tela nem rede - so pra dar pra testar sem abrir o Chrome.
+  // "total" e o que o vigia informou como pendente ANTES desta rodada
+  // pesquisar; se ele for maior que o que essa rodada pegou, sobrou lote.
+  function precisaMaisUmaRodada(total, pegos, rodadaAtual) {
+    return rodadaAtual < MAX_RODADAS && Number(total) > Number(pegos);
+  }
 
   // O botao da lupa e o que so existe nesta tela - e por ele que se sabe que
   // ela terminou de carregar, e nao pela URL.
@@ -60,9 +82,9 @@
     if (!codigos.length) {
       throw new Error('não há pedido novo pra pesquisar — rode o macro da AT Exportada antes');
     }
-    P.nota(`${codigos.length} códigos${resposta.total > codigos.length
-      ? ` (de ${resposta.total} no total)` : ''}`);
-    return codigos;
+    const total = Number(resposta.total) || codigos.length;
+    P.nota(`${codigos.length} códigos${total > codigos.length ? ` (de ${total} no total)` : ''}`);
+    return { codigos, total };
   }
 
   // ── 2 e 3. pesquisa em lote ────────────────────────────────────────────
@@ -278,36 +300,70 @@
     P.abrir('Pedidos Pesquisados', () => { S.parar = true; });
 
     const T = G.painelDeTarefas;
+    let ultimoAlvo = null;
+    let rodadas = 0;
 
     try {
       P.passo('abrindo Pedidos › Rastreio de pedidos');
       const mudou = await S.irParaTela(TELA, achouATela, 'Rastreio de pedidos');
       P.nota(mudou ? 'tela aberta' : 'já estava nela');
 
-      P.passo('1/5 · pedindo os códigos ao vigia');
-      const codigos = await pedirCodigos();
+      // Repete o ciclo inteiro (pedir -> pesquisar -> exportar -> baixar)
+      // quantas rodadas o pendente pedir, sem esperar o proximo agendamento -
+      // veja o comentario de MAX_POR_VEZ pra entender o porque.
+      for (;;) {
+        rodadas++;
+        const prefixo = `rodada ${rodadas} · `;
 
-      P.passo('2/5 · Pesquisa em lote');
-      await colarEEnviar(codigos);
+        P.passo(`${prefixo}1/5 · pedindo os códigos ao vigia`);
+        let codigos, total;
+        try {
+          ({ codigos, total } = await pedirCodigos());
+        } catch (e) {
+          // Da 2a rodada em diante, "nao ha pedido novo" quer dizer que a(s)
+          // rodada(s) anterior(es) ja deram conta do resto - nao e erro, e o
+          // fim do trabalho. Na 1a rodada continua sendo erro de verdade, e
+          // "parado por voce" (S.Parado) sempre sobe, em qualquer rodada.
+          if (rodadas > 1 && !(e instanceof S.Parado) &&
+              /não há pedido novo/.test(e.message || '')) {
+            P.nota('não sobrou pendente nenhum — backlog em dia');
+            break;
+          }
+          throw e;
+        }
 
-      P.passo('3/5 · lendo o painel antes de exportar');
-      const antes = await T.lerTarefasAgora();
-      await T.fecharPainelTarefas();
+        P.passo(`${prefixo}2/5 · Pesquisa em lote`);
+        await colarEEnviar(codigos);
 
-      P.passo('4/5 · Exportar pedidos pesquisados');
-      await pedirExportacao(antes);
+        P.passo(`${prefixo}3/5 · lendo o painel antes de exportar`);
+        const antes = await T.lerTarefasAgora();
+        await T.fecharPainelTarefas();
 
-      P.passo('5/5 · esperando o relatório ficar pronto');
-      // Pelo NOME, e nao "qualquer tarefa nova".
-      //
-      // Enquanto o nome nao se conhecia, este macro aceitava qualquer tarefa
-      // que nao estivesse la antes - e com os dois macros rodando juntos, a
-      // tarefa nova era a do outro: ele baixava o Br Assignment Task achando
-      // que era o dele.
-      const alvo = await T.esperarRelatorio(antes, L.NOME_PESQUISADOS);
-      await T.baixar(alvo);
+        P.passo(`${prefixo}4/5 · Exportar pedidos pesquisados`);
+        await pedirExportacao(antes);
 
-      P.ok(`baixado: ${alvo.nome} — ${alvo.quando}`);
+        P.passo(`${prefixo}5/5 · esperando o relatório ficar pronto`);
+        // Pelo NOME, e nao "qualquer tarefa nova".
+        //
+        // Enquanto o nome nao se conhecia, este macro aceitava qualquer tarefa
+        // que nao estivesse la antes - e com os dois macros rodando juntos, a
+        // tarefa nova era a do outro: ele baixava o Br Assignment Task achando
+        // que era o dele.
+        const alvo = await T.esperarRelatorio(antes, L.NOME_PESQUISADOS);
+        await T.baixar(alvo);
+        ultimoAlvo = alvo;
+
+        if (!precisaMaisUmaRodada(total, codigos.length, rodadas)) break;
+
+        P.nota(`sobrou pendente (${total - codigos.length} de fora) — próxima rodada em 15s`);
+        await S.dormir(ESPERA_ENTRE_RODADAS_MS);
+      }
+
+      P.ok(ultimoAlvo
+        ? (rodadas > 1
+            ? `baixado em ${rodadas} rodadas: ${ultimoAlvo.nome} — ${ultimoAlvo.quando}`
+            : `baixado: ${ultimoAlvo.nome} — ${ultimoAlvo.quando}`)
+        : 'nada pra baixar — backlog já estava em dia');
     } catch (e) {
       if (e instanceof S.Parado) P.erro('parado por você');
       else P.erro(e.message || String(e));
@@ -317,8 +373,12 @@
     }
   }
 
-  G.pedidos = { rodar, pedirCodigos, acharDialogoDeLote, acharCaixaDeLote, acharItemExportar,
-                TEXTO_LOTE, TEXTO_EXPORTAR, TEXTO_EXPORTAR_PESQUISADOS };
+  G.pedidos = { rodar, pedirCodigos, precisaMaisUmaRodada, acharDialogoDeLote, acharCaixaDeLote,
+                acharItemExportar, TEXTO_LOTE, TEXTO_EXPORTAR, TEXTO_EXPORTAR_PESQUISADOS };
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = G.pedidos;
+  }
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
