@@ -605,6 +605,17 @@ if (_BASE) {
             </ul>
         </ul>
 
+        <!-- Só dev — liga/desliga e configura tarefas automáticas (hoje só o aviso de rota
+             incompleta). Vai direto pra tela, sem submenu: só existe um macro hoje. -->
+        <li class="menu-item" data-menu="macros" id="menu-macros" onclick="abrirMacros(event)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span class="label">Macros</span>
+            <span class="menu-tooltip">Macros</span>
+        </li>
+
         <li class="menu-item" data-menu="videira" id="menu-videira" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -2280,6 +2291,41 @@ if (_BASE) {
                 </div>
             </div>
         </div><!-- /tela-entregador-telefone -->
+
+        <!-- MACROS (só dev) — tarefas automáticas. Hoje só o aviso de rota incompleta. -->
+        <div id="tela-macros" class="view tela-full">
+            <div class="fech-header">
+                <div style="font-size:15px;font-weight:700;color:#e2e8f0">Macros</div>
+                <div style="font-size:12.5px;color:#8494a9;margin-top:4px">Tarefas que o sistema roda sozinho — quando disparam e com qual critério.</div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="mac-empty">Carregando...</div>
+                <div id="mac-lista"></div>
+            </div>
+        </div><!-- /tela-macros -->
+
+        <!-- Configurar um macro -->
+        <div class="usr-modal-overlay" id="modal-macro-editar" onclick="_fecharModalSeBackdrop(event,'modal-macro-editar')">
+            <div class="usr-modal" style="max-width:620px">
+                <div class="usr-modal-title" id="mac-editar-titulo">Configurar macro</div>
+                <div class="usr-modal-sub" id="mac-editar-descricao"></div>
+
+                <label style="display:flex;align-items:center;gap:8px;margin:16px 0;cursor:pointer;font-size:13.5px;color:#e2e8f0">
+                    <input type="checkbox" id="mac-editar-ativo" style="width:16px;height:16px;cursor:pointer">
+                    Ativo
+                </label>
+
+                <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7b98b5;margin-bottom:8px">Rodadas</div>
+                <div id="mac-rodadas-lista"></div>
+                <button type="button" class="usr-modal-btn-cancel" style="margin-top:6px" onclick="_macAdicionarRodada()">+ Adicionar rodada</button>
+
+                <div class="usr-modal-error" id="mac-editar-erro"></div>
+                <div class="usr-modal-btns">
+                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-macro-editar')">Cancelar</button>
+                    <button class="usr-modal-btn-primary" id="mac-editar-salvar" onclick="_macSalvar()">Salvar</button>
+                </div>
+            </div>
+        </div>
 
         <!-- TELA TODOS OS USUÁRIOS (SÓ DEV) -->
         <div id="tela-todos-usuarios" class="view tela-full">
@@ -4647,9 +4693,9 @@ if (_BASE) {
     </div>
 </div>
 
-<script src="js/core.js?v=20260922a"></script>
+<script src="js/core.js?v=20260923a"></script>
 <script src="js/col-filtro.js?v=20260917b"></script>
-<script src="js/router.js?v=20260922c"></script>
+<script src="js/router.js?v=20260923a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
 <script src="js/nav.js?v=20260904a"></script>
 <script src="js/atendimento.js?v=20260907a"></script>
@@ -4673,6 +4719,7 @@ if (_BASE) {
 <script src="js/usuarios-gc.js?v=20260922b"></script>
 <script src="js/nomes-padrao.js?v=20260922a"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
+<script src="js/macros.js?v=20260923a"></script>
 <script src="js/todos-usuarios.js?v=30260812d"></script>
 <script src="js/whatsapp-teste.js?v=20260921d"></script>
 <script src="js/whatsapp-conversa.js?v=20260922a"></script>
