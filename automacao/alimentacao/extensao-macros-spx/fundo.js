@@ -36,7 +36,14 @@ const FUSO = 'America/Sao_Paulo';
 // agendamento salvo nao perder ele numa atualizacao.
 const PADRAO = { modo: 'off', minutos: 60, horarios: [] };
 // O Chrome nao dispara alarme mais rapido que isso.
-const MINIMO_MINUTOS = 1;
+// Ja aconteceu duas vezes o mesmo problema: o campo "de quanto em quanto
+// tempo" com um numero pequeno demais (1, 5 minutos) faz a AT Exportada
+// gerar uma exportacao nova antes de Pedidos Pesquisados dar conta de buscar
+// a de antes - o pendente vira uma bola de neve que so cresce (12 mil
+// pedidos pra buscar num dia so, virou "9k pedidos" e depois "12k pedidos"
+// nas conversas de 23/09/2026). O piso sobe de 1 pra 20: da pra acompanhar o
+// dia (3x por hora), sem deixar a AT atropelar a propria busca.
+const MINIMO_MINUTOS = 20;
 
 function minutosDaAgenda(agenda) {
   const guardado = Number(agenda.minutos) || (Number(agenda.horas) || 0) * 60;
@@ -105,8 +112,8 @@ async function reagendar() {
 
 // Disparo bem-sucedido: alem do registro, o Backlog guarda QUANDO rodou - e o
 // que o proximo agendamento usa pra nao repetir cedo demais.
-async function anotarDisparo(qual, extra) {
-  await anotar(`disparado: ${qual}${extra || ''}`);
+async function anotarDisparo(qual, origem, extra) {
+  await anotar(`disparado: ${qual} (${origem})${extra || ''}`);
   if (qual === 'backlog') await chrome.storage.local.set({ ultimoBacklog: Date.now() });
 }
 
@@ -181,7 +188,13 @@ async function abaDoSpx(qual) {
   return nova;
 }
 
-async function disparar(qual = 'alimentacao', focar = false) {
+// `origem` so vai pro registro - nao muda nada no que o macro faz. Existe
+// porque "disparado: alimentacao" sozinho nao dizia se foi o alarme ou um
+// clique no popup, e isso importa: duas rodadas de 35 segundos de distancia
+// pareciam alarme mal configurado, quando na verdade era clique manual
+// testando. Sem essa marca, cada vez que isso acontecesse de novo seria
+// preciso reabrir essa investigacao do zero.
+async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado') {
   const aba = await abaDoSpx(qual);
   if (!aba) {
     const motivo = 'não consegui abrir o SPX';
@@ -204,7 +217,7 @@ async function disparar(qual = 'alimentacao', focar = false) {
       await anotar('não rodou: ' + motivo);
       return { ok: false, error: motivo };
     }
-    await anotarDisparo(qual);
+    await anotarDisparo(qual, origem);
     return { ok: true };
   } catch (e) {
     // A aba existe mas a extensao nao entrou nela (foi aberta antes). Recarregar
@@ -213,7 +226,7 @@ async function disparar(qual = 'alimentacao', focar = false) {
       await chrome.tabs.reload(aba.id);
       await esperarCarregar(aba.id);
       await chrome.tabs.sendMessage(aba.id, { xmMacro: qual, agendado: true });
-      await anotarDisparo(qual, ' (depois de recarregar a aba)');
+      await anotarDisparo(qual, origem, ' (depois de recarregar a aba)');
       return { ok: true };
     } catch (e2) {
       const motivo = String(e2.message || e2);
@@ -224,7 +237,7 @@ async function disparar(qual = 'alimentacao', focar = false) {
 }
 
 chrome.alarms.onAlarm.addListener(async (alarme) => {
-  if (alarme.name === NOME_ALARME_BACKLOG) { await disparar('backlog'); return; }
+  if (alarme.name === NOME_ALARME_BACKLOG) { await disparar('backlog', false, 'agendado'); return; }
   if (alarme.name !== NOME_ALARME) return;
   await disparar();
   const agenda = await lerAgenda();
@@ -269,7 +282,12 @@ chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
   }
 
   if (msg.xmRodar) {
-    disparar(msg.xmRodar, !!msg.focar).then(
+    // O encadeamento (AT Exportada chamando Pedidos Pesquisados sozinha, 15s
+    // depois de terminar) passa por aqui tambem, com `encadeado: true` - sem
+    // essa marca, o registro nao teria como diferenciar isso de alguem tendo
+    // clicado no popup.
+    const origem = msg.encadeado ? 'encadeado' : 'manual';
+    disparar(msg.xmRodar, !!msg.focar, origem).then(
       (r) => responder(r),
       (e) => responder({ ok: false, error: String(e.message || e) }));
     return true;

@@ -797,7 +797,7 @@
       // resposta seria sempre nao, porque o download acabou de terminar agora.
       (async () => {
         await S.dormir(15000);
-        chrome.runtime.sendMessage({ xmRodar: 'pedidos' }).catch(() => {});
+        chrome.runtime.sendMessage({ xmRodar: 'pedidos', encadeado: true }).catch(() => {});
       })();
     } catch (e) {
       if (e instanceof S.Parado) P.erro('parado por você');

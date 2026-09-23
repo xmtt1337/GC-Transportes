@@ -79,7 +79,10 @@ async function salvarAgenda() {
   const modo = modoEscolhido();
   const agenda = {
     modo,
-    minutos: Math.min(1440, Math.max(1, Number(campos.minutos.value) || 60)),
+    // Piso de 20: numero menor que isso ja fez a AT Exportada rodar de novo
+    // antes de Pedidos Pesquisados terminar de buscar a rodada anterior, e o
+    // pendente virou bola de neve (9k, depois 12k pedidos, em 23/09/2026).
+    minutos: Math.min(1440, Math.max(20, Number(campos.minutos.value) || 60)),
     horarios: lerHorarios(campos.lista.value),
   };
   if (modo === 'horarios' && !agenda.horarios.length) {
