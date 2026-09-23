@@ -634,7 +634,7 @@ function _wacEntRenderizar() {
         return;
     }
 
-    const CRITERIO_LABEL = { abaixo_90: "abaixo de 90%", delivering_mais_1: "2+ em Delivering" };
+    const CRITERIO_LABEL = { abaixo_90: "abaixo de 90%", delivering_mais_1: "2+ em Delivering", manual: "manual (botão Alertar)" };
     el.innerHTML = `<div class="wac-lista-simples">${linhas.map(l => `
         <div class="wac-card" style="cursor:default">
             <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>

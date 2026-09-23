@@ -182,10 +182,42 @@ function _snrRenderLista() {
                 <span style="font-variant-numeric:tabular-nums;font-weight:700;color:#93c5fd;font-size:15px;flex:none">
                     ${e.total} pedido${e.total !== 1 ? "s" : ""}
                 </span>
+                ${semEntregador ? "" : `<button class="adm-usr-action" style="flex:none;border-color:rgba(234,179,8,0.4);color:#eab308" onclick="_snrAlertar('${_snrEsc(e.nome).replace(/'/g, "\\'")}')">Alertar</button>`}
                 <button class="adm-usr-action senha" style="flex:none" onclick="_snrAbrirDetalhe('${_snrEsc(e.nome).replace(/'/g, "\\'")}')">Ver pedidos</button>
             </div>
         </div>`;
     }).join("");
+}
+
+// ── Alertar: dispara o mesmo aviso de rota incompleta da rodada automática (19:05/22:05),
+// mas na hora, pra 1 entregador só — pra quem quiser avisar antes do horário configurado em
+// Macros, sem esperar o critério dela (% abaixo de X etc.) ficar verdadeiro. Cada clique é
+// um disparo avulso (grava com rodada "manual-HH:MM:SS"), sem dedupe: clicar de novo manda
+// de novo, de propósito.
+function _snrAlertar(nome) {
+    gcConfirm(
+        `Mandar o aviso de rota incompleta pro WhatsApp de <b>${_snrEsc(nome)}</b> agora?<br><br>` +
+        `Isso manda WhatsApp de verdade, fora do horário automático — não é uma simulação.`,
+        () => _snrAlertarConfirmado(nome),
+        "Alertar entregador",
+        "Mandar aviso"
+    );
+}
+
+function _snrAlertarConfirmado(nome) {
+    fetch(`${API}/admin/avisos-entregador/manual`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify({ dia: _snrDia, nome }),
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d && d.error) return gcAlert(_snrEsc(d.error));
+        if (!d.disparou) return gcAlert(_snrEsc(d.motivo || "Não deu pra mandar o aviso."));
+        if (d.sucesso) return gcAlert(`Aviso mandado pro WhatsApp de ${_snrEsc(nome)}.`);
+        return gcAlert(`Não deu pra mandar: ${_snrEsc(d.erro || "erro desconhecido")}`);
+    })
+    .catch(() => gcAlert("Erro ao conectar com o servidor."));
 }
 
 // ── Visão geral do dia (todos os entregadores somados) ──
