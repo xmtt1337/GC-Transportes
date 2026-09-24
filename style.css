@@ -2450,17 +2450,45 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     font-size: 12.5px; color: #8494a9;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.mac-campo-horario  { width: 176px; }
+.mac-campo-horario  { width: 136px; }
 .mac-campo-criterio { flex: 1 1 250px; }
 .mac-campo-param    { width: 156px; }
-/* Hora e minuto: dois seletores comuns (00–23 e 00–59), não o campo de horário do navegador, que
-   dá a volta na lista e parece rolar sem fim. */
-.mac-horario { display: flex; align-items: center; gap: 6px; }
-.mac-horario b { color: #7b98b5; font-size: 20px; font-weight: 600; }
-.mac-hm {
-    flex: 1; min-width: 0; cursor: pointer; padding: 9px 6px 9px 14px;
-    font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums;
+/* Horário: campo grande, e o relógio abre uma lista PRÓPRIA. A do Chrome dá a volta (depois do 59
+   vem o 00) e parece rolar sem fim; por isso o relógio nativo fica escondido. */
+.mac-horario-wrap { position: relative; }
+.mac-horario {
+    font-size: 20px; font-weight: 600; text-align: center; padding: 8px 40px 8px 12px;
+    font-variant-numeric: tabular-nums; letter-spacing: 0.03em;
 }
+.mac-horario::-webkit-calendar-picker-indicator { display: none; }
+.mac-relogio {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+    background: none; border: none; border-radius: 8px; cursor: pointer; color: #cbd5e1;
+    transition: background 0.15s, color 0.15s;
+}
+.mac-relogio:hover { background: rgba(58,134,255,0.16); color: #fff; }
+/* A lista de hora e minuto: fixa na tela (fora do modal, sem ser cortada por ele), duas colunas
+   com começo e fim. */
+.mac-hm-pop {
+    position: fixed; z-index: 600; display: flex; gap: 8px; padding: 10px;
+    background: #0f1925; border: 1px solid rgba(58,134,255,0.28); border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.65);
+}
+.mac-hm-lista { display: flex; flex-direction: column; gap: 6px; }
+.mac-hm-rotulo { font-size: 11.5px; color: #8494a9; padding-left: 4px; }
+.mac-hm-col {
+    position: relative; width: 74px; max-height: 236px; overflow-y: auto; overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: 2px; padding-right: 3px;
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+.mac-hm-item {
+    flex: none; height: 34px; border: none; border-radius: 9px; background: none; cursor: pointer;
+    color: #cbd5e1; font-family: inherit; font-size: 15px; font-weight: 500;
+    font-variant-numeric: tabular-nums; transition: background 0.12s;
+}
+.mac-hm-item:hover { background: rgba(58,134,255,0.16); color: #fff; }
+.mac-hm-item.sel { background: #3a86ff; color: #fff; font-weight: 700; }
 .mac-criterio { cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mac-remover {
     height: 44px; padding: 0 6px; background: none; border: none; cursor: pointer;

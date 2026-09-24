@@ -88,18 +88,99 @@ function _macRotuloParametro(tipoId) {
 // Dois dígitos nos rótulos: "03", não "3".
 const _macDoisDigitos = n => String(n).padStart(2, "0");
 
-// As opções de um seletor de horário, de `de` até `ate`, sempre com dois dígitos. Hora e minuto
-// são dois seletores comuns (00–23 e 00–59) em vez de um campo type="time": a lista do campo
-// nativo do Chrome dá a volta (depois do 59 vem o 00 de novo) e parecia rolar sem fim. Se o
-// valor atual não é um inteiro da faixa (hora vazia, por exemplo), entra um "--" marcado — em
-// vez de o seletor escolher "00" sozinho e mostrar um horário que não é o que está guardado.
-function _macOpcoes(de, ate, atual) {
-    const valido = Number.isInteger(atual) && atual >= de && atual <= ate;
-    let html = valido ? "" : `<option value="" selected>--</option>`;
+// "19:05" pro campo de horário — sempre com dois dígitos ("19:03", não "19:3"). Vazio quando
+// hora/minuto não são inteiros da faixa (00–23 e 00–59): melhor um campo vazio do que um
+// horário que não é o guardado.
+const _macEmFaixa = (v, max) => Number.isInteger(v) && v >= 0 && v <= max;
+
+function _macHorarioTexto(r) {
+    return _macEmFaixa(r.hora, 23) && _macEmFaixa(r.minuto, 59)
+        ? `${_macDoisDigitos(r.hora)}:${_macDoisDigitos(r.minuto)}` : "";
+}
+
+// Digitar no campo: o navegador devolve sempre "HH:MM" em 24h (mesmo que MOSTRE AM/PM, conforme
+// o idioma) ou "" enquanto está incompleto. Grava em hora e minuto, que é o que o servidor
+// guarda — a faixa (0–23, 0–59) o próprio campo já garante.
+function _macMudarHorario(i, valor) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(valor || "");
+    _macRodadas[i].hora = m ? Number(m[1]) : "";
+    _macRodadas[i].minuto = m ? Number(m[2]) : "";
+}
+
+// ── Escolher o horário numa lista ──
+// O campo de horário do Chrome tem uma lista própria, mas ela DÁ A VOLTA (depois do 59 vem o
+// 00 de novo) e parecia rolar sem fim — e não dá pra mudar isso. O relógio do campo abre esta
+// lista no lugar: hora (00–23) e minuto (00–59) lado a lado, com começo e fim. Digitar direto
+// no campo continua funcionando.
+const _macRelogioSvg = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>`;
+
+let _macPop = null;   // a lista aberta: { el, i, input, aoFora, aoTecla }
+
+function _macFecharHorario() {
+    if (!_macPop) return;
+    document.removeEventListener("mousedown", _macPop.aoFora, true);
+    document.removeEventListener("keydown", _macPop.aoTecla, true);
+    window.removeEventListener("resize", _macFecharHorario);
+    _macPop.el.remove();
+    _macPop = null;
+}
+
+// Uma coluna: de `de` até `ate`, dois dígitos, com o valor atual marcado.
+function _macColunaHtml(de, ate, atual, campo, i) {
+    let html = "";
     for (let n = de; n <= ate; n++) {
-        html += `<option value="${n}"${valido && n === atual ? " selected" : ""}>${_macDoisDigitos(n)}</option>`;
+        html += `<button type="button" class="mac-hm-item${n === atual ? " sel" : ""}" tabindex="-1" data-n="${n}" onclick="_macEscolherHm(${i},'${campo}',${n})">${_macDoisDigitos(n)}</button>`;
     }
     return html;
+}
+
+function _macAbrirHorario(i, botao) {
+    const jaAberta = !!_macPop && _macPop.i === i;
+    _macFecharHorario();
+    if (jaAberta) return; // clicar de novo no relógio fecha
+
+    const r = _macRodadas[i];
+    const el = document.createElement("div");
+    el.className = "mac-hm-pop";
+    el.innerHTML = `
+        <div class="mac-hm-lista"><div class="mac-hm-rotulo">Hora</div>
+            <div class="mac-hm-col" data-campo="hora">${_macColunaHtml(0, 23, r.hora, "hora", i)}</div></div>
+        <div class="mac-hm-lista"><div class="mac-hm-rotulo">Minuto</div>
+            <div class="mac-hm-col" data-campo="minuto">${_macColunaHtml(0, 59, r.minuto, "minuto", i)}</div></div>`;
+    document.body.appendChild(el);
+
+    // Abre PRA BAIXO do campo; só vira pra cima se embaixo não couber e em cima houver mais lugar.
+    const caixa = botao.getBoundingClientRect();
+    const alto = el.offsetHeight, largo = el.offsetWidth;
+    const abaixo = window.innerHeight - caixa.bottom;
+    const praCima = abaixo < alto + 12 && caixa.top > abaixo;
+    el.style.left = Math.max(8, Math.min(caixa.left, window.innerWidth - largo - 8)) + "px";
+    el.style.top = (praCima ? Math.max(8, caixa.top - alto - 6) : caixa.bottom + 6) + "px";
+
+    const aoFora = ev => { if (!el.contains(ev.target) && !botao.contains(ev.target)) _macFecharHorario(); };
+    const aoTecla = ev => { if (ev.key === "Escape") { ev.stopPropagation(); _macFecharHorario(); } };
+    document.addEventListener("mousedown", aoFora, true);
+    document.addEventListener("keydown", aoTecla, true);
+    window.addEventListener("resize", _macFecharHorario);
+    _macPop = { el, i, input: botao.parentNode.querySelector("input"), aoFora, aoTecla };
+
+    // Cada coluna já abre com o valor atual à vista, no meio.
+    el.querySelectorAll(".mac-hm-col").forEach(col => {
+        const sel = col.querySelector(".sel");
+        if (sel) col.scrollTop = sel.offsetTop - (col.clientHeight - sel.offsetHeight) / 2;
+    });
+}
+
+// Escolheu na lista: grava, marca na coluna e atualiza o campo. Escolher o minuto é o último
+// passo, então fecha; escolher a hora deixa aberta pra escolher o minuto em seguida.
+function _macEscolherHm(i, campo, n) {
+    _macRodadas[i][campo] = n;
+    if (_macPop) {
+        _macPop.el.querySelectorAll(`.mac-hm-col[data-campo="${campo}"] .mac-hm-item`)
+            .forEach(b => b.classList.toggle("sel", Number(b.dataset.n) === n));
+        if (_macPop.input) _macPop.input.value = _macHorarioTexto(_macRodadas[i]);
+    }
+    if (campo === "minuto") _macFecharHorario();
 }
 
 const _macCapitalizar = s => String(s || "").charAt(0).toUpperCase() + String(s || "").slice(1);
@@ -110,12 +191,13 @@ function _macLinhaRodada(r, i) {
     const rotuloParam = _macRotuloParametro(r.tipo);
     return `
     <div class="mac-rodada">
-        <div class="mac-campo mac-campo-horario" role="group" aria-label="Horário">
+        <div class="mac-campo mac-campo-horario">
             <span>Horário</span>
-            <div class="mac-horario">
-                <select class="usr-modal-input mac-hm" aria-label="Hora" onchange="_macMudarCampo(${i},'hora',this.value)">${_macOpcoes(0, 23, r.hora)}</select>
-                <b>:</b>
-                <select class="usr-modal-input mac-hm" aria-label="Minuto" onchange="_macMudarCampo(${i},'minuto',this.value)">${_macOpcoes(0, 59, r.minuto)}</select>
+            <div class="mac-horario-wrap">
+                <input type="time" class="usr-modal-input mac-horario" value="${_macHorarioTexto(r)}"
+                       oninput="_macMudarHorario(${i}, this.value)">
+                <button type="button" class="mac-relogio" title="Escolher o horário numa lista" aria-label="Escolher o horário"
+                        onclick="_macAbrirHorario(${i}, this)">${_macRelogioSvg}</button>
             </div>
         </div>
         <label class="mac-campo mac-campo-criterio">
@@ -135,6 +217,7 @@ function _macLinhaRodada(r, i) {
 }
 
 function _macRenderizarRodadas() {
+    _macFecharHorario(); // a lista aberta era de uma linha que está sendo redesenhada
     const el = document.getElementById("mac-rodadas-lista");
     if (!_macRodadas.length) {
         el.innerHTML = `<div style="font-size:12.5px;color:#66829c;padding:8px 0">Nenhuma rodada — adicione pelo menos uma.</div>`;
