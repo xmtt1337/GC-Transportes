@@ -85,22 +85,21 @@ function _macRotuloParametro(tipoId) {
     return t ? t.parametroRotulo : "Parâmetro";
 }
 
-// "19:05" pro campo de horário — sempre com dois dígitos ("19:03", não "19:3"). Vazio quando
-// hora/minuto ainda não são números (campo limpo no meio da edição).
+// Dois dígitos nos rótulos: "03", não "3".
 const _macDoisDigitos = n => String(n).padStart(2, "0");
 
-function _macHorarioTexto(r) {
-    const ok = v => v !== "" && v !== null && v !== undefined && !isNaN(Number(v));
-    return ok(r.hora) && ok(r.minuto) ? `${_macDoisDigitos(r.hora)}:${_macDoisDigitos(r.minuto)}` : "";
-}
-
-// O campo de horário do navegador devolve sempre "HH:MM" em 24h (mesmo que ele MOSTRE AM/PM,
-// dependendo do idioma) ou "" enquanto está incompleto. Grava em hora e minuto, que é o que o
-// servidor guarda — a validação de faixa (0–23, 0–59) o próprio campo já faz.
-function _macMudarHorario(i, valor) {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(valor || "");
-    _macRodadas[i].hora = m ? Number(m[1]) : "";
-    _macRodadas[i].minuto = m ? Number(m[2]) : "";
+// As opções de um seletor de horário, de `de` até `ate`, sempre com dois dígitos. Hora e minuto
+// são dois seletores comuns (00–23 e 00–59) em vez de um campo type="time": a lista do campo
+// nativo do Chrome dá a volta (depois do 59 vem o 00 de novo) e parecia rolar sem fim. Se o
+// valor atual não é um inteiro da faixa (hora vazia, por exemplo), entra um "--" marcado — em
+// vez de o seletor escolher "00" sozinho e mostrar um horário que não é o que está guardado.
+function _macOpcoes(de, ate, atual) {
+    const valido = Number.isInteger(atual) && atual >= de && atual <= ate;
+    let html = valido ? "" : `<option value="" selected>--</option>`;
+    for (let n = de; n <= ate; n++) {
+        html += `<option value="${n}"${valido && n === atual ? " selected" : ""}>${_macDoisDigitos(n)}</option>`;
+    }
+    return html;
 }
 
 const _macCapitalizar = s => String(s || "").charAt(0).toUpperCase() + String(s || "").slice(1);
@@ -111,11 +110,14 @@ function _macLinhaRodada(r, i) {
     const rotuloParam = _macRotuloParametro(r.tipo);
     return `
     <div class="mac-rodada">
-        <label class="mac-campo mac-campo-horario">
+        <div class="mac-campo mac-campo-horario" role="group" aria-label="Horário">
             <span>Horário</span>
-            <input type="time" class="usr-modal-input mac-horario" value="${_macHorarioTexto(r)}"
-                   oninput="_macMudarHorario(${i}, this.value)">
-        </label>
+            <div class="mac-horario">
+                <select class="usr-modal-input mac-hm" aria-label="Hora" onchange="_macMudarCampo(${i},'hora',this.value)">${_macOpcoes(0, 23, r.hora)}</select>
+                <b>:</b>
+                <select class="usr-modal-input mac-hm" aria-label="Minuto" onchange="_macMudarCampo(${i},'minuto',this.value)">${_macOpcoes(0, 59, r.minuto)}</select>
+            </div>
+        </div>
         <label class="mac-campo mac-campo-criterio">
             <span>Critério</span>
             <select class="usr-modal-input mac-criterio" title="${_macEsc((_macTipos.find(t => t.id === r.tipo) || {}).rotulo)}"
