@@ -2635,6 +2635,55 @@ td.cad-nome { color: #e2e8f0; }
     color: #3a86ff; font-family: inherit; font-size: 13.5px; font-weight: 600;
 }
 .mac-adicionar:hover { color: #6aa5ff; }
+
+/* ===== MACROS DO SPX: rodar agora, andamento e horário =====
+   Mesma linguagem do resto da tela: texto e filete, sem cartão nem selo. Cor só num pontinho
+   (e no texto quando é erro) — o "Última carga" e o andamento são informação, não alarme. */
+.mac-item-spx { grid-template-columns: minmax(180px, 240px) 1fr 130px 196px; }
+.mac-item-spx .mac-item-acao { display: flex; gap: 8px; justify-content: flex-end; }
+.mac-agenda-resumo { color: #e2e8f0; font-size: 13.5px; }
+.mac-agenda-mudo { color: #7b8ba1; font-style: italic; }
+.mac-carga { margin-top: 3px; font-size: 12.5px; color: #7b8ba1; }
+.mac-rodar {
+    padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    background: transparent; border: 1px solid rgba(58,134,255,0.45);
+    color: #7cb1ff; font-family: inherit; font-size: 13px; white-space: nowrap;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.mac-rodar:hover:not(:disabled) { border-color: #3a86ff; color: #fff; background: rgba(58,134,255,0.12); }
+.mac-rodar:disabled { cursor: default; border-color: rgba(255,255,255,0.1); color: #5d6b7e; }
+.mac-cmd, .mac-vigia { display: flex; align-items: baseline; gap: 7px; font-size: 12.5px; color: #8494a9; }
+.mac-cmd { margin-top: 5px; }
+.mac-vigia { margin: 0 0 10px; }
+.mac-cmd-ponto {
+    flex: none; width: 7px; height: 7px; border-radius: 50%; background: #66829c;
+    position: relative; top: -1px;
+}
+.mac-cmd-andando .mac-cmd-ponto { background: #3a86ff; animation: mac-pulsa 1.2s ease-in-out infinite; }
+.mac-cmd-ok .mac-cmd-ponto, .mac-vigia-on .mac-cmd-ponto { background: #34b26a; }
+.mac-cmd-aviso .mac-cmd-ponto, .mac-vigia-off .mac-cmd-ponto { background: #d6a23a; }
+.mac-cmd-erro { color: #f08a8a; }
+.mac-cmd-erro .mac-cmd-ponto { background: #ef5b5b; }
+@keyframes mac-pulsa { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .mac-cmd-andando .mac-cmd-ponto { animation: none; } }
+@media (max-width: 680px) {
+    .mac-item-spx { grid-template-columns: 1fr auto; }
+    .mac-item-spx .mac-item-acao { grid-column: 1 / -1; justify-content: flex-start; }
+}
+/* Modal de horário: duas opções lado a lado em importância; a que não vale fica apagada, mas
+   continua editável. */
+.mac-ag-bloco { padding: 14px 0; border-top: 1px solid rgba(255,255,255,0.07); transition: opacity 0.15s; }
+.mac-ag-apagado { opacity: 0.5; }
+.mac-ag-opcao { display: flex; align-items: center; gap: 10px; }
+.mac-ag-radio { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: #e2e8f0; }
+.mac-ag-radio input { width: 16px; height: 16px; cursor: pointer; }
+.mac-ag-minutos { width: 84px; text-align: center; font-size: 15px; font-variant-numeric: tabular-nums; }
+.mac-ag-unidade { font-size: 13.5px; color: #aab6c6; }
+.mac-ag-dica { margin: 6px 0 0 24px; font-size: 12.5px; color: #7b8ba1; }
+.mac-hor-linha { display: flex; align-items: center; gap: 12px; padding: 6px 0 0 24px; }
+.mac-hor-linha .mac-horario-wrap { width: 136px; }
+.mac-ag-vazio { padding: 8px 0 0 24px; font-size: 12.5px; color: #66829c; }
+#mac-ag-bloco-horarios .mac-adicionar { margin-left: 24px; margin-top: 4px; }
 .adm-usr-avatar {
     width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
     background: rgba(58,134,255,0.15); display: flex; align-items: center;

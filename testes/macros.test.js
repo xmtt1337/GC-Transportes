@@ -533,12 +533,20 @@ test("a tela traz as duas secoes e todos os itens, na ordem", () => {
   assert.deepStrictEqual([...ordem].sort((x, y) => x - y), ordem);
 });
 
-test("so o aviso da XPT_CFC tem Configurar; os outros ficam como ainda nao integrado", () => {
+test("so o aviso da XPT_CFC tem Configurar de rodadas; a XPT_VIA fica como ainda nao integrado", () => {
   const a = carregar();
   const html = a.ctx._macHtmlSecoes([AVISO]);
   assert.strictEqual(html.split("_macAbrirConfigurar(").length - 1, 1);
   assert.ok(html.includes("_macAbrirConfigurar('avisos_entregador')"));
-  assert.strictEqual(html.split("Ainda não integrado").length - 1, 4, "XPT_VIA + os tres da Shopee");
+  assert.strictEqual(html.split("Ainda não integrado").length - 1, 1, "so a XPT_VIA");
+});
+
+test("os tres macros do SPX, quando o servidor nao mandou, ficam Indisponiveis (nao somem)", () => {
+  // Servidor antigo, ou fora do ar so na rota dos macros do SPX: a linha continua na tela.
+  const a = carregar();
+  const html = a.ctx._macHtmlSecoes([AVISO]);
+  assert.strictEqual(html.split("Indisponível no momento").length - 1, 3);
+  assert.ok(!html.includes("_macRodar("), "sem o servidor nao ha o que rodar");
 });
 
 test("o resumo vira uma linha por rodada, horario separado do criterio", () => {

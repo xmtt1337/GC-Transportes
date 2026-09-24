@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260924g">
+<link rel="stylesheet" href="style.css?v=20260924h">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -2334,6 +2334,49 @@ if (_BASE) {
                 <div class="usr-modal-btns">
                     <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-macro-editar')">Cancelar</button>
                     <button class="usr-modal-btn-primary" id="mac-editar-salvar" onclick="_macSalvar()">Salvar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Horário de um macro do SPX (AT Exportada, Backlog) — montado por js/macros.js -->
+        <div class="usr-modal-overlay" id="modal-macro-agenda" onclick="_fecharModalSeBackdrop(event,'modal-macro-agenda')">
+            <div class="usr-modal" style="max-width:520px">
+                <div class="usr-modal-title" id="mac-ag-titulo">Horário do macro</div>
+                <div class="usr-modal-sub" id="mac-ag-descricao"></div>
+
+                <label style="display:flex;align-items:center;gap:8px;margin:16px 0;cursor:pointer;font-size:13.5px;color:#e2e8f0">
+                    <input type="checkbox" id="mac-ag-ativo" style="width:16px;height:16px;cursor:pointer">
+                    Ativo
+                </label>
+
+                <div class="mac-ag-bloco" id="mac-ag-bloco-intervalo">
+                    <div class="mac-ag-opcao">
+                        <label class="mac-ag-radio">
+                            <input type="radio" name="mac-ag-modo" id="mac-ag-modo-intervalo" onchange="_macMudarModo('intervalo')">
+                            A cada
+                        </label>
+                        <input type="number" id="mac-ag-minutos" class="usr-modal-input mac-ag-minutos" min="1" max="1440" step="1"
+                               oninput="_macMudarMinutos(this.value)">
+                        <span class="mac-ag-unidade">minutos</span>
+                    </div>
+                    <div class="mac-ag-dica" id="mac-ag-dica-minimo"></div>
+                </div>
+
+                <div class="mac-ag-bloco" id="mac-ag-bloco-horarios">
+                    <div class="mac-ag-opcao">
+                        <label class="mac-ag-radio">
+                            <input type="radio" name="mac-ag-modo" id="mac-ag-modo-horarios" onchange="_macMudarModo('horarios')">
+                            Todo dia, nestes horários
+                        </label>
+                    </div>
+                    <div id="mac-ag-horarios"></div>
+                    <button type="button" class="mac-adicionar" onclick="_macAdicionarHorario()">+ Adicionar horário</button>
+                </div>
+
+                <div class="usr-modal-error" id="mac-ag-erro"></div>
+                <div class="usr-modal-btns">
+                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-macro-agenda')">Cancelar</button>
+                    <button class="usr-modal-btn-primary" id="mac-ag-salvar" onclick="_macSalvarAgenda()">Salvar</button>
                 </div>
             </div>
         </div>
@@ -4693,7 +4736,7 @@ if (_BASE) {
 <script src="js/usuarios-gc.js?v=20260924b"></script>
 <script src="js/nomes-padrao.js?v=20260922a"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
-<script src="js/macros.js?v=20260924e"></script>
+<script src="js/macros.js?v=20260924f"></script>
 <script src="js/whatsapp-teste.js?v=20260921d"></script>
 <script src="js/whatsapp-conversa.js?v=20260924a"></script>
 <script src="js/modals.js?v=20260924a"></script>
