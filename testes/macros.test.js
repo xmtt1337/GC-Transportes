@@ -516,3 +516,73 @@ test("redesenhar as rodadas (remover uma, trocar o criterio) fecha a lista abert
   a.ctx._macRemoverRodada(1);
   assert.strictEqual(a.ultimo().removido, true, "a lista era de uma linha que foi redesenhada");
 });
+
+// ── a lista da tela, em seções ──────────────────────────────────────────────
+// Avisos de rota incompleta (XPT_CFC funciona, XPT_VIA ainda não) e Macros > Shopee (três
+// ainda não integrados). O que se protege: só o que existe no servidor ganha "Configurar", o
+// que ainda não foi integrado fica marcado sem ação, e nenhum macro do servidor some da tela.
+const AVISO = { chave: "avisos_entregador", nome: "Aviso de rota incompleta (Shopee)", descricao: "d", ativo: true,
+  resumo: "19:05 Abaixo de 90% concluído · 22:05 Mais de 1 pacotes em Delivering" };
+
+test("a tela traz as duas secoes e todos os itens, na ordem", () => {
+  const a = carregar();
+  const html = a.ctx._macHtmlSecoes([AVISO]);
+  const ordem = ["Avisos de rota incompleta", "Shopee XPT_CFC", "Shopee XPT_VIA", ">Macros<", ">Shopee<",
+    "Alimentar AT exportada", "Pedidos pesquisados", "Backlog"].map((t) => html.indexOf(t));
+  ordem.forEach((pos, k) => assert.ok(pos >= 0, `item ${k} nao apareceu`));
+  assert.deepStrictEqual([...ordem].sort((x, y) => x - y), ordem);
+});
+
+test("so o aviso da XPT_CFC tem Configurar; os outros ficam como ainda nao integrado", () => {
+  const a = carregar();
+  const html = a.ctx._macHtmlSecoes([AVISO]);
+  assert.strictEqual(html.split("_macAbrirConfigurar(").length - 1, 1);
+  assert.ok(html.includes("_macAbrirConfigurar('avisos_entregador')"));
+  assert.strictEqual(html.split("Ainda não integrado").length - 1, 4, "XPT_VIA + os tres da Shopee");
+});
+
+test("o resumo vira uma linha por rodada, horario separado do criterio", () => {
+  const a = carregar();
+  const html = a.ctx._macResumoHtml(AVISO.resumo);
+  assert.strictEqual(html.split("mac-agenda-linha").length - 1, 2);
+  assert.ok(html.includes('<span class="mac-agenda-hora">19:05</span><span>abaixo de 90% concluído</span>'));
+  assert.ok(html.includes('<span class="mac-agenda-hora">22:05</span>'));
+});
+
+test("resumo fora do formato passa inteiro, e vazio nao quebra", () => {
+  const a = carregar();
+  assert.ok(a.ctx._macResumoHtml("sem rodada configurada").includes("<span>sem rodada configurada</span>"));
+  assert.strictEqual(a.ctx._macResumoHtml(""), "");
+  assert.strictEqual(a.ctx._macResumoHtml(undefined), "");
+});
+
+test("macro desligado aparece como Desligado", () => {
+  const a = carregar();
+  const html = a.ctx._macHtmlSecoes([{ ...AVISO, ativo: false }]);
+  assert.ok(html.includes(">Desligado<") && !html.includes(">Ativo<"));
+});
+
+test("se o servidor nao manda o aviso, a linha fica sem Configurar (nao abre modal vazio)", () => {
+  const a = carregar();
+  const html = a.ctx._macHtmlSecoes([]);
+  assert.ok(!html.includes("_macAbrirConfigurar("));
+  assert.ok(html.includes("Indisponível no momento"));
+});
+
+test("macro do servidor sem lugar na tela nao some: vai pra Outros, configuravel", () => {
+  const a = carregar();
+  const html = a.ctx._macHtmlSecoes([AVISO, { chave: "novo_macro", nome: "Novo", descricao: "x", ativo: true, resumo: "" }]);
+  assert.ok(html.includes(">Outros<"));
+  assert.ok(html.includes("_macAbrirConfigurar('novo_macro')"));
+});
+
+test("nome e resumo vindos do servidor nao viram HTML", () => {
+  const a = carregar();
+  const html = a.ctx._macHtmlSecoes([AVISO, { chave: "z", nome: "<b>n</b>", descricao: "<i>d</i>", ativo: true, resumo: "10:00 <s>x</s>" }]);
+  assert.ok(!html.includes("<b>n</b>") && !html.includes("<i>d</i>") && !html.includes("<s>x</s>"));
+});
+
+test("o titulo do modal usa o nome da tela", () => {
+  const a = carregar();
+  assert.strictEqual(a.ctx._macTituloModal("avisos_entregador"), "Avisos de rota incompleta — Shopee XPT_CFC");
+});

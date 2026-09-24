@@ -2436,6 +2436,50 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 }
 .usr-modal-btn-cancel:hover { border-color: rgba(58,134,255,0.35); color: #94a3b8; }
 
+/* ===== MACROS: a lista da tela =====
+   Cara de página de configurações, não de painel: título de seção em texto simples, e cada
+   macro é uma LINHA de uma tabela (nome · horários · situação · ação), separada por filete —
+   sem cartão, selo colorido nem brilho. O que ainda não foi integrado fica na lista, apagado. */
+.mac-secao { max-width: 980px; margin-bottom: 30px; }
+.mac-secao-titulo { margin: 0; font-size: 15px; font-weight: 600; color: #e2e8f0; }
+.mac-secao-texto { margin: 3px 0 12px; font-size: 13px; color: #8494a9; }
+.mac-painel { border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; }
+.mac-grupo + .mac-grupo { border-top: 1px solid rgba(255,255,255,0.08); }
+.mac-grupo-titulo {
+    padding: 9px 18px; font-size: 12.5px; font-weight: 600; color: #94a3b8;
+    background: rgba(255,255,255,0.025); border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.mac-item {
+    display: grid; grid-template-columns: minmax(180px, 240px) 1fr 84px 104px;
+    align-items: center; gap: 16px; padding: 14px 18px;
+}
+.mac-item + .mac-item { border-top: 1px solid rgba(255,255,255,0.06); }
+.mac-item-nome { font-size: 14px; font-weight: 500; color: #e2e8f0; }
+.mac-item-detalhe { margin-top: 2px; font-size: 12.5px; color: #7b8ba1; }
+.mac-item-agenda { font-size: 13px; color: #aab6c6; min-width: 0; }
+.mac-agenda-linha { display: flex; gap: 12px; line-height: 1.7; }
+.mac-agenda-hora { color: #e2e8f0; font-variant-numeric: tabular-nums; flex: none; }
+.mac-item-status { font-size: 13px; }
+.mac-item-status.ligado { color: #4ade80; }
+.mac-item-status.desligado { color: #7b8ba1; }
+.mac-item-acao { text-align: right; }
+.mac-configurar {
+    padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    background: transparent; border: 1px solid rgba(255,255,255,0.14);
+    color: #cbd5e1; font-family: inherit; font-size: 13px;
+    transition: border-color 0.15s, color 0.15s;
+}
+.mac-configurar:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+.mac-item-pendente .mac-item-nome { color: #7b8ba1; }
+.mac-item-pendente .mac-item-agenda { color: #5d6b7e; font-style: italic; }
+@media (max-width: 680px) {
+    .mac-item { grid-template-columns: 1fr auto; gap: 8px 12px; padding: 14px; }
+    .mac-item-id { grid-column: 1 / -1; }
+    .mac-item-agenda { grid-column: 1 / -1; }
+    .mac-item-status:empty, .mac-item-acao:empty { display: none; }
+    .mac-grupo-titulo { padding: 9px 14px; }
+}
+
 /* ===== MACROS: rodadas do modal de configuração =====
    Uma rodada é uma LINHA separada por um filete, não um cartão dentro do cartão do modal. O
    horário é um campo grande de verdade (antes eram dois number de 54px: o "19" saía cortado e

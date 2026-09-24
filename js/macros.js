@@ -1,7 +1,7 @@
 // ───── MACROS (SÓ DEV) ─────
-// Tarefas que o sistema roda sozinho. Hoje só o aviso de rota incompleta pro entregador
-// (modules/avisos-entregador) — a lista existe pra caber mais no futuro sem redesenhar a
-// tela: cada macro tem chave, nome, descrição, ativo e um resumo pronto do servidor.
+// Tarefas que o sistema roda sozinho, em seções (ver _MAC_SECOES). Hoje só o aviso de rota
+// incompleta da Shopee XPT_CFC funciona (modules/avisos-entregador); os outros itens ficam na
+// tela como "ainda não integrado" até ganharem chave no servidor.
 //
 // Configurar é sempre pela tela — nunca mexendo direto no banco (mesmo espírito de
 // Conversão de nomes e Telefones dos entregadores).
@@ -42,28 +42,125 @@ function _macCarregarLista() {
         .then(d => {
             if (d && d.error) { skFim(empty, d.error); return; }
             _macLista = d.macros || [];
-            if (!_macLista.length) { skFim(empty, "Nenhum macro cadastrado ainda."); return; }
             empty.style.display = "none";
-            lista.innerHTML = _macLista.map(m => `
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:16px 18px;margin-bottom:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px">
-                    <div style="min-width:0">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-                            <span style="font-weight:600;color:#e2e8f0">${_macEsc(m.nome)}</span>
-                            <span class="adm-usr-badge ${m.ativo ? "ativo" : "inativo"}">${m.ativo ? "Ativo" : "Inativo"}</span>
-                        </div>
-                        <div style="font-size:12.5px;color:#8494a9;margin-bottom:6px">${_macEsc(m.descricao)}</div>
-                        <div style="font-size:12px;color:#66829c">${_macEsc(m.resumo)}</div>
-                    </div>
-                    <button type="button" class="adm-usr-action senha" onclick="_macAbrirConfigurar('${m.chave}')">Configurar</button>
-                </div>`).join("");
+            lista.innerHTML = _macHtmlSecoes(_macLista);
         })
         .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
+}
+
+// ── Como a tela se organiza ──
+// A arrumação é daqui do front: o servidor só manda os macros que JÁ funcionam (por chave), e
+// cada um cai no lugar dele. Item sem `chave` é um que ainda vai ser integrado — aparece na
+// lista, apagado, sem "Configurar", só pra ficar marcado onde ele vai morar.
+const _MAC_SECOES = [
+    {
+        titulo: "Avisos de rota incompleta",
+        texto: "Mensagem no WhatsApp pro entregador quando a rota ainda não fechou.",
+        grupos: [{
+            itens: [
+                { nome: "Shopee XPT_CFC", detalhe: "Caçador · WhatsApp oficial (WABA)", chave: "avisos_entregador" },
+                { nome: "Shopee XPT_VIA", detalhe: "Videira" },
+            ],
+        }],
+    },
+    {
+        titulo: "Macros",
+        texto: "Rotinas que rodam sozinhas no sistema da Shopee.",
+        grupos: [{
+            titulo: "Shopee",
+            itens: [
+                { nome: "Alimentar AT exportada" },
+                { nome: "Pedidos pesquisados" },
+                { nome: "Backlog" },
+            ],
+        }],
+    },
+];
+
+// "19:05 Abaixo de 90% concluído · 22:05 Mais de 1 pacotes em Delivering" (resumo do servidor)
+// vira uma linha por rodada, com o horário separado do critério. Texto fora desse formato
+// ("sem rodada configurada") passa inteiro, numa linha só.
+function _macResumoHtml(resumo) {
+    const partes = String(resumo || "").split(" · ").filter(Boolean);
+    if (!partes.length) return "";
+    return partes.map(p => {
+        const m = /^(\d{2}:\d{2}) (.+)$/.exec(p);
+        return m
+            ? `<div class="mac-agenda-linha"><span class="mac-agenda-hora">${m[1]}</span><span>${_macEsc(m[2].charAt(0).toLowerCase() + m[2].slice(1))}</span></div>`
+            : `<div class="mac-agenda-linha"><span>${_macEsc(p)}</span></div>`;
+    }).join("");
+}
+
+function _macHtmlItem(item, m) {
+    const nome = `<div class="mac-item-nome">${_macEsc(item.nome)}</div>`
+        + (item.detalhe ? `<div class="mac-item-detalhe">${_macEsc(item.detalhe)}</div>` : "");
+
+    if (!item.chave || !m) {
+        // Ainda não integrado (ou o servidor não mandou esse macro): fica marcado, sem ação.
+        const aviso = item.chave ? "Indisponível no momento" : "Ainda não integrado";
+        return `
+        <div class="mac-item mac-item-pendente">
+            <div class="mac-item-id">${nome}</div>
+            <div class="mac-item-agenda">${aviso}</div>
+            <div class="mac-item-status"></div>
+            <div class="mac-item-acao"></div>
+        </div>`;
+    }
+    return `
+        <div class="mac-item">
+            <div class="mac-item-id">${nome}</div>
+            <div class="mac-item-agenda">${_macResumoHtml(m.resumo)}</div>
+            <div class="mac-item-status ${m.ativo ? "ligado" : "desligado"}">${m.ativo ? "Ativo" : "Desligado"}</div>
+            <div class="mac-item-acao"><button type="button" class="mac-configurar" onclick="_macAbrirConfigurar('${_macEsc(m.chave)}')">Configurar</button></div>
+        </div>`;
+}
+
+function _macHtmlSecao(secao, porChave) {
+    const grupos = secao.grupos.map(g => `
+        <div class="mac-grupo">
+            ${g.titulo ? `<div class="mac-grupo-titulo">${_macEsc(g.titulo)}</div>` : ""}
+            ${g.itens.map(item => _macHtmlItem(item, item.chave && porChave[item.chave])).join("")}
+        </div>`).join("");
+    return `
+    <section class="mac-secao">
+        <h3 class="mac-secao-titulo">${_macEsc(secao.titulo)}</h3>
+        ${secao.texto ? `<p class="mac-secao-texto">${_macEsc(secao.texto)}</p>` : ""}
+        <div class="mac-painel">${grupos}</div>
+    </section>`;
+}
+
+// A tela inteira, a partir da lista do servidor. Macro que o servidor mande e que ainda não
+// tenha lugar em _MAC_SECOES não some: cai em "Outros", configurável normalmente.
+function _macHtmlSecoes(lista) {
+    const porChave = {};
+    (lista || []).forEach(m => { porChave[m.chave] = m; });
+    const conhecidas = new Set();
+    _MAC_SECOES.forEach(s => s.grupos.forEach(g => g.itens.forEach(i => i.chave && conhecidas.add(i.chave))));
+    const sobra = (lista || []).filter(m => !conhecidas.has(m.chave));
+
+    const secoes = sobra.length
+        ? _MAC_SECOES.concat([{ titulo: "Outros", grupos: [{ itens: sobra.map(m => ({ nome: m.nome, detalhe: m.descricao, chave: m.chave })) }] }])
+        : _MAC_SECOES;
+    return secoes.map(s => _macHtmlSecao(s, porChave)).join("");
+}
+
+// Nome do macro no título do modal: o da tela ("Avisos de rota incompleta — Shopee XPT_CFC"),
+// que é como ele aparece na lista; o nome do servidor só se ele não tiver lugar na tela.
+function _macTituloModal(chave) {
+    for (const s of _MAC_SECOES) {
+        for (const g of s.grupos) {
+            const item = g.itens.find(i => i.chave === chave);
+            if (item) return `${s.titulo} — ${item.nome}`;
+        }
+    }
+    const m = _macLista.find(x => x.chave === chave);
+    return (m && m.nome) || "Configurar macro";
 }
 
 function _macAbrirConfigurar(chave) {
     _macChaveEditando = chave;
     const m = _macLista.find(x => x.chave === chave);
-    document.getElementById("mac-editar-titulo").innerText = (m && m.nome) || "Configurar macro";
+    document.getElementById("mac-editar-titulo").innerText = _macTituloModal(chave);
     document.getElementById("mac-editar-descricao").innerText = (m && m.descricao) || "";
     document.getElementById("mac-editar-erro").innerText = "";
 
