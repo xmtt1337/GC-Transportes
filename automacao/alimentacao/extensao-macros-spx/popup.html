@@ -39,6 +39,12 @@
     input:disabled { background: #f4f6f9; color: #a7b2c2; }
     .proxima { font-size: 11px; color: #62718a; margin-top: 8px; min-height: 14px; }
     .proxima b { color: #24303f; }
+    /* Quando o sistema (xmtt.com.br > Macros) manda a agenda, os campos daqui nao valem:
+       esconder e melhor que mostrar uma agenda que nao esta em vigor. */
+    .do-sistema { font-size: 11.5px; color: #46566b; line-height: 1.5; margin: 6px 0 2px;
+                  background: #f4f6f9; border-left: 3px solid #2a8c4a; padding: 7px 9px;
+                  border-radius: 0 5px 5px 0; }
+    fieldset.controlado .linha { display: none; }
   </style>
 </head>
 <body>
@@ -59,8 +65,12 @@
   <button id="rodar-backlog">▶ 3 · Backlog</button>
   <div class="estado" id="estado"></div>
 
-  <fieldset>
+  <fieldset id="agenda">
     <legend>Sozinho (AT → Pedidos no intervalo · Backlog de hora em hora)</legend>
+    <div class="do-sistema" id="agenda-do-sistema" hidden>
+      Os horários são controlados pelo <b>sistema</b> (xmtt.com.br › Macros).
+      Mude por lá — o que estiver escolhido aqui só volta a valer se o sistema soltar o controle.
+    </div>
     <div class="linha">
       <input type="radio" name="modo" id="modo-off" value="off">
       <label for="modo-off">Desligado — só quando eu mandar</label>

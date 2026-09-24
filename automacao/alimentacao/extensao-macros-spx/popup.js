@@ -96,14 +96,20 @@ async function salvarAgenda() {
 }
 
 async function carregarAgenda() {
-  const guardado = await chrome.storage.local.get(['agenda', 'proxima', 'ultimoDisparo']);
+  const guardado = await chrome.storage.local.get(['agenda', 'proxima', 'ultimoDisparo', 'agendaSite']);
   const agenda = guardado.agenda || { modo: 'off', minutos: 60, horarios: [] };
   campos[agenda.modo] ? (campos[agenda.modo].checked = true) : (campos.off.checked = true);
   // horas: formato antigo, de quando o intervalo era em horas
   campos.minutos.value = agenda.minutos || (agenda.horas || 0) * 60 || 60;
   campos.lista.value = (agenda.horarios || []).join(', ');
   ajustarCampos();
-  if (agenda.modo !== 'off') mostrarProxima(guardado.proxima);
+
+  // O sistema (tela Macros) manda: os campos daqui nao estao em vigor, entao saem
+  // de vista, e a proxima execucao (essa sim vale) continua aparecendo.
+  const doSistema = !!guardado.agendaSite;
+  document.getElementById('agenda-do-sistema').hidden = !doSistema;
+  document.getElementById('agenda').classList.toggle('controlado', doSistema);
+  if (doSistema || agenda.modo !== 'off') mostrarProxima(guardado.proxima);
   // O ultimo disparo automatico e o unico jeito de saber que ele rodou de
   // madrugada - e, principalmente, que NAO rodou porque a aba estava fechada.
   if (guardado.ultimoDisparo && guardado.ultimoDisparo.texto.startsWith('não rodou')) {

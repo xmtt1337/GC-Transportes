@@ -138,10 +138,17 @@
   // hora, e um agendamento que dispara uma hora cedo ninguem percebe.
   function minutosAteProximaHora(horas, minutosAgora) {
     const limpas = lerHorarios(horas.join ? horas.join(',') : horas);
-    if (!limpas.length) return null;
+    return minutosAteProximoHorario(limpas.map((h) => h * 60), minutosAgora);
+  }
+
+  // O mesmo, com horarios em "minuto do dia" (08:30 -> 510) - o formato em que
+  // a tela Macros do sistema manda a agenda, e que aceita horario quebrado.
+  function minutosAteProximoHorario(minutosDoDia, minutosAgora) {
+    const validos = (minutosDoDia || []).filter((m) => Number.isInteger(m) && m >= 0 && m < 1440);
+    if (!validos.length) return null;
     let menor = Infinity;
-    for (const h of limpas) {
-      let falta = h * 60 - minutosAgora;
+    for (const m of validos) {
+      let falta = m - minutosAgora;
       // O "ja passou" tem folga de meio minuto: sem ela, o disparo das 8:00
       // remarcaria pra daqui a zero minuto e rodaria duas vezes seguidas.
       if (falta <= 0.5) falta += 24 * 60;
@@ -150,11 +157,118 @@
     return menor;
   }
 
+  // ── agenda vinda do sistema ────────────────────────────────────────────
+  // A tela Macros do sistema (xmtt.com.br) pode mandar a agenda; quando manda,
+  // ELA manda - o popup deixa de valer. Fica numa chave propria do storage
+  // (agendaSite), separada da que o popup grava (agenda): assim as duas nunca
+  // se sobrescrevem, e apagar a do sistema devolve o controle ao popup como
+  // estava.
+  //
+  // Mesmos pisos que o servidor impoe. Repetidos aqui de proposito: agenda
+  // errada vira macro rodando na hora errada num Chrome que ninguem olha, e
+  // esta e a ultima barreira antes do alarme.
+  const MINIMO_MINUTOS = 20;            // AT: abaixo disso o pendente vira bola de neve
+  const MINIMO_MINUTOS_BACKLOG = 30;    // cada rodada grava o retrato inteiro
+  const MINUTOS_BACKLOG_PADRAO = 60;
+  const MAXIMO_MINUTOS = 1440;
+
+  const OFF = () => ({ modo: 'off', minutos: 60, horarios: [] });
+
+  // Um macro da agenda do sistema -> { modo, minutos, horarios }. `ativo:false`
+  // e "modo horarios sem nenhum horario" viram desligado: nao ha o que agendar.
+  function agendaDoSistema(s, minimo) {
+    if (!s || !s.ativo) return OFF();
+    const minutos = Math.max(minimo, Math.min(MAXIMO_MINUTOS, Math.round(Number(s.minutos)) || 60));
+    const horarios = [...new Set((Array.isArray(s.horarios) ? s.horarios : [])
+      .map(Number).filter((m) => Number.isInteger(m) && m >= 0 && m < 1440))].sort((a, b) => a - b);
+    if (s.modo === 'horarios') return horarios.length ? { modo: 'horarios', minutos, horarios } : OFF();
+    return { modo: 'intervalo', minutos, horarios };
+  }
+
+  // O que o popup guardou -> o mesmo formato. `horas` e o campo antigo, de
+  // quando o intervalo era em horas.
+  function agendaDoPopup(local) {
+    const l = local || {};
+    const modo = l.modo === 'intervalo' || l.modo === 'horarios' ? l.modo : 'off';
+    const guardado = Number(l.minutos) || (Number(l.horas) || 0) * 60;
+    return {
+      modo,
+      minutos: Math.max(MINIMO_MINUTOS, guardado || 60),
+      horarios: lerHorarios(l.horarios || []).map((h) => h * 60),
+    };
+  }
+
+  /**
+   * A agenda que o service worker de fato aplica.
+   *
+   *   local  o que o popup guardou ({ modo, minutos, horarios em horas })
+   *   site   o que o sistema mandou ({ alimentacao?, backlog? }) ou null
+   *
+   * Cada macro segue o sistema se ele mandou algo pra ele, e o popup se nao.
+   * O Backlog, sem agenda propria em lugar nenhum, faz o que sempre fez: de hora
+   * em hora quando a AT roda por intervalo, e junto com cada AT quando ela roda
+   * em horarios fixos ('junto') - herda a decisao da AT que esta valendo.
+   */
+  function agendaEfetiva(local, site) {
+    const s = site || {};
+    const at = s.alimentacao ? agendaDoSistema(s.alimentacao, MINIMO_MINUTOS) : agendaDoPopup(local);
+
+    let backlog;
+    if (s.backlog) backlog = agendaDoSistema(s.backlog, MINIMO_MINUTOS_BACKLOG);
+    else if (at.modo === 'intervalo') {
+      backlog = { modo: 'intervalo', minutos: MINUTOS_BACKLOG_PADRAO, horarios: [] };
+    } else if (at.modo === 'horarios') backlog = { modo: 'junto', minutos: MINUTOS_BACKLOG_PADRAO, horarios: [] };
+    else backlog = OFF();
+
+    return { at, backlog };
+  }
+
+  // Em quantos minutos o Backlog deve rodar de novo, contando da ULTIMA vez que
+  // rodou (a manual conta). Sem isso, cada reagendar() - abrir o Chrome, mexer
+  // no popup - recomecaria a contagem do zero e ele nunca chegaria a rodar.
+  function minutosParaProximoBacklog(minutos, ultimoMs, agoraMs) {
+    const decorrido = ultimoMs ? (agoraMs - ultimoMs) / 60000 : minutos;  // nunca rodou: ja
+    return Math.max(1, Math.ceil(minutos - decorrido));
+  }
+
+  // ── comandos da tela Macros ────────────────────────────────────────────
+  const MACROS_DA_TELA = ['alimentacao', 'pedidos', 'backlog'];
+
+  // So roda o que esta nesta lista, com um id de verdade. O comando vem de uma
+  // resposta HTTP: nada que chegue por ali pode virar "rode qualquer coisa".
+  function comandoValido(c) {
+    return !!c && typeof c.id === 'string' && c.id.length > 0 && c.id.length <= 64
+      && MACROS_DA_TELA.includes(c.qual);
+  }
+
+  // O que fazer com a agenda que o vigia trouxe:
+  //   'manter'  - nao veio nada util (ausente = servidor sem a resposta; ou a
+  //               mesma versao que ja esta aplicada)
+  //   'aplicar' - versao nova
+  //   'limpar'  - null: o sistema nao tem nada configurado, volta pro popup
+  function decidirAgendaDoSite(agenda, versaoGuardada) {
+    if (agenda === undefined) return 'manter';
+    if (agenda === null) return versaoGuardada ? 'limpar' : 'manter';
+    if (typeof agenda !== 'object' || typeof agenda.versao !== 'string' || !agenda.versao) return 'manter';
+    return agenda.versao === versaoGuardada ? 'manter' : 'aplicar';
+  }
+
   const logica = {
     NOME_RELATORIO,
     NOME_PESQUISADOS,
     lerHorarios,
     minutosAteProximaHora,
+    minutosAteProximoHorario,
+    MINIMO_MINUTOS,
+    MINIMO_MINUTOS_BACKLOG,
+    MINUTOS_BACKLOG_PADRAO,
+    agendaDoSistema,
+    agendaDoPopup,
+    agendaEfetiva,
+    minutosParaProximoBacklog,
+    MACROS_DA_TELA,
+    comandoValido,
+    decidirAgendaDoSite,
     MESES_PT,
     MESES_EN,
     FORMATOS_DATA,

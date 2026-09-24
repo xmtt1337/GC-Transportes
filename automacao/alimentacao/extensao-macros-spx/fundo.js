@@ -25,31 +25,29 @@ const NOME_ALARME = 'alimentacao';
 // O Backlog tem alarme proprio, e MAIS LENTO que o da AT: o card do hub so
 // atualiza de tempos em tempos na Shopee, e cada rodada grava o snapshot
 // inteiro (1 a 4 mil linhas). De 5 em 5 min seriam ~290 copias quase iguais
-// por dia - o banco ja passa de 2 GB. Um numero so pra mexer se precisar.
+// por dia - o banco ja passa de 2 GB. O padrao (60) e o piso (30) moram na
+// logica.js, junto com o resto da conta de agenda.
 const NOME_ALARME_BACKLOG = 'backlog';
-const MINUTOS_BACKLOG = 60;
+// Pergunta ao vigia, de 30 em 30s, se a tela Macros do sistema pediu alguma
+// coisa - e traz junto a agenda vigente. Ver "ponte com o XM Vigia", abaixo.
+const NOME_ALARME_COMANDOS = 'comandos';
 const CHAVE = 'agenda';
+const CHAVE_SITE = 'agendaSite';
+const CHAVE_VERSAO_SITE = 'agendaSiteVersao';
 const FUSO = 'America/Sao_Paulo';
 
 // `minutos` substituiu `horas`: de hora em hora era grosso demais pra quem quer
-// a AT acompanhando o dia. O campo antigo ainda e lido, pra quem ja tinha
-// agendamento salvo nao perder ele numa atualizacao.
+// a AT acompanhando o dia. O campo antigo ainda e lido (logica.agendaDoPopup),
+// pra quem ja tinha agendamento salvo nao perder ele numa atualizacao.
+//
+// O piso do intervalo (20 min na AT) tambem mora na logica. Ja aconteceu duas
+// vezes o mesmo problema: numero pequeno demais (1, 5 minutos) faz a AT
+// Exportada gerar uma exportacao nova antes de Pedidos Pesquisados dar conta
+// de buscar a de antes - o pendente vira uma bola de neve que so cresce (12
+// mil pedidos pra buscar num dia so, em 23/09/2026).
 const PADRAO = { modo: 'off', minutos: 60, horarios: [] };
-// O Chrome nao dispara alarme mais rapido que isso.
-// Ja aconteceu duas vezes o mesmo problema: o campo "de quanto em quanto
-// tempo" com um numero pequeno demais (1, 5 minutos) faz a AT Exportada
-// gerar uma exportacao nova antes de Pedidos Pesquisados dar conta de buscar
-// a de antes - o pendente vira uma bola de neve que so cresce (12 mil
-// pedidos pra buscar num dia so, virou "9k pedidos" e depois "12k pedidos"
-// nas conversas de 23/09/2026). O piso sobe de 1 pra 20: da pra acompanhar o
-// dia (3x por hora), sem deixar a AT atropelar a propria busca.
-const MINIMO_MINUTOS = 20;
 
-function minutosDaAgenda(agenda) {
-  const guardado = Number(agenda.minutos) || (Number(agenda.horas) || 0) * 60;
-  return Math.max(MINIMO_MINUTOS, guardado || 60);
-}
-
+// O que o popup guardou.
 async function lerAgenda() {
   try {
     const guardado = await chrome.storage.local.get(CHAVE);
@@ -57,6 +55,21 @@ async function lerAgenda() {
   } catch (e) {
     return Object.assign({}, PADRAO);
   }
+}
+
+// O que o sistema mandou (null se nunca mandou, ou se foi devolvido ao popup).
+async function lerAgendaDoSite() {
+  try {
+    const guardado = await chrome.storage.local.get(CHAVE_SITE);
+    return guardado[CHAVE_SITE] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// A que vale: o sistema manda quando mandou, o popup no resto.
+async function agendaAtual() {
+  return L.agendaEfetiva(await lerAgenda(), await lerAgendaDoSite());
 }
 
 // O relogio de Brasilia, independente do fuso da maquina.
@@ -70,40 +83,43 @@ function agoraEmBrasilia() {
   return { hora: Number(p.hour) % 24, minuto: Number(p.minute), segundo: Number(p.second) };
 }
 
-function proximaHoraFixa(horas) {
+// Quando e o proximo horario da lista (minutos do dia, em Brasilia), em ms.
+function proximoHorario(minutosDoDia) {
   const agora = agoraEmBrasilia();
   const minutosAgora = agora.hora * 60 + agora.minuto + agora.segundo / 60;
-  const falta = L.minutosAteProximaHora(horas || [], minutosAgora);
+  const falta = L.minutosAteProximoHorario(minutosDoDia || [], minutosAgora);
   return falta === null ? null : Date.now() + falta * 60000;
 }
 
-// Em quantos minutos o Backlog deve rodar de novo, contando da ULTIMA vez que
-// rodou (a manual conta). Sem isso, cada reagendar() - abrir o Chrome, mexer no
-// popup - recomecaria a contagem do zero e ele nunca chegaria a rodar.
-async function minutosParaOBacklog() {
-  const guardado = await chrome.storage.local.get('ultimoBacklog');
-  const decorrido = guardado.ultimoBacklog
-    ? (Date.now() - guardado.ultimoBacklog) / 60000
-    : MINUTOS_BACKLOG;   // nunca rodou: roda ja, no proximo minuto
-  return Math.max(1, Math.ceil(MINUTOS_BACKLOG - decorrido));
+// Cria o alarme de um macro conforme a agenda dele: intervalo (periodico) ou
+// horarios fixos. 'junto' e 'off' nao criam nada - o primeiro roda dentro do
+// alarme da AT, o segundo nao roda.
+async function criarAlarmeDe(nome, agenda, minutosAteOPrimeiro) {
+  if (agenda.modo === 'intervalo') {
+    chrome.alarms.create(nome, {
+      delayInMinutes: minutosAteOPrimeiro === undefined ? agenda.minutos : minutosAteOPrimeiro,
+      periodInMinutes: agenda.minutos,
+    });
+  } else if (agenda.modo === 'horarios') {
+    const quando = proximoHorario(agenda.horarios);
+    // Sem periodInMinutes: cada disparo marca o proximo. Um periodo fixo de 24h
+    // iria escorregando, e a lista pode ter horarios de espacos diferentes.
+    if (quando) chrome.alarms.create(nome, { when: quando });
+  }
 }
 
 async function reagendar() {
   await chrome.alarms.clear(NOME_ALARME);
   await chrome.alarms.clear(NOME_ALARME_BACKLOG);
-  const agenda = await lerAgenda();
+  const { at, backlog } = await agendaAtual();
 
-  if (agenda.modo === 'intervalo') {
-    const minutos = minutosDaAgenda(agenda);
-    chrome.alarms.create(NOME_ALARME, { delayInMinutes: minutos, periodInMinutes: minutos });
-    chrome.alarms.create(NOME_ALARME_BACKLOG, {
-      delayInMinutes: await minutosParaOBacklog(), periodInMinutes: MINUTOS_BACKLOG });
-  } else if (agenda.modo === 'horarios') {
-    const quando = proximaHoraFixa(agenda.horarios);
-    // Sem periodInMinutes: cada disparo marca o proximo. Um periodo fixo de 24h
-    // iria escorregando, e a lista pode ter horarios de espacos diferentes.
-    if (quando) chrome.alarms.create(NOME_ALARME, { when: quando });
-  }
+  await criarAlarmeDe(NOME_ALARME, at);
+  // O Backlog conta da ULTIMA vez que rodou (a manual conta). Sem isso, cada
+  // reagendar() - abrir o Chrome, mexer no popup - recomecaria a contagem do
+  // zero e ele nunca chegaria a rodar.
+  const guardado = await chrome.storage.local.get('ultimoBacklog');
+  await criarAlarmeDe(NOME_ALARME_BACKLOG, backlog,
+    L.minutosParaProximoBacklog(backlog.minutos, guardado.ultimoBacklog, Date.now()));
 
   const alarme = await chrome.alarms.get(NOME_ALARME);
   await chrome.storage.local.set({ proxima: alarme ? alarme.scheduledTime : null });
@@ -237,13 +253,22 @@ async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado'
 }
 
 chrome.alarms.onAlarm.addListener(async (alarme) => {
-  if (alarme.name === NOME_ALARME_BACKLOG) { await disparar('backlog', false, 'agendado'); return; }
+  if (alarme.name === NOME_ALARME_COMANDOS) { await buscarComandos(); return; }
+
+  if (alarme.name === NOME_ALARME_BACKLOG) {
+    await disparar('backlog', false, 'agendado');
+    // Em horarios fixos o alarme nao tem periodo: cada disparo marca o proximo.
+    if ((await agendaAtual()).backlog.modo === 'horarios') await reagendar();
+    return;
+  }
+
   if (alarme.name !== NOME_ALARME) return;
   await disparar();
-  const agenda = await lerAgenda();
-  if (agenda.modo === 'horarios') {
-    // Nos horarios fixos nao ha alarme proprio do Backlog: ele roda junto.
-    await disparar('backlog');
+  const { at, backlog } = await agendaAtual();
+  if (at.modo === 'horarios') {
+    // Com a AT em horarios fixos e o Backlog sem agenda propria, ele roda
+    // junto com ela ('junto'). Com agenda propria, tem o alarme dele.
+    if (backlog.modo === 'junto') await disparar('backlog');
     await reagendar();
   } else {
     const atual = await chrome.alarms.get(NOME_ALARME);
@@ -271,6 +296,101 @@ async function pendentesDoVigia(limite) {
     throw new Error(motivo);
   }
   return r.json();
+}
+
+// ── a tela Macros do sistema ────────────────────────────────────────────────
+// De 30 em 30s a extensao pergunta ao vigia (que pergunta ao servidor) se
+// alguem clicou em "Rodar" na tela Macros, e traz a agenda que a tela
+// configurou. Nada de o servidor chamar a maquina: ela e que puxa.
+//
+// O custo dessa pergunta constante e por conta do servidor - ele responde da
+// memoria, sem tocar no banco (modules/macros-comando).
+//
+// COMANDO SAI DO SERVIDOR UMA VEZ SO. Por isso, o que chega aqui e executado
+// mesmo que o resto da resposta (a agenda) de problema: cada parte protegida
+// separada.
+let buscandoComandos = false;
+const MAX_COMANDOS_LEMBRADOS = 30;
+
+async function garantirAlarmeDeComandos() {
+  const existente = await chrome.alarms.get(NOME_ALARME_COMANDOS);
+  if (!existente) {
+    chrome.alarms.create(NOME_ALARME_COMANDOS, { delayInMinutes: 0.5, periodInMinutes: 0.5 });
+  }
+}
+
+async function comandosDoVigia() {
+  // O vigia espera ate 75s pelo servidor (15 de conexao + 60 de resposta).
+  const corte = AbortSignal.timeout ? AbortSignal.timeout(90000) : undefined;
+  const r = await fetch(`${VIGIA}/comandos`, { signal: corte });
+  if (!r.ok) throw new Error(`o vigia respondeu ${r.status}`);
+  return r.json();
+}
+
+// Conta ao servidor (pelo vigia) se o macro comecou - e o que a tela mostra.
+async function contarResultado(id, r) {
+  try {
+    await fetch(`${VIGIA}/comandos/${encodeURIComponent(id)}/resultado`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ok: !!(r && r.ok), error: r && r.error ? String(r.error) : null }),
+    });
+  } catch (e) { /* a tela mostra "sem confirmacao" - o macro em si nao depende disto */ }
+}
+
+async function executarComando(c) {
+  if (!L.comandoValido(c)) return;
+
+  // Um id ja visto nao roda de novo, mesmo que o servidor repita a entrega.
+  const { comandosFeitos = [] } = await chrome.storage.local.get('comandosFeitos');
+  if (comandosFeitos.includes(c.id)) return;
+  await chrome.storage.local.set({
+    comandosFeitos: [...comandosFeitos, c.id].slice(-MAX_COMANDOS_LEMBRADOS) });
+
+  // Sem focar: quem clicou no sistema pode estar em qualquer lugar, e puxar o
+  // SPX pra frente numa maquina que outra pessoa esta usando atrapalha. O
+  // macro mostra o andamento no proprio painel da aba dele.
+  //
+  // Sem esperar: abrir a aba pode levar um minuto, e a proxima pergunta ao
+  // vigia nao pode ficar parada atras disso.
+  disparar(c.qual, false, 'site')
+    .then((r) => contarResultado(c.id, r))
+    .catch((e) => contarResultado(c.id, { ok: false, error: String(e.message || e) }));
+}
+
+async function aplicarAgendaDoSite(agenda) {
+  const guardado = await chrome.storage.local.get(CHAVE_VERSAO_SITE);
+  const acao = L.decidirAgendaDoSite(agenda, guardado[CHAVE_VERSAO_SITE]);
+  if (acao === 'manter') return;
+  if (acao === 'limpar') {
+    await chrome.storage.local.remove([CHAVE_SITE, CHAVE_VERSAO_SITE]);
+  } else {
+    await chrome.storage.local.set({ [CHAVE_SITE]: agenda, [CHAVE_VERSAO_SITE]: agenda.versao });
+  }
+  await reagendar();
+  console.log('[XM Macros] agenda do sistema: ' + acao);
+}
+
+async function buscarComandos() {
+  if (buscandoComandos) return;
+  buscandoComandos = true;
+  try {
+    let resposta;
+    try {
+      resposta = await comandosDoVigia();
+    } catch (e) {
+      // Vigia fechado, servidor dormindo, sem internet: silencio e tenta de novo
+      // daqui a 30s. Anotar cada falha encheria o registro de nada.
+      return;
+    }
+    for (const c of Array.isArray(resposta.comandos) ? resposta.comandos : []) {
+      try { await executarComando(c); } catch (e) { console.log('[XM Macros] comando falhou: ' + e); }
+    }
+    try { await aplicarAgendaDoSite(resposta.agenda); }
+    catch (e) { console.log('[XM Macros] agenda do sistema falhou: ' + e); }
+  } finally {
+    buscandoComandos = false;
+  }
 }
 
 chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
@@ -301,5 +421,8 @@ chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener(() => { reagendar(); });
-chrome.runtime.onStartup.addListener(() => { reagendar(); });
+chrome.runtime.onInstalled.addListener(() => { reagendar(); garantirAlarmeDeComandos(); });
+chrome.runtime.onStartup.addListener(() => { reagendar(); garantirAlarmeDeComandos(); });
+// Alarme sobrevive ao service worker dormindo, mas nao a uma extensao recarregada
+// sem onInstalled (ex.: recarregar pela pagina de extensoes em algumas versoes).
+garantirAlarmeDeComandos();
