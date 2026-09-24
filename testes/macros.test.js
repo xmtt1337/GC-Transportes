@@ -137,3 +137,72 @@ test("remover todas as rodadas deixa a lista vazia, sem quebrar", () => {
   a.ctx._macRemoverRodada(0);
   assert.deepStrictEqual(a.m.rodadas, []);
 });
+
+// ── campo de horário da rodada ──────────────────────────────────────────────
+// Eram dois number de 54px: o "19" saía cortado e os minutos sem o zero ("3" em vez de "03").
+// Agora é UM campo de horário do navegador (type=time), que devolve "HH:MM" em 24h.
+test("o horario aparece sempre com dois digitos: 19:03, nunca 19:3", () => {
+  const a = carregar();
+  assert.strictEqual(a.ctx._macHorarioTexto({ hora: 19, minuto: 3 }), "19:03");
+  assert.strictEqual(a.ctx._macHorarioTexto({ hora: 8, minuto: 0 }), "08:00");
+  assert.strictEqual(a.ctx._macHorarioTexto({ hora: 0, minuto: 0 }), "00:00", "meia-noite e um horario valido, nao vazio");
+});
+
+test("hora ou minuto apagados/invalidos viram campo vazio, nao NaN:NaN", () => {
+  const a = carregar();
+  assert.strictEqual(a.ctx._macHorarioTexto({ hora: "", minuto: "" }), "");
+  assert.strictEqual(a.ctx._macHorarioTexto({ hora: null, minuto: 5 }), "");
+  assert.strictEqual(a.ctx._macHorarioTexto({ hora: "abc", minuto: 5 }), "");
+});
+
+test("o valor do campo vira hora e minuto NUMEROS, que e o que o servidor guarda", () => {
+  const a = carregar();
+  a.m.rodadas = [{ hora: 19, minuto: 5, tipo: "abaixo_limite", parametro: 90 }];
+  a.ctx._macMudarHorario(0, "07:05");
+  assert.strictEqual(a.m.rodadas[0].hora, 7);
+  assert.strictEqual(a.m.rodadas[0].minuto, 5);
+  a.ctx._macMudarHorario(0, "00:00");
+  assert.strictEqual(a.m.rodadas[0].hora, 0, "00:00 nao pode virar vazio");
+  assert.strictEqual(a.m.rodadas[0].minuto, 0);
+});
+
+test("campo apagado no meio da edicao fica vazio (o servidor recusa ao salvar, como antes)", () => {
+  const a = carregar();
+  a.m.rodadas = [{ hora: 19, minuto: 5, tipo: "abaixo_limite", parametro: 90 }];
+  a.ctx._macMudarHorario(0, "");
+  assert.strictEqual(a.m.rodadas[0].hora, "");
+  assert.strictEqual(a.m.rodadas[0].minuto, "");
+});
+
+test("mudar o horario nao mexe no resto da rodada", () => {
+  const a = carregar();
+  a.m.rodadas = [{ hora: 19, minuto: 5, tipo: "abaixo_limite", parametro: 90 }];
+  a.ctx._macMudarHorario(0, "20:15");
+  assert.strictEqual(JSON.stringify(a.m.rodadas[0]),
+    JSON.stringify({ hora: 20, minuto: 15, tipo: "abaixo_limite", parametro: 90 }));
+});
+
+test("a linha da rodada leva o horario certo, o criterio marcado e o rotulo do numero", () => {
+  const a = carregar();
+  a.m.tipos = TIPOS;
+  const html = a.ctx._macLinhaRodada({ hora: 19, minuto: 3, tipo: "delivering_pendente", parametro: 0 }, 0);
+  assert.ok(html.includes('type="time"'));
+  assert.ok(html.includes('value="19:03"'));
+  assert.ok(html.includes('<option value="delivering_pendente" selected>'));
+  assert.ok(html.includes(">Pacotes em Delivering<"), "rotulo em letra normal, com inicial maiuscula");
+  assert.ok(html.includes("_macRemoverRodada(0)"));
+});
+
+test("o criterio inteiro vai no title (o campo pode cortar o texto comprido)", () => {
+  const a = carregar();
+  a.m.tipos = TIPOS;
+  const html = a.ctx._macLinhaRodada({ hora: 19, minuto: 3, tipo: "delivering_pendente", parametro: 0 }, 0);
+  assert.ok(html.includes('title="Mais de X pacotes em Delivering"'));
+});
+
+test("rotulo de criterio com HTML nao vira HTML na linha da rodada", () => {
+  const a = carregar();
+  a.m.tipos = [{ id: "x", rotulo: "<b>x</b>", parametroRotulo: "<i>y</i>", parametroPadrao: 0 }];
+  const html = a.ctx._macLinhaRodada({ hora: 1, minuto: 2, tipo: "x", parametro: 0 }, 0);
+  assert.ok(!html.includes("<b>x</b>") && !html.includes("<i>y</i>"));
+});
