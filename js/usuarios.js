@@ -29,41 +29,67 @@ function _carregarUsuarios() {
         const podeMotorista = ["admin", "dev", "finance"].includes((window._gcUser && window._gcUser.role) || "");
         // Anotações de Quantidade é o entregador quem preenche e configura — só dev ativa.
         const podeAnotar = (window._gcUser && window._gcUser.role) === "dev";
-        document.getElementById("adm-usr-tbody").innerHTML = users.map(u => `
-            <tr>
-                <td>
-                    <div style="display:flex;align-items:center;gap:10px">
-                        <div class="adm-usr-avatar">${(u.name || u.username).slice(0, 2).toUpperCase()}</div>
-                        <div style="min-width:0">
-                            <div style="font-weight:600;color:#e2e8f0">${u.name || "—"}</div>
-                            <div style="font-size:11px;color:#7b98b5;margin-top:2px">${u.username}</div>
-                            ${_aparelhoLinha(u)}
-                        </div>
-                    </div>
-                </td>
-                <td>
-                    <span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span>
-                    ${u.senha_temporaria ? `<span class="adm-usr-badge senha-temp" title="Ainda não trocou a senha temporária — não consegue entrar até trocar">Senha pendente</span>` : ""}
-                    ${u.isento_nf ? `<span class="adm-usr-badge nf-isento" title="Vê os fechamentos mesmo com nota fiscal pendente da quinzena anterior">Sem trava de NF</span>` : ""}
-                    ${u.faz_motorista ? `<span class="adm-usr-badge nf-isento" title="Além da rota, tem acesso a Transferências e Devoluções do motorista">Também motorista</span>` : ""}
-                    ${u.pode_anotar_quantidade ? `<span class="adm-usr-badge nf-isento" title="Pode registrar quantidade entregue por transportadora e ver a estimativa de ganho">Anotações de quantidade</span>` : ""}
-                </td>
-                <td>
+        _cadContagem("adm-usr-contagem", users, "entregador", "entregadores");
+        document.getElementById("adm-usr-tbody").innerHTML = users.map(u => {
+            // O que esse entregador tem de diferente do padrão, em texto corrido — precisa ficar
+            // à vista (senão ninguém lembra de quem foi liberado), mas sem virar selo colorido.
+            const liberacoes = [
+                u.isento_nf && `<span title="Vê os fechamentos mesmo com nota fiscal pendente da quinzena anterior">Sem trava de NF</span>`,
+                u.faz_motorista && `<span title="Além da rota, tem acesso a Transferências e Devoluções do motorista">Também motorista</span>`,
+                u.pode_anotar_quantidade && `<span title="Pode registrar quantidade entregue por transportadora e ver a estimativa de ganho">Anotações de quantidade</span>`,
+            ].filter(Boolean);
+            return `
+            <tr class="${u.active ? "" : "cad-inativo"}">
+                <td>${_cadPessoaHtml(u)}</td>
+                <td>${_cadStatusHtml(u)}</td>
+                <td class="cad-liberacoes">${liberacoes.length ? liberacoes.join(" · ") : `<span class="cad-vazio">—</span>`}</td>
+                <td class="cad-acao">
                     <div class="adm-usr-editar-wrap">
                         <button class="adm-usr-action senha" onclick="_toggleMenuUsuario(event,${u.id})">Editar ▾</button>
                         <div class="adm-usr-editar-menu" id="adm-usr-menu-${u.id}">
                             <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleAtivoUsuario(${u.id},${!u.active})">${u.active ? 'Inativar' : 'Ativar'}</button>
-                            <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_resetarSenha(${u.id},'${u.username.replace(/'/g,"\\'")}')">Resetar senha</button>
+                            <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_resetarSenha(${u.id},'${u.username.replace(/'/g,"\'")}')">Resetar senha</button>
                             ${podeFaltante ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleFaltante(${u.id},${!u.pode_pacote_faltante})">${u.pode_pacote_faltante ? 'Desativar' : 'Ativar'} formulário de faltante</button>` : ""}
-                            ${podeNF ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleIsentoNF(${u.id},${!u.isento_nf},'${(u.name || u.username).replace(/'/g,"\\'")}')">${u.isento_nf ? 'Voltar a exigir NF' : 'Liberar fechamento sem NF'}</button>` : ""}
-                            ${podeMotorista ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleFazMotorista(${u.id},${!u.faz_motorista},'${(u.name || u.username).replace(/'/g,"\\'")}')">${u.faz_motorista ? 'Tirar telas de motorista' : 'Liberar telas de motorista'}</button>` : ""}
-                            ${podeAnotar ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleAnotaQuantidade(${u.id},${!u.pode_anotar_quantidade},'${(u.name || u.username).replace(/'/g,"\\'")}')">${u.pode_anotar_quantidade ? 'Desativar' : 'Ativar'} Anotações de Quantidade</button>` : ""}
+                            ${podeNF ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleIsentoNF(${u.id},${!u.isento_nf},'${(u.name || u.username).replace(/'/g,"\'")}')">${u.isento_nf ? 'Voltar a exigir NF' : 'Liberar fechamento sem NF'}</button>` : ""}
+                            ${podeMotorista ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleFazMotorista(${u.id},${!u.faz_motorista},'${(u.name || u.username).replace(/'/g,"\'")}')">${u.faz_motorista ? 'Tirar telas de motorista' : 'Liberar telas de motorista'}</button>` : ""}
+                            ${podeAnotar ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleAnotaQuantidade(${u.id},${!u.pode_anotar_quantidade},'${(u.name || u.username).replace(/'/g,"\'")}')">${u.pode_anotar_quantidade ? 'Desativar' : 'Ativar'} Anotações de Quantidade</button>` : ""}
                         </div>
                     </div>
                 </td>
-            </tr>
-        `).join("");
+            </tr>`;
+        }).join("");
     }).catch(() => { skFim(empty, "Erro ao carregar entregadores."); });
+}
+
+// ── Peças comuns das telas de Cadastros (Entregadores, Motoristas, Usuários) ──
+// Nome em cima, login embaixo, sem bolinha de iniciais. `login` troca o que vai na segunda
+// linha (Usuários esconde o login de dev/finance/sac).
+function _cadPessoaHtml(u, login) {
+    return `
+        <div class="cad-pessoa">
+            <div class="cad-nome">${_cadEsc(u.name || "—")}</div>
+            <div class="cad-login">${login !== undefined ? login : _cadEsc(u.username)}</div>
+            ${typeof _aparelhoLinha === "function" ? _aparelhoLinha(u) : ""}
+        </div>`;
+}
+
+// Ativo/Inativo em texto, e o aviso de senha pendente embaixo — quem está nela não entra.
+function _cadStatusHtml(u) {
+    return `<div class="cad-status">${u.active ? "Ativo" : "Inativo"}</div>`
+        + (u.senha_temporaria ? `<div class="cad-senha-pendente" title="Ainda não trocou a senha temporária — não consegue entrar até trocar">Senha pendente</div>` : "");
+}
+
+// "4 entregadores · 3 ativos" no cabeçalho da tela.
+function _cadContagem(id, lista, singular, plural) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const total = lista.length;
+    const ativos = lista.filter(u => u.active).length;
+    el.textContent = `${total} ${total === 1 ? singular : plural} · ${ativos} ${ativos === 1 ? "ativo" : "ativos"}`;
+}
+
+function _cadEsc(t) {
+    return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
 function _abrirModal(id) {

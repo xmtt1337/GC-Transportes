@@ -24,19 +24,12 @@ function _carregarMotoristas() {
         }
         empty.style.display = "none";
         res.style.display = "";
+        _cadContagem("adm-mot-contagem", users, "motorista", "motoristas");
         document.getElementById("adm-mot-tbody").innerHTML = users.map(u => `
-            <tr>
-                <td>
-                    <div style="display:flex;align-items:center;gap:10px">
-                        <div class="adm-usr-avatar">${(u.name || u.username).slice(0, 2).toUpperCase()}</div>
-                        <div>
-                            <div style="font-weight:600;color:#e2e8f0">${u.name || "—"}</div>
-                            <div style="font-size:11px;color:#7b98b5;margin-top:2px">${u.username}</div>
-                        </div>
-                    </div>
-                </td>
-                <td><span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span></td>
-                <td>
+            <tr class="${u.active ? "" : "cad-inativo"}">
+                <td>${_cadPessoaHtml(u)}</td>
+                <td>${_cadStatusHtml(u)}</td>
+                <td class="cad-acao">
                     <div class="adm-usr-editar-wrap">
                         <button class="adm-usr-action senha" onclick="_toggleMenuMotorista(event,${u.id})">Editar ▾</button>
                         <div class="adm-usr-editar-menu" id="adm-mot-menu-${u.id}">

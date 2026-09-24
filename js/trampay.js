@@ -135,17 +135,20 @@ function _carregarEntregadoresTrampay() {
         const lastImport = data[0]?.last_import
             ? new Date(data[0].last_import).toLocaleString("pt-BR")
             : null;
-        document.getElementById("trampay-ent-counter").innerHTML =
-            `${data.length} entregador${data.length !== 1 ? "es" : ""} cadastrado${data.length !== 1 ? "s" : ""}` +
-            (lastImport ? ` &nbsp;·&nbsp; <span style="color:#7b98b5">Último import: ${lastImport}</span>` : "");
+        document.getElementById("trampay-ent-counter").textContent =
+            `${data.length} entregador${data.length !== 1 ? "es" : ""}` +
+            (lastImport ? ` · última importação em ${lastImport}` : "");
+        // Texto simples em tudo: o tipo da chave PIX vai do lado dela, sem selo.
+        const vazio = `<span class="cad-vazio">—</span>`;
         document.getElementById("trampay-ent-tbody").innerHTML = data.map(u => `
             <tr>
-                <td class="adm-nf-entregador">${u.nome || "—"}</td>
-                <td class="adm-nf-cnpj">${u.documento || "—"}</td>
-                <td class="adm-nf-cnpj">${u.id_externo || "—"}</td>
-                <td class="pag-pix">${u.chave_pix || "—"}</td>
-                <td>${u.chave_pix ? `<span class="pag-pix-badge">${u.tipo_pix || "—"}</span>` : "—"}</td>
-                <td style="font-size:12px;color:#8494a9">${u.data_criacao || "—"}</td>
+                <td class="cad-nome">${_cadEsc(u.nome) || vazio}</td>
+                <td class="cad-num" data-rotulo="Documento">${_cadEsc(u.documento) || vazio}</td>
+                <td class="cad-num" data-rotulo="ID externo">${_cadEsc(u.id_externo) || vazio}</td>
+                <td class="cad-pix" data-rotulo="PIX">${u.chave_pix
+                    ? `${_cadEsc(u.chave_pix)}${u.tipo_pix ? ` <span class="cad-pix-tipo">${_cadEsc(u.tipo_pix)}</span>` : ""}`
+                    : vazio}</td>
+                <td class="cad-num cad-data" data-rotulo="Criado em">${_cadEsc(u.data_criacao) || vazio}</td>
             </tr>
         `).join("");
     }).catch(() => { skFim(empty, "Erro ao carregar entregadores Trampay."); });

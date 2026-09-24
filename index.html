@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260924e">
+<link rel="stylesheet" href="style.css?v=20260924f">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -1372,17 +1372,17 @@ if (_BASE) {
         <!-- TELA IMPORTAR TRAMPAY -->
 
         <!-- TELA ENTREGADORES TRAMPAY -->
-        <div id="tela-trampay-entregadores" class="view tela-full">
+        <div id="tela-trampay-entregadores" class="view tela-full cad">
             <div class="fech-header">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Entregadores — Trampay</div>
-                    <div style="display:flex;gap:8px;align-items:center">
+                <div class="cad-topo">
+                    <div>
+                        <div class="cad-titulo">Entregadores na Trampay</div>
+                        <div class="cad-sub" id="trampay-ent-counter"></div>
+                    </div>
+                    <div class="cad-botoes">
                         <input type="file" id="trampay-file-input" accept=".csv" style="display:none" onchange="_lerCsvTrampay(this)">
-                        <button id="trampay-importar-btn" class="fech-filtrar-btn" style="display:none" onclick="_confirmarImportTrampay()">Importar dados</button>
-                        <label for="trampay-file-input" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;border:1px solid rgba(58,134,255,0.3);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s" onmouseover="this.style.background='rgba(58,134,255,0.16)'" onmouseout="this.style.background='rgba(58,134,255,0.08)'">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                            Importar CSV
-                        </label>
+                        <button id="trampay-importar-btn" class="adm-usr-add-btn" style="display:none" onclick="_confirmarImportTrampay()">Importar dados</button>
+                        <label for="trampay-file-input" class="cad-btn-sec">Importar CSV</label>
                     </div>
                 </div>
                 <!-- preview após selecionar arquivo -->
@@ -1405,17 +1405,15 @@ if (_BASE) {
             <div class="fech-body">
                 <div class="fechamento-empty" id="trampay-ent-empty">Carregando...</div>
                 <div id="trampay-ent-resultado" style="display:none">
-                    <div class="adm-nf-counter" id="trampay-ent-counter"></div>
                     <div class="adm-nf-wrap">
                         <table class="adm-nf-table">
                             <thead>
                                 <tr>
                                     <th>Nome</th>
                                     <th>Documento</th>
-                                    <th>ID Externo</th>
+                                    <th>ID externo</th>
                                     <th>Chave PIX</th>
-                                    <th>Tipo PIX</th>
-                                    <th>Data Criação</th>
+                                    <th>Criado em</th>
                                 </tr>
                             </thead>
                             <tbody id="trampay-ent-tbody"></tbody>
@@ -1569,11 +1567,14 @@ if (_BASE) {
         </div><!-- /tela-anotacoes-relatorio -->
 
         <!-- TELA ADMIN USUÁRIOS -->
-        <div id="tela-admin-usuarios" class="view tela-full">
+        <div id="tela-admin-usuarios" class="view tela-full cad">
             <div class="fech-header">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Entregadores</div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div class="cad-topo">
+                    <div>
+                        <div class="cad-titulo">Entregadores</div>
+                        <div class="cad-sub" id="adm-usr-contagem"></div>
+                    </div>
+                    <div class="cad-botoes">
                         <button class="adm-usr-add-btn" id="btn-add-entregador" style="display:none" onclick="_abrirModalNovoEntregador()">+ Adicionar</button>
                     </div>
                 </div>
@@ -1586,8 +1587,9 @@ if (_BASE) {
                             <thead>
                                 <tr>
                                     <th>Entregador</th>
-                                    <th>Status</th>
-                                    <th>Editar</th>
+                                    <th>Situação</th>
+                                    <th>Liberações</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody id="adm-usr-tbody"></tbody>
@@ -1598,11 +1600,14 @@ if (_BASE) {
         </div><!-- /tela-admin-usuarios -->
 
         <!-- TELA ADMIN MOTORISTAS -->
-        <div id="tela-admin-motoristas" class="view tela-full">
+        <div id="tela-admin-motoristas" class="view tela-full cad">
             <div class="fech-header">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Motoristas</div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div class="cad-topo">
+                    <div>
+                        <div class="cad-titulo">Motoristas</div>
+                        <div class="cad-sub" id="adm-mot-contagem"></div>
+                    </div>
+                    <div class="cad-botoes">
                         <button class="adm-usr-add-btn" id="btn-add-motorista" style="display:none" onclick="_abrirModalNovoMotorista()">+ Adicionar</button>
                     </div>
                 </div>
@@ -1615,8 +1620,8 @@ if (_BASE) {
                             <thead>
                                 <tr>
                                     <th>Motorista</th>
-                                    <th>Status</th>
-                                    <th>Editar</th>
+                                    <th>Situação</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody id="adm-mot-tbody"></tbody>
@@ -2136,16 +2141,19 @@ if (_BASE) {
         </div>
 
         <!-- TELA USUÁRIOS GC -->
-        <div id="tela-admin-usuarios-gc" class="view tela-full">
+        <div id="tela-admin-usuarios-gc" class="view tela-full cad">
             <div class="fech-header">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Usuários</div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div class="cad-topo">
+                    <div>
+                        <div class="cad-titulo">Usuários</div>
+                        <div class="cad-sub" id="gc-usr-contagem"></div>
+                    </div>
+                    <div class="cad-botoes">
                         <!-- Só dev: quem edita o de→para de nome de entregador e o telefone dele é o
                              mesmo tanto que edita cadastro. -->
-                        <button class="usr-modal-btn-cancel" id="btn-conversao-nomes" style="display:none" onclick="abrirNomesPadrao(event)">Conversão de nomes</button>
-                        <button class="usr-modal-btn-cancel" id="btn-entregador-telefone" style="display:none" onclick="abrirEntregadorTelefone(event)">Telefones dos entregadores</button>
-                        <button class="adm-usr-add-btn" onclick="_abrirModalNovoUsuarioGC()">+ Usuário</button>
+                        <button class="cad-btn-sec" id="btn-conversao-nomes" style="display:none" onclick="abrirNomesPadrao(event)">Conversão de nomes</button>
+                        <button class="cad-btn-sec" id="btn-entregador-telefone" style="display:none" onclick="abrirEntregadorTelefone(event)">Telefones dos entregadores</button>
+                        <button class="adm-usr-add-btn" onclick="_abrirModalNovoUsuarioGC()">+ Adicionar</button>
                     </div>
                 </div>
             </div>
@@ -2157,10 +2165,10 @@ if (_BASE) {
                             <thead>
                                 <tr>
                                     <th>Usuário</th>
-                                    <th>Role</th>
+                                    <th>Cargo</th>
                                     <th>Polo</th>
-                                    <th>Status</th>
-                                    <th>Ações</th>
+                                    <th>Situação</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody id="gc-usr-tbody"></tbody>
@@ -4708,9 +4716,9 @@ if (_BASE) {
 <script src="js/fechamentos.js?v=30260812d"></script>
 <script src="js/admin.js?v=30260901a"></script>
 <script src="js/conf-nf.js?v=30260812d"></script>
-<script src="js/trampay.js?v=30260812d"></script>
-<script src="js/usuarios.js?v=30260922a"></script>
-<script src="js/motoristas.js?v=30260812d"></script>
+<script src="js/trampay.js?v=20260924a"></script>
+<script src="js/usuarios.js?v=20260924a"></script>
+<script src="js/motoristas.js?v=20260924a"></script>
 <script src="js/pagamentos.js?v=30260812d"></script>
 <script src="js/faturas.js?v=20260914a"></script>
 <script src="js/notas-fiscais.js?v=30260812d"></script>
@@ -4721,7 +4729,7 @@ if (_BASE) {
 <script src="js/nota-fiscal.js?v=30260812d"></script>
 <script src="js/extravios.js?v=30260812d"></script>
 <script src="js/extravios-registros.js?v=30260818e"></script>
-<script src="js/usuarios-gc.js?v=20260922b"></script>
+<script src="js/usuarios-gc.js?v=20260924a"></script>
 <script src="js/nomes-padrao.js?v=20260922a"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
 <script src="js/macros.js?v=20260924e"></script>
@@ -5184,10 +5192,10 @@ if (_BASE) {
 <!-- MODAL: EDITAR ROLE GC -->
 <div class="usr-modal-overlay" id="modal-editar-role-gc" onclick="_fecharModalSeBackdrop(event,'modal-editar-role-gc')">
     <div class="usr-modal">
-        <div class="usr-modal-title">Editar Role</div>
+        <div class="usr-modal-title">Mudar cargo</div>
         <div class="usr-modal-sub" id="erg-nome" style="color:#e2e8f0;font-size:14px;font-weight:600;margin-bottom:16px"></div>
         <div class="usr-modal-field">
-            <label class="usr-modal-label">Nova Role</label>
+            <label class="usr-modal-label">Novo cargo</label>
             <select class="usr-modal-input" id="erg-role" style="cursor:pointer">
                 <option value="user">Usuário</option>
                 <option value="admin">Administrador</option>

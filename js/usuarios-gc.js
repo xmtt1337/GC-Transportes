@@ -1,13 +1,6 @@
 // ───── USUÁRIOS GC TRANSPORTES ─────
 
 const GC_ROLE_LABELS = { admin: "Administrador", finance: "Financeiro", sac: "SAC", user: "Usuário", dev: "Dev" };
-const GC_ROLE_COLORS = {
-    admin:   { bg: "rgba(58,134,255,0.12)",  color: "#3a86ff" },
-    finance: { bg: "rgba(34,197,94,0.12)",   color: "#22c55e" },
-    sac:     { bg: "rgba(251,146,60,0.12)",  color: "#fb923c" },
-    user:    { bg: "rgba(148,163,184,0.12)", color: "#94a3b8" },
-    dev:     { bg: "rgba(168,85,247,0.12)",  color: "#a855f7" },
-};
 
 // Polos/bases. Joaçaba consta porque tem gente lotada lá, mas não recebe Shopee.
 const GC_POLOS = [
@@ -70,45 +63,47 @@ function _carregarUsuariosGC() {
         }
         empty.style.display = "none";
         res.style.display = "";
+        _cadContagem("gc-usr-contagem", gcUsers, "usuário", "usuários");
         document.getElementById("gc-usr-tbody").innerHTML = gcUsers.map(u => {
-            const rc = GC_ROLE_COLORS[u.role] || GC_ROLE_COLORS.user;
             const rl = GC_ROLE_LABELS[u.role] || u.role;
             const nomeEsc = (u.name || u.username).replace(/'/g, "\\'");
-            return `<tr>
-                <td>
-                    <div style="display:flex;align-items:center;gap:10px">
-                        <div class="adm-usr-avatar">${(u.name || u.username).slice(0,2).toUpperCase()}</div>
-                        <div style="min-width:0">
-                            <div style="font-weight:600;color:#e2e8f0">${u.name || "—"}</div>
-                            <div style="font-size:11px;color:#7b98b5;margin-top:2px">${['dev','finance','sac'].includes(u.role) ? '••••••' : u.username}</div>
-                            ${_aparelhoLinha(u)}
-                        </div>
-                    </div>
-                </td>
-                <td>
-                    <span style="background:${rc.bg};color:${rc.color};border:1px solid ${rc.color}44;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">${rl}</span>
-                </td>
+            const userEsc = u.username.replace(/'/g, "\\'");
+            // As quatro ações num menu só, como em Entregadores — antes eram quatro botões
+            // coloridos por linha. Deletar fica por último, em vermelho.
+            return `<tr class="${u.active ? "" : "cad-inativo"}">
+                <td>${_cadPessoaHtml(u, ['dev','finance','sac'].includes(u.role) ? '••••••' : undefined)}</td>
+                <td class="cad-cargo">${_cadEsc(rl)}</td>
                 <td>
                     <select class="gc-polo-select" data-anterior="${u.polo || ""}" onchange="_trocarPoloGC(${u.id}, this.value, this)">
                         ${GC_POLOS.map(p => `<option value="${p.chave}"${u.polo === p.chave ? " selected" : ""}>${p.label}</option>`).join("")}
-                        <option value=""${!u.polo ? " selected" : ""}>— sem polo —</option>
+                        <option value=""${!u.polo ? " selected" : ""}>Sem polo</option>
                     </select>
                 </td>
-                <td>
-                    <span class="adm-usr-badge ${u.active ? 'ativo' : 'inativo'}">${u.active ? 'Ativo' : 'Inativo'}</span>
-                    ${u.senha_temporaria ? `<span class="adm-usr-badge senha-temp" title="Ainda não trocou a senha temporária — não consegue entrar até trocar">Senha pendente</span>` : ""}
-                </td>
-                <td>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap">
-                        <button class="adm-usr-action senha" onclick="_abrirEditarRoleGC(${u.id},'${u.role}','${nomeEsc}')">Editar Role</button>
-                        <button class="adm-usr-action ${u.active ? 'inativar' : 'ativar'}" onclick="_toggleAtivoGC(${u.id},${!u.active})">${u.active ? 'Inativar' : 'Ativar'}</button>
-                        <button class="adm-usr-action senha" onclick="_resetarSenhaGC(${u.id},'${u.username.replace(/'/g,"\\'")}')">Resetar Senha</button>
-                        <button class="adm-usr-action deletar" onclick="_deletarUsuarioGC(${u.id},'${u.username.replace(/'/g,"\\'")}')">Deletar</button>
+                <td>${_cadStatusHtml(u)}</td>
+                <td class="cad-acao">
+                    <div class="adm-usr-editar-wrap">
+                        <button class="adm-usr-action senha" onclick="_toggleMenuGC(event,${u.id})">Editar ▾</button>
+                        <div class="adm-usr-editar-menu" id="gc-usr-menu-${u.id}">
+                            <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_abrirEditarRoleGC(${u.id},'${u.role}','${nomeEsc}')">Mudar cargo</button>
+                            <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleAtivoGC(${u.id},${!u.active})">${u.active ? 'Inativar' : 'Ativar'}</button>
+                            <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_resetarSenhaGC(${u.id},'${userEsc}')">Resetar senha</button>
+                            <button class="adm-usr-editar-item perigo" onclick="_fecharMenusUsuario();_deletarUsuarioGC(${u.id},'${userEsc}')">Deletar</button>
+                        </div>
                     </div>
                 </td>
             </tr>`;
         }).join("");
     }).catch(() => { skFim(empty, "Erro ao carregar usuários."); });
+}
+
+// Menu "Editar" da linha: só um aberto por vez (fecha os de Entregadores também), e clicar
+// fora fecha — o ouvinte de clique é o de usuarios.js.
+function _toggleMenuGC(event, id) {
+    event.stopPropagation();
+    const menu = document.getElementById(`gc-usr-menu-${id}`);
+    const jaAberto = menu.classList.contains("open");
+    _fecharMenusUsuario();
+    if (!jaAberto) menu.classList.add("open");
 }
 
 // ── Novo usuário ──
