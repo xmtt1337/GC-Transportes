@@ -7,7 +7,8 @@ let _wacSelecionadas = new Set(); // ids ("e12"/"r5") marcados pra excluir
 let _wacDados = [];               // última resposta do servidor, pra filtrar sem re-buscar
 let _wacPedidoAtual = "";         // pedido do card que abriu a conversa
 let _wacResolvidoAtual = false;
-let _wacRelogio = null;           // redesenha o funil pra acompanhar a passagem do tempo
+let _wacChatEntregador = false;   // a conversa aberta é com um entregador (sem "resolvido", sem pedido)
+let _wacRelogio = null;          // redesenha o funil pra acompanhar a passagem do tempo
 let _wacPrecisaDestacar = false;  // rolar até a mensagem do pedido só na abertura
 let _wacAba = "acareacao";        // "acareacao" (com prazo) | "outros" | "chamaram" | "entregadores"
 let _wacTransp = null;            // transportadora selecionada; null = escolher no 1º render
@@ -301,8 +302,9 @@ function _wacCarregarLista(jaPediuPolo) {
         .then(rows => {
             if (rows && rows.polo_pendente) { _wacPedirPolo(empty, jaPediuPolo); return; }
             if (!Array.isArray(rows) || !rows.length) {
-                // "Entregadores" não depende de conversa nenhuma — sem isso, quem entrasse
-                // direto nessa aba com zero conversas de cliente veria a aba errada vazia.
+                // Sem nenhuma conversa a aba Entregadores ainda tem o que desenhar (o aviso de
+                // "nenhuma conversa" e o registro de avisos, que vive de outro endpoint) — sem
+                // isso, quem entrasse direto nela veria a aba errada vazia.
                 if (_wacAba === "entregadores") { _wacRenderizar(); if (_wacAlvoUrl) _wacAbrirDaUrl(_wacAlvoUrl); return; }
                 skFim(empty, "Nenhuma conversa registrada ainda.");
                 return;
@@ -411,9 +413,17 @@ const _wacSemEnvio    = r => !r.primeiro_envio;
 const _wacEhAcareacao = r => !r.enviado_por_role || WA_ROLES_ACAREACAO.includes(r.enviado_por_role);
 
 function _wacAbaDe(conversa) {
+    // Conversa com entregador vem marcada pelo servidor (tem_entregador). Vale ANTES do resto:
+    // o aviso automático não tem autor nem cargo, e sem isto cairia na acareação — que é onde
+    // vai quem não tem cargo (_wacEhAcareacao).
+    if (conversa.tem_entregador) return "entregadores";
     if (_wacSemEnvio(conversa)) return "chamaram";
     return _wacEhAcareacao(conversa) ? "acareacao" : "outros";
 }
+
+// "Nos chamaram" e "Entregadores" não vêm de um disparo com transportadora — não tem o que
+// separar por ela, e a barra some.
+const _wacSemTransp = aba => aba === "chamaram" || aba === "entregadores";
 
 // Busca local por pedido, número ou nome — os dados já estão carregados, não refaz requisição.
 function _wacCasaBusca(conversa, termo) {
@@ -428,9 +438,7 @@ function _wacTermoBusca() {
 }
 
 function _wacFiltrar() {
-    // "Entregadores" não é conversa — não faz sentido _wacIrOndeEsta() pular pra outra aba
-    // atrás do termo em _wacDados, que nem é o que essa aba mostra.
-    if (_wacAba !== "entregadores") _wacIrOndeEsta();
+    _wacIrOndeEsta();
     _wacRenderizar();
 }
 
@@ -444,13 +452,13 @@ function _wacIrOndeEsta() {
     if (!achados.length) return; // não existe mesmo: a tela vazia é a resposta certa
 
     const naVisao = r => _wacAbaDe(r) === _wacAba &&
-        (_wacAba === "chamaram" || _wacTranspDe(r) === _wacTransp);
+        (_wacSemTransp(_wacAba) || _wacTranspDe(r) === _wacTransp);
     if (achados.some(naVisao)) return; // já está à vista, não mexe em nada
 
     // Prefere o resultado da aba aberta: trocar só de transportadora desloca menos.
     const alvo = achados.find(r => _wacAbaDe(r) === _wacAba) || achados[0];
     _wacAba = _wacAbaDe(alvo);
-    if (_wacAba !== "chamaram") _wacTransp = _wacTranspDe(alvo);
+    if (!_wacSemTransp(_wacAba)) _wacTransp = _wacTranspDe(alvo);
     document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.aba === _wacAba));
 }
@@ -585,10 +593,55 @@ function _wacExportar(aba) {
     XLSX.writeFile(wb, `ativos_${aba === "acareacao" ? "acareacoes" : "outros"}_${hoje}.xlsx`);
 }
 
-// ── Entregadores (aviso automático de rota incompleta) ──
-// Não é conversa: é o registro de um aviso que o próprio sistema mandou (19:05 e 22:05,
-// ver modules/avisos-entregador). Sem prazo, sem resolver, sem transportadora — só quem
-// recebeu o quê, quando, e se deu certo.
+// ── Entregadores ──
+// Conversa com entregador: nasce do aviso de rota incompleta (automático às 19:05/22:05, ou o
+// botão Alertar de Na Rua > Shopee — ver modules/avisos-entregador) e continua com o que ele
+// responde. Um card POR ENTREGADOR, sem pedido, sem prazo e sem "resolvido": é atendimento
+// corrido, não um caso com desfecho. O chat é o mesmo dos outros ativos.
+function _wacCardsEntregadores(itens) {
+    return itens.map(r => {
+        const aviso = _wacSeloNaoLidas(r);
+        const nome = r.nome_cliente || _wacFormatarNumero(r.numero);
+        // Ele respondeu depois do nosso último aviso? É o que pede atenção, então é o que o
+        // card diz — em vez de repetir sempre "aviso enviado".
+        const situacao = r.tem_resposta_nova ? "Respondeu" : "Aviso enviado";
+        return `
+        <div class="wac-card${r.nao_lidas ? " nao-lida" : ""}"
+             onclick="_wacAbrirConversa('${r.numero}','',false)">
+            <div class="wac-card-avatar">${WA_AVATAR_SVG}</div>
+            <div class="wac-card-info">
+                <div class="wac-card-nome">${_wacEscapar(nome)}</div>
+                <div class="wac-card-numero">${_wacFormatarNumero(r.numero)}</div>
+                <div class="wac-card-prazo">${situacao} · ${_wacDataCurta(r.ultima)}${
+                    r.nao_lidas ? "" : r.lido_em ? " · lida" : ""}</div>
+            </div>
+            ${aviso}
+        </div>`;
+    }).join("");
+}
+
+function _wacRenderizarEntregadores() {
+    const termo = _wacTermoBusca();
+    const itens = _wacDados.filter(r => _wacAbaDe(r) === "entregadores" && _wacCasaBusca(r, termo));
+    const el = document.getElementById("wac-lista-entregadores");
+    if (!itens.length) {
+        el.innerHTML = `<div class="wac-coluna-vazia">${termo
+            ? "Nenhum entregador encontrado."
+            : "Nenhuma conversa com entregador ainda. Elas aparecem aqui assim que um aviso de rota incompleta for enviado."}</div>`;
+        return;
+    }
+    const { itensPagina, pagina, totalPaginas, chave } = _wacPaginar("entregadores", itens);
+    el.innerHTML = _wacCardsEntregadores(itensPagina) + _wacPaginacaoHTML(chave, pagina, totalPaginas);
+}
+
+// ── Registro de avisos (recolhido no fim da aba Entregadores) ──
+// O log de cada envio, inclusive o que FALHOU (telefone não achado, Meta recusou): esses não
+// chegaram a ninguém, então não viram conversa — e sem este registro ninguém saberia que o
+// entregador ficou sem aviso. Só busca quando é aberto.
+function _wacEntAoAbrirRegistro(det) {
+    if (det.open) _wacEntCarregar(document.getElementById("wac-ent-dia").value || "");
+}
+
 function _wacEntCarregar(dia) {
     _wacEntCarregado = false;
     document.getElementById("wac-ent-lista").innerHTML = `<div class="fechamento-empty">Carregando...</div>`;
@@ -667,7 +720,10 @@ function _wacEntDispararManual(rodada) {
                         d.disparou ? `${d.avaliados} entregador${d.avaliados !== 1 ? "es" : ""} avaliado${d.avaliados !== 1 ? "s" : ""}.` : `Não disparou: ${d.motivo}`,
                         "Rodada executada"
                     );
-                    _wacEntCarregar(document.getElementById("wac-ent-dia").value || "");
+                    // Rodada nova = conversas novas na lista; e o registro, se estiver aberto.
+                    _wacCarregarLista();
+                    const registro = document.getElementById("wac-ent-registro");
+                    if (registro && registro.open) _wacEntCarregar(document.getElementById("wac-ent-dia").value || "");
                 })
                 .catch(() => gcAlert("Erro ao conectar com o servidor."));
         },
@@ -681,9 +737,6 @@ function _wacTrocarAba(aba) {
     _wacRevalidarTransp = true; // mantém a transportadora se ela tiver conversa na aba nova
     document.querySelectorAll("#wac-abas .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.aba === aba));
-    // Dado e endpoint próprios — sem isso a aba trocaria mas ficaria esperando um fetch
-    // que nunca é pedido (_wacEntRenderizar não busca nada sozinho, só redesenha).
-    if (aba === "entregadores") _wacEntCarregar();
     _wacRenderizar();   // pode trocar a transportadora, então a URL sai depois
     _wacAtualizarUrl();
 }
@@ -745,15 +798,20 @@ function _wacRenderizarTranspTabs(itens) {
 function _wacRenderizar() {
     const termo = _wacTermoBusca();
 
-    // "Entregadores" não é conversa (não tem cliente, não tem pedido pra resolver) — é o
-    // registro do aviso automático de rota incompleta. Dado próprio, endpoint próprio,
-    // sem nada a ver com _wacDados/_wacCarregarLista — por isso sai cedo daqui.
+    // "Entregadores" é conversa como as outras (cards + chat), só que por entregador e não por
+    // pedido: os dados são os mesmos de _wacDados, com a marca tem_entregador vinda do
+    // servidor. A view mora fora de #wac-lista-resultado, então sai cedo daqui em vez de
+    // passar pela barra de transportadoras e pelas colunas de prazo/desfecho.
     document.getElementById("wac-visao-entregadores").style.display = _wacAba === "entregadores" ? "" : "none";
     if (_wacAba === "entregadores") {
         document.getElementById("wac-lista-empty").style.display = "none";
         document.getElementById("wac-lista-resultado").style.display = "none";
         document.getElementById("wac-transp-tabs").style.display = "none";
-        _wacEntRenderizar();
+        // Só dev dispara rodada na mão (mesmo controle de Conversão de nomes / Telefones).
+        const role = window._gcUser && window._gcUser.role;
+        document.getElementById("wac-ent-manual").style.display = role === "dev" ? "flex" : "none";
+        _wacRenderizarEntregadores();
+        _wacEntRenderizar(); // o registro de avisos, se já tiver sido aberto
         return;
     }
 
@@ -827,11 +885,17 @@ function _wacAbrirConversa(numero, pedido, resolvido) {
     _wacResolvidoAtual = resolvido === true || resolvido === "true";
     _wacPrecisaDestacar = true; // só nesta abertura
     _wacSelecionadas.clear();
-    document.getElementById("wac-chat-nome").innerText = _wacFormatarNumero(numero);
-    document.getElementById("wac-chat-numero").innerText = "";
+    const conversa = _wacDados.find(r => r.numero === numero && (r.pedido || "") === (pedido || ""));
+    // Conversa com entregador mostra o NOME dele no topo e o número embaixo: quem atende
+    // precisa saber com quem está falando. O cabeçalho das outras mostra só o número, de
+    // propósito (contato não salvo, como aparece de verdade, é o que dá credibilidade ao print
+    // pra transportadora) — e conversa com entregador não é print de prova.
+    _wacChatEntregador = !!conversa && _wacAbaDe(conversa) === "entregadores";
+    const nomeEntregador = _wacChatEntregador ? conversa.nome_cliente : null;
+    document.getElementById("wac-chat-nome").innerText = nomeEntregador || _wacFormatarNumero(numero);
+    document.getElementById("wac-chat-numero").innerText = nomeEntregador ? _wacFormatarNumero(numero) : "";
     // A rota vai explícita: a tela do chat não tem entrada em _TELA_ROTAS porque a URL dela
     // depende de QUAL conversa está aberta, não só da tela.
-    const conversa = _wacDados.find(r => r.numero === numero && (r.pedido || "") === (pedido || ""));
     mostrarTela("tela-whatsapp-conversa-chat", _wacRotaDaConversa(conversa, numero, pedido));
     _wacCarregarConversa();
     // Recarrega sozinho enquanto a conversa está aberta, pra resposta do cliente
@@ -1057,6 +1121,10 @@ function _wacAlternarSelecao(id) {
 function _wacAtualizarBarraSelecao() {
     const barra = document.getElementById("wac-selecao-barra");
     if (!barra) return;
+    // "Marcar respondido" resolve um PEDIDO; conversa com entregador não tem pedido. Só sobra
+    // Excluir (tirar mensagem do histórico do sistema).
+    const marcar = barra.querySelector(".wac-selecao-responder");
+    if (marcar) marcar.style.display = _wacChatEntregador ? "none" : "";
     const n = _wacSelecionadas.size;
     barra.style.display = n ? "" : "none";
     if (n) document.getElementById("wac-selecao-contagem").innerText =

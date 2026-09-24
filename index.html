@@ -2482,21 +2482,30 @@ if (_BASE) {
                     </div>
                 </div>
 
-                <!-- "Entregadores": não é conversa, é o registro do aviso automático de rota
-                     incompleta (modules/avisos-entregador) — fica fora de #wac-lista-resultado
-                     de propósito, pra não depender do fetch de /admin/whatsapp/conversas. -->
+                <!-- "Entregadores": conversas com os entregadores (aviso de rota incompleta +
+                     o que eles respondem) — um card por entregador, mesmo chat dos outros
+                     ativos. Fica fora de #wac-lista-resultado porque não usa a barra de
+                     transportadoras nem as colunas de prazo/desfecho. -->
                 <div id="wac-visao-entregadores" style="display:none">
-                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-                        <select id="wac-ent-dia" class="fech-select" onchange="_wacEntCarregar(this.value)" style="max-width:180px">
-                            <option value="">Todos os dias</option>
-                        </select>
-                        <!-- Só dev: mesmo controle de quem edita Conversão de nomes / Telefones. -->
-                        <div id="wac-ent-manual" style="display:none;gap:8px;flex-wrap:wrap">
-                            <button type="button" class="usr-modal-btn-cancel" onclick="_wacEntDispararManual('19:05')">Disparar 19:05 agora</button>
-                            <button type="button" class="usr-modal-btn-cancel" onclick="_wacEntDispararManual('22:05')">Disparar 22:05 agora</button>
-                        </div>
+                    <!-- Só dev: mesmo controle de quem edita Conversão de nomes / Telefones. -->
+                    <div id="wac-ent-manual" style="display:none;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:14px">
+                        <button type="button" class="usr-modal-btn-cancel" onclick="_wacEntDispararManual('19:05')">Disparar 19:05 agora</button>
+                        <button type="button" class="usr-modal-btn-cancel" onclick="_wacEntDispararManual('22:05')">Disparar 22:05 agora</button>
                     </div>
-                    <div id="wac-ent-lista"><div class="fechamento-empty">Carregando...</div></div>
+                    <div class="wac-lista-simples" id="wac-lista-entregadores"></div>
+
+                    <!-- O log de cada envio, inclusive o que falhou (telefone não achado, Meta
+                         recusou): esses não chegaram a ninguém, então não viram conversa. Só
+                         busca quando é aberto. -->
+                    <details id="wac-ent-registro" ontoggle="_wacEntAoAbrirRegistro(this)" style="margin-top:22px">
+                        <summary style="cursor:pointer;color:#8494a9;font-size:13px;font-weight:600">Registro de avisos (enviados e falhas)</summary>
+                        <div style="margin:12px 0">
+                            <select id="wac-ent-dia" class="fech-select" onchange="_wacEntCarregar(this.value)" style="max-width:180px">
+                                <option value="">Todos os dias</option>
+                            </select>
+                        </div>
+                        <div id="wac-ent-lista"><div class="fechamento-empty">Carregando...</div></div>
+                    </details>
                 </div>
             </div>
         </div><!-- /tela-whatsapp-conversas -->
@@ -4735,7 +4744,7 @@ if (_BASE) {
 <script src="js/macros.js?v=20260923a"></script>
 <script src="js/todos-usuarios.js?v=30260812d"></script>
 <script src="js/whatsapp-teste.js?v=20260921d"></script>
-<script src="js/whatsapp-conversa.js?v=20260923a"></script>
+<script src="js/whatsapp-conversa.js?v=20260923b"></script>
 <script src="js/modals.js?v=30260812d"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
 <script src="js/fechamento-criar.js?v=30260812d"></script>
