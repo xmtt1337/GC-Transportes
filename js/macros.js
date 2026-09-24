@@ -110,7 +110,11 @@ function _macHtmlItem(item, m) {
         <div class="mac-item">
             <div class="mac-item-id">${nome}</div>
             <div class="mac-item-agenda">${_macResumoHtml(m.resumo)}</div>
-            <div class="mac-item-status ${m.ativo ? "ligado" : "desligado"}">${m.ativo ? "Ativo" : "Desligado"}</div>
+            <div class="mac-item-status ${m.ativo ? "ligado" : "desligado"}">
+                <button type="button" class="gc-toggle mac-toggle${m.ativo ? " gc-toggle--on" : ""}" role="switch" aria-checked="${m.ativo ? "true" : "false"}"
+                        title="${m.ativo ? "Desligar" : "Ligar"}" onclick="_macAlternarAtivo('${_macEsc(m.chave)}', this)"><span class="gc-toggle__knob"></span></button>
+                <span class="mac-status-texto">${m.ativo ? "Ativo" : "Desligado"}</span>
+            </div>
             <div class="mac-item-acao"><button type="button" class="mac-configurar" onclick="_macAbrirConfigurar('${_macEsc(m.chave)}')">Configurar</button></div>
         </div>`;
 }
@@ -142,6 +146,41 @@ function _macHtmlSecoes(lista) {
         ? _MAC_SECOES.concat([{ titulo: "Outros", grupos: [{ itens: sobra.map(m => ({ nome: m.nome, detalhe: m.descricao, chave: m.chave })) }] }])
         : _MAC_SECOES;
     return secoes.map(s => _macHtmlSecao(s, porChave)).join("");
+}
+
+// ── Ligar/desligar direto na lista ──
+// O interruptor da linha grava só o "ativo" (as rodadas ficam como estão), sem passar pelo
+// modal. Troca na hora e volta atrás se o servidor recusar.
+function _macAlternarAtivo(chave, botao) {
+    const m = _macLista.find(x => x.chave === chave);
+    if (!m || (botao && botao.disabled)) return;
+    const antes = !!m.ativo;
+    const novo = !antes;
+
+    const redesenhar = () => {
+        const lista = document.getElementById("mac-lista");
+        if (lista) lista.innerHTML = _macHtmlSecoes(_macLista);
+    };
+    m.ativo = novo;
+    redesenhar();
+
+    fetch(`${API}/admin/macros/${_macRotaDaChave(chave)}/ativo`, {
+        method: "PUT",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ ativo: novo })
+    })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            if (ok) return;
+            m.ativo = antes;
+            redesenhar();
+            gcAlert(d.error || "Não foi possível mudar.");
+        })
+        .catch(() => {
+            m.ativo = antes;
+            redesenhar();
+            gcAlert("Erro ao conectar com o servidor.");
+        });
 }
 
 // Nome do macro no título do modal: o da tela ("Avisos de rota incompleta — Shopee XPT_CFC"),

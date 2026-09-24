@@ -2450,7 +2450,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     background: rgba(255,255,255,0.025); border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .mac-item {
-    display: grid; grid-template-columns: minmax(180px, 240px) 1fr 84px 104px;
+    display: grid; grid-template-columns: minmax(180px, 240px) 1fr 130px 104px;
     align-items: center; gap: 16px; padding: 14px 18px;
 }
 .mac-item + .mac-item { border-top: 1px solid rgba(255,255,255,0.06); }
@@ -2459,8 +2459,10 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .mac-item-agenda { font-size: 13px; color: #aab6c6; min-width: 0; }
 .mac-agenda-linha { display: flex; gap: 12px; line-height: 1.7; }
 .mac-agenda-hora { color: #e2e8f0; font-variant-numeric: tabular-nums; flex: none; }
-.mac-item-status { font-size: 13px; }
-.mac-item-status.ligado { color: #4ade80; }
+.mac-item-status { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.mac-toggle { padding: 0; font: inherit; }
+.mac-toggle:focus-visible { outline: 2px solid #6aa5ff; outline-offset: 2px; }
+.mac-item-status.ligado { color: #e2e8f0; }
 .mac-item-status.desligado { color: #7b8ba1; }
 .mac-item-acao { text-align: right; }
 .mac-configurar {

@@ -586,3 +586,72 @@ test("o titulo do modal usa o nome da tela", () => {
   const a = carregar();
   assert.strictEqual(a.ctx._macTituloModal("avisos_entregador"), "Avisos de rota incompleta — Shopee XPT_CFC");
 });
+
+// ── interruptor de ligar/desligar na lista ──────────────────────────────────
+// Grava só o "ativo" (rota própria, as rodadas ficam como estão), troca na hora e volta atrás
+// se o servidor recusar — a tela nunca fica dizendo "Ativo" de um aviso que está desligado.
+function carregarComFetch(resposta) {
+  const els = {};
+  const chamadas = [];
+  const alertas = [];
+  const ctx = vm.createContext({
+    console, API: "https://api.teste", token: "tk",
+    document: { getElementById: (id) => els[id] || (els[id] = { id, style: {}, innerHTML: "" }) },
+    gcAlert: (msg) => alertas.push(msg),
+    fetch: (url, opcoes) => {
+      chamadas.push({ url, opcoes });
+      return resposta();
+    },
+  });
+  vm.runInContext(fonte + ACESSOR + ";globalThis.__lista = { set v(x) { _macLista = x; }, get v() { return _macLista; } };", ctx, { filename: "macros.js" });
+  return { ctx, els, chamadas, alertas, lista: ctx.__lista };
+}
+const esperar = () => new Promise((resolve) => setImmediate(resolve));
+
+test("a linha do aviso tem o interruptor, marcado conforme o ativo", () => {
+  const a = carregar();
+  const ligado = a.ctx._macHtmlSecoes([AVISO]);
+  assert.ok(ligado.includes("_macAlternarAtivo('avisos_entregador', this)"));
+  assert.ok(ligado.includes('aria-checked="true"') && ligado.includes("gc-toggle--on"));
+  const desligado = a.ctx._macHtmlSecoes([{ ...AVISO, ativo: false }]);
+  assert.ok(desligado.includes('aria-checked="false"') && !desligado.includes("gc-toggle--on"));
+});
+
+test("itens ainda nao integrados nao tem interruptor", () => {
+  const a = carregar();
+  assert.strictEqual(a.ctx._macHtmlSecoes([AVISO]).split("_macAlternarAtivo(").length - 1, 1);
+});
+
+test("clicar no interruptor desliga na hora e manda so o ativo pra rota certa", async () => {
+  const a = carregarComFetch(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, ativo: false }) }));
+  a.lista.v = [{ ...AVISO }];
+  a.ctx._macAlternarAtivo("avisos_entregador", null);
+  assert.strictEqual(a.lista.v[0].ativo, false);
+  assert.ok(a.els["mac-lista"].innerHTML.includes(">Desligado<"), "a tela ja mostra desligado");
+  assert.strictEqual(a.chamadas[0].url, "https://api.teste/admin/macros/avisos-entregador/ativo");
+  assert.strictEqual(a.chamadas[0].opcoes.method, "PUT");
+  assert.strictEqual(a.chamadas[0].opcoes.body, JSON.stringify({ ativo: false }));
+  await esperar();
+  assert.strictEqual(a.lista.v[0].ativo, false);
+  assert.strictEqual(a.alertas.length, 0);
+});
+
+test("se o servidor recusa, o interruptor volta como estava e avisa", async () => {
+  const a = carregarComFetch(() => Promise.resolve({ ok: false, json: () => Promise.resolve({ error: "Acesso negado" }) }));
+  a.lista.v = [{ ...AVISO, ativo: false }];
+  a.ctx._macAlternarAtivo("avisos_entregador", null);
+  assert.strictEqual(a.lista.v[0].ativo, true);
+  await esperar();
+  assert.strictEqual(a.lista.v[0].ativo, false);
+  assert.ok(a.els["mac-lista"].innerHTML.includes(">Desligado<"));
+  assert.deepStrictEqual(a.alertas, ["Acesso negado"]);
+});
+
+test("sem conexao, o interruptor tambem volta", async () => {
+  const a = carregarComFetch(() => Promise.reject(new Error("rede")));
+  a.lista.v = [{ ...AVISO }];
+  a.ctx._macAlternarAtivo("avisos_entregador", null);
+  await esperar();
+  assert.strictEqual(a.lista.v[0].ativo, true);
+  assert.deepStrictEqual(a.alertas, ["Erro ao conectar com o servidor."]);
+});
