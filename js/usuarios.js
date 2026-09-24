@@ -42,6 +42,7 @@ function _carregarUsuarios() {
             <tr class="${u.active ? "" : "cad-inativo"}">
                 <td>${_cadPessoaHtml(u)}</td>
                 <td>${_cadStatusHtml(u)}</td>
+                <td data-rotulo="Último acesso">${_cadAcessoHtml(u)}</td>
                 <td class="cad-liberacoes">${liberacoes.length ? liberacoes.join(" · ") : `<span class="cad-vazio">—</span>`}</td>
                 <td class="cad-acao">
                     <div class="adm-usr-editar-wrap">
@@ -69,8 +70,35 @@ function _cadPessoaHtml(u, login) {
         <div class="cad-pessoa">
             <div class="cad-nome">${_cadEsc(u.name || "—")}</div>
             <div class="cad-login">${login !== undefined ? login : _cadEsc(u.username)}</div>
-            ${typeof _aparelhoLinha === "function" ? _aparelhoLinha(u) : ""}
         </div>`;
+}
+
+// ── Último acesso ──
+// O servidor manda quantos segundos faz desde o último acesso (calculado no banco, sem
+// depender do relógio de quem olha); null = nunca entrou. Até 5 min conta como online.
+const _CAD_ONLINE_SEGUNDOS = 5 * 60;
+
+function _cadTextoAcesso(segundos) {
+    if (segundos == null || segundos === "") return "Nunca acessou";
+    const seg = Math.max(0, Number(segundos));
+    if (seg <= _CAD_ONLINE_SEGUNDOS) return "Online agora";
+    const min = Math.round(seg / 60);
+    if (min < 60) return `há ${min} min`;
+    const horas = Math.round(min / 60);
+    if (horas < 24) return `há ${horas}h`;
+    const dias = Math.round(horas / 24);
+    if (dias === 1) return "ontem";
+    if (dias < 30) return `há ${dias} dias`;
+    const meses = Math.round(dias / 30);
+    if (meses < 12) return `há ${meses} ${meses === 1 ? "mês" : "meses"}`;
+    const anos = Math.round(meses / 12);
+    return `há ${anos} ${anos === 1 ? "ano" : "anos"}`;
+}
+
+function _cadAcessoHtml(u) {
+    const seg = u.segundos_desde_acesso;
+    const classe = seg == null ? "nunca" : Number(seg) <= _CAD_ONLINE_SEGUNDOS ? "online" : "";
+    return `<span class="cad-acesso ${classe}">${_cadTextoAcesso(seg)}</span>`;
 }
 
 // Ativo/Inativo em texto, e o aviso de senha pendente embaixo — quem está nela não entra.

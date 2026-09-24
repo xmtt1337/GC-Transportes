@@ -58,23 +58,6 @@ function gcSenhaGerada(lista, titulo) {
     });
 }
 
-// Aparelho do último login, sob o nome na lista de usuários. Vai numa linha só e cortada:
-// a string completa ("Samsung SM-A515F • Android 13 • Chrome 120") estoura a coluna, e o
-// que interessa de relance é o começo — o modelo.
-function _aparelhoLinha(u) {
-    // Só dev. O servidor já não manda o campo pra quem não é, mas a checagem fica aqui
-    // também pra tela não depender disso pra se comportar.
-    if (!window._gcUser || window._gcUser.role !== "dev") return "";
-    if (!u || !u.ultimo_aparelho) return "";
-    let quando = "";
-    if (u.ultimo_aparelho_em) {
-        const d = new Date(u.ultimo_aparelho_em);
-        if (!isNaN(d)) quando = ` — visto em ${d.toLocaleDateString("pt-BR")}`;
-    }
-    return `<div style="font-size:11px;color:#64748b;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px"
-                 title="${_gcEsc(u.ultimo_aparelho)}${_gcEsc(quando)}">📱 ${_gcEsc(u.ultimo_aparelho)}</div>`;
-}
-
 function _gcEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }

@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260924f">
+<link rel="stylesheet" href="style.css?v=20260924g">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -594,7 +594,6 @@ if (_BASE) {
                 <li><a href="#" data-rota="Cadastros/Entregadores" onclick="abrirAdminUsuarios(event)">Entregadores</a></li>
                 <li><a href="#" data-rota="Cadastros/Motoristas" onclick="abrirAdminMotoristas(event)">Motoristas</a></li>
                 <li><a href="#" data-rota="Cadastros/Usuarios" onclick="abrirAdminUsuariosGC(event)">Usuários</a></li>
-                <li id="menu-item-todos-usuarios" style="display:none"><a href="#" data-rota="Cadastros/TodosUsuarios" onclick="abrirTodosUsuarios(event)">Todos os Usuários</a></li>
                 <li id="menu-item-anotacoes-relatorio" style="display:none"><a href="#" data-rota="Cadastros/AnotacoesRelatorio" onclick="abrirAnotacoesRelatorio(event)">Anotações de Quantidade</a></li>
             </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
@@ -1588,6 +1587,7 @@ if (_BASE) {
                                 <tr>
                                     <th>Entregador</th>
                                     <th>Situação</th>
+                                    <th>Último acesso</th>
                                     <th>Liberações</th>
                                     <th></th>
                                 </tr>
@@ -1621,6 +1621,7 @@ if (_BASE) {
                                 <tr>
                                     <th>Motorista</th>
                                     <th>Situação</th>
+                                    <th>Último acesso</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -2168,6 +2169,7 @@ if (_BASE) {
                                     <th>Cargo</th>
                                     <th>Polo</th>
                                     <th>Situação</th>
+                                    <th>Último acesso</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -2335,47 +2337,6 @@ if (_BASE) {
                 </div>
             </div>
         </div>
-
-        <!-- TELA TODOS OS USUÁRIOS (SÓ DEV) -->
-        <div id="tela-todos-usuarios" class="view tela-full">
-            <div class="fech-header">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Todos os Usuários</div>
-                    <span id="tu-counter" style="font-size:12.5px;color:#7b98b5"></span>
-                </div>
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:12px">
-                    <div class="filtro-tabs" id="tu-filtro-chips">
-                        <button type="button" class="filtro-tab active" data-filtro="todos" onclick="_tuFiltrar('todos')">Todos</button>
-                        <button type="button" class="filtro-tab" data-filtro="online" onclick="_tuFiltrar('online')">Online</button>
-                        <button type="button" class="filtro-tab" data-filtro="nunca" onclick="_tuFiltrar('nunca')">Nunca acessou</button>
-                        <button type="button" class="filtro-tab" data-filtro="inativos" onclick="_tuFiltrar('inativos')">Contas inativas</button>
-                    </div>
-                    <div class="adm-search-input-area" style="max-width:280px">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="text" id="tu-filtro-input" placeholder="Filtrar por nome, usuário ou cargo..." oninput="_tuFiltrarLocal()">
-                    </div>
-                </div>
-            </div>
-            <div class="fech-body">
-                <div class="fechamento-empty" id="tu-empty">Carregando...</div>
-                <div id="tu-resultado" style="display:none">
-                    <div class="adm-nf-wrap">
-                        <table class="adm-nf-table">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Usuário</th>
-                                    <th>Cargo</th>
-                                    <th>Status</th>
-                                    <th>Último acesso</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tu-tbody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div><!-- /tela-todos-usuarios -->
 
         <!-- TELA WHATSAPP — TESTE DE ENVIO (SÓ DEV) -->
         <div id="tela-whatsapp-teste" class="view tela-full">
@@ -4706,19 +4667,19 @@ if (_BASE) {
     </div>
 </div>
 
-<script src="js/core.js?v=20260923a"></script>
+<script src="js/core.js?v=20260924a"></script>
 <script src="js/col-filtro.js?v=20260917b"></script>
-<script src="js/router.js?v=20260923a"></script>
+<script src="js/router.js?v=20260924a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=20260904a"></script>
+<script src="js/nav.js?v=20260924a"></script>
 <script src="js/atendimento.js?v=20260907a"></script>
 <script src="js/atendimento-admin.js?v=30260902h"></script>
 <script src="js/fechamentos.js?v=30260812d"></script>
 <script src="js/admin.js?v=30260901a"></script>
 <script src="js/conf-nf.js?v=30260812d"></script>
 <script src="js/trampay.js?v=20260924a"></script>
-<script src="js/usuarios.js?v=20260924a"></script>
-<script src="js/motoristas.js?v=20260924a"></script>
+<script src="js/usuarios.js?v=20260924b"></script>
+<script src="js/motoristas.js?v=20260924b"></script>
 <script src="js/pagamentos.js?v=30260812d"></script>
 <script src="js/faturas.js?v=20260914a"></script>
 <script src="js/notas-fiscais.js?v=30260812d"></script>
@@ -4729,14 +4690,13 @@ if (_BASE) {
 <script src="js/nota-fiscal.js?v=30260812d"></script>
 <script src="js/extravios.js?v=30260812d"></script>
 <script src="js/extravios-registros.js?v=30260818e"></script>
-<script src="js/usuarios-gc.js?v=20260924a"></script>
+<script src="js/usuarios-gc.js?v=20260924b"></script>
 <script src="js/nomes-padrao.js?v=20260922a"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
 <script src="js/macros.js?v=20260924e"></script>
-<script src="js/todos-usuarios.js?v=30260812d"></script>
 <script src="js/whatsapp-teste.js?v=20260921d"></script>
 <script src="js/whatsapp-conversa.js?v=20260924a"></script>
-<script src="js/modals.js?v=30260812d"></script>
+<script src="js/modals.js?v=20260924a"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
 <script src="js/fechamento-criar.js?v=30260812d"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
@@ -5206,6 +5166,28 @@ if (_BASE) {
         <div class="usr-modal-btns">
             <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-editar-role-gc')">Cancelar</button>
             <button class="usr-modal-btn-primary" id="erg-btn-salvar" onclick="_salvarRoleGC()">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: MUDAR POLO (Cadastros > Usuários > Editar) -->
+<div class="usr-modal-overlay" id="modal-editar-polo-gc" onclick="_fecharModalSeBackdrop(event,'modal-editar-polo-gc')">
+    <div class="usr-modal">
+        <div class="usr-modal-title">Mudar polo</div>
+        <div class="usr-modal-sub" id="epg-nome" style="color:#e2e8f0;font-size:14px;font-weight:600;margin-bottom:16px"></div>
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Polo</label>
+            <select class="usr-modal-input" id="epg-polo" style="cursor:pointer">
+                <option value="cacador">Caçador</option>
+                <option value="videira">Videira</option>
+                <option value="joacaba">Joaçaba</option>
+                <option value="">Sem polo</option>
+            </select>
+        </div>
+        <div class="usr-modal-error" id="epg-erro"></div>
+        <div class="usr-modal-btns">
+            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-editar-polo-gc')">Cancelar</button>
+            <button class="usr-modal-btn-primary" id="epg-btn-salvar" onclick="_salvarPoloGC()">Salvar</button>
         </div>
     </div>
 </div>

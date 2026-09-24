@@ -26,7 +26,6 @@ function carregar({ role = "dev", resposta = [] } = {}) {
     skMostrar() {},
     skFim(e, t) { e.textContent = t; },
     mostrarTela() {},
-    _aparelhoLinha: () => "",
     fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve(resposta) }),
   });
   for (const f of ["usuarios.js", "motoristas.js", "usuarios-gc.js", "trampay.js"]) {
@@ -136,8 +135,8 @@ test("usuarios: cargo em texto (sem selo colorido), login escondido de finance, 
   ctx._carregarUsuariosGC();
   await esperar();
   const html = els["gc-usr-tbody"].innerHTML;
-  assert.ok(html.includes('<td class="cad-cargo">Administrador</td>'));
-  assert.ok(html.includes('<td class="cad-cargo">Financeiro</td>'));
+  assert.ok(html.includes('<td class="cad-cargo cargo-admin">Administrador</td>'));
+  assert.ok(html.includes('<td class="cad-cargo cargo-finance">Financeiro</td>'));
   assert.ok(!html.includes('<div class="cad-login">fin.t</div>'), "login do financeiro nao aparece na tela");
   assert.ok(html.includes('<div class="cad-login">admin.t</div>'));
   assert.ok(!html.includes("border-radius:20px"), "nada de pilula colorida");
@@ -145,11 +144,59 @@ test("usuarios: cargo em texto (sem selo colorido), login escondido de finance, 
   assert.strictEqual(els["gc-usr-contagem"].textContent, "2 usuários · 1 ativo");
 });
 
-test("usuarios: sem polo aparece como opcao marcada", async () => {
+test("usuarios: polo em texto na linha (sem seletor solto), e Sem polo quando nao tem", async () => {
   const { ctx, els } = carregar({ resposta: USUARIOS });
   ctx._carregarUsuariosGC();
   await esperar();
-  assert.ok(els["gc-usr-tbody"].innerHTML.includes('<option value="" selected>Sem polo</option>'));
+  const html = els["gc-usr-tbody"].innerHTML;
+  assert.ok(!html.includes("<select"), "trocar polo e pelo menu Editar");
+  assert.ok(html.includes('data-rotulo="Polo">Caçador</td>'));
+  assert.ok(html.includes('<span class="cad-vazio">Sem polo</span>'));
+});
+
+test("usuarios: Mudar polo fica no menu Editar, com o polo atual", async () => {
+  const { ctx, els } = carregar({ resposta: USUARIOS });
+  ctx._carregarUsuariosGC();
+  await esperar();
+  const html = els["gc-usr-tbody"].innerHTML;
+  assert.ok(html.includes("_abrirEditarPoloGC(7,'cacador','Admin Teste')\">Mudar polo<"));
+  assert.ok(html.includes("_abrirEditarPoloGC(8,'','Fin Teste')"));
+});
+
+test("usuarios: salvar o polo manda PATCH so com o polo (vazio vira null) e recarrega", async () => {
+  const chamadas = [];
+  const { ctx, els } = carregar({ resposta: USUARIOS });
+  ctx.fetch = (url, op) => { chamadas.push({ url, op }); return Promise.resolve({ ok: true, json: () => Promise.resolve(op ? { ok: true } : USUARIOS) }); };
+  ctx._abrirModal = () => {};
+  ctx._fecharModal = (id) => { chamadas.push({ fechou: id }); };
+  ctx._abrirEditarPoloGC(8, "", "Fin Teste");
+  assert.strictEqual(els["epg-polo"].value, "");
+  els["epg-polo"].value = "videira";
+  ctx._salvarPoloGC();
+  assert.strictEqual(chamadas[0].url, "https://api.teste/admin/usuarios/8");
+  assert.strictEqual(chamadas[0].op.method, "PATCH");
+  assert.strictEqual(chamadas[0].op.body, JSON.stringify({ polo: "videira" }));
+  await esperar();
+  assert.ok(chamadas.some((c) => c.fechou === "modal-editar-polo-gc"));
+
+  chamadas.length = 0;
+  ctx._abrirEditarPoloGC(8, "videira", "Fin Teste");
+  els["epg-polo"].value = "";
+  ctx._salvarPoloGC();
+  assert.strictEqual(chamadas[0].op.body, JSON.stringify({ polo: null }));
+});
+
+test("usuarios: se o servidor recusa o polo, mostra o erro e nao fecha", async () => {
+  const { ctx, els } = carregar();
+  let fechou = false;
+  ctx.fetch = () => Promise.resolve({ ok: false, json: () => Promise.resolve({ error: "Polo inválido" }) });
+  ctx._abrirModal = () => {};
+  ctx._fecharModal = () => { fechou = true; };
+  ctx._abrirEditarPoloGC(8, "", "Fin Teste");
+  ctx._salvarPoloGC();
+  await esperar();
+  assert.strictEqual(els["epg-erro"].innerText, "Polo inválido");
+  assert.strictEqual(fechou, false);
 });
 
 // ── Trampay ─────────────────────────────────────────────────────────────────
@@ -173,4 +220,44 @@ test("trampay: dados do CSV com HTML nao viram HTML", async () => {
   await esperar();
   const html = els["trampay-ent-tbody"].innerHTML;
   for (const tag of ["<b>", "<i>", "<s>", "<u>"]) assert.ok(!html.includes(tag), tag);
+});
+
+// ── último acesso ───────────────────────────────────────────────────────────
+// Vem do servidor em segundos (calculado no banco); até 5 min é "Online agora".
+test("ultimo acesso: textos por faixa de tempo", () => {
+  const { ctx } = carregar();
+  const casos = [
+    [null, "Nunca acessou"], [undefined, "Nunca acessou"],
+    [0, "Online agora"], [300, "Online agora"],
+    [301, "há 5 min"], [25 * 60, "há 25 min"],
+    [2 * 3600, "há 2h"], [23 * 3600, "há 23h"],
+    [30 * 3600, "ontem"], [3 * 86400, "há 3 dias"],
+    [35 * 86400, "há 1 mês"], [75 * 86400, "há 3 meses"],
+    [400 * 86400, "há 1 ano"],
+  ];
+  for (const [seg, texto] of casos) assert.strictEqual(ctx._cadTextoAcesso(seg), texto, String(seg));
+});
+
+test("ultimo acesso: online ganha a classe do destaque; nunca acessou fica apagado", () => {
+  const { ctx } = carregar();
+  assert.ok(ctx._cadAcessoHtml({ segundos_desde_acesso: 60 }).includes('class="cad-acesso online"'));
+  assert.ok(ctx._cadAcessoHtml({ segundos_desde_acesso: null }).includes('class="cad-acesso nunca"'));
+  assert.ok(ctx._cadAcessoHtml({ segundos_desde_acesso: 90000 }).includes('class="cad-acesso "'));
+});
+
+test("ultimo acesso aparece em entregadores, motoristas e usuarios", async () => {
+  const lista = [{ id: 1, name: "A", username: "a", role: "admin", active: true, segundos_desde_acesso: 60 }];
+  for (const [carregarLista, tbody] of [["_carregarUsuarios", "adm-usr-tbody"], ["_carregarMotoristas", "adm-mot-tbody"], ["_carregarUsuariosGC", "gc-usr-tbody"]]) {
+    const { ctx, els } = carregar({ resposta: lista });
+    ctx[carregarLista]();
+    await esperar();
+    assert.ok(els[tbody].innerHTML.includes(">Online agora</span>"), tbody);
+  }
+});
+
+test("o aparelho usado nao aparece mais em lugar nenhum", async () => {
+  const { ctx, els } = carregar({ resposta: [{ id: 1, name: "A", username: "a", role: "entregador", active: true, ultimo_aparelho: "Samsung Teste" }] });
+  ctx._carregarUsuarios();
+  await esperar();
+  assert.ok(!els["adm-usr-tbody"].innerHTML.includes("Samsung Teste"));
 });

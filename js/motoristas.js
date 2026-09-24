@@ -29,6 +29,7 @@ function _carregarMotoristas() {
             <tr class="${u.active ? "" : "cad-inativo"}">
                 <td>${_cadPessoaHtml(u)}</td>
                 <td>${_cadStatusHtml(u)}</td>
+                <td data-rotulo="Último acesso">${_cadAcessoHtml(u)}</td>
                 <td class="cad-acao">
                     <div class="adm-usr-editar-wrap">
                         <button class="adm-usr-action senha" onclick="_toggleMenuMotorista(event,${u.id})">Editar ▾</button>

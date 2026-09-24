@@ -294,7 +294,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         if (role === "finance") {
         }
         if (role === "dev") {
-            show("menu-item-todos-usuarios"); // visão de todos os usuários do sistema — só dev
             show("menu-item-anotacoes-relatorio"); // relatório consolidado de Anotações de Quantidade — só dev
             show("menu-macros"); // liga/desliga e configura tarefas automáticas — só dev
         }

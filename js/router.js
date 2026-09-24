@@ -99,7 +99,9 @@ const _ROTAS = {
     "Cadastros/AnotacoesRelatorio":  () => abrirAnotacoesRelatorio(),
     "Cadastros/Motoristas":          () => abrirAdminMotoristas(),
     "Cadastros/Usuarios":            () => abrirAdminUsuariosGC(),
-    "Cadastros/TodosUsuarios":       () => abrirTodosUsuarios(),
+    // "Todos os Usuários" foi removida (o último acesso agora está nas listas de Cadastros);
+    // link salvo pra ela cai em Usuários.
+    "Cadastros/TodosUsuarios":       () => abrirAdminUsuariosGC(),
     "Cadastros/ConversaoNomes":      () => abrirNomesPadrao(),
     "Cadastros/TelefoneEntregador":  () => abrirEntregadorTelefone(),
     "Macros":                        () => abrirMacros(),
@@ -212,7 +214,6 @@ const _TELA_ROTAS = {
     "tela-anotacoes-relatorio":  "Cadastros/AnotacoesRelatorio",
     "tela-admin-motoristas":     "Cadastros/Motoristas",
     "tela-admin-usuarios-gc":    "Cadastros/Usuarios",
-    "tela-todos-usuarios":       "Cadastros/TodosUsuarios",
     "tela-nomes-padrao":         "Cadastros/ConversaoNomes",
     "tela-entregador-telefone":  "Cadastros/TelefoneEntregador",
     "tela-macros":               "Macros",

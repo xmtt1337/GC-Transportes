@@ -11,24 +11,47 @@ const GC_POLOS = [
 
 let _editRoleGC_id = null;
 
-// Troca direto no select: é correção pontual de cadastro, e um modal só pra isso seria
-// cerimônia. O select volta ao valor antigo se o servidor recusar.
-function _trocarPoloGC(id, polo, select) {
-    const anterior = select.dataset.anterior || "";
-    select.disabled = true;
-    fetch(`${API}/admin/usuarios/${id}`, {
+const _gcPoloLabel = chave => (GC_POLOS.find(p => p.chave === chave) || {}).label || "";
+
+let _editPoloGC_id = null;
+
+// Polo pelo menu Editar, numa janela — igual a Mudar cargo. Antes era um seletor solto na
+// linha, fácil de trocar sem querer rolando a lista.
+function _abrirEditarPoloGC(id, poloAtual, nome) {
+    _editPoloGC_id = id;
+    document.getElementById("epg-nome").innerText = nome;
+    document.getElementById("epg-polo").value = poloAtual || "";
+    document.getElementById("epg-erro").innerText = "";
+    const btn = document.getElementById("epg-btn-salvar");
+    btn.disabled = false;
+    btn.textContent = "Salvar";
+    _abrirModal("modal-editar-polo-gc");
+}
+
+function _salvarPoloGC() {
+    if (!_editPoloGC_id) return;
+    const polo = document.getElementById("epg-polo").value;
+    const erro = document.getElementById("epg-erro");
+    const btn  = document.getElementById("epg-btn-salvar");
+    erro.innerText = "";
+    btn.disabled = true;
+    btn.textContent = "Salvando...";
+
+    fetch(`${API}/admin/usuarios/${_editPoloGC_id}`, {
         method: "PATCH",
         headers: { "Authorization": "Bearer " + localStorage.getItem("token"), "Content-Type": "application/json" },
         body: JSON.stringify({ polo: polo || null })
     }).then(r => r.json())
     .then(data => {
-        select.disabled = false;
-        if (data.error) { select.value = anterior; gcAlert(data.error); return; }
-        select.dataset.anterior = polo;
+        btn.disabled = false;
+        btn.textContent = "Salvar";
+        if (data.error) { erro.innerText = data.error; return; }
+        _fecharModal("modal-editar-polo-gc");
+        _carregarUsuariosGC();
     }).catch(() => {
-        select.disabled = false;
-        select.value = anterior;
-        gcAlert("Erro ao alterar o polo.");
+        btn.disabled = false;
+        btn.textContent = "Salvar";
+        erro.innerText = "Erro ao alterar o polo.";
     });
 }
 
@@ -72,19 +95,16 @@ function _carregarUsuariosGC() {
             // coloridos por linha. Deletar fica por último, em vermelho.
             return `<tr class="${u.active ? "" : "cad-inativo"}">
                 <td>${_cadPessoaHtml(u, ['dev','finance','sac'].includes(u.role) ? '••••••' : undefined)}</td>
-                <td class="cad-cargo">${_cadEsc(rl)}</td>
-                <td>
-                    <select class="gc-polo-select" data-anterior="${u.polo || ""}" onchange="_trocarPoloGC(${u.id}, this.value, this)">
-                        ${GC_POLOS.map(p => `<option value="${p.chave}"${u.polo === p.chave ? " selected" : ""}>${p.label}</option>`).join("")}
-                        <option value=""${!u.polo ? " selected" : ""}>Sem polo</option>
-                    </select>
-                </td>
+                <td class="cad-cargo cargo-${_cadEsc(u.role)}">${_cadEsc(rl)}</td>
+                <td class="cad-polo" data-rotulo="Polo">${_gcPoloLabel(u.polo) ? _cadEsc(_gcPoloLabel(u.polo)) : `<span class="cad-vazio">Sem polo</span>`}</td>
                 <td>${_cadStatusHtml(u)}</td>
+                <td data-rotulo="Último acesso">${_cadAcessoHtml(u)}</td>
                 <td class="cad-acao">
                     <div class="adm-usr-editar-wrap">
                         <button class="adm-usr-action senha" onclick="_toggleMenuGC(event,${u.id})">Editar ▾</button>
                         <div class="adm-usr-editar-menu" id="gc-usr-menu-${u.id}">
                             <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_abrirEditarRoleGC(${u.id},'${u.role}','${nomeEsc}')">Mudar cargo</button>
+                            <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_abrirEditarPoloGC(${u.id},'${_cadEsc(u.polo || "")}','${nomeEsc}')">Mudar polo</button>
                             <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleAtivoGC(${u.id},${!u.active})">${u.active ? 'Inativar' : 'Ativar'}</button>
                             <button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_resetarSenhaGC(${u.id},'${userEsc}')">Resetar senha</button>
                             <button class="adm-usr-editar-item perigo" onclick="_fecharMenusUsuario();_deletarUsuarioGC(${u.id},'${userEsc}')">Deletar</button>
