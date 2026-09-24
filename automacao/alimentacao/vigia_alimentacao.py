@@ -39,13 +39,14 @@ import hashlib
 import json
 import logging
 import os
+import re
 import socket
 import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from logging.handlers import RotatingFileHandler
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 import requests
 
@@ -79,6 +80,9 @@ ROTA_CARGA = "/macros/at-exportada"
 ROTA_PESQUISADOS = "/macros/pedidos-pesquisados"
 ROTA_BACKLOG = "/macros/backlog-shopee"
 ROTA_PENDENTES = "/macros/at-exportada/pendentes"
+# O que a tela Macros do sistema pediu pra rodar, e a agenda vigente (ver
+# Backend.comandos). A extensao pergunta a cada ~30s.
+ROTA_COMANDOS = "/macros/comandos"
 
 # Onde cada relatorio entra. A chave e o tipo que alimentacao_at.ler_qualquer
 # devolve (pelo cabecalho pra AT e pedidos pesquisados; pelo nome do arquivo
@@ -120,6 +124,10 @@ GRACA_S = 3600
 ESPERAS_S = [15, 30, 60, 120, 300, 300, 600]
 # Um envio carrega o dia inteiro de uma estacao: dezenas de milhares de linhas.
 TIMEOUT = (15, 420)
+# A consulta de comandos e minuscula e roda de 30 em 30s: se o servidor nao
+# responder, esperar 7 minutos (o TIMEOUT acima) so empilharia consultas
+# presas. Um minuto cobre o Render acordando.
+TIMEOUT_COMANDOS = (15, 60)
 # Acima disto vale comprimir: o corpo e JSON repetitivo e encolhe umas 10x.
 LIMITE_GZIP = 512 * 1024
 
@@ -417,6 +425,53 @@ class Backend:
 
         raise ErroDeEnvio("nao consegui autenticar")
 
+    def _requisitar(self, metodo, rota, corpo=None):
+        """GET/POST autenticado com uma relogada se o token venceu; devolve o JSON.
+
+        Serve as consultas pequenas e frequentes (comandos). O envio das cargas
+        tem o proprio caminho (enviar), com gzip e tentativas.
+        """
+        for tentativa in (1, 2):
+            if not self.token:
+                self.entrar()
+            try:
+                r = requests.request(metodo, self._url(rota), json=corpo,
+                                     headers={"Authorization": f"Bearer {self.token}"},
+                                     timeout=TIMEOUT_COMANDOS, verify=self.ca)
+            except requests.RequestException as e:
+                raise ErroDeEnvio(f"nao alcancei o servidor: {e}", temporario=True) from e
+
+            if r.status_code in (401, 403) and tentativa == 1:
+                self.token = None
+                continue
+            if r.status_code in (401, 403):
+                raise ErroDeConta("o servidor recusou a conta")
+            if r.status_code >= 500:
+                raise ErroDeEnvio(f"servidor respondeu {r.status_code}", temporario=True)
+            try:
+                dados = r.json()
+            except ValueError as e:
+                raise ErroDeEnvio("resposta ilegivel do servidor") from e
+            if not r.ok:
+                raise ErroDeEnvio(dados.get("error") or f"servidor respondeu {r.status_code}")
+            return dados
+
+        raise ErroDeEnvio("nao consegui autenticar")
+
+    def comandos(self):
+        """O que a tela Macros pediu pra rodar e a agenda vigente.
+
+        Devolve {"comandos": [{"id", "qual"}], "agenda": ...}. O servidor
+        entrega cada comando UMA vez so: quem chama tem que repassar a extensao
+        na mesma resposta, ou o pedido se perde.
+        """
+        return self._requisitar("GET", f"{ROTA_COMANDOS}/pendentes")
+
+    def resultado_comando(self, id_comando, ok, erro=None):
+        """Conta ao servidor se a extensao conseguiu iniciar o macro."""
+        rota = f"{ROTA_COMANDOS}/{quote(str(id_comando), safe='')}/resultado"
+        return self._requisitar("POST", rota, {"ok": bool(ok), "erro": erro})
+
 
 # ── o vigia ─────────────────────────────────────────────────────────────────
 class Pendente:
@@ -704,6 +759,12 @@ class Vigia:
 # So escuta em 127.0.0.1 - nao aceita conexao de fora da maquina. E responde
 # com o cabecalho de CORS que a extensao precisa; sem ele o Chrome bloqueia a
 # resposta e o erro que aparece la e "failed to fetch", que nao conta nada.
+# So aceita id no formato que o servidor gera (UUID): o caminho vira parte de
+# uma URL do backend, e qualquer coisa fora disso nao e um comando dele.
+ID_COMANDO = re.compile(
+    r"^/comandos/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/resultado$")
+
+
 class Atendimento(BaseHTTPRequestHandler):
     vigia = None
 
@@ -725,6 +786,8 @@ class Atendimento(BaseHTTPRequestHandler):
         caminho = urlparse(self.path)
         if caminho.path == "/ping":
             return self._responder(200, {"vigia": "de pe", "ultimo": self.vigia.ultimo})
+        if caminho.path == "/comandos":
+            return self._comandos()
         if caminho.path != "/pendentes":
             return self._responder(404, {"error": "nao conheco esse caminho"})
 
@@ -747,6 +810,61 @@ class Atendimento(BaseHTTPRequestHandler):
         log.info("extensao pediu pendentes: %d de %d",
                  len(resposta.get("codigos", [])), resposta.get("total", 0))
         return self._responder(200, resposta)
+
+    # A extensao pergunta aqui, de 30 em 30s, se a tela Macros pediu alguma
+    # coisa. A resposta do servidor sai daqui direto pra ela: o comando so e
+    # entregue UMA vez, entao nao pode parar no meio do caminho.
+    def _comandos(self):
+        try:
+            resposta = self.vigia.backend.comandos()
+        except (ErroDeConta, ErroDeEnvio) as e:
+            return self._responder(503, {"error": str(e)})
+        except Exception as e:
+            log.exception("erro ao buscar comandos")
+            return self._responder(500, {"error": str(e)})
+
+        # So registra quando ha o que contar: de 30 em 30s, uma linha por
+        # consulta seriam quase 3 mil por dia de nada.
+        if resposta.get("comandos"):
+            log.info("extensao recebeu comando(s) da tela Macros: %s",
+                     ", ".join(c.get("qual", "?") for c in resposta["comandos"]))
+        return self._responder(200, resposta)
+
+    # A extensao conta aqui se conseguiu iniciar o macro; o vigia repassa ao
+    # servidor, que mostra o resultado na tela Macros.
+    def do_POST(self):
+        # O corpo e lido ANTES de decidir a rota: responder e fechar com bytes
+        # da requisicao ainda por ler faz o Windows resetar a conexao, e quem
+        # chamou nao recebe nem o 404.
+        try:
+            tamanho = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            tamanho = 0
+        bruto = self.rfile.read(min(tamanho, 8192)) if tamanho > 0 else b""
+
+        achado = ID_COMANDO.match(urlparse(self.path).path)
+        if not achado:
+            return self._responder(404, {"error": "nao conheco esse caminho"})
+
+        try:
+            corpo = json.loads(bruto or b"{}")
+            if not isinstance(corpo, dict):
+                raise ValueError("corpo nao e objeto")
+        except (ValueError, UnicodeDecodeError):
+            return self._responder(400, {"error": "corpo ilegivel"})
+
+        erro = str(corpo.get("error") or "")[:300] or None
+        try:
+            self.vigia.backend.resultado_comando(achado.group(1), corpo.get("ok"), erro)
+        except (ErroDeConta, ErroDeEnvio) as e:
+            return self._responder(503, {"error": str(e)})
+        except Exception as e:
+            log.exception("erro ao contar o resultado do comando")
+            return self._responder(500, {"error": str(e)})
+
+        if not corpo.get("ok"):
+            log.info("comando %s nao rodou: %s", achado.group(1)[:8], erro)
+        return self._responder(200, {"ok": True})
 
     def log_message(self, formato, *args):
         # O log padrao do http.server escreve no stderr, que num pythonw nao
