@@ -2435,6 +2435,39 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     font-family: inherit; cursor: pointer; transition: border-color 0.2s, color 0.2s;
 }
 .usr-modal-btn-cancel:hover { border-color: rgba(58,134,255,0.35); color: #94a3b8; }
+
+/* ===== MACROS: rodadas do modal de configuração =====
+   Uma rodada é uma LINHA separada por um filete, não um cartão dentro do cartão do modal. O
+   horário é um campo grande de verdade (antes eram dois number de 54px: o "19" saía cortado e
+   os minutos sem o zero), e os rótulos ficam em letra normal — legíveis, sem caixa-alta miúda. */
+.mac-rodada {
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px;
+    padding: 16px 0; border-top: 1px solid rgba(255,255,255,0.07);
+}
+.mac-rodada:first-child { border-top: none; padding-top: 4px; }
+.mac-campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.mac-campo > span {
+    font-size: 12.5px; color: #8494a9;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mac-campo-horario  { width: 136px; }
+.mac-campo-criterio { flex: 1 1 250px; }
+.mac-campo-param    { width: 156px; }
+.mac-horario {
+    font-size: 20px; font-weight: 600; text-align: center; padding: 8px 12px;
+    font-variant-numeric: tabular-nums; letter-spacing: 0.03em;
+}
+.mac-criterio { cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mac-remover {
+    height: 44px; padding: 0 6px; background: none; border: none; cursor: pointer;
+    color: #7b98b5; font-family: inherit; font-size: 13px; transition: color 0.15s;
+}
+.mac-remover:hover { color: #f87171; }
+.mac-adicionar {
+    background: none; border: none; cursor: pointer; padding: 6px 0;
+    color: #3a86ff; font-family: inherit; font-size: 13.5px; font-weight: 600;
+}
+.mac-adicionar:hover { color: #6aa5ff; }
 .adm-usr-avatar {
     width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
     background: rgba(58,134,255,0.15); display: flex; align-items: center;

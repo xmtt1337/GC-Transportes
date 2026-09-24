@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260923a">
+<link rel="stylesheet" href="style.css?v=20260924a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -2306,7 +2306,7 @@ if (_BASE) {
 
         <!-- Configurar um macro -->
         <div class="usr-modal-overlay" id="modal-macro-editar" onclick="_fecharModalSeBackdrop(event,'modal-macro-editar')">
-            <div class="usr-modal" style="max-width:620px">
+            <div class="usr-modal" style="max-width:720px">
                 <div class="usr-modal-title" id="mac-editar-titulo">Configurar macro</div>
                 <div class="usr-modal-sub" id="mac-editar-descricao"></div>
 
@@ -2315,9 +2315,10 @@ if (_BASE) {
                     Ativo
                 </label>
 
-                <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7b98b5;margin-bottom:8px">Rodadas</div>
+                <div style="font-size:14px;font-weight:600;color:#e2e8f0">Rodadas</div>
+                <div style="font-size:12.5px;color:#8494a9;margin:3px 0 12px">Em cada horário, o sistema avisa quem se encaixa no critério escolhido.</div>
                 <div id="mac-rodadas-lista"></div>
-                <button type="button" class="usr-modal-btn-cancel" style="margin-top:6px" onclick="_macAdicionarRodada()">+ Adicionar rodada</button>
+                <button type="button" class="mac-adicionar" onclick="_macAdicionarRodada()">+ Adicionar rodada</button>
 
                 <div class="usr-modal-error" id="mac-editar-erro"></div>
                 <div class="usr-modal-btns">
@@ -4741,7 +4742,7 @@ if (_BASE) {
 <script src="js/usuarios-gc.js?v=20260922b"></script>
 <script src="js/nomes-padrao.js?v=20260922a"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
-<script src="js/macros.js?v=20260923a"></script>
+<script src="js/macros.js?v=20260924a"></script>
 <script src="js/todos-usuarios.js?v=30260812d"></script>
 <script src="js/whatsapp-teste.js?v=20260921d"></script>
 <script src="js/whatsapp-conversa.js?v=20260923b"></script>

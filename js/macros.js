@@ -85,29 +85,50 @@ function _macRotuloParametro(tipoId) {
     return t ? t.parametroRotulo : "Parâmetro";
 }
 
+// "19:05" pro campo de horário — sempre com dois dígitos ("19:03", não "19:3"). Vazio quando
+// hora/minuto ainda não são números (campo limpo no meio da edição).
+const _macDoisDigitos = n => String(n).padStart(2, "0");
+
+function _macHorarioTexto(r) {
+    const ok = v => v !== "" && v !== null && v !== undefined && !isNaN(Number(v));
+    return ok(r.hora) && ok(r.minuto) ? `${_macDoisDigitos(r.hora)}:${_macDoisDigitos(r.minuto)}` : "";
+}
+
+// O campo de horário do navegador devolve sempre "HH:MM" em 24h (mesmo que ele MOSTRE AM/PM,
+// dependendo do idioma) ou "" enquanto está incompleto. Grava em hora e minuto, que é o que o
+// servidor guarda — a validação de faixa (0–23, 0–59) o próprio campo já faz.
+function _macMudarHorario(i, valor) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(valor || "");
+    _macRodadas[i].hora = m ? Number(m[1]) : "";
+    _macRodadas[i].minuto = m ? Number(m[2]) : "";
+}
+
+const _macCapitalizar = s => String(s || "").charAt(0).toUpperCase() + String(s || "").slice(1);
+
+// Uma rodada = uma linha (sem cartão dentro do cartão do modal): horário, critério, o número
+// do critério e um "Remover" discreto. O rótulo do número acompanha o critério escolhido.
 function _macLinhaRodada(r, i) {
+    const rotuloParam = _macRotuloParametro(r.tipo);
     return `
-    <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:10px;flex-wrap:wrap;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px">
-        <div>
-            <label class="usr-modal-label" style="font-size:10px">Horário</label>
-            <div style="display:flex;gap:4px;align-items:center">
-                <input type="number" min="0" max="23" value="${r.hora}" style="width:54px" class="usr-modal-input" oninput="_macMudarCampo(${i},'hora',this.value)">
-                <span style="color:#7b98b5">:</span>
-                <input type="number" min="0" max="59" value="${r.minuto}" style="width:54px" class="usr-modal-input" oninput="_macMudarCampo(${i},'minuto',this.value)">
-            </div>
-        </div>
-        <div style="flex:1;min-width:200px">
-            <label class="usr-modal-label" style="font-size:10px">Critério</label>
-            <select class="usr-modal-input" style="cursor:pointer" onchange="_macMudarTipo(${i}, this.value)">
+    <div class="mac-rodada">
+        <label class="mac-campo mac-campo-horario">
+            <span>Horário</span>
+            <input type="time" class="usr-modal-input mac-horario" value="${_macHorarioTexto(r)}"
+                   oninput="_macMudarHorario(${i}, this.value)">
+        </label>
+        <label class="mac-campo mac-campo-criterio">
+            <span>Critério</span>
+            <select class="usr-modal-input mac-criterio" title="${_macEsc((_macTipos.find(t => t.id === r.tipo) || {}).rotulo)}"
+                    onchange="_macMudarTipo(${i}, this.value)">
                 ${_macTipos.map(t => `<option value="${t.id}"${t.id === r.tipo ? " selected" : ""}>${_macEsc(t.rotulo)}</option>`).join("")}
             </select>
-        </div>
-        <div style="width:120px">
-            <label class="usr-modal-label" style="font-size:10px">${_macEsc(_macRotuloParametro(r.tipo))}</label>
-            <input type="number" min="0" value="${r.parametro}" class="usr-modal-input" oninput="_macMudarCampo(${i},'parametro',this.value)">
-        </div>
-        <button type="button" onclick="_macRemoverRodada(${i})" title="Remover rodada"
-                style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:16px;line-height:1;flex-shrink:0">×</button>
+        </label>
+        <label class="mac-campo mac-campo-param">
+            <span title="${_macEsc(rotuloParam)}">${_macEsc(_macCapitalizar(rotuloParam))}</span>
+            <input type="number" min="0" class="usr-modal-input" value="${r.parametro}"
+                   oninput="_macMudarCampo(${i},'parametro',this.value)">
+        </label>
+        <button type="button" class="mac-remover" onclick="_macRemoverRodada(${i})">Remover</button>
     </div>`;
 }
 
