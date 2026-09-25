@@ -3463,6 +3463,23 @@ td.cad-nome { color: #e2e8f0; }
 }
 .sst-hist-btn:hover { background: rgba(58,134,255,0.2); }
 
+/* Enviar ativo: verde do WhatsApp — o mesmo que marca o "ativo" na linha do tempo
+   do pedido, então o botão e o evento que ele gera se reconhecem. */
+.sst-ativo-btn {
+    background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.35);
+    color: #25D366; border-radius: 8px; padding: 5px 12px;
+    font-family: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+}
+.sst-ativo-btn:hover { background: rgba(37,211,102,0.2); }
+/* .usr-modal não tem limite de altura: com a prévia da mensagem o card passa da tela
+   em janela baixa e o botão de enviar fica inalcançável. */
+#modal-sst-ativo .usr-modal { max-height: calc(100vh - 48px); overflow-y: auto; }
+.sst-ativo-preview {
+    white-space: pre-wrap; background: rgba(15,15,20,0.5);
+    border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;
+    padding: 14px; font-size: 13px; color: #cbd5e1; line-height: 1.5;
+}
+
 /* Linha do tempo do pedido. A tarja colorida à esquerda é a etapa: dá pra
    varrer a lista e ver "passou pelo recebimento, nunca foi conferido". */
 .sst-evento {

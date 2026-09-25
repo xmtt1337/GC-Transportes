@@ -293,24 +293,41 @@ function _waRecAtualizarPreview() {
     document.getElementById("wa-rec-preview").innerText = cfg.montar(_waRecValores());
 }
 
+// Valida o que a pessoa preencheu e monta o corpo do POST /admin/whatsapp/enviar.
+// Separado de _waRecEnviar porque o botão "Enviar ativo" do Stuck (shopee-stuck.js)
+// dispara exatamente este mesmo modelo: a mensagem e o corpo têm que sair iguais nas
+// duas telas, e cada uma só cuida de ler os próprios campos e mostrar o resultado.
+// Devolve { erro } ou { corpo }.
+function _waRecMontarEnvio({ cfg, valores, numero, prazo, role }) {
+    const tel = _waValidarTelefone(numero);
+    if (!tel.ok) return { erro: tel.erro };
+    // Só cobra prazo de quem faz acareação — pros demais o campo nem aparece.
+    const comPrazo = WA_ROLES_COM_PRAZO.includes(role);
+    if (comPrazo && (!prazo || prazo < 1)) return { erro: "Informe o prazo em horas." };
+    const faltando = cfg.campos.filter(c => !valores[c.id]);
+    if (faltando.length) return { erro: "Preencha: " + faltando.map(c => c.label).join(", ") };
+
+    return { corpo: {
+        numero: tel.e164, template: cfg.template, parametros: cfg.parametros(valores),
+        texto: cfg.montar(valores), nome_cliente: valores.nome_cliente || null,
+        pedido: valores[cfg.campoPedido] || null, prazo_horas: comPrazo ? prazo : null,
+        // Quando a transportadora é campo do template, ela vai explícita — o nome do
+        // template não a identifica, e é ela que separa a conversa no funil.
+        transportadora: cfg.transportadora
+    } };
+}
+
 function _waRecEnviar() {
     const cfg    = WA_REC_TEMPLATES[_waRecCategoria];
-    const prazo  = parseInt(document.getElementById("wa-rec-prazo").value, 10);
     const msgEl  = document.getElementById("wa-rec-msg");
-    const v      = _waRecValores();
 
-    const tel = _waValidarTelefone(document.getElementById("wa-rec-numero").value);
-    if (!tel.ok) { msgEl.style.color = "#ef4444"; msgEl.innerText = tel.erro; return; }
-    const numero = tel.e164;
-    // Só cobra prazo de quem faz acareação — pros demais o campo nem aparece.
-    const comPrazo = WA_ROLES_COM_PRAZO.includes(window._gcUser && window._gcUser.role);
-    if (comPrazo && (!prazo || prazo < 1)) { msgEl.style.color = "#ef4444"; msgEl.innerText = "Informe o prazo em horas."; return; }
-    const faltando = cfg.campos.filter(c => !v[c.id]);
-    if (faltando.length) {
-        msgEl.style.color = "#ef4444";
-        msgEl.innerText = "Preencha: " + faltando.map(c => c.label).join(", ");
-        return;
-    }
+    const envio = _waRecMontarEnvio({
+        cfg, valores: _waRecValores(),
+        numero: document.getElementById("wa-rec-numero").value,
+        prazo: parseInt(document.getElementById("wa-rec-prazo").value, 10),
+        role: window._gcUser && window._gcUser.role,
+    });
+    if (envio.erro) { msgEl.style.color = "#ef4444"; msgEl.innerText = envio.erro; return; }
 
     msgEl.style.color = "#8494a9";
     msgEl.innerText = "Enviando...";
@@ -318,14 +335,7 @@ function _waRecEnviar() {
     fetch(`${API}/admin/whatsapp/enviar`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({
-            numero, template: cfg.template, parametros: cfg.parametros(v),
-            texto: cfg.montar(v), nome_cliente: v.nome_cliente || null,
-            pedido: v[cfg.campoPedido] || null, prazo_horas: comPrazo ? prazo : null,
-            // Quando a transportadora é campo do template, ela vai explícita — o nome do
-            // template não a identifica, e é ela que separa a conversa no funil.
-            transportadora: cfg.transportadora
-        })
+        body: JSON.stringify(envio.corpo)
     })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ ok, body }) => {

@@ -98,6 +98,10 @@ function _sstRenderizar() {
         ? `${_sstRegistros.length} pedido${_sstRegistros.length !== 1 ? "s" : ""} parado${_sstRegistros.length !== 1 ? "s" : ""}`
         : `${lista.length} de ${_sstRegistros.length}`;
 
+    // A coluna some inteira (cabeçalho junto) pra quem não enxerga os Ativos.
+    const podeAtivo = _sstPodeAtivo();
+    document.getElementById("sst-th-ativo").style.display = podeAtivo ? "" : "none";
+
     document.getElementById("sst-tbody").innerHTML = lista.map(r => {
         // O índice do registro na lista COMPLETA: o filtro muda a ordem visível,
         // e passar a posição da lista filtrada faria o clique gravar em outro.
@@ -115,6 +119,9 @@ function _sstRenderizar() {
             <td data-label="Histórico">
                 <button type="button" class="sst-hist-btn" onclick="_sstAbrirHistorico('${_sstEsc(r.codigo)}')">Visualizar</button>
             </td>
+            ${podeAtivo ? `<td data-label="Ativo">
+                <button type="button" class="sst-ativo-btn" onclick="_sstAbrirAtivo(this)">Enviar ativo</button>
+            </td>` : ""}
         </tr>`;
     }).join("");
 }
@@ -178,6 +185,139 @@ function _sstSalvar(sel, indice) {
         sel.value = anterior;
         sel.classList.add("erro");
         gcAlert("Erro ao conectar com o servidor.");
+    });
+}
+
+// ───── Enviar ativo ─────
+//
+// O mesmo disparo de Ativos > Disparar (POST /admin/whatsapp/enviar) com o modelo
+// da Shopee que já mora em whatsapp-teste.js (WA_REC_TEMPLATES.shopee: template
+// aprovado na Meta, campos, texto e ordem dos parâmetros) — nada disso é copiado
+// pra cá, senão o texto daqui divergiria do aprovado na primeira troca. O que
+// muda: o código do pedido já vem da linha, então a pessoa completa só o resto.
+//
+// Só aparece pra quem enxerga os Ativos (sac, dev, admin): o servidor recusa os
+// demais, e um botão que só leva a "Acesso negado" é pior que não ter botão.
+
+let _sstAtivoCodigo = "";
+let _sstAtivoEnviando = false;
+
+function _sstPodeAtivo() {
+    const role = window._gcUser && window._gcUser.role;
+    return typeof WA_ROLES_ATIVOS !== "undefined" && WA_ROLES_ATIVOS.includes(role);
+}
+
+function _sstAtivoCfg() {
+    return typeof WA_REC_TEMPLATES !== "undefined" ? WA_REC_TEMPLATES.shopee : null;
+}
+
+function _sstAtivoMsg(texto, cor) {
+    const el = document.getElementById("sst-ativo-msg");
+    el.style.color = cor || "";
+    el.innerText = texto;
+}
+
+function _sstAtivoValores(cfg) {
+    const v = {};
+    cfg.campos.forEach(c => {
+        const el = document.getElementById(`sst-ativo-campo-${c.id}`);
+        v[c.id] = el ? el.value.trim() : "";
+    });
+    return v;
+}
+
+function _sstAtivoPreview() {
+    const cfg = _sstAtivoCfg();
+    if (!cfg) return;
+    document.getElementById("sst-ativo-preview").innerText = cfg.montar(_sstAtivoValores(cfg));
+}
+
+// O código vem da PRÓPRIA linha (data-codigo), não de um argumento no onclick:
+// código dentro de string de atributo é o jeito de quebrar a linha inteira no dia
+// em que aparecer um com aspas.
+function _sstAbrirAtivo(btn) {
+    const codigo = btn.closest("tr")?.dataset.codigo;
+    const cfg = _sstAtivoCfg();
+    if (!codigo || !cfg) return gcAlert("Não foi possível abrir o envio de ativo.");
+
+    _sstAtivoCodigo = codigo;
+    _sstAtivoEnviando = false;
+
+    document.getElementById("sst-ativo-codigo").innerText = codigo;
+    document.getElementById("sst-ativo-numero").value = "";
+    // Prazo é de acareação (só sac e dev) — igual ao formulário de Ativos: os demais
+    // cargos mandam a mesma mensagem, sem vencimento correndo.
+    const comPrazo = WA_ROLES_COM_PRAZO.includes(window._gcUser && window._gcUser.role);
+    document.getElementById("sst-ativo-prazo-wrap").style.display = comPrazo ? "" : "none";
+    document.getElementById("sst-ativo-prazo").value = 48;
+
+    document.getElementById("sst-ativo-campos").innerHTML = cfg.campos.map(c => {
+        const ehPedido = c.id === cfg.campoPedido;
+        return `
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">${_sstEsc(c.label)}</label>
+            <input type="text" id="sst-ativo-campo-${c.id}" class="usr-modal-input" autocomplete="off"
+                   oninput="_sstAtivoPreview()"${ehPedido ? ` value="${_sstEsc(codigo)}" readonly style="opacity:.7"` : ""}>
+        </div>`;
+    }).join("");
+
+    _sstAtivoMsg("", "");
+    const enviar = document.getElementById("sst-ativo-btn-enviar");
+    enviar.disabled = false;
+    enviar.textContent = "Enviar mensagem";
+    _sstAtivoPreview();
+    _abrirModal("modal-sst-ativo");
+}
+
+function _sstEnviarAtivo() {
+    if (_sstAtivoEnviando) return;
+    const cfg = _sstAtivoCfg();
+    if (!cfg) return;
+
+    const envio = _waRecMontarEnvio({
+        cfg, valores: _sstAtivoValores(cfg),
+        numero: document.getElementById("sst-ativo-numero").value,
+        prazo: parseInt(document.getElementById("sst-ativo-prazo").value, 10),
+        role: window._gcUser && window._gcUser.role,
+    });
+    if (envio.erro) return _sstAtivoMsg(envio.erro, "#ef4444");
+
+    // Trava já no clique: a mensagem vai pro WhatsApp do cliente e não tem volta, então
+    // um duplo clique não pode virar duas mensagens iguais.
+    _sstAtivoEnviando = true;
+    const codigoEnviado = _sstAtivoCodigo;
+    const botao = document.getElementById("sst-ativo-btn-enviar");
+    botao.disabled = true;
+    botao.textContent = "Enviando...";
+    _sstAtivoMsg("Enviando...", "#8494a9");
+
+    fetch(`${API}/admin/whatsapp/enviar`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify(envio.corpo)
+    })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ ok, body }) => {
+        if (!ok) {
+            _sstAtivoEnviando = false;
+            botao.disabled = false;
+            botao.textContent = "Enviar mensagem";
+            if (body.detalhe) console.error("[whatsapp] recusa da Meta:", body.detalhe);
+            _sstAtivoMsg(body.error || "Erro ao enviar.", "#ef4444");
+            if (body.polo_pendente) { gcPoloInvalidar(); gcPoloGarantir(); }
+            return;
+        }
+        // Continua travado depois de enviar: reabrir o mesmo pedido zera a trava.
+        botao.textContent = "Enviado";
+        _sstAtivoMsg("Enviado!", "#22c55e");
+        // Só fecha se ainda for o mesmo pedido — a pessoa pode ter aberto outro nesse meio-tempo.
+        setTimeout(() => { if (_sstAtivoCodigo === codigoEnviado) _fecharModal("modal-sst-ativo"); }, 1200);
+    })
+    .catch(() => {
+        _sstAtivoEnviando = false;
+        botao.disabled = false;
+        botao.textContent = "Enviar mensagem";
+        _sstAtivoMsg("Erro ao conectar com o servidor.", "#ef4444");
     });
 }
 
