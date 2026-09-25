@@ -34,6 +34,7 @@ const ACESSOR = `
   get fonte() { return _macFonte; }, set fonte(v) { _macFonte = v; },
   get poll() { return _macPoll; },
   get geral() { return _macGeral; }, set geral(v) { _macGeral = v; },
+  get computador() { return _macComputador; }, set computador(v) { _macComputador = v; },
 };`;
 
 function escapar(s) {
@@ -250,79 +251,277 @@ test("Rodar fica apagado enquanto o pedido esta em andamento, e volta depois", (
   }
 });
 
-// ── quem esta ouvindo ─────────────────────────────────────────────────────
+// ── em QUAL computador os macros executam ────────────────────────────────
 const UMA = { online: true, visto_ha_s: 3, maquinas: [{ nome: "AVELL-LEANDRO", visto_ha_s: 3, online: true }] };
 const DUAS = { online: true, visto_ha_s: 3, maquinas: [
   { nome: "CASA", visto_ha_s: 3, online: true }, { nome: "GALPAO", visto_ha_s: 20, online: true }] };
 const NENHUMA = { online: false, visto_ha_s: 400, maquinas: [{ nome: "CASA", visto_ha_s: 400, online: false }] };
+const secaoMacros = (a) => a.ctx._macHtmlSecoes(TRES());
+const opcoesDo = (html) => [...html.matchAll(/<option value="([^"]*)"( selected)?>([^<]*)<\/option>/g)]
+  .map((m) => ({ valor: m[1], selecionada: !!m[2], rotulo: m[3] }));
 
-test("um computador ouvindo: mostra o nome dele", () => {
-  const a = carregar();
-  a.m.vigia = UMA;
-  const html = a.ctx._macHtmlSecoes(TRES());
-  assert.ok(html.includes("AVELL-LEANDRO conectado"));
-  assert.ok(html.includes("mac-vigia-on"));
-});
-
-test("dois computadores ouvindo: avisa que o Rodar vai pro primeiro que responder", () => {
+test("o cabecalho tem o seletor 'Executa em' com 'Qualquer computador' e cada computador conhecido", () => {
   const a = carregar();
   a.m.vigia = DUAS;
-  const html = a.ctx._macHtmlSecoes(TRES());
-  assert.ok(html.includes("2 computadores conectados (CASA, GALPAO)"));
-  assert.ok(html.includes("primeiro que responder"));
-  assert.ok(html.includes("mac-vigia-aviso"));
+  const html = secaoMacros(a);
+  assert.ok(html.includes("Executa em"));
+  assert.deepStrictEqual(opcoesDo(html).map((o) => o.valor), ["", "CASA", "GALPAO"]);
+  assert.strictEqual(opcoesDo(html)[0].rotulo, "Qualquer computador");
 });
 
-test("ninguem ouvindo: diz ha quanto tempo e o que abrir", () => {
+test("sem escolha, 'Qualquer computador' vem marcado", () => {
   const a = carregar();
-  a.m.vigia = NENHUMA;
-  const html = a.ctx._macHtmlSecoes(TRES());
-  assert.ok(html.includes("Nenhum computador conectado (visto há 6 min)"));
-  assert.ok(html.includes("abra o Chrome (com a extensão) e o XM Vigia"));
-  assert.ok(html.includes("mac-vigia-off"));
+  a.m.vigia = DUAS;
+  const marcadas = opcoesDo(secaoMacros(a)).filter((o) => o.selecionada);
+  assert.deepStrictEqual(marcadas.map((o) => o.valor), [""]);
 });
 
-test("nunca teve contato: nao inventa um 'visto ha X'", () => {
+test("com escolha, o escolhido vem marcado", () => {
+  const a = carregar();
+  a.m.vigia = DUAS;
+  a.m.computador = "GALPAO";
+  assert.deepStrictEqual(opcoesDo(secaoMacros(a)).filter((o) => o.selecionada).map((o) => o.valor), ["GALPAO"]);
+});
+
+test("a escolha vale mesmo com outra caixa de letra (o Windows guarda em maiuscula)", () => {
+  const a = carregar();
+  a.m.vigia = DUAS;
+  a.m.computador = "galpao";
+  assert.deepStrictEqual(opcoesDo(secaoMacros(a)).filter((o) => o.selecionada).map((o) => o.valor), ["GALPAO"]);
+});
+
+test("computador desconectado aparece na lista marcado como desconectado", () => {
+  const a = carregar();
+  a.m.vigia = { online: true, visto_ha_s: 3, maquinas: [
+    { nome: "CASA", visto_ha_s: 3, online: true }, { nome: "GALPAO", visto_ha_s: 900, online: false }] };
+  const o = opcoesDo(secaoMacros(a));
+  assert.strictEqual(o.find((x) => x.valor === "GALPAO").rotulo, "GALPAO — desconectado");
+  assert.strictEqual(o.find((x) => x.valor === "CASA").rotulo, "CASA");
+});
+
+test("o escolhido que nunca consultou (servidor reiniciou) continua na lista, desconectado", () => {
   const a = carregar();
   a.m.vigia = { online: false, visto_ha_s: null, maquinas: [] };
-  const html = a.ctx._macHtmlSecoes(TRES());
-  assert.ok(html.includes("Nenhum computador conectado — abra"));
-  assert.ok(!html.includes("visto"));
+  a.m.computador = "GALPAO";
+  const o = opcoesDo(secaoMacros(a));
+  assert.deepStrictEqual(o.map((x) => x.valor), ["", "GALPAO"]);
+  assert.ok(o[1].selecionada && o[1].rotulo.includes("desconectado"));
+});
+
+test("vigia antigo (sem nome) nao pode ser escolhido - nome vazio significaria 'qualquer um'", () => {
+  const a = carregar();
+  a.m.vigia = { online: true, visto_ha_s: 2, maquinas: [{ nome: "", visto_ha_s: 2, online: true }] };
+  assert.deepStrictEqual(opcoesDo(secaoMacros(a)).map((o) => o.valor), [""]);
+});
+
+test("nome de computador com HTML nao vira HTML (nem na lista nem no aviso)", () => {
+  const a = carregar();
+  a.m.vigia = { online: true, visto_ha_s: 1, maquinas: [{ nome: '<b onclick="x">m</b>', visto_ha_s: 1, online: true }] };
+  a.m.computador = '<i>nao</i>';
+  const html = secaoMacros(a);
+  assert.ok(!html.includes("<b onclick") && !html.includes("<i>nao"));
+});
+
+test("sem a informacao do vigia (servidor antigo), o seletor nem aparece", () => {
+  const a = carregar();
+  a.m.vigia = null;
+  assert.ok(!secaoMacros(a).includes("mac-computador"));
+});
+
+test("o seletor so aparece na secao dos macros, uma vez", () => {
+  const a = carregar();
+  a.m.vigia = UMA;
+  assert.strictEqual(secaoMacros(a).split('id="mac-computador-sel"').length - 1, 1);
+});
+
+// ── o pontinho e o aviso: so quando ha algo a dizer ───────────────────────
+const aviso = (html) => { const m = /<div class="mac-geral"><div class="mac-sit mac-sit-aviso">[\s\S]*?<span>([^<]*)<\/span>/.exec(html); return m && m[1]; };
+const tomDoPonto = (html) => /mac-vigia mac-vigia-(\w+)/.exec(html)[1];
+
+test("um computador ouvindo e nenhuma escolha: sem aviso, ponto verde (nao ha ambiguidade)", () => {
+  const a = carregar();
+  a.m.vigia = UMA;
+  const html = secaoMacros(a);
+  assert.strictEqual(aviso(html), null);
+  assert.strictEqual(tomDoPonto(html), "on");
+});
+
+test("dois computadores conectados sem escolha: avisa pra escolher, e diz o que acontece sem escolha", () => {
+  const a = carregar();
+  a.m.vigia = DUAS;
+  const t = aviso(secaoMacros(a));
+  assert.ok(t.includes("2 computadores conectados (CASA, GALPAO)"));
+  assert.ok(t.includes("escolha acima em qual os macros rodam"));
+  assert.ok(t.includes("o horário roda em todos"));
+});
+
+test("dois conectados COM escolha: sem aviso (o outro fica parado, e esta tudo certo)", () => {
+  const a = carregar();
+  a.m.vigia = DUAS;
+  a.m.computador = "CASA";
+  const html = secaoMacros(a);
+  assert.strictEqual(aviso(html), null);
+  assert.strictEqual(tomDoPonto(html), "on");
+});
+
+test("o escolhido desconectado: avisa QUAL e ha quanto tempo, com o que fazer", () => {
+  const a = carregar();
+  a.m.vigia = { online: true, visto_ha_s: 3, maquinas: [
+    { nome: "CASA", visto_ha_s: 3, online: true }, { nome: "GALPAO", visto_ha_s: 900, online: false }] };
+  a.m.computador = "GALPAO";
+  const html = secaoMacros(a);
+  assert.ok(aviso(html).includes("GALPAO não está conectado (visto há 15 min)"));
+  assert.ok(aviso(html).includes("ou escolha outro computador"));
+  assert.strictEqual(tomDoPonto(html), "off");
+});
+
+test("outro computador conectado NAO conta como o escolhido estar conectado", () => {
+  const a = carregar();
+  a.m.vigia = UMA;                       // so o AVELL-LEANDRO esta ouvindo
+  a.m.computador = "GALPAO";
+  assert.ok(aviso(secaoMacros(a)).includes("GALPAO não está conectado"));
+});
+
+test("o escolhido que o servidor nunca viu: avisa sem inventar 'visto ha X'", () => {
+  const a = carregar();
+  a.m.vigia = { online: false, visto_ha_s: null, maquinas: [] };
+  a.m.computador = "GALPAO";
+  const t = aviso(secaoMacros(a));
+  assert.ok(t.includes("GALPAO não está conectado —"));
+  assert.ok(!t.includes("visto"));
+});
+
+test("ninguem conectado e sem escolha: diz ha quanto tempo e o que abrir", () => {
+  const a = carregar();
+  a.m.vigia = NENHUMA;
+  const t = aviso(secaoMacros(a));
+  assert.ok(t.includes("Nenhum computador conectado (visto há 6 min)"));
+  assert.ok(t.includes("abra o Chrome (com a extensão) e o XM Vigia"));
+});
+
+test("nunca teve contato: nao inventa 'visto ha X'", () => {
+  const a = carregar();
+  a.m.vigia = { online: false, visto_ha_s: null, maquinas: [] };
+  const t = aviso(secaoMacros(a));
+  assert.ok(t.includes("Nenhum computador conectado —") && !t.includes("visto"));
 });
 
 test("servidor antigo (sem a lista de maquinas) continua funcionando pelo online", () => {
   const a = carregar();
   a.m.vigia = { online: true, visto_ha_s: 2 };
-  assert.ok(a.ctx._macHtmlSecoes(TRES()).includes("Computador dos macros conectado"));
+  assert.strictEqual(aviso(secaoMacros(a)), null);
   a.m.vigia = { online: false, visto_ha_s: 500 };
-  assert.ok(a.ctx._macHtmlSecoes(TRES()).includes("Nenhum computador conectado (visto há 8 min)"));
+  assert.ok(aviso(secaoMacros(a)).includes("Nenhum computador conectado (visto há 8 min)"));
 });
 
-test("vigia antigo (sem nome de computador) aparece como 'Computador dos macros'", () => {
+test("o aviso do computador so aparece na secao dos macros, uma vez", () => {
   const a = carregar();
-  a.m.vigia = { online: true, visto_ha_s: 2, maquinas: [{ nome: "", visto_ha_s: 2, online: true }] };
-  assert.ok(a.ctx._macHtmlSecoes(TRES()).includes("Computador dos macros conectado"));
+  a.m.vigia = DUAS;
+  assert.strictEqual(secaoMacros(a).split("computadores conectados").length - 1, 1);
 });
 
-test("nome de computador com HTML nao vira HTML", () => {
+// ── escolher o computador ─────────────────────────────────────────────────
+const ROTA_PC = "PUT /admin/macros/spx/computador";
+
+test("escolher manda o nome ao servidor e a tela ja mostra a escolha", async () => {
+  const a = carregar({ rotas: { [ROTA_PC]: { corpo: { ok: true, computador: "GALPAO" } } } });
+  a.m.vigia = DUAS;
+  a.m.lista = TRES();
+  a.ctx._macEscolherComputador("GALPAO");
+  assert.strictEqual(a.m.computador, "GALPAO", "troca na hora, antes da resposta");
+  await a.esperar(); await a.esperar();
+  assert.strictEqual(a.chamadas[0].metodo, "PUT");
+  assert.strictEqual(a.chamadas[0].caminho, "/admin/macros/spx/computador");
+  assert.deepStrictEqual(a.chamadas[0].corpo, { maquina: "GALPAO" });
+});
+
+test("'Qualquer computador' manda null (solta a escolha)", async () => {
+  const a = carregar({ rotas: { [ROTA_PC]: { corpo: { ok: true, computador: null } } } });
+  a.m.vigia = DUAS; a.m.lista = TRES(); a.m.computador = "GALPAO";
+  a.ctx._macEscolherComputador("");
+  assert.strictEqual(a.m.computador, null);
+  await a.esperar(); await a.esperar();
+  assert.deepStrictEqual(a.chamadas[0].corpo, { maquina: null });
+});
+
+test("servidor recusou: volta pra escolha de antes e avisa", async () => {
+  const a = carregar({ rotas: { [ROTA_PC]: { status: 403, corpo: { error: "Acesso negado" } } } });
+  a.m.vigia = DUAS; a.m.lista = TRES(); a.m.computador = "CASA";
+  a.ctx._macEscolherComputador("GALPAO");
+  await a.esperar(); await a.esperar();
+  assert.strictEqual(a.m.computador, "CASA");
+  assert.deepStrictEqual(a.alertas, ["Acesso negado"]);
+});
+
+test("sem rede: volta pra escolha de antes e avisa", async () => {
+  const a = carregar({ rotas: { [ROTA_PC]: new TypeError("failed to fetch") } });
+  a.m.vigia = DUAS; a.m.lista = TRES(); a.m.computador = "CASA";
+  a.ctx._macEscolherComputador("GALPAO");
+  await a.esperar(); await a.esperar();
+  assert.strictEqual(a.m.computador, "CASA");
+  assert.deepStrictEqual(a.alertas, ["Erro ao conectar com o servidor."]);
+});
+
+test("a lista carrega a escolha que o servidor guardou", async () => {
+  const a = carregar({ rotas: {
+    "GET /admin/macros": { corpo: { macros: [AVISO] } },
+    "GET /admin/macros/spx": { corpo: { macros: TRES(), vigia: DUAS, computador: "GALPAO" } },
+  } });
+  a.ctx._macCarregarLista();
+  await a.esperar(); await a.esperar();
+  assert.strictEqual(a.m.computador, "GALPAO");
+});
+
+test("sem escolha guardada, a lista deixa 'qualquer computador'", async () => {
+  const a = carregar({ rotas: {
+    "GET /admin/macros": { corpo: { macros: [AVISO] } },
+    "GET /admin/macros/spx": { corpo: { macros: TRES(), vigia: DUAS, computador: null } },
+  } });
+  a.m.computador = "RESTO";
+  a.ctx._macCarregarLista();
+  await a.esperar(); await a.esperar();
+  assert.strictEqual(a.m.computador, null);
+});
+
+// ── o pedido sabe pra onde vai ────────────────────────────────────────────
+test("o Rodar diz no tooltip em qual computador vai rodar", () => {
   const a = carregar();
-  a.m.vigia = { online: true, visto_ha_s: 1, maquinas: [{ nome: "<b>x</b>", visto_ha_s: 1, online: true }] };
-  const html = a.ctx._macHtmlSecoes(TRES());
-  assert.ok(!html.includes("<b>x</b>"));
-  assert.ok(html.includes("&lt;b&gt;x&lt;/b&gt; conectado"));
+  a.m.vigia = DUAS; a.m.computador = "GALPAO";
+  assert.ok(linha(secaoMacros(a), "backlog").includes('title="Rodar agora em GALPAO"'));
+  a.m.computador = null;
+  assert.ok(linha(secaoMacros(a), "backlog").includes('title="Rodar agora"'));
 });
 
-test("sem a informacao do vigia (servidor antigo), a linha nem aparece", () => {
+test("pedido aguardando um computador desconectado diz QUAL e o que fazer", () => {
   const a = carregar();
-  a.m.vigia = null;
-  assert.ok(!a.ctx._macHtmlSecoes(TRES()).includes("mac-vigia"));
+  const soCasa = { online: true, visto_ha_s: 3, maquinas: [
+    { nome: "CASA", visto_ha_s: 3, online: true }, { nome: "GALPAO", visto_ha_s: 900, online: false }] };
+  const r = a.ctx._macComandoTexto(cmd("aguardando", { alvo: "GALPAO" }), soCasa);
+  assert.strictEqual(r.tom, "aviso");
+  assert.match(r.texto, /GALPAO não está conectado/);
+  assert.match(r.texto, /ou escolha outro computador/);
 });
 
-test("quem esta ouvindo so aparece na secao dos macros, uma vez", () => {
+test("pedido aguardando com o destino conectado anda normalmente", () => {
+  const a = carregar();
+  a.m.vigia = DUAS;
+  const r = a.ctx._macComandoTexto(cmd("aguardando", { alvo: "CASA" }), DUAS);
+  assert.strictEqual(r.tom, "andando");
+  assert.match(r.texto, /aguardando CASA/);
+});
+
+test("pedido com destino: outro computador conectado nao serve", () => {
   const a = carregar();
   a.m.vigia = UMA;
-  const html = a.ctx._macHtmlSecoes(TRES());
-  assert.strictEqual(html.split("mac-vigia mac-vigia-on").length - 1, 1);
+  const r = a.ctx._macComandoTexto(cmd("aguardando", { alvo: "GALPAO" }), UMA);
+  assert.strictEqual(r.tom, "aviso");
+});
+
+test("expirado e iniciado tambem citam o destino", () => {
+  const a = carregar();
+  assert.match(a.ctx._macComandoTexto(cmd("expirado", { alvo: "GALPAO" }), UMA).texto, /GALPAO está com o Chrome e o XM Vigia abertos/);
+  assert.match(a.ctx._macComandoTexto(cmd("iniciado", { alvo: "CASA" }), UMA).texto, /por Dev Teste em CASA$/);
+  assert.ok(!/ em /.test(a.ctx._macComandoTexto(cmd("iniciado"), UMA).texto), "sem destino, como antes");
 });
 
 // ── carregar a lista ──────────────────────────────────────────────────────
@@ -893,12 +1092,12 @@ test("a lista carrega o problema geral do servidor", async () => {
 });
 
 // ── cabecalho da secao ────────────────────────────────────────────────────
-test("o titulo da secao dos macros leva, na mesma linha, quem esta ouvindo e o Historico", () => {
+test("o titulo da secao dos macros leva, na mesma linha, o seletor de computador e o Historico", () => {
   const a = carregar();
   a.m.vigia = UMA;
   const html = a.ctx._macHtmlSecoes(TRES());
   const cab = /<div class="mac-secao-cab">([\s\S]*?)<\/div><\/div>/.exec(html)[1];
-  assert.ok(cab.includes(">Macros<") && cab.includes("AVELL-LEANDRO conectado") && cab.includes("_macAbrirHistorico()"));
+  assert.ok(cab.includes(">Macros<") && cab.includes("Executa em") && cab.includes("_macAbrirHistorico()"));
 });
 
 test("a secao dos avisos segue com o titulo simples (sem historico)", () => {

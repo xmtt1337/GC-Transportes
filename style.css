@@ -2644,6 +2644,15 @@ td.cad-nome { color: #e2e8f0; }
 .mac-secao-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 20px; flex-wrap: wrap; }
 .mac-secao-acoes { display: flex; align-items: center; gap: 18px; font-size: 12.5px; }
 .mac-vigia { display: inline-flex; align-items: baseline; gap: 7px; color: #8494a9; }
+.mac-computador { display: inline-flex; align-items: center; gap: 8px; color: #8494a9; }
+.mac-computador .mac-vigia { align-items: center; }
+.mac-select {
+    background: #0f1925; color: #e2e8f0; cursor: pointer; font: inherit; font-size: 12.5px;
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; padding: 5px 26px 5px 9px;
+    max-width: 260px; text-overflow: ellipsis;
+}
+.mac-select:hover { border-color: rgba(255,255,255,0.3); }
+.mac-select:focus-visible { outline: 2px solid #6aa5ff; outline-offset: 2px; }
 .mac-link {
     background: none; border: none; padding: 0; cursor: pointer;
     color: #6aa5ff; font: inherit; font-size: 12.5px;

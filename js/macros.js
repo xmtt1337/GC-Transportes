@@ -19,6 +19,7 @@ let _macAgenda = null;  // cópia de trabalho da agenda de um macro do SPX abert
 let _macFonte = "rodadas"; // qual lista de horários o relógio (hora/minuto) edita: "rodadas" | "agenda"
 let _macPoll = null;    // timer que acompanha um "Rodar" até ele sair do "aguardando"
 let _macGeral = null;   // problema que o vigia contou sem saber de qual macro (erro inesperado, etc.)
+let _macComputador = null; // o computador escolhido pra executar os macros (null = qualquer um)
 
 function abrirMacros(event) {
     if (event) event.preventDefault();
@@ -63,6 +64,7 @@ function _macCarregarLista(silencioso) {
             _macLista = (d.macros || []).concat(doSpx);
             _macVigia = spx && spx.vigia ? spx.vigia : null;
             _macGeral = spx && spx.geral ? spx.geral : null;
+            _macComputador = spx && spx.computador ? spx.computador : null;
             empty.style.display = "none";
             _macRedesenhar();
             _macAcompanhar();
@@ -161,18 +163,27 @@ function _macHoraBrasilia(iso) {
 // diz o que a pessoa precisa saber e, quando falha, o que conferir.
 function _macComandoTexto(cmd, vigia) {
     switch (cmd.estado) {
-        case "aguardando":
-            return vigia && !vigia.online
-                ? { tom: "aviso", texto: "Pedido enviado, mas nenhum computador responde. Confira se o Chrome e o XM Vigia estão abertos." }
-                : { tom: "andando", texto: "Pedido enviado — aguardando o computador dos macros…" };
+        case "aguardando": {
+            // Com destino, o que importa é ELE estar conectado (outro computador ouvindo não serve).
+            const alvo = cmd.alvo || "";
+            const ninguem = alvo ? !_macPcOnlineEm(vigia, alvo) : (vigia && !vigia.online);
+            if (ninguem) {
+                return { tom: "aviso", texto: alvo
+                    ? `Pedido enviado, mas ${alvo} não está conectado. Abra o Chrome e o XM Vigia nele, ou escolha outro computador.`
+                    : "Pedido enviado, mas nenhum computador responde. Confira se o Chrome e o XM Vigia estão abertos." };
+            }
+            return { tom: "andando", texto: `Pedido enviado — aguardando ${alvo || "o computador dos macros"}…` };
+        }
         case "entregue":
             return { tom: "andando", texto: "Recebido pela extensão — iniciando…" };
         case "iniciado":
-            return { tom: "ok", texto: `Iniciado às ${_macHoraBrasilia(cmd.criado_em)} por ${cmd.criado_por}` };
+            return { tom: "ok", texto: `Iniciado às ${_macHoraBrasilia(cmd.criado_em)} por ${cmd.criado_por}${cmd.alvo ? ` em ${cmd.alvo}` : ""}` };
         case "erro":
             return { tom: "erro", texto: `Não rodou: ${cmd.erro || "motivo não informado"}` };
         case "expirado":
-            return { tom: "aviso", texto: "Ninguém buscou o pedido — o Chrome ou o XM Vigia estão fechados?" };
+            return { tom: "aviso", texto: cmd.alvo
+                ? `Ninguém buscou o pedido — ${cmd.alvo} está com o Chrome e o XM Vigia abertos?`
+                : "Ninguém buscou o pedido — o Chrome ou o XM Vigia estão fechados?" };
         case "sem_confirmacao":
             return { tom: "aviso", texto: "A extensão recebeu o pedido mas não confirmou — veja na tela do SPX." };
         default:
@@ -205,24 +216,91 @@ function _macProblemaHtml(p, qual) {
         + `<button type="button" class="mac-link" onclick="_macAbrirHistorico('${_macEsc(qual)}')">Detalhes</button></span></div>`;
 }
 
-// Quem está ouvindo, num texto só: o computador (pelo nome), ou o que fazer se ninguém está.
-// Mais de um computador ouvindo é aviso: o "Rodar" vai pro primeiro que responder, e os dois
-// rodariam o horário — foi o que aconteceu com o segundo desktop.
-function _macVigiaTexto(v) {
-    const maquinas = Array.isArray(v.maquinas) ? v.maquinas : null;
-    const on = maquinas ? maquinas.filter(m => m.online) : (v.online ? [{ nome: "" }] : []);
-    if (on.length === 1) return { tom: "on", texto: `${on[0].nome || "Computador dos macros"} conectado` };
-    if (on.length > 1) {
-        return { tom: "aviso", texto: `${on.length} computadores conectados (${on.map(m => m.nome || "sem nome").join(", ")}) — o Rodar vai pro primeiro que responder` };
+// ── Em QUAL computador os macros executam ──
+// Com duas ou três máquinas ligadas (vigia + extensão), sem isto o horário rodava em TODAS e o
+// "Rodar" ia pra quem perguntasse primeiro. Uma escolha só, pros três macros: eles dividem a
+// mesma conta do SPX, então dois computadores rodando macros diferentes também se atrapalham.
+// As outras máquinas continuam conectadas, mas paradas (sem horário e sem Rodar).
+const _macMesmoPc = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+const _macPcOnlineEm = (vigia, nome) => !!vigia && (vigia.maquinas || []).some(m => m.online && _macMesmoPc(m.nome, nome));
+const _macPcOnline = nome => _macPcOnlineEm(_macVigia, nome);
+
+// Os computadores que se pode escolher: os que já consultaram o servidor, mais o escolhido se ele
+// estiver desligado (a escolha continua valendo, e some da lista se não aparecer).
+function _macComputadoresConhecidos() {
+    const nomes = [];
+    const soma = n => { if (n && !nomes.some(x => _macMesmoPc(x, n))) nomes.push(n); };
+    ((_macVigia && _macVigia.maquinas) || []).forEach(m => soma(m.nome));
+    soma(_macComputador);
+    return nomes;
+}
+
+// O que dizer sobre quem está ouvindo — só quando há algo errado ou ambíguo. Sem problema, sem
+// linha: o seletor já mostra o computador e o pontinho diz se está conectado.
+function _macAvisoComputador() {
+    if (!_macVigia) return null;
+    const maquinas = Array.isArray(_macVigia.maquinas) ? _macVigia.maquinas : null;
+    const on = maquinas ? maquinas.filter(m => m.online) : (_macVigia.online ? [{ nome: "" }] : []);
+
+    if (_macComputador) {
+        if (_macPcOnline(_macComputador)) return null;
+        const visto = maquinas && maquinas.find(m => _macMesmoPc(m.nome, _macComputador));
+        const quando = visto ? ` (visto ${_macHa(visto.visto_ha_s)})` : "";
+        return { tom: "aviso", texto: `${_macComputador} não está conectado${quando} — abra o Chrome (com a extensão) e o XM Vigia nele, ou escolha outro computador.` };
     }
-    const quando = v.visto_ha_s === null || v.visto_ha_s === undefined ? "" : ` (visto ${_macHa(v.visto_ha_s)})`;
-    return { tom: "off", texto: `Nenhum computador conectado${quando} — abra o Chrome (com a extensão) e o XM Vigia` };
+    if (on.length > 1) {
+        return { tom: "aviso", texto: `${on.length} computadores conectados (${on.map(m => m.nome || "sem nome").join(", ")}) — escolha acima em qual os macros rodam. Sem escolha, o horário roda em todos.` };
+    }
+    if (!on.length) {
+        const quando = _macVigia.visto_ha_s === null || _macVigia.visto_ha_s === undefined ? "" : ` (visto ${_macHa(_macVigia.visto_ha_s)})`;
+        return { tom: "aviso", texto: `Nenhum computador conectado${quando} — abra o Chrome (com a extensão) e o XM Vigia.` };
+    }
+    return null;
+}
+
+function _macAvisoComputadorHtml() {
+    const a = _macAvisoComputador();
+    return a ? `<div class="mac-geral"><div class="mac-sit mac-sit-${a.tom}"><span class="mac-cmd-ponto"></span><span>${_macEsc(a.texto)}</span></div></div>` : "";
 }
 
 function _macVigiaHtml() {
     if (!_macVigia) return "";
-    const t = _macVigiaTexto(_macVigia);
-    return `<span class="mac-vigia mac-vigia-${t.tom}"><span class="mac-cmd-ponto"></span>${_macEsc(t.texto)}</span>`;
+    const nomes = _macComputadoresConhecidos();
+    const opcoes = [`<option value=""${_macComputador ? "" : " selected"}>Qualquer computador</option>`]
+        .concat(nomes.map(n => `<option value="${_macEsc(n)}"${_macMesmoPc(n, _macComputador) ? " selected" : ""}>${_macEsc(n)}${_macPcOnline(n) ? "" : " — desconectado"}</option>`));
+
+    // O pontinho: o escolhido conectado (verde) ou não (amarelo); sem escolha, ok só com um
+    // computador ouvindo.
+    const on = ((_macVigia.maquinas || []).filter(m => m.online)).length || (_macVigia.online && !_macVigia.maquinas ? 1 : 0);
+    const tom = _macComputador ? (_macPcOnline(_macComputador) ? "on" : "off") : (on === 1 ? "on" : "off");
+    return `<span class="mac-computador"><label for="mac-computador-sel">Executa em</label>`
+        + `<select id="mac-computador-sel" class="mac-select" onchange="_macEscolherComputador(this.value)">${opcoes.join("")}</select>`
+        + `<span class="mac-vigia mac-vigia-${tom}"><span class="mac-cmd-ponto"></span></span></span>`;
+}
+
+// Escolheu o computador. Troca na hora e volta atrás se o servidor recusar.
+function _macEscolherComputador(valor) {
+    const antes = _macComputador;
+    _macComputador = valor || null;
+    _macRedesenhar();
+
+    fetch(`${API}/admin/macros/spx/computador`, {
+        method: "PUT",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ maquina: valor || null })
+    })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            if (ok) return;
+            _macComputador = antes;
+            _macRedesenhar();
+            gcAlert(d.error || "Não foi possível mudar o computador.");
+        })
+        .catch(() => {
+            _macComputador = antes;
+            _macRedesenhar();
+            gcAlert("Erro ao conectar com o servidor.");
+        });
 }
 
 // O que o vigia contou sem saber de qual macro é (erro inesperado, arquivo que não é relatório...).
@@ -263,7 +341,7 @@ function _macHtmlItemSpx(item, m) {
             </div>
             <div class="mac-spx-controles">
                 ${toggle}
-                <button type="button" class="mac-rodar" title="Rodar agora"
+                <button type="button" class="mac-rodar" title="${_macEsc(_macComputador ? `Rodar agora em ${_macComputador}` : "Rodar agora")}"
                         ${_macOcupado(m.comando) ? "disabled" : ""} onclick="_macRodar('${_macEsc(m.qual)}', this)">▶ Rodar</button>
                 ${horario}
             </div>
@@ -316,7 +394,7 @@ function _macHtmlSecao(secao, porChave) {
     <section class="mac-secao">
         ${cabecalho}
         ${secao.texto ? `<p class="mac-secao-texto">${_macEsc(secao.texto)}</p>` : ""}
-        ${secao.vigia ? _macGeralHtml() : ""}
+        ${secao.vigia ? _macAvisoComputadorHtml() + _macGeralHtml() : ""}
         <div class="mac-painel">${grupos}</div>
     </section>`;
 }
