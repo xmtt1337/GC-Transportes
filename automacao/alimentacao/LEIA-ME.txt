@@ -35,12 +35,14 @@ chamado  br_assignment_task_*  ou  export_return_order_*
   manda pra tabela certa do macro
   avisa na bandeja o que gravou
 
-Ele reconhece dois relatorios, pelo CABECALHO e nao pelo nome
-do arquivo (o nome muda com o tempo, as colunas sao o que o
-relatorio e):
+Ele reconhece tres relatorios. A AT e os pedidos pesquisados
+pelo CABECALHO (o nome muda com o tempo, as colunas sao o que o
+relatorio e); o Backlog pelo NOME (backlogs*.xlsx), porque o
+arquivo dele nao tem cabecalho conhecido:
 
   AT exportada          -> macro_at_exportada
   Pedidos pesquisados   -> macro_pedidos_pesquisados
+  Backlog               -> macro_backlog_shopee
 
 Arquivo que nao e nenhum dos dois ele ignora em silencio -
 a pasta de downloads tem de tudo, e alarme vermelho pra isso
@@ -75,9 +77,11 @@ IMPORTANTE: esse envio ACUMULA. Nao apaga nada, nao atualiza
 nada - cada rodada vira linhas novas, mesmo pro mesmo pacote
 de uma exportacao de minutos atras. E assim que da pra ver
 como uma AT mudou ao longo do dia. Mandar o mesmo ARQUIVO duas
-vezes nao duplica (o backend confere pelo nome antes de
-gravar), mas duas exportacoes diferentes do mesmo pacote sao
-duas linhas, de proposito.
+vezes nao duplica (o backend confere NOME + CONTEUDO antes de
+gravar - so o nome nao serve: o Chrome numera os downloads do
+zero num computador novo e repete nomes que ja estao no banco),
+mas duas exportacoes diferentes do mesmo pacote sao duas
+linhas, de proposito.
 
 
 -----------------------------------------------------------
@@ -175,6 +179,38 @@ motivo. Os comuns:
 Nao abriu nada ao clicar no .bat? Provavelmente ja esta
 rodando: so pode haver um vigia por maquina (dois mandariam
 o mesmo arquivo duas vezes). Procure o icone na bandeja.
+
+
+-----------------------------------------------------------
+USAR EM OUTRO COMPUTADOR / ATUALIZAR
+-----------------------------------------------------------
+
+Esta pasta pode viajar (pendrive, HD): e o kit inteiro.
+
+  1. Duplo clique em  rodar_vigia.bat  e preencha o login
+     (o login NAO viaja: fica em %APPDATA%\XM_Vigia de cada
+     computador - de proposito, senha nao anda em pendrive).
+  2. No Chrome: chrome://extensions > modo desenvolvedor >
+     "Carregar sem compactacao" > a pasta extensao-macros-spx.
+  3. O que a extensao aprendeu ("Ensinar a setinha" etc.) tambem
+     mora no Chrome de cada computador - mas a extensao ja vem
+     com o padrao dos tres, entao computador novo funciona.
+
+Uma copia envelhece. Pra trazer a versao mais nova do GitHub:
+duplo clique em  atualizar_macros.bat  (nao mexe no login nem no
+que foi ensinado). Depois feche o vigia na bandeja, abra de novo
+e recarregue a extensao em chrome://extensions.
+
+UM COMPUTADOR POR VEZ. Dois computadores com vigia e extensao
+ligados ao mesmo tempo, na mesma conta do SPX, se atrapalham: o
+painel "Ultima tarefa" e da conta (um baixa o relatorio que o
+outro pediu), o "Rodar" da tela Macros vai pro primeiro que
+responder e o horario configurado la rodaria nos dois.
+
+Se o vigia "identifica o arquivo mas nao grava": a tela Macros
+do sistema mostra o motivo (linha vermelha, com o nome do
+computador e o Historico). Sem login configurado ele avisa na
+bandeja em vez de esperar calado.
 
 
 -----------------------------------------------------------
