@@ -79,6 +79,7 @@ function carregar({ storage = {}, vigia = {} } = {}) {
   const fetchFalso = async (url, opcoes = {}) => {
     chamadas.fetch.push({ url, metodo: opcoes.method || 'GET', corpo: opcoes.body });
     if (vigia.fechado) throw new TypeError('Failed to fetch');
+    if (vigia.eventosFalham && url.endsWith('/eventos')) throw new TypeError('Failed to fetch');
     emVoo++;
     if (vigia.demora) await vigia.demora;
     emVoo--;
@@ -407,4 +408,78 @@ test('o disparo agendado continua marcado como agendado', async () => {
   await c.ouvintes.alarme({ name: 'alimentacao' });
   await dormir(20);
   assert.match(c.guardado.ultimoDisparo.texto, /disparado: alimentacao \(agendado\)/);
+});
+
+// ── contar ao sistema o que aconteceu ─────────────────────────────────────
+const EV = { macro: 'backlog', nivel: 'erro', texto: 'o ícone de baixar ainda não foi ensinado' };
+// Objeto criado dentro do vm tem outro prototipo: normaliza antes de comparar.
+const plano = (x) => JSON.parse(JSON.stringify(x));
+const mandarEvento = (c, ev) => new Promise((resolve) => c.ouvintes.mensagem({ xmEvento: ev }, {}, (r) => resolve(plano(r))));
+const eventosMandados = (c) => c.chamadas.fetch.filter((f) => f.url.endsWith('/eventos'));
+
+test('o painel do macro conta como terminou: vai pro vigia por POST /eventos', async () => {
+  const c = carregar();
+  const r = await mandarEvento(c, EV);
+  assert.deepStrictEqual(r, { ok: true });
+  const [e] = eventosMandados(c);
+  assert.strictEqual(e.metodo, 'POST');
+  assert.deepStrictEqual(JSON.parse(e.corpo), EV);
+});
+
+test('vigia fechado: o evento espera guardado, com a hora de quando aconteceu', async () => {
+  const c = carregar({ vigia: { fechado: true } });
+  const r = await mandarEvento(c, EV);
+  assert.deepStrictEqual(r, { ok: false });
+  assert.strictEqual(c.guardado.eventosGuardados.length, 1);
+  assert.strictEqual(c.guardado.eventosGuardados[0].texto, EV.texto);
+  assert.ok(c.guardado.eventosGuardados[0].quando, 'guarda a hora');
+});
+
+test('quando o vigia volta, a proxima consulta entrega o que ficou esperando', async () => {
+  const vigia = { fechado: true };
+  const c = carregar({ vigia });
+  await mandarEvento(c, EV);
+  vigia.fechado = false;
+  await c.ctx.buscarComandos();
+  assert.strictEqual(eventosMandados(c).length, 2, 'a tentativa que falhou + a entrega');
+  assert.strictEqual(c.guardado.eventosGuardados.length, 0);
+  assert.ok(JSON.parse(eventosMandados(c)[1].corpo).quando, 'a entrega leva a hora original');
+});
+
+test('se o envio de eventos ainda falha, o evento continua guardado (nada se perde)', async () => {
+  const c = carregar({ vigia: { eventosFalham: true } });
+  await mandarEvento(c, EV);
+  await c.ctx.buscarComandos();
+  assert.strictEqual(c.guardado.eventosGuardados.length, 1);
+});
+
+test('a espera guarda no maximo 20 eventos (os mais novos)', async () => {
+  const c = carregar({ vigia: { fechado: true } });
+  for (let i = 0; i < 30; i++) await mandarEvento(c, { ...EV, texto: `e${i}` });
+  assert.strictEqual(c.guardado.eventosGuardados.length, 20);
+  assert.strictEqual(c.guardado.eventosGuardados.at(-1).texto, 'e29');
+});
+
+test('evento incompleto nao e enviado nem guardado', async () => {
+  const c = carregar();
+  for (const ev of [{}, { macro: 'backlog' }, { macro: 'backlog', nivel: 'erro' }]) {
+    assert.deepStrictEqual(await mandarEvento(c, ev), { ok: false });
+  }
+  assert.strictEqual(eventosMandados(c).length, 0);
+  assert.strictEqual(c.guardado.eventosGuardados, undefined);
+});
+
+test('macro que RECUSA o disparo (ja rodando) conta como aviso, nao como defeito', async () => {
+  const c = carregar({ vigia: { macroRecusa: true, resposta: { comandos: [{ id: ID, qual: 'pedidos' }] } } });
+  await c.ctx.buscarComandos();
+  await dormir(30);
+  const evs = eventosMandados(c).map((e) => JSON.parse(e.corpo));
+  assert.deepStrictEqual(evs, [{ macro: 'pedidos', nivel: 'aviso', texto: 'Não rodou: já está rodando' }]);
+});
+
+test('disparo que deu certo nao conta evento (quem conta e o proprio macro, ao terminar)', async () => {
+  const c = carregar({ vigia: { resposta: { comandos: [{ id: ID, qual: 'backlog' }] } } });
+  await c.ctx.buscarComandos();
+  await dormir(30);
+  assert.strictEqual(eventosMandados(c).length, 0);
 });

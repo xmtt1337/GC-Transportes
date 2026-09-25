@@ -44,6 +44,8 @@ import socket
 import sys
 import threading
 import time
+from collections import deque
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from logging.handlers import RotatingFileHandler
 from urllib.parse import parse_qs, quote, urlparse
@@ -83,6 +85,13 @@ ROTA_PENDENTES = "/macros/at-exportada/pendentes"
 # O que a tela Macros do sistema pediu pra rodar, e a agenda vigente (ver
 # Backend.comandos). A extensao pergunta a cada ~30s.
 ROTA_COMANDOS = "/macros/comandos"
+# O vigia conta ao sistema o que aconteceu com cada arquivo (e o que a extensao contou a ele).
+ROTA_EVENTOS = "/macros/eventos"
+# De qual macro e cada tipo de relatorio - a tela mostra o problema na linha do macro.
+MACRO_DO_TIPO = {"at": "alimentacao", "pesquisados": "pedidos", "backlog": "backlog"}
+# Eventos por envio (o servidor aceita ate 20) e quantos guardar se ele estiver fora do ar.
+EVENTOS_POR_ENVIO = 20
+EVENTOS_GUARDADOS = 200
 
 # Onde cada relatorio entra. A chave e o tipo que alimentacao_at.ler_qualquer
 # devolve (pelo cabecalho pra AT e pedidos pesquisados; pelo nome do arquivo
@@ -241,6 +250,14 @@ def salvar_json(caminho, dados):
     with open(temporario, "w", encoding="utf-8") as f:
         json.dump(dados, f, indent=2, ensure_ascii=False)
     os.replace(temporario, caminho)
+
+
+def nome_da_maquina():
+    """O nome deste computador - e como o sistema distingue uma maquina da outra."""
+    try:
+        return (os.environ.get("COMPUTERNAME") or socket.gethostname() or "").strip()[:60]
+    except OSError:
+        return ""
 
 
 def configurado(cfg):
@@ -465,7 +482,12 @@ class Backend:
         entrega cada comando UMA vez so: quem chama tem que repassar a extensao
         na mesma resposta, ou o pedido se perde.
         """
-        return self._requisitar("GET", f"{ROTA_COMANDOS}/pendentes")
+        maquina = quote(nome_da_maquina(), safe="")
+        return self._requisitar("GET", f"{ROTA_COMANDOS}/pendentes?maquina={maquina}")
+
+    def enviar_eventos(self, eventos):
+        """Conta ao sistema o que aconteceu. Ate EVENTOS_POR_ENVIO por vez."""
+        return self._requisitar("POST", ROTA_EVENTOS, {"eventos": eventos})
 
     def resultado_comando(self, id_comando, ok, erro=None):
         """Conta ao servidor se a extensao conseguiu iniciar o macro."""
@@ -480,6 +502,7 @@ class Pendente:
         self.chave = chave
         self.tentativas = 0
         self.nao_antes = 0.0
+        self.avisou_sem_login = False
 
 
 class Vigia:
@@ -495,6 +518,9 @@ class Vigia:
         self._impressoes = {}
         self.desde = time.time() - GRACA_S
         self.ultimo = "esperando arquivo"
+        self._eventos = deque(maxlen=EVENTOS_GUARDADOS)
+        self.trava_eventos = threading.Lock()
+        self._avisou_eventos_em = 0.0
 
     def comecar(self):
         # Na primeira vez, o que ja esta na pasta NAO vai: sao downloads de
@@ -502,11 +528,65 @@ class Vigia:
         # pela de algum dia velho.
         if self.registro.primeira_vez:
             self._ignorar_o_que_ja_estava()
-        for alvo in (self._olhar, self._trabalhar):
+        for alvo in (self._olhar, self._trabalhar, self._relatar):
             threading.Thread(target=alvo, daemon=True).start()
 
     def encerrar(self):
         self.parar.set()
+
+    # ── contar ao sistema o que aconteceu ───────────────────────────────
+    # "O vigia identifica o arquivo mas nao joga no banco" - e nada dizia PORQUE: cada
+    # desfecho ia so pro registro local, que so quem esta sentado na maquina abre. Agora
+    # cada um vai tambem pro sistema, que mostra na tela Macros, com o nome do computador.
+    #
+    # E ACESSORIO: nunca levanta e nunca trava o envio. Os eventos esperam numa fila em
+    # memoria e vao em lote por outra thread - se o servidor estiver fora (que costuma ser
+    # justamente o problema), ficam guardados e chegam depois, com a hora de quando
+    # aconteceram.
+    def relatar(self, macro, nivel, texto, arquivo=None, origem="vigia", quando=None):
+        try:
+            # `quando`: evento que esperou guardado na extensao chega atrasado - vale a hora de
+            # quando ACONTECEU (o servidor confere se e sensata).
+            evento = {
+                "macro": macro, "nivel": nivel, "origem": origem, "texto": str(texto)[:300],
+                "maquina": nome_da_maquina(),
+                "quando": quando if isinstance(quando, str) and quando else datetime.now(timezone.utc).isoformat(),
+            }
+            if arquivo:
+                evento["arquivo"] = str(arquivo)[:200]
+            with self.trava_eventos:
+                self._eventos.append(evento)
+        except Exception:
+            log.exception("nao consegui registrar o evento")
+
+    def _relatar(self):
+        while not self.parar.is_set():
+            self.parar.wait(5)
+            self._descarregar_eventos()
+
+    def _descarregar_eventos(self):
+        """Uma passada: leva ao sistema o que estiver esperando. Devolve quantos foram."""
+        try:
+            with self.trava_eventos:
+                lote = list(self._eventos)[:EVENTOS_POR_ENVIO]
+            if not lote or not configurado(self.ler_config()):
+                return 0
+            self.backend.enviar_eventos(lote)
+            # So sai da fila DEPOIS de o sistema confirmar: se o envio falhar, nada se perde.
+            with self.trava_eventos:
+                for _ in range(len(lote)):
+                    if self._eventos:
+                        self._eventos.popleft()
+            return len(lote)
+        except (ErroDeConta, ErroDeEnvio) as e:
+            # Fora do ar / conta recusada: guarda e tenta depois. Um aviso a cada 10 min,
+            # nao a cada 5 segundos.
+            if time.time() - self._avisou_eventos_em > 600:
+                self._avisou_eventos_em = time.time()
+                log.warning("nao consegui contar os eventos ao sistema (guardados pra depois): %s", e)
+        except Exception:
+            log.exception("erro ao contar os eventos ao sistema")
+        return 0
 
     # ── achar arquivo ───────────────────────────────────────────────────
     def _arquivos(self):
@@ -629,9 +709,20 @@ class Vigia:
                 continue
             try:
                 self._processar(pendente)
-            except Exception:
+            except Exception as e:
                 log.exception("erro inesperado ao processar %s", pendente.caminho)
                 self._tirar(pendente)
+                # Sem marcar, o arquivo voltava pra fila na varredura seguinte (2s depois) e
+                # dava o mesmo erro, pra sempre: o registro enchia de traceback e nada mais
+                # acontecia - "o vigia identifica mas nao joga no banco". Marcado, para de
+                # insistir; o evento diz o que foi, e "Enviar um arquivo" na bandeja tenta de novo.
+                nome = os.path.basename(pendente.caminho)
+                self.registro.marcar(pendente.chave, nome=nome,
+                                     resultado=f"erro inesperado: {type(e).__name__}: {e}")
+                self.ultimo = f"erro inesperado em {nome}"
+                self.avisar("Erro inesperado", f"{nome}\n{type(e).__name__}: {e}", erro=True)
+                self.relatar("geral", "erro",
+                             f"Erro inesperado ao processar {nome}: {type(e).__name__}: {e}", arquivo=nome)
 
     def _processar(self, pendente):
         nome = os.path.basename(pendente.caminho)
@@ -641,6 +732,17 @@ class Vigia:
         if not configurado(self.ler_config()):
             self._adiar(pendente, 30)
             self.ultimo = "esperando usuario e senha"
+            # Uma vez por arquivo (e uma espera, nao um erro por tentativa). Antes ficava MUDO:
+            # o arquivo era identificado e nada acontecia, sem uma linha no registro.
+            if not pendente.avisou_sem_login:
+                pendente.avisou_sem_login = True
+                log.warning("%s esta esperando: falta configurar usuario e senha", nome)
+                self.avisar("Falta configurar",
+                            f"{nome}\nAbra Configurar na bandeja: sem usuario e senha nao da pra enviar.",
+                            erro=True)
+                self.relatar("geral", "erro",
+                             f"O vigia identificou {nome} mas falta configurar usuário e senha — nada foi enviado",
+                             arquivo=nome)
             return
 
         try:
@@ -649,6 +751,7 @@ class Vigia:
             self._tirar(pendente)
             self.registro.marcar(pendente.chave, nome=nome, resultado=f"recusado: {e}")
             self.avisar("Arquivo recusado", f"{nome}\n{e}", erro=True)
+            self.relatar("geral", "erro", f"Arquivo recusado ({nome}): {e}", arquivo=nome)
             return
         except OSError as e:
             # Sumiu ou esta preso: tenta de novo daqui a pouco.
@@ -663,6 +766,8 @@ class Vigia:
             self._tirar(pendente)
             self.registro.marcar(pendente.chave, nome=nome, resultado="nao e relatorio conhecido")
             log.info("ignorado (nao e AT, pedidos pesquisados nem backlog): %s", nome)
+            self.relatar("geral", "aviso",
+                         f"Ignorei {nome}: não é AT, pedidos pesquisados nem backlog", arquivo=nome)
             return
 
         numeros = at.resumo(linhas)
@@ -670,6 +775,7 @@ class Vigia:
         if faltando:
             log.warning("colunas ausentes em %s (entram vazias): %s", nome, ", ".join(faltando))
 
+        macro = MACRO_DO_TIPO.get(tipo, "geral")
         ROTULO_TIPO = {"at": "AT exportada", "pesquisados": "pedidos pesquisados", "backlog": "backlog"}
         rotulo = ROTULO_TIPO.get(tipo, tipo)
         if tipo == "at":
@@ -690,6 +796,7 @@ class Vigia:
         except ErroDeConta as e:
             self._tirar(pendente)
             self.avisar("Login recusado", f"{e}\nAbra Configurar na bandeja.", erro=True)
+            self.relatar(macro, "erro", f"Login recusado ao enviar {nome}: {e}", arquivo=nome)
             return
         except ErroDeEnvio as e:
             pendente.tentativas += 1
@@ -698,11 +805,17 @@ class Vigia:
                 self._tirar(pendente)
                 self.registro.marcar(pendente.chave, nome=nome, resultado=f"desisti: {e}")
                 self.avisar("Nao consegui enviar", f"{nome}\n{e}\nUse 'Enviar um arquivo' pra tentar de novo.", erro=True)
+                self.relatar(macro, "erro", f"Desisti de enviar {nome}: {e}", arquivo=nome)
                 return
             espera = ESPERAS_S[min(pendente.tentativas - 1, len(ESPERAS_S) - 1)]
             self._adiar(pendente, espera)
             log.warning("tentativa %d de %s falhou (%s) - nova tentativa em %ds",
                         pendente.tentativas, nome, e, espera)
+            # So a primeira falha: com a insistencia longa, um evento por tentativa seriam
+            # dezenas por arquivo.
+            if pendente.tentativas == 1:
+                self.relatar(macro, "aviso",
+                             f"Não consegui enviar {nome}, vou tentar de novo (em {espera}s): {e}", arquivo=nome)
             self.ultimo = f"tentando de novo em {espera}s"
             return
 
@@ -718,6 +831,8 @@ class Vigia:
             self.ultimo = f"{nome} · já estava gravado"
             self.registro.marcar(pendente.chave, nome=nome, resultado=f"{rotulo}: já importado antes")
             self.avisar("Já estava gravado", f"{nome}\neste arquivo já tinha sido importado")
+            self.relatar(macro, "aviso", f"Já estava gravado: {nome} (mesmo nome e conteúdo de uma carga anterior)",
+                         arquivo=nome)
             return
 
         if tipo == "at":
@@ -737,6 +852,7 @@ class Vigia:
         self.registro.marcar(pendente.chave, nome=nome,
                              resultado=f"{rotulo}: {resumo_texto}".replace("\n", " · "))
         self.avisar("Alimentado", f"{nome}\n{resumo_texto}")
+        self.relatar(macro, "ok", f"Gravado no sistema: {resumo_texto}".replace("\n", " · "), arquivo=nome)
 
     # ── envio manual, pelo menu ─────────────────────────────────────────
     def enfileirar(self, caminho):
@@ -830,6 +946,24 @@ class Atendimento(BaseHTTPRequestHandler):
                      ", ".join(c.get("qual", "?") for c in resposta["comandos"]))
         return self._responder(200, resposta)
 
+    # A extensao conta aqui como o macro TERMINOU (ou falhou no meio). O vigia carimba o nome do
+    # computador e leva ao sistema junto com os desfechos dele - assim a tela Macros mostra tudo
+    # no mesmo lugar, e um macro que quebra de madrugada nao passa em branco.
+    def _evento(self, bruto):
+        try:
+            corpo = json.loads(bruto or b"{}")
+            if not isinstance(corpo, dict):
+                raise ValueError("corpo nao e objeto")
+        except (ValueError, UnicodeDecodeError):
+            return self._responder(400, {"error": "corpo ilegivel"})
+        macro, nivel, texto = corpo.get("macro"), corpo.get("nivel"), corpo.get("texto")
+        if not all(isinstance(v, str) and v for v in (macro, nivel, texto)):
+            return self._responder(400, {"error": "informe macro, nivel e texto"})
+        quando = corpo.get("quando")
+        self.vigia.relatar(macro, nivel, texto, origem="extensao",
+                           quando=quando if isinstance(quando, str) else None)
+        return self._responder(200, {"ok": True})
+
     # A extensao conta aqui se conseguiu iniciar o macro; o vigia repassa ao
     # servidor, que mostra o resultado na tela Macros.
     def do_POST(self):
@@ -842,7 +976,11 @@ class Atendimento(BaseHTTPRequestHandler):
             tamanho = 0
         bruto = self.rfile.read(min(tamanho, 8192)) if tamanho > 0 else b""
 
-        achado = ID_COMANDO.match(urlparse(self.path).path)
+        caminho = urlparse(self.path).path
+        if caminho == "/eventos":
+            return self._evento(bruto)
+
+        achado = ID_COMANDO.match(caminho)
         if not achado:
             return self._responder(404, {"error": "nao conheco esse caminho"})
 

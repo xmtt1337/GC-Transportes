@@ -59,6 +59,19 @@
   let inicio = 0;
   let relogio = null;
   let aoParar = null;
+  let tituloAtual = '';
+
+  // Conta ao sistema (pelo service worker -> vigia) como o macro terminou. ACESSORIO: se nao
+  // der, o painel continua igual - nada aqui pode atrapalhar o macro.
+  function contarAoSistema(tipo, texto) {
+    try {
+      const ev = G.logica && G.logica.eventoDoPainel(tituloAtual, tipo, texto);
+      if (ev && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        const r = chrome.runtime.sendMessage({ xmEvento: ev });
+        if (r && typeof r.catch === 'function') r.catch(() => {});
+      }
+    } catch (e) { /* ver acima */ }
+  }
 
   function montar(titulo) {
     desmontar();
@@ -129,6 +142,7 @@
   const painel = {
     abrir(titulo, quandoParar) {
       aoParar = quandoParar;
+      tituloAtual = titulo;
       montar(titulo);
       console.log(`[XM Macros] ${titulo}: comecou`);
     },
@@ -147,6 +161,7 @@
     },
 
     ok(texto) {
+      contarAoSistema('ok', texto);
       if (!listaEl) return;
       fecharAnterior();
       passoAtual = null;
@@ -157,6 +172,7 @@
     },
 
     erro(texto) {
+      contarAoSistema('erro', texto);
       if (!listaEl) return;
       if (passoAtual) {
         passoAtual.classList.remove('fazendo');

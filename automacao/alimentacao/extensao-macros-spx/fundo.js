@@ -133,6 +133,13 @@ async function anotarDisparo(qual, origem, extra) {
   if (qual === 'backlog') await chrome.storage.local.set({ ultimoBacklog: Date.now() });
 }
 
+// Falha de disparo: alem do registro local, conta ao sistema. `nivel`: "aviso" quando o macro
+// RECUSOU (ja estava rodando - nao e defeito), "erro" quando nao deu nem pra comecar.
+async function anotarFalha(qual, motivo, nivel = 'erro') {
+  await anotar('não rodou: ' + motivo);
+  enviarEvento({ macro: qual, nivel, texto: 'Não rodou: ' + motivo });
+}
+
 async function anotar(texto) {
   await chrome.storage.local.set({
     ultimoDisparo: { quando: new Date().toISOString(), texto },
@@ -214,7 +221,7 @@ async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado'
   const aba = await abaDoSpx(qual);
   if (!aba) {
     const motivo = 'não consegui abrir o SPX';
-    await anotar('não rodou: ' + motivo);
+    await anotarFalha(qual, motivo);
     return { ok: false, error: motivo };
   }
   // Quando foi a pessoa que mandou rodar, traz a aba pra frente - ela quer ver.
@@ -230,7 +237,7 @@ async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado'
     // dizia "rodando" e a pessoa ficava esperando um segundo comeco que nao vem.
     if (r && r.ok === false) {
       const motivo = r.error || 'o macro recusou';
-      await anotar('não rodou: ' + motivo);
+      await anotarFalha(qual, motivo, 'aviso');
       return { ok: false, error: motivo };
     }
     await anotarDisparo(qual, origem);
@@ -246,7 +253,7 @@ async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado'
       return { ok: true };
     } catch (e2) {
       const motivo = String(e2.message || e2);
-      await anotar('não rodou: ' + motivo);
+      await anotarFalha(qual, motivo);
       return { ok: false, error: motivo };
     }
   }
@@ -296,6 +303,49 @@ async function pendentesDoVigia(limite) {
     throw new Error(motivo);
   }
   return r.json();
+}
+
+// ── contar ao sistema o que aconteceu ───────────────────────────────────────
+// O painel do macro (na aba do SPX) e o disparo avisam aqui; a extensao leva ao vigia, que
+// carimba o nome do computador e manda ao sistema. Se o vigia estiver fechado (justamente o
+// tipo de problema que vale contar), o evento espera guardado - com a hora de quando
+// aconteceu - e sai na primeira consulta que der certo.
+const MAX_EVENTOS_GUARDADOS = 20;
+
+async function mandarEventoAoVigia(ev) {
+  const corte = AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined;
+  const r = await fetch(`${VIGIA}/eventos`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(ev), signal: corte,
+  });
+  if (!r.ok) throw new Error(`o vigia respondeu ${r.status}`);
+}
+
+async function enviarEvento(ev) {
+  if (!ev || !ev.macro || !ev.nivel || !ev.texto) return false;
+  try {
+    await mandarEventoAoVigia(ev);
+    return true;
+  } catch (e) {
+    try {
+      const { eventosGuardados = [] } = await chrome.storage.local.get('eventosGuardados');
+      await chrome.storage.local.set({
+        eventosGuardados: [...eventosGuardados, { ...ev, quando: new Date().toISOString() }]
+          .slice(-MAX_EVENTOS_GUARDADOS) });
+    } catch (e2) { /* sem onde guardar: perde este, o macro segue */ }
+    return false;
+  }
+}
+
+// O vigia acabou de responder: entrega o que ficou esperando.
+async function entregarEventosGuardados() {
+  const { eventosGuardados = [] } = await chrome.storage.local.get('eventosGuardados');
+  if (!eventosGuardados.length) return;
+  const faltam = [];
+  for (const ev of eventosGuardados) {
+    try { await mandarEventoAoVigia(ev); } catch (e) { faltam.push(ev); }
+  }
+  await chrome.storage.local.set({ eventosGuardados: faltam });
 }
 
 // ── a tela Macros do sistema ────────────────────────────────────────────────
@@ -386,6 +436,7 @@ async function buscarComandos() {
     for (const c of Array.isArray(resposta.comandos) ? resposta.comandos : []) {
       try { await executarComando(c); } catch (e) { console.log('[XM Macros] comando falhou: ' + e); }
     }
+    try { await entregarEventosGuardados(); } catch (e) { /* tenta na proxima */ }
     try { await aplicarAgendaDoSite(resposta.agenda); }
     catch (e) { console.log('[XM Macros] agenda do sistema falhou: ' + e); }
   } finally {
@@ -395,6 +446,12 @@ async function buscarComandos() {
 
 chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
   if (!msg) return;
+
+  // O painel do macro (content script) conta como ele terminou.
+  if (msg.xmEvento) {
+    enviarEvento(msg.xmEvento).then((ok) => responder({ ok }), () => responder({ ok: false }));
+    return true;
+  }
 
   if (msg.xmAgenda === 'reagendar') {
     reagendar().then((quando) => responder({ ok: true, proxima: quando }));

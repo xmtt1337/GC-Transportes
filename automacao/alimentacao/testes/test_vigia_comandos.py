@@ -86,7 +86,7 @@ class ConsultaAoServidor(unittest.TestCase):
         b, _ = self.rodar([RespostaDublada(200, {"comandos": []})], lambda b: b.comandos())
         pedido = b.pedidos[0]
         self.assertEqual(pedido["metodo"], "GET")
-        self.assertTrue(pedido["url"].endswith("/macros/comandos/pendentes"))
+        self.assertIn("/macros/comandos/pendentes?maquina=", pedido["url"])
         self.assertEqual(pedido["headers"]["Authorization"], "Bearer token-1")
 
     def test_nao_fica_preso_7_minutos_numa_consulta_de_30_em_30_segundos(self):

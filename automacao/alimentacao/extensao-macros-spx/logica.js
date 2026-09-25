@@ -231,6 +231,24 @@
     return Math.max(1, Math.ceil(minutos - decorrido));
   }
 
+  // ── o que o macro conta ao sistema ─────────────────────────────────────
+  // Como um macro TERMINOU (ok) ou falhou no meio (erro) vai pra tela Macros do sistema, com o
+  // nome do computador - um macro que quebra de madrugada nao pode passar em branco (era o que
+  // acontecia: a mensagem ficava so no painel da aba do SPX, que ninguem estava olhando).
+  const MACRO_DO_PAINEL = {
+    'AT Exportada': 'alimentacao', 'Pedidos Pesquisados': 'pedidos', 'Backlog': 'backlog',
+  };
+
+  function eventoDoPainel(titulo, tipo, texto) {
+    const macro = Object.prototype.hasOwnProperty.call(MACRO_DO_PAINEL, titulo)
+      ? MACRO_DO_PAINEL[titulo] : null;
+    const t = String(texto == null ? '' : texto).trim();
+    if (!macro || !t) return null;
+    if (tipo === 'ok') return { macro, nivel: 'ok', texto: t };
+    // "parado por voce" nao e falha: foi a pessoa que apertou Parar.
+    return { macro, nivel: /^parado por voc/i.test(t) ? 'aviso' : 'erro', texto: t };
+  }
+
   // ── comandos da tela Macros ────────────────────────────────────────────
   const MACROS_DA_TELA = ['alimentacao', 'pedidos', 'backlog'];
 
@@ -269,6 +287,8 @@
     MACROS_DA_TELA,
     comandoValido,
     decidirAgendaDoSite,
+    MACRO_DO_PAINEL,
+    eventoDoPainel,
     MESES_PT,
     MESES_EN,
     FORMATOS_DATA,
