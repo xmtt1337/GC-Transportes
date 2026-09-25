@@ -36,6 +36,35 @@
     item: 'Select All in All Pages',
   };
 
+  // O QUE FICOU ENSINADO NAO VIAJA COM A PASTA DA EXTENSAO. Mora no armazenamento do Chrome
+  // daquele computador (chrome.storage.local), por perfil. Levar a extensao pra outro
+  // computador - ou abrir outro perfil do Chrome - comecava sem nada ensinado, e o Backlog
+  // parava com "o icone de baixar ainda nao foi ensinado" (25/09/2026, segundo desktop).
+  //
+  // Estes sao os que estavam ensinados e FUNCIONANDO no computador principal, copiados do
+  // armazenamento dele. Valem so enquanto ninguem ensinar outro: o que for ensinado
+  // (popup, Alt+S, Alt+M, Alt+B) sempre ganha, e a Shopee mudar o layout continua sendo
+  // "ensina de novo em dez segundos".
+  //
+  // Nao e chute: o mesmo seletor que a pessoa ensinou e que ja baixou o Backlog e exportou a
+  // AT dezenas de vezes. Chute seria justamente o que o backlog.js recusa - clicar com
+  // confianca em outra coisa.
+  const PADRAO_ENSINADO = {
+    seta: {
+      seletor: 'span.ssc-react-icon.ssc-react-icon-down-outline.ssc-react-table-selection-menu-icon svg',
+      texto: '',
+    },
+    item: {
+      seletor: 'div.ssc-react-popup.ssc-react-table-selection-menu-popup ' +
+               'div.ssc-react-popup-main div.ssc-react-table-selection-menu-item',
+      texto: 'Select All in All Pages',
+    },
+    backlog: {
+      seletor: 'div.index_download-action-icon__2izcz svg path',
+      texto: '',
+    },
+  };
+
   let ensinados = {};
   let cancelar = null;
 
@@ -60,8 +89,9 @@
   }
 
   // Aceita tambem o formato antigo, quando so o seletor era guardado.
+  // O ensinado ganha do padrao; sem ensino, vale o padrao (ver PADRAO_ENSINADO).
   const fichaDe = (qual) => {
-    const guardado = ensinados[qual];
+    const guardado = ensinados[qual] || PADRAO_ENSINADO[qual];
     if (!guardado) return null;
     return typeof guardado === 'string' ? { seletor: guardado, texto: '' } : guardado;
   };
@@ -281,7 +311,7 @@
   }
 
   G.aprender = { carregar, ensinar, seletorDe, textoDe, elementosEnsinados, seletorEstavel,
-                 faixa, fecharFaixa, ensinados: () => ensinados };
+                 faixa, fecharFaixa, ensinados: () => ensinados, padrao: PADRAO_ENSINADO };
 
   carregar();
 })(typeof window !== 'undefined' ? window : globalThis);
