@@ -527,10 +527,15 @@ const AVISO = { chave: "avisos_entregador", nome: "Aviso de rota incompleta (Sho
 test("a tela traz as duas secoes e todos os itens, na ordem", () => {
   const a = carregar();
   const html = a.ctx._macHtmlSecoes([AVISO]);
-  const ordem = ["Avisos de rota incompleta", "Shopee XPT_CFC", "Shopee XPT_VIA", ">Macros<", ">Shopee<",
+  const ordem = ["Avisos de rota incompleta", "Shopee XPT_CFC", "Shopee XPT_VIA", ">Macros<",
     "Alimentar AT exportada", "Pedidos pesquisados", "Backlog"].map((t) => html.indexOf(t));
   ordem.forEach((pos, k) => assert.ok(pos >= 0, `item ${k} nao apareceu`));
   assert.deepStrictEqual([...ordem].sort((x, y) => x - y), ordem);
+});
+
+test("a secao dos macros nao repete o titulo de grupo 'Shopee' (era ruido: so tem um grupo)", () => {
+  const a = carregar();
+  assert.ok(!a.ctx._macHtmlSecoes([AVISO]).includes("mac-grupo-titulo"));
 });
 
 test("so o aviso da XPT_CFC tem Configurar de rodadas; a XPT_VIA fica como ainda nao integrado", () => {

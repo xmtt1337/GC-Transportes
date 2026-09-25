@@ -18,6 +18,7 @@ let _macVigia = null;   // { online, visto_ha_s }: o Chrome do galpão consultou
 let _macAgenda = null;  // cópia de trabalho da agenda de um macro do SPX aberto no modal
 let _macFonte = "rodadas"; // qual lista de horários o relógio (hora/minuto) edita: "rodadas" | "agenda"
 let _macPoll = null;    // timer que acompanha um "Rodar" até ele sair do "aguardando"
+let _macGeral = null;   // problema que o vigia contou sem saber de qual macro (erro inesperado, etc.)
 
 function abrirMacros(event) {
     if (event) event.preventDefault();
@@ -61,6 +62,7 @@ function _macCarregarLista(silencioso) {
             const doSpx = spx && Array.isArray(spx.macros) ? spx.macros : [];
             _macLista = (d.macros || []).concat(doSpx);
             _macVigia = spx && spx.vigia ? spx.vigia : null;
+            _macGeral = spx && spx.geral ? spx.geral : null;
             empty.style.display = "none";
             _macRedesenhar();
             _macAcompanhar();
@@ -90,10 +92,9 @@ const _MAC_SECOES = [
     },
     {
         titulo: "Macros",
-        texto: "Rotinas do sistema da Shopee, executadas no Chrome do galpão.",
+        texto: "Rotinas do sistema da Shopee, executadas no computador com o Chrome e o XM Vigia.",
         vigia: true,
         grupos: [{
-            titulo: "Shopee",
             itens: [
                 { nome: "Alimentar AT exportada", detalhe: "Exporta e baixa a AT do dia", chave: "spx_alimentacao" },
                 { nome: "Pedidos pesquisados", detalhe: "Pesquisa em lote os pedidos novos da AT", chave: "spx_pedidos" },
@@ -138,13 +139,15 @@ function _macHa(segundos) {
 
 // "hoje 14:32 (há 12 min)" / "23/09 14:32 (há 1 dia)". `quando` é texto de Brasília sem fuso
 // ("2026-09-24 14:32:00.123"): a hora sai do próprio texto, sem passar por Date.
-function _macCargaTexto(c) {
-    const quando = String(c.quando || "");
-    const dia = quando.slice(0, 10);
-    const hora = quando.slice(11, 16);
+function _macQuandoTexto(quando) {
+    const q = String(quando || "");
+    const dia = q.slice(0, 10);
     const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-    const dataTexto = dia === hoje ? "hoje" : `${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
-    return `${dataTexto} ${hora} (${_macHa(c.segundos_atras)})`;
+    return `${dia === hoje ? "hoje" : `${dia.slice(8, 10)}/${dia.slice(5, 7)}`} ${q.slice(11, 16)}`;
+}
+
+function _macCargaTexto(c) {
+    return `${_macQuandoTexto(c.quando)} (${_macHa(c.segundos_atras)})`;
 }
 
 // aguardando/entregue = ainda em andamento (o Chrome não confirmou que começou).
@@ -160,8 +163,8 @@ function _macComandoTexto(cmd, vigia) {
     switch (cmd.estado) {
         case "aguardando":
             return vigia && !vigia.online
-                ? { tom: "aviso", texto: "Pedido enviado, mas o Chrome do galpão não responde. Confira se o Chrome e o XM Vigia estão abertos." }
-                : { tom: "andando", texto: "Pedido enviado — aguardando o Chrome do galpão…" };
+                ? { tom: "aviso", texto: "Pedido enviado, mas nenhum computador responde. Confira se o Chrome e o XM Vigia estão abertos." }
+                : { tom: "andando", texto: "Pedido enviado — aguardando o computador dos macros…" };
         case "entregue":
             return { tom: "andando", texto: "Recebido pela extensão — iniciando…" };
         case "iniciado":
@@ -177,59 +180,92 @@ function _macComandoTexto(cmd, vigia) {
     }
 }
 
-function _macComandoHtml(m) {
-    if (!m.comando) return "";
-    const c = _macComandoTexto(m.comando, _macVigia);
-    return `<div class="mac-cmd mac-cmd-${c.tom}"><span class="mac-cmd-ponto"></span>${_macEsc(c.texto)}</div>`;
+// Uma linha só de "situação" por macro. Antes eram até três linhas miúdas (agenda, última carga,
+// andamento) empilhadas em colunas — era isso que deixava a tela carregada. Agora: o que está
+// acontecendo AGORA (pedido em andamento, ou que acabou de falhar) ou, se nada, o último problema
+// que o vigia/a extensão contaram. Sem nada disso, a linha nem existe.
+function _macSituacaoHtml(m) {
+    const cmd = m.comando;
+    const relevante = cmd && (_macOcupado(cmd) || cmd.estado === "erro" || cmd.estado === "expirado"
+        || cmd.estado === "sem_confirmacao" || (cmd.estado === "iniciado" && cmd.idade_s < 180));
+    if (relevante) {
+        const c = _macComandoTexto(cmd, _macVigia);
+        return `<div class="mac-sit mac-sit-${c.tom}"><span class="mac-cmd-ponto"></span><span>${_macEsc(c.texto)}</span></div>`;
+    }
+    return m.problema ? _macProblemaHtml(m.problema, m.qual) : "";
 }
 
-// A linha "Chrome do galpão: conectado" sob o título da seção. Sem ela, um "Rodar" que não
-// acontece parece defeito do sistema, quando é o Chrome fechado.
+// "Falhou há 12 min · CASA — o SPX pediu login" + o atalho pro histórico. Erro em vermelho,
+// aviso só com o pontinho amarelo: nem todo aviso é defeito.
+function _macProblemaHtml(p, qual) {
+    const erro = p.nivel === "erro";
+    const onde = p.maquina ? ` · ${_macEsc(p.maquina)}` : "";
+    return `<div class="mac-sit mac-sit-${erro ? "erro" : "aviso"}"><span class="mac-cmd-ponto"></span>`
+        + `<span><b>${erro ? "Falhou" : "Atenção"}</b> ${_macEsc(_macHa(p.segundos_atras))}${onde} — ${_macEsc(p.texto)} `
+        + `<button type="button" class="mac-link" onclick="_macAbrirHistorico('${_macEsc(qual)}')">Detalhes</button></span></div>`;
+}
+
+// Quem está ouvindo, num texto só: o computador (pelo nome), ou o que fazer se ninguém está.
+// Mais de um computador ouvindo é aviso: o "Rodar" vai pro primeiro que responder, e os dois
+// rodariam o horário — foi o que aconteceu com o segundo desktop.
+function _macVigiaTexto(v) {
+    const maquinas = Array.isArray(v.maquinas) ? v.maquinas : null;
+    const on = maquinas ? maquinas.filter(m => m.online) : (v.online ? [{ nome: "" }] : []);
+    if (on.length === 1) return { tom: "on", texto: `${on[0].nome || "Computador dos macros"} conectado` };
+    if (on.length > 1) {
+        return { tom: "aviso", texto: `${on.length} computadores conectados (${on.map(m => m.nome || "sem nome").join(", ")}) — o Rodar vai pro primeiro que responder` };
+    }
+    const quando = v.visto_ha_s === null || v.visto_ha_s === undefined ? "" : ` (visto ${_macHa(v.visto_ha_s)})`;
+    return { tom: "off", texto: `Nenhum computador conectado${quando} — abra o Chrome (com a extensão) e o XM Vigia` };
+}
+
 function _macVigiaHtml() {
     if (!_macVigia) return "";
-    const v = _macVigia;
-    const texto = v.online
-        ? "Chrome do galpão conectado"
-        : v.visto_ha_s === null || v.visto_ha_s === undefined
-            ? "Sem contato com o Chrome do galpão — abra o Chrome (com a extensão) e o XM Vigia."
-            : `Sem contato com o Chrome do galpão ${_macHa(v.visto_ha_s)} — abra o Chrome (com a extensão) e o XM Vigia.`;
-    return `<div class="mac-vigia ${v.online ? "mac-vigia-on" : "mac-vigia-off"}"><span class="mac-cmd-ponto"></span>${_macEsc(texto)}</div>`;
+    const t = _macVigiaTexto(_macVigia);
+    return `<span class="mac-vigia mac-vigia-${t.tom}"><span class="mac-cmd-ponto"></span>${_macEsc(t.texto)}</span>`;
 }
 
+// O que o vigia contou sem saber de qual macro é (erro inesperado, arquivo que não é relatório...).
+function _macGeralHtml() {
+    return _macGeral ? `<div class="mac-geral">${_macProblemaHtml(_macGeral, "")}</div>` : "";
+}
+
+const _macEngrenagemSvg = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
+
+// A linha de um macro do SPX: nome + uma linha de "quando roda · última carga" à esquerda, os
+// controles agrupados à direita (interruptor, Rodar, horário) e, só se houver algo a dizer, uma
+// linha de situação embaixo. A explicação do macro vai no tooltip do nome, não na tela.
 function _macHtmlItemSpx(item, m) {
-    const nome = `<div class="mac-item-nome">${_macEsc(item.nome)}</div>`
-        + (item.detalhe ? `<div class="mac-item-detalhe">${_macEsc(item.detalhe)}</div>` : "");
-    const carga = m.ultima_carga
-        ? `Última carga: ${_macEsc(_macCargaTexto(m.ultima_carga))}`
-        : "Nenhuma carga ainda";
-    // O Rodar fica sempre na extrema direita (a acao principal), com ou sem Configurar ao lado.
     const semAgendaDoSistema = m.agendavel && !m.configurado;
+    const carga = m.ultima_carga
+        ? `Última carga ${_macEsc(_macCargaTexto(m.ultima_carga))}`
+        : "Nenhuma carga ainda";
 
     // O interruptor só existe quando a agenda já foi configurada por aqui; antes disso o
-    // macro segue a agenda do popup da extensão e não há o que ligar ou desligar.
-    const status = m.agendavel && m.configurado ? `
-            <div class="mac-item-status ${m.ativo ? "ligado" : "desligado"}">
-                <button type="button" class="gc-toggle mac-toggle${m.ativo ? " gc-toggle--on" : ""}" role="switch" aria-checked="${m.ativo ? "true" : "false"}"
-                        title="${m.ativo ? "Desligar" : "Ligar"}" onclick="_macAlternarAtivo('${_macEsc(m.chave)}', this)"><span class="gc-toggle__knob"></span></button>
-                <span class="mac-status-texto">${m.ativo ? "Ativo" : "Desligado"}</span>
-            </div>` : `<div class="mac-item-status"></div>`;
-
-    const configurar = m.agendavel
-        ? `<button type="button" class="mac-configurar" onclick="_macAbrirConfigurarSpx('${_macEsc(m.qual)}')">Configurar</button>` : "";
+    // macro segue a agenda do popup da extensão e não há o que ligar ou desligar. Onde falta
+    // interruptor ou engrenagem fica um espaço do mesmo tamanho: o Rodar tem que cair no
+    // mesmo lugar em todas as linhas.
+    const toggle = m.agendavel && m.configurado
+        ? `<button type="button" class="gc-toggle mac-toggle${m.ativo ? " gc-toggle--on" : ""}" role="switch" aria-checked="${m.ativo ? "true" : "false"}"
+                   title="${m.ativo ? "Desligar o horário" : "Ligar o horário"}" onclick="_macAlternarAtivo('${_macEsc(m.chave)}', this)"><span class="gc-toggle__knob"></span></button>`
+        : `<span class="mac-slot mac-slot-toggle"></span>`;
+    const horario = m.agendavel
+        ? `<button type="button" class="mac-icone" title="Horário" aria-label="Configurar o horário — ${_macEsc(item.nome)}"
+                   onclick="_macAbrirConfigurarSpx('${_macEsc(m.qual)}')">${_macEngrenagemSvg}</button>`
+        : `<span class="mac-slot mac-slot-icone"></span>`;
 
     return `
         <div class="mac-item mac-item-spx">
-            <div class="mac-item-id">${nome}</div>
-            <div class="mac-item-agenda">
-                <div class="mac-agenda-resumo${semAgendaDoSistema ? " mac-agenda-mudo" : ""}">${_macEsc(m.resumo)}</div>
-                <div class="mac-carga">${carga}</div>
-                ${_macComandoHtml(m)}
+            <div class="mac-spx-texto">
+                <div class="mac-item-nome" title="${_macEsc(item.detalhe || "")}">${_macEsc(item.nome)}</div>
+                <div class="mac-spx-meta"><span class="mac-agenda-resumo${semAgendaDoSistema ? " mac-agenda-mudo" : ""}">${_macEsc(m.resumo)}</span> · ${carga}</div>
+                ${_macSituacaoHtml(m)}
             </div>
-            ${status}
-            <div class="mac-item-acao">
-                ${configurar}
-                <button type="button" class="mac-rodar" title="Rodar agora, no Chrome do galpão"
+            <div class="mac-spx-controles">
+                ${toggle}
+                <button type="button" class="mac-rodar" title="Rodar agora"
                         ${_macOcupado(m.comando) ? "disabled" : ""} onclick="_macRodar('${_macEsc(m.qual)}', this)">▶ Rodar</button>
+                ${horario}
             </div>
         </div>`;
 }
@@ -270,11 +306,17 @@ function _macHtmlSecao(secao, porChave) {
             ${g.titulo ? `<div class="mac-grupo-titulo">${_macEsc(g.titulo)}</div>` : ""}
             ${g.itens.map(item => _macHtmlItem(item, item.chave && porChave[item.chave])).join("")}
         </div>`).join("");
+    const titulo = `<h3 class="mac-secao-titulo">${_macEsc(secao.titulo)}</h3>`;
+    // A seção dos macros do SPX leva, na linha do título, quem está ouvindo e o histórico.
+    const cabecalho = secao.vigia
+        ? `<div class="mac-secao-cab">${titulo}<div class="mac-secao-acoes">${_macVigiaHtml()}`
+          + `<button type="button" class="mac-link" onclick="_macAbrirHistorico()">Histórico</button></div></div>`
+        : titulo;
     return `
     <section class="mac-secao">
-        <h3 class="mac-secao-titulo">${_macEsc(secao.titulo)}</h3>
+        ${cabecalho}
         ${secao.texto ? `<p class="mac-secao-texto">${_macEsc(secao.texto)}</p>` : ""}
-        ${secao.vigia ? _macVigiaHtml() : ""}
+        ${secao.vigia ? _macGeralHtml() : ""}
         <div class="mac-painel">${grupos}</div>
     </section>`;
 }
@@ -763,4 +805,37 @@ function _macSalvarAgenda() {
             btn.textContent = "Salvar";
             erro.innerText = "Erro ao conectar com o servidor.";
         });
+}
+
+// ── Histórico: o que aconteceu, de todos os macros ou de um ──
+// Cada linha é um evento contado pelo vigia ou pela extensão, com o computador de onde veio.
+const _MAC_NOME_CURTO = { alimentacao: "AT", pedidos: "Pedidos", backlog: "Backlog", geral: "Geral" };
+const _MAC_ORIGEM = { vigia: "vigia", extensao: "extensão" };
+
+function _macHistoricoHtml(eventos) {
+    if (!eventos || !eventos.length) return `<div class="mac-ag-vazio">Nada registrado ainda.</div>`;
+    return eventos.map(e => {
+        const onde = [e.maquina, _MAC_ORIGEM[e.origem] || e.origem, e.arquivo].filter(Boolean).map(_macEsc).join(" · ");
+        return `
+        <div class="mac-hist-linha mac-hist-${_macEsc(e.nivel)}">
+            <span class="mac-cmd-ponto"></span>
+            <span class="mac-hist-quando">${_macEsc(_macQuandoTexto(e.quando))}</span>
+            <span class="mac-hist-corpo"><b>${_macEsc(_MAC_NOME_CURTO[e.macro] || e.macro)}</b> ${_macEsc(e.texto)}
+                <span class="mac-hist-onde">${onde}</span></span>
+        </div>`;
+    }).join("");
+}
+
+function _macAbrirHistorico(macro) {
+    const nome = macro ? (_MAC_NOME_CURTO[macro] || macro) : "";
+    document.getElementById("mac-hist-titulo").innerText = nome ? `Histórico — ${nome}` : "Histórico dos macros";
+    const lista = document.getElementById("mac-hist-lista");
+    lista.innerHTML = `<div class="mac-ag-vazio">Carregando...</div>`;
+    _abrirModal("modal-macro-historico");
+
+    const filtro = macro ? `&macro=${encodeURIComponent(macro)}` : "";
+    fetch(`${API}/admin/macros/spx/historico?limite=80${filtro}`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(d => { lista.innerHTML = d.error ? `<div class="mac-ag-vazio">${_macEsc(d.error)}</div>` : _macHistoricoHtml(d.eventos); })
+        .catch(() => { lista.innerHTML = `<div class="mac-ag-vazio">Erro ao conectar com o servidor.</div>`; });
 }

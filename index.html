@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260924h">
+<link rel="stylesheet" href="style.css?v=20260925a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -2377,6 +2377,18 @@ if (_BASE) {
                 <div class="usr-modal-btns">
                     <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-macro-agenda')">Cancelar</button>
                     <button class="usr-modal-btn-primary" id="mac-ag-salvar" onclick="_macSalvarAgenda()">Salvar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Histórico dos macros (o que a extensão e o vigia contaram) — montado por js/macros.js -->
+        <div class="usr-modal-overlay" id="modal-macro-historico" onclick="_fecharModalSeBackdrop(event,'modal-macro-historico')">
+            <div class="usr-modal" style="max-width:720px">
+                <div class="usr-modal-title" id="mac-hist-titulo">Histórico dos macros</div>
+                <div class="usr-modal-sub">O que aconteceu, do computador que contou. Fica guardado por 14 dias.</div>
+                <div class="mac-hist-lista" id="mac-hist-lista"></div>
+                <div class="usr-modal-btns">
+                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-macro-historico')">Fechar</button>
                 </div>
             </div>
         </div>
@@ -4736,7 +4748,7 @@ if (_BASE) {
 <script src="js/usuarios-gc.js?v=20260924b"></script>
 <script src="js/nomes-padrao.js?v=20260922a"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
-<script src="js/macros.js?v=20260924f"></script>
+<script src="js/macros.js?v=20260925a"></script>
 <script src="js/whatsapp-teste.js?v=20260921d"></script>
 <script src="js/whatsapp-conversa.js?v=20260924a"></script>
 <script src="js/modals.js?v=20260924a"></script>
