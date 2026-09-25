@@ -8,7 +8,8 @@
 # (%APPDATA%\XM_Vigia e o armazenamento do Chrome), nao nesta pasta.
 #
 # Uso:  atualizar_macros.bat   (duplo clique)
-#       ou, de qualquer lugar:  atualizar_macros.ps1 -Pasta "D:\Macros\alimentacao-shopee"
+#       ou, de qualquer lugar:  atualizar_macros.ps1 -Pasta "C:\Macros\alimentacao-shopee"
+#       (a pasta pode nao existir ainda: num computador novo ele cria e baixa o kit inteiro)
 
 param(
     # A pasta do kit (a que tem o vigia_alimentacao.py). Sem isto, e a pasta deste arquivo.
@@ -16,10 +17,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-if (-not $Pasta) { $Pasta = Split-Path -Parent $MyInvocation.MyCommand.Path }
-if (-not $Pasta -or -not (Test-Path $Pasta)) {
-    throw "Diga a pasta do kit: atualizar_macros.ps1 -Pasta 'D:\Macros\alimentacao-shopee'"
+if (-not $Pasta -and $MyInvocation.MyCommand.Path) { $Pasta = Split-Path -Parent $MyInvocation.MyCommand.Path }
+if (-not $Pasta) {
+    throw "Diga a pasta do kit: atualizar_macros.ps1 -Pasta 'C:\Macros\alimentacao-shopee'"
 }
+# Pasta que ainda nao existe e o caso do PRIMEIRO uso num computador (sem pendrive): cria.
+if (-not (Test-Path $Pasta)) { New-Item -ItemType Directory -Path $Pasta -Force | Out-Null }
 
 $repo = 'xmtt1337/GC-Transportes'
 $base = 'automacao/alimentacao'
