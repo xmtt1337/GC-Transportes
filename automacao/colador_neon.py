@@ -85,6 +85,13 @@ SAIDA_NAVEGADOR = 'Navegador (extensão)'
 # "depois" não é um delay no relógio: ele só enxerga o que o recebimento já
 # marcou como colado. Se o recebimento parar, o AT para junto em vez de
 # atribuir pacote que o SPX ainda não recebeu.
+# O site fala em minusculo-com-underline ("recebimento", "at_cluster" - ver colador.js no
+# backend); a janela fala nos nomes de MODOS ("Recebimento", "AT Cluster"). So existe
+# tradução aqui porque as duas pontas foram escritas em momentos diferentes - nao ha nada de
+# especial na escolha, so precisa ser a MESMA dos dois lados.
+QUAL_DO_MODO = {"Recebimento": "recebimento", "AT Cluster": "at_cluster"}
+MODO_DA_QUAL = {v: k for k, v in QUAL_DO_MODO.items()}
+
 MODOS = {
     'Recebimento': {
         'colado_em': 'colado_em',
@@ -214,6 +221,20 @@ def caminho_recurso(nome):
     return os.path.join(base, nome)
 
 
+def nome_da_maquina():
+    """O nome deste computador - e como o site distingue um Colador do outro.
+
+    Mesma ideia do vigia_alimentacao.py (automacao/alimentacao). Sem "computador
+    escolhido" aqui (ver colador.js no backend, o porque): isto so serve pra
+    tela mostrar QUEM esta com o Colador aberto agora, e pro registro dizer de
+    onde veio um erro quando tem mais de uma maquina rodando.
+    """
+    try:
+        return (os.environ.get("COMPUTERNAME") or socket.gethostname() or "").strip()[:60]
+    except OSError:
+        return ""
+
+
 def quem_sou():
     """Identifica esta máquina nas colunas reservado_por / colado_por."""
     return f"{os.environ.get('USERNAME', 'user')}@{socket.gethostname()}"
@@ -270,8 +291,31 @@ def preparar_schema(db):
 
     A fila dos entregadores o backend também cria (modules/at/migrations.js) —
     aqui é rede de segurança pro colador não depender da ordem em que as duas
-    coisas sobem.
+    coisas sobem. As duas tabelas do canal remoto (site -> Colador) são a
+    mesma ideia: o backend cria elas em modules/macros-comando/migrations.js,
+    e aqui de novo pro Colador funcionar mesmo se o site ainda não subiu essa
+    migration.
     """
+    db.executar("""
+        CREATE TABLE IF NOT EXISTS macros_comandos_colador (
+            id            SERIAL PRIMARY KEY,
+            qual          TEXT NOT NULL,
+            criado_em     TIMESTAMP NOT NULL DEFAULT NOW(),
+            criado_por    TEXT,
+            config        JSONB NOT NULL,
+            estado        TEXT NOT NULL DEFAULT 'aguardando',
+            maquina       TEXT,
+            entregue_em   TIMESTAMP,
+            erro          TEXT
+        )""", retorna=False)
+    db.executar("""
+        CREATE TABLE IF NOT EXISTS macros_colador_presenca (
+            qual     TEXT NOT NULL,
+            maquina  TEXT NOT NULL,
+            visto_em TIMESTAMP NOT NULL,
+            PRIMARY KEY (qual, maquina)
+        )""", retorna=False)
+
     for i, tabela in enumerate(FILAS):
         # A fila dos entregadores pode ainda não existir se o backend novo não
         # subiu: sem isto o colador morreria na abertura por causa dela.
@@ -420,6 +464,49 @@ UPDATE {tabela}
 """
 
 
+# ── canal remoto (tela Macros do site -> este Colador) ────────────────────────────────────
+#
+# O site guarda o pedido numa TABELA (macros_comandos_colador) em vez de mandar por HTTP: o
+# Colador nunca teve login no site, so a connection string do Neon (ver o cabecalho do
+# arquivo) - inventar autenticacao so pra isto quebraria essa simplicidade de proposito.
+#
+# É seguro pegar comando de QUALQUER Colador aberto, em QUALQUER computador: ao contrario dos
+# macros do SPX (uma conta so, tela "Ultima tarefa" compartilhada), aqui dois coladores rodando
+# ao mesmo tempo nunca pegam o mesmo codigo - e exatamente a garantia deste arquivo inteiro
+# (ver o cabecalho, "nao repetir e nao pular"). Por isso a reivindicacao abaixo e so
+# "o comando mais antigo que ainda ninguem pegou", com FOR UPDATE SKIP LOCKED - o mesmo jeito
+# que sql_reservar usa pra codigo.
+INTERVALO_POLL_REMOTO = 10  # segundos - so enquanto a janela estiver aberta e conectada
+
+
+def sql_reivindicar_comando():
+    return """
+UPDATE macros_comandos_colador
+   SET estado = 'iniciado', maquina = %(maquina)s, entregue_em = NOW()
+ WHERE id = (
+       SELECT id
+         FROM macros_comandos_colador
+        WHERE qual = %(qual)s AND estado = 'aguardando'
+        ORDER BY criado_em ASC
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+ )
+ RETURNING id, config::text
+"""
+
+
+def sql_marcar_erro_comando():
+    return "UPDATE macros_comandos_colador SET estado = 'erro', erro = %(erro)s WHERE id = %(id)s"
+
+
+def sql_presenca_colador():
+    return """
+INSERT INTO macros_colador_presenca (qual, maquina, visto_em)
+VALUES (%(qual)s, %(maquina)s, NOW())
+ON CONFLICT (qual, maquina) DO UPDATE SET visto_em = NOW()
+"""
+
+
 class ColadorApp:
     def __init__(self):
         self.cfg = carregar_config()
@@ -462,6 +549,11 @@ class ColadorApp:
         self.thread_at = None
         self.db = None            # conexão da thread de execução
         self.db_ui = None         # conexão da UI (testar / contar / zerar)
+
+        # Canal remoto: a tela Macros do site manda "Rodar" (ver sql_reivindicar_comando).
+        self.url_conectada = None
+        self.thread_poller_remoto = None
+        self.parar_poller_remoto = False
 
         self.setup_ui()
         self.bombear_ui()
@@ -932,6 +1024,7 @@ class ColadorApp:
                 xpts = [r[0] for r in db.executar(
                     f"SELECT DISTINCT xpt FROM {TABELA} WHERE xpt IS NOT NULL ORDER BY xpt")]
                 self.db_ui = db
+                self.url_conectada = url  # o poller remoto usa pra abrir a Banco() dele
                 self.ui(lambda: self.conexao_ok(xpts))
             except Exception as e:
                 msg = str(e).strip().split("\n")[0][:90]
@@ -941,6 +1034,7 @@ class ColadorApp:
         threading.Thread(target=tarefa, daemon=True).start()
 
     def conexao_ok(self, xpts):
+        self.iniciar_poller_remoto()
         self.conn_label.configure(text="Conectado ao Neon", text_color="#2ecc71")
         valores = xpts or ["XPT_CFC", "XPT_VIA"]
         atual = self.xpt_menu.get()
@@ -1179,6 +1273,119 @@ class ColadorApp:
 
         self.thread_execucao = threading.Thread(target=self.loop_colagem, daemon=True)
         self.thread_execucao.start()
+
+
+    # ── canal remoto (tela Macros do site) ─────────────────────────────────
+    #
+    # "Rodar" na tela vira uma linha em macros_comandos_colador (ver colador.js /
+    # rotasColador.js no backend). Este laço pergunta ao Postgres, a cada
+    # INTERVALO_POLL_REMOTO, se tem pedido esperando - só enquanto a janela
+    # estiver aberta e conectada, que é exatamente quando faz sentido responder.
+    def iniciar_poller_remoto(self):
+        if self.thread_poller_remoto and self.thread_poller_remoto.is_alive():
+            return
+        self.parar_poller_remoto = False
+        self.thread_poller_remoto = threading.Thread(
+            target=self._loop_comandos_remotos, daemon=True)
+        self.thread_poller_remoto.start()
+
+    def _loop_comandos_remotos(self):
+        maquina = nome_da_maquina()
+        db = None
+        while not self.parar_poller_remoto:
+            try:
+                if self.db_ui and getattr(self, 'url_conectada', None):
+                    if db is None:
+                        db = Banco(self.url_conectada)
+
+                    # Sinaliza presença nos DOIS "quais" - é o que a tela usa pra
+                    # dizer "tem Colador aberto" antes mesmo de alguém clicar Rodar.
+                    for qual in MODO_DA_QUAL:
+                        db.executar(sql_presenca_colador(),
+                                   {'qual': qual, 'maquina': maquina}, retorna=False)
+
+                    if not self.executando:
+                        for qual, modo in MODO_DA_QUAL.items():
+                            linhas = db.executar(sql_reivindicar_comando(),
+                                                 {'qual': qual, 'maquina': maquina})
+                            if linhas:
+                                id_comando, config_texto = linhas[0]
+                                config = json.loads(config_texto or '{}')
+                                # _rodar_comando_remoto mexe em widget Tk - so na thread da UI.
+                                self.ui(lambda i=id_comando, m=modo, c=config:
+                                        self._rodar_comando_remoto(i, m, c))
+                                break  # um por volta: a proxima ja ve self.executando=True
+            except Exception as e:
+                registrar(f"[poller remoto] erro (ignorado, tenta de novo): {e}")
+
+            fim = time.time() + INTERVALO_POLL_REMOTO
+            while time.time() < fim and not self.parar_poller_remoto:
+                time.sleep(0.2)
+
+    def _rodar_comando_remoto(self, id_comando, modo, config):
+        """Na THREAD DA UI: aplica o que a tela mandou e chama iniciar(), o MESMO
+        caminho de um clique de verdade - preenche os campos que a pessoa
+        preencheria à mão, e modo/XPT já contam como confirmados (a escolha foi
+        feita ao clicar Rodar NAQUELE colador, na tela).
+        """
+        if self.executando:
+            # Corrida rara: uma sessão local começou entre o poller ver "livre" e
+            # chegar aqui. Mais simples e mais claro pedir pra tentar de novo do
+            # que tentar devolver o comando pra fila.
+            self._marcar_comando_remoto(
+                id_comando, "este computador começou outra sessão no meio — clique em Rodar de novo")
+            return
+        if not self.db_ui:
+            self._marcar_comando_remoto(id_comando, "Colador sem conexão com o banco")
+            return
+
+        try:
+            self.modo_menu.set(modo)
+            self.modo_confirmado = True
+            self.atualizar_visual_modo()
+            self.sugerir_pagina()
+
+            valores_xpt = list(self.xpt_menu.cget("values")) or ["XPT_CFC", "XPT_VIA"]
+            xpt = config.get('xpt') if config.get('xpt') in valores_xpt else valores_xpt[0]
+            self.xpt_menu.set(xpt)
+            self.xpt_confirmado = True
+
+            self.todos_dias.set(bool(config.get('todos_dias')))
+            self.dia_entry.delete(0, 'end')
+            self.dia_entry.insert(0, config.get('dia') or '')
+            self.carencia_entry.delete(0, 'end')
+            self.carencia_entry.insert(0, str(config.get('carencia', CARENCIA_PADRAO)))
+            self.lote_entry.delete(0, 'end')
+            self.lote_entry.insert(0, str(config.get('lote', 20)))
+            self.interval_slider.set(float(config.get('intervalo', 0.5)))
+            self.update_interval_label(self.interval_slider.get())
+            self.modo_continuo.set(bool(config.get('continuo', True)))
+
+            # Remoto SEMPRE por extensão: o modo Teclado exige alguém clicando na
+            # janela de destino durante uma contagem, e não dá pra automatizar isso.
+            self.saida_menu.set(SAIDA_NAVEGADOR)
+            self.ao_trocar_saida()
+            self.pagina_entry.delete(0, 'end')
+            self.pagina_entry.insert(0, config.get('pagina') or MODOS[modo].get('pagina') or '')
+
+            self.iniciar()
+
+            if self.executando:
+                registrar(f"comando remoto {id_comando}: iniciado ({modo} / {xpt})")
+            else:
+                motivo = (self.status_sessao.cget("text") or "").strip() \
+                    or "não consegui iniciar (motivo não identificado)"
+                self._marcar_comando_remoto(id_comando, motivo)
+        except Exception as e:
+            self._marcar_comando_remoto(id_comando, str(e)[:290])
+
+    def _marcar_comando_remoto(self, id_comando, erro):
+        registrar(f"comando remoto {id_comando} não rodou: {erro}")
+        try:
+            self.db_ui.executar(sql_marcar_erro_comando(),
+                                {'id': id_comando, 'erro': str(erro)[:290]}, retorna=False)
+        except Exception as e:
+            registrar(f"não consegui contar ao site que o comando {id_comando} falhou: {e}")
 
     def janelas_proprias(self):
         hwnds = []
@@ -1651,6 +1858,7 @@ class ColadorApp:
 
     def ao_fechar(self):
         self.parar_thread = True
+        self.parar_poller_remoto = True
         if self.thread_execucao and self.thread_execucao.is_alive():
             self.thread_execucao.join(timeout=10)
         self.persistir_config()
