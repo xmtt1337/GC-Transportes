@@ -1424,15 +1424,26 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     .sidebar-backdrop {
         display: block; position: fixed; inset: 0; z-index: 90;
         background: rgba(0,0,0,0.5); opacity: 0; pointer-events: none;
-        transition: opacity 0.25s ease;
+        /* Mesmo motivo do .usr-modal-overlay: camada de tela inteira invisivel
+           ainda pesa na GPU do celular. Fechado, some de verdade. */
+        visibility: hidden;
+        transition: opacity 0.25s ease, visibility 0s linear 0.25s;
     }
-    .sidebar-backdrop.active { opacity: 1; pointer-events: auto; }
+    .sidebar-backdrop.active {
+        opacity: 1; pointer-events: auto; visibility: visible;
+        transition: opacity 0.25s ease, visibility 0s;
+    }
 
     .topbar-mobile-menu { display: flex; }
 
 
     .content { padding: 12px; }
-    .topbar { height: 52px; padding: 0 12px; margin-bottom: 12px; border-radius: 12px; }
+    /* Sem blur no celular: atras da topbar so tem o fundo liso, o efeito nao
+       aparece e so custa GPU. Fundo solido na mesma cor. */
+    .topbar {
+        height: 52px; padding: 0 12px; margin-bottom: 12px; border-radius: 12px;
+        backdrop-filter: none; -webkit-backdrop-filter: none; background: #0a0f18;
+    }
     .topbar h1 { font-size: 15px; }
     .username { display: none; }
     .logout-btn { width: 34px; height: 34px; }
@@ -2380,17 +2391,27 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .adm-usr-editar-item:hover { background: rgba(58,134,255,0.12); color: #fff }
 
 /* ===== MODAL GENÉRICO ===== */
+/* Fechado, o overlay NAO pode so ficar com opacity 0: sao 29 deles no index,
+   todos fixed de tela inteira. Com o blur ligado, o Chrome do Android compoe
+   cada um mesmo invisivel -- na densidade de celular (~2.8x) isso estoura a
+   memoria de GPU e a tela inteira passa a ser pintada aos pedacos, o "glitch"
+   que so dava no Chrome do celular (Firefox e "modo computador" nao). Entao:
+   fechado fica visibility: hidden e sem blur; o blur so existe no aberto.
+   O visibility espera o fade terminar pra sumir, e a animacao segue igual. */
 .usr-modal-overlay {
     position: fixed; inset: 0; z-index: 500;
     background: rgba(0,0,0,0.65);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
-    opacity: 0; pointer-events: none;
-    transition: opacity 0.22s ease;
+    opacity: 0; pointer-events: none; visibility: hidden;
+    transition: opacity 0.22s ease, visibility 0s linear 0.22s;
 }
-.usr-modal-overlay.open { opacity: 1; pointer-events: all; }
+.usr-modal-overlay.open {
+    opacity: 1; pointer-events: all; visibility: visible;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: opacity 0.22s ease, visibility 0s;
+}
 .usr-modal {
     background: #0f1925; border: 1px solid rgba(58,134,255,0.2);
     border-radius: 20px; padding: 32px 28px; width: 100%; max-width: 380px;
