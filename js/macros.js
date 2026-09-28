@@ -20,6 +20,8 @@ let _macFonte = "rodadas"; // qual lista de horários o relógio (hora/minuto) e
 let _macPoll = null;    // timer que acompanha um "Rodar" até ele sair do "aguardando"
 let _macGeral = null;   // problema que o vigia contou sem saber de qual macro (erro inesperado, etc.)
 let _macComputador = null; // o computador escolhido pra executar os macros (null = qualquer um)
+let _macColadores = [];    // [{ qual, chave, nome, detalhe, configurado, config, resumo, comando, computadores }]
+let _macColadorEditando = null; // copia de trabalho da config aberta no modal de configurar
 
 function abrirMacros(event) {
     if (event) event.preventDefault();
@@ -57,14 +59,18 @@ function _macCarregarLista(silencioso) {
         // Servidor sem os macros do SPX (ou fora do ar só nessa rota): as linhas deles ficam
         // "Indisponível no momento" e o resto da tela continua funcionando.
         fetch(`${API}/admin/macros/spx`, cab).then(r => r.json()).catch(() => null),
+        // Idem pro Colador: rota separada (fala com uma tabela que o colador_neon.py também
+        // lê por SQL, sem passar pelo resto do site — ver rotasColador.js).
+        fetch(`${API}/admin/macros/colador`, cab).then(r => r.json()).catch(() => null),
     ])
-        .then(([d, spx]) => {
+        .then(([d, spx, colador]) => {
             if (d && d.error) { skFim(empty, d.error); return; }
             const doSpx = spx && Array.isArray(spx.macros) ? spx.macros : [];
             _macLista = (d.macros || []).concat(doSpx);
             _macVigia = spx && spx.vigia ? spx.vigia : null;
             _macGeral = spx && spx.geral ? spx.geral : null;
             _macComputador = spx && spx.computador ? spx.computador : null;
+            _macColadores = colador && Array.isArray(colador.coladores) ? colador.coladores : [];
             empty.style.display = "none";
             _macRedesenhar();
             _macAcompanhar();
@@ -74,7 +80,7 @@ function _macCarregarLista(silencioso) {
 
 function _macRedesenhar() {
     const lista = document.getElementById("mac-lista");
-    if (lista) lista.innerHTML = _macHtmlSecoes(_macLista);
+    if (lista) lista.innerHTML = _macHtmlSecoes(_macLista) + _macHtmlSecaoColador(_macColadores);
 }
 
 // ── Como a tela se organiza ──
@@ -916,4 +922,217 @@ function _macAbrirHistorico(macro) {
         .then(r => r.json())
         .then(d => { lista.innerHTML = d.error ? `<div class="mac-ag-vazio">${_macEsc(d.error)}</div>` : _macHistoricoHtml(d.eventos); })
         .catch(() => { lista.innerHTML = `<div class="mac-ag-vazio">Erro ao conectar com o servidor.</div>`; });
+}
+
+// ── Colador (automacao/colador_neon.py) ──
+// Mesma ideia do Rodar/Configurar dos macros do SPX, mas sem horário nenhum: o Colador é uma
+// sessão que se liga e desliga (ou fica de vigia, modo contínuo), não uma agenda. Também sem
+// "computador escolhido" - rodar em mais de uma máquina ao mesmo tempo é seguro de propósito
+// (a reserva de lote no Postgres já garante que dois coladores nunca pegam o mesmo código).
+
+// Só um pontinho + texto, no mesmo estilo de _macVigiaHtml: quantos computadores têm ESTE
+// colador aberto agora. Sem inflar a tela com uma lista - "Detalhes" não existe aqui porque
+// não há histórico (só Rodar e Configurar).
+function _macColadorPresencaHtml(computadores) {
+    const on = (computadores || []).filter(c => c.online);
+    if (on.length === 1) return `<span class="mac-vigia mac-vigia-on"><span class="mac-cmd-ponto"></span>${_macEsc(on[0].nome || "conectado")}</span>`;
+    if (on.length > 1) return `<span class="mac-vigia mac-vigia-aviso"><span class="mac-cmd-ponto"></span>${on.length} computadores conectados</span>`;
+    return `<span class="mac-vigia mac-vigia-off"><span class="mac-cmd-ponto"></span>nenhum computador conectado</span>`;
+}
+
+// O comando mais recente: mesma lógica de tom dos macros do SPX (_macComandoTexto), com textos
+// próprios do Colador (não fala em "Chrome" nem em horário).
+function _macComandoColadorTexto(cmd) {
+    switch (cmd.estado) {
+        case "aguardando":
+            return { tom: "andando", texto: "Pedido enviado — aguardando algum Colador aberto…" };
+        case "iniciado":
+            return { tom: "ok", texto: `Iniciado às ${_macHoraBrasilia(cmd.criado_em)} por ${cmd.criado_por}${cmd.maquina ? ` em ${cmd.maquina}` : ""}` };
+        case "erro":
+            return { tom: "erro", texto: `Não rodou: ${cmd.erro || "motivo não informado"}` };
+        case "expirado":
+            return { tom: "aviso", texto: "Ninguém abriu o Colador a tempo de pegar esse pedido." };
+        default:
+            return { tom: "aviso", texto: String(cmd.estado || "") };
+    }
+}
+
+function _macSituacaoColadorHtml(cmd) {
+    // "iniciado" fica sem prazo pra sumir sozinho aqui (não há polling de estado depois que já
+    // rodou) - não enche a tela mostrando pra sempre que "já rodou".
+    if (!cmd || cmd.estado === "iniciado") return "";
+    const c = _macComandoColadorTexto(cmd);
+    return `<div class="mac-sit mac-sit-${c.tom}"><span class="mac-cmd-ponto"></span><span>${_macEsc(c.texto)}</span></div>`;
+}
+
+function _macHtmlItemColador(item) {
+    const ocupado = item.comando && item.comando.estado === "aguardando";
+    return `
+        <div class="mac-item mac-item-spx">
+            <div class="mac-spx-texto">
+                <div class="mac-item-nome" title="${_macEsc(item.detalhe || "")}">${_macEsc(item.nome)}</div>
+                <div class="mac-spx-meta">
+                    <span class="mac-agenda-resumo${item.configurado ? "" : " mac-agenda-mudo"}">${_macEsc(item.resumo)}</span>
+                    · ${_macColadorPresencaHtml(item.computadores)}
+                </div>
+                ${_macSituacaoColadorHtml(item.comando)}
+            </div>
+            <div class="mac-spx-controles">
+                <button type="button" class="mac-rodar" title="Rodar agora" ${ocupado ? "disabled" : ""}
+                        onclick="_macRodarColador('${_macEsc(item.qual)}', this)">▶ Rodar</button>
+                <button type="button" class="mac-icone" title="Configurar" aria-label="Configurar — ${_macEsc(item.nome)}"
+                        onclick="_macAbrirConfigurarColador('${_macEsc(item.qual)}')">${_macEngrenagemSvg}</button>
+            </div>
+        </div>`;
+}
+
+function _macHtmlSecaoColador(coladores) {
+    if (!coladores || !coladores.length) return "";
+    return `
+    <section class="mac-secao">
+        <h3 class="mac-secao-titulo">Colador</h3>
+        <p class="mac-secao-texto">Recebimento e AT Cluster (automacao/colador_neon.py) — roda no computador que estiver com a janela aberta.</p>
+        <div class="mac-painel">${coladores.map(_macHtmlItemColador).join("")}</div>
+    </section>`;
+}
+
+function _macRodarColador(qual, botao) {
+    const item = _macColadores.find(c => c.qual === qual);
+    if (!item) return;
+    if (botao) botao.disabled = true;
+
+    fetch(`${API}/admin/macros/colador/${qual}/rodar`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: "{}"
+    })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            if (!ok) {
+                if (botao) botao.disabled = false;
+                gcAlert(d.error || "Não foi possível pedir.");
+                return;
+            }
+            item.comando = Object.assign({ idade_s: 0 }, d.comando);
+            if (!d.algum_conectado) {
+                gcAlert("Pedido enviado, mas nenhum computador está com o Colador aberto agora — ele roda assim que alguém abrir.");
+            }
+            _macRedesenhar();
+            _macAcompanharColador();
+        })
+        .catch(() => {
+            if (botao) botao.disabled = false;
+            gcAlert("Erro ao conectar com o servidor.");
+        });
+}
+
+// Sem fila em memória aqui (é tudo por tabela — ver rotasColador.js), então acompanhar é só
+// reconsultar a lista inteira; mais simples do que ter um /estado próprio pra tão pouca coisa.
+let _macPollColador = null;
+function _macAcompanharColador() {
+    if (_macPollColador) return;
+    const passo = () => {
+        const tela = document.getElementById("tela-macros");
+        const visivel = !!tela && tela.classList.contains("active-view");
+        const andando = _macColadores.some(c => c.comando && c.comando.estado === "aguardando");
+        if (!visivel || !andando) { _macPollColador = null; return; }
+
+        fetch(`${API}/admin/macros/colador`, { headers: { "Authorization": "Bearer " + token } })
+            .then(r => r.json())
+            .then(d => {
+                if (d && Array.isArray(d.coladores)) { _macColadores = d.coladores; _macRedesenhar(); }
+            })
+            .catch(() => { /* tenta de novo na proxima */ })
+            .finally(() => { _macPollColador = setTimeout(passo, 4000); });
+    };
+    _macPollColador = setTimeout(passo, 4000);
+}
+
+// ── Configurar o Colador ──
+function _macAbrirConfigurarColador(qual) {
+    const item = _macColadores.find(c => c.qual === qual);
+    if (!item) return;
+    _macColadorEditando = Object.assign({ qual, nome: item.nome }, JSON.parse(JSON.stringify(item.config)));
+
+    document.getElementById("mac-col-titulo").innerText = item.nome;
+    document.getElementById("mac-col-erro").innerText = "";
+    _macRenderizarColador();
+    _abrirModal("modal-macro-colador");
+}
+
+function _macRenderizarColador() {
+    const c = _macColadorEditando;
+    document.getElementById("mac-col-xpt").value = c.xpt || "";
+    document.getElementById("mac-col-todos-dias").checked = !!c.todos_dias;
+    document.getElementById("mac-col-dia").value = c.dia || "";
+    document.getElementById("mac-col-dia").disabled = !!c.todos_dias;
+    document.getElementById("mac-col-carencia").value = c.carencia;
+    document.getElementById("mac-col-lote").value = c.lote;
+    document.getElementById("mac-col-intervalo").value = c.intervalo;
+    document.getElementById("mac-col-intervalo-rotulo").innerText = c.intervalo.toFixed(1) + "s";
+    document.getElementById("mac-col-continuo").checked = c.continuo !== false;
+}
+
+function _macColMudarTodosDias(marcado) {
+    _macColadorEditando.todos_dias = marcado;
+    _macRenderizarColador();
+}
+function _macColMudarCampo(campo, valor) {
+    _macColadorEditando[campo] = valor;
+}
+function _macColMudarIntervalo(valor) {
+    _macColadorEditando.intervalo = Number(valor);
+    document.getElementById("mac-col-intervalo-rotulo").innerText = Number(valor).toFixed(1) + "s";
+}
+
+// Mesmas regras do servidor (colador.js) — só pra a mensagem aparecer na hora; o servidor
+// confere de novo.
+function _macMontarConfigColador(c) {
+    if (!c.todos_dias && !/^\d{4}-\d{2}-\d{2}$/.test(c.dia || "")) {
+        return { erro: 'Informe o dia (AAAA-MM-DD) ou marque "todos os dias".' };
+    }
+    if (!String(c.xpt || "").trim()) return { erro: "Escolha o XPT." };
+    const carencia = Number(c.carencia);
+    if (!Number.isInteger(carencia) || carencia < 0 || carencia > 3600) return { erro: "Carência tem que ser de 0 a 3600 segundos." };
+    const lote = Number(c.lote);
+    if (!Number.isInteger(lote) || lote < 1 || lote > 500) return { erro: "Códigos por lote tem que ser de 1 a 500." };
+    const intervalo = Number(c.intervalo);
+    if (!Number.isFinite(intervalo) || intervalo < 0 || intervalo > 1.5) return { erro: "Intervalo tem que ser de 0 a 1,5 segundos." };
+    return {
+        config: {
+            todos_dias: !!c.todos_dias, dia: c.todos_dias ? null : c.dia.trim(),
+            xpt: c.xpt.trim(), carencia, lote, intervalo: Math.round(intervalo * 10) / 10,
+            continuo: c.continuo !== false,
+        },
+    };
+}
+
+function _macSalvarColador() {
+    const erro = document.getElementById("mac-col-erro");
+    erro.innerText = "";
+    const r = _macMontarConfigColador(_macColadorEditando);
+    if (r.erro) { erro.innerText = r.erro; return; }
+
+    const btn = document.getElementById("mac-col-salvar");
+    btn.disabled = true;
+    btn.textContent = "Salvando...";
+
+    fetch(`${API}/admin/macros/colador/${_macColadorEditando.qual}`, {
+        method: "PUT",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ config: r.config })
+    })
+        .then(res => res.json().then(d => ({ ok: res.ok, d })))
+        .then(({ ok, d }) => {
+            btn.disabled = false;
+            btn.textContent = "Salvar";
+            if (!ok) { erro.innerText = d.error || "Não foi possível salvar."; return; }
+            _fecharModal("modal-macro-colador");
+            _macCarregarLista(true);
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.textContent = "Salvar";
+            erro.innerText = "Erro ao conectar com o servidor.";
+        });
 }

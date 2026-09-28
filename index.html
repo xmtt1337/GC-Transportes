@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20260925c">
+<link rel="stylesheet" href="style.css?v=20260928a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -2377,6 +2377,60 @@ if (_BASE) {
                 <div class="usr-modal-btns">
                     <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-macro-agenda')">Cancelar</button>
                     <button class="usr-modal-btn-primary" id="mac-ag-salvar" onclick="_macSalvarAgenda()">Salvar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configurar um Colador (automacao/colador_neon.py) — montado por js/macros.js -->
+        <div class="usr-modal-overlay" id="modal-macro-colador" onclick="_fecharModalSeBackdrop(event,'modal-macro-colador')">
+            <div class="usr-modal" style="max-width:480px">
+                <div class="usr-modal-title" id="mac-col-titulo">Configurar</div>
+                <div class="usr-modal-sub">Vale a partir do próximo "Rodar" — não muda uma sessão já em andamento.</div>
+
+                <div class="mac-col-campo">
+                    <label for="mac-col-xpt">XPT</label>
+                    <input type="text" id="mac-col-xpt" class="usr-modal-input" list="mac-col-xpt-lista"
+                           placeholder="XPT_CFC" oninput="_macColMudarCampo('xpt', this.value)">
+                    <datalist id="mac-col-xpt-lista"><option value="XPT_CFC"><option value="XPT_VIA"></datalist>
+                </div>
+
+                <div class="mac-col-campo">
+                    <label for="mac-col-dia">Dia</label>
+                    <div class="mac-col-linha">
+                        <input type="date" id="mac-col-dia" class="usr-modal-input" oninput="_macColMudarCampo('dia', this.value)">
+                        <label class="mac-col-check"><input type="checkbox" id="mac-col-todos-dias"
+                               onchange="_macColMudarTodosDias(this.checked)"> todos os dias</label>
+                    </div>
+                </div>
+
+                <div class="mac-col-linha">
+                    <div class="mac-col-campo">
+                        <label for="mac-col-carencia">Carência (segundos)</label>
+                        <input type="number" id="mac-col-carencia" class="usr-modal-input" min="0" max="3600"
+                               oninput="_macColMudarCampo('carencia', this.value)">
+                    </div>
+                    <div class="mac-col-campo">
+                        <label for="mac-col-lote">Códigos por lote</label>
+                        <input type="number" id="mac-col-lote" class="usr-modal-input" min="1" max="500"
+                               oninput="_macColMudarCampo('lote', this.value)">
+                    </div>
+                </div>
+
+                <div class="mac-col-campo">
+                    <label for="mac-col-intervalo">Intervalo entre códigos — <span id="mac-col-intervalo-rotulo">0.5s</span></label>
+                    <input type="range" id="mac-col-intervalo" min="0" max="1.5" step="0.1"
+                           oninput="_macColMudarIntervalo(this.value)">
+                </div>
+
+                <label class="mac-col-check" style="margin:14px 0 4px">
+                    <input type="checkbox" id="mac-col-continuo" onchange="_macColMudarCampo('continuo', this.checked)">
+                    Modo contínuo — fica de vigia, colando o que chegar
+                </label>
+
+                <div class="usr-modal-error" id="mac-col-erro"></div>
+                <div class="usr-modal-btns">
+                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-macro-colador')">Cancelar</button>
+                    <button class="usr-modal-btn-primary" id="mac-col-salvar" onclick="_macSalvarColador()">Salvar</button>
                 </div>
             </div>
         </div>
@@ -4748,7 +4802,7 @@ if (_BASE) {
 <script src="js/usuarios-gc.js?v=20260924b"></script>
 <script src="js/nomes-padrao.js?v=20260922a"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
-<script src="js/macros.js?v=20260925b"></script>
+<script src="js/macros.js?v=20260928a"></script>
 <script src="js/whatsapp-teste.js?v=20260925a"></script>
 <script src="js/whatsapp-conversa.js?v=20260924a"></script>
 <script src="js/modals.js?v=20260924a"></script>

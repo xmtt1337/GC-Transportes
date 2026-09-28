@@ -2726,6 +2726,15 @@ td.cad-nome { color: #e2e8f0; }
 .mac-hist-corpo b { color: #e2e8f0; font-weight: 600; margin-right: 4px; }
 .mac-hist-onde { display: block; margin-top: 2px; font-size: 12px; color: #66829c; }
 .mac-hist-erro .mac-hist-corpo { color: #f08a8a; }
+/* Modal de configurar um Colador: campos simples, um por linha (dois por linha quando cabem). */
+.mac-col-campo { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; }
+.mac-col-campo label { font-size: 12.5px; color: #8494a9; }
+.mac-col-linha { display: flex; gap: 14px; align-items: flex-end; }
+.mac-col-linha .mac-col-campo { flex: 1; margin: 0; }
+.mac-col-check { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #cbd5e1; cursor: pointer; white-space: nowrap; }
+.mac-col-check input { width: 15px; height: 15px; cursor: pointer; }
+#mac-col-intervalo { width: 100%; accent-color: #3a86ff; }
+
 /* Modal de horário: duas opções lado a lado em importância; a que não vale fica apagada, mas
    continua editável. */
 .mac-ag-bloco { padding: 14px 0; border-top: 1px solid rgba(255,255,255,0.07); transition: opacity 0.15s; }
