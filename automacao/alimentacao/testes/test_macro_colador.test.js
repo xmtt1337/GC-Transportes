@@ -35,7 +35,7 @@ const PASTA = path.join(__dirname, '..', 'extensao-macros-spx');
 
 class ParadoFalso extends Error {}
 
-function carregar({ pagina = {}, respostas = {}, botoes = {}, ensinados = {} } = {}) {
+function carregar({ pagina = {}, respostas = {}, botoes = {}, ensinados = {}, soPorFolha = {}, textoDaPagina = '' } = {}) {
   const chamadasVigia = [];
   const painel = { passos: [], notas: [], ok: null, erro: null, aoParar: null, titulo: null };
   const cliques = [];
@@ -64,8 +64,11 @@ function carregar({ pagina = {}, respostas = {}, botoes = {}, ensinados = {} } =
     escrever: (el, texto) => { el.value = texto; el.escreveu = (el.escreveu || 0) + 1; },
     apertarEnter: (el) => { el.enterApertado = (el.enterApertado || 0) + 1; },
     clicar: (el) => { if (el) { cliques.push(el); el.cliques = (el.cliques || 0) + 1; } return !!el; },
-    acharBotao: (texto) => botoes[texto] || null,
-    folhaVisivelComTexto: (texto) => botoes[texto] || null,
+    // soPorFolha: textos que so existem como elemento sem classe clicavel (o
+    // caso real que motivou acharPorTexto - "Recebimento unitário" e um grupo
+    // de opções do design system do SPX, que acharBotao sozinho não achava).
+    acharBotao: (texto) => (soPorFolha[texto] ? null : botoes[texto] || null),
+    folhaVisivelComTexto: (texto) => botoes[texto] || soPorFolha[texto] || null,
     rede: { ativas: 0 },
     esperarRede: async () => {},
   };
@@ -79,7 +82,7 @@ function carregar({ pagina = {}, respostas = {}, botoes = {}, ensinados = {} } =
 
   const ctx = vm.createContext({
     console: { log() {}, warn() {}, error() {} },
-    document: { querySelector: (sel) => pagina[sel] || null },
+    document: { querySelector: (sel) => pagina[sel] || null, body: { innerText: textoDaPagina } },
     chrome: {
       runtime: {
         onMessage: { addListener: (f) => { ctx.__ouvinteMsg = f; } },
@@ -341,6 +344,26 @@ test('prepararRecebimento: clica em "Recebimento unitário" e depois em "Receber
   assert.deepStrictEqual(r.cliques, [recebimentoUnitario, receberPorPedido]);
 });
 
+// Bug de verdade, achado testando contra o SPX (29/09/2026): "Recebimento
+// unitário"/"Receber por pedido" são um grupo de opções (radio/toggle) do
+// design system do SPX, sem classe "btn"/"button" — acharBotao sozinho nunca
+// achava. acharPorTexto cai pra folhaVisivelComTexto (acha por TEXTO, sem
+// depender de classe) - mesmo fallback que alimentacao.js já usa pro "Mais".
+test('prepararRecebimento: acha por TEXTO mesmo quando nao e um elemento clicavel (bug real do SPX)', async () => {
+  const recebimentoUnitario = {};
+  const receberPorPedido = {};
+  let apareceu = false;
+  const r = carregar({
+    soPorFolha: { 'Recebimento unitário': recebimentoUnitario, 'Receber por pedido': receberPorPedido },
+  });
+  r.ctx.document.querySelector = (sel) => (apareceu && sel === 'input[placeholder="Por favor, insira"]' ? { desabilitado: false } : null);
+  const clicarOriginal = r.S.clicar;
+  r.S.clicar = (el) => { if (el === recebimentoUnitario) apareceu = true; return clicarOriginal(el); };
+
+  await r.G.colador.prepararRecebimento();
+  assert.deepStrictEqual(r.cliques, [recebimentoUnitario, receberPorPedido]);
+});
+
 test('prepararRecebimento: sem o botão "Recebimento unitário", erro claro', async () => {
   const r = carregar({ pagina: {}, botoes: {} });
   await assert.rejects(r.G.colador.prepararRecebimento(), /Recebimento unitário/);
@@ -451,4 +474,64 @@ test('diaDaAt: usa o dia do filtro, ou hoje se "todos os dias"', () => {
   const r = carregar({ pagina: {}, respostas: {} });
   assert.strictEqual(r.G.colador.diaDaAt({ dia: '2026-09-28' }), '2026-09-28');
   assert.match(r.G.colador.diaDaAt({ dia: null }), /^\d{4}-\d{2}-\d{2}$/);
+});
+
+// ── xptDaPagina / xptEfetivo (evita misturar código de polo errado) ─────────
+// Motivo de existir: com a MESMA extensão rodando em SPX de contas diferentes
+// (Caçador e Videira, cada PC na sua conta, ao mesmo tempo), uma config errada
+// ou esquecida não pode colar código de um polo na tela do outro.
+test('xptDaPagina acha o XPT no e-mail logado (adm.xpt-cfc-01@...)', () => {
+  const r = carregar({ textoDaPagina: 'Bem-vindo, adm.xpt-cfc-01@shopeemobile-external.com' });
+  assert.strictEqual(r.G.colador.xptDaPagina(), 'XPT_CFC');
+});
+
+test('xptDaPagina acha VIA tambem, e ignora caixa', () => {
+  const r = carregar({ textoDaPagina: 'XPT-via encontrado em algum lugar da tela' });
+  assert.strictEqual(r.G.colador.xptDaPagina(), 'XPT_VIA');
+});
+
+test('xptDaPagina sem nenhum sinal na tela devolve null', () => {
+  const r = carregar({ textoDaPagina: 'nada de util aqui' });
+  assert.strictEqual(r.G.colador.xptDaPagina(), null);
+});
+
+test('xptEfetivo usa o da pagina quando da pra detectar, mesmo com config diferente ausente', () => {
+  const r = carregar({ textoDaPagina: 'adm.xpt-via-01@shopeemobile-external.com' });
+  assert.strictEqual(r.G.colador.xptEfetivo({ xpt: '' }), 'XPT_VIA');
+});
+
+test('xptEfetivo cai pra config quando a pagina nao da nenhum sinal', () => {
+  const r = carregar({ textoDaPagina: '' });
+  assert.strictEqual(r.G.colador.xptEfetivo({ xpt: 'XPT_CFC' }), 'XPT_CFC');
+});
+
+test('xptEfetivo sem pagina NEM config devolve null (sem filtro de xpt)', () => {
+  const r = carregar({ textoDaPagina: '' });
+  assert.strictEqual(r.G.colador.xptEfetivo({ xpt: '' }), null);
+});
+
+test('xptEfetivo RECUSA rodar quando a pagina discorda da config (bug real que motivou isso)', () => {
+  const r = carregar({ textoDaPagina: 'adm.xpt-via-01@shopeemobile-external.com' });
+  assert.throws(() => r.G.colador.xptEfetivo({ xpt: 'XPT_CFC' }), /XPT_CFC.*XPT_VIA|logada em XPT_VIA/);
+});
+
+test('rodar: para ANTES de preparar a tela quando o XPT nao bate (nao cria RT/tarefa à toa)', async () => {
+  const r = carregar({
+    textoDaPagina: 'adm.xpt-via-01@shopeemobile-external.com',
+    botoes: { 'Recebimento unitário': {} }, // se preparar fosse chamado, acharia e clicaria
+  });
+  await r.G.colador.rodar('recebimento', { ...CONFIG, xpt: 'XPT_CFC' });
+  assert.match(r.P.erro, /XPT_VIA/);
+  assert.strictEqual(r.cliques.length, 0, 'nao chegou a clicar em nada da preparação');
+});
+
+test('rodar: usa o XPT da pagina no pedido de lote, mesmo com a config vazia', async () => {
+  const r = carregar({
+    textoDaPagina: 'adm.xpt-via-01@shopeemobile-external.com',
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: { lote: loteDe([]) },
+  });
+  await r.G.colador.rodar('recebimento', { ...CONFIG, xpt: '' });
+  const pedido = r.chamadasVigia.find((c) => c.xmColador === 'lote');
+  assert.strictEqual(pedido.xpt, 'XPT_VIA');
 });

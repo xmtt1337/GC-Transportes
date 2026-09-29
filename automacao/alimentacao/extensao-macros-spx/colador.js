@@ -60,6 +60,29 @@
     },
   };
 
+  // O e-mail logado (ex.: adm.xpt-cfc-01@shopeemobile-external.com) carrega o
+  // XPT de verdade — ler DA PÁGINA, em vez de confiar só numa config digitada
+  // à mão, é o que impede colar código do polo errado quando a MESMA extensão
+  // roda em SPX de contas diferentes (Caçador e Videira, cada PC na sua
+  // conta, rodando ao mesmo tempo). Se a página não trouxer nenhum sinal,
+  // devolve null — quem chama cai pra config.xpt (comportamento de antes).
+  function xptDaPagina() {
+    const m = String(document.body && document.body.innerText || '').match(/xpt[_-]?(cfc|via)/i);
+    return m ? `XPT_${m[1].toUpperCase()}` : null;
+  }
+
+  // O XPT que vale pra esta sessão: o da página quando dá pra detectar (nunca
+  // o da config, que pode estar errada ou desatualizada); a config só serve
+  // quando a página não dá nenhum sinal. Página e config DISCORDANDO é motivo
+  // de parar — rodar mesmo assim arriscaria colar o polo errado.
+  function xptEfetivo(config) {
+    const real = xptDaPagina();
+    if (real && config.xpt && real !== config.xpt) {
+      throw new Error(`configurado para ${config.xpt}, mas esta aba está logada em ${real} — corrija a configuração ou o computador antes de rodar`);
+    }
+    return real || config.xpt || null;
+  }
+
   const MAX_FALHAS_SEGUIDAS = 3;
   const ESPERA_SEM_CODIGO_MS = 4000;
   const ESPERA_CAMPO_LIVRE_MS = 15000;
@@ -137,11 +160,21 @@
   // tarefa que já esteja aberta (de uma rodada anterior, ou que a pessoa
   // mesma tenha deixado pronta), em vez de criar outra à toa.
 
+  // S.acharBotao sozinho exige um elemento CLICAVEL (button, [class*="btn"/
+  // "button"]...) — os botões "Recebimento unitário"/"Recebimento em massa"
+  // são um grupo de opções (radio/toggle) do design system do SPX, que não
+  // bate com nenhuma dessas classes. folhaVisivelComTexto acha pelo TEXTO,
+  // sem depender de classe nenhuma — mesmo fallback que alimentacao.js já usa
+  // pro botão "Mais" dos filtros, pelo mesmo motivo.
+  function acharPorTexto(texto) {
+    return S.acharBotao(texto) || S.folhaVisivelComTexto(texto) || S.acharBotao(texto, { comeca: true });
+  }
+
   async function prepararRecebimento() {
     if (acharCampo('recebimento')) return;
 
     P.passo('abrindo um recebimento unitário novo');
-    const botao = S.acharBotao('Recebimento unitário');
+    const botao = acharPorTexto('Recebimento unitário');
     if (!botao) {
       throw new Error('não achei o botão "Recebimento unitário" — confira se a aba está em Entrada > Recebimento');
     }
@@ -155,7 +188,7 @@
 
     // "Receber por pedido" costuma vir selecionado por padrão; clicar de novo
     // quando já está selecionado não atrapalha nada.
-    const abaPedido = S.acharBotao('Receber por pedido');
+    const abaPedido = acharPorTexto('Receber por pedido');
     if (abaPedido) { S.clicar(abaPedido); await S.dormir(300); }
   }
 
@@ -199,7 +232,7 @@
     if (acharCampo('at_cluster')) return;
 
     P.passo('criando uma tarefa de separação (AT Cluster)');
-    const criar = S.acharBotao('Criar tarefa');
+    const criar = acharPorTexto('Criar tarefa');
     if (!criar) {
       throw new Error('não achei o botão "Criar tarefa" — confira se a aba está em Entrega > Sorting Task Management');
     }
@@ -208,11 +241,11 @@
       oque: 'o formulário de criar tarefa', limite: 10000, intervalo: 200 });
     await S.dormir(300);
 
-    const estatico = S.acharBotao('Static');
+    const estatico = acharPorTexto('Static');
     if (!estatico) throw new Error('não achei a opção "Static" (Modo de Rota)');
     S.clicar(estatico);
 
-    const sim = S.acharBotao('YES');
+    const sim = acharPorTexto('YES');
     if (!sim) throw new Error('não achei a opção "YES" (Grupo de Rota Necessário)');
     S.clicar(sim);
     await S.dormir(300);
@@ -220,13 +253,13 @@
     await escolherNoDropdown('Grupo de Rotas', 'grupo_rotas');
     await escolherNoDropdown('Tipo de Rota de Entrega', 'tipo_rota_entrega');
 
-    const confirmar = S.acharBotao('Confirm');
+    const confirmar = acharPorTexto('Confirm');
     if (!confirmar) throw new Error('não achei o botão "Confirm"');
     S.clicar(confirmar);
 
-    await S.esperar(() => S.acharBotao('Participar Desta Tarefa'), {
+    await S.esperar(() => acharPorTexto('Participar Desta Tarefa'), {
       oque: 'a confirmação de tarefa criada', limite: 15000, intervalo: 300 });
-    S.clicar(S.acharBotao('Participar Desta Tarefa'));
+    S.clicar(acharPorTexto('Participar Desta Tarefa'));
 
     await S.esperar(() => acharCampo('at_cluster'), {
       oque: 'o campo de código aparecer', limite: 20000, intervalo: 300 });
@@ -275,6 +308,7 @@
     let colados = 0;
     let falhasSeguidas = 0;
     try {
+      const xpt = xptEfetivo(config);
       await PREPARAR[qual]();
 
       P.passo('procurando códigos pra colar');
@@ -287,7 +321,7 @@
         if (!lote.length) {
           const r = await pedirAoVigia('lote', {
             modo: qual, tam: config.lote, carencia: config.carencia,
-            dia: diaDoLote(config), xpt: config.xpt || null,
+            dia: diaDoLote(config), xpt,
           });
           tabela = r.tabela;
           lote = Array.isArray(r.itens) ? r.itens.slice() : [];
@@ -332,7 +366,8 @@
   }
 
   G.colador = { rodar, CATALOGO, acharCampo, colarUm, diaDoLote, diaDaAt,
-                prepararRecebimento, prepararAtCluster, campoDoRotulo, escolherNoDropdown };
+                prepararRecebimento, prepararAtCluster, campoDoRotulo, escolherNoDropdown, acharPorTexto,
+                xptDaPagina, xptEfetivo };
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
