@@ -610,6 +610,9 @@ function carregarComFetch(resposta) {
   const ctx = vm.createContext({
     console, API: "https://api.teste", token: "tk",
     document: { getElementById: (id) => els[id] || (els[id] = { id, style: {}, innerHTML: "" }) },
+    // _macRedesenhar olha window._gcUser.role pra saber se mostra a seção de avisos/SPX (só
+    // dev) — sem isso o vm nem tem "window" definido.
+    window: { _gcUser: { role: "dev" } },
     gcAlert: (msg) => alertas.push(msg),
     fetch: (url, opcoes) => {
       chamadas.push({ url, opcoes });

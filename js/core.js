@@ -272,6 +272,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-baixas");
         show("submenu-baixas");
         show("bip-sync-btn");
+        show("menu-macros"); // só a seção Colador aparece pra admin (macros.js filtra o resto)
         // sem: financeiro, fechamento (só dev e finance)
     }
 

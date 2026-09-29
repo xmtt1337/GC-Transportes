@@ -1,15 +1,17 @@
-// Testes de js/macros.js — a parte do Colador (automacao/colador_neon.py): Rodar, Configurar
-// e quem está com a janela aberta.
+// Testes de js/macros.js — a parte do Colador (extensão XM Macros SPX + XM Vigia): Rodar,
+// Configurar e quem está com o Chrome/vigia conectado.
 //
 // O que se protege, e por quê:
 //   - diferente dos macros do SPX, aqui NÃO há "computador escolhido" nem horário — é Rodar
-//     (pega qualquer Colador aberto) e Configurar (a config da PRÓXIMA sessão);
-//   - "Rodar" avisa quando pediu mas ninguém está com o Colador aberto — sem isso, clicar e
+//     (vai pra qualquer Chrome/vigia ouvindo, de propósito, pra dar pra rodar em dois polos ao
+//     mesmo tempo) e Configurar (a config da PRÓXIMA sessão);
+//   - "Rodar" avisa quando pediu mas nenhum Chrome/vigia está conectado — sem isso, clicar e
 //     não acontecer nada parece a mesma coisa que ter funcionado;
 //   - config inválida nem sai do navegador, com a mensagem na hora (mesmos limites do servidor:
 //     carência 0–3600s, lote 1–500, intervalo 0–1,5s);
 //   - texto vindo do servidor (erro, computador, quem pediu) nunca vira HTML;
-//   - abrir Configurar edita uma CÓPIA — cancelar não pode alterar a lista antes de Salvar.
+//   - abrir Configurar edita uma CÓPIA — cancelar não pode alterar a lista antes de Salvar;
+//   - a seção do Colador aparece pra admin também (só ela — o resto de Macros continua dev).
 //
 // Script carregado sozinho num contexto isolado, com DOM, fetch e timers de mentira.
 // Dados de TESTE, inventados.
@@ -116,6 +118,48 @@ test("os dois coladores aparecem, cada um com Rodar e Configurar", () => {
   assert.ok(html.includes("Colador — Recebimento") && html.includes("Colador — AT Cluster"));
 });
 
+test("recebidos_hoje aparece na linha do Recebimento quando vem do servidor", () => {
+  const a = carregar();
+  const html = a.ctx._macHtmlSecaoColador([colador("recebimento", { recebidos_hoje: 42 })]);
+  assert.ok(html.includes("42 recebido"));
+});
+
+test("sem recebidos_hoje (servidor antigo, ou item que nao e o Recebimento), nada aparece", () => {
+  const a = carregar();
+  const semCampo = a.ctx._macHtmlSecaoColador([colador("at_cluster")]);
+  assert.ok(!semCampo.includes("recebido(s) hoje"));
+  const nulo = a.ctx._macHtmlSecaoColador([colador("recebimento", { recebidos_hoje: null })]);
+  assert.ok(!nulo.includes("recebido(s) hoje"));
+});
+
+// ── quem acessa (admin também, não só dev) ──────────────────────────────────
+// _macRedesenhar é quem decide isso (só ela olha window._gcUser.role) — chamada direto, com o
+// DOM de mentira já populado, pra não depender do fetch inteiro de _macCarregarLista.
+// _macHtmlSecoes sempre desenha o catálogo fixo (_MAC_SECOES) — "Avisos de rota incompleta" e
+// "Shopee XPT_CFC" são texto ESTÁTICO dele, então nem precisa de uma _macLista real pra testar
+// se a seção aparece ou não.
+test("_macRedesenhar: dev ve avisos/SPX E o Colador", () => {
+  const a = carregar();
+  a.ctx.window._gcUser = { role: "dev" };
+  a.m.lista = [];
+  a.m.coladores = DOIS();
+  a.ctx._macRedesenhar();
+  const html = a.el("mac-lista").innerHTML;
+  assert.ok(html.includes("Avisos de rota incompleta"), "avisos aparecem");
+  assert.ok(html.includes("Colador — Recebimento"), "o Colador aparece");
+});
+
+test("_macRedesenhar: admin ve SÓ o Colador, nao os avisos/SPX", () => {
+  const a = carregar();
+  a.ctx.window._gcUser = { role: "admin" };
+  a.m.lista = [];
+  a.m.coladores = DOIS();
+  a.ctx._macRedesenhar();
+  const html = a.el("mac-lista").innerHTML;
+  assert.ok(!html.includes("Avisos de rota incompleta"), "avisos NAO aparecem pra admin");
+  assert.ok(html.includes("Colador — Recebimento"), "o Colador continua aparecendo");
+});
+
 test("sem coladores (servidor antigo, rota indisponível), a seção nem aparece", () => {
   const a = carregar();
   assert.strictEqual(a.ctx._macHtmlSecaoColador([]), "");
@@ -169,7 +213,7 @@ test("cada estado do comando diz o que a pessoa precisa saber", () => {
   assert.match(a.ctx._macComandoColadorTexto(cmd("iniciado", { maquina: "CASA" })).texto, /por Dev em CASA/);
   assert.match(a.ctx._macComandoColadorTexto(cmd("erro", { erro: "banco recusou" })).texto, /Não rodou: banco recusou/);
   assert.match(a.ctx._macComandoColadorTexto(cmd("erro")).texto, /motivo não informado/);
-  assert.match(a.ctx._macComandoColadorTexto(cmd("expirado")).texto, /Ninguém abriu o Colador/);
+  assert.match(a.ctx._macComandoColadorTexto(cmd("expirado")).texto, /Ninguém pegou esse pedido a tempo/);
 });
 
 test("sem comando, ou já iniciado, a linha de situação nem aparece", () => {

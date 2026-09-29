@@ -86,7 +86,10 @@ function carregar({ rotas = {} } = {}) {
     _abrirModal: (id) => modais.abertos.push(id),
     _fecharModal: (id) => modais.fechados.push(id),
     skMostrar() {}, skFim() {},
-    window: { addEventListener() {}, removeEventListener() {}, innerHeight: 800, innerWidth: 1200 },
+    // _macRedesenhar so mostra a secao de avisos/SPX pra role "dev" - estes testes verificam
+    // exatamente essa secao, entao precisam desse papel (o Colador, unico que admin tambem ve,
+    // tem seus proprios testes em macros-colador.test.js).
+    window: { addEventListener() {}, removeEventListener() {}, innerHeight: 800, innerWidth: 1200, _gcUser: { role: "dev" } },
     setTimeout: (fn) => { timers.push(fn); return timers.length; },
     clearTimeout() {},
   });

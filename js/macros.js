@@ -23,11 +23,13 @@ let _macComputador = null; // o computador escolhido pra executar os macros (nul
 let _macColadores = [];    // [{ qual, chave, nome, detalhe, configurado, config, resumo, comando, computadores }]
 let _macColadorEditando = null; // copia de trabalho da config aberta no modal de configurar
 
+// O resto de Macros (avisos de rota, macros do SPX) continua só dev; o Colador abre pra admin
+// também (pedido do usuário, 29/09/2026) — _macRedesenhar() filtra o que cada um vê.
 function abrirMacros(event) {
     if (event) event.preventDefault();
     const role = window._gcUser && window._gcUser.role;
-    if (role !== "dev") {
-        gcAlert("Só dev acessa os Macros.");
+    if (role !== "dev" && role !== "admin") {
+        gcAlert("Só dev e admin acessam os Macros.");
         return;
     }
     mostrarTela("tela-macros");
@@ -55,18 +57,18 @@ function _macCarregarLista(silencioso) {
 
     const cab = { headers: { "Authorization": "Bearer " + token } };
     Promise.all([
-        fetch(`${API}/admin/macros`, cab).then(r => r.json()),
+        // Avisos + macros do SPX são só dev: pra admin (que só enxerga o Colador) isso vem 403
+        // de propósito — trata como "nada aqui" em vez de erro, senão o Colador nem apareceria.
+        fetch(`${API}/admin/macros`, cab).then(r => r.json()).catch(() => null),
         // Servidor sem os macros do SPX (ou fora do ar só nessa rota): as linhas deles ficam
         // "Indisponível no momento" e o resto da tela continua funcionando.
         fetch(`${API}/admin/macros/spx`, cab).then(r => r.json()).catch(() => null),
-        // Idem pro Colador: rota separada (fala com uma tabela que o colador_neon.py também
-        // lê por SQL, sem passar pelo resto do site — ver rotasColador.js).
+        // Idem pro Colador — rota própria (ver rotasColador.js), aberta pra admin também.
         fetch(`${API}/admin/macros/colador`, cab).then(r => r.json()).catch(() => null),
     ])
         .then(([d, spx, colador]) => {
-            if (d && d.error) { skFim(empty, d.error); return; }
             const doSpx = spx && Array.isArray(spx.macros) ? spx.macros : [];
-            _macLista = (d.macros || []).concat(doSpx);
+            _macLista = ((d && d.macros) || []).concat(doSpx);
             _macVigia = spx && spx.vigia ? spx.vigia : null;
             _macGeral = spx && spx.geral ? spx.geral : null;
             _macComputador = spx && spx.computador ? spx.computador : null;
@@ -78,9 +80,13 @@ function _macCarregarLista(silencioso) {
         .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
 }
 
+// Avisos + macros do SPX: só dev (o resto de Macros continua como sempre foi). O Colador
+// aparece pros dois — é a única parte que o admin acessa.
 function _macRedesenhar() {
     const lista = document.getElementById("mac-lista");
-    if (lista) lista.innerHTML = _macHtmlSecoes(_macLista) + _macHtmlSecaoColador(_macColadores);
+    const role = window._gcUser && window._gcUser.role;
+    const doDev = role === "dev" ? _macHtmlSecoes(_macLista) : "";
+    if (lista) lista.innerHTML = doDev + _macHtmlSecaoColador(_macColadores);
 }
 
 // ── Como a tela se organiza ──
@@ -924,15 +930,18 @@ function _macAbrirHistorico(macro) {
         .catch(() => { lista.innerHTML = `<div class="mac-ag-vazio">Erro ao conectar com o servidor.</div>`; });
 }
 
-// ── Colador (automacao/colador_neon.py) ──
+// ── Colador (extensão XM Macros SPX + XM Vigia — migrado do colador_neon.py em 29/09/2026) ──
 // Mesma ideia do Rodar/Configurar dos macros do SPX, mas sem horário nenhum: o Colador é uma
 // sessão que se liga e desliga (ou fica de vigia, modo contínuo), não uma agenda. Também sem
-// "computador escolhido" - rodar em mais de uma máquina ao mesmo tempo é seguro de propósito
-// (a reserva de lote no Postgres já garante que dois coladores nunca pegam o mesmo código).
+// "computador escolhido" - de propósito, pra dar pra rodar em Caçador e Videira ao mesmo tempo,
+// cada PC na conta do próprio polo (a reserva de lote no backend garante que dois coladores
+// nunca pegam o mesmo código; quem evita colar o polo errado é a extensão, lendo o XPT da
+// própria página do SPX). Única parte de Macros que admin também acessa, não só dev.
 
-// Só um pontinho + texto, no mesmo estilo de _macVigiaHtml: quantos computadores têm ESTE
-// colador aberto agora. Sem inflar a tela com uma lista - "Detalhes" não existe aqui porque
-// não há histórico (só Rodar e Configurar).
+// Só um pontinho + texto, no mesmo estilo de _macVigiaHtml: quantos computadores estão com o
+// Chrome (extensão) + XM Vigia ouvindo agora — é a MESMA lista dos macros do SPX (fila.vigia()),
+// não uma por colador. Sem inflar a tela com uma lista - "Detalhes" não existe aqui porque não
+// há histórico (só Rodar e Configurar).
 function _macColadorPresencaHtml(computadores) {
     const on = (computadores || []).filter(c => c.online);
     if (on.length === 1) return `<span class="mac-vigia mac-vigia-on"><span class="mac-cmd-ponto"></span>${_macEsc(on[0].nome || "conectado")}</span>`;
@@ -945,13 +954,13 @@ function _macColadorPresencaHtml(computadores) {
 function _macComandoColadorTexto(cmd) {
     switch (cmd.estado) {
         case "aguardando":
-            return { tom: "andando", texto: "Pedido enviado — aguardando algum Colador aberto…" };
+            return { tom: "andando", texto: "Pedido enviado — aguardando o Chrome (com a extensão) e o XM Vigia atenderem…" };
         case "iniciado":
             return { tom: "ok", texto: `Iniciado às ${_macHoraBrasilia(cmd.criado_em)} por ${cmd.criado_por}${cmd.maquina ? ` em ${cmd.maquina}` : ""}` };
         case "erro":
             return { tom: "erro", texto: `Não rodou: ${cmd.erro || "motivo não informado"}` };
         case "expirado":
-            return { tom: "aviso", texto: "Ninguém abriu o Colador a tempo de pegar esse pedido." };
+            return { tom: "aviso", texto: "Ninguém pegou esse pedido a tempo — confira se o Chrome (com a extensão) e o XM Vigia estão de pé." };
         default:
             return { tom: "aviso", texto: String(cmd.estado || "") };
     }
@@ -965,6 +974,13 @@ function _macSituacaoColadorHtml(cmd) {
     return `<div class="mac-sit mac-sit-${c.tom}"><span class="mac-cmd-ponto"></span><span>${_macEsc(c.texto)}</span></div>`;
 }
 
+// "recebidos_hoje" só vem no item do Recebimento (ver rotasColador.js) — é a contagem de
+// verdade no banco (colado_em preenchido), não algo que a tela calcula.
+function _macRecebidosHtml(item) {
+    if (item.recebidos_hoje === undefined || item.recebidos_hoje === null) return "";
+    return ` · <span class="mac-agenda-resumo">${item.recebidos_hoje} recebido(s) hoje no SPX</span>`;
+}
+
 function _macHtmlItemColador(item) {
     const ocupado = item.comando && item.comando.estado === "aguardando";
     return `
@@ -973,7 +989,7 @@ function _macHtmlItemColador(item) {
                 <div class="mac-item-nome" title="${_macEsc(item.detalhe || "")}">${_macEsc(item.nome)}</div>
                 <div class="mac-spx-meta">
                     <span class="mac-agenda-resumo${item.configurado ? "" : " mac-agenda-mudo"}">${_macEsc(item.resumo)}</span>
-                    · ${_macColadorPresencaHtml(item.computadores)}
+                    · ${_macColadorPresencaHtml(item.computadores)}${_macRecebidosHtml(item)}
                 </div>
                 ${_macSituacaoColadorHtml(item.comando)}
             </div>
@@ -991,7 +1007,7 @@ function _macHtmlSecaoColador(coladores) {
     return `
     <section class="mac-secao">
         <h3 class="mac-secao-titulo">Colador</h3>
-        <p class="mac-secao-texto">Recebimento e AT Cluster (automacao/colador_neon.py) — roda no computador que estiver com a janela aberta.</p>
+        <p class="mac-secao-texto">Recebimento e AT Cluster — roda no Chrome (com a extensão) e o XM Vigia; dá pra rodar em mais de um computador ao mesmo tempo.</p>
         <div class="mac-painel">${coladores.map(_macHtmlItemColador).join("")}</div>
     </section>`;
 }
