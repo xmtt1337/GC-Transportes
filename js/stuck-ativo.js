@@ -4,7 +4,8 @@
 // da Shopee que já mora em whatsapp-teste.js (WA_REC_TEMPLATES.shopee: template
 // aprovado na Meta, campos, texto e ordem dos parâmetros) — nada disso é copiado
 // pra cá, senão o texto daqui divergiria do aprovado na primeira troca. O que
-// muda: o código do pedido já vem da linha, então a pessoa completa só o resto.
+// muda: o código do pedido já vem da linha, então a pessoa completa só o resto —
+// e se já houver um ativo anterior, o número e o nome do cliente vêm prontos.
 //
 // Sem prazo: prazo dado pela transportadora é coisa de extravio (acareação), e o
 // Stuck e o Backlog são contato com o cliente, sem vencimento correndo.
@@ -24,19 +25,23 @@ let _sstAtivoRedesenhar = null;   // redesenha a tela de onde o card foi aberto
 // diferentes na célula:
 //   ausente          ainda não consultei (ou a consulta falhou) — a célula não afirma nada
 //   null             consultei e não há ativo enviado
-//   { estado, ... }  há ativo enviado
+//   { estado, ... }  há ativo enviado (estado: aguardando | recebeu | nao_recebeu)
 const _sstAtivoEstados = {};
 
+// Só recebeu/não recebeu são fato encerrado — é a decisão de quem atendeu, não o que o
+// cliente escreveu. Enquanto isso não acontece, o pedido fica "aguardando" e continua
+// podendo receber outro ativo; depois disso, não: mandar de novo pra quem já respondeu
+// (numa direção ou na outra) não faz sentido, e por isso o botão nem aparece.
+const _SST_ATIVO_BLOQUEIA = new Set(["recebeu", "nao_recebeu"]);
+
 // A cor é só um pontinho (mesmo padrão do "Resposta do cliente" do Backlog,
-// classes .sstb-resp/.sstb-resp-vazio) — o texto continua na cor normal, e o
-// que diferencia mesmo é a palavra. Cores compartilhadas com o Backlog de
+// classes .sstb-resp/.sstb-resp-vazio). Cores compartilhadas com o Backlog de
 // propósito: é o mesmo fato mostrado em duas telas, não pode ter cor diferente
-// dependendo de onde a pessoa olha.
+// dependendo de onde a pessoa olha. "aguardando" não vira badge na linha (só
+// recebido/não recebido é mostrado) — o rótulo continua aqui só para o aviso do
+// card, quando reabre um pedido que já tem um ativo em aberto.
 const _SST_ATIVO_INFO = {
-    aguardando:  { rotulo: "Aguardando resposta", cor: "#eab308",
-        dica: "Enviado — o cliente ainda não respondeu." },
-    respondeu:   { rotulo: "Cliente respondeu",   cor: "#3a86ff",
-        dica: "O cliente escreveu depois do envio e ninguém marcou como recebido ou não recebido. Veja em Ativos > Conversas." },
+    aguardando:  { rotulo: "Aguardando resposta", dica: "Enviado — ainda sem decisão de recebido ou não." },
     recebeu:     { rotulo: "Recebido",            cor: "#22c55e",
         dica: "O cliente confirmou (ou alguém marcou) que recebeu o pedido." },
     nao_recebeu: { rotulo: "Não recebido",        cor: "#ef4444",
@@ -63,6 +68,12 @@ function _sstAtivoCfg() {
 /** undefined = não consultado; null = sem ativo; objeto = andamento. */
 function _sstAtivoEstadoDe(codigo) {
     return _sstAtivoEstados[_sstAtivoChave(codigo)];
+}
+
+/** Tem ativo e já foi respondido (recebido ou não) — não pode mandar outro. */
+function _sstAtivoBloqueado(codigo) {
+    const est = _sstAtivoEstadoDe(codigo);
+    return !!(est && _SST_ATIVO_BLOQUEIA.has(est.estado));
 }
 
 // "25/09 14:03", em horário de Brasília — o instante chega em ISO, e o fuso de quem olha
@@ -102,10 +113,10 @@ function _sstAtivoCarregarEstados(codigos) {
     )).then(() => {});
 }
 
-// A célula "Ativo" de uma linha: andamento (se houver) e o botão. `redesenhar` é o
-// NOME da função global que redesenha a tela, pra o card poder atualizar a linha
-// depois de enviar.
+// O botão da linha: some de vez pra quem já foi respondido — não é só desabilitado,
+// porque um botão cinza ainda convida ao clique, e a resposta é "não dá mesmo".
 function _sstAtivoBotaoHtml(codigo, redesenhar) {
+    if (_sstAtivoBloqueado(codigo)) return "";
     const rotulo = _sstAtivoEstadoDe(codigo) ? "Reenviar" : "Enviar ativo";
     return `<button type="button" class="sst-ativo-btn" onclick="_sstAbrirAtivo(this${redesenhar ? ", " + redesenhar : ""})">${rotulo}</button>`;
 }
@@ -115,13 +126,14 @@ function _sstAtivoBotaoHtml(codigo, redesenhar) {
 // (SSTB_RESPOSTAS) pro mesmo fato, então lá o botão vai sozinho
 // (_sstAtivoBotaoHtml) — repetir o andamento duas vezes na mesma linha, com
 // vocabulário diferente em cada uma, confundiria mais do que ajudaria.
+//
+// Só recebido/não recebido viram texto na linha: "aguardando" e "não enviado" não
+// dizem nada que o próprio botão ("Reenviar" vs. "Enviar ativo") já não diga.
 function _sstAtivoCelulaHtml(codigo, redesenhar) {
     const est = _sstAtivoEstadoDe(codigo);
     let info = "";
-    if (est === null) {
-        info = `<span class="sstb-resp sstb-resp-vazio" title="Ninguém mandou Ativo pra esse cliente ainda">Não enviado</span>`;
-    } else if (est) {
-        const def = _SST_ATIVO_INFO[est.estado] || { rotulo: est.estado, cor: "#8494a9", dica: "" };
+    if (est && _SST_ATIVO_BLOQUEIA.has(est.estado)) {
+        const def = _SST_ATIVO_INFO[est.estado];
         info = `<span class="sstb-resp" title="${_sstAtivoEsc(def.dica)}"><i style="background:${def.cor}"></i>${_sstAtivoEsc(def.rotulo)}</span>
                 <span class="sst-ativo-quando">enviado ${_sstAtivoEsc(_sstAtivoQuando(est.enviado_em))}</span>`;
     }
@@ -135,9 +147,8 @@ function _sstAtivoCelulaHtml(codigo, redesenhar) {
 
 // Semeia o cache de andamento a partir do que o Backlog já trouxe (resposta.js, no
 // backend) — sem bater na rede de novo: o Backlog já sabe a resposta de cada pedido
-// no MESMO retrato que carregou. "sem_resposta" (o vocabulário do Backlog não
-// distingue "nunca respondeu" de "respondeu mas ninguém decidiu") vira "aguardando":
-// é o que dá pra afirmar sem inventar um "respondeu" que o dado não confirma.
+// no MESMO retrato que carregou. "sem_resposta" vira "aguardando"; esse retrato não
+// traz número/nome do último envio — _sstAbrirAtivo busca isso à parte se faltar.
 function _sstAtivoSemearDoBacklog(registros) {
     (registros || []).forEach(r => {
         const chave = _sstAtivoChave(r.shipment_id);
@@ -169,6 +180,24 @@ function _sstAtivoPreview() {
     document.getElementById("sst-ativo-preview").innerText = cfg.montar(_sstAtivoValores(cfg));
 }
 
+// Preenche o número e os campos do card. Reaproveitado tanto na abertura quanto na
+// atualização em segundo plano (quando o andamento chega depois, sem número/nome
+// ainda) — nos dois casos o código do pedido continua travado e vindo da linha.
+function _sstAtivoPreencherCampos(cfg, codigo, est) {
+    document.getElementById("sst-ativo-numero").value = est && est.numero ? _waFormatarTelefone(est.numero) : "";
+    document.getElementById("sst-ativo-campos").innerHTML = cfg.campos.map(c => {
+        const ehPedido = c.id === cfg.campoPedido;
+        const valor = ehPedido ? codigo : (c.id === "nome_cliente" && est && est.nome_cliente ? est.nome_cliente : "");
+        return `
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">${_sstAtivoEsc(c.label)}</label>
+            <input type="text" id="sst-ativo-campo-${c.id}" class="usr-modal-input" autocomplete="off"
+                   oninput="_sstAtivoPreview()"${valor ? ` value="${_sstAtivoEsc(valor)}"` : ""}${ehPedido ? ` readonly style="opacity:.7"` : ""}>
+        </div>`;
+    }).join("");
+    _sstAtivoPreview();
+}
+
 // O código vem da PRÓPRIA linha (data-codigo), não de um argumento no onclick:
 // código dentro de string de atributo é o jeito de quebrar a linha inteira no dia
 // em que aparecer um com aspas.
@@ -177,26 +206,23 @@ function _sstAbrirAtivo(btn, redesenhar) {
     const cfg = _sstAtivoCfg();
     if (!codigo || !cfg) return gcAlert("Não foi possível abrir o envio de ativo.");
 
+    // Defesa a mais além de simplesmente não desenhar o botão: a linha pode estar
+    // desatualizada por uma fração de segundo entre o pedido ser resolvido em outra
+    // aba e esta tela redesenhar.
+    if (_sstAtivoBloqueado(codigo)) {
+        return gcAlert("Esse pedido já foi respondido (recebido ou não recebido) — não é possível enviar outro ativo.");
+    }
+
     _sstAtivoCodigo = codigo;
     _sstAtivoEnviando = false;
     _sstAtivoRedesenhar = typeof redesenhar === "function" ? redesenhar : null;
 
     document.getElementById("sst-ativo-codigo").innerText = codigo;
-    document.getElementById("sst-ativo-numero").value = "";
-
-    document.getElementById("sst-ativo-campos").innerHTML = cfg.campos.map(c => {
-        const ehPedido = c.id === cfg.campoPedido;
-        return `
-        <div class="usr-modal-field">
-            <label class="usr-modal-label">${_sstAtivoEsc(c.label)}</label>
-            <input type="text" id="sst-ativo-campo-${c.id}" class="usr-modal-input" autocomplete="off"
-                   oninput="_sstAtivoPreview()"${ehPedido ? ` value="${_sstAtivoEsc(codigo)}" readonly style="opacity:.7"` : ""}>
-        </div>`;
-    }).join("");
+    const est = _sstAtivoEstadoDe(codigo);
+    _sstAtivoPreencherCampos(cfg, codigo, est);
 
     // Reenviar manda OUTRA mensagem pro WhatsApp do cliente, e pode ter sido outra pessoa
     // do time que já mandou — o aviso deixa a pessoa decidir com o que já aconteceu na frente.
-    const est = _sstAtivoEstadoDe(codigo);
     const aviso = document.getElementById("sst-ativo-aviso");
     if (est) {
         const rotulo = (_SST_ATIVO_INFO[est.estado] || {}).rotulo || est.estado;
@@ -208,11 +234,22 @@ function _sstAbrirAtivo(btn, redesenhar) {
         aviso.style.display = "none";
     }
 
+    // Esse ativo veio do resumo local do Backlog, sem número/nome guardado — busca o
+    // andamento de verdade só deste pedido pra completar o card. Não atrasa a abertura
+    // (já abriu acima) e não pisa no que a pessoa já tiver digitado nesse meio-tempo.
+    if (est && !est.numero) {
+        _sstAtivoCarregarEstados([codigo]).then(() => {
+            if (_sstAtivoCodigo !== codigo) return; // já abriu outro pedido
+            if (document.getElementById("sst-ativo-numero").value) return; // já preencheu (a mão ou sozinho)
+            const fresco = _sstAtivoEstadoDe(codigo);
+            if (fresco && fresco.numero) _sstAtivoPreencherCampos(cfg, codigo, fresco);
+        });
+    }
+
     _sstAtivoMsg("", "");
     const enviar = document.getElementById("sst-ativo-btn-enviar");
     enviar.disabled = false;
     enviar.textContent = "Enviar mensagem";
-    _sstAtivoPreview();
     _abrirModal("modal-sst-ativo");
 }
 
@@ -259,7 +296,7 @@ function _sstEnviarAtivo() {
         botao.textContent = "Enviado";
         _sstAtivoMsg("Enviado!", "#22c55e");
         // O servidor já gravou o envio antes de responder: relê o andamento deste pedido
-        // pra linha mostrar "Aguardando resposta" em vez de continuar como "Não enviado".
+        // pra linha mostrar "Reenviar" em vez de continuar como se nada tivesse saído.
         _sstAtivoCarregarEstados([codigoEnviado]).then(() => { if (redesenhar) redesenhar(); });
         // Só fecha se ainda for o mesmo pedido — a pessoa pode ter aberto outro nesse meio-tempo.
         setTimeout(() => { if (_sstAtivoCodigo === codigoEnviado) _fecharModal("modal-sst-ativo"); }, 1200);

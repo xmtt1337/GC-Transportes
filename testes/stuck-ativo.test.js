@@ -405,53 +405,57 @@ test("enviar: sem servidor mostra o erro de conexão e destrava o botão", async
     assert.strictEqual(elementos["sst-ativo-btn-enviar"].disabled, false);
 });
 
-// ── andamento do ativo (aguardando / respondeu / recebeu / não recebeu) ──
+// ── andamento do ativo (aguardando / recebeu / não recebeu) ──────────────
 //
 // É o motivo desta feature existir: sem isso, um pedido que o cliente já
 // confirmou RECEBIDO continuava oferecendo "Enviar ativo" como se nada tivesse
 // acontecido — exatamente o que aconteceu em produção antes deste conserto.
+//
+// Só recebido/não recebido são fato encerrado (decisão de quem atendeu, não o
+// que o cliente escreveu) — por isso só esses dois viram texto na linha, e só
+// esses dois tiram o botão: "aguardando" ainda pode receber outro ativo.
 
-test("célula: pedido nunca consultado não afirma nada, só oferece o botão", () => {
+test("célula: pedido nunca consultado, ou aguardando resposta, não mostra texto nenhum — só o botão", () => {
     const { api, ctx, elementos } = carregar();
-    api.setRegistros([pedido("BR1TESTE")]);
-    ctx._sstRenderizar(); // sem _sstAtivoCarregarEstados: o andamento ainda não chegou
+    api.setRegistros([pedido("BR1TESTE"), pedido("BR2TESTE")]);
+    api.semearEstado("BR2TESTE", { estado: "aguardando", enviado_em: "2026-09-25T14:03:00.000Z" });
+    ctx._sstRenderizar(); // BR1TESTE nem foi consultado ainda
     const html = elementos["sst-tbody"].innerHTML;
-    assert.ok(!html.includes("sstb-resp"), "não pode inventar um andamento sem ter consultado");
-    assert.ok(html.includes(">Enviar ativo<"));
+    assert.ok(!html.includes("sstb-resp"), "aguardando (ou não consultado) não pode virar texto na linha");
+    assert.strictEqual((html.match(/>Enviar ativo</g) || []).length, 1, "BR1TESTE: nunca enviado");
+    assert.strictEqual((html.match(/>Reenviar</g) || []).length, 1, "BR2TESTE: aguardando, mas pode reenviar");
 });
 
-test("célula: cada andamento mostra o rótulo certo, e sem ativo mostra 'Não enviado'", () => {
-    const casos = [
-        ["aguardando", "Aguardando resposta"], ["respondeu", "Cliente respondeu"],
-        ["recebeu", "Recebido"], ["nao_recebeu", "Não recebido"],
-    ];
-    for (const [estado, rotulo] of casos) {
+test("célula: recebido e não recebido mostram o texto — pontinho colorido, sem botão", () => {
+    const casos = [["recebeu", "Recebido", "#22c55e"], ["nao_recebeu", "Não recebido", "#ef4444"]];
+    for (const [estado, rotulo, cor] of casos) {
         const { api, ctx, elementos } = carregar();
         api.setRegistros([pedido("BR1TESTE")]);
         api.semearEstado("BR1TESTE", { estado, enviado_em: "2026-09-25T14:03:00.000Z" });
         ctx._sstRenderizar();
         const html = elementos["sst-tbody"].innerHTML;
-        assert.ok(html.includes(`>${rotulo}<`), `${estado}: ${html}`);
-        assert.ok(html.includes(">Reenviar<"), `${estado}: já tem ativo, o botão vira Reenviar`);
+        // mesmas classes do "Resposta do cliente" do Backlog — pontinho <i> colorido, texto sem cor
+        assert.match(html, new RegExp(`<span class="sstb-resp"[^>]*><i style="background:${cor}"></i>${rotulo}</span>`), `${estado}: ${html}`);
+        assert.ok(!html.includes("sst-ativo-btn"), `${estado}: respondido não pode oferecer reenvio`);
     }
+});
 
+test("célula: sem ativo nenhum (consultado e vazio) não mostra texto, só 'Enviar ativo'", () => {
     const { api, ctx, elementos } = carregar();
     api.setRegistros([pedido("BR2TESTE")]);
     api.semearEstado("BR2TESTE", null); // consultado, e não há nada
     ctx._sstRenderizar();
     const html = elementos["sst-tbody"].innerHTML;
-    assert.ok(html.includes(">Não enviado<"));
-    assert.ok(html.includes(">Enviar ativo<"), "sem ativo, o botão continua Enviar (não Reenviar)");
+    assert.ok(!html.includes("sstb-resp"));
+    assert.ok(html.includes(">Enviar ativo<"));
 });
 
-test("célula: o texto do andamento fica na cor normal — só o pontinho é colorido", () => {
-    const { api, ctx, elementos } = carregar();
-    api.setRegistros([pedido("BR1TESTE")]);
+test("_sstAbrirAtivo recusa abrir um pedido já respondido, mesmo que o botão tenha sido clicado", () => {
+    const { ctx, api, chamadas } = carregar();
     api.semearEstado("BR1TESTE", { estado: "recebeu", enviado_em: "2026-09-25T14:03:00.000Z" });
-    ctx._sstRenderizar();
-    const html = elementos["sst-tbody"].innerHTML;
-    // mesmas classes do "Resposta do cliente" do Backlog — um pontinho <i> colorido, texto sem cor
-    assert.match(html, /<span class="sstb-resp"[^>]*><i style="background:#22c55e"><\/i>Recebido<\/span>/);
+    ctx._sstAbrirAtivo(botaoDaLinha("BR1TESTE"));
+    assert.deepStrictEqual(chamadas.modaisAbertos, []);
+    assert.match(chamadas.alertas[0], /já foi respondido/i);
 });
 
 test("_sstAtivoCarregarEstados: preenche o cache com o que o servidor devolver, em maiúsculas", async () => {
@@ -492,6 +496,51 @@ test("card: pedido sem ativo (ou nunca consultado) não mostra aviso nenhum", ()
     const { ctx, elementos } = carregar();
     ctx._sstAbrirAtivo(botaoDaLinha("BR9TESTE")); // nunca consultado
     assert.strictEqual(elementos["sst-ativo-aviso"].style.display, "none");
+});
+
+// ── reenviar aproveita o número e o nome do último ativo ──────────────────
+
+test("card: reabrir um pedido aguardando preenche número e nome do último envio", () => {
+    const { ctx, api, elementos } = carregar();
+    api.semearEstado("BR1TESTE", {
+        estado: "aguardando", enviado_em: "2026-09-25T14:03:00.000Z",
+        numero: "5549999276131", nome_cliente: "Maria Antiga",
+    });
+    ctx._sstAbrirAtivo(botaoDaLinha("BR1TESTE"));
+    assert.strictEqual(elementos["sst-ativo-numero"].value, "+55 49 9 9927-6131");
+    assert.strictEqual(elementos["sst-ativo-campo-nome_cliente"].value, "Maria Antiga");
+});
+
+test("card: ativo semeado do Backlog (sem número ainda) busca e completa os campos sozinho", async () => {
+    const { ctx, api, elementos } = carregar({
+        resposta: {
+            ok: true,
+            body: { estados: { BR1TESTE: { estado: "aguardando", enviado_em: "x", numero: "5549999276131", nome_cliente: "Maria Backlog" } } },
+        },
+    });
+    // como o Backlog semeia: tem estado, mas ainda sem número/nome
+    api.semearEstado("BR1TESTE", { estado: "aguardando", enviado_em: "2026-09-20T00:00:00.000Z" });
+    ctx._sstAbrirAtivo(botaoDaLinha("BR1TESTE"));
+    assert.strictEqual(elementos["sst-ativo-numero"].value, "", "abre em branco enquanto a busca não volta");
+
+    await assentar();
+    assert.strictEqual(elementos["sst-ativo-numero"].value, "+55 49 9 9927-6131");
+    assert.strictEqual(elementos["sst-ativo-campo-nome_cliente"].value, "Maria Backlog");
+});
+
+test("card: a busca de completar não pisa no que a pessoa já tinha digitado", async () => {
+    const { ctx, api, elementos } = carregar({
+        resposta: {
+            ok: true,
+            body: { estados: { BR1TESTE: { estado: "aguardando", enviado_em: "x", numero: "5549999276131", nome_cliente: "Maria Backlog" } } },
+        },
+    });
+    api.semearEstado("BR1TESTE", { estado: "aguardando", enviado_em: "2026-09-20T00:00:00.000Z" });
+    ctx._sstAbrirAtivo(botaoDaLinha("BR1TESTE"));
+    elementos["sst-ativo-numero"].value = "49988887777"; // a pessoa já começou a digitar
+
+    await assentar();
+    assert.strictEqual(elementos["sst-ativo-numero"].value, "49988887777");
 });
 
 // ── semear a partir do Backlog (resposta.js) ──────────────────────────────

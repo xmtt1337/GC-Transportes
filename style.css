@@ -3486,12 +3486,14 @@ td.cad-nome { color: #e2e8f0; }
 .sst-just.ok   { border-color: rgba(34,197,94,0.6); }
 .sst-just.erro { border-color: rgba(239,68,68,0.6); }
 
+/* Link, não botão: "Visualizar" abre o histórico, não é uma ação com risco —
+   um cartão com borda pesava mais do que o clique merecia. */
 .sst-hist-btn {
-    background: rgba(58,134,255,0.1); border: 1px solid var(--border-blue);
-    color: var(--blue); border-radius: 8px; padding: 5px 12px;
-    font-family: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+    background: none; border: none; padding: 0;
+    color: var(--blue); text-decoration: underline; text-underline-offset: 2px;
+    font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
 }
-.sst-hist-btn:hover { background: rgba(58,134,255,0.2); }
+.sst-hist-btn:hover { color: #5b9dff; }
 
 /* Enviar ativo: botão neutro, igual o resto das ações secundárias da tabela
    (.shr-pag-btn) — sem cor de marca nenhuma, só mais um botão do sistema. */
