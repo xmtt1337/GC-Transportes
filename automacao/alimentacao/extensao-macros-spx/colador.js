@@ -127,6 +127,113 @@
     }
   }
 
+  // ── preparar a tela (criar a RT / a tarefa de separação) ──────────────────
+  // fundo.js só leva a aba até a LISTA (Entrada > Recebimento, Entrega >
+  // Sorting Task Management) — o endereço da tela onde se digita de fato tem
+  // um id que muda a cada recebimento/tarefa criado, então não dá pra navegar
+  // direto pra ela. Daqui pra frente é clique dentro da página.
+  //
+  // Se acharCampo() já enxerga o campo, pula tudo isso: reaproveita uma RT ou
+  // tarefa que já esteja aberta (de uma rodada anterior, ou que a pessoa
+  // mesma tenha deixado pronta), em vez de criar outra à toa.
+
+  async function prepararRecebimento() {
+    if (acharCampo('recebimento')) return;
+
+    P.passo('abrindo um recebimento unitário novo');
+    const botao = S.acharBotao('Recebimento unitário');
+    if (!botao) {
+      throw new Error('não achei o botão "Recebimento unitário" — confira se a aba está em Entrada > Recebimento');
+    }
+    const base = S.rede.ativas;
+    S.clicar(botao);
+    await S.dormir(600);
+    await S.esperarRede({ base, limite: 20000 });
+
+    await S.esperar(() => acharCampo('recebimento'), {
+      oque: 'o campo de código aparecer', limite: 20000, intervalo: 300 });
+
+    // "Receber por pedido" costuma vir selecionado por padrão; clicar de novo
+    // quando já está selecionado não atrapalha nada.
+    const abaPedido = S.acharBotao('Receber por pedido');
+    if (abaPedido) { S.clicar(abaPedido); await S.dormir(300); }
+  }
+
+  // O campo clicável logo abaixo de um rótulo ("* Grupo de Rotas" com o campo
+  // "Por favor, selecione" embaixo) — o formulário do SPX agrupa rótulo e
+  // campo bem próximos, então basta subir alguns pais a partir do rótulo.
+  function campoDoRotulo(rotulo) {
+    const label = S.folhaVisivelComTexto(rotulo) || S.folhaVisivelComTexto(`* ${rotulo}`);
+    if (!label) return null;
+    let container = label.parentElement;
+    for (let i = 0; i < 4 && container; i++, container = container.parentElement) {
+      const campo = container.querySelector('input, [class*="select"], [class*="dropdown"]');
+      if (campo && S.visivel(campo)) return campo;
+    }
+    return null;
+  }
+
+  // Abre o campo (rótulo) e clica na opção ENSINADA (Alt+G / Alt+T, com o menu
+  // aberto) — ao contrário do campo em si, a opção que aparece no menu não tem
+  // como ser achada com confiança sem alguém apontar uma vez (mesmo motivo do
+  // ícone de baixar do Backlog: seletor chutado aqui seria pior que nenhum).
+  async function escolherNoDropdown(rotulo, qualEnsinado) {
+    const campo = campoDoRotulo(rotulo);
+    if (!campo) throw new Error(`não achei o campo "${rotulo}"`);
+    S.clicar(campo);
+    await S.dormir(500);
+
+    const opcao = await S.esperar(
+      () => G.aprender.elementosEnsinados(qualEnsinado).filter(S.visivel)[0] || null,
+      { oque: `a opção de "${rotulo}"`, limite: 8000, intervalo: 200 },
+    ).catch(() => null);
+    if (!opcao) {
+      const tecla = qualEnsinado === 'grupo_rotas' ? 'Alt+G' : 'Alt+T';
+      throw new Error(`"${rotulo}" ainda não foi ensinado — abra o menu e aperte ${tecla}`);
+    }
+    S.clicar(opcao);
+    await S.dormir(300);
+  }
+
+  async function prepararAtCluster() {
+    if (acharCampo('at_cluster')) return;
+
+    P.passo('criando uma tarefa de separação (AT Cluster)');
+    const criar = S.acharBotao('Criar tarefa');
+    if (!criar) {
+      throw new Error('não achei o botão "Criar tarefa" — confira se a aba está em Entrega > Sorting Task Management');
+    }
+    S.clicar(criar);
+    await S.esperar(() => S.folhaVisivelComTexto('Criar Tarefa de Separação'), {
+      oque: 'o formulário de criar tarefa', limite: 10000, intervalo: 200 });
+    await S.dormir(300);
+
+    const estatico = S.acharBotao('Static');
+    if (!estatico) throw new Error('não achei a opção "Static" (Modo de Rota)');
+    S.clicar(estatico);
+
+    const sim = S.acharBotao('YES');
+    if (!sim) throw new Error('não achei a opção "YES" (Grupo de Rota Necessário)');
+    S.clicar(sim);
+    await S.dormir(300);
+
+    await escolherNoDropdown('Grupo de Rotas', 'grupo_rotas');
+    await escolherNoDropdown('Tipo de Rota de Entrega', 'tipo_rota_entrega');
+
+    const confirmar = S.acharBotao('Confirm');
+    if (!confirmar) throw new Error('não achei o botão "Confirm"');
+    S.clicar(confirmar);
+
+    await S.esperar(() => S.acharBotao('Participar Desta Tarefa'), {
+      oque: 'a confirmação de tarefa criada', limite: 15000, intervalo: 300 });
+    S.clicar(S.acharBotao('Participar Desta Tarefa'));
+
+    await S.esperar(() => acharCampo('at_cluster'), {
+      oque: 'o campo de código aparecer', limite: 20000, intervalo: 300 });
+  }
+
+  const PREPARAR = { recebimento: prepararRecebimento, at_cluster: prepararAtCluster };
+
   // ── ponte com o vigia (por fundo.js — ver o porquê no cabeçalho) ─────────
   function pedirAoVigia(acao, extra) {
     return new Promise((resolve, reject) => {
@@ -168,6 +275,8 @@
     let colados = 0;
     let falhasSeguidas = 0;
     try {
+      await PREPARAR[qual]();
+
       P.passo('procurando códigos pra colar');
       let lote = [];
       let tabela = null;
@@ -222,7 +331,8 @@
     }
   }
 
-  G.colador = { rodar, CATALOGO, acharCampo, colarUm, diaDoLote, diaDaAt };
+  G.colador = { rodar, CATALOGO, acharCampo, colarUm, diaDoLote, diaDaAt,
+                prepararRecebimento, prepararAtCluster, campoDoRotulo, escolherNoDropdown };
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {

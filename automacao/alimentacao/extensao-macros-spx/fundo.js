@@ -152,16 +152,21 @@ const TELA_DE = {
   alimentacao: '#/delivery-assignment/list',
   pedidos: '#/orderTracking',
   backlog: '#/dashboard/all-mile-hub/lm',
+  // As duas do Colador levam so pra LISTA (Entrada > Recebimento, Entrega >
+  // Sorting Task Management) - a tela onde se digita de fato tem um id que
+  // muda a cada recebimento/tarefa criado, entao nao da pra navegar direto pra
+  // ela. E o colador.js (content script) que continua dai: cria a RT ou a
+  // tarefa de separacao e entra nela sozinho.
+  recebimento: '#/generalReceiveTaskOps',
+  at_cluster: '#/sorting-task/list',
 };
 
-// O Colador (recebimento/at_cluster) ainda nao tem endereco confirmado pra
-// navegar sozinho ate a tela (TODO: preencher TELA_DE quando confirmado, do
-// mesmo jeito que os tres de cima). Ate la, so pega uma aba que a PESSOA ja
-// deixou aberta na tela certa - a marca abaixo e um pedaco da URL de producao
-// (ver modules/macros-comando/colador.js, campo `pagina`). Navegar pra um
-// lugar chutado no SPX de verdade e pior que nao rodar.
+// O "ja estou na tela" do Colador precisa ser mais LARGO que o endereco de
+// navegar acima: uma aba que ja esta dentro de uma RT (singleReceiveNew/<id>)
+// ou de uma tarefa de separacao (sorting-task/detail?taskId=<id>) tambem conta
+// como "ja esta la" - navegar pra lista de novo reiniciaria o trabalho.
 const PAGINA_COLADOR = {
-  recebimento: 'singleReceiveNew',
+  recebimento: 'generalReceiveTaskOps',
   at_cluster: 'sorting-task',
 };
 
@@ -201,18 +206,16 @@ async function abaDoSpx(qual) {
     abas = [];
   }
 
-  if (PAGINA_COLADOR[qual]) {
-    return abas.find((t) => String(t.url || '').includes(PAGINA_COLADOR[qual])) || null;
-  }
-
   const tela = TELA_DE[qual] || TELA_DE.alimentacao;
-  const marca = tela.replace('#/', '');
+  // Pro Colador a marca e mais larga que o endereco de navegar (ver
+  // PAGINA_COLADOR acima); pros outros tres continua sendo o proprio hash.
+  const marca = PAGINA_COLADOR[qual] || tela.replace('#/', '');
   const jaNaTela = abas.find((t) => String(t.url || '').includes(marca));
   if (jaNaTela) return jaNaTela;
 
   // Aba do SPX que nao seja de nenhum macro (ninguem trabalhando nela) pode ser
   // aproveitada; a do outro macro, nao.
-  const ocupadas = Object.values(TELA_DE).map((t) => t.replace('#/', ''));
+  const ocupadas = [...Object.values(TELA_DE).map((t) => t.replace('#/', '')), ...Object.values(PAGINA_COLADOR)];
   const livre = abas.find((t) => !ocupadas.some((o) => String(t.url || '').includes(o)));
   if (livre) {
     await chrome.tabs.update(livre.id, { url: RAIZ_SPX + tela });
@@ -235,11 +238,7 @@ async function abaDoSpx(qual) {
 async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado', config) {
   const aba = await abaDoSpx(qual);
   if (!aba) {
-    // O Colador (ainda sem TELA_DE - ver PAGINA_COLADOR) nao abre aba sozinho:
-    // precisa que a pessoa ja tenha deixado a tela certa aberta no SPX.
-    const motivo = PAGINA_COLADOR[qual]
-      ? 'não achei a aba do SPX nessa tela — abra-a antes de rodar'
-      : 'não consegui abrir o SPX';
+    const motivo = 'não consegui abrir o SPX';
     await anotarFalha(qual, motivo);
     return { ok: false, error: motivo };
   }

@@ -35,9 +35,10 @@ const PASTA = path.join(__dirname, '..', 'extensao-macros-spx');
 
 class ParadoFalso extends Error {}
 
-function carregar({ pagina = {}, respostas = {}, mensagensRecebidas } = {}) {
+function carregar({ pagina = {}, respostas = {}, botoes = {}, ensinados = {} } = {}) {
   const chamadasVigia = [];
   const painel = { passos: [], notas: [], ok: null, erro: null, aoParar: null, titulo: null };
+  const cliques = [];
   const S = {
     Parado: ParadoFalso,
     parar: false,
@@ -46,10 +47,27 @@ function carregar({ pagina = {}, respostas = {}, mensagensRecebidas } = {}) {
       if (S.parar) return reject(new ParadoFalso('parado por voce'));
       resolve();
     }),
+    // Poll por TENTATIVAS (nao por relogio de verdade): o real usa Date.now(),
+    // o que faria cada preparar*() gastar segundos de parede reais no teste.
+    esperar: async (condicao, opcoes) => {
+      const o = opcoes || {};
+      for (let i = 0; i < 500; i++) {
+        if (S.parar) throw new ParadoFalso('parado por voce');
+        let valor = null;
+        try { valor = await condicao(); } catch (e) { if (e instanceof ParadoFalso) throw e; }
+        if (valor) return valor;
+      }
+      throw new Error(`nao apareceu a tempo: ${o.oque || 'condicao'}`);
+    },
     visivel: (el) => !!el && el.visivel !== false,
     desabilitado: (el) => !!el && !!el.desabilitado,
     escrever: (el, texto) => { el.value = texto; el.escreveu = (el.escreveu || 0) + 1; },
     apertarEnter: (el) => { el.enterApertado = (el.enterApertado || 0) + 1; },
+    clicar: (el) => { if (el) { cliques.push(el); el.cliques = (el.cliques || 0) + 1; } return !!el; },
+    acharBotao: (texto) => botoes[texto] || null,
+    folhaVisivelComTexto: (texto) => botoes[texto] || null,
+    rede: { ativas: 0 },
+    esperarRede: async () => {},
   };
   const P = {
     abrir(titulo, aoParar) { painel.titulo = titulo; painel.aoParar = aoParar; },
@@ -82,6 +100,7 @@ function carregar({ pagina = {}, respostas = {}, mensagensRecebidas } = {}) {
   vm.runInContext(fs.readFileSync(path.join(PASTA, 'logica.js'), 'utf8'), ctx);
   ctx.XMMacro.spx = S;
   ctx.XMMacro.painel = P;
+  ctx.XMMacro.aprender = { elementosEnsinados: (qual) => ensinados[qual] || [] };
   vm.runInContext(fs.readFileSync(path.join(PASTA, 'colador.js'), 'utf8'), ctx, { filename: 'colador.js' });
 
   // `window` visto de FORA (ctx.window) nao e o mesmo objeto que `window` visto de
@@ -91,7 +110,7 @@ function carregar({ pagina = {}, respostas = {}, mensagensRecebidas } = {}) {
   // mensagem simulada nunca bateria e a captura de AT pareceria simplesmente muda.
   const raiz = vm.runInContext('window', ctx);
 
-  return { G: ctx.XMMacro, S, P: painel, chamadasVigia, ctx, raiz };
+  return { G: ctx.XMMacro, S, P: painel, chamadasVigia, ctx, raiz, cliques };
 }
 
 const CONFIG = { xpt: 'XPT_CFC', dia: '2026-09-28', carencia: 60, lote: 20, intervalo: 0, continuo: false, todos_dias: false };
@@ -103,6 +122,17 @@ function loteDe(itens, tabela = 'shopee_recebimentos') {
 // Objeto criado DENTRO do vm (as mensagens que colador.js manda) tem outro
 // prototipo do deste realm: normaliza antes de comparar com deepStrictEqual.
 const plano = (x) => JSON.parse(JSON.stringify(x));
+
+// Faz o campo aparecer UMA vez (pro check de "já preparado" no início de
+// rodar() achar de cara e nunca chamar prepararRecebimento/prepararAtCluster)
+// e sumir depois disso — pra testar falha DURANTE a colagem, não antes dela.
+function campoSoNoInicio(campo, seletorPrincipal) {
+  let usado = false;
+  return (sel) => {
+    if (!usado && sel === seletorPrincipal) { usado = true; return campo; }
+    return null;
+  };
+}
 
 // ── uma rodada simples ──────────────────────────────────────────────────────
 test('cola um codigo, confirma, e termina quando a fila esvazia (nao continuo)', async () => {
@@ -164,12 +194,15 @@ test('cola varios da mesma tabela, um por um, cada um confirmado na hora', async
 // ── falha e desistencia ──────────────────────────────────────────────────────
 test('campo nao encontrado libera o codigo e conta como falha (nao excecao muda)', async () => {
   const r = carregar({
-    pagina: {}, // nenhum seletor acha nada - "tela errada"
+    pagina: {},
     respostas: {
       lote: (m) => (r.chamadasVigia.filter((c) => c.xmColador === 'lote').length === 1
         ? loteDe([{ id: 1, codigo: 'BR1' }]) : loteDe([])),
     },
   });
+  // "Já preparado" no início de rodar() acha o campo uma vez; ele some depois -
+  // é a colagem em si que precisa falhar, não a preparação da tela.
+  r.ctx.document.querySelector = campoSoNoInicio({ desabilitado: false }, 'input[placeholder="Por favor, insira"]');
   await r.G.colador.rodar('recebimento', CONFIG);
   const liberou = r.chamadasVigia.find((c) => c.xmColador === 'liberar');
   assert.deepStrictEqual(plano(liberou), { xmColador: 'liberar', modo: 'recebimento', tabela: 'shopee_recebimentos', ids: [1] });
@@ -185,6 +218,7 @@ test('depois de MAX_FALHAS_SEGUIDAS falhas seguidas, desiste com erro (nao marte
         : loteDe([])),
     },
   });
+  r.ctx.document.querySelector = campoSoNoInicio({ desabilitado: false }, 'input[placeholder="Por favor, insira"]');
   await r.G.colador.rodar('recebimento', CONFIG);
   assert.match(r.P.erro, /falhas seguidas/);
   // parou antes do 4o - nao gastou o lote inteiro tentando
@@ -195,7 +229,9 @@ test('uma colagem boa no meio zera a contagem de falhas seguidas', async () => {
   // Campo some (falha), aparece (cola - zera a conta), some de novo duas vezes
   // (2 falhas seguidas, nunca bate as 3 de MAX_FALHAS_SEGUIDAS): termina bem.
   let chamada = 0;
-  const seq = [null, { desabilitado: false }, null, null];
+  // O 1o elemento e so pro check de "ja preparado" no inicio de rodar() achar
+  // de cara; os 4 seguintes sao BR1..BR4 (falha, cola, falha, falha).
+  const seq = [{ desabilitado: false }, null, { desabilitado: false }, null, null];
   const r = carregar({ pagina: {}, respostas: {
     lote: () => (r.chamadasVigia.filter((c) => c.xmColador === 'lote').length === 1
       ? loteDe([{ id: 1, codigo: 'BR1' }, { id: 2, codigo: 'BR2' }, { id: 3, codigo: 'BR3' }, { id: 4, codigo: 'BR4' }])
@@ -279,6 +315,92 @@ test('erro ao gravar a AT nao trava a colagem (tenta de novo na proxima rodada)'
   await r.G.colador.rodar('at_cluster', CONFIG);
   assert.strictEqual(r.P.ok, '1 colado(s)', 'a colagem termina bem mesmo com a AT falhando');
   assert.ok(tentativasAt >= 1);
+});
+
+// ── preparar a tela (criar a RT / a tarefa de separação) ───────────────────
+function comCampoDeRotulo(container) {
+  return { parentElement: { querySelector: () => container } };
+}
+
+test('prepararRecebimento: campo ja pronto nao clica em nada', async () => {
+  const r = carregar({ pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } } });
+  await r.G.colador.prepararRecebimento();
+  assert.strictEqual(r.cliques.length, 0);
+});
+
+test('prepararRecebimento: clica em "Recebimento unitário" e depois em "Receber por pedido"', async () => {
+  const recebimentoUnitario = {};
+  const receberPorPedido = {};
+  let apareceu = false;
+  const r = carregar({ botoes: { 'Recebimento unitário': recebimentoUnitario, 'Receber por pedido': receberPorPedido } });
+  r.ctx.document.querySelector = (sel) => (apareceu && sel === 'input[placeholder="Por favor, insira"]' ? { desabilitado: false } : null);
+  const clicarOriginal = r.S.clicar;
+  r.S.clicar = (el) => { if (el === recebimentoUnitario) apareceu = true; return clicarOriginal(el); };
+
+  await r.G.colador.prepararRecebimento();
+  assert.deepStrictEqual(r.cliques, [recebimentoUnitario, receberPorPedido]);
+});
+
+test('prepararRecebimento: sem o botão "Recebimento unitário", erro claro', async () => {
+  const r = carregar({ pagina: {}, botoes: {} });
+  await assert.rejects(r.G.colador.prepararRecebimento(), /Recebimento unitário/);
+});
+
+test('prepararAtCluster: passa pelo formulário inteiro (Static, YES, os dois ensinados, Confirm, Participar)', async () => {
+  const grupoRotasCampo = {};
+  const tipoRotaCampo = {};
+  const grupoRotasOpcao = { desabilitado: false };
+  const tipoRotaOpcao = { desabilitado: false };
+  const botoes = {
+    'Criar tarefa': {},
+    'Criar Tarefa de Separação': {}, // achado por folhaVisivelComTexto, so pra confirmar que o form abriu
+    'Static': {},
+    'YES': {},
+    'Grupo de Rotas': comCampoDeRotulo(grupoRotasCampo),
+    'Tipo de Rota de Entrega': comCampoDeRotulo(tipoRotaCampo),
+    'Confirm': {},
+    'Participar Desta Tarefa': {},
+  };
+  let participou = false;
+  const r = carregar({
+    botoes,
+    ensinados: { grupo_rotas: [grupoRotasOpcao], tipo_rota_entrega: [tipoRotaOpcao] },
+  });
+  r.ctx.document.querySelector = (sel) => (participou && sel === 'input[placeholder="Please Scan or Input"]' ? { desabilitado: false } : null);
+  const clicarOriginal = r.S.clicar;
+  r.S.clicar = (el) => { if (el === botoes['Participar Desta Tarefa']) participou = true; return clicarOriginal(el); };
+
+  await r.G.colador.prepararAtCluster();
+  assert.deepStrictEqual(r.cliques, [
+    botoes['Criar tarefa'], botoes['Static'], botoes['YES'],
+    grupoRotasCampo, grupoRotasOpcao, tipoRotaCampo, tipoRotaOpcao,
+    botoes['Confirm'], botoes['Participar Desta Tarefa'],
+  ]);
+});
+
+test('prepararAtCluster: sem o botão "Criar tarefa", erro claro', async () => {
+  const r = carregar({ pagina: {}, botoes: {} });
+  await assert.rejects(r.G.colador.prepararAtCluster(), /Criar tarefa/);
+});
+
+test('prepararAtCluster: "Grupo de Rotas" nao ensinado pede pra ensinar (Alt+G)', async () => {
+  const botoes = {
+    'Criar tarefa': {}, 'Criar Tarefa de Separação': {}, 'Static': {}, 'YES': {},
+    'Grupo de Rotas': comCampoDeRotulo({}),
+  };
+  const r = carregar({ botoes, ensinados: {} }); // nada ensinado
+  await assert.rejects(r.G.colador.prepararAtCluster(), /Alt\+G/);
+});
+
+test('campoDoRotulo: sobe ate achar um campo dentro do container do rotulo', () => {
+  const campo = { desabilitado: false };
+  const r = carregar({ botoes: { 'Meu Rótulo': comCampoDeRotulo(campo) } });
+  assert.strictEqual(r.G.colador.campoDoRotulo('Meu Rótulo'), campo);
+});
+
+test('campoDoRotulo: sem o rotulo, null', () => {
+  const r = carregar({ botoes: {} });
+  assert.strictEqual(r.G.colador.campoDoRotulo('Nao Existe'), null);
 });
 
 // ── dispatch (chrome.runtime.onMessage) ─────────────────────────────────────

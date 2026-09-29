@@ -485,13 +485,17 @@ test('macro que RECUSA o disparo (ja rodando) conta como aviso, nao como defeito
 });
 
 // ── o Colador ──────────────────────────────────────────────────────────────
-// Ainda sem TELA_DE (nao navega sozinho - ver PAGINA_COLADOR em fundo.js): so
-// pega uma aba que a pessoa ja deixou aberta na tela certa, e leva a config
-// que veio no comando (ela nao tem outro jeito de chegar na extensao).
-test('comando do Colador vai pra aba ja aberta na tela certa, com a config', async () => {
+// TELA_DE leva so ate a LISTA (o endereco da tela de digitar tem um id que
+// muda a cada RT/tarefa criada - ver PAGINA_COLADOR em fundo.js, mais largo,
+// pra reconhecer uma aba ja dentro de uma RT/tarefa como "ja esta la"). A
+// config que veio no comando viaja junto - e o unico jeito de chegar no
+// content script, que nao tem tela propria na tela Macros como os outros 3.
+test('comando do Colador vai pra aba ja aberta, mesmo dentro de uma RT/tarefa (id que muda)', async () => {
   const config = { xpt: 'XPT_CFC', dia: '2026-09-28', carencia: 60, lote: 20, intervalo: 0.5, continuo: true };
   const c = carregar({
-    abasExtras: [{ id: 20, windowId: 1, url: 'https://spx.shopee.com.br/#/inbound/singleReceiveNew' }],
+    // O endereco de verdade tem um id que muda a cada RT criada - a marca
+    // (generalReceiveTaskOps) tem que reconhecer isso como "ja esta na tela".
+    abasExtras: [{ id: 20, windowId: 1, url: 'https://spx.shopee.com.br/#/generalReceiveTaskOps/singleReceiveNew/RT202609293H8SX' }],
     vigia: { resposta: { comandos: [{ id: ID, qual: 'recebimento', config }] } },
   });
   await c.ctx.buscarComandos();
@@ -500,13 +504,27 @@ test('comando do Colador vai pra aba ja aberta na tela certa, com a config', asy
   assert.deepStrictEqual(plano(c.chamadas.abas[0].msg), { xmMacro: 'recebimento', agendado: true, config });
 });
 
-test('sem aba do Colador aberta: erro claro, sem tentar abrir uma sozinho', async () => {
+test('sem aba nenhuma do Colador: abre uma nova na LISTA (Entrada > Recebimento / Sorting Task)', async () => {
   const c = carregar({ vigia: { resposta: { comandos: [{ id: ID, qual: 'at_cluster', config: { xpt: '' } } ] } } });
   await c.ctx.buscarComandos();
-  await dormir(20);
-  assert.strictEqual(c.chamadas.abas.length, 0, 'nao mandou mensagem pra aba nenhuma');
-  const [envio] = enviadosAoVigia(c, `/comandos/${ID}/resultado`);
-  assert.match(JSON.parse(envio.corpo).error, /abra-a antes/);
+  // Esse caminho passa por esperarCarregar (aba nova): 600ms + 2500ms de folga
+  // de verdade (setTimeout real, nao o relogio fixo) - os outros testes deste
+  // arquivo nunca passam por aqui porque as 3 abas fixas ja casam de cara.
+  await dormir(3300);
+  // As 3 abas fixas do fake nao servem (sao dos outros 3 macros) - abre nova.
+  assert.strictEqual(c.chamadas.abas[0].id, 99);
+  assert.match(c.guardado.ultimoDisparo.texto, /disparado: at_cluster/);
+});
+
+test('aba livre (nao ocupada por nenhum macro) e reaproveitada pro Colador, navegando pra lista', async () => {
+  const config = { xpt: '', dia: null, carencia: 60, lote: 20, intervalo: 0.5, continuo: true };
+  const c = carregar({
+    abasExtras: [{ id: 30, windowId: 1, url: 'https://spx.shopee.com.br/#/algum-lugar-qualquer' }],
+    vigia: { resposta: { comandos: [{ id: ID, qual: 'recebimento', config }] } },
+  });
+  await c.ctx.buscarComandos();
+  await dormir(3300); // mesma folga de esperarCarregar (chrome.tabs.update + esperar carregar)
+  assert.strictEqual(c.chamadas.abas[0].id, 30);
 });
 
 test('comando do Colador sem config e ignorado (comandoValido recusa)', async () => {

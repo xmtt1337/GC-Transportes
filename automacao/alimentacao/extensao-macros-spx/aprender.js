@@ -34,6 +34,9 @@
   // A seta nao entra: ela e um icone, nao tem texto pra conferir.
   const TEXTO_ESPERADO = {
     item: 'Select All in All Pages',
+    // grupo_rotas nao entra: o nome muda por polo ("Rotas Caçador", "Rotas
+    // Videira"...) - conferir texto fixo apagaria o ensino certo sozinho.
+    tipo_rota_entrega: 'Bulky&Non-bulky',
   };
 
   // O QUE FICOU ENSINADO NAO VIAJA COM A PASTA DA EXTENSAO. Mora no armazenamento do Chrome
@@ -224,6 +227,8 @@
     seta: 'a setinha ao lado do checkbox do cabeçalho (a que abre o menu)',
     item: 'o "Select All in All Pages" — com o menu já aberto',
     backlog: 'o ícone de baixar ao lado do card "Backlog" (Painel › Entrega/Devolução › AMH-LM › Delivery V3.0)',
+    grupo_rotas: 'a única opção que aparecer em "Grupo de Rotas" — com o menu já aberto (Criar Tarefa de Separação)',
+    tipo_rota_entrega: 'a opção "Bulky&Non-bulky" em "Tipo de Rota de Entrega" — com o menu já aberto (Criar Tarefa de Separação)',
   };
 
   function ensinar(qual) {

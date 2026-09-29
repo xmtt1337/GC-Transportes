@@ -70,7 +70,7 @@
     linhas.push('');
 
     diz('checkbox do cabecalho', resumo(A.checkboxDoCabecalho()));
-    for (const qual of ['seta', 'item', 'backlog']) {
+    for (const qual of ['seta', 'item', 'backlog', 'grupo_rotas', 'tipo_rota_entrega']) {
       const seletor = G.aprender.seletorDe(qual);
       if (!seletor) { diz(`${qual} ensinado`, 'nada ensinado ainda'); continue; }
       const quantos = (() => { try { return document.querySelectorAll(seletor).length; } catch (e) { return -1; } })();
@@ -175,6 +175,8 @@
   //   Alt+S  ensinar a Setinha
   //   Alt+M  ensinar o item do Menu (com o menu aberto)
   //   Alt+B  ensinar o icone de Baixar do Backlog
+  //   Alt+G  ensinar o Grupo de rotas (Colador AT Cluster, com o menu aberto)
+  //   Alt+T  ensinar o Tipo de rota de entrega (idem)
   async function copiarDiagnostico() {
     const texto = diagnostico();
     try {
@@ -194,6 +196,8 @@
     else if (tecla === 's') G.aprender.ensinar('seta');
     else if (tecla === 'm') G.aprender.ensinar('item');
     else if (tecla === 'b') G.aprender.ensinar('backlog');
+    else if (tecla === 'g') G.aprender.ensinar('grupo_rotas');
+    else if (tecla === 't') G.aprender.ensinar('tipo_rota_entrega');
     else return;
     evento.preventDefault();
   }, true);
