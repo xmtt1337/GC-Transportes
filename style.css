@@ -3493,14 +3493,15 @@ td.cad-nome { color: #e2e8f0; }
 }
 .sst-hist-btn:hover { background: rgba(58,134,255,0.2); }
 
-/* Enviar ativo: verde do WhatsApp — o mesmo que marca o "ativo" na linha do tempo
-   do pedido, então o botão e o evento que ele gera se reconhecem. */
+/* Enviar ativo: botão neutro, igual o resto das ações secundárias da tabela
+   (.shr-pag-btn) — sem cor de marca nenhuma, só mais um botão do sistema. */
 .sst-ativo-btn {
-    background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.35);
-    color: #25D366; border-radius: 8px; padding: 5px 12px;
-    font-family: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px;
+    color: #94a3b8; cursor: pointer; font-family: inherit;
+    font-size: 11.5px; font-weight: 600; padding: 5px 12px;
+    transition: border-color .15s, color .15s;
 }
-.sst-ativo-btn:hover { background: rgba(37,211,102,0.2); }
+.sst-ativo-btn:hover { border-color: rgba(255,255,255,0.3); color: #e2e8f0; }
 /* .usr-modal não tem limite de altura: com a prévia da mensagem o card passa da tela
    em janela baixa e o botão de enviar fica inalcançável. */
 #modal-sst-ativo .usr-modal { max-height: calc(100vh - 48px); overflow-y: auto; }
@@ -3508,6 +3509,17 @@ td.cad-nome { color: #e2e8f0; }
     white-space: pre-wrap; background: rgba(15,15,20,0.5);
     border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;
     padding: 14px; font-size: 13px; color: #cbd5e1; line-height: 1.5;
+}
+/* A célula da coluna Ativo: andamento (se houver) em cima, botão embaixo. */
+.sst-ativo-celula { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+.sst-ativo-info { display: flex; flex-direction: column; gap: 1px; }
+.sst-ativo-quando { font-size: 10.5px; color: #7b8ba3; }
+/* Aviso de reenvio: âmbar, a mesma cor de "atenção" que o resto do sistema usa
+   (nunca vermelho — reenviar não é erro, é uma decisão de quem está mandando). */
+.sst-ativo-aviso {
+    background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.3);
+    color: #eab308; border-radius: 10px; padding: 10px 14px;
+    font-size: 12.5px; line-height: 1.5; margin-bottom: 16px;
 }
 
 /* Linha do tempo do pedido. A tarja colorida à esquerda é a etapa: dá pra

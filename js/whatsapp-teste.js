@@ -298,11 +298,15 @@ function _waRecAtualizarPreview() {
 // dispara exatamente este mesmo modelo: a mensagem e o corpo têm que sair iguais nas
 // duas telas, e cada uma só cuida de ler os próprios campos e mostrar o resultado.
 // Devolve { erro } ou { corpo }.
-function _waRecMontarEnvio({ cfg, valores, numero, prazo, role }) {
+//
+// `comPrazo` só é passado por quem sabe que o ativo NÃO é acareação (o Stuck e o Backlog
+// nunca são): prazo dado pela transportadora é coisa de extravio, e o resto dos ativos é
+// contato, sem vencimento correndo. Sem ele, vale a regra do cargo — sac e dev fazem
+// acareação, então o formulário de Ativos continua cobrando prazo deles.
+function _waRecMontarEnvio({ cfg, valores, numero, prazo, role, comPrazo: comPrazoForcado }) {
     const tel = _waValidarTelefone(numero);
     if (!tel.ok) return { erro: tel.erro };
-    // Só cobra prazo de quem faz acareação — pros demais o campo nem aparece.
-    const comPrazo = WA_ROLES_COM_PRAZO.includes(role);
+    const comPrazo = comPrazoForcado !== undefined ? comPrazoForcado : WA_ROLES_COM_PRAZO.includes(role);
     if (comPrazo && (!prazo || prazo < 1)) return { erro: "Informe o prazo em horas." };
     const faltando = cfg.campos.filter(c => !valores[c.id]);
     if (faltando.length) return { erro: "Preencha: " + faltando.map(c => c.label).join(", ") };

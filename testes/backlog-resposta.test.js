@@ -24,6 +24,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
+const fonteWhatsapp = fs.readFileSync(path.join(__dirname, "..", "js", "whatsapp-teste.js"), "utf8");
+const fonteAtivo = fs.readFileSync(path.join(__dirname, "..", "js", "stuck-ativo.js"), "utf8");
 const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "shopee-stuck-backlog.js"), "utf8");
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 
@@ -59,13 +61,14 @@ function carregar() {
 
     const ctx = vm.createContext({
         console, XLSX,
+        window: {},
         document: { getElementById: el },
         gcAlert: (m) => chamadas.alertas.push(m),
         skMostrar() {}, skFim() {}, mostrarTela() {},
         fetch: () => new Promise(() => {}),   // a tela não termina de carregar: só o estado interessa
         API: "", token: "",
     });
-    vm.runInContext(fonte + ACESSOR, ctx, { filename: "shopee-stuck-backlog.js" });
+    vm.runInContext(fonteWhatsapp + fonteAtivo + fonte + ACESSOR, ctx, { filename: "shopee-stuck-backlog.js" });
     return { ctx, els, chamadas, b: ctx.__b };
 }
 
@@ -91,7 +94,9 @@ const valores = (html) => [...html.matchAll(/nr-tile-valor">([\d.]+)</g)].map((m
 /** As contagens da faixa de filtros, na ordem em que aparecem (`<b>` de cada pílula). */
 const contagens = (html) => [...html.matchAll(/<b>([\d.]+)<\/b>/g)].map((m) => Number(m[1].replace(/\./g, "")));
 const marcados = (html) => (html.match(/nr-tile-selecionada/g) || []).length;
-const linhas = (html) => (html.match(/<tr>/g) || []).length;
+// `<tr ` (com espaço) porque a linha agora carrega data-codigo — o botão "Enviar
+// ativo" precisa dele pra saber de qual pedido é o card que abriu.
+const linhas = (html) => (html.match(/<tr[ >]/g) || []).length;
 
 // ── card de Total ────────────────────────────────────────────────────────
 test("o Total soma todos os dias, de 1 a 6+, e vem antes das faixas", () => {
@@ -252,6 +257,10 @@ test("cada linha mostra a resposta do cliente com o rótulo certo", () => {
 
 test("a linha tem uma célula por coluna do cabeçalho - a tabela não desalinha", () => {
     const { b, els, ctx } = carregar();
+    // A coluna "Ativo" só desenha a célula pra quem o servidor deixaria enviar — sem
+    // isso o cabeçalho (sempre no HTML, só escondido por CSS pra quem não pode) teria
+    // uma coluna a mais que a linha, e o teste acusaria um desalinhamento que não existe.
+    ctx.window._gcUser = { role: "admin" };
     b.regs = [reg("N1", 4.0, "recebeu")];
     ctx._sstbRenderizar();
     const linha = els["sstb-tbody"].innerHTML;

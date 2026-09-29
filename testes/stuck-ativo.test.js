@@ -24,6 +24,7 @@ const vm = require("node:vm");
 
 const js = nome => fs.readFileSync(path.join(__dirname, "..", "js", nome), "utf8");
 const fonteWhatsapp = js("whatsapp-teste.js");
+const fonteAtivo = js("stuck-ativo.js");
 const fonteStuck = js("shopee-stuck.js");
 
 // `let` do topo não vira propriedade do contexto: a ponte é anexada ao próprio script.
@@ -31,6 +32,8 @@ const ponte = `
 ;globalThis.__sst = {
     setRegistros: v => { _sstRegistros = v; },
     estado: () => ({ enviando: _sstAtivoEnviando, codigo: _sstAtivoCodigo }),
+    estados: () => _sstAtivoEstados,
+    semearEstado: (codigo, v) => { _sstAtivoEstados[codigo] = v; },
 };`;
 
 const plano = o => JSON.parse(JSON.stringify(o));
@@ -102,6 +105,7 @@ function carregar({ role = "admin", resposta = { ok: true, body: { ok: true, id:
     ctx.globalThis = ctx;
 
     vm.runInContext(fonteWhatsapp, ctx, { filename: "whatsapp-teste.js" });
+    vm.runInContext(fonteAtivo, ctx, { filename: "stuck-ativo.js" });
     vm.runInContext(fonteStuck + ponte, ctx, { filename: "shopee-stuck.js" });
     // `const` do topo não vira propriedade do contexto: lê pelo escopo do próprio vm.
     const cfg = vm.runInContext("WA_REC_TEMPLATES.shopee", ctx);
@@ -118,15 +122,20 @@ const assentar = async () => { for (let i = 0; i < 4; i++) await new Promise(r =
 
 /**
  * Preenche o que a pessoa digitaria depois de abrir o card. O código do pedido NÃO
- * entra aqui: ele tem que já estar no campo, vindo da linha.
+ * entra aqui: ele tem que já estar no campo, vindo da linha. Sem prazo: o ativo do
+ * Stuck/Backlog nunca manda prazo — isso é só de extravio (acareação).
  */
-function preencher(elementos, { numero = "49999276131", nome = "Maria Teste", prazo = "48" } = {}) {
+function preencher(elementos, { numero = "49999276131", nome = "Maria Teste" } = {}) {
     elementos["sst-ativo-numero"].value = numero;
     elementos["sst-ativo-campo-nome_cliente"].value = nome;
-    elementos["sst-ativo-prazo"].value = prazo;
 }
 
 const botaoDaLinha = codigo => ({ closest: sel => (sel === "tr" ? { dataset: { codigo } } : null) });
+
+// Depois de um envio com sucesso a tela relê o andamento do pedido (outra chamada,
+// pra "Não enviado" virar "Aguardando resposta" sem recarregar a página) — os testes
+// de envio contam só a chamada que manda a mensagem, não esse efeito colateral.
+const envios = fetches => fetches.filter(f => f.url.endsWith("/admin/whatsapp/enviar"));
 
 // ── montagem do envio (compartilhada com Ativos > Disparar) ──────────────
 
@@ -237,16 +246,11 @@ test("card: abre com o pedido da linha já preenchido e travado, e o resto em br
     assert.ok(elementos["sst-ativo-preview"].innerText.includes("___"));
 });
 
-test("card: prazo aparece só pra sac e dev, igual ao formulário de Ativos", () => {
-    const admin = carregar({ role: "admin" });
-    admin.ctx._sstAbrirAtivo(botaoDaLinha("BR1TESTE"));
-    assert.strictEqual(admin.elementos["sst-ativo-prazo-wrap"].style.display, "none");
-
-    for (const role of ["sac", "dev"]) {
-        const c = carregar({ role });
-        c.ctx._sstAbrirAtivo(botaoDaLinha("BR1TESTE"));
-        assert.strictEqual(c.elementos["sst-ativo-prazo-wrap"].style.display, "", role);
-        assert.strictEqual(String(c.elementos["sst-ativo-prazo"].value), "48", role);
+test("card: não tem campo de prazo pra ninguém — prazo é só de extravio (acareação)", () => {
+    for (const role of ["admin", "sac", "dev"]) {
+        const { ctx, elementos } = carregar({ role });
+        ctx._sstAbrirAtivo(botaoDaLinha("BR1TESTE"));
+        assert.ok(!("sst-ativo-prazo-wrap" in elementos) && !("sst-ativo-prazo" in elementos), role);
     }
 });
 
@@ -279,11 +283,11 @@ test("enviar: manda o corpo certo pra /admin/whatsapp/enviar, com o token", asyn
     ctx._sstEnviarAtivo();
     await assentar();
 
-    assert.strictEqual(fetches.length, 1);
-    assert.strictEqual(fetches[0].url, "http://api.teste/admin/whatsapp/enviar");
-    assert.strictEqual(fetches[0].opts.method, "POST");
-    assert.strictEqual(fetches[0].opts.headers.Authorization, "Bearer tok-teste");
-    const corpo = JSON.parse(fetches[0].opts.body);
+    assert.strictEqual(envios(fetches).length, 1);
+    assert.strictEqual(envios(fetches)[0].url, "http://api.teste/admin/whatsapp/enviar");
+    assert.strictEqual(envios(fetches)[0].opts.method, "POST");
+    assert.strictEqual(envios(fetches)[0].opts.headers.Authorization, "Bearer tok-teste");
+    const corpo = JSON.parse(envios(fetches)[0].opts.body);
     assert.strictEqual(corpo.numero, "5549999276131");
     assert.strictEqual(corpo.template, "confirmacao_entrega");
     assert.deepStrictEqual(corpo.parametros, ["Maria Teste", "BR2600000001TESTE"]);
@@ -292,13 +296,15 @@ test("enviar: manda o corpo certo pra /admin/whatsapp/enviar, com o token", asyn
     assert.strictEqual(corpo.prazo_horas, null, "admin não define prazo");
 });
 
-test("enviar: sac manda o prazo junto", async () => {
-    const { ctx, elementos, fetches } = carregar({ role: "sac" });
-    ctx._sstAbrirAtivo(botaoDaLinha("BR2600000001TESTE"));
-    preencher(elementos, { prazo: "72" });
-    ctx._sstEnviarAtivo();
-    await assentar();
-    assert.strictEqual(JSON.parse(fetches[0].opts.body).prazo_horas, 72);
+test("enviar: nem sac nem dev mandam prazo — o ativo do Stuck não é acareação", async () => {
+    for (const role of ["sac", "dev"]) {
+        const { ctx, elementos, fetches } = carregar({ role });
+        ctx._sstAbrirAtivo(botaoDaLinha("BR2600000001TESTE"));
+        preencher(elementos);
+        ctx._sstEnviarAtivo();
+        await assentar();
+        assert.strictEqual(JSON.parse(envios(fetches)[0].opts.body).prazo_horas, null, role);
+    }
 });
 
 test("enviar: dado faltando mostra o erro, não chama o servidor e não trava o botão", async () => {
@@ -316,7 +322,7 @@ test("enviar: dado faltando mostra o erro, não chama o servidor e não trava o 
     preencher(elementos);
     ctx._sstEnviarAtivo();
     await assentar();
-    assert.strictEqual(fetches.length, 1);
+    assert.strictEqual(envios(fetches).length, 1);
 });
 
 test("enviar: duplo clique vira UMA mensagem só", async () => {
@@ -326,7 +332,7 @@ test("enviar: duplo clique vira UMA mensagem só", async () => {
     ctx._sstEnviarAtivo();
     ctx._sstEnviarAtivo(); // segundo clique antes da resposta chegar
     await assentar();
-    assert.strictEqual(fetches.length, 1);
+    assert.strictEqual(envios(fetches).length, 1);
     assert.strictEqual(elementos["sst-ativo-btn-enviar"].disabled, true);
 });
 
@@ -341,7 +347,7 @@ test("enviar: depois de enviado continua travado e o card fecha sozinho", async 
     assert.strictEqual(elementos["sst-ativo-btn-enviar"].disabled, true);
     ctx._sstEnviarAtivo(); // mandar de novo o mesmo ativo não tem volta
     await assentar();
-    assert.strictEqual(fetches.length, 1);
+    assert.strictEqual(envios(fetches).length, 1);
 
     assert.strictEqual(chamadas.timers.length, 1);
     chamadas.timers[0]();
@@ -399,13 +405,130 @@ test("enviar: sem servidor mostra o erro de conexão e destrava o botão", async
     assert.strictEqual(elementos["sst-ativo-btn-enviar"].disabled, false);
 });
 
+// ── andamento do ativo (aguardando / respondeu / recebeu / não recebeu) ──
+//
+// É o motivo desta feature existir: sem isso, um pedido que o cliente já
+// confirmou RECEBIDO continuava oferecendo "Enviar ativo" como se nada tivesse
+// acontecido — exatamente o que aconteceu em produção antes deste conserto.
+
+test("célula: pedido nunca consultado não afirma nada, só oferece o botão", () => {
+    const { api, ctx, elementos } = carregar();
+    api.setRegistros([pedido("BR1TESTE")]);
+    ctx._sstRenderizar(); // sem _sstAtivoCarregarEstados: o andamento ainda não chegou
+    const html = elementos["sst-tbody"].innerHTML;
+    assert.ok(!html.includes("sstb-resp"), "não pode inventar um andamento sem ter consultado");
+    assert.ok(html.includes(">Enviar ativo<"));
+});
+
+test("célula: cada andamento mostra o rótulo certo, e sem ativo mostra 'Não enviado'", () => {
+    const casos = [
+        ["aguardando", "Aguardando resposta"], ["respondeu", "Cliente respondeu"],
+        ["recebeu", "Recebido"], ["nao_recebeu", "Não recebido"],
+    ];
+    for (const [estado, rotulo] of casos) {
+        const { api, ctx, elementos } = carregar();
+        api.setRegistros([pedido("BR1TESTE")]);
+        api.semearEstado("BR1TESTE", { estado, enviado_em: "2026-09-25T14:03:00.000Z" });
+        ctx._sstRenderizar();
+        const html = elementos["sst-tbody"].innerHTML;
+        assert.ok(html.includes(`>${rotulo}<`), `${estado}: ${html}`);
+        assert.ok(html.includes(">Reenviar<"), `${estado}: já tem ativo, o botão vira Reenviar`);
+    }
+
+    const { api, ctx, elementos } = carregar();
+    api.setRegistros([pedido("BR2TESTE")]);
+    api.semearEstado("BR2TESTE", null); // consultado, e não há nada
+    ctx._sstRenderizar();
+    const html = elementos["sst-tbody"].innerHTML;
+    assert.ok(html.includes(">Não enviado<"));
+    assert.ok(html.includes(">Enviar ativo<"), "sem ativo, o botão continua Enviar (não Reenviar)");
+});
+
+test("célula: o texto do andamento fica na cor normal — só o pontinho é colorido", () => {
+    const { api, ctx, elementos } = carregar();
+    api.setRegistros([pedido("BR1TESTE")]);
+    api.semearEstado("BR1TESTE", { estado: "recebeu", enviado_em: "2026-09-25T14:03:00.000Z" });
+    ctx._sstRenderizar();
+    const html = elementos["sst-tbody"].innerHTML;
+    // mesmas classes do "Resposta do cliente" do Backlog — um pontinho <i> colorido, texto sem cor
+    assert.match(html, /<span class="sstb-resp"[^>]*><i style="background:#22c55e"><\/i>Recebido<\/span>/);
+});
+
+test("_sstAtivoCarregarEstados: preenche o cache com o que o servidor devolver, em maiúsculas", async () => {
+    const { ctx, api, fetches } = carregar({
+        resposta: { ok: true, body: { estados: { BR1TESTE: { estado: "recebeu", enviado_em: "x" } } } },
+    });
+    await ctx._sstAtivoCarregarEstados(["br1teste", "br2teste"]);
+    assert.strictEqual(fetches[0].opts.method, "POST");
+    assert.deepStrictEqual(JSON.parse(fetches[0].opts.body), { pedidos: ["BR1TESTE", "BR2TESTE"] });
+    assert.strictEqual(api.estados().BR1TESTE.estado, "recebeu");
+    assert.strictEqual(api.estados().BR2TESTE, null, "consultado e sem ativo é null, não ausente");
+});
+
+test("_sstAtivoCarregarEstados: resposta sem `estados` (erro, polo pendente) não apaga o que já sabia", async () => {
+    const { ctx, api } = carregar({ resposta: { ok: false, body: { error: "Escolha o seu polo." } } });
+    api.semearEstado("BR1TESTE", { estado: "recebeu", enviado_em: "x" });
+    await ctx._sstAtivoCarregarEstados(["BR1TESTE"]);
+    assert.strictEqual(api.estados().BR1TESTE.estado, "recebeu", "erro na consulta não pode virar 'sem ativo'");
+});
+
+test("_sstAtivoCarregarEstados: quem não enxerga os Ativos nem tenta consultar", async () => {
+    const { ctx, fetches } = carregar({ role: "user" });
+    await ctx._sstAtivoCarregarEstados(["BR1TESTE"]);
+    assert.strictEqual(fetches.length, 0);
+});
+
+test("card: reabrir um pedido com ativo conhecido avisa antes de deixar reenviar", () => {
+    const { ctx, api, elementos } = carregar();
+    api.setRegistros([pedido("BR1TESTE")]);
+    api.semearEstado("BR1TESTE", { estado: "aguardando", enviado_em: "2026-09-25T14:03:00.000Z" });
+    ctx._sstAbrirAtivo(botaoDaLinha("BR1TESTE"));
+    assert.strictEqual(elementos["sst-ativo-aviso"].style.display, "");
+    assert.match(elementos["sst-ativo-aviso"].innerText, /já existe um ativo/i);
+    assert.match(elementos["sst-ativo-aviso"].innerText, /aguardando resposta/i);
+});
+
+test("card: pedido sem ativo (ou nunca consultado) não mostra aviso nenhum", () => {
+    const { ctx, elementos } = carregar();
+    ctx._sstAbrirAtivo(botaoDaLinha("BR9TESTE")); // nunca consultado
+    assert.strictEqual(elementos["sst-ativo-aviso"].style.display, "none");
+});
+
+// ── semear a partir do Backlog (resposta.js) ──────────────────────────────
+// O Backlog já sabe a resposta de cada pedido no mesmo retrato que carregou
+// (server.js/resposta.js) — sem bater na rede de novo, só traduzindo o vocabulário.
+
+test("semeia do Backlog: sem_ativo vira null, sem_resposta vira aguardando, recebeu/nao_recebeu passam direto", () => {
+    const { ctx, api } = carregar();
+    ctx._sstAtivoSemearDoBacklog([
+        { shipment_id: "P1", resposta: "sem_ativo" },
+        { shipment_id: "P2", resposta: "sem_resposta", ativo_em: "2026-09-01T00:00:00.000Z" },
+        { shipment_id: "P3", resposta: "recebeu", ativo_em: "2026-09-02T00:00:00.000Z" },
+        { shipment_id: "P4", resposta: "nao_recebeu", ativo_em: "2026-09-03T00:00:00.000Z" },
+    ]);
+    assert.strictEqual(api.estados().P1, null);
+    assert.deepStrictEqual(plano(api.estados().P2), { estado: "aguardando", enviado_em: "2026-09-01T00:00:00.000Z" });
+    assert.strictEqual(api.estados().P3.estado, "recebeu");
+    assert.strictEqual(api.estados().P4.estado, "nao_recebeu");
+});
+
+test("semeia do Backlog: registro sem shipment_id não vira uma chave vazia no cache", () => {
+    const { ctx, api } = carregar();
+    ctx._sstAtivoSemearDoBacklog([{ resposta: "recebeu" }]);
+    assert.strictEqual(api.estados()[""], undefined);
+    assert.strictEqual(api.estados().undefined, undefined);
+});
+
 // ── index.html ───────────────────────────────────────────────────────────
 
 test("index.html tem todos os ids que o JS do card pede (senão o card abre em branco)", () => {
     const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
     const ids = [
-        "modal-sst-ativo", "sst-ativo-codigo", "sst-ativo-numero", "sst-ativo-prazo-wrap", "sst-ativo-prazo",
-        "sst-ativo-campos", "sst-ativo-preview", "sst-ativo-msg", "sst-ativo-btn-enviar", "sst-th-ativo",
+        "modal-sst-ativo", "sst-ativo-codigo", "sst-ativo-aviso", "sst-ativo-numero",
+        "sst-ativo-campos", "sst-ativo-preview", "sst-ativo-msg", "sst-ativo-btn-enviar",
+        "sst-th-ativo", "sstb-th-ativo",
     ];
     for (const id of ids) assert.ok(html.includes(`id="${id}"`), `falta id="${id}" no index.html`);
+    // O campo de prazo saiu de propósito: ativo do Stuck/Backlog não é acareação.
+    assert.ok(!html.includes('id="sst-ativo-prazo'), "prazo nao deveria mais existir no card de ativo");
 });

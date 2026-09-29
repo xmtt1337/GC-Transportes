@@ -19,6 +19,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
+const fonteWhatsapp = fs.readFileSync(path.join(__dirname, "..", "js", "whatsapp-teste.js"), "utf8");
+const fonteAtivo = fs.readFileSync(path.join(__dirname, "..", "js", "stuck-ativo.js"), "utf8");
 const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "shopee-stuck-backlog.js"), "utf8");
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 
@@ -51,6 +53,7 @@ function carregar() {
 
     const ctx = vm.createContext({
         console, XLSX,
+        window: {},
         document: { getElementById: el },
         gcAlert: (m) => chamadas.alertas.push(m),
         skMostrar() {}, skFim() {}, mostrarTela() {},
@@ -59,7 +62,7 @@ function carregar() {
         fetch: () => new Promise(() => {}),
         API: "", token: "",
     });
-    vm.runInContext(fonte + ACESSOR, ctx, { filename: "shopee-stuck-backlog.js" });
+    vm.runInContext(fonteWhatsapp + fonteAtivo + fonte + ACESSOR, ctx, { filename: "shopee-stuck-backlog.js" });
     // O gráfico recebe a lista que a tela decidiu: espia em vez de montar Chart.js.
     ctx._sstbGraficar = (lista) => { chamadas.grafico = lista.length; };
     return { ctx, els, chamadas, b: ctx.__b };
@@ -77,7 +80,9 @@ function pedidos(n, resposta = null) {
     }));
 }
 
-const linhas = (els) => (els["sstb-tbody"].innerHTML.match(/<tr>/g) || []).length;
+// `<tr ` (com espaço) porque a linha agora carrega data-codigo — o botão "Enviar
+// ativo" precisa dele pra saber de qual pedido é o card que abriu.
+const linhas = (els) => (els["sstb-tbody"].innerHTML.match(/<tr[ >]/g) || []).length;
 const ids = (els) => [...els["sstb-tbody"].innerHTML.matchAll(/>(P\d{3})</g)].map((m) => m[1]);
 const info = (els) => els["sstb-pag-info"].innerText;
 const contagens = (h) => [...h.matchAll(/<b>([\d.]+)<\/b>/g)].map((m) => Number(m[1].replace(/\./g, "")));

@@ -77,6 +77,9 @@ function _sstbCarregar() {
             }
             _sstbRegistros = b.registros || [];
             _sstbPagina = 1;   // dado novo: a lista pode ter encolhido, e a página 4 talvez nem exista mais
+            // Semeia o andamento do ativo a partir do que o backlog já trouxe — sem outra
+            // chamada de rede: server.js (resposta.js) já classifica junto com a lista.
+            _sstAtivoSemearDoBacklog(_sstbRegistros);
             document.getElementById("sstb-estacao").innerText = b.estacao || "—";
             _sstbPintarMeta(b);
             if (!_sstbRegistros.length) {
@@ -322,14 +325,18 @@ function _sstbRenderizar() {
         document.getElementById("sstb-pag-prox").disabled = _sstbPagina >= paginas;
     }
 
-    document.getElementById("sstb-tbody").innerHTML = pagina.map(r => _sstbLinhaHtml(r)).join("");
+    // A coluna some inteira (cabeçalho junto) pra quem não enxerga os Ativos.
+    const podeAtivo = _sstPodeAtivo();
+    document.getElementById("sstb-th-ativo").style.display = podeAtivo ? "" : "none";
+
+    document.getElementById("sstb-tbody").innerHTML = pagina.map(r => _sstbLinhaHtml(r, podeAtivo)).join("");
     _sstbGraficar(lista, porFaixa);
 }
 
-function _sstbLinhaHtml(r) {
+function _sstbLinhaHtml(r, podeAtivo) {
     const cor = SSTB_CORES[_sstbFaixaDe(r.dias).chave];
     return `
-    <tr>
+    <tr data-codigo="${_sstbEsc(r.shipment_id)}">
         <td data-label="Pedido" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600;color:#e2e8f0">${_sstbEsc(r.shipment_id)}</td>
         <td data-label="Status">${_sstbEsc(r.latest_status) || "—"}</td>
         <td data-label="Dias parado" style="text-align:center"><i class="nr-pac-ponto" style="background:${cor}"></i>${_sstbFormatarDias(r.dias)}</td>
@@ -338,6 +345,7 @@ function _sstbLinhaHtml(r) {
         <td data-label="Histórico">
             <button type="button" class="sst-hist-btn" onclick="_sstAbrirHistorico('${_sstbEsc(r.shipment_id)}')">Visualizar</button>
         </td>
+        ${podeAtivo ? `<td data-label="Ativo">${_sstAtivoBotaoHtml(r.shipment_id, "_sstbRenderizar")}</td>` : ""}
     </tr>`;
 }
 
