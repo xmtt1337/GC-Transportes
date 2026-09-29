@@ -137,6 +137,12 @@ document.getElementById('ensinar-backlog').addEventListener('click', async () =>
   if (r && r.ok) window.close();
 });
 
+document.getElementById('ensinar-recebimento').addEventListener('click', async () => {
+  dizer('');
+  const r = await mandar('ensinar', { qual: 'recebimento_unitario' });
+  if (r && r.ok) window.close();
+});
+
 document.getElementById('diagnostico').addEventListener('click', async () => {
   dizer('');
   const r = await mandar('diagnostico');

@@ -70,7 +70,7 @@
     linhas.push('');
 
     diz('checkbox do cabecalho', resumo(A.checkboxDoCabecalho()));
-    for (const qual of ['seta', 'item', 'backlog', 'grupo_rotas', 'tipo_rota_entrega']) {
+    for (const qual of ['seta', 'item', 'backlog', 'grupo_rotas', 'tipo_rota_entrega', 'recebimento_unitario']) {
       const seletor = G.aprender.seletorDe(qual);
       if (!seletor) { diz(`${qual} ensinado`, 'nada ensinado ainda'); continue; }
       const quantos = (() => { try { return document.querySelectorAll(seletor).length; } catch (e) { return -1; } })();
@@ -177,6 +177,7 @@
   //   Alt+B  ensinar o icone de Baixar do Backlog
   //   Alt+G  ensinar o Grupo de rotas (Colador AT Cluster, com o menu aberto)
   //   Alt+T  ensinar o Tipo de rota de entrega (idem)
+  //   Alt+R  ensinar o botão "Recebimento unitário" (Colador Recebimento)
   async function copiarDiagnostico() {
     const texto = diagnostico();
     try {
@@ -198,6 +199,7 @@
     else if (tecla === 'b') G.aprender.ensinar('backlog');
     else if (tecla === 'g') G.aprender.ensinar('grupo_rotas');
     else if (tecla === 't') G.aprender.ensinar('tipo_rota_entrega');
+    else if (tecla === 'r') G.aprender.ensinar('recebimento_unitario');
     else return;
     evento.preventDefault();
   }, true);

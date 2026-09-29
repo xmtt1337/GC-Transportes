@@ -161,11 +161,10 @@
   // mesma tenha deixado pronta), em vez de criar outra à toa.
 
   // S.acharBotao sozinho exige um elemento CLICAVEL (button, [class*="btn"/
-  // "button"]...) — os botões "Recebimento unitário"/"Recebimento em massa"
-  // são um grupo de opções (radio/toggle) do design system do SPX, que não
-  // bate com nenhuma dessas classes. folhaVisivelComTexto acha pelo TEXTO,
-  // sem depender de classe nenhuma — mesmo fallback que alimentacao.js já usa
-  // pro botão "Mais" dos filtros, pelo mesmo motivo.
+  // "button"]...); folhaVisivelComTexto acha por TEXTO, sem depender de
+  // classe — mesmo fallback que alimentacao.js já usa pro botão "Mais" dos
+  // filtros. Serve pros botões do formulário do AT Cluster (Criar tarefa,
+  // Static, YES, Confirm, Participar Desta Tarefa).
   function acharPorTexto(texto) {
     return S.acharBotao(texto) || S.folhaVisivelComTexto(texto) || S.acharBotao(texto, { comeca: true });
   }
@@ -174,9 +173,13 @@
     if (acharCampo('recebimento')) return;
 
     P.passo('abrindo um recebimento unitário novo');
-    const botao = acharPorTexto('Recebimento unitário');
+    // "Recebimento unitário"/"Recebimento em massa" NÃO foram achados nem por
+    // classe nem por texto puro contra o SPX de verdade (29/09/2026) - devem
+    // estar num componente que foge dos dois (Shadow DOM é o suspeito
+    // principal). Ensinado (Alt+R), como o ícone de baixar do Backlog.
+    const botao = G.aprender.elementosEnsinados('recebimento_unitario').filter(S.visivel)[0];
     if (!botao) {
-      throw new Error('não achei o botão "Recebimento unitário" — confira se a aba está em Entrada > Recebimento');
+      throw new Error('"Recebimento unitário" ainda não foi ensinado — abra o popup e clique em "Ensinar o Recebimento unitário" (ou Alt+R nesta tela)');
     }
     const base = S.rede.ativas;
     S.clicar(botao);

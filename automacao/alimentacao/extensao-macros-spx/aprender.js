@@ -37,6 +37,11 @@
     // grupo_rotas nao entra: o nome muda por polo ("Rotas Caçador", "Rotas
     // Videira"...) - conferir texto fixo apagaria o ensino certo sozinho.
     tipo_rota_entrega: 'Bulky&Non-bulky',
+    // Recebimento unitário/Receber por pedido: acharBotao E folhaVisivelComTexto
+    // (busca por classe e por texto puro) falharam contra o SPX de verdade
+    // (29/09/2026) - esse grupo de opcoes deve estar num componente que foge
+    // dos dois (Shadow DOM e o suspeito principal). Ensinar de vez.
+    recebimento_unitario: 'Recebimento unitário',
   };
 
   // O QUE FICOU ENSINADO NAO VIAJA COM A PASTA DA EXTENSAO. Mora no armazenamento do Chrome
@@ -229,6 +234,7 @@
     backlog: 'o ícone de baixar ao lado do card "Backlog" (Painel › Entrega/Devolução › AMH-LM › Delivery V3.0)',
     grupo_rotas: 'a única opção que aparecer em "Grupo de Rotas" — com o menu já aberto (Criar Tarefa de Separação)',
     tipo_rota_entrega: 'a opção "Bulky&Non-bulky" em "Tipo de Rota de Entrega" — com o menu já aberto (Criar Tarefa de Separação)',
+    recebimento_unitario: 'o botão "Recebimento unitário" (Entrada › Recebimento)',
   };
 
   function ensinar(qual) {

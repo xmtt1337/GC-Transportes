@@ -331,30 +331,19 @@ test('prepararRecebimento: campo ja pronto nao clica em nada', async () => {
   assert.strictEqual(r.cliques.length, 0);
 });
 
-test('prepararRecebimento: clica em "Recebimento unitário" e depois em "Receber por pedido"', async () => {
-  const recebimentoUnitario = {};
-  const receberPorPedido = {};
-  let apareceu = false;
-  const r = carregar({ botoes: { 'Recebimento unitário': recebimentoUnitario, 'Receber por pedido': receberPorPedido } });
-  r.ctx.document.querySelector = (sel) => (apareceu && sel === 'input[placeholder="Por favor, insira"]' ? { desabilitado: false } : null);
-  const clicarOriginal = r.S.clicar;
-  r.S.clicar = (el) => { if (el === recebimentoUnitario) apareceu = true; return clicarOriginal(el); };
-
-  await r.G.colador.prepararRecebimento();
-  assert.deepStrictEqual(r.cliques, [recebimentoUnitario, receberPorPedido]);
-});
-
 // Bug de verdade, achado testando contra o SPX (29/09/2026): "Recebimento
-// unitário"/"Receber por pedido" são um grupo de opções (radio/toggle) do
-// design system do SPX, sem classe "btn"/"button" — acharBotao sozinho nunca
-// achava. acharPorTexto cai pra folhaVisivelComTexto (acha por TEXTO, sem
-// depender de classe) - mesmo fallback que alimentacao.js já usa pro "Mais".
-test('prepararRecebimento: acha por TEXTO mesmo quando nao e um elemento clicavel (bug real do SPX)', async () => {
-  const recebimentoUnitario = {};
+// unitário" não foi achado nem por classe (acharBotao) nem por texto puro
+// (folhaVisivelComTexto) — deve estar num componente que foge dos dois
+// (Shadow DOM é o suspeito principal). Por isso esse botão é ENSINADO (Alt+R
+// ou popup "Ensinar o Recebimento unitário"), como o ícone do Backlog —
+// diferente dos botões do AT Cluster, que continuam achados por texto.
+test('prepararRecebimento: clica no ensinado "Recebimento unitário" e depois em "Receber por pedido"', async () => {
+  const recebimentoUnitario = { desabilitado: false };
   const receberPorPedido = {};
   let apareceu = false;
   const r = carregar({
-    soPorFolha: { 'Recebimento unitário': recebimentoUnitario, 'Receber por pedido': receberPorPedido },
+    ensinados: { recebimento_unitario: [recebimentoUnitario] },
+    botoes: { 'Receber por pedido': receberPorPedido },
   });
   r.ctx.document.querySelector = (sel) => (apareceu && sel === 'input[placeholder="Por favor, insira"]' ? { desabilitado: false } : null);
   const clicarOriginal = r.S.clicar;
@@ -364,9 +353,14 @@ test('prepararRecebimento: acha por TEXTO mesmo quando nao e um elemento clicave
   assert.deepStrictEqual(r.cliques, [recebimentoUnitario, receberPorPedido]);
 });
 
-test('prepararRecebimento: sem o botão "Recebimento unitário", erro claro', async () => {
-  const r = carregar({ pagina: {}, botoes: {} });
-  await assert.rejects(r.G.colador.prepararRecebimento(), /Recebimento unitário/);
+test('prepararRecebimento: ignora o ensinado se ele nao estiver visivel', async () => {
+  const r = carregar({ ensinados: { recebimento_unitario: [{ visivel: false }] } });
+  await assert.rejects(r.G.colador.prepararRecebimento(), /ainda não foi ensinado/);
+});
+
+test('prepararRecebimento: sem nada ensinado, erro claro (nao tenta adivinhar por texto)', async () => {
+  const r = carregar({ pagina: {}, botoes: { 'Recebimento unitário': {} } }); // se caisse pra acharPorTexto, acharia
+  await assert.rejects(r.G.colador.prepararRecebimento(), /"Recebimento unitário" ainda não foi ensinado.*Alt\+R/);
 });
 
 test('prepararAtCluster: passa pelo formulário inteiro (Static, YES, os dois ensinados, Confirm, Participar)', async () => {
