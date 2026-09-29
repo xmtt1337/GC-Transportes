@@ -111,6 +111,20 @@ class ConsultaAoServidor(unittest.TestCase):
             self.rodar([RespostaDublada(503)], lambda b: b.comandos())
         self.assertTrue(ctx.exception.temporario)
 
+    def test_500_com_motivo_no_corpo_mostra_o_motivo_de_verdade(self):
+        # Sem isso, todo 500 virava "servidor respondeu 500" - escondendo a causa real atras de
+        # um raio-x generico (foi o que aconteceu investigando o Colador, 29/09/2026).
+        with self.assertRaises(va.ErroDeEnvio) as ctx:
+            self.rodar([RespostaDublada(500, {"error": "column \"xpt\" nao existe"})],
+                      lambda b: b.comandos())
+        self.assertIn("xpt", str(ctx.exception))
+        self.assertTrue(ctx.exception.temporario, "500 continua temporario (pode ser so um deploy no ar)")
+
+    def test_500_sem_corpo_json_cai_no_motivo_generico(self):
+        with self.assertRaises(va.ErroDeEnvio) as ctx:
+            self.rodar([RespostaDublada(500, json_invalido=True)], lambda b: b.comandos())
+        self.assertIn("500", str(ctx.exception))
+
     def test_rede_caida_e_erro_temporario(self):
         with self.assertRaises(va.ErroDeEnvio) as ctx:
             self.rodar([va.requests.ConnectionError("sem rede")], lambda b: b.comandos())

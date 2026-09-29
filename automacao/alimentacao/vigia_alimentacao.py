@@ -406,7 +406,14 @@ class Backend:
             if r.status_code in (400, 413, 415) and len(json.dumps(corpo)) > LIMITE_GZIP:
                 r = self._post(rota, corpo, comprimir=False)
             if r.status_code >= 500:
-                raise ErroDeEnvio(f"servidor respondeu {r.status_code}", temporario=True)
+                motivo = f"servidor respondeu {r.status_code}"
+                try:
+                    corpo = r.json()
+                    if isinstance(corpo, dict) and corpo.get("error"):
+                        motivo = corpo["error"]
+                except ValueError:
+                    pass
+                raise ErroDeEnvio(motivo, temporario=True)
             try:
                 resposta = r.json()
             except ValueError as e:
@@ -468,7 +475,17 @@ class Backend:
             if r.status_code in (401, 403):
                 raise ErroDeConta("o servidor recusou a conta")
             if r.status_code >= 500:
-                raise ErroDeEnvio(f"servidor respondeu {r.status_code}", temporario=True)
+                # O corpo pode trazer o motivo de verdade (nossas rotas devolvem {"error":...}
+                # ate no 500) - sem tentar le-lo, "servidor respondeu 500" escondia a causa real
+                # atras de um raio-x generico (foi o que aconteceu com o Colador, 29/09/2026).
+                motivo = f"servidor respondeu {r.status_code}"
+                try:
+                    corpo = r.json()
+                    if isinstance(corpo, dict) and corpo.get("error"):
+                        motivo = corpo["error"]
+                except ValueError:
+                    pass
+                raise ErroDeEnvio(motivo, temporario=True)
             try:
                 dados = r.json()
             except ValueError as e:
