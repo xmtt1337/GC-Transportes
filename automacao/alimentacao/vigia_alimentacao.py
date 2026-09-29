@@ -87,6 +87,10 @@ ROTA_PENDENTES = "/macros/at-exportada/pendentes"
 ROTA_COMANDOS = "/macros/comandos"
 # O vigia conta ao sistema o que aconteceu com cada arquivo (e o que a extensao contou a ele).
 ROTA_EVENTOS = "/macros/eventos"
+# O que o colador_neon.py fazia direto no Postgres (reservar lote, confirmar,
+# devolver, gravar a AT capturada) - agora pelo mesmo login da extensao. Ver
+# modules/at/colagem.js no backend.
+ROTA_COLADOR = "/macros/colador"
 # De qual macro e cada tipo de relatorio - a tela mostra o problema na linha do macro.
 MACRO_DO_TIPO = {"at": "alimentacao", "pesquisados": "pedidos", "backlog": "backlog"}
 # Eventos por envio (o servidor aceita ate 20) e quantos guardar se ele estiver fora do ar.
@@ -494,6 +498,32 @@ class Backend:
         rota = f"{ROTA_COMANDOS}/{quote(str(id_comando), safe='')}/resultado"
         return self._requisitar("POST", rota, {"ok": bool(ok), "erro": erro})
 
+    # ── colador ──────────────────────────────────────────────────────────────
+    # Os quatro passos que o colador_neon.py fazia com uma UPDATE direta no
+    # Postgres: reservar um lote (FOR UPDATE SKIP LOCKED - nunca pega o mesmo
+    # codigo que outra maquina/aba), confirmar depois que o SPX aceitou,
+    # devolver se a via falhou (nao o codigo), e gravar a AT capturada.
+
+    def colador_lote(self, modo, tam, carencia, dia=None, xpt=None):
+        partes = [f"tam={int(tam)}", f"carencia={int(carencia)}"]
+        if dia:
+            partes.append(f"dia={quote(dia, safe='')}")
+        if xpt:
+            partes.append(f"xpt={quote(xpt, safe='')}")
+        rota = f"{ROTA_COLADOR}/{quote(modo, safe='')}/lote?{'&'.join(partes)}"
+        return self._requisitar("GET", rota)
+
+    def colador_confirmar(self, modo, tabela, ids):
+        rota = f"{ROTA_COLADOR}/{quote(modo, safe='')}/confirmar"
+        return self._requisitar("POST", rota, {"tabela": tabela, "ids": ids})
+
+    def colador_liberar(self, modo, tabela, ids):
+        rota = f"{ROTA_COLADOR}/{quote(modo, safe='')}/liberar"
+        return self._requisitar("POST", rota, {"tabela": tabela, "ids": ids})
+
+    def colador_at(self, codigo, dia, at):
+        return self._requisitar("POST", f"{ROTA_COLADOR}/at", {"codigo": codigo, "dia": dia, "at": at})
+
 
 # ── o vigia ─────────────────────────────────────────────────────────────────
 class Pendente:
@@ -880,6 +910,11 @@ class Vigia:
 ID_COMANDO = re.compile(
     r"^/comandos/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/resultado$")
 
+# So os dois modos que o colador conhece - falha aqui e um 400 na hora, sem
+# gastar uma viagem ao servidor pra descobrir a mesma coisa.
+MODOS_COLADOR = ("recebimento", "at_cluster")
+FILAS_COLADOR = ("shopee_recebimentos", "entregador_pedidos_at")
+
 
 class Atendimento(BaseHTTPRequestHandler):
     vigia = None
@@ -904,6 +939,8 @@ class Atendimento(BaseHTTPRequestHandler):
             return self._responder(200, {"vigia": "de pe", "ultimo": self.vigia.ultimo})
         if caminho.path == "/comandos":
             return self._comandos()
+        if caminho.path == "/colador/lote":
+            return self._colador_lote(parse_qs(caminho.query))
         if caminho.path != "/pendentes":
             return self._responder(404, {"error": "nao conheco esse caminho"})
 
@@ -946,6 +983,31 @@ class Atendimento(BaseHTTPRequestHandler):
                      ", ".join(c.get("qual", "?") for c in resposta["comandos"]))
         return self._responder(200, resposta)
 
+    # Reserva o proximo lote pro colador (Recebimento ou AT Cluster) colar.
+    def _colador_lote(self, query):
+        modo = (query.get("modo") or [""])[0]
+        if modo not in MODOS_COLADOR:
+            return self._responder(400, {"error": f"modo desconhecido: {modo}"})
+        try:
+            tam = max(1, min(500, int((query.get("tam") or ["20"])[0])))
+        except ValueError:
+            tam = 20
+        try:
+            carencia = max(0, min(3600, int((query.get("carencia") or ["60"])[0])))
+        except ValueError:
+            carencia = 60
+        dia = (query.get("dia") or [None])[0] or None
+        xpt = (query.get("xpt") or [None])[0] or None
+
+        try:
+            resposta = self.vigia.backend.colador_lote(modo, tam, carencia, dia=dia, xpt=xpt)
+        except (ErroDeConta, ErroDeEnvio) as e:
+            return self._responder(503, {"error": str(e)})
+        except Exception as e:
+            log.exception("erro ao reservar lote do colador")
+            return self._responder(500, {"error": str(e)})
+        return self._responder(200, resposta)
+
     # A extensao conta aqui como o macro TERMINOU (ou falhou no meio). O vigia carimba o nome do
     # computador e leva ao sistema junto com os desfechos dele - assim a tela Macros mostra tudo
     # no mesmo lugar, e um macro que quebra de madrugada nao passa em branco.
@@ -964,6 +1026,46 @@ class Atendimento(BaseHTTPRequestHandler):
                            quando=quando if isinstance(quando, str) else None)
         return self._responder(200, {"ok": True})
 
+    # confirmar/liberar (por lote de ids) e at (uma captura por vez) - os tres
+    # passos que fecham o que _colador_lote reservou.
+    def _colador_escrita(self, caminho, bruto):
+        try:
+            corpo = json.loads(bruto or b"{}")
+            if not isinstance(corpo, dict):
+                raise ValueError("corpo nao e objeto")
+        except (ValueError, UnicodeDecodeError):
+            return self._responder(400, {"error": "corpo ilegivel"})
+
+        try:
+            if caminho == "/colador/at":
+                codigo = str(corpo.get("codigo") or "").strip()
+                dia = str(corpo.get("dia") or "").strip()
+                at = str(corpo.get("at") or "").strip()
+                if not codigo or not dia or not at:
+                    return self._responder(400, {"error": "informe codigo, dia e at"})
+                resposta = self.vigia.backend.colador_at(codigo, dia, at)
+            else:
+                modo = corpo.get("modo")
+                tabela = corpo.get("tabela")
+                ids = corpo.get("ids")
+                if modo not in MODOS_COLADOR:
+                    return self._responder(400, {"error": f"modo desconhecido: {modo}"})
+                if tabela not in FILAS_COLADOR:
+                    return self._responder(400, {"error": "tabela invalida"})
+                if not isinstance(ids, list) or not ids or len(ids) > 500:
+                    return self._responder(400, {"error": "informe de 1 a 500 ids"})
+                if caminho == "/colador/confirmar":
+                    resposta = self.vigia.backend.colador_confirmar(modo, tabela, ids)
+                else:
+                    resposta = self.vigia.backend.colador_liberar(modo, tabela, ids)
+        except (ErroDeConta, ErroDeEnvio) as e:
+            return self._responder(503, {"error": str(e)})
+        except Exception as e:
+            log.exception("erro numa escrita do colador (%s)", caminho)
+            return self._responder(500, {"error": str(e)})
+
+        return self._responder(200, resposta)
+
     # A extensao conta aqui se conseguiu iniciar o macro; o vigia repassa ao
     # servidor, que mostra o resultado na tela Macros.
     def do_POST(self):
@@ -974,11 +1076,15 @@ class Atendimento(BaseHTTPRequestHandler):
             tamanho = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             tamanho = 0
-        bruto = self.rfile.read(min(tamanho, 8192)) if tamanho > 0 else b""
+        # 500 ids (o teto do lote) cabem folgado; o limite existe so pra nao
+        # deixar um corpo absurdo travar a thread lendo request.
+        bruto = self.rfile.read(min(tamanho, 65536)) if tamanho > 0 else b""
 
         caminho = urlparse(self.path).path
         if caminho == "/eventos":
             return self._evento(bruto)
+        if caminho in ("/colador/confirmar", "/colador/liberar", "/colador/at"):
+            return self._colador_escrita(caminho, bruto)
 
         achado = ID_COMANDO.match(caminho)
         if not achado:
