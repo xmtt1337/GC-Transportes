@@ -237,6 +237,7 @@
   // acontecia: a mensagem ficava so no painel da aba do SPX, que ninguem estava olhando).
   const MACRO_DO_PAINEL = {
     'AT Exportada': 'alimentacao', 'Pedidos Pesquisados': 'pedidos', 'Backlog': 'backlog',
+    'Colador — Recebimento': 'recebimento', 'Colador — AT Cluster': 'at_cluster',
   };
 
   function eventoDoPainel(titulo, tipo, texto) {
@@ -251,12 +252,20 @@
 
   // ── comandos da tela Macros ────────────────────────────────────────────
   const MACROS_DA_TELA = ['alimentacao', 'pedidos', 'backlog'];
+  // O Colador (recebimento/at_cluster) migrou do colador_neon.py (falava com o Postgres
+  // direto) pra essa mesma fila - ver modules/macros-comando/rotasColador.js no backend.
+  // Ele leva "config" (xpt/dia/carência/lote/intervalo) DENTRO do comando: é o único jeito de a
+  // extensão saber o que rodar, já que não tem tela própria nela como os 3 de cima.
+  const QUAIS_COLADOR = ['recebimento', 'at_cluster'];
 
   // So roda o que esta nesta lista, com um id de verdade. O comando vem de uma
   // resposta HTTP: nada que chegue por ali pode virar "rode qualquer coisa".
   function comandoValido(c) {
-    return !!c && typeof c.id === 'string' && c.id.length > 0 && c.id.length <= 64
-      && MACROS_DA_TELA.includes(c.qual);
+    if (!c || typeof c.id !== 'string' || !c.id.length || c.id.length > 64) return false;
+    if (MACROS_DA_TELA.includes(c.qual)) return true;
+    // Comando de Colador sem config não dá pra rodar - a extensão não tem de onde
+    // mais tirar xpt/dia/carência, e "rodar com o que sobrou" seria pior que recusar.
+    return QUAIS_COLADOR.includes(c.qual) && !!c.config && typeof c.config === 'object';
   }
 
   // O que fazer com a agenda que o vigia trouxe:
@@ -285,6 +294,7 @@
     agendaEfetiva,
     minutosParaProximoBacklog,
     MACROS_DA_TELA,
+    QUAIS_COLADOR,
     comandoValido,
     decidirAgendaDoSite,
     MACRO_DO_PAINEL,

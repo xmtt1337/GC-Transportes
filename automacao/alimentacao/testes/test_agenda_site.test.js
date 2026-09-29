@@ -163,7 +163,7 @@ test('vale pro intervalo que o sistema escolheu, nao so pra 60', () => {
 });
 
 // ── comandoValido ─────────────────────────────────────────────────────────
-test('so os tres macros da tela viram comando', () => {
+test('so os tres macros da tela viram comando, sem precisar de config', () => {
   for (const qual of ['alimentacao', 'pedidos', 'backlog']) {
     assert.ok(L.comandoValido({ id: 'abc', qual }), qual);
   }
@@ -176,6 +176,16 @@ test('comando torto e recusado', () => {
     { id: 'abc', qual: 'apagar' }, { id: 'abc', qual: '__proto__' }, { id: 'abc', qual: 'constructor' }]) {
     assert.ok(!L.comandoValido(c), JSON.stringify(c));
   }
+});
+
+test('Colador (recebimento/at_cluster) so vira comando com config', () => {
+  for (const qual of L.QUAIS_COLADOR) {
+    assert.ok(L.comandoValido({ id: 'abc', qual, config: { xpt: 'XPT_CFC' } }), qual);
+    assert.ok(!L.comandoValido({ id: 'abc', qual }), `${qual} sem config`);
+    assert.ok(!L.comandoValido({ id: 'abc', qual, config: null }), `${qual} config null`);
+    assert.ok(!L.comandoValido({ id: 'abc', qual, config: 'xpt=XPT_CFC' }), `${qual} config nao e objeto`);
+  }
+  assert.deepStrictEqual(L.QUAIS_COLADOR, ['recebimento', 'at_cluster']);
 });
 
 // ── decidirAgendaDoSite ───────────────────────────────────────────────────

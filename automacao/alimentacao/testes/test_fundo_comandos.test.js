@@ -26,7 +26,7 @@ const PASTA = path.join(__dirname, '..', 'extensao-macros-spx');
 const AGORA = Date.UTC(2026, 8, 24, 17, 0, 0);   // 14:00 em Brasilia
 const ID = '0f8fad5b-d9cb-469f-a165-70867728950e';
 
-function carregar({ storage = {}, vigia = {} } = {}) {
+function carregar({ storage = {}, vigia = {}, abasExtras = [] } = {}) {
   const guardado = { ...storage };
   const alarmes = new Map();
   const escritas = { criouAlarme: 0 };
@@ -61,7 +61,8 @@ function carregar({ storage = {}, vigia = {} } = {}) {
     tabs: {
       async query() { return [{ id: 7, windowId: 1, url: 'https://spx.shopee.com.br/#/delivery-assignment/list' },
         { id: 8, windowId: 1, url: 'https://spx.shopee.com.br/#/orderTracking' },
-        { id: 9, windowId: 1, url: 'https://spx.shopee.com.br/#/dashboard/all-mile-hub/lm' }]; },
+        { id: 9, windowId: 1, url: 'https://spx.shopee.com.br/#/dashboard/all-mile-hub/lm' },
+        ...abasExtras]; },
       async sendMessage(id, msg) {
         chamadas.abas.push({ id, msg });
         return vigia.macroRecusa ? { ok: false, error: 'já está rodando' } : { ok: true };
@@ -87,6 +88,12 @@ function carregar({ storage = {}, vigia = {} } = {}) {
       const resposta = vigia.resposta === undefined ? { comandos: [] } : vigia.resposta;
       return { ok: vigia.status ? vigia.status < 400 : true, status: vigia.status || 200, json: async () => resposta };
     }
+    if (url.includes('/colador/') && vigia.colador) {
+      const rota = url.slice(url.indexOf('/colador/'));
+      const chave = Object.keys(vigia.colador).find((k) => rota.startsWith(k));
+      const resposta = chave ? vigia.colador[chave] : { ok: true };
+      return { ok: true, status: 200, json: async () => resposta };
+    }
     return { ok: true, status: 200, json: async () => ({ ok: true }) };
   };
 
@@ -97,7 +104,7 @@ function carregar({ storage = {}, vigia = {} } = {}) {
   }
 
   const sandbox = { chrome, fetch: fetchFalso, console: { log() {}, error() {} }, Date: DataFixa,
-    AbortSignal, setTimeout, clearTimeout, Intl, Promise };
+    AbortSignal, setTimeout, clearTimeout, Intl, Promise, URLSearchParams };
   sandbox.self = sandbox;
   sandbox.importScripts = (arq) => vm.runInContext(fs.readFileSync(path.join(PASTA, arq), 'utf8'), sandbox);
   vm.createContext(sandbox);
@@ -475,6 +482,67 @@ test('macro que RECUSA o disparo (ja rodando) conta como aviso, nao como defeito
   await dormir(30);
   const evs = eventosMandados(c).map((e) => JSON.parse(e.corpo));
   assert.deepStrictEqual(evs, [{ macro: 'pedidos', nivel: 'aviso', texto: 'Não rodou: já está rodando' }]);
+});
+
+// ── o Colador ──────────────────────────────────────────────────────────────
+// Ainda sem TELA_DE (nao navega sozinho - ver PAGINA_COLADOR em fundo.js): so
+// pega uma aba que a pessoa ja deixou aberta na tela certa, e leva a config
+// que veio no comando (ela nao tem outro jeito de chegar na extensao).
+test('comando do Colador vai pra aba ja aberta na tela certa, com a config', async () => {
+  const config = { xpt: 'XPT_CFC', dia: '2026-09-28', carencia: 60, lote: 20, intervalo: 0.5, continuo: true };
+  const c = carregar({
+    abasExtras: [{ id: 20, windowId: 1, url: 'https://spx.shopee.com.br/#/inbound/singleReceiveNew' }],
+    vigia: { resposta: { comandos: [{ id: ID, qual: 'recebimento', config }] } },
+  });
+  await c.ctx.buscarComandos();
+  await dormir(20);
+  assert.strictEqual(c.chamadas.abas[0].id, 20);
+  assert.deepStrictEqual(plano(c.chamadas.abas[0].msg), { xmMacro: 'recebimento', agendado: true, config });
+});
+
+test('sem aba do Colador aberta: erro claro, sem tentar abrir uma sozinho', async () => {
+  const c = carregar({ vigia: { resposta: { comandos: [{ id: ID, qual: 'at_cluster', config: { xpt: '' } } ] } } });
+  await c.ctx.buscarComandos();
+  await dormir(20);
+  assert.strictEqual(c.chamadas.abas.length, 0, 'nao mandou mensagem pra aba nenhuma');
+  const [envio] = enviadosAoVigia(c, `/comandos/${ID}/resultado`);
+  assert.match(JSON.parse(envio.corpo).error, /abra-a antes/);
+});
+
+test('comando do Colador sem config e ignorado (comandoValido recusa)', async () => {
+  const c = carregar({ vigia: { resposta: { comandos: [{ id: ID, qual: 'recebimento' }] } } });
+  await c.ctx.buscarComandos();
+  await dormir(20);
+  assert.strictEqual(c.chamadas.abas.length, 0);
+});
+
+// ── ponte pro vigia (o content script do Colador nao alcanca 127.0.0.1 direto) ──
+const respostaMsg = (c, msg) => new Promise((resolve) => c.ouvintes.mensagem(msg, {}, resolve));
+
+test('xmColador "lote" pergunta ao vigia e devolve a resposta dele', async () => {
+  const c = carregar({ vigia: { colador: { '/colador/lote': { tabela: 'shopee_recebimentos', itens: [{ id: 1, codigo: 'BR1' }] } } } });
+  const r = await respostaMsg(c, { xmColador: 'lote', modo: 'recebimento', tam: 20, carencia: 60, dia: null, xpt: null });
+  assert.deepStrictEqual(plano(r), { ok: true, tabela: 'shopee_recebimentos', itens: [{ id: 1, codigo: 'BR1' }] });
+  const pedido = c.chamadas.fetch.find((f) => f.url.includes('/colador/lote'));
+  assert.ok(pedido.url.includes('modo=recebimento') && pedido.url.includes('tam=20') && pedido.url.includes('carencia=60'));
+});
+
+test('xmColador "confirmar"/"liberar"/"at": POST com o corpo certo', async () => {
+  const c = carregar({ vigia: {} });
+  await respostaMsg(c, { xmColador: 'confirmar', modo: 'recebimento', tabela: 'shopee_recebimentos', ids: [1, 2] });
+  const [confirmar] = c.chamadas.fetch.filter((f) => f.url.endsWith('/colador/confirmar'));
+  assert.strictEqual(confirmar.metodo, 'POST');
+  assert.deepStrictEqual(JSON.parse(confirmar.corpo), { modo: 'recebimento', tabela: 'shopee_recebimentos', ids: [1, 2] });
+
+  await respostaMsg(c, { xmColador: 'at', codigo: 'BR1', dia: '2026-09-28', at: 'AT1' });
+  const [at] = c.chamadas.fetch.filter((f) => f.url.endsWith('/colador/at'));
+  assert.deepStrictEqual(JSON.parse(at.corpo), { codigo: 'BR1', dia: '2026-09-28', at: 'AT1' });
+});
+
+test('xmColador com erro do vigia devolve ok:false com o motivo', async () => {
+  const c = carregar({ vigia: { fechado: true } });
+  const r = await respostaMsg(c, { xmColador: 'lote', modo: 'recebimento', tam: 20, carencia: 60 });
+  assert.strictEqual(r.ok, false);
 });
 
 test('disparo que deu certo nao conta evento (quem conta e o proprio macro, ao terminar)', async () => {

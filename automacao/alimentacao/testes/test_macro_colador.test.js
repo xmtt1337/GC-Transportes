@@ -1,0 +1,332 @@
+// Testes do macro Colador (Recebimento e AT Cluster) — colador.js.
+//
+//   node --test automacao/alimentacao/testes/test_macro_colador.test.js
+//
+// Sem DOM de verdade aqui, de proposito (mesma linha do resto da suite): o que
+// precisa de teste e a ORQUESTRACAO — qual lote pede, quando confirma, quando
+// libera e desiste, o que manda pro vigia — nao "o querySelector acha o campo
+// de verdade", que so da pra confirmar olhando a tela real (ver LEIA-ME sobre
+// Chrome headless). `S` (spx.js) e `document.querySelector` sao dublados.
+//
+// O que se protege:
+//   - reserva um lote, cola um por um, confirma cada um assim que entra;
+//   - falha de colagem libera o codigo (nao fica preso) e conta como falha;
+//   - MAX_FALHAS_SEGUIDAS falhas seguidas desiste (nao martela a fila à toa
+//     quando a tela mudou ou a aba caiu) — uma colagem boa no meio zera a conta;
+//   - campo nao encontrado e falha (a mesma trava acima), nao excecao muda;
+//   - "continuo" espera por codigo novo em vez de terminar com a fila vazia;
+//   - "nao continuo" termina quando a fila esvazia;
+//   - Parar (S.parar) encerra o laco e conta "parado por voce", nao erro;
+//   - a AT capturada (mensagem do rede.js) e mandada ao vigia, sem travar a
+//     digitacao caso isso falhe;
+//   - so responde comando pro proprio qual, e recusa comando sem config;
+//   - dois comandos pro mesmo content script (tabs diferentes) nunca rodam
+//     juntos - "rodando" e um unico valor.
+//
+// Dados de TESTE, inventados.
+
+const test = require('node:test');
+const assert = require('node:assert');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const PASTA = path.join(__dirname, '..', 'extensao-macros-spx');
+
+class ParadoFalso extends Error {}
+
+function carregar({ pagina = {}, respostas = {}, mensagensRecebidas } = {}) {
+  const chamadasVigia = [];
+  const painel = { passos: [], notas: [], ok: null, erro: null, aoParar: null, titulo: null };
+  const S = {
+    Parado: ParadoFalso,
+    parar: false,
+    dormir: (ms) => new Promise((resolve, reject) => {
+      // sincrono o bastante pro teste nao esperar de verdade, mas ainda respeita Parar.
+      if (S.parar) return reject(new ParadoFalso('parado por voce'));
+      resolve();
+    }),
+    visivel: (el) => !!el && el.visivel !== false,
+    desabilitado: (el) => !!el && !!el.desabilitado,
+    escrever: (el, texto) => { el.value = texto; el.escreveu = (el.escreveu || 0) + 1; },
+    apertarEnter: (el) => { el.enterApertado = (el.enterApertado || 0) + 1; },
+  };
+  const P = {
+    abrir(titulo, aoParar) { painel.titulo = titulo; painel.aoParar = aoParar; },
+    passo(t) { painel.passos.push(t); },
+    nota(t) { painel.notas.push(t); },
+    ok(t) { painel.ok = t; },
+    erro(t) { painel.erro = t; },
+  };
+
+  const ctx = vm.createContext({
+    console: { log() {}, warn() {}, error() {} },
+    document: { querySelector: (sel) => pagina[sel] || null },
+    chrome: {
+      runtime: {
+        onMessage: { addListener: (f) => { ctx.__ouvinteMsg = f; } },
+        sendMessage(msg, cb) {
+          chamadasVigia.push(msg);
+          const chave = msg.xmColador;
+          const r = typeof respostas[chave] === 'function' ? respostas[chave](msg) : respostas[chave];
+          if (r === '__NUNCA_RESPONDE__') return; // simula um pedido que nunca volta
+          if (r instanceof Error) { cb({ ok: false, error: r.message }); return; }
+          cb(r === undefined ? { ok: true } : r);
+        },
+        lastError: null,
+      },
+    },
+  });
+  ctx.window = ctx; // raiz === window: addEventListener('message') compara evento.source com ele
+  ctx.window.addEventListener = (tipo, fn) => { if (tipo === 'message') ctx.__ouvinteWindowMsg = fn; };
+  vm.runInContext(fs.readFileSync(path.join(PASTA, 'logica.js'), 'utf8'), ctx);
+  ctx.XMMacro.spx = S;
+  ctx.XMMacro.painel = P;
+  vm.runInContext(fs.readFileSync(path.join(PASTA, 'colador.js'), 'utf8'), ctx, { filename: 'colador.js' });
+
+  // `window` visto de FORA (ctx.window) nao e o mesmo objeto que `window` visto de
+  // DENTRO do vm (o global proxy do V8 - vm.createContext contextifica o sandbox,
+  // mas o script enxerga um proxy em cima dele). raiz.addEventListener compara
+  // evento.source === raiz por identidade: sem pegar essa referencia de DENTRO, a
+  // mensagem simulada nunca bateria e a captura de AT pareceria simplesmente muda.
+  const raiz = vm.runInContext('window', ctx);
+
+  return { G: ctx.XMMacro, S, P: painel, chamadasVigia, ctx, raiz };
+}
+
+const CONFIG = { xpt: 'XPT_CFC', dia: '2026-09-28', carencia: 60, lote: 20, intervalo: 0, continuo: false, todos_dias: false };
+
+function loteDe(itens, tabela = 'shopee_recebimentos') {
+  return { tabela, itens };
+}
+
+// Objeto criado DENTRO do vm (as mensagens que colador.js manda) tem outro
+// prototipo do deste realm: normaliza antes de comparar com deepStrictEqual.
+const plano = (x) => JSON.parse(JSON.stringify(x));
+
+// ── uma rodada simples ──────────────────────────────────────────────────────
+test('cola um codigo, confirma, e termina quando a fila esvazia (nao continuo)', async () => {
+  const campo = { desabilitado: false };
+  const { G, P, chamadasVigia } = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': campo },
+    respostas: {
+      lote: (m) => (chamadasVigia.filter((c) => c.xmColador === 'lote').length === 1
+        ? loteDe([{ id: 1, codigo: 'BR1' }]) : loteDe([])),
+      confirmar: { ok: true, atualizados: 1 },
+    },
+  });
+  await G.colador.rodar('recebimento', CONFIG);
+  assert.strictEqual(P.ok, '1 colado(s)');
+  assert.strictEqual(campo.value, 'BR1');
+  assert.strictEqual(campo.enterApertado, 1);
+  const confirmou = chamadasVigia.find((c) => c.xmColador === 'confirmar');
+  assert.deepStrictEqual(plano(confirmou), { xmColador: 'confirmar', modo: 'recebimento', tabela: 'shopee_recebimentos', ids: [1] });
+});
+
+test('lote pedido leva xpt/dia/carencia/lote da config', async () => {
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: { lote: loteDe([]), confirmar: { ok: true } },
+  });
+  await r.G.colador.rodar('recebimento', CONFIG);
+  const pedido = r.chamadasVigia.find((c) => c.xmColador === 'lote');
+  assert.deepStrictEqual(plano(pedido), {
+    xmColador: 'lote', modo: 'recebimento', tam: 20, carencia: 60, dia: '2026-09-28', xpt: 'XPT_CFC',
+  });
+});
+
+test('todos_dias manda dia null pro backend (nao inventa uma data)', async () => {
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: { lote: loteDe([]) },
+  });
+  await r.G.colador.rodar('recebimento', { ...CONFIG, todos_dias: true, dia: null });
+  const pedido = r.chamadasVigia.find((c) => c.xmColador === 'lote');
+  assert.strictEqual(pedido.dia, null);
+});
+
+test('cola varios da mesma tabela, um por um, cada um confirmado na hora', async () => {
+  const campo = { desabilitado: false };
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': campo },
+    respostas: {
+      lote: (m) => (r.chamadasVigia.filter((c) => c.xmColador === 'lote').length === 1
+        ? loteDe([{ id: 1, codigo: 'BR1' }, { id: 2, codigo: 'BR2' }]) : loteDe([])),
+      confirmar: { ok: true },
+    },
+  });
+  await r.G.colador.rodar('recebimento', CONFIG);
+  const confirmados = r.chamadasVigia.filter((c) => c.xmColador === 'confirmar').map((c) => c.ids[0]);
+  assert.deepStrictEqual(confirmados, [1, 2]);
+  assert.strictEqual(r.P.ok, '2 colado(s)');
+});
+
+// ── falha e desistencia ──────────────────────────────────────────────────────
+test('campo nao encontrado libera o codigo e conta como falha (nao excecao muda)', async () => {
+  const r = carregar({
+    pagina: {}, // nenhum seletor acha nada - "tela errada"
+    respostas: {
+      lote: (m) => (r.chamadasVigia.filter((c) => c.xmColador === 'lote').length === 1
+        ? loteDe([{ id: 1, codigo: 'BR1' }]) : loteDe([])),
+    },
+  });
+  await r.G.colador.rodar('recebimento', CONFIG);
+  const liberou = r.chamadasVigia.find((c) => c.xmColador === 'liberar');
+  assert.deepStrictEqual(plano(liberou), { xmColador: 'liberar', modo: 'recebimento', tabela: 'shopee_recebimentos', ids: [1] });
+  assert.match(r.P.notas.at(-1), /não colei BR1/);
+});
+
+test('depois de MAX_FALHAS_SEGUIDAS falhas seguidas, desiste com erro (nao martela a fila)', async () => {
+  const r = carregar({
+    pagina: {},
+    respostas: {
+      lote: (m) => (r.chamadasVigia.filter((c) => c.xmColador === 'lote').length === 1
+        ? loteDe([{ id: 1, codigo: 'BR1' }, { id: 2, codigo: 'BR2' }, { id: 3, codigo: 'BR3' }, { id: 4, codigo: 'BR4' }])
+        : loteDe([])),
+    },
+  });
+  await r.G.colador.rodar('recebimento', CONFIG);
+  assert.match(r.P.erro, /falhas seguidas/);
+  // parou antes do 4o - nao gastou o lote inteiro tentando
+  assert.strictEqual(r.chamadasVigia.filter((c) => c.xmColador === 'liberar').length, 3);
+});
+
+test('uma colagem boa no meio zera a contagem de falhas seguidas', async () => {
+  // Campo some (falha), aparece (cola - zera a conta), some de novo duas vezes
+  // (2 falhas seguidas, nunca bate as 3 de MAX_FALHAS_SEGUIDAS): termina bem.
+  let chamada = 0;
+  const seq = [null, { desabilitado: false }, null, null];
+  const r = carregar({ pagina: {}, respostas: {
+    lote: () => (r.chamadasVigia.filter((c) => c.xmColador === 'lote').length === 1
+      ? loteDe([{ id: 1, codigo: 'BR1' }, { id: 2, codigo: 'BR2' }, { id: 3, codigo: 'BR3' }, { id: 4, codigo: 'BR4' }])
+      : loteDe([])),
+    confirmar: { ok: true },
+  } });
+  // So o PRIMEIRO seletor do catalogo consome da sequencia - os de fallback (que
+  // tambem contem "insira") tem que continuar mudos, senao um acharCampo() so
+  // consumiria 2 posicoes da vez (o primeiro falhando e caindo no fallback).
+  r.ctx.document.querySelector = (sel) => (sel === 'input[placeholder="Por favor, insira"]' ? seq[chamada++] : null);
+  await r.G.colador.rodar('recebimento', CONFIG);
+  assert.strictEqual(r.P.ok, '1 colado(s)');
+});
+
+// ── continuo ──────────────────────────────────────────────────────────────
+test('continuo espera por codigo novo em vez de terminar com a fila vazia', async () => {
+  let pedidos = 0;
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: {
+      lote: () => {
+        pedidos++;
+        if (pedidos === 1) return loteDe([{ id: 1, codigo: 'BR1' }]);
+        if (pedidos === 2) { r.S.parar = true; return loteDe([]); } // simula o Parar chegando na espera
+        return loteDe([]);
+      },
+      confirmar: { ok: true },
+    },
+  });
+  await r.G.colador.rodar('recebimento', { ...CONFIG, continuo: true });
+  assert.strictEqual(r.P.erro, 'parado por você');
+  assert.ok(pedidos >= 2);
+});
+
+// ── Parar ────────────────────────────────────────────────────────────────
+test('Parar no meio conta "parado por voce", nao erro', async () => {
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: { lote: () => { r.S.parar = true; return loteDe([{ id: 1, codigo: 'BR1' }]); } },
+  });
+  await r.G.colador.rodar('recebimento', CONFIG);
+  assert.strictEqual(r.P.erro, 'parado por você');
+});
+
+// ── AT capturada ─────────────────────────────────────────────────────────
+test('AT capturada (mensagem do rede.js) e mandada ao vigia', async () => {
+  const r = carregar({
+    pagina: { 'input[placeholder="Please Scan or Input"]': { desabilitado: false } },
+    respostas: {
+      lote: (m) => (r.chamadasVigia.filter((c) => c.xmColador === 'lote').length === 1
+        ? loteDe([{ id: 1, codigo: 'BR1' }]) : loteDe([])),
+      confirmar: { ok: true },
+      at: { ok: true, atualizados: 1 },
+    },
+  });
+  r.ctx.__ouvinteWindowMsg({ source: r.raiz, data: { __xmMacroAt: true, codigo: 'BR1', at: 'AT1' } });
+  await r.G.colador.rodar('at_cluster', CONFIG);
+  const at = r.chamadasVigia.find((c) => c.xmColador === 'at');
+  assert.deepStrictEqual(plano(at), { xmColador: 'at', codigo: 'BR1', dia: '2026-09-28', at: 'AT1' });
+});
+
+test('mensagem de outra origem (source diferente) e ignorada', async () => {
+  const r = carregar({ pagina: {}, respostas: { lote: loteDe([]) } });
+  r.ctx.__ouvinteWindowMsg({ source: {}, data: { __xmMacroAt: true, codigo: 'BR1', at: 'AT1' } });
+  await r.G.colador.rodar('at_cluster', CONFIG);
+  assert.ok(!r.chamadasVigia.some((c) => c.xmColador === 'at'));
+});
+
+test('erro ao gravar a AT nao trava a colagem (tenta de novo na proxima rodada)', async () => {
+  let tentativasAt = 0;
+  const r = carregar({
+    pagina: { 'input[placeholder="Please Scan or Input"]': { desabilitado: false } },
+    respostas: {
+      lote: (m) => (r.chamadasVigia.filter((c) => c.xmColador === 'lote').length === 1
+        ? loteDe([{ id: 1, codigo: 'BR1' }]) : loteDe([])),
+      confirmar: { ok: true },
+      at: () => { tentativasAt++; return new Error('servidor fora'); },
+    },
+  });
+  r.ctx.__ouvinteWindowMsg({ source: r.raiz, data: { __xmMacroAt: true, codigo: 'BR1', at: 'AT1' } });
+  await r.G.colador.rodar('at_cluster', CONFIG);
+  assert.strictEqual(r.P.ok, '1 colado(s)', 'a colagem termina bem mesmo com a AT falhando');
+  assert.ok(tentativasAt >= 1);
+});
+
+// ── dispatch (chrome.runtime.onMessage) ─────────────────────────────────────
+test('so responde comando do proprio catalogo, e exige config', () => {
+  const r = carregar({ pagina: {}, respostas: {} });
+  const respostas = [];
+  const responder = (x) => respostas.push(x);
+
+  r.ctx.__ouvinteMsg({ xmMacro: 'recebimento' }, {}, responder); // sem config
+  assert.deepStrictEqual(plano(respostas.pop()), { ok: false, error: 'comando sem config' });
+
+  r.ctx.__ouvinteMsg({ xmMacro: 'outro-macro', config: {} }, {}, responder);
+  assert.strictEqual(respostas.length, 0, 'nao e do catalogo do colador - nem responde');
+});
+
+test('comando valido aceita e comeca a rodar', async () => {
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: { lote: loteDe([]) },
+  });
+  const respostas = [];
+  r.ctx.__ouvinteMsg({ xmMacro: 'recebimento', config: CONFIG }, {}, (x) => respostas.push(x));
+  assert.deepStrictEqual(plano(respostas), [{ ok: true }]);
+  await new Promise((res) => setImmediate(res));
+  assert.strictEqual(r.P.ok, '0 colado(s)');
+});
+
+test('comando pro mesmo qual enquanto ja esta rodando e recusado', async () => {
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: { lote: '__NUNCA_RESPONDE__' }, // fica "rodando" pra sempre
+  });
+  const respostas = [];
+  r.ctx.__ouvinteMsg({ xmMacro: 'recebimento', config: CONFIG }, {}, (x) => respostas.push(x));
+  await new Promise((res) => setImmediate(res));
+  r.ctx.__ouvinteMsg({ xmMacro: 'recebimento', config: CONFIG }, {}, (x) => respostas.push(x));
+  assert.deepStrictEqual(plano(respostas[1]), { ok: false, error: 'Colador — Recebimento já está rodando' });
+});
+
+// ── diaDoLote / diaDaAt (pura) ───────────────────────────────────────────────
+test('diaDoLote: todos_dias manda null, senao o dia do filtro', () => {
+  const r = carregar({ pagina: {}, respostas: {} });
+  assert.strictEqual(r.G.colador.diaDoLote({ todos_dias: true, dia: '2026-09-28' }), null);
+  assert.strictEqual(r.G.colador.diaDoLote({ todos_dias: false, dia: '2026-09-28' }), '2026-09-28');
+});
+
+test('diaDaAt: usa o dia do filtro, ou hoje se "todos os dias"', () => {
+  const r = carregar({ pagina: {}, respostas: {} });
+  assert.strictEqual(r.G.colador.diaDaAt({ dia: '2026-09-28' }), '2026-09-28');
+  assert.match(r.G.colador.diaDaAt({ dia: null }), /^\d{4}-\d{2}-\d{2}$/);
+});

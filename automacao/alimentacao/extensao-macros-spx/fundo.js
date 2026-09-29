@@ -154,6 +154,17 @@ const TELA_DE = {
   backlog: '#/dashboard/all-mile-hub/lm',
 };
 
+// O Colador (recebimento/at_cluster) ainda nao tem endereco confirmado pra
+// navegar sozinho ate a tela (TODO: preencher TELA_DE quando confirmado, do
+// mesmo jeito que os tres de cima). Ate la, so pega uma aba que a PESSOA ja
+// deixou aberta na tela certa - a marca abaixo e um pedaco da URL de producao
+// (ver modules/macros-comando/colador.js, campo `pagina`). Navegar pra um
+// lugar chutado no SPX de verdade e pior que nao rodar.
+const PAGINA_COLADOR = {
+  recebimento: 'singleReceiveNew',
+  at_cluster: 'sorting-task',
+};
+
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Espera a aba terminar de carregar, mais uma folga pro SPA se montar. */
@@ -190,6 +201,10 @@ async function abaDoSpx(qual) {
     abas = [];
   }
 
+  if (PAGINA_COLADOR[qual]) {
+    return abas.find((t) => String(t.url || '').includes(PAGINA_COLADOR[qual])) || null;
+  }
+
   const tela = TELA_DE[qual] || TELA_DE.alimentacao;
   const marca = tela.replace('#/', '');
   const jaNaTela = abas.find((t) => String(t.url || '').includes(marca));
@@ -217,10 +232,14 @@ async function abaDoSpx(qual) {
 // pareciam alarme mal configurado, quando na verdade era clique manual
 // testando. Sem essa marca, cada vez que isso acontecesse de novo seria
 // preciso reabrir essa investigacao do zero.
-async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado') {
+async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado', config) {
   const aba = await abaDoSpx(qual);
   if (!aba) {
-    const motivo = 'não consegui abrir o SPX';
+    // O Colador (ainda sem TELA_DE - ver PAGINA_COLADOR) nao abre aba sozinho:
+    // precisa que a pessoa ja tenha deixado a tela certa aberta no SPX.
+    const motivo = PAGINA_COLADOR[qual]
+      ? 'não achei a aba do SPX nessa tela — abra-a antes de rodar'
+      : 'não consegui abrir o SPX';
     await anotarFalha(qual, motivo);
     return { ok: false, error: motivo };
   }
@@ -231,8 +250,10 @@ async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado'
     await chrome.tabs.update(aba.id, { active: true }).catch(() => {});
     await chrome.windows.update(aba.windowId, { focused: true }).catch(() => {});
   }
+  const msg = { xmMacro: qual, agendado: true };
+  if (config !== undefined) msg.config = config;
   try {
-    const r = await chrome.tabs.sendMessage(aba.id, { xmMacro: qual, agendado: true });
+    const r = await chrome.tabs.sendMessage(aba.id, msg);
     // O macro recusa quando ja esta rodando. Sem olhar a resposta, o popup
     // dizia "rodando" e a pessoa ficava esperando um segundo comeco que nao vem.
     if (r && r.ok === false) {
@@ -248,7 +269,7 @@ async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado'
     try {
       await chrome.tabs.reload(aba.id);
       await esperarCarregar(aba.id);
-      await chrome.tabs.sendMessage(aba.id, { xmMacro: qual, agendado: true });
+      await chrome.tabs.sendMessage(aba.id, msg);
       await anotarDisparo(qual, origem, ' (depois de recarregar a aba)');
       return { ok: true };
     } catch (e2) {
@@ -304,6 +325,44 @@ async function pendentesDoVigia(limite) {
   }
   return r.json();
 }
+
+// ── ponte com o vigia pro Colador ───────────────────────────────────────────
+// Mesmo motivo do pendentesDoVigia acima: o content script (mundo HTTPS do SPX) esbarra no
+// bloqueio de rede privada do Chrome ao falar com 127.0.0.1 - quem pergunta ao vigia e o
+// service worker, que repassa a resposta pela mensagem que o content script mandou.
+async function pedirAoVigia(caminho, opcoes) {
+  const o = opcoes || {};
+  const corte = AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined;
+  const r = await fetch(`${VIGIA}${caminho}`, {
+    method: o.corpo ? 'POST' : 'GET',
+    headers: o.corpo ? { 'Content-Type': 'application/json' } : undefined,
+    body: o.corpo ? JSON.stringify(o.corpo) : undefined,
+    signal: corte,
+  });
+  if (!r.ok) {
+    let motivo = `respondeu ${r.status}`;
+    try {
+      const corpo = await r.json();
+      if (corpo && corpo.error) motivo = corpo.error;
+    } catch (e) { /* corpo sem JSON nao muda o que dizer */ }
+    throw new Error(motivo);
+  }
+  return r.json();
+}
+
+function coladorLote({ modo, tam, carencia, dia, xpt }) {
+  const params = new URLSearchParams({ modo: String(modo), tam: String(tam), carencia: String(carencia) });
+  if (dia) params.set('dia', dia);
+  if (xpt) params.set('xpt', xpt);
+  return pedirAoVigia(`/colador/lote?${params}`);
+}
+
+const coladorConfirmar = ({ modo, tabela, ids }) =>
+  pedirAoVigia('/colador/confirmar', { corpo: { modo, tabela, ids } });
+const coladorLiberar = ({ modo, tabela, ids }) =>
+  pedirAoVigia('/colador/liberar', { corpo: { modo, tabela, ids } });
+const coladorAt = ({ codigo, dia, at }) =>
+  pedirAoVigia('/colador/at', { corpo: { codigo, dia, at } });
 
 // ── contar ao sistema o que aconteceu ───────────────────────────────────────
 // O painel do macro (na aba do SPX) e o disparo avisam aqui; a extensao leva ao vigia, que
@@ -403,7 +462,7 @@ async function executarComando(c) {
   //
   // Sem esperar: abrir a aba pode levar um minuto, e a proxima pergunta ao
   // vigia nao pode ficar parada atras disso.
-  disparar(c.qual, false, 'site')
+  disparar(c.qual, false, 'site', c.config)
     .then((r) => contarResultado(c.id, r))
     .catch((e) => contarResultado(c.id, { ok: false, error: String(e.message || e) }));
 }
@@ -472,6 +531,18 @@ chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
 
   if (msg.xmMacro === 'pendentes') {
     pendentesDoVigia(msg.limite).then(
+      (d) => responder({ ok: true, ...d }),
+      (e) => responder({ ok: false, error: String(e.message || e) }));
+    return true;
+  }
+
+  // O content script do Colador nao alcanca 127.0.0.1 direto (mesmo bloqueio de
+  // rede privada do pendentes acima) - pede aqui, e a resposta volta pela mensagem.
+  if (msg.xmColador) {
+    const FUNCAO = { lote: coladorLote, confirmar: coladorConfirmar, liberar: coladorLiberar, at: coladorAt };
+    const fn = FUNCAO[msg.xmColador];
+    if (!fn) { responder({ ok: false, error: `xmColador desconhecido: ${msg.xmColador}` }); return; }
+    fn(msg).then(
       (d) => responder({ ok: true, ...d }),
       (e) => responder({ ok: false, error: String(e.message || e) }));
     return true;

@@ -151,7 +151,11 @@ test('eventoDoPainel: titulo que e propriedade do objeto nao vira macro', () => 
 
 test('os titulos do catalogo sao os que os macros realmente usam', () => {
   // Se um macro mudar o titulo do painel sem mudar o catalogo, ele deixa de contar - em silencio.
-  const usados = ['alimentacao.js', 'pedidos.js', 'backlog.js'].map((f) =>
+  // alimentacao/pedidos/backlog abrem com um titulo literal (P.abrir('...')); o colador serve dois
+  // quais no mesmo arquivo, com o titulo vindo do CATALOGO dele - por isso extraido a parte.
+  const literais = ['alimentacao.js', 'pedidos.js', 'backlog.js'].map((f) =>
     /P\.abrir\('([^']+)'/.exec(fs.readFileSync(path.join(PASTA, f), 'utf8'))[1]);
-  assert.deepStrictEqual(usados.sort(), Object.keys(L.MACRO_DO_PAINEL).sort());
+  const doColador = [...fs.readFileSync(path.join(PASTA, 'colador.js'), 'utf8').matchAll(/titulo: '([^']+)'/g)]
+    .map((m) => m[1]);
+  assert.deepStrictEqual([...literais, ...doColador].sort(), Object.keys(L.MACRO_DO_PAINEL).sort());
 });

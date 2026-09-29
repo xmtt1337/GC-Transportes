@@ -1,12 +1,14 @@
 // Conta quantas chamadas o SPX tem em voo, pro macro saber quando a tela
-// terminou de carregar de verdade.
+// terminou de carregar de verdade. Tambem captura a AT que o SPX cria ao
+// colar um codigo na tela de AT Cluster (ver "captura da AT", abaixo).
 //
 // POR QUE E UM ARQUIVO SEPARADO: content script roda num mundo isolado, e o
 // `fetch` que ele enxerga NAO e o que a pagina usa. Trocar o fetch la nao
 // intercepta nada. Este roda no mundo da PAGINA ("world": "MAIN" no manifest)
 // e conversa com o outro por postMessage, a unica ponte entre os dois.
 //
-// Ele so conta. Nao le corpo, nao guarda url, nao manda nada pra fora.
+// Fora da rota de criar AT (ver abaixo), nao le corpo, nao guarda url, nao
+// manda nada pra fora - so conta.
 
 (() => {
   'use strict';
@@ -23,8 +25,49 @@
   function entrou() { ativas++; avisar(); }
   function saiu() { ativas = Math.max(0, ativas - 1); avisar(); }
 
+  // ── captura da AT (Colador — AT Cluster) ──────────────────────────────────
+  // Ao colar um codigo nessa tela, o SPX cria a AT e devolve o numero na
+  // PROPRIA resposta dessa chamada - e o unico jeito de saber na hora (o
+  // arquivo da Shopee com essa informacao so sai horas depois). So esta rota
+  // tem o corpo lido; nenhuma outra chamada e olhada por dentro.
+  //
+  // Se a Shopee renomear a rota ou os campos, e aqui (ROTA_CRIA_AT e
+  // CAMPOS_CODIGO/CAMPOS_AT) que se ajusta.
+  const ROTA_CRIA_AT = '/assisted_sorting/delivery/order/add';
+  const CAMPOS_CODIGO = ['fleet_order_id', 'order_id', 'sls_tracking_no', 'tracking_no'];
+  const CAMPOS_AT = ['at_no', 'at_id', 'assisted_task_no'];
+
+  function primeiroCampo(obj, campos) {
+    if (!obj || typeof obj !== 'object') return null;
+    for (const c of campos) if (obj[c] != null && obj[c] !== '') return String(obj[c]);
+    return null;
+  }
+
+  function avisarAt(codigo, at) {
+    if (codigo && at) window.postMessage({ __xmMacroAt: true, codigo, at }, window.location.origin);
+  }
+
+  // `retcode` ausente conta como sucesso: nem toda resposta do SPX o repete.
+  function tratarRespostaAt(codigo, texto) {
+    if (!codigo) return;
+    try {
+      const resposta = JSON.parse(texto);
+      if (resposta && (resposta.retcode === 0 || resposta.retcode === undefined)) {
+        avisarAt(codigo, primeiroCampo(resposta.data, CAMPOS_AT));
+      }
+    } catch (e) { /* resposta nao e JSON - nao e a chamada que a gente espera */ }
+  }
+
   const fetchOriginal = window.fetch;
   window.fetch = function (...args) {
+    const url = typeof args[0] === 'string' ? args[0] : String((args[0] && args[0].url) || '');
+    let codigoDaAt = null;
+    if (url.includes(ROTA_CRIA_AT)) {
+      try {
+        const corpo = args[1] && args[1].body;
+        if (typeof corpo === 'string') codigoDaAt = primeiroCampo(JSON.parse(corpo), CAMPOS_CODIGO);
+      } catch (e) { /* corpo nao e JSON - segue sem capturar */ }
+    }
     entrou();
     let promessa;
     try {
@@ -34,15 +77,34 @@
       throw e;
     }
     return promessa.then(
-      (r) => { saiu(); return r; },
+      (r) => {
+        saiu();
+        if (codigoDaAt) r.clone().text().then((t) => tratarRespostaAt(codigoDaAt, t)).catch(() => {});
+        return r;
+      },
       (e) => { saiu(); throw e; },
     );
+  };
+
+  const xhrOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (metodo, url, ...resto) {
+    this.__xmMacroUrl = String(url || '');
+    return xhrOpen.call(this, metodo, url, ...resto);
   };
 
   const xhrSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function (corpo) {
     let baixou = false;
-    const terminou = () => { if (!baixou) { baixou = true; saiu(); } };
+    let codigoDaAt = null;
+    if ((this.__xmMacroUrl || '').includes(ROTA_CRIA_AT) && typeof corpo === 'string') {
+      try { codigoDaAt = primeiroCampo(JSON.parse(corpo), CAMPOS_CODIGO); } catch (e) { /* segue sem capturar */ }
+    }
+    const terminou = () => {
+      if (baixou) return;
+      baixou = true;
+      saiu();
+      if (codigoDaAt) tratarRespostaAt(codigoDaAt, this.responseText);
+    };
     try {
       entrou();
       this.addEventListener('loadend', terminou);
