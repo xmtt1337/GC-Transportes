@@ -257,12 +257,19 @@ function _sstbRespostaHtml(chave) {
 // duas linhas do MESMO entregador mostram sempre a mesma data.
 const _sstbSemInfo = `<span class="sstb-resp-vazio">—</span>`;
 
+// Nomeia o entregador no tooltip da célula — reforça (linha a linha, não só no
+// cabeçalho) que a data é do ENTREGADOR, não deste pedido especificamente.
+const _sstbDicaConferencia = (r) => r.latest_user_name
+    ? `Conferência de ${_sstbEsc(r.latest_user_name)} — em qualquer pedido dele, não só este` : "";
+
 function _sstbConferenciaHtml(r) {
-    return r.conferencia_em ? "Sim" : _sstbSemInfo;
+    if (!r.conferencia_em) return _sstbSemInfo;
+    return `<span title="${_sstbDicaConferencia(r)}">Sim</span>`;
 }
 
 function _sstbConferenciaQuandoHtml(r) {
-    return r.conferencia_em ? _sstbEsc(_sstAtivoQuando(r.conferencia_em)) : _sstbSemInfo;
+    if (!r.conferencia_em) return _sstbSemInfo;
+    return `<span title="${_sstbDicaConferencia(r)}">${_sstbEsc(_sstAtivoQuando(r.conferencia_em))}</span>`;
 }
 
 function _sstbFaixaDe(dias) {
@@ -398,13 +405,16 @@ function _sstbMontarRelatorio(registros) {
         "Faixa":                    _sstbFaixaDe(r.dias).rotulo,
         "Status":                   r.latest_status || "",
         "Último usuário":           r.latest_user_name || "",
-        "Conferência":              r.conferencia_em ? "Sim" : "Não",
-        "Última conferência":       _sstbDataHora(r.conferencia_em),
+        "Conferência do entregador":         r.conferencia_em ? "Sim" : "Não",
+        "Última conferência do entregador":  _sstbDataHora(r.conferencia_em),
         "Resposta do cliente":      rotuloResp[r.resposta] || "",
         "Ativo enviado em":         _sstbDataHora(r.ativo_em),
         "Ativo enviado por":        r.ativo_por || "",
         "Resposta registrada em":   _sstbDataHora(r.respondido_em),
         "Resposta registrada por":  r.respondido_por || "",
+        "Registrado como faltante":  r.faltante_em ? "Sim" : "Não",
+        "Faltante registrado por":   r.faltante_por || "",
+        "Faltante registrado em":    _sstbDataHora(r.faltante_em),
     }));
 
     const conta = (lista, chave) => lista.filter(r => r.resposta === chave).length;
@@ -428,7 +438,8 @@ function _sstbBaixar() {
     const abaPedidos = XLSX.utils.json_to_sheet(pedidos);
     abaPedidos["!cols"] = [{ wch: 18 }, { wch: 11 }, { wch: 10 }, { wch: 16 }, { wch: 34 },
                            { wch: 12 }, { wch: 20 },
-                           { wch: 20 }, { wch: 18 }, { wch: 26 }, { wch: 22 }, { wch: 26 }];
+                           { wch: 20 }, { wch: 18 }, { wch: 26 }, { wch: 22 }, { wch: 26 },
+                           { wch: 14 }, { wch: 26 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(wb, abaPedidos, "Pedidos");
 
     const abaResumo = XLSX.utils.aoa_to_sheet(resumo);

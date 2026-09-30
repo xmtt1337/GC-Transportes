@@ -43,11 +43,19 @@ const reg = (id, extra = {}) => ({ shipment_id: id, dias: 2, latest_status: "Hub
 
 test("linha com conferência: 'Sim' e a data em Brasília", () => {
     const { b, els, ctx } = carregar();
-    b.regs = [reg("A1", { conferencia_em: "2026-09-28T12:00:00.000Z" })];
+    b.regs = [reg("A1", { latest_user_name: "Ana", conferencia_em: "2026-09-28T12:00:00.000Z" })];
     ctx._sstbRenderizar();
     const tbody = els["sstb-tbody"].innerHTML;
-    assert.ok(/data-label="Conferência">Sim</.test(tbody));
-    assert.ok(/data-label="Última conferência">28\/09 09:00</.test(tbody), tbody);
+    assert.ok(/data-label="Conferência"><span title="[^"]*">Sim<\/span>/.test(tbody), tbody);
+    assert.ok(/data-label="Última conferência"><span title="[^"]*">28\/09 09:00<\/span>/.test(tbody), tbody);
+});
+
+test("célula deixa claro que a data é do ENTREGADOR (nomeado no tooltip), não deste pedido", () => {
+    const { b, els, ctx } = carregar();
+    b.regs = [reg("A1", { latest_user_name: "Ana da Silva", conferencia_em: "2026-09-28T12:00:00.000Z" })];
+    ctx._sstbRenderizar();
+    const tbody = els["sstb-tbody"].innerHTML;
+    assert.ok(tbody.includes('title="Conferência de Ana da Silva — em qualquer pedido dele, não só este"'), tbody);
 });
 
 test("linha sem conferência nenhuma: as duas colunas mostram o traço apagado, não 'Não'/data vazia", () => {
@@ -70,17 +78,25 @@ test("duas linhas do MESMO entregador mostram a mesma última conferência", () 
     assert.strictEqual((tbody.match(/28\/09 09:00/g) || []).length, 2);
 });
 
-test("cabeçalho: 'Conferência' e 'Última conferência' ficam entre 'Último usuário' e 'Resposta do cliente'", () => {
+test("cabeçalho: as colunas de conferência ficam entre 'Último usuário' e 'Resposta do cliente'", () => {
     const tela = html.slice(html.indexOf('id="tela-shopee-stuck-backlog"'));
     const cab = tela.slice(tela.indexOf("<thead>"), tela.indexOf("</thead>"));
     const usuario = cab.indexOf("Último usuário");
-    const conferencia = cab.indexOf(">Conferência<");
-    const quando = cab.indexOf("Última conferência");
+    const conferencia = cab.indexOf("Conferência do entregador");
+    const quando = cab.indexOf("Última conferência do entregador");
     const resposta = cab.indexOf("Resposta do cliente");
     assert.ok(usuario < conferencia && conferencia < quando && quando < resposta, cab);
 });
 
-test("relatório: Sim/Não e a data em Brasília, na mesma posição das outras colunas de contexto", () => {
+test("cabeçalho: o nome da coluna e o tooltip deixam claro que é do ENTREGADOR, não do pedido", () => {
+    const tela = html.slice(html.indexOf('id="tela-shopee-stuck-backlog"'));
+    const cab = tela.slice(tela.indexOf("<thead>"), tela.indexOf("</thead>"));
+    assert.ok(cab.includes(">Conferência do entregador<"));
+    assert.ok(cab.includes(">Última conferência do entregador<"));
+    assert.match(cab, /title="[^"]*ENTREGADOR[^"]*"[^>]*>Última conferência do entregador/);
+});
+
+test("relatório: Sim/Não e a data em Brasília, com o nome da coluna deixando claro que é do entregador", () => {
     const { ctx } = carregar();
     const registros = [
         reg("A1", { conferencia_em: "2026-09-28T12:00:00.000Z" }),
@@ -89,8 +105,8 @@ test("relatório: Sim/Não e a data em Brasília, na mesma posição das outras 
     const { pedidos } = ctx._sstbMontarRelatorio(registros);
     const a1 = pedidos.find((p) => p["Pedido"] === "A1");
     const a2 = pedidos.find((p) => p["Pedido"] === "A2");
-    assert.strictEqual(a1["Conferência"], "Sim");
-    assert.strictEqual(a1["Última conferência"], "28/09/2026, 09:00");
-    assert.strictEqual(a2["Conferência"], "Não");
-    assert.strictEqual(a2["Última conferência"], "", "sem conferência, sem data - vazio, não 'Invalid Date'");
+    assert.strictEqual(a1["Conferência do entregador"], "Sim");
+    assert.strictEqual(a1["Última conferência do entregador"], "28/09/2026, 09:00");
+    assert.strictEqual(a2["Conferência do entregador"], "Não");
+    assert.strictEqual(a2["Última conferência do entregador"], "", "sem conferência, sem data - vazio, não 'Invalid Date'");
 });
