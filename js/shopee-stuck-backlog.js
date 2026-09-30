@@ -262,9 +262,12 @@ const _sstbSemInfo = `<span class="sstb-resp-vazio">—</span>`;
 const _sstbDicaConferencia = (r) => r.latest_user_name
     ? `Conferência de ${_sstbEsc(r.latest_user_name)} — em qualquer pedido dele, não só este` : "";
 
-function _sstbConferenciaHtml(r) {
-    if (!r.conferencia_em) return _sstbSemInfo;
-    return `<span title="${_sstbDicaConferencia(r)}">Sim</span>`;
+// O nome_sistema do conferente — não o "Sim/Não": essa coluna já é redundante com
+// "Última conferência" mostrar ou não uma data. O nome extra serve pra conferir se a
+// tradução (Conversão de nomes) achou a pessoa certa.
+function _sstbConferenteHtml(r) {
+    if (!r.conferencia_por) return _sstbSemInfo;
+    return `<span title="${_sstbDicaConferencia(r)}">${_sstbEsc(r.conferencia_por)}</span>`;
 }
 
 function _sstbConferenciaQuandoHtml(r) {
@@ -364,8 +367,8 @@ function _sstbLinhaHtml(r, podeAtivo) {
         <td data-label="Status">${_sstbEsc(r.latest_status) || "—"}</td>
         <td data-label="Dias parado" style="text-align:center"><i class="nr-pac-ponto" style="background:${cor}"></i>${_sstbFormatarDias(r.dias)}</td>
         <td data-label="Último usuário">${_sstbEsc(r.latest_user_name) || "—"}</td>
-        <td data-label="Conferência">${_sstbConferenciaHtml(r)}</td>
-        <td data-label="Última conferência">${_sstbConferenciaQuandoHtml(r)}</td>
+        <td data-label="Conferente">${_sstbConferenteHtml(r)}</td>
+        <td data-label="Última conferência do entregador">${_sstbConferenciaQuandoHtml(r)}</td>
         <td data-label="Resposta do cliente">${_sstbRespostaHtml(r.resposta)}</td>
         <td data-label="Histórico">
             <button type="button" class="sst-hist-btn" onclick="_sstAbrirHistorico('${_sstbEsc(r.shipment_id)}')">Visualizar</button>
@@ -405,7 +408,7 @@ function _sstbMontarRelatorio(registros) {
         "Faixa":                    _sstbFaixaDe(r.dias).rotulo,
         "Status":                   r.latest_status || "",
         "Último usuário":           r.latest_user_name || "",
-        "Conferência do entregador":         r.conferencia_em ? "Sim" : "Não",
+        "Conferente":                        r.conferencia_por || "",
         "Última conferência do entregador":  _sstbDataHora(r.conferencia_em),
         "Resposta do cliente":      rotuloResp[r.resposta] || "",
         "Ativo enviado em":         _sstbDataHora(r.ativo_em),
@@ -437,7 +440,7 @@ function _sstbBaixar() {
 
     const abaPedidos = XLSX.utils.json_to_sheet(pedidos);
     abaPedidos["!cols"] = [{ wch: 18 }, { wch: 11 }, { wch: 10 }, { wch: 16 }, { wch: 34 },
-                           { wch: 12 }, { wch: 20 },
+                           { wch: 30 }, { wch: 20 },
                            { wch: 20 }, { wch: 18 }, { wch: 26 }, { wch: 22 }, { wch: 26 },
                            { wch: 14 }, { wch: 26 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(wb, abaPedidos, "Pedidos");
