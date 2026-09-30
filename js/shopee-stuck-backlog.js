@@ -250,21 +250,20 @@ function _sstbRespostaHtml(chave) {
 }
 
 // ── Conferência do entregador ──
-// O servidor já traduz "Último usuário" (nome cru do arquivo da Shopee) pro
-// nome_sistema e devolve a ÚLTIMA conferência daquele entregador — de
-// qualquer pedido, não só desta linha (conferencia-entregador.js). É sinal do
-// entregador ainda estar ativo bipando, não do status deste pacote: por isso
-// duas linhas do MESMO entregador mostram sempre a mesma data.
+// O servidor já devolve quem conferiu ESTE pedido (como entregador, na rota
+// dele) e quando (conferencia-entregador.js) — o mesmo evento "Conferência do
+// entregador" que já aparece no Histórico do pedido. NÃO é a última
+// conferência do entregador em qualquer pacote: a primeira versão fazia isso
+// e o dado mentia (um entregador que bipa vinte pacotes numa rajada fazia
+// todos eles mostrarem "agora", mesmo o que ele tinha conferido há semanas).
 const _sstbSemInfo = `<span class="sstb-resp-vazio">—</span>`;
 
-// Nomeia o entregador no tooltip da célula — reforça (linha a linha, não só no
-// cabeçalho) que a data é do ENTREGADOR, não deste pedido especificamente.
-const _sstbDicaConferencia = (r) => r.latest_user_name
-    ? `Conferência de ${_sstbEsc(r.latest_user_name)} — em qualquer pedido dele, não só este` : "";
+const _sstbDicaConferencia = (r) => r.conferencia_por
+    ? `${_sstbEsc(r.conferencia_por)} conferiu este pedido como entregador` : "";
 
-// O nome_sistema do conferente — não o "Sim/Não": essa coluna já é redundante com
-// "Última conferência" mostrar ou não uma data. O nome extra serve pra conferir se a
-// tradução (Conversão de nomes) achou a pessoa certa.
+// O nome de quem conferiu — pode ser diferente do "Último usuário" (a Shopee
+// mostra quem MEXEU por último no pacote; aqui é quem CONFERIU, como
+// entregador, especificamente).
 function _sstbConferenteHtml(r) {
     if (!r.conferencia_por) return _sstbSemInfo;
     return `<span title="${_sstbDicaConferencia(r)}">${_sstbEsc(r.conferencia_por)}</span>`;
