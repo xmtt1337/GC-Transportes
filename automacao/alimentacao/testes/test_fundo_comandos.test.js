@@ -534,6 +534,43 @@ test('comando do Colador sem config e ignorado (comandoValido recusa)', async ()
   assert.strictEqual(c.chamadas.abas.length, 0);
 });
 
+// ── "parar" pedido pela tela Macros num Colador ja "iniciado" ───────────────
+test('paradas do vigia repassa xmColadorParar pra aba que ja esta naquela tela do Colador', async () => {
+  const c = carregar({
+    abasExtras: [{ id: 20, windowId: 1, url: 'https://spx.shopee.com.br/#/generalReceiveTaskOps/singleReceiveNew/RT1' }],
+    vigia: { resposta: { comandos: [], paradas: [{ id: ID, qual: 'recebimento' }] } },
+  });
+  await c.ctx.buscarComandos();
+  assert.deepStrictEqual(plano(c.chamadas.abas), [{ id: 20, msg: { xmColadorParar: 'recebimento' } }]);
+});
+
+test('sem nenhuma aba naquela tela, paradas nao cria/navega aba nenhuma (nada rodando mesmo)', async () => {
+  const c = carregar({ vigia: { resposta: { comandos: [], paradas: [{ id: ID, qual: 'at_cluster' }] } } });
+  await c.ctx.buscarComandos();
+  assert.strictEqual(c.chamadas.abas.length, 0);
+});
+
+test('mais de uma parada na mesma resposta: cada uma vai pra aba certa', async () => {
+  const c = carregar({
+    abasExtras: [
+      { id: 20, windowId: 1, url: 'https://spx.shopee.com.br/#/generalReceiveTaskOps' },
+      { id: 21, windowId: 1, url: 'https://spx.shopee.com.br/#/sorting-task/list' },
+    ],
+    vigia: { resposta: { comandos: [], paradas: [{ id: 'a', qual: 'recebimento' }, { id: 'b', qual: 'at_cluster' }] } },
+  });
+  await c.ctx.buscarComandos();
+  assert.deepStrictEqual(plano(c.chamadas.abas).sort((x, y) => x.id - y.id), [
+    { id: 20, msg: { xmColadorParar: 'recebimento' } },
+    { id: 21, msg: { xmColadorParar: 'at_cluster' } },
+  ]);
+});
+
+test('resposta sem "paradas" (compatibilidade) nao estoura nada', async () => {
+  const c = carregar({ vigia: { resposta: { comandos: [] } } });
+  await c.ctx.buscarComandos();
+  assert.strictEqual(c.chamadas.abas.length, 0);
+});
+
 // ── ponte pro vigia (o content script do Colador nao alcanca 127.0.0.1 direto) ──
 const respostaMsg = (c, msg) => new Promise((resolve) => c.ouvintes.mensagem(msg, {}, resolve));
 

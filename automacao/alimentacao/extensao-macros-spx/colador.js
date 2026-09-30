@@ -310,12 +310,16 @@
   }
 
   let rodando = null;
+  // true quando quem pediu pra parar foi o botão "Parar" da tela Macros (via fundo.js), não o
+  // clique local no painel - só muda a mensagem final, a parada em si é a mesma (S.parar).
+  let paradoPelaTela = false;
 
   async function rodar(qual, config) {
     if (rodando) { P.nota(`${(CATALOGO[qual] || {}).titulo || qual} já está rodando`); return; }
     if (!CATALOGO[qual]) throw new Error(`Colador desconhecido: ${qual}`);
     rodando = qual;
     S.parar = false;
+    paradoPelaTela = false;
     P.abrir(CATALOGO[qual].titulo, () => { S.parar = true; });
 
     let colados = 0;
@@ -378,11 +382,12 @@
       await drenarAts(config);
       P.ok(`${colados} colado(s)`);
     } catch (e) {
-      if (e instanceof S.Parado) P.erro('parado por você');
+      if (e instanceof S.Parado) P.erro(paradoPelaTela ? 'parado pela tela do site' : 'parado por você');
       else P.erro(`${e.message || e} (${colados} colado(s) até parar)`);
     } finally {
       rodando = null;
       S.parar = false;
+      paradoPelaTela = false;
     }
   }
 
@@ -392,7 +397,17 @@
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
-      if (!msg || !CATALOGO[msg.xmMacro]) return;
+      if (!msg) return;
+
+      // "Parar" pedido pela tela Macros (fundo.js repassa, ~30s de atraso) - só derruba se for
+      // ESTE colador que está rodando agora; um recado atrasado não pode parar outra coisa que
+      // começou depois. Sem responder: fundo.js dispara e não espera confirmação.
+      if (msg.xmColadorParar) {
+        if (msg.xmColadorParar === rodando) { paradoPelaTela = true; S.parar = true; }
+        return;
+      }
+
+      if (!CATALOGO[msg.xmMacro]) return;
       if (rodando) { responder({ ok: false, error: `${CATALOGO[msg.xmMacro].titulo} já está rodando` }); return; }
       if (!msg.config || typeof msg.config !== 'object') { responder({ ok: false, error: 'comando sem config' }); return; }
       rodar(msg.xmMacro, msg.config);

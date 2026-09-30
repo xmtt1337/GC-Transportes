@@ -229,6 +229,20 @@ async function abaDoSpx(qual) {
   return nova;
 }
 
+// Igual abaDoSpx, mas NUNCA cria/navega uma aba - pra "parar" um comando: se não há aba
+// aberta nessa tela, não há nada rodando lá pra parar mesmo.
+async function abaExistenteDoSpx(qual) {
+  let abas = [];
+  try {
+    abas = await chrome.tabs.query({ url: `${RAIZ_SPX}*` });
+  } catch (e) {
+    abas = [];
+  }
+  const tela = TELA_DE[qual] || TELA_DE.alimentacao;
+  const marca = PAGINA_COLADOR[qual] || tela.replace('#/', '');
+  return abas.find((t) => String(t.url || '').includes(marca)) || null;
+}
+
 // `origem` so vai pro registro - nao muda nada no que o macro faz. Existe
 // porque "disparado: alimentacao" sozinho nao dizia se foi o alarme ou um
 // clique no popup, e isso importa: duas rodadas de 35 segundos de distancia
@@ -479,6 +493,21 @@ async function aplicarAgendaDoSite(agenda) {
   console.log('[XM Macros] agenda do sistema: ' + acao);
 }
 
+// O Colador pediu "Parar" pela tela num comando que já está "iniciado" - avisa SÓ a aba que
+// estiver de fato naquela tela agora (se não tiver nenhuma, não há o que fazer: quem estava
+// rodando já fechou ou nunca chegou a abrir). O content script decide se isso é ELE que está
+// rodando (rodando === qual) antes de parar - um "parar" que chegou atrasado, depois de outra
+// coisa já ter começado a rodar na mesma aba, não pode derrubar o comando errado.
+async function pararSeNecessario(paradas) {
+  for (const p of Array.isArray(paradas) ? paradas : []) {
+    if (!p || !p.qual) continue;
+    try {
+      const aba = await abaExistenteDoSpx(p.qual);
+      if (aba) await chrome.tabs.sendMessage(aba.id, { xmColadorParar: p.qual }).catch(() => {});
+    } catch (e) { /* aba sumiu entre o query e o sendMessage - nada rodando mesmo */ }
+  }
+}
+
 async function buscarComandos() {
   if (buscandoComandos) return;
   buscandoComandos = true;
@@ -494,6 +523,7 @@ async function buscarComandos() {
     for (const c of Array.isArray(resposta.comandos) ? resposta.comandos : []) {
       try { await executarComando(c); } catch (e) { console.log('[XM Macros] comando falhou: ' + e); }
     }
+    try { await pararSeNecessario(resposta.paradas); } catch (e) { /* tenta na proxima */ }
     try { await entregarEventosGuardados(); } catch (e) { /* tenta na proxima */ }
     try { await aplicarAgendaDoSite(resposta.agenda); }
     catch (e) { console.log('[XM Macros] agenda do sistema falhou: ' + e); }

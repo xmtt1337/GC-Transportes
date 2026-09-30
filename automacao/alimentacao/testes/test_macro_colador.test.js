@@ -282,6 +282,39 @@ test('Parar no meio conta "parado por voce", nao erro', async () => {
   assert.strictEqual(r.P.erro, 'parado por você');
 });
 
+// ── Parar remoto (tela Macros -> fundo.js -> xmColadorParar) ────────────────
+test('xmColadorParar so marca S.parar se for o QUAL que esta rodando agora', async () => {
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: { lote: '__NUNCA_RESPONDE__' }, // fica "rodando" pra sempre - so pra fixar `rodando`
+  });
+  // Chega ANTES de qualquer coisa rodar, e pro qual errado - nao pode mexer em nada.
+  r.ctx.__ouvinteMsg({ xmColadorParar: 'at_cluster' }, {}, () => {});
+  assert.strictEqual(r.S.parar, false);
+
+  r.ctx.__ouvinteMsg({ xmMacro: 'recebimento', config: CONFIG }, {}, () => {});
+  await new Promise((res) => setImmediate(res));
+
+  r.ctx.__ouvinteMsg({ xmColadorParar: 'at_cluster' }, {}, () => {}); // qual errado, ja rodando
+  assert.strictEqual(r.S.parar, false);
+  r.ctx.__ouvinteMsg({ xmColadorParar: 'recebimento' }, {}, () => {}); // o certo
+  assert.strictEqual(r.S.parar, true);
+});
+
+test('Parar remoto (tela Macros) conta "parado pela tela do site", diferente do Parar local', async () => {
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: {
+      lote: () => {
+        r.ctx.__ouvinteMsg({ xmColadorParar: 'recebimento' }, {}, () => {});
+        return loteDe([{ id: 1, codigo: 'BR1' }]);
+      },
+    },
+  });
+  await r.G.colador.rodar('recebimento', CONFIG);
+  assert.strictEqual(r.P.erro, 'parado pela tela do site');
+});
+
 // ── AT capturada ─────────────────────────────────────────────────────────
 test('AT capturada (mensagem do rede.js) e mandada ao vigia', async () => {
   const r = carregar({
