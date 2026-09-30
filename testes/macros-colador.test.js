@@ -94,8 +94,10 @@ const CFG = (extra = {}) => ({
 const colador = (qual, extra = {}) => ({
   qual, chave: `colador_${qual}`, nome: qual === "recebimento" ? "Colador — Recebimento" : "Colador — AT Cluster",
   detalhe: "detalhe", configurado: true, config: CFG(), resumo: "XPT_CFC · 28/09",
-  comando: null, computadores: [], ...extra,
+  comandos: [], computadores: [], ...extra,
 });
+// Um comando de teste, já com id (as ações de cancelar/parar precisam dele).
+const cmd = (estado, extra = {}) => ({ id: "c1", estado, criado_por: "Dev", criado_em: "2026-09-28T14:32:00.000Z", ...extra });
 const DOIS = () => [colador("recebimento"), colador("at_cluster")];
 
 // Objeto/array criado dentro do vm tem outro prototipo (outro realm): normaliza antes de
@@ -173,14 +175,33 @@ test("não configurado: resumo apagado, mas continua com Rodar e Configurar", ()
   assert.ok(html.includes("_macRodarColador"));
 });
 
-test("Rodar fica apagado só com pedido 'aguardando'; outros estados liberam de novo", () => {
+test("Rodar fica apagado com pedido 'aguardando' ou 'entregue'; outros estados liberam de novo", () => {
   const a = carregar();
   const desabilitado = (estado) => {
-    const html = a.ctx._macHtmlSecaoColador([colador("recebimento", { comando: estado ? { estado } : null })]);
+    const html = a.ctx._macHtmlSecaoColador([colador("recebimento", { comandos: estado ? [cmd(estado)] : [] })]);
     return /class="mac-rodar"[^>]*\bdisabled\b/.test(linha(html, "recebimento"));
   };
   assert.strictEqual(desabilitado("aguardando"), true);
-  for (const e of ["iniciado", "erro", "expirado", null]) assert.strictEqual(desabilitado(e), false, String(e));
+  assert.strictEqual(desabilitado("entregue"), true);
+  for (const e of ["iniciado", "erro", "cancelado", "expirado", "sem_confirmacao", null]) {
+    assert.strictEqual(desabilitado(e), false, String(e));
+  }
+});
+
+// Alvo diferente do que já está aguardando/entregue não conflita - é o que deixa pedir pra uma
+// SEGUNDA máquina enquanto a primeira ainda não foi buscada.
+test("Rodar continua liberado pra uma máquina DIFERENTE da que já está aguardando", () => {
+  const a = carregar();
+  a.ctx._macColadorMudarAlvo("recebimento", "VIDEIRA");
+  const html = a.ctx._macHtmlSecaoColador([colador("recebimento", { comandos: [cmd("aguardando", { alvo: "CACADOR" })] })]);
+  assert.ok(!/class="mac-rodar"[^>]*\bdisabled\b/.test(linha(html, "recebimento")));
+});
+
+test("Rodar fica apagado pra MESMA máquina que já está aguardando", () => {
+  const a = carregar();
+  a.ctx._macColadorMudarAlvo("recebimento", "CACADOR");
+  const html = a.ctx._macHtmlSecaoColador([colador("recebimento", { comandos: [cmd("aguardando", { alvo: "CACADOR" })] })]);
+  assert.ok(/class="mac-rodar"[^>]*\bdisabled\b/.test(linha(html, "recebimento")));
 });
 
 // ── presença ──────────────────────────────────────────────────────────────
@@ -208,23 +229,60 @@ test("nome de computador nunca vira HTML", () => {
 // ── o comando ─────────────────────────────────────────────────────────────
 test("cada estado do comando diz o que a pessoa precisa saber", () => {
   const a = carregar();
-  const cmd = (estado, extra) => ({ estado, criado_por: "Dev", criado_em: "2026-09-28T14:32:00.000Z", ...extra });
   assert.strictEqual(a.ctx._macComandoColadorTexto(cmd("aguardando")).tom, "andando");
-  assert.match(a.ctx._macComandoColadorTexto(cmd("iniciado", { maquina: "CASA" })).texto, /por Dev em CASA/);
+  assert.strictEqual(a.ctx._macComandoColadorTexto(cmd("entregue")).tom, "andando");
+  assert.match(a.ctx._macComandoColadorTexto(cmd("iniciado", { alvo: "CASA" })).texto, /por Dev em CASA/);
+  assert.match(a.ctx._macComandoColadorTexto(cmd("iniciado", { parar_pedido: true })).texto, /parada pedida/);
   assert.match(a.ctx._macComandoColadorTexto(cmd("erro", { erro: "banco recusou" })).texto, /Não rodou: banco recusou/);
   assert.match(a.ctx._macComandoColadorTexto(cmd("erro")).texto, /motivo não informado/);
+  assert.match(a.ctx._macComandoColadorTexto(cmd("cancelado")).texto, /Cancelado/);
   assert.match(a.ctx._macComandoColadorTexto(cmd("expirado")).texto, /Ninguém pegou esse pedido a tempo/);
+  assert.match(a.ctx._macComandoColadorTexto(cmd("sem_confirmacao")).texto, /nunca confirmou/);
 });
 
-test("sem comando, ou já iniciado, a linha de situação nem aparece", () => {
+test("sem comandos, a linha de situação nem aparece", () => {
   const a = carregar();
-  assert.strictEqual(a.ctx._macSituacaoColadorHtml(null), "");
-  assert.strictEqual(a.ctx._macSituacaoColadorHtml({ estado: "iniciado" }), "");
+  assert.strictEqual(a.ctx._macSituacaoColadorHtml("recebimento", []), "");
+  assert.strictEqual(a.ctx._macSituacaoColadorHtml("recebimento", null), "");
+});
+
+test("iniciado aparece com o botão 'parar'; com parar já pedido, some o botão", () => {
+  const a = carregar();
+  const semParar = a.ctx._macSituacaoColadorHtml("recebimento", [cmd("iniciado")]);
+  assert.ok(semParar.includes("_macPararColador('recebimento', 'c1'"));
+  const jaPedido = a.ctx._macSituacaoColadorHtml("recebimento", [cmd("iniciado", { parar_pedido: true })]);
+  assert.ok(!jaPedido.includes("_macPararColador"));
+});
+
+test("aguardando/entregue aparecem com o botão 'cancelar'", () => {
+  const a = carregar();
+  for (const estado of ["aguardando", "entregue"]) {
+    const html = a.ctx._macSituacaoColadorHtml("recebimento", [cmd(estado)]);
+    assert.ok(html.includes("_macCancelarColador('recebimento', 'c1'"), estado);
+  }
+});
+
+test("erro/cancelado/expirado nao tem botao nenhum", () => {
+  const a = carregar();
+  for (const estado of ["erro", "cancelado", "expirado", "sem_confirmacao"]) {
+    const html = a.ctx._macSituacaoColadorHtml("recebimento", [cmd(estado)]);
+    assert.ok(!html.includes("_macCancelarColador") && !html.includes("_macPararColador"), estado);
+  }
+});
+
+test("duas máquinas rodando o mesmo colador aparecem em DUAS linhas", () => {
+  const a = carregar();
+  const html = a.ctx._macSituacaoColadorHtml("recebimento", [
+    cmd("iniciado", { id: "c1", alvo: "CACADOR" }),
+    cmd("aguardando", { id: "c2", alvo: "VIDEIRA" }),
+  ]);
+  assert.match(html, /por Dev em CACADOR/);
+  assert.match(html, /Pedido enviado em VIDEIRA/);
 });
 
 test("erro do comando (texto de outro computador) nunca vira HTML", () => {
   const a = carregar();
-  const html = a.ctx._macSituacaoColadorHtml({ estado: "erro", erro: "<img src=x onerror=1>" });
+  const html = a.ctx._macSituacaoColadorHtml("recebimento", [cmd("erro", { erro: "<img src=x onerror=1>" })]);
   assert.ok(!html.includes("<img"));
   assert.ok(html.includes("&lt;img"));
 });
@@ -265,7 +323,7 @@ test("Rodar pede ao servidor e mostra o pedido", async () => {
   await a.esperar(); await a.esperar();
   assert.strictEqual(a.chamadas[0].metodo, "POST");
   assert.strictEqual(a.chamadas[0].caminho, "/admin/macros/colador/recebimento/rodar");
-  assert.strictEqual(a.m.coladores[0].comando.estado, "aguardando");
+  assert.strictEqual(a.m.coladores[0].comandos[0].estado, "aguardando");
   assert.deepStrictEqual(a.alertas, []);
 });
 
@@ -276,7 +334,23 @@ test("Rodar sem ninguém conectado avisa (mas o pedido continua valendo)", async
   await a.esperar(); await a.esperar();
   assert.strictEqual(a.alertas.length, 1);
   assert.match(a.alertas[0], /nenhum computador está com o Chrome\/XM Vigia conectado/);
-  assert.strictEqual(a.m.coladores[0].comando.estado, "aguardando", "o pedido nao e descartado so por avisar");
+  assert.strictEqual(a.m.coladores[0].comandos[0].estado, "aguardando", "o pedido nao e descartado so por avisar");
+});
+
+test("Rodar pra duas máquinas diferentes guarda os DOIS comandos, sem um apagar o outro", async () => {
+  let pedidos = 0;
+  const a = carregar({ rotas: { [ROTA_RODAR]: () => {
+    pedidos++;
+    return { corpo: { ok: true, comando: { id: "c" + pedidos, estado: "aguardando", alvo: pedidos === 1 ? "CACADOR" : "VIDEIRA" }, algum_conectado: true } };
+  } } });
+  a.m.coladores = DOIS();
+  a.ctx._macColadorMudarAlvo("recebimento", "CACADOR");
+  a.ctx._macRodarColador("recebimento", {});
+  await a.esperar(); await a.esperar();
+  a.ctx._macColadorMudarAlvo("recebimento", "VIDEIRA");
+  a.ctx._macRodarColador("recebimento", {});
+  await a.esperar(); await a.esperar();
+  assert.deepStrictEqual(a.m.coladores[0].comandos.map((c) => c.alvo).sort(), ["CACADOR", "VIDEIRA"]);
 });
 
 // ── alvo por clique (não persistente — 30/09/2026) ──────────────────────────
@@ -329,13 +403,13 @@ test("sem nada escolhido, 'Qualquer computador' vem marcado", () => {
 
 test("o alvo do comando aparece na situação 'aguardando'", () => {
   const a = carregar();
-  const html = a.ctx._macSituacaoColadorHtml({ estado: "aguardando", alvo: "PC-CACADOR" });
+  const html = a.ctx._macSituacaoColadorHtml("recebimento", [cmd("aguardando", { alvo: "PC-CACADOR" })]);
   assert.match(html, /em PC-CACADOR/);
 });
 
 test("sem alvo no comando, a situação não fala em computador nenhum", () => {
   const a = carregar();
-  const html = a.ctx._macSituacaoColadorHtml({ estado: "aguardando", alvo: null });
+  const html = a.ctx._macSituacaoColadorHtml("recebimento", [cmd("aguardando", { alvo: null })]);
   assert.ok(!html.includes(" em "));
 });
 
@@ -357,6 +431,51 @@ test("sem rede, devolve o botão e avisa", async () => {
   await a.esperar(); await a.esperar();
   assert.strictEqual(botao.disabled, false);
   assert.deepStrictEqual(a.alertas, ["Erro ao conectar com o servidor."]);
+});
+
+// ── cancelar / parar ─────────────────────────────────────────────────────
+test("cancelar troca o comando pelo devolvido (estado 'cancelado') e redesenha", async () => {
+  const a = carregar({ rotas: {
+    "POST /admin/macros/colador/comandos/c1/cancelar": { corpo: { ok: true, comando: cmd("cancelado", { alvo: "CACADOR" }) } },
+  } });
+  a.m.coladores = [colador("recebimento", { comandos: [cmd("aguardando", { alvo: "CACADOR" })] })];
+  const botao = { disabled: false };
+  a.ctx._macCancelarColador("recebimento", "c1", botao);
+  await a.esperar(); await a.esperar();
+  assert.strictEqual(a.m.coladores[0].comandos[0].estado, "cancelado");
+  assert.deepStrictEqual(a.alertas, []);
+});
+
+test("cancelar um que ja comecou (409) avisa e devolve o botao", async () => {
+  const a = carregar({ rotas: {
+    "POST /admin/macros/colador/comandos/c1/cancelar": { status: 409, corpo: { error: "Já não está mais pendente (iniciado)." } },
+  } });
+  a.m.coladores = [colador("recebimento", { comandos: [cmd("iniciado", { alvo: "CACADOR" })] })];
+  const botao = { disabled: false };
+  a.ctx._macCancelarColador("recebimento", "c1", botao);
+  await a.esperar(); await a.esperar();
+  assert.strictEqual(botao.disabled, false);
+  assert.deepStrictEqual(a.alertas, ["Já não está mais pendente (iniciado)."]);
+  assert.strictEqual(a.m.coladores[0].comandos[0].estado, "iniciado", "nao mexe no comando quando o servidor recusa");
+});
+
+test("parar marca parar_pedido no comando certo, sem mudar o estado", async () => {
+  const a = carregar({ rotas: { "POST /admin/macros/colador/comandos/c1/parar": { corpo: { ok: true } } } });
+  a.m.coladores = [colador("recebimento", { comandos: [cmd("iniciado", { alvo: "CACADOR" })] })];
+  a.ctx._macPararColador("recebimento", "c1", {});
+  await a.esperar(); await a.esperar();
+  assert.strictEqual(a.m.coladores[0].comandos[0].estado, "iniciado");
+  assert.strictEqual(a.m.coladores[0].comandos[0].parar_pedido, true);
+});
+
+test("parar um que nao esta rodando (409) avisa e devolve o botao", async () => {
+  const a = carregar({ rotas: { "POST /admin/macros/colador/comandos/c1/parar": { status: 409, corpo: { error: "Não está rodando (aguardando)." } } } });
+  a.m.coladores = [colador("recebimento", { comandos: [cmd("aguardando")] })];
+  const botao = { disabled: false };
+  a.ctx._macPararColador("recebimento", "c1", botao);
+  await a.esperar(); await a.esperar();
+  assert.strictEqual(botao.disabled, false);
+  assert.deepStrictEqual(a.alertas, ["Não está rodando (aguardando)."]);
 });
 
 // ── validação da config (mesmas regras do servidor) ─────────────────────────
@@ -466,23 +585,33 @@ test("recusa do servidor mostra o motivo e devolve o botão", async () => {
 // ── acompanhar ao vivo ──────────────────────────────────────────────────
 test("acompanhar atualiza a lista e PARA quando nada mais está aguardando", async () => {
   let estado = "aguardando";
-  const a = carregar({ rotas: { "GET /admin/macros/colador": () => ({ corpo: { coladores: [colador("recebimento", { comando: { estado } })] } }) } });
-  a.m.coladores = [colador("recebimento", { comando: { estado: "aguardando" } })];
+  const a = carregar({ rotas: { "GET /admin/macros/colador": () => ({ corpo: { coladores: [colador("recebimento", { comandos: [cmd(estado)] })] } }) } });
+  a.m.coladores = [colador("recebimento", { comandos: [cmd("aguardando")] })];
   a.el("tela-macros").classList.add("active-view");
   a.ctx._macAcompanharColador();
   assert.strictEqual(a.timers.length, 1);
 
   estado = "iniciado";
   await a.timers.shift()(); await a.esperar(); await a.esperar();
-  assert.strictEqual(a.m.coladores[0].comando.estado, "iniciado");
+  assert.strictEqual(a.m.coladores[0].comandos[0].estado, "iniciado");
   await a.timers.shift()();
   assert.strictEqual(a.timers.length, 0);
   assert.strictEqual(a.m.poll, null);
 });
 
+test("acompanhar continua enquanto o estado for 'entregue' (nao so 'aguardando')", async () => {
+  const a = carregar({ rotas: { "GET /admin/macros/colador": { corpo: { coladores: [colador("recebimento", { comandos: [cmd("entregue")] })] } } } });
+  a.m.coladores = [colador("recebimento", { comandos: [cmd("entregue")] })];
+  a.el("tela-macros").classList.add("active-view");
+  a.ctx._macAcompanharColador();
+  assert.strictEqual(a.timers.length, 1);
+  await a.timers.shift()(); await a.esperar(); await a.esperar();
+  assert.strictEqual(a.chamadas.length, 1, "chegou a perguntar de novo ao servidor");
+});
+
 test("acompanhar para quando a pessoa sai da tela", async () => {
   const a = carregar({ rotas: { "GET /admin/macros/colador": { corpo: { coladores: [] } } } });
-  a.m.coladores = [colador("recebimento", { comando: { estado: "aguardando" } })];
+  a.m.coladores = [colador("recebimento", { comandos: [cmd("aguardando")] })];
   a.el("tela-macros").classList.add("active-view");
   a.ctx._macAcompanharColador();
   a.el("tela-macros").classList.remove("active-view");

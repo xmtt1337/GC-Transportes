@@ -956,29 +956,58 @@ function _macColadorPresencaHtml(computadores) {
 }
 
 // O comando mais recente: mesma lógica de tom dos macros do SPX (_macComandoTexto), com textos
-// próprios do Colador (não fala em "Chrome" nem em horário).
+// próprios do Colador (não fala em "Chrome" nem em horário) — e um estado a mais ("cancelado")
+// que só o Colador tem (o SPX não deixa cancelar um pedido pendente).
 function _macComandoColadorTexto(cmd) {
     const emAlvo = cmd.alvo ? ` em ${cmd.alvo}` : "";
     switch (cmd.estado) {
         case "aguardando":
             return { tom: "andando", texto: `Pedido enviado${emAlvo} — aguardando o Chrome (com a extensão) e o XM Vigia atenderem…` };
+        case "entregue":
+            return { tom: "andando", texto: `Recebido pelo Chrome${emAlvo} — iniciando…` };
         case "iniciado":
-            return { tom: "ok", texto: `Iniciado às ${_macHoraBrasilia(cmd.criado_em)} por ${cmd.criado_por}${cmd.maquina ? ` em ${cmd.maquina}` : ""}` };
+            // parar_pedido: alguém já clicou "parar" pra este — o vigia pega isso no próximo
+            // /comandos dele (até ~30s); não dá pra confirmar aqui que já parou de verdade
+            // (quem sabe é o próprio painel do macro, na tela de quem está rodando).
+            return cmd.parar_pedido
+                ? { tom: "aviso", texto: `Rodando${emAlvo} — parada pedida, aguardando o Chrome atender (até ~30s)…` }
+                : { tom: "ok", texto: `Iniciado às ${_macHoraBrasilia(cmd.criado_em)} por ${cmd.criado_por}${emAlvo}` };
         case "erro":
-            return { tom: "erro", texto: `Não rodou: ${cmd.erro || "motivo não informado"}` };
+            return { tom: "erro", texto: `Não rodou${emAlvo}: ${cmd.erro || "motivo não informado"}` };
+        case "cancelado":
+            return { tom: "aviso", texto: `Cancelado${emAlvo} antes de começar.` };
         case "expirado":
-            return { tom: "aviso", texto: "Ninguém pegou esse pedido a tempo — confira se o Chrome (com a extensão) e o XM Vigia estão de pé." };
+            return { tom: "aviso", texto: `Ninguém pegou esse pedido${emAlvo} a tempo — confira se o Chrome (com a extensão) e o XM Vigia estão de pé.` };
+        case "sem_confirmacao":
+            return { tom: "aviso", texto: `Recebido pelo Chrome${emAlvo}, mas ele nunca confirmou que começou.` };
         default:
             return { tom: "aviso", texto: String(cmd.estado || "") };
     }
 }
 
-function _macSituacaoColadorHtml(cmd) {
-    // "iniciado" fica sem prazo pra sumir sozinho aqui (não há polling de estado depois que já
-    // rodou) - não enche a tela mostrando pra sempre que "já rodou".
-    if (!cmd || cmd.estado === "iniciado") return "";
-    const c = _macComandoColadorTexto(cmd);
-    return `<div class="mac-sit mac-sit-${c.tom}"><span class="mac-cmd-ponto"></span><span>${_macEsc(c.texto)}</span></div>`;
+// "cancelar": só faz sentido pendente (ninguém pegou ainda, ou pegou mas não confirmou) - depois
+// de "iniciado" a trava de duplicado já nem bloqueia mais nada, então cancelar não teria o que
+// liberar. "parar": só pro que já está rodando de verdade, e só uma vez (parar_pedido evita
+// martelar o botão mandando o mesmo pedido enquanto o vigia não passou pela aba).
+function _macBotaoAcaoColadorHtml(qual, cmd) {
+    if (cmd.estado === "aguardando" || cmd.estado === "entregue") {
+        return `<button type="button" class="mac-sit-acao" onclick="_macCancelarColador('${_macEsc(qual)}', '${_macEsc(cmd.id)}', this)">cancelar</button>`;
+    }
+    if (cmd.estado === "iniciado" && !cmd.parar_pedido) {
+        return `<button type="button" class="mac-sit-acao" onclick="_macPararColador('${_macEsc(qual)}', '${_macEsc(cmd.id)}', this)">parar</button>`;
+    }
+    return "";
+}
+
+// Uma linha por MÁQUINA que já pediu este qual (comandos vem de fila.comandosDe — ver
+// rotasColador.js) - Caçador e Videira rodando o mesmo Colador ao mesmo tempo aparecem os dois,
+// cada um com a ação que faz sentido pro estado dele.
+function _macSituacaoColadorHtml(qual, comandos) {
+    return (comandos || []).map(cmd => {
+        const c = _macComandoColadorTexto(cmd);
+        const botao = _macBotaoAcaoColadorHtml(qual, cmd);
+        return `<div class="mac-sit mac-sit-${c.tom}"><span class="mac-cmd-ponto"></span><span>${_macEsc(c.texto)}</span>${botao}</div>`;
+    }).join("");
 }
 
 // "recebidos_hoje" só vem no item do Recebimento (ver rotasColador.js) — é a contagem de
@@ -1006,10 +1035,24 @@ function _macHtmlAlvoColador(item) {
 
 function _macColadorMudarAlvo(qual, valor) {
     _macColadorAlvo[qual] = valor || "";
+    _macRedesenhar(); // o Rodar fica desabilitado/habilitado dependendo do alvo escolhido agora
+}
+
+// Só desabilita o Rodar quando o alvo ESCOLHIDO agora bate com um pedido pendente - mesma regra
+// do backend (fila.js/conflitaAlvo): "qualquer computador" conflita com tudo, alvo específico só
+// conflita com ele mesmo. Sem isso o botão ficaria preso achando que o Colador está ocupado só
+// porque OUTRA máquina está rodando, o que é exatamente o que agora é permitido.
+function _macColadorConflita(item, alvoEscolhido) {
+    const alvo = (alvoEscolhido || "").toLowerCase();
+    return (item.comandos || []).some(cmd => {
+        if (cmd.estado !== "aguardando" && cmd.estado !== "entregue") return false;
+        const cmdAlvo = (cmd.alvo || "").toLowerCase();
+        return !alvo || !cmdAlvo || alvo === cmdAlvo;
+    });
 }
 
 function _macHtmlItemColador(item) {
-    const ocupado = item.comando && item.comando.estado === "aguardando";
+    const ocupado = _macColadorConflita(item, _macColadorAlvo[item.qual]);
     return `
         <div class="mac-item mac-item-spx">
             <div class="mac-spx-texto">
@@ -1018,7 +1061,7 @@ function _macHtmlItemColador(item) {
                     <span class="mac-agenda-resumo${item.configurado ? "" : " mac-agenda-mudo"}">${_macEsc(item.resumo)}</span>
                     · ${_macColadorPresencaHtml(item.computadores)}${_macRecebidosHtml(item)}
                 </div>
-                ${_macSituacaoColadorHtml(item.comando)}
+                ${_macSituacaoColadorHtml(item.qual, item.comandos)}
             </div>
             <div class="mac-spx-controles">
                 ${_macHtmlAlvoColador(item)}
@@ -1040,6 +1083,16 @@ function _macHtmlSecaoColador(coladores) {
     </section>`;
 }
 
+// Substitui, dentro de item.comandos, o que já existia pra ESSE alvo (mesma máquina) - ou
+// acrescenta, se for a primeira vez que essa máquina pede este qual. Assim o Rodar pra uma
+// segunda máquina não apaga a situação da primeira, que continua rodando em paralelo.
+function _macMergeComandoColador(item, cmd) {
+    if (!Array.isArray(item.comandos)) item.comandos = [];
+    const chave = (cmd.alvo || "").toLowerCase();
+    const i = item.comandos.findIndex(c => (c.alvo || "").toLowerCase() === chave);
+    if (i >= 0) item.comandos[i] = cmd; else item.comandos.push(cmd);
+}
+
 function _macRodarColador(qual, botao) {
     const item = _macColadores.find(c => c.qual === qual);
     if (!item) return;
@@ -1058,7 +1111,7 @@ function _macRodarColador(qual, botao) {
                 gcAlert(d.error || "Não foi possível pedir.");
                 return;
             }
-            item.comando = Object.assign({ idade_s: 0 }, d.comando);
+            _macMergeComandoColador(item, Object.assign({ idade_s: 0 }, d.comando));
             if (!d.algum_conectado) {
                 const onde = maquina ? `o computador "${maquina}" não está` : "nenhum computador está";
                 gcAlert(`Pedido enviado, mas ${onde} com o Chrome/XM Vigia conectado agora — ele roda assim que alguém abrir.`);
@@ -1072,6 +1125,44 @@ function _macRodarColador(qual, botao) {
         });
 }
 
+// Cancela um pendente (aguardando/entregue) na hora — libera a mesma máquina pra pedir de novo
+// sem esperar a expiração. Não serve pro que já rodou (o servidor recusa com 409; a trava de
+// duplicado já nem bloqueia mais nada nesse ponto mesmo).
+function _macCancelarColador(qual, id, botao) {
+    const item = _macColadores.find(c => c.qual === qual);
+    if (botao) botao.disabled = true;
+    fetch(`${API}/admin/macros/colador/comandos/${encodeURIComponent(id)}/cancelar`, {
+        method: "POST", headers: { "Authorization": "Bearer " + token }
+    })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            if (!ok) { if (botao) botao.disabled = false; gcAlert(d.error || "Não foi possível cancelar."); return; }
+            if (item) _macMergeComandoColador(item, d.comando);
+            _macRedesenhar();
+        })
+        .catch(() => { if (botao) botao.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
+}
+
+// Pede pra um "iniciado" parar — o vigia repassa pro Chrome certo no próximo /comandos dele (até
+// ~30s). Não muda o estado aqui: só marca parar_pedido pra tela não deixar clicar de novo à toa.
+function _macPararColador(qual, id, botao) {
+    const item = _macColadores.find(c => c.qual === qual);
+    if (botao) botao.disabled = true;
+    fetch(`${API}/admin/macros/colador/comandos/${encodeURIComponent(id)}/parar`, {
+        method: "POST", headers: { "Authorization": "Bearer " + token }
+    })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            if (!ok) { if (botao) botao.disabled = false; gcAlert(d.error || "Não foi possível pedir pra parar."); return; }
+            if (item) {
+                const cmd = (item.comandos || []).find(c => c.id === id);
+                if (cmd) cmd.parar_pedido = true;
+            }
+            _macRedesenhar();
+        })
+        .catch(() => { if (botao) botao.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
+}
+
 // Reconsulta a lista inteira em vez de ter um /estado próprio (como o SPX tem) — é pouca coisa
 // pra justificar outro endpoint; a fila em memória (fila.js) é a mesma dos macros do SPX.
 let _macPollColador = null;
@@ -1080,7 +1171,10 @@ function _macAcompanharColador() {
     const passo = () => {
         const tela = document.getElementById("tela-macros");
         const visivel = !!tela && tela.classList.contains("active-view");
-        const andando = _macColadores.some(c => c.comando && c.comando.estado === "aguardando");
+        // "entregue" entra aqui também (não só "aguardando"): sem isso o poll parava assim que o
+        // Chrome pegasse o pedido, e "iniciado"/"erro" só apareceriam na próxima vez que a tela
+        // fosse reaberta.
+        const andando = _macColadores.some(c => (c.comandos || []).some(cmd => cmd.estado === "aguardando" || cmd.estado === "entregue"));
         if (!visivel || !andando) { _macPollColador = null; return; }
 
         fetch(`${API}/admin/macros/colador`, { headers: { "Authorization": "Bearer " + token } })

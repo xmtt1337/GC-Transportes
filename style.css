@@ -2725,6 +2725,14 @@ td.cad-nome { color: #e2e8f0; }
 .mac-sit-aviso .mac-cmd-ponto, .mac-vigia-aviso .mac-cmd-ponto, .mac-vigia-off .mac-cmd-ponto,
 .mac-hist-aviso .mac-cmd-ponto { background: #d6a23a; }
 .mac-sit-erro .mac-cmd-ponto, .mac-hist-erro .mac-cmd-ponto { background: #ef5b5b; }
+
+/* cancelar/parar de um pedido do Colador, embutido na própria linha de situação. */
+.mac-sit-acao {
+    background: none; border: none; padding: 0; margin-left: 2px; font: inherit; font-size: inherit;
+    color: #6aa5ff; cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+.mac-sit-acao:hover { color: #fff; }
+.mac-sit-acao:disabled { color: #5d6b7e; cursor: default; text-decoration: none; }
 @keyframes mac-pulsa { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 @media (prefers-reduced-motion: reduce) { .mac-sit-andando .mac-cmd-ponto { animation: none; } }
 
