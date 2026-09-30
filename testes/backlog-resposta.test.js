@@ -231,8 +231,11 @@ test("'sem ativo', que é a maioria, não repete selo em toda linha da tabela", 
     b.regs = [reg("S1", 4.0, "sem_ativo"), reg("S2", 5.0, "sem_ativo"), reg("N1", 6.0, "nao_recebeu")];
     ctx._sstbRenderizar();
     const tbody = els["sstb-tbody"].innerHTML;
-    assert.strictEqual((tbody.match(/sstb-resp-vazio/g) || []).length, 2, "sem ativo vira traço apagado");
-    assert.strictEqual((tbody.match(/class="sstb-resp"/g) || []).length, 1, "só a linha com resposta fala");
+    // Só a coluna "Resposta do cliente": Conferência/Última conferência também usam o
+    // mesmo traço apagado pra "sem info", e não podem contar aqui.
+    const colResposta = (tbody.match(/data-label="Resposta do cliente">.*?<\/td>/g) || []).join("");
+    assert.strictEqual((colResposta.match(/sstb-resp-vazio/g) || []).length, 2, "sem ativo vira traço apagado");
+    assert.strictEqual((colResposta.match(/class="sstb-resp"/g) || []).length, 1, "só a linha com resposta fala");
     assert.ok(!/Sem ativo</.test(tbody), "o texto 'Sem ativo' não aparece nas linhas (fica no tooltip e no filtro)");
 });
 

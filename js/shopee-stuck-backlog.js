@@ -249,6 +249,22 @@ function _sstbRespostaHtml(chave) {
     return `<span class="sstb-resp" title="${_sstbEsc(def.dica)}"><i style="background:${def.cor}"></i>${def.rotulo}</span>`;
 }
 
+// ── Conferência do entregador ──
+// O servidor já traduz "Último usuário" (nome cru do arquivo da Shopee) pro
+// nome_sistema e devolve a ÚLTIMA conferência daquele entregador — de
+// qualquer pedido, não só desta linha (conferencia-entregador.js). É sinal do
+// entregador ainda estar ativo bipando, não do status deste pacote: por isso
+// duas linhas do MESMO entregador mostram sempre a mesma data.
+const _sstbSemInfo = `<span class="sstb-resp-vazio">—</span>`;
+
+function _sstbConferenciaHtml(r) {
+    return r.conferencia_em ? "Sim" : _sstbSemInfo;
+}
+
+function _sstbConferenciaQuandoHtml(r) {
+    return r.conferencia_em ? _sstbEsc(_sstAtivoQuando(r.conferencia_em)) : _sstbSemInfo;
+}
+
 function _sstbFaixaDe(dias) {
     const inteiro = Math.floor(dias);
     return SSTB_FAIXAS.find(f => inteiro >= f.min && inteiro <= f.max) || SSTB_FAIXAS[SSTB_FAIXAS.length - 1];
@@ -341,6 +357,8 @@ function _sstbLinhaHtml(r, podeAtivo) {
         <td data-label="Status">${_sstbEsc(r.latest_status) || "—"}</td>
         <td data-label="Dias parado" style="text-align:center"><i class="nr-pac-ponto" style="background:${cor}"></i>${_sstbFormatarDias(r.dias)}</td>
         <td data-label="Último usuário">${_sstbEsc(r.latest_user_name) || "—"}</td>
+        <td data-label="Conferência">${_sstbConferenciaHtml(r)}</td>
+        <td data-label="Última conferência">${_sstbConferenciaQuandoHtml(r)}</td>
         <td data-label="Resposta do cliente">${_sstbRespostaHtml(r.resposta)}</td>
         <td data-label="Histórico">
             <button type="button" class="sst-hist-btn" onclick="_sstAbrirHistorico('${_sstbEsc(r.shipment_id)}')">Visualizar</button>
@@ -380,6 +398,8 @@ function _sstbMontarRelatorio(registros) {
         "Faixa":                    _sstbFaixaDe(r.dias).rotulo,
         "Status":                   r.latest_status || "",
         "Último usuário":           r.latest_user_name || "",
+        "Conferência":              r.conferencia_em ? "Sim" : "Não",
+        "Última conferência":       _sstbDataHora(r.conferencia_em),
         "Resposta do cliente":      rotuloResp[r.resposta] || "",
         "Ativo enviado em":         _sstbDataHora(r.ativo_em),
         "Ativo enviado por":        r.ativo_por || "",
@@ -407,6 +427,7 @@ function _sstbBaixar() {
 
     const abaPedidos = XLSX.utils.json_to_sheet(pedidos);
     abaPedidos["!cols"] = [{ wch: 18 }, { wch: 11 }, { wch: 10 }, { wch: 16 }, { wch: 34 },
+                           { wch: 12 }, { wch: 20 },
                            { wch: 20 }, { wch: 18 }, { wch: 26 }, { wch: 22 }, { wch: 26 }];
     XLSX.utils.book_append_sheet(wb, abaPedidos, "Pedidos");
 
