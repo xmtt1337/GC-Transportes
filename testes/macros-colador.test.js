@@ -275,8 +275,68 @@ test("Rodar sem ninguém conectado avisa (mas o pedido continua valendo)", async
   a.ctx._macRodarColador("recebimento", {});
   await a.esperar(); await a.esperar();
   assert.strictEqual(a.alertas.length, 1);
-  assert.match(a.alertas[0], /nenhum computador está com o Colador aberto/);
+  assert.match(a.alertas[0], /nenhum computador está com o Chrome\/XM Vigia conectado/);
   assert.strictEqual(a.m.coladores[0].comando.estado, "aguardando", "o pedido nao e descartado so por avisar");
+});
+
+// ── alvo por clique (não persistente — 30/09/2026) ──────────────────────────
+test("Rodar sem escolher computador manda maquina null", async () => {
+  const a = carregar({ rotas: { [ROTA_RODAR]: { corpo: { ok: true, comando: { id: 1, estado: "aguardando" }, algum_conectado: true } } } });
+  a.m.coladores = DOIS();
+  a.ctx._macRodarColador("recebimento", {});
+  await a.esperar(); await a.esperar();
+  assert.deepStrictEqual(a.chamadas[0].corpo, { maquina: null });
+});
+
+test("Rodar manda o computador escolhido no seletor daquele colador", async () => {
+  const a = carregar({ rotas: { [ROTA_RODAR]: { corpo: { ok: true, comando: { id: 1, estado: "aguardando" }, algum_conectado: true } } } });
+  a.m.coladores = DOIS();
+  a.ctx._macColadorMudarAlvo("recebimento", "PC-CACADOR");
+  a.ctx._macRodarColador("recebimento", {});
+  await a.esperar(); await a.esperar();
+  assert.deepStrictEqual(a.chamadas[0].corpo, { maquina: "PC-CACADOR" });
+});
+
+test("escolher o alvo de um colador não afeta o outro", async () => {
+  const a = carregar({ rotas: {
+    [ROTA_RODAR]: { corpo: { ok: true, comando: { id: 1, estado: "aguardando" }, algum_conectado: true } },
+    "POST /admin/macros/colador/at_cluster/rodar": { corpo: { ok: true, comando: { id: 2, estado: "aguardando" }, algum_conectado: true } },
+  } });
+  a.m.coladores = DOIS();
+  a.ctx._macColadorMudarAlvo("recebimento", "PC-CACADOR");
+  a.ctx._macRodarColador("at_cluster", {});
+  await a.esperar(); await a.esperar();
+  assert.deepStrictEqual(a.chamadas[0].corpo, { maquina: null });
+});
+
+test("o seletor lista os computadores que o vigia ja viu, com o escolhido marcado", () => {
+  const a = carregar();
+  a.ctx._macColadorMudarAlvo("recebimento", "PC-VIDEIRA");
+  const item = colador("recebimento", {
+    computadores: [{ nome: "PC-CACADOR", online: true }, { nome: "PC-VIDEIRA", online: false }],
+  });
+  const html = a.ctx._macHtmlAlvoColador(item);
+  assert.ok(html.includes('<option value="PC-CACADOR"'));
+  assert.ok(html.includes('<option value="PC-VIDEIRA" selected'));
+  assert.ok(html.includes("PC-VIDEIRA — desconectado"));
+});
+
+test("sem nada escolhido, 'Qualquer computador' vem marcado", () => {
+  const a = carregar();
+  const html = a.ctx._macHtmlAlvoColador(colador("recebimento", { computadores: [] }));
+  assert.match(html, /<option value=""\s+selected>Qualquer computador/);
+});
+
+test("o alvo do comando aparece na situação 'aguardando'", () => {
+  const a = carregar();
+  const html = a.ctx._macSituacaoColadorHtml({ estado: "aguardando", alvo: "PC-CACADOR" });
+  assert.match(html, /em PC-CACADOR/);
+});
+
+test("sem alvo no comando, a situação não fala em computador nenhum", () => {
+  const a = carregar();
+  const html = a.ctx._macSituacaoColadorHtml({ estado: "aguardando", alvo: null });
+  assert.ok(!html.includes(" em "));
 });
 
 test("erro do servidor devolve o botão e avisa", async () => {

@@ -932,11 +932,17 @@ function _macAbrirHistorico(macro) {
 
 // ── Colador (extensão XM Macros SPX + XM Vigia — migrado do colador_neon.py em 29/09/2026) ──
 // Mesma ideia do Rodar/Configurar dos macros do SPX, mas sem horário nenhum: o Colador é uma
-// sessão que se liga e desliga (ou fica de vigia, modo contínuo), não uma agenda. Também sem
-// "computador escolhido" - de propósito, pra dar pra rodar em Caçador e Videira ao mesmo tempo,
-// cada PC na conta do próprio polo (a reserva de lote no backend garante que dois coladores
-// nunca pegam o mesmo código; quem evita colar o polo errado é a extensão, lendo o XPT da
-// própria página do SPX). Única parte de Macros que admin também acessa, não só dev.
+// sessão que se liga e desliga (ou fica de vigia, modo contínuo), não uma agenda. Sem
+// "computador escolhido" PERSISTENTE (ao contrário do SPX) - de propósito, pra dar pra rodar em
+// Caçador e Videira ao mesmo tempo, cada PC na conta do próprio polo (a reserva de lote no
+// backend garante que dois coladores nunca pegam o mesmo código; quem evita colar o polo errado
+// é a extensão, lendo o XPT da própria página do SPX). Em vez disso, cada Rodar pode escolher
+// um alvo só PRA AQUELE CLIQUE (_macColadorAlvo, abaixo) — mostrado até o próximo Rodar mudar.
+// Única parte de Macros que admin também acessa, não só dev.
+
+// O computador escolhido pro PRÓXIMO clique de Rodar de cada colador (vazio = qualquer um). Só
+// existe no navegador — nada salvo no servidor, diferente do "Executa em" do SPX.
+let _macColadorAlvo = {};
 
 // Só um pontinho + texto, no mesmo estilo de _macVigiaHtml: quantos computadores estão com o
 // Chrome (extensão) + XM Vigia ouvindo agora — é a MESMA lista dos macros do SPX (fila.vigia()),
@@ -952,9 +958,10 @@ function _macColadorPresencaHtml(computadores) {
 // O comando mais recente: mesma lógica de tom dos macros do SPX (_macComandoTexto), com textos
 // próprios do Colador (não fala em "Chrome" nem em horário).
 function _macComandoColadorTexto(cmd) {
+    const emAlvo = cmd.alvo ? ` em ${cmd.alvo}` : "";
     switch (cmd.estado) {
         case "aguardando":
-            return { tom: "andando", texto: "Pedido enviado — aguardando o Chrome (com a extensão) e o XM Vigia atenderem…" };
+            return { tom: "andando", texto: `Pedido enviado${emAlvo} — aguardando o Chrome (com a extensão) e o XM Vigia atenderem…` };
         case "iniciado":
             return { tom: "ok", texto: `Iniciado às ${_macHoraBrasilia(cmd.criado_em)} por ${cmd.criado_por}${cmd.maquina ? ` em ${cmd.maquina}` : ""}` };
         case "erro":
@@ -981,6 +988,26 @@ function _macRecebidosHtml(item) {
     return ` · <span class="mac-agenda-resumo">${item.recebidos_hoje} recebido(s) hoje no SPX</span>`;
 }
 
+// O seletor de "pra qual computador vai o PRÓXIMO Rodar" — não é uma escolha salva (como o
+// "Executa em" do SPX): _macColadorAlvo só vive no navegador, e cada clique manda o que
+// estiver marcado aqui na hora. As opções são os computadores que o vigia já viu (mesma lista
+// de _macColadorPresencaHtml) — computador que nunca apareceu não tem como ser escolhido.
+function _macHtmlAlvoColador(item) {
+    const nomes = [...new Set((item.computadores || []).map(c => c.nome).filter(Boolean))];
+    const atual = _macColadorAlvo[item.qual] || "";
+    const opcoes = [`<option value=""${atual ? "" : " selected"}>Qualquer computador</option>`]
+        .concat(nomes.map(n => {
+            const online = (item.computadores || []).some(c => c.nome === n && c.online);
+            return `<option value="${_macEsc(n)}"${n === atual ? " selected" : ""}>${_macEsc(n)}${online ? "" : " — desconectado"}</option>`;
+        }));
+    return `<select class="mac-select" title="Rodar em qual computador" aria-label="Rodar ${_macEsc(item.nome)} em qual computador"
+                onchange="_macColadorMudarAlvo('${_macEsc(item.qual)}', this.value)">${opcoes.join("")}</select>`;
+}
+
+function _macColadorMudarAlvo(qual, valor) {
+    _macColadorAlvo[qual] = valor || "";
+}
+
 function _macHtmlItemColador(item) {
     const ocupado = item.comando && item.comando.estado === "aguardando";
     return `
@@ -994,6 +1021,7 @@ function _macHtmlItemColador(item) {
                 ${_macSituacaoColadorHtml(item.comando)}
             </div>
             <div class="mac-spx-controles">
+                ${_macHtmlAlvoColador(item)}
                 <button type="button" class="mac-rodar" title="Rodar agora" ${ocupado ? "disabled" : ""}
                         onclick="_macRodarColador('${_macEsc(item.qual)}', this)">▶ Rodar</button>
                 <button type="button" class="mac-icone" title="Configurar" aria-label="Configurar — ${_macEsc(item.nome)}"
@@ -1016,11 +1044,12 @@ function _macRodarColador(qual, botao) {
     const item = _macColadores.find(c => c.qual === qual);
     if (!item) return;
     if (botao) botao.disabled = true;
+    const maquina = _macColadorAlvo[qual] || null;
 
     fetch(`${API}/admin/macros/colador/${qual}/rodar`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: "{}"
+        body: JSON.stringify({ maquina })
     })
         .then(r => r.json().then(d => ({ ok: r.ok, d })))
         .then(({ ok, d }) => {
@@ -1031,7 +1060,8 @@ function _macRodarColador(qual, botao) {
             }
             item.comando = Object.assign({ idade_s: 0 }, d.comando);
             if (!d.algum_conectado) {
-                gcAlert("Pedido enviado, mas nenhum computador está com o Colador aberto agora — ele roda assim que alguém abrir.");
+                const onde = maquina ? `o computador "${maquina}" não está` : "nenhum computador está";
+                gcAlert(`Pedido enviado, mas ${onde} com o Chrome/XM Vigia conectado agora — ele roda assim que alguém abrir.`);
             }
             _macRedesenhar();
             _macAcompanharColador();
@@ -1042,8 +1072,8 @@ function _macRodarColador(qual, botao) {
         });
 }
 
-// Sem fila em memória aqui (é tudo por tabela — ver rotasColador.js), então acompanhar é só
-// reconsultar a lista inteira; mais simples do que ter um /estado próprio pra tão pouca coisa.
+// Reconsulta a lista inteira em vez de ter um /estado próprio (como o SPX tem) — é pouca coisa
+// pra justificar outro endpoint; a fila em memória (fila.js) é a mesma dos macros do SPX.
 let _macPollColador = null;
 function _macAcompanharColador() {
     if (_macPollColador) return;
