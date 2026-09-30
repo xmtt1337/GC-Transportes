@@ -17,12 +17,25 @@ const SCA_RESULTADOS = {
     sem_cluster: { rotulo: "Sem cluster",   cor: "#eab308" },
 };
 
-// O cluster forçado que o servidor cria pros pacotes em retorno (Return_Hub_Received). Não sai
-// da AT: não tem entregador e não se atribui a ninguém.
-const SCA_INTERCEPTADOS = "Interceptados";
+// Os clusters forçados que o servidor cria pros pacotes em retorno (Return_Hub_Received) — um
+// por dia, nome "Interceptados <YYYY-MM-DD>" (ver modules/conferencia/interceptados.js). Não
+// saem da AT: não têm entregador e não se atribuem a ninguém. O ISO no nome é o que o servidor
+// compara pra saber em qual grupo um pacote confere — a tela só troca por DD/MM pra mostrar.
+const SCA_INTERCEPTADOS_RE = /^interceptados\s+(\d{4})-(\d{2})-(\d{2})$/i;
 
 function _scaEhInterceptados(grupo) {
-    return _scaChave(grupo) === _scaChave(SCA_INTERCEPTADOS);
+    return SCA_INTERCEPTADOS_RE.test(String(grupo || "").trim());
+}
+
+/** "Interceptados 2026-09-27" → "Interceptados 27/09". Qualquer outro nome passa direto. */
+function _scaRotuloGrupo(nome) {
+    const m = SCA_INTERCEPTADOS_RE.exec(String(nome || "").trim());
+    return m ? `Interceptados ${m[3]}/${m[2]}` : nome;
+}
+
+/** O mesmo, mas pra um rótulo com vários nomes juntados por vírgula (ex.: sessao.alvo). */
+function _scaRotuloAlvo(alvo) {
+    return String(alvo || "").split(",").map((s) => _scaRotuloGrupo(s.trim())).join(", ");
 }
 
 // Como a resposta de um bipe deve soar e aparecer. Só o RESULTADO decide: status "não recebido
@@ -204,9 +217,9 @@ function _scaPreencherAlvo() {
         // "pct" em vez de "pacotes" por extenso: o rótulo compete com o nome do cluster
         // numa coluna estreita, e o número é o que interessa.
         multi.innerHTML = lista.map(o => `
-            <label class="sca-multi-item" data-cluster="${_scaEsc(o.cluster)}" title="${_scaEsc(o.cluster)} — ${o.pacotes} pacote${o.pacotes !== 1 ? "s" : ""}">
+            <label class="sca-multi-item" data-cluster="${_scaEsc(o.cluster)}" title="${_scaEsc(_scaRotuloGrupo(o.cluster))} — ${o.pacotes} pacote${o.pacotes !== 1 ? "s" : ""}">
                 <input type="checkbox" value="${_scaEsc(o.cluster)}" onchange="_scaAlvoMudou()">
-                <span>${_scaEsc(o.cluster)}</span>
+                <span>${_scaEsc(_scaRotuloGrupo(o.cluster))}</span>
                 <span class="sca-multi-qtd">${o.pacotes}</span>
             </label>`).join("");
     }
@@ -318,7 +331,7 @@ let _scaFaltamTruncado = false;
 function _scaAbrirSessao() {
     const s = _scaSessao;
     document.getElementById("sca-faixa-label").innerText = s.tipo === "cidade" ? "Conferindo cidade" : "Conferindo cluster";
-    document.getElementById("sca-faixa-alvo").innerText = s.alvo;
+    document.getElementById("sca-faixa-alvo").innerText = _scaRotuloAlvo(s.alvo);
     document.getElementById("sca-faixa-obs").innerText =
         `Aberta por ${s.usuario_nome || "—"}${s.encerrada_em ? " · encerrada" : ""}`;
     _scaMsg("", null);
@@ -369,7 +382,7 @@ function _scaScan() {
     _bteAbrirScanner(texto => _scaBipar(texto), {
         continuo: true,
         areaCheia: true,
-        titulo: "Conferindo " + (_scaSessao && _scaSessao.alvo ? _scaSessao.alvo : ""),
+        titulo: "Conferindo " + (_scaSessao && _scaSessao.alvo ? _scaRotuloAlvo(_scaSessao.alvo) : ""),
     });
 }
 
@@ -419,7 +432,7 @@ function _scaBipar(codigoLido) {
             // O detalhe só vem preenchido quando o CEP está em mais de uma cidade — nesse
             // caso o bipe confere, mas a pessoa precisa saber que a planilha está ambígua.
             _scaMsg(`✓ <strong>${_scaEsc(d.codigo)}</strong> ${d.repetido ? "já estava conferido" : "confere"} com <strong>${
-                _scaEsc(d.esperado)}</strong>.${d.detalhe ? ` <span style="color:#eab308">${_scaEsc(d.detalhe)}</span>` : ""}${rep}${receb}`, "ok");
+                _scaEsc(_scaRotuloAlvo(d.esperado))}</strong>.${d.detalhe ? ` <span style="color:#eab308">${_scaEsc(d.detalhe)}</span>` : ""}${rep}${receb}`, "ok");
         } else {
             // Divergência e "não encontrado" apitam igual: os dois param a esteira.
             _gcBeepErro(); _scaFlash("err");
@@ -432,9 +445,9 @@ function _scaBipar(codigoLido) {
             // pessoa com ele na mão a única que consegue decidir isso.
             const manual = d.desconhecido
                 ? ""
-                : ` <strong>Conferir manualmente se a rota é de ${_scaEsc(d.esperado)}.</strong>`;
+                : ` <strong>Conferir manualmente se a rota é de ${_scaEsc(_scaRotuloAlvo(d.esperado))}.</strong>`;
             _scaMsg(tom === "divergente"
-                ? `⚠ <strong>${_scaEsc(d.codigo)}</strong> é de <strong>${_scaEsc(d.encontrado)}</strong>, não de ${_scaEsc(d.esperado)}.${rep}${receb}`
+                ? `⚠ <strong>${_scaEsc(d.codigo)}</strong> é de <strong>${_scaEsc(_scaRotuloGrupo(d.encontrado))}</strong>, não de ${_scaEsc(_scaRotuloAlvo(d.esperado))}.${rep}${receb}`
                 : `⚠ <strong>${_scaEsc(d.codigo)}</strong> — ${_scaEsc(d.detalhe || info.rotulo)}${manual}${rep}${receb}`,
                 tom === "divergente" ? "erro" : "aviso");
         }
@@ -489,7 +502,7 @@ function _scaRenderizar() {
     _scaBarra(pct, pctFalta, conferidos, faltam);
 
     document.getElementById("sca-resumo").innerHTML =
-        card("Bipados", total, _scaSessao ? _scaSessao.alvo : "") +
+        card("Bipados", total, _scaSessao ? _scaRotuloAlvo(_scaSessao.alvo) : "") +
         card("Conferem", ok, "no grupo certo", ok ? "#22c55e" : null) +
         card("Grupo errado", div, "não são daqui", div ? "#ef4444" : null) +
         card("Sem dado", semD, "não deu pra conferir", semD ? "#eab308" : null) +
@@ -531,8 +544,8 @@ function _scaRenderizar() {
             <td data-label="Código" style="font-family:monospace;font-weight:700;color:#e2e8f0">${_scaEsc(b.codigo)}
                 ${apoio ? `<div style="font-size:11px;color:#8494a9;font-family:'Inter',sans-serif;font-weight:400">${apoio}</div>` : ""}</td>
             <td data-label="Resultado"><span style="color:${info.cor};font-weight:700">${info.rotulo}</span></td>
-            <td data-label="Esperado" style="color:#8494a9">${_scaEsc(b.esperado) || "—"}</td>
-            <td data-label="Encontrado" style="color:${b.resultado === "divergente" ? "#ef4444" : "#8494a9"};font-weight:${b.resultado === "divergente" ? 700 : 400}">${_scaEsc(b.encontrado) || "—"}</td>
+            <td data-label="Esperado" style="color:#8494a9">${_scaEsc(_scaRotuloAlvo(b.esperado)) || "—"}</td>
+            <td data-label="Encontrado" style="color:${b.resultado === "divergente" ? "#ef4444" : "#8494a9"};font-weight:${b.resultado === "divergente" ? 700 : 400}">${_scaEsc(_scaRotuloGrupo(b.encontrado)) || "—"}</td>
             <td data-label="Hora" style="color:#8494a9">${_scaEsc(b.data_hora_brasilia) || "—"}</td>
         </tr>`;
     }).join("")
@@ -687,7 +700,7 @@ function _scaRenderVisao(tipo) {
         const nomeEsc = String(g.grupo || "").replace(/'/g, "\\'");
         return `
         <tr>
-            <td data-label="${tipo === "cidade" ? "Cidade" : "Cluster"}" style="font-weight:700;color:#e2e8f0">${_scaEsc(g.grupo)}</td>
+            <td data-label="${tipo === "cidade" ? "Cidade" : "Cluster"}" style="font-weight:700;color:#e2e8f0">${_scaEsc(_scaRotuloGrupo(g.grupo))}</td>
             <td data-label="Conclusão" style="min-width:150px">
                 <div class="slh-pct" style="color:${cor}">${_scaPctTexto(pct)}${falta ? ` <span style="font-size:11px;font-weight:600;color:#8494a9">falta ${_scaPctTexto(pctFalta)}</span>` : ""}</div>
                 <div class="slh-barra"><div class="slh-barra-fill" style="width:${g.conferidos && frac < 1 ? 1 : Math.min(100, frac)}%;background:${cor}"></div></div>
@@ -1051,7 +1064,7 @@ function _scaCopiar() {
     }
     const div = _scaBipagens.filter(b => b.resultado === "divergente");
     if (!div.length) return gcAlert("Nenhuma divergência nesta conferência.");
-    const texto = div.map(b => `${b.codigo}\t${b.encontrado || "—"}`).join("\n");
+    const texto = div.map(b => `${b.codigo}\t${_scaRotuloGrupo(b.encontrado) || "—"}`).join("\n");
     navigator.clipboard.writeText(texto)
         .then(() => _scaMsg(`${div.length} divergência${div.length !== 1 ? "s" : ""} copiada${div.length !== 1 ? "s" : ""}.`, "aviso"))
         .catch(() => gcAlert("Não foi possível copiar."));
@@ -1061,7 +1074,7 @@ function _scaEncerrar() {
     if (!_scaSessao) return;
     const div = _scaBipagens.filter(b => b.resultado === "divergente").length;
     gcConfirm(
-        `Encerrar a conferência de ${_scaSessao.alvo}?\n\n${_scaBipagens.length} bipado(s)${div ? `, ${div} no grupo errado` : ""}. Depois de encerrar não dá pra bipar mais nela.`,
+        `Encerrar a conferência de ${_scaRotuloAlvo(_scaSessao.alvo)}?\n\n${_scaBipagens.length} bipado(s)${div ? `, ${div} no grupo errado` : ""}. Depois de encerrar não dá pra bipar mais nela.`,
         () => {
             fetch(`${API}/shopee/conferencia/atribuicoes/encerrar`, {
                 method: "POST",
@@ -1229,7 +1242,7 @@ function _scaCarregarHistorico() {
                 return `
                 <tr>
                     <td data-label="Conferência">
-                        <div style="font-weight:700;color:#e2e8f0">${_scaEsc(s.alvo)}</div>
+                        <div style="font-weight:700;color:#e2e8f0">${_scaEsc(_scaRotuloAlvo(s.alvo))}</div>
                         <div style="font-size:11px;color:#8494a9">${s.tipo === "cidade" ? "Cidade" : "Cluster"}${s.encerrada_em ? "" : " · em aberto"}</div>
                     </td>
                     <td data-label="Conclusão" style="min-width:130px">
@@ -1266,13 +1279,13 @@ function _scaVerSessao(id, retomada, adicionados) {
             if (!retomada) return;
             const partes = [];
             if (_scaBipagens.length) {
-                partes.push(`Continuando a conferência de <strong>${_scaEsc(d.sessao.alvo)}</strong> que já estava aberta — ${
+                partes.push(`Continuando a conferência de <strong>${_scaEsc(_scaRotuloAlvo(d.sessao.alvo))}</strong> que já estava aberta — ${
                     _scaBipagens.length} pacote${_scaBipagens.length !== 1 ? "s" : ""} já bipado${_scaBipagens.length !== 1 ? "s" : ""}.`);
             } else {
-                partes.push(`Continuando a conferência de <strong>${_scaEsc(d.sessao.alvo)}</strong> que já estava aberta.`);
+                partes.push(`Continuando a conferência de <strong>${_scaEsc(_scaRotuloAlvo(d.sessao.alvo))}</strong> que já estava aberta.`);
             }
             if (adicionados && adicionados.length) {
-                partes.push(`<strong>${_scaEsc(adicionados.join(", "))}</strong> ${
+                partes.push(`<strong>${_scaEsc(adicionados.map(_scaRotuloGrupo).join(", "))}</strong> ${
                     adicionados.length !== 1 ? "foram somados" : "foi somado"} a ela.`);
             }
             _scaMsg(partes.join(" "), "aviso");
