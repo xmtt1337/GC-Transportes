@@ -325,10 +325,28 @@ function comCampoDeRotulo(container) {
   return { parentElement: { querySelector: () => container } };
 }
 
-test('prepararRecebimento: campo ja pronto nao clica em nada', async () => {
+test('prepararRecebimento: sem "Receber por pedido" pra clicar, campo ja pronto nao clica em nada', async () => {
   const r = carregar({ pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } } });
   await r.G.colador.prepararRecebimento();
   assert.strictEqual(r.cliques.length, 0);
+});
+
+// Bug de verdade, achado ao vivo (30/09/2026): a tela ficava aberta no
+// "Recebimento unitário" na aba ERRADA por padrão ("Manifesto/Motorista/Por
+// TO/SP PARA Receber"), cujo campo usa o MESMO placeholder genérico ("Por
+// favor, insira") do campo certo — acharCampo('recebimento') achava esse
+// campo e um `return` antes de tentar "Receber por pedido" fazia o colador
+// colar na aba errada sem erro nenhum. Por isso clicar em "Receber por
+// pedido" (quando ela existir) vem ANTES de confiar que o campo já visível
+// é o certo, mesmo quando prepararRecebimento nem precisa abrir nada novo.
+test('prepararRecebimento: mesmo com um campo já visível, garante a aba "Receber por pedido" antes de colar', async () => {
+  const receberPorPedido = {};
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    botoes: { 'Receber por pedido': receberPorPedido },
+  });
+  await r.G.colador.prepararRecebimento();
+  assert.deepStrictEqual(r.cliques, [receberPorPedido]);
 });
 
 // Bug de verdade, achado testando contra o SPX (29/09/2026): "Recebimento
@@ -343,9 +361,13 @@ test('prepararRecebimento: clica no ensinado "Recebimento unitário" e depois em
   let apareceu = false;
   const r = carregar({
     ensinados: { recebimento_unitario: [recebimentoUnitario] },
-    botoes: { 'Receber por pedido': receberPorPedido },
   });
+  // "Receber por pedido" só existe DEPOIS de abrir o recebimento unitário — como o
+  // campo de código, gated por `apareceu` (senão o teste não pegaria um `return`
+  // cedo demais tentando clicar nela antes da tela existir).
   r.ctx.document.querySelector = (sel) => (apareceu && sel === 'input[placeholder="Por favor, insira"]' ? { desabilitado: false } : null);
+  r.S.acharBotao = (texto) => (apareceu && texto === 'Receber por pedido' ? receberPorPedido : null);
+  r.S.folhaVisivelComTexto = () => null;
   const clicarOriginal = r.S.clicar;
   r.S.clicar = (el) => { if (el === recebimentoUnitario) apareceu = true; return clicarOriginal(el); };
 

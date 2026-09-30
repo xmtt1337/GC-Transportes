@@ -170,6 +170,16 @@
   }
 
   async function prepararRecebimento() {
+    // Clicar em "Receber por pedido" vem ANTES de confiar em acharCampo, não depois: a
+    // aba padrão do "Recebimento unitário" ("Manifesto/Motorista/Por TO/SP PARA Receber")
+    // tem um campo com o MESMO placeholder genérico ("Por favor, insira") do campo certo
+    // — se a tela já estiver aberta nessa aba errada, acharCampo('recebimento') encontra
+    // esse campo e um `return` cedo aqui nunca chegava a clicar em "Receber por pedido":
+    // o colador colava na aba errada sem erro nenhum (achado ao vivo, 30/09/2026). Clicar
+    // numa aba já selecionada não atrapalha nada.
+    let abaPedido = acharPorTexto('Receber por pedido');
+    if (abaPedido) { S.clicar(abaPedido); await S.dormir(300); }
+
     if (acharCampo('recebimento')) return;
 
     P.passo('abrindo um recebimento unitário novo');
@@ -186,13 +196,13 @@
     await S.dormir(600);
     await S.esperarRede({ base, limite: 20000 });
 
+    await S.esperar(() => acharPorTexto('Receber por pedido'), {
+      oque: 'a aba "Receber por pedido"', limite: 20000, intervalo: 300 });
+    abaPedido = acharPorTexto('Receber por pedido');
+    if (abaPedido) { S.clicar(abaPedido); await S.dormir(300); }
+
     await S.esperar(() => acharCampo('recebimento'), {
       oque: 'o campo de código aparecer', limite: 20000, intervalo: 300 });
-
-    // "Receber por pedido" costuma vir selecionado por padrão; clicar de novo
-    // quando já está selecionado não atrapalha nada.
-    const abaPedido = acharPorTexto('Receber por pedido');
-    if (abaPedido) { S.clicar(abaPedido); await S.dormir(300); }
   }
 
   // O campo clicável logo abaixo de um rótulo ("* Grupo de Rotas" com o campo
