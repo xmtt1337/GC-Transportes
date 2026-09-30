@@ -321,6 +321,14 @@
     let colados = 0;
     let falhasSeguidas = 0;
     try {
+      // Sem isso, numa aba nova (conteúdo recém-injetado) o que foi ensinado (Alt+R etc.)
+      // podia ainda não estar carregado do chrome.storage quando prepararRecebimento
+      // chamasse elementosEnsinados — a corrida dependia de outro script (alimentacao.js)
+      // ter carregado primeiro, sem garantia nenhuma disso acontecer a tempo (achado ao
+      // vivo, 30/09/2026: ensinar funcionou, mas rodar direto depois disse "ainda não foi
+      // ensinado"). Mesma linha que backlog.js já usa, por isso mesmo.
+      await G.aprender.carregar();
+
       const xpt = xptEfetivo(config);
       await PREPARAR[qual]();
 

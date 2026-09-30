@@ -103,7 +103,10 @@ function carregar({ pagina = {}, respostas = {}, botoes = {}, ensinados = {}, so
   vm.runInContext(fs.readFileSync(path.join(PASTA, 'logica.js'), 'utf8'), ctx);
   ctx.XMMacro.spx = S;
   ctx.XMMacro.painel = P;
-  ctx.XMMacro.aprender = { elementosEnsinados: (qual) => ensinados[qual] || [] };
+  ctx.XMMacro.aprender = {
+    carregar: async () => {},
+    elementosEnsinados: (qual) => ensinados[qual] || [],
+  };
   vm.runInContext(fs.readFileSync(path.join(PASTA, 'colador.js'), 'utf8'), ctx, { filename: 'colador.js' });
 
   // `window` visto de FORA (ctx.window) nao e o mesmo objeto que `window` visto de
@@ -383,6 +386,25 @@ test('prepararRecebimento: ignora o ensinado se ele nao estiver visivel', async 
 test('prepararRecebimento: sem nada ensinado, erro claro (nao tenta adivinhar por texto)', async () => {
   const r = carregar({ pagina: {}, botoes: { 'Recebimento unitário': {} } }); // se caisse pra acharPorTexto, acharia
   await assert.rejects(r.G.colador.prepararRecebimento(), /"Recebimento unitário" ainda não foi ensinado.*Alt\+R/);
+});
+
+// Bug de verdade, achado ao vivo (30/09/2026): ensinar funcionou (o popup confirmou), mas
+// "Rodar" logo em seguida disse "ainda não foi ensinado" — numa aba nova (conteúdo recém-
+// injetado), o que foi ensinado só existe de verdade DEPOIS de um `await
+// chrome.storage.local.get(...)`, e nada em colador.js esperava por isso: contava com
+// alimentacao.js ter carregado primeiro, sem nenhuma garantia de ordem entre os dois. rodar()
+// agora chama G.aprender.carregar() ele mesmo (mesma linha que backlog.js já usa).
+test('rodar: carrega o que foi ensinado ANTES de rodar (nao depende de outro script já ter carregado)', async () => {
+  let carregado = false;
+  const r = carregar({
+    pagina: {},
+    respostas: { lote: loteDe([]) },
+  });
+  // Simula o "chrome.storage ainda não respondeu": só existe depois do carregar() de verdade.
+  r.G.aprender.elementosEnsinados = () => [];
+  r.G.aprender.carregar = async () => { carregado = true; };
+  await r.G.colador.rodar('recebimento', CONFIG);
+  assert.strictEqual(carregado, true);
 });
 
 test('prepararAtCluster: passa pelo formulário inteiro (Static, YES, os dois ensinados, Confirm, Participar)', async () => {
