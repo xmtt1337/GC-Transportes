@@ -75,10 +75,13 @@ test("número da sigla: VID-15 vira 15", () => {
     assert.strictEqual(sb._gcNumeroDaSigla(null), "");
 });
 
-test("texto falado: número e só o primeiro nome, em sequência", () => {
+test("texto falado: número e os dois primeiros nomes, parando no traço", () => {
     const { sb } = carregar();
-    assert.strictEqual(sb._bipTextoFala({ sigla: "VID-15", entregador: "Fulano de Tal Teste" }), "15, Fulano");
-    assert.strictEqual(sb._bipTextoFala({ sigla: null, entregador: "  Fulano Teste" }), "Fulano");
+    assert.strictEqual(sb._bipTextoFala({ sigla: "VID-15", entregador: "Fulano Beltrano de Tal" }), "15, Fulano Beltrano");
+    assert.strictEqual(sb._bipTextoFala({ sigla: null, entregador: "  Fulano   Teste" }), "Fulano Teste");
+    assert.strictEqual(sb._bipTextoFala({ sigla: "VID-7", entregador: "Fulano - Cidadeteste" }), "7, Fulano");
+    assert.strictEqual(sb._bipTextoFala({ sigla: "VID-7", entregador: "Fulano – Cidadeteste" }), "7, Fulano");
+    assert.strictEqual(sb._bipTextoFala({ sigla: "VID-7", entregador: "Fulano" }), "7, Fulano");
     assert.strictEqual(sb._bipTextoFala({ sigla: "VID-3", entregador: null }), "3, sem entregador");
     assert.strictEqual(sb._bipTextoFala({ sigla: "VID-3", entregador: "   " }), "3, sem entregador");
 });
