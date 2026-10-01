@@ -175,6 +175,60 @@ function _gcVozClusterErrado() {
     } catch (_) { _gcBeepErro(); }
 }
 
+// ───── FALA (texto que muda a cada bipe, ex. rota + entregador na separação) ─────
+// Nome de entregador não dá pra pré-gravar, então fala pela voz do próprio navegador.
+// Escolhe a feminina pt-BR mais natural que o aparelho tiver: no Edge é a mesma
+// Francisca do áudio "Clãster errado"; no Chrome, a do Google. A "Maria" local do
+// Windows é robótica e só entra se não houver outra.
+const _GC_VOZES_PREFERIDAS = [/francisca.*natural/i, /thalita.*natural/i, /francisca/i, /thalita/i,
+    /google.*portugu/i, /luciana/i];
+
+function _gcEscolherVoz(vozes) {
+    const ptbr = (vozes || []).filter(v => /^pt[-_]BR$/i.test(v.lang));
+    for (const re of _GC_VOZES_PREFERIDAS) {
+        const v = ptbr.find(x => re.test(x.name));
+        if (v) return v;
+    }
+    return ptbr.find(v => !/maria|daniel|antonio/i.test(v.name)) || ptbr[0] || null;
+}
+
+// No Chrome a lista de vozes chega vazia na 1ª chamada e só enche depois do evento;
+// pedir já no carregamento faz a 1ª fala sair com a voz certa e não a padrão.
+try {
+    if (window.speechSynthesis) {
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    }
+} catch (_) {}
+
+let _gcFalaTimer = null;
+
+function _gcFalar(texto) {
+    try {
+        const s = window.speechSynthesis;
+        if (!s || !texto) return;
+        // Bipe novo corta a fala anterior: em rajada, fila de nomes atrasados confunde
+        // mais do que ajuda — vale o pacote que está na mão agora.
+        clearTimeout(_gcFalaTimer);
+        s.cancel();
+        // Espera o bipe de sucesso (~0,37 s) acabar pra os dois não se embolarem.
+        _gcFalaTimer = setTimeout(() => {
+            const u = new SpeechSynthesisUtterance(texto);
+            u.lang = "pt-BR";
+            const voz = _gcEscolherVoz(s.getVoices());
+            if (voz) u.voice = voz;
+            u.rate = 1.05;
+            s.speak(u);
+        }, 350);
+    } catch (_) {}
+}
+
+// "VID-15" → "15". Sem número no fim, nada (fala só o nome).
+function _gcNumeroDaSigla(sigla) {
+    const m = String(sigla || "").match(/(\d+)\s*$/);
+    return m ? String(Number(m[1])) : "";
+}
+
 // ── Porcentagem ──
 // Sempre com duas casas, menos quando fecha em 100% (ou 0%), que não precisa de decimal.
 // Arredondar para inteiro escondia progresso real: 2 de 455 vira "0%" e parece que nada

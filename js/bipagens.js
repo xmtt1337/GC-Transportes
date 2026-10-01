@@ -116,6 +116,9 @@ async function _bipBuscarCodigo(codigo) {
         const cor        = _bipCorTransp(data.transportadora);
 
         _bipRegistrar(codigo, data);
+        // Fala a rota e o entregador logo depois do bipe: quem separa não precisa
+        // tirar o olho do pacote pra saber em que pilha ele vai.
+        _gcFalar(_bipTextoFala(data));
 
         const temEnt  = !!data.entregador;
         const entNome = data.entregador || 'Sem entregador atribuído';
@@ -148,6 +151,13 @@ async function _bipBuscarCodigo(codigo) {
     } catch {
         _bipMostrarErro(el, 'Erro ao conectar ao servidor.');
     }
+}
+
+// "15, João Silva". Sem entregador, avisa — é o caso que mais precisa de atenção.
+function _bipTextoFala(data) {
+    const num = _gcNumeroDaSigla(data.sigla);
+    const nome = data.entregador ? String(data.entregador).trim() : "sem entregador";
+    return num ? `${num}, ${nome}` : nome;
 }
 
 function _bipLoadingHtml() {
