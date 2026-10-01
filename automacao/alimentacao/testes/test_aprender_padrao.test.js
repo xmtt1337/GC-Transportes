@@ -51,6 +51,8 @@ const PADRAO_BACKLOG = 'div.index_download-action-icon__2izcz svg path';
 const PADRAO_SETA = 'span.ssc-react-icon.ssc-react-icon-down-outline.ssc-react-table-selection-menu-icon svg';
 const PADRAO_ITEM = 'div.ssc-react-popup.ssc-react-table-selection-menu-popup ' +
                     'div.ssc-react-popup-main div.ssc-react-table-selection-menu-item';
+const PADRAO_RECEBIMENTO_UNITARIO = 'div.general-pack-to div.core div.core-container div.actions-container div ' +
+                                    'button.ssc-button.ssc-btn-type-primary.ssc-btn-plain';
 
 test('maquina sem nada ensinado acha o icone do Backlog pelo padrao', async () => {
   const icone = el();
@@ -120,9 +122,24 @@ test('macro que nao existe nao tem padrao', async () => {
   assert.strictEqual(A.seletorDe('qualquer-outro'), null);
 });
 
-test('so existem padroes para os tres macros conhecidos', () => {
+test('so existem padroes para os quatro macros conhecidos', () => {
   const { A } = carregar();
-  assert.deepStrictEqual(Object.keys(A.padrao).sort(), ['backlog', 'item', 'seta']);
+  assert.deepStrictEqual(Object.keys(A.padrao).sort(), ['backlog', 'item', 'recebimento_unitario', 'seta']);
+});
+
+test('maquina sem nada ensinado acha o botao "Recebimento unitário" pelo padrao', async () => {
+  const botao = el('Recebimento unitário');
+  const { A } = carregar({ pagina: { [PADRAO_RECEBIMENTO_UNITARIO]: [botao] } });
+  await A.carregar();
+  assert.deepStrictEqual(achar(A, 'recebimento_unitario'), [botao]);
+});
+
+test('o texto do padrao do Recebimento unitário e o que a extensao exige (senao se apagaria sozinho)', async () => {
+  const errado = el('Recebimento em massa'); // mesmo seletor, texto diferente - MESMO bug do "item"
+  const { A } = carregar({ pagina: { [PADRAO_RECEBIMENTO_UNITARIO]: [errado] } });
+  await A.carregar();
+  assert.deepStrictEqual(achar(A, 'recebimento_unitario'), []);
+  assert.strictEqual(A.padrao.recebimento_unitario.texto, 'Recebimento unitário');
 });
 
 test('seletorDe e textoDe passam a enxergar o padrao (o diagnostico mostra o que vale)', async () => {

@@ -71,6 +71,14 @@
       seletor: 'div.index_download-action-icon__2izcz svg path',
       texto: '',
     },
+    // Ensinado ao vivo em 01/10/2026 (XPT_CFC) - mesmo motivo do backlog acima: sem isso, toda
+    // vez que o chrome.storage começa vazio (computador novo, perfil novo, ou simplesmente
+    // nunca ensinado ainda) o Recebimento para com "ainda não foi ensinado" até alguém apontar.
+    recebimento_unitario: {
+      seletor: 'div.general-pack-to div.core div.core-container div.actions-container div ' +
+               'button.ssc-button.ssc-btn-type-primary.ssc-btn-plain',
+      texto: 'Recebimento unitário',
+    },
   };
 
   let ensinados = {};
