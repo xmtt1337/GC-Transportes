@@ -116,8 +116,8 @@ async function _bipBuscarCodigo(codigo) {
         const cor        = _bipCorTransp(data.transportadora);
 
         _bipRegistrar(codigo, data);
-        // Fala a rota e o entregador logo depois do bipe: quem separa não precisa
-        // tirar o olho do pacote pra saber em que pilha ele vai.
+        // Fala a rota e o entregador: quem separa não precisa tirar o olho do pacote
+        // pra saber em que pilha ele vai.
         _gcFalar(_bipTextoFala(data));
 
         const temEnt  = !!data.entregador;
@@ -285,9 +285,10 @@ function _bipSessaoRenderizar() {
     }).join('');
 }
 
+// Sem bipe de sucesso: a fala da rota + entregador (logo depois desta chamada) já é a
+// confirmação, e o bipe na frente só atrasava e embolava com ela.
 function _bipRegistrar(codigo, dados) {
     _bipFlash('ok');
-    _gcBeepSucesso();
     _bipSessaoAdicionar(codigo, dados);
     fetch(API + '/bipagem/registrar', {
         method: 'POST',

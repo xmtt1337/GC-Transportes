@@ -176,10 +176,54 @@ function _gcVozClusterErrado() {
 }
 
 // ───── FALA (texto que muda a cada bipe, ex. rota + entregador na separação) ─────
-// Nome de entregador não dá pra pré-gravar, então fala pela voz do próprio navegador.
-// Escolhe a feminina pt-BR mais natural que o aparelho tiver: no Edge é a mesma
-// Francisca do áudio "Clãster errado"; no Chrome, a do Google. A "Maria" local do
-// Windows é robótica e só entra se não houver outra.
+// Nome de entregador não dá pra pré-gravar, então o servidor gera (GET /fala) na MESMA
+// Francisca do "Clãster errado" — igual em qualquer navegador. Toca pelo AudioContext dos
+// bipes (um <audio> solto seria barrado pelo autoplay: o som sai na resposta, fora do gesto).
+// Só se o servidor falhar cai na voz do navegador, que é melhor que silêncio.
+const _gcFalaCache = new Map(); // texto → AudioBuffer: frase repetida sai na hora
+let _gcFalaSeq = 0;             // só a fala do último bipe toca
+let _gcFalaFonte = null;        // o que está tocando agora, pra cortar no bipe seguinte
+
+function _gcFalar(texto) {
+    if (!texto) return;
+    const seq = ++_gcFalaSeq;
+    // Bipe novo corta a fala anterior: em rajada, fila de nomes atrasados confunde
+    // mais do que ajuda — vale o pacote que está na mão agora.
+    _gcPararFala();
+    try {
+        _gcInicializarAudio();
+        const ctx = _gcAudioCtx;
+        if (!ctx) return _gcFalarNavegador(texto);
+        const chave = texto.toLowerCase();
+        const pronto = _gcFalaCache.get(chave);
+        const buf = pronto ? Promise.resolve(pronto)
+            : fetch(`${API}/fala?texto=${encodeURIComponent(texto)}`, {
+                headers: { "Authorization": "Bearer " + token },
+            }).then(r => { if (!r.ok) throw new Error("fala " + r.status); return r.arrayBuffer(); })
+              .then(b => new Promise((ok, falha) => ctx.decodeAudioData(b, ok, falha)))
+              .then(b => { _gcFalaCache.set(chave, b); return b; });
+        buf.then(b => {
+            if (seq !== _gcFalaSeq) return; // já bipou outro pacote
+            return ctx.resume().then(() => {
+                if (seq !== _gcFalaSeq) return;
+                const src = ctx.createBufferSource();
+                src.buffer = b;
+                src.connect(ctx.destination);
+                src.start();
+                _gcFalaFonte = src;
+            });
+        }).catch(() => { if (seq === _gcFalaSeq) _gcFalarNavegador(texto); });
+    } catch (_) { _gcFalarNavegador(texto); }
+}
+
+function _gcPararFala() {
+    try { if (_gcFalaFonte) _gcFalaFonte.stop(); } catch (_) {}
+    _gcFalaFonte = null;
+    try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (_) {}
+}
+
+// Reserva: voz do navegador, a feminina pt-BR mais natural que houver. A "Maria" local
+// do Windows é robótica e só entra se não houver outra.
 const _GC_VOZES_PREFERIDAS = [/francisca.*natural/i, /thalita.*natural/i, /francisca/i, /thalita/i,
     /google.*portugu/i, /luciana/i];
 
@@ -201,25 +245,16 @@ try {
     }
 } catch (_) {}
 
-let _gcFalaTimer = null;
-
-function _gcFalar(texto) {
+function _gcFalarNavegador(texto) {
     try {
         const s = window.speechSynthesis;
         if (!s || !texto) return;
-        // Bipe novo corta a fala anterior: em rajada, fila de nomes atrasados confunde
-        // mais do que ajuda — vale o pacote que está na mão agora.
-        clearTimeout(_gcFalaTimer);
         s.cancel();
-        // Espera o bipe de sucesso (~0,37 s) acabar pra os dois não se embolarem.
-        _gcFalaTimer = setTimeout(() => {
-            const u = new SpeechSynthesisUtterance(texto);
-            u.lang = "pt-BR";
-            const voz = _gcEscolherVoz(s.getVoices());
-            if (voz) u.voice = voz;
-            u.rate = 1.05;
-            s.speak(u);
-        }, 350);
+        const u = new SpeechSynthesisUtterance(texto);
+        u.lang = "pt-BR";
+        const voz = _gcEscolherVoz(s.getVoices());
+        if (voz) u.voice = voz;
+        s.speak(u);
     } catch (_) {}
 }
 

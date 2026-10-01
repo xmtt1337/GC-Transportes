@@ -3,10 +3,11 @@
  *
  * Por que isto tem teste: quem separa ouve em vez de olhar. Número da rota errado
  * (ex. "VID-05" falado "cinco" ou "VID 15" sem número) manda o pacote pra pilha
- * errada; voz robótica escolhida quando havia uma natural foi a reclamação que
- * gerou isto; e em rajada a fala velha tem que ser cortada pela nova.
+ * errada; a voz tem que ser a Francisca do servidor (a do navegador pode ser a robótica)
+ * e só cair na do navegador se o servidor falhar; em rajada, só o último pacote fala;
+ * e não tem mais bipe de sucesso na frente da fala.
  *
- * Navegador falso, nomes inventados.
+ * Navegador e servidor falsos, nomes inventados.
  */
 
 const test = require("node:test");
@@ -16,30 +17,51 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const ler = (f) => fs.readFileSync(path.join(__dirname, "..", "js", f), "utf8");
+const esperar = async () => { for (let i = 0; i < 10; i++) await new Promise(r => setImmediate(r)); };
 
-function carregar(vozes) {
-    const falas = [];
-    const timers = [];
-    let cancelou = 0;
-    const synth = {
-        getVoices: () => vozes || [],
-        cancel: () => { cancelou++; },
-        speak: (u) => falas.push(u),
+function carregar(opcoes) {
+    const o = opcoes || {};
+    const tocou = [];      // falas do servidor tocadas (texto do buffer)
+    const paradas = [];
+    const navegador = [];  // falas pela voz do navegador (reserva)
+    const pedidos = [];    // URLs pedidas ao servidor
+    const pendentes = [];  // respostas seguradas pra simular demora
+    class Ctx {
+        constructor() { this.currentTime = 0; this.destination = {}; }
+        resume() { return Promise.resolve(); }
+        createOscillator() { return { connect() {}, frequency: { setValueAtTime() {} }, start() { tocou.push("bipe"); }, stop() {} }; }
+        createGain() { return { connect() {}, gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} } }; }
+        createBufferSource() {
+            return { connect() {}, start() { tocou.push(this.buffer.texto); }, stop() { paradas.push(this.buffer.texto); } };
+        }
+        decodeAudioData(b, ok) { ok({ texto: Buffer.from(b).toString() }); }
+    }
+    const responder = (url) => {
+        const texto = decodeURIComponent(url.split("texto=")[1]);
+        if (o.servidorFalha) return { ok: false, status: 502 };
+        return { ok: true, arrayBuffer: () => Promise.resolve(Uint8Array.from(Buffer.from(texto)).buffer) };
     };
     const sb = {
         console,
         document: {},
-        window: { speechSynthesis: synth },
+        API: "https://api.teste",
+        token: "tk",
+        window: {
+            AudioContext: Ctx,
+            speechSynthesis: { getVoices: () => o.vozes || [], cancel() {}, speak: (u) => navegador.push(u) },
+        },
         SpeechSynthesisUtterance: function (t) { this.text = t; },
-        setTimeout: (fn) => { timers.push(fn); return timers.length; },
-        clearTimeout: (id) => { if (id) timers[id - 1] = null; },
+        fetch: (url, init) => {
+            pedidos.push({ url, auth: init && init.headers && init.headers.Authorization });
+            if (o.segurar) return new Promise(r => pendentes.push(() => r(responder(url))));
+            return Promise.resolve(responder(url));
+        },
     };
     sb.globalThis = sb;
     vm.createContext(sb);
     vm.runInContext(ler("nav.js"), sb, { filename: "nav.js" });
     vm.runInContext(ler("bipagens.js"), sb, { filename: "bipagens.js" });
-    const rodarTimers = () => { timers.splice(0).forEach(fn => fn && fn()); };
-    return { sb, falas, rodarTimers, cancelou: () => cancelou };
+    return { sb, tocou, paradas, navegador, pedidos, pendentes };
 }
 
 const voz = (name, lang) => ({ name, lang: lang || "pt-BR" });
@@ -60,7 +82,60 @@ test("texto falado: número e nome em sequência", () => {
     assert.strictEqual(sb._bipTextoFala({ sigla: "VID-3", entregador: null }), "3, sem entregador");
 });
 
-test("voz: prefere a natural feminina pt-BR e evita a Maria robótica", () => {
+test("fala vem do servidor (Francisca), com token, e toca sem bipe na frente", async () => {
+    const { sb, tocou, pedidos, navegador } = carregar();
+    sb._gcFalar("15, Fulano Teste");
+    await esperar();
+    assert.deepStrictEqual(tocou, ["15, Fulano Teste"]);
+    assert.strictEqual(pedidos.length, 1);
+    assert.match(pedidos[0].url, /^https:\/\/api\.teste\/fala\?texto=15%2C%20Fulano%20Teste$/);
+    assert.strictEqual(pedidos[0].auth, "Bearer tk");
+    assert.strictEqual(navegador.length, 0);
+});
+
+test("frase repetida sai do cache, sem ir ao servidor de novo", async () => {
+    const { sb, tocou, pedidos } = carregar();
+    sb._gcFalar("15, Fulano Teste");
+    await esperar();
+    sb._gcFalar("15, FULANO TESTE");
+    await esperar();
+    assert.strictEqual(pedidos.length, 1);
+    assert.strictEqual(tocou.length, 2);
+});
+
+test("bipe novo corta a fala que está tocando", async () => {
+    const { sb, tocou, paradas } = carregar();
+    sb._gcFalar("1, Primeiro");
+    await esperar();
+    sb._gcFalar("2, Segundo");
+    await esperar();
+    assert.deepStrictEqual(tocou, ["1, Primeiro", "2, Segundo"]);
+    assert.deepStrictEqual(paradas, ["1, Primeiro"]);
+});
+
+test("resposta atrasada de um bipe velho não toca por cima do novo", async () => {
+    const { sb, tocou, pendentes } = carregar({ segurar: true });
+    sb._gcFalar("1, Primeiro");
+    sb._gcFalar("2, Segundo");
+    pendentes[1](); await esperar();
+    pendentes[0](); await esperar();
+    assert.deepStrictEqual(tocou, ["2, Segundo"]);
+});
+
+test("servidor fora: cai na voz do navegador (nunca mudo), preferindo a natural", async () => {
+    const { sb, tocou, navegador } = carregar({
+        servidorFalha: true,
+        vozes: [voz("Microsoft Maria - Portuguese (Brazil)"), voz("Google português do Brasil")],
+    });
+    sb._gcFalar("15, Fulano Teste");
+    await esperar();
+    assert.deepStrictEqual(tocou, []);
+    assert.strictEqual(navegador.length, 1);
+    assert.strictEqual(navegador[0].text, "15, Fulano Teste");
+    assert.match(navegador[0].voice.name, /Google/);
+});
+
+test("voz de reserva: prefere a natural e só usa a Maria se for a única", () => {
     const { sb } = carregar();
     const lista = [
         voz("Microsoft Maria - Portuguese (Brazil)"),
@@ -69,28 +144,13 @@ test("voz: prefere a natural feminina pt-BR e evita a Maria robótica", () => {
         voz("Microsoft Ava Online (Natural)", "en-US"),
     ];
     assert.match(sb._gcEscolherVoz(lista).name, /Francisca/);
-    assert.match(sb._gcEscolherVoz(lista.filter(v => !/Francisca/.test(v.name))).name, /Google/);
-    // Só a Maria disponível: melhor ela do que nenhuma.
     assert.match(sb._gcEscolherVoz([voz("Microsoft Maria - Portuguese (Brazil)")]).name, /Maria/);
     assert.strictEqual(sb._gcEscolherVoz([voz("Ava", "en-US")]), null);
 });
 
-test("fala sai depois do bipe, com a voz escolhida", () => {
-    const { sb, falas, rodarTimers } = carregar([voz("Google português do Brasil")]);
-    sb._gcFalar("15, Fulano Teste");
-    assert.strictEqual(falas.length, 0, "não fala por cima do bipe");
-    rodarTimers();
-    assert.strictEqual(falas.length, 1);
-    assert.strictEqual(falas[0].text, "15, Fulano Teste");
-    assert.strictEqual(falas[0].lang, "pt-BR");
-    assert.match(falas[0].voice.name, /Google/);
-});
-
-test("bipe novo corta a fala anterior (só o último pacote é falado)", () => {
-    const { sb, falas, rodarTimers, cancelou } = carregar([voz("Google português do Brasil")]);
-    sb._gcFalar("1, Primeiro");
-    sb._gcFalar("2, Segundo");
-    rodarTimers();
-    assert.deepStrictEqual(falas.map(f => f.text), ["2, Segundo"]);
-    assert.strictEqual(cancelou(), 2);
+test("separação: registrar o pacote não toca mais o bipe de sucesso", () => {
+    const fonte = ler("bipagens.js");
+    const corpo = fonte.slice(fonte.indexOf("function _bipRegistrar"), fonte.indexOf("function _bipSelecionarInput"));
+    assert.ok(!/_gcBeepSucesso\s*\(/.test(corpo));
+    assert.match(fonte, /_gcFalar\(_bipTextoFala\(data\)\)/);
 });
