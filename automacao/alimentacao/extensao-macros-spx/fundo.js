@@ -249,7 +249,7 @@ async function abaExistenteDoSpx(qual) {
 // pareciam alarme mal configurado, quando na verdade era clique manual
 // testando. Sem essa marca, cada vez que isso acontecesse de novo seria
 // preciso reabrir essa investigacao do zero.
-async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado', config) {
+async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado', config, idComando) {
   const aba = await abaDoSpx(qual);
   if (!aba) {
     const motivo = 'não consegui abrir o SPX';
@@ -265,6 +265,10 @@ async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado'
   }
   const msg = { xmMacro: qual, agendado: true };
   if (config !== undefined) msg.config = config;
+  // Só o Colador usa isso - deixa um "parar" remoto mirar o comando CERTO, não só o qual (ver
+  // pararSeNecessario): sem o id, um pedido de parar atrasado podia derrubar uma rodada nova que
+  // nem tem a ver com ele, só por ser do mesmo qual na mesma máquina (bug real, 01/10/2026).
+  if (idComando !== undefined) msg.idComando = idComando;
   try {
     const r = await chrome.tabs.sendMessage(aba.id, msg);
     // O macro recusa quando ja esta rodando. Sem olhar a resposta, o popup
@@ -475,7 +479,7 @@ async function executarComando(c) {
   //
   // Sem esperar: abrir a aba pode levar um minuto, e a proxima pergunta ao
   // vigia nao pode ficar parada atras disso.
-  disparar(c.qual, false, 'site', c.config)
+  disparar(c.qual, false, 'site', c.config, c.id)
     .then((r) => contarResultado(c.id, r))
     .catch((e) => contarResultado(c.id, { ok: false, error: String(e.message || e) }));
 }
@@ -503,7 +507,7 @@ async function pararSeNecessario(paradas) {
     if (!p || !p.qual) continue;
     try {
       const aba = await abaExistenteDoSpx(p.qual);
-      if (aba) await chrome.tabs.sendMessage(aba.id, { xmColadorParar: p.qual }).catch(() => {});
+      if (aba) await chrome.tabs.sendMessage(aba.id, { xmColadorParar: p.qual, idComando: p.id }).catch(() => {});
     } catch (e) { /* aba sumiu entre o query e o sendMessage - nada rodando mesmo */ }
   }
 }

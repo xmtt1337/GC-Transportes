@@ -329,14 +329,21 @@
   }
 
   let rodando = null;
+  // O id do comando (fila.js, backend) desta rodada — null quando disparado sem um (ex.:
+  // chamado direto, como nos testes). Sem isso, um "parar" remoto atrasado (chegou depois que
+  // ESTA rodada já tinha terminado e outra do mesmo qual/máquina começou) derrubava a rodada
+  // NOVA por engano, só por bater o qual (bug real, 01/10/2026 - junto com a fila nunca marcar
+  // o pedido de parar como entregue, ver fila.js).
+  let rodandoId = null;
   // true quando quem pediu pra parar foi o botão "Parar" da tela Macros (via fundo.js), não o
   // clique local no painel - só muda a mensagem final, a parada em si é a mesma (S.parar).
   let paradoPelaTela = false;
 
-  async function rodar(qual, config) {
+  async function rodar(qual, config, idComando) {
     if (rodando) { P.nota(`${(CATALOGO[qual] || {}).titulo || qual} já está rodando`); return; }
     if (!CATALOGO[qual]) throw new Error(`Colador desconhecido: ${qual}`);
     rodando = qual;
+    rodandoId = idComando !== undefined ? idComando : null;
     S.parar = false;
     paradoPelaTela = false;
     P.abrir(CATALOGO[qual].titulo, () => { S.parar = true; });
@@ -405,6 +412,7 @@
       else P.erro(`${e.message || e} (${colados} colado(s) até parar)`);
     } finally {
       rodando = null;
+      rodandoId = null;
       S.parar = false;
       paradoPelaTela = false;
     }
@@ -419,17 +427,21 @@
       if (!msg) return;
 
       // "Parar" pedido pela tela Macros (fundo.js repassa, ~30s de atraso) - só derruba se for
-      // ESTE colador que está rodando agora; um recado atrasado não pode parar outra coisa que
-      // começou depois. Sem responder: fundo.js dispara e não espera confirmação.
+      // ESTE colador que está rodando agora, E (quando o recado trouxer um id) se for A MESMA
+      // rodada que pediu pra parar - um recado atrasado não pode derrubar uma rodada nova que
+      // começou depois dele, só por ser do mesmo qual. Sem id no recado (compat), vale só o
+      // qual. Sem responder: fundo.js dispara e não espera confirmação.
       if (msg.xmColadorParar) {
-        if (msg.xmColadorParar === rodando) { paradoPelaTela = true; S.parar = true; }
+        const bateQual = msg.xmColadorParar === rodando;
+        const bateId = msg.idComando === undefined || msg.idComando === rodandoId;
+        if (bateQual && bateId) { paradoPelaTela = true; S.parar = true; }
         return;
       }
 
       if (!CATALOGO[msg.xmMacro]) return;
       if (rodando) { responder({ ok: false, error: `${CATALOGO[msg.xmMacro].titulo} já está rodando` }); return; }
       if (!msg.config || typeof msg.config !== 'object') { responder({ ok: false, error: 'comando sem config' }); return; }
-      rodar(msg.xmMacro, msg.config);
+      rodar(msg.xmMacro, msg.config, msg.idComando);
       responder({ ok: true });
     });
   }

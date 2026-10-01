@@ -303,6 +303,37 @@ test('xmColadorParar so marca S.parar se for o QUAL que esta rodando agora', asy
   assert.strictEqual(r.S.parar, true);
 });
 
+// Bug de verdade, achado ao vivo (01/10/2026): um "parar" pedido pra uma rodada que JÁ tinha
+// terminado chegava atrasado (~30s do vigia) bem quando uma rodada NOVA do mesmo qual na mesma
+// máquina tinha acabado de começar - e derrubava ela por engano, só por bater o qual. Agora o
+// recado também carrega o id do comando (fundo.js), e só para se o id bater também.
+test('xmColadorParar com id DIFERENTE do que está rodando não para, mesmo batendo o qual', async () => {
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: { lote: '__NUNCA_RESPONDE__' },
+  });
+  r.ctx.__ouvinteMsg({ xmMacro: 'recebimento', config: CONFIG, idComando: 'rodada-nova' }, {}, () => {});
+  await new Promise((res) => setImmediate(res));
+
+  r.ctx.__ouvinteMsg({ xmColadorParar: 'recebimento', idComando: 'rodada-velha' }, {}, () => {});
+  assert.strictEqual(r.S.parar, false, 'id de outra rodada nao pode parar esta');
+
+  r.ctx.__ouvinteMsg({ xmColadorParar: 'recebimento', idComando: 'rodada-nova' }, {}, () => {});
+  assert.strictEqual(r.S.parar, true);
+});
+
+test('xmColadorParar sem idComando no recado (compat com vigia/fundo.js antigo) para só pelo qual', async () => {
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: { lote: '__NUNCA_RESPONDE__' },
+  });
+  r.ctx.__ouvinteMsg({ xmMacro: 'recebimento', config: CONFIG, idComando: 'rodada-nova' }, {}, () => {});
+  await new Promise((res) => setImmediate(res));
+
+  r.ctx.__ouvinteMsg({ xmColadorParar: 'recebimento' }, {}, () => {}); // sem idComando
+  assert.strictEqual(r.S.parar, true);
+});
+
 test('Parar remoto (tela Macros) conta "parado pela tela do site", diferente do Parar local', async () => {
   const r = carregar({
     pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },

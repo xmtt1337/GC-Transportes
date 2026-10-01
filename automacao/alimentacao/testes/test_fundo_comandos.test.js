@@ -501,7 +501,7 @@ test('comando do Colador vai pra aba ja aberta, mesmo dentro de uma RT/tarefa (i
   await c.ctx.buscarComandos();
   await dormir(20);
   assert.strictEqual(c.chamadas.abas[0].id, 20);
-  assert.deepStrictEqual(plano(c.chamadas.abas[0].msg), { xmMacro: 'recebimento', agendado: true, config });
+  assert.deepStrictEqual(plano(c.chamadas.abas[0].msg), { xmMacro: 'recebimento', agendado: true, config, idComando: ID });
 });
 
 test('sem aba nenhuma do Colador: abre uma nova na LISTA (Entrada > Recebimento / Sorting Task)', async () => {
@@ -541,7 +541,7 @@ test('paradas do vigia repassa xmColadorParar pra aba que ja esta naquela tela d
     vigia: { resposta: { comandos: [], paradas: [{ id: ID, qual: 'recebimento' }] } },
   });
   await c.ctx.buscarComandos();
-  assert.deepStrictEqual(plano(c.chamadas.abas), [{ id: 20, msg: { xmColadorParar: 'recebimento' } }]);
+  assert.deepStrictEqual(plano(c.chamadas.abas), [{ id: 20, msg: { xmColadorParar: 'recebimento', idComando: ID } }]);
 });
 
 test('sem nenhuma aba naquela tela, paradas nao cria/navega aba nenhuma (nada rodando mesmo)', async () => {
@@ -560,8 +560,8 @@ test('mais de uma parada na mesma resposta: cada uma vai pra aba certa', async (
   });
   await c.ctx.buscarComandos();
   assert.deepStrictEqual(plano(c.chamadas.abas).sort((x, y) => x.id - y.id), [
-    { id: 20, msg: { xmColadorParar: 'recebimento' } },
-    { id: 21, msg: { xmColadorParar: 'at_cluster' } },
+    { id: 20, msg: { xmColadorParar: 'recebimento', idComando: 'a' } },
+    { id: 21, msg: { xmColadorParar: 'at_cluster', idComando: 'b' } },
   ]);
 });
 
