@@ -153,18 +153,12 @@ async function _bipBuscarCodigo(codigo) {
     }
 }
 
-// "15, João Pedro" — os dois primeiros nomes, mais rápido de ouvir que o nome inteiro.
-// Nome com polo depois do traço ("João - Videira") fala só "João": o que vem depois do
-// "-" não é nome. Sem entregador, avisa — é o caso que mais precisa de atenção.
+// "15, João" — só o primeiro nome, mais rápido de ouvir (pedido do usuário). Sem
+// entregador, avisa — é o caso que mais precisa de atenção.
 function _bipTextoFala(data) {
     const num = _gcNumeroDaSigla(data.sigla);
-    const partes = data.entregador ? String(data.entregador).trim().split(/\s+/).filter(Boolean) : [];
-    const doisPrimeiros = [];
-    for (const p of partes) {
-        if (/^[-–—]+$/.test(p) || doisPrimeiros.length === 2) break;
-        doisPrimeiros.push(p);
-    }
-    const nome = doisPrimeiros.join(" ") || "sem entregador";
+    const primeiro = data.entregador ? String(data.entregador).trim().split(/\s+/)[0] : "";
+    const nome = primeiro || "sem entregador";
     return num ? `${num}, ${nome}` : nome;
 }
 
