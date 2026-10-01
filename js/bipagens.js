@@ -153,10 +153,12 @@ async function _bipBuscarCodigo(codigo) {
     }
 }
 
-// "15, João Silva". Sem entregador, avisa — é o caso que mais precisa de atenção.
+// "15, João" — só o primeiro nome, mais rápido de ouvir. Sem entregador, avisa — é o
+// caso que mais precisa de atenção.
 function _bipTextoFala(data) {
     const num = _gcNumeroDaSigla(data.sigla);
-    const nome = data.entregador ? String(data.entregador).trim() : "sem entregador";
+    const primeiro = data.entregador ? String(data.entregador).trim().split(/\s+/)[0] : "";
+    const nome = primeiro || "sem entregador";
     return num ? `${num}, ${nome}` : nome;
 }
 

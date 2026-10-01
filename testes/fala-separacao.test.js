@@ -75,11 +75,12 @@ test("número da sigla: VID-15 vira 15", () => {
     assert.strictEqual(sb._gcNumeroDaSigla(null), "");
 });
 
-test("texto falado: número e nome em sequência", () => {
+test("texto falado: número e só o primeiro nome, em sequência", () => {
     const { sb } = carregar();
-    assert.strictEqual(sb._bipTextoFala({ sigla: "VID-15", entregador: "Fulano Teste" }), "15, Fulano Teste");
-    assert.strictEqual(sb._bipTextoFala({ sigla: null, entregador: "Fulano Teste" }), "Fulano Teste");
+    assert.strictEqual(sb._bipTextoFala({ sigla: "VID-15", entregador: "Fulano de Tal Teste" }), "15, Fulano");
+    assert.strictEqual(sb._bipTextoFala({ sigla: null, entregador: "  Fulano Teste" }), "Fulano");
     assert.strictEqual(sb._bipTextoFala({ sigla: "VID-3", entregador: null }), "3, sem entregador");
+    assert.strictEqual(sb._bipTextoFala({ sigla: "VID-3", entregador: "   " }), "3, sem entregador");
 });
 
 test("fala vem do servidor (Francisca), com token, e toca sem bipe na frente", async () => {
