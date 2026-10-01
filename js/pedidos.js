@@ -197,13 +197,18 @@ function _pedRenderizarPagina() {
     const pagina = _pedFiltrados.slice(inicio, inicio + _pedPorPagina);
 
     const tbody = document.getElementById('ped-tbody');
-    tbody.innerHTML = pagina.map(r => `<tr>
+    // Bipado no lugar errado sai em vermelho: é o que se procura primeiro
+    // quando o pedido some.
+    tbody.innerHTML = pagina.map(r => {
+        const errado = r.alerta === 'lugar_errado';
+        return `<tr>
             <td style="font-size:12px;color:#94a3b8;font-family:monospace">${_pedEsc(r.codigo) || '—'}</td>
             <td><span style="font-weight:600;color:${_PED_ETAPA_CORES[r.etapa] || '#8494a9'}">${_pedEsc(r.etapa_rotulo)}</span></td>
-            <td>${_pedEsc(r.detalhe) || '—'}</td>
+            <td${errado ? ' style="color:#ef4444;font-weight:600"' : ''}>${_pedEsc(r.detalhe) || '—'}</td>
             <td style="font-size:12px;white-space:nowrap">${_pedEsc(_pedQuando(r))}</td>
             <td style="font-size:12px;color:#8494a9">${_pedEsc(r.usuario) || '—'}</td>
-        </tr>`).join('');
+        </tr>`;
+    }).join('');
 
     document.getElementById('ped-pagina-info').innerText = `Página ${_pedPagina} de ${totalPaginas}`;
 }

@@ -270,11 +270,14 @@ function _sstAbrirConversa(codigo) {
 }
 
 function _sstEventoHtml(e) {
-    const cor = _SST_CORES[e.etapa] || "#8494a9";
+    // Bipado no lugar errado vira vermelho, com a etiqueta: é o que se procura
+    // primeiro quando o pedido some, e no meio da lista ele se perdia.
+    const errado = e.alerta === "lugar_errado";
+    const cor = errado ? "#ef4444" : (_SST_CORES[e.etapa] || "#8494a9");
     return `
-    <div class="sst-evento" style="--sst-c:${cor}">
+    <div class="sst-evento${errado ? " sst-evento-alerta" : ""}" style="--sst-c:${cor}">
         <div class="sst-evento-topo">
-            <span class="sst-evento-etapa">${_sstEsc(e.etapa_rotulo)}</span>
+            <span class="sst-evento-etapa">${_sstEsc(e.etapa_rotulo)}${errado ? ` <span class="sst-evento-tag">Rota errada</span>` : ""}</span>
             <span class="sst-evento-quando">${_sstEsc(_sstQuando(e))}</span>
         </div>
         ${e.detalhe ? `<div class="sst-evento-detalhe">${_sstEsc(e.detalhe)}</div>` : ""}
