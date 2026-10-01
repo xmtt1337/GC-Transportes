@@ -140,6 +140,41 @@ function _gcBeepErro() {
     _gcTocarTom([[0, 440, "square", 0.22], [0.24, 300, "square", 0.22]], 0.9);
 }
 
+// Voz feminina "Cluster errado" — pacote de outra rota na conferência. Som diferente do
+// bipe de erro pra quem bipa em rajada saber, sem olhar a tela, que o pacote é de outro
+// cluster (e não um pacote sem dados). Toca pelo mesmo AudioContext dos bipes: um <audio>
+// solto seria barrado pelo autoplay, já que o som sai na resposta do servidor, fora do
+// gesto. Enquanto o arquivo não carregou (ou se falhar), cai no bipe de erro.
+let _gcVozClusterBuf = null;
+let _gcVozClusterCarregando = null;
+
+function _gcCarregarVozCluster() {
+    if (_gcVozClusterBuf || _gcVozClusterCarregando) return _gcVozClusterCarregando;
+    _gcInicializarAudio();
+    const ctx = _gcAudioCtx;
+    if (!ctx) return null;
+    _gcVozClusterCarregando = fetch("sons/cluster-errado.mp3?v=20261001a")
+        .then(r => r.arrayBuffer())
+        .then(b => new Promise((ok, falha) => ctx.decodeAudioData(b, ok, falha)))
+        .then(buf => { _gcVozClusterBuf = buf; })
+        .catch(() => { _gcVozClusterCarregando = null; });
+    return _gcVozClusterCarregando;
+}
+
+function _gcVozClusterErrado() {
+    try {
+        _gcInicializarAudio();
+        const ctx = _gcAudioCtx;
+        if (!ctx || !_gcVozClusterBuf) { _gcCarregarVozCluster(); return _gcBeepErro(); }
+        ctx.resume().then(() => {
+            const src = ctx.createBufferSource();
+            src.buffer = _gcVozClusterBuf;
+            src.connect(ctx.destination);
+            src.start();
+        });
+    } catch (_) { _gcBeepErro(); }
+}
+
 // ── Porcentagem ──
 // Sempre com duas casas, menos quando fecha em 100% (ou 0%), que não precisa de decimal.
 // Arredondar para inteiro escondia progresso real: 2 de 455 vira "0%" e parece que nada

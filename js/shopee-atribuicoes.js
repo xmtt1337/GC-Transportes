@@ -388,6 +388,7 @@ function _scaScan() {
 
 function _scaBipar(codigoLido) {
     if (!_scaSessao || _scaSessao.encerrada_em) return;
+    _gcCarregarVozCluster(); // já baixa a voz no 1º bipe, antes de precisar dela
     const campo = document.getElementById("sca-codigo");
     const codigo = String(codigoLido != null ? codigoLido : campo.value).trim().toUpperCase();
     // Limpa e devolve o foco antes da resposta: o leitor dispara o próximo bipe na
@@ -434,8 +435,10 @@ function _scaBipar(codigoLido) {
             _scaMsg(`✓ <strong>${_scaEsc(d.codigo)}</strong> ${d.repetido ? "já estava conferido" : "confere"} com <strong>${
                 _scaEsc(_scaRotuloAlvo(d.esperado))}</strong>.${d.detalhe ? ` <span style="color:#eab308">${_scaEsc(d.detalhe)}</span>` : ""}${rep}${receb}`, "ok");
         } else {
-            // Divergência e "não encontrado" apitam igual: os dois param a esteira.
-            _gcBeepErro(); _scaFlash("err");
+            // Os dois param a esteira, mas soam diferente: outro cluster fala "Cluster
+            // errado"; sem dados continua no bipe de erro.
+            if (tom === "divergente") _gcVozClusterErrado(); else _gcBeepErro();
+            _scaFlash("err");
             // Sem cadastro não é "pacote errado" — é o sistema dizendo que não sabe
             // responder. Quem está com o pacote na mão precisa de instrução, não de
             // diagnóstico: e a instrução nomeia o grupo, porque quem bipa em rajada não

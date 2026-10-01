@@ -478,6 +478,7 @@ function _cenEscaneando() {
 }
 
 function _cenBipar(codigoLido) {
+    _gcCarregarVozCluster(); // já baixa a voz no 1º bipe, antes de precisar dela
     const campo = document.getElementById("cen-codigo");
     const codigo = String(codigoLido != null ? codigoLido : campo.value).trim().toUpperCase();
     // Com a câmera aberta o campo fica atrás do overlay: focar ali sobe o teclado do
@@ -501,7 +502,10 @@ function _cenBipar(codigoLido) {
         }
         // Pacote voltando apita erro mesmo estando na rota certa: ele não pode subir no
         // carro, e verde aqui seria o sinal oposto do que precisa acontecer.
-        _cenResposta(_cenTextoResultado(d), !d.interceptar && d.resultado === "ok" ? "ok" : "erro");
+        // Pacote de outro cluster fala "Cluster errado" em vez de apitar: sem dados continua
+        // no bipe de erro. Interceptar vence — o pacote não pode subir, seja de qual rota for.
+        const outraRota = !d.interceptar && d.resultado === "divergente";
+        _cenResposta(_cenTextoResultado(d), !d.interceptar && d.resultado === "ok" ? "ok" : "erro", outraRota);
         // Recarrega dos dois lados: o bipado entra na lista e sai dos faltantes.
         _cenCarregarSessao();
         _cenCarregarFaltantes();
@@ -540,8 +544,10 @@ function _cenTextoResultado(d) {
 
 // Som, cor e texto do bipe. O som é o que importa de verdade: conferindo pacote na mão,
 // ninguém olha a tela a cada bipe — é pelo apito que se percebe que algo saiu errado.
-function _cenResposta(msg, tipo) {
-    if (tipo === "ok") { _gcBeepSucesso(); } else { _gcBeepErro(); }
+function _cenResposta(msg, tipo, outraRota) {
+    if (tipo === "ok") { _gcBeepSucesso(); }
+    else if (outraRota) { _gcVozClusterErrado(); }
+    else { _gcBeepErro(); }
     _cenFlash(tipo);
     _cenMsg(msg, tipo);
     // Com a câmera cobrindo a tela, a resposta tem que aparecer dentro do overlay.
