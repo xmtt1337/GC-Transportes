@@ -378,7 +378,13 @@
           lote = Array.isArray(r.itens) ? r.itens.slice() : [];
           if (!lote.length) {
             if (!config.continuo) break;
-            P.nota(`${colados} colado(s) até agora · aguardando novos códigos`);
+            // diagnostico (colagem.js, só vem quando o lote sai vazio): mostra ONDE o código
+            // está sumindo (dia errado, xpt errado, ou já colado) em vez de só "nada achei" -
+            // sem isso, "0 de hoje mesmo o código aparecendo em Shopee > Receber" (achado ao
+            // vivo, 01/10/2026) não dava pra investigar sem acesso direto ao banco.
+            const d = r.diagnostico;
+            const extra = d ? ` (hoje: ${d.do_dia} · desse XPT: ${d.do_dia_e_xpt} · pendentes: ${d.pendentes})` : '';
+            P.nota(`${colados} colado(s) até agora · aguardando novos códigos${extra}`);
             await S.dormir(ESPERA_SEM_CODIGO_MS);
             continue;
           }

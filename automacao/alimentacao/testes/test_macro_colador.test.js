@@ -274,6 +274,36 @@ test('continuo espera por codigo novo em vez de terminar com a fila vazia', asyn
   assert.ok(pedidos >= 2);
 });
 
+// Bug de verdade, achado ao vivo (01/10/2026): código aparecia certinho em Shopee > Receber mas
+// o Colador nunca achava nada - sem o diagnóstico (colagem.js) junto do lote vazio, não dava pra
+// saber se era dia/xpt errado ou já colado sem acesso direto ao banco.
+test('lote vazio com diagnostico: a nota mostra em qual etapa o código está sumindo', async () => {
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: {
+      lote: () => {
+        r.S.parar = true;
+        return { tabela: null, itens: [], diagnostico: { total: 4, do_dia: 3, do_dia_e_xpt: 2, pendentes: 1 } };
+      },
+    },
+  });
+  await r.G.colador.rodar('recebimento', { ...CONFIG, continuo: true });
+  const ultimaNota = r.P.notas[r.P.notas.length - 1];
+  assert.match(ultimaNota, /hoje: 3 · desse XPT: 2 · pendentes: 1/);
+});
+
+test('lote vazio SEM diagnostico (resposta antiga, ou o proprio diagnostico falhou) nao quebra a nota', async () => {
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: {
+      lote: () => { r.S.parar = true; return loteDe([]); },
+    },
+  });
+  await r.G.colador.rodar('recebimento', { ...CONFIG, continuo: true });
+  const ultimaNota = r.P.notas[r.P.notas.length - 1];
+  assert.strictEqual(ultimaNota, '0 colado(s) até agora · aguardando novos códigos');
+});
+
 // ── Parar ────────────────────────────────────────────────────────────────
 test('Parar no meio conta "parado por voce", nao erro', async () => {
   const r = carregar({
