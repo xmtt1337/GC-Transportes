@@ -153,7 +153,7 @@ function _gcCarregarVozCluster() {
     _gcInicializarAudio();
     const ctx = _gcAudioCtx;
     if (!ctx) return null;
-    _gcVozClusterCarregando = fetch("sons/cluster-errado.mp3?v=20261001a")
+    _gcVozClusterCarregando = fetch("sons/cluster-errado.mp3?v=20261001b")
         .then(r => r.arrayBuffer())
         .then(b => new Promise((ok, falha) => ctx.decodeAudioData(b, ok, falha)))
         .then(buf => { _gcVozClusterBuf = buf; })
