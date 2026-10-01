@@ -35,7 +35,8 @@ const PASTA = path.join(__dirname, '..', 'extensao-macros-spx');
 
 class ParadoFalso extends Error {}
 
-function carregar({ pagina = {}, respostas = {}, botoes = {}, ensinados = {}, soPorFolha = {}, textoDaPagina = '' } = {}) {
+function carregar({ pagina = {}, respostas = {}, botoes = {}, ensinados = {}, soPorFolha = {}, textoDaPagina = '',
+  hash = '#/generalReceiveTaskOps/singleReceiveNew/RT1' } = {}) {
   const chamadasVigia = [];
   const painel = { passos: [], notas: [], ok: null, erro: null, aoParar: null, titulo: null };
   const cliques = [];
@@ -83,6 +84,7 @@ function carregar({ pagina = {}, respostas = {}, botoes = {}, ensinados = {}, so
   const ctx = vm.createContext({
     console: { log() {}, warn() {}, error() {} },
     document: { querySelector: (sel) => pagina[sel] || null, body: { innerText: textoDaPagina } },
+    location: { hash },
     chrome: {
       runtime: {
         onMessage: { addListener: (f) => { ctx.__ouvinteMsg = f; } },
@@ -383,6 +385,36 @@ test('prepararRecebimento: mesmo com um campo já visível, garante a aba "Receb
   });
   await r.G.colador.prepararRecebimento();
   assert.deepStrictEqual(r.cliques, [receberPorPedido]);
+});
+
+// Bug de verdade, achado ao vivo (01/10/2026): a LISTA de Recebimento (sem nenhum id na URL)
+// tem campos de filtro ("ID de recebimento", "Número de manifesto") com o MESMO placeholder
+// genérico do campo de digitar de verdade - acharCampo('recebimento') achava um deles e
+// prepararRecebimento retornava cedo achando que já estava pronto, sem nunca clicar em
+// "Recebimento unitário". Resultado: ficava "aguardando novos códigos" pra sempre, sem erro
+// nenhum (a reserva no backend não tem nada a ver com qual tela o navegador mostra).
+test('prepararRecebimento: campo com o mesmo placeholder na LISTA (sem id na URL) não engana - abre um novo', async () => {
+  const recebimentoUnitario = { desabilitado: false };
+  const receberPorPedido = {};
+  let apareceu = false;
+  const r = carregar({
+    hash: '#/generalReceiveTaskOps', // a LISTA, sem RT nenhuma aberta
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } }, // campo de FILTRO da lista
+    ensinados: { recebimento_unitario: [recebimentoUnitario] },
+  });
+  r.S.acharBotao = (texto) => (apareceu && texto === 'Receber por pedido' ? receberPorPedido : null);
+  r.S.folhaVisivelComTexto = () => null;
+  const clicarOriginal = r.S.clicar;
+  r.S.clicar = (el) => { if (el === recebimentoUnitario) { apareceu = true; r.ctx.location.hash = '#/generalReceiveTaskOps/singleReceiveNew/RT2'; } return clicarOriginal(el); };
+  await r.G.colador.prepararRecebimento();
+  assert.deepStrictEqual(r.cliques, [recebimentoUnitario, receberPorPedido]);
+});
+
+test('naTelaDeDigitar: AT Cluster nao tem filtro de URL (o seletor dele nao e ambíguo)', async () => {
+  const r = carregar({ hash: '#/sorting-task/list', pagina: { 'input[placeholder="Please Scan or Input"]': { desabilitado: false } } });
+  assert.ok(r.G.colador.acharCampo('at_cluster'));
+  await r.G.colador.prepararAtCluster(); // nao lanca, nem tenta clicar em "Criar tarefa"
+  assert.strictEqual(r.cliques.length, 0);
 });
 
 // Bug de verdade, achado testando contra o SPX (29/09/2026): "Recebimento

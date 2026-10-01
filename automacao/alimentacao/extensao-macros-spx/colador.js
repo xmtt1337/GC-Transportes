@@ -115,6 +115,25 @@
     return null;
   }
 
+  // O placeholder genérico "Por favor, insira" não é exclusivo da tela de digitar: a própria
+  // LISTA de Recebimento (#/generalReceiveTaskOps, sem nenhum id) tem os mesmos campos de
+  // filtro ("ID de recebimento", "Número de manifesto") com o MESMO placeholder - acharCampo()
+  // sozinho não enxerga essa diferença, e um `return` cedo baseado só nele fazia o colador achar
+  // que já estava pronto estando ainda na lista, sem nunca clicar em "Recebimento unitário"
+  // (achado ao vivo, 01/10/2026: ficava "aguardando novos códigos" pra sempre, sem erro nenhum,
+  // porque a reserva de verdade não tem nada a ver com qual tela o navegador está mostrando).
+  // Só pro Recebimento, que é onde isso foi visto - o seletor do AT Cluster (placeholder "Scan")
+  // não tem esse problema, então não ganha o filtro de URL.
+  const URL_TELA_PRONTA = {
+    recebimento: /singleReceiveNew/,
+  };
+
+  function naTelaDeDigitar(qual) {
+    const regex = URL_TELA_PRONTA[qual];
+    if (regex && !regex.test(String(location.hash || ''))) return false;
+    return !!acharCampo(qual);
+  }
+
   /** true se o campo destravou dentro do limite (ou já estava livre). */
   async function esperarCampoLivre(campo, limiteMs) {
     const fim = Date.now() + limiteMs;
@@ -180,7 +199,7 @@
     let abaPedido = acharPorTexto('Receber por pedido');
     if (abaPedido) { S.clicar(abaPedido); await S.dormir(300); }
 
-    if (acharCampo('recebimento')) return;
+    if (naTelaDeDigitar('recebimento')) return;
 
     P.passo('abrindo um recebimento unitário novo');
     // "Recebimento unitário"/"Recebimento em massa" NÃO foram achados nem por
