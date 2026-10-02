@@ -105,7 +105,7 @@ function _extrvBuscarCodigo() {
         codigo : _findCol(s, "CÓDIGO","Código","codigo","CODIGO"),
         unico  : _findCol(s, "ÚNICO","Único","unico","UNICO"),
         status : _findCol(s, "Status","STATUS","status"),
-        transp : _findCol(s, "TRANSPORTADORA","Transportadora"),
+        transp : _findColTransp(s),
         data   : _findCol(s, "DATA","Data","data"),
         hora   : _findCol(s, "HORA","Hora","hora"),
         cidade : _findCol(s, "Cidade","CIDADE","cidade"),
@@ -247,6 +247,12 @@ function _findCol(sample, ...cands) {
     return null;
 }
 
+// O cabeçalho já apareceu na planilha como "Transpordora" e a busca exata perdia a
+// coluna. Qualquer cabeçalho que comece com "transp" serve.
+function _findColTransp(sample) {
+    return Object.keys(sample).find(k => _nk(k).startsWith("transp")) || null;
+}
+
 function _parseV(str) {
     if (!str) return 0;
     return parseFloat((str+"").replace(/[^\d,]/g,"").replace(",",".")) || 0;
@@ -345,7 +351,7 @@ function _renderExtrDash(rows) {
     // Detectar colunas
     const C = {
         status : _findCol(s, "Status","STATUS","status","Situação","SITUAÇÃO"),
-        transp : _findCol(s, "TRANSPORTADORA","Transportadora","transportadora","TRANSP"),
+        transp : _findColTransp(s),
         data   : _findCol(s, "DATA","Data","data","DT","DATE"),
         valor  : _findCol(s, "Valor","VALOR","valor","VL"),
         resp   : _findCol(s, "Responsavel","RESPONSAVEL","Responsável","RESPONSÁVEL","Resp"),
