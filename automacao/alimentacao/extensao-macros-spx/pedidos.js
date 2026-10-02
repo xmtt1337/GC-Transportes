@@ -70,12 +70,22 @@
     return resposta;
   }
 
+  // O vigia conta quando a AT que acabou de baixar era IGUAL a uma ja gravada (de noite a AT
+  // para de mudar e o SPX exporta o mesmo arquivo byte a byte). Ai "0 codigos" nao e atraso de
+  // carga - e que nao ha mesmo nada novo, e esperar 6 min pra falhar seria mentira.
+  // Curto de proposito: o vigia nota o arquivo segundos depois do download e o Pedidos pergunta
+  // 15s depois - um "repetido" de mais de 2 min atras e de OUTRA rodada da AT, nao desta.
+  const AT_REPETIDA_RECENTE_S = 2 * 60;
+  const atNaoMudou = (r) => typeof r.at_repetida_ha_s === 'number' && r.at_repetida_ha_s <= AT_REPETIDA_RECENTE_S;
+
+  // Devolve os codigos, ou null quando (encadeado) a AT nao mudou e nao ha nada novo.
   async function pedirCodigos(opcoes) {
     const encadeado = !!(opcoes && opcoes.encadeado);
     const fim = Date.now() + ESPERA_ENCADEADO_MS;
     let resposta = await perguntarPendentes();
     let codigos = (resposta.codigos || []).filter(Boolean);
     while (!codigos.length && encadeado && Date.now() < fim) {
+      if (atNaoMudou(resposta)) return null;
       P.nota('a AT acabou de baixar — aguardando o XM Vigia levar a carga pro banco…');
       await S.dormir(INTERVALO_ENCADEADO_MS);
       resposta = await perguntarPendentes();
@@ -312,6 +322,10 @@
 
       P.passo('1/5 · pedindo os códigos ao vigia');
       const codigos = await pedirCodigos(opcoes);
+      if (codigos === null) {
+        P.aviso('a AT não mudou desde a última carga — nada novo pra pesquisar');
+        return;
+      }
 
       P.passo('2/5 · Pesquisa em lote');
       await colarEEnviar(codigos);

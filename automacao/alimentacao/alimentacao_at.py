@@ -157,6 +157,20 @@ def eh_arquivo_alvo(caminho):
     return nome.startswith(PREFIXOS) and nome.endswith(EXTENSOES)
 
 
+# So pra quando o arquivo NAO vai ser aberto (o vigia ja tem um igual gravado) e mesmo assim
+# precisa dizer de qual macro ele e. Quando o arquivo e aberto, quem decide e o cabecalho.
+_TIPO_DO_PREFIXO = (("br_assignment_task_", "at"), ("export_return_order_", "pesquisados"),
+                    ("backlogs", "backlog"))
+
+
+def tipo_pelo_nome(caminho):
+    nome = os.path.basename(str(caminho)).lower().replace(" ", "_")
+    for prefixo, tipo in _TIPO_DO_PREFIXO:
+        if nome.startswith(prefixo):
+            return tipo
+    return None
+
+
 def texto_da_celula(valor):
     """O valor como o Excel MOSTRA, nao como o Python guarda.
 

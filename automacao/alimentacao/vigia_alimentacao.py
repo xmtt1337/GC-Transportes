@@ -563,6 +563,12 @@ class Vigia:
         self.trava = threading.Lock()
         self._tamanhos = {}
         self._impressoes = {}
+        # Arquivo novo na pasta com o MESMO conteudo de um ja enviado (caminho, hash): avisado
+        # uma vez so - a varredura passa por ele a cada 2s.
+        self._repetidos_avisados = set()
+        # Quando chegou a ultima AT igual a uma ja gravada (time.time()) - o Pedidos encadeado
+        # pergunta isso pra saber que "0 codigos" e "a AT nao mudou", e nao "a carga atrasou".
+        self.at_repetida_em = None
         self.desde = time.time() - GRACA_S
         self.ultimo = "esperando arquivo"
         self._eventos = deque(maxlen=EVENTOS_GUARDADOS)
@@ -718,6 +724,7 @@ class Vigia:
             except OSError:
                 continue
             if self.registro.tem(chave):
+                self._avisar_repetido(caminho, chave)
                 continue
             with self.trava:
                 if any(p.chave == chave for p in self.fila):
@@ -730,6 +737,37 @@ class Vigia:
             if guardado not in vistos:
                 self._impressoes.pop(guardado, None)
                 self._tamanhos.pop(guardado, None)
+
+    def _avisar_repetido(self, caminho, chave):
+        """Baixado agora, mas IGUAL a um arquivo ja enviado: nao reenvia, mas conta.
+
+        Antes era silencio total - de noite a AT nao muda, o SPX exporta o mesmo arquivo byte a
+        byte, e o historico mostrava "AT baixado" sem nenhum "Gravado no sistema" depois, com o
+        Pedidos falhando em seguida por "nao ha pedido novo" (01/10/2026). Parecia que o vigia
+        tinha perdido a AT; na verdade ela so nao tinha nada de novo.
+        """
+        if (caminho, chave) in self._repetidos_avisados:
+            return
+        self._repetidos_avisados.add((caminho, chave))
+        nome = os.path.basename(caminho)
+        anterior = self.registro.itens.get(chave) or {}
+        # O PROPRIO arquivo que acabou de ser gravado continua na pasta e cai aqui na varredura
+        # seguinte - ele nao e copia de nada. Copia de verdade e outro nome ("(1)", "(2)"...).
+        if anterior.get("nome") == nome:
+            return
+        quando = anterior.get("quando") or "antes"
+        tipo = at.tipo_pelo_nome(nome)
+        if tipo == "at":
+            self.at_repetida_em = time.time()
+        log.info("igual a um ja enviado (%s): %s", quando, nome)
+        self.relatar(MACRO_DO_TIPO.get(tipo, "geral"), "aviso",
+                     f"Nada novo: {nome} é igual ao arquivo já gravado em {quando}", arquivo=nome)
+
+    def at_repetida_ha_s(self):
+        """Segundos desde a ultima AT igual a uma ja gravada, ou None."""
+        if self.at_repetida_em is None:
+            return None
+        return int(time.time() - self.at_repetida_em)
 
     # ── enviar ──────────────────────────────────────────────────────────
     def _proximo(self):
@@ -979,6 +1017,10 @@ class Atendimento(BaseHTTPRequestHandler):
 
         log.info("extensao pediu pendentes: %d de %d",
                  len(resposta.get("codigos", [])), resposta.get("total", 0))
+        # O Pedidos encadeado na AT usa isto pra separar "a AT nao mudou" (termina sem erro) de
+        # "a carga da AT ainda nao chegou no banco" (espera) - ver pedidos.js.
+        if isinstance(resposta, dict):
+            resposta["at_repetida_ha_s"] = self.vigia.at_repetida_ha_s()
         return self._responder(200, resposta)
 
     # A extensao pergunta aqui, de 30 em 30s, se a tela Macros pediu alguma

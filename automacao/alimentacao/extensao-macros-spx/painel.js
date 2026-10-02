@@ -171,6 +171,18 @@
       console.log(`[XM Macros] ${texto}`);
     },
 
+    // Terminou sem fazer nada, mas sem defeito: no historico entra amarelo, nao vermelho.
+    aviso(texto) {
+      contarAoSistema('aviso', texto);
+      if (!listaEl) return;
+      fecharAnterior();
+      passoAtual = null;
+      linha('pronto', '!', texto);
+      if (botaoEl) { botaoEl.textContent = 'Fechar'; botaoEl.classList.remove('parar'); }
+      aoParar = desmontar;
+      console.log(`[XM Macros] ${texto}`);
+    },
+
     erro(texto) {
       contarAoSistema('erro', texto);
       if (!listaEl) return;

@@ -159,3 +159,10 @@ test('os titulos do catalogo sao os que os macros realmente usam', () => {
     .map((m) => m[1]);
   assert.deepStrictEqual([...literais, ...doColador].sort(), Object.keys(L.MACRO_DO_PAINEL).sort());
 });
+
+// "Terminou sem fazer nada, sem defeito" (ex.: a AT nao mudou, nada novo pra pesquisar) entra
+// amarelo no historico - antes so existia ok ou erro, e isso aparecia como "Falhou" (01/10/2026).
+test('eventoDoPainel: aviso explicito vira nivel aviso, nao erro', () => {
+  assert.deepStrictEqual(L.eventoDoPainel('Pedidos Pesquisados', 'aviso', 'a AT não mudou'),
+    { macro: 'pedidos', nivel: 'aviso', texto: 'a AT não mudou' });
+});

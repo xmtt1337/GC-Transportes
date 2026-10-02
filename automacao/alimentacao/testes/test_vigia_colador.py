@@ -147,20 +147,27 @@ class BackendDeMentira:
     def colador_at(self, *a, **k):
         return self._chamar("colador_at", *a, **k)
 
+    def pendentes(self, *a, **k):
+        return self._chamar("pendentes", *a, **k)
+
 
 class VigiaDeMentira:
     ultimo = "esperando"
 
-    def __init__(self, backend):
+    def __init__(self, backend, at_repetida_ha_s=None):
         self.backend = backend
+        self._at_repetida = at_repetida_ha_s
+
+    def at_repetida_ha_s(self):
+        return self._at_repetida
 
 
 class ServidorLocal(unittest.TestCase):
     """O atendimento a extensao de verdade, numa porta livre de 127.0.0.1."""
 
-    def subir(self, backend):
+    def subir(self, backend, at_repetida_ha_s=None):
         self._vigia_anterior = va.Atendimento.vigia
-        va.Atendimento.vigia = VigiaDeMentira(backend)
+        va.Atendimento.vigia = VigiaDeMentira(backend, at_repetida_ha_s)
         servidor = ThreadingHTTPServer(("127.0.0.1", 0), va.Atendimento)
         threading.Thread(target=servidor.serve_forever, daemon=True).start()
         self.addCleanup(self._derrubar, servidor)
@@ -181,6 +188,21 @@ class ServidorLocal(unittest.TestCase):
                 return r.status, json.loads(r.read())
         except urllib.error.HTTPError as e:
             return e.code, json.loads(e.read())
+
+    # ── GET /pendentes (Pedidos Pesquisados) ─────────────────────────────────
+    # O Pedidos encadeado na AT separa "a AT nao mudou" de "a carga atrasou" por este campo
+    # (01/10/2026: AT repetida de noite virava "Falhou: nao ha pedido novo" em vermelho).
+    def test_pendentes_conta_ha_quanto_tempo_a_at_veio_repetida(self):
+        base = self.subir(BackendDeMentira({"codigos": [], "total": 0}), at_repetida_ha_s=8)
+        status, corpo = self.chamar(base, "/pendentes?limite=10")
+        self.assertEqual(status, 200)
+        self.assertEqual(corpo, {"codigos": [], "total": 0, "at_repetida_ha_s": 8})
+
+    def test_pendentes_sem_at_repetida_manda_null(self):
+        base = self.subir(BackendDeMentira({"codigos": ["BR1"], "total": 1}))
+        _, corpo = self.chamar(base, "/pendentes")
+        self.assertIsNone(corpo["at_repetida_ha_s"])
+        self.assertEqual(corpo["codigos"], ["BR1"])
 
     # ── GET /colador/lote ────────────────────────────────────────────────────
     def test_lote_repassa_a_resposta_do_servidor(self):

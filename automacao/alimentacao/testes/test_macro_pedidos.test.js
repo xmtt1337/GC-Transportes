@@ -96,6 +96,31 @@ test('vigia fora do ar continua sendo erro na hora, mesmo encadeado (nao e "carg
   assert.strictEqual(r.perguntas.length, 1);
 });
 
+// Achado ao vivo (01/10/2026): de noite a AT nao muda, o SPX exporta o MESMO arquivo e o vigia
+// nao regrava (igual a um ja enviado). "0 codigos" ai e "nada novo", nao "a carga atrasou" -
+// esperar 6 min pra falhar em vermelho seria mentir duas vezes.
+test('encadeado: vigia diz que a AT acabou de vir repetida -> null (nada novo), sem esperar', async () => {
+  const r = carregar([{ ...VAZIO, at_repetida_ha_s: 12 }]);
+  assert.strictEqual(await r.G.pedidos.pedirCodigos({ encadeado: true }), null);
+  assert.strictEqual(r.perguntas.length, 1);
+  assert.strictEqual(r.minutosPassados(), 0);
+});
+
+test('encadeado: "repetida" de outra rodada (mais de 2 min) nao conta - espera a carga', async () => {
+  const r = carregar([{ ...VAZIO, at_repetida_ha_s: 900 }, COM(4)]);
+  assert.strictEqual((await r.G.pedidos.pedirCodigos({ encadeado: true })).length, 4);
+});
+
+test('manual: AT repetida nao muda nada - 0 codigos continua erro na hora', async () => {
+  const r = carregar([{ ...VAZIO, at_repetida_ha_s: 5 }]);
+  await assert.rejects(r.G.pedidos.pedirCodigos(), /não há pedido novo/);
+});
+
+test('encadeado: com codigos, a marca de repetida e ignorada (tem o que pesquisar)', async () => {
+  const r = carregar([{ ...COM(3), at_repetida_ha_s: 5 }]);
+  assert.strictEqual((await r.G.pedidos.pedirCodigos({ encadeado: true })).length, 3);
+});
+
 test('Parar durante a espera encerra', async () => {
   const r = carregar([VAZIO]);
   r.S.parar = true;

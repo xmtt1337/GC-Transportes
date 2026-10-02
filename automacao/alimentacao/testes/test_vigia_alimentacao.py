@@ -140,6 +140,43 @@ class Deteccao(BaseDoVigia):
         self.varrer(vigia)
         self.assertEqual(vigia.fila, [])
 
+    # Achado ao vivo (01/10/2026): de noite a AT para de mudar, o SPX exporta o MESMO arquivo e
+    # o vigia pulava em silencio total - o historico mostrava "AT baixado" sem nenhum "Gravado
+    # no sistema", e parecia que a AT tinha se perdido. Agora conta, uma vez, como aviso.
+    def _ja_enviado_e_copia(self, nome, copia, conteudo=None):
+        self.escrever(nome, conteudo)
+        vigia = self.criar_vigia()
+        self.varrer(vigia)
+        vigia.registro.marcar(vigia.fila[0].chave, nome=nome, resultado="ok")
+        vigia.fila.clear()
+        self.escrever(copia, conteudo)
+        return vigia
+
+    def test_copia_identica_da_at_vira_aviso_da_alimentacao_uma_vez_so(self):
+        vigia = self._ja_enviado_e_copia("br_assignment_task_romaneio_20261001.csv",
+                                         "br_assignment_task_romaneio_20261001 (1).csv")
+        self.varrer(vigia)
+        self.varrer(vigia)   # a varredura passa a cada 2s: nao pode avisar de novo
+        repetidos = [e for e in vigia._eventos if e["texto"].startswith("Nada novo")]
+        self.assertEqual(len(repetidos), 1, "so a COPIA - o original que acabou de ser gravado nao")
+        self.assertEqual(repetidos[0]["arquivo"], "br_assignment_task_romaneio_20261001 (1).csv")
+        self.assertEqual(repetidos[0]["macro"], "alimentacao")
+        self.assertEqual(repetidos[0]["nivel"], "aviso")
+        self.assertEqual(vigia.fila, [], "continua nao reenviando")
+        self.assertIsNotNone(vigia.at_repetida_ha_s())
+        self.assertLess(vigia.at_repetida_ha_s(), 5)
+
+    def test_backlog_repetido_avisa_no_backlog_e_nao_marca_a_at(self):
+        backlog = "Tracking Number,Status\nBR1,Delivering\n"
+        vigia = self._ja_enviado_e_copia("backlogs.csv", "backlogs (1).csv", backlog)
+        self.varrer(vigia)
+        repetidos = [e for e in vigia._eventos if e["texto"].startswith("Nada novo")]
+        self.assertEqual([e["macro"] for e in repetidos], ["backlog"])
+        self.assertIsNone(vigia.at_repetida_ha_s())
+
+    def test_sem_nada_repetido_at_repetida_e_none(self):
+        self.assertIsNone(self.criar_vigia().at_repetida_ha_s())
+
     def test_rodada_nova_do_macro_vai_mesmo_com_nome_parecido(self):
         # Conteudo diferente = relatorio novo, ainda que o nome seja irmao
         self.escrever("br_assignment_task_20260915.csv")

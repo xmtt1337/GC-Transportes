@@ -246,6 +246,8 @@
     const t = String(texto == null ? '' : texto).trim();
     if (!macro || !t) return null;
     if (tipo === 'ok') return { macro, nivel: 'ok', texto: t };
+    // Terminou sem fazer nada, mas sem defeito (ex.: a AT nao mudou, nada novo pra pesquisar).
+    if (tipo === 'aviso') return { macro, nivel: 'aviso', texto: t };
     // "parado por voce" nao e falha: foi a pessoa que apertou Parar.
     return { macro, nivel: /^parado por voc/i.test(t) ? 'aviso' : 'erro', texto: t };
   }
