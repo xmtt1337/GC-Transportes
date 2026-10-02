@@ -265,6 +265,9 @@ async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado'
   }
   const msg = { xmMacro: qual, agendado: true };
   if (config !== undefined) msg.config = config;
+  // O Pedidos encadeado na AT espera a carga chegar no banco em vez de falhar
+  // no primeiro "0 codigos" (ver pedidos.js, pedirCodigos).
+  if (origem === 'encadeado') msg.encadeado = true;
   // Só o Colador usa isso - deixa um "parar" remoto mirar o comando CERTO, não só o qual (ver
   // pararSeNecessario): sem o id, um pedido de parar atrasado podia derrubar uma rodada nova que
   // nem tem a ver com ele, só por ser do mesmo qual na mesma máquina (bug real, 01/10/2026).

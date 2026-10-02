@@ -45,7 +45,18 @@
   const achouATela = () => !!(S.acharBotao(TEXTO_LOTE) || S.folhaVisivelComTexto(TEXTO_LOTE));
 
   // ── 1. os codigos ──────────────────────────────────────────────────────
-  async function pedirCodigos() {
+  // ENCADEADO NA AT, "0 CODIGOS" NAO E RESPOSTA FINAL. A AT termina quando o
+  // Chrome acaba de BAIXAR o arquivo; o dado so existe no banco depois que o
+  // vigia nota o arquivo, le, e manda pro backend - e esse envio pode levar
+  // minutos (arquivo de dezenas de milhares de linhas, Render acordando, o
+  // vigia reagendando depois de um erro temporario). Os 15s fixos da AT nao
+  // cobrem isso: em 01/10/2026 a AT rodou certinho as 21:15 e o Pedidos falhou
+  // com "nao ha pedido novo" porque perguntou antes de a carga chegar.
+  // Disparo manual continua falhando na hora: quem clicou quer saber ja.
+  const ESPERA_ENCADEADO_MS = 6 * 60 * 1000;
+  const INTERVALO_ENCADEADO_MS = 20000;
+
+  async function perguntarPendentes() {
     let resposta;
     try {
       resposta = await chrome.runtime.sendMessage({ xmMacro: 'pendentes', limite: MAX_POR_VEZ });
@@ -56,9 +67,24 @@
       const motivo = (resposta && resposta.error) || 'sem resposta';
       throw new Error(`o XM Vigia não respondeu (${motivo}). Ele está aberto na bandeja?`);
     }
-    const codigos = (resposta.codigos || []).filter(Boolean);
+    return resposta;
+  }
+
+  async function pedirCodigos(opcoes) {
+    const encadeado = !!(opcoes && opcoes.encadeado);
+    const fim = Date.now() + ESPERA_ENCADEADO_MS;
+    let resposta = await perguntarPendentes();
+    let codigos = (resposta.codigos || []).filter(Boolean);
+    while (!codigos.length && encadeado && Date.now() < fim) {
+      P.nota('a AT acabou de baixar — aguardando o XM Vigia levar a carga pro banco…');
+      await S.dormir(INTERVALO_ENCADEADO_MS);
+      resposta = await perguntarPendentes();
+      codigos = (resposta.codigos || []).filter(Boolean);
+    }
     if (!codigos.length) {
-      throw new Error('não há pedido novo pra pesquisar — rode o macro da AT Exportada antes');
+      throw new Error(encadeado
+        ? 'a AT baixou, mas a carga dela não chegou no banco em 6 min — confira o XM Vigia (bandeja)'
+        : 'não há pedido novo pra pesquisar — rode o macro da AT Exportada antes');
     }
     P.nota(`${codigos.length} códigos${resposta.total > codigos.length
       ? ` (de ${resposta.total} no total)` : ''}`);
@@ -271,7 +297,7 @@
   }
 
   // ── o macro ────────────────────────────────────────────────────────────
-  async function rodar() {
+  async function rodar(opcoes) {
     if (rodando) { P.nota('já está rodando'); return; }
     rodando = true;
     S.parar = false;
@@ -285,7 +311,7 @@
       P.nota(mudou ? 'tela aberta' : 'já estava nela');
 
       P.passo('1/5 · pedindo os códigos ao vigia');
-      const codigos = await pedirCodigos();
+      const codigos = await pedirCodigos(opcoes);
 
       P.passo('2/5 · Pesquisa em lote');
       await colarEEnviar(codigos);
@@ -324,7 +350,7 @@
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
       if (msg && msg.xmMacro === 'pedidos') {
         if (rodando) responder({ ok: false, error: 'os Pedidos Pesquisados já estão rodando' });
-        else { rodar(); responder({ ok: true }); }
+        else { rodar({ encadeado: !!msg.encadeado }); responder({ ok: true }); }
       }
     });
   }

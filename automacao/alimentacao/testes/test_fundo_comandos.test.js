@@ -606,3 +606,20 @@ test('disparo que deu certo nao conta evento (quem conta e o proprio macro, ao t
   await dormir(30);
   assert.strictEqual(eventosMandados(c).length, 0);
 });
+
+// ── encadeamento AT -> Pedidos ──────────────────────────────────────────────
+// O Pedidos encadeado espera a carga da AT chegar no banco (pedidos.js); pra isso a marca
+// "encadeado" tem que chegar até a aba - antes ela parava no registro do fundo.js e o Pedidos
+// tratava o encadeado como clique manual, falhando no primeiro "0 códigos" (01/10/2026).
+test('xmRodar encadeado leva a marca encadeado ate a aba do Pedidos', async () => {
+  const c = carregar();
+  const r = await respostaMsg(c, { xmRodar: 'pedidos', encadeado: true });
+  assert.strictEqual(r.ok, true);
+  assert.deepStrictEqual(plano(c.chamadas.abas[0].msg), { xmMacro: 'pedidos', agendado: true, encadeado: true });
+});
+
+test('xmRodar manual (popup) NAO leva a marca encadeado', async () => {
+  const c = carregar();
+  await respostaMsg(c, { xmRodar: 'pedidos' });
+  assert.deepStrictEqual(plano(c.chamadas.abas[0].msg), { xmMacro: 'pedidos', agendado: true });
+});

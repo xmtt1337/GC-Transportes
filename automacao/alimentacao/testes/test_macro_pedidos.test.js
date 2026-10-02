@@ -1,0 +1,103 @@
+// Testes do macro Pedidos Pesquisados (pedidos.js) - a parte de pedir os codigos ao vigia.
+//
+//   node --test automacao/alimentacao/testes/test_macro_pedidos.test.js
+//
+// O que se protege:
+//   - ENCADEADO na AT, "0 codigos" nao e resposta final: a AT termina quando o Chrome baixa o
+//     arquivo, mas o dado so chega no banco depois que o vigia manda (pode levar minutos). Em
+//     01/10/2026 a AT rodou certo e o Pedidos falhou com "nao ha pedido novo" por perguntar cedo;
+//   - mesmo encadeado, desiste depois do prazo (nao fica preso pra sempre) com um motivo que
+//     aponta pro vigia, e nao pra "rode a AT antes" (ela acabou de rodar);
+//   - disparo MANUAL continua falhando na hora com 0 codigos;
+//   - Parar durante a espera encerra (S.dormir respeita S.parar).
+//
+// Relogio falso: S.dormir avanca o Date.now() do contexto, sem esperar de verdade.
+// Dados de TESTE, inventados.
+
+const test = require('node:test');
+const assert = require('node:assert');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const PASTA = path.join(__dirname, '..', 'extensao-macros-spx');
+class ParadoFalso extends Error {}
+
+// `respostas`: o que o vigia devolve a cada pergunta de pendentes, em ordem (a ultima se repete).
+function carregar(respostas) {
+  let agora = Date.UTC(2026, 9, 1, 0, 20, 0);
+  class DataFalsa extends Date {
+    constructor(...a) { if (a.length) super(...a); else super(agora); }
+    static now() { return agora; }
+  }
+  const perguntas = [];
+  const painel = { notas: [] };
+  const S = {
+    Parado: ParadoFalso,
+    parar: false,
+    dormir: async (ms) => { if (S.parar) throw new ParadoFalso('parado'); agora += ms; },
+  };
+  const ctx = vm.createContext({
+    console: { log() {}, warn() {}, error() {} },
+    Date: DataFalsa,
+    chrome: { runtime: {
+      onMessage: { addListener() {} },
+      async sendMessage(msg) {
+        perguntas.push(msg);
+        return respostas[Math.min(perguntas.length - 1, respostas.length - 1)];
+      },
+    } },
+  });
+  ctx.window = ctx;
+  vm.runInContext(fs.readFileSync(path.join(PASTA, 'logica.js'), 'utf8'), ctx);
+  ctx.XMMacro.spx = S;
+  ctx.XMMacro.painel = { nota: (t) => painel.notas.push(t), passo() {}, abrir() {}, ok() {}, erro() {} };
+  vm.runInContext(fs.readFileSync(path.join(PASTA, 'pedidos.js'), 'utf8'), ctx, { filename: 'pedidos.js' });
+  return { G: ctx.XMMacro, S, perguntas, painel, minutosPassados: () => (agora - Date.UTC(2026, 9, 1, 0, 20, 0)) / 60000 };
+}
+
+const VAZIO = { ok: true, codigos: [], total: 0 };
+const COM = (n) => ({ ok: true, codigos: Array.from({ length: n }, (_, i) => `BR${i}`), total: n });
+
+test('encadeado: 0 codigos na primeira pergunta espera a carga chegar e segue quando ela chega', async () => {
+  const r = carregar([VAZIO, VAZIO, COM(3)]);
+  const codigos = await r.G.pedidos.pedirCodigos({ encadeado: true });
+  assert.strictEqual(codigos.length, 3);
+  assert.strictEqual(r.perguntas.length, 3);
+  assert.ok(r.painel.notas.some((n) => /aguardando o XM Vigia/.test(n)));
+});
+
+test('encadeado: desiste depois de ~6 min com motivo que aponta pro vigia (nao "rode a AT antes")', async () => {
+  const r = carregar([VAZIO]);
+  await assert.rejects(r.G.pedidos.pedirCodigos({ encadeado: true }), (e) => {
+    assert.match(e.message, /não chegou no banco em 6 min/);
+    assert.doesNotMatch(e.message, /rode o macro da AT/);
+    return true;
+  });
+  assert.ok(r.minutosPassados() >= 6 && r.minutosPassados() < 7, `esperou ${r.minutosPassados()} min`);
+});
+
+test('manual: 0 codigos falha na hora, sem esperar (quem clicou quer saber ja)', async () => {
+  const r = carregar([VAZIO, COM(5)]);
+  await assert.rejects(r.G.pedidos.pedirCodigos(), /não há pedido novo pra pesquisar/);
+  assert.strictEqual(r.perguntas.length, 1);
+  assert.strictEqual(r.minutosPassados(), 0);
+});
+
+test('encadeado com codigos de cara nao espera nada', async () => {
+  const r = carregar([COM(2)]);
+  assert.strictEqual((await r.G.pedidos.pedirCodigos({ encadeado: true })).length, 2);
+  assert.strictEqual(r.perguntas.length, 1);
+});
+
+test('vigia fora do ar continua sendo erro na hora, mesmo encadeado (nao e "carga atrasada")', async () => {
+  const r = carregar([{ ok: false, error: 'connection refused' }]);
+  await assert.rejects(r.G.pedidos.pedirCodigos({ encadeado: true }), /XM Vigia não respondeu/);
+  assert.strictEqual(r.perguntas.length, 1);
+});
+
+test('Parar durante a espera encerra', async () => {
+  const r = carregar([VAZIO]);
+  r.S.parar = true;
+  await assert.rejects(r.G.pedidos.pedirCodigos({ encadeado: true }), ParadoFalso);
+});
