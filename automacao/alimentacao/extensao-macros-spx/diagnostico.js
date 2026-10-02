@@ -70,7 +70,7 @@
     linhas.push('');
 
     diz('checkbox do cabecalho', resumo(A.checkboxDoCabecalho()));
-    for (const qual of ['seta', 'item', 'backlog', 'grupo_rotas', 'tipo_rota_entrega', 'recebimento_unitario']) {
+    for (const qual of ['seta', 'item', 'backlog', 'grupo_rotas', 'tipo_rota_entrega', 'recebimento_unitario', 'criar_tarefa']) {
       const seletor = G.aprender.seletorDe(qual);
       if (!seletor) { diz(`${qual} ensinado`, 'nada ensinado ainda'); continue; }
       const quantos = (() => { try { return document.querySelectorAll(seletor).length; } catch (e) { return -1; } })();
@@ -200,6 +200,7 @@
     else if (tecla === 'g') G.aprender.ensinar('grupo_rotas');
     else if (tecla === 't') G.aprender.ensinar('tipo_rota_entrega');
     else if (tecla === 'r') G.aprender.ensinar('recebimento_unitario');
+    else if (tecla === 'c') G.aprender.ensinar('criar_tarefa');
     else return;
     evento.preventDefault();
   }, true);

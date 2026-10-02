@@ -42,6 +42,9 @@
     // (29/09/2026) - esse grupo de opcoes deve estar num componente que foge
     // dos dois (Shadow DOM e o suspeito principal). Ensinar de vez.
     recebimento_unitario: 'Recebimento unitário',
+    // Mesmo componente do SPX (ssc-button) que o "Recebimento unitário": a busca por texto
+    // também não achou ele contra a tela de verdade (02/10/2026).
+    criar_tarefa: 'Criar tarefa',
   };
 
   // O QUE FICOU ENSINADO NAO VIAJA COM A PASTA DA EXTENSAO. Mora no armazenamento do Chrome
@@ -243,6 +246,7 @@
     grupo_rotas: 'a única opção que aparecer em "Grupo de Rotas" — com o menu já aberto (Criar Tarefa de Separação)',
     tipo_rota_entrega: 'a opção "Bulky&Non-bulky" em "Tipo de Rota de Entrega" — com o menu já aberto (Criar Tarefa de Separação)',
     recebimento_unitario: 'o botão "Recebimento unitário" (Entrada › Recebimento)',
+    criar_tarefa: 'o botão "Criar tarefa" (Entrega › Gestão de Tarefas de Separação)',
   };
 
   function ensinar(qual) {

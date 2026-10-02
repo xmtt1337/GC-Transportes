@@ -122,15 +122,18 @@
   // que já estava pronto estando ainda na lista, sem nunca clicar em "Recebimento unitário"
   // (achado ao vivo, 01/10/2026: ficava "aguardando novos códigos" pra sempre, sem erro nenhum,
   // porque a reserva de verdade não tem nada a ver com qual tela o navegador está mostrando).
-  // Só pro Recebimento, que é onde isso foi visto - o seletor do AT Cluster (placeholder "Scan")
-  // não tem esse problema, então não ganha o filtro de URL.
+  // O AT Cluster tem a MESMA armadilha: a lista (#/sorting-task/list) tem no topo o campo "ID da
+  // tarefa de separação" com placeholder "Please Scan or Input", igual ao de bipar dentro da
+  // tarefa (02/10/2026). Ali não se sabe o endereço da tarefa aberta, então vale o contrário:
+  // na LISTA, nunca está pronto.
   const URL_TELA_PRONTA = {
-    recebimento: /singleReceiveNew/,
+    recebimento: (h) => /singleReceiveNew/.test(h),
+    at_cluster: (h) => !/sorting-task\/list/.test(h),
   };
 
   function naTelaDeDigitar(qual) {
-    const regex = URL_TELA_PRONTA[qual];
-    if (regex && !regex.test(String(location.hash || ''))) return false;
+    const pronta = URL_TELA_PRONTA[qual];
+    if (pronta && !pronta(String(location.hash || ''))) return false;
     return !!acharCampo(qual);
   }
 
@@ -261,12 +264,18 @@
   }
 
   async function prepararAtCluster() {
-    if (acharCampo('at_cluster')) return;
+    if (naTelaDeDigitar('at_cluster')) return;
 
     P.passo('criando uma tarefa de separação (AT Cluster)');
-    const criar = acharPorTexto('Criar tarefa');
+    // ESPERA o botão: a aba acabou de ser aberta/navegada e o SPX ainda carrega a lista - procurar
+    // uma vez só dava "não achei o botão Criar tarefa" com ele aparecendo na tela segundos depois
+    // (02/10/2026). Ensinado (Alt+C) vale também, pro caso de a busca por texto não bastar.
+    const acharCriar = () => acharPorTexto('Criar tarefa') ||
+      G.aprender.elementosEnsinados('criar_tarefa').filter(S.visivel)[0] || null;
+    const criar = await S.esperar(acharCriar, { oque: 'o botão "Criar tarefa"', limite: 20000, intervalo: 300 })
+      .catch(() => null);
     if (!criar) {
-      throw new Error('não achei o botão "Criar tarefa" — confira se a aba está em Entrega > Sorting Task Management');
+      throw new Error('não achei o botão "Criar tarefa" — confira se a aba está em Entrega > Gestão de Tarefas de Separação (ou ensine: Alt+C nessa tela)');
     }
     S.clicar(criar);
     await S.esperar(() => S.folhaVisivelComTexto('Criar Tarefa de Separação'), {
@@ -293,7 +302,7 @@
       oque: 'a confirmação de tarefa criada', limite: 15000, intervalo: 300 });
     S.clicar(acharPorTexto('Participar Desta Tarefa'));
 
-    await S.esperar(() => acharCampo('at_cluster'), {
+    await S.esperar(() => naTelaDeDigitar('at_cluster'), {
       oque: 'o campo de código aparecer', limite: 20000, intervalo: 300 });
   }
 

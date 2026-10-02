@@ -471,11 +471,42 @@ test('prepararRecebimento: campo com o mesmo placeholder na LISTA (sem id na URL
   assert.deepStrictEqual(r.cliques, [recebimentoUnitario, receberPorPedido]);
 });
 
-test('naTelaDeDigitar: AT Cluster nao tem filtro de URL (o seletor dele nao e ambíguo)', async () => {
-  const r = carregar({ hash: '#/sorting-task/list', pagina: { 'input[placeholder="Please Scan or Input"]': { desabilitado: false } } });
-  assert.ok(r.G.colador.acharCampo('at_cluster'));
-  await r.G.colador.prepararAtCluster(); // nao lanca, nem tenta clicar em "Criar tarefa"
+// Achado ao vivo (02/10/2026): a LISTA do AT Cluster tem no topo "ID da tarefa de separação" com
+// o MESMO placeholder ("Please Scan or Input") do campo de bipar dentro da tarefa - na lista o
+// campo NÃO vale como "pronto", senão o colador bipava no filtro da lista.
+test('AT Cluster: campo "Please Scan" na LISTA nao vale como pronto - vai criar a tarefa', async () => {
+  const criar = {};
+  const r = carregar({
+    hash: '#/sorting-task/list',
+    pagina: { 'input[placeholder="Please Scan or Input"]': { desabilitado: false } },
+    botoes: { 'Criar tarefa': criar },
+  });
+  await assert.rejects(r.G.colador.prepararAtCluster()); // segue o formulário (que não existe aqui)
+  assert.strictEqual(r.cliques[0], criar, 'tentou criar a tarefa em vez de achar que ja estava pronto');
+});
+
+test('AT Cluster: fora da lista, com o campo visivel, ja esta pronto (reaproveita a tarefa aberta)', async () => {
+  const r = carregar({ hash: '#/sorting-task/detail/123', pagina: { 'input[placeholder="Please Scan or Input"]': { desabilitado: false } } });
+  await r.G.colador.prepararAtCluster();
   assert.strictEqual(r.cliques.length, 0);
+});
+
+// Achado ao vivo (02/10/2026): "não achei o botão Criar tarefa" com ele na tela - era procurado
+// uma vez só, logo depois de abrir a aba, antes de o SPX terminar de desenhar a lista.
+test('AT Cluster: "Criar tarefa" que aparece atrasado e esperado, nao vira erro', async () => {
+  const criar = {};
+  let tentativas = 0;
+  const r = carregar({ hash: '#/sorting-task/list', pagina: {} });
+  r.S.acharBotao = (texto) => (texto === 'Criar tarefa' && ++tentativas > 3 ? criar : null);
+  await assert.rejects(r.G.colador.prepararAtCluster(), /Criar Tarefa de Separação|formulário/);
+  assert.strictEqual(r.cliques[0], criar);
+});
+
+test('AT Cluster: "Criar tarefa" ensinado (Alt+C) serve quando a busca por texto nao acha', async () => {
+  const ensinado = {};
+  const r = carregar({ hash: '#/sorting-task/list', pagina: {}, ensinados: { criar_tarefa: [ensinado] } });
+  await assert.rejects(r.G.colador.prepararAtCluster());
+  assert.strictEqual(r.cliques[0], ensinado);
 });
 
 // Bug de verdade, achado testando contra o SPX (29/09/2026): "Recebimento
