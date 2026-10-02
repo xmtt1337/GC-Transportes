@@ -36,6 +36,7 @@
   'use strict';
 
   const G = (raiz.XMMacro = raiz.XMMacro || {});
+  const L = G.logica;
   const S = G.spx;
   const P = G.painel;
 
@@ -241,27 +242,63 @@
     return null;
   }
 
-  // Abre o campo (rótulo) e clica na opção ENSINADA (Alt+G / Alt+T, com o menu
-  // aberto) — ao contrário do campo em si, a opção que aparece no menu não tem
-  // como ser achada com confiança sem alguém apontar uma vez (mesmo motivo do
-  // ícone de baixar do Backlog: seletor chutado aqui seria pior que nenhum).
-  async function escolherNoDropdown(rotulo, qualEnsinado) {
+  // AS OPÇÕES DO MENU = O QUE APARECEU COM O CLIQUE. Antes era só a opção ENSINADA (Alt+G/Alt+T),
+  // e o "Grupo de Rotas" ensinado não confere texto (o nome muda por polo) - ao vivo (02/10/2026)
+  // ele clicou em outra coisa com o mesmo seletor (o "Rotas Caçador" cinza do topo do formulário)
+  // e o campo ficou "Por favor, selecione". Comparando o que estava visível antes e depois de
+  // abrir o campo, sobram só as opções DESTE menu, e aí dá pra escolher pelo texto.
+  const OPCOES_DE_MENU = 'li, [role="option"], [class*="option"], [class*="item"]';
+
+  function opcoesVisiveis() {
+    return [...document.querySelectorAll(OPCOES_DE_MENU)]
+      .filter(S.visivel)
+      .filter((el) => String(el.textContent || '').trim() && !el.querySelector(OPCOES_DE_MENU));
+  }
+
+  // O campo mostra o valor escolhido no lugar do "Por favor, selecione".
+  function campoPreenchido(rotulo) {
+    const campo = campoDoRotulo(rotulo);
+    if (!campo) return false;
+    const caixa = (campo.closest && campo.closest('[class*="select"]')) || campo;
+    const texto = `${caixa.textContent || ''} ${campo.value || ''}`.trim();
+    return !!texto && !/selecione/i.test(texto);
+  }
+
+  // `escolha(novas)`: das opções que apareceram, qual clicar (ou null).
+  async function escolherNoDropdown(rotulo, escolha, qualEnsinado) {
     const campo = campoDoRotulo(rotulo);
     if (!campo) throw new Error(`não achei o campo "${rotulo}"`);
+    const antes = new Set(opcoesVisiveis());
     S.clicar(campo);
     await S.dormir(500);
 
-    const opcao = await S.esperar(
-      () => G.aprender.elementosEnsinados(qualEnsinado).filter(S.visivel)[0] || null,
-      { oque: `a opção de "${rotulo}"`, limite: 8000, intervalo: 200 },
-    ).catch(() => null);
+    const novas = await S.esperar(() => {
+      const n = opcoesVisiveis().filter((el) => !antes.has(el));
+      return n.length ? n : null;
+    }, { oque: `o menu de "${rotulo}" abrir`, limite: 8000, intervalo: 200 }).catch(() => []);
+
+    let opcao = escolha(novas);
+    // Ensinado só como reserva, e só onde ele confere texto (Tipo de Rota) - ver acima.
+    if (!opcao && qualEnsinado) opcao = G.aprender.elementosEnsinados(qualEnsinado).filter(S.visivel)[0] || null;
     if (!opcao) {
-      const tecla = qualEnsinado === 'grupo_rotas' ? 'Alt+G' : 'Alt+T';
-      throw new Error(`"${rotulo}" ainda não foi ensinado — abra o menu e aperte ${tecla}`);
+      const vistas = novas.map((el) => String(el.textContent).trim()).filter(Boolean).slice(0, 5).join(' / ');
+      throw new Error(`não achei a opção certa em "${rotulo}"${vistas ? ` (apareceram: ${vistas})` : ' (o menu não abriu)'}`);
     }
     S.clicar(opcao);
-    await S.dormir(300);
+    await S.esperar(() => campoPreenchido(rotulo), { oque: `"${rotulo}" ficar preenchido`, limite: 4000, intervalo: 200 })
+      .catch(() => { throw new Error(`cliquei em "${String(opcao.textContent || '').trim()}" mas "${rotulo}" continuou vazio`); });
   }
+
+  // "Grupo de Rotas" só tem UMA opção (a do polo logado - confirmado pelo usuário, 30/09/2026).
+  // Se aparecer mais de uma, só aceita a que fala em "rota"; sem certeza, para com erro claro.
+  function escolherGrupoDeRotas(novas) {
+    if (novas.length === 1) return novas[0];
+    const comRota = novas.filter((el) => /rota/i.test(String(el.textContent || '')));
+    return comRota.length === 1 ? comRota[0] : null;
+  }
+
+  const escolherPorTexto = (texto) => (novas) =>
+    novas.find((el) => L.chave(el.textContent) === L.chave(texto)) || null;
 
   async function prepararAtCluster() {
     if (naTelaDeDigitar('at_cluster')) return;
@@ -291,8 +328,8 @@
     S.clicar(sim);
     await S.dormir(300);
 
-    await escolherNoDropdown('Grupo de Rotas', 'grupo_rotas');
-    await escolherNoDropdown('Tipo de Rota de Entrega', 'tipo_rota_entrega');
+    await escolherNoDropdown('Grupo de Rotas', escolherGrupoDeRotas);
+    await escolherNoDropdown('Tipo de Rota de Entrega', escolherPorTexto('Bulky&Non-bulky'), 'tipo_rota_entrega');
 
     const confirmar = acharPorTexto('Confirm');
     if (!confirmar) throw new Error('não achei o botão "Confirm"');
@@ -435,7 +472,7 @@
 
   G.colador = { rodar, CATALOGO, acharCampo, colarUm, diaDoLote, diaDaAt,
                 prepararRecebimento, prepararAtCluster, campoDoRotulo, escolherNoDropdown, acharPorTexto,
-                xptDaPagina, xptEfetivo };
+                xptDaPagina, xptEfetivo, escolherGrupoDeRotas };
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {

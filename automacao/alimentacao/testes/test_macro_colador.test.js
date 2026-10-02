@@ -36,7 +36,7 @@ const PASTA = path.join(__dirname, '..', 'extensao-macros-spx');
 class ParadoFalso extends Error {}
 
 function carregar({ pagina = {}, respostas = {}, botoes = {}, ensinados = {}, soPorFolha = {}, textoDaPagina = '',
-  hash = '#/generalReceiveTaskOps/singleReceiveNew/RT1' } = {}) {
+  hash = '#/generalReceiveTaskOps/singleReceiveNew/RT1', opcoes = () => [] } = {}) {
   const chamadasVigia = [];
   const painel = { passos: [], notas: [], ok: null, erro: null, aoParar: null, titulo: null };
   const cliques = [];
@@ -83,7 +83,7 @@ function carregar({ pagina = {}, respostas = {}, botoes = {}, ensinados = {}, so
 
   const ctx = vm.createContext({
     console: { log() {}, warn() {}, error() {} },
-    document: { querySelector: (sel) => pagina[sel] || null, body: { innerText: textoDaPagina } },
+    document: { querySelector: (sel) => pagina[sel] || null, querySelectorAll: () => opcoes(), body: { innerText: textoDaPagina } },
     location: { hash },
     chrome: {
       runtime: {
@@ -564,50 +564,99 @@ test('rodar: carrega o que foi ensinado ANTES de rodar (nao depende de outro scr
   assert.strictEqual(carregado, true);
 });
 
-test('prepararAtCluster: passa pelo formulário inteiro (Static, YES, os dois ensinados, Confirm, Participar)', async () => {
-  const grupoRotasCampo = {};
-  const tipoRotaCampo = {};
-  const grupoRotasOpcao = { desabilitado: false };
-  const tipoRotaOpcao = { desabilitado: false };
-  const botoes = {
-    'Criar tarefa': {},
-    'Criar Tarefa de Separação': {}, // achado por folhaVisivelComTexto, so pra confirmar que o form abriu
-    'Static': {},
-    'YES': {},
-    'Grupo de Rotas': comCampoDeRotulo(grupoRotasCampo),
-    'Tipo de Rota de Entrega': comCampoDeRotulo(tipoRotaCampo),
-    'Confirm': {},
-    'Participar Desta Tarefa': {},
-  };
-  let participou = false;
-  const r = carregar({
-    botoes,
-    ensinados: { grupo_rotas: [grupoRotasOpcao], tipo_rota_entrega: [tipoRotaOpcao] },
-  });
-  r.ctx.document.querySelector = (sel) => (participou && sel === 'input[placeholder="Please Scan or Input"]' ? { desabilitado: false } : null);
-  const clicarOriginal = r.S.clicar;
-  r.S.clicar = (el) => { if (el === botoes['Participar Desta Tarefa']) participou = true; return clicarOriginal(el); };
+// Monta o formulário "Criar Tarefa de Separação": cada campo de dropdown, quando clicado, faz
+// aparecer as opções dele (como no SPX: o menu só existe depois do clique), e clicar numa opção
+// escreve o texto dela no campo (é como campoPreenchido percebe que deu certo).
+const opcao = (texto) => ({ textContent: texto, querySelector: () => null });
 
-  await r.G.colador.prepararAtCluster();
-  assert.deepStrictEqual(r.cliques, [
-    botoes['Criar tarefa'], botoes['Static'], botoes['YES'],
-    grupoRotasCampo, grupoRotasOpcao, tipoRotaCampo, tipoRotaOpcao,
-    botoes['Confirm'], botoes['Participar Desta Tarefa'],
-  ]);
+function formularioAtCluster({ opcoesGrupo = [opcao('Rotas Caçador')], escreveAoEscolher = true, ensinados = {} } = {}) {
+  const grupoCampo = { textContent: '' };
+  const tipoCampo = { textContent: '' };
+  const opcoesTipo = [opcao('Bulky'), opcao('Bulky&Non-bulky'), opcao('Non-bulky')];
+  const fixas = [opcao('Rotas Caçador (cinza, no topo do formulario)')]; // ja visivel ANTES de abrir
+  const botoes = {
+    'Criar tarefa': {}, 'Criar Tarefa de Separação': {}, 'Static': {}, 'YES': {},
+    'Grupo de Rotas': comCampoDeRotulo(grupoCampo),
+    'Tipo de Rota de Entrega': comCampoDeRotulo(tipoCampo),
+    'Confirm': {}, 'Participar Desta Tarefa': {},
+  };
+  let aberto = null;
+  let participou = false;
+  const r = carregar({ hash: '#/sorting-task/list', botoes, ensinados,
+    opcoes: () => fixas.concat(aberto === 'grupo' ? opcoesGrupo : aberto === 'tipo' ? opcoesTipo : []) });
+  r.ctx.document.querySelector = (sel) =>
+    (participou && sel === 'input[placeholder="Please Scan or Input"]' ? { desabilitado: false } : null);
+  const clicarOriginal = r.S.clicar;
+  r.S.clicar = (el) => {
+    if (el === grupoCampo) aberto = 'grupo';
+    else if (el === tipoCampo) aberto = 'tipo';
+    else if (aberto && el.textContent !== undefined && el.querySelector) {
+      if (escreveAoEscolher) (aberto === 'grupo' ? grupoCampo : tipoCampo).textContent = el.textContent;
+      aberto = null;
+    }
+    if (el === botoes['Participar Desta Tarefa']) { participou = true; r.ctx.location.hash = '#/sorting-task/detail/AS1'; }
+    return clicarOriginal(el);
+  };
+  return { r, botoes, grupoCampo, tipoCampo, opcoesTipo, fixas };
+}
+
+test('prepararAtCluster: passa pelo formulário inteiro escolhendo as opções pelo menu que abriu', async () => {
+  const grupo = opcao('Rotas Caçador');
+  const f = formularioAtCluster({ opcoesGrupo: [grupo] });
+  await f.r.G.colador.prepararAtCluster();
+  const b = f.botoes;
+  const esperado = [b['Criar tarefa'], b['Static'], b['YES'], f.grupoCampo, grupo,
+    f.tipoCampo, f.opcoesTipo[1], b['Confirm'], b['Participar Desta Tarefa']];
+  assert.strictEqual(f.r.cliques.length, esperado.length);
+  esperado.forEach((el, i) => assert.strictEqual(f.r.cliques[i], el, `clique ${i}`));
+});
+
+// Bug de verdade (02/10/2026): o "Grupo de Rotas" ensinado não confere texto e clicou no "Rotas
+// Caçador" cinza do topo do formulário (mesmo seletor) - o campo ficou "Por favor, selecione".
+// O que já estava visível ANTES de abrir o menu nunca é candidato.
+test('Grupo de Rotas: o que ja estava na tela antes de abrir o menu nunca e escolhido', async () => {
+  const f = formularioAtCluster();
+  await f.r.G.colador.prepararAtCluster();
+  assert.ok(!f.r.cliques.includes(f.fixas[0]));
+  assert.strictEqual(f.grupoCampo.textContent, 'Rotas Caçador');
+  assert.strictEqual(f.tipoCampo.textContent, 'Bulky&Non-bulky');
+});
+
+test('Tipo de Rota: escolhe "Bulky&Non-bulky" pelo texto, nao a primeira opcao ("Bulky")', async () => {
+  const f = formularioAtCluster();
+  await f.r.G.colador.prepararAtCluster();
+  assert.ok(f.r.cliques.includes(f.opcoesTipo[1]));
+  assert.ok(!f.r.cliques.includes(f.opcoesTipo[0]));
+});
+
+test('Grupo de Rotas com mais de uma opcao e nenhuma clara: para com erro listando o que apareceu', async () => {
+  const f = formularioAtCluster({ opcoesGrupo: [opcao('Grupo A'), opcao('Grupo B')] });
+  await assert.rejects(f.r.G.colador.prepararAtCluster(), /não achei a opção certa em "Grupo de Rotas".*Grupo A/);
+});
+
+test('Grupo de Rotas: menu que nao abre da erro claro (nao clica em nada no escuro)', async () => {
+  const f = formularioAtCluster({ opcoesGrupo: [] });
+  await assert.rejects(f.r.G.colador.prepararAtCluster(), /o menu não abriu/);
+});
+
+test('opcao clicada mas campo continuou vazio: erro claro, nao segue como se tivesse dado certo', async () => {
+  const f = formularioAtCluster({ escreveAoEscolher: false });
+  await assert.rejects(f.r.G.colador.prepararAtCluster(), /continuou vazio/);
+});
+
+test('escolherGrupoDeRotas: uma opcao so; varias, so a unica que fala em rota', () => {
+  const r = carregar();
+  const e = r.G.colador.escolherGrupoDeRotas;
+  const a = opcao('Rotas Videira');
+  assert.strictEqual(e([a]), a);
+  assert.strictEqual(e([opcao('Selecionar todos'), a]), a);
+  assert.strictEqual(e([opcao('Rotas X'), opcao('Rotas Y')]), null);
+  assert.strictEqual(e([]), null);
 });
 
 test('prepararAtCluster: sem o botão "Criar tarefa", erro claro', async () => {
   const r = carregar({ pagina: {}, botoes: {} });
   await assert.rejects(r.G.colador.prepararAtCluster(), /Criar tarefa/);
-});
-
-test('prepararAtCluster: "Grupo de Rotas" nao ensinado pede pra ensinar (Alt+G)', async () => {
-  const botoes = {
-    'Criar tarefa': {}, 'Criar Tarefa de Separação': {}, 'Static': {}, 'YES': {},
-    'Grupo de Rotas': comCampoDeRotulo({}),
-  };
-  const r = carregar({ botoes, ensinados: {} }); // nada ensinado
-  await assert.rejects(r.G.colador.prepararAtCluster(), /Alt\+G/);
 });
 
 test('campoDoRotulo: sobe ate achar um campo dentro do container do rotulo', () => {
