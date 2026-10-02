@@ -81,7 +81,7 @@ function _htmlAgencyRouter(s, recebidos) {
 
     ${s.recusas_7_dias && s.recusas_7_dias.length ? `
     <div class="secao-form">
-        <h3>Recusadas nos últimos 7 dias</h3>
+        <h3>Recusadas nos últimos 7 dias ${s.recusas_total ? `<span class="dica">(${s.recusas_total} ao todo, sem limite de tempo)</span>` : ""}</h3>
         <table class="tabela">
             <thead><tr><th>Motivo</th><th>Quantidade</th></tr></thead>
             <tbody>${s.recusas_7_dias.map((r) => `<tr>
@@ -93,6 +93,25 @@ function _htmlAgencyRouter(s, recebidos) {
             <b>agency_id de outra agência</b> significa que chegou dado que não é
             da GC — vale mandar para a Shopee, é prova de erro de roteamento.
         </p>
+    </div>` : ""}
+
+    ${s.ips_recusados && s.ips_recusados.length ? `
+    <div class="secao-form">
+        <h3>IPs recusados por não estarem na lista</h3>
+        <p class="dica">
+            Sem janela de tempo — mostra desde o começo. É aqui que se vê se a
+            Shopee já está tentando mandar de um IP que falta incluir em
+            <code>SPX_IPS_PERMITIDOS</code>.
+        </p>
+        <table class="tabela">
+            <thead><tr><th>IP</th><th>Tentativas</th><th>Primeira</th><th>Última</th></tr></thead>
+            <tbody>${s.ips_recusados.map((i) => `<tr>
+                <td class="mono-pequeno">${_esc(i.ip || "—")}</td>
+                <td>${i.total}</td>
+                <td>${_fmtData(i.primeira_tentativa)}</td>
+                <td>${_fmtData(i.ultima_tentativa)}</td>
+            </tr>`).join("")}</tbody>
+        </table>
     </div>` : ""}
 
     <div class="secao-form">
