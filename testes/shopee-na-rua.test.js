@@ -23,7 +23,7 @@ const indexHtml = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf
 const ponte = `
 ;globalThis.__snr = {
     _snrSegmentosBarra, _snrEncurtarNome, _snrPendentes, _snrRenderLista, _snrPintarStatusLista,
-    _snrBucketStatus, _snrRelativo, _snrRenderUltima,
+    _snrBucketStatus, _snrRelativo, _snrRenderUltima, _snrMontarRelatorio,
     setLista: v => { _snrLista = v; },
     setTodos: v => { _snrTodos = v; },
     setStatusClicado: v => { _snrStatusClicado = v; },
@@ -181,6 +181,40 @@ test("atualizado: mostra a data em texto, sem passar por fuso do navegador", () 
     const html = elementos["snr-ultima"].innerHTML;
     assert.ok(html.includes("<b>23/09 15:42</b>"));
     assert.ok(html.includes("há 7 min"));
+});
+
+test("atualizado: olhando um dia que já passou, mostra também a última busca DAQUELE dia", () => {
+    const { api, elementos } = carregar();
+    api._snrRenderUltima({ importado_em: "2026-10-02 10:29:01.5", segundos_atras: 540 }, "2026-10-01 23:35:44.1");
+    const html = elementos["snr-ultima"].innerHTML;
+    assert.ok(html.includes("Última do dia <b>01/10 23:35</b>"));
+    assert.ok(html.includes("Atualizado <b>02/10 10:29</b>"));
+});
+
+test("atualizado: hoje a última do dia é a mesma busca — não repete", () => {
+    const { api, elementos } = carregar();
+    api._snrRenderUltima({ importado_em: "2026-10-02 10:29:01.5", segundos_atras: 60 }, "2026-10-02 10:29:01.5");
+    assert.ok(!elementos["snr-ultima"].innerHTML.includes("Última do dia"));
+});
+
+test("relatório: resumo por entregador soma os status do fim do dia e calcula o concluído", () => {
+    const { api } = carregar();
+    const { resumo, linhas } = api._snrMontarRelatorio([
+        { codigo: "BR001", entregador: "Ana Teste", status: "Delivered", endereco: "Rua A, 10, casa 2" },
+        { codigo: "BR002", entregador: "Ana Teste", status: "Delivering" },
+        { codigo: "BR003", entregador: "Ana Teste", status: "Delivered" },
+        { codigo: "BR004", entregador: "Beto Teste", status: "OnHold" },
+        { codigo: "BR005", entregador: "", status: "Hub_Assigned", importado_em: "2026-10-01 22:05:00" },
+    ]);
+    const ana = resumo.find(r => r["Entregador"] === "Ana Teste");
+    assert.strictEqual(resumo[0]["Entregador"], "Ana Teste", "quem tem mais pedido vem primeiro");
+    assert.deepStrictEqual([ana["Pedidos"], ana["Delivered"], ana["Delivering"], ana["Concluído %"]], [3, 2, 1, 66.7]);
+    assert.strictEqual(resumo.find(r => r["Entregador"] === "Beto Teste")["OnHold"], 1);
+    assert.strictEqual(resumo.find(r => r["Entregador"] === "Sem entregador")["Outros"], 1,
+        "pedido sem entregador e sem status de rua não some do resumo");
+    assert.strictEqual(linhas.length, 5);
+    assert.strictEqual(linhas[0]["Endereço"], "Rua A, 10");
+    assert.strictEqual(linhas[4]["Última busca"], "01/10 22:05");
 });
 
 test("atualizado: sem importação nenhuma, diz isso (e não fica em 'Carregando...')", () => {

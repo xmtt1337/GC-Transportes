@@ -4862,6 +4862,28 @@ button.snr-leg-lin:hover { background: rgba(255,255,255,0.05); }
     cursor: pointer; transition: background .15s, border-color .15s, color .15s;
 }
 .snr-btn:hover { background: #222d42; border-color: rgba(255,255,255,0.2); color: #f1f5f9; }
+/* Topo: o botão Relatórios fica depois do "atualizado" (que empurra pra direita). */
+.snr-topo > .snr-btn { padding: 7px 12px; }
+
+/* Modal Relatórios: uma linha por dia, o botão Baixar alinhado à direita. Mora fora do
+   .snr (fica com os outros modais), então não herda as variáveis --snr-*. */
+.usr-modal.snr-rel-modal { max-width: 560px; border-radius: 12px; padding: 24px 22px; }
+.snr-rel-modal .usr-modal-sub { margin-bottom: 16px; }
+.snr-rel-lista {
+    max-height: min(56vh, 460px); overflow-y: auto; margin-bottom: 18px;
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 8px;
+}
+.snr-rel-lin {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px;
+    padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.snr-rel-lin:last-child { border-bottom: 0; }
+.snr-rel-dia { font-size: 14px; font-weight: 600; color: #f1f5f9; font-variant-numeric: tabular-nums; }
+.snr-rel-dia small { margin-left: 8px; font-size: 11px; font-weight: 600; color: #6ea8ff; }
+.snr-rel-info { margin-top: 2px; font-size: 12px; color: #8494a9; font-variant-numeric: tabular-nums; }
+.snr-rel-info b { color: #cbd5e1; font-weight: 600; }
+.snr-rel-lista .snr-vazio { padding: 18px 14px; color: #6b7a91; }
+
 .snr-alerta { gap: 6px; padding: 7px 12px; color: #e2e8f0; }
 .snr-alerta svg { color: var(--snr-alerta); }
 .snr-alerta:hover, .snr-alerta:hover svg { color: #231a00; }

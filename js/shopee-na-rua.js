@@ -10,7 +10,8 @@
 // cards por entregador, "Ver pedidos" troca pra um detalhe (não modal).
 
 let _snrDia   = "";
-let _snrDias  = [];
+let _snrDias  = [];   // [{ dia, pedidos, entregadores, ultima_busca }]
+let _snrHoje  = "";
 let _snrLista = [];
 let _snrDet   = null;   // { nome, dia, pedidos: [...] }
 let _snrTodos = [];     // pedidos crus do dia inteiro — só buscado quando alguém clica um status
@@ -101,7 +102,11 @@ function _snrRelativo(seg) {
     return d === 1 ? "ontem" : `há ${d} dias`;
 }
 
-function _snrRenderUltima(atualizado) {
+// `ultimaDoDia` é a última busca que caiu DENTRO do dia escolhido (vem em
+// _snrDias, de diasComDado). Olhando um dia que já passou, ela é diferente da
+// última atualização geral — e é ela que diz "a que horas esse dia fechou".
+// Quando é a mesma busca (hoje), aparece uma vez só.
+function _snrRenderUltima(atualizado, ultimaDoDia) {
     const el = document.getElementById("snr-ultima");
     if (!atualizado || !atualizado.importado_em) {
         el.className = "snr-ultima vazia";
@@ -109,11 +114,85 @@ function _snrRenderUltima(atualizado) {
         return;
     }
     const rel = _snrRelativo(atualizado.segundos_atras);
+    const outraDoDia = ultimaDoDia && _snrDataHora(ultimaDoDia) !== _snrDataHora(atualizado.importado_em);
     el.className = "snr-ultima";
     el.innerHTML = `
+        ${outraDoDia ? `<span>Última do dia <b>${_snrDataHora(ultimaDoDia)}</b></span>` : ""}
         <span>Atualizado <b>${_snrDataHora(atualizado.importado_em)}</b></span>
         ${rel ? `<span class="rel">${rel}</span>` : ""}
         <span>XM Vigia (automático)</span>`;
+}
+
+// ── Relatórios: um por dia, de como ele ficou na última busca DELE ──
+// Não é o que está na tela: a tela mostra o status de agora (um pedido de
+// ontem entregue hoje aparece Delivered). O relatório corta as buscas no fim
+// do dia (/shopee-na-rua/relatorio) — é a foto de como o dia fechou.
+function _snrAbrirRelatorios() {
+    const el = document.getElementById("snr-rel-lista");
+    el.innerHTML = _snrDias.length
+        ? _snrDias.map(d => `
+            <div class="snr-rel-lin">
+                <div>
+                    <div class="snr-rel-dia">${_snrEsc(gcCalBr(d.dia))}${d.dia === _snrHoje ? "<small>HOJE · ainda aberto</small>" : ""}</div>
+                    <div class="snr-rel-info">Última atualização <b>${d.ultima_busca ? _snrDataHora(d.ultima_busca).slice(6) : "—"}</b>
+                        · ${Number(d.pedidos).toLocaleString("pt-BR")} pedido${d.pedidos !== 1 ? "s" : ""}
+                        · ${d.entregadores} entregador${d.entregadores !== 1 ? "es" : ""}</div>
+                </div>
+                <button type="button" class="snr-btn" data-dia="${_snrEsc(d.dia)}" onclick="_snrBaixarRelatorio(this.dataset.dia, this)">Baixar</button>
+            </div>`).join("")
+        : `<div class="snr-vazio">Nenhum dia com pedido pesquisado ainda.</div>`;
+    _abrirModal("modal-snr-relatorios");
+}
+
+// Planilha com duas abas: o resumo por entregador (o que a tela mostra) e os
+// pedidos um por um. O resumo é montado aqui mesmo, a partir dos pedidos — a
+// mesma conta da lista (_snrBucketStatus), só que com o status do fim do dia.
+function _snrMontarRelatorio(pedidos) {
+    const porNome = new Map();
+    pedidos.forEach(p => {
+        const nome = p.entregador || "Sem entregador";
+        if (!porNome.has(nome)) porNome.set(nome, { total: 0, entregue: 0, pendente: 0, insucesso: 0, outros: 0 });
+        const e = porNome.get(nome);
+        e.total++;
+        e[_snrBucketStatus(p.status) || "outros"]++;
+    });
+    const resumo = [...porNome.entries()]
+        .sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0]))
+        .map(([nome, e]) => ({
+            "Entregador": nome, "Pedidos": e.total, "Delivered": e.entregue, "Delivering": e.pendente,
+            "OnHold": e.insucesso, "Outros": e.outros,
+            "Concluído %": e.total ? Math.round(e.entregue / e.total * 1000) / 10 : 0,
+        }));
+    const linhas = pedidos.map(p => ({
+        "Código": p.codigo, "Entregador": p.entregador || "", "Status": p.status || "",
+        "AT": p.task_id || "", "Endereço": _snrRuaNumero(p.endereco), "Bairro": p.bairro || "",
+        "Cidade": p.cidade || "", "Última busca": _snrDataHora(p.importado_em),
+    }));
+    return { resumo, linhas };
+}
+
+function _snrBaixarRelatorio(dia, botao) {
+    if (typeof XLSX === "undefined") return gcAlert("A biblioteca de planilhas não carregou. Recarregue a página.");
+    const textoAntes = botao ? botao.innerText : "";
+    if (botao) { botao.disabled = true; botao.innerText = "Gerando..."; }
+    const voltar = () => { if (botao) { botao.disabled = false; botao.innerText = textoAntes; } };
+
+    fetch(`${API}/shopee-na-rua/relatorio?dia=${encodeURIComponent(dia)}`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => r.json())
+    .then(d => {
+        voltar();
+        if (d && d.error) return gcAlert(_snrEsc(d.error));
+        const pedidos = d.pedidos || [];
+        if (!pedidos.length) return gcAlert("Nenhum pedido nesse dia.");
+        const { resumo, linhas } = _snrMontarRelatorio(pedidos);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo), "Entregadores");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhas), "Pedidos");
+        // A hora do retrato no nome: dá pra saber de que atualização é sem abrir.
+        const hora = /(\d{2}):(\d{2})/.exec(String(d.retrato_em || "").slice(11));
+        XLSX.writeFile(wb, `na-rua-shopee_${dia}${hora ? `_${hora[1]}h${hora[2]}` : ""}.xlsx`);
+    })
+    .catch(() => { voltar(); gcAlert("Erro ao conectar com o servidor."); });
 }
 
 // ── Lista de entregadores do dia ──
@@ -134,8 +213,10 @@ function _snrCarregar() {
         // tela só passa a mandar um dia específico depois que alguém escolhe.
         _snrDia  = d.dia || "";
         _snrDias = d.dias || [];
+        _snrHoje = d.hoje || "";
         _snrRenderDias(d.hoje);
-        _snrRenderUltima(d.atualizado);
+        const doDia = _snrDias.find(x => x.dia === _snrDia);
+        _snrRenderUltima(d.atualizado, doDia && doDia.ultima_busca);
 
         _snrLista = d.entregadores || [];
         _snrTodos = []; // limpa o cache de pedidos crus — troca de dia, troca a carga

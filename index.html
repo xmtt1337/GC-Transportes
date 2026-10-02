@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261001a">
+<link rel="stylesheet" href="style.css?v=20261002a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -4538,6 +4538,9 @@ if (_BASE) {
                         <div class="snr-topo">
                             <div class="slh-cal" id="snr-dias" style="display:none"></div>
                             <div class="snr-ultima" id="snr-ultima">Carregando...</div>
+                            <button type="button" class="snr-btn" onclick="_snrAbrirRelatorios()" title="Baixar como cada dia ficou na última atualização dele">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>Relatórios
+                            </button>
                         </div>
 
                         <div class="fechamento-empty" id="snr-empty">Carregando...</div>
@@ -4849,7 +4852,7 @@ if (_BASE) {
 <script src="js/planejamento-videira.js?v=30260812d"></script>
 <script src="js/torre.js?v=30260812d"></script>
 <script src="js/torre-na-rua.js?v=30260916a"></script>
-<script src="js/shopee-na-rua.js?v=20260923b"></script>
+<script src="js/shopee-na-rua.js?v=20261002a"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
@@ -5679,6 +5682,19 @@ if (_BASE) {
 </div>
 
 <!-- MODAL: NOVO MOTORISTA -->
+<!-- Na Rua > Shopee: um relatório por dia, de como ele ficou na última busca DO PRÓPRIO dia
+     (não o status de agora). Montado por js/shopee-na-rua.js (_snrAbrirRelatorios). -->
+<div class="usr-modal-overlay" id="modal-snr-relatorios" onclick="_fecharModalSeBackdrop(event,'modal-snr-relatorios')">
+    <div class="usr-modal snr-rel-modal">
+        <div class="usr-modal-title">Relatórios do Na Rua · Shopee</div>
+        <div class="usr-modal-sub">Cada dia como ficou na última atualização dele: os pedidos que saíram no dia, com o status daquela hora.</div>
+        <div class="snr-rel-lista" id="snr-rel-lista"></div>
+        <div class="usr-modal-btns">
+            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-snr-relatorios')">Fechar</button>
+        </div>
+    </div>
+</div>
+
 <div class="usr-modal-overlay" id="modal-novo-motorista" onclick="_fecharModalSeBackdrop(event,'modal-novo-motorista')">
     <div class="usr-modal">
         <!-- form -->
