@@ -231,76 +231,93 @@
   // O campo clicável logo abaixo de um rótulo ("* Grupo de Rotas" com o campo
   // "Por favor, selecione" embaixo) — o formulário do SPX agrupa rótulo e
   // campo bem próximos, então basta subir alguns pais a partir do rótulo.
+  // Só vale campo que vem DEPOIS do rótulo no documento, e nunca radio/checkbox: subindo os pais,
+  // o container cresce e o "primeiro input" passava a ser um campo de CIMA (o YES/NO do "Grupo de
+  // Rota Necessário") - o clique ia nele e o menu do Grupo de Rotas nem abria (02/10/2026).
+  const CAMPO_DE_ROTULO = 'input:not([type="radio"]):not([type="checkbox"]), [class*="select"], [class*="dropdown"]';
+  const DEPOIS = 4; // Node.DOCUMENT_POSITION_FOLLOWING
+
   function campoDoRotulo(rotulo) {
     const label = S.folhaVisivelComTexto(rotulo) || S.folhaVisivelComTexto(`* ${rotulo}`);
     if (!label) return null;
+    const vemDepois = (el) => !label.compareDocumentPosition || (label.compareDocumentPosition(el) & DEPOIS);
     let container = label.parentElement;
     for (let i = 0; i < 4 && container; i++, container = container.parentElement) {
-      const campo = container.querySelector('input, [class*="select"], [class*="dropdown"]');
-      if (campo && S.visivel(campo)) return campo;
+      const candidatos = container.querySelectorAll
+        ? [...container.querySelectorAll(CAMPO_DE_ROTULO)]
+        : [container.querySelector(CAMPO_DE_ROTULO)].filter(Boolean);
+      const campo = candidatos.find((c) => vemDepois(c) && S.visivel(c));
+      if (campo) return campo;
     }
     return null;
   }
 
-  // AS OPÇÕES DO MENU = O QUE APARECEU COM O CLIQUE. Antes era só a opção ENSINADA (Alt+G/Alt+T),
-  // e o "Grupo de Rotas" ensinado não confere texto (o nome muda por polo) - ao vivo (02/10/2026)
-  // ele clicou em outra coisa com o mesmo seletor (o "Rotas Caçador" cinza do topo do formulário)
-  // e o campo ficou "Por favor, selecione". Comparando o que estava visível antes e depois de
-  // abrir o campo, sobram só as opções DESTE menu, e aí dá pra escolher pelo texto.
-  const OPCOES_DE_MENU = 'li, [role="option"], [class*="option"], [class*="item"]';
+  // DIGITAR E DAR ENTER (dica do usuário, 02/10/2026). O "Grupo de Rotas" e o "Tipo de Rota de
+  // Entrega" são selects com busca: clicar, digitar o texto da opção e dar Enter escolhe. Antes:
+  // 1) a opção ENSINADA (Alt+G) não confere texto e clicou no "Rotas Caçador" cinza do topo do
+  //    formulário (mesmo seletor) - o campo ficou "Por favor, selecione";
+  // 2) procurar as opções por classe (li/option/item) não achou nada - as opções desse componente
+  //    não usam essas classes, e o menu aberto parecia "não abriu".
+  // Se o Enter não escolher (menu continua aberto com a opção), clica na opção pelo texto. No fim
+  // confere: menu fechado E o campo mostrando o texto - senão para com erro claro.
+  //
+  // O nome do grupo muda por polo (só existe a opção do polo logado), e o XPT da aba já é conhecido.
+  const GRUPO_DE_ROTAS_DO_XPT = { XPT_CFC: 'Rotas Caçador', XPT_VIA: 'Rotas Videira' };
+  const TIPO_DE_ROTA = 'Bulky&Non-bulky';
 
-  function opcoesVisiveis() {
-    return [...document.querySelectorAll(OPCOES_DE_MENU)]
-      .filter(S.visivel)
-      .filter((el) => String(el.textContent || '').trim() && !el.querySelector(OPCOES_DE_MENU));
+  const caixaDoCampo = (campo) => (campo.closest && campo.closest('[class*="select"]')) || campo;
+
+  function entradaDoCampo(campo) {
+    if (String(campo.tagName || '').toUpperCase() === 'INPUT') return campo;
+    return (campo.querySelector && campo.querySelector('input')) || null;
   }
 
-  // O campo mostra o valor escolhido no lugar do "Por favor, selecione".
-  function campoPreenchido(rotulo) {
+  // A opção com esse texto que está visível AGORA e não estava antes de abrir o campo, fora da
+  // caixa do próprio campo (onde o valor escolhido aparece depois).
+  function opcaoAbertaCom(texto, antes, caixa) {
+    return S.folhasComTexto(texto).filter(S.visivel)
+      .find((el) => !antes.has(el) && !(caixa.contains && caixa.contains(el))) || null;
+  }
+
+  // O que foi DIGITADO fica no campo mesmo sem nada ter sido escolhido - por isso o valor do input
+  // só conta se o menu chegou a abrir com a opção (`viuOpcao`) e fechou; senão só vale o texto
+  // que o componente mostra como selecionado.
+  function campoMostra(rotulo, texto, viuOpcao) {
     const campo = campoDoRotulo(rotulo);
     if (!campo) return false;
-    const caixa = (campo.closest && campo.closest('[class*="select"]')) || campo;
-    const texto = `${caixa.textContent || ''} ${campo.value || ''}`.trim();
-    return !!texto && !/selecione/i.test(texto);
+    const caixa = caixaDoCampo(campo);
+    const mostrado = String(caixa.textContent || '');
+    if (/selecione/i.test(mostrado)) return false;
+    if (L.chave(mostrado).includes(L.chave(texto))) return true;
+    return !!viuOpcao && L.chave(campo.value || '').includes(L.chave(texto));
   }
 
-  // `escolha(novas)`: das opções que apareceram, qual clicar (ou null).
-  async function escolherNoDropdown(rotulo, escolha, qualEnsinado) {
+  async function escolherNoDropdown(rotulo, texto) {
     const campo = campoDoRotulo(rotulo);
     if (!campo) throw new Error(`não achei o campo "${rotulo}"`);
-    const antes = new Set(opcoesVisiveis());
+    const caixa = caixaDoCampo(campo);
+    const antes = new Set(S.folhasComTexto(texto).filter(S.visivel));
+
     S.clicar(campo);
-    await S.dormir(500);
-
-    const novas = await S.esperar(() => {
-      const n = opcoesVisiveis().filter((el) => !antes.has(el));
-      return n.length ? n : null;
-    }, { oque: `o menu de "${rotulo}" abrir`, limite: 8000, intervalo: 200 }).catch(() => []);
-
-    let opcao = escolha(novas);
-    // Ensinado só como reserva, e só onde ele confere texto (Tipo de Rota) - ver acima.
-    if (!opcao && qualEnsinado) opcao = G.aprender.elementosEnsinados(qualEnsinado).filter(S.visivel)[0] || null;
-    if (!opcao) {
-      const vistas = novas.map((el) => String(el.textContent).trim()).filter(Boolean).slice(0, 5).join(' / ');
-      throw new Error(`não achei a opção certa em "${rotulo}"${vistas ? ` (apareceram: ${vistas})` : ' (o menu não abriu)'}`);
+    await S.dormir(400);
+    const entrada = entradaDoCampo(campo);
+    let viuOpcao = !!opcaoAbertaCom(texto, antes, caixa);
+    if (entrada) {
+      S.escrever(entrada, texto);
+      await S.dormir(600);
+      viuOpcao = viuOpcao || !!opcaoAbertaCom(texto, antes, caixa);
+      S.apertarEnter(entrada);
+      await S.dormir(500);
     }
-    S.clicar(opcao);
-    await S.esperar(() => campoPreenchido(rotulo), { oque: `"${rotulo}" ficar preenchido`, limite: 4000, intervalo: 200 })
-      .catch(() => { throw new Error(`cliquei em "${String(opcao.textContent || '').trim()}" mas "${rotulo}" continuou vazio`); });
+    const aberta = opcaoAbertaCom(texto, antes, caixa);
+    if (aberta) { viuOpcao = true; S.clicar(aberta); await S.dormir(400); }
+
+    const ok = await S.esperar(() => !opcaoAbertaCom(texto, antes, caixa) && campoMostra(rotulo, texto, viuOpcao),
+      { oque: `"${rotulo}" ficar com "${texto}"`, limite: 4000, intervalo: 200 }).catch(() => false);
+    if (!ok) throw new Error(`não consegui escolher "${texto}" em "${rotulo}" — o campo continuou sem ele`);
   }
 
-  // "Grupo de Rotas" só tem UMA opção (a do polo logado - confirmado pelo usuário, 30/09/2026).
-  // Se aparecer mais de uma, só aceita a que fala em "rota"; sem certeza, para com erro claro.
-  function escolherGrupoDeRotas(novas) {
-    if (novas.length === 1) return novas[0];
-    const comRota = novas.filter((el) => /rota/i.test(String(el.textContent || '')));
-    return comRota.length === 1 ? comRota[0] : null;
-  }
-
-  const escolherPorTexto = (texto) => (novas) =>
-    novas.find((el) => L.chave(el.textContent) === L.chave(texto)) || null;
-
-  async function prepararAtCluster() {
+  async function prepararAtCluster(xpt) {
     if (naTelaDeDigitar('at_cluster')) return;
 
     P.passo('criando uma tarefa de separação (AT Cluster)');
@@ -328,8 +345,10 @@
     S.clicar(sim);
     await S.dormir(300);
 
-    await escolherNoDropdown('Grupo de Rotas', escolherGrupoDeRotas);
-    await escolherNoDropdown('Tipo de Rota de Entrega', escolherPorTexto('Bulky&Non-bulky'), 'tipo_rota_entrega');
+    const grupo = GRUPO_DE_ROTAS_DO_XPT[xpt];
+    if (!grupo) throw new Error('não sei o nome do Grupo de Rotas pro XPT ' + (xpt || '(nenhum)') + ' — confira o XPT da aba');
+    await escolherNoDropdown('Grupo de Rotas', grupo);
+    await escolherNoDropdown('Tipo de Rota de Entrega', TIPO_DE_ROTA);
 
     const confirmar = acharPorTexto('Confirm');
     if (!confirmar) throw new Error('não achei o botão "Confirm"');
@@ -406,7 +425,7 @@
       await G.aprender.carregar();
 
       const xpt = xptEfetivo(config);
-      await PREPARAR[qual]();
+      await PREPARAR[qual](xpt);
 
       P.passo('procurando códigos pra colar');
       let lote = [];
@@ -472,7 +491,7 @@
 
   G.colador = { rodar, CATALOGO, acharCampo, colarUm, diaDoLote, diaDaAt,
                 prepararRecebimento, prepararAtCluster, campoDoRotulo, escolherNoDropdown, acharPorTexto,
-                xptDaPagina, xptEfetivo, escolherGrupoDeRotas };
+                xptDaPagina, xptEfetivo, GRUPO_DE_ROTAS_DO_XPT };
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
