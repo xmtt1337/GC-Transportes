@@ -286,15 +286,24 @@
    * aconteceram - pedir tres vezes achando que falhou, e nao pedir nenhuma
    * achando que deu certo.
    */
+  // Quanto olhar o painel depois de cada pedido antes de concluir "o clique não pegou". Eram 4s
+  // numa olhada só - de noite, com ~5 mil pedidos, a tarefa demorava mais pra nascer e o macro
+  // pedia de novo e desistia (02/10 23:17 e 03/10 00:00: "pedi a exportação 3 vezes e nenhuma
+  // tarefa nasceu"), sendo que às 21:34 o mesmo fluxo tinha baixado normal.
+  const ESPERA_TAREFA_NASCER_MS = 25000;
+
   async function pedirExportacao(antes) {
     const T = G.painelDeTarefas;
     for (const tentativa of [1, 2, 3]) {
       await exportarPesquisados();
       if (tentativa > 1) P.nota(`pedindo de novo (${tentativa}ª vez)`);
 
-      await S.dormir(4000);
-      const agora = await T.lerTarefasAgora();
-      const nova = L.escolherTarefaNova(antes, agora, L.NOME_PESQUISADOS);
+      await S.dormir(3000);
+      const nova = await S.esperar(async () => {
+        const agora = await T.lerTarefasAgora();
+        return L.escolherTarefaNova(antes, agora, L.NOME_PESQUISADOS);
+      }, { oque: 'a tarefa da exportação nascer no painel', limite: ESPERA_TAREFA_NASCER_MS, intervalo: 2000 })
+        .catch((e) => { if (e instanceof S.Parado) throw e; return null; });
       await T.fecharPainelTarefas();
 
       if (nova) {
@@ -357,7 +366,7 @@
     }
   }
 
-  G.pedidos = { rodar, pedirCodigos, acharDialogoDeLote, acharCaixaDeLote, acharItemExportar,
+  G.pedidos = { rodar, pedirCodigos, pedirExportacao, acharDialogoDeLote, acharCaixaDeLote, acharItemExportar,
                 TEXTO_LOTE, TEXTO_EXPORTAR, TEXTO_EXPORTAR_PESQUISADOS };
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {

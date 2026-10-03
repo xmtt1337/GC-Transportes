@@ -126,3 +126,42 @@ test('Parar durante a espera encerra', async () => {
   r.S.parar = true;
   await assert.rejects(r.G.pedidos.pedirCodigos({ encadeado: true }), ParadoFalso);
 });
+
+// Achado ao vivo (02/10 23:17 e 03/10 00:00): "pedi a exportação 3 vezes e nenhuma tarefa nasceu"
+// - o painel era olhado UMA vez, 4s depois do clique; de noite a tarefa demorava mais pra nascer.
+function carregarExportacao({ nasceNaLeitura }) {
+  const r = carregar([COM(1)]);
+  let leituras = 0;
+  let pedidos = 0;
+  const nova = { nome: 'Return Order', quando: '2026-10-03 00:00:30' };
+  r.G.painelDeTarefas = {
+    lerTarefasAgora: async () => { leituras++; return leituras >= nasceNaLeitura ? [nova] : []; },
+    fecharPainelTarefas: async () => {},
+  };
+  // Só o necessário pra exportarPesquisados() "clicar" sem DOM de verdade.
+  const S = r.S;
+  Object.assign(S, {
+    acharBotao: () => ({}), folhaVisivelComTexto: () => null, passarMouse() {}, apertarEsc() {},
+    clicarNoPonto: () => { pedidos++; }, rede: { ativas: 0 }, esperarRede: async () => {},
+    // Por TENTATIVAS (limite/intervalo), sem relógio: o dormir falso não avança o Date.now daqui.
+    esperar: async (cond, o) => {
+      const voltas = Math.ceil((o.limite || 15000) / (o.intervalo || 200));
+      for (let i = 0; i <= voltas; i++) { const v = await cond(); if (v) return v; await S.dormir(o.intervalo || 200); }
+      throw new Error('tempo');
+    },
+  });
+  return { r, nova, pedidos: () => pedidos };
+}
+
+test('exportacao: tarefa que nasce ~15s depois do clique e aceita no 1o pedido (nao pede de novo)', async () => {
+  const { r, nova, pedidos } = carregarExportacao({ nasceNaLeitura: 7 }); // 3s + 6 leituras de 2s
+  const achada = await r.G.pedidos.pedirExportacao([]);
+  assert.strictEqual(achada.nome, nova.nome);
+  assert.strictEqual(pedidos(), 1);
+});
+
+test('exportacao: tarefa que nunca nasce ainda desiste depois de 3 pedidos', async () => {
+  const { r, pedidos } = carregarExportacao({ nasceNaLeitura: Infinity });
+  await assert.rejects(r.G.pedidos.pedirExportacao([]), /3 vezes/);
+  assert.strictEqual(pedidos(), 3);
+});
