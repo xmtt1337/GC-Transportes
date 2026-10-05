@@ -253,19 +253,37 @@
   // Nao existe sinal de sucesso nesta tela - o sinal e a tarefa aparecer no
   // painel "Ultima tarefa", e quem confere isso e o passo seguinte, que
   // desiste em 90s se nada nascer. Inventar um sinal proximo saiu caro.
-  async function exportarPesquisados() {
-    let item = acharItemExportar();
+  // UM JEITO DE CLICAR POR TENTATIVA. As tres tentativas clicavam igual (no que estivesse "por
+  // cima" do ponto do item) - quando esse jeito nao pegava, nao pegava tres vezes ("pedi a
+  // exportacao 3 vezes e nenhuma tarefa nasceu", com o menu aberto e o item na tela, 05/10/2026).
+  // Agora cada tentativa usa um alvo diferente: o ponto, o proprio item, e a linha do menu em
+  // volta dele (li / *item*), que e onde o componente costuma ouvir o clique.
+  const JEITOS_DE_CLICAR = [
+    { nome: 'no ponto', clicar: (item) => S.clicarNoPonto(item) },
+    { nome: 'no item', clicar: (item) => S.clicar(item) },
+    { nome: 'na linha do menu',
+      clicar: (item) => S.clicar((item.closest && item.closest('li, [role="menuitem"], [class*="item"]')) || item) },
+  ];
+
+  async function exportarPesquisados(tentativa) {
+    // Menu aberto de uma tentativa anterior pode estar "morto" (aberto por hover sintetico, sem
+    // o ponteiro em cima): fecha e abre de novo antes de clicar outra vez.
+    if (tentativa > 1) { S.apertarEsc(); await S.dormir(300); }
+    let item = tentativa > 1 ? null : acharItemExportar();
     if (!item) item = await abrirMenuExportar();
+    if (!item) item = acharItemExportar();
     if (!item) {
       throw new Error(`não achei "${TEXTO_EXPORTAR_PESQUISADOS}" no menu Exportar`);
     }
 
+    const jeito = JEITOS_DE_CLICAR[Math.min((tentativa || 1) - 1, JEITOS_DE_CLICAR.length - 1)];
     const base = S.rede.ativas;
     // Passar o mouse antes: em menu que abre por hover, o item so fica ativo
     // quando o ponteiro chega nele.
     S.passarMouse(item);
     await S.dormir(250);
-    S.clicarNoPonto(item);
+    jeito.clicar(item);
+    P.nota(`cliquei em "${TEXTO_EXPORTAR_PESQUISADOS}" (${jeito.nome})`);
     await S.dormir(900);
     await S.esperarRede({ base, limite: 60000 });
 
@@ -295,7 +313,7 @@
   async function pedirExportacao(antes) {
     const T = G.painelDeTarefas;
     for (const tentativa of [1, 2, 3]) {
-      await exportarPesquisados();
+      await exportarPesquisados(tentativa);
       if (tentativa > 1) P.nota(`pedindo de novo (${tentativa}ª vez)`);
 
       await S.dormir(3000);

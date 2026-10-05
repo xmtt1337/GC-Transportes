@@ -142,7 +142,7 @@ function carregarExportacao({ nasceNaLeitura }) {
   const S = r.S;
   Object.assign(S, {
     acharBotao: () => ({}), folhaVisivelComTexto: () => null, passarMouse() {}, apertarEsc() {},
-    clicarNoPonto: () => { pedidos++; }, rede: { ativas: 0 }, esperarRede: async () => {},
+    clicarNoPonto: () => { pedidos++; }, clicar: () => { pedidos++; }, rede: { ativas: 0 }, esperarRede: async () => {},
     // Por TENTATIVAS (limite/intervalo), sem relógio: o dormir falso não avança o Date.now daqui.
     esperar: async (cond, o) => {
       const voltas = Math.ceil((o.limite || 15000) / (o.intervalo || 200));

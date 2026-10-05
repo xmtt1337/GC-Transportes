@@ -19,9 +19,29 @@
   };
 
   // ── esperar ────────────────────────────────────────────────────────────
+  // ABA ESCONDIDA: o Chrome estrangula o setTimeout de aba em segundo plano (1 por segundo, e
+  // 1 por MINUTO depois de alguns minutos escondida). Um dormir(250) virava ate 60s, os prazos
+  // dos esperar() estouravam na primeira volta e o macro so funcionava com alguem olhando a
+  // tela (05/10/2026: "se eu nao estiver na tela, ele nao funciona"). O service worker nao
+  // sofre esse estrangulamento - com a aba escondida, quem conta o tempo e ele; o setTimeout
+  // daqui fica so de reserva, caso o service worker nao responda.
   function dormir(ms) {
     return new Promise((resolve, reject) => {
-      setTimeout(() => (spx.parar ? reject(new Parado('parado por voce')) : resolve()), ms);
+      let feito = false;
+      const fim = () => {
+        if (feito) return;
+        feito = true;
+        if (spx.parar) reject(new Parado('parado por voce')); else resolve();
+      };
+      const escondida = typeof document !== 'undefined' && document.hidden;
+      const temSw = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage;
+      if (escondida && temSw && ms > 0) {
+        try {
+          const r = chrome.runtime.sendMessage({ xmDormir: ms });
+          if (r && typeof r.then === 'function') r.then(fim, () => {});
+        } catch (e) { /* fica o setTimeout de reserva */ }
+      }
+      setTimeout(fim, ms);
     });
   }
 

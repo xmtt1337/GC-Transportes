@@ -30,7 +30,7 @@ function carregar({ storage = {}, vigia = {}, abasExtras = [] } = {}) {
   const guardado = { ...storage };
   const alarmes = new Map();
   const escritas = { criouAlarme: 0 };
-  const chamadas = { abas: [], fetch: [], focou: 0 };
+  const chamadas = { abas: [], fetch: [], focou: 0, abaAtivada: 0, janelaFocada: 0 };
   const ouvintes = {};
 
   const chrome = {
@@ -67,12 +67,12 @@ function carregar({ storage = {}, vigia = {}, abasExtras = [] } = {}) {
         chamadas.abas.push({ id, msg });
         return vigia.macroRecusa ? { ok: false, error: 'já está rodando' } : { ok: true };
       },
-      async update() { chamadas.focou++; },
+      async update(id, o) { chamadas.focou++; if (o && o.active) chamadas.abaAtivada++; },
       async get() { return { status: 'complete' }; },
       async reload() {},
       async create() { return { id: 99 }; },
     },
-    windows: { async update() { chamadas.focou++; } },
+    windows: { async update() { chamadas.focou++; chamadas.janelaFocada++; } },
   };
 
   // Tudo que o service worker pede ao vigia passa por aqui.
@@ -163,11 +163,21 @@ test('macro que recusa (ja rodando) vira erro contado ao vigia, com o motivo', a
   assert.deepStrictEqual(JSON.parse(envio.corpo), { ok: false, error: 'já está rodando' });
 });
 
-test('nao rouba o foco: quem clicou no sistema pode estar em qualquer lugar', async () => {
+// A ABA do macro vem pra frente dentro da janela dela (aba escondida tem timer estrangulado e o
+// Pedidos so exportava com alguem olhando - 05/10/2026); a JANELA nao, pra nao roubar o teclado
+// de quem esta em outro programa.
+test('disparo pelo sistema: ativa a ABA do macro, mas nao traz a JANELA pra frente', async () => {
   const c = carregar({ vigia: { resposta: { comandos: [{ id: ID, qual: 'alimentacao' }] } } });
   await c.ctx.buscarComandos();
   await dormir(20);
-  assert.strictEqual(c.chamadas.focou, 0);
+  assert.strictEqual(c.chamadas.abaAtivada, 1);
+  assert.strictEqual(c.chamadas.janelaFocada, 0);
+});
+
+test('xmDormir: o service worker conta o tempo pra aba escondida e responde', async () => {
+  const c = carregar();
+  const r = await respostaMsg(c, { xmDormir: 10 });
+  assert.deepStrictEqual(plano(r), { ok: true });
 });
 
 test('o mesmo comando entregue duas vezes roda UMA vez so', async () => {

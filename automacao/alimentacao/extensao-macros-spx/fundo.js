@@ -259,8 +259,12 @@ async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado'
   // Quando foi a pessoa que mandou rodar, traz a aba pra frente - ela quer ver.
   // No disparo agendado, nao: roubar a tela de quem esta trabalhando e pior do
   // que rodar escondido.
+  // A ABA vem pra frente SEMPRE (dentro da janela dela); a JANELA so quando foi a pessoa que
+  // mandou. Aba escondida atras de outra tem timer estrangulado e menu de hover que nao abre -
+  // o Pedidos so exportava com alguem olhando (05/10/2026). Trocar a aba ativa nao rouba o
+  // teclado de quem esta em outro programa; trazer a janela pra frente roubaria.
+  await chrome.tabs.update(aba.id, { active: true }).catch(() => {});
   if (focar) {
-    await chrome.tabs.update(aba.id, { active: true }).catch(() => {});
     await chrome.windows.update(aba.windowId, { focused: true }).catch(() => {});
   }
   const msg = { xmMacro: qual, agendado: true };
@@ -541,6 +545,13 @@ async function buscarComandos() {
 
 chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
   if (!msg) return;
+
+  // Relogio pra aba escondida: o setTimeout DELA e estrangulado pelo Chrome, o daqui nao (ver
+  // dormir() em spx.js). Teto de 25s: acima disso o proprio service worker pode ser suspenso.
+  if (msg.xmDormir !== undefined) {
+    setTimeout(() => responder({ ok: true }), Math.max(0, Math.min(25000, Number(msg.xmDormir) || 0)));
+    return true;
+  }
 
   // O painel do macro (content script) conta como ele terminou.
   if (msg.xmEvento) {
