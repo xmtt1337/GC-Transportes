@@ -51,6 +51,24 @@ function _enrRelativo(seg) {
 
 const _enrPlural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 
+// A performance chega pronta do servidor (entregue sobre o que saiu pra rua:
+// Delivering e OnHold contam contra). null = nada saiu ainda.
+function _enrPct(p) {
+    if (p === null || p === undefined || !isFinite(p)) return "—";
+    if (p <= 0) return "0%";
+    if (p >= 100) return "100%";
+    return p.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+}
+
+// Mesmas faixas de Torre de Controle > Na Rua (_snrCorPerformance): 90 pra cima
+// verde, 75 pra cima amarelo, abaixo vermelho.
+function _enrCorPerformance(p) {
+    if (p === null || p === undefined || !isFinite(p)) return "#8494a9";
+    if (p >= 90) return "#22c55e";
+    if (p >= 75) return "#eab308";
+    return "#ef4444";
+}
+
 // O ENDEREÇO COMPLETO da AT quase sempre já traz o complemento junto; repetir
 // embaixo só dobraria a altura da linha no celular.
 function _enrComplemento(p) {
@@ -89,8 +107,8 @@ function _enrEntregadorHtml(e) {
             <button type="button" class="enr-ent-topo" aria-expanded="${aberto}"
                     data-nome="${_enrEsc(e.nome)}" onclick="_enrAlternarEntregador(this.dataset.nome)">
                 <span class="enr-ent-nome">${_enrEsc(e.nome)}</span>
-                <span class="enr-ent-num${e.pendentes ? "" : " ok"}">${resumo}</span>
-                <span class="enr-ent-sub">${e.entregues} de ${e.total} entregues</span>
+                <span class="enr-pct" style="color:${_enrCorPerformance(e.performance)}">${_enrPct(e.performance)}</span>
+                <span class="enr-ent-sub"><b class="${e.pendentes ? "" : "ok"}">${resumo}</b> · ${e.entregues} de ${e.total} entregues</span>
                 <span class="enr-barra"><span style="width:${pct}%"></span></span>
             </button>
             ${lista}
@@ -100,18 +118,20 @@ function _enrEntregadorHtml(e) {
 function _enrTranspHtml(t) {
     const aberta = t.chave === _enrTransp;
     const cor = ENR_CORES[t.chave] || "#94a3b8";
-    const numero = !t.total ? "Nada na rua hoje"
-        : t.pendentes ? _enrPlural(t.pendentes, "pendente", "pendentes")
-        : "Tudo entregue";
+    const pendentes = t.pendentes ? _enrPlural(t.pendentes, "pendente", "pendentes") : "Tudo entregue";
+    // Com rota, o número grande é a performance; sem rota não há o que medir.
+    const numero = t.total
+        ? `<span class="enr-pct" style="color:${_enrCorPerformance(t.performance)}">${_enrPct(t.performance)}</span>`
+        : `<span class="enr-transp-num">Nada na rua hoje</span>`;
     const sub = t.total
-        ? `${t.entregues} de ${t.total} entregues · ${_enrPlural(t.entregadores.length, "entregador", "entregadores")}`
+        ? `<b class="${t.pendentes ? "" : "ok"}">${pendentes}</b> · ${t.entregues} de ${t.total} entregues · ${_enrPlural(t.entregadores.length, "entregador", "entregadores")}`
         : "Nenhum pedido no seu nome até agora.";
     return `
         <button type="button" class="enr-transp${aberta ? " aberta" : ""}" style="--tc:${cor}"
                 aria-expanded="${aberta}" ${t.total ? "" : "disabled"}
                 data-chave="${_enrEsc(t.chave)}" onclick="_enrAlternarTransp(this.dataset.chave)">
             <span class="enr-transp-nome">${_enrEsc(t.rotulo)}</span>
-            <span class="enr-transp-num">${numero}</span>
+            ${numero}
             <span class="enr-transp-sub">${sub}</span>
         </button>`;
 }

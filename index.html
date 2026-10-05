@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261005b">
+<link rel="stylesheet" href="style.css?v=20261005c">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -322,6 +322,21 @@ if (_BASE) {
         </li>
         <ul class="submenu" data-menu="confentregador" id="submenu-conf-entregador" style="display:none">
             <li><a href="#" data-rota="Conferencia/Shopee" onclick="abrirConfEntregador(event)">Shopee</a></li>
+        </ul>
+
+        <!-- Performance do entregador: o registro por dia da porcentagem que o bloco
+             "Na rua hoje" mostra na tela inicial. Só pro entregador liberado
+             (pode_ver_na_rua) — nasce escondido e o core.js mostra. -->
+        <li class="menu-item" data-menu="entperformance" id="menu-ent-performance" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+            </svg>
+            <span class="label">Performance</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Performance</span>
+        </li>
+        <ul class="submenu" data-menu="entperformance" id="submenu-ent-performance" style="display:none">
+            <li><a href="#" data-rota="Performance/PorDia" onclick="abrirEntPerformance(event)">Por dia</a></li>
         </ul>
 
         <!-- Solicitar AT: o pacote que caiu na mão do entregador sem passar pelo
@@ -3805,6 +3820,13 @@ if (_BASE) {
             </div>
         </div>
 
+        <!-- TELA PERFORMANCE DO ENTREGADOR — POR DIA -->
+        <div id="tela-ent-performance" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div id="epf-conteudo" class="enr"></div>
+            </div>
+        </div>
+
         <!-- TELA CONFERÊNCIA DO ENTREGADOR — SHOPEE -->
         <div id="tela-conf-entregador" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
@@ -4783,11 +4805,11 @@ if (_BASE) {
     </div>
 </div>
 
-<script src="js/core.js?v=20261005a"></script>
+<script src="js/core.js?v=20261005b"></script>
 <script src="js/col-filtro.js?v=20260917b"></script>
-<script src="js/router.js?v=20260924a"></script>
+<script src="js/router.js?v=20261005a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=20261001d"></script>
+<script src="js/nav.js?v=20261005a"></script>
 <script src="js/atendimento.js?v=20260907a"></script>
 <script src="js/atendimento-admin.js?v=30260902h"></script>
 <script src="js/fechamentos.js?v=30260812d"></script>
@@ -4854,7 +4876,8 @@ if (_BASE) {
 <script src="js/torre.js?v=30260812d"></script>
 <script src="js/torre-na-rua.js?v=30260916a"></script>
 <script src="js/shopee-na-rua.js?v=20261002a"></script>
-<script src="js/entregador-na-rua.js?v=20261005b"></script>
+<script src="js/entregador-na-rua.js?v=20261005c"></script>
+<script src="js/entregador-performance.js?v=20261005a"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">

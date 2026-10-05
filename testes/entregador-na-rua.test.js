@@ -23,7 +23,7 @@ const usuariosJs = fs.readFileSync(path.join(__dirname, "..", "js", "usuarios.js
 // `let`/`const` do topo não viram propriedade do contexto: a ponte vai no próprio script.
 const ponte = `
 ;globalThis.__enr = {
-    _enrHora, _enrRelativo, _enrComplemento, _enrRender, _enrAlternarTransp, _enrAlternarEntregador, _enrCarregar,
+    _enrHora, _enrRelativo, _enrComplemento, _enrPct, _enrCorPerformance, _enrRender, _enrAlternarTransp, _enrAlternarEntregador, _enrCarregar,
     setDados: v => { _enrDados = v; },
     abertos: () => [..._enrAbertos],
     transp: () => _enrTransp,
@@ -50,6 +50,7 @@ const ped = (codigo, situacao, extra = {}) => ({
 const ent = (nome, entregues, pedidos) => ({
     nome, total: entregues + pedidos.length, entregues, pendentes: pedidos.length,
     na_rua: pedidos.length, insucessos: 0, pedidos,
+    performance: entregues + pedidos.length ? Math.round(entregues / (entregues + pedidos.length) * 1000) / 10 : null,
 });
 
 function resposta(entregadores) {
@@ -60,6 +61,7 @@ function resposta(entregadores) {
         transportadoras: [{
             chave: "shopee", rotulo: "Shopee", total: soma("total"), entregues: soma("entregues"),
             pendentes: soma("pendentes"), entregadores,
+            performance: soma("total") ? Math.round(soma("entregues") / soma("total") * 1000) / 10 : null,
         }],
     };
 }
@@ -102,6 +104,39 @@ test("o tempo relativo vem dos segundos do servidor", () => {
     assert.strictEqual(api._enrRelativo(720), "há 12 min");
     assert.strictEqual(api._enrRelativo(7300), "há 2h");
     assert.strictEqual(api._enrRelativo(null), "");
+});
+
+// ── porcentagem ──────────────────────────────────────────────────────────
+
+test("a porcentagem sai com uma casa, no formato brasileiro", () => {
+    const { api } = carregar();
+    assert.strictEqual(api._enrPct(90.1), "90,1%");
+    assert.strictEqual(api._enrPct(75), "75,0%");
+    assert.strictEqual(api._enrPct(100), "100%");
+    assert.strictEqual(api._enrPct(0), "0%");
+    assert.strictEqual(api._enrPct(null), "—");
+});
+
+test("a cor segue as faixas da Torre: 90 verde, 75 amarelo, abaixo vermelho", () => {
+    const { api } = carregar();
+    assert.strictEqual(api._enrCorPerformance(90), "#22c55e");
+    assert.strictEqual(api._enrCorPerformance(89.9), "#eab308");
+    assert.strictEqual(api._enrCorPerformance(74.9), "#ef4444");
+    assert.strictEqual(api._enrCorPerformance(null), "#8494a9");
+});
+
+test("a transportadora e cada entregador mostram a propria porcentagem", () => {
+    const { api, el } = carregar();
+    api.setDados(resposta([
+        ent("Ajudante Um", 9, [ped("BR1", "na_rua")]),
+        ent("Ajudante Dois", 1, [ped("BR2", "na_rua"), ped("BR3", "na_rua"), ped("BR4", "na_rua")]),
+    ]));
+    api._enrRender();
+    assert.ok(el.innerHTML.includes("71,4%"));
+    assert.ok(!el.innerHTML.includes("90,0%"));
+    api._enrAlternarTransp("shopee");
+    assert.ok(el.innerHTML.includes("90,0%"));
+    assert.ok(el.innerHTML.includes("25,0%"));
 });
 
 // ── desenho ──────────────────────────────────────────────────────────────

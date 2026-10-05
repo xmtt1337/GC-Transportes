@@ -9,6 +9,7 @@ const _TELA_TITULOS = {
     "tela-fiscal-certificado":   "Certificado Digital",
     "tela-fiscal-tributacao":    "Tributação IBS/CBS",
     "tela-home":                 "Painel",
+    "tela-ent-performance":      "Performance por dia",
     "tela-admin":                "Alimentar",
     "tela-admin-fechamentos":    "Pesquisar Fechamentos",
     "tela-admin-nfs":            "Notas Fiscais",
