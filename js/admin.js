@@ -258,7 +258,6 @@ function renderHomeActions(role) {
     `).join("");
 
     if (role === "entregador")    carregarHomeNFStatus();
-    if (role === "entregador" && typeof _enrCarregar === "function") _enrCarregar();
     if (role === "finance")       _carregarHomeAdmin("admin");
     if (role === "dev")           _carregarHomeAdmin("admin");
     if (role === "admin")         _carregarHomeAdmin("admin");

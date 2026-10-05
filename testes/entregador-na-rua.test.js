@@ -16,7 +16,9 @@ const vm = require("node:vm");
 
 const fonteJs = fs.readFileSync(path.join(__dirname, "..", "js", "entregador-na-rua.js"), "utf8");
 const indexHtml = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const coreJs = fs.readFileSync(path.join(__dirname, "..", "js", "core.js"), "utf8");
 const adminJs = fs.readFileSync(path.join(__dirname, "..", "js", "admin.js"), "utf8");
+const usuariosJs = fs.readFileSync(path.join(__dirname, "..", "js", "usuarios.js"), "utf8");
 
 // `let`/`const` do topo não viram propriedade do contexto: a ponte vai no próprio script.
 const ponte = `
@@ -69,8 +71,19 @@ test("o index.html tem o lugar do bloco e carrega o script", () => {
     assert.match(indexHtml, /<script src="js\/entregador-na-rua\.js\?v=\d{8}[a-z]"><\/script>/);
 });
 
-test("a home do entregador chama a carga", () => {
-    assert.match(adminJs, /role === "entregador"[^\n]*_enrCarregar\(\)/);
+// É exclusividade: a carga só pode sair de dentro do `if` da liberação. Uma
+// chamada solta (como a que existia em renderHomeActions) mostraria o bloco
+// pra todo entregador de novo.
+test("so o entregador liberado dispara a carga", () => {
+    assert.match(coreJs, /if \(data\.usuario\.pode_ver_na_rua && [^\n]*\) _enrCarregar\(\);/);
+    assert.strictEqual((coreJs.match(/_enrCarregar\(\)/g) || []).length, 1);
+    assert.ok(!adminJs.includes("_enrCarregar"));
+});
+
+test("Cadastros > Entregadores liga e desliga a liberacao, e mostra quem tem", () => {
+    assert.ok(usuariosJs.includes("JSON.stringify({ pode_ver_na_rua: valor })"));
+    assert.ok(usuariosJs.includes("_toggleVerNaRua(${u.id},${!u.pode_ver_na_rua},this.dataset.nome)"));
+    assert.match(usuariosJs, /u\.pode_ver_na_rua && `<span[^`]*>Na rua hoje<\/span>`/);
 });
 
 // ── hora ─────────────────────────────────────────────────────────────────
@@ -211,11 +224,28 @@ test("atualizar mantem aberto o que estava aberto", async () => {
     assert.ok(el.innerHTML.includes(">Atualizar<"));
 });
 
-test("falha na primeira carga deixa o bloco vazio, sem erro na home", async () => {
-    const { api, el } = carregar(() => Promise.resolve({ json: () => Promise.resolve({ error: "Acesso negado" }) }));
+test("enquanto a primeira carga nao volta, o bloco avisa que esta carregando", () => {
+    const { api, el } = carregar(() => new Promise(() => {}));
+    api._enrCarregar();
+    assert.ok(el.innerHTML.includes("Na rua hoje"));
+    assert.ok(el.innerHTML.includes("Carregando"));
+});
+
+test("falha na primeira carga mostra o motivo e o botao de tentar de novo", async () => {
+    const { api, el } = carregar(() => Promise.resolve({ json: () => Promise.resolve({ error: "Acesso <negado>" }) }));
     api._enrCarregar();
     await espera();
-    assert.strictEqual(el.innerHTML, "");
+    assert.ok(el.innerHTML.includes("Acesso &lt;negado&gt;"));
+    assert.ok(el.innerHTML.includes("Tentar de novo"));
+});
+
+test("sem rede na primeira carga tambem avisa, em vez de sumir", async () => {
+    const { api, el } = carregar(() => Promise.reject(new Error("sem rede")));
+    api._enrCarregar();
+    await espera();
+    await espera();
+    assert.ok(el.innerHTML.includes("Confira a internet"));
+    assert.ok(el.innerHTML.includes("Tentar de novo"));
 });
 
 test("falha ao atualizar mantem a lista que ja estava na tela", async () => {

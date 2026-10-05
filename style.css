@@ -4854,6 +4854,7 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .enr-sit.rua { background: rgba(58,134,255,0.14); color: #6ea8ff; }
 .enr-sit.ins { background: rgba(239,68,68,0.14); color: #f87171; }
 .enr-sit.agu { background: rgba(148,163,184,0.14); color: #a8b5c8; }
+.enr-aviso { padding: 14px 16px; font-size: 13.5px; color: #9aa8bd; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; background: rgba(14,22,40,0.6); }
 .enr-vazio { padding: 12px 16px; font-size: 13px; color: #8494a9; border-top: 1px solid rgba(255,255,255,0.07); }
 
 /* ===== NA RUA > SHOPEE =====

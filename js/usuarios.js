@@ -29,6 +29,8 @@ function _carregarUsuarios() {
         const podeMotorista = ["admin", "dev", "finance"].includes((window._gcUser && window._gcUser.role) || "");
         // Anotações de Quantidade é o entregador quem preenche e configura — só dev ativa.
         const podeAnotar = (window._gcUser && window._gcUser.role) === "dev";
+        // Na rua hoje (performance do dia na home do entregador) é exclusividade — só dev ativa.
+        const podeNaRua = podeAnotar;
         _cadContagem("adm-usr-contagem", users, "entregador", "entregadores");
         document.getElementById("adm-usr-tbody").innerHTML = users.map(u => {
             // O que esse entregador tem de diferente do padrão, em texto corrido — precisa ficar
@@ -37,6 +39,7 @@ function _carregarUsuarios() {
                 u.isento_nf && `<span title="Vê os fechamentos mesmo com nota fiscal pendente da quinzena anterior">Sem trava de NF</span>`,
                 u.faz_motorista && `<span title="Além da rota, tem acesso a Transferências e Devoluções do motorista">Também motorista</span>`,
                 u.pode_anotar_quantidade && `<span title="Pode registrar quantidade entregue por transportadora e ver a estimativa de ganho">Anotações de quantidade</span>`,
+                u.pode_ver_na_rua && `<span title="Vê na tela inicial os pedidos do dia que estão no nome dele, com pendentes e endereço">Na rua hoje</span>`,
             ].filter(Boolean);
             return `
             <tr class="${u.active ? "" : "cad-inativo"}">
@@ -54,6 +57,7 @@ function _carregarUsuarios() {
                             ${podeNF ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleIsentoNF(${u.id},${!u.isento_nf},'${(u.name || u.username).replace(/'/g,"\'")}')">${u.isento_nf ? 'Voltar a exigir NF' : 'Liberar fechamento sem NF'}</button>` : ""}
                             ${podeMotorista ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleFazMotorista(${u.id},${!u.faz_motorista},'${(u.name || u.username).replace(/'/g,"\'")}')">${u.faz_motorista ? 'Tirar telas de motorista' : 'Liberar telas de motorista'}</button>` : ""}
                             ${podeAnotar ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleAnotaQuantidade(${u.id},${!u.pode_anotar_quantidade},'${(u.name || u.username).replace(/'/g,"\'")}')">${u.pode_anotar_quantidade ? 'Desativar' : 'Ativar'} Anotações de Quantidade</button>` : ""}
+                            ${podeNaRua ? `<button class="adm-usr-editar-item" data-nome="${String(u.name || u.username).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")}" onclick="_fecharMenusUsuario();_toggleVerNaRua(${u.id},${!u.pode_ver_na_rua},this.dataset.nome)">${u.pode_ver_na_rua ? 'Desativar' : 'Ativar'} Na rua hoje</button>` : ""}
                         </div>
                     </div>
                 </td>
@@ -298,6 +302,31 @@ function _toggleAnotaQuantidade(id, valor, nome) {
             : `Desativar Anotações de Quantidade para ${nome}?\n\nEle perde o acesso à tela. O que já foi lançado continua no histórico.`,
         aplicar,
         valor ? "Ativar Anotações de Quantidade" : "Desativar Anotações de Quantidade",
+        valor ? "Ativar" : "Desativar"
+    );
+}
+
+// Confirma antes: o bloco mostra endereço de cliente e a performance do dia, e é
+// exclusividade de quem o dono escolher.
+function _toggleVerNaRua(id, valor, nome) {
+    const aplicar = () => {
+        const tok = localStorage.getItem("token");
+        fetch(`${API}/admin/usuarios/${id}`, {
+            method: "PATCH",
+            headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
+            body: JSON.stringify({ pode_ver_na_rua: valor })
+        }).then(r => r.json())
+        .then(data => {
+            if (data.error) { gcAlert(data.error); return; }
+            _carregarUsuarios();
+        }).catch(() => gcAlert("Erro ao atualizar a permissão."));
+    };
+    gcConfirm(
+        valor
+            ? `Ativar o Na rua hoje para ${nome}?\n\nEle passa a ver, na tela inicial, os pedidos do dia que estão no nome dele (e nos nomes unificados no dele): quantos entregou, quantos faltam e o endereço dos pendentes. Vale na próxima vez que ele abrir o app.`
+            : `Desativar o Na rua hoje para ${nome}?\n\nO bloco some da tela inicial dele.`,
+        aplicar,
+        valor ? "Ativar Na rua hoje" : "Desativar Na rua hoje",
         valor ? "Ativar" : "Desativar"
     );
 }

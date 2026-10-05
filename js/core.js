@@ -221,6 +221,9 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
             show("menu-anotacoes");
             show("submenu-anotacoes");
         }
+        // "Na rua hoje" na tela inicial: só pro entregador liberado
+        // (toggle em Cadastros → Entregadores, "Editar" → Ativar Na rua hoje).
+        if (data.usuario.pode_ver_na_rua && typeof _enrCarregar === "function") _enrCarregar();
         // Quem leva rota e também roda transferência ganha as duas telas do motorista
         // (toggle em Cadastros → Entregadores, "Editar" → Liberar telas de motorista).
         // Continua sendo entregador: fechamento, NF e conferência de rota seguem iguais.

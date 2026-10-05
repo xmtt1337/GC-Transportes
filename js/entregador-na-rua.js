@@ -6,6 +6,10 @@
 // com o endereço. Quem recorta de quem é cada pedido é o servidor — esta tela
 // só desenha o que chegou.
 //
+// É exclusividade: quem chama _enrCarregar é o core.js, só pro entregador
+// liberado em Cadastros > Entregadores (pode_ver_na_rua). Pra quem não foi
+// liberado o bloco fica vazio e o servidor recusa a rota.
+//
 // Por enquanto só a Shopee vem na resposta; a tela já desenha uma lista de
 // transportadoras pra as outras entrarem sem mudar nada aqui.
 
@@ -153,7 +157,23 @@ function _enrAlternarEntregador(nome) {
     _enrRender();
 }
 
-// Chamado pela home do entregador (renderHomeActions) e pelo botão Atualizar.
+// Bloco sem dado ainda: "carregando" ou o erro com o botão de tentar de novo.
+// A consulta do dia é pesada e pode levar alguns segundos — sem este aviso o
+// bloco ficava em branco e parecia que a tela simplesmente não tinha a função.
+function _enrAviso(texto, comBotao) {
+    const el = document.getElementById("home-na-rua");
+    if (!el) return;
+    el.innerHTML = `
+        <section class="enr">
+            <div class="enr-topo">
+                <span class="enr-titulo">Na rua hoje</span>
+                ${comBotao ? `<button type="button" class="enr-recarregar" onclick="_enrCarregar()">Tentar de novo</button>` : ""}
+            </div>
+            <div class="enr-aviso">${_enrEsc(texto)}</div>
+        </section>`;
+}
+
+// Chamado pelo core.js (entregador liberado) e pelo botão Atualizar.
 // O que estava aberto continua aberto depois de atualizar: ele está no meio da
 // rota, conferindo a lista — fechar tudo a cada toque faria perder o lugar.
 function _enrCarregar() {
@@ -161,12 +181,13 @@ function _enrCarregar() {
     if (!el || _enrCarregando) return;
     _enrCarregando = true;
     if (_enrDados) _enrRender();
+    else _enrAviso("Carregando seus pedidos de hoje…", false);
 
     fetch(`${API}/entregador/na-rua`, { headers: { "Authorization": "Bearer " + localStorage.getItem("token") } })
         .then(r => r.json())
         .then(d => {
             _enrCarregando = false;
-            if (!d || d.error || !Array.isArray(d.transportadoras)) { _enrFalhou(); return; }
+            if (!d || d.error || !Array.isArray(d.transportadoras)) { _enrFalhou(d && d.error); return; }
             _enrDados = d;
             _enrRender();
         })
@@ -174,9 +195,9 @@ function _enrCarregar() {
 }
 
 // Falhou com dado na tela: fica o que já estava (melhor a lista de 5 minutos
-// atrás do que nenhuma). Falhou sem nada: o bloco some, não ocupa a home com erro.
-function _enrFalhou() {
+// atrás do que nenhuma). Falhou sem nada: diz que falhou e por quê — só entra
+// aqui quem foi liberado, então bloco vazio seria um defeito escondido.
+function _enrFalhou(motivo) {
     if (_enrDados) { _enrRender(); return; }
-    const el = document.getElementById("home-na-rua");
-    if (el) el.innerHTML = "";
+    _enrAviso(motivo ? `Não deu pra carregar: ${motivo}` : "Não deu pra carregar. Confira a internet e tente de novo.", true);
 }
