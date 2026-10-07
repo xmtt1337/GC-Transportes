@@ -320,6 +320,10 @@ function _abrirModalExportarCTe() {
  * "Status" existe porque, sem ele, um CT-e sem Data de emissão E sem Motivo
  * de rejeição parece inexplicável — mas é só um que ainda não foi transmitido
  * (Pronto, Assinando…), não um estado quebrado.
+ *
+ * Valor do frete, alíquota e valor do ICMS saem como número puro (sem "R$"
+ * nem "%") de propósito — é o que abre certo numa coluna numérica no Excel,
+ * em vez de virar texto.
  */
 async function _confirmarExportarCTeCsv() {
     const erroEl = document.getElementById("cte-exp-erro");
@@ -364,6 +368,7 @@ async function _confirmarExportarCTeCsv() {
     const csv = [
         linhaCsv(["Código BR", "Status", "Data emissão CT-e/NF", "Fatura", "Número CT-e",
                   "Série CT-e/NF", "Chave de acesso CT-e", "Protocolo de autorização SEFAZ",
+                  "Valor do frete", "Alíquota ICMS (%)", "Valor do imposto (ICMS)",
                   "Motivo rejeição CT-e", "Prefeitura NFSe"]),
         ...itens.map((x) => linhaCsv([
             x.codigo_shopee,
@@ -371,7 +376,9 @@ async function _confirmarExportarCTeCsv() {
             x.data_autorizacao ? new Date(x.data_autorizacao).toLocaleString("pt-BR") : "",
             "", // Fatura — GC não preenche esse grupo do CT-e hoje
             x.numero_cte, x.serie_cte,
-            x.chave_acesso, x.protocolo, x.motivo_rejeicao,
+            x.chave_acesso, x.protocolo,
+            x.valor_frete, x.aliquota_icms, x.valor_icms,
+            x.motivo_rejeicao,
             "", // Prefeitura NFSe — GC não emite NFS-e hoje, só CT-e
         ])),
     ].join("\r\n");
