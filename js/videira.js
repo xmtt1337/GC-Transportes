@@ -76,6 +76,7 @@ function deletarPlanilhaVideira(id) {
 // ───── VIDEIRA — PAINEL ─────
 
 let _vpQuinzena = 1;
+let _vpReqId    = 0; // descarta resposta de período trocado antes do fetch anterior voltar
 
 function abrirVideiraPainel(event) {
     if (event) event.preventDefault();
@@ -110,6 +111,7 @@ function buscarPainelVideira() {
     const ano      = document.getElementById("vp-ano")?.value;
     const quinzena = _vpQuinzena;
     if (!mes || !ano) return;
+    const reqId = ++_vpReqId;
 
     document.getElementById("vp-empty").style.display   = "";
     document.getElementById("vp-content").style.display = "none";
@@ -120,6 +122,7 @@ function buscarPainelVideira() {
     })
     .then(r => r.json())
     .then(data => {
+        if (reqId !== _vpReqId) return; // período já mudou de novo — resposta desatualizada, ignora
         if (data.error) {
             skFim(document.getElementById("vp-empty"), data.error);
             return;
@@ -127,7 +130,7 @@ function buscarPainelVideira() {
         _renderPainelVideira(data);
     })
     .catch(() => {
-        skFim(document.getElementById("vp-empty"), "Erro ao carregar o fechamento.");
+        if (reqId === _vpReqId) skFim(document.getElementById("vp-empty"), "Erro ao carregar o fechamento.");
     });
 }
 

@@ -2,10 +2,12 @@
 let _pagMes      = new Date().getMonth() + 1;
 let _pagAno      = new Date().getFullYear();
 let _pagQuinzena = null;
+let _pagReqId    = 0; // descarta resposta de período trocado antes do fetch anterior voltar
 
 function abrirAdminPagamentos(event) {
     if (event) event.preventDefault();
     _pagQuinzena = null;
+    _pagReqId++; // resposta ainda pendente não pode pintar a tela sem quinzena escolhida
     document.getElementById("pag-btn-1q").classList.remove("active");
     document.getElementById("pag-btn-2q").classList.remove("active");
     document.getElementById("pag-empty").innerText = "Selecione o mês, ano e quinzena para ver os pagamentos.";
@@ -44,6 +46,7 @@ function buscarPagamentos() {
     const mes = document.getElementById("pag-mes").value;
     const ano = document.getElementById("pag-ano").value;
     _pagMes = parseInt(mes); _pagAno = parseInt(ano);
+    const reqId    = ++_pagReqId;
     const empty    = document.getElementById("pag-empty");
     const resultado = document.getElementById("pag-resultado");
     skMostrar(empty);
@@ -54,6 +57,7 @@ function buscarPagamentos() {
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json())
     .then(data => {
+        if (reqId !== _pagReqId) return; // período já mudou de novo — resposta desatualizada, ignora
         if (data.error) { skFim(empty, data.error); return; }
         if (!data.length) { skFim(empty, "Nenhum entregador com valor neste período."); return; }
         empty.style.display = "none";
@@ -99,15 +103,20 @@ function buscarPagamentos() {
         }).join("");
 
         _buscarStatusQuinzena();
-    }).catch(() => { skFim(empty, "Erro ao carregar pagamentos."); });
+    }).catch(() => { if (reqId === _pagReqId) skFim(empty, "Erro ao carregar pagamentos."); });
 }
 
 function _buscarStatusQuinzena() {
+    const reqId = _pagReqId;
     const mes = document.getElementById("pag-mes").value;
     const ano = document.getElementById("pag-ano").value;
     fetch(`${API}/admin/pagamentos/quinzena?mes=${mes}&ano=${ano}&quinzena=${_pagQuinzena}`, {
         headers: { "Authorization": "Bearer " + token }
-    }).then(r => r.json()).then(d => { _renderStatusPagBtn(d); }).catch(() => {});
+    }).then(r => r.json()).then(d => {
+        // Sem isso o "Pago"/botão Pagar de uma quinzena aparece em cima da tabela da outra.
+        if (reqId !== _pagReqId) return;
+        _renderStatusPagBtn(d);
+    }).catch(() => {});
 }
 
 function _renderStatusPagBtn(d) {

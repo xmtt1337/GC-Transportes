@@ -504,6 +504,8 @@ function abrirAdminFechamentos(event) {
     _admFQuinzena = null;
     _admFEntregador = "";
     _admEntregadoresLista = [];
+    // resposta ainda pendente não pode pintar a tela sem quinzena escolhida
+    _admFListaReqId++; _admPainelReqId++;
     document.getElementById("adm-btn-1q").classList.remove("active");
     document.getElementById("adm-btn-2q").classList.remove("active");
     document.getElementById("adm-fech-empty").innerText = "Selecione o mês, ano e quinzena e clique em Buscar.";

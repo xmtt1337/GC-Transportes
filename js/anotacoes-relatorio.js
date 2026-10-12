@@ -7,6 +7,7 @@ let _arAno = new Date().getFullYear();
 let _arQuinzena = new Date().getDate() <= 15 ? 1 : 2;
 let _arLinhas = [];
 let _arTotal = { quantidade_total: 0, valor_estimado: 0 };
+let _arReqId = 0; // descarta resposta de período/filtro trocado antes do fetch anterior voltar
 
 // Mesmo catálogo do backend (modules/anotacoes-quantidade/config.js), duplicado aqui só pro
 // filtro/rótulo da tela — a validação de verdade é sempre no servidor.
@@ -103,14 +104,16 @@ function _arCarregarRelatorio() {
     if (entregadorId) url += `&entregador_id=${entregadorId}`;
     if (transportadora) url += `&transportadora=${transportadora}`;
 
+    const reqId = ++_arReqId;
     fetch(url, { headers: { "Authorization": "Bearer " + tok } })
         .then(r => r.json())
         .then(data => {
+            if (reqId !== _arReqId) return; // período já mudou de novo — resposta desatualizada, ignora
             if (data.error) { empty.innerText = data.error; return; }
             _arLinhas = data.linhas || [];
             _arTotal = data.total || { quantidade_total: 0, valor_estimado: 0 };
             _arRenderTabela();
-        }).catch(() => { empty.innerText = "Erro ao carregar o relatório."; });
+        }).catch(() => { if (reqId === _arReqId) empty.innerText = "Erro ao carregar o relatório."; });
 }
 
 function _arRenderTabela() {

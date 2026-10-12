@@ -3,11 +3,13 @@ let _antMes      = new Date().getMonth() + 1;
 let _antAno      = new Date().getFullYear();
 let _antQuinzena = null;
 let _antNFAtual  = null;
+let _antReqId    = 0; // descarta resposta de período trocado antes do fetch anterior voltar
 
 function abrirAntecipacoes(event) {
     if (event) event.preventDefault();
     _antQuinzena = null;
     _antNFAtual  = null;
+    _antReqId++; // resposta ainda pendente não pode pintar a tela sem quinzena escolhida
     _iniciarSelectsAnt();
     document.getElementById("ant-btn-1q").classList.remove("active");
     document.getElementById("ant-btn-2q").classList.remove("active");
@@ -182,6 +184,7 @@ function _antBuscarNF() {
     const ano = document.getElementById("ant-ano").value;
     _antMes = parseInt(mes); _antAno = parseInt(ano);
     _antNFAtual = null;
+    const reqId = ++_antReqId;
 
     // Busca NF (dados cadastrais) e painel (valor vivo da planilha) em paralelo
     Promise.all([
@@ -192,7 +195,9 @@ function _antBuscarNF() {
             headers: { "Authorization": "Bearer " + token }
         }).then(r => r.ok ? r.json() : null).catch(() => null)
     ]).then(([nf, painel]) => {
-        const uploadedAt    = painel?.planilha_uploaded_at ?? null;
+        // Resposta desatualizada deixaria a NF de uma quinzena pronta pra antecipar na outra.
+        if (reqId !== _antReqId) return;
+        const uploadedAt   = painel?.planilha_uploaded_at ?? null;
         const valorPlanilha = painel?.total_receber_num ?? null;
         const nfCard        = document.getElementById("ant-nf-card");
         let diverge = false;

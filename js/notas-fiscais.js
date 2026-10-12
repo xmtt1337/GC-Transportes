@@ -354,6 +354,8 @@ function _iniciarSelectsAdmFech() {
     document.getElementById("adm-fech-mes").value = _admFMes;
 }
 
+let _admFListaReqId = 0; // descarta resposta de período trocado antes do fetch anterior voltar
+
 function selecionarQuinzenaAdmin(q) {
     _admFQuinzena = q;
     document.getElementById("adm-btn-1q").classList.toggle("active", q === 1);
@@ -371,6 +373,10 @@ function buscarQuinzenaAdmin() {
     _admFAno = parseInt(document.getElementById("adm-fech-ano").value);
     _admFEntregador = "";
     _admEntregadoresLista = [];
+    const reqId = ++_admFListaReqId;
+    // Painel de um entregador ainda carregando no período anterior: invalida também,
+    // senão ele aparece por cima da lista do período novo.
+    _admPainelReqId++;
     document.getElementById("adm-ent-section").style.display = "none";
     document.getElementById("adm-fech-data").style.display = "none";
 
@@ -390,6 +396,7 @@ function buscarQuinzenaAdmin() {
     })
     .then(r => r.json().then(b => ({ ok: r.ok, b })))
     .then(({ ok, b }) => {
+        if (reqId !== _admFListaReqId) return; // período já mudou de novo — resposta desatualizada, ignora
         if (!ok) {
             skFim(empty, b.error || "Nenhum fechamento encontrado para este período.");
             return;
@@ -411,7 +418,7 @@ function buscarQuinzenaAdmin() {
         _renderEntregadoresGrid(b.entregadores);
     })
     .catch(() => {
-        skFim(empty, "Erro ao conectar com o servidor.");
+        if (reqId === _admFListaReqId) skFim(empty, "Erro ao conectar com o servidor.");
     });
 }
 

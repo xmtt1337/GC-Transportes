@@ -3,6 +3,7 @@ let _cfMes         = new Date().getMonth() + 1;
 let _cfAno         = new Date().getFullYear();
 let _cfQuinzena    = null;
 let _cfTranspAtual = null;
+let _cfReqId       = 0; // descarta resposta de período trocado antes do fetch anterior voltar
 
 // Cada transportadora tem suas próprias regras de mapeamento de colunas — o parser
 // de cada uma fica isolado, pra facilitar acrescentar as próximas depois.
@@ -15,6 +16,7 @@ function abrirCriarFechamento(event) {
     if (event) event.preventDefault();
     _cfQuinzena = null;
     _cfTranspAtual = null;
+    _cfReqId++; // resposta ainda pendente não pode pintar a tela sem quinzena escolhida
     document.getElementById("cf-btn-1q").classList.remove("active");
     document.getElementById("cf-btn-2q").classList.remove("active");
     document.getElementById("cf-empty").innerText = "Selecione o mês, ano e quinzena.";
@@ -56,6 +58,7 @@ function _cfCarregarResumo() {
     _cfAno = parseInt(document.getElementById("cf-ano").value);
     const empty   = document.getElementById("cf-empty");
     const content = document.getElementById("cf-content");
+    const reqId   = ++_cfReqId;
     skMostrar(empty);
     empty.style.display = "";
     content.style.display = "none";
@@ -64,6 +67,7 @@ function _cfCarregarResumo() {
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json())
     .then(rows => {
+        if (reqId !== _cfReqId) return; // período já mudou de novo — resposta desatualizada, ignora
         empty.style.display = "none";
         content.style.display = "";
         _cfTranspAtual = null;
@@ -72,7 +76,7 @@ function _cfCarregarResumo() {
         document.getElementById("cf-upload-wrap").style.display = "none";
         document.getElementById("cf-ocorrencia-wrap").style.display = "none";
     }).catch(() => {
-        skFim(empty, "Erro ao carregar dados do período.");
+        if (reqId === _cfReqId) skFim(empty, "Erro ao carregar dados do período.");
     });
 }
 

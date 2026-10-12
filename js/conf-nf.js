@@ -7,6 +7,7 @@ let _confNFTodosRows     = [];
 let _confNFFiltrados     = [];
 let _confNFPagina        = 1;
 let _confNFPorPagina     = 25;
+let _confNFReqId         = 0; // descarta resposta de período trocado antes do fetch anterior voltar
 
 function _toggleFiltroConf() {
     _confNFFiltrarPend = !_confNFFiltrarPend;
@@ -19,6 +20,7 @@ function _toggleFiltroConf() {
 function abrirConfNFs(event) {
     if (event) event.preventDefault();
     _confNFQuinzena = null;
+    _confNFReqId++; // resposta ainda pendente não pode pintar a tela sem quinzena escolhida
     document.getElementById("conf-nf-btn-1q").classList.remove("active");
     document.getElementById("conf-nf-btn-2q").classList.remove("active");
     document.getElementById("conf-nf-empty").innerText = "Selecione o período para conferir as notas fiscais.";
@@ -45,6 +47,7 @@ function buscarConfNFs() {
     const ano      = document.getElementById("conf-nf-ano").value;
     const empty    = document.getElementById("conf-nf-empty");
     const resultado = document.getElementById("conf-nf-resultado");
+    const reqId    = ++_confNFReqId;
     skMostrar(empty);
     empty.style.display = "";
     resultado.style.display = "none";
@@ -54,6 +57,7 @@ function buscarConfNFs() {
     })
     .then(r => r.json())
     .then(rows => {
+        if (reqId !== _confNFReqId) return; // período já mudou de novo — resposta desatualizada, ignora
         if (rows.error) { skFim(empty, rows.error); return; }
         if (!rows.length) { skFim(empty, "Nenhum entregador encontrado para este período."); return; }
         empty.style.display = "none";
@@ -72,7 +76,7 @@ function buscarConfNFs() {
         document.getElementById("conf-nf-counter").innerHTML = counter;
         _renderConfNFTabela(rows);
     })
-    .catch(() => { skFim(empty, "Erro ao carregar dados."); });
+    .catch(() => { if (reqId === _confNFReqId) skFim(empty, "Erro ao carregar dados."); });
 }
 
 function _renderConfNFTabela(rows) {

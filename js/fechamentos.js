@@ -11,6 +11,7 @@ let _fPainelReqId   = 0; // descarta resposta de período trocado antes do fetch
 function abrirFechamentos(event) {
     if (event) event.preventDefault();
     _fQuinzena = null;
+    _fPainelReqId++; // resposta ainda pendente não pode pintar a tela sem quinzena escolhida
     document.querySelectorAll(".quinzena-btn").forEach(b => b.classList.remove("active"));
     document.getElementById("fechamento-empty").innerText = "Selecione uma quinzena para ver o fechamento.";
     document.getElementById("fechamento-empty").style.display = "";
@@ -37,6 +38,7 @@ function filtrarPeriodo() {
     _fMes      = parseInt(document.getElementById("sel-mes").value);
     _fAno      = parseInt(document.getElementById("sel-ano").value);
     _fQuinzena = null;
+    _fPainelReqId++; // resposta ainda pendente não pode pintar a tela sem quinzena escolhida
     document.querySelectorAll(".quinzena-btn").forEach(b => b.classList.remove("active"));
     document.getElementById("fechamento-empty").innerText = "Selecione uma quinzena para ver o fechamento.";
     document.getElementById("fechamento-empty").style.display = "";

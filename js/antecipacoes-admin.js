@@ -3,11 +3,13 @@ let _admAntMes      = new Date().getMonth() + 1;
 let _admAntAno      = new Date().getFullYear();
 let _admAntQuinzena = null;
 let _admAntRows     = [];
+let _admAntReqId    = 0; // descarta resposta de período trocado antes do fetch anterior voltar
 
 function abrirAdminAntecipacoes(event) {
     if (event) event.preventDefault();
     _admAntQuinzena = null;
     _admAntRows     = [];
+    _admAntReqId++; // resposta ainda pendente não pode pintar a tela sem quinzena escolhida
     document.getElementById("adm-ant-btn-1q").classList.remove("active");
     document.getElementById("adm-ant-btn-2q").classList.remove("active");
     document.getElementById("adm-ant-empty").innerText = "Selecione o período e a quinzena para ver as antecipações.";
@@ -52,10 +54,12 @@ function buscarAntecipacoes() {
     skMostrar(empty); empty.style.display = ""; result.style.display = "none";
 
     const url = `${API}/admin/antecipacoes?mes=${mes}&ano=${ano}&quinzena=${_admAntQuinzena}`;
+    const reqId = ++_admAntReqId;
 
     fetch(url, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
     .then(rows => {
+        if (reqId !== _admAntReqId) return; // período já mudou de novo — resposta desatualizada, ignora
         if (rows.error) { skFim(empty, rows.error); return; }
         if (!rows.length) { skFim(empty, "Nenhuma solicitação encontrada para este período."); return; }
         _admAntRows = rows;
@@ -67,7 +71,7 @@ function buscarAntecipacoes() {
         if (totalEl) totalEl.innerHTML = `Total solicitado: <strong style="color:#3a86ff">${moedaJS(totalSol)}</strong>`;
         _renderAdmAntTabela(rows);
     })
-    .catch(() => { skFim(empty, "Erro ao carregar antecipações."); });
+    .catch(() => { if (reqId === _admAntReqId) skFim(empty, "Erro ao carregar antecipações."); });
 }
 
 function _renderAdmAntTabela(rows) {

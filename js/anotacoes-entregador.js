@@ -265,6 +265,7 @@ let _aqQMes = new Date().getMonth() + 1;
 let _aqQAno = new Date().getFullYear();
 let _aqQQuinzena = new Date().getDate() <= 15 ? 1 : 2;
 let _aqQLancamentos = [];
+let _aqQReqId = 0; // descarta resposta de período trocado antes do fetch anterior voltar
 
 function abrirAnotacoesQuinzenas(event) {
     if (event) event.preventDefault();
@@ -304,19 +305,22 @@ function _aqQSelecionarQuinzena(q) {
 
 function _aqQCarregar() {
     const tok = localStorage.getItem("token");
+    const reqId = ++_aqQReqId;
     fetch(`${API}/entregador/anotacoes/lancamentos?mes=${_aqQMes}&ano=${_aqQAno}&quinzena=${_aqQQuinzena}`, {
         headers: { "Authorization": "Bearer " + tok }
     }).then(r => r.json())
         .then(data => {
+            if (reqId !== _aqQReqId) return; // período já mudou de novo — resposta desatualizada, ignora
             if (data.error) { gcAlert(data.error); return; }
             _aqQLancamentos = data.lancamentos || [];
             _aqQRenderPivot();
-        }).catch(() => gcAlert("Erro ao carregar os lançamentos da quinzena."));
+        }).catch(() => { if (reqId === _aqQReqId) gcAlert("Erro ao carregar os lançamentos da quinzena."); });
 
     fetch(`${API}/entregador/anotacoes/resumo?mes=${_aqQMes}&ano=${_aqQAno}&quinzena=${_aqQQuinzena}`, {
         headers: { "Authorization": "Bearer " + tok }
     }).then(r => r.json())
         .then(data => {
+            if (reqId !== _aqQReqId) return;
             if (data.error) return;
             document.getElementById("aqq-total-valor").innerText = _aqMoeda(data.total.valor_estimado);
             document.getElementById("aqq-total-qtd").innerText = data.total.quantidade_total;
