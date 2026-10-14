@@ -2483,7 +2483,12 @@ if (_BASE) {
                         <button type="button" class="filtro-tab" data-cat="imile" onclick="_waRecEscolher('imile')">iMile</button>
                         <button type="button" class="filtro-tab" data-cat="anjun" onclick="_waRecEscolher('anjun')">Anjun</button>
                     </div>
+                    <div class="filtro-tabs" id="wa-modo-tabs" style="margin-bottom:16px;display:none">
+                        <button type="button" class="filtro-tab active" data-modo="unitario" onclick="_waModoEscolher('unitario')">Unitário</button>
+                        <button type="button" class="filtro-tab" data-modo="massa" onclick="_waModoEscolher('massa')">Em massa</button>
+                    </div>
                     <div style="display:flex;flex-direction:column;gap:14px">
+                        <div id="wa-unitario" style="display:flex;flex-direction:column;gap:14px">
                         <div>
                             <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8494a9;display:block;margin-bottom:6px">Número do cliente (com DDI)</label>
                             <input type="text" id="wa-rec-numero" class="fech-select" style="width:100%;background-image:none;padding-right:14px" placeholder="+55 49 9 9927-6131" oninput="_waMascaraTelefone(this)" autocomplete="off" autocorrect="off" spellcheck="false" name="wa-destinatario-gc">
@@ -2500,6 +2505,7 @@ if (_BASE) {
                         </div>
                         <button class="extrv-refresh-btn" onclick="_waRecEnviar()" style="justify-content:center;padding:10px">Enviar mensagem</button>
                         <div id="wa-rec-msg" style="font-size:13px"></div>
+                        </div>
 
                         <div id="wa-bulk-bloco" style="border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;margin-top:2px">
                             <button class="filtro-tab" id="wa-bulk-toggle" onclick="_waBulkAlternar()" style="padding-left:0">Disparar em massa ▾</button>
@@ -4832,7 +4838,7 @@ if (_BASE) {
 <script src="js/nomes-padrao.js?v=20260922a"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
 <script src="js/macros.js?v=20260928a"></script>
-<script src="js/whatsapp-teste.js?v=20260929a"></script>
+<script src="js/whatsapp-teste.js?v=20261014a"></script>
 <script src="js/stuck-ativo.js?v=20260929a"></script>
 <script src="js/whatsapp-conversa.js?v=20260924a"></script>
 <script src="js/modals.js?v=20260924a"></script>

@@ -18,17 +18,52 @@ function abrirWhatsappTeste(event) {
     // seu — melhor perguntar ao abrir do que depois de preencher o formulário inteiro.
     gcPoloGarantir();
 
-    const comPrazo = WA_ROLES_COM_PRAZO.includes(role);
     const mostrar = (id, sim) => { const el = document.getElementById(id); if (el) el.style.display = sim ? "" : "none"; };
     mostrar("wa-secao-acareacao", true);
-    mostrar("wa-campo-prazo", comPrazo);
-    // Massa é só pra quem faz outros ativos: acareação é caso a caso, cada uma com o
-    // prazo que a transportadora deu — disparar em lote não faz sentido ali.
-    mostrar("wa-bulk-bloco", !comPrazo);
     mostrar("wa-secao-status", role === "dev"); // diagnóstico do número: só dev
+    _waAplicarModo();
 
     if (role === "dev") _waCarregarStatus();
     _waRecRenderCampos();
+}
+
+// Dev faz acareação como o SAC, mas também dispara outros ativos — então escolhe o modo
+// em vez de herdar a trava do SAC. "massa" nunca é acareação: vai sem prazo.
+const WA_ROLES_ESCOLHEM_MODO = ["dev"];
+let _waModo = "unitario";
+
+function _waModoEscolher(modo) {
+    _waModo = modo;
+    _waAplicarModo();
+}
+
+function _waAplicarModo() {
+    const role = window._gcUser && window._gcUser.role;
+    const escolhe = WA_ROLES_ESCOLHEM_MODO.includes(role);
+    const comPrazo = WA_ROLES_COM_PRAZO.includes(role);
+    const massa = escolhe && _waModo === "massa";
+    const mostrar = (id, sim) => { const el = document.getElementById(id); if (el) el.style.display = sim ? "" : "none"; };
+
+    document.querySelectorAll("#wa-modo-tabs .filtro-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.modo === (massa ? "massa" : "unitario")));
+    mostrar("wa-modo-tabs", escolhe);
+    const unitario = document.getElementById("wa-unitario");
+    if (unitario) unitario.style.display = massa ? "none" : "flex";
+    mostrar("wa-campo-prazo", comPrazo);
+    // Sem escolha de modo, massa é só pra quem faz outros ativos: acareação é caso a caso,
+    // cada uma com o prazo que a transportadora deu — disparar em lote não faz sentido ali.
+    mostrar("wa-bulk-bloco", massa || !comPrazo);
+
+    // No modo massa a área já vem aberta e sozinha: o botão de recolher e a linha
+    // separando do formulário unitário só fazem sentido quando os dois aparecem juntos.
+    const bloco = document.getElementById("wa-bulk-bloco");
+    if (bloco) {
+        bloco.style.borderTop  = massa ? "none" : "";
+        bloco.style.paddingTop = massa ? "0" : "";
+        bloco.style.marginTop  = massa ? "0" : "";
+    }
+    mostrar("wa-bulk-toggle", !massa);
+    if (massa) document.getElementById("wa-bulk-area").style.display = "";
 }
 
 // Mostra qual número o servidor está usando pra enviar — trocamos de número no meio
@@ -484,8 +519,6 @@ async function _waBulkEnviar() {
     if (_waBulkEnviando || !_waBulkLinhas.length) return;
     const cfg = WA_REC_TEMPLATES[_waRecCategoria];
     const progresso = document.getElementById("wa-bulk-progresso");
-    const comPrazo = WA_ROLES_COM_PRAZO.includes(window._gcUser && window._gcUser.role);
-    const prazo = parseInt(document.getElementById("wa-rec-prazo").value, 10);
 
     _waBulkEnviando = true;
     const btn = document.getElementById("wa-bulk-btn-enviar");
@@ -498,11 +531,11 @@ async function _waBulkEnviar() {
         progresso.innerText = `Enviando ${i + 1} de ${_waBulkLinhas.length}... (${ok} ok, ${falha} falhas)`;
 
         // Valida antes de gastar mensagem: número torto ou campo vazio nem chega na Meta.
-        const tel = _waValidarTelefone(linha.numero);
-        const faltando = cfg.campos.filter(c => !linha.valores[c.id]);
-        if (!tel.ok || faltando.length) {
+        // Massa nunca é acareação, então vai sem prazo mesmo quando quem dispara é dev.
+        const envio = _waRecMontarEnvio({ cfg, valores: linha.valores, numero: linha.numero, comPrazo: false });
+        if (envio.erro) {
             linha.status = "erro";
-            linha.erro = !tel.ok ? tel.erro : "Faltou: " + faltando.map(c => c.label).join(", ");
+            linha.erro = envio.erro;
             falha++;
             _waBulkRenderizar();
             continue;
@@ -515,13 +548,7 @@ async function _waBulkEnviar() {
             const resp = await fetch(`${API}/admin/whatsapp/enviar`, {
                 method: "POST",
                 headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    numero: tel.e164, template: cfg.template,
-                    parametros: cfg.parametros(linha.valores), texto: cfg.montar(linha.valores),
-                    nome_cliente: linha.valores.nome_cliente || null,
-                    pedido: linha.valores[cfg.campoPedido] || null,
-                    prazo_horas: comPrazo ? prazo : null
-                })
+                body: JSON.stringify(envio.corpo)
             });
             const body = await resp.json();
             if (resp.ok) { linha.status = "ok"; ok++; }
