@@ -1,4 +1,11 @@
-// ───── PLANEJAMENTO VIDEIRA (bairro → entregador, por transportadora) ─────
+// ───── PLANEJAMENTO VIDEIRA (bairro → entregador) ─────
+// Desde 14/10/2026 o planejamento é GERAL: uma aba por unidade ("Geral Caçador",
+// "Geral Videira") com o nome padrão do entregador, e a lista de nomes vem da
+// planilha "Dados entregadores". O planejamento por transportadora fica inativo,
+// não apagado — voltar é trocar esta constante para true.
+const _PV_POR_TRANSPORTADORA = false;
+const _PV_GERAL_COR = "#3a86ff";
+
 const _PV_TRANSP = [
     { key: "loggi",         label: "Loggi",         cor: "#12A5E8" },
     { key: "anjun",         label: "Anjun",         cor: "#22C55E" },
@@ -11,7 +18,7 @@ const _PV_TRANSP = [
 const _PV_UNIDADE_LABEL = { videira: "Videira", cacador: "Caçador" };
 
 let _pvUnidade        = "videira";
-let _pvTransportadora = "loggi";
+let _pvTransportadora = _PV_POR_TRANSPORTADORA ? "loggi" : "geral";
 let _pvLinhas   = [];
 let _pvUsuarios = [];
 let _pvView     = "bairro"; // 'bairro' | 'entregador'
@@ -20,7 +27,9 @@ function abrirPlanejamentoVideira(event, unidade) {
     if (event) event.preventDefault();
     _pvUnidade = unidade || "videira";
     document.getElementById("pv-titulo-unidade").innerText = _PV_UNIDADE_LABEL[_pvUnidade] || _pvUnidade;
-    document.getElementById("pv-transp-tabs").innerHTML = _PV_TRANSP.map(t => `
+    const tabs = document.getElementById("pv-transp-tabs");
+    tabs.style.display = _PV_POR_TRANSPORTADORA ? "" : "none";
+    tabs.innerHTML = !_PV_POR_TRANSPORTADORA ? "" : _PV_TRANSP.map(t => `
         <button class="pv-transp-tab${t.key === _pvTransportadora ? " active" : ""}" style="--pvc:${t.cor}"
             data-t="${t.key}" onclick="_pvTrocarTransportadora('${t.key}')">
             <span class="pv-tab-dot"></span>${t.label}
@@ -48,7 +57,7 @@ function _pvTrocarTransportadora(t) {
 }
 
 function _pvAplicarAccent() {
-    const cor = (_PV_TRANSP.find(t => t.key === _pvTransportadora) || {}).cor || "#3a86ff";
+    const cor = (_PV_TRANSP.find(t => t.key === _pvTransportadora) || {}).cor || _PV_GERAL_COR;
     // Aplica no root para o popup de busca (que fica anexado ao <body>) também herdar a cor certa
     document.documentElement.style.setProperty("--pv-accent", cor);
 }
