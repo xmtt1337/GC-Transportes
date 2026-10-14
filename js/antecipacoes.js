@@ -149,8 +149,10 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlan
         return;
     }
 
-    // Prazo encerrado (17 dias antes do pagamento) e nenhuma solicitação feita
-    if (!prazo.aberto) {
+    // Prazo encerrado (17 dias antes do pagamento) e nenhuma solicitação feita. Quem o dev
+    // liberou (Cadastros > Entregadores) segue pro form — o backend confere a mesma flag.
+    const foraPrazoLiberado = !prazo.aberto && !!(window._gcUser && window._gcUser.antecipaForaPrazo);
+    if (!prazo.aberto && !foraPrazoLiberado) {
         card.innerHTML = _antCardHtml("lock", "Prazo de antecipação encerrado",
             `O prazo pra antecipar esta quinzena foi até <strong style="color:#cbd5e1">${prazo.limiteFmt}</strong>.`);
         if (form) form.style.display = "none";
@@ -174,7 +176,10 @@ function _antRenderStatusCard(mes, ano, quinzena, uploadedAt, diverge, valorPlan
     }
 
     // Tudo certo: form liberado, com o "timer" do prazo em cima
-    card.innerHTML = _antCardHtml("clock", "Prazo pra antecipar", `${_antPrazoTextoAberto(prazo)}.`);
+    card.innerHTML = foraPrazoLiberado
+        ? _antCardHtml("clock", "Antecipação liberada fora do prazo",
+            `O prazo normal foi até <strong style="color:#cbd5e1">${prazo.limiteFmt}</strong>, mas a sua conta foi liberada pra solicitar mesmo assim.`)
+        : _antCardHtml("clock", "Prazo pra antecipar", `${_antPrazoTextoAberto(prazo)}.`);
     if (form) form.style.display = "";
 }
 

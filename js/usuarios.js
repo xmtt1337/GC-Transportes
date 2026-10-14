@@ -31,6 +31,8 @@ function _carregarUsuarios() {
         const podeAnotar = (window._gcUser && window._gcUser.role) === "dev";
         // Na rua hoje (performance do dia na home do entregador) é exclusividade — só dev ativa.
         const podeNaRua = podeAnotar;
+        // Antecipação fora da data limite fura uma regra que vale pra todos — só dev libera.
+        const podeForaPrazo = podeAnotar;
         _cadContagem("adm-usr-contagem", users, "entregador", "entregadores");
         document.getElementById("adm-usr-tbody").innerHTML = users.map(u => {
             // O que esse entregador tem de diferente do padrão, em texto corrido — precisa ficar
@@ -40,6 +42,7 @@ function _carregarUsuarios() {
                 u.faz_motorista && `<span title="Além da rota, tem acesso a Transferências e Devoluções do motorista">Também motorista</span>`,
                 u.pode_anotar_quantidade && `<span title="Pode registrar quantidade entregue por transportadora e ver a estimativa de ganho">Anotações de quantidade</span>`,
                 u.pode_ver_na_rua && `<span title="Vê na tela inicial os pedidos do dia que estão no nome dele, com pendentes e endereço">Na rua hoje</span>`,
+                u.antecipa_fora_prazo && `<span title="Pode solicitar antecipação mesmo depois da data limite da quinzena">Antecipa fora do prazo</span>`,
             ].filter(Boolean);
             return `
             <tr class="${u.active ? "" : "cad-inativo"}">
@@ -58,6 +61,7 @@ function _carregarUsuarios() {
                             ${podeMotorista ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleFazMotorista(${u.id},${!u.faz_motorista},'${(u.name || u.username).replace(/'/g,"\'")}')">${u.faz_motorista ? 'Tirar telas de motorista' : 'Liberar telas de motorista'}</button>` : ""}
                             ${podeAnotar ? `<button class="adm-usr-editar-item" onclick="_fecharMenusUsuario();_toggleAnotaQuantidade(${u.id},${!u.pode_anotar_quantidade},'${(u.name || u.username).replace(/'/g,"\'")}')">${u.pode_anotar_quantidade ? 'Desativar' : 'Ativar'} Anotações de Quantidade</button>` : ""}
                             ${podeNaRua ? `<button class="adm-usr-editar-item" data-nome="${String(u.name || u.username).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")}" onclick="_fecharMenusUsuario();_toggleVerNaRua(${u.id},${!u.pode_ver_na_rua},this.dataset.nome)">${u.pode_ver_na_rua ? 'Desativar' : 'Ativar'} Na rua hoje</button>` : ""}
+                            ${podeForaPrazo ? `<button class="adm-usr-editar-item" data-nome="${String(u.name || u.username).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")}" onclick="_fecharMenusUsuario();_toggleAntecipaForaPrazo(${u.id},${!u.antecipa_fora_prazo},this.dataset.nome)">${u.antecipa_fora_prazo ? 'Voltar a exigir prazo da antecipação' : 'Liberar antecipação fora do prazo'}</button>` : ""}
                         </div>
                     </div>
                 </td>
@@ -329,6 +333,27 @@ function _toggleVerNaRua(id, valor, nome) {
         valor ? "Ativar Na rua hoje" : "Desativar Na rua hoje",
         valor ? "Ativar" : "Desativar"
     );
+}
+
+// Liberar cobra confirmação; voltar a exigir não. Liberar fura a data limite que vale pra
+// todos os entregadores.
+function _toggleAntecipaForaPrazo(id, valor, nome) {
+    const aplicar = () => {
+        const tok = localStorage.getItem("token");
+        fetch(`${API}/admin/usuarios/${id}`, {
+            method: "PATCH",
+            headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
+            body: JSON.stringify({ antecipa_fora_prazo: valor })
+        }).then(r => r.json())
+        .then(data => {
+            if (data.error) { gcAlert(data.error); return; }
+            _carregarUsuarios();
+        }).catch(() => gcAlert("Erro ao atualizar a permissão."));
+    };
+    if (!valor) return aplicar();
+    gcConfirm(
+        `Liberar ${nome} pra solicitar antecipação fora do prazo?\n\nEle passa a poder pedir antecipação mesmo depois da data limite da quinzena (17 dias antes do pagamento). As outras regras continuam valendo. Vale na próxima vez que ele abrir o app.`,
+        aplicar, "Liberar antecipação fora do prazo", "Liberar");
 }
 
 function _toggleFaltante(id, valor) {

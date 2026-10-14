@@ -118,7 +118,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     const displayName = name || username;
     const role        = data.usuario.role;
 
-    window._gcUser = { name, username, displayName, role };
+    // antecipa_fora_prazo: liberação do dev pra pedir antecipação depois da data limite.
+    window._gcUser = { name, username, displayName, role, antecipaForaPrazo: !!data.usuario.antecipa_fora_prazo };
     document.querySelector(".username").innerText  = displayName;
     document.getElementById("welcome-name").innerText = displayName;
 
