@@ -13,6 +13,7 @@ let _wacPrecisaDestacar = false;  // rolar até a mensagem do pedido só na aber
 let _wacAba = "acareacao";        // "acareacao" (com prazo) | "outros" | "chamaram" | "entregadores"
 let _wacTransp = null;            // transportadora selecionada; null = escolher no 1º render
 let _wacRevalidarTransp = false;  // trocou de aba: conferir se a escolhida tem conversa lá
+let _wacListaPronta = false;      // a lista chegou com conversas (senão o aviso/esqueleto fica à vista)
 
 // ── Paginação por coluna ──
 // Coluna com centenas/milhares de cards trava o navegador ao montar o DOM inteiro de uma
@@ -291,6 +292,7 @@ function _wacPedirPolo(vazio, jaPediu) {
 function _wacCarregarLista(jaPediuPolo) {
     const empty  = document.getElementById("wac-lista-empty");
     const result = document.getElementById("wac-lista-resultado");
+    _wacListaPronta = false;
     skMostrar(empty, "cards");
     result.style.display = "none";
 
@@ -311,6 +313,7 @@ function _wacCarregarLista(jaPediuPolo) {
             // quanto o cliente responder sobem o card. Um sort aqui, na origem dos dados, cobre
             // sozinho todas as colunas: filter() preserva a ordem de quem sobrevive ao filtro.
             _wacDados = [...rows].sort((a, b) => new Date(b.ultima || 0) - new Date(a.ultima || 0));
+            _wacListaPronta = true;
             const busca = document.getElementById("wac-busca");
             if (busca) busca.value = "";
             empty.style.display = "none";
@@ -407,7 +410,9 @@ function _wacAbrirDaUrl(alvo) {
 // o resto vai pelo CARGO de quem disparou, com SAC e dev na acareação (que tem prazo) e
 // o restante do time em outros ativos. Assim nenhuma conversa fica sem aba.
 const _wacSemEnvio    = r => !r.primeiro_envio;
-const _wacEhAcareacao = r => !r.enviado_por_role || WA_ROLES_ACAREACAO.includes(r.enviado_por_role);
+// tipo 'outros' = o dev escolheu "Outros ativos" no disparo; vence o cargo, que mandaria pra cá.
+const _wacEhAcareacao = r => r.tipo !== "outros" &&
+    (!r.enviado_por_role || WA_ROLES_ACAREACAO.includes(r.enviado_por_role));
 
 function _wacAbaDe(conversa) {
     // Conversa com entregador vem marcada pelo servidor (tem_entregador). Vale ANTES do resto:
@@ -709,6 +714,13 @@ function _wacRenderizar() {
         _wacRenderizarEntregadores();
         return;
     }
+
+    // A aba Entregadores esconde o aviso e a lista ao entrar; as outras precisam devolver o
+    // que estava à vista. Sem isso, passar por Entregadores e trocar pra Outros ativos deixava
+    // a tela em branco até recarregar a página.
+    document.getElementById("wac-lista-empty").style.display = _wacListaPronta ? "none" : "";
+    document.getElementById("wac-lista-resultado").style.display = _wacListaPronta ? "" : "none";
+    if (!_wacListaPronta) return;
 
     document.getElementById("wac-visao-acareacao").style.display = _wacAba === "acareacao" ? "" : "none";
     document.getElementById("wac-visao-outros").style.display    = _wacAba === "outros" ? "" : "none";

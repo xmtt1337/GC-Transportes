@@ -19,7 +19,8 @@ const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "whatsapp-teste.j
 const ACESSOR = `
 ;globalThis.__w = {
   set linhas(v) { _waBulkLinhas = v; },
-};`;
+};
+globalThis.WA_REC_TEMPLATES_TESTE = WA_REC_TEMPLATES.shopee;`;
 
 function criarContexto(role) {
   const els = {};
@@ -29,13 +30,17 @@ function criarContexto(role) {
     dataset: { modo }, ativo: false,
     classList: { toggle(_, sim) { tabs.find((t) => t.dataset.modo === modo).ativo = sim; } },
   }));
+  const destinos = ["acareacao", "outros"].map((destino) => ({
+    dataset: { destino }, ativo: false,
+    classList: { toggle(_, sim) { destinos.find((t) => t.dataset.destino === destino).ativo = sim; } },
+  }));
   const envios = [];
   const ctx = {
     console, setTimeout: (fn) => fn(), URL, Blob,
     window: { _gcUser: { role, name: "Teste" } },
     document: {
       getElementById: el,
-      querySelectorAll: (sel) => (sel.includes("wa-modo-tabs") ? tabs : []),
+      querySelectorAll: (sel) => (sel.includes("wa-modo-tabs") ? tabs : sel.includes("wa-destino-tabs") ? destinos : []),
     },
     API: "http://teste", token: "tk",
     gcAlert() {}, mostrarTela() {}, gcPoloGarantir() {},
@@ -46,7 +51,7 @@ function criarContexto(role) {
   };
   vm.createContext(ctx);
   vm.runInContext(fonte + ACESSOR, ctx);
-  return { ctx, el, tabs, envios, visivel: (id) => el(id).style.display !== "none" };
+  return { ctx, el, tabs, destinos, envios, visivel: (id) => el(id).style.display !== "none" };
 }
 
 test("SAC: só unitário, com prazo e sem massa nem escolha de modo", () => {
@@ -110,4 +115,51 @@ test("lote do dev sai sem prazo e com a transportadora", async () => {
   assert.strictEqual(disparos[0].corpo.prazo_horas, null);
   assert.strictEqual(disparos[0].corpo.transportadora, "shopee");
   assert.strictEqual(disparos[0].corpo.numero, "5549990000001");
+});
+
+// Dev escolhe pra qual aba das Conversas o disparo unitário vai: o cargo dele mandaria
+// sempre pra Acareações. "Outros ativos" sai sem prazo e com destino no corpo.
+test("dev: escolhe o destino; Outros ativos esconde o prazo e manda destino outros", async () => {
+  const t = criarContexto("dev");
+  t.ctx.abrirWhatsappTeste();
+  assert.strictEqual(t.visivel("wa-destino-tabs"), true);
+  assert.ok(t.destinos.find((b) => b.dataset.destino === "acareacao").ativo);
+
+  t.ctx._waDestinoEscolher("outros");
+  assert.strictEqual(t.visivel("wa-campo-prazo"), false);
+  assert.strictEqual(t.visivel("wa-bulk-bloco"), false, "massa continua só no modo massa");
+  assert.ok(t.destinos.find((b) => b.dataset.destino === "outros").ativo);
+
+  t.ctx._waRecEscolher("shopee");
+  const envio = t.ctx._waRecMontarEnvio({
+    cfg: t.ctx.WA_REC_TEMPLATES_TESTE, valores: { nome_cliente: "Cliente", codigo_pedido: "BR000009" },
+    numero: "49 9 9000-0009", prazo: NaN, role: "dev", destino: "outros",
+  });
+  assert.strictEqual(envio.erro, undefined);
+  assert.strictEqual(envio.corpo.destino, "outros");
+  assert.strictEqual(envio.corpo.prazo_horas, null);
+
+  t.ctx._waModoEscolher("massa");
+  assert.strictEqual(t.visivel("wa-destino-tabs"), false, "lote é sempre outros ativos");
+});
+
+test("SAC e admin não veem a escolha de destino", () => {
+  for (const role of ["sac", "admin"]) {
+    const t = criarContexto(role);
+    t.ctx.abrirWhatsappTeste();
+    assert.strictEqual(t.visivel("wa-destino-tabs"), false, role);
+  }
+});
+
+test("lote e quem força sem prazo (Stuck/Backlog) vão com destino outros", async () => {
+  const t = criarContexto("dev");
+  t.ctx.abrirWhatsappTeste();
+  t.ctx._waModoEscolher("massa");
+  t.ctx._waRecEscolher("shopee");
+  t.ctx.__w.linhas = [
+    { numero: "49 9 9000-0001", valores: { nome_cliente: "Cliente Um", codigo_pedido: "BR000001" }, status: "aguardando" },
+  ];
+  await t.ctx._waBulkEnviar();
+  const disparos = t.envios.filter((e) => e.url.endsWith("/admin/whatsapp/enviar"));
+  assert.strictEqual(disparos[0].corpo.destino, "outros");
 });

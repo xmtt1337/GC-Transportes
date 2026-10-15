@@ -45,6 +45,7 @@ const ACESSOR = `
   get chatEntregador() { return _wacChatEntregador; },
   atualizarBarra: () => _wacAtualizarBarraSelecao(),
   abrirConversa: (n, p, r) => _wacAbrirConversa(n, p, r),
+  carregarLista: () => _wacCarregarLista(),
 };`;
 
 const esperar = () => new Promise((r) => setImmediate(r));
@@ -68,7 +69,7 @@ function criarElementoDom() {
   return o;
 }
 
-function carregar() {
+function carregar(respostaConversas = []) {
   const els = {};
   const el = (id) => els[id] || (els[id] = Object.assign(criarElemento(), { id }));
   const chamadas = { fetch: [] };
@@ -79,7 +80,7 @@ function carregar() {
 
   const ctx = vm.createContext({
     console, API: "", token: "",
-    fetch: async (url) => { chamadas.fetch.push(url); return { ok: true, json: async () => [] }; },
+    fetch: async (url) => { chamadas.fetch.push(url); return { ok: true, json: async () => respostaConversas }; },
     window: { _gcUser: { role: "sac" } },
     document: { getElementById: el, createElement: () => criarElementoDom(), querySelectorAll: () => [] },
     CSS: { escape: (s) => s },
@@ -242,6 +243,37 @@ test("trocar de Entregadores pra Outros ativos nao quebra (cada aba cuida do pro
   a.w.trocarAba("outros");
   await esperarVarias();
   assert.strictEqual(a.els["wac-visao-entregadores"].style.display, "none");
+});
+
+// O bug: Entregadores esconde o aviso e a lista ao entrar, e as outras abas não mostravam
+// a lista de volta — Outros ativos ficava em branco até recarregar a página.
+test("voltar de Entregadores pra Outros ativos mostra a lista de novo", async () => {
+  const a = carregar(todas());
+  a.w.aba = "entregadores";
+  a.w.carregarLista();
+  await esperarVarias();
+  assert.strictEqual(a.els["wac-lista-resultado"].style.display, "none");
+
+  a.w.trocarAba("outros");
+  assert.strictEqual(a.els["wac-lista-resultado"].style.display, "");
+  assert.strictEqual(a.els["wac-lista-empty"].style.display, "none");
+  assert.match(a.els["wac-lista-outros"].innerHTML, /Aguardando/);
+});
+
+test("sem lista carregada, trocar de aba deixa o aviso à vista em vez da tela vazia", async () => {
+  const a = carregar([]);
+  a.w.aba = "entregadores";
+  a.w.carregarLista();
+  await esperarVarias();
+  a.w.trocarAba("acareacao");
+  assert.strictEqual(a.els["wac-lista-empty"].style.display, "");
+  assert.strictEqual(a.els["wac-lista-resultado"].style.display, "none");
+});
+
+test("disparo marcado como outros vai pra Outros ativos mesmo vindo de dev", () => {
+  const a = carregar();
+  assert.strictEqual(a.w.abaDe({ ...CLIENTE, enviado_por_role: "dev", tipo: "outros" }), "outros");
+  assert.strictEqual(a.w.abaDe({ ...CLIENTE, enviado_por_role: "dev", tipo: "acareacao" }), "acareacao");
 });
 
 // ── o chat ────────────────────────────────────────────────────────────────

@@ -32,6 +32,16 @@ function abrirWhatsappTeste(event) {
 const WA_ROLES_ESCOLHEM_MODO = ["dev"];
 let _waModo = "unitario";
 
+// Pra onde vai o disparo unitário do dev: a aba das Conversas sai do CARGO de quem dispara,
+// e dev cairia sempre em Acareações. Escolhendo "outros", o servidor grava tipo='outros' e
+// a conversa nasce em Outros ativos, sem prazo. Só dev escolhe — o servidor ignora dos demais.
+let _waDestino = "acareacao";
+
+function _waDestinoEscolher(destino) {
+    _waDestino = destino;
+    _waAplicarModo();
+}
+
 function _waModoEscolher(modo) {
     _waModo = modo;
     _waAplicarModo();
@@ -40,19 +50,23 @@ function _waModoEscolher(modo) {
 function _waAplicarModo() {
     const role = window._gcUser && window._gcUser.role;
     const escolhe = WA_ROLES_ESCOLHEM_MODO.includes(role);
-    const comPrazo = WA_ROLES_COM_PRAZO.includes(role);
     const massa = escolhe && _waModo === "massa";
+    const comPrazo = WA_ROLES_COM_PRAZO.includes(role) && !(escolhe && _waDestino === "outros");
     const mostrar = (id, sim) => { const el = document.getElementById(id); if (el) el.style.display = sim ? "" : "none"; };
 
     document.querySelectorAll("#wa-modo-tabs .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.modo === (massa ? "massa" : "unitario")));
     mostrar("wa-modo-tabs", escolhe);
+    document.querySelectorAll("#wa-destino-tabs .filtro-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.destino === _waDestino));
+    // Em massa não há escolha: o lote é sempre de outros ativos.
+    mostrar("wa-destino-tabs", escolhe && !massa);
     const unitario = document.getElementById("wa-unitario");
     if (unitario) unitario.style.display = massa ? "none" : "flex";
     mostrar("wa-campo-prazo", comPrazo);
     // Sem escolha de modo, massa é só pra quem faz outros ativos: acareação é caso a caso,
     // cada uma com o prazo que a transportadora deu — disparar em lote não faz sentido ali.
-    mostrar("wa-bulk-bloco", massa || !comPrazo);
+    mostrar("wa-bulk-bloco", massa || !WA_ROLES_COM_PRAZO.includes(role));
 
     // No modo massa a área já vem aberta e sozinha: o botão de recolher e a linha
     // separando do formulário unitário só fazem sentido quando os dois aparecem juntos.
@@ -338,10 +352,16 @@ function _waRecAtualizarPreview() {
 // nunca são): prazo dado pela transportadora é coisa de extravio, e o resto dos ativos é
 // contato, sem vencimento correndo. Sem ele, vale a regra do cargo — sac e dev fazem
 // acareação, então o formulário de Ativos continua cobrando prazo deles.
-function _waRecMontarEnvio({ cfg, valores, numero, prazo, role, comPrazo: comPrazoForcado }) {
+//
+// `destino: "outros"` manda a conversa pra Outros ativos mesmo vindo de dev (o servidor só
+// aceita de dev). Quem força sem prazo é por definição outros ativos, então já vai junto.
+function _waRecMontarEnvio({ cfg, valores, numero, prazo, role, comPrazo: comPrazoForcado, destino }) {
     const tel = _waValidarTelefone(numero);
     if (!tel.ok) return { erro: tel.erro };
-    const comPrazo = comPrazoForcado !== undefined ? comPrazoForcado : WA_ROLES_COM_PRAZO.includes(role);
+    if (comPrazoForcado === false) destino = "outros";
+    const comPrazo = comPrazoForcado !== undefined ? comPrazoForcado
+                   : destino === "outros" ? false
+                   : WA_ROLES_COM_PRAZO.includes(role);
     if (comPrazo && (!prazo || prazo < 1)) return { erro: "Informe o prazo em horas." };
     const faltando = cfg.campos.filter(c => !valores[c.id]);
     if (faltando.length) return { erro: "Preencha: " + faltando.map(c => c.label).join(", ") };
@@ -352,7 +372,8 @@ function _waRecMontarEnvio({ cfg, valores, numero, prazo, role, comPrazo: comPra
         pedido: valores[cfg.campoPedido] || null, prazo_horas: comPrazo ? prazo : null,
         // Quando a transportadora é campo do template, ela vai explícita — o nome do
         // template não a identifica, e é ela que separa a conversa no funil.
-        transportadora: cfg.transportadora
+        transportadora: cfg.transportadora,
+        ...(destino === "outros" ? { destino: "outros" } : {})
     } };
 }
 
@@ -365,6 +386,7 @@ function _waRecEnviar() {
         numero: document.getElementById("wa-rec-numero").value,
         prazo: parseInt(document.getElementById("wa-rec-prazo").value, 10),
         role: window._gcUser && window._gcUser.role,
+        destino: WA_ROLES_ESCOLHEM_MODO.includes(window._gcUser && window._gcUser.role) ? _waDestino : undefined,
     });
     if (envio.erro) { msgEl.style.color = "#ef4444"; msgEl.innerText = envio.erro; return; }
 
