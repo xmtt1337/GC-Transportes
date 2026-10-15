@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261015g">
+<link rel="stylesheet" href="style.css?v=20261015h">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -4773,7 +4773,6 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div id="adm-ant-conf" style="display:none;margin-bottom:22px"></div>
                 <div class="fechamento-empty" id="adm-ant-empty">Selecione o mês, ano e quinzena para ver as antecipações.</div>
                 <div id="adm-ant-resultado" style="display:none">
                     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
@@ -4810,6 +4809,18 @@ if (_BASE) {
                             </thead>
                             <tbody id="adm-ant-tbody"></tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+            <!-- Conferência com o relatório da Trampay (js/antecipacoes-admin.js) -->
+            <div class="usr-modal-overlay" id="modal-ant-conf" onclick="_fecharModalSeBackdrop(event,'modal-ant-conf')">
+                <div class="usr-modal ant-conf-modal">
+                    <div class="usr-modal-title" id="ant-conf-titulo">Conferência Trampay</div>
+                    <div class="usr-modal-sub" id="ant-conf-sub"></div>
+                    <div class="ant-conf-resumo" id="ant-conf-resumo"></div>
+                    <div class="ant-conf-corpo" id="ant-conf-corpo"></div>
+                    <div class="usr-modal-btns">
+                        <button type="button" class="usr-modal-btn-cancel" style="margin-left:auto" onclick="_fecharModal('modal-ant-conf')">Fechar</button>
                     </div>
                 </div>
             </div>
@@ -4898,7 +4909,7 @@ if (_BASE) {
 <script src="js/conferencias.js?v=30260812d"></script>
 <script src="js/conferencias-hub.js?v=30260901b"></script>
 <script src="js/antecipacoes.js?v=20261014a"></script>
-<script src="js/antecipacoes-admin.js?v=20261015a"></script>
+<script src="js/antecipacoes-admin.js?v=20261015b"></script>
 <script src="js/baixas.js?v=20260908a"></script>
 <script src="js/custodia.js?v=20260820i"></script>
 <script src="js/devolucoes.js?v=30260812d"></script>

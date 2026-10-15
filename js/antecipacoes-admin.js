@@ -9,7 +9,7 @@ function abrirAdminAntecipacoes(event) {
     if (event) event.preventDefault();
     _admAntQuinzena = null;
     _admAntRows     = [];
-    document.getElementById("adm-ant-conf").style.display = "none";
+    _fecharModal("modal-ant-conf");
     _admAntReqId++; // resposta ainda pendente não pode pintar a tela sem quinzena escolhida
     document.getElementById("adm-ant-btn-1q").classList.remove("active");
     document.getElementById("adm-ant-btn-2q").classList.remove("active");
@@ -35,7 +35,6 @@ function _iniciarSelectsAdmAnt() {
 
 function selecionarQuinzenaAntAdmin(q) {
     _admAntQuinzena = q;
-    document.getElementById("adm-ant-conf").style.display = "none"; // conferência era de outra quinzena
     document.getElementById("adm-ant-btn-1q").classList.toggle("active", q === 1);
     document.getElementById("adm-ant-btn-2q").classList.toggle("active", q === 2);
     buscarAntecipacoes();
@@ -210,7 +209,16 @@ function _exportarAntecipacaoXlsx() {
 // Sobe o relatório de antecipações da Trampay (vem com todos os períodos) e o servidor
 // confere, por id_entregador, se cada pedido do XM desta quinzena saiu "Aprovado" lá com o
 // mesmo valor_pedido. A quinzena é achada pela data_de_vencimento (fim + 45 dias, ±5).
-// Só confere — nada é gravado.
+// O resultado abre num modal; dali dá pra trazer o valor da Trampay pro XM (valor diferente)
+// ou excluir o pedido do XM (não pediu na Trampay).
+let _admAntConf = null; // { dados, ctx, filtro }
+
+const _ADM_ANT_SIT = {
+    ok:              "Recebeu",
+    valor_diferente: "Valor diferente",
+    nao_encontrado:  "Não está na Trampay",
+};
+
 function _admAntEscolherRelatorioTrampay() {
     if (!_admAntQuinzena) return gcAlert("Selecione o mês, o ano e a quinzena antes de subir o relatório da Trampay.");
     const input = document.getElementById("adm-ant-trampay-file");
@@ -224,9 +232,15 @@ function _admAntConferirTrampay(input) {
     const mes = parseInt(document.getElementById("adm-ant-mes").value);
     const ano = parseInt(document.getElementById("adm-ant-ano").value);
     const quinzena = _admAntQuinzena;
-    const painel = document.getElementById("adm-ant-conf");
-    painel.style.display = "";
-    painel.innerHTML = `<div class="fechamento-empty">Conferindo ${_admAntEsc(arquivo.name)}...</div>`;
+    const MESES = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+    _admAntConf = null;
+    document.getElementById("ant-conf-titulo").textContent = `Conferência Trampay — ${quinzena}ª Qz ${MESES[mes]}/${ano}`;
+    document.getElementById("ant-conf-sub").textContent = `Conferindo ${arquivo.name}...`;
+    document.getElementById("ant-conf-resumo").innerHTML = "";
+    document.getElementById("ant-conf-corpo").innerHTML = "";
+    _abrirModal("modal-ant-conf");
+    const falhou = (msg) => { document.getElementById("ant-conf-sub").textContent = msg; };
 
     const texto = /\.(csv|tsv|txt)$/i.test(arquivo.name);
     const leitor = new FileReader();
@@ -237,8 +251,7 @@ function _admAntConferirTrampay(input) {
             const wb = XLSX.read(new Uint8Array(leitor.result), texto ? { type: "array", raw: true, codepage: 65001 } : { type: "array" });
             linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "", raw: true });
         } catch (e) {
-            painel.innerHTML = `<div class="fechamento-empty">Não consegui ler o arquivo. Use o relatório da Trampay em .csv ou .xlsx.</div>`;
-            return;
+            return falhou("Não consegui ler o arquivo. Use o relatório da Trampay em .csv ou .xlsx.");
         }
         fetch(`${API}/admin/antecipacoes/conferencia-trampay`, {
             method: "POST",
@@ -247,10 +260,11 @@ function _admAntConferirTrampay(input) {
         })
         .then(r => r.json())
         .then(d => {
-            if (d.error) { painel.innerHTML = `<div class="fechamento-empty">${_admAntEsc(d.error)}</div>`; return; }
-            _admAntRenderConferencia(d, { mes, ano, quinzena, arquivo: arquivo.name });
+            if (d.error) return falhou(d.error);
+            _admAntConf = { dados: d, ctx: { arquivo: arquivo.name }, filtro: null };
+            _admAntRenderConferencia();
         })
-        .catch(() => { painel.innerHTML = `<div class="fechamento-empty">Erro ao conferir o relatório.</div>`; });
+        .catch(() => falhou("Erro ao conferir o relatório."));
     };
     leitor.readAsArrayBuffer(arquivo);
 }
@@ -265,76 +279,121 @@ function _admAntDataBR(iso) {
     return d ? `${d}/${m}/${a}` : "—";
 }
 
-function _admAntRenderConferencia(d, ctx) {
-    const MESES = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-    const r = d.resumo;
-    const SIT = {
-        ok:              { cor: "#22c55e", bg: "rgba(34,197,94,0.1)", label: "Recebeu" },
-        valor_diferente: { cor: "#eab308", bg: "rgba(234,179,8,0.1)", label: "Valor diferente" },
-        nao_encontrado:  { cor: "#ef4444", bg: "rgba(239,68,68,0.1)", label: "Não está na Trampay" },
-    };
-    const badge = (s) => `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;color:${s.cor};background:${s.bg}">${s.label}</span>`;
-    const chip = (n, label, cor) => `<div style="padding:8px 14px;border-radius:10px;border:1px solid ${cor}40;background:${cor}12;font-size:13px;color:${cor}"><strong style="font-size:16px">${n}</strong> ${label}</div>`;
+function _admAntFiltrarConf(filtro) {
+    if (!_admAntConf) return;
+    _admAntConf.filtro = _admAntConf.filtro === filtro ? null : filtro;
+    _admAntRenderConferencia();
+}
 
-    // Problemas primeiro, quem recebeu certinho no fim.
+function _admAntRenderConferencia() {
+    const { dados: d, ctx, filtro } = _admAntConf;
+    const r = d.resumo;
+    const j = d.janela;
+    document.getElementById("ant-conf-sub").innerHTML =
+        `${_admAntEsc(ctx.arquivo)}<br>Vencimento de ${_admAntDataBR(j.de)} a ${_admAntDataBR(j.ate)} (pagamento ${_admAntDataBR(j.pagamento)}, ±5 dias), só "Aprovado". ` +
+        `${r.linhas_consideradas} linha(s) usada(s); ${r.linhas_fora_da_janela} de outros períodos e ${r.linhas_nao_aprovadas} não aprovada(s) ficaram de fora.`;
+
+    // Contagem refeita aqui porque trocar valor / excluir muda a lista sem voltar ao servidor.
+    const conta = (s) => d.itens.filter(i => i.situacao === s).length;
+    const parte = (chave, n, um, varios) => { const texto = n === 1 ? um : varios; return n
+        ? `<button type="button" class="ant-conf-link${filtro === chave ? " ativo" : ""}" onclick="_admAntFiltrarConf('${chave}')">${n} ${texto}</button>`
+        : `0 ${texto}`; };
+    document.getElementById("ant-conf-resumo").innerHTML = [
+        parte("ok", conta("ok"), "recebeu certo", "receberam certo"),
+        parte("valor_diferente", conta("valor_diferente"), "com valor diferente", "com valor diferente"),
+        parte("nao_encontrado", conta("nao_encontrado"), "não está na Trampay", "não estão na Trampay"),
+        parte("so_trampay", d.so_na_trampay.length, "só na Trampay", "só na Trampay"),
+    ].join(`<span class="sep">·</span>`) +
+        (filtro ? `<span class="sep">·</span><button type="button" class="ant-conf-link" onclick="_admAntFiltrarConf(null)">ver todos</button>` : "");
+
+    // Problemas primeiro, quem recebeu certo no fim.
     const ordem = { nao_encontrado: 0, valor_diferente: 1, ok: 2 };
-    const itens = [...d.itens].sort((a, b) => ordem[a.situacao] - ordem[b.situacao] || String(a.usuario_nome).localeCompare(String(b.usuario_nome)));
+    const itens = d.itens
+        .map((i, idx) => ({ ...i, idx }))
+        .filter(i => !filtro || i.situacao === filtro)
+        .sort((a, b) => ordem[a.situacao] - ordem[b.situacao] || String(a.usuario_nome).localeCompare(String(b.usuario_nome)));
 
     const linhasXm = itens.map(i => {
-        const dif = i.recebido - i.solicitado;
-        const recebido = i.linhas_trampay
-            ? `${moedaJS(i.recebido)}${i.linhas_trampay > 1 ? ` <span style="font-size:11px;color:#8494a9">(${i.linhas_trampay} pedidos)</span>` : ""}`
+        const trampay = i.linhas_trampay
+            ? `${moedaJS(i.recebido)}${i.linhas_trampay > 1 ? `<div class="sub">${i.linhas_trampay} pedidos somados</div>` : ""}`
             : "—";
-        const nota = [
-            i.situacao === "valor_diferente" ? `${dif > 0 ? "+" : ""}${moedaJS(dif)}` : "",
-            i.pelo_nome ? "achado pelo nome" : "",
-            !i.id_trampay ? "sem ID Trampay no cadastro" : "",
-        ].filter(Boolean).join(" · ");
-        const nomeReal = i.nome_real && i.nome_real !== i.usuario_nome
-            ? `<div style="font-size:11px;color:#8494a9;font-weight:400">${_admAntEsc(i.nome_real)}</div>` : "";
+        const obs = [i.pelo_nome ? "achado pelo nome" : "", !i.id_trampay ? "sem ID Trampay no cadastro" : ""].filter(Boolean).join(" · ");
+        let acao = "";
+        if (i.situacao === "valor_diferente") acao = `<button type="button" class="ant-conf-link" onclick="_admAntUsarValorTrampay(${i.idx})">usar ${moedaJS(i.recebido)} da Trampay</button>`;
+        if (i.situacao === "nao_encontrado") acao = `<button type="button" class="ant-conf-link" onclick="_admAntExcluirSemTrampay(${i.idx})">excluir pedido</button>`;
         return `<tr>
-            <td class="adm-nf-entregador">${_admAntEsc(i.usuario_nome)}${nomeReal}</td>
-            <td style="color:#94a3b8">${_admAntEsc(i.id_trampay) || "—"}</td>
-            <td style="color:#3a86ff;font-weight:600">${moedaJS(i.solicitado)}</td>
-            <td>${recebido}</td>
-            <td>${badge(SIT[i.situacao])}</td>
-            <td style="font-size:12px;color:#94a3b8">${_admAntEsc(nota)}</td>
+            <td>${_admAntEsc(i.usuario_nome)}${i.nome_real && i.nome_real !== i.usuario_nome ? `<div class="sub">${_admAntEsc(i.nome_real)}</div>` : ""}</td>
+            <td>${_admAntEsc(i.id_trampay) || "—"}</td>
+            <td class="num">${moedaJS(i.solicitado)}</td>
+            <td class="num">${trampay}</td>
+            <td>${_ADM_ANT_SIT[i.situacao]}${obs ? `<div class="sub">${_admAntEsc(obs)}</div>` : ""}${acao ? `<div>${acao}</div>` : ""}</td>
         </tr>`;
     }).join("");
 
-    const linhasSobra = d.so_na_trampay.map(t => `<tr>
-            <td class="adm-nf-entregador">${_admAntEsc(t.nome) || "—"}</td>
-            <td style="color:#94a3b8">${_admAntEsc(t.id_trampay) || "—"}</td>
-            <td>${moedaJS(t.valor_pedido)}</td>
-            <td style="color:#94a3b8">${_admAntDataBR(t.vencimento)}</td>
-        </tr>`).join("");
-
-    document.getElementById("adm-ant-conf").innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
-            <div>
-                <div style="font-size:15px;font-weight:700">Conferência Trampay — ${ctx.quinzena}ª Qz ${MESES[ctx.mes]}/${ctx.ano}</div>
-                <div style="font-size:12px;color:#8494a9;margin-top:3px">
-                    ${_admAntEsc(ctx.arquivo)} · vencimento de ${_admAntDataBR(d.janela.de)} a ${_admAntDataBR(d.janela.ate)} (pagamento ${_admAntDataBR(d.janela.pagamento)} ±5 dias) · só "Aprovado" ·
-                    ${r.linhas_consideradas} linha(s) usada(s); ignoradas ${r.linhas_fora_da_janela} de outros períodos e ${r.linhas_nao_aprovadas} não aprovada(s)
-                </div>
-            </div>
-            <button onclick="document.getElementById('adm-ant-conf').style.display='none'" style="padding:7px 14px;border-radius:10px;border:1px solid rgba(148,163,184,0.3);background:transparent;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Fechar conferência</button>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-            ${chip(r.ok, "recebeu certo", "#22c55e")}
-            ${chip(r.valor_diferente, "com valor diferente", "#eab308")}
-            ${chip(r.nao_encontrado, "não estão na Trampay", "#ef4444")}
-            ${chip(r.so_na_trampay, "só na Trampay", "#a855f7")}
-        </div>
-        ${itens.length ? `<div class="adm-nf-wrap"><table class="adm-nf-table">
-            <thead><tr><th>Entregador (XM)</th><th>ID Trampay</th><th>Solicitado no XM</th><th>Valor pedido na Trampay</th><th>Situação</th><th>Obs.</th></tr></thead>
-            <tbody>${linhasXm}</tbody>
-        </table></div>` : `<div class="fechamento-empty">Nenhum pedido de antecipação no XM nesta quinzena.</div>`}
-        ${d.so_na_trampay.length ? `
-            <div style="font-size:13px;font-weight:700;color:#a855f7;margin:16px 0 8px">Aprovados na Trampay sem pedido no XM nesta quinzena</div>
-            <div class="adm-nf-wrap"><table class="adm-nf-table">
+    const mostrarXm = filtro !== "so_trampay";
+    const mostrarSobra = (!filtro || filtro === "so_trampay") && d.so_na_trampay.length;
+    let html = "";
+    if (mostrarXm) {
+        html += d.itens.length
+            ? `<table class="ant-conf-tabela">
+                <thead><tr><th>Entregador (XM)</th><th>ID Trampay</th><th>Pedido no XM</th><th>Na Trampay</th><th>Situação</th></tr></thead>
+                <tbody>${linhasXm}</tbody>
+              </table>`
+            : `<div class="fechamento-empty">Nenhum pedido de antecipação no XM nesta quinzena.</div>`;
+    }
+    if (mostrarSobra) {
+        html += `${mostrarXm ? `<div class="ant-conf-secao">Aprovados na Trampay sem pedido no XM nesta quinzena</div>` : ""}
+            <table class="ant-conf-tabela">
                 <thead><tr><th>Nome (Trampay)</th><th>ID Trampay</th><th>Valor pedido</th><th>Vencimento</th></tr></thead>
-                <tbody>${linhasSobra}</tbody>
-            </table></div>` : ""}
-    `;
+                <tbody>${d.so_na_trampay.map(t => `<tr>
+                    <td>${_admAntEsc(t.nome) || "—"}</td>
+                    <td>${_admAntEsc(t.id_trampay) || "—"}</td>
+                    <td class="num">${moedaJS(t.valor_pedido)}</td>
+                    <td class="num">${_admAntDataBR(t.vencimento)}</td>
+                </tr>`).join("")}</tbody>
+            </table>`;
+    }
+    document.getElementById("ant-conf-corpo").innerHTML = html;
+}
+
+function _admAntUsarValorTrampay(idx) {
+    const i = _admAntConf && _admAntConf.dados.itens[idx];
+    if (!i) return;
+    gcConfirm(
+        `O pedido de <strong>${_admAntEsc(i.usuario_nome)}</strong> no XM passa de ${moedaJS(i.solicitado)} para <strong>${moedaJS(i.recebido)}</strong>, o valor aprovado na Trampay.`,
+        () => {
+            fetch(`${API}/admin/antecipacoes/${i.antecipacao_id}/valor-trampay`, {
+                method: "PATCH",
+                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                body: JSON.stringify({ valor: i.recebido })
+            }).then(r => r.json()).then(d => {
+                if (d.error) return gcAlert(d.error);
+                i.solicitado = i.recebido;
+                i.situacao = "ok";
+                _admAntRenderConferencia();
+                buscarAntecipacoes();
+            }).catch(() => gcAlert("Erro ao trocar o valor."));
+        },
+        "Usar o valor da Trampay?", "Trocar valor"
+    );
+}
+
+function _admAntExcluirSemTrampay(idx) {
+    const i = _admAntConf && _admAntConf.dados.itens[idx];
+    if (!i) return;
+    gcConfirm(
+        `O pedido de <strong>${_admAntEsc(i.usuario_nome)}</strong> (${moedaJS(i.solicitado)}) não está na Trampay e vai ser apagado do sistema. Não dá pra desfazer.`,
+        () => {
+            fetch(`${API}/admin/antecipacoes/${i.antecipacao_id}`, {
+                method: "DELETE",
+                headers: { "Authorization": "Bearer " + token }
+            }).then(r => r.json()).then(d => {
+                if (d.error) return gcAlert(d.error);
+                _admAntConf.dados.itens.splice(idx, 1);
+                _admAntRenderConferencia();
+                buscarAntecipacoes();
+            }).catch(() => gcAlert("Erro ao excluir o pedido."));
+        },
+        "Excluir pedido de antecipação?", "Excluir"
+    );
 }
