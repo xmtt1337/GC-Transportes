@@ -1689,6 +1689,16 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     font-size: 9.5px; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.12em; color: #66829c; margin-bottom: 10px;
 }
+/* Seção do mês no perfil: abre e fecha pela setinha */
+.pc-dobra {
+    width: 100%; background: none; border: 0; padding: 0; margin-bottom: 0;
+    font-family: inherit; cursor: pointer; text-align: left;
+}
+.pc-dobra:hover { color: #9fb6cc; }
+.pc-dobra-seta { margin-left: auto; flex-shrink: 0; transition: transform 0.15s ease; }
+.pc-aberto .pc-dobra-seta { transform: rotate(180deg); }
+#pc-secao-mes .pc-transp-list { display: none; margin-top: 10px; }
+#pc-secao-mes.pc-aberto .pc-transp-list { display: flex; }
 .pc-nivel-row {
     display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;
 }

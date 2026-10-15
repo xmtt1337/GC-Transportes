@@ -508,10 +508,27 @@ function _pcSecaoDesempenho(d) {
             <div class="pc-nivel-sub">${subNivel}</div>
         </div>
 
-        <div class="pc-section">
-            <div class="pc-section-hd">${_PC_SVG.scan} ${_MES_NOMES[d.mes]} · ${(d.mensal?.total||0).toLocaleString("pt-BR")} bipagens</div>
+        <div class="pc-section${_pcMesAberto() ? " pc-aberto" : ""}" id="pc-secao-mes">
+            <button type="button" class="pc-section-hd pc-dobra" data-pc="mes" aria-expanded="${_pcMesAberto()}">
+                ${_PC_SVG.scan} ${_MES_NOMES[d.mes]} · ${(d.mensal?.total||0).toLocaleString("pt-BR")} bipagens
+                <svg class="pc-dobra-seta" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
             <div class="pc-transp-list">${transpRows}</div>
         </div>`;
+}
+
+// A quebra do mês por transportadora começa fechada (o card ficava poluído); quem abre,
+// encontra aberta da próxima vez. Só conveniência: sem localStorage, fica fechada.
+function _pcMesAberto() {
+    try { return localStorage.getItem("pc_mes_aberto") === "1"; } catch { return false; }
+}
+
+function _pcAlternarMes() {
+    const sec = document.getElementById("pc-secao-mes");
+    if (!sec) return;
+    const aberto = sec.classList.toggle("pc-aberto");
+    sec.querySelector(".pc-dobra").setAttribute("aria-expanded", String(aberto));
+    try { localStorage.setItem("pc_mes_aberto", aberto ? "1" : "0"); } catch {}
 }
 
 // Dev troca o próprio polo ali mesmo (gcPoloTrocar, em shopee-polo.js).
@@ -590,6 +607,7 @@ function _renderPerfilCard(card, { conta, desempenho, polo }) {
         "email":        () => pcAlterarEmail(conta.email),
         "senha":        () => pcAlterarSenha(),
         "polo":         () => pcSolicitarPolo(conta.polo),
+        "mes":          () => _pcAlternarMes(),
     };
     card.querySelectorAll("[data-pc]").forEach(el =>
         el.addEventListener("click", () => acoes[el.dataset.pc]()));
