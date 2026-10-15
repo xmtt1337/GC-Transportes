@@ -1715,6 +1715,35 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .pc-polo-btn.ativo { border-color: #3a86ff; background: rgba(58,134,255,0.12); cursor: default; }
 .pc-polo-nome { font-size: 12px; font-weight: 700; color: #e2e8f0; }
 .pc-polo-cod  { font-size: 9.5px; font-weight: 700; letter-spacing: .05em; color: #3a86ff; }
+/* Avatar clicável (foto de perfil) */
+.pc-avatar-btn { position: relative; padding: 0; cursor: pointer; font-family: inherit; }
+.pc-avatar-btn img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+.pc-avatar-cam {
+    position: absolute; right: -3px; bottom: -3px;
+    width: 17px; height: 17px; border-radius: 50%;
+    background: #3a86ff; color: #fff; border: 2px solid #0b1018;
+    display: flex; align-items: center; justify-content: center;
+}
+.pc-avatar-btn:hover { border-color: #3a86ff; }
+/* Linhas da seção Conta */
+.pc-conta-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; }
+.pc-conta-rotulo { font-size: 10px; color: #66829c; margin-bottom: 1px; }
+.pc-conta-valor { font-size: 12px; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-conta-link {
+    background: none; border: none; padding: 4px 0; cursor: pointer; flex-shrink: 0;
+    font-size: 11.5px; font-weight: 600; color: #3a86ff; font-family: inherit;
+}
+.pc-conta-link:hover { text-decoration: underline; }
+.pc-conta-link-perigo { color: #f87171; }
+/* Diálogos da conta (senha, e-mail, pedido de polo) */
+.pc-dlg-label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #8494a9; margin: 12px 0 6px; }
+.pc-dlg-input {
+    width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 9px;
+    background: rgba(15,15,20,0.6); border: 1px solid rgba(255,255,255,0.1);
+    color: #e2e8f0; font-size: 14px; font-family: inherit; outline: none;
+}
+.pc-dlg-input:focus { border-color: #3a86ff; }
+.pc-dlg-erro { font-size: 12.5px; margin-top: 12px; line-height: 1.45; }
 
 /* ── Widget de Desempenho (role user) ── */
 #home-user-dash { margin-top: 18px; text-align: left; width: 100%; max-width: 760px; margin-inline: auto; }

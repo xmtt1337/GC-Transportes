@@ -123,8 +123,9 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     document.querySelector(".username").innerText  = displayName;
     document.getElementById("welcome-name").innerText = displayName;
 
-    // Dev também abre o card: nele fica a troca de polo (o dev atende os dois).
-    if (role === "user" || role === "dev") {
+    // Todo cargo abre o card: foto, senha e e-mail são de todo mundo (o que muda por cargo
+    // fica dentro do card, em nav.js).
+    {
         const trigger = document.getElementById("username-trigger");
         if (trigger) {
             trigger.classList.add("perfil-trigger");

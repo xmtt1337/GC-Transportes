@@ -422,18 +422,18 @@ function abrirPerfilCard(e) {
 
     document.addEventListener("click", _pcClickFora);
 
-    // Dev não tem nível nem bipagens no mês: o card dele é o polo, que ele troca sozinho.
-    if ((window._gcUser || {}).role === "dev") {
-        gcPoloCarregar(true)
-        .then(info => _renderPerfilCardDev(card, info))
-        .catch(() => { card.innerHTML = `<div style="padding:16px;color:#f87171;font-size:12px">Erro ao carregar</div>`; });
-        return;
-    }
-
+    // Conta (foto, e-mail, polo) é de todo mundo. Nível e bipagens só o role user tem; o
+    // dev troca o próprio polo ali mesmo, então precisa do polo carregado em shopee-polo.js.
+    const role = (window._gcUser || {}).role;
     const tok = localStorage.getItem("token");
-    fetch(API + "/meu-perfil", { headers: { "Authorization": "Bearer " + tok } })
-    .then(r => r.json())
-    .then(d => _renderPerfilCard(card, d))
+    const json = url => fetch(API + url, { headers: { "Authorization": "Bearer " + tok } })
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(r.status)));
+    Promise.all([
+        json("/meus-dados"),
+        role === "user" ? json("/meu-perfil") : null,
+        role === "dev" ? gcPoloCarregar(true) : null,
+    ])
+    .then(([conta, desempenho, polo]) => _renderPerfilCard(card, { conta, desempenho, polo }))
     .catch(() => { card.innerHTML = `<div style="padding:16px;color:#f87171;font-size:12px">Erro ao carregar</div>`; });
 }
 
@@ -449,45 +449,34 @@ function _pcClickFora(e) {
     if (card && !card.contains(e.target) && e.target !== trigger) fecharPerfilCard();
 }
 
-const _PC_ROLE_LABELS = { user: "Usuário", admin: "Administrador", dev: "Dev", finance: "Financeiro", sac: "SAC" };
+const _PC_ROLE_LABELS = { user: "Usuário", admin: "Administrador", dev: "Dev", finance: "Financeiro", sac: "SAC", entregador: "Entregador", motorista: "Motorista" };
 
-function _pcCabecalho(u) {
+const _PC_SVG = {
+    key:  `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+    star: `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+    scan: `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>`,
+    pin:  `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+    cam:  `<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`,
+};
+
+// Avatar é o botão da foto: clicar escolhe/troca. A foto só entra se o servidor validou
+// como data URL de imagem (modules/perfil), então pode ir direto no src.
+function _pcCabecalho(u, foto) {
     const inicial = (u.displayName || u.name || u.username || "?")[0].toUpperCase();
     return `
         <div class="pc-header">
-            <div class="pc-avatar">${inicial}</div>
+            <button type="button" class="pc-avatar pc-avatar-btn" data-pc="foto" title="${foto ? "Trocar foto" : "Adicionar foto"}">
+                ${foto ? `<img src="${foto}" alt="">` : inicial}
+                <span class="pc-avatar-cam">${_PC_SVG.cam}</span>
+            </button>
             <div>
-                <div class="pc-name">${u.displayName || u.name || u.username || "—"}</div>
-                <div class="pc-meta">@${u.username} · ${_PC_ROLE_LABELS[u.role] || u.role || ""}</div>
+                <div class="pc-name">${_gcEsc(u.displayName || u.name || u.username || "—")}</div>
+                <div class="pc-meta">@${_gcEsc(u.username)} · ${_PC_ROLE_LABELS[u.role] || u.role || ""}</div>
             </div>
         </div>`;
 }
 
-function _renderPerfilCardDev(card, info) {
-    const atual = info && info.polo;
-    const svgPin = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
-    card.innerHTML = `
-        ${_pcCabecalho(window._gcUser || {})}
-        <div class="pc-section">
-            <div class="pc-section-hd">${svgPin} Polo</div>
-            <div class="pc-polo-opcoes">
-                ${SHOPEE_POLOS.map(p => `
-                    <button type="button" class="pc-polo-btn${p.chave === atual ? " ativo" : ""}" data-polo="${p.chave}">
-                        <span class="pc-polo-nome">${p.label}</span>
-                        <span class="pc-polo-cod">${p.xpt || "sem Shopee"}</span>
-                    </button>`).join("")}
-            </div>
-            <div class="pc-nivel-sub">${atual ? "Clique em outro polo para trocar." : "Você ainda não tem polo — escolha um."}</div>
-        </div>`;
-    // Erro vai em alerta: o clique na confirmação conta como clique fora e fecha o card.
-    card.querySelectorAll(".pc-polo-btn").forEach(btn => {
-        btn.addEventListener("click", () => gcPoloTrocar(btn.dataset.polo, erro => gcAlert(erro)));
-    });
-}
-
-function _renderPerfilCard(card, d) {
-    const u = window._gcUser || {};
-
+function _pcSecaoDesempenho(d) {
     const max = Math.max(..._TRANSP.map(t => d.mensal?.[t.key] || 0), 1);
     const transpRows = _TRANSP.map(t => {
         const val = d.mensal?.[t.key] || 0;
@@ -504,19 +493,13 @@ function _renderPerfilCard(card, d) {
         </div>`;
     }).join("");
 
-    const svgKey   = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
-    const svgStar  = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
-    const svgScan  = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>`;
-
     const subNivel = d.proxNivel
         ? `Faltam ${(d.faltam||0).toLocaleString("pt-BR")} bipagens para Nv ${d.proxNivel}`
         : `Nv 100 — nível máximo`;
 
-    card.innerHTML = `
-        ${_pcCabecalho(u)}
-
+    return `
         <div class="pc-section">
-            <div class="pc-section-hd">${svgStar} Nível</div>
+            <div class="pc-section-hd">${_PC_SVG.star} Nível</div>
             <div class="pc-nivel-row">
                 <span class="pc-nivel-num">Nv ${d.nivel}</span>
                 <span class="pc-nivel-total">${(d.totalBipagens||0).toLocaleString("pt-BR")} no total</span>
@@ -526,12 +509,87 @@ function _renderPerfilCard(card, d) {
         </div>
 
         <div class="pc-section">
-            <div class="pc-section-hd">${svgScan} ${_MES_NOMES[d.mes]} · ${(d.mensal?.total||0).toLocaleString("pt-BR")} bipagens</div>
+            <div class="pc-section-hd">${_PC_SVG.scan} ${_MES_NOMES[d.mes]} · ${(d.mensal?.total||0).toLocaleString("pt-BR")} bipagens</div>
             <div class="pc-transp-list">${transpRows}</div>
-        </div>
-
-        <div class="pc-senha-info">
-            ${svgKey}
-            <span>Para alterar sua senha, use "Esqueci minha senha" na tela de login.</span>
         </div>`;
+}
+
+// Dev troca o próprio polo ali mesmo (gcPoloTrocar, em shopee-polo.js).
+function _pcSecaoPoloDev(info) {
+    const atual = info && info.polo;
+    return `
+        <div class="pc-section">
+            <div class="pc-section-hd">${_PC_SVG.pin} Polo</div>
+            <div class="pc-polo-opcoes">
+                ${SHOPEE_POLOS.map(p => `
+                    <button type="button" class="pc-polo-btn${p.chave === atual ? " ativo" : ""}" data-polo="${p.chave}">
+                        <span class="pc-polo-nome">${p.label}</span>
+                        <span class="pc-polo-cod">${p.xpt || "sem Shopee"}</span>
+                    </button>`).join("")}
+            </div>
+            <div class="pc-nivel-sub">${atual ? "Clique em outro polo para trocar." : "Você ainda não tem polo — escolha um."}</div>
+        </div>`;
+}
+
+// Role user pede, o suporte troca (o pedido cai na Central de Atendimento).
+function _pcSecaoPoloPedido(conta) {
+    return `
+        <div class="pc-section">
+            <div class="pc-section-hd">${_PC_SVG.pin} Polo</div>
+            <div class="pc-conta-row">
+                <span class="pc-conta-valor">${conta.polo_label || "Nenhum definido"}</span>
+                <button type="button" class="pc-conta-link" data-pc="polo">Pedir troca</button>
+            </div>
+        </div>`;
+}
+
+function _pcSecaoConta(conta) {
+    return `
+        <div class="pc-section">
+            <div class="pc-section-hd">${_PC_SVG.key} Conta</div>
+            <div class="pc-conta-row">
+                <div style="min-width:0">
+                    <div class="pc-conta-rotulo">E-mail</div>
+                    <div class="pc-conta-valor" title="${_gcEsc(conta.email || "")}">${conta.email ? _gcEsc(conta.email) : `<span style="color:#7b98b5">Nenhum cadastrado</span>`}</div>
+                </div>
+                <button type="button" class="pc-conta-link" data-pc="email">${conta.email ? "Alterar" : "Cadastrar"}</button>
+            </div>
+            <div class="pc-conta-row">
+                <div>
+                    <div class="pc-conta-rotulo">Senha</div>
+                    <div class="pc-conta-valor">••••••••</div>
+                </div>
+                <button type="button" class="pc-conta-link" data-pc="senha">Alterar</button>
+            </div>
+            ${conta.foto ? `
+            <div class="pc-conta-row">
+                <div class="pc-conta-rotulo" style="margin:0">Foto de perfil</div>
+                <button type="button" class="pc-conta-link pc-conta-link-perigo" data-pc="remover-foto">Remover</button>
+            </div>` : ""}
+        </div>`;
+}
+
+function _renderPerfilCard(card, { conta, desempenho, polo }) {
+    const u = window._gcUser || {};
+    conta = conta || {};
+    card.innerHTML = `
+        ${_pcCabecalho(u, conta.foto)}
+        ${desempenho ? _pcSecaoDesempenho(desempenho) : ""}
+        ${u.role === "dev" ? _pcSecaoPoloDev(polo) : ""}
+        ${conta.pode_solicitar_polo ? _pcSecaoPoloPedido(conta) : ""}
+        ${_pcSecaoConta(conta)}`;
+
+    const acoes = {
+        "foto":         () => pcEscolherFoto(),
+        "remover-foto": () => pcRemoverFoto(),
+        "email":        () => pcAlterarEmail(conta.email),
+        "senha":        () => pcAlterarSenha(),
+        "polo":         () => pcSolicitarPolo(conta.polo),
+    };
+    card.querySelectorAll("[data-pc]").forEach(el =>
+        el.addEventListener("click", () => acoes[el.dataset.pc]()));
+    // Erro vai em alerta: o clique na confirmação conta como clique fora e fecha o card.
+    card.querySelectorAll(".pc-polo-btn").forEach(btn => {
+        btn.addEventListener("click", () => gcPoloTrocar(btn.dataset.polo, erro => gcAlert(erro)));
+    });
 }
