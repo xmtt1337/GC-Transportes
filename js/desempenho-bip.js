@@ -45,7 +45,8 @@ async function _desempCarregar() {
         const periodoTransp = transp !== 'todas' ? ` · ${transpNomeFiltro[transp]}` : '';
         const periodo = periodoMes + periodoTransp;
 
-        if (!data.length) {
+        const vazio = !(data.recebimento || []).length && !(data.conferencia || []).length && !(data.bipagens || []).length;
+        if (vazio) {
             skFim(emptyEl, `Nenhuma bipagem em ${periodo}.`);
             return;
         }
@@ -55,23 +56,44 @@ async function _desempCarregar() {
     }
 }
 
-function _desempRenderizar(rows, periodo) {
+// Três fontes, cada uma com o seu ranking: o recebimento e as conferências da
+// Shopee e as bipagens feitas em Operação > Bipagens. Somar tudo num número só
+// escondia quem passou o dia no recebimento.
+const _DESEMP_FONTES = [
+    { chave: 'recebimento', titulo: 'Recebimento · Shopee',  cor: '#F97316', unidade: 'recebidos' },
+    { chave: 'conferencia', titulo: 'Conferências · Shopee', cor: '#F97316', unidade: 'conferidos' },
+    { chave: 'bipagens',    titulo: 'Operação · Bipagens',   cor: null,      unidade: 'bipagens' },
+];
+
+function _desempRenderizar(data, periodo) {
     const emptyEl   = document.getElementById('desemp-empty');
     const contentEl = document.getElementById('desemp-content');
     const rankEl    = document.getElementById('desemp-ranking');
 
+    rankEl.innerHTML = _DESEMP_FONTES
+        .filter(f => (data[f.chave] || []).length)
+        .map(f => `<div class="desemp-secao">${_desempSecao(data[f.chave], f, periodo)}</div>`)
+        .join('');
+
+    emptyEl.style.display = 'none';
+    contentEl.style.display = '';
+}
+
+function _desempSecao(rows, fonte, periodo) {
     const maximo = rows[0].total;
-    const cores  = { loggi:'#12A5E8', anjun:'#22C55E', jt:'#EF4444', imile:'#9333EA', shopee:'#F97316', cep:'#06b6d4' };
-    const nomes  = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee', cep:'CEP' };
-    const transp = ['loggi','anjun','jt','imile','shopee','cep'];
+    const cores  = { loggi:'#12A5E8', anjun:'#22C55E', jt:'#EF4444', imile:'#9333EA', shopee:'#F97316' };
+    const nomes  = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee' };
+    const transp = ['loggi','anjun','jt','imile','shopee'];
     const posMedal   = ['🥇','🥈','🥉'];
     const posAccent  = ['#eab308','#94a3b8','#b45309'];
     const posBg      = ['rgba(234,179,8,0.09)','rgba(148,163,184,0.07)','rgba(180,83,9,0.08)','rgba(58,134,255,0.03)'];
     const totalGeral = rows.reduce((s, u) => s + u.total, 0);
     const transpFiltro = document.getElementById('desemp-transp').value;
+    // Recebimento e conferência são só Shopee: a quebra por transportadora não diz nada lá.
+    const comQuebra = fonte.chave === 'bipagens';
 
-    rankEl.innerHTML = `
-        <div class="rank-summary">${periodo} · ${totalGeral.toLocaleString('pt-BR')} bipagens no total · ${rows.length} operador${rows.length !== 1 ? 'es' : ''}</div>
+    return `
+        <div class="rank-summary">${fonte.cor ? `<span class="desemp-secao-dot" style="background:${fonte.cor}"></span>` : ''}${fonte.titulo} · ${periodo} · ${totalGeral.toLocaleString('pt-BR')} ${fonte.unidade} · ${rows.length} operador${rows.length !== 1 ? 'es' : ''}</div>
         ${rows.map((u, i) => {
             const pct      = maximo > 0 ? (u.total / maximo * 100).toFixed(1) : 0;
             const pctTotal = totalGeral > 0 ? (u.total / totalGeral * 100).toFixed(0) : 0;
@@ -81,7 +103,7 @@ function _desempRenderizar(rows, periodo) {
                 ? `<div class="rank-pos">${posMedal[i]}</div>`
                 : `<div class="rank-pos"><span class="rank-pos-num">${i+1}º</span></div>`;
 
-            const carriers = transp
+            const carriers = !comQuebra ? '' : transp
                 .filter(t => u[t] > 0 && (transpFiltro === 'todas' || transpFiltro === t))
                 .map(t => {
                     const barPct = u.total > 0 ? (u[t] / u.total * 100).toFixed(1) : 0;
@@ -107,14 +129,11 @@ function _desempRenderizar(rows, periodo) {
                     </div>
                     <div class="rank-total">
                         <div class="rank-num">${u.total.toLocaleString('pt-BR')}</div>
-                        <div class="rank-lbl">bipagens</div>
+                        <div class="rank-lbl">${fonte.unidade}</div>
                     </div>
                 </div>
                 <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${pct}%"></div></div>
                 ${carriers ? `<div class="rank-carriers">${carriers}</div>` : ''}
             </div>`;
         }).join('')}`;
-
-    emptyEl.style.display = 'none';
-    contentEl.style.display = '';
 }

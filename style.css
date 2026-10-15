@@ -710,6 +710,9 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
 }
 .rank-summary::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.05); }
+/* Desempenho: uma seção por fonte (recebimento, conferências, bipagens) */
+.desemp-secao + .desemp-secao { margin-top: 28px; }
+.desemp-secao-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-right: -4px; }
 .rank-card {
     background: rgba(14,22,40,0.85);
     border: 1px solid rgba(255,255,255,0.06);
@@ -1687,13 +1690,13 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .pc-transp-dot {
     width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
 }
-.pc-transp-label { font-size: 11px; color: #8494a9; width: 44px; flex-shrink: 0; }
+.pc-transp-label { font-size: 11px; color: #8494a9; width: 112px; white-space: nowrap; flex-shrink: 0; }
 .pc-transp-bar-wrap {
     flex: 1; height: 4px; border-radius: 999px;
     background: rgba(255,255,255,0.05); overflow: hidden;
 }
 .pc-transp-bar-fill { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
-.pc-transp-val { font-size: 11px; font-weight: 600; color: #7a9ab8; width: 28px; text-align: right; flex-shrink: 0; }
+.pc-transp-val { font-size: 11px; font-weight: 600; color: #7a9ab8; width: 36px; text-align: right; flex-shrink: 0; }
 .pc-senha-info {
     display: flex; align-items: center; gap: 8px;
     width: 100%; padding: 12px 16px; color: #7b98b5; font-size: 11.5px;

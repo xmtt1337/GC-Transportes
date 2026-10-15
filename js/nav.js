@@ -385,13 +385,16 @@ function _renderMultas(lista, elId, showWa = false) {
 }
 
 // ───── CARD DE PERFIL ─────
+// Linhas do mês no card de perfil. As duas primeiras são da Shopee fora de
+// Operação > Bipagens; "Shopee" sozinho é a bipagem feita lá.
 const _TRANSP = [
+    { key: "recebimento", label: "Recebimento Shopee",  cor: "#F97316" },
+    { key: "conferencia", label: "Conferências Shopee", cor: "#F97316" },
     { key: "loggi",  label: "Loggi",  cor: "#12A5E8" },
     { key: "anjun",  label: "Anjun",  cor: "#22C55E" },
     { key: "jt",     label: "J&T",    cor: "#EF4444" },
     { key: "imile",  label: "iMile",  cor: "#9333EA" },
     { key: "shopee", label: "Shopee", cor: "#F97316" },
-    { key: "cep",    label: "CEP",    cor: "#94a3b8" },
 ];
 const _MES_NOMES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
@@ -516,7 +519,7 @@ function _renderPerfilCard(card, d) {
             <div class="pc-section-hd">${svgStar} Nível</div>
             <div class="pc-nivel-row">
                 <span class="pc-nivel-num">Nv ${d.nivel}</span>
-                <span class="pc-nivel-total">${(d.totalBipagens||0).toLocaleString("pt-BR")} únicos</span>
+                <span class="pc-nivel-total">${(d.totalBipagens||0).toLocaleString("pt-BR")} no total</span>
             </div>
             <div class="pc-bar"><div class="pc-bar-fill" style="width:${d.progresso}%"></div></div>
             <div class="pc-nivel-sub">${subNivel}</div>
