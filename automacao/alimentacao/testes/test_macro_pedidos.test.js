@@ -184,10 +184,14 @@ test('rodape: com "nao encontrados", aceita o numero menor so depois de parar de
   assert.strictEqual(resultados[7], 7280);
 });
 
-test('rodape: numero menor parado SEM o aviso de nao encontrados continua esperando', () => {
+// 15/10/2026: 'Esperado 4825' parado e o aviso na tela, mas o aviso nao foi achado - sem ele,
+// vale o numero parado por bem mais tempo (20 leituras), nunca antes disso.
+test('rodape: sem o aviso, numero menor so vale depois de 20 leituras iguais', () => {
   const r = carregar([COM(1)]);
-  const rod = r.G.pedidos.novoRodape(7311);
-  for (let i = 0; i < 20; i++) assert.strictEqual(rod.ler(7280, false), null);
+  const rod = r.G.pedidos.novoRodape(7313);
+  const res = Array.from({ length: 21 }, () => rod.ler(4825, false));
+  assert.ok(res.slice(0, 20).every((x) => x === null));
+  assert.strictEqual(res[20], 4825);
 });
 
 test('rodape: numero piscando maior que o total nunca vale, mesmo parado', () => {

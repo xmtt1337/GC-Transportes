@@ -155,7 +155,12 @@
   // Lê o rodapé "Esperado N" leitura a leitura e diz quando a busca fechou (ver colarEEnviar):
   // no total colado, ou - com o aviso de "não encontrados" na tela - num número menor que parou
   // de mudar por LEITURAS_ESTAVEIS leituras seguidas.
+  // Sem o aviso visto, aceita o número parado só depois de bem mais tempo (~14s): o aviso pode
+  // não ser achado (15/10/2026: "Esperado 4825" parado com o aviso na tela e o macro desistiu -
+  // o texto do aviso fica num elemento com um link "Ver detalhes" dentro, e a busca só olhava
+  // elemento sem filho).
   const LEITURAS_ESTAVEIS = 6;
+  const LEITURAS_ESTAVEIS_SEM_AVISO = 20;
   function novoRodape(total) {
     let anterior = null;
     let iguais = 0;
@@ -164,9 +169,21 @@
         iguais = n !== null && n === anterior ? iguais + 1 : 0;
         anterior = n;
         if (n === total) return n;
-        return faltaram && n > 0 && n < total && iguais >= LEITURAS_ESTAVEIS ? n : null;
+        if (!(n > 0 && n < total)) return null;
+        return iguais >= (faltaram ? LEITURAS_ESTAVEIS : LEITURAS_ESTAVEIS_SEM_AVISO) ? n : null;
       },
     };
+  }
+
+  // O aviso "Pedidos foram encontrados, Pedidos não encontrados  Ver detalhes" - procurado em
+  // qualquer elemento de texto curto, não só em folha (o link dentro dele tirava ele da busca).
+  function avisoDeNaoEncontrados() {
+    for (const el of document.querySelectorAll('*')) {
+      const t = L.normalizar(el.textContent);
+      if (t.length > 160 || !/n[aã]o encontrad/i.test(t)) continue;
+      if (S.visivel(el)) return el;
+    }
+    return null;
   }
 
   async function colarEEnviar(codigos) {
@@ -214,7 +231,7 @@
         if (!achado) return null;
         const n = Number(achado.m[1].replace(/[.,]/g, '')) || null;
         ultimoVisto = n;
-        return rodape.ler(n, !!G.painelDeTarefas.folhaComRegex(/n[aã]o encontrad/i));
+        return rodape.ler(n, !!avisoDeNaoEncontrados());
       }, { oque: `a busca fechar em "Esperado ${codigos.length}" no rodapé`, limite: 180000, intervalo: 700 });
     } catch (e) {
       if (e instanceof S.Parado) throw e;
