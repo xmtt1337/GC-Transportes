@@ -248,6 +248,12 @@ let _pedBuscaAtual = 0;   // corrida: só a resposta da última digitação vale
  * que é a pior resposta possível numa tela de investigação.
  *
  * A busca no servidor não tem teto nem período: vai na view inteira.
+ *
+ * E vai SEMPRE que o termo tem cara de código, mesmo quando o filtro local
+ * achou algo. Achar uma linha no carregado não quer dizer achar o rastro todo:
+ * com o seletor em "Registrado como faltante" (ou com o teto cortando o dia), o
+ * pacote aparecia só como faltante, sem a conferência que o bipou horas antes —
+ * o histórico contava a metade que mais engana.
  */
 function _pedFiltrarLocal() {
     const bruto = document.getElementById('ped-filtro-input').value.trim();
@@ -264,15 +270,20 @@ function _pedFiltrarLocal() {
         (r.detalhe      || '').toLowerCase().includes(termo) ||
         (r.usuario      || '').toLowerCase().includes(termo)
     );
-    if (filtrado.length) { _pedRenderizar(filtrado, true); return; }
 
-    if (bruto.length < _PED_MIN_BUSCA) { _pedRenderizar([], true); return; }
+    if (!_pedPareceCodigo(bruto)) { _pedRenderizar(filtrado, true); return; }
 
-    // Nada na página: pode ser código antigo. Pergunta ao servidor, com uma
-    // pausa pra não disparar uma consulta por tecla digitada.
-    _pedRenderizarBuscando(bruto);
+    // O que já está na tela aparece na hora; o servidor completa em seguida.
+    if (filtrado.length) _pedRenderizar(filtrado, true);
+    else _pedRenderizarBuscando(bruto);
     const meu = _pedBuscaAtual;
-    _pedBuscaTimer = setTimeout(() => _pedBuscarNoServidor(bruto, meu), 400);
+    // Pausa pra não disparar uma consulta por tecla digitada.
+    _pedBuscaTimer = setTimeout(() => _pedBuscarNoServidor(bruto, meu, filtrado), 400);
+}
+
+/** Um termo só, sem espaço e comprido o bastante: nome de gente não passa. */
+function _pedPareceCodigo(bruto) {
+    return bruto.length >= _PED_MIN_BUSCA && !/\s/.test(bruto);
 }
 
 function _pedRenderizarBuscando(termo) {
@@ -284,7 +295,8 @@ function _pedRenderizarBuscando(termo) {
     document.getElementById('ped-pagina-info').innerText = '';
 }
 
-function _pedBuscarNoServidor(termo, meu) {
+function _pedBuscarNoServidor(termo, meu, locais) {
+    const temLocal = !!(locais && locais.length);
     fetch(API + '/pedidos/buscar?codigo=' + encodeURIComponent(termo), {
         headers: { 'Authorization': 'Bearer ' + token }
     })
@@ -294,7 +306,9 @@ function _pedBuscarNoServidor(termo, meu) {
         // termo e mostrá-la seria pior do que não mostrar nada.
         if (meu !== _pedBuscaAtual) return;
         if (!ok || !Array.isArray(b) || !b.length) {
-            _pedRenderizarNadaNoSistema(termo);
+            // O servidor casa o código inteiro; um pedaço de código não volta
+            // nada lá, mas o que o filtro local achou continua valendo.
+            if (!temLocal) _pedRenderizarNadaNoSistema(termo);
             return;
         }
         _pedRenderizar(b.map(_pedCompat), true);
@@ -302,7 +316,7 @@ function _pedBuscarNoServidor(termo, meu) {
             `${b.length} registro${b.length !== 1 ? 's' : ''} de ${termo} — busca no sistema inteiro`;
     })
     .catch(() => {
-        if (meu !== _pedBuscaAtual) return;
+        if (meu !== _pedBuscaAtual || temLocal) return;
         document.getElementById('ped-tbody').innerHTML =
             `<tr><td colspan="5" style="text-align:center;padding:26px;color:#8494a9">Erro ao conectar com o servidor.</td></tr>`;
     });
