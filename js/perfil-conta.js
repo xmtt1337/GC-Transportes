@@ -1,5 +1,5 @@
 // ───── CARD DO PERFIL → CONTA ─────
-// O que todo cargo faz pelo próprio nome no topo: foto, senha, e-mail e (role user) pedido
+// O que todo cargo faz pelo próprio nome no topo: foto, senha, e-mail e (todo cargo menos dev) pedido
 // de troca de polo. O card em si é montado em nav.js; aqui ficam as ações e os diálogos.
 //
 // Cada diálogo fecha o card antes de abrir: o clique dentro do diálogo contaria como clique
@@ -271,7 +271,7 @@ function pcAlterarEmail(atual) {
     });
 }
 
-// ── Pedido de troca de polo (role user) ──
+// ── Pedido de troca de polo (todo cargo menos dev) ──
 // Quem não é dev não troca sozinho: o pedido vira mensagem na Central de Atendimento e o
 // suporte troca em Cadastros > Usuários.
 function pcSolicitarPolo(poloAtual) {
