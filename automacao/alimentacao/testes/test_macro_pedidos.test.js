@@ -165,3 +165,33 @@ test('exportacao: tarefa que nunca nasce ainda desiste depois de 3 pedidos', asy
   await assert.rejects(r.G.pedidos.pedirExportacao([]), /3 vezes/);
   assert.strictEqual(pedidos(), 3);
 });
+
+// Achado ao vivo (15/10/2026): 7311 códigos colados, parte deles não existe no SPX ("Pedidos
+// não encontrados"). O rodapé fechava num número menor e nunca no total - o macro travava 3 min
+// e desistia.
+test('rodape: fecha no total quando todos foram encontrados', () => {
+  const r = carregar([COM(1)]);
+  const rod = r.G.pedidos.novoRodape(7311);
+  assert.strictEqual(rod.ler(7311, false), 7311);
+});
+
+test('rodape: com "nao encontrados", aceita o numero menor so depois de parar de mudar', () => {
+  const r = carregar([COM(1)]);
+  const rod = r.G.pedidos.novoRodape(7311);
+  const leituras = [7000, 7280, 7280, 7280, 7280, 7280, 7280, 7280]; // a 1a 7280 + 6 iguais
+  const resultados = leituras.map((n) => rod.ler(n, true));
+  assert.deepStrictEqual(resultados.slice(0, 7), [null, null, null, null, null, null, null]);
+  assert.strictEqual(resultados[7], 7280);
+});
+
+test('rodape: numero menor parado SEM o aviso de nao encontrados continua esperando', () => {
+  const r = carregar([COM(1)]);
+  const rod = r.G.pedidos.novoRodape(7311);
+  for (let i = 0; i < 20; i++) assert.strictEqual(rod.ler(7280, false), null);
+});
+
+test('rodape: numero piscando maior que o total nunca vale, mesmo parado', () => {
+  const r = carregar([COM(1)]);
+  const rod = r.G.pedidos.novoRodape(3256);
+  for (let i = 0; i < 20; i++) assert.strictEqual(rod.ler(1055090, true), null);
+});

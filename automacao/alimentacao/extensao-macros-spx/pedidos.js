@@ -152,6 +152,23 @@
     return { dialogo, caixa };
   }
 
+  // Lê o rodapé "Esperado N" leitura a leitura e diz quando a busca fechou (ver colarEEnviar):
+  // no total colado, ou - com o aviso de "não encontrados" na tela - num número menor que parou
+  // de mudar por LEITURAS_ESTAVEIS leituras seguidas.
+  const LEITURAS_ESTAVEIS = 6;
+  function novoRodape(total) {
+    let anterior = null;
+    let iguais = 0;
+    return {
+      ler(n, faltaram) {
+        iguais = n !== null && n === anterior ? iguais + 1 : 0;
+        anterior = n;
+        if (n === total) return n;
+        return faltaram && n > 0 && n < total && iguais >= LEITURAS_ESTAVEIS ? n : null;
+      },
+    };
+  }
+
   async function colarEEnviar(codigos) {
     const { dialogo, caixa } = await abrirPesquisaEmLote();
     // Uma por linha: e o que a propria caixa pede.
@@ -182,6 +199,13 @@
     // nenhum). Um numero errado ali nao e a pagina quebrada - e ela ainda
     // carregando. Por isso o ESPERAR e pelo numero CERTO, nao pelo primeiro
     // que aparecer; so vira erro de verdade se em 180s ele nunca chegar la.
+    // PARTE DOS CODIGOS PODE NAO EXISTIR NO SPX. Com o aviso "Pedidos foram encontrados, Pedidos
+    // não encontrados", o rodapé fecha num número MENOR que o colado e nunca chega no total - o
+    // macro ficava 3 min esperando e desistia (15/10/2026: 7311 colados depois de dias com o
+    // computador desligado). Com esse aviso na tela, vale o número que PAROU de mudar (o mesmo
+    // em várias leituras seguidas) e não passa do total - o número que pisca durante a conta é
+    // instável por definição.
+    const rodape = novoRodape(codigos.length);
     let ultimoVisto = null;
     let quantos;
     try {
@@ -190,7 +214,7 @@
         if (!achado) return null;
         const n = Number(achado.m[1].replace(/[.,]/g, '')) || null;
         ultimoVisto = n;
-        return n === codigos.length ? n : null;
+        return rodape.ler(n, !!G.painelDeTarefas.folhaComRegex(/n[aã]o encontrad/i));
       }, { oque: `a busca fechar em "Esperado ${codigos.length}" no rodapé`, limite: 180000, intervalo: 700 });
     } catch (e) {
       if (e instanceof S.Parado) throw e;
@@ -199,7 +223,8 @@
         : `a busca ficou em "Esperado ${ultimoVisto}" e nunca fechou em ${codigos.length} em 180s — ` +
           'rode de novo');
     }
-    P.nota(`busca pronta: ${quantos} pedidos`);
+    P.nota(quantos === codigos.length ? `busca pronta: ${quantos} pedidos`
+      : `busca pronta: ${quantos} de ${codigos.length} encontrados no SPX (o resto não existe lá)`);
     await S.dormir(800);
   }
 
@@ -384,7 +409,7 @@
     }
   }
 
-  G.pedidos = { rodar, pedirCodigos, pedirExportacao, acharDialogoDeLote, acharCaixaDeLote, acharItemExportar,
+  G.pedidos = { rodar, pedirCodigos, pedirExportacao, novoRodape, acharDialogoDeLote, acharCaixaDeLote, acharItemExportar,
                 TEXTO_LOTE, TEXTO_EXPORTAR, TEXTO_EXPORTAR_PESQUISADOS };
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
