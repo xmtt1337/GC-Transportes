@@ -9,6 +9,7 @@ function abrirAdminAntecipacoes(event) {
     if (event) event.preventDefault();
     _admAntQuinzena = null;
     _admAntRows     = [];
+    document.getElementById("adm-ant-conf").style.display = "none";
     _admAntReqId++; // resposta ainda pendente não pode pintar a tela sem quinzena escolhida
     document.getElementById("adm-ant-btn-1q").classList.remove("active");
     document.getElementById("adm-ant-btn-2q").classList.remove("active");
@@ -34,6 +35,7 @@ function _iniciarSelectsAdmAnt() {
 
 function selecionarQuinzenaAntAdmin(q) {
     _admAntQuinzena = q;
+    document.getElementById("adm-ant-conf").style.display = "none"; // conferência era de outra quinzena
     document.getElementById("adm-ant-btn-1q").classList.toggle("active", q === 1);
     document.getElementById("adm-ant-btn-2q").classList.toggle("active", q === 2);
     buscarAntecipacoes();
@@ -202,4 +204,137 @@ function _exportarAntecipacaoXlsx() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Antecipações");
     XLSX.writeFile(wb, `antecipacoes_${_admAntMes}_${_admAntAno}_q${_admAntQuinzena}.xlsx`);
+}
+
+// ───── CONFERÊNCIA COM O RELATÓRIO DA TRAMPAY ─────
+// Sobe o relatório de antecipações da Trampay (vem com todos os períodos) e o servidor
+// confere, por id_entregador, se cada pedido do XM desta quinzena saiu "Aprovado" lá com o
+// mesmo valor_pedido. A quinzena é achada pela data_de_vencimento (fim + 45 dias, ±5).
+// Só confere — nada é gravado.
+function _admAntEscolherRelatorioTrampay() {
+    if (!_admAntQuinzena) return gcAlert("Selecione o mês, o ano e a quinzena antes de subir o relatório da Trampay.");
+    const input = document.getElementById("adm-ant-trampay-file");
+    input.value = "";
+    input.click();
+}
+
+function _admAntConferirTrampay(input) {
+    const arquivo = input.files && input.files[0];
+    if (!arquivo || !_admAntQuinzena) return;
+    const mes = parseInt(document.getElementById("adm-ant-mes").value);
+    const ano = parseInt(document.getElementById("adm-ant-ano").value);
+    const quinzena = _admAntQuinzena;
+    const painel = document.getElementById("adm-ant-conf");
+    painel.style.display = "";
+    painel.innerHTML = `<div class="fechamento-empty">Conferindo ${_admAntEsc(arquivo.name)}...</div>`;
+
+    const texto = /\.(csv|tsv|txt)$/i.test(arquivo.name);
+    const leitor = new FileReader();
+    leitor.onload = () => {
+        let linhas;
+        try {
+            // raw: no CSV a data fica texto ("14/10/2026" não vira data americana); codepage pro acento do UTF-8
+            const wb = XLSX.read(new Uint8Array(leitor.result), texto ? { type: "array", raw: true, codepage: 65001 } : { type: "array" });
+            linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "", raw: true });
+        } catch (e) {
+            painel.innerHTML = `<div class="fechamento-empty">Não consegui ler o arquivo. Use o relatório da Trampay em .csv ou .xlsx.</div>`;
+            return;
+        }
+        fetch(`${API}/admin/antecipacoes/conferencia-trampay`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+            body: JSON.stringify({ mes, ano, quinzena, linhas })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) { painel.innerHTML = `<div class="fechamento-empty">${_admAntEsc(d.error)}</div>`; return; }
+            _admAntRenderConferencia(d, { mes, ano, quinzena, arquivo: arquivo.name });
+        })
+        .catch(() => { painel.innerHTML = `<div class="fechamento-empty">Erro ao conferir o relatório.</div>`; });
+    };
+    leitor.readAsArrayBuffer(arquivo);
+}
+
+function _admAntEsc(s) {
+    const mapa = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+    return String(s ?? "").replace(/[&<>"']/g, c => mapa[c]);
+}
+
+function _admAntDataBR(iso) {
+    const [a, m, d] = String(iso || "").split("-");
+    return d ? `${d}/${m}/${a}` : "—";
+}
+
+function _admAntRenderConferencia(d, ctx) {
+    const MESES = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    const r = d.resumo;
+    const SIT = {
+        ok:              { cor: "#22c55e", bg: "rgba(34,197,94,0.1)", label: "Recebeu" },
+        valor_diferente: { cor: "#eab308", bg: "rgba(234,179,8,0.1)", label: "Valor diferente" },
+        nao_encontrado:  { cor: "#ef4444", bg: "rgba(239,68,68,0.1)", label: "Não está na Trampay" },
+    };
+    const badge = (s) => `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;color:${s.cor};background:${s.bg}">${s.label}</span>`;
+    const chip = (n, label, cor) => `<div style="padding:8px 14px;border-radius:10px;border:1px solid ${cor}40;background:${cor}12;font-size:13px;color:${cor}"><strong style="font-size:16px">${n}</strong> ${label}</div>`;
+
+    // Problemas primeiro, quem recebeu certinho no fim.
+    const ordem = { nao_encontrado: 0, valor_diferente: 1, ok: 2 };
+    const itens = [...d.itens].sort((a, b) => ordem[a.situacao] - ordem[b.situacao] || String(a.usuario_nome).localeCompare(String(b.usuario_nome)));
+
+    const linhasXm = itens.map(i => {
+        const dif = i.recebido - i.solicitado;
+        const recebido = i.linhas_trampay
+            ? `${moedaJS(i.recebido)}${i.linhas_trampay > 1 ? ` <span style="font-size:11px;color:#8494a9">(${i.linhas_trampay} pedidos)</span>` : ""}`
+            : "—";
+        const nota = [
+            i.situacao === "valor_diferente" ? `${dif > 0 ? "+" : ""}${moedaJS(dif)}` : "",
+            i.pelo_nome ? "achado pelo nome" : "",
+            !i.id_trampay ? "sem ID Trampay no cadastro" : "",
+        ].filter(Boolean).join(" · ");
+        const nomeReal = i.nome_real && i.nome_real !== i.usuario_nome
+            ? `<div style="font-size:11px;color:#8494a9;font-weight:400">${_admAntEsc(i.nome_real)}</div>` : "";
+        return `<tr>
+            <td class="adm-nf-entregador">${_admAntEsc(i.usuario_nome)}${nomeReal}</td>
+            <td style="color:#94a3b8">${_admAntEsc(i.id_trampay) || "—"}</td>
+            <td style="color:#3a86ff;font-weight:600">${moedaJS(i.solicitado)}</td>
+            <td>${recebido}</td>
+            <td>${badge(SIT[i.situacao])}</td>
+            <td style="font-size:12px;color:#94a3b8">${_admAntEsc(nota)}</td>
+        </tr>`;
+    }).join("");
+
+    const linhasSobra = d.so_na_trampay.map(t => `<tr>
+            <td class="adm-nf-entregador">${_admAntEsc(t.nome) || "—"}</td>
+            <td style="color:#94a3b8">${_admAntEsc(t.id_trampay) || "—"}</td>
+            <td>${moedaJS(t.valor_pedido)}</td>
+            <td style="color:#94a3b8">${_admAntDataBR(t.vencimento)}</td>
+        </tr>`).join("");
+
+    document.getElementById("adm-ant-conf").innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+            <div>
+                <div style="font-size:15px;font-weight:700">Conferência Trampay — ${ctx.quinzena}ª Qz ${MESES[ctx.mes]}/${ctx.ano}</div>
+                <div style="font-size:12px;color:#8494a9;margin-top:3px">
+                    ${_admAntEsc(ctx.arquivo)} · vencimento de ${_admAntDataBR(d.janela.de)} a ${_admAntDataBR(d.janela.ate)} (pagamento ${_admAntDataBR(d.janela.pagamento)} ±5 dias) · só "Aprovado" ·
+                    ${r.linhas_consideradas} linha(s) usada(s); ignoradas ${r.linhas_fora_da_janela} de outros períodos e ${r.linhas_nao_aprovadas} não aprovada(s)
+                </div>
+            </div>
+            <button onclick="document.getElementById('adm-ant-conf').style.display='none'" style="padding:7px 14px;border-radius:10px;border:1px solid rgba(148,163,184,0.3);background:transparent;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Fechar conferência</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            ${chip(r.ok, "recebeu certo", "#22c55e")}
+            ${chip(r.valor_diferente, "com valor diferente", "#eab308")}
+            ${chip(r.nao_encontrado, "não estão na Trampay", "#ef4444")}
+            ${chip(r.so_na_trampay, "só na Trampay", "#a855f7")}
+        </div>
+        ${itens.length ? `<div class="adm-nf-wrap"><table class="adm-nf-table">
+            <thead><tr><th>Entregador (XM)</th><th>ID Trampay</th><th>Solicitado no XM</th><th>Valor pedido na Trampay</th><th>Situação</th><th>Obs.</th></tr></thead>
+            <tbody>${linhasXm}</tbody>
+        </table></div>` : `<div class="fechamento-empty">Nenhum pedido de antecipação no XM nesta quinzena.</div>`}
+        ${d.so_na_trampay.length ? `
+            <div style="font-size:13px;font-weight:700;color:#a855f7;margin:16px 0 8px">Aprovados na Trampay sem pedido no XM nesta quinzena</div>
+            <div class="adm-nf-wrap"><table class="adm-nf-table">
+                <thead><tr><th>Nome (Trampay)</th><th>ID Trampay</th><th>Valor pedido</th><th>Vencimento</th></tr></thead>
+                <tbody>${linhasSobra}</tbody>
+            </table></div>` : ""}
+    `;
 }

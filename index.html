@@ -4765,9 +4765,15 @@ if (_BASE) {
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         Modelo Trampay
                     </button>
+                    <button onclick="_admAntEscolherRelatorioTrampay()" title="Sobe o relatório de antecipações da Trampay e confere, por ID, se cada pedido do XM desta quinzena foi aprovado lá com o mesmo valor" style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:1px solid rgba(147,51,234,0.35);background:rgba(147,51,234,0.08);color:#a855f7;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s" onmouseover="this.style.background='rgba(147,51,234,0.18)'" onmouseout="this.style.background='rgba(147,51,234,0.08)'">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Conferir Trampay
+                    </button>
+                    <input type="file" id="adm-ant-trampay-file" accept=".csv,.xlsx,.xls,.tsv,.txt" style="display:none" onchange="_admAntConferirTrampay(this)">
                 </div>
             </div>
             <div class="fech-body">
+                <div id="adm-ant-conf" style="display:none;margin-bottom:22px"></div>
                 <div class="fechamento-empty" id="adm-ant-empty">Selecione o mês, ano e quinzena para ver as antecipações.</div>
                 <div id="adm-ant-resultado" style="display:none">
                     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
@@ -4892,7 +4898,7 @@ if (_BASE) {
 <script src="js/conferencias.js?v=30260812d"></script>
 <script src="js/conferencias-hub.js?v=30260901b"></script>
 <script src="js/antecipacoes.js?v=20261014a"></script>
-<script src="js/antecipacoes-admin.js?v=20261012a"></script>
+<script src="js/antecipacoes-admin.js?v=20261015a"></script>
 <script src="js/baixas.js?v=20260908a"></script>
 <script src="js/custodia.js?v=20260820i"></script>
 <script src="js/devolucoes.js?v=30260812d"></script>
