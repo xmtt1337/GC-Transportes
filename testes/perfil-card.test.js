@@ -87,3 +87,9 @@ test("e-mail e nome vão escapados", () => {
   const html = renderizar("sac", { ...CONTA, email: '"><img src=x onerror=alert(1)>@x.com' });
   assert.doesNotMatch(html, /<img src=x/);
 });
+
+test("todo cargo tem o Sair no card", () => {
+  for (const role of ["user", "admin", "dev", "sac", "entregador"]) {
+    assert.match(renderizar(role, CONTA), /class="pc-sair" data-pc="sair"/, role);
+  }
+});

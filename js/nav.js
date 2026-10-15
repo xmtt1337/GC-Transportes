@@ -577,9 +577,14 @@ function _renderPerfilCard(card, { conta, desempenho, polo }) {
         ${desempenho ? _pcSecaoDesempenho(desempenho) : ""}
         ${u.role === "dev" ? _pcSecaoPoloDev(polo) : ""}
         ${conta.pode_solicitar_polo ? _pcSecaoPoloPedido(conta) : ""}
-        ${_pcSecaoConta(conta)}`;
+        ${_pcSecaoConta(conta)}
+        <button type="button" class="pc-sair" data-pc="sair">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sair
+        </button>`;
 
     const acoes = {
+        "sair":         () => { fecharPerfilCard(); logout(); },
         "foto":         () => pcEscolherFoto(),
         "remover-foto": () => pcRemoverFoto(),
         "email":        () => pcAlterarEmail(conta.email),
