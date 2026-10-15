@@ -207,13 +207,10 @@ async function _bipSincronizarCeps() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erro');
-        const porTransp = data.por_transportadora || {};
-        const nomes = { loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee' };
-        const resumo = Object.entries(porTransp)
-            .map(([k,v]) => `${nomes[k]||k}: ${v.toLocaleString('pt-BR')}`)
-            .join(' · ');
+        // Os CEPs vêm da aba "Cep Geral" e valem pra todas as transportadoras —
+        // a contagem por transportadora seria o mesmo número repetido.
         const temErro = data.erros && data.erros.length > 0;
-        btn.innerHTML = `${temErro ? '⚠' : '✓'} ${data.total.toLocaleString('pt-BR')} CEPs — ${resumo}`;
+        btn.innerHTML = `${temErro ? '⚠' : '✓'} ${data.total.toLocaleString('pt-BR')} CEPs (geral)`;
         btn.style.borderColor = temErro ? 'rgba(251,146,60,0.5)'  : 'rgba(34,197,94,0.35)';
         btn.style.color       = temErro ? '#fb923c'               : '#22c55e';
         btn.style.background  = temErro ? 'rgba(251,146,60,0.08)' : 'rgba(34,197,94,0.08)';
@@ -312,8 +309,9 @@ function _bipSelecionarInput() {
     input.select();
 }
 
-const _TRANSP_NOMES  = { loggi: 'Loggi', anjun: 'Anjun', jt: 'J&T Express', imile: 'Imile', shopee: 'Shopee', total_express: 'Total Express' };
-const _TRANSP_CORES  = { loggi: '#12A5E8', anjun: '#22C55E', imile: '#9333EA', jt: '#EF4444', shopee: '#F97316', total_express: '#F59E0B' };
+// "geral": busca por CEP desde o planejamento geral — um cartão só, valendo pra todas.
+const _TRANSP_NOMES  = { loggi: 'Loggi', anjun: 'Anjun', jt: 'J&T Express', imile: 'Imile', shopee: 'Shopee', total_express: 'Total Express', geral: 'Geral' };
+const _TRANSP_CORES  = { loggi: '#12A5E8', anjun: '#22C55E', imile: '#9333EA', jt: '#EF4444', shopee: '#F97316', total_express: '#F59E0B', geral: '#3a86ff' };
 
 function _bipCorTransp(t) { return _TRANSP_CORES[t] || '#3a86ff'; }
 
