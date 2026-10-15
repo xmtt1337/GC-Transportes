@@ -43,6 +43,11 @@ const _ROTAS = {
     "Shopee/Pedidos":                () => abrirShopeePedidos(),
     "Shopee/LineHaul":               () => abrirShopeeLineHaul(),
     "Shopee/Atribuicoes":            () => abrirShopeeAtribuicoes(),
+    // Links diretos pra um passo DENTRO da tela (usados no material de treinamento):
+    // abrem a tela normal e já executam o clique que a pessoa daria.
+    "Shopee/Atribuicoes/VariosClusters": () => { abrirShopeeAtribuicoes(); _scaAlternarSelecao(true); },
+    // Exportar espera o polo carregar: o título do modal diz de qual polo/XPT é a planilha.
+    "Shopee/Recebimento/Exportar":   () => { abrirShopeeReceber(); gcPoloGarantir(info => { if (info && info.xpt) _shrAbrirExportar(); }); },
     "Shopee/ConfEntregadores":       () => abrirShopeeConfEntregadores(),
     "Shopee/ItemAvariado":           () => abrirShopeeAvariado(),
     "Shopee/Stuck":                  () => abrirShopeeStuck(),
@@ -114,6 +119,13 @@ const _ROTAS = {
     "Extravios/Registros":           () => abrirExtraviosRegistros(),
     "Extravios/Pesquisar":           () => abrirExtraviosBusca(),
     "Extravios/Dashboard":           () => abrirExtraviosDash(),
+};
+
+// Rota de um passo dentro da tela -> rota da tela, que é a que tem link no menu lateral.
+// Sem isso a tela abria certa mas com o menu sem nada destacado.
+const _ROTAS_MENU = {
+    "Shopee/Atribuicoes/VariosClusters": "Shopee/Atribuicoes",
+    "Shopee/Recebimento/Exportar":       "Shopee/Recebimento",
 };
 
 // Rotas com PARÂMETRO no caminho. O mapa acima é de correspondência exata, e essas não
@@ -254,7 +266,7 @@ function _rotaAbrirAtual() {
     if (!caminho) return; // raiz — fica na home, que já é a tela padrão
 
     const abrir = _ROTAS[caminho];
-    if (abrir) { abrir(); _marcarSubmenuAtivo(caminho); return; }
+    if (abrir) { abrir(); _marcarSubmenuAtivo(_ROTAS_MENU[caminho] || caminho); return; }
 
     // Correspondência exata falhou: tenta as rotas com parâmetro. Marca a rota BASE no menu,
     // porque o link do menu é o da lista — procurar por um data-rota com o código do pedido
