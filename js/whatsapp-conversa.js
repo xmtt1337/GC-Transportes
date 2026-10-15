@@ -1008,7 +1008,9 @@ function _wacConfirmarResultado(resultado) {
     .then(({ ok, body }) => {
         if (!ok) { gcAlert(body.error || "Erro ao salvar."); return; }
         _wacFecharModalResultado();
-        if (alvo.noChat) { _wacResolvidoAtual = true; _wacLimparSelecao(); }
+        // Respondeu pelo chat = pedido resolvido, não tem mais o que fazer ali: volta pra
+        // lista (que já recarrega com o card na coluna nova).
+        if (alvo.noChat) { _wacResolvidoAtual = true; _wacLimparSelecao(); _wacVoltarParaLista(); }
         else _wacCarregarLista();
     })
     .catch(() => gcAlert("Erro ao conectar com o servidor."));
