@@ -419,6 +419,14 @@ function abrirPerfilCard(e) {
 
     document.addEventListener("click", _pcClickFora);
 
+    // Dev não tem nível nem bipagens no mês: o card dele é o polo, que ele troca sozinho.
+    if ((window._gcUser || {}).role === "dev") {
+        gcPoloCarregar(true)
+        .then(info => _renderPerfilCardDev(card, info))
+        .catch(() => { card.innerHTML = `<div style="padding:16px;color:#f87171;font-size:12px">Erro ao carregar</div>`; });
+        return;
+    }
+
     const tok = localStorage.getItem("token");
     fetch(API + "/meu-perfil", { headers: { "Authorization": "Bearer " + tok } })
     .then(r => r.json())
@@ -438,11 +446,44 @@ function _pcClickFora(e) {
     if (card && !card.contains(e.target) && e.target !== trigger) fecharPerfilCard();
 }
 
+const _PC_ROLE_LABELS = { user: "Usuário", admin: "Administrador", dev: "Dev", finance: "Financeiro", sac: "SAC" };
+
+function _pcCabecalho(u) {
+    const inicial = (u.displayName || u.name || u.username || "?")[0].toUpperCase();
+    return `
+        <div class="pc-header">
+            <div class="pc-avatar">${inicial}</div>
+            <div>
+                <div class="pc-name">${u.displayName || u.name || u.username || "—"}</div>
+                <div class="pc-meta">@${u.username} · ${_PC_ROLE_LABELS[u.role] || u.role || ""}</div>
+            </div>
+        </div>`;
+}
+
+function _renderPerfilCardDev(card, info) {
+    const atual = info && info.polo;
+    const svgPin = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+    card.innerHTML = `
+        ${_pcCabecalho(window._gcUser || {})}
+        <div class="pc-section">
+            <div class="pc-section-hd">${svgPin} Polo</div>
+            <div class="pc-polo-opcoes">
+                ${SHOPEE_POLOS.map(p => `
+                    <button type="button" class="pc-polo-btn${p.chave === atual ? " ativo" : ""}" data-polo="${p.chave}">
+                        <span class="pc-polo-nome">${p.label}</span>
+                        <span class="pc-polo-cod">${p.xpt || "sem Shopee"}</span>
+                    </button>`).join("")}
+            </div>
+            <div class="pc-nivel-sub">${atual ? "Clique em outro polo para trocar." : "Você ainda não tem polo — escolha um."}</div>
+        </div>`;
+    // Erro vai em alerta: o clique na confirmação conta como clique fora e fecha o card.
+    card.querySelectorAll(".pc-polo-btn").forEach(btn => {
+        btn.addEventListener("click", () => gcPoloTrocar(btn.dataset.polo, erro => gcAlert(erro)));
+    });
+}
+
 function _renderPerfilCard(card, d) {
     const u = window._gcUser || {};
-    const inicial = (u.displayName || u.name || u.username || "?")[0].toUpperCase();
-    const roleLabels = { user: "Usuário", admin: "Administrador", dev: "Dev", finance: "Financeiro", sac: "SAC" };
-    const roleLabel  = roleLabels[u.role] || u.role || "";
 
     const max = Math.max(..._TRANSP.map(t => d.mensal?.[t.key] || 0), 1);
     const transpRows = _TRANSP.map(t => {
@@ -469,13 +510,7 @@ function _renderPerfilCard(card, d) {
         : `Nv 100 — nível máximo`;
 
     card.innerHTML = `
-        <div class="pc-header">
-            <div class="pc-avatar">${inicial}</div>
-            <div>
-                <div class="pc-name">${u.displayName || u.name || u.username || "—"}</div>
-                <div class="pc-meta">@${u.username} · ${roleLabel}</div>
-            </div>
-        </div>
+        ${_pcCabecalho(u)}
 
         <div class="pc-section">
             <div class="pc-section-hd">${svgStar} Nível</div>

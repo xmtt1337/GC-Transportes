@@ -59,6 +59,39 @@ function gcPoloGarantir(onPronto) {
         .catch(() => null);
 }
 
+// Dev atende os dois polos e troca sozinho, pelo card do perfil. O servidor confere de novo.
+const GC_ROLES_TROCAM_POLO = ["dev"];
+const _gcPoloPodeTrocar = () => {
+    const u = typeof window !== "undefined" ? window._gcUser : null;
+    return GC_ROLES_TROCAM_POLO.includes(u && u.role);
+};
+
+// Troca o polo de quem pode (dev). Cada tela guardou dados do polo antigo — contagens,
+// conversas, filtros —, então em vez de avisar uma por uma a página recarrega inteira.
+function gcPoloTrocar(chave, onErro) {
+    const polo = gcPoloPorChave(chave);
+    if (!polo || !_gcPoloPodeTrocar()) return;
+    if (_gcPolo && _gcPolo.polo === chave) return;
+
+    gcConfirm(
+        `Trocar seu polo para ${polo.label}${polo.xpt ? ` (${polo.xpt})` : ""}?\n\nA página recarrega e passa a mostrar os dados desse polo.`,
+        () => {
+            fetch(`${API}/shopee/meu-polo`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                body: JSON.stringify({ polo: chave })
+            }).then(r => r.json().then(d => ({ ok: r.ok, d })))
+            .then(({ ok, d }) => {
+                if (!ok) { if (onErro) onErro(d.error || "Não foi possível trocar."); return; }
+                window.location.reload();
+            })
+            .catch(() => { if (onErro) onErro("Erro de conexão. Tente de novo."); });
+        },
+        "Trocar polo",
+        "Trocar"
+    );
+}
+
 // Escolha inicial, uma única vez. O aviso de que fica salvo é o ponto: sem ele a pessoa
 // clica em qualquer um pra passar da tela e o erro dura até alguém reparar.
 function gcPoloPerguntar(onEscolhido) {
@@ -70,7 +103,7 @@ function gcPoloPerguntar(onEscolhido) {
     overlay.innerHTML = `
         <div style="${_gcCardStyle}">
             <div style="${_gcTitleStyle}">Qual é o seu polo?</div>
-            <div style="${_gcMsgStyle}">Escolha a base em que você trabalha. Ela fica salva no seu cadastro e passa a valer em tudo da Shopee — se errar, só um administrador consegue trocar.</div>
+            <div style="${_gcMsgStyle}">Escolha a base em que você trabalha. Ela fica salva no seu cadastro e passa a valer em tudo da Shopee — ${_gcPoloPodeTrocar() ? "dá pra trocar depois pelo seu perfil." : "se errar, só um administrador consegue trocar."}</div>
             <div class="shr-escolha-opcoes">
                 ${SHOPEE_POLOS.map(p => `
                     <button type="button" class="shr-escolha-btn" data-polo="${p.chave}">
@@ -95,9 +128,12 @@ function _gcPoloConfirmar(chave, overlay, onEscolhido) {
         : `${polo.label} não recebe Shopee — você não vai bipar pacotes nas telas da Shopee.`;
 
     // Confirmação antes de gravar: é escolha de uma vez só, e um clique errado aqui custa
-    // uma ida ao administrador.
+    // uma ida ao administrador. Dev é a exceção — troca depois pelo próprio perfil.
+    const depois = _gcPoloPodeTrocar()
+        ? "Você pode trocar depois clicando no seu nome, no canto de cima."
+        : "Depois, só um administrador pode alterar.";
     gcConfirm(
-        `${detalhe}\n\nIsso fica salvo no seu cadastro. Depois, só um administrador pode alterar.`,
+        `${detalhe}\n\nIsso fica salvo no seu cadastro. ${depois}`,
         () => {
             const erro = overlay.querySelector("#gc-polo-erro");
             const botoes = overlay.querySelectorAll(".shr-escolha-btn");
