@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261005c">
+<link rel="stylesheet" href="style.css?v=20261014a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -4878,7 +4878,7 @@ if (_BASE) {
 <script src="js/motorista-devolucoes.js?v=30260812d"></script>
 <script src="js/etiquetas.js?v=30260812d"></script>
 <script src="js/videira.js?v=20261012a"></script>
-<script src="js/planejamento-videira.js?v=20261014a"></script>
+<script src="js/planejamento-videira.js?v=20261014b"></script>
 <script src="js/torre.js?v=30260812d"></script>
 <script src="js/torre-na-rua.js?v=30260916a"></script>
 <script src="js/shopee-na-rua.js?v=20261002a"></script>
@@ -5078,7 +5078,11 @@ if (_BASE) {
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:14px">
             <div class="pv-transp-tabs" id="pv-transp-tabs" style="margin-top:0"></div>
-            <div class="pv-view-toggle" id="pv-view-toggle">
+            <button class="pv-inserir-btn" id="pv-inserir-btn" onclick="_pvAbrirInserirEntregador()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                Inserir Entregador
+            </button>
+            <div class="pv-view-toggle" id="pv-view-toggle" style="margin-left:auto">
                 <button class="pv-view-btn active" data-view="bairro" onclick="_pvMudarView('bairro')">Por Bairro</button>
                 <button class="pv-view-btn" data-view="entregador" onclick="_pvMudarView('entregador')">Por Entregador</button>
             </div>

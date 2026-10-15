@@ -29,6 +29,8 @@ function abrirPlanejamentoVideira(event, unidade) {
     document.getElementById("pv-titulo-unidade").innerText = _PV_UNIDADE_LABEL[_pvUnidade] || _pvUnidade;
     const tabs = document.getElementById("pv-transp-tabs");
     tabs.style.display = _PV_POR_TRANSPORTADORA ? "" : "none";
+    // A lista do geral vem da planilha Dados entregadores — só lá faz sentido pedir cadastro.
+    document.getElementById("pv-inserir-btn").style.display = _PV_POR_TRANSPORTADORA ? "none" : "";
     tabs.innerHTML = !_PV_POR_TRANSPORTADORA ? "" : _PV_TRANSP.map(t => `
         <button class="pv-transp-tab${t.key === _pvTransportadora ? " active" : ""}" style="--pvc:${t.cor}"
             data-t="${t.key}" onclick="_pvTrocarTransportadora('${t.key}')">
@@ -527,3 +529,84 @@ function _pvReatribuirPorDrag(linha, novoEntregador) {
 }
 
 document.addEventListener("pointerdown", _pvDragIniciar);
+
+// ───── Inserir Entregador — quem planeja pede o cadastro de quem não está na lista ─────
+// Grava na aba "Solicitação de usuários" da planilha Dados entregadores, e o nome já
+// entra no combobox. A regra do modelo é a mesma do backend (modules/planejamento/
+// usuarios.js); aqui ela só dá o aviso enquanto digita — quem decide é o servidor.
+const _PV_PALAVRA   = "[A-Za-zÀ-ÖØ-öø-ÿ]+(?:'[A-Za-zÀ-ÖØ-öø-ÿ]+)?";
+const _PV_RE_MODELO = new RegExp("^" + _PV_PALAVRA + "(?: " + _PV_PALAVRA + ")+ ?- ?" + _PV_PALAVRA + "(?: " + _PV_PALAVRA + ")*$");
+
+function _pvAbrirInserirEntregador() {
+    const overlay = document.createElement("div");
+    overlay.setAttribute("style", _gcOverlayStyle);
+    overlay.innerHTML = `<div style="${_gcCardStyle}">
+        <div style="${_gcTitleStyle}">Inserir Entregador</div>
+        <div style="font-size:13px;color:#94a3b8;line-height:1.6;margin-bottom:14px">
+            Não achou o nome na lista? Digite no modelo <b style="color:#e2e8f0">Nome Sobrenome - Cidade</b>.
+            Ele vai como solicitação de cadastro e já pode ser usado no planejamento.
+        </div>
+        <input type="text" class="usr-modal-input" data-nome autocomplete="off" maxlength="80"
+            placeholder="Ex.: Maria Souza - Videira" style="width:100%;box-sizing:border-box">
+        <div data-aviso style="font-size:12px;min-height:18px;margin:8px 0 14px;color:#94a3b8"></div>
+        <div style="${_gcBtnsStyle}">
+            <button style="${_gcBtnCxStyle}" data-cancelar>Cancelar</button>
+            <button style="${_gcBtnOkStyle}" data-inserir>Inserir</button>
+        </div>
+    </div>`;
+
+    const input  = overlay.querySelector("[data-nome]");
+    const aviso  = overlay.querySelector("[data-aviso]");
+    const btnIns = overlay.querySelector("[data-inserir]");
+    const fechar = () => overlay.remove();
+
+    const conferir = () => {
+        const v = input.value.replace(/\s+/g, " ").trim();
+        if (!v) { aviso.textContent = ""; return false; }
+        const ok = _PV_RE_MODELO.test(v);
+        aviso.style.color = ok ? "#22c55e" : "#f59e0b";
+        aviso.textContent = ok ? "Formato certo." : "Use o modelo Nome Sobrenome - Cidade.";
+        return ok;
+    };
+
+    const inserir = () => {
+        if (!conferir()) { input.focus(); return; }
+        btnIns.disabled = true;
+        btnIns.textContent = "Inserindo...";
+        fetch(`${API}/videira/planejamento/entregador`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+            body: JSON.stringify({ nome: input.value })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) {
+                aviso.style.color = "#ef4444";
+                aviso.textContent = d.error;
+                btnIns.disabled = false;
+                btnIns.textContent = "Inserir";
+                return;
+            }
+            if (Array.isArray(d.usuarios)) _pvUsuarios = d.usuarios;
+            fechar();
+            gcAlert(`<b>${_gcEsc(d.nome)}</b> foi enviado para cadastro e já aparece na lista do planejamento.`, "Entregador inserido");
+        })
+        .catch(() => {
+            aviso.style.color = "#ef4444";
+            aviso.textContent = "Erro ao conectar com o servidor.";
+            btnIns.disabled = false;
+            btnIns.textContent = "Inserir";
+        });
+    };
+
+    input.addEventListener("input", conferir);
+    input.addEventListener("keydown", e => {
+        if (e.key === "Enter") inserir();
+        if (e.key === "Escape") fechar();
+    });
+    btnIns.addEventListener("click", inserir);
+    overlay.querySelector("[data-cancelar]").addEventListener("click", fechar);
+    overlay.addEventListener("click", e => { if (e.target === overlay) fechar(); });
+    document.body.appendChild(overlay);
+    setTimeout(() => input.focus(), 50);
+}

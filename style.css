@@ -4210,6 +4210,21 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
     background: var(--pv-accent, #3a86ff); color: #fff;
 }
 
+/* "Inserir Entregador" — pede cadastro de quem não está na lista */
+.pv-inserir-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 14px; border-radius: 99px; cursor: pointer;
+    font-family: inherit; font-size: 12.5px; font-weight: 600;
+    color: var(--pv-accent, #3a86ff);
+    background: color-mix(in srgb, var(--pv-accent, #3a86ff) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--pv-accent, #3a86ff) 35%, transparent);
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+.pv-inserir-btn:hover {
+    background: color-mix(in srgb, var(--pv-accent, #3a86ff) 22%, transparent);
+    transform: translateY(-1px);
+}
+
 /* Cards agrupados por entregador — "quem vai fazer qual rota" */
 .pv-driver-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;
