@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261015e">
+<link rel="stylesheet" href="style.css?v=20261015f">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -2099,6 +2099,13 @@ if (_BASE) {
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Desempenho — Bipagens</div>
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <!-- Polo: só o dev escolhe; os demais veem o próprio (o servidor impõe). -->
+                        <select id="desemp-polo" class="fech-select" onchange="_desempCarregar()" style="display:none">
+                            <option value="todos">Todos os polos</option>
+                            <option value="cacador">Caçador</option>
+                            <option value="videira">Videira</option>
+                            <option value="joacaba">Joaçaba</option>
+                        </select>
                         <select id="desemp-mes" class="fech-select" onchange="_desempCarregar()">
                             <option value="">Todos os meses</option>
                             <option value="1">Janeiro</option><option value="2">Fevereiro</option>
@@ -2121,6 +2128,12 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
+                <!-- Uma fonte por vez: somar ou empilhar escondia quem passou o dia no recebimento. -->
+                <div class="filtro-tabs desemp-tipos" id="desemp-tipos">
+                    <button type="button" class="filtro-tab active" data-tipo="bipagens" onclick="_desempEscolherTipo('bipagens')">Bipagens · transportadoras</button>
+                    <button type="button" class="filtro-tab" data-tipo="recebimento" onclick="_desempEscolherTipo('recebimento')">Recebimento · Shopee</button>
+                    <button type="button" class="filtro-tab" data-tipo="conferencia" onclick="_desempEscolherTipo('conferencia')">Conferência · Shopee</button>
+                </div>
                 <div class="fechamento-empty" id="desemp-empty">Carregando...</div>
                 <div id="desemp-content" style="display:none">
                     <div id="desemp-ranking"></div>
@@ -2133,6 +2146,12 @@ if (_BASE) {
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
                     <div style="font-size:15px;font-weight:700;color:#e2e8f0">Desempenho — Quantidade x Hora</div>
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <select id="desemp-hora-polo" class="fech-select" onchange="_desempHoraCarregar()" style="display:none">
+                            <option value="todos">Todos os polos</option>
+                            <option value="cacador">Caçador</option>
+                            <option value="videira">Videira</option>
+                            <option value="joacaba">Joaçaba</option>
+                        </select>
                         <input type="date" id="desemp-hora-data" class="fech-select" onchange="_desempHoraCarregar()">
                         <select id="desemp-hora-transp" class="fech-select" onchange="_desempHoraCarregar()">
                             <option value="todas">Todas</option>
@@ -2146,6 +2165,11 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
+                <div class="filtro-tabs desemp-tipos" id="desemp-hora-tipos">
+                    <button type="button" class="filtro-tab active" data-tipo="bipagens" onclick="_desempHoraEscolherTipo('bipagens')">Bipagens · transportadoras</button>
+                    <button type="button" class="filtro-tab" data-tipo="recebimento" onclick="_desempHoraEscolherTipo('recebimento')">Recebimento · Shopee</button>
+                    <button type="button" class="filtro-tab" data-tipo="conferencia" onclick="_desempHoraEscolherTipo('conferencia')">Conferência · Shopee</button>
+                </div>
                 <div class="fechamento-empty" id="desemp-hora-empty">Carregando...</div>
                 <div id="desemp-hora-content" style="display:none">
                     <div id="desemp-hora-lista"></div>
@@ -4826,7 +4850,7 @@ if (_BASE) {
 <script src="js/sidebar.js?v=30260812d"></script>
 <script src="js/nav.js?v=20261015e"></script>
 <script src="js/atendimento.js?v=20261015a"></script>
-<script src="js/atendimento-admin.js?v=20261015a"></script>
+<script src="js/atendimento-admin.js?v=20261015b"></script>
 <script src="js/fechamentos.js?v=20261012a"></script>
 <script src="js/admin.js?v=20261012a"></script>
 <script src="js/conf-nf.js?v=20261012a"></script>
@@ -4856,8 +4880,8 @@ if (_BASE) {
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
 <script src="js/pedidos.js?v=20261001a"></script>
-<script src="js/desempenho-bip.js?v=20261015b"></script>
-<script src="js/desempenho-hora.js?v=30260812d"></script>
+<script src="js/desempenho-bip.js?v=20261015c"></script>
+<script src="js/desempenho-hora.js?v=20261015a"></script>
 <script src="js/conferencias.js?v=30260812d"></script>
 <script src="js/conferencias-hub.js?v=30260901b"></script>
 <script src="js/antecipacoes.js?v=20261014a"></script>
@@ -4866,7 +4890,7 @@ if (_BASE) {
 <script src="js/custodia.js?v=20260820i"></script>
 <script src="js/devolucoes.js?v=30260812d"></script>
 <script src="js/shopee-polo.js?v=20261015a"></script>
-<script src="js/perfil-conta.js?v=20261015b"></script>
+<script src="js/perfil-conta.js?v=20261015c"></script>
 <script src="js/shopee.js?v=30260812d"></script>
 <script src="js/shopee-romaneiro.js?v=30260812d"></script>
 <script src="js/shopee-at.js?v=30260917b"></script>

@@ -3,6 +3,7 @@ function abrirDesempenhoBip(event) {
     mostrarTela('tela-desempenho-bip');
     document.getElementById('titulo-pagina').innerText = 'Desempenho';
     _desempInicializarAnos();
+    _desempPintarTipo();
     _desempCarregar();
 }
 
@@ -18,6 +19,57 @@ function _desempInicializarAnos() {
     document.getElementById('desemp-mes').value = String(new Date().getMonth() + 1);
 }
 
+// Três fontes, cada uma com o seu ranking: as bipagens de Operação > Bipagens e o
+// recebimento e as conferências da Shopee. Uma por vez, escolhida nas abas — somar
+// ou empilhar escondia quem passou o dia no recebimento.
+const _DESEMP_FONTES = {
+    bipagens:    { chave: 'bipagens',    titulo: 'Operação · Bipagens',   cor: null,      unidade: 'bipagens' },
+    recebimento: { chave: 'recebimento', titulo: 'Recebimento · Shopee',  cor: '#F97316', unidade: 'recebidos' },
+    conferencia: { chave: 'conferencia', titulo: 'Conferências · Shopee', cor: '#F97316', unidade: 'conferidos' },
+};
+let _desempTipo = 'bipagens';
+let _desempDados = null;     // última resposta: trocar de aba não precisa ir ao servidor
+let _desempPeriodo = '';
+
+const _DESEMP_POLOS = { cacador: 'Caçador', videira: 'Videira', joacaba: 'Joaçaba' };
+
+function _desempEscolherTipo(tipo) {
+    if (!_DESEMP_FONTES[tipo]) return;
+    _desempTipo = tipo;
+    _desempPintarTipo();
+    if (_desempDados) _desempRenderizar(_desempDados, _desempPeriodo);
+}
+
+// Aba ativa e filtro de transportadora: ele só faz sentido nas bipagens da Operação
+// (recebimento e conferência são sempre Shopee).
+function _desempPintarTipo() {
+    document.querySelectorAll('#desemp-tipos .filtro-tab').forEach(b =>
+        b.classList.toggle('active', b.dataset.tipo === _desempTipo));
+    const transp = document.getElementById('desemp-transp');
+    if (transp) transp.style.display = _desempTipo === 'bipagens' ? '' : 'none';
+}
+
+// Polo da consulta: só dev escolhe (o seletor só aparece pra ele). Vazio na primeira
+// abertura = o servidor usa o polo do próprio dev, e a resposta preenche o seletor.
+function _desempPoloParam(selId) {
+    const role = window._gcUser && window._gcUser.role;
+    const sel = document.getElementById(selId);
+    if (!sel || role !== 'dev') return '';
+    sel.style.display = '';
+    return sel.dataset.escolhido ? sel.value : '';
+}
+
+function _desempPoloRefletir(selId, polo) {
+    const sel = document.getElementById(selId);
+    if (!sel || sel.style.display === 'none') return;
+    sel.value = polo || 'todos';
+    sel.dataset.escolhido = '1';
+}
+
+function _desempPoloRotulo(polo) {
+    return polo ? _DESEMP_POLOS[polo] || polo : 'Todos os polos';
+}
+
 async function _desempCarregar() {
     const mes = document.getElementById('desemp-mes').value;
     const ano = document.getElementById('desemp-ano').value;
@@ -27,6 +79,7 @@ async function _desempCarregar() {
     skMostrar(emptyEl);
     emptyEl.style.display = '';
     contentEl.style.display = 'none';
+    _desempDados = null;
 
     const transp = document.getElementById('desemp-transp').value;
     const transpNomeFiltro = { todas:'Todas', loggi:'Loggi', anjun:'Anjun', jt:'J&T', imile:'Imile', shopee:'Shopee' };
@@ -35,48 +88,48 @@ async function _desempCarregar() {
         const params = new URLSearchParams();
         if (mes && ano) { params.set('mes', mes); params.set('ano', ano); }
         if (transp && transp !== 'todas') params.set('transportadora', transp);
+        const polo = _desempPoloParam('desemp-polo');
+        if (polo) params.set('polo', polo);
         const url  = API + '/bipagem/desempenho' + (params.toString() ? '?' + params.toString() : '');
         const res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
         const data = await res.json();
+        // Sem polo cadastrado o servidor não mostra nada: pergunta e recarrega.
+        if (data.polo_pendente) {
+            skFim(emptyEl, 'Escolha o seu polo para ver o desempenho.');
+            gcPoloInvalidar(); gcPoloGarantir(() => _desempCarregar());
+            return;
+        }
         if (!res.ok) throw new Error(data.error);
+        _desempPoloRefletir('desemp-polo', data.polo);
 
         const meses = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
         const periodoMes   = mes && ano ? `${meses[parseInt(mes)]} ${ano}` : 'Todos os meses';
         const periodoTransp = transp !== 'todas' ? ` · ${transpNomeFiltro[transp]}` : '';
-        const periodo = periodoMes + periodoTransp;
-
-        const vazio = !(data.recebimento || []).length && !(data.conferencia || []).length && !(data.bipagens || []).length;
-        if (vazio) {
-            skFim(emptyEl, `Nenhuma bipagem em ${periodo}.`);
-            return;
-        }
-        _desempRenderizar(data, periodo);
+        _desempPeriodo = `${_desempPoloRotulo(data.polo)} · ${periodoMes}${periodoTransp}`;
+        _desempDados = data;
+        _desempRenderizar(data, _desempPeriodo);
     } catch (err) {
         skFim(emptyEl, 'Erro: ' + err.message);
     }
 }
 
-// Três fontes, cada uma com o seu ranking: o recebimento e as conferências da
-// Shopee e as bipagens feitas em Operação > Bipagens. Somar tudo num número só
-// escondia quem passou o dia no recebimento.
-const _DESEMP_FONTES = [
-    { chave: 'recebimento', titulo: 'Recebimento · Shopee',  cor: '#F97316', unidade: 'recebidos' },
-    { chave: 'conferencia', titulo: 'Conferências · Shopee', cor: '#F97316', unidade: 'conferidos' },
-    { chave: 'bipagens',    titulo: 'Operação · Bipagens',   cor: null,      unidade: 'bipagens' },
-];
-
 function _desempRenderizar(data, periodo) {
     const emptyEl   = document.getElementById('desemp-empty');
     const contentEl = document.getElementById('desemp-content');
     const rankEl    = document.getElementById('desemp-ranking');
+    const fonte     = _DESEMP_FONTES[_desempTipo];
+    const rows      = data[fonte.chave] || [];
 
-    rankEl.innerHTML = _DESEMP_FONTES
-        .filter(f => (data[f.chave] || []).length)
-        .map(f => `<div class="desemp-secao">${_desempSecao(data[f.chave], f, periodo)}</div>`)
-        .join('');
-
+    if (!rows.length) {
+        contentEl.style.display = 'none';
+        emptyEl.style.display = '';
+        skFim(emptyEl, `Nenhum registro de ${fonte.titulo.toLowerCase()} em ${periodo}.`);
+        return;
+    }
+    rankEl.innerHTML = `<div class="desemp-secao">${_desempSecao(rows, fonte, periodo)}</div>`;
     emptyEl.style.display = 'none';
     contentEl.style.display = '';
+    if (typeof gcAplicarFotos === 'function') gcAplicarFotos(rankEl);
 }
 
 function _desempSecao(rows, fonte, periodo) {
@@ -122,9 +175,9 @@ function _desempSecao(rows, fonte, periodo) {
             <div class="rank-card" style="--rk-accent:${accent};--rk-bg:${rkBg}">
                 <div class="rank-head">
                     ${posEl}
-                    <div class="rank-avatar">${ini.toUpperCase()}</div>
+                    <div class="rank-avatar" data-foto-nome="${_gcEsc(u.usuario_nome || '')}">${_gcEsc(ini.toUpperCase())}</div>
                     <div class="rank-info">
-                        <div class="rank-name">${u.usuario_nome}</div>
+                        <div class="rank-name">${_gcEsc(u.usuario_nome)}</div>
                         <div class="rank-pct-lbl">${pctTotal}% do total · ${u.total.toLocaleString('pt-BR')} de ${totalGeral.toLocaleString('pt-BR')}</div>
                     </div>
                     <div class="rank-total">

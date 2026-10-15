@@ -118,7 +118,7 @@ function _atdaPintarCandidatos() {
     const sobra  = achados.length - mostra.length;
     alvo.innerHTML = mostra.map(c => `
         <div class="atd-novo-item" onclick="_atdaEscolherCandidato(${c.usuario_id})">
-            <div class="atd-adm-avatar">${_atdEscapar(_atdaIniciais(c.nome))}</div>
+            <div class="atd-adm-avatar" data-foto-nome="${_atdEscapar(c.nome)}">${_atdEscapar(_atdaIniciais(c.nome))}</div>
             <div class="atd-novo-item-corpo">
                 <div class="atd-adm-nome">${_atdEscapar(c.nome)}</div>
                 <div class="atd-adm-item-meta">${_atdaCrachaRole(c.role)}
@@ -127,6 +127,7 @@ function _atdaPintarCandidatos() {
             ${c.tem_conversa ? `<span class="atd-novo-jatem">já conversaram</span>` : ""}
         </div>`).join("")
         + (sobra ? `<div class="atd-aviso">e mais ${sobra} — refine a busca.</div>` : "");
+    if (typeof gcAplicarFotos === "function") gcAplicarFotos(alvo);
 }
 
 function _atdaEscolherCandidato(usuarioId) {
@@ -258,7 +259,7 @@ function _atdaPintarLista() {
         // dá pra saber, olhando a lista, quem está esperando quem.
         const prefixo = c.ultimo_de === "suporte" ? `<span class="atd-adm-eu">Você:</span> ` : "";
         return `<div class="atd-adm-item${ativa}${nova}" onclick="_atdaAbrirConversa(${c.id})">
-            <div class="atd-adm-avatar">${_atdEscapar(_atdaIniciais(c.usuario_nome))}</div>
+            <div class="atd-adm-avatar" data-foto-nome="${_atdEscapar(c.usuario_nome)}">${_atdEscapar(_atdaIniciais(c.usuario_nome))}</div>
             <div class="atd-adm-item-corpo">
                 <div class="atd-adm-item-topo">
                     <span class="atd-adm-nome">${_atdEscapar(c.usuario_nome)}</span>
@@ -273,6 +274,7 @@ function _atdaPintarLista() {
             </div>
         </div>`;
     }).join("");
+    if (typeof gcAplicarFotos === "function") gcAplicarFotos(alvo);
 }
 
 function _atdaAbrirConversa(id) {
@@ -317,7 +319,12 @@ function _atdaPintarCabecalho() {
     const av   = document.getElementById("atd-adm-chat-avatar");
     const btn  = document.getElementById("atd-adm-arquivar");
     if (nome) nome.innerText = _atdaAtual.usuario_nome || "—";
-    if (av)   av.innerText   = _atdaIniciais(_atdaAtual.usuario_nome);
+    if (av) {
+        av.classList.remove("gc-com-foto");
+        av.innerText = _atdaIniciais(_atdaAtual.usuario_nome);
+        av.dataset.fotoNome = _atdaAtual.usuario_nome || "";
+        if (typeof gcAplicarFotos === "function" && av.parentElement) gcAplicarFotos(av.parentElement);
+    }
     if (sub) {
         sub.innerHTML = `${_atdaCrachaRole(_atdaAtual.usuario_role)}
             <span class="atd-adm-username">${_atdEscapar(_atdaAtual.usuario_username || "")}</span>`;

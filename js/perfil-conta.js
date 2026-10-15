@@ -110,8 +110,45 @@ function pcRemoverFoto() {
 // atualiza o chip do topo junto.
 function _pcAtualizarAvatar(foto) {
     gcPerfilChipAvatar(foto);
+    _gcFotosEsquecerMinha();
     fecharPerfilCard();
     abrirPerfilCard();
+}
+
+// ── Fotos de perfil nos avatares das outras telas ──
+// Toda tela que desenha bolinha de iniciais (ranking, Quantidade x Hora, atendimento)
+// marca o elemento com data-foto-nome="<nome>" e chama gcAplicarFotos(container)
+// depois de desenhar. As iniciais ficam até a foto chegar — e ficam de vez pra quem
+// não tem foto. Cache por nome durante a sessão: o timer das telas redesenha o tempo
+// todo e não pode virar um pedido de foto a cada volta.
+const _gcFotosCache = new Map(); // nome → data URL | null (sem foto)
+
+async function gcAplicarFotos(container) {
+    if (!container) return;
+    const els = [...container.querySelectorAll("[data-foto-nome]")];
+    if (!els.length) return;
+    const faltam = [...new Set(els.map(e => e.dataset.fotoNome).filter(n => n && !_gcFotosCache.has(n)))];
+    if (faltam.length) {
+        try {
+            const r = await fetch(API + "/usuarios/fotos", {
+                method: "POST", headers: _pcHeaders(), body: JSON.stringify({ nomes: faltam }),
+            });
+            const d = r.ok ? await r.json() : { fotos: {} };
+            faltam.forEach(n => _gcFotosCache.set(n, (d.fotos && d.fotos[n]) || null));
+        } catch { return; } // sem rede, as iniciais ficam
+    }
+    els.forEach(el => {
+        const foto = _gcFotosCache.get(el.dataset.fotoNome);
+        if (!foto || !el.isConnected) return;
+        el.classList.add("gc-com-foto");
+        el.innerHTML = `<img src="${foto}" alt="">`;
+    });
+}
+
+// A foto própria mudou: esquece o cache do próprio nome pra próxima tela buscar de novo.
+function _gcFotosEsquecerMinha() {
+    const u = window._gcUser || {};
+    _gcFotosCache.delete(u.name || u.username || "");
 }
 
 // ── Chip do topo (avatar + nome + setinha) ──

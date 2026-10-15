@@ -8,7 +8,31 @@ function abrirDesempenhoHora(event) {
         const tz   = new Date(hoje.getTime() - hoje.getTimezoneOffset() * 60000);
         dataInput.value = tz.toISOString().slice(0, 10);
     }
+    _desempHoraPintarTipo();
     _desempHoraCarregar();
+}
+
+// Mesmas três fontes da tela Desempenho. A Shopee não é bipada em Operação >
+// Bipagens, e sim no Recebimento e na Conferência — sem estas abas ela nunca aparecia.
+let _desempHoraTipo = 'bipagens';
+const _DESEMP_HORA_VAZIO = {
+    bipagens: 'Nenhuma bipagem nesta data.',
+    recebimento: 'Nenhum recebimento da Shopee nesta data.',
+    conferencia: 'Nenhuma conferência da Shopee nesta data.',
+};
+
+function _desempHoraEscolherTipo(tipo) {
+    if (!_DESEMP_HORA_VAZIO[tipo]) return;
+    _desempHoraTipo = tipo;
+    _desempHoraPintarTipo();
+    _desempHoraCarregar();
+}
+
+function _desempHoraPintarTipo() {
+    document.querySelectorAll('#desemp-hora-tipos .filtro-tab').forEach(b =>
+        b.classList.toggle('active', b.dataset.tipo === _desempHoraTipo));
+    const transp = document.getElementById('desemp-hora-transp');
+    if (transp) transp.style.display = _desempHoraTipo === 'bipagens' ? '' : 'none';
 }
 
 async function _desempHoraCarregar() {
@@ -24,15 +48,23 @@ async function _desempHoraCarregar() {
 
     try {
         const transp = document.getElementById('desemp-hora-transp').value;
-        const params = new URLSearchParams({ data });
-        if (transp && transp !== 'todas') params.set('transportadora', transp);
+        const params = new URLSearchParams({ data, tipo: _desempHoraTipo });
+        if (_desempHoraTipo === 'bipagens' && transp && transp !== 'todas') params.set('transportadora', transp);
+        const polo = _desempPoloParam('desemp-hora-polo');
+        if (polo) params.set('polo', polo);
         const url  = API + '/bipagem/desempenho-hora?' + params.toString();
         const res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
         const body = await res.json();
+        if (body.polo_pendente) {
+            skFim(emptyEl, 'Escolha o seu polo para ver o desempenho.');
+            gcPoloInvalidar(); gcPoloGarantir(() => _desempHoraCarregar());
+            return;
+        }
         if (!res.ok) throw new Error(body.error);
+        _desempPoloRefletir('desemp-hora-polo', body.polo);
 
         if (!body.horas || !body.horas.length) {
-            skFim(emptyEl, 'Nenhuma bipagem nesta data.');
+            skFim(emptyEl, _DESEMP_HORA_VAZIO[_desempHoraTipo]);
             return;
         }
         _desempHoraRenderizar(body.horas, body.comparativo || [], body.transp || [], data);
@@ -202,9 +234,9 @@ function _desempHoraRenderizar(rows, comparativo, transpRows, data) {
                 <div class="dh-head">
                     <div class="dh-user">
                         <span class="dh-rank ${rankClasse[idx] || ''}">${rankLabel}</span>
-                        <div class="dh-avatar">${_desempHoraIniciais(nome)}</div>
+                        <div class="dh-avatar" data-foto-nome="${_gcEsc(nome)}">${_gcEsc(_desempHoraIniciais(nome))}</div>
                         <div style="min-width:0">
-                            <div class="dh-name">${nome}</div>
+                            <div class="dh-name">${_gcEsc(nome)}</div>
                             <div class="dh-sub">
                                 ${c.hoje_horas ? c.hoje_horas + 'h ativas' : '—'}
                                 <span class="dh-peak-pill">⚡ pico ${String(peakHora).padStart(2,'0')}h</span>
@@ -248,4 +280,5 @@ function _desempHoraRenderizar(rows, comparativo, transpRows, data) {
 
     emptyEl.style.display = 'none';
     contentEl.style.display = '';
+    if (typeof gcAplicarFotos === 'function') gcAplicarFotos(listaEl);
 }
