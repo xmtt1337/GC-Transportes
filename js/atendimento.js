@@ -15,26 +15,15 @@
 // minuto é folgado pro ritmo de um suporte interno e não faz a aba esquecida
 // aberta martelar o servidor o dia inteiro.
 // ─────────────────────────────────────────────────────────────────────────────
-// CHAVE DE DESLIGAR — TEMPORARIA, PRA ISOLAR UM BUG
+// Quem NÃO tem balãozinho. Dev é quem responde (ou senta do lado de quem
+// responde) — pra ele o botão só ocuparia o canto da tela.
 //
-// O dono relatou que o app "fica todo bugado, parecendo glitch" no celular dos
-// entregadores, e lembrou que comecou no dia em que este atendimento entrou
-// (2026-09-02). E a melhor pista que apareceu depois de muita tentativa errada
-// minha, e da pra testar sem adivinhar: desliga o atendimento pra quem NAO e do
-// suporte e ve se para.
-//
-// Duas coisas que o atendimento poe em TODA tela, pra TODO cargo, e que
-// nenhuma outra parte do sistema fazia antes dele:
-//   1. Um botao position: fixed no canto, sempre presente, em cima de tudo.
-//   2. Um fetch de minuto em minuto, em toda tela, pro backend.
-// E medido: com o painel aberto no celular ele cobre 84% da tela com fundo
-// quase preto (378x644 numa tela de 394x734), o que sozinho ja explica alguem
-// achar que o sistema morreu se abrir sem querer.
-//
-// COMO REATIVAR: trocar para false. Uma linha, nada mais.
-// Se o defeito continuar com isto ligado, o atendimento esta inocente e a
-// investigacao volta pra outro lado — o que tambem e resposta.
-const _ATD_DESLIGADO = true;
+// O balão chegou a ficar desligado pra todo mundo (set/2026) como suspeito do
+// "glitch" no Chrome do celular. A causa real apareceu em 28/09: overlays de
+// tela inteira com backdrop-filter vivos mesmo fechados (ver o teste
+// gpu-camadas-fechadas). O balão não tem nada disso — é um botão de 54px sem
+// blur, e o painel só existe na pintura (display) quando está aberto.
+const _ATD_SEM_BALAO_ROLES = ["dev"];
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _ATD_INTERVALO_BADGE = 60000;
@@ -135,6 +124,32 @@ function _atdBlocos(mensagens, agora) {
     return blocos;
 }
 
+// Rodapé de mensagem que pede decisão (ex.: troca de polo). O suporte vê os botões
+// enquanto está pendente; quem pediu vê só em que pé está. Decidido, os dois veem o
+// resultado e quem decidiu.
+const _ATD_ACAO_STATUS = {
+    pendente:    { texto: "Aguardando o suporte", cls: "pendente" },
+    aprovado:    { texto: "Aprovado",             cls: "aprovado" },
+    recusado:    { texto: "Recusado",             cls: "recusado" },
+    substituido: { texto: "Trocado por um pedido mais novo", cls: "substituido" },
+};
+
+function _atdHtmlAcao(m, meuLado) {
+    const a = m.acao;
+    if (!a || !a.tipo) return "";
+    const id = Number(m.id);
+    if (a.status === "pendente" && meuLado === "suporte" && Number.isFinite(id)) {
+        return `<div class="atd-acao">
+            <button type="button" class="atd-acao-btn aprovar" onclick="_atdaDecidir(${id}, true)">Aprovar</button>
+            <button type="button" class="atd-acao-btn recusar" onclick="_atdaDecidir(${id}, false)">Recusar</button>
+        </div>`;
+    }
+    const st = _ATD_ACAO_STATUS[a.status] || { texto: a.status || "", cls: "" };
+    const quem = a.decidido_por && (a.status === "aprovado" || a.status === "recusado")
+        ? ` · ${_atdEscapar(a.decidido_por)}` : "";
+    return `<div class="atd-acao"><span class="atd-acao-status ${st.cls}">${_atdEscapar(st.texto)}${quem}</span></div>`;
+}
+
 /** HTML de uma conversa inteira. `meuLado` é o lado que aparece à direita. */
 function _atdHtmlConversa(mensagens, meuLado, agora) {
     return _atdBlocos(mensagens, agora).map(b => {
@@ -146,6 +161,7 @@ function _atdHtmlConversa(mensagens, meuLado, agora) {
         const autor = lado === "dele" && m.autor
             ? `<span class="atd-bolha-autor">${_atdEscapar(m.autor)}</span>` : "";
         return `<div class="atd-bolha ${lado}">${autor}${_atdEscapar(m.texto)}`
+             + _atdHtmlAcao(m, meuLado)
              + `<span class="atd-bolha-hora">${_atdHora(m.criado_em)}</span></div>`;
     }).join("");
 }
@@ -156,24 +172,7 @@ function _atdHtmlConversa(mensagens, meuLado, agora) {
 // conta vê o balãozinho (todo mundo) ou o menu "Atendimento" (só o suporte) —
 // e quem responde isso é o servidor, não uma lista de nomes no navegador.
 function atdIniciar() {
-    // Desligado: sem botao e sem consulta de minuto em minuto. A conta do
-    // suporte segue com o menu "Atendimento" normalmente — quem some e so o
-    // balaozinho de quem pede ajuda, que e o que esta em toda tela de todo mundo.
-    if (_ATD_DESLIGADO) {
-        _atdPronto = fetch(API + "/atendimento/status", { headers: { "Authorization": "Bearer " + token } })
-            .then(r => r.ok ? r.json() : Promise.reject())
-            .then(d => {
-                _atdSuporte = !!d.suporte;
-                if (!_atdSuporte) return;
-                const menu = document.getElementById("menu-atendimento");
-                const sub  = document.getElementById("submenu-atendimento");
-                if (menu) menu.style.display = "";
-                if (sub)  sub.style.display  = "";
-                _atdPintarBadge(d.nao_lidas);
-            })
-            .catch(() => {});
-        return;
-    }
+    const role = window._gcUser && window._gcUser.role;
     _atdPronto = fetch(API + "/atendimento/status", { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.ok ? r.json() : Promise.reject())
         .then(d => {
@@ -183,6 +182,9 @@ function atdIniciar() {
                 const sub  = document.getElementById("submenu-atendimento");
                 if (menu) menu.style.display = "";
                 if (sub)  sub.style.display  = "";
+            } else if (_ATD_SEM_BALAO_ROLES.includes(role)) {
+                // Sem balão, sem contador e sem consulta de minuto em minuto.
+                return;
             } else {
                 const btn = document.getElementById("atd-launcher");
                 if (btn) btn.style.display = "";

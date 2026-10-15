@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261015d">
+<link rel="stylesheet" href="style.css?v=20261015e">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -701,7 +701,13 @@ if (_BASE) {
             <h1 id="titulo-pagina">Painel</h1>
         </div>
         <div class="user-area">
-            <span class="username" id="username-trigger">Carregando...</span>
+            <!-- Chip do perfil: avatar + nome + setinha, pra ficar claro que abre algo.
+                 No celular o nome some e fica o avatar com a setinha (ver style.css). -->
+            <button type="button" class="username perfil-chip" id="username-trigger" aria-label="Abrir meu perfil" title="Meu perfil">
+                <span class="perfil-chip-avatar" id="perfil-chip-avatar"></span>
+                <span class="perfil-chip-nome" id="perfil-chip-nome">Carregando...</span>
+                <svg class="perfil-chip-seta" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
             <div id="perfil-card" class="perfil-card" style="display:none"></div>
             <div class="logout-btn" onclick="logout()">
                 <svg viewBox="0 0 24 24" width="18" height="18">
@@ -4814,13 +4820,13 @@ if (_BASE) {
     </div>
 </div>
 
-<script src="js/core.js?v=20261015b"></script>
+<script src="js/core.js?v=20261015c"></script>
 <script src="js/col-filtro.js?v=20260917b"></script>
 <script src="js/router.js?v=20261015a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=20261015d"></script>
-<script src="js/atendimento.js?v=20260907a"></script>
-<script src="js/atendimento-admin.js?v=30260902h"></script>
+<script src="js/nav.js?v=20261015e"></script>
+<script src="js/atendimento.js?v=20261015a"></script>
+<script src="js/atendimento-admin.js?v=20261015a"></script>
 <script src="js/fechamentos.js?v=20261012a"></script>
 <script src="js/admin.js?v=20261012a"></script>
 <script src="js/conf-nf.js?v=20261012a"></script>
@@ -4860,7 +4866,7 @@ if (_BASE) {
 <script src="js/custodia.js?v=20260820i"></script>
 <script src="js/devolucoes.js?v=30260812d"></script>
 <script src="js/shopee-polo.js?v=20261015a"></script>
-<script src="js/perfil-conta.js?v=20261015a"></script>
+<script src="js/perfil-conta.js?v=20261015b"></script>
 <script src="js/shopee.js?v=30260812d"></script>
 <script src="js/shopee-romaneiro.js?v=30260812d"></script>
 <script src="js/shopee-at.js?v=30260917b"></script>

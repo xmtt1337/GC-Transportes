@@ -90,7 +90,7 @@ function pcEscolherFoto() {
             const foto = await _pcReduzirFoto(arquivo);
             const r = await _pcPost("/minha-foto", { foto }, "PUT");
             if (!r.ok) { gcAlert(r.d.error || "Não foi possível salvar a foto."); return; }
-            _pcAtualizarAvatar();
+            _pcAtualizarAvatar(foto);
         } catch (e) {
             gcAlert(e.message || "Erro ao enviar a foto.");
         }
@@ -102,14 +102,34 @@ function pcRemoverFoto() {
     gcConfirm("Remover sua foto de perfil?", async () => {
         const r = await _pcPost("/minha-foto", null, "DELETE").catch(() => ({ ok: false, d: {} }));
         if (!r.ok) { gcAlert(r.d.error || "Não foi possível remover a foto."); return; }
-        _pcAtualizarAvatar();
+        _pcAtualizarAvatar(null);
     }, "Remover foto", "Remover");
 }
 
-// Reabre o card já com a foto nova (e o "Remover foto" aparecendo ou sumindo).
-function _pcAtualizarAvatar() {
+// Reabre o card já com a foto nova (e o "Remover foto" aparecendo ou sumindo), e
+// atualiza o chip do topo junto.
+function _pcAtualizarAvatar(foto) {
+    gcPerfilChipAvatar(foto);
     fecharPerfilCard();
     abrirPerfilCard();
+}
+
+// ── Chip do topo (avatar + nome + setinha) ──
+// A foto só entra se o servidor validou como data URL de imagem (modules/perfil).
+function gcPerfilChipAvatar(foto) {
+    const el = document.getElementById("perfil-chip-avatar");
+    if (!el) return;
+    const u = window._gcUser || {};
+    const inicial = (u.displayName || u.name || u.username || "?")[0].toUpperCase();
+    el.innerHTML = foto ? `<img src="${foto}" alt="">` : _gcEsc(inicial);
+}
+
+// Uma consulta só, na entrada. A foto vem reduzida (~20 KB), então não pesa.
+function gcPerfilChipCarregarFoto() {
+    fetch(API + "/meus-dados", { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d && d.foto) gcPerfilChipAvatar(d.foto); })
+        .catch(() => {});
 }
 
 // ── Senha ──

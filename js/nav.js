@@ -446,7 +446,7 @@ function fecharPerfilCard() {
 function _pcClickFora(e) {
     const card = document.getElementById("perfil-card");
     const trigger = document.getElementById("username-trigger");
-    if (card && !card.contains(e.target) && e.target !== trigger) fecharPerfilCard();
+    if (card && !card.contains(e.target) && !(trigger && trigger.contains(e.target))) fecharPerfilCard();
 }
 
 const _PC_ROLE_LABELS = { user: "Usuário", admin: "Administrador", dev: "Dev", finance: "Financeiro", sac: "SAC", entregador: "Entregador", motorista: "Motorista" };

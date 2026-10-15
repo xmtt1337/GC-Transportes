@@ -441,3 +441,29 @@ function _atdaArquivar() {
         })
         .catch(() => gcAlert("Erro ao conectar com o servidor."));
 }
+
+// Aprovar/recusar um pedido que chegou na conversa (ex.: troca de polo). Quem aplica
+// é o servidor; aqui só confirma e recarrega a conversa, que já traz a resposta que
+// foi pra pessoa e o pedido marcado como decidido.
+function _atdaDecidir(mensagemId, aprovar) {
+    const nome = (_atdaAtual && _atdaAtual.usuario_nome) || "esta pessoa";
+    gcConfirm(
+        aprovar ? `Aprovar o pedido de ${_atdEscapar(nome)}? A troca vale na hora.`
+                : `Recusar o pedido de ${_atdEscapar(nome)}?`,
+        () => {
+            fetch(`${API}/atendimento/mensagens/${mensagemId}/decidir`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                body: JSON.stringify({ aprovar }),
+            })
+                .then(r => r.json().then(corpo => ({ ok: r.ok, corpo })))
+                .then(({ ok, corpo }) => {
+                    if (!ok) gcAlert(corpo.error || "Não foi possível registrar a decisão.");
+                    _atdaCarregarConversa(true);
+                })
+                .catch(() => gcAlert("Erro ao conectar com o servidor."));
+        },
+        aprovar ? "Aprovar pedido" : "Recusar pedido",
+        aprovar ? "Aprovar" : "Recusar"
+    );
+}

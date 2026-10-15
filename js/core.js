@@ -120,7 +120,11 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
 
     // antecipa_fora_prazo: liberação do dev pra pedir antecipação depois da data limite.
     window._gcUser = { name, username, displayName, role, antecipaForaPrazo: !!data.usuario.antecipa_fora_prazo };
-    document.querySelector(".username").innerText  = displayName;
+    const chipNome = document.getElementById("perfil-chip-nome");
+    if (chipNome) chipNome.innerText = displayName;
+    // perfil-conta.js carrega depois deste arquivo; o perfil chega por fetch, então na
+    // prática já existe — o typeof é só pra não derrubar o resto se faltar.
+    if (typeof gcPerfilChipAvatar === "function") { gcPerfilChipAvatar(null); gcPerfilChipCarregarFoto(); }
     document.getElementById("welcome-name").innerText = displayName;
 
     // Todo cargo abre o card: foto, senha e e-mail são de todo mundo (o que muda por cargo
