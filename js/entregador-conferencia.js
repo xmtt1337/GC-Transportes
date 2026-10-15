@@ -301,17 +301,58 @@ function _cenAtsHtml(cluster) {
 function _cenCopiarAt(btn, i) {
     const at = _cenAts[i];
     if (!at) return;
+    // Sem área de transferência (navegador antigo, página sem HTTPS) ainda dá
+    // pra copiar no dedo: o QR abre com a AT selecionável do lado.
+    _cenCopiar(btn, at.task_id);
+}
+
+// Copia o texto e mostra no próprio botão se deu certo. Celular antigo sem
+// navigator.clipboard ainda copia pelo caminho velho (textarea + execCommand).
+function _cenCopiar(btn, texto) {
     const rotulo = btn.innerText;
-    navigator.clipboard.writeText(at.task_id).then(() => {
+    const ok = () => {
         btn.innerText = "Copiado!";
         btn.classList.add("copiado");
         setTimeout(() => { btn.innerText = rotulo; btn.classList.remove("copiado"); }, 1800);
-    }).catch(() => {
-        // Sem área de transferência (navegador antigo, página sem HTTPS) ainda dá
-        // pra copiar no dedo: o QR abre com a AT selecionável do lado.
+    };
+    const falhou = () => {
         btn.innerText = "Não consegui copiar";
         setTimeout(() => { btn.innerText = rotulo; }, 2200);
-    });
+    };
+    const jeitoVelho = () => {
+        try {
+            const ta = document.createElement("textarea");
+            ta.value = texto;
+            ta.setAttribute("readonly", "");
+            ta.style.cssText = "position:fixed;left:-9999px;top:0";
+            document.body.appendChild(ta);
+            ta.select();
+            const deu = document.execCommand("copy");
+            ta.remove();
+            deu ? ok() : falhou();
+        } catch (_) { falhou(); }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(ok).catch(jeitoVelho);
+    } else {
+        jeitoVelho();
+    }
+}
+
+// Texto da lista de faltantes como vai pra área de transferência: um cabeçalho e
+// um código por linha — é assim que ele cola no WhatsApp pro responsável.
+function _cenTextoFaltantes(lista) {
+    return "Pedidos faltantes:\n" + (lista || []).map(f => f.codigo).join("\n");
+}
+
+function _cenCopiarFaltantes(btn) {
+    if (!_cenFaltantes.length) return;
+    _cenCopiar(btn, _cenTextoFaltantes(_cenFaltantes));
+}
+
+function _cenCopiarFaltante(btn, i) {
+    const f = _cenFaltantes[i];
+    if (f) _cenCopiar(btn, f.codigo);
 }
 
 function _cenVerQr(i) {
@@ -617,15 +658,26 @@ function _cenRenderizar() {
     document.querySelectorAll("#cen-abas .filtro-tab").forEach(b =>
         b.classList.toggle("active", b.dataset.f === _cenFiltro));
 
+    // Copiar todos só existe na aba Faltam e com algo pra copiar.
+    const copiarTodos = document.getElementById("cen-copiar-faltam");
+    if (copiarTodos) {
+        const mostrar = _cenFiltro === "faltam" && _cenFaltantes.length > 0;
+        copiarTodos.style.display = mostrar ? "" : "none";
+        const btnTodos = document.getElementById("cen-copiar-faltam-btn");
+        if (mostrar && btnTodos && !btnTodos.classList.contains("copiado")) {
+            btnTodos.innerText = `Copiar os ${_cenFaltantes.length} faltantes`;
+        }
+    }
     let linhas;
     if (_cenFiltro === "faltam") {
-        linhas = _cenFaltantes.map(f => `
+        linhas = _cenFaltantes.map((f, i) => `
             <tr>
                 <td data-label="Código" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#e2e8f0">${_cenEsc(f.codigo)}</td>
                 <td data-label="Situação"><span style="color:#eab308;font-weight:700;font-size:12.5px">Não bipado</span></td>
                 <td data-label="Cidade">${_cenEsc(f.cidade || f.bairro || "—")}</td>
+                <td data-label=""><button type="button" class="cen-at-btn" onclick="_cenCopiarFaltante(this,${i})">Copiar</button></td>
             </tr>`);
-        document.getElementById("cen-thead").innerHTML = `<tr><th>Código</th><th>Situação</th><th>Cidade / Bairro</th></tr>`;
+        document.getElementById("cen-thead").innerHTML = `<tr><th>Código</th><th>Situação</th><th>Cidade / Bairro</th><th></th></tr>`;
     } else {
         const filtradas = _cenBipagens.filter(b => {
             if (_cenFiltro === "todos") return true;
