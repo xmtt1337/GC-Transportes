@@ -523,7 +523,7 @@ function _cenTextoResultado(d) {
     const rotulo = (CEN_RESULTADOS[d.resultado] || {}).rotulo || "";
     const rep = d.repetido ? " (bipado de novo)" : "";
     // Vem antes de tudo: é a única resposta que muda o que ele faz com o pacote agora.
-    if (d.interceptar) return "NÃO LEVE — " + (d.detalhe || "este pacote está voltando") + " Devolva ao galpão." + rep;
+    if (d.interceptar) return "NÃO LEVE — " + (d.detalhe || "este pacote está voltando") + " Entregue ao responsável." + rep;
     if (d.resultado === "ok") {
         // Pacote na rota certa que não consta recebido no hub. Vale dizer — é a explicação
         // de por que ele pode sumir do sistema depois —, mas não apita erro: ele está com o
