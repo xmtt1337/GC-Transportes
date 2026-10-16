@@ -363,7 +363,10 @@ async function _fatBaixarPO(referencia) {
     let destino = null;
     if (window.showDirectoryPicker) {
         try {
-            destino = await window.showDirectoryPicker({ id: "faturas-po", mode: "readwrite" });
+            // O Chrome recusa a raiz de Downloads/pasta do usuário ("contém arquivos
+            // do sistema"), mas aceita qualquer subpasta. Começa em Documentos e,
+            // pelo id, da próxima vez já abre na última pasta escolhida.
+            destino = await window.showDirectoryPicker({ id: "faturas-po", mode: "readwrite", startIn: "documents" });
         } catch (err) {
             if (err && err.name === "AbortError") return; // cancelou a escolha
             destino = null;
