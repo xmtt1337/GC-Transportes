@@ -1337,11 +1337,11 @@ if (_BASE) {
         <div id="tela-faturas" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
                 <div id="fat-form-wrap" class="ant-form-wrap">
-                    <div class="ant-form-title">Gerar Fatura — GC Transportes → Shopee</div>
+                    <div class="ant-form-title">Gerar Faturas — GC Transportes → Shopee</div>
                     <div class="ant-form-grid">
                         <div class="ant-field">
-                            <label class="ant-label">Nº da Fatura *</label>
-                            <input type="text" id="fat-numero" class="ant-input" placeholder="Ex: 015">
+                            <label class="ant-label">PO *</label>
+                            <input type="text" id="fat-referencia" class="ant-input" placeholder="Ex: SPXBR-PR-105508" onchange="_fatRefazerPrevia()">
                         </div>
                         <div class="ant-field">
                             <label class="ant-label">Data da Emissão *</label>
@@ -1350,19 +1350,45 @@ if (_BASE) {
                     </div>
                     <div class="ant-form-grid">
                         <div class="ant-field">
-                            <label class="ant-label">Valor (R$) *</label>
-                            <input type="number" id="fat-valor" class="ant-input" min="0.01" step="0.01" placeholder="0,00">
+                            <label class="ant-label">Nº da primeira fatura *</label>
+                            <input type="text" id="fat-numero" class="ant-input" placeholder="Ex: 015" oninput="if (_fatPrevia) _fatRenderPrevia()">
                         </div>
-                        <div class="ant-field">
-                            <label class="ant-label">Referência / PO *</label>
-                            <input type="text" id="fat-referencia" class="ant-input" placeholder="Ex: SPXBR-PR-105508">
-                        </div>
+                        <div class="ant-field"></div>
                     </div>
+
+                    <div class="trampay-upload-area" id="fat-upload-area" style="margin-bottom:14px">
+                        <input type="file" id="fat-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="_fatArquivo(this)">
+                        <div class="nota-upload-icon" style="margin:0 auto 12px">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3a86ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+                        </div>
+                        <div class="nota-upload-title">Planilha da PO</div>
+                        <div class="nota-upload-sub" id="fat-sub">Colunas: operação · prefeitura nfse · cnpj tomador · Total — só entram as linhas com prefeitura nfse = Fatura</div>
+                        <div class="nota-upload-btn" style="margin-top:14px" onclick="document.getElementById('fat-file').click()">Selecionar arquivo</div>
+                    </div>
+
+                    <div id="fat-previa" style="display:none;margin-bottom:14px">
+                        <div class="adm-nf-wrap">
+                            <table class="adm-nf-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nº</th>
+                                        <th>Operação</th>
+                                        <th>Sacado (tomador)</th>
+                                        <th>Endereço</th>
+                                        <th>Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fat-previa-tbody"></tbody>
+                            </table>
+                        </div>
+                        <div id="fat-previa-rodape" style="font-size:12px;color:#8494a9;margin-top:8px"></div>
+                    </div>
+
                     <div style="font-size:12px;color:#8494a9;margin:2px 0 14px">
-                        Vencimento e valor por extenso são calculados automaticamente — vencimento 1 mês após a emissão.
+                        Uma fatura por linha, todas da mesma PO, numeradas em sequência a partir do nº informado. O sacado é o tomador do último CT-e com aquele CNPJ; sem CT-e, vem da Receita. Vencimento 1 mês após a emissão.
                     </div>
                     <div id="fat-form-msg" class="ant-form-msg" style="display:none"></div>
-                    <button onclick="_fatGerar()" id="fat-gerar-btn" class="ant-submit-btn">Gerar e Baixar PDF</button>
+                    <button onclick="_fatGerar()" id="fat-gerar-btn" class="ant-submit-btn" disabled>Gerar faturas</button>
                 </div>
 
                 <div style="margin-top:28px">
@@ -1375,6 +1401,7 @@ if (_BASE) {
                                     <tr>
                                         <th>Nº Fatura</th>
                                         <th>Referência / PO</th>
+                                        <th>Sacado</th>
                                         <th>Valor</th>
                                         <th>Emissão</th>
                                         <th>Vencimento</th>
@@ -4873,7 +4900,7 @@ if (_BASE) {
 <script src="js/usuarios.js?v=20261014a"></script>
 <script src="js/motoristas.js?v=20260924b"></script>
 <script src="js/pagamentos.js?v=20261012a"></script>
-<script src="js/faturas.js?v=20260914a"></script>
+<script src="js/faturas.js?v=20261016a"></script>
 <script src="js/notas-fiscais.js?v=20261012a"></script>
 <script src="js/dashboard.js?v=30260812d"></script>
 <script src="js/ent-dashboard.js?v=30260812d"></script>
