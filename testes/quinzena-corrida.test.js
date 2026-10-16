@@ -160,7 +160,8 @@ const TELAS = [
         nome: "Criar Fechamento",
         arquivos: ["fechamento-criar.js"],
         selecionar: "_cfSelecionarQuinzena",
-        resposta: (q) => [{ transportadora: marca(q), total: 1 }],
+        resposta: (q) => [{ chave: "loggi", transportadora: "Loggi", total: 1, dentro_prazo: 1, fora_prazo: 0,
+                                 com_pendencia: 0, valor_motorista: 1, arquivo: marca(q) }],
     },
     {
         nome: "Relatório de Anotações",
