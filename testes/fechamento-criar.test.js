@@ -135,3 +135,14 @@ test("filtro de coluna: vai junto na busca de pacotes e marca o funil da coluna 
     vm.runInContext(`_cfColFiltros = {}`, ctx);
     assert.strictEqual(JSON.parse(vm.runInContext("JSON.stringify(_cfParamsFiltro())", ctx)).filtros, undefined);
 });
+
+test("toda coluna da tabela tem funil", () => {
+    const ctx = carregar();
+    const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-criar.js"), "utf8");
+    for (const c of ["driver", "usuario", "codigo", "tipo_produto", "cidade", "polo", "data_atribuicao", "data_entrega",
+        "deve_ser_entregue", "dentro_prazo", "peso_kg", "valor_entrega", "incentivo", "desconto", "adicional_peso", "valor_motorista"]) {
+        assert.match(fonte, new RegExp(`_cfTh\\("[^"]+", "${c}"\\)`), c);
+    }
+    assert.doesNotMatch(fonte, /<th>(Código|Peso|Valor|Incentivo|Desconto|Adic|Motorista)/, "nenhum <th> sem funil");
+    assert.ok(ctx);
+});

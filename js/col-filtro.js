@@ -35,7 +35,8 @@ function _colfFechar() {
  * @param {Array<string>} opts.valores Valor bruto de CADA linha (com repetição — a
  *   contagem por valor é calculada aqui).
  * @param {Array<{valor: string, qtd: number}>=} opts.contagem Alternativa a `valores`
- *   pra tabela paginada no servidor: a contagem já vem pronta do lote inteiro.
+ *   pra tabela paginada no servidor: a contagem já vem pronta do lote inteiro, e na
+ *   ordem certa (número e data pelo valor, não alfabética) — essa ordem é mantida.
  * @param {?Set<string>} opts.selecionados Valores atualmente incluídos, ou null pra "todos".
  * @param {{atual: ?string}=} opts.ordenar Presente pra mostrar os botões de ordenar;
  *   `atual` é "asc"/"desc"/null.
@@ -59,7 +60,9 @@ function colfAbrir(anchorEl, opts) {
         const chave = String(v ?? "").trim();
         contagem.set(chave, (contagem.get(chave) || 0) + 1);
     });
-    const todasChaves = [...contagem.keys()].sort((a, b) => colfCompara(a, b, "asc"));
+    const todasChaves = opts.contagem
+        ? [...contagem.keys()]
+        : [...contagem.keys()].sort((a, b) => colfCompara(a, b, "asc"));
     const selecionadas = opts.selecionados ? new Set(opts.selecionados) : new Set(todasChaves);
     let ordemEscolhida = opts.ordenar ? opts.ordenar.atual || null : null;
 

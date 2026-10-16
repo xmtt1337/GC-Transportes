@@ -484,11 +484,12 @@ function _cfCarregarPacotes() {
         el.innerHTML = `
             <div class="cft-tabela-wrap"><table class="cft-tabela">
                 <thead><tr>
-                    ${_cfTh("Driver", "driver")}${_cfTh("Usuário", "usuario")}<th>Código</th>${total ? _cfTh("Tipo", "tipo_produto") : ""}
+                    ${_cfTh("Driver", "driver")}${_cfTh("Usuário", "usuario")}${_cfTh("Código", "codigo")}${total ? _cfTh("Tipo", "tipo_produto") : ""}
                     ${_cfTh("Cidade", "cidade")}${_cfTh("Polo", "polo")}
                     ${_cfTh("Atribuição", "data_atribuicao")}${_cfTh("Entrega", "data_entrega")}${_cfTh("Deve ser entregue", "deve_ser_entregue")}
                     ${_cfTh("No prazo", "dentro_prazo")}
-                    <th>Peso (kg)</th><th>Valor</th><th>Incentivo</th><th>Desconto</th><th>Adic. peso</th><th>Motorista</th>
+                    ${_cfTh("Peso (kg)", "peso_kg")}${_cfTh("Valor", "valor_entrega")}${_cfTh("Incentivo", "incentivo")}
+                    ${_cfTh("Desconto", "desconto")}${_cfTh("Adic. peso", "adicional_peso")}${_cfTh("Motorista", "valor_motorista")}
                 </tr></thead>
                 <tbody>${linhas || `<tr><td colspan="16" class="cft-vazio" style="padding:16px">Nenhum pacote.</td></tr>`}</tbody>
             </table></div>
