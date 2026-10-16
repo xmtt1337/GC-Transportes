@@ -637,6 +637,12 @@ function _cfRenderColunas(msg) {
         <div class="cft-barra" style="margin-top:0">
             ${_CF_TRANSPORTADORAS.map(t => `<button class="cft-chip${t.key === transp ? " on" : ""}" onclick="_cfAbrirColunas('${t.key}')">${t.label}</button>`).join("")}
         </div>
+        <div class="cft-barra" style="margin-top:0">
+            <label class="cft-btn" style="cursor:pointer">Ler colunas de um arquivo
+                <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="_cfLerColunasDeArquivo(this)">
+            </label>
+            <span class="cft-ajuda">escolhe na lista qual coluna do arquivo é cada campo, sem digitar</span>
+        </div>
         <div class="cft-ajuda" style="margin-bottom:10px">Nomes das colunas no relatório da transportadora, em ordem de preferência: em cada linha vale a
             <b>primeira dessas colunas que estiver preenchida</b> (as outras são o plano B). Acento e maiúscula não importam.
             "#S" quer dizer a coluna S do arquivo, pela letra.</div>
@@ -872,8 +878,11 @@ function _cfExportar(btn) {
 // ── Upload ──
 async function _cfArquivoSelecionado(input) {
     const file = input.files[0];
-    if (!file) return;
-    const key = _cfTranspAtual;
+    input.value = "";
+    if (file) await _cfEnviarArquivo(file, _cfTranspAtual);
+}
+
+async function _cfEnviarArquivo(file, key) {
     const cfg = _CF_TRANSPORTADORAS.find(t => t.key === key);
     if (!cfg) return;
     const status = document.getElementById("cf-upload-status");
@@ -897,11 +906,13 @@ async function _cfArquivoSelecionado(input) {
             }),
         });
         const d = await res.json();
-        input.value = "";
         if (!res.ok) {
-            status.innerHTML = `<div class="cft-erro">${_cfEsc(d.error || "Erro ao enviar.")}
-                ${d.cabecalho_encontrado ? `<div class="cft-ajuda" style="margin-top:8px">Colunas que o arquivo tem (dá pra apontar a certa em <button class="cft-link" onclick="_cfAbrirColunas('${key}')">Colunas dos relatórios</button>):</div>
-                <div class="cft-pend-tags">${d.cabecalho_encontrado.map(h => `<span class="cft-tag">${_cfEsc(h)}</span>`).join("")}</div>` : ""}</div>`;
+            // Coluna faltando: abre o quadro pra escolher qual coluna do arquivo é cada campo.
+            if (d.cabecalho_encontrado) {
+                _cfAbrirMapeamento({ transp: key, cabecalho: grid[0], arquivo: file, alvo: "cf-upload-status", aviso: d.error });
+                return;
+            }
+            status.innerHTML = `<div class="cft-erro">${_cfEsc(d.error || "Erro ao enviar.")}</div>`;
             return;
         }
         if (key !== _cfTranspAtual) return;
@@ -910,8 +921,125 @@ async function _cfArquivoSelecionado(input) {
         _cfCarregarDetalhe();
     } catch (err) {
         status.innerHTML = `<div class="cft-erro">${_cfEsc(err.message)}</div>`;
-        input.value = "";
     }
+}
+
+// ── Ligar colunas: "qual coluna do arquivo é o quê", escolhendo numa lista (sem digitar).
+// Abre sozinho quando o relatório não tem alguma coluna obrigatória, ou pela tela Colunas
+// dos relatórios › "Ler colunas de um arquivo". A coluna escolhida vira a 1ª da lista daquele
+// campo (as outras continuam de plano B) e é gravada em fechamento_colunas.
+let _cfMapa = null; // { transp, cabecalho, arquivo, alvo, campos, escolha: {campo: coluna | ""} }
+
+async function _cfAbrirMapeamento({ transp, cabecalho, arquivo, alvo, aviso }) {
+    const el = document.getElementById(alvo);
+    el.innerHTML = `<div class="cft-ajuda">Carregando colunas...</div>`;
+    try {
+        const d = await fetch(`${_CF_API()}/colunas?transportadora=${transp}`, { headers: _cfHeaders() }).then(r => r.json());
+        if (d.error) throw new Error(d.error);
+        const colunasArquivo = [...new Set((cabecalho || []).map(h => String(h ?? "").trim()).filter(Boolean))];
+        const escolha = {};
+        for (const c of d.campos) {
+            // Já escolhe o que a configuração atual acharia nesse arquivo.
+            const achou = c.nomes.map(n => colunasArquivo.find(h => _cfChave(h) === _cfChave(n))).find(Boolean);
+            escolha[c.campo] = achou || "";
+        }
+        _cfMapa = { transp, cabecalho: colunasArquivo, arquivo, alvo, aviso, campos: d.campos, escolha };
+        _cfRenderMapeamento();
+    } catch (err) {
+        el.innerHTML = `<div class="cft-erro">${_cfEsc(err.message || "Erro ao carregar as colunas.")}</div>`;
+    }
+}
+
+function _cfRenderMapeamento(msg) {
+    const m = _cfMapa;
+    const el = document.getElementById(m.alvo);
+    const label = (_CF_TRANSPORTADORAS.find(t => t.key === m.transp) || {}).label || m.transp;
+    const linhas = m.campos.filter(c => c.obrigatorio !== "nao_usa").map(c => {
+        const sel = m.escolha[c.campo] || "";
+        const falta = !sel && (c.obrigatorio === "sim" ||
+            (c.obrigatorio === "cidade_ou_cep" && !m.escolha.cidade && !m.escolha.cep));
+        return `<tr>
+            <td><strong${falta ? ' class="cft-neg"' : ""}>${_cfEsc(c.rotulo)}</strong><div class="cft-ajuda">${_CF_OBRIG[c.obrigatorio] || ""}</div></td>
+            <td><select class="fech-select cft-map-select" onchange="_cfMapaEscolher('${c.campo}', this.value)">
+                <option value="">— não tem no arquivo —</option>
+                ${m.cabecalho.map(h => `<option value="${_cfEsc(h)}"${h === sel ? " selected" : ""}>${_cfEsc(h)}</option>`).join("")}
+            </select></td>
+        </tr>`;
+    }).join("");
+    el.innerHTML = `
+        <div class="cft-regras" style="margin:8px 0 0">
+            ${m.aviso ? `<div class="cft-erro" style="margin-bottom:8px">${_cfEsc(m.aviso)}</div>` : ""}
+            <div class="cft-pend-titulo" style="color:#e2e8f0">Qual coluna do arquivo é cada campo — ${_cfEsc(label)}</div>
+            <div class="cft-ajuda" style="margin-bottom:10px">Escolha na lista as colunas do seu arquivo. Fica salvo pros próximos relatórios da ${_cfEsc(label)}.</div>
+            <div class="cft-tabela-wrap"><table class="cft-tabela cft-regras-tabela cft-col-tabela">
+                <thead><tr><th>Campo</th><th>Coluna no arquivo</th></tr></thead>
+                <tbody>${linhas}</tbody>
+            </table></div>
+            <div class="cft-barra">
+                <button class="cft-btn" onclick="_cfFecharMapeamento()">Cancelar</button>
+                <span style="flex:1"></span>
+                <button class="cft-btn primario" id="cf-mapa-salvar" onclick="_cfSalvarMapeamento()">${m.arquivo ? "Salvar e enviar de novo" : "Salvar"}</button>
+            </div>
+            <div class="cft-ajuda" id="cf-mapa-status">${msg || ""}</div>
+        </div>`;
+}
+
+function _cfMapaEscolher(campo, valor) {
+    _cfMapa.escolha[campo] = valor;
+    _cfRenderMapeamento();
+}
+
+function _cfFecharMapeamento() {
+    const m = _cfMapa;
+    _cfMapa = null;
+    if (!m) return;
+    if (m.alvo === "cf-colunas") _cfAbrirColunas(m.transp);
+    else document.getElementById(m.alvo).innerHTML = "";
+}
+
+/** Listas novas: a coluna escolhida vai pra frente; "não tem" tira as que estão nesse arquivo. */
+function _cfMapaListas(m) {
+    const campos = {};
+    for (const c of m.campos) {
+        const sel = m.escolha[c.campo];
+        const doArquivo = (n) => m.cabecalho.some(h => _cfChave(h) === _cfChave(n));
+        campos[c.campo] = sel
+            ? [sel, ...c.nomes.filter(n => _cfChave(n) !== _cfChave(sel))]
+            : c.nomes.filter(n => !doArquivo(n));
+    }
+    return campos;
+}
+
+async function _cfSalvarMapeamento() {
+    const m = _cfMapa;
+    const btn = document.getElementById("cf-mapa-salvar");
+    btn.disabled = true;
+    try {
+        const r = await fetch(`${_CF_API()}/colunas`, {
+            method: "PUT", headers: _cfHeaders(true),
+            body: JSON.stringify({ transportadora: m.transp, campos: _cfMapaListas(m) }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Erro ao salvar.");
+        _cfColunas = null; // a lista de colunas que o upload manda mudou
+        _cfMapa = null;
+        if (m.arquivo) await _cfEnviarArquivo(m.arquivo, m.transp);
+        else _cfAbrirColunas(m.transp);
+    } catch (err) {
+        btn.disabled = false;
+        _cfRenderMapeamento(err.message);
+    }
+}
+
+function _cfLerColunasDeArquivo(input) {
+    const file = input.files[0];
+    input.value = "";
+    if (!file || !_cfColCfg) return;
+    const transp = _cfColCfg.transp;
+    document.getElementById("cf-colunas").innerHTML = `<div class="cft-ajuda">Lendo arquivo...</div>`;
+    _cfLerGrid(file)
+        .then(grid => _cfAbrirMapeamento({ transp, cabecalho: grid[0] || [], arquivo: null, alvo: "cf-colunas" }))
+        .catch(() => { document.getElementById("cf-colunas").innerHTML = `<div class="cft-erro">Não consegui ler o arquivo.</div>`; });
 }
 
 // Mesma normalização do backend (nomes-padrao/normalizacao.chave): sem acento/caixa/espaço extra.

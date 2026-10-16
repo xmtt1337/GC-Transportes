@@ -189,3 +189,22 @@ test("acento quebrado do relatório (CÃ³digo) volta a ser Código; texto certo
     assert.strictEqual(ctx._cfConsertarAcento("Código de Barras"), "Código de Barras");
     assert.strictEqual(ctx._cfConsertarAcento("São José"), "São José");
 });
+
+test("ligar colunas: escolhida vai pra frente da lista; 'não tem' tira as desse arquivo", () => {
+    const ctx = carregar();
+    const m = {
+        cabecalho: ["Código de Barras", "Pessoas", "Entregador correto", "Cidade"],
+        campos: [
+            { campo: "usuario", nomes: ["Entregador correto", "Usuario", "Driver"] },
+            { campo: "codigo", nomes: ["Código de Barras", "Codigo"] },
+            { campo: "peso_kg", nomes: ["Peso Cubado", "Peso"] },
+            { campo: "cidade", nomes: ["Cidade"] },
+        ],
+        escolha: { usuario: "Pessoas", codigo: "Código de Barras", peso_kg: "", cidade: "" },
+    };
+    const r = JSON.parse(JSON.stringify(ctx._cfMapaListas(m)));
+    assert.deepStrictEqual(r.usuario, ["Pessoas", "Entregador correto", "Usuario", "Driver"]);
+    assert.deepStrictEqual(r.codigo, ["Código de Barras", "Codigo"], "não duplica");
+    assert.deepStrictEqual(r.peso_kg, ["Peso Cubado", "Peso"], "nada desse arquivo: lista fica igual");
+    assert.deepStrictEqual(r.cidade, [], "'não tem' tira a coluna que existe no arquivo");
+});

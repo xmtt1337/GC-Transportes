@@ -6249,3 +6249,4 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .cft-col-mini { background: none; border: 0; padding: 0 2px; font: inherit; font-size: 12px; color: #6b7a90; cursor: pointer; }
 .cft-col-mini:hover { color: #e2e8f0; }
 .cft-col-input { max-width: 280px; margin-top: 6px; padding: 6px 10px; font-size: 12px; }
+.cft-map-select { min-width: 260px; max-width: 100%; }
