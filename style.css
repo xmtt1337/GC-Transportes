@@ -6207,3 +6207,7 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .cft-nao { color: #f87171; font-weight: 600; }
 .cft-vazio { color: #6b7a90; }
 .cft-paginacao { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: 12px; color: #8494a9; flex-wrap: wrap; }
+
+.cft-regras { padding: 14px 16px; margin-bottom: 18px; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); }
+.cft-chip-mini { padding: 4px 9px; font-size: 12px; }
+.cft-regras-tabela td { padding: 8px 10px; }

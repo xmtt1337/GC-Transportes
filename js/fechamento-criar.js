@@ -10,8 +10,8 @@ let _cfTranspAtual = null;
 let _cfReqId       = 0; // descarta resposta de período trocado antes do fetch anterior voltar
 let _cfResumo      = [];
 let _cfColunas     = null; // nomes de coluna aceitos por transportadora (GET /config)
-let _cfIgnSab      = false;
-let _cfIgnDom      = false;
+let _cfRegras     = null; // quadro de regras de prazo em edição: [{escopo, t: {chave: {sab, dom}}}]
+let _cfPolos      = [];
 let _cfTemLote     = false;
 let _cfBusca       = "";
 let _cfFiltro      = "";
@@ -157,8 +157,6 @@ function _cfSelecionarTransp(key) {
     document.getElementById("cf-upload-titulo").innerText = `Anexar relatório — ${cfg.label}`;
     document.getElementById("cf-upload-status").innerHTML = "";
     document.getElementById("cf-file-input").value = "";
-    // Loggi está sempre no prazo — sábado/domingo não muda nada lá.
-    document.getElementById("cf-fds-barra").style.display = key === "loggi" ? "none" : "";
     document.getElementById("cf-painel").style.display = "";
     _cfCarregarDetalhe();
 }
@@ -175,15 +173,12 @@ function _cfCarregarDetalhe() {
         if (d.error) { det.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
         _cfTemLote = !!d.lote;
         if (d.lote) {
-            _cfIgnSab = !!d.lote.ignorar_sabado;
-            _cfIgnDom = !!d.lote.ignorar_domingo;
             const quando = new Date(d.lote.recalculado_em || d.lote.enviado_em);
             document.getElementById("cf-painel-arquivo").innerText =
                 `${d.lote.arquivo || "relatório"} · ${d.lote.recalculado_em ? "recalculado" : "enviado"} em ${quando.toLocaleString("pt-BR")}`;
         } else {
             document.getElementById("cf-painel-arquivo").innerText = "";
         }
-        _cfRenderChips();
         if (!d.lote) {
             det.innerHTML = `<div class="cft-ajuda">Nenhum relatório dessa transportadora nesta quinzena ainda.</div>`;
             return;
@@ -193,11 +188,6 @@ function _cfCarregarDetalhe() {
     }).catch(() => {
         if (reqId === _cfReqId) det.innerHTML = `<div class="cft-erro">Erro ao carregar o fechamento.</div>`;
     });
-}
-
-function _cfRenderChips() {
-    document.getElementById("cf-chip-sab").classList.toggle("on", _cfIgnSab);
-    document.getElementById("cf-chip-dom").classList.toggle("on", _cfIgnDom);
 }
 
 function _cfHtmlResumo(r) {
@@ -331,38 +321,137 @@ function _cfMudarPagina(delta) {
     _cfCarregarPacotes();
 }
 
-// Sábado/domingo: com relatório já gravado, recalcula na hora; sem relatório, vale pro
-// próximo upload.
-function _cfAlternarFds(qual) {
-    if (qual === "sab") _cfIgnSab = !_cfIgnSab; else _cfIgnDom = !_cfIgnDom;
-    _cfRenderChips();
-    if (_cfTemLote) _cfRecalcular();
-}
-
 function _cfRecalcular() {
     const key = _cfTranspAtual;
-    const chips = [document.getElementById("cf-chip-sab"), document.getElementById("cf-chip-dom")];
     const btn = document.getElementById("cf-btn-recalcular");
     const status = document.getElementById("cf-acao-status");
-    chips.forEach(c => c.disabled = true);
     if (btn) btn.disabled = true;
-    if (status) status.innerText = "Recalculando (relendo planilha de precificação e conversão de nomes)...";
+    if (status) status.innerText = "Recalculando (relendo planilha de precificação, conversão de nomes e regras de prazo)...";
     fetch(`${_CF_API()}/recalcular`, {
         method: "POST", headers: _cfHeaders(true),
-        body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: key,
-            ignorar_sabado: _cfIgnSab, ignorar_domingo: _cfIgnDom }),
+        body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: key }),
     }).then(r => r.json())
     .then(d => {
-        chips.forEach(c => c.disabled = false);
         if (key !== _cfTranspAtual) return;
         if (d.error) { if (status) status.innerText = d.error; if (btn) btn.disabled = false; return; }
         _cfAtualizarCards();
         _cfCarregarDetalhe();
     }).catch(() => {
-        chips.forEach(c => c.disabled = false);
         if (btn) btn.disabled = false;
         if (status) status.innerText = "Erro ao recalcular.";
     });
+}
+
+// ── Regras de prazo: quais transportadoras não contam sábado/domingo, geral e por polo.
+// A regra do polo SOMA à geral (ver modules/fechamento-transportadoras/regras-prazo.js).
+function _cfAbrirRegras() {
+    const el = document.getElementById("cf-regras");
+    if (el.style.display !== "none") { el.style.display = "none"; return; }
+    el.style.display = "";
+    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    fetch(`${_CF_API()}/regras-prazo`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
+        _cfPolos = d.polos || [];
+        const linhas = [{ escopo: "geral", t: {} }];
+        for (const r of d.regras || []) {
+            let l = linhas.find(x => _cfChave(x.escopo) === _cfChave(r.escopo));
+            if (!l) { l = { escopo: r.escopo, t: {} }; linhas.push(l); }
+            l.t[r.transportadora] = { sab: !!r.ignorar_sabado, dom: !!r.ignorar_domingo };
+        }
+        _cfRegras = linhas;
+        _cfRenderRegras();
+    }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar as regras.</div>`; });
+}
+
+function _cfRenderRegras(msg) {
+    const el = document.getElementById("cf-regras");
+    const celula = (i, key, dia, rot) => {
+        const on = !!((_cfRegras[i].t[key] || {})[dia]);
+        return `<button class="cft-chip cft-chip-mini${on ? " on" : ""}" title="${on ? "Não conta" : "Conta"} ${rot === "Sáb" ? "sábado" : "domingo"}"
+            onclick="_cfAlternarRegra(${i}, '${key}', '${dia}')">${rot}</button>`;
+    };
+    const usados = new Set(_cfRegras.map(l => _cfChave(l.escopo)));
+    const sugestoes = _cfPolos.filter(p => !usados.has(_cfChave(p)));
+    el.innerHTML = `
+        <div class="cft-ajuda" style="margin-bottom:10px">Marcado = <b>não conta</b> aquele dia no prazo (cada dia desses que cair no prazo soma +1 dia).
+            A linha de um polo soma à Geral pros pacotes daquele polo (o polo vem da planilha de precificação).</div>
+        <div class="cft-tabela-wrap"><table class="cft-tabela cft-regras-tabela">
+            <thead><tr><th>Vale para</th>${_CF_TRANSPORTADORAS.map(t => `<th>${t.label}</th>`).join("")}<th></th></tr></thead>
+            <tbody>${_cfRegras.map((l, i) => `<tr>
+                <td><strong>${l.escopo === "geral" ? "Geral (todos os polos)" : "Polo " + _cfEsc(l.escopo)}</strong></td>
+                ${_CF_TRANSPORTADORAS.map(t => `<td>${celula(i, t.key, "sab", "Sáb")} ${celula(i, t.key, "dom", "Dom")}</td>`).join("")}
+                <td>${l.escopo === "geral" ? "" : `<button class="cft-chip cft-chip-mini" title="Remover polo" onclick="_cfRemoverPolo(${i})">✕</button>`}</td>
+            </tr>`).join("")}</tbody>
+        </table></div>
+        <div class="cft-barra">
+            <input list="cf-polos-lista" id="cf-novo-polo" class="fech-select" placeholder="Polo (ex.: Joaçaba)" style="min-width:200px">
+            <datalist id="cf-polos-lista">${sugestoes.map(p => `<option value="${_cfEsc(p)}">`).join("")}</datalist>
+            <button class="cft-btn" onclick="_cfAdicionarPolo()">+ Regra para polo</button>
+            <span style="flex:1"></span>
+            <button class="cft-btn verde" id="cf-regras-salvar" onclick="_cfSalvarRegras()">Salvar${_cfQuinzena ? " e recalcular a quinzena" : ""}</button>
+        </div>
+        <div class="cft-ajuda" id="cf-regras-status">${msg || ""}</div>`;
+}
+
+function _cfAlternarRegra(i, key, dia) {
+    const t = _cfRegras[i].t;
+    t[key] = t[key] || { sab: false, dom: false };
+    t[key][dia] = !t[key][dia];
+    _cfRenderRegras();
+}
+
+function _cfAdicionarPolo() {
+    const nome = document.getElementById("cf-novo-polo").value.trim();
+    if (!nome) return;
+    if (_cfChave(nome) === "geral" || _cfRegras.some(l => _cfChave(l.escopo) === _cfChave(nome))) {
+        _cfRenderRegras("Esse polo já está na lista.");
+        return;
+    }
+    _cfRegras.push({ escopo: nome, t: {} });
+    _cfRenderRegras();
+}
+
+function _cfRemoverPolo(i) {
+    _cfRegras.splice(i, 1);
+    _cfRenderRegras();
+}
+
+async function _cfSalvarRegras() {
+    const btn = document.getElementById("cf-regras-salvar");
+    const status = document.getElementById("cf-regras-status");
+    const regras = [];
+    for (const l of _cfRegras) {
+        for (const [key, v] of Object.entries(l.t)) {
+            if (v.sab || v.dom) regras.push({ escopo: l.escopo, transportadora: key, ignorar_sabado: v.sab, ignorar_domingo: v.dom });
+        }
+    }
+    btn.disabled = true;
+    status.innerText = "Salvando...";
+    try {
+        const r = await fetch(`${_CF_API()}/regras-prazo`, { method: "PUT", headers: _cfHeaders(true), body: JSON.stringify({ regras }) });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || "Erro ao salvar.");
+        // Regra nova só vale pro que for (re)calculado: recalcula o que já subiu nesta quinzena.
+        const lotes = _cfQuinzena ? _cfResumo.map(x => x.chave).filter(Boolean) : [];
+        const falhas = [];
+        for (let i = 0; i < lotes.length; i++) {
+            status.innerText = `Salvo. Recalculando ${i + 1} de ${lotes.length}...`;
+            const rr = await fetch(`${_CF_API()}/recalcular`, {
+                method: "POST", headers: _cfHeaders(true),
+                body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: lotes[i] }),
+            });
+            if (!rr.ok) falhas.push(_CF_TRANSPORTADORAS.find(t => t.key === lotes[i])?.label || lotes[i]);
+        }
+        btn.disabled = false;
+        status.innerText = falhas.length ? `Salvo, mas não consegui recalcular: ${falhas.join(", ")}.`
+            : lotes.length ? "Salvo e recalculado." : "Salvo. Vale pros próximos relatórios e recálculos.";
+        if (lotes.length) { _cfAtualizarCards(); if (_cfTranspAtual) _cfCarregarDetalhe(); }
+    } catch (err) {
+        btn.disabled = false;
+        status.innerText = err.message;
+    }
 }
 
 function _cfExcluir() {
@@ -428,7 +517,6 @@ async function _cfArquivoSelecionado(input) {
             method: "POST", headers: _cfHeaders(true),
             body: JSON.stringify({
                 mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: key, arquivo: file.name,
-                ignorar_sabado: _cfIgnSab, ignorar_domingo: _cfIgnDom,
                 grid: enviar, posicoes_originais: posicoes, cabecalho_original: grid[0],
             }),
         });

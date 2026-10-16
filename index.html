@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261016a">
+<link rel="stylesheet" href="style.css?v=20261016b">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -4891,7 +4891,7 @@ if (_BASE) {
 <script src="js/whatsapp-conversa.js?v=20261015b"></script>
 <script src="js/modals.js?v=20260924a"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
-<script src="js/fechamento-criar.js?v=20261016b"></script>
+<script src="js/fechamento-criar.js?v=20261016c"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
 <script src="js/pedidos.js?v=20261015a"></script>
@@ -5042,7 +5042,11 @@ if (_BASE) {
         <div class="fechamento-empty" id="cf-empty">Selecione o mês, ano e quinzena.</div>
         <div id="cf-content" style="display:none">
 
-            <div class="ant-form-title" style="margin-bottom:12px">Transportadoras da quinzena</div>
+            <div class="cft-barra" style="justify-content:space-between;margin-top:0">
+                <div class="ant-form-title" style="margin:0">Transportadoras da quinzena</div>
+                <button class="cft-btn" id="cf-regras-btn" onclick="_cfAbrirRegras()">⚙ Regras de prazo (sábado/domingo)</button>
+            </div>
+            <div class="cft-regras" id="cf-regras" style="display:none"></div>
             <div class="cft-cards" id="cf-cards"></div>
 
             <div id="cf-painel" style="display:none">
@@ -5065,13 +5069,6 @@ if (_BASE) {
                     <div class="nota-upload-btn">Selecionar arquivo</div>
                 </label>
                 <div id="cf-upload-status" style="margin-top:10px"></div>
-
-                <div class="cft-barra" id="cf-fds-barra">
-                    <span class="cft-rotulo">Prazo</span>
-                    <button class="cft-chip" id="cf-chip-sab" onclick="_cfAlternarFds('sab')">Desconsiderar sábado</button>
-                    <button class="cft-chip" id="cf-chip-dom" onclick="_cfAlternarFds('dom')">Desconsiderar domingo</button>
-                    <span class="cft-ajuda" id="cf-fds-ajuda">Cada dia desconsiderado que cair no prazo soma +1 dia.</span>
-                </div>
 
                 <div id="cf-detalhe"></div>
             </div>
