@@ -896,7 +896,8 @@ async function _cfEnviarArquivo(file, key) {
         }
         const grid = await _cfLerGrid(file);
         if (!grid || grid.length < 2) throw new Error("Arquivo vazio ou inválido.");
-        const { grid: enviar, posicoes } = _cfSoColunasUteis(grid, _cfColunas[key] || []);
+        // Loggi filtra pela coluna Status (só "Entregue") no servidor — ela tem que ir junto.
+        const { grid: enviar, posicoes } = _cfSoColunasUteis(grid, [...(_cfColunas[key] || []), ...(key === "loggi" ? ["Status"] : [])]);
         status.innerHTML = `<div class="cft-ajuda" style="font-size:13px">Tratando ${(grid.length - 1).toLocaleString("pt-BR")} linhas (planilha de precificação + conversão de nomes)...</div>`;
         const res = await fetch(`${_CF_API()}/upload`, {
             method: "POST", headers: _cfHeaders(true),
@@ -916,7 +917,11 @@ async function _cfEnviarArquivo(file, key) {
             return;
         }
         if (key !== _cfTranspAtual) return;
-        status.innerHTML = `<div class="cft-ajuda" style="font-size:13px;color:#cbd5e1">${d.resumo.total.toLocaleString("pt-BR")} pacotes tratados e gravados.</div>`;
+        const ign = d.ignorados || [];
+        const totalIgn = ign.reduce((s, x) => s + x.qtd, 0);
+        status.innerHTML = `<div class="cft-ajuda" style="font-size:13px;color:#cbd5e1">${d.resumo.total.toLocaleString("pt-BR")} pacotes tratados e gravados.</div>`
+            + (totalIgn ? `<div class="cft-ajuda" style="margin-top:4px">${totalIgn.toLocaleString("pt-BR")} linha${totalIgn !== 1 ? "s" : ""} fora do fechamento por não estar${totalIgn !== 1 ? "em" : ""} com Status "Entregue":
+                ${ign.map(x => `${_cfEsc(x.status)} ${x.qtd.toLocaleString("pt-BR")}`).join(" · ")}</div>` : "");
         _cfAtualizarCards();
         _cfCarregarDetalhe();
     } catch (err) {
