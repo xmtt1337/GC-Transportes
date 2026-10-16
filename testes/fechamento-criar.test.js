@@ -108,3 +108,18 @@ test("nome vindo do relatório não vira HTML na tag clicável", () => {
     assert.doesNotMatch(html, /<img/);
     assert.match(html, /onclick="_cfAbrirConversao\(0\)"/);
 });
+
+test("cadastrar novo entregador: manda o nome, entra na lista e já fica escolhido", async () => {
+    const t = carregarComDom(async () => ({ ok: true, status: 200, json: async () => ({ success: true, nome: "Pessoa Nova - Vila Teste" }) }));
+    vm.runInContext(`_cfEntregadores = { nomes: ["Fulano de Teste - Vila Teste"], aviso: null }`, t.ctx);
+    t.el("cf-novo-nome").value = " pessoa nova - vila teste ";
+    t.el("cf-novo-btn"); t.el("cf-novo-status"); t.el("cf-conv-novo"); t.el("cf-conv-input"); t.el("cf-conv-sugestoes");
+    t.el("cf-conv-input").focus = () => {};
+    t.ctx._cfCadastrarEntregador();
+    await new Promise((r) => setTimeout(r, 10));
+    assert.strictEqual(t.chamadas[0].url, "https://api.teste/admin/fechamento-transportadoras/entregadores");
+    assert.deepStrictEqual(JSON.parse(t.chamadas[0].opts.body), { nome: "pessoa nova - vila teste" });
+    assert.deepStrictEqual(JSON.parse(vm.runInContext("JSON.stringify(_cfEntregadores.nomes)", t.ctx)),
+        ["Fulano de Teste - Vila Teste", "Pessoa Nova - Vila Teste"]);
+    assert.strictEqual(t.el("cf-conv-input").value, "Pessoa Nova - Vila Teste");
+});

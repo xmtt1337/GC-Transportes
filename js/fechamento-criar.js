@@ -252,6 +252,10 @@ function _cfAbrirConversao(i) {
             <input id="cf-conv-input" class="cft-input" autocomplete="off" placeholder="Digite pra buscar..." value="${_cfEsc(palpite)}"
                 oninput="_cfBuscarEntregador(this.value)" onkeydown="if(event.key==='Enter')_cfSalvarConversao(${i})">
             <div class="cft-sugestoes" id="cf-conv-sugestoes"></div>
+            <div class="cft-novo" id="cf-conv-novo">
+                <span class="cft-ajuda">Não achou?</span>
+                <button class="cft-link" onclick="_cfAbrirNovoEntregador()">Cadastrar novo entregador</button>
+            </div>
             <div class="cft-cidades" id="cf-conv-cidades-ent"></div>
             <div class="cft-ajuda" id="cf-conv-status" style="min-height:18px;margin-top:8px"></div>
             <div class="cft-barra" style="justify-content:flex-end;margin-bottom:0">
@@ -327,6 +331,46 @@ function _cfBuscarEntregador(q) {
         : `<div class="cft-ajuda" style="padding:6px 2px">Ninguém com esse nome nos Dados entregadores — salvar cria um nome novo.</div>`);
     const cont = document.getElementById("cf-conv-total");
     if (cont) cont.innerText = `${lista.length} de ${todos.length} entregadores`;
+}
+
+// Cadastro de entregador novo pela própria tela: grava na aba "Solicitação de usuários"
+// da planilha Dados entregadores (mesmo "Inserir Entregador" do Planejamento).
+function _cfAbrirNovoEntregador() {
+    const el = document.getElementById("cf-conv-novo");
+    const digitado = (document.getElementById("cf-conv-input").value || "").trim();
+    el.innerHTML = `
+        <label class="cft-rotulo" for="cf-novo-nome">Novo entregador</label>
+        <input id="cf-novo-nome" class="cft-input" autocomplete="off" placeholder="Nome Sobrenome - Cidade" value="${_cfEsc(digitado)}"
+            onkeydown="if(event.key==='Enter')_cfCadastrarEntregador()">
+        <div class="cft-ajuda" style="margin-top:6px">Modelo: <b style="color:#cbd5e1">Nome Sobrenome - Cidade</b>. Vai pra aba Solicitação de usuários dos Dados entregadores.</div>
+        <div class="cft-barra" style="margin:8px 0 0">
+            <button class="cft-btn" id="cf-novo-btn" onclick="_cfCadastrarEntregador()">Cadastrar</button>
+            <span class="cft-ajuda" id="cf-novo-status"></span>
+        </div>`;
+    const inp = document.getElementById("cf-novo-nome");
+    inp.focus();
+}
+
+function _cfCadastrarEntregador() {
+    const nome = document.getElementById("cf-novo-nome").value.trim();
+    const btn = document.getElementById("cf-novo-btn");
+    const status = document.getElementById("cf-novo-status");
+    if (!nome) { status.innerText = "Digite o nome."; return; }
+    btn.disabled = true;
+    status.innerText = "Cadastrando...";
+    fetch(`${_CF_API()}/entregadores`, { method: "POST", headers: _cfHeaders(true), body: JSON.stringify({ nome }) })
+    .then(async r => {
+        const d = await r.json().catch(() => ({}));
+        btn.disabled = false;
+        if (!r.ok) { status.innerText = d.error || "Erro ao cadastrar."; return; }
+        if (_cfEntregadores && !_cfEntregadores.nomes.includes(d.nome)) {
+            _cfEntregadores.nomes.push(d.nome);
+            _cfEntregadores.nomes.sort((a, b) => a.localeCompare(b, "pt-BR"));
+        }
+        const novo = document.getElementById("cf-conv-novo");
+        novo.innerHTML = `<span class="cft-ajuda">${_cfEsc(d.nome)} cadastrado nos Dados entregadores. Clique em Salvar pra ligar ao nome do relatório.</span>`;
+        _cfEscolherEntregador(d.nome);
+    }).catch(() => { btn.disabled = false; status.innerText = "Erro ao cadastrar."; });
 }
 
 function _cfEscolherEntregador(nome) {
