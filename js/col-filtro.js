@@ -21,6 +21,31 @@ function colfCompara(a, b, dir) {
     return dir === "desc" ? -r : r;
 }
 
+/**
+ * Onde o popover nasce. Ele é fixo na janela (e fecha quando a página rola), então
+ * TEM que caber na tela: abre embaixo do funil se couber; senão em cima; se não couber
+ * em nenhum dos dois (tabela no meio de tela baixa), fica do lado com mais espaço e ganha
+ * rolagem própria (maxHeight). Antes só limitava o topo e o resto ficava pra fora da tela,
+ * sem jeito de alcançar o OK.
+ *
+ * @param {{top:number, bottom:number, left:number}} r retângulo do funil
+ * @param {number} altura altura natural do popover
+ * @param {number} largura
+ * @param {{w:number, h:number}} janela
+ * @return {{top:number, left:number, maxHeight:?number}}
+ */
+function colfPosicao(r, altura, largura, janela) {
+    const MARGEM = 8, VAO = 6;
+    const left = Math.max(MARGEM, Math.min(r.left, janela.w - largura - MARGEM));
+    const abaixo = janela.h - r.bottom - VAO - MARGEM;
+    const acima = r.top - VAO - MARGEM;
+    if (altura <= abaixo) return { top: r.bottom + VAO, left, maxHeight: null };
+    if (altura <= acima) return { top: r.top - VAO - altura, left, maxHeight: null };
+    return abaixo >= acima
+        ? { top: r.bottom + VAO, left, maxHeight: Math.max(120, abaixo) }
+        : { top: MARGEM, left, maxHeight: Math.max(120, acima) };
+}
+
 function _colfFechar() {
     if (!_colfAberto) return;
     _colfAberto.el.remove();
@@ -129,11 +154,12 @@ function colfAbrir(anchorEl, opts) {
 
     // Fixo (não absoluto) porque o gatilho pode estar em qualquer coluna da
     // tabela — sem isso o popover nasceria sempre colado no canto errado.
-    // Corrige a borda direita/inferior pra nunca nascer cortado fora da tela.
+    // Posição: ver colfPosicao (nunca nasce cortado fora da tela).
     const r = anchorEl.getBoundingClientRect();
-    const LARGURA = 240;
-    el.style.top  = Math.min(r.bottom + 6, window.innerHeight - 60) + "px";
-    el.style.left = Math.max(8, Math.min(r.left, window.innerWidth - LARGURA - 8)) + "px";
+    const pos = colfPosicao(r, el.offsetHeight, 240, { w: window.innerWidth, h: window.innerHeight });
+    el.style.top  = pos.top + "px";
+    el.style.left = pos.left + "px";
+    if (pos.maxHeight) { el.style.maxHeight = pos.maxHeight + "px"; el.style.overflowY = "auto"; }
 
     const onDocClick = e => {
         const dentro = e.composedPath ? e.composedPath().includes(el) : el.contains(e.target);
