@@ -422,14 +422,14 @@ async function _cfArquivoSelecionado(input) {
         }
         const grid = await _cfLerGrid(file);
         if (!grid || grid.length < 2) throw new Error("Arquivo vazio ou inválido.");
-        const enviar = _cfSoColunasUteis(grid, _cfColunas[key] || []);
+        const { grid: enviar, posicoes } = _cfSoColunasUteis(grid, _cfColunas[key] || []);
         status.innerHTML = `<div class="cft-ajuda" style="font-size:13px">Tratando ${(grid.length - 1).toLocaleString("pt-BR")} linhas (planilha de precificação + conversão de nomes)...</div>`;
         const res = await fetch(`${_CF_API()}/upload`, {
             method: "POST", headers: _cfHeaders(true),
             body: JSON.stringify({
                 mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: key, arquivo: file.name,
                 ignorar_sabado: _cfIgnSab, ignorar_domingo: _cfIgnDom,
-                grid: enviar, cabecalho_original: grid[0],
+                grid: enviar, posicoes_originais: posicoes, cabecalho_original: grid[0],
             }),
         });
         const d = await res.json();
@@ -456,11 +456,19 @@ function _cfChave(v) {
 }
 
 // Relatório da Shopee tem dezenas de colunas × dezenas de milhares de linhas — manda só
-// as colunas que o backend sabe ler.
+// as colunas que o backend sabe ler. "#S" na lista é coluna pela letra; a posição original
+// de cada coluna vai junto (posicoes) pro backend saber qual era a S.
 function _cfSoColunasUteis(grid, aceitas) {
-    const set = new Set(aceitas.map(_cfChave));
-    const idx = grid[0].map((h, i) => set.has(_cfChave(h)) ? i : -1).filter(i => i >= 0);
-    return grid.map(row => idx.map(i => row[i] ?? ""));
+    const set = new Set(aceitas.filter(a => !/^#/.test(a)).map(_cfChave));
+    const letras = new Set(aceitas.filter(a => /^#[A-Za-z]{1,3}$/.test(a)).map(a => _cfLetraParaIndice(a.slice(1))));
+    const posicoes = grid[0].map((h, i) => set.has(_cfChave(h)) || letras.has(i) ? i : -1).filter(i => i >= 0);
+    return { grid: grid.map(row => posicoes.map(i => row[i] ?? "")), posicoes };
+}
+
+function _cfLetraParaIndice(letras) {
+    let n = 0;
+    for (const ch of letras.toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64);
+    return n - 1;
 }
 
 // Data de célula do Excel vira "AAAA-MM-DD HH:MM:SS" (sem ambiguidade dia/mês); o resto

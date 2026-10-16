@@ -26,7 +26,8 @@ test("filtro de colunas ignora acento e caixa, como o backend", () => {
         ["P1", "x", "fulano", "2026-10-01"],
     ];
     const r = ctx._cfSoColunasUteis(grid, ["Codigo", "Usuario", "Data atribuicao"]);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(r)), [
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(r.posicoes)), [0, 2, 3]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(r.grid)), [
         ["Código", "USUÁRIO", "Data Atribuição"],
         ["P1", "fulano", "2026-10-01"],
     ]);
@@ -35,7 +36,7 @@ test("filtro de colunas ignora acento e caixa, como o backend", () => {
 test("linha mais curta que o cabeçalho não vira undefined", () => {
     const ctx = carregar();
     const r = ctx._cfSoColunasUteis([["Codigo", "Usuario"], ["P1"]], ["Codigo", "Usuario"]);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(r[1])), ["P1", ""]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(r.grid[1])), ["P1", ""]);
 });
 
 test("as 5 transportadoras da planilha de precificação têm card", () => {
@@ -43,4 +44,12 @@ test("as 5 transportadoras da planilha de precificação têm card", () => {
     assert.deepStrictEqual(
         JSON.parse(vm.runInContext("JSON.stringify(_CF_TRANSPORTADORAS.map(t => t.label))", ctx)),
         ["Shopee Xpress", "Loggi", "Anjun", "Imile", "Total Express"]);
+});
+
+test("coluna pela letra (#S, #AG) entra mesmo sem nome reconhecido", () => {
+    const ctx = carregar();
+    const cab = Array.from({ length: 34 }, (_, i) => "X" + i);
+    cab[0] = "Waybill No";
+    const r = ctx._cfSoColunasUteis([cab], ["Waybill No", "#S", "#AG"]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(r.posicoes)), [0, 18, 32]);
 });
