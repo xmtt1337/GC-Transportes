@@ -10,8 +10,10 @@ let _cfTranspAtual = null;
 let _cfReqId       = 0; // descarta resposta de período trocado antes do fetch anterior voltar
 let _cfResumo      = [];
 let _cfColunas     = null; // nomes de coluna aceitos por transportadora (GET /config)
-let _cfRegras     = null; // quadro de regras de prazo em edição: [{escopo, t: {chave: {sab, dom}}}]
+let _cfRegras     = null; // quadro de regras de prazo em edição: [{tipo, escopo, t: {chave: {sab, dom}}}]
 let _cfPolos      = [];
+let _cfCidades    = [];
+let _cfNovoTipo   = "polo"; // o que o "+ Adicionar" das regras cria: polo ou cidade
 let _cfNomesPend  = []; // [{nome, qtd, feito}] — nomes sem conversão do lote aberto (tags clicáveis)
 let _cfEntregadores = null; // {nomes, aviso} — Dados entregadores + Conversão de nomes, lido 1x por tela
 let _cfTemLote     = false;
@@ -601,10 +603,12 @@ function _cfAbrirRegras() {
     .then(d => {
         if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
         _cfPolos = d.polos || [];
-        const linhas = [{ escopo: "geral", t: {} }];
+        _cfCidades = d.cidades || [];
+        const linhas = [{ tipo: "geral", escopo: "geral", t: {} }];
         for (const r of d.regras || []) {
-            let l = linhas.find(x => _cfChave(x.escopo) === _cfChave(r.escopo));
-            if (!l) { l = { escopo: r.escopo, t: {} }; linhas.push(l); }
+            const tipo = r.tipo || (_cfChave(r.escopo) === "geral" ? "geral" : "polo");
+            let l = linhas.find(x => x.tipo === tipo && _cfChave(x.escopo) === _cfChave(r.escopo));
+            if (!l) { l = { tipo, escopo: r.escopo, t: {} }; linhas.push(l); }
             l.t[r.transportadora] = { sab: !!r.ignorar_sabado, dom: !!r.ignorar_domingo };
         }
         _cfRegras = linhas;
@@ -619,23 +623,30 @@ function _cfRenderRegras(msg) {
         return `<button class="cft-chip cft-chip-mini${on ? " on" : ""}" title="${on ? "Não conta" : "Conta"} ${rot === "Sáb" ? "sábado" : "domingo"}"
             onclick="_cfAlternarRegra(${i}, '${key}', '${dia}')">${rot}</button>`;
     };
-    const usados = new Set(_cfRegras.map(l => _cfChave(l.escopo)));
-    const sugestoes = _cfPolos.filter(p => !usados.has(_cfChave(p)));
+    const usados = new Set(_cfRegras.filter(l => l.tipo === _cfNovoTipo).map(l => _cfChave(l.escopo)));
+    const sugestoes = (_cfNovoTipo === "cidade" ? _cfCidades : _cfPolos).filter(p => !usados.has(_cfChave(p)));
+    const rotuloLinha = (l) => l.tipo === "geral" ? "Geral (todos)" : (l.tipo === "cidade" ? "Cidade " : "Polo ") + _cfEsc(l.escopo);
+    // Geral, depois polos, depois cidades — a ordem em que as camadas se somam.
+    const ordem = { geral: 0, polo: 1, cidade: 2 };
+    const indices = _cfRegras.map((_, i) => i).sort((a, b) =>
+        ordem[_cfRegras[a].tipo] - ordem[_cfRegras[b].tipo] || _cfRegras[a].escopo.localeCompare(_cfRegras[b].escopo, "pt-BR"));
     el.innerHTML = `
         <div class="cft-ajuda" style="margin-bottom:10px">Marcado = <b>não conta</b> aquele dia no prazo (cada dia desses que cair no prazo soma +1 dia).
-            A linha de um polo soma à Geral pros pacotes daquele polo (o polo vem da planilha de precificação).</div>
+            Polo e cidade somam à Geral: um pacote segue a Geral + a linha do polo dele + a linha da cidade dele (polo e cidade vêm da planilha de precificação).</div>
         <div class="cft-tabela-wrap"><table class="cft-tabela cft-regras-tabela">
             <thead><tr><th>Vale para</th>${_CF_TRANSPORTADORAS.map(t => `<th>${t.label}</th>`).join("")}<th></th></tr></thead>
-            <tbody>${_cfRegras.map((l, i) => `<tr>
-                <td><strong>${l.escopo === "geral" ? "Geral (todos os polos)" : "Polo " + _cfEsc(l.escopo)}</strong></td>
+            <tbody>${indices.map(i => { const l = _cfRegras[i]; return `<tr>
+                <td><strong>${rotuloLinha(l)}</strong></td>
                 ${_CF_TRANSPORTADORAS.map(t => `<td>${celula(i, t.key, "sab", "Sáb")} ${celula(i, t.key, "dom", "Dom")}</td>`).join("")}
-                <td>${l.escopo === "geral" ? "" : `<button class="cft-chip cft-chip-mini" onclick="_cfRemoverPolo(${i})">Remover</button>`}</td>
-            </tr>`).join("")}</tbody>
+                <td>${l.tipo === "geral" ? "" : `<button class="cft-btn perigo" onclick="_cfRemoverPolo(${i})">Remover</button>`}</td>
+            </tr>`; }).join("")}</tbody>
         </table></div>
         <div class="cft-barra">
-            <input list="cf-polos-lista" id="cf-novo-polo" class="fech-select" placeholder="Polo (ex.: Joaçaba)" style="min-width:200px">
+            <button class="cft-chip${_cfNovoTipo === "polo" ? " on" : ""}" onclick="_cfTipoNovaRegra('polo')">Polo</button>
+            <button class="cft-chip${_cfNovoTipo === "cidade" ? " on" : ""}" onclick="_cfTipoNovaRegra('cidade')">Cidade</button>
+            <input list="cf-polos-lista" id="cf-novo-polo" class="fech-select" placeholder="${_cfNovoTipo === "cidade" ? "Cidade (ex.: Caçador)" : "Polo (ex.: Joaçaba)"}" style="min-width:220px">
             <datalist id="cf-polos-lista">${sugestoes.map(p => `<option value="${_cfEsc(p)}">`).join("")}</datalist>
-            <button class="cft-btn" onclick="_cfAdicionarPolo()">+ Regra para polo</button>
+            <button class="cft-btn" onclick="_cfAdicionarPolo()">Adicionar regra ${_cfNovoTipo === "cidade" ? "por cidade" : "por polo"}</button>
             <span style="flex:1"></span>
             <button class="cft-btn primario" id="cf-regras-salvar" onclick="_cfSalvarRegras()">Salvar${_cfQuinzena ? " e recalcular a quinzena" : ""}</button>
         </div>
@@ -649,14 +660,20 @@ function _cfAlternarRegra(i, key, dia) {
     _cfRenderRegras();
 }
 
+function _cfTipoNovaRegra(tipo) {
+    _cfNovoTipo = tipo;
+    _cfRenderRegras();
+}
+
 function _cfAdicionarPolo() {
     const nome = document.getElementById("cf-novo-polo").value.trim();
     if (!nome) return;
-    if (_cfChave(nome) === "geral" || _cfRegras.some(l => _cfChave(l.escopo) === _cfChave(nome))) {
-        _cfRenderRegras("Esse polo já está na lista.");
+    const tipo = _cfNovoTipo;
+    if (_cfChave(nome) === "geral" || _cfRegras.some(l => l.tipo === tipo && _cfChave(l.escopo) === _cfChave(nome))) {
+        _cfRenderRegras(`Ess${tipo === "cidade" ? "a cidade" : "e polo"} já está na lista.`);
         return;
     }
-    _cfRegras.push({ escopo: nome, t: {} });
+    _cfRegras.push({ tipo, escopo: nome, t: {} });
     _cfRenderRegras();
 }
 
@@ -671,7 +688,7 @@ async function _cfSalvarRegras() {
     const regras = [];
     for (const l of _cfRegras) {
         for (const [key, v] of Object.entries(l.t)) {
-            if (v.sab || v.dom) regras.push({ escopo: l.escopo, transportadora: key, ignorar_sabado: v.sab, ignorar_domingo: v.dom });
+            if (v.sab || v.dom) regras.push({ tipo: l.tipo, escopo: l.escopo, transportadora: key, ignorar_sabado: v.sab, ignorar_domingo: v.dom });
         }
     }
     btn.disabled = true;

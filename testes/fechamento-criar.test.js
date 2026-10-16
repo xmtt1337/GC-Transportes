@@ -146,3 +146,20 @@ test("toda coluna da tabela tem funil", () => {
     assert.doesNotMatch(fonte, /<th>(Código|Peso|Valor|Incentivo|Desconto|Adic|Motorista)/, "nenhum <th> sem funil");
     assert.ok(ctx);
 });
+
+test("regras de prazo: salvar manda o tipo (polo/cidade) de cada linha", async () => {
+    const t = carregarComDom(async () => ({ ok: true, status: 200, json: async () => ({ success: true }) }));
+    vm.runInContext(`_cfQuinzena = null; _cfRegras = [
+        { tipo: "geral", escopo: "geral", t: { loggi: { sab: true, dom: true } } },
+        { tipo: "polo", escopo: "Polo B", t: { anjun: { sab: false, dom: true } } },
+        { tipo: "cidade", escopo: "Vila Teste", t: { anjun: { sab: true, dom: false }, imile: { sab: false, dom: false } } },
+    ];`, t.ctx);
+    t.el("cf-regras-salvar"); t.el("cf-regras-status");
+    await t.ctx._cfSalvarRegras();
+    assert.strictEqual(t.chamadas[0].opts.method, "PUT");
+    assert.deepStrictEqual(JSON.parse(t.chamadas[0].opts.body).regras, [
+        { tipo: "geral", escopo: "geral", transportadora: "loggi", ignorar_sabado: true, ignorar_domingo: true },
+        { tipo: "polo", escopo: "Polo B", transportadora: "anjun", ignorar_sabado: false, ignorar_domingo: true },
+        { tipo: "cidade", escopo: "Vila Teste", transportadora: "anjun", ignorar_sabado: true, ignorar_domingo: false },
+    ]);
+});
