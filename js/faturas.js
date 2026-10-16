@@ -2,9 +2,18 @@
 // Lote: PO + planilha (operação | prefeitura nfse | cnpj tomador | Total).
 // Sai uma fatura por linha com prefeitura nfse = "Fatura"; o backend lê a
 // planilha e acha o endereço de cada CNPJ, aqui só mostramos a prévia.
+//
+// A planilha da PO tem ~100 filiais da SHPX. Por isso tudo que demora é
+// feito em pedaços com progresso na tela: os CNPJs sem CT-e vão à Receita um
+// por um (3 de cada vez) e a geração vai em blocos de FAT_BLOCO faturas.
 
 let _fatGrid = null;      // planilha crua, reenviada na geração
-let _fatPrevia = null;    // resposta de /faturas/lote/previa
+let _fatPrevia = null;    // resposta de /faturas/lote/previa (itens vão sendo completados)
+let _fatSeq = 0;          // trocou de planilha no meio da busca → descarta a busca antiga
+let _fatGerando = false;
+
+const FAT_BLOCO = 5;
+const FAT_RECEITA_PARALELO = 3;
 
 function abrirGeradorFaturas(event) {
     if (event) event.preventDefault();
@@ -15,6 +24,7 @@ function abrirGeradorFaturas(event) {
     document.getElementById("fat-numero").value = "";
     mostrarTela("tela-faturas");
     _fatCarregarHistorico();
+    _fatCarregarPOs();
     _fatSugerirNumero();
 
     const area = document.getElementById("fat-upload-area");
@@ -62,6 +72,15 @@ function _fatMostrarMsg(msg, tipo) {
     el.innerHTML = msg;
 }
 
+function _fatProgresso(texto, feito, total) {
+    const wrap = document.getElementById("fat-progresso");
+    if (texto === null) { wrap.style.display = "none"; return; }
+    wrap.style.display = "";
+    document.getElementById("fat-progresso-txt").innerText = texto;
+    const pct = total ? Math.round((feito / total) * 100) : 0;
+    document.getElementById("fat-progresso-barra").style.width = pct + "%";
+}
+
 function _fatSugerirNumero() {
     fetch(`${API}/faturas/proximo-numero`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
@@ -78,13 +97,17 @@ function _fatSugerirNumero() {
 // ── Planilha ──
 
 function _fatLimparPlanilha() {
+    _fatSeq++;
     _fatGrid = null;
     _fatPrevia = null;
     document.getElementById("fat-previa").style.display = "none";
     document.getElementById("fat-previa-tbody").innerHTML = "";
     document.getElementById("fat-sub").innerText =
         "Colunas: operação · prefeitura nfse · cnpj tomador · Total — só entram as linhas com prefeitura nfse = Fatura";
-    document.getElementById("fat-gerar-btn").disabled = true;
+    _fatProgresso(null);
+    const btn = document.getElementById("fat-gerar-btn");
+    btn.disabled = true;
+    btn.innerText = "Gerar faturas";
 }
 
 function _fatArquivo(input) {
@@ -93,6 +116,7 @@ function _fatArquivo(input) {
 }
 
 async function _fatLerArquivo(file) {
+    if (_fatGerando) return;
     _fatLimparMsg();
     _fatLimparPlanilha();
     document.getElementById("fat-sub").innerText = `Lendo ${file.name}...`;
@@ -127,12 +151,11 @@ function _fatLerGrid(file) {
 }
 
 async function _fatRefazerPrevia() {
-    if (!_fatGrid) return;
-    const btn = document.getElementById("fat-gerar-btn");
-    btn.disabled = true;
-    document.getElementById("fat-previa-rodape").innerText = "Buscando o endereço de cada CNPJ...";
-    document.getElementById("fat-previa").style.display = "";
-    document.getElementById("fat-previa-tbody").innerHTML = "";
+    if (!_fatGrid || _fatGerando) return;
+    const seq = ++_fatSeq;
+    document.getElementById("fat-gerar-btn").disabled = true;
+    document.getElementById("fat-previa").style.display = "none";
+    _fatProgresso("Lendo a planilha e buscando os endereços nos CT-e...", 0, 1);
     try {
         const r = await fetch(`${API}/faturas/lote/previa`, {
             method: "POST",
@@ -141,12 +164,65 @@ async function _fatRefazerPrevia() {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || "Erro ao ler a planilha.");
+        if (seq !== _fatSeq) return;
         _fatPrevia = d;
+        document.getElementById("fat-previa").style.display = "";
         _fatRenderPrevia();
+        await _fatBuscarPendentes(seq);
     } catch (err) {
+        if (seq !== _fatSeq) return;
+        _fatProgresso(null);
         document.getElementById("fat-previa").style.display = "none";
         _fatMostrarMsg(_fatEsc(err.message), "erro");
     }
+}
+
+// CNPJs sem CT-e: um por um na Receita, preenchendo a tabela conforme chegam.
+async function _fatBuscarPendentes(seq) {
+    const pendentes = [...new Set(_fatPrevia.itens.filter(it => it.pendente).map(it => it.cnpj))];
+    const doCte = new Set(_fatPrevia.itens.filter(it => it.origem === "cte").map(it => it.cnpj)).size;
+    if (!pendentes.length) { _fatProgresso(null); _fatRenderPrevia(); return; }
+
+    let feitos = 0;
+    const atualizar = () => _fatProgresso(
+        `${doCte} endereço(s) achados nos CT-e · consultando a Receita: ${feitos} de ${pendentes.length}`,
+        feitos, pendentes.length
+    );
+    atualizar();
+
+    const fila = pendentes.slice();
+    const trabalhador = async () => {
+        while (fila.length) {
+            const cnpj = fila.shift();
+            let res = await _fatConsultarReceita(cnpj);
+            if (res.erro) {   // a BrasilAPI às vezes recusa por excesso de pedidos — tenta mais uma vez
+                await new Promise(ok => setTimeout(ok, 1500));
+                res = await _fatConsultarReceita(cnpj);
+            }
+            if (seq !== _fatSeq) return;
+            for (const it of _fatPrevia.itens) {
+                if (it.cnpj !== cnpj) continue;
+                it.pendente = false;
+                it.sacado = res.sacado || null;
+                it.origem = res.origem || null;
+                it.erro = res.erro || null;
+            }
+            feitos++;
+            atualizar();
+            _fatRenderPrevia();
+        }
+    };
+    await Promise.all(Array.from({ length: FAT_RECEITA_PARALELO }, trabalhador));
+    if (seq !== _fatSeq) return;
+    _fatProgresso(null);
+    _fatRenderPrevia();
+}
+
+function _fatConsultarReceita(cnpj) {
+    return fetch(`${API}/faturas/sacado/${cnpj}`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(d => d.error ? { erro: d.error } : d)
+        .catch(() => ({ erro: "sem resposta do servidor" }));
 }
 
 function _fatRenderPrevia() {
@@ -159,13 +235,15 @@ function _fatRenderPrevia() {
         if (it.origem === "receita") avisos.push("sem CT-e — endereço da Receita, confira");
         if (it.ja_gerada) avisos.push("já tem fatura desta PO pra esse CNPJ");
         const aviso = avisos.length ? `<div style="color:#eab308;font-size:11px;margin-top:2px">${_fatEsc(avisos.join(" · "))}</div>` : "";
+        let endereco;
+        if (s) endereco = `${_fatEsc(s.enderecoCobranca)} — ${_fatEsc(s.bairro)}, ${_fatEsc(s.cidade)}/${_fatEsc(s.estado)} — CEP ${_fatEsc(s.cep)}`;
+        else if (it.pendente) endereco = `<span style="color:#8494a9">sem CT-e — consultando a Receita...</span>`;
+        else endereco = `<span style="color:#ef4444">${_fatEsc(it.erro)}</span>`;
         return `<tr>
             <td>${_fatEsc(_fatNumeroDaLinha(numeroInicial, i))}</td>
             <td>${_fatEsc(it.operacao || "—")}</td>
             <td>${s ? _fatEsc(s.nome) : "—"}<div style="color:#8494a9;font-size:11px">${_fatEsc(_fatCnpj(it.cnpj))}</div></td>
-            <td>${s
-                ? `${_fatEsc(s.enderecoCobranca)} — ${_fatEsc(s.bairro)}, ${_fatEsc(s.cidade)}/${_fatEsc(s.estado)} — CEP ${_fatEsc(s.cep)}`
-                : `<span style="color:#ef4444">${_fatEsc(it.erro)}</span>`}${aviso}</td>
+            <td>${endereco}${aviso}</td>
             <td class="pag-valor">${moedaJS(it.valor)}</td>
         </tr>`;
     }).join("") || `<tr><td colspan="5" style="color:#8494a9">Nenhuma linha com prefeitura nfse = Fatura.</td></tr>`;
@@ -175,17 +253,19 @@ function _fatRenderPrevia() {
     if (ignoradas) partes.push(`${ignoradas} linha(s) de outra prefeitura ignorada(s)`);
     document.getElementById("fat-previa-rodape").innerText = partes.join(" · ");
 
-    const semEndereco = itens.filter(it => !it.sacado).length;
+    const pendentes = itens.filter(it => it.pendente).length;
+    const semEndereco = itens.filter(it => !it.sacado && !it.pendente).length;
     if (erros.length) {
         _fatMostrarMsg("Corrija a planilha: " + erros.map(e => `linha ${e.linha} — ${_fatEsc(e.motivo)}`).join("; "), "erro");
     } else if (semEndereco) {
-        _fatMostrarMsg(`${semEndereco} CNPJ(s) sem endereço — não dá pra gerar enquanto faltar.`, "erro");
+        _fatMostrarMsg(`${semEndereco} CNPJ(s) sem endereço — não dá pra gerar enquanto faltar. Anexe a planilha de novo pra tentar outra vez.`, "erro");
     } else {
         _fatLimparMsg();
     }
 
     const btn = document.getElementById("fat-gerar-btn");
-    btn.disabled = !itens.length || erros.length > 0 || semEndereco > 0;
+    if (_fatGerando) return;
+    btn.disabled = !itens.length || erros.length > 0 || semEndereco > 0 || pendentes > 0;
     btn.innerText = itens.length ? `Gerar ${itens.length} fatura(s)` : "Gerar faturas";
 }
 
@@ -196,9 +276,9 @@ function _fatNumeroDaLinha(inicial, i) {
     return m[1] + String(Number(m[2]) + i).padStart(m[2].length, "0");
 }
 
-// ── Geração ──
+// ── Geração (em blocos, com progresso) ──
 
-function _fatGerar() {
+async function _fatGerar() {
     const referencia = document.getElementById("fat-referencia").value.trim();
     const emissaoISO = document.getElementById("fat-emissao").value;
     const numero     = document.getElementById("fat-numero").value.trim();
@@ -206,38 +286,153 @@ function _fatGerar() {
     if (!referencia) return _fatMostrarMsg("Informe a PO.", "erro");
     if (!emissaoISO) return _fatMostrarMsg("Informe a data de emissão.", "erro");
     if (!numero)     return _fatMostrarMsg("Informe o nº da primeira fatura.", "erro");
-    if (!_fatGrid)   return _fatMostrarMsg("Anexe a planilha.", "erro");
+    if (!_fatGrid || !_fatPrevia) return _fatMostrarMsg("Anexe a planilha.", "erro");
 
     const btn = document.getElementById("fat-gerar-btn");
+    const total = _fatPrevia.itens.length;
+    _fatGerando = true;
     btn.disabled = true;
-    const textoOriginal = btn.innerText;
     btn.innerText = "Gerando...";
     _fatLimparMsg();
 
-    fetch(`${API}/faturas/lote/gerar`, {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ referencia, data_emissao: emissaoISO, numero_inicial: numero, grid: _fatGrid })
-    })
-    .then(async (r) => {
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(d.error || "Erro ao gerar as faturas.");
-        // Um download por vez — vários de uma vez o navegador costuma bloquear.
-        for (const f of d.faturas) {
-            await _fatBaixar(f.id, f.nome_arquivo);
-            await new Promise(res => setTimeout(res, 400));
+    let geradas = 0;
+    try {
+        for (let de = 0; de < total; de += FAT_BLOCO) {
+            _fatProgresso(`Gerando faturas: ${geradas} de ${total}`, geradas, total);
+            const r = await fetch(`${API}/faturas/lote/gerar`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                body: JSON.stringify({ referencia, data_emissao: emissaoISO, numero_inicial: numero, grid: _fatGrid, de, ate: de + FAT_BLOCO })
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d.error || "Erro ao gerar as faturas.");
+            geradas += d.faturas.length;
         }
-        _fatMostrarMsg(`${d.faturas.length} fatura(s) gerada(s) e baixada(s): nº ${d.faturas.map(f => _fatEsc(f.numero_fatura)).join(", ")}.`, "sucesso");
+        _fatProgresso(null);
+        _fatGerando = false;
         _fatLimparPlanilha();
         document.getElementById("fat-numero").value = "";
+        _fatMostrarMsg(
+            `${geradas} fatura(s) gerada(s) da PO ${_fatEsc(referencia)}. ` +
+            `<a href="#" onclick="_fatBaixarPO(${_fatEsc(JSON.stringify(referencia))});return false" style="color:inherit;text-decoration:underline">Baixar todas</a>`,
+            "sucesso"
+        );
         _fatCarregarHistorico();
+        _fatCarregarPOs(referencia);
         _fatSugerirNumero();
+    } catch (err) {
+        _fatGerando = false;
+        _fatProgresso(null);
+        const parcial = geradas ? ` ${geradas} de ${total} já foram geradas e estão no histórico.` : "";
+        _fatMostrarMsg(_fatEsc(err.message || "Erro ao gerar as faturas.") + parcial, "erro");
+        btn.disabled = false;
+        btn.innerText = `Gerar ${total} fatura(s)`;
+    }
+}
+
+// ── Baixar PO (todas as faturas numa pasta com o nome da PO) ──
+
+function _fatCarregarPOs(selecionar) {
+    fetch(`${API}/faturas/pos`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => r.json())
+    .then(pos => {
+        if (!Array.isArray(pos)) return;
+        const sel = document.getElementById("fat-po-sel");
+        const atual = selecionar || sel.value;
+        sel.innerHTML = pos.map(p =>
+            `<option value="${_fatEsc(p.referencia)}">${_fatEsc(p.referencia)} — ${p.qtd} fatura(s)</option>`
+        ).join("") || `<option value="">Nenhuma PO</option>`;
+        if (atual && pos.some(p => p.referencia === atual)) sel.value = atual;
     })
-    .catch((err) => {
-        _fatMostrarMsg(_fatEsc(err.message || "Erro ao gerar as faturas."), "erro");
+    .catch(() => {});
+}
+
+function _fatNomePasta(s) {
+    return String(s).replace(/[\\/:*?"<>|]/g, "-").trim() || "faturas";
+}
+
+// Chrome/Edge: a pessoa escolhe onde salvar e a pasta da PO é criada lá
+// dentro. Outros navegadores: um .zip com a pasta da PO dentro.
+// O seletor de pasta precisa ser aberto ANTES de qualquer await de rede — o
+// navegador só permite em resposta direta ao clique.
+async function _fatBaixarPO(referencia) {
+    referencia = referencia || document.getElementById("fat-po-sel").value;
+    if (!referencia) return gcAlert("Escolha a PO.");
+    const pasta = _fatNomePasta(referencia);
+
+    let destino = null;
+    if (window.showDirectoryPicker) {
+        try {
+            destino = await window.showDirectoryPicker({ id: "faturas-po", mode: "readwrite" });
+        } catch (err) {
+            if (err && err.name === "AbortError") return; // cancelou a escolha
+            destino = null;
+        }
+    }
+
+    const btn = document.getElementById("fat-po-btn");
+    const textoOriginal = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = "Baixando...";
+    try {
+        const r = await fetch(`${API}/faturas/po/pdfs?referencia=${encodeURIComponent(referencia)}`,
+            { headers: { "Authorization": "Bearer " + token } });
+        const arquivos = await r.json();
+        if (!r.ok) throw new Error(arquivos.error || "Erro ao buscar as faturas.");
+        if (!arquivos.length) throw new Error("Nenhuma fatura nessa PO.");
+
+        if (destino) {
+            const dir = await destino.getDirectoryHandle(pasta, { create: true });
+            for (const a of arquivos) {
+                const fh = await dir.getFileHandle(a.nome_arquivo, { create: true });
+                const w = await fh.createWritable();
+                await w.write(_fatBase64ParaBytes(a.pdf));
+                await w.close();
+            }
+            gcAlert(`${arquivos.length} fatura(s) salvas na pasta "${pasta}".`);
+        } else {
+            await _fatCarregarJSZip();
+            const zip = new JSZip();
+            const dir = zip.folder(pasta);
+            for (const a of arquivos) dir.file(a.nome_arquivo, a.pdf, { base64: true });
+            const blob = await zip.generateAsync({ type: "blob" });
+            _fatSalvarBlob(blob, `${pasta}.zip`);
+        }
+    } catch (err) {
+        gcAlert(err.message || "Não foi possível baixar as faturas da PO.");
+    } finally {
         btn.disabled = false;
         btn.innerText = textoOriginal;
+    }
+}
+
+function _fatBase64ParaBytes(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+}
+
+function _fatCarregarJSZip() {
+    if (window.JSZip) return Promise.resolve();
+    return new Promise((ok, falha) => {
+        const s = document.createElement("script");
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+        s.onload = ok;
+        s.onerror = () => falha(new Error("Não consegui carregar o compactador."));
+        document.head.appendChild(s);
     });
+}
+
+function _fatSalvarBlob(blob, nome) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 // ── Histórico ──
@@ -279,15 +474,6 @@ function _fatCarregarHistorico() {
 function _fatBaixar(id, nome) {
     return fetch(`${API}/faturas/${id}/pdf`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
-    .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = nome || `fatura-${id}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-    })
+    .then(blob => _fatSalvarBlob(blob, nome || `fatura-${id}.pdf`))
     .catch(() => gcAlert("Não foi possível baixar o PDF desta fatura."));
 }
