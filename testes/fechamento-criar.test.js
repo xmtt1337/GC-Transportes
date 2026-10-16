@@ -180,3 +180,12 @@ test("colunas dos relatórios: salvar manda a lista de cada campo, na ordem", as
         campos: { usuario: ["Delivery Associate"], data_atribuicao: ["Delivery Time", "Arrival Time"] } });
     assert.strictEqual(vm.runInContext("_cfColunas", t.ctx), null, "upload relê a lista de colunas");
 });
+
+test("acento quebrado do relatório (CÃ³digo) volta a ser Código; texto certo não muda", () => {
+    const ctx = carregar();
+    ctx.TextDecoder = TextDecoder;
+    assert.strictEqual(ctx._cfConsertarAcento("CÃ³digo de Barras"), "Código de Barras");
+    assert.strictEqual(ctx._cfConsertarAcento("Nome do DestinatÃ¡rio"), "Nome do Destinatário");
+    assert.strictEqual(ctx._cfConsertarAcento("Código de Barras"), "Código de Barras");
+    assert.strictEqual(ctx._cfConsertarAcento("São José"), "São José");
+});

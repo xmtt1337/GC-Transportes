@@ -935,6 +935,26 @@ function _cfLetraParaIndice(letras) {
     return n - 1;
 }
 
+// Acento quebrado: texto UTF-8 que alguém leu como Latin-1/Windows-1252 e gravou assim
+// ("CÃ³digo de Barras" — o relatório da Loggi vem desse jeito). Só mexe quando o padrão
+// aparece e a volta é UTF-8 válido. Mesma regra do backend (fechamento-transportadoras/acento.js).
+const _CF_CP1252 = { "€": 0x80, "‚": 0x82, "ƒ": 0x83, "„": 0x84, "…": 0x85, "†": 0x86, "‡": 0x87, "ˆ": 0x88, "‰": 0x89,
+    "Š": 0x8a, "‹": 0x8b, "Œ": 0x8c, "Ž": 0x8e, "‘": 0x91, "’": 0x92, "“": 0x93, "”": 0x94, "•": 0x95,
+    "–": 0x96, "—": 0x97, "˜": 0x98, "™": 0x99, "š": 0x9a, "›": 0x9b, "œ": 0x9c, "ž": 0x9e, "Ÿ": 0x9f };
+const _CF_QUEBRADO = /[ÃÂ][\u0080-\u00BF€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/;
+function _cfConsertarAcento(s) {
+    if (typeof s !== "string" || !_CF_QUEBRADO.test(s)) return s;
+    const bytes = [];
+    for (const ch of s) {
+        const c = ch.charCodeAt(0);
+        if (c <= 0xff) bytes.push(c);
+        else if (_CF_CP1252[ch] !== undefined) bytes.push(_CF_CP1252[ch]);
+        else return s;
+    }
+    try { return new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes)); }
+    catch (_) { return s; }
+}
+
 // Data de célula do Excel vira "AAAA-MM-DD HH:MM:SS" (sem ambiguidade dia/mês); o resto
 // vai como o texto que aparece na célula (código numérico grande não perde dígito).
 function _cfLerGrid(file) {
@@ -963,7 +983,7 @@ function _cfLerGrid(file) {
                         return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
                     }
                     const t = txt[i] && txt[i][j];
-                    return t !== undefined && t !== "" ? String(t) : String(v ?? "");
+                    return _cfConsertarAcento(t !== undefined && t !== "" ? String(t) : String(v ?? ""));
                 })));
             } catch (err) { reject(err); }
         };
