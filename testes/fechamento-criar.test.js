@@ -123,3 +123,15 @@ test("cadastrar novo entregador: manda o nome, entra na lista e já fica escolhi
         ["Fulano de Teste - Vila Teste", "Pessoa Nova - Vila Teste"]);
     assert.strictEqual(t.el("cf-conv-input").value, "Pessoa Nova - Vila Teste");
 });
+
+test("filtro de coluna: vai junto na busca de pacotes e marca o funil da coluna filtrada", () => {
+    const ctx = carregar();
+    vm.runInContext(`_cfTranspAtual = "anjun"; _cfColFiltros = { cidade: ["Vila Teste"] }; _cfOrdem = { coluna: "data_entrega", dir: "desc" };`, ctx);
+    const p = JSON.parse(vm.runInContext("JSON.stringify(_cfParamsFiltro())", ctx));
+    assert.deepStrictEqual(JSON.parse(p.filtros), { cidade: ["Vila Teste"] });
+    assert.match(vm.runInContext(`_cfTh("Cidade", "cidade")`, ctx), /colf-btn ativo/);
+    assert.match(vm.runInContext(`_cfTh("Entrega", "data_entrega")`, ctx), /colf-btn ativo/, "ordenada também conta como ativa");
+    assert.doesNotMatch(vm.runInContext(`_cfTh("Polo", "polo")`, ctx), /ativo/);
+    vm.runInContext(`_cfColFiltros = {}`, ctx);
+    assert.strictEqual(JSON.parse(vm.runInContext("JSON.stringify(_cfParamsFiltro())", ctx)).filtros, undefined);
+});

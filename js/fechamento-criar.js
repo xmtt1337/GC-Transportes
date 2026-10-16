@@ -19,6 +19,8 @@ let _cfBusca       = "";
 let _cfFiltro      = "";
 let _cfPagina      = 0;
 let _cfBuscaTimer  = null;
+let _cfColFiltros = {};   // filtro de coluna (funil): { coluna: [valores] } — só colunas com recorte
+let _cfOrdem      = null; // { coluna, dir } escolhida no funil
 const _CF_POR_PAGINA = 200;
 const _CF_API = () => `${API}/admin/fechamento-transportadoras`;
 
@@ -152,7 +154,7 @@ function _cfRenderCards() {
 
 function _cfSelecionarTransp(key) {
     _cfTranspAtual = key;
-    _cfBusca = ""; _cfFiltro = ""; _cfPagina = 0;
+    _cfBusca = ""; _cfFiltro = ""; _cfPagina = 0; _cfColFiltros = {}; _cfOrdem = null;
     _cfRenderCards();
     const cfg = _CF_TRANSPORTADORAS.find(t => t.key === key);
     document.getElementById("cf-painel-nome").innerText = cfg.label;
@@ -200,7 +202,7 @@ function _cfHtmlResumo(r) {
             <div class="cft-kpi"><div class="cft-kpi-valor">${r.total.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Pacotes</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">${pct}%</div><div class="cft-kpi-rotulo">${r.dentro_prazo.toLocaleString("pt-BR")} no prazo</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">${r.fora_prazo.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Fora do prazo</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor">${moedaJS(r.valor_motorista)}</div><div class="cft-kpi-rotulo">Valor motoristas</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor cft-pos">${moedaJS(r.valor_motorista)}</div><div class="cft-kpi-rotulo">Valor motoristas</div></div>
         </div>`;
 
     const tags = (lista) => `<div class="cft-pend-tags">${lista.map(x =>
@@ -427,6 +429,7 @@ function _cfHtmlTabelaBase() {
                 <button class="cft-chip${_cfFiltro === "" ? " on" : ""}" data-cf-filtro="" onclick="_cfMudarFiltro('')">Todos</button>
                 <button class="cft-chip${_cfFiltro === "fora" ? " on" : ""}" data-cf-filtro="fora" onclick="_cfMudarFiltro('fora')">Fora do prazo</button>
                 <button class="cft-chip${_cfFiltro === "pendentes" ? " on" : ""}" data-cf-filtro="pendentes" onclick="_cfMudarFiltro('pendentes')">Com pendência</button>
+                <button class="cft-btn" id="cf-limpar-filtros" style="display:none" onclick="_cfLimparFiltrosColuna()">Limpar filtros de coluna</button>
             </div>
             <div class="adm-search-input-area" style="max-width:300px">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -446,7 +449,8 @@ function _cfCarregarPacotes() {
     if (!el) return;
     const key = _cfTranspAtual;
     const reqId = _cfReqId;
-    const params = { transportadora: key, busca: _cfBusca, filtro: _cfFiltro, limite: _CF_POR_PAGINA, pagina: _cfPagina };
+    const params = { ..._cfParamsFiltro(), limite: _CF_POR_PAGINA, pagina: _cfPagina };
+    if (_cfOrdem) { params.ordem = _cfOrdem.coluna; params.dir = _cfOrdem.dir; }
     fetch(`${_CF_API()}/pacotes?${_cfQs(params)}`, { headers: _cfHeaders() })
     .then(r => r.json())
     .then(d => {
@@ -470,18 +474,20 @@ function _cfCarregarPacotes() {
                 <td>${prazo}</td>
                 <td class="num">${_cfNum(p.peso_kg, 2)}</td>
                 <td class="num">${_cfNum(p.valor_entrega)}</td>
-                <td class="num">${_cfNum(p.incentivo)}</td>
-                <td class="num">${_cfNum(p.desconto)}</td>
-                <td class="num">${_cfNum(p.adicional_peso)}</td>
-                <td class="num"><strong>${_cfNum(p.valor_motorista)}</strong></td>
+                <td class="num${p.incentivo > 0 ? " cft-pos" : ""}">${_cfNum(p.incentivo)}</td>
+                <td class="num${p.desconto > 0 ? " cft-neg" : ""}">${_cfNum(p.desconto)}</td>
+                <td class="num${p.adicional_peso > 0 ? " cft-pos" : ""}">${_cfNum(p.adicional_peso)}</td>
+                <td class="num cft-pos"><strong>${_cfNum(p.valor_motorista)}</strong></td>
             </tr>`;
         }).join("");
         const paginas = Math.max(1, Math.ceil(d.total / _CF_POR_PAGINA));
         el.innerHTML = `
             <div class="cft-tabela-wrap"><table class="cft-tabela">
                 <thead><tr>
-                    <th>Driver</th><th>Usuário</th><th>Código</th>${total ? "<th>Tipo</th>" : ""}<th>Cidade</th><th>Polo</th>
-                    <th>Atribuição</th><th>Entrega</th><th>Deve ser entregue</th><th>No prazo</th>
+                    ${_cfTh("Driver", "driver")}${_cfTh("Usuário", "usuario")}<th>Código</th>${total ? _cfTh("Tipo", "tipo_produto") : ""}
+                    ${_cfTh("Cidade", "cidade")}${_cfTh("Polo", "polo")}
+                    ${_cfTh("Atribuição", "data_atribuicao")}${_cfTh("Entrega", "data_entrega")}${_cfTh("Deve ser entregue", "deve_ser_entregue")}
+                    ${_cfTh("No prazo", "dentro_prazo")}
                     <th>Peso (kg)</th><th>Valor</th><th>Incentivo</th><th>Desconto</th><th>Adic. peso</th><th>Motorista</th>
                 </tr></thead>
                 <tbody>${linhas || `<tr><td colspan="16" class="cft-vazio" style="padding:16px">Nenhum pacote.</td></tr>`}</tbody>
@@ -494,9 +500,57 @@ function _cfCarregarPacotes() {
                     <button class="cft-chip" ${_cfPagina >= paginas - 1 ? "disabled" : ""} onclick="_cfMudarPagina(1)">›</button>
                 </span>` : ""}
             </div>`;
+        _cfAtualizarLimparFiltros();
     }).catch(() => {
         if (reqId === _cfReqId) el.innerHTML = `<div class="cft-erro">Erro ao carregar os pacotes.</div>`;
     });
+}
+
+// ── Filtro de coluna (funil no cabeçalho, mesmo componente dos backlogs: col-filtro.js).
+// A lista de valores vem do servidor (lote inteiro), não só da página na tela.
+const _CF_FUNIL = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>';
+
+function _cfTh(rotulo, coluna) {
+    const ativo = !!_cfColFiltros[coluna] || (_cfOrdem && _cfOrdem.coluna === coluna);
+    return `<th><span class="colf-th">${rotulo}<button type="button" class="colf-btn${ativo ? " ativo" : ""}" onclick="_cfAbrirFiltroColuna(this, '${coluna}')" title="Filtrar / ordenar">${_CF_FUNIL}</button></span></th>`;
+}
+
+function _cfParamsFiltro() {
+    const p = { transportadora: _cfTranspAtual, busca: _cfBusca, filtro: _cfFiltro };
+    if (Object.keys(_cfColFiltros).length) p.filtros = JSON.stringify(_cfColFiltros);
+    return p;
+}
+
+function _cfAbrirFiltroColuna(btn, coluna) {
+    fetch(`${_CF_API()}/valores?${_cfQs({ ..._cfParamsFiltro(), coluna })}`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) { gcAlert(d.error); return; }
+        colfAbrir(btn, {
+            contagem: d.valores || [],
+            selecionados: _cfColFiltros[coluna] ? new Set(_cfColFiltros[coluna]) : null,
+            ordenar: { atual: _cfOrdem && _cfOrdem.coluna === coluna ? _cfOrdem.dir : null },
+            aoAplicar: (sel, ordem) => {
+                if (sel) _cfColFiltros[coluna] = [...sel]; else delete _cfColFiltros[coluna];
+                if (ordem) _cfOrdem = { coluna, dir: ordem };
+                else if (_cfOrdem && _cfOrdem.coluna === coluna) _cfOrdem = null;
+                _cfPagina = 0;
+                _cfAtualizarLimparFiltros();
+                _cfCarregarPacotes();
+            },
+        });
+    }).catch(() => gcAlert("Erro ao carregar os valores da coluna."));
+}
+
+function _cfLimparFiltrosColuna() {
+    _cfColFiltros = {}; _cfOrdem = null; _cfPagina = 0;
+    _cfAtualizarLimparFiltros();
+    _cfCarregarPacotes();
+}
+
+function _cfAtualizarLimparFiltros() {
+    const el = document.getElementById("cf-limpar-filtros");
+    if (el) el.style.display = Object.keys(_cfColFiltros).length || _cfOrdem ? "" : "none";
 }
 
 function _cfBuscar(v) {
