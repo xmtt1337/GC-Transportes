@@ -6244,3 +6244,8 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .cft-novo > .cft-ajuda:first-child { flex-basis: auto; }
 .cft-link { background: none; border: 0; padding: 0; font: inherit; font-size: 12px; color: #cbd5e1; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .cft-link:hover { color: #fff; }
+.cft-col-tabela td { vertical-align: top; white-space: normal; }
+.cft-col-tag { display: inline-flex; align-items: center; gap: 4px; }
+.cft-col-mini { background: none; border: 0; padding: 0 2px; font: inherit; font-size: 12px; color: #6b7a90; cursor: pointer; }
+.cft-col-mini:hover { color: #e2e8f0; }
+.cft-col-input { max-width: 280px; margin-top: 6px; padding: 6px 10px; font-size: 12px; }

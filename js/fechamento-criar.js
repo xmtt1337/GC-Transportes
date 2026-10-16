@@ -13,6 +13,7 @@ let _cfColunas     = null; // nomes de coluna aceitos por transportadora (GET /c
 let _cfRegras     = null; // quadro de regras de prazo em edição: [{tipo, escopo, t: {chave: {sab, dom}}}]
 let _cfPolos      = [];
 let _cfCidades    = [];
+let _cfColCfg     = null; // tela Colunas dos relatórios: { transp, campos: [{campo, rotulo, obrigatorio, nomes, padrao, nomes_padrao}] }
 let _cfNovoTipo   = "polo"; // o que o "+ Adicionar" das regras cria: polo ou cidade
 let _cfNomesPend  = []; // [{nome, qtd, feito}] — nomes sem conversão do lote aberto (tags clicáveis)
 let _cfEntregadores = null; // {nomes, aviso} — Dados entregadores + Conversão de nomes, lido 1x por tela
@@ -591,6 +592,117 @@ function _cfRecalcular() {
     });
 }
 
+// ── Colunas dos relatórios: por transportadora, os nomes de coluna aceitos em cada campo,
+// em ordem — em cada linha vale a primeira dessas colunas que estiver preenchida.
+// Gravado no banco (fechamento_colunas); sem edição vale o padrão do sistema.
+const _CF_OBRIG = {
+    sim: "obrigatório", cidade_ou_cep: "Cidade ou CEP (um dos dois)", nao: "opcional", nao_usa: "não usado (sempre NORMAL)",
+};
+
+function _cfAbrirColunas(key) {
+    const el = document.getElementById("cf-colunas");
+    if (!key && el.style.display !== "none") { el.style.display = "none"; return; }
+    el.style.display = "";
+    const transp = key || (_cfColCfg && _cfColCfg.transp) || _cfTranspAtual || _CF_TRANSPORTADORAS[0].key;
+    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    fetch(`${_CF_API()}/colunas?transportadora=${transp}`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
+        _cfColCfg = { transp, campos: d.campos || [] };
+        _cfRenderColunas();
+    }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar as colunas.</div>`; });
+}
+
+function _cfRenderColunas(msg) {
+    const el = document.getElementById("cf-colunas");
+    const { transp, campos } = _cfColCfg;
+    // Tipo de Produto só existe na Total Express — nas outras a linha só confundiria.
+    const linhas = campos.map((c, i) => c.obrigatorio === "nao_usa" ? "" : (() => {
+        const vazioObrig = !c.nomes.length && c.obrigatorio === "sim";
+        const tags = c.nomes.map((n, k) => `<span class="cft-tag cft-col-tag">
+                ${k > 0 ? `<button class="cft-col-mini" title="Subir (tem preferência)" onclick="_cfColMover(${i}, ${k})">↑</button>` : ""}${_cfEsc(n)}
+                <button class="cft-col-mini" title="Remover" onclick="_cfColRemover(${i}, ${k})">×</button>
+            </span>`).join("");
+        return `<tr>
+            <td><strong>${_cfEsc(c.rotulo)}</strong><div class="cft-ajuda">${_CF_OBRIG[c.obrigatorio] || ""}</div></td>
+            <td>
+                <div class="cft-pend-tags" style="margin:0">${tags || `<span class="cft-ajuda${vazioObrig ? " cft-neg" : ""}">nenhuma coluna${vazioObrig ? " — o upload vai recusar" : ""}</span>`}</div>
+                <input class="cft-input cft-col-input" placeholder="Nome da coluna + Enter" onkeydown="if(event.key==='Enter')_cfColAdicionar(${i}, this)">
+            </td>
+            <td class="cft-ajuda">${c.padrao ? "padrão" : "editado"}</td>
+        </tr>`;
+    })()).join("");
+    el.innerHTML = `
+        <div class="cft-barra" style="margin-top:0">
+            ${_CF_TRANSPORTADORAS.map(t => `<button class="cft-chip${t.key === transp ? " on" : ""}" onclick="_cfAbrirColunas('${t.key}')">${t.label}</button>`).join("")}
+        </div>
+        <div class="cft-ajuda" style="margin-bottom:10px">Nomes das colunas no relatório da transportadora, em ordem de preferência: em cada linha vale a
+            <b>primeira dessas colunas que estiver preenchida</b> (as outras são o plano B). Acento e maiúscula não importam.
+            "#S" quer dizer a coluna S do arquivo, pela letra.</div>
+        <div class="cft-tabela-wrap"><table class="cft-tabela cft-regras-tabela cft-col-tabela">
+            <thead><tr><th>Campo</th><th>Colunas aceitas</th><th></th></tr></thead>
+            <tbody>${linhas}</tbody>
+        </table></div>
+        <div class="cft-barra">
+            <button class="cft-btn perigo" onclick="_cfColRestaurar()">Restaurar padrão</button>
+            <span style="flex:1"></span>
+            <button class="cft-btn primario" id="cf-col-salvar" onclick="_cfColSalvar()">Salvar</button>
+        </div>
+        <div class="cft-ajuda" id="cf-col-status">${msg || ""}</div>`;
+}
+
+function _cfColAdicionar(i, input) {
+    const nome = input.value.replace(/\s+/g, " ").trim();
+    if (!nome) return;
+    const c = _cfColCfg.campos[i];
+    if (c.nomes.some(n => _cfChave(n) === _cfChave(nome))) { input.value = ""; return; }
+    c.nomes.push(nome);
+    _cfRenderColunas("Alteração não salva.");
+}
+
+function _cfColRemover(i, k) {
+    _cfColCfg.campos[i].nomes.splice(k, 1);
+    _cfRenderColunas("Alteração não salva.");
+}
+
+function _cfColMover(i, k) {
+    const n = _cfColCfg.campos[i].nomes;
+    [n[k - 1], n[k]] = [n[k], n[k - 1]];
+    _cfRenderColunas("Alteração não salva.");
+}
+
+function _cfColSalvar() {
+    const { transp, campos } = _cfColCfg;
+    const corpo = { transportadora: transp, campos: {} };
+    campos.forEach(c => { corpo.campos[c.campo] = c.nomes; });
+    const btn = document.getElementById("cf-col-salvar");
+    btn.disabled = true;
+    fetch(`${_CF_API()}/colunas`, { method: "PUT", headers: _cfHeaders(true), body: JSON.stringify(corpo) })
+    .then(async r => {
+        const d = await r.json().catch(() => ({}));
+        btn.disabled = false;
+        if (!r.ok) { document.getElementById("cf-col-status").innerText = d.error || "Erro ao salvar."; return; }
+        _cfColunas = null; // o upload relê a lista de colunas que manda pro servidor
+        _cfAbrirColunas(transp);
+        setTimeout(() => { const s = document.getElementById("cf-col-status"); if (s) s.innerText = "Salvo. Vale pro próximo relatório enviado."; }, 300);
+    }).catch(() => { btn.disabled = false; document.getElementById("cf-col-status").innerText = "Erro ao salvar."; });
+}
+
+function _cfColRestaurar() {
+    const { transp } = _cfColCfg;
+    const label = (_CF_TRANSPORTADORAS.find(t => t.key === transp) || {}).label || transp;
+    gcConfirm(`Voltar as colunas da <b>${label}</b> pro padrão do sistema?`, () => {
+        fetch(`${_CF_API()}/colunas?transportadora=${transp}`, { method: "DELETE", headers: _cfHeaders() })
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) { gcAlert(d.error); return; }
+            _cfColunas = null;
+            _cfAbrirColunas(transp);
+        }).catch(() => gcAlert("Erro ao restaurar."));
+    }, "Restaurar padrão", "Restaurar");
+}
+
 // ── Regras de prazo: quais transportadoras não contam sábado/domingo, geral e por polo.
 // A regra do polo SOMA à geral (ver modules/fechamento-transportadoras/regras-prazo.js).
 function _cfAbrirRegras() {
@@ -788,7 +900,7 @@ async function _cfArquivoSelecionado(input) {
         input.value = "";
         if (!res.ok) {
             status.innerHTML = `<div class="cft-erro">${_cfEsc(d.error || "Erro ao enviar.")}
-                ${d.cabecalho_encontrado ? `<div class="cft-ajuda" style="margin-top:8px">Colunas que o arquivo tem:</div>
+                ${d.cabecalho_encontrado ? `<div class="cft-ajuda" style="margin-top:8px">Colunas que o arquivo tem (dá pra apontar a certa em <button class="cft-link" onclick="_cfAbrirColunas('${key}')">Colunas dos relatórios</button>):</div>
                 <div class="cft-pend-tags">${d.cabecalho_encontrado.map(h => `<span class="cft-tag">${_cfEsc(h)}</span>`).join("")}</div>` : ""}</div>`;
             return;
         }

@@ -163,3 +163,20 @@ test("regras de prazo: salvar manda o tipo (polo/cidade) de cada linha", async (
         { tipo: "cidade", escopo: "Vila Teste", transportadora: "anjun", ignorar_sabado: true, ignorar_domingo: false },
     ]);
 });
+
+test("colunas dos relatórios: salvar manda a lista de cada campo, na ordem", async () => {
+    const t = carregarComDom(async () => ({ ok: true, status: 200, json: async () => ({ success: true }) }));
+    vm.runInContext(`_cfColCfg = { transp: "imile", campos: [
+        { campo: "usuario", rotulo: "Usuario", obrigatorio: "sim", nomes: ["Delivery Associate"], padrao: true },
+        { campo: "data_atribuicao", rotulo: "Data", obrigatorio: "sim", nomes: ["Arrival Time", "Delivery Time"], padrao: false },
+    ] }; _cfColunas = { imile: [] };`, t.ctx);
+    t.el("cf-col-salvar"); t.el("cf-col-status"); t.el("cf-colunas").style = {};
+    vm.runInContext("_cfColMover(1, 1)", Object.assign(t.ctx, { _cfRenderColunas() {} }));
+    t.ctx._cfColSalvar();
+    await new Promise((r) => setTimeout(r, 10));
+    const put = t.chamadas.find((c) => c.opts && c.opts.method === "PUT");
+    assert.ok(put.url.endsWith("/admin/fechamento-transportadoras/colunas"));
+    assert.deepStrictEqual(JSON.parse(put.opts.body), { transportadora: "imile",
+        campos: { usuario: ["Delivery Associate"], data_atribuicao: ["Delivery Time", "Arrival Time"] } });
+    assert.strictEqual(vm.runInContext("_cfColunas", t.ctx), null, "upload relê a lista de colunas");
+});
