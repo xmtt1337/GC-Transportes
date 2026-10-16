@@ -6223,3 +6223,6 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .cft-sugestoes { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; max-height: 240px; overflow-y: auto; }
 .cft-sugestao { text-align: left; padding: 8px 10px; border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); color: #cbd5e1; }
 .cft-sugestao:hover { background: rgba(58,134,255,0.12); border-color: rgba(58,134,255,0.4); color: #e2e8f0; }
+
+.cft-cidades:not(:empty) { margin: 10px 0 12px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); }
+.cft-cidades .cft-pend-tags { margin-top: 6px; }

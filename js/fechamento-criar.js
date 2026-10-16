@@ -13,7 +13,7 @@ let _cfColunas     = null; // nomes de coluna aceitos por transportadora (GET /c
 let _cfRegras     = null; // quadro de regras de prazo em edição: [{escopo, t: {chave: {sab, dom}}}]
 let _cfPolos      = [];
 let _cfNomesPend  = []; // [{nome, qtd, feito}] — nomes sem conversão do lote aberto (tags clicáveis)
-let _cfNomeTimer  = null;
+let _cfEntregadores = null; // {nomes, aviso} — Dados entregadores + Conversão de nomes, lido 1x por tela
 let _cfTemLote     = false;
 let _cfBusca       = "";
 let _cfFiltro      = "";
@@ -244,10 +244,15 @@ function _cfAbrirConversao(i) {
             <div class="cft-modal-titulo">Quem é o entregador?</div>
             <div class="cft-ajuda" style="margin-bottom:12px">No relatório aparece <b style="color:#e2e8f0">${_cfEsc(item.nome)}</b>
                 — ${item.qtd.toLocaleString("pt-BR")} pacote${item.qtd !== 1 ? "s" : ""}.</div>
-            <label class="cft-rotulo" for="cf-conv-input">Entregador responsável</label>
+            <div class="cft-cidades" id="cf-conv-cidades-rel"></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <label class="cft-rotulo" for="cf-conv-input">Entregador responsável</label>
+                <span class="cft-ajuda" id="cf-conv-total"></span>
+            </div>
             <input id="cf-conv-input" class="cft-input" autocomplete="off" placeholder="Digite pra buscar..." value="${_cfEsc(palpite)}"
                 oninput="_cfBuscarEntregador(this.value)" onkeydown="if(event.key==='Enter')_cfSalvarConversao(${i})">
             <div class="cft-sugestoes" id="cf-conv-sugestoes"></div>
+            <div class="cft-cidades" id="cf-conv-cidades-ent"></div>
             <div class="cft-ajuda" id="cf-conv-status" style="min-height:18px;margin-top:8px"></div>
             <div class="cft-barra" style="justify-content:flex-end;margin-bottom:0">
                 <button class="cft-btn" onclick="_cfFecharConversao()">Cancelar</button>
@@ -258,7 +263,26 @@ function _cfAbrirConversao(i) {
     document.body.appendChild(ov);
     const inp = document.getElementById("cf-conv-input");
     inp.focus(); inp.select();
-    _cfBuscarEntregador(palpite, true);
+    _cfBuscarEntregador(palpite);
+    _cfMostrarCidades("cf-conv-cidades-rel", `${_CF_API()}/cidades?${_cfQs({ transportadora: _cfTranspAtual, usuario: item.nome })}`,
+        `Cidades de <b>${_cfEsc(item.nome)}</b> neste relatório`, "Sem cidade neste relatório.");
+}
+
+// Cidades (com quantos pacotes) — pra reconhecer quem é quem pelo lugar que atende.
+function _cfMostrarCidades(id, url, titulo, vazio) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.dataset.url = url;
+    el.innerHTML = `<div class="cft-ajuda">${titulo}: carregando...</div>`;
+    fetch(url, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (el.dataset.url !== url) return; // clicou em outro enquanto carregava
+        const cidades = d.cidades || [];
+        el.innerHTML = `<div class="cft-ajuda">${titulo}:</div>` + (cidades.length
+            ? `<div class="cft-pend-tags">${cidades.map(c => `<span class="cft-tag">${_cfEsc(c.cidade)} <b>${c.qtd.toLocaleString("pt-BR")}</b></span>`).join("")}</div>`
+            : `<div class="cft-ajuda" style="font-style:italic">${vazio}</div>`);
+    }).catch(() => { if (el.dataset.url === url) el.innerHTML = `<div class="cft-erro">Erro ao carregar cidades.</div>`; });
 }
 
 function _cfFecharConversao() {
@@ -266,24 +290,43 @@ function _cfFecharConversao() {
     if (ov) ov.remove();
 }
 
-function _cfBuscarEntregador(q, agora) {
-    clearTimeout(_cfNomeTimer);
-    _cfNomeTimer = setTimeout(() => {
-        const el = document.getElementById("cf-conv-sugestoes");
-        if (!el) return;
-        const termo = q.trim();
-        if (termo.length < 2) { el.innerHTML = ""; return; }
-        fetch(`${API}/nomes-padrao?q=${encodeURIComponent(termo)}`, { headers: _cfHeaders() })
+// Lista inteira vem uma vez (planilha Dados entregadores + Conversão de nomes) e o filtro
+// é local — digitar não fica esperando o Google a cada letra.
+function _cfBuscarEntregador(q) {
+    const el = document.getElementById("cf-conv-sugestoes");
+    if (!el) return;
+    // Digitou de novo: as cidades do entregador escolhido antes não valem mais.
+    const ent = document.getElementById("cf-conv-cidades-ent");
+    if (ent) { ent.innerHTML = ""; ent.dataset.url = ""; }
+    if (!_cfEntregadores) {
+        el.innerHTML = `<div class="cft-ajuda" style="padding:6px 2px">Carregando entregadores...</div>`;
+        fetch(`${_CF_API()}/entregadores`, { headers: _cfHeaders() })
         .then(r => r.json())
         .then(d => {
+            if (d.error) throw new Error(d.error);
+            _cfEntregadores = { nomes: d.nomes || [], aviso: d.aviso || null };
             const atual = document.getElementById("cf-conv-input");
-            if (!atual || atual.value.trim() !== termo) return; // já digitou outra coisa
-            const nomes = [...new Set((d.linhas || []).map(l => l.nome_sistema))].slice(0, 12);
-            el.innerHTML = nomes.length
-                ? nomes.map(n => `<button class="cft-sugestao" data-nome="${_cfEsc(n)}" onclick="_cfEscolherEntregador(this.dataset.nome)">${_cfEsc(n)}</button>`).join("")
-                : `<div class="cft-ajuda" style="padding:6px 2px">Nenhum entregador com esse nome — salvar cria um nome novo.</div>`;
-        }).catch(() => {});
-    }, agora ? 0 : 250);
+            if (atual) _cfBuscarEntregador(atual.value);
+        }).catch(err => { el.innerHTML = `<div class="cft-erro">${_cfEsc(err.message || "Erro ao carregar entregadores.")}</div>`; });
+        return;
+    }
+    const termo = _cfChave(q);
+    // Começa com o termo primeiro, depois quem só contém; vazio mostra todo mundo.
+    const todos = _cfEntregadores.nomes;
+    const comeca = [], contem = [];
+    for (const n of todos) {
+        const k = _cfChave(n);
+        if (!termo || k.startsWith(termo)) comeca.push(n);
+        else if (k.includes(termo)) contem.push(n);
+    }
+    const lista = comeca.concat(contem);
+    const aviso = _cfEntregadores.aviso ? `<div class="cft-erro" style="font-size:12px;padding:4px 2px">${_cfEsc(_cfEntregadores.aviso)}</div>` : "";
+    el.innerHTML = aviso + (lista.length
+        ? lista.slice(0, 200).map(n => `<button class="cft-sugestao" data-nome="${_cfEsc(n)}" onclick="_cfEscolherEntregador(this.dataset.nome)">${_cfEsc(n)}</button>`).join("")
+          + (lista.length > 200 ? `<div class="cft-ajuda" style="padding:6px 2px">+${lista.length - 200} — digite mais pra filtrar.</div>` : "")
+        : `<div class="cft-ajuda" style="padding:6px 2px">Ninguém com esse nome nos Dados entregadores — salvar cria um nome novo.</div>`);
+    const cont = document.getElementById("cf-conv-total");
+    if (cont) cont.innerText = `${lista.length} de ${todos.length} entregadores`;
 }
 
 function _cfEscolherEntregador(nome) {
@@ -291,6 +334,8 @@ function _cfEscolherEntregador(nome) {
     inp.value = nome;
     document.getElementById("cf-conv-sugestoes").innerHTML = "";
     inp.focus();
+    _cfMostrarCidades("cf-conv-cidades-ent", `${_CF_API()}/cidades?driver=${encodeURIComponent(nome)}`,
+        `Cidades que <b>${_cfEsc(nome)}</b> já fez nos fechamentos`, "Ainda não aparece em nenhum fechamento gravado.");
 }
 
 function _cfSalvarConversao(i) {
