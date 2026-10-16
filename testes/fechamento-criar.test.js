@@ -53,3 +53,58 @@ test("coluna pela letra (#S, #AG) entra mesmo sem nome reconhecido", () => {
     const r = ctx._cfSoColunasUteis([cab], ["Waybill No", "#S", "#AG"]);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(r.posicoes)), [0, 18, 32]);
 });
+
+// ── Card de conversão de nome (clique no nome em "Usuário sem conversão de nome") ──
+function carregarComDom(respostaFetch) {
+    const els = new Map();
+    const el = (id) => {
+        if (!els.has(id)) els.set(id, { id, value: "", innerText: "", innerHTML: "", disabled: false, remove() { els.delete(id); } });
+        return els.get(id);
+    };
+    const chamadas = [];
+    const ctx = {
+        console, API: "https://api.teste", token: "tok", setTimeout, clearTimeout,
+        document: { getElementById: (id) => (els.has(id) ? els.get(id) : null) },
+        fetch: async (url, opts) => { chamadas.push({ url, opts }); return respostaFetch(url); },
+    };
+    vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-criar.js"), "utf8"), ctx);
+    return { ctx, el, chamadas };
+}
+
+async function salvarCom(status) {
+    const t = carregarComDom(async () => ({ ok: status === 200, status, json: async () => ({ error: "x" }) }));
+    vm.runInContext(`_cfNomesPend = [{ nome: "fulano.teste", qtd: 3, feito: null }]`, t.ctx);
+    t.el("cf-conv").value = "";
+    t.el("cf-conv-input").value = "  Fulano de Teste - Vila Teste ";
+    t.el("cf-conv-status"); t.el("cf-conv-salvar"); t.el("cf-nomes-pend"); t.el("cf-acao-status");
+    t.ctx._cfSalvarConversao(0);
+    await new Promise((r) => setTimeout(r, 10));
+    return t;
+}
+
+test("salvar conversão manda o par pro endpoint da Conversão de nomes e marca o nome como feito", async () => {
+    const t = await salvarCom(200);
+    assert.strictEqual(t.chamadas.length, 1);
+    assert.strictEqual(t.chamadas[0].url, "https://api.teste/admin/nomes-padrao");
+    assert.strictEqual(t.chamadas[0].opts.method, "POST");
+    assert.deepStrictEqual(JSON.parse(t.chamadas[0].opts.body), { nome_origem: "fulano.teste", nome_sistema: "Fulano de Teste - Vila Teste" });
+    assert.strictEqual(vm.runInContext("_cfNomesPend[0].feito", t.ctx), "Fulano de Teste - Vila Teste");
+    assert.match(t.el("cf-nomes-pend").innerHTML, /✓ fulano\.teste/);
+});
+
+test("par que já existia (409) conta como salvo; sem permissão (403) explica e não marca", async () => {
+    const a = await salvarCom(409);
+    assert.ok(vm.runInContext("_cfNomesPend[0].feito", a.ctx));
+    const b = await salvarCom(403);
+    assert.strictEqual(vm.runInContext("_cfNomesPend[0].feito", b.ctx), null);
+    assert.match(b.el("cf-conv-status").innerText, /dev/);
+});
+
+test("nome vindo do relatório não vira HTML na tag clicável", () => {
+    const ctx = carregar();
+    vm.runInContext(`_cfNomesPend = [{ nome: "<img src=x onerror=alert(1)>", qtd: 1, feito: null }]`, ctx);
+    const html = vm.runInContext("_cfHtmlNomesPend()", ctx);
+    assert.doesNotMatch(html, /<img/);
+    assert.match(html, /onclick="_cfAbrirConversao\(0\)"/);
+});

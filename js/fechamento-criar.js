@@ -12,6 +12,8 @@ let _cfResumo      = [];
 let _cfColunas     = null; // nomes de coluna aceitos por transportadora (GET /config)
 let _cfRegras     = null; // quadro de regras de prazo em edição: [{escopo, t: {chave: {sab, dom}}}]
 let _cfPolos      = [];
+let _cfNomesPend  = []; // [{nome, qtd, feito}] — nomes sem conversão do lote aberto (tags clicáveis)
+let _cfNomeTimer  = null;
 let _cfTemLote     = false;
 let _cfBusca       = "";
 let _cfFiltro      = "";
@@ -206,7 +208,8 @@ function _cfHtmlResumo(r) {
     const grupos = [];
     if (r.cidades_sem_preco.length) grupos.push(`<div class="cft-pend-grupo"><b>Cidade sem preço na planilha</b> — sem valor nem prazo até cadastrar na aba da transportadora:${tags(r.cidades_sem_preco)}</div>`);
     if (r.tipos_sem_preco.length) grupos.push(`<div class="cft-pend-grupo"><b>Tipo de produto sem coluna de preço</b>:${tags(r.tipos_sem_preco)}</div>`);
-    if (r.nomes_sem_conversao.length) grupos.push(`<div class="cft-pend-grupo"><b>Usuário sem conversão de nome</b> — cadastre em Cadastros › Usuários › Conversão de nomes:${tags(r.nomes_sem_conversao)}</div>`);
+    _cfNomesPend = r.nomes_sem_conversao.map(x => ({ ...x, feito: null }));
+    if (r.nomes_sem_conversao.length) grupos.push(`<div class="cft-pend-grupo"><b>Usuário sem conversão de nome</b> — clique no nome pra dizer quem é o entregador:<div class="cft-pend-tags" id="cf-nomes-pend">${_cfHtmlNomesPend()}</div></div>`);
     if (r.sem_data_entrega) grupos.push(`<div class="cft-pend-grupo"><b>${r.sem_data_entrega}</b> sem data de entrega (não pagos)</div>`);
     if (r.sem_data_atribuicao) grupos.push(`<div class="cft-pend-grupo"><b>${r.sem_data_atribuicao}</b> sem data de atribuição (prazo não calculado)</div>`);
     const pend = grupos.length ? `
@@ -216,6 +219,106 @@ function _cfHtmlResumo(r) {
             <div class="cft-ajuda" style="margin-top:10px">Depois de corrigir, clique em Recalcular — não precisa reenviar o relatório.</div>
         </div>` : "";
     return kpis + pend;
+}
+
+function _cfHtmlNomesPend() {
+    return _cfNomesPend.map((x, i) => x.feito
+        ? `<span class="cft-tag cft-tag-ok" title="${_cfEsc(x.nome)} → ${_cfEsc(x.feito)}">✓ ${_cfEsc(x.nome)} → ${_cfEsc(x.feito)}</span>`
+        : `<button class="cft-tag cft-tag-btn" onclick="_cfAbrirConversao(${i})">${_cfEsc(x.nome)} <b>${x.qtd}</b></button>`
+    ).join("");
+}
+
+// ── Card de conversão de nome: nome do relatório → entregador responsável. Grava na
+// Conversão de nomes (POST /admin/nomes-padrao), a mesma lista de Cadastros › Usuários.
+function _cfAbrirConversao(i) {
+    const item = _cfNomesPend[i];
+    if (!item) return;
+    _cfFecharConversao();
+    const ov = document.createElement("div");
+    ov.className = "cft-modal-overlay";
+    ov.id = "cf-conv";
+    // Sugestão inicial: a primeira parte do usuário ("kauane.maciel" → "kauane").
+    const palpite = String(item.nome).split(/[.\s_-]+/).filter(Boolean)[0] || item.nome;
+    ov.innerHTML = `
+        <div class="cft-modal">
+            <div class="cft-modal-titulo">Quem é o entregador?</div>
+            <div class="cft-ajuda" style="margin-bottom:12px">No relatório aparece <b style="color:#e2e8f0">${_cfEsc(item.nome)}</b>
+                — ${item.qtd.toLocaleString("pt-BR")} pacote${item.qtd !== 1 ? "s" : ""}.</div>
+            <label class="cft-rotulo" for="cf-conv-input">Entregador responsável</label>
+            <input id="cf-conv-input" class="cft-input" autocomplete="off" placeholder="Digite pra buscar..." value="${_cfEsc(palpite)}"
+                oninput="_cfBuscarEntregador(this.value)" onkeydown="if(event.key==='Enter')_cfSalvarConversao(${i})">
+            <div class="cft-sugestoes" id="cf-conv-sugestoes"></div>
+            <div class="cft-ajuda" id="cf-conv-status" style="min-height:18px;margin-top:8px"></div>
+            <div class="cft-barra" style="justify-content:flex-end;margin-bottom:0">
+                <button class="cft-btn" onclick="_cfFecharConversao()">Cancelar</button>
+                <button class="cft-btn verde" id="cf-conv-salvar" onclick="_cfSalvarConversao(${i})">Salvar</button>
+            </div>
+        </div>`;
+    ov.addEventListener("click", e => { if (e.target === ov) _cfFecharConversao(); });
+    document.body.appendChild(ov);
+    const inp = document.getElementById("cf-conv-input");
+    inp.focus(); inp.select();
+    _cfBuscarEntregador(palpite, true);
+}
+
+function _cfFecharConversao() {
+    const ov = document.getElementById("cf-conv");
+    if (ov) ov.remove();
+}
+
+function _cfBuscarEntregador(q, agora) {
+    clearTimeout(_cfNomeTimer);
+    _cfNomeTimer = setTimeout(() => {
+        const el = document.getElementById("cf-conv-sugestoes");
+        if (!el) return;
+        const termo = q.trim();
+        if (termo.length < 2) { el.innerHTML = ""; return; }
+        fetch(`${API}/nomes-padrao?q=${encodeURIComponent(termo)}`, { headers: _cfHeaders() })
+        .then(r => r.json())
+        .then(d => {
+            const atual = document.getElementById("cf-conv-input");
+            if (!atual || atual.value.trim() !== termo) return; // já digitou outra coisa
+            const nomes = [...new Set((d.linhas || []).map(l => l.nome_sistema))].slice(0, 12);
+            el.innerHTML = nomes.length
+                ? nomes.map(n => `<button class="cft-sugestao" data-nome="${_cfEsc(n)}" onclick="_cfEscolherEntregador(this.dataset.nome)">${_cfEsc(n)}</button>`).join("")
+                : `<div class="cft-ajuda" style="padding:6px 2px">Nenhum entregador com esse nome — salvar cria um nome novo.</div>`;
+        }).catch(() => {});
+    }, agora ? 0 : 250);
+}
+
+function _cfEscolherEntregador(nome) {
+    const inp = document.getElementById("cf-conv-input");
+    inp.value = nome;
+    document.getElementById("cf-conv-sugestoes").innerHTML = "";
+    inp.focus();
+}
+
+function _cfSalvarConversao(i) {
+    const item = _cfNomesPend[i];
+    const nome = document.getElementById("cf-conv-input").value.trim();
+    const status = document.getElementById("cf-conv-status");
+    const btn = document.getElementById("cf-conv-salvar");
+    if (!nome) { status.innerText = "Escolha o entregador."; return; }
+    btn.disabled = true;
+    status.innerText = "Salvando...";
+    fetch(`${API}/admin/nomes-padrao`, {
+        method: "POST", headers: _cfHeaders(true),
+        body: JSON.stringify({ nome_origem: item.nome, nome_sistema: nome }),
+    }).then(async r => {
+        const d = await r.json().catch(() => ({}));
+        // 409 = esse par já estava cadastrado: pro que a pessoa quer, é a mesma coisa que salvar.
+        if (!r.ok && r.status !== 409) {
+            btn.disabled = false;
+            status.innerText = r.status === 403 ? "Só quem é dev pode mexer na Conversão de nomes." : (d.error || "Erro ao salvar.");
+            return;
+        }
+        item.feito = nome;
+        _cfFecharConversao();
+        const lista = document.getElementById("cf-nomes-pend");
+        if (lista) lista.innerHTML = _cfHtmlNomesPend();
+        const st = document.getElementById("cf-acao-status");
+        if (st) st.innerText = "Conversão salva — clique em Recalcular pra aplicar nos pacotes.";
+    }).catch(() => { btn.disabled = false; status.innerText = "Erro ao salvar."; });
 }
 
 function _cfHtmlAcoes() {
