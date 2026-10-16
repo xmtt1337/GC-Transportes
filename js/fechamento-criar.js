@@ -223,7 +223,7 @@ function _cfHtmlResumo(r) {
 
 function _cfHtmlNomesPend() {
     return _cfNomesPend.map((x, i) => x.feito
-        ? `<span class="cft-tag cft-tag-ok" title="${_cfEsc(x.nome)} → ${_cfEsc(x.feito)}">✓ ${_cfEsc(x.nome)} → ${_cfEsc(x.feito)}</span>`
+        ? `<span class="cft-tag cft-tag-ok" title="${_cfEsc(x.nome)} → ${_cfEsc(x.feito)}">${_cfEsc(x.nome)}<span>→ ${_cfEsc(x.feito)}</span></span>`
         : `<button class="cft-tag cft-tag-btn" onclick="_cfAbrirConversao(${i})">${_cfEsc(x.nome)} <b>${x.qtd}</b></button>`
     ).join("");
 }
@@ -256,7 +256,7 @@ function _cfAbrirConversao(i) {
             <div class="cft-ajuda" id="cf-conv-status" style="min-height:18px;margin-top:8px"></div>
             <div class="cft-barra" style="justify-content:flex-end;margin-bottom:0">
                 <button class="cft-btn" onclick="_cfFecharConversao()">Cancelar</button>
-                <button class="cft-btn verde" id="cf-conv-salvar" onclick="_cfSalvarConversao(${i})">Salvar</button>
+                <button class="cft-btn primario" id="cf-conv-salvar" onclick="_cfSalvarConversao(${i})">Salvar</button>
             </div>
         </div>`;
     ov.addEventListener("click", e => { if (e.target === ov) _cfFecharConversao(); });
@@ -369,9 +369,9 @@ function _cfSalvarConversao(i) {
 function _cfHtmlAcoes() {
     return `
         <div class="cft-barra">
-            <button class="cft-btn verde" id="cf-btn-recalcular" onclick="_cfRecalcular()">↻ Recalcular</button>
-            <button class="cft-btn" onclick="_cfExportar(this)">⤓ Baixar relatório tratado</button>
-            <button class="cft-btn vermelho" onclick="_cfExcluir()">Excluir relatório</button>
+            <button class="cft-btn" id="cf-btn-recalcular" onclick="_cfRecalcular()">Recalcular</button>
+            <button class="cft-btn" onclick="_cfExportar(this)">Baixar relatório tratado</button>
+            <button class="cft-btn perigo" onclick="_cfExcluir()">Excluir relatório</button>
             <span class="cft-ajuda" id="cf-acao-status"></span>
         </div>`;
 }
@@ -530,7 +530,7 @@ function _cfRenderRegras(msg) {
             <tbody>${_cfRegras.map((l, i) => `<tr>
                 <td><strong>${l.escopo === "geral" ? "Geral (todos os polos)" : "Polo " + _cfEsc(l.escopo)}</strong></td>
                 ${_CF_TRANSPORTADORAS.map(t => `<td>${celula(i, t.key, "sab", "Sáb")} ${celula(i, t.key, "dom", "Dom")}</td>`).join("")}
-                <td>${l.escopo === "geral" ? "" : `<button class="cft-chip cft-chip-mini" title="Remover polo" onclick="_cfRemoverPolo(${i})">✕</button>`}</td>
+                <td>${l.escopo === "geral" ? "" : `<button class="cft-chip cft-chip-mini" onclick="_cfRemoverPolo(${i})">Remover</button>`}</td>
             </tr>`).join("")}</tbody>
         </table></div>
         <div class="cft-barra">
@@ -538,7 +538,7 @@ function _cfRenderRegras(msg) {
             <datalist id="cf-polos-lista">${sugestoes.map(p => `<option value="${_cfEsc(p)}">`).join("")}</datalist>
             <button class="cft-btn" onclick="_cfAdicionarPolo()">+ Regra para polo</button>
             <span style="flex:1"></span>
-            <button class="cft-btn verde" id="cf-regras-salvar" onclick="_cfSalvarRegras()">Salvar${_cfQuinzena ? " e recalcular a quinzena" : ""}</button>
+            <button class="cft-btn primario" id="cf-regras-salvar" onclick="_cfSalvarRegras()">Salvar${_cfQuinzena ? " e recalcular a quinzena" : ""}</button>
         </div>
         <div class="cft-ajuda" id="cf-regras-status">${msg || ""}</div>`;
 }
@@ -677,7 +677,7 @@ async function _cfArquivoSelecionado(input) {
             return;
         }
         if (key !== _cfTranspAtual) return;
-        status.innerHTML = `<div style="color:#22c55e;font-size:13px">✓ ${d.resumo.total.toLocaleString("pt-BR")} pacotes tratados e gravados.</div>`;
+        status.innerHTML = `<div class="cft-ajuda" style="font-size:13px;color:#cbd5e1">${d.resumo.total.toLocaleString("pt-BR")} pacotes tratados e gravados.</div>`;
         _cfAtualizarCards();
         _cfCarregarDetalhe();
     } catch (err) {

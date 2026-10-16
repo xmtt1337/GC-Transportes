@@ -90,7 +90,7 @@ test("salvar conversão manda o par pro endpoint da Conversão de nomes e marca 
     assert.strictEqual(t.chamadas[0].opts.method, "POST");
     assert.deepStrictEqual(JSON.parse(t.chamadas[0].opts.body), { nome_origem: "fulano.teste", nome_sistema: "Fulano de Teste - Vila Teste" });
     assert.strictEqual(vm.runInContext("_cfNomesPend[0].feito", t.ctx), "Fulano de Teste - Vila Teste");
-    assert.match(t.el("cf-nomes-pend").innerHTML, /✓ fulano\.teste/);
+    assert.match(t.el("cf-nomes-pend").innerHTML, /cft-tag-ok/);
 });
 
 test("par que já existia (409) conta como salvo; sem permissão (403) explica e não marca", async () => {
