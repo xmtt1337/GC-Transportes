@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <title>XM Conferência</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Login ── -->
+<section id="tela-login" class="tela">
+    <div class="login-caixa">
+        <div class="marca">XM <span>Conferência</span></div>
+        <p class="sub">Entre com o mesmo usuário e senha do sistema.</p>
+        <form id="login-form" autocomplete="on">
+            <label class="rot" for="login-usuario">Usuário ou e-mail</label>
+            <input id="login-usuario" class="campo" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="username" required>
+            <label class="rot" for="login-senha">Senha</label>
+            <div class="campo-senha">
+                <input id="login-senha" class="campo" type="password" autocomplete="current-password" required>
+                <button type="button" id="login-ver-senha" class="link">Mostrar</button>
+            </div>
+            <div id="login-erro" class="aviso erro" hidden></div>
+            <button type="submit" id="login-btn" class="btn btn-grande">Entrar</button>
+            <div id="login-espera" class="obs" hidden>O servidor estava dormindo e está acordando. Pode levar até 1 minuto.</div>
+        </form>
+    </div>
+</section>
+
+<!-- ── Dias ── -->
+<section id="tela-dias" class="tela" hidden>
+    <header class="topo">
+        <div>
+            <div class="topo-titulo">Minhas rotas</div>
+            <div id="usuario-nome" class="topo-sub"></div>
+        </div>
+        <button type="button" id="btn-sair" class="link">Sair</button>
+    </header>
+
+    <div class="cartao">
+        <div class="rot">Procurar pacote</div>
+        <div class="linha-campo">
+            <input id="busca" class="campo mono" placeholder="Código do pacote" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="search">
+            <button type="button" id="busca-scan" class="btn">Câmera</button>
+        </div>
+        <div id="busca-res"></div>
+    </div>
+
+    <div id="dias-vazio" class="vazio">Carregando...</div>
+    <div id="dias-lista"></div>
+</section>
+
+<!-- ── Clusters do dia ── -->
+<section id="tela-dia" class="tela" hidden>
+    <header class="topo">
+        <button type="button" id="dia-voltar" class="link">Voltar</button>
+        <div class="topo-titulo" id="dia-titulo"></div>
+        <span></span>
+    </header>
+
+    <div id="dia-vazio" class="vazio">Carregando...</div>
+    <div id="dia-conteudo" hidden>
+        <div class="cartao">
+            <div class="cartao-topo">
+                <span class="rot">Sua rota</span>
+                <span id="rota-pct" class="num-grande"></span>
+            </div>
+            <div id="rota-obs" class="obs"></div>
+            <div class="barra"><div id="rota-barra" class="barra-fill"></div></div>
+            <button type="button" id="rota-btn" class="btn btn-grande"></button>
+        </div>
+        <div id="ats-aviso" class="aviso alerta" hidden>A AT (Task ID) aparece aqui depois que você encerrar a conferência da rota.</div>
+        <div id="clusters"></div>
+    </div>
+</section>
+
+<!-- ── Conferência ── -->
+<section id="tela-conf" class="tela" hidden>
+    <header class="topo">
+        <button type="button" id="conf-voltar" class="link">Voltar</button>
+        <div class="topo-titulo">Conferência</div>
+        <span></span>
+    </header>
+
+    <div class="faixa-alvo">Clusters: <strong id="conf-alvo">—</strong></div>
+
+    <div id="conf-bipar" class="cartao">
+        <button type="button" id="conf-camera" class="btn btn-grande btn-destaque">Bipar com a câmera</button>
+        <div class="linha-campo" id="conf-campo-wrap">
+            <input id="conf-codigo" class="campo mono" placeholder="Ou digite o código" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="send">
+            <button type="button" id="conf-enviar" class="btn">Bipar</button>
+        </div>
+    </div>
+    <div id="conf-msg" class="aviso" hidden></div>
+
+    <div class="resumo">
+        <div class="resumo-item"><div class="rot">Conferem</div><div id="r-ok" class="num-grande verde">0</div></div>
+        <div class="resumo-item"><div class="rot">Faltam</div><div id="r-faltam" class="num-grande">0</div></div>
+        <div class="resumo-item"><div class="rot">A mais</div><div id="r-amais" class="num-grande">0</div></div>
+    </div>
+
+    <div class="cartao">
+        <div class="cartao-topo">
+            <span class="rot">Progresso</span>
+            <span id="prog-pct" class="num-grande"></span>
+        </div>
+        <div id="prog-obs" class="obs"></div>
+        <div class="barra"><div id="prog-barra" class="barra-fill"></div></div>
+    </div>
+
+    <div class="abas" id="abas">
+        <button type="button" data-f="todos" class="aba ativa">Todos</button>
+        <button type="button" data-f="faltam" class="aba">Faltam</button>
+        <button type="button" data-f="divergente" class="aba">Outra rota</button>
+        <button type="button" data-f="amais" class="aba">Sem cadastro</button>
+    </div>
+    <div id="copiar-faltam" hidden><button type="button" id="copiar-faltam-btn" class="link"></button></div>
+    <div id="conf-lista"></div>
+
+    <button type="button" id="conf-encerrar" class="btn btn-grande btn-perigo">Encerrar conferência</button>
+</section>
+
+<!-- ── Scanner (a câmera nativa fica ATRÁS da página; tudo aqui é transparente) ── -->
+<div id="scanner" hidden>
+    <div class="scan-topo">
+        <div id="scan-titulo" class="scan-titulo">Bipando a rota</div>
+        <div id="scan-sub" class="scan-sub">Aponte a mira para o código</div>
+    </div>
+    <div class="scan-mira"><span></span></div>
+    <div class="scan-base">
+        <div id="scan-status" class="scan-status" hidden></div>
+        <div class="scan-botoes">
+            <button type="button" id="scan-luz" class="scan-btn" hidden>Lanterna</button>
+            <button type="button" id="scan-zoom" class="scan-btn" hidden>Zoom 2x</button>
+        </div>
+        <button type="button" id="scan-fechar" class="scan-btn scan-fechar">Concluir</button>
+    </div>
+</div>
+
+<!-- ── Janelas ── -->
+<div id="modal" class="modal" hidden>
+    <div class="modal-caixa">
+        <div id="modal-titulo" class="modal-titulo"></div>
+        <div id="modal-corpo" class="modal-corpo"></div>
+        <div class="modal-botoes">
+            <button type="button" id="modal-nao" class="btn">Cancelar</button>
+            <button type="button" id="modal-sim" class="btn">OK</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/logica.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "xm-conferencia",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App do entregador para conferir a carga com leitor nativo (ML Kit)",
+  "scripts": {
+    "test": "node --test \"testes/**/*.test.js\"",
+    "sync": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor-community/keep-awake": "8.0.1",
+    "@capacitor-mlkit/barcode-scanning": "8.2.1",
+    "@capacitor/android": "8.5.2",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/haptics": "8.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2"
+  }
+}

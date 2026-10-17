@@ -1,0 +1,93 @@
+# Compila o APK do XM Conferência (app do entregador) e publica num link fixo:
+#   https://github.com/xmtt1337/GC-Transportes/releases/latest/download/xm-conferencia.apk
+#
+# A assinatura vem de dois secrets do repositório (Settings > Secrets and variables > Actions):
+#   XM_KEYSTORE_BASE64   — o arquivo .p12 da chave, em base64
+#   XM_KEYSTORE_PASSWORD — a senha dele
+# Sem eles o build ainda roda (confere que compila), mas só gera APK de teste e NÃO publica:
+# APK assinado com outra chave não atualiza o app já instalado no celular do entregador.
+name: XM Conferência (APK)
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "xm-conferencia/**"
+      - ".github/workflows/xm-conferencia-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: xm-conferencia
+    env:
+      XM_VERSION_CODE: ${{ github.run_number }}
+      XM_VERSION_NAME: 1.0.${{ github.run_number }}
+      TEM_CHAVE: ${{ secrets.XM_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: xm-conferencia/package-lock.json
+
+      - run: npm ci
+      - run: npm test
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - run: npx cap sync android
+
+      - name: Chave de assinatura
+        if: env.TEM_CHAVE == 'true'
+        run: |
+          echo "${{ secrets.XM_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/xm.p12"
+          echo "XM_KEYSTORE_PATH=$RUNNER_TEMP/xm.p12" >> "$GITHUB_ENV"
+          echo "XM_KEYSTORE_PASSWORD=${{ secrets.XM_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "XM_KEY_PASSWORD=${{ secrets.XM_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "XM_KEY_ALIAS=xm" >> "$GITHUB_ENV"
+
+      - name: Compilar (assinado)
+        if: env.TEM_CHAVE == 'true'
+        working-directory: xm-conferencia/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/xm-conferencia.apk"
+
+      - name: Compilar (teste, sem chave)
+        if: env.TEM_CHAVE != 'true'
+        working-directory: xm-conferencia/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/xm-conferencia-teste.apk"
+          echo "::warning::Secrets XM_KEYSTORE_BASE64/XM_KEYSTORE_PASSWORD ausentes — APK de teste, nada publicado."
+
+      - name: Guardar APK de teste
+        if: env.TEM_CHAVE != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: xm-conferencia-teste
+          path: ${{ runner.temp }}/xm-conferencia-teste.apk
+
+      - name: Publicar no link fixo
+        if: env.TEM_CHAVE == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: xm-conferencia-v1.0.${{ github.run_number }}
+          name: XM Conferência 1.0.${{ github.run_number }}
+          body: App do entregador para conferir a carga. Baixe o xm-conferencia.apk e instale por cima da versão anterior.
+          files: ${{ runner.temp }}/xm-conferencia.apk
+          make_latest: true
