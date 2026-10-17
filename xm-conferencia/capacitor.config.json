@@ -1,6 +1,6 @@
 {
   "appId": "br.com.xmtt.conferencia",
-  "appName": "XM Conferência",
+  "appName": "Conferência de Carga",
   "webDir": "www",
   "android": {
     "backgroundColor": "#0b0f17"

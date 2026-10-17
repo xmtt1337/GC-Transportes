@@ -87,7 +87,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: xm-conferencia-v1.0.${{ github.run_number }}
-          name: XM Conferência 1.0.${{ github.run_number }}
+          name: Conferência de Carga 1.0.${{ github.run_number }}
           body: App do entregador para conferir a carga. Baixe o xm-conferencia.apk e instale por cima da versão anterior.
           files: ${{ runner.temp }}/xm-conferencia.apk
           make_latest: true

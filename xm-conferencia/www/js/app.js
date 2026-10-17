@@ -622,7 +622,7 @@ async function abrirScanner(opcoes) {
     try {
         const perm = await Scanner.requestPermissions();
         if (perm.camera !== "granted" && perm.camera !== "limited") {
-            return alerta("O app precisa da câmera pra bipar. Libere em Configurações > Apps > XM Conferência > Permissões.");
+            return alerta("O app precisa da câmera pra bipar. Libere em Configurações > Apps > Conferência de Carga > Permissões.");
         }
     } catch (_) {
         return alerta("Não consegui pedir acesso à câmera.");
