@@ -5,12 +5,22 @@
 
 const API = "https://sistema-backend-i4uh.onrender.com";
 
+// Sem bundler não existe Capacitor.registerPlugin — ele vem do @capacitor/core empacotado.
+// O que a ponte nativa injeta de fato é Capacitor.Plugins, com um objeto por plugin instalado.
 const Cap      = window.Capacitor;
 const nativo   = !!(Cap && Cap.isNativePlatform && Cap.isNativePlatform());
-const plugin   = nome => (nativo && Cap.registerPlugin) ? Cap.registerPlugin(nome) : null;
+const plugin   = nome => (nativo && Cap.Plugins && Cap.Plugins[nome]) || null;
 const Scanner  = plugin("BarcodeScanner");
 const Haptics  = plugin("Haptics");
 const KeepAwake = plugin("KeepAwake");
+const AppNativo = plugin("App");
+
+// Rede ruim não pode virar botão parado pra sempre: estoura o tempo e mostra o erro.
+function fetchComPrazo(url, opcoes, ms) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), ms);
+    return fetch(url, { ...opcoes, signal: ctl.signal }).finally(() => clearTimeout(t));
+}
 
 const $ = id => document.getElementById(id);
 const esc = XM.esc;
@@ -44,14 +54,14 @@ function mostrar(id) {
 class SessaoCaiu extends Error {}
 
 async function api(caminho, opcoes = {}) {
-    const r = await fetch(API + caminho, {
+    const r = await fetchComPrazo(API + caminho, {
         method: opcoes.method || "GET",
         headers: {
             "Authorization": "Bearer " + token,
             ...(opcoes.body ? { "Content-Type": "application/json" } : {}),
         },
         body: opcoes.body ? JSON.stringify(opcoes.body) : undefined,
-    });
+    }, 70000);
     let d = {};
     try { d = await r.json(); } catch (_) {}
     if (r.status === 401 || r.status === 403) {
@@ -73,7 +83,7 @@ function agendarRenovacao() {
 async function renovarToken() {
     if (!token) return;
     try {
-        const r = await fetch(API + "/renovar-token", { method: "POST", headers: { "Authorization": "Bearer " + token } });
+        const r = await fetchComPrazo(API + "/renovar-token", { method: "POST", headers: { "Authorization": "Bearer " + token } }, 70000);
         const d = await r.json().catch(() => ({}));
         if (r.ok && d.token) { token = d.token; gravar("xm_token", token); return; }
         if (r.status === 401 || r.status === 403) sair(d.motivo || "Sua sessão venceu. Entre de novo.");
@@ -106,11 +116,11 @@ $("login-form").addEventListener("submit", async e => {
     // pessoa acha que travou e fecha o app no meio.
     const t = setTimeout(() => { espera.hidden = false; }, 4000);
     try {
-        const r = await fetch(API + "/login", {
+        const r = await fetchComPrazo(API + "/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, password }),
-        });
+        }, 90000);
         const d = await r.json();
         if (!d.success) {
             return mostrarErroLogin(d.inativo ? "Conta inativa. Fale com o responsável." : "Usuário ou senha inválidos.");
@@ -131,8 +141,11 @@ $("login-form").addEventListener("submit", async e => {
         $("login-senha").value = "";
         agendarRenovacao();
         abrirDias();
-    } catch (_) {
-        mostrarErroLogin("Erro ao conectar com o servidor. Confira a internet.");
+    } catch (e) {
+        // O detalhe vai junto: "Failed to fetch" e "aborted" apontam pra causas diferentes,
+        // e é pelo print do entregador que a gente descobre qual foi.
+        const det = e && e.name === "AbortError" ? "o servidor demorou demais" : (e && e.message) || "sem detalhe";
+        mostrarErroLogin(`Erro ao conectar com o servidor. Confira a internet. (${det})`);
     } finally {
         clearTimeout(t);
         espera.hidden = true;
@@ -686,9 +699,9 @@ async function fecharScanner() {
 }
 
 // Botão voltar do Android fecha a câmera em vez de sair do app no meio da conferência.
-if (nativo) {
-    const App = Cap.registerPlugin("App");
-    App.addListener && App.addListener("backButton", () => {
+if (AppNativo) {
+    const App = AppNativo;
+    App.addListener("backButton", () => {
         if (scannerAberto) return fecharScanner();
         if (!$("modal").hidden) return fecharJanela();
         if (!$("tela-conf").hidden) return $("conf-voltar").click();
@@ -696,8 +709,10 @@ if (nativo) {
         App.minimizeApp && App.minimizeApp();
     });
     // App foi pro fundo (ligação, WhatsApp): solta a câmera, senão ela fica presa.
-    App.addListener && App.addListener("pause", () => fecharScanner());
-    App.addListener && App.addListener("resume", () => renovarToken());
+    App.addListener("pause", () => fecharScanner());
+    App.addListener("resume", () => renovarToken());
+    // Versão na tela de login: é por ela que se descobre se o entregador está na última.
+    App.getInfo().then(i => { $("versao").textContent = `Versão ${i.version}`; }).catch(() => {});
 }
 
 let piscaScanTimer = null;
