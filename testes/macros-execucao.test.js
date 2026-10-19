@@ -157,3 +157,17 @@ test("passou da hora: diz que deve comecar a qualquer momento, nao numero negati
   assert.match(m.falta(-30), /qualquer momento/);
   assert.strictEqual(m.falta(90), "1min 30s");
 });
+
+test("dois Chromes no mesmo notebook (um por XPT) aparecem como dois cartoes, cada um com o polo", () => {
+  const m = carregar();
+  m.dados = { abas: [], alertas: [], ouvindo: [{ nome: "NOTE", online: true, visto_ha_s: 3 }], maquinas: [
+    { nome: "NOTE", chave: "NOTE#a", perfil: "a", xpt: "XPT_CFC", online: true, visto_ha_s: 3, versao: "3.38", abas: [] },
+    { nome: "NOTE", chave: "NOTE#b", perfil: "b", xpt: "XPT_VIA", online: true, visto_ha_s: 4, versao: "3.38", abas: [] },
+  ] };
+  const html = m.computadoresHtml();
+  assert.strictEqual(html.split('class="mex-pc"').length - 1, 2);
+  assert.match(html, /XPT_CFC · Caçador/);
+  assert.match(html, /XPT_VIA · Videira/);
+  assert.match(html, /um dos Chromes deste computador/);
+  assert.ok(!html.includes("atualize"), "o vigia do mesmo nome nao vira um terceiro cartao");
+});

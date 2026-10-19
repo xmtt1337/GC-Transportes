@@ -243,13 +243,52 @@ test("SPX: Executar em lista os computadores, marca o escolhido (sem ligar pra c
   assert.ok(!v.includes("<i>PC2</i>"));
 });
 
-test("SPX: o polo vem da estacao logada na aba (atividade); sem ela, diz que ainda nao viu", () => {
+test("SPX: o polo e um seletor (qualquer um, XPT_CFC, XPT_VIA) com o escolhido marcado", () => {
   const a = carregar({ rotas: HIST("alimentacao") });
+  const t = montar(a, { lista: [AVISO, spx("alimentacao", { xpt: "XPT_VIA" }), spx("pedidos"), spx("backlog")] });
+  const v = t.vivo();
+  assert.match(v, /Qualquer um \(o da aba\)/);
+  assert.match(v, /<option value="XPT_VIA" selected>XPT_VIA · Videira<\/option>/);
+  assert.match(v, /_macEscolherPolo\('alimentacao'/);
+});
+
+test("SPX: sem polo, diz a estacao vista na aba; com polo e sem Chrome dele conectado, avisa", () => {
+  const a = carregar({ rotas: HIST("alimentacao") });
+  a.m.atividade = { abas: [{ macro: "alimentacao", estado: "ok", maquina: "NOTE", aba: "3", xpt: "XPT_CFC" }],
+    maquinas: [{ nome: "NOTE", online: true, xpt: "XPT_CFC" }] };
   const t = montar(a);
-  assert.match(t.vivo(), /ainda não visto/);
-  a.m.atividade = { abas: [{ macro: "alimentacao", estado: "ok", maquina: "LEANDROXM", aba: "3", xpt: "XPT_VIA" }] };
+  assert.match(t.vivo(), /agora XPT_CFC em NOTE/);
+  a.m.lista.find((m) => m.qual === "alimentacao").xpt = "XPT_VIA";
   a.ctx._macRedesenhar();
-  assert.match(t.vivo(), /XPT_VIA<\/b> · Videira/);
+  assert.match(t.vivo(), /Nenhum Chrome nesse polo conectado agora/);
+  a.m.lista.find((m) => m.qual === "alimentacao").xpt = "XPT_CFC";
+  a.ctx._macRedesenhar();
+  assert.match(t.vivo(), /Roda só no Chrome logado em XPT_CFC \(NOTE\)/);
+});
+
+test("SPX: escolher o polo manda pro servidor, e volta atras se ele recusar", async () => {
+  let status = 200;
+  const a = carregar({ rotas: { ...HIST("alimentacao"), "PUT /admin/macros/spx/alimentacao/polo": () => ({ status, corpo: status === 200 ? { ok: true } : { error: "nao" } }) } });
+  montar(a);
+  a.ctx._macEscolherPolo("alimentacao", "XPT_VIA");
+  await a.esperar();
+  assert.deepStrictEqual(a.chamadas.find((c) => c.metodo === "PUT").corpo, { xpt: "XPT_VIA" });
+  assert.strictEqual(a.m.lista.find((m) => m.qual === "alimentacao").xpt, "XPT_VIA");
+  status = 400;
+  a.ctx._macEscolherPolo("alimentacao", "");
+  await a.esperar(); await a.esperar();
+  assert.strictEqual(a.m.lista.find((m) => m.qual === "alimentacao").xpt, "XPT_VIA", "voltou");
+  assert.deepStrictEqual([...a.alertas], ["nao"]);
+});
+
+test("SPX: com polo escolhido, a proxima rodada e a do Chrome desse polo", () => {
+  const a = carregar({ rotas: HIST("alimentacao") });
+  a.m.atividade = { abas: [], ativos: [
+    { macro: "alimentacao", maquina: "NOTE", xpt: "XPT_CFC", rodando: false, proxima_em: Date.UTC(2026, 9, 19, 18, 1, 0), proxima_em_s: 60 * 5 },
+    { macro: "alimentacao", maquina: "NOTE", xpt: "XPT_VIA", rodando: false, proxima_em: Date.UTC(2026, 9, 19, 18, 31, 0), proxima_em_s: 60 * 35 },
+  ] };
+  const t = montar(a, { lista: [AVISO, spx("alimentacao", { xpt: "XPT_VIA" }), spx("pedidos"), spx("backlog")] });
+  assert.match(t.nav(), /XPT_VIA · Próxima às 15:31/);
 });
 
 test("SPX: problema do vigia aparece com computador e motivo escapado, e Detalhes do macro", () => {

@@ -274,15 +274,17 @@ function _mexAlertasHtml() {
 
 // Junta quem manda o andamento (extensão nova) com quem só consulta comandos (vigia ligado).
 function _mexComputadores() {
-    const porNome = new Map();
-    (_mexDados.maquinas || []).forEach(m => porNome.set(m.nome, { nome: m.nome, relata: true, online: m.online,
-        visto: m.visto_ha_s, versao: m.versao, rodando: m.abas.filter(a => a.estado === "rodando").length }));
+    // Um cartão por Chrome (computador + perfil): dois perfis no mesmo notebook, um por XPT, são dois.
+    const lista = (_mexDados.maquinas || []).map(m => ({ chave: m.chave || m.nome, nome: m.nome, xpt: m.xpt || null, relata: true,
+        online: m.online, visto: m.visto_ha_s, versao: m.versao, rodando: m.abas.filter(a => a.estado === "rodando").length }));
     (_mexDados.ouvindo || []).forEach(v => {
-        const atual = porNome.get(v.nome);
-        if (atual) { atual.vigiaOnline = v.online; return; }
-        porNome.set(v.nome, { nome: v.nome, relata: false, online: v.online, visto: v.visto_ha_s, vigiaOnline: v.online, rodando: 0 });
+        if (lista.some(c => c.nome === v.nome)) return;
+        lista.push({ chave: v.nome, nome: v.nome, relata: false, online: v.online, visto: v.visto_ha_s, rodando: 0 });
     });
-    return [...porNome.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+    const porNome = {};
+    lista.forEach(c => { porNome[c.nome] = (porNome[c.nome] || 0) + 1; });
+    lista.forEach(c => { c.varios = porNome[c.nome] > 1; });
+    return lista.sort((a, b) => a.nome.localeCompare(b.nome) || String(a.xpt || "").localeCompare(String(b.xpt || "")));
 }
 
 function _mexComputadoresHtml() {
@@ -302,7 +304,9 @@ function _mexComputadoresHtml() {
             situacao = `Sem sinal <span data-mex-ha="${c.visto}">${_mexHa(c.visto)}</span> — Chrome ou vigia fechado?`;
         }
         return `<div class="mex-pc">
-            <div class="mex-pc-nome"><span class="mex-ponto mex-ponto-${classe}"></span>${_mexEsc(c.nome)}</div>
+            <div class="mex-pc-nome"><span class="mex-ponto mex-ponto-${classe}"></span>${_mexEsc(c.nome)}${c.xpt
+                ? `<span class="mex-pc-xpt">${_mexEsc(c.xpt)} · ${_mexEsc(_MEX_XPTS[c.xpt] || "")}</span>` : ""}</div>
+            ${c.varios ? `<div class="mex-pc-meta">um dos Chromes deste computador</div>` : ""}
             <div class="mex-pc-sit">${situacao}</div>
             <div class="mex-pc-meta">${c.rodando ? `<b>${c.rodando}</b> rodando agora` : "nada rodando"}${c.versao ? ` · extensão ${_mexEsc(c.versao)}` : ""}</div>
         </div>`;
@@ -315,7 +319,7 @@ function _mexComputadoresHtml() {
     </section>`;
 }
 
-function _mexChave(a) { return `${a.maquina}|${a.aba}`; }
+function _mexChave(a) { return `${a.maquina}|${a.perfil || ""}|${a.aba}`; }
 
 function _mexAlternarLog(chave) {
     if (_mexAbertos.has(chave)) _mexAbertos.delete(chave); else _mexAbertos.add(chave);
@@ -366,7 +370,7 @@ function _mexAtivos(abas) {
     // Extensão antiga não manda `ativos`: o que está rodando continua aparecendo.
     for (const a of abas) {
         if ((a.estado !== "rodando" && a.estado !== "sem_sinal") || a.macro === "outro") continue;
-        if (lista.some(x => x.maquina === a.maquina && x.macro === a.macro)) continue;
+        if (lista.some(x => x.maquina === a.maquina && (x.perfil || "") === (a.perfil || "") && x.macro === a.macro)) continue;
         lista.push({ tipo: "maquina", macro: a.macro, maquina: a.maquina, aba: a.aba, xpt: a.xpt, rodando: true, online: a.estado !== "sem_sinal" });
     }
     const passou = _mexDecorrido();
@@ -430,8 +434,9 @@ function _mexSecaoAtivosHtml(lista) {
     const abas = _mexDados.abas || [];
     const cartoes = lista.map(a => {
         if (a.rodando) {
-            const aba = abas.find(x => x.maquina === a.maquina && x.aba === a.aba)
-                || abas.find(x => x.maquina === a.maquina && x.macro === a.macro && (x.estado === "rodando" || x.estado === "sem_sinal"));
+            const mesmo = x => x.maquina === a.maquina && (x.perfil || "") === (a.perfil || "");
+            const aba = abas.find(x => mesmo(x) && x.aba === a.aba)
+                || abas.find(x => mesmo(x) && x.macro === a.macro && (x.estado === "rodando" || x.estado === "sem_sinal"));
             if (aba) return _mexCartaoHtml(aba);
         }
         return _mexAguardandoHtml(a);

@@ -190,7 +190,10 @@ const _macRodandoDe = qual => _macAbasDe(qual).filter(a => a.estado === "rodando
 
 // A próxima rodada agendada de um relatório: a do computador escolhido, ou a mais cedo.
 function _macProximaDe(qual) {
-    const lista = ((_macAtividade && _macAtividade.ativos) || []).filter(a => a.macro === qual && a.proxima_em);
+    const m = _macLista.find(x => x.qual === qual);
+    // Com polo escolhido, só conta o Chrome desse polo (o outro também tem o alarme, mas pula).
+    const lista = ((_macAtividade && _macAtividade.ativos) || [])
+        .filter(a => a.macro === qual && a.proxima_em && (!m || !m.xpt || a.xpt === m.xpt));
     if (!lista.length) return null;
     return lista.find(a => _macComputador && _macMesmoPc(a.maquina, _macComputador))
         || lista.slice().sort((a, b) => a.proxima_em - b.proxima_em)[0];
@@ -231,7 +234,8 @@ function _macResumoLinha(item) {
         if (m.problema && m.problema.nivel === "erro") return { tom: "erro", texto: `Falhou ${_macHa(m.problema.segundos_atras)}` };
         if (m.agendavel && m.configurado && !m.ativo) return { tom: "mudo", texto: "Horário desligado" };
         const prox = _macProximaDe(item.qual);
-        if (prox) return { tom: "ok", texto: `Próxima às ${_macProximaTexto(prox)}` };
+        const polo = m.xpt ? `${m.xpt} · ` : "";
+        if (prox) return { tom: "ok", texto: `${polo}Próxima às ${_macProximaTexto(prox)}` };
         return { tom: m.agendavel && !m.configurado ? "mudo" : "ok", texto: m.resumo || "" };
     }
     if (item.tipo === "colador") {
@@ -393,16 +397,60 @@ function _macVivoHtml(item) {
     return _macVivoAvisoHtml(item, m);
 }
 
+// Os Chromes conectados agora em cada XPT (pela atividade): é com eles que o polo escolhido roda.
+function _macChromesNoXpt(xpt) {
+    return ((_macAtividade && _macAtividade.maquinas) || []).filter(m => m.online && m.xpt === xpt);
+}
+
+// O seletor do polo de um relatório: em qualquer Chrome, ou só no de um XPT.
+function _macPoloSpxHtml(m) {
+    const atual = m.xpt || "";
+    const opcoes = [`<option value=""${atual ? "" : " selected"}>Qualquer um (o da aba)</option>`]
+        .concat(_MAC_XPTS.map(p => `<option value="${p.xpt}"${p.xpt === atual ? " selected" : ""}>${p.xpt} · ${p.polo}</option>`));
+    return `<select class="mac-select" aria-label="Polo do macro" onchange="_macEscolherPolo('${_macEsc(m.qual)}', this.value)">${opcoes.join("")}</select>`;
+}
+
+function _macPoloSpxNota(item, m) {
+    if (m.xpt) {
+        const chromes = _macChromesNoXpt(m.xpt);
+        if (chromes.length) return `Roda só no Chrome logado em ${_macEsc(m.xpt)} (${chromes.map(c => _macEsc(c.nome)).join(", ")}). Os outros pulam.`;
+        return `Roda só no Chrome logado em ${_macEsc(m.xpt)}. <b>Nenhum Chrome nesse polo conectado agora.</b>`;
+    }
+    const visto = _macXptDoSpx(item.qual);
+    return visto
+        ? `Roda na estação que estiver logada no SPX — agora ${_macEsc(visto.xpt)} em ${_macEsc(visto.maquina)}.`
+        : "Roda na estação que estiver logada embaixo da logo do SPX.";
+}
+
+// Escolheu o polo: troca na hora e volta atrás se o servidor recusar.
+function _macEscolherPolo(qual, valor) {
+    const m = _macLista.find(x => x.qual === qual);
+    if (!m) return;
+    const antes = m.xpt || null;
+    m.xpt = valor || null;
+    _macRedesenhar();
+    fetch(`${API}/admin/macros/spx/${qual}/polo`, {
+        method: "PUT",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ xpt: valor || null })
+    })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            if (ok) return;
+            m.xpt = antes;
+            _macRedesenhar();
+            gcAlert(d.error || "Não foi possível mudar o polo.");
+        })
+        .catch(() => {
+            m.xpt = antes;
+            _macRedesenhar();
+            gcAlert("Erro ao conectar com o servidor.");
+        });
+}
+
 function _macVivoSpxHtml(item, m) {
     const pc = _macComputador;
     const onlinePc = pc ? _macPcOnline(pc) : null;
-    const xpt = _macXptDoSpx(item.qual);
-    const poloTexto = xpt
-        ? `<b>${_macEsc(xpt.xpt)}</b> · ${_macEsc(_macPoloDoXpt(xpt.xpt))}`
-        : `<span class="mac-agenda-mudo">ainda não visto</span>`;
-    const poloNota = xpt
-        ? `A estação logada no SPX de ${_macEsc(xpt.maquina)}. Pra trocar de polo, troque a estação embaixo da logo do SPX.`
-        : "Aparece quando a extensão (3.36 ou mais nova) contar. É a estação logada embaixo da logo do SPX.";
     const carga = m.ultima_carga ? _macEsc(_macCargaTexto(m.ultima_carga)) : `<span class="mac-agenda-mudo">nenhuma ainda</span>`;
     const situacao = _macSituacaoHtml(m);
 
@@ -410,7 +458,7 @@ function _macVivoSpxHtml(item, m) {
         <div class="macd-grade">
             ${_macCampoHtml("Executar em", _macVigiaHtml() || `<span class="mac-agenda-mudo">nenhum computador conectado</span>`,
                 `Vale pros três relatórios: dividem a mesma conta do SPX.${pc && onlinePc === false ? " <b>Desconectado agora.</b>" : ""}`)}
-            ${_macCampoHtml("Polo (XPT)", poloTexto, poloNota)}
+            ${_macCampoHtml("Polo (XPT)", _macPoloSpxHtml(m), _macPoloSpxNota(item, m))}
             ${_macCampoHtml("Última carga", carga, "Quando o arquivo chegou no sistema — a prova de que rodou de verdade.")}
             ${_macCampoHtml("Próxima rodada", _macProximaDe(item.qual)
                 ? _macEsc(_macProximaTexto(_macProximaDe(item.qual)))
