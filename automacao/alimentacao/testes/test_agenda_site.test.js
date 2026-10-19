@@ -178,14 +178,14 @@ test('comando torto e recusado', () => {
   }
 });
 
-test('Colador (recebimento/at_cluster) so vira comando com config', () => {
+test('Colador (recebimento/at_cluster/criar_at) so vira comando com config', () => {
   for (const qual of L.QUAIS_COLADOR) {
     assert.ok(L.comandoValido({ id: 'abc', qual, config: { xpt: 'XPT_CFC' } }), qual);
     assert.ok(!L.comandoValido({ id: 'abc', qual }), `${qual} sem config`);
     assert.ok(!L.comandoValido({ id: 'abc', qual, config: null }), `${qual} config null`);
     assert.ok(!L.comandoValido({ id: 'abc', qual, config: 'xpt=XPT_CFC' }), `${qual} config nao e objeto`);
   }
-  assert.deepStrictEqual(L.QUAIS_COLADOR, ['recebimento', 'at_cluster']);
+  assert.deepStrictEqual(L.QUAIS_COLADOR, ['recebimento', 'at_cluster', 'criar_at']);
 });
 
 // ── decidirAgendaDoSite ───────────────────────────────────────────────────

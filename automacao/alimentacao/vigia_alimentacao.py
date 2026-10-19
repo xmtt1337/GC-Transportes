@@ -572,6 +572,11 @@ class Backend:
     def colador_at(self, codigo, dia, at):
         return self._requisitar("POST", f"{ROTA_COLADOR}/at", {"codigo": codigo, "dia": dia, "at": at})
 
+    def colador_falhou(self, modo, tabela, id_, erro):
+        """Criar AT: o SPX recusou o codigo - o pedido sai da fila com o motivo."""
+        rota = f"{ROTA_COLADOR}/{quote(modo, safe='')}/falhou"
+        return self._requisitar("POST", rota, {"tabela": tabela, "id": id_, "erro": erro})
+
 
 # ── o vigia ─────────────────────────────────────────────────────────────────
 class Pendente:
@@ -1008,7 +1013,7 @@ ID_COMANDO = re.compile(
 
 # So os dois modos que o colador conhece - falha aqui e um 400 na hora, sem
 # gastar uma viagem ao servidor pra descobrir a mesma coisa.
-MODOS_COLADOR = ("recebimento", "at_cluster")
+MODOS_COLADOR = ("recebimento", "at_cluster", "criar_at")
 FILAS_COLADOR = ("shopee_recebimentos", "entregador_pedidos_at")
 
 
@@ -1140,7 +1145,19 @@ class Atendimento(BaseHTTPRequestHandler):
             return self._responder(400, {"error": "corpo ilegivel"})
 
         try:
-            if caminho == "/colador/at":
+            if caminho == "/colador/falhou":
+                modo = corpo.get("modo")
+                tabela = corpo.get("tabela")
+                id_ = corpo.get("id")
+                if modo not in MODOS_COLADOR:
+                    return self._responder(400, {"error": f"modo desconhecido: {modo}"})
+                if tabela not in FILAS_COLADOR:
+                    return self._responder(400, {"error": "tabela invalida"})
+                if not isinstance(id_, int) or id_ < 1:
+                    return self._responder(400, {"error": "informe o id"})
+                erro = str(corpo.get("erro") or "")[:300]
+                resposta = self.vigia.backend.colador_falhou(modo, tabela, id_, erro)
+            elif caminho == "/colador/at":
                 codigo = str(corpo.get("codigo") or "").strip()
                 dia = str(corpo.get("dia") or "").strip()
                 at = str(corpo.get("at") or "").strip()
@@ -1188,7 +1205,7 @@ class Atendimento(BaseHTTPRequestHandler):
             return self._evento(bruto)
         if caminho == "/atividade":
             return self._atividade(bruto)
-        if caminho in ("/colador/confirmar", "/colador/liberar", "/colador/at"):
+        if caminho in ("/colador/confirmar", "/colador/liberar", "/colador/at", "/colador/falhou"):
             return self._colador_escrita(caminho, bruto)
 
         achado = ID_COMANDO.match(caminho)

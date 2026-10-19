@@ -147,6 +147,9 @@ class BackendDeMentira:
     def colador_at(self, *a, **k):
         return self._chamar("colador_at", *a, **k)
 
+    def colador_falhou(self, *a, **k):
+        return self._chamar("colador_falhou", *a, **k)
+
     def pendentes(self, *a, **k):
         return self._chamar("pendentes", *a, **k)
 
@@ -231,6 +234,25 @@ class ServidorLocal(unittest.TestCase):
         base = self.subir(backend)
         self.chamar(base, "/pendentes?limite=10&estacao=XPT_SC_Ca%C3%A7ador")
         self.assertEqual(backend.chamadas, [("pendentes", (10,), {"estacao": "XPT_SC_Caçador"})])
+
+    # ── POST /colador/falhou (Criar AT: o SPX recusou o codigo) ─────────────
+    def test_falhou_repassa_modo_tabela_id_e_motivo(self):
+        backend = BackendDeMentira({"ok": True})
+        base = self.subir(backend)
+        status, _ = self.chamar(base, "/colador/falhou", metodo="POST",
+                                corpo={"modo": "criar_at", "tabela": "entregador_pedidos_at", "id": 7, "erro": "nao aceitou"})
+        self.assertEqual(status, 200)
+        self.assertEqual(backend.chamadas, [("colador_falhou", ("criar_at", "entregador_pedidos_at", 7, "nao aceitou"), {})])
+
+    def test_falhou_recusa_id_ou_modo_tortos(self):
+        backend = BackendDeMentira({"ok": True})
+        base = self.subir(backend)
+        for corpo in ({"modo": "criar_at", "tabela": "entregador_pedidos_at", "id": "x"},
+                      {"modo": "outro", "tabela": "entregador_pedidos_at", "id": 1},
+                      {"modo": "criar_at", "tabela": "users", "id": 1}):
+            status, _ = self.chamar(base, "/colador/falhou", metodo="POST", corpo=corpo)
+            self.assertEqual(status, 400, corpo)
+        self.assertEqual(backend.chamadas, [])
 
     # ── POST /atividade (tela "Em execucao") ─────────────────────────────────
     def test_atividade_repassa_o_corpo_ao_servidor(self):

@@ -159,6 +159,8 @@ const TELA_DE = {
   // tarefa de separacao e entra nela sozinho.
   recebimento: '#/generalReceiveTaskOps',
   at_cluster: '#/sorting-task/list',
+  // Criar AT (entregadores): a mesma lista da AT Exportada - o colador.js volta pra ela a cada código.
+  criar_at: '#/delivery-assignment/list',
 };
 
 // O "ja estou na tela" do Colador precisa ser mais LARGO que o endereco de
@@ -168,7 +170,19 @@ const TELA_DE = {
 const PAGINA_COLADOR = {
   recebimento: 'generalReceiveTaskOps',
   at_cluster: 'sorting-task',
+  criar_at: 'assignment',
 };
+
+// Abas que estão rodando OUTRO macro agora (pela atividade do painel): nunca servem pra este. A AT
+// Exportada e o Criar AT usam a mesma tela - sem isto um pegaria a aba do outro no meio do trabalho.
+async function abasOcupadasPorOutro(qual) {
+  try {
+    const mapa = await carregarAtividade();
+    return new Set(Object.entries(mapa)
+      .filter(([, a]) => a && a.estado === 'rodando' && a.macro && a.macro !== qual)
+      .map(([aba]) => Number(aba)));
+  } catch (e) { return new Set(); }
+}
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -206,6 +220,9 @@ async function abaDoSpx(qual) {
     abas = [];
   }
 
+  const ocupadas = await abasOcupadasPorOutro(qual);
+  abas = abas.filter((t) => !ocupadas.has(t.id));
+
   const tela = TELA_DE[qual] || TELA_DE.alimentacao;
   // Pro Colador a marca e mais larga que o endereco de navegar (ver
   // PAGINA_COLADOR acima); pros outros tres continua sendo o proprio hash.
@@ -215,8 +232,8 @@ async function abaDoSpx(qual) {
 
   // Aba do SPX que nao seja de nenhum macro (ninguem trabalhando nela) pode ser
   // aproveitada; a do outro macro, nao.
-  const ocupadas = [...Object.values(TELA_DE).map((t) => t.replace('#/', '')), ...Object.values(PAGINA_COLADOR)];
-  const livre = abas.find((t) => !ocupadas.some((o) => String(t.url || '').includes(o)));
+  const deMacro = [...Object.values(TELA_DE).map((t) => t.replace('#/', '')), ...Object.values(PAGINA_COLADOR)];
+  const livre = abas.find((t) => !deMacro.some((o) => String(t.url || '').includes(o)));
   if (livre) {
     await chrome.tabs.update(livre.id, { url: RAIZ_SPX + tela });
     await esperarCarregar(livre.id);
@@ -439,6 +456,9 @@ const coladorLiberar = ({ modo, tabela, ids }) =>
   pedirAoVigia('/colador/liberar', { corpo: { modo, tabela, ids } });
 const coladorAt = ({ codigo, dia, at }) =>
   pedirAoVigia('/colador/at', { corpo: { codigo, dia, at } });
+// Criar AT: o SPX recusou o código - o pedido fica com o motivo (o entregador vê) e sai da fila.
+const coladorFalhou = ({ modo, tabela, id, erro }) =>
+  pedirAoVigia('/colador/falhou', { corpo: { modo, tabela, id, erro } });
 
 // ── contar ao sistema o que aconteceu ───────────────────────────────────────
 // O painel do macro (na aba do SPX) e o disparo avisam aqui; a extensao leva ao vigia, que
@@ -774,7 +794,7 @@ chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
   // O content script do Colador nao alcanca 127.0.0.1 direto (mesmo bloqueio de
   // rede privada do pendentes acima) - pede aqui, e a resposta volta pela mensagem.
   if (msg.xmColador) {
-    const FUNCAO = { lote: coladorLote, confirmar: coladorConfirmar, liberar: coladorLiberar, at: coladorAt };
+    const FUNCAO = { lote: coladorLote, confirmar: coladorConfirmar, liberar: coladorLiberar, at: coladorAt, falhou: coladorFalhou };
     const fn = FUNCAO[msg.xmColador];
     if (!fn) { responder({ ok: false, error: `xmColador desconhecido: ${msg.xmColador}` }); return; }
     fn(msg).then(

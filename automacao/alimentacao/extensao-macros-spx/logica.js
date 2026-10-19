@@ -238,6 +238,7 @@
   const MACRO_DO_PAINEL = {
     'AT Exportada': 'alimentacao', 'Pedidos Pesquisados': 'pedidos', 'Backlog': 'backlog',
     'Colador — Recebimento': 'recebimento', 'Colador — AT Cluster': 'at_cluster',
+    'Colador — Criar AT (entregadores)': 'criar_at',
   };
 
   const macroDoTitulo = (titulo) => (Object.prototype.hasOwnProperty.call(MACRO_DO_PAINEL, titulo)
@@ -321,7 +322,7 @@
   // direto) pra essa mesma fila - ver modules/macros-comando/rotasColador.js no backend.
   // Ele leva "config" (xpt/dia/carência/lote/intervalo) DENTRO do comando: é o único jeito de a
   // extensão saber o que rodar, já que não tem tela própria nela como os 3 de cima.
-  const QUAIS_COLADOR = ['recebimento', 'at_cluster'];
+  const QUAIS_COLADOR = ['recebimento', 'at_cluster', 'criar_at'];
 
   // So roda o que esta nesta lista, com um id de verdade. O comando vem de uma
   // resposta HTTP: nada que chegue por ali pode virar "rode qualquer coisa".

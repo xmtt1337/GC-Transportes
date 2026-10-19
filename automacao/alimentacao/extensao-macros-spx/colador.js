@@ -59,6 +59,16 @@
         'input[placeholder*="Scan"]',
       ],
     },
+    // Uma AT NOVA por pedido de AT dos entregadores (Atribuições > Solicitar AT, no site): cria a
+    // tarefa de atribuição em Entrega > Atribuição de Entrega e põe o código nela pelo "Add New
+    // Order". A AT fica em "Created" - quem conclui é outra etapa (decisão do usuário, 19/10/2026).
+    criar_at: {
+      titulo: 'Colador — Criar AT (entregadores)',
+      seletoresCampo: [
+        'input[placeholder*="escaneie ou insira"]',
+        'input[placeholder*="SPX T"]',
+      ],
+    },
   };
 
   // O e-mail logado (ex.: adm.xpt-cfc-01@shopeemobile-external.com) carrega o
@@ -369,7 +379,51 @@
       oque: 'o campo de código aparecer', limite: 20000, intervalo: 300 });
   }
 
-  const PREPARAR = { recebimento: prepararRecebimento, at_cluster: prepararAtCluster };
+  // ── criar uma AT do zero pra um código (modo criar_at) ─────────────────────
+  // Sempre do zero, um código por AT: volta pra lista, "Criar tarefa de atribuição", Enviar (a data
+  // já vem a de hoje), e o SPX abre a AT nova (#/assignment-task/detailNoLabel?id=AT...). O id
+  // sai do endereço; o código entra pelo "Add New Order" e só conta quando aparece na tabela.
+  const TELA_LISTA_ATRIBUICAO = '#/delivery-assignment/list';
+  const ID_DA_AT_NA_URL = /assignment-task\/detail[^?]*\?id=(AT[A-Z0-9]+)/i;
+  const TEXTO_CRIAR_ATRIBUICAO = 'Criar tarefa de atribuição';
+
+  // O SPX recusou o código na AT (não vale tentar de novo: o entregador precisa saber).
+  class Recusado extends Error {}
+
+  const atDaUrl = () => { const m = ID_DA_AT_NA_URL.exec(String(location.hash || '')); return m ? m[1].toUpperCase() : null; };
+
+  async function criarAtPara(codigo) {
+    await S.irParaTela(TELA_LISTA_ATRIBUICAO, () => !atDaUrl() && acharPorTexto(TEXTO_CRIAR_ATRIBUICAO),
+      'Atribuição de Entrega');
+    const criar = await S.esperar(() => acharPorTexto(TEXTO_CRIAR_ATRIBUICAO),
+      { oque: `o botão "${TEXTO_CRIAR_ATRIBUICAO}"`, limite: 20000, intervalo: 300 });
+    S.clicar(criar);
+    const enviar = await S.esperar(() => acharPorTexto('Enviar'),
+      { oque: 'a janela "Criar tarefa de atribuição" (botão Enviar)', limite: 10000, intervalo: 200 });
+    await S.dormir(300);
+    const base = S.rede.ativas;
+    S.clicar(enviar);
+    await S.dormir(600);
+    await S.esperarRede({ base, limite: 20000 });
+    const at = await S.esperar(atDaUrl, { oque: 'a AT nova abrir', limite: 25000, intervalo: 300 });
+
+    const campo = await S.esperar(() => acharCampo('criar_at'),
+      { oque: 'o campo "Add New Order" da AT', limite: 20000, intervalo: 300 });
+    await esperarCampoLivre(campo, ESPERA_CAMPO_LIVRE_MS);
+    const antesRede = S.rede.ativas;
+    S.escrever(campo, codigo);
+    S.apertarEnter(campo);
+    await S.dormir(800);
+    await S.esperarRede({ base: antesRede, limite: 20000 });
+    // Aceito = o código aparece na tabela da AT (a aba "Atribuído (1)" passa a ter ele).
+    // (o que foi digitado no campo não conta: input não tem texto de página, só a tabela tem)
+    const entrou = await S.esperar(() => S.folhaVisivelComTexto(codigo),
+      { oque: `o código ${codigo} aparecer na AT`, limite: 12000, intervalo: 300 }).catch(() => null);
+    if (!entrou) throw new Recusado(`o SPX não aceitou o código na ${at} (a AT foi criada vazia)`);
+    return at;
+  }
+
+  const PREPARAR = { recebimento: prepararRecebimento, at_cluster: prepararAtCluster, criar_at: async () => {} };
 
   // ── ponte com o vigia (por fundo.js — ver o porquê no cabeçalho) ─────────
   function pedirAoVigia(acao, extra) {
@@ -443,7 +497,9 @@
 
         if (!lote.length) {
           const r = await pedirAoVigia('lote', {
-            modo: qual, tam: config.lote, carencia: config.carencia,
+            // Criar AT: um de cada vez - cada código é uma AT do zero, e o resto fica livre pra
+            // outra máquina do mesmo polo pegar enquanto esta trabalha.
+            modo: qual, tam: qual === 'criar_at' ? 1 : config.lote, carencia: config.carencia,
             dia: diaDoLote(config), xpt,
           });
           tabela = r.tabela;
@@ -464,13 +520,32 @@
 
         const item = lote.shift();
         try {
-          await colarUm(qual, item.codigo);
-          await pedirAoVigia('confirmar', { modo: qual, tabela, ids: [item.id] });
-          colados++;
-          falhasSeguidas = 0;
-          P.nota(`${colados} colado(s) · ${item.codigo}`);
+          if (qual === 'criar_at') {
+            P.passo(`criando a AT do ${item.codigo}`);
+            const at = await criarAtPara(item.codigo);
+            // A AT vai pro entregador ANTES do confirmar: é o que ele espera na tela dele.
+            await pedirAoVigia('at', { codigo: item.codigo, dia: item.dia || diaDaAt(config), at });
+            await pedirAoVigia('confirmar', { modo: qual, tabela, ids: [item.id] });
+            colados++;
+            falhasSeguidas = 0;
+            P.nota(`${colados} AT(s) criada(s) · ${item.codigo} → ${at}`);
+          } else {
+            await colarUm(qual, item.codigo);
+            await pedirAoVigia('confirmar', { modo: qual, tabela, ids: [item.id] });
+            colados++;
+            falhasSeguidas = 0;
+            P.nota(`${colados} colado(s) · ${item.codigo}`);
+          }
         } catch (e) {
           if (e instanceof S.Parado) throw e;
+          // Recusado pelo SPX: não volta pra fila (repetiria pra sempre) - fica com o motivo, que o
+          // entregador vê na tela dele, e ele pode pedir de novo.
+          if (e instanceof Recusado) {
+            await pedirAoVigia('falhou', { modo: qual, tabela, id: item.id, erro: e.message }).catch(() => {});
+            P.nota(`${item.codigo}: ${e.message}`);
+            await S.dormir(Math.max(0, Math.round((config.intervalo || 0) * 1000)));
+            continue;
+          }
           await pedirAoVigia('liberar', { modo: qual, tabela, ids: [item.id] }).catch(() => {});
           falhasSeguidas++;
           if (falhasSeguidas >= MAX_FALHAS_SEGUIDAS) {
@@ -496,7 +571,7 @@
     }
   }
 
-  G.colador = { rodar, CATALOGO, acharCampo, colarUm, diaDoLote, diaDaAt,
+  G.colador = { rodar, CATALOGO, acharCampo, colarUm, diaDoLote, diaDaAt, criarAtPara, Recusado,
                 prepararRecebimento, prepararAtCluster, campoDoRotulo, escolherNoDropdown, acharPorTexto,
                 xptDaPagina, xptEfetivo, GRUPO_DE_ROTAS_DO_XPT };
 
