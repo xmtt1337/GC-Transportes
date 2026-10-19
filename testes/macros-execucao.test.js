@@ -73,8 +73,8 @@ test("duracao e data no jeito que se le", () => {
 });
 
 test("admin so ve o Colador no filtro; dev ve tudo", () => {
-  assert.deepStrictEqual([...carregar("admin").visiveis()], ["recebimento", "at_cluster"]);
-  assert.strictEqual(carregar("dev").visiveis().length, 5);
+  assert.deepStrictEqual([...carregar("admin").visiveis()], ["recebimento", "at_cluster", "criar_at"]);
+  assert.strictEqual(carregar("dev").visiveis().length, 6);
   assert.ok(!carregar("admin").filtrosHtml([]).includes("Backlog"));
 });
 

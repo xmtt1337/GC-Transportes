@@ -31,6 +31,8 @@ function _solatMostrarDesativado() {
 const SOLAT_STATUS = {
     criando: { rotulo: "Criando", cor: "#eab308" },
     criada:  { rotulo: "Criada",  cor: "#22c55e" },
+    // O SPX recusou o código na AT nova: o motivo aparece embaixo, e bipar de novo tenta outra vez.
+    erro:    { rotulo: "Não criada", cor: "#f87171" },
 };
 
 let _solatXpt = null;      // XPT do polo do cadastro; null = ainda sem polo
@@ -475,7 +477,8 @@ function _solatRenderizar() {
                    <span style="width:7px;height:7px;border-radius:50%;background:${s.cor}"></span>
                    ${s.rotulo}${i.levou_segundos !== null && i.levou_segundos !== undefined
                        ? ` <span style="color:#7b98b5;font-size:11px">em ${i.levou_segundos}s</span>` : ""}
-               </span>`;
+               </span>${i.status === "erro"
+                   ? `<div style="font-size:11.5px;color:#f8a5a5;margin-top:4px">${_solatEsc(i.erro || "o SPX recusou o código")}. Bipe de novo pra tentar outra vez.</div>` : ""}`;
         return `<tr>
             <td data-label="Código"><strong>${_solatEsc(i.codigo)}</strong></td>
             <td data-label="Andamento">${andamento}</td>

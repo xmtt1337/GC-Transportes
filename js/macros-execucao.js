@@ -13,9 +13,10 @@ const _MEX_MACROS = {
     backlog:     { nome: "Backlog", tipo: "relatorio" },
     recebimento: { nome: "Colador · Recebimento", tipo: "colador" },
     at_cluster:  { nome: "Colador · AT Cluster", tipo: "colador" },
+    criar_at:    { nome: "Colador · Criar AT (entregadores)", tipo: "colador" },
     outro:       { nome: "Outro", tipo: "outro" },
 };
-const _MEX_ORDEM = ["alimentacao", "pedidos", "backlog", "recebimento", "at_cluster"];
+const _MEX_ORDEM = ["alimentacao", "pedidos", "backlog", "recebimento", "at_cluster", "criar_at"];
 const _MEX_XPTS = { XPT_CFC: "Caçador", XPT_VIA: "Videira" };
 const _MEX_ESTADOS = {
     rodando:      { rotulo: "Rodando",       classe: "andando" },

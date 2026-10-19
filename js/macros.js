@@ -1319,7 +1319,7 @@ function _macMontarAgenda(a) {
 
 // ── Histórico: o que aconteceu, de todos os macros ou de um ──
 // Cada linha é um evento contado pelo vigia ou pela extensão, com o computador de onde veio.
-const _MAC_NOME_CURTO = { alimentacao: "AT", pedidos: "Pedidos", backlog: "Backlog", recebimento: "Colador Recebimento", at_cluster: "Colador AT Cluster", geral: "Geral" };
+const _MAC_NOME_CURTO = { alimentacao: "AT", pedidos: "Pedidos", backlog: "Backlog", recebimento: "Colador Recebimento", at_cluster: "Colador AT Cluster", criar_at: "Criar AT", geral: "Geral" };
 const _MAC_ORIGEM = { vigia: "vigia", extensao: "extensão" };
 
 // Salvar o horário: atualiza a instância aberta, ou cria a nova (com computador e polo escolhidos).
