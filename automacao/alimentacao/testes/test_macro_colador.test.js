@@ -764,9 +764,9 @@ test('xptEfetivo cai pra config quando a pagina nao da nenhum sinal', () => {
   assert.strictEqual(r.G.colador.xptEfetivo({ xpt: 'XPT_CFC' }), 'XPT_CFC');
 });
 
-test('xptEfetivo sem pagina NEM config devolve null (sem filtro de xpt)', () => {
+test('xptEfetivo sem pagina NEM config RECUSA (sem XPT o lote misturaria os polos)', () => {
   const r = carregar({ textoDaPagina: '' });
-  assert.strictEqual(r.G.colador.xptEfetivo({ xpt: '' }), null);
+  assert.throws(() => r.G.colador.xptEfetivo({ xpt: '' }), /não achei o XPT/);
 });
 
 test('xptEfetivo RECUSA rodar quando a pagina discorda da config (bug real que motivou isso)', () => {

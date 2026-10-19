@@ -85,7 +85,10 @@
     if (real && config.xpt && real !== config.xpt) {
       throw new Error(`configurado para ${config.xpt}, mas esta aba está logada em ${real} — corrija a configuração ou o computador antes de rodar`);
     }
-    return real || config.xpt || null;
+    const xpt = real || config.xpt;
+    // Sem XPT o lote viria dos dois polos misturados — melhor não colar nada.
+    if (!xpt) throw new Error('não achei o XPT desta aba (XPT_SC_… embaixo da logo) — confira se o SPX carregou');
+    return xpt;
   }
 
   const MAX_FALHAS_SEGUIDAS = 3;
