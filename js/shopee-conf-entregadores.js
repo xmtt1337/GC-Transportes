@@ -1,7 +1,10 @@
 // ───── SHOPEE → CONFERÊNCIA → ENTREGADORES ─────
 // O galpão olhando a conferência que cada entregador fez no celular. É leitura: dá pra ver
 // o que ele bipou e o que ficou faltando, mas não dá pra bipar nem encerrar por ele — o
-// registro é do que ELE recebeu, e mexer de fora esvaziaria o sentido dele.
+// registro é do que ELE recebeu, e mexer de fora esvaziaria o sentido dele. A exceção é
+// reabrir uma encerrada (admin e dev): quem volta a bipar continua sendo ele.
+
+const SCE_ROLES_REABREM = ["admin", "dev"];
 
 const SCE_RESULTADOS = {
     ok:          { rotulo: "Confere",        cor: "#22c55e" },
@@ -214,6 +217,25 @@ function _sceAbrirDetalhe(sessaoId, indice) {
     });
 }
 
+function _sceReabrir() {
+    const s = (_sceDet && _sceDet.sessao) || {};
+    if (!s.id) return;
+    gcConfirm(`Reabrir a conferência de ${s.entregador || "este entregador"}? Os bipes feitos continuam valendo e ele volta a poder conferir pelo aplicativo.`, () => {
+        fetch(`${API}/shopee/conferencia/entregadores/sessao/${s.id}/reabrir`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token },
+        }).then(r => r.json())
+        .then(d => {
+            if (d && d.error) { gcAlert(d.error); return; }
+            // Recarrega o detalhe e a lista: o card dele deixa de mostrar "Encerrada".
+            const i = _sceLista.findIndex(e => e.sessao_id === s.id);
+            _sceAbrirDetalhe(s.id, i);
+            _sceCarregar();
+        })
+        .catch(() => gcAlert("Erro ao conectar com o servidor."));
+    }, "Reabrir conferência", "Reabrir");
+}
+
 function _sceVoltar() {
     _sceDet = null;
     _sceMostrarLista();
@@ -235,6 +257,10 @@ function _sceRenderDetalhe() {
     document.getElementById("sce-det-sub").innerText =
         `${(s.alvos || []).join(", ") || s.alvo || "—"}${s.dia ? " · " + s.dia.split("-").reverse().join("/") : ""}${
             s.encerrada_em ? " · encerrada" : " · em andamento"}`;
+
+    const u = typeof window !== "undefined" ? window._gcUser : null;
+    document.getElementById("sce-det-reabrir").style.display =
+        s.encerrada_em && SCE_ROLES_REABREM.includes(u && u.role) ? "" : "none";
 
     const pct = total ? (ok / total) * 100 : 0;
     const cor = !total ? "#8494a9" : falt.length === 0 ? "#22c55e" : "#eab308";
