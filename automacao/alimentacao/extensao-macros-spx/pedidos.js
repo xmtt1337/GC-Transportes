@@ -329,7 +329,18 @@
       clicar: (item) => S.clicar((item.closest && item.closest('li, [role="menuitem"], [class*="item"]')) || item) },
   ];
 
+  // Janela minimizada ou coberta por outra (dois Chromes, um por polo, um atrás do outro): o
+  // Windows avisa o Chrome que ela não aparece, ele para de desenhar a página, e o menu
+  // Exportar - que abre ao passar o mouse - não reage ao clique. Visto em 19/10/2026: o mesmo
+  // Pedidos exportou de primeira no Chrome de Caçador e falhou 3 vezes no de Videira, ao lado.
+  let viuEscondida = false;
+  const janelaEscondida = () => typeof document !== 'undefined' && !!document.hidden;
+
   async function exportarPesquisados(tentativa) {
+    if (janelaEscondida()) {
+      if (!viuEscondida) P.nota('a janela deste Chrome está escondida (minimizada ou coberta) — o SPX pode não reagir ao clique');
+      viuEscondida = true;
+    }
     // Menu aberto de uma tentativa anterior pode estar "morto" (aberto por hover sintetico, sem
     // o ponteiro em cima): fecha e abre de novo antes de clicar outra vez.
     if (tentativa > 1) { S.apertarEsc(); await S.dormir(300); }
@@ -389,6 +400,7 @@
   }
 
   async function pedirExportacao(antes) {
+    viuEscondida = false;
     for (const tentativa of [1, 2, 3]) {
       await exportarPesquisados(tentativa);
       if (tentativa > 1) P.nota(`pedindo de novo (${tentativa}ª vez)`);
@@ -400,6 +412,11 @@
         return nova;
       }
       P.nota('o SPX ainda não criou a tarefa de exportação');
+    }
+    if (viuEscondida) {
+      throw new Error(`cliquei 3 vezes em "${TEXTO_EXPORTAR_PESQUISADOS}" e o SPX não criou o arquivo — a janela ` +
+        'deste Chrome estava escondida (minimizada ou coberta por outra). Deixe as janelas lado a lado, ' +
+        'ou abra o Chrome pelo atalho XM (que não esconde a janela)');
     }
     throw new Error(`cliquei 3 vezes em "${TEXTO_EXPORTAR_PESQUISADOS}" e o SPX não criou o arquivo ` +
       `("${L.NOME_PESQUISADOS}" não apareceu em Última tarefa em ~2 min) — a próxima rodada tenta de novo`);

@@ -293,7 +293,9 @@ async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado'
   if (RELATORIOS.includes(qual) && origem !== 'manual') {
     const exigido = (config && config.xpt) || (await polosDoSite())[qual] || null;
     if (exigido) {
-      const d = L.decidirPolo(exigido, await xptDaAba(aba.id));
+      // A aba não respondeu a estação a tempo (carregando, janela escondida): vale a última que
+      // este Chrome contou. Sem isso o Chrome do OUTRO polo reclamava em vez de só pular.
+      const d = L.decidirPolo(exigido, (await xptDaAba(aba.id)) || (await xptDoPerfil()));
       if (!d.rodar) {
         if (d.outroPolo && origem !== 'site') {
           await anotar(`pulado: ${qual} — ${d.motivo}`);

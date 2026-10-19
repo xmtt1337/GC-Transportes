@@ -24,7 +24,7 @@ const PASTA = path.join(__dirname, '..', 'extensao-macros-spx');
 class ParadoFalso extends Error {}
 
 // `respostas`: o que o vigia devolve a cada pergunta de pendentes, em ordem (a ultima se repete).
-function carregar(respostas, textoDaPagina = 'Shopee Xpress XPT_SC_Caçador Busca Painel') {
+function carregar(respostas, textoDaPagina = 'Shopee Xpress XPT_SC_Caçador Busca Painel', escondida = false) {
   let agora = Date.UTC(2026, 9, 1, 0, 20, 0);
   class DataFalsa extends Date {
     constructor(...a) { if (a.length) super(...a); else super(agora); }
@@ -40,7 +40,7 @@ function carregar(respostas, textoDaPagina = 'Shopee Xpress XPT_SC_Caçador Busc
   const ctx = vm.createContext({
     console: { log() {}, warn() {}, error() {} },
     Date: DataFalsa,
-    document: { body: { innerText: textoDaPagina } },
+    document: { body: { innerText: textoDaPagina }, hidden: escondida },
     chrome: { runtime: {
       onMessage: { addListener() {} },
       async sendMessage(msg) {
@@ -130,8 +130,8 @@ test('Parar durante a espera encerra', async () => {
 
 // Achado ao vivo (02/10 23:17 e 03/10 00:00): "pedi a exportação 3 vezes e nenhuma tarefa nasceu"
 // - o painel era olhado UMA vez, 4s depois do clique; de noite a tarefa demorava mais pra nascer.
-function carregarExportacao({ nasceNaLeitura }) {
-  const r = carregar([COM(1)]);
+function carregarExportacao({ nasceNaLeitura, escondida = false }) {
+  const r = carregar([COM(1)], undefined, escondida);
   let leituras = 0;
   let pedidos = 0;
   const nova = { nome: 'Return Order', quando: '2026-10-03 00:00:30' };
@@ -232,4 +232,16 @@ test('rodape: o aviso piscando nao soma leituras de zero', () => {
   const r = carregar([COM(1)]);
   const rod = r.G.pedidos.novoRodape(3073);
   for (let i = 0; i < 30; i++) assert.strictEqual(rod.ler(null, i % 2 === 0), null);
+});
+
+// 19/10/2026: dois Chromes (um por polo), um atras do outro - o de tras nao exporta.
+test('exportacao: com a janela escondida, anota e o erro diz o que fazer', async () => {
+  const { r } = carregarExportacao({ nasceNaLeitura: Infinity, escondida: true });
+  await assert.rejects(r.G.pedidos.pedirExportacao([]), /janela deste Chrome estava escondida.*lado a lado/);
+  assert.strictEqual(r.painel.notas.filter((n) => /janela deste Chrome está escondida/.test(n)).length, 1, 'anota uma vez so');
+});
+
+test('exportacao: janela visivel mantem o erro de sempre', async () => {
+  const { r } = carregarExportacao({ nasceNaLeitura: Infinity });
+  await assert.rejects(r.G.pedidos.pedirExportacao([]), (e) => !/escondida/.test(e.message));
 });
