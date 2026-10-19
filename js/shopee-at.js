@@ -172,14 +172,7 @@ function _satRenderPrevia(faltando) {
         `Prévia · ${_satPlural(ats, "AT", "ATs")} · ${_satPlural(n, "linha", "linhas")} de ${_satArquivoNome}`;
     document.getElementById("sat-sub").innerText = "Arraste o arquivo aqui ou clique para selecionar — .csv, .xlsx ou .xls";
 
-    // O aviso do que vai ser substituído é o ponto: enviar aqui apaga TODAS as ATs
-    // anteriores das estações do arquivo, e isso não pode ser descoberto depois.
-    const avisos = [];
-    avisos.push(`Isto <strong>substitui todas as ATs</strong> de <strong>${_satEsc(estacoes.join(", "))}</strong> pelas ${_satPlural(ats, "AT", "ATs")} deste arquivo.`);
-    if (faltando && faltando.length) {
-        avisos.push(`Colunas não encontradas (vão entrar em branco): ${_satEsc(faltando.join(", "))}.`);
-    }
-    _satMsg(avisos.join("<br>"), "aviso");
+    _satMontarDias();
 
     const amostra = _satLinhas.slice(0, 20);
     document.getElementById("sat-previa-tbody").innerHTML = amostra.map(l => `
@@ -195,9 +188,69 @@ function _satRenderPrevia(faltando) {
         : "");
 
     document.getElementById("sat-previa").style.display = "";
+    document.getElementById("sat-btn-enviar").disabled = false;
+    _satAtualizarAviso(faltando || []);
+}
+
+// Dia da AT. Hoje = a importação de sempre (substitui a AT atual). Um dia que já passou vai
+// só pro histórico do servidor: não mexe na AT de hoje, e serve pra conferência daquele dia
+// (o entregador que não conferiu a rota de ontem antes de a AT de hoje entrar).
+const SAT_DIAS_PASSADOS = 7;
+let _satFaltando = [];
+
+function _satHoje() {
+    return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+}
+
+function _satDiaMenos(dia, n) {
+    const d = new Date(`${dia}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - n);
+    return d.toISOString().slice(0, 10);
+}
+
+function _satDiaBr(dia) {
+    const [, m, d] = dia.split("-");
+    return `${d}/${m}`;
+}
+
+function _satMontarDias() {
+    const sel = document.getElementById("sat-dia");
+    if (!sel) return;
+    const hoje = _satHoje();
+    const opcoes = [`<option value="">Hoje · substitui a AT atual</option>`];
+    for (let i = 1; i <= SAT_DIAS_PASSADOS; i++) {
+        const dia = _satDiaMenos(hoje, i);
+        opcoes.push(`<option value="${dia}">${i === 1 ? "Ontem" : "AT de"} ${_satDiaBr(dia)}</option>`);
+    }
+    sel.innerHTML = opcoes.join("");
+    sel.value = "";
+}
+
+function _satDiaEscolhido() {
+    return document.getElementById("sat-dia")?.value || "";
+}
+
+function _satAtualizarAviso(faltando) {
+    if (faltando !== undefined) _satFaltando = faltando;
+    const ats = _satContarAts(_satLinhas);
+    const estacoes = [...new Set(_satLinhas.map(l => l.station).filter(Boolean))];
+    const dia = _satDiaEscolhido();
+    const avisos = [];
+    if (dia) {
+        avisos.push(`Isto guarda as ${_satPlural(ats, "AT", "ATs")} deste arquivo como a AT de <strong>${_satDiaBr(dia)}</strong> de <strong>${_satEsc(estacoes.join(", "))}</strong>. A AT de hoje <strong>não é alterada</strong> — serve para conferir a rota daquele dia.`);
+    } else {
+        // O aviso do que vai ser substituído é o ponto: enviar aqui apaga TODAS as ATs
+        // anteriores das estações do arquivo, e isso não pode ser descoberto depois.
+        avisos.push(`Isto <strong>substitui todas as ATs</strong> de <strong>${_satEsc(estacoes.join(", "))}</strong> pelas ${_satPlural(ats, "AT", "ATs")} deste arquivo.`);
+    }
+    if (_satFaltando.length) {
+        avisos.push(`Colunas não encontradas (vão entrar em branco): ${_satEsc(_satFaltando.join(", "))}.`);
+    }
+    _satMsg(avisos.join("<br>"), "aviso");
     const btn = document.getElementById("sat-btn-enviar");
-    btn.disabled = false;
-    btn.textContent = `Substituir por ${_satPlural(ats, "AT", "ATs")}`;
+    if (btn && !_satEnviando) {
+        btn.textContent = dia ? `Guardar como AT de ${_satDiaBr(dia)}` : `Substituir por ${_satPlural(ats, "AT", "ATs")}`;
+    }
 }
 
 function _satCancelar() {
@@ -214,6 +267,8 @@ function _satEnviar() {
     if (_satEnviando || !_satLinhas.length) return;
     const estacoes = [...new Set(_satLinhas.map(l => l.station).filter(Boolean))];
     const ats = _satContarAts(_satLinhas);
+    const dia = _satDiaEscolhido();
+    if (dia) return _satEnviarDiaPassado(dia, estacoes, ats);
 
     // Confirmação explícita: substituir apaga TODAS as ATs da estação, não só as que
     // coincidirem com as do arquivo. Sem dizer isso, o tamanho do estrago fica escondido.
@@ -260,6 +315,44 @@ function _satEnviar() {
         },
         "Substituir a AT",
         "Substituir"
+    );
+}
+
+// AT de um dia que já passou: vai só pro histórico. Não apaga nada da AT de hoje, então a
+// confirmação diz isso em vez do "não dá pra desfazer" da substituição.
+function _satEnviarDiaPassado(dia, estacoes, ats) {
+    gcConfirm(
+        `Guardar as ${_satPlural(ats, "AT", "ATs")} deste arquivo (${_satPlural(_satLinhas.length, "linha", "linhas")}) como a AT de ${_satDiaBr(dia)} de ${estacoes.join(", ")}?\n\nA AT de hoje não muda. Se já havia AT guardada desse dia, ela é trocada por esta.`,
+        () => {
+            _satEnviando = true;
+            const btn = document.getElementById("sat-btn-enviar");
+            btn.disabled = true;
+            btn.textContent = "Guardando...";
+            fetch(`${API}/shopee/at`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                body: JSON.stringify({ arquivo: _satArquivoNome, linhas: _satLinhas, dia })
+            }).then(r => r.json().then(d => ({ ok: r.ok, d })))
+            .then(({ ok, d }) => {
+                _satEnviando = false;
+                btn.disabled = false;
+                if (!ok) {
+                    _satAtualizarAviso();
+                    return _satMsg(_satEsc(d.error) || "Não foi possível enviar.", "erro");
+                }
+                _satCancelar();
+                _satMsg(`✓ ${_satPlural(d.ats || 0, "AT guardada", "ATs guardadas")} como AT de ${_satDiaBr(d.dia || dia)} em ${
+                    _satEsc((d.estacoes || []).join(", "))} — ${_satPlural(d.gravadas, "linha", "linhas")}. Os entregadores já podem conferir a rota desse dia.`, "ok");
+            })
+            .catch(() => {
+                _satEnviando = false;
+                btn.disabled = false;
+                _satAtualizarAviso();
+                _satMsg("Erro ao conectar com o servidor.", "erro");
+            });
+        },
+        `Guardar AT de ${_satDiaBr(dia)}`,
+        "Guardar"
     );
 }
 
