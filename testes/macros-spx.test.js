@@ -118,7 +118,6 @@ const linha = (html, qual) => {
   return partes.find((p) => p.includes(`_macRodar('${qual}'`)) || "";
 };
 
-// ── a linha de cada macro ─────────────────────────────────────────────────
 // ── última carga ──────────────────────────────────────────────────────────
 test("a ultima carga mostra a hora do texto de Brasilia, sem passar por Date", () => {
   const a = carregar();
@@ -191,55 +190,9 @@ test("erro sem motivo nao fica em branco", () => {
 const UMA = { online: true, visto_ha_s: 3, maquinas: [{ nome: "AVELL-LEANDRO", visto_ha_s: 3, online: true }] };
 const DUAS = { online: true, visto_ha_s: 3, maquinas: [
   { nome: "CASA", visto_ha_s: 3, online: true }, { nome: "GALPAO", visto_ha_s: 20, online: true }] };
-const NENHUMA = { online: false, visto_ha_s: 400, maquinas: [{ nome: "CASA", visto_ha_s: 400, online: false }] };
-const opcoesDo = (html) => [...html.matchAll(/<option value="([^"]*)"( selected)?>([^<]*)<\/option>/g)]
-  .map((m) => ({ valor: m[1], selecionada: !!m[2], rotulo: m[3] }));
 
 // ── o pontinho e o aviso: so quando ha algo a dizer ───────────────────────
 const aviso = (html) => { const m = /<div class="mac-geral"><div class="mac-sit mac-sit-aviso">[\s\S]*?<span>([^<]*)<\/span>/.exec(html); return m && m[1]; };
-const tomDoPonto = (html) => /mac-vigia mac-vigia-(\w+)/.exec(html)[1];
-
-// ── escolher o computador ─────────────────────────────────────────────────
-const ROTA_PC = "PUT /admin/macros/spx/computador";
-
-test("servidor recusou: volta pra escolha de antes e avisa", async () => {
-  const a = carregar({ rotas: { [ROTA_PC]: { status: 403, corpo: { error: "Acesso negado" } } } });
-  a.m.vigia = DUAS; a.m.lista = TRES(); a.m.computador = "CASA";
-  a.ctx._macEscolherComputador("GALPAO");
-  await a.esperar(); await a.esperar();
-  assert.strictEqual(a.m.computador, "CASA");
-  assert.deepStrictEqual(a.alertas, ["Acesso negado"]);
-});
-
-test("sem rede: volta pra escolha de antes e avisa", async () => {
-  const a = carregar({ rotas: { [ROTA_PC]: new TypeError("failed to fetch") } });
-  a.m.vigia = DUAS; a.m.lista = TRES(); a.m.computador = "CASA";
-  a.ctx._macEscolherComputador("GALPAO");
-  await a.esperar(); await a.esperar();
-  assert.strictEqual(a.m.computador, "CASA");
-  assert.deepStrictEqual(a.alertas, ["Erro ao conectar com o servidor."]);
-});
-
-test("a lista carrega a escolha que o servidor guardou", async () => {
-  const a = carregar({ rotas: {
-    "GET /admin/macros": { corpo: { macros: [AVISO] } },
-    "GET /admin/macros/spx": { corpo: { macros: TRES(), vigia: DUAS, computador: "GALPAO" } },
-  } });
-  a.ctx._macCarregarLista();
-  await a.esperar(); await a.esperar();
-  assert.strictEqual(a.m.computador, "GALPAO");
-});
-
-test("sem escolha guardada, a lista deixa 'qualquer computador'", async () => {
-  const a = carregar({ rotas: {
-    "GET /admin/macros": { corpo: { macros: [AVISO] } },
-    "GET /admin/macros/spx": { corpo: { macros: TRES(), vigia: DUAS, computador: null } },
-  } });
-  a.m.computador = "RESTO";
-  a.ctx._macCarregarLista();
-  await a.esperar(); await a.esperar();
-  assert.strictEqual(a.m.computador, null);
-});
 
 // ── o pedido sabe pra onde vai ────────────────────────────────────────────
 test("pedido aguardando um computador desconectado diz QUAL e o que fazer", () => {
@@ -288,46 +241,6 @@ test("rota dos macros do SPX respondendo erro (nao dev, servidor antigo) tambem 
   assert.strictEqual(a.m.vigia, null);
 });
 
-// ── Rodar agora ───────────────────────────────────────────────────────────
-const ROTA_RODAR = "POST /admin/macros/spx/alimentacao/rodar";
-
-test("clicar num macro ja em andamento nao faz pedido nenhum", () => {
-  const a = carregar();
-  a.m.lista = [macro("alimentacao", { comando: cmd("entregue") })];
-  a.ctx._macRodar("alimentacao", { disabled: false });
-  assert.strictEqual(a.chamadas.length, 0);
-});
-
-test("409 (ja foi pedido) avisa e mostra o pedido que ja existe", async () => {
-  const a = carregar({ rotas: { [ROTA_RODAR]: { status: 409, corpo: { error: "já foi pedido — aguarde.", comando: cmd("entregue") } } } });
-  a.m.lista = TRES();
-  a.ctx._macRodar("alimentacao", { disabled: false });
-  await a.esperar(); await a.esperar();
-  assert.deepStrictEqual(a.alertas, ["já foi pedido — aguarde."]);
-  assert.strictEqual(a.m.lista[0].comando.estado, "entregue");
-});
-
-test("erro do servidor devolve o botao e avisa", async () => {
-  const a = carregar({ rotas: { [ROTA_RODAR]: { status: 403, corpo: { error: "Acesso negado" } } } });
-  a.m.lista = TRES();
-  const botao = { disabled: false };
-  a.ctx._macRodar("alimentacao", botao);
-  await a.esperar(); await a.esperar();
-  assert.strictEqual(botao.disabled, false);
-  assert.deepStrictEqual(a.alertas, ["Acesso negado"]);
-  assert.strictEqual(a.m.lista[0].comando, null);
-});
-
-test("sem rede devolve o botao e avisa", async () => {
-  const a = carregar({ rotas: { [ROTA_RODAR]: new TypeError("failed to fetch") } });
-  a.m.lista = TRES();
-  const botao = { disabled: false };
-  a.ctx._macRodar("alimentacao", botao);
-  await a.esperar(); await a.esperar();
-  assert.strictEqual(botao.disabled, false);
-  assert.deepStrictEqual(a.alertas, ["Erro ao conectar com o servidor."]);
-});
-
 // ── acompanhar ────────────────────────────────────────────────────────────
 const ROTA_ESTADO = "GET /admin/macros/spx/estado";
 
@@ -351,15 +264,6 @@ test("sem nada em andamento nem comeca a perguntar", async () => {
   assert.strictEqual(a.chamadas.length, 0);
 });
 
-test("uma volta sem resposta nao mata o acompanhamento", async () => {
-  const a = carregar({ rotas: { [ROTA_ESTADO]: new TypeError("failed to fetch") } });
-  a.m.lista = [macro("alimentacao", { comando: cmd("aguardando") })];
-  a.el("tela-macros").classList.add("active-view");
-  a.ctx._macAcompanhar();
-  await a.timers.shift()(); await a.esperar(); await a.esperar();
-  assert.strictEqual(a.timers.length, 1, "tenta de novo");
-});
-
 test("nao abre dois acompanhamentos ao mesmo tempo", () => {
   const a = carregar();
   a.m.lista = [macro("alimentacao", { comando: cmd("aguardando") })];
@@ -376,15 +280,6 @@ test("o interruptor do aviso continua na rota de sempre", async () => {
   await a.esperar(); await a.esperar();
   assert.strictEqual(a.chamadas[0].caminho, "/admin/macros/avisos-entregador/ativo");
   assert.strictEqual(a.chamadas.length, 1, "o aviso nao recarrega a lista");
-});
-
-test("recusa do servidor desfaz o interruptor", async () => {
-  const a = carregar({ rotas: { "PUT /admin/macros/spx/backlog/ativo": { status: 409, corpo: { error: "Configure o horário antes." } } } });
-  a.m.lista = TRES();
-  a.ctx._macAlternarAtivo("spx_backlog", {});
-  await a.esperar(); await a.esperar();
-  assert.strictEqual(a.m.lista[2].ativo, true, "voltou");
-  assert.deepStrictEqual(a.alertas, ["Configure o horário antes."]);
 });
 
 // ── validacao da agenda ───────────────────────────────────────────────────
@@ -440,83 +335,7 @@ test("os dois jeitos seguem juntos: trocar de modo nao joga fora o outro", () =>
   assert.strictEqual(r.agenda.horarios.length, 1);
 });
 
-// ── o modal ───────────────────────────────────────────────────────────────
-test("a parte que nao esta valendo fica apagada, e o radio acompanha o modo", () => {
-  const a = carregar();
-  a.m.lista = [macro("alimentacao")];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  assert.strictEqual(a.el("mac-ag-modo-intervalo").checked, true);
-  assert.strictEqual(a.el("mac-ag-bloco-horarios").classList.contains("mac-ag-apagado"), true);
-  assert.strictEqual(a.el("mac-ag-bloco-intervalo").classList.contains("mac-ag-apagado"), false);
-  a.ctx._macMudarModo("horarios");
-  assert.strictEqual(a.el("mac-ag-modo-horarios").checked, true);
-  assert.strictEqual(a.el("mac-ag-bloco-intervalo").classList.contains("mac-ag-apagado"), true);
-});
-
-test("adicionar horario: comeca em 08:00, depois sugere uma hora a mais, e passa pra modo horarios", () => {
-  const a = carregar();
-  a.m.lista = [macro("alimentacao")];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  a.ctx._macAdicionarHorario();
-  a.ctx._macAdicionarHorario();
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(a.m.agenda.horarios)),
-    [{ hora: 8, minuto: 0 }, { hora: 9, minuto: 0 }]);
-  assert.strictEqual(a.m.agenda.modo, "horarios");
-});
-
-test("a sugestao de horario nao passa de 23", () => {
-  const a = carregar();
-  a.m.lista = [macro("alimentacao", { agenda: { modo: "horarios", minutos: 60, horarios: [{ hora: 23, minuto: 30 }] } })];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  a.ctx._macAdicionarHorario();
-  assert.strictEqual(a.m.agenda.horarios[1].hora, 23);
-});
-
-test("remover horario tira o certo e a lista vazia diz isso", () => {
-  const a = carregar();
-  a.m.lista = [macro("alimentacao", { agenda: { modo: "horarios", minutos: 60,
-    horarios: [{ hora: 8, minuto: 0 }, { hora: 12, minuto: 0 }, { hora: 16, minuto: 0 }] } })];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  a.ctx._macRemoverHorario(1);
-  assert.deepStrictEqual(a.m.agenda.horarios.map((h) => h.hora), [8, 16]);
-  a.ctx._macRemoverHorario(0); a.ctx._macRemoverHorario(0);
-  assert.ok(a.el("mac-ag-horarios").innerHTML.includes("Nenhum horário ainda"));
-});
-
-test("o campo de minutos guarda numero, e vazio fica vazio (nao vira 0)", () => {
-  const a = carregar();
-  a.m.lista = [macro("alimentacao")];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  a.ctx._macMudarMinutos("45");
-  assert.strictEqual(a.m.agenda.minutos, 45);
-  a.ctx._macMudarMinutos("");
-  assert.strictEqual(a.m.agenda.minutos, "");
-});
-
 // ── o relogio serve aos dois modais ───────────────────────────────────────
-test("com o modal de horario aberto, o relogio edita os HORARIOS do macro (nao as rodadas do aviso)", () => {
-  const a = carregar();
-  a.m.rodadas = [{ hora: 19, minuto: 5, tipo: "abaixo_limite", parametro: 90 }];
-  a.m.lista = [macro("alimentacao", { agenda: { modo: "horarios", minutos: 60, horarios: [{ hora: 8, minuto: 0 }] } })];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  assert.strictEqual(a.m.fonte, "agenda");
-  a.ctx._macMudarHorario(0, "09:45");
-  assert.strictEqual(a.m.agenda.horarios[0].hora, 9);
-  assert.strictEqual(a.m.agenda.horarios[0].minuto, 45);
-  assert.strictEqual(a.m.rodadas[0].hora, 19, "as rodadas do aviso ficaram intactas");
-  assert.strictEqual(a.m.rodadas[0].minuto, 5);
-});
-
-test("escolher na lista de hora/minuto tambem vai pra lista certa", () => {
-  const a = carregar();
-  a.m.lista = [macro("alimentacao", { agenda: { modo: "horarios", minutos: 60, horarios: [{ hora: 8, minuto: 0 }] } })];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  a.ctx._macEscolherHm(0, "hora", 17);
-  a.ctx._macEscolherHm(0, "minuto", 30);
-  assert.strictEqual(a.m.agenda.horarios[0].hora, 17);
-  assert.strictEqual(a.m.agenda.horarios[0].minuto, 30);
-});
-
 test("abrindo o modal do aviso, o relogio volta a editar as rodadas", () => {
   const a = carregar({ rotas: { "GET /admin/macros/avisos-entregador": { corpo: { ativo: true, rodadas: [], tipos: [] } } } });
   a.m.fonte = "agenda";
@@ -530,29 +349,6 @@ test("abrindo o modal do aviso, o relogio volta a editar as rodadas", () => {
   assert.strictEqual(a.m.agenda.horarios[0].hora, 8, "os horarios do macro do SPX ficaram intactos");
 });
 
-// ── salvar ────────────────────────────────────────────────────────────────
-test("agenda invalida nem sai do navegador: a mensagem aparece na hora", () => {
-  const a = carregar();
-  a.m.lista = [macro("backlog")];
-  a.ctx._macAbrirConfigurarSpx("backlog");
-  a.ctx._macMudarMinutos("10");
-  a.ctx._macSalvarAgenda();
-  assert.strictEqual(a.chamadas.length, 0);
-  assert.match(a.el("mac-ag-erro").innerHTML, /30 a 1440/);
-  assert.deepStrictEqual(a.modais.fechados, []);
-});
-
-test("sem rede ao salvar: avisa no modal e devolve o botao", async () => {
-  const a = carregar({ rotas: { "PUT /admin/macros/spx/alimentacao": new TypeError("failed to fetch") } });
-  a.m.lista = [macro("alimentacao")];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  a.ctx._macSalvarAgenda();
-  await a.esperar(); await a.esperar();
-  assert.match(a.el("mac-ag-erro").innerHTML, /Erro ao conectar/);
-  assert.strictEqual(a.el("mac-ag-salvar").disabled, false);
-});
-
-// ── o redesenho: uma linha de texto, controles a direita ──────────────────
 // ── a linha de situacao: uma so, e so quando importa ──────────────────────
 const problema = (extra = {}) => ({ macro: "backlog", origem: "vigia", nivel: "erro", texto: "Login recusado ao enviar backlogs.xlsx",
   maquina: "CASA", arquivo: "backlogs.xlsx", quando: `${hojeBrasilia()} 09:40:00`, segundos_atras: 720, ...extra });
@@ -569,7 +365,6 @@ test("a lista carrega o problema geral do servidor", async () => {
   assert.strictEqual(a.m.geral.texto, "erro geral");
 });
 
-// ── cabecalho da secao ────────────────────────────────────────────────────
 // ── historico ─────────────────────────────────────────────────────────────
 const EVENTOS = [
   { id: 2, macro: "backlog", origem: "vigia", nivel: "erro", texto: "Login recusado", maquina: "CASA",
@@ -634,5 +429,3 @@ test("_macQuandoTexto: hoje ou dia/mes, sempre com a hora do proprio texto", () 
   assert.strictEqual(a.ctx._macQuandoTexto("2026-09-24 20:07:11"), "24/09 20:07");
   assert.doesNotThrow(() => a.ctx._macQuandoTexto(null));
 });
-
-// ── o Rodar no mesmo lugar em todas as linhas ─────────────────────────────

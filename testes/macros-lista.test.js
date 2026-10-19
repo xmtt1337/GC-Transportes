@@ -1,14 +1,17 @@
-// Testes de js/macros.js — o layout de lista (à esquerda) + detalhe do escolhido (à direita).
+// Testes de js/macros.js — a lista de macros com as instâncias (computador + polo) embaixo e o
+// detalhe do escolhido ao lado.
 //
 // O que se protege, e por quê:
-//   - cada um vê só o que pode (admin: só o Colador) e nada some da lista (o que o servidor não
-//     mandou fica "Indisponível"; o que ainda não existe fica "Ainda não integrado");
-//   - o detalhe traz tudo do macro num lugar: onde executa, polo, situação, Rodar e o formulário;
-//   - o Rodar trava enquanto o pedido está em andamento (clique duplo = pedido em dobro);
-//   - texto que vem de fora (servidor, outros computadores) nunca vira HTML;
-//   - atualizar o que muda sozinho (andamento, atividade) NUNCA redesenha o formulário —
-//     apagaria o que a pessoa está digitando;
-//   - salvar não depende mais de modal: mostra "Salvo." e recarrega por baixo.
+//   - cada um vê só o que pode (admin: só o Colador) e nada some da lista;
+//   - cada relatório mostra uma linha por instância (computador + polo), com o estado certo:
+//     rodando, pedido enviado, pausado, falhou, próxima rodada; o Pedidos segue as instâncias da AT;
+//   - Iniciar/Pausar/Cancelar/Rodar/Reiniciar/Parar mandam o pedido certo, pro Chrome certo,
+//     e voltam atrás (ou avisam) se o servidor recusar;
+//   - o Rodar trava enquanto o pedido daquele Chrome anda (clique duplo = pedido em dobro);
+//   - nova instância só oferece computador + polo que ainda não existem, e cria com o horário;
+//   - o horário: intervalo mínimo, horários recolhidos quando não estão em uso, relógio na lista certa;
+//   - texto que vem de fora nunca vira HTML;
+//   - o que muda sozinho (atividade, andamento) nunca redesenha o formulário.
 //
 // Script carregado num contexto isolado, com DOM, fetch e timers de mentira. Dados de TESTE.
 
@@ -23,15 +26,15 @@ const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "macros.js"), "ut
 const ACESSOR = `
 ;globalThis.__m = {
   get lista() { return _macLista; }, set lista(v) { _macLista = v; },
+  get instancias() { return _macInstancias; }, set instancias(v) { _macInstancias = v; },
   get coladores() { return _macColadores; }, set coladores(v) { _macColadores = v; },
   get vigia() { return _macVigia; }, set vigia(v) { _macVigia = v; },
-  get computador() { return _macComputador; }, set computador(v) { _macComputador = v; },
   get atividade() { return _macAtividade; }, set atividade(v) { _macAtividade = v; },
   get selecionado() { return _macSelecionado; }, set selecionado(v) { _macSelecionado = v; },
   get agenda() { return _macAgenda; },
-  get colEditando() { return _macColadorEditando; },
+  get nova() { return _macNova; },
   get rodadas() { return _macRodadas; },
-  set alvo(v) { _macColadorAlvo = v; },
+  get poll() { return _macPoll; },
 };`;
 
 function escapar(s) {
@@ -52,8 +55,7 @@ function criarElemento(id) {
   return o;
 }
 
-// Um elemento só "existe" se já foi criado ou se algum innerHTML o desenhou (id="..."): é isso
-// que deixa o código distinguir "primeira montagem" de "só atualizar os pedaços".
+// Um elemento só "existe" se já foi criado ou se algum innerHTML o desenhou (id="...").
 function carregar({ role = "dev", rotas = {}, guardado = null } = {}) {
   const els = {};
   const existe = (id) => {
@@ -66,6 +68,7 @@ function carregar({ role = "dev", rotas = {}, guardado = null } = {}) {
 
   const chamadas = [];
   const alertas = [];
+  const confirmacoes = [];
   const timers = [];
   const storage = guardado ? { "gc-macros-selecionado": guardado } : {};
   const fetchFalso = async (url, opcoes = {}) => {
@@ -74,15 +77,17 @@ function carregar({ role = "dev", rotas = {}, guardado = null } = {}) {
     chamadas.push({ metodo, caminho, corpo: opcoes.body ? JSON.parse(opcoes.body) : undefined });
     const r = rotas[`${metodo} ${caminho}`];
     if (r === undefined) throw new TypeError("sem rota: " + metodo + " " + caminho);
+    if (r instanceof Error) throw r;
     const { status = 200, corpo = {} } = typeof r === "function" ? r() : r;
     return { ok: status < 400, status, json: async () => corpo };
   };
   const ctx = vm.createContext({
-    console, Date, Intl, Promise, JSON, Set, Math, Number, String, Array, Object,
-    document: { getElementById: existe, hidden: false },
+    console, Date, Intl, Promise, JSON, Set, Map, Math, Number, String, Array, Object,
+    document: { getElementById: existe, hidden: false, addEventListener() {}, removeEventListener() {} },
     API: "http://api.test", token: "tok",
     fetch: fetchFalso,
     gcAlert: (m) => alertas.push(m),
+    gcConfirm: (msg, ok) => { confirmacoes.push(msg); ok(); },
     _abrirModal() {}, _fecharModal() {}, skMostrar() {}, skFim() {},
     localStorage: { getItem: (k) => storage[k] || null, setItem: (k, v) => { storage[k] = v; } },
     window: { addEventListener() {}, removeEventListener() {}, innerHeight: 800, innerWidth: 1400, _gcUser: { role } },
@@ -90,261 +95,327 @@ function carregar({ role = "dev", rotas = {}, guardado = null } = {}) {
     clearTimeout() {},
   });
   vm.runInContext(fonte + ACESSOR, ctx, { filename: "macros.js" });
-  const esperar = () => new Promise((r) => setImmediate(r));
-  return { ctx, m: ctx.__m, els, el: existe, chamadas, alertas, timers, storage, esperar };
+  const esperar = async () => { for (let i = 0; i < 4; i++) await new Promise((r) => setImmediate(r)); };
+  return { ctx, m: ctx.__m, el: existe, chamadas, alertas, confirmacoes, timers, storage, esperar };
 }
 
-const spx = (qual, extra = {}) => ({
-  chave: `spx_${qual}`, qual, nome: qual, agendavel: qual !== "pedidos", minutos_minimo: 20,
-  configurado: true, ativo: true,
-  agenda: qual === "pedidos" ? null : { modo: "intervalo", minutos: 60, horarios: [] },
-  resumo: qual === "pedidos" ? "Roda sozinho depois de cada AT" : "A cada 1 h",
-  ultima_carga: { quando: "2026-10-19 14:32:07.123", segundos_atras: 720 }, comando: null, problema: null,
-  ...extra,
+const SPX = (qual, extra = {}) => ({
+  chave: `spx_${qual}`, qual, nome: qual, agendavel: qual !== "pedidos", minutos_minimo: qual === "backlog" ? 30 : 20,
+  ultima_carga: { quando: "2026-10-19 14:32:07.123", segundos_atras: 720 }, comandos: [], problema: null, ...extra,
 });
-const TRES = () => [spx("alimentacao"), spx("pedidos"), spx("backlog")];
+const TRES = () => [SPX("alimentacao"), SPX("pedidos"), SPX("backlog")];
 const AVISO = { chave: "avisos_entregador", nome: "Avisos", ativo: true, resumo: "19:05 Abaixo de 90% concluído" };
-const colador = (qual, extra = {}) => ({
+const INST = (qual, maquina, xpt, extra = {}) => ({
+  id: `spx_inst:${qual}:${maquina.toLowerCase()}:${xpt}`, qual, maquina, xpt, ativo: true,
+  agenda: { modo: "intervalo", minutos: 30, horarios: [] }, resumo: "A cada 30 min", ...extra,
+});
+const COLADOR = (qual, extra = {}) => ({
   qual, chave: `colador_${qual}`, nome: `Colador ${qual}`, configurado: true, resumo: "XPT_CFC · lote 20",
   config: { xpt: "XPT_CFC", todos_dias: true, dia: null, carencia: 60, lote: 20, intervalo: 0.5, continuo: true },
-  comandos: [], computadores: [{ nome: "LEANDROXM", online: true }], ...extra,
+  comandos: [], computadores: [], ...extra,
 });
+const AT_CFC = INST("alimentacao", "NOTE", "XPT_CFC");
+const AT_VIA = INST("alimentacao", "NOTE", "XPT_VIA");
 
-// Monta a tela com os dados e abre o item pedido.
-function montar(a, { lista = [AVISO, ...TRES()], coladores = [colador("recebimento"), colador("at_cluster")], abrir } = {}) {
-  a.m.lista = lista;
-  a.m.coladores = coladores;
-  a.m.vigia = { online: true, visto_ha_s: 5, maquinas: [{ nome: "LEANDROXM", online: true, visto_ha_s: 5 }] };
+function montar(a, { lista = [AVISO, ...TRES()], instancias = [AT_CFC, AT_VIA], coladores = [COLADOR("recebimento")], abrir, atividade } = {}) {
+  // Cópias: as ações mexem nos objetos da tela, e os exemplos são compartilhados entre testes.
+  const copia = (x) => JSON.parse(JSON.stringify(x));
+  a.m.lista = copia(lista);
+  a.m.instancias = copia(instancias);
+  a.m.coladores = copia(coladores);
+  a.m.vigia = { online: true, visto_ha_s: 5, maquinas: [{ nome: "NOTE", online: true, visto_ha_s: 5 }] };
+  if (atividade) a.m.atividade = atividade;
   if (abrir) a.m.selecionado = abrir;
   a.ctx._macRedesenhar();
   const html = (id) => (a.el(id) ? a.el(id).innerHTML : "");
-  return { nav: () => html("macl-nav"),
-           det: () => [html("macl-detalhe"), html("macd-cab-controle"), html("macd-vivo"), html("macd-config")].join("\n"),
-           vivo: () => html("macd-vivo"), config: () => html("macd-config") };
+  return {
+    nav: () => html("macl-nav"),
+    det: () => ["macl-detalhe", "macd-cab", "macd-vivo", "macd-config"].map(html).join("\n"),
+    vivo: () => html("macd-vivo"), config: () => html("macd-config"), cab: () => html("macd-cab"),
+  };
 }
 
-const HIST = (macro) => ({ [`GET /admin/macros/spx/historico?limite=12&macro=${macro}`]: { corpo: { eventos: [] } } });
+const HIST = (macro) => ({ [`GET /admin/macros/spx/historico?limite=40&macro=${macro}`]: { corpo: { eventos: [] } } });
+const idDe = (i) => `inst:${i.id}`;
+const enc = (i) => encodeURIComponent(i.id);
+const botaoAntes = (html, chamada) => html.split(chamada)[0].split("<button").pop();
+const linhaDe = (bloco, onde) => bloco.split(onde)[1].split("</button>")[0];
 
 // ── a lista ──────────────────────────────────────────────────────────────
-test("dev ve os tres grupos, na ordem, com todos os itens", () => {
+test("a lista: cada relatorio com uma linha por instancia (computador + polo), na ordem", () => {
   const a = carregar({ rotas: HIST("alimentacao") });
-  const t = montar(a);
+  const t = montar(a, { instancias: [AT_VIA, AT_CFC, INST("backlog", "NOTE", "XPT_CFC")] });
   const nav = t.nav();
-  const ordem = ["Relatórios do SPX", "Alimentar AT exportada", "Pedidos pesquisados", "Backlog",
-    "Colador", "Colador — Recebimento", "Colador — AT Cluster", "Avisos de rota incompleta", "Shopee XPT_CFC", "Shopee XPT_VIA"];
+  const ordem = ["Alimentar AT exportada", "NOTE · <b>XPT_CFC</b>", "NOTE · <b>XPT_VIA</b>", "Pedidos pesquisados",
+    "Backlog", "Colador", "Avisos de rota incompleta", "Shopee XPT_VIA"];
   let pos = -1;
   for (const s of ordem) { const p = nav.indexOf(s, pos + 1); assert.ok(p > pos, s); pos = p; }
 });
 
-test("admin so ve o Colador", () => {
+test("a lista: o Pedidos tem uma linha por instancia da AT (vai junto dela)", () => {
+  const a = carregar({ rotas: HIST("alimentacao") });
+  const t = montar(a);
+  const ped = t.nav().split("Pedidos pesquisados")[1].split("Backlog")[0];
+  assert.strictEqual((ped.match(/class="macl-inst( sel)?"/g) || []).length, 2);
+  assert.ok(ped.includes("_macSelecionar('ped:NOTE|XPT_CFC')"));
+});
+
+test("a lista: relatorio sem instancia diz como abrir; AT e Backlog tem o +, o Pedidos nao", () => {
+  const a = carregar({ rotas: HIST("alimentacao") });
+  const t = montar(a, { instancias: [] });
+  assert.match(t.nav(), /nenhuma instância — clique pra abrir/);
+  assert.ok(t.nav().includes("_macSelecionar('novo:alimentacao')"));
+  assert.ok(t.nav().includes("_macSelecionar('novo:backlog')"));
+  assert.ok(!t.nav().includes("novo:pedidos"));
+});
+
+test("a lista: admin so ve o Colador", () => {
   const a = carregar({ role: "admin", rotas: HIST("recebimento") });
   const t = montar(a);
-  assert.ok(t.nav().includes("Colador — Recebimento"));
+  assert.ok(t.nav().includes("Colador recebimento"));
   assert.ok(!t.nav().includes("Relatórios do SPX"));
-  assert.ok(!t.nav().includes("Shopee XPT_CFC"));
-  assert.strictEqual(a.m.selecionado, "col:recebimento");
+  assert.ok(!t.nav().includes("Avisos de rota"));
 });
 
-test("o que o servidor nao mandou fica Indisponivel; o que nao existe fica Ainda nao integrado", () => {
-  const a = carregar();
-  const t = montar(a, { lista: [], coladores: [] });
-  assert.ok(t.nav().includes("Indisponível no momento"));
-  assert.ok(t.nav().includes("Ainda não integrado"));
-  assert.ok(!t.nav().includes("Colador — Recebimento"), "colador sem dado do servidor nao aparece");
-});
-
-test("macro do servidor sem lugar na lista vai pra Outros", () => {
+test("a lista: o estado de cada linha — rodando, pedido enviado, pausado, falhou, proxima", () => {
   const a = carregar({ rotas: HIST("alimentacao") });
-  const t = montar(a, { lista: [AVISO, ...TRES(), { chave: "novo", nome: "Novo macro", ativo: false, resumo: "" }] });
-  assert.ok(t.nav().includes("Outros"));
-  assert.ok(t.nav().includes("Novo macro"));
+  const prox = Date.UTC(2026, 9, 19, 21, 10, 0); // 18:10 em Brasilia
+  const t = montar(a, {
+    lista: [AVISO, SPX("alimentacao", { comandos: [{ id: "1", estado: "aguardando", alvo: "PC2", config: { xpt: "XPT_CFC" } }] }), SPX("pedidos"), SPX("backlog")],
+    instancias: [AT_CFC, AT_VIA, INST("alimentacao", "PC2", "XPT_CFC"), INST("backlog", "NOTE", "XPT_CFC", { ativo: false }),
+      INST("backlog", "NOTE", "XPT_VIA")],
+    atividade: {
+      abas: [{ macro: "alimentacao", estado: "rodando", maquina: "NOTE", xpt: "XPT_VIA", aba: "1" }],
+      ativos: [
+        { macro: "alimentacao", maquina: "NOTE", xpt: "XPT_CFC", proxima_em: prox, proxima_em_s: 600, ultimo: { estado: "ok" } },
+        { macro: "backlog", maquina: "NOTE", xpt: "XPT_VIA", proxima_em: prox, proxima_em_s: 600, ultimo: { estado: "erro" } },
+      ],
+      maquinas: [{ nome: "NOTE", online: true, xpt: "XPT_CFC" }, { nome: "NOTE", online: true, xpt: "XPT_VIA" }],
+    },
+  });
+  const at = t.nav().split("Alimentar AT exportada")[1].split("Pedidos pesquisados")[0];
+  assert.match(linhaDe(at, "NOTE · <b>XPT_CFC</b>"), /próx\. 18:10/);
+  assert.match(linhaDe(at, "NOTE · <b>XPT_VIA</b>"), /rodando agora/);
+  assert.match(linhaDe(at, "PC2 · <b>XPT_CFC</b>"), /pedido enviado/);
+  const bk = t.nav().split("Backlog")[1];
+  assert.match(linhaDe(bk, "NOTE · <b>XPT_CFC</b>"), /pausado/);
+  assert.match(linhaDe(bk, "NOTE · <b>XPT_VIA</b>"), /falhou · próx\. 18:10/);
 });
 
-test("nome e resumo do servidor nao viram HTML na lista", () => {
+test("a lista: nome de computador vindo de fora nao vira HTML", () => {
   const a = carregar({ rotas: HIST("alimentacao") });
-  const t = montar(a, { lista: [AVISO, spx("alimentacao", { resumo: "<b>x</b>" }), spx("pedidos"), spx("backlog")],
-    coladores: [] });
-  assert.ok(!t.nav().includes("<b>x</b>"));
-  assert.ok(t.nav().includes("&lt;b&gt;x&lt;/b&gt;"));
+  const t = montar(a, { instancias: [INST("alimentacao", "<img src=x>", "XPT_CFC")] });
+  assert.ok(!t.nav().includes("<img"));
+  assert.ok(t.nav().includes("&lt;img src=x&gt;"));
 });
 
-test("o resumo da linha diz o que importa: rodando, falhou, desligado", () => {
-  const a = carregar({ rotas: HIST("alimentacao") });
-  a.m.atividade = { abas: [{ macro: "pedidos", estado: "rodando", maquina: "LEANDROXM", aba: "1", xpt: "XPT_CFC" }] };
-  const t = montar(a, { lista: [AVISO, spx("alimentacao", { problema: { nivel: "erro", segundos_atras: 600, texto: "x" } }),
-    spx("pedidos"), spx("backlog", { ativo: false })] });
-  assert.match(t.nav(), /Falhou há 10 min/);
-  assert.match(t.nav(), /Rodando agora em LEANDROXM/);
-  assert.match(t.nav(), /Horário desligado/);
-});
-
-// ── escolher ─────────────────────────────────────────────────────────────
-test("sem escolha lembrada, abre o primeiro; a escolha fica lembrada", () => {
+// ── abrir ────────────────────────────────────────────────────────────────
+test("abrir: sem escolha lembrada abre a primeira instancia; a escolha fica lembrada", () => {
   const a = carregar({ rotas: { ...HIST("alimentacao"), ...HIST("backlog") } });
   montar(a);
-  assert.strictEqual(a.m.selecionado, "spx:alimentacao");
-  a.ctx._macSelecionar("spx:backlog");
-  assert.strictEqual(a.m.selecionado, "spx:backlog");
-  assert.strictEqual(a.storage["gc-macros-selecionado"], "spx:backlog");
-  assert.match(a.el("macl-detalhe").innerHTML, /Backlog/);
+  assert.strictEqual(a.m.selecionado, idDe(AT_CFC));
+  a.ctx._macSelecionar("novo:backlog");
+  assert.strictEqual(a.storage["gc-macros-selecionado"], "novo:backlog");
 });
 
-test("abre o lembrado da ultima vez", () => {
-  const a = carregar({ guardado: "col:at_cluster", rotas: HIST("at_cluster") });
-  montar(a);
-  assert.strictEqual(a.m.selecionado, "col:at_cluster");
-});
-
-// ── detalhe de um relatorio do SPX ───────────────────────────────────────
-test("SPX: o detalhe traz Executar em, Polo, ultima carga, Rodar e o horario", () => {
-  const a = carregar({ rotas: HIST("backlog") });
-  const t = montar(a, { abrir: "spx:backlog" });
+test("abrir: a instancia mostra computador + polo, situacao, Chrome, ultima rodada e os botoes", () => {
+  const a = carregar({ rotas: HIST("alimentacao") });
+  const t = montar(a, { abrir: idDe(AT_CFC), atividade: { abas: [], ativos: [
+    { macro: "alimentacao", maquina: "NOTE", xpt: "XPT_CFC", ultimo: { estado: "erro", passo: "<b>x</b> deu ruim", terminou_ha_s: 600 } }],
+    maquinas: [{ nome: "NOTE", online: true, xpt: "XPT_CFC" }] } });
   const d = t.det();
-  for (const s of ["Executar em", "Polo (XPT)", "Última carga", "_macRodar('backlog'", "Salvar horário", "Histórico recente"]) {
+  assert.match(t.cab(), /NOTE · XPT_CFC · Caçador/);
+  for (const s of ["Situação", "Próxima rodada", "Chrome", "conectado", "Última rodada", "Falhou", "Pausar", "Rodar agora", "Cancelar instância", "Salvar horário"]) {
     assert.ok(d.includes(s), s);
   }
+  assert.ok(!d.includes("<b>x</b>"), "passo vindo da extensao escapado");
 });
 
-test("SPX: Pedidos nao tem horario proprio nem interruptor", () => {
-  const a = carregar({ rotas: HIST("pedidos") });
-  const t = montar(a, { abrir: "spx:pedidos" });
-  assert.ok(!t.det().includes("Salvar horário"));
-  assert.ok(!t.det().includes("_macAlternarAtivo"));
-  assert.ok(t.det().includes("_macRodar('pedidos'"));
-});
-
-test("SPX: nunca configurado por aqui nao tem interruptor e avisa que segue o popup", () => {
+test("abrir: Chrome daquele polo fechado aparece assim", () => {
   const a = carregar({ rotas: HIST("alimentacao") });
-  const t = montar(a, { lista: [AVISO, spx("alimentacao", { configurado: false }), spx("pedidos"), spx("backlog")], abrir: "spx:alimentacao" });
-  assert.ok(!t.det().includes("_macAlternarAtivo"));
-  assert.match(t.config(), /popup da extensão/);
+  const t = montar(a, { abrir: idDe(AT_VIA), atividade: { abas: [], ativos: [], maquinas: [{ nome: "NOTE", online: true, xpt: "XPT_CFC" }] } });
+  assert.match(t.vivo(), /fechado ou sem a extensão/);
 });
 
-test("SPX: Rodar travado enquanto o pedido anda, e solto depois", () => {
-  const a = carregar({ rotas: HIST("alimentacao") });
-  for (const [estado, travado] of [["aguardando", true], ["entregue", true], ["iniciado", false], ["erro", false]]) {
-    const t = montar(a, { lista: [AVISO, spx("alimentacao", { comando: { estado, criado_em: new Date().toISOString(), criado_por: "x", idade_s: 999 } }),
-      spx("pedidos"), spx("backlog")], abrir: "spx:alimentacao" });
-    const botao = t.vivo().split("_macRodar('alimentacao'")[0].split("<button").pop();
-    assert.strictEqual(botao.includes("disabled"), travado, estado);
-  }
-});
-
-test("SPX: Executar em lista os computadores, marca o escolhido (sem ligar pra caixa) e o desconectado", () => {
-  const a = carregar({ rotas: HIST("alimentacao") });
-  a.m.computador = "leandroxm";
-  const t = montar(a);
-  a.m.vigia = { online: true, maquinas: [{ nome: "LEANDROXM", online: true, visto_ha_s: 3 }, { nome: "<i>PC2</i>", online: false, visto_ha_s: 900 }] };
-  a.ctx._macRedesenhar();
-  const v = t.vivo();
-  assert.match(v, /Qualquer computador/);
-  assert.match(v, /value="LEANDROXM" selected/);
-  assert.match(v, /&lt;i&gt;PC2&lt;\/i&gt; — desconectado/);
-  assert.ok(!v.includes("<i>PC2</i>"));
-});
-
-test("SPX: o polo e um seletor (qualquer um, XPT_CFC, XPT_VIA) com o escolhido marcado", () => {
-  const a = carregar({ rotas: HIST("alimentacao") });
-  const t = montar(a, { lista: [AVISO, spx("alimentacao", { xpt: "XPT_VIA" }), spx("pedidos"), spx("backlog")] });
-  const v = t.vivo();
-  assert.match(v, /Qualquer um \(o da aba\)/);
-  assert.match(v, /<option value="XPT_VIA" selected>XPT_VIA · Videira<\/option>/);
-  assert.match(v, /_macEscolherPolo\('alimentacao'/);
-});
-
-test("SPX: sem polo, diz a estacao vista na aba; com polo e sem Chrome dele conectado, avisa", () => {
-  const a = carregar({ rotas: HIST("alimentacao") });
-  a.m.atividade = { abas: [{ macro: "alimentacao", estado: "ok", maquina: "NOTE", aba: "3", xpt: "XPT_CFC" }],
-    maquinas: [{ nome: "NOTE", online: true, xpt: "XPT_CFC" }] };
-  const t = montar(a);
-  assert.match(t.vivo(), /agora XPT_CFC em NOTE/);
-  a.m.lista.find((m) => m.qual === "alimentacao").xpt = "XPT_VIA";
-  a.ctx._macRedesenhar();
-  assert.match(t.vivo(), /Nenhum Chrome nesse polo conectado agora/);
-  a.m.lista.find((m) => m.qual === "alimentacao").xpt = "XPT_CFC";
-  a.ctx._macRedesenhar();
-  assert.match(t.vivo(), /Roda só no Chrome logado em XPT_CFC \(NOTE\)/);
-});
-
-test("SPX: escolher o polo manda pro servidor, e volta atras se ele recusar", async () => {
-  let status = 200;
-  const a = carregar({ rotas: { ...HIST("alimentacao"), "PUT /admin/macros/spx/alimentacao/polo": () => ({ status, corpo: status === 200 ? { ok: true } : { error: "nao" } }) } });
-  montar(a);
-  a.ctx._macEscolherPolo("alimentacao", "XPT_VIA");
+// ── acoes ────────────────────────────────────────────────────────────────
+test("pausar manda so o ativo pra instancia certa, e lista e botoes acompanham", async () => {
+  const a = carregar({ rotas: { ...HIST("alimentacao"),
+    [`PUT /admin/macros/spx/instancias/${enc(AT_CFC)}`]: () => ({ corpo: { ok: true, instancia: { ...AT_CFC, ativo: false, resumo: "Desligado" } } }) } });
+  const t = montar(a, { abrir: idDe(AT_CFC) });
+  a.ctx._macInstAtivo(AT_CFC.id, false, null);
   await a.esperar();
-  assert.deepStrictEqual(a.chamadas.find((c) => c.metodo === "PUT").corpo, { xpt: "XPT_VIA" });
-  assert.strictEqual(a.m.lista.find((m) => m.qual === "alimentacao").xpt, "XPT_VIA");
-  status = 400;
-  a.ctx._macEscolherPolo("alimentacao", "");
-  await a.esperar(); await a.esperar();
-  assert.strictEqual(a.m.lista.find((m) => m.qual === "alimentacao").xpt, "XPT_VIA", "voltou");
-  assert.deepStrictEqual([...a.alertas], ["nao"]);
+  assert.deepStrictEqual(a.chamadas.find((c) => c.metodo === "PUT").corpo, { ativo: false });
+  assert.match(linhaDe(t.nav(), "NOTE · <b>XPT_CFC</b>"), /pausado/);
+  assert.match(t.vivo(), /Iniciar/);
 });
 
-test("SPX: com polo escolhido, a proxima rodada e a do Chrome desse polo", () => {
-  const a = carregar({ rotas: HIST("alimentacao") });
-  a.m.atividade = { abas: [], ativos: [
-    { macro: "alimentacao", maquina: "NOTE", xpt: "XPT_CFC", rodando: false, proxima_em: Date.UTC(2026, 9, 19, 18, 1, 0), proxima_em_s: 60 * 5 },
-    { macro: "alimentacao", maquina: "NOTE", xpt: "XPT_VIA", rodando: false, proxima_em: Date.UTC(2026, 9, 19, 18, 31, 0), proxima_em_s: 60 * 35 },
-  ] };
-  const t = montar(a, { lista: [AVISO, spx("alimentacao", { xpt: "XPT_VIA" }), spx("pedidos"), spx("backlog")] });
-  assert.match(t.nav(), /XPT_VIA · Próxima às 15:31/);
+test("pausar recusado pelo servidor avisa e nao muda nada", async () => {
+  const a = carregar({ rotas: { ...HIST("alimentacao"),
+    [`PUT /admin/macros/spx/instancias/${enc(AT_CFC)}`]: { status: 500, corpo: { error: "banco fora" } } } });
+  montar(a, { abrir: idDe(AT_CFC) });
+  a.ctx._macInstAtivo(AT_CFC.id, false, null);
+  await a.esperar();
+  assert.deepStrictEqual([...a.alertas], ["banco fora"]);
+  assert.strictEqual(a.m.instancias.find((i) => i.id === AT_CFC.id).ativo, true);
 });
 
-test("SPX: problema do vigia aparece com computador e motivo escapado, e Detalhes do macro", () => {
-  const a = carregar({ rotas: HIST("alimentacao") });
-  const t = montar(a, { lista: [AVISO, spx("alimentacao", { problema: { nivel: "erro", segundos_atras: 120, maquina: "LEANDROXM", texto: "<script>x</script>" } }),
-    spx("pedidos"), spx("backlog")] });
-  const v = t.vivo();
-  assert.match(v, /Falhou/);
-  assert.match(v, /LEANDROXM/);
-  assert.ok(!v.includes("<script>"));
-  assert.ok(v.includes("_macAbrirHistorico('alimentacao')"));
+test("cancelar pede confirmacao, apaga e volta pra abrir uma nova", async () => {
+  const a = carregar({ rotas: { ...HIST("alimentacao"), [`DELETE /admin/macros/spx/instancias/${enc(AT_CFC)}`]: { corpo: { ok: true } } } });
+  montar(a, { abrir: idDe(AT_CFC) });
+  a.ctx._macCancelarInstancia(AT_CFC.id, null);
+  await a.esperar();
+  assert.strictEqual(a.confirmacoes.length, 1);
+  assert.match(a.confirmacoes[0], /NOTE · XPT_CFC/);
+  assert.deepStrictEqual(a.m.instancias.map((i) => i.id), [AT_VIA.id]);
+  assert.strictEqual(a.m.selecionado, "novo:alimentacao");
 });
 
-test("SPX: o horario salvo vem pro formulario, e salvar nao abre modal: mostra Salvo e recarrega", async () => {
-  const a = carregar({ rotas: {
-    ...HIST("backlog"),
-    "PUT /admin/macros/spx/backlog": { corpo: { ok: true } },
-    "GET /admin/macros": { corpo: { macros: [AVISO] } },
-    "GET /admin/macros/spx": { corpo: { macros: TRES() } },
-    "GET /admin/macros/colador": { corpo: { coladores: [] } },
-    "GET /admin/macros/atividade": { corpo: { abas: [] } },
-  } });
-  montar(a, { abrir: "spx:backlog" });
-  assert.strictEqual(a.m.agenda.qual, "backlog");
-  assert.strictEqual(a.m.agenda.minutos, 60);
-  a.m.agenda.minutos = 90;
+test("rodar agora vai pro Chrome certo (computador + polo) e o botao trava enquanto o pedido anda", async () => {
+  const cmd = { id: "c1", estado: "aguardando", alvo: "NOTE", config: { xpt: "XPT_CFC" }, criado_em: new Date().toISOString(), criado_por: "Dev" };
+  const a = carregar({ rotas: { ...HIST("alimentacao"), "POST /admin/macros/spx/alimentacao/rodar": { corpo: { ok: true, comando: cmd, vigia: { online: true, maquinas: [] } } } } });
+  const t = montar(a, { abrir: idDe(AT_CFC) });
+  a.ctx._macRodarChrome("alimentacao", "NOTE", "XPT_CFC", false, null);
+  await a.esperar();
+  assert.deepStrictEqual(a.chamadas.find((c) => c.metodo === "POST").corpo, { maquina: "NOTE", xpt: "XPT_CFC", reiniciar: false });
+  assert.ok(botaoAntes(t.vivo(), "_macRodarChrome(").includes("disabled"));
+  assert.ok(a.m.poll, "passou a acompanhar");
+  a.ctx._macSelecionar(idDe(AT_VIA));
+  assert.ok(!botaoAntes(t.vivo(), "_macRodarChrome(").includes("disabled"), "o outro polo nao trava");
+});
+
+test("rodando agora: o botao vira Reiniciar (com reiniciar: true) e aparece o Parar", async () => {
+  const a = carregar({ rotas: { ...HIST("alimentacao"),
+    "POST /admin/macros/spx/alimentacao/rodar": { corpo: { ok: true, comando: { id: "c", estado: "aguardando", alvo: "NOTE", config: { xpt: "XPT_VIA" } } } },
+    "POST /admin/macros/spx/alimentacao/parar": { corpo: { ok: true } } } });
+  const t = montar(a, { abrir: idDe(AT_VIA), atividade: { abas: [{ macro: "alimentacao", estado: "rodando", maquina: "NOTE", xpt: "XPT_VIA", aba: "4", linhas: [] }], ativos: [] } });
+  assert.match(t.vivo(), /Reiniciar/);
+  assert.match(t.vivo(), /Parar/);
+  a.ctx._macPararChrome("alimentacao", "NOTE", "XPT_VIA", null);
+  await a.esperar();
+  assert.deepStrictEqual(a.chamadas.find((c) => c.caminho.endsWith("/parar")).corpo, { maquina: "NOTE", xpt: "XPT_VIA" });
+  a.ctx._macRodarChrome("alimentacao", "NOTE", "XPT_VIA", true, null);
+  await a.esperar();
+  assert.strictEqual(a.chamadas.find((c) => c.caminho.endsWith("/rodar")).corpo.reiniciar, true);
+});
+
+test("rodar recusado (409, ja pedido) avisa e mostra o pedido que ja existe", async () => {
+  const cmd = { id: "c1", estado: "entregue", alvo: "NOTE", config: { xpt: "XPT_CFC" } };
+  const a = carregar({ rotas: { ...HIST("alimentacao"), "POST /admin/macros/spx/alimentacao/rodar": { status: 409, corpo: { error: "já foi pedido", comando: cmd } } } });
+  const t = montar(a, { abrir: idDe(AT_CFC) });
+  a.ctx._macRodarChrome("alimentacao", "NOTE", "XPT_CFC", false, null);
+  await a.esperar();
+  assert.deepStrictEqual([...a.alertas], ["já foi pedido"]);
+  assert.ok(botaoAntes(t.vivo(), "_macRodarChrome(").includes("disabled"));
+});
+
+test("Pedidos: segue a AT do mesmo Chrome — sem Pausar/Cancelar proprios, com Rodar", () => {
+  const a = carregar({ rotas: HIST("pedidos") });
+  const t = montar(a, { abrir: "ped:NOTE|XPT_CFC" });
+  assert.match(t.vivo(), /Liga e pausa junto da AT/);
+  assert.ok(t.vivo().includes("_macRodarChrome('pedidos','NOTE','XPT_CFC', false"));
+  assert.ok(!t.vivo().includes("Cancelar instância"));
+  assert.strictEqual(t.config(), "", "sem horario proprio");
+});
+
+// ── nova instancia ───────────────────────────────────────────────────────
+test("nova instancia: computador + polo ja usados aparecem desabilitados", () => {
+  const a = carregar();
+  const t = montar(a, { abrir: "novo:alimentacao" });
+  a.ctx._macNovaCampo("maquina", "NOTE");
+  assert.match(t.vivo(), /<option value="XPT_CFC" disabled>XPT_CFC · Caçador — já existe/);
+  a.ctx._macNovaCampo("maquina", "OUTRO");
+  assert.ok(!t.vivo().includes("já existe"));
+});
+
+test("nova instancia: criar manda computador, polo, ligada e horario; depois abre a criada", async () => {
+  const nova = INST("backlog", "NOTE", "XPT_VIA", { agenda: { modo: "intervalo", minutos: 45, horarios: [] } });
+  const a = carregar({ rotas: { ...HIST("backlog"), "POST /admin/macros/spx/instancias": { corpo: { ok: true, instancia: nova } } } });
+  montar(a, { abrir: "novo:backlog" });
+  a.ctx._macNovaCampo("maquina", "NOTE");
+  a.ctx._macNovaCampo("xpt", "XPT_VIA");
+  a.ctx._macMudarMinutos("45");
   a.ctx._macSalvarAgenda();
-  await a.esperar(); await a.esperar();
-  const put = a.chamadas.find((c) => c.metodo === "PUT");
-  assert.deepStrictEqual(put.corpo, { ativo: true, agenda: { modo: "intervalo", horarios: [], minutos: 90 } });
-  assert.match(a.el("mac-ag-erro").innerHTML, /Salvo/);
-  assert.ok(a.chamadas.some((c) => c.caminho === "/admin/macros/spx"), "recarregou por baixo");
+  await a.esperar();
+  assert.deepStrictEqual(a.chamadas.find((c) => c.metodo === "POST").corpo,
+    { qual: "backlog", maquina: "NOTE", xpt: "XPT_VIA", ativo: true, agenda: { modo: "intervalo", horarios: [], minutos: 45 } });
+  assert.strictEqual(a.m.selecionado, idDe(nova));
+  assert.ok(a.m.instancias.some((i) => i.id === nova.id));
 });
 
-test("SPX: salvar o horario de um nunca configurado sai ligado; de um desligado, continua desligado", async () => {
-  for (const [extra, esperado] of [[{ configurado: false, ativo: false }, true], [{ configurado: true, ativo: false }, false]]) {
-    const a = carregar({ rotas: { ...HIST("backlog"), "PUT /admin/macros/spx/backlog": { corpo: {} },
-      "GET /admin/macros": { corpo: {} }, "GET /admin/macros/spx": { corpo: {} }, "GET /admin/macros/colador": { corpo: {} },
-      "GET /admin/macros/atividade": { corpo: {} } } });
-    montar(a, { lista: [spx("alimentacao"), spx("pedidos"), spx("backlog", extra)], abrir: "spx:backlog" });
-    a.ctx._macSalvarAgenda();
-    await a.esperar();
-    assert.strictEqual(a.chamadas.find((c) => c.metodo === "PUT").corpo.ativo, esperado);
-  }
+test("nova instancia: sem computador ou polo nem sai do navegador", () => {
+  const a = carregar();
+  montar(a, { abrir: "novo:alimentacao" });
+  a.ctx._macSalvarAgenda();
+  assert.match(a.el("mac-ag-erro").innerHTML, /Escolha o computador e o polo/);
+  assert.ok(!a.chamadas.some((c) => c.metodo === "POST"));
+});
+
+// ── horario ──────────────────────────────────────────────────────────────
+test("horario: a instancia abre com a agenda dela; intervalo abaixo do minimo nem sai do navegador", () => {
+  const a = carregar({ rotas: HIST("backlog") });
+  const bk = INST("backlog", "NOTE", "XPT_CFC", { agenda: { modo: "intervalo", minutos: 60, horarios: [] } });
+  montar(a, { instancias: [bk], abrir: idDe(bk) });
+  assert.strictEqual(a.m.agenda.instId, bk.id);
+  assert.strictEqual(a.m.agenda.minimo, 30);
+  a.ctx._macMudarMinutos("10");
+  a.ctx._macSalvarAgenda();
+  assert.match(a.el("mac-ag-erro").innerHTML, /de 30 a 1440/);
+  assert.ok(!a.chamadas.some((c) => c.metodo === "PUT"));
+});
+
+test("horario: salvar manda so a agenda pra instancia e mostra Salvo", async () => {
+  const a = carregar({ rotas: { ...HIST("alimentacao"),
+    [`PUT /admin/macros/spx/instancias/${enc(AT_CFC)}`]: { corpo: { ok: true, instancia: { ...AT_CFC, agenda: { modo: "intervalo", minutos: 40, horarios: [] }, resumo: "A cada 40 min" } } } } });
+  montar(a, { abrir: idDe(AT_CFC) });
+  a.ctx._macMudarMinutos("40");
+  a.ctx._macSalvarAgenda();
+  await a.esperar();
+  assert.deepStrictEqual(a.chamadas.find((c) => c.metodo === "PUT").corpo, { agenda: { modo: "intervalo", horarios: [], minutos: 40 } });
+  assert.match(a.el("mac-ag-erro").innerHTML, /Salvo/);
+  assert.strictEqual(a.m.instancias.find((i) => i.id === AT_CFC.id).resumo, "A cada 40 min");
+});
+
+test("horario: 'Todo dia, nestes horarios' fica recolhido quando vale o intervalo, e abre ao escolher", () => {
+  const a = carregar({ rotas: HIST("alimentacao") });
+  const at = INST("alimentacao", "NOTE", "XPT_CFC", { agenda: { modo: "intervalo", minutos: 30, horarios: [{ hora: 18, minuto: 45 }, { hora: 21, minuto: 15 }] } });
+  montar(a, { instancias: [at], abrir: idDe(at) });
+  assert.strictEqual(a.el("mac-ag-horarios-corpo").style.display, "none");
+  assert.match(a.el("mac-ag-recolhido").innerHTML, /2 horários guardados · mostrar/);
+  a.ctx._macMudarModo("horarios");
+  assert.strictEqual(a.el("mac-ag-horarios-corpo").style.display, "");
+  assert.strictEqual(a.el("mac-ag-recolhido").innerHTML, "");
+});
+
+test("horario: adicionar sugere uma hora depois da ultima e passa pra horarios; remover tira o certo", () => {
+  const a = carregar({ rotas: HIST("alimentacao") });
+  montar(a, { abrir: idDe(AT_CFC) });
+  a.ctx._macAdicionarHorario();
+  a.ctx._macAdicionarHorario();
+  assert.strictEqual(a.m.agenda.modo, "horarios");
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(a.m.agenda.horarios)), [{ hora: 8, minuto: 0 }, { hora: 9, minuto: 0 }]);
+  a.ctx._macRemoverHorario(0);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(a.m.agenda.horarios)), [{ hora: 9, minuto: 0 }]);
+});
+
+test("horario: o relogio edita os horarios da instancia (nao as rodadas do aviso)", () => {
+  const a = carregar({ rotas: HIST("alimentacao") });
+  montar(a, { abrir: idDe(AT_CFC) });
+  a.ctx._macAdicionarHorario();
+  a.ctx._macEscolherHm(0, "hora", 14);
+  assert.strictEqual(a.m.agenda.horarios[0].hora, 14);
+  assert.strictEqual(a.m.rodadas.length, 0);
 });
 
 // ── o que muda sozinho nao mexe no formulario ────────────────────────────
-test("redesenhar (andamento, atividade) atualiza o vivo e a lista, mas NUNCA o formulario", () => {
-  const a = carregar({ rotas: HIST("backlog") });
-  const t = montar(a, { abrir: "spx:backlog" });
+test("redesenhar (atividade, andamento) atualiza lista e vivo, mas NUNCA o formulario", () => {
+  const a = carregar({ rotas: HIST("alimentacao") });
+  const t = montar(a, { abrir: idDe(AT_CFC) });
   const form = a.el("macd-config");
   form.innerHTML = "FORMULARIO-COM-O-QUE-A-PESSOA-DIGITOU";
-  a.m.atividade = { abas: [{ macro: "backlog", estado: "rodando", maquina: "LEANDROXM", aba: "9", xpt: "XPT_CFC" }] };
+  a.m.atividade = { abas: [{ macro: "alimentacao", estado: "rodando", maquina: "NOTE", xpt: "XPT_CFC", aba: "9", linhas: [] }], ativos: [] };
   a.ctx._macRedesenhar();
   assert.strictEqual(form.innerHTML, "FORMULARIO-COM-O-QUE-A-PESSOA-DIGITOU");
-  assert.match(t.nav(), /Rodando agora em LEANDROXM/);
+  assert.match(t.vivo(), /Rodando agora/);
 });
 
 test("atividade igual a anterior nao redesenha nada", async () => {
@@ -357,114 +428,78 @@ test("atividade igual a anterior nao redesenha nada", async () => {
   assert.strictEqual(t.nav(), "INTACTO");
 });
 
-test("Rodar pede ao servidor, mostra o pedido no detalhe e passa a acompanhar", async () => {
-  const a = carregar({ rotas: { ...HIST("alimentacao"), "POST /admin/macros/spx/alimentacao/rodar": { corpo: {
-    ok: true, comando: { id: "1", estado: "aguardando", criado_em: new Date().toISOString(), criado_por: "Dev" },
-    vigia: { online: true, maquinas: [{ nome: "LEANDROXM", online: true }] } } } } });
-  const t = montar(a);
-  a.ctx._macRodar("alimentacao", null);
-  await a.esperar(); await a.esperar();
-  assert.match(t.vivo(), /aguardando o computador dos macros/);
-  assert.ok(a.timers.length >= 1, "passou a acompanhar");
+// ── Colador: sessoes por Chrome ──────────────────────────────────────────
+test("Colador: uma linha por sessao (computador + polo), da atividade e dos pedidos", () => {
+  const a = carregar({ rotas: HIST("recebimento") });
+  const t = montar(a, {
+    coladores: [COLADOR("recebimento", { comandos: [{ id: "x", estado: "aguardando", alvo: "PC2", config: { xpt: "XPT_VIA" } }] })],
+    atividade: { abas: [{ macro: "recebimento", estado: "rodando", maquina: "NOTE", xpt: "XPT_CFC", aba: "1" }], ativos: [] },
+  });
+  const col = t.nav().split("Colador recebimento")[1];
+  assert.match(linhaDe(col, "NOTE · <b>XPT_CFC</b>"), /rodando agora/);
+  assert.match(linhaDe(col, "PC2 · <b>XPT_VIA</b>"), /pedido enviado/);
 });
 
-// ── detalhe do Colador ───────────────────────────────────────────────────
-test("Colador: o polo salvo vem marcado no formulario e aparece no topo", () => {
-  const a = carregar({ rotas: HIST("at_cluster") });
-  const t = montar(a, { coladores: [colador("recebimento"), colador("at_cluster", { config: { ...colador("x").config, xpt: "XPT_VIA" } })], abrir: "col:at_cluster" });
-  assert.strictEqual(a.el("mac-col-xpt").value, "XPT_VIA");
-  assert.match(t.vivo(), /XPT_VIA<\/b> · Videira/);
-  assert.match(t.config(), /<option value="XPT_CFC">XPT_CFC · Caçador<\/option>/);
+test("Colador: abrir sessao manda computador e polo; Parar vai pro Chrome certo", async () => {
+  const cmd = { id: "c", estado: "aguardando", alvo: "NOTE", config: { xpt: "XPT_VIA" } };
+  const a = carregar({ rotas: { ...HIST("recebimento"),
+    "POST /admin/macros/colador/recebimento/rodar": { corpo: { ok: true, algum_conectado: true, comando: cmd } },
+    "POST /admin/macros/colador/recebimento/parar": { corpo: { ok: true } } } });
+  montar(a, { abrir: "colcfg:recebimento" });
+  a.ctx._macNovaCampo("maquina", "NOTE");
+  a.ctx._macNovaCampo("xpt", "XPT_VIA");
+  a.ctx._macAbrirSessao("recebimento", null);
+  await a.esperar();
+  assert.deepStrictEqual(a.chamadas.find((c) => c.caminho.endsWith("/rodar")).corpo, { maquina: "NOTE", xpt: "XPT_VIA", reiniciar: false });
+  assert.strictEqual(a.m.selecionado, "col:recebimento|NOTE|XPT_VIA");
+  a.ctx._macSessaoParar("recebimento", "NOTE", "XPT_VIA", null);
+  await a.esperar();
+  assert.deepStrictEqual(a.chamadas.find((c) => c.caminho.endsWith("/parar")).corpo, { maquina: "NOTE", xpt: "XPT_VIA" });
 });
 
-test("Colador: Rodar manda o computador escolhido e trava so pra mesma maquina aguardando", async () => {
-  const a = carregar({ rotas: { ...HIST("recebimento"), "POST /admin/macros/colador/recebimento/rodar": { corpo: {
-    ok: true, algum_conectado: true, comando: { id: "c", estado: "aguardando", alvo: "LEANDROXM" } } } } });
-  const t = montar(a, { abrir: "col:recebimento" });
-  a.ctx._macColadorMudarAlvo("recebimento", "LEANDROXM");
-  a.ctx._macRodarColador("recebimento", null);
-  await a.esperar(); await a.esperar();
-  assert.deepStrictEqual(a.chamadas.find((c) => c.metodo === "POST").corpo, { maquina: "LEANDROXM" });
-  const travado = () => t.vivo().split("_macRodarColador('recebimento'")[0].split("<button").pop().includes("disabled");
-  assert.strictEqual(travado(), true, "mesma maquina");
-  a.ctx._macColadorMudarAlvo("recebimento", "OUTRO-PC");
-  assert.strictEqual(travado(), false, "outra maquina pode");
+test("Colador: erro do pedido (texto de outro computador) nunca vira HTML", () => {
+  const a = carregar({ rotas: HIST("recebimento") });
+  const t = montar(a, { coladores: [COLADOR("recebimento", { comandos: [{ id: "x", estado: "erro", erro: "<script>x</script>", alvo: "NOTE", config: { xpt: "XPT_CFC" } }] })],
+    abrir: "col:recebimento|NOTE|XPT_CFC" });
+  assert.ok(t.vivo().length > 0);
+  assert.ok(!t.vivo().includes("<script>"));
 });
 
-test("Colador: recebidos de hoje so aparece quando o servidor manda", () => {
-  const a = carregar({ rotas: { ...HIST("recebimento"), ...HIST("at_cluster") } });
-  const t = montar(a, { coladores: [colador("recebimento", { recebidos_hoje: 42 }), colador("at_cluster")], abrir: "col:recebimento" });
-  assert.match(t.vivo(), /42 recebido\(s\)/);
-  a.ctx._macSelecionar("col:at_cluster");
-  assert.ok(!t.vivo().includes("recebido(s)"));
-});
-
-test("Colador: salvar manda a config normalizada, mostra Salvo e recarrega", async () => {
-  const a = carregar({ rotas: { ...HIST("recebimento"), "PUT /admin/macros/colador/recebimento": { corpo: { ok: true } },
-    "GET /admin/macros": { corpo: {} }, "GET /admin/macros/spx": { corpo: {} },
-    "GET /admin/macros/colador": { corpo: { coladores: [colador("recebimento")] } }, "GET /admin/macros/atividade": { corpo: {} } } });
-  montar(a, { abrir: "col:recebimento" });
-  a.ctx._macColMudarCampo("xpt", "XPT_VIA");
-  a.ctx._macColMudarCampo("lote", "35");
-  a.ctx._macSalvarColador();
-  await a.esperar(); await a.esperar();
-  const put = a.chamadas.find((c) => c.metodo === "PUT");
-  assert.strictEqual(put.corpo.config.xpt, "XPT_VIA");
-  assert.strictEqual(put.corpo.config.lote, 35);
-  assert.match(a.el("mac-col-erro").innerHTML, /Salvo/);
-  assert.strictEqual(a.m.coladores[0].config.xpt, "XPT_CFC", "a lista so muda com o que o servidor devolver");
-});
-
-// ── detalhe do aviso ─────────────────────────────────────────────────────
-test("Aviso: roda no servidor, polo fixo, e as rodadas carregam no formulario", async () => {
+// ── aviso ────────────────────────────────────────────────────────────────
+test("Aviso: roda no servidor, polo fixo, rodadas no formulario e interruptor no topo", async () => {
   const a = carregar({ rotas: { "GET /admin/macros/avisos-entregador": { corpo: {
     ativo: true, tipos: [{ id: "p", rotulo: "Percentual", parametroRotulo: "%", parametroPadrao: 90 }],
     rodadas: [{ hora: 19, minuto: 5, tipo: "p", parametro: 90 }] } } } });
   const t = montar(a, { abrir: "av:avisos_entregador" });
-  await a.esperar(); await a.esperar();
+  await a.esperar();
   assert.match(t.vivo(), /No servidor/);
   assert.match(t.vivo(), /XPT_CFC<\/b> · Caçador/);
-  assert.strictEqual(a.m.rodadas.length, 1);
   assert.match(a.el("mac-rodadas-lista").innerHTML, /19:05/);
-  assert.ok(t.det().includes("_macAlternarAtivo('avisos_entregador'"), "liga/desliga no topo");
+  assert.ok(t.cab().includes("_macAlternarAtivo('avisos_entregador'"));
 });
 
-test("Aviso: salvar as rodadas mantem o ligado/desligado da lista", async () => {
-  const a = carregar({ rotas: { "GET /admin/macros/avisos-entregador": { corpo: { tipos: [], rodadas: [{ hora: 8, minuto: 0, tipo: "p", parametro: 1 }] } },
-    "PUT /admin/macros/avisos-entregador": { corpo: { ok: true } },
-    "GET /admin/macros": { corpo: {} }, "GET /admin/macros/spx": { corpo: {} }, "GET /admin/macros/colador": { corpo: {} },
-    "GET /admin/macros/atividade": { corpo: {} } } });
-  montar(a, { lista: [{ ...AVISO, ativo: false }], coladores: [], abrir: "av:avisos_entregador" });
-  await a.esperar(); await a.esperar();
-  a.ctx._macSalvar();
+test("Aviso: o interruptor desliga na hora e volta se o servidor recusar", async () => {
+  let status = 200;
+  const a = carregar({ rotas: {
+    "GET /admin/macros/avisos-entregador": { corpo: { tipos: [], rodadas: [] } },
+    "PUT /admin/macros/avisos-entregador/ativo": () => ({ status, corpo: status === 200 ? { ok: true } : { error: "não" } }) } });
+  const t = montar(a, { abrir: "av:avisos_entregador" });
+  a.ctx._macAlternarAtivo("avisos_entregador", null);
+  assert.strictEqual(a.m.lista[0].ativo, false);
+  assert.match(t.nav(), /Desligado/);
   await a.esperar();
-  assert.strictEqual(a.chamadas.find((c) => c.metodo === "PUT").corpo.ativo, false);
+  assert.deepStrictEqual(a.chamadas.find((c) => c.metodo === "PUT").corpo, { ativo: false });
+  status = 400;
+  a.ctx._macAlternarAtivo("avisos_entregador", null);
+  await a.esperar();
+  assert.strictEqual(a.m.lista[0].ativo, false, "voltou");
+  assert.deepStrictEqual([...a.alertas], ["não"]);
 });
 
-test("Ainda nao integrado: o detalhe explica e nao tem acao nenhuma", () => {
+test("Ainda nao integrado: explica e nao tem acao nenhuma", () => {
   const a = carregar();
   const t = montar(a, { abrir: "av:pendente_via" });
   assert.match(t.det(), /Ainda não integrado/);
   assert.ok(!t.det().includes("_macRodar"));
   assert.ok(!t.det().includes("Salvar"));
-});
-
-test("SPX: a proxima rodada agendada aparece na lista e no detalhe", () => {
-  const a = carregar({ rotas: HIST("alimentacao") });
-  a.m.computador = "LEANDROXM";
-  a.m.atividade = { abas: [], ativos: [{ macro: "alimentacao", maquina: "LEANDROXM", rodando: false,
-    proxima_em: Date.UTC(2026, 9, 19, 18, 31, 0), proxima_em_s: 720 }] };
-  const t = montar(a);
-  assert.match(t.nav(), /Próxima às 15:31 \(em 12 min\)/);
-  assert.match(t.vivo(), /Próxima rodada[\s\S]*15:31 \(em 12 min\)/);
-});
-
-test("Executar em: com dois Chromes no computador (um por polo), diz isso em vez de sugerir um so", () => {
-  const a = carregar({ rotas: HIST("alimentacao") });
-  a.m.computador = "LEANDROXM";
-  a.m.atividade = { abas: [], maquinas: [
-    { nome: "LEANDROXM", online: true, xpt: "XPT_CFC" }, { nome: "LEANDROXM", online: true, xpt: "XPT_VIA" }] };
-  const t = montar(a);
-  assert.match(t.vivo(), /2 Chromes abertos aqui \(XPT_CFC, XPT_VIA\): cada um roda só o que é do polo dele/);
-  assert.ok(!t.vivo().includes("dividem a mesma conta"));
 });

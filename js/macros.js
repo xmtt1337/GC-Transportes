@@ -19,7 +19,6 @@ let _macAgenda = null;  // cópia de trabalho da agenda de um macro do SPX abert
 let _macFonte = "rodadas"; // qual lista de horários o relógio (hora/minuto) edita: "rodadas" | "agenda"
 let _macPoll = null;    // timer que acompanha um "Rodar" até ele sair do "aguardando"
 let _macGeral = null;   // problema que o vigia contou sem saber de qual macro (erro inesperado, etc.)
-let _macComputador = null; // o computador escolhido pra executar os macros (null = qualquer um)
 let _macColadores = [];    // [{ qual, chave, nome, detalhe, configurado, config, resumo, comando, computadores }]
 let _macColadorEditando = null; // copia de trabalho da config aberta no modal de configurar
 
@@ -74,7 +73,7 @@ function _macCarregarLista(silencioso) {
             _macLista = ((d && d.macros) || []).concat(doSpx);
             _macVigia = spx && spx.vigia ? spx.vigia : null;
             _macGeral = spx && spx.geral ? spx.geral : null;
-            _macComputador = spx && spx.computador ? spx.computador : null;
+            _macInstancias = spx && Array.isArray(spx.instancias) ? spx.instancias : [];
             _macColadores = colador && Array.isArray(colador.coladores) ? colador.coladores : [];
             empty.style.display = "none";
             _macRedesenhar();
@@ -84,22 +83,26 @@ function _macCarregarLista(silencioso) {
         .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
 }
 
-// ── O layout: lista de macros à esquerda, tudo do escolhido à direita ──
-// A lista diz o essencial de cada um (rodando, falhou, ligado, desligado). Clicar abre, ao lado,
-// TUDO daquele macro num lugar só: onde executa, em qual polo, situação, rodar, horário ou
-// configuração, o que está rodando agora e o histórico recente — sem modal.
+// ── O layout: lista de macros com as instâncias embaixo, detalhe do escolhido à direita ──
+// Cada relatório do SPX roda em quantos lugares precisar: uma INSTÂNCIA por computador + polo
+// (o Chrome logado naquela estação), cada uma com o seu horário e o seu liga/desliga
+// (modules/macros-comando/instancias.js). Na lista, o nome do macro e embaixo uma linha por
+// instância — clicar abre ela; clicar no nome (ou no +) abre uma instância nova.
+//
+// O Pedidos Pesquisados não tem instância própria: vai logo depois de cada AT, no mesmo Chrome —
+// as linhas dele seguem as da AT. O Colador tem uma linha por sessão (computador + polo).
 //
 // Dois pedaços do detalhe, redesenhados em momentos diferentes:
-//   #macd-vivo   - situação, Rodar, "Executar em", rodando agora: muda sozinho (acompanhamento
-//                  de um Rodar, atividade das abas) e é redesenhado a cada mudança;
-//   #macd-config - o formulário (horário, rodadas, configuração do Colador): só é montado ao
-//                  escolher o macro e depois de salvar — redesenhar no meio apagaria o que a
-//                  pessoa está digitando.
+//   #macd-vivo   - situação, botões, rodando agora: muda sozinho (acompanhamento, atividade);
+//   #macd-config - o formulário (horário, rodadas, configuração): só ao abrir e depois de salvar
+//                  — redesenhar no meio apagaria o que a pessoa está digitando.
 
-let _macSelecionado = null;   // id do item aberto: "spx:alimentacao", "col:recebimento", "av:avisos_entregador"...
+let _macSelecionado = null;   // "inst:<id>", "ped:<maquina>|<xpt>", "col:<qual>|<maquina>|<xpt>", "novo:<qual>", "colcfg:<qual>", "av:<chave>"
 let _macAtividade = null;     // /admin/macros/atividade (o que roda agora em cada aba)
+let _macInstancias = [];      // as instâncias dos relatórios (vem de /admin/macros/spx)
 let _macPollVivo = null;
-let _macHistMacro = { macro: null, eventos: null };
+let _macHistMacro = { chave: null, eventos: null };
+let _macNova = null;          // rascunho de "nova instância": { qual, maquina, xpt, ativo }
 const _MAC_CHAVE_SELECIONADO = "gc-macros-selecionado";
 
 const _MAC_XPTS = [
@@ -108,100 +111,40 @@ const _MAC_XPTS = [
 ];
 const _macPoloDoXpt = xpt => (_MAC_XPTS.find(p => p.xpt === xpt) || {}).polo || "";
 
-// O catálogo da lista. A arrumação é daqui do front: o servidor só manda os macros que JÁ
-// funcionam, e cada um cai no grupo dele. Item sem `chave` ainda vai ser integrado: aparece
-// apagado, só pra ficar marcado onde ele vai morar.
-const _MAC_GRUPOS = [
-    {
-        titulo: "Relatórios do SPX", so_dev: true,
-        texto: "Rodam no Chrome do galpão, com a extensão e o XM Vigia.",
-        itens: [
-            { id: "spx:alimentacao", tipo: "spx", qual: "alimentacao", nome: "Alimentar AT exportada", detalhe: "Exporta e baixa a AT do dia" },
-            { id: "spx:pedidos", tipo: "spx", qual: "pedidos", nome: "Pedidos pesquisados", detalhe: "Pesquisa em lote os pedidos novos da AT" },
-            { id: "spx:backlog", tipo: "spx", qual: "backlog", nome: "Backlog", detalhe: "Baixa o backlog do hub" },
-        ],
-    },
-    {
-        titulo: "Colador",
-        texto: "Digita no SPX os códigos bipados no sistema. Pode rodar em mais de um computador.",
-        itens: [
-            { id: "col:recebimento", tipo: "colador", qual: "recebimento", nome: "Colador — Recebimento", detalhe: "Recebe os pacotes no SPX" },
-            { id: "col:at_cluster", tipo: "colador", qual: "at_cluster", nome: "Colador — AT Cluster", detalhe: "Atribui no SPX o que já foi recebido" },
-        ],
-    },
-    {
-        titulo: "Avisos de rota incompleta", so_dev: true,
-        texto: "Mensagem no WhatsApp pro entregador quando a rota ainda não fechou.",
-        itens: [
-            { id: "av:avisos_entregador", tipo: "aviso", chave: "avisos_entregador", nome: "Shopee XPT_CFC", detalhe: "Caçador · WhatsApp oficial (WABA)", xpt: "XPT_CFC" },
-            { id: "av:pendente_via", tipo: "pendente", nome: "Shopee XPT_VIA", detalhe: "Videira", xpt: "XPT_VIA" },
-        ],
-    },
+const _MAC_SPX = [
+    { qual: "alimentacao", nome: "Alimentar AT exportada", detalhe: "Exporta e baixa a AT do dia. Depois de cada AT, o Pedidos Pesquisados roda sozinho." },
+    { qual: "pedidos", nome: "Pedidos pesquisados", detalhe: "Pesquisa em lote os pedidos novos da AT — roda logo depois de cada AT, no mesmo Chrome." },
+    { qual: "backlog", nome: "Backlog", detalhe: "Baixa o backlog do hub. Cada rodada grava o retrato inteiro — quanto mais seguido, mais o banco cresce." },
 ];
-
-// Explicação de cada macro do SPX, no topo do detalhe.
-const _MAC_DICAS_SPX = {
-    alimentacao: "Depois de cada AT, o Pedidos Pesquisados roda sozinho.",
-    pedidos: "Não tem horário próprio: roda sozinho 15s depois de cada AT Exportada, com os pedidos que ainda não foram pesquisados.",
-    backlog: "Cada rodada grava o retrato inteiro do backlog — quanto mais seguido, mais o banco cresce.",
-};
+const _MAC_AVISOS = [
+    { id: "av:avisos_entregador", chave: "avisos_entregador", nome: "Shopee XPT_CFC", detalhe: "Caçador · WhatsApp oficial (WABA)", xpt: "XPT_CFC" },
+    { id: "av:pendente_via", nome: "Shopee XPT_VIA", detalhe: "Videira", xpt: "XPT_VIA", pendente: true },
+];
+const _macNomeSpx = qual => (_MAC_SPX.find(x => x.qual === qual) || {}).nome || qual;
 
 const _macEhDev = () => !!(window._gcUser && window._gcUser.role === "dev");
+const _macDadoSpx = qual => _macLista.find(m => m.qual === qual) || null;
+const _macMesmoChrome = (a, maquina, xpt) => _macMesmoPc(a.maquina, maquina) && (a.xpt || null) === (xpt || null);
 
-// A lista de itens que esta pessoa vê, cada um com o dado do servidor (`m`) quando houver.
-function _macItens() {
-    const dev = _macEhDev();
-    const grupos = [];
-    for (const g of _MAC_GRUPOS) {
-        if (g.so_dev && !dev) continue;
-        const itens = g.itens.map(i => Object.assign({}, i, { m: _macDadoDo(i) }))
-            // O Colador só aparece se o servidor o mandou; os outros ficam marcados mesmo sem dado.
-            .filter(i => i.tipo !== "colador" || i.m);
-        if (itens.length) grupos.push(Object.assign({}, g, { itens }));
-    }
-    // Macro que o servidor mande e que ainda não tenha lugar na lista não some: cai em "Outros".
-    if (dev) {
-        const conhecidas = new Set(["avisos_entregador", "spx_alimentacao", "spx_pedidos", "spx_backlog"]);
-        const sobra = _macLista.filter(m => !m.qual && !conhecidas.has(m.chave));
-        if (sobra.length) grupos.push({ titulo: "Outros", itens: sobra.map(m => ({
-            id: `av:${m.chave}`, tipo: "aviso", chave: m.chave, nome: m.nome, detalhe: m.descricao, m })) });
-    }
-    return grupos;
+// ── o que está acontecendo em cada Chrome (pela atividade das abas) ──
+const _macAbas = () => (_macAtividade && _macAtividade.abas) || [];
+const _macAtivos = () => (_macAtividade && _macAtividade.ativos) || [];
+const _macAbaRodando = (macro, maquina, xpt) =>
+    _macAbas().find(a => a.macro === macro && (a.estado === "rodando" || a.estado === "sem_sinal") && _macMesmoChrome(a, maquina, xpt)) || null;
+const _macAtivoDe = (macro, maquina, xpt) => _macAtivos().find(a => a.macro === macro && _macMesmoChrome(a, maquina, xpt)) || null;
+// O Chrome daquele computador + polo está conectado agora?
+const _macChromeOnline = (maquina, xpt) =>
+    ((_macAtividade && _macAtividade.maquinas) || []).some(m => m.online && _macMesmoPc(m.nome, maquina) && m.xpt === xpt);
+
+// O último pedido (Rodar/Reiniciar) daquele Chrome pra este macro.
+function _macComandoDe(qual, maquina, xpt) {
+    const m = _macDadoSpx(qual);
+    return ((m && m.comandos) || []).find(c => _macMesmoPc(c.alvo, maquina) && ((c.config && c.config.xpt) || null) === (xpt || null)) || null;
 }
 
-function _macDadoDo(item) {
-    if (item.tipo === "spx") return _macLista.find(m => m.qual === item.qual) || null;
-    if (item.tipo === "colador") return _macColadores.find(c => c.qual === item.qual) || null;
-    if (item.tipo === "aviso") return _macLista.find(m => m.chave === item.chave) || null;
-    return null;
-}
-
-function _macItemPorId(id) {
-    for (const g of _macItens()) {
-        const i = g.itens.find(x => x.id === id);
-        if (i) return i;
-    }
-    return null;
-}
-
-// ── o que está rodando agora (vem da extensão, pela atividade das abas) ──
-const _macAbasDe = qual => ((_macAtividade && _macAtividade.abas) || []).filter(a => a.macro === qual);
-const _macRodandoDe = qual => _macAbasDe(qual).filter(a => a.estado === "rodando");
-
-// A próxima rodada agendada de um relatório: a do computador escolhido, ou a mais cedo.
-function _macProximaDe(qual) {
-    const m = _macLista.find(x => x.qual === qual);
-    // Com polo escolhido, só conta o Chrome desse polo (o outro também tem o alarme, mas pula).
-    const lista = ((_macAtividade && _macAtividade.ativos) || [])
-        .filter(a => a.macro === qual && a.proxima_em && (!m || !m.xpt || a.xpt === m.xpt));
-    if (!lista.length) return null;
-    return lista.find(a => _macComputador && _macMesmoPc(a.maquina, _macComputador))
-        || lista.slice().sort((a, b) => a.proxima_em - b.proxima_em)[0];
-}
-
-// "15:31 (em 12 min)" / "15:31 (a qualquer momento)". A hora sai do relógio do servidor (já
-// convertido), mostrada em Brasília.
+// "15:31 (em 12 min)" / "a qualquer momento".
 function _macProximaTexto(p) {
+    if (!p || !p.proxima_em) return null;
     const hora = new Date(p.proxima_em).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
     const s = p.proxima_em_s;
     const falta = s === null || s === undefined ? "" : s <= 60 ? " (a qualquer momento)"
@@ -209,86 +152,153 @@ function _macProximaTexto(p) {
     return hora + falta;
 }
 
-// O XPT em que um macro do SPX roda: o da estação logada na aba do computador escolhido — a
-// extensão lê embaixo da logo do SPX. A aba mais recente desse macro, ou qualquer aba daquele
-// computador, diz qual é.
-function _macXptDoSpx(qual) {
-    const abas = (_macAtividade && _macAtividade.abas) || [];
-    const doMacro = abas.filter(a => a.macro === qual && a.xpt);
-    const doPc = abas.filter(a => a.xpt && (!_macComputador || _macMesmoPc(a.maquina, _macComputador)));
-    const a = doMacro.find(x => !_macComputador || _macMesmoPc(x.maquina, _macComputador)) || doMacro[0] || doPc[0];
-    return a ? { xpt: a.xpt, maquina: a.maquina } : null;
+// ── os itens da lista ──
+// Cada instância/linha: { id, tipo, qual, maquina, xpt, ... } com o estado pronto pra lista.
+function _macLinhasDeInstancia(qual) {
+    return _macInstancias.filter(i => i.qual === qual)
+        .sort((a, b) => a.maquina.localeCompare(b.maquina) || a.xpt.localeCompare(b.xpt))
+        .map(i => ({ id: `inst:${i.id}`, tipo: "inst", qual, maquina: i.maquina, xpt: i.xpt, inst: i }));
 }
 
-// ── a lista ──
-// O resumo de cada linha: o ponto (cor = estado) e uma frase curta.
-function _macResumoLinha(item) {
-    const m = item.m;
-    if (item.tipo === "pendente") return { tom: "mudo", texto: "Ainda não integrado" };
-    if (!m) return { tom: "mudo", texto: "Indisponível no momento" };
+function _macLinhasDePedidos() {
+    return _macInstancias.filter(i => i.qual === "alimentacao")
+        .sort((a, b) => a.maquina.localeCompare(b.maquina) || a.xpt.localeCompare(b.xpt))
+        .map(i => ({ id: `ped:${i.maquina}|${i.xpt}`, tipo: "ped", qual: "pedidos", maquina: i.maquina, xpt: i.xpt, at: i }));
+}
 
-    if (item.tipo === "spx") {
-        const rodando = _macRodandoDe(item.qual);
-        if (rodando.length) return { tom: "andando", texto: `Rodando agora em ${rodando.map(a => a.maquina).join(", ")}` };
-        if (_macOcupado(m.comando)) return { tom: "andando", texto: "Pedido enviado — aguardando o computador" };
-        if (m.problema && m.problema.nivel === "erro") return { tom: "erro", texto: `Falhou ${_macHa(m.problema.segundos_atras)}` };
-        if (m.agendavel && m.configurado && !m.ativo) return { tom: "mudo", texto: "Horário desligado" };
-        const prox = _macProximaDe(item.qual);
-        const polo = m.xpt ? `${m.xpt} · ` : "";
-        if (prox) return { tom: "ok", texto: `${polo}Próxima às ${_macProximaTexto(prox)}` };
-        return { tom: m.agendavel && !m.configurado ? "mudo" : "ok", texto: m.resumo || "" };
+// As sessões do Colador: as que estão rodando (atividade) + as pedidas pela tela (comandos).
+function _macLinhasDoColador(c) {
+    const vistas = new Map();
+    const soma = (maquina, xpt) => {
+        if (!maquina) return;
+        const chave = `${String(maquina).toLowerCase()}|${xpt || ""}`;
+        if (!vistas.has(chave)) vistas.set(chave, { id: `col:${c.qual}|${maquina}|${xpt || ""}`, tipo: "col", qual: c.qual, maquina, xpt: xpt || null, col: c });
+    };
+    for (const a of _macAbas()) if (a.macro === c.qual) soma(a.maquina, a.xpt);
+    for (const cmd of c.comandos || []) soma(cmd.alvo, (cmd.config && cmd.config.xpt) || null);
+    return [...vistas.values()].sort((a, b) => a.maquina.localeCompare(b.maquina) || String(a.xpt).localeCompare(String(b.xpt)));
+}
+
+function _macGrupos() {
+    const dev = _macEhDev();
+    const grupos = [];
+    if (dev) {
+        grupos.push({ titulo: "Relatórios do SPX", macros: _MAC_SPX.map(x => ({
+            id: x.qual === "pedidos" ? null : `novo:${x.qual}`, nome: x.nome, qual: x.qual,
+            novo: x.qual !== "pedidos", indisponivel: !_macDadoSpx(x.qual),
+            linhas: x.qual === "pedidos" ? _macLinhasDePedidos() : _macLinhasDeInstancia(x.qual),
+            vazio: x.qual === "pedidos" ? "segue as instâncias da AT" : "nenhuma instância — clique pra abrir",
+        })) });
     }
-    if (item.tipo === "colador") {
-        const rodando = _macRodandoDe(item.qual);
-        if (rodando.length) {
-            const xpts = [...new Set(rodando.map(a => a.xpt).filter(Boolean))].join(" e ");
-            return { tom: "andando", texto: `Rodando em ${rodando.length} computador${rodando.length > 1 ? "es" : ""}${xpts ? ` · ${xpts}` : ""}` };
-        }
-        if ((m.comandos || []).some(c => c.estado === "aguardando" || c.estado === "entregue")) {
-            return { tom: "andando", texto: "Pedido enviado — aguardando o computador" };
-        }
-        return { tom: m.configurado ? "ok" : "mudo", texto: m.resumo || "" };
+    if (_macColadores.length) {
+        grupos.push({ titulo: "Colador", macros: _macColadores.map(c => ({
+            id: `colcfg:${c.qual}`, nome: c.nome, qual: c.qual, novo: true,
+            linhas: _macLinhasDoColador(c), vazio: "nenhuma sessão — clique pra abrir",
+        })) });
     }
-    // aviso
-    return m.ativo ? { tom: "ok", texto: "Ativo" }
-        : { tom: "mudo", texto: "Desligado" };
+    if (dev) {
+        const linhas = _MAC_AVISOS.map(a => ({ ...a, tipo: a.pendente ? "pendente" : "aviso", m: a.chave ? _macLista.find(m => m.chave === a.chave) : null }));
+        const conhecidas = new Set(["avisos_entregador"]);
+        for (const m of _macLista) {
+            if (!m.qual && !conhecidas.has(m.chave)) linhas.push({ id: `av:${m.chave}`, tipo: "aviso", chave: m.chave, nome: m.nome, detalhe: m.descricao, m });
+        }
+        grupos.push({ titulo: "Avisos de rota incompleta", avisos: linhas });
+    }
+    return grupos;
+}
+
+// Só a hora, pra caber na lista: "18:10".
+const _macHoraCurta = p => (p && p.proxima_em
+    ? new Date(p.proxima_em).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }) : null);
+
+// O ponto e a frase de cada linha.
+function _macEstadoLinha(l) {
+    const macro = l.qual;
+    const rodando = _macAbaRodando(macro, l.maquina, l.xpt);
+    const ativo = _macAtivoDe(macro, l.maquina, l.xpt);
+    const ultimo = ativo && ativo.ultimo;
+    if (rodando) return { tom: "andando", texto: rodando.estado === "sem_sinal" ? "sem sinal do Chrome" : "rodando agora" };
+    const cmd = l.tipo === "col"
+        ? (l.col.comandos || []).find(c => _macMesmoPc(c.alvo, l.maquina) && ((c.config && c.config.xpt) || null) === l.xpt)
+        : _macComandoDe(macro, l.maquina, l.xpt);
+    if (cmd && _macOcupado(cmd)) return { tom: "andando", texto: "pedido enviado" };
+    if (l.tipo === "inst" && !l.inst.ativo) return { tom: "mudo", texto: "pausado" };
+    if (l.tipo === "col") return { tom: "mudo", texto: ultimo ? `parado · última ${(_MEX_ESTADOS_TXT[ultimo.estado] || ultimo.estado)}` : "parado" };
+    if (ultimo && ultimo.estado === "erro") {
+        const prox = _macHoraCurta(ativo);
+        return { tom: "erro", texto: `falhou${prox ? ` · próx. ${prox}` : ""}` };
+    }
+    const prox = _macHoraCurta(ativo);
+    if (prox) return { tom: "ok", texto: `próx. ${prox}` };
+    if (l.tipo === "ped") return { tom: l.at.ativo ? "ok" : "mudo", texto: l.at.ativo ? "depois de cada AT" : "AT pausada" };
+    if (!_macChromeOnline(l.maquina, l.xpt)) return { tom: "aviso", texto: "Chrome desse polo fechado" };
+    return { tom: "ok", texto: l.inst ? l.inst.resumo : "" };
+}
+const _MEX_ESTADOS_TXT = { ok: "concluída", aviso: "com aviso", erro: "falhou", parado: "parada", interrompido: "interrompida" };
+
+function _macHtmlLinha(l) {
+    const r = _macEstadoLinha(l);
+    const sel = l.id === _macSelecionado;
+    return `<button type="button" class="macl-inst${sel ? " sel" : ""}" ${sel ? 'aria-current="true"' : ""} onclick="_macSelecionar('${_macEsc(l.id)}')">
+        <span class="mac-cmd-ponto macl-ponto-${r.tom}"></span>
+        <span class="macl-inst-onde">${_macEsc(l.maquina)} · <b>${_macEsc(l.xpt || "polo ?")}</b></span>
+        <span class="macl-inst-resumo">${_macEsc(r.texto)}</span>
+    </button>`;
 }
 
 function _macHtmlLista(grupos) {
     return grupos.map(g => `
         <div class="macl-grupo">
             <div class="macl-grupo-titulo">${_macEsc(g.titulo)}</div>
-            ${g.itens.map(i => {
-                const r = _macResumoLinha(i);
-                const sel = i.id === _macSelecionado;
-                return `<button type="button" class="macl-item${sel ? " sel" : ""}${i.tipo === "pendente" ? " pendente" : ""}"
-                            ${sel ? 'aria-current="true"' : ""} onclick="_macSelecionar('${_macEsc(i.id)}')">
-                    <span class="macl-nome">${_macEsc(i.nome)}</span>
+            ${(g.macros || []).map(m => `
+                <div class="macl-macro">
+                    ${m.id
+                        ? `<button type="button" class="macl-macro-nome${m.id === _macSelecionado ? " sel" : ""}" onclick="_macSelecionar('${_macEsc(m.id)}')"
+                                   title="${m.novo ? "Abrir uma instância nova" : ""}"><span>${_macEsc(m.nome)}</span>${m.novo ? `<span class="macl-mais" aria-hidden="true">+</span>` : ""}</button>`
+                        : `<div class="macl-macro-nome macl-macro-fixo"><span>${_macEsc(m.nome)}</span></div>`}
+                    ${m.indisponivel ? `<div class="macl-vazio">indisponível no momento</div>`
+                        : m.linhas.length ? m.linhas.map(_macHtmlLinha).join("") : `<div class="macl-vazio">${_macEsc(m.vazio)}</div>`}
+                </div>`).join("")}
+            ${(g.avisos || []).map(a => {
+                const sel = a.id === _macSelecionado;
+                const r = a.tipo === "pendente" ? { tom: "mudo", texto: "Ainda não integrado" }
+                    : !a.m ? { tom: "mudo", texto: "Indisponível no momento" }
+                    : a.m.ativo ? { tom: "ok", texto: "Ativo" } : { tom: "mudo", texto: "Desligado" };
+                return `<button type="button" class="macl-item${sel ? " sel" : ""}${a.tipo === "pendente" ? " pendente" : ""}" ${sel ? 'aria-current="true"' : ""}
+                            onclick="_macSelecionar('${_macEsc(a.id)}')">
+                    <span class="macl-nome">${_macEsc(a.nome)}</span>
                     <span class="macl-resumo"><span class="mac-cmd-ponto macl-ponto-${r.tom}"></span>${_macEsc(r.texto)}</span>
                 </button>`;
             }).join("")}
         </div>`).join("");
 }
 
-// ── a tela inteira ──
-// Primeira vez (ou o escolhido sumiu): abre o lembrado, ou o primeiro da lista.
+// Todos os ids que dá pra abrir agora (pra saber se o lembrado ainda existe).
+function _macIdsAbriveis(grupos) {
+    const ids = [];
+    for (const g of grupos) {
+        for (const m of g.macros || []) { if (m.id) ids.push(m.id); m.linhas.forEach(l => ids.push(l.id)); }
+        for (const a of g.avisos || []) ids.push(a.id);
+    }
+    return ids;
+}
+
 function _macGarantirSelecao(grupos) {
-    const todos = grupos.flatMap(g => g.itens);
-    if (_macSelecionado && todos.some(i => i.id === _macSelecionado)) return false;
+    const ids = _macIdsAbriveis(grupos);
+    if (_macSelecionado && ids.includes(_macSelecionado)) return false;
     let lembrado = null;
     try { lembrado = localStorage.getItem(_MAC_CHAVE_SELECIONADO); } catch (e) { /* sem storage */ }
-    const achado = todos.find(i => i.id === lembrado) || todos.find(i => i.tipo !== "pendente") || todos[0];
-    _macSelecionado = achado ? achado.id : null;
+    _macSelecionado = ids.includes(lembrado) ? lembrado
+        : (ids.find(i => i.startsWith("inst:") || i.startsWith("col:")) || ids[0] || null);
     return true;
 }
 
 function _macRedesenhar() {
     const lista = document.getElementById("mac-lista");
     if (!lista) return;
-    const grupos = _macItens();
+    const grupos = _macGrupos();
     const mudouSelecao = _macGarantirSelecao(grupos);
     const nav = document.getElementById("macl-nav");
-    // Primeira montagem: o esqueleto das duas colunas. Depois só se trocam os pedaços.
     if (!nav || mudouSelecao) {
         lista.innerHTML = `<div class="macl">
             <nav class="macl-lista" id="macl-nav" aria-label="Macros"></nav>
@@ -308,208 +318,255 @@ function _macSelecionar(id) {
     try { localStorage.setItem(_MAC_CHAVE_SELECIONADO, id); } catch (e) { /* sem storage */ }
     _macFecharHorario();
     const nav = document.getElementById("macl-nav");
-    if (nav) nav.innerHTML = _macHtmlLista(_macItens());
+    if (nav) nav.innerHTML = _macHtmlLista(_macGrupos());
     _macMontarDetalhe();
-    // No celular a lista fica em cima: leva o olho pro que abriu.
     const det = document.getElementById("macl-detalhe");
     if (det && det.scrollIntoView && window.innerWidth < 900) det.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// O que está aberto, já com os dados de agora.
+function _macAberto() {
+    const id = _macSelecionado || "";
+    for (const g of _macGrupos()) {
+        for (const m of g.macros || []) {
+            if (m.id === id) return { tipo: id.startsWith("novo:") ? "novo" : "colcfg", qual: m.qual, nome: m.nome, macro: m };
+            const l = m.linhas.find(x => x.id === id);
+            if (l) return { ...l, nome: m.nome };
+        }
+        for (const a of g.avisos || []) if (a.id === id) return a;
+    }
+    return null;
 }
 
 // ── o detalhe ──
 function _macMontarDetalhe() {
     const det = document.getElementById("macl-detalhe");
     if (!det) return;
-    const item = _macItemPorId(_macSelecionado);
+    const item = _macAberto();
     if (!item) { det.innerHTML = `<div class="mac-ag-vazio">Escolha um macro na lista.</div>`; return; }
-
-    // O esqueleto vazio primeiro; cada pedaço é preenchido pelo mesmo caminho que o atualiza depois.
+    const hist = _macChaveHistorico(item);
     det.innerHTML = `
-        ${_macCabecalhoHtml(item)}
+        <header class="macd-cab" id="macd-cab"></header>
         <div id="macd-vivo"></div>
         <div id="macd-config"></div>
-        ${_macTemHistorico(item) ? `<div class="macd-bloco">
-            <div class="macd-bloco-cab"><div class="macd-rotulo">Histórico recente</div>
+        ${hist ? `<div class="macd-bloco">
+            <div class="macd-bloco-cab"><div class="macd-rotulo">Histórico recente${item.maquina ? ` · ${_macEsc(item.maquina)}` : ""}</div>
                 <button type="button" class="mac-link" onclick="_macAbrirHistorico('${_macEsc(item.qual)}')">Ver tudo</button></div>
             <div id="macd-hist" class="mac-hist-lista macd-hist"><div class="mac-ag-vazio">Carregando...</div></div>
         </div>` : ""}`;
+    document.getElementById("macd-cab").innerHTML = _macCabecalhoHtml(item);
     document.getElementById("macd-vivo").innerHTML = _macVivoHtml(item);
     document.getElementById("macd-config").innerHTML = _macConfigHtml(item);
     _macPrepararConfig(item);
-    if (_macTemHistorico(item)) _macCarregarHistoricoDoMacro(item.qual);
+    if (hist) _macCarregarHistoricoDoMacro(item);
 }
 
-const _macTemHistorico = item => (item.tipo === "spx" || item.tipo === "colador") && !!item.m;
+const _macChaveHistorico = item => ["inst", "ped", "col", "colcfg"].includes(item.tipo) ? item.qual : null;
 
 function _macRedesenharVivo() {
-    const el = document.getElementById("macd-vivo");
-    const item = _macItemPorId(_macSelecionado);
-    if (el && item) el.innerHTML = _macVivoHtml(item);
-    const cab = document.getElementById("macd-cab-controle");
-    if (cab && item) cab.innerHTML = _macControleCabHtml(item);
+    const item = _macAberto();
+    if (!item) return _macMontarDetalhe();
+    const vivo = document.getElementById("macd-vivo");
+    const cab = document.getElementById("macd-cab");
+    if (vivo) vivo.innerHTML = _macVivoHtml(item);
+    if (cab) cab.innerHTML = _macCabecalhoHtml(item);
 }
 
-// Nome, explicação e (quando existe) o interruptor de ligar/desligar.
 function _macCabecalhoHtml(item) {
-    const dica = item.tipo === "spx" ? (_MAC_DICAS_SPX[item.qual] || item.detalhe) : item.detalhe;
-    return `<header class="macd-cab">
-        <div class="macd-cab-texto">
-            <h3 class="macd-titulo">${_macEsc(item.nome)}</h3>
-            ${dica ? `<p class="macd-sub">${_macEsc(dica)}</p>` : ""}
-        </div>
-        <div id="macd-cab-controle">${_macControleCabHtml(item)}</div>
-    </header>`;
-}
-
-// O interruptor só existe onde há o que ligar: aviso, e horário do SPX já configurado por aqui
-// (antes disso o macro segue a agenda do popup da extensão).
-function _macControleCabHtml(item) {
-    const m = item.m;
-    if (!m) return "";
-    const pode = item.tipo === "aviso" || (item.tipo === "spx" && m.agendavel && m.configurado);
-    if (!pode) return "";
-    return `<label class="macd-liga">
-        <span>${m.ativo ? (item.tipo === "spx" ? "Horário ligado" : "Ligado") : (item.tipo === "spx" ? "Horário desligado" : "Desligado")}</span>
-        <button type="button" class="gc-toggle mac-toggle${m.ativo ? " gc-toggle--on" : ""}" role="switch" aria-checked="${m.ativo ? "true" : "false"}"
-                title="${m.ativo ? "Desligar" : "Ligar"}" onclick="_macAlternarAtivo('${_macEsc(m.chave)}', this)"><span class="gc-toggle__knob"></span></button>
-    </label>`;
+    let titulo = item.nome, sub = item.detalhe || "";
+    if (["inst", "ped", "col"].includes(item.tipo)) {
+        sub = `${item.maquina} · ${item.xpt || "polo ?"}${item.xpt ? ` · ${_macPoloDoXpt(item.xpt)}` : ""}`;
+    } else if (item.tipo === "novo") {
+        sub = "Nova instância: escolha o computador e o polo onde ele vai rodar.";
+    } else if (item.tipo === "colcfg") {
+        sub = "Configuração das sessões e abrir uma sessão nova num computador e polo.";
+    }
+    const liga = item.tipo === "aviso" && item.m
+        ? `<label class="macd-liga"><span>${item.m.ativo ? "Ligado" : "Desligado"}</span>
+            <button type="button" class="gc-toggle mac-toggle${item.m.ativo ? " gc-toggle--on" : ""}" role="switch" aria-checked="${item.m.ativo ? "true" : "false"}"
+                    title="${item.m.ativo ? "Desligar" : "Ligar"}" onclick="_macAlternarAtivo('${_macEsc(item.m.chave)}', this)"><span class="gc-toggle__knob"></span></button></label>`
+        : "";
+    return `<div class="macd-cab-texto"><h3 class="macd-titulo">${_macEsc(titulo)}</h3>${sub ? `<p class="macd-sub">${_macEsc(sub)}</p>` : ""}</div>${liga}`;
 }
 
 function _macCampoHtml(rotulo, valor, nota) {
     return `<div class="macd-campo"><div class="macd-rotulo">${rotulo}</div><div class="macd-valor">${valor}</div>${nota ? `<div class="macd-nota">${nota}</div>` : ""}</div>`;
 }
 
-function _macRodandoAgoraHtml(qual) {
-    const abas = _macAbasDe(qual).filter(a => a.estado === "rodando" || a.estado === "sem_sinal");
-    if (!abas.length || typeof _mexCartaoHtml !== "function") return "";
-    return `<div class="macd-bloco"><div class="macd-rotulo">Rodando agora</div>
-        <div class="macd-cartoes">${abas.map(_mexCartaoHtml).join("")}</div></div>`;
+function _macRodandoAgoraHtml(macro, maquina, xpt) {
+    const aba = _macAbaRodando(macro, maquina, xpt);
+    if (!aba || typeof _mexCartaoHtml !== "function") return "";
+    return `<div class="macd-bloco"><div class="macd-rotulo">Rodando agora</div><div class="macd-cartoes">${_mexCartaoHtml(aba)}</div></div>`;
 }
 
-// O pedaço que muda sozinho: onde executa, polo, situação, Rodar, rodando agora.
+function _macUltimaHtml(macro, maquina, xpt) {
+    const u = (_macAtivoDe(macro, maquina, xpt) || {}).ultimo;
+    if (!u) return `<span class="mac-agenda-mudo">nenhuma registrada neste Chrome</span>`;
+    const txt = { ok: "Concluída", aviso: "Terminou com aviso", erro: "Falhou", parado: "Parada", interrompido: "Interrompida" }[u.estado] || u.estado;
+    return `<span class="${u.estado === "erro" ? "macd-erro" : ""}"><b>${txt}</b>${u.terminou_ha_s !== null && u.terminou_ha_s !== undefined ? ` ${_macEsc(_macHa(u.terminou_ha_s))}` : ""}</span>`
+        + (u.passo ? `<div class="macd-nota">${_macEsc(u.passo)}</div>` : "");
+}
+
+function _macChromeHtml(maquina, xpt) {
+    if (_macChromeOnline(maquina, xpt)) return `<span class="mac-vigia mac-vigia-on"><span class="mac-cmd-ponto"></span>conectado</span>`;
+    return `<span class="mac-vigia mac-vigia-off"><span class="mac-cmd-ponto"></span>fechado ou sem a extensão</span>`;
+}
+
 function _macVivoHtml(item) {
-    const m = item.m;
-    if (item.tipo === "pendente") {
-        return `<div class="macd-bloco"><div class="mac-ag-vazio">Ainda não integrado. Quando estiver pronto, ele se configura por aqui.</div></div>`;
+    if (item.tipo === "pendente") return `<div class="macd-bloco"><div class="mac-ag-vazio">Ainda não integrado. Quando estiver pronto, ele se configura por aqui.</div></div>`;
+    if (item.tipo === "aviso") return item.m ? _macVivoAvisoHtml(item, item.m)
+        : `<div class="macd-bloco"><div class="mac-ag-vazio">Indisponível no momento — o servidor não respondeu sobre este macro.</div></div>`;
+    if (item.tipo === "novo") return _macVivoNovoHtml(item);
+    if (item.tipo === "colcfg") return _macVivoColCfgHtml(item);
+    if (item.tipo === "inst" || item.tipo === "ped") return _macVivoSpxHtml(item);
+    if (item.tipo === "col") return _macVivoSessaoHtml(item);
+    return "";
+}
+
+// Uma instância de relatório (ou o Pedidos que segue uma AT): situação + botões + rodando agora.
+function _macVivoSpxHtml(item) {
+    const { qual, maquina, xpt } = item;
+    const rodando = _macAbaRodando(qual, maquina, xpt);
+    const cmd = _macComandoDe(qual, maquina, xpt);
+    const ocupado = _macOcupado(cmd);
+    const ativo = item.tipo === "inst" ? item.inst.ativo : item.at.ativo;
+    const prox = _macProximaTexto(_macAtivoDe(qual, maquina, xpt));
+    const m = _macDadoSpx(qual);
+    const esc = s => _macEsc(s);
+    const arg = `'${esc(qual)}','${esc(maquina)}','${esc(xpt)}'`;
+
+    const botoes = [];
+    if (item.tipo === "inst") {
+        botoes.push(ativo
+            ? `<button type="button" class="macd-acao" onclick="_macInstAtivo('${esc(item.inst.id)}', false, this)">Pausar</button>`
+            : `<button type="button" class="macd-acao macd-acao-forte" onclick="_macInstAtivo('${esc(item.inst.id)}', true, this)">Iniciar</button>`);
     }
-    if (!m) return `<div class="macd-bloco"><div class="mac-ag-vazio">Indisponível no momento — o servidor não respondeu sobre este macro.</div></div>`;
-    if (item.tipo === "spx") return _macVivoSpxHtml(item, m);
-    if (item.tipo === "colador") return _macVivoColadorHtml(item, m);
-    return _macVivoAvisoHtml(item, m);
-}
-
-// Os Chromes conectados agora em cada XPT (pela atividade): é com eles que o polo escolhido roda.
-function _macChromesNoXpt(xpt) {
-    return ((_macAtividade && _macAtividade.maquinas) || []).filter(m => m.online && m.xpt === xpt);
-}
-
-// O seletor do polo de um relatório: em qualquer Chrome, ou só no de um XPT.
-function _macPoloSpxHtml(m) {
-    const atual = m.xpt || "";
-    const opcoes = [`<option value=""${atual ? "" : " selected"}>Qualquer um (o da aba)</option>`]
-        .concat(_MAC_XPTS.map(p => `<option value="${p.xpt}"${p.xpt === atual ? " selected" : ""}>${p.xpt} · ${p.polo}</option>`));
-    return `<select class="mac-select" aria-label="Polo do macro" onchange="_macEscolherPolo('${_macEsc(m.qual)}', this.value)">${opcoes.join("")}</select>`;
-}
-
-function _macPoloSpxNota(item, m) {
-    if (m.xpt) {
-        const chromes = _macChromesNoXpt(m.xpt);
-        if (chromes.length) return `Roda só no Chrome logado em ${_macEsc(m.xpt)} (${chromes.map(c => _macEsc(c.nome)).join(", ")}). Os outros pulam.`;
-        return `Roda só no Chrome logado em ${_macEsc(m.xpt)}. <b>Nenhum Chrome nesse polo conectado agora.</b>`;
-    }
-    const visto = _macXptDoSpx(item.qual);
-    return visto
-        ? `Roda na estação que estiver logada no SPX — agora ${_macEsc(visto.xpt)} em ${_macEsc(visto.maquina)}.`
-        : "Roda na estação que estiver logada embaixo da logo do SPX.";
-}
-
-// O computador escolhido vale pros três relatórios; nele pode haver mais de um Chrome (um por
-// polo, cada um logado na sua estação) — cada Chrome roda só o que é do polo dele.
-function _macNotaExecutarEm(pc, onlinePc) {
-    if (pc && onlinePc === false) return "Vale pros três relatórios. <b>Desconectado agora.</b>";
-    const chromes = ((_macAtividade && _macAtividade.maquinas) || [])
-        .filter(m => m.online && (!pc || _macMesmoPc(m.nome, pc)));
-    if (chromes.length > 1) {
-        const polos = chromes.map(c => c.xpt || "polo ainda não visto");
-        return `Vale pros três relatórios. ${chromes.length} Chromes abertos aqui (${_macEsc(polos.join(", "))}): cada um roda só o que é do polo dele.`;
-    }
-    return "Vale pros três relatórios. Pode ter um Chrome por polo nesse computador: cada um roda só o que é do polo dele.";
-}
-
-// Escolheu o polo: troca na hora e volta atrás se o servidor recusar.
-function _macEscolherPolo(qual, valor) {
-    const m = _macLista.find(x => x.qual === qual);
-    if (!m) return;
-    const antes = m.xpt || null;
-    m.xpt = valor || null;
-    _macRedesenhar();
-    fetch(`${API}/admin/macros/spx/${qual}/polo`, {
-        method: "PUT",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ xpt: valor || null })
-    })
-        .then(r => r.json().then(d => ({ ok: r.ok, d })))
-        .then(({ ok, d }) => {
-            if (ok) return;
-            m.xpt = antes;
-            _macRedesenhar();
-            gcAlert(d.error || "Não foi possível mudar o polo.");
-        })
-        .catch(() => {
-            m.xpt = antes;
-            _macRedesenhar();
-            gcAlert("Erro ao conectar com o servidor.");
-        });
-}
-
-function _macVivoSpxHtml(item, m) {
-    const pc = _macComputador;
-    const onlinePc = pc ? _macPcOnline(pc) : null;
-    const carga = m.ultima_carga ? _macEsc(_macCargaTexto(m.ultima_carga)) : `<span class="mac-agenda-mudo">nenhuma ainda</span>`;
-    const situacao = _macSituacaoHtml(m);
+    botoes.push(rodando
+        ? `<button type="button" class="macd-acao" ${ocupado ? "disabled" : ""} onclick="_macRodarChrome(${arg}, true, this)">Reiniciar</button>`
+        : `<button type="button" class="macd-acao" ${ocupado ? "disabled" : ""} onclick="_macRodarChrome(${arg}, false, this)">Rodar agora</button>`);
+    if (rodando) botoes.push(`<button type="button" class="macd-acao" onclick="_macPararChrome(${arg}, this)">Parar</button>`);
+    if (item.tipo === "inst") botoes.push(`<button type="button" class="macd-acao macd-acao-perigo" onclick="_macCancelarInstancia('${esc(item.inst.id)}', this)">Cancelar instância</button>`);
 
     return `
         <div class="macd-grade">
-            ${_macCampoHtml("Executar em", _macVigiaHtml() || `<span class="mac-agenda-mudo">nenhum computador conectado</span>`,
-                _macNotaExecutarEm(pc, onlinePc))}
-            ${_macCampoHtml("Polo (XPT)", _macPoloSpxHtml(m), _macPoloSpxNota(item, m))}
-            ${_macCampoHtml("Última carga", carga, "Quando o arquivo chegou no sistema — a prova de que rodou de verdade.")}
-            ${_macCampoHtml("Próxima rodada", _macProximaDe(item.qual)
-                ? _macEsc(_macProximaTexto(_macProximaDe(item.qual)))
-                : `<span class="mac-agenda-mudo">${m.agendavel && m.configurado && !m.ativo ? "horário desligado" : "nenhuma agendada"}</span>`,
-                item.qual === "pedidos" ? "Vai logo depois de cada AT Exportada." : `${_macEsc(m.resumo || "")}${_macProximaDe(item.qual) ? ` · em ${_macEsc(_macProximaDe(item.qual).maquina)}` : ""}`)}
+            ${_macCampoHtml("Situação", rodando ? `<b>Rodando agora</b>` : ativo ? (item.tipo === "ped" ? "Ligado (segue a AT)" : "Ligada") : "Pausada",
+                item.tipo === "ped" ? "Liga e pausa junto da AT deste Chrome." : (item.inst ? _macEsc(item.inst.resumo) : ""))}
+            ${_macCampoHtml("Próxima rodada", prox ? esc(prox) : `<span class="mac-agenda-mudo">${rodando ? "depois desta" : ativo ? "aguardando o Chrome contar" : "pausada"}</span>`, "")}
+            ${_macCampoHtml("Chrome", _macChromeHtml(maquina, xpt), `O ${esc(xpt)} em ${esc(maquina)}. Ele confere a estação embaixo da logo antes de rodar.`)}
+            ${_macCampoHtml("Última rodada", _macUltimaHtml(qual, maquina, xpt),
+                m && m.ultima_carga ? `Última carga no sistema (todos os polos): ${esc(_macCargaTexto(m.ultima_carga))}` : "")}
         </div>
-        ${_macAvisoComputadorHtml()}
-        <div class="macd-acoes">
-            <button type="button" class="mac-rodar" title="${_macEsc(pc ? `Rodar agora em ${pc}` : "Rodar agora")}"
-                    ${_macOcupado(m.comando) ? "disabled" : ""} onclick="_macRodar('${_macEsc(m.qual)}', this)">▶ Rodar agora</button>
-            ${situacao ? `<div class="macd-situacao">${situacao}</div>` : ""}
+        <div class="macd-acoes">${botoes.join("")}
+            ${cmd ? `<div class="macd-situacao">${_macPedidoHtml(cmd)}</div>` : ""}
         </div>
         ${_macGeral ? _macGeralHtml() : ""}
-        ${_macRodandoAgoraHtml(item.qual)}`;
+        ${_macRodandoAgoraHtml(qual, maquina, xpt)}`;
 }
 
-function _macVivoColadorHtml(item, m) {
-    const ocupado = _macColadorConflita(m, _macColadorAlvo[m.qual]);
-    const rodando = _macRodandoDe(m.qual);
-    const xptsRodando = [...new Set(rodando.map(a => a.xpt).filter(Boolean))];
-    const nota = xptsRodando.length
-        ? `Rodando agora em ${xptsRodando.map(x => `${x} · ${_macPoloDoXpt(x)}`).join(" e ")}.`
-        : "Cada computador cola só o XPT da estação logada no SPX dele — e não roda se não bater com o escolhido abaixo.";
-    return `
-        <div class="macd-grade">
-            ${_macCampoHtml("Executar em", _macHtmlAlvoColador(m),
-                `Só pro próximo Rodar. ${_macColadorPresencaHtml(m.computadores)}`)}
-            ${_macCampoHtml("Polo (XPT)", m.config && m.config.xpt
-                ? `<b>${_macEsc(m.config.xpt)}</b> · ${_macEsc(_macPoloDoXpt(m.config.xpt))}` : `<span class="mac-agenda-mudo">não escolhido</span>`, nota)}
-            ${m.recebidos_hoje !== undefined && m.recebidos_hoje !== null
-                ? _macCampoHtml("Hoje", `${_macEsc(m.recebidos_hoje)} recebido(s) no SPX`, "Contados no banco: o que o Colador já colou.") : ""}
+// O último pedido daquele Chrome, numa linha (aguardando, iniciado, falhou...).
+function _macPedidoHtml(cmd) {
+    const relevante = _macOcupado(cmd) || ["erro", "expirado", "sem_confirmacao"].includes(cmd.estado)
+        || (cmd.estado === "iniciado" && cmd.idade_s < 180);
+    if (!relevante) return "";
+    const c = _macComandoTexto(cmd, _macVigia);
+    return `<div class="mac-sit mac-sit-${c.tom}"><span class="mac-cmd-ponto"></span><span>${_macEsc(c.texto)}</span></div>`;
+}
+
+// Os computadores que dá pra escolher: os que o vigia viu + os das instâncias.
+function _macComputadoresConhecidos() {
+    const nomes = [];
+    const soma = n => { if (n && !nomes.some(x => _macMesmoPc(x, n))) nomes.push(n); };
+    ((_macVigia && _macVigia.maquinas) || []).forEach(m => soma(m.nome));
+    ((_macAtividade && _macAtividade.maquinas) || []).forEach(m => soma(m.nome));
+    _macInstancias.forEach(i => soma(i.maquina));
+    return nomes;
+}
+
+// Nova instância: computador + polo (só as combinações que ainda não existem), e o horário.
+function _macVivoNovoHtml(item) {
+    const qual = item.qual;
+    if (!_macNova || _macNova.qual !== qual) _macNova = { qual, maquina: "", xpt: "", ativo: true };
+    const n = _macNova;
+    const nomes = _macComputadoresConhecidos();
+    const existe = (maq, xpt) => _macInstancias.some(i => i.qual === qual && _macMesmoPc(i.maquina, maq) && i.xpt === xpt);
+    const pcs = [`<option value="">Escolha…</option>`].concat(nomes.map(nome => {
+        const online = ((_macAtividade && _macAtividade.maquinas) || []).some(m => m.online && _macMesmoPc(m.nome, nome));
+        return `<option value="${_macEsc(nome)}"${_macMesmoPc(nome, n.maquina) ? " selected" : ""}>${_macEsc(nome)}${online ? "" : " — desconectado"}</option>`;
+    }));
+    const polos = [`<option value="">Escolha…</option>`].concat(_MAC_XPTS.map(p => {
+        const usado = n.maquina && existe(n.maquina, p.xpt);
+        return `<option value="${p.xpt}"${p.xpt === n.xpt ? " selected" : ""}${usado ? " disabled" : ""}>${p.xpt} · ${p.polo}${usado ? " — já existe" : ""}</option>`;
+    }));
+    const chromes = ((_macAtividade && _macAtividade.maquinas) || []).filter(m => m.online && m.xpt);
+    return `<div class="macd-grade">
+            ${_macCampoHtml("Computador", `<select class="mac-select" onchange="_macNovaCampo('maquina', this.value)">${pcs.join("")}</select>`, "Os que já falaram com o sistema.")}
+            ${_macCampoHtml("Polo (XPT)", `<select class="mac-select" onchange="_macNovaCampo('xpt', this.value)">${polos.join("")}</select>`,
+                "Roda só no Chrome logado nessa estação, nesse computador.")}
+            ${_macCampoHtml("Chromes conectados agora", chromes.length
+                ? chromes.map(c => `${_macEsc(c.nome)} · ${_macEsc(c.xpt)}`).join("<br>") : `<span class="mac-agenda-mudo">nenhum contou o polo ainda</span>`, "")}
         </div>
-        <div class="macd-acoes">
-            <button type="button" class="mac-rodar" title="Rodar agora" ${ocupado ? "disabled" : ""}
-                    onclick="_macRodarColador('${_macEsc(m.qual)}', this)">▶ Rodar agora</button>
-            ${(m.comandos || []).length ? `<div class="macd-situacao">${_macSituacaoColadorHtml(m.qual, m.comandos)}</div>` : ""}
+        <label class="mac-col-check" style="margin:12px 0 0"><input type="checkbox" ${n.ativo ? "checked" : ""} onchange="_macNovaCampo('ativo', this.checked)"> Já começar ligada</label>`;
+}
+
+function _macNovaCampo(campo, valor) {
+    _macNova[campo] = valor;
+    if (campo === "maquina") {
+        const existe = x => _macInstancias.some(i => i.qual === _macNova.qual && _macMesmoPc(i.maquina, valor) && i.xpt === x);
+        if (_macNova.xpt && existe(_macNova.xpt)) _macNova.xpt = "";
+    }
+    if (campo !== "ativo") _macRedesenharVivo();
+}
+
+// Colador: configuração das sessões + abrir sessão nova.
+function _macVivoColCfgHtml(item) {
+    const c = _macColadores.find(x => x.qual === item.qual);
+    if (!c) return "";
+    if (!_macNova || _macNova.qual !== c.qual) _macNova = { qual: c.qual, maquina: "", xpt: "" };
+    const n = _macNova;
+    const nomes = _macComputadoresConhecidos();
+    const pcs = [`<option value="">Escolha…</option>`].concat(nomes.map(nome =>
+        `<option value="${_macEsc(nome)}"${_macMesmoPc(nome, n.maquina) ? " selected" : ""}>${_macEsc(nome)}</option>`));
+    const polos = [`<option value="">Escolha…</option>`].concat(_MAC_XPTS.map(p =>
+        `<option value="${p.xpt}"${p.xpt === n.xpt ? " selected" : ""}>${p.xpt} · ${p.polo}</option>`));
+    const pronto = n.maquina && n.xpt;
+    return `<div class="macd-bloco" style="margin-top:0;border-top:none">
+            <div class="macd-rotulo">Abrir sessão</div>
+            <div class="macd-grade" style="padding-top:6px">
+                ${_macCampoHtml("Computador", `<select class="mac-select" onchange="_macNovaCampo('maquina', this.value)">${pcs.join("")}</select>`, "")}
+                ${_macCampoHtml("Polo (XPT)", `<select class="mac-select" onchange="_macNovaCampo('xpt', this.value)">${polos.join("")}</select>`,
+                    "O Chrome desse computador logado nessa estação.")}
+                ${c.recebidos_hoje !== undefined && c.recebidos_hoje !== null ? _macCampoHtml("Hoje", `${_macEsc(c.recebidos_hoje)} recebido(s) no SPX`, "") : ""}
+            </div>
+            <div class="macd-acoes"><button type="button" class="macd-acao macd-acao-forte" ${pronto ? "" : "disabled"}
+                onclick="_macAbrirSessao('${_macEsc(c.qual)}', this)">Iniciar sessão</button></div>
+        </div>`;
+}
+
+// Uma sessão do Colador num Chrome.
+function _macVivoSessaoHtml(item) {
+    const { qual, maquina, xpt } = item;
+    const rodando = _macAbaRodando(qual, maquina, xpt);
+    const cmd = (item.col.comandos || []).find(c => _macMesmoPc(c.alvo, maquina) && ((c.config && c.config.xpt) || null) === xpt);
+    const ocupado = cmd && _macOcupado(cmd);
+    const esc = s => _macEsc(s);
+    const arg = `'${esc(qual)}','${esc(maquina)}','${esc(xpt || "")}'`;
+    const botoes = [];
+    if (rodando) {
+        botoes.push(`<button type="button" class="macd-acao" ${ocupado ? "disabled" : ""} onclick="_macSessaoRodar(${arg}, true, this)">Reiniciar</button>`);
+        botoes.push(`<button type="button" class="macd-acao" onclick="_macSessaoParar(${arg}, this)">Parar</button>`);
+    } else {
+        botoes.push(`<button type="button" class="macd-acao macd-acao-forte" ${ocupado ? "disabled" : ""} onclick="_macSessaoRodar(${arg}, false, this)">Iniciar</button>`);
+    }
+    return `<div class="macd-grade">
+            ${_macCampoHtml("Situação", rodando ? "<b>Rodando agora</b>" : "Parada", "")}
+            ${_macCampoHtml("Chrome", xpt ? _macChromeHtml(maquina, xpt) : "—", "")}
+            ${_macCampoHtml("Última sessão", _macUltimaHtml(qual, maquina, xpt), "")}
         </div>
-        ${_macRodandoAgoraHtml(m.qual)}`;
+        <div class="macd-acoes">${botoes.join("")}
+            ${cmd ? `<div class="macd-situacao">${(c => `<div class="mac-sit mac-sit-${c.tom}"><span class="mac-cmd-ponto"></span><span>${_macEsc(c.texto)}</span>${ocupado
+                ? `<button type="button" class="mac-sit-acao" onclick="_macCancelarColador('${esc(qual)}', '${esc(cmd.id)}', this)">cancelar</button>` : ""}</div>`)(_macComandoColadorTexto(cmd))}</div>` : ""}
+        </div>
+        ${_macRodandoAgoraHtml(qual, maquina, xpt)}`;
 }
 
 function _macVivoAvisoHtml(item, m) {
@@ -520,41 +577,41 @@ function _macVivoAvisoHtml(item, m) {
     </div>`;
 }
 
-// ── o formulário de cada tipo (mesmos ids dos antigos modais, agora no painel) ──
-function _macConfigHtml(item) {
-    const m = item.m;
-    if (!m || item.tipo === "pendente") return "";
-    if (item.tipo === "spx") {
-        if (!m.agendavel) return "";
-        return `<div class="macd-bloco">
-            <div class="macd-rotulo">Horário</div>
-            ${m.configurado ? "" : `<div class="macd-nota" style="margin-bottom:10px">Ainda segue o horário do popup da extensão. Salvar aqui passa a valer o daqui (já ligado).</div>`}
-            <div class="mac-ag-bloco" id="mac-ag-bloco-intervalo">
-                <div class="mac-ag-opcao">
-                    <label class="mac-ag-radio"><input type="radio" name="mac-ag-modo" id="mac-ag-modo-intervalo" onchange="_macMudarModo('intervalo')"> A cada</label>
-                    <input type="number" id="mac-ag-minutos" class="usr-modal-input mac-ag-minutos" min="1" max="1440" step="1" oninput="_macMudarMinutos(this.value)">
-                    <span class="mac-ag-unidade">minutos</span>
-                </div>
-                <div class="mac-ag-dica" id="mac-ag-dica-minimo"></div>
+// ── os formulários (mesmos ids de antes, agora no painel) ──
+function _macHtmlFormAgenda(textoBotao) {
+    return `
+        <div class="mac-ag-bloco" id="mac-ag-bloco-intervalo">
+            <div class="mac-ag-opcao">
+                <label class="mac-ag-radio"><input type="radio" name="mac-ag-modo" id="mac-ag-modo-intervalo" onchange="_macMudarModo('intervalo')"> A cada</label>
+                <input type="number" id="mac-ag-minutos" class="usr-modal-input mac-ag-minutos" min="1" max="1440" step="1" oninput="_macMudarMinutos(this.value)">
+                <span class="mac-ag-unidade">minutos</span>
             </div>
-            <div class="mac-ag-bloco" id="mac-ag-bloco-horarios">
-                <div class="mac-ag-opcao">
-                    <label class="mac-ag-radio"><input type="radio" name="mac-ag-modo" id="mac-ag-modo-horarios" onchange="_macMudarModo('horarios')"> Todo dia, nestes horários</label>
-                </div>
+            <div class="mac-ag-dica" id="mac-ag-dica-minimo"></div>
+        </div>
+        <div class="mac-ag-bloco" id="mac-ag-bloco-horarios">
+            <div class="mac-ag-opcao">
+                <label class="mac-ag-radio"><input type="radio" name="mac-ag-modo" id="mac-ag-modo-horarios" onchange="_macMudarModo('horarios')"> Todo dia, nestes horários</label>
+                <span class="mac-ag-recolhido" id="mac-ag-recolhido"></span>
+            </div>
+            <div id="mac-ag-horarios-corpo">
                 <div id="mac-ag-horarios"></div>
                 <button type="button" class="mac-adicionar" onclick="_macAdicionarHorario()">+ Adicionar horário</button>
             </div>
-            <div class="macd-salvar"><div class="usr-modal-error" id="mac-ag-erro"></div>
-                <button class="usr-modal-btn-primary" id="mac-ag-salvar" onclick="_macSalvarAgenda()">Salvar horário</button></div>
-        </div>`;
-    }
-    if (item.tipo === "colador") {
+        </div>
+        <div class="macd-salvar"><div class="usr-modal-error" id="mac-ag-erro"></div>
+            <button class="usr-modal-btn-primary" id="mac-ag-salvar" onclick="_macSalvarAgenda()">${textoBotao}</button></div>`;
+}
+
+function _macConfigHtml(item) {
+    if (item.tipo === "inst") return `<div class="macd-bloco"><div class="macd-rotulo">Horário</div>${_macHtmlFormAgenda("Salvar horário")}</div>`;
+    if (item.tipo === "novo") return `<div class="macd-bloco"><div class="macd-rotulo">Horário</div>${_macHtmlFormAgenda("Criar instância")}</div>`;
+    if (item.tipo === "colcfg") {
         return `<div class="macd-bloco">
-            <div class="macd-rotulo">Configuração</div>
-            <div class="macd-nota" style="margin-bottom:12px">Vale a partir do próximo "Rodar" — não muda uma sessão já em andamento.</div>
+            <div class="macd-rotulo">Configuração das sessões</div>
+            <div class="macd-nota" style="margin-bottom:12px">Vale a partir da próxima sessão — não muda uma já em andamento.</div>
             <div class="mac-col-linha">
                 <div class="mac-col-campo">
-                    <label for="mac-col-xpt">Polo (XPT)</label>
+                    <label for="mac-col-xpt">Polo padrão</label>
                     <select id="mac-col-xpt" class="usr-modal-input" onchange="_macColMudarCampo('xpt', this.value)">
                         <option value="">Escolha…</option>
                         ${_MAC_XPTS.map(p => `<option value="${p.xpt}">${p.xpt} · ${p.polo}</option>`).join("")}
@@ -590,41 +647,45 @@ function _macConfigHtml(item) {
                 <button class="usr-modal-btn-primary" id="mac-col-salvar" onclick="_macSalvarColador()">Salvar configuração</button></div>
         </div>`;
     }
-    return `<div class="macd-bloco">
-        <div class="macd-rotulo">Rodadas</div>
-        <div class="macd-nota" style="margin-bottom:12px">Em cada horário, o sistema avisa quem se encaixa no critério escolhido.</div>
-        <div id="mac-rodadas-lista"><div class="mac-ag-vazio">Carregando...</div></div>
-        <button type="button" class="mac-adicionar" onclick="_macAdicionarRodada()">+ Adicionar rodada</button>
-        <div class="macd-salvar"><div class="usr-modal-error" id="mac-editar-erro"></div>
-            <button class="usr-modal-btn-primary" id="mac-editar-salvar" onclick="_macSalvar()">Salvar rodadas</button></div>
-    </div>`;
+    if (item.tipo === "aviso" && item.m) {
+        return `<div class="macd-bloco">
+            <div class="macd-rotulo">Rodadas</div>
+            <div class="macd-nota" style="margin-bottom:12px">Em cada horário, o sistema avisa quem se encaixa no critério escolhido.</div>
+            <div id="mac-rodadas-lista"><div class="mac-ag-vazio">Carregando...</div></div>
+            <button type="button" class="mac-adicionar" onclick="_macAdicionarRodada()">+ Adicionar rodada</button>
+            <div class="macd-salvar"><div class="usr-modal-error" id="mac-editar-erro"></div>
+                <button class="usr-modal-btn-primary" id="mac-editar-salvar" onclick="_macSalvar()">Salvar rodadas</button></div>
+        </div>`;
+    }
+    return "";
 }
 
-// Enche o formulário recém-montado com o que está salvo.
 function _macPrepararConfig(item) {
-    if (!item.m) return;
-    if (item.tipo === "spx" && item.m.agendavel) _macAbrirConfigurarSpx(item.qual);
-    else if (item.tipo === "colador") _macAbrirConfigurarColador(item.qual);
-    else if (item.tipo === "aviso") _macAbrirConfigurar(item.chave);
+    if (item.tipo === "inst") _macAbrirAgenda(item.qual, item.inst.agenda, item.inst.id);
+    else if (item.tipo === "novo") _macAbrirAgenda(item.qual, null, null);
+    else if (item.tipo === "colcfg") _macAbrirConfigurarColador(item.qual);
+    else if (item.tipo === "aviso" && item.m) _macAbrirConfigurar(item.chave);
 }
 
-// "Salvo" no lugar da mensagem de erro do formulário, em verde, por alguns segundos.
-function _macMostrarSalvo(idErro) {
+function _macMostrarSalvo(idErro, texto) {
     const el = document.getElementById(idErro);
     if (!el) return;
-    el.innerHTML = `<span class="macd-salvo">Salvo.</span>`;
+    el.innerHTML = `<span class="macd-salvo">${_macEsc(texto || "Salvo.")}</span>`;
     setTimeout(() => { if (el.innerHTML.includes("macd-salvo")) el.innerHTML = ""; }, 4000);
 }
 
-function _macCarregarHistoricoDoMacro(macro) {
-    _macHistMacro = { macro, eventos: null };
-    fetch(`${API}/admin/macros/spx/historico?limite=12&macro=${encodeURIComponent(macro)}`, { headers: { "Authorization": "Bearer " + token } })
+// O histórico recente do macro, só do computador aberto (quando há um).
+function _macCarregarHistoricoDoMacro(item) {
+    const chave = `${item.qual}|${item.maquina || ""}`;
+    _macHistMacro = { chave, eventos: null };
+    fetch(`${API}/admin/macros/spx/historico?limite=40&macro=${encodeURIComponent(item.qual)}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
         .then(d => {
-            if (_macHistMacro.macro !== macro) return;
-            _macHistMacro.eventos = d.eventos || [];
+            if (_macHistMacro.chave !== chave) return;
+            const eventos = (d.eventos || []).filter(e => !item.maquina || !e.maquina || _macMesmoPc(e.maquina, item.maquina)).slice(0, 12);
+            _macHistMacro.eventos = eventos;
             const el = document.getElementById("macd-hist");
-            if (el) el.innerHTML = d.error ? `<div class="mac-ag-vazio">${_macEsc(d.error)}</div>` : _macHistoricoHtml(d.eventos);
+            if (el) el.innerHTML = d.error ? `<div class="mac-ag-vazio">${_macEsc(d.error)}</div>` : _macHistoricoHtml(eventos);
         })
         .catch(() => {
             const el = document.getElementById("macd-hist");
@@ -632,8 +693,8 @@ function _macCarregarHistoricoDoMacro(macro) {
         });
 }
 
-// A atividade das abas, de 5 em 5s enquanto a tela está aberta — só memória no servidor. Só
-// redesenha a lista e o "vivo" quando algo mudou (o formulário nunca).
+// A atividade das abas, de 5 em 5s enquanto a tela está aberta (só memória no servidor). Só
+// redesenha quando algo mudou — e nunca o formulário.
 function _macCarregarAtividade() {
     return fetch(`${API}/admin/macros/atividade`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => (r.ok ? r.json() : null))
@@ -658,18 +719,136 @@ function _macVigiarAtividade() {
     _macPollVivo = setTimeout(passo, 5000);
 }
 
-// "19:05 Abaixo de 90% concluído · 22:05 Mais de 1 pacotes em Delivering" (resumo do servidor)
-// vira uma linha por rodada, com o horário separado do critério. Texto fora desse formato
-// ("sem rodada configurada") passa inteiro, numa linha só.
-function _macResumoHtml(resumo) {
-    const partes = String(resumo || "").split(" · ").filter(Boolean);
-    if (!partes.length) return "";
-    return partes.map(p => {
-        const m = /^(\d{2}:\d{2}) (.+)$/.exec(p);
-        return m
-            ? `<div class="mac-agenda-linha"><span class="mac-agenda-hora">${m[1]}</span><span>${_macEsc(m[2].charAt(0).toLowerCase() + m[2].slice(1))}</span></div>`
-            : `<div class="mac-agenda-linha"><span>${_macEsc(p)}</span></div>`;
-    }).join("");
+// ── ações das instâncias e dos Chromes ──
+function _macPedir(metodo, caminho, corpo) {
+    return fetch(`${API}${caminho}`, {
+        method: metodo,
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: corpo === undefined ? undefined : JSON.stringify(corpo),
+    }).then(r => r.json().then(d => ({ ok: r.ok, status: r.status, d })));
+}
+
+// Iniciar/Pausar: liga ou desliga o horário daquela instância (pausar também para o que roda).
+function _macInstAtivo(id, ativo, botao) {
+    if (botao) botao.disabled = true;
+    _macPedir("PUT", `/admin/macros/spx/instancias/${encodeURIComponent(id)}`, { ativo })
+        .then(({ ok, d }) => {
+            if (!ok) { if (botao) botao.disabled = false; gcAlert(d.error || "Não foi possível mudar."); return; }
+            const i = _macInstancias.find(x => x.id === id);
+            if (i) Object.assign(i, d.instancia);
+            _macRedesenhar();
+        })
+        .catch(() => { if (botao) botao.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
+}
+
+function _macCancelarInstancia(id, botao) {
+    const i = _macInstancias.find(x => x.id === id);
+    if (!i) return;
+    gcConfirm(`Cancelar ${_macEsc(_macNomeSpx(i.qual))} em ${_macEsc(i.maquina)} · ${_macEsc(i.xpt)}?\n\nO horário dela some e o que estiver rodando nesse Chrome para.`,
+        () => {
+            if (botao) botao.disabled = true;
+            _macPedir("DELETE", `/admin/macros/spx/instancias/${encodeURIComponent(id)}`)
+                .then(({ ok, d }) => {
+                    if (!ok) { if (botao) botao.disabled = false; gcAlert(d.error || "Não foi possível cancelar."); return; }
+                    _macInstancias = _macInstancias.filter(x => x.id !== id);
+                    _macSelecionado = `novo:${i.qual}`;
+                    _macRedesenhar();
+                    _macMontarDetalhe();
+                })
+                .catch(() => { if (botao) botao.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
+        }, "Cancelar instância", "Cancelar instância");
+}
+
+// Rodar agora / Reiniciar num Chrome (computador + polo).
+function _macRodarChrome(qual, maquina, xpt, reiniciar, botao) {
+    if (botao) botao.disabled = true;
+    _macPedir("POST", `/admin/macros/spx/${qual}/rodar`, { maquina, xpt, reiniciar: !!reiniciar })
+        .then(({ ok, status, d }) => {
+            if (ok || (status === 409 && d.comando)) {
+                const m = _macDadoSpx(qual);
+                if (m) {
+                    m.comandos = (m.comandos || []).filter(c => !(_macMesmoPc(c.alvo, maquina) && ((c.config && c.config.xpt) || null) === xpt));
+                    m.comandos.unshift(d.comando);
+                }
+                if (d.vigia) _macVigia = d.vigia;
+                if (!ok) gcAlert(d.error);
+                else if (reiniciar) gcAlert("Pedido de parar enviado. Ele roda de novo em cerca de 1 minuto.", "Reiniciar");
+                _macRedesenhar();
+                _macAcompanhar();
+                return;
+            }
+            if (botao) botao.disabled = false;
+            gcAlert(d.error || "Não foi possível pedir.");
+        })
+        .catch(() => { if (botao) botao.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
+}
+
+function _macPararChrome(qual, maquina, xpt, botao) {
+    if (botao) botao.disabled = true;
+    _macPedir("POST", `/admin/macros/spx/${qual}/parar`, { maquina, xpt })
+        .then(({ ok, d }) => {
+            if (!ok) { if (botao) botao.disabled = false; gcAlert(d.error || "Não foi possível pedir pra parar."); return; }
+            gcAlert("Pedido de parar enviado — o Chrome atende em até 30 segundos.", "Parar");
+        })
+        .catch(() => { if (botao) botao.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
+}
+
+// Colador: abrir/reiniciar/parar a sessão de um Chrome.
+function _macSessaoRodar(qual, maquina, xpt, reiniciar, botao) {
+    const item = _macColadores.find(c => c.qual === qual);
+    if (!item) return;
+    if (botao) botao.disabled = true;
+    _macPedir("POST", `/admin/macros/colador/${qual}/rodar`, { maquina, xpt: xpt || null, reiniciar: !!reiniciar })
+        .then(({ ok, d }) => {
+            if (!ok) { if (botao) botao.disabled = false; gcAlert(d.error || "Não foi possível pedir."); return; }
+            _macMergeComandoColador(item, Object.assign({ idade_s: 0 }, d.comando));
+            if (!d.algum_conectado) gcAlert(`Pedido enviado, mas ${maquina} não está com o Chrome/XM Vigia conectado agora — roda assim que abrir.`);
+            else if (reiniciar) gcAlert("Pedido de parar enviado. A sessão abre de novo em cerca de 1 minuto.", "Reiniciar");
+            _macRedesenhar();
+            _macAcompanharColador();
+        })
+        .catch(() => { if (botao) botao.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
+}
+
+function _macSessaoParar(qual, maquina, xpt, botao) {
+    if (botao) botao.disabled = true;
+    _macPedir("POST", `/admin/macros/colador/${qual}/parar`, { maquina, xpt: xpt || null })
+        .then(({ ok, d }) => {
+            if (!ok) { if (botao) botao.disabled = false; gcAlert(d.error || "Não foi possível pedir pra parar."); return; }
+            gcAlert("Pedido de parar enviado — o Chrome atende em até 30 segundos.", "Parar");
+        })
+        .catch(() => { if (botao) botao.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
+}
+
+function _macAbrirSessao(qual, botao) {
+    const n = _macNova;
+    if (!n || !n.maquina || !n.xpt) return;
+    _macSelecionado = `col:${qual}|${n.maquina}|${n.xpt}`;
+    _macSessaoRodar(qual, n.maquina, n.xpt, false, botao);
+}
+
+// Pergunta o andamento de poucos em poucos segundos (só memória no servidor) enquanto houver
+// pedido em andamento - e para sozinho quando não há mais, ou depois de 12 minutos.
+function _macAcompanhar() {
+    if (_macPoll) return;
+    const inicio = Date.now();
+    const passo = () => {
+        const tela = document.getElementById("tela-macros");
+        const visivel = !!tela && tela.classList.contains("active-view");
+        const andando = _macLista.some(m => m.qual && (m.comandos || []).some(_macOcupado));
+        if (!visivel || !andando || Date.now() - inicio > 12 * 60 * 1000) { _macPoll = null; return; }
+        fetch(`${API}/admin/macros/spx/estado`, { headers: { "Authorization": "Bearer " + token } })
+            .then(r => r.json())
+            .then(d => {
+                if (!d || !d.comandos) return;
+                _macLista.forEach(m => { if (m.qual && d.comandos[m.qual]) m.comandos = d.comandos[m.qual]; });
+                if (d.vigia) _macVigia = d.vigia;
+                _macRedesenhar();
+            })
+            .catch(() => { /* tenta de novo */ })
+            .finally(() => { _macPoll = setTimeout(passo, 3000); });
+    };
+    _macPoll = setTimeout(passo, 3000);
 }
 
 // ── Macros do SPX: "Rodar agora", última carga e andamento ──
@@ -737,21 +916,6 @@ function _macComandoTexto(cmd, vigia) {
     }
 }
 
-// Uma linha só de "situação" por macro. Antes eram até três linhas miúdas (agenda, última carga,
-// andamento) empilhadas em colunas — era isso que deixava a tela carregada. Agora: o que está
-// acontecendo AGORA (pedido em andamento, ou que acabou de falhar) ou, se nada, o último problema
-// que o vigia/a extensão contaram. Sem nada disso, a linha nem existe.
-function _macSituacaoHtml(m) {
-    const cmd = m.comando;
-    const relevante = cmd && (_macOcupado(cmd) || cmd.estado === "erro" || cmd.estado === "expirado"
-        || cmd.estado === "sem_confirmacao" || (cmd.estado === "iniciado" && cmd.idade_s < 180));
-    if (relevante) {
-        const c = _macComandoTexto(cmd, _macVigia);
-        return `<div class="mac-sit mac-sit-${c.tom}"><span class="mac-cmd-ponto"></span><span>${_macEsc(c.texto)}</span></div>`;
-    }
-    return m.problema ? _macProblemaHtml(m.problema, m.qual) : "";
-}
-
 // "Falhou há 12 min · CASA — o SPX pediu login" + o atalho pro histórico. Erro em vermelho,
 // aviso só com o pontinho amarelo: nem todo aviso é defeito.
 function _macProblemaHtml(p, qual) {
@@ -769,85 +933,7 @@ function _macProblemaHtml(p, qual) {
 // As outras máquinas continuam conectadas, mas paradas (sem horário e sem Rodar).
 const _macMesmoPc = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
 const _macPcOnlineEm = (vigia, nome) => !!vigia && (vigia.maquinas || []).some(m => m.online && _macMesmoPc(m.nome, nome));
-const _macPcOnline = nome => _macPcOnlineEm(_macVigia, nome);
 
-// Os computadores que se pode escolher: os que já consultaram o servidor, mais o escolhido se ele
-// estiver desligado (a escolha continua valendo, e some da lista se não aparecer).
-function _macComputadoresConhecidos() {
-    const nomes = [];
-    const soma = n => { if (n && !nomes.some(x => _macMesmoPc(x, n))) nomes.push(n); };
-    ((_macVigia && _macVigia.maquinas) || []).forEach(m => soma(m.nome));
-    soma(_macComputador);
-    return nomes;
-}
-
-// O que dizer sobre quem está ouvindo — só quando há algo errado ou ambíguo. Sem problema, sem
-// linha: o seletor já mostra o computador e o pontinho diz se está conectado.
-function _macAvisoComputador() {
-    if (!_macVigia) return null;
-    const maquinas = Array.isArray(_macVigia.maquinas) ? _macVigia.maquinas : null;
-    const on = maquinas ? maquinas.filter(m => m.online) : (_macVigia.online ? [{ nome: "" }] : []);
-
-    if (_macComputador) {
-        if (_macPcOnline(_macComputador)) return null;
-        const visto = maquinas && maquinas.find(m => _macMesmoPc(m.nome, _macComputador));
-        const quando = visto ? ` (visto ${_macHa(visto.visto_ha_s)})` : "";
-        return { tom: "aviso", texto: `${_macComputador} não está conectado${quando} — abra o Chrome (com a extensão) e o XM Vigia nele, ou escolha outro computador.` };
-    }
-    if (on.length > 1) {
-        return { tom: "aviso", texto: `${on.length} computadores conectados (${on.map(m => m.nome || "sem nome").join(", ")}) — escolha acima em qual os macros rodam. Sem escolha, o horário roda em todos.` };
-    }
-    if (!on.length) {
-        const quando = _macVigia.visto_ha_s === null || _macVigia.visto_ha_s === undefined ? "" : ` (visto ${_macHa(_macVigia.visto_ha_s)})`;
-        return { tom: "aviso", texto: `Nenhum computador conectado${quando} — abra o Chrome (com a extensão) e o XM Vigia.` };
-    }
-    return null;
-}
-
-function _macAvisoComputadorHtml() {
-    const a = _macAvisoComputador();
-    return a ? `<div class="mac-geral"><div class="mac-sit mac-sit-${a.tom}"><span class="mac-cmd-ponto"></span><span>${_macEsc(a.texto)}</span></div></div>` : "";
-}
-
-function _macVigiaHtml() {
-    if (!_macVigia) return "";
-    const nomes = _macComputadoresConhecidos();
-    const opcoes = [`<option value=""${_macComputador ? "" : " selected"}>Qualquer computador</option>`]
-        .concat(nomes.map(n => `<option value="${_macEsc(n)}"${_macMesmoPc(n, _macComputador) ? " selected" : ""}>${_macEsc(n)}${_macPcOnline(n) ? "" : " — desconectado"}</option>`));
-
-    // O pontinho: o escolhido conectado (verde) ou não (amarelo); sem escolha, ok só com um
-    // computador ouvindo.
-    const on = ((_macVigia.maquinas || []).filter(m => m.online)).length || (_macVigia.online && !_macVigia.maquinas ? 1 : 0);
-    const tom = _macComputador ? (_macPcOnline(_macComputador) ? "on" : "off") : (on === 1 ? "on" : "off");
-    return `<span class="mac-computador"><label for="mac-computador-sel">Executa em</label>`
-        + `<select id="mac-computador-sel" class="mac-select" onchange="_macEscolherComputador(this.value)">${opcoes.join("")}</select>`
-        + `<span class="mac-vigia mac-vigia-${tom}"><span class="mac-cmd-ponto"></span></span></span>`;
-}
-
-// Escolheu o computador. Troca na hora e volta atrás se o servidor recusar.
-function _macEscolherComputador(valor) {
-    const antes = _macComputador;
-    _macComputador = valor || null;
-    _macRedesenhar();
-
-    fetch(`${API}/admin/macros/spx/computador`, {
-        method: "PUT",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ maquina: valor || null })
-    })
-        .then(r => r.json().then(d => ({ ok: r.ok, d })))
-        .then(({ ok, d }) => {
-            if (ok) return;
-            _macComputador = antes;
-            _macRedesenhar();
-            gcAlert(d.error || "Não foi possível mudar o computador.");
-        })
-        .catch(() => {
-            _macComputador = antes;
-            _macRedesenhar();
-            gcAlert("Erro ao conectar com o servidor.");
-        });
-}
 
 // O que o vigia contou sem saber de qual macro é (erro inesperado, arquivo que não é relatório...).
 function _macGeralHtml() {
@@ -866,9 +952,7 @@ function _macAlternarAtivo(chave, botao) {
     m.ativo = novo;
     _macRedesenhar();
 
-    // Macro do SPX tem rota própria (/admin/macros/spx/:qual); os outros seguem a convenção
-    // "chave com traço".
-    const rota = m.qual ? `spx/${m.qual}` : _macRotaDaChave(chave);
+    const rota = _macRotaDaChave(chave);
     fetch(`${API}/admin/macros/${rota}/ativo`, {
         method: "PUT",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
@@ -876,11 +960,7 @@ function _macAlternarAtivo(chave, botao) {
     })
         .then(r => r.json().then(d => ({ ok: r.ok, d })))
         .then(({ ok, d }) => {
-            if (ok) {
-                // O resumo da linha ("Desligado" / "A cada 1 h") depende do interruptor.
-                if (m.qual) _macCarregarLista(true);
-                return;
-            }
+            if (ok) return;
             m.ativo = antes;
             _macRedesenhar();
             gcAlert(d.error || "Não foi possível mudar.");
@@ -892,65 +972,6 @@ function _macAlternarAtivo(chave, botao) {
         });
 }
 
-// ── Rodar agora ──
-// O pedido vai pro servidor, o vigia busca (de ~30 em 30s) e a extensão executa no Chrome do
-// galpão. Aqui só se pede e se acompanha: a linha mostra em que pé está, até o Chrome
-// confirmar que começou (ou avisar que não conseguiu).
-function _macRodar(qual, botao) {
-    const m = _macLista.find(x => x.qual === qual);
-    if (!m || _macOcupado(m.comando)) return;
-    if (botao) botao.disabled = true;
-
-    fetch(`${API}/admin/macros/spx/${qual}/rodar`, {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: "{}"
-    })
-        .then(r => r.json().then(d => ({ ok: r.ok, status: r.status, d })))
-        .then(({ ok, status, d }) => {
-            if (ok || (status === 409 && d.comando)) {
-                m.comando = d.comando;
-                if (d.vigia) _macVigia = d.vigia;
-                if (!ok) gcAlert(d.error);
-                _macRedesenhar();
-                _macAcompanhar();
-                return;
-            }
-            if (botao) botao.disabled = false;
-            gcAlert(d.error || "Não foi possível pedir.");
-        })
-        .catch(() => {
-            if (botao) botao.disabled = false;
-            gcAlert("Erro ao conectar com o servidor.");
-        });
-}
-
-// Pergunta o andamento de poucos em poucos segundos (só memória no servidor, não toca no
-// banco) enquanto houver pedido em andamento — e para sozinho quando não há mais, quando a
-// pessoa sai da tela, ou depois de 12 minutos (o pedido já teria expirado no servidor).
-function _macAcompanhar() {
-    if (_macPoll) return;
-    const inicio = Date.now();
-
-    const passo = () => {
-        const tela = document.getElementById("tela-macros");
-        const visivel = !!tela && tela.classList.contains("active-view");
-        const andando = _macLista.some(m => m.qual && _macOcupado(m.comando));
-        if (!visivel || !andando || Date.now() - inicio > 12 * 60 * 1000) { _macPoll = null; return; }
-
-        fetch(`${API}/admin/macros/spx/estado`, { headers: { "Authorization": "Bearer " + token } })
-            .then(r => r.json())
-            .then(d => {
-                if (!d || !d.comandos) return;
-                _macLista.forEach(m => { if (m.qual && d.comandos[m.qual]) m.comando = d.comandos[m.qual]; });
-                if (d.vigia) _macVigia = d.vigia;
-                _macRedesenhar();
-            })
-            .catch(() => { /* uma volta sem resposta: tenta de novo na próxima */ })
-            .finally(() => { _macPoll = setTimeout(passo, 3000); });
-    };
-    _macPoll = setTimeout(passo, 3000);
-}
 
 // As rodadas do aviso, no painel (o formulário já está montado por _macConfigHtml).
 function _macAbrirConfigurar(chave) {
@@ -1181,18 +1202,27 @@ function _macSalvar() {
 // Duas formas de agendar, e a tela guarda as DUAS ao mesmo tempo: `modo` diz qual vale. Assim
 // trocar de "a cada N minutos" pra "nestes horários" não joga fora o que já estava digitado.
 
-function _macAbrirConfigurarSpx(qual) {
-    const m = _macLista.find(x => x.qual === qual);
-    if (!m || !m.agenda) return;
+// O formulário de horário de uma instância (agenda dela) ou de uma nova (agenda padrão).
+function _macAbrirAgenda(qual, agenda, instId) {
+    const m = _macDadoSpx(qual);
+    const ag = agenda || { modo: "intervalo", minutos: qual === "backlog" ? 60 : 30, horarios: [] };
     _macAgenda = {
-        qual,
-        modo: m.agenda.modo === "horarios" ? "horarios" : "intervalo",
-        minutos: m.agenda.minutos,
-        minimo: m.minutos_minimo || 20,
-        horarios: (m.agenda.horarios || []).map(h => ({ hora: h.hora, minuto: h.minuto })),
+        qual, instId,
+        modo: ag.modo === "horarios" ? "horarios" : "intervalo",
+        minutos: ag.minutos,
+        minimo: (m && m.minutos_minimo) || 20,
+        horarios: (ag.horarios || []).map(h => ({ hora: h.hora, minuto: h.minuto })),
+        verHorarios: ag.modo === "horarios",
     };
     _macFonte = "agenda";
-    document.getElementById("mac-ag-erro").innerText = "";
+    const erro = document.getElementById("mac-ag-erro");
+    if (erro) erro.innerText = "";
+    _macRenderizarAgenda();
+}
+
+// "Todo dia, nestes horários" fica recolhido quando o que vale é o intervalo — abre ao escolher.
+function _macVerHorarios() {
+    _macAgenda.verHorarios = true;
     _macRenderizarAgenda();
 }
 
@@ -1215,6 +1245,16 @@ function _macRenderizarAgenda() {
     document.getElementById("mac-ag-horarios").innerHTML = a.horarios.length
         ? a.horarios.map((h, i) => _macLinhaHorario(h, i)).join("")
         : `<div class="mac-ag-vazio">Nenhum horário ainda.</div>`;
+
+    const aberto = !porIntervalo || a.verHorarios;
+    const corpo = document.getElementById("mac-ag-horarios-corpo");
+    if (corpo) corpo.style.display = aberto ? "" : "none";
+    const recolhido = document.getElementById("mac-ag-recolhido");
+    if (recolhido) {
+        recolhido.innerHTML = aberto ? ""
+            : `<button type="button" class="mac-link" onclick="_macVerHorarios()">${a.horarios.length
+                ? `${a.horarios.length} horário${a.horarios.length > 1 ? "s" : ""} guardado${a.horarios.length > 1 ? "s" : ""} · mostrar` : "mostrar"}</button>`;
+    }
 }
 
 function _macLinhaHorario(h, i) {
@@ -1232,6 +1272,7 @@ function _macLinhaHorario(h, i) {
 
 function _macMudarModo(modo) {
     _macAgenda.modo = modo === "horarios" ? "horarios" : "intervalo";
+    if (_macAgenda.modo === "horarios") _macAgenda.verHorarios = true;
     _macRenderizarAgenda();
 }
 
@@ -1276,45 +1317,56 @@ function _macMontarAgenda(a) {
     return { agenda: Object.assign({ modo: a.modo, horarios }, minutosValidos ? { minutos } : {}) };
 }
 
+// ── Histórico: o que aconteceu, de todos os macros ou de um ──
+// Cada linha é um evento contado pelo vigia ou pela extensão, com o computador de onde veio.
+const _MAC_NOME_CURTO = { alimentacao: "AT", pedidos: "Pedidos", backlog: "Backlog", recebimento: "Colador Recebimento", at_cluster: "Colador AT Cluster", geral: "Geral" };
+const _MAC_ORIGEM = { vigia: "vigia", extensao: "extensão" };
+
+// Salvar o horário: atualiza a instância aberta, ou cria a nova (com computador e polo escolhidos).
 function _macSalvarAgenda() {
     const erro = document.getElementById("mac-ag-erro");
     erro.innerText = "";
     const r = _macMontarAgenda(_macAgenda);
     if (r.erro) { erro.innerText = r.erro; return; }
-
+    const criando = !_macAgenda.instId;
+    if (criando && (!_macNova || !_macNova.maquina || !_macNova.xpt)) {
+        erro.innerText = "Escolha o computador e o polo.";
+        return;
+    }
     const btn = document.getElementById("mac-ag-salvar");
+    const rotulo = criando ? "Criar instância" : "Salvar horário";
     btn.disabled = true;
     btn.textContent = "Salvando...";
-
-    // Ligar/desligar é no interruptor do topo. Macro nunca configurado por aqui sai já ligado:
-    // quem chegou até o Salvar quer que rode.
-    const m = _macLista.find(x => x.qual === _macAgenda.qual);
-    const ativo = m && m.configurado ? !!m.ativo : true;
-
-    fetch(`${API}/admin/macros/spx/${_macAgenda.qual}`, {
-        method: "PUT",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ ativo, agenda: r.agenda })
-    })
-        .then(res => res.json().then(d => ({ ok: res.ok, d })))
+    const pedido = criando
+        ? _macPedir("POST", "/admin/macros/spx/instancias",
+            { qual: _macAgenda.qual, maquina: _macNova.maquina, xpt: _macNova.xpt, ativo: _macNova.ativo !== false, agenda: r.agenda })
+        : _macPedir("PUT", `/admin/macros/spx/instancias/${encodeURIComponent(_macAgenda.instId)}`, { agenda: r.agenda });
+    pedido
         .then(({ ok, d }) => {
             btn.disabled = false;
-            btn.textContent = "Salvar horário";
+            btn.textContent = rotulo;
             if (!ok) { erro.innerText = d.error || "Não foi possível salvar."; return; }
+            if (criando) {
+                _macInstancias.push(d.instancia);
+                _macNova = null;
+                _macSelecionado = `inst:${d.instancia.id}`;
+                try { localStorage.setItem(_MAC_CHAVE_SELECIONADO, _macSelecionado); } catch (e) { /* sem storage */ }
+                _macRedesenhar();
+                _macMontarDetalhe();
+                _macMostrarSalvo("mac-ag-erro", "Instância criada.");
+                return;
+            }
+            const i = _macInstancias.find(x => x.id === _macAgenda.instId);
+            if (i) Object.assign(i, d.instancia);
             _macMostrarSalvo("mac-ag-erro");
-            _macCarregarLista(true);
+            _macRedesenhar();
         })
         .catch(() => {
             btn.disabled = false;
-            btn.textContent = "Salvar horário";
+            btn.textContent = rotulo;
             erro.innerText = "Erro ao conectar com o servidor.";
         });
 }
-
-// ── Histórico: o que aconteceu, de todos os macros ou de um ──
-// Cada linha é um evento contado pelo vigia ou pela extensão, com o computador de onde veio.
-const _MAC_NOME_CURTO = { alimentacao: "AT", pedidos: "Pedidos", backlog: "Backlog", recebimento: "Colador Recebimento", at_cluster: "Colador AT Cluster", geral: "Geral" };
-const _MAC_ORIGEM = { vigia: "vigia", extensao: "extensão" };
 
 function _macHistoricoHtml(eventos) {
     if (!eventos || !eventos.length) return `<div class="mac-ag-vazio">Nada registrado ainda.</div>`;
@@ -1345,29 +1397,11 @@ function _macAbrirHistorico(macro) {
 }
 
 // ── Colador (extensão XM Macros SPX + XM Vigia — migrado do colador_neon.py em 29/09/2026) ──
-// Mesma ideia do Rodar/Configurar dos macros do SPX, mas sem horário nenhum: o Colador é uma
-// sessão que se liga e desliga (ou fica de vigia, modo contínuo), não uma agenda. Sem
-// "computador escolhido" PERSISTENTE (ao contrário do SPX) - de propósito, pra dar pra rodar em
-// Caçador e Videira ao mesmo tempo, cada PC na conta do próprio polo (a reserva de lote no
-// backend garante que dois coladores nunca pegam o mesmo código; quem evita colar o polo errado
-// é a extensão, lendo o XPT da própria página do SPX). Em vez disso, cada Rodar pode escolher
-// um alvo só PRA AQUELE CLIQUE (_macColadorAlvo, abaixo) — mostrado até o próximo Rodar mudar.
-// Única parte de Macros que admin também acessa, não só dev.
-
-// O computador escolhido pro PRÓXIMO clique de Rodar de cada colador (vazio = qualquer um). Só
-// existe no navegador — nada salvo no servidor, diferente do "Executa em" do SPX.
-let _macColadorAlvo = {};
-
-// Só um pontinho + texto, no mesmo estilo de _macVigiaHtml: quantos computadores estão com o
-// Chrome (extensão) + XM Vigia ouvindo agora — é a MESMA lista dos macros do SPX (fila.vigia()),
-// não uma por colador. Sem inflar a tela com uma lista - "Detalhes" não existe aqui porque não
-// há histórico (só Rodar e Configurar).
-function _macColadorPresencaHtml(computadores) {
-    const on = (computadores || []).filter(c => c.online);
-    if (on.length === 1) return `<span class="mac-vigia mac-vigia-on"><span class="mac-cmd-ponto"></span>${_macEsc(on[0].nome || "conectado")}</span>`;
-    if (on.length > 1) return `<span class="mac-vigia mac-vigia-aviso"><span class="mac-cmd-ponto"></span>${on.length} computadores conectados</span>`;
-    return `<span class="mac-vigia mac-vigia-off"><span class="mac-cmd-ponto"></span>nenhum computador conectado</span>`;
-}
+// Sem horário: o Colador é uma SESSÃO que se abre e fecha (ou fica de vigia, modo contínuo) num
+// Chrome — computador + polo. Cada sessão é uma linha na lista (ver _macLinhasDoColador); dá pra
+// rodar em Caçador e Videira ao mesmo tempo (a reserva de lote no backend garante que dois
+// coladores nunca pegam o mesmo código; quem evita colar o polo errado é a extensão, lendo a
+// estação da própria página do SPX). Única parte de Macros que admin também acessa.
 
 // O comando mais recente: mesma lógica de tom dos macros do SPX (_macComandoTexto), com textos
 // próprios do Colador (não fala em "Chrome" nem em horário) — e um estado a mais ("cancelado")
@@ -1399,72 +1433,6 @@ function _macComandoColadorTexto(cmd) {
     }
 }
 
-// "cancelar": só faz sentido pendente (ninguém pegou ainda, ou pegou mas não confirmou) - depois
-// de "iniciado" a trava de duplicado já nem bloqueia mais nada, então cancelar não teria o que
-// liberar. "parar": só pro que já está rodando de verdade, e só uma vez (parar_pedido evita
-// martelar o botão mandando o mesmo pedido enquanto o vigia não passou pela aba).
-function _macBotaoAcaoColadorHtml(qual, cmd) {
-    if (cmd.estado === "aguardando" || cmd.estado === "entregue") {
-        return `<button type="button" class="mac-sit-acao" onclick="_macCancelarColador('${_macEsc(qual)}', '${_macEsc(cmd.id)}', this)">cancelar</button>`;
-    }
-    if (cmd.estado === "iniciado" && !cmd.parar_pedido) {
-        return `<button type="button" class="mac-sit-acao" onclick="_macPararColador('${_macEsc(qual)}', '${_macEsc(cmd.id)}', this)">parar</button>`;
-    }
-    return "";
-}
-
-// Uma linha por MÁQUINA que já pediu este qual (comandos vem de fila.comandosDe — ver
-// rotasColador.js) - Caçador e Videira rodando o mesmo Colador ao mesmo tempo aparecem os dois,
-// cada um com a ação que faz sentido pro estado dele.
-function _macSituacaoColadorHtml(qual, comandos) {
-    return (comandos || []).map(cmd => {
-        const c = _macComandoColadorTexto(cmd);
-        const botao = _macBotaoAcaoColadorHtml(qual, cmd);
-        return `<div class="mac-sit mac-sit-${c.tom}"><span class="mac-cmd-ponto"></span><span>${_macEsc(c.texto)}</span>${botao}</div>`;
-    }).join("");
-}
-
-// "recebidos_hoje" só vem no item do Recebimento (ver rotasColador.js) — é a contagem de
-// verdade no banco (colado_em preenchido), não algo que a tela calcula.
-function _macRecebidosHtml(item) {
-    if (item.recebidos_hoje === undefined || item.recebidos_hoje === null) return "";
-    return ` · <span class="mac-agenda-resumo">${item.recebidos_hoje} recebido(s) hoje no SPX</span>`;
-}
-
-// O seletor de "pra qual computador vai o PRÓXIMO Rodar" — não é uma escolha salva (como o
-// "Executa em" do SPX): _macColadorAlvo só vive no navegador, e cada clique manda o que
-// estiver marcado aqui na hora. As opções são os computadores que o vigia já viu (mesma lista
-// de _macColadorPresencaHtml) — computador que nunca apareceu não tem como ser escolhido.
-function _macHtmlAlvoColador(item) {
-    const nomes = [...new Set((item.computadores || []).map(c => c.nome).filter(Boolean))];
-    const atual = _macColadorAlvo[item.qual] || "";
-    const opcoes = [`<option value=""${atual ? "" : " selected"}>Qualquer computador</option>`]
-        .concat(nomes.map(n => {
-            const online = (item.computadores || []).some(c => c.nome === n && c.online);
-            return `<option value="${_macEsc(n)}"${n === atual ? " selected" : ""}>${_macEsc(n)}${online ? "" : " — desconectado"}</option>`;
-        }));
-    return `<select class="mac-select" title="Rodar em qual computador" aria-label="Rodar ${_macEsc(item.nome)} em qual computador"
-                onchange="_macColadorMudarAlvo('${_macEsc(item.qual)}', this.value)">${opcoes.join("")}</select>`;
-}
-
-function _macColadorMudarAlvo(qual, valor) {
-    _macColadorAlvo[qual] = valor || "";
-    _macRedesenhar(); // o Rodar fica desabilitado/habilitado dependendo do alvo escolhido agora
-}
-
-// Só desabilita o Rodar quando o alvo ESCOLHIDO agora bate com um pedido pendente - mesma regra
-// do backend (fila.js/conflitaAlvo): "qualquer computador" conflita com tudo, alvo específico só
-// conflita com ele mesmo. Sem isso o botão ficaria preso achando que o Colador está ocupado só
-// porque OUTRA máquina está rodando, o que é exatamente o que agora é permitido.
-function _macColadorConflita(item, alvoEscolhido) {
-    const alvo = (alvoEscolhido || "").toLowerCase();
-    return (item.comandos || []).some(cmd => {
-        if (cmd.estado !== "aguardando" && cmd.estado !== "entregue") return false;
-        const cmdAlvo = (cmd.alvo || "").toLowerCase();
-        return !alvo || !cmdAlvo || alvo === cmdAlvo;
-    });
-}
-
 // Substitui, dentro de item.comandos, o que já existia pra ESSE alvo (mesma máquina) - ou
 // acrescenta, se for a primeira vez que essa máquina pede este qual. Assim o Rodar pra uma
 // segunda máquina não apaga a situação da primeira, que continua rodando em paralelo.
@@ -1473,38 +1441,6 @@ function _macMergeComandoColador(item, cmd) {
     const chave = (cmd.alvo || "").toLowerCase();
     const i = item.comandos.findIndex(c => (c.alvo || "").toLowerCase() === chave);
     if (i >= 0) item.comandos[i] = cmd; else item.comandos.push(cmd);
-}
-
-function _macRodarColador(qual, botao) {
-    const item = _macColadores.find(c => c.qual === qual);
-    if (!item) return;
-    if (botao) botao.disabled = true;
-    const maquina = _macColadorAlvo[qual] || null;
-
-    fetch(`${API}/admin/macros/colador/${qual}/rodar`, {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ maquina })
-    })
-        .then(r => r.json().then(d => ({ ok: r.ok, d })))
-        .then(({ ok, d }) => {
-            if (!ok) {
-                if (botao) botao.disabled = false;
-                gcAlert(d.error || "Não foi possível pedir.");
-                return;
-            }
-            _macMergeComandoColador(item, Object.assign({ idade_s: 0 }, d.comando));
-            if (!d.algum_conectado) {
-                const onde = maquina ? `o computador "${maquina}" não está` : "nenhum computador está";
-                gcAlert(`Pedido enviado, mas ${onde} com o Chrome/XM Vigia conectado agora — ele roda assim que alguém abrir.`);
-            }
-            _macRedesenhar();
-            _macAcompanharColador();
-        })
-        .catch(() => {
-            if (botao) botao.disabled = false;
-            gcAlert("Erro ao conectar com o servidor.");
-        });
 }
 
 // Cancela um pendente (aguardando/entregue) na hora — libera a mesma máquina pra pedir de novo
@@ -1520,26 +1456,6 @@ function _macCancelarColador(qual, id, botao) {
         .then(({ ok, d }) => {
             if (!ok) { if (botao) botao.disabled = false; gcAlert(d.error || "Não foi possível cancelar."); return; }
             if (item) _macMergeComandoColador(item, d.comando);
-            _macRedesenhar();
-        })
-        .catch(() => { if (botao) botao.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
-}
-
-// Pede pra um "iniciado" parar — o vigia repassa pro Chrome certo no próximo /comandos dele (até
-// ~30s). Não muda o estado aqui: só marca parar_pedido pra tela não deixar clicar de novo à toa.
-function _macPararColador(qual, id, botao) {
-    const item = _macColadores.find(c => c.qual === qual);
-    if (botao) botao.disabled = true;
-    fetch(`${API}/admin/macros/colador/comandos/${encodeURIComponent(id)}/parar`, {
-        method: "POST", headers: { "Authorization": "Bearer " + token }
-    })
-        .then(r => r.json().then(d => ({ ok: r.ok, d })))
-        .then(({ ok, d }) => {
-            if (!ok) { if (botao) botao.disabled = false; gcAlert(d.error || "Não foi possível pedir pra parar."); return; }
-            if (item) {
-                const cmd = (item.comandos || []).find(c => c.id === id);
-                if (cmd) cmd.parar_pedido = true;
-            }
             _macRedesenhar();
         })
         .catch(() => { if (botao) botao.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
