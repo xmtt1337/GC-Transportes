@@ -6250,3 +6250,112 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .cft-col-mini:hover { color: #e2e8f0; }
 .cft-col-input { max-width: 280px; margin-top: 6px; padding: 6px 10px; font-size: 12px; }
 .cft-map-select { min-width: 260px; max-width: 100%; }
+
+/* ───── Macros → Em execução ───── */
+.mex-abas { display: flex; gap: 22px; margin-top: 14px; font-size: 13px; }
+.mex-aba { color: #8494a9; text-decoration: none; padding-bottom: 6px; border-bottom: 2px solid transparent; }
+.mex-aba:hover { color: #e2e8f0; }
+.mex-aba.ativa { color: #e2e8f0; border-bottom-color: #3a86ff; }
+.mex-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.mex-vivo { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: #7b8ba1; white-space: nowrap; }
+.mex-secao { max-width: 1180px; }
+.mex-dica { color: #66829c; font-size: 12px; }
+.mex-vazio { padding: 16px 18px; font-size: 13px; color: #7b8ba1; border: 1px dashed rgba(255,255,255,0.1); border-radius: 10px; }
+
+.mex-ponto { flex: none; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #66829c; margin-right: 7px; position: relative; top: -1px; }
+.mex-ponto-ok { background: #34b26a; }
+.mex-ponto-aviso { background: #d6a23a; }
+.mex-ponto-erro { background: #ef5b5b; }
+.mex-ponto-off { background: #4b5a6d; }
+.mex-ponto-andando { background: #3a86ff; animation: mac-pulsa 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .mex-ponto-andando { animation: none; } }
+
+/* filtros: texto, sem cor de enfeite; o escolhido ganha fundo discreto */
+.mex-filtros { max-width: 1180px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px; }
+.mex-filtro-linha { display: flex; flex-wrap: wrap; gap: 6px; }
+.mex-chip {
+    font: inherit; font-size: 12.5px; color: #aab6c6; cursor: pointer;
+    background: transparent; border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; padding: 5px 12px;
+}
+.mex-chip:hover { border-color: rgba(255,255,255,0.3); color: #e2e8f0; }
+.mex-chip.ativo { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.28); color: #f1f5f9; }
+.mex-chip:focus-visible { outline: 2px solid #6aa5ff; outline-offset: 2px; }
+.mex-chip-n { color: #6aa5ff; font-variant-numeric: tabular-nums; margin-left: 2px; }
+
+/* alertas: tarja à esquerda, canto reto desse lado */
+.mex-alerta {
+    max-width: 1180px; box-sizing: border-box; margin-bottom: 10px; padding: 11px 16px;
+    font-size: 13px; color: #cbd5e1; background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08); border-left: 3px solid #66829c;
+    border-radius: 0 10px 10px 0;
+}
+.mex-alerta b { color: #f1f5f9; font-weight: 600; margin-right: 4px; }
+.mex-alerta-erro { border-left-color: #ef5b5b; }
+.mex-alerta-erro b { color: #f08a8a; }
+.mex-alerta-aviso { border-left-color: #d6a23a; }
+.mex-alerta-info { border-left-color: #3a86ff; }
+.mex-alerta-onde { margin-top: 3px; font-size: 12px; color: #7b8ba1; }
+.mex-filtros + .mex-secao, .mex-alerta + .mex-secao { margin-top: 12px; }
+
+/* computadores */
+.mex-pcs { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.mex-pc { padding: 13px 16px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(255,255,255,0.02); }
+.mex-pc-nome { display: flex; align-items: center; font-size: 14px; font-weight: 600; color: #e2e8f0; }
+.mex-pc-sit { margin-top: 5px; font-size: 12.5px; color: #8494a9; line-height: 1.45; }
+.mex-pc-meta { margin-top: 6px; font-size: 12px; color: #66829c; }
+.mex-pc-meta b { color: #e2e8f0; font-weight: 600; }
+
+/* o que está rodando: cartão com tarja de estado à esquerda (canto reto desse lado) */
+.mex-cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.mex-cartao {
+    min-width: 0; padding: 14px 16px 12px; background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.08); border-left: 3px solid #3a86ff; border-radius: 0 10px 10px 0;
+}
+.mex-cartao-aviso { border-left-color: #d6a23a; }
+.mex-cartao-erro { border-left-color: #ef5b5b; }
+.mex-cartao-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.mex-cartao-nome { font-size: 14.5px; font-weight: 600; color: #f1f5f9; }
+.mex-xpt { flex: none; font-size: 12px; color: #cbd5e1; font-variant-numeric: tabular-nums; }
+.mex-xpt-sem { color: #d6a23a; }
+.mex-cartao-meta { margin-top: 5px; font-size: 12.5px; line-height: 1.5; color: #8494a9; }
+.mex-cartao-passo { margin-top: 10px; font-size: 13.5px; color: #e2e8f0; overflow-wrap: anywhere; }
+
+.mex-log {
+    margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: #0b1320;
+    font: 12px/1.55 ui-monospace, "Cascadia Mono", Consolas, monospace; color: #9fb0c5;
+}
+.mex-log-todo { max-height: 300px; overflow-y: auto; }
+.mex-log-vazio { color: #5d6b7e; }
+.mex-log-linha { display: flex; gap: 8px; min-width: 0; }
+.mex-log-hora { flex: none; color: #5d6f85; font-variant-numeric: tabular-nums; }
+.mex-log-marca { flex: none; width: 10px; text-align: center; color: #5d6f85; }
+.mex-log-texto { min-width: 0; overflow-wrap: anywhere; }
+.mex-log-passo .mex-log-texto { color: #dbe5f2; }
+.mex-log-passo .mex-log-marca { color: #6aa5ff; }
+.mex-log-ok .mex-log-marca, .mex-log-ok .mex-log-texto { color: #5fcf8f; }
+.mex-log-aviso .mex-log-marca, .mex-log-aviso .mex-log-texto { color: #e0b25a; }
+.mex-log-erro .mex-log-marca, .mex-log-erro .mex-log-texto { color: #f08a8a; }
+.mex-log-botao { margin-top: 8px; font-size: 12px; }
+
+/* terminaram há pouco */
+.mex-fim { padding: 10px 18px; }
+.mex-fim + .mex-fim { border-top: 1px solid rgba(255,255,255,0.06); }
+.mex-fim-linha { display: flex; align-items: baseline; gap: 10px; font-size: 13px; color: #aab6c6; }
+.mex-fim-quando { flex: none; width: 74px; color: #7b8ba1; }
+.mex-fim-corpo { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.mex-fim-corpo b { color: #e2e8f0; font-weight: 600; margin-right: 4px; }
+.mex-fim-erro .mex-fim-corpo { color: #f08a8a; }
+.mex-fim-onde { display: block; margin-top: 2px; font-size: 12px; color: #66829c; }
+.mex-fim .mex-log { margin-left: 17px; }
+
+/* histórico (reaproveita as linhas do modal de Histórico) */
+.mex-hist { padding: 0 18px; }
+.mex-hist-linha .mac-cmd-ponto { align-self: center; }
+.mex-mais { margin-top: 10px; }
+
+@media (max-width: 680px) {
+    .mex-cartoes { grid-template-columns: 1fr; }
+    .mex-fim { padding: 10px 12px; }
+    .mex-fim-quando { width: auto; }
+    .mex-hist { padding: 0 12px; }
+}

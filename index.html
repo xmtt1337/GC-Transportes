@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261016i">
+<link rel="stylesheet" href="style.css?v=20261019a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -2394,12 +2394,36 @@ if (_BASE) {
             <div class="fech-header">
                 <div style="font-size:15px;font-weight:700;color:#e2e8f0">Macros</div>
                 <div style="font-size:12.5px;color:#8494a9;margin-top:4px">O que o sistema faz sozinho, e em que horário.</div>
+                <nav class="mex-abas" aria-label="Macros">
+                    <a href="#" class="mex-aba ativa" aria-current="page" onclick="abrirMacros(event)">Configurar</a>
+                    <a href="#" class="mex-aba" data-rota="Macros/EmExecucao" onclick="abrirMacrosExecucao(event)">Em execução</a>
+                </nav>
             </div>
             <div class="fech-body">
                 <div class="fechamento-empty" id="mac-empty">Carregando...</div>
                 <div id="mac-lista"></div>
             </div>
         </div><!-- /tela-macros -->
+
+        <!-- MACROS → EM EXECUÇÃO — o que cada computador está rodando agora (js/macros-execucao.js) -->
+        <div id="tela-macros-execucao" class="view tela-full">
+            <div class="fech-header">
+                <div class="mex-cab">
+                    <div>
+                        <div style="font-size:15px;font-weight:700;color:#e2e8f0">Macros</div>
+                        <div style="font-size:12.5px;color:#8494a9;margin-top:4px">O que cada computador está rodando agora, em qual XPT, com o log ao vivo.</div>
+                    </div>
+                    <div class="mex-vivo"><span class="mex-ponto mex-ponto-andando"></span><span id="mex-vivo-texto">ao vivo</span></div>
+                </div>
+                <nav class="mex-abas" aria-label="Macros">
+                    <a href="#" class="mex-aba" onclick="abrirMacros(event)">Configurar</a>
+                    <a href="#" class="mex-aba ativa" aria-current="page" onclick="abrirMacrosExecucao(event)">Em execução</a>
+                </nav>
+            </div>
+            <div class="fech-body">
+                <div id="mex-corpo"><div class="fechamento-empty">Carregando...</div></div>
+            </div>
+        </div><!-- /tela-macros-execucao -->
 
         <!-- Configurar um macro -->
         <div class="usr-modal-overlay" id="modal-macro-editar" onclick="_fecharModalSeBackdrop(event,'modal-macro-editar')">
@@ -4904,7 +4928,7 @@ if (_BASE) {
 
 <script src="js/core.js?v=20261019b"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261015a"></script>
+<script src="js/router.js?v=20261019a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
 <script src="js/nav.js?v=20261015f"></script>
 <script src="js/atendimento.js?v=20261015a"></script>
@@ -4929,6 +4953,7 @@ if (_BASE) {
 <script src="js/nomes-padrao.js?v=20260922a"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
 <script src="js/macros.js?v=20260928a"></script>
+<script src="js/macros-execucao.js?v=20261019a"></script>
 <script src="js/whatsapp-teste.js?v=20261015a"></script>
 <script src="js/stuck-ativo.js?v=20260929a"></script>
 <script src="js/whatsapp-conversa.js?v=20261015b"></script>
