@@ -89,6 +89,10 @@ class ConsultaAoServidor(unittest.TestCase):
         self.assertIn("/macros/comandos/pendentes?maquina=", pedido["url"])
         self.assertEqual(pedido["headers"]["Authorization"], "Bearer token-1")
 
+    def test_comandos_com_xpt_pede_so_os_do_polo(self):
+        b, _ = self.rodar([RespostaDublada(200, {"comandos": []})], lambda b: b.comandos(xpt="XPT_VIA"))
+        self.assertIn("&xpt=XPT_VIA", b.pedidos[0]["url"])
+
     def test_nao_fica_preso_7_minutos_numa_consulta_de_30_em_30_segundos(self):
         b, _ = self.rodar([RespostaDublada(200, {"comandos": []})], lambda b: b.comandos())
         leitura = b.pedidos[0]["timeout"][1]
@@ -163,8 +167,9 @@ class BackendDeMentira:
         self.consultas = 0
         self.resultados = []
 
-    def comandos(self):
+    def comandos(self, xpt=None):
         self.consultas += 1
+        self.xpt = xpt
         if self.erro:
             raise self.erro
         return self.resposta
@@ -221,6 +226,12 @@ class ServidorLocal(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(corpo, resposta)
         self.assertIn("backlog", "\n".join(capturado.output))
+
+    def test_comandos_repassa_o_xpt_do_chrome_que_perguntou(self):
+        b = BackendDeMentira({"comandos": []})
+        base = self.subir(b)
+        self.chamar(base, "/comandos?xpt=XPT_CFC")
+        self.assertEqual(b.xpt, "XPT_CFC")
 
     def test_agenda_null_passa_como_null(self):
         # null quer dizer "nada configurado pela tela" - a extensao volta pro popup.

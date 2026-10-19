@@ -249,12 +249,60 @@ async function abaExistenteDoSpx(qual) {
 // pareciam alarme mal configurado, quando na verdade era clique manual
 // testando. Sem essa marca, cada vez que isso acontecesse de novo seria
 // preciso reabrir essa investigacao do zero.
+// ── o polo de cada relatório (escolhido na tela Macros do sistema) ─────────
+const RELATORIOS = ['alimentacao', 'pedidos', 'backlog'];
+
+async function polosDoSite() {
+  try { return (await chrome.storage.local.get('polosSite')).polosSite || {}; } catch (e) { return {}; }
+}
+
+// A estação da aba, perguntada a ela. A tela do SPX demora a desenhar a barra da esquerda depois
+// de abrir: tenta por alguns segundos antes de desistir.
+async function xptDaAba(abaId) {
+  for (let i = 0; i < 6; i++) {
+    try {
+      const r = await chrome.tabs.sendMessage(abaId, { xmEstacao: true });
+      const xpt = r && L.xptDaEstacao(r.estacao);
+      if (xpt) return xpt;
+    } catch (e) { /* content script ainda não entrou */ }
+    await new Promise((ok) => setTimeout(ok, 2000));
+  }
+  return null;
+}
+
+// O que a aba contou da estação dela: vai junto quando a extensão pergunta por comandos, pro
+// servidor entregar a cada Chrome só o que é do polo dele.
+async function xptDoPerfil() {
+  try {
+    const { estacaoPerfil } = await chrome.storage.local.get('estacaoPerfil');
+    // Visto há mais de 1h: a aba fechou ou trocou de estação sem contar - melhor não afirmar nada.
+    if (!estacaoPerfil || Date.now() - estacaoPerfil.em > 60 * 60 * 1000) return null;
+    return estacaoPerfil.xpt || null;
+  } catch (e) { return null; }
+}
+
 async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado', config, idComando) {
   const aba = await abaDoSpx(qual);
   if (!aba) {
     const motivo = 'não consegui abrir o SPX';
     await anotarFalha(qual, motivo);
     return { ok: false, error: motivo };
+  }
+  // Polo escolhido no sistema: só roda se a aba estiver nele. Quem clica no popup decide na hora
+  // (manual não passa por aqui); o agendado de outro polo é do OUTRO Chrome, então só anota.
+  if (RELATORIOS.includes(qual) && origem !== 'manual') {
+    const exigido = (config && config.xpt) || (await polosDoSite())[qual] || null;
+    if (exigido) {
+      const d = L.decidirPolo(exigido, await xptDaAba(aba.id));
+      if (!d.rodar) {
+        if (d.outroPolo && origem !== 'site') {
+          await anotar(`pulado: ${qual} — ${d.motivo}`);
+          return { ok: false, error: d.motivo, pulado: true };
+        }
+        await anotarFalha(qual, d.motivo, 'aviso');
+        return { ok: false, error: d.motivo };
+      }
+    }
   }
   // Quando foi a pessoa que mandou rodar, traz a aba pra frente - ela quer ver.
   // No disparo agendado, nao: roubar a tela de quem esta trabalhando e pior do
@@ -485,6 +533,18 @@ async function guardarUltimo(ativ) {
   } catch (e) { /* acessorio */ }
 }
 
+// Quem é ESTE Chrome. Dois perfis no mesmo computador (um logado em Caçador, outro em Videira)
+// falam com o mesmo vigia e têm o mesmo nome de máquina: sem isto, um apagaria o outro na tela.
+async function perfilId() {
+  try {
+    const { perfilId: guardado } = await chrome.storage.local.get('perfilId');
+    if (guardado) return guardado;
+    const novo = (self.crypto && self.crypto.randomUUID ? self.crypto.randomUUID() : String(Math.random()).slice(2)).slice(0, 12);
+    await chrome.storage.local.set({ perfilId: novo });
+    return novo;
+  } catch (e) { return ''; }
+}
+
 async function mandarAtividade() {
   try {
     const mapa = await carregarAtividade();
@@ -498,7 +558,8 @@ async function mandarAtividade() {
     const corte = AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined;
     await fetch(`${VIGIA}/atividade`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agora: Date.now(), versao: chrome.runtime.getManifest().version, abas, agendados, ultimos }),
+      body: JSON.stringify({ agora: Date.now(), versao: chrome.runtime.getManifest().version, perfil: await perfilId(),
+        abas, agendados, ultimos }),
       signal: corte,
     });
   } catch (e) { /* vigia fechado: a tela mostra "sem sinal" */ }
@@ -546,7 +607,8 @@ async function garantirAlarmeDeComandos() {
 async function comandosDoVigia() {
   // O vigia espera ate 75s pelo servidor (15 de conexao + 60 de resposta).
   const corte = AbortSignal.timeout ? AbortSignal.timeout(90000) : undefined;
-  const r = await fetch(`${VIGIA}/comandos`, { signal: corte });
+  const xpt = await xptDoPerfil();
+  const r = await fetch(`${VIGIA}/comandos${xpt ? `?xpt=${encodeURIComponent(xpt)}` : ''}`, { signal: corte });
   if (!r.ok) throw new Error(`o vigia respondeu ${r.status}`);
   return r.json();
 }
@@ -628,6 +690,10 @@ async function buscarComandos() {
     try { await pararSeNecessario(resposta.paradas); } catch (e) { /* tenta na proxima */ }
     try { await entregarEventosGuardados(); } catch (e) { /* tenta na proxima */ }
     try { await mandarAtividade(); } catch (e) { /* tenta na proxima */ }
+    // O polo de cada relatório, escolhido na tela Macros (ausente = servidor antigo: mantém).
+    if (resposta.polos !== undefined) {
+      try { await chrome.storage.local.set({ polosSite: resposta.polos || {} }); } catch (e) { /* tenta na proxima */ }
+    }
     try { await aplicarAgendaDoSite(resposta.agenda); }
     catch (e) { console.log('[XM Macros] agenda do sistema falhou: ' + e); }
   } finally {
@@ -643,6 +709,14 @@ chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
   if (msg.xmDormir !== undefined) {
     setTimeout(() => responder({ ok: true }), Math.max(0, Math.min(25000, Number(msg.xmDormir) || 0)));
     return true;
+  }
+
+  // A aba conta em qual estação este Chrome está (spx.js).
+  if (msg.xmEstacaoPerfil) {
+    const xpt = L.xptDaEstacao(msg.xmEstacaoPerfil);
+    if (xpt) chrome.storage.local.set({ estacaoPerfil: { estacao: msg.xmEstacaoPerfil, xpt, em: Date.now() } }).catch(() => {});
+    responder({ ok: true });
+    return;
   }
 
   // O painel do macro conta o andamento (tela "Em execução").

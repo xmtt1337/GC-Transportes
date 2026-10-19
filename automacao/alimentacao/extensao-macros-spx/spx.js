@@ -310,4 +310,28 @@
   });
 
   G.spx = spx;
+
+  // ── em qual estação esta aba está ──────────────────────────────────────
+  // O fundo pergunta antes de rodar um relatório (o polo escolhido no sistema tem que bater), e
+  // a aba conta sozinha de minuto em minuto: é por isso que o Chrome de Caçador só recebe os
+  // pedidos de Caçador quando há um Chrome de cada polo no mesmo computador.
+  const estacaoAgora = () => {
+    try { return G.logica.estacaoNoTexto(raiz.document && raiz.document.body && raiz.document.body.innerText); }
+    catch (e) { return null; }
+  };
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage && raiz.document) {
+    chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
+      if (msg && msg.xmEstacao) responder({ estacao: estacaoAgora() });
+    });
+    const contar = () => {
+      const estacao = estacaoAgora();
+      if (!estacao) return;
+      try {
+        const r = chrome.runtime.sendMessage({ xmEstacaoPerfil: estacao });
+        if (r && typeof r.catch === 'function') r.catch(() => {});
+      } catch (e) { /* extensão recarregada: a próxima aba conta */ }
+    };
+    setTimeout(contar, 5000);
+    setInterval(contar, 60000);
+  }
 })(typeof window !== 'undefined' ? window : globalThis);

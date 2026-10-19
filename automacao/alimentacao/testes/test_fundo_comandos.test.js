@@ -245,6 +245,7 @@ test('nao pergunta de novo enquanto a pergunta anterior nao voltou', async () =>
   const c = carregar({ vigia: { demora: new Promise((r) => { soltar = r; }) } });
   const primeira = c.ctx.buscarComandos();
   await c.ctx.buscarComandos();      // segunda batida do alarme, com a primeira ainda em voo
+  await new Promise((r) => setImmediate(r)); // a primeira le a estacao do perfil antes de perguntar
   assert.strictEqual(enviadosAoVigia(c, '/comandos').length, 1);
   soltar();
   await primeira;
@@ -640,4 +641,24 @@ test('xmRodar manual (popup) NAO leva a marca encadeado', async () => {
   const c = carregar();
   await respostaMsg(c, { xmRodar: 'pedidos' });
   assert.deepStrictEqual(plano(c.chamadas.abas[0].msg), { xmMacro: 'pedidos', agendado: true });
+});
+
+// ── o polo de cada relatorio ──────────────────────────────────────────────
+test('com a estacao do perfil conhecida, pergunta os comandos so do XPT dele', async () => {
+  const c = carregar({ storage: { estacaoPerfil: { estacao: 'XPT_SC_Videira', xpt: 'XPT_VIA', em: AGORA - 60000 } } });
+  await c.ctx.buscarComandos();
+  assert.ok(enviadosAoVigia(c, '/comandos?xpt=XPT_VIA').length === 1);
+});
+
+test('estacao do perfil vista ha mais de 1h nao vale (pergunta sem XPT)', async () => {
+  const c = carregar({ storage: { estacaoPerfil: { estacao: 'XPT_SC_Videira', xpt: 'XPT_VIA', em: AGORA - 2 * 3600000 } } });
+  await c.ctx.buscarComandos();
+  assert.ok(enviadosAoVigia(c, '/comandos').length === 1);
+  assert.ok(!enviadosAoVigia(c, '/comandos?xpt').length);
+});
+
+test('os polos escolhidos no sistema ficam guardados', async () => {
+  const c = carregar({ vigia: { resposta: { comandos: [], polos: { alimentacao: 'XPT_CFC' } } } });
+  await c.ctx.buscarComandos();
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(c.guardado.polosSite)), { alimentacao: 'XPT_CFC' });
 });

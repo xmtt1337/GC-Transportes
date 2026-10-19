@@ -43,3 +43,22 @@ test('ultimoDoMacro guarda so o desfecho, nunca o "rodando"', () => {
   assert.deepStrictEqual(L.ultimoDoMacro({ macro: 'backlog', estado: 'ok', passo: 'baixado', terminou_em: 9, xpt: 'XPT_CFC', linhas: [] }),
     { estado: 'ok', passo: 'baixado', terminou_em: 9, xpt: 'XPT_CFC' });
 });
+
+// ── decidirPolo: o relatorio so roda no Chrome do polo escolhido ──────────
+test('sem polo escolhido, roda em qualquer um', () => {
+  assert.deepStrictEqual(L.decidirPolo(null, 'XPT_VIA'), { rodar: true });
+});
+
+test('polo igual ao da aba roda; diferente e do outro Chrome (nao e defeito)', () => {
+  assert.deepStrictEqual(L.decidirPolo('XPT_CFC', 'XPT_CFC'), { rodar: true });
+  const r = L.decidirPolo('XPT_CFC', 'XPT_VIA');
+  assert.strictEqual(r.rodar, false);
+  assert.strictEqual(r.outroPolo, true);
+  assert.match(r.motivo, /XPT_VIA.*XPT_CFC/);
+});
+
+test('polo escolhido e aba sem estacao legivel: nao roda (melhor que rodar no polo errado)', () => {
+  const r = L.decidirPolo('XPT_CFC', null);
+  assert.strictEqual(r.rodar, false);
+  assert.ok(!r.outroPolo);
+});

@@ -161,7 +161,9 @@ class VigiaDeMentira:
         self.backend = backend
         self._at_repetida = at_repetida_ha_s
 
-    def at_repetida_ha_s(self):
+    def at_repetida_ha_s(self, estacao=None):
+        if isinstance(self._at_repetida, dict):
+            return self._at_repetida.get(estacao)
         return self._at_repetida
 
 
@@ -206,6 +208,23 @@ class ServidorLocal(unittest.TestCase):
         _, corpo = self.chamar(base, "/pendentes")
         self.assertIsNone(corpo["at_repetida_ha_s"])
         self.assertEqual(corpo["codigos"], ["BR1"])
+
+    def test_pendentes_conta_so_a_at_repetida_da_estacao_pedida(self):
+        # Cacador e Videira no mesmo computador: a AT repetida de um nao vale pro outro.
+        base = self.subir(BackendDeMentira({"codigos": [], "total": 0}),
+                          at_repetida_ha_s={"XPT_SC_Caçador": 10, None: 10})
+        _, corpo = self.chamar(base, "/pendentes?estacao=XPT_SC_Videira")
+        self.assertIsNone(corpo["at_repetida_ha_s"])
+        _, corpo = self.chamar(base, "/pendentes?estacao=XPT_SC_Ca%C3%A7ador")
+        self.assertEqual(corpo["at_repetida_ha_s"], 10)
+
+    def test_at_repetida_por_estacao_ignora_acento(self):
+        class V:
+            at_repetida_em = 100.0
+            at_repetida_por_estacao = {va.chave_estacao("XPT_SC_Caçador"): 100.0}
+        self.assertIsNotNone(va.Vigia.at_repetida_ha_s(V(), "XPT_SC_Cacador"))
+        self.assertIsNone(va.Vigia.at_repetida_ha_s(V(), "XPT_SC_Videira"))
+        self.assertIsNotNone(va.Vigia.at_repetida_ha_s(V(), None))
 
     def test_pendentes_repassa_a_estacao_da_aba(self):
         backend = BackendDeMentira({"codigos": [], "total": 0})

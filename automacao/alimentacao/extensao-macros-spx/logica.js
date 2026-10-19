@@ -284,6 +284,20 @@
     return saida;
   }
 
+  // O polo escolhido no sistema pra um relatório x o polo da aba onde ele ia rodar. Com um
+  // Chrome por XPT no mesmo computador, os dois recebem a mesma agenda: cada um roda só o que é
+  // do polo dele. `outroPolo` = não é defeito, é o outro Chrome que roda.
+  function decidirPolo(exigido, xptDaAba) {
+    if (!exigido) return { rodar: true };
+    if (!xptDaAba) {
+      return { rodar: false, motivo: `o polo deste macro é ${exigido}, mas não achei a estação logada embaixo da logo do SPX` };
+    }
+    if (xptDaAba !== exigido) {
+      return { rodar: false, outroPolo: true, motivo: `este Chrome está em ${xptDaAba}; o macro é pra ${exigido}` };
+    }
+    return { rodar: true };
+  }
+
   // O último desfecho de cada macro nesta máquina (fica guardado além dos 30 min da aba).
   function ultimoDoMacro(a) {
     if (!a || !a.macro || a.estado === 'rodando') return null;
@@ -351,6 +365,7 @@
     atividadeDoPainel,
     agendadosDosAlarmes,
     ultimoDoMacro,
+    decidirPolo,
     xptDaEstacao,
     NOME_RELATORIO,
     NOME_PESQUISADOS,

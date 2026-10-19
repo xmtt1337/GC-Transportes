@@ -258,6 +258,22 @@ def salvar_json(caminho, dados):
     os.replace(temporario, caminho)
 
 
+def chave_estacao(estacao):
+    """'XPT_SC_Caçador' e 'XPT_SC_Cacador' sao a mesma estacao (a tela e o arquivo variam)."""
+    import unicodedata
+    sem = unicodedata.normalize("NFD", str(estacao or "")).encode("ascii", "ignore").decode()
+    return sem.strip().lower()
+
+
+def estacoes_do_arquivo(caminho):
+    """As estacoes que vem DENTRO de um arquivo de AT; vazio se nao der pra ler."""
+    try:
+        _tipo, linhas, _faltando = at.ler_qualquer(caminho)
+        return at.resumo(linhas)["estacoes"]
+    except Exception:
+        return []
+
+
 def nome_da_maquina():
     """O nome deste computador - e como o sistema distingue uma maquina da outra."""
     try:
@@ -502,7 +518,7 @@ class Backend:
 
         raise ErroDeEnvio("nao consegui autenticar")
 
-    def comandos(self):
+    def comandos(self, xpt=None):
         """O que a tela Macros pediu pra rodar e a agenda vigente.
 
         Devolve {"comandos": [{"id", "qual"}], "agenda": ...}. O servidor
@@ -510,7 +526,12 @@ class Backend:
         na mesma resposta, ou o pedido se perde.
         """
         maquina = quote(nome_da_maquina(), safe="")
-        return self._requisitar("GET", f"{ROTA_COMANDOS}/pendentes?maquina={maquina}")
+        rota = f"{ROTA_COMANDOS}/pendentes?maquina={maquina}"
+        # O XPT do Chrome que perguntou: com um Chrome por polo no mesmo computador, cada um so
+        # leva os pedidos do polo dele.
+        if xpt:
+            rota += f"&xpt={quote(xpt, safe='')}"
+        return self._requisitar("GET", rota)
 
     def enviar_eventos(self, eventos):
         """Conta ao sistema o que aconteceu. Ate EVENTOS_POR_ENVIO por vez."""
@@ -579,6 +600,9 @@ class Vigia:
         # Quando chegou a ultima AT igual a uma ja gravada (time.time()) - o Pedidos encadeado
         # pergunta isso pra saber que "0 codigos" e "a AT nao mudou", e nao "a carga atrasou".
         self.at_repetida_em = None
+        # O mesmo, POR ESTACAO: com Cacador e Videira baixando no mesmo computador, a AT repetida
+        # de um polo nao pode fazer o Pedidos do outro desistir de esperar a carga dele.
+        self.at_repetida_por_estacao = {}
         self.desde = time.time() - GRACA_S
         self.ultimo = "esperando arquivo"
         self._eventos = deque(maxlen=EVENTOS_GUARDADOS)
@@ -769,15 +793,22 @@ class Vigia:
         tipo = at.tipo_pelo_nome(nome)
         if tipo == "at":
             self.at_repetida_em = time.time()
+            for estacao in estacoes_do_arquivo(caminho):
+                self.at_repetida_por_estacao[chave_estacao(estacao)] = self.at_repetida_em
         log.info("igual a um ja enviado (%s): %s", quando, nome)
         self.relatar(MACRO_DO_TIPO.get(tipo, "geral"), "aviso",
                      f"Nada novo: {nome} é igual ao arquivo já gravado em {quando}", arquivo=nome)
 
-    def at_repetida_ha_s(self):
-        """Segundos desde a ultima AT igual a uma ja gravada, ou None."""
-        if self.at_repetida_em is None:
-            return None
-        return int(time.time() - self.at_repetida_em)
+    def at_repetida_ha_s(self, estacao=None):
+        """Segundos desde a ultima AT igual a uma ja gravada, ou None.
+
+        Com `estacao`, so a AT daquela estacao conta (a do outro polo nao diz nada sobre esta).
+        """
+        if estacao:
+            em = self.at_repetida_por_estacao.get(chave_estacao(estacao))
+        else:
+            em = self.at_repetida_em
+        return None if em is None else int(time.time() - em)
 
     # ── enviar ──────────────────────────────────────────────────────────
     def _proximo(self):
@@ -1003,7 +1034,7 @@ class Atendimento(BaseHTTPRequestHandler):
         if caminho.path == "/ping":
             return self._responder(200, {"vigia": "de pe", "ultimo": self.vigia.ultimo})
         if caminho.path == "/comandos":
-            return self._comandos()
+            return self._comandos(parse_qs(caminho.query))
         if caminho.path == "/colador/lote":
             return self._colador_lote(parse_qs(caminho.query))
         if caminho.path != "/pendentes":
@@ -1032,15 +1063,16 @@ class Atendimento(BaseHTTPRequestHandler):
         # O Pedidos encadeado na AT usa isto pra separar "a AT nao mudou" (termina sem erro) de
         # "a carga da AT ainda nao chegou no banco" (espera) - ver pedidos.js.
         if isinstance(resposta, dict):
-            resposta["at_repetida_ha_s"] = self.vigia.at_repetida_ha_s()
+            resposta["at_repetida_ha_s"] = self.vigia.at_repetida_ha_s(estacao)
         return self._responder(200, resposta)
 
     # A extensao pergunta aqui, de 30 em 30s, se a tela Macros pediu alguma
     # coisa. A resposta do servidor sai daqui direto pra ela: o comando so e
     # entregue UMA vez, entao nao pode parar no meio do caminho.
-    def _comandos(self):
+    def _comandos(self, query=None):
+        xpt = ((query or {}).get("xpt") or [""])[0].strip() or None
         try:
-            resposta = self.vigia.backend.comandos()
+            resposta = self.vigia.backend.comandos(xpt=xpt) if xpt else self.vigia.backend.comandos()
         except (ErroDeConta, ErroDeEnvio) as e:
             return self._responder(503, {"error": str(e)})
         except Exception as e:
