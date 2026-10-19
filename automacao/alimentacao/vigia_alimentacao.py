@@ -87,6 +87,8 @@ ROTA_PENDENTES = "/macros/at-exportada/pendentes"
 ROTA_COMANDOS = "/macros/comandos"
 # O vigia conta ao sistema o que aconteceu com cada arquivo (e o que a extensao contou a ele).
 ROTA_EVENTOS = "/macros/eventos"
+# O que esta rodando agora em cada aba (tela "Em execucao"); o servidor guarda so na memoria.
+ROTA_ATIVIDADE = "/macros/atividade"
 # O que o colador_neon.py fazia direto no Postgres (reservar lote, confirmar,
 # devolver, gravar a AT capturada) - agora pelo mesmo login da extensao. Ver
 # modules/at/colagem.js no backend.
@@ -513,6 +515,10 @@ class Backend:
     def enviar_eventos(self, eventos):
         """Conta ao sistema o que aconteceu. Ate EVENTOS_POR_ENVIO por vez."""
         return self._requisitar("POST", ROTA_EVENTOS, {"eventos": eventos})
+
+    def enviar_atividade(self, corpo):
+        """Conta ao sistema o que esta rodando agora nas abas do Chrome desta maquina."""
+        return self._requisitar("POST", ROTA_ATIVIDADE, {**corpo, "maquina": nome_da_maquina()})
 
     def resultado_comando(self, id_comando, ok, erro=None):
         """Conta ao servidor se a extensao conseguiu iniciar o macro."""
@@ -1143,11 +1149,13 @@ class Atendimento(BaseHTTPRequestHandler):
             tamanho = 0
         # 500 ids (o teto do lote) cabem folgado; o limite existe so pra nao
         # deixar um corpo absurdo travar a thread lendo request.
-        bruto = self.rfile.read(min(tamanho, 65536)) if tamanho > 0 else b""
+        bruto = self.rfile.read(min(tamanho, 262144)) if tamanho > 0 else b""
 
         caminho = urlparse(self.path).path
         if caminho == "/eventos":
             return self._evento(bruto)
+        if caminho == "/atividade":
+            return self._atividade(bruto)
         if caminho in ("/colador/confirmar", "/colador/liberar", "/colador/at"):
             return self._colador_escrita(caminho, bruto)
 
@@ -1173,6 +1181,24 @@ class Atendimento(BaseHTTPRequestHandler):
 
         if not corpo.get("ok"):
             log.info("comando %s nao rodou: %s", achado.group(1)[:8], erro)
+        return self._responder(200, {"ok": True})
+
+    # O andamento das abas: repassa como veio (quem valida e o servidor). Sem log por envio -
+    # chega de 30 em 30s o dia todo.
+    def _atividade(self, bruto):
+        try:
+            corpo = json.loads(bruto or b"{}")
+            if not isinstance(corpo, dict):
+                raise ValueError("corpo nao e objeto")
+        except (ValueError, UnicodeDecodeError):
+            return self._responder(400, {"error": "corpo ilegivel"})
+        try:
+            self.vigia.backend.enviar_atividade(corpo)
+        except (ErroDeConta, ErroDeEnvio) as e:
+            return self._responder(503, {"error": str(e)})
+        except Exception as e:
+            log.exception("erro ao contar a atividade")
+            return self._responder(500, {"error": str(e)})
         return self._responder(200, {"ok": True})
 
     def log_message(self, formato, *args):

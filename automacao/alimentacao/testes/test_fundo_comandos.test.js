@@ -28,6 +28,7 @@ const ID = '0f8fad5b-d9cb-469f-a165-70867728950e';
 
 function carregar({ storage = {}, vigia = {}, abasExtras = [] } = {}) {
   const guardado = { ...storage };
+  const sessao = {};
   const alarmes = new Map();
   const escritas = { criouAlarme: 0 };
   const chamadas = { abas: [], fetch: [], focou: 0, abaAtivada: 0, janelaFocada: 0 };
@@ -41,6 +42,9 @@ function carregar({ storage = {}, vigia = {}, abasExtras = [] } = {}) {
       },
       async set(o) { Object.assign(guardado, o); },
       async remove(ks) { for (const k of [].concat(ks)) delete guardado[k]; },
+    }, session: {
+      async get(k) { return k in sessao ? { [k]: sessao[k] } : {}; },
+      async set(o) { Object.assign(sessao, o); },
     } },
     alarms: {
       create(nome, info) {
@@ -57,6 +61,7 @@ function carregar({ storage = {}, vigia = {}, abasExtras = [] } = {}) {
       onMessage: { addListener: (f) => { ouvintes.mensagem = f; } },
       onInstalled: { addListener: () => {} },
       onStartup: { addListener: () => {} },
+      getManifest: () => ({ version: '9.99' }),
     },
     tabs: {
       async query() { return [{ id: 7, windowId: 1, url: 'https://spx.shopee.com.br/#/delivery-assignment/list' },
@@ -71,6 +76,8 @@ function carregar({ storage = {}, vigia = {}, abasExtras = [] } = {}) {
       async get() { return { status: 'complete' }; },
       async reload() {},
       async create() { return { id: 99 }; },
+      onRemoved: { addListener: (f) => { ouvintes.abaFechada = f; } },
+      onUpdated: { addListener: (f) => { ouvintes.abaMudou = f; } },
     },
     windows: { async update() { chamadas.focou++; chamadas.janelaFocada++; } },
   };

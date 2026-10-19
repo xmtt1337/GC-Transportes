@@ -150,6 +150,9 @@ class BackendDeMentira:
     def pendentes(self, *a, **k):
         return self._chamar("pendentes", *a, **k)
 
+    def enviar_atividade(self, *a, **k):
+        return self._chamar("enviar_atividade", *a, **k)
+
 
 class VigiaDeMentira:
     ultimo = "esperando"
@@ -209,6 +212,22 @@ class ServidorLocal(unittest.TestCase):
         base = self.subir(backend)
         self.chamar(base, "/pendentes?limite=10&estacao=XPT_SC_Ca%C3%A7ador")
         self.assertEqual(backend.chamadas, [("pendentes", (10,), {"estacao": "XPT_SC_Caçador"})])
+
+    # ── POST /atividade (tela "Em execucao") ─────────────────────────────────
+    def test_atividade_repassa_o_corpo_ao_servidor(self):
+        backend = BackendDeMentira({"ok": True})
+        base = self.subir(backend)
+        corpo = {"agora": 1, "abas": [{"aba": "7", "macro": "pedidos", "estado": "rodando"}]}
+        status, _ = self.chamar(base, "/atividade", metodo="POST", corpo=corpo)
+        self.assertEqual(status, 200)
+        self.assertEqual(backend.chamadas, [("enviar_atividade", (corpo,), {})])
+
+    def test_atividade_servidor_fora_responde_503(self):
+        backend = BackendDeMentira({})
+        backend.erro = va.ErroDeEnvio("nao alcancei o servidor", temporario=True)
+        base = self.subir(backend)
+        status, _ = self.chamar(base, "/atividade", metodo="POST", corpo={"abas": []})
+        self.assertEqual(status, 503)
 
     def test_pendentes_sem_estacao_manda_none(self):
         backend = BackendDeMentira({"codigos": [], "total": 0})

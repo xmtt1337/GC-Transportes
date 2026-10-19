@@ -61,6 +61,51 @@
   let aoParar = null;
   let tituloAtual = '';
 
+  // ── o andamento pra tela "Em execução" do sistema ──────────────────────
+  // Uma foto do painel desta aba (passo atual, últimas linhas, estação logada) vai pro service
+  // worker, que junta a de todas as abas e manda ao vigia -> sistema, só em memória lá. Tudo
+  // aqui é ACESSÓRIO: falhar não pode atrapalhar o macro.
+  let atividade = null;
+  let envioMarcado = null;
+  const INTERVALO_ENVIO_MS = 1500;
+
+  function estacaoDaPagina() {
+    try { return G.logica.estacaoNoTexto(document.body && document.body.innerText); }
+    catch (e) { return null; }
+  }
+
+  function enviarAtividade() {
+    envioMarcado = null;
+    try {
+      if (!atividade || typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) return;
+      const r = chrome.runtime.sendMessage({ xmAtividade: G.logica.atividadeDoPainel(atividade) });
+      if (r && typeof r.catch === 'function') r.catch(() => {});
+    } catch (e) { /* ver acima */ }
+  }
+
+  // Junta as mudanças de 1,5s num envio só (um macro solta várias notas por segundo); o fim do
+  // macro sai na hora.
+  function registrar(tipo, texto, opcoes) {
+    try { anotar(tipo, texto, opcoes || {}); } catch (e) { /* acessorio: nunca derruba o macro */ }
+  }
+
+  function anotar(tipo, texto, { estado, passo, imediato }) {
+    if (!atividade) return;
+    atividade.linhas.push({ em: Date.now(), tipo, texto: String(texto == null ? '' : texto) });
+    if (atividade.linhas.length > 60) atividade.linhas.splice(0, atividade.linhas.length - 60);
+    if (passo !== undefined) atividade.passo = passo;
+    if (estado) {
+      atividade.estado = estado;
+      if (estado !== 'rodando') atividade.terminouEm = Date.now();
+    }
+    if (imediato) {
+      if (envioMarcado) clearTimeout(envioMarcado);
+      enviarAtividade();
+    } else if (!envioMarcado) {
+      envioMarcado = setTimeout(enviarAtividade, INTERVALO_ENVIO_MS);
+    }
+  }
+
   // Conta ao sistema (pelo service worker -> vigia) como o macro terminou. ACESSORIO: se nao
   // der, o painel continua igual - nada aqui pode atrapalhar o macro.
   function contarAoSistema(tipo, texto) {
@@ -143,11 +188,15 @@
     abrir(titulo, quandoParar) {
       aoParar = quandoParar;
       tituloAtual = titulo;
+      atividade = { titulo, estado: 'rodando', passo: '', estacao: estacaoDaPagina(),
+                    comecouEm: Date.now(), terminouEm: null, linhas: [] };
+      registrar('passo', 'começou', { imediato: true });
       montar(titulo);
       console.log(`[XM Macros] ${titulo}: comecou`);
     },
 
     passo(texto) {
+      registrar('passo', texto, { passo: texto });
       if (!listaEl) return;
       fecharAnterior();
       passoAtual = linha('fazendo', '▸', texto);
@@ -155,6 +204,7 @@
     },
 
     nota(texto) {
+      registrar('nota', texto);
       if (!listaEl) return;
       linha('', '·', texto);
       console.log(`[XM Macros]   ${texto}`);
@@ -162,6 +212,7 @@
 
     ok(texto) {
       contarAoSistema('ok', texto);
+      registrar('ok', texto, { estado: 'ok', passo: texto, imediato: true });
       if (!listaEl) return;
       fecharAnterior();
       passoAtual = null;
@@ -174,6 +225,7 @@
     // Terminou sem fazer nada, mas sem defeito: no historico entra amarelo, nao vermelho.
     aviso(texto) {
       contarAoSistema('aviso', texto);
+      registrar('aviso', texto, { estado: 'aviso', passo: texto, imediato: true });
       if (!listaEl) return;
       fecharAnterior();
       passoAtual = null;
@@ -185,6 +237,8 @@
 
     erro(texto) {
       contarAoSistema('erro', texto);
+      registrar('erro', texto, { estado: /^parado por voc/i.test(String(texto)) ? 'parado' : 'erro',
+                                 passo: texto, imediato: true });
       if (!listaEl) return;
       if (passoAtual) {
         passoAtual.classList.remove('fazendo');

@@ -170,11 +170,19 @@
   // elemento sem filho).
   const LEITURAS_ESTAVEIS = 6;
   const LEITURAS_ESTAVEIS_SEM_AVISO = 20;
+  // NENHUM ENCONTRADO: o SPX não desenha o rodapé "Esperado N" quando a busca não acha nada
+  // (19/10/2026, das 04:34 às 06:04: só sobravam códigos de Videira na busca da aba de Caçador,
+  // e o macro esperava 3 min por um rodapé que nunca vem). Sem rodapé e com o aviso de "não
+  // encontrados" na tela por tantas leituras seguidas, a resposta é zero.
+  const LEITURAS_NENHUM_ENCONTRADO = 10;
   function novoRodape(total) {
     let anterior = null;
     let iguais = 0;
+    let semRodapeComAviso = 0;
     return {
       ler(n, faltaram) {
+        semRodapeComAviso = n === null && faltaram ? semRodapeComAviso + 1 : 0;
+        if (semRodapeComAviso >= LEITURAS_NENHUM_ENCONTRADO) return 0;
         iguais = n !== null && n === anterior ? iguais + 1 : 0;
         anterior = n;
         if (n === total) return n;
@@ -235,23 +243,28 @@
     let ultimoVisto = null;
     let quantos;
     try {
-      quantos = await S.esperar(() => {
+      // Embrulhado em { n }: zero encontrados é resposta válida, e esperar() só para em verdadeiro.
+      const r = await S.esperar(() => {
         const achado = G.painelDeTarefas.folhaComRegex(/esperado\s+([\d.,]+)/i);
-        if (!achado) return null;
-        const n = Number(achado.m[1].replace(/[.,]/g, '')) || null;
-        ultimoVisto = n;
-        return rodape.ler(n, !!avisoDeNaoEncontrados());
+        const n = achado ? (Number(achado.m[1].replace(/[.,]/g, '')) || null) : null;
+        if (n !== null) ultimoVisto = n;
+        const lido = rodape.ler(n, !!avisoDeNaoEncontrados());
+        return lido === null ? null : { n: lido };
       }, { oque: `a busca fechar em "Esperado ${codigos.length}" no rodapé`, limite: 180000, intervalo: 700 });
+      quantos = r.n;
     } catch (e) {
       if (e instanceof S.Parado) throw e;
       throw new Error(ultimoVisto === null
-        ? 'a busca não terminou a tempo — não achei "Esperado N" no rodapé em 180s'
-        : `a busca ficou em "Esperado ${ultimoVisto}" e nunca fechou em ${codigos.length} em 180s — ` +
-          'rode de novo');
+        ? `a Pesquisa em lote de ${codigos.length} pedidos não mostrou resultado em 3 min ` +
+          '(o rodapé "Esperado N" não apareceu). O SPX pode estar lento — a próxima rodada tenta de novo'
+        : `a Pesquisa em lote parou em ${ultimoVisto} de ${codigos.length} pedidos e não terminou em 3 min ` +
+          '— a próxima rodada tenta de novo');
     }
-    P.nota(quantos === codigos.length ? `busca pronta: ${quantos} pedidos`
+    if (quantos === 0) P.nota(`nenhum dos ${codigos.length} pedidos existe no SPX desta estação`);
+    else P.nota(quantos === codigos.length ? `busca pronta: ${quantos} pedidos`
       : `busca pronta: ${quantos} de ${codigos.length} encontrados no SPX (o resto não existe lá)`);
     await S.dormir(800);
+    return quantos;
   }
 
   // ── 4. exportar ────────────────────────────────────────────────────────
@@ -360,28 +373,36 @@
   // pedia de novo e desistia (02/10 23:17 e 03/10 00:00: "pedi a exportação 3 vezes e nenhuma
   // tarefa nasceu"), sendo que às 21:34 o mesmo fluxo tinha baixado normal.
   const ESPERA_TAREFA_NASCER_MS = 25000;
+  // Depois do 3º pedido, ainda olha o painel por mais este tempo: uma busca grande pode fazer a
+  // tarefa nascer atrasada, e ela vale do mesmo jeito (o painel foi lido ANTES do 1º clique).
+  const ESPERA_FINAL_MS = 60000;
+
+  async function tarefaNova(antes, limite) {
+    const T = G.painelDeTarefas;
+    const nova = await S.esperar(async () => {
+      const agora = await T.lerTarefasAgora();
+      return L.escolherTarefaNova(antes, agora, L.NOME_PESQUISADOS);
+    }, { oque: 'a tarefa da exportação nascer no painel', limite, intervalo: 2000 })
+      .catch((e) => { if (e instanceof S.Parado) throw e; return null; });
+    await T.fecharPainelTarefas();
+    return nova;
+  }
 
   async function pedirExportacao(antes) {
-    const T = G.painelDeTarefas;
     for (const tentativa of [1, 2, 3]) {
       await exportarPesquisados(tentativa);
       if (tentativa > 1) P.nota(`pedindo de novo (${tentativa}ª vez)`);
-
       await S.dormir(3000);
-      const nova = await S.esperar(async () => {
-        const agora = await T.lerTarefasAgora();
-        return L.escolherTarefaNova(antes, agora, L.NOME_PESQUISADOS);
-      }, { oque: 'a tarefa da exportação nascer no painel', limite: ESPERA_TAREFA_NASCER_MS, intervalo: 2000 })
-        .catch((e) => { if (e instanceof S.Parado) throw e; return null; });
-      await T.fecharPainelTarefas();
-
+      const nova = await tarefaNova(antes, tentativa === 3 ? ESPERA_TAREFA_NASCER_MS + ESPERA_FINAL_MS
+        : ESPERA_TAREFA_NASCER_MS);
       if (nova) {
         P.nota(`pedido aceito: ${nova.nome} — ${nova.quando}`);
         return nova;
       }
-      P.nota('o clique não pegou — nenhuma tarefa nasceu');
+      P.nota('o SPX ainda não criou a tarefa de exportação');
     }
-    throw new Error('pedi a exportação 3 vezes e nenhuma tarefa nasceu no painel');
+    throw new Error(`cliquei 3 vezes em "${TEXTO_EXPORTAR_PESQUISADOS}" e o SPX não criou o arquivo ` +
+      `("${L.NOME_PESQUISADOS}" não apareceu em Última tarefa em ~2 min) — a próxima rodada tenta de novo`);
   }
 
   // ── o macro ────────────────────────────────────────────────────────────
@@ -406,7 +427,11 @@
       }
 
       P.passo('2/5 · Pesquisa em lote');
-      await colarEEnviar(codigos);
+      const achados = await colarEEnviar(codigos);
+      if (achados === 0) {
+        P.aviso(`nenhum dos ${codigos.length} pedidos pendentes existe no SPX de ${estacaoDaAba()} — nada pra exportar`);
+        return;
+      }
 
       P.passo('3/5 · lendo o painel antes de exportar');
       const antes = await T.lerTarefasAgora();

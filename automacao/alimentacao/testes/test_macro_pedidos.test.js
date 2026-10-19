@@ -212,3 +212,24 @@ test('estacao: sem XPT_SC_ na tela recusa, em vez de pesquisar codigos de outro 
   await assert.rejects(r.G.pedidos.pedirCodigos(), /não achei a estação/);
   assert.strictEqual(r.perguntas.length, 0);
 });
+
+// 19/10/2026: busca so com codigos de outra estacao - o SPX nao desenha o rodape "Esperado N".
+test('rodape: sem rodape e com o aviso de "nao encontrados" por 10 leituras, a resposta e zero', () => {
+  const r = carregar([COM(1)]);
+  const rod = r.G.pedidos.novoRodape(3073);
+  const res = Array.from({ length: 10 }, () => rod.ler(null, true));
+  assert.ok(res.slice(0, 9).every((x) => x === null));
+  assert.strictEqual(res[9], 0);
+});
+
+test('rodape: sem rodape e SEM o aviso nunca conclui zero (pode ser so a tela carregando)', () => {
+  const r = carregar([COM(1)]);
+  const rod = r.G.pedidos.novoRodape(3073);
+  for (let i = 0; i < 30; i++) assert.strictEqual(rod.ler(null, false), null);
+});
+
+test('rodape: o aviso piscando nao soma leituras de zero', () => {
+  const r = carregar([COM(1)]);
+  const rod = r.G.pedidos.novoRodape(3073);
+  for (let i = 0; i < 30; i++) assert.strictEqual(rod.ler(null, i % 2 === 0), null);
+});

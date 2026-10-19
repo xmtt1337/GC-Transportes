@@ -36,15 +36,16 @@ function elemento() {
 
 function carregar({ enviar } = {}) {
   const mensagens = [];
+  const atividades = [];
   const ctx = vm.createContext({
     console: { log() {}, error() {}, warn() {} },
     document: { createElement: elemento, documentElement: elemento(), getElementById: () => null },
     setInterval: () => 1, clearInterval() {},
-    chrome: { runtime: { sendMessage: (m) => { mensagens.push(m); return enviar ? enviar(m) : Promise.resolve({ ok: true }); } } },
+    chrome: { runtime: { sendMessage: (m) => { (m.xmAtividade ? atividades : mensagens).push(m); return enviar ? enviar(m) : Promise.resolve({ ok: true }); } } },
   });
   vm.runInContext(fs.readFileSync(path.join(PASTA, 'logica.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(PASTA, 'painel.js'), 'utf8'), ctx, { filename: 'painel.js' });
-  return { P: ctx.XMMacro.painel, mensagens };
+  return { P: ctx.XMMacro.painel, mensagens, atividades };
 }
 
 const plano = (x) => JSON.parse(JSON.stringify(x));
@@ -165,4 +166,45 @@ test('os titulos do catalogo sao os que os macros realmente usam', () => {
 test('eventoDoPainel: aviso explicito vira nivel aviso, nao erro', () => {
   assert.deepStrictEqual(L.eventoDoPainel('Pedidos Pesquisados', 'aviso', 'a AT não mudou'),
     { macro: 'pedidos', nivel: 'aviso', texto: 'a AT não mudou' });
+});
+
+// ── o andamento pra tela "Em execucao" ────────────────────────────────────
+test('atividade: abrir e terminar mandam a foto na hora, com o macro e o estado', () => {
+  const { P, atividades } = carregar();
+  P.abrir('Colador — AT Cluster', () => {});
+  P.ok('fila vazia');
+  const ultima = atividades[atividades.length - 1].xmAtividade;
+  assert.strictEqual(atividades[0].xmAtividade.estado, 'rodando');
+  assert.strictEqual(ultima.macro, 'at_cluster');
+  assert.strictEqual(ultima.estado, 'ok');
+  assert.ok(ultima.terminou_em >= ultima.comecou_em);
+  assert.deepStrictEqual(plano(ultima.linhas.map((l) => l.tipo)), ['passo', 'ok']);
+});
+
+test('atividade: parado por voce vira "parado", erro de verdade vira "erro"', () => {
+  const a = carregar();
+  a.P.abrir('Backlog', () => {});
+  a.P.erro('parado por você');
+  assert.strictEqual(a.atividades.pop().xmAtividade.estado, 'parado');
+  const b = carregar();
+  b.P.abrir('Backlog', () => {});
+  b.P.erro('não achei o botão');
+  assert.strictEqual(b.atividades.pop().xmAtividade.estado, 'erro');
+});
+
+test('atividade: sem setTimeout (ou com ele quebrado) o painel continua funcionando', () => {
+  const { P } = carregar();
+  P.abrir('Pedidos Pesquisados', () => {});
+  assert.doesNotThrow(() => { P.passo('1/5'); P.nota('x'); });
+});
+
+test('atividadeDoPainel corta as linhas e le o XPT da estacao', () => {
+  const linhas = Array.from({ length: 50 }, (_, i) => ({ em: i, tipo: 'nota', texto: 'x'.repeat(500) }));
+  const a = L.atividadeDoPainel({ titulo: 'Pedidos Pesquisados', estado: 'rodando', passo: 'p',
+    estacao: 'XPT_SC_Videira', comecouEm: 1, linhas });
+  assert.strictEqual(a.macro, 'pedidos');
+  assert.strictEqual(a.xpt, 'XPT_VIA');
+  assert.strictEqual(a.linhas.length, 30);
+  assert.strictEqual(a.linhas[0].em, 20);
+  assert.strictEqual(a.linhas[0].texto.length, 200);
 });

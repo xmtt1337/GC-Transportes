@@ -240,9 +240,31 @@
     'Colador — Recebimento': 'recebimento', 'Colador — AT Cluster': 'at_cluster',
   };
 
+  const macroDoTitulo = (titulo) => (Object.prototype.hasOwnProperty.call(MACRO_DO_PAINEL, titulo)
+    ? MACRO_DO_PAINEL[titulo] : null);
+
+  // O que a aba conta pra tela "Em execução" do sistema: o andamento inteiro do painel, com as
+  // últimas linhas. Cortado aqui pra caber no envio (o vigia lê no máximo 256 KB por vez).
+  const MAX_LINHAS_ATIVIDADE = 30;
+  const MAX_TEXTO_ATIVIDADE = 200;
+  function atividadeDoPainel(p) {
+    const corta = (t) => String(t == null ? '' : t).slice(0, MAX_TEXTO_ATIVIDADE);
+    return {
+      macro: macroDoTitulo(p.titulo) || 'outro',
+      titulo: corta(p.titulo),
+      estado: p.estado,
+      passo: corta(p.passo),
+      estacao: p.estacao || null,
+      xpt: xptDaEstacao(p.estacao),
+      comecou_em: p.comecouEm,
+      terminou_em: p.terminouEm || null,
+      linhas: (p.linhas || []).slice(-MAX_LINHAS_ATIVIDADE)
+        .map((l) => ({ em: l.em, tipo: l.tipo, texto: corta(l.texto) })),
+    };
+  }
+
   function eventoDoPainel(titulo, tipo, texto) {
-    const macro = Object.prototype.hasOwnProperty.call(MACRO_DO_PAINEL, titulo)
-      ? MACRO_DO_PAINEL[titulo] : null;
+    const macro = macroDoTitulo(titulo);
     const t = String(texto == null ? '' : texto).trim();
     if (!macro || !t) return null;
     if (tipo === 'ok') return { macro, nivel: 'ok', texto: t };
@@ -298,6 +320,8 @@
 
   const logica = {
     estacaoNoTexto,
+    macroDoTitulo,
+    atividadeDoPainel,
     xptDaEstacao,
     NOME_RELATORIO,
     NOME_PESQUISADOS,

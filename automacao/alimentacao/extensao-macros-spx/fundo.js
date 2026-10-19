@@ -433,6 +433,78 @@ async function entregarEventosGuardados() {
   await chrome.storage.local.set({ eventosGuardados: faltam });
 }
 
+// ── o que está rodando agora (tela "Em execução" do sistema) ────────────────
+// Cada aba com painel de macro manda a foto do andamento (painel.js). Aqui se junta a de todas
+// as abas e manda ao vigia, que carimba o computador e repassa ao sistema - que guarda SÓ EM
+// MEMÓRIA (nada disso toca o banco). Vai na mudança (juntando 2s) e a cada 30s junto da
+// consulta de comandos, que serve de sinal de vida: lista vazia = extensão viva sem nada rodando.
+// Guardado em storage.session porque o service worker dorme e perderia o que estava rodando.
+const CHAVE_ATIVIDADE = 'atividadeAbas';
+const GUARDAR_TERMINADO_MS = 30 * 60 * 1000;
+let atividadeAbas = null;
+let fotoMarcada = null;
+let filaAtividade = Promise.resolve();
+
+async function carregarAtividade() {
+  if (atividadeAbas) return atividadeAbas;
+  try {
+    const o = await chrome.storage.session.get(CHAVE_ATIVIDADE);
+    atividadeAbas = o[CHAVE_ATIVIDADE] || {};
+  } catch (e) { atividadeAbas = {}; }
+  return atividadeAbas;
+}
+
+function podarAtividade(mapa) {
+  const corte = Date.now() - GUARDAR_TERMINADO_MS;
+  for (const [aba, a] of Object.entries(mapa)) {
+    if (a.terminou_em && a.terminou_em < corte) delete mapa[aba];
+  }
+}
+
+// Serializado: duas abas contando ao mesmo tempo não podem apagar uma a mudança da outra.
+function mudarAtividade(mudar) {
+  filaAtividade = filaAtividade.then(async () => {
+    const mapa = await carregarAtividade();
+    mudar(mapa);
+    podarAtividade(mapa);
+    try { await chrome.storage.session.set({ [CHAVE_ATIVIDADE]: mapa }); } catch (e) { /* fica só na memória */ }
+    if (!fotoMarcada) fotoMarcada = setTimeout(() => { fotoMarcada = null; mandarAtividade(); }, 2000);
+  }).catch(() => {});
+  return filaAtividade;
+}
+
+async function mandarAtividade() {
+  try {
+    const mapa = await carregarAtividade();
+    podarAtividade(mapa);
+    const abas = Object.entries(mapa).map(([aba, a]) => ({ aba, ...a }));
+    const corte = AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined;
+    await fetch(`${VIGIA}/atividade`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agora: Date.now(), versao: chrome.runtime.getManifest().version, abas }),
+      signal: corte,
+    });
+  } catch (e) { /* vigia fechado: a tela mostra "sem sinal" */ }
+}
+
+chrome.tabs.onRemoved.addListener((abaId) => {
+  mudarAtividade((mapa) => { delete mapa[String(abaId)]; });
+});
+
+// Aba recarregada no meio do macro: o content script morreu junto, e sem isto a tela
+// mostraria "rodando" pra sempre.
+chrome.tabs.onUpdated.addListener((abaId, mudanca) => {
+  if (!mudanca || mudanca.status !== 'loading') return;
+  mudarAtividade((mapa) => {
+    const a = mapa[String(abaId)];
+    if (a && a.estado === 'rodando') {
+      a.estado = 'interrompido';
+      a.terminou_em = Date.now();
+      a.passo = 'a aba recarregou no meio do macro';
+    }
+  });
+});
+
 // ── a tela Macros do sistema ────────────────────────────────────────────────
 // De 30 em 30s a extensao pergunta ao vigia (que pergunta ao servidor) se
 // alguem clicou em "Rodar" na tela Macros, e traz a agenda que a tela
@@ -538,6 +610,7 @@ async function buscarComandos() {
     }
     try { await pararSeNecessario(resposta.paradas); } catch (e) { /* tenta na proxima */ }
     try { await entregarEventosGuardados(); } catch (e) { /* tenta na proxima */ }
+    try { await mandarAtividade(); } catch (e) { /* tenta na proxima */ }
     try { await aplicarAgendaDoSite(resposta.agenda); }
     catch (e) { console.log('[XM Macros] agenda do sistema falhou: ' + e); }
   } finally {
@@ -553,6 +626,14 @@ chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
   if (msg.xmDormir !== undefined) {
     setTimeout(() => responder({ ok: true }), Math.max(0, Math.min(25000, Number(msg.xmDormir) || 0)));
     return true;
+  }
+
+  // O painel do macro conta o andamento (tela "Em execução").
+  if (msg.xmAtividade) {
+    const aba = remetente && remetente.tab ? String(remetente.tab.id) : null;
+    if (aba) mudarAtividade((mapa) => { mapa[aba] = msg.xmAtividade; });
+    responder({ ok: true });
+    return;
   }
 
   // O painel do macro (content script) conta como ele terminou.
