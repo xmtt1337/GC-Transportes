@@ -188,6 +188,24 @@ function _macItemPorId(id) {
 const _macAbasDe = qual => ((_macAtividade && _macAtividade.abas) || []).filter(a => a.macro === qual);
 const _macRodandoDe = qual => _macAbasDe(qual).filter(a => a.estado === "rodando");
 
+// A próxima rodada agendada de um relatório: a do computador escolhido, ou a mais cedo.
+function _macProximaDe(qual) {
+    const lista = ((_macAtividade && _macAtividade.ativos) || []).filter(a => a.macro === qual && a.proxima_em);
+    if (!lista.length) return null;
+    return lista.find(a => _macComputador && _macMesmoPc(a.maquina, _macComputador))
+        || lista.slice().sort((a, b) => a.proxima_em - b.proxima_em)[0];
+}
+
+// "15:31 (em 12 min)" / "15:31 (a qualquer momento)". A hora sai do relógio do servidor (já
+// convertido), mostrada em Brasília.
+function _macProximaTexto(p) {
+    const hora = new Date(p.proxima_em).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+    const s = p.proxima_em_s;
+    const falta = s === null || s === undefined ? "" : s <= 60 ? " (a qualquer momento)"
+        : s < 3600 ? ` (em ${Math.round(s / 60)} min)` : ` (em ${Math.floor(s / 3600)} h ${String(Math.round((s % 3600) / 60)).padStart(2, "0")})`;
+    return hora + falta;
+}
+
 // O XPT em que um macro do SPX roda: o da estação logada na aba do computador escolhido — a
 // extensão lê embaixo da logo do SPX. A aba mais recente desse macro, ou qualquer aba daquele
 // computador, diz qual é.
@@ -212,6 +230,8 @@ function _macResumoLinha(item) {
         if (_macOcupado(m.comando)) return { tom: "andando", texto: "Pedido enviado — aguardando o computador" };
         if (m.problema && m.problema.nivel === "erro") return { tom: "erro", texto: `Falhou ${_macHa(m.problema.segundos_atras)}` };
         if (m.agendavel && m.configurado && !m.ativo) return { tom: "mudo", texto: "Horário desligado" };
+        const prox = _macProximaDe(item.qual);
+        if (prox) return { tom: "ok", texto: `Próxima às ${_macProximaTexto(prox)}` };
         return { tom: m.agendavel && !m.configurado ? "mudo" : "ok", texto: m.resumo || "" };
     }
     if (item.tipo === "colador") {
@@ -392,6 +412,10 @@ function _macVivoSpxHtml(item, m) {
                 `Vale pros três relatórios: dividem a mesma conta do SPX.${pc && onlinePc === false ? " <b>Desconectado agora.</b>" : ""}`)}
             ${_macCampoHtml("Polo (XPT)", poloTexto, poloNota)}
             ${_macCampoHtml("Última carga", carga, "Quando o arquivo chegou no sistema — a prova de que rodou de verdade.")}
+            ${_macCampoHtml("Próxima rodada", _macProximaDe(item.qual)
+                ? _macEsc(_macProximaTexto(_macProximaDe(item.qual)))
+                : `<span class="mac-agenda-mudo">${m.agendavel && m.configurado && !m.ativo ? "horário desligado" : "nenhuma agendada"}</span>`,
+                item.qual === "pedidos" ? "Vai logo depois de cada AT Exportada." : `${_macEsc(m.resumo || "")}${_macProximaDe(item.qual) ? ` · em ${_macEsc(_macProximaDe(item.qual).maquina)}` : ""}`)}
         </div>
         ${_macAvisoComputadorHtml()}
         <div class="macd-acoes">

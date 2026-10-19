@@ -27,6 +27,11 @@ const ACESSOR = `
   set dados(v) { _mexDados = v; _mexRecebidoEm = Date.now(); },
   computadoresHtml: () => _mexComputadoresHtml(),
   filtrosHtml: (r) => _mexFiltrosHtml(r),
+  ativos: (abas) => _mexAtivos(abas),
+  secaoAtivos: (l) => _mexSecaoAtivosHtml(l),
+  proximoHorario: (r, ms) => _mexProximoHorario(r, ms),
+  falta: (s) => _mexFalta(s),
+  set avisos(v) { _mexAvisos = v; },
 };`;
 
 function carregar(role = "dev") {
@@ -91,4 +96,64 @@ test("computador com vigia mas sem relatorio pede pra atualizar a extensao", () 
 test("rodando sem XPT aparece como XPT desconhecido", () => {
   const m = carregar();
   assert.match(m.cartao(ABA({ xpt: null })), /XPT desconhecido/);
+});
+
+// ── ativos: o que esta executando + o que espera a proxima rodada ──
+test("AT agendada aparece como ativa esperando, com a contagem e a ultima rodada", () => {
+  const m = carregar();
+  m.dados = { abas: [], maquinas: [], alertas: [], ativos: [
+    { macro: "alimentacao", maquina: "PC1", online: true, xpt: "XPT_CFC", rodando: false, modo: "intervalo", minutos: 30,
+      proxima_em: Date.now() + 720000, proxima_em_s: 720, ultimo: { estado: "ok", passo: "baixado", terminou_ha_s: 1080 } },
+  ] };
+  const lista = m.ativos([]);
+  const html = m.secaoAtivos(lista);
+  assert.match(html, /Ativos agora · 1/);
+  assert.match(html, /Ativo, aguardando · PC1 · a cada 30 min/);
+  assert.match(html, /Próxima rodada em <b data-mex-falta="720">12min 00s<\/b>/);
+  assert.match(html, /Última: <b>Concluído<\/b>/);
+});
+
+test("o que esta executando vem antes, no cartao com o log", () => {
+  const m = carregar();
+  const aba = { aba: "4", maquina: "PC1", macro: "backlog", estado: "rodando", passo: "baixando", xpt: "XPT_CFC", rodando_ha_s: 10, linhas: [] };
+  m.dados = { abas: [aba], maquinas: [], alertas: [], ativos: [
+    { macro: "alimentacao", maquina: "PC1", online: true, rodando: false, proxima_em_s: 60 },
+    { macro: "backlog", maquina: "PC1", online: true, rodando: true, aba: "4" },
+  ] };
+  const lista = m.ativos([aba]);
+  assert.strictEqual(lista[0].macro, "backlog");
+  assert.match(m.secaoAtivos(lista), /Log completo/);
+});
+
+test("extensao antiga (sem ativos) ainda mostra o que esta rodando", () => {
+  const m = carregar();
+  const aba = { aba: "1", maquina: "PC1", macro: "recebimento", estado: "rodando", xpt: "XPT_VIA", linhas: [] };
+  m.dados = { abas: [aba], maquinas: [], alertas: [] };
+  assert.deepStrictEqual([...m.ativos([aba]).map((a) => a.macro)], ["recebimento"]);
+});
+
+test("aviso de rota ligado entra nos ativos com a proxima pelo horario das rodadas", () => {
+  const m = carregar();
+  m.dados = { abas: [], maquinas: [], alertas: [], ativos: [] };
+  m.avisos = [{ chave: "avisos_entregador", nome: "Shopee XPT_CFC", ativo: true, resumo: "19:05 Abaixo de 90% · 22:05 Mais de 1" },
+              { chave: "outro", nome: "Desligado", ativo: false, resumo: "08:00 x" }];
+  const lista = m.ativos([]);
+  assert.strictEqual(lista.length, 1);
+  assert.match(m.secaoAtivos(lista), /Aviso de rota · Shopee XPT_CFC/);
+});
+
+test("proximo horario das rodadas: o seguinte hoje, ou o primeiro de amanha", () => {
+  const m = carregar();
+  // 18:00 em Brasilia = 21:00 UTC
+  const as18 = Date.UTC(2026, 9, 19, 21, 0, 0);
+  assert.strictEqual(m.proximoHorario("19:05 x · 22:05 y", as18), 65 * 60);
+  const as23 = Date.UTC(2026, 9, 20, 2, 0, 0);
+  assert.strictEqual(m.proximoHorario("19:05 x · 22:05 y", as23), (20 * 60 + 5) * 60);
+  assert.strictEqual(m.proximoHorario("sem rodada", as18), null);
+});
+
+test("passou da hora: diz que deve comecar a qualquer momento, nao numero negativo", () => {
+  const m = carregar();
+  assert.match(m.falta(-30), /qualquer momento/);
+  assert.strictEqual(m.falta(90), "1min 30s");
 });

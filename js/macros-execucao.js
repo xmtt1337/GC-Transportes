@@ -42,6 +42,7 @@ let _mexTimer = null;
 let _mexTimerHist = null;
 let _mexRelogio = null;
 let _mexErro = null;
+let _mexAvisos = [];         // avisos de rota (rodam no servidor): [{ chave, nome, ativo, resumo }]
 
 const _mexEhDev = () => !!(window._gcUser && window._gcUser.role === "dev");
 const _mexMacrosVisiveis = () => _mexEhDev() ? _MEX_ORDEM : _MEX_ORDEM.filter(m => _MEX_MACROS[m].tipo === "colador");
@@ -118,6 +119,7 @@ function _mexAssinatura(d) {
             (a.linhas || []).length, ((a.linhas || []).slice(-1)[0] || {}).em]),
         (d.maquinas || []).map(m => [m.nome, m.online, m.versao]),
         (d.ouvindo || []).map(m => [m.nome, m.online]),
+        (d.ativos || []).map(a => [a.macro, a.maquina, a.rodando, a.online, a.proxima_em, a.ultimo && a.ultimo.terminou_em]),
         d.alertas || [],
     ]);
 }
@@ -127,6 +129,24 @@ function _mexBuscarHistorico() {
         .then(r => r.json())
         .then(d => { _mexHistorico = d.eventos || []; _mexDesenharHistorico(); })
         .catch(() => {});
+    // O aviso de rota roda no servidor, sem aba nem computador: o horário dele vem da config.
+    if (_mexEhDev()) {
+        fetch(`${API}/admin/macros`, { headers: { "Authorization": "Bearer " + token } })
+            .then(r => r.json())
+            .then(d => { _mexAvisos = (d && d.macros) || []; if (_mexDados) _mexDesenhar(); })
+            .catch(() => {});
+    }
+}
+
+// "19:05 Abaixo de 90% · 22:05 Mais de 1..." -> segundos até o próximo desses horários, em Brasília.
+function _mexProximoHorario(resumo, agoraMs) {
+    const horas = [...String(resumo || "").matchAll(/\b(\d{2}):(\d{2})\b/g)].map(m => Number(m[1]) * 60 + Number(m[2]));
+    if (!horas.length) return null;
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", hour12: false,
+        hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date(agoraMs || Date.now())).map(x => [x.type, x.value]));
+    const agoraS = (Number(p.hour) % 24) * 3600 + Number(p.minute) * 60 + Number(p.second);
+    const proximos = horas.map(h => { let d = h * 60 - agoraS; if (d <= 0) d += 86400; return d; });
+    return Math.min(...proximos);
 }
 
 function _mexMaisHistorico() {
@@ -181,6 +201,9 @@ function _mexAtualizarTempos() {
     document.querySelectorAll("#tela-macros-execucao [data-mex-ha]").forEach(el => {
         el.textContent = _mexHa(Number(el.dataset.mexHa) + passou);
     });
+    document.querySelectorAll("#tela-macros-execucao [data-mex-falta]").forEach(el => {
+        el.textContent = _mexFalta(Number(el.dataset.mexFalta) - passou);
+    });
     const vivo = document.getElementById("mex-vivo-texto");
     if (vivo && _mexRecebidoEm) vivo.textContent = `atualizado ${_mexHa(passou)}`;
 }
@@ -195,15 +218,16 @@ function _mexDesenhar() {
     }
     const abas = (_mexDados.abas || []);
     const rodando = abas.filter(a => a.estado === "rodando" || a.estado === "sem_sinal");
+    const ativos = _mexAtivos(abas);
     const terminados = abas.filter(a => a.estado !== "rodando" && a.estado !== "sem_sinal")
         .sort((a, b) => (a.terminou_ha_s ?? 1e9) - (b.terminou_ha_s ?? 1e9));
 
     corpo.innerHTML = [
         _mexErro ? `<div class="mex-alerta mex-alerta-aviso"><div>${_mexEsc(_mexErro)}</div></div>` : "",
-        _mexFiltrosHtml(rodando),
+        _mexFiltrosHtml(ativos),
         _mexAlertasHtml(),
         _mexComputadoresHtml(),
-        _mexSecaoRodandoHtml(rodando.filter(_mexPassaFiltro)),
+        _mexSecaoAtivosHtml(ativos.filter(_mexPassaFiltro)),
         _mexSecaoTerminadosHtml(terminados.filter(_mexPassaFiltro)),
         `<section class="mac-secao mex-secao">
             <div class="mac-secao-cab"><h3 class="mac-secao-titulo">Histórico</h3>
@@ -220,8 +244,8 @@ function _mexChip(rotulo, ativo, onclick, contagem) {
         + `${_mexEsc(rotulo)}${contagem ? ` <span class="mex-chip-n">${contagem}</span>` : ""}</button>`;
 }
 
-function _mexFiltrosHtml(rodando) {
-    const conta = m => rodando.filter(a => a.macro === m && (_mexFiltroXpt === "todos" || a.xpt === _mexFiltroXpt)).length;
+function _mexFiltrosHtml(ativos) {
+    const conta = m => ativos.filter(a => a.macro === m && (_mexFiltroXpt === "todos" || a.xpt === _mexFiltroXpt)).length;
     const macros = [_mexChip("Todos", _mexFiltroMacro === "todos", "_mexFiltrar('todos')", null)]
         .concat(_mexMacrosVisiveis().map(m =>
             _mexChip(_MEX_MACROS[m].nome, _mexFiltroMacro === m, `_mexFiltrar('${m}')`, conta(m))));
@@ -334,12 +358,91 @@ function _mexCartaoHtml(a) {
     </article>`;
 }
 
-function _mexSecaoRodandoHtml(lista) {
+// Todo macro ATIVO: o que está executando agora (cartão com o log) e o que está esperando a
+// próxima rodada (AT a cada 30 min, Backlog nos horários, aviso de rota no servidor...). Vem de
+// _mexDados.ativos (o que cada máquina agendou) + o que roda sem agenda + os avisos do servidor.
+function _mexAtivos(abas) {
+    const lista = (_mexDados.ativos || []).map(a => Object.assign({ tipo: "maquina" }, a));
+    // Extensão antiga não manda `ativos`: o que está rodando continua aparecendo.
+    for (const a of abas) {
+        if ((a.estado !== "rodando" && a.estado !== "sem_sinal") || a.macro === "outro") continue;
+        if (lista.some(x => x.maquina === a.maquina && x.macro === a.macro)) continue;
+        lista.push({ tipo: "maquina", macro: a.macro, maquina: a.maquina, aba: a.aba, xpt: a.xpt, rodando: true, online: a.estado !== "sem_sinal" });
+    }
+    const passou = _mexDecorrido();
+    for (const av of _mexAvisos) {
+        if (!av.ativo) continue;
+        lista.push({ tipo: "servidor", macro: "aviso", chave: av.chave, nome: av.nome, xpt: av.chave === "avisos_entregador" ? "XPT_CFC" : null,
+            rodando: false, online: true, resumo: av.resumo, ...(() => {
+                const falta = _mexProximoHorario(av.resumo);
+                return falta === null ? { proxima_em_s: null, proxima_em: null }
+                    : { proxima_em_s: falta + passou, proxima_em: Date.now() + falta * 1000 };
+            })() });
+    }
+    return lista.sort((a, b) => (a.rodando === b.rodando ? (a.proxima_em_s ?? 1e12) - (b.proxima_em_s ?? 1e12) : a.rodando ? -1 : 1));
+}
+
+function _mexCadencia(a) {
+    if (a.tipo === "servidor") return "nos horários das rodadas";
+    if (a.modo === "intervalo" && a.minutos) return `a cada ${a.minutos} min`;
+    if (a.modo === "horarios") return a.horarios ? `em ${a.horarios} horário(s) por dia` : "em horários fixos";
+    if (a.modo === "encadeado") return "logo depois de cada AT Exportada";
+    if (a.modo === "junto") return "junto com a AT Exportada";
+    return "sessão aberta (sem horário)";
+}
+
+function _mexUltimoHtml(u) {
+    if (!u) return `<div class="mex-ultimo mex-ultimo-nada">Nenhuma rodada registrada ainda neste computador.</div>`;
+    const est = _MEX_ESTADOS[u.estado] || _MEX_ESTADOS.ok;
+    return `<div class="mex-ultimo mex-ultimo-${est.classe}"><span class="mex-ponto mex-ponto-${est.classe}"></span>`
+        + `Última: <b>${est.rotulo}</b>${u.terminou_ha_s !== null && u.terminou_ha_s !== undefined
+            ? ` <span data-mex-ha="${u.terminou_ha_s}">${_mexHa(u.terminou_ha_s)}</span>` : ""}`
+        + `${u.passo ? ` — ${_mexEsc(u.passo)}` : ""}</div>`;
+}
+
+// O cartão de quem está ativo mas esperando: quando roda de novo (contando), de quanto em
+// quanto tempo, e como foi a última.
+function _mexAguardandoHtml(a) {
+    const nome = a.tipo === "servidor" ? `Aviso de rota · ${a.nome || ""}` : (_MEX_MACROS[a.macro] || _MEX_MACROS.outro).nome;
+    const onde = a.tipo === "servidor" ? "no servidor" : _mexEsc(a.maquina);
+    const semSinal = a.tipo !== "servidor" && a.online === false;
+    const proxima = a.proxima_em_s === null || a.proxima_em_s === undefined
+        ? `<span class="mex-espera-quando">sem próxima rodada marcada</span>`
+        : `Próxima rodada em <b data-mex-falta="${a.proxima_em_s}">${_mexFalta(a.proxima_em_s)}</b>`
+          + `<span class="mex-espera-quando">${a.proxima_em ? ` · às ${_mexHora(a.proxima_em).slice(0, 5)}` : ""}</span>`;
+    return `<article class="mex-cartao mex-cartao-${semSinal ? "aviso" : "espera"}">
+        <div class="mex-cartao-topo">
+            <div class="mex-cartao-nome">${_mexEsc(nome)}</div>
+            ${a.xpt ? `<span class="mex-xpt">${_mexEsc(a.xpt)} · ${_mexEsc(_MEX_XPTS[a.xpt] || "")}</span>` : `<span class="mex-xpt mex-xpt-sem">XPT desconhecido</span>`}
+        </div>
+        <div class="mex-cartao-meta"><span class="mex-ponto mex-ponto-${semSinal ? "aviso" : "ok"}"></span>${semSinal ? "Sem sinal" : "Ativo, aguardando"} · ${onde} · ${_mexEsc(_mexCadencia(a))}</div>
+        <div class="mex-cartao-passo mex-espera">${proxima}</div>
+        ${a.tipo === "servidor" ? "" : _mexUltimoHtml(a.ultimo)}
+    </article>`;
+}
+
+// Quanto falta. Passou da hora (o Chrome atrasa alarme de aba dormindo): "a qualquer momento".
+function _mexFalta(s) {
+    return s > 0 ? _mexDuracao(s) : "instantes — deve começar a qualquer momento";
+}
+
+function _mexSecaoAtivosHtml(lista) {
+    const abas = _mexDados.abas || [];
+    const cartoes = lista.map(a => {
+        if (a.rodando) {
+            const aba = abas.find(x => x.maquina === a.maquina && x.aba === a.aba)
+                || abas.find(x => x.maquina === a.maquina && x.macro === a.macro && (x.estado === "rodando" || x.estado === "sem_sinal"));
+            if (aba) return _mexCartaoHtml(aba);
+        }
+        return _mexAguardandoHtml(a);
+    });
+    const rodando = lista.filter(a => a.rodando).length;
     const corpo = lista.length
-        ? `<div class="mex-cartoes">${lista.map(_mexCartaoHtml).join("")}</div>`
-        : `<div class="mex-vazio">Nada rodando${_mexFiltroMacro !== "todos" || _mexFiltroXpt !== "todos" ? " com esse filtro" : ""} agora.</div>`;
+        ? `<div class="mex-cartoes">${cartoes.join("")}</div>`
+        : `<div class="mex-vazio">Nenhum macro ativo${_mexFiltroMacro !== "todos" || _mexFiltroXpt !== "todos" ? " com esse filtro" : ""}. Ligue o horário em Configurar, ou rode um Colador.</div>`;
     return `<section class="mac-secao mex-secao">
-        <div class="mac-secao-cab"><h3 class="mac-secao-titulo">Rodando agora${lista.length ? ` · ${lista.length}` : ""}</h3></div>
+        <div class="mac-secao-cab"><h3 class="mac-secao-titulo">Ativos agora${lista.length ? ` · ${lista.length}` : ""}</h3>
+            <div class="mac-secao-acoes"><span class="mex-dica">${rodando ? `${rodando} executando agora, ` : ""}${lista.length - rodando} esperando a próxima rodada</span></div></div>
         ${corpo}
     </section>`;
 }

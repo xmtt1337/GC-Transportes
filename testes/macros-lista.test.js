@@ -409,3 +409,13 @@ test("Ainda nao integrado: o detalhe explica e nao tem acao nenhuma", () => {
   assert.ok(!t.det().includes("_macRodar"));
   assert.ok(!t.det().includes("Salvar"));
 });
+
+test("SPX: a proxima rodada agendada aparece na lista e no detalhe", () => {
+  const a = carregar({ rotas: HIST("alimentacao") });
+  a.m.computador = "LEANDROXM";
+  a.m.atividade = { abas: [], ativos: [{ macro: "alimentacao", maquina: "LEANDROXM", rodando: false,
+    proxima_em: Date.UTC(2026, 9, 19, 18, 31, 0), proxima_em_s: 720 }] };
+  const t = montar(a);
+  assert.match(t.nav(), /Próxima às 15:31 \(em 12 min\)/);
+  assert.match(t.vivo(), /Próxima rodada[\s\S]*15:31 \(em 12 min\)/);
+});

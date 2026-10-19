@@ -6433,3 +6433,14 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .macd-bloco .mac-col-campo { margin: 0 0 12px; }
 .macd-bloco .mac-col-linha .mac-col-campo { margin: 0; }
 .macd-bloco .mac-col-linha { align-items: flex-start; }
+
+/* Em execução: ativo esperando a próxima rodada (verde = ligado e em dia) */
+.mex-cartao-espera { border-left-color: #34b26a; }
+.mex-espera { font-size: 13.5px; color: #cbd5e1; }
+.mex-espera b { color: #f1f5f9; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mex-espera-quando { color: #8494a9; }
+.mex-ultimo { display: block; margin-top: 10px; padding-top: 10px;
+              border-top: 1px solid rgba(255,255,255,0.06); font-size: 12.5px; color: #aab6c6; line-height: 1.5; overflow-wrap: anywhere; }
+.mex-ultimo b { font-weight: 600; color: #e2e8f0; margin: 0 2px; }
+.mex-ultimo-erro, .mex-ultimo-erro b { color: #f08a8a; }
+.mex-ultimo-nada { color: #66829c; }
