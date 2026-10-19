@@ -263,6 +263,33 @@
     };
   }
 
+  // Quais macros estão AGENDADOS nesta máquina e quando roda o próximo, a partir dos alarmes que
+  // o Chrome tem de verdade (não da agenda escrita: o alarme é o que vai disparar). O Pedidos
+  // não tem alarme: vai encadeado na AT, então a próxima dele é a da AT. O Backlog "junto" idem.
+  function agendadosDosAlarmes(alarmes, agenda) {
+    const porNome = {};
+    for (const a of alarmes || []) if (a && a.name) porNome[a.name] = a.scheduledTime;
+    const cadencia = (ag) => (!ag ? null : ag.modo === 'intervalo' ? { modo: 'intervalo', minutos: ag.minutos }
+      : ag.modo === 'horarios' ? { modo: 'horarios', horarios: (ag.horarios || []).length } : { modo: ag.modo });
+    const saida = [];
+    const at = porNome.alimentacao;
+    if (at) {
+      saida.push({ macro: 'alimentacao', proxima_em: at, ...cadencia(agenda && agenda.at) });
+      saida.push({ macro: 'pedidos', proxima_em: at, modo: 'encadeado' });
+    }
+    if (porNome.backlog) saida.push({ macro: 'backlog', proxima_em: porNome.backlog, ...cadencia(agenda && agenda.backlog) });
+    else if (at && agenda && agenda.backlog && agenda.backlog.modo === 'junto') {
+      saida.push({ macro: 'backlog', proxima_em: at, modo: 'junto' });
+    }
+    return saida;
+  }
+
+  // O último desfecho de cada macro nesta máquina (fica guardado além dos 30 min da aba).
+  function ultimoDoMacro(a) {
+    if (!a || !a.macro || a.estado === 'rodando') return null;
+    return { estado: a.estado, passo: a.passo, terminou_em: a.terminou_em || null, xpt: a.xpt || null };
+  }
+
   function eventoDoPainel(titulo, tipo, texto) {
     const macro = macroDoTitulo(titulo);
     const t = String(texto == null ? '' : texto).trim();
@@ -322,6 +349,8 @@
     estacaoNoTexto,
     macroDoTitulo,
     atividadeDoPainel,
+    agendadosDosAlarmes,
+    ultimoDoMacro,
     xptDaEstacao,
     NOME_RELATORIO,
     NOME_PESQUISADOS,

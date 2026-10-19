@@ -473,15 +473,32 @@ function mudarAtividade(mudar) {
   return filaAtividade;
 }
 
+// O último desfecho de cada macro, guardado no storage.local: a aba some da foto 30 min depois de
+// terminar, mas "a AT das 15:00 deu certo" tem que continuar aparecendo até a próxima rodada.
+async function guardarUltimo(ativ) {
+  const u = L.ultimoDoMacro(ativ);
+  if (!u) return;
+  try {
+    const { ultimosMacros = {} } = await chrome.storage.local.get('ultimosMacros');
+    ultimosMacros[ativ.macro] = u;
+    await chrome.storage.local.set({ ultimosMacros });
+  } catch (e) { /* acessorio */ }
+}
+
 async function mandarAtividade() {
   try {
     const mapa = await carregarAtividade();
     podarAtividade(mapa);
     const abas = Object.entries(mapa).map(([aba, a]) => ({ aba, ...a }));
+    // Os alarmes que vão disparar de verdade nesta máquina - é daí que sai "próxima às 15:31".
+    let agendados = [];
+    try { agendados = L.agendadosDosAlarmes(await chrome.alarms.getAll(), await agendaAtual()); } catch (e) { /* sem agenda */ }
+    let ultimos = {};
+    try { ultimos = (await chrome.storage.local.get('ultimosMacros')).ultimosMacros || {}; } catch (e) { /* sem storage */ }
     const corte = AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined;
     await fetch(`${VIGIA}/atividade`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agora: Date.now(), versao: chrome.runtime.getManifest().version, abas }),
+      body: JSON.stringify({ agora: Date.now(), versao: chrome.runtime.getManifest().version, abas, agendados, ultimos }),
       signal: corte,
     });
   } catch (e) { /* vigia fechado: a tela mostra "sem sinal" */ }
@@ -632,6 +649,7 @@ chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
   if (msg.xmAtividade) {
     const aba = remetente && remetente.tab ? String(remetente.tab.id) : null;
     if (aba) mudarAtividade((mapa) => { mapa[aba] = msg.xmAtividade; });
+    guardarUltimo(msg.xmAtividade);
     responder({ ok: true });
     return;
   }

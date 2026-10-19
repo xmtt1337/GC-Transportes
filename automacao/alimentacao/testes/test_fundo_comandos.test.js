@@ -55,6 +55,7 @@ function carregar({ storage = {}, vigia = {}, abasExtras = [] } = {}) {
       },
       async clear(nome) { alarmes.delete(nome); },
       async get(nome) { return alarmes.get(nome); },
+      async getAll() { return [...alarmes.values()]; },
       onAlarm: { addListener: (f) => { ouvintes.alarme = f; } },
     },
     runtime: {
