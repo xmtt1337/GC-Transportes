@@ -669,6 +669,15 @@ async function aplicarAgendaDoSite(agenda) {
 async function pararSeNecessario(paradas) {
   for (const p of Array.isArray(paradas) ? paradas : []) {
     if (!p || !p.qual) continue;
+    // Parada pedida pela tela pra ESTE Chrome (Pausar, Cancelar, Reiniciar, Parar), venha o
+    // macro de um comando ou do horário: para o que estiver rodando na aba dele.
+    if (p.avulsa) {
+      try {
+        const aba = await abaExistenteDoSpx(p.qual);
+        if (aba) await chrome.tabs.sendMessage(aba.id, { xmPararMacro: p.qual }).catch(() => {});
+      } catch (e) { /* aba sumiu - nada rodando */ }
+      continue;
+    }
     try {
       const aba = await abaExistenteDoSpx(p.qual);
       if (aba) await chrome.tabs.sendMessage(aba.id, { xmColadorParar: p.qual, idComando: p.id }).catch(() => {});

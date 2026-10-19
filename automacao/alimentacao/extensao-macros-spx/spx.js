@@ -322,6 +322,8 @@
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage && raiz.document) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
       if (msg && msg.xmEstacao) responder({ estacao: estacaoAgora() });
+      // Parar pedido pela tela: todo macro desta aba olha spx.parar entre um passo e outro.
+      if (msg && msg.xmPararMacro) { spx.parar = true; responder({ ok: true }); }
     });
     const contar = () => {
       const estacao = estacaoAgora();

@@ -662,3 +662,11 @@ test('os polos escolhidos no sistema ficam guardados', async () => {
   await c.ctx.buscarComandos();
   assert.deepStrictEqual(JSON.parse(JSON.stringify(c.guardado.polosSite)), { alimentacao: 'XPT_CFC' });
 });
+
+test('parada pedida pela tela pra este Chrome (avulsa) para o macro na aba dele', async () => {
+  const c = carregar({ vigia: { resposta: { comandos: [], paradas: [{ id: 'p1', qual: 'pedidos', avulsa: true }] } } });
+  await c.ctx.buscarComandos();
+  const msgs = c.chamadas.abas.map((a) => a.msg);
+  assert.ok(msgs.some((m) => m.xmPararMacro === 'pedidos'), JSON.stringify(msgs));
+  assert.ok(!msgs.some((m) => m.xmColadorParar), 'nao confunde com o parar do Colador por comando');
+});
