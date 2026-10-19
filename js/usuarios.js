@@ -140,6 +140,7 @@ function _fecharModalSeBackdrop(event, id) {
 
 function _abrirModalNovoEntregador() {
     document.getElementById("mne-nome").value      = "";
+    document.getElementById("mne-cidade").value    = "";
     document.getElementById("mne-senha").value     = "";
     document.getElementById("mne-telefone").value  = "";
     document.getElementById("mne-erro").innerText  = "";
@@ -155,18 +156,20 @@ function _salvarNovoEntregador() {
     const name     = document.getElementById("mne-nome").value.trim();
     const password = document.getElementById("mne-senha").value.trim();
     const telefone = document.getElementById("mne-telefone").value.trim();
+    const cidade   = document.getElementById("mne-cidade").value.trim();
     const erro     = document.getElementById("mne-erro");
     const btn      = document.getElementById("mne-btn-salvar");
     erro.innerText = "";
     document.getElementById("mne-duplicado").style.display = "none";
     if (!name) { erro.innerText = "Informe o nome do entregador."; return; }
+    if (!cidade) { erro.innerText = "Informe a cidade do entregador."; return; }
     btn.disabled   = true;
     btn.textContent = "Cadastrando...";
 
     fetch(`${API}/admin/usuarios`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
-        body: JSON.stringify({ name, password, role: "entregador", telefone })
+        body: JSON.stringify({ name, password, role: "entregador", telefone, cidade })
     }).then(r => r.json())
     .then(data => {
         btn.disabled = false;
@@ -180,6 +183,13 @@ function _salvarNovoEntregador() {
         document.getElementById("mne-id-gerado").innerText = data.username;
         document.getElementById("mne-senha-gerada").innerText = data.senha_temporaria || "—";
         document.getElementById("mne-copiado").innerText   = "";
+        // O usuário já existe; a planilha é um passo a mais e pode falhar sozinha.
+        const sol = data.solicitacao;
+        const planilha = document.getElementById("mne-planilha");
+        planilha.style.color = sol && !sol.ok ? "#f59e0b" : "";
+        planilha.innerText = !sol ? ""
+            : sol.nome ? `${sol.nome} foi para a Solicitação de usuários dos Dados entregadores.`
+            : sol.aviso + (sol.ok ? "" : " Peça o nome pelo Planejamento de Rotas.");
         document.getElementById("mne-form").style.display    = "none";
         document.getElementById("mne-sucesso").style.display = "";
         _carregarUsuarios();

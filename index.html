@@ -4901,7 +4901,7 @@ if (_BASE) {
     </div>
 </div>
 
-<script src="js/core.js?v=20261015c"></script>
+<script src="js/core.js?v=20261019a"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
 <script src="js/router.js?v=20261015a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
@@ -4912,7 +4912,7 @@ if (_BASE) {
 <script src="js/admin.js?v=20261012a"></script>
 <script src="js/conf-nf.js?v=20261012a"></script>
 <script src="js/trampay.js?v=20260924a"></script>
-<script src="js/usuarios.js?v=20261014a"></script>
+<script src="js/usuarios.js?v=20261019a"></script>
 <script src="js/motoristas.js?v=20260924b"></script>
 <script src="js/pagamentos.js?v=20261012a"></script>
 <script src="js/faturas.js?v=20261016c"></script>
@@ -5772,6 +5772,11 @@ if (_BASE) {
                 <input class="usr-modal-input" id="mne-nome" type="text" placeholder="Nome completo do entregador" autocomplete="off">
             </div>
             <div class="usr-modal-field">
+                <label class="usr-modal-label">Cidade</label>
+                <input class="usr-modal-input" id="mne-cidade" type="text" placeholder="Cidade onde o entregador roda" autocomplete="off">
+                <div class="cft-ajuda" style="margin-top:6px">O nome vai pra aba Solicitação de usuários dos Dados entregadores como <b style="color:#cbd5e1">Nome Sobrenome - Cidade</b>.</div>
+            </div>
+            <div class="usr-modal-field">
                 <label class="usr-modal-label">Senha <span style="color:#66829c;font-weight:400;text-transform:none">(opcional — deixe em branco para senha padrão)</span></label>
                 <input class="usr-modal-input" id="mne-senha" type="text" placeholder="Deixe em branco para senha padrão" autocomplete="off">
             </div>
@@ -5804,7 +5809,8 @@ if (_BASE) {
                 <span id="mne-senha-gerada" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;font-weight:700;color:#eab308;letter-spacing:.06em"></span>
                 <button onclick="_copiarSenhaEntregador()" style="background:rgba(234,179,8,0.15);border:1px solid rgba(234,179,8,0.3);color:#eab308;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Copiar</button>
             </div>
-            <div id="mne-copiado" style="font-size:12px;color:#22c55e;height:16px;margin-bottom:16px"></div>
+            <div id="mne-copiado" style="font-size:12px;color:#22c55e;height:16px;margin-bottom:8px"></div>
+            <div id="mne-planilha" class="cft-ajuda" style="text-align:left;margin-bottom:16px"></div>
             <button class="usr-modal-btn-primary" onclick="_fecharModal('modal-novo-entregador')">Fechar</button>
         </div>
     </div>

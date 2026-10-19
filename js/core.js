@@ -279,6 +279,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     }
 
     if (role === "admin") {
+        show("btn-add-entregador"); // admin cria entregador (motorista continua só dev/finance)
         _showOperacional();
         _showPlanejamento();
         _showCadastros();
@@ -304,7 +305,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("submenu-baixas");
         show("bip-sync-btn");
         if (role === "dev" || role === "finance") {
-            show("btn-add-entregador"); // só dev/finance criam entregador/motorista novo
+            show("btn-add-entregador"); // dev/finance criam entregador e motorista; admin só entregador
             show("btn-add-motorista");
         }
         if (role === "finance") {
