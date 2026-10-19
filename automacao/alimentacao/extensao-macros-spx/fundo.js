@@ -558,8 +558,10 @@ async function mandarAtividade() {
     const corte = AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined;
     await fetch(`${VIGIA}/atividade`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
+      // xpt: a estação que as abas do SPX deste Chrome mostram (spx.js conta de minuto em minuto).
+      // Sem ela, um Chrome parado - sem macro rodando nem rodada guardada - não diria o polo.
       body: JSON.stringify({ agora: Date.now(), versao: chrome.runtime.getManifest().version, perfil: await perfilId(),
-        abas, agendados, ultimos }),
+        xpt: await xptDoPerfil(), abas, agendados, ultimos }),
       signal: corte,
     });
   } catch (e) { /* vigia fechado: a tela mostra "sem sinal" */ }
