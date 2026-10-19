@@ -5,19 +5,15 @@
 // Por isso a tela não confirma "pronto": ela mostra o ANDAMENTO de cada pedido, que
 // só avança quando o colador passa por ele.
 //
-// Sem seletor de XPT de propósito: o entregador não tem polo no cadastro, e o XPT sai
-// da rota que ele já tem hoje. Deixar escolher seria deixar errar.
+// O XPT sai do POLO do cadastro do entregador: na primeira vez a tela pergunta o polo
+// (fica salvo), e a cada pedido confirma "Solicitar AT no XPT …?" — trocar o polo depois
+// é pedido ao suporte. O colador de cada máquina só cola o XPT logado no SPX dela.
 
 const SOLAT_CODIGO_RE = /^BR[A-Z0-9]{13}$/;
 
-// DESATIVADO em 2026-09-05 a pedido do dono, até segunda ordem (custo de
-// compute no Neon — o colador perguntando ao banco a cada 5s nunca deixava
-// ele suspender). O menu já não mostra mais este item pro entregador
-// (js/core.js); esta trava é só pra quem chegar aqui por link salvo ou pelo
-// histórico do navegador — sem ela a tela pareceria funcionar e só falharia
-// na hora de bipar, o que confunde mais do que avisar na entrada.
-// Pra reativar: virar pra false (e destravar o menu em core.js).
-const SOLAT_DESATIVADO = true;
+// Interruptor de emergência (custo de compute no Neon, como em 05/09/2026). Desligar
+// aqui E `ativo: false` em server.js; o menu é destravado em core.js.
+const SOLAT_DESATIVADO = false;
 
 function _solatMostrarDesativado() {
     document.getElementById("solat-faixa").style.display = "none";
@@ -37,7 +33,8 @@ const SOLAT_STATUS = {
     criada:  { rotulo: "Criada",  cor: "#22c55e" },
 };
 
-let _solatXpt = null;      // XPT da rota de hoje; null = sem rota hoje
+let _solatXpt = null;      // XPT do polo do cadastro; null = ainda sem polo
+let _solatPolo = null;     // { polo, polo_label, xpt }
 let _solatItens = [];
 let _solatEstimativa = 45; // segundos; vem medido do servidor
 let _solatTimerBusca = null;
@@ -74,7 +71,126 @@ function abrirSolicitarAT(event) {
     _solatMsg("", null);
     document.getElementById("solat-empty").innerText = "Carregando...";
     document.getElementById("solat-resultado").style.display = "none";
-    _solatCarregarHoje();
+    _solatGarantirPolo(() => _solatCarregarHoje());
+}
+
+// ── Polo ──────────────────────────────────────────────────────────────────
+// Sem polo, pergunta antes de qualquer coisa: é ele que decide em qual SPX a AT é colada.
+function _solatGarantirPolo(seguir) {
+    fetch(`${API}/entregador/meu-polo`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(d => {
+            if (d.xpt) { _solatAplicarPolo(d); return seguir(); }
+            _solatAplicarPolo(null);
+            _solatPintarXpt();
+            _solatPerguntarPolo(d.opcoes || [], seguir);
+        })
+        .catch(() => {
+            document.getElementById("solat-empty").innerText = "Erro ao carregar. Puxe a tela pra recarregar.";
+        });
+}
+
+function _solatAplicarPolo(d) {
+    _solatPolo = d && d.xpt ? { polo: d.polo, polo_label: d.polo_label, xpt: d.xpt } : null;
+    _solatXpt = _solatPolo ? _solatPolo.xpt : null;
+}
+
+function _solatPerguntarPolo(opcoes, seguir) {
+    if (document.getElementById("solat-polo-overlay")) return;
+    const overlay = document.createElement("div");
+    overlay.id = "solat-polo-overlay";
+    overlay.setAttribute("style", _gcOverlayStyle);
+    overlay.innerHTML = `
+        <div style="${_gcCardStyle}">
+            <div style="${_gcTitleStyle}">Qual é o seu polo?</div>
+            <div style="${_gcMsgStyle}">É nele que as suas ATs vão ser criadas. Fica salvo no seu cadastro — pra trocar depois, você pede a redefinição ao suporte.</div>
+            <div class="shr-escolha-opcoes">
+                ${opcoes.map(p => `
+                    <button type="button" class="shr-escolha-btn" data-polo="${_solatEsc(p.chave)}">
+                        <span class="shr-escolha-cidade">${_solatEsc(p.label)}</span>
+                        <span class="shr-escolha-cod">${_solatEsc(p.xpt)}</span>
+                    </button>`).join("")}
+            </div>
+            <div id="solat-polo-erro" style="display:none;font-size:12.5px;color:#ef4444;margin-bottom:12px"></div>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    overlay.querySelectorAll(".shr-escolha-btn").forEach(btn => btn.addEventListener("click", () => {
+        const p = opcoes.find(o => o.chave === btn.dataset.polo);
+        if (!p) return;
+        gcConfirm(
+            `Seu polo é ${_solatEsc(p.label)} (${_solatEsc(p.xpt)})?\n\nDepois, só o suporte consegue trocar.`,
+            () => _solatGravarPolo(p.chave, overlay, seguir),
+            "Confirmar polo",
+            "Sim, é esse"
+        );
+    }));
+}
+
+function _solatGravarPolo(chave, overlay, seguir) {
+    const erro = overlay.querySelector("#solat-polo-erro");
+    const botoes = overlay.querySelectorAll(".shr-escolha-btn");
+    botoes.forEach(b => b.disabled = true);
+    fetch(`${API}/entregador/meu-polo`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ polo: chave })
+    }).then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+        // 409 com polo = já estava definido (outra aba, ou o suporte definiu). Segue com ele.
+        if (!ok && !d.xpt) {
+            botoes.forEach(b => b.disabled = false);
+            erro.style.display = "";
+            erro.innerText = d.error || "Não foi possível salvar. Tente de novo.";
+            return;
+        }
+        overlay.remove();
+        _solatAplicarPolo(d);
+        seguir();
+    })
+    .catch(() => {
+        botoes.forEach(b => b.disabled = false);
+        erro.style.display = "";
+        erro.innerText = "Erro de conexão. Tente de novo.";
+    });
+}
+
+// A cada pedido: "Solicitar AT no XPT Videira?". Enter também confirma — quem bipa em
+// sequência não larga o leitor pra tocar na tela.
+function _solatConfirmarPolo(codigo, onOk) {
+    const anterior = document.getElementById("solat-conf-overlay");
+    if (anterior) anterior.remove();
+    const p = _solatPolo;
+    const overlay = document.createElement("div");
+    overlay.id = "solat-conf-overlay";
+    overlay.setAttribute("style", _gcOverlayStyle);
+    overlay.innerHTML = `
+        <div style="${_gcCardStyle}">
+            <div style="${_gcTitleStyle}">Solicitar AT no XPT ${_solatEsc(p.polo_label)}?</div>
+            <div style="${_gcMsgStyle}"><strong>${_solatEsc(codigo)}</strong> · ${_solatEsc(p.xpt)}</div>
+            <div style="${_gcBtnsStyle};flex-wrap:wrap">
+                <button style="${_gcBtnCxStyle}" data-action="redefinir">Solicitar redefinição de polo</button>
+                <button style="${_gcBtnOkStyle}" data-action="ok">OK</button>
+            </div>
+        </div>`;
+
+    const fechar = () => { overlay.remove(); document.removeEventListener("keydown", tecla); };
+    const confirmar = () => { fechar(); onOk(); };
+    const tecla = e => {
+        if (e.key === "Enter") { e.preventDefault(); confirmar(); }
+        else if (e.key === "Escape") fechar();
+    };
+    overlay.querySelector("[data-action=ok]").addEventListener("click", confirmar);
+    overlay.querySelector("[data-action=redefinir]").addEventListener("click", () => {
+        fechar();
+        pcSolicitarPolo(p.polo);
+    });
+    overlay.addEventListener("click", e => { if (e.target === overlay) fechar(); });
+    document.body.appendChild(overlay);
+    // Fora do evento atual: o Enter do próprio bipe que abriu isto ainda está subindo
+    // até o document e confirmaria sozinho.
+    setTimeout(() => document.addEventListener("keydown", tecla), 0);
+    overlay.querySelector("[data-action=ok]").focus();
 }
 
 /** A tela ainda é a que está aberta? */
@@ -157,14 +273,14 @@ function _solatPintarBarras() {
     }
 }
 
-// O mesmo GET responde as duas perguntas: se ele tem rota hoje (daí sai o XPT) e o que
-// ele já pediu. Uma ida só ao servidor — quem abre isso está na rua, com rede ruim.
+// O mesmo GET responde as duas perguntas: o polo atual (o suporte pode ter trocado) e o
+// que ele já pediu. Uma ida só ao servidor — quem abre isso está na rua, com rede ruim.
 function _solatCarregarHoje() {
     fetch(`${API}/entregador/solicitar-at/hoje`, {
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json())
     .then(d => {
-        _solatXpt = d.xpt || null;
+        _solatAplicarPolo(d);
         _solatItens = d.itens || [];
         if (d.estimativa_segundos) _solatEstimativa = d.estimativa_segundos;
         _solatPintarXpt();
@@ -179,9 +295,9 @@ function _solatPintarXpt() {
     const faixa = document.getElementById("solat-faixa");
     faixa.style.display = _solatXpt ? "" : "none";
     faixa.className = "shr-faixa" + (_solatXpt === "XPT_VIA" ? " via" : " cfc");
-    if (_solatXpt) document.getElementById("solat-faixa-xpt").innerText = _solatXpt;
+    if (_solatXpt) document.getElementById("solat-faixa-xpt").innerText = `${_solatXpt} · ${_solatPolo.polo_label}`;
 
-    // Sem rota hoje não há XPT, e sem XPT não há onde lançar: o campo sai do caminho em
+    // Sem polo não há XPT, e sem XPT não há onde lançar: o campo sai do caminho em
     // vez de aceitar o bipe e recusar cada um depois.
     document.getElementById("solat-campo-codigo").style.display = _solatXpt ? "" : "none";
 
@@ -191,8 +307,7 @@ function _solatPintarXpt() {
         document.getElementById("solat-codigo").focus();
     } else {
         aviso.style.display = "";
-        aviso.innerText = "Você não tem rota hoje. Sem rota não dá pra saber em qual XPT lançar o pedido — "
-                        + "fale com a operação.";
+        aviso.innerText = "Escolha o seu polo pra pedir AT. Se a escolha fechou, saia e entre de novo nesta tela.";
     }
 }
 
@@ -235,17 +350,23 @@ function _solatEnviar() {
         return _solatMsg(`<strong>${_solatEsc(codigo)}</strong> não é um código válido — precisa ser BR seguido de 13 caracteres.`, "erro");
     }
 
+    _solatConfirmarPolo(codigo, () => _solatPedir(codigo));
+}
+
+function _solatPedir(codigo) {
     fetch(`${API}/entregador/solicitar-at`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ codigo })
+        // O XPT que ele acabou de confirmar: se o polo mudou nesse meio-tempo, o servidor recusa.
+        body: JSON.stringify({ codigo, xpt: _solatXpt })
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
         if (!ok) {
             _gcBeepErro(); _solatFlash("err");
-            // A rota pode ter mudado com a tela aberta (ele saiu da rota, virou o dia):
+            // O polo pode ter mudado com a tela aberta (o suporte aprovou a troca):
             // repinta em vez de deixar bipando contra um erro fixo.
-            if (d.sem_rota) { _solatXpt = null; _solatPintarXpt(); }
+            if (d.sem_polo) { _solatAplicarPolo(null); _solatPintarXpt(); }
+            if (d.polo_mudou) _solatCarregarHoje();
             if (d.ja_pedido) {
                 return _solatMsg(
                     `<strong>${_solatEsc(codigo)}</strong> ${_solatEsc(d.error)}` +
