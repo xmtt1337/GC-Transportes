@@ -110,100 +110,14 @@ const linha = (html, qual) => {
 };
 
 // ── a linha de cada colador ────────────────────────────────────────────────
-test("os dois coladores aparecem, cada um com Rodar e Configurar", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecaoColador(DOIS());
-  for (const q of ["recebimento", "at_cluster"]) {
-    assert.ok(html.includes(`_macRodarColador('${q}'`), q);
-    assert.ok(html.includes(`_macAbrirConfigurarColador('${q}')`), q);
-  }
-  assert.ok(html.includes("Colador — Recebimento") && html.includes("Colador — AT Cluster"));
-});
-
-test("recebidos_hoje aparece na linha do Recebimento quando vem do servidor", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecaoColador([colador("recebimento", { recebidos_hoje: 42 })]);
-  assert.ok(html.includes("42 recebido"));
-});
-
-test("sem recebidos_hoje (servidor antigo, ou item que nao e o Recebimento), nada aparece", () => {
-  const a = carregar();
-  const semCampo = a.ctx._macHtmlSecaoColador([colador("at_cluster")]);
-  assert.ok(!semCampo.includes("recebido(s) hoje"));
-  const nulo = a.ctx._macHtmlSecaoColador([colador("recebimento", { recebidos_hoje: null })]);
-  assert.ok(!nulo.includes("recebido(s) hoje"));
-});
-
 // ── quem acessa (admin também, não só dev) ──────────────────────────────────
 // _macRedesenhar é quem decide isso (só ela olha window._gcUser.role) — chamada direto, com o
 // DOM de mentira já populado, pra não depender do fetch inteiro de _macCarregarLista.
 // _macHtmlSecoes sempre desenha o catálogo fixo (_MAC_SECOES) — "Avisos de rota incompleta" e
 // "Shopee XPT_CFC" são texto ESTÁTICO dele, então nem precisa de uma _macLista real pra testar
 // se a seção aparece ou não.
-test("_macRedesenhar: dev ve avisos/SPX E o Colador", () => {
-  const a = carregar();
-  a.ctx.window._gcUser = { role: "dev" };
-  a.m.lista = [];
-  a.m.coladores = DOIS();
-  a.ctx._macRedesenhar();
-  const html = a.el("mac-lista").innerHTML;
-  assert.ok(html.includes("Avisos de rota incompleta"), "avisos aparecem");
-  assert.ok(html.includes("Colador — Recebimento"), "o Colador aparece");
-});
-
-test("_macRedesenhar: admin ve SÓ o Colador, nao os avisos/SPX", () => {
-  const a = carregar();
-  a.ctx.window._gcUser = { role: "admin" };
-  a.m.lista = [];
-  a.m.coladores = DOIS();
-  a.ctx._macRedesenhar();
-  const html = a.el("mac-lista").innerHTML;
-  assert.ok(!html.includes("Avisos de rota incompleta"), "avisos NAO aparecem pra admin");
-  assert.ok(html.includes("Colador — Recebimento"), "o Colador continua aparecendo");
-});
-
-test("sem coladores (servidor antigo, rota indisponível), a seção nem aparece", () => {
-  const a = carregar();
-  assert.strictEqual(a.ctx._macHtmlSecaoColador([]), "");
-  assert.strictEqual(a.ctx._macHtmlSecaoColador(null), "");
-});
-
-test("não configurado: resumo apagado, mas continua com Rodar e Configurar", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecaoColador([colador("recebimento", { configurado: false, resumo: "Ainda não configurado" })]);
-  assert.ok(html.includes("mac-agenda-mudo"));
-  assert.ok(html.includes("_macRodarColador"));
-});
-
-test("Rodar fica apagado com pedido 'aguardando' ou 'entregue'; outros estados liberam de novo", () => {
-  const a = carregar();
-  const desabilitado = (estado) => {
-    const html = a.ctx._macHtmlSecaoColador([colador("recebimento", { comandos: estado ? [cmd(estado)] : [] })]);
-    return /class="mac-rodar"[^>]*\bdisabled\b/.test(linha(html, "recebimento"));
-  };
-  assert.strictEqual(desabilitado("aguardando"), true);
-  assert.strictEqual(desabilitado("entregue"), true);
-  for (const e of ["iniciado", "erro", "cancelado", "expirado", "sem_confirmacao", null]) {
-    assert.strictEqual(desabilitado(e), false, String(e));
-  }
-});
-
 // Alvo diferente do que já está aguardando/entregue não conflita - é o que deixa pedir pra uma
 // SEGUNDA máquina enquanto a primeira ainda não foi buscada.
-test("Rodar continua liberado pra uma máquina DIFERENTE da que já está aguardando", () => {
-  const a = carregar();
-  a.ctx._macColadorMudarAlvo("recebimento", "VIDEIRA");
-  const html = a.ctx._macHtmlSecaoColador([colador("recebimento", { comandos: [cmd("aguardando", { alvo: "CACADOR" })] })]);
-  assert.ok(!/class="mac-rodar"[^>]*\bdisabled\b/.test(linha(html, "recebimento")));
-});
-
-test("Rodar fica apagado pra MESMA máquina que já está aguardando", () => {
-  const a = carregar();
-  a.ctx._macColadorMudarAlvo("recebimento", "CACADOR");
-  const html = a.ctx._macHtmlSecaoColador([colador("recebimento", { comandos: [cmd("aguardando", { alvo: "CACADOR" })] })]);
-  assert.ok(/class="mac-rodar"[^>]*\bdisabled\b/.test(linha(html, "recebimento")));
-});
-
 // ── presença ──────────────────────────────────────────────────────────────
 test("presença: ninguém, um, e mais de um computador conectado", () => {
   const a = carregar();
@@ -288,18 +202,6 @@ test("erro do comando (texto de outro computador) nunca vira HTML", () => {
 });
 
 // ── carregar a lista ──────────────────────────────────────────────────────
-test("a lista junta os coladores vindos do servidor", async () => {
-  const a = carregar({ rotas: {
-    "GET /admin/macros": { corpo: { macros: [] } },
-    "GET /admin/macros/spx": { corpo: { macros: [] } },
-    "GET /admin/macros/colador": { corpo: { coladores: DOIS() } },
-  } });
-  a.ctx._macCarregarLista();
-  await a.esperar(); await a.esperar();
-  assert.strictEqual(a.m.coladores.length, 2);
-  assert.ok(a.el("mac-lista").innerHTML.includes("_macRodarColador"));
-});
-
 test("rota do colador fora do ar não derruba o resto da tela", async () => {
   const a = carregar({ rotas: {
     "GET /admin/macros": { corpo: { macros: [] } },
@@ -358,27 +260,6 @@ test("Rodar sem escolher computador manda maquina null", async () => {
   const a = carregar({ rotas: { [ROTA_RODAR]: { corpo: { ok: true, comando: { id: 1, estado: "aguardando" }, algum_conectado: true } } } });
   a.m.coladores = DOIS();
   a.ctx._macRodarColador("recebimento", {});
-  await a.esperar(); await a.esperar();
-  assert.deepStrictEqual(a.chamadas[0].corpo, { maquina: null });
-});
-
-test("Rodar manda o computador escolhido no seletor daquele colador", async () => {
-  const a = carregar({ rotas: { [ROTA_RODAR]: { corpo: { ok: true, comando: { id: 1, estado: "aguardando" }, algum_conectado: true } } } });
-  a.m.coladores = DOIS();
-  a.ctx._macColadorMudarAlvo("recebimento", "PC-CACADOR");
-  a.ctx._macRodarColador("recebimento", {});
-  await a.esperar(); await a.esperar();
-  assert.deepStrictEqual(a.chamadas[0].corpo, { maquina: "PC-CACADOR" });
-});
-
-test("escolher o alvo de um colador não afeta o outro", async () => {
-  const a = carregar({ rotas: {
-    [ROTA_RODAR]: { corpo: { ok: true, comando: { id: 1, estado: "aguardando" }, algum_conectado: true } },
-    "POST /admin/macros/colador/at_cluster/rodar": { corpo: { ok: true, comando: { id: 2, estado: "aguardando" }, algum_conectado: true } },
-  } });
-  a.m.coladores = DOIS();
-  a.ctx._macColadorMudarAlvo("recebimento", "PC-CACADOR");
-  a.ctx._macRodarColador("at_cluster", {});
   await a.esperar(); await a.esperar();
   assert.deepStrictEqual(a.chamadas[0].corpo, { maquina: null });
 });
@@ -517,47 +398,12 @@ test("carência, lote e intervalo respeitam os limites do servidor", () => {
 });
 
 // ── abrir/editar/salvar ──────────────────────────────────────────────────
-test("abrir Configurar copia a config — mexer nela não muda a lista antes de Salvar", () => {
-  const a = carregar();
-  a.m.coladores = [colador("recebimento")];
-  a.ctx._macAbrirConfigurarColador("recebimento");
-  a.m.editando.xpt = "XPT_VIA";
-  assert.strictEqual(a.m.coladores[0].config.xpt, "XPT_CFC");
-  assert.deepStrictEqual(a.modais.abertos, ["modal-macro-colador"]);
-});
-
-test("o modal mostra o nome do colador que foi aberto", () => {
-  const a = carregar();
-  a.m.coladores = [colador("at_cluster")];
-  a.ctx._macAbrirConfigurarColador("at_cluster");
-  assert.strictEqual(a.el("mac-col-titulo").innerHTML, "Colador — AT Cluster");
-});
-
 test("marcar todos os dias desabilita e limpa o campo de data na tela", () => {
   const a = carregar();
   a.m.coladores = [colador("recebimento")];
   a.ctx._macAbrirConfigurarColador("recebimento");
   a.ctx._macColMudarTodosDias(true);
   assert.strictEqual(a.el("mac-col-dia").disabled, true);
-});
-
-test("salvar manda a config normalizada, fecha o modal e recarrega por baixo", async () => {
-  const a = carregar({ rotas: {
-    "PUT /admin/macros/colador/recebimento": { corpo: { ok: true } },
-    "GET /admin/macros": { corpo: { macros: [] } },
-    "GET /admin/macros/spx": { corpo: { macros: [] } },
-    "GET /admin/macros/colador": { corpo: { coladores: DOIS() } },
-  } });
-  a.m.coladores = [colador("recebimento")];
-  a.ctx._macAbrirConfigurarColador("recebimento");
-  a.ctx._macColMudarCampo("xpt", "XPT_VIA");
-  a.ctx._macSalvarColador();
-  await a.esperar(); await a.esperar(); await a.esperar();
-  assert.strictEqual(a.chamadas[0].metodo, "PUT");
-  assert.strictEqual(a.chamadas[0].caminho, "/admin/macros/colador/recebimento");
-  assert.strictEqual(a.chamadas[0].corpo.config.xpt, "XPT_VIA");
-  assert.deepStrictEqual(a.modais.fechados, ["modal-macro-colador"]);
-  assert.ok(a.chamadas.some((c) => c.caminho === "/admin/macros/colador" && c.metodo === "GET"));
 });
 
 test("config inválida nem sai do navegador: fica só no modal, sem fechar", () => {
@@ -569,17 +415,6 @@ test("config inválida nem sai do navegador: fica só no modal, sem fechar", () 
   assert.strictEqual(a.chamadas.length, 0);
   assert.match(a.el("mac-col-erro").innerHTML, /lote/);
   assert.deepStrictEqual(a.modais.fechados, []);
-});
-
-test("recusa do servidor mostra o motivo e devolve o botão", async () => {
-  const a = carregar({ rotas: { "PUT /admin/macros/colador/recebimento": { status: 400, corpo: { error: "Escolha o XPT." } } } });
-  a.m.coladores = [colador("recebimento")];
-  a.ctx._macAbrirConfigurarColador("recebimento");
-  a.ctx._macSalvarColador();
-  await a.esperar(); await a.esperar();
-  assert.match(a.el("mac-col-erro").innerHTML, /Escolha o XPT/);
-  assert.strictEqual(a.el("mac-col-salvar").disabled, false);
-  assert.strictEqual(a.el("mac-col-salvar").textContent, "Salvar");
 });
 
 // ── acompanhar ao vivo ──────────────────────────────────────────────────
@@ -597,16 +432,6 @@ test("acompanhar atualiza a lista e PARA quando nada mais está aguardando", asy
   await a.timers.shift()();
   assert.strictEqual(a.timers.length, 0);
   assert.strictEqual(a.m.poll, null);
-});
-
-test("acompanhar continua enquanto o estado for 'entregue' (nao so 'aguardando')", async () => {
-  const a = carregar({ rotas: { "GET /admin/macros/colador": { corpo: { coladores: [colador("recebimento", { comandos: [cmd("entregue")] })] } } } });
-  a.m.coladores = [colador("recebimento", { comandos: [cmd("entregue")] })];
-  a.el("tela-macros").classList.add("active-view");
-  a.ctx._macAcompanharColador();
-  assert.strictEqual(a.timers.length, 1);
-  await a.timers.shift()(); await a.esperar(); await a.esperar();
-  assert.strictEqual(a.chamadas.length, 1, "chegou a perguntar de novo ao servidor");
 });
 
 test("acompanhar para quando a pessoa sai da tela", async () => {

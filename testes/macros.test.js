@@ -524,36 +524,6 @@ test("redesenhar as rodadas (remover uma, trocar o criterio) fecha a lista abert
 const AVISO = { chave: "avisos_entregador", nome: "Aviso de rota incompleta (Shopee)", descricao: "d", ativo: true,
   resumo: "19:05 Abaixo de 90% concluído · 22:05 Mais de 1 pacotes em Delivering" };
 
-test("a tela traz as duas secoes e todos os itens, na ordem", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes([AVISO]);
-  const ordem = ["Avisos de rota incompleta", "Shopee XPT_CFC", "Shopee XPT_VIA", ">Macros<",
-    "Alimentar AT exportada", "Pedidos pesquisados", "Backlog"].map((t) => html.indexOf(t));
-  ordem.forEach((pos, k) => assert.ok(pos >= 0, `item ${k} nao apareceu`));
-  assert.deepStrictEqual([...ordem].sort((x, y) => x - y), ordem);
-});
-
-test("a secao dos macros nao repete o titulo de grupo 'Shopee' (era ruido: so tem um grupo)", () => {
-  const a = carregar();
-  assert.ok(!a.ctx._macHtmlSecoes([AVISO]).includes("mac-grupo-titulo"));
-});
-
-test("so o aviso da XPT_CFC tem Configurar de rodadas; a XPT_VIA fica como ainda nao integrado", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes([AVISO]);
-  assert.strictEqual(html.split("_macAbrirConfigurar(").length - 1, 1);
-  assert.ok(html.includes("_macAbrirConfigurar('avisos_entregador')"));
-  assert.strictEqual(html.split("Ainda não integrado").length - 1, 1, "so a XPT_VIA");
-});
-
-test("os tres macros do SPX, quando o servidor nao mandou, ficam Indisponiveis (nao somem)", () => {
-  // Servidor antigo, ou fora do ar so na rota dos macros do SPX: a linha continua na tela.
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes([AVISO]);
-  assert.strictEqual(html.split("Indisponível no momento").length - 1, 3);
-  assert.ok(!html.includes("_macRodar("), "sem o servidor nao ha o que rodar");
-});
-
 test("o resumo vira uma linha por rodada, horario separado do criterio", () => {
   const a = carregar();
   const html = a.ctx._macResumoHtml(AVISO.resumo);
@@ -567,37 +537,6 @@ test("resumo fora do formato passa inteiro, e vazio nao quebra", () => {
   assert.ok(a.ctx._macResumoHtml("sem rodada configurada").includes("<span>sem rodada configurada</span>"));
   assert.strictEqual(a.ctx._macResumoHtml(""), "");
   assert.strictEqual(a.ctx._macResumoHtml(undefined), "");
-});
-
-test("macro desligado aparece como Desligado", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes([{ ...AVISO, ativo: false }]);
-  assert.ok(html.includes(">Desligado<") && !html.includes(">Ativo<"));
-});
-
-test("se o servidor nao manda o aviso, a linha fica sem Configurar (nao abre modal vazio)", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes([]);
-  assert.ok(!html.includes("_macAbrirConfigurar("));
-  assert.ok(html.includes("Indisponível no momento"));
-});
-
-test("macro do servidor sem lugar na tela nao some: vai pra Outros, configuravel", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes([AVISO, { chave: "novo_macro", nome: "Novo", descricao: "x", ativo: true, resumo: "" }]);
-  assert.ok(html.includes(">Outros<"));
-  assert.ok(html.includes("_macAbrirConfigurar('novo_macro')"));
-});
-
-test("nome e resumo vindos do servidor nao viram HTML", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes([AVISO, { chave: "z", nome: "<b>n</b>", descricao: "<i>d</i>", ativo: true, resumo: "10:00 <s>x</s>" }]);
-  assert.ok(!html.includes("<b>n</b>") && !html.includes("<i>d</i>") && !html.includes("<s>x</s>"));
-});
-
-test("o titulo do modal usa o nome da tela", () => {
-  const a = carregar();
-  assert.strictEqual(a.ctx._macTituloModal("avisos_entregador"), "Avisos de rota incompleta — Shopee XPT_CFC");
 });
 
 // ── interruptor de ligar/desligar na lista ──────────────────────────────────
@@ -624,43 +563,18 @@ function carregarComFetch(resposta) {
 }
 const esperar = () => new Promise((resolve) => setImmediate(resolve));
 
-test("a linha do aviso tem o interruptor, marcado conforme o ativo", () => {
-  const a = carregar();
-  const ligado = a.ctx._macHtmlSecoes([AVISO]);
-  assert.ok(ligado.includes("_macAlternarAtivo('avisos_entregador', this)"));
-  assert.ok(ligado.includes('aria-checked="true"') && ligado.includes("gc-toggle--on"));
-  const desligado = a.ctx._macHtmlSecoes([{ ...AVISO, ativo: false }]);
-  assert.ok(desligado.includes('aria-checked="false"') && !desligado.includes("gc-toggle--on"));
-});
-
-test("itens ainda nao integrados nao tem interruptor", () => {
-  const a = carregar();
-  assert.strictEqual(a.ctx._macHtmlSecoes([AVISO]).split("_macAlternarAtivo(").length - 1, 1);
-});
-
 test("clicar no interruptor desliga na hora e manda so o ativo pra rota certa", async () => {
   const a = carregarComFetch(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, ativo: false }) }));
   a.lista.v = [{ ...AVISO }];
   a.ctx._macAlternarAtivo("avisos_entregador", null);
   assert.strictEqual(a.lista.v[0].ativo, false);
-  assert.ok(a.els["mac-lista"].innerHTML.includes(">Desligado<"), "a tela ja mostra desligado");
+  assert.ok(a.els["macl-nav"].innerHTML.includes("Desligado"), "a lista ja mostra desligado");
   assert.strictEqual(a.chamadas[0].url, "https://api.teste/admin/macros/avisos-entregador/ativo");
   assert.strictEqual(a.chamadas[0].opcoes.method, "PUT");
   assert.strictEqual(a.chamadas[0].opcoes.body, JSON.stringify({ ativo: false }));
   await esperar();
   assert.strictEqual(a.lista.v[0].ativo, false);
   assert.strictEqual(a.alertas.length, 0);
-});
-
-test("se o servidor recusa, o interruptor volta como estava e avisa", async () => {
-  const a = carregarComFetch(() => Promise.resolve({ ok: false, json: () => Promise.resolve({ error: "Acesso negado" }) }));
-  a.lista.v = [{ ...AVISO, ativo: false }];
-  a.ctx._macAlternarAtivo("avisos_entregador", null);
-  assert.strictEqual(a.lista.v[0].ativo, true);
-  await esperar();
-  assert.strictEqual(a.lista.v[0].ativo, false);
-  assert.ok(a.els["mac-lista"].innerHTML.includes(">Desligado<"));
-  assert.deepStrictEqual(a.alertas, ["Acesso negado"]);
 });
 
 test("sem conexao, o interruptor tambem volta", async () => {

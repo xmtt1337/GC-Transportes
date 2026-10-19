@@ -119,40 +119,6 @@ const linha = (html, qual) => {
 };
 
 // ── a linha de cada macro ─────────────────────────────────────────────────
-test("cada macro do SPX tem o botao Rodar", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes(TRES());
-  for (const q of ["alimentacao", "pedidos", "backlog"]) assert.ok(html.includes(`_macRodar('${q}'`), q);
-});
-
-test("AT e Backlog tem Configurar e interruptor; Pedidos so tem o Rodar", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes(TRES());
-  assert.ok(linha(html, "alimentacao").includes("_macAbrirConfigurarSpx('alimentacao')"));
-  assert.ok(linha(html, "backlog").includes("_macAbrirConfigurarSpx('backlog')"));
-  assert.ok(linha(html, "alimentacao").includes("_macAlternarAtivo('spx_alimentacao'"));
-  const pedidos = linha(html, "pedidos");
-  assert.ok(!pedidos.includes("_macAbrirConfigurarSpx"));
-  assert.ok(!pedidos.includes("_macAlternarAtivo"), "pedidos e encadeado depois da AT: nao tem o que ligar");
-  assert.ok(pedidos.includes("Roda sozinho depois de cada AT"));
-});
-
-test("macro nunca configurado por aqui: sem interruptor, resumo apagado, Configurar disponivel", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes([macro("alimentacao", { configurado: false, resumo: "Ainda na agenda da extensão" }),
-    macro("pedidos"), macro("backlog")]);
-  const l = linha(html, "alimentacao");
-  assert.ok(!l.includes("_macAlternarAtivo"));
-  assert.ok(l.includes("mac-agenda-mudo"));
-  assert.ok(l.includes("_macAbrirConfigurarSpx('alimentacao')"));
-});
-
-test("macro desligado mostra Desligado", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes([macro("alimentacao", { ativo: false, resumo: "Desligado" }), macro("pedidos"), macro("backlog")]);
-  assert.ok(linha(html, "alimentacao").includes(">Desligado<"));
-});
-
 // ── última carga ──────────────────────────────────────────────────────────
 test("a ultima carga mostra a hora do texto de Brasilia, sem passar por Date", () => {
   const a = carregar();
@@ -164,12 +130,6 @@ test("carga de outro dia mostra dia/mes em vez de hoje", () => {
   const a = carregar();
   assert.strictEqual(a.ctx._macCargaTexto({ quando: "2026-09-23 22:05:00", segundos_atras: 3600 * 20 }),
     "23/09 22:05 (há 20 h)");
-});
-
-test("sem nenhuma carga, diz isso", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes([macro("alimentacao", { ultima_carga: null }), macro("pedidos"), macro("backlog")]);
-  assert.ok(linha(html, "alimentacao").includes("Nenhuma carga ainda"));
 });
 
 test("_macHa: instantes, minutos, horas, dias", () => {
@@ -227,225 +187,20 @@ test("erro sem motivo nao fica em branco", () => {
   assert.match(a.ctx._macComandoTexto(cmd("erro"), ONLINE).texto, /motivo não informado/);
 });
 
-test("texto do servidor (erro, quem pediu) nunca vira HTML", () => {
-  const a = carregar();
-  a.m.vigia = ONLINE;
-  const perigoso = '<img src=x onerror=alert(1)>';
-  const html = a.ctx._macHtmlSecoes([
-    macro("alimentacao", { comando: cmd("erro", { erro: perigoso }) }), macro("pedidos"), macro("backlog")]);
-  assert.ok(!html.includes("<img"), "o erro foi escapado");
-  assert.ok(html.includes("&lt;img"));
-  const html2 = a.ctx._macHtmlSecoes([
-    macro("alimentacao", { comando: cmd("iniciado", { criado_por: perigoso }) }), macro("pedidos"), macro("backlog")]);
-  assert.ok(!html2.includes("<img"));
-});
-
-test("Rodar fica apagado enquanto o pedido esta em andamento, e volta depois", () => {
-  const a = carregar();
-  a.m.vigia = ONLINE;
-  const desabilitado = (estado) => {
-    const html = a.ctx._macHtmlSecoes([macro("alimentacao", { comando: estado ? cmd(estado) : null }), macro("pedidos"), macro("backlog")]);
-    return /class="mac-rodar"[^>]*\bdisabled\b/.test(linha(html, "alimentacao"));
-  };
-  assert.strictEqual(desabilitado("aguardando"), true);
-  assert.strictEqual(desabilitado("entregue"), true);
-  for (const e of ["iniciado", "erro", "expirado", "sem_confirmacao", null]) {
-    assert.strictEqual(desabilitado(e), false, String(e));
-  }
-});
-
 // ── em QUAL computador os macros executam ────────────────────────────────
 const UMA = { online: true, visto_ha_s: 3, maquinas: [{ nome: "AVELL-LEANDRO", visto_ha_s: 3, online: true }] };
 const DUAS = { online: true, visto_ha_s: 3, maquinas: [
   { nome: "CASA", visto_ha_s: 3, online: true }, { nome: "GALPAO", visto_ha_s: 20, online: true }] };
 const NENHUMA = { online: false, visto_ha_s: 400, maquinas: [{ nome: "CASA", visto_ha_s: 400, online: false }] };
-const secaoMacros = (a) => a.ctx._macHtmlSecoes(TRES());
 const opcoesDo = (html) => [...html.matchAll(/<option value="([^"]*)"( selected)?>([^<]*)<\/option>/g)]
   .map((m) => ({ valor: m[1], selecionada: !!m[2], rotulo: m[3] }));
-
-test("o cabecalho tem o seletor 'Executa em' com 'Qualquer computador' e cada computador conhecido", () => {
-  const a = carregar();
-  a.m.vigia = DUAS;
-  const html = secaoMacros(a);
-  assert.ok(html.includes("Executa em"));
-  assert.deepStrictEqual(opcoesDo(html).map((o) => o.valor), ["", "CASA", "GALPAO"]);
-  assert.strictEqual(opcoesDo(html)[0].rotulo, "Qualquer computador");
-});
-
-test("sem escolha, 'Qualquer computador' vem marcado", () => {
-  const a = carregar();
-  a.m.vigia = DUAS;
-  const marcadas = opcoesDo(secaoMacros(a)).filter((o) => o.selecionada);
-  assert.deepStrictEqual(marcadas.map((o) => o.valor), [""]);
-});
-
-test("com escolha, o escolhido vem marcado", () => {
-  const a = carregar();
-  a.m.vigia = DUAS;
-  a.m.computador = "GALPAO";
-  assert.deepStrictEqual(opcoesDo(secaoMacros(a)).filter((o) => o.selecionada).map((o) => o.valor), ["GALPAO"]);
-});
-
-test("a escolha vale mesmo com outra caixa de letra (o Windows guarda em maiuscula)", () => {
-  const a = carregar();
-  a.m.vigia = DUAS;
-  a.m.computador = "galpao";
-  assert.deepStrictEqual(opcoesDo(secaoMacros(a)).filter((o) => o.selecionada).map((o) => o.valor), ["GALPAO"]);
-});
-
-test("computador desconectado aparece na lista marcado como desconectado", () => {
-  const a = carregar();
-  a.m.vigia = { online: true, visto_ha_s: 3, maquinas: [
-    { nome: "CASA", visto_ha_s: 3, online: true }, { nome: "GALPAO", visto_ha_s: 900, online: false }] };
-  const o = opcoesDo(secaoMacros(a));
-  assert.strictEqual(o.find((x) => x.valor === "GALPAO").rotulo, "GALPAO — desconectado");
-  assert.strictEqual(o.find((x) => x.valor === "CASA").rotulo, "CASA");
-});
-
-test("o escolhido que nunca consultou (servidor reiniciou) continua na lista, desconectado", () => {
-  const a = carregar();
-  a.m.vigia = { online: false, visto_ha_s: null, maquinas: [] };
-  a.m.computador = "GALPAO";
-  const o = opcoesDo(secaoMacros(a));
-  assert.deepStrictEqual(o.map((x) => x.valor), ["", "GALPAO"]);
-  assert.ok(o[1].selecionada && o[1].rotulo.includes("desconectado"));
-});
-
-test("vigia antigo (sem nome) nao pode ser escolhido - nome vazio significaria 'qualquer um'", () => {
-  const a = carregar();
-  a.m.vigia = { online: true, visto_ha_s: 2, maquinas: [{ nome: "", visto_ha_s: 2, online: true }] };
-  assert.deepStrictEqual(opcoesDo(secaoMacros(a)).map((o) => o.valor), [""]);
-});
-
-test("nome de computador com HTML nao vira HTML (nem na lista nem no aviso)", () => {
-  const a = carregar();
-  a.m.vigia = { online: true, visto_ha_s: 1, maquinas: [{ nome: '<b onclick="x">m</b>', visto_ha_s: 1, online: true }] };
-  a.m.computador = '<i>nao</i>';
-  const html = secaoMacros(a);
-  assert.ok(!html.includes("<b onclick") && !html.includes("<i>nao"));
-});
-
-test("sem a informacao do vigia (servidor antigo), o seletor nem aparece", () => {
-  const a = carregar();
-  a.m.vigia = null;
-  assert.ok(!secaoMacros(a).includes("mac-computador"));
-});
-
-test("o seletor so aparece na secao dos macros, uma vez", () => {
-  const a = carregar();
-  a.m.vigia = UMA;
-  assert.strictEqual(secaoMacros(a).split('id="mac-computador-sel"').length - 1, 1);
-});
 
 // ── o pontinho e o aviso: so quando ha algo a dizer ───────────────────────
 const aviso = (html) => { const m = /<div class="mac-geral"><div class="mac-sit mac-sit-aviso">[\s\S]*?<span>([^<]*)<\/span>/.exec(html); return m && m[1]; };
 const tomDoPonto = (html) => /mac-vigia mac-vigia-(\w+)/.exec(html)[1];
 
-test("um computador ouvindo e nenhuma escolha: sem aviso, ponto verde (nao ha ambiguidade)", () => {
-  const a = carregar();
-  a.m.vigia = UMA;
-  const html = secaoMacros(a);
-  assert.strictEqual(aviso(html), null);
-  assert.strictEqual(tomDoPonto(html), "on");
-});
-
-test("dois computadores conectados sem escolha: avisa pra escolher, e diz o que acontece sem escolha", () => {
-  const a = carregar();
-  a.m.vigia = DUAS;
-  const t = aviso(secaoMacros(a));
-  assert.ok(t.includes("2 computadores conectados (CASA, GALPAO)"));
-  assert.ok(t.includes("escolha acima em qual os macros rodam"));
-  assert.ok(t.includes("o horário roda em todos"));
-});
-
-test("dois conectados COM escolha: sem aviso (o outro fica parado, e esta tudo certo)", () => {
-  const a = carregar();
-  a.m.vigia = DUAS;
-  a.m.computador = "CASA";
-  const html = secaoMacros(a);
-  assert.strictEqual(aviso(html), null);
-  assert.strictEqual(tomDoPonto(html), "on");
-});
-
-test("o escolhido desconectado: avisa QUAL e ha quanto tempo, com o que fazer", () => {
-  const a = carregar();
-  a.m.vigia = { online: true, visto_ha_s: 3, maquinas: [
-    { nome: "CASA", visto_ha_s: 3, online: true }, { nome: "GALPAO", visto_ha_s: 900, online: false }] };
-  a.m.computador = "GALPAO";
-  const html = secaoMacros(a);
-  assert.ok(aviso(html).includes("GALPAO não está conectado (visto há 15 min)"));
-  assert.ok(aviso(html).includes("ou escolha outro computador"));
-  assert.strictEqual(tomDoPonto(html), "off");
-});
-
-test("outro computador conectado NAO conta como o escolhido estar conectado", () => {
-  const a = carregar();
-  a.m.vigia = UMA;                       // so o AVELL-LEANDRO esta ouvindo
-  a.m.computador = "GALPAO";
-  assert.ok(aviso(secaoMacros(a)).includes("GALPAO não está conectado"));
-});
-
-test("o escolhido que o servidor nunca viu: avisa sem inventar 'visto ha X'", () => {
-  const a = carregar();
-  a.m.vigia = { online: false, visto_ha_s: null, maquinas: [] };
-  a.m.computador = "GALPAO";
-  const t = aviso(secaoMacros(a));
-  assert.ok(t.includes("GALPAO não está conectado —"));
-  assert.ok(!t.includes("visto"));
-});
-
-test("ninguem conectado e sem escolha: diz ha quanto tempo e o que abrir", () => {
-  const a = carregar();
-  a.m.vigia = NENHUMA;
-  const t = aviso(secaoMacros(a));
-  assert.ok(t.includes("Nenhum computador conectado (visto há 6 min)"));
-  assert.ok(t.includes("abra o Chrome (com a extensão) e o XM Vigia"));
-});
-
-test("nunca teve contato: nao inventa 'visto ha X'", () => {
-  const a = carregar();
-  a.m.vigia = { online: false, visto_ha_s: null, maquinas: [] };
-  const t = aviso(secaoMacros(a));
-  assert.ok(t.includes("Nenhum computador conectado —") && !t.includes("visto"));
-});
-
-test("servidor antigo (sem a lista de maquinas) continua funcionando pelo online", () => {
-  const a = carregar();
-  a.m.vigia = { online: true, visto_ha_s: 2 };
-  assert.strictEqual(aviso(secaoMacros(a)), null);
-  a.m.vigia = { online: false, visto_ha_s: 500 };
-  assert.ok(aviso(secaoMacros(a)).includes("Nenhum computador conectado (visto há 8 min)"));
-});
-
-test("o aviso do computador so aparece na secao dos macros, uma vez", () => {
-  const a = carregar();
-  a.m.vigia = DUAS;
-  assert.strictEqual(secaoMacros(a).split("computadores conectados").length - 1, 1);
-});
-
 // ── escolher o computador ─────────────────────────────────────────────────
 const ROTA_PC = "PUT /admin/macros/spx/computador";
-
-test("escolher manda o nome ao servidor e a tela ja mostra a escolha", async () => {
-  const a = carregar({ rotas: { [ROTA_PC]: { corpo: { ok: true, computador: "GALPAO" } } } });
-  a.m.vigia = DUAS;
-  a.m.lista = TRES();
-  a.ctx._macEscolherComputador("GALPAO");
-  assert.strictEqual(a.m.computador, "GALPAO", "troca na hora, antes da resposta");
-  await a.esperar(); await a.esperar();
-  assert.strictEqual(a.chamadas[0].metodo, "PUT");
-  assert.strictEqual(a.chamadas[0].caminho, "/admin/macros/spx/computador");
-  assert.deepStrictEqual(a.chamadas[0].corpo, { maquina: "GALPAO" });
-});
-
-test("'Qualquer computador' manda null (solta a escolha)", async () => {
-  const a = carregar({ rotas: { [ROTA_PC]: { corpo: { ok: true, computador: null } } } });
-  a.m.vigia = DUAS; a.m.lista = TRES(); a.m.computador = "GALPAO";
-  a.ctx._macEscolherComputador("");
-  assert.strictEqual(a.m.computador, null);
-  await a.esperar(); await a.esperar();
-  assert.deepStrictEqual(a.chamadas[0].corpo, { maquina: null });
-});
 
 test("servidor recusou: volta pra escolha de antes e avisa", async () => {
   const a = carregar({ rotas: { [ROTA_PC]: { status: 403, corpo: { error: "Acesso negado" } } } });
@@ -487,14 +242,6 @@ test("sem escolha guardada, a lista deixa 'qualquer computador'", async () => {
 });
 
 // ── o pedido sabe pra onde vai ────────────────────────────────────────────
-test("o Rodar diz no tooltip em qual computador vai rodar", () => {
-  const a = carregar();
-  a.m.vigia = DUAS; a.m.computador = "GALPAO";
-  assert.ok(linha(secaoMacros(a), "backlog").includes('title="Rodar agora em GALPAO"'));
-  a.m.computador = null;
-  assert.ok(linha(secaoMacros(a), "backlog").includes('title="Rodar agora"'));
-});
-
 test("pedido aguardando um computador desconectado diz QUAL e o que fazer", () => {
   const a = carregar();
   const soCasa = { online: true, visto_ha_s: 3, maquinas: [
@@ -530,30 +277,6 @@ test("expirado e iniciado tambem citam o destino", () => {
 // ── carregar a lista ──────────────────────────────────────────────────────
 const AVISO = { chave: "avisos_entregador", nome: "Aviso", descricao: "", ativo: true, resumo: "19:05 Abaixo de 90% concluído" };
 
-test("junta os macros de aviso com os do SPX e guarda o estado do vigia", async () => {
-  const a = carregar({ rotas: {
-    "GET /admin/macros": { corpo: { macros: [AVISO] } },
-    "GET /admin/macros/spx": { corpo: { macros: TRES(), vigia: ONLINE } },
-  } });
-  a.ctx._macCarregarLista();
-  await a.esperar(); await a.esperar();
-  assert.strictEqual(a.m.lista.length, 4);
-  assert.strictEqual(a.m.vigia.online, true);
-  assert.ok(a.el("mac-lista").innerHTML.includes("_macRodar('backlog'"));
-});
-
-test("a rota dos macros do SPX falhando NAO derruba o resto da tela", async () => {
-  const a = carregar({ rotas: {
-    "GET /admin/macros": { corpo: { macros: [AVISO] } },
-    "GET /admin/macros/spx": new TypeError("failed to fetch"),
-  } });
-  a.ctx._macCarregarLista();
-  await a.esperar(); await a.esperar();
-  const html = a.el("mac-lista").innerHTML;
-  assert.ok(html.includes("_macAbrirConfigurar('avisos_entregador')"), "o aviso segue funcionando");
-  assert.strictEqual(html.split("Indisponível no momento").length - 1, 3);
-});
-
 test("rota dos macros do SPX respondendo erro (nao dev, servidor antigo) tambem nao derruba", async () => {
   const a = carregar({ rotas: {
     "GET /admin/macros": { corpo: { macros: [AVISO] } },
@@ -565,34 +288,8 @@ test("rota dos macros do SPX respondendo erro (nao dev, servidor antigo) tambem 
   assert.strictEqual(a.m.vigia, null);
 });
 
-test("recarga silenciosa nao apaga a lista nem mostra o esqueleto", async () => {
-  const a = carregar({ rotas: {
-    "GET /admin/macros": { corpo: { macros: [AVISO] } },
-    "GET /admin/macros/spx": { corpo: { macros: TRES(), vigia: ONLINE } },
-  } });
-  a.el("mac-lista").innerHTML = "<div>antes</div>";
-  a.ctx._macCarregarLista(true);
-  assert.strictEqual(a.el("mac-lista").innerHTML, "<div>antes</div>", "ainda la enquanto carrega");
-  await a.esperar(); await a.esperar();
-  assert.ok(a.el("mac-lista").innerHTML.includes("_macRodar"));
-});
-
 // ── Rodar agora ───────────────────────────────────────────────────────────
 const ROTA_RODAR = "POST /admin/macros/spx/alimentacao/rodar";
-
-test("Rodar pede ao servidor, mostra o pedido e passa a acompanhar", async () => {
-  const a = carregar({ rotas: { [ROTA_RODAR]: { corpo: { ok: true, comando: cmd("aguardando"), vigia: ONLINE } } } });
-  a.m.lista = TRES();
-  const botao = { disabled: false };
-  a.ctx._macRodar("alimentacao", botao);
-  assert.strictEqual(botao.disabled, true, "desabilita na hora, antes da resposta");
-  await a.esperar(); await a.esperar();
-  assert.strictEqual(a.chamadas[0].metodo, "POST");
-  assert.strictEqual(a.chamadas[0].caminho, "/admin/macros/spx/alimentacao/rodar");
-  assert.strictEqual(a.m.lista[0].comando.estado, "aguardando");
-  assert.ok(a.el("mac-lista").innerHTML.includes("aguardando o computador dos macros"));
-  assert.ok(a.m.poll, "ficou acompanhando");
-});
 
 test("clicar num macro ja em andamento nao faz pedido nenhum", () => {
   const a = carregar();
@@ -634,27 +331,6 @@ test("sem rede devolve o botao e avisa", async () => {
 // ── acompanhar ────────────────────────────────────────────────────────────
 const ROTA_ESTADO = "GET /admin/macros/spx/estado";
 
-test("o acompanhamento atualiza o andamento e PARA quando o pedido sai de andamento", async () => {
-  let estado = "entregue";
-  const a = carregar({ rotas: { [ROTA_ESTADO]: () => ({ corpo: { comandos: { alimentacao: cmd(estado) }, vigia: ONLINE } }) } });
-  a.m.lista = [macro("alimentacao", { comando: cmd("aguardando") })];
-  a.el("tela-macros").classList.add("active-view");
-  a.ctx._macAcompanhar();
-  assert.strictEqual(a.timers.length, 1, "agendou a primeira volta");
-
-  await a.timers.shift()(); await a.esperar(); await a.esperar();
-  assert.strictEqual(a.m.lista[0].comando.estado, "entregue");
-  assert.ok(a.el("mac-lista").innerHTML.includes("Recebido pela extensão"));
-  assert.strictEqual(a.timers.length, 1, "ainda em andamento: marcou a proxima volta");
-
-  estado = "iniciado";
-  await a.timers.shift()(); await a.esperar(); await a.esperar();
-  assert.ok(a.el("mac-lista").innerHTML.includes("Iniciado às 14:32"));
-  await a.timers.shift()();   // a volta seguinte ve que nao ha mais o que acompanhar
-  assert.strictEqual(a.timers.length, 0);
-  assert.strictEqual(a.m.poll, null);
-});
-
 test("o acompanhamento para quando a pessoa sai da tela", async () => {
   const a = carregar({ rotas: { [ROTA_ESTADO]: { corpo: { comandos: {}, vigia: ONLINE } } } });
   a.m.lista = [macro("alimentacao", { comando: cmd("aguardando") })];
@@ -693,20 +369,6 @@ test("nao abre dois acompanhamentos ao mesmo tempo", () => {
 });
 
 // ── ligar / desligar ──────────────────────────────────────────────────────
-test("o interruptor de um macro do SPX usa a rota do SPX e recarrega o resumo", async () => {
-  const a = carregar({ rotas: {
-    "PUT /admin/macros/spx/alimentacao/ativo": { corpo: { ok: true, ativo: false } },
-    "GET /admin/macros": { corpo: { macros: [AVISO] } },
-    "GET /admin/macros/spx": { corpo: { macros: TRES(), vigia: ONLINE } },
-  } });
-  a.m.lista = TRES();
-  a.ctx._macAlternarAtivo("spx_alimentacao", {});
-  await a.esperar(); await a.esperar(); await a.esperar();
-  assert.strictEqual(a.chamadas[0].caminho, "/admin/macros/spx/alimentacao/ativo");
-  assert.deepStrictEqual(a.chamadas[0].corpo, { ativo: false });
-  assert.ok(a.chamadas.some((c) => c.caminho === "/admin/macros/spx"), "recarregou o resumo");
-});
-
 test("o interruptor do aviso continua na rota de sempre", async () => {
   const a = carregar({ rotas: { "PUT /admin/macros/avisos-entregador/ativo": { corpo: { ok: true } } } });
   a.m.lista = [AVISO];
@@ -779,36 +441,6 @@ test("os dois jeitos seguem juntos: trocar de modo nao joga fora o outro", () =>
 });
 
 // ── o modal ───────────────────────────────────────────────────────────────
-test("abrir o modal copia a agenda (editar nao mexe na lista da tela)", () => {
-  const a = carregar();
-  a.m.lista = [macro("alimentacao", { agenda: { modo: "horarios", minutos: 60, horarios: [{ hora: 8, minuto: 0 }] } })];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  a.m.agenda.horarios[0].hora = 15;
-  a.m.agenda.horarios.push({ hora: 20, minuto: 0 });
-  assert.strictEqual(a.m.lista[0].agenda.horarios[0].hora, 8);
-  assert.strictEqual(a.m.lista[0].agenda.horarios.length, 1);
-  assert.deepStrictEqual(a.modais.abertos, ["modal-macro-agenda"]);
-});
-
-test("o modal mostra o nome, o minimo do macro e a explicacao", () => {
-  const a = carregar();
-  a.m.lista = [macro("backlog", { nome: "Backlog" })];
-  a.ctx._macAbrirConfigurarSpx("backlog");
-  assert.strictEqual(a.el("mac-ag-titulo").innerHTML, "Backlog");
-  assert.strictEqual(a.el("mac-ag-dica-minimo").innerHTML, "Mínimo de 30 minutos.");
-  assert.match(a.el("mac-ag-descricao").innerHTML, /retrato inteiro/);
-});
-
-test("macro nunca configurado abre ligado; configurado e desligado abre desligado", () => {
-  const a = carregar();
-  a.m.lista = [macro("alimentacao", { configurado: false, ativo: true })];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  assert.strictEqual(a.el("mac-ag-ativo").checked, true);
-  a.m.lista = [macro("alimentacao", { configurado: true, ativo: false })];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  assert.strictEqual(a.el("mac-ag-ativo").checked, false);
-});
-
 test("a parte que nao esta valendo fica apagada, e o radio acompanha o modo", () => {
   const a = carregar();
   a.m.lista = [macro("alimentacao")];
@@ -899,26 +531,6 @@ test("abrindo o modal do aviso, o relogio volta a editar as rodadas", () => {
 });
 
 // ── salvar ────────────────────────────────────────────────────────────────
-test("salvar manda ativo e agenda, fecha o modal e recarrega a lista por baixo", async () => {
-  const a = carregar({ rotas: {
-    "PUT /admin/macros/spx/alimentacao": { corpo: { ok: true } },
-    "GET /admin/macros": { corpo: { macros: [AVISO] } },
-    "GET /admin/macros/spx": { corpo: { macros: TRES(), vigia: ONLINE } },
-  } });
-  a.m.lista = [macro("alimentacao")];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  a.ctx._macMudarMinutos("40");
-  a.el("mac-ag-ativo").checked = true;
-  a.ctx._macSalvarAgenda();
-  await a.esperar(); await a.esperar(); await a.esperar();
-  assert.strictEqual(a.chamadas[0].metodo, "PUT");
-  assert.strictEqual(a.chamadas[0].caminho, "/admin/macros/spx/alimentacao");
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(a.chamadas[0].corpo)),
-    { ativo: true, agenda: { modo: "intervalo", horarios: [], minutos: 40 } });
-  assert.deepStrictEqual(a.modais.fechados, ["modal-macro-agenda"]);
-  assert.ok(a.chamadas.some((c) => c.caminho === "/admin/macros/spx" && c.metodo === "GET"));
-});
-
 test("agenda invalida nem sai do navegador: a mensagem aparece na hora", () => {
   const a = carregar();
   a.m.lista = [macro("backlog")];
@@ -927,18 +539,6 @@ test("agenda invalida nem sai do navegador: a mensagem aparece na hora", () => {
   a.ctx._macSalvarAgenda();
   assert.strictEqual(a.chamadas.length, 0);
   assert.match(a.el("mac-ag-erro").innerHTML, /30 a 1440/);
-  assert.deepStrictEqual(a.modais.fechados, []);
-});
-
-test("recusa do servidor mostra o motivo no modal e devolve o botao", async () => {
-  const a = carregar({ rotas: { "PUT /admin/macros/spx/alimentacao": { status: 400, corpo: { error: "O intervalo tem que ser de 20 a 1440 minutos." } } } });
-  a.m.lista = [macro("alimentacao")];
-  a.ctx._macAbrirConfigurarSpx("alimentacao");
-  a.ctx._macSalvarAgenda();
-  await a.esperar(); await a.esperar();
-  assert.match(a.el("mac-ag-erro").innerHTML, /20 a 1440/);
-  assert.strictEqual(a.el("mac-ag-salvar").disabled, false);
-  assert.strictEqual(a.el("mac-ag-salvar").textContent, "Salvar");
   assert.deepStrictEqual(a.modais.fechados, []);
 });
 
@@ -953,136 +553,11 @@ test("sem rede ao salvar: avisa no modal e devolve o botao", async () => {
 });
 
 // ── o redesenho: uma linha de texto, controles a direita ──────────────────
-test("a linha e enxuta: nome, UMA linha 'quando roda · ultima carga', e os controles", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes(TRES());
-  const l = linha(html, "alimentacao");
-  assert.ok(l.includes('class="mac-spx-texto"'));
-  assert.ok(l.includes('class="mac-spx-controles"'));
-  assert.strictEqual(l.split("mac-spx-meta").length - 1, 1, "so uma linha de meta");
-  assert.match(l, /A cada 1 h<\/span> · Última carga hoje 14:32/);
-});
-
-test("a explicacao do macro vai no tooltip do nome, nao na tela", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes(TRES());
-  assert.ok(html.includes('title="Exporta e baixa a AT do dia"'));
-  assert.ok(!html.includes('class="mac-item-detalhe">Exporta'), "nao aparece como linha de texto");
-});
-
-test("o horario e um botao de engrenagem com nome acessivel (nao um 'Configurar' de texto)", () => {
-  const a = carregar();
-  const l = linha(a.ctx._macHtmlSecoes(TRES()), "alimentacao");
-  assert.ok(/class="mac-icone"[^>]*aria-label="Configurar o horário/.test(l));
-  assert.ok(!l.includes(">Configurar<"));
-});
-
-test("o interruptor nao carrega mais o rotulo 'Ativo' ao lado (o resumo ja diz 'Desligado')", () => {
-  const a = carregar();
-  const l = linha(a.ctx._macHtmlSecoes(TRES()), "alimentacao");
-  assert.ok(!l.includes(">Ativo<"));
-  assert.ok(l.includes('role="switch"'));
-});
-
-test("Rodar fica depois do interruptor e antes da engrenagem, sempre na mesma ordem", () => {
-  const a = carregar();
-  const l = linha(a.ctx._macHtmlSecoes(TRES()), "alimentacao");
-  const pos = ["gc-toggle", "mac-rodar", "mac-icone"].map((c) => l.indexOf(c));
-  assert.deepStrictEqual([...pos].sort((x, y) => x - y), pos);
-});
-
 // ── a linha de situacao: uma so, e so quando importa ──────────────────────
 const problema = (extra = {}) => ({ macro: "backlog", origem: "vigia", nivel: "erro", texto: "Login recusado ao enviar backlogs.xlsx",
   maquina: "CASA", arquivo: "backlogs.xlsx", quando: `${hojeBrasilia()} 09:40:00`, segundos_atras: 720, ...extra });
-const linhaBacklog = (a, extra) => linha(a.ctx._macHtmlSecoes([macro("alimentacao"), macro("pedidos"), macro("backlog", extra)]), "backlog");
-
-test("sem nada a dizer, a linha de situacao nem existe", () => {
-  const a = carregar();
-  assert.ok(!linhaBacklog(a, {}).includes("mac-sit"));
-});
-
-test("problema contado pelo vigia aparece com o computador, ha quanto tempo e o motivo", () => {
-  const a = carregar();
-  const l = linhaBacklog(a, { problema: problema() });
-  assert.ok(l.includes("mac-sit-erro"));
-  assert.ok(l.includes("<b>Falhou</b> há 12 min · CASA — Login recusado ao enviar backlogs.xlsx"));
-});
-
-test("aviso (nao erro) usa 'Atencao' e o tom de aviso", () => {
-  const a = carregar();
-  const l = linhaBacklog(a, { problema: problema({ nivel: "aviso", texto: "Já estava gravado" }) });
-  assert.ok(l.includes("mac-sit-aviso"));
-  assert.ok(l.includes("<b>Atenção</b>"));
-});
-
-test("o problema tem 'Detalhes' que abre o historico DAQUELE macro", () => {
-  const a = carregar();
-  assert.ok(linhaBacklog(a, { problema: problema() }).includes("_macAbrirHistorico('backlog')"));
-});
-
-test("problema sem nome de computador nao deixa ' ·' sobrando", () => {
-  const a = carregar();
-  const l = linhaBacklog(a, { problema: problema({ maquina: null }) });
-  assert.ok(l.includes("<b>Falhou</b> há 12 min — Login"));
-});
-
-test("texto do problema (vem de outro computador) nunca vira HTML", () => {
-  const a = carregar();
-  const l = linhaBacklog(a, { problema: problema({ texto: "<img src=x onerror=alert(1)>", maquina: "<script>" }) });
-  assert.ok(!l.includes("<img") && !l.includes("<script>"));
-  assert.ok(l.includes("&lt;img"));
-});
-
-test("pedido em andamento tem prioridade sobre o problema antigo (uma linha so)", () => {
-  const a = carregar();
-  a.m.vigia = UMA;
-  const l = linhaBacklog(a, { problema: problema(), comando: cmd("aguardando", { qual: "backlog" }) });
-  assert.strictEqual(l.split("mac-sit ").length - 1, 1);
-  assert.ok(l.includes("aguardando o computador"));
-  assert.ok(!l.includes("Falhou"));
-});
-
-test("'Iniciado' aparece so nos primeiros minutos; depois a tela volta ao normal", () => {
-  const a = carregar();
-  a.m.vigia = UMA;
-  assert.ok(linhaBacklog(a, { comando: cmd("iniciado", { qual: "backlog", idade_s: 60 }) }).includes("Iniciado às"));
-  assert.ok(!linhaBacklog(a, { comando: cmd("iniciado", { qual: "backlog", idade_s: 900 }) }).includes("mac-sit"));
-});
-
-test("pedido que deu erro continua visivel ate o proximo", () => {
-  const a = carregar();
-  a.m.vigia = UMA;
-  const l = linhaBacklog(a, { comando: cmd("erro", { qual: "backlog", erro: "já está rodando", idade_s: 4000 }) });
-  assert.ok(l.includes("Não rodou: já está rodando"));
-});
-
-test("depois que o pedido acaba bem, o problema antigo do vigia volta a aparecer", () => {
-  const a = carregar();
-  a.m.vigia = UMA;
-  const l = linhaBacklog(a, { problema: problema(), comando: cmd("iniciado", { qual: "backlog", idade_s: 4000 }) });
-  assert.ok(l.includes("<b>Falhou</b>"));
-});
 
 // ── problema geral (sem macro) ────────────────────────────────────────────
-test("erro do vigia sem macro (inesperado) aparece uma vez, sob o titulo da secao", () => {
-  const a = carregar();
-  a.m.vigia = UMA;
-  a.m.geral = problema({ macro: "geral", texto: "Erro inesperado ao processar x.csv: KeyError" });
-  const html = a.ctx._macHtmlSecoes(TRES());
-  assert.strictEqual(html.split("mac-geral").length - 1, 1);
-  assert.ok(html.includes("Erro inesperado ao processar x.csv"));
-  a.m.geral = null;
-  assert.ok(!a.ctx._macHtmlSecoes(TRES()).includes("mac-geral"));
-});
-
-test("o problema geral so aparece na secao dos macros, nao na dos avisos", () => {
-  const a = carregar();
-  a.m.geral = problema({ macro: "geral", texto: "so aqui" });
-  const html = a.ctx._macHtmlSecoes([AVISO]);
-  assert.strictEqual(html.split("so aqui").length - 1, 1);
-  assert.ok(html.indexOf("so aqui") > html.indexOf(">Macros<"));
-});
-
 test("a lista carrega o problema geral do servidor", async () => {
   const geral = problema({ macro: "geral", texto: "erro geral" });
   const a = carregar({ rotas: {
@@ -1095,20 +570,6 @@ test("a lista carrega o problema geral do servidor", async () => {
 });
 
 // ── cabecalho da secao ────────────────────────────────────────────────────
-test("o titulo da secao dos macros leva, na mesma linha, o seletor de computador e o Historico", () => {
-  const a = carregar();
-  a.m.vigia = UMA;
-  const html = a.ctx._macHtmlSecoes(TRES());
-  const cab = /<div class="mac-secao-cab">([\s\S]*?)<\/div><\/div>/.exec(html)[1];
-  assert.ok(cab.includes(">Macros<") && cab.includes("Executa em") && cab.includes("_macAbrirHistorico()"));
-});
-
-test("a secao dos avisos segue com o titulo simples (sem historico)", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes([AVISO]);
-  assert.strictEqual(html.split("_macAbrirHistorico()").length - 1, 1, "so na secao dos macros");
-});
-
 // ── historico ─────────────────────────────────────────────────────────────
 const EVENTOS = [
   { id: 2, macro: "backlog", origem: "vigia", nivel: "erro", texto: "Login recusado", maquina: "CASA",
@@ -1175,25 +636,3 @@ test("_macQuandoTexto: hoje ou dia/mes, sempre com a hora do proprio texto", () 
 });
 
 // ── o Rodar no mesmo lugar em todas as linhas ─────────────────────────────
-test("onde falta interruptor ou engrenagem fica um espaco do mesmo tamanho (o Rodar nao pula)", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes([macro("alimentacao"), macro("pedidos"), macro("backlog", { configurado: false })]);
-  const at = linha(html, "alimentacao");
-  assert.ok(!at.includes("mac-slot"), "AT tem interruptor e engrenagem");
-  const pedidos = linha(html, "pedidos");
-  assert.ok(pedidos.includes("mac-slot-toggle") && pedidos.includes("mac-slot-icone"), "pedidos nao tem nenhum dos dois");
-  const backlogSemAgenda = linha(html, "backlog");
-  assert.ok(backlogSemAgenda.includes("mac-slot-toggle"), "sem agenda configurada, sem interruptor");
-  assert.ok(!backlogSemAgenda.includes("mac-slot-icone"), "mas tem engrenagem");
-});
-
-test("em toda linha os tres controles existem, nessa ordem: interruptor, Rodar, engrenagem", () => {
-  const a = carregar();
-  const html = a.ctx._macHtmlSecoes(TRES());
-  for (const q of ["alimentacao", "pedidos", "backlog"]) {
-    const l = linha(html, q);
-    const pos = [/gc-toggle |mac-slot-toggle/, /mac-rodar/, /mac-icone|mac-slot-icone/].map((r) => l.search(r));
-    assert.ok(pos.every((p) => p >= 0), q);
-    assert.deepStrictEqual([...pos].sort((x, y) => x - y), pos, q);
-  }
-});

@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261019a">
+<link rel="stylesheet" href="style.css?v=20261019b">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -2393,7 +2393,7 @@ if (_BASE) {
         <div id="tela-macros" class="view tela-full">
             <div class="fech-header">
                 <div style="font-size:15px;font-weight:700;color:#e2e8f0">Macros</div>
-                <div style="font-size:12.5px;color:#8494a9;margin-top:4px">O que o sistema faz sozinho, e em que horário.</div>
+                <div style="font-size:12.5px;color:#8494a9;margin-top:4px">Escolha um macro na lista pra ver e mudar tudo dele: onde roda, em qual polo e quando.</div>
                 <nav class="mex-abas" aria-label="Macros">
                     <a href="#" class="mex-aba ativa" aria-current="page" onclick="abrirMacros(event)">Configurar</a>
                     <a href="#" class="mex-aba" data-rota="Macros/EmExecucao" onclick="abrirMacrosExecucao(event)">Em execução</a>
@@ -2424,127 +2424,6 @@ if (_BASE) {
                 <div id="mex-corpo"><div class="fechamento-empty">Carregando...</div></div>
             </div>
         </div><!-- /tela-macros-execucao -->
-
-        <!-- Configurar um macro -->
-        <div class="usr-modal-overlay" id="modal-macro-editar" onclick="_fecharModalSeBackdrop(event,'modal-macro-editar')">
-            <div class="usr-modal" style="max-width:720px">
-                <div class="usr-modal-title" id="mac-editar-titulo">Configurar macro</div>
-                <div class="usr-modal-sub" id="mac-editar-descricao"></div>
-
-                <label style="display:flex;align-items:center;gap:8px;margin:16px 0;cursor:pointer;font-size:13.5px;color:#e2e8f0">
-                    <input type="checkbox" id="mac-editar-ativo" style="width:16px;height:16px;cursor:pointer">
-                    Ativo
-                </label>
-
-                <div style="font-size:14px;font-weight:600;color:#e2e8f0">Rodadas</div>
-                <div style="font-size:12.5px;color:#8494a9;margin:3px 0 12px">Em cada horário, o sistema avisa quem se encaixa no critério escolhido.</div>
-                <div id="mac-rodadas-lista"></div>
-                <button type="button" class="mac-adicionar" onclick="_macAdicionarRodada()">+ Adicionar rodada</button>
-
-                <div class="usr-modal-error" id="mac-editar-erro"></div>
-                <div class="usr-modal-btns">
-                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-macro-editar')">Cancelar</button>
-                    <button class="usr-modal-btn-primary" id="mac-editar-salvar" onclick="_macSalvar()">Salvar</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Horário de um macro do SPX (AT Exportada, Backlog) — montado por js/macros.js -->
-        <div class="usr-modal-overlay" id="modal-macro-agenda" onclick="_fecharModalSeBackdrop(event,'modal-macro-agenda')">
-            <div class="usr-modal" style="max-width:520px">
-                <div class="usr-modal-title" id="mac-ag-titulo">Horário do macro</div>
-                <div class="usr-modal-sub" id="mac-ag-descricao"></div>
-
-                <label style="display:flex;align-items:center;gap:8px;margin:16px 0;cursor:pointer;font-size:13.5px;color:#e2e8f0">
-                    <input type="checkbox" id="mac-ag-ativo" style="width:16px;height:16px;cursor:pointer">
-                    Ativo
-                </label>
-
-                <div class="mac-ag-bloco" id="mac-ag-bloco-intervalo">
-                    <div class="mac-ag-opcao">
-                        <label class="mac-ag-radio">
-                            <input type="radio" name="mac-ag-modo" id="mac-ag-modo-intervalo" onchange="_macMudarModo('intervalo')">
-                            A cada
-                        </label>
-                        <input type="number" id="mac-ag-minutos" class="usr-modal-input mac-ag-minutos" min="1" max="1440" step="1"
-                               oninput="_macMudarMinutos(this.value)">
-                        <span class="mac-ag-unidade">minutos</span>
-                    </div>
-                    <div class="mac-ag-dica" id="mac-ag-dica-minimo"></div>
-                </div>
-
-                <div class="mac-ag-bloco" id="mac-ag-bloco-horarios">
-                    <div class="mac-ag-opcao">
-                        <label class="mac-ag-radio">
-                            <input type="radio" name="mac-ag-modo" id="mac-ag-modo-horarios" onchange="_macMudarModo('horarios')">
-                            Todo dia, nestes horários
-                        </label>
-                    </div>
-                    <div id="mac-ag-horarios"></div>
-                    <button type="button" class="mac-adicionar" onclick="_macAdicionarHorario()">+ Adicionar horário</button>
-                </div>
-
-                <div class="usr-modal-error" id="mac-ag-erro"></div>
-                <div class="usr-modal-btns">
-                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-macro-agenda')">Cancelar</button>
-                    <button class="usr-modal-btn-primary" id="mac-ag-salvar" onclick="_macSalvarAgenda()">Salvar</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Configurar um Colador (automacao/colador_neon.py) — montado por js/macros.js -->
-        <div class="usr-modal-overlay" id="modal-macro-colador" onclick="_fecharModalSeBackdrop(event,'modal-macro-colador')">
-            <div class="usr-modal" style="max-width:480px">
-                <div class="usr-modal-title" id="mac-col-titulo">Configurar</div>
-                <div class="usr-modal-sub">Vale a partir do próximo "Rodar" — não muda uma sessão já em andamento.</div>
-
-                <div class="mac-col-campo">
-                    <label for="mac-col-xpt">XPT</label>
-                    <input type="text" id="mac-col-xpt" class="usr-modal-input" list="mac-col-xpt-lista"
-                           placeholder="XPT_CFC" oninput="_macColMudarCampo('xpt', this.value)">
-                    <datalist id="mac-col-xpt-lista"><option value="XPT_CFC"><option value="XPT_VIA"></datalist>
-                </div>
-
-                <div class="mac-col-campo">
-                    <label for="mac-col-dia">Dia</label>
-                    <div class="mac-col-linha">
-                        <input type="date" id="mac-col-dia" class="usr-modal-input" oninput="_macColMudarCampo('dia', this.value)">
-                        <label class="mac-col-check"><input type="checkbox" id="mac-col-todos-dias"
-                               onchange="_macColMudarTodosDias(this.checked)"> todos os dias</label>
-                    </div>
-                </div>
-
-                <div class="mac-col-linha">
-                    <div class="mac-col-campo">
-                        <label for="mac-col-carencia">Carência (segundos)</label>
-                        <input type="number" id="mac-col-carencia" class="usr-modal-input" min="0" max="3600"
-                               oninput="_macColMudarCampo('carencia', this.value)">
-                    </div>
-                    <div class="mac-col-campo">
-                        <label for="mac-col-lote">Códigos por lote</label>
-                        <input type="number" id="mac-col-lote" class="usr-modal-input" min="1" max="500"
-                               oninput="_macColMudarCampo('lote', this.value)">
-                    </div>
-                </div>
-
-                <div class="mac-col-campo">
-                    <label for="mac-col-intervalo">Intervalo entre códigos — <span id="mac-col-intervalo-rotulo">0.5s</span></label>
-                    <input type="range" id="mac-col-intervalo" min="0" max="1.5" step="0.1"
-                           oninput="_macColMudarIntervalo(this.value)">
-                </div>
-
-                <label class="mac-col-check" style="margin:14px 0 4px">
-                    <input type="checkbox" id="mac-col-continuo" onchange="_macColMudarCampo('continuo', this.checked)">
-                    Modo contínuo — fica de vigia, colando o que chegar
-                </label>
-
-                <div class="usr-modal-error" id="mac-col-erro"></div>
-                <div class="usr-modal-btns">
-                    <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-macro-colador')">Cancelar</button>
-                    <button class="usr-modal-btn-primary" id="mac-col-salvar" onclick="_macSalvarColador()">Salvar</button>
-                </div>
-            </div>
-        </div>
 
         <!-- Histórico dos macros (o que a extensão e o vigia contaram) — montado por js/macros.js -->
         <div class="usr-modal-overlay" id="modal-macro-historico" onclick="_fecharModalSeBackdrop(event,'modal-macro-historico')">
@@ -4952,7 +4831,7 @@ if (_BASE) {
 <script src="js/usuarios-gc.js?v=20260924b"></script>
 <script src="js/nomes-padrao.js?v=20260922a"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
-<script src="js/macros.js?v=20260928a"></script>
+<script src="js/macros.js?v=20261019a"></script>
 <script src="js/macros-execucao.js?v=20261019a"></script>
 <script src="js/whatsapp-teste.js?v=20261015a"></script>
 <script src="js/stuck-ativo.js?v=20260929a"></script>
