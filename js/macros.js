@@ -422,6 +422,19 @@ function _macPoloSpxNota(item, m) {
         : "Roda na estação que estiver logada embaixo da logo do SPX.";
 }
 
+// O computador escolhido vale pros três relatórios; nele pode haver mais de um Chrome (um por
+// polo, cada um logado na sua estação) — cada Chrome roda só o que é do polo dele.
+function _macNotaExecutarEm(pc, onlinePc) {
+    if (pc && onlinePc === false) return "Vale pros três relatórios. <b>Desconectado agora.</b>";
+    const chromes = ((_macAtividade && _macAtividade.maquinas) || [])
+        .filter(m => m.online && (!pc || _macMesmoPc(m.nome, pc)));
+    if (chromes.length > 1) {
+        const polos = chromes.map(c => c.xpt || "polo ainda não visto");
+        return `Vale pros três relatórios. ${chromes.length} Chromes abertos aqui (${_macEsc(polos.join(", "))}): cada um roda só o que é do polo dele.`;
+    }
+    return "Vale pros três relatórios. Pode ter um Chrome por polo nesse computador: cada um roda só o que é do polo dele.";
+}
+
 // Escolheu o polo: troca na hora e volta atrás se o servidor recusar.
 function _macEscolherPolo(qual, valor) {
     const m = _macLista.find(x => x.qual === qual);
@@ -457,7 +470,7 @@ function _macVivoSpxHtml(item, m) {
     return `
         <div class="macd-grade">
             ${_macCampoHtml("Executar em", _macVigiaHtml() || `<span class="mac-agenda-mudo">nenhum computador conectado</span>`,
-                `Vale pros três relatórios: dividem a mesma conta do SPX.${pc && onlinePc === false ? " <b>Desconectado agora.</b>" : ""}`)}
+                _macNotaExecutarEm(pc, onlinePc))}
             ${_macCampoHtml("Polo (XPT)", _macPoloSpxHtml(m), _macPoloSpxNota(item, m))}
             ${_macCampoHtml("Última carga", carga, "Quando o arquivo chegou no sistema — a prova de que rodou de verdade.")}
             ${_macCampoHtml("Próxima rodada", _macProximaDe(item.qual)

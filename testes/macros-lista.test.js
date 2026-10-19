@@ -458,3 +458,13 @@ test("SPX: a proxima rodada agendada aparece na lista e no detalhe", () => {
   assert.match(t.nav(), /Próxima às 15:31 \(em 12 min\)/);
   assert.match(t.vivo(), /Próxima rodada[\s\S]*15:31 \(em 12 min\)/);
 });
+
+test("Executar em: com dois Chromes no computador (um por polo), diz isso em vez de sugerir um so", () => {
+  const a = carregar({ rotas: HIST("alimentacao") });
+  a.m.computador = "LEANDROXM";
+  a.m.atividade = { abas: [], maquinas: [
+    { nome: "LEANDROXM", online: true, xpt: "XPT_CFC" }, { nome: "LEANDROXM", online: true, xpt: "XPT_VIA" }] };
+  const t = montar(a);
+  assert.match(t.vivo(), /2 Chromes abertos aqui \(XPT_CFC, XPT_VIA\): cada um roda só o que é do polo dele/);
+  assert.ok(!t.vivo().includes("dividem a mesma conta"));
+});
