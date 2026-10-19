@@ -424,16 +424,20 @@ class Backend:
 
         raise ErroDeEnvio("nao consegui autenticar")
 
-    def pendentes(self, limite=10000):
+    def pendentes(self, limite=10000, estacao=None):
         """Os codigos da AT que ainda nao foram pesquisados.
 
         E o que o macro de pedidos pesquisados cola na Pesquisa em lote do SPX.
+        Com `estacao`, so os daquela estacao (a que esta logada na aba).
         """
+        consulta = f"limite={int(limite)}"
+        if estacao:
+            consulta += f"&estacao={quote(estacao, safe='')}"
         for tentativa in (1, 2):
             if not self.token:
                 self.entrar()
             try:
-                r = requests.get(self._url(f"{ROTA_PENDENTES}?limite={int(limite)}"),
+                r = requests.get(self._url(f"{ROTA_PENDENTES}?{consulta}"),
                                  headers={"Authorization": f"Bearer {self.token}"},
                                  timeout=TIMEOUT, verify=self.ca)
             except requests.RequestException as e:
@@ -1000,15 +1004,17 @@ class Atendimento(BaseHTTPRequestHandler):
             return self._responder(404, {"error": "nao conheco esse caminho"})
 
         limite = 10000
+        consulta = parse_qs(caminho.query)
         try:
-            pedido = parse_qs(caminho.query).get("limite", [""])[0]
+            pedido = consulta.get("limite", [""])[0]
             if pedido:
                 limite = max(1, min(10000, int(pedido)))
         except ValueError:
             pass
+        estacao = (consulta.get("estacao", [""])[0] or "").strip() or None
 
         try:
-            resposta = self.vigia.backend.pendentes(limite)
+            resposta = self.vigia.backend.pendentes(limite, estacao=estacao)
         except (ErroDeConta, ErroDeEnvio) as e:
             return self._responder(503, {"error": str(e)})
         except Exception as e:

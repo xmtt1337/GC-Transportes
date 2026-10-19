@@ -335,10 +335,12 @@ chrome.alarms.onAlarm.addListener(async (alarme) => {
 // Chrome - e o erro que chega la e um "failed to fetch" que nao conta nada.
 const VIGIA = 'http://127.0.0.1:49732';
 
-async function pendentesDoVigia(limite) {
+async function pendentesDoVigia(limite, estacao) {
   const quanto = Math.max(1, Math.min(10000, Number(limite) || 10000));
+  const params = new URLSearchParams({ limite: String(quanto) });
+  if (estacao) params.set('estacao', estacao);
   const corte = AbortSignal.timeout ? AbortSignal.timeout(120000) : undefined;
-  const r = await fetch(`${VIGIA}/pendentes?limite=${quanto}`, { signal: corte });
+  const r = await fetch(`${VIGIA}/pendentes?${params}`, { signal: corte });
   if (!r.ok) {
     let motivo = `respondeu ${r.status}`;
     try {
@@ -577,7 +579,7 @@ chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
   }
 
   if (msg.xmMacro === 'pendentes') {
-    pendentesDoVigia(msg.limite).then(
+    pendentesDoVigia(msg.limite, msg.estacao).then(
       (d) => responder({ ok: true, ...d }),
       (e) => responder({ ok: false, error: String(e.message || e) }));
     return true;

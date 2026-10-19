@@ -24,7 +24,7 @@ const PASTA = path.join(__dirname, '..', 'extensao-macros-spx');
 class ParadoFalso extends Error {}
 
 // `respostas`: o que o vigia devolve a cada pergunta de pendentes, em ordem (a ultima se repete).
-function carregar(respostas) {
+function carregar(respostas, textoDaPagina = 'Shopee Xpress XPT_SC_Caçador Busca Painel') {
   let agora = Date.UTC(2026, 9, 1, 0, 20, 0);
   class DataFalsa extends Date {
     constructor(...a) { if (a.length) super(...a); else super(agora); }
@@ -40,6 +40,7 @@ function carregar(respostas) {
   const ctx = vm.createContext({
     console: { log() {}, warn() {}, error() {} },
     Date: DataFalsa,
+    document: { body: { innerText: textoDaPagina } },
     chrome: { runtime: {
       onMessage: { addListener() {} },
       async sendMessage(msg) {
@@ -198,4 +199,16 @@ test('rodape: numero piscando maior que o total nunca vale, mesmo parado', () =>
   const r = carregar([COM(1)]);
   const rod = r.G.pedidos.novoRodape(3256);
   for (let i = 0; i < 20; i++) assert.strictEqual(rod.ler(1055090, true), null);
+});
+
+test('estacao: pede ao vigia so os pendentes da estacao logada embaixo da logo', async () => {
+  const r = carregar([COM(2)], 'Shopee Xpress XPT_SC_Videira Busca');
+  await r.G.pedidos.pedirCodigos();
+  assert.strictEqual(r.perguntas[0].estacao, 'XPT_SC_Videira');
+});
+
+test('estacao: sem XPT_SC_ na tela recusa, em vez de pesquisar codigos de outro polo', async () => {
+  const r = carregar([COM(2)], 'carregando...');
+  await assert.rejects(r.G.pedidos.pedirCodigos(), /não achei a estação/);
+  assert.strictEqual(r.perguntas.length, 0);
 });

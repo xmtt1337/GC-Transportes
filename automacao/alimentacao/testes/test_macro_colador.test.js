@@ -739,6 +739,16 @@ test('xptDaPagina acha VIA tambem, e ignora caixa', () => {
   assert.strictEqual(r.G.colador.xptDaPagina(), 'XPT_VIA');
 });
 
+test('xptDaPagina le a estacao embaixo da logo (XPT_SC_Caçador / XPT_SC_Videira)', () => {
+  assert.strictEqual(carregar({ textoDaPagina: 'Shopee Xpress\nXPT_SC_Caçador\nBusca' }).G.colador.xptDaPagina(), 'XPT_CFC');
+  assert.strictEqual(carregar({ textoDaPagina: 'XPT_SC_Videira\nBusca' }).G.colador.xptDaPagina(), 'XPT_VIA');
+});
+
+test('xptDaPagina: a estacao embaixo da logo manda mais que o e-mail', () => {
+  const r = carregar({ textoDaPagina: 'XPT_SC_Videira\nadm.xpt-cfc-01@shopeemobile-external.com' });
+  assert.strictEqual(r.G.colador.xptDaPagina(), 'XPT_VIA');
+});
+
 test('xptDaPagina sem nenhum sinal na tela devolve null', () => {
   const r = carregar({ textoDaPagina: 'nada de util aqui' });
   assert.strictEqual(r.G.colador.xptDaPagina(), null);

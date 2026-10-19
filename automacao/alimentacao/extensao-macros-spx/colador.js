@@ -67,8 +67,12 @@
   // roda em SPX de contas diferentes (Caçador e Videira, cada PC na sua
   // conta, rodando ao mesmo tempo). Se a página não trouxer nenhum sinal,
   // devolve null — quem chama cai pra config.xpt (comportamento de antes).
+  // A fonte principal é a estação embaixo da logo ("XPT_SC_Videira"); o e-mail fica de reserva.
   function xptDaPagina() {
-    const m = String(document.body && document.body.innerText || '').match(/xpt[_-]?(cfc|via)/i);
+    const texto = String(document.body && document.body.innerText || '');
+    const daEstacao = L.xptDaEstacao(L.estacaoNoTexto(texto));
+    if (daEstacao) return daEstacao;
+    const m = texto.match(/xpt[_-]?(cfc|via)/i);
     return m ? `XPT_${m[1].toUpperCase()}` : null;
   }
 

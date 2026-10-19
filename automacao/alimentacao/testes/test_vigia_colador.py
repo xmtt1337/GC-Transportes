@@ -204,6 +204,18 @@ class ServidorLocal(unittest.TestCase):
         self.assertIsNone(corpo["at_repetida_ha_s"])
         self.assertEqual(corpo["codigos"], ["BR1"])
 
+    def test_pendentes_repassa_a_estacao_da_aba(self):
+        backend = BackendDeMentira({"codigos": [], "total": 0})
+        base = self.subir(backend)
+        self.chamar(base, "/pendentes?limite=10&estacao=XPT_SC_Ca%C3%A7ador")
+        self.assertEqual(backend.chamadas, [("pendentes", (10,), {"estacao": "XPT_SC_Caçador"})])
+
+    def test_pendentes_sem_estacao_manda_none(self):
+        backend = BackendDeMentira({"codigos": [], "total": 0})
+        base = self.subir(backend)
+        self.chamar(base, "/pendentes")
+        self.assertEqual(backend.chamadas, [("pendentes", (10000,), {"estacao": None})])
+
     # ── GET /colador/lote ────────────────────────────────────────────────────
     def test_lote_repassa_a_resposta_do_servidor(self):
         resposta = {"tabela": "shopee_recebimentos", "itens": [{"id": 1, "codigo": "BR1"}]}

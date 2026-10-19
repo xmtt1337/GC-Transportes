@@ -56,10 +56,19 @@
   const ESPERA_ENCADEADO_MS = 6 * 60 * 1000;
   const INTERVALO_ENCADEADO_MS = 20000;
 
+  // Só os códigos da estação logada nesta aba: pesquisar no SPX de Videira um código de
+  // Caçador não acha nada, e o código continuaria "pendente" pra sempre.
+  function estacaoDaAba() {
+    const estacao = L.estacaoNoTexto(document.body && document.body.innerText);
+    if (!estacao) throw new Error('não achei a estação (XPT_SC_…) embaixo da logo do SPX — a aba carregou direito?');
+    return estacao;
+  }
+
   async function perguntarPendentes() {
+    const estacao = estacaoDaAba();
     let resposta;
     try {
-      resposta = await chrome.runtime.sendMessage({ xmMacro: 'pendentes', limite: MAX_POR_VEZ });
+      resposta = await chrome.runtime.sendMessage({ xmMacro: 'pendentes', limite: MAX_POR_VEZ, estacao });
     } catch (e) {
       throw new Error('não consegui falar com a extensão — dê F5 na aba');
     }

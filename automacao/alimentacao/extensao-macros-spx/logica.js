@@ -282,7 +282,23 @@
     return agenda.versao === versaoGuardada ? 'manter' : 'aplicar';
   }
 
+  // A estacao logada aparece embaixo da logo do SPX ("XPT_SC_Caçador"). O mesmo nome
+  // vem na coluna de estacao dos relatorios, e o sistema chama o polo de XPT_CFC/XPT_VIA.
+  const XPT_DA_CIDADE = { cacador: 'XPT_CFC', videira: 'XPT_VIA' };
+
+  function estacaoNoTexto(texto) {
+    const m = String(texto || '').match(/XPT_SC_[A-Za-zÀ-ÿ]+/);
+    return m ? m[0] : null;
+  }
+
+  function xptDaEstacao(estacao) {
+    const m = /^XPT_SC_(.+)$/i.exec(normalizar(estacao));
+    return m ? XPT_DA_CIDADE[chave(m[1])] || null : null;
+  }
+
   const logica = {
+    estacaoNoTexto,
+    xptDaEstacao,
     NOME_RELATORIO,
     NOME_PESQUISADOS,
     lerHorarios,
