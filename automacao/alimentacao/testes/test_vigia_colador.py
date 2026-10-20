@@ -197,6 +197,13 @@ class ServidorLocal(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, json.loads(e.read())
 
+    def test_ping_diz_a_versao_e_os_modos_do_colador(self):
+        base = self.subir(BackendDeMentira({}))
+        status, corpo = self.chamar(base, "/ping")
+        self.assertEqual(status, 200)
+        self.assertEqual(corpo["versao"], va.VERSAO_VIGIA)
+        self.assertIn("criar_at", corpo["modos_colador"])
+
     # ── GET /pendentes (Pedidos Pesquisados) ─────────────────────────────────
     # O Pedidos encadeado na AT separa "a AT nao mudou" de "a carga atrasou" por este campo
     # (01/10/2026: AT repetida de noite virava "Falhou: nao ha pedido novo" em vermelho).

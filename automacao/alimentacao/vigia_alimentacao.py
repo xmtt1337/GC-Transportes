@@ -1013,6 +1013,10 @@ ID_COMANDO = re.compile(
 
 # So os dois modos que o colador conhece - falha aqui e um 400 na hora, sem
 # gastar uma viagem ao servidor pra descobrir a mesma coisa.
+# Muda a cada alteracao que precise do vigia novo: o /ping mostra, e o comando de atualizar confere
+# que o vigia que ficou de pe e o novo (um vigia aberto continua com o codigo antigo ate reiniciar).
+VERSAO_VIGIA = "2026-10-19-criar-at"
+
 MODOS_COLADOR = ("recebimento", "at_cluster", "criar_at")
 FILAS_COLADOR = ("shopee_recebimentos", "entregador_pedidos_at")
 
@@ -1037,7 +1041,8 @@ class Atendimento(BaseHTTPRequestHandler):
     def do_GET(self):
         caminho = urlparse(self.path)
         if caminho.path == "/ping":
-            return self._responder(200, {"vigia": "de pe", "ultimo": self.vigia.ultimo})
+            return self._responder(200, {"vigia": "de pe", "versao": VERSAO_VIGIA,
+                                         "modos_colador": list(MODOS_COLADOR), "ultimo": self.vigia.ultimo})
         if caminho.path == "/comandos":
             return self._comandos(parse_qs(caminho.query))
         if caminho.path == "/colador/lote":
