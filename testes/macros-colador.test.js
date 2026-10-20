@@ -244,3 +244,8 @@ test("nada aguardando: nem começa a perguntar", async () => {
   await a.timers.shift()();
   assert.strictEqual(a.chamadas.length, 0);
 });
+
+test("salvar sempre manda continuo: true (nao tem mais a opcao na tela)", () => {
+  const a = carregar();
+  assert.strictEqual(a.ctx._macMontarConfigColador(CFG({ continuo: false })).config.continuo, true);
+});

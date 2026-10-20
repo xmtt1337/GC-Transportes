@@ -663,10 +663,6 @@ function _macConfigHtml(item) {
                 <label for="mac-col-intervalo">Intervalo entre códigos — <span id="mac-col-intervalo-rotulo">0.5s</span></label>
                 <input type="range" id="mac-col-intervalo" min="0" max="1.5" step="0.1" oninput="_macColMudarIntervalo(this.value)">
             </div>
-            <label class="mac-col-check" style="margin:14px 0 4px">
-                <input type="checkbox" id="mac-col-continuo" onchange="_macColMudarCampo('continuo', this.checked)">
-                Modo contínuo — fica de vigia, colando o que chegar
-            </label>
             <div class="macd-salvar"><div class="usr-modal-error" id="mac-col-erro"></div>
                 <button class="usr-modal-btn-primary" id="mac-col-salvar" onclick="_macSalvarColador()">Salvar configuração</button></div>
         </div>`;
@@ -1532,7 +1528,6 @@ function _macRenderizarColador() {
     document.getElementById("mac-col-lote").value = c.lote;
     document.getElementById("mac-col-intervalo").value = c.intervalo;
     document.getElementById("mac-col-intervalo-rotulo").innerText = c.intervalo.toFixed(1) + "s";
-    document.getElementById("mac-col-continuo").checked = c.continuo !== false;
 }
 
 function _macColMudarCampo(campo, valor) {
@@ -1556,7 +1551,8 @@ function _macMontarConfigColador(c) {
     return {
         config: {
             todos_dias: true, dia: null, xpt: "", carencia, lote, intervalo: Math.round(intervalo * 10) / 10,
-            continuo: c.continuo !== false,
+            // Sempre contínuo: a sessão fica de vigia, colando o que chegar (20/10/2026).
+            continuo: true,
         },
     };
 }
