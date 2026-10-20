@@ -535,3 +535,33 @@ test("relatorio: X na linha da instancia cancela a instancia (com confirmacao)",
   const t = montar(a);
   assert.ok(t.nav().includes(`onclick="_macCancelarInstancia('${AT_CFC.id}', this)"`));
 });
+
+// 20/10/2026: Iniciar liga a sessão no servidor; ela fica rodando até alguém parar.
+test("Colador: sessao ligada aparece na lista mesmo sem estar rodando, com X e Parar", async () => {
+  const a = carregar({ rotas: { ...HIST("criar_at"),
+    "POST /admin/macros/colador/criar_at/parar": { corpo: { ok: true } } } });
+  const t = montar(a, {
+    coladores: [COLADOR("criar_at", { sessoes: [{ qual: "criar_at", maquina: "NOTE", xpt: "XPT_CFC" }] })],
+    abrir: "col:criar_at|NOTE|XPT_CFC",
+  });
+  const linha = t.nav().split("Colador criar_at")[1].split("NOTE · <b>XPT_CFC</b>")[1].split("macl-inst-linha")[0];
+  assert.match(linha, /ligada · Chrome desse polo fechado/, "sem atividade do Chrome: avisa que esta fechado");
+  assert.match(linha, /macl-fechar/);
+  assert.match(t.vivo(), /<b>Ligada<\/b>/);
+  assert.match(t.vivo(), />Parar</);
+  assert.doesNotMatch(t.vivo(), />Iniciar</);
+  a.ctx._macSessaoParar("criar_at", "NOTE", "XPT_CFC", null);
+  await a.esperar(); await a.esperar();
+  assert.deepStrictEqual(a.m.coladores[0].sessoes, [], "some da lista ao parar");
+});
+
+test("Colador: Iniciar que volta com sessao (servidor novo) marca ligada, sem comando", async () => {
+  const sessao = { qual: "criar_at", maquina: "NOTE", xpt: "XPT_VIA" };
+  const a = carregar({ rotas: { ...HIST("criar_at"),
+    "POST /admin/macros/colador/criar_at/rodar": { corpo: { ok: true, sessao, algum_conectado: true } } } });
+  montar(a, { coladores: [COLADOR("criar_at")], abrir: "colcfg:criar_at" });
+  a.ctx._macSessaoRodar("criar_at", "NOTE", "XPT_VIA", false, null);
+  await a.esperar(); await a.esperar();
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(a.m.coladores[0].sessoes)), [sessao]);
+  assert.deepStrictEqual(a.alertas, []);
+});

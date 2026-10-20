@@ -174,6 +174,7 @@ function _macLinhasDoColador(c) {
         const chave = `${String(maquina).toLowerCase()}|${xpt || ""}`;
         if (!vistas.has(chave)) vistas.set(chave, { id: `col:${c.qual}|${maquina}|${xpt || ""}`, tipo: "col", qual: c.qual, maquina, xpt: xpt || null, col: c });
     };
+    for (const s of c.sessoes || []) soma(s.maquina, s.xpt);
     for (const a of _macAbas()) if (a.macro === c.qual) soma(a.maquina, a.xpt);
     for (const cmd of c.comandos || []) soma(cmd.alvo, (cmd.config && cmd.config.xpt) || null);
     return [...vistas.values()].sort((a, b) => a.maquina.localeCompare(b.maquina) || String(a.xpt).localeCompare(String(b.xpt)));
@@ -207,6 +208,11 @@ function _macGrupos() {
     return grupos;
 }
 
+// A sessão está ligada no servidor (fica rodando até alguém parar)?
+function _macSessaoLigada(l) {
+    return !!(l.col && (l.col.sessoes || []).some(s => _macMesmoPc(s.maquina, l.maquina) && s.xpt === l.xpt));
+}
+
 // Só a hora, pra caber na lista: "18:10".
 const _macHoraCurta = p => (p && p.proxima_em
     ? new Date(p.proxima_em).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }) : null);
@@ -218,6 +224,12 @@ function _macEstadoLinha(l) {
     const ativo = _macAtivoDe(macro, l.maquina, l.xpt);
     const ultimo = ativo && ativo.ultimo;
     if (rodando) return { tom: "andando", texto: rodando.estado === "sem_sinal" ? "sem sinal do Chrome" : "rodando agora" };
+    // Ligada e ainda não rodando: o Chrome desse polo abre sozinho (ou está fechado).
+    if (l.tipo === "col" && _macSessaoLigada(l)) {
+        return _macChromeOnline(l.maquina, l.xpt)
+            ? { tom: "andando", texto: "ligada · abrindo" }
+            : { tom: "aviso", texto: "ligada · Chrome desse polo fechado" };
+    }
     const cmd = l.tipo === "col"
         ? (l.col.comandos || []).find(c => _macMesmoPc(c.alvo, l.maquina) && ((c.config && c.config.xpt) || null) === l.xpt)
         : _macComandoDe(macro, l.maquina, l.xpt);
@@ -244,7 +256,7 @@ function _macFecharDaLinha(l) {
         return { titulo: "Cancelar esta instância", acao: `_macCancelarInstancia('${esc(l.inst.id)}', this)` };
     }
     if (l.tipo !== "col") return null;
-    if (_macAbaRodando(l.qual, l.maquina, l.xpt)) {
+    if (_macAbaRodando(l.qual, l.maquina, l.xpt) || _macSessaoLigada(l)) {
         return { titulo: "Parar esta sessão", acao: `_macSessaoParar('${esc(l.qual)}','${esc(l.maquina)}','${esc(l.xpt || "")}', this)` };
     }
     const cmd = (l.col.comandos || []).find(c => _macMesmoPc(c.alvo, l.maquina) && ((c.config && c.config.xpt) || null) === l.xpt);
@@ -572,15 +584,20 @@ function _macVivoSessaoHtml(item) {
     const ocupado = cmd && _macOcupado(cmd);
     const esc = s => _macEsc(s);
     const arg = `'${esc(qual)}','${esc(maquina)}','${esc(xpt || "")}'`;
+    const ligada = _macSessaoLigada(item);
     const botoes = [];
-    if (rodando) {
-        botoes.push(`<button type="button" class="macd-acao" ${ocupado ? "disabled" : ""} onclick="_macSessaoRodar(${arg}, true, this)">Reiniciar</button>`);
+    if (rodando || ligada) {
+        if (rodando) botoes.push(`<button type="button" class="macd-acao" ${ocupado ? "disabled" : ""} onclick="_macSessaoRodar(${arg}, true, this)">Reiniciar</button>`);
         botoes.push(`<button type="button" class="macd-acao" onclick="_macSessaoParar(${arg}, this)">Parar</button>`);
     } else {
         botoes.push(`<button type="button" class="macd-acao macd-acao-forte" ${ocupado ? "disabled" : ""} onclick="_macSessaoRodar(${arg}, false, this)">Iniciar</button>`);
     }
+    // Ligada = fica rodando sempre: se cair (F5, Chrome fechado, erro), o Chrome desse polo abre de novo.
+    const situacao = rodando ? "<b>Rodando agora</b>"
+        : ligada ? `<b>Ligada</b><div class="macd-nota">${_macChromeOnline(maquina, xpt) ? "o Chrome desse polo abre em até 1 min" : "abre quando o Chrome desse polo conectar"}</div>`
+        : "Parada";
     return `<div class="macd-grade">
-            ${_macCampoHtml("Situação", rodando ? "<b>Rodando agora</b>" : "Parada", "")}
+            ${_macCampoHtml("Situação", situacao, rodando || ligada ? "Fica rodando até você parar — se cair, volta sozinha." : "")}
             ${_macCampoHtml("Chrome", xpt ? _macChromeHtml(maquina, xpt) : "—", "")}
             ${_macCampoHtml("Última sessão", _macUltimaHtml(qual, maquina, xpt), "")}
         </div>
@@ -808,8 +825,12 @@ function _macSessaoRodar(qual, maquina, xpt, reiniciar, botao) {
     _macPedir("POST", `/admin/macros/colador/${qual}/rodar`, { maquina, xpt: xpt || null, reiniciar: !!reiniciar })
         .then(({ ok, d }) => {
             if (!ok) { if (botao) botao.disabled = false; gcAlert(d.error || "Não foi possível pedir."); return; }
-            _macMergeComandoColador(item, Object.assign({ idade_s: 0 }, d.comando));
-            if (!d.algum_conectado) gcAlert(`Pedido enviado, mas ${maquina} não está com o Chrome/XM Vigia conectado agora — roda assim que abrir.`);
+            if (d.sessao) {
+                item.sessoes = (item.sessoes || []).filter(s => !(_macMesmoPc(s.maquina, d.sessao.maquina) && s.xpt === d.sessao.xpt)).concat([d.sessao]);
+            } else if (d.comando) {
+                _macMergeComandoColador(item, Object.assign({ idade_s: 0 }, d.comando));
+            }
+            if (!d.algum_conectado) gcAlert(`Sessão ligada, mas ${maquina} não está com o Chrome/XM Vigia conectado agora — começa assim que abrir.`);
             else if (reiniciar) gcAlert("Pedido de parar enviado. A sessão abre de novo em cerca de 1 minuto.", "Reiniciar");
             _macRedesenhar();
             _macAcompanharColador();
@@ -822,7 +843,10 @@ function _macSessaoParar(qual, maquina, xpt, botao) {
     _macPedir("POST", `/admin/macros/colador/${qual}/parar`, { maquina, xpt: xpt || null })
         .then(({ ok, d }) => {
             if (!ok) { if (botao) botao.disabled = false; gcAlert(d.error || "Não foi possível pedir pra parar."); return; }
-            gcAlert("Pedido de parar enviado — o Chrome atende em até 30 segundos.", "Parar");
+            const item = _macColadores.find(c => c.qual === qual);
+            if (item) item.sessoes = (item.sessoes || []).filter(s => !(_macMesmoPc(s.maquina, maquina) && s.xpt === (xpt || null)));
+            _macRedesenhar();
+            gcAlert("Sessão desligada — o Chrome para em até 30 segundos e não abre de novo.", "Parar");
         })
         .catch(() => { if (botao) botao.disabled = false; gcAlert("Erro ao conectar com o servidor."); });
 }
