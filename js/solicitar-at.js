@@ -283,7 +283,9 @@ function _solatCarregarHoje() {
     }).then(r => r.json())
     .then(d => {
         _solatAplicarPolo(d);
+        const antes = _solatItens;
         _solatItens = d.itens || [];
+        _solatAvisarRecusas(antes, _solatItens);
         if (d.estimativa_segundos) _solatEstimativa = d.estimativa_segundos;
         _solatPintarXpt();
         _solatRenderizar();
@@ -291,6 +293,22 @@ function _solatCarregarHoje() {
     .catch(() => {
         document.getElementById("solat-empty").innerText = "Erro ao carregar. Puxe a tela pra recarregar.";
     });
+}
+
+// Pedido que estava "criando" e voltou recusado: avisa na hora, com bipe - não só na linha da tabela,
+// que o entregador pode nem estar olhando.
+function _solatAvisarRecusas(antes, agora) {
+    const criando = new Set(antes.filter(i => i.status === "criando").map(i => i.id));
+    const recusado = agora.find(i => i.status === "erro" && criando.has(i.id));
+    if (!recusado) return;
+    _gcBeepErro();
+    _solatMsg(`<strong>${_solatEsc(recusado.codigo)}</strong>: ${_solatEsc(_solatTextoErro(recusado))}`, "erro");
+}
+
+// "Não existe no SPX" não adianta bipar de novo: é conferir o código.
+function _solatTextoErro(item) {
+    const erro = item.erro || "o SPX recusou o código";
+    return /não existe/i.test(erro) ? `${erro}. Confira o código.` : `${erro}. Bipe de novo pra tentar outra vez.`;
 }
 
 function _solatPintarXpt() {
@@ -478,7 +496,7 @@ function _solatRenderizar() {
                    ${s.rotulo}${i.levou_segundos !== null && i.levou_segundos !== undefined
                        ? ` <span style="color:#7b98b5;font-size:11px">em ${i.levou_segundos}s</span>` : ""}
                </span>${i.status === "erro"
-                   ? `<div style="font-size:11.5px;color:#f8a5a5;margin-top:4px">${_solatEsc(i.erro || "o SPX recusou o código")}. Bipe de novo pra tentar outra vez.</div>` : ""}`;
+                   ? `<div style="font-size:11.5px;color:#f8a5a5;margin-top:4px">${_solatEsc(_solatTextoErro(i))}</div>` : ""}`;
         return `<tr>
             <td data-label="Código"><strong>${_solatEsc(i.codigo)}</strong></td>
             <td data-label="Andamento">${andamento}</td>
