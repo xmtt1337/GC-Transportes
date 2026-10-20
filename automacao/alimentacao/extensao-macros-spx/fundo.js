@@ -651,6 +651,33 @@ async function contarResultado(id, r) {
   } catch (e) { /* a tela mostra "sem confirmacao" - o macro em si nao depende disto */ }
 }
 
+// ── repetir um relatório que falhou por não achar algo na tela ───────────────
+const REPETIR_MAX = 2;
+const REPETIR_JANELA_MS = 30 * 60 * 1000;
+async function repetirMacro(qual, abaId) {
+  if (!RELATORIOS.includes(qual)) return false;
+  const agora = Date.now();
+  const { repeticoesMacro = {} } = await chrome.storage.local.get('repeticoesMacro');
+  const recentes = (repeticoesMacro[qual] || []).filter((t) => agora - t < REPETIR_JANELA_MS);
+  if (recentes.length >= REPETIR_MAX) {
+    await anotar(`não repeti ${qual}: já repeti ${recentes.length} vezes nos últimos 30 min`);
+    return false;
+  }
+  repeticoesMacro[qual] = [...recentes, agora];
+  await chrome.storage.local.set({ repeticoesMacro });
+  await anotar(`repetindo ${qual}: recarregando a aba e rodando de novo`);
+  // Uns segundos pro macro terminar de contar o erro antes de a aba recarregar.
+  const pausa = typeof self !== 'undefined' && self.XM_PAUSA_REPETIR_MS !== undefined ? self.XM_PAUSA_REPETIR_MS : 3000;
+  await new Promise((ok) => setTimeout(ok, pausa));
+  try {
+    await chrome.tabs.reload(abaId);
+    await esperarCarregar(abaId);
+  } catch (e) { /* aba sumiu: disparar abre outra */ }
+  await new Promise((ok) => setTimeout(ok, pausa));
+  await disparar(qual, false, 'repeticao');
+  return true;
+}
+
 // ── sessões do Colador que voltam sozinhas ──────────────────────────────────
 // Guardadas no storage.local (sobrevivem a F5, extensão atualizada e Chrome reaberto). Saem só
 // quando a pessoa para (tela ou painel), quando a sessão termina por conta própria (sem modo
@@ -857,6 +884,14 @@ chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
 
   // O content script do Colador nao alcanca 127.0.0.1 direto (mesmo bloqueio de
   // rede privada do pendentes acima) - pede aqui, e a resposta volta pela mensagem.
+  // O macro não achou o que precisava na tela (ex.: ícone do Backlog que não desenhou): recarrega a
+  // aba dele e roda de novo - no máximo 2 vezes em 30 min por macro, pra não ficar em laço.
+  if (msg.xmRepetirMacro && remetente && remetente.tab) {
+    repetirMacro(String(msg.xmRepetirMacro), remetente.tab.id).catch(() => {});
+    responder({ ok: true });
+    return;
+  }
+
   // A sessão do Colador acabou de propósito (Parar no painel/tela, ou terminou sem modo contínuo).
   if (msg.xmColadorFim) {
     esquecerSessaoColador(String(msg.xmColadorFim)).then(() => responder({ ok: true }));

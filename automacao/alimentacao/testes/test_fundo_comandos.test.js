@@ -751,3 +751,24 @@ test('sessao que continua ligada guarda as tentativas (nao reabre em cima da que
   assert.strictEqual(c.guardado.sessoesColador.criar_at.ultimaTentativa, AGORA - 30000);
   assert.deepStrictEqual(macrosDisparados(c), []);
 });
+
+// ── repetir o Backlog que nao achou o icone (20/10/2026) ──────────────────
+test('macro pede pra repetir: recarrega a aba e roda de novo', async () => {
+  const c = carregar();
+  c.ctx.XM_PAUSA_REPETIR_MS = 0;
+  assert.strictEqual(await c.ctx.repetirMacro('backlog', 9), true);
+  assert.deepStrictEqual(macrosDisparados(c), ['backlog']);
+});
+
+test('no maximo 2 repeticoes em 30 min por macro (sem laco)', async () => {
+  const c = carregar({ storage: { repeticoesMacro: { backlog: [AGORA - 60000, AGORA - 120000] } } });
+  c.ctx.XM_PAUSA_REPETIR_MS = 0;
+  assert.strictEqual(await c.ctx.repetirMacro('backlog', 9), false);
+  assert.deepStrictEqual(macrosDisparados(c), []);
+});
+
+test('repeticao so vale pros relatorios (nada de Colador ou macro inventado)', async () => {
+  const c = carregar();
+  c.ctx.XM_PAUSA_REPETIR_MS = 0;
+  assert.strictEqual(await c.ctx.repetirMacro('qualquer', 9), false);
+});

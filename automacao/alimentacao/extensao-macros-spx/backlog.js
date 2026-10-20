@@ -33,6 +33,31 @@
     return G.aprender.elementosEnsinados('backlog').filter(S.visivel)[0] || null;
   }
 
+  // O card do Backlog desenha depois dos números do painel: espera, e na segunda volta rola até
+  // ele (o SPX só desenha o que está perto da tela). null se não apareceu.
+  async function esperarBotaoBaixar() {
+    const achar = () => acharBotaoBaixar();
+    const espera = (limite) => S.esperar(achar, { oque: 'o ícone de baixar do Backlog', limite, intervalo: 500 })
+      .catch((e) => { if (e instanceof S.Parado) throw e; return null; });
+    let botao = await espera(20000);
+    if (botao) return botao;
+    P.nota('o ícone ainda não apareceu — rolando até o card do Backlog');
+    const card = S.folhaVisivelComTexto(TEXTO_BACKLOG);
+    try { if (card && card.scrollIntoView) card.scrollIntoView({ block: 'center' }); } catch (e) { /* segue */ }
+    botao = await espera(20000);
+    return botao;
+  }
+
+  // Pede ao service worker pra recarregar esta aba e rodar o Backlog de novo (ele limita quantas).
+  function pedirRepeticao() {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) return false;
+      const r = chrome.runtime.sendMessage({ xmRepetirMacro: 'backlog' });
+      if (r && typeof r.catch === 'function') r.catch(() => {});
+      return true;
+    } catch (e) { return false; }
+  }
+
   let rodando = false;
 
   async function rodar() {
@@ -49,10 +74,14 @@
       P.nota(mudou ? 'tela aberta' : 'já estava nela');
 
       P.passo('1/2 · achando o ícone de baixar do Backlog');
-      const botao = acharBotaoBaixar();
+      const botao = await esperarBotaoBaixar();
       if (!botao) {
-        throw new Error('o ícone de baixar do "Backlog" ainda não foi ensinado — ' +
-                         'abra o popup e clique em "Ensinar o Backlog" (ou Alt+B nesta tela)');
+        // O ícone tem padrão gravado (aprender.js): não achar é a tela que não desenhou o card
+        // (carregando, janela escondida). Recarrega a aba e roda de novo (20/10/2026).
+        const repete = pedirRepeticao();
+        throw new Error('não achei o ícone de baixar do "Backlog" na tela (esperei 40s)' +
+          (repete ? ' — vou recarregar a aba e rodar de novo' : '') +
+          '; se continuar, ensine de novo pelo popup ("Ensinar o Backlog" ou Alt+B nesta tela)');
       }
 
       P.passo('2/2 · clicando pra baixar');
@@ -75,7 +104,7 @@
     }
   }
 
-  G.backlog = { rodar, achouATela, acharBotaoBaixar, TELA, TEXTO_BACKLOG };
+  G.backlog = { rodar, achouATela, acharBotaoBaixar, esperarBotaoBaixar, TELA, TEXTO_BACKLOG };
 
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
