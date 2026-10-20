@@ -565,3 +565,42 @@ test("Colador: Iniciar que volta com sessao (servidor novo) marca ligada, sem co
   assert.deepStrictEqual(JSON.parse(JSON.stringify(a.m.coladores[0].sessoes)), [sessao]);
   assert.deepStrictEqual(a.alertas, []);
 });
+
+// 20/10/2026: a tela abriu com o servidor reiniciando e ficou "indisponível" ate recarregar a pagina.
+test("servidor fora do ar ao abrir: tenta de novo sozinho e, quando volta, mostra a lista", async () => {
+  let fora = true;
+  const spx = () => (fora ? { status: 502, corpo: {} } : { corpo: { macros: TRES(), instancias: [AT_CFC] } });
+  const col = () => (fora ? { status: 502, corpo: {} } : { corpo: { coladores: [COLADOR("criar_at")] } });
+  const a = carregar({ rotas: {
+    "GET /admin/macros": { corpo: { macros: [] } },
+    "GET /admin/macros/spx": spx,
+    "GET /admin/macros/colador": col,
+    "GET /admin/macros/atividade": { corpo: { abas: [], ativos: [] } },
+  } });
+  a.ctx._macCarregarLista(false);
+  await a.esperar();
+  assert.strictEqual(a.m.instancias.length, 0);
+  assert.ok(a.timers.length, "agendou outra tentativa");
+  fora = false;
+  for (const f of a.timers.splice(0)) f();
+  await a.esperar();
+  assert.strictEqual(a.m.instancias.length, 1, "carregou quando o servidor voltou");
+  assert.strictEqual(a.m.coladores.length, 1);
+});
+
+test("recarga silenciosa com o servidor fora mantem o que ja esta na tela", async () => {
+  let fora = false;
+  const a = carregar({ rotas: {
+    "GET /admin/macros": { corpo: { macros: [] } },
+    "GET /admin/macros/spx": () => (fora ? { status: 503, corpo: {} } : { corpo: { macros: TRES(), instancias: [AT_CFC] } }),
+    "GET /admin/macros/colador": () => (fora ? { status: 503, corpo: {} } : { corpo: { coladores: [COLADOR("criar_at")] } }),
+    "GET /admin/macros/atividade": { corpo: { abas: [], ativos: [] } },
+  } });
+  a.ctx._macCarregarLista(false);
+  await a.esperar();
+  fora = true;
+  a.ctx._macCarregarLista(true);
+  await a.esperar();
+  assert.strictEqual(a.m.instancias.length, 1);
+  assert.strictEqual(a.m.coladores.length, 1);
+});

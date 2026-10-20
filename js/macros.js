@@ -45,6 +45,28 @@ const _macRotaDaChave = chave => String(chave || "").replace(/_/g, "-");
 
 // `silencioso`: recarrega por baixo, sem apagar a lista nem mostrar o esqueleto (depois de
 // salvar ou de ligar/desligar — a tela não pode piscar por causa disso).
+// Servidor fora do ar (reiniciando depois de uma atualização no Render, ~1-3 min): a tela avisa
+// e tenta de novo sozinha, em vez de ficar com tudo "indisponível" até alguém recarregar (20/10/2026).
+const _MAC_ESPERA_RECARREGAR_MS = 10000;
+const _MAC_MAX_RECARREGAR = 30;
+let _macTentativasLista = 0;
+let _macTimerLista = null;
+
+function _macAvisoServidor(texto) {
+    const lista = document.getElementById("mac-lista");
+    if (!lista || !lista.parentNode) return;
+    let el = document.getElementById("mac-aviso-servidor");
+    if (!texto) { if (el) el.remove(); return; }
+    if (!el) {
+        el = document.createElement("div");
+        el.id = "mac-aviso-servidor";
+        el.className = "mac-aviso-servidor";
+        el.setAttribute("role", "status");
+        lista.parentNode.insertBefore(el, lista);
+    }
+    el.textContent = texto;
+}
+
 function _macCarregarLista(silencioso) {
     const empty = document.getElementById("mac-empty");
     const lista = document.getElementById("mac-lista");
@@ -52,35 +74,61 @@ function _macCarregarLista(silencioso) {
         skMostrar(empty, "cards");
         empty.style.display = "";
         lista.innerHTML = "";
+        _macTentativasLista = 0;
     }
+    if (_macTimerLista) { clearTimeout(_macTimerLista); _macTimerLista = null; }
 
     const cab = { headers: { "Authorization": "Bearer " + token } };
+    // { status, d }: status 0 = nem conectou. 403 é de propósito (admin não vê os do SPX).
+    const pegar = url => fetch(url, cab)
+        .then(r => r.json().then(d => ({ status: r.status, d }), () => ({ status: r.status, d: null })))
+        .catch(() => ({ status: 0, d: null }));
+    const caiu = x => x.status === 0 || x.status >= 500;
     Promise.all([
         // Avisos + macros do SPX são só dev: pra admin (que só enxerga o Colador) isso vem 403
         // de propósito — trata como "nada aqui" em vez de erro, senão o Colador nem apareceria.
-        fetch(`${API}/admin/macros`, cab).then(r => r.json()).catch(() => null),
-        // Servidor sem os macros do SPX (ou fora do ar só nessa rota): as linhas deles ficam
-        // "Indisponível no momento" e o resto da tela continua funcionando.
-        fetch(`${API}/admin/macros/spx`, cab).then(r => r.json()).catch(() => null),
-        // Idem pro Colador — rota própria (ver rotasColador.js), aberta pra admin também.
-        fetch(`${API}/admin/macros/colador`, cab).then(r => r.json()).catch(() => null),
+        pegar(`${API}/admin/macros`),
+        pegar(`${API}/admin/macros/spx`),
+        // Rota própria do Colador (ver rotasColador.js), aberta pra admin também.
+        pegar(`${API}/admin/macros/colador`),
         // O que roda agora em cada aba (só memória no servidor). Sem isso a tela segue, só sem o "rodando".
-        fetch(`${API}/admin/macros/atividade`, cab).then(r => (r.ok ? r.json() : null)).catch(() => null),
+        pegar(`${API}/admin/macros/atividade`),
     ])
         .then(([d, spx, colador, atividade]) => {
-            if (atividade) _macAtividade = atividade;
-            const doSpx = spx && Array.isArray(spx.macros) ? spx.macros : [];
-            _macLista = ((d && d.macros) || []).concat(doSpx);
-            _macVigia = spx && spx.vigia ? spx.vigia : null;
-            _macGeral = spx && spx.geral ? spx.geral : null;
-            _macInstancias = spx && Array.isArray(spx.instancias) ? spx.instancias : [];
-            _macColadores = colador && Array.isArray(colador.coladores) ? colador.coladores : [];
+            const fora = caiu(spx) || caiu(colador) || caiu(d);
+            // Fora do ar numa recarga silenciosa: mantém o que já está na tela.
+            if (fora && silencioso && (_macColadores.length || _macInstancias.length)) {
+                _macTentarDeNovo();
+                return;
+            }
+            if (atividade.status === 200 && atividade.d) _macAtividade = atividade.d;
+            const doSpx = spx.d && Array.isArray(spx.d.macros) ? spx.d.macros : [];
+            _macLista = ((d.d && d.d.macros) || []).concat(doSpx);
+            _macVigia = spx.d && spx.d.vigia ? spx.d.vigia : null;
+            _macGeral = spx.d && spx.d.geral ? spx.d.geral : null;
+            _macInstancias = spx.d && Array.isArray(spx.d.instancias) ? spx.d.instancias : [];
+            _macColadores = colador.d && Array.isArray(colador.d.coladores) ? colador.d.coladores : [];
             empty.style.display = "none";
             _macRedesenhar();
             _macAcompanhar();
             _macVigiarAtividade();
+            if (fora) _macTentarDeNovo();
+            else { _macTentativasLista = 0; _macAvisoServidor(null); }
         })
         .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
+}
+
+function _macTentarDeNovo() {
+    if (_macTentativasLista >= _MAC_MAX_RECARREGAR) {
+        _macAvisoServidor("O servidor não respondeu nos últimos minutos. Recarregue a página para tentar de novo.");
+        return;
+    }
+    _macTentativasLista++;
+    _macAvisoServidor("O servidor está reiniciando (atualização). Tentando de novo a cada 10 segundos…");
+    _macTimerLista = setTimeout(() => {
+        _macTimerLista = null;
+        if (document.getElementById("mac-lista")) _macCarregarLista(true);
+    }, _MAC_ESPERA_RECARREGAR_MS);
 }
 
 // ── O layout: lista de macros com as instâncias embaixo, detalhe do escolhido à direita ──
