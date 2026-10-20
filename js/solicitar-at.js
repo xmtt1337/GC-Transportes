@@ -310,7 +310,7 @@ function _solatAvisarRecusas(antes, agora) {
 function _solatTextoErro(item) {
     const erro = item.erro || "o SPX recusou o código";
     if (/não existe/i.test(erro)) return `${erro}. Confira o código.`;
-    if (/entregue|na rua|responsável/i.test(erro)) return erro;
+    if (/entregue|na rua|responsável|já está em uma AT/i.test(erro)) return erro;
     return `${erro}. Bipe de novo pra tentar outra vez.`;
 }
 

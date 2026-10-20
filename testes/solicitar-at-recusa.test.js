@@ -74,4 +74,5 @@ test("pedido entregue ou ja na rua: mostra so o resumo, sem pedir pra bipar de n
     const { ctx } = carregar();
     assert.strictEqual(ctx._solatTextoErro({ erro: 'Pedido com o status "entregue"' }), 'Pedido com o status "entregue"');
     assert.strictEqual(ctx._solatTextoErro({ erro: "Pedido já está na rua (em rota de entrega)" }), "Pedido já está na rua (em rota de entrega)");
+    assert.strictEqual(ctx._solatTextoErro({ erro: "Esse pedido já está em uma AT" }), "Esse pedido já está em uma AT");
 });
