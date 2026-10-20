@@ -170,29 +170,19 @@ test("cancelar um que ja comecou (409) avisa e devolve o botao", async () => {
 });
 
 // ── validação da config (mesmas regras do servidor) ─────────────────────────
-test("config válida passa", () => {
+test("config válida passa: dia é sempre o de hoje e o polo é de cada sessão", () => {
   const a = carregar();
   assert.deepStrictEqual(plano(a.ctx._macMontarConfigColador(CFG()).config), {
-    todos_dias: false, dia: "2026-09-28", xpt: "XPT_CFC", carencia: 60, lote: 20, intervalo: 0.5, continuo: true,
+    todos_dias: true, dia: null, xpt: "", carencia: 60, lote: 20, intervalo: 0.5, continuo: true,
   });
 });
 
-test("sem todos_dias, dia fora do formato é recusado", () => {
+test("dia ou polo antigos guardados na config não voltam ao salvar", () => {
   const a = carregar();
-  for (const dia of ["", "28/09/2026", "2026-9-28"]) {
-    assert.match(a.ctx._macMontarConfigColador(CFG({ dia })).erro, /Informe o dia/, dia);
-  }
-});
-
-test("todos_dias dispensa o dia", () => {
-  const a = carregar();
-  const r = a.ctx._macMontarConfigColador(CFG({ todos_dias: true, dia: "" }));
+  const r = a.ctx._macMontarConfigColador(CFG({ todos_dias: false, dia: "28/09/2026", xpt: "XPT_VIA" }));
   assert.strictEqual(r.config.dia, null);
-});
-
-test("xpt vazio é recusado", () => {
-  const a = carregar();
-  assert.match(a.ctx._macMontarConfigColador(CFG({ xpt: "  " })).erro, /Escolha o XPT/);
+  assert.strictEqual(r.config.todos_dias, true);
+  assert.strictEqual(r.config.xpt, "");
 });
 
 test("carência, lote e intervalo respeitam os limites do servidor", () => {
@@ -208,14 +198,6 @@ test("carência, lote e intervalo respeitam os limites do servidor", () => {
 });
 
 // ── abrir/editar/salvar ──────────────────────────────────────────────────
-test("marcar todos os dias desabilita e limpa o campo de data na tela", () => {
-  const a = carregar();
-  a.m.coladores = [colador("recebimento")];
-  a.ctx._macAbrirConfigurarColador("recebimento");
-  a.ctx._macColMudarTodosDias(true);
-  assert.strictEqual(a.el("mac-col-dia").disabled, true);
-});
-
 test("config inválida nem sai do navegador: fica só no modal, sem fechar", () => {
   const a = carregar();
   a.m.coladores = [colador("recebimento")];

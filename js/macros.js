@@ -236,14 +236,36 @@ function _macEstadoLinha(l) {
 }
 const _MEX_ESTADOS_TXT = { ok: "concluída", aviso: "com aviso", erro: "falhou", parado: "parada", interrompido: "interrompida" };
 
+// O X da linha: fechar sem abrir a tela. Sessão do Colador rodando → parar; pedida e ainda não
+// começada → cancelar o pedido; instância de relatório → cancelar a instância (pede confirmação).
+function _macFecharDaLinha(l) {
+    const esc = s => _macEsc(s);
+    if (l.tipo === "inst") {
+        return { titulo: "Cancelar esta instância", acao: `_macCancelarInstancia('${esc(l.inst.id)}', this)` };
+    }
+    if (l.tipo !== "col") return null;
+    if (_macAbaRodando(l.qual, l.maquina, l.xpt)) {
+        return { titulo: "Parar esta sessão", acao: `_macSessaoParar('${esc(l.qual)}','${esc(l.maquina)}','${esc(l.xpt || "")}', this)` };
+    }
+    const cmd = (l.col.comandos || []).find(c => _macMesmoPc(c.alvo, l.maquina) && ((c.config && c.config.xpt) || null) === l.xpt);
+    if (cmd && _macOcupado(cmd) && cmd.estado !== "iniciado") {
+        return { titulo: "Cancelar o pedido", acao: `_macCancelarColador('${esc(l.qual)}', '${esc(cmd.id)}', this)` };
+    }
+    return null;
+}
+
 function _macHtmlLinha(l) {
     const r = _macEstadoLinha(l);
     const sel = l.id === _macSelecionado;
-    return `<button type="button" class="macl-inst${sel ? " sel" : ""}" ${sel ? 'aria-current="true"' : ""} onclick="_macSelecionar('${_macEsc(l.id)}')">
-        <span class="mac-cmd-ponto macl-ponto-${r.tom}"></span>
-        <span class="macl-inst-onde">${_macEsc(l.maquina)} · <b>${_macEsc(l.xpt || "polo ?")}</b></span>
-        <span class="macl-inst-resumo">${_macEsc(r.texto)}</span>
-    </button>`;
+    const fechar = _macFecharDaLinha(l);
+    return `<div class="macl-inst-linha">
+        <button type="button" class="macl-inst${sel ? " sel" : ""}" ${sel ? 'aria-current="true"' : ""} onclick="_macSelecionar('${_macEsc(l.id)}')">
+            <span class="mac-cmd-ponto macl-ponto-${r.tom}"></span>
+            <span class="macl-inst-onde">${_macEsc(l.maquina)} · <b>${_macEsc(l.xpt || "polo ?")}</b></span>
+            <span class="macl-inst-resumo">${_macEsc(r.texto)}</span>
+        </button>
+        ${fechar ? `<button type="button" class="macl-fechar" title="${fechar.titulo}" aria-label="${fechar.titulo}" onclick="${fechar.acao}">×</button>` : ""}
+    </div>`;
 }
 
 function _macHtmlLista(grupos) {
@@ -609,22 +631,7 @@ function _macConfigHtml(item) {
         return `<div class="macd-bloco">
             <div class="macd-rotulo">Configuração das sessões</div>
             <div class="macd-nota" style="margin-bottom:12px">Vale a partir da próxima sessão — não muda uma já em andamento.</div>
-            <div class="mac-col-linha">
-                <div class="mac-col-campo">
-                    <label for="mac-col-xpt">Polo padrão</label>
-                    <select id="mac-col-xpt" class="usr-modal-input" onchange="_macColMudarCampo('xpt', this.value)">
-                        <option value="">Escolha…</option>
-                        ${_MAC_XPTS.map(p => `<option value="${p.xpt}">${p.xpt} · ${p.polo}</option>`).join("")}
-                    </select>
-                </div>
-                <div class="mac-col-campo">
-                    <label for="mac-col-dia">Dia</label>
-                    <div class="mac-col-linha" style="align-items:center">
-                        <input type="date" id="mac-col-dia" class="usr-modal-input" oninput="_macColMudarCampo('dia', this.value)">
-                        <label class="mac-col-check"><input type="checkbox" id="mac-col-todos-dias" onchange="_macColMudarTodosDias(this.checked)"> todos os dias</label>
-                    </div>
-                </div>
-            </div>
+            <div class="macd-nota" style="margin-bottom:12px">O polo é o de cada sessão (escolhido em "Abrir sessão": XPT_CFC só Caçador, XPT_VIA só Videira) e o dia é sempre o de hoje.</div>
             <div class="mac-col-linha">
                 <div class="mac-col-campo">
                     <label for="mac-col-carencia">Carência (segundos)</label>
@@ -1497,10 +1504,6 @@ function _macAbrirConfigurarColador(qual) {
 
 function _macRenderizarColador() {
     const c = _macColadorEditando;
-    document.getElementById("mac-col-xpt").value = c.xpt || "";
-    document.getElementById("mac-col-todos-dias").checked = !!c.todos_dias;
-    document.getElementById("mac-col-dia").value = c.dia || "";
-    document.getElementById("mac-col-dia").disabled = !!c.todos_dias;
     document.getElementById("mac-col-carencia").value = c.carencia;
     document.getElementById("mac-col-lote").value = c.lote;
     document.getElementById("mac-col-intervalo").value = c.intervalo;
@@ -1508,10 +1511,6 @@ function _macRenderizarColador() {
     document.getElementById("mac-col-continuo").checked = c.continuo !== false;
 }
 
-function _macColMudarTodosDias(marcado) {
-    _macColadorEditando.todos_dias = marcado;
-    _macRenderizarColador();
-}
 function _macColMudarCampo(campo, valor) {
     _macColadorEditando[campo] = valor;
 }
@@ -1521,12 +1520,9 @@ function _macColMudarIntervalo(valor) {
 }
 
 // Mesmas regras do servidor (colador.js) — só pra a mensagem aparecer na hora; o servidor
-// confere de novo.
+// confere de novo. Dia é sempre o de hoje e o polo é de cada sessão (20/10/2026): a config não
+// guarda nenhum dos dois.
 function _macMontarConfigColador(c) {
-    if (!c.todos_dias && !/^\d{4}-\d{2}-\d{2}$/.test(c.dia || "")) {
-        return { erro: 'Informe o dia (AAAA-MM-DD) ou marque "todos os dias".' };
-    }
-    if (!String(c.xpt || "").trim()) return { erro: "Escolha o XPT." };
     const carencia = Number(c.carencia);
     if (!Number.isInteger(carencia) || carencia < 0 || carencia > 3600) return { erro: "Carência tem que ser de 0 a 3600 segundos." };
     const lote = Number(c.lote);
@@ -1535,8 +1531,7 @@ function _macMontarConfigColador(c) {
     if (!Number.isFinite(intervalo) || intervalo < 0 || intervalo > 1.5) return { erro: "Intervalo tem que ser de 0 a 1,5 segundos." };
     return {
         config: {
-            todos_dias: !!c.todos_dias, dia: c.todos_dias ? null : c.dia.trim(),
-            xpt: c.xpt.trim(), carencia, lote, intervalo: Math.round(intervalo * 10) / 10,
+            todos_dias: true, dia: null, xpt: "", carencia, lote, intervalo: Math.round(intervalo * 10) / 10,
             continuo: c.continuo !== false,
         },
     };

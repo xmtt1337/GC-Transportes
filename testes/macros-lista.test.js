@@ -503,3 +503,35 @@ test("Ainda nao integrado: explica e nao tem acao nenhuma", () => {
   assert.ok(!t.det().includes("_macRodar"));
   assert.ok(!t.det().includes("Salvar"));
 });
+
+// 20/10/2026: fechar a sessão pelo X da lista, sem abrir a tela dela.
+test("Colador: X na linha rodando para a sessao daquele Chrome; linha parada nao tem X", async () => {
+  const a = carregar({ rotas: { ...HIST("recebimento"), "POST /admin/macros/colador/recebimento/parar": { corpo: { ok: true } } } });
+  const t = montar(a, {
+    coladores: [COLADOR("recebimento", { comandos: [{ id: "x", estado: "concluido", alvo: "PC2", config: { xpt: "XPT_VIA" } }] })],
+    atividade: { abas: [{ macro: "recebimento", estado: "rodando", maquina: "NOTE", xpt: "XPT_CFC", aba: "1" }], ativos: [] },
+  });
+  const col = t.nav().split("Colador recebimento")[1];
+  const noteCfc = col.split("NOTE · <b>XPT_CFC</b>")[1].split("macl-inst-linha")[0];
+  assert.match(noteCfc, /class="macl-fechar"[^>]*onclick="_macSessaoParar\('recebimento','NOTE','XPT_CFC', this\)"/);
+  const pc2 = col.split("PC2 · <b>XPT_VIA</b>")[1].split("macl-inst-linha")[0];
+  assert.doesNotMatch(pc2, /macl-fechar/);
+  a.ctx._macSessaoParar("recebimento", "NOTE", "XPT_CFC", null);
+  await a.esperar();
+  assert.deepStrictEqual(a.chamadas.find((c) => c.caminho.endsWith("/parar")).corpo, { maquina: "NOTE", xpt: "XPT_CFC" });
+});
+
+test("Colador: X na linha de pedido ainda nao comecado cancela o pedido", () => {
+  const a = carregar({ rotas: HIST("recebimento") });
+  const t = montar(a, {
+    coladores: [COLADOR("recebimento", { comandos: [{ id: "c9", estado: "aguardando", alvo: "PC2", config: { xpt: "XPT_VIA" } }] })],
+  });
+  const pc2 = t.nav().split("PC2 · <b>XPT_VIA</b>")[1].split("macl-inst-linha")[0];
+  assert.match(pc2, /onclick="_macCancelarColador\('recebimento', 'c9', this\)"/);
+});
+
+test("relatorio: X na linha da instancia cancela a instancia (com confirmacao)", () => {
+  const a = carregar({ rotas: HIST("alimentacao") });
+  const t = montar(a);
+  assert.ok(t.nav().includes(`onclick="_macCancelarInstancia('${AT_CFC.id}', this)"`));
+});

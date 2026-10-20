@@ -6465,7 +6465,18 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
     border-left: 2px solid transparent; border-radius: 0 8px 8px 0; font: inherit; font-size: 12.5px;
     color: #aab6c6; text-align: left; cursor: pointer;
 }
+.macl-inst-linha { position: relative; }
+.macl-inst-linha .macl-inst { padding-right: 34px; }
 .macl-inst:hover { background: rgba(255,255,255,0.04); }
+/* o X de fechar a sessão sem abrir a tela: só texto, avermelha no hover */
+.macl-fechar {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    width: 24px; height: 24px; padding: 0; background: none; border: none; border-radius: 6px;
+    font: inherit; font-size: 17px; line-height: 1; color: #7b8ba1; cursor: pointer;
+}
+.macl-fechar:hover { color: #f08a8a; background: rgba(255,255,255,0.05); }
+.macl-fechar:disabled { color: #3f4a5a; cursor: default; background: none; }
+.macl-fechar:focus-visible { outline: 2px solid #6aa5ff; outline-offset: -2px; }
 .macl-inst.sel { background: rgba(255,255,255,0.07); border-left-color: #3a86ff; color: #e2e8f0; }
 .macl-inst:focus-visible, .macl-macro-nome:focus-visible { outline: 2px solid #6aa5ff; outline-offset: -2px; }
 .macl-inst .mac-cmd-ponto { top: 0; }
