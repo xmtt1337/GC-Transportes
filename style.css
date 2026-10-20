@@ -4887,6 +4887,16 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
    direita sumiam sem ter como chegar. Aqui a tabela rola de lado dentro do cartao.
    Os graficos idem: o minimo de 360px estourava a coluna quando sobrava menos que isso. */
 #tela-shopee-stuck-backlog .adm-nf-wrap { overflow-x: auto; }
+/* So a rolagem de lado nao bastou: com 50 linhas a barra fica la embaixo e ninguem
+   ve. Entao a tabela tenta CABER primeiro - cabecalho comprido ("Ultima conferencia
+   do entregador") e nome/e-mail de usuario quebram linha, celula com menos folga.
+   Pedido, dias, data e botao continuam numa linha so. */
+#tela-shopee-stuck-backlog .sst-tabela th { white-space: normal; padding: 10px 12px; vertical-align: bottom; }
+#tela-shopee-stuck-backlog .sst-tabela td { padding: 10px 12px; }
+#tela-shopee-stuck-backlog .sst-tabela td[data-label="Último usuário"],
+#tela-shopee-stuck-backlog .sst-tabela td[data-label="Conferente"] {
+    white-space: normal; overflow-wrap: anywhere; min-width: 140px; max-width: 260px;
+}
 #tela-shopee-stuck-backlog .nr-graficos { grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); }
 .sstb-filtro-resp { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; }
 .sstb-filtro-rotulo { font-size: 10px; font-weight: 700; color: #6b7a91; text-transform: uppercase; letter-spacing: .1em; }
