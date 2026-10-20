@@ -60,8 +60,9 @@
       ],
     },
     // Uma AT NOVA por pedido de AT dos entregadores (Atribuições > Solicitar AT, no site): cria a
-    // tarefa de atribuição em Entrega > Atribuição de Entrega e põe o código nela pelo "Add New
-    // Order". A AT fica em "Created" - quem conclui é outra etapa (decisão do usuário, 19/10/2026).
+    // tarefa de atribuição em Entrega > Atribuição de Entrega, põe o código nela pelo "Add New
+    // Order" e CONCLUI a AT (botão "Concluído" + "Confirmar") - sem concluir, sair dela pede
+    // "Você quer sair sem completar esta tarefa de atribuição?" (pedido do usuário, 20/10/2026).
     criar_at: {
       titulo: 'Colador — Criar AT (entregadores)',
       seletoresCampo: [
@@ -399,6 +400,14 @@
 
   const naLista = () => !atDaUrl() && acharPorTexto(TEXTO_CRIAR_ATRIBUICAO);
 
+  // "Você quer sair sem completar esta tarefa de atribuição? [Cancelar] [Determinar]" - aparece ao
+  // sair de uma AT não concluída (a que o SPX recusou e ficou vazia, ou a que não deu pra concluir).
+  // Sair mesmo: o pedido já foi resolvido (AT entregue, ou recusa registrada).
+  async function confirmarSairSeAvisar() {
+    const sair = S.acharBotao('Determinar') || S.folhaVisivelComTexto('Determinar');
+    if (sair) { S.clicar(sair); await S.dormir(600); }
+  }
+
   // Voltar da AT aberta pra lista. Só trocar o endereço às vezes não redesenha a tela (20/10/2026:
   // "a tela Atribuição de Entrega não carregou" três vezes seguidas, saindo de dentro de uma AT) -
   // então tenta voltar uma página e, por último, o item do menu da esquerda.
@@ -415,6 +424,7 @@
     for (const tentar of tentativas) {
       tentar();
       await S.dormir(800);
+      await confirmarSairSeAvisar();
       const ok = await S.esperar(naLista, { oque: 'a tela Atribuição de Entrega', limite: 15000, intervalo: 300 }).catch((e) => {
         if (e instanceof S.Parado) throw e;
         return null;
@@ -469,6 +479,26 @@
       throw new Recusado(`o SPX recusou o código na ${at}${resultado.mensagem ? `: ${resultado.mensagem}` : ''}`);
     }
     return at;
+  }
+
+  // Concluir a AT aberta: "Concluído" no topo (ao lado de "Imprimir etiqueta") e "Confirmar" no card
+  // que abre. Pronto quando o card fecha e o botão "Concluído" some (ou fica desabilitado).
+  async function concluirAt(at) {
+    const concluir = await S.esperar(() => acharPorTexto('Concluído'),
+      { oque: 'o botão "Concluído" da AT', limite: 10000, intervalo: 300 });
+    S.clicar(concluir);
+    const confirmar = await S.esperar(() => acharPorTexto('Confirmar'),
+      { oque: 'o card de confirmar a conclusão', limite: 10000, intervalo: 200 });
+    await S.dormir(300);
+    const base = S.rede.ativas;
+    S.clicar(confirmar);
+    await S.dormir(800);
+    await S.esperarRede({ base, limite: 20000 });
+    await S.esperar(() => {
+      if (acharPorTexto('Confirmar')) return null;
+      const botao = acharPorTexto('Concluído');
+      return !botao || S.desabilitado(botao) || !atDaUrl() || atDaUrl() !== at ? true : null;
+    }, { oque: `a ${at} ficar concluída`, limite: 15000, intervalo: 300 });
   }
 
   const PREPARAR = { recebimento: prepararRecebimento, at_cluster: prepararAtCluster, criar_at: async () => {} };
@@ -576,7 +606,15 @@
             await pedirAoVigia('confirmar', { modo: qual, tabela, ids: [item.id] });
             colados++;
             falhasSeguidas = 0;
-            P.nota(`${colados} AT(s) criada(s) · ${item.codigo} → ${at}`);
+            // Concluir fecha o ciclo. Se não der, a AT do entregador continua valendo (o código
+            // está nela) - só fica anotado, e a próxima volta pra lista sai pelo "Determinar".
+            try {
+              await concluirAt(at);
+              P.nota(`${colados} AT(s) criada(s) · ${item.codigo} → ${at} (concluída)`);
+            } catch (e) {
+              if (e instanceof S.Parado) throw e;
+              P.nota(`${item.codigo} → ${at}, mas não consegui concluir a AT: ${e.message || e}`);
+            }
           } else {
             await colarUm(qual, item.codigo);
             await pedirAoVigia('confirmar', { modo: qual, tabela, ids: [item.id] });
@@ -619,7 +657,7 @@
     }
   }
 
-  G.colador = { rodar, CATALOGO, acharCampo, colarUm, diaDoLote, diaDaAt, criarAtPara, Recusado,
+  G.colador = { rodar, CATALOGO, acharCampo, colarUm, diaDoLote, diaDaAt, criarAtPara, concluirAt, Recusado,
                 prepararRecebimento, prepararAtCluster, campoDoRotulo, escolherNoDropdown, acharPorTexto,
                 xptDaPagina, xptEfetivo, GRUPO_DE_ROTAS_DO_XPT };
 

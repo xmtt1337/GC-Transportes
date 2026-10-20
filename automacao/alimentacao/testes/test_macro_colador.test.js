@@ -796,7 +796,7 @@ test('rodar: usa o XPT da pagina no pedido de lote, mesmo com a config vazia', a
 });
 
 // ── Criar AT (entregadores): uma AT nova do zero por codigo ────────────────
-function carregarCriarAt({ aceita = true, semResposta = false, itens = [{ id: 7, codigo: 'BR266104829025G', dia: '2026-10-19' }] } = {}) {
+function carregarCriarAt({ aceita = true, semResposta = false, concluivel = true, itens = [{ id: 7, codigo: 'BR266104829025G', dia: '2026-10-19' }] } = {}) {
   const campo = { value: '', visivel: true };
   let lotes = 0;
   const r = carregar({
@@ -809,14 +809,27 @@ function carregarCriarAt({ aceita = true, semResposta = false, itens = [{ id: 7,
   const S = r.S;
   const criadas = [];
   const voltas = [];
+  const concluidas = [];
+  let cardAberto = false;
+  // "Você quer sair sem completar?" - aparece ao sair de uma AT nao concluida.
+  let avisoDeSair = false;
+  const saiuPeloAviso = [];
   // location com o hash observado: quem volta pra lista troca o hash.
   let hash = '#/delivery-assignment/list';
   r.ctx.location = { origin: 'https://spx.shopee.com.br',
-    get hash() { return hash; }, set hash(v) { hash = v; if (/delivery-assignment\/list/.test(v)) voltas.push(v); } };
+    get hash() { return hash; },
+    set hash(v) {
+      const daAt = (/id=(AT\w+)/.exec(hash) || [])[1];
+      if (daAt && !concluidas.includes(daAt) && /delivery-assignment\/list/.test(v)) { avisoDeSair = true; return; }
+      hash = v; if (/delivery-assignment\/list/.test(v)) voltas.push(v);
+    } };
   r.ctx.postMessage = () => {};
   const clicarOriginal = S.clicar;
   S.clicar = (el) => {
     // Enviar na janela: o SPX cria a AT e abre a pagina dela.
+    if (el && el.nome === 'concluir') cardAberto = true;
+    if (el && el.nome === 'confirmar') { cardAberto = false; concluidas.push((/id=(AT\w+)/.exec(hash) || [])[1]); }
+    if (el && el.nome === 'sair') { avisoDeSair = false; saiuPeloAviso.push(hash); hash = '#/delivery-assignment/list'; voltas.push(hash); }
     if (el && el.nome === 'enviar') {
       const at = `AT2026102${criadas.length}BHA90`;
       criadas.push(at);
@@ -830,7 +843,16 @@ function carregarCriarAt({ aceita = true, semResposta = false, itens = [{ id: 7,
     return folha(texto);
   };
   const acharBotao = S.acharBotao;
-  S.acharBotao = (texto, o) => (texto === 'Criar tarefa de atribuição' && /assignment-task/.test(hash) ? null : acharBotao(texto, o));
+  S.acharBotao = (texto, o) => {
+    if (texto === 'Criar tarefa de atribuição' && /assignment-task/.test(hash)) return null;
+    if (texto === 'Confirmar') return cardAberto ? { nome: 'confirmar' } : null;
+    if (texto === 'Determinar') return avisoDeSair ? { nome: 'sair' } : null;
+    if (texto === 'Concluído') {
+      const daAt = (/id=(AT\w+)/.exec(hash) || [])[1];
+      return concluivel && daAt && !concluidas.includes(daAt) ? { nome: 'concluir' } : null;
+    }
+    return acharBotao(texto, o);
+  };
   // A resposta do SPX à chamada que levou o código (o que rede.js manda pela ponte).
   S.apertarEnter = (el) => {
     el.enterApertado = (el.enterApertado || 0) + 1;
@@ -838,7 +860,7 @@ function carregarCriarAt({ aceita = true, semResposta = false, itens = [{ id: 7,
     const dados = { __xmMacroResposta: true, codigo: el.value, ok: aceita, mensagem: aceita ? '' : 'pedido já está em outra AT' };
     r.ctx.__ouvinteWindowMsg({ source: r.raiz, data: dados });
   };
-  return { ...r, campo, criadas, voltas };
+  return { ...r, campo, criadas, voltas, concluidas, saiuPeloAviso };
 }
 
 test('criar AT: cria a tarefa do zero, poe o codigo, manda a AT pro entregador e confirma', async () => {
@@ -895,4 +917,21 @@ test('criar AT: sem resposta e sem o codigo na tela, falha dizendo pra conferir 
   await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
   const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
   assert.match(falhou.erro, /não confirmou o código na AT2026.*confira essa AT/);
+});
+
+test('criar AT: depois de por o codigo, conclui a AT (Concluido + Confirmar) e so entao abre a proxima', async () => {
+  const c = carregarCriarAt({ itens: [{ id: 1, codigo: 'BR1', dia: '2026-10-20' }, { id: 2, codigo: 'BR2', dia: '2026-10-20' }] });
+  await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
+  assert.deepStrictEqual(plano(c.concluidas), plano(c.criadas), 'as duas ATs concluidas');
+  assert.deepStrictEqual(c.saiuPeloAviso, [], 'concluida, sair nao pede confirmacao');
+  assert.ok(c.P.notas.some((n) => /\(concluída\)/.test(n)), JSON.stringify(c.P.notas));
+});
+
+test('criar AT: sem conseguir concluir, a AT do entregador vale e a proxima sai pelo "Determinar"', async () => {
+  const c = carregarCriarAt({ concluivel: false, itens: [{ id: 1, codigo: 'BR1', dia: '2026-10-20' }, { id: 2, codigo: 'BR2', dia: '2026-10-20' }] });
+  await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
+  assert.strictEqual(c.chamadasVigia.filter((m) => m.xmColador === 'at').length, 2, 'as duas ATs foram pros entregadores');
+  assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'falhou'));
+  assert.strictEqual(c.saiuPeloAviso.length, 1, 'saiu da primeira AT confirmando o aviso');
+  assert.ok(c.P.notas.some((n) => /não consegui concluir a AT/.test(n)));
 });
