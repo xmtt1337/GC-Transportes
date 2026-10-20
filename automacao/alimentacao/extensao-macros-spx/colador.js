@@ -407,6 +407,10 @@
     if (/\bdelivering\b/i.test(t)) return 'Pedido já está na rua (em rota de entrega)';
     // "Não foi possível adicionar o pedido à gaiola": o pedido já está em outra AT (20/10/2026).
     if (/gaiola|\bcage\b/i.test(t)) return 'Esse pedido já está em uma AT';
+    // "estação atual inválida: 7326, ID da estação do pedido: 5968": o pedido é do outro polo.
+    if (/esta[cç][aã]o atual inv[aá]lida|esta[cç][aã]o do pedido|invalid station|station.*invalid/i.test(t)) {
+      return 'Esse pedido é de uma estação diferente da sua. Confirme o seu polo — se estiver errado, peça a troca de polo';
+    }
     if (/não confirmou|não apareceu/i.test(t)) return 'Não deu pra confirmar a AT — fale com o responsável';
     // Sem resumo conhecido: a frase do SPX sem o número interno ("141201028:") nem o código.
     const limpa = t.replace(/^.*?recusou o código na AT\w+:\s*/i, '').replace(/^\d{5,}:\s*/, '')
