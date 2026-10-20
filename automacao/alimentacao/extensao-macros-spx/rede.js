@@ -77,14 +77,45 @@
     return (String(url || '').includes(c) || (typeof corpo === 'string' && corpo.includes(c))) ? c : null;
   }
 
+  // Falhas dentro de uma resposta "ok" (retcode 0): o SPX responde o lote inteiro com sucesso e
+  // lista à parte o que não entrou (campos tipo fail_list / error_list / fail_count). Era assim
+  // que um código recusado virava AT entregue (20/10/2026).
+  const textoDaFalha = (x) => {
+    if (x == null) return '';
+    if (typeof x !== 'object') return String(x);
+    const m = x.message || x.msg || x.reason || x.fail_reason || x.error_msg || x.err_msg || x.error;
+    return typeof m === 'string' && m ? m : JSON.stringify(x).slice(0, 150);
+  };
+  function falhasEm(obj, prof = 0, saida = []) {
+    if (!obj || typeof obj !== 'object' || prof > 5) return saida;
+    for (const [k, v] of Object.entries(obj)) {
+      if (/fail|error|invalid|reject/i.test(k)) {
+        if (Array.isArray(v)) { if (v.length) saida.push(...v.map(textoDaFalha)); }
+        else if (typeof v === 'number') { if (v > 0) saida.push(`${k}: ${v}`); }
+        else if (typeof v === 'string') { if (v.trim()) saida.push(v.trim()); }
+        else if (v && typeof v === 'object' && Object.keys(v).length) saida.push(textoDaFalha(v));
+      }
+      if (v && typeof v === 'object') falhasEm(v, prof + 1, saida);
+    }
+    return saida;
+  }
+
   function tratarRespostaEscutada(codigo, status, texto) {
     let ok = status >= 200 && status < 300;
     let mensagem = '';
     try {
       const r = JSON.parse(texto);
       if (r && r.retcode !== undefined && r.retcode !== 0) ok = false;
+      const falhas = falhasEm(r).filter(Boolean);
+      if (falhas.length) ok = false;
       mensagem = String((r && (r.message || r.msg || (r.data && r.data.message))) || '');
-    } catch (e) { /* nao e JSON: vale o status */ }
+      // "success" genérico não explica nada: com falha listada, vale a falha.
+      if (falhas.length && (!mensagem || /^(success|ok|sucesso)$/i.test(mensagem.trim()))) mensagem = falhas.slice(0, 3).join('; ');
+      else if (falhas.length) mensagem = `${mensagem}: ${falhas.slice(0, 3).join('; ')}`;
+      if (!ok && !mensagem) mensagem = `o SPX respondeu ${String(texto).slice(0, 150)}`;
+    } catch (e) {
+      if (!ok) mensagem = `o SPX respondeu ${status}`;
+    }
     window.postMessage({ __xmMacroResposta: true, codigo, ok, mensagem }, window.location.origin);
   }
 

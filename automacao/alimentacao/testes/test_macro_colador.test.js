@@ -796,7 +796,8 @@ test('rodar: usa o XPT da pagina no pedido de lote, mesmo com a config vazia', a
 });
 
 // ── Criar AT (entregadores): uma AT nova do zero por codigo ────────────────
-function carregarCriarAt({ aceita = true, mensagemRecusa = 'pedido já está em outra AT', semResposta = false, concluivel = true, itens = [{ id: 7, codigo: 'BR266104829025G', dia: '2026-10-19' }] } = {}) {
+function carregarCriarAt({ aceita = true, mensagemRecusa = 'pedido já está em outra AT', semResposta = false, concluivel = true,
+  entraNaAt = aceita, avisoDepoisDoEnter = null, itens = [{ id: 7, codigo: 'BR266104829025G', dia: '2026-10-19' }] } = {}) {
   const campo = { value: '', visivel: true };
   let lotes = 0;
   const r = carregar({
@@ -853,14 +854,22 @@ function carregarCriarAt({ aceita = true, mensagemRecusa = 'pedido já está em 
     }
     return acharBotao(texto, o);
   };
+  // Os baloes flutuantes do SPX (SELETOR_AVISOS); o resto do DOM falso continua o de sempre.
+  const avisos = [];
+  const qsa = r.ctx.document.querySelectorAll;
+  r.ctx.document.querySelectorAll = (sel) => (sel === r.G.colador.SELETOR_AVISOS ? avisos : qsa(sel));
   // A resposta do SPX à chamada que levou o código (o que rede.js manda pela ponte).
   S.apertarEnter = (el) => {
     el.enterApertado = (el.enterApertado || 0) + 1;
     if (semResposta) return;
+
+    // O balao do SPX (sucesso ou erro) e o codigo na tabela da AT, como a pagina ficaria.
+    if (avisoDepoisDoEnter) avisos.push({ visivel: true, ...avisoDepoisDoEnter });
+    if (entraNaAt) r.ctx.document.body.innerText = `XPT_SC_Caçador Atribuído (1) ${el.value}`;
     const dados = { __xmMacroResposta: true, codigo: el.value, ok: aceita, mensagem: aceita ? '' : mensagemRecusa };
     r.ctx.__ouvinteWindowMsg({ source: r.raiz, data: dados });
   };
-  return { ...r, campo, criadas, voltas, concluidas, saiuPeloAviso };
+  return { ...r, campo, criadas, voltas, concluidas, saiuPeloAviso, avisos };
 }
 
 test('criar AT: cria a tarefa do zero, poe o codigo, manda a AT pro entregador e confirma', async () => {
@@ -964,4 +973,36 @@ test('config sem o campo continuo fica de vigia (so continuo: false termina)', a
   await r.G.colador.rodar('recebimento', semContinuo);
   assert.ok(pedidos >= 3, 'continuou pedindo lote');
   assert.strictEqual(r.P.erro, 'parado por você');
+});
+
+// 20/10/2026: o codigo nao entrava na AT e mesmo assim a AT ia pro entregador.
+test('criar AT: SPX responde ok mas o codigo nao aparece na AT -> nao entrega, diz pra conferir', async () => {
+  const c = carregarCriarAt({ entraNaAt: false });
+  await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
+  assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'at'), 'nao mandou AT pro entregador');
+  const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
+  assert.match(falhou.erro, /respondeu ok, mas o código não apareceu na AT2026/);
+});
+
+test('criar AT: balao de erro do SPX (com o codigo no texto) -> recusado com a mensagem do balao', async () => {
+  const c = carregarCriarAt({ entraNaAt: false,
+    avisoDepoisDoEnter: { innerText: 'BR266104829025G: pedido não pode ser atribuído neste status', className: 'ssc-message ssc-message-error' } });
+  c.ctx.document.body.innerText = 'XPT_SC_Caçador BR266104829025G: pedido não pode ser atribuído neste status';
+  await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
+  assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'at'));
+  const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
+  assert.match(falhou.erro, /recusou o código na AT2026.*não pode ser atribuído neste status/);
+});
+
+test('criar AT: o codigo so no balao de erro (fora da tabela) nao conta como entrou', () => {
+  const c = carregarCriarAt();
+  c.avisos.push({ visivel: true, innerText: 'BR1 já existe em outra tarefa', className: 'toast' });
+  const [a] = c.G.colador.avisosNaTela();
+  assert.strictEqual(a.erro, true);
+});
+
+test('criar AT: balao de sucesso nao e erro', () => {
+  const c = carregarCriarAt();
+  c.avisos.push({ visivel: true, innerText: 'Adicionado com sucesso', className: 'ssc-message ssc-message-success' });
+  assert.strictEqual(c.G.colador.avisosNaTela()[0].erro, false);
 });

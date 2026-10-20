@@ -401,6 +401,25 @@
   // Resposta do SPX pra código que não existe: "<código> Fleet order not found" (20/10/2026).
   const CODIGO_INEXISTENTE = /fleet order not found/i;
 
+  // Os avisos flutuantes do SPX (o balão de erro/sucesso no topo da tela). Erro = classe de erro
+  // ou texto de erro; o texto deles também é tirado da página antes de procurar o código, porque
+  // o aviso de erro costuma trazer o próprio código ("BR123... Fleet order not found").
+  const SELETOR_AVISOS = '[class*="message"], [class*="notification"], [class*="toast"], [role="alert"]';
+  const TEXTO_DE_ERRO = /not found|erro|error|fail|falh|inv[aá]lid|n[aã]o (foi|pode|encontr|existe|permit)|already|j[aá] (est|exist)|exist|duplic|cannot|can't|unable/i;
+  function avisosNaTela() {
+    const doc = raiz.document;
+    if (!doc || !doc.querySelectorAll) return [];
+    const vistos = [];
+    for (const el of Array.from(doc.querySelectorAll(SELETOR_AVISOS))) {
+      if (!S.visivel(el)) continue;
+      const texto = String(el.innerText || el.textContent || '').trim();
+      if (!texto || vistos.some((v) => v.texto.includes(texto) || texto.includes(v.texto))) continue;
+      const classe = String((el.className && el.className.baseVal !== undefined ? el.className.baseVal : el.className) || '');
+      vistos.push({ texto: texto.slice(0, 200), erro: /error|fail|warn|danger/i.test(classe) || TEXTO_DE_ERRO.test(texto) });
+    }
+    return vistos;
+  }
+
   const naLista = () => !atDaUrl() && acharPorTexto(TEXTO_CRIAR_ATRIBUICAO);
 
   // "Você quer sair sem completar esta tarefa de atribuição? [Cancelar] [Determinar]" - aparece ao
@@ -462,16 +481,21 @@
     await S.dormir(800);
     await S.esperarRede({ base: antesRede, limite: 20000 });
 
-    // Quem decide é a RESPOSTA do SPX à chamada que levou o código (rede.js). A tela fica de
-    // reserva: o código em qualquer lugar do texto da página (não só como texto exato de uma
-    // célula - foi assim que um código que entrou foi dado como recusado, 20/10/2026), ou a aba
-    // "Atribuído (N)" com N > 0.
+    // A AT só vai pro entregador com o código DENTRO dela. Antes bastava a resposta "ok" ou o
+    // código em qualquer lugar da página - e o aviso de erro do SPX traz o código, então um erro
+    // virava AT entregue (20/10/2026). Agora, nesta ordem:
+    //   1. aviso de erro na tela, ou a resposta do SPX dizendo que falhou -> recusado, com a
+    //      mensagem do SPX (é o que o entregador vê);
+    //   2. o código na AT (texto da página SEM os avisos) ou a aba "Atribuído (N)" com N > 0 -> entrou.
     const resultado = await S.esperar(() => {
+      const avisos = avisosNaTela();
+      const erroNaTela = avisos.find((a) => a.erro);
+      if (erroNaTela) return { ok: false, mensagem: erroNaTela.texto };
       const r = respostasDoSpx[codigo];
-      if (r) return r;
-      const texto = String((raiz.document && raiz.document.body && raiz.document.body.innerText) || '');
-      // O aviso de código inexistente traz o próprio código no texto: vem antes do "achou o código".
+      if (r && !r.ok) return r;
+      let texto = String((raiz.document && raiz.document.body && raiz.document.body.innerText) || '');
       if (CODIGO_INEXISTENTE.test(texto)) return { ok: false, mensagem: 'Fleet order not found' };
+      for (const a of avisos) texto = texto.split(a.texto).join(' ');
       const atribuidos = /Atribu[ií]do\s*\((\d+)\)/i.exec(texto);
       if (texto.includes(codigo) || (atribuidos && Number(atribuidos[1]) > 0)) return { ok: true, mensagem: '' };
       return null;
@@ -479,7 +503,12 @@
       if (e instanceof S.Parado) throw e;
       return null;
     });
-    if (!resultado) throw new Recusado(`o SPX não confirmou o código na ${at} — confira essa AT no SPX`);
+    if (!resultado) {
+      const r = respostasDoSpx[codigo];
+      throw new Recusado(r && r.ok
+        ? `o SPX respondeu ok, mas o código não apareceu na ${at} — confira essa AT no SPX`
+        : `o SPX não confirmou o código na ${at} — confira essa AT no SPX`);
+    }
     // Esse texto vai pra tela do entregador (at_erro), então é a frase pra ele, não a do SPX.
     if (!resultado.ok && CODIGO_INEXISTENTE.test(resultado.mensagem)) {
       throw new Recusado(`Não foi possível criar a AT: o código ${codigo} não existe no SPX`);
@@ -691,7 +720,7 @@
     }
   }
 
-  G.colador = { rodar, CATALOGO, acharCampo, colarUm, diaDoLote, diaDaAt, criarAtPara, concluirAt, Recusado,
+  G.colador = { rodar, CATALOGO, avisosNaTela, SELETOR_AVISOS, acharCampo, colarUm, diaDoLote, diaDaAt, criarAtPara, concluirAt, Recusado,
                 prepararRecebimento, prepararAtCluster, campoDoRotulo, escolherNoDropdown, acharPorTexto,
                 xptDaPagina, xptEfetivo, GRUPO_DE_ROTAS_DO_XPT };
 
