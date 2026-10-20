@@ -398,6 +398,9 @@
 
   const atDaUrl = () => { const m = ID_DA_AT_NA_URL.exec(String(location.hash || '')); return m ? m[1].toUpperCase() : null; };
 
+  // Resposta do SPX pra código que não existe: "<código> Fleet order not found" (20/10/2026).
+  const CODIGO_INEXISTENTE = /fleet order not found/i;
+
   const naLista = () => !atDaUrl() && acharPorTexto(TEXTO_CRIAR_ATRIBUICAO);
 
   // "Você quer sair sem completar esta tarefa de atribuição? [Cancelar] [Determinar]" - aparece ao
@@ -467,6 +470,8 @@
       const r = respostasDoSpx[codigo];
       if (r) return r;
       const texto = String((raiz.document && raiz.document.body && raiz.document.body.innerText) || '');
+      // O aviso de código inexistente traz o próprio código no texto: vem antes do "achou o código".
+      if (CODIGO_INEXISTENTE.test(texto)) return { ok: false, mensagem: 'Fleet order not found' };
       const atribuidos = /Atribu[ií]do\s*\((\d+)\)/i.exec(texto);
       if (texto.includes(codigo) || (atribuidos && Number(atribuidos[1]) > 0)) return { ok: true, mensagem: '' };
       return null;
@@ -475,6 +480,10 @@
       return null;
     });
     if (!resultado) throw new Recusado(`o SPX não confirmou o código na ${at} — confira essa AT no SPX`);
+    // Esse texto vai pra tela do entregador (at_erro), então é a frase pra ele, não a do SPX.
+    if (!resultado.ok && CODIGO_INEXISTENTE.test(resultado.mensagem)) {
+      throw new Recusado(`Não foi possível criar a AT: o código ${codigo} não existe no SPX`);
+    }
     if (!resultado.ok) {
       throw new Recusado(`o SPX recusou o código na ${at}${resultado.mensagem ? `: ${resultado.mensagem}` : ''}`);
     }

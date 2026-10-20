@@ -796,7 +796,7 @@ test('rodar: usa o XPT da pagina no pedido de lote, mesmo com a config vazia', a
 });
 
 // ── Criar AT (entregadores): uma AT nova do zero por codigo ────────────────
-function carregarCriarAt({ aceita = true, semResposta = false, concluivel = true, itens = [{ id: 7, codigo: 'BR266104829025G', dia: '2026-10-19' }] } = {}) {
+function carregarCriarAt({ aceita = true, mensagemRecusa = 'pedido já está em outra AT', semResposta = false, concluivel = true, itens = [{ id: 7, codigo: 'BR266104829025G', dia: '2026-10-19' }] } = {}) {
   const campo = { value: '', visivel: true };
   let lotes = 0;
   const r = carregar({
@@ -857,7 +857,7 @@ function carregarCriarAt({ aceita = true, semResposta = false, concluivel = true
   S.apertarEnter = (el) => {
     el.enterApertado = (el.enterApertado || 0) + 1;
     if (semResposta) return;
-    const dados = { __xmMacroResposta: true, codigo: el.value, ok: aceita, mensagem: aceita ? '' : 'pedido já está em outra AT' };
+    const dados = { __xmMacroResposta: true, codigo: el.value, ok: aceita, mensagem: aceita ? '' : mensagemRecusa };
     r.ctx.__ouvinteWindowMsg({ source: r.raiz, data: dados });
   };
   return { ...r, campo, criadas, voltas, concluidas, saiuPeloAviso };
@@ -934,4 +934,13 @@ test('criar AT: sem conseguir concluir, a AT do entregador vale e a proxima sai 
   assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'falhou'));
   assert.strictEqual(c.saiuPeloAviso.length, 1, 'saiu da primeira AT confirmando o aviso');
   assert.ok(c.P.notas.some((n) => /não consegui concluir a AT/.test(n)));
+});
+
+test('criar AT: "Fleet order not found" -> avisa o entregador que o codigo nao existe', async () => {
+  const c = carregarCriarAt({ aceita: false, mensagemRecusa: 'BR266104829025G Fleet order not found' });
+  await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
+  const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
+  assert.ok(falhou, 'o pedido foi marcado como nao criado');
+  assert.strictEqual(falhou.erro, 'Não foi possível criar a AT: o código BR266104829025G não existe no SPX');
+  assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'at'));
 });
