@@ -37,8 +37,22 @@ function Baixar($caminhoNoRepo, $destino) {
     # Baixa pra um arquivo temporario e so troca no fim: uma queda de rede no meio nao deixa um
     # arquivo pela metade no lugar do bom.
     $tmp = "$destino.baixando"
-    Invoke-WebRequest -UseBasicParsing -Headers $cab -OutFile $tmp `
-        -Uri "https://raw.githubusercontent.com/$repo/master/$caminhoNoRepo"
+    # O raw.githubusercontent.com as vezes cai so pro cache da regiao ("503 Backend unavailable",
+    # 20/10/2026): tenta de novo e, por ultimo, pega o mesmo arquivo pela API do GitHub (outro servidor).
+    $fontes = @(
+        @{ Uri = "https://raw.githubusercontent.com/$repo/master/$caminhoNoRepo"; Cab = $cab },
+        @{ Uri = "https://raw.githubusercontent.com/$repo/master/$caminhoNoRepo"; Cab = $cab },
+        @{ Uri = "https://api.github.com/repos/$repo/contents/$caminhoNoRepo`?ref=master"; Cab = $cab + @{ 'Accept' = 'application/vnd.github.raw' } }
+    )
+    for ($n = 0; $n -lt $fontes.Count; $n++) {
+        try {
+            Invoke-WebRequest -UseBasicParsing -Headers $fontes[$n].Cab -OutFile $tmp -Uri $fontes[$n].Uri
+            break
+        } catch {
+            if ($n -eq $fontes.Count - 1) { throw }
+            Start-Sleep -Seconds 3
+        }
+    }
     Move-Item -Force $tmp $destino
 }
 
