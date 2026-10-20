@@ -405,6 +405,8 @@
     if (/fleet order not found/i.test(t)) return 'Código não existe no SPX';
     if (/\bdelivered\b/i.test(t)) return 'Pedido com o status "entregue"';
     if (/\bdelivering\b/i.test(t)) return 'Pedido já está na rua (em rota de entrega)';
+    // "Não foi possível adicionar o pedido à gaiola": o pedido já está em outra AT (20/10/2026).
+    if (/gaiola|\bcage\b/i.test(t)) return 'Esse pedido já está em uma AT';
     if (/não confirmou|não apareceu/i.test(t)) return 'Não deu pra confirmar a AT — fale com o responsável';
     // Sem resumo conhecido: a frase do SPX sem o número interno ("141201028:") nem o código.
     const limpa = t.replace(/^.*?recusou o código na AT\w+:\s*/i, '').replace(/^\d{5,}:\s*/, '')
