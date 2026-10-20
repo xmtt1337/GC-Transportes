@@ -58,6 +58,36 @@
     } catch (e) { /* resposta nao e JSON - nao e a chamada que a gente espera */ }
   }
 
+  // ── a resposta do SPX pra um codigo (Colador — Criar AT) ───────────────────
+  // Enquanto o colador poe um codigo no "Add New Order" de uma AT, ele avisa aqui qual codigo e
+  // (postMessage {__xmMacroEscutar: codigo}). A chamada que levar esse codigo (no corpo ou no
+  // endereco) tem a resposta lida: aceito, ou recusado com a mensagem do proprio SPX. E o unico
+  // jeito certo de saber - olhar a tela deu "nao aceitou" com o codigo dentro da AT (20/10/2026).
+  // So vale por 30s depois do aviso, e so pra chamada que contem o codigo.
+  let escutando = null; // { codigo, ate }
+  window.addEventListener('message', (evento) => {
+    if (evento.source !== window) return;
+    const d = evento.data;
+    if (d && d.__xmMacroEscutar) escutando = { codigo: String(d.__xmMacroEscutar), ate: Date.now() + 30000 };
+  });
+
+  function codigoEscutadoEm(url, corpo) {
+    if (!escutando || Date.now() > escutando.ate) return null;
+    const c = escutando.codigo;
+    return (String(url || '').includes(c) || (typeof corpo === 'string' && corpo.includes(c))) ? c : null;
+  }
+
+  function tratarRespostaEscutada(codigo, status, texto) {
+    let ok = status >= 200 && status < 300;
+    let mensagem = '';
+    try {
+      const r = JSON.parse(texto);
+      if (r && r.retcode !== undefined && r.retcode !== 0) ok = false;
+      mensagem = String((r && (r.message || r.msg || (r.data && r.data.message))) || '');
+    } catch (e) { /* nao e JSON: vale o status */ }
+    window.postMessage({ __xmMacroResposta: true, codigo, ok, mensagem }, window.location.origin);
+  }
+
   const fetchOriginal = window.fetch;
   window.fetch = function (...args) {
     const url = typeof args[0] === 'string' ? args[0] : String((args[0] && args[0].url) || '');
@@ -68,6 +98,8 @@
         if (typeof corpo === 'string') codigoDaAt = primeiroCampo(JSON.parse(corpo), CAMPOS_CODIGO);
       } catch (e) { /* corpo nao e JSON - segue sem capturar */ }
     }
+    let codigoEscutado = null;
+    try { codigoEscutado = codigoEscutadoEm(url, args[1] && args[1].body); } catch (e) { /* segue */ }
     entrou();
     let promessa;
     try {
@@ -80,6 +112,7 @@
       (r) => {
         saiu();
         if (codigoDaAt) r.clone().text().then((t) => tratarRespostaAt(codigoDaAt, t)).catch(() => {});
+        if (codigoEscutado) r.clone().text().then((t) => tratarRespostaEscutada(codigoEscutado, r.status, t)).catch(() => {});
         return r;
       },
       (e) => { saiu(); throw e; },
@@ -99,11 +132,16 @@
     if ((this.__xmMacroUrl || '').includes(ROTA_CRIA_AT) && typeof corpo === 'string') {
       try { codigoDaAt = primeiroCampo(JSON.parse(corpo), CAMPOS_CODIGO); } catch (e) { /* segue sem capturar */ }
     }
+    let codigoEscutado = null;
+    try { codigoEscutado = codigoEscutadoEm(this.__xmMacroUrl, corpo); } catch (e) { /* segue */ }
     const terminou = () => {
       if (baixou) return;
       baixou = true;
       saiu();
       if (codigoDaAt) tratarRespostaAt(codigoDaAt, this.responseText);
+      if (codigoEscutado) {
+        try { tratarRespostaEscutada(codigoEscutado, this.status, this.responseText); } catch (e) { /* segue */ }
+      }
     };
     try {
       entrou();

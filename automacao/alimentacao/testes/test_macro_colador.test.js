@@ -796,7 +796,7 @@ test('rodar: usa o XPT da pagina no pedido de lote, mesmo com a config vazia', a
 });
 
 // ── Criar AT (entregadores): uma AT nova do zero por codigo ────────────────
-function carregarCriarAt({ aceita = true, itens = [{ id: 7, codigo: 'BR266104829025G', dia: '2026-10-19' }] } = {}) {
+function carregarCriarAt({ aceita = true, semResposta = false, itens = [{ id: 7, codigo: 'BR266104829025G', dia: '2026-10-19' }] } = {}) {
   const campo = { value: '', visivel: true };
   let lotes = 0;
   const r = carregar({
@@ -808,24 +808,37 @@ function carregarCriarAt({ aceita = true, itens = [{ id: 7, codigo: 'BR266104829
   });
   const S = r.S;
   const criadas = [];
-  S.irParaTela = async (hash) => { r.ctx.location.hash = hash; };
+  const voltas = [];
+  // location com o hash observado: quem volta pra lista troca o hash.
+  let hash = '#/delivery-assignment/list';
+  r.ctx.location = { origin: 'https://spx.shopee.com.br',
+    get hash() { return hash; }, set hash(v) { hash = v; if (/delivery-assignment\/list/.test(v)) voltas.push(v); } };
+  r.ctx.postMessage = () => {};
   const clicarOriginal = S.clicar;
   S.clicar = (el) => {
     // Enviar na janela: o SPX cria a AT e abre a pagina dela.
     if (el && el.nome === 'enviar') {
       const at = `AT2026102${criadas.length}BHA90`;
       criadas.push(at);
-      r.ctx.location.hash = `#/assignment-task/detailNoLabel?id=${at}`;
+      hash = `#/assignment-task/detailNoLabel?id=${at}`;
     }
     return clicarOriginal(el);
   };
   const folha = S.folhaVisivelComTexto;
   S.folhaVisivelComTexto = (texto) => {
-    if (texto === 'Criar tarefa de atribuição' && /assignment-task/.test(r.ctx.location.hash)) return null;
-    if (/^BR/.test(texto)) return aceita && campo.enterApertado ? { texto } : null;
+    if (texto === 'Criar tarefa de atribuição' && /assignment-task/.test(hash)) return null;
     return folha(texto);
   };
-  return { ...r, campo, criadas };
+  const acharBotao = S.acharBotao;
+  S.acharBotao = (texto, o) => (texto === 'Criar tarefa de atribuição' && /assignment-task/.test(hash) ? null : acharBotao(texto, o));
+  // A resposta do SPX à chamada que levou o código (o que rede.js manda pela ponte).
+  S.apertarEnter = (el) => {
+    el.enterApertado = (el.enterApertado || 0) + 1;
+    if (semResposta) return;
+    const dados = { __xmMacroResposta: true, codigo: el.value, ok: aceita, mensagem: aceita ? '' : 'pedido já está em outra AT' };
+    r.ctx.__ouvinteWindowMsg({ source: r.raiz, data: dados });
+  };
+  return { ...r, campo, criadas, voltas };
 }
 
 test('criar AT: cria a tarefa do zero, poe o codigo, manda a AT pro entregador e confirma', async () => {
@@ -847,25 +860,39 @@ test('criar AT: cria a tarefa do zero, poe o codigo, manda a AT pro entregador e
 
 test('criar AT: cada codigo abre uma AT nova (sempre do zero, voltando pra lista)', async () => {
   const c = carregarCriarAt({ itens: [{ id: 1, codigo: 'BR1', dia: '2026-10-19' }, { id: 2, codigo: 'BR2', dia: '2026-10-19' }] });
-  const voltas = [];
-  const ir = c.S.irParaTela;
-  c.S.irParaTela = async (hash) => { voltas.push(hash); return ir(hash); };
   await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
   assert.strictEqual(c.criadas.length, 2);
   assert.notStrictEqual(c.criadas[0], c.criadas[1]);
-  assert.deepStrictEqual(voltas, ['#/delivery-assignment/list', '#/delivery-assignment/list']);
+  assert.strictEqual(c.voltas.length, 1, 'saindo da primeira AT, volta pra lista antes da segunda');
   const ats = c.chamadasVigia.filter((m) => m.xmColador === 'at').map((m) => [m.codigo, m.at]);
   assert.deepStrictEqual(plano(ats), [['BR1', c.criadas[0]], ['BR2', c.criadas[1]]]);
 });
 
-test('criar AT: SPX recusou o codigo -> falhou com o motivo (nao volta pra fila) e segue', async () => {
+test('criar AT: SPX recusou o codigo -> falhou com a mensagem do SPX (nao volta pra fila) e segue', async () => {
   const c = carregarCriarAt({ aceita: false });
   await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
   const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
   assert.ok(falhou, 'avisou que falhou');
   assert.strictEqual(falhou.id, 7);
-  assert.match(falhou.erro, /não aceitou o código na AT2026/);
+  assert.match(falhou.erro, /recusou o código na AT2026.*pedido já está em outra AT/);
   assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'liberar'), 'nao devolve pra fila (repetiria pra sempre)');
   assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'confirmar'));
   assert.ok(!c.P.erro, 'a sessao nao cai por um codigo recusado');
+});
+
+// 20/10/2026: o codigo entrou na AT, mas a conferencia pela tela (texto exato) nao achou e deu
+// "nao aceitou". Sem resposta capturada, vale o codigo em QUALQUER lugar do texto da pagina.
+test('criar AT: sem resposta capturada, o codigo no meio do texto da AT conta como aceito', async () => {
+  const c = carregarCriarAt({ semResposta: true });
+  c.ctx.document.body.innerText = 'Atribuído (1)  1  BR266104829025G  Endereço  Entrega';
+  await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
+  assert.ok(c.chamadasVigia.some((m) => m.xmColador === 'at'), 'mandou a AT pro entregador');
+  assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'falhou'));
+});
+
+test('criar AT: sem resposta e sem o codigo na tela, falha dizendo pra conferir a AT (nao inventa)', async () => {
+  const c = carregarCriarAt({ semResposta: true });
+  await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
+  const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
+  assert.match(falhou.erro, /não confirmou o código na AT2026.*confira essa AT/);
 });

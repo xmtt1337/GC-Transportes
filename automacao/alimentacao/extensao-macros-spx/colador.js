@@ -115,11 +115,16 @@
   // cria a AT (ver ali o porque de ser um arquivo a parte). Guarda numa fila
   // simples: gravar é responsabilidade daqui, não do rede.js.
   const atsCapturados = [];
+  // Criar AT: a resposta do SPX pro código que acabou de ir no "Add New Order" (ver rede.js).
+  const respostasDoSpx = {};
   raiz.addEventListener('message', (evento) => {
     if (evento.source !== raiz) return;
     const d = evento.data;
     if (d && d.__xmMacroAt === true && d.codigo && d.at) {
       atsCapturados.push({ codigo: String(d.codigo), at: String(d.at) });
+    }
+    if (d && d.__xmMacroResposta === true && d.codigo) {
+      respostasDoSpx[String(d.codigo)] = { ok: !!d.ok, mensagem: String(d.mensagem || '') };
     }
   });
 
@@ -392,9 +397,35 @@
 
   const atDaUrl = () => { const m = ID_DA_AT_NA_URL.exec(String(location.hash || '')); return m ? m[1].toUpperCase() : null; };
 
+  const naLista = () => !atDaUrl() && acharPorTexto(TEXTO_CRIAR_ATRIBUICAO);
+
+  // Voltar da AT aberta pra lista. Só trocar o endereço às vezes não redesenha a tela (20/10/2026:
+  // "a tela Atribuição de Entrega não carregou" três vezes seguidas, saindo de dentro de uma AT) -
+  // então tenta voltar uma página e, por último, o item do menu da esquerda.
+  async function irParaListaDeAtribuicao() {
+    if (naLista()) return;
+    const tentativas = [
+      () => { raiz.location.hash = TELA_LISTA_ATRIBUICAO; },
+      () => { if (raiz.history && raiz.history.back) raiz.history.back(); },
+      () => {
+        const item = S.folhasComTexto('Atribuição de Entrega').filter(S.visivel)[0];
+        if (item) S.clicar(item); else raiz.location.hash = TELA_LISTA_ATRIBUICAO;
+      },
+    ];
+    for (const tentar of tentativas) {
+      tentar();
+      await S.dormir(800);
+      const ok = await S.esperar(naLista, { oque: 'a tela Atribuição de Entrega', limite: 15000, intervalo: 300 }).catch((e) => {
+        if (e instanceof S.Parado) throw e;
+        return null;
+      });
+      if (ok) return;
+    }
+    throw new Error('não consegui voltar pra Entrega > Atribuição de Entrega (a tela não carregou)');
+  }
+
   async function criarAtPara(codigo) {
-    await S.irParaTela(TELA_LISTA_ATRIBUICAO, () => !atDaUrl() && acharPorTexto(TEXTO_CRIAR_ATRIBUICAO),
-      'Atribuição de Entrega');
+    await irParaListaDeAtribuicao();
     const criar = await S.esperar(() => acharPorTexto(TEXTO_CRIAR_ATRIBUICAO),
       { oque: `o botão "${TEXTO_CRIAR_ATRIBUICAO}"`, limite: 20000, intervalo: 300 });
     S.clicar(criar);
@@ -410,16 +441,33 @@
     const campo = await S.esperar(() => acharCampo('criar_at'),
       { oque: 'o campo "Add New Order" da AT', limite: 20000, intervalo: 300 });
     await esperarCampoLivre(campo, ESPERA_CAMPO_LIVRE_MS);
+    delete respostasDoSpx[codigo];
+    raiz.postMessage({ __xmMacroEscutar: codigo }, raiz.location.origin);
     const antesRede = S.rede.ativas;
     S.escrever(campo, codigo);
     S.apertarEnter(campo);
     await S.dormir(800);
     await S.esperarRede({ base: antesRede, limite: 20000 });
-    // Aceito = o código aparece na tabela da AT (a aba "Atribuído (1)" passa a ter ele).
-    // (o que foi digitado no campo não conta: input não tem texto de página, só a tabela tem)
-    const entrou = await S.esperar(() => S.folhaVisivelComTexto(codigo),
-      { oque: `o código ${codigo} aparecer na AT`, limite: 12000, intervalo: 300 }).catch(() => null);
-    if (!entrou) throw new Recusado(`o SPX não aceitou o código na ${at} (a AT foi criada vazia)`);
+
+    // Quem decide é a RESPOSTA do SPX à chamada que levou o código (rede.js). A tela fica de
+    // reserva: o código em qualquer lugar do texto da página (não só como texto exato de uma
+    // célula - foi assim que um código que entrou foi dado como recusado, 20/10/2026), ou a aba
+    // "Atribuído (N)" com N > 0.
+    const resultado = await S.esperar(() => {
+      const r = respostasDoSpx[codigo];
+      if (r) return r;
+      const texto = String((raiz.document && raiz.document.body && raiz.document.body.innerText) || '');
+      const atribuidos = /Atribu[ií]do\s*\((\d+)\)/i.exec(texto);
+      if (texto.includes(codigo) || (atribuidos && Number(atribuidos[1]) > 0)) return { ok: true, mensagem: '' };
+      return null;
+    }, { oque: `o SPX responder sobre o ${codigo}`, limite: 15000, intervalo: 300 }).catch((e) => {
+      if (e instanceof S.Parado) throw e;
+      return null;
+    });
+    if (!resultado) throw new Recusado(`o SPX não confirmou o código na ${at} — confira essa AT no SPX`);
+    if (!resultado.ok) {
+      throw new Recusado(`o SPX recusou o código na ${at}${resultado.mensagem ? `: ${resultado.mensagem}` : ''}`);
+    }
     return at;
   }
 
