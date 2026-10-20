@@ -223,3 +223,17 @@ test('erro com a janela escondida diz isso no motivo; janela visivel nao', () =>
   b.P.erro('nao apareceu a tempo');
   assert.doesNotMatch(b.mensagens[0].xmEvento.texto, /escondida/);
 });
+
+// 20/10/2026: o Colador abria antes de a pagina desenhar a estacao e a sessao aparecia como "polo ?".
+test('P.polo poe o XPT da sessao na atividade, mesmo sem estacao na pagina', () => {
+  const a = carregar();
+  a.P.abrir('Colador — Criar AT (entregadores)', () => {});
+  a.P.polo('XPT_CFC');
+  assert.strictEqual(a.atividades[a.atividades.length - 1].xmAtividade.xpt, 'XPT_CFC');
+});
+
+test('atividadeDoPainel: o XPT dito pelo macro vale mais que a falta de estacao', () => {
+  const a = L.atividadeDoPainel({ titulo: 'Colador — Criar AT (entregadores)', estado: 'rodando', passo: '',
+    estacao: null, xpt: 'XPT_VIA', comecouEm: 1, linhas: [] });
+  assert.strictEqual(a.xpt, 'XPT_VIA');
+});

@@ -104,6 +104,8 @@
   function anotar(tipo, texto, { estado, passo, imediato }) {
     if (janelaEscondida()) viuEscondida = true;
     if (!atividade) return;
+    // Aberto antes de a página desenhar a estação: tenta de novo a cada anotação.
+    if (!atividade.estacao) atividade.estacao = estacaoDaPagina();
     atividade.linhas.push({ em: Date.now(), tipo, texto: String(texto == null ? '' : texto) });
     if (atividade.linhas.length > 60) atividade.linhas.splice(0, atividade.linhas.length - 60);
     if (passo !== undefined) atividade.passo = passo;
@@ -215,6 +217,14 @@
       fecharAnterior();
       passoAtual = linha('fazendo', '▸', texto);
       console.log(`[XM Macros] ${texto}`);
+    },
+
+    // O polo em que o macro está trabalhando (o Colador sabe, mesmo antes de a página mostrar a
+    // estação): é o que põe a sessão na linha certa do sistema, e não em "polo ?".
+    polo(xpt) {
+      if (!atividade || !xpt) return;
+      atividade.xpt = xpt;
+      registrar('nota', `polo ${xpt}`, { imediato: true });
     },
 
     nota(texto) {

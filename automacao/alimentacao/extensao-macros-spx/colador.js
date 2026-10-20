@@ -572,7 +572,14 @@
       // ensinado"). Mesma linha que backlog.js já usa, por isso mesmo.
       await G.aprender.carregar();
 
+      // A barra da esquerda (com a estação) demora a desenhar numa aba recém-aberta: sem esperar,
+      // a sessão rodava sem saber o polo da página e aparecia como "polo ?" no sistema (20/10/2026).
+      await S.esperar(xptDaPagina, { oque: 'a estação embaixo da logo', limite: 15000, intervalo: 500 }).catch((e) => {
+        if (e instanceof S.Parado) throw e;
+        return null;
+      });
       const xpt = xptEfetivo(config);
+      if (P.polo) P.polo(xpt);
       await PREPARAR[qual](xpt);
 
       P.passo('procurando códigos pra colar');

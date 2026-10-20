@@ -256,7 +256,7 @@
       estado: p.estado,
       passo: corta(p.passo),
       estacao: p.estacao || null,
-      xpt: xptDaEstacao(p.estacao),
+      xpt: p.xpt || xptDaEstacao(p.estacao),
       comecou_em: p.comecouEm,
       terminou_em: p.terminouEm || null,
       linhas: (p.linhas || []).slice(-MAX_LINHAS_ATIVIDADE)
