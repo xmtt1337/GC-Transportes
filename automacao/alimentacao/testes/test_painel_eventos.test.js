@@ -37,15 +37,16 @@ function elemento() {
 function carregar({ enviar } = {}) {
   const mensagens = [];
   const atividades = [];
+  const documento = { createElement: elemento, documentElement: elemento(), getElementById: () => null, hidden: false };
   const ctx = vm.createContext({
     console: { log() {}, error() {}, warn() {} },
-    document: { createElement: elemento, documentElement: elemento(), getElementById: () => null },
+    document: documento,
     setInterval: () => 1, clearInterval() {},
     chrome: { runtime: { sendMessage: (m) => { (m.xmAtividade ? atividades : mensagens).push(m); return enviar ? enviar(m) : Promise.resolve({ ok: true }); } } },
   });
   vm.runInContext(fs.readFileSync(path.join(PASTA, 'logica.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(PASTA, 'painel.js'), 'utf8'), ctx, { filename: 'painel.js' });
-  return { P: ctx.XMMacro.painel, mensagens, atividades };
+  return { P: ctx.XMMacro.painel, mensagens, atividades, esconder: (v) => { documento.hidden = v; } };
 }
 
 const plano = (x) => JSON.parse(JSON.stringify(x));
@@ -207,4 +208,18 @@ test('atividadeDoPainel corta as linhas e le o XPT da estacao', () => {
   assert.strictEqual(a.linhas.length, 30);
   assert.strictEqual(a.linhas[0].em, 20);
   assert.strictEqual(a.linhas[0].texto.length, 200);
+});
+
+// 19/10/2026: com dois Chromes, o de tras (janela coberta) falhava sem dizer por que.
+test('erro com a janela escondida diz isso no motivo; janela visivel nao', () => {
+  const a = carregar();
+  a.P.abrir('AT Exportada', () => {});
+  a.esconder(true);
+  a.P.passo('3/5');
+  a.P.erro('nao apareceu a tempo: o contador "Task(s) Selected"');
+  assert.match(a.mensagens[0].xmEvento.texto, /janela deste Chrome estava escondida/);
+  const b = carregar();
+  b.P.abrir('AT Exportada', () => {});
+  b.P.erro('nao apareceu a tempo');
+  assert.doesNotMatch(b.mensagens[0].xmEvento.texto, /escondida/);
 });

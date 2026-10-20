@@ -89,7 +89,20 @@
     try { anotar(tipo, texto, opcoes || {}); } catch (e) { /* acessorio: nunca derruba o macro */ }
   }
 
+  // A janela deste Chrome ficou escondida (minimizada ou coberta por outra) em algum momento do
+  // macro? Com dois Chromes, um atrás do outro, o de trás para de desenhar a página e os cliques
+  // não pegam (19/10/2026) - o erro final passa a dizer isso, senão parece defeito do macro.
+  let viuEscondida = false;
+  const janelaEscondida = () => typeof document !== 'undefined' && !!document.hidden;
+
+  function comAvisoDeJanela(texto) {
+    const t = String(texto == null ? '' : texto);
+    if (!viuEscondida || /escondida/i.test(t) || /^parado por voc/i.test(t)) return t;
+    return `${t} — a janela deste Chrome estava escondida (minimizada ou coberta); deixe as janelas lado a lado ou abra pelo atalho XM`;
+  }
+
   function anotar(tipo, texto, { estado, passo, imediato }) {
+    if (janelaEscondida()) viuEscondida = true;
     if (!atividade) return;
     atividade.linhas.push({ em: Date.now(), tipo, texto: String(texto == null ? '' : texto) });
     if (atividade.linhas.length > 60) atividade.linhas.splice(0, atividade.linhas.length - 60);
@@ -188,6 +201,7 @@
     abrir(titulo, quandoParar) {
       aoParar = quandoParar;
       tituloAtual = titulo;
+      viuEscondida = janelaEscondida();
       atividade = { titulo, estado: 'rodando', passo: '', estacao: estacaoDaPagina(),
                     comecouEm: Date.now(), terminouEm: null, linhas: [] };
       registrar('passo', 'começou', { imediato: true });
@@ -235,7 +249,9 @@
       console.log(`[XM Macros] ${texto}`);
     },
 
-    erro(texto) {
+    erro(textoOriginal) {
+      if (janelaEscondida()) viuEscondida = true;
+      const texto = comAvisoDeJanela(textoOriginal);
       contarAoSistema('erro', texto);
       registrar('erro', texto, { estado: /^parado por voc/i.test(String(texto)) ? 'parado' : 'erro',
                                  passo: texto, imediato: true });
