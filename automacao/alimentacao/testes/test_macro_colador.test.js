@@ -905,7 +905,9 @@ test('criar AT: SPX recusou o codigo -> falhou com a mensagem do SPX (nao volta 
   const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
   assert.ok(falhou, 'avisou que falhou');
   assert.strictEqual(falhou.id, 7);
-  assert.match(falhou.erro, /recusou o código na AT2026.*pedido já está em outra AT/);
+  // O entregador le o resumo; o log do macro guarda a frase inteira do SPX.
+  assert.strictEqual(falhou.erro, 'Não foi possível criar a AT: pedido já está em outra AT');
+  assert.ok(c.P.notas.some((n) => /recusou o código na AT2026.*pedido já está em outra AT/.test(n)));
   assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'liberar'), 'nao devolve pra fila (repetiria pra sempre)');
   assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'confirmar'));
   assert.ok(!c.P.erro, 'a sessao nao cai por um codigo recusado');
@@ -925,7 +927,7 @@ test('criar AT: sem resposta e sem o codigo na tela, falha dizendo pra conferir 
   const c = carregarCriarAt({ semResposta: true });
   await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
   const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
-  assert.match(falhou.erro, /não confirmou o código na AT2026.*confira essa AT/);
+  assert.strictEqual(falhou.erro, 'Não deu pra confirmar a AT — fale com o responsável');
 });
 
 test('criar AT: depois de por o codigo, conclui a AT (Concluido + Confirmar) e so entao abre a proxima', async () => {
@@ -950,7 +952,7 @@ test('criar AT: "Fleet order not found" -> avisa o entregador que o codigo nao e
   await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
   const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
   assert.ok(falhou, 'o pedido foi marcado como nao criado');
-  assert.strictEqual(falhou.erro, 'Não foi possível criar a AT: o código BR266104829025G não existe no SPX');
+  assert.strictEqual(falhou.erro, 'Código não existe no SPX');
   assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'at'));
 });
 
@@ -981,7 +983,8 @@ test('criar AT: SPX responde ok mas o codigo nao aparece na AT -> nao entrega, d
   await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
   assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'at'), 'nao mandou AT pro entregador');
   const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
-  assert.match(falhou.erro, /respondeu ok, mas o código não apareceu na AT2026/);
+  assert.strictEqual(falhou.erro, 'Não deu pra confirmar a AT — fale com o responsável');
+  assert.ok(c.P.notas.some((n) => /respondeu ok, mas o código não apareceu na AT2026/.test(n)));
 });
 
 test('criar AT: balao de erro do SPX (com o codigo no texto) -> recusado com a mensagem do balao', async () => {
@@ -991,7 +994,7 @@ test('criar AT: balao de erro do SPX (com o codigo no texto) -> recusado com a m
   await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
   assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'at'));
   const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
-  assert.match(falhou.erro, /recusou o código na AT2026.*não pode ser atribuído neste status/);
+  assert.strictEqual(falhou.erro, 'Não foi possível criar a AT: pedido não pode ser atribuído neste status');
 });
 
 test('criar AT: o codigo so no balao de erro (fora da tabela) nao conta como entrou', () => {
@@ -1005,4 +1008,16 @@ test('criar AT: balao de sucesso nao e erro', () => {
   const c = carregarCriarAt();
   c.avisos.push({ visivel: true, innerText: 'Adicionado com sucesso', className: 'ssc-message ssc-message-success' });
   assert.strictEqual(c.G.colador.avisosNaTela()[0].erro, false);
+});
+
+// 20/10/2026: o entregador ve o aviso resumido, na lingua dele.
+test('resumoParaEntregador: Delivered, Delivering, inexistente e o resto sem numero interno nem codigo', () => {
+  const R = carregar().G.colador.resumoParaEntregador;
+  assert.strictEqual(R('o SPX recusou o código na AT20261021BISZW: 141201028: BR2672859634610 O status do pedido é Delivered, não pode ser adicionado ao AT'),
+    'Pedido com o status "entregue"');
+  assert.strictEqual(R('o SPX recusou o código na AT20261021BISZW: 141201028: BR2672859634610 O status do pedido é Delivering, não pode ser adicionado ao AT'),
+    'Pedido já está na rua (em rota de entrega)');
+  assert.strictEqual(R('o SPX recusou o código na AT1: BR2672859634610 Fleet order not found'), 'Código não existe no SPX');
+  assert.strictEqual(R('o SPX recusou o código na AT20261021BISZW: 141201028: BR2672859634610 pedido bloqueado'),
+    'Não foi possível criar a AT: pedido bloqueado');
 });

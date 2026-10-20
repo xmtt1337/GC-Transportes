@@ -396,6 +396,22 @@
   // O SPX recusou o código na AT (não vale tentar de novo: o entregador precisa saber).
   class Recusado extends Error {}
 
+  // O que o ENTREGADOR lê quando o pedido não vira AT (vai pro at_erro, aparece no app dele):
+  // curto e na língua dele. O texto inteiro do SPX continua no log do macro, pra quem cuida.
+  // Pedido do usuário (20/10/2026): "O status do pedido é Delivered, não pode ser adicionado
+  // ao AT" -> 'Pedido com o status "entregue"'; Delivering = o pedido já está na rua.
+  function resumoParaEntregador(motivo) {
+    const t = String(motivo || '');
+    if (/fleet order not found/i.test(t)) return 'Código não existe no SPX';
+    if (/\bdelivered\b/i.test(t)) return 'Pedido com o status "entregue"';
+    if (/\bdelivering\b/i.test(t)) return 'Pedido já está na rua (em rota de entrega)';
+    if (/não confirmou|não apareceu/i.test(t)) return 'Não deu pra confirmar a AT — fale com o responsável';
+    // Sem resumo conhecido: a frase do SPX sem o número interno ("141201028:") nem o código.
+    const limpa = t.replace(/^.*?recusou o código na AT\w+:\s*/i, '').replace(/^\d{5,}:\s*/, '')
+      .replace(/\bBR\w{13}\b:?\s*/g, '').trim();
+    return limpa ? `Não foi possível criar a AT: ${limpa}` : 'Não foi possível criar a AT';
+  }
+
   const atDaUrl = () => { const m = ID_DA_AT_NA_URL.exec(String(location.hash || '')); return m ? m[1].toUpperCase() : null; };
 
   // Resposta do SPX pra código que não existe: "<código> Fleet order not found" (20/10/2026).
@@ -511,7 +527,7 @@
     }
     // Esse texto vai pra tela do entregador (at_erro), então é a frase pra ele, não a do SPX.
     if (!resultado.ok && CODIGO_INEXISTENTE.test(resultado.mensagem)) {
-      throw new Recusado(`Não foi possível criar a AT: o código ${codigo} não existe no SPX`);
+      throw new Recusado(`o SPX recusou o código na ${at}: ${codigo} Fleet order not found (o código não existe no SPX)`);
     }
     if (!resultado.ok) {
       throw new Recusado(`o SPX recusou o código na ${at}${resultado.mensagem ? `: ${resultado.mensagem}` : ''}`);
@@ -684,7 +700,7 @@
           // Recusado pelo SPX: não volta pra fila (repetiria pra sempre) - fica com o motivo, que o
           // entregador vê na tela dele, e ele pode pedir de novo.
           if (e instanceof Recusado) {
-            await pedirAoVigia('falhou', { modo: qual, tabela, id: item.id, erro: e.message }).catch(() => {});
+            await pedirAoVigia('falhou', { modo: qual, tabela, id: item.id, erro: resumoParaEntregador(e.message) }).catch(() => {});
             P.nota(`${item.codigo}: ${e.message}`);
             await S.dormir(Math.max(0, Math.round((config.intervalo || 0) * 1000)));
             continue;
@@ -720,7 +736,7 @@
     }
   }
 
-  G.colador = { rodar, CATALOGO, avisosNaTela, SELETOR_AVISOS, acharCampo, colarUm, diaDoLote, diaDaAt, criarAtPara, concluirAt, Recusado,
+  G.colador = { rodar, CATALOGO, resumoParaEntregador, avisosNaTela, SELETOR_AVISOS, acharCampo, colarUm, diaDoLote, diaDaAt, criarAtPara, concluirAt, Recusado,
                 prepararRecebimento, prepararAtCluster, campoDoRotulo, escolherNoDropdown, acharPorTexto,
                 xptDaPagina, xptEfetivo, GRUPO_DE_ROTAS_DO_XPT };
 
