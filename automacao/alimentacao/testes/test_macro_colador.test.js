@@ -1051,3 +1051,33 @@ test('linhaDeErroComCodigo: linha da tabela (codigo + endereco) nao e erro; form
   assert.strictEqual(F('1  BR266104829025G  Rua das Flores 10  Caçador', 'BR266104829025G'), null);
   assert.match(F('141201027: BR266104829025G Qualquer coisa', 'BR266104829025G'), /^141201027/);
 });
+
+// 20/10/2026 (foto): o codigo foi enviado duas vezes - o 1o entrou, o 2o voltou "ja esta na
+// gaiola" - e o entregador viu "ja esta em uma AT" com o codigo DENTRO da AT.
+test('criar AT: aceito e depois "ja esta na gaiola" (envio repetido) -> vale o que entrou, AT vai pro entregador', async () => {
+  const c = carregarCriarAt();
+  const enter = c.S.apertarEnter;
+  c.S.apertarEnter = (el) => {
+    enter(el);
+    // o segundo envio do mesmo codigo, com o erro do SPX
+    c.ctx.__ouvinteWindowMsg({ source: c.raiz, data: { __xmMacroResposta: true, codigo: el.value, ok: false,
+      mensagem: '141201027: BR266104829025G Não foi possível adicionar o pedido na gaiola' } });
+    c.ctx.document.body.innerText += '\n141201027: BR266104829025G Não foi possível adicionar o pedido na gaiola';
+  };
+  await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
+  assert.ok(c.chamadasVigia.some((m) => m.xmColador === 'at'), 'a AT foi pro entregador');
+  assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'falhou'));
+});
+
+test('criar AT: o campo enviou sozinho -> nao aperta Enter (nao manda o codigo de novo)', async () => {
+  const c = carregarCriarAt();
+  const escrever = c.S.escrever;
+  c.S.escrever = (el, texto) => {
+    escrever(el, texto);
+    c.ctx.document.body.innerText = `XPT_SC_Caçador Atribuído (1) ${texto}`;
+    c.ctx.__ouvinteWindowMsg({ source: c.raiz, data: { __xmMacroResposta: true, codigo: texto, ok: true, mensagem: '' } });
+  };
+  await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
+  assert.ok(!c.campo.enterApertado, 'nao apertou Enter');
+  assert.ok(c.chamadasVigia.some((m) => m.xmColador === 'at'));
+});

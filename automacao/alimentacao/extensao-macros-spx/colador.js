@@ -125,7 +125,11 @@
       atsCapturados.push({ codigo: String(d.codigo), at: String(d.at) });
     }
     if (d && d.__xmMacroResposta === true && d.codigo) {
-      respostasDoSpx[String(d.codigo)] = { ok: !!d.ok, mensagem: String(d.mensagem || '') };
+      // O código pode ir duas vezes (o campo envia sozinho e o Enter envia de novo): a segunda
+      // volta "já está na gaiola". Uma vez aceito, fica aceito - a última resposta não apaga isso.
+      const antes = respostasDoSpx[String(d.codigo)];
+      respostasDoSpx[String(d.codigo)] = (antes && antes.ok)
+        ? antes : { ok: !!d.ok, mensagem: String(d.mensagem || '') };
     }
   });
 
@@ -523,29 +527,41 @@
     raiz.postMessage({ __xmMacroEscutar: codigo }, raiz.location.origin);
     const antesRede = S.rede.ativas;
     S.escrever(campo, codigo);
-    S.apertarEnter(campo);
+    // O campo do SPX às vezes envia sozinho ao receber o código (como um leitor). O Enter em cima
+    // disso mandava o código DE NOVO: o 1º entrava, o 2º voltava "já está na gaiola" e o
+    // entregador via "já está em uma AT" com o código dentro dela (20/10/2026). Só aperta Enter
+    // se nada saiu sozinho.
+    const foiSozinho = await S.esperar(() => respostasDoSpx[codigo] || null,
+      { oque: 'o campo enviar sozinho', limite: 1500, intervalo: 150 }).catch((e) => {
+      if (e instanceof S.Parado) throw e;
+      return null;
+    });
+    if (!foiSozinho) S.apertarEnter(campo);
     await S.dormir(800);
     await S.esperarRede({ base: antesRede, limite: 20000 });
 
     // A AT só vai pro entregador com o código DENTRO dela. O código solto na página NÃO prova
     // nada: a faixa vermelha de erro do SPX ("141201027: BR... Não foi possível adicionar o pedido
     // na gaiola...") traz o código e não tem classe de aviso conhecida - foi assim que um pedido
-    // que nem entrou virou AT entregue (20/10/2026, duas vezes). Agora, nesta ordem:
-    //   1. erro: aviso de erro, resposta do SPX dizendo que falhou, ou qualquer linha da página
-    //      com o código + frase de erro (ou no formato "141201027: BR...") -> recusado;
-    //   2. entrou: a aba "Atribuído (N)" com N > 0, ou o código numa linha da TABELA da AT.
+    // que nem entrou virou AT entregue (20/10/2026, duas vezes). Nesta ordem:
+    //   1. entrou: a aba "Atribuído (N)" com N > 0, ou o código numa linha da TABELA da AT (a AT
+    //      é nova e só leva este código). Vem ANTES do erro: um envio repetido dá "já está na
+    //      gaiola" com o código já dentro;
+    //   2. o SPX aceitou alguma vez: espera a tabela mostrar (o erro que vier é do envio repetido);
+    //   3. erro: aviso de erro, resposta do SPX dizendo que falhou, ou qualquer linha da página
+    //      com o código + frase de erro (ou no formato "141201027: BR...") -> recusado.
     const resultado = await S.esperar(() => {
-      const avisos = avisosNaTela();
-      const erroNaTela = avisos.find((a) => a.erro);
-      if (erroNaTela) return { ok: false, mensagem: erroNaTela.texto };
-      const r = respostasDoSpx[codigo];
-      if (r && !r.ok) return r;
       const texto = String((raiz.document && raiz.document.body && raiz.document.body.innerText) || '');
+      const atribuidos = /Atribu[ií]do\s*\((\d+)\)/i.exec(texto);
+      if ((atribuidos && Number(atribuidos[1]) > 0) || codigoNaTabela(codigo)) return { ok: true, mensagem: '' };
+      const r = respostasDoSpx[codigo];
+      if (r && r.ok) return null;
+      const erroNaTela = avisosNaTela().find((a) => a.erro);
+      if (erroNaTela) return { ok: false, mensagem: erroNaTela.texto };
+      if (r && !r.ok) return r;
       if (CODIGO_INEXISTENTE.test(texto)) return { ok: false, mensagem: 'Fleet order not found' };
       const linhaDeErro = linhaDeErroComCodigo(texto, codigo);
       if (linhaDeErro) return { ok: false, mensagem: linhaDeErro };
-      const atribuidos = /Atribu[ií]do\s*\((\d+)\)/i.exec(texto);
-      if ((atribuidos && Number(atribuidos[1]) > 0) || codigoNaTabela(codigo)) return { ok: true, mensagem: '' };
       return null;
     }, { oque: `o SPX responder sobre o ${codigo}`, limite: 15000, intervalo: 300 }).catch((e) => {
       if (e instanceof S.Parado) throw e;
@@ -553,6 +569,12 @@
     });
     if (!resultado) {
       const r = respostasDoSpx[codigo];
+      // O SPX disse ok mas o código não apareceu na tabela: se a página mostra um erro com o
+      // código, é ele o motivo (mais útil pro entregador que "não confirmou").
+      const texto = String((raiz.document && raiz.document.body && raiz.document.body.innerText) || '');
+      const erroNaTela = avisosNaTela().find((a) => a.erro);
+      const erro = (erroNaTela && erroNaTela.texto) || linhaDeErroComCodigo(texto, codigo);
+      if (erro) throw new Recusado(`o SPX recusou o código na ${at}: ${erro}`);
       throw new Recusado(r && r.ok
         ? `o SPX respondeu ok, mas o código não apareceu na ${at} — confira essa AT no SPX`
         : `o SPX não confirmou o código na ${at} — confira essa AT no SPX`);
