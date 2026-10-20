@@ -424,6 +424,30 @@
   // o aviso de erro costuma trazer o próprio código ("BR123... Fleet order not found").
   const SELETOR_AVISOS = '[class*="message"], [class*="notification"], [class*="toast"], [role="alert"]';
   const TEXTO_DE_ERRO = /not found|erro|error|fail|falh|inv[aá]lid|n[aã]o (foi|pode|encontr|existe|permit)|already|j[aá] (est|exist)|exist|duplic|cannot|can't|unable/i;
+  // Uma linha da página com o código E cara de erro: o formato de erro do SPX ("141201027: BR...")
+  // ou uma frase de erro tirando o próprio código. A linha da tabela da AT tem código + endereço,
+  // sem essas frases.
+  function linhaDeErroComCodigo(texto, codigo) {
+    for (const linha of String(texto || '').split(/\n+/)) {
+      if (!linha.includes(codigo)) continue;
+      if (/\d{6,}:\s*BR\w{13}/i.test(linha) || TEXTO_DE_ERRO.test(linha.split(codigo).join(' '))) {
+        return linha.trim().slice(0, 250);
+      }
+    }
+    return null;
+  }
+
+  // O código numa linha da tabela da AT (td/tr/role=row/linha de tabela do design system do SPX).
+  const SELETOR_LINHAS_DA_TABELA = 'td, tr, [role="row"], [role="cell"], [class*="table-row"], [class*="table-cell"]';
+  function codigoNaTabela(codigo) {
+    const doc = raiz.document;
+    if (!doc || !doc.querySelectorAll) return false;
+    try {
+      return Array.from(doc.querySelectorAll(SELETOR_LINHAS_DA_TABELA))
+        .some((el) => String(el.textContent || '').includes(codigo));
+    } catch (e) { return false; }
+  }
+
   function avisosNaTela() {
     const doc = raiz.document;
     if (!doc || !doc.querySelectorAll) return [];
@@ -499,23 +523,25 @@
     await S.dormir(800);
     await S.esperarRede({ base: antesRede, limite: 20000 });
 
-    // A AT só vai pro entregador com o código DENTRO dela. Antes bastava a resposta "ok" ou o
-    // código em qualquer lugar da página - e o aviso de erro do SPX traz o código, então um erro
-    // virava AT entregue (20/10/2026). Agora, nesta ordem:
-    //   1. aviso de erro na tela, ou a resposta do SPX dizendo que falhou -> recusado, com a
-    //      mensagem do SPX (é o que o entregador vê);
-    //   2. o código na AT (texto da página SEM os avisos) ou a aba "Atribuído (N)" com N > 0 -> entrou.
+    // A AT só vai pro entregador com o código DENTRO dela. O código solto na página NÃO prova
+    // nada: a faixa vermelha de erro do SPX ("141201027: BR... Não foi possível adicionar o pedido
+    // na gaiola...") traz o código e não tem classe de aviso conhecida - foi assim que um pedido
+    // que nem entrou virou AT entregue (20/10/2026, duas vezes). Agora, nesta ordem:
+    //   1. erro: aviso de erro, resposta do SPX dizendo que falhou, ou qualquer linha da página
+    //      com o código + frase de erro (ou no formato "141201027: BR...") -> recusado;
+    //   2. entrou: a aba "Atribuído (N)" com N > 0, ou o código numa linha da TABELA da AT.
     const resultado = await S.esperar(() => {
       const avisos = avisosNaTela();
       const erroNaTela = avisos.find((a) => a.erro);
       if (erroNaTela) return { ok: false, mensagem: erroNaTela.texto };
       const r = respostasDoSpx[codigo];
       if (r && !r.ok) return r;
-      let texto = String((raiz.document && raiz.document.body && raiz.document.body.innerText) || '');
+      const texto = String((raiz.document && raiz.document.body && raiz.document.body.innerText) || '');
       if (CODIGO_INEXISTENTE.test(texto)) return { ok: false, mensagem: 'Fleet order not found' };
-      for (const a of avisos) texto = texto.split(a.texto).join(' ');
+      const linhaDeErro = linhaDeErroComCodigo(texto, codigo);
+      if (linhaDeErro) return { ok: false, mensagem: linhaDeErro };
       const atribuidos = /Atribu[ií]do\s*\((\d+)\)/i.exec(texto);
-      if (texto.includes(codigo) || (atribuidos && Number(atribuidos[1]) > 0)) return { ok: true, mensagem: '' };
+      if ((atribuidos && Number(atribuidos[1]) > 0) || codigoNaTabela(codigo)) return { ok: true, mensagem: '' };
       return null;
     }, { oque: `o SPX responder sobre o ${codigo}`, limite: 15000, intervalo: 300 }).catch((e) => {
       if (e instanceof S.Parado) throw e;
@@ -738,7 +764,7 @@
     }
   }
 
-  G.colador = { rodar, CATALOGO, resumoParaEntregador, avisosNaTela, SELETOR_AVISOS, acharCampo, colarUm, diaDoLote, diaDaAt, criarAtPara, concluirAt, Recusado,
+  G.colador = { rodar, CATALOGO, resumoParaEntregador, linhaDeErroComCodigo, SELETOR_LINHAS_DA_TABELA, avisosNaTela, SELETOR_AVISOS, acharCampo, colarUm, diaDoLote, diaDaAt, criarAtPara, concluirAt, Recusado,
                 prepararRecebimento, prepararAtCluster, campoDoRotulo, escolherNoDropdown, acharPorTexto,
                 xptDaPagina, xptEfetivo, GRUPO_DE_ROTAS_DO_XPT };
 

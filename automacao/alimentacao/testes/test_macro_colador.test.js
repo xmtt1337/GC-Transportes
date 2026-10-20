@@ -1023,3 +1023,29 @@ test('resumoParaEntregador: Delivered, Delivering, inexistente e o resto sem num
   assert.strictEqual(R('o SPX recusou o código na AT20261021BISZW: 141201028: BR2672859634610 pedido bloqueado'),
     'Não foi possível criar a AT: pedido bloqueado');
 });
+
+// 20/10/2026 (foto da tela): faixa vermelha no topo SEM classe de aviso conhecida, com o codigo no
+// texto. A resposta capturada nao acusou erro, e o codigo "na pagina" virou AT entregue - sem ter
+// entrado na AT.
+test('criar AT: faixa de erro do SPX com o codigo (sem classe de aviso) -> recusado, nao entrega a AT', async () => {
+  const c = carregarCriarAt({ entraNaAt: false });
+  c.ctx.document.body.innerText = 'XPT_SC_Caçador\n141201027: BR266104829025G Não foi possível adicionar o pedido na gaiola. ' +
+    'Acione a liderança de turno p... tring=AT20261020BIE82)\nStatus Created\nAdd New Order';
+  await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
+  assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'at'), 'nao mandou AT pro entregador');
+  const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
+  assert.strictEqual(falhou.erro, 'Esse pedido já está em uma AT');
+});
+
+test('criar AT: codigo solto na pagina, sem tabela nem "Atribuido (N)", nao conta como entrou', async () => {
+  const c = carregarCriarAt({ entraNaAt: false });
+  c.ctx.document.body.innerText = 'XPT_SC_Caçador\nultimo pesquisado: BR266104829025G\nAtribuído (0)';
+  await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
+  assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'at'));
+});
+
+test('linhaDeErroComCodigo: linha da tabela (codigo + endereco) nao e erro; formato do SPX e', () => {
+  const F = carregar().G.colador.linhaDeErroComCodigo;
+  assert.strictEqual(F('1  BR266104829025G  Rua das Flores 10  Caçador', 'BR266104829025G'), null);
+  assert.match(F('141201027: BR266104829025G Qualquer coisa', 'BR266104829025G'), /^141201027/);
+});
