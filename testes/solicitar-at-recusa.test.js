@@ -18,15 +18,19 @@ const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "solicitar-at.js"
 function carregar() {
     const msg = { style: {}, innerHTML: "" };
     const bipes = [];
+    // Relógio falso: o aviso some sozinho depois de alguns segundos.
+    const timers = [];
     const ctx = {
         document: { getElementById: (id) => (id === "solat-msg" ? msg : { style: {} }) },
+        setTimeout: (fn, ms) => { timers.push({ fn, ms, ativo: true }); return timers.length; },
+        clearTimeout: (id) => { if (timers[id - 1]) timers[id - 1].ativo = false; },
         _gcBeepErro: () => bipes.push("erro"),
         _gcBeepSucesso: () => bipes.push("ok"),
         console,
     };
     vm.createContext(ctx);
     vm.runInContext(fonte, ctx);
-    return { ctx, msg, bipes };
+    return { ctx, msg, bipes, timers };
 }
 
 const NAO_EXISTE = "Código não existe no SPX";
@@ -88,4 +92,31 @@ test("pedido de outra estacao: mostra o aviso e o atalho pra pedir a troca de po
     assert.ok(msg.innerHTML.includes("estação diferente da sua"));
     assert.doesNotMatch(msg.innerHTML, /Bipe de novo/);
     assert.match(msg.innerHTML, /onclick="pcSolicitarPolo\(_solatPolo\.polo\)">Solicitar troca de polo/);
+});
+
+test("o aviso do cartao de bipagem some sozinho em 7 segundos", () => {
+    const { ctx, msg, timers } = carregar();
+    ctx._solatMsg("BR000000000001X na fila.", "ok");
+    assert.strictEqual(msg.style.display, "");
+    const ativos = timers.filter(t => t.ativo);
+    assert.strictEqual(ativos.length, 1);
+    assert.strictEqual(ativos[0].ms, 7000);
+    ativos[0].fn();
+    assert.strictEqual(msg.style.display, "none");
+    assert.strictEqual(msg.innerHTML, "");
+});
+
+test("aviso novo reinicia a contagem: o anterior nao apaga o novo", () => {
+    const { ctx, timers } = carregar();
+    ctx._solatMsg("primeiro", "ok");
+    ctx._solatMsg("segundo", "ok");
+    assert.strictEqual(timers.filter(t => t.ativo).length, 1);
+    assert.strictEqual(timers[0].ativo, false);
+});
+
+test("hora de criacao da AT sai no horario de Brasilia; sem hora, nada", () => {
+    const { ctx } = carregar();
+    assert.strictEqual(ctx._solatHora("2026-10-20T20:22:41Z"), "17:22");
+    assert.strictEqual(ctx._solatHora(null), "");
+    assert.strictEqual(ctx._solatHora("lixo"), "");
 });

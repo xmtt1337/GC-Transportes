@@ -3770,9 +3770,11 @@ td.cad-nome { color: #e2e8f0; }
 }
 .solat-at-num {
     flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
+    display: flex; flex-direction: column; gap: 2px;
     font-size: 13px; color: #e2e8f0;
 }
+.solat-at-num strong { font-family: ui-monospace, Menlo, Consolas, monospace; }
+.solat-at-hora { font-size: 11px; color: #7b98b5; }
 .solat-at .cen-at-btn { padding: 6px 12px; }
 @media (max-width: 680px) {
     #tela-solicitar-at .bip-scan-card { padding: 14px 14px 12px; }

@@ -438,9 +438,24 @@ function _solatCopiarAt(botao, at) {
     });
 }
 
+// "17:22", no horário de Brasília — é a hora que ele vê no relógio e fala pro supervisor.
+function _solatHora(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+}
+
+// O aviso do cartão de bipagem some sozinho: parado ali, o "na fila" de um bipe antigo
+// parecia a resposta do bipe seguinte. O andamento de cada pedido fica na lista.
+const SOLAT_MSG_DURACAO = 7000;
+let _solatMsgTimer = null;
+
 function _solatMsg(msg, tipo) {
     const el = document.getElementById("solat-msg");
+    clearTimeout(_solatMsgTimer);
     if (!msg) { el.style.display = "none"; el.innerHTML = ""; return; }
+    _solatMsgTimer = setTimeout(() => { el.style.display = "none"; el.innerHTML = ""; }, SOLAT_MSG_DURACAO);
     const cores = { ok: "#22c55e", erro: "#f87171", aviso: "#eab308" };
     el.style.display = "";
     el.style.color = cores[tipo] || "#cbd5e1";
@@ -503,10 +518,14 @@ function _solatRenderizar() {
         // que deixa claro se hoje está melhor ou pior que o normal.
         const motivo = i.status === "erro"
             ? `<div class="solat-motivo">${_solatEsc(_solatTextoErro(i))}</div>` : "";
+        const criadaAs = _solatHora(i.at_criada_em);
         const at = i.at
             ? `<div class="solat-at">
                    <span class="solat-at-rotulo">AT</span>
-                   <strong class="solat-at-num">${_solatEsc(i.at)}</strong>
+                   <span class="solat-at-num">
+                       <strong>${_solatEsc(i.at)}</strong>
+                       ${criadaAs ? `<span class="solat-at-hora">Criada às ${criadaAs}</span>` : ""}
+                   </span>
                    <button type="button" class="cen-at-btn"
                            onclick="_solatCopiarAt(this,'${_solatEsc(i.at)}')">Copiar</button>
                </div>`
