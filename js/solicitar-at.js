@@ -305,10 +305,13 @@ function _solatAvisarRecusas(antes, agora) {
     _solatMsg(`<strong>${_solatEsc(recusado.codigo)}</strong>: ${_solatEsc(_solatTextoErro(recusado))}`, "erro");
 }
 
-// "Não existe no SPX" não adianta bipar de novo: é conferir o código.
+// O motivo já vem resumido pelo macro (colador.js, resumoParaEntregador). Pra pedido entregue ou
+// já na rua não adianta bipar de novo; código inexistente é conferir o código.
 function _solatTextoErro(item) {
     const erro = item.erro || "o SPX recusou o código";
-    return /não existe/i.test(erro) ? `${erro}. Confira o código.` : `${erro}. Bipe de novo pra tentar outra vez.`;
+    if (/não existe/i.test(erro)) return `${erro}. Confira o código.`;
+    if (/entregue|na rua|responsável/i.test(erro)) return erro;
+    return `${erro}. Bipe de novo pra tentar outra vez.`;
 }
 
 function _solatPintarXpt() {

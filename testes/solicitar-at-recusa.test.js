@@ -29,7 +29,7 @@ function carregar() {
     return { ctx, msg, bipes };
 }
 
-const NAO_EXISTE = "Não foi possível criar a AT: o código BR000000000001X não existe no SPX";
+const NAO_EXISTE = "Código não existe no SPX";
 
 test("pedido que estava criando e voltou recusado: bipa e mostra o motivo", () => {
     const { ctx, msg, bipes } = carregar();
@@ -39,7 +39,7 @@ test("pedido que estava criando e voltou recusado: bipa e mostra o motivo", () =
     );
     assert.deepStrictEqual(bipes, ["erro"]);
     assert.match(msg.innerHTML, /BR000000000001X/);
-    assert.match(msg.innerHTML, /não existe no SPX\. Confira o código\./);
+    assert.match(msg.innerHTML, /Código não existe no SPX\. Confira o código\./);
 });
 
 test("recusa antiga (ja estava em erro ao abrir a tela) nao bipa", () => {
@@ -68,4 +68,10 @@ test("outra recusa do SPX continua orientando a bipar de novo", () => {
         "o SPX recusou o código na AT20261020TESTE: pedido já está em outra AT. Bipe de novo pra tentar outra vez.",
     );
     assert.strictEqual(ctx._solatTextoErro({}), "o SPX recusou o código. Bipe de novo pra tentar outra vez.");
+});
+
+test("pedido entregue ou ja na rua: mostra so o resumo, sem pedir pra bipar de novo", () => {
+    const { ctx } = carregar();
+    assert.strictEqual(ctx._solatTextoErro({ erro: 'Pedido com o status "entregue"' }), 'Pedido com o status "entregue"');
+    assert.strictEqual(ctx._solatTextoErro({ erro: "Pedido já está na rua (em rota de entrega)" }), "Pedido já está na rua (em rota de entrega)");
 });
