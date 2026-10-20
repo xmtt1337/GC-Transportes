@@ -31,6 +31,7 @@ const _PED_ETAPA_CORES = {
     devolucao:              '#f59e0b',
     faltante:               '#ef4444',
     custodia:               '#9333EA',
+    at_solicitada:          '#14b8a6',
 };
 
 let _pedTruncado = 0;
@@ -327,7 +328,7 @@ function _pedRenderizarNadaNoSistema(termo) {
     document.getElementById('ped-tbody').innerHTML =
         `<tr><td colspan="5" style="text-align:center;padding:26px;color:#8494a9">
             <strong style="color:#cbd5e1">${_pedEsc(termo)}</strong> nunca foi bipado no sistema —
-            nem no recebimento, nem em conferência nenhuma.
+            nem no recebimento, nem em conferência nenhuma — e não é AT pedida por entregador.
             <button type="button" onclick="_pedLimparBusca()"
                     style="margin-left:10px;background:rgba(58,134,255,0.1);border:1px solid rgba(58,134,255,0.35);color:#5d9aff;border-radius:8px;padding:5px 12px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Limpar busca</button>
         </td></tr>`;
