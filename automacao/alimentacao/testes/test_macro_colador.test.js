@@ -944,3 +944,24 @@ test('criar AT: "Fleet order not found" -> avisa o entregador que o codigo nao e
   assert.strictEqual(falhou.erro, 'Não foi possível criar a AT: o código BR266104829025G não existe no SPX');
   assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'at'));
 });
+
+// 20/10/2026: config antiga sem o campo "continuo" terminava no 1o lote vazio ("0 colado(s)") e o
+// pedido seguinte do entregador ficava sem ninguem pra pegar.
+test('config sem o campo continuo fica de vigia (so continuo: false termina)', async () => {
+  let pedidos = 0;
+  const r = carregar({
+    pagina: { 'input[placeholder="Por favor, insira"]': { desabilitado: false } },
+    respostas: {
+      lote: () => {
+        pedidos++;
+        if (pedidos === 3) r.S.parar = true;
+        return loteDe([]);
+      },
+    },
+  });
+  const semContinuo = { ...CONFIG };
+  delete semContinuo.continuo;
+  await r.G.colador.rodar('recebimento', semContinuo);
+  assert.ok(pedidos >= 3, 'continuou pedindo lote');
+  assert.strictEqual(r.P.erro, 'parado por você');
+});

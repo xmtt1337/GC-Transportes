@@ -608,7 +608,10 @@
           tabela = r.tabela;
           lote = Array.isArray(r.itens) ? r.itens.slice() : [];
           if (!lote.length) {
-            if (!config.continuo) break;
+            // Só sai com "contínuo" DESLIGADO de propósito. Config antiga sem o campo é contínua
+            // (é o que a tela mostra) - antes saía no primeiro lote vazio e a sessão "parava"
+            // sozinha com 0 colado(s), sem pegar o pedido seguinte do entregador (20/10/2026).
+            if (config.continuo === false) break;
             // diagnostico (colagem.js, só vem quando o lote sai vazio): mostra ONDE o código
             // está sumindo (dia errado, xpt errado, ou já colado) em vez de só "nada achei" -
             // sem isso, "0 de hoje mesmo o código aparecendo em Shopee > Receber" (achado ao
