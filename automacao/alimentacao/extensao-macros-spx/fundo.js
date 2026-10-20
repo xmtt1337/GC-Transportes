@@ -372,7 +372,7 @@ async function disparar(qual = 'alimentacao', focar = false, origem = 'agendado'
 }
 
 chrome.alarms.onAlarm.addListener(async (alarme) => {
-  if (alarme.name === NOME_ALARME_COMANDOS) { await buscarComandos(); return; }
+  if (alarme.name === NOME_ALARME_COMANDOS) { await buscarComandos(); await retomarColadores(); return; }
 
   if (alarme.name === NOME_ALARME_BACKLOG) {
     await disparar('backlog', false, 'agendado');
@@ -648,6 +648,51 @@ async function contarResultado(id, r) {
   } catch (e) { /* a tela mostra "sem confirmacao" - o macro em si nao depende disto */ }
 }
 
+// ── sessões do Colador que voltam sozinhas ──────────────────────────────────
+// Guardadas no storage.local (sobrevivem a F5, extensão atualizada e Chrome reaberto). Saem só
+// quando a pessoa para (tela ou painel), quando a sessão termina por conta própria (sem modo
+// contínuo) ou quando cai demais (ver L.decidirRetomarColador).
+const CHAVE_SESSOES_COLADOR = 'sessoesColador';
+let retomandoColador = false;
+
+async function mudarSessoesColador(mudar) {
+  try {
+    const o = await chrome.storage.local.get(CHAVE_SESSOES_COLADOR);
+    const sessoes = o[CHAVE_SESSOES_COLADOR] || {};
+    mudar(sessoes);
+    await chrome.storage.local.set({ [CHAVE_SESSOES_COLADOR]: sessoes });
+  } catch (e) { /* sem storage: só não volta sozinha */ }
+}
+
+const lembrarSessaoColador = (qual, config) =>
+  mudarSessoesColador((s) => { s[qual] = { qual, config, desde: Date.now(), tentativas: [], ultimaTentativa: Date.now() }; });
+const esquecerSessaoColador = (qual) => mudarSessoesColador((s) => { delete s[qual]; });
+
+async function retomarColadores() {
+  if (retomandoColador) return;
+  retomandoColador = true;
+  try {
+    const sessoes = (await chrome.storage.local.get(CHAVE_SESSOES_COLADOR))[CHAVE_SESSOES_COLADOR] || {};
+    const atividades = Object.values(await carregarAtividade());
+    for (const sessao of Object.values(sessoes)) {
+      const d = L.decidirRetomarColador(sessao, atividades, Date.now());
+      if (d.acao === 'desistir') {
+        await esquecerSessaoColador(sessao.qual);
+        await anotarFalha(sessao.qual, d.motivo);
+        continue;
+      }
+      if (d.acao !== 'retomar') continue;
+      await mudarSessoesColador((s) => {
+        if (s[sessao.qual]) Object.assign(s[sessao.qual], { tentativas: d.tentativas, ultimaTentativa: Date.now() });
+      });
+      await anotar(`retomando ${sessao.qual}: a sessão tinha caído sem ninguém mandar parar`);
+      await disparar(sessao.qual, false, 'retomar', sessao.config).catch(() => {});
+    }
+  } catch (e) { /* tenta de novo no próximo alarme */ } finally {
+    retomandoColador = false;
+  }
+}
+
 async function executarComando(c) {
   if (!L.comandoValido(c)) return;
 
@@ -663,6 +708,7 @@ async function executarComando(c) {
   //
   // Sem esperar: abrir a aba pode levar um minuto, e a proxima pergunta ao
   // vigia nao pode ficar parada atras disso.
+  if (L.QUAIS_COLADOR.includes(c.qual)) await lembrarSessaoColador(c.qual, c.config);
   disparar(c.qual, false, 'site', c.config, c.id)
     .then((r) => contarResultado(c.id, r))
     .catch((e) => contarResultado(c.id, { ok: false, error: String(e.message || e) }));
@@ -691,6 +737,8 @@ async function pararSeNecessario(paradas) {
     if (!p || !p.qual) continue;
     // Parada pedida pela tela pra ESTE Chrome (Pausar, Cancelar, Reiniciar, Parar), venha o
     // macro de um comando ou do horário: para o que estiver rodando na aba dele.
+    // Parar pela tela encerra a sessão de vez: não volta sozinha.
+    if (L.QUAIS_COLADOR.includes(p.qual)) await esquecerSessaoColador(p.qual);
     if (p.avulsa) {
       try {
         const aba = await abaExistenteDoSpx(p.qual);
@@ -793,6 +841,12 @@ chrome.runtime.onMessage.addListener((msg, remetente, responder) => {
 
   // O content script do Colador nao alcanca 127.0.0.1 direto (mesmo bloqueio de
   // rede privada do pendentes acima) - pede aqui, e a resposta volta pela mensagem.
+  // A sessão do Colador acabou de propósito (Parar no painel/tela, ou terminou sem modo contínuo).
+  if (msg.xmColadorFim) {
+    esquecerSessaoColador(String(msg.xmColadorFim)).then(() => responder({ ok: true }));
+    return true;
+  }
+
   if (msg.xmColador) {
     const FUNCAO = { lote: coladorLote, confirmar: coladorConfirmar, liberar: coladorLiberar, at: coladorAt, falhou: coladorFalhou };
     const fn = FUNCAO[msg.xmColador];

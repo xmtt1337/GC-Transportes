@@ -552,6 +552,15 @@
   // clique local no painel - só muda a mensagem final, a parada em si é a mesma (S.parar).
   let paradoPelaTela = false;
 
+  // Avisa o fundo.js que esta sessão acabou de propósito: não é pra reabrir sozinha.
+  function encerrarSessao(qual) {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) return;
+      const r = chrome.runtime.sendMessage({ xmColadorFim: qual });
+      if (r && typeof r.catch === 'function') r.catch(() => {});
+    } catch (e) { /* contexto da extensão invalidado: nada a avisar */ }
+  }
+
   async function rodar(qual, config, idComando) {
     if (rodando) { P.nota(`${(CATALOGO[qual] || {}).titulo || qual} já está rodando`); return; }
     if (!CATALOGO[qual]) throw new Error(`Colador desconhecido: ${qual}`);
@@ -662,9 +671,15 @@
 
       await drenarAts(config);
       P.ok(`${colados} colado(s)`);
+      encerrarSessao(qual);
     } catch (e) {
-      if (e instanceof S.Parado) P.erro(paradoPelaTela ? 'parado pela tela do site' : 'parado por você');
-      else P.erro(`${e.message || e} (${colados} colado(s) até parar)`);
+      // Parada de propósito encerra a sessão; erro não - a extensão reabre sozinha (fundo.js).
+      if (e instanceof S.Parado) {
+        P.erro(paradoPelaTela ? 'parado pela tela do site' : 'parado por você');
+        encerrarSessao(qual);
+      } else {
+        P.erro(`${e.message || e} (${colados} colado(s) até parar) — tento de novo em instantes`);
+      }
     } finally {
       rodando = null;
       rodandoId = null;

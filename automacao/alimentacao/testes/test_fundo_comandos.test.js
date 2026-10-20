@@ -529,7 +529,8 @@ test('sem aba nenhuma do Colador: abre uma nova na LISTA (Entrada > Recebimento 
   // Esse caminho passa por esperarCarregar (aba nova): 600ms + 2500ms de folga
   // de verdade (setTimeout real, nao o relogio fixo) - os outros testes deste
   // arquivo nunca passam por aqui porque as 3 abas fixas ja casam de cara.
-  await dormir(3300);
+  // Ate o disparo acontecer (com teto): a espera fixa de 3,3s estourava com a suite toda rodando junto.
+  for (let i = 0; i < 80 && !(c.guardado.ultimoDisparo && c.chamadas.abas.length); i++) await dormir(100);
   // As 3 abas fixas do fake nao servem (sao dos outros 3 macros) - abre nova.
   assert.strictEqual(c.chamadas.abas[0].id, 99);
   assert.match(c.guardado.ultimoDisparo.texto, /disparado: at_cluster/);
@@ -542,7 +543,7 @@ test('aba livre (nao ocupada por nenhum macro) e reaproveitada pro Colador, nave
     vigia: { resposta: { comandos: [{ id: ID, qual: 'recebimento', config }] } },
   });
   await c.ctx.buscarComandos();
-  await dormir(3300); // mesma folga de esperarCarregar (chrome.tabs.update + esperar carregar)
+  for (let i = 0; i < 80 && !c.chamadas.abas.length; i++) await dormir(100); // folga de esperarCarregar, com teto
   assert.strictEqual(c.chamadas.abas[0].id, 30);
 });
 
@@ -669,4 +670,52 @@ test('parada pedida pela tela pra este Chrome (avulsa) para o macro na aba dele'
   const msgs = c.chamadas.abas.map((a) => a.msg);
   assert.ok(msgs.some((m) => m.xmPararMacro === 'pedidos'), JSON.stringify(msgs));
   assert.ok(!msgs.some((m) => m.xmColadorParar), 'nao confunde com o parar do Colador por comando');
+});
+
+// ── sessao do Colador que volta sozinha (20/10/2026: "ele nao deveria parar") ──
+const CFG_CRIAR = { xpt: 'XPT_CFC', todos_dias: true, carencia: 60, lote: 1, intervalo: 0.5, continuo: true };
+const SESSAO = (extra = {}) => ({ sessoesColador: { criar_at: { qual: 'criar_at', config: CFG_CRIAR, desde: AGORA - 3600000,
+  tentativas: [], ultimaTentativa: AGORA - 3600000, ...extra } } });
+
+test('comando do Colador guarda a sessao (pra voltar sozinha se cair)', async () => {
+  const c = carregar({ vigia: { resposta: { comandos: [{ id: ID, qual: 'criar_at', config: CFG_CRIAR }] } } });
+  await c.ctx.buscarComandos();
+  await dormir(20);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(c.guardado.sessoesColador.criar_at.config)), CFG_CRIAR);
+});
+
+test('sessao guardada e nada rodando (F5, extensao atualizada): reabre com a mesma config', async () => {
+  const c = carregar({ storage: SESSAO() });
+  await c.ctx.retomarColadores();
+  const envio = c.chamadas.abas.find((a) => a.msg.xmMacro === 'criar_at');
+  assert.ok(envio, 'reabriu o Criar AT');
+  assert.strictEqual(envio.msg.config.xpt, 'XPT_CFC');
+  assert.strictEqual(c.guardado.sessoesColador.criar_at.tentativas.length, 1);
+});
+
+test('acabou de tentar (menos de 90s): espera a aba comecar, nao reabre de novo', async () => {
+  const c = carregar({ storage: SESSAO({ ultimaTentativa: AGORA - 30000 }) });
+  await c.ctx.retomarColadores();
+  assert.deepStrictEqual(macrosDisparados(c), []);
+});
+
+test('caiu 6 vezes em 15 min: desiste, esquece a sessao e anota o motivo', async () => {
+  const tentativas = [1, 2, 3, 4, 5, 6].map((m) => AGORA - m * 120000);
+  const c = carregar({ storage: SESSAO({ tentativas, ultimaTentativa: AGORA - 120000 }) });
+  await c.ctx.retomarColadores();
+  assert.deepStrictEqual(macrosDisparados(c), []);
+  assert.strictEqual(c.guardado.sessoesColador.criar_at, undefined);
+});
+
+test('Parar pela tela (parada avulsa) esquece a sessao: nao volta sozinha', async () => {
+  const c = carregar({ storage: SESSAO(), vigia: { resposta: { comandos: [], paradas: [{ id: 'p1', qual: 'criar_at', avulsa: true }] } } });
+  await c.ctx.buscarComandos();
+  await dormir(20);
+  assert.strictEqual(c.guardado.sessoesColador.criar_at, undefined);
+});
+
+test('a aba avisa que parou de proposito (xmColadorFim): esquece a sessao', async () => {
+  const c = carregar({ storage: SESSAO() });
+  await new Promise((ok) => c.ouvintes.mensagem({ xmColadorFim: 'criar_at' }, {}, ok));
+  assert.strictEqual(c.guardado.sessoesColador.criar_at, undefined);
 });

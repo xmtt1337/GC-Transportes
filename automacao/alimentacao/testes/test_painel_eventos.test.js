@@ -237,3 +237,11 @@ test('atividadeDoPainel: o XPT dito pelo macro vale mais que a falta de estacao'
     estacao: null, xpt: 'XPT_VIA', comecouEm: 1, linhas: [] });
   assert.strictEqual(a.xpt, 'XPT_VIA');
 });
+
+test('decidirRetomarColador: com a sessao rodando numa aba, nao reabre', () => {
+  const sessao = { qual: 'criar_at', config: {}, tentativas: [], ultimaTentativa: 0 };
+  assert.strictEqual(L.decidirRetomarColador(sessao, [{ macro: 'criar_at', estado: 'rodando' }], 10 ** 7).acao, 'nada');
+  assert.strictEqual(L.decidirRetomarColador(sessao, [{ macro: 'criar_at', estado: 'interrompido' }], 10 ** 7).acao, 'retomar');
+  assert.strictEqual(L.decidirRetomarColador(null, [], 10 ** 7).acao, 'nada');
+  assert.strictEqual(L.decidirRetomarColador({ ...sessao, qual: 'alimentacao' }, [], 10 ** 7).acao, 'nada');
+});
