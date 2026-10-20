@@ -21,6 +21,8 @@ const _ROTAS = {
     "Baixas/TotalExpress":           () => abrirBaixaTotalExpress(),
     "Conferencia/Shopee":            () => abrirConfEntregador(),
     "Performance/PorDia":            () => abrirEntPerformance(),
+    "CriarAT":                       () => abrirSolicitarAT(),
+    // Rota de quando era Atribuições → Solicitar AT: mantida pra link salvo não quebrar.
     "Atribuicoes/SolicitarAT":       () => abrirSolicitarAT(),
     "Devolucoes/Nova":               () => abrirDevolucaoNova(),
     "Devolucoes/Enviadas":           () => abrirDevolucoesEnviadas(),
@@ -127,6 +129,7 @@ const _ROTAS = {
 const _ROTAS_MENU = {
     "Shopee/Atribuicoes/VariosClusters": "Shopee/Atribuicoes",
     "Shopee/Recebimento/Exportar":       "Shopee/Recebimento",
+    "Atribuicoes/SolicitarAT":           "CriarAT",
 };
 
 // Rotas com PARÂMETRO no caminho. O mapa acima é de correspondência exata, e essas não
@@ -173,7 +176,7 @@ const _TELA_ROTAS = {
     "tela-baixa-te":             "Baixas/TotalExpress",
     "tela-conf-entregador":      "Conferencia/Shopee",
     "tela-ent-performance":      "Performance/PorDia",
-    "tela-solicitar-at":         "Atribuicoes/SolicitarAT",
+    "tela-solicitar-at":         "CriarAT",
     "tela-admin-baixas-te":      "Baixas/TotalExpress",
     "tela-devolucao-nova":       "Devolucoes/Nova",
     "tela-devolucao-enviadas":   "Devolucoes/Enviadas",
@@ -291,7 +294,13 @@ function _marcarSubmenuAtivo(caminho) {
     const candidatos = document.querySelectorAll(`.submenu a[data-rota="${caminho}"]`);
     let alvo = null;
     candidatos.forEach(el => { if (!alvo && el.offsetParent !== null) alvo = el; });
-    if (!alvo) return; // link não existe pro cargo atual (ex.: sem permissão) — nada pra marcar
+    if (!alvo) {
+        // Item de menu sem submenu (ex.: Criar AT): a rota mora no próprio item. Sem ele
+        // também, o link não existe pro cargo atual (ex.: sem permissão) — nada pra marcar.
+        const item = document.querySelector(`.menu-item[data-rota="${caminho}"]`);
+        if (item) item.classList.add("active");
+        return;
+    }
     alvo.classList.add("active");
     const menuItem = alvo.closest(".submenu").previousElementSibling;
     if (menuItem) menuItem.classList.add("active");

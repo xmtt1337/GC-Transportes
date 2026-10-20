@@ -20,7 +20,7 @@ function _solatMostrarDesativado() {
     document.getElementById("solat-campo-codigo").style.display = "none";
     const aviso = document.getElementById("solat-aviso");
     aviso.style.display = "";
-    aviso.innerText = "Solicitar AT está temporariamente desativado. Fale com a operação.";
+    aviso.innerText = "Criar AT está temporariamente desativado. Fale com a operação.";
     document.getElementById("solat-msg").style.display = "none";
     document.getElementById("solat-empty").innerText = "";
     document.getElementById("solat-resultado").style.display = "none";
@@ -64,6 +64,9 @@ function _solatEsc(txt) {
 function abrirSolicitarAT(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-solicitar-at");
+    // Item sem submenu: mostrarTela limpa o destaque e nenhum link de submenu o devolve.
+    const itemMenu = document.getElementById("menu-criar-at");
+    if (itemMenu) itemMenu.classList.add("active");
     if (SOLAT_DESATIVADO) return _solatMostrarDesativado();
 
     _solatXpt = null;
@@ -157,7 +160,7 @@ function _solatGravarPolo(chave, overlay, seguir) {
     });
 }
 
-// A cada pedido: "Solicitar AT no XPT Videira?". Enter também confirma — quem bipa em
+// A cada pedido: "Criar AT no XPT Videira?". Enter também confirma — quem bipa em
 // sequência não larga o leitor pra tocar na tela.
 function _solatConfirmarPolo(codigo, onOk) {
     const anterior = document.getElementById("solat-conf-overlay");
@@ -168,7 +171,7 @@ function _solatConfirmarPolo(codigo, onOk) {
     overlay.setAttribute("style", _gcOverlayStyle);
     overlay.innerHTML = `
         <div style="${_gcCardStyle}">
-            <div style="${_gcTitleStyle}">Solicitar AT no XPT ${_solatEsc(p.polo_label)}?</div>
+            <div style="${_gcTitleStyle}">Criar AT no XPT ${_solatEsc(p.polo_label)}?</div>
             <div style="${_gcMsgStyle}"><strong>${_solatEsc(codigo)}</strong> · ${_solatEsc(p.xpt)}</div>
             <div style="${_gcBtnsStyle};flex-wrap:wrap">
                 <button style="${_gcBtnCxStyle}" data-action="redefinir">Solicitar redefinição de polo</button>

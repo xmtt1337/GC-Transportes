@@ -339,23 +339,19 @@ if (_BASE) {
             <li><a href="#" data-rota="Performance/PorDia" onclick="abrirEntPerformance(event)">Por dia</a></li>
         </ul>
 
-        <!-- Solicitar AT: o pacote que caiu na mão do entregador sem passar pelo
-             recebimento nem pela atribuição no SPX. Menu próprio, e não um item
-             dentro de "Conferência", porque ali ele CONFERE o que já é dele; aqui
-             ele PEDE que um pacote passe a ser. -->
-        <li class="menu-item" data-menu="atribuicoesent" id="menu-atribuicoes-ent" onclick="toggleMenu(this)" style="display:none">
+        <!-- Criar AT: o pacote que caiu na mão do entregador sem passar pelo
+             recebimento nem pela atribuição no SPX. Item próprio, e não dentro de
+             "Conferência", porque ali ele CONFERE o que já é dele; aqui ele PEDE que
+             um pacote passe a ser. Vai direto pra tela, sem submenu: é uma tela só. -->
+        <li class="menu-item" data-menu="criarat" data-rota="CriarAT" id="menu-criar-at" onclick="abrirSolicitarAT(event)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="7" width="18" height="14" rx="2"/>
                 <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                 <path d="M12 12v5"/><path d="M9.5 14.5 12 12l2.5 2.5"/>
             </svg>
-            <span class="label">Atribuições</span>
-            <span class="arrow">&#9662;</span>
-            <span class="menu-tooltip">Atribuições</span>
+            <span class="label">Criar AT</span>
+            <span class="menu-tooltip">Criar AT</span>
         </li>
-        <ul class="submenu" data-menu="atribuicoesent" id="submenu-atribuicoes-ent" style="display:none">
-            <li><a href="#" data-rota="Atribuicoes/SolicitarAT" onclick="abrirSolicitarAT(event)">Solicitar AT</a></li>
-        </ul>
 
         <li class="menu-item" data-menu="baixas" id="menu-baixas" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -3955,7 +3951,7 @@ if (_BASE) {
                 <div class="bip-scan-card">
                     <div class="bip-scan-title">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M12 12v5"/><path d="M9.5 14.5 12 12l2.5 2.5"/></svg>
-                        Solicitar AT
+                        Criar AT
                     </div>
 
                     <div class="shr-faixa" id="solat-faixa" style="display:none">
@@ -4802,11 +4798,11 @@ if (_BASE) {
     </div>
 </div>
 
-<script src="js/core.js?v=20261019b"></script>
+<script src="js/core.js?v=20261020a"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261019a"></script>
+<script src="js/router.js?v=20261020a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=20261015f"></script>
+<script src="js/nav.js?v=20261020a"></script>
 <script src="js/atendimento.js?v=20261015a"></script>
 <script src="js/atendimento-admin.js?v=20261015b"></script>
 <script src="js/fechamentos.js?v=20261012a"></script>
@@ -4862,7 +4858,7 @@ if (_BASE) {
 <script src="js/shopee-stuck.js?v=20261001a"></script>
 <script src="js/shopee-stuck-backlog.js?v=20260930d"></script>
 <script src="js/entregador-conferencia.js?v=20261015b"></script>
-<script src="js/solicitar-at.js?v=20261020d"></script>
+<script src="js/solicitar-at.js?v=20261020e"></script>
 <script src="js/viagens.js?v=30260812d"></script>
 <script src="js/ocorrencias.js?v=30260812d"></script>
 <script src="js/ocorrencias-admin.js?v=30260812d"></script>

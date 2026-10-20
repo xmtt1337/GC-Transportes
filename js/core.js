@@ -207,9 +207,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("submenu-devolucoes");
         show("menu-conf-entregador");
         show("submenu-conf-entregador");
-        // Atribuições → Solicitar AT (reativado em 19/10/2026; o XPT sai do polo dele).
-        show("menu-atribuicoes-ent");
-        show("submenu-atribuicoes-ent");
+        // Criar AT (reativado em 19/10/2026; o XPT sai do polo dele). Item único, sem submenu.
+        show("menu-criar-at");
         // Ocorrências → Pacotes Faltantes: só aparece pro entregador liberado
         // (toggle em Cadastros → Entregadores, "Editar" → Ativar formulário de faltante)
         if (data.usuario.pode_pacote_faltante) {
