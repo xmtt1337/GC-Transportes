@@ -3720,6 +3720,62 @@ td.cad-nome { color: #e2e8f0; }
 .cen-at-btn:active { background: rgba(58,134,255,0.24); }
 .cen-at-btn.copiado { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.4); color: #86efac; }
 
+/* ── Solicitar AT: lista de pedidos do dia ──
+   Cartão por pedido em vez de tabela: código e andamento na mesma linha, o resto
+   (barra, motivo da recusa, AT) embaixo em largura cheia. Lido na rua, no celular. */
+.solat-msg { margin-top: 10px; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.solat-lista-topo {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin: 18px 2px 10px;
+}
+.solat-lista { display: flex; flex-direction: column; gap: 8px; }
+.solat-item {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px; padding: 12px 14px;
+}
+.solat-item-topo {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.solat-codigo {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 14px; color: #e2e8f0; letter-spacing: .01em;
+    min-width: 0; overflow-wrap: anywhere;
+}
+.solat-status {
+    display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+    font-size: 12.5px; font-weight: 600; white-space: nowrap;
+}
+.solat-ponto { width: 7px; height: 7px; border-radius: 50%; }
+.solat-levou { color: #7b98b5; font-size: 11px; font-weight: 500; }
+.solat-barra { margin-top: 10px; }
+.solat-tempo { font-size: 11px; color: #7b98b5; margin-top: 5px; }
+.solat-motivo {
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);
+    font-size: 12.5px; line-height: 1.45; color: #f8a5a5;
+}
+.solat-at {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);
+}
+.solat-at-rotulo {
+    font-size: 11px; font-weight: 700; color: #717f95;
+    text-transform: uppercase; letter-spacing: .04em;
+}
+.solat-at-num {
+    flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px; color: #e2e8f0;
+}
+.solat-at .cen-at-btn { padding: 6px 12px; }
+@media (max-width: 680px) {
+    #tela-solicitar-at .bip-scan-card { padding: 14px 14px 12px; }
+    #tela-solicitar-at .bip-scan-title { margin-bottom: 10px; }
+    #tela-solicitar-at .shr-faixa { padding: 9px 14px; margin-bottom: 10px; }
+    #tela-solicitar-at .bip-search-wrap { padding: 11px 14px; }
+    #tela-solicitar-at .bip-search-wrap input { font-size: 16px; min-width: 0; }
+}
+
 /* O QR precisa de fundo claro e de tamanho: é lido por leitor de mão, muitas
    vezes de longe e com a tela do celular no brilho baixo. */
 .cen-qr-caixa {

@@ -436,7 +436,6 @@ function _solatMsg(msg, tipo) {
     const cores = { ok: "#22c55e", erro: "#f87171", aviso: "#eab308" };
     el.style.display = "";
     el.style.color = cores[tipo] || "#cbd5e1";
-    el.style.fontSize = "13px";
     el.innerHTML = msg;
 }
 
@@ -477,40 +476,39 @@ function _solatRenderizar() {
     document.getElementById("solat-lista-titulo").innerText =
         `Pedidos de hoje · ${_solatItens.length}` + (criando ? ` · ${criando} criando` : "");
 
+    // Um cartão por pedido, não tabela: no celular a tabela virava rótulo de um lado e
+    // valor espremido do outro, e o motivo da recusa quebrava em três linhas à direita.
     document.getElementById("solat-tbody").innerHTML = _solatItens.map(i => {
         const s = SOLAT_STATUS[i.status] || { rotulo: i.status, cor: "#8494a9" };
-        const andamento = i.status === "criando"
-            ? `<div style="min-width:150px">
-                   <span style="display:inline-flex;align-items:center;gap:6px;color:${s.cor}">
-                       <span style="width:7px;height:7px;border-radius:50%;background:${s.cor}"></span>
-                       ${s.rotulo}
-                   </span>
-                   <div class="slh-barra" style="margin-top:6px">
-                       <div class="slh-barra-fill" id="solat-barra-${i.id}"
-                            style="width:0%;background:#3a86ff"></div>
-                   </div>
-                   <div id="solat-tempo-${i.id}"
-                        style="font-size:11px;color:#7b98b5;margin-top:4px">0s de ~${_solatEstimativa}s</div>
+        const levou = i.status !== "criando" && i.levou_segundos !== null && i.levou_segundos !== undefined
+            ? ` <span class="solat-levou">em ${i.levou_segundos}s</span>` : "";
+        const status = `<span class="solat-status" style="color:${s.cor}">
+                <span class="solat-ponto" style="background:${s.cor}"></span>${s.rotulo}${levou}
+            </span>`;
+        const barra = i.status === "criando"
+            ? `<div class="slh-barra solat-barra">
+                   <div class="slh-barra-fill" id="solat-barra-${i.id}" style="width:0%;background:#3a86ff"></div>
+               </div>
+               <div class="solat-tempo" id="solat-tempo-${i.id}">0s de ~${_solatEstimativa}s</div>`
+            : "";
+        // Pronto: no lugar da barra, quanto ESTE levou (o "em Xs" do status). É o número
+        // que deixa claro se hoje está melhor ou pior que o normal.
+        const motivo = i.status === "erro"
+            ? `<div class="solat-motivo">${_solatEsc(_solatTextoErro(i))}</div>` : "";
+        const at = i.at
+            ? `<div class="solat-at">
+                   <span class="solat-at-rotulo">AT</span>
+                   <strong class="solat-at-num">${_solatEsc(i.at)}</strong>
+                   <button type="button" class="cen-at-btn"
+                           onclick="_solatCopiarAt(this,'${_solatEsc(i.at)}')">Copiar</button>
                </div>`
-            // Pronto: no lugar da barra, quanto ESTE levou. É o número que
-            // deixa claro se hoje está melhor ou pior que o normal.
-            : `<span style="display:inline-flex;align-items:center;gap:6px;color:${s.cor}">
-                   <span style="width:7px;height:7px;border-radius:50%;background:${s.cor}"></span>
-                   ${s.rotulo}${i.levou_segundos !== null && i.levou_segundos !== undefined
-                       ? ` <span style="color:#7b98b5;font-size:11px">em ${i.levou_segundos}s</span>` : ""}
-               </span>${i.status === "erro"
-                   ? `<div style="font-size:11.5px;color:#f8a5a5;margin-top:4px">${_solatEsc(_solatTextoErro(i))}</div>` : ""}`;
-        return `<tr>
-            <td data-label="Código"><strong>${_solatEsc(i.codigo)}</strong></td>
-            <td data-label="Andamento">${andamento}</td>
-            <td data-label="AT">${i.at
-                ? `<span style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap">
-                       <strong>${_solatEsc(i.at)}</strong>
-                       <button type="button" class="cen-at-btn"
-                               onclick="_solatCopiarAt(this,'${_solatEsc(i.at)}')">Copiar</button>
-                   </span>`
-                : "—"}</td>
-        </tr>`;
+            : "";
+        return `<div class="solat-item">
+            <div class="solat-item-topo">
+                <strong class="solat-codigo">${_solatEsc(i.codigo)}</strong>
+                ${status}
+            </div>${barra}${motivo}${at}
+        </div>`;
     }).join("");
 
     _solatPintarBarras();

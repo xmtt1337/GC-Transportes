@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261020d">
+<link rel="stylesheet" href="style.css?v=20261020e">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -3973,19 +3973,16 @@ if (_BASE) {
                     </div>
 
                     <div class="bip-scan-hint" id="solat-aviso" style="display:none"></div>
-                    <div id="solat-msg" style="display:none;margin-top:12px"></div>
+                    <div id="solat-msg" class="solat-msg" style="display:none"></div>
                 </div>
 
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:12px">
+                <div class="solat-lista-topo">
                     <span class="ant-sol-title" id="solat-lista-titulo" style="border:none;padding:0;margin:0">Pedidos de hoje</span>
-                    <button type="button" class="shr-pag-btn" onclick="_solatCarregarHoje()">Atualizar andamento</button>
+                    <button type="button" class="shr-pag-btn" onclick="_solatCarregarHoje()">Atualizar</button>
                 </div>
                 <div class="fechamento-empty" id="solat-empty">Carregando...</div>
                 <div id="solat-resultado" style="display:none">
-                    <table class="ant-hist-table">
-                        <thead><tr><th>Código</th><th>Andamento</th><th>AT</th></tr></thead>
-                        <tbody id="solat-tbody"></tbody>
-                    </table>
+                    <div class="solat-lista" id="solat-tbody"></div>
                 </div>
             </div>
         </div><!-- /tela-solicitar-at -->
@@ -4865,7 +4862,7 @@ if (_BASE) {
 <script src="js/shopee-stuck.js?v=20261001a"></script>
 <script src="js/shopee-stuck-backlog.js?v=20260930d"></script>
 <script src="js/entregador-conferencia.js?v=20261015b"></script>
-<script src="js/solicitar-at.js?v=20261020c"></script>
+<script src="js/solicitar-at.js?v=20261020d"></script>
 <script src="js/viagens.js?v=30260812d"></script>
 <script src="js/ocorrencias.js?v=30260812d"></script>
 <script src="js/ocorrencias-admin.js?v=30260812d"></script>
