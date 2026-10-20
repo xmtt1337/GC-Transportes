@@ -336,19 +336,20 @@
 
   // Sessão do Colador que caiu sem ninguém mandar parar (F5 na aba, extensão atualizada, Chrome
   // fechado, erro): volta sozinha (pedido do usuário, 20/10/2026 - "ele não deveria parar").
-  // Só para de vez com Parar/X na tela ou o Parar do painel. Espera 90s entre tentativas (a
-  // aba precisa de tempo pra abrir e começar) e desiste depois de 6 em 15 min - uma sessão que
-  // cai toda hora (polo errado, SPX deslogado) não pode ficar reabrindo a aba pra sempre.
+  // Só para de vez com Parar/X na tela. Espera 90s entre tentativas (a aba precisa de tempo pra
+  // abrir e começar); sessão que cai toda hora (SPX deslogado, tela que não carrega) passa a
+  // tentar de 5 em 5 min - nunca desiste: "sempre vigiando e sempre colando" (20/10/2026).
   const RETOMAR_ESPERA_MS = 90 * 1000;
   const RETOMAR_JANELA_MS = 15 * 60 * 1000;
   const RETOMAR_MAX = 6;
+  const RETOMAR_ESPERA_LONGA_MS = 5 * 60 * 1000;
   function decidirRetomarColador(sessao, atividades, agora) {
     if (!sessao || !QUAIS_COLADOR.includes(sessao.qual) || !sessao.config) return { acao: 'nada' };
     if ((atividades || []).some((a) => a && a.macro === sessao.qual && a.estado === 'rodando')) return { acao: 'nada' };
     if (sessao.ultimaTentativa && agora - sessao.ultimaTentativa < RETOMAR_ESPERA_MS) return { acao: 'nada' };
     const recentes = (sessao.tentativas || []).filter((t) => agora - t < RETOMAR_JANELA_MS);
-    if (recentes.length >= RETOMAR_MAX) {
-      return { acao: 'desistir', motivo: `a sessão caiu ${recentes.length} vezes em 15 min — parei de reabrir; confira o SPX e inicie de novo pela tela` };
+    if (recentes.length >= RETOMAR_MAX && sessao.ultimaTentativa && agora - sessao.ultimaTentativa < RETOMAR_ESPERA_LONGA_MS) {
+      return { acao: 'nada' };
     }
     return { acao: 'retomar', tentativas: [...recentes, agora] };
   }

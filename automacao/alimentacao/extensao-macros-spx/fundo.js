@@ -292,8 +292,11 @@ async function xptDaAba(abaId) {
 async function xptDoPerfil() {
   try {
     const { estacaoPerfil } = await chrome.storage.local.get('estacaoPerfil');
-    // Visto há mais de 1h: a aba fechou ou trocou de estação sem contar - melhor não afirmar nada.
-    if (!estacaoPerfil || Date.now() - estacaoPerfil.em > 60 * 60 * 1000) return null;
+    // Vale a última que este Chrome viu, por mais antiga que seja: o perfil do Chrome fica logado
+    // na mesma estação, e é por ela que o servidor entrega as sessões do Colador DESTE polo
+    // (sem polo, nenhuma - antes, depois de 1h sem aba do SPX, o Chrome ficava sem polo e pegava
+    // pedido do outro, 20/10/2026). Trocou de estação: spx.js conta de novo em até 1 min.
+    if (!estacaoPerfil) return null;
     return estacaoPerfil.xpt || null;
   } catch (e) { return null; }
 }
@@ -668,6 +671,23 @@ const lembrarSessaoColador = (qual, config) =>
   mudarSessoesColador((s) => { s[qual] = { qual, config, desde: Date.now(), tentativas: [], ultimaTentativa: Date.now() }; });
 const esquecerSessaoColador = (qual) => mudarSessoesColador((s) => { delete s[qual]; });
 
+// As sessões ligadas no servidor pra ESTE Chrome (computador + polo) passam a ser as daqui: as
+// novas entram, as desligadas pela tela saem. Guarda as tentativas das que continuam.
+async function sincronizarSessoesColador(doServidor) {
+  if (!Array.isArray(doServidor)) return;   // servidor antigo / banco fora: mantém como está
+  await mudarSessoesColador((s) => {
+    const quais = new Set();
+    for (const x of doServidor) {
+      if (!x || !L.QUAIS_COLADOR.includes(x.qual) || !x.config || typeof x.config !== 'object') continue;
+      quais.add(x.qual);
+      s[x.qual] = s[x.qual]
+        ? { ...s[x.qual], config: x.config }
+        : { qual: x.qual, config: x.config, desde: Date.now(), tentativas: [], ultimaTentativa: 0 };
+    }
+    for (const qual of Object.keys(s)) if (!quais.has(qual)) delete s[qual];
+  });
+}
+
 async function retomarColadores() {
   if (retomandoColador) return;
   retomandoColador = true;
@@ -676,11 +696,6 @@ async function retomarColadores() {
     const atividades = Object.values(await carregarAtividade());
     for (const sessao of Object.values(sessoes)) {
       const d = L.decidirRetomarColador(sessao, atividades, Date.now());
-      if (d.acao === 'desistir') {
-        await esquecerSessaoColador(sessao.qual);
-        await anotarFalha(sessao.qual, d.motivo);
-        continue;
-      }
       if (d.acao !== 'retomar') continue;
       await mudarSessoesColador((s) => {
         if (s[sessao.qual]) Object.assign(s[sessao.qual], { tentativas: d.tentativas, ultimaTentativa: Date.now() });
@@ -769,6 +784,7 @@ async function buscarComandos() {
       try { await executarComando(c); } catch (e) { console.log('[XM Macros] comando falhou: ' + e); }
     }
     try { await pararSeNecessario(resposta.paradas); } catch (e) { /* tenta na proxima */ }
+    try { await sincronizarSessoesColador(resposta.sessoes); } catch (e) { /* tenta na proxima */ }
     try { await entregarEventosGuardados(); } catch (e) { /* tenta na proxima */ }
     try { await mandarAtividade(); } catch (e) { /* tenta na proxima */ }
     // O polo de cada relatório, escolhido na tela Macros (ausente = servidor antigo: mantém).

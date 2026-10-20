@@ -651,11 +651,17 @@ test('com a estacao do perfil conhecida, pergunta os comandos so do XPT dele', a
   assert.ok(enviadosAoVigia(c, '/comandos?xpt=XPT_VIA').length === 1);
 });
 
-test('estacao do perfil vista ha mais de 1h nao vale (pergunta sem XPT)', async () => {
+// 20/10/2026: depois de 1h sem aba do SPX o Chrome ficava sem polo e pegava pedido do outro polo.
+test('estacao do perfil vista ha horas continua valendo (o perfil fica na mesma estacao)', async () => {
   const c = carregar({ storage: { estacaoPerfil: { estacao: 'XPT_SC_Videira', xpt: 'XPT_VIA', em: AGORA - 2 * 3600000 } } });
   await c.ctx.buscarComandos();
+  assert.ok(enviadosAoVigia(c, '/comandos?xpt=XPT_VIA').length === 1);
+});
+
+test('sem estacao nenhuma vista, pergunta sem XPT', async () => {
+  const c = carregar();
+  await c.ctx.buscarComandos();
   assert.ok(enviadosAoVigia(c, '/comandos').length === 1);
-  assert.ok(!enviadosAoVigia(c, '/comandos?xpt').length);
 });
 
 test('os polos escolhidos no sistema ficam guardados', async () => {
@@ -699,12 +705,15 @@ test('acabou de tentar (menos de 90s): espera a aba comecar, nao reabre de novo'
   assert.deepStrictEqual(macrosDisparados(c), []);
 });
 
-test('caiu 6 vezes em 15 min: desiste, esquece a sessao e anota o motivo', async () => {
+test('caiu 6 vezes em 15 min: nao desiste - passa a tentar de 5 em 5 min', async () => {
   const tentativas = [1, 2, 3, 4, 5, 6].map((m) => AGORA - m * 120000);
   const c = carregar({ storage: SESSAO({ tentativas, ultimaTentativa: AGORA - 120000 }) });
   await c.ctx.retomarColadores();
-  assert.deepStrictEqual(macrosDisparados(c), []);
-  assert.strictEqual(c.guardado.sessoesColador.criar_at, undefined);
+  assert.deepStrictEqual(macrosDisparados(c), [], 'tentou ha 2 min: espera');
+  assert.ok(c.guardado.sessoesColador.criar_at, 'a sessao continua guardada');
+  const d = carregar({ storage: SESSAO({ tentativas: [1, 2, 3, 4, 5, 6].map((m) => AGORA - m * 60000 - 300000), ultimaTentativa: AGORA - 360000 }) });
+  await d.ctx.retomarColadores();
+  assert.deepStrictEqual(macrosDisparados(d), ['criar_at'], 'passados 5 min: tenta de novo');
 });
 
 test('Parar pela tela (parada avulsa) esquece a sessao: nao volta sozinha', async () => {
@@ -718,4 +727,27 @@ test('a aba avisa que parou de proposito (xmColadorFim): esquece a sessao', asyn
   const c = carregar({ storage: SESSAO() });
   await new Promise((ok) => c.ouvintes.mensagem({ xmColadorFim: 'criar_at' }, {}, ok));
   assert.strictEqual(c.guardado.sessoesColador.criar_at, undefined);
+});
+
+test('sessoes ligadas no servidor viram as deste Chrome; desligada pela tela sai', async () => {
+  const c = carregar({ storage: SESSAO(),
+    vigia: { resposta: { comandos: [], sessoes: [{ qual: 'recebimento', config: { ...CFG_CRIAR, continuo: true } }] } } });
+  await c.ctx.buscarComandos();
+  assert.deepStrictEqual(Object.keys(c.guardado.sessoesColador), ['recebimento']);
+  assert.strictEqual(c.guardado.sessoesColador.recebimento.ultimaTentativa, 0, 'nova: abre ja na proxima conferida');
+});
+
+test('servidor sem a chave sessoes (antigo ou banco fora): mantem as daqui', async () => {
+  const c = carregar({ storage: SESSAO(), vigia: { resposta: { comandos: [] } } });
+  await c.ctx.buscarComandos();
+  assert.ok(c.guardado.sessoesColador.criar_at);
+});
+
+test('sessao que continua ligada guarda as tentativas (nao reabre em cima da que esta abrindo)', async () => {
+  const c = carregar({ storage: SESSAO({ tentativas: [AGORA - 30000], ultimaTentativa: AGORA - 30000 }),
+    vigia: { resposta: { comandos: [], sessoes: [{ qual: 'criar_at', config: CFG_CRIAR }] } } });
+  await c.ctx.buscarComandos();
+  await c.ctx.retomarColadores();
+  assert.strictEqual(c.guardado.sessoesColador.criar_at.ultimaTentativa, AGORA - 30000);
+  assert.deepStrictEqual(macrosDisparados(c), []);
 });
