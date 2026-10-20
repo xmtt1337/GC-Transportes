@@ -3724,6 +3724,12 @@ td.cad-nome { color: #e2e8f0; }
    Cartão por pedido em vez de tabela: código e andamento na mesma linha, o resto
    (barra, motivo da recusa, AT) embaixo em largura cheia. Lido na rua, no celular. */
 .solat-msg { margin-top: 10px; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+/* atalho dentro do aviso (ex.: "Solicitar troca de polo"): texto azul, sublinha no hover */
+.solat-link {
+    background: none; border: none; padding: 0; margin-left: 4px; font: inherit; font-weight: 600;
+    color: #6aa5ff; cursor: pointer;
+}
+.solat-link:hover { color: #9cc3ff; text-decoration: underline; text-underline-offset: 3px; }
 .solat-lista-topo {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     margin: 18px 2px 10px;

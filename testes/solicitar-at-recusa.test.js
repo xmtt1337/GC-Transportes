@@ -76,3 +76,16 @@ test("pedido entregue ou ja na rua: mostra so o resumo, sem pedir pra bipar de n
     assert.strictEqual(ctx._solatTextoErro({ erro: "Pedido já está na rua (em rota de entrega)" }), "Pedido já está na rua (em rota de entrega)");
     assert.strictEqual(ctx._solatTextoErro({ erro: "Esse pedido já está em uma AT" }), "Esse pedido já está em uma AT");
 });
+
+test("pedido de outra estacao: mostra o aviso e o atalho pra pedir a troca de polo", () => {
+    const { ctx, msg } = carregar();
+    const erro = "Esse pedido é de uma estação diferente da sua. Confirme o seu polo — se estiver errado, peça a troca de polo";
+    vm.runInContext('_solatPolo = { polo: "videira", polo_label: "Videira", xpt: "XPT_VIA" };', ctx);
+    ctx._solatAvisarRecusas(
+        [{ id: 1, codigo: "BR000000000001X", status: "criando" }],
+        [{ id: 1, codigo: "BR000000000001X", status: "erro", erro }],
+    );
+    assert.ok(msg.innerHTML.includes("estação diferente da sua"));
+    assert.doesNotMatch(msg.innerHTML, /Bipe de novo/);
+    assert.match(msg.innerHTML, /onclick="pcSolicitarPolo\(_solatPolo\.polo\)">Solicitar troca de polo/);
+});

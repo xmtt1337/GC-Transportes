@@ -302,15 +302,20 @@ function _solatAvisarRecusas(antes, agora) {
     const recusado = agora.find(i => i.status === "erro" && criando.has(i.id));
     if (!recusado) return;
     _gcBeepErro();
-    _solatMsg(`<strong>${_solatEsc(recusado.codigo)}</strong>: ${_solatEsc(_solatTextoErro(recusado))}`, "erro");
+    // Pedido de outra estação: o atalho pra pedir a troca de polo já vem junto do aviso.
+    const trocar = _solatEhOutraEstacao(recusado.erro) && _solatPolo
+        ? ` <button type="button" class="solat-link" onclick="pcSolicitarPolo(_solatPolo.polo)">Solicitar troca de polo</button>` : "";
+    _solatMsg(`<strong>${_solatEsc(recusado.codigo)}</strong>: ${_solatEsc(_solatTextoErro(recusado))}${trocar}`, "erro");
 }
+
+const _solatEhOutraEstacao = erro => /estação diferente/i.test(erro || "");
 
 // O motivo já vem resumido pelo macro (colador.js, resumoParaEntregador). Pra pedido entregue ou
 // já na rua não adianta bipar de novo; código inexistente é conferir o código.
 function _solatTextoErro(item) {
     const erro = item.erro || "o SPX recusou o código";
     if (/não existe/i.test(erro)) return `${erro}. Confira o código.`;
-    if (/entregue|na rua|responsável|já está em uma AT/i.test(erro)) return erro;
+    if (/entregue|na rua|responsável|já está em uma AT|estação diferente/i.test(erro)) return erro;
     return `${erro}. Bipe de novo pra tentar outra vez.`;
 }
 
