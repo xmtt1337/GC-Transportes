@@ -28,6 +28,7 @@ function abrirShopeeRomaneiro(event) {
     if (event) event.preventDefault();
     _shlCancelar();
     mostrarTela("tela-shopee-romaneiro");
+    _shlPeriodoPadrao();
     _shlCarregarHistorico();
 
     // Arrastar os arquivos em cima do quadro também vale — é como o resto do sistema faz.
@@ -329,20 +330,52 @@ let _shlEnvios = [];
 
 const _shlEhDia = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
 
-// Colunas da planilha: as do romaneiro, com o mesmo nome da prévia, e depois de onde cada
-// linha veio.
+// Colunas da planilha: as do romaneiro, com o mesmo nome da prévia, e depois quando e por
+// quem a linha entrou no XM. Data e hora em colunas separadas pra dar pra filtrar o dia no
+// Excel sem quebrar texto.
 const SHL_COLUNAS_EXPORTAR = [
     ...SHL_COLUNAS.map(c => ({ id: c.id, label: c.label })),
     { id: "arquivo",       label: "Arquivo" },
-    { id: "importado_por", label: "Enviado por" },
-    { id: "importado_em",  label: "Enviado em" },
+    { id: "envio_data",    label: "Data do envio ao XM" },
+    { id: "envio_hora",    label: "Hora do envio ao XM" },
+    { id: "importado_por", label: "Enviado ao XM por" },
 ];
 
+// Data e hora de Brasília de um carimbo do servidor, já separadas.
+function _shlDataHoraPartes(iso) {
+    if (!iso) return { data: "", hora: "" };
+    const d = new Date(iso);
+    return {
+        data: d.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+        hora: d.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+    };
+}
+
 function _shlLinhasPlanilha(pedidos) {
-    return pedidos.map(p => Object.fromEntries(SHL_COLUNAS_EXPORTAR.map(c => [
-        c.label,
-        c.id === "importado_em" ? (p.importado_em ? _shlDataHora(p.importado_em) : "") : (p[c.id] ?? ""),
-    ])));
+    return pedidos.map(p => {
+        const envio = _shlDataHoraPartes(p.importado_em);
+        const valor = { ...p, envio_data: envio.data, envio_hora: envio.hora };
+        return Object.fromEntries(SHL_COLUNAS_EXPORTAR.map(c => [c.label, valor[c.id] ?? ""]));
+    });
+}
+
+// Baixa em massa: todos os pedidos enviados ao XM entre as duas datas escolhidas.
+function _shlExportarPeriodo(btn) {
+    const de = document.getElementById("shl-exp-de").value;
+    const ate = document.getElementById("shl-exp-ate").value;
+    if (!de || !ate) return gcAlert("Escolha as duas datas.");
+    if (de > ate) return gcAlert("A data inicial é depois da final.");
+    _shlExportar(btn, { de, ate }, de === ate ? "romaneiro_" + de : `romaneiro_${de}_a_${ate}`);
+}
+
+// As duas datas começam em hoje: é o período que mais se baixa, e deixar vazio obriga a
+// escolher duas datas até pra pegar o dia corrente.
+function _shlPeriodoPadrao() {
+    const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+    for (const id of ["shl-exp-de", "shl-exp-ate"]) {
+        const el = document.getElementById(id);
+        if (el && !el.value) el.value = hoje;
+    }
 }
 
 // Nome do .xlsx de um envio: o do arquivo original sem a extensão, pra quem baixa
@@ -374,7 +407,7 @@ function _shlExportar(btn, filtro, nome) {
     .then(({ ok, d }) => {
         if (!ok) return gcAlert(d.error || "Não foi possível exportar.");
         const pedidos = d.pedidos || [];
-        if (!pedidos.length) return gcAlert("Nenhum pedido nesse envio.");
+        if (!pedidos.length) return gcAlert("Nenhum pedido enviado nesse período.");
         const ws = XLSX.utils.json_to_sheet(_shlLinhasPlanilha(pedidos),
             { header: SHL_COLUNAS_EXPORTAR.map(c => c.label) });
         const wb = XLSX.utils.book_new();

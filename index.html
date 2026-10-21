@@ -3127,6 +3127,18 @@ if (_BASE) {
                     </table>
                 </div>
 
+                <span class="ant-sol-title" style="border:none;padding:0;margin:20px 0 10px;display:block">Baixar pedidos</span>
+                <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+                    <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#8494a9">Enviados ao XM de
+                        <input type="date" id="shl-exp-de" class="fech-select">
+                    </label>
+                    <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#8494a9">até
+                        <input type="date" id="shl-exp-ate" class="fech-select">
+                    </label>
+                    <button type="button" class="usr-modal-btn-primary" onclick="_shlExportarPeriodo(this)">Baixar .xlsx</button>
+                </div>
+                <div style="font-size:12px;color:#8494a9;margin-bottom:4px">Todos os pedidos enviados nesse período, com a data, a hora e quem enviou ao XM.</div>
+
                 <span class="ant-sol-title" style="border:none;padding:0;margin:20px 0 10px;display:block">Envios anteriores</span>
                 <div class="fechamento-empty" id="shl-hist-empty">Carregando...</div>
                 <div id="shl-hist-resultado" style="display:none">
@@ -4848,7 +4860,7 @@ if (_BASE) {
 <script src="js/shopee-polo.js?v=20261015a"></script>
 <script src="js/perfil-conta.js?v=20261015c"></script>
 <script src="js/shopee.js?v=30260812d"></script>
-<script src="js/shopee-romaneiro.js?v=20261021a"></script>
+<script src="js/shopee-romaneiro.js?v=20261021b"></script>
 <script src="js/shopee-at.js?v=20261019a"></script>
 <script src="js/shopee-pedidos.js?v=30260812d"></script>
 <script src="js/calendario-dias.js?v=30260827b"></script>

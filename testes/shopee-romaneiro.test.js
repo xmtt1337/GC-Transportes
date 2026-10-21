@@ -19,6 +19,7 @@ const indexHtml = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf
 const ponte = `
 ;globalThis.__shl = {
     _shlCarregarHistorico, _shlLinhasPlanilha, _shlNomeEnvio, _shlExportarDia, _shlExportarEnvio,
+    _shlExportarPeriodo,
     SHL_COLUNAS_EXPORTAR,
     envios: () => _shlEnvios,
 };`;
@@ -94,15 +95,44 @@ test("planilha sai com as colunas do romaneiro na ordem da previa e depois a ori
     // [...] traz o array pro contexto do teste: o do vm tem outro protótipo e o deepStrictEqual recusa.
     assert.deepStrictEqual([...api.SHL_COLUNAS_EXPORTAR.map(c => c.label)], [
         "Horário de entrega", "Pedido (TN)", "Origem", "Destino", "Número da TO", "Rota de LH",
-        "Arquivo", "Enviado por", "Enviado em",
+        "Arquivo", "Data do envio ao XM", "Hora do envio ao XM", "Enviado ao XM por",
     ]);
-    const [linha] = api._shlLinhasPlanilha([{
+    const [linha, semCarimbo] = api._shlLinhasPlanilha([{
         horario_entrega: "08:00", pedido_tn: "BRTESTE01", origem: "SOC_T", destino: "XPT_T",
         numero_to: "TO-T1", rota_lh: "LH-T", arquivo: "a.xlsx", importado_por: "Fulano Teste",
-        importado_em: null,
-    }]);
+        importado_em: "2026-10-20T13:05:09.000Z",
+    }, { pedido_tn: "BRTESTE02", importado_em: null }]);
     assert.strictEqual(linha["Pedido (TN)"], "BRTESTE01");
-    assert.strictEqual(linha["Enviado em"], "");
+    // 13:05 UTC = 10:05 em Brasília
+    assert.strictEqual(linha["Data do envio ao XM"], "20/10/2026");
+    assert.strictEqual(linha["Hora do envio ao XM"], "10:05:09");
+    assert.strictEqual(linha["Enviado ao XM por"], "Fulano Teste");
+    assert.strictEqual(semCarimbo["Data do envio ao XM"], "");
+});
+
+test("baixar periodo pede de/ate e nomeia a planilha pelo intervalo", async () => {
+    const { api, elementos, chamadas } = carregar([{ pedidos: [{ pedido_tn: "BRTESTE01" }] }]);
+    elementos["shl-exp-de"] = { value: "2026-10-01" };
+    elementos["shl-exp-ate"] = { value: "2026-10-20" };
+    api._shlExportarPeriodo(btnFalso());
+    await espera();
+    assert.strictEqual(chamadas.fetch[0], "https://api.teste/shopee/lh/pedidos?de=2026-10-01&ate=2026-10-20");
+    assert.strictEqual(chamadas.planilhas[0].nome, "romaneiro_2026-10-01_a_2026-10-20.xlsx");
+});
+
+test("baixar periodo invertido avisa e nao chama o servidor", () => {
+    const { api, elementos, chamadas } = carregar([]);
+    elementos["shl-exp-de"] = { value: "2026-10-20" };
+    elementos["shl-exp-ate"] = { value: "2026-10-01" };
+    api._shlExportarPeriodo(btnFalso());
+    assert.strictEqual(chamadas.fetch.length, 0);
+    assert.strictEqual(chamadas.alertas.length, 1);
+});
+
+test("index.html tem os dois campos de data e o botao do periodo", () => {
+    assert.match(indexHtml, /id="shl-exp-de"/);
+    assert.match(indexHtml, /id="shl-exp-ate"/);
+    assert.match(indexHtml, /onclick="_shlExportarPeriodo\(this\)"/);
 });
 
 test("nome do arquivo baixado tira a extensao do original", () => {
