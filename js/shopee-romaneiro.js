@@ -28,7 +28,6 @@ function abrirShopeeRomaneiro(event) {
     if (event) event.preventDefault();
     _shlCancelar();
     mostrarTela("tela-shopee-romaneiro");
-    _shlPeriodoPadrao();
     _shlCarregarHistorico();
 
     // Arrastar os arquivos em cima do quadro também vale — é como o resto do sistema faz.
@@ -359,23 +358,97 @@ function _shlLinhasPlanilha(pedidos) {
     });
 }
 
-// Baixa em massa: todos os pedidos enviados ao XM entre as duas datas escolhidas.
-function _shlExportarPeriodo(btn) {
-    const de = document.getElementById("shl-exp-de").value;
-    const ate = document.getElementById("shl-exp-ate").value;
-    if (!de || !ate) return gcAlert("Escolha as duas datas.");
-    if (de > ate) return gcAlert("A data inicial é depois da final.");
-    _shlExportar(btn, { de, ate }, de === ate ? "romaneiro_" + de : `romaneiro_${de}_a_${ate}`);
+// ── Exportar em massa: calendário de intervalo ──
+// Mesmo desenho do exportador do Recebimento (js/shopee.js): clicar numa data e depois
+// noutra marca o período; clicar numa só e baixar já é um dia — de e até saem iguais.
+const SHL_CAL_DOW   = ["D", "S", "T", "Q", "Q", "S", "S"];
+const SHL_CAL_MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                       "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+let _shlCalInicio = null, _shlCalFim = null, _shlCalMes = null;
+
+const _shlFmtData   = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const _shlParseData = s => { const [a, m, d] = s.split("-").map(Number); return new Date(a, m - 1, d); };
+
+function _shlCalMesAnterior() { _shlCalMes.setMonth(_shlCalMes.getMonth() - 1); _shlCalRender(); }
+function _shlCalMesProximo()  { _shlCalMes.setMonth(_shlCalMes.getMonth() + 1); _shlCalRender(); }
+
+function _shlCalClick(dataStr) {
+    const d = _shlParseData(dataStr);
+    // Intervalo fechado começa uma seleção nova; clique anterior ao início inverte as pontas.
+    if (!_shlCalInicio || _shlCalFim) { _shlCalInicio = d; _shlCalFim = null; }
+    else if (d < _shlCalInicio)       { _shlCalFim = _shlCalInicio; _shlCalInicio = d; }
+    else                              { _shlCalFim = d; }
+    _shlCalRender();
+    document.getElementById("shl-exp-erro").innerText = "";
 }
 
-// As duas datas começam em hoje: é o período que mais se baixa, e deixar vazio obriga a
-// escolher duas datas até pra pegar o dia corrente.
-function _shlPeriodoPadrao() {
-    const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-    for (const id of ["shl-exp-de", "shl-exp-ate"]) {
-        const el = document.getElementById(id);
-        if (el && !el.value) el.value = hoje;
+function _shlCalRender() {
+    const ano = _shlCalMes.getFullYear(), mesIdx = _shlCalMes.getMonth();
+    const primeiroDiaSemana = new Date(ano, mesIdx, 1).getDay();
+    const diasNoMes  = new Date(ano, mesIdx + 1, 0).getDate();
+    const celulaIni  = new Date(ano, mesIdx, 1 - primeiroDiaSemana);
+    const total      = Math.ceil((primeiroDiaSemana + diasNoMes) / 7) * 7;
+    const ini = _shlCalInicio, fim = _shlCalFim;
+
+    let grid = "";
+    for (let i = 0; i < total; i++) {
+        const dia = new Date(celulaIni);
+        dia.setDate(celulaIni.getDate() + i);
+        let classes = "ped-cal-day" + (dia.getMonth() !== mesIdx ? " outro-mes" : "");
+        if (ini && fim) {
+            const t = dia.getTime();
+            if (t === ini.getTime() && t === fim.getTime()) classes += " intervalo-unico";
+            else if (t === ini.getTime()) classes += " intervalo-inicio";
+            else if (t === fim.getTime()) classes += " intervalo-fim";
+            else if (t > ini.getTime() && t < fim.getTime()) classes += " no-intervalo";
+        } else if (ini && dia.getTime() === ini.getTime()) {
+            classes += " intervalo-unico";
+        }
+        grid += `<div class="${classes}" onclick="_shlCalClick('${_shlFmtData(dia)}')">${dia.getDate()}</div>`;
     }
+
+    const texto = !ini ? "Clique na data"
+        : !fim ? `${ini.toLocaleDateString("pt-BR")} — clique de novo para um período`
+        : ini.getTime() === fim.getTime() ? ini.toLocaleDateString("pt-BR")
+        : `${ini.toLocaleDateString("pt-BR")} — ${fim.toLocaleDateString("pt-BR")}`;
+
+    document.getElementById("shl-cal").innerHTML = `
+        <div class="ped-cal-header">
+            <button type="button" class="ped-cal-nav" onclick="_shlCalMesAnterior()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span>${SHL_CAL_MESES[mesIdx]} ${ano}</span>
+            <button type="button" class="ped-cal-nav" onclick="_shlCalMesProximo()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+        </div>
+        <div class="ped-cal-grid">${SHL_CAL_DOW.map(d => `<div class="ped-cal-dow">${d}</div>`).join("")}${grid}</div>
+        <div class="ped-cal-footer"><span class="ped-cal-range-txt">${texto}</span></div>`;
+}
+
+function _shlAbrirExportar() {
+    const hoje = _shlParseData(new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }));
+    _shlCalInicio = hoje;
+    _shlCalFim    = hoje;
+    _shlCalMes    = new Date(hoje);
+    _shlCalMes.setDate(1);
+    _shlCalRender();
+    document.getElementById("shl-exp-erro").innerText = "";
+    _abrirModal("modal-shl-exportar");
+}
+
+// Baixa em massa: todos os pedidos enviados ao XM no período marcado no calendário.
+function _shlExportarPeriodo() {
+    const erro = document.getElementById("shl-exp-erro");
+    erro.innerText = "";
+    if (!_shlCalInicio) { erro.innerText = "Clique numa data no calendário."; return; }
+
+    // Fim vazio = intervalo de um dia só.
+    const de  = _shlFmtData(_shlCalInicio);
+    const ate = _shlFmtData(_shlCalFim || _shlCalInicio);
+    _shlExportar(document.getElementById("shl-exp-btn"), { de, ate },
+        de === ate ? "romaneiro_" + de : `romaneiro_${de}_a_${ate}`,
+        { avisar: m => { erro.innerText = m; }, aoBaixar: () => _fecharModal("modal-shl-exportar") });
 }
 
 // Nome do .xlsx de um envio: o do arquivo original sem a extensão, pra quem baixa
@@ -395,8 +468,9 @@ function _shlExportarEnvio(btn, idx) {
     _shlExportar(btn, { importado_em: envio.importado_em }, _shlNomeEnvio(envio));
 }
 
-// `filtro` é { dia } ou { importado_em }.
-function _shlExportar(btn, filtro, nome) {
+// `filtro` é { de, ate }, { dia } ou { importado_em }. No modal o aviso sai dentro dele
+// (`avisar`) e ele fecha depois de baixar (`aoBaixar`); nos botões da lista, num alerta.
+function _shlExportar(btn, filtro, nome, { avisar = gcAlert, aoBaixar = () => {} } = {}) {
     if (btn.disabled) return;
     const texto = btn.textContent;
     btn.disabled = true;
@@ -405,16 +479,17 @@ function _shlExportar(btn, filtro, nome) {
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json().then(d => ({ ok: r.ok, d })))
     .then(({ ok, d }) => {
-        if (!ok) return gcAlert(d.error || "Não foi possível exportar.");
+        if (!ok) return avisar(d.error || "Não foi possível exportar.");
         const pedidos = d.pedidos || [];
-        if (!pedidos.length) return gcAlert("Nenhum pedido enviado nesse período.");
+        if (!pedidos.length) return avisar("Nenhum pedido enviado nesse período.");
         const ws = XLSX.utils.json_to_sheet(_shlLinhasPlanilha(pedidos),
             { header: SHL_COLUNAS_EXPORTAR.map(c => c.label) });
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Romaneiro");
         XLSX.writeFile(wb, nome + ".xlsx");
+        aoBaixar();
     })
-    .catch(() => gcAlert("Erro ao conectar com o servidor."))
+    .catch(() => avisar("Erro ao conectar com o servidor."))
     .finally(() => { btn.disabled = false; btn.textContent = texto; });
 }
 

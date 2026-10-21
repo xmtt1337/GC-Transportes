@@ -19,7 +19,7 @@ const indexHtml = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf
 const ponte = `
 ;globalThis.__shl = {
     _shlCarregarHistorico, _shlLinhasPlanilha, _shlNomeEnvio, _shlExportarDia, _shlExportarEnvio,
-    _shlExportarPeriodo,
+    _shlExportarPeriodo, _shlAbrirExportar, _shlCalClick,
     SHL_COLUNAS_EXPORTAR,
     envios: () => _shlEnvios,
 };`;
@@ -32,7 +32,7 @@ function elementoFalso() {
 // que o fetch devolve, na ordem.
 function carregar(respostas) {
     const elementos = {};
-    const chamadas = { fetch: [], planilhas: [], alertas: [] };
+    const chamadas = { fetch: [], planilhas: [], alertas: [], modais: [] };
     const fila = [...respostas];
     const contexto = vm.createContext({
         console, Date, URLSearchParams, Promise,
@@ -41,6 +41,8 @@ function carregar(respostas) {
         API: "https://api.teste", token: "tk",
         skMostrar() {}, skFim() {},
         gcAlert: m => chamadas.alertas.push(m),
+        _abrirModal: id => chamadas.modais.push("abrir:" + id),
+        _fecharModal: id => chamadas.modais.push("fechar:" + id),
         fetch: url => {
             chamadas.fetch.push(url);
             const corpo = fila.shift();
@@ -110,29 +112,62 @@ test("planilha sai com as colunas do romaneiro na ordem da previa e depois a ori
     assert.strictEqual(semCarimbo["Data do envio ao XM"], "");
 });
 
-test("baixar periodo pede de/ate e nomeia a planilha pelo intervalo", async () => {
-    const { api, elementos, chamadas } = carregar([{ pedidos: [{ pedido_tn: "BRTESTE01" }] }]);
-    elementos["shl-exp-de"] = { value: "2026-10-01" };
-    elementos["shl-exp-ate"] = { value: "2026-10-20" };
-    api._shlExportarPeriodo(btnFalso());
+test("exportar abre com hoje marcado, como o do Recebimento", () => {
+    const { api, elementos, chamadas } = carregar([]);
+    api._shlAbrirExportar();
+    assert.deepStrictEqual(chamadas.modais, ["abrir:modal-shl-exportar"]);
+    const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+    assert.match(elementos["shl-cal"].innerHTML, /intervalo-unico/);
+    assert.match(elementos["shl-cal"].innerHTML, new RegExp(`_shlCalClick\\('${hoje}'\\)`));
+});
+
+test("calendario: dois cliques marcam o periodo e o download pede de/ate e fecha o modal", async () => {
+    const { api, chamadas } = carregar([{ pedidos: [{ pedido_tn: "BRTESTE01" }] }]);
+    api._shlAbrirExportar();
+    api._shlCalClick("2026-10-01"); // intervalo fechado (hoje-hoje) → começa seleção nova
+    api._shlCalClick("2026-10-20");
+    api._shlExportarPeriodo();
     await espera();
     assert.strictEqual(chamadas.fetch[0], "https://api.teste/shopee/lh/pedidos?de=2026-10-01&ate=2026-10-20");
     assert.strictEqual(chamadas.planilhas[0].nome, "romaneiro_2026-10-01_a_2026-10-20.xlsx");
+    assert.deepStrictEqual(chamadas.modais, ["abrir:modal-shl-exportar", "fechar:modal-shl-exportar"]);
 });
 
-test("baixar periodo invertido avisa e nao chama o servidor", () => {
-    const { api, elementos, chamadas } = carregar([]);
-    elementos["shl-exp-de"] = { value: "2026-10-20" };
-    elementos["shl-exp-ate"] = { value: "2026-10-01" };
-    api._shlExportarPeriodo(btnFalso());
-    assert.strictEqual(chamadas.fetch.length, 0);
-    assert.strictEqual(chamadas.alertas.length, 1);
+test("calendario: clicar antes do inicio inverte as pontas", async () => {
+    const { api, chamadas } = carregar([{ pedidos: [{ pedido_tn: "BRTESTE01" }] }]);
+    api._shlAbrirExportar();
+    api._shlCalClick("2026-10-20");
+    api._shlCalClick("2026-10-01");
+    api._shlExportarPeriodo();
+    await espera();
+    assert.strictEqual(chamadas.fetch[0], "https://api.teste/shopee/lh/pedidos?de=2026-10-01&ate=2026-10-20");
 });
 
-test("index.html tem os dois campos de data e o botao do periodo", () => {
-    assert.match(indexHtml, /id="shl-exp-de"/);
-    assert.match(indexHtml, /id="shl-exp-ate"/);
-    assert.match(indexHtml, /onclick="_shlExportarPeriodo\(this\)"/);
+test("calendario: uma data so baixa aquele dia", async () => {
+    const { api, chamadas } = carregar([{ pedidos: [{ pedido_tn: "BRTESTE01" }] }]);
+    api._shlAbrirExportar();
+    api._shlCalClick("2026-10-05");
+    api._shlExportarPeriodo();
+    await espera();
+    assert.strictEqual(chamadas.fetch[0], "https://api.teste/shopee/lh/pedidos?de=2026-10-05&ate=2026-10-05");
+    assert.strictEqual(chamadas.planilhas[0].nome, "romaneiro_2026-10-05.xlsx");
+});
+
+test("periodo sem pedido avisa dentro do modal e ele continua aberto", async () => {
+    const { api, elementos, chamadas } = carregar([{ pedidos: [] }]);
+    api._shlAbrirExportar();
+    api._shlExportarPeriodo();
+    await espera();
+    assert.strictEqual(elementos["shl-exp-erro"].innerText, "Nenhum pedido enviado nesse período.");
+    assert.strictEqual(chamadas.alertas.length, 0);
+    assert.deepStrictEqual(chamadas.modais, ["abrir:modal-shl-exportar"]);
+});
+
+test("index.html: botao Exportar abre o modal, que tem o calendario e o Baixar", () => {
+    assert.match(indexHtml, /onclick="_shlAbrirExportar\(\)"/);
+    assert.match(indexHtml, /id="modal-shl-exportar"/);
+    assert.match(indexHtml, /<div class="shr-cal" id="shl-cal"><\/div>/);
+    assert.match(indexHtml, /id="shl-exp-btn" onclick="_shlExportarPeriodo\(\)"/);
 });
 
 test("nome do arquivo baixado tira a extensao do original", () => {
