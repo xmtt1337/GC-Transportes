@@ -196,6 +196,7 @@ function _valProcessarLocal() {
     _valColunas = {
         codigo: cabecalho[iCod], valor: cabecalho[iVal],
         cidade: iCid >= 0 ? cabecalho[iCid] : null,
+        aliquota: iAliq >= 0 ? cabecalho[iAliq] : null,
         componentes: colsComp.map((c) => `${c.nome} (${cabecalho[c.i]})`),
     };
     const soma = Math.round(itens.reduce((t, i) => t + i.valor, 0) * 100) / 100;
@@ -463,6 +464,28 @@ function _valMostrarEtapas() {
                 <input type="checkbox" id="val-sobrescrever"> Trocar valores já preenchidos
             </label>
         </div>
+        <div class="linha-form">
+            <label>Ambiente de emissão
+                <select id="val-ambiente">
+                    <option value="">O de sempre (desta empresa)</option>
+                    <option value="homologacao">Homologação</option>
+                    <option value="producao">Produção</option>
+                </select></label>
+            <label>Alíquota do ICMS
+                <select id="val-fonte-aliquota">
+                    <option value="perfil">Do perfil de operação (padrão)</option>
+                    <option value="planilha">Da planilha (coluna de alíquota)</option>
+                </select></label>
+        </div>
+        <p class="dica">
+            <b>Ambiente</b> força onde ESTES CT-e nascem, sem precisar mudar o
+            ambiente da empresa inteira — útil para testar um lote real em
+            homologação. <b>Alíquota da planilha</b> usa o que a Shopee apurou
+            linha a linha, em vez da alíquota fixa do perfil — só mude se o
+            contador confirmou que essas linhas são mesmo ICMS, só que a
+            alíquota varia (ver o aviso de alíquotas diferentes abaixo, em
+            "Conferir").
+        </p>
         <div id="val-tipos"></div>
         <div id="val-cidades"></div>
         <div class="acoes-rodape">
@@ -535,7 +558,11 @@ async function _valEnviar() {
            <b>${_esc(local.colunas.valor)}</b>.
            ${(local.colunas.componentes || []).length
              ? `<br>Componentes: ${_esc(local.colunas.componentes.join(" · "))}`
-             : "<br>Nenhuma coluna de componente reconhecida."}</p>
+             : "<br>Nenhuma coluna de componente reconhecida."}
+           <br>Alíquota: ${local.colunas.aliquota
+             ? `<b>${_esc(local.colunas.aliquota)}</b>`
+             : `nenhuma coluna reconhecida${document.getElementById("val-fonte-aliquota").value === "planilha"
+                 ? ` <span style="color:#e74c3c">— "da planilha" não vai ter o que puxar, cai no perfil</span>` : ""}`}</p>
         ${local.itens.length && local.itens[0].componentes ? `<p class="dica">
             Componentes do primeiro pedido:
             ${local.itens[0].componentes.map((c) =>
@@ -670,6 +697,8 @@ async function _valConfirmarLote() {
 
     const n = local.itens.length;
     const horas = (n * 0.4) / 3600;   // ~0,4s por código, com 4 em paralelo
+    const ambiente = document.getElementById("val-ambiente").value;
+    const fonteAliquota = document.getElementById("val-fonte-aliquota").value;
     alvo.innerHTML = `
     <div class="aviso-info">
         <strong>Criar ${n.toLocaleString("pt-BR")} CT-e?</strong>
@@ -678,6 +707,10 @@ async function _valConfirmarLote() {
             ${local.excluidos ? ` · ${local.excluidos.toLocaleString("pt-BR")}
                 fora, de cidade excluída` : ""}
             · ${local.ignoradas.toLocaleString("pt-BR")} linha(s) ignorada(s)
+        </p>
+        <p class="dica">
+            Ambiente: <b>${ambiente ? (ambiente === "producao" ? "PRODUÇÃO" : "Homologação") : "o de sempre (desta empresa)"}</b> ·
+            Alíquota do ICMS: <b>${fonteAliquota === "planilha" ? "da planilha" : "do perfil"}</b>
         </p>
         <p class="dica">
             Códigos que já têm rascunho só terão o valor atualizado — não duplicam.
@@ -720,6 +753,8 @@ async function _valImportarLote() {
     }
 
     const sobrescrever = document.getElementById("val-sobrescrever").checked;
+    const ambiente = document.getElementById("val-ambiente").value || null;
+    const fonteAliquota = document.getElementById("val-fonte-aliquota").value;
     alvo.innerHTML = "<p class='carregando'>Preparando a importação…</p>";
 
     try {
@@ -727,7 +762,10 @@ async function _valImportarLote() {
             method: "POST",
             // O filtro por cidade já foi aplicado aqui, na leitura da planilha:
             // o que não vai ser emitido nem chega a ser enfileirado.
-            body: JSON.stringify({ nome: _valPlanilha.nome, sobrescrever }),
+            body: JSON.stringify({
+                nome: _valPlanilha.nome, sobrescrever,
+                ambiente, fonte_aliquota: fonteAliquota,
+            }),
         });
         _valImportacaoId = imp.id;
 
