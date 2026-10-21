@@ -20,12 +20,93 @@ async function abrirFiscalCertificado(event) {
     const area = document.getElementById("fiscal-certificado-conteudo");
     area.innerHTML = "<p class='carregando'>Carregando certificado…</p>";
     try {
-        const s = await _cteApi("/fiscal/certificado");
-        area.innerHTML = _htmlCertificado(s);
+        const [s, p] = await Promise.all([
+            _cteApi("/fiscal/certificado"),
+            // Falha aqui (ex: empresa sem vínculo) não pode travar a tela do
+            // certificado inteira — ambiente é um extra, não o fluxo principal.
+            _cteApi("/fiscal/producao").catch(() => null),
+        ]);
+        area.innerHTML = _htmlCertificado(s) + (p ? _htmlAmbiente(p) : "");
     } catch (e) {
         area.innerHTML = typeof _htmlSemAcesso === "function"
             ? _htmlSemAcesso(e.message)
             : `<div class="aviso-bloqueio"><p>${_esc(e.message)}</p></div>`;
+    }
+}
+
+/**
+ * Ambiente de emissão da empresa (produção x homologação).
+ *
+ * Antes só mudava rodando liberar-producao.js no shell do Render — a tela de
+ * Certificado tinha o campo "Enviado como", mas ele é só o rótulo de QUANDO O
+ * ARQUIVO foi mandado, nunca mudou onde a empresa emite de verdade.
+ *
+ * Reverter (produção -> homologação) é sempre liberado: não apaga CT-e
+ * nenhum, só muda onde os PRÓXIMOS nascem. Liberar produção exige o
+ * checklist inteiro aprovado — mesmo que `liberar-producao.js --liberar`.
+ */
+function _htmlAmbiente(p) {
+    const emProducao = p.ambiente === "producao";
+    return `
+    <div class="secao-form">
+        <h3>Ambiente de emissão</h3>
+        <div class="conf-grade">
+            <div class="conf-bloco"><b>Emitindo em</b><br>
+                ${emProducao ? `<b style="color:#e74c3c">PRODUÇÃO</b>` : "homologação"}
+                ${p.producao_liberada_em
+                    ? `<br><span class="dica">liberada em ${_fmtData(p.producao_liberada_em)}` +
+                      `${p.producao_liberada_por ? ` por ${_esc(p.producao_liberada_por)}` : ""}</span>`
+                    : ""}</div>
+        </div>
+
+        ${!p.pode_configurar ? `
+        <p class="dica">Alterar o ambiente exige a permissão <b>configurar</b>.</p>` : emProducao ? `
+        <p class="dica">
+            Reverter não apaga nenhum CT-e já emitido — eles continuam válidos.
+            Só muda onde os PRÓXIMOS nascem.
+        </p>
+        <div class="acoes-rodape">
+            <button class="btn-perigo" onclick="reverterAmbiente()">Reverter para homologação</button>
+        </div>` : `
+        <table class="tabela">
+            <thead><tr><th>Checagem</th><th>Situação</th></tr></thead>
+            <tbody>${p.checagens.map((c) => `<tr>
+                <td>${_esc(c.titulo)}</td>
+                <td style="color:${c.ok ? "#2ecc71" : "#e74c3c"}">
+                    ${c.ok ? "ok" : "NÃO"} — ${_esc(c.detalhe)}</td>
+            </tr>`).join("")}</tbody>
+        </table>
+        <div class="acoes-rodape">
+            <button class="btn-primario" ${p.pronto ? "" : "disabled"}
+                onclick="liberarAmbienteProducao()">Liberar produção</button>
+            ${!p.pronto ? '<span class="dica">Resolva os itens marcados NÃO antes de liberar.</span>' : ""}
+        </div>`}
+        <div id="resultado-ambiente"></div>
+    </div>`;
+}
+
+async function reverterAmbiente() {
+    if (!confirm("Reverter esta empresa para HOMOLOGAÇÃO?\n\n" +
+        "Os CT-e já emitidos em produção continuam válidos — isso só muda onde os próximos nascem.")) return;
+    const alvo = document.getElementById("resultado-ambiente");
+    try {
+        await _cteApi("/fiscal/producao/reverter", { method: "POST" });
+        abrirFiscalCertificado();
+    } catch (e) {
+        if (alvo) alvo.innerHTML = _avisoErro(e.message);
+    }
+}
+
+async function liberarAmbienteProducao() {
+    if (!confirm("Liberar PRODUÇÃO para esta empresa?\n\n" +
+        "A partir daqui os CT-e emitidos têm validade fiscal real. " +
+        "Emita UM e confira o retorno antes de qualquer volume.")) return;
+    const alvo = document.getElementById("resultado-ambiente");
+    try {
+        await _cteApi("/fiscal/producao/liberar", { method: "POST" });
+        abrirFiscalCertificado();
+    } catch (e) {
+        if (alvo) alvo.innerHTML = _avisoErro(e.message);
     }
 }
 
@@ -66,14 +147,6 @@ function _htmlCertificado(s) {
                 ${c.dias_restantes != null
                     ? `<b style="color:${c.dias_restantes <= 30 ? "#e74c3c" : "#2ecc71"}">${c.dias_restantes}</b>`
                     : "—"}</div>
-            <div class="conf-bloco"><b>Emitindo em</b><br>
-                ${s.ambiente === "producao"
-                    ? `<b style="color:#e74c3c">PRODUÇÃO</b>`
-                    : "homologação"}
-                ${s.producao_liberada_em
-                    ? `<br><span class="dica">liberada em ${_fmtData(s.producao_liberada_em)}` +
-                      `${s.producao_liberada_por ? ` por ${_esc(s.producao_liberada_por)}` : ""}</span>`
-                    : ""}</div>
             <div class="conf-bloco"><b>Enviado em</b><br>${_fmtData(s.enviado_em)}</div>
         </div>
 
