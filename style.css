@@ -1103,6 +1103,14 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 }
 .shr-del-btn:hover { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.5); }
 
+/* Baixar pedidos do romaneiro (dia ou envio): ação comum, então texto azul e não botão cheio. */
+.shl-baixar {
+    background: none; border: none; padding: 0; font: inherit; font-size: 12.5px; font-weight: 600;
+    color: #6aa5ff; cursor: pointer; text-underline-offset: 2px;
+}
+.shl-baixar:hover { text-decoration: underline; }
+.shl-baixar:disabled { color: #5d6b7e; cursor: default; text-decoration: none; }
+
 /* Percentual junto do número, menor: é leitura de apoio, não um segundo total. */
 .shr-pct {
     font-size: 13px; font-weight: 700; color: #3a86ff;

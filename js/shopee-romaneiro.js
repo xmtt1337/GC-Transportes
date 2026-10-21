@@ -281,8 +281,7 @@ function _shlCarregarHistorico() {
             const totaisDia = Object.fromEntries(((d && d.dias) || []).map(x => [x.dia, x]));
             const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
             const podeRemover = _shlPodeRemover();
-            const colunas = podeRemover ? 5 : 4;
-            document.getElementById("shl-th-acao").style.display = podeRemover ? "" : "none";
+            _shlEnvios = imps;
 
             document.getElementById("shl-hist-tbody").innerHTML = [...porDia.entries()].map(([dia, lista]) => {
                 const resumo = totaisDia[dia];
@@ -290,11 +289,13 @@ function _shlCarregarHistorico() {
                 const envios = resumo ? resumo.envios : lista.length;
                 return `
                 <tr class="shl-dia-linha">
-                    <td colspan="${colunas}" style="background:rgba(58,134,255,0.07);border-top:1px solid rgba(58,134,255,0.18);padding:9px 12px">
+                    <td colspan="5" style="background:rgba(58,134,255,0.07);border-top:1px solid rgba(58,134,255,0.18);padding:9px 12px">
                         <span style="font-weight:700;color:#93c5fd;font-size:13px">${_shlDiaTexto(dia, hoje)}</span>
                         <span style="color:#8494a9;font-size:12.5px;margin-left:8px">
                             ${envios} arquivo${envios !== 1 ? "s" : ""} · ${linhasDia.toLocaleString("pt-BR")} linha${linhasDia !== 1 ? "s" : ""}
                         </span>
+                        ${_shlEhDia(dia) ? `<button class="shl-baixar" style="float:right" title="Baixar todos os pedidos deste dia"
+                                onclick="_shlExportarDia(this,'${dia}')">Baixar o dia (.xlsx)</button>` : ""}
                     </td>
                 </tr>` + lista.map(i => `
                 <tr>
@@ -302,10 +303,12 @@ function _shlCarregarHistorico() {
                     <td data-label="Linhas" style="font-variant-numeric:tabular-nums">${i.linhas}</td>
                     <td data-label="Enviado por">${_shlEsc(i.importado_por) || "—"}</td>
                     <td data-label="Quando" style="color:#8494a9">${_shlDataHora(i.importado_em)}</td>
-                    ${podeRemover ? `<td data-label="" style="text-align:right">
-                        <button class="shr-del-btn" title="Remover este envio"
-                                onclick="_shlRemover('${_shlEsc(i.importado_em)}','${_shlEsc(i.arquivo).replace(/'/g, "\\'")}',${i.linhas})">Remover</button>
-                    </td>` : ""}
+                    <td data-label="" style="text-align:right;white-space:nowrap">
+                        <button class="shl-baixar" title="Baixar os pedidos deste envio"
+                                onclick="_shlExportarEnvio(this,${imps.indexOf(i)})">Baixar</button>
+                        ${podeRemover ? `<button class="shr-del-btn" style="margin-left:10px" title="Remover este envio"
+                                onclick="_shlRemover('${_shlEsc(i.importado_em)}','${_shlEsc(i.arquivo).replace(/'/g, "\\'")}',${i.linhas})">Remover</button>` : ""}
+                    </td>
                 </tr>`).join("");
             }).join("");
         })
@@ -313,6 +316,73 @@ function _shlCarregarHistorico() {
             skFim(empty, "Erro ao conectar com o servidor.");
             _shlRenderUltima(null, null);
         });
+}
+
+// ── Exportar ──
+// Os pedidos ficam guardados linha por linha; daqui sai a planilha de um dia inteiro ou
+// de um envio só. O servidor devolve as linhas e a planilha é montada aqui, igual às
+// outras exportações do sistema.
+
+// Envios listados no histórico, na ordem da tela — o botão "Baixar" de cada linha aponta
+// pra cá pelo índice, em vez de levar nome de arquivo dentro do onclick.
+let _shlEnvios = [];
+
+const _shlEhDia = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
+
+// Colunas da planilha: as do romaneiro, com o mesmo nome da prévia, e depois de onde cada
+// linha veio.
+const SHL_COLUNAS_EXPORTAR = [
+    ...SHL_COLUNAS.map(c => ({ id: c.id, label: c.label })),
+    { id: "arquivo",       label: "Arquivo" },
+    { id: "importado_por", label: "Enviado por" },
+    { id: "importado_em",  label: "Enviado em" },
+];
+
+function _shlLinhasPlanilha(pedidos) {
+    return pedidos.map(p => Object.fromEntries(SHL_COLUNAS_EXPORTAR.map(c => [
+        c.label,
+        c.id === "importado_em" ? (p.importado_em ? _shlDataHora(p.importado_em) : "") : (p[c.id] ?? ""),
+    ])));
+}
+
+// Nome do .xlsx de um envio: o do arquivo original sem a extensão, pra quem baixa
+// reconhecer de qual planilha veio.
+function _shlNomeEnvio(envio) {
+    const base = String(envio.arquivo || "").replace(/\.(xlsx|xls|csv)$/i, "").trim();
+    return "romaneiro_" + (base || String(envio.dia || "envio"));
+}
+
+function _shlExportarDia(btn, dia) {
+    _shlExportar(btn, { dia }, "romaneiro_" + dia);
+}
+
+function _shlExportarEnvio(btn, idx) {
+    const envio = _shlEnvios[idx];
+    if (!envio) return;
+    _shlExportar(btn, { importado_em: envio.importado_em }, _shlNomeEnvio(envio));
+}
+
+// `filtro` é { dia } ou { importado_em }.
+function _shlExportar(btn, filtro, nome) {
+    if (btn.disabled) return;
+    const texto = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Gerando...";
+    fetch(`${API}/shopee/lh/pedidos?${new URLSearchParams(filtro)}`, {
+        headers: { "Authorization": "Bearer " + token }
+    }).then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+        if (!ok) return gcAlert(d.error || "Não foi possível exportar.");
+        const pedidos = d.pedidos || [];
+        if (!pedidos.length) return gcAlert("Nenhum pedido nesse envio.");
+        const ws = XLSX.utils.json_to_sheet(_shlLinhasPlanilha(pedidos),
+            { header: SHL_COLUNAS_EXPORTAR.map(c => c.label) });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Romaneiro");
+        XLSX.writeFile(wb, nome + ".xlsx");
+    })
+    .catch(() => gcAlert("Erro ao conectar com o servidor."))
+    .finally(() => { btn.disabled = false; btn.textContent = texto; });
 }
 
 // Só admin e dev removem. Apagar linhas de romaneiro muda o "faltam" da conferência de
