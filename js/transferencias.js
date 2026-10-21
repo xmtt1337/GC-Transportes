@@ -111,19 +111,22 @@ function _trfDestinoFecharLista() {
     document.getElementById("trf-destino-lista").style.display = "none";
 }
 
+// Câmera dentro da página (xm-camera.js) — ver o porquê lá.
 function _trfTirarFoto() {
-    document.getElementById("trf-foto-input").click();
+    xmCameraFoto("trf-foto-input", "Foto").then(foto => { if (foto) _trfAplicarFoto(foto); });
+}
+
+function _trfAplicarFoto({ dataUrl, base64 }) {
+    _trfFotoBase64   = base64;
+    _trfFotoMimeType = "image/jpeg";
+    document.getElementById("trf-foto-preview").src = dataUrl;
+    document.getElementById("trf-foto-tile").classList.add("tem-foto");
 }
 
 function _trfFotoSelecionada(input) {
     const file = input.files[0];
     if (!file) return;
-    _bteComprimirImagem(file).then(({ dataUrl, base64 }) => {
-        _trfFotoBase64   = base64;
-        _trfFotoMimeType = "image/jpeg";
-        document.getElementById("trf-foto-preview").src = dataUrl;
-        document.getElementById("trf-foto-tile").classList.add("tem-foto");
-    }).catch(() => gcAlert("Não foi possível processar a foto. Tente novamente."));
+    _bteComprimirImagem(file).then(_trfAplicarFoto).catch(() => gcAlert("Não foi possível processar a foto. Tente novamente."));
 }
 
 // Canvas em alta resolução (devicePixelRatio) — sem isso a assinatura sai borrada

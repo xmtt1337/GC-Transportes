@@ -53,18 +53,21 @@ function _vfCarregar() {
         .catch(() => _vfMsg("Erro ao carregar a viagem.", "erro"));
 }
 
+// Câmera dentro da página (xm-camera.js) — ver o porquê lá.
 function _vfTirarFoto(tipo) {
-    document.getElementById(`vf-${tipo}-input`).click();
+    xmCameraFoto(`vf-${tipo}-input`, "Foto da saca").then(foto => { if (foto) _vfAplicarFoto(tipo, foto); });
+}
+
+function _vfAplicarFoto(tipo, { dataUrl, base64 }) {
+    _vfSacaBase64 = base64;
+    document.getElementById(`vf-${tipo}-preview`).src = dataUrl;
+    document.getElementById(`vf-${tipo}-tile`).classList.add("tem-foto");
 }
 
 function _vfFotoSelecionada(tipo, input) {
     const file = input.files[0];
     if (!file) return;
-    _bteComprimirImagem(file).then(({ dataUrl, base64 }) => {
-        _vfSacaBase64 = base64;
-        document.getElementById(`vf-${tipo}-preview`).src = dataUrl;
-        document.getElementById(`vf-${tipo}-tile`).classList.add("tem-foto");
-    }).catch(() => gcAlert("Não foi possível processar a foto. Tente novamente."));
+    _bteComprimirImagem(file).then(foto => _vfAplicarFoto(tipo, foto)).catch(() => gcAlert("Não foi possível processar a foto. Tente novamente."));
 }
 
 function _vfConfirmar() {

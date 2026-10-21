@@ -140,20 +140,24 @@ function _devMostrarMsg(msg, tipo) {
     el.innerHTML = msg;
 }
 
+// Câmera dentro da página (xm-camera.js): o app de câmera fazia o Android derrubar a
+// aba e a foto sumia. O input fica de reserva pra aparelho sem câmera no navegador.
 function _devTirarFoto() {
-    document.getElementById("dev-foto-input").click();
+    xmCameraFoto("dev-foto-input", "Foto do pacote").then(foto => { if (foto) _devAplicarFoto(foto); });
+}
+
+function _devAplicarFoto({ dataUrl, base64 }) {
+    _devFotoBase64   = base64;
+    _devFotoMimeType = "image/jpeg";
+    document.getElementById("dev-foto-preview").src = dataUrl;
+    document.getElementById("dev-foto-tile").classList.add("tem-foto");
 }
 
 function _devFotoSelecionada(input) {
     const file = input.files[0];
     if (!file) return;
     // mesma compressão usada nas Baixas (foto de celular vem com vários MB)
-    _bteComprimirImagem(file).then(({ dataUrl, base64 }) => {
-        _devFotoBase64   = base64;
-        _devFotoMimeType = "image/jpeg";
-        document.getElementById("dev-foto-preview").src = dataUrl;
-        document.getElementById("dev-foto-tile").classList.add("tem-foto");
-    }).catch(() => {
+    _bteComprimirImagem(file).then(_devAplicarFoto).catch(() => {
         gcAlert("Não foi possível processar a foto. Tente novamente.");
     });
 }

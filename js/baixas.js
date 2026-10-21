@@ -145,9 +145,18 @@ function _bteVerificarCodigo() {
 
 // Abre a câmera e já dispara a captura da localização em paralelo — o GPS "esquenta"
 // enquanto o entregador tira a foto, e o fix chega junto com a imagem.
+// Câmera dentro da página (xm-camera.js) — ver o porquê lá.
 function _bteTirarFoto() {
     _bteCapturarLocalizacao();
-    document.getElementById("bte-foto-input").click();
+    xmCameraFoto("bte-foto-input", "Foto da etiqueta").then(foto => { if (foto) _bteAplicarFoto(foto); });
+}
+
+function _bteAplicarFoto({ dataUrl, base64 }) {
+    _bteFotoBase64   = base64;
+    _bteFotoMimeType = "image/jpeg";
+    const preview = document.getElementById("bte-foto-preview");
+    preview.src = dataUrl;
+    preview.style.display = "";
 }
 
 function _bteCapturarLocalizacao() {
@@ -202,13 +211,7 @@ function _bteFotoSelecionada(input) {
     const file = input.files[0];
     if (!file) return;
     _bteCapturarLocalizacao(); // segunda chance, caso a primeira ainda não tenha resolvido
-    _bteComprimirImagem(file).then(({ dataUrl, base64 }) => {
-        _bteFotoBase64   = base64;
-        _bteFotoMimeType = "image/jpeg";
-        const preview = document.getElementById("bte-foto-preview");
-        preview.src = dataUrl;
-        preview.style.display = "";
-    }).catch(() => {
+    _bteComprimirImagem(file).then(_bteAplicarFoto).catch(() => {
         gcAlert("Não foi possível processar a foto. Tente novamente.");
     });
 }
