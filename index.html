@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261021a">
+<link rel="stylesheet" href="style.css?v=20261021b">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -2594,7 +2594,7 @@ if (_BASE) {
                 </div>
                 <div class="wac-chat-body" id="wac-chat-body"></div>
                 <div class="wac-compose">
-                    <input type="text" id="wac-compose-input" placeholder="Digite uma mensagem..." onkeydown="if(event.key==='Enter')_wacResponderEnviar()">
+                    <textarea id="wac-compose-input" rows="1" placeholder="Insira a mensagem" oninput="_wacAjustarAltura(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_wacResponderEnviar()}"></textarea>
                     <button onclick="_wacResponderEnviar()" class="wac-compose-btn" title="Enviar">➤</button>
                 </div>
             </div>
@@ -4834,7 +4834,7 @@ if (_BASE) {
 <script src="js/macros-execucao.js?v=20261019d"></script>
 <script src="js/whatsapp-teste.js?v=20261015a"></script>
 <script src="js/stuck-ativo.js?v=20260929a"></script>
-<script src="js/whatsapp-conversa.js?v=20261015b"></script>
+<script src="js/whatsapp-conversa.js?v=20261021a"></script>
 <script src="js/modals.js?v=20260924a"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
 <script src="js/fechamento-criar.js?v=20261016o"></script>

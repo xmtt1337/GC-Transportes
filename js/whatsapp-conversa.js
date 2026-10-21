@@ -1070,6 +1070,13 @@ function _wacExcluirSelecionadas() {
     );
 }
 
+// A caixa acompanha o tamanho da mensagem: zera e mede de novo a cada tecla, senão ela só
+// cresceria e nunca voltaria ao apagar texto. O teto fica no CSS (max-height).
+function _wacAjustarAltura(el) {
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + 2 + "px";
+}
+
 // Resposta livre — só funciona dentro da janela de 24h aberta pelo cliente (sem template).
 function _wacResponderEnviar() {
     const input = document.getElementById("wac-compose-input");
@@ -1091,6 +1098,7 @@ function _wacResponderEnviar() {
             return;
         }
         input.value = "";
+        _wacAjustarAltura(input);
         input.focus();
         // Recarrega sem piscar "Carregando..." e desce até a mensagem recém-enviada —
         // a recarga completa fazia a conversa sumir e voltar a cada envio.
