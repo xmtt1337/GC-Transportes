@@ -13,7 +13,7 @@ let _cfColunas     = null; // nomes de coluna aceitos por transportadora (GET /c
 let _cfRegras     = null; // quadro de regras de prazo em edição: [{tipo, escopo, t: {chave: {sab, dom}}}]
 let _cfPolos      = [];
 let _cfCidades    = [];
-let _cfCidadesPend = [];   // [{nome, qtd, feito}] — cidades sem preço do lote aberto (clicáveis na Loggi)
+let _cfCidadesPend = [];   // [{nome, qtd, feito, tipo: "preco"|"conv"}] — cidades sem preço / sem conversão (clicáveis na Loggi)
 let _cfCidadesPlan = null; // cidades da aba Loggi da planilha de precificação (card "Qual é a cidade certa?")
 let _cfConvCidades = [];   // tela Conversão de cidades: [{id, cidade_errada, cidade_correta}]
 // Transportadoras com Conversão de cidades — por enquanto só a Loggi (igual ao backend).
@@ -218,10 +218,15 @@ function _cfHtmlResumo(r) {
     const grupos = [];
     // Antes de montar os grupos: as tags clicáveis leem daqui.
     _cfNomesPend = r.nomes_sem_conversao.map(x => ({ ...x, feito: null }));
-    _cfCidadesPend = r.cidades_sem_preco.map(x => ({ ...x, feito: null }));
+    _cfCidadesPend = [
+        ...r.cidades_sem_preco.map(x => ({ ...x, feito: null, tipo: "preco" })),
+        ...(r.cidades_sem_conversao || []).map(x => ({ ...x, feito: null, tipo: "conv" })),
+    ];
     if (r.cidades_sem_preco.length) grupos.push(_CF_CONVERTE_CIDADE.includes(_cfTranspAtual)
-        ? `<div class="cft-pend-grupo"><b>Cidade sem preço na planilha</b> — clique na cidade pra dizer qual é a certa (ou cadastre na aba da transportadora):<div class="cft-pend-tags" id="cf-cidades-pend">${_cfHtmlCidadesPend()}</div></div>`
+        ? `<div class="cft-pend-grupo"><b>Cidade sem preço na planilha</b> — clique na cidade pra dizer qual é a certa (ou cadastre na aba da transportadora):<div class="cft-pend-tags" id="cf-cidades-pend">${_cfHtmlCidadesPend("preco")}</div></div>`
         : `<div class="cft-pend-grupo"><b>Cidade sem preço na planilha</b> — sem valor nem prazo até cadastrar na aba da transportadora:${tags(r.cidades_sem_preco)}</div>`);
+    if ((r.cidades_sem_conversao || []).length && _CF_CONVERTE_CIDADE.includes(_cfTranspAtual)) grupos.push(
+        `<div class="cft-pend-grupo"><b>Cidade sem conversão</b> — achou preço pelo nome, mas ainda não está na Conversão de cidades. Clique pra confirmar (ou trocar):<div class="cft-pend-tags" id="cf-cidades-conv-pend">${_cfHtmlCidadesPend("conv")}</div></div>`);
     if (r.tipos_sem_preco.length) grupos.push(`<div class="cft-pend-grupo"><b>Tipo de produto sem coluna de preço</b>:${tags(r.tipos_sem_preco)}</div>`);
     if (r.nomes_sem_conversao.length) grupos.push(`<div class="cft-pend-grupo"><b>Usuário sem conversão de nome</b> — clique no nome pra dizer quem é o entregador:<div class="cft-pend-tags" id="cf-nomes-pend">${_cfHtmlNomesPend()}</div></div>`);
     if (r.sem_data_entrega) grupos.push(`<div class="cft-pend-grupo"><b>${r.sem_data_entrega}</b> sem data de entrega (não pagos)</div>`);
@@ -235,8 +240,8 @@ function _cfHtmlResumo(r) {
     return kpis + pend;
 }
 
-function _cfHtmlCidadesPend() {
-    return _cfCidadesPend.map((x, i) => x.feito
+function _cfHtmlCidadesPend(tipo) {
+    return _cfCidadesPend.map((x, i) => x.tipo !== tipo ? "" : x.feito
         ? `<span class="cft-tag cft-tag-ok" title="${_cfEsc(x.nome)} → ${_cfEsc(x.feito)}">${_cfEsc(x.nome)}<span>→ ${_cfEsc(x.feito)}</span></span>`
         : `<button class="cft-tag cft-tag-btn" onclick="_cfAbrirCidadeCerta(${i})">${_cfEsc(x.nome)} <b>${x.qtd}</b></button>`
     ).join("");
@@ -261,7 +266,7 @@ async function _cfAbrirCidadeCerta(i) {
                 <span class="cft-ajuda" id="cf-conv-total"></span>
             </div>
             <input id="cf-conv-input" class="cft-input" autocomplete="off" placeholder="Digite pra buscar..."
-                value="${_cfEsc(String(item.nome).slice(0, 4))}" oninput="_cfFiltrarCidadesPlan(this.value)"
+                value="${_cfEsc(item.tipo === "conv" ? item.nome : String(item.nome).slice(0, 4))}" oninput="_cfFiltrarCidadesPlan(this.value)"
                 onkeydown="if(event.key==='Enter')_cfSalvarCidadeCerta(${i})">
             <div class="cft-sugestoes" id="cf-conv-sugestoes"></div>
             <div class="cft-ajuda" id="cf-conv-status" style="min-height:18px;margin-top:8px"></div>
@@ -287,7 +292,11 @@ async function _cfAbrirCidadeCerta(i) {
         }
     }
     const atual = document.getElementById("cf-conv-input");
-    if (atual) _cfFiltrarCidadesPlan(atual.value);
+    if (!atual) return;
+    // "Sem conversão" já achou a cidade na planilha pelo nome: deixa ela escolhida, é só confirmar.
+    const mesma = item.tipo === "conv" && _cfCidadesPlan.find(c => _cfChave(c) === _cfChave(item.nome));
+    if (mesma) atual.value = mesma;
+    _cfFiltrarCidadesPlan(atual.value);
 }
 
 function _cfFiltrarCidadesPlan(q) {
@@ -334,7 +343,9 @@ function _cfSalvarCidadeCerta(i) {
         item.feito = daPlanilha;
         _cfFecharConversao();
         const lista = document.getElementById("cf-cidades-pend");
-        if (lista) lista.innerHTML = _cfHtmlCidadesPend();
+        if (lista) lista.innerHTML = _cfHtmlCidadesPend("preco");
+        const listaConv = document.getElementById("cf-cidades-conv-pend");
+        if (listaConv) listaConv.innerHTML = _cfHtmlCidadesPend("conv");
         const st = document.getElementById("cf-acao-status");
         if (st) st.innerText = "Conversão de cidade salva — clique em Recalcular pra aplicar nos pacotes.";
     }).catch(() => { btn.disabled = false; status.innerText = "Erro ao salvar."; });

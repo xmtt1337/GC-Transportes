@@ -211,7 +211,7 @@ test("ligar colunas: escolhida vai pra frente da lista; 'não tem' tira as desse
 
 test("cidade certa: só aceita cidade da planilha e grava errada → correta da Loggi", async () => {
     const t = carregarComDom(async () => ({ ok: true, status: 200, json: async () => ({ success: true }) }));
-    vm.runInContext(`_cfTranspAtual = "loggi"; _cfCidadesPend = [{ nome: "VL TESTE", qtd: 3, feito: null }];
+    vm.runInContext(`_cfTranspAtual = "loggi"; _cfCidadesPend = [{ nome: "VL TESTE", qtd: 3, feito: null, tipo: "preco" }];
         _cfCidadesPlan = ["Morro Falso", "Vila Teste"]; _cfFecharConversao = () => {};`, t.ctx);
     t.el("cf-conv-status"); t.el("cf-conv-salvar"); t.el("cf-cidades-pend"); t.el("cf-acao-status");
     t.el("cf-conv-input").value = "Cidade Inventada";
@@ -237,4 +237,19 @@ test("cidade sem preço só é clicável na Loggi", () => {
     assert.match(ctx._cfHtmlResumo(resumo), /_cfAbrirCidadeCerta\(0\)/);
     vm.runInContext(`_cfTranspAtual = "anjun"`, ctx);
     assert.doesNotMatch(ctx._cfHtmlResumo(resumo), /_cfAbrirCidadeCerta/);
+});
+
+test("Loggi: cidade sem conversão aparece em grupo próprio, clicável", () => {
+    const ctx = carregar();
+    ctx.moedaJS = (n) => "R$ " + n;
+    const resumo = { total: 2, dentro_prazo: 0, fora_prazo: 0, valor_motorista: 0, sem_data_entrega: 0, sem_data_atribuicao: 0,
+        cidades_sem_preco: [{ nome: "VL TESTE", qtd: 1 }], cidades_sem_conversao: [{ nome: "Morro Falso", qtd: 4 }],
+        tipos_sem_preco: [], nomes_sem_conversao: [] };
+    vm.runInContext(`_cfTranspAtual = "loggi"`, ctx);
+    const html = ctx._cfHtmlResumo(resumo);
+    assert.match(html, /Cidade sem conversão/);
+    assert.match(html, /_cfAbrirCidadeCerta\(0\)">VL TESTE/);
+    assert.match(html, /_cfAbrirCidadeCerta\(1\)">Morro Falso/);
+    vm.runInContext(`_cfTranspAtual = "anjun"`, ctx);
+    assert.doesNotMatch(ctx._cfHtmlResumo(resumo), /Cidade sem conversão/);
 });
