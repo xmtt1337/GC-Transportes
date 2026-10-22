@@ -252,6 +252,125 @@ function _shlEnviar() {
     });
 }
 
+// ── Pesquisar pedidos ──
+// A pessoa cola uma lista de códigos e vê, de cada um, a saída da LH (Horário de entrega do
+// romaneiro), a rota, a TO, origem e destino — e quando ele foi recebido no XM (o primeiro
+// bipe no Recebimento Shopee). O cruzamento é feito no servidor, igual à conferência de LH.
+
+// Última pesquisa, pra baixar a planilha do que está na tela sem pesquisar de novo.
+let _shlPesquisa = [];
+
+// Mesmo teto do servidor (LH_MAX_PESQUISA).
+const SHL_MAX_PESQUISA = 5000;
+
+// Separa por qualquer espaço, vírgula ou ponto e vírgula: a lista vem colada de planilha
+// (uma por linha), de mensagem (separada por vírgula) ou digitada.
+function _shlCodigosDoTexto(texto) {
+    const vistos = new Set();
+    for (const p of String(texto || "").split(/[\s,;]+/)) {
+        const c = p.trim().toUpperCase();
+        if (c) vistos.add(c);
+    }
+    return [...vistos];
+}
+
+// Colunas da tela e da planilha, na ordem pedida.
+const SHL_COLUNAS_PESQUISA = [
+    { id: "codigo",          label: "Código" },
+    { id: "horario_entrega", label: "Data Saída LH" },
+    { id: "recebido_em",     label: "Data Recebimento no XM" },
+    { id: "rota_lh",         label: "Rota de LH" },
+    { id: "numero_to",       label: "Número da TO" },
+    { id: "origem",          label: "Origem" },
+    { id: "destino",         label: "Destino" },
+];
+
+// O que vai na célula quando falta o dado: na tela e na planilha diz o motivo, pra quem lê
+// não confundir "não chegou" com "não pesquisado".
+const SHL_SEM_ROMANEIRO = "Não está no romaneiro";
+const SHL_SEM_RECEBIMENTO = "Não recebido";
+
+const _shlNoRomaneiro = p => !!(p.numero_to || p.horario_entrega || p.rota_lh);
+
+function _shlPesquisar() {
+    const codigos = _shlCodigosDoTexto(document.getElementById("shl-busca").value);
+    if (!codigos.length) return gcAlert("Cole ao menos um pedido.");
+    if (codigos.length > SHL_MAX_PESQUISA) {
+        return gcAlert(`São ${codigos.length.toLocaleString("pt-BR")} pedidos — o limite por pesquisa é ${SHL_MAX_PESQUISA.toLocaleString("pt-BR")}.`);
+    }
+    const btn = document.getElementById("shl-busca-btn");
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = "Pesquisando...";
+
+    fetch(`${API}/shopee/lh/pesquisar`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ codigos })
+    }).then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+        if (!ok) return gcAlert(d.error || "Não foi possível pesquisar.");
+        _shlPesquisa = d.pedidos || [];
+        _shlRenderPesquisa(codigos.length);
+    })
+    .catch(() => gcAlert("Erro ao conectar com o servidor."))
+    .finally(() => { btn.disabled = false; btn.textContent = "Pesquisar"; });
+}
+
+function _shlRenderPesquisa(qtdPesquisada) {
+    const lista = _shlPesquisa;
+    const unicos = (filtro) => new Set(lista.filter(filtro).map(p => p.codigo)).size;
+    const noRom = unicos(_shlNoRomaneiro);
+    const recebidos = unicos(p => p.recebido_em);
+    document.getElementById("shl-busca-resumo").innerText =
+        `${qtdPesquisada} pedido${qtdPesquisada !== 1 ? "s" : ""} pesquisado${qtdPesquisada !== 1 ? "s" : ""}` +
+        ` · ${noRom} no romaneiro · ${recebidos} recebido${recebidos !== 1 ? "s" : ""} no XM`;
+
+    const ambar = txt => `<span style="color:#eab308">${txt}</span>`;
+    document.getElementById("shl-busca-tbody").innerHTML = lista.map(p => {
+        const rom = _shlNoRomaneiro(p);
+        return `
+        <tr>
+            <td data-label="Código" style="font-family:monospace">${_shlEsc(p.codigo)}</td>
+            <td data-label="Data saída LH">${rom ? (_shlEsc(p.horario_entrega) || "—") : ambar(SHL_SEM_ROMANEIRO)}</td>
+            <td data-label="Recebido no XM">${p.recebido_em ? _shlEsc(p.recebido_em) : ambar(SHL_SEM_RECEBIMENTO)}</td>
+            <td data-label="Rota de LH">${_shlEsc(p.rota_lh) || "—"}</td>
+            <td data-label="Número da TO">${_shlEsc(p.numero_to) || "—"}</td>
+            <td data-label="Origem">${_shlEsc(p.origem) || "—"}</td>
+            <td data-label="Destino">${_shlEsc(p.destino) || "—"}</td>
+        </tr>`;
+    }).join("");
+    document.getElementById("shl-busca-resultado").style.display = "";
+}
+
+function _shlLinhasPesquisa(pedidos) {
+    return pedidos.map(p => {
+        const valor = {
+            ...p,
+            horario_entrega: _shlNoRomaneiro(p) ? (p.horario_entrega || "") : SHL_SEM_ROMANEIRO,
+            recebido_em: p.recebido_em || SHL_SEM_RECEBIMENTO,
+        };
+        return Object.fromEntries(SHL_COLUNAS_PESQUISA.map(c => [c.label, valor[c.id] ?? ""]));
+    });
+}
+
+function _shlBaixarPesquisa() {
+    if (!_shlPesquisa.length) return gcAlert("Pesquise antes de baixar.");
+    const ws = XLSX.utils.json_to_sheet(_shlLinhasPesquisa(_shlPesquisa),
+        { header: SHL_COLUNAS_PESQUISA.map(c => c.label) });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
+    const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+    XLSX.writeFile(wb, `romaneiro_pesquisa_${hoje}.xlsx`);
+}
+
+function _shlLimparPesquisa() {
+    _shlPesquisa = [];
+    document.getElementById("shl-busca").value = "";
+    document.getElementById("shl-busca-tbody").innerHTML = "";
+    document.getElementById("shl-busca-resultado").style.display = "none";
+}
+
 // ── Histórico ──
 function _shlCarregarHistorico() {
     const empty  = document.getElementById("shl-hist-empty");

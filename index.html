@@ -3127,6 +3127,31 @@ if (_BASE) {
                     </table>
                 </div>
 
+                <!-- Pesquisar pedidos: o que o romaneiro diz de cada código e quando chegou no XM -->
+                <span class="ant-sol-title" style="border:none;padding:0;margin:20px 0 10px;display:block">Pesquisar pedidos</span>
+                <textarea id="shl-busca" class="ant-input" rows="3" style="resize:vertical;font-family:monospace"
+                          placeholder="Cole os pedidos (BR...) — um por linha, ou separados por espaço ou vírgula"
+                          onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();_shlPesquisar()}"></textarea>
+                <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+                    <button type="button" class="usr-modal-btn-primary" id="shl-busca-btn" onclick="_shlPesquisar()">Pesquisar</button>
+                    <button type="button" class="usr-modal-btn-cancel" onclick="_shlLimparPesquisa()">Limpar</button>
+                </div>
+                <div id="shl-busca-resultado" style="display:none;margin-top:14px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:12px">
+                        <span id="shl-busca-resumo" style="font-size:13px;color:#8494a9"></span>
+                        <button type="button" class="shr-export-btn" onclick="_shlBaixarPesquisa()">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Baixar .xlsx
+                        </button>
+                    </div>
+                    <table class="ant-hist-table">
+                        <thead>
+                            <tr><th>Código</th><th>Data saída LH</th><th>Recebido no XM</th><th>Rota de LH</th><th>Número da TO</th><th>Origem</th><th>Destino</th></tr>
+                        </thead>
+                        <tbody id="shl-busca-tbody"></tbody>
+                    </table>
+                </div>
+
                 <div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px;flex-wrap:wrap;gap:12px">
                     <span class="ant-sol-title" style="border:none;padding:0;margin:0">Envios anteriores</span>
                     <button type="button" class="shr-export-btn" onclick="_shlAbrirExportar()">
@@ -4854,7 +4879,7 @@ if (_BASE) {
 <script src="js/shopee-polo.js?v=20261015a"></script>
 <script src="js/perfil-conta.js?v=20261015c"></script>
 <script src="js/shopee.js?v=30260812d"></script>
-<script src="js/shopee-romaneiro.js?v=20261021c"></script>
+<script src="js/shopee-romaneiro.js?v=20261022f"></script>
 <script src="js/shopee-at.js?v=20261019a"></script>
 <script src="js/shopee-pedidos.js?v=30260812d"></script>
 <script src="js/calendario-dias.js?v=30260827b"></script>

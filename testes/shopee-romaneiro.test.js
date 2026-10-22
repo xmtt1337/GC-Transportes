@@ -21,6 +21,8 @@ const ponte = `
     _shlCarregarHistorico, _shlLinhasPlanilha, _shlNomeEnvio, _shlExportarDia, _shlExportarEnvio,
     _shlExportarPeriodo, _shlAbrirExportar, _shlCalClick,
     SHL_COLUNAS_EXPORTAR,
+    _shlCodigosDoTexto, _shlPesquisar, _shlBaixarPesquisa, _shlLimparPesquisa, _shlLinhasPesquisa,
+    SHL_COLUNAS_PESQUISA,
     envios: () => _shlEnvios,
 };`;
 
@@ -32,7 +34,7 @@ function elementoFalso() {
 // que o fetch devolve, na ordem.
 function carregar(respostas) {
     const elementos = {};
-    const chamadas = { fetch: [], planilhas: [], alertas: [], modais: [] };
+    const chamadas = { fetch: [], corpos: [], planilhas: [], alertas: [], modais: [] };
     const fila = [...respostas];
     const contexto = vm.createContext({
         console, Date, URLSearchParams, Promise,
@@ -43,8 +45,9 @@ function carregar(respostas) {
         gcAlert: m => chamadas.alertas.push(m),
         _abrirModal: id => chamadas.modais.push("abrir:" + id),
         _fecharModal: id => chamadas.modais.push("fechar:" + id),
-        fetch: url => {
+        fetch: (url, op) => {
             chamadas.fetch.push(url);
+            chamadas.corpos.push(op && op.body ? JSON.parse(op.body) : null);
             const corpo = fila.shift();
             return Promise.resolve({ ok: !corpo.error, json: () => Promise.resolve(corpo) });
         },
@@ -207,4 +210,85 @@ test("erro do servidor vira aviso e nao gera planilha", async () => {
     await espera();
     assert.strictEqual(chamadas.planilhas.length, 0);
     assert.deepStrictEqual(chamadas.alertas, ["Mais de 200.000 linhas — exporte por envio."]);
+});
+
+// ── pesquisar pedidos ────────────────────────────────────────────────────
+
+const achado = {
+    codigo: "BRTESTE0000001", horario_entrega: "2026-10-20 08:00", rota_lh: "LH-TESTE",
+    numero_to: "TO-TESTE-1", origem: "SOC_TESTE", destino: "XPT_TESTE",
+    recebido_em: "20/10/2026, 14:02:11", recebido_por: "Fulano Teste", recebido_xpt: "XPT_CFC",
+};
+const semNada = { codigo: "BRTESTE0000009", horario_entrega: null, rota_lh: null, numero_to: null,
+    origem: null, destino: null, recebido_em: null };
+const soNoRomaneiro = { ...achado, codigo: "BRTESTE0000002", recebido_em: null };
+
+test("codigos do texto: linha, espaco, virgula e ponto e virgula; maiusculas e sem repetir", () => {
+    const { api } = carregar([]);
+    assert.deepStrictEqual([...api._shlCodigosDoTexto("brteste0000001\nBRTESTE0000002, BRTESTE0000003;  brteste0000001\r\n\t")],
+        ["BRTESTE0000001", "BRTESTE0000002", "BRTESTE0000003"]);
+    assert.strictEqual(api._shlCodigosDoTexto("   ").length, 0);
+});
+
+test("pesquisar manda os codigos no corpo e mostra a tabela com o resumo", async () => {
+    const { api, elementos, chamadas } = carregar([{ pedidos: [achado, soNoRomaneiro, semNada] }]);
+    elementos["shl-busca"] = { value: "brteste0000001\nBRTESTE0000002\nBRTESTE0000009" };
+    api._shlPesquisar();
+    await espera();
+    assert.strictEqual(chamadas.fetch[0], "https://api.teste/shopee/lh/pesquisar");
+    assert.deepStrictEqual(chamadas.corpos[0], { codigos: ["BRTESTE0000001", "BRTESTE0000002", "BRTESTE0000009"] });
+    assert.strictEqual(elementos["shl-busca-resumo"].innerText,
+        "3 pedidos pesquisados · 2 no romaneiro · 1 recebido no XM");
+    const html = elementos["shl-busca-tbody"].innerHTML;
+    assert.match(html, /20\/10\/2026, 14:02:11/);
+    assert.match(html, /Não está no romaneiro/);
+    assert.strictEqual((html.match(/Não recebido/g) || []).length, 2);
+    assert.strictEqual(elementos["shl-busca-resultado"].style.display, "");
+});
+
+test("pesquisar sem codigo avisa e nao chama o servidor", () => {
+    const { api, elementos, chamadas } = carregar([]);
+    elementos["shl-busca"] = { value: " \n " };
+    api._shlPesquisar();
+    assert.strictEqual(chamadas.fetch.length, 0);
+    assert.strictEqual(chamadas.alertas.length, 1);
+});
+
+test("planilha da pesquisa: colunas na ordem pedida e o motivo no lugar do vazio", async () => {
+    const { api, elementos, chamadas } = carregar([{ pedidos: [achado, semNada] }]);
+    assert.deepStrictEqual([...api.SHL_COLUNAS_PESQUISA.map(c => c.label)], [
+        "Código", "Data Saída LH", "Data Recebimento no XM", "Rota de LH", "Número da TO", "Origem", "Destino",
+    ]);
+    elementos["shl-busca"] = { value: "BRTESTE0000001 BRTESTE0000009" };
+    api._shlPesquisar();
+    await espera();
+    api._shlBaixarPesquisa();
+    const { wb, nome } = chamadas.planilhas[0];
+    assert.match(nome, /^romaneiro_pesquisa_\d{4}-\d{2}-\d{2}\.xlsx$/);
+    const [l1, l2] = wb.abas[0].ws.linhas;
+    assert.strictEqual(l1["Data Saída LH"], "2026-10-20 08:00");
+    assert.strictEqual(l1["Data Recebimento no XM"], "20/10/2026, 14:02:11");
+    assert.strictEqual(l1["Número da TO"], "TO-TESTE-1");
+    assert.strictEqual(l2["Data Saída LH"], "Não está no romaneiro");
+    assert.strictEqual(l2["Data Recebimento no XM"], "Não recebido");
+});
+
+test("limpar apaga a lista e esconde o resultado; baixar depois avisa", async () => {
+    const { api, elementos, chamadas } = carregar([{ pedidos: [achado] }]);
+    elementos["shl-busca"] = { value: "BRTESTE0000001" };
+    api._shlPesquisar();
+    await espera();
+    api._shlLimparPesquisa();
+    assert.strictEqual(elementos["shl-busca"].value, "");
+    assert.strictEqual(elementos["shl-busca-resultado"].style.display, "none");
+    api._shlBaixarPesquisa();
+    assert.strictEqual(chamadas.planilhas.length, 0);
+    assert.strictEqual(chamadas.alertas.length, 1);
+});
+
+test("index.html: caixa de pesquisa, botoes e tabela de resultado", () => {
+    assert.match(indexHtml, /<textarea id="shl-busca"/);
+    assert.match(indexHtml, /id="shl-busca-btn" onclick="_shlPesquisar\(\)"/);
+    assert.match(indexHtml, /onclick="_shlBaixarPesquisa\(\)"/);
+    assert.match(indexHtml, /<tbody id="shl-busca-tbody"><\/tbody>/);
 });
