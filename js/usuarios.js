@@ -106,7 +106,59 @@ function _cadTextoAcesso(segundos) {
 function _cadAcessoHtml(u) {
     const seg = u.segundos_desde_acesso;
     const classe = seg == null ? "nunca" : Number(seg) <= _CAD_ONLINE_SEGUNDOS ? "online" : "";
-    return `<span class="cad-acesso ${classe}">${_cadTextoAcesso(seg)}</span>`;
+    const texto = `<span class="cad-acesso ${classe}">${_cadTextoAcesso(seg)}</span>`;
+    // Dev abre o histórico de acessos da conta (IP e cidade de cada login — só dev vê).
+    if ((window._gcUser && window._gcUser.role) !== "dev") return texto;
+    return `<button type="button" class="cad-acesso-link" title="Ver histórico de acessos"
+        data-nome="${_cadEsc(u.name || u.username)}" onclick="_cadAbrirAcessos(${u.id}, this.dataset.nome)">${texto}</button>`;
+}
+
+// ── Histórico de acessos (só dev) ──
+// Cada login, de qual aparelho, IP e cidade, e as tentativas com senha errada. Nasceu do caso
+// de 22/10/2026, em que não havia como provar de onde uma conta tinha sido usada.
+const _CAD_CANAL = { site: "Site", app: "App XM Conferência", vigia: "XM Vigia" };
+
+function _cadAbrirAcessos(id, nome) {
+    const overlay = document.createElement("div");
+    overlay.setAttribute("style", _gcOverlayStyle);
+    overlay.innerHTML = `<div class="cad-acessos-card" style="${_gcCardStyle};max-width:860px">
+        <div style="${_gcTitleStyle}">Acessos de ${_cadEsc(nome)}</div>
+        <div class="cad-acessos-corpo">Carregando...</div>
+        <div style="${_gcBtnsStyle};margin-top:16px"><button data-fechar style="${_gcBtnOkStyle}">Fechar</button></div>
+    </div>`;
+    const fechar = () => overlay.remove();
+    overlay.querySelector("[data-fechar]").addEventListener("click", fechar);
+    overlay.addEventListener("click", e => { if (e.target === overlay) fechar(); });
+    document.body.appendChild(overlay);
+    const corpo = overlay.querySelector(".cad-acessos-corpo");
+
+    fetch(`${API}/admin/usuarios/${id}/acessos`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) { corpo.textContent = d.error; return; }
+        const lista = d.acessos || [];
+        if (!lista.length) {
+            corpo.innerHTML = `<div class="cad-acessos-vazio">Nenhum acesso registrado ainda. O histórico começou em 22/10/2026 — logins de antes disso não ficaram guardados.</div>`;
+            return;
+        }
+        corpo.innerHTML = `
+            <div class="cad-acessos-nota">Últimos ${lista.length} registros · guardados por ${d.retencao_dias} dias</div>
+            <div class="cad-acessos-rolagem"><table class="cad-acessos-tabela">
+                <thead><tr><th>Quando</th><th>O quê</th><th>Por onde</th><th>Aparelho</th><th>IP</th><th>Local</th></tr></thead>
+                <tbody>${lista.map(a => `
+                    <tr>
+                        <td data-rotulo="Quando">${_cadEsc(a.quando_texto)}</td>
+                        <td data-rotulo="O quê">${a.evento === "senha_errada"
+                            ? `<span class="cad-acessos-falha">Senha errada</span>`
+                            : "Entrou" + (a.substituiu ? `<div class="cad-acessos-sub">derrubou o aparelho anterior</div>` : "")}</td>
+                        <td data-rotulo="Por onde">${_cadEsc(_CAD_CANAL[a.canal] || a.canal || "—")}</td>
+                        <td data-rotulo="Aparelho">${_cadEsc(a.aparelho || "—")}</td>
+                        <td data-rotulo="IP">${_cadEsc(a.ip || "—")}</td>
+                        <td data-rotulo="Local">${_cadEsc(a.local || "—")}</td>
+                    </tr>`).join("")}</tbody>
+            </table></div>`;
+    })
+    .catch(() => { corpo.textContent = "Erro ao carregar os acessos."; });
 }
 
 // Ativo/Inativo em texto, e o aviso de senha pendente embaixo — quem está nela não entra.
