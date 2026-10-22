@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261022a">
+<link rel="stylesheet" href="style.css?v=20261022b">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -4837,7 +4837,7 @@ if (_BASE) {
 <script src="js/whatsapp-conversa.js?v=20261021a"></script>
 <script src="js/modals.js?v=20260924a"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
-<script src="js/fechamento-criar.js?v=20261016o"></script>
+<script src="js/fechamento-criar.js?v=20261022a"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
 <script src="js/pedidos.js?v=20261020a"></script>
@@ -4992,10 +4992,12 @@ if (_BASE) {
             <div class="cft-barra" style="justify-content:space-between;margin-top:0">
                 <div class="ant-form-title" style="margin:0">Transportadoras da quinzena</div>
                 <span>
+                    <button class="cft-btn" id="cf-cidades-btn" onclick="_cfAbrirConvCidades()">Conversão de cidades</button>
                     <button class="cft-btn" id="cf-colunas-btn" onclick="_cfAbrirColunas()">Colunas dos relatórios</button>
                     <button class="cft-btn" id="cf-regras-btn" onclick="_cfAbrirRegras()">Regras de prazo</button>
                 </span>
             </div>
+            <div class="cft-regras" id="cf-cidades" style="display:none"></div>
             <div class="cft-regras" id="cf-colunas" style="display:none"></div>
             <div class="cft-regras" id="cf-regras" style="display:none"></div>
             <div class="cft-cards" id="cf-cards"></div>

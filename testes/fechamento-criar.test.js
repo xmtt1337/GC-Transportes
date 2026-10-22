@@ -208,3 +208,33 @@ test("ligar colunas: escolhida vai pra frente da lista; 'não tem' tira as desse
     assert.deepStrictEqual(r.peso_kg, ["Peso Cubado", "Peso"], "nada desse arquivo: lista fica igual");
     assert.deepStrictEqual(r.cidade, [], "'não tem' tira a coluna que existe no arquivo");
 });
+
+test("cidade certa: só aceita cidade da planilha e grava errada → correta da Loggi", async () => {
+    const t = carregarComDom(async () => ({ ok: true, status: 200, json: async () => ({ success: true }) }));
+    vm.runInContext(`_cfTranspAtual = "loggi"; _cfCidadesPend = [{ nome: "VL TESTE", qtd: 3, feito: null }];
+        _cfCidadesPlan = ["Morro Falso", "Vila Teste"]; _cfFecharConversao = () => {};`, t.ctx);
+    t.el("cf-conv-status"); t.el("cf-conv-salvar"); t.el("cf-cidades-pend"); t.el("cf-acao-status");
+    t.el("cf-conv-input").value = "Cidade Inventada";
+    t.ctx._cfSalvarCidadeCerta(0);
+    assert.strictEqual(t.chamadas.length, 0, "cidade fora da planilha não grava");
+    assert.match(t.el("cf-conv-status").innerText, /planilha/);
+
+    t.el("cf-conv-input").value = "vila teste";
+    t.ctx._cfSalvarCidadeCerta(0);
+    await new Promise((r) => setTimeout(r, 10));
+    assert.ok(t.chamadas[0].url.endsWith("/admin/fechamento-transportadoras/cidades-conversao"));
+    assert.deepStrictEqual(JSON.parse(t.chamadas[0].opts.body), { transportadora: "loggi", cidade_errada: "VL TESTE", cidade_correta: "Vila Teste" });
+    assert.strictEqual(vm.runInContext("_cfCidadesPend[0].feito", t.ctx), "Vila Teste");
+    assert.match(t.el("cf-cidades-pend").innerHTML, /cft-tag-ok/);
+});
+
+test("cidade sem preço só é clicável na Loggi", () => {
+    const ctx = carregar();
+    const resumo = { total: 1, dentro_prazo: 0, fora_prazo: 0, valor_motorista: 0, sem_data_entrega: 0, sem_data_atribuicao: 0,
+        cidades_sem_preco: [{ nome: "VL TESTE", qtd: 1 }], tipos_sem_preco: [], nomes_sem_conversao: [] };
+    ctx.moedaJS = (n) => "R$ " + n;
+    vm.runInContext(`_cfTranspAtual = "loggi"`, ctx);
+    assert.match(ctx._cfHtmlResumo(resumo), /_cfAbrirCidadeCerta\(0\)/);
+    vm.runInContext(`_cfTranspAtual = "anjun"`, ctx);
+    assert.doesNotMatch(ctx._cfHtmlResumo(resumo), /_cfAbrirCidadeCerta/);
+});
