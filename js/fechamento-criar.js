@@ -434,10 +434,25 @@ async function _cfImportarConvCidades(input) {
         });
         const d = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(d.error || "Erro ao importar.");
-        _cfCarregarConvCidades(`${d.gravados.toLocaleString("pt-BR")} conversões gravadas${d.ignorados ? ` · ${d.ignorados} linha${d.ignorados !== 1 ? "s" : ""} ignorada${d.ignorados !== 1 ? "s" : ""} (vazia ou igual)` : ""}. Recalcule a Loggi pra aplicar.`);
+        _cfCarregarConvCidades(_cfMsgImportCidades(linhas.length, d));
     } catch (err) {
         status.innerText = err.message;
     }
+}
+
+// Resultado da importação: por que "N linhas" virou "M conversões" — vazias, variações da
+// mesma cidade (sem acento/maiúscula/UF/" - ...") juntadas numa só, e conflitos.
+function _cfMsgImportCidades(totalLinhas, d) {
+    const n = (x) => Number(x || 0).toLocaleString("pt-BR");
+    const partes = [`${n(totalLinhas)} linhas no arquivo → ${n(d.gravados)} conversões gravadas.`];
+    if (d.juntadas) partes.push(`${n(d.juntadas)} linha${d.juntadas !== 1 ? "s eram" : " era"} a mesma cidade escrita de outro jeito (acento, maiúscula, UF ou " - ..." no fim) e ${d.juntadas !== 1 ? "viraram" : "virou"} uma só.`);
+    if (d.ignorados) partes.push(`${n(d.ignorados)} linha${d.ignorados !== 1 ? "s" : ""} sem Cidade Errada ou Cidade Correta.`);
+    let html = `<div>${_cfEsc(partes.join(" "))} Recalcule a Loggi pra aplicar.</div>`;
+    if ((d.conflitos || []).length) {
+        html += `<div class="cft-erro" style="margin-top:6px">Atenção — ${d.conflitos.length} cidade${d.conflitos.length !== 1 ? "s" : ""} com corretas diferentes no arquivo; ficou valendo a última de cada:</div>
+            <div class="cft-pend-tags">${d.conflitos.map(c => `<span class="cft-tag">${_cfEsc(c.erradas.join(" / "))} → ${_cfEsc(c.corretas.join(" ou "))} · ficou <b>${_cfEsc(c.ficou)}</b></span>`).join("")}</div>`;
+    }
+    return html;
 }
 
 function _cfRemoverConvCidade(id) {
@@ -445,7 +460,7 @@ function _cfRemoverConvCidade(id) {
     gcConfirm(`Remover a conversão <b>${_cfEsc(l ? l.cidade_errada : "")}</b> → <b>${_cfEsc(l ? l.cidade_correta : "")}</b>?`, () => {
         fetch(`${_CF_API()}/cidades-conversao/${id}`, { method: "DELETE", headers: _cfHeaders() })
         .then(r => r.json())
-        .then(d => { if (d.error) gcAlert(d.error); else _cfCarregarConvCidades("Removida. Recalcule a Loggi pra aplicar."); })
+        .then(d => { if (d.error) gcAlert(d.error); else _cfCarregarConvCidades(_cfEsc("Removida. Recalcule a Loggi pra aplicar.")); })
         .catch(() => gcAlert("Erro ao remover."));
     }, "Remover conversão", "Remover");
 }

@@ -253,3 +253,14 @@ test("Loggi: cidade sem conversão aparece em grupo próprio, clicável", () => 
     vm.runInContext(`_cfTranspAtual = "anjun"`, ctx);
     assert.doesNotMatch(ctx._cfHtmlResumo(resumo), /Cidade sem conversão/);
 });
+
+test("importar cidades: mensagem explica linhas juntadas e mostra conflito (escapado)", () => {
+    const ctx = carregar();
+    const html = ctx._cfMsgImportCidades(8, { gravados: 4, ignorados: 1, juntadas: 3,
+        conflitos: [{ erradas: ["Caçador - Centro", "<b>x</b>"], corretas: ["Caçador", "Rio das Antas"], ficou: "Rio das Antas" }] });
+    assert.match(html, /8 linhas no arquivo → 4 conversões gravadas/);
+    assert.match(html, /3 linhas eram a mesma cidade/);
+    assert.match(html, /1 linha sem Cidade Errada/);
+    assert.match(html, /ficou <b>Rio das Antas<\/b>/);
+    assert.doesNotMatch(html, /<b>x<\/b>/);
+});
