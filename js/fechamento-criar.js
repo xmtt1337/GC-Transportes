@@ -243,7 +243,7 @@ function _cfHtmlResumo(r) {
 function _cfHtmlCidadesPend(tipo) {
     return _cfCidadesPend.map((x, i) => x.tipo !== tipo ? "" : x.feito
         ? `<span class="cft-tag cft-tag-ok" title="${_cfEsc(x.nome)} → ${_cfEsc(x.feito)}">${_cfEsc(x.nome)}<span>→ ${_cfEsc(x.feito)}</span></span>`
-        : `<button class="cft-tag cft-tag-btn" onclick="_cfAbrirCidadeCerta(${i})">${_cfEsc(x.nome)} <b>${x.qtd}</b></button>`
+        : `<button class="cft-tag cft-tag-btn" onclick="_cfAbrirCidadeCerta(${i})"${(x.variantes || []).length > 1 ? ` title="Grafias no relatório: ${_cfEsc(x.variantes.join(" · "))}"` : ""}>${_cfEsc(x.nome)}${(x.variantes || []).length > 1 ? ` <span class="cft-ajuda">+${x.variantes.length - 1} grafia${x.variantes.length > 2 ? "s" : ""}</span>` : ""} <b>${x.qtd}</b></button>`
     ).join("");
 }
 

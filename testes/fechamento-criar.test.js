@@ -272,3 +272,12 @@ test("conversão de cidades: lista mostra todas as grafias e a busca acha por qu
     assert.strictEqual(ctx._cfBateConvCidade(l, "cacador - sc"), true);
     assert.strictEqual(ctx._cfBateConvCidade(l, "videira"), false);
 });
+
+test("cidade com várias grafias: tag única mostra quantas grafias e lista no title", () => {
+    const ctx = carregar();
+    vm.runInContext(`_cfCidadesPend = [{ nome: "Caçador", qtd: 431, variantes: ["Caçador", "Cacador", "CACADOR"], feito: null, tipo: "conv" }]`, ctx);
+    const html = ctx._cfHtmlCidadesPend("conv");
+    assert.match(html, /\+2 grafias/);
+    assert.match(html, /title="Grafias no relatório: Caçador · Cacador · CACADOR"/);
+    assert.match(html, /<b>431<\/b>/);
+});
