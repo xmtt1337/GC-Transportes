@@ -375,7 +375,7 @@ function _cfCarregarConvCidades(msg) {
 function _cfRenderConvCidades(msg) {
     const el = document.getElementById("cf-cidades");
     const busca = _cfChave((document.getElementById("cf-cid-busca") || {}).value || "");
-    const lista = _cfConvCidades.filter(l => !busca || _cfChave(l.cidade_errada).includes(busca) || _cfChave(l.cidade_correta).includes(busca));
+    const lista = _cfConvCidades.filter(l => _cfBateConvCidade(l, busca));
     el.innerHTML = `
         <div class="cft-barra" style="margin-top:0">
             <span class="cft-pend-titulo" style="color:#e2e8f0;margin:0">Conversão de cidades — Loggi</span>
@@ -395,16 +395,26 @@ function _cfRenderConvCidades(msg) {
         </div>
         <div class="cft-ajuda" id="cf-cid-status" style="margin-bottom:8px">${msg || ""}</div>
         <div class="cft-tabela-wrap" style="max-height:360px;overflow-y:auto"><table class="cft-tabela">
-            <thead><tr><th>Cidade errada</th><th>Cidade correta</th><th></th></tr></thead>
+            <thead><tr><th>Cidade errada (todas as grafias)</th><th>Cidade correta</th><th></th></tr></thead>
             <tbody id="cf-cid-tbody">${_cfLinhasConvCidades(lista)}</tbody>
         </table></div>
         <div class="cft-ajuda" style="margin-top:6px" id="cf-cid-total">${_cfConvCidades.length.toLocaleString("pt-BR")} conversões</div>`;
 }
 
+// Grafias da cidade errada: a principal + as outras que vieram no(s) CSV(s) — tudo isso
+// vira a mesma cidade (sem acento/maiúscula/UF), então é uma linha só.
+function _cfGrafias(l) {
+    return [...new Set([l.cidade_errada, ...(l.variantes || [])])];
+}
+
+function _cfBateConvCidade(l, busca) {
+    return !busca || _cfGrafias(l).some(g => _cfChave(g).includes(busca)) || _cfChave(l.cidade_correta).includes(busca);
+}
+
 function _cfLinhasConvCidades(lista) {
     return lista.length
         ? lista.slice(0, 500).map(l => `<tr>
-            <td>${_cfEsc(l.cidade_errada)}</td><td>${_cfEsc(l.cidade_correta)}</td>
+            <td>${_cfGrafias(l).map(_cfEsc).join(" · ")}</td><td>${_cfEsc(l.cidade_correta)}</td>
             <td><button class="cft-btn perigo" onclick="_cfRemoverConvCidade(${l.id})">Remover</button></td>
         </tr>`).join("")
         : `<tr><td colspan="3" class="cft-vazio" style="padding:14px">Nenhuma conversão.</td></tr>`;
@@ -412,7 +422,7 @@ function _cfLinhasConvCidades(lista) {
 
 function _cfRenderConvCidadesBusca() {
     const busca = _cfChave(document.getElementById("cf-cid-busca").value);
-    const lista = _cfConvCidades.filter(l => !busca || _cfChave(l.cidade_errada).includes(busca) || _cfChave(l.cidade_correta).includes(busca));
+    const lista = _cfConvCidades.filter(l => _cfBateConvCidade(l, busca));
     document.getElementById("cf-cid-tbody").innerHTML = _cfLinhasConvCidades(lista);
 }
 

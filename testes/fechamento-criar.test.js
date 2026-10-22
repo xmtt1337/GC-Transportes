@@ -264,3 +264,11 @@ test("importar cidades: mensagem explica linhas juntadas e mostra conflito (esca
     assert.match(html, /ficou <b>Rio das Antas<\/b>/);
     assert.doesNotMatch(html, /<b>x<\/b>/);
 });
+
+test("conversão de cidades: lista mostra todas as grafias e a busca acha por qualquer uma", () => {
+    const ctx = carregar();
+    const l = { id: 1, cidade_errada: "Caçador", cidade_correta: "Caçador", variantes: ["CACADOR - SC", "Caçador"] };
+    assert.match(ctx._cfLinhasConvCidades([l]), /Caçador · CACADOR - SC/);
+    assert.strictEqual(ctx._cfBateConvCidade(l, "cacador - sc"), true);
+    assert.strictEqual(ctx._cfBateConvCidade(l, "videira"), false);
+});
