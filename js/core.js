@@ -46,7 +46,14 @@ window.fetch = async function (entrada, opcoes) {
         if (alvo.startsWith(API) && !alvo.includes("/renovar-token")) {
             try {
                 // clone porque ler o corpo aqui consumiria o que a tela ainda vai ler.
-                const { error } = await resp.clone().json();
+                const { error, sessao_substituida, motivo } = await resp.clone().json();
+                if (sessao_substituida) {
+                    // Login novo NESTE navegador (outra aba): adota e refaz o pedido, em vez
+                    // de expulsar quem só tinha duas abas abertas.
+                    if (_gcAdotarTokenDoNavegador()) return window.fetch(entrada, opcoes);
+                    _gcForcarSaida("substituida", motivo);
+                    return resp;
+                }
                 // Só sessão derruba. "Acesso negado" é falta de permissão pra aquela tela —
                 // a sessão está viva, e deslogar aí seria expulsar quem clicou no lugar errado.
                 if (/token/i.test(error || "")) _gcForcarSaida("expirou");
@@ -55,6 +62,28 @@ window.fetch = async function (entrada, opcoes) {
     }
     return resp;
 };
+
+// A conta só fica aberta num aparelho por vez (servidor). Quando outro aparelho entra, este
+// sai — mas antes vê se não foi uma aba deste mesmo navegador que entrou de novo: aí o login
+// novo está no localStorage e serve aqui também.
+function _gcAdotarTokenDoNavegador() {
+    let salvo = null;
+    try { salvo = localStorage.getItem("token"); } catch {}
+    if (!salvo || salvo === token) return false;
+    token = salvo;
+    return true;
+}
+
+// Pergunta de tempos em tempos se esta ainda é a sessão da conta. É o que derruba o aparelho
+// antigo NA HORA, mesmo parado na tela — sem isso ele só sairia no próximo clique. Só com a
+// aba visível: aba escondida não está sendo usada, e ao voltar a pergunta sai na hora.
+const _GC_PING_MS = 20 * 1000;
+function _gcPingSessao() {
+    if (_gcSaindo || !token || document.hidden) return;
+    fetch(API + "/sessao/ping", { headers: { "Authorization": "Bearer " + token } }).catch(() => {});
+}
+setInterval(_gcPingSessao, _GC_PING_MS);
+document.addEventListener("visibilitychange", _gcPingSessao);
 
 // ───── RENOVAÇÃO DA SESSÃO ─────
 // Renova só enquanto a pessoa está de fato usando. Renovar por relógio faria uma aba
@@ -97,8 +126,10 @@ async function _gcChecarSessao() {
             const d = await resp.json();
             if (d.token) { token = d.token; localStorage.setItem("token", d.token); }
         } else if (resp.status === 401) {
-            // Teto de 24h, conta desativada ou senha resetada: a sessão acabou pra valer.
+            // Teto de 24h, conta desativada, senha resetada ou aberta em outro aparelho: a
+            // sessão acabou pra valer (salvo login novo neste mesmo navegador).
             const d = await resp.json().catch(() => ({}));
+            if (d.sessao_substituida && _gcAdotarTokenDoNavegador()) return;
             _gcForcarSaida(d.error === "sessao_max" ? "expirou" : "revogada", d.motivo);
         }
         // Outros erros (500, rede) ficam quietos: tenta de novo no próximo ciclo, e ainda
