@@ -409,6 +409,9 @@
     if (/fleet order not found/i.test(t)) return 'Código não existe no SPX';
     if (/\bdelivered\b/i.test(t)) return 'Pedido com o status "entregue"';
     if (/\bdelivering\b/i.test(t)) return 'Pedido já está na rua (em rota de entrega)';
+    // "O status do pedido é Hub_LHArrived, não pode ser adicionado ao AT" (22/10/2026): o pacote
+    // chegou na transferência mas ainda não foi bipado no recebimento do hub.
+    if (/\bhub_lharrived\b/i.test(t)) return 'O pedido não foi recebido no HUB';
     // "Não foi possível adicionar o pedido à gaiola": o pedido já está em outra AT (20/10/2026).
     if (/gaiola|\bcage\b/i.test(t)) return 'Esse pedido já está em uma AT';
     // "estação atual inválida: 7326, ID da estação do pedido: 5968": o pedido é do outro polo.

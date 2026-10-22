@@ -1018,6 +1018,9 @@ test('resumoParaEntregador: Delivered, Delivering, inexistente e o resto sem num
   assert.strictEqual(R('o SPX recusou o código na AT20261021BISZW: 141201028: BR2672859634610 O status do pedido é Delivering, não pode ser adicionado ao AT'),
     'Pedido já está na rua (em rota de entrega)');
   assert.strictEqual(R('o SPX recusou o código na AT1: BR2672859634610 Fleet order not found'), 'Código não existe no SPX');
+  // 22/10/2026: chegou na transferencia mas nao foi bipado no recebimento do hub.
+  assert.strictEqual(R('o SPX recusou o código na AT20261022BMBBY: 141201028: BR269545289992M O status do pedido é Hub_LHArrived, não pode ser adicionado ao AT'),
+    'O pedido não foi recebido no HUB');
   assert.strictEqual(R('o SPX recusou o código na AT1: 141201030: BR2672859634610 Não foi possível adicionar o pedido à gaiola'),
     'Esse pedido já está em uma AT');
   assert.strictEqual(R('o SPX recusou o código na AT20261021BJ28Y: 141202030: BR260467360950U add_order falhou: BR260467360950U, estação atual inválida: 7326, ID da estação do pedido: 5968'),
