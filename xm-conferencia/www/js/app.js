@@ -66,7 +66,8 @@ async function api(caminho, opcoes = {}) {
     try { d = await r.json(); } catch (_) {}
     if (r.status === 401 || r.status === 403) {
         if (/token/i.test(d.error || "") || r.status === 401) {
-            sair("Sua sessão venceu. Entre de novo.");
+            // motivo vem quando a conta foi aberta em outro aparelho (sessão única).
+            sair(d.motivo || "Sua sessão venceu. Entre de novo.");
             throw new SessaoCaiu();
         }
     }
@@ -90,6 +91,12 @@ async function renovarToken() {
     } catch (_) { /* sem internet: tenta na próxima */ }
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) renovarToken(); });
+
+// A conta só fica aberta num celular por vez: se entrar em outro, este sai na hora, e não só
+// no próximo bipe. A pergunta é leve (o servidor responde da memória).
+setInterval(() => {
+    if (token && !document.hidden) api("/sessao/ping").catch(() => {});
+}, 20 * 1000);
 
 // ───── LOGIN ─────
 $("login-usuario").value = lerArmazenado("xm_usuario");
@@ -119,7 +126,9 @@ $("login-form").addEventListener("submit", async e => {
         const r = await fetchComPrazo(API + "/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password }),
+            // canal: o app tem a vaga dele, separada da do site - o entregador usa os dois
+            // no mesmo celular, e um não pode derrubar o outro.
+            body: JSON.stringify({ username, password, canal: "app" }),
         }, 90000);
         const d = await r.json();
         if (!d.success) {
