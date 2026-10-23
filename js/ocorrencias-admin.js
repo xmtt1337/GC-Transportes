@@ -1,6 +1,12 @@
 // ───── TORRE DE CONTROLE — PACOTES FALTANTES (ADMIN/DEV) ─────
 // Visão de todos os pacotes faltantes reportados por qualquer entregador. Mesmo
 // esquema de listagem/paginação/exportação já usado em Baixas Total Express.
+//
+// Junto vêm os que o entregador NÃO bipou na conferência do dia (origem "conferencia").
+// Esses são calculados por período no servidor, então a lista mostra só os últimos
+// _PFA_CONF_DIAS dias; o Exportar busca de novo com o período escolhido.
+const _PFA_CONF_DIAS = 7;
+const _PFA_ORIGENS = { report: "Report", conferencia: "Conferência" };
 let _pfaDados     = [];
 let _pfaFiltrados = [];
 let _pfaPagina    = 1;
@@ -19,15 +25,34 @@ function _pfaCarregar() {
     empty.style.display = "";
     lista.style.display = "none";
 
-    fetch(`${API}/admin/pacotes-faltantes`, { headers: { "Authorization": "Bearer " + token } })
-        .then(r => r.json())
-        .then(rows => {
+    const ate = _pfaDrpDiaChave(new Date());
+    const d = new Date(); d.setDate(d.getDate() - (_PFA_CONF_DIAS - 1));
+    const de = _pfaDrpDiaChave(d);
+    // A conferência falhar não pode esconder os reportados: cada lado cai sozinho.
+    const reportados = fetch(`${API}/admin/pacotes-faltantes`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json());
+    const conferencia = _pfaBuscarConferencia(de, ate).catch(() => []);
+
+    Promise.all([reportados, conferencia])
+        .then(([rows, conf]) => {
             if (!Array.isArray(rows)) { skFim(empty, rows.error || "Erro ao carregar pacotes faltantes."); return; }
-            _pfaDados = rows;
+            _pfaDados = [...rows.map(r => ({ ...r, origem: "report" })), ...conf];
+            // sort é estável: dentro do mesmo dia continua a ordem que cada lado mandou.
+            _pfaDados.sort((a, b) => (_pfaDataISO(b.data_hora_brasilia) || "").localeCompare(_pfaDataISO(a.data_hora_brasilia) || ""));
             const filtro = document.getElementById("pfa-filtro-input");
             if (filtro) filtro.value = "";
-            _pfaRenderizar(rows);
+            _pfaRenderizar(_pfaDados);
         }).catch(() => { skFim(empty, "Erro ao carregar pacotes faltantes."); });
+}
+
+// Não bipados na conferência do entregador, de `de` a `ate` (YYYY-MM-DD).
+function _pfaBuscarConferencia(de, ate) {
+    return fetch(`${API}/admin/conferencia-entregadores/nao-bipados?de=${de}&ate=${ate}`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(d => {
+            if (!d || !Array.isArray(d.linhas)) throw new Error((d && d.error) || "Erro ao carregar a conferência.");
+            return d.linhas;
+        });
 }
 
 function _pfaRenderizar(rows) {
@@ -42,7 +67,9 @@ function _pfaRenderizar(rows) {
         lista.style.display = "none";
         return;
     }
-    document.getElementById("pfa-counter").innerText = `${rows.length.toLocaleString("pt-BR")} pacote${rows.length !== 1 ? "s" : ""}`;
+    const nConf = rows.filter(r => r.origem === "conferencia").length;
+    document.getElementById("pfa-counter").innerText = `${rows.length.toLocaleString("pt-BR")} pacote${rows.length !== 1 ? "s" : ""}`
+        + (nConf ? ` · ${nConf.toLocaleString("pt-BR")} da conferência (últimos ${_PFA_CONF_DIAS} dias)` : "");
     empty.style.display = "none";
     lista.style.display = "";
     _pfaRenderizarPagina();
@@ -57,6 +84,7 @@ function _pfaRenderizarPagina() {
     document.getElementById("pfa-tbody").innerHTML = pagina.map(r => `
         <tr>
             <td style="font-family:monospace;font-size:12px">${r.codigo || "—"}</td>
+            <td>${_PFA_ORIGENS[r.origem] || "—"}${r.cluster ? `<div style="font-size:11.5px;color:#7b98b5">${r.cluster}</div>` : ""}</td>
             <td>${r.transportadora || "—"}</td>
             <td>${r.usuario_nome || "—"}</td>
             <td style="font-size:12px;white-space:nowrap;color:#94a3b8">${r.data_hora_brasilia || "—"}</td>
@@ -90,7 +118,9 @@ function _pfaFiltrarLocal() {
     const filtrado = _pfaDados.filter(r =>
         (r.codigo         || "").toLowerCase().includes(termo) ||
         (r.transportadora || "").toLowerCase().includes(termo) ||
-        (r.usuario_nome   || "").toLowerCase().includes(termo)
+        (r.usuario_nome   || "").toLowerCase().includes(termo) ||
+        (r.cluster        || "").toLowerCase().includes(termo) ||
+        (_PFA_ORIGENS[r.origem] || "").toLowerCase().includes(termo)
     );
     _pfaRenderizar(filtrado);
 }
@@ -112,6 +142,7 @@ function _pfaAbrirExportar() {
         `<option value="">Todos os entregadores</option>` + entregadores.map(e => `<option value="${e}">${e}</option>`).join("");
     document.getElementById("pfa-exp-transportadora").innerHTML =
         `<option value="">Todas as transportadoras</option>` + transportadoras.map(t => `<option value="${t}">${t}</option>`).join("");
+    document.getElementById("pfa-exp-origem").value = "";
     document.getElementById("pfa-exp-de").value  = "";
     document.getElementById("pfa-exp-ate").value = "";
     document.getElementById("pfa-exp-erro").textContent = "";
@@ -123,15 +154,40 @@ function _pfaAbrirExportar() {
     _abrirModal("modal-pfa-exportar");
 }
 
-function _pfaExportar() {
-    const de   = document.getElementById("pfa-exp-de").value;
-    const ate  = document.getElementById("pfa-exp-ate").value;
-    const ent  = document.getElementById("pfa-exp-entregador").value;
-    const trns = document.getElementById("pfa-exp-transportadora").value;
+async function _pfaExportar() {
+    const de     = document.getElementById("pfa-exp-de").value;
+    const ate    = document.getElementById("pfa-exp-ate").value;
+    const ent    = document.getElementById("pfa-exp-entregador").value;
+    const trns   = document.getElementById("pfa-exp-transportadora").value;
+    const origem = document.getElementById("pfa-exp-origem").value;   // "" = os dois
     const erroEl = document.getElementById("pfa-exp-erro");
+    const btn    = document.getElementById("pfa-exp-btn");
     erroEl.textContent = "";
 
-    const filtrados = _pfaDados.filter(r => {
+    // Os da conferência são calculados por período no servidor (teto de 31 dias), então
+    // "Todo o período" só existe pros reportados. Busca de novo em vez de usar a lista da
+    // tela, que só tem os últimos dias.
+    let base = _pfaDados.filter(r => r.origem === "report");
+    if (origem !== "report") {
+        if (!de) {
+            erroEl.textContent = "Escolha o período (até 31 dias) para incluir a conferência.";
+            return;
+        }
+        btn.disabled = true;
+        btn.innerText = "Buscando...";
+        try {
+            base = base.concat(await _pfaBuscarConferencia(de, ate || de));
+        } catch (e) {
+            erroEl.textContent = e.message || "Erro ao carregar a conferência.";
+            return;
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Exportar XLSX";
+        }
+    }
+
+    const filtrados = base.filter(r => {
+        if (origem && r.origem !== origem) return false;
         if (ent && r.usuario_nome !== ent) return false;
         if (trns && r.transportadora !== trns) return false;
         if (de || ate) {
@@ -150,15 +206,19 @@ function _pfaExportar() {
 
     const linhas = filtrados.map(r => ({
         "Código":         r.codigo || "",
+        "Origem":         _PFA_ORIGENS[r.origem] || "",
         "Transportadora": r.transportadora || "",
         "Entregador":     r.usuario_nome || "",
         "Data/Hora":      r.data_hora_brasilia || "",
+        "Cluster":        r.cluster || "",
+        "Base":           r.base || "",
     }));
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhas), "Pacotes Faltantes");
 
     const nomeArquivo = ["Pacotes_Faltantes"];
+    if (origem) nomeArquivo.push(origem === "report" ? "Report" : "Conferencia");
     if (ent)  nomeArquivo.push(ent.replace(/[\\/:*?"<>|]/g, ""));
     if (trns) nomeArquivo.push(trns.replace(/[\\/:*?"<>|]/g, ""));
     if (de || ate) nomeArquivo.push(`${de || "inicio"}_a_${ate || "fim"}`);
