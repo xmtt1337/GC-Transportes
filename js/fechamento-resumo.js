@@ -102,7 +102,18 @@ function _rqRender() {
                     <option value="">Todos os polos</option>${polos.map(p => `<option>${_rqEsc(p)}</option>`).join("")}
                 </select>
             </span>
-            <button class="cft-btn" onclick="_rqExportar()">Exportar planilha</button>
+            <button class="cft-btn" onclick="_rqAlternarBaixar()">Baixar relatório</button>
+        </div>
+        <div id="rq-baixar" class="cft-regras" style="display:none">
+            <div class="cft-ajuda" style="margin-bottom:8px">Planilha com duas abas: <b>Resumo</b> (por entregador) e <b>Pacotes</b>
+                (todos os pacotes de todas as transportadoras). Escolha o que entra — deixe "Todos" pra baixar tudo.</div>
+            <div class="cft-barra" style="margin:0;flex-wrap:wrap">
+                ${_rqSelect("rq-x-polo", "Todos os polos", (d.opcoes || {}).polos)}
+                ${_rqSelect("rq-x-driver", "Todos os entregadores", (d.opcoes || {}).entregadores)}
+                ${_rqSelect("rq-x-cidade", "Todas as cidades", (d.opcoes || {}).cidades)}
+                <button class="cft-btn primario" id="rq-x-btn" onclick="_rqBaixar()">Baixar</button>
+                <span class="cft-ajuda" id="rq-x-status"></span>
+            </div>
         </div>
         <div class="cft-tabela-wrap" style="max-height:620px;overflow-y:auto"><table class="cft-tabela">
             <thead id="rq-thead"></thead><tbody id="rq-tbody"></tbody><tfoot id="rq-tfoot"></tfoot>
@@ -161,22 +172,80 @@ function _rqRenderTabela() {
         </tr>` : "";
 }
 
-// Planilha com o que está na tela (respeita busca e polo).
-function _rqLinhasExportar() {
-    const cols = _rqColunas();
-    return _rqFiltradas().map(l => {
-        const o = { Entregador: l.entregador + (l.sem_conversao ? " (sem conversão)" : ""), Polo: l.polo || "" };
-        for (const c of cols) {
-            o[c.nome + " (pacotes)"] = (l.por_transp[c.chave] || {}).pacotes || 0;
-            o[c.nome + " (R$)"] = (l.por_transp[c.chave] || {}).valor || 0;
-        }
-        return Object.assign(o, { Pacotes: l.pacotes, Bruto: l.bruto, Ticketlog: l.ticketlog, "Líquido": l.liquido });
-    });
+function _rqSelect(id, todos, lista) {
+    return `<select class="fech-select" id="${id}" style="max-width:280px"><option value="">${todos}</option>${(lista || []).map(v => `<option value="${_rqEsc(v)}">${_rqEsc(v)}</option>`).join("")}</select>`;
 }
 
-function _rqExportar() {
-    const ws = XLSX.utils.json_to_sheet(_rqLinhasExportar());
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Resumo");
-    XLSX.writeFile(wb, `resumo_quinzena_${_rqQuinzena}q_${String(_rqMes).padStart(2, "0")}_${_rqAno}.xlsx`);
+function _rqAlternarBaixar() {
+    const el = document.getElementById("rq-baixar");
+    el.style.display = el.style.display === "none" ? "" : "none";
+}
+
+const _RQ_COLUNAS_PACOTES = [
+    ["Transportadora", "transportadora"], ["Driver", "driver"], ["Usuario", "usuario"], ["Codigo", "codigo"],
+    ["Cidade", "cidade"], ["Polo", "polo"], ["CEP", "cep"], ["Tipo de Produto", "tipo_produto"],
+    ["Destinatario", "destinatario"], ["Endereço", "endereco"], ["Data atribuicao", "data_atribuicao"],
+    ["Data entrega", "data_entrega"], ["Deve ser entregue", "deve_ser_entregue"], ["Dentro do prazo", "dentro_prazo"],
+    ["Peso (Kg)", "peso_kg"], ["Valor entrega", "valor_entrega"], ["Incentivo", "incentivo"], ["Desconto", "desconto"],
+    ["Adicional por peso", "adicional_peso"], ["Valor motorista", "valor_motorista"],
+    ["Dia da performance", "perf_dia"], ["Performance (%)", "perf_pct"],
+];
+
+/**
+ * As duas abas da planilha a partir dos pacotes já filtrados. Ticketlog (e o líquido) só
+ * entra quando não tem filtro de cidade — o desconto é do entregador, não da cidade.
+ * @return {{resumo: Array<Array>, pacotes: Array<Array>}}
+ */
+function _rqMontarPlanilha(pacotes, filtros) {
+    const comTl = !filtros.cidade;
+    const tl = new Map((_rqDados.linhas || []).filter(l => !l.sem_conversao).map(l => [l.entregador, l.ticketlog || 0]));
+    const transp = [...new Set(pacotes.map(p => p.transportadora))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const por = new Map();
+    for (const p of pacotes) {
+        const k = p.driver || `${p.usuario || "(sem usuário)"} (sem conversão)`;
+        if (!por.has(k)) por.set(k, { nome: k, driver: p.driver, polos: new Map(), t: {}, pacotes: 0, bruto: 0 });
+        const r = por.get(k);
+        r.t[p.transportadora] = (r.t[p.transportadora] || 0) + (p.valor_motorista || 0);
+        r.pacotes++;
+        r.bruto += p.valor_motorista || 0;
+        if (p.polo) r.polos.set(p.polo, (r.polos.get(p.polo) || 0) + 1);
+    }
+    const r2 = (n) => Math.round(n * 100) / 100;
+    const cab = ["Entregador", "Polo", ...transp.map(t => t + " (R$)"), "Pacotes", "Bruto"].concat(comTl ? ["Ticketlog", "Líquido"] : []);
+    const linhas = [...por.values()].sort((a, b) => (!a.driver - !b.driver) || a.nome.localeCompare(b.nome, "pt-BR")).map(r => {
+        const polo = [...r.polos.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0])[0] || "";
+        const desc = comTl && r.driver ? (tl.get(r.driver) || 0) : 0;
+        return [r.nome, polo, ...transp.map(t => r2(r.t[t] || 0)), r.pacotes, r2(r.bruto)].concat(comTl ? [desc, r2(r.bruto - desc)] : []);
+    });
+    return {
+        resumo: [cab, ...linhas],
+        pacotes: [_RQ_COLUNAS_PACOTES.map(c => c[0]), ...pacotes.map(p => _RQ_COLUNAS_PACOTES.map(c => p[c[1]] ?? ""))],
+    };
+}
+
+async function _rqBaixar() {
+    const v = (id) => document.getElementById(id).value;
+    const filtros = { polo: v("rq-x-polo"), driver: v("rq-x-driver"), cidade: v("rq-x-cidade") };
+    const btn = document.getElementById("rq-x-btn");
+    const st = document.getElementById("rq-x-status");
+    btn.disabled = true;
+    st.innerText = "Buscando os pacotes...";
+    try {
+        const qs = `mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}&` + Object.entries(filtros).map(([k, x]) => k + "=" + encodeURIComponent(x)).join("&");
+        const r = await fetch(`${_RQ_API()}/resumo-quinzena/pacotes?${qs}`, { headers: { "Authorization": "Bearer " + token } });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || "Erro ao baixar.");
+        if (!d.pacotes.length) { st.innerText = "Nenhum pacote com esse filtro."; return; }
+        const p = _rqMontarPlanilha(d.pacotes, filtros);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(p.resumo), "Resumo");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(p.pacotes), "Pacotes");
+        const sufixo = Object.values(filtros).filter(Boolean).map(x => "_" + x.replace(/[^\w\u00C0-\u017F-]+/g, "-")).join("");
+        XLSX.writeFile(wb, `fechamento_${_rqQuinzena}q_${String(_rqMes).padStart(2, "0")}-${_rqAno}${sufixo}.xlsx`);
+        st.innerText = `${d.pacotes.length.toLocaleString("pt-BR")} pacotes baixados.`;
+    } catch (err) {
+        st.innerText = err.message;
+    } finally {
+        btn.disabled = false;
+    }
 }

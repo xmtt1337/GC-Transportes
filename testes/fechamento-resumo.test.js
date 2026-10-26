@@ -16,6 +16,7 @@ const DADOS = {
         { entregador: "usuario.sem", polo: null, sem_conversao: true, por_transp: { imile: { pacotes: 1, valor: 3 } },
             pacotes: 1, bruto: 3, ticketlog: 0, liquido: 3, ticketlog_divergencias: 0 },
     ],
+    opcoes: { polos: ["Caçador", "Videira"], entregadores: ["Fulano de Teste - Vila Teste"], cidades: ["Vila Teste"] },
     totais: { entregadores: 2, pacotes: 156, bruto: 388, ticketlog: 80, liquido: 308, sem_conversao: { linhas: 1, valor: 3 }, ticketlog_sem_nome: 0 },
     ticketlog_arquivos: 1,
 };
@@ -37,21 +38,45 @@ test("só aparecem colunas das transportadoras que subiram; sem conversão fica 
     assert.match(head, /Shopee Caçador/);
     assert.doesNotMatch(head, /Total Express/);
     assert.match(el("rq-conteudo").innerHTML, /Sem relatório nesta quinzena: Total Express/);
-    ctx._rqOrdenar("liquido"); // maior primeiro
-    const nomes = [...ctx._rqLinhasExportar().map(l => l.Entregador)];
-    assert.deepStrictEqual(nomes, ["Fulano de Teste - Vila Teste", "Beltrano Exemplo - Morro", "usuario.sem (sem conversão)"]);
+    ctx._rqOrdenar("liquido");
+    const corpo = el("rq-tbody").innerHTML;
+    assert.ok(corpo.indexOf("Fulano") < corpo.indexOf("Beltrano") && corpo.indexOf("Beltrano") < corpo.indexOf("usuario.sem"));
 });
 
-test("busca ignora acento e polo filtra; planilha leva pacotes e R$ por transportadora", () => {
+const PAC = [
+    { transportadora: "Imile", driver: "Fulano de Teste - Vila Teste", usuario: "f", polo: "Caçador", cidade: "Vila Teste", valor_motorista: 3, codigo: "I1" },
+    { transportadora: "Shopee Caçador", driver: "Fulano de Teste - Vila Teste", usuario: "f", polo: "Caçador", cidade: "Vila Teste", valor_motorista: 2.5, codigo: "S1" },
+    { transportadora: "Imile", driver: null, usuario: "usuario.sem", polo: null, cidade: "Morro", valor_motorista: 3, codigo: "I2" },
+];
+
+test("planilha: resumo por entregador com Ticketlog e líquido; aba de pacotes com todas as colunas", () => {
+    const { ctx } = carregar();
+    const p = JSON.parse(JSON.stringify(ctx._rqMontarPlanilha(PAC, { polo: "", driver: "", cidade: "" })));
+    assert.deepStrictEqual(p.resumo, [
+        ["Entregador", "Polo", "Imile (R$)", "Shopee Caçador (R$)", "Pacotes", "Bruto", "Ticketlog", "Líquido"],
+        ["Fulano de Teste - Vila Teste", "Caçador", 3, 2.5, 2, 5.5, 80, -74.5],
+        ["usuario.sem (sem conversão)", "", 3, 0, 1, 3, 0, 3],
+    ]);
+    assert.strictEqual(p.pacotes.length, 4);
+    assert.strictEqual(p.pacotes[1][3], "I1");
+});
+
+test("planilha: com filtro de cidade não leva Ticketlog (desconto é do entregador, não da cidade)", () => {
+    const { ctx } = carregar();
+    const p = JSON.parse(JSON.stringify(ctx._rqMontarPlanilha(PAC.slice(0, 2), { cidade: "Vila Teste" })));
+    assert.deepStrictEqual(p.resumo[0], ["Entregador", "Polo", "Imile (R$)", "Shopee Caçador (R$)", "Pacotes", "Bruto"]);
+});
+
+test("baixar manda polo, entregador e cidade escolhidos", async () => {
     const { ctx, el } = carregar();
     ctx._rqRender();
-    el("rq-polo").value = "Videira";
-    const linhas = ctx._rqLinhasExportar();
-    assert.strictEqual(linhas.length, 1);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(linhas[0])), { Entregador: "Beltrano Exemplo - Morro", Polo: "Videira",
-        "Shopee Caçador (pacotes)": 0, "Shopee Caçador (R$)": 0, "Imile (pacotes)": 5, "Imile (R$)": 15,
-        Pacotes: 5, Bruto: 15, Ticketlog: 0, "Líquido": 15 });
-    el("rq-polo").value = "";
-    el("rq-busca").value = "FULANO";
-    assert.strictEqual(ctx._rqLinhasExportar().length, 1);
+    vm.runInContext("_rqMes = 9; _rqAno = 2026; _rqQuinzena = 2;", ctx);
+    let url = null, gravado = null;
+    ctx.fetch = async (u) => { url = u; return { ok: true, json: async () => ({ pacotes: PAC }) }; };
+    ctx.XLSX = { utils: { book_new: () => ({ abas: [] }), aoa_to_sheet: (a) => a, book_append_sheet: (wb, ws, n) => wb.abas.push(n) },
+        writeFile: (wb, nome) => { gravado = [wb.abas, nome]; } };
+    el("rq-x-polo").value = "Caçador"; el("rq-x-driver").value = ""; el("rq-x-cidade").value = "Vila Teste";
+    await ctx._rqBaixar();
+    assert.match(url, /resumo-quinzena\/pacotes\?mes=9&ano=2026&quinzena=2&polo=Ca%C3%A7ador&driver=&cidade=Vila%20Teste$/);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(gravado)), [["Resumo", "Pacotes"], "fechamento_2q_09-2026_Caçador_Vila-Teste.xlsx"]);
 });

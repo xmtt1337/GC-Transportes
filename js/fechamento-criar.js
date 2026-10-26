@@ -1704,12 +1704,14 @@ function _cfExportar(btn) {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhas), cfg.label.slice(0, 31));
         const nomeArq = `fechamento_${cfg.key}_${String(_cfMes).padStart(2, "0")}-${_cfAno}_q${_cfQuinzena}.xlsx`;
         if (!_cfEhShopee(cfg.key)) { XLSX.writeFile(wb, nomeArq); return; }
-        // Shopee: segunda aba com a performance por usuário e dia.
+        // Shopee: segunda aba com a performance consolidada por entregador e dia.
         return fetch(`${_CF_API()}/performance?${_cfQs({ transportadora: cfg.key })}`, { headers: _cfHeaders() })
             .then(r => r.json())
             .then(pf => {
-                const perf = [["Dia", "Usuario", "Driver", "Entregues", "Onholds", "Performance (%)", "Valor por pacote", "Total"]]
-                    .concat((pf.linhas || []).map(l => [_cfDia(l.dia), l.usuario, l.driver || "", l.entregues, l.onholds, l.pct, l.valor, l.total]));
+                const perf = [["Dia", "Entregador", "Shopee entregues", "Onholds", "Outras no prazo", "Outras atrasadas",
+                    "Performance (%)", "Valor por pacote", "Pacotes pagos", "Total"]]
+                    .concat((pf.linhas || []).map(l => [_cfDia(l.dia), l.driver, l.shopee, l.onholds, l.outras_prazo, l.outras_atraso,
+                        l.pct, l.valor, l.pacotes_pagos, l.total]));
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(perf), "Performance");
                 XLSX.writeFile(wb, nomeArq);
             });
