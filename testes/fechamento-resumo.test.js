@@ -24,13 +24,14 @@ const DADOS = {
 function carregar() {
     const els = new Map();
     const el = (id) => { if (!els.has(id)) els.set(id, { id, value: "", innerHTML: "", innerText: "", style: {}, classList: { toggle() {} } }); return els.get(id); };
-    const ctx = { console, API: "https://api.teste", token: "tok", document: { getElementById: el }, mostrarTela() {} };
+    const caixas = [];
+    const ctx = { console, API: "https://api.teste", token: "tok", document: { getElementById: el, querySelectorAll: () => caixas }, mostrarTela() {} };
     vm.createContext(ctx);
     // As colunas do detalhado vêm do Criar Fechamento (os dois scripts estão na página).
     vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-criar.js"), "utf8"), ctx);
     vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-resumo.js"), "utf8"), ctx);
     vm.runInContext("_rqDados = " + JSON.stringify(DADOS), ctx);
-    return { ctx, el };
+    return { ctx, el, caixas };
 }
 
 test("só aparecem colunas das transportadoras que subiram; sem conversão fica no fim", () => {
@@ -72,22 +73,43 @@ test("detalhado: uma aba por transportadora com as colunas do Criar Fechamento, 
 test("resumo sem Ticketlog quando filtra cidade ou transportadora (desconto é do entregador inteiro)", () => {
     const { ctx } = carregar();
     const cab = (f) => JSON.parse(JSON.stringify(ctx._rqAbaResumo(PAC.slice(0, 2), f)))[0];
-    assert.deepStrictEqual(cab({ cidade: "Vila Teste" }), ["Entregador", "Polo", "Imile (R$)", "Shopee Caçador (R$)", "Pacotes", "Bruto"]);
-    assert.strictEqual(cab({ transportadora: "imile" }).includes("Ticketlog"), false);
+    assert.deepStrictEqual(cab({ cidades: ["Vila Teste"] }), ["Entregador", "Polo", "Imile (R$)", "Shopee Caçador (R$)", "Pacotes", "Bruto"]);
+    assert.strictEqual(cab({ parcialTransp: true }).includes("Ticketlog"), false);
+    assert.strictEqual(cab({ cidades: [] }).includes("Ticketlog"), true);
 });
 
-test("baixar manda transportadora, polo, entregador e cidade escolhidos", async () => {
+test("cidades: colar lista casa sem acento/caixa/UF, não repete, avisa as que não existem", () => {
     const { ctx, el } = carregar();
+    vm.runInContext(`_rqDados.opcoes = { cidades: ["Caçador", "Vila Teste", "São José"] }`, ctx);
+    ctx._rqAddCidades("CACADOR\nvila teste - SC; Lugar Nenhum,  , São José/SC\ncaçador");
+    assert.deepStrictEqual([...vm.runInContext("_rqXCidades", ctx)], ["Caçador", "Vila Teste", "São José"]);
+    assert.deepStrictEqual([...vm.runInContext("_rqXNaoAchadas", ctx)], ["Lugar Nenhum"]);
+    assert.match(el("rq-x-cidades").innerHTML, /3 cidade\(s\)/);
+    assert.match(el("rq-x-cidades").innerHTML, /Sem pacote nesta quinzena:<\/span> Lugar Nenhum/);
+    ctx._rqTirarCidade(0);
+    assert.deepStrictEqual([...vm.runInContext("_rqXCidades", ctx)], ["Vila Teste", "São José"]);
+});
+
+test("baixar manda transportadoras marcadas, polo, entregador e as cidades", async () => {
+    const { ctx, el, caixas } = carregar();
     ctx._rqRender();
-    vm.runInContext("_rqMes = 9; _rqAno = 2026; _rqQuinzena = 2;", ctx);
+    caixas.push({ value: "shopee_cfc", checked: false }, { value: "imile", checked: true });
+    vm.runInContext(`_rqMes = 9; _rqAno = 2026; _rqQuinzena = 2; _rqXCidades = ["Vila Teste", "Caçador"];`, ctx);
     const urls = [];
     let gravado = null;
     ctx.fetch = async (u) => { urls.push(u); return { ok: true, json: async () => (u.includes("/performance") ? { linhas: [] } : { pacotes: PAC.slice(0, 1) }) }; };
     ctx.XLSX = { utils: { book_new: () => ({ abas: [] }), aoa_to_sheet: (a) => a, book_append_sheet: (wb, ws, n) => wb.abas.push(n) },
         writeFile: (wb, nome) => { gravado = [wb.abas, nome]; } };
-    el("rq-x-transp").value = "imile"; el("rq-x-polo").value = "Caçador"; el("rq-x-driver").value = ""; el("rq-x-cidade").value = "Vila Teste";
+    el("rq-x-polo").value = "Caçador"; el("rq-x-driver").value = "";
     await ctx._rqBaixar();
-    assert.match(urls[0], /resumo-quinzena\/pacotes\?mes=9&ano=2026&quinzena=2&transportadora=imile&polo=Ca%C3%A7ador&driver=&cidade=Vila%20Teste$/);
+    assert.match(urls[0], /resumo-quinzena\/pacotes\?mes=9&ano=2026&quinzena=2&transportadoras=imile&polo=Ca%C3%A7ador&driver=&cidades=Vila%20Teste%7CCa%C3%A7ador$/);
     assert.strictEqual(urls.length, 1, "sem Shopee no arquivo não busca performance");
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(gravado)), [["Imile", "Resumo"], "fechamento_2q_09-2026_Imile_Caçador_Vila-Teste.xlsx"]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(gravado)), [["Imile", "Resumo"], "fechamento_2q_09-2026_Imile_Caçador_2-cidades.xlsx"]);
+
+    // nenhuma marcada: não baixa
+    caixas[1].checked = false;
+    urls.length = 0;
+    await ctx._rqBaixar();
+    assert.strictEqual(urls.length, 0);
+    assert.match(el("rq-x-status").innerText, /ao menos uma/);
 });

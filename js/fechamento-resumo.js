@@ -10,6 +10,8 @@ let _rqQuinzena = null;
 let _rqDados = null;
 let _rqOrdem = { campo: "entregador", desc: false };
 let _rqReq = 0;
+let _rqXCidades = [];      // cidades escolhidas no "Baixar relatório" (vazio = todas)
+let _rqXNaoAchadas = [];   // nomes colados que não existem nesta quinzena
 
 function _rqEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -107,12 +109,27 @@ function _rqRender() {
         <div id="rq-baixar" class="cft-regras" style="display:none">
             <div class="cft-ajuda" style="margin-bottom:8px">Relatório detalhado, igual ao do Criar Fechamento: uma aba por transportadora
                 com todos os pacotes, a aba <b>Performance</b> da Shopee e, no fim, o <b>Resumo</b> por entregador.
-                Escolha o que entra — deixe "Todos" pra baixar tudo.</div>
-            <div class="cft-barra" style="margin:0;flex-wrap:wrap">
-                <select class="fech-select" id="rq-x-transp" style="max-width:280px"><option value="">Todas as transportadoras</option>${_rqColunas().map(c => `<option value="${c.chave}">${_rqEsc(c.nome)}</option>`).join("")}</select>
+                Escolha o que entra — sem nada escolhido, vai tudo.</div>
+            <div class="cft-rotulo" style="margin-bottom:4px">Transportadoras</div>
+            <div class="cft-barra" style="margin:0 0 10px;flex-wrap:wrap;gap:14px">
+                ${_rqColunas().map(c => `<label class="cft-ajuda" style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#cbd5e1">
+                    <input type="checkbox" class="rq-x-transp" value="${c.chave}" checked> ${_rqEsc(c.nome)}</label>`).join("")}
+            </div>
+            <div class="cft-barra" style="margin:0 0 10px;flex-wrap:wrap">
                 ${_rqSelect("rq-x-polo", "Todos os polos", (d.opcoes || {}).polos)}
                 ${_rqSelect("rq-x-driver", "Todos os entregadores", (d.opcoes || {}).entregadores)}
-                ${_rqSelect("rq-x-cidade", "Todas as cidades", (d.opcoes || {}).cidades)}
+            </div>
+            <div class="cft-rotulo" style="margin-bottom:4px">Cidades</div>
+            <datalist id="rq-x-cidades-lista">${((d.opcoes || {}).cidades || []).map(c => `<option value="${_rqEsc(c)}">`).join("")}</datalist>
+            <div class="cft-barra" style="margin:0 0 6px;flex-wrap:wrap">
+                <input class="cft-input" id="rq-x-cidade" list="rq-x-cidades-lista" placeholder="Digite a cidade..." style="width:320px;flex:0 0 auto;margin:0"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();_rqAddCidades(this.value);this.value='';}">
+                <button class="cft-btn" onclick="const i=document.getElementById('rq-x-cidade');_rqAddCidades(i.value);i.value=''">Adicionar</button>
+            </div>
+            <textarea id="rq-x-colar" class="cft-input" rows="2" placeholder="Ou cole uma lista de cidades (uma por linha, ou separadas por vírgula / ponto e vírgula)"
+                onpaste="setTimeout(()=>{_rqAddCidades(this.value);this.value='';},0)"></textarea>
+            <div id="rq-x-cidades" style="margin:6px 0 10px"></div>
+            <div class="cft-barra" style="margin:0">
                 <button class="cft-btn primario" id="rq-x-btn" onclick="_rqBaixar()">Baixar</button>
                 <span class="cft-ajuda" id="rq-x-status"></span>
             </div>
@@ -123,6 +140,37 @@ function _rqRender() {
         <div class="cft-ajuda" style="margin-top:6px">Valor de cada transportadora = soma do "Valor motorista" dos pacotes (Shopee já pela performance consolidada).
             Líquido = bruto − Ticketlog. Clique no título da coluna pra ordenar.</div>`;
     _rqRenderTabela();
+    _rqRenderCidades();
+}
+
+// Cidades do filtro: aceita uma ou uma lista colada; casa com as da quinzena sem olhar
+// acento/caixa nem "/SC" ou "- SC" no fim. O que não existe na quinzena vira aviso.
+function _rqChaveCidade(c) {
+    return _rqChave(c).replace(/\s*[-/]\s*[a-z]{2}$/, "").replace(/\s+/g, " ");
+}
+function _rqAddCidades(texto) {
+    const opcoes = ((_rqDados && _rqDados.opcoes) || {}).cidades || [];
+    const porChave = new Map(opcoes.map(c => [_rqChaveCidade(c), c]));
+    for (const bruto of String(texto || "").split(/[\n\r;,\t]+/)) {
+        const nome = bruto.trim();
+        if (!nome) continue;
+        const achada = porChave.get(_rqChaveCidade(nome));
+        if (achada) { if (!_rqXCidades.includes(achada)) _rqXCidades.push(achada); }
+        else if (!_rqXNaoAchadas.includes(nome)) _rqXNaoAchadas.push(nome);
+    }
+    _rqRenderCidades();
+}
+function _rqTirarCidade(i) { _rqXCidades.splice(i, 1); _rqRenderCidades(); }
+function _rqLimparCidades() { _rqXCidades = []; _rqXNaoAchadas = []; _rqRenderCidades(); }
+function _rqRenderCidades() {
+    const el = document.getElementById("rq-x-cidades");
+    if (!el) return;
+    el.innerHTML = (_rqXCidades.length
+        ? `<span class="cft-ajuda">${_rqXCidades.length} cidade(s): </span>` + _rqXCidades.map((c, i) =>
+            `<span class="cft-chip">${_rqEsc(c)} <a href="#" title="Tirar" onclick="event.preventDefault();_rqTirarCidade(${i})">×</a></span>`).join(" ")
+            + ` <a href="#" class="cft-ordem cft-ajuda" onclick="event.preventDefault();_rqLimparCidades()">limpar</a>`
+        : `<span class="cft-ajuda">Todas as cidades.</span>`)
+        + (_rqXNaoAchadas.length ? `<div class="cft-ajuda" style="margin-top:4px"><span class="cft-aviso">Sem pacote nesta quinzena:</span> ${_rqEsc(_rqXNaoAchadas.join(", "))}</div>` : "");
 }
 
 function _rqFiltradas() {
@@ -189,7 +237,7 @@ function _rqAlternarBaixar() {
  * entregador inteiro, não de uma parte dos pacotes dele.
  */
 function _rqAbaResumo(pacotes, filtros) {
-    const comTl = !filtros.cidade && !filtros.transportadora;
+    const comTl = !(filtros.cidades || []).length && !filtros.parcialTransp;
     const tl = new Map((_rqDados.linhas || []).filter(l => !l.sem_conversao).map(l => [l.entregador, l.ticketlog || 0]));
     const transp = [...new Set(pacotes.map(p => p.transportadora))].sort((a, b) => a.localeCompare(b, "pt-BR"));
     const por = new Map();
@@ -257,13 +305,19 @@ async function _rqBuscarPerformance(pacotes) {
 
 async function _rqBaixar() {
     const v = (id) => document.getElementById(id).value;
-    const filtros = { transportadora: v("rq-x-transp"), polo: v("rq-x-polo"), driver: v("rq-x-driver"), cidade: v("rq-x-cidade") };
+    const caixas = [...document.querySelectorAll(".rq-x-transp")];
+    const transps = caixas.filter(c => c.checked).map(c => c.value);
+    if (caixas.length && !transps.length) { document.getElementById("rq-x-status").innerText = "Marque ao menos uma transportadora."; return; }
+    const filtros = { transportadoras: transps.length === caixas.length ? [] : transps, parcialTransp: transps.length < caixas.length,
+        polo: v("rq-x-polo"), driver: v("rq-x-driver"), cidades: _rqXCidades.slice() };
     const btn = document.getElementById("rq-x-btn");
     const st = document.getElementById("rq-x-status");
     btn.disabled = true;
     st.innerText = "Buscando os pacotes...";
     try {
-        const qs = `mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}&` + Object.entries(filtros).map(([k, x]) => k + "=" + encodeURIComponent(x)).join("&");
+        const qs = `mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}`
+            + `&transportadoras=${encodeURIComponent(filtros.transportadoras.join(","))}&polo=${encodeURIComponent(filtros.polo)}`
+            + `&driver=${encodeURIComponent(filtros.driver)}&cidades=${encodeURIComponent(filtros.cidades.join("|"))}`;
         const r = await fetch(`${_RQ_API()}/resumo-quinzena/pacotes?${qs}`, { headers: { "Authorization": "Bearer " + token } });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || "Erro ao baixar.");
@@ -271,8 +325,10 @@ async function _rqBaixar() {
         const perf = await _rqBuscarPerformance(d.pacotes);
         const wb = XLSX.utils.book_new();
         for (const a of _rqMontarAbas(d.pacotes, filtros, perf)) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a.linhas), a.nome);
-        const nomeTransp = filtros.transportadora ? (_rqDados.transportadoras[filtros.transportadora] || {}).nome : "";
-        const sufixo = [nomeTransp, filtros.polo, filtros.driver, filtros.cidade].filter(Boolean)
+        const nomeTransp = filtros.transportadoras.length === 1 ? (_rqDados.transportadoras[filtros.transportadoras[0]] || {}).nome
+            : filtros.transportadoras.length ? filtros.transportadoras.length + " transportadoras" : "";
+        const nomeCidade = filtros.cidades.length === 1 ? filtros.cidades[0] : filtros.cidades.length ? filtros.cidades.length + " cidades" : "";
+        const sufixo = [nomeTransp, filtros.polo, filtros.driver, nomeCidade].filter(Boolean)
             .map(x => "_" + x.replace(/[^\w\u00C0-\u017F-]+/g, "-")).join("");
         XLSX.writeFile(wb, `fechamento_${_rqQuinzena}q_${String(_rqMes).padStart(2, "0")}-${_rqAno}${sufixo}.xlsx`);
         st.innerText = `${d.pacotes.length.toLocaleString("pt-BR")} pacotes baixados.`;

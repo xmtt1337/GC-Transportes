@@ -6339,6 +6339,9 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .cft-neg, .cft-tabela td.cft-neg { color: #f87171; }
 /* Resumo da Quinzena: pendência em âmbar, título de coluna que ordena, linha de total fixa embaixo */
 .cft-aviso { color: #fbbf24; }
+.cft-chip { display: inline-block; padding: 2px 8px; margin: 2px 0; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); color: #cbd5e1; font-size: 12px; }
+.cft-chip a { color: #8494a9; text-decoration: none; margin-left: 2px; }
+.cft-chip a:hover { color: #f87171; }
 .cft-ordem { color: inherit; text-decoration: none; }
 .cft-ordem:hover { color: #60a5fa; text-decoration: underline; }
 .cft-tabela tfoot td { position: sticky; bottom: 0; background: #141b26; border-top: 1px solid rgba(255,255,255,0.12); }
