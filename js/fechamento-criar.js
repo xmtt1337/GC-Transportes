@@ -446,16 +446,20 @@ function _cfCarregarFixos(msg) {
 }
 
 // Mudou valor fixo: recalcula a Shopee já enviada na quinzena aberta.
+// Valor fixo só muda a performance consolidada: refaz ela uma vez (não trata os
+// relatórios da Shopee de novo — isso levava minutos com ~100 mil pacotes).
 async function _cfRecalcularShopee() {
-    const lotes = _cfQuinzena ? _cfResumo.map(x => x.chave).filter(_cfEhShopee) : [];
-    for (const k of lotes) {
-        await fetch(`${_CF_API()}/recalcular`, {
-            method: "POST", headers: _cfHeaders(true),
-            body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: k }),
-        }).catch(() => {});
-    }
-    if (lotes.length) { _cfAtualizarCards(); if (_cfEhShopee(_cfTranspAtual)) _cfCarregarDetalhe(); }
-    return lotes.length;
+    const tem = _cfQuinzena && _cfResumo.some(x => _cfEhShopee(x.chave));
+    if (!tem) return 0;
+    const st = document.getElementById("cf-fixo-status");
+    if (st) st.innerText = "Recalculando a performance da quinzena...";
+    const r = await fetch(`${_CF_API()}/reconsolidar`, {
+        method: "POST", headers: _cfHeaders(true), body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "Erro ao recalcular.");
+    _cfAtualizarCards();
+    if (_cfEhShopee(_cfTranspAtual)) _cfCarregarDetalhe();
+    return 1;
 }
 
 async function _cfSalvarFixo() {
@@ -487,6 +491,8 @@ function _cfRemoverFixo(id) {
             const r = await fetch(`${_CF_API()}/valores-fixos/${id}`, { method: "DELETE", headers: _cfHeaders() });
             const d = await r.json().catch(() => ({}));
             if (!r.ok) throw new Error(d.error || "Erro ao remover.");
+            const st = document.getElementById("cf-fixo-status");
+            if (st) st.innerText = `${f ? f.entregador : "Valor fixo"} removido. Recalculando...`;
             const n = await _cfRecalcularShopee();
             _cfCarregarFixos(n ? "Removido e recalculado." : "Removido.");
         } catch (err) { gcAlert(err.message); }

@@ -299,7 +299,7 @@ test("Shopee: KPIs de performance no lugar do prazo", () => {
     assert.match(ctx._cfHtmlResumo(resumo), /Fora do prazo/);
 });
 
-test("valores fixos: salvar manda entregador e valor e recalcula só a Shopee da quinzena", async () => {
+test("valores fixos: salvar manda entregador e valor e refaz só a performance da quinzena (uma chamada)", async () => {
     const t = carregarComDom(async () => ({ ok: true, status: 200, json: async () => ({ success: true, linhas: [] }) }));
     vm.runInContext(`_cfQuinzena = 2; _cfMes = 9; _cfAno = 2026; _cfTranspAtual = "anjun";
         _cfResumo = [{ chave: "shopee_cfc" }, { chave: "anjun" }, { chave: "shopee_via" }];
@@ -309,8 +309,9 @@ test("valores fixos: salvar manda entregador e valor e recalcula só a Shopee da
     t.el("cf-fixo-status"); t.el("cf-fixo-salvar");
     await t.ctx._cfSalvarFixo();
     assert.deepStrictEqual(JSON.parse(t.chamadas[0].opts.body), { entregador: "Lisete Granemann - Caçador", valor: "2,7" });
-    const recalc = t.chamadas.filter((c) => c.url.endsWith("/recalcular")).map((c) => JSON.parse(c.opts.body).transportadora);
-    assert.deepStrictEqual(recalc, ["shopee_cfc", "shopee_via"]);
+    assert.strictEqual(t.chamadas.filter((c) => c.url.endsWith("/recalcular")).length, 0, "não trata os relatórios de novo");
+    const recon = t.chamadas.filter((c) => c.url.endsWith("/reconsolidar")).map((c) => JSON.parse(c.opts.body));
+    assert.deepStrictEqual(recon, [{ mes: 9, ano: 2026, quinzena: 2 }]);
 });
 
 test("CSV com linha inteira entre aspas: a linha é lida de novo e as colunas voltam pro lugar", () => {
