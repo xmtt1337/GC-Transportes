@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261027a">
+<link rel="stylesheet" href="style.css?v=20261028a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -521,6 +521,7 @@ if (_BASE) {
                 <li><a href="#" data-rota="Videira/MeuFechamento" onclick="abrirVideiraPainel(event)">Fechamento Videira</a></li>
             </ul>
             <li><a href="#" data-rota="Fechamento/Criar" onclick="abrirCriarFechamento(event)">Criar Fechamento</a></li>
+            <li><a href="#" data-rota="Fechamento/Resumo" onclick="abrirResumoQuinzena(event)">Resumo da Quinzena</a></li>
         </ul>
 
         <li class="menu-item" data-menu="planejamento" id="menu-planejamento" onclick="toggleMenu(this)" style="display:none">
@@ -4879,6 +4880,7 @@ if (_BASE) {
 <script src="js/alimentar.js?v=30260812d"></script>
 <script src="js/fechamento-criar.js?v=20261028b"></script>
 <script src="js/ticketlog-info.js?v=20261028a"></script>
+<script src="js/fechamento-resumo.js?v=20261028a"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
 <script src="js/pedidos.js?v=20261020a"></script>
@@ -5128,6 +5130,30 @@ if (_BASE) {
         </div>
     </div>
 </div><!-- /tela-criar-fechamento -->
+
+<!-- TELA FECHAMENTO › RESUMO DA QUINZENA -->
+<div id="tela-resumo-quinzena" class="view tela-full">
+    <div class="fech-header">
+        <div class="fech-period-row">
+            <select class="fech-select" id="rq-mes" onchange="_rqPeriodoMudou()">
+                <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                <option value="3">Março</option><option value="4">Abril</option>
+                <option value="5">Maio</option><option value="6">Junho</option>
+                <option value="7">Julho</option><option value="8">Agosto</option>
+                <option value="9">Setembro</option><option value="10">Outubro</option>
+                <option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select>
+            <select class="fech-select" id="rq-ano" onchange="_rqPeriodoMudou()"></select>
+        </div>
+        <div class="quinzena-toggle">
+            <button class="quinzena-btn" id="rq-btn-1q" onclick="_rqSelecionarQuinzena(1)">1ª Quinzena &nbsp;(1 – 15)</button>
+            <button class="quinzena-btn" id="rq-btn-2q" onclick="_rqSelecionarQuinzena(2)">2ª Quinzena &nbsp;(16 – fim)</button>
+        </div>
+    </div>
+    <div class="fech-body">
+        <div id="rq-conteudo"><div class="fechamento-empty">Selecione o mês, ano e quinzena.</div></div>
+    </div>
+</div><!-- /tela-resumo-quinzena -->
 
 <!-- TELA TICKETLOG › INFORMAÇÕES (só dev) -->
 <div id="tela-ticketlog-info" class="view tela-full">

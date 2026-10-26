@@ -6337,6 +6337,11 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .cft-sim { color: #34d399; }
 .cft-pos, .cft-tabela td.cft-pos { color: #34d399; }
 .cft-neg, .cft-tabela td.cft-neg { color: #f87171; }
+/* Resumo da Quinzena: pendência em âmbar, título de coluna que ordena, linha de total fixa embaixo */
+.cft-aviso { color: #fbbf24; }
+.cft-ordem { color: inherit; text-decoration: none; }
+.cft-ordem:hover { color: #60a5fa; text-decoration: underline; }
+.cft-tabela tfoot td { position: sticky; bottom: 0; background: #141b26; border-top: 1px solid rgba(255,255,255,0.12); }
 .cft-nao { color: #f87171; }
 .cft-vazio { color: #6b7a90; }
 .cft-paginacao { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: 12px; color: #8494a9; flex-wrap: wrap; }

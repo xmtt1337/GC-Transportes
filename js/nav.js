@@ -69,6 +69,7 @@ const _TELA_TITULOS = {
     "tela-em-breve":             "Em Breve",
     "tela-torre-alimentar":      "Alimentar",
     "tela-criar-fechamento":     "Criar Fechamento",
+    "tela-resumo-quinzena":      "Resumo da Quinzena",
     "tela-ticketlog-info":       "TicketLog — Informações",
 };
 
