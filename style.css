@@ -51,6 +51,15 @@ body {
     z-index: 10;
 }
 .sidebar.expanded { width: 250px; min-width: 250px; }
+/* No computador a barra abre POR CIMA do conteúdo (fixa), com o lugar dela (58px) reservado
+   no .content. Antes ela era item do flex: abrir de 58 → 250px encolhia o .content a cada
+   quadro da animação e o navegador recalculava a página inteira ~20 vezes — em tela com
+   tabela grande (Criar Fechamento, milhares de células) o hover no menu travava. No
+   celular ela já era fixa (media 680px mais abaixo). */
+@media screen and (min-width: 681px) {
+    .sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
+    .content { margin-left: 58px; }
+}
 
 .logo {
     display: flex; justify-content: center; align-items: center;
