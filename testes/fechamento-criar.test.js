@@ -443,3 +443,18 @@ test("Ticketlog: lista Não descontar mostra quem está e quanto saiu", () => {
     assert.match(html, /<option value="Beltrano">/);
     assert.match(ctx._cfHtmlNaoDescontar({}), /Ninguém na lista/);
 });
+
+test("Ticketlog: nome sem conversão vira pendência e salvar grava na Conversão de nomes", async () => {
+    const ctx = carregar();
+    const html = ctx._cfHtmlTlSemConversao({ sem_conversao: [{ nome: "FULANO SEM CONV", abastecimentos: 2, total: 150 }] });
+    assert.match(html, /Nomes sem conversão \(1\)/);
+    assert.match(html, /FULANO SEM CONV/);
+    assert.strictEqual(ctx._cfHtmlTlSemConversao({ sem_conversao: [] }), "");
+    ctx._cfHtmlTlSemConversao({ sem_conversao: [{ nome: "FULANO SEM CONV", abastecimentos: 2, total: 150 }] });
+    let corpo = null;
+    ctx.document = { getElementById: (id) => (id === "cf-tl-conv-0" ? { value: " Fulano Exemplo - Vila Teste " } : { style: {}, innerHTML: "" }) };
+    ctx.fetch = async (u, o) => { if (o && o.method === "POST") corpo = [u, JSON.parse(o.body)]; return { ok: true, status: 200, json: async () => ({}) }; };
+    ctx._cfCarregarTicketlog = () => {};
+    await ctx._cfTlSalvarConversao(0);
+    assert.deepStrictEqual(corpo, ["https://api.teste/admin/nomes-padrao", { nome_origem: "FULANO SEM CONV", nome_sistema: "Fulano Exemplo - Vila Teste" }]);
+});

@@ -260,6 +260,7 @@ function _cfCarregarTicketlog(msg) {
                     <td>${a.enviado_em ? new Date(a.enviado_em).toLocaleString("pt-BR") : ""}</td>
                     <td><button class="cft-btn perigo" data-e="${_cfEsc(a.envio_id)}" data-n="${_cfEsc(a.arquivo || "")}" onclick="_cfRemoverTicketlog(this.dataset.e, this.dataset.n)">Remover</button></td>
                 </tr>`).join("")}</tbody></table></div>` : `<div class="cft-ajuda">Nenhum relatório da Ticketlog nesta quinzena ainda.</div>`}
+            ${_cfHtmlTlSemConversao(d)}
             ${_cfHtmlNaoDescontar(d)}
             ${arqs.length ? `
             <div class="cft-kpis" style="margin-top:14px">
@@ -285,6 +286,49 @@ function _cfCarregarTicketlog(msg) {
                     <td class="num${r.divergencias ? " cft-neg" : ""}">${n(r.divergencias)}</td>
                 </tr>`).join("")}</tbody></table></div>` : ""}`;
     }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar a Ticketlog.</div>`; });
+}
+
+// Nomes do Ticketlog que não acharam o nome padrão: escolher o entregador grava na
+// Conversão de nomes (a mesma dos relatórios), e o desconto passa a juntar no Resumo.
+let _cfTlSemConv = [];
+function _cfHtmlTlSemConversao(d) {
+    _cfTlSemConv = d.sem_conversao || [];
+    if (!_cfTlSemConv.length) return "";
+    return `<div class="cft-pend" style="margin-top:12px">
+        <div class="cft-pend-titulo"><span class="cft-aviso">Nomes sem conversão (${_cfTlSemConv.length})</span></div>
+        <div class="cft-ajuda" style="margin-bottom:6px">Não achei o entregador desses nomes. Escolha quem é — fica salvo na Conversão de nomes
+            e o desconto passa a sair no Resumo da Quinzena junto com os pacotes dele.</div>
+        <datalist id="cf-tl-entregadores">${((_cfEntregadores && _cfEntregadores.nomes) || []).map(n => `<option value="${_cfEsc(n)}">`).join("")}</datalist>
+        <div class="cft-tabela-wrap"><table class="cft-tabela"><tbody>${_cfTlSemConv.map((p, i) => `<tr>
+            <td>${_cfEsc(p.nome)}</td>
+            <td class="num cft-neg">${_cfNum(p.total)}</td>
+            <td><input class="cft-input" id="cf-tl-conv-${i}" list="cf-tl-entregadores" placeholder="Entregador..." style="min-width:260px;margin:0"
+                onfocus="_cfTlGarantirEntregadores()"></td>
+            <td style="width:1%;white-space:nowrap"><button class="cft-btn" onclick="_cfTlSalvarConversao(${i})">Salvar</button></td>
+        </tr>`).join("")}</tbody></table></div>
+    </div>`;
+}
+
+// A lista de entregadores (Dados entregadores + Conversão) só é lida quando precisa.
+function _cfTlGarantirEntregadores() {
+    if (_cfEntregadores) return;
+    fetch(`${_CF_API()}/entregadores`, { headers: _cfHeaders() }).then(r => r.json()).then(d => {
+        _cfEntregadores = { nomes: d.nomes || [], aviso: d.aviso || null };
+        const dl = document.getElementById("cf-tl-entregadores");
+        if (dl) dl.innerHTML = _cfEntregadores.nomes.map(n => `<option value="${_cfEsc(n)}">`).join("");
+    }).catch(() => {});
+}
+
+async function _cfTlSalvarConversao(i) {
+    const item = _cfTlSemConv[i];
+    const nome = document.getElementById("cf-tl-conv-" + i).value.trim();
+    if (!nome) { gcAlert("Escolha o entregador."); return; }
+    const r = await fetch(`${API}/admin/nomes-padrao`, { method: "POST", headers: _cfHeaders(true),
+        body: JSON.stringify({ nome_origem: item.nome, nome_sistema: nome }) });
+    const d = await r.json().catch(() => ({}));
+    // 409 = o par já existia: dá no mesmo.
+    if (!r.ok && r.status !== 409) { gcAlert(r.status === 403 ? "Só quem é dev pode mexer na Conversão de nomes." : (d.error || "Erro ao salvar.")); return; }
+    _cfCarregarTicketlog(_cfEsc(`${item.nome} → ${nome}`));
 }
 
 // Lista "Não descontar": abastecimentos dessas pessoas saem do relatório e do total.
