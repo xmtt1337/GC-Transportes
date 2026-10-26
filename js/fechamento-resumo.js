@@ -105,9 +105,11 @@ function _rqRender() {
             <button class="cft-btn" onclick="_rqAlternarBaixar()">Baixar relatório</button>
         </div>
         <div id="rq-baixar" class="cft-regras" style="display:none">
-            <div class="cft-ajuda" style="margin-bottom:8px">Planilha com duas abas: <b>Resumo</b> (por entregador) e <b>Pacotes</b>
-                (todos os pacotes de todas as transportadoras). Escolha o que entra — deixe "Todos" pra baixar tudo.</div>
+            <div class="cft-ajuda" style="margin-bottom:8px">Relatório detalhado, igual ao do Criar Fechamento: uma aba por transportadora
+                com todos os pacotes, a aba <b>Performance</b> da Shopee e, no fim, o <b>Resumo</b> por entregador.
+                Escolha o que entra — deixe "Todos" pra baixar tudo.</div>
             <div class="cft-barra" style="margin:0;flex-wrap:wrap">
+                <select class="fech-select" id="rq-x-transp" style="max-width:280px"><option value="">Todas as transportadoras</option>${_rqColunas().map(c => `<option value="${c.chave}">${_rqEsc(c.nome)}</option>`).join("")}</select>
                 ${_rqSelect("rq-x-polo", "Todos os polos", (d.opcoes || {}).polos)}
                 ${_rqSelect("rq-x-driver", "Todos os entregadores", (d.opcoes || {}).entregadores)}
                 ${_rqSelect("rq-x-cidade", "Todas as cidades", (d.opcoes || {}).cidades)}
@@ -181,23 +183,13 @@ function _rqAlternarBaixar() {
     el.style.display = el.style.display === "none" ? "" : "none";
 }
 
-const _RQ_COLUNAS_PACOTES = [
-    ["Transportadora", "transportadora"], ["Driver", "driver"], ["Usuario", "usuario"], ["Codigo", "codigo"],
-    ["Cidade", "cidade"], ["Polo", "polo"], ["CEP", "cep"], ["Tipo de Produto", "tipo_produto"],
-    ["Destinatario", "destinatario"], ["Endereço", "endereco"], ["Data atribuicao", "data_atribuicao"],
-    ["Data entrega", "data_entrega"], ["Deve ser entregue", "deve_ser_entregue"], ["Dentro do prazo", "dentro_prazo"],
-    ["Peso (Kg)", "peso_kg"], ["Valor entrega", "valor_entrega"], ["Incentivo", "incentivo"], ["Desconto", "desconto"],
-    ["Adicional por peso", "adicional_peso"], ["Valor motorista", "valor_motorista"],
-    ["Dia da performance", "perf_dia"], ["Performance (%)", "perf_pct"],
-];
-
 /**
- * As duas abas da planilha a partir dos pacotes já filtrados. Ticketlog (e o líquido) só
- * entra quando não tem filtro de cidade — o desconto é do entregador, não da cidade.
- * @return {{resumo: Array<Array>, pacotes: Array<Array>}}
+ * Aba "Resumo" (por entregador) a partir dos pacotes já filtrados. Ticketlog (e o líquido)
+ * só entra quando não tem filtro de cidade nem de transportadora — o desconto é do
+ * entregador inteiro, não de uma parte dos pacotes dele.
  */
-function _rqMontarPlanilha(pacotes, filtros) {
-    const comTl = !filtros.cidade;
+function _rqAbaResumo(pacotes, filtros) {
+    const comTl = !filtros.cidade && !filtros.transportadora;
     const tl = new Map((_rqDados.linhas || []).filter(l => !l.sem_conversao).map(l => [l.entregador, l.ticketlog || 0]));
     const transp = [...new Set(pacotes.map(p => p.transportadora))].sort((a, b) => a.localeCompare(b, "pt-BR"));
     const por = new Map();
@@ -217,15 +209,55 @@ function _rqMontarPlanilha(pacotes, filtros) {
         const desc = comTl && r.driver ? (tl.get(r.driver) || 0) : 0;
         return [r.nome, polo, ...transp.map(t => r2(r.t[t] || 0)), r.pacotes, r2(r.bruto)].concat(comTl ? [desc, r2(r.bruto - desc)] : []);
     });
-    return {
-        resumo: [cab, ...linhas],
-        pacotes: [_RQ_COLUNAS_PACOTES.map(c => c[0]), ...pacotes.map(p => _RQ_COLUNAS_PACOTES.map(c => p[c[1]] ?? ""))],
-    };
+    return [cab, ...linhas];
+}
+
+/**
+ * Abas do relatório detalhado: uma por transportadora com as MESMAS colunas do export do
+ * Criar Fechamento (_CF_EXPORT_COLUNAS / _SHOPEE, de fechamento-criar.js), a Performance
+ * consolidada da Shopee (só dos entregadores que estão no arquivo) e o Resumo no fim.
+ * @return {Array<{nome: string, linhas: Array<Array>}>}
+ */
+function _rqMontarAbas(pacotes, filtros, perfLinhas) {
+    const ordem = Object.values(_rqDados.transportadoras).map(t => t.nome);
+    const nomes = [...new Set(pacotes.map(p => p.transportadora))]
+        .sort((a, b) => (ordem.indexOf(a) + 1 || 99) - (ordem.indexOf(b) + 1 || 99));
+    const abas = nomes.map(nome => {
+        const cols = /^shopee/i.test(nome) ? _CF_EXPORT_COLUNAS_SHOPEE : _CF_EXPORT_COLUNAS;
+        const doTransp = pacotes.filter(p => p.transportadora === nome);
+        return { nome: nome.slice(0, 31), linhas: [cols.map(c => c[0])].concat(doTransp.map(p => cols.map(c => p[c[1]] ?? ""))) };
+    });
+    const drivers = new Set(pacotes.map(p => p.driver).filter(Boolean));
+    const perf = (perfLinhas || []).filter(l => drivers.has(l.driver));
+    if (perf.length) {
+        abas.push({ nome: "Performance", linhas: [["Dia", "Entregador", "Shopee entregues", "Onholds", "Outras no prazo", "Outras atrasadas",
+            "Performance (%)", "Valor por pacote", "Pacotes pagos", "Total"]].concat(perf.map(l => [_cfDia(l.dia), l.driver, l.shopee, l.onholds,
+            l.outras_prazo, l.outras_atraso, l.pct, l.valor, l.pacotes_pagos, l.total])) });
+    }
+    abas.push({ nome: "Resumo", linhas: _rqAbaResumo(pacotes, filtros) });
+    return abas;
+}
+
+// Performance consolidada das XPTs da Shopee que estão no arquivo (sem repetir entregador × dia).
+async function _rqBuscarPerformance(pacotes) {
+    const chaves = Object.entries(_rqDados.transportadoras)
+        .filter(([, t]) => /^shopee/i.test(t.nome) && pacotes.some(p => p.transportadora === t.nome)).map(([k]) => k);
+    const vistos = new Set(), linhas = [];
+    for (const k of chaves) {
+        const r = await fetch(`${_RQ_API()}/performance?mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}&transportadora=${k}`,
+            { headers: { "Authorization": "Bearer " + token } });
+        const d = await r.json().catch(() => ({}));
+        for (const l of d.linhas || []) {
+            const id = l.driver + "|" + l.dia;
+            if (!vistos.has(id)) { vistos.add(id); linhas.push(l); }
+        }
+    }
+    return linhas.sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : String(a.driver).localeCompare(String(b.driver), "pt-BR")));
 }
 
 async function _rqBaixar() {
     const v = (id) => document.getElementById(id).value;
-    const filtros = { polo: v("rq-x-polo"), driver: v("rq-x-driver"), cidade: v("rq-x-cidade") };
+    const filtros = { transportadora: v("rq-x-transp"), polo: v("rq-x-polo"), driver: v("rq-x-driver"), cidade: v("rq-x-cidade") };
     const btn = document.getElementById("rq-x-btn");
     const st = document.getElementById("rq-x-status");
     btn.disabled = true;
@@ -236,11 +268,12 @@ async function _rqBaixar() {
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || "Erro ao baixar.");
         if (!d.pacotes.length) { st.innerText = "Nenhum pacote com esse filtro."; return; }
-        const p = _rqMontarPlanilha(d.pacotes, filtros);
+        const perf = await _rqBuscarPerformance(d.pacotes);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(p.resumo), "Resumo");
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(p.pacotes), "Pacotes");
-        const sufixo = Object.values(filtros).filter(Boolean).map(x => "_" + x.replace(/[^\w\u00C0-\u017F-]+/g, "-")).join("");
+        for (const a of _rqMontarAbas(d.pacotes, filtros, perf)) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a.linhas), a.nome);
+        const nomeTransp = filtros.transportadora ? (_rqDados.transportadoras[filtros.transportadora] || {}).nome : "";
+        const sufixo = [nomeTransp, filtros.polo, filtros.driver, filtros.cidade].filter(Boolean)
+            .map(x => "_" + x.replace(/[^\w\u00C0-\u017F-]+/g, "-")).join("");
         XLSX.writeFile(wb, `fechamento_${_rqQuinzena}q_${String(_rqMes).padStart(2, "0")}-${_rqAno}${sufixo}.xlsx`);
         st.innerText = `${d.pacotes.length.toLocaleString("pt-BR")} pacotes baixados.`;
     } catch (err) {
