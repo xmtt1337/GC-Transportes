@@ -379,3 +379,20 @@ test("desconsiderar onholds: colar e enviar manda os códigos do fechamento aber
     assert.deepStrictEqual(JSON.parse(t.chamadas[0].opts.body),
         { mes: 9, ano: 2026, quinzena: 2, transportadora: "shopee_via", codigos: ["BR2612345678901", "BR2698765432109"] });
 });
+
+test("desconsiderar onholds: lista em linhas, fechada por padrão, com busca", () => {
+    const ctx = carregar();
+    const els = {};
+    ctx.document = { getElementById: (id) => (els[id] = els[id] || { id, value: "", innerHTML: "", innerText: "", style: {} }) };
+    vm.runInContext(`_cfIgnorar = [{ codigo: "BR2600000001A", criado_em: null }, { codigo: "BR2600000002B", criado_em: null }]`, ctx);
+    assert.strictEqual(vm.runInContext("_cfIgnorarAberta", ctx), false);
+    ctx._cfAlternarListaIgnorar();
+    assert.strictEqual(els["cf-ignorar-lista"].style.display, "");
+    assert.strictEqual((els["cf-ignorar-tbody"].innerHTML.match(/<tr>/g) || []).length, 2);
+    els["cf-ignorar-busca"].value = "002b";
+    ctx._cfRenderListaIgnorar();
+    assert.match(els["cf-ignorar-tbody"].innerHTML, /BR2600000002B/);
+    assert.doesNotMatch(els["cf-ignorar-tbody"].innerHTML, /BR2600000001A/);
+    ctx._cfAlternarListaIgnorar();
+    assert.strictEqual(els["cf-ignorar-lista"].style.display, "none");
+});

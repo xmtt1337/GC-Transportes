@@ -327,7 +327,8 @@ function _cfCarregarOnholdsInfo(msg) {
 }
 
 // ── Desconsiderar onholds: códigos BR colados ou anexados que não contam nesse fechamento ──
-let _cfIgnorar = [];
+let _cfIgnorar = [];        // [{codigo, criado_em}]
+let _cfIgnorarAberta = false; // lista de códigos desconsiderados aberta (começa fechada)
 
 /** Tudo que parece código BR no texto ("BR" + letras/números), sem repetir. */
 function _cfExtrairCodigosBR(texto) {
@@ -343,7 +344,7 @@ function _cfCarregarIgnorar(msg) {
     .then(d => {
         if (key !== _cfTranspAtual) return;
         if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
-        _cfIgnorar = (d.codigos || []).map(c => c.codigo);
+        _cfIgnorar = d.codigos || [];
         el.innerHTML = `
             <div class="cft-pend-titulo" style="color:#e2e8f0">Desconsiderar onholds</div>
             <div class="cft-ajuda" style="margin-bottom:8px">Cole os códigos BR (um por linha, ou do jeito que vierem — pega tudo que começa com "BR")
@@ -358,12 +359,45 @@ function _cfCarregarIgnorar(msg) {
             </div>
             <div class="cft-ajuda" id="cf-ignorar-status" style="margin-top:6px">${msg || ""}</div>
             ${_cfIgnorar.length ? `
-                <div class="cft-ajuda" style="margin:6px 0">${_cfIgnorar.length.toLocaleString("pt-BR")} código${_cfIgnorar.length !== 1 ? "s" : ""} desconsiderado${_cfIgnorar.length !== 1 ? "s" : ""}
-                    · ${Number(d.onholds_desconsiderados || 0).toLocaleString("pt-BR")} onhold${d.onholds_desconsiderados !== 1 ? "s" : ""} deixaram de contar.</div>
-                <div class="cft-pend-tags" style="max-height:160px;overflow-y:auto">${_cfIgnorar.slice(0, 500).map(c =>
-                    `<span class="cft-tag">${_cfEsc(c)} <button class="cft-col-mini" title="Voltar a contar" data-c="${_cfEsc(c)}" onclick="_cfTirarIgnorar(this.dataset.c)">×</button></span>`).join("")}
-                    ${_cfIgnorar.length > 500 ? `<span class="cft-ajuda">+${_cfIgnorar.length - 500}</span>` : ""}</div>` : ""}`;
+                <div class="cft-barra" style="margin:6px 0 0">
+                    <span class="cft-ajuda">${_cfIgnorar.length.toLocaleString("pt-BR")} código${_cfIgnorar.length !== 1 ? "s" : ""} desconsiderado${_cfIgnorar.length !== 1 ? "s" : ""}
+                        · ${Number(d.onholds_desconsiderados || 0).toLocaleString("pt-BR")} onhold${d.onholds_desconsiderados !== 1 ? "s" : ""} deixaram de contar.</span>
+                    <button class="cft-btn" id="cf-ignorar-toggle" onclick="_cfAlternarListaIgnorar()">${_cfIgnorarAberta ? "Esconder lista" : "Ver lista"}</button>
+                </div>
+                <div id="cf-ignorar-lista" style="display:${_cfIgnorarAberta ? "" : "none"}">
+                    <div class="adm-search-input-area" style="max-width:260px;margin:6px 0">
+                        <input type="text" id="cf-ignorar-busca" placeholder="Buscar código..." oninput="_cfRenderListaIgnorar()">
+                    </div>
+                    <div class="cft-tabela-wrap" style="max-height:280px;overflow-y:auto"><table class="cft-tabela">
+                        <thead><tr><th>Pedido (BR)</th><th>Incluído em</th><th></th></tr></thead>
+                        <tbody id="cf-ignorar-tbody"></tbody>
+                    </table></div>
+                    <div class="cft-ajuda" id="cf-ignorar-contagem" style="margin-top:4px"></div>
+                </div>` : ""}`;
+        if (_cfIgnorar.length && _cfIgnorarAberta) _cfRenderListaIgnorar();
     }).catch(() => {});
+}
+
+function _cfAlternarListaIgnorar() {
+    _cfIgnorarAberta = !_cfIgnorarAberta;
+    document.getElementById("cf-ignorar-lista").style.display = _cfIgnorarAberta ? "" : "none";
+    document.getElementById("cf-ignorar-toggle").innerText = _cfIgnorarAberta ? "Esconder lista" : "Ver lista";
+    if (_cfIgnorarAberta) _cfRenderListaIgnorar();
+}
+
+// Uma linha por código (até 1000 na tela; a busca acha qualquer um).
+function _cfRenderListaIgnorar() {
+    const busca = String((document.getElementById("cf-ignorar-busca") || {}).value || "").trim().toUpperCase();
+    const lista = _cfIgnorar.filter(c => !busca || c.codigo.includes(busca));
+    document.getElementById("cf-ignorar-tbody").innerHTML = lista.length ? lista.slice(0, 1000).map(c => `<tr>
+            <td>${_cfEsc(c.codigo)}</td>
+            <td>${c.criado_em ? new Date(c.criado_em).toLocaleString("pt-BR") : ""}</td>
+            <td><button class="cft-btn perigo" data-c="${_cfEsc(c.codigo)}" onclick="_cfTirarIgnorar(this.dataset.c)">Voltar a contar</button></td>
+        </tr>`).join("")
+        : `<tr><td colspan="3" class="cft-vazio" style="padding:12px">Nenhum código com isso.</td></tr>`;
+    document.getElementById("cf-ignorar-contagem").innerText = lista.length > 1000
+        ? `Mostrando 1.000 de ${lista.length.toLocaleString("pt-BR")} — busque pra achar os outros.`
+        : `${lista.length.toLocaleString("pt-BR")} código${lista.length !== 1 ? "s" : ""}`;
 }
 
 async function _cfEnviarIgnorar(codigos, origem) {
