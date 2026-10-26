@@ -338,6 +338,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         if (role === "dev") {
             show("menu-item-anotacoes-relatorio"); // relatório consolidado de Anotações de Quantidade — só dev
             show("menu-macros"); // liga/desliga e configura tarefas automáticas — só dev
+            show("menu-ticketlog"); // cartões Ticketlog e valor de cada um — só dev
+            show("submenu-ticketlog");
         }
     }
 

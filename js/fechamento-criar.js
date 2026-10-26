@@ -218,7 +218,6 @@ const _CF_SITUACAO_TL = {
     matricula_errada: "Matrícula errada", cartao_nao_cadastrado: "Cartão não cadastrado",
     sem_cartao: "Sem número do cartão", nome_nao_cadastrado: "Nome fora do cadastro",
 };
-let _cfTlCartoesAberto = false;
 
 function _cfAbrirTicketlog() {
     const el = document.getElementById("cf-ticketlog");
@@ -243,9 +242,8 @@ function _cfCarregarTicketlog(msg) {
             <div class="cft-barra" style="margin-top:0">
                 <span class="cft-pend-titulo" style="color:#e2e8f0;margin:0">Descontos da quinzena — Ticketlog (combustível)</span>
                 <span style="flex:1"></span>
-                ${ehDev ? `<button class="cft-btn" onclick="_cfAlternarCartoesTl()">Cartões Ticketlog (dev)</button>` : ""}
+                ${ehDev ? `<button class="cft-btn" onclick="abrirTicketlogInfo()">Cartões em TicketLog › Informações</button>` : ""}
             </div>
-            <div id="cf-tl-cartoes" style="display:${ehDev && _cfTlCartoesAberto ? "" : "none"}"></div>
             <div class="cft-ajuda" style="margin-bottom:8px">Relatório da Ticketlog: usa NOME MOTORISTA e VALOR EMISSAO, e confere o NUMERO CARTAO com a MATRICULA.
                 Se o cartão é de um entregador e a matrícula digitada é de outro, o desconto vai pro <b>dono do cartão</b> e a linha aparece em Divergências.</div>
             <div class="cft-barra">
@@ -285,7 +283,6 @@ function _cfCarregarTicketlog(msg) {
                     <td class="num cft-neg"><strong>${_cfNum(r.total)}</strong></td>
                     <td class="num${r.divergencias ? " cft-neg" : ""}">${n(r.divergencias)}</td>
                 </tr>`).join("")}</tbody></table></div>` : ""}`;
-        if (ehDev && _cfTlCartoesAberto) _cfCarregarCartoesTl();
     }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar a Ticketlog.</div>`; });
 }
 
@@ -321,83 +318,6 @@ function _cfRemoverTicketlog(envio, nome) {
         .then(d => { if (d.error) gcAlert(d.error); else _cfCarregarTicketlog(_cfEsc(`${nome || "Relatório"} removido.`)); })
         .catch(() => gcAlert("Erro ao remover."));
     }, "Remover relatório", "Remover");
-}
-
-// ── Cadastro de cartões Ticketlog (só dev) ──
-let _cfTlCartoes = [];
-
-function _cfAlternarCartoesTl() {
-    _cfTlCartoesAberto = !_cfTlCartoesAberto;
-    const el = document.getElementById("cf-tl-cartoes");
-    el.style.display = _cfTlCartoesAberto ? "" : "none";
-    if (_cfTlCartoesAberto) _cfCarregarCartoesTl();
-}
-
-function _cfCarregarCartoesTl(msg) {
-    const el = document.getElementById("cf-tl-cartoes");
-    if (!el) return;
-    el.innerHTML = `<div class="cft-ajuda">Carregando cartões...</div>`;
-    fetch(`${_CF_API()}/ticketlog-cartoes`, { headers: _cfHeaders() })
-    .then(r => r.json())
-    .then(d => {
-        if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
-        _cfTlCartoes = d.cartoes || [];
-        el.innerHTML = `
-            <div class="cft-regras" style="margin:6px 0 14px">
-                <div class="cft-pend-titulo" style="color:#e2e8f0">Cartões Ticketlog</div>
-                <div class="cft-ajuda" style="margin-bottom:8px">Quem é o dono de cada cartão. O nome do entregador tem que ser o da Conversão de nomes (com " - Cidade").</div>
-                <div class="cft-tabela-wrap" style="max-height:320px;overflow-y:auto"><table class="cft-tabela">
-                    <thead><tr><th>Entregador</th><th>Número do cartão</th><th>Matrícula</th><th>Placa</th><th></th></tr></thead>
-                    <tbody>${_cfTlCartoes.map(c => `<tr>
-                        <td><input class="cft-input cft-tl-in" data-id="${c.id}" data-k="driver" value="${_cfEsc(c.driver)}"></td>
-                        <td><input class="cft-input cft-tl-in" data-id="${c.id}" data-k="numero" value="${_cfEsc(c.numero)}"></td>
-                        <td><input class="cft-input cft-tl-in" data-id="${c.id}" data-k="matricula" value="${_cfEsc(c.matricula || "")}" style="width:80px"></td>
-                        <td><input class="cft-input cft-tl-in" data-id="${c.id}" data-k="placa" value="${_cfEsc(c.placa || "")}" style="width:110px"></td>
-                        <td style="white-space:nowrap"><button class="cft-btn" onclick="_cfSalvarCartaoTl(${c.id})">Salvar</button>
-                            <button class="cft-btn perigo" onclick="_cfRemoverCartaoTl(${c.id})">Remover</button></td>
-                    </tr>`).join("")}</tbody></table></div>
-                <div class="cft-ajuda" style="margin-top:10px">Acrescentar: cole da planilha as colunas <b>Driver · Número · Matrícula · Placa</b> (uma linha por cartão; cartão que já existe é atualizado).</div>
-                <textarea id="cf-tl-colar" class="cft-input" rows="3" placeholder="Fulano de Tal - Caçador&#9;0000000000000000&#9;99&#9;ABC0000"></textarea>
-                <div class="cft-barra" style="margin:8px 0 0">
-                    <button class="cft-btn primario" onclick="_cfImportarCartoesTl()">Gravar cartões colados</button>
-                    <span class="cft-ajuda" id="cf-tl-cartoes-status">${msg || ""}</span>
-                </div>
-            </div>`;
-    }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar os cartões.</div>`; });
-}
-
-async function _cfPostCartoesTl(corpo, okMsg) {
-    const st = document.getElementById("cf-tl-cartoes-status");
-    try {
-        const r = await fetch(`${_CF_API()}/ticketlog-cartoes`, { method: "POST", headers: _cfHeaders(true), body: JSON.stringify(corpo) });
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(d.error || "Erro ao gravar.");
-        _cfCarregarTicketlog(); // a conferência usa o cadastro novo na hora
-        _cfCarregarCartoesTl(_cfEsc(okMsg(d)) + (d.erros && d.erros.length ? ` <span class="cft-neg">${_cfEsc(d.erros.length + " linha(s) com erro: " + d.erros[0])}</span>` : ""));
-    } catch (err) { if (st) st.innerText = err.message; }
-}
-
-function _cfSalvarCartaoTl(id) {
-    const v = {};
-    document.querySelectorAll(`.cft-tl-in[data-id="${id}"]`).forEach(i => { v[i.dataset.k] = i.value; });
-    _cfPostCartoesTl({ id, ...v }, () => "Cartão salvo.");
-}
-
-function _cfImportarCartoesTl() {
-    const linhas = document.getElementById("cf-tl-colar").value.split(/\r?\n/)
-        .map(l => l.split("\t").map(c => c.trim())).filter(c => c.some(Boolean));
-    if (!linhas.length) return;
-    _cfPostCartoesTl({ linhas }, (d) => `${d.gravados} cartão(ões) gravado(s).`);
-}
-
-function _cfRemoverCartaoTl(id) {
-    const c = _cfTlCartoes.find(x => x.id === id);
-    gcConfirm(`Remover o cartão de <b>${_cfEsc(c ? c.driver : "")}</b>?`, () => {
-        fetch(`${_CF_API()}/ticketlog-cartoes/${id}`, { method: "DELETE", headers: _cfHeaders() })
-        .then(r => r.json())
-        .then(d => { if (d.error) gcAlert(d.error); else { _cfCarregarTicketlog(); _cfCarregarCartoesTl("Removido."); } })
-        .catch(() => gcAlert("Erro ao remover."));
-    }, "Remover cartão", "Remover");
 }
 
 // ── Shopee: valores fixos por entregador (no lugar da performance) ──

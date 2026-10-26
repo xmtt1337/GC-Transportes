@@ -69,6 +69,7 @@ const _TELA_TITULOS = {
     "tela-em-breve":             "Em Breve",
     "tela-torre-alimentar":      "Alimentar",
     "tela-criar-fechamento":     "Criar Fechamento",
+    "tela-ticketlog-info":       "TicketLog — Informações",
 };
 
 function mostrarTela(id, rota) {

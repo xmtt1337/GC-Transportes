@@ -626,6 +626,20 @@ if (_BASE) {
             <span class="menu-tooltip">Macros</span>
         </li>
 
+        <!-- Só dev: cartões Ticketlog (combustível) e o valor de cada um. -->
+        <li class="menu-item" data-menu="ticketlog" id="menu-ticketlog" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <path d="M2 10h20M6 15h4"/>
+            </svg>
+            <span class="label">TicketLog</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">TicketLog</span>
+        </li>
+        <ul class="submenu" data-menu="ticketlog" id="submenu-ticketlog" style="display:none">
+            <li><a href="#" data-rota="TicketLog/Informacoes" onclick="abrirTicketlogInfo(event)">Informações</a></li>
+        </ul>
+
         <li class="menu-item" data-menu="videira" id="menu-videira" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -4830,11 +4844,11 @@ if (_BASE) {
     </div>
 </div>
 
-<script src="js/core.js?v=20261022b"></script>
+<script src="js/core.js?v=20261028a"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261020a"></script>
+<script src="js/router.js?v=20261028a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=20261020a"></script>
+<script src="js/nav.js?v=20261028a"></script>
 <script src="js/atendimento.js?v=20261015a"></script>
 <script src="js/atendimento-admin.js?v=20261015b"></script>
 <script src="js/fechamentos.js?v=20261012a"></script>
@@ -4863,7 +4877,8 @@ if (_BASE) {
 <script src="js/whatsapp-conversa.js?v=20261021a"></script>
 <script src="js/modals.js?v=20260924a"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
-<script src="js/fechamento-criar.js?v=20261027i"></script>
+<script src="js/fechamento-criar.js?v=20261028a"></script>
+<script src="js/ticketlog-info.js?v=20261028a"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
 <script src="js/pedidos.js?v=20261020a"></script>
@@ -5113,6 +5128,13 @@ if (_BASE) {
         </div>
     </div>
 </div><!-- /tela-criar-fechamento -->
+
+<!-- TELA TICKETLOG › INFORMAÇÕES (só dev) -->
+<div id="tela-ticketlog-info" class="view tela-full">
+    <div class="fech-body">
+        <div id="tli-conteudo"></div>
+    </div>
+</div><!-- /tela-ticketlog-info -->
 
 <div id="tela-planejamento-videira" class="view tela-full">
     <div class="fech-header">
