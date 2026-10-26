@@ -4863,7 +4863,7 @@ if (_BASE) {
 <script src="js/whatsapp-conversa.js?v=20261021a"></script>
 <script src="js/modals.js?v=20260924a"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
-<script src="js/fechamento-criar.js?v=20261027b"></script>
+<script src="js/fechamento-criar.js?v=20261027c"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
 <script src="js/pedidos.js?v=20261020a"></script>
@@ -5053,7 +5053,7 @@ if (_BASE) {
 
                 <div id="cf-onholds-wrap" style="display:none;margin-top:14px">
                     <label class="nota-upload-area" style="cursor:pointer">
-                        <input type="file" id="cf-onholds-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="_cfOnholdsSelecionado(this)">
+                        <input type="file" id="cf-onholds-input" accept=".xlsx,.xls,.csv" multiple style="display:none" onchange="_cfOnholdsSelecionado(this)">
                         <div class="nota-upload-icon">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3a86ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -5064,7 +5064,7 @@ if (_BASE) {
                         </div>
                         <div class="nota-upload-text">
                             <div class="nota-upload-title" id="cf-onholds-titulo">Alimentar onholds</div>
-                            <div class="nota-upload-sub">Order ID · OnHold Time · OnHoldReason — só entram os da quinzena; reenviar substitui</div>
+                            <div class="nota-upload-sub">Order ID · OnHold Time · OnHoldReason · Driver Name — dá pra mandar vários arquivos; cada um soma aos que já estão</div>
                         </div>
                         <div class="nota-upload-btn">Selecionar arquivo</div>
                     </label>

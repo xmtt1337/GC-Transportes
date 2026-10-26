@@ -287,46 +287,76 @@ function _cfCarregarOnholdsInfo(msg) {
     .then(r => r.json())
     .then(d => {
         if (key !== _cfTranspAtual) return;
-        const atual = d.total
-            ? `${d.total.toLocaleString("pt-BR")} onholds da quinzena gravados${d.arquivo ? ` (${_cfEsc(d.arquivo)})` : ""}.`
+        const arqs = d.arquivos || [];
+        const lista = arqs.length ? `
+            <div class="cft-tabela-wrap" style="margin-top:6px"><table class="cft-tabela">
+                <thead><tr><th>Arquivo de onholds</th><th>Onholds</th><th>Enviado em</th><th></th></tr></thead>
+                <tbody>${arqs.map(a => `<tr>
+                    <td>${_cfEsc(a.arquivo || "(sem nome)")}</td>
+                    <td class="num">${Number(a.total).toLocaleString("pt-BR")}</td>
+                    <td>${a.enviado_em ? new Date(a.enviado_em).toLocaleString("pt-BR") : ""}</td>
+                    <td><button class="cft-btn perigo" data-envio="${_cfEsc(a.envio_id)}" data-nome="${_cfEsc(a.arquivo || "")}" onclick="_cfRemoverOnholds(this.dataset.envio, this.dataset.nome)">Remover</button></td>
+                </tr>`).join("")}</tbody>
+            </table></div>
+            <div style="margin-top:4px">${Number(d.total || 0).toLocaleString("pt-BR")} onholds valendo neste fechamento (repetido entre arquivos conta uma vez).</div>`
             : "Nenhum onhold desta quinzena ainda — sem eles, todo mundo fica com 100% de performance.";
-        el.innerHTML = (msg ? msg + "<br>" : "") + atual;
+        el.innerHTML = (msg ? `<div>${msg}</div>` : "") + lista;
     }).catch(() => {});
 }
 
+// Vários arquivos de uma vez: um por um, cada um soma aos que já estão.
 async function _cfOnholdsSelecionado(input) {
-    const file = input.files[0];
+    const arquivos = [...(input.files || [])];
     input.value = "";
-    if (!file) return;
+    if (!arquivos.length) return;
     const key = _cfTranspAtual;
     const el = document.getElementById("cf-onholds-status");
-    el.innerText = "Lendo arquivo...";
-    try {
-        const grid = await _cfLerGrid(file);
-        // Só as colunas que interessam (arquivo de onholds pode ser grande).
-        const { grid: enviar } = _cfSoColunasUteis(grid, ["Order ID", "OnHold Time", "On Hold Time", "OnHoldReason", "OnHold Reason", "On Hold Reason", "Driver Name"]);
-        el.innerText = `Gravando ${(grid.length - 1).toLocaleString("pt-BR")} linhas...`;
-        const r = await fetch(`${_CF_API()}/onholds`, {
-            method: "POST", headers: _cfHeaders(true),
-            body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: key, arquivo: file.name, grid: enviar }),
-        });
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok) {
-            el.innerHTML = `<span class="cft-erro">${_cfEsc(d.error || "Erro ao enviar.")}</span>`
-                + (d.cabecalho_encontrado ? `<div class="cft-pend-tags">${d.cabecalho_encontrado.map(h => `<span class="cft-tag">${_cfEsc(h)}</span>`).join("")}</div>` : "");
-            return;
+    const n = (x) => Number(x || 0).toLocaleString("pt-BR");
+    const msgs = [];
+    let recalculado = false;
+    for (const file of arquivos) {
+        el.innerText = `Lendo ${file.name}...`;
+        try {
+            const grid = await _cfLerGrid(file);
+            // Só as colunas que interessam (arquivo de onholds pode ser grande).
+            const { grid: enviar } = _cfSoColunasUteis(grid, ["Order ID", "OnHold Time", "On Hold Time", "OnHoldReason", "OnHold Reason", "On Hold Reason", "Driver Name"]);
+            el.innerText = `Gravando ${file.name} (${n(grid.length - 1)} linhas)...`;
+            const r = await fetch(`${_CF_API()}/onholds`, {
+                method: "POST", headers: _cfHeaders(true),
+                body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: key, arquivo: file.name, grid: enviar }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) {
+                msgs.push(`<span class="cft-erro">${_cfEsc(file.name)}: ${_cfEsc(d.error || "erro ao enviar.")}</span>`
+                    + (d.cabecalho_encontrado ? `<div class="cft-pend-tags">${d.cabecalho_encontrado.map(h => `<span class="cft-tag">${_cfEsc(h)}</span>`).join("")}</div>` : ""));
+                continue;
+            }
+            recalculado = recalculado || d.recalculado;
+            msgs.push(_cfEsc(`${file.name}: ${n(d.gravados)} onholds da quinzena`
+                + (d.fora_da_quinzena ? ` · ${n(d.fora_da_quinzena)} fora da quinzena ignorados` : "")
+                + (d.sem_data ? ` · ${n(d.sem_data)} sem OnHold Time` : "")));
+        } catch (err) {
+            msgs.push(`<span class="cft-erro">${_cfEsc(file.name)}: ${_cfEsc(err.message)}</span>`);
         }
-        const n = (x) => Number(x || 0).toLocaleString("pt-BR");
-        const msg = `${n(d.gravados)} onholds da quinzena gravados`
-            + (d.fora_da_quinzena ? ` · ${n(d.fora_da_quinzena)} fora da quinzena ignorados` : "")
-            + (d.sem_data ? ` · ${n(d.sem_data)} sem OnHold Time` : "")
-            + (d.recalculado ? " · valores recalculados." : " · os valores entram quando o relatório de entregues subir.");
-        if (key !== _cfTranspAtual) return;
-        _cfCarregarOnholdsInfo(_cfEsc(msg));
-        if (d.recalculado) { _cfAtualizarCards(); _cfCarregarDetalhe(); }
-    } catch (err) {
-        el.innerHTML = `<span class="cft-erro">${_cfEsc(err.message)}</span>`;
     }
+    if (key !== _cfTranspAtual) return;
+    _cfCarregarOnholdsInfo(msgs.join("<br>") + (recalculado ? "<br>Valores recalculados." : ""));
+    if (recalculado) { _cfAtualizarCards(); _cfCarregarDetalhe(); }
+}
+
+function _cfRemoverOnholds(envio, nome) {
+    gcConfirm(`Remover o arquivo de onholds <b>${_cfEsc(nome || "(sem nome)")}</b> deste fechamento? Os valores são recalculados.`, async () => {
+        const key = _cfTranspAtual;
+        try {
+            const r = await fetch(`${_CF_API()}/onholds/${encodeURIComponent(envio)}?${_cfQs({ transportadora: key })}`,
+                { method: "DELETE", headers: _cfHeaders() });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d.error || "Erro ao remover.");
+            if (key !== _cfTranspAtual) return;
+            _cfCarregarOnholdsInfo(_cfEsc(`${nome || "Arquivo"} removido.`) + (d.recalculado ? " Valores recalculados." : ""));
+            if (d.recalculado) { _cfAtualizarCards(); _cfCarregarDetalhe(); }
+        } catch (err) { gcAlert(err.message); }
+    }, "Remover onholds", "Remover");
 }
 
 // ── Shopee: performance por usuário e dia (entregues ÷ (entregues + onholds)) ──

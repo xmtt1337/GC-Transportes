@@ -338,3 +338,15 @@ test("CSV com linha inteira entre aspas: a linha é lida de novo e as colunas vo
     assert.deepStrictEqual(r[2], ["BR2", "beltrano", "89500-001", "21/09/2026 11:00:00"]);
     assert.deepStrictEqual(r[3], ["só um campo sem separador", "", "", ""]);
 });
+
+test("onholds: vários arquivos selecionados vão um por um", async () => {
+    let n = 0;
+    const t = carregarComDom(async () => ({ ok: true, status: 200, json: async () => ({ success: true, gravados: 2, recalculado: false, arquivos: [] }) }));
+    vm.runInContext(`_cfTranspAtual = "shopee_cfc"; _cfQuinzena = 2; _cfMes = 9; _cfAno = 2026;
+        _cfLerGrid = async (f) => [["Order ID", "OnHold Time"], [f.name, "21-09-2026 10:00"]];`, t.ctx);
+    t.el("cf-onholds-status");
+    await t.ctx._cfOnholdsSelecionado({ files: [{ name: "a.xlsx" }, { name: "b.xlsx" }], value: "x" });
+    const posts = t.chamadas.filter((c) => c.opts && c.opts.method === "POST").map((c) => JSON.parse(c.opts.body).arquivo);
+    assert.deepStrictEqual(posts, ["a.xlsx", "b.xlsx"]);
+    assert.ok(n === 0);
+});
