@@ -128,6 +128,8 @@ function _cfCarregarResumo() {
         _cfRenderCards();
         if (_cfTranspAtual) _cfCarregarDetalhe();
         else document.getElementById("cf-painel").style.display = "none";
+        const tl = document.getElementById("cf-ticketlog");
+        if (tl && tl.style.display !== "none") _cfCarregarTicketlog();
     }).catch(() => {
         if (reqId === _cfReqId) skFim(empty, "Erro ao carregar dados do período.");
     });
@@ -206,6 +208,196 @@ async function _cfSincronizarCeps() {
         if (btn) btn.disabled = false;
         if (st) st.innerText = err.message;
     }
+}
+
+// ── Descontos: Ticketlog (combustível) da quinzena ──
+// Relatório da Ticketlog: NOME MOTORISTA + VALOR EMISSAO, conferidos com o cadastro de cartões
+// (NUMERO CARTAO × MATRICULA). Matrícula de outro entregador no cartão = digitou errado; o
+// desconto vai pro dono do cartão. Cadastro de cartões: só dev.
+const _CF_SITUACAO_TL = {
+    matricula_errada: "Matrícula errada", cartao_nao_cadastrado: "Cartão não cadastrado",
+    sem_cartao: "Sem número do cartão", nome_nao_cadastrado: "Nome fora do cadastro",
+};
+let _cfTlCartoesAberto = false;
+
+function _cfAbrirTicketlog() {
+    const el = document.getElementById("cf-ticketlog");
+    if (el.style.display !== "none") { el.style.display = "none"; return; }
+    el.style.display = "";
+    _cfCarregarTicketlog();
+}
+
+function _cfCarregarTicketlog(msg) {
+    const el = document.getElementById("cf-ticketlog");
+    if (!_cfQuinzena) { el.innerHTML = `<div class="cft-ajuda">Escolha a quinzena primeiro.</div>`; return; }
+    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    const ehDev = window._gcUser && window._gcUser.role === "dev";
+    fetch(`${_CF_API()}/ticketlog?${_cfQs()}`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
+        const n = (x) => Number(x || 0).toLocaleString("pt-BR");
+        const arqs = d.arquivos || [];
+        const div = d.divergencias || [];
+        el.innerHTML = `
+            <div class="cft-barra" style="margin-top:0">
+                <span class="cft-pend-titulo" style="color:#e2e8f0;margin:0">Descontos da quinzena — Ticketlog (combustível)</span>
+                <span style="flex:1"></span>
+                ${ehDev ? `<button class="cft-btn" onclick="_cfAlternarCartoesTl()">Cartões Ticketlog (dev)</button>` : ""}
+            </div>
+            <div id="cf-tl-cartoes" style="display:${ehDev && _cfTlCartoesAberto ? "" : "none"}"></div>
+            <div class="cft-ajuda" style="margin-bottom:8px">Relatório da Ticketlog: usa NOME MOTORISTA e VALOR EMISSAO, e confere o NUMERO CARTAO com a MATRICULA.
+                Se o cartão é de um entregador e a matrícula digitada é de outro, o desconto vai pro <b>dono do cartão</b> e a linha aparece em Divergências.</div>
+            <div class="cft-barra">
+                <label class="cft-btn primario" style="cursor:pointer">Subir relatório Ticketlog
+                    <input type="file" accept=".xlsx,.xls,.csv" multiple style="display:none" onchange="_cfTicketlogArquivo(this)">
+                </label>
+                <span class="cft-ajuda" id="cf-tl-status">${msg || ""}</span>
+            </div>
+            ${arqs.length ? `<div class="cft-tabela-wrap"><table class="cft-tabela">
+                <thead><tr><th>Arquivo</th><th>Abastecimentos</th><th>R$ emissão</th><th>Enviado em</th><th></th></tr></thead>
+                <tbody>${arqs.map(a => `<tr>
+                    <td>${_cfEsc(a.arquivo || "(sem nome)")}</td><td class="num">${n(a.total)}</td>
+                    <td class="num">${moedaJS(a.valor)}</td>
+                    <td>${a.enviado_em ? new Date(a.enviado_em).toLocaleString("pt-BR") : ""}</td>
+                    <td><button class="cft-btn perigo" data-e="${_cfEsc(a.envio_id)}" data-n="${_cfEsc(a.arquivo || "")}" onclick="_cfRemoverTicketlog(this.dataset.e, this.dataset.n)">Remover</button></td>
+                </tr>`).join("")}</tbody></table></div>` : `<div class="cft-ajuda">Nenhum relatório da Ticketlog nesta quinzena ainda.</div>`}
+            ${arqs.length ? `
+            <div class="cft-kpis" style="margin-top:14px">
+                <div class="cft-kpi"><div class="cft-kpi-valor cft-neg">${moedaJS(d.total)}</div><div class="cft-kpi-rotulo">Combustível na quinzena</div></div>
+                <div class="cft-kpi"><div class="cft-kpi-valor">${n(d.abastecimentos)}</div><div class="cft-kpi-rotulo">Abastecimentos</div></div>
+                <div class="cft-kpi"><div class="cft-kpi-valor${div.length ? " cft-neg" : ""}">${n(div.length)}</div><div class="cft-kpi-rotulo">Divergências</div></div>
+            </div>
+            ${div.length ? `<div class="cft-pend" style="margin-top:4px">
+                <div class="cft-pend-titulo">Divergências</div>
+                <div class="cft-tabela-wrap" style="max-height:300px;overflow-y:auto"><table class="cft-tabela">
+                    <thead><tr><th>Data</th><th>Nome no relatório</th><th>Cartão</th><th>Matrícula</th><th>R$ emissão</th><th>Descontar de</th><th>Problema</th></tr></thead>
+                    <tbody>${div.map(l => `<tr title="${_cfEsc(l.detalhe || "")}">
+                        <td>${_cfDia(l.data)}</td><td>${_cfEsc(l.nome)}</td><td>${_cfEsc(l.cartao || "—")}</td><td>${_cfEsc(l.matricula || "—")}</td>
+                        <td class="num cft-neg">${_cfNum(l.valor)}</td><td>${_cfEsc(l.driver || "—")}</td>
+                        <td style="white-space:normal;min-width:280px">${_cfEsc(_CF_SITUACAO_TL[l.situacao] || l.situacao)}<div class="cft-ajuda">${_cfEsc(l.detalhe || "")}</div></td>
+                    </tr>`).join("")}</tbody></table></div></div>` : ""}
+            <div class="cft-pend-titulo" style="color:#e2e8f0;margin-top:10px">Por entregador</div>
+            <div class="cft-tabela-wrap" style="max-height:360px;overflow-y:auto"><table class="cft-tabela">
+                <thead><tr><th>Entregador</th><th>Abastecimentos</th><th>R$ a descontar</th><th>Divergências</th></tr></thead>
+                <tbody>${(d.resumo || []).map(r => `<tr>
+                    <td>${_cfEsc(r.driver)}</td><td class="num">${n(r.abastecimentos)}</td>
+                    <td class="num cft-neg"><strong>${_cfNum(r.total)}</strong></td>
+                    <td class="num${r.divergencias ? " cft-neg" : ""}">${n(r.divergencias)}</td>
+                </tr>`).join("")}</tbody></table></div>` : ""}`;
+        if (ehDev && _cfTlCartoesAberto) _cfCarregarCartoesTl();
+    }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar a Ticketlog.</div>`; });
+}
+
+async function _cfTicketlogArquivo(input) {
+    const arquivos = [...(input.files || [])];
+    input.value = "";
+    const msgs = [];
+    for (const file of arquivos) {
+        const st = document.getElementById("cf-tl-status");
+        if (st) st.innerText = `Lendo ${file.name}...`;
+        try {
+            const grid = await _cfLerGrid(file);
+            const r = await fetch(`${_CF_API()}/ticketlog`, {
+                method: "POST", headers: _cfHeaders(true),
+                body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, arquivo: file.name, grid }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) {
+                msgs.push(`<span class="cft-erro">${_cfEsc(file.name)}: ${_cfEsc(d.error || "erro ao enviar.")}</span>`
+                    + (d.cabecalho_encontrado && d.cabecalho_encontrado.length ? ` <span class="cft-ajuda">Colunas do arquivo: ${_cfEsc(d.cabecalho_encontrado.join(" · "))}</span>` : ""));
+                continue;
+            }
+            msgs.push(_cfEsc(`${file.name}: ${Number(d.gravados).toLocaleString("pt-BR")} abastecimentos.`) + (d.aviso ? ` <span class="cft-neg">${_cfEsc(d.aviso)}</span>` : ""));
+        } catch (err) { msgs.push(`<span class="cft-erro">${_cfEsc(file.name)}: ${_cfEsc(err.message)}</span>`); }
+    }
+    _cfCarregarTicketlog(msgs.join("<br>"));
+}
+
+function _cfRemoverTicketlog(envio, nome) {
+    gcConfirm(`Remover o relatório da Ticketlog <b>${_cfEsc(nome || "(sem nome)")}</b> desta quinzena?`, () => {
+        fetch(`${_CF_API()}/ticketlog/${encodeURIComponent(envio)}?${_cfQs()}`, { method: "DELETE", headers: _cfHeaders() })
+        .then(r => r.json())
+        .then(d => { if (d.error) gcAlert(d.error); else _cfCarregarTicketlog(_cfEsc(`${nome || "Relatório"} removido.`)); })
+        .catch(() => gcAlert("Erro ao remover."));
+    }, "Remover relatório", "Remover");
+}
+
+// ── Cadastro de cartões Ticketlog (só dev) ──
+let _cfTlCartoes = [];
+
+function _cfAlternarCartoesTl() {
+    _cfTlCartoesAberto = !_cfTlCartoesAberto;
+    const el = document.getElementById("cf-tl-cartoes");
+    el.style.display = _cfTlCartoesAberto ? "" : "none";
+    if (_cfTlCartoesAberto) _cfCarregarCartoesTl();
+}
+
+function _cfCarregarCartoesTl(msg) {
+    const el = document.getElementById("cf-tl-cartoes");
+    if (!el) return;
+    el.innerHTML = `<div class="cft-ajuda">Carregando cartões...</div>`;
+    fetch(`${_CF_API()}/ticketlog-cartoes`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
+        _cfTlCartoes = d.cartoes || [];
+        el.innerHTML = `
+            <div class="cft-regras" style="margin:6px 0 14px">
+                <div class="cft-pend-titulo" style="color:#e2e8f0">Cartões Ticketlog</div>
+                <div class="cft-ajuda" style="margin-bottom:8px">Quem é o dono de cada cartão. O nome do entregador tem que ser o da Conversão de nomes (com " - Cidade").</div>
+                <div class="cft-tabela-wrap" style="max-height:320px;overflow-y:auto"><table class="cft-tabela">
+                    <thead><tr><th>Entregador</th><th>Número do cartão</th><th>Matrícula</th><th>Placa</th><th></th></tr></thead>
+                    <tbody>${_cfTlCartoes.map(c => `<tr>
+                        <td><input class="cft-input cft-tl-in" data-id="${c.id}" data-k="driver" value="${_cfEsc(c.driver)}"></td>
+                        <td><input class="cft-input cft-tl-in" data-id="${c.id}" data-k="numero" value="${_cfEsc(c.numero)}"></td>
+                        <td><input class="cft-input cft-tl-in" data-id="${c.id}" data-k="matricula" value="${_cfEsc(c.matricula || "")}" style="width:80px"></td>
+                        <td><input class="cft-input cft-tl-in" data-id="${c.id}" data-k="placa" value="${_cfEsc(c.placa || "")}" style="width:110px"></td>
+                        <td style="white-space:nowrap"><button class="cft-btn" onclick="_cfSalvarCartaoTl(${c.id})">Salvar</button>
+                            <button class="cft-btn perigo" onclick="_cfRemoverCartaoTl(${c.id})">Remover</button></td>
+                    </tr>`).join("")}</tbody></table></div>
+                <div class="cft-ajuda" style="margin-top:10px">Acrescentar: cole da planilha as colunas <b>Driver · Número · Matrícula · Placa</b> (uma linha por cartão; cartão que já existe é atualizado).</div>
+                <textarea id="cf-tl-colar" class="cft-input" rows="3" placeholder="Fulano de Tal - Caçador&#9;0000000000000000&#9;99&#9;ABC0000"></textarea>
+                <div class="cft-barra" style="margin:8px 0 0">
+                    <button class="cft-btn primario" onclick="_cfImportarCartoesTl()">Gravar cartões colados</button>
+                    <span class="cft-ajuda" id="cf-tl-cartoes-status">${msg || ""}</span>
+                </div>
+            </div>`;
+    }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar os cartões.</div>`; });
+}
+
+async function _cfPostCartoesTl(corpo, okMsg) {
+    const st = document.getElementById("cf-tl-cartoes-status");
+    try {
+        const r = await fetch(`${_CF_API()}/ticketlog-cartoes`, { method: "POST", headers: _cfHeaders(true), body: JSON.stringify(corpo) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Erro ao gravar.");
+        _cfCarregarTicketlog(); // a conferência usa o cadastro novo na hora
+        _cfCarregarCartoesTl(_cfEsc(okMsg(d)) + (d.erros && d.erros.length ? ` <span class="cft-neg">${_cfEsc(d.erros.length + " linha(s) com erro: " + d.erros[0])}</span>` : ""));
+    } catch (err) { if (st) st.innerText = err.message; }
+}
+
+function _cfSalvarCartaoTl(id) {
+    const v = {};
+    document.querySelectorAll(`.cft-tl-in[data-id="${id}"]`).forEach(i => { v[i.dataset.k] = i.value; });
+    _cfPostCartoesTl({ id, ...v }, () => "Cartão salvo.");
+}
+
+function _cfImportarCartoesTl() {
+    const linhas = document.getElementById("cf-tl-colar").value.split(/\r?\n/)
+        .map(l => l.split("\t").map(c => c.trim())).filter(c => c.some(Boolean));
+    if (!linhas.length) return;
+    _cfPostCartoesTl({ linhas }, (d) => `${d.gravados} cartão(ões) gravado(s).`);
+}
+
+function _cfRemoverCartaoTl(id) {
+    const c = _cfTlCartoes.find(x => x.id === id);
+    gcConfirm(`Remover o cartão de <b>${_cfEsc(c ? c.driver : "")}</b>?`, () => {
+        fetch(`${_CF_API()}/ticketlog-cartoes/${id}`, { method: "DELETE", headers: _cfHeaders() })
+        .then(r => r.json())
+        .then(d => { if (d.error) gcAlert(d.error); else { _cfCarregarTicketlog(); _cfCarregarCartoesTl("Removido."); } })
+        .catch(() => gcAlert("Erro ao remover."));
+    }, "Remover cartão", "Remover");
 }
 
 // ── Shopee: valores fixos por entregador (no lugar da performance) ──
@@ -1824,6 +2016,9 @@ function _cfLerGrid(file) {
                         const d = new Date(Math.round(v.getTime() / 1000) * 1000);
                         return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
                     }
+                    // Inteiro grande (cartão, código numérico): o número de verdade — o texto
+                    // formatado do Excel pode vir "6,03574E+15" e perder dígitos.
+                    if (typeof v === "number" && Number.isInteger(v) && Math.abs(v) >= 1e11) return String(v);
                     const t = txt[i] && txt[i][j];
                     return _cfConsertarAcento(t !== undefined && t !== "" ? String(t) : String(v ?? ""));
                 }));

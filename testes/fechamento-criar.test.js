@@ -408,3 +408,14 @@ test("texto da tabela de performance sai da tabela da XPT (Infinity vira null no
     const cfc = { semana: [{ ate: 95, inclusivo: true, valor: 1.8 }, { ate: 98, valor: 2 }, { ate: 99.5, valor: 2.5 }, { ate: null, valor: 2.6 }], domingo: [] };
     assert.match(ctx._cfTextoFaixas(cfc), /&lt; 99,5% R\$ 2,5 · ≥ 99,5% R\$ 2,6/);
 });
+
+test("cartões Ticketlog: colar da planilha separa por tab, ignora linha vazia", async () => {
+    const t = carregarComDom(async () => ({ ok: true, status: 200, json: async () => ({ success: true, gravados: 2, erros: [] }) }));
+    vm.runInContext("_cfCarregarTicketlog = () => {}; _cfCarregarCartoesTl = () => {};", t.ctx);
+    t.el("cf-tl-colar").value = "Fulano - Vila\t6035000000000001\t12\tAAA0001\n\t\t\t\nBeltrano - Morro\t6035000000000002\t13\tAAA0002";
+    t.el("cf-tl-cartoes-status");
+    await t.ctx._cfImportarCartoesTl();
+    await new Promise((r) => setTimeout(r, 5));
+    assert.deepStrictEqual(JSON.parse(t.chamadas[0].opts.body).linhas, [
+        ["Fulano - Vila", "6035000000000001", "12", "AAA0001"], ["Beltrano - Morro", "6035000000000002", "13", "AAA0002"]]);
+});

@@ -4863,7 +4863,7 @@ if (_BASE) {
 <script src="js/whatsapp-conversa.js?v=20261021a"></script>
 <script src="js/modals.js?v=20260924a"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
-<script src="js/fechamento-criar.js?v=20261027h"></script>
+<script src="js/fechamento-criar.js?v=20261027i"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
 <script src="js/pedidos.js?v=20261020a"></script>
@@ -5018,12 +5018,14 @@ if (_BASE) {
             <div class="cft-barra" style="justify-content:space-between;margin-top:0">
                 <div class="ant-form-title" style="margin:0">Transportadoras da quinzena</div>
                 <span>
+                    <button class="cft-btn" id="cf-ticketlog-btn" onclick="_cfAbrirTicketlog()">Descontos: Ticketlog</button>
                     <button class="cft-btn" id="cf-fixos-btn" onclick="_cfAbrirFixos()">Valores fixos (Shopee)</button>
                     <button class="cft-btn" id="cf-cidades-btn" onclick="_cfAbrirConvCidades()">Conversão de cidades</button>
                     <button class="cft-btn" id="cf-colunas-btn" onclick="_cfAbrirColunas()">Colunas dos relatórios</button>
                     <button class="cft-btn" id="cf-regras-btn" onclick="_cfAbrirRegras()">Regras de prazo</button>
                 </span>
             </div>
+            <div class="cft-regras" id="cf-ticketlog" style="display:none"></div>
             <div class="cft-regras" id="cf-fixos" style="display:none"></div>
             <div class="cft-regras" id="cf-cidades" style="display:none"></div>
             <div class="cft-regras" id="cf-colunas" style="display:none"></div>
