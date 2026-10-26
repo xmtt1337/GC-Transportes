@@ -538,7 +538,7 @@ function _cfCarregarPerformance() {
                 Recipient reject ou Wrongly assigned; Office closed no sábado ou domingo; pedido entregue no mesmo dia do onhold.
                 ${txtRegras ? `<b style="color:#cbd5e1">${txtRegras}</b>` : ""}
                 Entregador em "Valores fixos" ganha o valor dele, seja qual for a performance.
-                Seg a sáb: ≤ 95% R$ 1,80 · &lt; 98% R$ 2,00 · &lt; 99,5% R$ 2,50 · ≥ 99,5% R$ 2,60. Domingo: ≤ 90% R$ 2,40 · &lt; 98% R$ 2,50 · ≥ 98% R$ 2,60.</div>
+                ${_cfTextoFaixas(d.faixas)}</div>
             <div class="cft-tabela-wrap" style="max-height:420px;overflow-y:auto"><table class="cft-tabela">
                 <thead><tr><th>Dia</th><th>Usuário</th><th>Driver</th><th>Entregues</th><th>Onholds</th><th>Performance</th><th>R$/pacote</th><th>Total</th></tr></thead>
                 <tbody id="cf-perf-tbody"></tbody>
@@ -546,6 +546,20 @@ function _cfCarregarPerformance() {
             <div class="cft-ajuda" style="margin:6px 0 18px" id="cf-perf-total"></div>`;
         _cfRenderPerformance();
     }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar a performance.</div>`; });
+}
+
+// Tabela de valor por performance da XPT aberta (vem do servidor — cada XPT tem a sua).
+function _cfTextoFaixas(f) {
+    if (!f) return "";
+    const faixa = (lista) => lista.map((x, i) => {
+        const v = moedaJS(x.valor);
+        if (x.ate === null || x.ate === Infinity || x.ate > 1000) {
+            const ant = lista[i - 1];
+            return `${ant && ant.ate === 100 ? "= 100%" : "≥ " + _cfNum(ant ? ant.ate : 0, ant && ant.ate % 1 ? 1 : 0) + "%"} ${v}`;
+        }
+        return `${x.inclusivo ? "≤" : "&lt;"} ${_cfNum(x.ate, x.ate % 1 ? 1 : 0)}% ${v}`;
+    }).join(" · ");
+    return `Seg a sáb: ${faixa(f.semana || [])}. Domingo: ${faixa(f.domingo || [])}.`;
 }
 
 function _cfRenderPerformance() {

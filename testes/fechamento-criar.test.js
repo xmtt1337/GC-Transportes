@@ -396,3 +396,15 @@ test("desconsiderar onholds: lista em linhas, fechada por padrão, com busca", (
     ctx._cfAlternarListaIgnorar();
     assert.strictEqual(els["cf-ignorar-lista"].style.display, "none");
 });
+
+test("texto da tabela de performance sai da tabela da XPT (Infinity vira null no JSON)", () => {
+    const ctx = carregar();
+    ctx.moedaJS = (n) => "R$ " + String(n).replace(".", ",");
+    const via = { semana: [{ ate: 95, inclusivo: true, valor: 1.8 }, { ate: 98, valor: 2 }, { ate: 100, valor: 2.2 }, { ate: null, valor: 2.6 }],
+        domingo: [{ ate: 90, inclusivo: true, valor: 2.4 }, { ate: 98, valor: 2.5 }, { ate: null, valor: 2.6 }] };
+    const txt = ctx._cfTextoFaixas(via);
+    assert.match(txt, /&lt; 100% R\$ 2,2 · = 100% R\$ 2,6/);
+    assert.match(txt, /Domingo: ≤ 90% R\$ 2,4 · &lt; 98% R\$ 2,5 · ≥ 98% R\$ 2,6/);
+    const cfc = { semana: [{ ate: 95, inclusivo: true, valor: 1.8 }, { ate: 98, valor: 2 }, { ate: 99.5, valor: 2.5 }, { ate: null, valor: 2.6 }], domingo: [] };
+    assert.match(ctx._cfTextoFaixas(cfc), /&lt; 99,5% R\$ 2,5 · ≥ 99,5% R\$ 2,6/);
+});
