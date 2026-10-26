@@ -39,11 +39,11 @@ test("linha mais curta que o cabeçalho não vira undefined", () => {
     assert.deepStrictEqual(JSON.parse(JSON.stringify(r.grid[1])), ["P1", ""]);
 });
 
-test("as 5 transportadoras da planilha de precificação têm card", () => {
+test("transportadoras com card (Shopee por XPT)", () => {
     const ctx = carregar();
     assert.deepStrictEqual(
         JSON.parse(vm.runInContext("JSON.stringify(_CF_TRANSPORTADORAS.map(t => t.label))", ctx)),
-        ["Shopee Xpress", "Loggi", "Anjun", "Imile", "Total Express"]);
+        ["Shopee Caçador", "Shopee Videira", "Loggi", "Anjun", "Imile", "Total Express"]);
 });
 
 test("coluna pela letra (#S, #AG) entra mesmo sem nome reconhecido", () => {
@@ -141,7 +141,7 @@ test("toda coluna da tabela tem funil", () => {
     const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-criar.js"), "utf8");
     for (const c of ["driver", "usuario", "codigo", "tipo_produto", "cidade", "polo", "data_atribuicao", "data_entrega",
         "deve_ser_entregue", "dentro_prazo", "peso_kg", "valor_entrega", "incentivo", "desconto", "adicional_peso", "valor_motorista"]) {
-        assert.match(fonte, new RegExp(`_cfTh\\("[^"]+", "${c}"\\)`), c);
+        assert.match(fonte, new RegExp(`_cfTh\\((?:"[^"]+"|sp \\? "[^"]+" : "[^"]+"), "${c}"\\)`), c);
     }
     assert.doesNotMatch(fonte, /<th>(Código|Peso|Valor|Incentivo|Desconto|Adic|Motorista)/, "nenhum <th> sem funil");
     assert.ok(ctx);
@@ -280,4 +280,21 @@ test("cidade com várias grafias: tag única mostra quantas grafias e lista no t
     assert.match(html, /\+2 grafias/);
     assert.match(html, /title="Grafias no relatório: Caçador · Cacador · CACADOR"/);
     assert.match(html, /<b>431<\/b>/);
+});
+
+test("Shopee: KPIs de performance no lugar do prazo", () => {
+    const ctx = carregar();
+    ctx.moedaJS = (n) => "R$ " + n;
+    const resumo = { total: 10, dentro_prazo: 0, fora_prazo: 0, valor_motorista: 20, sem_data_entrega: 0, sem_data_atribuicao: 0,
+        cidades_sem_preco: [], tipos_sem_preco: [], nomes_sem_conversao: [], ceps_sem_cidade: [{ nome: "11111111", qtd: 2 }],
+        performance: { entregues: 10, onholds: 1, pct: 90.91, onholds_total: 2, onholds_sem_entregador: 1 } };
+    vm.runInContext(`_cfTranspAtual = "shopee_via"`, ctx);
+    const html = ctx._cfHtmlResumo(resumo);
+    assert.match(html, /Performance geral/);
+    assert.match(html, /90,91%/);
+    assert.match(html, /1 sem entregador/);
+    assert.match(html, /CEP sem cidade/);
+    assert.doesNotMatch(html, /Fora do prazo/);
+    vm.runInContext(`_cfTranspAtual = "anjun"`, ctx);
+    assert.match(ctx._cfHtmlResumo(resumo), /Fora do prazo/);
 });

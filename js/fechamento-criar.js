@@ -34,12 +34,17 @@ const _CF_API = () => `${API}/admin/fechamento-transportadoras`;
 
 // key/label também são lidos por pedidos-ocorrencia.js.
 const _CF_TRANSPORTADORAS = [
-    { key: "shopee", label: "Shopee Xpress", cor: "#F97316" },
+    // Shopee: um fechamento por XPT, mesmas regras (valor pela performance — ver _cfEhShopee).
+    { key: "shopee_cfc", label: "Shopee Caçador", cor: "#F97316" },
+    { key: "shopee_via", label: "Shopee Videira", cor: "#F97316" },
     { key: "loggi",  label: "Loggi",         cor: "#12A5E8" },
     { key: "anjun",  label: "Anjun",         cor: "#22C55E" },
     { key: "imile",  label: "Imile",         cor: "#9333EA" },
     { key: "total",  label: "Total Express", cor: "#EAB308" },
 ];
+
+/** Shopee (as duas XPTs): valor pela performance do usuário no dia, sem prazo. */
+function _cfEhShopee(key) { return String(key || "").startsWith("shopee"); }
 
 function _cfEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -150,7 +155,7 @@ function _cfRenderCards() {
             const comData = r.dentro_prazo + r.fora_prazo;
             const pct = comData ? Math.round(r.dentro_prazo / comData * 100) : 0;
             corpo = `
-                <div class="cft-card-linha"><strong>${r.total.toLocaleString("pt-BR")}</strong> pacotes · <strong>${pct}%</strong> no prazo</div>
+                <div class="cft-card-linha"><strong>${r.total.toLocaleString("pt-BR")}</strong> pacotes${_cfEhShopee(t.key) ? "" : ` · <strong>${pct}%</strong> no prazo`}</div>
                 <div class="cft-card-linha">Motoristas: <strong>${moedaJS(r.valor_motorista)}</strong></div>
                 ${r.com_pendencia ? `<div class="cft-card-linha cft-card-pend">${r.com_pendencia.toLocaleString("pt-BR")} com pendência</div>` : ""}
                 <div class="cft-arquivo" title="${_cfEsc(r.arquivo)}">${_cfEsc(r.arquivo || "")}</div>`;
@@ -170,7 +175,118 @@ function _cfSelecionarTransp(key) {
     document.getElementById("cf-upload-status").innerHTML = "";
     document.getElementById("cf-file-input").value = "";
     document.getElementById("cf-painel").style.display = "";
+    // Shopee: segundo upload, dos onholds da quinzena.
+    const oh = document.getElementById("cf-onholds-wrap");
+    oh.style.display = _cfEhShopee(key) ? "" : "none";
+    if (_cfEhShopee(key)) {
+        document.getElementById("cf-onholds-titulo").innerText = `Alimentar onholds — ${cfg.label}`;
+        document.getElementById("cf-onholds-input").value = "";
+        _cfCarregarOnholdsInfo();
+    }
     _cfCarregarDetalhe();
+}
+
+// ── Shopee: onholds da quinzena (Order ID, OnHold Time, OnHoldReason; Driver Name se tiver) ──
+function _cfCarregarOnholdsInfo(msg) {
+    const key = _cfTranspAtual;
+    const el = document.getElementById("cf-onholds-status");
+    fetch(`${_CF_API()}/onholds?${_cfQs({ transportadora: key })}`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (key !== _cfTranspAtual) return;
+        const atual = d.total
+            ? `${d.total.toLocaleString("pt-BR")} onholds da quinzena gravados${d.arquivo ? ` (${_cfEsc(d.arquivo)})` : ""}.`
+            : "Nenhum onhold desta quinzena ainda — sem eles, todo mundo fica com 100% de performance.";
+        el.innerHTML = (msg ? msg + "<br>" : "") + atual;
+    }).catch(() => {});
+}
+
+async function _cfOnholdsSelecionado(input) {
+    const file = input.files[0];
+    input.value = "";
+    if (!file) return;
+    const key = _cfTranspAtual;
+    const el = document.getElementById("cf-onholds-status");
+    el.innerText = "Lendo arquivo...";
+    try {
+        const grid = await _cfLerGrid(file);
+        // Só as colunas que interessam (arquivo de onholds pode ser grande).
+        const { grid: enviar } = _cfSoColunasUteis(grid, ["Order ID", "OnHold Time", "On Hold Time", "OnHoldReason", "OnHold Reason", "On Hold Reason", "Driver Name"]);
+        el.innerText = `Gravando ${(grid.length - 1).toLocaleString("pt-BR")} linhas...`;
+        const r = await fetch(`${_CF_API()}/onholds`, {
+            method: "POST", headers: _cfHeaders(true),
+            body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: key, arquivo: file.name, grid: enviar }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            el.innerHTML = `<span class="cft-erro">${_cfEsc(d.error || "Erro ao enviar.")}</span>`
+                + (d.cabecalho_encontrado ? `<div class="cft-pend-tags">${d.cabecalho_encontrado.map(h => `<span class="cft-tag">${_cfEsc(h)}</span>`).join("")}</div>` : "");
+            return;
+        }
+        const n = (x) => Number(x || 0).toLocaleString("pt-BR");
+        const msg = `${n(d.gravados)} onholds da quinzena gravados`
+            + (d.fora_da_quinzena ? ` · ${n(d.fora_da_quinzena)} fora da quinzena ignorados` : "")
+            + (d.sem_data ? ` · ${n(d.sem_data)} sem OnHold Time` : "")
+            + (d.recalculado ? " · valores recalculados." : " · os valores entram quando o relatório de entregues subir.");
+        if (key !== _cfTranspAtual) return;
+        _cfCarregarOnholdsInfo(_cfEsc(msg));
+        if (d.recalculado) { _cfAtualizarCards(); _cfCarregarDetalhe(); }
+    } catch (err) {
+        el.innerHTML = `<span class="cft-erro">${_cfEsc(err.message)}</span>`;
+    }
+}
+
+// ── Shopee: performance por usuário e dia (entregues ÷ (entregues + onholds)) ──
+let _cfPerfLinhas = [];
+const _CF_DIAS_SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+function _cfCarregarPerformance() {
+    const key = _cfTranspAtual;
+    const el = document.getElementById("cf-perf");
+    if (!el) return;
+    el.innerHTML = `<div class="cft-ajuda">Carregando performance...</div>`;
+    fetch(`${_CF_API()}/performance?${_cfQs({ transportadora: key })}`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (key !== _cfTranspAtual) return;
+        if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
+        _cfPerfLinhas = d.linhas || [];
+        el.innerHTML = `
+            <div class="cft-barra" style="justify-content:space-between">
+                <span class="cft-pend-titulo" style="color:#e2e8f0;margin:0">Performance por usuário e dia</span>
+                <div class="adm-search-input-area" style="max-width:260px">
+                    <input type="text" id="cf-perf-busca" placeholder="Usuário ou driver..." oninput="_cfRenderPerformance()">
+                </div>
+            </div>
+            <div class="cft-ajuda" style="margin-bottom:8px">Performance = entregues ÷ (entregues + onholds) do usuário no dia.
+                Seg a sáb: ≤ 95% R$ 1,80 · &lt; 98% R$ 2,00 · &lt; 99,5% R$ 2,50 · ≥ 99,5% R$ 2,60. Domingo: &lt; 90% R$ 2,40 · &lt; 98% R$ 2,50 · ≥ 98% R$ 2,60.</div>
+            <div class="cft-tabela-wrap" style="max-height:420px;overflow-y:auto"><table class="cft-tabela">
+                <thead><tr><th>Dia</th><th>Usuário</th><th>Driver</th><th>Entregues</th><th>Onholds</th><th>Performance</th><th>R$/pacote</th><th>Total</th></tr></thead>
+                <tbody id="cf-perf-tbody"></tbody>
+            </table></div>
+            <div class="cft-ajuda" style="margin:6px 0 18px" id="cf-perf-total"></div>`;
+        _cfRenderPerformance();
+    }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar a performance.</div>`; });
+}
+
+function _cfRenderPerformance() {
+    const busca = _cfChave((document.getElementById("cf-perf-busca") || {}).value || "");
+    const lista = _cfPerfLinhas.filter(l => !busca || _cfChave(l.usuario).includes(busca) || _cfChave(l.driver).includes(busca));
+    const diaSem = (iso) => _CF_DIAS_SEMANA[new Date(iso + "T12:00:00Z").getUTCDay()];
+    document.getElementById("cf-perf-tbody").innerHTML = lista.length ? lista.slice(0, 1000).map(l => `<tr>
+            <td>${_cfDia(l.dia)} <span class="cft-ajuda">${diaSem(l.dia)}</span></td>
+            <td>${_cfEsc(l.usuario)}</td>
+            <td>${l.driver ? _cfEsc(l.driver) : `<span class="cft-vazio">—</span>`}</td>
+            <td class="num">${l.entregues.toLocaleString("pt-BR")}</td>
+            <td class="num${l.onholds ? " cft-neg" : ""}">${l.onholds.toLocaleString("pt-BR")}</td>
+            <td class="num">${_cfNum(l.pct, 2)}%</td>
+            <td class="num">${_cfNum(l.valor)}</td>
+            <td class="num cft-pos"><strong>${_cfNum(l.total)}</strong></td>
+        </tr>`).join("")
+        : `<tr><td colspan="8" class="cft-vazio" style="padding:14px">Nada por aqui.</td></tr>`;
+    const tot = lista.reduce((s, l) => s + l.total, 0);
+    document.getElementById("cf-perf-total").innerText =
+        `${lista.length.toLocaleString("pt-BR")} linha${lista.length !== 1 ? "s" : ""} (usuário × dia) · total ${moedaJS(tot)}`;
 }
 
 function _cfCarregarDetalhe() {
@@ -195,7 +311,9 @@ function _cfCarregarDetalhe() {
             det.innerHTML = `<div class="cft-ajuda">Nenhum relatório dessa transportadora nesta quinzena ainda.</div>`;
             return;
         }
-        det.innerHTML = _cfHtmlResumo(d.resumo) + _cfHtmlAcoes() + _cfHtmlTabelaBase();
+        det.innerHTML = _cfHtmlResumo(d.resumo) + _cfHtmlAcoes()
+            + (_cfEhShopee(key) ? `<div id="cf-perf"></div>` : "") + _cfHtmlTabelaBase();
+        if (_cfEhShopee(key)) _cfCarregarPerformance();
         _cfCarregarPacotes();
     }).catch(() => {
         if (reqId === _cfReqId) det.innerHTML = `<div class="cft-erro">Erro ao carregar o fechamento.</div>`;
@@ -205,7 +323,14 @@ function _cfCarregarDetalhe() {
 function _cfHtmlResumo(r) {
     const comData = r.dentro_prazo + r.fora_prazo;
     const pct = comData ? Math.round(r.dentro_prazo / comData * 100) : 0;
-    const kpis = `
+    const perf = r.performance;
+    const kpis = _cfEhShopee(_cfTranspAtual) ? `
+        <div class="cft-kpis">
+            <div class="cft-kpi"><div class="cft-kpi-valor">${r.total.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Pacotes</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor">${perf ? _cfNum(perf.pct, 2) + "%" : "—"}</div><div class="cft-kpi-rotulo">Performance geral</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor">${perf ? perf.onholds.toLocaleString("pt-BR") : "—"}</div><div class="cft-kpi-rotulo">Onholds na quinzena${perf && perf.onholds_sem_entregador ? ` · <span class="cft-neg">${perf.onholds_sem_entregador} sem entregador</span>` : ""}</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor cft-pos">${moedaJS(r.valor_motorista)}</div><div class="cft-kpi-rotulo">Valor motoristas</div></div>
+        </div>` : `
         <div class="cft-kpis">
             <div class="cft-kpi"><div class="cft-kpi-valor">${r.total.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Pacotes</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">${pct}%</div><div class="cft-kpi-rotulo">${r.dentro_prazo.toLocaleString("pt-BR")} no prazo</div></div>
@@ -227,6 +352,7 @@ function _cfHtmlResumo(r) {
         : `<div class="cft-pend-grupo"><b>Cidade sem preço na planilha</b> — sem valor nem prazo até cadastrar na aba da transportadora:${tags(r.cidades_sem_preco)}</div>`);
     if ((r.cidades_sem_conversao || []).length && _CF_CONVERTE_CIDADE.includes(_cfTranspAtual)) grupos.push(
         `<div class="cft-pend-grupo"><b>Cidade sem conversão</b> — achou preço pelo nome, mas ainda não está na Conversão de cidades. Clique pra confirmar (ou trocar):<div class="cft-pend-tags" id="cf-cidades-conv-pend">${_cfHtmlCidadesPend("conv")}</div></div>`);
+    if ((r.ceps_sem_cidade || []).length) grupos.push(`<div class="cft-pend-grupo"><b>CEP sem cidade</b> — não está na planilha de CEP do Planejamento (aba Cep Geral); a cidade fica em branco:${tags(r.ceps_sem_cidade)}</div>`);
     if (r.tipos_sem_preco.length) grupos.push(`<div class="cft-pend-grupo"><b>Tipo de produto sem coluna de preço</b>:${tags(r.tipos_sem_preco)}</div>`);
     if (r.nomes_sem_conversao.length) grupos.push(`<div class="cft-pend-grupo"><b>Usuário sem conversão de nome</b> — clique no nome pra dizer quem é o entregador:<div class="cft-pend-tags" id="cf-nomes-pend">${_cfHtmlNomesPend()}</div></div>`);
     if (r.sem_data_entrega) grupos.push(`<div class="cft-pend-grupo"><b>${r.sem_data_entrega}</b> sem data de entrega (não pagos)</div>`);
@@ -679,7 +805,7 @@ function _cfHtmlTabelaBase() {
         <div class="cft-barra" style="justify-content:space-between">
             <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button class="cft-chip${_cfFiltro === "" ? " on" : ""}" data-cf-filtro="" onclick="_cfMudarFiltro('')">Todos</button>
-                <button class="cft-chip${_cfFiltro === "fora" ? " on" : ""}" data-cf-filtro="fora" onclick="_cfMudarFiltro('fora')">Fora do prazo</button>
+                ${_cfEhShopee(_cfTranspAtual) ? "" : `<button class="cft-chip${_cfFiltro === "fora" ? " on" : ""}" data-cf-filtro="fora" onclick="_cfMudarFiltro('fora')">Fora do prazo</button>`}
                 <button class="cft-chip${_cfFiltro === "pendentes" ? " on" : ""}" data-cf-filtro="pendentes" onclick="_cfMudarFiltro('pendentes')">Com pendência</button>
                 <button class="cft-btn" id="cf-limpar-filtros" style="display:none" onclick="_cfLimparFiltrosColuna()">Limpar filtros de coluna</button>
             </div>
@@ -709,6 +835,8 @@ function _cfCarregarPacotes() {
         if (reqId !== _cfReqId || key !== _cfTranspAtual) return;
         if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
         const total = key === "total";
+        // Shopee: só as colunas que ela grava (sem prazo, peso, incentivo, desconto, adicional).
+        const sp = _cfEhShopee(key);
         const linhas = (d.pacotes || []).map(p => {
             const pend = (p.pendencias || []).map(x => _CF_PENDENCIA_TEXTO[x] || x).join(", ");
             const prazo = p.dentro_prazo === "Sim" ? `<span class="cft-sim">Sim</span>`
@@ -718,17 +846,18 @@ function _cfCarregarPacotes() {
                 <td>${_cfEsc(p.usuario)}</td>
                 <td>${_cfEsc(p.codigo)}</td>
                 ${total ? `<td>${_cfEsc(p.tipo_produto)}</td>` : ""}
-                <td>${_cfEsc(p.cidade || p.cep)}</td>
+                <td>${sp ? (p.cidade ? _cfEsc(p.cidade) : `<span class="cft-vazio">—</span>`) : _cfEsc(p.cidade || p.cep)}</td>
+                ${sp ? `<td>${_cfEsc(p.cep)}</td>` : ""}
                 <td>${_cfEsc(p.polo)}</td>
-                <td>${_cfDia(p.data_atribuicao)}</td>
+                ${sp ? "" : `<td>${_cfDia(p.data_atribuicao)}</td>`}
                 <td>${_cfDia(p.data_entrega)}</td>
-                <td>${_cfDia(p.deve_ser_entregue)}</td>
+                ${sp ? "" : `<td>${_cfDia(p.deve_ser_entregue)}</td>
                 <td>${prazo}</td>
                 <td class="num">${_cfNum(p.peso_kg, 2)}</td>
                 <td class="num">${_cfNum(p.valor_entrega)}</td>
                 <td class="num${p.incentivo > 0 ? " cft-pos" : ""}">${_cfNum(p.incentivo)}</td>
                 <td class="num${p.desconto > 0 ? " cft-neg" : ""}">${_cfNum(p.desconto)}</td>
-                <td class="num${p.adicional_peso > 0 ? " cft-pos" : ""}">${_cfNum(p.adicional_peso)}</td>
+                <td class="num${p.adicional_peso > 0 ? " cft-pos" : ""}">${_cfNum(p.adicional_peso)}</td>`}
                 <td class="num cft-pos"><strong>${_cfNum(p.valor_motorista)}</strong></td>
             </tr>`;
         }).join("");
@@ -737,11 +866,12 @@ function _cfCarregarPacotes() {
             <div class="cft-tabela-wrap"><table class="cft-tabela">
                 <thead><tr>
                     ${_cfTh("Driver", "driver")}${_cfTh("Usuário", "usuario")}${_cfTh("Código", "codigo")}${total ? _cfTh("Tipo", "tipo_produto") : ""}
-                    ${_cfTh("Cidade", "cidade")}${_cfTh("Polo", "polo")}
-                    ${_cfTh("Atribuição", "data_atribuicao")}${_cfTh("Entrega", "data_entrega")}${_cfTh("Deve ser entregue", "deve_ser_entregue")}
-                    ${_cfTh("No prazo", "dentro_prazo")}
-                    ${_cfTh("Peso (kg)", "peso_kg")}${_cfTh("Valor", "valor_entrega")}${_cfTh("Incentivo", "incentivo")}
-                    ${_cfTh("Desconto", "desconto")}${_cfTh("Adic. peso", "adicional_peso")}${_cfTh("Motorista", "valor_motorista")}
+                    ${_cfTh("Cidade", "cidade")}${sp ? _cfTh("Zipcode", "cep") : ""}${_cfTh(sp ? "XPT" : "Polo", "polo")}
+                    ${sp ? "" : _cfTh("Atribuição", "data_atribuicao")}${_cfTh("Entrega", "data_entrega")}
+                    ${sp ? "" : _cfTh("Deve ser entregue", "deve_ser_entregue") + _cfTh("No prazo", "dentro_prazo")
+                        + _cfTh("Peso (kg)", "peso_kg") + _cfTh("Valor", "valor_entrega") + _cfTh("Incentivo", "incentivo")
+                        + _cfTh("Desconto", "desconto") + _cfTh("Adic. peso", "adicional_peso")}
+                    ${_cfTh(sp ? "Valor (performance)" : "Motorista", "valor_motorista")}
                 </tr></thead>
                 <tbody>${linhas || `<tr><td colspan="16" class="cft-vazio" style="padding:16px">Nenhum pacote.</td></tr>`}</tbody>
             </table></div>
@@ -1108,6 +1238,13 @@ const _CF_EXPORT_COLUNAS = [
     ["Adicional por peso", "adicional_peso"], ["Valor motorista", "valor_motorista"],
 ];
 
+// Shopee: só as colunas que ela grava.
+const _CF_EXPORT_COLUNAS_SHOPEE = [
+    ["Transportadora", "transportadora"], ["Driver", "driver"], ["Usuario", "usuario"], ["Codigo", "codigo"],
+    ["Cidade", "cidade"], ["Polo", "polo"], ["Zipcode Name", "cep"], ["Data entrega", "data_entrega"],
+    ["Valor motorista", "valor_motorista"],
+];
+
 function _cfExportar(btn) {
     const cfg = _CF_TRANSPORTADORAS.find(t => t.key === _cfTranspAtual);
     btn.disabled = true;
@@ -1116,11 +1253,21 @@ function _cfExportar(btn) {
     .then(d => {
         btn.disabled = false;
         if (d.error) { gcAlert(d.error); return; }
-        const linhas = [_CF_EXPORT_COLUNAS.map(c => c[0])].concat(
-            d.pacotes.map(p => _CF_EXPORT_COLUNAS.map(c => p[c[1]] ?? "")));
+        const colunas = _cfEhShopee(cfg.key) ? _CF_EXPORT_COLUNAS_SHOPEE : _CF_EXPORT_COLUNAS;
+        const linhas = [colunas.map(c => c[0])].concat(d.pacotes.map(p => colunas.map(c => p[c[1]] ?? "")));
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhas), cfg.label.slice(0, 31));
-        XLSX.writeFile(wb, `fechamento_${cfg.key}_${String(_cfMes).padStart(2, "0")}-${_cfAno}_q${_cfQuinzena}.xlsx`);
+        const nomeArq = `fechamento_${cfg.key}_${String(_cfMes).padStart(2, "0")}-${_cfAno}_q${_cfQuinzena}.xlsx`;
+        if (!_cfEhShopee(cfg.key)) { XLSX.writeFile(wb, nomeArq); return; }
+        // Shopee: segunda aba com a performance por usuário e dia.
+        return fetch(`${_CF_API()}/performance?${_cfQs({ transportadora: cfg.key })}`, { headers: _cfHeaders() })
+            .then(r => r.json())
+            .then(pf => {
+                const perf = [["Dia", "Usuario", "Driver", "Entregues", "Onholds", "Performance (%)", "Valor por pacote", "Total"]]
+                    .concat((pf.linhas || []).map(l => [_cfDia(l.dia), l.usuario, l.driver || "", l.entregues, l.onholds, l.pct, l.valor, l.total]));
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(perf), "Performance");
+                XLSX.writeFile(wb, nomeArq);
+            });
     }).catch(() => { btn.disabled = false; gcAlert("Erro ao baixar."); });
 }
 
