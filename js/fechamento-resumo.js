@@ -10,7 +10,7 @@ let _rqQuinzena = null;
 let _rqDados = null;
 let _rqOrdem = { campo: "entregador", desc: false };
 let _rqReq = 0;
-let _rqXCidades = [];      // cidades escolhidas no "Baixar relatório" (vazio = todas)
+let _rqXCidades = [];      // cidades escolhidas no "Baixar relatório": [{nome, variantes}] (vazio = todas)
 let _rqXNaoAchadas = [];   // nomes colados que não existem nesta quinzena
 
 function _rqEsc(t) {
@@ -120,7 +120,7 @@ function _rqRender() {
                 ${_rqSelect("rq-x-driver", "Todos os entregadores", (d.opcoes || {}).entregadores)}
             </div>
             <div class="cft-rotulo" style="margin-bottom:4px">Cidades</div>
-            <datalist id="rq-x-cidades-lista">${((d.opcoes || {}).cidades || []).map(c => `<option value="${_rqEsc(c)}">`).join("")}</datalist>
+            <datalist id="rq-x-cidades-lista">${_rqGruposCidades().map(g => `<option value="${_rqEsc(g.nome)}">`).join("")}</datalist>
             <div class="cft-barra" style="margin:0 0 6px;flex-wrap:wrap">
                 <input class="cft-input" id="rq-x-cidade" list="rq-x-cidades-lista" placeholder="Digite a cidade..." style="width:320px;flex:0 0 auto;margin:0"
                     onkeydown="if(event.key==='Enter'){event.preventDefault();_rqAddCidades(this.value);this.value='';}">
@@ -143,19 +143,32 @@ function _rqRender() {
     _rqRenderCidades();
 }
 
-// Cidades do filtro: aceita uma ou uma lista colada; casa com as da quinzena sem olhar
-// acento/caixa nem "/SC" ou "- SC" no fim. O que não existe na quinzena vira aviso.
+// Cidades do filtro: aceita uma ou uma lista colada. Casa sem olhar acento, caixa,
+// espaço/hífen/apóstrofo nem "/SC" ou "- SC" no fim — e pega TODAS as grafias da mesma
+// cidade que existem na quinzena (Joaçaba, JOACABA, Joacaba...). O que não existe vira aviso.
 function _rqChaveCidade(c) {
-    return _rqChave(c).replace(/\s*[-/]\s*[a-z]{2}$/, "").replace(/\s+/g, " ");
+    return _rqChave(c).replace(/\s*[-/]\s*[a-z]{2}$/, "").replace(/[^a-z0-9]+/g, "");
+}
+// Grafias da quinzena agrupadas; o nome mostrado é o "mais bonito" (com acento e sem tudo maiúsculo).
+function _rqGruposCidades() {
+    const g = new Map();
+    for (const c of ((_rqDados && _rqDados.opcoes) || {}).cidades || []) {
+        const k = _rqChaveCidade(c);
+        if (!k) continue;
+        if (!g.has(k)) g.set(k, { chave: k, variantes: [] });
+        g.get(k).variantes.push(c);
+    }
+    const nota = (v) => (/[^\x00-\x7f]/.test(v) ? 2 : 0) + (v !== v.toUpperCase() ? 1 : 0);
+    return [...g.values()].map(x => ({ ...x, nome: x.variantes.slice().sort((a, b) => nota(b) - nota(a))[0] }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }
 function _rqAddCidades(texto) {
-    const opcoes = ((_rqDados && _rqDados.opcoes) || {}).cidades || [];
-    const porChave = new Map(opcoes.map(c => [_rqChaveCidade(c), c]));
+    const grupos = new Map(_rqGruposCidades().map(x => [x.chave, x]));
     for (const bruto of String(texto || "").split(/[\n\r;,\t]+/)) {
         const nome = bruto.trim();
         if (!nome) continue;
-        const achada = porChave.get(_rqChaveCidade(nome));
-        if (achada) { if (!_rqXCidades.includes(achada)) _rqXCidades.push(achada); }
+        const g = grupos.get(_rqChaveCidade(nome));
+        if (g) { if (!_rqXCidades.some(x => x.chave === g.chave)) _rqXCidades.push(g); }
         else if (!_rqXNaoAchadas.includes(nome)) _rqXNaoAchadas.push(nome);
     }
     _rqRenderCidades();
@@ -167,7 +180,7 @@ function _rqRenderCidades() {
     if (!el) return;
     el.innerHTML = (_rqXCidades.length
         ? `<span class="cft-ajuda">${_rqXCidades.length} cidade(s): </span>` + _rqXCidades.map((c, i) =>
-            `<span class="cft-chip">${_rqEsc(c)} <a href="#" title="Tirar" onclick="event.preventDefault();_rqTirarCidade(${i})">×</a></span>`).join(" ")
+            `<span class="cft-chip"${c.variantes.length > 1 ? ` title="Grafias: ${_rqEsc(c.variantes.join(" · "))}"` : ""}>${_rqEsc(c.nome)}${c.variantes.length > 1 ? ` <span class="cft-ajuda">+${c.variantes.length - 1}</span>` : ""} <a href="#" title="Tirar" onclick="event.preventDefault();_rqTirarCidade(${i})">×</a></span>`).join(" ")
             + ` <a href="#" class="cft-ordem cft-ajuda" onclick="event.preventDefault();_rqLimparCidades()">limpar</a>`
         : `<span class="cft-ajuda">Todas as cidades.</span>`)
         + (_rqXNaoAchadas.length ? `<div class="cft-ajuda" style="margin-top:4px"><span class="cft-aviso">Sem pacote nesta quinzena:</span> ${_rqEsc(_rqXNaoAchadas.join(", "))}</div>` : "");
@@ -309,7 +322,8 @@ async function _rqBaixar() {
     const transps = caixas.filter(c => c.checked).map(c => c.value);
     if (caixas.length && !transps.length) { document.getElementById("rq-x-status").innerText = "Marque ao menos uma transportadora."; return; }
     const filtros = { transportadoras: transps.length === caixas.length ? [] : transps, parcialTransp: transps.length < caixas.length,
-        polo: v("rq-x-polo"), driver: v("rq-x-driver"), cidades: _rqXCidades.slice() };
+        polo: v("rq-x-polo"), driver: v("rq-x-driver"), cidades: _rqXCidades.flatMap(c => c.variantes), nCidades: _rqXCidades.length,
+        nomeCidade: _rqXCidades.length === 1 ? _rqXCidades[0].nome : "" };
     const btn = document.getElementById("rq-x-btn");
     const st = document.getElementById("rq-x-status");
     btn.disabled = true;
@@ -327,7 +341,7 @@ async function _rqBaixar() {
         for (const a of _rqMontarAbas(d.pacotes, filtros, perf)) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a.linhas), a.nome);
         const nomeTransp = filtros.transportadoras.length === 1 ? (_rqDados.transportadoras[filtros.transportadoras[0]] || {}).nome
             : filtros.transportadoras.length ? filtros.transportadoras.length + " transportadoras" : "";
-        const nomeCidade = filtros.cidades.length === 1 ? filtros.cidades[0] : filtros.cidades.length ? filtros.cidades.length + " cidades" : "";
+        const nomeCidade = filtros.nomeCidade || (filtros.nCidades ? filtros.nCidades + " cidades" : "");
         const sufixo = [nomeTransp, filtros.polo, filtros.driver, nomeCidade].filter(Boolean)
             .map(x => "_" + x.replace(/[^\w\u00C0-\u017F-]+/g, "-")).join("");
         XLSX.writeFile(wb, `fechamento_${_rqQuinzena}q_${String(_rqMes).padStart(2, "0")}-${_rqAno}${sufixo}.xlsx`);
