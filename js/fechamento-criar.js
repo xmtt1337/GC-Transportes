@@ -260,6 +260,7 @@ function _cfCarregarTicketlog(msg) {
                     <td>${a.enviado_em ? new Date(a.enviado_em).toLocaleString("pt-BR") : ""}</td>
                     <td><button class="cft-btn perigo" data-e="${_cfEsc(a.envio_id)}" data-n="${_cfEsc(a.arquivo || "")}" onclick="_cfRemoverTicketlog(this.dataset.e, this.dataset.n)">Remover</button></td>
                 </tr>`).join("")}</tbody></table></div>` : `<div class="cft-ajuda">Nenhum relatório da Ticketlog nesta quinzena ainda.</div>`}
+            ${_cfHtmlNaoDescontar(d)}
             ${arqs.length ? `
             <div class="cft-kpis" style="margin-top:14px">
                 <div class="cft-kpi"><div class="cft-kpi-valor cft-neg">${moedaJS(d.total)}</div><div class="cft-kpi-rotulo">Combustível na quinzena</div></div>
@@ -284,6 +285,41 @@ function _cfCarregarTicketlog(msg) {
                     <td class="num${r.divergencias ? " cft-neg" : ""}">${n(r.divergencias)}</td>
                 </tr>`).join("")}</tbody></table></div>` : ""}`;
     }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar a Ticketlog.</div>`; });
+}
+
+// Lista "Não descontar": abastecimentos dessas pessoas saem do relatório e do total.
+function _cfHtmlNaoDescontar(d) {
+    const lista = d.nao_descontar || [];
+    const ig = d.ignorados || {};
+    return `<div class="cft-pend" style="margin-top:12px">
+        <div class="cft-pend-titulo">Não descontar</div>
+        <div class="cft-ajuda" style="margin-bottom:6px">Abastecimentos de quem está aqui não são descontados e nem aparecem no relatório
+            (vale pelo nome do relatório ou pelo dono do cartão).${ig.abastecimentos ? ` Nesta quinzena: ${ig.abastecimentos} abastecimento(s), ${moedaJS(ig.total)} fora.` : ""}</div>
+        ${lista.length ? `<div class="cft-tabela-wrap"><table class="cft-tabela"><tbody>${lista.map(i => `<tr>
+            <td>${_cfEsc(i.nome)}</td>
+            <td style="width:1%;white-space:nowrap"><button class="cft-btn" onclick="_cfTlVoltarDescontar(${i.id})">Voltar a descontar</button></td>
+        </tr>`).join("")}</tbody></table></div>` : `<div class="cft-ajuda">Ninguém na lista.</div>`}
+        <div class="cft-barra" style="margin:8px 0 0">
+            <datalist id="cf-tl-nomes">${(d.nomes || []).map(n => `<option value="${_cfEsc(n)}">`).join("")}</datalist>
+            <input class="cft-input" id="cf-tl-ignorar" list="cf-tl-nomes" placeholder="Nome do relatório..." style="min-width:260px;margin:0">
+            <button class="cft-btn" onclick="_cfTlNaoDescontar()">Não descontar</button>
+        </div>
+    </div>`;
+}
+
+async function _cfTlNaoDescontar() {
+    const nome = document.getElementById("cf-tl-ignorar").value;
+    const r = await fetch(`${_CF_API()}/ticketlog-ignorar`, { method: "POST", headers: _cfHeaders(true), body: JSON.stringify({ nome }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { gcAlert(d.error || "Erro ao gravar."); return; }
+    _cfCarregarTicketlog(_cfEsc(`${nome} não será mais descontado.`));
+}
+
+function _cfTlVoltarDescontar(id) {
+    fetch(`${_CF_API()}/ticketlog-ignorar/${id}`, { method: "DELETE", headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => { if (d.error) gcAlert(d.error); else _cfCarregarTicketlog("Voltou a descontar."); })
+    .catch(() => gcAlert("Erro ao remover."));
 }
 
 async function _cfTicketlogArquivo(input) {

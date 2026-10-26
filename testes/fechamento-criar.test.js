@@ -432,3 +432,14 @@ test("tabela nova de performance aparece certa (28/10/2026)", () => {
     assert.strictEqual(ctx._cfTextoFaixas(f),
         "Seg a sáb: &lt; 95% R$ 1,5 · &lt; 98% R$ 2 · ≥ 98% R$ 2,5. Domingo: &lt; 90% R$ 1,8 · &lt; 98% R$ 2,2 · ≥ 98% R$ 2,6.");
 });
+
+test("Ticketlog: lista Não descontar mostra quem está e quanto saiu", () => {
+    const ctx = carregar();
+    ctx.moedaJS = (n) => "R$ " + n;
+    const html = ctx._cfHtmlNaoDescontar({ nao_descontar: [{ id: 3, nome: "Fulano de Teste" }], ignorados: { abastecimentos: 2, total: 150 }, nomes: ["Beltrano"] });
+    assert.match(html, /Fulano de Teste/);
+    assert.match(html, /_cfTlVoltarDescontar\(3\)/);
+    assert.match(html, /2 abastecimento\(s\), R\$ 150 fora/);
+    assert.match(html, /<option value="Beltrano">/);
+    assert.match(ctx._cfHtmlNaoDescontar({}), /Ninguém na lista/);
+});
