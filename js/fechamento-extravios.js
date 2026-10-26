@@ -58,7 +58,13 @@ function _fxCarregar() {
     .then(r => r.json())
     .then(d => {
         if (req !== _fxReq) return;
-        if (d.error) { el.innerHTML = `<div class="cft-erro">${_fxEsc(d.error)}</div>`; return; }
+        if (d.error) {
+            // planilha fora do ar ou fonte errada: dá pra trocar a fonte daqui mesmo
+            el.innerHTML = `<div class="cft-erro">${_fxEsc(d.error)}</div>
+                <div class="cft-barra"><button class="cft-btn" onclick="_fxAbrirFonte()">Fonte: planilha e aba</button></div>
+                <div id="fx-fonte" class="cft-regras" style="display:none"></div>`;
+            return;
+        }
         _fxDados = d;
         _fxRender();
     }).catch(() => { if (req === _fxReq) el.innerHTML = `<div class="cft-erro">Erro ao carregar os extravios.</div>`; });
@@ -75,7 +81,7 @@ function _fxSituacao(r) {
 function _fxRender() {
     const d = _fxDados, t = d.totais;
     const el = document.getElementById("fx-conteudo");
-    el.innerHTML = `
+    el.innerHTML = `<div id="fx-fonte" class="cft-regras" style="display:none"></div>` + `
         <div class="cft-kpis">
             <div class="cft-kpi"><div class="cft-kpi-valor">${t.linhas.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Extravios e multas · ${_fxEsc(d.codigo_quinzena)}</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor cft-neg">${_fxNum(t.total)}</div><div class="cft-kpi-rotulo">Total a descontar (R$)</div></div>
@@ -83,8 +89,9 @@ function _fxRender() {
             <div class="cft-kpi"><div class="cft-kpi-valor${t.sem_fechamento.entregadores ? " cft-aviso" : ""}">${t.sem_fechamento.entregadores} · ${_fxNum(t.sem_fechamento.total)}</div><div class="cft-kpi-rotulo">Sem fechamento na quinzena</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor${t.sem_conversao.entregadores ? " cft-aviso" : ""}">${t.sem_conversao.entregadores} · ${_fxNum(t.sem_conversao.total)}</div><div class="cft-kpi-rotulo">Responsável sem entregador</div></div>
         </div>
-        <div class="cft-ajuda" style="margin-bottom:10px">Linhas da planilha de extravios com "Data desconto" = <b style="color:#cbd5e1">${_fxEsc(d.codigo_quinzena)}</b>
-            (registradas em Extravios › Registrar ou direto na planilha). O desconto entra no Resumo da Quinzena de quem tem fechamento.
+        <div class="cft-ajuda" style="margin-bottom:10px">Linhas da planilha de extravios com "Data desconto" = <b style="color:#cbd5e1">${_fxEsc(d.codigo_quinzena)}</b>.
+            O desconto entra no Resumo da Quinzena de quem tem fechamento.
+            <a href="#" class="cft-ordem" style="color:#60a5fa" onclick="event.preventDefault();_fxAbrirFonte()">Fonte: planilha e aba</a>
             ${d.tem_relatorios ? "" : `<span class="cft-aviso">Nenhum relatório de transportadora nesta quinzena ainda — todos aparecem como sem fechamento.</span>`}</div>
         <div class="cft-barra" style="justify-content:space-between">
             <span style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -160,4 +167,60 @@ function _fxExportar() {
     const wb = XLSX.utils.book_new();
     for (const a of _fxAbas()) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a.linhas), a.nome);
     XLSX.writeFile(wb, `extravios_${_fxDados.codigo_quinzena}_${_fxAno}${_fxFiltro ? "_" + _fxFiltro : ""}.xlsx`);
+}
+
+// ── Fonte: de qual planilha/aba vêm os extravios (vale aqui e no Resumo da Quinzena) ──
+function _fxAbrirFonte() {
+    const el = document.getElementById("fx-fonte");
+    if (el.style.display !== "none") { el.style.display = "none"; return; }
+    el.style.display = "";
+    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    fetch(`${_FX_API()}/extravios-fonte`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => r.json())
+    .then(f => {
+        el.innerHTML = `
+            <div class="cft-pend-titulo" style="color:#e2e8f0">Fonte dos extravios</div>
+            <div class="cft-ajuda" style="margin-bottom:8px">${f.planilha ? `Hoje: planilha <b style="color:#cbd5e1">${_fxEsc(f.planilha)}</b>, aba <b style="color:#cbd5e1">${_fxEsc(f.aba)}</b>.`
+                : "Hoje: planilha de extravios do site (Extravios › Registrar)."}
+                As colunas são achadas pelo nome: precisa ter <b>Data desconto</b>, <b>Responsavel</b> e <b>Valor</b>
+                (Transportadora, Codigo, Endereço, Cidade e Status entram se tiver). A conta do servidor precisa ter acesso de Leitor na planilha.</div>
+            <div class="cft-barra" style="margin:0;flex-wrap:wrap">
+                <input class="cft-input" id="fx-fonte-link" placeholder="Link da planilha do Google" value="${f.planilha ? "https://docs.google.com/spreadsheets/d/" + _fxEsc(f.planilha) : ""}"
+                    style="min-width:420px;flex:1;margin:0" onchange="_fxCarregarAbas()">
+                <select class="fech-select" id="fx-fonte-aba">${(f.abas || []).map(a => `<option${a === f.aba ? " selected" : ""}>${_fxEsc(a)}</option>`).join("")
+                    || `<option value="">cole o link pra ver as abas</option>`}</select>
+                <button class="cft-btn primario" onclick="_fxSalvarFonte()">Salvar</button>
+                <span class="cft-ajuda" id="fx-fonte-status"></span>
+            </div>`;
+    }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar a fonte.</div>`; });
+}
+
+function _fxCarregarAbas() {
+    const link = document.getElementById("fx-fonte-link").value;
+    const st = document.getElementById("fx-fonte-status");
+    const sel = document.getElementById("fx-fonte-aba");
+    st.innerText = "Abrindo a planilha...";
+    fetch(`${_FX_API()}/extravios-fonte?link=${encodeURIComponent(link)}`, { headers: { "Authorization": "Bearer " + token } })
+    .then(r => r.json())
+    .then(f => {
+        if (f.error) { st.innerText = f.error; return; }
+        st.innerText = "";
+        sel.innerHTML = (f.abas || []).map(a => `<option>${_fxEsc(a)}</option>`).join("");
+    }).catch(() => { st.innerText = "Erro ao abrir a planilha."; });
+}
+
+async function _fxSalvarFonte() {
+    const st = document.getElementById("fx-fonte-status");
+    st.innerText = "Conferindo as colunas...";
+    try {
+        const r = await fetch(`${_FX_API()}/extravios-fonte`, { method: "PUT",
+            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+            body: JSON.stringify({ link: document.getElementById("fx-fonte-link").value, aba: document.getElementById("fx-fonte-aba").value }) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            st.innerText = (d.error || "Erro ao salvar.") + (d.cabecalho_encontrado && d.cabecalho_encontrado.length ? " Colunas da aba: " + d.cabecalho_encontrado.join(" · ") : "");
+            return;
+        }
+        if (_fxQuinzena) _fxCarregar();
+    } catch (_) { st.innerText = "Erro ao salvar."; }
 }
