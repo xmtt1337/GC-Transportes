@@ -488,6 +488,10 @@ function _cfCarregarPerformance() {
         if (key !== _cfTranspAtual) return;
         if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
         _cfPerfLinhas = d.linhas || [];
+        const rg = (d.totais && d.totais.onholds_regras) || {};
+        const nRegras = (rg.motivo || 0) + (rg.office_closed_fds || 0) + (rg.mesmo_dia || 0);
+        const txtRegras = nRegras ? `${nRegras.toLocaleString("pt-BR")} onhold${nRegras !== 1 ? "s" : ""} não contam pelas regras:
+            ${rg.motivo || 0} pelo motivo · ${rg.office_closed_fds || 0} Office closed no sáb/dom · ${rg.mesmo_dia || 0} entregue no mesmo dia.` : "";
         el.innerHTML = `
             <div class="cft-barra" style="justify-content:space-between">
                 <span class="cft-pend-titulo" style="color:#e2e8f0;margin:0">Performance por usuário e dia</span>
@@ -496,6 +500,9 @@ function _cfCarregarPerformance() {
                 </div>
             </div>
             <div class="cft-ajuda" style="margin-bottom:8px">Performance = entregues ÷ (entregues + onholds) do usuário no dia.
+                Onholds que não contam: motivo Reject - Buyers change their mind, Recipient change location, Incorrect/ missing verification,
+                Recipient reject ou Wrongly assigned; Office closed no sábado ou domingo; pedido entregue no mesmo dia do onhold.
+                ${txtRegras ? `<b style="color:#cbd5e1">${txtRegras}</b>` : ""}
                 Entregador em "Valores fixos" ganha o valor dele, seja qual for a performance.
                 Seg a sáb: ≤ 95% R$ 1,80 · &lt; 98% R$ 2,00 · &lt; 99,5% R$ 2,50 · ≥ 99,5% R$ 2,60. Domingo: ≤ 90% R$ 2,40 · &lt; 98% R$ 2,50 · ≥ 98% R$ 2,60.</div>
             <div class="cft-tabela-wrap" style="max-height:420px;overflow-y:auto"><table class="cft-tabela">
