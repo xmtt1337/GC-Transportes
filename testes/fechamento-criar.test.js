@@ -350,3 +350,14 @@ test("onholds: vários arquivos selecionados vão um por um", async () => {
     assert.deepStrictEqual(posts, ["a.xlsx", "b.xlsx"]);
     assert.ok(n === 0);
 });
+
+test("CEP sem cidade: atalho sincroniza os CEPs e depois recalcula", async () => {
+    const t = carregarComDom(async () => ({ ok: true, status: 200, json: async () => ({ success: true }) }));
+    let recalculou = false;
+    t.ctx._cfRecalcular = () => { recalculou = true; };
+    t.el("cf-sinc-ceps"); t.el("cf-sinc-ceps-status");
+    await t.ctx._cfSincronizarCeps();
+    assert.strictEqual(t.chamadas[0].url, "https://api.teste/admin/sincronizar-ceps");
+    assert.strictEqual(t.chamadas[0].opts.method, "POST");
+    assert.strictEqual(recalculou, true);
+});

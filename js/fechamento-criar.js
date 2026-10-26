@@ -186,6 +186,27 @@ function _cfSelecionarTransp(key) {
     _cfCarregarDetalhe();
 }
 
+// Planilha de CEP do Planejamento (aba "Cep Geral") — o sistema copia pro banco sozinho a
+// cada 1 h; o botão da pendência copia na hora (mesma rota do "Sincronizar CEPs" da Bipagem).
+const _CF_PLANILHA_CEP = "https://docs.google.com/spreadsheets/d/1igX7HiJSM8v9VjvbO4ZeXPo8U062xOMKyBFjK9K4XU8/edit";
+
+async function _cfSincronizarCeps() {
+    const btn = document.getElementById("cf-sinc-ceps");
+    const st = document.getElementById("cf-sinc-ceps-status");
+    if (btn) btn.disabled = true;
+    if (st) st.innerText = "Lendo a planilha de CEP...";
+    try {
+        const r = await fetch(`${API}/admin/sincronizar-ceps`, { method: "POST", headers: _cfHeaders() });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Erro ao sincronizar os CEPs.");
+        if (st) st.innerText = "CEPs sincronizados. Recalculando...";
+        _cfRecalcular();
+    } catch (err) {
+        if (btn) btn.disabled = false;
+        if (st) st.innerText = err.message;
+    }
+}
+
 // ── Shopee: valores fixos por entregador (no lugar da performance) ──
 let _cfFixos = [];
 
@@ -476,7 +497,7 @@ function _cfHtmlResumo(r) {
         : `<div class="cft-pend-grupo"><b>Cidade sem preço na planilha</b> — sem valor nem prazo até cadastrar na aba da transportadora:${tags(r.cidades_sem_preco)}</div>`);
     if ((r.cidades_sem_conversao || []).length && _CF_CONVERTE_CIDADE.includes(_cfTranspAtual)) grupos.push(
         `<div class="cft-pend-grupo"><b>Cidade sem conversão</b> — achou preço pelo nome, mas ainda não está na Conversão de cidades. Clique pra confirmar (ou trocar):<div class="cft-pend-tags" id="cf-cidades-conv-pend">${_cfHtmlCidadesPend("conv")}</div></div>`);
-    if ((r.ceps_sem_cidade || []).length) grupos.push(`<div class="cft-pend-grupo"><b>CEP sem cidade</b> — não está na planilha de CEP do Planejamento (aba Cep Geral); a cidade fica em branco:${tags(r.ceps_sem_cidade)}</div>`);
+    if ((r.ceps_sem_cidade || []).length) grupos.push(`<div class="cft-pend-grupo"><b>CEP sem cidade</b> — não está na planilha de CEP do Planejamento; a cidade fica em branco. Cadastre o CEP e a cidade na aba <a class="cft-link" href="${_CF_PLANILHA_CEP}" target="_blank" rel="noopener">Cep Geral</a> e depois <button class="cft-link" id="cf-sinc-ceps" onclick="_cfSincronizarCeps()">sincronize os CEPs e recalcule</button>:${tags(r.ceps_sem_cidade)}<div class="cft-ajuda" id="cf-sinc-ceps-status"></div></div>`);
     if (r.tipos_sem_preco.length) grupos.push(`<div class="cft-pend-grupo"><b>Tipo de produto sem coluna de preço</b>:${tags(r.tipos_sem_preco)}</div>`);
     if (r.nomes_sem_conversao.length) grupos.push(`<div class="cft-pend-grupo"><b>Usuário sem conversão de nome</b> — clique no nome pra dizer quem é o entregador:<div class="cft-pend-tags" id="cf-nomes-pend">${_cfHtmlNomesPend()}</div></div>`);
     if (r.sem_data_entrega) grupos.push(`<div class="cft-pend-grupo"><b>${r.sem_data_entrega}</b> sem data de entrega (não pagos)</div>`);
