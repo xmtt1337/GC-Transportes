@@ -724,8 +724,14 @@ function _cfCarregarPerformance() {
                     <input type="text" id="cf-perf-busca" placeholder="Entregador..." oninput="_cfRenderPerformance()">
                 </div>
             </div>
+            <div class="cft-barra" style="margin:0 0 8px;flex-wrap:wrap;gap:14px">
+                <span class="cft-rotulo">Vale pros pacotes dos polos:</span>
+                ${(d.polos_disponiveis || []).concat((d.polos_regra || []).filter(p => !(d.polos_disponiveis || []).includes(p))).map(p => `<label class="cft-ajuda" style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#cbd5e1">
+                    <input type="checkbox" class="cf-perf-polo" value="${_cfEsc(p)}"${(d.polos_regra || []).includes(p) ? " checked" : ""}> ${_cfEsc(p)}</label>`).join("")}
+                <button class="cft-btn" onclick="_cfSalvarPolosPerf(this)">Salvar polos</button>
+            </div>
             <div class="cft-ajuda" style="margin-bottom:8px">Uma performance só por entregador e dia, juntando todas as transportadoras
-                (só pra quem faz Shopee; as duas XPTs juntas):
+                (só os pacotes dos polos marcados acima; as duas XPTs juntas; os outros polos ficam com o valor da tabela de cidade):
                 (Shopee entregues + outras com prazo vencendo no dia entregues no prazo) ÷ (isso + onholds + outras com prazo vencendo no dia atrasadas ou não entregues).
                 Loggi, que não tem prazo, conta como no prazo no dia da entrega.
                 Todo pacote do entregador vale o R$/pacote do dia em que contou (Shopee: dia da entrega; outras: dia do prazo) — não entregue vale 0.
@@ -740,6 +746,19 @@ function _cfCarregarPerformance() {
             <div class="cft-ajuda" style="margin:6px 0 18px" id="cf-perf-total"></div>`;
         _cfRenderPerformance();
     }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar a performance.</div>`; });
+}
+
+// Polos onde a performance consolidada vale — salvar reconsolida a quinzena aberta.
+async function _cfSalvarPolosPerf(btn) {
+    const polos = [...document.querySelectorAll(".cf-perf-polo")].filter(c => c.checked).map(c => c.value);
+    btn.disabled = true;
+    try {
+        const r = await fetch(`${_CF_API()}/performance-polos`, { method: "PUT", headers: _cfHeaders(true),
+            body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, polos }) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { gcAlert(d.error || "Erro ao salvar."); return; }
+        _cfCarregarDetalhe();
+    } catch (_) { gcAlert("Erro ao salvar."); } finally { btn.disabled = false; }
 }
 
 // Tabela de valor por performance da XPT aberta (vem do servidor — cada XPT tem a sua).

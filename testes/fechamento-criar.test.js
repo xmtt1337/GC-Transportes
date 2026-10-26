@@ -458,3 +458,16 @@ test("Ticketlog: nome sem conversão vira pendência e salvar grava na Conversã
     await ctx._cfTlSalvarConversao(0);
     assert.deepStrictEqual(corpo, ["https://api.teste/admin/nomes-padrao", { nome_origem: "FULANO SEM CONV", nome_sistema: "Fulano Exemplo - Vila Teste" }]);
 });
+
+test("performance: salvar polos manda os marcados e o período", async () => {
+    const ctx = carregar();
+    const caixas = [{ value: "Caçador", checked: true }, { value: "Joaçaba", checked: false }, { value: "Videira", checked: true }];
+    ctx.document = { querySelectorAll: () => caixas, getElementById: () => ({ style: {}, innerHTML: "" }) };
+    let corpo = null;
+    ctx.fetch = async (u, o) => { corpo = [u, o.method, JSON.parse(o.body)]; return { ok: true, json: async () => ({ success: true }) }; };
+    ctx._cfCarregarDetalhe = () => {};
+    vm.runInContext("_cfMes = 9; _cfAno = 2026; _cfQuinzena = 2;", ctx);
+    await ctx._cfSalvarPolosPerf({ disabled: false });
+    assert.deepStrictEqual(corpo, ["https://api.teste/admin/fechamento-transportadoras/performance-polos", "PUT",
+        { mes: 9, ano: 2026, quinzena: 2, polos: ["Caçador", "Videira"] }]);
+});
