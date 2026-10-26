@@ -186,6 +186,99 @@ function _cfSelecionarTransp(key) {
     _cfCarregarDetalhe();
 }
 
+// ── Shopee: valores fixos por entregador (no lugar da performance) ──
+let _cfFixos = [];
+
+function _cfAbrirFixos() {
+    const el = document.getElementById("cf-fixos");
+    if (el.style.display !== "none") { el.style.display = "none"; return; }
+    el.style.display = "";
+    _cfCarregarFixos();
+}
+
+function _cfCarregarFixos(msg) {
+    const el = document.getElementById("cf-fixos");
+    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    Promise.all([
+        fetch(`${_CF_API()}/valores-fixos`, { headers: _cfHeaders() }).then(r => r.json()),
+        _cfEntregadores ? Promise.resolve(_cfEntregadores)
+            : fetch(`${_CF_API()}/entregadores`, { headers: _cfHeaders() }).then(r => r.json())
+                .then(d => (_cfEntregadores = { nomes: d.nomes || [], aviso: d.aviso || null })).catch(() => ({ nomes: [] })),
+    ]).then(([d, ent]) => {
+        if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
+        _cfFixos = d.linhas || [];
+        el.innerHTML = `
+            <div class="cft-barra" style="margin-top:0">
+                <span class="cft-pend-titulo" style="color:#e2e8f0;margin:0">Valores fixos por entregador — Shopee</span>
+            </div>
+            <div class="cft-ajuda" style="margin-bottom:10px">Pra quem está aqui, todo pacote entregue vale o valor fixo, seja qual for a performance
+                (vale pra Shopee Caçador e Videira). O entregador é o nome convertido — o "Driver" da tela.</div>
+            <div class="cft-tabela-wrap"><table class="cft-tabela">
+                <thead><tr><th>Entregador</th><th>R$ por pacote</th><th></th></tr></thead>
+                <tbody>${_cfFixos.length ? _cfFixos.map(f => `<tr>
+                    <td>${_cfEsc(f.entregador)}</td>
+                    <td class="num">${_cfNum(f.valor)}</td>
+                    <td><button class="cft-btn perigo" onclick="_cfRemoverFixo(${f.id})">Remover</button></td>
+                </tr>`).join("") : `<tr><td colspan="3" class="cft-vazio" style="padding:14px">Ninguém com valor fixo.</td></tr>`}</tbody>
+            </table></div>
+            <div class="cft-barra">
+                <input list="cf-fixo-lista" id="cf-fixo-nome" class="fech-select" placeholder="Entregador (ex.: Fulano - Cidade)" style="min-width:300px">
+                <datalist id="cf-fixo-lista">${(ent.nomes || []).map(n => `<option value="${_cfEsc(n)}">`).join("")}</datalist>
+                <input id="cf-fixo-valor" class="cft-input" placeholder="R$ por pacote" style="width:130px;margin:0" inputmode="decimal">
+                <button class="cft-btn primario" id="cf-fixo-salvar" onclick="_cfSalvarFixo()">Adicionar / atualizar</button>
+            </div>
+            <div class="cft-ajuda" id="cf-fixo-status">${msg || ""}</div>`;
+    }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar os valores fixos.</div>`; });
+}
+
+// Mudou valor fixo: recalcula a Shopee já enviada na quinzena aberta.
+async function _cfRecalcularShopee() {
+    const lotes = _cfQuinzena ? _cfResumo.map(x => x.chave).filter(_cfEhShopee) : [];
+    for (const k of lotes) {
+        await fetch(`${_CF_API()}/recalcular`, {
+            method: "POST", headers: _cfHeaders(true),
+            body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: k }),
+        }).catch(() => {});
+    }
+    if (lotes.length) { _cfAtualizarCards(); if (_cfEhShopee(_cfTranspAtual)) _cfCarregarDetalhe(); }
+    return lotes.length;
+}
+
+async function _cfSalvarFixo() {
+    const entregador = document.getElementById("cf-fixo-nome").value.trim();
+    const valor = document.getElementById("cf-fixo-valor").value.trim();
+    const status = document.getElementById("cf-fixo-status");
+    const btn = document.getElementById("cf-fixo-salvar");
+    btn.disabled = true;
+    status.innerText = "Salvando...";
+    try {
+        const r = await fetch(`${_CF_API()}/valores-fixos`, {
+            method: "POST", headers: _cfHeaders(true), body: JSON.stringify({ entregador, valor }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Erro ao salvar.");
+        status.innerText = "Salvo. Recalculando a Shopee desta quinzena...";
+        const n = await _cfRecalcularShopee();
+        _cfCarregarFixos(n ? "Salvo e recalculado." : "Salvo. Vale nos próximos envios e recálculos da Shopee.");
+    } catch (err) {
+        btn.disabled = false;
+        status.innerText = err.message;
+    }
+}
+
+function _cfRemoverFixo(id) {
+    const f = _cfFixos.find(x => x.id === id);
+    gcConfirm(`Tirar o valor fixo de <b>${_cfEsc(f ? f.entregador : "")}</b>? Ele volta a ganhar pela performance.`, async () => {
+        try {
+            const r = await fetch(`${_CF_API()}/valores-fixos/${id}`, { method: "DELETE", headers: _cfHeaders() });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d.error || "Erro ao remover.");
+            const n = await _cfRecalcularShopee();
+            _cfCarregarFixos(n ? "Removido e recalculado." : "Removido.");
+        } catch (err) { gcAlert(err.message); }
+    }, "Tirar valor fixo", "Tirar");
+}
+
 // ── Shopee: onholds da quinzena (Order ID, OnHold Time, OnHoldReason; Driver Name se tiver) ──
 function _cfCarregarOnholdsInfo(msg) {
     const key = _cfTranspAtual;
@@ -259,6 +352,7 @@ function _cfCarregarPerformance() {
                 </div>
             </div>
             <div class="cft-ajuda" style="margin-bottom:8px">Performance = entregues ÷ (entregues + onholds) do usuário no dia.
+                Entregador em "Valores fixos" ganha o valor dele, seja qual for a performance.
                 Seg a sáb: ≤ 95% R$ 1,80 · &lt; 98% R$ 2,00 · &lt; 99,5% R$ 2,50 · ≥ 99,5% R$ 2,60. Domingo: ≤ 90% R$ 2,40 · &lt; 98% R$ 2,50 · ≥ 98% R$ 2,60.</div>
             <div class="cft-tabela-wrap" style="max-height:420px;overflow-y:auto"><table class="cft-tabela">
                 <thead><tr><th>Dia</th><th>Usuário</th><th>Driver</th><th>Entregues</th><th>Onholds</th><th>Performance</th><th>R$/pacote</th><th>Total</th></tr></thead>
@@ -280,7 +374,7 @@ function _cfRenderPerformance() {
             <td class="num">${l.entregues.toLocaleString("pt-BR")}</td>
             <td class="num${l.onholds ? " cft-neg" : ""}">${l.onholds.toLocaleString("pt-BR")}</td>
             <td class="num">${_cfNum(l.pct, 2)}%</td>
-            <td class="num">${_cfNum(l.valor)}</td>
+            <td class="num">${l.fixo ? `<span class="cft-ajuda" title="Valor fixo do entregador (Valores fixos)">fixo</span> ` : ""}${_cfNum(l.valor)}</td>
             <td class="num cft-pos"><strong>${_cfNum(l.total)}</strong></td>
         </tr>`).join("")
         : `<tr><td colspan="8" class="cft-vazio" style="padding:14px">Nada por aqui.</td></tr>`;

@@ -298,3 +298,17 @@ test("Shopee: KPIs de performance no lugar do prazo", () => {
     vm.runInContext(`_cfTranspAtual = "anjun"`, ctx);
     assert.match(ctx._cfHtmlResumo(resumo), /Fora do prazo/);
 });
+
+test("valores fixos: salvar manda entregador e valor e recalcula só a Shopee da quinzena", async () => {
+    const t = carregarComDom(async () => ({ ok: true, status: 200, json: async () => ({ success: true, linhas: [] }) }));
+    vm.runInContext(`_cfQuinzena = 2; _cfMes = 9; _cfAno = 2026; _cfTranspAtual = "anjun";
+        _cfResumo = [{ chave: "shopee_cfc" }, { chave: "anjun" }, { chave: "shopee_via" }];
+        _cfAtualizarCards = () => {}; _cfCarregarFixos = () => {};`, t.ctx);
+    t.el("cf-fixo-nome").value = "Lisete Granemann - Caçador";
+    t.el("cf-fixo-valor").value = "2,7";
+    t.el("cf-fixo-status"); t.el("cf-fixo-salvar");
+    await t.ctx._cfSalvarFixo();
+    assert.deepStrictEqual(JSON.parse(t.chamadas[0].opts.body), { entregador: "Lisete Granemann - Caçador", valor: "2,7" });
+    const recalc = t.chamadas.filter((c) => c.url.endsWith("/recalcular")).map((c) => JSON.parse(c.opts.body).transportadora);
+    assert.deepStrictEqual(recalc, ["shopee_cfc", "shopee_via"]);
+});
