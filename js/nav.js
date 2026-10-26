@@ -71,6 +71,7 @@ const _TELA_TITULOS = {
     "tela-criar-fechamento":     "Criar Fechamento",
     "tela-resumo-quinzena":      "Resumo da Quinzena",
     "tela-ajustes-fechamento":   "Acréscimos e Descontos",
+    "tela-extravios-fechamento": "Fechamento de Extravios",
     "tela-ticketlog-info":       "TicketLog — Informações",
 };
 

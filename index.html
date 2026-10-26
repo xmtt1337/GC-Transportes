@@ -523,6 +523,7 @@ if (_BASE) {
             <li><a href="#" data-rota="Fechamento/Criar" onclick="abrirCriarFechamento(event)">Criar Fechamento</a></li>
             <li><a href="#" data-rota="Fechamento/Resumo" onclick="abrirResumoQuinzena(event)">Resumo da Quinzena</a></li>
             <li><a href="#" data-rota="Fechamento/Ajustes" onclick="abrirAjustesFechamento(event)">Acréscimos e Descontos</a></li>
+            <li><a href="#" data-rota="Fechamento/Extravios" onclick="abrirExtraviosFechamento(event)">Fechamento de Extravios</a></li>
         </ul>
 
         <li class="menu-item" data-menu="planejamento" id="menu-planejamento" onclick="toggleMenu(this)" style="display:none">
@@ -4883,6 +4884,7 @@ if (_BASE) {
 <script src="js/ticketlog-info.js?v=20261028a"></script>
 <script src="js/fechamento-resumo.js?v=20261028f"></script>
 <script src="js/fechamento-ajustes.js?v=20261028b"></script>
+<script src="js/fechamento-extravios.js?v=20261028a"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
 <script src="js/pedidos.js?v=20261020a"></script>
@@ -5133,6 +5135,30 @@ if (_BASE) {
         </div>
     </div>
 </div><!-- /tela-criar-fechamento -->
+
+<!-- TELA FECHAMENTO › FECHAMENTO DE EXTRAVIOS -->
+<div id="tela-extravios-fechamento" class="view tela-full">
+    <div class="fech-header">
+        <div class="fech-period-row">
+            <select class="fech-select" id="fx-mes" onchange="_fxPeriodoMudou()">
+                <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                <option value="3">Março</option><option value="4">Abril</option>
+                <option value="5">Maio</option><option value="6">Junho</option>
+                <option value="7">Julho</option><option value="8">Agosto</option>
+                <option value="9">Setembro</option><option value="10">Outubro</option>
+                <option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select>
+            <select class="fech-select" id="fx-ano" onchange="_fxPeriodoMudou()"></select>
+        </div>
+        <div class="quinzena-toggle">
+            <button class="quinzena-btn" id="fx-btn-1q" onclick="_fxSelecionarQuinzena(1)">1ª Quinzena &nbsp;(1 – 15)</button>
+            <button class="quinzena-btn" id="fx-btn-2q" onclick="_fxSelecionarQuinzena(2)">2ª Quinzena &nbsp;(16 – fim)</button>
+        </div>
+    </div>
+    <div class="fech-body">
+        <div id="fx-conteudo"><div class="fechamento-empty">Selecione o mês, ano e quinzena.</div></div>
+    </div>
+</div><!-- /tela-extravios-fechamento -->
 
 <!-- TELA FECHAMENTO › ACRÉSCIMOS E DESCONTOS -->
 <div id="tela-ajustes-fechamento" class="view tela-full">
