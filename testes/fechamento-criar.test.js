@@ -361,3 +361,21 @@ test("CEP sem cidade: atalho sincroniza os CEPs e depois recalcula", async () =>
     assert.strictEqual(t.chamadas[0].opts.method, "POST");
     assert.strictEqual(recalculou, true);
 });
+
+test("desconsiderar onholds: pega os códigos BR de qualquer jeito que vierem", () => {
+    const ctx = carregar();
+    const r = JSON.parse(JSON.stringify(ctx._cfExtrairCodigosBR(
+        "br2612345678901\nBR2612345678901, BR2698765432109;texto BR12 x\tBR26AAAA1111BBB")));
+    assert.deepStrictEqual(r, ["BR2612345678901", "BR2698765432109", "BR26AAAA1111BBB"]);
+});
+
+test("desconsiderar onholds: colar e enviar manda os códigos do fechamento aberto", async () => {
+    const t = carregarComDom(async () => ({ ok: true, status: 200, json: async () => ({ success: true, adicionados: 2, ja_estavam: 0, recalculado: false, codigos: [] }) }));
+    vm.runInContext(`_cfTranspAtual = "shopee_via"; _cfQuinzena = 2; _cfMes = 9; _cfAno = 2026;
+        _cfCarregarIgnorar = () => {}; _cfCarregarOnholdsInfo = () => {};`, t.ctx);
+    t.el("cf-ignorar-texto").value = "BR2612345678901 BR2698765432109";
+    t.el("cf-ignorar-status");
+    await t.ctx._cfAdicionarIgnorar();
+    assert.deepStrictEqual(JSON.parse(t.chamadas[0].opts.body),
+        { mes: 9, ano: 2026, quinzena: 2, transportadora: "shopee_via", codigos: ["BR2612345678901", "BR2698765432109"] });
+});

@@ -182,6 +182,7 @@ function _cfSelecionarTransp(key) {
         document.getElementById("cf-onholds-titulo").innerText = `Alimentar onholds — ${cfg.label}`;
         document.getElementById("cf-onholds-input").value = "";
         _cfCarregarOnholdsInfo();
+        _cfCarregarIgnorar();
     }
     _cfCarregarDetalhe();
 }
@@ -323,6 +324,98 @@ function _cfCarregarOnholdsInfo(msg) {
             : "Nenhum onhold desta quinzena ainda — sem eles, todo mundo fica com 100% de performance.";
         el.innerHTML = (msg ? `<div>${msg}</div>` : "") + lista;
     }).catch(() => {});
+}
+
+// ── Desconsiderar onholds: códigos BR colados ou anexados que não contam nesse fechamento ──
+let _cfIgnorar = [];
+
+/** Tudo que parece código BR no texto ("BR" + letras/números), sem repetir. */
+function _cfExtrairCodigosBR(texto) {
+    return [...new Set((String(texto || "").toUpperCase().match(/\bBR[0-9A-Z]{6,}\b/g) || []))];
+}
+
+function _cfCarregarIgnorar(msg) {
+    const key = _cfTranspAtual;
+    const el = document.getElementById("cf-ignorar");
+    if (!el) return;
+    fetch(`${_CF_API()}/onholds-ignorar?${_cfQs({ transportadora: key })}`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (key !== _cfTranspAtual) return;
+        if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
+        _cfIgnorar = (d.codigos || []).map(c => c.codigo);
+        el.innerHTML = `
+            <div class="cft-pend-titulo" style="color:#e2e8f0">Desconsiderar onholds</div>
+            <div class="cft-ajuda" style="margin-bottom:8px">Cole os códigos BR (um por linha, ou do jeito que vierem — pega tudo que começa com "BR")
+                ou anexe uma planilha com eles. Os onholds desses pedidos não contam na performance deste fechamento.</div>
+            <textarea id="cf-ignorar-texto" class="cft-input" rows="3" placeholder="BR2612345678901&#10;BR2698765432109"></textarea>
+            <div class="cft-barra" style="margin:8px 0 0">
+                <button class="cft-btn primario" id="cf-ignorar-btn" onclick="_cfAdicionarIgnorar()">Desconsiderar</button>
+                <label class="cft-btn" style="cursor:pointer">Anexar planilha
+                    <input type="file" accept=".xlsx,.xls,.csv,.txt" multiple style="display:none" onchange="_cfIgnorarArquivo(this)">
+                </label>
+                ${_cfIgnorar.length ? `<span style="flex:1"></span><button class="cft-btn perigo" onclick="_cfTirarIgnorar(null)">Tirar todos</button>` : ""}
+            </div>
+            <div class="cft-ajuda" id="cf-ignorar-status" style="margin-top:6px">${msg || ""}</div>
+            ${_cfIgnorar.length ? `
+                <div class="cft-ajuda" style="margin:6px 0">${_cfIgnorar.length.toLocaleString("pt-BR")} código${_cfIgnorar.length !== 1 ? "s" : ""} desconsiderado${_cfIgnorar.length !== 1 ? "s" : ""}
+                    · ${Number(d.onholds_desconsiderados || 0).toLocaleString("pt-BR")} onhold${d.onholds_desconsiderados !== 1 ? "s" : ""} deixaram de contar.</div>
+                <div class="cft-pend-tags" style="max-height:160px;overflow-y:auto">${_cfIgnorar.slice(0, 500).map(c =>
+                    `<span class="cft-tag">${_cfEsc(c)} <button class="cft-col-mini" title="Voltar a contar" data-c="${_cfEsc(c)}" onclick="_cfTirarIgnorar(this.dataset.c)">×</button></span>`).join("")}
+                    ${_cfIgnorar.length > 500 ? `<span class="cft-ajuda">+${_cfIgnorar.length - 500}</span>` : ""}</div>` : ""}`;
+    }).catch(() => {});
+}
+
+async function _cfEnviarIgnorar(codigos, origem) {
+    const key = _cfTranspAtual;
+    const st = document.getElementById("cf-ignorar-status");
+    if (!codigos.length) { if (st) st.innerText = `Nenhum código BR encontrado ${origem}.`; return; }
+    if (st) st.innerText = `Gravando ${codigos.length.toLocaleString("pt-BR")} código(s)...`;
+    try {
+        const r = await fetch(`${_CF_API()}/onholds-ignorar`, {
+            method: "POST", headers: _cfHeaders(true),
+            body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: key, codigos }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Erro ao gravar.");
+        if (key !== _cfTranspAtual) return;
+        const n = (x) => Number(x || 0).toLocaleString("pt-BR");
+        _cfCarregarIgnorar(_cfEsc(`${n(d.adicionados)} código(s) desconsiderado(s)${d.ja_estavam ? ` · ${n(d.ja_estavam)} já estavam` : ""}${d.recalculado ? " · valores recalculados." : "."}`));
+        _cfCarregarOnholdsInfo();
+        if (d.recalculado) { _cfAtualizarCards(); _cfCarregarDetalhe(); }
+    } catch (err) { if (st) st.innerText = err.message; }
+}
+
+function _cfAdicionarIgnorar() {
+    const txt = document.getElementById("cf-ignorar-texto").value;
+    _cfEnviarIgnorar(_cfExtrairCodigosBR(txt), "no texto colado");
+}
+
+async function _cfIgnorarArquivo(input) {
+    const arquivos = [...(input.files || [])];
+    input.value = "";
+    let codigos = [];
+    for (const f of arquivos) {
+        const grid = await _cfLerGrid(f).catch(() => []);
+        codigos = codigos.concat(_cfExtrairCodigosBR(grid.map(row => (row || []).join(" ")).join("\n")));
+    }
+    _cfEnviarIgnorar([...new Set(codigos)], "no arquivo");
+}
+
+function _cfTirarIgnorar(codigo) {
+    const faz = async () => {
+        const key = _cfTranspAtual;
+        const extra = codigo ? { codigo } : { todos: "1" };
+        const r = await fetch(`${_CF_API()}/onholds-ignorar?${_cfQs({ transportadora: key, ...extra })}`, { method: "DELETE", headers: _cfHeaders() });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { gcAlert(d.error || "Erro ao tirar."); return; }
+        if (key !== _cfTranspAtual) return;
+        _cfCarregarIgnorar(codigo ? _cfEsc(`${codigo} volta a contar.`) : "Todos voltam a contar.");
+        _cfCarregarOnholdsInfo();
+        if (d.recalculado) { _cfAtualizarCards(); _cfCarregarDetalhe(); }
+    };
+    if (codigo) faz();
+    else gcConfirm("Tirar todos os códigos desconsiderados deste fechamento? Os onholds deles voltam a contar.", faz, "Tirar todos", "Tirar");
 }
 
 // Vários arquivos de uma vez: um por um, cada um soma aos que já estão.
