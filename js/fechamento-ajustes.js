@@ -19,39 +19,67 @@ function _ajHeaders(json) {
     return h;
 }
 
-/** Quinzenas pra escolher: da próxima até 6 meses atrás, a atual selecionada. Valor "ano-mes-q". */
-function _ajQuinzenas(hoje) {
+/** Quinzena de hoje (1–15 = Q1). */
+function _ajHoje(hoje) {
     const d = hoje || new Date();
-    let ano = d.getFullYear(), mes = d.getMonth() + 1, q = d.getDate() <= 15 ? 1 : 2;
-    const atual = `${ano}-${mes}-${q}`;
-    // começa uma quinzena à frente
-    if (q === 1) q = 2; else { q = 1; mes++; if (mes > 12) { mes = 1; ano++; } }
-    const lista = [];
-    for (let i = 0; i < 14; i++) {
-        lista.push({ valor: `${ano}-${mes}-${q}`, rotulo: `Q${q}${_AJ_MESES[mes - 1]} · ${q === 1 ? "1 – 15" : "16 – fim"} de ${_AJ_MESES[mes - 1]}/${ano}`, atual: `${ano}-${mes}-${q}` === atual });
-        if (q === 2) q = 1; else { q = 2; mes--; if (mes < 1) { mes = 12; ano--; } }
-    }
-    return lista;
+    return { mes: d.getMonth() + 1, ano: d.getFullYear(), quinzena: d.getDate() <= 15 ? 1 : 2 };
 }
+/** As n quinzenas a partir de per, virando mês e ano (igual ao servidor). */
+function _ajProximas(per, n) {
+    const out = [];
+    let { mes, ano, quinzena } = per;
+    for (let i = 0; i < n; i++) {
+        out.push({ mes, ano, quinzena });
+        if (quinzena === 1) quinzena = 2; else { quinzena = 1; mes++; if (mes > 12) { mes = 1; ano++; } }
+    }
+    return out;
+}
+function _ajCodigo(p) { return `Q${p.quinzena}${_AJ_MESES[p.mes - 1]}/${p.ano}`; }
 function _ajPeriodo() {
-    const [ano, mes, quinzena] = document.getElementById("aj-quinzena").value.split("-").map(Number);
-    return { mes, ano, quinzena };
+    const v = (id) => parseInt(document.getElementById(id).value, 10);
+    return { mes: v("aj-mes"), ano: v("aj-ano"), quinzena: v("aj-q") };
+}
+// Valor digitado ("1.941,12") → número.
+function _ajValorNum(t) {
+    const n = Number(String(t || "").replace(/\s|R\$/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+}
+// "6 × R$ 323,52 · Q1Out/2026 até Q2Dez/2026"
+function _ajTextoParcelas() {
+    const el = document.getElementById("aj-previa");
+    if (!el) return;
+    const n = parseInt(document.getElementById("aj-parcelas").value, 10) || 1;
+    const total = _ajValorNum(document.getElementById("aj-valor").value);
+    if (n <= 1 || !total) { el.innerText = ""; return; }
+    const qs = _ajProximas(_ajPeriodo(), n);
+    const base = Math.floor(Math.round(total * 100) / n) / 100;
+    const ultima = Math.round((total - base * (n - 1)) * 100) / 100;
+    el.innerText = `${n} × R$ ${_ajNum(base)}${ultima !== base ? ` (última R$ ${_ajNum(ultima)})` : ""} · ${_ajCodigo(qs[0])} até ${_ajCodigo(qs[n - 1])}`;
 }
 
 function abrirAjustesFechamento(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-ajustes-fechamento");
+    const h = _ajHoje();
     const el = document.getElementById("aj-conteudo");
     el.innerHTML = `
         <div class="cft-regras">
             <div class="cft-pend-titulo" style="color:#e2e8f0">Novo lançamento</div>
-            <div class="cft-ajuda" style="margin-bottom:10px">Entra no Resumo da Quinzena da quinzena escolhida: acréscimo soma no líquido, desconto tira.</div>
+            <div class="cft-ajuda" style="margin-bottom:10px">Entra no Resumo da Quinzena da quinzena escolhida: acréscimo soma no líquido, desconto tira.
+                Parcelado: o valor total é dividido e cai uma parcela por quinzena, a partir da escolhida (pode ser quinzena futura, até de outro ano).</div>
             <datalist id="aj-entregadores"></datalist>
             <div class="cft-barra" style="margin:0 0 10px;flex-wrap:wrap">
-                <select class="fech-select" id="aj-quinzena" onchange="_ajCarregar()">${_ajQuinzenas().map(q =>
-                    `<option value="${q.valor}"${q.atual ? " selected" : ""}>${_ajEsc(q.rotulo)}</option>`).join("")}</select>
+                <select class="fech-select" id="aj-q" onchange="_ajPeriodoMudou()">
+                    <option value="1"${h.quinzena === 1 ? " selected" : ""}>Q1 (1 – 15)</option><option value="2"${h.quinzena === 2 ? " selected" : ""}>Q2 (16 – fim)</option></select>
+                <select class="fech-select" id="aj-mes" onchange="_ajPeriodoMudou()">${_AJ_MESES.map((m, i) =>
+                    `<option value="${i + 1}"${i + 1 === h.mes ? " selected" : ""}>${m}</option>`).join("")}</select>
+                <select class="fech-select" id="aj-ano" onchange="_ajPeriodoMudou()">${Array.from({ length: 7 }, (_, i) => h.ano - 1 + i).map(a =>
+                    `<option value="${a}"${a === h.ano ? " selected" : ""}>${a}</option>`).join("")}</select>
                 <input class="cft-input" id="aj-driver" list="aj-entregadores" placeholder="Entregador..." style="width:300px;flex:0 0 auto;margin:0" onfocus="_ajGarantirEntregadores()">
-                <input class="cft-input" id="aj-valor" inputmode="decimal" placeholder="Valor (R$)" style="width:120px;flex:0 0 auto;margin:0">
+                <input class="cft-input" id="aj-valor" inputmode="decimal" placeholder="Valor total (R$)" style="width:140px;flex:0 0 auto;margin:0" oninput="_ajTextoParcelas()">
+                <label class="cft-rotulo" for="aj-parcelas" style="margin:0">Parcelas</label>
+                <input class="cft-input" id="aj-parcelas" type="number" min="1" max="48" value="1" style="width:70px;flex:0 0 auto;margin:0" oninput="_ajTextoParcelas()">
+                <span class="cft-ajuda" id="aj-previa"></span>
             </div>
             <div class="cft-barra" style="margin:0 0 10px;flex-wrap:wrap;gap:16px">
                 <label class="cft-ajuda" style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#cbd5e1"><input type="radio" name="aj-tipo" value="acrescimo"> Acréscimo</label>
@@ -63,10 +91,39 @@ function abrirAjustesFechamento(event) {
                 <span class="cft-ajuda" id="aj-status"></span>
             </div>
         </div>
-        <div id="aj-lista"></div>`;
+        <div id="aj-lista"></div>
+        <div id="aj-parcelamentos" style="margin-top:18px"></div>`;
     _ajGarantirEntregadores();
     _ajCarregar();
+    _ajCarregarParcelamentos();
 }
+
+function _ajPeriodoMudou() { _ajTextoParcelas(); _ajCarregar(); }
+
+// Parcelamentos de todas as quinzenas: quantas parcelas ainda existem e onde caem.
+function _ajCarregarParcelamentos() {
+    const el = document.getElementById("aj-parcelamentos");
+    fetch(`${_AJ_API()}/ajustes/parcelamentos`, { headers: _ajHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        const ls = d.linhas || [];
+        el.innerHTML = !ls.length ? "" : `
+            <div class="cft-pend-titulo" style="color:#e2e8f0">Parcelamentos</div>
+            <div class="cft-tabela-wrap" style="max-height:360px;overflow-y:auto"><table class="cft-tabela">
+                <thead><tr><th>Entregador</th><th>Tipo</th><th>Descrição</th><th style="text-align:right">Parcelas</th><th style="text-align:right">Soma (R$)</th><th>Quinzenas</th><th></th></tr></thead>
+                <tbody>${ls.map(p => `<tr>
+                    <td>${_ajEsc(p.driver)}</td>
+                    <td>${p.tipo === "acrescimo" ? "Acréscimo" : "Desconto"}</td>
+                    <td style="white-space:normal">${_ajEsc(p.descricao || "")}</td>
+                    <td class="num">${p.restantes} de ${p.parcelas}</td>
+                    <td class="num ${p.tipo === "acrescimo" ? "cft-pos" : "cft-neg"}">${_ajNum(p.total_restante)}</td>
+                    <td class="cft-ajuda" style="white-space:normal">${(p.lista || []).map(x => `${_ajCodigo(x)} (${x.parcela})`).join(" · ")}</td>
+                    <td style="width:1%"><button class="cft-btn perigo" data-g="${_ajEsc(p.grupo_id)}" onclick="_ajRemoverTodas(this.dataset.g)">Remover todas</button></td>
+                </tr>`).join("")}</tbody></table></div>`;
+        _ajParcelamentos = ls;
+    }).catch(() => {});
+}
+let _ajParcelamentos = [];
 
 // Lista de entregadores (Dados entregadores + Conversão de nomes), lida uma vez.
 function _ajGarantirEntregadores() {
@@ -103,7 +160,7 @@ function _ajRenderLista(msg) {
             <thead><tr><th>Entregador</th><th>Tipo</th><th style="text-align:right">Valor (R$)</th><th>Descrição</th><th>Lançado por</th><th></th></tr></thead>
             <tbody>${_ajLinhas.length ? _ajLinhas.map(a => `<tr>
                 <td>${_ajEsc(a.driver)}</td>
-                <td>${a.tipo === "acrescimo" ? "Acréscimo" : "Desconto"}</td>
+                <td>${a.tipo === "acrescimo" ? "Acréscimo" : "Desconto"}${a.parcelas ? ` <span class="cft-ajuda">parcela ${a.parcela}/${a.parcelas}</span>` : ""}</td>
                 <td class="num ${a.tipo === "acrescimo" ? "cft-pos" : "cft-neg"}">${a.tipo === "acrescimo" ? "+" : "−"} ${_ajNum(a.valor)}</td>
                 <td style="white-space:normal">${_ajEsc(a.descricao || "")}</td>
                 <td class="cft-ajuda">${_ajEsc(a.criado_por_nome || "")} ${a.criado_em ? new Date(a.criado_em).toLocaleString("pt-BR") : ""}</td>
@@ -116,7 +173,7 @@ async function _ajSalvar() {
     const st = document.getElementById("aj-status");
     const tipo = (document.querySelector('input[name="aj-tipo"]:checked') || {}).value || "";
     const corpo = { ..._ajPeriodo(), driver: document.getElementById("aj-driver").value, valor: document.getElementById("aj-valor").value,
-        tipo, descricao: document.getElementById("aj-descricao").value };
+        tipo, descricao: document.getElementById("aj-descricao").value, parcelas: document.getElementById("aj-parcelas").value || "1" };
     if (!tipo) { st.innerText = "Escolha se é acréscimo ou desconto."; return; }
     const btn = document.getElementById("aj-salvar");
     btn.disabled = true;
@@ -126,16 +183,39 @@ async function _ajSalvar() {
         if (!r.ok) { st.innerText = d.error || "Erro ao lançar."; return; }
         st.innerText = "";
         for (const id of ["aj-driver", "aj-valor", "aj-descricao"]) document.getElementById(id).value = "";
-        _ajCarregar("Lançado.");
+        document.getElementById("aj-parcelas").value = "1";
+        _ajTextoParcelas();
+        const ps = d.parcelas || [];
+        _ajCarregar(ps.length > 1 ? `Lançado em ${ps.length} parcelas (${_ajCodigo(ps[0])} até ${_ajCodigo(ps[ps.length - 1])}).` : "Lançado.");
+        _ajCarregarParcelamentos();
     } catch (_) { st.innerText = "Erro ao lançar."; } finally { btn.disabled = false; }
 }
 
+function _ajApagar(id, todas, msg) {
+    fetch(`${_AJ_API()}/ajustes/${id}${todas ? "?todas=1" : ""}`, { method: "DELETE", headers: _ajHeaders() })
+    .then(r => r.json())
+    .then(d => { if (d.error) gcAlert(d.error); else { _ajCarregar(msg); _ajCarregarParcelamentos(); } })
+    .catch(() => gcAlert("Erro ao remover."));
+}
+
+// Parcela: remove só esta (as outras continuam caindo). O parcelamento inteiro sai pela lista Parcelamentos.
 function _ajRemover(id) {
     const a = _ajLinhas.find(x => x.id === id);
-    gcConfirm(`Remover o ${a && a.tipo === "acrescimo" ? "acréscimo" : "desconto"} de <b>${_ajEsc(a ? a.driver : "")}</b> (R$ ${_ajNum(a ? a.valor : 0)})?`, () => {
-        fetch(`${_AJ_API()}/ajustes/${id}`, { method: "DELETE", headers: _ajHeaders() })
-        .then(r => r.json())
-        .then(d => { if (d.error) gcAlert(d.error); else _ajCarregar("Removido."); })
-        .catch(() => gcAlert("Erro ao remover."));
-    }, "Remover lançamento", "Remover");
+    const qual = a && a.parcelas ? `a parcela ${a.parcela}/${a.parcelas} do` : "o";
+    gcConfirm(`Remover ${qual} ${a && a.tipo === "acrescimo" ? "acréscimo" : "desconto"} de <b>${_ajEsc(a ? a.driver : "")}</b> (R$ ${_ajNum(a ? a.valor : 0)})?`
+        + (a && a.parcelas ? "<br><span style='font-size:12px;color:#8494a9'>As outras parcelas continuam. Pra tirar todas, use Parcelamentos.</span>" : ""),
+        () => _ajApagar(id, false, "Removido."), "Remover lançamento", "Remover");
+}
+
+function _ajRemoverTodas(grupo) {
+    const p = _ajParcelamentos.find(x => x.grupo_id === grupo);
+    if (!p || !p.lista || !p.lista.length) return;
+    gcConfirm(`Remover as <b>${p.restantes} parcelas</b> de ${p.tipo === "acrescimo" ? "acréscimo" : "desconto"} de <b>${_ajEsc(p.driver)}</b> (R$ ${_ajNum(p.total_restante)})?`,
+        () => _ajApagarGrupo(grupo), "Remover parcelamento", "Remover todas");
+}
+function _ajApagarGrupo(grupo) {
+    fetch(`${_AJ_API()}/ajustes/grupo/${encodeURIComponent(grupo)}`, { method: "DELETE", headers: _ajHeaders() })
+    .then(r => r.json())
+    .then(x => { if (x.error) gcAlert(x.error); else { _ajCarregar("Parcelamento removido."); _ajCarregarParcelamentos(); } })
+    .catch(() => gcAlert("Erro ao remover."));
 }
