@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261028b">
+<link rel="stylesheet" href="style.css?v=20261028c">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -522,6 +522,7 @@ if (_BASE) {
             </ul>
             <li><a href="#" data-rota="Fechamento/Criar" onclick="abrirCriarFechamento(event)">Criar Fechamento</a></li>
             <li><a href="#" data-rota="Fechamento/Resumo" onclick="abrirResumoQuinzena(event)">Resumo da Quinzena</a></li>
+            <li><a href="#" data-rota="Fechamento/Ajustes" onclick="abrirAjustesFechamento(event)">Acréscimos e Descontos</a></li>
         </ul>
 
         <li class="menu-item" data-menu="planejamento" id="menu-planejamento" onclick="toggleMenu(this)" style="display:none">
@@ -4878,9 +4879,10 @@ if (_BASE) {
 <script src="js/whatsapp-conversa.js?v=20261021a"></script>
 <script src="js/modals.js?v=20260924a"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
-<script src="js/fechamento-criar.js?v=20261028f"></script>
+<script src="js/fechamento-criar.js?v=20261028g"></script>
 <script src="js/ticketlog-info.js?v=20261028a"></script>
-<script src="js/fechamento-resumo.js?v=20261028e"></script>
+<script src="js/fechamento-resumo.js?v=20261028f"></script>
+<script src="js/fechamento-ajustes.js?v=20261028a"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
 <script src="js/pedidos.js?v=20261020a"></script>
@@ -5033,8 +5035,9 @@ if (_BASE) {
         <div id="cf-content" style="display:none">
 
             <div class="cft-barra" style="justify-content:space-between;margin-top:0">
-                <div class="ant-form-title" style="margin:0">Transportadoras da quinzena</div>
+                <div class="ant-form-title" style="margin:0">Transportadoras da quinzena <span class="cft-ajuda" id="cf-todas-status" style="font-weight:400"></span></div>
                 <span>
+                    <button class="cft-btn" onclick="_cfRecalcularTodas(this)" title="Trata de novo todos os relatórios da quinzena (depois de mexer em conversões, preços, regras de prazo)">Recalcular todas</button>
                     <button class="cft-btn" id="cf-ticketlog-btn" onclick="_cfAbrirTicketlog()">Descontos: Ticketlog</button>
                     <button class="cft-btn" id="cf-fixos-btn" onclick="_cfAbrirFixos()">Valores fixos (Shopee)</button>
                     <button class="cft-btn" id="cf-cidades-btn" onclick="_cfAbrirConvCidades()">Conversão de cidades</button>
@@ -5130,6 +5133,13 @@ if (_BASE) {
         </div>
     </div>
 </div><!-- /tela-criar-fechamento -->
+
+<!-- TELA FECHAMENTO › ACRÉSCIMOS E DESCONTOS -->
+<div id="tela-ajustes-fechamento" class="view tela-full">
+    <div class="fech-body">
+        <div id="aj-conteudo"></div>
+    </div>
+</div><!-- /tela-ajustes-fechamento -->
 
 <!-- TELA FECHAMENTO › RESUMO DA QUINZENA -->
 <div id="tela-resumo-quinzena" class="view tela-full">

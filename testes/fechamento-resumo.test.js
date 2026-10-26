@@ -10,7 +10,7 @@ const DADOS = {
         imile: { nome: "Imile", enviado: true, pacotes: 50, valor: 120 }, total: { nome: "Total Express", enviado: false, pacotes: 0, valor: 0 } },
     linhas: [
         { entregador: "Fulano de Teste - Vila Teste", polo: "Caçador", sem_conversao: false, por_transp: { shopee_cfc: { pacotes: 100, valor: 250 }, imile: { pacotes: 50, valor: 120 } },
-            pacotes: 150, bruto: 370, ticketlog: 80, liquido: 290, ticketlog_divergencias: 0 },
+            pacotes: 150, bruto: 370, ticketlog: 80, extravios: 20, acrescimos: 10, descontos: 5, liquido: 275, ticketlog_divergencias: 0 },
         { entregador: "Beltrano Exemplo - Morro", polo: "Videira", sem_conversao: false, por_transp: { imile: { pacotes: 5, valor: 15 } },
             pacotes: 5, bruto: 15, ticketlog: 0, liquido: 15, ticketlog_divergencias: 0 },
         { entregador: "usuario.sem", polo: null, sem_conversao: true, por_transp: { imile: { pacotes: 1, valor: 3 } },
@@ -19,6 +19,10 @@ const DADOS = {
     opcoes: { polos: ["Caçador", "Videira"], entregadores: ["Fulano de Teste - Vila Teste"], cidades: ["Vila Teste"] },
     totais: { entregadores: 2, pacotes: 156, bruto: 388, ticketlog: 80, liquido: 308, sem_conversao: { linhas: 1, valor: 3 }, ticketlog_sem_nome: 0 },
     ticketlog_arquivos: 1,
+    extravios_linhas: [{ driver: "Fulano de Teste - Vila Teste", responsavel: "FULANO DE TESTE", status: "Extravio", transportadora: "Imile",
+        data: "20/09/2026", codigo: "C1", valor: 20, causa: "", data_desconto: "Q2Set", sem_conversao: false },
+        { driver: "Fora do Arquivo", responsavel: "x", status: "Multa", valor: 1, sem_conversao: true }],
+    ajustes_linhas: [{ id: 1, driver: "Fulano de Teste - Vila Teste", tipo: "acrescimo", valor: 10, descricao: "ajuda" }],
 };
 
 function carregar() {
@@ -57,16 +61,18 @@ test("detalhado: uma aba por transportadora com as colunas do Criar Fechamento, 
     const perf = [{ driver: "Fulano de Teste - Vila Teste", dia: "2026-09-21", shopee: 1, onholds: 0, outras_prazo: 1, outras_atraso: 0, pct: 100, valor: 2.5, pacotes_pagos: 2, total: 5 },
         { driver: "Outro Fora - X", dia: "2026-09-21", shopee: 1, onholds: 0, outras_prazo: 0, outras_atraso: 0, pct: 100, valor: 2.5, pacotes_pagos: 1, total: 2.5 }];
     const abas = JSON.parse(JSON.stringify(ctx._rqMontarAbas(PAC, { polo: "", driver: "", cidade: "", transportadora: "" }, perf)));
-    assert.deepStrictEqual(abas.map(a => a.nome), ["Shopee Caçador", "Imile", "Performance", "Resumo"]);
+    assert.deepStrictEqual(abas.map(a => a.nome), ["Shopee Caçador", "Imile", "Performance", "Extravios", "Acréscimos e descontos", "Resumo"]);
+    assert.deepStrictEqual(abas[3].linhas[1].slice(0, 3), ["Fulano de Teste - Vila Teste", "FULANO DE TESTE", "Extravio"]);
+    assert.deepStrictEqual(abas[4].linhas[1], ["Fulano de Teste - Vila Teste", "Acréscimo", 10, "ajuda"]);
     const imile = abas[1].linhas;
     assert.deepStrictEqual(imile[0].slice(0, 5), ["Transportadora", "Tipo de Produto", "Driver", "Usuario", "Codigo"]);
     assert.strictEqual(imile.length, 3);
     assert.deepStrictEqual(abas[0].linhas[0], ["Transportadora", "Driver", "Usuario", "Codigo", "Cidade", "Polo", "Zipcode Name", "Data entrega", "Valor motorista"]);
     assert.strictEqual(abas[2].linhas.length, 2, "performance só de quem está no arquivo");
-    assert.deepStrictEqual(abas[3].linhas, [
-        ["Entregador", "Polo", "Imile (R$)", "Shopee Caçador (R$)", "Pacotes", "Bruto", "Ticketlog", "Líquido"],
-        ["Fulano de Teste - Vila Teste", "Caçador", 3, 2.5, 2, 5.5, 80, -74.5],
-        ["usuario.sem (sem conversão)", "", 3, 0, 1, 3, 0, 3],
+    assert.deepStrictEqual(abas[5].linhas, [
+        ["Entregador", "Polo", "Imile (R$)", "Shopee Caçador (R$)", "Pacotes", "Bruto", "Acréscimos", "Ticketlog", "Extravios", "Descontos", "Líquido"],
+        ["Fulano de Teste - Vila Teste", "Caçador", 3, 2.5, 2, 5.5, 10, 80, 20, 5, -89.5],
+        ["usuario.sem (sem conversão)", "", 3, 0, 1, 3, 0, 0, 0, 0, 3],
     ]);
 });
 

@@ -1298,6 +1298,24 @@ function _cfSalvarConversao(i) {
     }).catch(() => { btn.disabled = false; status.innerText = "Erro ao salvar."; });
 }
 
+// Trata de novo todos os relatórios da quinzena (depois de mexer em conversões, planilha de
+// preços, regras de prazo...) e refaz a performance uma vez só.
+async function _cfRecalcularTodas(btn) {
+    const st = document.getElementById("cf-todas-status");
+    btn.disabled = true;
+    if (st) st.innerText = "Recalculando todas as transportadoras...";
+    try {
+        const r = await fetch(`${_CF_API()}/recalcular-todas`, { method: "POST", headers: _cfHeaders(true),
+            body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena }) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Erro ao recalcular.");
+        if (st) st.innerText = `Recalculadas: ${d.recalculadas.join(", ")}.`;
+        _cfCarregarResumo();
+    } catch (err) {
+        if (st) st.innerText = err.message;
+    } finally { btn.disabled = false; }
+}
+
 function _cfHtmlAcoes() {
     return `
         <div class="cft-barra">

@@ -85,7 +85,10 @@ function _rqRender() {
             <div class="cft-kpi"><div class="cft-kpi-valor">${t.entregadores.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Entregadores</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">${t.pacotes.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Pacotes</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">${_rqNum(t.bruto)}</div><div class="cft-kpi-rotulo">Bruto (R$)</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor${t.acrescimos ? " cft-pos" : ""}">${_rqNum(t.acrescimos)}</div><div class="cft-kpi-rotulo">Acréscimos (R$)</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor${t.ticketlog ? " cft-neg" : ""}">${_rqNum(t.ticketlog)}</div><div class="cft-kpi-rotulo">Ticketlog (R$)</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor${t.extravios ? " cft-neg" : ""}">${_rqNum(t.extravios)}</div><div class="cft-kpi-rotulo">Extravios (R$) · ${_rqEsc(d.codigo_quinzena || "")}</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor${t.descontos ? " cft-neg" : ""}">${_rqNum(t.descontos)}</div><div class="cft-kpi-rotulo">Descontos (R$)</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor cft-pos">${_rqNum(t.liquido)}</div><div class="cft-kpi-rotulo">Líquido (R$)</div></div>
         </div>
         ${transp ? `<div class="cft-pend-titulo" style="color:#e2e8f0">Por transportadora</div><div class="cft-kpis">${transp}</div>` : ""}
@@ -94,6 +97,8 @@ function _rqRender() {
             (R$ ${_rqNum(t.sem_conversao.valor)}) — aparecem no fim da lista; converta no Criar Fechamento.</div>` : ""}
         ${t.ticketlog_sem_nome ? `<div class="cft-ajuda" style="margin-bottom:6px"><span class="cft-aviso">R$ ${_rqNum(t.ticketlog_sem_nome)} de Ticketlog sem entregador</span> — confira em Descontos: Ticketlog.</div>` : ""}
         ${!d.ticketlog_arquivos ? `<div class="cft-ajuda" style="margin-bottom:6px">Nenhum relatório do Ticketlog nesta quinzena.</div>` : ""}
+        ${d.extravios_erro ? `<div class="cft-erro" style="margin-bottom:6px">Não consegui ler a planilha de extravios: ${_rqEsc(d.extravios_erro)}</div>` : ""}
+        ${_rqExtraviosSemConversao(d)}
 
         <div class="cft-barra" style="justify-content:space-between">
             <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -138,7 +143,8 @@ function _rqRender() {
             <thead id="rq-thead"></thead><tbody id="rq-tbody"></tbody><tfoot id="rq-tfoot"></tfoot>
         </table></div>
         <div class="cft-ajuda" style="margin-top:6px">Valor de cada transportadora = soma do "Valor motorista" dos pacotes (Shopee já pela performance consolidada).
-            Líquido = bruto − Ticketlog. Clique no título da coluna pra ordenar.</div>`;
+            Líquido = bruto + acréscimos − Ticketlog − extravios − descontos. Extravios: planilha de extravios, linhas com "Data desconto" = ${_rqEsc(d.codigo_quinzena || "")}.
+            Acréscimos e descontos: Fechamento › Acréscimos e Descontos. Clique no título da coluna pra ordenar.</div>`;
     _rqRenderTabela();
     _rqRenderCidades();
 }
@@ -180,10 +186,20 @@ function _rqRenderCidades() {
     if (!el) return;
     el.innerHTML = (_rqXCidades.length
         ? `<span class="cft-ajuda">${_rqXCidades.length} cidade(s): </span>` + _rqXCidades.map((c, i) =>
-            `<span class="cft-chip"${c.variantes.length > 1 ? ` title="Grafias: ${_rqEsc(c.variantes.join(" · "))}"` : ""}>${_rqEsc(c.nome)}${c.variantes.length > 1 ? ` <span class="cft-ajuda">+${c.variantes.length - 1}</span>` : ""} <a href="#" title="Tirar" onclick="event.preventDefault();_rqTirarCidade(${i})">×</a></span>`).join(" ")
+            `<span class="cft-etiqueta"${c.variantes.length > 1 ? ` title="Grafias: ${_rqEsc(c.variantes.join(" · "))}"` : ""}>${_rqEsc(c.nome)}${c.variantes.length > 1 ? ` <span class="cft-ajuda">+${c.variantes.length - 1}</span>` : ""} <a href="#" title="Tirar" onclick="event.preventDefault();_rqTirarCidade(${i})">×</a></span>`).join(" ")
             + ` <a href="#" class="cft-ordem cft-ajuda" onclick="event.preventDefault();_rqLimparCidades()">limpar</a>`
         : `<span class="cft-ajuda">Todas as cidades.</span>`)
         + (_rqXNaoAchadas.length ? `<div class="cft-ajuda" style="margin-top:4px"><span class="cft-aviso">Sem pacote nesta quinzena:</span> ${_rqEsc(_rqXNaoAchadas.join(", "))}</div>` : "");
+}
+
+// Responsável da planilha de extravios que não virou nome padrão: aparece como linha
+// "sem conversão" — aqui a soma, pra pessoa corrigir o nome na planilha ou na Conversão.
+function _rqExtraviosSemConversao(d) {
+    const sem = (d.extravios_linhas || []).filter(e => e.sem_conversao);
+    if (!sem.length) return "";
+    const nomes = [...new Set(sem.map(e => e.responsavel || "(sem responsável)"))];
+    return `<div class="cft-ajuda" style="margin-bottom:6px"><span class="cft-aviso">${sem.length} extravio(s) com responsável sem conversão</span>
+        (R$ ${_rqNum(sem.reduce((s, e) => s + e.valor, 0))}): ${_rqEsc(nomes.join(", "))}.</div>`;
 }
 
 function _rqFiltradas() {
@@ -211,7 +227,8 @@ function _rqRenderTabela() {
     const th = (c, rot, num) => `<th${num ? ` style="text-align:right"` : ""}><a href="#" class="cft-ordem" onclick="event.preventDefault();_rqOrdenar('${c}')">${rot}${seta(c)}</a></th>`;
     document.getElementById("rq-thead").innerHTML = `<tr>${th("entregador", "Entregador")}${th("polo", "Polo")}
         ${cols.map(c => th("t:" + c.chave, _rqEsc(c.nome), true)).join("")}
-        ${th("pacotes", "Pacotes", true)}${th("bruto", "Bruto", true)}${th("ticketlog", "Ticketlog", true)}${th("liquido", "Líquido", true)}</tr>`;
+        ${th("pacotes", "Pacotes", true)}${th("bruto", "Bruto", true)}${th("acrescimos", "Acrésc.", true)}${th("ticketlog", "Ticketlog", true)}
+        ${th("extravios", "Extravios", true)}${th("descontos", "Descontos", true)}${th("liquido", "Líquido", true)}</tr>`;
     const lista = _rqFiltradas();
     document.getElementById("rq-tbody").innerHTML = lista.length ? lista.map(l => `<tr>
             <td>${_rqEsc(l.entregador)}${l.sem_conversao ? ` <span class="cft-aviso" title="Usuário sem conversão de nome">sem conversão</span>` : ""}</td>
@@ -220,17 +237,23 @@ function _rqRenderTabela() {
                 return v ? `<td class="num" title="${v.pacotes} pacote(s)">${_rqNum(v.valor)}</td>` : `<td class="num cft-vazio">—</td>`; }).join("")}
             <td class="num">${l.pacotes.toLocaleString("pt-BR")}</td>
             <td class="num">${_rqNum(l.bruto)}</td>
+            <td class="num${l.acrescimos ? " cft-pos" : ""}">${l.acrescimos ? _rqNum(l.acrescimos) : `<span class="cft-vazio">—</span>`}</td>
             <td class="num${l.ticketlog ? " cft-neg" : ""}"${l.ticketlog_divergencias ? ` title="${l.ticketlog_divergencias} abastecimento(s) com divergência de cartão/matrícula"` : ""}>${l.ticketlog ? _rqNum(l.ticketlog) : `<span class="cft-vazio">—</span>`}</td>
+            <td class="num${l.extravios ? " cft-neg" : ""}"${l.qtd_extravios ? ` title="${l.qtd_extravios} extravio(s)/multa(s)"` : ""}>${l.extravios ? _rqNum(l.extravios) : `<span class="cft-vazio">—</span>`}</td>
+            <td class="num${l.descontos ? " cft-neg" : ""}">${l.descontos ? _rqNum(l.descontos) : `<span class="cft-vazio">—</span>`}</td>
             <td class="num ${l.liquido < 0 ? "cft-neg" : "cft-pos"}"><strong>${_rqNum(l.liquido)}</strong></td>
         </tr>`).join("")
-        : `<tr><td colspan="${cols.length + 6}" class="cft-vazio" style="padding:14px">${_rqDados.linhas.length ? "Nada com esse filtro." : "Nenhum relatório nesta quinzena ainda."}</td></tr>`;
+        : `<tr><td colspan="${cols.length + 9}" class="cft-vazio" style="padding:14px">${_rqDados.linhas.length ? "Nada com esse filtro." : "Nenhum relatório nesta quinzena ainda."}</td></tr>`;
     const soma = (f) => lista.reduce((s, l) => s + f(l), 0);
     document.getElementById("rq-tfoot").innerHTML = lista.length ? `<tr>
             <td><strong>Total</strong> <span class="cft-ajuda">${lista.length} linha(s)</span></td><td></td>
             ${cols.map(c => `<td class="num"><strong>${_rqNum(soma(l => (l.por_transp[c.chave] || {}).valor || 0))}</strong></td>`).join("")}
             <td class="num"><strong>${soma(l => l.pacotes).toLocaleString("pt-BR")}</strong></td>
             <td class="num"><strong>${_rqNum(soma(l => l.bruto))}</strong></td>
+            <td class="num"><strong>${_rqNum(soma(l => l.acrescimos))}</strong></td>
             <td class="num"><strong>${_rqNum(soma(l => l.ticketlog))}</strong></td>
+            <td class="num"><strong>${_rqNum(soma(l => l.extravios))}</strong></td>
+            <td class="num"><strong>${_rqNum(soma(l => l.descontos))}</strong></td>
             <td class="num cft-pos"><strong>${_rqNum(soma(l => l.liquido))}</strong></td>
         </tr>` : "";
 }
@@ -245,13 +268,13 @@ function _rqAlternarBaixar() {
 }
 
 /**
- * Aba "Resumo" (por entregador) a partir dos pacotes já filtrados. Ticketlog (e o líquido)
- * só entra quando não tem filtro de cidade nem de transportadora — o desconto é do
- * entregador inteiro, não de uma parte dos pacotes dele.
+ * Aba "Resumo" (por entregador) a partir dos pacotes já filtrados. Ajustes (acréscimos,
+ * Ticketlog, extravios, descontos) e o líquido só entram quando não tem filtro de cidade
+ * nem de transportadora — são do entregador inteiro, não de uma parte dos pacotes dele.
  */
 function _rqAbaResumo(pacotes, filtros) {
     const comTl = !(filtros.cidades || []).length && !filtros.parcialTransp;
-    const tl = new Map((_rqDados.linhas || []).filter(l => !l.sem_conversao).map(l => [l.entregador, l.ticketlog || 0]));
+    const aj = new Map((_rqDados.linhas || []).filter(l => !l.sem_conversao).map(l => [l.entregador, l]));
     const transp = [...new Set(pacotes.map(p => p.transportadora))].sort((a, b) => a.localeCompare(b, "pt-BR"));
     const por = new Map();
     for (const p of pacotes) {
@@ -264,11 +287,14 @@ function _rqAbaResumo(pacotes, filtros) {
         if (p.polo) r.polos.set(p.polo, (r.polos.get(p.polo) || 0) + 1);
     }
     const r2 = (n) => Math.round(n * 100) / 100;
-    const cab = ["Entregador", "Polo", ...transp.map(t => t + " (R$)"), "Pacotes", "Bruto"].concat(comTl ? ["Ticketlog", "Líquido"] : []);
+    const cab = ["Entregador", "Polo", ...transp.map(t => t + " (R$)"), "Pacotes", "Bruto"]
+        .concat(comTl ? ["Acréscimos", "Ticketlog", "Extravios", "Descontos", "Líquido"] : []);
     const linhas = [...por.values()].sort((a, b) => (!a.driver - !b.driver) || a.nome.localeCompare(b.nome, "pt-BR")).map(r => {
         const polo = [...r.polos.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0])[0] || "";
-        const desc = comTl && r.driver ? (tl.get(r.driver) || 0) : 0;
-        return [r.nome, polo, ...transp.map(t => r2(r.t[t] || 0)), r.pacotes, r2(r.bruto)].concat(comTl ? [desc, r2(r.bruto - desc)] : []);
+        const a = (r.driver && aj.get(r.driver)) || {};
+        const [ac, tlv, ex, de] = [a.acrescimos || 0, a.ticketlog || 0, a.extravios || 0, a.descontos || 0];
+        return [r.nome, polo, ...transp.map(t => r2(r.t[t] || 0)), r.pacotes, r2(r.bruto)]
+            .concat(comTl ? [ac, tlv, ex, de, r2(r.bruto + ac - tlv - ex - de)] : []);
     });
     return [cab, ...linhas];
 }
@@ -294,6 +320,16 @@ function _rqMontarAbas(pacotes, filtros, perfLinhas) {
         abas.push({ nome: "Performance", linhas: [["Dia", "Entregador", "Shopee entregues", "Onholds", "Outras no prazo", "Outras atrasadas",
             "Performance (%)", "Valor por pacote", "Pacotes pagos", "Total"]].concat(perf.map(l => [_cfDia(l.dia), l.driver, l.shopee, l.onholds,
             l.outras_prazo, l.outras_atraso, l.pct, l.valor, l.pacotes_pagos, l.total])) });
+    }
+    // Extravios e acréscimos/descontos dos entregadores do arquivo (só sem filtro de cidade/transportadora).
+    if (!(filtros.cidades || []).length && !filtros.parcialTransp) {
+        const ext = (_rqDados.extravios_linhas || []).filter(e => drivers.has(e.driver));
+        if (ext.length) abas.push({ nome: "Extravios", linhas: [["Entregador", "Responsável (planilha)", "Status", "Transportadora", "Data", "Código",
+            "Valor", "Causa", "Data desconto"]].concat(ext.map(e => [e.driver, e.responsavel, e.status, e.transportadora, e.data, e.codigo,
+            e.valor, e.causa, e.data_desconto])) });
+        const ajs = (_rqDados.ajustes_linhas || []).filter(a => drivers.has(a.driver));
+        if (ajs.length) abas.push({ nome: "Acréscimos e descontos", linhas: [["Entregador", "Tipo", "Valor", "Descrição"]]
+            .concat(ajs.map(a => [a.driver, a.tipo === "acrescimo" ? "Acréscimo" : "Desconto", a.valor, a.descricao || ""])) });
     }
     abas.push({ nome: "Resumo", linhas: _rqAbaResumo(pacotes, filtros) });
     return abas;
