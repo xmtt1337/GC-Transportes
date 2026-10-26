@@ -619,7 +619,8 @@ function _cfRemoverOnholds(envio, nome) {
     }, "Remover onholds", "Remover");
 }
 
-// ── Shopee: performance por usuário e dia (entregues ÷ (entregues + onholds)) ──
+// ── Shopee: performance consolidada por entregador e dia (todas as transportadoras) ──
+// Backend: modules/fechamento-transportadoras/consolidacao.js.
 let _cfPerfLinhas = [];
 const _CF_DIAS_SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
@@ -634,25 +635,26 @@ function _cfCarregarPerformance() {
         if (key !== _cfTranspAtual) return;
         if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
         _cfPerfLinhas = d.linhas || [];
-        const rg = (d.totais && d.totais.onholds_regras) || {};
-        const nRegras = (rg.motivo || 0) + (rg.office_closed_fds || 0) + (rg.mesmo_dia || 0);
-        const txtRegras = nRegras ? `${nRegras.toLocaleString("pt-BR")} onhold${nRegras !== 1 ? "s" : ""} não contam pelas regras:
-            ${rg.motivo || 0} pelo motivo · ${rg.office_closed_fds || 0} Office closed no sáb/dom · ${rg.mesmo_dia || 0} entregue no mesmo dia.` : "";
+        const tt = d.totais || {};
+        const oc = tt.onholds_office_closed_fds || 0;
         el.innerHTML = `
             <div class="cft-barra" style="justify-content:space-between">
-                <span class="cft-pend-titulo" style="color:#e2e8f0;margin:0">Performance por usuário e dia</span>
+                <span class="cft-pend-titulo" style="color:#e2e8f0;margin:0">Performance por entregador e dia</span>
                 <div class="adm-search-input-area" style="max-width:260px">
-                    <input type="text" id="cf-perf-busca" placeholder="Usuário ou driver..." oninput="_cfRenderPerformance()">
+                    <input type="text" id="cf-perf-busca" placeholder="Entregador..." oninput="_cfRenderPerformance()">
                 </div>
             </div>
-            <div class="cft-ajuda" style="margin-bottom:8px">Performance = entregues ÷ (entregues + onholds) do usuário no dia.
-                Onholds que não contam: motivo Reject - Buyers change their mind, Recipient change location, Incorrect/ missing verification,
-                Recipient reject ou Wrongly assigned; Office closed no sábado ou domingo; pedido entregue no mesmo dia do onhold.
-                ${txtRegras ? `<b style="color:#cbd5e1">${txtRegras}</b>` : ""}
+            <div class="cft-ajuda" style="margin-bottom:8px">Uma performance só por entregador e dia, juntando todas as transportadoras
+                (só pra quem faz Shopee; as duas XPTs juntas):
+                (Shopee entregues + outras com prazo vencendo no dia entregues no prazo) ÷ (isso + onholds + outras com prazo vencendo no dia atrasadas ou não entregues).
+                Loggi, que não tem prazo, conta como no prazo no dia da entrega.
+                Todo pacote do entregador vale o R$/pacote do dia em que contou (Shopee: dia da entrega; outras: dia do prazo) — não entregue vale 0.
+                Onhold que não conta: só Office closed no sábado ou domingo${oc ? ` (<b style="color:#cbd5e1">${oc.toLocaleString("pt-BR")} nesta quinzena</b>)` : ""}, além dos códigos em "Desconsiderar onholds".
                 Entregador em "Valores fixos" ganha o valor dele, seja qual for a performance.
                 ${_cfTextoFaixas(d.faixas)}</div>
             <div class="cft-tabela-wrap" style="max-height:420px;overflow-y:auto"><table class="cft-tabela">
-                <thead><tr><th>Dia</th><th>Usuário</th><th>Driver</th><th>Entregues</th><th>Onholds</th><th>Performance</th><th>R$/pacote</th><th>Total</th></tr></thead>
+                <thead><tr><th>Dia</th><th>Entregador</th><th>Shopee entregues</th><th>Onholds</th><th>Outras no prazo</th><th>Outras atrasadas</th>
+                    <th>Performance</th><th>R$/pacote</th><th>Pacotes pagos</th><th>Total</th></tr></thead>
                 <tbody id="cf-perf-tbody"></tbody>
             </table></div>
             <div class="cft-ajuda" style="margin:6px 0 18px" id="cf-perf-total"></div>`;
@@ -676,22 +678,24 @@ function _cfTextoFaixas(f) {
 
 function _cfRenderPerformance() {
     const busca = _cfChave((document.getElementById("cf-perf-busca") || {}).value || "");
-    const lista = _cfPerfLinhas.filter(l => !busca || _cfChave(l.usuario).includes(busca) || _cfChave(l.driver).includes(busca));
+    const lista = _cfPerfLinhas.filter(l => !busca || _cfChave(l.driver).includes(busca));
     const diaSem = (iso) => _CF_DIAS_SEMANA[new Date(iso + "T12:00:00Z").getUTCDay()];
     document.getElementById("cf-perf-tbody").innerHTML = lista.length ? lista.slice(0, 1000).map(l => `<tr>
             <td>${_cfDia(l.dia)} <span class="cft-ajuda">${diaSem(l.dia)}</span></td>
-            <td>${_cfEsc(l.usuario)}</td>
-            <td>${l.driver ? _cfEsc(l.driver) : `<span class="cft-vazio">—</span>`}</td>
-            <td class="num">${l.entregues.toLocaleString("pt-BR")}</td>
+            <td>${_cfEsc(l.driver)}</td>
+            <td class="num">${l.shopee.toLocaleString("pt-BR")}</td>
             <td class="num${l.onholds ? " cft-neg" : ""}">${l.onholds.toLocaleString("pt-BR")}</td>
+            <td class="num">${l.outras_prazo.toLocaleString("pt-BR")}</td>
+            <td class="num${l.outras_atraso ? " cft-neg" : ""}">${l.outras_atraso.toLocaleString("pt-BR")}</td>
             <td class="num">${_cfNum(l.pct, 2)}%</td>
             <td class="num">${l.fixo ? `<span class="cft-ajuda" title="Valor fixo do entregador (Valores fixos)">fixo</span> ` : ""}${_cfNum(l.valor)}</td>
+            <td class="num">${l.pacotes_pagos.toLocaleString("pt-BR")}</td>
             <td class="num cft-pos"><strong>${_cfNum(l.total)}</strong></td>
         </tr>`).join("")
-        : `<tr><td colspan="8" class="cft-vazio" style="padding:14px">Nada por aqui.</td></tr>`;
+        : `<tr><td colspan="10" class="cft-vazio" style="padding:14px">Nada por aqui.</td></tr>`;
     const tot = lista.reduce((s, l) => s + l.total, 0);
     document.getElementById("cf-perf-total").innerText =
-        `${lista.length.toLocaleString("pt-BR")} linha${lista.length !== 1 ? "s" : ""} (usuário × dia) · total ${moedaJS(tot)}`;
+        `${lista.length.toLocaleString("pt-BR")} linha${lista.length !== 1 ? "s" : ""} (entregador × dia) · total ${moedaJS(tot)} (todas as transportadoras)`;
 }
 
 function _cfCarregarDetalhe() {

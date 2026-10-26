@@ -409,3 +409,26 @@ test("texto da tabela de performance sai da tabela da XPT (Infinity vira null no
     assert.match(ctx._cfTextoFaixas(cfc), /&lt; 99,5% R\$ 2,5 · ≥ 99,5% R\$ 2,6/);
 });
 
+
+test("performance consolidada: uma linha por entregador e dia, com as outras transportadoras", () => {
+    const ctx = carregar();
+    ctx.moedaJS = (n) => "R$ " + String(n).replace(".", ",");
+    const tbody = { innerHTML: "" }, total = { innerText: "" };
+    ctx.document = { getElementById: (id) => (id === "cf-perf-tbody" ? tbody : id === "cf-perf-total" ? total : { value: "" }) };
+    vm.runInContext(`_cfPerfLinhas = [{ driver: "Fulano de Teste - Vila Teste", dia: "2026-02-17", shopee: 100, onholds: 0,
+        outras_prazo: 48, outras_atraso: 2, pct: 98.67, valor: 2.5, fixo: false, pacotes_pagos: 150, total: 375 }]`, ctx);
+    ctx._cfRenderPerformance();
+    assert.match(tbody.innerHTML, /Fulano de Teste - Vila Teste/);
+    assert.match(tbody.innerHTML, /98,67%/);
+    assert.match(tbody.innerHTML, /cft-neg">2</);
+    assert.match(total.innerText, /1 linha \(entregador × dia\)/);
+});
+
+test("tabela nova de performance aparece certa (28/10/2026)", () => {
+    const ctx = carregar();
+    ctx.moedaJS = (n) => "R$ " + String(n).replace(".", ",");
+    const f = { semana: [{ ate: 95, valor: 1.5 }, { ate: 98, valor: 2 }, { ate: null, valor: 2.5 }],
+        domingo: [{ ate: 90, valor: 1.8 }, { ate: 98, valor: 2.2 }, { ate: null, valor: 2.6 }] };
+    assert.strictEqual(ctx._cfTextoFaixas(f),
+        "Seg a sáb: &lt; 95% R$ 1,5 · &lt; 98% R$ 2 · ≥ 98% R$ 2,5. Domingo: &lt; 90% R$ 1,8 · &lt; 98% R$ 2,2 · ≥ 98% R$ 2,6.");
+});
