@@ -312,3 +312,29 @@ test("valores fixos: salvar manda entregador e valor e recalcula só a Shopee da
     const recalc = t.chamadas.filter((c) => c.url.endsWith("/recalcular")).map((c) => JSON.parse(c.opts.body).transportadora);
     assert.deepStrictEqual(recalc, ["shopee_cfc", "shopee_via"]);
 });
+
+test("CSV com linha inteira entre aspas: a linha é lida de novo e as colunas voltam pro lugar", () => {
+    const ctx = carregar();
+    // leitor de linha de mentira: separa por vírgula respeitando aspas
+    const lerLinha = (s) => {
+        const out = []; let cur = "", q = false;
+        for (let i = 0; i < s.length; i++) {
+            const ch = s[i];
+            if (ch === '"') { if (q && s[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+            else if (ch === "," && !q) { out.push(cur); cur = ""; }
+            else cur += ch;
+        }
+        out.push(cur);
+        return out;
+    };
+    const grid = [
+        ["Order ID", "Driver Name", "Zipcode Name", "Delivered Time"],
+        ['BR1,fulano,89500-000,"Rua X, 10",21/09/2026 10:00:00', "", "", ""],
+        ["BR2", "beltrano", "89500-001", "21/09/2026 11:00:00"],
+        ["só um campo sem separador", "", "", ""],
+    ];
+    const r = JSON.parse(JSON.stringify(ctx._cfDesembrulharLinhas(grid, lerLinha)));
+    assert.deepStrictEqual(r[1], ["BR1", "fulano", "89500-000", "Rua X, 10", "21/09/2026 10:00:00"]);
+    assert.deepStrictEqual(r[2], ["BR2", "beltrano", "89500-001", "21/09/2026 11:00:00"]);
+    assert.deepStrictEqual(r[3], ["só um campo sem separador", "", "", ""]);
+});

@@ -1580,6 +1580,26 @@ function _cfConsertarAcento(s) {
 
 // Data de célula do Excel vira "AAAA-MM-DD HH:MM:SS" (sem ambiguidade dia/mês); o resto
 // vai como o texto que aparece na célula (código numérico grande não perde dígito).
+// CSV com cada linha de dados INTEIRA entre aspas (o cabeçalho não): o leitor entende a
+// linha toda como um campo só, e ela inteira caía em "Código" (relatório da Shopee de set/26).
+// Linha com um campo só, que tem separador dentro, enquanto o cabeçalho tem várias colunas:
+// lê esse campo de novo como uma linha de CSV.
+function _cfDesembrulharLinhas(grid, lerLinha) {
+    const colunas = (grid[0] || []).filter(c => String(c ?? "").trim()).length;
+    if (colunas < 3) return grid;
+    const ler = lerLinha || (s => XLSX.utils.sheet_to_json(XLSX.read(s, { type: "string", raw: true }).Sheets.Sheet1,
+        { header: 1, defval: "", raw: true })[0] || []);
+    return grid.map((row, i) => {
+        if (i === 0 || !Array.isArray(row)) return row;
+        const cheias = row.filter(c => String(c ?? "").trim());
+        if (cheias.length !== 1) return row;
+        const s = String(cheias[0]);
+        if (![",", ";", "\t"].some(sep => s.split(sep).length >= Math.min(colunas, 3))) return row;
+        const nova = ler(s);
+        return nova.length >= Math.min(colunas, 3) ? nova.map(c => _cfConsertarAcento(String(c ?? ""))) : row;
+    });
+}
+
 function _cfLerGrid(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1599,7 +1619,7 @@ function _cfLerGrid(file) {
                 const crus = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: true });
                 const txt = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
                 const p2 = n => String(n).padStart(2, "0");
-                resolve(crus.map((row, i) => row.map((v, j) => {
+                const grid = crus.map((row, i) => row.map((v, j) => {
                     if (v instanceof Date) {
                         // SheetJS monta a data no fuso local; arredonda pro segundo (vem com ms de sobra).
                         const d = new Date(Math.round(v.getTime() / 1000) * 1000);
@@ -1607,7 +1627,8 @@ function _cfLerGrid(file) {
                     }
                     const t = txt[i] && txt[i][j];
                     return _cfConsertarAcento(t !== undefined && t !== "" ? String(t) : String(v ?? ""));
-                })));
+                }));
+                resolve(_cfDesembrulharLinhas(grid));
             } catch (err) { reject(err); }
         };
         reader.onerror = reject;
