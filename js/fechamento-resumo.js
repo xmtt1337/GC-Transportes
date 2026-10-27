@@ -94,6 +94,12 @@ function _rqRender() {
         _rqSemFechamento(t.sem_fechamento),
     ].filter(Boolean);
     el.innerHTML = `
+        <div class="cft-barra" style="justify-content:space-between;margin:0 0 10px">
+            <span class="cft-ajuda">${d.publicado_em
+                ? `<b class="cft-pos">Publicado pros entregadores</b> em ${new Date(d.publicado_em).toLocaleString("pt-BR")} — no Meus Fechamentos eles já veem este fechamento (performance e o que afetou cada dia).`
+                : `<b>Não publicado</b> — os entregadores ainda veem a planilha. Publique quando terminar de conferir.`}</span>
+            <button class="cft-btn${d.publicado_em ? "" : " primario"}" onclick="_rqPublicar(${d.publicado_em ? "false" : "true"})">${d.publicado_em ? "Despublicar" : "Publicar para os entregadores"}</button>
+        </div>
         <div class="rq-topo">
             ${_rqConta(t, d.codigo_quinzena)}
             <div class="rq-meta"><b>${t.entregadores.toLocaleString("pt-BR")}</b> entregadores · <b>${t.pacotes.toLocaleString("pt-BR")}</b> pacotes</div>
@@ -541,6 +547,18 @@ function _rqSemFechamento(s) {
         .filter(x => x[1]).map(x => `${x[0]} R$ ${_rqNum(x[1])}`);
     return `<span title="${_rqEsc((s.nomes || []).join(" · "))}">${s.pessoas} pessoa(s) com desconto/ajuste e sem fechamento nesta quinzena
         não aparecem aqui (${partes.join(", ")}) — veja em Fechamento de Extravios.</span>`;
+}
+
+// Publica (ou tira) a quinzena pros entregadores: Meus Fechamentos passa a mostrar o fechamento do sistema.
+function _rqPublicar(publicar) {
+    const fazer = () => fetch(`${_RQ_API()}/publicacao`, { method: "PUT",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ mes: _rqMes, ano: _rqAno, quinzena: _rqQuinzena, publicar }) })
+        .then(r => r.json()).then(d => { if (d.error) gcAlert(d.error); else _rqCarregar(); })
+        .catch(() => gcAlert("Erro ao publicar."));
+    gcConfirm(publicar
+        ? "Os entregadores vão ver este fechamento no Meus Fechamentos (no lugar da planilha). Publicar?"
+        : "Os entregadores voltam a ver a planilha desta quinzena. Despublicar?", fazer, publicar ? "Publicar fechamento" : "Despublicar", publicar ? "Publicar" : "Despublicar");
 }
 
 function _rqFiltradas() {

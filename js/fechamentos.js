@@ -224,6 +224,20 @@ function _carregarPainel() {
 
         _renderPgtoStatusCard(d);
 
+        // Quinzena publicada no fechamento do sistema: visão nova (fechamento-entregador.js),
+        // com performance e o que afetou cada dia. Senão segue a da planilha.
+        const ehSistema = d.fonte === "sistema";
+        document.getElementById("fech-planilha").style.display = ehSistema ? "none" : "";
+        document.getElementById("fech-sistema").style.display = ehSistema ? "" : "none";
+        if (ehSistema) {
+            _fsRender(d);
+            empty.classList.remove("sk-mode");
+            empty.style.display = "none";
+            data.style.display  = "";
+            _carregarNota();
+            return;
+        }
+
         // Ajustes
         document.getElementById("paj-adicional").innerText    = d.adicional;
         document.getElementById("paj-adicional-card").className = "paj-card " + (_parseMoeda(d.adicional) < 0 ? "negativo" : "positivo");
