@@ -484,3 +484,25 @@ test("performance: insucessos do dia viram tabela (onhold com motivo, atrasado c
     assert.match(html, /não entregue/);
     assert.match(ctx._cfHtmlInsucessos([]), /Nada encontrado/);
 });
+
+test("publicar: botão mostra o estado da quinzena e manda publicar/despublicar", async () => {
+    const ctx = carregar();
+    const els = { "cf-pub-btn": { style: {}, className: "", innerText: "" }, "cf-pub-status": { innerHTML: "" } };
+    ctx.document = { getElementById: (id) => els[id] || { style: {}, innerHTML: "" } };
+    let resposta = { publicado_em: null };
+    const enviados = [];
+    ctx.fetch = async (u, o) => { if (o && o.method === "PUT") enviados.push(JSON.parse(o.body)); return { ok: true, json: async () => (o && o.method === "PUT" ? { success: true } : resposta) }; };
+    ctx.gcConfirm = (msg, ok) => ok();
+    vm.runInContext("_cfMes = 10; _cfAno = 2026; _cfQuinzena = 1;", ctx);
+    ctx._cfCarregarPublicacao();
+    await new Promise(r => setTimeout(r, 0));
+    assert.strictEqual(els["cf-pub-btn"].innerText, "Publicar para os entregadores");
+    ctx._cfPublicar();
+    await new Promise(r => setTimeout(r, 0));
+    assert.deepStrictEqual(enviados[0], { mes: 10, ano: 2026, quinzena: 1, publicar: true });
+    resposta = { publicado_em: "2026-10-27T12:00:00Z" };
+    ctx._cfCarregarPublicacao();
+    await new Promise(r => setTimeout(r, 0));
+    assert.strictEqual(els["cf-pub-btn"].innerText, "Despublicar");
+    assert.match(els["cf-pub-status"].innerHTML, /Publicado/);
+});

@@ -126,6 +126,7 @@ function _cfCarregarResumo() {
         content.style.display = "";
         _cfResumo = Array.isArray(rows) ? rows : [];
         _cfRenderCards();
+        _cfCarregarPublicacao();
         if (_cfTranspAtual) _cfCarregarDetalhe();
         else document.getElementById("cf-painel").style.display = "none";
         const tl = document.getElementById("cf-ticketlog");
@@ -1353,6 +1354,38 @@ async function _cfRecalcularTodas(btn) {
     } catch (err) {
         if (st) st.innerText = err.message;
     } finally { btn.disabled = false; }
+}
+
+// Publicar a quinzena pros entregadores (o mesmo botão do Resumo da Quinzena): publicada,
+// o Meus Fechamentos deles mostra o fechamento do sistema em vez da planilha.
+let _cfPublicadoEm = null;
+function _cfCarregarPublicacao() {
+    const btn = document.getElementById("cf-pub-btn");
+    const st = document.getElementById("cf-pub-status");
+    if (!btn) return;
+    const chave = `${_cfAno}-${_cfMes}-${_cfQuinzena}`;
+    fetch(`${_CF_API()}/publicacao?${_cfQs()}`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (chave !== `${_cfAno}-${_cfMes}-${_cfQuinzena}`) return; // trocou de quinzena
+        _cfPublicadoEm = d.publicado_em || null;
+        btn.style.display = "";
+        btn.className = "cft-btn" + (_cfPublicadoEm ? "" : " primario");
+        btn.innerText = _cfPublicadoEm ? "Despublicar" : "Publicar para os entregadores";
+        st.innerHTML = _cfPublicadoEm ? `<span class="cft-pos">Publicado</span> em ${new Date(_cfPublicadoEm).toLocaleDateString("pt-BR")} ·` : "";
+    }).catch(() => {});
+}
+function _cfPublicar() {
+    const publicar = !_cfPublicadoEm;
+    gcConfirm(publicar
+        ? "Os entregadores vão ver este fechamento no Meus Fechamentos (no lugar da planilha). Publicar?"
+        : "Os entregadores voltam a ver a planilha desta quinzena. Despublicar?", () => {
+        fetch(`${_CF_API()}/publicacao`, { method: "PUT", headers: _cfHeaders(true),
+            body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, publicar }) })
+        .then(r => r.json())
+        .then(d => { if (d.error) gcAlert(d.error); else _cfCarregarPublicacao(); })
+        .catch(() => gcAlert("Erro ao publicar."));
+    }, publicar ? "Publicar fechamento" : "Despublicar", publicar ? "Publicar" : "Despublicar");
 }
 
 function _cfHtmlAcoes() {
