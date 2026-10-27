@@ -124,6 +124,98 @@ function _peAbrirEntregador(d) {
     document.body.appendChild(overlay);
 }
 
+// ───── Relatório (.xlsx/.xls/.csv/.txt) para fixos e extras ─────
+// A coluna é achada pelo cabeçalho nas primeiras linhas; sem cabeçalho, vale a
+// ordem (1ª coluna entregador, 2ª bairro). Quem confere nome e bairro é o
+// servidor no Salvar (fixos) ou a lista do combobox (extras) — aqui só se lê.
+const _PE_CAB_NOME   = ["entregador", "entregadores", "nome", "nomes", "usuario", "usuarios", "extra", "extras", "motorista"];
+const _PE_CAB_BAIRRO = ["bairro", "bairros"];
+
+function _peNorm(v) {
+    return String(v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function _peAcharCabecalho(linhas, aceitos) {
+    for (let i = 0; i < Math.min(linhas.length, 10); i++) {
+        const c = (linhas[i] || []).findIndex(v => aceitos.includes(_peNorm(v)));
+        if (c >= 0) return { linha: i, col: c };
+    }
+    return null;
+}
+
+function _peCelula(v) {
+    return String(v ?? "").replace(/\s+/g, " ").trim();
+}
+
+/** Linhas "Entregador;Bairro" a partir do relatório (vai pro campo de texto). */
+function _peFixosDoRelatorio(linhas) {
+    const nome = _peAcharCabecalho(linhas, _PE_CAB_NOME);
+    const bairro = _peAcharCabecalho(linhas, _PE_CAB_BAIRRO);
+    const temCab = nome && bairro;
+    const cN = temCab ? nome.col : 0;
+    const cB = temCab ? bairro.col : 1;
+    const inicio = temCab ? Math.max(nome.linha, bairro.linha) + 1 : 0;
+    const out = [];
+    for (let i = inicio; i < linhas.length; i++) {
+        const e = _peCelula((linhas[i] || [])[cN]);
+        const b = _peCelula((linhas[i] || [])[cB]);
+        if (e || b) out.push(`${e};${b}`);
+    }
+    return out;
+}
+
+/** Nomes da coluna de entregador (ou da 1ª coluna), sem repetir. */
+function _peNomesDoRelatorio(linhas) {
+    const cab = _peAcharCabecalho(linhas, _PE_CAB_NOME);
+    const col = cab ? cab.col : 0;
+    const vistos = new Set();
+    const out = [];
+    for (let i = cab ? cab.linha + 1 : 0; i < linhas.length; i++) {
+        const n = _peCelula((linhas[i] || [])[col]);
+        if (!n || vistos.has(_peNorm(n))) continue;
+        vistos.add(_peNorm(n));
+        out.push(n);
+    }
+    return out;
+}
+
+/** Casa os nomes do relatório com a lista do planejamento (sem caixa, acento e " - Cidade"). */
+function _peCasarNomes(nomes, lista) {
+    const chave = n => _peNorm(String(n).split(" - ")[0]);
+    const porChave = new Map(lista.map(n => [chave(n), n]));
+    const achados = [], faltando = [];
+    nomes.forEach(n => {
+        const oficial = porChave.get(chave(n));
+        if (oficial) { if (!achados.includes(oficial)) achados.push(oficial); }
+        else faltando.push(n);
+    });
+    return { achados, faltando };
+}
+
+/** Lê o arquivo como linhas de células. CSV/TXT aceitam ; , ou TAB. */
+function _peLerArquivo(arquivo) {
+    const ehTexto = /\.(csv|txt)$/i.test(arquivo.name);
+    return new Promise((resolve, reject) => {
+        const leitor = new FileReader();
+        leitor.onerror = () => reject(new Error("Não consegui ler o arquivo."));
+        leitor.onload = () => {
+            try {
+                if (ehTexto) {
+                    const texto = String(leitor.result).replace(/^﻿/, "");
+                    const sep = /[;\t]/.test(texto) ? /;|\t/ : /,/;
+                    resolve(texto.split(/\r?\n/).map(l => l.split(sep)));
+                    return;
+                }
+                const wb = XLSX.read(new Uint8Array(leitor.result), { type: "array" });
+                resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "", raw: false }));
+            } catch (e) {
+                reject(new Error("Arquivo em formato que não deu pra ler. Use .xlsx, .xls ou .csv."));
+            }
+        };
+        if (ehTexto) leitor.readAsText(arquivo, "utf-8"); else leitor.readAsArrayBuffer(arquivo);
+    });
+}
+
 // ───── Lado do gestor (Planejamento Caçador) ─────
 function _peAbrirGestor() {
     const overlay = document.createElement("div");
@@ -183,9 +275,18 @@ function _peRenderGestor(overlay, d) {
         <details class="pe-g-config"${porEntregador.size ? "" : " open"}>
             <summary>Configurar</summary>
             <label class="pe-g-check"><input type="checkbox" data-ativo${d.ativo ? " checked" : ""}> Enquete ligada</label>
-            <div class="pe-g-rot">Fixos — uma linha por bairro, no formato <b>Entregador;Bairro</b></div>
+            <div class="pe-g-rot pe-g-rot-acao">
+                <span>Fixos — uma linha por bairro, no formato <b>Entregador;Bairro</b></span>
+                <button type="button" class="pe-g-link" data-subir="fixos">Subir relatório</button>
+            </div>
             <textarea class="usr-modal-input pe-g-texto" data-lista spellcheck="false" placeholder="Nome Sobrenome;Bairro">${_gcEsc(listaTexto)}</textarea>
-            <div class="pe-g-rot">Extras disponíveis <span data-qtd></span></div>
+            <div class="pe-g-msg" data-msg="fixos"></div>
+            <div class="pe-g-rot pe-g-rot-acao">
+                <span>Extras disponíveis <span data-qtd></span></span>
+                <button type="button" class="pe-g-link" data-subir="extras">Subir relatório</button>
+            </div>
+            <div class="pe-g-msg" data-msg="extras"></div>
+            <input type="file" data-arquivo accept=".xlsx,.xls,.csv,.txt" style="display:none">
             <input type="text" class="usr-modal-input pe-g-busca" data-busca placeholder="Buscar nome...">
             <div class="pe-g-extras" data-extras></div>
             <div class="pe-g-ignorados" data-ignorados></div>
@@ -217,6 +318,49 @@ function _peRenderGestor(overlay, d) {
     });
     overlay.querySelectorAll("[data-fechar]").forEach(b => b.addEventListener("click", () => overlay.remove()));
     renderExtras();
+
+    // Subir relatório: fixos vira o texto do campo (o Salvar confere contra a planilha);
+    // extras substitui a seleção pelos nomes do arquivo que existem na lista.
+    const inputArq = overlay.querySelector("[data-arquivo]");
+    let alvo = null;
+    overlay.querySelectorAll("[data-subir]").forEach(b => b.addEventListener("click", () => {
+        alvo = b.dataset.subir;
+        inputArq.value = "";
+        inputArq.click();
+    }));
+    inputArq.addEventListener("change", () => {
+        const arquivo = inputArq.files && inputArq.files[0];
+        if (!arquivo || !alvo) return;
+        const msg = overlay.querySelector(`[data-msg="${alvo}"]`);
+        const qual = alvo;
+        msg.className = "pe-g-msg";
+        msg.textContent = "Lendo " + arquivo.name + "...";
+        _peLerArquivo(arquivo).then(linhas => {
+            if (qual === "fixos") {
+                const fixos = _peFixosDoRelatorio(linhas);
+                if (!fixos.length) { msg.className = "pe-g-msg pe-g-msg-erro"; msg.textContent = "Nenhuma linha com entregador e bairro no arquivo."; return; }
+                overlay.querySelector("[data-lista]").value = fixos.join("\n");
+                msg.textContent = `${fixos.length} linha${fixos.length !== 1 ? "s" : ""} lida${fixos.length !== 1 ? "s" : ""} de ${arquivo.name}. Confira e clique em Salvar.`;
+                return;
+            }
+            const nomes = _peNomesDoRelatorio(linhas);
+            const { achados, faltando } = _peCasarNomes(nomes, _pvUsuarios);
+            if (!achados.length) {
+                msg.className = "pe-g-msg pe-g-msg-erro";
+                msg.textContent = "Nenhum nome do arquivo está na lista do planejamento. A seleção não mudou.";
+                return;
+            }
+            extrasSel.clear();
+            achados.forEach(n => extrasSel.add(n));
+            overlay.querySelector("[data-busca]").value = "";
+            renderExtras();
+            msg.innerHTML = `${achados.length} extra${achados.length !== 1 ? "s" : ""} marcado${achados.length !== 1 ? "s" : ""}. Clique em Salvar.` +
+                (faltando.length ? `<div class="pe-g-msg-erro">Fora da lista do planejamento (não marcados): ${faltando.map(_gcEsc).join(", ")}</div>` : "");
+        }).catch(e => {
+            msg.className = "pe-g-msg pe-g-msg-erro";
+            msg.textContent = e.message;
+        });
+    });
 
     const btnSalvar = overlay.querySelector("[data-salvar]");
     btnSalvar.addEventListener("click", () => {
