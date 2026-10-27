@@ -2,11 +2,11 @@
 // No horário configurado (padrão 00:00–14:00) o entregador FIXO (lista "Entregador;Bairro" da unidade) diz,
 // bairro a bairro, se faz a rota do dia seguinte — e quem não vai escolhe o extra
 // que fica no lugar. A resposta já vai para a coluna C do planejamento (backend:
-// modules/planejamento/enquete*.js). Por enquanto só a cidade de Caçador.
+// modules/planejamento/enquete*.js). Só vê quem é fixo; o polo do cadastro dele escolhe o planejamento (Caçador/Videira).
 //
 // Dois lados neste arquivo:
 //   _peVerificar()     — entregador: abre o quadro se houver enquete pendente.
-//   _peAbrirGestor()   — Planejamento Caçador: quem respondeu + configuração.
+//   _peAbrirGestor()   — Planejamento Caçador/Videira: quem respondeu + configuração.
 
 const _PE_FORA = "__fora__";
 
@@ -216,7 +216,7 @@ function _peLerArquivo(arquivo) {
     });
 }
 
-// ───── Lado do gestor (Planejamento Caçador) ─────
+// ───── Lado do gestor (Planejamento Caçador/Videira) ─────
 function _peAbrirGestor() {
     const overlay = document.createElement("div");
     overlay.setAttribute("style", _gcOverlayStyle);
