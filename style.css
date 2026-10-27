@@ -6349,6 +6349,19 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .rq-transp-valor { justify-content: flex-end; color: #e2e8f0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .rq-pend-lista { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; color: #cbd5e1; line-height: 1.65; }
 .rq-pend-lista b { color: #fde68a; font-weight: 600; }
+.rq-abas { display: flex; gap: 24px; padding-bottom: 0; }
+.rq-abas .mex-aba { padding-bottom: 9px; margin-bottom: -1px; }
+.rq-perf-linha { cursor: pointer; }
+.rq-perf-linha:hover td { background: rgba(255,255,255,0.025); }
+.rq-perf-pct { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.rq-perf-pct em { width: 56px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.rq-perf-pct i { display: block; height: 100%; background: currentColor; opacity: .75; color: #64748b; }
+.rq-perf-pct i.cft-pos { color: #34d399; }
+.rq-perf-pct i.cft-neg { color: #f87171; }
+.rq-perf-pct strong { min-width: 58px; text-align: right; font-weight: 600; }
+.rq-perf-dias td { white-space: normal !important; background: rgba(255,255,255,0.015); padding: 10px 12px !important; }
+.rq-dia { display: inline-block; margin: 3px 14px 3px 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+.rq-dia b { color: #cbd5e1; font-weight: 600; }
 
 /* Acréscimos e Descontos: formulário com rótulo em cima de cada campo. */
 .aj-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 18px; max-width: 1180px; }
@@ -6393,7 +6406,7 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .cft-pos, .cft-tabela td.cft-pos { color: #34d399; }
 .cft-neg, .cft-tabela td.cft-neg { color: #f87171; }
 /* Resumo da Quinzena: pendência em âmbar, título de coluna que ordena, linha de total fixa embaixo */
-.cft-aviso { color: #fbbf24; }
+.cft-aviso, .cft-tabela td.cft-aviso { color: #fbbf24; }
 .cft-etiqueta { display: inline-block; padding: 2px 8px; margin: 2px 0; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); color: #cbd5e1; font-size: 12px; }
 .cft-etiqueta a { color: #8494a9; text-decoration: none; margin-left: 2px; }
 .cft-etiqueta a:hover { color: #f87171; }

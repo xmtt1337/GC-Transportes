@@ -132,3 +132,40 @@ test("baixar manda transportadoras marcadas, polo, entregador e as cidades", asy
     assert.strictEqual(urls.length, 0);
     assert.match(el("rq-x-status").innerText, /ao menos uma/);
 });
+
+// Aba Performance por entregador: soma dos dias da performance consolidada. Dados inventados.
+const PERF = [
+    { driver: "Fulano de Teste - Vila Teste", dia: "2026-09-16", polo: "Caçador", shopee: 90, onholds: 10, outras_prazo: 0, outras_atraso: 0, pct: 90, valor: 1.5, pacotes_pagos: 90, total: 135 },
+    { driver: "Fulano de Teste - Vila Teste", dia: "2026-09-17", polo: "Caçador", shopee: 99, onholds: 0, outras_prazo: 0, outras_atraso: 1, pct: 99, valor: 2.5, pacotes_pagos: 99, total: 247.5 },
+    { driver: "Beltrano Exemplo - Morro", dia: "2026-09-16", polo: "Videira", shopee: 100, onholds: 0, outras_prazo: 0, outras_atraso: 0, pct: 100, valor: 2.5, pacotes_pagos: 100, total: 250 },
+];
+
+test("performance: soma por entregador com performance da quinzena, pior dia e dias abaixo de 98%", () => {
+    const { ctx } = carregar();
+    const r = JSON.parse(JSON.stringify(ctx._rqPerfPorEntregador(PERF)));
+    const f = r.find(x => x.entregador.startsWith("Fulano"));
+    assert.strictEqual(f.dias_n, 2);
+    assert.strictEqual(f.sucessos, 189);
+    assert.strictEqual(f.onholds, 10);
+    assert.strictEqual(f.atrasos, 1);
+    assert.strictEqual(f.pct, 94.5);           // 189 ÷ 200
+    assert.strictEqual(f.pior.dia, "2026-09-16");
+    assert.strictEqual(f.abaixo, 1);
+    assert.strictEqual(f.total, 382.5);
+    assert.strictEqual(f.por_pacote, 2.02);
+});
+
+test("performance: aba lista o pior primeiro e respeita a busca", () => {
+    const { ctx, el } = carregar();
+    ctx._rqRender();
+    vm.runInContext(`_rqPerf = { chave: "x", entregadores: _rqPerfPorEntregador(${JSON.stringify(PERF)}) }; _rqAba = "performance";`, ctx);
+    ctx._rqRenderPerf();
+    let html = el("rq-painel-performance").innerHTML;
+    assert.ok(html.indexOf("Fulano") < html.indexOf("Beltrano"));
+    assert.match(html, /94,50%/);
+    el("rq-busca").value = "beltrano";
+    ctx._rqRenderTabela();
+    html = el("rq-painel-performance").innerHTML;
+    assert.doesNotMatch(html, /Fulano/);
+    assert.match(html, /Beltrano/);
+});

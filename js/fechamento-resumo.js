@@ -12,6 +12,11 @@ let _rqOrdem = { campo: "entregador", desc: false };
 let _rqReq = 0;
 let _rqXCidades = [];      // cidades escolhidas no "Baixar relatório": [{nome, variantes}] (vazio = todas)
 let _rqXNaoAchadas = [];   // nomes colados que não existem nesta quinzena
+let _rqAba = "valores";   // valores | performance
+let _rqPerf = null;       // {chave: "ano-mes-q", entregadores} da aba Performance
+let _rqPerfOrdem = { campo: "pct", desc: false }; // pior performance primeiro
+let _rqPerfAbertos = new Set();  // entregadores com o dia a dia aberto
+let _rqPerfVisiveis = [];
 
 function _rqEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -56,6 +61,7 @@ function _rqCarregar() {
     const el = document.getElementById("rq-conteudo");
     const req = ++_rqReq;
     el.innerHTML = `<div class="fechamento-empty">Carregando...</div>`;
+    _rqPerf = null;
     fetch(`${_RQ_API()}/resumo-quinzena?mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
     .then(d => {
@@ -98,7 +104,10 @@ function _rqRender() {
         ${pend ? `<div class="cft-pend"><div class="cft-pend-titulo">Pendências</div><ul class="rq-pend-lista">${pend}</ul></div>` : ""}
         ${info.map(x => `<div class="cft-ajuda" style="margin-bottom:4px">${x}</div>`).join("")}
 
-        <div class="cft-secao">Por entregador</div>
+        <div class="cft-secao rq-abas">
+            <a href="#" class="mex-aba" id="rq-aba-valores" onclick="event.preventDefault();_rqMudarAba('valores')">Valores por entregador</a>
+            <a href="#" class="mex-aba" id="rq-aba-performance" onclick="event.preventDefault();_rqMudarAba('performance')">Performance por entregador</a>
+        </div>
         <div class="cft-barra" style="justify-content:space-between;margin-top:0">
             <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                 <div class="adm-search-input-area" style="max-width:260px;margin:0">
@@ -138,14 +147,154 @@ function _rqRender() {
                 <span class="cft-ajuda" id="rq-x-status"></span>
             </div>
         </div>
+        <div id="rq-painel-valores">
         <div class="cft-tabela-wrap" style="max-height:620px;overflow-y:auto"><table class="cft-tabela">
             <thead id="rq-thead"></thead><tbody id="rq-tbody"></tbody><tfoot id="rq-tfoot"></tfoot>
         </table></div>
         <div class="cft-ajuda" style="margin-top:6px">Valor de cada transportadora = soma do "Valor motorista" dos pacotes (Shopee já pela performance consolidada).
             Líquido = bruto + acréscimos − Ticketlog − extravios − descontos. Extravios: planilha de extravios, linhas com "Data desconto" = ${_rqEsc(d.codigo_quinzena || "")}.
-            Acréscimos e descontos: Fechamento › Acréscimos e Descontos. Clique no título da coluna pra ordenar.</div>`;
+            Acréscimos e descontos: Fechamento › Acréscimos e Descontos. Clique no título da coluna pra ordenar.</div>
+        </div>
+        <div id="rq-painel-performance" style="display:none"></div>`;
     _rqRenderTabela();
     _rqRenderCidades();
+    _rqRenderAbas();
+}
+
+// ── Aba Performance por entregador ──
+// Performance consolidada da quinzena (a mesma que paga a Shopee: entregador × dia, juntando
+// as transportadoras, só nos polos da regra) somada por entregador. Lida uma vez por quinzena.
+function _rqMudarAba(a) { _rqAba = a; _rqRenderAbas(); }
+function _rqRenderAbas() {
+    for (const a of ["valores", "performance"]) {
+        document.getElementById("rq-aba-" + a).classList.toggle("ativa", _rqAba === a);
+        document.getElementById("rq-painel-" + a).style.display = _rqAba === a ? "" : "none";
+    }
+    if (_rqAba === "performance") _rqCarregarPerf();
+}
+
+async function _rqCarregarPerf() {
+    const el = document.getElementById("rq-painel-performance");
+    const chave = `${_rqAno}-${_rqMes}-${_rqQuinzena}`;
+    if (_rqPerf && _rqPerf.chave === chave) { _rqRenderPerf(); return; }
+    el.innerHTML = `<div class="cft-ajuda">Carregando a performance...</div>`;
+    const chaves = Object.entries(_rqDados.transportadoras).filter(([, t]) => /^shopee/i.test(t.nome) && t.enviado).map(([k]) => k);
+    try {
+        const linhas = await _rqPerfLinhas(chaves);
+        if (chave !== `${_rqAno}-${_rqMes}-${_rqQuinzena}`) return; // trocou de quinzena no meio
+        _rqPerf = { chave, entregadores: _rqPerfPorEntregador(linhas) };
+        _rqRenderPerf();
+    } catch (_) { el.innerHTML = `<div class="cft-erro">Erro ao carregar a performance.</div>`; }
+}
+
+/** Dias (entregador × dia) somados por entregador: tentativas, performance da quinzena, pior dia. */
+function _rqPerfPorEntregador(linhas) {
+    const por = new Map();
+    for (const l of linhas) {
+        if (!por.has(l.driver)) por.set(l.driver, { entregador: l.driver, dias: [], polos: new Map(), sucessos: 0, onholds: 0, atrasos: 0, pacotes_pagos: 0, total: 0 });
+        const r = por.get(l.driver);
+        r.dias.push({ dia: l.dia, pct: l.pct, valor: l.valor });
+        r.sucessos += (l.shopee || 0) + (l.outras_prazo || 0);
+        r.onholds += l.onholds || 0;
+        r.atrasos += l.outras_atraso || 0;
+        r.pacotes_pagos += l.pacotes_pagos || 0;
+        r.total += l.total || 0;
+        if (l.polo) r.polos.set(l.polo, (r.polos.get(l.polo) || 0) + 1);
+    }
+    return [...por.values()].map(r => {
+        const tentativas = r.sucessos + r.onholds + r.atrasos;
+        const dias = r.dias.sort((a, b) => (a.dia < b.dia ? -1 : 1));
+        const comPct = dias.filter(d => d.pct != null);
+        return {
+            entregador: r.entregador, dias, dias_n: dias.length, sucessos: r.sucessos, onholds: r.onholds, atrasos: r.atrasos,
+            polo: [...r.polos.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0])[0] || "",
+            pct: tentativas ? Math.round(r.sucessos / tentativas * 10000) / 100 : null,
+            pior: comPct.reduce((m, d) => (!m || d.pct < m.pct ? d : m), null),
+            abaixo: comPct.filter(d => d.pct < 98).length,
+            pacotes_pagos: r.pacotes_pagos, total: Math.round(r.total * 100) / 100,
+            por_pacote: r.pacotes_pagos ? Math.round(r.total / r.pacotes_pagos * 100) / 100 : 0,
+        };
+    });
+}
+
+// Mesma régua da tabela de valor: 98% ou mais paga o máximo, abaixo de 95% o mínimo (seg a sáb).
+function _rqPctClasse(p) { return p == null ? "cft-vazio" : p >= 98 ? "cft-pos" : p < 95 ? "cft-neg" : ""; }
+function _rqPct(p) { return p == null ? "—" : p.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%"; }
+function _rqDiaCurto(iso) { const [, m, d] = String(iso || "").split("-"); return d ? `${d}/${m}` : ""; }
+
+function _rqPerfFiltrados() {
+    const busca = _rqChave((document.getElementById("rq-busca") || {}).value);
+    const polo = (document.getElementById("rq-polo") || {}).value || "";
+    const poloResumo = new Map((_rqDados.linhas || []).map(l => [l.entregador, l.polo]));
+    const lista = _rqPerf.entregadores.map(r => ({ ...r, polo: poloResumo.get(r.entregador) || r.polo }))
+        .filter(r => (!busca || _rqChave(r.entregador).includes(busca)) && (!polo || r.polo === polo));
+    const { campo, desc } = _rqPerfOrdem;
+    const val = (r) => campo === "pior" ? (r.pior ? r.pior.pct : null) : r[campo];
+    return lista.sort((a, b) => {
+        const x = val(a), y = val(b);
+        if (x == null || y == null) return (x == null) - (y == null); // sem performance sempre no fim
+        const c = typeof x === "number" ? x - y : String(x).localeCompare(String(y), "pt-BR");
+        return desc ? -c : c;
+    });
+}
+
+function _rqPerfOrdenar(campo) {
+    _rqPerfOrdem = { campo, desc: _rqPerfOrdem.campo === campo ? !_rqPerfOrdem.desc : !["entregador", "polo", "pct", "pior"].includes(campo) };
+    _rqRenderPerf();
+}
+function _rqPerfAbrir(i) {
+    const nome = _rqPerfVisiveis[i];
+    if (_rqPerfAbertos.has(nome)) _rqPerfAbertos.delete(nome); else _rqPerfAbertos.add(nome);
+    _rqRenderPerf();
+}
+
+function _rqRenderPerf() {
+    const el = document.getElementById("rq-painel-performance");
+    if (!el || !_rqPerf) return;
+    const todos = _rqPerf.entregadores;
+    if (!todos.length) {
+        el.innerHTML = `<div class="cft-ajuda">Sem performance nesta quinzena — ela sai do relatório da Shopee (Criar Fechamento).</div>`;
+        return;
+    }
+    const lista = _rqPerfFiltrados();
+    _rqPerfVisiveis = lista.map(r => r.entregador);
+    const s = lista.reduce((a, r) => a + r.sucessos, 0), f = lista.reduce((a, r) => a + r.onholds + r.atrasos, 0);
+    const faixa = (fn) => lista.filter(r => r.pct != null && fn(r.pct)).length;
+    const seta = (c) => _rqPerfOrdem.campo === c ? (_rqPerfOrdem.desc ? " ↓" : " ↑") : "";
+    const th = (c, rot, num) => `<th${num ? ` style="text-align:right"` : ""}><a href="#" class="cft-ordem" onclick="event.preventDefault();_rqPerfOrdenar('${c}')">${rot}${seta(c)}</a></th>`;
+    el.innerHTML = `
+        <div class="cft-kpis">
+            <div class="cft-kpi"><div class="cft-kpi-valor ${_rqPctClasse(s + f ? s / (s + f) * 100 : null)}">${_rqPct(s + f ? Math.round(s / (s + f) * 10000) / 100 : null)}</div><div class="cft-kpi-rotulo">Performance geral</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor">${lista.length}</div><div class="cft-kpi-rotulo">Entregadores</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor cft-pos">${faixa(p => p >= 98)}</div><div class="cft-kpi-rotulo">98% ou mais</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor">${faixa(p => p >= 95 && p < 98)}</div><div class="cft-kpi-rotulo">95% a 98%</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor${faixa(p => p < 95) ? " cft-neg" : ""}">${faixa(p => p < 95)}</div><div class="cft-kpi-rotulo">Abaixo de 95%</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor">${lista.reduce((a, r) => a + r.onholds, 0).toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Onholds</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor">${lista.reduce((a, r) => a + r.atrasos, 0).toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Atrasos (outras transp.)</div></div>
+        </div>
+        <div class="cft-tabela-wrap" style="max-height:620px;overflow-y:auto"><table class="cft-tabela">
+            <thead><tr>${th("entregador", "Entregador")}${th("polo", "Polo")}${th("dias_n", "Dias", true)}${th("sucessos", "Sucessos", true)}
+                ${th("onholds", "Onholds", true)}${th("atrasos", "Atrasos", true)}${th("pct", "Performance", true)}${th("pior", "Pior dia", true)}
+                ${th("abaixo", "Dias &lt; 98%", true)}${th("pacotes_pagos", "Pacotes pagos", true)}${th("por_pacote", "R$/pacote", true)}${th("total", "Total (R$)", true)}</tr></thead>
+            <tbody>${lista.length ? lista.map((r, i) => `<tr class="rq-perf-linha" onclick="_rqPerfAbrir(${i})" title="Clique pra ver dia a dia">
+                <td>${_rqEsc(r.entregador)}</td>
+                <td>${r.polo ? _rqEsc(r.polo) : `<span class="cft-vazio">—</span>`}</td>
+                <td class="num">${r.dias.length}</td>
+                <td class="num">${r.sucessos.toLocaleString("pt-BR")}</td>
+                <td class="num">${r.onholds || `<span class="cft-vazio">—</span>`}</td>
+                <td class="num">${r.atrasos || `<span class="cft-vazio">—</span>`}</td>
+                <td class="num"><span class="rq-perf-pct"><em><i class="${_rqPctClasse(r.pct)}" style="width:${Math.max(0, Math.min(100, r.pct || 0))}%"></i></em><strong class="${_rqPctClasse(r.pct)}">${_rqPct(r.pct)}</strong></span></td>
+                <td class="num">${r.pior ? `<span class="${_rqPctClasse(r.pior.pct)}">${_rqPct(r.pior.pct)}</span> <span class="cft-ajuda">${_rqDiaCurto(r.pior.dia)}</span>` : `<span class="cft-vazio">—</span>`}</td>
+                <td class="num${r.abaixo ? " cft-aviso" : ""}">${r.abaixo || `<span class="cft-vazio">—</span>`}</td>
+                <td class="num">${r.pacotes_pagos.toLocaleString("pt-BR")}</td>
+                <td class="num">${_rqNum(r.por_pacote)}</td>
+                <td class="num"><strong>${_rqNum(r.total)}</strong></td>
+            </tr>${_rqPerfAbertos.has(r.entregador) ? `<tr class="rq-perf-dias"><td colspan="12">${r.dias.map(d =>
+                `<span class="rq-dia"><b>${_rqDiaCurto(d.dia)}</b> <span class="${_rqPctClasse(d.pct)}">${_rqPct(d.pct)}</span> <span class="cft-ajuda">R$ ${_rqNum(d.valor)}</span></span>`).join("")}</td></tr>` : ""}`).join("")
+            : `<tr><td colspan="12" class="cft-vazio" style="padding:14px">Nada com esse filtro.</td></tr>`}</tbody>
+        </table></div>
+        <div class="cft-ajuda" style="margin-top:6px">Performance = sucessos ÷ (sucessos + onholds + atrasos), juntando todas as transportadoras — a mesma que define o valor da Shopee,
+            só nos polos da regra (Criar Fechamento). Verde: 98% ou mais; vermelho: abaixo de 95%. Clique no entregador pra ver dia a dia (R$ = valor por pacote no dia).</div>`;
 }
 
 // Cidades do filtro: aceita uma ou uma lista colada. Casa sem olhar acento, caixa,
@@ -291,6 +440,7 @@ function _rqRenderTabela() {
             <td class="num"><strong>${_rqNum(soma(l => l.descontos))}</strong></td>
             <td class="num cft-pos"><strong>${_rqNum(soma(l => l.liquido))}</strong></td>
         </tr>` : "";
+    if (_rqAba === "performance") _rqRenderPerf(); // busca e polo valem pras duas abas
 }
 
 function _rqSelect(id, todos, lista) {
@@ -371,9 +521,12 @@ function _rqMontarAbas(pacotes, filtros, perfLinhas) {
 }
 
 // Performance consolidada das XPTs da Shopee que estão no arquivo (sem repetir entregador × dia).
-async function _rqBuscarPerformance(pacotes) {
-    const chaves = Object.entries(_rqDados.transportadoras)
-        .filter(([, t]) => /^shopee/i.test(t.nome) && pacotes.some(p => p.transportadora === t.nome)).map(([k]) => k);
+function _rqBuscarPerformance(pacotes) {
+    return _rqPerfLinhas(Object.entries(_rqDados.transportadoras)
+        .filter(([, t]) => /^shopee/i.test(t.nome) && pacotes.some(p => p.transportadora === t.nome)).map(([k]) => k));
+}
+// Linhas entregador × dia da performance consolidada, das XPTs pedidas, sem repetir.
+async function _rqPerfLinhas(chaves) {
     const vistos = new Set(), linhas = [];
     for (const k of chaves) {
         const r = await fetch(`${_RQ_API()}/performance?mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}&transportadora=${k}`,
