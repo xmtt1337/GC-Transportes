@@ -1,11 +1,17 @@
 // ───── MACROS ─────
-// Tarefas que o sistema roda sozinho, numa lista (ver _MAC_GRUPOS) com o detalhe do escolhido ao
-// lado. Três tipos:
+// Tarefas que o sistema roda sozinho, numa lista (ver _macGrupos) com o detalhe do escolhido ao
+// lado. Quatro tipos:
 //   - os relatórios do SPX (AT Exportada, Pedidos Pesquisados, Backlog — modules/macros-comando),
 //     que rodam no Chrome do galpão: "Rodar agora", em qual computador e o horário;
 //   - o Colador (Recebimento, AT Cluster), também no Chrome, com polo e configuração da sessão;
-//   - o aviso de rota incompleta (modules/avisos-entregador), que roda no servidor por rodadas.
+//   - o aviso de rota incompleta (modules/avisos-entregador), que roda no servidor por rodadas;
+//   - o aviso de planejamento não respondido (modules/planejamento/aviso-rotas), que roda no
+//     servidor de X em X minutos dentro de uma janela, por unidade (Caçador, Videira).
 // Admin só vê o Colador; o resto é de dev.
+//
+// Os dois avisos vêm do mesmo endpoint (GET /admin/macros), cada item já com um `grupo` (o
+// título da seção na lista) e um `formato` ("rodadas" ou "intervalo_janela") que decide qual
+// formulário desenhar — um aviso novo no backend aparece aqui sem mexer nesta tela.
 //
 // Configurar é sempre pela tela — nunca mexendo direto no banco (mesmo espírito de
 // Conversão de nomes e Telefones dos entregadores).
@@ -16,7 +22,8 @@ let _macRodadas = [];   // cópia de trabalho das rodadas de quem está aberto n
 let _macChaveEditando = null;
 let _macVigia = null;   // { online, visto_ha_s }: o Chrome do galpão consultou o servidor há pouco?
 let _macAgenda = null;  // cópia de trabalho da agenda de um macro do SPX aberto no modal
-let _macFonte = "rodadas"; // qual lista de horários o relógio (hora/minuto) edita: "rodadas" | "agenda"
+let _macPlanejamento = null; // cópia de trabalho do aviso de planejamento (intervalo + janela) aberto
+let _macFonte = "rodadas"; // qual lista de horários o relógio (hora/minuto) edita: "rodadas" | "agenda" | "planejamento"
 let _macPoll = null;    // timer que acompanha um "Rodar" até ele sair do "aguardando"
 let _macGeral = null;   // problema que o vigia contou sem saber de qual macro (erro inesperado, etc.)
 let _macColadores = [];    // [{ qual, chave, nome, detalhe, configurado, config, resumo, comando, computadores }]
@@ -246,12 +253,24 @@ function _macGrupos() {
         })) });
     }
     if (dev) {
-        const linhas = _MAC_AVISOS.map(a => ({ ...a, tipo: a.pendente ? "pendente" : "aviso", m: a.chave ? _macLista.find(m => m.chave === a.chave) : null }));
+        // Agrupa os avisos pelo `grupo` que CADA UM manda no catálogo (/admin/macros) — um
+        // aviso novo no backend (ex.: planejamento) vira grupo próprio sem mexer aqui. O
+        // Shopee entra primeiro sempre, com o placeholder "pendente" de Videira incluído,
+        // pra não mudar a ordem/aparência que já existia antes disso ser genérico.
+        const porGrupo = [];
+        const grupoDe = titulo => {
+            let g = porGrupo.find(x => x.titulo === titulo);
+            if (!g) { g = { titulo, avisos: [] }; porGrupo.push(g); }
+            return g;
+        };
+        grupoDe("Avisos de rota incompleta").avisos.push(
+            ..._MAC_AVISOS.map(a => ({ ...a, tipo: a.pendente ? "pendente" : "aviso", m: a.chave ? _macLista.find(m => m.chave === a.chave) : null })));
         const conhecidas = new Set(["avisos_entregador"]);
         for (const m of _macLista) {
-            if (!m.qual && !conhecidas.has(m.chave)) linhas.push({ id: `av:${m.chave}`, tipo: "aviso", chave: m.chave, nome: m.nome, detalhe: m.descricao, m });
+            if (m.qual || conhecidas.has(m.chave)) continue;
+            grupoDe(m.grupo || "Avisos").avisos.push({ id: `av:${m.chave}`, tipo: "aviso", chave: m.chave, nome: m.nome, detalhe: m.descricao, m });
         }
-        grupos.push({ titulo: "Avisos de rota incompleta", avisos: linhas });
+        grupos.push(...porGrupo);
     }
     return grupos;
 }
@@ -657,6 +676,13 @@ function _macVivoSessaoHtml(item) {
 }
 
 function _macVivoAvisoHtml(item, m) {
+    if (m.formato === "intervalo_janela") {
+        return `<div class="macd-grade">
+            ${_macCampoHtml("Executar em", "No servidor", "Não depende de computador nem do Chrome ligado.")}
+            ${_macCampoHtml("Quem recebe", "Fixos que ainda não responderam",
+                "A lista de fixos e a janela da enquete vêm de Planejamento > Enquete de amanhã.")}
+        </div>`;
+    }
     return `<div class="macd-grade">
         ${_macCampoHtml("Executar em", "No servidor", "Não depende de computador nem do Chrome ligado.")}
         ${_macCampoHtml("Polo (XPT)", item.xpt ? `<b>${_macEsc(item.xpt)}</b> · ${_macEsc(_macPoloDoXpt(item.xpt))}` : "—",
@@ -715,6 +741,26 @@ function _macConfigHtml(item) {
                 <button class="usr-modal-btn-primary" id="mac-col-salvar" onclick="_macSalvarColador()">Salvar configuração</button></div>
         </div>`;
     }
+    if (item.tipo === "aviso" && item.m && item.m.formato === "intervalo_janela") {
+        return `<div class="macd-bloco">
+            <div class="macd-rotulo">Disparo</div>
+            <div class="macd-nota" style="margin-bottom:12px">A cada tanto tempo, avisa de novo quem ainda não respondeu a enquete de amanhã — só dentro do horário abaixo.</div>
+            <div class="macd-grade">
+                <div class="macd-campo">
+                    <div class="macd-rotulo">A cada</div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <input type="number" id="mac-pla-intervalo" class="usr-modal-input mac-ag-minutos" min="5" max="180" oninput="_macPlaCampo('intervaloMin', this.value)">
+                        <span class="mac-ag-unidade">minutos</span>
+                    </div>
+                </div>
+                <div class="macd-campo"><div class="macd-rotulo">Das</div>${_macPlaHorarioHtml(0)}</div>
+                <div class="macd-campo"><div class="macd-rotulo">até</div>${_macPlaHorarioHtml(1)}</div>
+            </div>
+            <div id="mac-pla-sem-telefone"></div>
+            <div class="macd-salvar"><div class="usr-modal-error" id="mac-pla-erro"></div>
+                <button class="usr-modal-btn-primary" id="mac-pla-salvar" onclick="_macSalvarPlanejamento()">Salvar</button></div>
+        </div>`;
+    }
     if (item.tipo === "aviso" && item.m) {
         return `<div class="macd-bloco">
             <div class="macd-rotulo">Rodadas</div>
@@ -732,6 +778,7 @@ function _macPrepararConfig(item) {
     if (item.tipo === "inst") _macAbrirAgenda(item.qual, item.inst.agenda, item.inst.id);
     else if (item.tipo === "novo") _macAbrirAgenda(item.qual, null, null);
     else if (item.tipo === "colcfg") _macAbrirConfigurarColador(item.qual);
+    else if (item.tipo === "aviso" && item.m && item.m.formato === "intervalo_janela") _macAbrirConfigurarPlanejamento(item.chave);
     else if (item.tipo === "aviso" && item.m) _macAbrirConfigurar(item.chave);
 }
 
@@ -1105,7 +1152,11 @@ let _macPop = null;   // a lista aberta: { el, i, input, aoFora, aoTecla }
 
 // O relogio serve a duas telas: as rodadas do aviso e os horarios de um macro do SPX. Qual lista
 // ele edita depende de qual modal esta aberto (_macFonte).
-const _macFonteHm = () => (_macFonte === "agenda" && _macAgenda ? _macAgenda.horarios : _macRodadas);
+const _macFonteHm = () => {
+    if (_macFonte === "agenda" && _macAgenda) return _macAgenda.horarios;
+    if (_macFonte === "planejamento" && _macPlanejamento) return _macPlanejamento.janela;
+    return _macRodadas;
+};
 
 function _macFecharHorario() {
     if (!_macPop) return;
@@ -1269,6 +1320,115 @@ function _macSalvar() {
         .catch(() => {
             btn.disabled = false;
             btn.textContent = "Salvar rodadas";
+            erro.innerText = "Erro ao conectar com o servidor.";
+        });
+}
+
+// ── Aviso de planejamento não respondido (intervalo + janela, por unidade) ──
+// Mesmo campo de horário do resto da tela (type=time + relógio com a lista própria), só que
+// aqui são sempre DUAS posições fixas — início e fim — sem botão de remover/adicionar.
+function _macPlaHorarioHtml(i) {
+    return `<div class="mac-horario-wrap">
+        <input type="time" class="usr-modal-input mac-horario" id="mac-pla-horario-${i}" value=""
+               oninput="_macMudarHorario(${i}, this.value)">
+        <button type="button" class="mac-relogio" title="Escolher o horário numa lista" aria-label="Escolher o horário"
+                onclick="_macAbrirHorario(${i}, this)">${_macRelogioSvg}</button>
+    </div>`;
+}
+
+function _macAbrirConfigurarPlanejamento(chave) {
+    _macChaveEditando = chave;
+    _macFonte = "planejamento";
+    const erro = document.getElementById("mac-pla-erro");
+    if (erro) erro.innerText = "";
+
+    fetch(`${API}/admin/macros/${_macRotaDaChave(chave)}`, { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) { gcAlert(d.error); return; }
+            if (_macChaveEditando !== chave) return; // trocou de macro enquanto carregava
+            const [horaIni, minIni] = String(d.janela.inicio || "08:00").split(":").map(Number);
+            const [horaFim, minFim] = String(d.janela.fim || "14:00").split(":").map(Number);
+            _macPlanejamento = {
+                chave, intervaloMin: d.intervaloMin,
+                janela: [{ hora: horaIni, minuto: minIni }, { hora: horaFim, minuto: minFim }],
+                semTelefone: d.semTelefone || [], totalFixos: d.totalFixos || 0, enqueteAtiva: !!d.enqueteAtiva,
+            };
+            _macRenderizarPlanejamento();
+        })
+        .catch(() => gcAlert("Erro ao conectar com o servidor."));
+}
+
+function _macRenderizarPlanejamento() {
+    _macFecharHorario(); // a lista aberta era de uma linha que está sendo redesenhada
+    const p = _macPlanejamento;
+    document.getElementById("mac-pla-intervalo").value = p.intervaloMin;
+    document.getElementById("mac-pla-horario-0").value = _macHorarioTexto(p.janela[0]);
+    document.getElementById("mac-pla-horario-1").value = _macHorarioTexto(p.janela[1]);
+
+    const semTel = document.getElementById("mac-pla-sem-telefone");
+    if (!semTel) return;
+    if (!p.enqueteAtiva) {
+        semTel.innerHTML = `<div class="mac-sit mac-sit-aviso"><span class="mac-cmd-ponto"></span>
+            <span>A enquete desta unidade está desligada — ninguém recebe este aviso até ela ser ligada (Planejamento &gt; Enquete de amanhã).</span></div>`;
+    } else if (p.semTelefone.length) {
+        semTel.innerHTML = `<div class="mac-sit mac-sit-aviso"><span class="mac-cmd-ponto"></span>
+            <span><b>${p.semTelefone.length} de ${p.totalFixos} fixo${p.totalFixos !== 1 ? "s" : ""} sem telefone:</b> ${p.semTelefone.map(s => _macEsc(s.nome)).join(", ")}
+            — não recebem o aviso até isso ser corrigido na planilha "Dados entregadores/CLT's".</span></div>`;
+    } else {
+        semTel.innerHTML = "";
+    }
+}
+
+function _macPlaCampo(campo, valor) {
+    _macPlanejamento[campo] = valor === "" ? "" : Number(valor);
+}
+
+// O que vai pro servidor, ou o motivo de não ir — mesmas regras que ele confere de novo.
+function _macMontarPlanejamento(p) {
+    const intervaloMin = Number(p.intervaloMin);
+    if (p.intervaloMin === "" || !Number.isInteger(intervaloMin) || intervaloMin < 5 || intervaloMin > 180) {
+        return { erro: "O intervalo tem que ser de 5 a 180 minutos." };
+    }
+    const [ini, fim] = p.janela;
+    if (!_macEmFaixa(ini.hora, 23) || !_macEmFaixa(ini.minuto, 59) || !_macEmFaixa(fim.hora, 23) || !_macEmFaixa(fim.minuto, 59)) {
+        return { erro: "Tem um horário em branco ou inválido." };
+    }
+    if (ini.hora * 60 + ini.minuto >= fim.hora * 60 + fim.minuto) {
+        return { erro: "O horário de início tem que ser antes do de fim (no mesmo dia)." };
+    }
+    return { intervaloMin, janela: { inicio: _macHorarioTexto(ini), fim: _macHorarioTexto(fim) } };
+}
+
+function _macSalvarPlanejamento() {
+    const erro = document.getElementById("mac-pla-erro");
+    erro.innerText = "";
+    const r = _macMontarPlanejamento(_macPlanejamento);
+    if (r.erro) { erro.innerText = r.erro; return; }
+
+    // Ligar/desligar é no interruptor do topo; salvar aqui mantém o que está.
+    const atual = _macLista.find(x => x.chave === _macChaveEditando);
+    const ativo = !!(atual && atual.ativo);
+    const btn = document.getElementById("mac-pla-salvar");
+    btn.disabled = true;
+    btn.textContent = "Salvando...";
+
+    fetch(`${API}/admin/macros/${_macRotaDaChave(_macChaveEditando)}`, {
+        method: "PUT",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ ativo, intervaloMin: r.intervaloMin, janela: r.janela })
+    })
+        .then(res => res.json().then(d => ({ ok: res.ok, d })))
+        .then(({ ok, d }) => {
+            btn.disabled = false;
+            btn.textContent = "Salvar";
+            if (!ok) { erro.innerText = d.error || "Não foi possível salvar."; return; }
+            _macMostrarSalvo("mac-pla-erro");
+            _macCarregarLista(true);
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.textContent = "Salvar";
             erro.innerText = "Erro ao conectar com o servidor.";
         });
 }

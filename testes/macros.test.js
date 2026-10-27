@@ -21,6 +21,14 @@ const ACESSOR = `
   set tipos(v) { _macTipos = v; },
   rotaDaChave: (c) => _macRotaDaChave(c),
   rotuloParametro: (id) => _macRotuloParametro(id),
+  set lista(v) { _macLista = v; },
+  set coladores(v) { _macColadores = v; },
+  grupos: () => _macGrupos(),
+  get planejamento() { return _macPlanejamento; },
+  set planejamento(v) { _macPlanejamento = v; },
+  montarPlanejamento: (p) => _macMontarPlanejamento(p),
+  plaCampo: (c, v) => _macPlaCampo(c, v),
+  plaHorarioHtml: (i) => _macPlaHorarioHtml(i),
 };`;
 
 function criarElemento() {
@@ -29,12 +37,13 @@ function criarElemento() {
   return o;
 }
 
-function carregar() {
+function carregar({ role = "dev" } = {}) {
   const els = {};
   const el = (id) => els[id] || (els[id] = Object.assign(criarElemento(), { id }));
   const ctx = vm.createContext({
     console,
     document: { getElementById: el },
+    window: { _gcUser: { role } },
   });
   vm.runInContext(fonte + ACESSOR, ctx, { filename: "macros.js" });
   return { ctx, els, m: ctx.__m };
@@ -523,3 +532,138 @@ test("redesenhar as rodadas (remover uma, trocar o criterio) fecha a lista abert
 // que ainda não foi integrado fica marcado sem ação, e nenhum macro do servidor some da tela.
 const AVISO = { chave: "avisos_entregador", nome: "Aviso de rota incompleta (Shopee)", descricao: "d", ativo: true,
   resumo: "19:05 Abaixo de 90% concluído · 22:05 Mais de 1 pacotes em Delivering" };
+
+// `deepStrictEqual` não serve pra comparar objetos/arrays que o próprio macros.js criou: eles
+// nascem no realm da VM (outro Array/Object.prototype), então até estrutura idêntica falha como
+// "same structure but not reference-equal". Por isso aqui sempre se lê campo a campo, ou se passa
+// por JSON.parse(JSON.stringify(...)) pra trazer o valor pro realm do teste antes de comparar.
+const normal = (v) => JSON.parse(JSON.stringify(v));
+
+test("quem nao e dev nao ve nenhum grupo de avisos (nem o pendente do Shopee VIA)", () => {
+  const a = carregar({ role: "sac" });
+  a.m.lista = [AVISO];
+  a.m.coladores = [];
+  assert.strictEqual(a.m.grupos().length, 0);
+});
+
+test("dev sempre ve o grupo de avisos de rota incompleta, com o pendente do Shopee VIA mesmo sem backend", () => {
+  const a = carregar({ role: "dev" });
+  a.m.lista = [];
+  a.m.coladores = [];
+  const grupo = a.m.grupos().find((g) => g.titulo === "Avisos de rota incompleta");
+  assert.ok(grupo, "o grupo existe mesmo sem nenhum macro configurado no servidor");
+  assert.strictEqual(grupo.avisos.length, 2);
+  assert.strictEqual(grupo.avisos[0].chave, "avisos_entregador");
+  assert.strictEqual(grupo.avisos[0].tipo, "aviso", "XPT_CFC nao tem a flag 'pendente' — fica tipo aviso mesmo sem achar no catalogo");
+  assert.strictEqual(grupo.avisos[0].m, undefined, "sem _macLista, nao achou o catalogo — mas nao quebra");
+  assert.strictEqual(grupo.avisos[1].tipo, "pendente", "Shopee XPT_VIA e sempre marcado como pendente (ainda nao integrado)");
+});
+
+test("o aviso do catalogo (avisos_entregador) e ligado ao item certo pela chave", () => {
+  const a = carregar({ role: "dev" });
+  a.m.lista = [AVISO];
+  a.m.coladores = [];
+  const grupo = a.m.grupos().find((g) => g.titulo === "Avisos de rota incompleta");
+  assert.strictEqual(grupo.avisos[0].tipo, "aviso");
+  assert.strictEqual(grupo.avisos[0].m.chave, "avisos_entregador");
+  assert.strictEqual(grupo.avisos[0].m.resumo, AVISO.resumo);
+});
+
+test("um item da lista com 'qual' (relatorio do SPX) nunca vira aviso, mesmo com chave", () => {
+  const a = carregar({ role: "dev" });
+  a.m.lista = [AVISO, { qual: "pedidos", chave: "pedidos", nome: "Pedidos", descricao: "d" }];
+  a.m.coladores = [];
+  const grupos = a.m.grupos();
+  assert.ok(!grupos.some((g) => g.avisos && g.avisos.some((av) => av.chave === "pedidos")));
+});
+
+test("um aviso novo do catalogo, com 'grupo' proprio, ganha secao propria sem mexer no codigo", () => {
+  const a = carregar({ role: "dev" });
+  const planejamento = { chave: "planejamento_aviso_cacador", grupo: "Planejamento de amanhã",
+    nome: "Planejamento de amanhã (Caçador)", descricao: "Avisa quem ainda não respondeu a enquete." };
+  a.m.lista = [AVISO, planejamento];
+  a.m.coladores = [];
+  const grupo = a.m.grupos().find((g) => g.titulo === "Planejamento de amanhã");
+  assert.ok(grupo, "a secao nasceu so por existir 'grupo' no catalogo");
+  assert.strictEqual(grupo.avisos.length, 1);
+  assert.deepStrictEqual(normal(grupo.avisos[0]), {
+    id: "av:planejamento_aviso_cacador", tipo: "aviso", chave: "planejamento_aviso_cacador",
+    nome: "Planejamento de amanhã (Caçador)", detalhe: "Avisa quem ainda não respondeu a enquete.", m: planejamento,
+  });
+});
+
+test("avisos novos sem 'grupo' no catalogo caem juntos na secao generica 'Avisos'", () => {
+  const a = carregar({ role: "dev" });
+  const x = { chave: "x", nome: "X", descricao: "dx" };
+  const y = { chave: "y", nome: "Y", descricao: "dy" };
+  a.m.lista = [AVISO, x, y];
+  a.m.coladores = [];
+  const grupo = a.m.grupos().find((g) => g.titulo === "Avisos");
+  assert.strictEqual(grupo.avisos.length, 2);
+  assert.deepStrictEqual(normal(grupo.avisos).map((av) => av.chave), ["x", "y"]);
+});
+
+test("duas unidades do mesmo aviso (grupo igual) ficam na mesma secao, uma linha cada", () => {
+  const a = carregar({ role: "dev" });
+  const cacador = { chave: "planejamento_aviso_cacador", grupo: "Planejamento de amanhã", nome: "Caçador", descricao: "d1" };
+  const videira = { chave: "planejamento_aviso_videira", grupo: "Planejamento de amanhã", nome: "Videira", descricao: "d2" };
+  a.m.lista = [cacador, videira];
+  a.m.coladores = [];
+  const grupo = a.m.grupos().find((g) => g.titulo === "Planejamento de amanhã");
+  assert.strictEqual(grupo.avisos.length, 2);
+  assert.deepStrictEqual(normal(grupo.avisos).map((av) => av.chave), ["planejamento_aviso_cacador", "planejamento_aviso_videira"]);
+});
+
+// ── Aviso de planejamento não respondido (intervalo + janela) ──────────────
+const JANELA_VALIDA = { intervaloMin: 15, janela: [{ hora: 8, minuto: 0 }, { hora: 14, minuto: 0 }] };
+
+test("monta a config valida pro servidor, convertendo o horario pra texto", () => {
+  const a = carregar();
+  const r = a.m.montarPlanejamento(JANELA_VALIDA);
+  assert.deepStrictEqual(normal(r), { intervaloMin: 15, janela: { inicio: "08:00", fim: "14:00" } });
+});
+
+test("intervalo vazio, fora de 5 a 180, ou nao inteiro e recusado antes de ir pro servidor", () => {
+  const a = carregar();
+  for (const intervaloMin of ["", 4, 181, 10.5]) {
+    const r = a.m.montarPlanejamento({ ...JANELA_VALIDA, intervaloMin });
+    assert.match(r.erro, /intervalo/i, JSON.stringify(intervaloMin));
+  }
+});
+
+test("horario em branco (hora ou minuto vazio) e recusado", () => {
+  const a = carregar();
+  const r = a.m.montarPlanejamento({ intervaloMin: 15, janela: [{ hora: "", minuto: 0 }, { hora: 14, minuto: 0 }] });
+  assert.match(r.erro, /horário/i);
+});
+
+test("hora ou minuto fora da faixa (ex.: 24h) e recusado", () => {
+  const a = carregar();
+  const r = a.m.montarPlanejamento({ intervaloMin: 15, janela: [{ hora: 24, minuto: 0 }, { hora: 14, minuto: 0 }] });
+  assert.match(r.erro, /horário/i);
+});
+
+test("inicio igual ou depois do fim e recusado (nao da pra virar o dia)", () => {
+  const a = carregar();
+  const igual = a.m.montarPlanejamento({ intervaloMin: 15, janela: [{ hora: 14, minuto: 0 }, { hora: 14, minuto: 0 }] });
+  assert.match(igual.erro, /início.*antes.*fim/i);
+  const invertido = a.m.montarPlanejamento({ intervaloMin: 15, janela: [{ hora: 15, minuto: 0 }, { hora: 14, minuto: 0 }] });
+  assert.match(invertido.erro, /início.*antes.*fim/i);
+});
+
+test("_macPlaCampo grava o intervalo como numero, e campo apagado fica vazio (nao NaN)", () => {
+  const a = carregar();
+  a.m.planejamento = { intervaloMin: 15 };
+  a.m.plaCampo("intervaloMin", "30");
+  assert.strictEqual(a.m.planejamento.intervaloMin, 30);
+  a.m.plaCampo("intervaloMin", "");
+  assert.strictEqual(a.m.planejamento.intervaloMin, "");
+});
+
+test("o HTML do horario de planejamento usa o indice certo no id e no onclick, sem seletores", () => {
+  const a = carregar();
+  const html = a.m.plaHorarioHtml(1);
+  assert.match(html, /id="mac-pla-horario-1"/);
+  assert.match(html, /_macAbrirHorario\(1,/);
+  assert.ok(!html.includes("<select"), "é o mesmo input+relógio do resto da tela, não um <select>");
+});
