@@ -1373,7 +1373,7 @@ function _macRenderizarPlanejamento() {
             <span>A enquete desta unidade está desligada — ninguém recebe este aviso até ela ser ligada (Planejamento &gt; Enquete de amanhã).</span></div>`;
     } else if (p.semTelefone.length) {
         semTel.innerHTML = `<div class="mac-sit mac-sit-aviso"><span class="mac-cmd-ponto"></span>
-            <span><b>${p.semTelefone.length} de ${p.totalFixos} fixo${p.totalFixos !== 1 ? "s" : ""} sem telefone:</b> ${p.semTelefone.map(s => _macEsc(s.nome)).join(", ")}
+            <span><b>${p.semTelefone.length} de ${p.totalFixos} fixo${p.totalFixos !== 1 ? "s" : ""} sem telefone:</b> ${p.semTelefone.map(s => _macEsc(s.nome) + (s.motivo ? ` (${_macEsc(s.motivo)})` : "")).join(", ")}
             — não recebem o aviso até isso ser corrigido na planilha "Dados entregadores/CLT's".</span></div>`;
     } else {
         semTel.innerHTML = "";
