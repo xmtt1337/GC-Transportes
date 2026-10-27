@@ -9,6 +9,8 @@ let _fxAno = new Date().getFullYear();
 let _fxQuinzena = null;
 let _fxDados = null;
 let _fxFiltro = "";
+let _fxCategoria = "";   // "" | entregador | gc_interno | terceirizada
+const _FX_CATEGORIAS = { entregador: "Entregadores", gc_interno: "GC Interno", terceirizada: "Terceirizada" };
 let _fxReq = 0;
 
 function _fxEsc(t) {
@@ -73,6 +75,7 @@ function _fxCarregar() {
 // Situação de cada entregador: sem conversão (responsável não achou entregador),
 // sem fechamento (tem desconto mas nenhum pacote na quinzena) ou ok.
 function _fxSituacao(r) {
+    if (r.categoria && r.categoria !== "entregador") return { k: r.categoria, t: _FX_CATEGORIAS[r.categoria] };
     if (r.sem_conversao) return { k: "sem_conversao", t: "Responsável sem entregador" };
     if (!r.tem_fechamento) return { k: "sem_fechamento", t: "Sem fechamento na quinzena" };
     return { k: "ok", t: "No fechamento" };
@@ -84,8 +87,8 @@ function _fxRender() {
     el.innerHTML = `<div id="fx-fonte" class="cft-regras" style="display:none"></div>` + `
         <div class="cft-kpis">
             <div class="cft-kpi"><div class="cft-kpi-valor">${t.linhas.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Extravios e multas · ${_fxEsc(d.codigo_quinzena)}</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor cft-neg">${_fxNum(t.total)}</div><div class="cft-kpi-rotulo">Total a descontar (R$)</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor">${t.entregadores.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Entregadores</div></div>
+            ${Object.entries(_FX_CATEGORIAS).map(([c, rot]) => { const x = (t.por_categoria || {})[c] || { responsaveis: 0, total: 0, linhas: 0 };
+                return `<div class="cft-kpi"><div class="cft-kpi-valor cft-neg">${_fxNum(x.total)}</div><div class="cft-kpi-rotulo">${rot} · ${x.linhas} linha(s), ${x.responsaveis} ${c === "entregador" ? "entregador(es)" : "responsável(is)"}</div></div>`; }).join("")}
             <div class="cft-kpi"><div class="cft-kpi-valor${t.sem_fechamento.entregadores ? " cft-aviso" : ""}">${t.sem_fechamento.entregadores} · ${_fxNum(t.sem_fechamento.total)}</div><div class="cft-kpi-rotulo">Sem fechamento na quinzena</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor${t.sem_conversao.entregadores ? " cft-aviso" : ""}">${t.sem_conversao.entregadores} · ${_fxNum(t.sem_conversao.total)}</div><div class="cft-kpi-rotulo">Responsável sem entregador</div></div>
         </div>
@@ -95,8 +98,10 @@ function _fxRender() {
             ${d.tem_relatorios ? "" : `<span class="cft-aviso">Nenhum relatório de transportadora nesta quinzena ainda — todos aparecem como sem fechamento.</span>`}</div>
         <div class="cft-barra" style="justify-content:space-between">
             <span style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                ${[["", "Todos"], ["sem_fechamento", "Sem fechamento"], ["sem_conversao", "Sem entregador"], ["ok", "No fechamento"]].map(([k, rot]) =>
-                    `<button class="cft-chip${_fxFiltro === k ? " on" : ""}" onclick="_fxMudarFiltro('${k}')">${rot}</button>`).join("")}
+                ${[["", "Todos"], ["entregador", "Entregadores"], ["gc_interno", "GC Interno"], ["terceirizada", "Terceirizada"]].map(([k, rot]) =>
+                    `<button class="cft-chip${_fxCategoria === k ? " on" : ""}" onclick="_fxMudarCategoria('${k}')">${rot}</button>`).join("")}
+                ${_fxCategoria === "entregador" ? `<span class="cft-ajuda">·</span>` + [["", "Todos"], ["sem_fechamento", "Sem fechamento"], ["sem_conversao", "Sem entregador"], ["ok", "No fechamento"]].map(([k, rot]) =>
+                    `<button class="cft-chip${_fxFiltro === k ? " on" : ""}" onclick="_fxMudarFiltro('${k}')">${rot}</button>`).join("") : ""}
                 <div class="adm-search-input-area" style="max-width:260px;margin:0">
                     <input type="text" id="fx-busca" placeholder="Entregador ou código..." oninput="_fxRenderTabelas()">
                 </div>
@@ -105,7 +110,7 @@ function _fxRender() {
         </div>
         <div class="cft-pend-titulo" style="color:#e2e8f0">Por entregador</div>
         <div class="cft-tabela-wrap" style="max-height:380px;overflow-y:auto"><table class="cft-tabela">
-            <thead><tr><th>Entregador</th><th>Situação</th><th style="text-align:right">Extravios</th><th style="text-align:right">Multas</th><th style="text-align:right">Total (R$)</th></tr></thead>
+            <thead><tr><th>Responsável</th><th>Situação</th><th style="text-align:right">Extravios</th><th style="text-align:right">Multas</th><th style="text-align:right">Total (R$)</th></tr></thead>
             <tbody id="fx-tbody-ent"></tbody></table></div>
         <div class="cft-pend-titulo" style="color:#e2e8f0;margin-top:14px">Linhas</div>
         <div class="cft-tabela-wrap" style="max-height:480px;overflow-y:auto"><table class="cft-tabela">
@@ -116,17 +121,20 @@ function _fxRender() {
 }
 
 function _fxMudarFiltro(k) { _fxFiltro = k; _fxRender(); }
+function _fxMudarCategoria(k) { _fxCategoria = k; _fxFiltro = ""; _fxRender(); }
 
 function _fxSituacaoLinha(l) {
+    if (l.categoria && l.categoria !== "entregador") return l.categoria;
     return l.sem_conversao ? "sem_conversao" : l.tem_fechamento ? "ok" : "sem_fechamento";
 }
 
 /** Linhas e entregadores que passam no filtro e na busca. */
 function _fxFiltrados() {
     const busca = _fxChave((document.getElementById("fx-busca") || {}).value);
-    const ent = _fxDados.por_entregador.filter(r => (!_fxFiltro || _fxSituacao(r).k === _fxFiltro)
+    const naCat = (c) => !_fxCategoria || (c || "entregador") === _fxCategoria;
+    const ent = _fxDados.por_entregador.filter(r => naCat(r.categoria) && (!_fxFiltro || _fxSituacao(r).k === _fxFiltro)
         && (!busca || _fxChave(r.entregador).includes(busca) || r.responsaveis.some(x => _fxChave(x).includes(busca))));
-    const lin = _fxDados.linhas.filter(l => (!_fxFiltro || _fxSituacaoLinha(l) === _fxFiltro)
+    const lin = _fxDados.linhas.filter(l => naCat(l.categoria) && (!_fxFiltro || _fxSituacaoLinha(l) === _fxFiltro)
         && (!busca || _fxChave(l.driver).includes(busca) || _fxChave(l.responsavel).includes(busca) || _fxChave(l.codigo).includes(busca)));
     return { ent, lin };
 }
@@ -138,13 +146,13 @@ function _fxRenderTabelas() {
         const s = _fxSituacao(r);
         return `<tr>
             <td>${_fxEsc(r.entregador)}${r.responsaveis.length && r.responsaveis.some(x => x !== r.entregador) ? ` <span class="cft-ajuda" title="Como está na planilha">(${_fxEsc(r.responsaveis.join(" · "))})</span>` : ""}</td>
-            <td>${s.k === "ok" ? `<span class="cft-ajuda">${s.t}</span>` : `<span class="cft-aviso">${s.t}</span>`}</td>
+            <td>${["ok", "gc_interno", "terceirizada"].includes(s.k) ? `<span class="cft-ajuda">${s.t}</span>` : `<span class="cft-aviso">${s.t}</span>`}</td>
             <td class="num">${r.extravios}</td><td class="num">${r.multas}</td>
             <td class="num cft-neg"><strong>${_fxNum(r.total)}</strong></td>
         </tr>`;
     }).join("") : vazio(5);
     document.getElementById("fx-tbody-lin").innerHTML = lin.length ? lin.slice(0, 2000).map(l => `<tr>
-            <td>${_fxEsc(l.driver || "—")}${_fxSituacaoLinha(l) !== "ok" ? ` <span class="cft-aviso">${l.sem_conversao ? "sem entregador" : "sem fechamento"}</span>` : ""}</td>
+            <td>${_fxEsc(l.driver || "—")}${["sem_conversao", "sem_fechamento"].includes(_fxSituacaoLinha(l)) ? ` <span class="cft-aviso">${l.sem_conversao ? "sem entregador" : "sem fechamento"}</span>` : ""}</td>
             <td>${_fxEsc(l.responsavel)}</td><td>${_fxEsc(l.status)}</td><td>${_fxEsc(l.transportadora)}</td>
             <td>${_fxEsc(l.data)}</td><td>${_fxEsc(l.codigo)}</td>
             <td class="num cft-neg">${_fxNum(l.valor)}</td><td style="white-space:normal">${_fxEsc(l.causa)}</td>
@@ -155,10 +163,10 @@ function _fxRenderTabelas() {
 function _fxAbas() {
     const { ent, lin } = _fxFiltrados();
     return [
-        { nome: "Por entregador", linhas: [["Entregador", "Situação", "Extravios", "Multas", "Total", "Responsável (planilha)"]]
-            .concat(ent.map(r => [r.entregador, _fxSituacao(r).t, r.extravios, r.multas, r.total, r.responsaveis.join(" · ")])) },
-        { nome: "Linhas", linhas: [["Entregador", "Situação", "Responsável (planilha)", "Status", "Transportadora", "Data", "Código", "Valor", "Causa", "Data desconto", "Para desconto?"]]
-            .concat(lin.map(l => [l.driver || "", { ok: "No fechamento", sem_fechamento: "Sem fechamento na quinzena", sem_conversao: "Responsável sem entregador" }[_fxSituacaoLinha(l)],
+        { nome: "Por responsável", linhas: [["Categoria", "Responsável", "Situação", "Extravios", "Multas", "Total", "Como está na planilha"]]
+            .concat(ent.map(r => [_FX_CATEGORIAS[r.categoria || "entregador"], r.entregador, _fxSituacao(r).t, r.extravios, r.multas, r.total, r.responsaveis.join(" · ")])) },
+        { nome: "Linhas", linhas: [["Categoria", "Entregador", "Situação", "Responsável (planilha)", "Status", "Transportadora", "Data", "Código", "Valor", "Causa", "Data desconto", "Para desconto?"]]
+            .concat(lin.map(l => [_FX_CATEGORIAS[l.categoria || "entregador"], l.driver || "", { ok: "No fechamento", sem_fechamento: "Sem fechamento na quinzena", sem_conversao: "Responsável sem entregador", gc_interno: "GC Interno", terceirizada: "Terceirizada" }[_fxSituacaoLinha(l)],
                 l.responsavel, l.status, l.transportadora, l.data, l.codigo, l.valor, l.causa, l.data_desconto, l.para_desconto])) },
     ];
 }
@@ -166,7 +174,7 @@ function _fxAbas() {
 function _fxExportar() {
     const wb = XLSX.utils.book_new();
     for (const a of _fxAbas()) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a.linhas), a.nome);
-    XLSX.writeFile(wb, `extravios_${_fxDados.codigo_quinzena}_${_fxAno}${_fxFiltro ? "_" + _fxFiltro : ""}.xlsx`);
+    XLSX.writeFile(wb, `extravios_${_fxDados.codigo_quinzena}_${_fxAno}${_fxCategoria ? "_" + _fxCategoria : ""}${_fxFiltro ? "_" + _fxFiltro : ""}.xlsx`);
 }
 
 // ── Fonte: de qual planilha/aba vêm os extravios (vale aqui e no Resumo da Quinzena) ──

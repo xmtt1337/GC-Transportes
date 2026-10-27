@@ -32,11 +32,12 @@ function carregar() {
 
 test("sem fechamento: só quem tem desconto e nenhum pacote na quinzena", () => {
     const { ctx, el } = carregar();
+    ctx._fxMudarCategoria("entregador");
     ctx._fxMudarFiltro("sem_fechamento");
     assert.match(el("fx-tbody-ent").innerHTML, /Beltrano Exemplo/);
     assert.doesNotMatch(el("fx-tbody-ent").innerHTML, /Fulano/);
     const abas = JSON.parse(JSON.stringify(ctx._fxAbas()));
-    assert.deepStrictEqual(abas[1].linhas.slice(1).map(l => [l[0], l[1], l[7]]), [["Beltrano Exemplo - Morro", "Sem fechamento na quinzena", 10]]);
+    assert.deepStrictEqual(abas[1].linhas.slice(1).map(l => [l[1], l[2], l[8]]), [["Beltrano Exemplo - Morro", "Sem fechamento na quinzena", 10]]);
     assert.match(el("fx-conteudo").innerHTML, /1 · 10,00/);
 });
 
@@ -44,11 +45,27 @@ test("busca por código ou responsável; Todos mostra as 3 situações", () => {
     const { ctx, el } = carregar();
     ctx._fxMudarFiltro("");
     el("fx-busca").value = "c3";
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(ctx._fxAbas()))[1].linhas.slice(1).map(l => l[6]), ["C3"]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(ctx._fxAbas()))[1].linhas.slice(1).map(l => l[7]), ["C3"]);
     el("fx-busca").value = "";
     ctx._fxRenderTabelas();
     const html = el("fx-tbody-ent").innerHTML;
     assert.match(html, /Sem fechamento na quinzena/);
     assert.match(html, /Responsável sem entregador/);
     assert.match(html, /No fechamento/);
+});
+
+test("categorias: GC Interno e Terceirizada separados, cada responsável por si", () => {
+    const { ctx, el } = carregar();
+    vm.runInContext(`_fxDados.linhas.push({ driver: "GC Interno - Caçador", responsavel: "GC Interno - Caçador", categoria: "gc_interno", status: "Lost", valor: 10, codigo: "G1" },
+        { driver: "GC Interno - Videira", responsavel: "GC Interno - Videira", categoria: "gc_interno", status: "Lost", valor: 20, codigo: "G2" });
+      _fxDados.por_entregador.push({ entregador: "GC Interno - Caçador", categoria: "gc_interno", extravios: 1, multas: 0, qtd: 1, total: 10, responsaveis: ["GC Interno - Caçador"] },
+        { entregador: "GC Interno - Videira", categoria: "gc_interno", extravios: 1, multas: 0, qtd: 1, total: 20, responsaveis: ["GC Interno - Videira"] });`, ctx);
+    ctx._fxMudarCategoria("gc_interno");
+    const html = el("fx-tbody-ent").innerHTML;
+    assert.match(html, /GC Interno - Caçador/);
+    assert.match(html, /GC Interno - Videira/);
+    assert.doesNotMatch(html, /Fulano|Beltrano/);
+    assert.doesNotMatch(html, /Sem fechamento/);
+    const abas = JSON.parse(JSON.stringify(ctx._fxAbas()));
+    assert.deepStrictEqual(abas[0].linhas.slice(1).map(l => [l[0], l[1], l[5]]), [["GC Interno", "GC Interno - Caçador", 10], ["GC Interno", "GC Interno - Videira", 20]]);
 });
