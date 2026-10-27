@@ -212,6 +212,7 @@ function _rqPerfPorEntregador(linhas) {
             pct: tentativas ? Math.round(r.sucessos / tentativas * 10000) / 100 : null,
             pior: comPct.reduce((m, d) => (!m || d.pct < m.pct ? d : m), null),
             abaixo: comPct.filter(d => d.pct < 98).length,
+            acima: comPct.filter(d => d.pct >= 98).length,
             pacotes_pagos: r.pacotes_pagos, total: Math.round(r.total * 100) / 100,
             por_pacote: r.pacotes_pagos ? Math.round(r.total / r.pacotes_pagos * 100) / 100 : 0,
         };
@@ -276,7 +277,7 @@ function _rqRenderPerf() {
         <div class="cft-tabela-wrap" style="max-height:620px;overflow-y:auto"><table class="cft-tabela">
             <thead><tr>${th("entregador", "Entregador")}${th("polo", "Polo")}${th("dias_n", "Dias", true)}${th("sucessos", "Sucessos", true)}
                 ${th("onholds", "Onholds", true)}${th("atrasos", "Atrasos", true)}${th("pct", "Performance", true)}${th("pior", "Pior dia", true)}
-                ${th("abaixo", "Dias &lt; 98%", true)}${th("pacotes_pagos", "Pacotes pagos", true)}${th("por_pacote", "R$/pacote", true)}${th("total", "Total (R$)", true)}</tr></thead>
+                ${th("acima", "Dias 98%+", true)}${th("abaixo", "Dias abaixo de 98%", true)}${th("pacotes_pagos", "Pacotes pagos", true)}${th("por_pacote", "Ticket médio", true)}${th("total", "Total (R$)", true)}</tr></thead>
             <tbody>${lista.length ? lista.map((r, i) => `<tr class="rq-perf-linha" onclick="_rqPerfAbrir(${i})" title="Clique pra ver dia a dia">
                 <td>${_rqEsc(r.entregador)}</td>
                 <td>${r.polo ? _rqEsc(r.polo) : `<span class="cft-vazio">—</span>`}</td>
@@ -286,16 +287,18 @@ function _rqRenderPerf() {
                 <td class="num">${r.atrasos || `<span class="cft-vazio">—</span>`}</td>
                 <td class="num"><span class="rq-perf-pct"><em><i class="${_rqPctClasse(r.pct)}" style="width:${Math.max(0, Math.min(100, r.pct || 0))}%"></i></em><strong class="${_rqPctClasse(r.pct)}">${_rqPct(r.pct)}</strong></span></td>
                 <td class="num">${r.pior ? `<span class="${_rqPctClasse(r.pior.pct)}">${_rqPct(r.pior.pct)}</span> <span class="cft-ajuda">${_rqDiaCurto(r.pior.dia)}</span>` : `<span class="cft-vazio">—</span>`}</td>
-                <td class="num${r.abaixo ? " cft-aviso" : ""}">${r.abaixo || `<span class="cft-vazio">—</span>`}</td>
+                <td class="num">${r.acima}</td>
+                <td class="num${r.abaixo ? " cft-aviso" : ""}">${r.abaixo}</td>
                 <td class="num">${r.pacotes_pagos.toLocaleString("pt-BR")}</td>
-                <td class="num">${_rqNum(r.por_pacote)}</td>
+                <td class="num" title="Total ÷ pacotes pagos">${_rqNum(r.por_pacote)}</td>
                 <td class="num"><strong>${_rqNum(r.total)}</strong></td>
-            </tr>${_rqPerfAbertos.has(r.entregador) ? `<tr class="rq-perf-dias"><td colspan="12">${r.dias.map(d =>
+            </tr>${_rqPerfAbertos.has(r.entregador) ? `<tr class="rq-perf-dias"><td colspan="13">${r.dias.map(d =>
                 `<span class="rq-dia"><b>${_rqDiaCurto(d.dia)}</b> <span class="${_rqPctClasse(d.pct)}">${_rqPct(d.pct)}</span> <span class="cft-ajuda">R$ ${_rqNum(d.valor)}</span></span>`).join("")}</td></tr>` : ""}`).join("")
-            : `<tr><td colspan="12" class="cft-vazio" style="padding:14px">Nada com esse filtro.</td></tr>`}</tbody>
+            : `<tr><td colspan="13" class="cft-vazio" style="padding:14px">Nada com esse filtro.</td></tr>`}</tbody>
         </table></div>
         <div class="cft-ajuda" style="margin-top:6px">Performance = sucessos ÷ (sucessos + onholds + atrasos), juntando todas as transportadoras — a mesma que define o valor da Shopee,
-            só nos polos da regra (Criar Fechamento). Verde: 98% ou mais; vermelho: abaixo de 95%. Clique no entregador pra ver dia a dia (R$ = valor por pacote no dia).</div>`;
+            só nos polos da regra (Criar Fechamento). Verde: 98% ou mais; vermelho: abaixo de 95%. Clique no entregador pra ver dia a dia (R$ = valor por pacote no dia).
+            Ticket médio = total ÷ pacotes pagos.</div>`;
 }
 
 // Cidades do filtro: aceita uma ou uma lista colada. Casa sem olhar acento, caixa,

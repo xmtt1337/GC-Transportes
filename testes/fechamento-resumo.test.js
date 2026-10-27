@@ -162,6 +162,7 @@ test("performance: soma por entregador com performance da quinzena, pior dia e d
     assert.strictEqual(f.pct, 94.5);           // 189 ÷ 200
     assert.strictEqual(f.pior.dia, "2026-09-16");
     assert.strictEqual(f.abaixo, 1);
+    assert.strictEqual(f.acima, f.dias_n - 1);
     assert.strictEqual(f.total, 382.5);
     assert.strictEqual(f.por_pacote, 2.02);
 });
