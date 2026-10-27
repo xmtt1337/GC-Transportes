@@ -6352,7 +6352,6 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .rq-abas { display: flex; gap: 24px; padding-bottom: 0; }
 .rq-abas .mex-aba { padding-bottom: 9px; margin-bottom: -1px; }
 .rq-perf-linha { cursor: pointer; }
-.rq-perf-linha:hover td { background: rgba(255,255,255,0.025); }
 .rq-perf-pct { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .rq-perf-pct em { width: 56px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.06); overflow: hidden; }
 .rq-perf-pct i { display: block; height: 100%; background: currentColor; opacity: .75; color: #64748b; }
@@ -6402,6 +6401,8 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .cft-tabela th { position: sticky; top: 0; z-index: 2; background: #141b26; text-align: left; padding: 9px 10px; font-size: 11px; color: #8494a9; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.08); }
 .cft-tabela td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); color: #cbd5e1; }
 .cft-tabela td.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Linha embaixo do mouse destacada, pra seguir os números até o fim da linha. */
+.cft-tabela tbody tr:hover td { background: rgba(58,134,255,0.08); }
 .cft-sim { color: #34d399; }
 .cft-pos, .cft-tabela td.cft-pos { color: #34d399; }
 .cft-neg, .cft-tabela td.cft-neg { color: #f87171; }
