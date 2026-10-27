@@ -7,49 +7,69 @@ const vm = require("node:vm");
 
 const D = {
     fonte: "sistema", codigo_quinzena: "Q2Set",
-    faixas: { semana: [{ ate: 95, valor: 1.5 }, { ate: 98, valor: 2 }, { ate: null, valor: 2.5 }], domingo: [{ ate: 90, valor: 1.8 }, { ate: 98, valor: 2.2 }, { ate: null, valor: 2.6 }] },
-    transportadoras: [{ nome: "Shopee Caçador", pacotes: 100, valor: 250, por_pacote: 2.5 }, { nome: "Imile", pacotes: 50, valor: 120, por_pacote: 2.4 }],
-    conta: { bruto: 370, acrescimos: 0, deslocamento: 30, ticketlog: 80, extravios: 0, descontos: 0, liquido: 320 },
+    transportadoras: [{ nome: "Shopee Caçador", pacotes: 110, valor: 275, por_pacote: 2.5 }, { nome: "Imile", pacotes: 50, valor: 120, por_pacote: 2.4 }],
+    conta: { bruto: 395, acrescimos: 0, deslocamento: 30, ticketlog: 80, extravios: 0, descontos: 0, liquido: 345 },
     deslocamento: { dias: 2, valor_dia: 15, valor: 30 },
     performance: { pct: 98.67, dias: [
-        { dia: "2026-09-21", shopee: 100, outras_prazo: 48, onholds: 0, outras_atraso: 2, pct: 98.67, valor: 2.5, total: 375 },
+        { dia: "2026-09-21", shopee: 100, outras_prazo: 48, onholds: 1, outras_atraso: 2, pct: 98.03, valor: 2.5, total: 375 },
         { dia: "2026-09-22", shopee: 10, outras_prazo: 0, onholds: 0, outras_atraso: 0, pct: 100, valor: 2.5, total: 25 }] },
-    insucessos: [{ dia: "2026-09-21", tipo: "Atrasado", transportadora: "Imile", codigo: "I9", deveria: "2026-09-21", entregue: "2026-09-23" },
-        { dia: "2026-09-21", tipo: "Não entregue", transportadora: "Loggi", codigo: "L1", deveria: "2026-09-21", entregue: null }],
+    por_dia: [
+        { transportadora: "Shopee Caçador", dia: "2026-09-21", pacotes: 100, entregues: 100, atrasados: 0, nao_entregues: 0, valor: 250 },
+        { transportadora: "Shopee Caçador", dia: "2026-09-22", pacotes: 10, entregues: 10, atrasados: 0, nao_entregues: 0, valor: 25 },
+        { transportadora: "Imile", dia: "2026-09-21", pacotes: 50, entregues: 49, atrasados: 1, nao_entregues: 1, valor: 120 }],
+    insucessos: [
+        { dia: "2026-09-21", tipo: "Onhold", transportadora: "Shopee Caçador", codigo: "BRX", motivo: "Cliente ausente", ocorrencia_hora: "14:40" },
+        { dia: "2026-09-21", tipo: "Atrasado", transportadora: "Imile", codigo: "I9", deveria: "2026-09-21", entregue: "2026-09-23" },
+        { dia: "2026-09-21", tipo: "Não entregue", transportadora: "Imile", codigo: "I10", deveria: "2026-09-21", entregue: null }],
     extravios: [], ajustes: [],
 };
 
 function carregar() {
     const els = new Map();
     const el = (id) => { if (!els.has(id)) els.set(id, { id, innerHTML: "", style: {} }); return els.get(id); };
-    const ctx = { console, document: { getElementById: el } };
+    const modal = { innerHTML: "" };
+    const ctx = { console, document: {
+        getElementById: el, querySelector: () => modal,
+        createElement: () => ({ addEventListener() {}, set innerHTML(v) {}, remove() {} }),
+        body: { appendChild() {} },
+    } };
     vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-entregador.js"), "utf8"), ctx);
-    return { ctx, el };
+    return { ctx, el, modal };
 }
 
-test("mostra a conta, R$ por pacote por transportadora e a performance da quinzena", () => {
+test("cards como antes: transportadoras com valor/entregues/por pacote, adicionais e descontos", () => {
     const { ctx, el } = carregar();
     ctx._fsRender(D);
     const html = el("fech-sistema").innerHTML;
-    assert.match(html, /Deslocamento \(2 dias × R\$ 15,00\)/);
-    assert.match(html, /= Total a receber/);
-    assert.match(html, /R\$ 320,00/);
-    assert.match(html, /R\$ 2,40/);           // Imile por pacote
-    assert.match(html, /98,67%<\/span> na quinzena/);
-    assert.match(html, /98% ou mais: R\$ 2,50/);
-    assert.doesNotMatch(html, /Acréscimos<\/span>/, "acréscimo zerado não aparece");
+    assert.match(html, /pt-card pt-card-shopee fs-clicavel/);
+    assert.match(html, /Shopee Caçador/);
+    assert.match(html, /R\$ 2,40/);              // Imile por pacote
+    assert.match(html, /2 × R\$ 15,00/);          // deslocamento
+    assert.match(html, /Ticket Log/);
+    assert.doesNotMatch(html, /Performance do dia/, "sem o texto da performance");
 });
 
-test("tocar no dia abre os pedidos que derrubaram, com quando deveriam ser entregues", () => {
-    const { ctx, el } = carregar();
+test("card da transportadora: dias; Shopee mostra a % e conta as ocorrências de todas as transportadoras", () => {
+    const { ctx, modal } = carregar();
     ctx._fsRender(D);
-    assert.doesNotMatch(el("fs-dias").innerHTML, /I9/);
-    ctx._fsAlternarDia("2026-09-21");
-    const html = el("fs-dias").innerHTML;
-    assert.match(html, /Atrasado<\/span> · Imile · <b>I9<\/b>/);
-    assert.match(html, /deveria ser entregue 21\/09, entregue 23\/09/);
-    assert.match(html, /não entregue/);
-    // dia sem insucesso não é clicável
-    assert.doesNotMatch(html, /_fsAlternarDia\('2026-09-22'\)/);
+    ctx._fsMostrarTransp(0);
+    assert.match(modal.innerHTML, /98,03%/);
+    assert.match(modal.innerHTML, /3 ocorrência\(s\)/);   // 1 onhold + 2 das outras
+    assert.doesNotMatch(modal.innerHTML, /_fsMostrarDia\(0, '2026-09-22'\)/, "dia sem ocorrência não abre");
+    ctx._fsMostrarTransp(1);
+    assert.match(modal.innerHTML, /2 ocorrência\(s\)/);   // Imile: 1 atrasado + 1 não entregue
+});
+
+test("tocar no dia mostra os pedidos que afetaram, com quando deveriam ser entregues", () => {
+    const { ctx, modal } = carregar();
+    ctx._fsRender(D);
+    ctx._fsMostrarDia(1, "2026-09-21");   // Imile: só os dela
+    assert.match(modal.innerHTML, /Deveria ser entregue 21\/09 · entregue 23\/09/);
+    assert.match(modal.innerHTML, /I10/);
+    assert.doesNotMatch(modal.innerHTML, /BRX/);
+    ctx._fsMostrarDia(0, "2026-09-21");   // Shopee: tudo que derrubou o dia
+    assert.match(modal.innerHTML, /BRX/);
+    assert.match(modal.innerHTML, /Cliente ausente · às 14:40/);
+    assert.match(modal.innerHTML, /I9/);
 });

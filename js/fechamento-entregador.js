@@ -1,9 +1,10 @@
 // ───── MEUS FECHAMENTOS: FECHAMENTO DO SISTEMA (visão do entregador) ─────
-// Quando a quinzena foi publicada no Fechamento (Resumo da Quinzena › Publicar), o /painel
-// devolve fonte "sistema" e o fechamento vem de lá em vez da planilha: a conta inteira,
-// valor por transportadora com R$/pacote, a performance dia a dia e — tocando no dia — os
-// pedidos que derrubaram (onhold, atrasado, não entregue) com quando deveriam ser entregues.
-// Tudo na tela, sem baixar relatório. Chamado por _carregarPainel (fechamentos.js).
+// Quando a quinzena foi publicada (Criar Fechamento / Resumo da Quinzena › Publicar), o
+// /painel devolve fonte "sistema" e o fechamento vem de lá em vez da planilha. Mesmo jeito
+// da tela antiga: cards por transportadora, Adicionais e Descontos. Tocando na
+// transportadora abre um card com os dias; tocando no dia, os pedidos que afetaram
+// (onhold, atrasado, não entregue) com quando deveriam ser entregues. Tudo na tela, sem
+// baixar relatório. Chamado por _carregarPainel (fechamentos.js).
 
 function _fsEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -12,117 +13,146 @@ function _fsR(n) {
     return "R$ " + Number(n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function _fsDia(iso) {
-    const [a, m, d] = String(iso || "").split("-");
+    const [, m, d] = String(iso || "").split("-");
     return d ? `${d}/${m}` : "—";
 }
+const _FS_SEM = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+function _fsSem(iso) { return _FS_SEM[new Date(iso + "T12:00:00Z").getUTCDay()]; }
 function _fsPct(p) {
     return p == null ? "—" : Number(p).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
 }
-// Mesma régua da tabela de valor: 98%+ paga o máximo; abaixo de 95% (90% no domingo) o mínimo.
-function _fsPctClasse(p, iso) {
-    if (p == null) return "";
-    const dom = iso && new Date(iso + "T12:00:00Z").getUTCDay() === 0;
-    return p >= 98 ? "cft-pos" : p < (dom ? 90 : 95) ? "cft-neg" : "";
+// Cor do cabeçalho do card (mesmas classes da tela da planilha).
+function _fsClasseTransp(nome) {
+    const n = String(nome || "").toLowerCase();
+    if (n.startsWith("shopee")) return "pt-card-shopee";
+    if (n.startsWith("loggi")) return "pt-card-loggi";
+    if (n.startsWith("imile")) return "pt-card-imile";
+    if (n.startsWith("anjun")) return "pt-card-anjun";
+    if (n.startsWith("total")) return "pt-card-te";
+    if (n.startsWith("j&t") || n.startsWith("jet")) return "pt-card-jt";
+    return "";
 }
-
-/** Texto das faixas de valor (seg a sáb / domingo). */
-function _fsFaixas(f) {
-    if (!f) return "";
-    const lista = (l) => (l || []).map((x, i) => {
-        const ant = l[i - 1];
-        if (x.ate === null || x.ate === Infinity || x.ate > 1000) return `${ant ? ant.ate : 0}% ou mais: ${_fsR(x.valor)}`;
-        return `${ant ? `de ${ant.ate}% ` : ""}abaixo de ${x.ate}%: ${_fsR(x.valor)}`;
-    }).join(" · ");
-    return `Segunda a sábado — ${lista(f.semana)}. Domingo — ${lista(f.domingo)}.`;
-}
+const _fsEhShopee = (nome) => /^shopee/i.test(nome || "");
 
 let _fsDados = null;
-const _fsAbertos = new Set();
 
 function _fsRender(d) {
     _fsDados = d;
-    _fsAbertos.clear();
-    const el = document.getElementById("fech-sistema");
     const c = d.conta || {};
-    const linhaConta = (rot, v, cls, sinal) => v || rot === "Bruto" ? `<div class="fs-conta-linha"><span>${sinal ? `<span class="fs-sinal">${sinal}</span> ` : ""}${rot}</span>
-        <span class="${cls || ""}">${_fsR(v)}</span></div>` : "";
-    el.innerHTML = `
-        <div class="painel-section-title">Como chegou no valor</div>
-        <div class="fs-card">
-            ${linhaConta("Bruto", c.bruto)}
-            ${linhaConta("Acréscimos", c.acrescimos, "cft-pos", "+")}
-            ${linhaConta(`Deslocamento${d.deslocamento ? ` (${d.deslocamento.dias} dias × ${_fsR(d.deslocamento.valor_dia)})` : ""}`, c.deslocamento, "cft-pos", "+")}
-            ${linhaConta("Ticket Log", c.ticketlog, "cft-neg", "−")}
-            ${linhaConta("Extravios e multas", c.extravios, "cft-neg", "−")}
-            ${linhaConta("Descontos", c.descontos, "cft-neg", "−")}
-            <div class="fs-conta-linha fs-conta-total"><span>= Total a receber</span><span class="${c.liquido < 0 ? "cft-neg" : "cft-pos"}">${_fsR(c.liquido)}</span></div>
+    const card = (titulo, linhas, extra) => `<div class="pt-card ${extra || ""}">
+        <div class="pt-header">${titulo}</div>${linhas.map(([a, b]) => `<div class="pt-row"><span>${a}</span><span>${b}</span></div>`).join("")}</div>`;
+    const paj = (rot, v, sub) => `<div class="paj-card${v ? " negativo" : ""}"><div class="paj-label">${rot}</div>
+        ${sub ? `<div class="paj-sublabel">${sub}</div>` : ""}<div class="paj-value">${_fsR(v)}</div></div>`;
+    document.getElementById("fech-sistema").innerHTML = `
+        <div class="painel-section-title">Transportadoras</div>
+        <div class="painel-transp">${(d.transportadoras || []).map((t, i) => `<div class="pt-card ${_fsClasseTransp(t.nome)} fs-clicavel" onclick="_fsAbrirTransp(${i})">
+            <div class="pt-header">${_fsEsc(t.nome)}</div>
+            <div class="pt-row"><span>Valor</span><span>${_fsR(t.valor)}</span></div>
+            <div class="pt-row"><span>Entregues</span><span>${t.pacotes.toLocaleString("pt-BR")} pacotes</span></div>
+            <div class="pt-row"><span>Por pacote</span><span>${_fsR(t.por_pacote)}</span></div>
+        </div>`).join("")}</div>
+
+        <div class="painel-section-title">Adicionais</div>
+        <div class="painel-adicionais">
+            ${card("Acréscimos", [["Valor", _fsR(c.acrescimos)]])}
+            ${card("Deslocamento", [["Valor", _fsR(c.deslocamento)]].concat(d.deslocamento ? [["Dias", `${d.deslocamento.dias} × ${_fsR(d.deslocamento.valor_dia)}`]] : []))}
         </div>
 
-        <div class="painel-section-title">Por transportadora</div>
-        <div class="fs-card fs-tabela-wrap"><table class="cft-tabela">
-            <thead><tr><th>Transportadora</th><th style="text-align:right">Pacotes</th><th style="text-align:right">Valor</th><th style="text-align:right">Por pacote</th></tr></thead>
-            <tbody>${(d.transportadoras || []).map(t => `<tr><td>${_fsEsc(t.nome)}</td><td class="num">${t.pacotes.toLocaleString("pt-BR")}</td>
-                <td class="num">${_fsR(t.valor)}</td><td class="num">${_fsR(t.por_pacote)}</td></tr>`).join("")}</tbody>
-        </table></div>
+        <div class="painel-section-title">Descontos</div>
+        <div class="painel-descontos">
+            ${paj("Extravios + Multas", c.extravios)}
+            ${paj("Ticket Log", c.ticketlog, "Desconto no cartão")}
+            ${c.descontos ? paj("Outros descontos", c.descontos) : ""}
+        </div>
 
-        ${d.performance ? `
-        <div class="painel-section-title">Performance — <span class="${_fsPctClasse(d.performance.pct)}">${_fsPct(d.performance.pct)}</span> na quinzena</div>
-        <div class="cft-ajuda" style="margin-bottom:8px">Performance do dia = entregues ÷ (entregues + onholds + pacotes que atrasaram ou não foram entregues no dia do prazo),
-            juntando todas as transportadoras. O valor por pacote do dia segue a performance: ${_fsEsc(_fsFaixas(d.faixas))}
-            <b>Toque no dia</b> pra ver o que derrubou.</div>
-        <div class="fs-card fs-tabela-wrap"><table class="cft-tabela fs-larga">
-            <thead><tr><th>Dia</th><th style="text-align:right">Entregues</th><th style="text-align:right">Onholds</th><th style="text-align:right">Atrasados</th>
-                <th style="text-align:right">Performance</th><th style="text-align:right">Por pacote</th><th style="text-align:right">Total</th></tr></thead>
-            <tbody id="fs-dias"></tbody>
-        </table></div>` : ""}
+        ${(d.extravios || []).length ? `<div class="painel-ocorrencias"><div class="poc-card">
+            <div class="poc-header">Extravios e multas</div>
+            <div class="extr-lista">${d.extravios.map(e => `<div class="extr-card">
+                <div class="extr-top"><span class="extr-transp">${_fsEsc(e.transportadora)} · ${_fsEsc(e.status)}</span><span class="extr-codigo">${_fsEsc(e.codigo)}</span></div>
+                <div class="extr-bottom"><span class="extr-valor val-neg">${_fsR(e.valor)}</span></div></div>`).join("")}</div>
+        </div></div>` : ""}
 
-        ${(d.extravios || []).length ? `
-        <div class="painel-section-title">Extravios e multas</div>
-        <div class="fs-card fs-tabela-wrap"><table class="cft-tabela">
-            <thead><tr><th>Tipo</th><th>Transportadora</th><th>Pedido</th><th style="text-align:right">Valor</th></tr></thead>
-            <tbody>${d.extravios.map(e => `<tr><td>${_fsEsc(e.status)}</td><td>${_fsEsc(e.transportadora)}</td><td>${_fsEsc(e.codigo)}</td>
-                <td class="num cft-neg">${_fsR(e.valor)}</td></tr>`).join("")}</tbody>
-        </table></div>` : ""}
-
-        ${(d.ajustes || []).length ? `
-        <div class="painel-section-title">Acréscimos e descontos</div>
-        <div class="fs-card fs-tabela-wrap"><table class="cft-tabela">
-            <tbody>${d.ajustes.map(a => `<tr><td>${a.tipo === "acrescimo" ? "Acréscimo" : "Desconto"}</td><td style="white-space:normal">${_fsEsc(a.descricao || "")}</td>
-                <td class="num ${a.tipo === "acrescimo" ? "cft-pos" : "cft-neg"}">${a.tipo === "acrescimo" ? "+" : "−"} ${_fsR(a.valor)}</td></tr>`).join("")}</tbody>
-        </table></div>` : ""}`;
-    _fsRenderDias();
+        ${(d.ajustes || []).length ? `<div class="painel-ocorrencias"><div class="poc-card">
+            <div class="poc-header">Acréscimos e descontos</div>
+            <div class="extr-lista">${d.ajustes.map(a => `<div class="extr-card">
+                <div class="extr-top"><span class="extr-transp">${a.tipo === "acrescimo" ? "Acréscimo" : "Desconto"}</span></div>
+                ${a.descricao ? `<div class="extr-endereco">${_fsEsc(a.descricao)}</div>` : ""}
+                <div class="extr-bottom"><span class="extr-valor ${a.tipo === "acrescimo" ? "fs-pos" : "val-neg"}">${a.tipo === "acrescimo" ? "+" : "−"} ${_fsR(a.valor)}</span></div></div>`).join("")}</div>
+        </div></div>` : ""}`;
 }
 
-/** Pedidos que derrubaram o dia (vêm junto no /painel, sem nova chamada). */
-function _fsInsucessosDoDia(dia) {
-    return (_fsDados.insucessos || []).filter(x => x.dia === dia);
+// ── Card da transportadora: dias; tocando no dia, os pedidos que afetaram ──
+
+/** Dias da transportadora: pacotes/valor do dia e quantos afetaram (Shopee: % do dia). */
+function _fsDiasDaTransp(nome) {
+    const d = _fsDados;
+    const perf = new Map(((d.performance || {}).dias || []).map(x => [x.dia, x]));
+    return (d.por_dia || []).filter(x => x.transportadora === nome).map(x => {
+        const p = perf.get(x.dia);
+        const shopee = _fsEhShopee(nome);
+        // Shopee: o valor do dia segue a performance, que junta todas as transportadoras.
+        const afetaram = shopee ? (p ? p.onholds + p.outras_atraso : 0) : x.atrasados + x.nao_entregues;
+        return { ...x, pct: p ? p.pct : null, por_pacote: shopee && p ? p.valor : (x.entregues ? x.valor / x.entregues : 0), afetaram };
+    });
 }
 
-function _fsRenderDias() {
-    const tb = document.getElementById("fs-dias");
-    if (!tb || !_fsDados.performance) return;
-    const sem = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
-    tb.innerHTML = _fsDados.performance.dias.map(x => {
-        const ruins = x.onholds + x.outras_atraso;
-        const aberto = _fsAbertos.has(x.dia);
-        const ins = aberto ? _fsInsucessosDoDia(x.dia) : [];
-        return `<tr${ruins ? ` style="cursor:pointer" onclick="_fsAlternarDia('${x.dia}')"` : ""}>
-            <td>${ruins ? `<span class="cft-ajuda">${aberto ? "▾" : "▸"}</span> ` : ""}${_fsDia(x.dia)} <span class="cft-ajuda">${sem[new Date(x.dia + "T12:00:00Z").getUTCDay()]}</span></td>
-            <td class="num">${(x.shopee + x.outras_prazo).toLocaleString("pt-BR")}</td>
-            <td class="num${x.onholds ? " cft-neg" : ""}">${x.onholds}</td>
-            <td class="num${x.outras_atraso ? " cft-neg" : ""}">${x.outras_atraso}</td>
-            <td class="num ${_fsPctClasse(x.pct, x.dia)}"><strong>${_fsPct(x.pct)}</strong></td>
-            <td class="num">${_fsR(x.valor)}</td>
-            <td class="num">${_fsR(x.total)}</td>
-        </tr>${aberto ? `<tr><td colspan="7" class="fs-detalhe">${ins.length ? ins.map(i => `<div class="fs-ins">
-            <span class="cft-neg">${_fsEsc(i.tipo)}</span> · ${_fsEsc(i.transportadora)} · <b>${_fsEsc(i.codigo || "")}</b>
-            ${i.deveria ? ` · deveria ser entregue ${_fsDia(i.deveria)}` : ""}${i.entregue ? `, entregue ${_fsDia(i.entregue)}` : (i.tipo === "Não entregue" ? ", não entregue" : "")}
-            ${i.motivo ? ` · ${_fsEsc(i.motivo)}${i.ocorrencia_hora ? ` às ${_fsEsc(i.ocorrencia_hora)}` : ""}` : ""}</div>`).join("")
-            : `<span class="cft-ajuda">Sem detalhe dos pedidos desse dia.</span>`}</td></tr>` : ""}`;
-    }).join("");
+/** Pedidos que afetaram um dia. Shopee: tudo que derrubou a performance do dia; outras: só dela. */
+function _fsAfetantes(nome, dia) {
+    return (_fsDados.insucessos || []).filter(i => i.dia === dia && (_fsEhShopee(nome) || i.transportadora === nome));
 }
 
-function _fsAlternarDia(dia) {
-    if (_fsAbertos.has(dia)) _fsAbertos.delete(dia); else _fsAbertos.add(dia);
-    _fsRenderDias();
+function _fsAbrirTransp(i) {
+    const t = (_fsDados.transportadoras || [])[i];
+    if (!t) return;
+    _fsFechar();
+    const ov = document.createElement("div");
+    ov.className = "cft-modal-overlay";
+    ov.id = "fs-modal";
+    ov.innerHTML = `<div class="cft-modal fs-modal"></div>`;
+    ov.addEventListener("click", e => { if (e.target === ov) _fsFechar(); });
+    document.body.appendChild(ov);
+    _fsMostrarTransp(i);
+}
+function _fsFechar() {
+    const ov = document.getElementById("fs-modal");
+    if (ov) ov.remove();
+}
+
+function _fsMostrarTransp(i) {
+    const t = _fsDados.transportadoras[i];
+    const dias = _fsDiasDaTransp(t.nome);
+    const shopee = _fsEhShopee(t.nome);
+    const perf = _fsDados.performance;
+    document.querySelector("#fs-modal .fs-modal").innerHTML = `
+        <div class="fs-modal-topo"><div class="pt-card ${_fsClasseTransp(t.nome)} fs-titulo"><div class="pt-header" style="margin:0;padding:0;border:0">${_fsEsc(t.nome)}</div></div>
+            <a href="#" class="fs-fechar" onclick="event.preventDefault();_fsFechar()">Fechar</a></div>
+        <div class="fs-resumo">
+            <div class="fs-mini"><span>Entregues</span><b>${t.pacotes.toLocaleString("pt-BR")}</b></div>
+            <div class="fs-mini"><span>Valor</span><b>${_fsR(t.valor)}</b></div>
+            <div class="fs-mini"><span>Por pacote</span><b>${_fsR(t.por_pacote)}</b></div>
+            ${shopee && perf ? `<div class="fs-mini"><span>Performance</span><b>${_fsPct(perf.pct)}</b></div>` : ""}
+        </div>
+        <div class="fs-sub">Dias${dias.some(x => x.afetaram) ? " · toque no dia com ocorrência pra ver os pedidos" : ""}</div>
+        <div class="fs-dias">${dias.length ? dias.map(x => `<div class="fs-dia${x.afetaram ? " fs-clicavel fs-dia-alerta" : ""}"${x.afetaram ? ` onclick="_fsMostrarDia(${i}, '${x.dia}')"` : ""}>
+            <div class="fs-dia-topo"><b>${_fsDia(x.dia)}</b> <span>${_fsSem(x.dia)}</span></div>
+            <div class="fs-dia-linha">${x.entregues} entregue(s)</div>
+            <div class="fs-dia-linha"><b>${_fsR(x.valor)}</b></div>
+            ${shopee && x.pct != null ? `<div class="fs-dia-linha">${_fsPct(x.pct)} · <span class="fs-nw">${_fsR(x.por_pacote)}</span>/pct</div>` : ""}
+            ${x.afetaram ? `<div class="fs-dia-alerta-txt">${x.afetaram} ocorrência(s) ›</div>` : ""}
+        </div>`).join("") : `<div class="cft-ajuda">Sem dias nesta transportadora.</div>`}</div>`;
+}
+
+function _fsMostrarDia(i, dia) {
+    const t = _fsDados.transportadoras[i];
+    const lista = _fsAfetantes(t.nome, dia);
+    document.querySelector("#fs-modal .fs-modal").innerHTML = `
+        <div class="fs-modal-topo"><a href="#" class="fs-fechar" onclick="event.preventDefault();_fsMostrarTransp(${i})">‹ ${_fsEsc(t.nome)}</a>
+            <a href="#" class="fs-fechar" onclick="event.preventDefault();_fsFechar()">Fechar</a></div>
+        <div class="fs-sub">${_fsDia(dia)} ${_fsSem(dia)} · o que afetou o dia</div>
+        ${_fsEhShopee(t.nome) ? `<div class="cft-ajuda" style="margin-bottom:8px">O valor da Shopee no dia segue a performance, que conta também as outras transportadoras.</div>` : ""}
+        <div class="extr-lista" style="padding:0">${lista.length ? lista.map(x => `<div class="extr-card">
+            <div class="extr-top"><span class="extr-transp fs-neg">${_fsEsc(x.tipo)} · ${_fsEsc(x.transportadora)}</span><span class="extr-codigo">${_fsEsc(x.codigo || "")}</span></div>
+            <div class="extr-endereco">${x.deveria ? `Deveria ser entregue ${_fsDia(x.deveria)}` : ""}${x.entregue ? ` · entregue ${_fsDia(x.entregue)}` : (x.tipo === "Não entregue" ? " · não entregue" : "")}
+                ${x.motivo ? `${_fsEsc(x.motivo)}${x.ocorrencia_hora ? ` · às ${_fsEsc(x.ocorrencia_hora)}` : ""}` : ""}</div>
+        </div>`).join("") : `<div class="extr-vazio">Sem detalhe dos pedidos desse dia.</div>`}</div>`;
 }
