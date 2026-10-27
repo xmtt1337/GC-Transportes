@@ -120,7 +120,7 @@ function _rqRender() {
         </div>
         <div id="rq-baixar" class="cft-regras" style="display:none">
             <div class="cft-ajuda" style="margin-bottom:8px">Relatório detalhado: a aba <b>Todas as transportadoras</b> (todos os pacotes juntos),
-                uma aba por transportadora (igual ao Criar Fechamento), a <b>Performance</b> por entregador e dia — clique no <b>+</b> à esquerda
+                a <b>Performance</b> por entregador e dia — clique no <b>+</b> à esquerda
                 da linha no Excel pra abrir os onholds e atrasados daquele dia —, a aba <b>Insucessos</b> com todos eles e, no fim, o <b>Resumo</b> por entregador.
                 Escolha o que entra — sem nada escolhido, vai tudo.</div>
             <div class="cft-rotulo" style="margin-bottom:4px">Transportadoras</div>
@@ -269,9 +269,10 @@ const _RQ_AFETOU = ["Atrasado", "Não entregue", "Onhold"];
 function _rqPedidosDoDia(dia, pacotes, onholds) {
     const ps = pacotes.filter(p => _rqIsoDeBr(p.perf_dia) === dia).map(p => ({
         situacao: _rqSituacao(p), transportadora: p.transportadora, codigo: p.codigo, cidade: p.cidade || "",
-        deveria: p.deve_ser_entregue || "", entregue: p.data_entrega || "", valor: p.valor_motorista || 0, motivo: "" }));
+        deveria: p.deve_ser_entregue || "", entregue: p.data_entrega || "", valor: p.valor_motorista || 0, motivo: "", ocorrencia: p.data_entrega || "" }));
     const os = onholds.filter(o => o.dia === dia).map(o => ({
-        situacao: "Onhold", transportadora: o.transportadora, codigo: o.codigo || "", cidade: "", deveria: "", entregue: "", valor: 0, motivo: o.motivo || "" }));
+        situacao: "Onhold", transportadora: o.transportadora, codigo: o.codigo || "", cidade: "", deveria: "", entregue: "", valor: 0, motivo: o.motivo || "",
+        ocorrencia: _rqOcorrencia(o) }));
     const peso = (x) => (_RQ_AFETOU.includes(x.situacao) ? 0 : 1);
     return os.concat(ps).sort((a, b) => peso(a) - peso(b) || a.situacao.localeCompare(b.situacao) || String(a.codigo).localeCompare(String(b.codigo)));
 }
@@ -319,7 +320,7 @@ function _rqRenderCard() {
         <td class="${_RQ_AFETOU.includes(x.situacao) ? "cft-neg" : "cft-ajuda"}">${_rqEsc(x.situacao)}</td>
         <td>${_rqEsc(x.transportadora)}</td><td>${_rqEsc(x.codigo)}</td>
         <td>${_rqEsc(x.deveria) || "—"}</td><td>${_rqEsc(x.entregue) || (x.situacao.startsWith("Não entregue") ? "não entregue" : "—")}</td>
-        <td style="white-space:normal">${_rqEsc(x.motivo || x.cidade)}</td></tr>`;
+        <td style="white-space:normal">${_rqEsc(x.motivo || x.cidade)}${x.situacao === "Onhold" && x.ocorrencia ? ` <span class="cft-ajuda">${_rqEsc(x.ocorrencia)}</span>` : ""}</td></tr>`;
     ov.querySelector(".rq-card").innerHTML = `
         <div class="cft-barra" style="justify-content:space-between;margin:0 0 6px">
             <div class="cft-modal-titulo" style="margin:0">${_rqEsc(r.entregador)}</div>
@@ -363,9 +364,9 @@ function _rqCardAlternarDia(dia) {
     _rqRenderCard();
 }
 
-const _RQ_CAB_PEDIDOS = ["Dia da performance", "Situação", "Afetou a performance?", "Transportadora", "Pedido", "Cidade", "Deveria ser entregue", "Entregue em", "Valor pago", "Motivo do onhold"];
+const _RQ_CAB_PEDIDOS = ["Dia da performance", "Situação", "Afetou a performance?", "Data da ocorrência", "Transportadora", "Pedido", "Cidade", "Deveria ser entregue", "Entregue em", "Valor pago", "Motivo do onhold"];
 function _rqLinhasPedidos(dia, ped) {
-    return ped.map(x => [_rqDiaCurto(dia), x.situacao, _RQ_AFETOU.includes(x.situacao) ? "Sim" : "Não", x.transportadora, x.codigo, x.cidade,
+    return ped.map(x => [_rqDiaCurto(dia), x.situacao, _RQ_AFETOU.includes(x.situacao) ? "Sim" : "Não", x.ocorrencia || "", x.transportadora, x.codigo, x.cidade,
         x.deveria, x.entregue, x.valor, x.motivo]);
 }
 function _rqNomeArquivo(sufixo) {
@@ -389,7 +390,7 @@ function _rqAbasEntregador() {
     const dias = [["Dia", "Shopee entregues", "Outras no prazo", "Onholds", "Atrasados/não entregues", "Performance (%)", "R$/pacote", "Pacotes pagos", "Total"]]
         .concat(r.dias.map(d => [_rqDiaCurto(d.dia), d.shopee, d.outras_prazo, d.onholds, d.outras_atraso, d.pct, d.valor, d.pacotes_pagos, d.total]));
     const todos = r.dias.flatMap(d => _rqLinhasPedidos(d.dia, _rqPedidosDoDia(d.dia, pacotes, onholds)));
-    const fora = pacotes.filter(p => !p.perf_dia && !/^shopee/i.test(p.transportadora)).map(p => ["", _rqSituacao(p), "Não", p.transportadora, p.codigo,
+    const fora = pacotes.filter(p => !p.perf_dia && !/^shopee/i.test(p.transportadora)).map(p => ["", _rqSituacao(p), "Não", p.data_entrega || "", p.transportadora, p.codigo,
         p.cidade || "", p.deve_ser_entregue || "", p.data_entrega || "", p.valor_motorista || 0, ""]);
     return [
         { nome: "Dias", linhas: dias },
@@ -646,6 +647,12 @@ function _rqAbaResumo(pacotes, filtros) {
  * consolidada da Shopee (só dos entregadores que estão no arquivo) e o Resumo no fim.
  * @return {Array<{nome: string, linhas: Array<Array>}>}
  */
+/** Data da ocorrência: onhold = OnHold Time ("17/09/26 14:40"); atrasado = quando foi entregue. */
+function _rqOcorrencia(x) {
+    if (!x || !x.ocorrencia) return "";
+    return _cfDia(x.ocorrencia) + (x.ocorrencia_hora ? " " + x.ocorrencia_hora : "");
+}
+
 function _rqMontarAbas(pacotes, filtros, perfLinhas, insucessos) {
     const ordem = Object.values(_rqDados.transportadoras).map(t => t.nome);
     const nomes = [...new Set(pacotes.map(p => p.transportadora))]
@@ -655,11 +662,7 @@ function _rqMontarAbas(pacotes, filtros, perfLinhas, insucessos) {
     const porTransp = (nome) => pacotes.filter(p => p.transportadora === nome);
     const abas = [{ nome: "Todas as transportadoras", linhas: [colsTodas.map(c => c[0])]
         .concat(nomes.flatMap(n => porTransp(n)).map(p => colsTodas.map(c => p[c[1]] ?? ""))) }];
-    abas.push(...nomes.map(nome => {
-        const cols = /^shopee/i.test(nome) ? _CF_EXPORT_COLUNAS_SHOPEE : _CF_EXPORT_COLUNAS;
-        const doTransp = pacotes.filter(p => p.transportadora === nome);
-        return { nome: nome.slice(0, 31), linhas: [cols.map(c => c[0])].concat(doTransp.map(p => cols.map(c => p[c[1]] ?? ""))) };
-    }));
+    // (as abas separadas por transportadora saíram a pedido do usuário: fica só a de todas juntas)
     const drivers = new Set(pacotes.map(p => p.driver).filter(Boolean));
     const perf = (perfLinhas || []).filter(l => drivers.has(l.driver));
     if (perf.length) {
@@ -682,9 +685,9 @@ function _rqMontarAbas(pacotes, filtros, perfLinhas, insucessos) {
         }
         abas.push({ nome: "Performance", linhas, rows, outline: { above: true } });
         if (ins.length) {
-            abas.push({ nome: "Insucessos", linhas: [["Dia da performance", "Entregador", "Tipo", "Transportadora", "Código", "Deveria ser entregue",
-                "Entregue em", "Motivo do onhold", "Cidade"]].concat(ins.map(x => [_cfDia(x.dia), x.driver, x.tipo, x.transportadora, x.codigo || "",
-                x.deveria ? _cfDia(x.deveria) : "", x.entregue ? _cfDia(x.entregue) : "", x.motivo || "", x.cidade || ""])) });
+            abas.push({ nome: "Insucessos", linhas: [["Dia da performance", "Entregador", "Tipo", "Data da ocorrência", "Transportadora", "Código",
+                "Deveria ser entregue", "Entregue em", "Motivo do onhold", "Cidade"]].concat(ins.map(x => [_cfDia(x.dia), x.driver, x.tipo, _rqOcorrencia(x),
+                x.transportadora, x.codigo || "", x.deveria ? _cfDia(x.deveria) : "", x.entregue ? _cfDia(x.entregue) : "", x.motivo || "", x.cidade || ""])) });
         }
     }
     // Extravios e acréscimos/descontos dos entregadores do arquivo (só sem filtro de cidade/transportadora).
