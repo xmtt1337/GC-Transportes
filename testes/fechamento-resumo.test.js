@@ -81,9 +81,9 @@ test("detalhado: uma aba por transportadora com as colunas do Criar Fechamento, 
     assert.deepStrictEqual(abas[3].linhas[1].slice(0, 3), ["Fulano de Teste - Vila Teste", "FULANO DE TESTE", "Extravio"]);
     assert.deepStrictEqual(abas[4].linhas[1], ["Fulano de Teste - Vila Teste", "Acréscimo", 10, "ajuda"]);
     assert.deepStrictEqual(abas[5].linhas, [
-        ["Entregador", "Polo", "Imile (R$)", "Shopee Caçador (R$)", "Pacotes", "Bruto", "Acréscimos", "Ticketlog", "Extravios", "Descontos", "Líquido"],
-        ["Fulano de Teste - Vila Teste", "Caçador", 3, 2.5, 2, 5.5, 10, 80, 20, 5, -89.5],
-        ["usuario.sem (sem conversão)", "", 3, 0, 1, 3, 0, 0, 0, 0, 3],
+        ["Entregador", "Polo", "Imile (R$)", "Shopee Caçador (R$)", "Pacotes", "Bruto", "Acréscimos", "Deslocamento", "Ticketlog", "Extravios", "Descontos", "Líquido"],
+        ["Fulano de Teste - Vila Teste", "Caçador", 3, 2.5, 2, 5.5, 10, 0, 80, 20, 5, -89.5],
+        ["usuario.sem (sem conversão)", "", 3, 0, 1, 3, 0, 0, 0, 0, 0, 3],
     ]);
 });
 

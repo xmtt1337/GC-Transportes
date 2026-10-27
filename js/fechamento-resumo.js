@@ -153,7 +153,7 @@ function _rqRender() {
         </table></div>
         <div class="cft-ajuda" style="margin-top:6px">Valor de cada transportadora = soma do "Valor motorista" dos pacotes (Shopee já pela performance consolidada).
             Líquido = bruto + acréscimos − Ticketlog − extravios − descontos. Extravios: planilha de extravios, linhas com "Data desconto" = ${_rqEsc(d.codigo_quinzena || "")}.
-            Acréscimos e descontos: Fechamento › Acréscimos e Descontos. Clique no título da coluna pra ordenar.</div>
+            Acréscimos e descontos: Fechamento › Acréscimos e Descontos. Deslocamento: Fechamento › Deslocamentos. Clique no título da coluna pra ordenar.</div>
         </div>
         <div id="rq-painel-performance" style="display:none"></div>`;
     _rqRenderTabela();
@@ -497,12 +497,12 @@ function _rqRenderCidades() {
         + (_rqXNaoAchadas.length ? `<div class="cft-ajuda" style="margin-top:4px"><span class="cft-aviso">Sem pacote nesta quinzena:</span> ${_rqEsc(_rqXNaoAchadas.join(", "))}</div>` : "");
 }
 
-// A conta da quinzena numa linha: Bruto + Acréscimos − Ticketlog − Extravios − Descontos = Líquido.
+// A conta da quinzena numa linha: Bruto + Acréscimos + Deslocamento − Ticketlog − Extravios − Descontos = Líquido.
 function _rqConta(t, codigo) {
     const item = (rot, v, cls) => `<div class="rq-conta-item"><span class="rq-conta-rot">${rot}</span><span class="rq-conta-val${v && cls ? " " + cls : ""}">${_rqNum(v)}</span></div>`;
     const op = (s) => `<span class="rq-conta-op">${s}</span>`;
     return `<div class="rq-conta">
-        ${item("Bruto (R$)", t.bruto)}${op("+")}${item("Acréscimos", t.acrescimos, "cft-pos")}${op("−")}${item("Ticketlog", t.ticketlog, "cft-neg")}
+        ${item("Bruto (R$)", t.bruto)}${op("+")}${item("Acréscimos", t.acrescimos, "cft-pos")}${op("+")}${item("Deslocamento", t.deslocamento, "cft-pos")}${op("−")}${item("Ticketlog", t.ticketlog, "cft-neg")}
         ${op("−")}${item(`Extravios · ${_rqEsc(codigo || "")}`, t.extravios, "cft-neg")}${op("−")}${item("Descontos", t.descontos, "cft-neg")}${op("=")}
         <div class="rq-conta-item rq-conta-total"><span class="rq-conta-rot">Líquido (R$)</span><span class="rq-conta-val cft-pos">${_rqNum(t.liquido)}</span></div>
     </div>`;
@@ -568,7 +568,7 @@ function _rqRenderTabela() {
     const th = (c, rot, num) => `<th${num ? ` style="text-align:right"` : ""}><a href="#" class="cft-ordem" onclick="event.preventDefault();_rqOrdenar('${c}')">${rot}${seta(c)}</a></th>`;
     document.getElementById("rq-thead").innerHTML = `<tr>${th("entregador", "Entregador")}${th("polo", "Polo")}
         ${cols.map(c => th("t:" + c.chave, _rqEsc(c.nome), true)).join("")}
-        ${th("pacotes", "Pacotes", true)}${th("bruto", "Bruto", true)}${th("acrescimos", "Acrésc.", true)}${th("ticketlog", "Ticketlog", true)}
+        ${th("pacotes", "Pacotes", true)}${th("bruto", "Bruto", true)}${th("acrescimos", "Acrésc.", true)}${th("deslocamento", "Desloc.", true)}${th("ticketlog", "Ticketlog", true)}
         ${th("extravios", "Extravios", true)}${th("descontos", "Descontos", true)}${th("liquido", "Líquido", true)}</tr>`;
     const lista = _rqFiltradas();
     document.getElementById("rq-tbody").innerHTML = lista.length ? lista.map(l => `<tr>
@@ -579,12 +579,13 @@ function _rqRenderTabela() {
             <td class="num">${l.pacotes.toLocaleString("pt-BR")}</td>
             <td class="num">${_rqNum(l.bruto)}</td>
             <td class="num${l.acrescimos ? " cft-pos" : ""}">${l.acrescimos ? _rqNum(l.acrescimos) : `<span class="cft-vazio">—</span>`}</td>
+            <td class="num${l.deslocamento ? " cft-pos" : ""}"${l.deslocamento ? ` title="${l.deslocamento_dias} dia(s) com entrega"` : ""}>${l.deslocamento ? _rqNum(l.deslocamento) : `<span class="cft-vazio">—</span>`}</td>
             <td class="num${l.ticketlog ? " cft-neg" : ""}"${l.ticketlog_divergencias ? ` title="${l.ticketlog_divergencias} abastecimento(s) com divergência de cartão/matrícula"` : ""}>${l.ticketlog ? _rqNum(l.ticketlog) : `<span class="cft-vazio">—</span>`}</td>
             <td class="num${l.extravios ? " cft-neg" : ""}"${l.qtd_extravios ? ` title="${l.qtd_extravios} extravio(s)/multa(s)"` : ""}>${l.extravios ? _rqNum(l.extravios) : `<span class="cft-vazio">—</span>`}</td>
             <td class="num${l.descontos ? " cft-neg" : ""}">${l.descontos ? _rqNum(l.descontos) : `<span class="cft-vazio">—</span>`}</td>
             <td class="num ${l.liquido < 0 ? "cft-neg" : "cft-pos"}"><strong>${_rqNum(l.liquido)}</strong></td>
         </tr>`).join("")
-        : `<tr><td colspan="${cols.length + 9}" class="cft-vazio" style="padding:14px">${_rqDados.linhas.length ? "Nada com esse filtro." : "Nenhum relatório nesta quinzena ainda."}</td></tr>`;
+        : `<tr><td colspan="${cols.length + 10}" class="cft-vazio" style="padding:14px">${_rqDados.linhas.length ? "Nada com esse filtro." : "Nenhum relatório nesta quinzena ainda."}</td></tr>`;
     const soma = (f) => lista.reduce((s, l) => s + f(l), 0);
     document.getElementById("rq-tfoot").innerHTML = lista.length ? `<tr>
             <td><strong>Total</strong> <span class="cft-ajuda">${lista.length} linha(s)</span></td><td></td>
@@ -592,6 +593,7 @@ function _rqRenderTabela() {
             <td class="num"><strong>${soma(l => l.pacotes).toLocaleString("pt-BR")}</strong></td>
             <td class="num"><strong>${_rqNum(soma(l => l.bruto))}</strong></td>
             <td class="num"><strong>${_rqNum(soma(l => l.acrescimos))}</strong></td>
+            <td class="num"><strong>${_rqNum(soma(l => l.deslocamento || 0))}</strong></td>
             <td class="num"><strong>${_rqNum(soma(l => l.ticketlog))}</strong></td>
             <td class="num"><strong>${_rqNum(soma(l => l.extravios))}</strong></td>
             <td class="num"><strong>${_rqNum(soma(l => l.descontos))}</strong></td>
@@ -630,13 +632,13 @@ function _rqAbaResumo(pacotes, filtros) {
     }
     const r2 = (n) => Math.round(n * 100) / 100;
     const cab = ["Entregador", "Polo", ...transp.map(t => t + " (R$)"), "Pacotes", "Bruto"]
-        .concat(comTl ? ["Acréscimos", "Ticketlog", "Extravios", "Descontos", "Líquido"] : []);
+        .concat(comTl ? ["Acréscimos", "Deslocamento", "Ticketlog", "Extravios", "Descontos", "Líquido"] : []);
     const linhas = [...por.values()].sort((a, b) => (!a.driver - !b.driver) || a.nome.localeCompare(b.nome, "pt-BR")).map(r => {
         const polo = [...r.polos.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0])[0] || "";
         const a = (r.driver && aj.get(r.driver)) || {};
-        const [ac, tlv, ex, de] = [a.acrescimos || 0, a.ticketlog || 0, a.extravios || 0, a.descontos || 0];
+        const [ac, ds, tlv, ex, de] = [a.acrescimos || 0, a.deslocamento || 0, a.ticketlog || 0, a.extravios || 0, a.descontos || 0];
         return [r.nome, polo, ...transp.map(t => r2(r.t[t] || 0)), r.pacotes, r2(r.bruto)]
-            .concat(comTl ? [ac, tlv, ex, de, r2(r.bruto + ac - tlv - ex - de)] : []);
+            .concat(comTl ? [ac, ds, tlv, ex, de, r2(r.bruto + ac + ds - tlv - ex - de)] : []);
     });
     return [cab, ...linhas];
 }

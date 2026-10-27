@@ -523,6 +523,7 @@ if (_BASE) {
             <li><a href="#" data-rota="Fechamento/Criar" onclick="abrirCriarFechamento(event)">Criar Fechamento</a></li>
             <li><a href="#" data-rota="Fechamento/Resumo" onclick="abrirResumoQuinzena(event)">Resumo da Quinzena</a></li>
             <li><a href="#" data-rota="Fechamento/Ajustes" onclick="abrirAjustesFechamento(event)">Acréscimos e Descontos</a></li>
+            <li><a href="#" data-rota="Fechamento/Deslocamentos" onclick="abrirDeslocamentos(event)">Deslocamentos</a></li>
             <li><a href="#" data-rota="Fechamento/Extravios" onclick="abrirExtraviosFechamento(event)">Fechamento de Extravios</a></li>
         </ul>
 
@@ -4882,8 +4883,9 @@ if (_BASE) {
 <script src="js/alimentar.js?v=30260812d"></script>
 <script src="js/fechamento-criar.js?v=20261029a"></script>
 <script src="js/ticketlog-info.js?v=20261028a"></script>
-<script src="js/fechamento-resumo.js?v=20261029d"></script>
+<script src="js/fechamento-resumo.js?v=20261027a"></script>
 <script src="js/fechamento-ajustes.js?v=20261028c"></script>
+<script src="js/fechamento-deslocamentos.js?v=20261027a"></script>
 <script src="js/fechamento-extravios.js?v=20261028d"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
@@ -5162,6 +5164,12 @@ if (_BASE) {
 </div><!-- /tela-extravios-fechamento -->
 
 <!-- TELA FECHAMENTO › ACRÉSCIMOS E DESCONTOS -->
+<div id="tela-deslocamentos" class="view tela-full">
+    <div class="fech-body">
+        <div id="ds-conteudo"></div>
+    </div>
+</div><!-- /tela-deslocamentos -->
+
 <div id="tela-ajustes-fechamento" class="view tela-full">
     <div class="fech-body">
         <div id="aj-conteudo"></div>
