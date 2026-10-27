@@ -6698,3 +6698,75 @@ label.check { display:flex; flex-direction:row; align-items:center; gap:8px;
 .macd-acoes { align-items: center; }
 .macd-erro b { color: #f08a8a; }
 .mac-ag-recolhido { margin-left: 10px; font-size: 12.5px; }
+
+/* ───── Enquete do planejamento (js/planejamento-enquete.js) ───── */
+.pe-card {
+    background: #111827; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;
+    padding: 22px 22px 18px; max-width: 440px; width: 100%; box-sizing: border-box;
+    max-height: calc(100vh - 32px); overflow-y: auto;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.7); font-family: Inter, system-ui, sans-serif;
+}
+.pe-card-gestor { max-width: 640px; }
+.pe-etiqueta { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #3a86ff; }
+.pe-titulo { font-size: 17px; font-weight: 700; color: #f1f5f9; margin-top: 6px; }
+.pe-dia { font-size: 14px; font-weight: 600; color: #cbd5e1; margin-top: 2px; }
+.pe-sub { font-size: 13px; color: #94a3b8; line-height: 1.55; margin-top: 8px; }
+.pe-lista { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 6px; }
+.pe-item {
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px 12px;
+    background: rgba(255,255,255,0.02);
+}
+.pe-item-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.pe-bairro { font-size: 14px; font-weight: 600; color: #e2e8f0; }
+.pe-escolha { display: flex; gap: 6px; }
+.pe-op {
+    font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    padding: 6px 12px; border-radius: 8px; color: #94a3b8;
+    background: transparent; border: 1px solid rgba(255,255,255,0.12);
+}
+.pe-op:hover { color: #e2e8f0; }
+.pe-op[data-vai="1"].ativo { color: #22c55e; border-color: rgba(34,197,94,0.55); }
+.pe-op[data-vai="0"].ativo { color: #ef4444; border-color: rgba(239,68,68,0.55); }
+.pe-extra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; color: #94a3b8; }
+/* "Escrita clicável": o select nativo (lista boa no celular) com cara de link. */
+.pe-extra-sel {
+    font-family: inherit; font-size: 13px; font-weight: 600; color: #3a86ff; cursor: pointer;
+    background: transparent; border: none; padding: 2px 0; max-width: 100%;
+    text-decoration: underline; text-underline-offset: 3px;
+}
+.pe-extra-sel option { color: #e2e8f0; background: #111827; }
+.pe-extra-sel.escolhido { color: #e2e8f0; }
+.pe-erro { font-size: 12.5px; color: #ef4444; min-height: 16px; margin: 6px 0; }
+.pe-enviar {
+    width: 100%; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    padding: 11px; border-radius: 10px; border: none; background: #3a86ff; color: #fff;
+}
+.pe-enviar:disabled { opacity: .4; cursor: default; }
+
+.pe-g-lista { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
+.pe-g-ent { border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px 12px; }
+.pe-g-nome { font-size: 13.5px; font-weight: 700; color: #e2e8f0; display: flex; justify-content: space-between; gap: 8px; }
+.pe-g-hora { font-size: 11.5px; font-weight: 500; color: #8494a9; }
+.pe-g-bairro { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: #cbd5e1; padding: 4px 0; flex-wrap: wrap; }
+.pe-g-st { color: #cbd5e1; }
+.pe-g-st b { color: #e2e8f0; font-weight: 600; }
+.pe-g-vai { color: #22c55e; }
+.pe-g-pend { color: #f59e0b; }
+.pe-g-sem { color: #8494a9; }
+.pe-g-config { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; }
+.pe-g-config summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #3a86ff; }
+.pe-g-config summary:hover { text-decoration: underline; }
+.pe-g-rot { font-size: 12.5px; color: #94a3b8; margin: 14px 0 6px; }
+.pe-g-rot b { color: #e2e8f0; }
+.pe-g-texto { width: 100%; box-sizing: border-box; min-height: 140px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+.pe-g-busca { width: 100%; box-sizing: border-box; }
+.pe-g-extras {
+    max-height: 200px; overflow-y: auto; margin-top: 6px; padding: 4px 8px;
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
+}
+.pe-g-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #cbd5e1; padding: 4px 0; cursor: pointer; }
+.pe-g-config > .pe-g-check { margin-top: 12px; }
+.pe-g-ignorados { font-size: 12.5px; color: #f59e0b; line-height: 1.6; margin: 10px 0; }
+.pe-g-ignorados b { display: block; }
+.pe-g-config > div:last-child, .pe-g-rodape { margin-top: 14px; }
+.pe-g-rodape { display: flex; justify-content: flex-end; }

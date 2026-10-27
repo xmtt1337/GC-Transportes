@@ -31,6 +31,8 @@ function abrirPlanejamentoVideira(event, unidade) {
     tabs.style.display = _PV_POR_TRANSPORTADORA ? "" : "none";
     // A lista do geral vem da planilha Dados entregadores — só lá faz sentido pedir cadastro.
     document.getElementById("pv-inserir-btn").style.display = _PV_POR_TRANSPORTADORA ? "none" : "";
+    // Enquete "vou fazer a rota de amanhã?" — por enquanto só Caçador (js/planejamento-enquete.js).
+    document.getElementById("pv-enquete-btn").style.display = _pvUnidade === "cacador" ? "" : "none";
     tabs.innerHTML = !_PV_POR_TRANSPORTADORA ? "" : _PV_TRANSP.map(t => `
         <button class="pv-transp-tab${t.key === _pvTransportadora ? " active" : ""}" style="--pvc:${t.cor}"
             data-t="${t.key}" onclick="_pvTrocarTransportadora('${t.key}')">

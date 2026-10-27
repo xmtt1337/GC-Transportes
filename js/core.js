@@ -274,6 +274,9 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
             // viravam dois itens idênticos, e a pessoa escolheria no chute.
             _renomearMenu("menu-devolucoes-motorista", "Coleta de devoluções");
         }
+        // Enquete do planejamento (00:00–14:00, só entregador fixo): o quadro abre sozinho
+        // e só sai quando ele responde. Quem não tem enquete pendente não vê nada.
+        if (typeof _peVerificar === "function") _peVerificar();
         document.getElementById("welcome-name").innerText = displayName.split(" ")[0];
     }
 
