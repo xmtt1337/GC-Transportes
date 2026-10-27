@@ -60,16 +60,27 @@ test("detalhado: uma aba por transportadora com as colunas do Criar Fechamento, 
     const { ctx } = carregar();
     const perf = [{ driver: "Fulano de Teste - Vila Teste", dia: "2026-09-21", shopee: 1, onholds: 0, outras_prazo: 1, outras_atraso: 0, pct: 100, valor: 2.5, pacotes_pagos: 2, total: 5 },
         { driver: "Outro Fora - X", dia: "2026-09-21", shopee: 1, onholds: 0, outras_prazo: 0, outras_atraso: 0, pct: 100, valor: 2.5, pacotes_pagos: 1, total: 2.5 }];
-    const abas = JSON.parse(JSON.stringify(ctx._rqMontarAbas(PAC, { polo: "", driver: "", cidade: "", transportadora: "" }, perf)));
-    assert.deepStrictEqual(abas.map(a => a.nome), ["Shopee Caçador", "Imile", "Performance", "Extravios", "Acréscimos e descontos", "Resumo"]);
-    assert.deepStrictEqual(abas[3].linhas[1].slice(0, 3), ["Fulano de Teste - Vila Teste", "FULANO DE TESTE", "Extravio"]);
-    assert.deepStrictEqual(abas[4].linhas[1], ["Fulano de Teste - Vila Teste", "Acréscimo", 10, "ajuda"]);
-    const imile = abas[1].linhas;
+    const ins = [{ driver: "Fulano de Teste - Vila Teste", dia: "2026-09-21", tipo: "Onhold", transportadora: "Shopee Caçador", codigo: "BRX", motivo: "Cliente ausente" },
+        { driver: "Fulano de Teste - Vila Teste", dia: "2026-09-21", tipo: "Atrasado", transportadora: "Imile", codigo: "I9", deveria: "2026-09-21", entregue: "2026-09-22" }];
+    const abas = JSON.parse(JSON.stringify(ctx._rqMontarAbas(PAC, { polo: "", driver: "", cidade: "", transportadora: "" }, perf, ins)));
+    assert.deepStrictEqual(abas.map(a => a.nome), ["Todas as transportadoras", "Shopee Caçador", "Imile", "Performance", "Insucessos", "Extravios", "Acréscimos e descontos", "Resumo"]);
+    // todas juntas: os 3 pacotes numa aba, com as colunas completas
+    assert.strictEqual(abas[0].linhas.length, 4);
+    assert.ok(abas[0].linhas[0].includes("Deve ser entregue"));
+    // performance: linha do dia + 2 insucessos agrupados (nível 1, escondidos), "+" em cima
+    const p = abas[3];
+    assert.deepStrictEqual(p.linhas.slice(1, 4).map(l => l[1]), ["Fulano de Teste - Vila Teste", "   ↳ Onhold", "   ↳ Atrasado"]);
+    assert.deepStrictEqual(p.rows.slice(1, 4), [{}, { level: 1, hidden: true }, { level: 1, hidden: true }]);
+    assert.deepStrictEqual(p.outline, { above: true });
+    assert.strictEqual(p.rows.filter(r => !r.level).length, 2, "performance só de quem está no arquivo (cabeçalho + 1 dia)");
+    assert.deepStrictEqual(abas[4].linhas[2].slice(2, 7), ["Atrasado", "Imile", "I9", "21/09/26", "22/09/26"]);
+    assert.deepStrictEqual(abas[5].linhas[1].slice(0, 3), ["Fulano de Teste - Vila Teste", "FULANO DE TESTE", "Extravio"]);
+    assert.deepStrictEqual(abas[6].linhas[1], ["Fulano de Teste - Vila Teste", "Acréscimo", 10, "ajuda"]);
+    const imile = abas[2].linhas;
     assert.deepStrictEqual(imile[0].slice(0, 5), ["Transportadora", "Tipo de Produto", "Driver", "Usuario", "Codigo"]);
     assert.strictEqual(imile.length, 3);
-    assert.deepStrictEqual(abas[0].linhas[0], ["Transportadora", "Driver", "Usuario", "Codigo", "Cidade", "Polo", "Zipcode Name", "Data entrega", "Valor motorista"]);
-    assert.strictEqual(abas[2].linhas.length, 2, "performance só de quem está no arquivo");
-    assert.deepStrictEqual(abas[5].linhas, [
+    assert.deepStrictEqual(abas[1].linhas[0], ["Transportadora", "Driver", "Usuario", "Codigo", "Cidade", "Polo", "Zipcode Name", "Data entrega", "Valor motorista"]);
+    assert.deepStrictEqual(abas[7].linhas, [
         ["Entregador", "Polo", "Imile (R$)", "Shopee Caçador (R$)", "Pacotes", "Bruto", "Acréscimos", "Ticketlog", "Extravios", "Descontos", "Líquido"],
         ["Fulano de Teste - Vila Teste", "Caçador", 3, 2.5, 2, 5.5, 10, 80, 20, 5, -89.5],
         ["usuario.sem (sem conversão)", "", 3, 0, 1, 3, 0, 0, 0, 0, 3],
@@ -123,7 +134,7 @@ test("baixar manda transportadoras marcadas, polo, entregador e as cidades", asy
     await ctx._rqBaixar();
     assert.match(urls[0], /resumo-quinzena\/pacotes\?mes=9&ano=2026&quinzena=2&transportadoras=imile&polo=Ca%C3%A7ador&driver=&cidades=Vila%20Teste%7CCa%C3%A7ador%7CCACADOR$/);
     assert.strictEqual(urls.length, 1, "sem Shopee no arquivo não busca performance");
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(gravado)), [["Imile", "Resumo"], "fechamento_2q_09-2026_Imile_Caçador_2-cidades.xlsx"]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(gravado)), [["Todas as transportadoras", "Imile", "Resumo"], "fechamento_2q_09-2026_Imile_Caçador_2-cidades.xlsx"]);
 
     // nenhuma marcada: não baixa
     caixas[1].checked = false;

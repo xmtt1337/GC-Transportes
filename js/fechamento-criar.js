@@ -743,6 +743,7 @@ function _cfCarregarPerformance() {
                 Todo pacote do entregador vale o R$/pacote do dia em que contou (Shopee: dia da entrega; outras: dia do prazo) — não entregue vale 0.
                 Onhold que não conta: só Office closed no sábado ou domingo${oc ? ` (<b style="color:#cbd5e1">${oc.toLocaleString("pt-BR")} nesta quinzena</b>)` : ""}, além dos códigos em "Desconsiderar onholds".
                 Entregador em "Valores fixos" ganha o valor dele, seja qual for a performance.
+                Clique na linha (▸) pra ver quais foram os onholds e os atrasados do dia.
                 ${_cfTextoFaixas(d.faixas)}</div>
             <div class="cft-tabela-wrap" style="max-height:420px;overflow-y:auto"><table class="cft-tabela">
                 <thead><tr><th>Dia</th><th>Entregador</th><th>Shopee entregues</th><th>Onholds</th><th>Outras no prazo</th><th>Outras atrasadas</th>
@@ -785,8 +786,10 @@ function _cfRenderPerformance() {
     const busca = _cfChave((document.getElementById("cf-perf-busca") || {}).value || "");
     const lista = _cfPerfLinhas.filter(l => !busca || _cfChave(l.driver).includes(busca));
     const diaSem = (iso) => _CF_DIAS_SEMANA[new Date(iso + "T12:00:00Z").getUTCDay()];
-    document.getElementById("cf-perf-tbody").innerHTML = lista.length ? lista.slice(0, 1000).map(l => `<tr>
-            <td>${_cfDia(l.dia)} <span class="cft-ajuda">${diaSem(l.dia)}</span></td>
+    _cfPerfVisiveis = lista.slice(0, 1000);
+    document.getElementById("cf-perf-tbody").innerHTML = lista.length ? _cfPerfVisiveis.map((l, i) => `<tr id="cf-perf-l${i}"${l.onholds || l.outras_atraso
+            ? ` style="cursor:pointer" title="Clique pra ver os onholds e os atrasados" onclick="_cfAlternarInsucessos(${i})"` : ""}>
+            <td>${l.onholds || l.outras_atraso ? `<span class="cft-ajuda" id="cf-perf-seta${i}">▸</span> ` : ""}${_cfDia(l.dia)} <span class="cft-ajuda">${diaSem(l.dia)}</span></td>
             <td>${_cfEsc(l.driver)}</td>
             <td class="num">${l.shopee.toLocaleString("pt-BR")}</td>
             <td class="num${l.onholds ? " cft-neg" : ""}">${l.onholds.toLocaleString("pt-BR")}</td>
@@ -801,6 +804,36 @@ function _cfRenderPerformance() {
     const tot = lista.reduce((s, l) => s + l.total, 0);
     document.getElementById("cf-perf-total").innerText =
         `${lista.length.toLocaleString("pt-BR")} linha${lista.length !== 1 ? "s" : ""} (entregador × dia) · total ${moedaJS(tot)} (todas as transportadoras)`;
+}
+
+// O que derrubou o dia: onholds que contaram e pacotes das outras transportadoras
+// atrasados/não entregues no dia do prazo (GET /performance/insucessos).
+let _cfPerfVisiveis = [];
+function _cfAlternarInsucessos(i) {
+    const tr = document.getElementById("cf-perf-l" + i);
+    const aberto = document.getElementById("cf-perf-d" + i);
+    const seta = document.getElementById("cf-perf-seta" + i);
+    if (aberto) { aberto.remove(); if (seta) seta.innerText = "▸"; return; }
+    const l = _cfPerfVisiveis[i];
+    const det = document.createElement("tr");
+    det.id = "cf-perf-d" + i;
+    det.innerHTML = `<td colspan="10" style="background:rgba(255,255,255,0.02);padding:8px 14px"><span class="cft-ajuda">Carregando...</span></td>`;
+    tr.after(det);
+    if (seta) seta.innerText = "▾";
+    fetch(`${_CF_API()}/performance/insucessos?${_cfQs({ driver: l.driver, dia: l.dia })}`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => { det.firstElementChild.innerHTML = _cfHtmlInsucessos(d.linhas || [], d.error); })
+    .catch(() => { det.firstElementChild.innerHTML = `<span class="cft-erro">Erro ao carregar.</span>`; });
+}
+
+function _cfHtmlInsucessos(linhas, erroMsg) {
+    if (erroMsg) return `<span class="cft-erro">${_cfEsc(erroMsg)}</span>`;
+    if (!linhas.length) return `<span class="cft-ajuda">Nada encontrado (clique em Recalcular todas se a quinzena é antiga).</span>`;
+    return `<table class="cft-tabela" style="margin:0"><thead><tr><th>Tipo</th><th>Transportadora</th><th>Pedido</th>
+        <th>Deveria ser entregue</th><th>Entregue em</th><th>Motivo / cidade</th></tr></thead><tbody>${linhas.map(x => `<tr>
+            <td class="cft-neg">${_cfEsc(x.tipo)}</td><td>${_cfEsc(x.transportadora)}</td><td>${_cfEsc(x.codigo || "—")}</td>
+            <td>${x.deveria ? _cfDia(x.deveria) : "—"}</td><td>${x.entregue ? _cfDia(x.entregue) : (x.tipo === "Não entregue" ? "não entregue" : "—")}</td>
+            <td>${_cfEsc(x.motivo || x.cidade || "")}</td></tr>`).join("")}</tbody></table>`;
 }
 
 function _cfCarregarDetalhe() {

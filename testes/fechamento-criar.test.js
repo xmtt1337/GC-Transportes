@@ -472,3 +472,15 @@ test("performance: salvar polos manda os marcados e o período", async () => {
     assert.deepStrictEqual(corpo, ["https://api.teste/admin/fechamento-transportadoras/performance-polos", "PUT",
         { mes: 9, ano: 2026, quinzena: 2, polos: ["Caçador", "Videira"] }]);
 });
+
+test("performance: insucessos do dia viram tabela (onhold com motivo, atrasado com as datas)", () => {
+    const ctx = carregar();
+    const html = ctx._cfHtmlInsucessos([
+        { tipo: "Onhold", transportadora: "Shopee Caçador", codigo: "BRX", motivo: "Cliente ausente" },
+        { tipo: "Não entregue", transportadora: "Imile", codigo: "I9", deveria: "2026-09-21", entregue: null, cidade: "Vila Teste" },
+    ]);
+    assert.match(html, /Cliente ausente/);
+    assert.match(html, /21\/09\/26/);
+    assert.match(html, /não entregue/);
+    assert.match(ctx._cfHtmlInsucessos([]), /Nada encontrado/);
+});

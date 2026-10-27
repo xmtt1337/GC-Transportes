@@ -120,8 +120,9 @@ function _rqRender() {
             <button class="cft-btn" onclick="_rqAlternarBaixar()">Baixar relatório</button>
         </div>
         <div id="rq-baixar" class="cft-regras" style="display:none">
-            <div class="cft-ajuda" style="margin-bottom:8px">Relatório detalhado, igual ao do Criar Fechamento: uma aba por transportadora
-                com todos os pacotes, a aba <b>Performance</b> da Shopee e, no fim, o <b>Resumo</b> por entregador.
+            <div class="cft-ajuda" style="margin-bottom:8px">Relatório detalhado: a aba <b>Todas as transportadoras</b> (todos os pacotes juntos),
+                uma aba por transportadora (igual ao Criar Fechamento), a <b>Performance</b> por entregador e dia — clique no <b>+</b> à esquerda
+                da linha no Excel pra abrir os onholds e atrasados daquele dia —, a aba <b>Insucessos</b> com todos eles e, no fim, o <b>Resumo</b> por entregador.
                 Escolha o que entra — sem nada escolhido, vai tudo.</div>
             <div class="cft-rotulo" style="margin-bottom:4px">Transportadoras</div>
             <div class="cft-barra" style="margin:0 0 10px;flex-wrap:wrap;gap:14px">
@@ -490,21 +491,46 @@ function _rqAbaResumo(pacotes, filtros) {
  * consolidada da Shopee (só dos entregadores que estão no arquivo) e o Resumo no fim.
  * @return {Array<{nome: string, linhas: Array<Array>}>}
  */
-function _rqMontarAbas(pacotes, filtros, perfLinhas) {
+function _rqMontarAbas(pacotes, filtros, perfLinhas, insucessos) {
     const ordem = Object.values(_rqDados.transportadoras).map(t => t.nome);
     const nomes = [...new Set(pacotes.map(p => p.transportadora))]
         .sort((a, b) => (ordem.indexOf(a) + 1 || 99) - (ordem.indexOf(b) + 1 || 99));
-    const abas = nomes.map(nome => {
+    // Todas as transportadoras numa aba só (colunas completas; a Shopee não tem algumas).
+    const colsTodas = _CF_EXPORT_COLUNAS.concat([["Dia da performance", "perf_dia"], ["Performance (%)", "perf_pct"]]);
+    const porTransp = (nome) => pacotes.filter(p => p.transportadora === nome);
+    const abas = [{ nome: "Todas as transportadoras", linhas: [colsTodas.map(c => c[0])]
+        .concat(nomes.flatMap(n => porTransp(n)).map(p => colsTodas.map(c => p[c[1]] ?? ""))) }];
+    abas.push(...nomes.map(nome => {
         const cols = /^shopee/i.test(nome) ? _CF_EXPORT_COLUNAS_SHOPEE : _CF_EXPORT_COLUNAS;
         const doTransp = pacotes.filter(p => p.transportadora === nome);
         return { nome: nome.slice(0, 31), linhas: [cols.map(c => c[0])].concat(doTransp.map(p => cols.map(c => p[c[1]] ?? ""))) };
-    });
+    }));
     const drivers = new Set(pacotes.map(p => p.driver).filter(Boolean));
     const perf = (perfLinhas || []).filter(l => drivers.has(l.driver));
     if (perf.length) {
-        abas.push({ nome: "Performance", linhas: [["Dia", "Entregador", "Shopee entregues", "Onholds", "Outras no prazo", "Outras atrasadas",
-            "Performance (%)", "Valor por pacote", "Pacotes pagos", "Total"]].concat(perf.map(l => [_cfDia(l.dia), l.driver, l.shopee, l.onholds,
-            l.outras_prazo, l.outras_atraso, l.pct, l.valor, l.pacotes_pagos, l.total])) });
+        // Estilo tabela dinâmica: cada entregador × dia tem as linhas dos insucessos agrupadas
+        // embaixo (escondidas; o "+" do Excel abre).
+        const ins = (insucessos || []).filter(x => drivers.has(x.driver));
+        const porDia = new Map();
+        for (const x of ins) { const k = x.driver + "|" + x.dia; if (!porDia.has(k)) porDia.set(k, []); porDia.get(k).push(x); }
+        const linhas = [["Dia", "Entregador", "Shopee entregues", "Onholds", "Outras no prazo", "Outras atrasadas",
+            "Performance (%)", "Valor por pacote", "Pacotes pagos", "Total"]];
+        const rows = [{}];
+        for (const l of perf) {
+            linhas.push([_cfDia(l.dia), l.driver, l.shopee, l.onholds, l.outras_prazo, l.outras_atraso, l.pct, l.valor, l.pacotes_pagos, l.total]);
+            rows.push({});
+            for (const x of porDia.get(l.driver + "|" + l.dia) || []) {
+                linhas.push(["", "   ↳ " + x.tipo, x.transportadora, x.codigo || "", x.deveria ? "Deveria: " + _cfDia(x.deveria) : "",
+                    x.entregue ? "Entregue: " + _cfDia(x.entregue) : (x.tipo === "Não entregue" ? "Não entregue" : ""), x.motivo || x.cidade || ""]);
+                rows.push({ level: 1, hidden: true });
+            }
+        }
+        abas.push({ nome: "Performance", linhas, rows, outline: { above: true } });
+        if (ins.length) {
+            abas.push({ nome: "Insucessos", linhas: [["Dia da performance", "Entregador", "Tipo", "Transportadora", "Código", "Deveria ser entregue",
+                "Entregue em", "Motivo do onhold", "Cidade"]].concat(ins.map(x => [_cfDia(x.dia), x.driver, x.tipo, x.transportadora, x.codigo || "",
+                x.deveria ? _cfDia(x.deveria) : "", x.entregue ? _cfDia(x.entregue) : "", x.motivo || "", x.cidade || ""])) });
+        }
     }
     // Extravios e acréscimos/descontos dos entregadores do arquivo (só sem filtro de cidade/transportadora).
     if (!(filtros.cidades || []).length && !filtros.parcialTransp) {
@@ -561,8 +587,19 @@ async function _rqBaixar() {
         if (!r.ok) throw new Error(d.error || "Erro ao baixar.");
         if (!d.pacotes.length) { st.innerText = "Nenhum pacote com esse filtro."; return; }
         const perf = await _rqBuscarPerformance(d.pacotes);
+        let ins = [];
+        if (perf.length) {
+            st.innerText = "Buscando os onholds e atrasados...";
+            const ri = await fetch(`${_RQ_API()}/performance/insucessos?mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}`, { headers: { "Authorization": "Bearer " + token } });
+            ins = ((await ri.json().catch(() => ({}))).linhas) || [];
+        }
         const wb = XLSX.utils.book_new();
-        for (const a of _rqMontarAbas(d.pacotes, filtros, perf)) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a.linhas), a.nome);
+        for (const a of _rqMontarAbas(d.pacotes, filtros, perf, ins)) {
+            const ws = XLSX.utils.aoa_to_sheet(a.linhas);
+            if (a.rows) ws["!rows"] = a.rows;
+            if (a.outline) ws["!outline"] = a.outline;
+            XLSX.utils.book_append_sheet(wb, ws, a.nome);
+        }
         const nomeTransp = filtros.transportadoras.length === 1 ? (_rqDados.transportadoras[filtros.transportadoras[0]] || {}).nome
             : filtros.transportadoras.length ? filtros.transportadoras.length + " transportadoras" : "";
         const nomeCidade = filtros.nomeCidade || (filtros.nCidades ? filtros.nCidades + " cidades" : "");
