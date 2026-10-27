@@ -8,8 +8,6 @@
 //   _peVerificar()     — entregador: abre o quadro se houver enquete pendente.
 //   _peAbrirGestor()   — Planejamento Caçador/Videira: quem respondeu + configuração.
 
-const _PE_FORA = "__fora__";
-
 function _peDiaRotulo(dia) {
     const [a, m, d] = String(dia || "").split("-").map(Number);
     if (!a) return dia || "";
@@ -26,15 +24,18 @@ function _peVerificar() {
         .catch(() => {});
 }
 
+function _peIniciais(nome) {
+    const p = String(nome || "").split(" - ")[0].trim().split(/\s+/);
+    return ((p[0] || "")[0] + (p.length > 1 ? p[p.length - 1][0] : (p[0] || "").slice(1, 2))).toUpperCase();
+}
+
+const _PE_SETA = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+
 function _peAbrirEntregador(d) {
     const respostas = {}; // bairro → { vai, extra, foraDaLista }
     const overlay = document.createElement("div");
     overlay.id = "pe-overlay";
     overlay.setAttribute("style", _gcOverlayStyle);
-
-    const opcoesExtra = `<option value="">Escolher extra</option>` +
-        (d.extras || []).map(e => `<option value="${_gcEsc(e)}">${_gcEsc(e)}</option>`).join("") +
-        `<option value="${_PE_FORA}">Extra não está na lista</option>`;
 
     overlay.innerHTML = `<div class="pe-card">
         <div class="pe-etiqueta">Planejamento de amanhã</div>
@@ -52,8 +53,9 @@ function _peAbrirEntregador(d) {
                     </div>
                 </div>
                 <div class="pe-extra" style="display:none">
-                    <span>Quem fica no seu lugar:</span>
-                    <select class="pe-extra-sel">${opcoesExtra}</select>
+                    <div class="pe-extra-rot">Quem fica no seu lugar</div>
+                    <button type="button" class="pe-extra-btn"></button>
+                    <div class="pe-ex-lista" style="display:none"></div>
                 </div>
             </div>`).join("")}
         </div>
@@ -63,6 +65,8 @@ function _peAbrirEntregador(d) {
 
     const btnEnviar = overlay.querySelector("[data-enviar]");
     const erroEl    = overlay.querySelector("[data-erro]");
+    const itens     = [...overlay.querySelectorAll(".pe-item")];
+    const bairroDe  = item => d.bairros[parseInt(item.dataset.i)];
 
     const completo = () => d.bairros.every(b => {
         const r = respostas[b];
@@ -70,25 +74,98 @@ function _peAbrirEntregador(d) {
     });
     const atualizar = () => { btnEnviar.disabled = !completo(); };
 
-    overlay.querySelectorAll(".pe-item").forEach(item => {
-        const bairro = d.bairros[parseInt(item.dataset.i)];
+    // O botão mostra a escolha atual; a lista abre logo abaixo dele (uma por vez).
+    const renderEscolha = item => {
+        const r = respostas[bairroDe(item)] || {};
+        const btn = item.querySelector(".pe-extra-btn");
+        btn.classList.toggle("vazio", !r.extra && !r.foraDaLista);
+        btn.innerHTML = r.extra
+            ? `<span class="pe-ex-av">${_gcEsc(_peIniciais(r.extra))}</span><span class="pe-ex-nome">${_gcEsc(r.extra)}</span><span class="pe-ex-trocar">trocar</span>`
+            : r.foraDaLista
+            ? `<span class="pe-ex-nome">Extra não está na lista</span><span class="pe-ex-trocar">trocar</span>`
+            : `<span class="pe-ex-nome">Escolher extra</span>${_PE_SETA}`;
+    };
+
+    const renderLista = item => {
+        const atual = respostas[bairroDe(item)] || {};
+        item.querySelector(".pe-ex-lista").innerHTML = (d.extras || []).map(e => e.escaladoPor
+            ? `<div class="pe-ex-op ocupado" aria-disabled="true">
+                   <span class="pe-ex-av">${_gcEsc(_peIniciais(e.nome))}</span>
+                   <span class="pe-ex-txt"><span class="pe-ex-nome">${_gcEsc(e.nome)}</span>
+                   <span class="pe-ex-tag">${_gcEsc(e.escaladoPor.split(" - ")[0])} já escalou esse extra</span></span>
+               </div>`
+            : `<button type="button" class="pe-ex-op${atual.extra === e.nome ? " escolhido" : ""}" data-nome="${_gcEsc(e.nome)}">
+                   <span class="pe-ex-av">${_gcEsc(_peIniciais(e.nome))}</span>
+                   <span class="pe-ex-txt"><span class="pe-ex-nome">${_gcEsc(e.nome)}</span>
+                   <span class="pe-ex-tag livre">Disponível</span></span>
+               </button>`
+        ).join("") + `<button type="button" class="pe-ex-op pe-ex-fora${atual.foraDaLista ? " escolhido" : ""}" data-fora="1">
+                <span class="pe-ex-txt"><span class="pe-ex-nome">Extra não está na lista</span>
+                <span class="pe-ex-tag">O responsável define quem vai</span></span>
+            </button>`;
+    };
+
+    const fecharListas = () => itens.forEach(i => {
+        i.querySelector(".pe-ex-lista").style.display = "none";
+        i.querySelector(".pe-extra-btn").classList.remove("aberto");
+    });
+
+    itens.forEach(item => {
+        const bairro = bairroDe(item);
         const extraEl = item.querySelector(".pe-extra");
-        const sel = item.querySelector(".pe-extra-sel");
+        const lista = item.querySelector(".pe-ex-lista");
+        const btnEscolha = item.querySelector(".pe-extra-btn");
+        renderEscolha(item);
+
         item.querySelectorAll(".pe-op").forEach(btn => btn.addEventListener("click", () => {
             const vai = btn.dataset.vai === "1";
             item.querySelectorAll(".pe-op").forEach(b => b.classList.toggle("ativo", b === btn));
             item.classList.toggle("pe-vai", vai);
             item.classList.toggle("pe-nao-vai", !vai);
             extraEl.style.display = vai ? "none" : "";
-            respostas[bairro] = vai ? { vai: true } : { vai: false, extra: sel.value === _PE_FORA ? "" : sel.value, foraDaLista: sel.value === _PE_FORA };
+            const antes = respostas[bairro] || {};
+            respostas[bairro] = vai ? { vai: true } : { vai: false, extra: antes.extra || "", foraDaLista: !!antes.foraDaLista };
+            renderEscolha(item);
+            fecharListas();
+            // Marcou "Não vou" e ainda não escolheu ninguém: já abre a lista.
+            if (!vai && !antes.extra && !antes.foraDaLista) btnEscolha.click();
             atualizar();
         }));
-        sel.addEventListener("change", () => {
-            sel.classList.toggle("escolhido", !!sel.value);
-            respostas[bairro] = { vai: false, extra: sel.value === _PE_FORA ? "" : sel.value, foraDaLista: sel.value === _PE_FORA };
+
+        btnEscolha.addEventListener("click", () => {
+            const abrir = lista.style.display === "none";
+            fecharListas();
+            if (!abrir) return;
+            renderLista(item);
+            lista.style.display = "";
+            btnEscolha.classList.add("aberto");
+        });
+
+        lista.addEventListener("click", e => {
+            const op = e.target.closest("button.pe-ex-op");
+            if (!op) return;
+            respostas[bairro] = op.dataset.fora
+                ? { vai: false, extra: "", foraDaLista: true }
+                : { vai: false, extra: op.dataset.nome, foraDaLista: false };
+            fecharListas();
+            renderEscolha(item);
             atualizar();
         });
     });
+
+    // Outro fixo pegou um extra enquanto ele respondia: atualiza a lista e
+    // desfaz só as escolhas que ficaram ocupadas.
+    const aplicarExtras = extras => {
+        d.extras = extras;
+        const ocupado = new Set(extras.filter(e => e.escaladoPor).map(e => e.nome));
+        itens.forEach(item => {
+            const r = respostas[bairroDe(item)];
+            if (r && ocupado.has(r.extra)) r.extra = "";
+            renderEscolha(item);
+        });
+        fecharListas();
+        atualizar();
+    };
 
     // Sem fechar clicando fora nem com Esc: o quadro só sai quando ele responde.
     btnEnviar.addEventListener("click", () => {
@@ -96,15 +173,21 @@ function _peAbrirEntregador(d) {
         btnEnviar.disabled = true;
         btnEnviar.textContent = "Enviando...";
         erroEl.textContent = "";
-        const itens = d.bairros.map(b => ({ bairro: b, ...respostas[b] }));
+        const corpo = d.bairros.map(b => ({ bairro: b, ...respostas[b] }));
         fetch(`${API}/entregador/enquete-planejamento`, {
             method: "POST",
             headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-            body: JSON.stringify({ itens })
+            body: JSON.stringify({ itens: corpo })
         })
         .then(r => r.json().then(b => ({ ok: r.ok, status: r.status, b })))
         .then(({ ok, status, b }) => {
-            // 409 = já respondeu ou fechou: não adianta insistir, o quadro sai.
+            btnEnviar.textContent = "Enviar resposta";
+            if (status === 409 && b.codigo === "extra_ocupado") {
+                erroEl.textContent = b.error;
+                aplicarExtras(b.extras || []);
+                return;
+            }
+            // Outro 409 = já respondeu ou fechou: não adianta insistir, o quadro sai.
             if (ok || status === 409) {
                 overlay.remove();
                 gcAlert(ok ? "Resposta enviada. Obrigado!" : _gcEsc(b.error), "Planejamento de amanhã");
@@ -112,7 +195,6 @@ function _peAbrirEntregador(d) {
             }
             erroEl.textContent = b.error || "Não foi possível enviar. Tente de novo.";
             btnEnviar.disabled = false;
-            btnEnviar.textContent = "Enviar resposta";
         })
         .catch(() => {
             erroEl.textContent = "Sem conexão com o servidor. Tente de novo.";
