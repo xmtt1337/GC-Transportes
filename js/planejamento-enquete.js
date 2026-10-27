@@ -1,5 +1,5 @@
 // ───── ENQUETE DO PLANEJAMENTO ("vou fazer a rota de amanhã?") ─────
-// Das 00:00 às 14:00 o entregador FIXO (lista "Entregador;Bairro" da unidade) diz,
+// No horário configurado (padrão 00:00–14:00) o entregador FIXO (lista "Entregador;Bairro" da unidade) diz,
 // bairro a bairro, se faz a rota do dia seguinte — e quem não vai escolhe o extra
 // que fica no lugar. A resposta já vai para a coluna C do planejamento (backend:
 // modules/planejamento/enquete*.js). Por enquanto só a cidade de Caçador.
@@ -266,7 +266,7 @@ function _peRenderGestor(overlay, d) {
     overlay.querySelector(".pe-card").innerHTML = `
         <div class="pe-etiqueta">Planejamento de amanhã</div>
         <div class="pe-titulo">Enquete — ${_gcEsc(_peDiaRotulo(d.diaRota))}</div>
-        <div class="pe-sub">${!d.ativo ? "Enquete desligada." : d.aberta ? `Aberta para os entregadores até as ${String(d.janela.fim).padStart(2, "0")}:00.` : `Fechada. Abre de novo às ${String(d.janela.inicio).padStart(2, "0")}:00.`}
+        <div class="pe-sub">${!d.ativo ? "Enquete desligada." : d.aberta ? `Aberta para os entregadores até as ${_gcEsc(d.janela.fim)}.` : `Fechada. Fica aberta das ${_gcEsc(d.janela.inicio)} às ${_gcEsc(d.janela.fim)}.`}
             ${porEntregador.size ? ` ${respondidos} de ${porEntregador.size} responderam.` : ""}</div>
         <div class="pe-g-lista">${porEntregador.size
             ? [...porEntregador.entries()].map(([n, b]) => linhaEntregador(n, b)).join("")
@@ -275,6 +275,11 @@ function _peRenderGestor(overlay, d) {
         <details class="pe-g-config"${porEntregador.size ? "" : " open"}>
             <summary>Configurar</summary>
             <label class="pe-g-check"><input type="checkbox" data-ativo${d.ativo ? " checked" : ""}> Enquete ligada</label>
+            <div class="pe-g-rot">Horário em que aparece para os entregadores (no mesmo dia)</div>
+            <div class="pe-g-janela">
+                das <input type="time" class="usr-modal-input" data-inicio value="${_gcEsc(d.janela.inicio)}">
+                às <input type="time" class="usr-modal-input" data-fim value="${_gcEsc(d.janela.fim)}">
+            </div>
             <div class="pe-g-rot pe-g-rot-acao">
                 <span>Fixos — uma linha por bairro, no formato <b>Entregador;Bairro</b></span>
                 <button type="button" class="pe-g-link" data-subir="fixos">Subir relatório</button>
@@ -364,6 +369,11 @@ function _peRenderGestor(overlay, d) {
 
     const btnSalvar = overlay.querySelector("[data-salvar]");
     btnSalvar.addEventListener("click", () => {
+        const janela = { inicio: overlay.querySelector("[data-inicio]").value, fim: overlay.querySelector("[data-fim]").value };
+        if (!janela.inicio || !janela.fim || janela.inicio >= janela.fim) {
+            gcAlert("O horário de abrir precisa ser antes do de fechar, no mesmo dia.");
+            return;
+        }
         btnSalvar.disabled = true;
         btnSalvar.textContent = "Salvando...";
         fetch(`${API}/videira/planejamento/enquete`, {
@@ -374,6 +384,7 @@ function _peRenderGestor(overlay, d) {
                 ativo: overlay.querySelector("[data-ativo]").checked,
                 lista: overlay.querySelector("[data-lista]").value,
                 extras: [...extrasSel],
+                janela,
             })
         })
         .then(r => r.json().then(b => ({ ok: r.ok, b })))
