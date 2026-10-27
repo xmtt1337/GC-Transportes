@@ -99,6 +99,7 @@ function _rqRender() {
         ${!d.ticketlog_arquivos ? `<div class="cft-ajuda" style="margin-bottom:6px">Nenhum relatório do Ticketlog nesta quinzena.</div>` : ""}
         ${d.extravios_erro ? `<div class="cft-erro" style="margin-bottom:6px">Não consegui ler a planilha de extravios: ${_rqEsc(d.extravios_erro)}</div>` : ""}
         ${_rqExtraviosSemConversao(d)}
+        ${_rqSemFechamento(t.sem_fechamento)}
 
         <div class="cft-barra" style="justify-content:space-between">
             <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -200,6 +201,15 @@ function _rqExtraviosSemConversao(d) {
     const nomes = [...new Set(sem.map(e => e.responsavel || "(sem responsável)"))];
     return `<div class="cft-ajuda" style="margin-bottom:6px"><span class="cft-aviso">${sem.length} extravio(s) com responsável sem conversão</span>
         (R$ ${_rqNum(sem.reduce((s, e) => s + e.valor, 0))}): ${_rqEsc(nomes.join(", "))}.</div>`;
+}
+
+// Quem tem desconto/ajuste mas nenhum pacote na quinzena não entra na lista nem nos totais.
+function _rqSemFechamento(s) {
+    if (!s || !s.pessoas) return "";
+    const partes = [["Ticketlog", s.ticketlog], ["extravios", s.extravios], ["descontos", s.descontos], ["acréscimos", s.acrescimos]]
+        .filter(x => x[1]).map(x => `${x[0]} R$ ${_rqNum(x[1])}`);
+    return `<div class="cft-ajuda" style="margin-bottom:6px" title="${_rqEsc((s.nomes || []).join(" · "))}">${s.pessoas} pessoa(s) com desconto/ajuste e sem fechamento nesta quinzena
+        não aparecem aqui (${partes.join(", ")}) — veja em Fechamento de Extravios.</div>`;
 }
 
 function _rqFiltradas() {
