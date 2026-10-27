@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261028c">
+<link rel="stylesheet" href="style.css?v=20261028d">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -4882,9 +4882,9 @@ if (_BASE) {
 <script src="js/alimentar.js?v=30260812d"></script>
 <script src="js/fechamento-criar.js?v=20261028h"></script>
 <script src="js/ticketlog-info.js?v=20261028a"></script>
-<script src="js/fechamento-resumo.js?v=20261028g"></script>
-<script src="js/fechamento-ajustes.js?v=20261028b"></script>
-<script src="js/fechamento-extravios.js?v=20261028c"></script>
+<script src="js/fechamento-resumo.js?v=20261028h"></script>
+<script src="js/fechamento-ajustes.js?v=20261028c"></script>
+<script src="js/fechamento-extravios.js?v=20261028d"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
 <script src="js/pedidos.js?v=20261020a"></script>
@@ -5015,7 +5015,7 @@ if (_BASE) {
 
 <!-- TELA CRIAR FECHAMENTO -->
 <div id="tela-criar-fechamento" class="view tela-full">
-    <div class="fech-header">
+    <div class="fech-header fech-header-linha">
         <div class="fech-period-row">
             <select class="fech-select" id="cf-mes" onchange="_cfPeriodoMudou()">
                 <option value="1">Janeiro</option><option value="2">Fevereiro</option>
@@ -5138,7 +5138,7 @@ if (_BASE) {
 
 <!-- TELA FECHAMENTO › FECHAMENTO DE EXTRAVIOS -->
 <div id="tela-extravios-fechamento" class="view tela-full">
-    <div class="fech-header">
+    <div class="fech-header fech-header-linha">
         <div class="fech-period-row">
             <select class="fech-select" id="fx-mes" onchange="_fxPeriodoMudou()">
                 <option value="1">Janeiro</option><option value="2">Fevereiro</option>
@@ -5169,7 +5169,7 @@ if (_BASE) {
 
 <!-- TELA FECHAMENTO › RESUMO DA QUINZENA -->
 <div id="tela-resumo-quinzena" class="view tela-full">
-    <div class="fech-header">
+    <div class="fech-header fech-header-linha">
         <div class="fech-period-row">
             <select class="fech-select" id="rq-mes" onchange="_rqPeriodoMudou()">
                 <option value="1">Janeiro</option><option value="2">Fevereiro</option>

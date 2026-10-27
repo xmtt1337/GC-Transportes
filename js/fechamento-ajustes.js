@@ -63,36 +63,39 @@ function abrirAjustesFechamento(event) {
     const h = _ajHoje();
     const el = document.getElementById("aj-conteudo");
     el.innerHTML = `
-        <div class="cft-regras">
-            <div class="cft-pend-titulo" style="color:#e2e8f0">Novo lançamento</div>
-            <div class="cft-ajuda" style="margin-bottom:10px">Entra no Resumo da Quinzena da quinzena escolhida: acréscimo soma no líquido, desconto tira.
-                Parcelado: o valor total é dividido e cai uma parcela por quinzena, a partir da escolhida (pode ser quinzena futura, até de outro ano).</div>
-            <datalist id="aj-entregadores"></datalist>
-            <div class="cft-barra" style="margin:0 0 10px;flex-wrap:wrap">
+        <div class="cft-secao" style="margin-top:0">Novo lançamento</div>
+        <div class="cft-ajuda" style="margin-bottom:14px">Entra no Resumo da Quinzena da quinzena escolhida: acréscimo soma no líquido, desconto tira.
+            Parcelado: o valor total é dividido e cai uma parcela por quinzena, a partir da escolhida (pode ser quinzena futura, até de outro ano).</div>
+        <datalist id="aj-entregadores"></datalist>
+        <div class="aj-form">
+            <div class="aj-campo"><span class="cft-rotulo">Quinzena</span><span class="aj-junto">
                 <select class="fech-select" id="aj-q" onchange="_ajPeriodoMudou()">
                     <option value="1"${h.quinzena === 1 ? " selected" : ""}>Q1 (1 – 15)</option><option value="2"${h.quinzena === 2 ? " selected" : ""}>Q2 (16 – fim)</option></select>
                 <select class="fech-select" id="aj-mes" onchange="_ajPeriodoMudou()">${_AJ_MESES.map((m, i) =>
                     `<option value="${i + 1}"${i + 1 === h.mes ? " selected" : ""}>${m}</option>`).join("")}</select>
                 <select class="fech-select" id="aj-ano" onchange="_ajPeriodoMudou()">${Array.from({ length: 7 }, (_, i) => h.ano - 1 + i).map(a =>
                     `<option value="${a}"${a === h.ano ? " selected" : ""}>${a}</option>`).join("")}</select>
-                <input class="cft-input" id="aj-driver" list="aj-entregadores" placeholder="Entregador..." style="width:300px;flex:0 0 auto;margin:0" onfocus="_ajGarantirEntregadores()">
-                <input class="cft-input" id="aj-valor" inputmode="decimal" placeholder="Valor total (R$)" style="width:140px;flex:0 0 auto;margin:0" oninput="_ajTextoParcelas()">
-                <label class="cft-rotulo" for="aj-parcelas" style="margin:0">Parcelas</label>
-                <input class="cft-input" id="aj-parcelas" type="number" min="1" max="48" value="1" style="width:70px;flex:0 0 auto;margin:0" oninput="_ajTextoParcelas()">
-                <span class="cft-ajuda" id="aj-previa"></span>
-            </div>
-            <div class="cft-barra" style="margin:0 0 10px;flex-wrap:wrap;gap:16px">
-                <label class="cft-ajuda" style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#cbd5e1"><input type="radio" name="aj-tipo" value="acrescimo"> Acréscimo</label>
-                <label class="cft-ajuda" style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#cbd5e1"><input type="radio" name="aj-tipo" value="desconto"> Desconto</label>
-                <input class="cft-input" id="aj-descricao" placeholder="Descrição (opcional)" maxlength="300" style="min-width:300px;flex:1;margin:0">
-            </div>
-            <div class="cft-barra" style="margin:0">
-                <button class="cft-btn primario" id="aj-salvar" onclick="_ajSalvar()">Lançar</button>
-                <span class="cft-ajuda" id="aj-status"></span>
-            </div>
+            </span></div>
+            <div class="aj-campo"><span class="cft-rotulo">Tipo</span><span class="aj-tipo">
+                <label><input type="radio" name="aj-tipo" value="acrescimo"><span>Acréscimo</span></label>
+                <label><input type="radio" name="aj-tipo" value="desconto"><span>Desconto</span></label>
+            </span></div>
+            <label class="aj-campo" style="flex:1 1 220px"><span class="cft-rotulo">Entregador</span>
+                <input class="cft-input" id="aj-driver" list="aj-entregadores" placeholder="Nome do entregador" onfocus="_ajGarantirEntregadores()"></label>
+            <label class="aj-campo"><span class="cft-rotulo">Valor total (R$)</span>
+                <input class="cft-input" id="aj-valor" inputmode="decimal" placeholder="0,00" style="width:140px" oninput="_ajTextoParcelas()"></label>
+            <label class="aj-campo"><span class="cft-rotulo">Parcelas</span>
+                <input class="cft-input" id="aj-parcelas" type="number" min="1" max="48" value="1" style="width:80px" oninput="_ajTextoParcelas()"></label>
+            <label class="aj-campo" style="flex:1 1 100%"><span class="cft-rotulo">Descrição <span class="cft-ajuda" style="font-weight:400">(opcional)</span></span>
+                <input class="cft-input" id="aj-descricao" maxlength="300"></label>
+        </div>
+        <div class="cft-barra" style="margin:12px 0 0">
+            <button class="cft-btn primario" id="aj-salvar" onclick="_ajSalvar()">Lançar</button>
+            <span class="cft-ajuda" id="aj-previa"></span>
+            <span class="cft-ajuda" id="aj-status"></span>
         </div>
         <div id="aj-lista"></div>
-        <div id="aj-parcelamentos" style="margin-top:18px"></div>`;
+        <div id="aj-parcelamentos"></div>`;
     _ajGarantirEntregadores();
     _ajCarregar();
     _ajCarregarParcelamentos();
@@ -108,7 +111,7 @@ function _ajCarregarParcelamentos() {
     .then(d => {
         const ls = d.linhas || [];
         el.innerHTML = !ls.length ? "" : `
-            <div class="cft-pend-titulo" style="color:#e2e8f0">Parcelamentos</div>
+            <div class="cft-secao">Parcelamentos</div>
             <div class="cft-tabela-wrap" style="max-height:360px;overflow-y:auto"><table class="cft-tabela">
                 <thead><tr><th>Entregador</th><th>Tipo</th><th>Descrição</th><th style="text-align:right">Parcelas</th><th style="text-align:right">Soma (R$)</th><th>Quinzenas</th><th></th></tr></thead>
                 <tbody>${ls.map(p => `<tr>
@@ -152,9 +155,9 @@ function _ajCarregar(msg) {
 function _ajRenderLista(msg) {
     const soma = (t) => _ajLinhas.filter(a => a.tipo === t).reduce((s, a) => s + a.valor, 0);
     document.getElementById("aj-lista").innerHTML = `
-        <div class="cft-barra" style="justify-content:space-between">
-            <span class="cft-pend-titulo" style="color:#e2e8f0;margin:0">Lançamentos da quinzena</span>
-            <span class="cft-ajuda">${msg || ""} Acréscimos <span class="cft-pos">${_ajNum(soma("acrescimo"))}</span> · Descontos <span class="cft-neg">${_ajNum(soma("desconto"))}</span></span>
+        <div class="cft-secao cft-secao-lado">
+            <span>Lançamentos da quinzena</span>
+            <span class="cft-ajuda" style="font-weight:400">${msg || ""} Acréscimos <span class="cft-pos">${_ajNum(soma("acrescimo"))}</span> · Descontos <span class="cft-neg">${_ajNum(soma("desconto"))}</span></span>
         </div>
         <div class="cft-tabela-wrap" style="max-height:560px;overflow-y:auto"><table class="cft-tabela">
             <thead><tr><th>Entregador</th><th>Tipo</th><th style="text-align:right">Valor (R$)</th><th>Descrição</th><th>Lançado por</th><th></th></tr></thead>

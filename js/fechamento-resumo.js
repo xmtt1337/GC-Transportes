@@ -77,31 +77,29 @@ function _rqRender() {
     const t = d.totais;
     const polos = [...new Set(d.linhas.map(l => l.polo).filter(Boolean))].sort();
     const faltam = Object.values(d.transportadoras).filter(x => !x.enviado).map(x => x.nome);
-    const transp = Object.values(d.transportadoras).filter(x => x.enviado).map(x =>
-        `<div class="cft-kpi"><div class="cft-kpi-valor">${_rqNum(x.valor)}</div>
-            <div class="cft-kpi-rotulo">${_rqEsc(x.nome)} · ${x.pacotes.toLocaleString("pt-BR")} pacotes</div></div>`).join("");
+    // Pendências (âmbar) num bloco só; o que é só informação fica em cinza embaixo dele.
+    const pend = [
+        t.sem_conversao.linhas ? `<li><b>${t.sem_conversao.linhas} usuário(s) sem conversão de nome</b> (R$ ${_rqNum(t.sem_conversao.valor)}) — aparecem no fim da lista; converta no Criar Fechamento.</li>` : "",
+        t.ticketlog_sem_nome ? `<li><b>R$ ${_rqNum(t.ticketlog_sem_nome)} de Ticketlog sem entregador</b> — confira em Descontos: Ticketlog.</li>` : "",
+        _rqExtraviosSemConversao(d),
+    ].join("");
+    const info = [
+        faltam.length ? `Sem relatório nesta quinzena: ${_rqEsc(faltam.join(", "))}.` : "",
+        !d.ticketlog_arquivos ? "Nenhum relatório do Ticketlog nesta quinzena." : "",
+        _rqSemFechamento(t.sem_fechamento),
+    ].filter(Boolean);
     el.innerHTML = `
-        <div class="cft-kpis">
-            <div class="cft-kpi"><div class="cft-kpi-valor">${t.entregadores.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Entregadores</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor">${t.pacotes.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Pacotes</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor">${_rqNum(t.bruto)}</div><div class="cft-kpi-rotulo">Bruto (R$)</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor${t.acrescimos ? " cft-pos" : ""}">${_rqNum(t.acrescimos)}</div><div class="cft-kpi-rotulo">Acréscimos (R$)</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor${t.ticketlog ? " cft-neg" : ""}">${_rqNum(t.ticketlog)}</div><div class="cft-kpi-rotulo">Ticketlog (R$)</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor${t.extravios ? " cft-neg" : ""}">${_rqNum(t.extravios)}</div><div class="cft-kpi-rotulo">Extravios (R$) · ${_rqEsc(d.codigo_quinzena || "")}</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor${t.descontos ? " cft-neg" : ""}">${_rqNum(t.descontos)}</div><div class="cft-kpi-rotulo">Descontos (R$)</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor cft-pos">${_rqNum(t.liquido)}</div><div class="cft-kpi-rotulo">Líquido (R$)</div></div>
+        <div class="rq-topo">
+            ${_rqConta(t, d.codigo_quinzena)}
+            <div class="rq-meta"><b>${t.entregadores.toLocaleString("pt-BR")}</b> entregadores · <b>${t.pacotes.toLocaleString("pt-BR")}</b> pacotes</div>
         </div>
-        ${transp ? `<div class="cft-pend-titulo" style="color:#e2e8f0">Por transportadora</div><div class="cft-kpis">${transp}</div>` : ""}
-        ${faltam.length ? `<div class="cft-ajuda" style="margin-bottom:6px">Sem relatório nesta quinzena: ${_rqEsc(faltam.join(", "))}.</div>` : ""}
-        ${t.sem_conversao.linhas ? `<div class="cft-ajuda" style="margin-bottom:6px"><span class="cft-aviso">${t.sem_conversao.linhas} usuário(s) sem conversão de nome</span>
-            (R$ ${_rqNum(t.sem_conversao.valor)}) — aparecem no fim da lista; converta no Criar Fechamento.</div>` : ""}
-        ${t.ticketlog_sem_nome ? `<div class="cft-ajuda" style="margin-bottom:6px"><span class="cft-aviso">R$ ${_rqNum(t.ticketlog_sem_nome)} de Ticketlog sem entregador</span> — confira em Descontos: Ticketlog.</div>` : ""}
-        ${!d.ticketlog_arquivos ? `<div class="cft-ajuda" style="margin-bottom:6px">Nenhum relatório do Ticketlog nesta quinzena.</div>` : ""}
-        ${d.extravios_erro ? `<div class="cft-erro" style="margin-bottom:6px">Não consegui ler a planilha de extravios: ${_rqEsc(d.extravios_erro)}</div>` : ""}
-        ${_rqExtraviosSemConversao(d)}
-        ${_rqSemFechamento(t.sem_fechamento)}
+        ${_rqPorTransportadora(d, t.bruto)}
+        ${d.extravios_erro ? `<div class="cft-erro" style="margin-bottom:10px">Não consegui ler a planilha de extravios: ${_rqEsc(d.extravios_erro)}</div>` : ""}
+        ${pend ? `<div class="cft-pend"><div class="cft-pend-titulo">Pendências</div><ul class="rq-pend-lista">${pend}</ul></div>` : ""}
+        ${info.map(x => `<div class="cft-ajuda" style="margin-bottom:4px">${x}</div>`).join("")}
 
-        <div class="cft-barra" style="justify-content:space-between">
+        <div class="cft-secao">Por entregador</div>
+        <div class="cft-barra" style="justify-content:space-between;margin-top:0">
             <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                 <div class="adm-search-input-area" style="max-width:260px;margin:0">
                     <input type="text" id="rq-busca" placeholder="Entregador..." oninput="_rqRenderTabela()">
@@ -193,14 +191,41 @@ function _rqRenderCidades() {
         + (_rqXNaoAchadas.length ? `<div class="cft-ajuda" style="margin-top:4px"><span class="cft-aviso">Sem pacote nesta quinzena:</span> ${_rqEsc(_rqXNaoAchadas.join(", "))}</div>` : "");
 }
 
+// A conta da quinzena numa linha: Bruto + Acréscimos − Ticketlog − Extravios − Descontos = Líquido.
+function _rqConta(t, codigo) {
+    const item = (rot, v, cls) => `<div class="rq-conta-item"><span class="rq-conta-rot">${rot}</span><span class="rq-conta-val${v && cls ? " " + cls : ""}">${_rqNum(v)}</span></div>`;
+    const op = (s) => `<span class="rq-conta-op">${s}</span>`;
+    return `<div class="rq-conta">
+        ${item("Bruto (R$)", t.bruto)}${op("+")}${item("Acréscimos", t.acrescimos, "cft-pos")}${op("−")}${item("Ticketlog", t.ticketlog, "cft-neg")}
+        ${op("−")}${item(`Extravios · ${_rqEsc(codigo || "")}`, t.extravios, "cft-neg")}${op("−")}${item("Descontos", t.descontos, "cft-neg")}${op("=")}
+        <div class="rq-conta-item rq-conta-total"><span class="rq-conta-rot">Líquido (R$)</span><span class="rq-conta-val cft-pos">${_rqNum(t.liquido)}</span></div>
+    </div>`;
+}
+
+// Uma linha por transportadora, com a parte de cada uma no bruto (barra na cor dela).
+function _rqPorTransportadora(d, bruto) {
+    const cores = new Map((typeof _CF_TRANSPORTADORAS !== "undefined" ? _CF_TRANSPORTADORAS : []).map(x => [x.key, x.cor]));
+    const ts = Object.entries(d.transportadoras).filter(([, x]) => x.enviado).sort((a, b) => b[1].valor - a[1].valor);
+    if (!ts.length) return "";
+    return `<div class="cft-secao">Por transportadora</div><div class="rq-transp">${ts.map(([k, x]) => {
+        const pct = bruto ? x.valor / bruto * 100 : 0;
+        return `<div class="rq-transp-linha" style="--rq-cor:${cores.get(k) || "#64748b"}">
+            <span class="rq-transp-nome">${_rqEsc(x.nome)}</span>
+            <span class="rq-transp-pac">${x.pacotes.toLocaleString("pt-BR")} pacotes</span>
+            <span class="rq-transp-barra"><em><i style="width:${pct.toFixed(1)}%"></i></em></span>
+            <span class="rq-transp-pct">${pct.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span>
+            <span class="rq-transp-valor">${_rqNum(x.valor)}</span>
+        </div>`; }).join("")}</div>`;
+}
+
 // Responsável da planilha de extravios que não virou nome padrão: aparece como linha
 // "sem conversão" — aqui a soma, pra pessoa corrigir o nome na planilha ou na Conversão.
 function _rqExtraviosSemConversao(d) {
     const sem = (d.extravios_linhas || []).filter(e => e.sem_conversao);
     if (!sem.length) return "";
     const nomes = [...new Set(sem.map(e => e.responsavel || "(sem responsável)"))];
-    return `<div class="cft-ajuda" style="margin-bottom:6px"><span class="cft-aviso">${sem.length} extravio(s) com responsável sem conversão</span>
-        (R$ ${_rqNum(sem.reduce((s, e) => s + e.valor, 0))}): ${_rqEsc(nomes.join(", "))}.</div>`;
+    return `<li><b>${sem.length} extravio(s) com responsável sem conversão</b>
+        (R$ ${_rqNum(sem.reduce((s, e) => s + e.valor, 0))}): ${_rqEsc(nomes.join(", "))}.</li>`;
 }
 
 // Quem tem desconto/ajuste mas nenhum pacote na quinzena não entra na lista nem nos totais.
@@ -208,8 +233,8 @@ function _rqSemFechamento(s) {
     if (!s || !s.pessoas) return "";
     const partes = [["Ticketlog", s.ticketlog], ["extravios", s.extravios], ["descontos", s.descontos], ["acréscimos", s.acrescimos]]
         .filter(x => x[1]).map(x => `${x[0]} R$ ${_rqNum(x[1])}`);
-    return `<div class="cft-ajuda" style="margin-bottom:6px" title="${_rqEsc((s.nomes || []).join(" · "))}">${s.pessoas} pessoa(s) com desconto/ajuste e sem fechamento nesta quinzena
-        não aparecem aqui (${partes.join(", ")}) — veja em Fechamento de Extravios.</div>`;
+    return `<span title="${_rqEsc((s.nomes || []).join(" · "))}">${s.pessoas} pessoa(s) com desconto/ajuste e sem fechamento nesta quinzena
+        não aparecem aqui (${partes.join(", ")}) — veja em Fechamento de Extravios.</span>`;
 }
 
 function _rqFiltradas() {

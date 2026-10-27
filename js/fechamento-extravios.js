@@ -88,7 +88,7 @@ function _fxRender() {
         <div class="cft-kpis">
             <div class="cft-kpi"><div class="cft-kpi-valor">${t.linhas.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Extravios e multas · ${_fxEsc(d.codigo_quinzena)}</div></div>
             ${Object.entries(_FX_CATEGORIAS).map(([c, rot]) => { const x = (t.por_categoria || {})[c] || { responsaveis: 0, total: 0, linhas: 0 };
-                return `<div class="cft-kpi"><div class="cft-kpi-valor cft-neg">${_fxNum(x.total)}</div><div class="cft-kpi-rotulo">${rot} · ${x.linhas} linha(s), ${x.responsaveis} ${c === "entregador" ? "entregador(es)" : "responsável(is)"}</div></div>`; }).join("")}
+                return `<div class="cft-kpi" title="${x.linhas} linha(s), ${x.responsaveis} ${c === "entregador" ? "entregador(es)" : "responsável(is)"}"><div class="cft-kpi-valor cft-neg">${_fxNum(x.total)}</div><div class="cft-kpi-rotulo">${rot} · ${x.linhas} linha(s)</div></div>`; }).join("")}
             <div class="cft-kpi"><div class="cft-kpi-valor${t.sem_fechamento.entregadores ? " cft-aviso" : ""}">${t.sem_fechamento.entregadores} · ${_fxNum(t.sem_fechamento.total)}</div><div class="cft-kpi-rotulo">Sem fechamento na quinzena</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor${t.sem_conversao.entregadores ? " cft-aviso" : ""}">${t.sem_conversao.entregadores} · ${_fxNum(t.sem_conversao.total)}</div><div class="cft-kpi-rotulo">Responsável sem entregador</div></div>
         </div>
@@ -108,11 +108,11 @@ function _fxRender() {
             </span>
             <button class="cft-btn" onclick="_fxExportar()">Baixar planilha</button>
         </div>
-        <div class="cft-pend-titulo" style="color:#e2e8f0">Por entregador</div>
+        <div class="cft-secao">Por entregador</div>
         <div class="cft-tabela-wrap" style="max-height:380px;overflow-y:auto"><table class="cft-tabela">
             <thead><tr><th>Responsável</th><th>Situação</th><th style="text-align:right">Extravios</th><th style="text-align:right">Multas</th><th style="text-align:right">Total (R$)</th></tr></thead>
             <tbody id="fx-tbody-ent"></tbody></table></div>
-        <div class="cft-pend-titulo" style="color:#e2e8f0;margin-top:14px">Linhas</div>
+        <div class="cft-secao">Linhas</div>
         <div class="cft-tabela-wrap" style="max-height:480px;overflow-y:auto"><table class="cft-tabela">
             <thead><tr><th>Entregador</th><th>Responsável (planilha)</th><th>Status</th><th>Transportadora</th><th>Data</th><th>Código</th>
                 <th style="text-align:right">Valor (R$)</th><th>Causa</th></tr></thead>
