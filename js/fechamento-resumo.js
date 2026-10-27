@@ -15,7 +15,6 @@ let _rqXNaoAchadas = [];   // nomes colados que não existem nesta quinzena
 let _rqAba = "valores";   // valores | performance
 let _rqPerf = null;       // {chave: "ano-mes-q", entregadores} da aba Performance
 let _rqPerfOrdem = { campo: "pct", desc: false }; // pior performance primeiro
-let _rqPerfAbertos = new Set();  // entregadores com o dia a dia aberto
 let _rqPerfVisiveis = [];
 
 function _rqEsc(t) {
@@ -194,7 +193,8 @@ function _rqPerfPorEntregador(linhas) {
     for (const l of linhas) {
         if (!por.has(l.driver)) por.set(l.driver, { entregador: l.driver, dias: [], polos: new Map(), sucessos: 0, onholds: 0, atrasos: 0, pacotes_pagos: 0, total: 0 });
         const r = por.get(l.driver);
-        r.dias.push({ dia: l.dia, pct: l.pct, valor: l.valor });
+        r.dias.push({ dia: l.dia, pct: l.pct, valor: l.valor, shopee: l.shopee || 0, onholds: l.onholds || 0,
+            outras_prazo: l.outras_prazo || 0, outras_atraso: l.outras_atraso || 0, pacotes_pagos: l.pacotes_pagos || 0, total: l.total || 0, fixo: !!l.fixo });
         r.sucessos += (l.shopee || 0) + (l.outras_prazo || 0);
         r.onholds += l.onholds || 0;
         r.atrasos += l.outras_atraso || 0;
@@ -245,9 +245,162 @@ function _rqPerfOrdenar(campo) {
     _rqRenderPerf();
 }
 function _rqPerfAbrir(i) {
-    const nome = _rqPerfVisiveis[i];
-    if (_rqPerfAbertos.has(nome)) _rqPerfAbertos.delete(nome); else _rqPerfAbertos.add(nome);
-    _rqRenderPerf();
+    _rqAbrirCardEntregador(_rqPerfVisiveis[i]);
+}
+
+// ── Card do entregador: dias, % e os pedidos que derrubaram cada dia ──
+let _rqCard = null; // { r, pacotes, onholds, abertos: Set(dia) }
+
+function _rqIsoDeBr(d) {
+    const m = String(d || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : (d || null);
+}
+
+/** Situação de um pacote na performance (o que o card e as planilhas mostram). */
+function _rqSituacao(p) {
+    if (/^shopee/i.test(p.transportadora)) return p.data_entrega ? "Entregue (Shopee)" : "Não entregue (Shopee)";
+    if (!p.perf_dia) return "Fora da conta";
+    if (!p.data_entrega) return "Não entregue";
+    return p.dentro_prazo === "Não" ? "Atrasado" : "No prazo";
+}
+const _RQ_AFETOU = ["Atrasado", "Não entregue", "Onhold"];
+
+/** Pedidos que contaram num dia: pacotes com perf_dia = dia + os onholds do dia. Os que afetaram primeiro. */
+function _rqPedidosDoDia(dia, pacotes, onholds) {
+    const ps = pacotes.filter(p => _rqIsoDeBr(p.perf_dia) === dia).map(p => ({
+        situacao: _rqSituacao(p), transportadora: p.transportadora, codigo: p.codigo, cidade: p.cidade || "",
+        deveria: p.deve_ser_entregue || "", entregue: p.data_entrega || "", valor: p.valor_motorista || 0, motivo: "" }));
+    const os = onholds.filter(o => o.dia === dia).map(o => ({
+        situacao: "Onhold", transportadora: o.transportadora, codigo: o.codigo || "", cidade: "", deveria: "", entregue: "", valor: 0, motivo: o.motivo || "" }));
+    const peso = (x) => (_RQ_AFETOU.includes(x.situacao) ? 0 : 1);
+    return os.concat(ps).sort((a, b) => peso(a) - peso(b) || a.situacao.localeCompare(b.situacao) || String(a.codigo).localeCompare(String(b.codigo)));
+}
+
+async function _rqAbrirCardEntregador(nome) {
+    const r = (_rqPerf.entregadores || []).find(x => x.entregador === nome);
+    if (!r) return;
+    _rqFecharCard();
+    const ov = document.createElement("div");
+    ov.className = "cft-modal-overlay";
+    ov.id = "rq-card";
+    ov.innerHTML = `<div class="cft-modal rq-card"><div class="cft-ajuda">Carregando os pedidos de ${_rqEsc(nome)}...</div></div>`;
+    ov.addEventListener("click", e => { if (e.target === ov) _rqFecharCard(); });
+    document.body.appendChild(ov);
+    document.addEventListener("keydown", _rqCardEsc);
+    const qs = `mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}&driver=${encodeURIComponent(nome)}`;
+    try {
+        const h = { headers: { "Authorization": "Bearer " + token } };
+        const [p, i] = await Promise.all([
+            fetch(`${_RQ_API()}/resumo-quinzena/pacotes?${qs}`, h).then(x => x.json()),
+            fetch(`${_RQ_API()}/performance/insucessos?${qs}`, h).then(x => x.json()),
+        ]);
+        if (p.error || i.error) throw new Error(p.error || i.error);
+        _rqCard = { r, pacotes: p.pacotes || [], onholds: (i.linhas || []).filter(x => x.tipo === "Onhold"), abertos: new Set() };
+        _rqRenderCard();
+    } catch (err) {
+        const c = ov.querySelector(".rq-card");
+        if (c) c.innerHTML = `<div class="cft-erro">${_rqEsc(err.message || "Erro ao carregar.")}</div>`;
+    }
+}
+
+function _rqCardEsc(e) { if (e.key === "Escape") _rqFecharCard(); }
+function _rqFecharCard() {
+    const ov = document.getElementById("rq-card");
+    if (ov) ov.remove();
+    document.removeEventListener("keydown", _rqCardEsc);
+}
+
+function _rqRenderCard() {
+    const ov = document.getElementById("rq-card");
+    if (!ov || !_rqCard) return;
+    const { r, pacotes, onholds, abertos } = _rqCard;
+    const diaSem = (iso) => ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"][new Date(iso + "T12:00:00Z").getUTCDay()];
+    const linhaPedido = (x) => `<tr>
+        <td class="${_RQ_AFETOU.includes(x.situacao) ? "cft-neg" : "cft-ajuda"}">${_rqEsc(x.situacao)}</td>
+        <td>${_rqEsc(x.transportadora)}</td><td>${_rqEsc(x.codigo)}</td>
+        <td>${_rqEsc(x.deveria) || "—"}</td><td>${_rqEsc(x.entregue) || (x.situacao.startsWith("Não entregue") ? "não entregue" : "—")}</td>
+        <td style="white-space:normal">${_rqEsc(x.motivo || x.cidade)}</td></tr>`;
+    ov.querySelector(".rq-card").innerHTML = `
+        <div class="cft-barra" style="justify-content:space-between;margin:0 0 6px">
+            <div class="cft-modal-titulo" style="margin:0">${_rqEsc(r.entregador)}</div>
+            <span><button class="cft-btn" onclick="_rqBaixarEntregador()">Baixar relatório do entregador</button>
+                <button class="cft-btn" onclick="_rqFecharCard()">Fechar</button></span>
+        </div>
+        <div class="cft-ajuda" style="margin-bottom:10px">${_rqEsc(r.polo || "")} · performance da quinzena
+            <strong class="${_rqPctClasse(r.pct)}">${_rqPct(r.pct)}</strong> · ${r.sucessos.toLocaleString("pt-BR")} sucessos,
+            ${r.onholds} onhold(s), ${r.atrasos} atrasado(s)/não entregue(s) · ticket médio R$ ${_rqNum(r.por_pacote)} · total R$ ${_rqNum(r.total)}</div>
+        <div class="cft-tabela-wrap" style="max-height:62vh;overflow-y:auto"><table class="cft-tabela">
+            <thead><tr><th>Dia</th><th style="text-align:right">Shopee</th><th style="text-align:right">Outras no prazo</th>
+                <th style="text-align:right">Onholds</th><th style="text-align:right">Atrasados</th><th style="text-align:right">Performance</th>
+                <th style="text-align:right">R$/pacote</th><th style="text-align:right">Pagos</th><th style="text-align:right">Total</th><th></th></tr></thead>
+            <tbody>${r.dias.map(d => {
+                const afetou = d.onholds + d.outras_atraso;
+                const ped = abertos.has(d.dia) ? _rqPedidosDoDia(d.dia, pacotes, onholds) : null;
+                return `<tr>
+                    <td>${_rqDiaCurto(d.dia)} <span class="cft-ajuda">${diaSem(d.dia)}</span></td>
+                    <td class="num">${d.shopee}</td><td class="num">${d.outras_prazo}</td>
+                    <td class="num${d.onholds ? " cft-neg" : ""}">${d.onholds}</td><td class="num${d.outras_atraso ? " cft-neg" : ""}">${d.outras_atraso}</td>
+                    <td class="num ${_rqPctClasse(d.pct)}"><strong>${_rqPct(d.pct)}</strong></td>
+                    <td class="num">${d.fixo ? `<span class="cft-ajuda">fixo</span> ` : ""}${_rqNum(d.valor)}</td>
+                    <td class="num">${d.pacotes_pagos}</td><td class="num">${_rqNum(d.total)}</td>
+                    <td style="white-space:nowrap"><a href="#" class="cft-ordem" style="color:#60a5fa" onclick="event.preventDefault();_rqCardAlternarDia('${d.dia}')">${abertos.has(d.dia) ? "fechar" : (afetou ? "ver o que afetou" : "ver pedidos")}</a>
+                        · <a href="#" class="cft-ordem" style="color:#60a5fa" onclick="event.preventDefault();_rqBaixarDia('${d.dia}')">baixar</a></td>
+                </tr>${ped ? `<tr><td colspan="10" style="background:rgba(255,255,255,0.02);padding:8px 12px">
+                    ${(() => {
+                        const af = ped.filter(x => _RQ_AFETOU.includes(x.situacao));
+                        const resto = ped.length - af.length;
+                        return (af.length ? `<table class="cft-tabela" style="margin:0"><thead><tr><th>Situação</th><th>Transportadora</th><th>Pedido</th>
+                            <th>Deveria ser entregue</th><th>Entregue em</th><th>Motivo / cidade</th></tr></thead><tbody>${af.map(linhaPedido).join("")}</tbody></table>`
+                            : `<span class="cft-ajuda">Nenhum pedido derrubou esse dia.</span>`)
+                            + `<div class="cft-ajuda" style="margin-top:6px">${resto} pedido(s) no prazo nesse dia — estão no "baixar".</div>`;
+                    })()}</td></tr>` : ""}`;
+            }).join("")}</tbody>
+        </table></div>`;
+}
+
+function _rqCardAlternarDia(dia) {
+    if (_rqCard.abertos.has(dia)) _rqCard.abertos.delete(dia); else _rqCard.abertos.add(dia);
+    _rqRenderCard();
+}
+
+const _RQ_CAB_PEDIDOS = ["Dia da performance", "Situação", "Afetou a performance?", "Transportadora", "Pedido", "Cidade", "Deveria ser entregue", "Entregue em", "Valor pago", "Motivo do onhold"];
+function _rqLinhasPedidos(dia, ped) {
+    return ped.map(x => [_rqDiaCurto(dia), x.situacao, _RQ_AFETOU.includes(x.situacao) ? "Sim" : "Não", x.transportadora, x.codigo, x.cidade,
+        x.deveria, x.entregue, x.valor, x.motivo]);
+}
+function _rqNomeArquivo(sufixo) {
+    const nome = _rqCard.r.entregador.replace(/[^\w\u00C0-\u017F]+/g, "-");
+    return `performance_${nome}_${_rqQuinzena}q_${String(_rqMes).padStart(2, "0")}-${_rqAno}${sufixo}.xlsx`;
+}
+
+/** Planilha de um dia: os pedidos que contaram nele (os que afetaram primeiro). */
+function _rqPlanilhaDia(dia) {
+    return [_RQ_CAB_PEDIDOS].concat(_rqLinhasPedidos(dia, _rqPedidosDoDia(dia, _rqCard.pacotes, _rqCard.onholds)));
+}
+function _rqBaixarDia(dia) {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(_rqPlanilhaDia(dia)), "Pedidos " + _rqDiaCurto(dia).replace("/", "-"));
+    XLSX.writeFile(wb, _rqNomeArquivo("_dia-" + _rqDiaCurto(dia).replace("/", "-")));
+}
+
+/** Relatório inteiro do entregador: dias, o que afetou cada dia e todos os pedidos. */
+function _rqAbasEntregador() {
+    const { r, pacotes, onholds } = _rqCard;
+    const dias = [["Dia", "Shopee entregues", "Outras no prazo", "Onholds", "Atrasados/não entregues", "Performance (%)", "R$/pacote", "Pacotes pagos", "Total"]]
+        .concat(r.dias.map(d => [_rqDiaCurto(d.dia), d.shopee, d.outras_prazo, d.onholds, d.outras_atraso, d.pct, d.valor, d.pacotes_pagos, d.total]));
+    const todos = r.dias.flatMap(d => _rqLinhasPedidos(d.dia, _rqPedidosDoDia(d.dia, pacotes, onholds)));
+    const fora = pacotes.filter(p => !p.perf_dia && !/^shopee/i.test(p.transportadora)).map(p => ["", _rqSituacao(p), "Não", p.transportadora, p.codigo,
+        p.cidade || "", p.deve_ser_entregue || "", p.data_entrega || "", p.valor_motorista || 0, ""]);
+    return [
+        { nome: "Dias", linhas: dias },
+        { nome: "O que afetou", linhas: [_RQ_CAB_PEDIDOS].concat(todos.filter(l => l[2] === "Sim")) },
+        { nome: "Todos os pedidos", linhas: [_RQ_CAB_PEDIDOS].concat(todos, fora) },
+    ];
+}
+function _rqBaixarEntregador() {
+    const wb = XLSX.utils.book_new();
+    for (const a of _rqAbasEntregador()) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a.linhas), a.nome);
+    XLSX.writeFile(wb, _rqNomeArquivo(""));
 }
 
 function _rqRenderPerf() {
@@ -278,7 +431,7 @@ function _rqRenderPerf() {
             <thead><tr>${th("entregador", "Entregador")}${th("polo", "Polo")}${th("dias_n", "Dias", true)}${th("sucessos", "Sucessos", true)}
                 ${th("onholds", "Onholds", true)}${th("atrasos", "Atrasos", true)}${th("pct", "Performance", true)}${th("pior", "Pior dia", true)}
                 ${th("acima", "Dias 98%+", true)}${th("abaixo", "Dias abaixo de 98%", true)}${th("pacotes_pagos", "Pacotes pagos", true)}${th("por_pacote", "Ticket médio", true)}${th("total", "Total (R$)", true)}</tr></thead>
-            <tbody>${lista.length ? lista.map((r, i) => `<tr class="rq-perf-linha" onclick="_rqPerfAbrir(${i})" title="Clique pra ver dia a dia">
+            <tbody>${lista.length ? lista.map((r, i) => `<tr class="rq-perf-linha" onclick="_rqPerfAbrir(${i})" title="Clique pra ver os dias e os pedidos">
                 <td>${_rqEsc(r.entregador)}</td>
                 <td>${r.polo ? _rqEsc(r.polo) : `<span class="cft-vazio">—</span>`}</td>
                 <td class="num">${r.dias.length}</td>
@@ -292,12 +445,11 @@ function _rqRenderPerf() {
                 <td class="num">${r.pacotes_pagos.toLocaleString("pt-BR")}</td>
                 <td class="num" title="Total ÷ pacotes pagos">${_rqNum(r.por_pacote)}</td>
                 <td class="num"><strong>${_rqNum(r.total)}</strong></td>
-            </tr>${_rqPerfAbertos.has(r.entregador) ? `<tr class="rq-perf-dias"><td colspan="13">${r.dias.map(d =>
-                `<span class="rq-dia"><b>${_rqDiaCurto(d.dia)}</b> <span class="${_rqPctClasse(d.pct)}">${_rqPct(d.pct)}</span> <span class="cft-ajuda">R$ ${_rqNum(d.valor)}</span></span>`).join("")}</td></tr>` : ""}`).join("")
+            </tr>`).join("")
             : `<tr><td colspan="13" class="cft-vazio" style="padding:14px">Nada com esse filtro.</td></tr>`}</tbody>
         </table></div>
         <div class="cft-ajuda" style="margin-top:6px">Performance = sucessos ÷ (sucessos + onholds + atrasos), juntando todas as transportadoras — a mesma que define o valor da Shopee,
-            só nos polos da regra (Criar Fechamento). Verde: 98% ou mais; vermelho: abaixo de 95%. Clique no entregador pra ver dia a dia (R$ = valor por pacote no dia).
+            só nos polos da regra (Criar Fechamento). Verde: 98% ou mais; vermelho: abaixo de 95%. Clique no entregador pra ver os dias, os pedidos que afetaram cada dia e baixar.
             Ticket médio = total ÷ pacotes pagos.</div>`;
 }
 
