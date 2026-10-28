@@ -45,7 +45,7 @@ test("filtro só tarifa mínima e abrir o dia mostra os códigos", () => {
     ctx._acRenderTabela();
     assert.doesNotMatch(el("ac-tbody").innerHTML, /Beltrano/);
     ctx._acAlternar("Fulano de Teste - Vila|2026-09-21");
-    assert.match(el("ac-tbody").innerHTML, /IM1<\/b> · aberta às 09:00/);
+    assert.match(el("ac-tbody").innerHTML, /IM1<\/b> · aberta no dia seguinte às 09:00/);
 });
 
 test("valor fixo: resumo das regras (só leitura) e dia do fixo marcado com o desconto", () => {

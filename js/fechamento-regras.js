@@ -101,7 +101,7 @@ function _rgHtmlPnr(p) {
     const f = p.regra_fixo || {};
     return `<div class="cft-regras">
         <div class="cft-pend-titulo" style="color:#e2e8f0">PNR abertas</div>
-        <div class="cft-ajuda" style="margin-bottom:8px">Vale só pros polos da performance. A PNR conta no dia em que foi aberta.</div>
+        <div class="cft-ajuda" style="margin-bottom:8px">Vale só pros polos da performance. A PNR conta no dia anterior ao da abertura (criada dia 21 → pega o dia 20).</div>
         <div class="cft-barra" style="margin:0 0 8px;flex-wrap:wrap;align-items:center">
             <span class="cft-ajuda"><b>Sem valor fixo:</b> um usuário com mais de</span>
             <input class="cft-input" id="rg-pnr-limite" value="${_rgEsc(p.limite_usuario)}" inputmode="numeric" style="width:60px;flex:0 0 auto;margin:0">

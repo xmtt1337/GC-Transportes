@@ -1,7 +1,8 @@
 // ───── FECHAMENTO › ACAREAÇÕES ─────
 // Relatórios de acareação (PNR) por transportadora — Shopee, Imile, Anjun e Loggi; a
 // transportadora sai das colunas do arquivo. Vários arquivos por quinzena.
-// Regra: um usuário com mais de N acareações abertas no mesmo dia (conta por usuário, não
+// O dia de cada PNR é o ANTERIOR ao da abertura (criada dia 21 → conta no dia 20).
+// Regra: um usuário com mais de N acareações no mesmo dia (conta por usuário, não
 // soma os usuários do entregador) → todos os pacotes do entregador naquele dia valem a tarifa mínima
 // do dia (seg a sáb R$ 1,50, domingo R$ 1,80). Só nos polos da regra da performance.
 // Quem tem valor fixo: soma os usuários, compara com as baixas do dia e cai pro fixo menos
@@ -151,7 +152,7 @@ function _acRegrasResumoHtml(d) {
         <div class="cft-ajuda"><b>Sem valor fixo:</b> um usuário com mais de <b>${limite}</b> PNR no mesmo dia (cada usuário separado) → todos os pacotes
             do entregador naquele dia na tarifa mínima (R$ 1,50 seg a sáb, R$ 1,80 dom).
             <b>Com valor fixo:</b> somando os usuários, acima de <b>${_acPct(r.limite_pct)}%</b> das baixas do dia → fixo com <b>${_acPct(r.desconto_pct)}% a menos</b>.
-            Só nos polos da performance. Pra mudar ou criar exceção pra um entregador:
+            A PNR conta no dia anterior ao da abertura (criada dia 21 → dia 20). Só nos polos da performance. Pra mudar ou criar exceção pra um entregador:
             <a href="#" style="color:#60a5fa" onclick="event.preventDefault();abrirRegrasFechamento()">Regras e configurações</a>.</div>
     </div>`;
 }
@@ -195,7 +196,7 @@ function _acRenderTabela() {
             <td class="num">${x.pacotes || 0}</td>
             <td class="num">${x.na_regra ? _acNum(x.total) : "—"}</td>
         </tr>${aberto ? `<tr><td colspan="8" style="background:rgba(255,255,255,0.02);padding:8px 12px">
-            ${codigos.map(a => `<div class="cft-ajuda">${_acEsc(a.transportadora)}${a.usuario ? ` · ${_acEsc(a.usuario)}` : ""} · <b>${_acEsc(a.codigo || "(sem código)")}</b>${a.hora ? ` · aberta às ${_acEsc(a.hora)}` : ""}</div>`).join("")}
+            ${codigos.map(a => `<div class="cft-ajuda">${_acEsc(a.transportadora)}${a.usuario ? ` · ${_acEsc(a.usuario)}` : ""} · <b>${_acEsc(a.codigo || "(sem código)")}</b>${a.hora ? ` · aberta no dia seguinte às ${_acEsc(a.hora)}` : " · aberta no dia seguinte"}</div>`).join("")}
         </td></tr>` : ""}`;
     }).join("") : `<tr><td colspan="8" class="cft-vazio" style="padding:14px">Nada por aqui.</td></tr>`;
 }
