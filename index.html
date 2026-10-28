@@ -525,6 +525,7 @@ if (_BASE) {
             <li><a href="#" data-rota="Fechamento/Ajustes" onclick="abrirAjustesFechamento(event)">Acréscimos e Descontos</a></li>
             <li><a href="#" data-rota="Fechamento/Deslocamentos" onclick="abrirDeslocamentos(event)">Deslocamentos</a></li>
             <li><a href="#" data-rota="Fechamento/Acareacoes" onclick="abrirAcareacoes(event)">PNR abertas</a></li>
+            <li><a href="#" data-rota="Fechamento/Perdas" onclick="abrirPerdasDesempenho(event)">Perdas por desempenho</a></li>
             <li><a href="#" data-rota="Fechamento/Extravios" onclick="abrirExtraviosFechamento(event)">Fechamento de Extravios</a></li>
             <li><a href="#" data-rota="Fechamento/Regras" onclick="abrirRegrasFechamento(event)">Regras e configurações</a></li>
         </ul>
@@ -4859,9 +4860,9 @@ if (_BASE) {
 
 <script src="js/core.js?v=20261028b"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261028n"></script>
+<script src="js/router.js?v=20261028o"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=20261028o"></script>
+<script src="js/nav.js?v=20261028p"></script>
 <script src="js/atendimento.js?v=20261015a"></script>
 <script src="js/atendimento-admin.js?v=20261015b"></script>
 <script src="js/fechamentos.js?v=20261027a"></script>
@@ -4897,6 +4898,7 @@ if (_BASE) {
 <script src="js/fechamento-ajustes.js?v=20261028c"></script>
 <script src="js/fechamento-deslocamentos.js?v=20261027a"></script>
 <script src="js/fechamento-acareacoes.js?v=20261028m"></script>
+<script src="js/fechamento-perdas.js?v=20261028a"></script>
 <script src="js/fechamento-regras.js?v=20261028e"></script>
 <script src="js/fechamento-extravios.js?v=20261028d"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
@@ -5189,6 +5191,13 @@ if (_BASE) {
         <div id="ac-conteudo"></div>
     </div>
 </div><!-- /tela-acareacoes -->
+
+<!-- TELA FECHAMENTO › PERDAS POR DESEMPENHO -->
+<div id="tela-perdas" class="view tela-full">
+    <div class="fech-body">
+        <div id="pd-conteudo"></div>
+    </div>
+</div><!-- /tela-perdas -->
 
 <!-- TELA FECHAMENTO › REGRAS E CONFIGURAÇÕES (os editores #cf-fixos e #cf-regras são do fechamento-criar.js) -->
 <div id="tela-regras-fechamento" class="view tela-full">

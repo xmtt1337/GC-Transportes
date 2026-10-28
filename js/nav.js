@@ -74,6 +74,7 @@ const _TELA_TITULOS = {
     "tela-deslocamentos":        "Deslocamentos",
     "tela-acareacoes":           "PNR abertas",
     "tela-regras-fechamento":    "Regras e configurações",
+    "tela-perdas":               "Perdas por desempenho",
     "tela-extravios-fechamento": "Fechamento de Extravios",
     "tela-ticketlog-info":       "TicketLog — Informações",
 };
