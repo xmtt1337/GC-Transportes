@@ -7,7 +7,7 @@ const vm = require("node:vm");
 
 const DADOS = {
     performance: { polos: ["Caçador"], polos_disponiveis: ["Caçador", "Videira", "Outro Polo"], faixas: null },
-    pnr: { limite_usuario: 2, regra_fixo: { limite_pct: 0.01, desconto_pct: 40 } },
+    pnr: { limite_usuario: 2, regra_fixo: { fator: 0.01, desconto_pct: 40 } },
     ticketlog: { percentual: 50 },
     deslocamento: { asfalto: 0.5, chao: 0.8 },
     extravios: { planilha: null, aba: null },

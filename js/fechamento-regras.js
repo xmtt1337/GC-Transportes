@@ -84,7 +84,7 @@ function _rgCarregar(msg) {
 
 function _rgRender() {
     const d = _rgDados || {};
-    const pnr = d.pnr || { limite_usuario: 2, regra_fixo: { limite_pct: 0.01, desconto_pct: 40 } };
+    const pnr = d.pnr || { limite_usuario: 2, regra_fixo: { fator: 0.01, desconto_pct: 40 } };
     document.getElementById("rg-conteudo").innerHTML = `
         ${_rgHtmlPnr(pnr)}
         ${_rgHtmlExcecoes(d)}
@@ -108,9 +108,9 @@ function _rgHtmlPnr(p) {
             <span class="cft-ajuda">PNR no dia (cada usuário separado) → todos os pacotes do dia na tarifa mínima (seg a sáb R$ 1,50, dom R$ 1,80).</span>
         </div>
         <div class="cft-barra" style="margin:0;flex-wrap:wrap;align-items:center">
-            <span class="cft-ajuda"><b>Com valor fixo:</b> somando os usuários, acima de</span>
-            <input class="cft-input" id="rg-pnr-fixo-limite" value="${_rgPct(f.limite_pct)}" inputmode="decimal" style="width:80px;flex:0 0 auto;margin:0">
-            <span class="cft-ajuda">% das baixas do dia → valor fixo com</span>
+            <span class="cft-ajuda"><b>Com valor fixo:</b> somando os usuários, mais PNR que as baixas do dia ×</span>
+            <input class="cft-input" id="rg-pnr-fixo-limite" value="${_rgPct(f.fator)}" inputmode="decimal" style="width:80px;flex:0 0 auto;margin:0">
+            <span class="cft-ajuda">(ex.: 1.000 baixas × 0,01 = mais de 10 PNR) → valor fixo com</span>
             <input class="cft-input" id="rg-pnr-fixo-desconto" value="${_rgPct(f.desconto_pct)}" inputmode="decimal" style="width:60px;flex:0 0 auto;margin:0">
             <span class="cft-ajuda">% a menos. Dia com PNR e sem nenhuma baixa também cai.</span>
             <button class="cft-btn primario" onclick="_rgSalvarPnr(this)">Salvar</button>
@@ -136,7 +136,7 @@ async function _rgPost(caminho, metodo, corpo, okMsg, btn) {
 function _rgSalvarPnr(btn) {
     const v = (id) => document.getElementById(id).value.trim();
     _rgPost("regras/pnr", "PUT", { ..._rgPeriodo(), limite_usuario: v("rg-pnr-limite"),
-        limite_pct: v("rg-pnr-fixo-limite"), desconto_pct: v("rg-pnr-fixo-desconto") }, "Regras de PNR salvas — quinzena recalculada.", btn);
+        fator: v("rg-pnr-fixo-limite"), desconto_pct: v("rg-pnr-fixo-desconto") }, "Regras de PNR salvas — quinzena recalculada.", btn);
 }
 
 // ── Exceções por entregador ──

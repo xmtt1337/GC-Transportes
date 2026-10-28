@@ -50,12 +50,12 @@ test("filtro só tarifa mínima e abrir o dia mostra os códigos", () => {
 
 test("valor fixo: resumo das regras (só leitura) e dia do fixo marcado com o desconto", () => {
     const { ctx, el } = carregar();
-    ctx._set({ ...DADOS, regra_fixo: { limite_pct: 0.01, desconto_pct: 40 },
+    ctx._set({ ...DADOS, regra_fixo: { fator: 0.01, desconto_pct: 40 },
         dias: DADOS.dias.concat([{ driver: "Ciclano Fixo - Vila", dia: "2026-09-23", acareacoes: 1, por_transportadora: { Loggi: 1 },
             fixo: true, tarifa_minima: true, valor_dia: 1.8, pacotes: 20, total: 36, na_regra: true }]) });
     ctx._acRender();
     const html = el("ac-lista").innerHTML;
-    assert.match(html, /acima de <b>0,01%<\/b> das baixas do dia → fixo com <b>40% a menos/);
+    assert.match(html, /baixas do dia × <b>0,01<\/b> \(1\.000 baixas × 0,01 = mais de 10\) → fixo com <b>40% a menos/);
     assert.match(html, /abrirRegrasFechamento\(\)/);
     assert.doesNotMatch(html, /ac-fixo-limite/);
     assert.match(el("ac-tbody").innerHTML, /Fixo −40%/);

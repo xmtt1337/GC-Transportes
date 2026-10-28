@@ -145,13 +145,13 @@ function _acPct(n) {
     return Number(n || 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 }
 function _acRegrasResumoHtml(d) {
-    const r = d.regra_fixo || { limite_pct: 0.01, desconto_pct: 40 };
+    const r = d.regra_fixo || { fator: 0.01, desconto_pct: 40 };
     const limite = d.limite ?? 2;
     return `<div class="cft-regras">
         <div class="cft-pend-titulo" style="color:#e2e8f0">Regras que valem hoje</div>
         <div class="cft-ajuda"><b>Sem valor fixo:</b> um usuário com mais de <b>${limite}</b> PNR no mesmo dia (cada usuário separado) → todos os pacotes
             do entregador naquele dia na tarifa mínima (R$ 1,50 seg a sáb, R$ 1,80 dom).
-            <b>Com valor fixo:</b> somando os usuários, acima de <b>${_acPct(r.limite_pct)}%</b> das baixas do dia → fixo com <b>${_acPct(r.desconto_pct)}% a menos</b>.
+            <b>Com valor fixo:</b> somando os usuários, mais PNR que as baixas do dia × <b>${_acPct(r.fator)}</b> (1.000 baixas × ${_acPct(r.fator)} = mais de ${_acPct(1000 * r.fator)}) → fixo com <b>${_acPct(r.desconto_pct)}% a menos</b>.
             A PNR conta no dia anterior ao da abertura (criada dia 21 → dia 20). Só nos polos da performance. Pra mudar ou criar exceção pra um entregador:
             <a href="#" style="color:#60a5fa" onclick="event.preventDefault();abrirRegrasFechamento()">Regras e configurações</a>.</div>
     </div>`;
