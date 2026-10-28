@@ -211,7 +211,7 @@ function _rgHtmlPerformance(p) {
                 <input type="checkbox" class="rg-polo" value="${_rgEsc(x)}"${polos.includes(x) ? " checked" : ""}> ${_rgEsc(x)}</label>`).join("")}
             <button class="cft-btn" onclick="_rgSalvarPolos(this)">Salvar polos</button>
         </div>
-        <div class="cft-ajuda">R$ por pacote pela performance do dia — ${typeof _cfTextoFaixas === "function" ? _cfTextoFaixas(p.faixas) : ""}</div>
+        <div class="cft-ajuda">Só pacote NORMAL entra na performance (e nas PNR); cartão e os outros tipos da Total Express recebem pelo preço da planilha pro tipo. R$ por pacote pela performance do dia — ${typeof _cfTextoFaixas === "function" ? _cfTextoFaixas(p.faixas) : ""}</div>
         <div class="cft-ajuda" style="margin-top:6px">Valores fixos e sábado/domingo ficam nos dois quadros logo abaixo — depois de mexer neles, use <b>Recalcular a quinzena</b> lá em cima.</div>
     </div>`;
 }
