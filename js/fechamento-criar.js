@@ -788,16 +788,16 @@ function _cfRenderPerformance() {
     const lista = _cfPerfLinhas.filter(l => !busca || _cfChave(l.driver).includes(busca));
     const diaSem = (iso) => _CF_DIAS_SEMANA[new Date(iso + "T12:00:00Z").getUTCDay()];
     _cfPerfVisiveis = lista.slice(0, 1000);
-    document.getElementById("cf-perf-tbody").innerHTML = lista.length ? _cfPerfVisiveis.map((l, i) => `<tr id="cf-perf-l${i}"${l.onholds || l.outras_atraso
+    document.getElementById("cf-perf-tbody").innerHTML = lista.length ? _cfPerfVisiveis.map((l, i) => `<tr id="cf-perf-l${i}"${l.onholds || l.outras_atraso || l.acareacoes
             ? ` style="cursor:pointer" title="Clique pra ver os onholds e os atrasados" onclick="_cfAlternarInsucessos(${i})"` : ""}>
-            <td>${l.onholds || l.outras_atraso ? `<span class="cft-ajuda" id="cf-perf-seta${i}">▸</span> ` : ""}${_cfDia(l.dia)} <span class="cft-ajuda">${diaSem(l.dia)}</span></td>
+            <td>${l.onholds || l.outras_atraso || l.acareacoes ? `<span class="cft-ajuda" id="cf-perf-seta${i}">▸</span> ` : ""}${_cfDia(l.dia)} <span class="cft-ajuda">${diaSem(l.dia)}</span></td>
             <td>${_cfEsc(l.driver)}</td>
             <td class="num">${l.shopee.toLocaleString("pt-BR")}</td>
             <td class="num${l.onholds ? " cft-neg" : ""}">${l.onholds.toLocaleString("pt-BR")}</td>
             <td class="num">${l.outras_prazo.toLocaleString("pt-BR")}</td>
             <td class="num${l.outras_atraso ? " cft-neg" : ""}">${l.outras_atraso.toLocaleString("pt-BR")}</td>
             <td class="num">${_cfNum(l.pct, 2)}%</td>
-            <td class="num">${l.fixo ? `<span class="cft-ajuda" title="Valor fixo do entregador (Valores fixos)">fixo</span> ` : ""}${_cfNum(l.valor)}</td>
+            <td class="num">${l.tarifa_minima ? `<span class="cft-neg" title="${l.acareacoes} acareações no dia: tarifa mínima">${l.acareacoes} acareações</span> ` : ""}${l.fixo && !l.tarifa_minima ? `<span class="cft-ajuda" title="Valor fixo do entregador (Valores fixos)">fixo</span> ` : ""}${_cfNum(l.valor)}</td>
             <td class="num">${l.pacotes_pagos.toLocaleString("pt-BR")}</td>
             <td class="num cft-pos"><strong>${_cfNum(l.total)}</strong></td>
         </tr>`).join("")

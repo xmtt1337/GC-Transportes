@@ -1,0 +1,49 @@
+// Fechamento › Acareações: tabela entregador × dia, filtro da tarifa mínima, pendências. Dados inventados.
+const test = require("node:test");
+const assert = require("node:assert");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+
+const DADOS = {
+    limite: 2,
+    arquivos: [{ envio_id: "e1", transportadora: "Imile", arquivo: "pnr.xlsx", total: 4 }],
+    dias: [
+        { driver: "Fulano de Teste - Vila", dia: "2026-09-21", acareacoes: 3, por_transportadora: { Imile: 2, Loggi: 1 }, tarifa_minima: true, valor_dia: 1.5, pacotes: 10, total: 15, na_regra: true },
+        { driver: "Beltrano Exemplo - Vila", dia: "2026-09-22", acareacoes: 1, por_transportadora: { Imile: 1 }, tarifa_minima: false, valor_dia: 2.5, pacotes: 4, total: 10, na_regra: true },
+    ],
+    lista: [{ driver: "Fulano de Teste - Vila", dia: "2026-09-21", codigo: "IM1", transportadora: "Imile", hora: "09:00" }],
+    sem_conversao: [{ usuario: "pessoa.sem.nome", transportadoras: ["Loggi"], acareacoes: 2 }],
+};
+
+function carregar() {
+    const els = new Map();
+    const el = (id) => { if (!els.has(id)) els.set(id, { id, innerHTML: "", value: "", checked: false, style: {} }); return els.get(id); };
+    const ctx = { console, API: "", token: "t", document: { getElementById: el } };
+    vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-acareacoes.js"), "utf8") + "\n;this._set = (d) => { _acDados = d; };", ctx);
+    return { ctx, el };
+}
+
+test("tabela: tarifa mínima em destaque, transportadoras do dia e pendência de usuário", () => {
+    const { ctx, el } = carregar();
+    ctx._set(DADOS);
+    ctx._acRender();
+    assert.match(el("ac-lista").innerHTML, /pessoa\.sem\.nome/);
+    assert.match(el("ac-lista").innerHTML, /pnr\.xlsx/);
+    const tb = el("ac-tbody").innerHTML;
+    assert.match(tb, /Tarifa mínima/);
+    assert.match(tb, /Imile 2 · Loggi 1/);
+    assert.match(tb, /Beltrano Exemplo/);
+});
+
+test("filtro só tarifa mínima e abrir o dia mostra os códigos", () => {
+    const { ctx, el } = carregar();
+    ctx._set(DADOS);
+    ctx._acRender();
+    el("ac-so-minima").checked = true;
+    ctx._acRenderTabela();
+    assert.doesNotMatch(el("ac-tbody").innerHTML, /Beltrano/);
+    ctx._acAlternar("Fulano de Teste - Vila|2026-09-21");
+    assert.match(el("ac-tbody").innerHTML, /IM1<\/b> · aberta às 09:00/);
+});

@@ -73,3 +73,21 @@ test("tocar no dia mostra os pedidos que afetaram, com quando deveriam ser entre
     assert.match(modal.innerHTML, /Cliente ausente · às 14:40/);
     assert.match(modal.innerHTML, /I9/);
 });
+
+test("dia com mais de 2 acareações: card mostra tarifa mínima e o dia lista as acareações de todas as transportadoras", () => {
+    const { ctx, modal } = carregar();
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.performance.dias[1] = { ...D2.performance.dias[1], acareacoes: 3, tarifa_minima: true, valor: 1.5 };
+    D2.insucessos.push(
+        { dia: "2026-09-22", tipo: "Acareação", transportadora: "Imile", codigo: "PNR1", motivo: "PNR aberta" },
+        { dia: "2026-09-22", tipo: "Acareação", transportadora: "Loggi", codigo: "PNR2", motivo: "PNR aberta" },
+        { dia: "2026-09-22", tipo: "Acareação", transportadora: "Loggi", codigo: "PNR3", motivo: "PNR aberta" });
+    ctx._fsRender(D2);
+    ctx._fsMostrarTransp(0);
+    assert.match(modal.innerHTML, /Tarifa mínima · 3 acareações/);
+    assert.match(modal.innerHTML, /_fsMostrarDia\(0, '2026-09-22'\)/, "dia na tarifa mínima abre");
+    ctx._fsMostrarDia(0, "2026-09-22");
+    assert.match(modal.innerHTML, /tarifa mínima, R\$ 1,50 por pacote/);
+    assert.match(modal.innerHTML, /PNR1/);
+    assert.match(modal.innerHTML, /PNR3/);
+});

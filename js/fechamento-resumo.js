@@ -200,7 +200,8 @@ function _rqPerfPorEntregador(linhas) {
         if (!por.has(l.driver)) por.set(l.driver, { entregador: l.driver, dias: [], polos: new Map(), sucessos: 0, onholds: 0, atrasos: 0, pacotes_pagos: 0, total: 0 });
         const r = por.get(l.driver);
         r.dias.push({ dia: l.dia, pct: l.pct, valor: l.valor, shopee: l.shopee || 0, onholds: l.onholds || 0,
-            outras_prazo: l.outras_prazo || 0, outras_atraso: l.outras_atraso || 0, pacotes_pagos: l.pacotes_pagos || 0, total: l.total || 0, fixo: !!l.fixo });
+            outras_prazo: l.outras_prazo || 0, outras_atraso: l.outras_atraso || 0, pacotes_pagos: l.pacotes_pagos || 0, total: l.total || 0, fixo: !!l.fixo,
+            acareacoes: l.acareacoes || 0, tarifa_minima: !!l.tarifa_minima });
         r.sucessos += (l.shopee || 0) + (l.outras_prazo || 0);
         r.onholds += l.onholds || 0;
         r.atrasos += l.outras_atraso || 0;
@@ -269,7 +270,7 @@ function _rqSituacao(p) {
     if (!p.data_entrega) return "Não entregue";
     return p.dentro_prazo === "Não" ? "Atrasado" : "No prazo";
 }
-const _RQ_AFETOU = ["Atrasado", "Não entregue", "Onhold"];
+const _RQ_AFETOU = ["Atrasado", "Não entregue", "Onhold", "Acareação"];
 
 /** Pedidos que contaram num dia: pacotes com perf_dia = dia + os onholds do dia. Os que afetaram primeiro. */
 function _rqPedidosDoDia(dia, pacotes, onholds) {
@@ -277,7 +278,7 @@ function _rqPedidosDoDia(dia, pacotes, onholds) {
         situacao: _rqSituacao(p), transportadora: p.transportadora, codigo: p.codigo, cidade: p.cidade || "",
         deveria: p.deve_ser_entregue || "", entregue: p.data_entrega || "", valor: p.valor_motorista || 0, motivo: "", ocorrencia: p.data_entrega || "" }));
     const os = onholds.filter(o => o.dia === dia).map(o => ({
-        situacao: "Onhold", transportadora: o.transportadora, codigo: o.codigo || "", cidade: "", deveria: "", entregue: "", valor: 0, motivo: o.motivo || "",
+        situacao: o.tipo || "Onhold", transportadora: o.transportadora, codigo: o.codigo || "", cidade: "", deveria: "", entregue: "", valor: 0, motivo: o.motivo || "",
         ocorrencia: _rqOcorrencia(o) }));
     const peso = (x) => (_RQ_AFETOU.includes(x.situacao) ? 0 : 1);
     return os.concat(ps).sort((a, b) => peso(a) - peso(b) || a.situacao.localeCompare(b.situacao) || String(a.codigo).localeCompare(String(b.codigo)));
@@ -302,7 +303,7 @@ async function _rqAbrirCardEntregador(nome) {
             fetch(`${_RQ_API()}/performance/insucessos?${qs}`, h).then(x => x.json()),
         ]);
         if (p.error || i.error) throw new Error(p.error || i.error);
-        _rqCard = { r, pacotes: p.pacotes || [], onholds: (i.linhas || []).filter(x => x.tipo === "Onhold"), abertos: new Set() };
+        _rqCard = { r, pacotes: p.pacotes || [], onholds: (i.linhas || []).filter(x => x.tipo === "Onhold" || x.tipo === "Acareação"), abertos: new Set() };
         _rqRenderCard();
     } catch (err) {
         const c = ov.querySelector(".rq-card");
@@ -341,14 +342,14 @@ function _rqRenderCard() {
                 <th style="text-align:right">Onholds</th><th style="text-align:right">Atrasados</th><th style="text-align:right">Performance</th>
                 <th style="text-align:right">R$/pacote</th><th style="text-align:right">Pagos</th><th style="text-align:right">Total</th><th></th></tr></thead>
             <tbody>${r.dias.map(d => {
-                const afetou = d.onholds + d.outras_atraso;
+                const afetou = d.onholds + d.outras_atraso + (d.acareacoes || 0);
                 const ped = abertos.has(d.dia) ? _rqPedidosDoDia(d.dia, pacotes, onholds) : null;
                 return `<tr>
                     <td>${_rqDiaCurto(d.dia)} <span class="cft-ajuda">${diaSem(d.dia)}</span></td>
                     <td class="num">${d.shopee}</td><td class="num">${d.outras_prazo}</td>
                     <td class="num${d.onholds ? " cft-neg" : ""}">${d.onholds}</td><td class="num${d.outras_atraso ? " cft-neg" : ""}">${d.outras_atraso}</td>
                     <td class="num ${_rqPctClasse(d.pct)}"><strong>${_rqPct(d.pct)}</strong></td>
-                    <td class="num">${d.fixo ? `<span class="cft-ajuda">fixo</span> ` : ""}${_rqNum(d.valor)}</td>
+                    <td class="num">${d.tarifa_minima ? `<span class="cft-neg" title="${d.acareacoes} acareações no dia: tarifa mínima">${d.acareacoes} acareações</span> ` : ""}${d.fixo && !d.tarifa_minima ? `<span class="cft-ajuda">fixo</span> ` : ""}${_rqNum(d.valor)}</td>
                     <td class="num">${d.pacotes_pagos}</td><td class="num">${_rqNum(d.total)}</td>
                     <td style="white-space:nowrap"><a href="#" class="cft-ordem" style="color:#60a5fa" onclick="event.preventDefault();_rqCardAlternarDia('${d.dia}')">${abertos.has(d.dia) ? "fechar" : (afetou ? "ver o que afetou" : "ver pedidos")}</a>
                         · <a href="#" class="cft-ordem" style="color:#60a5fa" onclick="event.preventDefault();_rqBaixarDia('${d.dia}')">baixar</a></td>

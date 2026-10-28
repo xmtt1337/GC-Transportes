@@ -4,7 +4,8 @@
 // da tela antiga: cards por transportadora, Adicionais e Descontos. Tocando na
 // transportadora abre um card com os dias; tocando no dia, os pedidos que afetaram
 // (onhold, atrasado, não entregue) com quando deveriam ser entregues. Tudo na tela, sem
-// baixar relatório. Chamado por _carregarPainel (fechamentos.js).
+// baixar relatório. Dia com mais de 2 acareações (PNR) aparece como "tarifa mínima", com as
+// acareações na lista do dia. Chamado por _carregarPainel (fechamentos.js).
 
 function _fsEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -83,6 +84,11 @@ function _fsRender(d) {
 
 // ── Card da transportadora: dias; tocando no dia, os pedidos que afetaram ──
 
+/** Dia da performance (com acareações / tarifa mínima), ou undefined. */
+function _fsPerfDia(dia) {
+    return ((_fsDados.performance || {}).dias || []).find(x => x.dia === dia);
+}
+
 /** Dias da transportadora: pacotes/valor do dia e quantos afetaram (Shopee: % do dia). */
 function _fsDiasDaTransp(nome) {
     const d = _fsDados;
@@ -91,14 +97,22 @@ function _fsDiasDaTransp(nome) {
         const p = perf.get(x.dia);
         const shopee = _fsEhShopee(nome);
         // Shopee: o valor do dia segue a performance, que junta todas as transportadoras.
-        const afetaram = shopee ? (p ? p.onholds + p.outras_atraso : 0) : x.atrasados + x.nao_entregues;
-        return { ...x, pct: p ? p.pct : null, por_pacote: shopee && p ? p.valor : (x.entregues ? x.valor / x.entregues : 0), afetaram };
+        const acars = _fsAfetantes(nome, x.dia).filter(i => i.tipo === "Acareação").length;
+        const afetaram = acars + (shopee ? (p ? p.onholds + p.outras_atraso : 0) : x.atrasados + x.nao_entregues);
+        return { ...x, pct: p ? p.pct : null, por_pacote: shopee && p ? p.valor : (x.entregues ? x.valor / x.entregues : 0), afetaram,
+            minima: !!(p && p.tarifa_minima), acareacoes: p ? p.acareacoes || 0 : 0 };
     });
 }
 
-/** Pedidos que afetaram um dia. Shopee: tudo que derrubou a performance do dia; outras: só dela. */
+/**
+ * Pedidos que afetaram um dia. Shopee: tudo que derrubou a performance do dia; outras: só
+ * dela. Dia na tarifa mínima: todas as acareações do dia (a regra junta as transportadoras).
+ */
 function _fsAfetantes(nome, dia) {
-    return (_fsDados.insucessos || []).filter(i => i.dia === dia && (_fsEhShopee(nome) || i.transportadora === nome));
+    const p = _fsPerfDia(dia);
+    const minima = !!(p && p.tarifa_minima);
+    return (_fsDados.insucessos || []).filter(i => i.dia === dia
+        && (_fsEhShopee(nome) || i.transportadora === nome || (minima && i.tipo === "Acareação")));
 }
 
 function _fsAbrirTransp(i) {
@@ -138,6 +152,7 @@ function _fsMostrarTransp(i) {
             <div class="fs-dia-linha">${x.entregues} entregue(s)</div>
             <div class="fs-dia-linha"><b>${_fsR(x.valor)}</b></div>
             ${shopee && x.pct != null ? `<div class="fs-dia-linha">${_fsPct(x.pct)} · <span class="fs-nw">${_fsR(x.por_pacote)}</span>/pct</div>` : ""}
+            ${x.minima ? `<div class="fs-dia-linha fs-neg">Tarifa mínima · ${x.acareacoes} acareações</div>` : ""}
             ${x.afetaram ? `<div class="fs-dia-alerta-txt">${x.afetaram} ocorrência(s) ›</div>` : ""}
         </div>`).join("") : `<div class="cft-ajuda">Sem dias nesta transportadora.</div>`}</div>`;
 }
@@ -149,6 +164,8 @@ function _fsMostrarDia(i, dia) {
         <div class="fs-modal-topo"><a href="#" class="fs-fechar" onclick="event.preventDefault();_fsMostrarTransp(${i})">‹ ${_fsEsc(t.nome)}</a>
             <a href="#" class="fs-fechar" onclick="event.preventDefault();_fsFechar()">Fechar</a></div>
         <div class="fs-sub">${_fsDia(dia)} ${_fsSem(dia)} · o que afetou o dia</div>
+        ${(() => { const p = _fsPerfDia(dia); return p && p.tarifa_minima ? `<div class="cft-ajuda fs-neg" style="margin-bottom:8px">${p.acareacoes} acareações abertas neste dia
+            (mais de 2): todos os pacotes do dia ficaram na tarifa mínima, ${_fsR(p.valor)} por pacote.</div>` : ""; })()}
         ${_fsEhShopee(t.nome) ? `<div class="cft-ajuda" style="margin-bottom:8px">O valor da Shopee no dia segue a performance, que conta também as outras transportadoras.</div>` : ""}
         <div class="extr-lista" style="padding:0">${lista.length ? lista.map(x => `<div class="extr-card">
             <div class="extr-top"><span class="extr-transp fs-neg">${_fsEsc(x.tipo)} · ${_fsEsc(x.transportadora)}</span><span class="extr-codigo">${_fsEsc(x.codigo || "")}</span></div>
