@@ -60,9 +60,6 @@ function abrirAcareacoes(event) {
                     `<option value="${i + 1}"${i + 1 === h.mes ? " selected" : ""}>${m}</option>`).join("")}</select>
                 <select class="fech-select" id="ac-ano" onchange="_acCarregar()">${[h.ano - 1, h.ano].map(a =>
                     `<option value="${a}"${a === h.ano ? " selected" : ""}>${a}</option>`).join("")}</select>
-                <label class="cft-btn primario" style="cursor:pointer">Anexar relatórios
-                    <input type="file" accept=".xlsx,.xls,.csv" multiple style="display:none" onchange="_acArquivos(this)">
-                </label>
                 <span class="cft-ajuda" id="ac-status"></span>
             </div>
         </div>
@@ -94,13 +91,22 @@ function _acRender(msg) {
         ${msg ? `<div class="cft-ajuda" style="margin:0 0 10px">${msg}</div>` : ""}
         <div class="cft-regras">
             <div class="cft-pend-titulo" style="color:#e2e8f0">Relatórios da quinzena</div>
-            ${arqs.length ? `<div class="cft-tabela-wrap"><table class="cft-tabela">
-                <thead><tr><th>Transportadora</th><th>Arquivo</th><th style="text-align:right">Acareações</th><th></th></tr></thead>
-                <tbody>${arqs.map(a => `<tr>
-                    <td>${_acEsc(a.transportadora)}</td><td>${_acEsc(a.arquivo || "(sem nome)")}</td><td class="num">${a.total}</td>
-                    <td style="width:1%;white-space:nowrap"><button class="cft-btn perigo" data-e="${_acEsc(a.envio_id)}" data-n="${_acEsc(a.arquivo || "")}"
-                        onclick="_acRemover(this.dataset.e, this.dataset.n)">Remover</button></td>
-                </tr>`).join("")}</tbody></table></div>` : `<div class="cft-ajuda">Nenhum relatório de acareação nesta quinzena ainda.</div>`}
+            <div class="cft-ajuda" style="margin-bottom:8px">Anexe o relatório de cada transportadora — a que ainda não tem fica marcada como "falta".
+                Se a transportadora não teve PNR, anexe o relatório mesmo assim (vazio ou sem nada na quinzena), pra ficar registrado.</div>
+            <div class="cft-tabela-wrap"><table class="cft-tabela">
+                <thead><tr><th>Transportadora</th><th>Situação</th><th>Arquivos</th><th></th></tr></thead>
+                <tbody>${_acSlots(d).map(t => {
+                    const seus = arqs.filter(a => a.transportadora === t.nome);
+                    return `<tr>
+                    <td><strong>${_acEsc(t.nome)}</strong></td>
+                    <td>${t.arquivos ? `<span class="cft-pos">Anexado</span> <span class="cft-ajuda">· ${t.pnr} PNR</span>` : `<span class="cft-aviso">Falta anexar</span>`}</td>
+                    <td>${seus.map(a => `<div class="cft-ajuda" style="display:flex;align-items:center;gap:8px">${_acEsc(a.arquivo || "(sem nome)")} · ${a.total} PNR
+                        <a href="#" class="cft-ajuda" style="text-decoration:underline" data-e="${_acEsc(a.envio_id)}" data-n="${_acEsc(a.arquivo || "")}"
+                        onclick="event.preventDefault();_acRemover(this.dataset.e, this.dataset.n)">remover</a></div>`).join("") || `<span class="cft-ajuda">—</span>`}</td>
+                    <td style="width:1%;white-space:nowrap"><label class="cft-btn${t.arquivos ? "" : " primario"}" style="cursor:pointer">Anexar
+                        <input type="file" accept=".xlsx,.xls,.csv" multiple style="display:none" data-t="${_acEsc(t.chave)}" onchange="_acArquivos(this, this.dataset.t)">
+                    </label></td>
+                </tr>`; }).join("")}</tbody></table></div>
         </div>
         ${_acRegraFixoHtml(d.regra_fixo)}
         ${pend.length ? `<div class="cft-pend">
@@ -117,7 +123,7 @@ function _acRender(msg) {
             </tr>`).join("")}</tbody></table></div>
         </div>` : ""}
         ${dias.length ? `<div class="cft-kpis">
-            <div class="cft-kpi"><div class="cft-kpi-valor">${(d.lista || []).length.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Acareações com entregador</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor">${(d.lista || []).length.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">PNR com entregador</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor${minimas.length ? " cft-neg" : ""}">${minimas.length}</div><div class="cft-kpi-rotulo">Dias na tarifa mínima</div></div>
             ${_acTransportadoras().map(([t, n]) => `<div class="cft-kpi"><div class="cft-kpi-valor">${n.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">${_acEsc(t)}</div></div>`).join("")}
         </div>
@@ -129,7 +135,7 @@ function _acRender(msg) {
                 <input type="checkbox" id="ac-so-minima" onchange="_acRenderTabela()"> só os dias na tarifa mínima</label>
         </div>
         <div class="cft-tabela-wrap" style="max-height:62vh;overflow-y:auto"><table class="cft-tabela">
-            <thead><tr><th>Dia</th><th>Entregador</th><th style="text-align:right">Acareações</th><th>Transportadoras</th>
+            <thead><tr><th>Dia</th><th>Entregador</th><th style="text-align:right">PNR no dia</th><th>Transportadora</th>
                 <th>Tarifa</th><th style="text-align:right">R$/pacote</th><th style="text-align:right">Pacotes</th><th style="text-align:right">Total do dia</th></tr></thead>
             <tbody id="ac-tbody"></tbody></table></div>` : ""}`;
     if (dias.length) _acRenderTabela();
@@ -202,7 +208,7 @@ function _acRenderTabela() {
             <td><span class="cft-ajuda">${aberto ? "▾" : "▸"}</span> ${_acDia(x.dia)} <span class="cft-ajuda">${_AC_SEM[new Date(x.dia + "T12:00:00Z").getUTCDay()]}</span></td>
             <td>${_acEsc(x.driver)}</td>
             <td class="num${x.tarifa_minima || (!x.fixo && (x.maior_usuario ?? x.acareacoes) > limite) ? " cft-neg" : ""}"><strong>${x.acareacoes}</strong></td>
-            <td class="cft-ajuda">${Object.entries(x.por_transportadora || {}).map(([t, n]) => `${_acEsc(t)} ${n}`).join(" · ")}</td>
+            <td class="cft-ajuda">${(e => e.length > 1 ? e.map(([t, n]) => `${_acEsc(t)} ${n}`).join(" · ") : e.map(([t]) => _acEsc(t)).join(""))(Object.entries(x.por_transportadora || {}))}</td>
             <td>${tarifa}</td>
             <td class="num">${x.valor_dia != null ? _acNum(x.valor_dia) : "—"}</td>
             <td class="num">${x.pacotes || 0}</td>
@@ -218,7 +224,13 @@ function _acAlternar(k) {
     _acRenderTabela();
 }
 
-async function _acArquivos(input) {
+/** Uma linha por transportadora (o backend manda; sem ele, as quatro sem nada). */
+function _acSlots(d) {
+    return (d && d.transportadoras) || [["shopee", "Shopee"], ["imile", "Imile"], ["anjun", "Anjun"], ["loggi", "Loggi"]]
+        .map(([chave, nome]) => ({ chave, nome, arquivos: 0, pnr: 0 }));
+}
+
+async function _acArquivos(input, transportadora) {
     const arquivos = [...(input.files || [])];
     input.value = "";
     const p = _acPeriodo();
@@ -229,7 +241,7 @@ async function _acArquivos(input) {
         try {
             const grid = await _cfLerGrid(file);
             const r = await fetch(`${_AC_API()}/acareacoes`, { method: "POST", headers: _acHeaders(true),
-                body: JSON.stringify({ ...p, arquivo: file.name, grid }) });
+                body: JSON.stringify({ ...p, arquivo: file.name, grid, transportadora: transportadora || undefined }) });
             const d = await r.json().catch(() => ({}));
             if (!r.ok) {
                 msgs.push(`<span class="cft-erro">${_acEsc(file.name)}: ${_acEsc(d.error || "erro ao enviar.")}</span>`

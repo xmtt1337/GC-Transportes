@@ -72,3 +72,18 @@ test("por transportadora: contagem de cada uma e filtro da tabela", () => {
     assert.match(el("ac-tbody").innerHTML, /Fulano de Teste/);
     assert.doesNotMatch(el("ac-tbody").innerHTML, /Beltrano/);
 });
+
+test("um espaço por transportadora: anexado ou falta; dia de uma só transportadora mostra só o nome", () => {
+    const { ctx, el } = carregar();
+    ctx._set({ ...DADOS, transportadoras: [
+        { chave: "shopee", nome: "Shopee", arquivos: 0, pnr: 0 }, { chave: "imile", nome: "Imile", arquivos: 1, pnr: 4 },
+        { chave: "anjun", nome: "Anjun", arquivos: 0, pnr: 0 }, { chave: "loggi", nome: "Loggi", arquivos: 0, pnr: 0 }] });
+    ctx._acRender();
+    const html = el("ac-lista").innerHTML;
+    assert.strictEqual((html.match(/Falta anexar/g) || []).length, 3);
+    assert.match(html, /Anexado<\/span> <span class="cft-ajuda">· 4 PNR/);
+    assert.match(html, /data-t="loggi" onchange="_acArquivos\(this, this\.dataset\.t\)"/);
+    const tb = el("ac-tbody").innerHTML;
+    assert.match(tb, /<td class="cft-ajuda">Imile<\/td>/, "Beltrano só tem Imile: sem número");
+    assert.match(tb, /Imile 2 · Loggi 1/, "mais de uma: com número");
+});
