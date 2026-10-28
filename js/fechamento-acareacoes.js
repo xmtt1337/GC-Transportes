@@ -205,7 +205,10 @@ function _acRenderTabela() {
         </tr>${aberto ? `<tr><td colspan="8" style="background:rgba(255,255,255,0.02);padding:8px 12px">
             ${(x.usuarios || []).map(u => `<div class="cft-ajuda" style="margin-bottom:2px">${u.passou ? `<span class="cft-neg">${_acEsc(u.usuario)}</span>` : _acEsc(u.usuario)}
                 (${_acEsc(u.transportadora)}): <b>${u.pnr} PNR</b> — ${u.passou ? "passou do limite: as entregas desse usuário no dia vão pra tarifa mínima" : "não passou: entregas desse usuário no valor normal"}</div>`).join("")}
-            ${x.tarifa_minima && !x.fixo && !x.pacotes_minima ? `<div class="cft-aviso" style="margin-bottom:4px">Nenhuma entrega desse usuário no dia: confira se o nome do usuário na PNR é o mesmo do relatório de entregas.</div>` : ""}
+            ${x.tarifa_minima && !x.fixo && !x.pacotes_minima ? `<div class="cft-aviso" style="margin-bottom:4px">Nenhuma entrega desse usuário no dia — as entregas pagas do dia são de outro usuário/transportadora (abaixo).
+                Se for o mesmo login com outro nome, ajuste a Conversão de nomes.</div>` : ""}
+            ${(x.entregas_usuarios || []).length ? `<div class="cft-ajuda" style="margin:4px 0 2px">Entregas pagas no dia: ${x.entregas_usuarios.map(e =>
+                `${_acEsc(e.transportadora)} · ${_acEsc(e.usuario || "(sem usuário)")}: <b>${e.entregas}</b>`).join(" &nbsp;|&nbsp; ")}</div>` : ""}
             ${(x.usuarios || []).length ? `<div style="height:6px"></div>` : ""}
             ${codigos.map(a => `<div class="cft-ajuda">${_acEsc(a.transportadora)}${a.usuario ? ` · ${_acEsc(a.usuario)}` : ""} · <b>${_acEsc(a.codigo || "(sem código)")}</b>${a.hora ? ` · aberta no dia seguinte às ${_acEsc(a.hora)}` : " · aberta no dia seguinte"}</div>`).join("")}
         </td></tr>` : ""}`;

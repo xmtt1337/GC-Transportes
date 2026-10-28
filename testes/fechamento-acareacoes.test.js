@@ -129,3 +129,16 @@ test("entregador fora dos polos da regra: 'não afeta a precificação nesse pol
     assert.ok(tb.indexOf("Pessoa Folga") < tb.indexOf("Pessoa Outro Polo"), "fora dos polos vai pro fim");
     assert.match(tb, /<td class="num"><strong>5<\/strong>/, "sem vermelho");
 });
+
+test("PNR de um usuário sem entrega dele no dia: aviso e de quem são as entregas pagas", () => {
+    const { ctx, el } = carregar();
+    ctx._set({ ...DADOS, dias: [{ driver: "Pessoa Teste - Vila", dia: "2026-10-14", acareacoes: 3, maior_usuario: 3, por_transportadora: { Shopee: 3 },
+        tarifa_minima: true, valor_dia: 2.5, valor_minima: 1.5, pacotes: 1, pacotes_minima: 0, total: 2.5, na_regra: true,
+        usuarios: [{ usuario: "PESSOA TESTE", transportadora: "Shopee", pnr: 3, passou: true }],
+        entregas_usuarios: [{ usuario: "pessoa.imile", transportadora: "Imile", entregas: 1 }] }], lista: [] });
+    ctx._acRender();
+    ctx._acAlternar("Pessoa Teste - Vila|2026-10-14");
+    const tb = el("ac-tbody").innerHTML;
+    assert.match(tb, /Nenhuma entrega desse usuário no dia — as entregas pagas do dia são de outro usuário/);
+    assert.match(tb, /Entregas pagas no dia: Imile · pessoa\.imile: <b>1<\/b>/);
+});
