@@ -4,8 +4,9 @@
 // da tela antiga: cards por transportadora, Adicionais e Descontos. Tocando na
 // transportadora abre um card com os dias; tocando no dia, os pedidos que afetaram
 // (onhold, atrasado, não entregue) com quando deveriam ser entregues. Tudo na tela, sem
-// baixar relatório. Dia com mais de 2 acareações (PNR) num mesmo usuário aparece como "tarifa mínima", com as
-// acareações na lista do dia. Chamado por _carregarPainel (fechamentos.js).
+// baixar relatório. "Performance por dia" na tela principal mostra os dias que tiveram onhold,
+// atraso ou PNR (quantos pacotes caíram pra tarifa mínima e quanto custou). PNR aparece na lista
+// do dia. Chamado por _carregarPainel (fechamentos.js).
 
 function _fsEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -53,6 +54,8 @@ function _fsRender(d) {
             <div class="pt-row"><span>Por pacote</span><span>${_fsR(t.por_pacote)}</span></div>
         </div>`).join("")}</div>
 
+        ${_fsHtmlPerformance(d)}
+
         <div class="painel-section-title">Adicionais</div>
         <div class="painel-adicionais">
             ${card("Acréscimos", [["Valor", _fsR(c.acrescimos)]])}
@@ -80,6 +83,76 @@ function _fsRender(d) {
                 ${a.descricao ? `<div class="extr-endereco">${_fsEsc(a.descricao)}</div>` : ""}
                 <div class="extr-bottom"><span class="extr-valor ${a.tipo === "acrescimo" ? "fs-pos" : "val-neg"}">${a.tipo === "acrescimo" ? "+" : "−"} ${_fsR(a.valor)}</span></div></div>`).join("")}</div>
         </div></div>` : ""}`;
+}
+
+// ── Performance por dia (tela principal): só os dias que tiveram algo contra ──
+
+/** Menor e maior R$/pacote da tabela no dia (tarifa mínima e o valor de 100%). */
+function _fsFaixa(dia) {
+    const f = (_fsDados || {}).faixas || {};
+    const lista = (_fsSem(dia) === "dom" ? f.domingo : f.semana) || [];
+    const v = lista.map(x => Number(x.valor)).filter(n => n > 0);
+    return v.length ? { min: Math.min(...v), max: Math.max(...v) } : { min: _fsSem(dia) === "dom" ? 1.8 : 1.5, max: null };
+}
+
+/** Quanto a PNR tirou do dia: entregas que caíram × (valor do dia − tarifa mínima). Fixo: não dá pra saber daqui. */
+function _fsPerdaPnr(p) {
+    if (!p || !p.tarifa_minima || p.fixo) return 0;
+    return Math.max(0, Math.round((p.pacotes_minima || 0) * (p.valor - _fsFaixa(p.dia).min) * 100) / 100);
+}
+
+const _fsAfetouDia = (p) => (p.onholds || 0) + (p.outras_atraso || 0) + (p.acareacoes || 0) > 0 || p.tarifa_minima;
+
+function _fsHtmlPerformance(d) {
+    const perf = d.performance;
+    if (!perf || !(perf.dias || []).length) return "";
+    const afetados = perf.dias.filter(_fsAfetouDia);
+    const soma = (f) => perf.dias.reduce((s, p) => s + (f(p) || 0), 0);
+    const pacMin = soma(p => p.tarifa_minima ? (p.fixo ? p.pacotes_pagos : p.pacotes_minima) : 0);
+    const perda = soma(_fsPerdaPnr);
+    const mini = (rot, v, neg) => `<div class="fs-mini"><span>${rot}</span><b${neg ? ` class="fs-neg"` : ""}>${v}</b></div>`;
+    return `<div class="painel-section-title">Performance por dia</div>
+        <div class="fs-resumo">
+            ${mini("Performance da quinzena", _fsPct(perf.pct))}
+            ${mini("Dias com ocorrência", `${afetados.length} de ${perf.dias.length}`)}
+            ${mini("Onholds e atrasados", soma(p => (p.onholds || 0) + (p.outras_atraso || 0)).toLocaleString("pt-BR"))}
+            ${mini("PNR", soma(p => p.acareacoes).toLocaleString("pt-BR"))}
+            ${pacMin ? mini("Pacotes na tarifa mínima", pacMin.toLocaleString("pt-BR"), true) : ""}
+            ${perda ? mini("Perdido com PNR", "−" + _fsR(perda), true) : ""}
+        </div>
+        ${afetados.length ? `<div class="fs-sub">Toque no dia pra ver os pedidos que afetaram.</div>
+        <div class="fs-dias" style="margin-bottom:18px">${afetados.map(_fsCardDia).join("")}</div>`
+            : `<div class="cft-ajuda" style="margin-bottom:18px">Nenhum dia com ocorrência nesta quinzena.</div>`}`;
+}
+
+function _fsCardDia(p) {
+    const fx = _fsFaixa(p.dia);
+    const perda = _fsPerdaPnr(p);
+    return `<div class="fs-dia fs-clicavel fs-dia-alerta" onclick="_fsAbrirDia('${p.dia}')">
+        <div class="fs-dia-topo"><b>${_fsDia(p.dia)}</b> <span>${_fsSem(p.dia)}</span></div>
+        <div class="fs-dia-linha">Performance <b>${_fsPct(p.pct)}</b></div>
+        <div class="fs-dia-linha">${p.fixo ? "Valor fixo" : `<span class="fs-nw">${_fsR(p.valor)}</span>/pct`}${!p.fixo && fx.max && p.valor < fx.max
+            ? ` <span class="fs-neg fs-nw" title="Quanto ficou abaixo do valor de 100% de performance, por pacote">(−${_fsR(fx.max - p.valor)})</span>` : ""}</div>
+        ${p.onholds ? `<div class="fs-dia-linha">${p.onholds} onhold(s)</div>` : ""}
+        ${p.outras_atraso ? `<div class="fs-dia-linha">${p.outras_atraso} atrasado(s)</div>` : ""}
+        ${p.acareacoes ? `<div class="fs-dia-linha">${p.acareacoes} PNR</div>` : ""}
+        ${p.tarifa_minima ? `<div class="fs-dia-linha fs-neg">${p.fixo ? `Fixo com desconto em ${p.pacotes_pagos} pacotes`
+            : `${p.pacotes_minima || 0} pacote(s) na tarifa mínima (${_fsR(fx.min)})`}</div>` : ""}
+        ${perda ? `<div class="fs-dia-linha fs-neg">−${_fsR(perda)} com PNR</div>` : ""}
+        <div class="fs-dia-alerta-txt">ver pedidos ›</div>
+    </div>`;
+}
+
+/** Abre o dia direto da tela principal: todos os pedidos que afetaram, de todas as transportadoras. */
+function _fsAbrirDia(dia) {
+    _fsFechar();
+    const ov = document.createElement("div");
+    ov.className = "cft-modal-overlay";
+    ov.id = "fs-modal";
+    ov.innerHTML = `<div class="cft-modal fs-modal"></div>`;
+    ov.addEventListener("click", e => { if (e.target === ov) _fsFechar(); });
+    document.body.appendChild(ov);
+    _fsMostrarDia(-1, dia);
 }
 
 // ── Card da transportadora: dias; tocando no dia, os pedidos que afetaram ──
@@ -152,24 +225,40 @@ function _fsMostrarTransp(i) {
             <div class="fs-dia-linha">${x.entregues} entregue(s)</div>
             <div class="fs-dia-linha"><b>${_fsR(x.valor)}</b></div>
             ${shopee && x.pct != null ? `<div class="fs-dia-linha">${_fsPct(x.pct)} · <span class="fs-nw">${_fsR(x.por_pacote)}</span>/pct</div>` : ""}
-            ${x.minima ? `<div class="fs-dia-linha fs-neg">${(_fsPerfDia(x.dia) || {}).fixo ? "Fixo com desconto" : "Tarifa mínima"} · ${x.acareacoes} acareações</div>` : ""}
+            ${x.minima ? (() => { const p = _fsPerfDia(x.dia) || {}; return `<div class="fs-dia-linha fs-neg">${p.fixo ? "Fixo com desconto"
+                : `Tarifa mínima em ${p.pacotes_minima || 0} pct`} · ${x.acareacoes} PNR</div>`; })() : ""}
             ${x.afetaram ? `<div class="fs-dia-alerta-txt">${x.afetaram} ocorrência(s) ›</div>` : ""}
         </div>`).join("") : `<div class="cft-ajuda">Sem dias nesta transportadora.</div>`}</div>`;
 }
 
+// i = transportadora aberta; -1 = veio da Performance por dia (mostra tudo do dia).
 function _fsMostrarDia(i, dia) {
-    const t = _fsDados.transportadoras[i];
-    const lista = _fsAfetantes(t.nome, dia);
+    const t = i >= 0 ? _fsDados.transportadoras[i] : null;
+    const lista = t ? _fsAfetantes(t.nome, dia) : (_fsDados.insucessos || []).filter(x => x.dia === dia);
+    const p = _fsPerfDia(dia);
+    const fx = _fsFaixa(dia);
+    const perda = _fsPerdaPnr(p);
+    const mini = (rot, v, neg) => `<div class="fs-mini"><span>${rot}</span><b${neg ? ` class="fs-neg"` : ""}>${v}</b></div>`;
     document.querySelector("#fs-modal .fs-modal").innerHTML = `
-        <div class="fs-modal-topo"><a href="#" class="fs-fechar" onclick="event.preventDefault();_fsMostrarTransp(${i})">‹ ${_fsEsc(t.nome)}</a>
+        <div class="fs-modal-topo">${t ? `<a href="#" class="fs-fechar" onclick="event.preventDefault();_fsMostrarTransp(${i})">‹ ${_fsEsc(t.nome)}</a>` : "<span></span>"}
             <a href="#" class="fs-fechar" onclick="event.preventDefault();_fsFechar()">Fechar</a></div>
         <div class="fs-sub">${_fsDia(dia)} ${_fsSem(dia)} · o que afetou o dia</div>
-        ${(() => { const p = _fsPerfDia(dia); return p && p.tarifa_minima ? `<div class="cft-ajuda fs-neg" style="margin-bottom:8px">${p.acareacoes} acareações abertas neste dia
-            ${p.fixo ? `(acima do limite pras baixas do dia): todos os pacotes do dia ficaram no valor fixo com desconto, ${_fsR(p.valor)} por pacote.`
-                : `(passou do limite no usuário ${_fsEsc(p.usuarios_minima || "")}): ${p.pacotes_minima || 0} entrega(s) desse usuário ficaram na tarifa mínima.`}</div>` : ""; })()}
-        ${_fsEhShopee(t.nome) ? `<div class="cft-ajuda" style="margin-bottom:8px">O valor da Shopee no dia segue a performance, que conta também as outras transportadoras.</div>` : ""}
+        ${p ? `<div class="fs-resumo">
+            ${mini("Performance", _fsPct(p.pct))}
+            ${mini("R$ por pacote", p.fixo ? "Fixo" : _fsR(p.valor))}
+            ${mini("Onholds e atrasados", (p.onholds || 0) + (p.outras_atraso || 0), (p.onholds || 0) + (p.outras_atraso || 0) > 0)}
+            ${mini("PNR", p.acareacoes || 0, (p.acareacoes || 0) > 0)}
+            ${p.tarifa_minima && !p.fixo ? mini("Na tarifa mínima", `${p.pacotes_minima || 0} pct`, true) : ""}
+            ${perda ? mini("Perdido com PNR", "−" + _fsR(perda), true) : ""}
+        </div>` : ""}
+        ${p && !p.fixo && fx.max && p.valor < fx.max ? `<div class="cft-ajuda" style="margin-bottom:8px">Com 100% de performance seria ${_fsR(fx.max)} por pacote;
+            os onholds e atrasados abaixo baixaram pra ${_fsR(p.valor)}.</div>` : ""}
+        ${p && p.tarifa_minima ? `<div class="cft-ajuda fs-neg" style="margin-bottom:8px">${p.acareacoes} PNR contaram neste dia (abertas no dia seguinte)
+            ${p.fixo ? `— acima do limite pras baixas do dia: todos os pacotes do dia ficaram no valor fixo com desconto, ${_fsR(p.valor)} por pacote.`
+                : `— passou do limite no usuário ${_fsEsc(p.usuarios_minima || "")}: ${p.pacotes_minima || 0} entrega(s) desse usuário ficaram na tarifa mínima (${_fsR(fx.min)}).`}</div>` : ""}
+        ${t && _fsEhShopee(t.nome) ? `<div class="cft-ajuda" style="margin-bottom:8px">O valor da Shopee no dia segue a performance, que conta também as outras transportadoras.</div>` : ""}
         <div class="extr-lista" style="padding:0">${lista.length ? lista.map(x => `<div class="extr-card">
-            <div class="extr-top"><span class="extr-transp fs-neg">${_fsEsc(x.tipo)} · ${_fsEsc(x.transportadora)}</span><span class="extr-codigo">${_fsEsc(x.codigo || "")}</span></div>
+            <div class="extr-top"><span class="extr-transp fs-neg">${x.tipo === "Acareação" ? "PNR" : _fsEsc(x.tipo)} · ${_fsEsc(x.transportadora)}</span><span class="extr-codigo">${_fsEsc(x.codigo || "")}</span></div>
             <div class="extr-endereco">${x.deveria ? `Deveria ser entregue ${_fsDia(x.deveria)}` : ""}${x.entregue ? ` · entregue ${_fsDia(x.entregue)}` : (x.tipo === "Não entregue" ? " · não entregue" : "")}
                 ${x.motivo ? `${_fsEsc(x.motivo)}${x.ocorrencia_hora ? ` · às ${_fsEsc(x.ocorrencia_hora)}` : ""}` : ""}</div>
         </div>`).join("") : `<div class="extr-vazio">Sem detalhe dos pedidos desse dia.</div>`}</div>`;

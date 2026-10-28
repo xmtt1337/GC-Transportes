@@ -26,7 +26,7 @@ const D = {
 
 function carregar() {
     const els = new Map();
-    const el = (id) => { if (!els.has(id)) els.set(id, { id, innerHTML: "", style: {} }); return els.get(id); };
+    const el = (id) => { if (!els.has(id)) els.set(id, { id, innerHTML: "", style: {}, remove() {} }); return els.get(id); };
     const modal = { innerHTML: "" };
     const ctx = { console, document: {
         getElementById: el, querySelector: () => modal,
@@ -84,10 +84,33 @@ test("dia com mais de 2 acareações: card mostra tarifa mínima e o dia lista a
         { dia: "2026-09-22", tipo: "Acareação", transportadora: "Loggi", codigo: "PNR3", motivo: "PNR aberta" });
     ctx._fsRender(D2);
     ctx._fsMostrarTransp(0);
-    assert.match(modal.innerHTML, /Tarifa mínima · 3 acareações/);
+    assert.match(modal.innerHTML, /Tarifa mínima em 4 pct · 3 PNR/);
     assert.match(modal.innerHTML, /_fsMostrarDia\(0, '2026-09-22'\)/, "dia na tarifa mínima abre");
     ctx._fsMostrarDia(0, "2026-09-22");
-    assert.match(modal.innerHTML, /fulano\.login\): 4 entrega\(s\) desse usuário ficaram na tarifa mínima/);
+    assert.match(modal.innerHTML, /usuário fulano\.login: 4 entrega\(s\) desse usuário ficaram na tarifa mínima/);
     assert.match(modal.innerHTML, /PNR1/);
     assert.match(modal.innerHTML, /PNR3/);
+});
+
+test("Performance por dia: resumo, só os dias com ocorrência, PNR em pacotes e em reais; tocando abre o dia com tudo", () => {
+    const { ctx, el, modal } = carregar();
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.faixas = { semana: [{ ate: 90, valor: 1.5 }, { ate: 100, valor: 2.5 }], domingo: [{ ate: 100, valor: 1.8 }, { ate: null, valor: 2.8 }] };
+    D2.performance.dias[0] = { ...D2.performance.dias[0], valor: 2.3, acareacoes: 4, tarifa_minima: true, pacotes_minima: 40, usuarios_minima: "fulano.login" };
+    D2.insucessos.push({ dia: "2026-09-21", tipo: "Acareação", transportadora: "Loggi", codigo: "PNR9", motivo: "PNR aberta no dia seguinte" });
+    ctx._fsRender(D2);
+    const html = el("fech-sistema").innerHTML;
+    assert.match(html, /Performance por dia/);
+    assert.match(html, /Dias com ocorrência<\/span><b>1 de 2<\/b>/);
+    assert.match(html, /Pacotes na tarifa mínima<\/span><b class="fs-neg">40<\/b>/);
+    assert.match(html, /Perdido com PNR<\/span><b class="fs-neg">−R\$ 32,00<\/b>/, "40 × (2,30 − 1,50)");
+    assert.match(html, /_fsAbrirDia\('2026-09-21'\)/);
+    assert.doesNotMatch(html, /_fsAbrirDia\('2026-09-22'\)/, "dia sem ocorrência não aparece");
+    assert.match(html, /40 pacote\(s\) na tarifa mínima \(R\$ 1,50\)/);
+    assert.match(html, /\(−R\$ 0,20\)/, "abaixo do valor de 100%");
+    ctx._fsAbrirDia("2026-09-21");
+    assert.match(modal.innerHTML, /Com 100% de performance seria R\$ 2,50 por pacote/);
+    assert.match(modal.innerHTML, /PNR · Loggi/);
+    assert.match(modal.innerHTML, /Atrasado · Imile/, "de todas as transportadoras");
+    assert.doesNotMatch(modal.innerHTML, /_fsMostrarTransp/, "sem voltar pra transportadora");
 });
