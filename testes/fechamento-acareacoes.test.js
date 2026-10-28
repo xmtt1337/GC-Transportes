@@ -116,3 +116,16 @@ test("PNR por usuário: só as entregas do usuário que passou caem; abrir o dia
     assert.match(tb, /TITULAR TESTE<\/span>\s*\(Shopee\): <b>3 PNR<\/b> — passou do limite/);
     assert.match(tb, /Ajudante Teste\s*\(Shopee\): <b>1 PNR<\/b> — não passou/);
 });
+
+test("entregador fora dos polos da regra: 'não afeta a precificação nesse polo', sem vermelho e no fim da lista", () => {
+    const { ctx, el } = carregar();
+    ctx._set({ ...DADOS, dias: [
+        { driver: "Pessoa Outro Polo - Longe", dia: "2026-10-06", acareacoes: 5, maior_usuario: 5, por_transportadora: { Loggi: 5 }, tarifa_minima: false, pacotes: 0, na_regra: false, fora_dos_polos: true },
+        { driver: "Pessoa Folga - Vila", dia: "2026-10-15", acareacoes: 3, maior_usuario: 3, por_transportadora: { Shopee: 3 }, tarifa_minima: false, pacotes: 0, na_regra: false, fora_dos_polos: false }] });
+    ctx._acRender();
+    const tb = el("ac-tbody").innerHTML;
+    assert.match(tb, /não afeta a precificação nesse polo/);
+    assert.match(tb, /sem entrega no dia/);
+    assert.ok(tb.indexOf("Pessoa Folga") < tb.indexOf("Pessoa Outro Polo"), "fora dos polos vai pro fim");
+    assert.match(tb, /<td class="num"><strong>5<\/strong>/, "sem vermelho");
+});

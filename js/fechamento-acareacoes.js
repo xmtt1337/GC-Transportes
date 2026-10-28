@@ -171,7 +171,9 @@ function _acRenderTabela() {
     const so = (document.getElementById("ac-so-minima") || {}).checked;
     const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
     const linhas = (d.dias || []).filter(x => (!so || x.tarifa_minima) && (!busca || norm(x.driver).includes(norm(busca)))
-        && (!transp || (x.por_transportadora || {})[transp]));
+        && (!transp || (x.por_transportadora || {})[transp]))
+        // Fora dos polos da regra (ex.: Joaçaba) vai pro fim — não mexe no valor.
+        .sort((a, b) => (a.fora_dos_polos ? 1 : 0) - (b.fora_dos_polos ? 1 : 0));
     const limite = d.limite ?? 2;
     document.getElementById("ac-tbody").innerHTML = linhas.length ? linhas.map(x => {
         const k = x.driver + "|" + x.dia;
@@ -180,6 +182,7 @@ function _acRenderTabela() {
         // Sem fixo: só as entregas do usuário que passou caem (o resto do dia segue normal).
         const tarifa = x.tarifa_minima ? (x.fixo ? `<span class="cft-neg">Fixo −${_acPct(descFixo)}%</span>`
                 : `<span class="cft-neg">Tarifa mínima</span> <span class="cft-ajuda">em ${x.pacotes_minima || 0} de ${x.pacotes || 0} pacotes</span>`)
+            : x.fora_dos_polos ? `<span class="cft-ajuda" title="Entregador de polo fora da regra da performance (só Caçador e Videira): a PNR não mexe no valor dele.">não afeta a precificação nesse polo</span>`
             : x.excecao ? `<span class="cft-ajuda" title="Exceção do entregador (Regras e configurações)">exceção: ${_acEsc(x.excecao)}</span>`
             : x.fixo ? `<span class="cft-ajuda">fixo</span>`
             : (x.maior_usuario ?? x.acareacoes) > limite
@@ -191,7 +194,7 @@ function _acRenderTabela() {
         return `<tr style="cursor:pointer" title="Clique pra ver os códigos" data-k="${_acEsc(k)}" onclick="_acAlternar(this.dataset.k)">
             <td><span class="cft-ajuda">${aberto ? "▾" : "▸"}</span> ${_acDia(x.dia)} <span class="cft-ajuda">${_AC_SEM[new Date(x.dia + "T12:00:00Z").getUTCDay()]}</span></td>
             <td>${_acEsc(x.driver)}</td>
-            <td class="num${x.tarifa_minima || (!x.fixo && (x.maior_usuario ?? x.acareacoes) > limite) ? " cft-neg" : ""}"><strong>${x.acareacoes}</strong></td>
+            <td class="num${x.tarifa_minima || (!x.fixo && !x.fora_dos_polos && (x.maior_usuario ?? x.acareacoes) > limite) ? " cft-neg" : ""}"><strong>${x.acareacoes}</strong></td>
             <td class="cft-ajuda">${(e => e.length > 1 ? e.map(([t, n]) => `${_acEsc(t)} ${n}`).join(" · ") : e.map(([t]) => _acEsc(t)).join(""))(Object.entries(x.por_transportadora || {}))}</td>
             <td>${tarifa}</td>
             <td class="num">${x.valor_dia == null ? "—" : x.tarifa_minima && !x.fixo && x.pacotes_minima
