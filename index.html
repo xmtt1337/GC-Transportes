@@ -4888,7 +4888,7 @@ if (_BASE) {
 <script src="js/whatsapp-conversa.js?v=20261021a"></script>
 <script src="js/modals.js?v=20260924a"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
-<script src="js/fechamento-criar.js?v=20261027a"></script>
+<script src="js/fechamento-criar.js?v=20261028a"></script>
 <script src="js/ticketlog-info.js?v=20261028a"></script>
 <script src="js/fechamento-resumo.js?v=20261027b"></script>
 <script src="js/fechamento-ajustes.js?v=20261028c"></script>
@@ -5051,6 +5051,7 @@ if (_BASE) {
                 <span>
                     <span class="cft-ajuda" id="cf-pub-status"></span>
                     <button class="cft-btn" id="cf-pub-btn" style="display:none" onclick="_cfPublicar()"></button>
+                    <button class="cft-btn" id="cf-pub-alguns-btn" style="display:none" onclick="_cfAbrirPubAlguns()">Publicar para alguns</button>
                     <button class="cft-btn" onclick="_cfRecalcularTodas(this)" title="Trata de novo todos os relatórios da quinzena (depois de mexer em conversões, preços, regras de prazo)">Recalcular todas</button>
                     <button class="cft-btn" id="cf-ticketlog-btn" onclick="_cfAbrirTicketlog()">Descontos: Ticketlog</button>
                     <button class="cft-btn" id="cf-fixos-btn" onclick="_cfAbrirFixos()">Valores fixos (Shopee)</button>
@@ -5059,6 +5060,7 @@ if (_BASE) {
                     <button class="cft-btn" id="cf-regras-btn" onclick="_cfAbrirRegras()">Regras de prazo</button>
                 </span>
             </div>
+            <div class="cft-regras" id="cf-pub-alguns" style="display:none"></div>
             <div class="cft-regras" id="cf-ticketlog" style="display:none"></div>
             <div class="cft-regras" id="cf-fixos" style="display:none"></div>
             <div class="cft-regras" id="cf-cidades" style="display:none"></div>

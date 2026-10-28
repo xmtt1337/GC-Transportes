@@ -1359,6 +1359,7 @@ async function _cfRecalcularTodas(btn) {
 // Publicar a quinzena pros entregadores (o mesmo botão do Resumo da Quinzena): publicada,
 // o Meus Fechamentos deles mostra o fechamento do sistema em vez da planilha.
 let _cfPublicadoEm = null;
+let _cfPubInfo = { selecionados: [], entregadores: [] };
 function _cfCarregarPublicacao() {
     const btn = document.getElementById("cf-pub-btn");
     const st = document.getElementById("cf-pub-status");
@@ -1369,12 +1370,84 @@ function _cfCarregarPublicacao() {
     .then(d => {
         if (chave !== `${_cfAno}-${_cfMes}-${_cfQuinzena}`) return; // trocou de quinzena
         _cfPublicadoEm = d.publicado_em || null;
+        _cfPubInfo = { selecionados: d.selecionados || [], entregadores: d.entregadores || [] };
+        const nSel = _cfPubInfo.selecionados.length;
+        const btnAlguns = document.getElementById("cf-pub-alguns-btn");
+        if (btnAlguns) {
+            // publicado pra todos: escolher alguns não muda nada, some o botão
+            btnAlguns.style.display = _cfPublicadoEm ? "none" : "";
+            btnAlguns.innerText = nSel ? `Publicado para ${nSel} entregador(es)` : "Publicar para alguns";
+        }
         btn.style.display = "";
         btn.className = "cft-btn" + (_cfPublicadoEm ? "" : " primario");
         btn.innerText = _cfPublicadoEm ? "Despublicar" : "Publicar para os entregadores";
         st.innerHTML = _cfPublicadoEm ? `<span class="cft-pos">Publicado</span> em ${new Date(_cfPublicadoEm).toLocaleDateString("pt-BR")} ·` : "";
     }).catch(() => {});
 }
+// Publicar só pra alguns entregadores: caixinhas dos entregadores da quinzena, com busca.
+function _cfAbrirPubAlguns() {
+    const el = document.getElementById("cf-pub-alguns");
+    if (el.style.display !== "none") { el.style.display = "none"; return; }
+    el.style.display = "";
+    _cfRenderPubAlguns();
+}
+function _cfRenderPubAlguns() {
+    const el = document.getElementById("cf-pub-alguns");
+    const marcados = new Set(_cfPubInfo.selecionados);
+    // quem foi marcado e não tem mais pacote também aparece (pra poder desmarcar)
+    const todos = [...new Set(_cfPubInfo.entregadores.concat(_cfPubInfo.selecionados))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    el.innerHTML = `
+        <div class="cft-barra" style="margin-top:0;justify-content:space-between">
+            <span class="cft-pend-titulo" style="color:#e2e8f0;margin:0">Publicar só para alguns entregadores</span>
+            <span class="cft-ajuda" id="cf-pub-alguns-n"></span>
+        </div>
+        <div class="cft-ajuda" style="margin-bottom:8px">Só os marcados veem este fechamento no Meus Fechamentos; os outros continuam vendo a planilha.
+            Bom pra testar antes de publicar para todos.</div>
+        <div class="cft-barra" style="margin:0 0 8px;flex-wrap:wrap">
+            <div class="adm-search-input-area" style="max-width:280px;margin:0"><input type="text" id="cf-pub-busca" placeholder="Buscar entregador..." oninput="_cfFiltrarPubAlguns()"></div>
+            <a href="#" class="cft-ordem" style="color:#60a5fa" onclick="event.preventDefault();_cfMarcarPubAlguns(true)">marcar os visíveis</a>
+            <a href="#" class="cft-ordem" style="color:#60a5fa" onclick="event.preventDefault();_cfMarcarPubAlguns(false)">desmarcar todos</a>
+        </div>
+        <div class="cf-pub-lista" style="max-height:320px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 14px">
+            ${todos.map(n => `<label class="cft-ajuda cf-pub-item" data-n="${_cfEsc(_cfChave(n))}" style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#cbd5e1">
+                <input type="checkbox" class="cf-pub-cb" value="${_cfEsc(n)}"${marcados.has(n) ? " checked" : ""} onchange="_cfContarPubAlguns()"> ${_cfEsc(n)}</label>`).join("")
+                || `<span class="cft-ajuda">Nenhum entregador nesta quinzena ainda.</span>`}
+        </div>
+        <div class="cft-barra" style="margin:10px 0 0">
+            <button class="cft-btn primario" onclick="_cfSalvarPubAlguns(this)">Salvar</button>
+            <span class="cft-ajuda" id="cf-pub-alguns-status"></span>
+        </div>`;
+    _cfContarPubAlguns();
+}
+function _cfFiltrarPubAlguns() {
+    const b = _cfChave(document.getElementById("cf-pub-busca").value || "");
+    document.querySelectorAll(".cf-pub-item").forEach(x => { x.style.display = !b || x.dataset.n.includes(b) ? "" : "none"; });
+}
+function _cfMarcarPubAlguns(marcar) {
+    document.querySelectorAll(".cf-pub-item").forEach(x => {
+        if (!marcar || x.style.display !== "none") x.querySelector("input").checked = marcar;
+    });
+    _cfContarPubAlguns();
+}
+function _cfContarPubAlguns() {
+    const n = [...document.querySelectorAll(".cf-pub-cb")].filter(c => c.checked).length;
+    const el = document.getElementById("cf-pub-alguns-n");
+    if (el) el.innerText = `${n} marcado(s)`;
+}
+async function _cfSalvarPubAlguns(btn) {
+    const drivers = [...document.querySelectorAll(".cf-pub-cb")].filter(c => c.checked).map(c => c.value);
+    const st = document.getElementById("cf-pub-alguns-status");
+    btn.disabled = true;
+    try {
+        const r = await fetch(`${_CF_API()}/publicacao/entregadores`, { method: "PUT", headers: _cfHeaders(true),
+            body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, drivers }) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { st.innerText = d.error || "Erro ao salvar."; return; }
+        st.innerText = drivers.length ? `Publicado para ${drivers.length} entregador(es).` : "Ninguém marcado: só a planilha.";
+        _cfCarregarPublicacao();
+    } catch (_) { st.innerText = "Erro ao salvar."; } finally { btn.disabled = false; }
+}
+
 function _cfPublicar() {
     const publicar = !_cfPublicadoEm;
     gcConfirm(publicar

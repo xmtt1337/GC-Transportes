@@ -506,3 +506,15 @@ test("publicar: botão mostra o estado da quinzena e manda publicar/despublicar"
     assert.strictEqual(els["cf-pub-btn"].innerText, "Despublicar");
     assert.match(els["cf-pub-status"].innerHTML, /Publicado/);
 });
+
+test("publicar para alguns: manda só os marcados", async () => {
+    const ctx = carregar();
+    const caixas = [{ value: "Fulano de Teste - Vila Teste", checked: true }, { value: "Beltrano - Morro", checked: false }];
+    ctx.document = { querySelectorAll: () => caixas, getElementById: () => ({ style: {}, innerText: "", innerHTML: "" }) };
+    let corpo = null;
+    ctx.fetch = async (u, o) => { if (o && o.method === "PUT") corpo = [u, JSON.parse(o.body)]; return { ok: true, json: async () => ({ success: true, selecionados: [], entregadores: [] }) }; };
+    vm.runInContext("_cfMes = 10; _cfAno = 2026; _cfQuinzena = 1;", ctx);
+    await ctx._cfSalvarPubAlguns({ disabled: false });
+    assert.deepStrictEqual(corpo, ["https://api.teste/admin/fechamento-transportadoras/publicacao/entregadores",
+        { mes: 10, ano: 2026, quinzena: 1, drivers: ["Fulano de Teste - Vila Teste"] }]);
+});
