@@ -101,11 +101,13 @@ test("Performance por dia: resumo, só os dias com ocorrência, PNR em pacotes e
     ctx._fsRender(D2);
     const html = el("fech-sistema").innerHTML;
     assert.match(html, /Performance por dia/);
-    assert.match(html, /Dias com ocorrência<\/span><b>1 de 2<\/b>/);
+    assert.match(html, /Dias com perda<\/span><b>1 de 2<\/b>/);
     assert.match(html, /Pacotes na tarifa mínima<\/span><b class="fs-neg">40<\/b>/);
     assert.match(html, /Perdido com PNR<\/span><b class="fs-neg">−R\$ 32,00<\/b>/, "40 × (2,30 − 1,50)");
     assert.match(html, /_fsAbrirDia\('2026-09-21'\)/);
-    assert.doesNotMatch(html, /_fsAbrirDia\('2026-09-22'\)/, "dia sem ocorrência não aparece");
+    assert.match(html, /fs-dia fs-clicavel" onclick="_fsAbrirDia\('2026-09-22'\)/, "dia sem perda aparece, sem destaque");
+    assert.match(html, /fs-dia fs-clicavel fs-dia-alerta" onclick="_fsAbrirDia\('2026-09-21'\)/);
+    assert.doesNotMatch(html, /Performance da quinzena/, "sem a média da quinzena");
     assert.match(html, /40 pacote\(s\) na tarifa mínima \(R\$ 1,50\)/);
     assert.match(html, /\(−R\$ 0,20\)/, "abaixo do valor de 100%");
     ctx._fsAbrirDia("2026-09-21");
@@ -113,4 +115,32 @@ test("Performance por dia: resumo, só os dias com ocorrência, PNR em pacotes e
     assert.match(modal.innerHTML, /PNR · Loggi/);
     assert.match(modal.innerHTML, /Atrasado · Imile/, "de todas as transportadoras");
     assert.doesNotMatch(modal.innerHTML, /_fsMostrarTransp/, "sem voltar pra transportadora");
+});
+
+test("painel: dia com ocorrência mas no valor cheio aparece como 'Valor cheio'; PNR sem 'dia seguinte' nem hora", () => {
+    const { ctx, el, modal } = carregar();
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.faixas = { semana: [{ ate: 98, valor: 2 }, { ate: 100, valor: 2.5 }], domingo: [{ ate: 100, valor: 2.6 }] };
+    D2.performance.dias = [{ dia: "2026-09-21", pct: 98.17, valor: 2.5, onholds: 0, outras_atraso: 4, acareacoes: 1, pacotes_pagos: 200, total: 500 }];
+    D2.insucessos = [{ dia: "2026-09-21", tipo: "Acareação", transportadora: "Shopee", codigo: "BRP", motivo: "PNR aberta no dia seguinte", ocorrencia_hora: "14:29" }];
+    ctx._fsRender(D2);
+    const html = el("fech-sistema").innerHTML;
+    assert.match(html, /Dias com perda<\/span><b>0 de 1<\/b>/);
+    assert.match(html, /fs-dia fs-clicavel" onclick="_fsAbrirDia\('2026-09-21'\)/, "sem destaque");
+    assert.match(html, /<div class="fs-dia-linha fs-pos">Valor cheio<\/div>/);
+    assert.match(html, /Nenhum dia com perda nesta quinzena/);
+    ctx._fsAbrirDia("2026-09-21");
+    assert.doesNotMatch(modal.innerHTML, /dia seguinte/);
+    assert.doesNotMatch(modal.innerHTML, /14:29/);
+    assert.match(modal.innerHTML, /PNR · Shopee/);
+});
+
+test("deslocamento: card mostra os km por dia (asfalto e chão)", () => {
+    const { ctx, el } = carregar();
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.deslocamento = { dias: 2, km_asfalto: 32.5, km_chao: 8, valor_dia: 15, valor: 30 };
+    ctx._fsRender(D2);
+    const html = el("fech-sistema").innerHTML;
+    assert.match(html, /Asfalto por dia<\/span><span>32,5 km/);
+    assert.match(html, /Chão por dia<\/span><span>8 km/);
 });

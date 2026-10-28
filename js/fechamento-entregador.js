@@ -59,7 +59,8 @@ function _fsRender(d) {
         <div class="painel-section-title">Adicionais</div>
         <div class="painel-adicionais">
             ${card("Acréscimos", [["Valor", _fsR(c.acrescimos)]])}
-            ${card("Deslocamento", [["Valor", _fsR(c.deslocamento)]].concat(d.deslocamento ? [["Dias", `${d.deslocamento.dias} × ${_fsR(d.deslocamento.valor_dia)}`]] : []))}
+            ${card("Deslocamento", [["Valor", _fsR(c.deslocamento)]].concat(d.deslocamento ? [["Dias", `${d.deslocamento.dias} × ${_fsR(d.deslocamento.valor_dia)}`]]
+                .concat(_fsKm(d.deslocamento)) : []))}
         </div>
 
         <div class="painel-section-title">Descontos</div>
@@ -85,7 +86,13 @@ function _fsRender(d) {
         </div></div>` : ""}`;
 }
 
-// ── Performance por dia (tela principal): só os dias que tiveram algo contra ──
+/** Km por dia do deslocamento (asfalto e chão), só os que tem. */
+function _fsKm(ds) {
+    const km = (n) => Number(n || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " km";
+    return [["Asfalto por dia", ds.km_asfalto], ["Chão por dia", ds.km_chao]].filter(([, v]) => Number(v) > 0).map(([r, v]) => [r, km(v)]);
+}
+
+// ── Performance por dia (tela principal): todos os dias; os que perderam valor em destaque ──
 
 /** Menor e maior R$/pacote da tabela no dia (tarifa mínima e o valor de 100%). */
 function _fsFaixa(dia) {
@@ -101,34 +108,39 @@ function _fsPerdaPnr(p) {
     return Math.max(0, Math.round((p.pacotes_minima || 0) * (p.valor - _fsFaixa(p.dia).min) * 100) / 100);
 }
 
-const _fsAfetouDia = (p) => (p.onholds || 0) + (p.outras_atraso || 0) + (p.acareacoes || 0) > 0 || p.tarifa_minima;
+/** Dia em que ele perdeu dinheiro: R$ abaixo do valor de 100% ou entregas na tarifa mínima por PNR. Ocorrência que não custou nada não entra. */
+const _fsPerdeuDia = (p) => {
+    const fx = _fsFaixa(p.dia);
+    return (!p.fixo && fx.max != null && p.valor < fx.max) || (p.tarifa_minima && (p.fixo || (p.pacotes_minima || 0) > 0));
+};
 
 function _fsHtmlPerformance(d) {
     const perf = d.performance;
     if (!perf || !(perf.dias || []).length) return "";
-    const afetados = perf.dias.filter(_fsAfetouDia);
+    const afetados = perf.dias.filter(_fsPerdeuDia);
     const soma = (f) => perf.dias.reduce((s, p) => s + (f(p) || 0), 0);
     const pacMin = soma(p => p.tarifa_minima ? (p.fixo ? p.pacotes_pagos : p.pacotes_minima) : 0);
     const perda = soma(_fsPerdaPnr);
     const mini = (rot, v, neg) => `<div class="fs-mini"><span>${rot}</span><b${neg ? ` class="fs-neg"` : ""}>${v}</b></div>`;
     return `<div class="painel-section-title">Performance por dia</div>
         <div class="fs-resumo">
-            ${mini("Performance da quinzena", _fsPct(perf.pct))}
-            ${mini("Dias com ocorrência", `${afetados.length} de ${perf.dias.length}`)}
+            ${mini("Dias com perda", `${afetados.length} de ${perf.dias.length}`)}
             ${mini("Onholds e atrasados", soma(p => (p.onholds || 0) + (p.outras_atraso || 0)).toLocaleString("pt-BR"))}
             ${mini("PNR", soma(p => p.acareacoes).toLocaleString("pt-BR"))}
             ${pacMin ? mini("Pacotes na tarifa mínima", pacMin.toLocaleString("pt-BR"), true) : ""}
             ${perda ? mini("Perdido com PNR", "−" + _fsR(perda), true) : ""}
         </div>
-        ${afetados.length ? `<div class="fs-sub">Toque no dia pra ver os pedidos que afetaram.</div>
-        <div class="fs-dias" style="margin-bottom:18px">${afetados.map(_fsCardDia).join("")}</div>`
-            : `<div class="cft-ajuda" style="margin-bottom:18px">Nenhum dia com ocorrência nesta quinzena.</div>`}`;
+        <div class="fs-sub">${afetados.length ? "Em vermelho, os dias em que você recebeu menos que o valor cheio. Toque no dia pra ver os pedidos."
+            : "Nenhum dia com perda nesta quinzena: todos no valor cheio."}</div>
+        <div class="fs-dias" style="margin-bottom:18px">${perf.dias.slice().sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : 0)).map(_fsCardDia).join("")}</div>`;
 }
 
 function _fsCardDia(p) {
     const fx = _fsFaixa(p.dia);
     const perda = _fsPerdaPnr(p);
-    return `<div class="fs-dia fs-clicavel fs-dia-alerta" onclick="_fsAbrirDia('${p.dia}')">
+    const perdeu = _fsPerdeuDia(p);
+    const ocorrencias = (p.onholds || 0) + (p.outras_atraso || 0) + (p.acareacoes || 0);
+    return `<div class="fs-dia fs-clicavel${perdeu ? " fs-dia-alerta" : ""}" onclick="_fsAbrirDia('${p.dia}')">
         <div class="fs-dia-topo"><b>${_fsDia(p.dia)}</b> <span>${_fsSem(p.dia)}</span></div>
         <div class="fs-dia-linha">Performance <b>${_fsPct(p.pct)}</b></div>
         <div class="fs-dia-linha">${p.fixo ? "Valor fixo" : p.tarifa_minima && p.pacotes_minima && p.pacotes_pagos
@@ -140,7 +152,7 @@ function _fsCardDia(p) {
         ${p.tarifa_minima ? `<div class="fs-dia-linha fs-neg">${p.fixo ? `Fixo com desconto em ${p.pacotes_pagos} pacotes`
             : `${p.pacotes_minima || 0} pacote(s) na tarifa mínima (${_fsR(fx.min)})`}</div>` : ""}
         ${perda ? `<div class="fs-dia-linha fs-neg">−${_fsR(perda)} com PNR</div>` : ""}
-        <div class="fs-dia-alerta-txt">ver pedidos ›</div>
+        ${perdeu ? `<div class="fs-dia-alerta-txt">ver pedidos ›</div>` : `<div class="fs-dia-linha fs-pos">Valor cheio</div>${ocorrencias ? `<div class="fs-dia-linha">ver pedidos ›</div>` : ""}`}
     </div>`;
 }
 
@@ -210,7 +222,6 @@ function _fsMostrarTransp(i) {
     const t = _fsDados.transportadoras[i];
     const dias = _fsDiasDaTransp(t.nome);
     const shopee = _fsEhShopee(t.nome);
-    const perf = _fsDados.performance;
     document.querySelector("#fs-modal .fs-modal").innerHTML = `
         <div class="fs-modal-topo"><div class="pt-card ${_fsClasseTransp(t.nome)} fs-titulo"><div class="pt-header" style="margin:0;padding:0;border:0">${_fsEsc(t.nome)}</div></div>
             <a href="#" class="fs-fechar" onclick="event.preventDefault();_fsFechar()">Fechar</a></div>
@@ -218,7 +229,6 @@ function _fsMostrarTransp(i) {
             <div class="fs-mini"><span>Entregues</span><b>${t.pacotes.toLocaleString("pt-BR")}</b></div>
             <div class="fs-mini"><span>Valor</span><b>${_fsR(t.valor)}</b></div>
             <div class="fs-mini"><span>Por pacote</span><b>${_fsR(t.por_pacote)}</b></div>
-            ${shopee && perf ? `<div class="fs-mini"><span>Performance</span><b>${_fsPct(perf.pct)}</b></div>` : ""}
         </div>
         <div class="fs-sub">Dias${dias.some(x => x.afetaram) ? " · toque no dia com ocorrência pra ver os pedidos" : ""}</div>
         <div class="fs-dias">${dias.length ? dias.map(x => `<div class="fs-dia${x.afetaram ? " fs-clicavel fs-dia-alerta" : ""}"${x.afetaram ? ` onclick="_fsMostrarDia(${i}, '${x.dia}')"` : ""}>
@@ -255,13 +265,13 @@ function _fsMostrarDia(i, dia) {
         </div>` : ""}
         ${p && !p.fixo && fx.max && p.valor < fx.max ? `<div class="cft-ajuda" style="margin-bottom:8px">Com 100% de performance seria ${_fsR(fx.max)} por pacote;
             os onholds e atrasados abaixo baixaram pra ${_fsR(p.valor)}.</div>` : ""}
-        ${p && p.tarifa_minima ? `<div class="cft-ajuda fs-neg" style="margin-bottom:8px">${p.acareacoes} PNR contaram neste dia (abertas no dia seguinte)
+        ${p && p.tarifa_minima ? `<div class="cft-ajuda fs-neg" style="margin-bottom:8px">${p.acareacoes} PNR neste dia
             ${p.fixo ? `— acima do limite pras baixas do dia: todos os pacotes do dia ficaram no valor fixo com desconto, ${_fsR(p.valor)} por pacote.`
                 : `— passou do limite no usuário ${_fsEsc(p.usuarios_minima || "")}: ${p.pacotes_minima || 0} entrega(s) desse usuário ficaram na tarifa mínima (${_fsR(fx.min)}).`}</div>` : ""}
         ${t && _fsEhShopee(t.nome) ? `<div class="cft-ajuda" style="margin-bottom:8px">O valor da Shopee no dia segue a performance, que conta também as outras transportadoras.</div>` : ""}
         <div class="extr-lista" style="padding:0">${lista.length ? lista.map(x => `<div class="extr-card">
             <div class="extr-top"><span class="extr-transp fs-neg">${x.tipo === "Acareação" ? "PNR" : _fsEsc(x.tipo)} · ${_fsEsc(x.transportadora)}</span><span class="extr-codigo">${_fsEsc(x.codigo || "")}</span></div>
             <div class="extr-endereco">${x.deveria ? `Deveria ser entregue ${_fsDia(x.deveria)}` : ""}${x.entregue ? ` · entregue ${_fsDia(x.entregue)}` : (x.tipo === "Não entregue" ? " · não entregue" : "")}
-                ${x.motivo ? `${_fsEsc(x.motivo)}${x.ocorrencia_hora ? ` · às ${_fsEsc(x.ocorrencia_hora)}` : ""}` : ""}</div>
+                ${x.tipo === "Acareação" ? "" : x.motivo ? `${_fsEsc(x.motivo)}${x.ocorrencia_hora ? ` · às ${_fsEsc(x.ocorrencia_hora)}` : ""}` : ""}</div>
         </div>`).join("") : `<div class="extr-vazio">Sem detalhe dos pedidos desse dia.</div>`}</div>`;
 }
