@@ -1,11 +1,12 @@
 // ───── FECHAMENTO › ACAREAÇÕES ─────
 // Relatórios de acareação (PNR) por transportadora — Shopee, Imile, Anjun e Loggi; a
 // transportadora sai das colunas do arquivo. Vários arquivos por quinzena.
-// Regra: um usuário com mais de 2 acareações abertas no mesmo dia (conta por usuário, não
+// Regra: um usuário com mais de N acareações abertas no mesmo dia (conta por usuário, não
 // soma os usuários do entregador) → todos os pacotes do entregador naquele dia valem a tarifa mínima
 // do dia (seg a sáb R$ 1,50, domingo R$ 1,80). Só nos polos da regra da performance.
 // Quem tem valor fixo: soma os usuários, compara com as baixas do dia e cai pro fixo menos
-// um desconto — limite e desconto configuráveis nesta tela.
+// um desconto. Limites, desconto e exceções por entregador ficam em Fechamento › Regras e
+// configurações (fechamento-regras.js); aqui só o resumo.
 // Backend: /acareacoes (modules/fechamento-transportadoras/acareacoes.js); a conta entra na
 // consolidação e aparece no Resumo da Quinzena e no Meus Fechamentos.
 const _AC_API = () => `${API}/admin/fechamento-transportadoras`;
@@ -47,9 +48,6 @@ function abrirAcareacoes(event) {
     document.getElementById("ac-conteudo").innerHTML = `
         <div class="cft-regras">
             <div class="cft-pend-titulo" style="color:#e2e8f0">PNR abertas (acareações)</div>
-            <div class="cft-ajuda" style="margin-bottom:8px">Usuário com <b>mais de 2 acareações abertas no mesmo dia</b> (conta cada usuário separado,
-                não soma os usuários do entregador): o entregador (sem valor fixo) recebe a <b>tarifa mínima do dia</b> em todos os pacotes daquele dia: R$ 1,50 de segunda a sábado,
-                R$ 1,80 no domingo. Vale só pros polos da regra da performance (Caçador e Videira).</div>
             <div class="cft-ajuda" style="margin-bottom:10px">Relatórios aceitos — Shopee: Driver, Created Time, SPXTN · Imile: Associated Waybill,
                 The Responsible Person, Create Time · Anjun: Número do Waybill, Entregador, tempo de registro (só "Suspeita de perda")
                 · Loggi: Pacote, Entregador, Aberto em. Mesmo código repetido conta uma vez.</div>
@@ -108,7 +106,7 @@ function _acRender(msg) {
                     </label></td>
                 </tr>`; }).join("")}</tbody></table></div>
         </div>
-        ${_acRegraFixoHtml(d.regra_fixo)}
+        ${_acRegrasResumoHtml(d)}
         ${pend.length ? `<div class="cft-pend">
             <div class="cft-pend-titulo"><span class="cft-aviso">Usuários sem entregador (${pend.length})</span></div>
             <div class="cft-ajuda" style="margin-bottom:6px">Não achei o entregador desses usuários — as acareações deles ainda não contam.
@@ -141,42 +139,21 @@ function _acRender(msg) {
     if (dias.length) _acRenderTabela();
 }
 
-// Regra de quem tem valor fixo: soma os usuários e compara com as baixas do dia.
+// Regras que valem hoje (só leitura — mudar em Regras e configurações).
 function _acPct(n) {
     return Number(n || 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 }
-function _acRegraFixoHtml(r) {
-    r = r || { limite_pct: 0.01, desconto_pct: 40 };
+function _acRegrasResumoHtml(d) {
+    const r = d.regra_fixo || { limite_pct: 0.01, desconto_pct: 40 };
+    const limite = d.limite ?? 2;
     return `<div class="cft-regras">
-        <div class="cft-pend-titulo" style="color:#e2e8f0">Entregador com valor fixo</div>
-        <div class="cft-ajuda" style="margin-bottom:8px">Pra quem tem valor fixo a conta é outra: <b>soma as acareações de todos os usuários</b> dele no dia
-            e compara com as baixas do dia (pacotes entregues). Acima de <b>${_acPct(r.limite_pct)}%</b>, todos os pacotes do dia valem
-            o fixo com <b>${_acPct(r.desconto_pct)}% a menos</b>. Dia com acareação e sem nenhuma baixa também cai.</div>
-        <div class="cft-barra" style="margin:0;flex-wrap:wrap;align-items:center">
-            <span class="cft-ajuda">Acareações acima de</span>
-            <input class="cft-input" id="ac-fixo-limite" value="${_acPct(r.limite_pct)}" inputmode="decimal" style="width:90px;flex:0 0 auto;margin:0">
-            <span class="cft-ajuda">% das baixas do dia → valor fixo com</span>
-            <input class="cft-input" id="ac-fixo-desconto" value="${_acPct(r.desconto_pct)}" inputmode="decimal" style="width:70px;flex:0 0 auto;margin:0">
-            <span class="cft-ajuda">% a menos</span>
-            <button class="cft-btn" onclick="_acSalvarRegraFixo()">Salvar</button>
-        </div>
+        <div class="cft-pend-titulo" style="color:#e2e8f0">Regras que valem hoje</div>
+        <div class="cft-ajuda"><b>Sem valor fixo:</b> um usuário com mais de <b>${limite}</b> PNR no mesmo dia (cada usuário separado) → todos os pacotes
+            do entregador naquele dia na tarifa mínima (R$ 1,50 seg a sáb, R$ 1,80 dom).
+            <b>Com valor fixo:</b> somando os usuários, acima de <b>${_acPct(r.limite_pct)}%</b> das baixas do dia → fixo com <b>${_acPct(r.desconto_pct)}% a menos</b>.
+            Só nos polos da performance. Pra mudar ou criar exceção pra um entregador:
+            <a href="#" style="color:#60a5fa" onclick="event.preventDefault();abrirRegrasFechamento()">Regras e configurações</a>.</div>
     </div>`;
-}
-
-function _acSalvarRegraFixo() {
-    const v = (id) => document.getElementById(id).value.trim();
-    const st = document.getElementById("ac-status");
-    if (st) st.textContent = "Salvando e recalculando a quinzena...";
-    fetch(`${_AC_API()}/acareacoes/regra-fixo`, {
-        method: "PUT", headers: _acHeaders(true),
-        body: JSON.stringify({ ..._acPeriodo(), limite_pct: v("ac-fixo-limite"), desconto_pct: v("ac-fixo-desconto") }),
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (st) st.textContent = "";
-        if (d.error) { alert(d.error); return; }
-        _acCarregar("Regra do valor fixo salva — quinzena recalculada.");
-    }).catch(() => { if (st) st.textContent = ""; alert("Erro ao salvar."); });
 }
 
 /** Transportadoras com PNR na quinzena: [[nome, quantidade]], na ordem do relatório. */
@@ -200,6 +177,7 @@ function _acRenderTabela() {
         const aberto = _acAbertos.has(k);
         const descFixo = (d.regra_fixo || {}).desconto_pct ?? 40;
         const tarifa = x.tarifa_minima ? `<span class="cft-neg">${x.fixo ? `Fixo −${_acPct(descFixo)}%` : "Tarifa mínima"}</span>`
+            : x.excecao ? `<span class="cft-ajuda" title="Exceção do entregador (Regras e configurações)">exceção: ${_acEsc(x.excecao)}</span>`
             : x.fixo ? `<span class="cft-ajuda">fixo</span>`
             : (x.maior_usuario ?? x.acareacoes) > limite
                 ? (!x.na_regra

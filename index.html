@@ -526,6 +526,7 @@ if (_BASE) {
             <li><a href="#" data-rota="Fechamento/Deslocamentos" onclick="abrirDeslocamentos(event)">Deslocamentos</a></li>
             <li><a href="#" data-rota="Fechamento/Acareacoes" onclick="abrirAcareacoes(event)">PNR abertas</a></li>
             <li><a href="#" data-rota="Fechamento/Extravios" onclick="abrirExtraviosFechamento(event)">Fechamento de Extravios</a></li>
+            <li><a href="#" data-rota="Fechamento/Regras" onclick="abrirRegrasFechamento(event)">Regras e configurações</a></li>
         </ul>
 
         <li class="menu-item" data-menu="planejamento" id="menu-planejamento" onclick="toggleMenu(this)" style="display:none">
@@ -4857,9 +4858,9 @@ if (_BASE) {
 
 <script src="js/core.js?v=20261028b"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261028m"></script>
+<script src="js/router.js?v=20261028n"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=20261028n"></script>
+<script src="js/nav.js?v=20261028o"></script>
 <script src="js/atendimento.js?v=20261015a"></script>
 <script src="js/atendimento-admin.js?v=20261015b"></script>
 <script src="js/fechamentos.js?v=20261027a"></script>
@@ -4894,7 +4895,8 @@ if (_BASE) {
 <script src="js/fechamento-resumo.js?v=20261028n"></script>
 <script src="js/fechamento-ajustes.js?v=20261028c"></script>
 <script src="js/fechamento-deslocamentos.js?v=20261027a"></script>
-<script src="js/fechamento-acareacoes.js?v=20261028f"></script>
+<script src="js/fechamento-acareacoes.js?v=20261028g"></script>
+<script src="js/fechamento-regras.js?v=20261028b"></script>
 <script src="js/fechamento-extravios.js?v=20261028d"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
@@ -5056,18 +5058,15 @@ if (_BASE) {
                     <button class="cft-btn" id="cf-pub-alguns-btn" style="display:none" onclick="_cfAbrirPubAlguns()">Publicar para alguns</button>
                     <button class="cft-btn" onclick="_cfRecalcularTodas(this)" title="Trata de novo todos os relatórios da quinzena (depois de mexer em conversões, preços, regras de prazo)">Recalcular todas</button>
                     <button class="cft-btn" id="cf-ticketlog-btn" onclick="_cfAbrirTicketlog()">Descontos: Ticketlog</button>
-                    <button class="cft-btn" id="cf-fixos-btn" onclick="_cfAbrirFixos()">Valores fixos (Shopee)</button>
                     <button class="cft-btn" id="cf-cidades-btn" onclick="_cfAbrirConvCidades()">Conversão de cidades</button>
                     <button class="cft-btn" id="cf-colunas-btn" onclick="_cfAbrirColunas()">Colunas dos relatórios</button>
-                    <button class="cft-btn" id="cf-regras-btn" onclick="_cfAbrirRegras()">Regras de prazo</button>
+                    <button class="cft-btn" onclick="abrirRegrasFechamento()" title="Valores fixos, sábado/domingo, PNR, exceções por entregador...">Regras e configurações</button>
                 </span>
             </div>
             <div class="cft-regras" id="cf-pub-alguns" style="display:none"></div>
             <div class="cft-regras" id="cf-ticketlog" style="display:none"></div>
-            <div class="cft-regras" id="cf-fixos" style="display:none"></div>
             <div class="cft-regras" id="cf-cidades" style="display:none"></div>
             <div class="cft-regras" id="cf-colunas" style="display:none"></div>
-            <div class="cft-regras" id="cf-regras" style="display:none"></div>
             <div class="cft-cards" id="cf-cards"></div>
 
             <div id="cf-painel" style="display:none">
@@ -5189,6 +5188,18 @@ if (_BASE) {
         <div id="ac-conteudo"></div>
     </div>
 </div><!-- /tela-acareacoes -->
+
+<!-- TELA FECHAMENTO › REGRAS E CONFIGURAÇÕES (os editores #cf-fixos e #cf-regras são do fechamento-criar.js) -->
+<div id="tela-regras-fechamento" class="view tela-full">
+    <div class="fech-body">
+        <div id="rg-topo"></div>
+        <div id="rg-conteudo"></div>
+        <div class="cft-regras" id="cf-fixos" style="display:none"></div>
+        <div class="cft-regras" id="cf-regras" style="display:none"></div>
+        <div id="rg-conteudo2"></div>
+        <div id="rg-historico"></div>
+    </div>
+</div><!-- /tela-regras-fechamento -->
 
 <div id="tela-ajustes-fechamento" class="view tela-full">
     <div class="fech-body">
