@@ -1,8 +1,8 @@
 // ───── FECHAMENTO › ACAREAÇÕES ─────
 // Relatórios de acareação (PNR) por transportadora — Shopee, Imile, Anjun e Loggi; a
 // transportadora sai das colunas do arquivo. Vários arquivos por quinzena.
-// Regra: entregador (somando os usuários dele em todas as transportadoras) com mais de 2
-// acareações abertas no mesmo dia → todos os pacotes dele naquele dia valem a tarifa mínima
+// Regra: um usuário com mais de 2 acareações abertas no mesmo dia (conta por usuário, não
+// soma os usuários do entregador) → todos os pacotes do entregador naquele dia valem a tarifa mínima
 // do dia (seg a sáb R$ 1,50, domingo R$ 1,80). Só nos polos da regra da performance.
 // Backend: /acareacoes (modules/fechamento-transportadoras/acareacoes.js); a conta entra na
 // consolidação e aparece no Resumo da Quinzena e no Meus Fechamentos.
@@ -45,8 +45,8 @@ function abrirAcareacoes(event) {
     document.getElementById("ac-conteudo").innerHTML = `
         <div class="cft-regras">
             <div class="cft-pend-titulo" style="color:#e2e8f0">Acareações</div>
-            <div class="cft-ajuda" style="margin-bottom:8px">Entregador com <b>mais de 2 acareações abertas no mesmo dia</b> (somando todos os usuários dele,
-                de todas as transportadoras) recebe a <b>tarifa mínima do dia</b> em todos os pacotes daquele dia: R$ 1,50 de segunda a sábado,
+            <div class="cft-ajuda" style="margin-bottom:8px">Usuário com <b>mais de 2 acareações abertas no mesmo dia</b> (conta cada usuário separado,
+                não soma os usuários do entregador): o entregador recebe a <b>tarifa mínima do dia</b> em todos os pacotes daquele dia: R$ 1,50 de segunda a sábado,
                 R$ 1,80 no domingo. Vale só pros polos da regra da performance (Caçador e Videira).</div>
             <div class="cft-ajuda" style="margin-bottom:10px">Relatórios aceitos — Shopee: Driver, Created Time, SPXTN · Imile: Associated Waybill,
                 The Responsible Person, Create Time · Anjun: Número do Waybill, Entregador, tempo de registro (só "Suspeita de perda")
@@ -140,20 +140,20 @@ function _acRenderTabela() {
         const k = x.driver + "|" + x.dia;
         const aberto = _acAbertos.has(k);
         const tarifa = x.tarifa_minima ? `<span class="cft-neg">Tarifa mínima</span>`
-            : x.acareacoes > limite ? `<span class="cft-ajuda" title="Sem pacote nos polos da regra nesse dia">fora da regra</span>`
+            : (x.maior_usuario ?? x.acareacoes) > limite ? `<span class="cft-ajuda" title="Sem pacote nos polos da regra nesse dia">fora da regra</span>`
             : `<span class="cft-ajuda">normal</span>`;
         const codigos = aberto ? (d.lista || []).filter(a => a.driver === x.driver && a.dia === x.dia) : [];
         return `<tr style="cursor:pointer" title="Clique pra ver os códigos" data-k="${_acEsc(k)}" onclick="_acAlternar(this.dataset.k)">
             <td><span class="cft-ajuda">${aberto ? "▾" : "▸"}</span> ${_acDia(x.dia)} <span class="cft-ajuda">${_AC_SEM[new Date(x.dia + "T12:00:00Z").getUTCDay()]}</span></td>
             <td>${_acEsc(x.driver)}</td>
-            <td class="num${x.acareacoes > limite ? " cft-neg" : ""}"><strong>${x.acareacoes}</strong></td>
+            <td class="num${(x.maior_usuario ?? x.acareacoes) > limite ? " cft-neg" : ""}"><strong>${x.acareacoes}</strong></td>
             <td class="cft-ajuda">${Object.entries(x.por_transportadora || {}).map(([t, n]) => `${_acEsc(t)} ${n}`).join(" · ")}</td>
             <td>${tarifa}</td>
             <td class="num">${x.valor_dia != null ? _acNum(x.valor_dia) : "—"}</td>
             <td class="num">${x.pacotes || 0}</td>
             <td class="num">${x.na_regra ? _acNum(x.total) : "—"}</td>
         </tr>${aberto ? `<tr><td colspan="8" style="background:rgba(255,255,255,0.02);padding:8px 12px">
-            ${codigos.map(a => `<div class="cft-ajuda">${_acEsc(a.transportadora)} · <b>${_acEsc(a.codigo || "(sem código)")}</b>${a.hora ? ` · aberta às ${_acEsc(a.hora)}` : ""}</div>`).join("")}
+            ${codigos.map(a => `<div class="cft-ajuda">${_acEsc(a.transportadora)}${a.usuario ? ` · ${_acEsc(a.usuario)}` : ""} · <b>${_acEsc(a.codigo || "(sem código)")}</b>${a.hora ? ` · aberta às ${_acEsc(a.hora)}` : ""}</div>`).join("")}
         </td></tr>` : ""}`;
     }).join("") : `<tr><td colspan="8" class="cft-vazio" style="padding:14px">Nada por aqui.</td></tr>`;
 }

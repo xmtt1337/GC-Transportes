@@ -4,7 +4,7 @@
 // da tela antiga: cards por transportadora, Adicionais e Descontos. Tocando na
 // transportadora abre um card com os dias; tocando no dia, os pedidos que afetaram
 // (onhold, atrasado, não entregue) com quando deveriam ser entregues. Tudo na tela, sem
-// baixar relatório. Dia com mais de 2 acareações (PNR) aparece como "tarifa mínima", com as
+// baixar relatório. Dia com mais de 2 acareações (PNR) num mesmo usuário aparece como "tarifa mínima", com as
 // acareações na lista do dia. Chamado por _carregarPainel (fechamentos.js).
 
 function _fsEsc(t) {
@@ -165,7 +165,7 @@ function _fsMostrarDia(i, dia) {
             <a href="#" class="fs-fechar" onclick="event.preventDefault();_fsFechar()">Fechar</a></div>
         <div class="fs-sub">${_fsDia(dia)} ${_fsSem(dia)} · o que afetou o dia</div>
         ${(() => { const p = _fsPerfDia(dia); return p && p.tarifa_minima ? `<div class="cft-ajuda fs-neg" style="margin-bottom:8px">${p.acareacoes} acareações abertas neste dia
-            (mais de 2): todos os pacotes do dia ficaram na tarifa mínima, ${_fsR(p.valor)} por pacote.</div>` : ""; })()}
+            (mais de 2 num mesmo usuário): todos os pacotes do dia ficaram na tarifa mínima, ${_fsR(p.valor)} por pacote.</div>` : ""; })()}
         ${_fsEhShopee(t.nome) ? `<div class="cft-ajuda" style="margin-bottom:8px">O valor da Shopee no dia segue a performance, que conta também as outras transportadoras.</div>` : ""}
         <div class="extr-lista" style="padding:0">${lista.length ? lista.map(x => `<div class="extr-card">
             <div class="extr-top"><span class="extr-transp fs-neg">${_fsEsc(x.tipo)} · ${_fsEsc(x.transportadora)}</span><span class="extr-codigo">${_fsEsc(x.codigo || "")}</span></div>
