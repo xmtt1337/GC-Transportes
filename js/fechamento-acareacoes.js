@@ -3,7 +3,7 @@
 // transportadora sai das colunas do arquivo. Vários arquivos por quinzena.
 // O dia de cada PNR é o ANTERIOR ao da abertura (criada dia 21 → conta no dia 20).
 // Regra: um usuário com mais de N acareações no mesmo dia (conta por usuário, não
-// soma os usuários do entregador) → todos os pacotes do entregador naquele dia valem a tarifa mínima
+// soma os usuários do entregador) → as entregas desse usuário naquele dia valem a tarifa mínima
 // do dia (seg a sáb R$ 1,50, domingo R$ 1,80). Só nos polos da regra da performance.
 // Quem tem valor fixo: soma os usuários, compara com as baixas do dia e cai pro fixo menos
 // um desconto. Limites, desconto e exceções por entregador ficam em Fechamento › Regras e
@@ -149,8 +149,8 @@ function _acRegrasResumoHtml(d) {
     const limite = d.limite ?? 2;
     return `<div class="cft-regras">
         <div class="cft-pend-titulo" style="color:#e2e8f0">Regras que valem hoje</div>
-        <div class="cft-ajuda"><b>Sem valor fixo:</b> um usuário com mais de <b>${limite}</b> PNR no mesmo dia (cada usuário separado) → todos os pacotes
-            do entregador naquele dia na tarifa mínima (R$ 1,50 seg a sáb, R$ 1,80 dom).
+        <div class="cft-ajuda"><b>Sem valor fixo:</b> um usuário com mais de <b>${limite}</b> PNR no mesmo dia (cada usuário separado) → as entregas DESSE usuário
+            naquele dia na tarifa mínima (os outros usuários do entregador seguem normais) (R$ 1,50 seg a sáb, R$ 1,80 dom).
             <b>Com valor fixo:</b> somando os usuários, mais PNR que as baixas do dia × <b>${_acPct(r.fator)}</b> (1.000 baixas × ${_acPct(r.fator)} = mais de ${_acPct(1000 * r.fator)}) → fixo com <b>${_acPct(r.desconto_pct)}% a menos</b>.
             A PNR conta no dia anterior ao da abertura (criada dia 21 → dia 20). Só nos polos da performance. Pra mudar ou criar exceção pra um entregador:
             <a href="#" style="color:#60a5fa" onclick="event.preventDefault();abrirRegrasFechamento()">Regras e configurações</a>.</div>
@@ -177,7 +177,9 @@ function _acRenderTabela() {
         const k = x.driver + "|" + x.dia;
         const aberto = _acAbertos.has(k);
         const descFixo = (d.regra_fixo || {}).desconto_pct ?? 40;
-        const tarifa = x.tarifa_minima ? `<span class="cft-neg">${x.fixo ? `Fixo −${_acPct(descFixo)}%` : "Tarifa mínima"}</span>`
+        // Sem fixo: só as entregas do usuário que passou caem (o resto do dia segue normal).
+        const tarifa = x.tarifa_minima ? (x.fixo ? `<span class="cft-neg">Fixo −${_acPct(descFixo)}%</span>`
+                : `<span class="cft-neg">Tarifa mínima</span> <span class="cft-ajuda">em ${x.pacotes_minima || 0} de ${x.pacotes || 0} pacotes</span>`)
             : x.excecao ? `<span class="cft-ajuda" title="Exceção do entregador (Regras e configurações)">exceção: ${_acEsc(x.excecao)}</span>`
             : x.fixo ? `<span class="cft-ajuda">fixo</span>`
             : (x.maior_usuario ?? x.acareacoes) > limite
@@ -192,10 +194,16 @@ function _acRenderTabela() {
             <td class="num${x.tarifa_minima || (!x.fixo && (x.maior_usuario ?? x.acareacoes) > limite) ? " cft-neg" : ""}"><strong>${x.acareacoes}</strong></td>
             <td class="cft-ajuda">${(e => e.length > 1 ? e.map(([t, n]) => `${_acEsc(t)} ${n}`).join(" · ") : e.map(([t]) => _acEsc(t)).join(""))(Object.entries(x.por_transportadora || {}))}</td>
             <td>${tarifa}</td>
-            <td class="num">${x.valor_dia != null ? _acNum(x.valor_dia) : "—"}</td>
+            <td class="num">${x.valor_dia == null ? "—" : x.tarifa_minima && !x.fixo && x.pacotes_minima
+                ? (x.pacotes_minima >= (x.pacotes || 0) ? _acNum(x.valor_minima) : `<span class="cft-neg">${_acNum(x.valor_minima)}</span> / ${_acNum(x.valor_dia)}`)
+                : _acNum(x.valor_dia)}</td>
             <td class="num">${x.pacotes || 0}</td>
             <td class="num">${x.na_regra ? _acNum(x.total) : "—"}</td>
         </tr>${aberto ? `<tr><td colspan="8" style="background:rgba(255,255,255,0.02);padding:8px 12px">
+            ${(x.usuarios || []).map(u => `<div class="cft-ajuda" style="margin-bottom:2px">${u.passou ? `<span class="cft-neg">${_acEsc(u.usuario)}</span>` : _acEsc(u.usuario)}
+                (${_acEsc(u.transportadora)}): <b>${u.pnr} PNR</b> — ${u.passou ? "passou do limite: as entregas desse usuário no dia vão pra tarifa mínima" : "não passou: entregas desse usuário no valor normal"}</div>`).join("")}
+            ${x.tarifa_minima && !x.fixo && !x.pacotes_minima ? `<div class="cft-aviso" style="margin-bottom:4px">Nenhuma entrega desse usuário no dia: confira se o nome do usuário na PNR é o mesmo do relatório de entregas.</div>` : ""}
+            ${(x.usuarios || []).length ? `<div style="height:6px"></div>` : ""}
             ${codigos.map(a => `<div class="cft-ajuda">${_acEsc(a.transportadora)}${a.usuario ? ` · ${_acEsc(a.usuario)}` : ""} · <b>${_acEsc(a.codigo || "(sem código)")}</b>${a.hora ? ` · aberta no dia seguinte às ${_acEsc(a.hora)}` : " · aberta no dia seguinte"}</div>`).join("")}
         </td></tr>` : ""}`;
     }).join("") : `<tr><td colspan="8" class="cft-vazio" style="padding:14px">Nada por aqui.</td></tr>`;

@@ -100,3 +100,19 @@ test("mais de 2 PNR sem pacote no dia: mostra 'sem entrega no dia'; com pacote e
     assert.match(tb, /falta recalcular/);
     assert.doesNotMatch(tb, /fora da regra/);
 });
+
+test("PNR por usuário: só as entregas do usuário que passou caem; abrir o dia mostra cada usuário", () => {
+    const { ctx, el } = carregar();
+    ctx._set({ ...DADOS, dias: [{ driver: "Titular Teste - Vila", dia: "2026-10-09", acareacoes: 4, maior_usuario: 3, por_transportadora: { Shopee: 4 },
+        tarifa_minima: true, valor_dia: 2.5, valor_minima: 1.5, pacotes: 10, pacotes_minima: 6, total: 19, na_regra: true,
+        usuarios: [{ usuario: "TITULAR TESTE", transportadora: "Shopee", pnr: 3, passou: true }, { usuario: "Ajudante Teste", transportadora: "Shopee", pnr: 1, passou: false }] }],
+        lista: [] });
+    ctx._acRender();
+    let tb = el("ac-tbody").innerHTML;
+    assert.match(tb, /Tarifa mínima<\/span> <span class="cft-ajuda">em 6 de 10 pacotes/);
+    assert.match(tb, /<span class="cft-neg">1,50<\/span> \/ 2,50/);
+    ctx._acAlternar("Titular Teste - Vila|2026-10-09");
+    tb = el("ac-tbody").innerHTML;
+    assert.match(tb, /TITULAR TESTE<\/span>\s*\(Shopee\): <b>3 PNR<\/b> — passou do limite/);
+    assert.match(tb, /Ajudante Teste\s*\(Shopee\): <b>1 PNR<\/b> — não passou/);
+});
