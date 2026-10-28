@@ -131,7 +131,8 @@ function _fsCardDia(p) {
     return `<div class="fs-dia fs-clicavel fs-dia-alerta" onclick="_fsAbrirDia('${p.dia}')">
         <div class="fs-dia-topo"><b>${_fsDia(p.dia)}</b> <span>${_fsSem(p.dia)}</span></div>
         <div class="fs-dia-linha">Performance <b>${_fsPct(p.pct)}</b></div>
-        <div class="fs-dia-linha">${p.fixo ? "Valor fixo" : `<span class="fs-nw">${_fsR(p.valor)}</span>/pct`}${!p.fixo && fx.max && p.valor < fx.max
+        <div class="fs-dia-linha">${p.fixo ? "Valor fixo" : p.tarifa_minima && p.pacotes_minima && p.pacotes_pagos
+            ? `média <span class="fs-nw">${_fsR(p.total / p.pacotes_pagos)}</span>/pct` : `<span class="fs-nw">${_fsR(p.valor)}</span>/pct`}${!p.fixo && fx.max && p.valor < fx.max
             ? ` <span class="fs-neg fs-nw" title="Quanto ficou abaixo do valor de 100% de performance, por pacote">(−${_fsR(fx.max - p.valor)})</span>` : ""}</div>
         ${p.onholds ? `<div class="fs-dia-linha">${p.onholds} onhold(s)</div>` : ""}
         ${p.outras_atraso ? `<div class="fs-dia-linha">${p.outras_atraso} atrasado(s)</div>` : ""}
@@ -245,7 +246,8 @@ function _fsMostrarDia(i, dia) {
         <div class="fs-sub">${_fsDia(dia)} ${_fsSem(dia)} · o que afetou o dia</div>
         ${p ? `<div class="fs-resumo">
             ${mini("Performance", _fsPct(p.pct))}
-            ${mini("R$ por pacote", p.fixo ? "Fixo" : _fsR(p.valor))}
+            ${mini(p.tarifa_minima && !p.fixo && p.pacotes_minima ? "R$ por pacote (média)" : "R$ por pacote", p.fixo ? "Fixo"
+                : p.tarifa_minima && p.pacotes_minima && p.pacotes_pagos ? _fsR(p.total / p.pacotes_pagos) : _fsR(p.valor))}
             ${mini("Onholds e atrasados", (p.onholds || 0) + (p.outras_atraso || 0), (p.onholds || 0) + (p.outras_atraso || 0) > 0)}
             ${mini("PNR", p.acareacoes || 0, (p.acareacoes || 0) > 0)}
             ${p.tarifa_minima && !p.fixo ? mini("Na tarifa mínima", `${p.pacotes_minima || 0} pct`, true) : ""}

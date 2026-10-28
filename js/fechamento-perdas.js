@@ -183,7 +183,10 @@ function _pdTabela(aba, { ents, dias, deTipo }) {
         <th style="text-align:right">Performance (R$)</th><th style="text-align:right">PNR (R$)</th><th style="text-align:right">Total</th></tr></thead>
         <tbody>${lista.length ? lista.map(d => `<tr><td>${dia(d.dia)}</td><td>${_pdEsc(d.driver)}</td>
             <td class="num">${Number(d.pct || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%</td>
-            <td class="num">${d.fixo ? "fixo" : `${_pdNum(d.valor)} <span class="cft-ajuda">de ${_pdNum(d.valor_maximo)}</span>`}</td>
+            <td class="num">${d.fixo ? "fixo" : d.pacotes_minima && d.valor_medio
+                ? `<span title="Média do dia: ${d.pacotes - d.pacotes_minima} pacotes a ${_pdNum(d.valor)} e ${d.pacotes_minima} na tarifa mínima a ${_pdNum(d.valor_minima)}">${_pdNum(d.valor_medio)}</span> <span class="cft-ajuda">de ${_pdNum(d.valor_maximo)}</span>
+                    <div class="cft-ajuda">${d.pacotes - d.pacotes_minima} a ${_pdNum(d.valor)} · ${d.pacotes_minima} a ${_pdNum(d.valor_minima)}</div>`
+                : `${_pdNum(d.valor)} <span class="cft-ajuda">de ${_pdNum(d.valor_maximo)}</span>`}</td>
             <td class="num">${d.pacotes}${d.pacotes_minima ? ` <span class="cft-ajuda">(${d.pacotes_minima} na mínima)</span>` : ""}</td>
             <td class="num">${d.onholds} / ${d.atrasos}</td><td class="num">${d.pnr}</td>
             ${perdido(d.perda_performance)}${perdido(d.perda_pnr)}<td class="num cft-neg"><strong>−${_pdNum(d.total)}</strong></td></tr>`).join("")

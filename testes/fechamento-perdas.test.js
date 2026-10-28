@@ -70,3 +70,14 @@ test("filtros: polo e cidade", () => {
     assert.match(el("pd-lista").innerHTML, /\(40 na mínima\)/);
     assert.match(el("pd-lista").innerHTML, /2,00 <span class="cft-ajuda">de 2,50/);
 });
+
+test("por dia: com entregas na tarifa mínima, R$/pacote é a média do dia com a divisão embaixo", () => {
+    const { ctx, el } = carregar();
+    ctx._set({ dias: [{ driver: "Interno Teste", cidade: null, polo: "Caçador", dia: "2026-10-01", pct: 99.23, valor: 2.5, valor_maximo: 2.5, valor_minima: 1.5,
+        valor_medio: 2.31, total_pago: 300, fixo: false, pacotes: 130, onholds: 0, atrasos: 1, pnr: 4, tarifa_minima: true, pacotes_minima: 25,
+        perda_performance: 0, perda_pnr: 25, total: 25 }], ocorrencias: [] });
+    ctx._pdAbrirAba("dias");
+    const html = el("pd-lista").innerHTML;
+    assert.match(html, />2,31<\/span> <span class="cft-ajuda">de 2,50/);
+    assert.match(html, /105 a 2,50 · 25 a 1,50/);
+});
