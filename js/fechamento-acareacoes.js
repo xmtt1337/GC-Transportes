@@ -201,7 +201,10 @@ function _acRenderTabela() {
         const descFixo = (d.regra_fixo || {}).desconto_pct ?? 40;
         const tarifa = x.tarifa_minima ? `<span class="cft-neg">${x.fixo ? `Fixo −${_acPct(descFixo)}%` : "Tarifa mínima"}</span>`
             : x.fixo ? `<span class="cft-ajuda">fixo</span>`
-            : (x.maior_usuario ?? x.acareacoes) > limite ? `<span class="cft-ajuda" title="Sem pacote nos polos da regra nesse dia">fora da regra</span>`
+            : (x.maior_usuario ?? x.acareacoes) > limite
+                ? (!x.na_regra
+                    ? `<span class="cft-aviso" title="Nenhum pacote entregue por ele nesse dia nos polos da regra (Caçador e Videira): não tem pacote pra baixar pra tarifa mínima. Se ele trabalhou, confira se o relatório de entregas do dia foi enviado.">sem entrega no dia</span>`
+                    : `<span class="cft-aviso" title="O fechamento ainda não foi recalculado com essas PNR. Use Recalcular.">falta recalcular</span>`)
             : `<span class="cft-ajuda">normal</span>`;
         const codigos = aberto ? (d.lista || []).filter(a => a.driver === x.driver && a.dia === x.dia && (!transp || a.transportadora === transp)) : [];
         return `<tr style="cursor:pointer" title="Clique pra ver os códigos" data-k="${_acEsc(k)}" onclick="_acAlternar(this.dataset.k)">
@@ -226,7 +229,7 @@ function _acAlternar(k) {
 
 /** Uma linha por transportadora (o backend manda; sem ele, as quatro sem nada). */
 function _acSlots(d) {
-    return (d && d.transportadoras) || [["shopee", "Shopee"], ["imile", "Imile"], ["anjun", "Anjun"], ["loggi", "Loggi"]]
+    return (d && d.transportadoras) || [["shopee_cfc", "Shopee Caçador"], ["shopee_via", "Shopee Videira"], ["imile", "Imile"], ["anjun", "Anjun"], ["loggi", "Loggi"]]
         .map(([chave, nome]) => ({ chave, nome, arquivos: 0, pnr: 0 }));
 }
 

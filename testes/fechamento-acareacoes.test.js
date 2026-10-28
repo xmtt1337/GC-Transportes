@@ -87,3 +87,15 @@ test("um espaço por transportadora: anexado ou falta; dia de uma só transporta
     assert.match(tb, /<td class="cft-ajuda">Imile<\/td>/, "Beltrano só tem Imile: sem número");
     assert.match(tb, /Imile 2 · Loggi 1/, "mais de uma: com número");
 });
+
+test("mais de 2 PNR sem pacote no dia: mostra 'sem entrega no dia'; com pacote e sem tarifa: 'falta recalcular'", () => {
+    const { ctx, el } = carregar();
+    ctx._set({ ...DADOS, dias: [
+        { driver: "Pessoa Folga - Vila", dia: "2026-10-15", acareacoes: 3, maior_usuario: 3, por_transportadora: { Shopee: 3 }, tarifa_minima: false, pacotes: 0, na_regra: false },
+        { driver: "Pessoa Velha - Vila", dia: "2026-10-14", acareacoes: 3, maior_usuario: 3, por_transportadora: { Shopee: 3 }, tarifa_minima: false, pacotes: 5, total: 12.5, valor_dia: 2.5, na_regra: true }] });
+    ctx._acRender();
+    const tb = el("ac-tbody").innerHTML;
+    assert.match(tb, /sem entrega no dia/);
+    assert.match(tb, /falta recalcular/);
+    assert.doesNotMatch(tb, /fora da regra/);
+});
