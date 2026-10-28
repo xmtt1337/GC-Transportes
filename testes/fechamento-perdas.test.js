@@ -44,17 +44,17 @@ test("resumo: total perdido, só quem perdeu, performance e PNR separados", () =
     assert.match(el("pd-cidade").innerHTML, /<option value="Vila B">/);
 });
 
-test("abas: fora do prazo, onhold e PNR com o valor de cada ocorrência", () => {
+test("abas: fora do prazo, onhold e PNR com o que deixou de receber no dia (uma vez por dia)", () => {
     const { ctx, el } = carregar();
     ctx._set(DADOS);
     ctx._pdAbrirAba("prazo");
-    assert.match(el("pd-lista").innerHTML, /IM1<\/td><td>05\/10<\/td><td>07\/10<\/td>\s*<td class="num cft-neg">−12,50/);
+    assert.match(el("pd-lista").innerHTML, /IM1<\/td><td>05\/10<\/td><td>07\/10<\/td>\s*<td class="num cft-neg">−50,00/);
     ctx._pdAbrirAba("onhold");
     assert.match(el("pd-lista").innerHTML, /Cliente ausente/);
     assert.doesNotMatch(el("pd-lista").innerHTML, /IM1/);
     ctx._pdAbrirAba("pnr");
     assert.match(el("pd-lista").innerHTML, /07\/10 às 10:00/);
-    assert.match(el("pd-lista").innerHTML, /−10,00/);
+    assert.match(el("pd-lista").innerHTML, /−40,00/);
 });
 
 test("filtros: polo e cidade", () => {
@@ -80,4 +80,24 @@ test("por dia: com entregas na tarifa mínima, R$/pacote é a média do dia com 
     const html = el("pd-lista").innerHTML;
     assert.match(html, />2,31<\/span> <span class="cft-ajuda">de 2,50/);
     assert.match(html, /105 a 2,50 · 25 a 1,50/);
+});
+
+test("PNR que não custou nada mostra o motivo e o usuário", () => {
+    const { ctx, el } = carregar();
+    ctx._set({ dias: DADOS.dias, ocorrencias: [{ driver: "Fulano Teste - Vila A", cidade: "Vila A", polo: "Caçador", dia: "2026-10-05", tipo: "PNR",
+        transportadora: "Shopee", codigo: "P9", usuario: "FULANO LOGIN", ocorrencia: "2026-10-06", hora: "09:00", valor_perdido: 0, situacao: "não passou do limite no dia" }] });
+    ctx._pdAbrirAba("pnr");
+    const html = el("pd-lista").innerHTML;
+    assert.match(html, /<td class="cft-ajuda">FULANO LOGIN<\/td>/);
+    assert.match(html, /<span class="cft-ajuda">não passou do limite no dia<\/span>/);
+});
+
+test("mesmo dia com várias ocorrências: o valor do dia aparece só na 1ª linha e o total conta o dia uma vez", () => {
+    const { ctx, el } = carregar();
+    const o = (codigo) => ({ driver: "Fulano Teste - Vila A", cidade: "Vila A", polo: "Caçador", dia: "2026-10-05", tipo: "Onhold", transportadora: "Shopee", codigo, valor_perdido: 16.67 });
+    ctx._set({ dias: DADOS.dias, ocorrencias: [o("BR1"), o("BR2"), o("BR3")] });
+    ctx._pdAbrirAba("onhold");
+    const html = el("pd-lista").innerHTML;
+    assert.strictEqual((html.match(/−50,00/g) || []).length, 2, "1ª linha + total");
+    assert.match(html, /Deixou de receber no dia/);
 });

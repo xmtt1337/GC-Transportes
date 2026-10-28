@@ -145,7 +145,8 @@ function _pdRender() {
 function _pdTabela(aba, { ents, dias, deTipo }) {
     const vazio = (n) => `<tr><td colspan="${n}" class="cft-vazio" style="padding:14px">Nada por aqui.</td></tr>`;
     const dia = (iso) => `${_pdDia(iso)} <span class="cft-ajuda">${_pdSem(iso)}</span>`;
-    const perdido = (v) => `<td class="num${v > 0 ? " cft-neg" : ""}">${v > 0 ? "−" + _pdNum(v) : "—"}</td>`;
+    const perdido = (v, situacao) => `<td class="num${v > 0 ? " cft-neg" : ""}">${v > 0 ? "−" + _pdNum(v)
+        : situacao ? `<span class="cft-ajuda">${_pdEsc(situacao)}</span>` : "—"}</td>`;
     const total = (cols, v) => `<tr><td colspan="${cols}"><strong>Total</strong></td><td class="num cft-neg"><strong>${v > 0 ? "−" + _pdNum(v) : "—"}</strong></td></tr>`;
     if (aba === "resumo") {
         const lista = ents.filter(e => e.total > 0);
@@ -160,22 +161,45 @@ function _pdTabela(aba, { ents, dias, deTipo }) {
             </tr>`).join("") + `<tr><td colspan="7"><strong>Total</strong></td>${perdido(lista.reduce((s, e) => s + e.perda_performance, 0))}${perdido(lista.reduce((s, e) => s + e.perda_pnr, 0))}
                 <td class="num cft-neg"><strong>−${_pdNum(lista.reduce((s, e) => s + e.total, 0))}</strong></td></tr>` : vazio(10)}</tbody></table>`;
     }
+    // Ocorrências: a perda é do DIA (entregador × dia) — aparece uma vez, na 1ª linha do dia;
+    // as outras linhas do mesmo dia ficam em branco (ou dizem por que não custaram nada).
+    const porDiaMap = new Map(((_pdDados || {}).dias || []).map(d => [d.driver + "|" + d.dia, d]));
+    const ordenar = (l) => l.slice().sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : a.driver.localeCompare(b.driver, "pt-BR")));
+    const perdaDoDia = (lista, campo) => {
+        const vistos = new Set();
+        let soma = 0;
+        const celulas = lista.map(o => {
+            const k = o.driver + "|" + o.dia;
+            if (vistos.has(k)) return o.situacao ? `<td class="num"><span class="cft-ajuda">${_pdEsc(o.situacao)}</span></td>` : "<td></td>";
+            vistos.add(k);
+            const d = porDiaMap.get(k);
+            const v = d ? d[campo] : 0;
+            soma += v;
+            return perdido(v, v ? null : o.situacao);
+        });
+        return { celulas, soma };
+    };
+    const thDia = (titulo) => `<th style="text-align:right" title="${titulo}">Deixou de receber no dia</th>`;
     if (aba === "prazo") {
-        const lista = deTipo(["Atrasado", "Não entregue"]);
+        const lista = ordenar(deTipo(["Atrasado", "Não entregue"]));
+        const pd = perdaDoDia(lista, "perda_performance");
         return `<table class="cft-tabela"><thead><tr><th>Dia</th><th>Entregador</th><th>Transportadora</th><th>Código</th><th>Deveria</th><th>Entregue</th>
-            <th style="text-align:right">Deixou de receber</th></tr></thead>
-            <tbody>${lista.length ? lista.map(o => `<tr><td>${dia(o.dia)}</td><td>${_pdEsc(o.driver)}</td><td>${_pdEsc(o.transportadora || "")}</td>
+            ${thDia("Perda de performance do dia inteiro (onholds e atrasos juntos), na 1ª linha de cada dia")}</tr></thead>
+            <tbody>${lista.length ? lista.map((o, i) => `<tr><td>${dia(o.dia)}</td><td>${_pdEsc(o.driver)}</td><td>${_pdEsc(o.transportadora || "")}</td>
                 <td>${_pdEsc(o.codigo || "")}</td><td>${_pdDia(o.deveria)}</td><td>${o.entregue ? _pdDia(o.entregue) : `<span class="cft-aviso">não entregue</span>`}</td>
-                ${perdido(o.valor_perdido)}</tr>`).join("") + total(6, lista.reduce((s, o) => s + o.valor_perdido, 0)) : vazio(7)}</tbody></table>`;
+                ${pd.celulas[i]}</tr>`).join("") + total(6, pd.soma) : vazio(7)}</tbody></table>`;
     }
     if (aba === "onhold" || aba === "pnr") {
-        const lista = deTipo([aba === "onhold" ? "Onhold" : "PNR"]);
-        return `<table class="cft-tabela"><thead><tr><th>Dia</th><th>Entregador</th><th>Transportadora</th><th>Código</th>
-            <th>${aba === "onhold" ? "Motivo" : "Aberta em"}</th><th style="text-align:right">Deixou de receber</th></tr></thead>
-            <tbody>${lista.length ? lista.map(o => `<tr><td>${dia(o.dia)}</td><td>${_pdEsc(o.driver)}</td><td>${_pdEsc(o.transportadora || "")}</td>
-                <td>${_pdEsc(o.codigo || "")}</td>
+        const lista = ordenar(deTipo([aba === "onhold" ? "Onhold" : "PNR"]));
+        const pnr = aba === "pnr";
+        const pd = perdaDoDia(lista, pnr ? "perda_pnr" : "perda_performance");
+        return `<table class="cft-tabela"><thead><tr><th>Dia</th><th>Entregador</th><th>Transportadora</th>${pnr ? "<th>Usuário</th>" : ""}<th>Código</th>
+            <th>${aba === "onhold" ? "Motivo" : "Aberta em"}</th>${thDia(pnr ? "O que a PNR tirou do dia inteiro, na 1ª linha de cada dia"
+                : "Perda de performance do dia inteiro (onholds e atrasos juntos), na 1ª linha de cada dia")}</tr></thead>
+            <tbody>${lista.length ? lista.map((o, i) => `<tr><td>${dia(o.dia)}</td><td>${_pdEsc(o.driver)}</td><td>${_pdEsc(o.transportadora || "")}</td>
+                ${pnr ? `<td class="cft-ajuda">${_pdEsc(o.usuario || "—")}</td>` : ""}<td>${_pdEsc(o.codigo || "")}</td>
                 <td class="cft-ajuda">${aba === "onhold" ? `${_pdEsc(o.motivo || "")}${o.hora ? ` · ${_pdEsc(o.hora)}` : ""}` : `${_pdDia(o.ocorrencia)}${o.hora ? ` às ${_pdEsc(o.hora)}` : ""}`}</td>
-                ${perdido(o.valor_perdido)}</tr>`).join("") + total(5, lista.reduce((s, o) => s + o.valor_perdido, 0)) : vazio(6)}</tbody></table>`;
+                ${pd.celulas[i]}</tr>`).join("") + total(pnr ? 6 : 5, pd.soma) : vazio(pnr ? 7 : 6)}</tbody></table>`;
     }
     const lista = dias.filter(d => d.total > 0).sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : a.driver.localeCompare(b.driver, "pt-BR")));
     return `<table class="cft-tabela"><thead><tr><th>Dia</th><th>Entregador</th><th style="text-align:right">Performance</th><th style="text-align:right">R$/pacote</th>
