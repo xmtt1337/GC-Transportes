@@ -409,6 +409,44 @@ async function _fatBaixarPO(referencia) {
     }
 }
 
+// Planilha da PO: uma linha por fatura, as mesmas que o "Baixar PO" salva.
+// CNPJ vai como texto — como número o Excel mostra 4,24463E+13.
+async function _fatExportarPO() {
+    const referencia = document.getElementById("fat-po-sel").value;
+    if (!referencia) return gcAlert("Escolha a PO.");
+    const btn = document.getElementById("fat-po-xlsx-btn");
+    const textoOriginal = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = "Exportando...";
+    try {
+        const r = await fetch(`${API}/faturas/po/pdfs?sem_pdf=1&referencia=${encodeURIComponent(referencia)}`,
+            { headers: { "Authorization": "Bearer " + token } });
+        const linhas = await r.json();
+        if (!r.ok) throw new Error(linhas.error || "Erro ao buscar as faturas.");
+        if (!linhas.length) throw new Error("Nenhuma fatura nessa PO.");
+
+        const dados = [["Número do documento", "NF/Fatura", "Data de emissão", "Nome do arquivo", "cnpj tomador", "Total"]];
+        for (const l of linhas) {
+            dados.push([String(l.numero_fatura), "Fatura", _fatFormatarDataBR(l.data_emissao), l.nome_arquivo,
+                String(l.sacado_cnpj || ""), Number(l.valor)]);
+        }
+        const ws = XLSX.utils.aoa_to_sheet(dados);
+        for (let i = 2; i <= dados.length; i++) {
+            const total = ws["F" + i];
+            if (total) total.z = '"R$" #,##0.00';
+        }
+        ws["!cols"] = [{ wch: 20 }, { wch: 10 }, { wch: 15 }, { wch: 52 }, { wch: 17 }, { wch: 14 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Faturas");
+        XLSX.writeFile(wb, `${_fatNomePasta(referencia)}.xlsx`);
+    } catch (err) {
+        gcAlert(err.message || "Não foi possível exportar a planilha da PO.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = textoOriginal;
+    }
+}
+
 function _fatBase64ParaBytes(b64) {
     const bin = atob(b64);
     const bytes = new Uint8Array(bin.length);
