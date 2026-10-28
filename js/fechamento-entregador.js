@@ -38,7 +38,33 @@ const _fsEhShopee = (nome) => /^shopee/i.test(nome || "");
 
 let _fsDados = null;
 
+/**
+ * Pro entregador a XPT não importa: "Shopee Caçador"/"Shopee Videira" viram um card só,
+ * "Shopee" (pacotes, valor e dias somados; os pedidos que afetaram também com o nome curto).
+ */
+function _fsJuntarShopee(d) {
+    const ehS = (n) => _fsEhShopee(n);
+    const ts = (d.transportadoras || []).filter(t => ehS(t.nome));
+    if (!ts.length) return d;
+    const pacotes = ts.reduce((s, t) => s + (t.pacotes || 0), 0), valor = ts.reduce((s, t) => s + (t.valor || 0), 0);
+    const shopee = { nome: "Shopee", pacotes, valor: Math.round(valor * 100) / 100, por_pacote: pacotes ? Math.round((valor / pacotes) * 100) / 100 : 0 };
+    const i = (d.transportadoras || []).findIndex(t => ehS(t.nome));
+    const transportadoras = d.transportadoras.filter(t => !ehS(t.nome));
+    transportadoras.splice(i, 0, shopee);
+    const dias = new Map();
+    const porDia = [];
+    for (const x of d.por_dia || []) {
+        if (!ehS(x.transportadora)) { porDia.push(x); continue; }
+        const r = dias.get(x.dia);
+        if (!r) { const n = { ...x, transportadora: "Shopee" }; dias.set(x.dia, n); porDia.push(n); continue; }
+        for (const k of ["pacotes", "entregues", "atrasados", "nao_entregues", "valor"]) r[k] = (r[k] || 0) + (x[k] || 0);
+    }
+    const insucessos = (d.insucessos || []).map(x => ehS(x.transportadora) ? { ...x, transportadora: "Shopee" } : x);
+    return { ...d, transportadoras, por_dia: porDia, insucessos };
+}
+
 function _fsRender(d) {
+    d = _fsJuntarShopee(d);
     _fsDados = d;
     const c = d.conta || {};
     const card = (titulo, linhas, extra) => `<div class="pt-card ${extra || ""}">

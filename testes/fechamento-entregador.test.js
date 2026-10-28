@@ -43,7 +43,8 @@ test("cards como antes: transportadoras com valor/entregues/por pacote, adiciona
     ctx._fsRender(D);
     const html = el("fech-sistema").innerHTML;
     assert.match(html, /pt-card pt-card-shopee fs-clicavel/);
-    assert.match(html, /Shopee Caçador/);
+    assert.match(html, /<div class="pt-header">Shopee<\/div>/);
+    assert.doesNotMatch(html, /Shopee Caçador/, "sem a XPT pro entregador");
     assert.match(html, /R\$ 2,40/);              // Imile por pacote
     assert.match(html, /2 × R\$ 15,00/);          // deslocamento
     assert.match(html, /Ticket Log/);
@@ -143,4 +144,18 @@ test("deslocamento: card mostra os km por dia (asfalto e chão)", () => {
     const html = el("fech-sistema").innerHTML;
     assert.match(html, /Asfalto por dia<\/span><span>32,5 km/);
     assert.match(html, /Chão por dia<\/span><span>8 km/);
+});
+
+test("Shopee das duas XPTs vira um card só 'Shopee', com pacotes, valor e dias somados", () => {
+    const { ctx, el } = carregar();
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.transportadoras.push({ nome: "Shopee Videira", pacotes: 40, valor: 100, por_pacote: 2.5 });
+    D2.por_dia.push({ transportadora: "Shopee Videira", dia: "2026-09-21", pacotes: 40, entregues: 40, atrasados: 0, nao_entregues: 0, valor: 100 });
+    ctx._fsRender(D2);
+    const html = el("fech-sistema").innerHTML;
+    assert.strictEqual((html.match(/<div class="pt-header">Shopee<\/div>/g) || []).length, 1);
+    assert.match(html, /150 pacotes/, "110 + 40");
+    assert.match(html, /R\$ 375,00/, "275 + 100");
+    const dias = JSON.parse(JSON.stringify(ctx._fsDiasDaTransp("Shopee")));
+    assert.strictEqual(dias.find(x => x.dia === "2026-09-21").entregues, 140);
 });
