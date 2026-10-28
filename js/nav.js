@@ -72,7 +72,7 @@ const _TELA_TITULOS = {
     "tela-resumo-quinzena":      "Resumo da Quinzena",
     "tela-ajustes-fechamento":   "Acréscimos e Descontos",
     "tela-deslocamentos":        "Deslocamentos",
-    "tela-acareacoes":           "Acareações",
+    "tela-acareacoes":           "PNR abertas",
     "tela-extravios-fechamento": "Fechamento de Extravios",
     "tela-ticketlog-info":       "TicketLog — Informações",
 };

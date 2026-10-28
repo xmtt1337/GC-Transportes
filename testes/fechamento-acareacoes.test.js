@@ -59,3 +59,16 @@ test("valor fixo: quadro da regra configurável e dia do fixo marcado com o desc
     assert.match(html, /id="ac-fixo-desconto" value="40"/);
     assert.match(el("ac-tbody").innerHTML, /Fixo −40%/);
 });
+
+test("por transportadora: contagem de cada uma e filtro da tabela", () => {
+    const { ctx, el } = carregar();
+    ctx._set({ ...DADOS, lista: DADOS.lista.concat([{ driver: "Beltrano Exemplo - Vila", dia: "2026-09-22", codigo: "IM9", transportadora: "Imile" },
+        { driver: "Fulano de Teste - Vila", dia: "2026-09-21", codigo: "LG1", transportadora: "Loggi" }]) });
+    ctx._acRender();
+    assert.match(el("ac-lista").innerHTML, /<option value="Loggi">Loggi<\/option>/);
+    assert.match(el("ac-lista").innerHTML, /cft-kpi-valor">2<\/div><div class="cft-kpi-rotulo">Imile/);
+    el("ac-transp").value = "Loggi";
+    ctx._acRenderTabela();
+    assert.match(el("ac-tbody").innerHTML, /Fulano de Teste/);
+    assert.doesNotMatch(el("ac-tbody").innerHTML, /Beltrano/);
+});

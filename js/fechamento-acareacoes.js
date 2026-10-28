@@ -46,7 +46,7 @@ function abrirAcareacoes(event) {
     const h = { mes: d.getMonth() + 1, ano: d.getFullYear(), quinzena: d.getDate() <= 15 ? 1 : 2 };
     document.getElementById("ac-conteudo").innerHTML = `
         <div class="cft-regras">
-            <div class="cft-pend-titulo" style="color:#e2e8f0">Acareações</div>
+            <div class="cft-pend-titulo" style="color:#e2e8f0">PNR abertas (acareações)</div>
             <div class="cft-ajuda" style="margin-bottom:8px">Usuário com <b>mais de 2 acareações abertas no mesmo dia</b> (conta cada usuário separado,
                 não soma os usuários do entregador): o entregador (sem valor fixo) recebe a <b>tarifa mínima do dia</b> em todos os pacotes daquele dia: R$ 1,50 de segunda a sábado,
                 R$ 1,80 no domingo. Vale só pros polos da regra da performance (Caçador e Videira).</div>
@@ -119,8 +119,11 @@ function _acRender(msg) {
         ${dias.length ? `<div class="cft-kpis">
             <div class="cft-kpi"><div class="cft-kpi-valor">${(d.lista || []).length.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Acareações com entregador</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor${minimas.length ? " cft-neg" : ""}">${minimas.length}</div><div class="cft-kpi-rotulo">Dias na tarifa mínima</div></div>
+            ${_acTransportadoras().map(([t, n]) => `<div class="cft-kpi"><div class="cft-kpi-valor">${n.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">${_acEsc(t)}</div></div>`).join("")}
         </div>
         <div class="cft-barra" style="flex-wrap:wrap">
+            <select class="fech-select" id="ac-transp" onchange="_acRenderTabela()">
+                <option value="">Todas as transportadoras</option>${_acTransportadoras().map(([t]) => `<option value="${_acEsc(t)}">${_acEsc(t)}</option>`).join("")}</select>
             <input class="cft-input" id="ac-busca" placeholder="Buscar entregador..." style="width:260px;flex:0 0 auto;margin:0" oninput="_acRenderTabela()">
             <label class="cft-ajuda" style="display:flex;align-items:center;gap:6px;cursor:pointer">
                 <input type="checkbox" id="ac-so-minima" onchange="_acRenderTabela()"> só os dias na tarifa mínima</label>
@@ -170,12 +173,21 @@ function _acSalvarRegraFixo() {
     }).catch(() => { if (st) st.textContent = ""; alert("Erro ao salvar."); });
 }
 
+/** Transportadoras com PNR na quinzena: [[nome, quantidade]], na ordem do relatório. */
+function _acTransportadoras() {
+    const m = new Map();
+    for (const a of (_acDados || {}).lista || []) m.set(a.transportadora, (m.get(a.transportadora) || 0) + 1);
+    return [...m.entries()];
+}
+
 function _acRenderTabela() {
     const d = _acDados || {};
+    const transp = (document.getElementById("ac-transp") || {}).value || "";
     const busca = (document.getElementById("ac-busca") || {}).value || "";
     const so = (document.getElementById("ac-so-minima") || {}).checked;
     const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-    const linhas = (d.dias || []).filter(x => (!so || x.tarifa_minima) && (!busca || norm(x.driver).includes(norm(busca))));
+    const linhas = (d.dias || []).filter(x => (!so || x.tarifa_minima) && (!busca || norm(x.driver).includes(norm(busca)))
+        && (!transp || (x.por_transportadora || {})[transp]));
     const limite = d.limite ?? 2;
     document.getElementById("ac-tbody").innerHTML = linhas.length ? linhas.map(x => {
         const k = x.driver + "|" + x.dia;
@@ -185,7 +197,7 @@ function _acRenderTabela() {
             : x.fixo ? `<span class="cft-ajuda">fixo</span>`
             : (x.maior_usuario ?? x.acareacoes) > limite ? `<span class="cft-ajuda" title="Sem pacote nos polos da regra nesse dia">fora da regra</span>`
             : `<span class="cft-ajuda">normal</span>`;
-        const codigos = aberto ? (d.lista || []).filter(a => a.driver === x.driver && a.dia === x.dia) : [];
+        const codigos = aberto ? (d.lista || []).filter(a => a.driver === x.driver && a.dia === x.dia && (!transp || a.transportadora === transp)) : [];
         return `<tr style="cursor:pointer" title="Clique pra ver os códigos" data-k="${_acEsc(k)}" onclick="_acAlternar(this.dataset.k)">
             <td><span class="cft-ajuda">${aberto ? "▾" : "▸"}</span> ${_acDia(x.dia)} <span class="cft-ajuda">${_AC_SEM[new Date(x.dia + "T12:00:00Z").getUTCDay()]}</span></td>
             <td>${_acEsc(x.driver)}</td>
