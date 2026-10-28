@@ -191,18 +191,25 @@ test("card do entregador: pedidos do dia com situação, os que afetaram primeir
         { transportadora: "Shopee Caçador", codigo: "BR1", perf_dia: "21/09/2026", data_entrega: "21/09/2026", valor_motorista: 2.5 },
         { transportadora: "Anjun", codigo: "A1", perf_dia: null, deve_ser_entregue: "14/09/2026", data_entrega: "16/09/2026", dentro_prazo: "Não", valor_motorista: 3 },
     ];
-    const onholds = [{ dia: "2026-09-21", tipo: "Onhold", transportadora: "Shopee Caçador", codigo: "BRX", motivo: "Cliente ausente" }];
+    const onholds = [{ dia: "2026-09-21", tipo: "Onhold", transportadora: "Shopee Caçador", codigo: "BRX", motivo: "Cliente ausente" },
+        { dia: "2026-09-21", tipo: "Acareação", transportadora: "Shopee", codigo: "BRP", ocorrencia: "2026-09-22", ocorrencia_hora: "10:00", usuario: "fulano.login" }];
     const ped = JSON.parse(JSON.stringify(ctx._rqPedidosDoDia("2026-09-21", pacotes, onholds)));
-    assert.deepStrictEqual(ped.map(x => [x.situacao, x.codigo]), [["Atrasado", "I2"], ["Não entregue", "L1"], ["Onhold", "BRX"],
+    assert.deepStrictEqual(ped.map(x => [x.situacao, x.codigo]), [["Atrasado", "I2"], ["Não entregue", "L1"], ["Onhold", "BRX"], ["PNR", "BRP"],
         ["Entregue (Shopee)", "BR1"], ["No prazo", "I1"]]);
     assert.strictEqual(ped[0].deveria, "21/09/2026");
     vm.runInContext(`_rqMes = 9; _rqAno = 2026; _rqQuinzena = 2; _rqCard = { r: { entregador: "Fulano de Teste - Vila Teste",
-        dias: [{ dia: "2026-09-21", shopee: 1, outras_prazo: 1, onholds: 1, outras_atraso: 2, pct: 40, valor: 1.5, pacotes_pagos: 3, total: 4.5 }] },
+        dias: [{ dia: "2026-09-21", shopee: 1, outras_prazo: 1, onholds: 1, outras_atraso: 2, pct: 40, valor: 1.5, pacotes_pagos: 3, total: 4.5,
+            acareacoes: 3, tarifa_minima: true, pacotes_minima: 1, usuarios_minima: "fulano.login" }] },
         pacotes: ${JSON.stringify(pacotes)}, onholds: ${JSON.stringify(onholds)}, abertos: new Set() };`, ctx);
     const abas = JSON.parse(JSON.stringify(ctx._rqAbasEntregador()));
-    assert.deepStrictEqual(abas.map(a => a.nome), ["Dias", "O que afetou", "Todos os pedidos"]);
-    assert.deepStrictEqual(abas[1].linhas.slice(1).map(l => [l[1], l[3], l[5], l[7]]), [["Atrasado", "23/09/2026", "I2", "21/09/2026"], ["Não entregue", "", "L1", "21/09/2026"], ["Onhold", "", "BRX", ""]]);
-    assert.strictEqual(abas[2].linhas.length, 1 + 5 + 1, "dia inteiro + o que ficou fora da conta");
-    assert.strictEqual(abas[2].linhas[6][1], "Fora da conta");
+    assert.deepStrictEqual(abas.map(a => a.nome), ["Dias", "O que afetou", "PNR", "Todos os pedidos"]);
+    assert.deepStrictEqual(abas[0].linhas[1].slice(5, 8), [3, 1, "fulano.login"], "Dias: PNR, pacotes na mínima, usuário");
+    assert.deepStrictEqual(abas[1].linhas.slice(1).map(l => [l[3], l[7]]), [["Atrasado", "I2"], ["Não entregue", "L1"], ["Onhold", "BRX"], ["PNR", "BRP"]]);
+    assert.deepStrictEqual(abas[1].linhas[1].slice(1, 3), [40, 1.5], "% e R$/pacote do dia em cada pedido");
+    assert.match(abas[1].linhas[4][12], /usuário fulano\.login/);
+    assert.strictEqual(abas[2].linhas[1][4], "fulano.login");
+    assert.strictEqual(abas[3].linhas.length, 1 + 6 + 1, "dia inteiro + o que ficou fora da conta");
+    assert.deepStrictEqual(abas[3].linhas.slice(1, 7).map(l => l[7]), ["BR1", "BRP", "BRX", "I1", "I2", "L1"], "todos na ordem do pedido, não os que afetaram primeiro");
+    assert.strictEqual(abas[3].linhas[7][3], "Fora da conta");
     assert.strictEqual(ctx._rqNomeArquivo(""), "performance_Fulano-de-Teste-Vila-Teste_2q_09-2026.xlsx");
 });
