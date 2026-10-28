@@ -47,3 +47,15 @@ test("filtro só tarifa mínima e abrir o dia mostra os códigos", () => {
     ctx._acAlternar("Fulano de Teste - Vila|2026-09-21");
     assert.match(el("ac-tbody").innerHTML, /IM1<\/b> · aberta às 09:00/);
 });
+
+test("valor fixo: quadro da regra configurável e dia do fixo marcado com o desconto", () => {
+    const { ctx, el } = carregar();
+    ctx._set({ ...DADOS, regra_fixo: { limite_pct: 0.01, desconto_pct: 40 },
+        dias: DADOS.dias.concat([{ driver: "Ciclano Fixo - Vila", dia: "2026-09-23", acareacoes: 1, por_transportadora: { Loggi: 1 },
+            fixo: true, tarifa_minima: true, valor_dia: 1.8, pacotes: 20, total: 36, na_regra: true }]) });
+    ctx._acRender();
+    const html = el("ac-lista").innerHTML;
+    assert.match(html, /id="ac-fixo-limite" value="0,01"/);
+    assert.match(html, /id="ac-fixo-desconto" value="40"/);
+    assert.match(el("ac-tbody").innerHTML, /Fixo −40%/);
+});

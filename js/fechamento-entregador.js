@@ -152,7 +152,7 @@ function _fsMostrarTransp(i) {
             <div class="fs-dia-linha">${x.entregues} entregue(s)</div>
             <div class="fs-dia-linha"><b>${_fsR(x.valor)}</b></div>
             ${shopee && x.pct != null ? `<div class="fs-dia-linha">${_fsPct(x.pct)} · <span class="fs-nw">${_fsR(x.por_pacote)}</span>/pct</div>` : ""}
-            ${x.minima ? `<div class="fs-dia-linha fs-neg">Tarifa mínima · ${x.acareacoes} acareações</div>` : ""}
+            ${x.minima ? `<div class="fs-dia-linha fs-neg">${(_fsPerfDia(x.dia) || {}).fixo ? "Fixo com desconto" : "Tarifa mínima"} · ${x.acareacoes} acareações</div>` : ""}
             ${x.afetaram ? `<div class="fs-dia-alerta-txt">${x.afetaram} ocorrência(s) ›</div>` : ""}
         </div>`).join("") : `<div class="cft-ajuda">Sem dias nesta transportadora.</div>`}</div>`;
 }
@@ -165,7 +165,8 @@ function _fsMostrarDia(i, dia) {
             <a href="#" class="fs-fechar" onclick="event.preventDefault();_fsFechar()">Fechar</a></div>
         <div class="fs-sub">${_fsDia(dia)} ${_fsSem(dia)} · o que afetou o dia</div>
         ${(() => { const p = _fsPerfDia(dia); return p && p.tarifa_minima ? `<div class="cft-ajuda fs-neg" style="margin-bottom:8px">${p.acareacoes} acareações abertas neste dia
-            (mais de 2 num mesmo usuário): todos os pacotes do dia ficaram na tarifa mínima, ${_fsR(p.valor)} por pacote.</div>` : ""; })()}
+            ${p.fixo ? "(acima do limite pras baixas do dia): todos os pacotes do dia ficaram no valor fixo com desconto"
+                : "(mais de 2 num mesmo usuário): todos os pacotes do dia ficaram na tarifa mínima"}, ${_fsR(p.valor)} por pacote.</div>` : ""; })()}
         ${_fsEhShopee(t.nome) ? `<div class="cft-ajuda" style="margin-bottom:8px">O valor da Shopee no dia segue a performance, que conta também as outras transportadoras.</div>` : ""}
         <div class="extr-lista" style="padding:0">${lista.length ? lista.map(x => `<div class="extr-card">
             <div class="extr-top"><span class="extr-transp fs-neg">${_fsEsc(x.tipo)} · ${_fsEsc(x.transportadora)}</span><span class="extr-codigo">${_fsEsc(x.codigo || "")}</span></div>

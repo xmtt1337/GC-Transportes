@@ -349,7 +349,7 @@ function _rqRenderCard() {
                     <td class="num">${d.shopee}</td><td class="num">${d.outras_prazo}</td>
                     <td class="num${d.onholds ? " cft-neg" : ""}">${d.onholds}</td><td class="num${d.outras_atraso ? " cft-neg" : ""}">${d.outras_atraso}</td>
                     <td class="num ${_rqPctClasse(d.pct)}"><strong>${_rqPct(d.pct)}</strong></td>
-                    <td class="num">${d.tarifa_minima ? `<span class="cft-neg" title="${d.acareacoes} acareações no dia: tarifa mínima">${d.acareacoes} acareações</span> ` : ""}${d.fixo && !d.tarifa_minima ? `<span class="cft-ajuda">fixo</span> ` : ""}${_rqNum(d.valor)}</td>
+                    <td class="num">${d.tarifa_minima ? `<span class="cft-neg" title="${d.acareacoes} acareações no dia: ${d.fixo ? "fixo com desconto" : "tarifa mínima"}">${d.acareacoes} acareações</span> ` : ""}${d.fixo && !d.tarifa_minima ? `<span class="cft-ajuda">fixo</span> ` : ""}${_rqNum(d.valor)}</td>
                     <td class="num">${d.pacotes_pagos}</td><td class="num">${_rqNum(d.total)}</td>
                     <td style="white-space:nowrap"><a href="#" class="cft-ordem" style="color:#60a5fa" onclick="event.preventDefault();_rqCardAlternarDia('${d.dia}')">${abertos.has(d.dia) ? "fechar" : (afetou ? "ver o que afetou" : "ver pedidos")}</a>
                         · <a href="#" class="cft-ordem" style="color:#60a5fa" onclick="event.preventDefault();_rqBaixarDia('${d.dia}')">baixar</a></td>

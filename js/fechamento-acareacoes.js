@@ -4,6 +4,8 @@
 // Regra: um usuário com mais de 2 acareações abertas no mesmo dia (conta por usuário, não
 // soma os usuários do entregador) → todos os pacotes do entregador naquele dia valem a tarifa mínima
 // do dia (seg a sáb R$ 1,50, domingo R$ 1,80). Só nos polos da regra da performance.
+// Quem tem valor fixo: soma os usuários, compara com as baixas do dia e cai pro fixo menos
+// um desconto — limite e desconto configuráveis nesta tela.
 // Backend: /acareacoes (modules/fechamento-transportadoras/acareacoes.js); a conta entra na
 // consolidação e aparece no Resumo da Quinzena e no Meus Fechamentos.
 const _AC_API = () => `${API}/admin/fechamento-transportadoras`;
@@ -46,7 +48,7 @@ function abrirAcareacoes(event) {
         <div class="cft-regras">
             <div class="cft-pend-titulo" style="color:#e2e8f0">Acareações</div>
             <div class="cft-ajuda" style="margin-bottom:8px">Usuário com <b>mais de 2 acareações abertas no mesmo dia</b> (conta cada usuário separado,
-                não soma os usuários do entregador): o entregador recebe a <b>tarifa mínima do dia</b> em todos os pacotes daquele dia: R$ 1,50 de segunda a sábado,
+                não soma os usuários do entregador): o entregador (sem valor fixo) recebe a <b>tarifa mínima do dia</b> em todos os pacotes daquele dia: R$ 1,50 de segunda a sábado,
                 R$ 1,80 no domingo. Vale só pros polos da regra da performance (Caçador e Videira).</div>
             <div class="cft-ajuda" style="margin-bottom:10px">Relatórios aceitos — Shopee: Driver, Created Time, SPXTN · Imile: Associated Waybill,
                 The Responsible Person, Create Time · Anjun: Número do Waybill, Entregador, tempo de registro (só "Suspeita de perda")
@@ -100,6 +102,7 @@ function _acRender(msg) {
                         onclick="_acRemover(this.dataset.e, this.dataset.n)">Remover</button></td>
                 </tr>`).join("")}</tbody></table></div>` : `<div class="cft-ajuda">Nenhum relatório de acareação nesta quinzena ainda.</div>`}
         </div>
+        ${_acRegraFixoHtml(d.regra_fixo)}
         ${pend.length ? `<div class="cft-pend">
             <div class="cft-pend-titulo"><span class="cft-aviso">Usuários sem entregador (${pend.length})</span></div>
             <div class="cft-ajuda" style="margin-bottom:6px">Não achei o entregador desses usuários — as acareações deles ainda não contam.
@@ -129,6 +132,44 @@ function _acRender(msg) {
     if (dias.length) _acRenderTabela();
 }
 
+// Regra de quem tem valor fixo: soma os usuários e compara com as baixas do dia.
+function _acPct(n) {
+    return Number(n || 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+}
+function _acRegraFixoHtml(r) {
+    r = r || { limite_pct: 0.01, desconto_pct: 40 };
+    return `<div class="cft-regras">
+        <div class="cft-pend-titulo" style="color:#e2e8f0">Entregador com valor fixo</div>
+        <div class="cft-ajuda" style="margin-bottom:8px">Pra quem tem valor fixo a conta é outra: <b>soma as acareações de todos os usuários</b> dele no dia
+            e compara com as baixas do dia (pacotes entregues). Acima de <b>${_acPct(r.limite_pct)}%</b>, todos os pacotes do dia valem
+            o fixo com <b>${_acPct(r.desconto_pct)}% a menos</b>. Dia com acareação e sem nenhuma baixa também cai.</div>
+        <div class="cft-barra" style="margin:0;flex-wrap:wrap;align-items:center">
+            <span class="cft-ajuda">Acareações acima de</span>
+            <input class="cft-input" id="ac-fixo-limite" value="${_acPct(r.limite_pct)}" inputmode="decimal" style="width:90px;flex:0 0 auto;margin:0">
+            <span class="cft-ajuda">% das baixas do dia → valor fixo com</span>
+            <input class="cft-input" id="ac-fixo-desconto" value="${_acPct(r.desconto_pct)}" inputmode="decimal" style="width:70px;flex:0 0 auto;margin:0">
+            <span class="cft-ajuda">% a menos</span>
+            <button class="cft-btn" onclick="_acSalvarRegraFixo()">Salvar</button>
+        </div>
+    </div>`;
+}
+
+function _acSalvarRegraFixo() {
+    const v = (id) => document.getElementById(id).value.trim();
+    const st = document.getElementById("ac-status");
+    if (st) st.textContent = "Salvando e recalculando a quinzena...";
+    fetch(`${_AC_API()}/acareacoes/regra-fixo`, {
+        method: "PUT", headers: _acHeaders(true),
+        body: JSON.stringify({ ..._acPeriodo(), limite_pct: v("ac-fixo-limite"), desconto_pct: v("ac-fixo-desconto") }),
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (st) st.textContent = "";
+        if (d.error) { alert(d.error); return; }
+        _acCarregar("Regra do valor fixo salva — quinzena recalculada.");
+    }).catch(() => { if (st) st.textContent = ""; alert("Erro ao salvar."); });
+}
+
 function _acRenderTabela() {
     const d = _acDados || {};
     const busca = (document.getElementById("ac-busca") || {}).value || "";
@@ -139,14 +180,16 @@ function _acRenderTabela() {
     document.getElementById("ac-tbody").innerHTML = linhas.length ? linhas.map(x => {
         const k = x.driver + "|" + x.dia;
         const aberto = _acAbertos.has(k);
-        const tarifa = x.tarifa_minima ? `<span class="cft-neg">Tarifa mínima</span>`
+        const descFixo = (d.regra_fixo || {}).desconto_pct ?? 40;
+        const tarifa = x.tarifa_minima ? `<span class="cft-neg">${x.fixo ? `Fixo −${_acPct(descFixo)}%` : "Tarifa mínima"}</span>`
+            : x.fixo ? `<span class="cft-ajuda">fixo</span>`
             : (x.maior_usuario ?? x.acareacoes) > limite ? `<span class="cft-ajuda" title="Sem pacote nos polos da regra nesse dia">fora da regra</span>`
             : `<span class="cft-ajuda">normal</span>`;
         const codigos = aberto ? (d.lista || []).filter(a => a.driver === x.driver && a.dia === x.dia) : [];
         return `<tr style="cursor:pointer" title="Clique pra ver os códigos" data-k="${_acEsc(k)}" onclick="_acAlternar(this.dataset.k)">
             <td><span class="cft-ajuda">${aberto ? "▾" : "▸"}</span> ${_acDia(x.dia)} <span class="cft-ajuda">${_AC_SEM[new Date(x.dia + "T12:00:00Z").getUTCDay()]}</span></td>
             <td>${_acEsc(x.driver)}</td>
-            <td class="num${(x.maior_usuario ?? x.acareacoes) > limite ? " cft-neg" : ""}"><strong>${x.acareacoes}</strong></td>
+            <td class="num${x.tarifa_minima || (!x.fixo && (x.maior_usuario ?? x.acareacoes) > limite) ? " cft-neg" : ""}"><strong>${x.acareacoes}</strong></td>
             <td class="cft-ajuda">${Object.entries(x.por_transportadora || {}).map(([t, n]) => `${_acEsc(t)} ${n}`).join(" · ")}</td>
             <td>${tarifa}</td>
             <td class="num">${x.valor_dia != null ? _acNum(x.valor_dia) : "—"}</td>
