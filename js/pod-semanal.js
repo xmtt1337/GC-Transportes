@@ -75,18 +75,30 @@ function _pdsNotasHtml(cabecalho, l) {
 }
 
 // Entregador: um cartão por linha (mais de uma quando há outros logins unificados no nome
-// dele). O título é o usuário da Shopee; a cidade fica embaixo, menor.
+// dele). O título é o usuário da Shopee; a cidade fica embaixo, menor. Fechado mostra só Good
+// e Bad Pod; tocar no cartão abre as outras notas (o CSS esconde .pds-outros).
 function _pdsLinhaHtml(cabecalho, l) {
+    const temOutros = cabecalho.some(c => !_PDS_PRINCIPAIS.includes(_pdsChaveCol(c)));
+    const abre = temOutros
+        ? ` role="button" tabindex="0" aria-expanded="false" onclick="_pdsDetalhe(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();_pdsDetalhe(this)}"`
+        : "";
     return `
-        <div class="pds-linha">
+        <div class="pds-linha${temOutros ? " pds-abre" : ""}"${abre}>
             <div class="pds-linha-nome">${_enrEsc(l.entregador)}</div>
             <div class="pds-linha-cidade">${_enrEsc(l.cidade || l.station)}</div>
             ${_pdsNotasHtml(cabecalho, l)}
+            ${temOutros ? `<div class="pds-detalhe-dica"></div>` : ""}
         </div>`;
 }
 
+// Só alterna a classe: sem redesenhar, a busca e as semanas abertas ficam como estão.
+function _pdsDetalhe(el) {
+    const aberto = el.classList.toggle("aberto");
+    el.setAttribute("aria-expanded", String(aberto));
+}
+
 // Sem acento e sem caixa: "Rogerio" acha "Rogério".
-const _pdsSemAcento = t => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const _pdsSemAcento = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 // Ordem alfabética do entregador e, com `filtrar`, a busca (e o polo, que só o dev escolhe).
 function _pdsOrdenar(linhas, filtrar) {

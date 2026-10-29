@@ -18,7 +18,7 @@ const fonteEnr = ler("js/entregador-na-rua.js");
 const fonte = ler("js/pod-semanal.js");
 
 const ponte = `
-;globalThis.__pds = { _pdsQuando, _pdsPeriodo, _pdsClasse, _pdsRender, _pdsHome, _pdsAlternar, _pdsBuscar,
+;globalThis.__pds = { _pdsQuando, _pdsPeriodo, _pdsClasse, _pdsRender, _pdsHome, _pdsAlternar, _pdsBuscar, _pdsLinhaHtml, _pdsDetalhe,
     setDados: v => { _pdsDados = v; }, abrir: s => _pdsAbertas.add(s) };`;
 
 function carregar() {
@@ -112,6 +112,26 @@ test("cartoes em ordem alfabetica e busca sem acento so nos cartoes da tela", ()
     // a home ignora a busca da tela
     api._pdsHome();
     assert.ok(els["home-pod"].innerHTML.includes("ZECA TESTE"));
+});
+
+test("cartao fechado so com Good/Bad Pod; tocar abre as outras notas", () => {
+    const { api } = carregar();
+    const l = { entregador: "FULANO TESTE", cidade: "Cidade A", valores: ["90,00%", "5,00%", "99,00%"] };
+    const h = api._pdsLinhaHtml(["Good Pod", "Bad Pod", "Qualidade"], l);
+    assert.ok(h.includes('class="pds-linha pds-abre"'));
+    assert.ok(h.includes('aria-expanded="false"'));
+    assert.ok(h.includes("pds-outros"));
+    // so as principais: nada pra abrir
+    assert.ok(!api._pdsLinhaHtml(["Good Pod", "Bad Pod"], l).includes("pds-abre"));
+
+    const cls = new Set();
+    const attrs = {};
+    const el = { classList: { toggle: c => (cls.has(c) ? (cls.delete(c), false) : (cls.add(c), true)) },
+        setAttribute: (k, v) => { attrs[k] = v; } };
+    api._pdsDetalhe(el);
+    assert.strictEqual(attrs["aria-expanded"], "true");
+    api._pdsDetalhe(el);
+    assert.strictEqual(attrs["aria-expanded"], "false");
 });
 
 test("home: semana mais recente do entregador; dev nao ganha bloco", () => {
