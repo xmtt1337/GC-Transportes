@@ -138,7 +138,7 @@ function _pdsRender() {
     const d = _pdsDados;
     const semanas = d.semanas || [];
     el.innerHTML = `
-        <p class="epf-nota">POD da Shopee: cada semana vai de segunda a domingo e é atualizada na semana seguinte. Quando a planilha muda, a edição nova fica gravada aqui com a data.</p>
+        <p class="epf-nota">POD da Shopee: cada edição vale pela semana anterior inteira (segunda a domingo) ao dia em que foi feita. Quando a planilha muda, a edição nova fica gravada aqui com a data.</p>
         ${d.todos ? _pdsFiltrosHtml() : ""}
         ${semanas.length
             ? `<div class="enr-ents">${semanas.map(s => _pdsSemanaHtml(s, d.todos)).join("")}</div>`
@@ -223,7 +223,8 @@ function _pdsDiagHtml(st, lendo) {
             ${st && st.erro ? `<div class="pds-diag-erro">${_enrEsc(st.erro)}${st.todas && st.todas.length ? ` Abas da planilha: ${_enrEsc(st.todas.join(", "))}` : ""}</div>` : ""}
             ${abas.map(a => a.erro
                 ? `<div class="pds-diag-erro">${_enrEsc(a.aba)}: ${_enrEsc(a.erro)}</div>`
-                : `<div class="pds-diag-aba"><b>${_enrEsc(a.aba)}</b> → semana ${_pdsPeriodo(a)} · ${a.linhas} de ${a.linhas_lidas} linhas são de Caçador/Videira · ${a.gravou ? "gravou edição nova" : "sem mudança"}<br>Colunas: ${_enrEsc(a.cabecalho.join(", "))}</div>`).join("")}
+                : `<div class="pds-diag-aba">Aba lida: <b>${_enrEsc(a.aba)}</b> · ${a.linhas} de ${a.linhas_lidas} linhas são de Caçador/Videira · ${a.gravou ? `gravou edição nova na semana ${_pdsPeriodo(a)}` : "sem mudança desde a última edição gravada"}<br>Colunas: ${_enrEsc(a.cabecalho.join(", "))}</div>`).join("")}
+            ${st && st.ignoradas && st.ignoradas.length ? `<div class="pds-diag-aba">Abas antigas ignoradas: ${_enrEsc(st.ignoradas.join(", "))}</div>` : ""}
         </div>`;
 }
 
