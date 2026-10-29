@@ -528,6 +528,7 @@ if (_BASE) {
             <li><a href="#" data-rota="Fechamento/Perdas" onclick="abrirPerdasDesempenho(event)">Perdas por desempenho</a></li>
             <li><a href="#" data-rota="Fechamento/Extravios" onclick="abrirExtraviosFechamento(event)">Fechamento de Extravios</a></li>
             <li><a href="#" data-rota="Fechamento/Regras" onclick="abrirRegrasFechamento(event)">Regras e configurações</a></li>
+            <li><a href="#" data-rota="Fechamento/Conversoes" onclick="abrirConversoes(event)">Conversões</a></li>
         </ul>
 
         <li class="menu-item" data-menu="planejamento" id="menu-planejamento" onclick="toggleMenu(this)" style="display:none">
@@ -2291,45 +2292,7 @@ if (_BASE) {
             </div>
         </div><!-- /tela-admin-usuarios-gc -->
 
-        <!-- CONVERSÃO DE NOMES (só dev) — de→para entre o nome que a transportadora manda e
-             o nome padrão do sistema. Chega aqui por Cadastros > Usuários > Conversão de nomes. -->
-        <div id="tela-nomes-padrao" class="view tela-full">
-            <div class="fech-header">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Conversão de nomes</div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                        <div class="adm-search-input-area" style="max-width:260px">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                            <input type="text" id="cnp-busca" placeholder="Buscar nome..." oninput="_cnpBuscar()" autocomplete="off">
-                        </div>
-                        <button class="usr-modal-btn-cancel" onclick="_cnpAbrirImportar()">Importar planilha</button>
-                        <button class="adm-usr-add-btn" onclick="_cnpAbrirNovo()">+ Adicionar</button>
-                    </div>
-                </div>
-                <div id="cnp-resumo" style="font-size:12.5px;color:#8494a9;margin-top:8px"></div>
-            </div>
-            <div class="fech-body">
-                <div class="fechamento-empty" id="cnp-empty">Carregando...</div>
-                <div id="cnp-resultado" style="display:none">
-                    <div class="adm-nf-wrap">
-                        <table class="ant-hist-table">
-                            <thead>
-                                <tr><th>Como a transportadora escreve</th><th></th><th>Nome no sistema</th><th>Ações</th></tr>
-                            </thead>
-                            <tbody id="cnp-tbody"></tbody>
-                        </table>
-                    </div>
-                    <div id="cnp-truncado" style="display:none;font-size:12px;color:#8494a9;padding:10px 4px">Mostrando os 300 primeiros — refine a busca pra achar outro.</div>
-                </div>
-                <div id="cnp-ambiguos-wrap" style="display:none">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                        <div style="font-size:13px;color:#8494a9">Cada um destes aponta pra mais de um nome no sistema — a correção automática não escolhe sozinha, então eles precisam ser arrumados (editar ou excluir na lista) até sobrar um só por nome.</div>
-                        <button class="usr-modal-btn-cancel" onclick="_cnpFecharAmbiguos()">← Voltar à lista</button>
-                    </div>
-                    <div id="cnp-ambiguos-lista"></div>
-                </div>
-            </div>
-        </div><!-- /tela-nomes-padrao -->
+
 
         <!-- Adicionar / editar um par -->
         <div class="usr-modal-overlay" id="modal-cnp-editar" onclick="_fecharModalSeBackdrop(event,'modal-cnp-editar')">
@@ -4860,9 +4823,9 @@ if (_BASE) {
 
 <script src="js/core.js?v=20261028b"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261028o"></script>
+<script src="js/router.js?v=20261029a"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=20261028p"></script>
+<script src="js/nav.js?v=20261029a"></script>
 <script src="js/atendimento.js?v=20261015a"></script>
 <script src="js/atendimento-admin.js?v=20261015b"></script>
 <script src="js/fechamentos.js?v=20261027a"></script>
@@ -4883,7 +4846,7 @@ if (_BASE) {
 <script src="js/extravios.js?v=20261002a"></script>
 <script src="js/extravios-registros.js?v=30260818e"></script>
 <script src="js/usuarios-gc.js?v=20260924b"></script>
-<script src="js/nomes-padrao.js?v=20260922a"></script>
+<script src="js/nomes-padrao.js?v=20261029a"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
 <script src="js/macros.js?v=20261027a"></script>
 <script src="js/macros-execucao.js?v=20261019d"></script>
@@ -4897,9 +4860,10 @@ if (_BASE) {
 <script src="js/fechamento-resumo.js?v=20261029a"></script>
 <script src="js/fechamento-ajustes.js?v=20261028c"></script>
 <script src="js/fechamento-deslocamentos.js?v=20261027a"></script>
-<script src="js/fechamento-acareacoes.js?v=20261029a"></script>
+<script src="js/fechamento-acareacoes.js?v=20261029c"></script>
+<script src="js/conversoes.js?v=20261029a"></script>
 <script src="js/fechamento-perdas.js?v=20261028d"></script>
-<script src="js/fechamento-regras.js?v=20261029a"></script>
+<script src="js/fechamento-regras.js?v=20261029c"></script>
 <script src="js/fechamento-extravios.js?v=20261028d"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
 <script src="js/bipagens.js?v=20261014a"></script>
@@ -5061,14 +5025,13 @@ if (_BASE) {
                     <button class="cft-btn" id="cf-pub-alguns-btn" style="display:none" onclick="_cfAbrirPubAlguns()">Publicar para alguns</button>
                     <button class="cft-btn" onclick="_cfRecalcularTodas(this)" title="Trata de novo todos os relatórios da quinzena (depois de mexer em conversões, preços, regras de prazo)">Recalcular todas</button>
                     <button class="cft-btn" id="cf-ticketlog-btn" onclick="_cfAbrirTicketlog()">Descontos: Ticketlog</button>
-                    <button class="cft-btn" id="cf-cidades-btn" onclick="_cfAbrirConvCidades()">Conversão de cidades</button>
+                    <button class="cft-btn" onclick="abrirConversoes(null, 'cidade')" title="Cidade, Usuário → Usuário principal, Usuário → Entregador">Conversões</button>
                     <button class="cft-btn" id="cf-colunas-btn" onclick="_cfAbrirColunas()">Colunas dos relatórios</button>
                     <button class="cft-btn" onclick="abrirRegrasFechamento()" title="Valores fixos, sábado/domingo, PNR, exceções por entregador...">Regras e configurações</button>
                 </span>
             </div>
             <div class="cft-regras" id="cf-pub-alguns" style="display:none"></div>
             <div class="cft-regras" id="cf-ticketlog" style="display:none"></div>
-            <div class="cft-regras" id="cf-cidades" style="display:none"></div>
             <div class="cft-regras" id="cf-colunas" style="display:none"></div>
             <div class="cft-cards" id="cf-cards"></div>
 
@@ -5198,6 +5161,56 @@ if (_BASE) {
         <div id="pd-conteudo"></div>
     </div>
 </div><!-- /tela-perdas -->
+
+<!-- TELA FECHAMENTO › CONVERSÕES (abas: Usuário → Usuário principal, Usuário → Entregador = a antiga
+     Conversão de nomes, só dev; Cidade = editor #cf-cidades do fechamento-criar.js) -->
+<div id="tela-conversoes" class="view tela-full">
+    <div class="fech-body">
+        <div class="filtro-tabs" id="cv-abas" style="margin-bottom:14px"></div>
+        <div id="cv-painel-principal"><div id="cv-principal"></div></div>
+        <div id="cv-painel-entregador" style="display:none">
+            <div class="cft-ajuda" id="cv-entregador-aviso" style="display:none">Só dev edita a Conversão de nomes (Usuário → Entregador).</div>
+            <div id="cv-entregador-conteudo">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                    <div style="font-size:15px;font-weight:700;color:#e2e8f0">Conversão de nomes</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                        <div class="adm-search-input-area" style="max-width:260px">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="cnp-busca" placeholder="Buscar nome..." oninput="_cnpBuscar()" autocomplete="off">
+                        </div>
+                        <button class="usr-modal-btn-cancel" onclick="_cnpAbrirImportar()">Importar planilha</button>
+                        <button class="adm-usr-add-btn" onclick="_cnpAbrirNovo()">+ Adicionar</button>
+                    </div>
+                </div>
+                <div id="cnp-resumo" style="font-size:12.5px;color:#8494a9;margin-top:8px"></div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="cnp-empty">Carregando...</div>
+                <div id="cnp-resultado" style="display:none">
+                    <div class="adm-nf-wrap">
+                        <table class="ant-hist-table">
+                            <thead>
+                                <tr><th>Como a transportadora escreve</th><th></th><th>Nome no sistema</th><th>Ações</th></tr>
+                            </thead>
+                            <tbody id="cnp-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div id="cnp-truncado" style="display:none;font-size:12px;color:#8494a9;padding:10px 4px">Mostrando os 300 primeiros — refine a busca pra achar outro.</div>
+                </div>
+                <div id="cnp-ambiguos-wrap" style="display:none">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                        <div style="font-size:13px;color:#8494a9">Cada um destes aponta pra mais de um nome no sistema — a correção automática não escolhe sozinha, então eles precisam ser arrumados (editar ou excluir na lista) até sobrar um só por nome.</div>
+                        <button class="usr-modal-btn-cancel" onclick="_cnpFecharAmbiguos()">← Voltar à lista</button>
+                    </div>
+                    <div id="cnp-ambiguos-lista"></div>
+                </div>
+            </div>
+</div>
+        </div>
+        <div id="cv-painel-cidade" style="display:none"><div class="cft-regras" id="cf-cidades" style="display:none"></div></div>
+    </div>
+</div><!-- /tela-conversoes -->
 
 <!-- TELA FECHAMENTO › REGRAS E CONFIGURAÇÕES (os editores #cf-fixos e #cf-regras são do fechamento-criar.js) -->
 <div id="tela-regras-fechamento" class="view tela-full">

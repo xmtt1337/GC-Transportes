@@ -139,6 +139,6 @@ test("PNR de um usuário sem entrega dele no dia: aviso e de quem são as entreg
     ctx._acRender();
     ctx._acAlternar("Pessoa Teste - Vila|2026-10-14");
     const tb = el("ac-tbody").innerHTML;
-    assert.match(tb, /Nenhuma entrega desse usuário no dia — as entregas pagas do dia são de outro usuário/);
+    assert.match(tb, /Nenhuma entrega dessa pessoa no dia — as entregas pagas do dia são de outro login/);
     assert.match(tb, /Entregas pagas no dia: Imile · pessoa\.imile: <b>1<\/b>/);
 });

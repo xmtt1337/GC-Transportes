@@ -2,7 +2,7 @@
 // De → para entre o nome que a transportadora manda e o nome padrão do sistema. Antes só
 // dava mexendo direto no banco (apagar nomes_padrao e recarregar o seed); agora é aqui.
 //
-// Chega por Cadastros > Usuários > "Conversão de nomes" — o botão só aparece pra dev
+// Chega por Fechamento › Conversões (aba Usuário → Entregador) ou Cadastros > Usuários > "Conversão de nomes" — o botão só aparece pra dev
 // (abrirAdminUsuariosGC decide isso, em usuarios-gc.js). Ainda assim o acesso à tela é
 // travado de novo aqui: entrar direto pela URL sem ser dev não pode funcionar, e o
 // servidor recusa as escritas de qualquer forma — a checagem aqui é só pra não abrir uma
@@ -19,9 +19,8 @@ function abrirNomesPadrao(event) {
         gcAlert("Só dev edita a Conversão de nomes.");
         return;
     }
-    mostrarTela("tela-nomes-padrao");
-    document.getElementById("cnp-busca").value = "";
-    _cnpCarregar();
+    // Mora na aba "Usuário → Entregador" de Fechamento › Conversões (desde 29/10/2026).
+    abrirConversoes(null, "entregador");
 }
 
 function _cnpEsc(txt) {
