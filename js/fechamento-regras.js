@@ -105,7 +105,7 @@ function _rgHtmlPnr(p) {
         <div class="cft-barra" style="margin:0 0 8px;flex-wrap:wrap;align-items:center">
             <span class="cft-ajuda"><b>Sem valor fixo:</b> um usuário com mais de</span>
             <input class="cft-input" id="rg-pnr-limite" value="${_rgEsc(p.limite_usuario)}" inputmode="numeric" style="width:60px;flex:0 0 auto;margin:0">
-            <span class="cft-ajuda">PNR no dia (cada usuário separado) → as entregas DESSE usuário no dia na tarifa mínima; os outros usuários do entregador seguem normais (seg a sáb R$ 1,50, dom R$ 1,80).</span>
+            <span class="cft-ajuda">PNR no dia (cada usuário separado) → todas as entregas do entregador no dia, de todos os logins dele, na tarifa mínima (seg a sáb R$ 1,50, dom R$ 1,80).</span>
         </div>
         <div class="cft-barra" style="margin:0;flex-wrap:wrap;align-items:center">
             <span class="cft-ajuda"><b>Com valor fixo:</b> somando os usuários, mais PNR que as baixas do dia ×</span>

@@ -335,7 +335,7 @@ function _rqRenderCard() {
         <td>${_rqEsc(x.transportadora)}</td><td>${_rqEsc(x.codigo)}</td>
         <td>${_rqEsc(x.deveria) || "—"}</td><td>${_rqEsc(x.entregue) || (x.situacao.startsWith("Não entregue") ? "não entregue" : "—")}</td>
         <td style="white-space:normal">${_rqEsc(x.motivo || x.cidade)}${x.situacao === "Onhold" && x.ocorrencia ? ` <span class="cft-ajuda">${_rqEsc(x.ocorrencia)}</span>` : ""}</td></tr>`;
-    const pnrDia = (d) => d.tarifa_minima ? (d.fixo ? "fixo com desconto" : `${d.pacotes_minima || 0} pacote(s) de ${d.usuarios_minima || "?"} na tarifa mínima`) : "não passou do limite";
+    const pnrDia = (d) => d.tarifa_minima ? (d.fixo ? "fixo com desconto" : `${d.pacotes_minima || 0} pacote(s) na tarifa mínima (${d.usuarios_minima || "?"} passou do limite)`) : "não passou do limite";
     ov.querySelector(".rq-card").innerHTML = `
         <div class="cft-barra" style="justify-content:space-between;margin:0 0 6px">
             <div class="cft-modal-titulo" style="margin:0">${_rqEsc(r.entregador)}</div>
