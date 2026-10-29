@@ -37,33 +37,61 @@ function _pdsQuando(em) {
 const _pdsPeriodo = s => `${_pdsDia(s.semana_inicio)} a ${_pdsDia(s.semana_fim)}`;
 const _pdsUltimaEdicao = s => (s.edicoes && s.edicoes.length ? s.edicoes[s.edicoes.length - 1] : "");
 
-// Bad Pod é o único número que, quando aparece, é ruim de qualquer jeito.
+// Meta da Shopee: Good Pod de pelo menos 80% na semana. Só ele ganha cor — o Bad Pod é o
+// mesmo dado pelo outro lado, e pintar os dois repetiria o recado.
+const PDS_META_GOOD = 80;
+
 function _pdsClasse(coluna, valor) {
     const c = String(coluna || "").toLowerCase().replace(/\s+/g, " ").trim();
-    const v = parseFloat(String(valor || "").replace("%", "").replace(",", "."));
-    return c === "bad pod" && v > 0 ? "ruim" : "";
+    if (c !== "good pod") return "";
+    const v = parseFloat(String(valor || "").replace("%", "").replace(/\./g, "").replace(",", "."));
+    if (!isFinite(v)) return "";
+    return v >= PDS_META_GOOD ? "bom" : "ruim";
 }
 
-function _pdsBlocosHtml(cabecalho, l) {
+const _PDS_PRINCIPAIS = ["good pod", "bad pod"];
+const _pdsChaveCol = c => String(c || "").toLowerCase().replace(/\s+/g, " ").trim();
+
+// Good Pod e Bad Pod são o que ele veio ver: número grande, lado a lado. O resto vira uma lista
+// curta de rótulo e valor — no celular, uma caixa por nota virava uma torre de 7 caixas.
+function _pdsNotasHtml(cabecalho, l) {
+    const idx = cabecalho.map((c, i) => i);
+    const principais = idx.filter(i => _PDS_PRINCIPAIS.includes(_pdsChaveCol(cabecalho[i])));
+    const outros = idx.filter(i => !principais.includes(i));
+    const val = i => _enrEsc(l.valores[i] || "—");
     return `
-        <div class="pds-notas">
-            ${cabecalho.map((c, i) => `
-                <div class="pds-nota">
-                    <span class="pds-nota-rot">${_enrEsc(c)}</span>
-                    <span class="pds-nota-val ${_pdsClasse(c, l.valores[i])}">${_enrEsc(l.valores[i] || "—")}</span>
-                </div>`).join("")}
-        </div>`;
+        ${principais.length ? `
+            <div class="pds-principais">
+                ${principais.map(i => `
+                    <div>
+                        <div class="pds-princ-rot">${_enrEsc(cabecalho[i])}${_pdsChaveCol(cabecalho[i]) === "good pod" ? ` <span class="pds-meta">· meta ${PDS_META_GOOD}%</span>` : ""}</div>
+                        <div class="pds-princ-val ${_pdsClasse(cabecalho[i], l.valores[i])}">${val(i)}</div>
+                    </div>`).join("")}
+            </div>` : ""}
+        ${outros.length ? `
+            <dl class="pds-outros">
+                ${outros.map(i => `<div><dt>${_enrEsc(cabecalho[i])}</dt><dd class="${_pdsClasse(cabecalho[i], l.valores[i])}">${val(i)}</dd></div>`).join("")}
+            </dl>` : ""}`;
 }
 
-// Entregador: um cartão por linha (normalmente uma só; mais de uma quando há outros logins
-// unificados no nome dele).
-function _pdsLinhaHtml(cabecalho, l) {
+// Entregador: um cartão por linha (uma por cidade; mais de uma quando há outros logins
+// unificados no nome dele). O título é a cidade — o nome dele mesmo não diz nada pra ele; só
+// aparece quando a semana tem mais de um login.
+function _pdsLinhaHtml(cabecalho, l, comNome) {
     return `
         <div class="pds-linha">
-            <div class="pds-linha-nome">${_enrEsc(l.entregador)}</div>
-            <div class="pds-linha-sub">${_enrEsc(l.cidade || l.station)} · ${_enrEsc(l.polo)}</div>
-            ${_pdsBlocosHtml(cabecalho, l)}
+            <div class="pds-linha-topo">
+                <span class="pds-linha-cidade">${_enrEsc(l.cidade || l.station)}</span>
+                <span class="pds-linha-polo">${_enrEsc(l.polo)}</span>
+            </div>
+            ${comNome ? `<div class="pds-linha-nome">${_enrEsc(l.entregador)}</div>` : ""}
+            ${_pdsNotasHtml(cabecalho, l)}
         </div>`;
+}
+
+function _pdsLinhasHtml(s) {
+    const comNome = new Set(s.linhas.map(l => l.entregador)).size > 1;
+    return s.linhas.map(l => _pdsLinhaHtml(s.cabecalho, l, comNome)).join("");
 }
 
 // Dev: todo mundo numa tabela, que dá pra comparar de relance. Rola de lado dentro da caixa,
@@ -108,7 +136,7 @@ function _pdsSemanaHtml(s, todos) {
             </button>
             ${aberta ? `
                 <div class="pds-corpo">
-                    ${todos ? _pdsTabelaHtml(s) : s.linhas.map(l => _pdsLinhaHtml(s.cabecalho, l)).join("")}
+                    ${todos ? _pdsTabelaHtml(s) : _pdsLinhasHtml(s)}
                     ${_pdsEdicoesHtml(s)}
                 </div>` : ""}
         </div>`;
@@ -138,7 +166,7 @@ function _pdsRender() {
     const d = _pdsDados;
     const semanas = d.semanas || [];
     el.innerHTML = `
-        <p class="epf-nota">POD da Shopee: cada edição vale pela semana anterior inteira (segunda a domingo) ao dia em que foi feita. Quando a planilha muda, a edição nova fica gravada aqui com a data.</p>
+        <p class="epf-nota">Cada semana vai de segunda a domingo e sai na semana seguinte.</p>
         ${d.todos ? _pdsFiltrosHtml() : ""}
         ${semanas.length
             ? `<div class="enr-ents">${semanas.map(s => _pdsSemanaHtml(s, d.todos)).join("")}</div>`
@@ -195,12 +223,12 @@ function _pdsHome() {
     if (!s) { el.innerHTML = ""; return; }
     el.innerHTML = `
         <section class="enr">
-            <div class="enr-topo">
-                <span class="enr-titulo">POD Shopee · semana ${_pdsPeriodo(s)}</span>
-                <span class="enr-atual">Atualizado em <b>${_enrEsc(_pdsQuando(_pdsUltimaEdicao(s)))}</b></span>
-                <button type="button" class="enr-recarregar" onclick="abrirPodSemanal(event)">Ver semanas</button>
+            <div class="pds-home-topo">
+                <span class="enr-titulo">POD Shopee</span>
+                <button type="button" class="pds-link" onclick="abrirPodSemanal(event)">Ver semanas</button>
+                <span class="pds-home-sub">Semana ${_pdsPeriodo(s)} · atualizado em ${_enrEsc(_pdsQuando(_pdsUltimaEdicao(s)))}</span>
             </div>
-            <div class="enr-ents">${s.linhas.map(l => _pdsLinhaHtml(s.cabecalho, l)).join("")}</div>
+            <div class="enr-ents">${_pdsLinhasHtml(s)}</div>
         </section>`;
 }
 

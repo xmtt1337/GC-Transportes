@@ -46,11 +46,15 @@ test("datas: texto puro, sem fuso", () => {
     assert.strictEqual(api._pdsPeriodo(SEMANA), "19/10 a 25/10");
 });
 
-test("Bad Pod acima de zero fica vermelho; zero e outras colunas, nao", () => {
+test("meta do Good Pod: 80% ou mais verde, 79,99% pra baixo vermelho; o resto sem cor", () => {
     const { api } = carregar();
-    assert.strictEqual(api._pdsClasse("Bad Pod", "20,00%"), "ruim");
-    assert.strictEqual(api._pdsClasse("Bad Pod", "0,00%"), "");
-    assert.strictEqual(api._pdsClasse("Good Pod", "0,00%"), "");
+    assert.strictEqual(api._pdsClasse("Good Pod", "80,00%"), "bom");
+    assert.strictEqual(api._pdsClasse("Good Pod", "100,00%"), "bom");
+    assert.strictEqual(api._pdsClasse("Good Pod", "79,99%"), "ruim");
+    assert.strictEqual(api._pdsClasse("Good Pod", "0,00%"), "ruim");
+    assert.strictEqual(api._pdsClasse("Good Pod", ""), "");
+    assert.strictEqual(api._pdsClasse("Bad Pod", "32,48%"), "");
+    assert.strictEqual(api._pdsClasse("Qualidade", "10,00%"), "");
 });
 
 test("tela do entregador: semana aberta, nome escapado, edicoes listadas", () => {
@@ -59,19 +63,34 @@ test("tela do entregador: semana aberta, nome escapado, edicoes listadas", () =>
     api.abrir(SEMANA.semana_inicio);
     api._pdsRender();
     const h = els["pds-conteudo"].innerHTML;
-    assert.ok(h.includes("FULANO &quot;TESTE&quot;"));
-    assert.ok(!h.includes('FULANO "TESTE"'));
     assert.ok(h.includes("Atualizado em 27/10 às 14:32"));
     assert.ok(h.includes("27/10 às 09:10 · 27/10 às 14:32"));
-    assert.ok(h.includes('class="pds-nota-val ruim">20,00%'));
+    assert.ok(h.includes('class="pds-princ-val ruim">80,00%') === false);
+    assert.ok(h.includes('class="pds-princ-val bom">80,00%'));
+    assert.ok(h.includes("meta 80%"));
+    // um login só: o título é a cidade, sem repetir o nome dele
+    assert.ok(h.includes('pds-linha-cidade">Cidade A'));
+    assert.ok(!h.includes("pds-linha-nome"));
     assert.ok(!h.includes("pds-filtros"));
+});
+
+test("mais de um login na semana: cada cartao mostra o nome, escapado", () => {
+    const { api, els } = carregar();
+    const outro = { ...SEMANA.linhas[0], entregador: "AJUDANTE <TESTE>", cidade: "Cidade B" };
+    api.setDados({ todos: false, semanas: [{ ...SEMANA, linhas: [...SEMANA.linhas, outro] }] });
+    api.abrir(SEMANA.semana_inicio);
+    api._pdsRender();
+    const h = els["pds-conteudo"].innerHTML;
+    assert.ok(h.includes("FULANO &quot;TESTE&quot;"));
+    assert.ok(!h.includes('FULANO "TESTE"'));
+    assert.ok(h.includes("AJUDANTE &lt;TESTE&gt;"));
 });
 
 test("home: semana mais recente do entregador; dev nao ganha bloco", () => {
     const { api, els } = carregar();
     api.setDados({ todos: false, semanas: [SEMANA] });
     api._pdsHome();
-    assert.ok(els["home-pod"].innerHTML.includes("POD Shopee · semana 19/10 a 25/10"));
+    assert.ok(els["home-pod"].innerHTML.includes("Semana 19/10 a 25/10 · atualizado em 27/10 às 14:32"));
     api.setDados({ todos: true, semanas: [SEMANA] });
     api._pdsHome();
     assert.strictEqual(els["home-pod"].innerHTML, "");
