@@ -50,7 +50,7 @@ function abrirAcareacoes(event) {
         <div class="cft-regras">
             <div class="cft-pend-titulo" style="color:#e2e8f0">PNR abertas (acareações)</div>
             <div class="cft-ajuda" style="margin-bottom:10px">Relatórios aceitos — Shopee: Driver, Created Time, SPXTN · Imile: Associated Waybill,
-                The Responsible Person, Create Time · Anjun: Número do Waybill, Entregador, tempo de registro (só "Suspeita de perda")
+                The Responsible Person, Create Time · Anjun: Número do Waybill, Entregador, tempo de registro (só "Suspeita de perda" em Tipo de Reclamação)
                 · Loggi: Pacote, Entregador, Aberto em. Mesmo código repetido conta uma vez.</div>
             <div class="cft-barra" style="margin:0;flex-wrap:wrap">
                 <select class="fech-select" id="ac-q" onchange="_acCarregar()">
