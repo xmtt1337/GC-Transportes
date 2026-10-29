@@ -21,6 +21,7 @@ const _ROTAS = {
     "Baixas/TotalExpress":           () => abrirBaixaTotalExpress(),
     "Conferencia/Shopee":            () => abrirConfEntregador(),
     "Performance/PorDia":            () => abrirEntPerformance(),
+    "PODShopee/Semanal":             () => abrirPodSemanal(),
     "CriarAT":                       () => abrirSolicitarAT(),
     // Rota de quando era Atribuições → Solicitar AT: mantida pra link salvo não quebrar.
     "Atribuicoes/SolicitarAT":       () => abrirSolicitarAT(),
@@ -185,6 +186,7 @@ const _TELA_ROTAS = {
     "tela-baixa-te":             "Baixas/TotalExpress",
     "tela-conf-entregador":      "Conferencia/Shopee",
     "tela-ent-performance":      "Performance/PorDia",
+    "tela-pod-semanal":          "PODShopee/Semanal",
     "tela-solicitar-at":         "CriarAT",
     "tela-admin-baixas-te":      "Baixas/TotalExpress",
     "tela-devolucao-nova":       "Devolucoes/Nova",

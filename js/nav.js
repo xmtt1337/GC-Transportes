@@ -10,6 +10,7 @@ const _TELA_TITULOS = {
     "tela-fiscal-tributacao":    "Tributação IBS/CBS",
     "tela-home":                 "Painel",
     "tela-ent-performance":      "Performance por dia",
+    "tela-pod-semanal":          "POD Shopee — Semanal",
     "tela-admin":                "Alimentar",
     "tela-admin-fechamentos":    "Pesquisar Fechamentos",
     "tela-admin-nfs":            "Notas Fiscais",

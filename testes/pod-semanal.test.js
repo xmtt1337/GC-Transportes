@@ -1,0 +1,90 @@
+// Testes de POD Shopee > Semanal e do bloco na tela inicial (js/pod-semanal.js).
+//
+// O que se protege: o texto vem da planilha (nome com aspas não pode quebrar o HTML); a data
+// chega pronta em Brasília e não passa por `new Date`; Bad Pod acima de zero em vermelho; a
+// home só mostra a semana do próprio entregador; o index/core/router não perdem os ganchos.
+//
+// Dados de TESTE, inventados.
+
+const test = require("node:test");
+const assert = require("node:assert");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+
+const raiz = path.join(__dirname, "..");
+const ler = f => fs.readFileSync(path.join(raiz, f), "utf8");
+const fonteEnr = ler("js/entregador-na-rua.js");
+const fonte = ler("js/pod-semanal.js");
+
+const ponte = `
+;globalThis.__pds = { _pdsQuando, _pdsPeriodo, _pdsClasse, _pdsRender, _pdsHome, _pdsAlternar,
+    setDados: v => { _pdsDados = v; }, abrir: s => _pdsAbertas.add(s) };`;
+
+function carregar() {
+    const els = { "pds-conteudo": { innerHTML: "" }, "home-pod": { innerHTML: "" } };
+    const ctx = vm.createContext({
+        console, API: "http://api.teste", localStorage: { getItem: () => "tok" },
+        document: { getElementById: id => els[id] || null, querySelector: () => null },
+        fetch: () => Promise.reject(new Error("sem rede")),
+    });
+    ctx.globalThis = ctx;
+    vm.runInContext(fonteEnr + "\n" + fonte + ponte, ctx);
+    return { api: ctx.__pds, els };
+}
+
+const SEMANA = {
+    semana_inicio: "2026-10-19", semana_fim: "2026-10-25", aba: "04 - POD por Driver - 27/10",
+    cabecalho: ["Good Pod", "Bad Pod"],
+    edicoes: ["2026-10-27 09:10", "2026-10-27 14:32"],
+    linhas: [{ entregador: 'FULANO "TESTE"', station: "XPT_SC_Caçador", cidade: "Cidade A", polo: "Caçador", valores: ["80,00%", "20,00%"] }],
+};
+
+test("datas: texto puro, sem fuso", () => {
+    const { api } = carregar();
+    assert.strictEqual(api._pdsQuando("2026-10-27 14:32"), "27/10 às 14:32");
+    assert.strictEqual(api._pdsPeriodo(SEMANA), "19/10 a 25/10");
+});
+
+test("Bad Pod acima de zero fica vermelho; zero e outras colunas, nao", () => {
+    const { api } = carregar();
+    assert.strictEqual(api._pdsClasse("Bad Pod", "20,00%"), "ruim");
+    assert.strictEqual(api._pdsClasse("Bad Pod", "0,00%"), "");
+    assert.strictEqual(api._pdsClasse("Good Pod", "0,00%"), "");
+});
+
+test("tela do entregador: semana aberta, nome escapado, edicoes listadas", () => {
+    const { api, els } = carregar();
+    api.setDados({ todos: false, semanas: [SEMANA] });
+    api.abrir(SEMANA.semana_inicio);
+    api._pdsRender();
+    const h = els["pds-conteudo"].innerHTML;
+    assert.ok(h.includes("FULANO &quot;TESTE&quot;"));
+    assert.ok(!h.includes('FULANO "TESTE"'));
+    assert.ok(h.includes("Atualizado em 27/10 às 14:32"));
+    assert.ok(h.includes("27/10 às 09:10 · 27/10 às 14:32"));
+    assert.ok(h.includes('class="pds-nota-val ruim">20,00%'));
+    assert.ok(!h.includes("pds-filtros"));
+});
+
+test("home: semana mais recente do entregador; dev nao ganha bloco", () => {
+    const { api, els } = carregar();
+    api.setDados({ todos: false, semanas: [SEMANA] });
+    api._pdsHome();
+    assert.ok(els["home-pod"].innerHTML.includes("POD Shopee · semana 19/10 a 25/10"));
+    api.setDados({ todos: true, semanas: [SEMANA] });
+    api._pdsHome();
+    assert.strictEqual(els["home-pod"].innerHTML, "");
+});
+
+test("ganchos no index, core e router", () => {
+    const index = ler("index.html");
+    assert.ok(index.includes('id="home-pod"'));
+    assert.ok(index.includes('id="tela-pod-semanal"'));
+    assert.ok(index.includes('id="menu-pod-shopee"'));
+    assert.ok(/js\/pod-semanal\.js\?v=\d{8}[a-z]/.test(index));
+    const core = ler("js/core.js");
+    assert.ok(core.includes('show("menu-pod-shopee")'));
+    assert.ok(core.includes("_pdsCarregarHome()"));
+    assert.ok(ler("js/router.js").includes('"PODShopee/Semanal"'));
+});

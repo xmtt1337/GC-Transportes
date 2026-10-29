@@ -260,6 +260,10 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
             show("menu-ent-performance");
             show("submenu-ent-performance");
         }
+        // POD Shopee: todo entregador; a tela inicial mostra a semana mais recente dele.
+        show("menu-pod-shopee");
+        show("submenu-pod-shopee");
+        if (typeof _pdsCarregarHome === "function") _pdsCarregarHome();
         // Quem leva rota e também roda transferência ganha as duas telas do motorista
         // (toggle em Cadastros → Entregadores, "Editar" → Liberar telas de motorista).
         // Continua sendo entregador: fechamento, NF e conferência de rota seguem iguais.
@@ -343,6 +347,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
             show("menu-macros"); // liga/desliga e configura tarefas automáticas — só dev
             show("menu-ticketlog"); // cartões Ticketlog e valor de cada um — só dev
             show("submenu-ticketlog");
+            show("menu-pod-shopee"); // POD Shopee > Semanal: dev vê todos os entregadores
+            show("submenu-pod-shopee");
         }
     }
 

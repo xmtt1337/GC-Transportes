@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261027c">
+<link rel="stylesheet" href="style.css?v=20261029a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -337,6 +337,20 @@ if (_BASE) {
         </li>
         <ul class="submenu" data-menu="entperformance" id="submenu-ent-performance" style="display:none">
             <li><a href="#" data-rota="Performance/PorDia" onclick="abrirEntPerformance(event)">Por dia</a></li>
+        </ul>
+
+        <!-- POD Shopee: o POD semanal da planilha do André, só Caçador e Videira. Todo
+             entregador vê o dele; o dev vê todos. Nasce escondido e o core.js mostra. -->
+        <li class="menu-item" data-menu="podshopee" id="menu-pod-shopee" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>
+            </svg>
+            <span class="label">POD Shopee</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">POD Shopee</span>
+        </li>
+        <ul class="submenu" data-menu="podshopee" id="submenu-pod-shopee" style="display:none">
+            <li><a href="#" data-rota="PODShopee/Semanal" onclick="abrirPodSemanal(event)">Semanal</a></li>
         </ul>
 
         <!-- Criar AT: o pacote que caiu na mão do entregador sem passar pelo
@@ -746,6 +760,7 @@ if (_BASE) {
                 <div class="home-greeting">Olá, <span id="welcome-name">...</span>!</div>
                 <div class="home-role-badge" id="home-role-badge">Carregando...</div>
                 <div id="home-na-rua"></div>
+                <div id="home-pod"></div>
                 <div class="home-actions" id="home-actions"></div>
                 <div id="home-nf-status"></div>
                 <div id="home-admin-dash"></div>
@@ -3834,6 +3849,13 @@ if (_BASE) {
             </div>
         </div>
 
+        <!-- TELA POD SHOPEE — SEMANAL -->
+        <div id="tela-pod-semanal" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div id="pds-conteudo" class="enr pds"></div>
+            </div>
+        </div>
+
         <!-- TELA CONFERÊNCIA DO ENTREGADOR — SHOPEE -->
         <div id="tela-conf-entregador" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
@@ -4821,11 +4843,11 @@ if (_BASE) {
     </div>
 </div>
 
-<script src="js/core.js?v=20261028b"></script>
+<script src="js/core.js?v=20261029a"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261029a"></script>
+<script src="js/router.js?v=20261029b"></script>
 <script src="js/sidebar.js?v=30260812d"></script>
-<script src="js/nav.js?v=20261029a"></script>
+<script src="js/nav.js?v=20261029b"></script>
 <script src="js/atendimento.js?v=20261015a"></script>
 <script src="js/atendimento-admin.js?v=20261015b"></script>
 <script src="js/fechamentos.js?v=20261027a"></script>
@@ -4908,6 +4930,7 @@ if (_BASE) {
 <script src="js/shopee-na-rua.js?v=20261002a"></script>
 <script src="js/entregador-na-rua.js?v=20261005c"></script>
 <script src="js/entregador-performance.js?v=20261005a"></script>
+<script src="js/pod-semanal.js?v=20261029a"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
