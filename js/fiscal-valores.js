@@ -16,6 +16,8 @@ let _valTipos = null;      // [{tipo, n}] achados na planilha
 let _valTiposIncluidos = null;   // null = ainda não escolhido
 let _valNomeResidual = null;     // nome do componente que fecha a conta
 let _valRelatorio = null;
+let _valPermitirReemissao = false;   // true = cria CT-e novo mesmo pra código já emitido
+let _valJaEmitidos = null;           // [{codigo, status, numero, serie, ...}] achados na checagem
 
 // ── leitura da planilha no navegador
 //
@@ -256,6 +258,8 @@ async function abrirFiscalValores(event) {
     _valTipos = null;
     _valTiposIncluidos = null;
     _valRelatorio = null;
+    _valPermitirReemissao = false;
+    _valJaEmitidos = null;
     if (_valPolling) { clearInterval(_valPolling); _valPolling = null; }
     document.getElementById("fiscal-valores-conteudo").innerHTML = _htmlValores();
 
@@ -335,8 +339,9 @@ function _htmlValores() {
            vem de <b>Valor Final à Receber</b>.</p>
         <p>Códigos que ainda não têm rascunho são buscados na Shopee e criados na
            hora — <b>como rascunho</b>, que ainda passa por validação e emissão.
-           Documento já emitido não é tocado, e reenviar a mesma planilha não
-           duplica nada.</p>
+           Documento já emitido não é tocado por padrão, e reenviar a mesma
+           planilha não duplica nada — a tela avisa antes se achar algum código
+           que já tem CT-e, e só reemite se você confirmar.</p>
     </div>
 
     <div class="secao-form">
@@ -476,6 +481,12 @@ function _valMostrarEtapas() {
                     <option value="perfil">Do perfil de operação (padrão)</option>
                     <option value="planilha">Da planilha (coluna de alíquota)</option>
                 </select></label>
+            <label>Tipo de serviço
+                <select id="val-tipo-servico">
+                    <option value="">O do perfil (padrão — Redespacho)</option>
+                    <option value="2">Redespacho</option>
+                    <option value="1">Subcontratação</option>
+                </select></label>
         </div>
         <p class="dica">
             <b>Ambiente</b> força onde ESTES CT-e nascem, sem precisar mudar o
@@ -484,7 +495,9 @@ function _valMostrarEtapas() {
             linha a linha, em vez da alíquota fixa do perfil — só mude se o
             contador confirmou que essas linhas são mesmo ICMS, só que a
             alíquota varia (ver o aviso de alíquotas diferentes abaixo, em
-            "Conferir").
+            "Conferir"). <b>Tipo de serviço</b> força o ide.tpServ destes
+            CT-e — hoje o perfil sempre usa Redespacho; só mexe quando a
+            operação desta planilha for mesmo Subcontratação.
         </p>
         <div id="val-tipos"></div>
         <div id="val-cidades"></div>
@@ -695,10 +708,122 @@ async function _valConfirmarLote() {
         return;
     }
 
+    _valPermitirReemissao = false;
+    _valJaEmitidos = null;
+    alvo.innerHTML = "<p class='carregando'>Conferindo se algum código já tem CT-e emitido…</p>";
+    try {
+        _valJaEmitidos = await _valChecarJaEmitidos(local.itens.map((i) => i.codigo));
+    } catch (e) {
+        // Falha na checagem não pode travar quem só quer importar — segue
+        // sem o aviso, do jeito que a tela sempre funcionou (pula duplicado).
+        _valJaEmitidos = [];
+    }
+
+    if (_valJaEmitidos.length) {
+        _valMostrarAvisoJaEmitidos(local);
+    } else {
+        _valMostrarConfirmacao(local);
+    }
+}
+
+/**
+ * Manda os códigos pro servidor em blocos (mesmo limite de 5000 da rota) e
+ * junta o resultado — é só uma consulta indexada, mas 120 mil códigos num
+ * corpo só não passa, igual ao envio dos itens.
+ */
+const _VAL_BLOCO_CHECAGEM = 5000;
+async function _valChecarJaEmitidos(codigos) {
+    const achados = [];
+    for (let i = 0; i < codigos.length; i += _VAL_BLOCO_CHECAGEM) {
+        const bloco = codigos.slice(i, i + _VAL_BLOCO_CHECAGEM);
+        const r = await _cteApi("/fiscal/cte/ja-emitidos", {
+            method: "POST", body: JSON.stringify({ codigos: bloco }),
+        });
+        achados.push(...(r || []));
+    }
+    return achados;
+}
+
+/**
+ * Avisa ANTES de criar: "N códigos já têm CT-e, quer emitir de novo mesmo
+ * assim?" — por precaução, pra não duplicar documento fiscal sem querer nem
+ * silenciosamente perder um reenvio proposital (substituição, correção).
+ */
+function _valMostrarAvisoJaEmitidos(local) {
+    const alvo = document.getElementById("val-resultado");
+    const n = _valJaEmitidos.length;
+    const amostra = _valJaEmitidos.slice(0, 8);
+    alvo.innerHTML = `
+    <div class="aviso-bloqueio">
+        <strong>${n.toLocaleString("pt-BR")} código(s) desta planilha já têm CT-e emitido.</strong>
+        <p>
+            Isso costuma acontecer quando a mesma planilha (ou parte dela) já foi
+            processada antes. Confira a amostra abaixo — se não for isso, baixe o
+            relatório completo antes de decidir.
+        </p>
+        <table class="tabela">
+            <thead><tr><th>Código</th><th>Status atual</th><th>CT-e</th></tr></thead>
+            <tbody>${amostra.map((j) => `<tr>
+                <td class="mono-pequeno">${_esc(j.codigo)}</td>
+                <td>${_esc(j.status)}</td>
+                <td>${j.numero ? `nº ${_esc(j.numero)}/${_esc(j.serie)}` : "—"}</td>
+            </tr>`).join("")}</tbody>
+        </table>
+        ${n > amostra.length ? `<p class="dica">+ ${(n - amostra.length).toLocaleString("pt-BR")} outro(s).</p>` : ""}
+        <p><b>Quer emitir de novo mesmo assim?</b></p>
+        <div class="acoes-rodape">
+            <button onclick="_valBaixarRelatorioJaEmitidos()">↓ Baixar relatório detalhado</button>
+            <button onclick="_valDecidirReemissao(false)">Não — pular esses ${n}</button>
+            <button class="btn-primario" onclick="_valDecidirReemissao(true)">
+                Sim — emitir de novo
+            </button>
+        </div>
+    </div>`;
+}
+
+function _valDecidirReemissao(permitir) {
+    _valPermitirReemissao = permitir;
+    let local;
+    try { local = _valProcessarLocal(); }
+    catch (e) {
+        document.getElementById("val-resultado").innerHTML =
+            `<div class="aviso-bloqueio">${_esc(e.message)}</div>`;
+        return;
+    }
+    _valMostrarConfirmacao(local);
+}
+
+/** Relatório em CSV dos códigos que já têm CT-e — pra decidir com calma, fora da tela. */
+function _valBaixarRelatorioJaEmitidos() {
+    if (!_valJaEmitidos || !_valJaEmitidos.length) return;
+    const linhaCsv = (campos) => campos.map((c) =>
+        `"${String(c ?? "").replace(/"/g, '""')}"`).join(";");
+    const csv = [
+        linhaCsv(["Código", "Status atual", "CT-e id", "Número", "Série", "Ambiente", "Data autorização"]),
+        ...(_valJaEmitidos.map((j) => linhaCsv([
+            j.codigo, j.status, j.cte_id, j.numero, j.serie, j.ambiente,
+            j.data_autorizacao ? new Date(j.data_autorizacao).toLocaleString("pt-BR") : "",
+        ]))),
+    ].join("\r\n");
+
+    const blob = new Blob([String.fromCharCode(0xFEFF) + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ja-emitidos-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+function _valMostrarConfirmacao(local) {
+    const alvo = document.getElementById("val-resultado");
     const n = local.itens.length;
     const horas = (n * 0.4) / 3600;   // ~0,4s por código, com 4 em paralelo
     const ambiente = document.getElementById("val-ambiente").value;
     const fonteAliquota = document.getElementById("val-fonte-aliquota").value;
+    const tipoServico = document.getElementById("val-tipo-servico").value;
     alvo.innerHTML = `
     <div class="aviso-info">
         <strong>Criar ${n.toLocaleString("pt-BR")} CT-e?</strong>
@@ -710,10 +835,16 @@ async function _valConfirmarLote() {
         </p>
         <p class="dica">
             Ambiente: <b>${ambiente ? (ambiente === "producao" ? "PRODUÇÃO" : "Homologação") : "o de sempre (desta empresa)"}</b> ·
-            Alíquota do ICMS: <b>${fonteAliquota === "planilha" ? "da planilha" : "do perfil"}</b>
+            Alíquota do ICMS: <b>${fonteAliquota === "planilha" ? "da planilha" : "do perfil"}</b> ·
+            Tipo de serviço: <b>${tipoServico === "1" ? "Subcontratação" : tipoServico === "2" ? "Redespacho" : "o do perfil"}</b>
         </p>
         <p class="dica">
-            Códigos que já têm rascunho só terão o valor atualizado — não duplicam.
+            ${_valPermitirReemissao
+                ? `Você escolheu emitir de novo mesmo pros ${_valJaEmitidos.length} código(s)
+                   que já tinham CT-e — vão ganhar um CT-e <b>adicional</b>, o anterior não é tocado.`
+                : `Códigos que já têm rascunho só terão o valor atualizado — não duplicam.
+                   ${_valJaEmitidos && _valJaEmitidos.length
+                       ? `Os ${_valJaEmitidos.length} que já têm CT-e emitido serão pulados.` : ""}`}
             São criados como <b>rascunho</b>: nada é enviado à SEFAZ aqui.
         </p>
         ${horas > 0.5 ? `<p><b>Deve levar cerca de ${horas < 1
@@ -755,6 +886,8 @@ async function _valImportarLote() {
     const sobrescrever = document.getElementById("val-sobrescrever").checked;
     const ambiente = document.getElementById("val-ambiente").value || null;
     const fonteAliquota = document.getElementById("val-fonte-aliquota").value;
+    const tipoServicoSel = document.getElementById("val-tipo-servico").value;
+    const tipoServico = tipoServicoSel === "" ? null : Number(tipoServicoSel);
     alvo.innerHTML = "<p class='carregando'>Preparando a importação…</p>";
 
     try {
@@ -765,6 +898,8 @@ async function _valImportarLote() {
             body: JSON.stringify({
                 nome: _valPlanilha.nome, sobrescrever,
                 ambiente, fonte_aliquota: fonteAliquota,
+                permitir_reemissao: _valPermitirReemissao,
+                tipo_servico: tipoServico,
             }),
         });
         _valImportacaoId = imp.id;
