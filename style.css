@@ -5109,9 +5109,9 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .pds-linha { padding: 14px 16px; }
 .pds-linha + .pds-linha { border-top: 1px solid rgba(255,255,255,0.07); }
 .pds-linha-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.pds-linha-cidade { font-size: 15px; font-weight: 700; color: #f1f5f9; overflow-wrap: anywhere; }
+.pds-linha-nome { font-size: 15px; font-weight: 700; color: #f1f5f9; overflow-wrap: anywhere; }
 .pds-linha-polo { font-size: 12px; color: #8494a9; white-space: nowrap; }
-.pds-linha-nome { font-size: 12px; color: #8494a9; margin-top: 2px; overflow-wrap: anywhere; }
+.pds-linha-cidade { font-size: 12px; color: #8494a9; margin-top: 2px; overflow-wrap: anywhere; }
 .pds-principais { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
 .pds-princ-rot { font-size: 12px; color: #8494a9; }
 .pds-meta { color: #64748b; }

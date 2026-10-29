@@ -74,24 +74,22 @@ function _pdsNotasHtml(cabecalho, l) {
             </dl>` : ""}`;
 }
 
-// Entregador: um cartão por linha (uma por cidade; mais de uma quando há outros logins
-// unificados no nome dele). O título é a cidade — o nome dele mesmo não diz nada pra ele; só
-// aparece quando a semana tem mais de um login.
-function _pdsLinhaHtml(cabecalho, l, comNome) {
+// Entregador: um cartão por linha (mais de uma quando há outros logins unificados no nome
+// dele). O título é o usuário da Shopee; a cidade fica embaixo, menor.
+function _pdsLinhaHtml(cabecalho, l) {
     return `
         <div class="pds-linha">
             <div class="pds-linha-topo">
-                <span class="pds-linha-cidade">${_enrEsc(l.cidade || l.station)}</span>
+                <span class="pds-linha-nome">${_enrEsc(l.entregador)}</span>
                 <span class="pds-linha-polo">${_enrEsc(l.polo)}</span>
             </div>
-            ${comNome ? `<div class="pds-linha-nome">${_enrEsc(l.entregador)}</div>` : ""}
+            <div class="pds-linha-cidade">${_enrEsc(l.cidade || l.station)}</div>
             ${_pdsNotasHtml(cabecalho, l)}
         </div>`;
 }
 
 function _pdsLinhasHtml(s) {
-    const comNome = new Set(s.linhas.map(l => l.entregador)).size > 1;
-    return s.linhas.map(l => _pdsLinhaHtml(s.cabecalho, l, comNome)).join("");
+    return s.linhas.map(l => _pdsLinhaHtml(s.cabecalho, l)).join("");
 }
 
 // Dev: todo mundo numa tabela, que dá pra comparar de relance. Rola de lado dentro da caixa,

@@ -68,9 +68,9 @@ test("tela do entregador: semana aberta, nome escapado, edicoes listadas", () =>
     assert.ok(h.includes('class="pds-princ-val ruim">80,00%') === false);
     assert.ok(h.includes('class="pds-princ-val bom">80,00%'));
     assert.ok(h.includes("meta 80%"));
-    // um login só: o título é a cidade, sem repetir o nome dele
+    // o título é o usuário (escapado); a cidade vai embaixo
+    assert.ok(h.includes('pds-linha-nome">FULANO &quot;TESTE&quot;'));
     assert.ok(h.includes('pds-linha-cidade">Cidade A'));
-    assert.ok(!h.includes("pds-linha-nome"));
     assert.ok(!h.includes("pds-filtros"));
 });
 
