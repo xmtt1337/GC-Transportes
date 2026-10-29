@@ -412,6 +412,8 @@
     // "O status do pedido é Hub_LHArrived, não pode ser adicionado ao AT" (22/10/2026): o pacote
     // chegou na transferência mas ainda não foi bipado no recebimento do hub.
     if (/\bhub_lharrived\b/i.test(t)) return 'O pedido não foi recebido no HUB';
+    // Janela "Pedido interceptado - por favor, encaminhe BR... para área de Tratativas" (29/10/2026).
+    if (/interceptad/i.test(t)) return 'Pedido interceptado — fale com o responsável';
     // "Não foi possível adicionar o pedido à gaiola": o pedido já está em outra AT (20/10/2026).
     if (/gaiola|\bcage\b/i.test(t)) return 'Esse pedido já está em uma AT';
     // "estação atual inválida: 7326, ID da estação do pedido: 5968": o pedido é do outro polo.
@@ -474,6 +476,14 @@
   }
 
   const naLista = () => !atDaUrl() && acharPorTexto(TEXTO_CRIAR_ATRIBUICAO);
+
+  const PEDIDO_INTERCEPTADO = /pedido interceptado/i;
+  async function fecharJanelaDeInterceptado() {
+    const confirmar = await S.esperar(() => acharPorTexto('Confirmar'),
+      { oque: 'o botão "Confirmar" da janela de pedido interceptado', limite: 5000, intervalo: 200 })
+      .catch((e) => { if (e instanceof S.Parado) throw e; return null; });
+    if (confirmar) { S.clicar(confirmar); await S.dormir(600); }
+  }
 
   // "Você quer sair sem completar esta tarefa de atribuição? [Cancelar] [Determinar]" - aparece ao
   // sair de uma AT não concluída (a que o SPX recusou e ficou vazia, ou a que não deu pra concluir).
@@ -557,6 +567,9 @@
       const texto = String((raiz.document && raiz.document.body && raiz.document.body.innerText) || '');
       const atribuidos = /Atribu[ií]do\s*\((\d+)\)/i.exec(texto);
       if ((atribuidos && Number(atribuidos[1]) > 0) || codigoNaTabela(codigo)) return { ok: true, mensagem: '' };
+      // Janela "Pedido interceptado - por favor, encaminhe BR... para área de Tratativas" (29/10/2026):
+      // não é balão nem faixa, e a frase não tem cara de erro - por isso conferida à parte.
+      if (PEDIDO_INTERCEPTADO.test(texto)) return { ok: false, mensagem: 'Pedido interceptado', interceptado: true };
       const r = respostasDoSpx[codigo];
       if (r && r.ok) return null;
       const erroNaTela = avisosNaTela().find((a) => a.erro);
@@ -586,6 +599,8 @@
     if (!resultado.ok && CODIGO_INEXISTENTE.test(resultado.mensagem)) {
       throw new Recusado(`o SPX recusou o código na ${at}: ${codigo} Fleet order not found (o código não existe no SPX)`);
     }
+    // A janela do interceptado fica por cima de tudo: sem "Confirmar", sair da AT não funciona.
+    if (!resultado.ok && resultado.interceptado) await fecharJanelaDeInterceptado();
     if (!resultado.ok) {
       throw new Recusado(`o SPX recusou o código na ${at}${resultado.mensagem ? `: ${resultado.mensagem}` : ''}`);
     }

@@ -1042,6 +1042,31 @@ test('criar AT: faixa de erro do SPX com o codigo (sem classe de aviso) -> recus
   assert.strictEqual(falhou.erro, 'Esse pedido já está em uma AT');
 });
 
+// 29/10/2026 (foto da tela): janela "Pedido interceptado - por favor, encaminhe BR... para área de
+// Tratativas" com um botão Confirmar. O entregador fica sabendo que está interceptado, e o macro
+// aperta o Confirmar pra janela não travar a saída da AT.
+test('criar AT: pedido interceptado avisa o entregador e aperta Confirmar na janela', async () => {
+  const c = carregarCriarAt({ entraNaAt: false });
+  c.ctx.document.body.innerText = 'XPT_SC_Caçador\nAdd New Order\n' +
+    'Pedido interceptado - por favor, encaminhe BR266104829025G para área de Tratativas\nConfirmar';
+  const fechou = [];
+  const acharBotao = c.S.acharBotao;
+  c.S.acharBotao = (texto, o) => {
+    if (texto === 'Confirmar' && /Pedido interceptado/.test(c.ctx.document.body.innerText)) return { nome: 'fecharInterceptado' };
+    return acharBotao(texto, o);
+  };
+  const clicar = c.S.clicar;
+  c.S.clicar = (el) => {
+    if (el && el.nome === 'fecharInterceptado') { fechou.push(true); c.ctx.document.body.innerText = 'XPT_SC_Caçador\nAdd New Order'; }
+    return clicar(el);
+  };
+  await c.G.colador.rodar('criar_at', { ...CONFIG, continuo: false });
+  assert.strictEqual(fechou.length, 1, 'apertou o Confirmar da janela');
+  assert.ok(!c.chamadasVigia.some((m) => m.xmColador === 'at'), 'nao mandou AT pro entregador');
+  const falhou = c.chamadasVigia.find((m) => m.xmColador === 'falhou');
+  assert.strictEqual(falhou.erro, 'Pedido interceptado — fale com o responsável');
+});
+
 test('criar AT: codigo solto na pagina, sem tabela nem "Atribuido (N)", nao conta como entrou', async () => {
   const c = carregarCriarAt({ entraNaAt: false });
   c.ctx.document.body.innerText = 'XPT_SC_Caçador\nultimo pesquisado: BR266104829025G\nAtribuído (0)';
