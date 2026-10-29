@@ -88,7 +88,7 @@ test("dia com mais de 2 acareações: card mostra tarifa mínima e o dia lista a
     assert.match(modal.innerHTML, /Tarifa mínima em 4 pct · 3 PNR/);
     assert.match(modal.innerHTML, /_fsMostrarDia\(0, '2026-09-22'\)/, "dia na tarifa mínima abre");
     ctx._fsMostrarDia(0, "2026-09-22");
-    assert.match(modal.innerHTML, /passou do limite: 4 entrega\(s\) do dia ficaram na tarifa mínima/);
+    assert.match(modal.innerHTML, /usuário fulano\.login: 4 entrega\(s\) desse usuário ficaram na tarifa mínima/);
     assert.match(modal.innerHTML, /PNR1/);
     assert.match(modal.innerHTML, /PNR3/);
 });

@@ -797,7 +797,7 @@ function _cfRenderPerformance() {
             <td class="num">${l.outras_prazo.toLocaleString("pt-BR")}</td>
             <td class="num${l.outras_atraso ? " cft-neg" : ""}">${l.outras_atraso.toLocaleString("pt-BR")}</td>
             <td class="num">${_cfNum(l.pct, 2)}%</td>
-            <td class="num">${l.tarifa_minima ? `<span class="cft-neg" title="${l.acareacoes} acareações no dia: ${l.fixo ? "fixo com desconto" : `${l.pacotes_minima || 0} pacote(s) na tarifa mínima (${l.usuarios_minima || "?"} passou do limite)`}">${l.acareacoes} acareações</span> ` : ""}${l.fixo && !l.tarifa_minima ? `<span class="cft-ajuda" title="Valor fixo do entregador (Valores fixos)">fixo</span> ` : ""}${_cfNum(l.valor)}</td>
+            <td class="num">${l.tarifa_minima ? `<span class="cft-neg" title="${l.acareacoes} acareações no dia: ${l.fixo ? "fixo com desconto" : `${l.pacotes_minima || 0} pacote(s) de ${l.usuarios_minima || "?"} na tarifa mínima`}">${l.acareacoes} acareações</span> ` : ""}${l.fixo && !l.tarifa_minima ? `<span class="cft-ajuda" title="Valor fixo do entregador (Valores fixos)">fixo</span> ` : ""}${_cfNum(l.valor)}</td>
             <td class="num">${l.pacotes_pagos.toLocaleString("pt-BR")}</td>
             <td class="num cft-pos"><strong>${_cfNum(l.total)}</strong></td>
         </tr>`).join("")
