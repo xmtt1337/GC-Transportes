@@ -18,7 +18,7 @@ const fonteEnr = ler("js/entregador-na-rua.js");
 const fonte = ler("js/pod-semanal.js");
 
 const ponte = `
-;globalThis.__pds = { _pdsQuando, _pdsPeriodo, _pdsClasse, _pdsRender, _pdsHome, _pdsAlternar, _pdsBuscar, _pdsLinhaHtml, _pdsDetalhe,
+;globalThis.__pds = { _pdsQuando, _pdsPeriodo, _pdsClasse, _pdsRender, _pdsHome, _pdsAlternar, _pdsBuscar, _pdsLinhaHtml, _pdsDetalhe, _pdsSemanasFechadas, _pdsAnexoHtml,
     setDados: v => { _pdsDados = v; }, abrir: s => _pdsAbertas.add(s) };`;
 
 function carregar() {
@@ -132,6 +132,24 @@ test("cartao fechado so com Good/Bad Pod; tocar abre as outras notas", () => {
     assert.strictEqual(attrs["aria-expanded"], "true");
     api._pdsDetalhe(el);
     assert.strictEqual(attrs["aria-expanded"], "false");
+});
+
+test("anexar: so semanas ja fechadas, de segunda a domingo; so o dev ve", () => {
+    const { api, els } = carregar();
+    // quinta 29/10/2026 às 12h em Brasília
+    const ws = api._pdsSemanasFechadas(new Date("2026-10-29T15:00:00Z"));
+    assert.strictEqual(`${ws[0].semana_inicio} ${ws[0].semana_fim}`, "2026-10-19 2026-10-25");
+    assert.ok(ws.some(w => w.semana_inicio === "2026-10-05" && w.semana_fim === "2026-10-11"));
+    assert.ok(ws.some(w => w.semana_inicio === "2026-10-12"));
+    assert.ok(api._pdsAnexoHtml().includes("pds-anexo-arquivo"));
+
+    api.setDados({ todos: false, semanas: [SEMANA] });
+    api._pdsRender();
+    assert.ok(!els["pds-conteudo"].innerHTML.includes("Anexar semana"));
+    api.setDados({ todos: true, semanas: [{ ...SEMANA, origem: "anexo" }] });
+    api._pdsRender();
+    assert.ok(els["pds-conteudo"].innerHTML.includes("Anexar semana"));
+    assert.ok(els["pds-conteudo"].innerHTML.includes("Anexada em"));
 });
 
 test("home: semana mais recente do entregador; dev nao ganha bloco", () => {

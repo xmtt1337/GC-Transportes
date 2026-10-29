@@ -5151,6 +5151,9 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .pds-diag-aba { font-size: 12.5px; color: #9aa8bd; line-height: 1.5; margin-top: 6px; overflow-wrap: anywhere; }
 .pds-diag-aba b { color: #e2e8f0; }
 .pds-diag-erro { font-size: 12.5px; color: #fbbf24; margin-top: 6px; overflow-wrap: anywhere; }
+.pds-anexo-campos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.pds-anexo-campos select { flex: 0 1 200px; }
+.pds-anexo-campos input[type=file] { flex: 1 1 200px; min-width: 0; font-size: 12.5px; color: #9aa8bd; }
 
 /* ===== NA RUA > SHOPEE =====
    Visual próprio, só classes snr-*: as outras transportadoras de Na Rua seguem com os cards

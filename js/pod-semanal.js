@@ -150,7 +150,7 @@ function _pdsSemanaHtml(s, todos) {
                     data-semana="${_enrEsc(s.semana_inicio)}" onclick="_pdsAlternar(this.dataset.semana)">
                 <span class="enr-ent-nome">Semana ${_pdsPeriodo(s)}</span>
                 <span class="pds-seta">${aberta ? "▴" : "▾"}</span>
-                <span class="enr-ent-sub">Atualizado em ${_enrEsc(_pdsQuando(ultima))}${qtd > 1 ? ` · ${qtd} edições` : ""}</span>
+                <span class="enr-ent-sub">${s.origem === "anexo" ? "Anexada" : "Atualizado"} em ${_enrEsc(_pdsQuando(ultima))}${qtd > 1 ? ` · ${qtd} edições` : ""}</span>
             </button>
             ${aberta ? `
                 <div class="pds-corpo">
@@ -196,7 +196,7 @@ function _pdsRender() {
         ${semanas.length
             ? `<div class="enr-ents">${semanas.map(s => _pdsSemanaHtml(s, d.todos)).join("")}</div>`
             : `<div class="enr-aviso">${d.todos ? "Nenhuma semana gravada ainda." : "Você ainda não aparece em nenhuma semana do POD."}</div>`}
-        ${d.todos ? `<div id="pds-diag">${_pdsDiagHtml(_pdsStatus, false)}</div>` : ""}`;
+        ${d.todos ? `<div id="pds-diag">${_pdsDiagHtml(_pdsStatus, false)}</div><div id="pds-anexo">${_pdsAnexoHtml()}</div>` : ""}`;
 }
 
 function _pdsAlternar(semana) {
@@ -279,6 +279,74 @@ function _pdsDiagHtml(st, lendo) {
                 : `<div class="pds-diag-aba">Aba lida: <b>${_enrEsc(a.aba)}</b> · ${a.linhas} de ${a.linhas_lidas} linhas são de Caçador/Videira · ${a.gravou ? `gravou edição nova na semana ${_pdsPeriodo(a)}` : "sem mudança desde a última edição gravada"}<br>Colunas: ${_enrEsc(a.cabecalho.join(", "))}</div>`).join("")}
             ${st && st.ignoradas && st.ignoradas.length ? `<div class="pds-diag-aba">Abas antigas ignoradas: ${_enrEsc(st.ignoradas.join(", "))}</div>` : ""}
         </div>`;
+}
+
+// ── Dev: anexar em arquivo uma semana que o vigia não pegou (as de antes dele existir). ──
+const PDS_SEMANAS_ANEXO = 10;
+let _pdsAnexoMsg = null;   // {ok, texto} do último envio
+
+// As últimas semanas já fechadas (seg–dom), mais recente primeiro. Hoje em Brasília.
+function _pdsSemanasFechadas(agora) {
+    const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(agora || new Date());
+    const [a, m, d] = hoje.split("-").map(Number);
+    const t = Date.UTC(a, m - 1, d);
+    const seg = t - ((new Date(t).getUTCDay() + 6) % 7) * 86400000 - 7 * 86400000;
+    const iso = ms => new Date(ms).toISOString().slice(0, 10);
+    return Array.from({ length: PDS_SEMANAS_ANEXO }, (_, i) => {
+        const ini = seg - i * 7 * 86400000;
+        return { semana_inicio: iso(ini), semana_fim: iso(ini + 6 * 86400000) };
+    });
+}
+
+function _pdsAnexoHtml(enviando) {
+    const msg = _pdsAnexoMsg;
+    return `
+        <div class="pds-diag">
+            <div class="enr-topo"><span class="enr-titulo">Anexar semana</span></div>
+            <div class="pds-diag-aba">Pra semana que não veio da planilha. Arquivo .xlsx ou .csv com as mesmas colunas (Entregador, Station Name...). Anexar de novo a mesma semana troca o que aparece.</div>
+            <div class="pds-anexo-campos">
+                <select id="pds-anexo-semana" class="pds-busca">
+                    <option value="">Escolha a semana</option>
+                    ${_pdsSemanasFechadas().map(w => `<option value="${w.semana_inicio}">${_pdsPeriodo(w)}</option>`).join("")}
+                </select>
+                <input type="file" id="pds-anexo-arquivo" accept=".xlsx,.xls,.csv">
+                <button type="button" class="enr-recarregar" onclick="_pdsAnexar()" ${enviando ? "disabled" : ""}>${enviando ? "Enviando…" : "Anexar"}</button>
+            </div>
+            ${msg ? `<div class="${msg.ok ? "pds-diag-aba" : "pds-diag-erro"}">${_enrEsc(msg.texto)}</div>` : ""}
+        </div>`;
+}
+
+function _pdsAnexoMostrar(msg, enviando) {
+    _pdsAnexoMsg = msg;
+    const el = document.getElementById("pds-anexo");
+    if (el) el.innerHTML = _pdsAnexoHtml(enviando);
+}
+
+function _pdsAnexar() {
+    const semana = document.getElementById("pds-anexo-semana").value;
+    const arq = document.getElementById("pds-anexo-arquivo").files[0];
+    if (!semana) return _pdsAnexoMostrar({ ok: false, texto: "Escolha a semana." });
+    if (!arq) return _pdsAnexoMostrar({ ok: false, texto: "Escolha o arquivo." });
+    const leitor = new FileReader();
+    leitor.onload = () => {
+        const base64 = String(leitor.result).split(",")[1] || "";
+        _pdsAnexoMostrar(null, true);
+        fetch(`${API}/admin/pod-semanal/anexar`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + localStorage.getItem("token"), "Content-Type": "application/json" },
+            body: JSON.stringify({ semana_inicio: semana, nome_arquivo: arq.name, dados_base64: base64 }),
+        })
+            .then(r => r.json())
+            .then(r => {
+                if (r.error) return _pdsAnexoMostrar({ ok: false, texto: r.error });
+                _pdsAbertas.add(r.semana_inicio);
+                _pdsAnexoMsg = { ok: true, texto: `Semana de ${_pdsDia(r.semana_inicio)} anexada: ${r.linhas} entregadores de Caçador/Videira.` };
+                _pdsCarregar();
+            })
+            .catch(() => _pdsAnexoMostrar({ ok: false, texto: "Não consegui enviar. Tente de novo." }));
+    };
+    leitor.onerror = () => _pdsAnexoMostrar({ ok: false, texto: "Não consegui ler o arquivo." });
+    leitor.readAsDataURL(arq);
 }
 
 function _pdsDiagnostico() {
