@@ -18,7 +18,7 @@ const fonteEnr = ler("js/entregador-na-rua.js");
 const fonte = ler("js/pod-semanal.js");
 
 const ponte = `
-;globalThis.__pds = { _pdsQuando, _pdsPeriodo, _pdsClasse, _pdsRender, _pdsHome, _pdsAlternar,
+;globalThis.__pds = { _pdsQuando, _pdsPeriodo, _pdsClasse, _pdsRender, _pdsHome, _pdsAlternar, _pdsBuscar,
     setDados: v => { _pdsDados = v; }, abrir: s => _pdsAbertas.add(s) };`;
 
 function carregar() {
@@ -84,6 +84,34 @@ test("mais de um login na semana: cada cartao mostra o nome, escapado", () => {
     assert.ok(h.includes("FULANO &quot;TESTE&quot;"));
     assert.ok(!h.includes('FULANO "TESTE"'));
     assert.ok(h.includes("AJUDANTE &lt;TESTE&gt;"));
+});
+
+test("cartoes em ordem alfabetica e busca sem acento so nos cartoes da tela", () => {
+    const { api, els } = carregar();
+    const base = SEMANA.linhas[0];
+    const linhas = [
+        { ...base, entregador: "ZECA TESTE", cidade: "Cidade Z" },
+        { ...base, entregador: "ÁLVARO TESTE", cidade: "Cidade Á" },
+        { ...base, entregador: "maria teste", cidade: "Cidade M" },
+    ];
+    api.setDados({ todos: false, semanas: [{ ...SEMANA, linhas }] });
+    api.abrir(SEMANA.semana_inicio);
+    api._pdsRender();
+    let h = els["pds-conteudo"].innerHTML;
+    assert.ok(h.includes("pds-busca"));
+    const pos = n => h.indexOf(n);
+    assert.ok(pos("ÁLVARO") < pos("maria") && pos("maria") < pos("ZECA"));
+    assert.ok(!h.includes("pds-linha-polo"));
+
+    api._pdsBuscar("alvaro");
+    h = els["pds-conteudo"].innerHTML;
+    assert.ok(h.includes("ÁLVARO TESTE") && !h.includes("ZECA TESTE") && !h.includes("maria teste"));
+    api._pdsBuscar("ninguem");
+    assert.ok(els["pds-conteudo"].innerHTML.includes("Ninguém com esse nome"));
+
+    // a home ignora a busca da tela
+    api._pdsHome();
+    assert.ok(els["home-pod"].innerHTML.includes("ZECA TESTE"));
 });
 
 test("home: semana mais recente do entregador; dev nao ganha bloco", () => {

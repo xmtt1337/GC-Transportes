@@ -79,26 +79,34 @@ function _pdsNotasHtml(cabecalho, l) {
 function _pdsLinhaHtml(cabecalho, l) {
     return `
         <div class="pds-linha">
-            <div class="pds-linha-topo">
-                <span class="pds-linha-nome">${_enrEsc(l.entregador)}</span>
-                <span class="pds-linha-polo">${_enrEsc(l.polo)}</span>
-            </div>
+            <div class="pds-linha-nome">${_enrEsc(l.entregador)}</div>
             <div class="pds-linha-cidade">${_enrEsc(l.cidade || l.station)}</div>
             ${_pdsNotasHtml(cabecalho, l)}
         </div>`;
 }
 
-function _pdsLinhasHtml(s) {
-    return s.linhas.map(l => _pdsLinhaHtml(s.cabecalho, l)).join("");
+// Sem acento e sem caixa: "Rogerio" acha "Rogério".
+const _pdsSemAcento = t => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+// Ordem alfabética do entregador e, com `filtrar`, a busca (e o polo, que só o dev escolhe).
+function _pdsOrdenar(linhas, filtrar) {
+    const busca = filtrar ? _pdsSemAcento(_pdsBusca).trim() : "";
+    return linhas
+        .filter(l => !filtrar || !_pdsPolo || l.polo === _pdsPolo)
+        .filter(l => !busca || _pdsSemAcento(l.entregador).includes(busca) || _pdsSemAcento(l.cidade).includes(busca))
+        .sort((a, b) => a.entregador.localeCompare(b.entregador, "pt-BR", { sensitivity: "base" }));
+}
+
+function _pdsLinhasHtml(s, filtrar) {
+    const linhas = _pdsOrdenar(s.linhas, filtrar);
+    if (!linhas.length) return `<div class="enr-vazio">Ninguém com esse nome nesta semana.</div>`;
+    return `<div class="pds-cartoes">${linhas.map(l => _pdsLinhaHtml(s.cabecalho, l)).join("")}</div>`;
 }
 
 // Dev: todo mundo numa tabela, que dá pra comparar de relance. Rola de lado dentro da caixa,
 // nunca a página.
 function _pdsTabelaHtml(s) {
-    const busca = _pdsBusca.toLowerCase();
-    const linhas = s.linhas.filter(l =>
-        (!_pdsPolo || l.polo === _pdsPolo) &&
-        (!busca || l.entregador.toLowerCase().includes(busca) || (l.cidade || "").toLowerCase().includes(busca)));
+    const linhas = _pdsOrdenar(s.linhas, true);
     if (!linhas.length) return `<div class="enr-vazio">Ninguém com esse filtro nesta semana.</div>`;
     return `
         <div class="pds-tabela-caixa">
@@ -134,20 +142,27 @@ function _pdsSemanaHtml(s, todos) {
             </button>
             ${aberta ? `
                 <div class="pds-corpo">
-                    ${todos ? _pdsTabelaHtml(s) : _pdsLinhasHtml(s)}
+                    ${todos ? _pdsTabelaHtml(s) : _pdsLinhasHtml(s, true)}
                     ${_pdsEdicoesHtml(s)}
                 </div>` : ""}
         </div>`;
 }
 
+const _pdsCampoBusca = () => `
+            <input type="search" class="pds-busca" placeholder="Procurar entregador ou cidade"
+                   value="${_enrEsc(_pdsBusca)}" oninput="_pdsBuscar(this.value)">`;
+
 function _pdsFiltrosHtml() {
     const chip = (v, rot) => `<button type="button" class="pds-chip${_pdsPolo === v ? " ativo" : ""}" onclick="_pdsFiltrarPolo('${v}')">${rot}</button>`;
     return `
         <div class="pds-filtros">
-            ${chip("", "Todos")}${chip("Caçador", "Caçador")}${chip("Videira", "Videira")}
-            <input type="search" class="pds-busca" placeholder="Procurar entregador ou cidade"
-                   value="${_enrEsc(_pdsBusca)}" oninput="_pdsBuscar(this.value)">
+            ${chip("", "Todos")}${chip("Caçador", "Caçador")}${chip("Videira", "Videira")}${_pdsCampoBusca()}
         </div>`;
+}
+
+// Entregador: só a busca, e só quando alguma semana tem mais de um cartão.
+function _pdsBuscaHtml() {
+    return `<div class="pds-filtros">${_pdsCampoBusca()}</div>`;
 }
 
 function _pdsAviso(texto, comBotao) {
@@ -165,7 +180,7 @@ function _pdsRender() {
     const semanas = d.semanas || [];
     el.innerHTML = `
         <p class="epf-nota">Cada semana vai de segunda a domingo e sai na semana seguinte.</p>
-        ${d.todos ? _pdsFiltrosHtml() : ""}
+        ${d.todos ? _pdsFiltrosHtml() : semanas.some(s => s.linhas.length > 1) ? _pdsBuscaHtml() : ""}
         ${semanas.length
             ? `<div class="enr-ents">${semanas.map(s => _pdsSemanaHtml(s, d.todos)).join("")}</div>`
             : `<div class="enr-aviso">${d.todos ? "Nenhuma semana gravada ainda." : "Você ainda não aparece em nenhuma semana do POD."}</div>`}
@@ -226,7 +241,7 @@ function _pdsHome() {
                 <button type="button" class="pds-link" onclick="abrirPodSemanal(event)">Ver semanas</button>
                 <span class="pds-home-sub">Semana ${_pdsPeriodo(s)} · atualizado em ${_enrEsc(_pdsQuando(_pdsUltimaEdicao(s)))}</span>
             </div>
-            <div class="enr-ents">${_pdsLinhasHtml(s)}</div>
+            ${_pdsLinhasHtml(s)}
         </section>`;
 }
 
