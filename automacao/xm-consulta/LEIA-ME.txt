@@ -50,7 +50,8 @@ SEGURANCA
   servidor so aceita o id fixo dela (o "key" do manifest).
 - O acesso a Anjun e o do usuario logado no navegador, e a
   Anjun registra em nome dele.
-- Velocidade: consulta.js, INTERVALO_MS (500 = 2 por segundo).
+- Velocidade: consulta.js, INTERVALO_MS (3000 = 1 pacote a cada 3 s).
+  A Anjun barra 30 minutos quem vai rapido demais.
 
 
 -----------------------------------------------------------

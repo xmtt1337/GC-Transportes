@@ -45,7 +45,7 @@ test('nomeArquivo tem transportadora e horario', () => {
   assert.strictEqual(X.nomeArquivo('anjun', new Date(2026, 9, 30, 15, 4, 9)), 'anjun-contatos-2026-10-30_15-04-09.csv');
 });
 
-test('executar mostra a porcentagem e faz 2 por segundo', async () => {
+test('executar mostra a porcentagem e faz 1 pacote a cada 3 segundos', async () => {
   const avancos = [];
   const pausas = [];
   const res = await X.executar({
@@ -57,7 +57,7 @@ test('executar mostra a porcentagem e faz 2 por segundo', async () => {
     agora: () => 0,
   });
   assert.deepStrictEqual(avancos, [25, 50, 75, 100]);
-  assert.deepStrictEqual(pausas, [500, 500, 500]);
+  assert.deepStrictEqual(pausas, [3000, 3000, 3000]);
   assert.strictEqual(res.linhas[0].whatsapp, 'https://wa.me/5549900000000');
   assert.strictEqual(res.erro, null);
 });
@@ -73,7 +73,7 @@ test('a pausa desconta o tempo da consulta', async () => {
     dormir: async (ms) => pausas.push(ms),
     agora: () => tempos.shift() ?? 0,
   });
-  assert.strictEqual(pausas[0], 100);
+  assert.strictEqual(pausas[0], 2600);
 });
 
 test('bloqueio para, guarda o que veio e devolve o resto', async () => {

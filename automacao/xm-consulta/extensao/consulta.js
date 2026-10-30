@@ -10,7 +10,9 @@
   // Rota so de leitura, atras de verificarNaoEntregador: entregador entra na conta
   // mas nao passa daqui. Mesma regra das demais rotas de macro.
   const ROTA_ACESSO = '/macros/resumo';
-  const INTERVALO_MS = 500; // 2 consultas por segundo
+  // 1 pacote a cada 3s foi o ritmo que passou 157 de uma vez. A 2 por segundo a Anjun
+  // barrou no 4o pacote, com 30 minutos de castigo (30/10/2026). Nao acelerar sem testar.
+  const INTERVALO_MS = 3000;
   const ESPERA_ABA_MS = 20000;
   const COLUNAS = ['waybill', 'status', 'nome', 'telefone', 'whatsapp'];
   const PASTA_CSV = 'XM Consultas de telefone';
