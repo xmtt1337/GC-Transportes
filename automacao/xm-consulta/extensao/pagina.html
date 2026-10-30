@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>XM Consulta</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #16181d; color: #e8eaed; font: 14px system-ui, sans-serif; }
+  main { max-width: 620px; margin: 0 auto; padding: 24px 16px; }
+  [hidden] { display: none !important; }
+  h1 { font-size: 22px; margin: 0 0 16px; }
+  label { display: block; margin: 14px 0 4px; }
+  input, select, textarea { width: 100%; padding: 8px; background: #0f1115; color: #e8eaed; border: 1px solid #3a3f4a; border-radius: 4px; font: inherit; }
+  select { width: auto; min-width: 200px; }
+  textarea { height: 280px; resize: vertical; font-family: ui-monospace, Consolas, monospace; }
+  button { margin-top: 12px; margin-right: 16px; padding: 0; background: none; border: 0; color: #6ea8fe; font: inherit; font-weight: 600; cursor: pointer; }
+  button:hover:not(:disabled) { text-decoration: underline; }
+  button:disabled { color: #6b7280; cursor: default; }
+  .topo { display: flex; justify-content: space-between; align-items: baseline; color: #a8adb7; }
+  .topo button { margin: 0; }
+  .suave { color: #a8adb7; margin: 4px 0 0; min-height: 18px; }
+  .erro { color: #f87171; }
+  .barra { height: 8px; margin-top: 16px; background: #2a2e37; border-radius: 4px; overflow: hidden; }
+  .barra div { height: 100%; width: 0; background: #4ade80; }
+  #progresso { margin: 6px 0 0; font-variant-numeric: tabular-nums; }
+  #mensagem { margin: 8px 0 0; line-height: 1.4; }
+</style>
+</head>
+<body>
+<main>
+  <h1>XM Consulta</h1>
+
+  <form id="tela-login" hidden>
+    <label for="usuario">Usuário do sistema</label>
+    <input id="usuario" autocomplete="username" required>
+    <label for="senha">Senha</label>
+    <input id="senha" type="password" autocomplete="current-password" required>
+    <button id="entrar" type="submit">Entrar</button>
+    <p id="aviso-login" class="suave erro"></p>
+  </form>
+
+  <section id="tela-consulta" hidden>
+    <div class="topo">
+      <span id="logado"></span>
+      <button id="sair" type="button">Sair</button>
+    </div>
+
+    <label for="transportadora">Transportadora</label>
+    <select id="transportadora"></select>
+
+    <label for="codigos">Códigos de pacote</label>
+    <textarea id="codigos" spellcheck="false"></textarea>
+    <p id="contagem" class="suave"></p>
+
+    <button id="iniciar" type="button" disabled>Iniciar consulta</button>
+    <button id="parar" type="button" disabled>Parar</button>
+    <button id="mostrar" type="button" hidden>Mostrar o CSV</button>
+
+    <div class="barra"><div id="barra"></div></div>
+    <p id="progresso">0%</p>
+    <p id="mensagem"></p>
+  </section>
+</main>
+<script src="consulta.js"></script>
+<script src="pagina.js"></script>
+</body>
+</html>

@@ -1,18 +1,19 @@
 {
   "manifest_version": 3,
   "name": "XM Consulta",
-  "version": "1.0",
-  "description": "Maos do programa XM Consulta: busca os pacotes pedidos na aba da transportadora, com a sessao de quem esta logado.",
+  "version": "2.0",
+  "description": "Consulta pacotes em lote na transportadora e gera um CSV de contato.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwI6Ci1AkQRZ0wB2gGfGOMYRS2ghUmHgXK5YF11xxYZWbitjcuRLBTXc7U6pgmyOdxGs4WyrHm2gIRlDh5O/Xc2qAokKbfM6o5WDfdejoqzlPU7EErY1FGTlKFdWoLbLFZxTiKoZ+pIO3fTHUBNPM44014td6NzMcXOKgFXb012qI77DAtqRHOPyTq8Zrb+CfaMPp3hXxFIVO5neNa5vAvOfIiDG/t/1lxvol1fkUEjCE9FZVsAA4iHy5w3o26rOJTeQRU9vfwtG1Wp/mlWFG0TAGxkh4tZFoWIDhd26lc4vzZRkKehHfKEupaKUyJO6ZEcVYKou7cwReg8gXvSBchQIDAQAB",
   "permissions": [
     "storage",
-    "alarms"
+    "downloads"
   ],
   "background": {
     "service_worker": "fundo.js"
   },
   "host_permissions": [
     "https://newsupplier.anjunexpress.com/*",
-    "http://127.0.0.1/*"
+    "https://sistema-backend-i4uh.onrender.com/*"
   ],
   "content_scripts": [
     {
@@ -38,7 +39,6 @@
     }
   ],
   "action": {
-    "default_popup": "popup.html",
     "default_title": "XM Consulta"
   }
 }

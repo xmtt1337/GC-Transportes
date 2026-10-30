@@ -2,8 +2,9 @@
   XM CONSULTA
 ===========================================================
 
-Escolhe a transportadora, cola os codigos e sai um CSV com
-waybill, status, nome, telefone e link do WhatsApp.
+Extensao do Chrome. Escolhe a transportadora, cola os codigos
+e sai um CSV com waybill, status, nome, telefone e link do
+WhatsApp. Nao precisa de Python nem de outro programa.
 
 Hoje so a Anjun funciona. Shopee e iMile aparecem na lista
 como "em breve".
@@ -16,25 +17,25 @@ INSTALAR (uma vez por computador)
 1. Chrome > chrome://extensions > ligue "Modo do desenvolvedor"
 2. "Carregar sem compactacao" > escolha a pasta  extensao
    Faca isso no perfil do Chrome logado na Anjun.
-3. Abra  rodar.bat  e entre com o login do sistema.
-4. Clique em "Copiar chave da extensao".
-5. Clique no icone da XM Consulta no Chrome, cole e salve.
-6. Se a Anjun ja estava aberta, atualize a aba com F5.
+3. Se a Anjun ja estava aberta, atualize a aba com F5.
 
 
 -----------------------------------------------------------
 USAR
 -----------------------------------------------------------
 
-1. Abra rodar.bat e entre.
-2. Deixe a Anjun logada no Chrome. Se nao estiver aberta, o
-   programa abre.
+1. Clique no icone da XM Consulta e entre com o login do
+   sistema. A tela abre numa aba propria.
+2. Deixe a Anjun logada no Chrome. Se nao estiver aberta, a
+   extensao abre.
 3. Escolha a transportadora, cole os codigos, Iniciar.
+4. Nao feche a aba da XM Consulta nem a da Anjun ate terminar.
+   Pode trabalhar em outras abas.
 
 O CSV cai em  Downloads\XM Consulta . Ele tem dado pessoal de
 cliente: fica so com quem vai usar e apague ao terminar.
 
-Se a transportadora recusar, para sozinho, salva o que ja veio
+Se a transportadora recusar, para sozinho, baixa o que ja veio
 e deixa na caixa os codigos que faltaram.
 
 
@@ -43,22 +44,19 @@ SEGURANCA
 -----------------------------------------------------------
 
 - Entrada: mesmo login do XM Vigia. Entregador nao passa.
-- A senha nao e salva. O token fica so na memoria, e e o
-  mesmo tipo do vigia: so abre as rotas de macro.
-- Programa e extensao se provam pela chave antes de qualquer
-  dado passar. A chave fica em  %APPDATA%\XM_Consulta  e no
-  Chrome, e nunca viaja. E so desta maquina.
-- A extensao so alcanca a Anjun e 127.0.0.1.
+- A senha nao e salva. O token fica na sessao do Chrome,
+  some ao fechar o navegador e so abre as rotas de macro.
+- A extensao so alcanca a Anjun e o servidor do sistema, e o
+  servidor so aceita o id fixo dela (o "key" do manifest).
 - O acesso a Anjun e o do usuario logado no navegador, e a
   Anjun registra em nome dele.
-- Velocidade: consulta.py, INTERVALO_PADRAO (0.5 = 2 por segundo).
+- Velocidade: consulta.js, INTERVALO_MS (500 = 2 por segundo).
 
 
 -----------------------------------------------------------
 TESTES
 -----------------------------------------------------------
 
-  python -m unittest discover -s testes -p "test_*.py"
-  node --test testes/test_anjun.test.js
+  node --test testes/*.test.js
 
 Sao com dados inventados. Nao tocam na Anjun de verdade.
