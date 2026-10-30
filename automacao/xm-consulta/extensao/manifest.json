@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "XM Consulta",
+  "version": "1.0",
+  "description": "Maos do programa XM Consulta: busca os pacotes pedidos na aba da transportadora, com a sessao de quem esta logado.",
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "background": {
+    "service_worker": "fundo.js"
+  },
+  "host_permissions": [
+    "https://newsupplier.anjunexpress.com/*",
+    "http://127.0.0.1/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://newsupplier.anjunexpress.com/*"
+      ],
+      "js": [
+        "anjun.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://newsupplier.anjunexpress.com/*"
+      ],
+      "js": [
+        "aba.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "XM Consulta"
+  }
+}
