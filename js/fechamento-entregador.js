@@ -275,19 +275,23 @@ function _fsMostrarDia(i, dia) {
     const p = _fsPerfDia(dia);
     const fx = _fsFaixa(dia);
     const perda = _fsPerdaPnr(p);
+    // Entregues do dia: de todas as transportadoras, ou só da que estiver aberta.
+    const entregues = (_fsDados.por_dia || []).filter(x => x.dia === dia && (!t || x.transportadora === t.nome))
+        .reduce((s, x) => s + (x.entregues || 0), 0);
     const mini = (rot, v, neg) => `<div class="fs-mini"><span>${rot}</span><b${neg ? ` class="fs-neg"` : ""}>${v}</b></div>`;
     document.querySelector("#fs-modal .fs-modal").innerHTML = `
         <div class="fs-modal-topo">${t ? `<a href="#" class="fs-fechar" onclick="event.preventDefault();_fsMostrarTransp(${i})">‹ ${_fsEsc(t.nome)}</a>` : "<span></span>"}
             <a href="#" class="fs-fechar" onclick="event.preventDefault();_fsFechar()">Fechar</a></div>
         <div class="fs-sub">${_fsDia(dia)} ${_fsSem(dia)} · o que afetou o dia</div>
-        ${p ? `<div class="fs-resumo">
-            ${mini("Performance", _fsPct(p.pct))}
+        ${p || entregues ? `<div class="fs-resumo">
+            ${mini("Entregues", entregues.toLocaleString("pt-BR"))}
+            ${p ? `${mini("Performance", _fsPct(p.pct))}
             ${mini(p.tarifa_minima && !p.fixo && p.pacotes_minima ? "R$ por pacote (média)" : "R$ por pacote", p.fixo ? "Fixo"
                 : p.tarifa_minima && p.pacotes_minima && p.pacotes_pagos ? _fsR(p.total / p.pacotes_pagos) : _fsR(p.valor))}
             ${mini("Onholds e atrasados", (p.onholds || 0) + (p.outras_atraso || 0), (p.onholds || 0) + (p.outras_atraso || 0) > 0)}
             ${mini("PNR", p.acareacoes || 0, (p.acareacoes || 0) > 0)}
             ${p.tarifa_minima && !p.fixo ? mini("Na tarifa mínima", `${p.pacotes_minima || 0} pct`, true) : ""}
-            ${perda ? mini("Perdido com PNR", "−" + _fsR(perda), true) : ""}
+            ${perda ? mini("Perdido com PNR", "−" + _fsR(perda), true) : ""}` : ""}
         </div>` : ""}
         ${p && !p.fixo && fx.max && p.valor < fx.max ? `<div class="cft-ajuda" style="margin-bottom:8px">Com 100% de performance seria ${_fsR(fx.max)} por pacote;
             os onholds e atrasados abaixo baixaram pra ${_fsR(p.valor)}.</div>` : ""}

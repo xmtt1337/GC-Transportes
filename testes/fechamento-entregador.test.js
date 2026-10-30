@@ -69,7 +69,11 @@ test("tocar no dia mostra os pedidos que afetaram, com quando deveriam ser entre
     assert.match(modal.innerHTML, /Deveria ser entregue 21\/09 · entregue 23\/09/);
     assert.match(modal.innerHTML, /I10/);
     assert.doesNotMatch(modal.innerHTML, /BRX/);
+    assert.match(modal.innerHTML, /Entregues<\/span><b>49<\/b>/, "aberto pela Imile: só as entregas dela");
+    ctx._fsMostrarDia(-1, "2026-09-21");  // "ver pedidos" do card do dia: todas as transportadoras
+    assert.match(modal.innerHTML, /Entregues<\/span><b>149<\/b>/);
     ctx._fsMostrarDia(0, "2026-09-21");   // Shopee: tudo que derrubou o dia
+    assert.match(modal.innerHTML, /Entregues<\/span><b>100<\/b>/);
     assert.match(modal.innerHTML, /BRX/);
     assert.match(modal.innerHTML, /Cliente ausente · às 14:40/);
     assert.match(modal.innerHTML, /I9/);
