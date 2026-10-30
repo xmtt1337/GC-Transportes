@@ -6892,6 +6892,10 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .fs-mini { background: rgba(27,38,59,0.9); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 10px 12px; }
 .fs-mini span { display: block; font-size: 10px; color: #717f95; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
 .fs-mini b { font-size: 15px; color: #f1f5f9; font-variant-numeric: tabular-nums; }
+.fs-visao { display: flex; gap: 2px; padding: 3px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; }
+.fs-visao button { flex: 1; padding: 7px 14px; font-size: 13px; font-family: inherit; border: 0; border-radius: 7px; background: transparent; color: #8494a9; cursor: pointer; }
+.fs-visao button:hover:not(.active) { background: rgba(255,255,255,0.04); color: #cbd5e1; }
+.fs-visao button.active { background: rgba(255,255,255,0.09); color: #e2e8f0; }
 .fs-sub { font-size: 11px; color: #8494a9; margin: 4px 0 8px; }
 .fs-dias { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .fs-dia { background: rgba(27,38,59,0.9); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 10px 12px; }

@@ -3,7 +3,8 @@
 // /painel devolve fonte "sistema" e o fechamento vem de lá em vez da planilha. Mesmo jeito
 // da tela antiga: cards por transportadora (só o resumo), Adicionais e Descontos. "Performance
 // por dia" mostra todos os dias; tocando no dia, abas com os entregues, os atrasados e onholds
-// (com quando deveriam ser entregues) e as PNR abertas. Não abre por transportadora: a performance junta todas, e o detalhe separado confundia. "Baixar
+// (com quando deveriam ser entregues) e as PNR abertas, em duas visões: Geral e Por usuário
+// (usuário principal: lista as pessoas e ele marca quem quer ver). Não abre por transportadora: a performance junta todas, e o detalhe separado confundia. "Baixar
 // relatório detalhado" gera a planilha com as mesmas abas do Resumo da Quinzena.
 // Chamado por _carregarPainel (fechamentos.js).
 
@@ -39,6 +40,10 @@ let _fsDados = null;
 let _fsPedidos = null;       // pedidos dele na quinzena (só busca quando precisa)
 let _fsPedidosBusca = null;
 let _fsDiaAberto = null;     // "dia|aba" na tela, pra não redesenhar o que já foi fechado
+let _fsDiaVisao = "geral";   // "geral" ou "usuario"
+let _fsDiaMarcados = new Set(); // pessoas marcadas em Por usuário (nenhuma = todas); vale nas três abas
+let _fsDiaPessoas = [];      // pessoas do dia, na ordem da lista
+const _FS_SEM_USUARIO = "Sem usuário";
 
 /**
  * Pro entregador a XPT não importa: "Shopee Caçador"/"Shopee Videira" viram um card só,
@@ -195,6 +200,8 @@ function _fsAbrirDia(dia) {
     ov.innerHTML = `<div class="cft-modal fs-modal"></div>`;
     ov.addEventListener("click", e => { if (e.target === ov) _fsFechar(); });
     document.body.appendChild(ov);
+    _fsDiaVisao = "geral";
+    _fsDiaMarcados = new Set();
     _fsMostrarDia(dia);
 }
 
@@ -234,44 +241,40 @@ function _fsEntreguesDoDia(dia) {
     return (_fsPedidos || []).filter(p => p.data_entrega && _fsIsoDeBr(p.perf_dia || p.data_entrega) === dia);
 }
 
-function _fsCardEntregue(p) {
-    return `<div class="extr-card">
-        <div class="extr-top"><span class="extr-transp">${_fsEsc(p.transportadora)}</span><span class="extr-codigo">${_fsEsc(p.codigo || "")}</span></div>
-        <div class="extr-endereco">Entregue ${_fsEsc(p.data_entrega.slice(0, 5))}${p.cidade ? ` · ${_fsEsc(p.cidade)}` : ""}${p.dentro_prazo === "Não" && p.deve_ser_entregue
-            ? ` · deveria ser entregue ${_fsEsc(p.deve_ser_entregue.slice(0, 5))}` : ""}</div>
-    </div>`;
+const _fsPessoa = (x) => x.pessoa || _FS_SEM_USUARIO;
+
+/** Pessoas do dia com o que cada uma fez, da que mais entregou pra que menos. */
+function _fsPessoasDoDia(entregues, atrasos, pnrs) {
+    const m = new Map();
+    const somar = (lista, campo) => {
+        for (const x of lista) {
+            const nome = _fsPessoa(x);
+            if (!m.has(nome)) m.set(nome, { nome, entregues: 0, atrasos: 0, pnr: 0 });
+            m.get(nome)[campo]++;
+        }
+    };
+    somar(entregues, "entregues");
+    somar(atrasos, "atrasos");
+    somar(pnrs, "pnr");
+    return [...m.values()].sort((a, b) => b.entregues - a.entregues || a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
-function _fsCardOcorrencia(x) {
-    return `<div class="extr-card">
-        <div class="extr-top"><span class="extr-transp fs-neg">${x.tipo === "Acareação" ? "PNR" : _fsEsc(x.tipo)} · ${_fsEsc(x.transportadora)}</span><span class="extr-codigo">${_fsEsc(x.codigo || "")}</span></div>
-        <div class="extr-endereco">${x.deveria ? `Deveria ser entregue ${_fsDia(x.deveria)}` : ""}${x.entregue ? ` · entregue ${_fsDia(x.entregue)}` : (x.tipo === "Não entregue" ? " · não entregue" : "")}
-            ${x.tipo === "Acareação" ? "" : x.motivo ? `${_fsEsc(x.motivo)}${x.ocorrencia_hora ? ` · às ${_fsEsc(x.ocorrencia_hora)}` : ""}` : ""}</div>
-    </div>`;
+function _fsVisaoDia(dia, aba, visao) {
+    _fsDiaVisao = visao;
+    _fsMostrarDia(dia, aba);
 }
 
-// Abas do dia: entregues (default, os pedidos vêm do backend na 1ª vez), atrasados e onholds, PNR abertas.
-function _fsMostrarDia(dia, aba) {
-    aba = aba || "entregues";
-    _fsDiaAberto = dia + "|" + aba;
-    const doDia = (_fsDados.insucessos || []).filter(x => x.dia === dia);
-    const pnrs = doDia.filter(x => x.tipo === "Acareação");
-    const atrasos = doDia.filter(x => x.tipo !== "Acareação");
-    const p = _fsPerfDia(dia);
+function _fsMarcarPessoa(dia, aba, i) {
+    const { nome } = _fsDiaPessoas[i];
+    if (!_fsDiaMarcados.delete(nome)) _fsDiaMarcados.add(nome);
+    _fsMostrarDia(dia, aba);
+}
+
+function _fsHtmlResumoDia(dia, p, entregues) {
     const fx = _fsFaixa(dia);
     const perda = _fsPerdaPnr(p);
-    const entregues = (_fsDados.por_dia || []).filter(x => x.dia === dia).reduce((s, x) => s + (x.entregues || 0), 0);
     const mini = (rot, v, neg) => `<div class="fs-mini"><span>${rot}</span><b${neg ? ` class="fs-neg"` : ""}>${v}</b></div>`;
-    const abas = [["entregues", "Entregues", entregues], ["atrasados", "Atrasados e onholds", atrasos.length], ["pnr", "PNR abertas", pnrs.length]];
-    const esperando = aba === "entregues" && entregues > 0 && !_fsPedidos;
-    const cards = aba === "entregues" ? _fsEntreguesDoDia(dia).map(_fsCardEntregue) : (aba === "pnr" ? pnrs : atrasos).map(_fsCardOcorrencia);
-    const corpo = esperando ? `<div class="extr-vazio">Carregando os pedidos...</div>`
-        : cards.length ? cards.join("") : `<div class="extr-vazio">Nenhum pedido nesta aba.</div>`;
-    document.querySelector("#fs-modal .fs-modal").innerHTML = `
-        <div class="fs-modal-topo"><span></span>
-            <a href="#" class="fs-fechar" onclick="event.preventDefault();_fsFechar()">Fechar</a></div>
-        <div class="fs-sub">${_fsDia(dia)} ${_fsSem(dia)} · pedidos do dia</div>
-        ${p || entregues ? `<div class="fs-resumo">
+    return `${p || entregues ? `<div class="fs-resumo">
             ${mini("Entregues", entregues.toLocaleString("pt-BR"))}
             ${p ? `${mini("Performance", _fsPct(p.pct))}
             ${mini(p.tarifa_minima && !p.fixo && p.pacotes_minima ? "R$ por pacote (média)" : "R$ por pacote", p.fixo ? "Fixo"
@@ -285,7 +288,65 @@ function _fsMostrarDia(dia, aba) {
             os onholds e atrasados abaixo baixaram pra ${_fsR(p.valor)}.</div>` : ""}
         ${p && p.tarifa_minima ? `<div class="cft-ajuda fs-neg" style="margin-bottom:8px">${p.acareacoes} PNR neste dia
             ${p.fixo ? `— acima do limite pras baixas do dia: todos os pacotes do dia ficaram no valor fixo com desconto, ${_fsR(p.valor)} por pacote.`
-                : `— passou do limite no usuário ${_fsEsc(p.usuarios_minima || "")}: ${p.pacotes_minima || 0} entrega(s) desse usuário ficaram na tarifa mínima (${_fsR(fx.min)}).`}</div>` : ""}
+                : `— passou do limite no usuário ${_fsEsc(p.usuarios_minima || "")}: ${p.pacotes_minima || 0} entrega(s) desse usuário ficaram na tarifa mínima (${_fsR(fx.min)}).`}</div>` : ""}`;
+}
+
+/** Por usuário: a lista das pessoas é o resumo e também o seletor (toca na linha pra marcar). */
+function _fsHtmlPessoasDia(dia, aba) {
+    if (!_fsDiaPessoas.length) return "";
+    const num = (n) => n.toLocaleString("pt-BR");
+    return `<div class="cft-ajuda" style="margin-bottom:6px">Marque quem você quer ver. Sem ninguém marcado, aparecem todos.</div>
+        <div class="cft-tabela-wrap" style="margin-bottom:12px"><table class="cft-tabela"><thead><tr><th></th><th>Usuário</th>
+            <th style="text-align:right">Entregues</th><th style="text-align:right">Atrasos e onholds</th><th style="text-align:right">PNR</th></tr></thead>
+            <tbody>${_fsDiaPessoas.map((u, i) => `<tr style="cursor:pointer" onclick="_fsMarcarPessoa('${dia}', '${aba}', ${i})">
+                <td style="width:1%"><input type="checkbox" style="pointer-events:none"${_fsDiaMarcados.has(u.nome) ? " checked" : ""}></td>
+                <td style="white-space:normal">${_fsEsc(u.nome)}</td>
+                <td class="num">${num(u.entregues)}</td><td class="num">${num(u.atrasos)}</td><td class="num">${num(u.pnr)}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+function _fsCardEntregue(p) {
+    return `<div class="extr-card">
+        <div class="extr-top"><span class="extr-transp">${_fsEsc(p.transportadora)}</span><span class="extr-codigo">${_fsEsc(p.codigo || "")}</span></div>
+        <div class="extr-endereco">Entregue ${_fsEsc(p.data_entrega.slice(0, 5))}${p.cidade ? ` · ${_fsEsc(p.cidade)}` : ""}${p.dentro_prazo === "Não" && p.deve_ser_entregue
+            ? ` · deveria ser entregue ${_fsEsc(p.deve_ser_entregue.slice(0, 5))}` : ""}${p.pessoa ? ` · ${_fsEsc(p.pessoa)}` : ""}</div>
+    </div>`;
+}
+
+function _fsCardOcorrencia(x) {
+    return `<div class="extr-card">
+        <div class="extr-top"><span class="extr-transp fs-neg">${x.tipo === "Acareação" ? "PNR" : _fsEsc(x.tipo)} · ${_fsEsc(x.transportadora)}</span><span class="extr-codigo">${_fsEsc(x.codigo || "")}</span></div>
+        <div class="extr-endereco">${x.deveria ? `Deveria ser entregue ${_fsDia(x.deveria)}` : ""}${x.entregue ? ` · entregue ${_fsDia(x.entregue)}` : (x.tipo === "Não entregue" ? " · não entregue" : "")}
+            ${x.tipo === "Acareação" ? "" : x.motivo ? `${_fsEsc(x.motivo)}${x.ocorrencia_hora ? ` · às ${_fsEsc(x.ocorrencia_hora)}` : ""}` : ""}${x.pessoa ? ` · ${_fsEsc(x.pessoa)}` : ""}</div>
+    </div>`;
+}
+
+// Duas visões (Geral / Por usuário) com as mesmas abas: entregues (default; os pedidos vêm do
+// backend na 1ª vez), atrasados e onholds, PNR abertas. O resumo do dia é do entregador, só no Geral.
+function _fsMostrarDia(dia, aba) {
+    aba = aba || "entregues";
+    _fsDiaAberto = dia + "|" + aba;
+    const porUsuario = _fsDiaVisao === "usuario";
+    const doDia = (_fsDados.insucessos || []).filter(x => x.dia === dia);
+    const pnrs = doDia.filter(x => x.tipo === "Acareação");
+    const atrasos = doDia.filter(x => x.tipo !== "Acareação");
+    const entregues = (_fsDados.por_dia || []).filter(x => x.dia === dia).reduce((s, x) => s + (x.entregues || 0), 0);
+    const esperando = entregues > 0 && !_fsPedidos && (porUsuario || aba === "entregues");
+    const doEntregues = _fsEntreguesDoDia(dia);
+    _fsDiaPessoas = _fsPessoasDoDia(doEntregues, atrasos, pnrs);
+    const vale = (x) => !porUsuario || !_fsDiaMarcados.size || _fsDiaMarcados.has(_fsPessoa(x));
+    const [listaE, listaA, listaP] = [doEntregues, atrasos, pnrs].map(l => l.filter(vale));
+    const abas = [["entregues", "Entregues", porUsuario && !esperando ? listaE.length : entregues], ["atrasados", "Atrasados e onholds", listaA.length], ["pnr", "PNR abertas", listaP.length]];
+    const linhas = aba === "entregues" ? listaE : aba === "pnr" ? listaP : listaA;
+    const cards = linhas.map(aba === "entregues" ? _fsCardEntregue : _fsCardOcorrencia);
+    const corpo = esperando ? `<div class="extr-vazio">Carregando os pedidos...</div>`
+        : cards.length ? cards.join("") : `<div class="extr-vazio">Nenhum pedido nesta aba.</div>`;
+    const visao = (k, n) => `<button type="button"${_fsDiaVisao === k ? ` class="active"` : ""} onclick="_fsVisaoDia('${dia}', '${aba}', '${k}')">${n}</button>`;
+    document.querySelector("#fs-modal .fs-modal").innerHTML = `
+        <div class="fs-modal-topo"><span></span>
+            <a href="#" class="fs-fechar" onclick="event.preventDefault();_fsFechar()">Fechar</a></div>
+        <div class="fs-sub">${_fsDia(dia)} ${_fsSem(dia)} · pedidos do dia</div>
+        <div class="fs-visao">${visao("geral", "Geral")}${visao("usuario", "Por usuário")}</div>
+        ${porUsuario ? (esperando ? "" : _fsHtmlPessoasDia(dia, aba)) : _fsHtmlResumoDia(dia, _fsPerfDia(dia), entregues)}
         <div class="filtro-tabs" style="margin-bottom:10px">${abas.map(([k, n, q]) => `<button type="button" class="filtro-tab${k === aba ? " active" : ""}" onclick="_fsMostrarDia('${dia}', '${k}')">${n} ${q.toLocaleString("pt-BR")}</button>`).join("")}</div>
         <div class="extr-lista" id="fs-dia-lista" style="padding:0">${corpo}</div>`;
     if (!esperando) return;

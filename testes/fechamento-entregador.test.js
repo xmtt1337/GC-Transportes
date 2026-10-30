@@ -214,3 +214,73 @@ test("abas do dia: dia fechado antes da resposta não reabre", async () => {
     await new Promise(r => setImmediate(r));
     assert.strictEqual(modal.innerHTML, "fechado");
 });
+
+test("Geral e Por usuário: a lista das pessoas seleciona; vale nas três abas; o resumo do entregador fica só no Geral", async () => {
+    const { ctx, modal } = carregar();
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.insucessos = [
+        { dia: "2026-09-21", tipo: "Onhold", transportadora: "Shopee Caçador", codigo: "BRX", usuario: "ana.login", pessoa: "Ana Pessoa" },
+        { dia: "2026-09-21", tipo: "Atrasado", transportadora: "Imile", codigo: "I9", usuario: "bia.login", pessoa: "Bia Pessoa" },
+        { dia: "2026-09-21", tipo: "Acareação", transportadora: "Loggi", codigo: "PNR1", usuario: "ana.login", pessoa: "Ana Pessoa" }];
+    ctx._fsRender(D2);
+    Object.assign(ctx, { API: "", token: "t", _fMes: 9, _fAno: 2026, _fQuinzena: 2,
+        fetch: async () => ({ ok: true, json: async () => ({ pacotes: [
+            { transportadora: "Shopee Caçador", codigo: "BR1", data_entrega: "21/09/2026", perf_dia: "21/09/2026", pessoa: "Ana Pessoa" },
+            { transportadora: "Shopee Caçador", codigo: "BR2", data_entrega: "21/09/2026", perf_dia: "21/09/2026", pessoa: "Ana Pessoa" },
+            { transportadora: "Imile", codigo: "I2", data_entrega: "21/09/2026", perf_dia: "21/09/2026", pessoa: "Bia Pessoa" },
+            { transportadora: "Imile", codigo: "I3", data_entrega: "21/09/2026", perf_dia: "21/09/2026", pessoa: null }] }) }) });
+    ctx._fsAbrirDia("2026-09-21");
+    await new Promise(r => setImmediate(r));
+    assert.match(modal.innerHTML, /<span>Performance<\/span>/, "Geral tem o resumo");
+    assert.doesNotMatch(modal.innerHTML, /_fsMarcarPessoa/, "Geral não tem a lista de pessoas");
+    assert.match(modal.innerHTML, /Entregues 149<\/button>/, "Geral: o número do dia");
+
+    ctx._fsVisaoDia("2026-09-21", "entregues", "usuario");
+    assert.doesNotMatch(modal.innerHTML, /<span>Performance<\/span>/);
+    const linha = (nome) => modal.innerHTML.replace(/\s+/g, " ").match(new RegExp(nome + '</td> <td class="num">(\\d+)</td><td class="num">(\\d+)</td><td class="num">(\\d+)</td>')).slice(1).join("/");
+    assert.strictEqual(linha("Ana Pessoa"), "2/1/1");
+    assert.strictEqual(linha("Bia Pessoa"), "1/1/0");
+    assert.strictEqual(linha("Sem usuário"), "1/0/0");
+    assert.match(modal.innerHTML, /Entregues 4<\/button>/, "ninguém marcado: todos");
+    assert.match(modal.innerHTML, /BR1/);
+    assert.match(modal.innerHTML, /I2/);
+
+    ctx._fsMarcarPessoa("2026-09-21", "entregues", 0);   // Ana: quem mais entregou vem primeiro
+    assert.match(modal.innerHTML, /Entregues 2<\/button>/);
+    assert.match(modal.innerHTML, /Atrasados e onholds 1<\/button>/);
+    assert.match(modal.innerHTML, /PNR abertas 1<\/button>/);
+    assert.match(modal.innerHTML, /BR2/);
+    assert.doesNotMatch(modal.innerHTML, />I2</);
+    assert.match(modal.innerHTML, / checked>/);
+    ctx._fsMostrarDia("2026-09-21", "atrasados");
+    assert.match(modal.innerHTML, /BRX/);
+    assert.doesNotMatch(modal.innerHTML, /I9/);
+    ctx._fsMostrarDia("2026-09-21", "pnr");
+    assert.match(modal.innerHTML, /PNR1/);
+
+    ctx._fsMarcarPessoa("2026-09-21", "entregues", 1);   // marca mais uma: Ana + Bia
+    assert.match(modal.innerHTML, /Entregues 3<\/button>/);
+    ctx._fsMarcarPessoa("2026-09-21", "entregues", 0);   // desmarca a Ana
+    assert.match(modal.innerHTML, /Entregues 1<\/button>/);
+
+    ctx._fsVisaoDia("2026-09-21", "entregues", "geral");
+    assert.match(modal.innerHTML, /Entregues 149<\/button>/, "Geral ignora a seleção");
+    ctx._fsAbrirDia("2026-09-21");
+    ctx._fsVisaoDia("2026-09-21", "entregues", "usuario");
+    assert.match(modal.innerHTML, /Entregues 4<\/button>/, "abrir o dia de novo limpa a seleção");
+});
+
+test("Por usuário: busca os pedidos mesmo aberto na aba de atrasados", async () => {
+    const { ctx, modal } = carregar();
+    ctx._fsRender(D);
+    let buscas = 0;
+    Object.assign(ctx, { API: "", token: "t", _fMes: 9, _fAno: 2026, _fQuinzena: 2,
+        fetch: async () => { buscas++; return { ok: true, json: async () => ({ pacotes: [{ transportadora: "Imile", codigo: "I2", data_entrega: "21/09/2026", perf_dia: "21/09/2026", pessoa: "Ana Pessoa" }] }) }; } });
+    ctx._fsAbrirDia("2026-09-21");
+    ctx._fsMostrarDia("2026-09-21", "atrasados");
+    ctx._fsVisaoDia("2026-09-21", "atrasados", "usuario");
+    assert.match(modal.innerHTML, /Carregando os pedidos/);
+    await new Promise(r => setImmediate(r));
+    assert.match(modal.innerHTML, /Ana Pessoa/);
+    assert.strictEqual(buscas, 1);
+});
