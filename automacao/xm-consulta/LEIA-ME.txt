@@ -51,7 +51,9 @@ SEGURANCA
 - O acesso a Anjun e o do usuario logado no navegador, e a
   Anjun registra em nome dele.
 - Velocidade: consulta.js, INTERVALO_MS (3000 = 1 pacote a cada 3 s).
-  A Anjun barra 30 minutos quem vai rapido demais.
+  A Anjun barra 30 minutos quem vai rapido demais. Depois de um
+  bloqueio, a extensao nao deixa iniciar antes de o prazo acabar.
+  Ela tambem recusa rodar em duas abas ao mesmo tempo.
 
 
 -----------------------------------------------------------

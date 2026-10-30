@@ -11,6 +11,31 @@ const X = require('../extensao/consulta.js');
 const ANJUN = X.TRANSPORTADORAS[0];
 const semPausa = async () => {};
 
+test('tempoDeBloqueio le o prazo da Anjun e soma 1 minuto de folga', () => {
+  const msg = 'A Anjun recusou (HTTP 200, code 500): Operações muito frequentes, tente novamente após 29 minuto(s) 27 segundo(s).';
+  assert.strictEqual(X.tempoDeBloqueio(msg), ((29 * 60) + 27 + 60) * 1000);
+  assert.strictEqual(X.tempoDeBloqueio('muito frequentes, após 40 segundo(s)'), 100000);
+});
+
+test('bloqueio sem prazo legivel assume 30 minutos, e outro erro nao bloqueia', () => {
+  assert.strictEqual(X.tempoDeBloqueio('Operações muito frequentes'), 31 * 60 * 1000);
+  assert.strictEqual(X.tempoDeBloqueio('A Anjun recusou (HTTP 502)'), null);
+  assert.strictEqual(X.tempoDeBloqueio(null), null);
+});
+
+test('nao inicia durante o bloqueio e libera quando o prazo acaba', () => {
+  const agora = Date.now();
+  assert.match(X.motivoParaNaoIniciar({ agora, bloqueadoAte: agora + 120000 }), /bloqueou.*falta 2 min 00 s/);
+  assert.strictEqual(X.motivoParaNaoIniciar({ agora, bloqueadoAte: agora - 1 }), null);
+});
+
+test('nao inicia em cima de outra rodada', () => {
+  const agora = Date.now();
+  assert.match(X.motivoParaNaoIniciar({ agora, ultimaConsulta: agora - 3000 }), /outra aba/);
+  assert.strictEqual(X.motivoParaNaoIniciar({ agora, ultimaConsulta: agora - 10000 }), null);
+  assert.strictEqual(X.motivoParaNaoIniciar({ agora }), null);
+});
+
 test('extrairCodigos aceita separadores, tira repetido e conta lixo', () => {
   const texto = 'AJ100000000000001\naj100000000000002, AJ100000000000001;BR123 xyz';
   assert.deepStrictEqual(X.extrairCodigos(texto, ANJUN.padrao), {

@@ -14,6 +14,10 @@
   // barrou no 4o pacote, com 30 minutos de castigo (30/10/2026). Nao acelerar sem testar.
   const INTERVALO_MS = 3000;
   const ESPERA_ABA_MS = 20000;
+  // Consulta mais recente ha menos que isso: outra aba rodando, ou reinicio em cima do anterior.
+  const FOLGA_ENTRE_RODADAS_MS = 10000;
+  const BLOQUEIO_PADRAO_MS = 30 * 60 * 1000;
+  const MARGEM_BLOQUEIO_MS = 60 * 1000;
   const COLUNAS = ['waybill', 'status', 'nome', 'telefone', 'whatsapp'];
   const PASTA_CSV = 'XM Consultas de telefone';
 
@@ -100,6 +104,27 @@
   }
 
   // Nome vem de fora: "=..." viraria formula ao abrir no Excel.
+  function tempoDeBloqueio(erro) {
+    const texto = String(erro || '');
+    if (!/muito frequentes|too frequent|频繁/i.test(texto)) return null;
+    const minutos = texto.match(/(\d+)\s*minuto/i);
+    const segundos = texto.match(/(\d+)\s*segundo/i);
+    if (!minutos && !segundos) return BLOQUEIO_PADRAO_MS + MARGEM_BLOQUEIO_MS;
+    return ((Number(minutos?.[1] || 0) * 60) + Number(segundos?.[1] || 0)) * 1000 + MARGEM_BLOQUEIO_MS;
+  }
+
+  // Tentar durante o bloqueio so arrisca piorar, e duas abas juntas dobrariam o ritmo.
+  function motivoParaNaoIniciar({ agora, bloqueadoAte, ultimaConsulta }) {
+    if (bloqueadoAte && agora < bloqueadoAte) {
+      const hora = new Date(bloqueadoAte).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      return `A transportadora bloqueou por excesso de consultas. Tente depois das ${hora} (falta ${textoTempo(bloqueadoAte - agora)}).`;
+    }
+    if (ultimaConsulta && agora - ultimaConsulta < FOLGA_ENTRE_RODADAS_MS) {
+      return 'Teve consulta há poucos segundos, nesta ou em outra aba. Aguarde 10 segundos e confira se nenhuma outra está rodando.';
+    }
+    return null;
+  }
+
   function celula(valor) {
     const t = String(valor ?? '');
     const seguro = /^[=+\-@]/.test(t) ? `'${t}` : t;
@@ -202,7 +227,7 @@
 
   const publico = {
     TRANSPORTADORAS, COLUNAS, PASTA_CSV, ErroDeConta, entrar, conferir, extrairCodigos, linkWhatsapp,
-    porcentagem, textoTempo, montarCsv, nomeArquivo, criarAbas, executar,
+    porcentagem, textoTempo, tempoDeBloqueio, motivoParaNaoIniciar, montarCsv, nomeArquivo, criarAbas, executar,
   };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMConsulta = publico;

@@ -103,6 +103,16 @@ function definirRodando(valor) {
 async function iniciar() {
   const t = transportadora();
   const { codigos } = X.extrairCodigos($('codigos').value, t.padrao);
+  const chaveBloqueio = `bloqueio:${t.chave}`;
+  const chaveUltima = `ultima:${t.chave}`;
+  const salvo = await chrome.storage.local.get([chaveBloqueio, chaveUltima]);
+  const motivo = X.motivoParaNaoIniciar({
+    agora: Date.now(), bloqueadoAte: salvo[chaveBloqueio], ultimaConsulta: salvo[chaveUltima],
+  });
+  if (motivo) {
+    dizer(motivo, true);
+    return;
+  }
   pedirParada = false;
   $('mostrar').hidden = true;
   mostrarProgresso(0, codigos.length, 0);
@@ -120,13 +130,18 @@ async function iniciar() {
     const res = await X.executar({
       codigos,
       dormir,
-      pedir: (codigo) => abas.consultar(t, codigo),
+      pedir: async (codigo) => {
+        await chrome.storage.local.set({ [chaveUltima]: Date.now() });
+        return abas.consultar(t, codigo);
+      },
       deveParar: () => pedirParada,
       aoAvancar: (feitos, total) => {
         const medio = (Date.now() - inicio) / feitos;
         mostrarProgresso(feitos, total, medio * (total - feitos));
       },
     });
+    const bloqueio = X.tempoDeBloqueio(res.erro);
+    if (bloqueio) await chrome.storage.local.set({ [chaveBloqueio]: Date.now() + bloqueio });
     await concluir(t, res);
   } catch (e) {
     if (e instanceof X.ErroDeConta) {
