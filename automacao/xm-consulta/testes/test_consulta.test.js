@@ -167,6 +167,23 @@ test('aba sem sessao avisa o que fazer em vez de seguir', async () => {
   await assert.rejects(ctrl.preparar(ANJUN), /F5/);
 });
 
+test('menu flutuante nao sai da tela nem some ao arrastar', () => {
+  const { limitar } = require('../extensao/menu.js');
+  assert.strictEqual(limitar(100, 500), 100);
+  assert.strictEqual(limitar(-30, 500), 8);
+  assert.strictEqual(limitar(900, 500), 500);
+  assert.strictEqual(limitar(100, -50), 8); // janela menor que o painel
+});
+
+test('so a Anjun pode embutir o painel, e ele guarda o nome novo', () => {
+  const m = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extensao', 'manifest.json'), 'utf8'));
+  assert.strictEqual(m.name, 'XM - Consultas de telefone');
+  assert.deepStrictEqual(m.web_accessible_resources, [{
+    resources: ['pagina.html', 'img/logo.png', 'img/logo-claro.png'],
+    matches: ['https://newsupplier.anjunexpress.com/*'],
+  }]);
+});
+
 test('manifest alcanca so a Anjun e o sistema, com o id liberado no backend', () => {
   const m = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extensao', 'manifest.json'), 'utf8'));
   assert.deepStrictEqual(m.host_permissions, [

@@ -13,6 +13,7 @@
   const INTERVALO_MS = 500; // 2 consultas por segundo
   const ESPERA_ABA_MS = 20000;
   const COLUNAS = ['waybill', 'status', 'nome', 'telefone', 'whatsapp'];
+  const PASTA_CSV = 'XM Consultas de telefone';
 
   const TRANSPORTADORAS = [
     {
@@ -198,7 +199,7 @@
   }
 
   const publico = {
-    TRANSPORTADORAS, COLUNAS, ErroDeConta, entrar, conferir, extrairCodigos, linkWhatsapp,
+    TRANSPORTADORAS, COLUNAS, PASTA_CSV, ErroDeConta, entrar, conferir, extrairCodigos, linkWhatsapp,
     porcentagem, textoTempo, montarCsv, nomeArquivo, criarAbas, executar,
   };
   if (typeof module !== 'undefined') module.exports = publico;

@@ -10,6 +10,10 @@ let rodando = false;
 let pedirParada = false;
 let ultimoDownload = null;
 
+const NOME = 'XM - Consultas de telefone';
+const embutido = window.parent !== window;
+if (embutido) document.body.classList.add('embutido');
+
 const relogio = new Worker('relogio.js');
 const esperas = new Map();
 let proximaEspera = 0;
@@ -65,7 +69,12 @@ function mostrarProgresso(feitos, total, restanteMs) {
   const pct = X.porcentagem(feitos, total);
   $('barra').style.width = `${pct}%`;
   $('progresso').textContent = feitos ? `${pct}%  ·  ${feitos} de ${total}  ·  faltam ${X.textoTempo(restanteMs)}` : '0%';
-  document.title = rodando ? `${pct}% · XM Consulta` : 'XM Consulta';
+  document.title = rodando ? `${pct}% · ${NOME}` : NOME;
+  avisarMenu(pct);
+}
+
+function avisarMenu(pct) {
+  if (embutido) window.parent.postMessage({ xmConsulta: 'progresso', pct }, location.ancestorOrigins[0]);
 }
 
 function dizer(texto, erro = false) {
@@ -76,7 +85,7 @@ function dizer(texto, erro = false) {
 async function baixarCsv(t, linhas) {
   const nome = X.nomeArquivo(t.chave);
   const url = URL.createObjectURL(new Blob([X.montarCsv(linhas)], { type: 'text/csv;charset=utf-8' }));
-  ultimoDownload = await chrome.downloads.download({ url, filename: `XM Consulta/${nome}`, saveAs: false });
+  ultimoDownload = await chrome.downloads.download({ url, filename: `${X.PASTA_CSV}/${nome}`, saveAs: false });
   setTimeout(() => URL.revokeObjectURL(url), 60000);
   $('mostrar').hidden = false;
   return nome;
@@ -122,6 +131,7 @@ async function iniciar() {
   } catch (e) {
     if (e instanceof X.ErroDeConta) {
       definirRodando(false);
+      avisarMenu(null);
       await chrome.storage.session.remove('token');
       mostrarLogin(e.message);
       return;
@@ -129,7 +139,8 @@ async function iniciar() {
     dizer(e.message, true);
   }
   definirRodando(false);
-  document.title = 'XM Consulta';
+  document.title = NOME;
+  avisarMenu(null);
 }
 
 async function concluir(t, res) {
@@ -138,7 +149,7 @@ async function concluir(t, res) {
   if (res.erro) partes.push(res.erro);
   if (res.linhas.length) {
     const nome = await baixarCsv(t, res.linhas);
-    partes.push(`${res.linhas.length} pacotes em Downloads\\XM Consulta\\${nome}`);
+    partes.push(`${res.linhas.length} pacotes em Downloads\\${X.PASTA_CSV}\\${nome}`);
     const semWhats = res.linhas.filter((l) => !l.whatsapp).length;
     if (semWhats) partes.push(`${semWhats} sem WhatsApp válido`);
   }

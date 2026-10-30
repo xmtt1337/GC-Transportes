@@ -1,5 +1,5 @@
 ===========================================================
-  XM CONSULTA
+  XM - CONSULTAS DE TELEFONE
 ===========================================================
 
 Extensao do Chrome. Escolhe a transportadora, cola os codigos
@@ -24,15 +24,15 @@ INSTALAR (uma vez por computador)
 USAR
 -----------------------------------------------------------
 
-1. Clique no icone da XM Consulta e entre com o login do
-   sistema. A tela abre numa aba propria.
+1. Clique no icone XM (no site ou no Chrome) e entre com o login do
+   sistema XMTT. O menu flutua sobre o site e pode ser arrastado.
 2. Deixe a Anjun logada no Chrome. Se nao estiver aberta, a
    extensao abre.
 3. Escolha a transportadora, cole os codigos, Iniciar.
-4. Nao feche a aba da XM Consulta nem a da Anjun ate terminar.
-   Pode trabalhar em outras abas.
+4. Nao feche nem atualize a aba da Anjun ate terminar.
+   Pode minimizar e trabalhar em outras abas.
 
-O CSV cai em  Downloads\XM Consulta . Ele tem dado pessoal de
+O CSV cai em  Downloads\XM Consultas de telefone . Tem dado pessoal de
 cliente: fica so com quem vai usar e apague ao terminar.
 
 Se a transportadora recusar, para sozinho, baixa o que ja veio

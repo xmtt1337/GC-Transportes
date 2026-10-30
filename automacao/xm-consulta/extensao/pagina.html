@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>XM Consulta</title>
+<title>XM - Consultas de telefone</title>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; background: #16181d; color: #e8eaed; font: 14px system-ui, sans-serif; }
@@ -24,14 +24,17 @@
   .barra div { height: 100%; width: 0; background: #4ade80; }
   #progresso { margin: 6px 0 0; font-variant-numeric: tabular-nums; }
   #mensagem { margin: 8px 0 0; line-height: 1.4; }
+  .embutido main { padding: 12px 14px; }
+  .embutido h1 { display: none; }
+  .embutido textarea { height: 170px; }
 </style>
 </head>
 <body>
 <main>
-  <h1>XM Consulta</h1>
+  <h1>XM - Consultas de telefone</h1>
 
   <form id="tela-login" hidden>
-    <label for="usuario">Usuário do sistema</label>
+    <label for="usuario">Usuário no sistema XMTT</label>
     <input id="usuario" autocomplete="username" required>
     <label for="senha">Senha</label>
     <input id="senha" type="password" autocomplete="current-password" required>
