@@ -215,72 +215,99 @@ test("abas do dia: dia fechado antes da resposta não reabre", async () => {
     assert.strictEqual(modal.innerHTML, "fechado");
 });
 
-test("Geral e Por usuário: a lista das pessoas seleciona; vale nas três abas; o resumo do entregador fica só no Geral", async () => {
-    const { ctx, modal } = carregar();
-    const D2 = JSON.parse(JSON.stringify(D));
-    D2.insucessos = [
-        { dia: "2026-09-21", tipo: "Onhold", transportadora: "Shopee Caçador", codigo: "BRX", usuario: "ana.login", pessoa: "Ana Pessoa" },
-        { dia: "2026-09-21", tipo: "Atrasado", transportadora: "Imile", codigo: "I9", usuario: "bia.login", pessoa: "Bia Pessoa" },
-        { dia: "2026-09-21", tipo: "Acareação", transportadora: "Loggi", codigo: "PNR1", usuario: "ana.login", pessoa: "Ana Pessoa" }];
+const PESSOAS = {
+    insucessos: [
+        { dia: "2026-09-21", tipo: "Onhold", transportadora: "Shopee Caçador", codigo: "BRX", pessoa: "Ana Pessoa" },
+        { dia: "2026-09-21", tipo: "Atrasado", transportadora: "Imile", codigo: "I9", pessoa: "Bia Pessoa" },
+        { dia: "2026-09-21", tipo: "Acareação", transportadora: "Loggi", codigo: "PNR1", pessoa: "Ana Pessoa" }],
+    pacotes: [
+        { transportadora: "Shopee Caçador", codigo: "BR1", data_entrega: "21/09/2026", perf_dia: "21/09/2026", valor_motorista: 2.5, pessoa: "Ana Pessoa" },
+        { transportadora: "Shopee Caçador", codigo: "BR2", data_entrega: "22/09/2026", perf_dia: "22/09/2026", valor_motorista: 2.5, pessoa: "Ana Pessoa" },
+        { transportadora: "Imile", codigo: "I2", data_entrega: "21/09/2026", perf_dia: "21/09/2026", valor_motorista: 2, pessoa: "Bia Pessoa" },
+        { transportadora: "Imile", codigo: "I3", data_entrega: "21/09/2026", perf_dia: "21/09/2026", valor_motorista: 1, pessoa: null }],
+};
+function porUsuario(ctx, extra) {
+    const D2 = { ...JSON.parse(JSON.stringify(D)), insucessos: PESSOAS.insucessos, ...extra };
     ctx._fsRender(D2);
     Object.assign(ctx, { API: "", token: "t", _fMes: 9, _fAno: 2026, _fQuinzena: 2,
-        fetch: async () => ({ ok: true, json: async () => ({ pacotes: [
-            { transportadora: "Shopee Caçador", codigo: "BR1", data_entrega: "21/09/2026", perf_dia: "21/09/2026", pessoa: "Ana Pessoa" },
-            { transportadora: "Shopee Caçador", codigo: "BR2", data_entrega: "21/09/2026", perf_dia: "21/09/2026", pessoa: "Ana Pessoa" },
-            { transportadora: "Imile", codigo: "I2", data_entrega: "21/09/2026", perf_dia: "21/09/2026", pessoa: "Bia Pessoa" },
-            { transportadora: "Imile", codigo: "I3", data_entrega: "21/09/2026", perf_dia: "21/09/2026", pessoa: null }] }) }) });
-    ctx._fsAbrirDia("2026-09-21");
+        fetch: async () => ({ ok: true, json: async () => ({ pacotes: PESSOAS.pacotes }) }) });
+}
+
+test("Geral e Por usuário: a tela vira o fechamento das pessoas marcadas", async () => {
+    const { ctx, el, modal } = carregar();
+    porUsuario(ctx);
+    const tela = () => el("fech-sistema").innerHTML;
+    assert.match(tela(), /class="active" onclick="_fsTrocarVisao\('geral'\)"/);
+    assert.match(tela(), /Ticket Log/, "Geral é o fechamento do entregador");
+    assert.doesNotMatch(tela(), /_fsMarcarPessoa/);
+
+    ctx._fsTrocarVisao("usuario");
+    assert.match(tela(), /Carregando os pedidos/);
     await new Promise(r => setImmediate(r));
-    assert.match(modal.innerHTML, /<span>Performance<\/span>/, "Geral tem o resumo");
-    assert.doesNotMatch(modal.innerHTML, /_fsMarcarPessoa/, "Geral não tem a lista de pessoas");
-    assert.match(modal.innerHTML, /Entregues 149<\/button>/, "Geral: o número do dia");
+    assert.doesNotMatch(tela(), /Ticket Log/, "descontos são do entregador");
+    assert.match(tela(), /veja em Geral/);
+    const linha = (nome) => tela().replace(/\s+/g, " ").match(new RegExp(nome + '</td> <td class="num">([^<]+)</td><td class="num">([^<]+)</td><td class="num">([^<]+)</td> <td class="num">([^<]+)</td><td class="num">([^<]+)</td>')).slice(1).join(" | ").replace(/\u00a0/g, " ");
+    assert.strictEqual(linha("Ana Pessoa"), "2 | R$ 5,00 | R$ 2,50 | 1 | 1");
+    assert.strictEqual(linha("Bia Pessoa"), "1 | R$ 2,00 | R$ 2,00 | 1 | 0");
+    assert.strictEqual(linha("Sem usuário"), "1 | R$ 1,00 | R$ 1,00 | 0 | 0");
+    assert.ok(tela().indexOf("Ana Pessoa") < tela().indexOf("Bia Pessoa"), "quem mais recebeu vem primeiro");
+    assert.match(tela(), /Valor<\/span><b>R\$ 8,00<\/b>/, "ninguém marcado: todos");
 
-    ctx._fsVisaoDia("2026-09-21", "entregues", "usuario");
-    assert.doesNotMatch(modal.innerHTML, /<span>Performance<\/span>/);
-    const linha = (nome) => modal.innerHTML.replace(/\s+/g, " ").match(new RegExp(nome + '</td> <td class="num">(\\d+)</td><td class="num">(\\d+)</td><td class="num">(\\d+)</td>')).slice(1).join("/");
-    assert.strictEqual(linha("Ana Pessoa"), "2/1/1");
-    assert.strictEqual(linha("Bia Pessoa"), "1/1/0");
-    assert.strictEqual(linha("Sem usuário"), "1/0/0");
-    assert.match(modal.innerHTML, /Entregues 4<\/button>/, "ninguém marcado: todos");
+    ctx._fsMarcarPessoa(1);   // Bia
+    assert.match(tela(), /Valor<\/span><b>R\$ 2,00<\/b>/);
+    assert.match(tela(), /<div class="pt-header">Imile<\/div>/);
+    assert.doesNotMatch(tela(), /<div class="pt-header">Shopee<\/div>/, "só as transportadoras dela");
+    assert.doesNotMatch(tela(), /_fsAbrirDia\('2026-09-22'\)/, "só os dias dela");
+    assert.match(tela(), /_fsAbrirDia\('2026-09-21'\)/);
+    ctx._fsMarcarPessoa(0);   // Ana junto
+    assert.match(tela(), /Valor<\/span><b>R\$ 7,00<\/b>/);
+    assert.match(tela(), /_fsAbrirDia\('2026-09-22'\)/);
+
+    ctx._fsMarcarPessoa(1);   // só a Ana
+    ctx._fsAbrirDia("2026-09-21");
+    assert.match(modal.innerHTML, /21\/09 seg · Ana Pessoa/);
+    assert.match(modal.innerHTML, /Valor<\/span><b>R\$ 2,50<\/b>/, "o dia dela");
+    assert.match(modal.innerHTML, /Entregues 1<\/button>/);
     assert.match(modal.innerHTML, /BR1/);
-    assert.match(modal.innerHTML, /I2/);
-
-    ctx._fsMarcarPessoa("2026-09-21", "entregues", 0);   // Ana: quem mais entregou vem primeiro
-    assert.match(modal.innerHTML, /Entregues 2<\/button>/);
-    assert.match(modal.innerHTML, /Atrasados e onholds 1<\/button>/);
-    assert.match(modal.innerHTML, /PNR abertas 1<\/button>/);
-    assert.match(modal.innerHTML, /BR2/);
-    assert.doesNotMatch(modal.innerHTML, />I2</);
-    assert.match(modal.innerHTML, / checked>/);
+    assert.doesNotMatch(modal.innerHTML, /I2/);
     ctx._fsMostrarDia("2026-09-21", "atrasados");
     assert.match(modal.innerHTML, /BRX/);
     assert.doesNotMatch(modal.innerHTML, /I9/);
     ctx._fsMostrarDia("2026-09-21", "pnr");
     assert.match(modal.innerHTML, /PNR1/);
 
-    ctx._fsMarcarPessoa("2026-09-21", "entregues", 1);   // marca mais uma: Ana + Bia
-    assert.match(modal.innerHTML, /Entregues 3<\/button>/);
-    ctx._fsMarcarPessoa("2026-09-21", "entregues", 0);   // desmarca a Ana
-    assert.match(modal.innerHTML, /Entregues 1<\/button>/);
-
-    ctx._fsVisaoDia("2026-09-21", "entregues", "geral");
-    assert.match(modal.innerHTML, /Entregues 149<\/button>/, "Geral ignora a seleção");
+    ctx._fsTrocarVisao("geral");
     ctx._fsAbrirDia("2026-09-21");
-    ctx._fsVisaoDia("2026-09-21", "entregues", "usuario");
-    assert.match(modal.innerHTML, /Entregues 4<\/button>/, "abrir o dia de novo limpa a seleção");
+    assert.match(modal.innerHTML, /Entregues 149<\/button>/, "Geral ignora a seleção");
+    assert.match(modal.innerHTML, /<span>Performance<\/span>/);
 });
 
-test("Por usuário: busca os pedidos mesmo aberto na aba de atrasados", async () => {
-    const { ctx, modal } = carregar();
-    ctx._fsRender(D);
-    let buscas = 0;
-    Object.assign(ctx, { API: "", token: "t", _fMes: 9, _fAno: 2026, _fQuinzena: 2,
-        fetch: async () => { buscas++; return { ok: true, json: async () => ({ pacotes: [{ transportadora: "Imile", codigo: "I2", data_entrega: "21/09/2026", perf_dia: "21/09/2026", pessoa: "Ana Pessoa" }] }) }; } });
-    ctx._fsAbrirDia("2026-09-21");
-    ctx._fsMostrarDia("2026-09-21", "atrasados");
-    ctx._fsVisaoDia("2026-09-21", "atrasados", "usuario");
-    assert.match(modal.innerHTML, /Carregando os pedidos/);
+test("Por usuário: tarifa mínima por PNR só no dia de quem passou; quinzena nova volta pro Geral", async () => {
+    const { ctx, el } = carregar();
+    const perf = JSON.parse(JSON.stringify(D.performance));
+    perf.dias[0] = { ...perf.dias[0], tarifa_minima: true, pacotes_minima: 1, usuarios_minima: "Bia Pessoa" };
+    porUsuario(ctx, { performance: perf });
+    ctx._fsTrocarVisao("usuario");
     await new Promise(r => setImmediate(r));
-    assert.match(modal.innerHTML, /Ana Pessoa/);
-    assert.strictEqual(buscas, 1);
+    assert.match(el("fech-sistema").innerHTML, /Tarifa mínima por PNR/);
+    ctx._fsMarcarPessoa(0);   // Ana não passou
+    assert.doesNotMatch(el("fech-sistema").innerHTML, /Tarifa mínima por PNR/);
+    ctx._fsRender(D);
+    assert.match(el("fech-sistema").innerHTML, /Ticket Log/);
+});
+
+test("Por usuário: erro ao buscar os pedidos aparece e dá pra tentar de novo", async () => {
+    const { ctx, el } = carregar();
+    porUsuario(ctx);
+    let falha = true;
+    const ok = ctx.fetch;
+    ctx.fetch = async (...a) => { if (falha) return { ok: false, json: async () => ({ error: "Sem NF" }) }; return ok(...a); };
+    ctx._fsTrocarVisao("usuario");
+    await new Promise(r => setImmediate(r));
+    assert.strictEqual(el("fs-usuario").innerHTML, "Sem NF");
+    falha = false;
+    ctx._fsTrocarVisao("geral");
+    ctx._fsTrocarVisao("usuario");
+    await new Promise(r => setImmediate(r));
+    assert.match(el("fech-sistema").innerHTML, /Ana Pessoa/);
 });
