@@ -487,6 +487,9 @@ function _valMostrarEtapas() {
                     <option value="2">Redespacho</option>
                     <option value="1">Subcontratação</option>
                 </select></label>
+            <label>Série
+                <input id="val-serie" type="number" min="0" max="999"
+                       placeholder="a do perfil (ex: 4)"></label>
         </div>
         <p class="dica">
             <b>Ambiente</b> força onde ESTES CT-e nascem, sem precisar mudar o
@@ -497,7 +500,10 @@ function _valMostrarEtapas() {
             alíquota varia (ver o aviso de alíquotas diferentes abaixo, em
             "Conferir"). <b>Tipo de serviço</b> força o ide.tpServ destes
             CT-e — hoje o perfil sempre usa Redespacho; só mexe quando a
-            operação desta planilha for mesmo Subcontratação.
+            operação desta planilha for mesmo Subcontratação. <b>Série</b>
+            deixa em branco pra usar a do perfil, ou escolha outra pra manter
+            Subcontratação numa numeração separada — defina o número inicial
+            dessa série em Fiscal &gt; Numeração antes de emitir.
         </p>
         <div id="val-tipos"></div>
         <div id="val-cidades"></div>
@@ -824,6 +830,7 @@ function _valMostrarConfirmacao(local) {
     const ambiente = document.getElementById("val-ambiente").value;
     const fonteAliquota = document.getElementById("val-fonte-aliquota").value;
     const tipoServico = document.getElementById("val-tipo-servico").value;
+    const serie = document.getElementById("val-serie").value;
     alvo.innerHTML = `
     <div class="aviso-info">
         <strong>Criar ${n.toLocaleString("pt-BR")} CT-e?</strong>
@@ -836,7 +843,8 @@ function _valMostrarConfirmacao(local) {
         <p class="dica">
             Ambiente: <b>${ambiente ? (ambiente === "producao" ? "PRODUÇÃO" : "Homologação") : "o de sempre (desta empresa)"}</b> ·
             Alíquota do ICMS: <b>${fonteAliquota === "planilha" ? "da planilha" : "do perfil"}</b> ·
-            Tipo de serviço: <b>${tipoServico === "1" ? "Subcontratação" : tipoServico === "2" ? "Redespacho" : "o do perfil"}</b>
+            Tipo de serviço: <b>${tipoServico === "1" ? "Subcontratação" : tipoServico === "2" ? "Redespacho" : "o do perfil"}</b> ·
+            Série: <b>${serie ? _esc(serie) : "a do perfil"}</b>
         </p>
         <p class="dica">
             ${_valPermitirReemissao
@@ -888,6 +896,8 @@ async function _valImportarLote() {
     const fonteAliquota = document.getElementById("val-fonte-aliquota").value;
     const tipoServicoSel = document.getElementById("val-tipo-servico").value;
     const tipoServico = tipoServicoSel === "" ? null : Number(tipoServicoSel);
+    const serieSel = document.getElementById("val-serie").value;
+    const serie = serieSel === "" ? null : Number(serieSel);
     alvo.innerHTML = "<p class='carregando'>Preparando a importação…</p>";
 
     try {
@@ -899,7 +909,7 @@ async function _valImportarLote() {
                 nome: _valPlanilha.nome, sobrescrever,
                 ambiente, fonte_aliquota: fonteAliquota,
                 permitir_reemissao: _valPermitirReemissao,
-                tipo_servico: tipoServico,
+                tipo_servico: tipoServico, serie,
             }),
         });
         _valImportacaoId = imp.id;
