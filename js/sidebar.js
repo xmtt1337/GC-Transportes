@@ -68,17 +68,22 @@ function toggleSubGroup(el) {
 }
 
 // Desktop hover-to-expand com debounce (evita travar ao entrar/sair rápido)
+// A largura é conferida a cada evento, não só ao carregar: página aberta larga e depois
+// estreitada (janela reduzida, modo celular do DevTools) ficava com o hover ligado, e o
+// mouse saindo fechava a barra sem tirar o fundo escuro, que só some em fecharSidebar.
 document.addEventListener("DOMContentLoaded", function () {
-    if (!window.matchMedia("(hover: hover) and (min-width: 681px)").matches) return;
     const sidebar = document.getElementById("sidebar");
     if (!sidebar) return;
+    const temHover = window.matchMedia("(hover: hover) and (min-width: 681px)");
     let hoverTimer;
     sidebar.addEventListener("mouseenter", () => {
         clearTimeout(hoverTimer);
+        if (!temHover.matches) return;
         hoverTimer = setTimeout(() => sidebar.classList.add("expanded"), 80);
     });
     sidebar.addEventListener("mouseleave", () => {
         clearTimeout(hoverTimer);
+        if (!temHover.matches) return;
         hoverTimer = setTimeout(() => sidebar.classList.remove("expanded"), 150);
     });
 });
