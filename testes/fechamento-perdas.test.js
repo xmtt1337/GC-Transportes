@@ -48,7 +48,8 @@ test("abas: fora do prazo, onhold e PNR com o que deixou de receber no dia (uma 
     const { ctx, el } = carregar();
     ctx._set(DADOS);
     ctx._pdAbrirAba("prazo");
-    assert.match(el("pd-lista").innerHTML, /IM1<\/td><td>05\/10<\/td><td>07\/10<\/td>\s*<td class="num cft-neg">−50,00/);
+    assert.match(el("pd-lista").innerHTML, /IM1<\/td><td>05\/10<\/td><td>07\/10<\/td>\s*<td class="num">95%<\/td>\s*<td class="num cft-neg">−50,00/);
+    assert.match(el("pd-lista").innerHTML, /% do dia/);
     ctx._pdAbrirAba("onhold");
     assert.match(el("pd-lista").innerHTML, /Cliente ausente/);
     assert.doesNotMatch(el("pd-lista").innerHTML, /IM1/);

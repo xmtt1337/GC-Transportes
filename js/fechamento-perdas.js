@@ -17,6 +17,9 @@ function _pdEsc(t) {
 function _pdNum(n) {
     return Number(n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+function _pdPct(n) {
+    return Number(n || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + "%";
+}
 function _pdDia(iso) {
     const [, m, d] = String(iso || "").split("-");
     return d ? `${d}/${m}` : "—";
@@ -184,10 +187,12 @@ function _pdTabela(aba, { ents, dias, deTipo }) {
         const lista = ordenar(deTipo(["Atrasado", "Não entregue"]));
         const pd = perdaDoDia(lista, "perda_performance");
         return `<table class="cft-tabela"><thead><tr><th>Dia</th><th>Entregador</th><th>Transportadora</th><th>Código</th><th>Deveria</th><th>Entregue</th>
+            <th style="text-align:right" title="Performance do entregador no dia">% do dia</th>
             ${thDia("Perda de performance do dia inteiro (onholds e atrasos juntos), na 1ª linha de cada dia")}</tr></thead>
             <tbody>${lista.length ? lista.map((o, i) => `<tr><td>${dia(o.dia)}</td><td>${_pdEsc(o.driver)}</td><td>${_pdEsc(o.transportadora || "")}</td>
                 <td>${_pdEsc(o.codigo || "")}</td><td>${_pdDia(o.deveria)}</td><td>${o.entregue ? _pdDia(o.entregue) : `<span class="cft-aviso">não entregue</span>`}</td>
-                ${pd.celulas[i]}</tr>`).join("") + total(6, pd.soma) : vazio(7)}</tbody></table>`;
+                <td class="num">${porDiaMap.has(o.driver + "|" + o.dia) ? _pdPct(porDiaMap.get(o.driver + "|" + o.dia).pct) : "—"}</td>
+                ${pd.celulas[i]}</tr>`).join("") + total(7, pd.soma) : vazio(8)}</tbody></table>`;
     }
     if (aba === "onhold" || aba === "pnr") {
         const lista = ordenar(deTipo([aba === "onhold" ? "Onhold" : "PNR"]));
@@ -206,7 +211,7 @@ function _pdTabela(aba, { ents, dias, deTipo }) {
         <th style="text-align:right">Pacotes</th><th style="text-align:right">Onhold / atraso</th><th style="text-align:right">PNR</th>
         <th style="text-align:right">Performance (R$)</th><th style="text-align:right">PNR (R$)</th><th style="text-align:right">Total</th></tr></thead>
         <tbody>${lista.length ? lista.map(d => `<tr><td>${dia(d.dia)}</td><td>${_pdEsc(d.driver)}</td>
-            <td class="num">${Number(d.pct || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%</td>
+            <td class="num">${_pdPct(d.pct)}</td>
             <td class="num">${d.fixo ? "fixo" : d.pacotes_minima && d.valor_medio
                 ? `<span title="Média do dia: ${d.pacotes - d.pacotes_minima} pacotes a ${_pdNum(d.valor)} e ${d.pacotes_minima} na tarifa mínima a ${_pdNum(d.valor_minima)}">${_pdNum(d.valor_medio)}</span> <span class="cft-ajuda">de ${_pdNum(d.valor_maximo)}</span>
                     <div class="cft-ajuda">${d.pacotes - d.pacotes_minima} a ${_pdNum(d.valor)} · ${d.pacotes_minima} a ${_pdNum(d.valor_minima)}</div>`
