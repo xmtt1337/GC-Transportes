@@ -381,8 +381,8 @@ function _rqCardAlternarDia(dia) {
 
 const _RQ_CAB_PEDIDOS = ["Dia da performance", "Performance do dia (%)", "R$/pacote do dia", "Situação", "Afetou a performance?", "Data da ocorrência", "Transportadora", "Pedido", "Cidade", "Deveria ser entregue", "Entregue em", "Valor pago", "Motivo do onhold / PNR"];
 /** Linhas da planilha de pedidos, com o % e o R$/pacote do dia (o que vale pra todos os pedidos dele). */
-function _rqLinhasPedidos(dia, ped) {
-    const d = ((_rqCard && _rqCard.r && _rqCard.r.dias) || []).find(x => x.dia === dia);
+function _rqLinhasPedidos(dia, ped, dias) {
+    const d = (dias || (_rqCard && _rqCard.r && _rqCard.r.dias) || []).find(x => x.dia === dia);
     return ped.map(x => [_rqDiaCurto(dia), d ? d.pct : "", d ? d.valor : "", x.situacao, _RQ_AFETOU.includes(x.situacao) ? "Sim" : "Não", x.ocorrencia || "", x.transportadora, x.codigo, x.cidade,
         x.deveria, x.entregue, x.valor, x.motivo]);
 }
@@ -404,17 +404,18 @@ function _rqBaixarDia(dia) {
 /**
  * Relatório inteiro do entregador: Dias (com PNR e tarifa mínima), O que afetou (só os que
  * derrubaram: atraso, não entregue, onhold, PNR), PNR (aba própria) e Todos os pedidos (na
- * ordem do dia e do pedido, com o que ficou fora da conta no fim).
+ * ordem do dia e do pedido, com o que ficou fora da conta no fim). O painel do entregador
+ * passa o card dele; a tela do Resumo usa o aberto.
  */
-function _rqAbasEntregador() {
-    const { r, pacotes, onholds } = _rqCard;
+function _rqAbasEntregador(card) {
+    const { r, pacotes, onholds } = card || _rqCard;
     const dias = [["Dia", "Shopee entregues", "Outras no prazo", "Onholds", "Atrasados/não entregues", "PNR", "Pacotes na tarifa mínima (PNR)",
         "Usuário(s) que passaram do limite de PNR", "Performance (%)", "R$/pacote", "Pacotes pagos", "Total"]]
         .concat(r.dias.map(d => [_rqDiaCurto(d.dia), d.shopee, d.outras_prazo, d.onholds, d.outras_atraso, d.acareacoes || 0,
             d.tarifa_minima ? (d.fixo ? d.pacotes_pagos : d.pacotes_minima || 0) : 0, d.tarifa_minima && !d.fixo ? d.usuarios_minima || "" : (d.tarifa_minima ? "(valor fixo)" : ""),
             d.pct, d.valor, d.pacotes_pagos, d.total]));
-    const afetou = r.dias.flatMap(d => _rqLinhasPedidos(d.dia, _rqPedidosDoDia(d.dia, pacotes, onholds))).filter(l => l[4] === "Sim");
-    const todos = r.dias.flatMap(d => _rqLinhasPedidos(d.dia, _rqPedidosDoDia(d.dia, pacotes, onholds, true)));
+    const afetou = r.dias.flatMap(d => _rqLinhasPedidos(d.dia, _rqPedidosDoDia(d.dia, pacotes, onholds), r.dias)).filter(l => l[4] === "Sim");
+    const todos = r.dias.flatMap(d => _rqLinhasPedidos(d.dia, _rqPedidosDoDia(d.dia, pacotes, onholds, true), r.dias));
     const fora = pacotes.filter(p => !p.perf_dia && !/^shopee/i.test(p.transportadora)).map(p => ["", "", "", _rqSituacao(p), "Não", p.data_entrega || "", p.transportadora, p.codigo,
         p.cidade || "", p.deve_ser_entregue || "", p.data_entrega || "", p.valor_motorista || 0, ""]);
     const pnr = [["Dia da performance", "Aberta em", "Transportadora", "Pedido", "Usuário", "Dia na tarifa mínima?"]]

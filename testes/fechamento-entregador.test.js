@@ -42,7 +42,8 @@ test("cards como antes: transportadoras com valor/entregues/por pacote, adiciona
     const { ctx, el } = carregar();
     ctx._fsRender(D);
     const html = el("fech-sistema").innerHTML;
-    assert.match(html, /pt-card pt-card-shopee fs-clicavel/);
+    assert.match(html, /<div class="pt-card pt-card-shopee">/, "card da transportadora é só resumo, não abre");
+    assert.doesNotMatch(html, /_fsAbrirTransp/);
     assert.match(html, /<div class="pt-header">Shopee<\/div>/);
     assert.doesNotMatch(html, /Shopee Caçador/, "sem a XPT pro entregador");
     assert.match(html, /R\$ 2,40/);              // Imile por pacote
@@ -51,29 +52,13 @@ test("cards como antes: transportadoras com valor/entregues/por pacote, adiciona
     assert.doesNotMatch(html, /Performance do dia/, "sem o texto da performance");
 });
 
-test("card da transportadora: dias; Shopee mostra a % e conta as ocorrências de todas as transportadoras", () => {
-    const { ctx, modal } = carregar();
-    ctx._fsRender(D);
-    ctx._fsMostrarTransp(0);
-    assert.match(modal.innerHTML, /98,03%/);
-    assert.match(modal.innerHTML, /3 ocorrência\(s\)/);   // 1 onhold + 2 das outras
-    assert.doesNotMatch(modal.innerHTML, /_fsMostrarDia\(0, '2026-09-22'\)/, "dia sem ocorrência não abre");
-    ctx._fsMostrarTransp(1);
-    assert.match(modal.innerHTML, /2 ocorrência\(s\)/);   // Imile: 1 atrasado + 1 não entregue
-});
-
 test("tocar no dia mostra os pedidos que afetaram, com quando deveriam ser entregues", () => {
     const { ctx, modal } = carregar();
     ctx._fsRender(D);
-    ctx._fsMostrarDia(1, "2026-09-21");   // Imile: só os dela
+    ctx._fsMostrarDia("2026-09-21", "atrasados");
     assert.match(modal.innerHTML, /Deveria ser entregue 21\/09 · entregue 23\/09/);
     assert.match(modal.innerHTML, /I10/);
-    assert.doesNotMatch(modal.innerHTML, /BRX/);
-    assert.match(modal.innerHTML, /Entregues<\/span><b>49<\/b>/, "aberto pela Imile: só as entregas dela");
-    ctx._fsMostrarDia(-1, "2026-09-21");  // "ver pedidos" do card do dia: todas as transportadoras
-    assert.match(modal.innerHTML, /Entregues<\/span><b>149<\/b>/);
-    ctx._fsMostrarDia(0, "2026-09-21");   // Shopee: tudo que derrubou o dia
-    assert.match(modal.innerHTML, /Entregues<\/span><b>100<\/b>/);
+    assert.match(modal.innerHTML, /Entregues<\/span><b>149<\/b>/, "todas as transportadoras");
     assert.match(modal.innerHTML, /BRX/);
     assert.match(modal.innerHTML, /Cliente ausente · às 14:40/);
     assert.match(modal.innerHTML, /I9/);
@@ -88,10 +73,7 @@ test("dia com mais de 2 acareações: card mostra tarifa mínima e o dia lista a
         { dia: "2026-09-22", tipo: "Acareação", transportadora: "Loggi", codigo: "PNR2", motivo: "PNR aberta" },
         { dia: "2026-09-22", tipo: "Acareação", transportadora: "Loggi", codigo: "PNR3", motivo: "PNR aberta" });
     ctx._fsRender(D2);
-    ctx._fsMostrarTransp(0);
-    assert.match(modal.innerHTML, /Tarifa mínima em 4 pct · 3 PNR/);
-    assert.match(modal.innerHTML, /_fsMostrarDia\(0, '2026-09-22'\)/, "dia na tarifa mínima abre");
-    ctx._fsMostrarDia(0, "2026-09-22");
+    ctx._fsMostrarDia("2026-09-22", "pnr");
     assert.match(modal.innerHTML, /usuário fulano\.login: 4 entrega\(s\) desse usuário ficaram na tarifa mínima/);
     assert.match(modal.innerHTML, /PNR1/);
     assert.match(modal.innerHTML, /PNR3/);
@@ -117,9 +99,10 @@ test("Performance por dia: resumo, só os dias com ocorrência, PNR em pacotes e
     assert.match(html, /\(−R\$ 0,20\)/, "abaixo do valor de 100%");
     ctx._fsAbrirDia("2026-09-21");
     assert.match(modal.innerHTML, /Com 100% de performance seria R\$ 2,50 por pacote/);
+    ctx._fsMostrarDia("2026-09-21", "pnr");
     assert.match(modal.innerHTML, /PNR · Loggi/);
+    ctx._fsMostrarDia("2026-09-21", "atrasados");
     assert.match(modal.innerHTML, /Atrasado · Imile/, "de todas as transportadoras");
-    assert.doesNotMatch(modal.innerHTML, /_fsMostrarTransp/, "sem voltar pra transportadora");
 });
 
 test("painel: dia com ocorrência mas no valor cheio aparece como 'Valor cheio'; PNR sem 'dia seguinte' nem hora", () => {
@@ -134,7 +117,7 @@ test("painel: dia com ocorrência mas no valor cheio aparece como 'Valor cheio';
     assert.match(html, /fs-dia fs-clicavel" onclick="_fsAbrirDia\('2026-09-21'\)/, "sem destaque");
     assert.match(html, /<div class="fs-dia-linha fs-pos">Valor cheio<\/div>/);
     assert.match(html, /Nenhum dia com perda nesta quinzena/);
-    ctx._fsAbrirDia("2026-09-21");
+    ctx._fsMostrarDia("2026-09-21", "pnr");
     assert.doesNotMatch(modal.innerHTML, /dia seguinte/);
     assert.doesNotMatch(modal.innerHTML, /14:29/);
     assert.match(modal.innerHTML, /PNR · Shopee/);
@@ -151,7 +134,7 @@ test("deslocamento: card mostra os km por dia (asfalto e chão)", () => {
 });
 
 test("Shopee das duas XPTs vira um card só 'Shopee', com pacotes, valor e dias somados", () => {
-    const { ctx, el } = carregar();
+    const { ctx, el, modal } = carregar();
     const D2 = JSON.parse(JSON.stringify(D));
     D2.transportadoras.push({ nome: "Shopee Videira", pacotes: 40, valor: 100, por_pacote: 2.5 });
     D2.por_dia.push({ transportadora: "Shopee Videira", dia: "2026-09-21", pacotes: 40, entregues: 40, atrasados: 0, nao_entregues: 0, valor: 100 });
@@ -160,6 +143,74 @@ test("Shopee das duas XPTs vira um card só 'Shopee', com pacotes, valor e dias 
     assert.strictEqual((html.match(/<div class="pt-header">Shopee<\/div>/g) || []).length, 1);
     assert.match(html, /150 pacotes/, "110 + 40");
     assert.match(html, /R\$ 375,00/, "275 + 100");
-    const dias = JSON.parse(JSON.stringify(ctx._fsDiasDaTransp("Shopee")));
-    assert.strictEqual(dias.find(x => x.dia === "2026-09-21").entregues, 140);
+    ctx._fsMostrarDia("2026-09-21");
+    assert.match(modal.innerHTML, /Entregues<\/span><b>189<\/b>/, "100 + 40 da Shopee + 49 da Imile");
+});
+
+test("baixar relatório: pede os pedidos dele e gera a planilha com as abas do Resumo", async () => {
+    const { ctx, el } = carregar();
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.insucessos.push({ dia: "2026-09-21", tipo: "Acareação", transportadora: "Loggi", codigo: "PNR1" });
+    ctx._fsRender(D2);
+    assert.match(el("fech-sistema").innerHTML, /Baixar relatório detalhado/);
+    const pedidos = [], planilhas = [];
+    let card = null;
+    Object.assign(ctx, {
+        API: "", token: "t", _fMes: 9, _fAno: 2026, _fQuinzena: 2,
+        fetch: async (url) => { pedidos.push(url); return { ok: true, json: async () => ({ pacotes: [{ transportadora: "Shopee Caçador", codigo: "BR1" }, { transportadora: "Imile", codigo: "I1" }] }) }; },
+        _rqAbasEntregador: (c) => { card = c; return [{ nome: "Dias", linhas: [["Dia"]] }]; },
+        XLSX: { utils: { book_new: () => ({}), aoa_to_sheet: (l) => l, book_append_sheet: (wb, l, n) => planilhas.push(n) }, writeFile: (wb, nome) => planilhas.push(nome) },
+    });
+    el("fs-baixar").textContent = "Baixar relatório detalhado";
+    await ctx._fsBaixarRelatorio();
+    assert.deepStrictEqual(pedidos, ["/painel/fechamento-pedidos?mes=9&ano=2026&quinzena=2"]);
+    assert.deepStrictEqual(planilhas, ["Dias", "fechamento_Q2Set.xlsx"]);
+    assert.deepStrictEqual(card.pacotes.map(p => p.transportadora), ["Shopee", "Imile"], "Shopee sem a XPT, como no resto do painel");
+    assert.deepStrictEqual(card.onholds.map(o => o.tipo), ["Onhold", "Acareação"], "atrasos vêm dos pacotes, não repetem");
+    assert.strictEqual(el("fs-baixar").textContent, "Baixar relatório detalhado", "volta o texto do link");
+});
+
+test("abas do dia: entregues (busca os pedidos uma vez), atrasados e onholds, PNR abertas", async () => {
+    const { ctx, modal } = carregar();
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.insucessos.push({ dia: "2026-09-21", tipo: "Acareação", transportadora: "Loggi", codigo: "PNR1" });
+    ctx._fsRender(D2);
+    let buscas = 0;
+    Object.assign(ctx, { API: "", token: "t", _fMes: 9, _fAno: 2026, _fQuinzena: 2,
+        fetch: async () => { buscas++; return { ok: true, json: async () => ({ pacotes: [
+            { transportadora: "Shopee Caçador", codigo: "BR1", cidade: "Vila A", data_entrega: "21/09/2026", perf_dia: "21/09/2026" },
+            { transportadora: "Imile", codigo: "I2", data_entrega: "23/09/2026", perf_dia: "21/09/2026", deve_ser_entregue: "21/09/2026", dentro_prazo: "Não" },
+            { transportadora: "Imile", codigo: "I10", data_entrega: null, perf_dia: "21/09/2026" },
+            { transportadora: "Shopee Caçador", codigo: "BR2", data_entrega: "22/09/2026", perf_dia: "22/09/2026" }] }) }; } });
+    ctx._fsMostrarDia("2026-09-21");
+    assert.match(modal.innerHTML, /Carregando os pedidos/);
+    assert.match(modal.innerHTML, /Entregues 149<\/button>/);
+    assert.match(modal.innerHTML, /Atrasados e onholds 3<\/button>/);
+    assert.match(modal.innerHTML, /PNR abertas 1<\/button>/);
+    await new Promise(r => setImmediate(r));
+    assert.match(modal.innerHTML, /BR1/);
+    assert.match(modal.innerHTML, /Shopee<\/span>/, "Shopee sem a XPT");
+    assert.match(modal.innerHTML, /Entregue 23\/09 · deveria ser entregue 21\/09/);
+    assert.doesNotMatch(modal.innerHTML, /I10/, "não entregue fica fora de Entregues");
+    assert.doesNotMatch(modal.innerHTML, /BR2/, "pedido de outro dia");
+    ctx._fsMostrarDia("2026-09-21", "atrasados");
+    assert.match(modal.innerHTML, /Cliente ausente/);
+    assert.doesNotMatch(modal.innerHTML, /PNR1/);
+    ctx._fsMostrarDia("2026-09-21", "pnr");
+    assert.match(modal.innerHTML, /PNR1/);
+    assert.doesNotMatch(modal.innerHTML, /BRX/);
+    ctx._fsMostrarDia("2026-09-21");
+    assert.strictEqual(buscas, 1, "não busca de novo");
+});
+
+test("abas do dia: dia fechado antes da resposta não reabre", async () => {
+    const { ctx, modal } = carregar();
+    ctx._fsRender(D);
+    Object.assign(ctx, { API: "", token: "t", _fMes: 9, _fAno: 2026, _fQuinzena: 2,
+        fetch: async () => ({ ok: true, json: async () => ({ pacotes: [{ transportadora: "Imile", codigo: "I2", data_entrega: "21/09/2026" }] }) }) });
+    ctx._fsMostrarDia("2026-09-21");
+    ctx._fsFechar();
+    modal.innerHTML = "fechado";
+    await new Promise(r => setImmediate(r));
+    assert.strictEqual(modal.innerHTML, "fechado");
 });
