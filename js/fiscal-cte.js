@@ -1358,7 +1358,7 @@ Nada é enviado à SEFAZ — só monta o ` +
 let _cancLotePlanilha = null;       // {nome, linhas} — a planilha crua
 let _cancLoteEncontrados = null;    // [{id, chave_acesso, numero, serie, ambiente, status, cancelavel}]
 let _cancLoteNaoEncontradas = null; // [chave, ...] — não bateram com nenhum CT-e desta empresa
-let _cancLoteParar = false;
+let _cancLotePolling = null;
 
 const _CANC_COLS_CHAVE = [
     "chavedeacessocte", "chavedeacesso", "chaveacessocte", "chaveacesso", "chavecte", "chave",
@@ -1408,6 +1408,21 @@ function abrirCancelamentoEmMassa() {
     </div>
     <div id="canc-conferencia"></div>
     <div id="canc-resultado"></div>`;
+
+    _cancLoteRetomarSeHouver();
+}
+
+/**
+ * Se já existe um lote PROCESSANDO (fechou a aba e voltou, ou outra pessoa
+ * iniciou), mostra o progresso dele direto — sem isso, a pessoa achava que
+ * precisava subir a planilha de novo.
+ */
+async function _cancLoteRetomarSeHouver() {
+    try {
+        const lotes = await _cteApi("/fiscal/cte/lote/cancelar-fila");
+        const ativo = (lotes || []).find((l) => l.situacao === "PROCESSANDO");
+        if (ativo) _cancLoteAcompanhar(ativo.id);
+    } catch (e) { /* tela sobe normal se isso falhar */ }
 }
 
 /** Lê a planilha no navegador (SheetJS) — o arquivo não sai daqui até a conferência. */
@@ -1526,7 +1541,17 @@ function _cancPintarConferencia() {
     </div>`;
 }
 
-/** Cancela de fato, em blocos de 20 — mesma etiqueta da emissão em lote com a SEFAZ. */
+/**
+ * Enfileira o cancelamento no servidor e passa a acompanhar — NÃO processa
+ * aqui na aba.
+ *
+ * Achado ao vivo (31/10): a versão anterior processava em blocos de 20 na
+ * própria aba (mesma etiqueta do "Emitir em lote") — pensada pra dezenas ou
+ * centenas. Uma planilha real trouxe 58.701 chaves: nesse volume, cada
+ * cancelamento sendo uma chamada à SEFAZ, a aba teria que ficar aberta por
+ * horas. Agora só cria o lote e manda os IDs (rápido, é só banco — a fila em
+ * segundo plano, cte/cancelamento-lote.js, é quem fala com a SEFAZ).
+ */
 async function _cancLoteExecutar() {
     const justificativa = document.getElementById("canc-justificativa").value.trim();
     if (justificativa.length < 15 || justificativa.length > 255) {
@@ -1535,63 +1560,93 @@ async function _cancLoteExecutar() {
     }
     const ids = (_cancLoteEncontrados || []).filter((c) => c.cancelavel).map((c) => c.id);
     if (!ids.length) return;
-    if (!confirm(`Cancelar ${ids.length} CT-e na SEFAZ?\n\nEsta ação não tem volta.`)) return;
+    if (!confirm(`Cancelar ${ids.length} CT-e na SEFAZ?\n\n` +
+                 "Esta ação não tem volta. O cancelamento roda no servidor, em segundo " +
+                 "plano — pode fechar esta aba depois de iniciado.")) return;
 
-    _cancLoteParar = false;
-    const TAMANHO = 20;
     const alvo = document.getElementById("canc-resultado");
-    const acumulado = { ok: 0, falhou: 0 };
-    const problemas = [];
-    let interrompido = null;
+    alvo.innerHTML = "<p class='carregando'>Criando o lote…</p>";
 
-    const pintar = (feitos) => {
-        const pct = Math.round((feitos / ids.length) * 100);
-        alvo.innerHTML = `
-        <div class="${interrompido ? "aviso-bloqueio" : feitos >= ids.length ? "aviso-sucesso" : "aviso-info"}">
-            <strong>${interrompido ? "Interrompido" : feitos >= ids.length ? "Concluído" : "Cancelando"} —
-                ${feitos} de ${ids.length} (${pct}%)</strong>
-            <div style="background:#1e2a3d;border-radius:6px;height:10px;margin:10px 0;overflow:hidden">
-                <div style="background:${interrompido ? "#e8a33d" : "#3b82f6"};height:100%;width:${pct}%"></div>
-            </div>
-            <p>${acumulado.ok} cancelado(s) · ${acumulado.falhou} com problema</p>
-            ${interrompido ? `<p style="color:#e8a33d">${_esc(interrompido)}</p>` : ""}
-            ${feitos < ids.length && !interrompido ? `<button onclick="_cancLoteParar=true">Parar</button>` : ""}
-        </div>
-        ${problemas.length ? `
-        <details class="secao-form" open>
-            <summary><b>Com problema</b> — ${problemas.length}</summary>
-            <table class="tabela">
-                <thead><tr><th>CT-e</th><th>Situação</th><th>Motivo</th></tr></thead>
-                <tbody>${problemas.slice(0, 200).map((p) => `<tr>
-                    <td>#${p.id}</td><td>${_esc(p.status || "")}</td>
-                    <td class="dica">${_esc(p.motivo || "")}</td>
-                </tr>`).join("")}</tbody>
-            </table>
-        </details>` : ""}
-        ${feitos >= ids.length || interrompido
-            ? `<div class="acoes-rodape"><button onclick="abrirCTes()">Ver a lista</button></div>` : ""}`;
-    };
+    try {
+        const lote = await _cteApi("/fiscal/cte/lote/cancelar-fila", {
+            method: "POST",
+            body: JSON.stringify({ nome: _cancLotePlanilha ? _cancLotePlanilha.nome : null, justificativa }),
+        });
 
-    pintar(0);
-    for (let i = 0; i < ids.length; i += TAMANHO) {
-        if (_cancLoteParar) { interrompido = "Parado por você."; pintar(i); break; }
-        const pedaco = ids.slice(i, i + TAMANHO);
-        try {
-            const r = await _cteApi("/fiscal/cte/lote/cancelar", {
-                method: "POST", body: JSON.stringify({ ids: pedaco, justificativa }),
+        // Enviar os IDs é só gravação no banco (rápido) — nada aqui fala com a
+        // SEFAZ. Em blocos porque dezenas de milhares de IDs num corpo só não passa.
+        const BLOCO = 1000;
+        for (let i = 0; i < ids.length; i += BLOCO) {
+            const pedaco = ids.slice(i, i + BLOCO);
+            await _cteApi(`/fiscal/cte/lote/cancelar-fila/${lote.id}/itens`, {
+                method: "POST", body: JSON.stringify({ ids: pedaco }),
             });
-            acumulado.ok += r.resumo.ok;
-            acumulado.falhou += r.resumo.falhou;
-            for (const x of r.resultados) if (!x.ok) problemas.push(x);
-            if (r.interrompido) { interrompido = r.motivo_parada; pintar(i + r.resultados.length); break; }
-        } catch (e) {
-            interrompido = e.message;
-            pintar(i);
-            break;
+            const pct = Math.round(Math.min(i + pedaco.length, ids.length) / ids.length * 100);
+            alvo.innerHTML = `<div class="aviso-info">
+                <strong>Enviando os CT-e… ${pct}%</strong>
+                <p>${Math.min(i + pedaco.length, ids.length).toLocaleString("pt-BR")}
+                   de ${ids.length.toLocaleString("pt-BR")}</p></div>`;
         }
-        pintar(Math.min(i + TAMANHO, ids.length));
+
+        await _cteApi(`/fiscal/cte/lote/cancelar-fila/${lote.id}/iniciar`, {
+            method: "POST", body: JSON.stringify({}) });
+
+        _cancLoteAcompanhar(lote.id);
+    } catch (e) {
+        alvo.innerHTML = `<div class="aviso-bloqueio">
+            <strong>Não foi possível enfileirar.</strong><p>${_esc(e.message)}</p></div>`;
     }
-    if (!interrompido) pintar(ids.length);
+}
+
+function _cancLoteAcompanhar(id) {
+    if (_cancLotePolling) clearInterval(_cancLotePolling);
+    const atualizar = async () => {
+        try {
+            const p = await _cteApi(`/fiscal/cte/lote/cancelar-fila/${id}`);
+            _cancPintarProgressoFila(p);
+            if (["CONCLUIDA", "CANCELADA"].includes(p.lote.situacao)) {
+                clearInterval(_cancLotePolling); _cancLotePolling = null;
+            }
+        } catch (e) { /* rede instável não pode parar o acompanhamento */ }
+    };
+    atualizar();
+    _cancLotePolling = setInterval(atualizar, 5000);
+}
+
+function _cancPintarProgressoFila(p) {
+    const conf = document.getElementById("canc-conferencia");
+    if (conf) conf.innerHTML = "";   // já tem lote rodando — a etapa de conferência não cabe mais aqui
+    const alvo = document.getElementById("canc-resultado");
+    const s = p.por_situacao || {};
+    const n = (k) => (s[k] ? s[k].n : 0);
+    const pct = p.total ? Math.round((p.feitos / p.total) * 100) : 0;
+    const emAndamento = p.lote.situacao === "PROCESSANDO";
+
+    alvo.innerHTML = `
+    <div class="${emAndamento ? "aviso-info" : "aviso-sucesso"}">
+        <strong>${emAndamento ? "Cancelando no servidor" : p.lote.situacao} —
+            ${p.feitos.toLocaleString("pt-BR")} de ${p.total.toLocaleString("pt-BR")} (${pct}%)</strong>
+        <div style="background:#1e2a3d;border-radius:6px;height:10px;margin:10px 0;overflow:hidden">
+            <div style="background:#3b82f6;height:100%;width:${pct}%;transition:width .3s"></div>
+        </div>
+        <p>
+            ${n("CANCELADO").toLocaleString("pt-BR")} cancelado(s) ·
+            ${n("REJEITADO").toLocaleString("pt-BR")} rejeitado(s) pela SEFAZ ·
+            ${n("ERRO").toLocaleString("pt-BR")} com erro
+        </p>
+        ${emAndamento ? `<p class="dica">Pode fechar esta aba — o processamento continua no servidor.
+            Voltando aqui e clicando em "Cancelar em massa" de novo mostra o progresso de novo.</p>
+            <button onclick="_cancLoteParar(${p.lote.id})">Parar</button>` : ""}
+    </div>
+    ${!emAndamento ? `<div class="acoes-rodape"><button onclick="abrirCTes()">Ver a lista</button></div>` : ""}`;
+}
+
+async function _cancLoteParar(id) {
+    if (!confirm("Parar o cancelamento?\n\nO que já foi feito fica como está — o que ainda não foi " +
+                 "tentado não é mais processado.")) return;
+    try {
+        await _cteApi(`/fiscal/cte/lote/cancelar-fila/${id}/parar`, { method: "POST", body: JSON.stringify({}) });
+    } catch (e) { alert("Não consegui parar: " + e.message); }
 }
 
 async function emitirCTe(id) {
