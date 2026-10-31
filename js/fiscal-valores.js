@@ -481,6 +481,9 @@ function _valMostrarEtapas() {
                     <option value="perfil">Do perfil de operação (padrão)</option>
                     <option value="planilha">Da planilha (coluna de alíquota)</option>
                 </select></label>
+            <label>Alíquota digitada (%)
+                <input id="val-aliquota" type="number" min="0" max="100" step="0.01"
+                       placeholder="em branco = a da opção ao lado"></label>
             <label>Tipo de serviço
                 <select id="val-tipo-servico">
                     <option value="">O do perfil (padrão — Redespacho)</option>
@@ -501,7 +504,9 @@ function _valMostrarEtapas() {
             linha a linha, em vez da alíquota fixa do perfil — só mude se o
             contador confirmou que essas linhas são mesmo ICMS, só que a
             alíquota varia (ver o aviso de alíquotas diferentes abaixo, em
-            "Conferir"). <b>Tipo de serviço</b> força o ide.tpServ destes
+            "Conferir"). <b>Alíquota digitada</b> vale para todos os CT-e desta
+            planilha e vence as duas opções acima; 0 é aceito (a base continua
+            sendo o valor do frete). <b>Tipo de serviço</b> força o ide.tpServ destes
             CT-e — hoje o perfil sempre usa Redespacho; só mexe quando a
             operação desta planilha for mesmo Subcontratação. <b>Série</b>
             deixa em branco pra usar a do perfil, ou escolha outra pra manter
@@ -836,6 +841,7 @@ function _valMostrarConfirmacao(local) {
     const horas = (n * 0.4) / 3600;   // ~0,4s por código, com 4 em paralelo
     const ambiente = document.getElementById("val-ambiente").value;
     const fonteAliquota = document.getElementById("val-fonte-aliquota").value;
+    const aliquota = document.getElementById("val-aliquota").value;
     const tipoServico = document.getElementById("val-tipo-servico").value;
     const serie = document.getElementById("val-serie").value;
     alvo.innerHTML = `
@@ -849,7 +855,7 @@ function _valMostrarConfirmacao(local) {
         </p>
         <p class="dica">
             Ambiente: <b>${ambiente ? (ambiente === "producao" ? "PRODUÇÃO" : "Homologação") : "o de sempre (desta empresa)"}</b> ·
-            Alíquota do ICMS: <b>${fonteAliquota === "planilha" ? "da planilha" : "do perfil"}</b> ·
+            Alíquota do ICMS: <b>${aliquota !== "" ? `${_esc(aliquota)}% (digitada)` : fonteAliquota === "planilha" ? "da planilha" : "do perfil"}</b> ·
             Tipo de serviço: <b>${tipoServico === "1" ? "Subcontratação" : tipoServico === "2" ? "Redespacho" : "o do perfil"}</b> ·
             Série: <b>${serie ? _esc(serie) : "a do perfil"}</b>
         </p>
@@ -906,6 +912,8 @@ async function _valImportarLote() {
     const serieSel = document.getElementById("val-serie").value;
     const serie = serieSel === "" ? null : Number(serieSel);
     const cfop = document.getElementById("val-cfop").value.trim() || null;
+    const aliquotaSel = document.getElementById("val-aliquota").value;
+    const aliquota = aliquotaSel === "" ? null : Number(aliquotaSel);
     alvo.innerHTML = "<p class='carregando'>Preparando a importação…</p>";
 
     try {
@@ -917,7 +925,7 @@ async function _valImportarLote() {
                 nome: _valPlanilha.nome, sobrescrever,
                 ambiente, fonte_aliquota: fonteAliquota,
                 permitir_reemissao: _valPermitirReemissao,
-                tipo_servico: tipoServico, serie, cfop,
+                tipo_servico: tipoServico, serie, cfop, aliquota,
             }),
         });
         _valImportacaoId = imp.id;
