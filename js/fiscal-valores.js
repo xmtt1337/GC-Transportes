@@ -490,6 +490,9 @@ function _valMostrarEtapas() {
             <label>Série
                 <input id="val-serie" type="number" min="0" max="999"
                        placeholder="a do perfil (ex: 4)"></label>
+            <label>CFOP
+                <input id="val-cfop" type="text" inputmode="numeric" maxlength="4"
+                       placeholder="o do perfil (ex: 5351)"></label>
         </div>
         <p class="dica">
             <b>Ambiente</b> força onde ESTES CT-e nascem, sem precisar mudar o
@@ -503,7 +506,11 @@ function _valMostrarEtapas() {
             operação desta planilha for mesmo Subcontratação. <b>Série</b>
             deixa em branco pra usar a do perfil, ou escolha outra pra manter
             Subcontratação numa numeração separada — defina o número inicial
-            dessa série em Fiscal &gt; Numeração antes de emitir.
+            dessa série em Fiscal &gt; Numeração antes de emitir. <b>CFOP</b>
+            deixa em branco pra usar o do perfil (5351, interna SC → SC), ou
+            informe outro (ex.: 6351, interestadual) quando a planilha for de
+            uma leva com destino fora de SC ou de um tipo de serviço que use
+            CFOP diferente — confirme com o contador antes de trocar.
         </p>
         <div id="val-tipos"></div>
         <div id="val-cidades"></div>
@@ -898,6 +905,7 @@ async function _valImportarLote() {
     const tipoServico = tipoServicoSel === "" ? null : Number(tipoServicoSel);
     const serieSel = document.getElementById("val-serie").value;
     const serie = serieSel === "" ? null : Number(serieSel);
+    const cfop = document.getElementById("val-cfop").value.trim() || null;
     alvo.innerHTML = "<p class='carregando'>Preparando a importação…</p>";
 
     try {
@@ -909,7 +917,7 @@ async function _valImportarLote() {
                 nome: _valPlanilha.nome, sobrescrever,
                 ambiente, fonte_aliquota: fonteAliquota,
                 permitir_reemissao: _valPermitirReemissao,
-                tipo_servico: tipoServico, serie,
+                tipo_servico: tipoServico, serie, cfop,
             }),
         });
         _valImportacaoId = imp.id;
