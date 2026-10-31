@@ -145,6 +145,8 @@ function _htmlListagem() {
         <div>
             <button onclick="loteCTe('validar')">Validar em lote</button>
             <button onclick="loteCTe('emitir')">Emitir em lote</button>
+            ${_cteContexto.permissoes.cancelar
+                ? `<button onclick="abrirCancelamentoEmMassa()">Cancelar em massa</button>` : ""}
             <button onclick="abrirImportarShopee()">↓ Importar da Shopee</button>
             <button onclick="_abrirModalExportarCTe()">↓ Exportar relatório</button>
             <button class="btn-primario" onclick="abrirNovoCTe()">+ Novo CT-e</button>
@@ -1342,6 +1344,252 @@ Nada é enviado à SEFAZ — só monta o ` +
             break;
         }
         pintar(Math.min(i + tamanho, ids.length));
+    }
+    if (!interrompido) pintar(ids.length);
+}
+
+// ══════════════════════════════════ CANCELAMENTO EM MASSA (planilha)
+//
+// Pensado pra corrigir uma leva de CT-e emitido errado de uma vez só. Evento
+// de cancelamento (110111) é irreversível, por isso tem sempre uma
+// conferência — quantos foram achados, quantos já não cabem, quais chaves
+// não bateram — ANTES de qualquer chamada à SEFAZ.
+
+let _cancLotePlanilha = null;       // {nome, linhas} — a planilha crua
+let _cancLoteEncontrados = null;    // [{id, chave_acesso, numero, serie, ambiente, status, cancelavel}]
+let _cancLoteNaoEncontradas = null; // [chave, ...] — não bateram com nenhum CT-e desta empresa
+let _cancLoteParar = false;
+
+const _CANC_COLS_CHAVE = [
+    "chavedeacessocte", "chavedeacesso", "chaveacessocte", "chaveacesso", "chavecte", "chave",
+];
+
+function _cancNormalizar(s) {
+    return String(s == null ? "" : s)
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function _cancAcharColuna(cabecalhoNorm, candidatas) {
+    for (const c of candidatas) {
+        const i = cabecalhoNorm.indexOf(c);
+        if (i >= 0) return i;
+    }
+    for (const c of candidatas) {
+        const i = cabecalhoNorm.findIndex((h) => h.includes(c));
+        if (i >= 0) return i;
+    }
+    return -1;
+}
+
+function abrirCancelamentoEmMassa() {
+    _cancLotePlanilha = null;
+    _cancLoteEncontrados = null;
+    _cancLoteNaoEncontradas = null;
+    const area = document.getElementById("fiscal-ctes-conteudo");
+    area.innerHTML = `
+    <div class="cabecalho-tela">
+        <h2>Cancelamento em massa</h2>
+        <button onclick="abrirCTes()">← Voltar</button>
+    </div>
+    <div class="aviso-info">
+        <p>Cancela vários CT-e de uma vez a partir de uma planilha — útil para
+           corrigir uma leva emitida errada. Cada cancelamento é um evento na
+           SEFAZ (110111) e <b>não tem volta</b>: confira a lista antes de
+           confirmar.</p>
+        <p>A planilha precisa de uma coluna com a <b>chave de acesso</b> (44
+           dígitos) de cada CT-e — é a mesma coluna "Chave de acesso CT-e" do
+           relatório que esta tela exporta.</p>
+    </div>
+    <div class="secao-form">
+        <h3>1. A planilha</h3>
+        <input type="file" id="canc-arquivo" accept=".xlsx,.xls,.csv" onchange="_cancLoteLerArquivo(this)">
+        <div id="canc-info-arquivo"></div>
+    </div>
+    <div id="canc-conferencia"></div>
+    <div id="canc-resultado"></div>`;
+}
+
+/** Lê a planilha no navegador (SheetJS) — o arquivo não sai daqui até a conferência. */
+function _cancLoteLerArquivo(input) {
+    const arquivo = input.files && input.files[0];
+    if (!arquivo) return;
+    const info = document.getElementById("canc-info-arquivo");
+    info.innerHTML = "<p class='carregando'>Lendo a planilha…</p>";
+    document.getElementById("canc-conferencia").innerHTML = "";
+    document.getElementById("canc-resultado").innerHTML = "";
+
+    const leitor = new FileReader();
+    leitor.onload = async (e) => {
+        try {
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
+            _cancLotePlanilha = { nome: arquivo.name, linhas };
+
+            const cabecalho = linhas[0] || [];
+            const norm = cabecalho.map(_cancNormalizar);
+            const iChave = _cancAcharColuna(norm, _CANC_COLS_CHAVE);
+            if (iChave < 0) {
+                info.innerHTML = `<div class="aviso-bloqueio">
+                    <strong>Não achei a coluna da chave de acesso.</strong>
+                    <p>A planilha precisa de uma coluna chamada "Chave de acesso"
+                       (ou parecido) com os 44 dígitos de cada CT-e.</p></div>`;
+                return;
+            }
+
+            const chaves = [...new Set(linhas.slice(1)
+                .map((l) => String(l[iChave] || "").replace(/\D/g, ""))
+                .filter((c) => c.length === 44))];
+
+            if (!chaves.length) {
+                info.innerHTML = `<div class="aviso-bloqueio">
+                    Nenhuma chave de 44 dígitos encontrada na coluna
+                    "${_esc(cabecalho[iChave])}".</div>`;
+                return;
+            }
+
+            info.innerHTML = `<div class="aviso-sucesso">
+                <strong>${_esc(arquivo.name)}</strong>
+                <p>${chaves.length} chave(s) de acesso única(s) na coluna
+                   "${_esc(cabecalho[iChave])}".</p></div>`;
+
+            await _cancLoteConsultar(chaves);
+        } catch (err) {
+            info.innerHTML = `<div class="aviso-bloqueio">
+                <strong>Não consegui ler a planilha.</strong><p>${_esc(err.message)}</p></div>`;
+        }
+    };
+    leitor.onerror = () => {
+        info.innerHTML = `<div class="aviso-bloqueio">Falha ao abrir o arquivo.</div>`;
+    };
+    leitor.readAsArrayBuffer(arquivo);
+}
+
+/** Resolve as chaves para CT-e desta empresa, SEM cancelar nada ainda — em blocos. */
+async function _cancLoteConsultar(chaves) {
+    const conf = document.getElementById("canc-conferencia");
+    conf.innerHTML = "<p class='carregando'>Conferindo as chaves…</p>";
+
+    const BLOCO = 1000;
+    let encontrados = [];
+    let naoEncontrados = [];
+    try {
+        for (let i = 0; i < chaves.length; i += BLOCO) {
+            const pedaco = chaves.slice(i, i + BLOCO);
+            const r = await _cteApi("/fiscal/cte/lote/cancelar/consultar", {
+                method: "POST", body: JSON.stringify({ chaves: pedaco }),
+            });
+            encontrados = encontrados.concat(r.encontrados);
+            naoEncontrados = naoEncontrados.concat(r.naoEncontrados);
+        }
+    } catch (e) {
+        conf.innerHTML = `<div class="aviso-bloqueio">
+            <strong>Não consegui conferir as chaves.</strong><p>${_esc(e.message)}</p></div>`;
+        return;
+    }
+
+    _cancLoteEncontrados = encontrados;
+    _cancLoteNaoEncontradas = naoEncontrados;
+    _cancPintarConferencia();
+}
+
+function _cancPintarConferencia() {
+    const conf = document.getElementById("canc-conferencia");
+    const encontrados = _cancLoteEncontrados || [];
+    const naoEncontradas = _cancLoteNaoEncontradas || [];
+    const cancelaveis = encontrados.filter((c) => c.cancelavel);
+    const naoCancelaveis = encontrados.filter((c) => !c.cancelavel);
+
+    const porStatus = new Map();
+    for (const c of naoCancelaveis) porStatus.set(c.status, (porStatus.get(c.status) || 0) + 1);
+
+    conf.innerHTML = `
+    <div class="secao-form">
+        <h3>2. Conferir antes de cancelar</h3>
+        <p><b>${cancelaveis.length}</b> CT-e autorizado(s), prontos para cancelar.</p>
+        ${naoCancelaveis.length ? `<p>${naoCancelaveis.length} já não dá para cancelar: ` +
+            [...porStatus.entries()].map(([s, n]) =>
+                `${n} ${_esc((_CTE_ESTADOS[s] && _CTE_ESTADOS[s].rotulo) || s)}`).join(", ") + `.</p>` : ""}
+        ${naoEncontradas.length ? `<p>${naoEncontradas.length} chave(s) da planilha não bateram com
+            nenhum CT-e desta empresa.</p>` : ""}
+
+        ${cancelaveis.length ? `
+        <label class="largo">Justificativa (vai para a SEFAZ, de 15 a 255 caracteres)
+            <textarea id="canc-justificativa" rows="2"
+                placeholder="Ex.: CT-e emitido em duplicidade, cancelado para reemissão correta."></textarea>
+        </label>
+        <div class="acoes-rodape">
+            <button class="btn-primario" onclick="_cancLoteExecutar()">
+                Cancelar ${cancelaveis.length} CT-e na SEFAZ</button>
+        </div>` : ""}
+    </div>`;
+}
+
+/** Cancela de fato, em blocos de 20 — mesma etiqueta da emissão em lote com a SEFAZ. */
+async function _cancLoteExecutar() {
+    const justificativa = document.getElementById("canc-justificativa").value.trim();
+    if (justificativa.length < 15 || justificativa.length > 255) {
+        alert(`A justificativa precisa ter de 15 a 255 caracteres — esta tem ${justificativa.length}.`);
+        return;
+    }
+    const ids = (_cancLoteEncontrados || []).filter((c) => c.cancelavel).map((c) => c.id);
+    if (!ids.length) return;
+    if (!confirm(`Cancelar ${ids.length} CT-e na SEFAZ?\n\nEsta ação não tem volta.`)) return;
+
+    _cancLoteParar = false;
+    const TAMANHO = 20;
+    const alvo = document.getElementById("canc-resultado");
+    const acumulado = { ok: 0, falhou: 0 };
+    const problemas = [];
+    let interrompido = null;
+
+    const pintar = (feitos) => {
+        const pct = Math.round((feitos / ids.length) * 100);
+        alvo.innerHTML = `
+        <div class="${interrompido ? "aviso-bloqueio" : feitos >= ids.length ? "aviso-sucesso" : "aviso-info"}">
+            <strong>${interrompido ? "Interrompido" : feitos >= ids.length ? "Concluído" : "Cancelando"} —
+                ${feitos} de ${ids.length} (${pct}%)</strong>
+            <div style="background:#1e2a3d;border-radius:6px;height:10px;margin:10px 0;overflow:hidden">
+                <div style="background:${interrompido ? "#e8a33d" : "#3b82f6"};height:100%;width:${pct}%"></div>
+            </div>
+            <p>${acumulado.ok} cancelado(s) · ${acumulado.falhou} com problema</p>
+            ${interrompido ? `<p style="color:#e8a33d">${_esc(interrompido)}</p>` : ""}
+            ${feitos < ids.length && !interrompido ? `<button onclick="_cancLoteParar=true">Parar</button>` : ""}
+        </div>
+        ${problemas.length ? `
+        <details class="secao-form" open>
+            <summary><b>Com problema</b> — ${problemas.length}</summary>
+            <table class="tabela">
+                <thead><tr><th>CT-e</th><th>Situação</th><th>Motivo</th></tr></thead>
+                <tbody>${problemas.slice(0, 200).map((p) => `<tr>
+                    <td>#${p.id}</td><td>${_esc(p.status || "")}</td>
+                    <td class="dica">${_esc(p.motivo || "")}</td>
+                </tr>`).join("")}</tbody>
+            </table>
+        </details>` : ""}
+        ${feitos >= ids.length || interrompido
+            ? `<div class="acoes-rodape"><button onclick="abrirCTes()">Ver a lista</button></div>` : ""}`;
+    };
+
+    pintar(0);
+    for (let i = 0; i < ids.length; i += TAMANHO) {
+        if (_cancLoteParar) { interrompido = "Parado por você."; pintar(i); break; }
+        const pedaco = ids.slice(i, i + TAMANHO);
+        try {
+            const r = await _cteApi("/fiscal/cte/lote/cancelar", {
+                method: "POST", body: JSON.stringify({ ids: pedaco, justificativa }),
+            });
+            acumulado.ok += r.resumo.ok;
+            acumulado.falhou += r.resumo.falhou;
+            for (const x of r.resultados) if (!x.ok) problemas.push(x);
+            if (r.interrompido) { interrompido = r.motivo_parada; pintar(i + r.resultados.length); break; }
+        } catch (e) {
+            interrompido = e.message;
+            pintar(i);
+            break;
+        }
+        pintar(Math.min(i + TAMANHO, ids.length));
     }
     if (!interrompido) pintar(ids.length);
 }
