@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261102h">
+<link rel="stylesheet" href="style.css?v=20261102j">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -177,49 +177,54 @@ if (_BASE) {
             </ul>
             <!-- Uma entrada por transportadora, como na Torre de Controle. Transportadora nova é
                  um grupo aqui e outro lá. Etiquetas, Separação e o resto de cima valem pra todas. -->
-            <li class="subgroup-header" onclick="toggleSubGroup(this); gcPoloGarantir()">
-                Shopee <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="grupo-op-shopee">
-                <li><a href="#" data-rota="Shopee/Recebimento" onclick="abrirShopeeReceber(event)">Recebimento</a></li>
-                <li><a href="#" data-rota="Conferencias/Alimentar" onclick="abrirPainelAlimentar(event)">Alimentar</a></li>
-                <li><a href="#" data-rota="Shopee/LineHaul" onclick="abrirShopeeLineHaul(event)">Line Haul</a></li>
-                <li><a href="#" data-rota="Shopee/Atribuicoes" onclick="abrirShopeeAtribuicoes(event)">Atribuições</a></li>
-            </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Loggi <span class="subgroup-arrow">▾</span>
+                Transportadoras <span class="subgroup-arrow">▾</span>
             </li>
-            <ul class="sub-submenu" id="grupo-op-loggi">
-                <li><a href="#" data-rota="Operacao/AlimentarLoggi" onclick="abrirAlimentar(event,'loggi')">Alimentar</a></li>
-                <li><a href="#" data-rota="Conferencias/Loggi" onclick="abrirConferencias(event,'loggi')">Conferência</a></li>
-            </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Anjun <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="grupo-op-anjun">
-                <li><a href="#" data-rota="Operacao/AlimentarAnjun" onclick="abrirAlimentar(event,'anjun')">Alimentar</a></li>
-                <li><a href="#" data-rota="Conferencias/Anjun" onclick="abrirConferencias(event,'anjun')">Conferência</a></li>
-            </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Imile <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="grupo-op-imile">
-                <li><a href="#" data-rota="Operacao/AlimentarImile" onclick="abrirAlimentar(event,'imile')">Alimentar</a></li>
-                <li><a href="#" data-rota="Conferencias/Imile" onclick="abrirConferencias(event,'imile')">Conferência</a></li>
-            </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                J&amp;T <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="grupo-op-jt">
-                <li><a href="#" data-rota="Operacao/AlimentarJT" onclick="abrirAlimentar(event,'jt')">Alimentar</a></li>
-                <li><a href="#" data-rota="Conferencias/JT" onclick="abrirConferencias(event,'jt')">Conferência</a></li>
-            </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Total Express <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="grupo-op-total_express">
-                <li><a href="#" data-rota="Operacao/AlimentarTotalExpress" onclick="abrirAlimentar(event,'total_express')">Alimentar</a></li>
-                <li><a href="#" data-rota="Conferencias/TotalExpress" onclick="abrirConferencias(event,'total_express')">Conferência</a></li>
+            <ul class="sub-submenu" id="grupo-op-transportadoras">
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this); gcPoloGarantir()">
+                    Shopee <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-op-shopee">
+                    <li><a href="#" data-rota="Shopee/Recebimento" onclick="abrirShopeeReceber(event)">Recebimento</a></li>
+                    <li><a href="#" data-rota="Conferencias/Alimentar" onclick="abrirPainelAlimentar(event)">Alimentar</a></li>
+                    <li><a href="#" data-rota="Shopee/LineHaul" onclick="abrirShopeeLineHaul(event)">Line Haul</a></li>
+                    <li><a href="#" data-rota="Shopee/Atribuicoes" onclick="abrirShopeeAtribuicoes(event)">Atribuições</a></li>
+                </ul>
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
+                    Loggi <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-op-loggi">
+                    <li><a href="#" data-rota="Operacao/AlimentarLoggi" onclick="abrirAlimentar(event,'loggi')">Alimentar</a></li>
+                    <li><a href="#" data-rota="Conferencias/Loggi" onclick="abrirConferencias(event,'loggi')">Conferência</a></li>
+                </ul>
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
+                    Anjun <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-op-anjun">
+                    <li><a href="#" data-rota="Operacao/AlimentarAnjun" onclick="abrirAlimentar(event,'anjun')">Alimentar</a></li>
+                    <li><a href="#" data-rota="Conferencias/Anjun" onclick="abrirConferencias(event,'anjun')">Conferência</a></li>
+                </ul>
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
+                    Imile <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-op-imile">
+                    <li><a href="#" data-rota="Operacao/AlimentarImile" onclick="abrirAlimentar(event,'imile')">Alimentar</a></li>
+                    <li><a href="#" data-rota="Conferencias/Imile" onclick="abrirConferencias(event,'imile')">Conferência</a></li>
+                </ul>
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
+                    J&amp;T <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-op-jt">
+                    <li><a href="#" data-rota="Operacao/AlimentarJT" onclick="abrirAlimentar(event,'jt')">Alimentar</a></li>
+                    <li><a href="#" data-rota="Conferencias/JT" onclick="abrirConferencias(event,'jt')">Conferência</a></li>
+                </ul>
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
+                    Total Express <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-op-total_express">
+                    <li><a href="#" data-rota="Operacao/AlimentarTotalExpress" onclick="abrirAlimentar(event,'total_express')">Alimentar</a></li>
+                    <li><a href="#" data-rota="Conferencias/TotalExpress" onclick="abrirConferencias(event,'total_express')">Conferência</a></li>
+                </ul>
             </ul>
         </ul>
 
@@ -369,61 +374,66 @@ if (_BASE) {
                 <li><a href="#" data-rota="Extravios/Pesquisar" onclick="abrirExtraviosBusca(event)">Pesquisar</a></li>
                 <li><a href="#" data-rota="Extravios/Dashboard" onclick="abrirExtraviosDash(event)">Dashboard</a></li>
             </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this); gcPoloGarantir()">
-                Shopee <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="grupo-torre-shopee">
-                <li><a href="#" data-rota="TorreControle/NaRua/Shopee" onclick="abrirTorreNaRua(event,'shopee')">Na Rua</a></li>
-                <li><a href="#" data-rota="Shopee/Stuck" onclick="abrirShopeeStuck(event)">Stuck — Planilha Andre</a></li>
-                <li><a href="#" data-rota="Shopee/Stuck/Backlog" onclick="abrirShopeeStuckBacklog(event)">Stuck — Backlog</a></li>
-                <li><a href="#" data-rota="Shopee/ItemAvariado" onclick="abrirShopeeAvariado(event)">Item Avariado</a></li>
-                <li data-roles="dev"><a href="#" data-rota="TorreControle/Shopee/POD" onclick="abrirPodSemanal(event,'TorreControle/Shopee/POD')">POD</a></li>
-                <li><a href="#" data-rota="TorreControle/Shopee/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event,'Shopee','TorreControle/Shopee/PacotesFaltantes')">Pacotes Faltantes</a></li>
-                <li><a href="#" data-rota="TorreControle/Shopee/Extravios" onclick="abrirExtraviosRegistros(event,/shopee|spx/,'TorreControle/Shopee/Extravios')">Extravios</a></li>
-                <li data-roles="sac dev admin"><a href="#" data-rota="Ativos/Conversas" onclick="abrirWhatsappConversas(event,{transp:'Shopee'})">Ativos</a></li>
-            </ul>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Loggi <span class="subgroup-arrow">▾</span>
+                Transportadoras <span class="subgroup-arrow">▾</span>
             </li>
-            <ul class="sub-submenu" id="grupo-torre-loggi">
-                <li><a href="#" data-rota="TorreControle/NaRua/Loggi" onclick="abrirTorreNaRua(event,'loggi')">Na Rua</a></li>
-                <li><a href="#" data-rota="TorreControle/Loggi/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event,'Loggi','TorreControle/Loggi/PacotesFaltantes')">Pacotes Faltantes</a></li>
-                <li><a href="#" data-rota="TorreControle/Loggi/Extravios" onclick="abrirExtraviosRegistros(event,/loggi/,'TorreControle/Loggi/Extravios')">Extravios</a></li>
-            </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Anjun <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="grupo-torre-anjun">
-                <li><a href="#" data-rota="TorreControle/NaRua/Anjun" onclick="abrirTorreNaRua(event,'anjun')">Na Rua</a></li>
-                <li><a href="#" data-rota="TorreControle/Anjun/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event,'Anjun','TorreControle/Anjun/PacotesFaltantes')">Pacotes Faltantes</a></li>
-                <li><a href="#" data-rota="TorreControle/Anjun/Extravios" onclick="abrirExtraviosRegistros(event,/anjun/,'TorreControle/Anjun/Extravios')">Extravios</a></li>
-                <li data-roles="sac dev admin"><a href="#" data-rota="Ativos/Conversas" onclick="abrirWhatsappConversas(event,{transp:'Anjun'})">Ativos</a></li>
-            </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Imile <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="grupo-torre-imile">
-                <li><a href="#" data-rota="TorreControle/NaRua/Imile" onclick="abrirTorreNaRua(event,'imile')">Na Rua</a></li>
-                <li><a href="#" data-rota="TorreControle/Imile/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event,'Imile','TorreControle/Imile/PacotesFaltantes')">Pacotes Faltantes</a></li>
-                <li><a href="#" data-rota="TorreControle/Imile/Extravios" onclick="abrirExtraviosRegistros(event,/imile/,'TorreControle/Imile/Extravios')">Extravios</a></li>
-                <li data-roles="sac dev admin"><a href="#" data-rota="Ativos/Conversas" onclick="abrirWhatsappConversas(event,{transp:'iMile'})">Ativos</a></li>
-            </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                J&amp;T <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="grupo-torre-jt">
-                <li><a href="#" data-rota="TorreControle/NaRua/JT" onclick="abrirTorreNaRua(event,'jt')">Na Rua</a></li>
-                <li><a href="#" data-rota="TorreControle/JT/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event,'J&amp;T Express','TorreControle/JT/PacotesFaltantes')">Pacotes Faltantes</a></li>
-                <li><a href="#" data-rota="TorreControle/JT/Extravios" onclick="abrirExtraviosRegistros(event,/jt/,'TorreControle/JT/Extravios')">Extravios</a></li>
-                <li data-roles="sac dev admin"><a href="#" data-rota="Ativos/Conversas" onclick="abrirWhatsappConversas(event,{transp:'JT'})">Ativos</a></li>
-            </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Total Express <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="grupo-torre-total_express">
-                <li><a href="#" data-rota="TorreControle/NaRua/TotalExpress" onclick="abrirTorreNaRua(event,'total_express')">Na Rua</a></li>
-                <li><a href="#" data-rota="TorreControle/TotalExpress/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event,'Total Express','TorreControle/TotalExpress/PacotesFaltantes')">Pacotes Faltantes</a></li>
-                <li><a href="#" data-rota="TorreControle/TotalExpress/Extravios" onclick="abrirExtraviosRegistros(event,/total/,'TorreControle/TotalExpress/Extravios')">Extravios</a></li>
+            <ul class="sub-submenu" id="grupo-torre-transportadoras">
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this); gcPoloGarantir()">
+                    Shopee <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-torre-shopee">
+                    <li><a href="#" data-rota="TorreControle/NaRua/Shopee" onclick="abrirTorreNaRua(event,'shopee')">Na Rua</a></li>
+                    <li><a href="#" data-rota="Shopee/Stuck" onclick="abrirShopeeStuck(event)">Stuck — Planilha Andre</a></li>
+                    <li><a href="#" data-rota="Shopee/Stuck/Backlog" onclick="abrirShopeeStuckBacklog(event)">Stuck — Backlog</a></li>
+                    <li><a href="#" data-rota="Shopee/ItemAvariado" onclick="abrirShopeeAvariado(event)">Item Avariado</a></li>
+                    <li data-roles="dev"><a href="#" data-rota="TorreControle/Shopee/POD" onclick="abrirPodSemanal(event,'TorreControle/Shopee/POD')">POD</a></li>
+                    <li><a href="#" data-rota="TorreControle/Shopee/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event,'Shopee','TorreControle/Shopee/PacotesFaltantes')">Pacotes Faltantes</a></li>
+                    <li><a href="#" data-rota="TorreControle/Shopee/Extravios" onclick="abrirExtraviosRegistros(event,/shopee|spx/,'TorreControle/Shopee/Extravios')">Extravios</a></li>
+                    <li data-roles="sac dev admin"><a href="#" data-rota="Ativos/Conversas" onclick="abrirWhatsappConversas(event,{transp:'Shopee'})">Ativos</a></li>
+                </ul>
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
+                    Loggi <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-torre-loggi">
+                    <li><a href="#" data-rota="TorreControle/NaRua/Loggi" onclick="abrirTorreNaRua(event,'loggi')">Na Rua</a></li>
+                    <li><a href="#" data-rota="TorreControle/Loggi/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event,'Loggi','TorreControle/Loggi/PacotesFaltantes')">Pacotes Faltantes</a></li>
+                    <li><a href="#" data-rota="TorreControle/Loggi/Extravios" onclick="abrirExtraviosRegistros(event,/loggi/,'TorreControle/Loggi/Extravios')">Extravios</a></li>
+                </ul>
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
+                    Anjun <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-torre-anjun">
+                    <li><a href="#" data-rota="TorreControle/NaRua/Anjun" onclick="abrirTorreNaRua(event,'anjun')">Na Rua</a></li>
+                    <li><a href="#" data-rota="TorreControle/Anjun/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event,'Anjun','TorreControle/Anjun/PacotesFaltantes')">Pacotes Faltantes</a></li>
+                    <li><a href="#" data-rota="TorreControle/Anjun/Extravios" onclick="abrirExtraviosRegistros(event,/anjun/,'TorreControle/Anjun/Extravios')">Extravios</a></li>
+                    <li data-roles="sac dev admin"><a href="#" data-rota="Ativos/Conversas" onclick="abrirWhatsappConversas(event,{transp:'Anjun'})">Ativos</a></li>
+                </ul>
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
+                    Imile <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-torre-imile">
+                    <li><a href="#" data-rota="TorreControle/NaRua/Imile" onclick="abrirTorreNaRua(event,'imile')">Na Rua</a></li>
+                    <li><a href="#" data-rota="TorreControle/Imile/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event,'Imile','TorreControle/Imile/PacotesFaltantes')">Pacotes Faltantes</a></li>
+                    <li><a href="#" data-rota="TorreControle/Imile/Extravios" onclick="abrirExtraviosRegistros(event,/imile/,'TorreControle/Imile/Extravios')">Extravios</a></li>
+                    <li data-roles="sac dev admin"><a href="#" data-rota="Ativos/Conversas" onclick="abrirWhatsappConversas(event,{transp:'iMile'})">Ativos</a></li>
+                </ul>
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
+                    J&amp;T <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-torre-jt">
+                    <li><a href="#" data-rota="TorreControle/NaRua/JT" onclick="abrirTorreNaRua(event,'jt')">Na Rua</a></li>
+                    <li><a href="#" data-rota="TorreControle/JT/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event,'J&amp;T Express','TorreControle/JT/PacotesFaltantes')">Pacotes Faltantes</a></li>
+                    <li><a href="#" data-rota="TorreControle/JT/Extravios" onclick="abrirExtraviosRegistros(event,/jt/,'TorreControle/JT/Extravios')">Extravios</a></li>
+                    <li data-roles="sac dev admin"><a href="#" data-rota="Ativos/Conversas" onclick="abrirWhatsappConversas(event,{transp:'JT'})">Ativos</a></li>
+                </ul>
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
+                    Total Express <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-torre-total_express">
+                    <li><a href="#" data-rota="TorreControle/NaRua/TotalExpress" onclick="abrirTorreNaRua(event,'total_express')">Na Rua</a></li>
+                    <li><a href="#" data-rota="TorreControle/TotalExpress/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event,'Total Express','TorreControle/TotalExpress/PacotesFaltantes')">Pacotes Faltantes</a></li>
+                    <li><a href="#" data-rota="TorreControle/TotalExpress/Extravios" onclick="abrirExtraviosRegistros(event,/total/,'TorreControle/TotalExpress/Extravios')">Extravios</a></li>
+                </ul>
             </ul>
         </ul>
 

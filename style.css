@@ -2394,7 +2394,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     transition: max-height 0.35s ease, opacity 0.22s ease;
     padding-left: 18px;
 }
-.sub-submenu.open { max-height: 600px; opacity: 1; }
+.sub-submenu.open { max-height: 800px; opacity: 1; }
 .sub-submenu a { padding-left: 18px !important; font-size: 13px !important; }
 
 /* ── Subgroup header nível 2 (ex "Alimentar separação") ── */
@@ -2415,7 +2415,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     transition: max-height 0.3s ease, opacity 0.22s ease;
     padding-left: 14px;
 }
-.sub-sub-submenu.open { max-height: 40dvh; opacity: 1; }
+.sub-sub-submenu.open { max-height: 500px; opacity: 1; }
 .sub-sub-submenu a { padding-left: 18px !important; font-size: 12.5px !important; }
 
 /* ===== TELA IMPORTAR TRAMPAY ===== */

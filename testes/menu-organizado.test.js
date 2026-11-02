@@ -64,8 +64,8 @@ test("Loggi e Total não oferecem Ativos, porque não têm modelo", () => {
 
 test("abrir a Shopee pergunta o polo, nos dois menus", () => {
     const antes = id => menu.slice(0, menu.indexOf(`id="${id}"`)).split("<li").pop();
-    assert.match(antes("grupo-op-shopee"), /toggleSubGroup\(this\); gcPoloGarantir\(\)/);
-    assert.match(antes("grupo-torre-shopee"), /toggleSubGroup\(this\); gcPoloGarantir\(\)/);
+    assert.match(antes("grupo-op-shopee"), /toggleSubSubGroup\(this\); gcPoloGarantir\(\)/);
+    assert.match(antes("grupo-torre-shopee"), /toggleSubSubGroup\(this\); gcPoloGarantir\(\)/);
 });
 
 test("o que vale pra todas fica em cima, fora dos grupos", () => {
@@ -135,4 +135,21 @@ test("o submenu aberto não corta os grupos de transportadora", () => {
     const limites = [...css.matchAll(/\.submenu\.open \{ max-height: (\d+)px/g)].map(m => Number(m[1]));
     assert.ok(limites.length >= 2);
     limites.forEach(px => assert.ok(px >= 1200, `limite de ${px}px`));
+});
+
+test("as transportadoras ficam guardadas no grupo Transportadoras", () => {
+    ["op", "torre"].forEach(a => {
+        const ini = menu.indexOf(`id="grupo-${a}-transportadoras"`);
+        assert.ok(ini > 0, a);
+        TRANSPORTADORAS.forEach(t => assert.ok(menu.indexOf(`id="grupo-${a}-${t}"`) > ini, `${a} ${t}`));
+    });
+    assert.strictEqual((menu.match(/>\s*Transportadoras <span/g) || []).length, 2);
+});
+
+test("os níveis abertos não cortam a lista da Shopee", () => {
+    // 8 itens da Torre > Shopee a ~34px: limite por altura de tela cortaria no celular.
+    const css = ler("style.css");
+    const px = re => Number(css.match(re)[1]);
+    assert.ok(px(/\.sub-sub-submenu\.open \{ max-height: (\d+)px/) >= 400);
+    assert.ok(px(/\.sub-submenu\.open \{ max-height: (\d+)px/) >= 700);
 });
