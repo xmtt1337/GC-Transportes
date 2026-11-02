@@ -73,8 +73,18 @@ function _chubPintarAlimentar() {
     lista.style.display = "";
     // Pedidos pesquisados não conta como pendência (a operação parou de alimentar),
     // mas a tela segue no ar e este é o caminho até ela.
-    lista.innerHTML = fontes.map(_chubCardHtml).join("") + `
-        <button type="button" class="chub-acao" onclick="abrirShopeePedidos()">Pedidos pesquisados</button>`;
+    lista.innerHTML = `
+        <div class="adm-nf-wrap"><table class="adm-nf-table">
+            <thead><tr><th>Carga</th><th>Situação</th><th>Última carga</th><th>Por</th><th>Linhas</th><th>Envio</th></tr></thead>
+            <tbody>
+                ${fontes.map(_chubLinhaHtml).join("")}
+                <tr>
+                    <td data-label="Carga"><button type="button" class="alim-link" onclick="abrirShopeePedidos()">Pedidos pesquisados</button></td>
+                    <td data-label="Situação">—</td><td data-label="Última carga">—</td><td data-label="Por">—</td>
+                    <td data-label="Linhas">—</td><td data-label="Envio">—</td>
+                </tr>
+            </tbody>
+        </table></div>`;
 }
 
 const _CHUB_SITUACAO = {
@@ -83,29 +93,18 @@ const _CHUB_SITUACAO = {
     nunca:  { cor: "#ef4444", texto: "Nunca alimentado" },
 };
 
-function _chubCardHtml(f) {
+function _chubLinhaHtml(f) {
     const s = _CHUB_SITUACAO[f.situacao] || _CHUB_SITUACAO.nunca;
     const quando = f.importado_em ? _chubQuando(f.importado_em) : "—";
-    const total = Number(f.total || 0);
     return `
-    <div class="alim-card" style="--alim-c:${s.cor}">
-        <div class="alim-card-topo">
-            <span class="alim-card-nome">${_chubEsc(f.rotulo)}</span>
-            <span class="alim-card-tag">${s.texto}</span>
-        </div>
-        <div class="alim-card-desc">${_chubEsc(f.descricao)}</div>
-        <div class="alim-card-desc alim-card-sustenta">Sustenta: ${_chubEsc(f.sustenta)}</div>
-        <div class="alim-card-meta">
-            <span>Última carga: <strong>${_chubEsc(quando)}</strong></span>
-            ${f.importado_por ? `<span>por ${_chubEsc(f.importado_por)}</span>` : ""}
-            <span>${total.toLocaleString("pt-BR")} linha${total === 1 ? "" : "s"} no sistema</span>
-        </div>
-        <div class="alim-card-modo">${f.acumula
-            ? "Cada envio SOMA ao que já está lá."
-            : "Cada envio SUBSTITUI a carga inteira."}</div>
-        <button type="button" class="usr-modal-btn-primary alim-card-btn"
-                onclick="_chubAbrirFonte('${f.chave}')">Abrir ${_chubEsc(f.rotulo)}</button>
-    </div>`;
+    <tr>
+        <td data-label="Carga"><button type="button" class="alim-link" onclick="_chubAbrirFonte('${f.chave}')">${_chubEsc(f.rotulo)}</button></td>
+        <td data-label="Situação" style="color:${s.cor}">${s.texto}</td>
+        <td data-label="Última carga">${_chubEsc(quando)}</td>
+        <td data-label="Por">${_chubEsc(f.importado_por || "—")}</td>
+        <td data-label="Linhas">${Number(f.total || 0).toLocaleString("pt-BR")}</td>
+        <td data-label="Envio">${f.acumula ? "Soma" : "Substitui"}</td>
+    </tr>`;
 }
 
 /** Data e hora no formato que a operação lê, no fuso de Brasília. */

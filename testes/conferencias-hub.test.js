@@ -20,7 +20,7 @@ const vm = require("node:vm");
 // navegar.
 const arquivo = path.join(__dirname, "..", "js", "conferencias-hub.js");
 const fonte = fs.readFileSync(arquivo, "utf8") +
-    "\n;globalThis.__chub = { _chubCardHtml, _chubQuando, _chubEsc };";
+    "\n;globalThis.__chub = { _chubLinhaHtml, _chubQuando, _chubEsc };";
 
 const contexto = vm.createContext({ globalThis: undefined, console });
 contexto.globalThis = contexto;
@@ -45,33 +45,29 @@ function fonteTeste(extra) {
 }
 
 test("o cartao mostra a situacao da carga", () => {
-    assert.match(api._chubCardHtml(fonteTeste({ situacao: "hoje" })),   /Alimentado hoje/);
-    assert.match(api._chubCardHtml(fonteTeste({ situacao: "antiga" })), /Carga de outro dia/);
-    assert.match(api._chubCardHtml(fonteTeste({ situacao: "nunca" })),  /Nunca alimentado/);
+    assert.match(api._chubLinhaHtml(fonteTeste({ situacao: "hoje" })),   /Alimentado hoje/);
+    assert.match(api._chubLinhaHtml(fonteTeste({ situacao: "antiga" })), /Carga de outro dia/);
+    assert.match(api._chubLinhaHtml(fonteTeste({ situacao: "nunca" })),  /Nunca alimentado/);
 });
 
 test("situacao desconhecida cai no estado mais grave", () => {
     // Errar pra "nunca alimentado" faz alguem conferir; errar pra "alimentado
     // hoje" faz a carga faltar o dia inteiro sem ninguem perceber.
-    assert.match(api._chubCardHtml(fonteTeste({ situacao: "??" })), /Nunca alimentado/);
+    assert.match(api._chubLinhaHtml(fonteTeste({ situacao: "??" })), /Nunca alimentado/);
 });
 
 test("o cartao diz se o envio soma ou substitui", () => {
     // E a duvida que mais aparece: reenviar o romaneiro soma, reenviar a AT
     // reescreve. Errar isso duplica romaneio ou apaga AT boa.
-    assert.match(api._chubCardHtml(fonteTeste({ acumula: true })),  /SOMA ao que já está lá/);
-    assert.match(api._chubCardHtml(fonteTeste({ acumula: false })), /SUBSTITUI a carga inteira/);
+    assert.match(api._chubLinhaHtml(fonteTeste({ acumula: true })),  />Soma</);
+    assert.match(api._chubLinhaHtml(fonteTeste({ acumula: false })), />Substitui</);
 });
 
 test("carga que nunca aconteceu nao inventa data nem autor", () => {
-    const html = api._chubCardHtml(fonteTeste({ importado_em: null, importado_por: null, total: 0 }));
-    assert.match(html, /Última carga: <strong>—<\/strong>/);
-    assert.ok(!html.includes("por "), "nao deve citar autor que nao existe");
-    assert.match(html, /0 linhas no sistema/);
-});
-
-test("uma linha so nao vira 'linhas'", () => {
-    assert.match(api._chubCardHtml(fonteTeste({ total: 1 })), /1 linha no sistema/);
+    const html = api._chubLinhaHtml(fonteTeste({ importado_em: null, importado_por: null, total: 0 }));
+    assert.match(html, /data-label="Última carga">—</);
+    assert.match(html, /data-label="Por">—</);
+    assert.match(html, /data-label="Linhas">0</);
 });
 
 test("a data sai no fuso de Brasilia", () => {
@@ -85,7 +81,7 @@ test("data invalida vira travessao, nao 'Invalid Date'", () => {
 });
 
 test("texto vindo do servidor e escapado no cartao", () => {
-    const html = api._chubCardHtml(fonteTeste({ importado_por: '<img src=x onerror=alert(1)>' }));
+    const html = api._chubLinhaHtml(fonteTeste({ importado_por: '<img src=x onerror=alert(1)>' }));
     assert.ok(!html.includes("<img"));
     assert.match(html, /&lt;img/);
 });
