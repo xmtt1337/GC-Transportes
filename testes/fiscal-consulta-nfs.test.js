@@ -12,14 +12,17 @@ const vm = require("node:vm");
 
 const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "fiscal-consulta-nfs.js"), "utf8");
 
-function carregar({ cteApi } = {}) {
+function carregar({ cteApi, copiar } = {}) {
   const els = {};
   const el = (id) => (els[id] ||= {
-    value: "", innerHTML: "", textContent: "", disabled: false,
+    value: "", innerHTML: "", textContent: "", innerText: "", disabled: false,
+    dataset: {},
     classes: new Set(),
-    classList: { toggle(c, on) { const lista = els[id].classes; on ? lista.add(c) : lista.delete(c); } },
+    classList: { toggle(c, on) { const lista = els[id].classes; on ? lista.add(c) : lista.delete(c); },
+                 add(c) { els[id].classes.add(c); }, remove(c) { els[id].classes.delete(c); } },
   });
   const baixados = [];
+  const copiados = [];
   const ctx = vm.createContext({
     console,
     document: {
@@ -32,12 +35,17 @@ function carregar({ cteApi } = {}) {
     URL: { createObjectURL: () => "blob:teste", revokeObjectURL() {} },
     _esc: (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`),
     _cteApi: cteApi || (async () => ({ resultados: [] })),
+    // gcCopiar é global (nav.js), não parte deste arquivo — mockado aqui como
+    // em qualquer outro teste que usa botão de copiar (ver entregador-conferencia).
+    gcCopiar: copiar || (async (texto) => { copiados.push(texto); }),
+    setTimeout, clearTimeout,
   });
   vm.runInContext(fonte + `
     ;globalThis.__cnfs = { ler: _cnfsLerCodigos, contar: _cnfsContar, html: _cnfsHtmlResultado,
-                           csv: _cnfsMontarCsv, gerar: _cnfsGerar, tela: _htmlConsultaNfs };`,
+                           csv: _cnfsMontarCsv, gerar: _cnfsGerar, tela: _htmlConsultaNfs,
+                           baixar: _cnfsBaixar, copiar: _cnfsCopiar };`,
     ctx, { filename: "fiscal-consulta-nfs.js" });
-  return { api: ctx.__cnfs, el, baixados };
+  return { api: ctx.__cnfs, el, baixados, copiados };
 }
 
 const COM_NF = { codigo: "BR000000000001A", nfs: ["1".repeat(44)], erro: null };
@@ -100,14 +108,42 @@ test("CSV mantém a chave como texto pro Excel e junta várias NF-e", () => {
   assert.strictEqual(linhas[2], '"BR000000000003C";="";"Nenhuma NF-e encontrada para este código."');
 });
 
-test("gerar mostra a tabela, baixa o CSV e devolve o botão", async () => {
+test("consultar mostra na tela, sem baixar nada, e devolve o botão", async () => {
   const { api, el, baixados } = carregar({ cteApi: async () => ({ resultados: [COM_NF] }) });
   el("cnfs-codigos").value = "BR000000000001A";
   await api.gerar();
   assert.ok(el("cnfs-resultado").innerHTML.includes("1".repeat(44)));
-  assert.strictEqual(baixados.length, 1);
+  assert.strictEqual(baixados.length, 0);
   assert.strictEqual(el("cnfs-btn").disabled, false);
-  assert.strictEqual(el("cnfs-btn").textContent, "Gerar CSV");
+  assert.strictEqual(el("cnfs-btn").textContent, "Consultar");
+});
+
+test("Exportar CSV baixa o que está na tela", async () => {
+  const { api, el, baixados } = carregar({ cteApi: async () => ({ resultados: [COM_NF] }) });
+  el("cnfs-codigos").value = "BR000000000001A";
+  await api.gerar();
+  api.baixar();
+  assert.strictEqual(baixados.length, 1);
+  assert.match(baixados[0], /^consulta-nfs-\d{4}-\d{2}-\d{2}\.csv$/);
+});
+
+test("cada chave tem o próprio botão de copiar", () => {
+  const { api } = carregar();
+  const html = api.html([DUAS_NF]);
+  assert.ok(html.includes(`data-nf="${"2".repeat(44)}"`));
+  assert.ok(html.includes(`data-nf="${"3".repeat(44)}"`));
+});
+
+test("copiar manda a chave e avisa no próprio botão", async () => {
+  const { api, copiados } = carregar();
+  const btn = {
+    dataset: { nf: "1".repeat(44) }, innerText: "Copiar",
+    classList: { add() {}, remove() {} },
+  };
+  api.copiar(btn);
+  await new Promise((r) => setImmediate(r));
+  assert.strictEqual(copiados[0], "1".repeat(44));
+  assert.strictEqual(btn.innerText, "Copiado!");
 });
 
 test("sem código não chama o servidor", async () => {

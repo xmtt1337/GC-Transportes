@@ -6925,12 +6925,14 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .cnfs-barra .cft-btn { margin-right: 0; }
 .cnfs-kpis { align-items: flex-end; }
 .cnfs-baixar { margin: 0 0 0 auto; }
-.cnfs-tabela td.cnfs-mono { font-family: Consolas, monospace; font-variant-numeric: tabular-nums; }
+.cnfs-tabela td.cnfs-mono, .cnfs-tabela td.cnfs-mono span { font-family: Consolas, monospace; font-variant-numeric: tabular-nums; }
 .cnfs-tabela td { vertical-align: top; font-size: 12.5px; line-height: 1.6; }
 .cnfs-tabela td.cft-neg { white-space: normal; min-width: 260px; }
-.cnfs-nf-linha { display: flex; align-items: center; gap: 8px; }
-.cnfs-nf-linha:not(:last-child) { margin-bottom: 4px; }
-.cnfs-copiar { font-size: 11px; padding: 2px 8px; border: 1px solid rgba(255,255,255,0.15);
-               border-radius: 4px; background: transparent; color: #94a3b8; cursor: pointer; flex-shrink: 0; }
-.cnfs-copiar:hover { border-color: rgba(255,255,255,0.3); color: #e2e8f0; }
-.cnfs-copiar.copiado { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.4); color: #86efac; }
+.cnfs-nf-linha { display: flex; align-items: center; gap: 12px; }
+.cnfs-copiar { font-size: 12px; font-family: inherit; padding: 0; border: 0; background: none; color: #60a5fa; cursor: pointer; flex-shrink: 0; text-underline-offset: 3px; }
+.cnfs-copiar:hover { color: #93c5fd; text-decoration: underline; }
+.cnfs-copiar.copiado { color: #34d399; text-decoration: none; }
+@media (max-width: 600px) {
+    .cnfs-nf-linha { flex-direction: column; align-items: flex-start; gap: 0; }
+    .cnfs-nf-linha:not(:last-child) { margin-bottom: 6px; }
+}

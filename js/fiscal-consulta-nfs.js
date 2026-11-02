@@ -1,8 +1,9 @@
 // ───── FISCAL: Consulta de NFs (código BR → chave da NF-e) ─────
 //
-// Cola uma lista de códigos BR e gera um CSV com a chave da NF-e vinculada a
-// cada um. Olha primeiro no CT-e já importado (sem gastar cota da API da
-// Shopee); se não achar, busca de novo na API.
+// Cola uma lista de códigos BR e mostra na tela a chave da NF-e vinculada a
+// cada um, com opção de copiar a chave ou exportar CSV. Olha primeiro no CT-e
+// já importado (sem gastar cota da API da Shopee); se não achar, busca de novo
+// na API.
 //
 // NÃO traz o item/produto da nota: a autorização da SEFAZ (NFeDistribuicaoDFe)
 // trava quase toda consulta pra quem não é parte na NF-e — amostra real
@@ -30,7 +31,7 @@ function _htmlConsultaNfs() {
                   placeholder="BR000000000000A&#10;BR000000000000B&#10;BR000000000000C"></textarea>
         <div class="cnfs-barra">
             <span id="cnfs-contagem" class="cft-ajuda">Até ${_CNFS_LIMITE} códigos por vez</span>
-            <button id="cnfs-btn" class="cft-btn primario" onclick="_cnfsGerar()">Gerar CSV</button>
+            <button id="cnfs-btn" class="cft-btn primario" onclick="_cnfsGerar()">Consultar</button>
         </div>
 
         <div id="cnfs-erro"></div>
@@ -69,7 +70,7 @@ function _cnfsHtmlResultado(resultados) {
         <div class="cft-kpi"><span class="cft-kpi-valor">${resultados.length}</span><span class="cft-kpi-rotulo">Códigos</span></div>
         <div class="cft-kpi"><span class="cft-kpi-valor cft-pos">${comNf}</span><span class="cft-kpi-rotulo">Com NF-e</span></div>
         <div class="cft-kpi"><span class="cft-kpi-valor${semNf ? " cft-neg" : ""}">${semNf}</span><span class="cft-kpi-rotulo">Sem NF-e</span></div>
-        <button class="cft-btn cnfs-baixar" onclick="_cnfsBaixar()">Baixar CSV</button>
+        <button class="cft-btn cnfs-baixar" onclick="_cnfsBaixar()">Exportar CSV</button>
     </div>
     <div class="cft-tabela-wrap">
         <table class="cft-tabela cnfs-tabela">
@@ -98,11 +99,11 @@ async function _cnfsGerar() {
     } catch (e) {
         erroEl.innerHTML = `<p class="aviso-bloqueio">Não consegui consultar: ${_esc(e.message)}</p>`;
         btn.disabled = false;
-        btn.textContent = "Gerar CSV";
+        btn.textContent = "Consultar";
         return;
     }
     btn.disabled = false;
-    btn.textContent = "Gerar CSV";
+    btn.textContent = "Consultar";
 
     _cnfsResultados = dados.resultados || [];
     resultEl.innerHTML = _cnfsHtmlResultado(_cnfsResultados);
