@@ -64,17 +64,19 @@ test('o menu ja abre na transportadora do site', () => {
   assert.strictEqual(X.indiceDoSite('https://outro.example'), 0);
 });
 
-test('linkWhatsapp acrescenta DDI so quando falta', () => {
-  assert.strictEqual(X.linkWhatsapp('49900000000'), 'https://wa.me/5549900000000');
-  assert.strictEqual(X.linkWhatsapp('(49) 3333-3333'), 'https://wa.me/554933333333');
-  assert.strictEqual(X.linkWhatsapp('5549900000000'), 'https://wa.me/5549900000000');
-  assert.strictEqual(X.linkWhatsapp('123'), '');
-  assert.strictEqual(X.linkWhatsapp(null), '');
+test('telefone sai com DDI e espacos, para o Excel nao estragar', () => {
+  assert.strictEqual(X.formatarTelefone('49900000000'), '55 49 900000000');
+  assert.strictEqual(X.formatarTelefone('(49) 3333-3333'), '55 49 33333333');
+  assert.strictEqual(X.formatarTelefone('5549900000000'), '55 49 900000000');
+  assert.strictEqual(X.formatarTelefone('123'), '123');
+  assert.strictEqual(X.formatarTelefone(null), '');
+  assert.ok(X.telefoneValido('55 49 900000000'));
+  assert.ok(!X.telefoneValido('123'));
 });
 
 test('CSV abre no Excel com acento e sem virar formula', () => {
   const csv = X.montarCsv([{
-    waybill: 'AJ1', status: 'Em trânsito', nome: '=Fulano "X"', telefone: '49900000000', whatsapp: '',
+    waybill: 'AJ1', status: 'Em trânsito', nome: '=Fulano "X"', telefone: '49900000000',
   }]);
   assert.ok(csv.startsWith('﻿"') === false && csv.startsWith('﻿waybill;'));
   assert.ok(csv.includes('"Em trânsito"'));
@@ -98,7 +100,8 @@ test('executar mostra a porcentagem e faz 1 pacote a cada 3 segundos', async () 
   });
   assert.deepStrictEqual(avancos, [25, 50, 75, 100]);
   assert.deepStrictEqual(pausas, [3000, 3000, 3000]);
-  assert.strictEqual(res.linhas[0].whatsapp, 'https://wa.me/5549900000000');
+  assert.strictEqual(res.linhas[0].telefone, '55 49 900000000');
+  assert.ok(!('whatsapp' in res.linhas[0]));
   assert.strictEqual(res.erro, null);
 });
 

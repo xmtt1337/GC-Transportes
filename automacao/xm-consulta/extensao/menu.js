@@ -48,7 +48,7 @@
       </button>
       <div class="painel">
         <div class="cabecalho">
-          <span class="marca"><img alt="" src="${chrome.runtime.getURL('img/logo-claro.png')}">${NOME}</span>
+          <span class="marca"><img alt="XM" src="${chrome.runtime.getURL('img/logo-claro.png')}">- Consultas de telefone</span>
           <button type="button">Minimizar</button>
         </div>
       </div>

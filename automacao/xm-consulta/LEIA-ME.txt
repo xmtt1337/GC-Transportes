@@ -3,8 +3,8 @@
 ===========================================================
 
 Extensao do Chrome. Escolhe a transportadora, cola os codigos
-e sai um CSV com waybill, status, nome, telefone e link do
-WhatsApp. Nao precisa de Python nem de outro programa.
+e sai um CSV com waybill, status, nome e telefone com DDI.
+Nao precisa de Python nem de outro programa.
 
 Funciona na Anjun e no SPX da Shopee. iMile aparece na lista
 como "em breve". Na Shopee tambem sai o nome do remetente, e

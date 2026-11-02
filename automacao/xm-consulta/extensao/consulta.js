@@ -21,8 +21,8 @@
   // Pedido a pedido, a pedido do usuario. Sao 3 campos por pedido, cerca de 2 chamadas por
   // segundo: o ritmo que a Anjun barrou. Se o SPX recusar, voltar a subir este numero.
   const INTERVALO_SHOPEE_MS = 1500;
-  const COLUNAS = ['waybill', 'status', 'nome', 'telefone', 'whatsapp'];
-  const COLUNAS_SHOPEE = ['waybill', 'status', 'nome', 'telefone', 'remetente', 'whatsapp'];
+  const COLUNAS = ['waybill', 'status', 'nome', 'telefone'];
+  const COLUNAS_SHOPEE = ['waybill', 'status', 'nome', 'telefone', 'remetente'];
   const PASTA_CSV = 'XM Consultas de telefone';
 
   const TRANSPORTADORAS = [
@@ -104,12 +104,17 @@
     return { codigos, ignorados };
   }
 
-  function linkWhatsapp(telefone) {
-    const d = String(telefone || '').replace(/\D/g, '');
-    if (d.length === 10 || d.length === 11) return `https://wa.me/55${d}`;
-    if ((d.length === 12 || d.length === 13) && d.startsWith('55')) return `https://wa.me/${d}`;
-    return '';
+  // Com DDI e espacos: so numero, com 13 digitos, o Excel mostra 5,5E+12 e perde o telefone
+  // ao salvar. Fora do padrao, sai como veio.
+  function formatarTelefone(telefone) {
+    const bruto = String(telefone || '');
+    const d = bruto.replace(/\D/g, '');
+    const local = (d.length === 12 || d.length === 13) && d.startsWith('55') ? d.slice(2) : d;
+    if (local.length !== 10 && local.length !== 11) return bruto;
+    return `55 ${local.slice(0, 2)} ${local.slice(2)}`;
   }
+
+  const telefoneValido = (telefone) => /^55 \d{2} \d{8,9}$/.test(String(telefone || ''));
 
   const porcentagem = (feitos, total) => (total ? Math.floor((feitos * 100) / total) : 0);
 
@@ -237,9 +242,8 @@
         waybill: codigo,
         status: d.status || '',
         nome: d.nome || '',
-        telefone: d.telefone || '',
+        telefone: formatarTelefone(d.telefone),
         remetente: d.remetente || '',
-        whatsapp: linkWhatsapp(d.telefone),
       });
       aoAvancar(i + 1, codigos.length);
       if (i < codigos.length - 1) await dormir(Math.max(0, intervalo - (agora() - inicio)));
@@ -248,7 +252,7 @@
   }
 
   const publico = {
-    TRANSPORTADORAS, COLUNAS, PASTA_CSV, ErroDeConta, entrar, conferir, extrairCodigos, linkWhatsapp,
+    TRANSPORTADORAS, COLUNAS, PASTA_CSV, ErroDeConta, entrar, conferir, extrairCodigos, formatarTelefone, telefoneValido,
     porcentagem, textoTempo, tempoDeBloqueio, motivoParaNaoIniciar, montarCsv, indiceDoSite, nomeArquivo, criarAbas, executar,
   };
   if (typeof module !== 'undefined') module.exports = publico;

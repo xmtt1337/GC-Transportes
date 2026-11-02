@@ -166,8 +166,8 @@ async function concluir(t, res) {
   if (res.linhas.length) {
     const nome = await baixarCsv(t, res.linhas);
     partes.push(`${res.linhas.length} pacotes em Downloads\\${X.PASTA_CSV}\\${nome}`);
-    const semWhats = res.linhas.filter((l) => !l.whatsapp).length;
-    if (semWhats) partes.push(`${semWhats} sem WhatsApp válido`);
+    const semTelefone = res.linhas.filter((l) => !X.telefoneValido(l.telefone)).length;
+    if (semTelefone) partes.push(`${semTelefone} sem telefone válido`);
   }
   if (res.pendentes.length) {
     $('codigos').value = res.pendentes.join('\n');
