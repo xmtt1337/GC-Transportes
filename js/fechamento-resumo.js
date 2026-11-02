@@ -773,7 +773,7 @@ function _rqBuscarPerformance(pacotes) {
 async function _rqPerfLinhas(chaves) {
     const vistos = new Set(), linhas = [];
     for (const k of chaves) {
-        const r = await fetch(`${_RQ_API()}/performance?mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}&transportadora=${k}`,
+        const r = await fetch(`${_RQ_API()}/performance?mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}&transportadora=${k}&todos=1`,
             { headers: { "Authorization": "Bearer " + token } });
         const d = await r.json().catch(() => ({}));
         for (const l of d.linhas || []) {
