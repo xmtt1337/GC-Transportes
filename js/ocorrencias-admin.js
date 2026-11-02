@@ -13,9 +13,9 @@ let _pfaPagina    = 1;
 let _pfaPorPagina = 25;
 
 // `transportadora` vem do menu dela: abre a lista já filtrada nela.
-function abrirPacotesFaltantesAdmin(event, transportadora) {
+function abrirPacotesFaltantesAdmin(event, transportadora, rota) {
     if (event) event.preventDefault();
-    mostrarTela("tela-torre-pacotes-faltantes");
+    mostrarTela("tela-torre-pacotes-faltantes", rota);
     _pfaCarregar(transportadora);
 }
 

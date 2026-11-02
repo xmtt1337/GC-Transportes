@@ -34,9 +34,9 @@ let _extrvRegSalvando = false;  // trava contra duplo clique
 /* ───────────────────────── Navegação ───────────────────────── */
 
 // `transportadora` (regex) vem do menu dela: abre filtrado nela.
-function abrirExtraviosRegistros(event, transportadora) {
+function abrirExtraviosRegistros(event, transportadora, rota) {
     if (event) event.preventDefault();
-    mostrarTela("tela-extravios-registros");
+    mostrarTela("tela-extravios-registros", rota);
     _extrvRegIniciar(transportadora);
 }
 

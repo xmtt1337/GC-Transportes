@@ -9,6 +9,7 @@ const _ROTA_BASE  = location.hostname === "xmtt1337.github.io" ? "/GC-Transporte
 // caminho da URL -> função que abre a tela correspondente
 const _ROTAS = {
     "Fiscal/CTes":                   () => abrirCTes(),
+    "Fiscal/Acompanhamento":         () => abrirFiscalAcompanhamento(),
     "Fiscal/NovoCTe":                () => abrirNovoCTe(),
     "Fiscal/ImportarShopee":         () => abrirImportarShopee(),
     "Fiscal/Empresas":               () => abrirFiscalEmpresas(),
@@ -23,6 +24,7 @@ const _ROTAS = {
     "Conferencia/Shopee":            () => abrirConfEntregador(),
     "Performance/PorDia":            () => abrirEntPerformance(),
     "PODShopee/Semanal":             () => abrirPodSemanal(),
+    "TorreControle/Shopee/POD":      () => abrirPodSemanal(null, "TorreControle/Shopee/POD"),
     "CriarAT":                       () => abrirSolicitarAT(),
     // Rota de quando era Atribuições → Solicitar AT: mantida pra link salvo não quebrar.
     "Atribuicoes/SolicitarAT":       () => abrirSolicitarAT(),
@@ -67,6 +69,7 @@ const _ROTAS = {
     "Operacao/ShopeeLineHaul":          () => abrirShopeeLineHaul(),
     "Operacao/ShopeeAtribuicoes":       () => abrirShopeeAtribuicoes(),
     "Ocorrencias/PacotesFaltantes":  () => abrirPacotesFaltantes(),
+    "Operacao/PacotesFaltantes/MeusRegistros": () => abrirPacotesFaltantesRegistro(),
     "TorreControle/NaRua":           () => abrirTorreNaRua(),
     "TorreControle/NaRua/Shopee":       () => abrirTorreNaRua(null, "shopee"),
     "TorreControle/NaRua/Loggi":        () => abrirTorreNaRua(null, "loggi"),
@@ -142,6 +145,20 @@ const _ROTAS = {
     "Extravios/Dashboard":           () => abrirExtraviosDash(),
 };
 
+// Torre de Controle > transportadora: a URL guarda a transportadora, e o F5 volta filtrado.
+[
+    ["Shopee",       "Shopee",        /shopee|spx/],
+    ["Loggi",        "Loggi",         /loggi/],
+    ["Anjun",        "Anjun",         /anjun/],
+    ["Imile",        "Imile",         /imile/],
+    ["JT",           "J&T Express",   /jt/],
+    ["TotalExpress", "Total Express", /total/],
+].forEach(([nome, falta, extravio]) => {
+    const base = "TorreControle/" + nome;
+    _ROTAS[base + "/PacotesFaltantes"] = () => abrirPacotesFaltantesAdmin(null, falta, base + "/PacotesFaltantes");
+    _ROTAS[base + "/Extravios"]        = () => abrirExtraviosRegistros(null, extravio, base + "/Extravios");
+});
+
 // Rota de um passo dentro da tela -> rota da tela, que é a que tem link no menu lateral.
 // Sem isso a tela abria certa mas com o menu sem nada destacado.
 const _ROTAS_MENU = {
@@ -183,6 +200,7 @@ const _TELA_ROTAS = {
     // a rota da tela anterior, o menu marcava o item errado e recarregar levava
     // para outro lugar.
     "tela-fiscal-ctes":          "Fiscal/CTes",
+    "tela-fiscal-acompanhamento":"Fiscal/Acompanhamento",
     "tela-fiscal-novo-cte":      "Fiscal/NovoCTe",
     "tela-fiscal-empresas":      "Fiscal/Empresas",
     "tela-fiscal-certificado":   "Fiscal/Certificado",
@@ -207,6 +225,7 @@ const _TELA_ROTAS = {
     "tela-custodia":             "Custodia/Pacotes",
     "tela-etiquetas":            "Operacao/Etiquetas",
     "tela-pacotes-faltantes":    "Ocorrencias/PacotesFaltantes",
+    "tela-pacotes-faltantes-registro": "Operacao/PacotesFaltantes/MeusRegistros",
     "tela-torre-na-rua":            "TorreControle/NaRua",
     "tela-torre-pacotes-faltantes": "TorreControle/PacotesFaltantes",
     "tela-torre-transferencias":    "TorreControle/Transferencias",
@@ -256,6 +275,7 @@ const _TELA_ROTAS = {
     "tela-conf-nfs":             "Financeiro/ConferenciaNF",
     "tela-admin-antecipacoes":   "Financeiro/Antecipacoes",
     "tela-admin-pagamentos":     "Financeiro/Pagamentos",
+    "tela-faturas":              "Financeiro/Faturas",
     "tela-admin-usuarios":       "Cadastros/Entregadores",
     "tela-anotacoes-relatorio":  "Cadastros/AnotacoesRelatorio",
     "tela-admin-motoristas":     "Cadastros/Motoristas",
@@ -273,6 +293,132 @@ const _TELA_ROTAS = {
     "tela-extravios-dash":       "Extravios/Dashboard",
 };
 
+// ───── URL QUE ACOMPANHA O MENU ─────
+// O nome de cada rota nasceu com o menu da época (Shopee/AT, Pedidos/Pesquisar...). O código
+// segue usando esses nomes: é tudo isto aqui que traduz, e só aqui. Por isso a tradução é
+// segura: a tela não sabe qual URL está na barra, e link antigo continua abrindo, porque
+// o nome interno é aceito como sempre foi e logo em seguida a barra troca pro novo.
+//
+// Interna -> a que aparece na barra. Pra renomear, é mudar aqui. Duas internas podem dar na
+// mesma pública (rota antiga de uma tela): a primeira da lista é a que a URL nova abre.
+const _ROTAS_URL = {
+    // Operação
+    "Operacao/Bipagem":                "Operacao/Separacao",
+    "Custodia/Pacotes":                "Operacao/Custodia",
+    "Pedidos/Pesquisar":               "Operacao/HistoricoPedidos",
+    "Shopee/ConfEntregadores":         "Operacao/ConferenciaEntregadores",
+    "Ocorrencias/PacotesFaltantes":    "Operacao/PacotesFaltantes",
+    "Operacao/DevolucoesReceber":      "Operacao/Devolucoes/Receber",
+    "Operacao/DevolucoesReceberAvulso":"Operacao/Devolucoes/ReceberAvulso",
+    "Operacao/DevolucoesRegistro":     "Operacao/Devolucoes/Registro",
+    "Operacao/DesempenhoUsuario":      "Operacao/Desempenho/Usuario",
+    "Operacao/DesempenhoHora":         "Operacao/Desempenho/Hora",
+
+    // Operação > Shopee
+    "Shopee/Recebimento":              "Operacao/Shopee/Recebimento",
+    "Shopee/Recebimento/Exportar":     "Operacao/Shopee/Recebimento/Exportar",
+    "Conferencias/Alimentar":          "Operacao/Shopee/Alimentar",
+    "Shopee/Romaneiro":                "Operacao/Shopee/Alimentar/Romaneiro",
+    "Shopee/AT":                       "Operacao/Shopee/Alimentar/AT",
+    "Shopee/Pedidos":                  "Operacao/Shopee/Alimentar/Pedidos",
+    "Shopee/LineHaul":                 "Operacao/Shopee/LineHaul",
+    "Shopee/Atribuicoes":              "Operacao/Shopee/Atribuicoes",
+    "Shopee/Atribuicoes/VariosClusters": "Operacao/Shopee/Atribuicoes/VariosClusters",
+    "Conferencias/Shopee":             "Operacao/Shopee/ConferenciaArquivo",
+
+    // Operação > as demais transportadoras
+    "Operacao/AlimentarLoggi":         "Operacao/Loggi/Alimentar",
+    "Operacao/AlimentarAnjun":         "Operacao/Anjun/Alimentar",
+    "Operacao/AlimentarImile":         "Operacao/Imile/Alimentar",
+    "Operacao/AlimentarJT":            "Operacao/JT/Alimentar",
+    "Operacao/AlimentarTotalExpress":  "Operacao/TotalExpress/Alimentar",
+    "Conferencias/Loggi":              "Operacao/Loggi/Conferencia",
+    "Conferencias/Anjun":              "Operacao/Anjun/Conferencia",
+    "Conferencias/Imile":              "Operacao/Imile/Conferencia",
+    "Conferencias/JT":                 "Operacao/JT/Conferencia",
+    "Conferencias/TotalExpress":       "Operacao/TotalExpress/Conferencia",
+
+    // Torre de Controle
+    "Planejamento/Cacador":            "TorreControle/Planejamento/Cacador",
+    "Planejamento/Videira":            "TorreControle/Planejamento/Videira",
+    "Ativos/Disparar":                 "TorreControle/Ativos/Disparar",
+    "Extravios/Registros":             "TorreControle/Extravios/Registros",
+    "Extravios/Pesquisar":             "TorreControle/Extravios/Pesquisar",
+    "Extravios/Dashboard":             "TorreControle/Extravios/Dashboard",
+    "TorreControle/NaRua/Shopee":      "TorreControle/Shopee/NaRua",
+    "TorreControle/NaRua/Loggi":       "TorreControle/Loggi/NaRua",
+    "TorreControle/NaRua/Anjun":       "TorreControle/Anjun/NaRua",
+    "TorreControle/NaRua/Imile":       "TorreControle/Imile/NaRua",
+    "TorreControle/NaRua/JT":          "TorreControle/JT/NaRua",
+    "TorreControle/NaRua/TotalExpress":"TorreControle/TotalExpress/NaRua",
+    "Shopee/Stuck":                    "TorreControle/Shopee/Stuck",
+    "Shopee/Stuck/Backlog":            "TorreControle/Shopee/Stuck/Backlog",
+    "Shopee/ItemAvariado":             "TorreControle/Shopee/ItemAvariado",
+
+    // Entregador
+    "Conferencia/Shopee":              "MinhaRota/Conferencia",
+    "CriarAT":                         "MinhaRota/CriarAT",
+    "Devolucoes/Nova":                 "MinhaRota/Devolucao",
+    "Devolucoes/Enviadas":             "MinhaRota/Devolucoes",
+    "Devolucoes/MinhasViagens":        "MinhaRota/Viagens",
+    "Anotacoes/Transportadoras":       "MinhaRota/Anotacoes/Transportadoras",
+    "Anotacoes/PorDia":                "MinhaRota/Anotacoes/PorDia",
+    "Anotacoes/Quinzenas":             "MinhaRota/Anotacoes/Quinzenas",
+    "Performance/PorDia":              "MeuDesempenho/Performance",
+    "PODShopee/Semanal":               "MeuDesempenho/POD",
+    "Fechamentos/Meus":                "MeusPagamentos/Fechamentos",
+    "Fechamentos/Dashboard":           "MeusPagamentos/Dashboard",
+    "Fechamentos/NotasFiscais":        "MeusPagamentos/NotasFiscais",
+    "Adiantamentos/Solicitar":         "MeusPagamentos/Antecipacao",
+    "Adiantamentos/Minhas":            "MeusPagamentos/Solicitacoes",
+
+    // Sistema, Cadastros e Fiscal
+    "Macros":                          "Sistema/Macros",
+    "Macros/EmExecucao":               "Sistema/Macros/EmExecucao",
+    "SPX/AgencyRouter":                "Sistema/AgencyRouter",
+    "TicketLog/Informacoes":           "Cadastros/TicketLog",
+    "ConsultaNFs":                     "Fiscal/ConsultaNFs",
+    "Cadastros/Usuarios":              "Cadastros/Usuarios",
+
+    // Rotas antigas, que já não tinham tela própria: a barra vai direto pro endereço de hoje.
+    "Conferencias":                    "Operacao/Shopee/LineHaul",
+    "Operacao/ShopeeRecebimento":      "Operacao/Shopee/Recebimento",
+    "Operacao/ShopeeReceber":          "Operacao/Shopee/Recebimento",
+    "Operacao/ShopeeRomaneiro":        "Operacao/Shopee/Alimentar/Romaneiro",
+    "Operacao/ShopeeAT":               "Operacao/Shopee/Alimentar/AT",
+    "Operacao/ShopeePedidos":          "Operacao/Shopee/Alimentar/Pedidos",
+    "Operacao/ShopeeLineHaul":         "Operacao/Shopee/LineHaul",
+    "Operacao/ShopeeAtribuicoes":      "Operacao/Shopee/Atribuicoes",
+    "Atribuicoes/SolicitarAT":         "MinhaRota/CriarAT",
+    "Cadastros/TodosUsuarios":         "Cadastros/Usuarios",
+};
+
+// Pública -> interna. Só a primeira de cada pública: as de baixo são nomes antigos.
+const _ROTAS_INTERNAS = {};
+Object.entries(_ROTAS_URL).forEach(([interna, publica]) => {
+    if (!(publica in _ROTAS_INTERNAS)) _ROTAS_INTERNAS[publica] = interna;
+});
+
+// Conversas têm o resto do caminho variável (tipo/transportadora/código), então vão por prefixo.
+const _ROTA_PREFIXO_INTERNO = "Ativos/Conversas";
+const _ROTA_PREFIXO_PUBLICO = "TorreControle/Ativos/Conversas";
+
+function _rotaPublica(rota) {
+    if (_ROTAS_URL[rota]) return _ROTAS_URL[rota];
+    if (rota === _ROTA_PREFIXO_INTERNO || rota.startsWith(_ROTA_PREFIXO_INTERNO + "/")) {
+        return _ROTA_PREFIXO_PUBLICO + rota.slice(_ROTA_PREFIXO_INTERNO.length);
+    }
+    return rota;
+}
+
+function _rotaInterna(caminho) {
+    if (_ROTAS_INTERNAS[caminho]) return _ROTAS_INTERNAS[caminho];
+    if (caminho === _ROTA_PREFIXO_PUBLICO || caminho.startsWith(_ROTA_PREFIXO_PUBLICO + "/")) {
+        return _ROTA_PREFIXO_INTERNO + caminho.slice(_ROTA_PREFIXO_PUBLICO.length);
+    }
+    return caminho;
+}
+
 // Atualiza a URL sem recarregar a página. rota=undefined (tela sem entrada no mapa,
 // ex. telas internas/modais) não mexe na URL atual. Só roda nos hosts de produção —
 // local (Live Server etc.) o site não mora num caminho fixo, então reescrever a URL
@@ -283,7 +429,7 @@ const _TELA_ROTAS = {
 function _rotaAtualizarUrl(rota, substituir) {
     if (!_ROTA_HOSTS.includes(location.hostname)) return;
     if (rota === undefined || rota === null) return;
-    const destino = rota ? `${_ROTA_BASE}/${rota}` : `${_ROTA_BASE}/`;
+    const destino = rota ? `${_ROTA_BASE}/${_rotaPublica(rota)}` : `${_ROTA_BASE}/`;
     if (location.pathname === destino) return;
     if (substituir) history.replaceState({ rota }, "", destino);
     else history.pushState({ rota }, "", destino);
@@ -297,6 +443,17 @@ function _rotaAbrirAtual() {
     caminho = caminho.replace(/^\/+|\/+$/g, "");
     if (caminho === "index.html") caminho = "";
     if (!caminho) return; // raiz — fica na home, que já é a tela padrão
+
+    // Veio do endereço novo: acha o nome interno. Veio do antigo: acerta a barra ANTES de abrir.
+    // Se fosse depois, a tela empilharia a URL nova e o "voltar" cairia de novo na antiga,
+    // que empilharia de novo — a pessoa ficaria presa ali.
+    caminho = _rotaInterna(caminho);
+    if (_ROTA_HOSTS.includes(location.hostname)) {
+        const destino = `${_ROTA_BASE}/${_rotaPublica(caminho)}`;
+        if (location.pathname.replace(/\/+$/, "") !== destino) {
+            history.replaceState({ rota: caminho }, "", destino + (location.search || "") + (location.hash || ""));
+        }
+    }
 
     const abrir = _ROTAS[caminho];
     if (abrir) { abrir(); _marcarSubmenuAtivo(_ROTAS_MENU[caminho] || caminho); return; }

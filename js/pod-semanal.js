@@ -16,9 +16,10 @@ let _pdsBusca = "";
 let _pdsCarregando = false;
 let _pdsStatus = null;          // última leitura da planilha (só dev)
 
-function abrirPodSemanal(event) {
+// `rota`: a tela é a mesma, mas na Torre de Controle a URL não pode dizer "Meu desempenho".
+function abrirPodSemanal(event, rota) {
     if (event) event.preventDefault();
-    mostrarTela("tela-pod-semanal");
+    mostrarTela("tela-pod-semanal", rota);
     _pdsCarregar();
 }
 
