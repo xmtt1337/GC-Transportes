@@ -321,6 +321,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("submenu-baixas");
         show("bip-sync-btn");
         show("menu-macros"); // só a seção Colador aparece pra admin (macros.js filtra o resto)
+        show("menu-consulta-nfs"); // leitura só — aberta pra admin, diferente do resto do Fiscal
         // sem: financeiro, fechamento (só dev e finance)
     }
 
@@ -336,6 +337,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-baixas");
         show("submenu-baixas");
         show("bip-sync-btn");
+        show("menu-consulta-nfs");
         if (role === "dev" || role === "finance") {
             show("btn-add-entregador"); // dev/finance criam entregador e motorista
             show("btn-add-motorista");

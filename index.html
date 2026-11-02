@@ -608,6 +608,19 @@ if (_BASE) {
                 <li><a href="#" data-rota="Fiscal/Perfil" onclick="abrirFiscalPerfil(event)">Perfil de operação</a></li>
             </ul>
         </ul>
+
+        <!-- Consulta de NFs: código BR -> chave da NF-e vinculada, em lote, pra
+             CSV. Leitura só — por isso aberta pra admin, não só finance/dev como
+             o resto do Fiscal. Item próprio, sem submenu: é uma tela só. -->
+        <li class="menu-item" data-menu="consultanfs" data-rota="ConsultaNFs" id="menu-consulta-nfs" onclick="abrirConsultaNfs(event)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="10" cy="10" r="6"/>
+                <path d="m21 21-4.3-4.3"/>
+            </svg>
+            <span class="label">Consulta de NFs</span>
+            <span class="menu-tooltip">Consulta de NFs</span>
+        </li>
+
         <li class="menu-item" data-menu="cadastros" id="menu-cadastros" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -2049,6 +2062,10 @@ if (_BASE) {
 
         <div id="tela-fiscal-valores" class="view tela-full">
             <div id="fiscal-valores-conteudo" class="conteudo-fiscal"></div>
+        </div>
+
+        <div id="tela-fiscal-consulta-nfs" class="view tela-full">
+            <div id="fiscal-consulta-nfs-conteudo" class="conteudo-fiscal"></div>
         </div>
 
         <div id="tela-bipagens" class="view tela-full">
@@ -6047,6 +6064,7 @@ if (_BASE) {
     <script src="js/fiscal-numeracao.js?v=30260815a"></script>
     <script src="js/fiscal-perfil.js?v=30260816c"></script>
     <script src="js/fiscal-valores.js?v=20261031b"></script>
+    <script src="js/fiscal-consulta-nfs.js?v=20261102a"></script>
     <script src="js/fiscal-dacte.js?v=30260820b"></script>
     <script src="js/fiscal-certificado.js?v=20261021a"></script>
     <script src="js/agency-router.js?v=20261002a"></script>
