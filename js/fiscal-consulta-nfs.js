@@ -71,12 +71,16 @@ async function _cnfsGerar() {
     const comNf = resultados.filter((r) => r.nfs.length).length;
     resultEl.innerHTML = `<p>${comNf} de ${resultados.length} código(s) com NF-e encontrada — baixando o CSV…</p>`;
 
-    const nomeOrigem = (o) => (o === "cte_importado" ? "CT-e já importado"
-        : o === "api_shopee" ? "API da Shopee" : "");
-    const linhaCsv = (campos) => campos.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(";");
+    const campo = (c) => `"${String(c ?? "").replace(/"/g, '""')}"`;
+    // A chave da NF-e tem 44 dígitos — puro número, o Excel vira notação
+    // científica (3,52E+43) e perde o valor de verdade. O truque =" " força
+    // o Excel a tratar como texto, igual já seria preciso pra CNPJ/CPF/chave
+    // em qualquer CSV deste sistema.
+    const campoTexto = (c) => `="${String(c ?? "").replace(/"/g, '""')}"`;
+    const linhaCsv = (campos) => campos.join(";");
     const csv = [
-        linhaCsv(["Código BR", "NFs", "Origem", "Erro"]),
-        ...resultados.map((r) => linhaCsv([r.codigo, r.nfs.join("; "), nomeOrigem(r.origem), r.erro || ""])),
+        linhaCsv([campo("Código BR"), campo("NFs"), campo("Erro")]),
+        ...resultados.map((r) => linhaCsv([campo(r.codigo), campoTexto(r.nfs.join("; ")), campo(r.erro || "")])),
     ].join("\r\n");
 
     const blob = new Blob([String.fromCharCode(0xFEFF) + csv], { type: "text/csv;charset=utf-8" });
