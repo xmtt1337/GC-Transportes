@@ -22,7 +22,7 @@ const DADOS = {
 function carregar(user) {
     const els = new Map();
     const el = (id) => { if (!els.has(id)) els.set(id, { id, innerHTML: "", value: "", checked: false, style: {} }); return els.get(id); };
-    const ctx = { console, API: "", token: "t", window: { _gcUser: user || { role: "gestor" } }, document: { getElementById: el, querySelectorAll: () => [] } };
+    const ctx = { console, API: "", token: "t", fetch: async () => ({ json: async () => ctx.podResposta || { linhas: [] } }), window: { _gcUser: user || { role: "gestor" } }, document: { getElementById: el, querySelectorAll: () => [] } };
     vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-regras.js"), "utf8") + "\n;this._set = (d) => { _rgDados = d; };", ctx);
     return { ctx, el };
@@ -70,3 +70,25 @@ test("exceção 'Limite de PNR próprio' mostra o campo do número", () => {
     ctx._rgTipoExcecao();
     assert.strictEqual(el("rg-exc-valor").style.display, "none");
 });
+
+test("POD: valores atuais e conferência, com o que não casou em destaque", async () => {
+    const { ctx, el } = carregar();
+    ctx.podResposta = { linhas: [
+        { semana_inicio: "2026-11-02", semana_fim: "2026-11-08", usuario: "login.um", cidade: "Vila A", good: 79.99, pacotes: 10, valor: 2, situacao: "desconta" },
+        { semana_inicio: "2026-11-02", semana_fim: "2026-11-08", usuario: "login.dois", cidade: "Vila B", good: 70, pacotes: 0, valor: 0, situacao: "sem entrega nessa cidade", cidades_entrega: ["Vila C"] }] };
+    ctx._set({ ...DADOS, pod: { limite_pct: 80, desconto_pacote: 0.2, inicio_performance: "2026-10-16", inicio_fixo: "2026-11-01" } });
+    ctx._rgRender();
+    const html = el("rg-conteudo").innerHTML;
+    assert.match(html, /id="rg-pod-limite" value="80"/);
+    assert.match(html, /id="rg-pod-desconto" value="0,2"/);
+    assert.match(html, /id="rg-pod-inicio" value="2026-10-16"/);
+    assert.match(html, /id="rg-pod-inicio-fixo" value="2026-11-01"/);
+    await new Promise(r => setImmediate(r));
+    await new Promise(r => setImmediate(r));
+    const conf = el("rg-pod-conf").innerHTML;
+    assert.match(conf, /Abaixo da meta nessa quinzena: 2 · desconto R\$ 2,00/);
+    assert.match(conf, /02\/11 a 08\/11/);
+    assert.match(conf, /79,99%/);
+    assert.match(conf, /cft-aviso">sem entrega nessa cidade \(entregou em Vila C\)/);
+});
+

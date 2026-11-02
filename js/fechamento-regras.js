@@ -87,6 +87,7 @@ function _rgRender() {
     const pnr = d.pnr || { limite_usuario: 2, regra_fixo: { fator: 0.01, desconto_pct: 40 } };
     document.getElementById("rg-conteudo").innerHTML = `
         ${_rgHtmlPnr(pnr)}
+        ${_rgHtmlPod(d.pod || {})}
         ${_rgHtmlExcecoes(d)}
         ${_rgHtmlPerformance(d.performance || {})}`;
     document.getElementById("rg-conteudo2").innerHTML = `
@@ -94,6 +95,57 @@ function _rgRender() {
         ${_rgHtmlDeslocamento(d.deslocamento || {})}
         ${_rgHtmlExtravios(d.extravios || {})}`;
     document.getElementById("rg-historico").innerHTML = _rgHtmlHistorico(d.historico || []);
+    _rgCarregarPod();
+}
+
+// ── POD ──
+function _rgHtmlPod(p) {
+    return `<div class="cft-regras">
+        <div class="cft-pend-titulo" style="color:#e2e8f0">POD Shopee</div>
+        <div class="cft-ajuda" style="margin-bottom:8px">Vem de POD Shopee › Semanal. Vale por login e cidade: desconta só as entregas Shopee daquele login naquela cidade, de segunda a domingo da semana. Os outros logins da pessoa e as outras transportadoras não mudam. Soma com a tarifa mínima da PNR. Quando sair uma semana nova, use <b>Recalcular</b> em PNR abertas.</div>
+        <div class="cft-barra" style="margin:0;flex-wrap:wrap;align-items:center">
+            <span class="cft-ajuda">Good Pod abaixo de</span>
+            <input class="cft-input" id="rg-pod-limite" value="${_rgEsc(p.limite_pct ?? "")}" inputmode="decimal" style="width:60px;flex:0 0 auto;margin:0">
+            <span class="cft-ajuda">% → menos R$</span>
+            <input class="cft-input" id="rg-pod-desconto" value="${_rgPct(p.desconto_pacote)}" inputmode="decimal" style="width:70px;flex:0 0 auto;margin:0">
+            <span class="cft-ajuda">por pacote. Começa em</span>
+            <input class="cft-input" type="date" id="rg-pod-inicio" value="${_rgEsc(p.inicio_performance || "")}" style="width:150px;flex:0 0 auto;margin:0">
+            <span class="cft-ajuda">(performance) e em</span>
+            <input class="cft-input" type="date" id="rg-pod-inicio-fixo" value="${_rgEsc(p.inicio_fixo || "")}" style="width:150px;flex:0 0 auto;margin:0">
+            <span class="cft-ajuda">(valor fixo).</span>
+            <button class="cft-btn primario" onclick="_rgSalvarPod(this)">Salvar</button>
+        </div>
+        <div id="rg-pod-conf" style="margin-top:10px"></div>
+    </div>`;
+}
+
+function _rgSalvarPod(btn) {
+    const v = (id) => (document.getElementById(id) || {}).value || "";
+    _rgPost("regras/pod", "PUT", { ..._rgPeriodo(), limite_pct: v("rg-pod-limite"), desconto_pacote: v("rg-pod-desconto"),
+        inicio_performance: v("rg-pod-inicio"), inicio_fixo: v("rg-pod-inicio-fixo") }, "Regra do POD salva — quinzena recalculada.", btn);
+}
+
+// Quem ficou abaixo da meta na quinzena escolhida. POD sem entrega casada não desconta, em âmbar.
+function _rgCarregarPod() {
+    const el = document.getElementById("rg-pod-conf");
+    if (!el) return;
+    const p = _rgPeriodo();
+    fetch(`${_RG_API()}/regras/pod-conferencia?mes=${p.mes}&ano=${p.ano}&quinzena=${p.quinzena}`, { headers: _rgHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) { el.innerHTML = `<div class="cft-erro">${_rgEsc(d.error)}</div>`; return; }
+        const linhas = d.linhas || [];
+        if (!linhas.length) { el.innerHTML = `<div class="cft-ajuda">Ninguém abaixo da meta nas semanas dessa quinzena.</div>`; return; }
+        const dia = (iso) => iso.slice(8) + "/" + iso.slice(5, 7);
+        const num = (n) => Number(n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const total = linhas.reduce((s, x) => s + x.valor, 0);
+        el.innerHTML = `<div class="cft-ajuda" style="margin-bottom:6px">Abaixo da meta nessa quinzena: ${linhas.length} · desconto R$ ${num(total)}</div>
+            <div class="cft-tabela-wrap" style="max-height:320px;overflow-y:auto"><table class="cft-tabela"><thead><tr><th>Semana</th><th>Usuário</th><th>Cidade</th>
+                <th style="text-align:right">Good Pod</th><th style="text-align:right">Pacotes</th><th style="text-align:right">Desconto</th><th>Situação</th></tr></thead>
+                <tbody>${linhas.map(x => `<tr><td>${dia(x.semana_inicio)} a ${dia(x.semana_fim)}</td><td>${_rgEsc(x.usuario)}</td><td>${_rgEsc(x.cidade || "—")}</td>
+                    <td class="num">${num(x.good)}%</td><td class="num">${x.pacotes}</td><td class="num">${x.valor ? "−" + num(x.valor) : "—"}</td>
+                    <td>${x.situacao === "desconta" ? "desconta" : `<span class="cft-aviso">${_rgEsc(x.situacao)}${(x.cidades_entrega || []).length ? " (entregou em " + _rgEsc(x.cidades_entrega.join(", ")) + ")" : ""}</span>`}</td></tr>`).join("")}</tbody></table></div>`;
+    }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar a conferência do POD.</div>`; });
 }
 
 // ── PNR abertas ──

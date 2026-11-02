@@ -410,10 +410,10 @@ function _rqBaixarDia(dia) {
 function _rqAbasEntregador(card) {
     const { r, pacotes, onholds } = card || _rqCard;
     const dias = [["Dia", "Shopee entregues", "Outras no prazo", "Onholds", "Atrasados/não entregues", "PNR", "Pacotes na tarifa mínima (PNR)",
-        "Usuário(s) que passaram do limite de PNR", "Performance (%)", "R$/pacote", "Pacotes pagos", "Total"]]
+        "Usuário(s) que passaram do limite de PNR", "Performance (%)", "R$/pacote", "Pacotes pagos", "Total", "Pacotes com desconto POD", "Desconto POD", "Usuário(s) com POD abaixo da meta"]]
         .concat(r.dias.map(d => [_rqDiaCurto(d.dia), d.shopee, d.outras_prazo, d.onholds, d.outras_atraso, d.acareacoes || 0,
             d.tarifa_minima ? (d.fixo ? d.pacotes_pagos : d.pacotes_minima || 0) : 0, d.tarifa_minima && !d.fixo ? d.usuarios_minima || "" : (d.tarifa_minima ? "(valor fixo)" : ""),
-            d.pct, d.valor, d.pacotes_pagos, d.total]));
+            d.pct, d.valor, d.pacotes_pagos, d.total, d.pod_pacotes || 0, d.pod_desconto || 0, d.pod_usuarios || ""]));
     const afetou = r.dias.flatMap(d => _rqLinhasPedidos(d.dia, _rqPedidosDoDia(d.dia, pacotes, onholds), r.dias)).filter(l => l[4] === "Sim");
     const todos = r.dias.flatMap(d => _rqLinhasPedidos(d.dia, _rqPedidosDoDia(d.dia, pacotes, onholds, true), r.dias));
     const fora = pacotes.filter(p => !p.perf_dia && !/^shopee/i.test(p.transportadora)).map(p => ["", "", "", _rqSituacao(p), "Não", p.data_entrega || "", p.transportadora, p.codigo,

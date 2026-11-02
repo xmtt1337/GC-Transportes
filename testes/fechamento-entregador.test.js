@@ -311,3 +311,31 @@ test("Por usuário: erro ao buscar os pedidos aparece e dá pra tentar de novo",
     await new Promise(r => setImmediate(r));
     assert.match(el("fech-sistema").innerHTML, /Ana Pessoa/);
 });
+
+test("POD: dia com desconto aparece como perda, com o valor e o usuário", () => {
+    const { ctx, el, modal } = carregar();
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.faixas = { semana: [{ ate: 100, valor: 2.5 }], domingo: [{ ate: 100, valor: 2.6 }] };
+    Object.assign(D2.performance.dias[1], { pod_pacotes: 10, pod_desconto: 2, pod_usuarios: "fulano.login" });
+    ctx._fsRender(D2);
+    const html = el("fech-sistema").innerHTML;
+    assert.match(html, /fs-dia-alerta" onclick="_fsAbrirDia\('2026-09-22'\)/);
+    assert.match(html, /−R\$\s2,00 com POD/);
+    ctx._fsMostrarDia("2026-09-22", "atrasados");
+    assert.match(modal.innerHTML, /Perdido com POD/);
+    assert.match(modal.innerHTML, /10 entrega\(s\) Shopee com desconto \(fulano\.login\)/);
+});
+
+test("POD: na visão Por usuário só aparece no dia de quem teve desconto", async () => {
+    const { ctx, el } = carregar();
+    porUsuario(ctx);
+    ctx.fetch = async () => ({ ok: true, json: async () => ({ pacotes: [
+        { transportadora: "Shopee", codigo: "BR1", data_entrega: "21/09/2026", perf_dia: "21/09/2026", valor_motorista: 2.3, desconto_pod: 0.2, pessoa: "Ana Pessoa" },
+        { transportadora: "Imile", codigo: "I2", data_entrega: "21/09/2026", perf_dia: "21/09/2026", valor_motorista: 2.5, desconto_pod: 0, pessoa: "Bia Pessoa" }] }) });
+    ctx._fsTrocarVisao("usuario");
+    await new Promise(r => setImmediate(r));
+    assert.match(el("fech-sistema").innerHTML, /−R\$\s0,20 com POD/);
+    ctx._fsMarcarPessoa(0);   // quem mais recebeu: Bia, sem POD
+    assert.doesNotMatch(el("fech-sistema").innerHTML, /com POD/);
+});
+

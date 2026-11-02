@@ -109,12 +109,12 @@ function _pdPorEntregador(dias) {
     const m = new Map();
     for (const d of dias) {
         const r = m.get(d.driver) || { driver: d.driver, cidade: d.cidade, polos: new Map(), dias: 0, afetados: 0, onholds: 0, atrasos: 0, pnr: 0,
-            pacotes_minima: 0, perda_performance: 0, perda_pnr: 0, total: 0 };
+            pacotes_minima: 0, perda_performance: 0, perda_pnr: 0, perda_pod: 0, total: 0 };
         r.polos.set(d.polo, (r.polos.get(d.polo) || 0) + 1);
         r.dias++;
         if (d.total > 0) r.afetados++;
         r.onholds += d.onholds; r.atrasos += d.atrasos; r.pnr += d.pnr; r.pacotes_minima += d.pacotes_minima;
-        r.perda_performance += d.perda_performance; r.perda_pnr += d.perda_pnr; r.total += d.total;
+        r.perda_performance += d.perda_performance; r.perda_pnr += d.perda_pnr; r.perda_pod += d.perda_pod || 0; r.total += d.total;
         m.set(d.driver, r);
     }
     return [...m.values()].map(r => ({ ...r, polo: [...r.polos.entries()].sort((a, b) => b[1] - a[1])[0][0] }))
@@ -128,16 +128,17 @@ function _pdRender() {
     const dias = (_pdDados.dias || []).filter(ok);
     const oc = (_pdDados.ocorrencias || []).filter(ok);
     const soma = (lista, f) => lista.reduce((s, x) => s + (Number(f(x)) || 0), 0);
-    const perf = soma(dias, d => d.perda_performance), pnr = soma(dias, d => d.perda_pnr);
+    const perf = soma(dias, d => d.perda_performance), pnr = soma(dias, d => d.perda_pnr), pod = soma(dias, d => d.perda_pod);
     const ents = _pdPorEntregador(dias);
     const deTipo = (tipos) => oc.filter(o => tipos.includes(o.tipo));
     const contagem = { resumo: ents.filter(e => e.total > 0).length, prazo: deTipo(["Atrasado", "Não entregue"]).length,
         onhold: deTipo(["Onhold"]).length, pnr: deTipo(["PNR"]).length, dias: dias.filter(d => d.total > 0).length };
     el.innerHTML = `
         <div class="cft-kpis">
-            <div class="cft-kpi"><div class="cft-kpi-valor cft-neg">R$ ${_pdNum(perf + pnr)}</div><div class="cft-kpi-rotulo">Deixaram de receber</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor cft-neg">R$ ${_pdNum(perf + pnr + pod)}</div><div class="cft-kpi-rotulo">Deixaram de receber</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">R$ ${_pdNum(perf)}</div><div class="cft-kpi-rotulo">Performance (onhold e atraso)</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">R$ ${_pdNum(pnr)}</div><div class="cft-kpi-rotulo">PNR</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor">R$ ${_pdNum(pod)}</div><div class="cft-kpi-rotulo">POD</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">${contagem.resumo} de ${ents.length}</div><div class="cft-kpi-rotulo">Entregadores com perda</div></div>
         </div>
         <div class="filtro-tabs" style="margin-bottom:12px">${_PD_ABAS.map(([k, n]) =>
@@ -155,14 +156,14 @@ function _pdTabela(aba, { ents, dias, deTipo }) {
         const lista = ents.filter(e => e.total > 0);
         return `<table class="cft-tabela"><thead><tr><th>Entregador</th><th>Polo</th><th>Cidade</th><th style="text-align:right">Dias afetados</th>
             <th style="text-align:right">Onholds</th><th style="text-align:right">Fora do prazo</th><th style="text-align:right">PNR</th>
-            <th style="text-align:right">Performance</th><th style="text-align:right">PNR (R$)</th><th style="text-align:right">Total</th></tr></thead>
+            <th style="text-align:right">Performance</th><th style="text-align:right">PNR (R$)</th><th style="text-align:right">POD (R$)</th><th style="text-align:right">Total</th></tr></thead>
             <tbody>${lista.length ? lista.map(e => `<tr style="cursor:pointer" title="Filtrar por este entregador" data-n="${_pdEsc(e.driver)}"
                 onclick="document.getElementById('pd-entregador').value=this.dataset.n;_pdAba='dias';_pdRender()">
                 <td>${_pdEsc(e.driver)}</td><td>${_pdEsc(e.polo || "—")}</td><td>${_pdEsc(e.cidade || "—")}</td>
                 <td class="num">${e.afetados} de ${e.dias}</td><td class="num">${e.onholds}</td><td class="num">${e.atrasos}</td><td class="num">${e.pnr}</td>
-                ${perdido(e.perda_performance)}${perdido(e.perda_pnr)}<td class="num cft-neg"><strong>−${_pdNum(e.total)}</strong></td>
-            </tr>`).join("") + `<tr><td colspan="7"><strong>Total</strong></td>${perdido(lista.reduce((s, e) => s + e.perda_performance, 0))}${perdido(lista.reduce((s, e) => s + e.perda_pnr, 0))}
-                <td class="num cft-neg"><strong>−${_pdNum(lista.reduce((s, e) => s + e.total, 0))}</strong></td></tr>` : vazio(10)}</tbody></table>`;
+                ${perdido(e.perda_performance)}${perdido(e.perda_pnr)}${perdido(e.perda_pod)}<td class="num cft-neg"><strong>−${_pdNum(e.total)}</strong></td>
+            </tr>`).join("") + `<tr><td colspan="7"><strong>Total</strong></td>${perdido(lista.reduce((s, e) => s + e.perda_performance, 0))}${perdido(lista.reduce((s, e) => s + e.perda_pnr, 0))}${perdido(lista.reduce((s, e) => s + e.perda_pod, 0))}
+                <td class="num cft-neg"><strong>−${_pdNum(lista.reduce((s, e) => s + e.total, 0))}</strong></td></tr>` : vazio(11)}</tbody></table>`;
     }
     // Ocorrências: a perda é do DIA (entregador × dia) — aparece uma vez, na 1ª linha do dia;
     // as outras linhas do mesmo dia ficam em branco (ou dizem por que não custaram nada).
@@ -209,7 +210,7 @@ function _pdTabela(aba, { ents, dias, deTipo }) {
     const lista = dias.filter(d => d.total > 0).sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : a.driver.localeCompare(b.driver, "pt-BR")));
     return `<table class="cft-tabela"><thead><tr><th>Dia</th><th>Entregador</th><th style="text-align:right">Performance</th><th style="text-align:right">R$/pacote</th>
         <th style="text-align:right">Pacotes</th><th style="text-align:right">Onhold / atraso</th><th style="text-align:right">PNR</th>
-        <th style="text-align:right">Performance (R$)</th><th style="text-align:right">PNR (R$)</th><th style="text-align:right">Total</th></tr></thead>
+        <th style="text-align:right">Performance (R$)</th><th style="text-align:right">PNR (R$)</th><th style="text-align:right">POD (R$)</th><th style="text-align:right">Total</th></tr></thead>
         <tbody>${lista.length ? lista.map(d => `<tr><td>${dia(d.dia)}</td><td>${_pdEsc(d.driver)}</td>
             <td class="num">${_pdPct(d.pct)}</td>
             <td class="num">${d.fixo ? "fixo" : d.pacotes_minima && d.valor_medio
@@ -218,6 +219,6 @@ function _pdTabela(aba, { ents, dias, deTipo }) {
                 : `${_pdNum(d.valor)} <span class="cft-ajuda">de ${_pdNum(d.valor_maximo)}</span>`}</td>
             <td class="num">${d.pacotes}${d.pacotes_minima ? ` <span class="cft-ajuda">(${d.pacotes_minima} na mínima)</span>` : ""}</td>
             <td class="num">${d.onholds} / ${d.atrasos}</td><td class="num">${d.pnr}</td>
-            ${perdido(d.perda_performance)}${perdido(d.perda_pnr)}<td class="num cft-neg"><strong>−${_pdNum(d.total)}</strong></td></tr>`).join("")
-            + total(9, lista.reduce((s, d) => s + d.total, 0)) : vazio(10)}</tbody></table>`;
+            ${perdido(d.perda_performance)}${perdido(d.perda_pnr)}${perdido(d.perda_pod)}<td class="num cft-neg"><strong>−${_pdNum(d.total)}</strong></td></tr>`).join("")
+            + total(10, lista.reduce((s, d) => s + d.total, 0)) : vazio(11)}</tbody></table>`;
 }

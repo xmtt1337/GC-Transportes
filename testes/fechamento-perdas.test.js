@@ -102,3 +102,19 @@ test("mesmo dia com várias ocorrências: o valor do dia aparece só na 1ª linh
     assert.strictEqual((html.match(/−50,00/g) || []).length, 2, "1ª linha + total");
     assert.match(html, /Deixou de receber no dia/);
 });
+
+test("POD entra no total, no KPI e nas colunas do resumo e do dia", () => {
+    const { ctx, el } = carregar();
+    const d = JSON.parse(JSON.stringify(DADOS));
+    Object.assign(d.dias[0], { perda_pod: 4, pod_pacotes: 20, total: 54 });
+    ctx._set(d);
+    ctx._pdOpcoes();
+    ctx._pdRender();
+    const html = el("pd-lista").innerHTML;
+    assert.match(html, /R\$ 94,00<\/div><div class="cft-kpi-rotulo">Deixaram de receber/);
+    assert.match(html, /R\$ 4,00<\/div><div class="cft-kpi-rotulo">POD/);
+    assert.match(html, /POD \(R\$\)/);
+    ctx._pdAbrirAba("dias");
+    assert.match(el("pd-lista").innerHTML, /<td class="num cft-neg">−4,00<\/td>/);
+});
+

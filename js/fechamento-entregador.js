@@ -170,7 +170,7 @@ function _fsPerdaPnr(p) {
 /** Dia em que ele perdeu dinheiro: R$ abaixo do valor de 100% ou entregas na tarifa mínima por PNR. Ocorrência que não custou nada não entra. */
 const _fsPerdeuDia = (p) => {
     const fx = _fsFaixa(p.dia);
-    return (!p.fixo && fx.max != null && p.valor < fx.max) || (p.tarifa_minima && (p.fixo || (p.pacotes_minima || 0) > 0));
+    return (!p.fixo && fx.max != null && p.valor < fx.max) || (p.tarifa_minima && (p.fixo || (p.pacotes_minima || 0) > 0)) || (p.pod_pacotes || 0) > 0;
 };
 
 function _fsHtmlPerformance(d) {
@@ -212,6 +212,7 @@ function _fsCardDia(p) {
         ${p.tarifa_minima ? `<div class="fs-dia-linha fs-neg">${p.fixo ? `Fixo com desconto em ${p.pacotes_pagos} pacotes`
             : `${p.pacotes_minima || 0} pacote(s) na tarifa mínima (${_fsR(fx.min)})`}</div>` : ""}
         ${perda ? `<div class="fs-dia-linha fs-neg">−${_fsR(perda)} com PNR</div>` : ""}
+        ${p.pod_pacotes ? `<div class="fs-dia-linha fs-neg">−${_fsR(p.pod_desconto)} com POD</div>` : ""}
         ${perdeu ? `<div class="fs-dia-alerta-txt">ver pedidos ›</div>` : `<div class="fs-dia-linha fs-pos">Valor cheio</div>${ocorrencias ? `<div class="fs-dia-linha">ver pedidos ›</div>` : ""}`}
     </div>`;
 }
@@ -277,7 +278,8 @@ function _fsSomar(pedidos, ocorrencias) {
     const entregues = pedidos.filter(p => p.data_entrega).length;
     const valor = Math.round(pedidos.reduce((t, p) => t + (p.valor_motorista || 0), 0) * 100) / 100;
     const pnr = ocorrencias.filter(x => x.tipo === "Acareação").length;
-    return { entregues, valor, por_pacote: entregues ? valor / entregues : 0, atrasos: ocorrencias.length - pnr, pnr };
+    const pod = Math.round(pedidos.reduce((t, p) => t + (p.desconto_pod || 0), 0) * 100) / 100;
+    return { entregues, valor, por_pacote: entregues ? valor / entregues : 0, atrasos: ocorrencias.length - pnr, pnr, pod };
 }
 
 /** Pessoas da quinzena com o resultado de cada uma, da que mais recebeu pra que menos. */
@@ -322,6 +324,7 @@ function _fsCardDiaUsuario(dia, t) {
         ${t.atrasos ? `<div class="fs-dia-linha">${t.atrasos} onhold(s) e atraso(s)</div>` : ""}
         ${t.pnr ? `<div class="fs-dia-linha">${t.pnr} PNR</div>` : ""}
         ${passou.length ? `<div class="fs-dia-linha fs-neg">Tarifa mínima por PNR</div>` : ""}
+        ${t.pod ? `<div class="fs-dia-linha fs-neg">−${_fsR(t.pod)} com POD</div>` : ""}
         <div class="${passou.length ? "fs-dia-alerta-txt" : "fs-dia-linha"}">ver pedidos ›</div>
     </div>`;
 }
@@ -371,8 +374,10 @@ function _fsHtmlResumoDia(dia, p, entregues) {
             ${mini("Onholds e atrasados", (p.onholds || 0) + (p.outras_atraso || 0), (p.onholds || 0) + (p.outras_atraso || 0) > 0)}
             ${mini("PNR", p.acareacoes || 0, (p.acareacoes || 0) > 0)}
             ${p.tarifa_minima && !p.fixo ? mini("Na tarifa mínima", `${p.pacotes_minima || 0} pct`, true) : ""}
-            ${perda ? mini("Perdido com PNR", "−" + _fsR(perda), true) : ""}` : ""}
+            ${perda ? mini("Perdido com PNR", "−" + _fsR(perda), true) : ""}
+            ${p.pod_pacotes ? mini("Perdido com POD", "−" + _fsR(p.pod_desconto), true) : ""}` : ""}
         </div>` : ""}
+        ${p && p.pod_pacotes ? `<div class="cft-ajuda fs-neg" style="margin-bottom:8px">POD abaixo da meta na semana: ${p.pod_pacotes} entrega(s) Shopee com desconto (${_fsEsc(p.pod_usuarios || "")}).</div>` : ""}
         ${p && !p.fixo && fx.max && p.valor < fx.max ? `<div class="cft-ajuda" style="margin-bottom:8px">Com 100% de performance seria ${_fsR(fx.max)} por pacote;
             os onholds e atrasados abaixo baixaram pra ${_fsR(p.valor)}.</div>` : ""}
         ${p && p.tarifa_minima ? `<div class="cft-ajuda fs-neg" style="margin-bottom:8px">${p.acareacoes} PNR neste dia
