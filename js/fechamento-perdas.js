@@ -7,7 +7,7 @@
 const _PD_API = () => `${API}/admin/fechamento-transportadoras`;
 const _PD_MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const _PD_SEM = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
-const _PD_ABAS = [["resumo", "Resumo por entregador"], ["prazo", "Fora do prazo"], ["onhold", "Ocorrências (onhold)"], ["pnr", "PNR"], ["dias", "Por dia"]];
+const _PD_ABAS = [["resumo", "Resumo por entregador"], ["prazo", "Fora do prazo"], ["onhold", "Ocorrências (onhold)"], ["pnr", "PNR"], ["pod", "POD"], ["dias", "Por dia"]];
 let _pdDados = null;
 let _pdAba = "resumo";
 
@@ -42,6 +42,7 @@ function abrirPerdasDesempenho(event) {
             <div class="cft-ajuda" style="margin-bottom:10px">Quanto cada entregador deixou de receber na quinzena (polos da regra da performance).
                 <b>Performance:</b> pacotes do dia × (R$ de 100% − R$ que ele fez), dividido entre os onholds e atrasos do dia.
                 <b>PNR:</b> entregas que caíram pra tarifa mínima × (R$ do dia − tarifa mínima); valor fixo: a diferença pro fixo com desconto.
+                <b>POD:</b> desconto por pacote nas Shopee do login e da cidade abaixo da meta, na semana.
                 O pacote não entregue em si não entra — só o quanto ele derrubou a performance.</div>
             <div class="cft-barra" style="margin:0;flex-wrap:wrap">
                 <select class="fech-select" id="pd-q" onchange="_pdCarregar()">
@@ -130,9 +131,12 @@ function _pdRender() {
     const soma = (lista, f) => lista.reduce((s, x) => s + (Number(f(x)) || 0), 0);
     const perf = soma(dias, d => d.perda_performance), pnr = soma(dias, d => d.perda_pnr), pod = soma(dias, d => d.perda_pod);
     const ents = _pdPorEntregador(dias);
+    // Semana do POD não tem polo: vem do entregador. A cidade do filtro é a do nome dele, como nos dias.
+    const doEnt = new Map((_pdDados.dias || []).map(d => [d.driver, d]));
+    const podSemanas = (_pdDados.pod || []).filter(x => ok({ ...(doEnt.get(x.driver) || {}), driver: x.driver }));
     const deTipo = (tipos) => oc.filter(o => tipos.includes(o.tipo));
     const contagem = { resumo: ents.filter(e => e.total > 0).length, prazo: deTipo(["Atrasado", "Não entregue"]).length,
-        onhold: deTipo(["Onhold"]).length, pnr: deTipo(["PNR"]).length, dias: dias.filter(d => d.total > 0).length };
+        onhold: deTipo(["Onhold"]).length, pnr: deTipo(["PNR"]).length, pod: podSemanas.length, dias: dias.filter(d => d.total > 0).length };
     el.innerHTML = `
         <div class="cft-kpis">
             <div class="cft-kpi"><div class="cft-kpi-valor cft-neg">R$ ${_pdNum(perf + pnr + pod)}</div><div class="cft-kpi-rotulo">Deixaram de receber</div></div>
@@ -143,10 +147,10 @@ function _pdRender() {
         </div>
         <div class="filtro-tabs" style="margin-bottom:12px">${_PD_ABAS.map(([k, n]) =>
             `<button type="button" class="filtro-tab${k === _pdAba ? " active" : ""}" onclick="_pdAbrirAba('${k}')">${n} <span class="cft-ajuda">${contagem[k]}</span></button>`).join("")}</div>
-        <div class="cft-tabela-wrap" style="max-height:62vh;overflow-y:auto">${_pdTabela(_pdAba, { ents, dias, deTipo })}</div>`;
+        <div class="cft-tabela-wrap" style="max-height:62vh;overflow-y:auto">${_pdTabela(_pdAba, { ents, dias, deTipo, podSemanas })}</div>`;
 }
 
-function _pdTabela(aba, { ents, dias, deTipo }) {
+function _pdTabela(aba, { ents, dias, deTipo, podSemanas }) {
     const vazio = (n) => `<tr><td colspan="${n}" class="cft-vazio" style="padding:14px">Nada por aqui.</td></tr>`;
     const dia = (iso) => `${_pdDia(iso)} <span class="cft-ajuda">${_pdSem(iso)}</span>`;
     const perdido = (v, situacao) => `<td class="num${v > 0 ? " cft-neg" : ""}">${v > 0 ? "−" + _pdNum(v)
@@ -164,6 +168,14 @@ function _pdTabela(aba, { ents, dias, deTipo }) {
                 ${perdido(e.perda_performance)}${perdido(e.perda_pnr)}${perdido(e.perda_pod)}<td class="num cft-neg"><strong>−${_pdNum(e.total)}</strong></td>
             </tr>`).join("") + `<tr><td colspan="7"><strong>Total</strong></td>${perdido(lista.reduce((s, e) => s + e.perda_performance, 0))}${perdido(lista.reduce((s, e) => s + e.perda_pnr, 0))}${perdido(lista.reduce((s, e) => s + e.perda_pod, 0))}
                 <td class="num cft-neg"><strong>−${_pdNum(lista.reduce((s, e) => s + e.total, 0))}</strong></td></tr>` : vazio(11)}</tbody></table>`;
+    }
+    if (aba === "pod") {
+        const lista = podSemanas.slice().sort((a, b) => (a.semana_inicio < b.semana_inicio ? -1 : a.semana_inicio > b.semana_inicio ? 1 : a.driver.localeCompare(b.driver, "pt-BR")));
+        return `<table class="cft-tabela"><thead><tr><th>Semana</th><th>Entregador</th><th>Usuário</th><th>Cidade</th><th style="text-align:right">Good Pod</th>
+            <th style="text-align:right">Pacotes</th><th style="text-align:right">Desconto</th></tr></thead>
+            <tbody>${lista.length ? lista.map(x => `<tr><td>${_pdDia(x.semana_inicio)} a ${_pdDia(x.semana_fim)}</td><td>${_pdEsc(x.driver)}</td><td class="cft-ajuda">${_pdEsc(x.usuario)}</td>
+                <td>${_pdEsc(x.cidade || "—")}</td><td class="num cft-neg">${_pdPct(x.good)}</td><td class="num">${x.pacotes.toLocaleString("pt-BR")}</td>${perdido(x.valor)}</tr>`).join("")
+                + total(6, lista.reduce((s, x) => s + x.valor, 0)) : vazio(7)}</tbody></table>`;
     }
     // Ocorrências: a perda é do DIA (entregador × dia) — aparece uma vez, na 1ª linha do dia;
     // as outras linhas do mesmo dia ficam em branco (ou dizem por que não custaram nada).

@@ -34,7 +34,8 @@ function carregar() {
         body: { appendChild() {} },
     } };
     vm.createContext(ctx);
-    vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-entregador.js"), "utf8"), ctx);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-entregador.js"), "utf8")
+        + "\n;this._fsPessoasTeste = (n) => _fsPessoas.findIndex(p => p.nome === n);", ctx);
     return { ctx, el, modal };
 }
 
@@ -339,3 +340,25 @@ test("POD: na visão Por usuário só aparece no dia de quem teve desconto", asy
     assert.doesNotMatch(el("fech-sistema").innerHTML, /com POD/);
 });
 
+test("POD: mostra a semana, o Good Pod e quanto saiu; na visão Por usuário só das pessoas marcadas", async () => {
+    const { ctx, el } = carregar();
+    const pod = { meta: 80, semanas: [
+        { semana_inicio: "2026-10-19", semana_fim: "2026-10-25", usuario: "ana.login", cidade: "Vila A", good: 72.5, pacotes: 100, valor: 20, pessoa: "Ana Pessoa" },
+        { semana_inicio: "2026-10-19", semana_fim: "2026-10-25", usuario: "bia.login", cidade: "Vila B", good: 60, pacotes: 10, valor: 2, pessoa: "Bia Pessoa" }] };
+    porUsuario(ctx, { pod });
+    const tela = () => el("fech-sistema").innerHTML;
+    assert.match(tela(), /Desconto por POD/);
+    assert.match(tela(), /Semana de 19\/10 a 25\/10/);
+    assert.match(tela(), /72,50%<\/b> \(meta 80,00%\) · Vila A · 100 entrega\(s\) Shopee/);
+    ctx._fsTrocarVisao("usuario");
+    await new Promise(r => setImmediate(r));
+    ctx._fsMarcarPessoa(ctx._fsPessoasTeste("Bia Pessoa"));
+    assert.match(tela(), /bia\.login/);
+    assert.doesNotMatch(tela(), /ana\.login/);
+});
+
+test("POD: sem desconto na quinzena não mostra o bloco", () => {
+    const { ctx, el } = carregar();
+    ctx._fsRender(D);
+    assert.doesNotMatch(el("fech-sistema").innerHTML, /Desconto por POD/);
+});

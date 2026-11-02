@@ -114,6 +114,7 @@ function _fsHtmlGeral(d) {
         </div>`).join("")}</div>
 
         ${_fsHtmlPerformance(d)}
+        ${_fsHtmlPod()}
 
         <div class="painel-section-title">Adicionais</div>
         <div class="painel-adicionais">
@@ -172,6 +173,21 @@ const _fsPerdeuDia = (p) => {
     const fx = _fsFaixa(p.dia);
     return (!p.fixo && fx.max != null && p.valor < fx.max) || (p.tarifa_minima && (p.fixo || (p.pacotes_minima || 0) > 0)) || (p.pod_pacotes || 0) > 0;
 };
+
+/** Semanas com POD abaixo da meta: o período, o Good Pod da semana e quanto saiu na quinzena. */
+function _fsHtmlPod() {
+    const pod = _fsDados.pod || {};
+    const semanas = (pod.semanas || []).filter(_fsVale);
+    if (!semanas.length) return "";
+    const pct = (n) => Number(n).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+    return `<div class="painel-ocorrencias" style="margin-bottom:18px"><div class="poc-card">
+        <div class="poc-header">Desconto por POD</div>
+        <div class="extr-lista">${semanas.map(x => `<div class="extr-card">
+            <div class="extr-top"><span class="extr-transp">Semana de ${_fsDia(x.semana_inicio)} a ${_fsDia(x.semana_fim)}</span><span class="extr-codigo">${_fsEsc(x.usuario)}</span></div>
+            <div class="extr-endereco">Good Pod <b class="fs-neg">${pct(x.good)}</b> (meta ${pct(pod.meta)})${x.cidade ? ` · ${_fsEsc(x.cidade)}` : ""} · ${x.pacotes.toLocaleString("pt-BR")} entrega(s) Shopee nesta quinzena</div>
+            <div class="extr-bottom"><span class="extr-valor val-neg">−${_fsR(x.valor)}</span></div></div>`).join("")}</div>
+    </div></div>`;
+}
 
 function _fsHtmlPerformance(d) {
     const perf = d.performance;
@@ -355,6 +371,7 @@ function _fsHtmlPorUsuario() {
             <div class="pt-row"><span>Entregues</span><span>${num(t.entregues)} pacotes</span></div>
             <div class="pt-row"><span>Por pacote</span><span>${_fsR(t.por_pacote)}</span></div>
         </div>`).join("")}</div>
+        ${_fsHtmlPod()}
         <div class="painel-section-title">Por dia</div>
         <div class="fs-sub">Toque no dia pra ver os pedidos.</div>
         <div class="fs-dias" style="margin-bottom:18px">${dias.map(dia => _fsCardDiaUsuario(dia,

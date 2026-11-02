@@ -213,3 +213,13 @@ test("card do entregador: pedidos do dia com situação, os que afetaram primeir
     assert.strictEqual(abas[3].linhas[7][3], "Fora da conta");
     assert.strictEqual(ctx._rqNomeArquivo(""), "performance_Fulano-de-Teste-Vila-Teste_2q_09-2026.xlsx");
 });
+
+test("entregador do Resumo: o dia guarda tarifa mínima e POD (card e planilha leem daqui)", () => {
+    const { ctx, el } = carregar();
+    const [r] = JSON.parse(JSON.stringify(ctx._rqPerfPorEntregador([{ driver: "Fulano de Teste - Vila Teste", dia: "2026-09-21", pct: 100, valor: 2.5, shopee: 10, onholds: 0,
+        outras_prazo: 0, outras_atraso: 0, pacotes_pagos: 10, total: 23, acareacoes: 3, tarifa_minima: true, pacotes_minima: 2, usuarios_minima: "Pessoa Teste",
+        pod_pacotes: 10, pod_desconto: 2, pod_usuarios: "fulano.login" }])));
+    const d = r.dias[0];
+    assert.deepStrictEqual([d.pacotes_minima, d.usuarios_minima, d.pod_pacotes, d.pod_desconto, d.pod_usuarios], [2, "Pessoa Teste", 10, 2, "fulano.login"]);
+});
+

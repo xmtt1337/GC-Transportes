@@ -201,7 +201,8 @@ function _rqPerfPorEntregador(linhas) {
         const r = por.get(l.driver);
         r.dias.push({ dia: l.dia, pct: l.pct, valor: l.valor, shopee: l.shopee || 0, onholds: l.onholds || 0,
             outras_prazo: l.outras_prazo || 0, outras_atraso: l.outras_atraso || 0, pacotes_pagos: l.pacotes_pagos || 0, total: l.total || 0, fixo: !!l.fixo,
-            acareacoes: l.acareacoes || 0, tarifa_minima: !!l.tarifa_minima });
+            acareacoes: l.acareacoes || 0, tarifa_minima: !!l.tarifa_minima, pacotes_minima: l.pacotes_minima || 0, usuarios_minima: l.usuarios_minima || null,
+            pod_pacotes: l.pod_pacotes || 0, pod_desconto: l.pod_desconto || 0, pod_usuarios: l.pod_usuarios || null });
         r.sucessos += (l.shopee || 0) + (l.outras_prazo || 0);
         r.onholds += l.onholds || 0;
         r.atrasos += l.outras_atraso || 0;
@@ -344,7 +345,10 @@ function _rqRenderCard() {
         </div>
         <div class="cft-ajuda" style="margin-bottom:10px">${_rqEsc(r.polo || "")} · performance da quinzena
             <strong class="${_rqPctClasse(r.pct)}">${_rqPct(r.pct)}</strong> · ${r.sucessos.toLocaleString("pt-BR")} sucessos,
-            ${r.onholds} onhold(s), ${r.atrasos} atrasado(s)/não entregue(s) · ticket médio R$ ${_rqNum(r.por_pacote)} · total R$ ${_rqNum(r.total)}</div>
+            ${r.onholds} onhold(s), ${r.atrasos} atrasado(s)/não entregue(s) · ticket médio R$ ${_rqNum(r.por_pacote)} · total R$ ${_rqNum(r.total)}${(() => {
+                const pod = r.dias.reduce((s, d) => s + (d.pod_desconto || 0), 0);
+                return pod ? ` · <span class="cft-neg">POD −R$ ${_rqNum(pod)}</span> (${r.dias.reduce((s, d) => s + (d.pod_pacotes || 0), 0)} pacotes)` : "";
+            })()}</div>
         <div class="cft-tabela-wrap" style="max-height:62vh;overflow-y:auto"><table class="cft-tabela">
             <thead><tr><th>Dia</th><th style="text-align:right">Shopee</th><th style="text-align:right">Outras no prazo</th>
                 <th style="text-align:right">Onholds</th><th style="text-align:right">Atrasados</th><th style="text-align:right">Performance</th>
@@ -353,7 +357,8 @@ function _rqRenderCard() {
                 const afetou = d.onholds + d.outras_atraso + (d.acareacoes || 0);
                 const ped = abertos.has(d.dia) ? _rqPedidosDoDia(d.dia, pacotes, onholds) : null;
                 return `<tr>
-                    <td>${_rqDiaCurto(d.dia)} <span class="cft-ajuda">${diaSem(d.dia)}</span></td>
+                    <td>${_rqDiaCurto(d.dia)} <span class="cft-ajuda">${diaSem(d.dia)}</span>${d.pod_pacotes
+                        ? ` <span class="cft-neg" title="${d.pod_pacotes} entrega(s) com desconto de POD: ${_rqEsc(d.pod_usuarios || "")}">POD −${_rqNum(d.pod_desconto)}</span>` : ""}</td>
                     <td class="num">${d.shopee}</td><td class="num">${d.outras_prazo}</td>
                     <td class="num${d.onholds ? " cft-neg" : ""}">${d.onholds}</td><td class="num${d.outras_atraso ? " cft-neg" : ""}">${d.outras_atraso}</td>
                     <td class="num ${_rqPctClasse(d.pct)}"><strong>${_rqPct(d.pct)}</strong></td>

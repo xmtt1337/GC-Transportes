@@ -118,3 +118,25 @@ test("POD entra no total, no KPI e nas colunas do resumo e do dia", () => {
     assert.match(el("pd-lista").innerHTML, /<td class="num cft-neg">−4,00<\/td>/);
 });
 
+test("aba POD: semana, usuário, Good Pod e desconto; respeita os filtros", () => {
+    const { ctx, el } = carregar();
+    const d = JSON.parse(JSON.stringify(DADOS));
+    d.pod = [
+        { semana_inicio: "2026-10-19", semana_fim: "2026-10-25", driver: "Fulano Teste - Vila A", usuario: "fulano.login", cidade: "Vila A", good: 72.5, pacotes: 100, valor: 20 },
+        { semana_inicio: "2026-10-19", semana_fim: "2026-10-25", driver: "Beltrano Teste - Vila B", usuario: "beltrano.login", cidade: "Vila B", good: 60, pacotes: 10, valor: 2 }];
+    ctx._set(d);
+    ctx._pdOpcoes();
+    ctx._pdAbrirAba("pod");
+    let html = el("pd-lista").innerHTML;
+    assert.match(html, /POD <span class="cft-ajuda">2<\/span>/);
+    assert.match(html, /19\/10 a 25\/10/);
+    assert.match(html, /fulano\.login/);
+    assert.match(html, /72,5%/);
+    assert.match(html, /<strong>−22,00<\/strong>/);
+    el("pd-polo").value = "Videira";
+    ctx._pdRender();
+    html = el("pd-lista").innerHTML;
+    assert.doesNotMatch(html, /fulano\.login/);
+    assert.match(html, /beltrano\.login/);
+    el("pd-polo").value = "";
+});
