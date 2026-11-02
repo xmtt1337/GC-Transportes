@@ -223,3 +223,10 @@ test("entregador do Resumo: o dia guarda tarifa mínima e POD (card e planilha l
     assert.deepStrictEqual([d.pacotes_minima, d.usuarios_minima, d.pod_pacotes, d.pod_desconto, d.pod_usuarios], [2, "Pessoa Teste", 10, 2, "fulano.login"]);
 });
 
+test("R$/pacote do dia: com tarifa mínima ou POD vale o que foi pago, não o da performance", () => {
+    const { ctx } = carregar();
+    assert.strictEqual(ctx._rqValorPago({ valor: 2.6, pacotes_pagos: 113, total: 203.4, pacotes_minima: 113 }), 1.8);
+    assert.strictEqual(ctx._rqValorPago({ valor: 2.5, pacotes_pagos: 10, total: 23, pod_pacotes: 10 }), 2.3);
+    assert.strictEqual(ctx._rqValorPago({ valor: 2.5, pacotes_pagos: 10, total: 25 }), 2.5, "dia normal");
+    assert.strictEqual(ctx._rqValorPago({ valor: 2.5, pacotes_pagos: 0, total: 0, pacotes_minima: 1 }), 2.5, "sem pacote pago");
+});

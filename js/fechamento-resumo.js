@@ -264,6 +264,14 @@ function _rqIsoDeBr(d) {
     return m ? `${m[3]}-${m[2]}-${m[1]}` : (d || null);
 }
 
+/**
+ * R$/pacote que ele recebeu no dia. d.valor é o da performance: com tarifa mínima ou POD parte
+ * das entregas (ou todas) saiu por menos, e o que vale é a média do que foi pago.
+ */
+function _rqValorPago(d) {
+    return d.pacotes_pagos && (d.pacotes_minima || d.pod_pacotes) ? Math.round((d.total / d.pacotes_pagos) * 100) / 100 : d.valor;
+}
+
 /** Situação de um pacote na performance (o que o card e as planilhas mostram). */
 function _rqSituacao(p) {
     if (/^shopee/i.test(p.transportadora)) return p.data_entrega ? "Entregue (Shopee)" : "Não entregue (Shopee)";
@@ -362,7 +370,8 @@ function _rqRenderCard() {
                     <td class="num">${d.shopee}</td><td class="num">${d.outras_prazo}</td>
                     <td class="num${d.onholds ? " cft-neg" : ""}">${d.onholds}</td><td class="num${d.outras_atraso ? " cft-neg" : ""}">${d.outras_atraso}</td>
                     <td class="num ${_rqPctClasse(d.pct)}"><strong>${_rqPct(d.pct)}</strong></td>
-                    <td class="num">${d.acareacoes ? `<span class="${d.tarifa_minima ? "cft-neg" : "cft-ajuda"}" title="${d.acareacoes} PNR no dia: ${pnrDia(d)}">${d.acareacoes} PNR</span> ` : ""}${d.fixo && !d.tarifa_minima ? `<span class="cft-ajuda">fixo</span> ` : ""}${_rqNum(d.valor)}</td>
+                    <td class="num">${d.acareacoes ? `<span class="${d.tarifa_minima ? "cft-neg" : "cft-ajuda"}" title="${d.acareacoes} PNR no dia: ${pnrDia(d)}">${d.acareacoes} PNR</span> ` : ""}${d.fixo && !d.tarifa_minima ? `<span class="cft-ajuda">fixo</span> ` : ""}${_rqNum(_rqValorPago(d))}${_rqValorPago(d) !== d.valor
+                        ? ` <span class="cft-ajuda" title="Valor da performance no dia, antes da tarifa mínima e do POD">de ${_rqNum(d.valor)}</span>` : ""}</td>
                     <td class="num">${d.pacotes_pagos}</td><td class="num">${_rqNum(d.total)}</td>
                     <td style="white-space:nowrap"><a href="#" class="cft-ordem" style="color:#60a5fa" onclick="event.preventDefault();_rqCardAlternarDia('${d.dia}')">${abertos.has(d.dia) ? "fechar" : (afetou ? "ver o que afetou" : "ver pedidos")}</a>
                         · <a href="#" class="cft-ordem" style="color:#60a5fa" onclick="event.preventDefault();_rqBaixarDia('${d.dia}')">baixar</a></td>
@@ -388,7 +397,7 @@ const _RQ_CAB_PEDIDOS = ["Dia da performance", "Performance do dia (%)", "R$/pac
 /** Linhas da planilha de pedidos, com o % e o R$/pacote do dia (o que vale pra todos os pedidos dele). */
 function _rqLinhasPedidos(dia, ped, dias) {
     const d = (dias || (_rqCard && _rqCard.r && _rqCard.r.dias) || []).find(x => x.dia === dia);
-    return ped.map(x => [_rqDiaCurto(dia), d ? d.pct : "", d ? d.valor : "", x.situacao, _RQ_AFETOU.includes(x.situacao) ? "Sim" : "Não", x.ocorrencia || "", x.transportadora, x.codigo, x.cidade,
+    return ped.map(x => [_rqDiaCurto(dia), d ? d.pct : "", d ? _rqValorPago(d) : "", x.situacao, _RQ_AFETOU.includes(x.situacao) ? "Sim" : "Não", x.ocorrencia || "", x.transportadora, x.codigo, x.cidade,
         x.deveria, x.entregue, x.valor, x.motivo]);
 }
 function _rqNomeArquivo(sufixo) {
@@ -418,7 +427,7 @@ function _rqAbasEntregador(card) {
         "Usuário(s) que passaram do limite de PNR", "Performance (%)", "R$/pacote", "Pacotes pagos", "Total", "Pacotes com desconto POD", "Desconto POD", "Usuário(s) com POD abaixo da meta"]]
         .concat(r.dias.map(d => [_rqDiaCurto(d.dia), d.shopee, d.outras_prazo, d.onholds, d.outras_atraso, d.acareacoes || 0,
             d.tarifa_minima ? (d.fixo ? d.pacotes_pagos : d.pacotes_minima || 0) : 0, d.tarifa_minima && !d.fixo ? d.usuarios_minima || "" : (d.tarifa_minima ? "(valor fixo)" : ""),
-            d.pct, d.valor, d.pacotes_pagos, d.total, d.pod_pacotes || 0, d.pod_desconto || 0, d.pod_usuarios || ""]));
+            d.pct, _rqValorPago(d), d.pacotes_pagos, d.total, d.pod_pacotes || 0, d.pod_desconto || 0, d.pod_usuarios || ""]));
     const afetou = r.dias.flatMap(d => _rqLinhasPedidos(d.dia, _rqPedidosDoDia(d.dia, pacotes, onholds), r.dias)).filter(l => l[4] === "Sim");
     const todos = r.dias.flatMap(d => _rqLinhasPedidos(d.dia, _rqPedidosDoDia(d.dia, pacotes, onholds, true), r.dias));
     const fora = pacotes.filter(p => !p.perf_dia && !/^shopee/i.test(p.transportadora)).map(p => ["", "", "", _rqSituacao(p), "Não", p.data_entrega || "", p.transportadora, p.codigo,
@@ -726,7 +735,7 @@ function _rqMontarAbas(pacotes, filtros, perfLinhas, insucessos) {
             "Performance (%)", "Valor por pacote", "Pacotes pagos", "Total"]];
         const rows = [{}];
         for (const l of perf) {
-            linhas.push([_cfDia(l.dia), l.driver, l.shopee, l.onholds, l.outras_prazo, l.outras_atraso, l.pct, l.valor, l.pacotes_pagos, l.total]);
+            linhas.push([_cfDia(l.dia), l.driver, l.shopee, l.onholds, l.outras_prazo, l.outras_atraso, l.pct, _rqValorPago(l), l.pacotes_pagos, l.total]);
             rows.push({});
             for (const x of porDia.get(l.driver + "|" + l.dia) || []) {
                 linhas.push(["", "   ↳ " + x.tipo, x.transportadora, x.codigo || "", x.deveria ? "Deveria: " + _cfDia(x.deveria) : "",
