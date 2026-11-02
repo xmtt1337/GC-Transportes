@@ -10,6 +10,7 @@ const _PD_SEM = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 const _PD_ABAS = [["resumo", "Resumo por entregador"], ["prazo", "Fora do prazo"], ["onhold", "Ocorrências (onhold)"], ["pnr", "PNR"], ["pod", "POD"], ["dias", "Por dia"]];
 let _pdDados = null;
 let _pdAba = "resumo";
+let _pdInterno = false;   // true = só os internos (fora das somas dos entregadores)
 
 function _pdEsc(t) {
     return String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -97,10 +98,13 @@ function _pdLimpar() {
     _pdRender();
 }
 
+function _pdEhInterno(nome) { return /(^|[^a-zà-ú])intern[oa]([^a-zà-ú]|$)/i.test(String(nome || "")); }
+function _pdTrocarVisao(interno) { _pdInterno = interno; _pdRender(); }
+
 function _pdFiltro() {
     const v = (id) => (document.getElementById(id) || {}).value || "";
     const ent = _pdNorm(v("pd-entregador")), polo = v("pd-polo"), cidade = v("pd-cidade");
-    return (x) => (!ent || _pdNorm(x.driver).includes(ent)) && (!polo || x.polo === polo) && (!cidade || x.cidade === cidade);
+    return (x) => _pdEhInterno(x.driver) === _pdInterno && (!ent || _pdNorm(x.driver).includes(ent)) && (!polo || x.polo === polo) && (!cidade || x.cidade === cidade);
 }
 
 function _pdAbrirAba(aba) { _pdAba = aba; _pdRender(); }
@@ -138,6 +142,7 @@ function _pdRender() {
     const contagem = { resumo: ents.filter(e => e.total > 0).length, prazo: deTipo(["Atrasado", "Não entregue"]).length,
         onhold: deTipo(["Onhold"]).length, pnr: deTipo(["PNR"]).length, pod: podSemanas.length, dias: dias.filter(d => d.total > 0).length };
     el.innerHTML = `
+        <div class="fs-visao" style="max-width:420px"><button type="button"${_pdInterno ? "" : ` class="active"`} onclick="_pdTrocarVisao(false)">Entregadores</button><button type="button"${_pdInterno ? ` class="active"` : ""} onclick="_pdTrocarVisao(true)">GC Interno</button></div>
         <div class="cft-kpis">
             <div class="cft-kpi"><div class="cft-kpi-valor cft-neg">R$ ${_pdNum(perf + pnr + pod)}</div><div class="cft-kpi-rotulo">Deixaram de receber</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">R$ ${_pdNum(perf)}</div><div class="cft-kpi-rotulo">Performance (onhold e atraso)</div></div>

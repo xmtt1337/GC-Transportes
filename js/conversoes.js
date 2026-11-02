@@ -67,6 +67,8 @@ function _cvRender(msg) {
     const el = document.getElementById("cv-principal");
     const busca = (document.getElementById("cv-busca") || {}).value || "";
     const soFaltando = (document.getElementById("cv-so-falta") || { checked: true }).checked;
+    const verInterno = !!(document.getElementById("cv-interno") || {}).checked;
+    const conflitos = (d.conflitos || []).filter(c => verInterno || !c.entregadores.some(_cvEhInterno));
     el.innerHTML = `
         <div class="cft-regras">
             <div class="cft-ajuda" style="margin-bottom:8px">Cada transportadora tem um login pra mesma pessoa (ex.: <b>fulano.s</b> na Shopee e <b>Fulano S</b> na Anjun).
@@ -78,24 +80,28 @@ function _cvRender(msg) {
                 <input class="cft-input" id="cv-busca" placeholder="Buscar entregador ou login..." value="${_cvEsc(busca)}" style="width:280px;flex:0 0 auto;margin:0" oninput="_cvRender()">
                 <label class="cft-ajuda" style="display:flex;align-items:center;gap:6px;cursor:pointer">
                     <input type="checkbox" id="cv-so-falta"${soFaltando ? " checked" : ""} onchange="_cvRender()"> só entregador com login sem usuário principal</label>
+                <label class="cft-ajuda" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                    <input type="checkbox" id="cv-interno"${verInterno ? " checked" : ""} onchange="_cvRender()"> ver GC Interno</label>
                 <span class="cft-ajuda">${d.sem_principal || 0} login(s) sem usuário principal</span>
                 <span class="cft-ajuda" id="cv-status">${msg || ""}</span>
             </div>
         </div>
-        ${(d.conflitos || []).length ? `<div class="cft-pend"><div class="cft-pend-titulo"><span class="cft-aviso">Usuário principal em mais de um entregador (${d.conflitos.length})</span></div>
+        ${conflitos.length ? `<div class="cft-pend"><div class="cft-pend-titulo"><span class="cft-aviso">Usuário principal em mais de um entregador (${conflitos.length})</span></div>
             <div class="cft-ajuda" style="margin-bottom:6px">Os logins dessa pessoa estão em entregadores diferentes na Conversão de nomes — confira qual é o certo.</div>
-            ${d.conflitos.map(c => `<div class="cft-ajuda"><b>${_cvEsc(c.principal)}</b>: ${_cvEsc(c.entregadores.join(" · "))} (logins: ${_cvEsc(c.usuarios.join(", "))})</div>`).join("")}
+            ${conflitos.map(c => `<div class="cft-ajuda"><b>${_cvEsc(c.principal)}</b>: ${_cvEsc(c.entregadores.join(" · "))} (logins: ${_cvEsc(c.usuarios.join(", "))})</div>`).join("")}
         </div>` : ""}
         <datalist id="cv-principais">${(d.principais || []).map(p => `<option value="${_cvEsc(p.principal)}">`).join("")}</datalist>
-        <div id="cv-lista">${_cvLista(busca, soFaltando)}</div>`;
+        <div id="cv-lista">${_cvLista(busca, soFaltando, verInterno)}</div>`;
     const b = document.getElementById("cv-busca");
     if (b && busca) { b.focus(); b.setSelectionRange(busca.length, busca.length); }
 }
 
-function _cvLista(busca, soFaltando) {
+function _cvEhInterno(nome) { return /(^|[^a-zà-ú])intern[oa]([^a-zà-ú]|$)/i.test(String(nome || "")); }
+
+function _cvLista(busca, soFaltando, verInterno) {
     const d = _cvDados || {};
     const q = _cvNorm(busca);
-    const lista = (d.entregadores || []).filter(e => (!soFaltando || e.sem_principal > 0)
+    const lista = (d.entregadores || []).filter(e => (verInterno || !_cvEhInterno(e.entregador)) && (!soFaltando || e.sem_principal > 0)
         && (!q || _cvNorm(e.entregador).includes(q) || e.usuarios.some(u => _cvNorm(u.usuario).includes(q) || _cvNorm(u.principal).includes(q))));
     if (!lista.length) return `<div class="cft-ajuda">Nada por aqui${soFaltando ? " — todos os logins já têm usuário principal" : ""}.</div>`;
     return lista.slice(0, 80).map((e, i) => `<div class="cft-regras">

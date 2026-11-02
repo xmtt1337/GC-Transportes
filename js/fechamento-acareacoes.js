@@ -80,11 +80,13 @@ function _acCarregar(msg) {
     }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar.</div>`; });
 }
 
+function _acEhInterno(nome) { return /(^|[^a-zà-ú])intern[oa]([^a-zà-ú]|$)/i.test(String(nome || "")); }
+
 function _acRender(msg) {
     const d = _acDados || {};
     const arqs = d.arquivos || [];
     const pend = d.sem_conversao || [];
-    const dias = d.dias || [];
+    const dias = (d.dias || []).filter(x => !_acEhInterno(x.driver));
     const minimas = dias.filter(x => x.tarifa_minima);
     document.getElementById("ac-lista").innerHTML = `
         ${msg ? `<div class="cft-ajuda" style="margin:0 0 10px">${msg}</div>` : ""}
@@ -132,6 +134,8 @@ function _acRender(msg) {
             <input class="cft-input" id="ac-busca" placeholder="Buscar entregador..." style="width:260px;flex:0 0 auto;margin:0" oninput="_acRenderTabela()">
             <label class="cft-ajuda" style="display:flex;align-items:center;gap:6px;cursor:pointer">
                 <input type="checkbox" id="ac-so-minima" onchange="_acRenderTabela()"> só os dias na tarifa mínima</label>
+                <label class="cft-ajuda" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" id="ac-interno" onchange="_acRenderTabela()"> ver GC Interno</label>
         </div>
         <div class="cft-tabela-wrap" style="max-height:62vh;overflow-y:auto"><table class="cft-tabela">
             <thead><tr><th>Dia</th><th>Entregador</th><th style="text-align:right">PNR no dia</th><th>Transportadora</th>
@@ -170,7 +174,8 @@ function _acRenderTabela() {
     const busca = (document.getElementById("ac-busca") || {}).value || "";
     const so = (document.getElementById("ac-so-minima") || {}).checked;
     const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-    const linhas = (d.dias || []).filter(x => (!so || x.tarifa_minima) && (!busca || norm(x.driver).includes(norm(busca)))
+    const interno = (document.getElementById("ac-interno") || {}).checked;
+    const linhas = (d.dias || []).filter(x => !!interno === _acEhInterno(x.driver) && (!so || x.tarifa_minima) && (!busca || norm(x.driver).includes(norm(busca)))
         && (!transp || (x.por_transportadora || {})[transp]))
         // Fora dos polos da regra (ex.: Joaçaba) vai pro fim — não mexe no valor.
         .sort((a, b) => (a.fora_dos_polos ? 1 : 0) - (b.fora_dos_polos ? 1 : 0));

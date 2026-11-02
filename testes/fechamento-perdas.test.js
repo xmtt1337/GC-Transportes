@@ -74,7 +74,7 @@ test("filtros: polo e cidade", () => {
 
 test("por dia: com entregas na tarifa mínima, R$/pacote é a média do dia com a divisão embaixo", () => {
     const { ctx, el } = carregar();
-    ctx._set({ dias: [{ driver: "Interno Teste", cidade: null, polo: "Caçador", dia: "2026-10-01", pct: 99.23, valor: 2.5, valor_maximo: 2.5, valor_minima: 1.5,
+    ctx._set({ dias: [{ driver: "Beltrano Teste", cidade: null, polo: "Caçador", dia: "2026-10-01", pct: 99.23, valor: 2.5, valor_maximo: 2.5, valor_minima: 1.5,
         valor_medio: 2.31, total_pago: 300, fixo: false, pacotes: 130, onholds: 0, atrasos: 1, pnr: 4, tarifa_minima: true, pacotes_minima: 25,
         perda_performance: 0, perda_pnr: 25, total: 25 }], ocorrencias: [] });
     ctx._pdAbrirAba("dias");
@@ -139,4 +139,23 @@ test("aba POD: semana, usuário, Good Pod e desconto; respeita os filtros", () =
     assert.doesNotMatch(html, /fulano\.login/);
     assert.match(html, /beltrano\.login/);
     el("pd-polo").value = "";
+});
+
+test("GC Interno: fora das somas e das listas, com visão própria", () => {
+    const { ctx, el } = carregar();
+    const d = JSON.parse(JSON.stringify(DADOS));
+    d.dias.push({ driver: "GC Interno", cidade: null, polo: "Caçador", dia: "2026-10-05", pct: 90, valor: 1.5, valor_maximo: 2.5, fixo: false, pacotes: 10,
+        onholds: 0, atrasos: 1, pnr: 0, tarifa_minima: false, pacotes_minima: 0, perda_performance: 10, perda_pnr: 0, total: 10 });
+    d.ocorrencias.push({ driver: "GC Interno", polo: "Caçador", dia: "2026-10-05", tipo: "Atrasado", transportadora: "Imile", codigo: "INT1", valor_perdido: 10 });
+    ctx._set(d);
+    ctx._pdOpcoes();
+    ctx._pdRender();
+    let html = el("pd-lista").innerHTML;
+    assert.match(html, /R\$ 90,00<\/div><div class="cft-kpi-rotulo">Deixaram de receber/, "a soma não muda");
+    assert.doesNotMatch(html, /GC Interno<\/td>/);
+    ctx._pdTrocarVisao(true);
+    html = el("pd-lista").innerHTML;
+    assert.match(html, /R\$ 10,00<\/div><div class="cft-kpi-rotulo">Deixaram de receber/);
+    assert.match(html, /GC Interno<\/td>/);
+    ctx._pdTrocarVisao(false);
 });

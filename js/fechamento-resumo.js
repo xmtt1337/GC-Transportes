@@ -8,6 +8,7 @@ let _rqMes = new Date().getMonth() + 1;
 let _rqAno = new Date().getFullYear();
 let _rqQuinzena = null;
 let _rqDados = null;
+let _rqVisao = "entregadores"; // "entregadores" ou "interno"
 let _rqOrdem = { campo: "entregador", desc: false };
 let _rqReq = 0;
 let _rqXCidades = [];      // cidades escolhidas no "Baixar relatório": [{nome, variantes}] (vazio = todas)
@@ -56,6 +57,17 @@ function _rqSelecionarQuinzena(q) {
     _rqCarregar();
 }
 
+// Internos (GC Interno, Base Interna...) fora das somas e listas; aqui têm o fechamento deles.
+function _rqEhInterno(nome) { return /(^|[^a-zà-ú])intern[oa]([^a-zà-ú]|$)/i.test(String(nome || "")); }
+const _rqDaVisao = (nome) => _rqEhInterno(nome) === (_rqVisao === "interno");
+function _rqDadosVisao() {
+    return _rqVisao === "interno" && _rqDados.interno ? { ..._rqDados, ..._rqDados.interno } : _rqDados;
+}
+function _rqTrocarVisao(v) {
+    _rqVisao = v;
+    _rqRender();
+}
+
 function _rqCarregar() {
     const el = document.getElementById("rq-conteudo");
     const req = ++_rqReq;
@@ -77,7 +89,7 @@ function _rqColunas() {
 }
 
 function _rqRender() {
-    const d = _rqDados;
+    const d = _rqDadosVisao();
     const el = document.getElementById("rq-conteudo");
     const t = d.totais;
     const polos = [...new Set(d.linhas.map(l => l.polo).filter(Boolean))].sort();
@@ -93,8 +105,11 @@ function _rqRender() {
         !d.ticketlog_arquivos ? "Nenhum relatório do Ticketlog nesta quinzena." : "",
         _rqSemFechamento(t.sem_fechamento),
     ].filter(Boolean);
+    const visao = (k, n) => `<button type="button"${_rqVisao === k ? ` class="active"` : ""} onclick="_rqTrocarVisao('${k}')">${n}</button>`;
     el.innerHTML = `
-        <div class="cft-barra" style="justify-content:space-between;margin:0 0 10px">
+        <div class="fs-visao" style="max-width:420px">${visao("entregadores", "Entregadores")}${visao("interno", "Fechamento GC Interno")}</div>
+        ${_rqVisao === "interno" ? `<div class="cft-ajuda" style="margin-bottom:10px">Internos não entram nas somas nem nas listas dos entregadores: ficam só aqui.</div>` : ""}
+        <div class="cft-barra" style="justify-content:space-between;margin:0 0 10px${_rqVisao === "interno" ? ";display:none" : ""}">
             <span class="cft-ajuda">${d.publicado_em
                 ? `<b class="cft-pos">Publicado pros entregadores</b> em ${new Date(d.publicado_em).toLocaleString("pt-BR")} — no Meus Fechamentos eles já veem este fechamento (performance e o que afetou cada dia).`
                 : `<b>Não publicado</b> — os entregadores ainda veem a planilha. Publique quando terminar de conferir.`}</span>
@@ -235,9 +250,9 @@ function _rqDiaCurto(iso) { const [, m, d] = String(iso || "").split("-"); retur
 function _rqPerfFiltrados() {
     const busca = _rqChave((document.getElementById("rq-busca") || {}).value);
     const polo = (document.getElementById("rq-polo") || {}).value || "";
-    const poloResumo = new Map((_rqDados.linhas || []).map(l => [l.entregador, l.polo]));
+    const poloResumo = new Map((_rqDadosVisao().linhas || []).map(l => [l.entregador, l.polo]));
     const lista = _rqPerf.entregadores.map(r => ({ ...r, polo: poloResumo.get(r.entregador) || r.polo }))
-        .filter(r => (!busca || _rqChave(r.entregador).includes(busca)) && (!polo || r.polo === polo));
+        .filter(r => _rqDaVisao(r.entregador) && (!busca || _rqChave(r.entregador).includes(busca)) && (!polo || r.polo === polo));
     const { campo, desc } = _rqPerfOrdem;
     const val = (r) => campo === "pior" ? (r.pior ? r.pior.pct : null) : r[campo];
     return lista.sort((a, b) => {
@@ -604,7 +619,7 @@ function _rqPublicar(publicar) {
 function _rqFiltradas() {
     const busca = _rqChave((document.getElementById("rq-busca") || {}).value);
     const polo = (document.getElementById("rq-polo") || {}).value || "";
-    const lista = _rqDados.linhas.filter(l => (!busca || _rqChave(l.entregador).includes(busca)) && (!polo || l.polo === polo));
+    const lista = _rqDadosVisao().linhas.filter(l => (!busca || _rqChave(l.entregador).includes(busca)) && (!polo || l.polo === polo));
     const { campo, desc } = _rqOrdem;
     const val = (l) => campo.startsWith("t:") ? ((l.por_transp[campo.slice(2)] || {}).valor || 0) : l[campo];
     return lista.slice().sort((a, b) => {
@@ -643,7 +658,7 @@ function _rqRenderTabela() {
             <td class="num${l.descontos ? " cft-neg" : ""}">${l.descontos ? _rqNum(l.descontos) : `<span class="cft-vazio">—</span>`}</td>
             <td class="num ${l.liquido < 0 ? "cft-neg" : "cft-pos"}"><strong>${_rqNum(l.liquido)}</strong></td>
         </tr>`).join("")
-        : `<tr><td colspan="${cols.length + 10}" class="cft-vazio" style="padding:14px">${_rqDados.linhas.length ? "Nada com esse filtro." : "Nenhum relatório nesta quinzena ainda."}</td></tr>`;
+        : `<tr><td colspan="${cols.length + 10}" class="cft-vazio" style="padding:14px">${_rqDadosVisao().linhas.length ? "Nada com esse filtro." : "Nenhum relatório nesta quinzena ainda."}</td></tr>`;
     const soma = (f) => lista.reduce((s, l) => s + f(l), 0);
     document.getElementById("rq-tfoot").innerHTML = lista.length ? `<tr>
             <td><strong>Total</strong> <span class="cft-ajuda">${lista.length} linha(s)</span></td><td></td>
@@ -676,7 +691,7 @@ function _rqAlternarBaixar() {
  */
 function _rqAbaResumo(pacotes, filtros) {
     const comTl = !(filtros.cidades || []).length && !filtros.parcialTransp;
-    const aj = new Map((_rqDados.linhas || []).filter(l => !l.sem_conversao).map(l => [l.entregador, l]));
+    const aj = new Map((_rqDadosVisao().linhas || []).filter(l => !l.sem_conversao).map(l => [l.entregador, l]));
     const transp = [...new Set(pacotes.map(p => p.transportadora))].sort((a, b) => a.localeCompare(b, "pt-BR"));
     const por = new Map();
     for (const p of pacotes) {
@@ -714,6 +729,7 @@ function _rqOcorrencia(x) {
 }
 
 function _rqMontarAbas(pacotes, filtros, perfLinhas, insucessos) {
+    pacotes = pacotes.filter(p => _rqDaVisao(p.driver));
     const ordem = Object.values(_rqDados.transportadoras).map(t => t.nome);
     const nomes = [...new Set(pacotes.map(p => p.transportadora))]
         .sort((a, b) => (ordem.indexOf(a) + 1 || 99) - (ordem.indexOf(b) + 1 || 99));
