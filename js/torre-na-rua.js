@@ -97,7 +97,10 @@ let _nrPacTitulo = "";
 function abrirTorreNaRua(event, transportadora) {
     if (event) event.preventDefault();
     if (transportadora) _nrTransp = transportadora;
-    mostrarTela("tela-torre-na-rua");
+    const rotaPorTransp = { loggi: "Loggi", anjun: "Anjun", imile: "Imile", jt: "JT", shopee: "Shopee", total_express: "TotalExpress" };
+    mostrarTela("tela-torre-na-rua", "TorreControle/NaRua/" + rotaPorTransp[_nrTransp]);
+    // As abas da tela ficam escondidas: quem escolhe a transportadora é o menu.
+    document.getElementById("titulo-pagina").innerText = "Na Rua — " + _nrCfg().rotulo;
     _nrPintarTranspTabs();
     _nrAplicarTransp(true);
 }

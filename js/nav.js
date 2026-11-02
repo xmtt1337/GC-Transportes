@@ -96,13 +96,6 @@ function mostrarTela(id, rota) {
     if (typeof _rotaAtualizarUrl === "function") {
         _rotaAtualizarUrl(rota !== undefined ? rota : (typeof _TELA_ROTAS !== "undefined" ? _TELA_ROTAS[id] : undefined));
     }
-
-    // A barra de abas das conferências mora DENTRO de cada tela, não é uma tela.
-    // O gancho fica aqui porque toda navegação passa por mostrarTela: assim o
-    // destaque acerta também em link direto e no botão voltar, não só no clique
-    // da aba. E fica no FIM porque a barra também marca o menu lateral — antes
-    // da limpeza acima, a marca seria apagada no mesmo instante.
-    if (typeof _chubPintar === "function") _chubPintar(id);
 }
 
 

@@ -33,7 +33,7 @@ let _extrvRegSalvando = false;  // trava contra duplo clique
 
 /* ───────────────────────── Navegação ───────────────────────── */
 
-// `transportadora` (regex) vem da barra de Transportadoras: abre filtrado nela.
+// `transportadora` (regex) vem do menu dela: abre filtrado nela.
 function abrirExtraviosRegistros(event, transportadora) {
     if (event) event.preventDefault();
     mostrarTela("tela-extravios-registros");

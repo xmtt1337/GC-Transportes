@@ -219,7 +219,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     if (role === "entregador") {
         hide("menu-operacao");
         hide("submenu-operacao");
-        hide("menu-conferencias");
         show("menu-ent-rota");
         show("submenu-ent-rota");
         show("menu-ent-desempenho");
@@ -263,7 +262,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     if (role === "motorista") {
         hide("menu-operacao");
         hide("submenu-operacao");
-        hide("menu-conferencias");
         show("menu-transferencias");
         show("submenu-transferencias");
         show("menu-devolucoes-motorista");
@@ -327,7 +325,6 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     if (role === "ADM Videira") {
         hide("menu-operacao");
         hide("submenu-operacao");
-        hide("menu-conferencias");
         show("menu-videira");
         show("submenu-videira");
         // Alimentar só para dev
@@ -350,6 +347,11 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     // Central de Atendimento: o balãozinho do canto, pra todo cargo. Quem decide
     // se esta conta o vê ou vê o menu do suporte é o servidor — ver js/atendimento.js.
     if (typeof atdIniciar === "function") atdIniciar();
+
+    // Item de menu limitado a alguns cargos. É só o que aparece: quem manda é o servidor.
+    document.querySelectorAll("#sidebar [data-roles]").forEach(el => {
+        if (!el.dataset.roles.split(" ").includes(role)) el.style.display = "none";
+    });
 
     renderHomeActions(role);
 

@@ -12,7 +12,7 @@ let _pfaFiltrados = [];
 let _pfaPagina    = 1;
 let _pfaPorPagina = 25;
 
-// `transportadora` vem da barra de Transportadoras: abre a lista já filtrada nela.
+// `transportadora` vem do menu dela: abre a lista já filtrada nela.
 function abrirPacotesFaltantesAdmin(event, transportadora) {
     if (event) event.preventDefault();
     mostrarTela("tela-torre-pacotes-faltantes");
