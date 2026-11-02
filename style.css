@@ -6917,3 +6917,20 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .fs-dia-linha b { color: #e2e8f0; white-space: nowrap; }
 .fs-nw { white-space: nowrap; }
 .fs-dia-alerta-txt { font-size: 12px; color: #ef4444; margin-top: 4px; font-weight: 600; }
+
+/* Consulta de NFs */
+.cnfs { max-width: 900px; }
+.cnfs-codigos { font-family: Consolas, monospace; font-size: 13px; line-height: 1.5; resize: vertical; }
+.cnfs-barra { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0 18px; }
+.cnfs-barra .cft-btn { margin-right: 0; }
+.cnfs-kpis { align-items: flex-end; }
+.cnfs-baixar { margin: 0 0 0 auto; }
+.cnfs-tabela td.cnfs-mono { font-family: Consolas, monospace; font-variant-numeric: tabular-nums; }
+.cnfs-tabela td { vertical-align: top; font-size: 12.5px; line-height: 1.6; }
+.cnfs-tabela td.cft-neg { white-space: normal; min-width: 260px; }
+.cnfs-nf-linha { display: flex; align-items: center; gap: 8px; }
+.cnfs-nf-linha:not(:last-child) { margin-bottom: 4px; }
+.cnfs-copiar { font-size: 11px; padding: 2px 8px; border: 1px solid rgba(255,255,255,0.15);
+               border-radius: 4px; background: transparent; color: #94a3b8; cursor: pointer; flex-shrink: 0; }
+.cnfs-copiar:hover { border-color: rgba(255,255,255,0.3); color: #e2e8f0; }
+.cnfs-copiar.copiado { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.4); color: #86efac; }
