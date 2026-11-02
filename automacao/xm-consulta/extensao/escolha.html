@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>XM - Consultas de telefone</title>
+<style>
+  body { width: 240px; margin: 0; padding: 14px; background: #16181d; color: #e8eaed; font: 14px system-ui, sans-serif; }
+  [hidden] { display: none !important; }
+  .marca { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; }
+  .marca img { width: 30px; }
+  p { margin: 12px 0 6px; color: #a8adb7; }
+  button { display: block; width: 100%; padding: 8px 0; background: none; border: 0; border-top: 1px solid #2a2e37; color: #6ea8fe; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+  button:hover:not(:disabled) { text-decoration: underline; }
+  button:disabled { color: #6b7280; cursor: default; }
+</style>
+</head>
+<body>
+  <div class="marca"><img alt="" src="img/logo-claro.png">XM - Consultas de telefone</div>
+  <div id="lista" hidden>
+    <p>Abrir em qual transportadora?</p>
+  </div>
+  <script src="consulta.js"></script>
+  <script src="escolha.js"></script>
+</body>
+</html>

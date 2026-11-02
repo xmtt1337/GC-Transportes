@@ -24,7 +24,7 @@ function pedirPagina(pedido) {
 }
 
 chrome.runtime.onMessage.addListener((pedido, _, responder) => {
-  if (pedido.tipo === 'alternar') return false; // esse e do menu.js
+  if (pedido.tipo === 'alternar' || pedido.tipo === 'abrir') return false; // esses sao do menu.js
   pedirPagina(pedido).then(responder);
   return true;
 });

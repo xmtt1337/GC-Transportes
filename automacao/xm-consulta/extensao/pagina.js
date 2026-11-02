@@ -222,15 +222,10 @@ async function comecar() {
     if (aba) chrome.tabs.update(aba.id, { autoDiscardable: false }).catch(() => {});
   });
 
+  // Abrir o menu nao vai ao servidor: quem confere o acesso e o Iniciar.
   const { token, nome } = await chrome.storage.session.get(['token', 'nome']);
-  if (!token) return mostrarLogin();
-  try {
-    await X.conferir(token);
-    mostrarConsulta(nome);
-  } catch (e) {
-    if (e instanceof X.ErroDeConta) await chrome.storage.session.clear();
-    mostrarLogin(e.message);
-  }
+  if (token) mostrarConsulta(nome);
+  else mostrarLogin();
 }
 
 comecar();

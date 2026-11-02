@@ -126,9 +126,9 @@
   });
 
   chrome.runtime.onMessage.addListener((pedido) => {
-    if (pedido.tipo !== 'alternar') return;
-    if (menu.classList.contains('aberto')) minimizar();
-    else abrir();
+    if (pedido.tipo === 'abrir') abrir();
+    else if (pedido.tipo === 'alternar' && menu.classList.contains('aberto')) minimizar();
+    else if (pedido.tipo === 'alternar') abrir();
   });
 
   document.documentElement.append(hospedeiro);

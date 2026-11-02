@@ -55,7 +55,7 @@ test('Shopee aceita codigo terminado em letra e tem coluna de remetente', () => 
   assert.deepStrictEqual(codigos, ['BR2608892320879', 'BR262117646755X']);
   assert.strictEqual(ignorados, 1);
   assert.ok(X.montarCsv([{ waybill: 'BR1', remetente: 'Loja Teste' }], shopee.colunas).includes('"Loja Teste"'));
-  assert.ok(shopee.intervaloMs >= 5000);
+  assert.strictEqual(shopee.intervaloMs, 1500);
 });
 
 test('o menu ja abre na transportadora do site', () => {
@@ -154,7 +154,7 @@ test('login usa o canal vigia e confere o acesso', async () => {
   };
   assert.deepStrictEqual(await X.entrar('fulano', 'x', buscar), { token: 'T', nome: 'Fulano' });
   assert.strictEqual(JSON.parse(chamadas[0].o.body).canal, 'vigia');
-  assert.ok(chamadas[1].url.endsWith('/macros/resumo'));
+  assert.ok(chamadas[1].url.endsWith('/macros/acesso'));
   assert.strictEqual(chamadas[1].o.headers.Authorization, 'Bearer T');
 });
 

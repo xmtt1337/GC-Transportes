@@ -7,9 +7,9 @@
 
 (() => {
   const BACKEND = 'https://sistema-backend-i4uh.onrender.com';
-  // Rota so de leitura, atras de verificarNaoEntregador: entregador entra na conta
-  // mas nao passa daqui. Mesma regra das demais rotas de macro.
-  const ROTA_ACESSO = '/macros/resumo';
+  // Atras de verificarNaoEntregador: entregador entra na conta mas nao passa daqui.
+  // Nao toca no banco, para o login nao esperar.
+  const ROTA_ACESSO = '/macros/acesso';
   // 1 pacote a cada 3s foi o ritmo que passou 157 de uma vez. A 2 por segundo a Anjun
   // barrou no 4o pacote, com 30 minutos de castigo (30/10/2026). Nao acelerar sem testar.
   const INTERVALO_MS = 3000;
@@ -18,8 +18,9 @@
   const FOLGA_ENTRE_RODADAS_MS = 10000;
   const BLOQUEIO_PADRAO_MS = 30 * 60 * 1000;
   const MARGEM_BLOQUEIO_MS = 60 * 1000;
-  // Pedido do SPX revela 3 campos, um por chamada: por isso o intervalo maior que o da Anjun.
-  const INTERVALO_SHOPEE_MS = 5000;
+  // Pedido a pedido, a pedido do usuario. Sao 3 campos por pedido, cerca de 2 chamadas por
+  // segundo: o ritmo que a Anjun barrou. Se o SPX recusar, voltar a subir este numero.
+  const INTERVALO_SHOPEE_MS = 1500;
   const COLUNAS = ['waybill', 'status', 'nome', 'telefone', 'whatsapp'];
   const COLUNAS_SHOPEE = ['waybill', 'status', 'nome', 'telefone', 'remetente', 'whatsapp'];
   const PASTA_CSV = 'XM Consultas de telefone';

@@ -33,7 +33,7 @@ test('pausa entre os campos, como quem clica', async () => {
   const { get } = getFalso(() => ({ retcode: 0, data: { data_detail: 'x' } }));
   await criarConsulta(get, async (ms) => pausas.push(ms))('BR1');
   assert.strictEqual(pausas.length, 2);
-  assert.ok(pausas.every((ms) => ms >= 500));
+  assert.ok(pausas.every((ms) => ms >= 300));
 });
 
 test('pedido de outra estacao marca e nao interrompe a lista', async () => {

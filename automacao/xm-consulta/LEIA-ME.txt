@@ -25,7 +25,8 @@ INSTALAR (uma vez por computador)
 USAR
 -----------------------------------------------------------
 
-1. Clique no icone XM (no site ou no Chrome) e entre com o login do
+1. Clique no botao XM do site, ou no icone do Chrome para escolher
+   a transportadora, e entre com o login do
    sistema XMTT. O menu flutua sobre o site e pode ser arrastado.
 2. Deixe a Anjun logada no Chrome. Se nao estiver aberta, a
    extensao abre.
@@ -53,7 +54,7 @@ SEGURANCA
   e ela registra em nome dele. No SPX, a protecao anti-robo
   (x-sap-*) nao e copiada: se recusar, a consulta para.
 - Velocidade: consulta.js, INTERVALO_MS (3000 = 1 pacote a cada 3 s).
-  Shopee: INTERVALO_SHOPEE_MS (5000, com 3 campos por pedido).
+  Shopee: INTERVALO_SHOPEE_MS (1500, com 3 campos por pedido).
   A Anjun barra 30 minutos quem vai rapido demais. Depois de um
   bloqueio, a extensao nao deixa iniciar antes de o prazo acabar.
   Ela tambem recusa rodar em duas abas ao mesmo tempo.

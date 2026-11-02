@@ -11,7 +11,7 @@
   const ROTA = '/api/fleet_order/order/detail/show_sensitive_data';
   const CAMPOS = { nome: 'buyer_name', telefone: 'buyer_contact', remetente: 'seller_name' };
   const PEDIDO_DE_OUTRA_ESTACAO = 200301007;
-  const PAUSA_CAMPO_MS = 700;
+  const PAUSA_CAMPO_MS = 300;
   const HEADERS_DO_SITE = ['x-csrftoken', 'device-id', 'app', 'version'];
 
   function criarConsulta(get, esperar) {
