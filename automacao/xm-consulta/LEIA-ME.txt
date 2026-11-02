@@ -6,8 +6,9 @@ Extensao do Chrome. Escolhe a transportadora, cola os codigos
 e sai um CSV com waybill, status, nome, telefone e link do
 WhatsApp. Nao precisa de Python nem de outro programa.
 
-Hoje so a Anjun funciona. Shopee e iMile aparecem na lista
-como "em breve".
+Funciona na Anjun e no SPX da Shopee. iMile aparece na lista
+como "em breve". Na Shopee tambem sai o nome do remetente, e
+sem status: pedido de outra estacao vem marcado no CSV.
 
 
 -----------------------------------------------------------
@@ -46,11 +47,13 @@ SEGURANCA
 - Entrada: mesmo login do XM Vigia. Entregador nao passa.
 - A senha nao e salva. O token fica na sessao do Chrome,
   some ao fechar o navegador e so abre as rotas de macro.
-- A extensao so alcanca a Anjun e o servidor do sistema, e o
+- A extensao so alcanca a Anjun, o SPX e o servidor do sistema, e o
   servidor so aceita o id fixo dela (o "key" do manifest).
-- O acesso a Anjun e o do usuario logado no navegador, e a
-  Anjun registra em nome dele.
+- O acesso a transportadora e o do usuario logado no navegador,
+  e ela registra em nome dele. No SPX, a protecao anti-robo
+  (x-sap-*) nao e copiada: se recusar, a consulta para.
 - Velocidade: consulta.js, INTERVALO_MS (3000 = 1 pacote a cada 3 s).
+  Shopee: INTERVALO_SHOPEE_MS (5000, com 3 campos por pedido).
   A Anjun barra 30 minutos quem vai rapido demais. Depois de um
   bloqueio, a extensao nao deixa iniciar antes de o prazo acabar.
   Ela tambem recusa rodar em duas abas ao mesmo tempo.

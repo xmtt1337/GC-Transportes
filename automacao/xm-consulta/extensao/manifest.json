@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "XM - Consultas de telefone",
-  "version": "2.2",
+  "version": "2.3",
   "description": "Consulta pacotes em lote na transportadora e gera um CSV de contato.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwI6Ci1AkQRZ0wB2gGfGOMYRS2ghUmHgXK5YF11xxYZWbitjcuRLBTXc7U6pgmyOdxGs4WyrHm2gIRlDh5O/Xc2qAokKbfM6o5WDfdejoqzlPU7EErY1FGTlKFdWoLbLFZxTiKoZ+pIO3fTHUBNPM44014td6NzMcXOKgFXb012qI77DAtqRHOPyTq8Zrb+CfaMPp3hXxFIVO5neNa5vAvOfIiDG/t/1lxvol1fkUEjCE9FZVsAA4iHy5w3o26rOJTeQRU9vfwtG1Wp/mlWFG0TAGxkh4tZFoWIDhd26lc4vzZRkKehHfKEupaKUyJO6ZEcVYKou7cwReg8gXvSBchQIDAQAB",
   "permissions": [
@@ -13,6 +13,7 @@
   },
   "host_permissions": [
     "https://newsupplier.anjunexpress.com/*",
+    "https://spx.shopee.com.br/*",
     "https://sistema-backend-i4uh.onrender.com/*"
   ],
   "content_scripts": [
@@ -29,7 +30,19 @@
     },
     {
       "matches": [
-        "https://newsupplier.anjunexpress.com/*"
+        "https://spx.shopee.com.br/*"
+      ],
+      "js": [
+        "shopee.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://newsupplier.anjunexpress.com/*",
+        "https://spx.shopee.com.br/*"
       ],
       "js": [
         "aba.js"
@@ -39,7 +52,8 @@
     },
     {
       "matches": [
-        "https://newsupplier.anjunexpress.com/*"
+        "https://newsupplier.anjunexpress.com/*",
+        "https://spx.shopee.com.br/*"
       ],
       "js": [
         "menu.js"
@@ -56,7 +70,8 @@
         "img/logo-claro.png"
       ],
       "matches": [
-        "https://newsupplier.anjunexpress.com/*"
+        "https://newsupplier.anjunexpress.com/*",
+        "https://spx.shopee.com.br/*"
       ]
     }
   ],

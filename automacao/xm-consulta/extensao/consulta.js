@@ -18,7 +18,10 @@
   const FOLGA_ENTRE_RODADAS_MS = 10000;
   const BLOQUEIO_PADRAO_MS = 30 * 60 * 1000;
   const MARGEM_BLOQUEIO_MS = 60 * 1000;
+  // Pedido do SPX revela 3 campos, um por chamada: por isso o intervalo maior que o da Anjun.
+  const INTERVALO_SHOPEE_MS = 5000;
   const COLUNAS = ['waybill', 'status', 'nome', 'telefone', 'whatsapp'];
+  const COLUNAS_SHOPEE = ['waybill', 'status', 'nome', 'telefone', 'remetente', 'whatsapp'];
   const PASTA_CSV = 'XM Consultas de telefone';
 
   const TRANSPORTADORAS = [
@@ -29,8 +32,19 @@
       padrao: /^AJ\d{10,}$/i,
       abas: 'https://newsupplier.anjunexpress.com/*',
       url: 'https://newsupplier.anjunexpress.com/#/views/packageCenter/packageQuery',
+      intervaloMs: INTERVALO_MS,
+      colunas: COLUNAS,
     },
-    { chave: 'shopee', nome: 'Shopee', ativa: false },
+    {
+      chave: 'shopee',
+      nome: 'Shopee',
+      ativa: true,
+      padrao: /^BR[0-9A-Z]{10,16}$/i,
+      abas: 'https://spx.shopee.com.br/*',
+      url: 'https://spx.shopee.com.br/#/orderTracking',
+      intervaloMs: INTERVALO_SHOPEE_MS,
+      colunas: COLUNAS_SHOPEE,
+    },
     { chave: 'imile', nome: 'iMile', ativa: false },
   ];
 
@@ -106,7 +120,7 @@
   // Nome vem de fora: "=..." viraria formula ao abrir no Excel.
   function tempoDeBloqueio(erro) {
     const texto = String(erro || '');
-    if (!/muito frequentes|too frequent|频繁/i.test(texto)) return null;
+    if (!/muito frequentes|frequent|too many|频繁/i.test(texto)) return null;
     const minutos = texto.match(/(\d+)\s*minuto/i);
     const segundos = texto.match(/(\d+)\s*segundo/i);
     if (!minutos && !segundos) return BLOQUEIO_PADRAO_MS + MARGEM_BLOQUEIO_MS;
@@ -131,9 +145,15 @@
     return `"${seguro.replace(/"/g, '""')}"`;
   }
 
-  function montarCsv(linhas) {
-    const corpo = linhas.map((l) => COLUNAS.map((c) => celula(l[c])).join(';'));
-    return `﻿${[COLUNAS.join(';'), ...corpo].join('\r\n')}\r\n`;
+  function montarCsv(linhas, colunas = COLUNAS) {
+    const corpo = linhas.map((l) => colunas.map((c) => celula(l[c])).join(';'));
+    return `﻿${[colunas.join(';'), ...corpo].join('\r\n')}\r\n`;
+  }
+
+  // A extensao abre no site em que o menu esta, para nao consultar a transportadora errada.
+  function indiceDoSite(origem) {
+    const i = TRANSPORTADORAS.findIndex((t) => t.abas && t.abas.startsWith(`${origem}/`));
+    return Math.max(0, i);
   }
 
   function nomeArquivo(chave, agora = new Date()) {
@@ -217,6 +237,7 @@
         status: d.status || '',
         nome: d.nome || '',
         telefone: d.telefone || '',
+        remetente: d.remetente || '',
         whatsapp: linkWhatsapp(d.telefone),
       });
       aoAvancar(i + 1, codigos.length);
@@ -227,7 +248,7 @@
 
   const publico = {
     TRANSPORTADORAS, COLUNAS, PASTA_CSV, ErroDeConta, entrar, conferir, extrairCodigos, linkWhatsapp,
-    porcentagem, textoTempo, tempoDeBloqueio, motivoParaNaoIniciar, montarCsv, nomeArquivo, criarAbas, executar,
+    porcentagem, textoTempo, tempoDeBloqueio, motivoParaNaoIniciar, montarCsv, indiceDoSite, nomeArquivo, criarAbas, executar,
   };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMConsulta = publico;

@@ -84,7 +84,7 @@ function dizer(texto, erro = false) {
 
 async function baixarCsv(t, linhas) {
   const nome = X.nomeArquivo(t.chave);
-  const url = URL.createObjectURL(new Blob([X.montarCsv(linhas)], { type: 'text/csv;charset=utf-8' }));
+  const url = URL.createObjectURL(new Blob([X.montarCsv(linhas, t.colunas)], { type: 'text/csv;charset=utf-8' }));
   ultimoDownload = await chrome.downloads.download({ url, filename: `${X.PASTA_CSV}/${nome}`, saveAs: false });
   setTimeout(() => URL.revokeObjectURL(url), 60000);
   $('mostrar').hidden = false;
@@ -130,6 +130,7 @@ async function iniciar() {
     const res = await X.executar({
       codigos,
       dormir,
+      intervalo: t.intervaloMs,
       pedir: async (codigo) => {
         await chrome.storage.local.set({ [chaveUltima]: Date.now() });
         return abas.consultar(t, codigo);
@@ -216,6 +217,7 @@ async function comecar() {
   for (const t of X.TRANSPORTADORAS) {
     $('transportadora').add(new Option(t.ativa ? t.nome : `${t.nome} (em breve)`));
   }
+  if (embutido) $('transportadora').selectedIndex = X.indiceDoSite(location.ancestorOrigins[0]);
   chrome.tabs.getCurrent().then((aba) => {
     if (aba) chrome.tabs.update(aba.id, { autoDiscardable: false }).catch(() => {});
   });

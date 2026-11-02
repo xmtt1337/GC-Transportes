@@ -44,9 +44,24 @@ test('extrairCodigos aceita separadores, tira repetido e conta lixo', () => {
   });
 });
 
-test('so a Anjun esta ativa, e as tres aparecem', () => {
+test('Anjun e Shopee ativas, e as tres aparecem', () => {
   assert.deepStrictEqual(X.TRANSPORTADORAS.map((t) => t.chave), ['anjun', 'shopee', 'imile']);
-  assert.deepStrictEqual(X.TRANSPORTADORAS.filter((t) => t.ativa).map((t) => t.nome), ['Anjun']);
+  assert.deepStrictEqual(X.TRANSPORTADORAS.filter((t) => t.ativa).map((t) => t.nome), ['Anjun', 'Shopee']);
+});
+
+test('Shopee aceita codigo terminado em letra e tem coluna de remetente', () => {
+  const shopee = X.TRANSPORTADORAS[1];
+  const { codigos, ignorados } = X.extrairCodigos('BR2608892320879 br262117646755x AJ100000000000001', shopee.padrao);
+  assert.deepStrictEqual(codigos, ['BR2608892320879', 'BR262117646755X']);
+  assert.strictEqual(ignorados, 1);
+  assert.ok(X.montarCsv([{ waybill: 'BR1', remetente: 'Loja Teste' }], shopee.colunas).includes('"Loja Teste"'));
+  assert.ok(shopee.intervaloMs >= 5000);
+});
+
+test('o menu ja abre na transportadora do site', () => {
+  assert.strictEqual(X.indiceDoSite('https://spx.shopee.com.br'), 1);
+  assert.strictEqual(X.indiceDoSite('https://newsupplier.anjunexpress.com'), 0);
+  assert.strictEqual(X.indiceDoSite('https://outro.example'), 0);
 });
 
 test('linkWhatsapp acrescenta DDI so quando falta', () => {
@@ -200,12 +215,12 @@ test('menu flutuante nao sai da tela nem some ao arrastar', () => {
   assert.strictEqual(limitar(100, -50), 8); // janela menor que o painel
 });
 
-test('so a Anjun pode embutir o painel, e ele guarda o nome novo', () => {
+test('so os sites das transportadoras podem embutir o painel, e ele guarda o nome novo', () => {
   const m = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extensao', 'manifest.json'), 'utf8'));
   assert.strictEqual(m.name, 'XM - Consultas de telefone');
   assert.deepStrictEqual(m.web_accessible_resources, [{
     resources: ['pagina.html', 'img/logo.png', 'img/logo-claro.png'],
-    matches: ['https://newsupplier.anjunexpress.com/*'],
+    matches: ['https://newsupplier.anjunexpress.com/*', 'https://spx.shopee.com.br/*'],
   }]);
 });
 
@@ -213,6 +228,7 @@ test('manifest alcanca so a Anjun e o sistema, com o id liberado no backend', ()
   const m = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extensao', 'manifest.json'), 'utf8'));
   assert.deepStrictEqual(m.host_permissions, [
     'https://newsupplier.anjunexpress.com/*',
+    'https://spx.shopee.com.br/*',
     'https://sistema-backend-i4uh.onrender.com/*',
   ]);
   const hash = require('node:crypto').createHash('sha256')
