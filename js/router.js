@@ -83,6 +83,7 @@ const _ROTAS = {
     "Conferencias/Anjun":            () => abrirConferencias(null, "anjun"),
     "Conferencias/Imile":            () => abrirConferencias(null, "imile"),
     "Conferencias/Shopee":           () => abrirConferencias(null, "shopee"),
+    "Conferencias/TotalExpress":     () => abrirConferencias(null, "total_express"),
     "Fechamentos/Meus":              () => abrirFechamentos(),
     "Fechamentos/Dashboard":         () => abrirEntDashboard(),
     "Anotacoes/Transportadoras":     () => abrirAnotacoesTransportadoras(),

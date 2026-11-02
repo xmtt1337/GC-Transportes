@@ -12,13 +12,14 @@ let _pfaFiltrados = [];
 let _pfaPagina    = 1;
 let _pfaPorPagina = 25;
 
-function abrirPacotesFaltantesAdmin(event) {
+// `transportadora` vem da barra de Transportadoras: abre a lista já filtrada nela.
+function abrirPacotesFaltantesAdmin(event, transportadora) {
     if (event) event.preventDefault();
     mostrarTela("tela-torre-pacotes-faltantes");
-    _pfaCarregar();
+    _pfaCarregar(transportadora);
 }
 
-function _pfaCarregar() {
+function _pfaCarregar(transportadora) {
     const empty = document.getElementById("pfa-empty");
     const lista = document.getElementById("pfa-lista");
     skMostrar(empty, "cards");
@@ -40,8 +41,8 @@ function _pfaCarregar() {
             // sort é estável: dentro do mesmo dia continua a ordem que cada lado mandou.
             _pfaDados.sort((a, b) => (_pfaDataISO(b.data_hora_brasilia) || "").localeCompare(_pfaDataISO(a.data_hora_brasilia) || ""));
             const filtro = document.getElementById("pfa-filtro-input");
-            if (filtro) filtro.value = "";
-            _pfaRenderizar(_pfaDados);
+            if (filtro) filtro.value = transportadora || "";
+            _pfaFiltrarLocal();
         }).catch(() => { skFim(empty, "Erro ao carregar pacotes faltantes."); });
 }
 

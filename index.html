@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261102c">
+<link rel="stylesheet" href="style.css?v=20261102d">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -139,40 +139,38 @@ if (_BASE) {
 
     <ul class="menu">
 
+        <!-- Um item só, sem submenu: a transportadora é aba dentro da tela, e cada aba traz
+             as funções dela (js/conferencias-hub.js). Cada uma que entrasse aqui deixaria a
+             barra lateral mais alta sem dizer nada de novo. As URLs antigas (Shopee/...,
+             Operacao/Alimentar...) continuam valendo: link salvo abre a tela certa. -->
+        <li class="menu-item" data-menu="conferencias" id="menu-conferencias" onclick="abrirConferenciasHub(event)">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+            <span class="label">Transportadoras</span>
+            <span class="menu-tooltip">Transportadoras</span>
+        </li>
+
+        <!-- Galpão: o que é geral, de qualquer transportadora. A Separação mora aqui de
+             propósito — ela bipa pacote de todas, não é de uma só. -->
         <li class="menu-item" data-menu="operacao" id="menu-operacao" onclick="toggleMenu(this)">
             <svg class="menu-icon" viewBox="0 0 24 24">
                 <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
                 <rect x="9" y="3" width="6" height="4" rx="1"/>
                 <path d="M9 12h6M9 16h4"/>
             </svg>
-            <span class="label">Operação</span>
+            <span class="label">Galpão</span>
             <span class="arrow">▾</span>
-            <span class="menu-tooltip">Operação</span>
+            <span class="menu-tooltip">Galpão</span>
         </li>
         <ul class="submenu" data-menu="operacao" id="submenu-operacao">
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Bipagem <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="subgroup-bipagens">
-                <li><a href="#" data-rota="Operacao/Bipagem" onclick="abrirBipagens(event)">Separação</a></li>
-            </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Alimentar separação <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="subgroup-alimentar">
-                <li><a href="#" data-rota="Operacao/AlimentarLoggi" onclick="abrirAlimentar(event,'loggi')">Loggi</a></li>
-                <li><a href="#" data-rota="Operacao/AlimentarAnjun" onclick="abrirAlimentar(event,'anjun')">Anjun</a></li>
-                <li><a href="#" data-rota="Operacao/AlimentarJT" onclick="abrirAlimentar(event,'jt')">J&amp;T</a></li>
-                <li><a href="#" data-rota="Operacao/AlimentarImile" onclick="abrirAlimentar(event,'imile')">Imile</a></li>
-                <li><a href="#" data-rota="Operacao/AlimentarTotalExpress" onclick="abrirAlimentar(event,'total_express')">Total Express</a></li>
-            </ul>
-            <li class="subgroup-header" id="menu-desempenho-bip" style="display:none" onclick="toggleSubGroup(this)">
-                Desempenho <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="subgroup-desempenho">
-                <li><a href="#" data-rota="Operacao/DesempenhoUsuario" onclick="abrirDesempenhoBip(event)">Quantidade x Usuário</a></li>
-                <li><a href="#" data-rota="Operacao/DesempenhoHora" onclick="abrirDesempenhoHora(event)">Quantidade x Hora</a></li>
-            </ul>
+            <li><a href="#" data-rota="Operacao/Bipagem" onclick="abrirBipagens(event)">Separação</a></li>
+            <li id="menu-item-etiquetas"><a href="#" data-rota="Operacao/Etiquetas" onclick="abrirEtiquetas(event)">Impressão de etiquetas</a></li>
+            <li><a href="#" data-rota="Custodia/Pacotes" onclick="abrirCustodia(event)">Custódia</a></li>
+            <li><a href="#" data-rota="Pedidos/Pesquisar" onclick="abrirPesquisarPedidos(event)">Histórico de pedidos</a></li>
+            <li id="menu-item-pacotes-faltantes-op" style="display:none"><a href="#" data-rota="Ocorrencias/PacotesFaltantes" onclick="abrirPacotesFaltantes(event)">Registro de Pacotes Faltantes</a></li>
             <li class="subgroup-header" onclick="toggleSubGroup(this)">
                 Devoluções <span class="subgroup-arrow">▾</span>
             </li>
@@ -181,191 +179,75 @@ if (_BASE) {
                 <li><a href="#" data-rota="Operacao/DevolucoesReceberAvulso" onclick="abrirDevolucoesReceberAvulso(event)">Receber Avulso</a></li>
                 <li><a href="#" data-rota="Operacao/DevolucoesRegistro" onclick="abrirDevolucoesRegistro(event)">Registro</a></li>
             </ul>
-            <li id="menu-item-etiquetas"><a href="#" data-rota="Operacao/Etiquetas" onclick="abrirEtiquetas(event)">Impressão de etiquetas</a></li>
-            <li id="menu-item-pacotes-faltantes-op" style="display:none"><a href="#" data-rota="Ocorrencias/PacotesFaltantes" onclick="abrirPacotesFaltantes(event)">Registro de Pacotes Faltantes</a></li>
-        </ul>
-
-        <!-- Shopee é menu próprio, e não um grupo dentro de Operação: era o único fluxo que
-             precisava de um 4º nível (Operação > Shopee > Alimentar > tela), o que deixava os
-             links com ~66px de recuo numa sidebar de 250px. Aqui ele fica com a mesma
-             profundidade de todos os outros menus. Visibilidade acompanha Operação — quem não
-             enxerga uma, não enxerga a outra (core.js). -->
-        <!-- gcPoloGarantir no clique: o polo é o que decide o XPT de tudo aqui dentro, então
-             a pergunta vem já na abertura do menu — antes era só dentro do Recebimento, e
-             quem entrava por outra tela levava um aviso mandando abrir aquela primeiro. -->
-        <li class="menu-item" data-menu="shopee" id="menu-shopee" onclick="toggleMenu(this); gcPoloGarantir()">
-            <svg class="menu-icon" viewBox="0 0 24 24">
-                <path d="M4 7h16l-1.2 12.1A2 2 0 0 1 16.8 21H7.2a2 2 0 0 1-2-1.9L4 7z"/>
-                <path d="M8.5 10V6.5a3.5 3.5 0 0 1 7 0V10"/>
-            </svg>
-            <span class="label">Shopee</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">Shopee</span>
-        </li>
-        <ul class="submenu" data-menu="shopee" id="submenu-shopee">
-            <li><a href="#" data-rota="Shopee/Recebimento" onclick="abrirShopeeReceber(event)">Recebimento</a></li>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Alimentar <span class="subgroup-arrow">▾</span>
+            <li class="subgroup-header" id="menu-desempenho-bip" style="display:none" onclick="toggleSubGroup(this)">
+                Desempenho <span class="subgroup-arrow">▾</span>
             </li>
-            <ul class="sub-submenu" id="subgroup-shopee-alimentar">
-                <li><a href="#" data-rota="Shopee/Romaneiro" onclick="abrirShopeeRomaneiro(event)">Romaneiro</a></li>
-                <li><a href="#" data-rota="Shopee/AT" onclick="abrirShopeeAT(event)">AT Exportada</a></li>
-                <!-- Voltou ao menu: é o relatório que traz o status de cada pedido, e
-                     agora ele alimenta também o bloqueio de "pedido retido" (status de
-                     retorno) em toda tela de bipagem — sem alimentar isso, a coluna
-                     `status` nunca teria dado novo e a trava ficaria sem fonte. -->
-                <li><a href="#" data-rota="Shopee/Pedidos" onclick="abrirShopeePedidos(event)">Pedidos pesquisados</a></li>
-            </ul>
-            <!-- As conferências da Shopee saíram daqui: viraram abas do menu
-                 "Conferências". As URLs (Shopee/LineHaul, Shopee/Atribuicoes,
-                 Shopee/ConfEntregadores) continuam valendo — link salvo e
-                 histórico do navegador seguem abrindo a tela certa. -->
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Pacotes Retidos <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="subgroup-shopee-retidos">
-                <li><a href="#" data-rota="Shopee/ItemAvariado" onclick="abrirShopeeAvariado(event)">Item Avariado</a></li>
-            </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Stuck <span class="subgroup-arrow">▾</span>
-            </li>
-            <ul class="sub-submenu" id="subgroup-shopee-stuck">
-                <li><a href="#" data-rota="Shopee/Stuck" onclick="abrirShopeeStuck(event)">Planilha Andre</a></li>
-                <li><a href="#" data-rota="Shopee/Stuck/Backlog" onclick="abrirShopeeStuckBacklog(event)">Backlog</a></li>
+            <ul class="sub-submenu" id="subgroup-desempenho">
+                <li><a href="#" data-rota="Operacao/DesempenhoUsuario" onclick="abrirDesempenhoBip(event)">Quantidade x Usuário</a></li>
+                <li><a href="#" data-rota="Operacao/DesempenhoHora" onclick="abrirDesempenhoHora(event)">Quantidade x Hora</a></li>
             </ul>
         </ul>
 
-        <li class="menu-item" data-menu="pedidos" id="menu-pedidos" onclick="toggleMenu(this)">
-            <svg class="menu-icon" viewBox="0 0 24 24">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                <line x1="12" y1="22.08" x2="12" y2="12"/>
-            </svg>
-            <span class="label">Pedidos</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">Pedidos</span>
-        </li>
-        <ul class="submenu" data-menu="pedidos" id="submenu-pedidos">
-            <li><a href="#" data-rota="Pedidos/Pesquisar" onclick="abrirPesquisarPedidos(event)">Histórico de pedidos</a></li>
-        </ul>
-
-        <!-- Um item só, sem submenu: a transportadora virou aba dentro da tela.
-             Cada uma que entrasse aqui deixaria a barra lateral mais alta sem
-             dizer nada de novo. -->
-        <li class="menu-item" data-menu="conferencias" id="menu-conferencias" onclick="abrirConferenciasHub(event)">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
-                <rect x="9" y="3" width="6" height="4" rx="1"/>
-                <path d="M9 12l2 2 4-4"/>
-            </svg>
-            <span class="label">Conferências</span>
-            <span class="menu-tooltip">Conferências</span>
-        </li>
-
-        <li class="menu-item" data-menu="fechamentos" id="menu-fechamentos" onclick="toggleMenu(this)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24">
-                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                <path d="M16 2v4M8 2v4M3 10h18"/>
-                <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
-            </svg>
-            <span class="label">Fechamentos</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">Fechamentos</span>
-        </li>
-        <ul class="submenu" data-menu="fechamentos" id="submenu-fechamentos" style="display:none">
-            <li><a href="#" data-rota="Fechamentos/Meus" onclick="abrirFechamentos(event)">Meus Fechamentos</a></li>
-            <li><a href="#" data-rota="Fechamentos/Dashboard" onclick="abrirEntDashboard(event)">Dashboard</a></li>
-            <li><a href="#" data-rota="Fechamentos/NotasFiscais" onclick="abrirMinhasNFs(event)">Notas Fiscais</a></li>
-        </ul>
-
-        <li class="menu-item" data-menu="anotacoes" id="menu-anotacoes" onclick="toggleMenu(this)" style="display:none">
+        <!-- Telas do entregador. Três menus por assunto, em vez de um por tela: na rua, no
+             celular, a pessoa procura pelo que quer fazer. Cada item mantém o id de antes
+             porque é por ele que o core.js libera quem tem permissão. -->
+        <li class="menu-item" data-menu="entrota" id="menu-ent-rota" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="8" y1="13" x2="16" y2="13"/>
-                <line x1="8" y1="17" x2="13" y2="17"/>
+                <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
             </svg>
-            <span class="label">Anotações</span>
+            <span class="label">Minha rota</span>
             <span class="arrow">▾</span>
-            <span class="menu-tooltip">Anotações</span>
+            <span class="menu-tooltip">Minha rota</span>
         </li>
-        <ul class="submenu" data-menu="anotacoes" id="submenu-anotacoes" style="display:none">
-            <li><a href="#" data-rota="Anotacoes/Transportadoras" onclick="abrirAnotacoesTransportadoras(event)">Transportadoras</a></li>
-            <li><a href="#" data-rota="Anotacoes/PorDia" onclick="abrirAnotacoesPorDia(event)">Anotações dos pacotes por dia</a></li>
-            <li><a href="#" data-rota="Anotacoes/Quinzenas" onclick="abrirAnotacoesQuinzenas(event)">Quinzenas</a></li>
+        <ul class="submenu" data-menu="entrota" id="submenu-ent-rota" style="display:none">
+            <li><a href="#" data-rota="Conferencia/Shopee" onclick="abrirConfEntregador(event)">Conferência</a></li>
+            <li><a href="#" data-rota="CriarAT" onclick="abrirSolicitarAT(event)">Criar AT</a></li>
+            <li><a href="#" data-rota="Devolucoes/Nova" onclick="abrirDevolucaoNova(event)">Registrar devolução</a></li>
+            <li><a href="#" data-rota="Devolucoes/MinhasViagens" onclick="abrirViagemMinhas(event)">Minhas viagens</a></li>
+            <li id="menu-ocorrencias" style="display:none"><a href="#" data-rota="Ocorrencias/PacotesFaltantes" onclick="abrirPacotesFaltantes(event)">Pacotes Faltantes</a></li>
+            <li class="subgroup-header" id="menu-anotacoes" style="display:none" onclick="toggleSubGroup(this)">
+                Anotações <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="submenu-anotacoes">
+                <li><a href="#" data-rota="Anotacoes/Transportadoras" onclick="abrirAnotacoesTransportadoras(event)">Transportadoras</a></li>
+                <li><a href="#" data-rota="Anotacoes/PorDia" onclick="abrirAnotacoesPorDia(event)">Anotações dos pacotes por dia</a></li>
+                <li><a href="#" data-rota="Anotacoes/Quinzenas" onclick="abrirAnotacoesQuinzenas(event)">Quinzenas</a></li>
+            </ul>
         </ul>
 
-        <li class="menu-item" data-menu="adiantamentos" id="menu-adiantamentos" onclick="toggleMenu(this)" style="display:none">
+        <li class="menu-item" data-menu="entdesempenho" id="menu-ent-desempenho" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+            </svg>
+            <span class="label">Meu desempenho</span>
+            <span class="arrow">▾</span>
+            <span class="menu-tooltip">Meu desempenho</span>
+        </li>
+        <ul class="submenu" data-menu="entdesempenho" id="submenu-ent-desempenho" style="display:none">
+            <!-- Performance: o registro por dia da porcentagem do bloco "Na rua hoje" da tela
+                 inicial. Só pro entregador liberado (pode_ver_na_rua). -->
+            <li id="menu-ent-performance" style="display:none"><a href="#" data-rota="Performance/PorDia" onclick="abrirEntPerformance(event)">Performance por dia</a></li>
+            <!-- POD Shopee: o POD semanal da planilha do André, só Caçador e Videira. -->
+            <li id="menu-pod-shopee" style="display:none"><a href="#" data-rota="PODShopee/Semanal" onclick="abrirPodSemanal(event)">POD Shopee</a></li>
+        </ul>
+
+        <li class="menu-item" data-menu="entpagamentos" id="menu-ent-pagamentos" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="2" y="5" width="20" height="14" rx="2"/>
                 <path d="M16 12a2 2 0 0 0 0 4h4v-4Z"/>
                 <path d="M2 10h20"/>
             </svg>
-            <span class="label">Adiantamentos</span>
+            <span class="label">Meus pagamentos</span>
             <span class="arrow">▾</span>
-            <span class="menu-tooltip">Adiantamentos</span>
+            <span class="menu-tooltip">Meus pagamentos</span>
         </li>
-        <ul class="submenu" data-menu="adiantamentos" id="submenu-adiantamentos" style="display:none">
+        <ul class="submenu" data-menu="entpagamentos" id="submenu-ent-pagamentos" style="display:none">
+            <li><a href="#" data-rota="Fechamentos/Meus" onclick="abrirFechamentos(event)">Meus Fechamentos</a></li>
+            <li><a href="#" data-rota="Fechamentos/Dashboard" onclick="abrirEntDashboard(event)">Dashboard</a></li>
+            <li><a href="#" data-rota="Fechamentos/NotasFiscais" onclick="abrirMinhasNFs(event)">Notas Fiscais</a></li>
             <li><a href="#" data-rota="Adiantamentos/Solicitar" onclick="abrirAntecipacoes(event)">Solicitar Antecipação</a></li>
             <li><a href="#" data-rota="Adiantamentos/Minhas" onclick="abrirMinhasSolicitacoes(event)">Minhas Solicitações</a></li>
         </ul>
-
-        <!-- Conferência do entregador: os clusters que ele leva hoje. Menu próprio porque
-             "Conferências" existente é da operação e mostra o galpão inteiro. -->
-        <li class="menu-item" data-menu="confentregador" id="menu-conf-entregador" onclick="toggleMenu(this)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-            </svg>
-            <span class="label">Conferência</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">Conferência</span>
-        </li>
-        <ul class="submenu" data-menu="confentregador" id="submenu-conf-entregador" style="display:none">
-            <li><a href="#" data-rota="Conferencia/Shopee" onclick="abrirConfEntregador(event)">Shopee</a></li>
-        </ul>
-
-        <!-- Performance do entregador: o registro por dia da porcentagem que o bloco
-             "Na rua hoje" mostra na tela inicial. Só pro entregador liberado
-             (pode_ver_na_rua) — nasce escondido e o core.js mostra. -->
-        <li class="menu-item" data-menu="entperformance" id="menu-ent-performance" onclick="toggleMenu(this)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
-            </svg>
-            <span class="label">Performance</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">Performance</span>
-        </li>
-        <ul class="submenu" data-menu="entperformance" id="submenu-ent-performance" style="display:none">
-            <li><a href="#" data-rota="Performance/PorDia" onclick="abrirEntPerformance(event)">Por dia</a></li>
-        </ul>
-
-        <!-- POD Shopee: o POD semanal da planilha do André, só Caçador e Videira. Todo
-             entregador vê o dele; o dev vê todos. Nasce escondido e o core.js mostra. -->
-        <li class="menu-item" data-menu="podshopee" id="menu-pod-shopee" onclick="toggleMenu(this)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>
-            </svg>
-            <span class="label">POD Shopee</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">POD Shopee</span>
-        </li>
-        <ul class="submenu" data-menu="podshopee" id="submenu-pod-shopee" style="display:none">
-            <li><a href="#" data-rota="PODShopee/Semanal" onclick="abrirPodSemanal(event)">Semanal</a></li>
-        </ul>
-
-        <!-- Criar AT: o pacote que caiu na mão do entregador sem passar pelo
-             recebimento nem pela atribuição no SPX. Item próprio, e não dentro de
-             "Conferência", porque ali ele CONFERE o que já é dele; aqui ele PEDE que
-             um pacote passe a ser. Vai direto pra tela, sem submenu: é uma tela só. -->
-        <li class="menu-item" data-menu="criarat" data-rota="CriarAT" id="menu-criar-at" onclick="abrirSolicitarAT(event)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="7" width="18" height="14" rx="2"/>
-                <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                <path d="M12 12v5"/><path d="M9.5 14.5 12 12l2.5 2.5"/>
-            </svg>
-            <span class="label">Criar AT</span>
-            <span class="menu-tooltip">Criar AT</span>
-        </li>
 
         <!-- Baixas — Total Express: oculto pra todos os cargos. A tela e a rota
              Baixas/TotalExpress seguem no ar; pra voltar, é mostrar este menu no core.js. -->
@@ -382,84 +264,6 @@ if (_BASE) {
             <li><a href="#" data-rota="Baixas/TotalExpress" onclick="abrirBaixaTotalExpress(event)">Total Express</a></li>
         </ul>
 
-        <li class="menu-item" data-menu="devolucoes" id="menu-devolucoes" onclick="toggleMenu(this)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                <line x1="12" y1="22.08" x2="12" y2="12"/>
-            </svg>
-            <span class="label">Devoluções</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">Devoluções</span>
-        </li>
-        <ul class="submenu" data-menu="devolucoes" id="submenu-devolucoes" style="display:none">
-            <li><a href="#" data-rota="Devolucoes/Nova" onclick="abrirDevolucaoNova(event)">Registrar devolução</a></li>
-            <li><a href="#" data-rota="Devolucoes/MinhasViagens" onclick="abrirViagemMinhas(event)">Minhas viagens</a></li>
-        </ul>
-
-        <li class="menu-item" data-menu="ocorrencias" id="menu-ocorrencias" onclick="toggleMenu(this)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <span class="label">Ocorrências</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">Ocorrências</span>
-        </li>
-        <ul class="submenu" data-menu="ocorrencias" id="submenu-ocorrencias" style="display:none">
-            <li><a href="#" data-rota="Ocorrencias/PacotesFaltantes" onclick="abrirPacotesFaltantes(event)">Pacotes Faltantes</a></li>
-        </ul>
-
-        <!-- gcPoloGarantir no clique: as conversas são separadas por polo, então quem ainda não
-             escolheu o seu é perguntado já na abertura do menu — a pergunta volta a cada clique
-             enquanto não for respondida. -->
-        <li class="menu-item" data-menu="ativos" id="menu-ativos" onclick="toggleMenu(this); gcPoloGarantir()" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-            </svg>
-            <span class="label">Ativos</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">Ativos</span>
-        </li>
-        <ul class="submenu" data-menu="ativos" id="submenu-ativos" style="display:none">
-            <li><a href="#" data-rota="Ativos/Disparar" onclick="abrirWhatsappTeste(event)">Disparar ativo</a></li>
-            <li><a href="#" data-rota="Ativos/Conversas" onclick="abrirWhatsappConversas(event)">Conversas</a></li>
-        </ul>
-
-        <!-- Atendimento interno: o outro lado do balãozinho do rodapé. Só a conta do
-             suporte enxerga, e quem libera é o servidor (js/atendimento.js consulta
-             /atendimento/status) — não há cargo nem nome de usuário decidindo aqui. -->
-        <li class="menu-item" data-menu="atendimento" id="menu-atendimento" onclick="toggleMenu(this)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 14v-2a8 8 0 0 1 16 0v2"/>
-                <path d="M4 14h2.5a1 1 0 0 1 1 1v3.5a1 1 0 0 1-1 1H5.5A1.5 1.5 0 0 1 4 18V14z"/>
-                <path d="M20 14h-2.5a1 1 0 0 0-1 1v3.5a1 1 0 0 0 1 1h1a1.5 1.5 0 0 0 1.5-1.5V14z"/>
-                <path d="M20 18v1a3 3 0 0 1-3 3h-3"/>
-            </svg>
-            <span class="label">Atendimento</span>
-            <span class="arrow">▾</span>
-            <span class="atd-badge-menu" id="atd-badge-menu" style="display:none"></span>
-            <span class="menu-tooltip">Atendimento</span>
-        </li>
-        <ul class="submenu" data-menu="atendimento" id="submenu-atendimento" style="display:none">
-            <li><a href="#" data-rota="Atendimento/Conversas" onclick="abrirAtendimento(event)">Conversas</a></li>
-        </ul>
-
-        <li class="menu-item" data-menu="custodia" id="menu-custodia" onclick="toggleMenu(this)">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="8" width="18" height="12" rx="2"/>
-                <path d="M3 12h18"/>
-                <path d="M7 8V6a5 5 0 0 1 10 0v2"/>
-                <circle cx="12" cy="16" r="1.2"/>
-            </svg>
-            <span class="label">Custódia</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">Custódia</span>
-        </li>
-        <ul class="submenu" data-menu="custodia" id="submenu-custodia">
-            <li><a href="#" data-rota="Custodia/Pacotes" onclick="abrirCustodia(event)">Entrada e saída</a></li>
-        </ul>
         <li class="menu-item" data-menu="transferencias" id="menu-transferencias" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="1" y="3" width="15" height="13"/>
@@ -491,23 +295,46 @@ if (_BASE) {
             <li><a href="#" data-rota="DevolucoesMotorista/MinhasCargas" onclick="abrirMotoristaMinhasCargas(event)">Minhas cargas</a></li>
         </ul>
 
+        <!-- Acompanhamento: o que a gestão olha, valendo pra todas as transportadoras. O
+             recorte por transportadora (Na Rua, por exemplo) está na barra de Transportadoras. -->
         <li class="menu-item" data-menu="torrecontrole" id="menu-torrecontrole" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2v6"/>
                 <path d="M5.64 8.64a8 8 0 1 0 12.72 0"/>
                 <circle cx="12" cy="14" r="2"/>
             </svg>
-            <span class="label">Torre de Controle</span>
+            <span class="label">Acompanhamento</span>
             <span class="arrow">▾</span>
-            <span class="menu-tooltip">Torre de Controle</span>
+            <span class="menu-tooltip">Acompanhamento</span>
         </li>
         <ul class="submenu" data-menu="torrecontrole" id="submenu-torrecontrole" style="display:none">
-            <li><a href="#" onclick="_emBreve(event)">Visão Geral</a></li>
-            <li><a href="#" data-rota="TorreControle/NaRua" onclick="abrirTorreNaRua(event)">Na Rua</a></li>
-            <li><a href="#" onclick="_emBreve(event)">Na Base</a></li>
-            <li><a href="#" onclick="_emBreve(event)">Sem Movimentação</a></li>
             <li id="menu-item-pacotes-faltantes-adm"><a href="#" data-rota="TorreControle/PacotesFaltantes" onclick="abrirPacotesFaltantesAdmin(event)">Pacotes Faltantes</a></li>
             <li id="menu-item-transferencias-adm"><a href="#" data-rota="TorreControle/Transferencias" onclick="abrirTransferenciasAdmin(event)">Transferências</a></li>
+            <li class="subgroup-header" id="menu-planejamento" style="display:none" onclick="toggleSubGroup(this)">
+                Planejamento de Rotas <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="submenu-planejamento">
+                <li><a href="#" data-rota="Planejamento/Cacador" onclick="abrirPlanejamentoVideira(event,'cacador')">Caçador</a></li>
+                <li><a href="#" data-rota="Planejamento/Videira" onclick="abrirPlanejamentoVideira(event,'videira')">Videira</a></li>
+            </ul>
+            <!-- gcPoloGarantir no clique: as conversas são separadas por polo, então quem ainda não
+                 escolheu o seu é perguntado já na abertura do grupo — a pergunta volta a cada clique
+                 enquanto não for respondida. -->
+            <li class="subgroup-header" id="menu-ativos" style="display:none" onclick="toggleSubGroup(this); gcPoloGarantir()">
+                Ativos <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="submenu-ativos">
+                <li><a href="#" data-rota="Ativos/Disparar" onclick="abrirWhatsappTeste(event)">Disparar ativo</a></li>
+                <li><a href="#" data-rota="Ativos/Conversas" onclick="abrirWhatsappConversas(event)">Conversas</a></li>
+            </ul>
+            <li class="subgroup-header" id="menu-extravios" style="display:none" onclick="toggleSubGroup(this)">
+                Extravios <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="submenu-extravios">
+                <li><a href="#" data-rota="Extravios/Registros" onclick="abrirExtraviosRegistros(event)">Registros</a></li>
+                <li><a href="#" data-rota="Extravios/Pesquisar" onclick="abrirExtraviosBusca(event)">Pesquisar</a></li>
+                <li><a href="#" data-rota="Extravios/Dashboard" onclick="abrirExtraviosDash(event)">Dashboard</a></li>
+            </ul>
         </ul>
 
         <li class="menu-item" data-menu="fechamento" id="menu-fechamento" onclick="toggleMenu(this)" style="display:none">
@@ -547,48 +374,29 @@ if (_BASE) {
             <li><a href="#" data-rota="Fechamento/Conversoes" onclick="abrirConversoes(event)">Conversões</a></li>
         </ul>
 
-        <li class="menu-item" data-menu="planejamento" id="menu-planejamento" onclick="toggleMenu(this)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 11l3 3L22 4"/>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-            </svg>
-            <span class="label">Planejamento de Rotas</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">Planejamento de Rotas</span>
-        </li>
-        <ul class="submenu" data-menu="planejamento" id="submenu-planejamento" style="display:none">
-            <li><a href="#" data-rota="Planejamento/Cacador" onclick="abrirPlanejamentoVideira(event,'cacador')">Caçador</a></li>
-            <li><a href="#" data-rota="Planejamento/Videira" onclick="abrirPlanejamentoVideira(event,'videira')">Videira</a></li>
-        </ul>
-
+        <!-- Financeiro e Fiscal: quem é de finance/dev vê tudo; o admin vê só a Consulta de NFs,
+             que é leitura — o core.js esconde os grupos marcados com .fin-restrito. -->
         <li class="menu-item" data-menu="financeiro" id="menu-financeiro" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24">
                 <rect x="1" y="4" width="22" height="16" rx="2"/>
                 <line x1="1" y1="10" x2="23" y2="10"/>
             </svg>
-            <span class="label">Financeiro</span>
+            <span class="label">Financeiro e Fiscal</span>
             <span class="arrow">▾</span>
-            <span class="menu-tooltip">Financeiro</span>
+            <span class="menu-tooltip">Financeiro e Fiscal</span>
         </li>
         <ul class="submenu" data-menu="financeiro" id="submenu-financeiro" style="display:none">
-            <li><a href="#" data-rota="Financeiro/NotasFiscais" onclick="abrirAdminNFs(event)">Notas Fiscais</a></li>
-            <li><a href="#" data-rota="Financeiro/ConferenciaNF" onclick="abrirConfNFs(event)">Conferência NF</a></li>
-            <li><a href="#" data-rota="Financeiro/Antecipacoes" onclick="abrirAdminAntecipacoes(event)">Antecipações</a></li>
-            <li><a href="#" data-rota="Financeiro/Pagamentos" onclick="abrirAdminPagamentos(event)">Pagamentos</a></li>
-            <li><a href="#" data-rota="Financeiro/Faturas" onclick="abrirGeradorFaturas(event)">Gerador de Faturas</a></li>
-        </ul>
-
-        <li class="menu-item" data-menu="fiscal" id="menu-fiscal" onclick="toggleMenu(this)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6M8 13h8M8 17h5"/>
-            </svg>
-            <span class="label">Fiscal</span>
-            <span class="arrow">&#9662;</span>
-            <span class="menu-tooltip">Fiscal</span>
-        </li>
-        <ul class="submenu" data-menu="fiscal" id="submenu-fiscal">
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
+            <li class="subgroup-header fin-restrito" onclick="toggleSubGroup(this)">
+                Financeiro <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu">
+                <li><a href="#" data-rota="Financeiro/NotasFiscais" onclick="abrirAdminNFs(event)">Notas Fiscais</a></li>
+                <li><a href="#" data-rota="Financeiro/ConferenciaNF" onclick="abrirConfNFs(event)">Conferência NF</a></li>
+                <li><a href="#" data-rota="Financeiro/Antecipacoes" onclick="abrirAdminAntecipacoes(event)">Antecipações</a></li>
+                <li><a href="#" data-rota="Financeiro/Pagamentos" onclick="abrirAdminPagamentos(event)">Pagamentos</a></li>
+                <li><a href="#" data-rota="Financeiro/Faturas" onclick="abrirGeradorFaturas(event)">Gerador de Faturas</a></li>
+            </ul>
+            <li class="subgroup-header fin-restrito" onclick="toggleSubGroup(this)">
                 CT-e <span class="subgroup-arrow">&#9662;</span>
             </li>
             <ul class="sub-submenu">
@@ -597,10 +405,9 @@ if (_BASE) {
                 <li><a href="#" data-rota="Fiscal/NovoCTe" onclick="abrirNovoCTe(); return false;">Novo CT-e</a></li>
                 <li><a href="#" data-rota="Fiscal/ImportarShopee" onclick="abrirImportarShopee(); return false;">Importar da Shopee</a></li>
                 <li><a href="#" data-rota="Fiscal/Valores" onclick="abrirFiscalValores(event)">Valores do frete</a></li>
-                <li><a href="#" data-rota="SPX/AgencyRouter" onclick="abrirAgencyRouter(event)">Agency Router (SPX)</a></li>
             </ul>
-            <li class="subgroup-header" onclick="toggleSubGroup(this)">
-                Configurações <span class="subgroup-arrow">&#9662;</span>
+            <li class="subgroup-header fin-restrito" onclick="toggleSubGroup(this)">
+                Configurações fiscais <span class="subgroup-arrow">&#9662;</span>
             </li>
             <ul class="sub-submenu">
                 <li><a href="#" data-rota="Fiscal/Empresas" onclick="abrirFiscalEmpresas(event)">Empresa emitente</a></li>
@@ -609,19 +416,9 @@ if (_BASE) {
                 <li><a href="#" data-rota="Fiscal/Numeracao" onclick="abrirFiscalNumeracao(event)">Numeração</a></li>
                 <li><a href="#" data-rota="Fiscal/Perfil" onclick="abrirFiscalPerfil(event)">Perfil de operação</a></li>
             </ul>
+            <!-- Consulta de NFs: código BR -> chave da NF-e vinculada, em lote, pra CSV. -->
+            <li><a href="#" data-rota="ConsultaNFs" onclick="abrirConsultaNfs(event)">Consulta de NFs</a></li>
         </ul>
-
-        <!-- Consulta de NFs: código BR -> chave da NF-e vinculada, em lote, pra
-             CSV. Leitura só — por isso aberta pra admin, não só finance/dev como
-             o resto do Fiscal. Item próprio, sem submenu: é uma tela só. -->
-        <li class="menu-item" data-menu="consultanfs" data-rota="ConsultaNFs" id="menu-consulta-nfs" onclick="abrirConsultaNfs(event)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="10" cy="10" r="6"/>
-                <path d="m21 21-4.3-4.3"/>
-            </svg>
-            <span class="label">Consulta de NFs</span>
-            <span class="menu-tooltip">Consulta de NFs</span>
-        </li>
 
         <li class="menu-item" data-menu="cadastros" id="menu-cadastros" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24">
@@ -650,31 +447,44 @@ if (_BASE) {
             <ul class="sub-submenu" id="subgroup-trampay">
                 <li><a href="#" data-rota="Cadastros/TrampayEntregadores" onclick="abrirEntregadoresTrampay(event)">Entregadores</a></li>
             </ul>
+            <!-- Só dev: cartões Ticketlog (combustível) e o valor de cada um. -->
+            <li id="menu-item-ticketlog" style="display:none"><a href="#" data-rota="TicketLog/Informacoes" onclick="abrirTicketlogInfo(event)">TicketLog</a></li>
         </ul>
 
-        <!-- Só dev — liga/desliga e configura tarefas automáticas (hoje só o aviso de rota
-             incompleta). Vai direto pra tela, sem submenu: só existe um macro hoje. -->
-        <li class="menu-item" data-menu="macros" id="menu-macros" onclick="abrirMacros(event)" style="display:none">
+        <!-- Sistema: as automações. Macros é de dev e admin (o admin só vê a seção Colador,
+             macros.js filtra o resto); o Agency Router, de dev e finance. -->
+        <li class="menu-item" data-menu="sistema" id="menu-sistema" onclick="toggleMenu(this)" style="display:none">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"/>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
             </svg>
-            <span class="label">Macros</span>
-            <span class="menu-tooltip">Macros</span>
-        </li>
-
-        <!-- Só dev: cartões Ticketlog (combustível) e o valor de cada um. -->
-        <li class="menu-item" data-menu="ticketlog" id="menu-ticketlog" onclick="toggleMenu(this)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="5" width="20" height="14" rx="2"/>
-                <path d="M2 10h20M6 15h4"/>
-            </svg>
-            <span class="label">TicketLog</span>
+            <span class="label">Sistema</span>
             <span class="arrow">▾</span>
-            <span class="menu-tooltip">TicketLog</span>
+            <span class="menu-tooltip">Sistema</span>
         </li>
-        <ul class="submenu" data-menu="ticketlog" id="submenu-ticketlog" style="display:none">
-            <li><a href="#" data-rota="TicketLog/Informacoes" onclick="abrirTicketlogInfo(event)">Informações</a></li>
+        <ul class="submenu" data-menu="sistema" id="submenu-sistema" style="display:none">
+            <li id="menu-macros" style="display:none"><a href="#" data-rota="Macros" onclick="abrirMacros(event)">Macros</a></li>
+            <li id="menu-item-agency-router" style="display:none"><a href="#" data-rota="SPX/AgencyRouter" onclick="abrirAgencyRouter(event)">Agency Router (SPX)</a></li>
+        </ul>
+
+        <!-- Atendimento interno: o outro lado do balãozinho do rodapé. Fica fora de Sistema
+             porque o contador de não lidas precisa aparecer com a barra recolhida. Só a conta
+             do suporte enxerga, e quem libera é o servidor (js/atendimento.js consulta
+             /atendimento/status) — não há cargo nem nome de usuário decidindo aqui. -->
+        <li class="menu-item" data-menu="atendimento" id="menu-atendimento" onclick="toggleMenu(this)" style="display:none">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 14v-2a8 8 0 0 1 16 0v2"/>
+                <path d="M4 14h2.5a1 1 0 0 1 1 1v3.5a1 1 0 0 1-1 1H5.5A1.5 1.5 0 0 1 4 18V14z"/>
+                <path d="M20 14h-2.5a1 1 0 0 0-1 1v3.5a1 1 0 0 0 1 1h1a1.5 1.5 0 0 0 1.5-1.5V14z"/>
+                <path d="M20 18v1a3 3 0 0 1-3 3h-3"/>
+            </svg>
+            <span class="label">Atendimento</span>
+            <span class="arrow">▾</span>
+            <span class="atd-badge-menu" id="atd-badge-menu" style="display:none"></span>
+            <span class="menu-tooltip">Atendimento</span>
+        </li>
+        <ul class="submenu" data-menu="atendimento" id="submenu-atendimento" style="display:none">
+            <li><a href="#" data-rota="Atendimento/Conversas" onclick="abrirAtendimento(event)">Conversas</a></li>
         </ul>
 
         <li class="menu-item" data-menu="videira" id="menu-videira" onclick="toggleMenu(this)" style="display:none">
@@ -692,24 +502,6 @@ if (_BASE) {
             <li><a href="#" data-rota="Videira/MeuFechamento" onclick="abrirVideiraPainel(event)">Meu Fechamento</a></li>
             <li id="videira-li-alimentar" style="display:none"><a href="#" data-rota="Videira/AlimentarFechamento" onclick="abrirVideiraAlimentar(event)">Alimentar Fechamento</a></li>
         </ul>
-
-        <li class="menu-item" data-menu="extravios" id="menu-extravios" onclick="toggleMenu(this)" style="display:none">
-            <svg class="menu-icon" viewBox="0 0 24 24">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            <span class="label">Extravios</span>
-            <span class="arrow">▾</span>
-            <span class="menu-tooltip">Extravios</span>
-        </li>
-        <ul class="submenu" data-menu="extravios" id="submenu-extravios" style="display:none">
-            <li><a href="#" data-rota="Extravios/Registros" onclick="abrirExtraviosRegistros(event)">Registros</a></li>
-            <li><a href="#" data-rota="Extravios/Pesquisar" onclick="abrirExtraviosBusca(event)">Pesquisar</a></li>
-            <li><a href="#" data-rota="Extravios/Dashboard" onclick="abrirExtraviosDash(event)">Dashboard</a></li>
-        </ul>
-
-
 
     </ul>
 
@@ -4530,7 +4322,7 @@ if (_BASE) {
             <div class="fech-body" style="padding-top:22px">
 
                 <div class="nr-cab">
-                    <div class="filtro-tabs" id="nr-transp-tabs"></div>
+                    <div class="filtro-tabs" id="nr-transp-tabs" style="display:none"></div>
                     <div class="nr-cab-dir" id="nr-cab-dir">
                         <span class="nr-atualizado" id="nr-atualizado"></span>
                         <span class="nr-atualizado" id="nr-sla-info"></span>
@@ -4863,9 +4655,9 @@ if (_BASE) {
     </div>
 </div>
 
-<script src="js/core.js?v=20261102a"></script>
+<script src="js/core.js?v=20261102b"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261029b"></script>
+<script src="js/router.js?v=20261102b"></script>
 <script src="js/sidebar.js?v=20261030a"></script>
 <script src="js/nav.js?v=20261029b"></script>
 <script src="js/atendimento.js?v=20261015a"></script>
@@ -4886,7 +4678,7 @@ if (_BASE) {
 <script src="js/anotacoes-relatorio.js?v=20261012a"></script>
 <script src="js/nota-fiscal.js?v=30260812d"></script>
 <script src="js/extravios.js?v=20261002a"></script>
-<script src="js/extravios-registros.js?v=30260818e"></script>
+<script src="js/extravios-registros.js?v=20261102b"></script>
 <script src="js/usuarios-gc.js?v=20260924b"></script>
 <script src="js/nomes-padrao.js?v=20261029a"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
@@ -4912,8 +4704,8 @@ if (_BASE) {
 <script src="js/pedidos.js?v=20261020a"></script>
 <script src="js/desempenho-bip.js?v=20261015c"></script>
 <script src="js/desempenho-hora.js?v=20261015a"></script>
-<script src="js/conferencias.js?v=30260812d"></script>
-<script src="js/conferencias-hub.js?v=30260901b"></script>
+<script src="js/conferencias.js?v=20261102b"></script>
+<script src="js/conferencias-hub.js?v=20261102b"></script>
 <script src="js/antecipacoes.js?v=20261014a"></script>
 <script src="js/antecipacoes-admin.js?v=20261015b"></script>
 <script src="js/xm-camera.js?v=20261021a"></script>
@@ -4937,7 +4729,7 @@ if (_BASE) {
 <script src="js/solicitar-at.js?v=20261020f"></script>
 <script src="js/viagens.js?v=20261021a"></script>
 <script src="js/ocorrencias.js?v=30260812d"></script>
-<script src="js/ocorrencias-admin.js?v=20261023a"></script>
+<script src="js/ocorrencias-admin.js?v=20261102b"></script>
 <script src="js/transferencias.js?v=20261021a"></script>
 <script src="js/transferencias-admin.js?v=30260812d"></script>
 <script src="js/motorista-devolucoes.js?v=30260812d"></script>
@@ -4946,7 +4738,7 @@ if (_BASE) {
 <script src="js/planejamento-videira.js?v=20261027b"></script>
 <script src="js/planejamento-enquete.js?v=20261027e"></script>
 <script src="js/torre.js?v=30260812d"></script>
-<script src="js/torre-na-rua.js?v=30260916a"></script>
+<script src="js/torre-na-rua.js?v=20261102b"></script>
 <script src="js/shopee-na-rua.js?v=20261002a"></script>
 <script src="js/entregador-na-rua.js?v=20261005c"></script>
 <script src="js/entregador-performance.js?v=20261005a"></script>

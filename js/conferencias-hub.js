@@ -1,13 +1,14 @@
-// ───── CONFERÊNCIAS: A BARRA ÚNICA ─────
+// ───── TRANSPORTADORAS: A BARRA ÚNICA ─────
 //
-// Antes, "conferir" aparecia em dois lugares do menu ao mesmo tempo: um menu
-// "Conferências" com uma transportadora por link, e um subgrupo "Conferência"
-// dentro do menu Shopee. A pergunta "onde fica X?" nunca tinha resposta óbvia.
-//
-// Agora é um menu só. A transportadora virou ABA, não item de menu — pelo mesmo
-// motivo do Planejamento de Rotas: a lista de transportadoras cresce, e cada uma
-// que entrasse no menu deixaria a barra lateral mais alta sem dizer nada de novo.
+// Nasceu como barra das conferências e virou a casa de cada transportadora: um
+// item só no menu lateral, com uma aba por transportadora e, na linha de baixo,
+// a mesma lista de funções na mesma ordem — sempre o que já existe no sistema.
+// A transportadora é ABA, não item de menu: a lista cresce, e cada uma que
+// entrasse no menu deixaria a barra lateral mais alta sem dizer nada de novo.
 // Transportadora nova aqui é uma linha em _CHUB_TRANSP.
+//
+// A Separação NÃO entra aqui de propósito: ela é geral, bipa pacote de qualquer
+// transportadora. O que cada uma tem é o Alimentar, que abastece essa separação.
 //
 // A barra não é uma tela: ela é DESENHADA DENTRO de cada tela que participa, por
 // mostrarTela(). É o que faz o destaque continuar certo quando a pessoa chega por
@@ -18,27 +19,61 @@
 // aqui competiria com as cores que JÁ significam alguma coisa nas telas de
 // baixo — progresso, situação do pacote — e a aba não precisa de cor pra dizer
 // qual está aberta.
+//   falta:    como ela aparece nos Pacotes Faltantes
+//   extravio: como reconhecê-la na planilha de extravios, que tem grafia livre
+//   ativo:    nome dela na rota das conversas; sem ele, ela não tem modelo de ativo
 const _CHUB_TRANSP = [
-    { chave: "shopee", rotulo: "Shopee" },
-    { chave: "loggi",  rotulo: "Loggi"  },
-    { chave: "anjun",  rotulo: "Anjun"  },
-    { chave: "imile",  rotulo: "Imile"  },
-    { chave: "jt",     rotulo: "J&T"    },
+    { chave: "shopee",        rotulo: "Shopee",        falta: "Shopee",        extravio: /shopee|spx/, ativo: "Shopee" },
+    { chave: "loggi",         rotulo: "Loggi",         falta: "Loggi",         extravio: /loggi/ },
+    { chave: "anjun",         rotulo: "Anjun",         falta: "Anjun",         extravio: /anjun/,      ativo: "Anjun" },
+    { chave: "imile",         rotulo: "Imile",         falta: "Imile",         extravio: /imile/,      ativo: "iMile" },
+    { chave: "jt",            rotulo: "J&T",           falta: "J&T Express",   extravio: /jt/,         ativo: "JT" },
+    { chave: "total_express", rotulo: "Total Express", falta: "Total Express", extravio: /total/ },
 ];
 
-// A Shopee tem mais de um tipo de conferência porque é a única que exporta os
-// dados da rota. As outras têm só a conferência por arquivo — e é por isso que a
-// linha de sub-abas aparece só nela, em vez de nascer vazia nas demais.
-const _CHUB_SUBS = {
-    shopee: [
-        { chave: "linehaul",    rotulo: "Line Haul",   abrir: () => abrirShopeeLineHaul() },
-        { chave: "atribuicoes", rotulo: "Atribuições", abrir: () => abrirShopeeAtribuicoes() },
-        // Sem "Por arquivo": a conferência da Shopee é a de Line Haul e a de
-        // Atribuições, que saem dos dados que ela exporta. A por arquivo é o
-        // recurso das transportadoras que não exportam nada. A tela continua
-        // existindo e a rota Conferencias/Shopee segue valendo por URL.
-    ],
-};
+// Quem vê cada função. Sem `roles`, todo mundo que enxerga esta barra. É só o que
+// aparece: quem manda de verdade é o servidor, em cada rota.
+const _CHUB_ROLES_TORRE  = ["admin", "dev", "finance", "sac"];
+const _CHUB_ROLES_ATIVOS = ["sac", "dev", "admin"];
+const _CHUB_ROLES_ETIQ   = ["user", "admin", "finance", "dev"];
+
+/** As funções que toda transportadora tem, depois das de alimentar e conferir. */
+function _chubComuns(t) {
+    const itens = [
+        { chave: "narua",     rotulo: "Na Rua",            roles: _CHUB_ROLES_TORRE, abrir: () => abrirTorreNaRua(null, t.chave) },
+        { chave: "etiquetas", rotulo: "Etiquetas",         roles: _CHUB_ROLES_ETIQ,  abrir: () => { abrirEtiquetas(); _etqSelecionarTransp(t.chave); } },
+        { chave: "faltantes", rotulo: "Pacotes Faltantes", abrir: () => _chubAbrirFaltantes(t) },
+        { chave: "extravios", rotulo: "Extravios",         roles: _CHUB_ROLES_TORRE, abrir: () => abrirExtraviosRegistros(null, t.extravio) },
+    ];
+    if (t.ativo) itens.push({ chave: "ativos", rotulo: "Ativos", roles: _CHUB_ROLES_ATIVOS, abrir: () => abrirWhatsappConversas(null, { transp: t.ativo }) });
+    return itens;
+}
+
+// Quem é da torre vê a lista de todos; os demais só registram, como no menu Galpão.
+function _chubAbrirFaltantes(t) {
+    if (_CHUB_ROLES_TORRE.includes(_chubRole())) return abrirPacotesFaltantesAdmin(null, t.falta);
+    abrirPacotesFaltantes();
+    _pfSelecionarTransp(t.falta);
+}
+
+// `inicio` é por onde a transportadora abre. A Shopee tem duas conferências porque
+// é a única que exporta os dados da rota; a por arquivo é o recurso das que não
+// exportam nada, e a tela dela atende qualquer transportadora.
+const _CHUB_SUBS = Object.fromEntries(_CHUB_TRANSP.map(t => [t.chave, t.chave === "shopee" ? [
+    { chave: "recebimento", rotulo: "Recebimento",   abrir: () => abrirShopeeReceber() },
+    { chave: "alimentar",   rotulo: "Alimentar",     abrir: () => abrirPainelAlimentar() },
+    { chave: "linehaul",    rotulo: "Line Haul",     abrir: () => abrirShopeeLineHaul(), inicio: true },
+    { chave: "atribuicoes", rotulo: "Atribuições",   abrir: () => abrirShopeeAtribuicoes() },
+    ..._chubComuns(t),
+    { chave: "stuck",       rotulo: "Stuck",         abrir: () => abrirShopeeStuck() },
+    { chave: "backlog",     rotulo: "Backlog",       abrir: () => abrirShopeeStuckBacklog() },
+    { chave: "avariado",    rotulo: "Item Avariado", abrir: () => abrirShopeeAvariado() },
+    { chave: "pod",         rotulo: "POD",           roles: ["dev"], abrir: () => abrirPodSemanal() },
+] : [
+    { chave: "alimentar",   rotulo: "Alimentar",     abrir: () => abrirAlimentar(null, t.chave) },
+    { chave: "conferencia", rotulo: "Conferência",   abrir: () => abrirConferencias(null, t.chave), inicio: true },
+    ..._chubComuns(t),
+]]));
 
 // O que NÃO é de uma transportadora só. "Entregadores" mostra o que cada
 // entregador está conferindo, e a conferência dele pega a rota inteira — os
@@ -48,22 +83,37 @@ const _CHUB_ACOES = [
     { chave: "entregadores", rotulo: "Entregadores", abrir: () => abrirShopeeConfEntregadores() },
 ];
 
-// Telas que ganham a barra. tela-conferencias atende as cinco transportadoras, e
-// por isso a transportadora dela sai de _confTransp, não deste mapa.
+// Telas que ganham a barra.
+//   da:           de onde sai a transportadora, nas telas que atendem várias
+//   soPelaBarra:  a tela também abre fora daqui, valendo pra todas — nesse caso a
+//                 barra não aparece, senão diria que ela é de uma transportadora só
 const _CHUB_TELAS = {
-    // Sem sub-aba: a conferência por arquivo é a única das transportadoras que
-    // não exportam dados, e a Shopee não oferece mais essa opção. Quem chegar
-    // aqui por URL vê a aba da transportadora marcada e nenhuma sub — que é a
-    // verdade: esta tela não é uma das conferências da Shopee.
-    "tela-conferencias":             {},
+    "tela-conferencias":             { sub: "conferencia", da: () => typeof _confTransp !== "undefined" && _confTransp },
+    "tela-alimentar":                { sub: "alimentar",   da: () => typeof _alimentarTransp !== "undefined" && _alimentarTransp },
+    "tela-torre-na-rua":             { sub: "narua",       da: () => typeof _nrTransp !== "undefined" && _nrTransp },
+    "tela-painel-alimentar":         { transp: "shopee", sub: "alimentar" },
+    "tela-shopee-romaneiro":         { transp: "shopee", sub: "alimentar" },
+    "tela-shopee-at":                { transp: "shopee", sub: "alimentar" },
+    "tela-shopee-pedidos":           { transp: "shopee", sub: "alimentar" },
+    "tela-shopee-receber":           { transp: "shopee", sub: "recebimento" },
     "tela-shopee-linehaul":          { transp: "shopee", sub: "linehaul" },
     "tela-shopee-atribuicoes":       { transp: "shopee", sub: "atribuicoes" },
+    "tela-shopee-stuck":             { transp: "shopee", sub: "stuck" },
+    "tela-shopee-stuck-backlog":     { transp: "shopee", sub: "backlog" },
+    "tela-shopee-avariado":          { transp: "shopee", sub: "avariado" },
     "tela-shopee-conf-entregadores": { acao: "entregadores" },
-    "tela-painel-alimentar":         { alimentar: true },
+    "tela-etiquetas":                { sub: "etiquetas", soPelaBarra: true },
+    "tela-pacotes-faltantes":        { sub: "faltantes", soPelaBarra: true },
+    "tela-torre-pacotes-faltantes":  { sub: "faltantes", soPelaBarra: true },
+    "tela-extravios-registros":      { sub: "extravios", soPelaBarra: true },
+    "tela-whatsapp-conversas":       { sub: "ativos",    soPelaBarra: true },
+    "tela-pod-semanal":              { transp: "shopee", sub: "pod", soPelaBarra: true },
 };
 
 let _chubTransp = "shopee";   // aba aberta agora
+let _chubSub    = null;       // função aberta agora: trocar de aba tenta ficar nela
 let _chubStatus = {};         // transportadora -> resposta de /alimentar/status
+let _chubPelaBarra = false;   // a tela abrindo agora saiu de um clique na barra
 
 function _chubEsc(t) {
     return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -71,6 +121,14 @@ function _chubEsc(t) {
 
 function _chubInfo(chave) {
     return _CHUB_TRANSP.find(t => t.chave === chave) || _CHUB_TRANSP[0];
+}
+
+function _chubRole() {
+    return typeof window !== "undefined" && window._gcUser ? window._gcUser.role : null;
+}
+
+function _chubPode(item) {
+    return !item.roles || item.roles.includes(_chubRole());
 }
 
 /** A transportadora tem arquivo pra alimentar? Hoje só a Shopee exporta. */
@@ -86,18 +144,25 @@ function abrirConferenciasHub(event) {
     _chubIr(_chubTransp);
 }
 
-/** Abre a conferência de uma transportadora. */
+/** Abre uma transportadora, na mesma função em que a pessoa estava, se ela tiver. */
 function _chubIr(transp) {
     _chubTransp = transp;
-    const subs = _CHUB_SUBS[transp];
-    if (subs) subs[0].abrir();
-    else abrirConferencias(null, transp);
+    // O polo decide o XPT de tudo na Shopee: a pergunta vem já na abertura da aba.
+    if (transp === "shopee" && typeof gcPoloGarantir === "function") gcPoloGarantir();
+    const subs = (_CHUB_SUBS[transp] || []).filter(_chubPode);
+    _chubAbrirItem(subs.find(s => s.chave === _chubSub) || subs.find(s => s.inicio));
 }
 
-/** Troca de sub-aba dentro da mesma transportadora. */
+/** Troca de função dentro da mesma transportadora. */
 function _chubIrSub(chave) {
     const sub = (_CHUB_SUBS[_chubTransp] || []).find(s => s.chave === chave);
-    if (sub) sub.abrir();
+    if (sub) _chubAbrirItem(sub);
+}
+
+function _chubAbrirItem(item) {
+    if (!item) return;
+    _chubPelaBarra = true;
+    try { item.abrir(); } finally { _chubPelaBarra = false; }
 }
 
 // ───── A barra ─────
@@ -114,13 +179,17 @@ function _chubPintar(telaId) {
     const tela = document.getElementById(telaId);
     if (!conf || !tela) return;
 
-    // A tela de conferência por arquivo é compartilhada pelas cinco: quem manda
-    // é a transportadora que ela acabou de carregar.
-    const transp = conf.alimentar ? _chubTransp
-                 : conf.transp || (typeof _confTransp !== "undefined" && _confTransp) || _chubTransp;
-    _chubTransp = transp;
-
     let barra = tela.querySelector(":scope > .chub");
+    if (conf.soPelaBarra && !_chubPelaBarra) {
+        if (barra) barra.remove();
+        return;
+    }
+
+    // Tela compartilhada: quem manda é a transportadora que ela acabou de carregar.
+    const transp = conf.transp || (conf.da && conf.da()) || _chubTransp;
+    _chubTransp = transp;
+    _chubSub = conf.sub || null;
+
     if (!barra) {
         barra = document.createElement("div");
         barra.className = "chub";
@@ -130,7 +199,7 @@ function _chubPintar(telaId) {
 
     // Destaca o menu lateral. Antes quem fazia isso era o link do submenu, que
     // nao existe mais: sem esta linha a barra lateral ficaria sem marca nenhuma
-    // em toda tela de conferencia.
+    // em toda tela de transportadora.
     document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
     const item = document.getElementById("menu-conferencias");
     if (item) item.classList.add("active");
@@ -141,38 +210,31 @@ function _chubPintar(telaId) {
 function _chubHtml(transp, conf) {
     // Tela que vale pra todas as transportadoras não marca aba nenhuma: marcar
     // uma diria que a pessoa está dentro daquela transportadora, e não está.
-    const transversal = !!(conf.alimentar || conf.acao);
+    const transversal = !!conf.acao;
     const abaAtiva = transversal ? null : transp;
 
     const abas = _CHUB_TRANSP.map(t => `
         <button type="button" class="chub-tab${t.chave === abaAtiva ? " active" : ""}"
                 onclick="_chubIr('${t.chave}')">${_chubEsc(t.rotulo)}</button>`).join("");
 
-    const subs = _CHUB_SUBS[transp] || [];
+    const subs = (_CHUB_SUBS[_chubInfo(transp).chave] || []).filter(_chubPode);
     const subAtiva = transversal ? null : conf.sub;
+    // O número de cargas atrasadas mora no Alimentar, e só em quem tem o que alimentar.
+    const badge = `<span class="chub-badge" id="chub-badge" style="display:none"></span>`;
     const linhaSubs = subs.length ? `
         <div class="chub-subs">
             ${subs.map(s => `
                 <button type="button" class="chub-sub${s.chave === subAtiva ? " active" : ""}"
-                        onclick="_chubIrSub('${s.chave}')">${_chubEsc(s.rotulo)}</button>`).join("")}
+                        onclick="_chubIrSub('${s.chave}')">${_chubEsc(s.rotulo)}${
+                            s.chave === "alimentar" && _chubTemAlimentar(transp) ? badge : ""}</button>`).join("")}
         </div>` : "";
 
     const acoes = _CHUB_ACOES.map(a => `
         <button type="button" class="chub-acao${conf.acao === a.chave ? " active" : ""}"
                 onclick="_chubAcao('${a.chave}')">${_chubEsc(a.rotulo)}</button>`).join("");
 
-    const alimentar = _chubTemAlimentar(transp) ? `
-        <button type="button" class="chub-acao${conf.alimentar ? " active" : ""}" onclick="abrirPainelAlimentar(event)">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            Alimentar<span class="chub-badge" id="chub-badge" style="display:none"></span>
-        </button>` : "";
-
     return `<div class="chub-topo"><div class="chub-tabs">${abas}</div>`
-        + `<div class="chub-acoes">${acoes}${alimentar}</div></div>${linhaSubs}`;
+        + `<div class="chub-acoes">${acoes}</div></div>${linhaSubs}`;
 }
 
 function _chubAcao(chave) {
@@ -191,7 +253,8 @@ function _chubAcao(chave) {
  */
 function _chubCarregarStatus(transp, forcar) {
     const pintar = () => {
-        const badge = document.getElementById("chub-badge");
+        // Cada tela tem a sua barra, todas com o mesmo id: vale a da tela aberta.
+        const badge = document.querySelector(".view.active-view #chub-badge");
         const d = _chubStatus[transp];
         if (!badge || !d) return;
         badge.style.display = d.pendentes ? "" : "none";
@@ -222,6 +285,8 @@ function _chubCarregarStatus(transp, forcar) {
 // abria este painel.
 function abrirPainelAlimentar(event) {
     if (event) event.preventDefault();
+    // Este painel é o da Shopee; as demais alimentam pela tela de Alimentar Separação.
+    _chubTransp = "shopee";
     document.getElementById("alim-titulo").innerText = "Alimentar — " + _chubInfo(_chubTransp).rotulo;
     mostrarTela("tela-painel-alimentar", "Conferencias/Alimentar");
     // Sempre rebusca: a pessoa costuma voltar aqui logo depois de alimentar, e
@@ -255,7 +320,10 @@ function _chubPintarAlimentar() {
     }
     empty.style.display = "none";
     lista.style.display = "";
-    lista.innerHTML = fontes.map(_chubCardHtml).join("");
+    // Pedidos pesquisados não conta como pendência (a operação parou de alimentar),
+    // mas a tela segue no ar e este é o caminho até ela.
+    lista.innerHTML = fontes.map(_chubCardHtml).join("") + `
+        <button type="button" class="chub-acao" onclick="abrirShopeePedidos()">Pedidos pesquisados</button>`;
 }
 
 const _CHUB_SITUACAO = {
@@ -300,8 +368,8 @@ function _chubQuando(iso) {
     });
 }
 
-// As telas de envio continuam as mesmas, no menu da transportadora. Este painel
-// é atalho e diagnóstico — não duplica o formulário de upload.
+// As telas de envio continuam as mesmas, dentro da aba da transportadora. Este
+// painel é atalho e diagnóstico — não duplica o formulário de upload.
 const _CHUB_FONTES_ABRIR = {
     romaneiro: () => abrirShopeeRomaneiro(),
     at:        () => abrirShopeeAT(),

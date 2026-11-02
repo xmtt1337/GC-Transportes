@@ -77,9 +77,8 @@ test("carrega depois de entregador-na-rua.js, de quem usa os helpers", () => {
 
 test("o menu nasce escondido e so a liberacao mostra", () => {
     assert.match(indexHtml, /id="menu-ent-performance"[^>]*style="display:none"/);
-    assert.match(indexHtml, /id="submenu-ent-performance"[^>]*style="display:none"/);
-    assert.match(coreJs, /if \(data\.usuario\.pode_ver_na_rua\) \{\s*show\("menu-ent-performance"\);\s*show\("submenu-ent-performance"\);/);
-    assert.strictEqual((coreJs.match(/menu-ent-performance/g) || []).length, 2);
+    assert.match(coreJs, /if \(data\.usuario\.pode_ver_na_rua\) show\("menu-ent-performance"\);/);
+    assert.strictEqual((coreJs.match(/menu-ent-performance/g) || []).length, 1);
 });
 
 // ── texto ────────────────────────────────────────────────────────────────

@@ -94,8 +94,9 @@ let _nrDim      = "entregador";
 let _nrPacotes  = [];      // pedidos da célula aberta no modal
 let _nrPacTitulo = "";
 
-function abrirTorreNaRua(event) {
+function abrirTorreNaRua(event, transportadora) {
     if (event) event.preventDefault();
+    if (transportadora) _nrTransp = transportadora;
     mostrarTela("tela-torre-na-rua");
     _nrPintarTranspTabs();
     _nrAplicarTransp(true);

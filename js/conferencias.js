@@ -7,8 +7,8 @@ let _confPacotesNaBase = null;
 let _confTipoAtual     = null;  // tipo sendo processado no seletor de colunas
 let _confGridTemp      = null;  // grid temporário para seletor manual
 
-const _CONF_NOMES = { loggi: 'Loggi', jt: 'J&T', anjun: 'Anjun', imile: 'Imile', shopee: 'Shopee' };
-const _CONF_CORES = { loggi: '#12A5E8', jt: '#EF4444', anjun: '#22C55E', imile: '#9333EA', shopee: '#F97316' };
+const _CONF_NOMES = { loggi: 'Loggi', jt: 'J&T', anjun: 'Anjun', imile: 'Imile', shopee: 'Shopee', total_express: 'Total Express' };
+const _CONF_CORES = { loggi: '#12A5E8', jt: '#EF4444', anjun: '#22C55E', imile: '#9333EA', shopee: '#F97316', total_express: '#F59E0B' };
 
 function abrirConferencias(event, transportadora) {
     if (event) event.preventDefault();
@@ -28,7 +28,7 @@ function abrirConferencias(event, transportadora) {
     document.getElementById('conf-empty-msg').style.display = '';
 
     if (_confChartInstance) { _confChartInstance.destroy(); _confChartInstance = null; }
-    const _rotaNomes = { loggi: 'Loggi', jt: 'JT', anjun: 'Anjun', imile: 'Imile', shopee: 'Shopee' };
+    const _rotaNomes = { loggi: 'Loggi', jt: 'JT', anjun: 'Anjun', imile: 'Imile', shopee: 'Shopee', total_express: 'TotalExpress' };
     mostrarTela('tela-conferencias', 'Conferencias/' + (_rotaNomes[transportadora] || ''));
 }
 

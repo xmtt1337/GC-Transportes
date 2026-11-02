@@ -33,13 +33,19 @@ let _extrvRegSalvando = false;  // trava contra duplo clique
 
 /* ───────────────────────── Navegação ───────────────────────── */
 
-function abrirExtraviosRegistros(event) {
+// `transportadora` (regex) vem da barra de Transportadoras: abre filtrado nela.
+function abrirExtraviosRegistros(event, transportadora) {
     if (event) event.preventDefault();
     mostrarTela("tela-extravios-registros");
-    _extrvRegIniciar();
+    _extrvRegIniciar(transportadora);
 }
 
-async function _extrvRegIniciar() {
+// A planilha tem grafia livre ("J&T", "JT Express"): compara só letras e números.
+function _extrvRegAchaTransp(opcoes, re) {
+    return (opcoes || []).find(o => re.test(String(o).toLowerCase().replace(/[^a-z0-9]/g, ""))) || "";
+}
+
+async function _extrvRegIniciar(transportadora) {
     if (!_extrvRegOpcoes) {
         try {
             _extrvRegOpcoes = await _extrvRegApi("/extravios/opcoes");
@@ -48,6 +54,13 @@ async function _extrvRegIniciar() {
             gcAlert(err.message, "Extravios");
             return;
         }
+    }
+    if (transportadora) {
+        const valor = _extrvRegAchaTransp(_extrvRegOpcoes.transportadoras, transportadora);
+        const sel = document.getElementById("extrvreg-f-transp");
+        if (sel) sel.value = valor;
+        _extrvRegEstado.transportadora = valor;
+        _extrvRegEstado.pagina = 1;
     }
     _extrvRegCarregar();
 }

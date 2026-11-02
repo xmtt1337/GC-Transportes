@@ -239,8 +239,8 @@ test("conversa de outro polo mostra o motivo do servidor, nao 'nenhuma mensagem'
 });
 
 // ── o menu ───────────────────────────────────────────────────────────────
-test("o menu Ativos pergunta o polo no clique, como o da Shopee", () => {
+test("o grupo Ativos pergunta o polo no clique, como a aba Shopee", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   const menu = html.match(/<li[^>]*id="menu-ativos"[^>]*>/)[0];
-  assert.match(menu, /onclick="toggleMenu\(this\); gcPoloGarantir\(\)"/);
+  assert.match(menu, /onclick="toggleSubGroup\(this\); gcPoloGarantir\(\)"/);
 });

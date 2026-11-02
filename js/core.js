@@ -193,9 +193,15 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-planejamento");
         show("submenu-planejamento");
     };
-    const _showFinanceiro = () => {
+    const _showFinanceiroFiscal = () => {
         show("menu-financeiro");
         show("submenu-financeiro");
+    };
+    // Sistema só aparece junto de um item dele: o menu em si não diz nada.
+    const _showSistema = (item) => {
+        show("menu-sistema");
+        show("submenu-sistema");
+        show(item);
     };
     const _showCadastros = () => {
         show("menu-cadastros");
@@ -209,58 +215,30 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-torrecontrole");
         show("submenu-torrecontrole");
     };
-    // Fiscal (CT-e). Ver o menu não é o mesmo que poder emitir: o backend ainda
-    // exige vínculo em fiscal_empresa_usuarios com pode_emitir. Aqui só decide
-    // quem enxerga a opção.
-    const _showFiscal = () => {
-        show("menu-fiscal");
-        show("submenu-fiscal");
-    };
 
     if (role === "entregador") {
         hide("menu-operacao");
         hide("submenu-operacao");
-        hide("menu-shopee");
-        hide("submenu-shopee");
-        hide("menu-pedidos");
-        hide("submenu-pedidos");
         hide("menu-conferencias");
-        hide("submenu-conferencias");
-        hide("menu-custodia");
-        hide("submenu-custodia");
-        show("menu-fechamentos");
-        show("submenu-fechamentos");
-        show("menu-adiantamentos");
-        show("submenu-adiantamentos");
-        show("menu-devolucoes");
-        show("submenu-devolucoes");
-        show("menu-conf-entregador");
-        show("submenu-conf-entregador");
-        // Criar AT (reativado em 19/10/2026; o XPT sai do polo dele). Item único, sem submenu.
-        show("menu-criar-at");
-        // Ocorrências → Pacotes Faltantes: só aparece pro entregador liberado
+        show("menu-ent-rota");
+        show("submenu-ent-rota");
+        show("menu-ent-desempenho");
+        show("submenu-ent-desempenho");
+        show("menu-ent-pagamentos");
+        show("submenu-ent-pagamentos");
+        // Pacotes Faltantes: só aparece pro entregador liberado
         // (toggle em Cadastros → Entregadores, "Editar" → Ativar formulário de faltante)
-        if (data.usuario.pode_pacote_faltante) {
-            show("menu-ocorrencias");
-            show("submenu-ocorrencias");
-        }
+        if (data.usuario.pode_pacote_faltante) show("menu-ocorrencias");
         // Anotações de Quantidade: só aparece pro entregador liberado
         // (toggle em Cadastros → Entregadores, "Editar" → Ativar Anotações de Quantidade).
-        if (data.usuario.pode_anotar_quantidade) {
-            show("menu-anotacoes");
-            show("submenu-anotacoes");
-        }
+        if (data.usuario.pode_anotar_quantidade) show("menu-anotacoes");
         // "Na rua hoje" na tela inicial: só pro entregador liberado
         // (toggle em Cadastros → Entregadores, "Editar" → Ativar Na rua hoje).
         if (data.usuario.pode_ver_na_rua && typeof _enrCarregar === "function") _enrCarregar();
-        // Mesma liberação abre o menu Performance (o registro por dia).
-        if (data.usuario.pode_ver_na_rua) {
-            show("menu-ent-performance");
-            show("submenu-ent-performance");
-        }
+        // Mesma liberação abre a Performance (o registro por dia).
+        if (data.usuario.pode_ver_na_rua) show("menu-ent-performance");
         // POD Shopee: todo entregador; a tela inicial mostra a semana mais recente dele.
         show("menu-pod-shopee");
-        show("submenu-pod-shopee");
         if (typeof _pdsCarregarHome === "function") _pdsCarregarHome();
         // Quem leva rota e também roda transferência ganha as duas telas do motorista
         // (toggle em Cadastros → Entregadores, "Editar" → Liberar telas de motorista).
@@ -285,14 +263,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     if (role === "motorista") {
         hide("menu-operacao");
         hide("submenu-operacao");
-        hide("menu-shopee");
-        hide("submenu-shopee");
-        hide("menu-pedidos");
-        hide("submenu-pedidos");
         hide("menu-conferencias");
-        hide("submenu-conferencias");
-        hide("menu-custodia");
-        hide("submenu-custodia");
         show("menu-transferencias");
         show("submenu-transferencias");
         show("menu-devolucoes-motorista");
@@ -316,8 +287,10 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         _showExtravios();
         _showTorreControle();
         show("bip-sync-btn");
-        show("menu-macros"); // só a seção Colador aparece pra admin (macros.js filtra o resto)
-        show("menu-consulta-nfs"); // leitura só — aberta pra admin, diferente do resto do Fiscal
+        _showSistema("menu-macros"); // só a seção Colador aparece pra admin (macros.js filtra o resto)
+        // Consulta de NFs é leitura — aberta pra admin, diferente do resto do Financeiro e Fiscal.
+        _showFinanceiroFiscal();
+        document.querySelectorAll("#submenu-financeiro .fin-restrito").forEach(el => { el.style.display = "none"; });
         // sem: financeiro, fechamento (só dev e finance)
     }
 
@@ -325,13 +298,12 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         _showOperacional();
         _showFechamentosAdmin();
         _showPlanejamento();
-        _showFinanceiro();
-        _showFiscal();
+        _showFinanceiroFiscal();
         _showCadastros();
         _showExtravios();
         _showTorreControle();
         show("bip-sync-btn");
-        show("menu-consulta-nfs");
+        _showSistema("menu-item-agency-router");
         if (role === "dev" || role === "finance") {
             show("btn-add-entregador"); // dev/finance criam entregador e motorista
             show("btn-add-motorista");
@@ -341,10 +313,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         if (role === "dev") {
             show("menu-item-anotacoes-relatorio"); // relatório consolidado de Anotações de Quantidade — só dev
             show("menu-macros"); // liga/desliga e configura tarefas automáticas — só dev
-            show("menu-ticketlog"); // cartões Ticketlog e valor de cada um — só dev
-            show("submenu-ticketlog");
-            show("menu-pod-shopee"); // POD Shopee > Semanal: dev vê todos os entregadores
-            show("submenu-pod-shopee");
+            show("menu-item-ticketlog"); // cartões Ticketlog e valor de cada um — só dev
         }
     }
 
@@ -358,14 +327,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     if (role === "ADM Videira") {
         hide("menu-operacao");
         hide("submenu-operacao");
-        hide("menu-shopee");
-        hide("submenu-shopee");
-        hide("menu-pedidos");
-        hide("submenu-pedidos");
         hide("menu-conferencias");
-        hide("submenu-conferencias");
-        hide("menu-custodia");
-        hide("submenu-custodia");
         show("menu-videira");
         show("submenu-videira");
         // Alimentar só para dev

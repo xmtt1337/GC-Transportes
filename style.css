@@ -3484,8 +3484,10 @@ td.cad-nome { color: #e2e8f0; }
     background: #ef4444; color: #fff;
     font-size: 11px; font-weight: 700; line-height: 17px; text-align: center;
 }
+/* Quebra em duas linhas no computador: sem barra de rolagem, o mouse não alcançaria
+   as últimas funções da Shopee. No celular rola de lado (ver @media abaixo). */
 .chub-subs {
-    display: flex; gap: 4px; overflow-x: auto; padding: 8px 0 10px;
+    display: flex; flex-wrap: wrap; gap: 4px; overflow-x: auto; padding: 8px 0 10px;
     scrollbar-width: none; -ms-overflow-style: none;
 }
 .chub-subs::-webkit-scrollbar { display: none; }
@@ -3739,7 +3741,7 @@ td.cad-nome { color: #e2e8f0; }
 
 @media (max-width: 700px) {
     .chub { padding: 10px 14px 0; }
-    .chub-alimentar { padding: 7px 11px; font-size: 12px; }
+    .chub-subs { flex-wrap: nowrap; }
 }
 
 /* AT (Task ID) da rota do cluster. O entregador precisa dela na mão no galpão —
