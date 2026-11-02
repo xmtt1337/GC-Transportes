@@ -49,12 +49,12 @@ test('Anjun e Shopee ativas, e as tres aparecem', () => {
   assert.deepStrictEqual(X.TRANSPORTADORAS.filter((t) => t.ativa).map((t) => t.nome), ['Anjun', 'Shopee']);
 });
 
-test('Shopee aceita codigo terminado em letra e tem coluna de remetente', () => {
+test('Shopee aceita codigo terminado em letra e nao tem remetente', () => {
   const shopee = X.TRANSPORTADORAS[1];
   const { codigos, ignorados } = X.extrairCodigos('BR2608892320879 br262117646755x AJ100000000000001', shopee.padrao);
   assert.deepStrictEqual(codigos, ['BR2608892320879', 'BR262117646755X']);
   assert.strictEqual(ignorados, 1);
-  assert.ok(X.montarCsv([{ waybill: 'BR1', remetente: 'Loja Teste' }], shopee.colunas).includes('"Loja Teste"'));
+  assert.ok(!shopee.colunas.includes('remetente'));
   assert.strictEqual(shopee.intervaloMs, 1500);
 });
 

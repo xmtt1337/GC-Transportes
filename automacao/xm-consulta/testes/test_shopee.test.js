@@ -7,7 +7,7 @@ const assert = require('node:assert');
 const { criarConsulta, lerResposta, HEADERS_DO_SITE } = require('../extensao/shopee.js');
 
 const semPausa = async () => {};
-const valores = { buyer_name: 'Fulano de Tal', buyer_contact: '5549900000000', seller_name: 'Loja Teste' };
+const valores = { buyer_name: 'Fulano de Tal', buyer_contact: '5549900000000' };
 
 function getFalso(resposta) {
   const urls = [];
@@ -18,13 +18,14 @@ function getFalso(resposta) {
   return { get, urls };
 }
 
-test('abre nome, telefone e remetente, um campo por chamada', async () => {
+test('abre so nome e telefone, um campo por chamada', async () => {
   const { get, urls } = getFalso((url) => ({
     retcode: 0, data: { data_detail: valores[new URL(url, 'https://x').searchParams.get('data_field')] },
   }));
   const r = await criarConsulta(get, semPausa)('BR262117646755X');
-  assert.deepStrictEqual(r, { status: '', nome: 'Fulano de Tal', telefone: '5549900000000', remetente: 'Loja Teste' });
-  assert.strictEqual(urls.length, 3);
+  assert.deepStrictEqual(r, { status: '', nome: 'Fulano de Tal', telefone: '5549900000000' });
+  assert.strictEqual(urls.length, 2);
+  assert.ok(!urls.some((u) => u.includes('seller_name')));
   assert.ok(urls.every((u) => u.startsWith('/api/fleet_order/order/detail/show_sensitive_data?shipment_id=BR262117646755X&data_field=')));
 });
 
@@ -32,7 +33,7 @@ test('pausa entre os campos, como quem clica', async () => {
   const pausas = [];
   const { get } = getFalso(() => ({ retcode: 0, data: { data_detail: 'x' } }));
   await criarConsulta(get, async (ms) => pausas.push(ms))('BR1');
-  assert.strictEqual(pausas.length, 2);
+  assert.strictEqual(pausas.length, 1);
   assert.ok(pausas.every((ms) => ms >= 300));
 });
 

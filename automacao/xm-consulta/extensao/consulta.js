@@ -18,11 +18,10 @@
   const FOLGA_ENTRE_RODADAS_MS = 10000;
   const BLOQUEIO_PADRAO_MS = 30 * 60 * 1000;
   const MARGEM_BLOQUEIO_MS = 60 * 1000;
-  // Pedido a pedido, a pedido do usuario. Sao 3 campos por pedido, cerca de 2 chamadas por
-  // segundo: o ritmo que a Anjun barrou. Se o SPX recusar, voltar a subir este numero.
+  // Pedido a pedido, a pedido do usuario. Sao 2 campos por pedido, cerca de 1,3 chamada por
+  // segundo. Se o SPX recusar, subir este numero.
   const INTERVALO_SHOPEE_MS = 1500;
   const COLUNAS = ['waybill', 'status', 'nome', 'telefone'];
-  const COLUNAS_SHOPEE = ['waybill', 'status', 'nome', 'telefone', 'remetente'];
   const PASTA_CSV = 'XM Consultas de telefone';
 
   const TRANSPORTADORAS = [
@@ -44,7 +43,7 @@
       abas: 'https://spx.shopee.com.br/*',
       url: 'https://spx.shopee.com.br/#/orderTracking',
       intervaloMs: INTERVALO_SHOPEE_MS,
-      colunas: COLUNAS_SHOPEE,
+      colunas: COLUNAS,
     },
     { chave: 'imile', nome: 'iMile', ativa: false },
   ];
@@ -243,7 +242,6 @@
         status: d.status || '',
         nome: d.nome || '',
         telefone: formatarTelefone(d.telefone),
-        remetente: d.remetente || '',
       });
       aoAvancar(i + 1, codigos.length);
       if (i < codigos.length - 1) await dormir(Math.max(0, intervalo - (agora() - inicio)));

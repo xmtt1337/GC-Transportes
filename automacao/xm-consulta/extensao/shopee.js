@@ -1,7 +1,7 @@
 // Consulta de pedidos no SPX da Shopee, no mundo da pagina.
 //
 // Cada olho da tela e uma chamada show_sensitive_data por campo. Aqui so saem
-// nome e telefone do recebedor e nome do remetente.
+// nome e telefone do recebedor.
 //
 // x-sap-ri e x-sap-sec sao a protecao anti-robo do SPX: nao copiar nem gerar.
 // O pedido sai pelo XMLHttpRequest da propria pagina. Se a Shopee recusar assim,
@@ -9,14 +9,14 @@
 
 (() => {
   const ROTA = '/api/fleet_order/order/detail/show_sensitive_data';
-  const CAMPOS = { nome: 'buyer_name', telefone: 'buyer_contact', remetente: 'seller_name' };
+  const CAMPOS = { nome: 'buyer_name', telefone: 'buyer_contact' };
   const PEDIDO_DE_OUTRA_ESTACAO = 200301007;
   const PAUSA_CAMPO_MS = 300;
   const HEADERS_DO_SITE = ['x-csrftoken', 'device-id', 'app', 'version'];
 
   function criarConsulta(get, esperar) {
     return async function consultar(codigo) {
-      const dados = { status: '', nome: '', telefone: '', remetente: '' };
+      const dados = { status: '', nome: '', telefone: '' };
       const nomes = Object.keys(CAMPOS);
       for (let i = 0; i < nomes.length; i++) {
         const url = `${ROTA}?shipment_id=${encodeURIComponent(codigo)}&data_field=${CAMPOS[nomes[i]]}`;
