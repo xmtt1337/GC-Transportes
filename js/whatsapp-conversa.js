@@ -4,6 +4,7 @@
 let _wacNumeroAtual = null;
 let _wacAutoRefresh = null;
 let _wacSelecionadas = new Set(); // ids ("e12"/"r5") marcados pra excluir
+let _wacPedidoPorMsg = {};        // id da mensagem → pedido gravado nela, pro "Copiar código"
 let _wacDados = [];               // última resposta do servidor, pra filtrar sem re-buscar
 let _wacPedidoAtual = "";         // pedido do card que abriu a conversa
 let _wacResolvidoAtual = false;
@@ -862,6 +863,8 @@ function _wacCarregarConversa(silencioso) {
                 return;
             }
             const scrollAnterior = body.scrollTop;
+            _wacPedidoPorMsg = {};
+            rows.forEach(m => { if (m.pedido) _wacPedidoPorMsg[m.id] = m.pedido; });
             // Separador de data a cada virada de dia, como no app. A bolha mostrava só a
             // hora, então uma conversa de vários dias virava uma fila de horários soltos —
             // e esta tela existe pra virar print de prova, onde a data é o principal.
@@ -1034,6 +1037,12 @@ function _wacAtualizarBarraSelecao() {
     // Excluir (tirar mensagem do histórico do sistema).
     const marcar = barra.querySelector(".wac-selecao-responder");
     if (marcar) marcar.style.display = _wacChatEntregador ? "none" : "";
+    const copiar = barra.querySelector(".wac-selecao-copiar");
+    if (copiar) {
+        const codigos = _wacCodigosSelecionados();
+        copiar.style.display = codigos.length ? "" : "none";
+        copiar.innerText = codigos.length > 1 ? "Copiar códigos" : "Copiar código";
+    }
     const n = _wacSelecionadas.size;
     barra.style.display = n ? "" : "none";
     if (n) document.getElementById("wac-selecao-contagem").innerText =
@@ -1044,6 +1053,24 @@ function _wacLimparSelecao() {
     _wacSelecionadas.clear();
     document.querySelectorAll(".wac-bubble.selecionada").forEach(b => b.classList.remove("selecionada"));
     _wacAtualizarBarraSelecao();
+}
+
+// Mensagem enviada traz o pedido gravado; a recebida não (o banco não liga resposta a pedido),
+// então vale o pedido do card que abriu a conversa. Numa conversa com vários pedidos, duas
+// mensagens podem dar o mesmo código: sai uma vez só.
+function _wacCodigosSelecionados() {
+    const codigos = [..._wacSelecionadas].map(id => _wacPedidoPorMsg[id] || _wacPedidoAtual);
+    return [...new Set(codigos.filter(Boolean))];
+}
+
+function _wacCopiarCodigos() {
+    const codigos = _wacCodigosSelecionados();
+    if (!codigos.length) return;
+    gcCopiar(codigos.join("\n")).then(() => {
+        const botao = document.querySelector("#wac-selecao-barra .wac-selecao-copiar");
+        if (botao) botao.innerText = "Copiado!";
+        setTimeout(_wacAtualizarBarraSelecao, 1500);
+    }).catch(() => gcAlert("Não consegui copiar o código."));
 }
 
 function _wacExcluirSelecionadas() {

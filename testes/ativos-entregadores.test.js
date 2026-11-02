@@ -76,7 +76,7 @@ function carregar(respostaConversas = []) {
 
   // O botão "Marcar respondido" da barra de seleção: só o que o código mexe nele (style).
   const botaoMarcar = { style: {} };
-  el("wac-selecao-barra").querySelector = () => botaoMarcar;
+  el("wac-selecao-barra").querySelector = sel => (sel === ".wac-selecao-responder" ? botaoMarcar : null);
 
   const ctx = vm.createContext({
     console, API: "", token: "",
