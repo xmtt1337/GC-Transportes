@@ -155,10 +155,10 @@ function _cexRender(msg) {
                 <div class="nr-grafico-titulo">1. Foi atribuído? <span class="cft-ajuda" style="font-weight:400">· meta 100%</span></div>
                 <div class="nr-grafico-legenda" id="cex-gr-atrib-leg"></div>
                 <div class="cex-par">
-                    <div class="nr-grafico-area"><canvas id="cex-gr-atrib"></canvas><div class="cex-centro" id="cex-gr-atrib-centro"></div></div>
+                    <div class="nr-grafico-area cex-rosca"><canvas id="cex-gr-atrib"></canvas><div class="cex-centro" id="cex-gr-atrib-centro"></div></div>
                     <div>
                         <div class="cex-par-sub">Sem atribuição por cidade</div>
-                        <div class="nr-grafico-area"><canvas id="cex-gr-cidades"></canvas>
+                        <div class="nr-grafico-area cex-barras"><canvas id="cex-gr-cidades"></canvas>
                             <div class="nr-grafico-vazio" id="cex-gr-cidades-vazio" style="display:none">Todos os pacotes atribuídos.</div></div>
                     </div>
                 </div>
@@ -167,10 +167,10 @@ function _cexRender(msg) {
                 <div class="nr-grafico-titulo">2. Foi pra cidade certa? <span class="cft-ajuda" style="font-weight:400">· meta 100%</span></div>
                 <div class="nr-grafico-legenda" id="cex-gr-certo-leg"></div>
                 <div class="cex-par">
-                    <div class="nr-grafico-area"><canvas id="cex-gr-certo"></canvas><div class="cex-centro" id="cex-gr-certo-centro"></div></div>
+                    <div class="nr-grafico-area cex-rosca"><canvas id="cex-gr-certo"></canvas><div class="cex-centro" id="cex-gr-certo-centro"></div></div>
                     <div>
                         <div class="cex-par-sub">Atribuição errada por login <span class="cft-ajuda" style="font-weight:400">· clique pra corrigir</span></div>
-                        <div class="nr-grafico-area"><canvas id="cex-gr-logins"></canvas>
+                        <div class="nr-grafico-area cex-barras"><canvas id="cex-gr-logins"></canvas>
                             <div class="nr-grafico-vazio" id="cex-gr-logins-vazio" style="display:none">Nenhum login com pacote fora das cidades dele.</div></div>
                     </div>
                 </div>
@@ -179,10 +179,10 @@ function _cexRender(msg) {
                 <div class="nr-grafico-titulo">3. É cidade que a gente atende?</div>
                 <div class="nr-grafico-legenda" id="cex-gr-abr-leg"></div>
                 <div class="cex-par">
-                    <div class="nr-grafico-area"><canvas id="cex-gr-abr"></canvas><div class="cex-centro" id="cex-gr-abr-centro"></div></div>
+                    <div class="nr-grafico-area cex-rosca"><canvas id="cex-gr-abr"></canvas><div class="cex-centro" id="cex-gr-abr-centro"></div></div>
                     <div>
                         <div class="cex-par-sub">Fora de abrangência por cidade <span class="cft-ajuda" style="font-weight:400">· nenhum login faz</span></div>
-                        <div class="nr-grafico-area"><canvas id="cex-gr-fora"></canvas>
+                        <div class="nr-grafico-area cex-barras"><canvas id="cex-gr-fora"></canvas>
                             <div class="nr-grafico-vazio" id="cex-gr-fora-vazio" style="display:none">Todos os pacotes são de cidades que a gente atende.</div></div>
                     </div>
                 </div>
@@ -242,21 +242,22 @@ function _cexGraficar() {
     // 3. O % aqui é informativo (o pacote não é nosso), mas fora de abrangência ainda é pendência:
     // precisa voltar pra transportadora — ou a cidade entrar na lista de algum login.
     _cexRosca("abr", [["Na abrangência", nossos, _CEX_CORES.ok], ["Fora de abrangência", r.fora_abrangencia, _CEX_CORES.fora_abrangencia]],
-        nossos, r.total, "na abrangência");
+        nossos, r.total, "na abrangência", false);
     const fora = new Map();
     pacotes.filter(p => p.status === "fora_abrangencia").forEach(p => fora.set(p.cidade, (fora.get(p.cidade) || 0) + 1));
     _cexBarras("fora", [...fora.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([c, n]) => ({ rotulo: c, fora_abrangencia: n })),
         [["fora_abrangencia", "Fora de abrangência"]]);
 }
 
-function _cexRosca(id, fatias, feitos, total, rotulo) {
+// meta = o % tem que chegar a 100 (verde só lá; abaixo, vermelho). Sem meta o número fica neutro.
+function _cexRosca(id, fatias, feitos, total, rotulo, meta = true) {
     const leg = document.getElementById(`cex-gr-${id}-leg`);
     if (leg) leg.innerHTML = fatias.map(([n, v, cor]) => `<span class="nr-leg"><i style="background:${cor}"></i>${n} ${_cexNum(v)}</span>`).join("");
     const pct = total ? feitos / total * 100 : 100;
     // Arredonda pra baixo: 99,96% não pode aparecer como 100% se ainda tem pacote pendente.
     const txt = !total ? "—" : feitos === total ? "100%" : (Math.floor(pct * 10) / 10).toLocaleString("pt-BR") + "%";
     const centro = document.getElementById(`cex-gr-${id}-centro`);
-    if (centro) centro.innerHTML = `<div class="cex-centro-valor" style="color:${feitos === total ? _CEX_CORES.ok : _CEX_CORES.sem_entregador}">${txt}</div>
+    if (centro) centro.innerHTML = `<div class="cex-centro-valor" style="color:${!meta ? "#cbd5e1" : feitos === total ? _CEX_CORES.ok : _CEX_CORES.sem_entregador}">${txt}</div>
         <div class="cex-centro-rotulo">${rotulo}</div>`;
     // Fatia zerada fica só na legenda — na pizza ela vira um risco escuro no topo.
     const comValor = fatias.filter(f => f[1]);
@@ -275,13 +276,16 @@ function _cexBarras(id, linhas, series, aoClicar) {
     const leg = document.getElementById(`cex-gr-${id}-leg`);
     if (leg) leg.innerHTML = linhas.length && series.length > 1
         ? series.map(([k, n]) => `<span class="nr-leg"><i style="background:${_CEX_CORES[k]}"></i>${n}</span>`).join("") : "";
+    // Altura pela quantidade de linhas: 2 cidades não precisam de um gráfico de 250px.
+    const canvas = document.getElementById(`cex-gr-${id}`);
+    if (canvas) canvas.parentElement.style.height = (linhas.length ? Math.max(70, linhas.length * 19 + 24) : 70) + "px";
     if (!linhas.length) return;
-    const curto = t => t.length <= 24 ? t : t.slice(0, 23) + "…";
+    const curto = t => t.length <= 17 ? t : t.slice(0, 16) + "…";
     _cexGraficos[id] = new Chart(document.getElementById(`cex-gr-${id}`), {
         type: "bar",
         data: {
             labels: linhas.map(l => curto(l.rotulo)),
-            datasets: series.map(([k, n]) => ({ label: n, data: linhas.map(l => l[k]), backgroundColor: _CEX_CORES[k], maxBarThickness: 18 })),
+            datasets: series.map(([k, n]) => ({ label: n, data: linhas.map(l => l[k]), backgroundColor: _CEX_CORES[k], maxBarThickness: 11 })),
         },
         options: {
             ..._CEX_GRAF_BASE, indexAxis: "y",
