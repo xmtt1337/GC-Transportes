@@ -134,17 +134,8 @@ body {
     transition: background 0.18s, color 0.18s; white-space: nowrap;
 }
 .submenu a:hover  { background: rgba(255,255,255,0.04); color: #cbd5e1; }
-.submenu a.active { color: #e2e8f0; background: rgba(58,134,255,0.07); }
-
-/* Círculo antes de cada link */
-.submenu a::before {
-    content: ""; flex-shrink: 0;
-    width: 8px; height: 8px; border-radius: 50%;
-    background: #47596f; border: 1.5px solid #3d5068;
-    transition: all 0.2s ease;
-}
-.submenu a:hover::before  { background: #3a86ff; border-color: #3a86ff; }
-.submenu a.active::before { background: #3a86ff; border-color: #3a86ff; }
+/* Azul só na tela atual; o resto do menu fica em cinza. */
+.submenu a.active { color: #60a5fa; background: rgba(58,134,255,0.1); }
 
 /* ── Shopee ──
    Menu próprio, então usa o laranja da transportadora (#F97316, o mesmo dos gráficos
@@ -2378,24 +2369,39 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     transition: background 0.18s, color 0.18s;
 }
 .subgroup-header:hover  { color: #cbd5e1; }
-.subgroup-header.open   { color: #e2e8f0; }
+.subgroup-header.open   { color: #f1f5f9; }
 
+/* Fechado ▸, aberto ▾. */
 .subgroup-arrow {
     font-size: 10px; opacity: 0.5; margin-left: auto;
     transition: transform 0.25s ease; display: inline-block;
+    transform: rotate(-90deg);
 }
-.subgroup-header.open .subgroup-arrow  { transform: rotate(180deg); opacity: 0.8; }
-.subgroup-header-2.open .subgroup-arrow { transform: rotate(180deg); opacity: 0.8; }
+.subgroup-header.open .subgroup-arrow  { transform: none; opacity: 0.9; }
+.subgroup-header-2.open .subgroup-arrow { transform: none; opacity: 0.9; }
+
+/* Grupo aberto vira uma caixa: o título e a lista dele dividem o mesmo fundo, pra
+   saber de longe qual está aberto. Dentro de outra caixa, o fundo soma e clareia. */
+.subgroup-header.open,
+.subgroup-header-2.open {
+    background: rgba(255,255,255,0.045);
+    border-radius: 8px 8px 0 0; margin-bottom: 0;
+}
+.sub-submenu.open,
+.sub-sub-submenu.open {
+    background: rgba(255,255,255,0.045);
+    border-radius: 0 0 8px 8px; padding-bottom: 4px; margin-bottom: 2px;
+}
 
 /* ── Sub-submenu (nível 1 expandido) ── */
 .sub-submenu {
     list-style: none;
     max-height: 0; overflow: hidden; opacity: 0;
     transition: max-height 0.35s ease, opacity 0.22s ease;
-    padding-left: 18px;
+    padding: 0 6px 0 10px;
 }
 .sub-submenu.open { max-height: 800px; opacity: 1; }
-.sub-submenu a { padding-left: 18px !important; font-size: 13px !important; }
+.sub-submenu a { padding-left: 16px !important; font-size: 13px !important; }
 
 /* ── Subgroup header nível 2 (ex "Alimentar separação") ── */
 .subgroup-header-2 {
@@ -2405,15 +2411,15 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     border-radius: 8px; margin: 1px 0;
     transition: background 0.18s, color 0.18s;
 }
-.subgroup-header-2:hover  { color: #94a3b8; }
-.subgroup-header-2.open   { color: #cbd5e1; }
+.subgroup-header-2:hover  { color: #cbd5e1; }
+.subgroup-header-2.open   { color: #f1f5f9; }
 
 /* ── Sub-sub-submenu (nível 2 expandido) ── */
 .sub-sub-submenu {
     list-style: none;
     max-height: 0; overflow: hidden; opacity: 0;
     transition: max-height 0.3s ease, opacity 0.22s ease;
-    padding-left: 14px;
+    padding: 0 6px 0 8px;
 }
 .sub-sub-submenu.open { max-height: 500px; opacity: 1; }
 .sub-sub-submenu a { padding-left: 18px !important; font-size: 12.5px !important; }

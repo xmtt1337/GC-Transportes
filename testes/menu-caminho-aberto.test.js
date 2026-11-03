@@ -145,6 +145,13 @@ test("rota aberta por endereço acha o link e abre o caminho", () => {
     assert.ok(m.naRua.classes.has("active") && aberto(m.grupoLoggi) && aberto(m.subTorre));
 });
 
+test("grupo aberto tem fundo próprio e o menu não tem mais bolinhas", () => {
+    const css = ler("style.css");
+    assert.match(css, /\.subgroup-header\.open,\s*\.subgroup-header-2\.open \{\s*background:/);
+    assert.match(css, /\.sub-submenu\.open,\s*\.sub-sub-submenu\.open \{\s*background:/);
+    assert.doesNotMatch(css, /\.submenu a::before/);
+});
+
 test("trocar de tela não fecha mais o menu", () => {
     const nav = ler("js", "nav.js");
     const corpo = nav.slice(nav.indexOf("function mostrarTela"), nav.indexOf("\n}\n", nav.indexOf("function mostrarTela")));
