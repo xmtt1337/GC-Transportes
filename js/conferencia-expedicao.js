@@ -255,8 +255,10 @@ function _cexRosca(id, fatias, feitos, total, rotulo, meta = true) {
     const leg = document.getElementById(`cex-gr-${id}-leg`);
     if (leg) leg.innerHTML = fatias.map(([n, v, cor]) => `<span class="nr-leg"><i style="background:${cor}"></i>${n} ${_cexNum(v)}</span>`).join("");
     const pct = total ? feitos / total * 100 : 100;
-    // Arredonda pra baixo: 99,96% não pode aparecer como 100% se ainda tem pacote pendente.
-    const txt = !total ? "—" : feitos === total ? "100%" : (Math.floor(pct * 10) / 10).toLocaleString("pt-BR") + "%";
+    // Arredonda pra baixo: 99,996% não pode aparecer como 100% se ainda tem pacote pendente.
+    // O 1e-9 evita o erro de ponto flutuante (99,02 * 100 = 9901,999...).
+    const txt = !total ? "—" : feitos === total ? "100%" : (Math.floor(pct * 100 + 1e-9) / 100)
+        .toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
     const centro = document.getElementById(`cex-gr-${id}-centro`);
     if (centro) centro.innerHTML = `<div class="cex-centro-valor" style="color:${!meta ? "#cbd5e1" : feitos === total ? _CEX_CORES.ok : _CEX_CORES.sem_entregador}">${txt}</div>
         <div class="cex-centro-rotulo">${rotulo}</div>`;
