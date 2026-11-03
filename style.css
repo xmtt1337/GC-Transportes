@@ -4905,7 +4905,10 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .cex-centro-valor { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .cex-centro-rotulo { font-size: 11px; color: #7b8ba3; margin-top: 2px; }
 .cex-graficos { grid-template-columns: repeat(auto-fit, minmax(520px, 1fr)); }
-.cex-par { display: grid; grid-template-columns: minmax(180px, 2fr) 3fr; gap: 18px; align-items: end; }
+.cex-par { display: grid; grid-template-columns: minmax(180px, 2fr) minmax(0, 3fr); gap: 18px; align-items: end; }
+/* Item de grid não encolhe abaixo do conteúdo: sem isto o canvas do Chart.js, depois de esticar
+   (sidebar abrindo, janela mudando), segurava a coluna e a barra invadia o card do lado. */
+.cex-par > *, .cex-graficos > * { min-width: 0; }
 .cex-par-sub { font-size: 11.5px; font-weight: 600; color: #8494a9; margin-top: 12px; }
 .cex-par-sub + .nr-grafico-area { margin-top: 6px; height: 232px; }
 @media (max-width: 640px) {
