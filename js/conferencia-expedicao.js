@@ -3,8 +3,8 @@
 //   1. foi atribuído?          pacote sem Entregador = sem atribuição
 //   2. foi atribuído certo?    o login do Entregador atende a cidade do pacote?
 //   3. é nosso?                cidade que nenhum login da lista faz = fora de abrangência
-// Salvo por dia (o dia em que subiu) e por polo (coluna Ponto Responsável): quem não é dev só
-// vê e só sobe o próprio polo; o dev vê todos e filtra.
+// Salvo por dia (o dia em que subiu) e por polo (coluna Ponto Responsável): quem não é dev/admin só
+// vê e só sobe o próprio polo; dev/admin veem todos e filtram.
 // A lista login → cidades fica na aba "Cidades por usuário" desta tela. Login sem cidade ou com
 // cidade fora da lista: clique no nome e marque as cidades que ele faz (mesmo jeito das
 // pendências do fechamento). A conferência é refeita na hora contra a lista atual — não precisa
@@ -30,7 +30,7 @@ let _cexDados = null;     // resposta de /:transp/resultado
 let _cexFiltro = "pend";  // pend | todos | um dos status
 let _cexCidades = null;   // linhas de /cidades-usuario
 let _cexDia = null;       // AAAA-MM-DD escolhido; null = o último com relatório
-let _cexPolo = "";        // só dev: "" = todos os polos
+let _cexPolo = "";        // só dev/admin: "" = todos os polos
 const _CEX_POLOS = { cacador: "Caçador", videira: "Videira", joacaba: "Joaçaba" };
 
 function _cexEsc(t) {
@@ -130,11 +130,11 @@ function _cexRender(msg) {
     const selDia = dias.length ? `<select class="cft-input" style="width:auto;flex:0 0 auto;margin:0" onchange="_cexDia=this.value;_cexDados=null;_cexCarregar()">
         ${dias.map(x => `<option value="${x}"${x === d.dia ? " selected" : ""}>${_cexDiaBr(x)}${x === d.hoje ? " (hoje)" : ""}</option>`).join("")}
     </select>` : "";
-    const selPolo = d.ve_tudo ? `<span class="sstb-pills">${[["", "Todos"], ...Object.entries(_CEX_POLOS)].map(([k, n]) =>
-        `<button type="button" class="sstb-pill${k === (d.polo || "") ? " sel" : ""}" onclick="_cexPolo='${k}';_cexDia=null;_cexDados=null;_cexCarregar()">${n}</button>`).join("")}</span>`
-        : (d.polo ? `<span class="cft-ajuda">Polo ${_cexEsc(_CEX_POLOS[d.polo] || d.polo)}</span>` : "");
-    const info = (d.envios || []).map(e => `<span class="cft-ajuda">${d.ve_tudo && !d.polo ? `<b>${_cexEsc(_CEX_POLOS[e.polo] || e.polo)}</b>: ` : ""}${_cexNum(e.linhas)} pacotes · ${e.enviado_por ? "por " + _cexEsc(e.enviado_por) + " " : ""}às ${_cexEsc(_cexHora(e.enviado_em))}</span>`).join("");
-    document.getElementById("cex-envio").innerHTML = selDia + selPolo + info + (msg ? `<span class="cft-ajuda cft-pos">${_cexEsc(msg)}</span>` : "");
+    // Dev/admin escolhem o polo; os demais só enxergam o próprio (o backend já filtra).
+    const selPolo = d.ve_tudo ? `<select class="cft-input" style="width:auto;flex:0 0 auto;margin:0" onchange="_cexPolo=this.value;_cexDia=null;_cexDados=null;_cexCarregar()">
+        ${[["", "Todos os polos"], ...Object.entries(_CEX_POLOS)].map(([k, n]) => `<option value="${k}"${k === (d.polo || "") ? " selected" : ""}>${n}</option>`).join("")}
+    </select>` : (d.polo ? `<span class="cft-ajuda">Polo ${_cexEsc(_CEX_POLOS[d.polo] || d.polo)}</span>` : "");
+    document.getElementById("cex-envio").innerHTML = selDia + selPolo + (msg ? `<span class="cft-ajuda cft-pos">${_cexEsc(msg)}</span>` : "");
 
     if (!(d.envios || []).length) {
         el.innerHTML = `<div class="fechamento-empty">${d.dia ? "Nenhum relatório neste dia." : `Suba o relatório da ${_cexEsc(_CEX_NOMES[_cexTransp] || _cexTransp)} pra conferir.`}</div>`;
@@ -309,11 +309,6 @@ function _cexBarras(id, linhas, series, aoClicar) {
 function _cexDiaBr(dia) {
     const [a, m, d] = String(dia || "").split("-");
     return d ? `${d}/${m}/${a}` : "";
-}
-
-function _cexHora(v) {
-    const d = new Date(v);
-    return isNaN(d) ? "" : d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
 function _cexData(v) {
