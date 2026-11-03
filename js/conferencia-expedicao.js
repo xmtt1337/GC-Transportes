@@ -101,14 +101,11 @@ async function _cexSubir(input) {
 function _cexRender(msg) {
     const d = _cexDados || {};
     const el = document.getElementById("cex-resultado");
-    const envios = d.envios || [];
-    const sel = envios.length > 1 ? `<select class="cft-input" style="width:auto;flex:0 0 auto;margin:0" onchange="_cexDados=null;_cexCarregar(this.value)">
-        ${envios.map(e => `<option value="${e.id}"${d.envio && e.id === d.envio.id ? " selected" : ""}>${_cexEsc(_cexData(e.enviado_em))} · ${_cexNum(e.linhas)} pacotes</option>`).join("")}
-    </select>` : "";
+    // Só existe o último envio: subir outro relatório substitui este.
     const info = d.envio
-        ? `<span class="cft-ajuda">${_cexEsc(d.envio.arquivo || "relatório")} · enviado ${d.envio.enviado_por ? "por " + _cexEsc(d.envio.enviado_por) + " " : ""}em ${_cexEsc(_cexData(d.envio.enviado_em))}</span>`
+        ? `<span class="cft-ajuda">${_cexEsc(d.envio.arquivo || "relatório")} · ${_cexNum(d.envio.linhas)} pacotes · enviado ${d.envio.enviado_por ? "por " + _cexEsc(d.envio.enviado_por) + " " : ""}em ${_cexEsc(_cexData(d.envio.enviado_em))}</span>`
         : "";
-    document.getElementById("cex-envio").innerHTML = sel + info + (msg ? `<span class="cft-ajuda cft-pos">${_cexEsc(msg)}</span>` : "");
+    document.getElementById("cex-envio").innerHTML = info + (msg ? `<span class="cft-ajuda cft-pos">${_cexEsc(msg)}</span>` : "");
 
     if (!d.envio) {
         el.innerHTML = `<div class="fechamento-empty">Suba o relatório da ${_cexEsc(_CEX_NOMES[_cexTransp] || _cexTransp)} pra conferir.</div>`;
