@@ -114,8 +114,6 @@ function _cexRender(msg) {
         el.innerHTML = `<div class="fechamento-empty">Suba o relatório da ${_cexEsc(_CEX_NOMES[_cexTransp] || _cexTransp)} pra conferir.</div>`;
         return;
     }
-    const r = d.resumo || {};
-    const kpi = (v, rot, cls) => `<div class="cft-kpi"><div class="cft-kpi-valor${v && cls ? " " + cls : ""}">${_cexNum(v)}</div><div class="cft-kpi-rotulo">${rot}</div></div>`;
     const usuarios = d.usuarios || [];
     const semCad = usuarios.filter(u => u.sem_cadastro);
     const comErro = usuarios.filter(u => !u.sem_cadastro && u.erradas);
@@ -125,16 +123,31 @@ function _cexRender(msg) {
     if (comErro.length) grupos.push(`<div class="cft-pend-grupo"><b>Login com pacote de cidade que ele não faz</b> — confira a atribuição, ou clique no nome se a cidade for dele mesmo:<div class="cft-pend-tags">${comErro.map(u => tag(u, u.erradas)).join("")}</div></div>`);
 
     el.innerHTML = `
-        <div class="cft-kpis">
-            ${kpi(r.total, "Pacotes")}
-            ${kpi(r.sem_entregador, "Sem atribuição", "cft-neg")}
-            ${kpi(r.cidade_errada, "Cidade errada", "cft-neg")}
-            ${kpi(r.usuario_sem_cidade, "Login sem cidade", "cft-aviso")}
-            ${r.sem_cidade ? kpi(r.sem_cidade, "Pacote sem cidade", "cft-aviso") : ""}
-            ${kpi(r.ok, "Atribuídos certo", "cft-pos")}
+        <div class="nr-tiles" id="cex-tiles" style="margin-bottom:18px"></div>
+        <div class="nr-graficos">
+            <div class="nr-grafico-card">
+                <div class="nr-grafico-titulo">Atribuição <span class="cft-ajuda" style="font-weight:400">· meta 100%</span></div>
+                <div class="nr-grafico-legenda" id="cex-gr-atrib-leg"></div>
+                <div class="nr-grafico-area"><canvas id="cex-gr-atrib"></canvas><div class="cex-centro" id="cex-gr-atrib-centro"></div></div>
+            </div>
+            <div class="nr-grafico-card">
+                <div class="nr-grafico-titulo">Atribuídos na cidade certa <span class="cft-ajuda" style="font-weight:400">· meta 100%</span></div>
+                <div class="nr-grafico-legenda" id="cex-gr-certo-leg"></div>
+                <div class="nr-grafico-area"><canvas id="cex-gr-certo"></canvas><div class="cex-centro" id="cex-gr-certo-centro"></div></div>
+            </div>
+            <div class="nr-grafico-card">
+                <div class="nr-grafico-titulo">Sem atribuição por cidade</div>
+                <div class="nr-grafico-area"><canvas id="cex-gr-cidades"></canvas>
+                    <div class="nr-grafico-vazio" id="cex-gr-cidades-vazio" style="display:none">Todos os pacotes atribuídos.</div></div>
+            </div>
+            <div class="nr-grafico-card">
+                <div class="nr-grafico-titulo">Atribuição errada por login</div>
+                <div class="nr-grafico-legenda" id="cex-gr-logins-leg"></div>
+                <div class="nr-grafico-area"><canvas id="cex-gr-logins"></canvas>
+                    <div class="nr-grafico-vazio" id="cex-gr-logins-vazio" style="display:none">Nenhum login com pacote fora das cidades dele.</div></div>
+            </div>
         </div>
         ${grupos.length ? `<div class="cft-pend"><div class="cft-pend-titulo">Pendências</div>${grupos.join("")}</div>` : ""}
-        <div class="filtro-tabs" id="cex-filtros" style="margin-bottom:10px"></div>
         <div class="cft-barra" style="margin:0 0 10px">
             <input class="cft-input" id="cex-busca" placeholder="Buscar waybill, login ou cidade..." style="width:280px;flex:0 0 auto;margin:0" oninput="_cexPintarTabela()">
             <button class="cft-btn" onclick="_cexCopiar()">Copiar waybills</button>
@@ -142,6 +155,93 @@ function _cexRender(msg) {
         </div>
         <div id="cex-tabela"></div>`;
     _cexPintarTabela();
+    _cexGraficar();
+}
+
+// ── Gráficos ── (mesmo padrão do Backlog da Shopee: nr-graficos + Chart.js)
+// Meta é zero pendência: o % no meio da pizza só fica verde em 100%.
+const _CEX_CORES = { ok: "#22c55e", sem_entregador: "#ef4444", cidade_errada: "#f97316", usuario_sem_cidade: "#f59e0b", sem_cidade: "#64748b" };
+const _CEX_EIXO = { color: "#7b8ba3", font: { size: 11 } };
+const _CEX_GRADE = { color: "rgba(255,255,255,0.055)", drawTicks: false };
+const _CEX_GRAF_BASE = { responsive: true, maintainAspectRatio: false, animation: { duration: 220 } };
+let _cexGraficos = {};
+
+function _cexGraficar() {
+    Object.values(_cexGraficos).forEach(g => { try { g.destroy(); } catch (_) {} });
+    _cexGraficos = {};
+    if (typeof Chart === "undefined") return;
+    const r = (_cexDados && _cexDados.resumo) || {};
+    const pacotes = (_cexDados && _cexDados.pacotes) || [];
+    const atribuidos = r.total - r.sem_entregador;
+
+    _cexRosca("atrib", [["Atribuídos", atribuidos, _CEX_CORES.ok], ["Sem atribuição", r.sem_entregador, _CEX_CORES.sem_entregador]],
+        atribuidos, r.total, "atribuído");
+    _cexRosca("certo", [["Cidade certa", r.ok, _CEX_CORES.ok], ["Cidade errada", r.cidade_errada, _CEX_CORES.cidade_errada],
+        ["Login sem cidade", r.usuario_sem_cidade, _CEX_CORES.usuario_sem_cidade], ["Pacote sem cidade", r.sem_cidade, _CEX_CORES.sem_cidade]]
+        .filter(([, n], i) => n || i < 2), r.ok, atribuidos, "na cidade certa");
+
+    // Onde falta atribuir — a cidade é o que diz pra quem mandar.
+    const porCidade = new Map();
+    pacotes.filter(p => p.status === "sem_entregador").forEach(p => {
+        const c = String(p.cidade || "").trim() || "(sem cidade)";
+        porCidade.set(c, (porCidade.get(c) || 0) + 1);
+    });
+    _cexBarras("cidades", [...porCidade.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([c, n]) => ({ rotulo: c, cidade_errada: 0, sem_entregador: n })),
+        [["sem_entregador", "Sem atribuição"]]);
+
+    // Quem recebeu pacote fora das cidades dele (ou sem cidade cadastrada). Clicar abre o card do login.
+    const logins = ((_cexDados && _cexDados.usuarios) || [])
+        .map(u => ({ rotulo: u.usuario, cidade_errada: u.erradas, usuario_sem_cidade: u.sem_cadastro ? u.qtd : 0 }))
+        .filter(u => u.cidade_errada || u.usuario_sem_cidade)
+        .sort((a, b) => (b.cidade_errada + b.usuario_sem_cidade) - (a.cidade_errada + a.usuario_sem_cidade)).slice(0, 10);
+    _cexBarras("logins", logins, [["cidade_errada", "Cidade errada"], ["usuario_sem_cidade", "Login sem cidade"]], u => _cexAbrirUsuario(u.rotulo));
+}
+
+function _cexRosca(id, fatias, feitos, total, rotulo) {
+    const leg = document.getElementById(`cex-gr-${id}-leg`);
+    if (leg) leg.innerHTML = fatias.map(([n, v, cor]) => `<span class="nr-leg"><i style="background:${cor}"></i>${n} ${_cexNum(v)}</span>`).join("");
+    const pct = total ? feitos / total * 100 : 100;
+    // Arredonda pra baixo: 99,96% não pode aparecer como 100% se ainda tem pacote pendente.
+    const txt = !total ? "—" : feitos === total ? "100%" : (Math.floor(pct * 10) / 10).toLocaleString("pt-BR") + "%";
+    const centro = document.getElementById(`cex-gr-${id}-centro`);
+    if (centro) centro.innerHTML = `<div class="cex-centro-valor" style="color:${feitos === total ? _CEX_CORES.ok : _CEX_CORES.sem_entregador}">${txt}</div>
+        <div class="cex-centro-rotulo">${rotulo}</div>`;
+    _cexGraficos[id] = new Chart(document.getElementById(`cex-gr-${id}`), {
+        type: "doughnut",
+        data: { labels: fatias.map(f => f[0]), datasets: [{ data: fatias.map(f => f[1]), backgroundColor: fatias.map(f => f[2]), borderColor: "#0f1520", borderWidth: 2 }] },
+        options: { ..._CEX_GRAF_BASE, cutout: "68%", plugins: { legend: { display: false },
+            tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed.toLocaleString("pt-BR")} pacotes` } } } },
+    });
+}
+
+function _cexBarras(id, linhas, series, aoClicar) {
+    const vazio = document.getElementById(`cex-gr-${id}-vazio`);
+    if (vazio) vazio.style.display = linhas.length ? "none" : "";
+    const leg = document.getElementById(`cex-gr-${id}-leg`);
+    if (leg) leg.innerHTML = linhas.length && series.length > 1
+        ? series.map(([k, n]) => `<span class="nr-leg"><i style="background:${_CEX_CORES[k]}"></i>${n}</span>`).join("") : "";
+    if (!linhas.length) return;
+    const curto = t => t.length <= 24 ? t : t.slice(0, 23) + "…";
+    _cexGraficos[id] = new Chart(document.getElementById(`cex-gr-${id}`), {
+        type: "bar",
+        data: {
+            labels: linhas.map(l => curto(l.rotulo)),
+            datasets: series.map(([k, n]) => ({ label: n, data: linhas.map(l => l[k]), backgroundColor: _CEX_CORES[k], maxBarThickness: 18 })),
+        },
+        options: {
+            ..._CEX_GRAF_BASE, indexAxis: "y",
+            onClick: aoClicar ? (_, els) => { if (els.length) aoClicar(linhas[els[0].index]); } : undefined,
+            onHover: aoClicar ? (e, els) => { e.native.target.style.cursor = els.length ? "pointer" : "default"; } : undefined,
+            plugins: { legend: { display: false }, tooltip: { callbacks: {
+                title: c => linhas[c[0].dataIndex].rotulo,
+                label: c => `${c.dataset.label}: ${c.parsed.x.toLocaleString("pt-BR")} pacotes`,
+            } } },
+            scales: {
+                x: { stacked: true, ticks: { ..._CEX_EIXO, precision: 0 }, grid: _CEX_GRADE, beginAtZero: true },
+                y: { stacked: true, ticks: { ..._CEX_EIXO, autoSkip: false }, grid: { display: false } },
+            },
+        },
+    });
 }
 
 function _cexData(v) {
@@ -159,13 +259,21 @@ function _cexFiltrados() {
 
 function _cexPintarTabela() {
     const r = (_cexDados && _cexDados.resumo) || {};
-    const filtros = [["pend", "Pendentes", r.total - r.ok], ["sem_entregador", "Sem atribuição", r.sem_entregador],
-        ["cidade_errada", "Cidade errada", r.cidade_errada], ["usuario_sem_cidade", "Login sem cidade", r.usuario_sem_cidade],
-        ["sem_cidade", "Pacote sem cidade", r.sem_cidade], ["ok", "Certos", r.ok], ["todos", "Todos", r.total]]
-        .filter(([k, , n]) => n || k === "pend" || k === "todos");
-    const ft = document.getElementById("cex-filtros");
-    if (ft) ft.innerHTML = filtros.map(([k, nome, n]) =>
-        `<button type="button" class="filtro-tab${k === _cexFiltro ? " active" : ""}" onclick="_cexFiltro='${k}';_cexPintarTabela()">${nome} ${_cexNum(n)}</button>`).join("");
+    // Tiles = filtro da tabela (mesmo jeito do Backlog da Shopee).
+    const pend = r.total - r.ok;
+    const tiles = [["todos", "Pacotes", r.total, ""], ["pend", "Pendentes", pend, pend ? _CEX_CORES.sem_entregador : _CEX_CORES.ok],
+        ["sem_entregador", "Sem atribuição", r.sem_entregador, _CEX_CORES.sem_entregador],
+        ["cidade_errada", "Cidade errada", r.cidade_errada, _CEX_CORES.cidade_errada],
+        ["usuario_sem_cidade", "Login sem cidade", r.usuario_sem_cidade, _CEX_CORES.usuario_sem_cidade],
+        ["sem_cidade", "Pacote sem cidade", r.sem_cidade, _CEX_CORES.sem_cidade], ["ok", "Atribuídos certo", r.ok, _CEX_CORES.ok]]
+        .filter(([k, , n]) => n || k !== "sem_cidade");
+    const ft = document.getElementById("cex-tiles");
+    if (ft) ft.innerHTML = tiles.map(([k, nome, n, cor]) => `
+        <div class="nr-tile nr-tile-click${k === _cexFiltro ? " nr-tile-selecionada" : ""}" onclick="_cexFiltro='${k}';_cexPintarTabela()">
+            <div class="nr-tile-label">${cor ? `<span class="nr-chip-cor" style="background:${cor}"></span>` : ""}${nome}</div>
+            <div class="nr-tile-valor">${_cexNum(n)}</div>
+            <div class="nr-tile-sub">${r.total ? (Math.floor(n / r.total * 1000) / 10).toLocaleString("pt-BR") + "% dos pacotes" : "pacotes"}</div>
+        </div>`).join("");
     const el = document.getElementById("cex-tabela");
     if (!el) return;
     const lista = _cexFiltrados();

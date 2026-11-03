@@ -4900,6 +4900,10 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .nr-grafico-legenda { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
 .nr-leg { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #8494a9; }
 .nr-leg i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+/* Conferência de expedição: % no meio da pizza (pointer-events none pra não roubar o tooltip). */
+.cex-centro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.cex-centro-valor { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.cex-centro-rotulo { font-size: 11px; color: #7b8ba3; margin-top: 2px; }
 
 /* Backlog > resposta do cliente. Discreto de proposito: uma faixa fina de filtros
    em cima da tabela (e nao uma fileira de cards) e, na tabela, so um pontinho
