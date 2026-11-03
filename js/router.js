@@ -474,8 +474,10 @@ function _rotaAbrirAtual() {
 // acontece ao clicar direto no menu — só que aqui a tela foi aberta por código, sem
 // clique, então precisa ser feito manualmente).
 function _marcarSubmenuAtivo(caminho) {
-    document.querySelectorAll(".submenu a").forEach(l => l.classList.remove("active"));
-    document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
+    // O link clicado já está marcado: "Ativos/Conversas" existe em várias transportadoras
+    // e procurar pela rota abriria a primeira, não a escolhida.
+    const atual = document.querySelector(".submenu a.active");
+    if (atual && atual.dataset.rota === caminho) return _abrirCaminhoAte(atual);
     const candidatos = document.querySelectorAll(`.submenu a[data-rota="${caminho}"]`);
     let alvo = null;
     candidatos.forEach(el => { if (!alvo && el.offsetParent !== null) alvo = el; });
@@ -483,12 +485,13 @@ function _marcarSubmenuAtivo(caminho) {
         // Item de menu sem submenu (ex.: Criar AT): a rota mora no próprio item. Sem ele
         // também, o link não existe pro cargo atual (ex.: sem permissão) — nada pra marcar.
         const item = document.querySelector(`.menu-item[data-rota="${caminho}"]`);
-        if (item) item.classList.add("active");
+        if (!item) return;
+        document.querySelectorAll(".submenu a").forEach(l => l.classList.remove("active"));
+        document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
+        item.classList.add("active");
         return;
     }
-    alvo.classList.add("active");
-    const menuItem = alvo.closest(".submenu").previousElementSibling;
-    if (menuItem) menuItem.classList.add("active");
+    _abrirCaminhoAte(alvo);
 }
 
 window.addEventListener("popstate", _rotaAbrirAtual);

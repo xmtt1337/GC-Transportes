@@ -27,6 +27,8 @@ function carregar(larga) {
         document: {
             addEventListener: (_, fn) => { aoCarregar = fn; },
             getElementById: () => sidebar,
+            querySelector: () => null,
+            querySelectorAll: () => [],
         },
         setTimeout: fn => { timers.push(fn); return timers.length; },
         clearTimeout: id => { timers[id - 1] = () => {}; },

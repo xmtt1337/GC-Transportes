@@ -102,9 +102,7 @@ function logout() {
 // ───── LINK ATIVO NO SUBMENU ─────
 document.querySelectorAll(".submenu a").forEach(link => {
     link.addEventListener("click", function() {
-        document.querySelectorAll(".submenu a").forEach(l => l.classList.remove("active"));
-        this.classList.add("active");
-        this.closest(".submenu").previousElementSibling.classList.add("active");
+        _abrirCaminhoAte(this);
         document.getElementById("titulo-pagina").innerText = this.innerText;
     });
 });

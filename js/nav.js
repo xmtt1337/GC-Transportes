@@ -86,16 +86,14 @@ function mostrarTela(id, rota) {
     document.getElementById(id).classList.add("active-view");
     const titulo = document.getElementById("titulo-pagina");
     if (titulo && _TELA_TITULOS[id]) titulo.innerText = _TELA_TITULOS[id];
-    // Sempre fecha/recolhe a sidebar ao navegar
+    // Recolhe a sidebar ao navegar, mas o menu fica aberto até a tela atual.
     const sidebar = document.getElementById("sidebar");
     sidebar.classList.remove("expanded");
     document.getElementById("sidebar-backdrop").classList.remove("active");
-    document.querySelectorAll(".submenu").forEach(m => m.classList.remove("open"));
-    document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active", "open"));
 
-    if (typeof _rotaAtualizarUrl === "function") {
-        _rotaAtualizarUrl(rota !== undefined ? rota : (typeof _TELA_ROTAS !== "undefined" ? _TELA_ROTAS[id] : undefined));
-    }
+    const rotaFinal = rota !== undefined ? rota : (typeof _TELA_ROTAS !== "undefined" ? _TELA_ROTAS[id] : undefined);
+    if (rotaFinal && typeof _marcarSubmenuAtivo === "function") _marcarSubmenuAtivo(rotaFinal);
+    if (typeof _rotaAtualizarUrl === "function") _rotaAtualizarUrl(rotaFinal);
 }
 
 

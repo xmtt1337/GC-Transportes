@@ -6,21 +6,45 @@ function _fecharTodosSubmenus() {
     document.querySelectorAll(".subgroup-header, .subgroup-header-2").forEach(h => h.classList.remove("open"));
 }
 
+// Deixa aberto só o caminho até o link (Torre > Transportadoras > Shopee > Na Rua), pra
+// quem reabre o menu ver onde está. Antes, abrir uma tela fechava o menu inteiro.
+function _abrirCaminhoAte(link) {
+    _fecharTodosSubmenus();
+    document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active", "open"));
+    document.querySelectorAll(".submenu a").forEach(l => l.classList.remove("active"));
+    link.classList.add("active");
+    let ul = link.closest(".submenu, .sub-submenu, .sub-sub-submenu");
+    while (ul) {
+        ul.classList.add("open");
+        const cabeca = ul.previousElementSibling;
+        if (cabeca) cabeca.classList.add("open");
+        if (ul.classList.contains("submenu")) {
+            if (cabeca) cabeca.classList.add("active");
+            break;
+        }
+        ul = ul.parentElement.closest(".submenu, .sub-submenu, .sub-sub-submenu");
+    }
+}
+
+// Ao recolher a barra, o que foi aberto só pra olhar volta pro caminho da tela atual.
+function _menuVoltarAoAtivo() {
+    const ativo = document.querySelector(".submenu a.active");
+    if (ativo) return _abrirCaminhoAte(ativo);
+    _fecharTodosSubmenus();
+    document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("open"));
+}
+
 function toggleSidebar() {
     const sidebar = document.getElementById("sidebar");
     const isExpanded = sidebar.classList.toggle("expanded");
     document.getElementById("sidebar-backdrop").classList.toggle("active", isExpanded);
-    if (!isExpanded) {
-        _fecharTodosSubmenus();
-        document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active", "open"));
-    }
+    if (!isExpanded) _menuVoltarAoAtivo();
 }
 
 function fecharSidebar() {
     document.getElementById("sidebar").classList.remove("expanded");
     document.getElementById("sidebar-backdrop").classList.remove("active");
-    _fecharTodosSubmenus();
-    document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active", "open"));
+    _menuVoltarAoAtivo();
 }
 
 function irParaHome() {
@@ -84,7 +108,7 @@ document.addEventListener("DOMContentLoaded", function () {
     sidebar.addEventListener("mouseleave", () => {
         clearTimeout(hoverTimer);
         if (!temHover.matches) return;
-        hoverTimer = setTimeout(() => sidebar.classList.remove("expanded"), 150);
+        hoverTimer = setTimeout(() => { sidebar.classList.remove("expanded"); _menuVoltarAoAtivo(); }, 150);
     });
 });
 
