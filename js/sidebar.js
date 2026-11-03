@@ -32,7 +32,30 @@ function _menuVoltarAoAtivo() {
     document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("open"));
 }
 
+// No computador a barra abre por cima ao passar o mouse (empurrar a tela a cada hover
+// recalcula a página inteira e trava as tabelas grandes). Quem quer ela sempre aberta
+// fixa pelo botão do rodapé: aí a tela anda pro lado, num pulo só, e fica assim.
+const _SIDEBAR_FIXA_CHAVE = "gc_sidebar_fixa";
+const _ehComputador = () => window.matchMedia("(min-width: 681px)").matches;
+const sidebarFixa = () => document.body.classList.contains("sidebar-fixa");
+
+function _aplicarSidebarFixa(fixa) {
+    const sidebar = document.getElementById("sidebar");
+    document.body.classList.toggle("sidebar-fixa", fixa);
+    sidebar.classList.toggle("expanded", fixa);
+    const botao = sidebar.querySelector(".hamburger-btn");
+    if (botao) botao.title = fixa ? "Soltar a barra" : "Deixar a barra fixa e aberta";
+    if (!fixa) _menuVoltarAoAtivo();
+}
+
+function alternarSidebarFixa() {
+    const fixa = !sidebarFixa();
+    _aplicarSidebarFixa(fixa);
+    try { localStorage.setItem(_SIDEBAR_FIXA_CHAVE, fixa ? "1" : "0"); } catch (_) {}
+}
+
 function toggleSidebar() {
+    if (_ehComputador()) return alternarSidebarFixa();
     const sidebar = document.getElementById("sidebar");
     const isExpanded = sidebar.classList.toggle("expanded");
     document.getElementById("sidebar-backdrop").classList.toggle("active", isExpanded);
@@ -98,15 +121,18 @@ document.addEventListener("DOMContentLoaded", function () {
     const sidebar = document.getElementById("sidebar");
     if (!sidebar) return;
     const temHover = window.matchMedia("(hover: hover) and (min-width: 681px)");
+    let fixaSalva = false;
+    try { fixaSalva = localStorage.getItem(_SIDEBAR_FIXA_CHAVE) === "1"; } catch (_) {}
+    if (fixaSalva && _ehComputador()) _aplicarSidebarFixa(true);
     let hoverTimer;
     sidebar.addEventListener("mouseenter", () => {
         clearTimeout(hoverTimer);
-        if (!temHover.matches) return;
+        if (!temHover.matches || sidebarFixa()) return;
         hoverTimer = setTimeout(() => sidebar.classList.add("expanded"), 80);
     });
     sidebar.addEventListener("mouseleave", () => {
         clearTimeout(hoverTimer);
-        if (!temHover.matches) return;
+        if (!temHover.matches || sidebarFixa()) return;
         hoverTimer = setTimeout(() => { sidebar.classList.remove("expanded"); _menuVoltarAoAtivo(); }, 150);
     });
 });

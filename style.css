@@ -59,6 +59,9 @@ body {
 @media screen and (min-width: 681px) {
     .sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
     .content { margin-left: 58px; }
+    /* Fixa pelo botão do rodapé: a tela anda pro lado de uma vez, sem animar a margem
+       (animar recalcularia a página a cada quadro, o motivo de ela abrir por cima). */
+    body.sidebar-fixa .content { margin-left: 272px; }
 }
 
 .logo {
@@ -180,7 +183,10 @@ body {
 }
 .hamburger-btn:hover { color: #fff; }
 .hamburger-btn .chevron-icon { transition: transform 0.32s cubic-bezier(0.4,0,0.2,1); }
-.sidebar.expanded .hamburger-btn .chevron-icon { transform: rotate(180deg); }
+/* No computador a seta mostra se está fixa (aberta só pelo mouse, segue apontando pra
+   fora: o clique fixa). No celular, segue o abre/fecha. */
+body.sidebar-fixa .hamburger-btn { color: #7cb4ff; }
+body.sidebar-fixa .hamburger-btn .chevron-icon { transform: rotate(180deg); }
 
 /* ===== CONTENT ===== */
 .content { flex: 1; display: flex; flex-direction: column; padding: 20px; min-width: 0; overflow: hidden; }
@@ -1461,6 +1467,7 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     .sidebar.expanded .menu-item .arrow { opacity: 0.7; }
     .sidebar.expanded .submenu.open { max-height: 1400px; opacity: 1; margin-bottom: 6px; border-color: rgba(58,134,255,0.1); }
     .sidebar.expanded .sidebar-footer { justify-content: space-between; padding: 0 10px; }
+    .sidebar.expanded .hamburger-btn .chevron-icon { transform: rotate(180deg); }
 
     .sidebar-backdrop {
         display: block; position: fixed; inset: 0; z-index: 90;

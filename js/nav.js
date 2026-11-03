@@ -86,9 +86,11 @@ function mostrarTela(id, rota) {
     document.getElementById(id).classList.add("active-view");
     const titulo = document.getElementById("titulo-pagina");
     if (titulo && _TELA_TITULOS[id]) titulo.innerText = _TELA_TITULOS[id];
-    // Recolhe a sidebar ao navegar, mas o menu fica aberto até a tela atual.
+    // Recolhe a sidebar ao navegar (menos se estiver fixa), mas o menu fica aberto até a
+    // tela atual.
     const sidebar = document.getElementById("sidebar");
-    sidebar.classList.remove("expanded");
+    const fixa = typeof sidebarFixa === "function" && sidebarFixa() && window.matchMedia("(min-width: 681px)").matches;
+    if (!fixa) sidebar.classList.remove("expanded");
     document.getElementById("sidebar-backdrop").classList.remove("active");
 
     const rotaFinal = rota !== undefined ? rota : (typeof _TELA_ROTAS !== "undefined" ? _TELA_ROTAS[id] : undefined);
