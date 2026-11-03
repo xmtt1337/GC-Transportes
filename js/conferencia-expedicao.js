@@ -22,6 +22,7 @@ const _CEX_STATUS = {
     ok:                 { rotulo: "Certo",            classe: "cft-pos" },
 };
 const _CEX_MAX_LINHAS = 500;
+const _CEX_MAX_BARRAS = 8;   // teto igual nos três gráficos: nenhum card cresce mais que os outros
 
 let _cexTransp = "anjun";
 let _cexAba = "conferencia";
@@ -169,7 +170,7 @@ function _cexRender(msg) {
                 <div class="cex-par">
                     <div class="nr-grafico-area cex-rosca"><canvas id="cex-gr-certo"></canvas><div class="cex-centro" id="cex-gr-certo-centro"></div></div>
                     <div>
-                        <div class="cex-par-sub">Atribuição errada por login <span class="cft-ajuda" style="font-weight:400">· clique pra corrigir</span></div>
+                        <div class="cex-par-sub" title="Clique na barra pra corrigir as cidades do login">Atribuição errada por login</div>
                         <div class="nr-grafico-area cex-barras"><canvas id="cex-gr-logins"></canvas>
                             <div class="nr-grafico-vazio" id="cex-gr-logins-vazio" style="display:none">Nenhum login com pacote fora das cidades dele.</div></div>
                     </div>
@@ -181,7 +182,7 @@ function _cexRender(msg) {
                 <div class="cex-par">
                     <div class="nr-grafico-area cex-rosca"><canvas id="cex-gr-abr"></canvas><div class="cex-centro" id="cex-gr-abr-centro"></div></div>
                     <div>
-                        <div class="cex-par-sub">Fora de abrangência por cidade <span class="cft-ajuda" style="font-weight:400">· nenhum login faz</span></div>
+                        <div class="cex-par-sub" title="Cidades que nenhum login desta transportadora faz">Fora de abrangência por cidade</div>
                         <div class="nr-grafico-area cex-barras"><canvas id="cex-gr-fora"></canvas>
                             <div class="nr-grafico-vazio" id="cex-gr-fora-vazio" style="display:none">Todos os pacotes são de cidades que a gente atende.</div></div>
                     </div>
@@ -229,14 +230,14 @@ function _cexGraficar() {
         const c = String(p.cidade || "").trim() || "(sem cidade)";
         porCidade.set(c, (porCidade.get(c) || 0) + 1);
     });
-    _cexBarras("cidades", [...porCidade.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([c, n]) => ({ rotulo: c, cidade_errada: 0, sem_entregador: n })),
+    _cexBarras("cidades", [...porCidade.entries()].sort((a, b) => b[1] - a[1]).slice(0, _CEX_MAX_BARRAS).map(([c, n]) => ({ rotulo: c, cidade_errada: 0, sem_entregador: n })),
         [["sem_entregador", "Sem atribuição"]]);
 
     // Quem recebeu pacote fora das cidades dele (ou sem cidade cadastrada). Clicar abre o card do login.
     const logins = ((_cexDados && _cexDados.usuarios) || [])
         .map(u => ({ rotulo: u.usuario, cidade_errada: u.erradas, usuario_sem_cidade: u.sem_cadastro ? u.qtd : 0 }))
         .filter(u => u.cidade_errada || u.usuario_sem_cidade)
-        .sort((a, b) => (b.cidade_errada + b.usuario_sem_cidade) - (a.cidade_errada + a.usuario_sem_cidade)).slice(0, 10);
+        .sort((a, b) => (b.cidade_errada + b.usuario_sem_cidade) - (a.cidade_errada + a.usuario_sem_cidade)).slice(0, _CEX_MAX_BARRAS);
     _cexBarras("logins", logins, [["cidade_errada", "Cidade errada"], ["usuario_sem_cidade", "Login sem cidade"]], u => _cexAbrirUsuario(u.rotulo));
 
     // 3. O % aqui é informativo (o pacote não é nosso), mas fora de abrangência ainda é pendência:
@@ -245,7 +246,7 @@ function _cexGraficar() {
         nossos, r.total, "na abrangência", false);
     const fora = new Map();
     pacotes.filter(p => p.status === "fora_abrangencia").forEach(p => fora.set(p.cidade, (fora.get(p.cidade) || 0) + 1));
-    _cexBarras("fora", [...fora.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([c, n]) => ({ rotulo: c, fora_abrangencia: n })),
+    _cexBarras("fora", [...fora.entries()].sort((a, b) => b[1] - a[1]).slice(0, _CEX_MAX_BARRAS).map(([c, n]) => ({ rotulo: c, fora_abrangencia: n })),
         [["fora_abrangencia", "Fora de abrangência"]]);
 }
 

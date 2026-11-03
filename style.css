@@ -4902,17 +4902,20 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .nr-leg i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 /* Conferência de expedição — compacta: os três cards numa linha a 100%, pizza pequena e
    barra com a altura das linhas que tem (o tamanho é ajustado no js). */
-.cex-graficos { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; margin-bottom: 16px; align-items: start; }
+.cex-graficos { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; margin-bottom: 16px; }
 .cex-graficos .nr-grafico-card { padding: 12px 14px 10px; }
 .cex-graficos .nr-grafico-legenda { gap: 10px; margin-top: 4px; }
-.cex-par { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 14px; align-items: center; margin-top: 8px; }
+/* Tudo alinhado pelo topo: a pizza e a 1ª barra começam na mesma altura nos três cards, tenha
+   o gráfico 2 linhas ou 8. Os cards esticam até o mais alto (padrão do grid). */
+.cex-par { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 14px; align-items: start; margin-top: 8px; }
+.cex-par > .cex-rosca { margin-top: 20px; }
 /* Item de grid não encolhe abaixo do conteúdo: sem isto o canvas do Chart.js, depois de esticar
    (sidebar abrindo, janela mudando), segurava a coluna e a barra invadia o card do lado. */
 .cex-par > *, .cex-graficos > * { min-width: 0; }
 .cex-graficos .nr-grafico-area { margin-top: 0; }
 .cex-graficos .cex-rosca { height: 104px; }
 .cex-graficos .cex-barras { height: 70px; }
-.cex-par-sub { font-size: 11px; font-weight: 600; color: #8494a9; margin-bottom: 4px; }
+.cex-par-sub { font-size: 11px; font-weight: 600; color: #8494a9; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* % no meio da pizza (pointer-events none pra não roubar o tooltip). */
 .cex-centro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
 .cex-centro-valor { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
