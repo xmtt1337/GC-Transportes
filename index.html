@@ -202,7 +202,7 @@ if (_BASE) {
                 </li>
                 <ul class="sub-sub-submenu" id="grupo-op-anjun">
                     <li><a href="#" data-rota="Operacao/AlimentarAnjun" onclick="abrirAlimentar(event,'anjun')">Alimentar</a></li>
-                    <li><a href="#" data-rota="Conferencias/Anjun" onclick="abrirConferencias(event,'anjun')">Conferência</a></li>
+                    <li><a href="#" data-rota="Conferencias/Anjun" onclick="abrirConfExpedicao(event,'anjun')">Conferência</a></li>
                 </ul>
                 <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
                     Imile <span class="subgroup-arrow">▾</span>
@@ -1893,6 +1893,29 @@ if (_BASE) {
                     <div id="conf-cidades"></div>
 
                 </div>
+            </div>
+        </div>
+
+        <!-- TELA CONFERÊNCIA DE EXPEDIÇÃO (Operação > Transportadoras > Anjun > Conferência):
+             relatório da transportadora x Cidades por usuário — js/conferencia-expedicao.js -->
+        <div id="tela-conf-expedicao" class="view tela-full">
+            <div class="fech-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                    <div id="cex-titulo" style="font-size:15px;font-weight:700;color:#e2e8f0">Conferência</div>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="filtro-tabs" id="cex-abas" style="margin-bottom:14px"></div>
+                <div id="cex-painel-conferencia">
+                    <div class="cft-barra" style="margin:0 0 12px">
+                        <label class="cft-btn primario" for="cex-arquivo" style="cursor:pointer">Subir relatório</label>
+                        <input type="file" id="cex-arquivo" accept=".xlsx,.xls,.csv" style="display:none" onchange="_cexSubir(this)">
+                        <span id="cex-envio" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"></span>
+                        <span class="cft-ajuda" id="cex-status"></span>
+                    </div>
+                    <div id="cex-resultado"></div>
+                </div>
+                <div id="cex-painel-cidades" style="display:none"><div id="cex-cidades"></div></div>
             </div>
         </div>
 
@@ -4737,7 +4760,7 @@ if (_BASE) {
 
 <script src="js/core.js?v=20261102d"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261102f"></script>
+<script src="js/router.js?v=20261103a"></script>
 <script src="js/sidebar.js?v=20261030a"></script>
 <script src="js/nav.js?v=20261102c"></script>
 <script src="js/atendimento.js?v=20261015a"></script>
@@ -4785,6 +4808,7 @@ if (_BASE) {
 <script src="js/desempenho-bip.js?v=20261015c"></script>
 <script src="js/desempenho-hora.js?v=20261015a"></script>
 <script src="js/conferencias.js?v=20261102b"></script>
+<script src="js/conferencia-expedicao.js?v=20261103a"></script>
 <script src="js/conferencias-hub.js?v=20261102g"></script>
 <script src="js/antecipacoes.js?v=20261014a"></script>
 <script src="js/antecipacoes-admin.js?v=20261015b"></script>
