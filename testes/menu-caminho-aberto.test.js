@@ -145,10 +145,13 @@ test("rota aberta por endereço acha o link e abre o caminho", () => {
     assert.ok(m.naRua.classes.has("active") && aberto(m.grupoLoggi) && aberto(m.subTorre));
 });
 
-test("área aberta e tela atual em cartão azul, sem bolinhas nem caixa cinza", () => {
+test("área aberta e tela atual em faixa azul de canto reto, sem bolinhas nem caixa cinza", () => {
     const css = ler("style.css");
     assert.match(css, /\.sidebar\.expanded \.menu-item\.active \{[^}]*rgba\(58,134,255/);
-    assert.match(css, /\.submenu a\.active \{[^}]*border-color: rgba\(58,134,255/);
+    assert.match(css, /\.submenu a\.active \{[^}]*inset 2px 0 0 #3a86ff/);
+    const regra = sel => css.slice(css.indexOf(sel), css.indexOf("}", css.indexOf(sel)));
+    ["\n.submenu a {", ".sidebar.expanded .menu-item {", "\n.subgroup-header-2 {"].forEach(s =>
+        assert.doesNotMatch(regra(s), /border-radius/, s));
     assert.doesNotMatch(css, /\.submenu a::before/);
     assert.doesNotMatch(css, /\.sub-submenu\.open,\s*\.sub-sub-submenu\.open \{\s*background:/, "caixa cinza do grupo aberto saiu");
 });
