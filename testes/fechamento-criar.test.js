@@ -518,3 +518,17 @@ test("publicar para alguns: manda só os marcados", async () => {
     assert.deepStrictEqual(corpo, ["https://api.teste/admin/fechamento-transportadoras/publicacao/entregadores",
         { mes: 10, ano: 2026, quinzena: 1, drivers: ["Fulano de Teste - Vila Teste"] }]);
 });
+
+test("registros do entregador: lista o que não conta e o botão certo pra cada um", () => {
+    const ctx = carregar();
+    const html = ctx._cfHtmlRegistros([
+        { codigo: "BRT1", origem: "Pacote faltante", usuario_nome: "Fulano de Teste", onholds: 2, contando: false },
+        { codigo: "BRT2", origem: "Devolução fora de rota", usuario_nome: "Fulano de Teste", onholds: 1, contando: true },
+    ]);
+    assert.match(html, /1 pedido desconsiderado/);
+    assert.match(html, /\(2 onholds\)/);
+    assert.match(html, /1 contando mesmo assim/);
+    assert.match(html, /Contar mesmo assim/);
+    assert.match(html, />Desconsiderar</);
+    assert.match(ctx._cfHtmlRegistros([]), /nenhum nos onholds/);
+});

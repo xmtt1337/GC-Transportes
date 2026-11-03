@@ -572,9 +572,59 @@ function _cfCarregarIgnorar(msg) {
                         <tbody id="cf-ignorar-tbody"></tbody>
                     </table></div>
                     <div class="cft-ajuda" id="cf-ignorar-contagem" style="margin-top:4px"></div>
-                </div>` : ""}`;
+                </div>` : ""}
+            ${_cfHtmlRegistros(d.registros || [])}`;
         if (_cfIgnorar.length && _cfIgnorarAberta) _cfRenderListaIgnorar();
     }).catch(() => {});
+}
+
+/**
+ * Onholds que o entregador justificou no app (Pacote faltante ou Devolução "Fora de rota" da
+ * Shopee): já não contam, sem ninguém colar código. "Contar mesmo assim" põe de volta.
+ */
+function _cfHtmlRegistros(regs) {
+    if (!regs.length) return `<div class="cft-ajuda" style="margin-top:10px">Pacote faltante e devolução "Fora de rota" registrados pelo entregador
+        também não contam — nenhum nos onholds deste fechamento.</div>`;
+    const fora = regs.filter(r => !r.contando);
+    const n = (x) => Number(x || 0).toLocaleString("pt-BR");
+    const ohs = fora.reduce((s, r) => s + (r.onholds || 0), 0);
+    return `
+        <details style="margin-top:10px">
+            <summary class="cft-ajuda" style="cursor:pointer">Registrados pelo entregador: ${n(fora.length)} pedido${fora.length !== 1 ? "s" : ""} desconsiderado${fora.length !== 1 ? "s" : ""}
+                (${n(ohs)} onhold${ohs !== 1 ? "s" : ""}) — Pacote faltante e devolução "Fora de rota"${regs.length > fora.length ? ` · ${n(regs.length - fora.length)} contando mesmo assim` : ""}</summary>
+            <div class="cft-tabela-wrap" style="max-height:280px;overflow-y:auto;margin-top:6px"><table class="cft-tabela">
+                <thead><tr><th>Pedido (BR)</th><th>Registro</th><th>Entregador</th><th>Em</th><th>Onholds</th><th>Situação</th><th></th></tr></thead>
+                <tbody>${regs.map(r => `<tr>
+                    <td>${_cfEsc(r.codigo)}</td>
+                    <td>${_cfEsc(r.origem)}</td>
+                    <td>${_cfEsc(r.usuario_nome || "")}</td>
+                    <td>${r.criado_em ? new Date(r.criado_em).toLocaleString("pt-BR") : ""}</td>
+                    <td>${n(r.onholds)}</td>
+                    <td>${r.contando ? "Conta" : "Não conta"}</td>
+                    <td><button class="cft-btn${r.contando ? "" : " perigo"}" data-c="${_cfEsc(r.codigo)}" data-contar="${r.contando ? "" : "1"}"
+                        onclick="_cfContarRegistro(this.dataset.c, !!this.dataset.contar)">${r.contando ? "Desconsiderar" : "Contar mesmo assim"}</button></td>
+                </tr>`).join("")}</tbody>
+            </table></div>
+        </details>`;
+}
+
+async function _cfContarRegistro(codigo, contar) {
+    const key = _cfTranspAtual;
+    const st = document.getElementById("cf-ignorar-status");
+    if (st) st.innerText = "Gravando...";
+    try {
+        const qs = _cfQs({ transportadora: key });
+        const r = contar
+            ? await fetch(`${_CF_API()}/onholds-contar`, { method: "POST", headers: _cfHeaders(true),
+                body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: key, codigo }) })
+            : await fetch(`${_CF_API()}/onholds-contar?${qs}&codigo=${encodeURIComponent(codigo)}`, { method: "DELETE", headers: _cfHeaders() });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Erro ao gravar.");
+        if (key !== _cfTranspAtual) return;
+        _cfCarregarIgnorar(_cfEsc(`${codigo} ${contar ? "volta a contar" : "deixa de contar"}${d.recalculado ? " · valores recalculados." : "."}`));
+        _cfCarregarOnholdsInfo();
+        if (d.recalculado) { _cfAtualizarCards(); _cfCarregarDetalhe(); }
+    } catch (err) { if (st) st.innerText = err.message; }
 }
 
 function _cfAlternarListaIgnorar() {
@@ -742,7 +792,8 @@ function _cfCarregarPerformance() {
                 (Shopee entregues + outras com prazo vencendo no dia entregues no prazo) ÷ (isso + onholds + outras com prazo vencendo no dia atrasadas ou não entregues).
                 Loggi, que não tem prazo, conta como no prazo no dia da entrega.
                 Todo pacote do entregador vale o R$/pacote do dia em que contou (Shopee: dia da entrega; outras: dia do prazo) — não entregue vale 0.
-                Onhold que não conta: só Office closed no sábado ou domingo${oc ? ` (<b style="color:#cbd5e1">${oc.toLocaleString("pt-BR")} nesta quinzena</b>)` : ""}, além dos códigos em "Desconsiderar onholds".
+                Onhold que não conta: só Office closed no sábado ou domingo${oc ? ` (<b style="color:#cbd5e1">${oc.toLocaleString("pt-BR")} nesta quinzena</b>)` : ""}, além dos códigos em "Desconsiderar onholds"
+                e dos pedidos com Pacote faltante ou devolução "Fora de rota" registrados pelo entregador.
                 Entregador em "Valores fixos" ganha o valor dele, seja qual for a performance.
                 Clique na linha (▸) pra ver quais foram os onholds e os atrasados do dia.
                 ${_cfTextoFaixas(d.faixas)}</div>
