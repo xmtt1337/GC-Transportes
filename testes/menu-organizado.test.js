@@ -14,7 +14,7 @@ const core = ler("js", "core.js");
 const menu = html.slice(html.indexOf('<ul class="menu">'), html.indexOf('class="sidebar-footer"'));
 
 const rotulosDoMenu = [...menu.matchAll(/<span class="label">([^<]+)<\/span>/g)].map(m => m[1]);
-const TRANSPORTADORAS = ["shopee", "loggi", "anjun", "imile", "jt", "total_express"];
+const TRANSPORTADORAS = ["shopee", "loggi", "anjun", "imile", "total_express"];
 
 /** Os links de uma transportadora em Operação ("op") ou Torre de Controle ("torre"). */
 function grupo(area, chave) {
@@ -26,7 +26,7 @@ function grupo(area, chave) {
 const area = id => menu.slice(menu.indexOf(`id="submenu-${id}"`), menu.indexOf("</ul>\n\n", menu.indexOf(`id="submenu-${id}"`)));
 
 test("transportadora não é menu do primeiro nível", () => {
-    ["Shopee", "Loggi", "Anjun", "Imile", "J&amp;T", "Total Express", "Transportadoras"]
+    ["Shopee", "Loggi", "Anjun", "Imile", "Total Express", "Transportadoras"]
         .forEach(r => assert.ok(!rotulosDoMenu.includes(r), r));
 });
 
@@ -42,7 +42,7 @@ test("toda transportadora tem um grupo em Operação e outro na Torre", () => {
 });
 
 test("a Operação de cada uma tem Alimentar e sua conferência", () => {
-    ["loggi", "anjun", "imile", "jt", "total_express"].forEach(t => {
+    ["loggi", "anjun", "imile", "total_express"].forEach(t => {
         ["Alimentar", "Conferência"].forEach(i => assert.ok(grupo("op", t).includes(`>${i}</a>`), `${t}: ${i}`));
     });
     ["Recebimento", "Alimentar", "Line Haul", "Atribuições"]
@@ -59,7 +59,14 @@ test("a Torre de cada uma tem Na Rua, Faltantes e Extravios", () => {
 
 test("Loggi e Total não oferecem Ativos, porque não têm modelo", () => {
     ["loggi", "total_express"].forEach(t => assert.ok(!grupo("torre", t).includes(">Ativos</a>"), t));
-    ["shopee", "anjun", "imile", "jt"].forEach(t => assert.ok(grupo("torre", t).includes(">Ativos</a>"), t));
+    ["shopee", "anjun", "imile"].forEach(t => assert.ok(grupo("torre", t).includes(">Ativos</a>"), t));
+});
+
+test("J&T saiu do menu, mas os links antigos continuam abrindo", () => {
+    assert.ok(!menu.includes("J&amp;T"));
+    assert.ok(!menu.includes('id="grupo-op-jt"'));
+    assert.ok(!menu.includes('id="grupo-torre-jt"'));
+    ["Operacao/AlimentarJT", "Conferencias/JT", "TorreControle/NaRua/JT"].forEach(r => assert.ok(router.includes(`"${r}"`), r));
 });
 
 test("abrir a Shopee pergunta o polo, nos dois menus", () => {
@@ -113,7 +120,7 @@ test("as rotas antigas continuam abrindo", () => {
 
 test("todo Na Rua do menu tem rota", () => {
     const rotas = [...menu.matchAll(/data-rota="(TorreControle\/NaRua\/[A-Za-z]+)"/g)].map(m => m[1]);
-    assert.strictEqual(rotas.length, 6);
+    assert.strictEqual(rotas.length, 5);
     rotas.forEach(r => assert.ok(router.includes(`"${r}":`), r));
 });
 
