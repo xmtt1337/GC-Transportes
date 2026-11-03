@@ -80,7 +80,7 @@ function _acCarregar(msg) {
     }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar.</div>`; });
 }
 
-function _acEhInterno(nome) { return /(^|[^a-zà-ú])intern[oa]([^a-zà-ú]|$)/i.test(String(nome || "")); }
+function _acEhInterno(nome) { return /(^|[^a-zà-ú])(?:intern[oa]|correios)([^a-zà-ú]|$)/i.test(String(nome || "")); }
 
 function _acRender(msg) {
     const d = _acDados || {};

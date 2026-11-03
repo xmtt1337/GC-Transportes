@@ -134,7 +134,7 @@ function _rgCarregarPod() {
     .then(r => r.json())
     .then(d => {
         if (d.error) { el.innerHTML = `<div class="cft-erro">${_rgEsc(d.error)}</div>`; return; }
-        const interno = (x) => /(^|[^a-zà-ú])intern[oa]([^a-zà-ú]|$)/i.test(String(x.driver || ""));
+        const interno = (x) => /(^|[^a-zà-ú])(?:intern[oa]|correios)([^a-zà-ú]|$)/i.test(String(x.driver || ""));
         const linhas = (d.linhas || []).filter(x => !interno(x));
         if (!linhas.length) { el.innerHTML = `<div class="cft-ajuda">Ninguém abaixo da meta nas semanas dessa quinzena.</div>`; return; }
         const dia = (iso) => iso.slice(8) + "/" + iso.slice(5, 7);

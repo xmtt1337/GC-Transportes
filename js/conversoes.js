@@ -96,7 +96,7 @@ function _cvRender(msg) {
     if (b && busca) { b.focus(); b.setSelectionRange(busca.length, busca.length); }
 }
 
-function _cvEhInterno(nome) { return /(^|[^a-zà-ú])intern[oa]([^a-zà-ú]|$)/i.test(String(nome || "")); }
+function _cvEhInterno(nome) { return /(^|[^a-zà-ú])(?:intern[oa]|correios)([^a-zà-ú]|$)/i.test(String(nome || "")); }
 
 function _cvLista(busca, soFaltando, verInterno) {
     const d = _cvDados || {};

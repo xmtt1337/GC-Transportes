@@ -98,7 +98,7 @@ function _pdLimpar() {
     _pdRender();
 }
 
-function _pdEhInterno(nome) { return /(^|[^a-zà-ú])intern[oa]([^a-zà-ú]|$)/i.test(String(nome || "")); }
+function _pdEhInterno(nome) { return /(^|[^a-zà-ú])(?:intern[oa]|correios)([^a-zà-ú]|$)/i.test(String(nome || "")); }
 function _pdTrocarVisao(interno) { _pdInterno = interno; _pdRender(); }
 
 function _pdFiltro() {

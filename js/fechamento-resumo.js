@@ -58,7 +58,7 @@ function _rqSelecionarQuinzena(q) {
 }
 
 // Internos (GC Interno, Base Interna...) fora das somas e listas; aqui têm o fechamento deles.
-function _rqEhInterno(nome) { return /(^|[^a-zà-ú])intern[oa]([^a-zà-ú]|$)/i.test(String(nome || "")); }
+function _rqEhInterno(nome) { return /(^|[^a-zà-ú])(?:intern[oa]|correios)([^a-zà-ú]|$)/i.test(String(nome || "")); }
 const _rqDaVisao = (nome) => _rqEhInterno(nome) === (_rqVisao === "interno");
 function _rqDadosVisao() {
     return _rqVisao === "interno" && _rqDados.interno ? { ..._rqDados, ..._rqDados.interno } : _rqDados;
