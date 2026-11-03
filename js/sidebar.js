@@ -11,17 +11,15 @@ function _fecharTodosSubmenus() {
 function _abrirCaminhoAte(link) {
     _fecharTodosSubmenus();
     document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active", "open"));
-    document.querySelectorAll(".submenu a").forEach(l => l.classList.remove("active"));
+    document.querySelectorAll(".submenu a, .subgroup-header, .subgroup-header-2").forEach(l => l.classList.remove("active"));
     link.classList.add("active");
+    // Cada título no caminho também fica marcado (Torre, Transportadoras, Loggi).
     let ul = link.closest(".submenu, .sub-submenu, .sub-sub-submenu");
     while (ul) {
         ul.classList.add("open");
         const cabeca = ul.previousElementSibling;
-        if (cabeca) cabeca.classList.add("open");
-        if (ul.classList.contains("submenu")) {
-            if (cabeca) cabeca.classList.add("active");
-            break;
-        }
+        if (cabeca) cabeca.classList.add("open", "active");
+        if (ul.classList.contains("submenu")) break;
         ul = ul.parentElement.closest(".submenu, .sub-submenu, .sub-sub-submenu");
     }
 }
@@ -65,12 +63,13 @@ function toggleMenu(element) {
     const submenu = element.nextElementSibling;
     const isOpen  = submenu.classList.contains("open");
 
-    document.querySelectorAll(".menu-item").forEach(i => i.classList.remove("active", "open"));
+    // Abrir pra olhar não tira a marca da área da tela atual ("active"); só abre.
+    document.querySelectorAll(".menu-item").forEach(i => i.classList.remove("open"));
     _fecharTodosSubmenus();
 
     if (!isOpen) {
         submenu.classList.add("open");
-        element.classList.add("open", "active");
+        element.classList.add("open");
     }
 }
 

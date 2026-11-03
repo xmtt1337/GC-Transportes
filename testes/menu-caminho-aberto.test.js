@@ -74,6 +74,7 @@ function montar() {
         ".subgroup-header, .subgroup-header-2": () => [...tem("subgroup-header"), ...tem("subgroup-header-2")],
         ".menu-item": () => tem("menu-item"),
         ".submenu a": () => tem("link"),
+        ".submenu a, .subgroup-header, .subgroup-header-2": () => [...tem("link"), ...tem("subgroup-header"), ...tem("subgroup-header-2")],
         ".submenu a.active": () => tem("link").filter(e => e.classes.has("active")),
     };
     const qsa = sel => {
@@ -111,6 +112,22 @@ test("clicar num link deixa aberto o caminho inteiro até ele", () => {
     [m.grupoLoggi, m.loggi, m.grupoTransp, m.transp, m.subTorre, m.torre].forEach((e, i) => assert.ok(aberto(e), "nível " + i));
     assert.ok(m.torre.classes.has("active"), "menu da área marcado");
     assert.ok(!aberto(m.subOp) && !aberto(m.grupoImile), "o resto fecha");
+});
+
+test("todo título no caminho fica marcado, os de fora não", () => {
+    const m = montar();
+    m.ctx._abrirCaminhoAte(m.naRua);
+    [m.torre, m.transp, m.loggi].forEach((e, i) => assert.ok(e.classes.has("active"), "nível " + i));
+    m.ctx._abrirCaminhoAte(m.ativosAnjun);
+    assert.ok(m.anjun.classes.has("active") && !m.loggi.classes.has("active"));
+});
+
+test("abrir outra área pra olhar não tira a marca da área atual", () => {
+    const m = montar();
+    m.ctx._abrirCaminhoAte(m.naRua);
+    m.ctx.toggleMenu(m.op);
+    assert.ok(m.torre.classes.has("active"), "Torre segue marcada");
+    assert.ok(!m.op.classes.has("active") && m.op.classes.has("open"), "Operação só aberta");
 });
 
 test("trocar de tela troca o caminho aberto", () => {
