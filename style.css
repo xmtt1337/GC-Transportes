@@ -50,7 +50,7 @@ body {
     transition: width 0.32s cubic-bezier(0.4,0,0.2,1), min-width 0.32s cubic-bezier(0.4,0,0.2,1);
     z-index: 10;
 }
-.sidebar.expanded { width: 250px; min-width: 250px; }
+.sidebar.expanded { width: 272px; min-width: 272px; }
 /* No computador a barra abre POR CIMA do conteúdo (fixa), com o lugar dela (58px) reservado
    no .content. Antes ela era item do flex: abrir de 58 → 250px encolhia o .content a cada
    quadro da animação e o navegador recalculava a página inteira ~20 vezes — em tela com
@@ -89,22 +89,38 @@ body {
     margin: 3px 0;
     white-space: nowrap; position: relative;
 }
-.sidebar.expanded .menu-item { padding: 13px 18px; justify-content: flex-start; gap: 13px; }
+/* Aberta, a área vira um cartão azul (fundo + borda); a tela atual dentro dela repete o
+   mesmo cartão. Recolhida (só ícones), segue a barrinha azul à esquerda. */
+.sidebar.expanded .menu-item {
+    padding: 11px 10px; margin: 3px 8px; justify-content: flex-start; gap: 13px;
+    border: 1px solid transparent; border-radius: 10px;
+}
 .menu-item:hover  { background: rgba(58,134,255,0.08); color: #fff; }
 .menu-item.active { color: #fff; box-shadow: inset 3px 0 0 #3a86ff; }
+.sidebar.expanded .menu-item.active {
+    box-shadow: none; color: #7cb4ff;
+    background: rgba(58,134,255,0.12); border-color: rgba(58,134,255,0.3);
+}
+.sidebar.expanded .menu-item.active .label { font-weight: 600; }
 
 .menu-item .label {
     font-size: 14px; font-weight: 500; flex: 1;
     opacity: 0; max-width: 0; overflow: hidden;
     transition: opacity 0.2s ease, max-width 0.32s ease;
 }
-.menu-item .arrow {
-    font-size: 11px; opacity: 0; max-width: 0; overflow: hidden;
-    transition: opacity 0.2s ease, max-width 0.32s ease, transform 0.28s ease;
+/* Seta fina desenhada com borda (o "▾" do HTML some): ⌄ fechado, ⌃ aberto. */
+.menu-item .arrow,
+.subgroup-arrow {
+    font-size: 0; width: 6px; height: 6px; flex-shrink: 0; margin: 0 4px -3px auto;
+    border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+    transform: translateY(-3px) rotate(45deg);
+    transition: opacity 0.2s ease, transform 0.25s ease;
 }
+.menu-item .arrow { opacity: 0; }
+.sidebar:not(.expanded) .menu-item .arrow { display: none; }
 .sidebar.expanded .menu-item .label { opacity: 1; max-width: 160px; }
-.sidebar.expanded .menu-item .arrow { opacity: 1; max-width: 20px; }
-.menu-item.open .arrow { transform: rotate(180deg); }
+.sidebar.expanded .menu-item .arrow { opacity: 0.7; }
+.menu-item.open .arrow { transform: translateY(1px) rotate(-135deg); }
 
 .menu-tooltip {
     position: absolute; left: calc(100% + 14px); top: 50%; transform: translateY(-50%);
@@ -118,24 +134,28 @@ body {
 
 .submenu {
     max-height: 0; overflow: hidden; opacity: 0; list-style: none;
-    margin: 0 6px; padding: 0 0 4px 0;
+    margin: 0 8px; padding: 0 0 4px 0;
     transition: max-height 0.4s ease, opacity 0.25s ease;
 }
 /* Limite só pra animação abrir: a altura real vem da lista, e quem rola é o .menu. Limite
    apertado aqui corta os grupos de transportadora no fim da Operação e da Torre. */
 .sidebar.expanded .submenu.open { max-height: 1400px; opacity: 1; margin-bottom: 4px; }
 
-/* ── Links diretos no submenu ── */
+/* ── Links diretos no submenu ──
+   O texto começa na mesma linha do nome da área (ícone 24 + espaço 13 + respiro). */
 .submenu > li > a,
 .submenu a {
     display: flex; align-items: center; gap: 10px;
-    padding: 9px 12px 9px 16px; font-size: 13px; font-weight: 500;
-    color: #8494a9; text-decoration: none; border-radius: 8px;
-    transition: background 0.18s, color 0.18s; white-space: nowrap;
+    padding: 10px 10px 10px 46px; font-size: 13.5px; font-weight: 500;
+    color: #8b9ab0; text-decoration: none; border-radius: 8px;
+    border: 1px solid transparent; margin: 2px 0; line-height: 1.3;
+    transition: background 0.18s, color 0.18s;
 }
-.submenu a:hover  { background: rgba(255,255,255,0.04); color: #cbd5e1; }
-/* Azul só na tela atual; o resto do menu fica em cinza. */
-.submenu a.active { color: #60a5fa; background: rgba(58,134,255,0.1); }
+.submenu a:hover  { background: rgba(58,134,255,0.06); color: #e2e8f0; }
+.submenu a.active {
+    color: #7cb4ff; font-weight: 600;
+    background: rgba(58,134,255,0.12); border-color: rgba(58,134,255,0.3);
+}
 
 /* ── Shopee ──
    Menu próprio, então usa o laranja da transportadora (#F97316, o mesmo dos gráficos
@@ -1436,13 +1456,13 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     .sidebar {
         position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
         transform: translateX(-100%);
-        width: 260px !important; min-width: 260px !important;
+        width: 272px !important; min-width: 272px !important;
         transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
     }
     .sidebar.expanded { transform: translateX(0); }
-    .sidebar.expanded .menu-item { padding: 13px 18px; justify-content: flex-start; gap: 13px; }
+    .sidebar.expanded .menu-item { padding: 11px 10px; justify-content: flex-start; gap: 13px; }
     .sidebar.expanded .menu-item .label { opacity: 1; max-width: 160px; }
-    .sidebar.expanded .menu-item .arrow { opacity: 1; max-width: 20px; }
+    .sidebar.expanded .menu-item .arrow { opacity: 0.7; }
     .sidebar.expanded .submenu.open { max-height: 1400px; opacity: 1; margin-bottom: 6px; border-color: rgba(58,134,255,0.1); }
     .sidebar.expanded .sidebar-footer { justify-content: space-between; padding: 0 10px; }
 
@@ -2361,68 +2381,41 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 
 /* ===== SUBMENU 3º NÍVEL ===== */
 /* ── Subgroup header (nível 1: ex "Bipagem") ── */
-.subgroup-header {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 12px 9px 16px; cursor: pointer; list-style: none;
-    color: #8494a9; font-size: 13px; font-weight: 600;
-    border-radius: 8px; margin: 1px 0;
-    transition: background 0.18s, color 0.18s;
-}
-.subgroup-header:hover  { color: #cbd5e1; }
-.subgroup-header.open   { color: #f1f5f9; }
-
-/* Fechado ▸, aberto ▾. */
-.subgroup-arrow {
-    font-size: 10px; opacity: 0.5; margin-left: auto;
-    transition: transform 0.25s ease; display: inline-block;
-    transform: rotate(-90deg);
-}
-.subgroup-header.open .subgroup-arrow  { transform: none; opacity: 0.9; }
-.subgroup-header-2.open .subgroup-arrow { transform: none; opacity: 0.9; }
-
-/* Grupo aberto vira uma caixa: o título e a lista dele dividem o mesmo fundo, pra
-   saber de longe qual está aberto. Dentro de outra caixa, o fundo soma e clareia. */
-.subgroup-header.open,
-.subgroup-header-2.open {
-    background: rgba(255,255,255,0.045);
-    border-radius: 8px 8px 0 0; margin-bottom: 0;
-}
-.sub-submenu.open,
-.sub-sub-submenu.open {
-    background: rgba(255,255,255,0.045);
-    border-radius: 0 0 8px 8px; padding-bottom: 4px; margin-bottom: 2px;
-}
-
-/* ── Sub-submenu (nível 1 expandido) ── */
-.sub-submenu {
-    list-style: none;
-    max-height: 0; overflow: hidden; opacity: 0;
-    transition: max-height 0.35s ease, opacity 0.22s ease;
-    padding: 0 6px 0 10px;
-}
-.sub-submenu.open { max-height: 800px; opacity: 1; }
-.sub-submenu a { padding-left: 16px !important; font-size: 13px !important; }
-
-/* ── Subgroup header nível 2 (ex "Alimentar separação") ── */
+/* Grupo dentro da área: mesma altura e alinhamento dos links, só com a seta. */
+.subgroup-header,
 .subgroup-header-2 {
     display: flex; align-items: center; gap: 10px;
-    padding: 8px 12px 8px 18px; cursor: pointer; list-style: none;
-    color: #7b98b5; font-size: 12.5px; font-weight: 600;
-    border-radius: 8px; margin: 1px 0;
+    padding: 10px 10px 10px 46px; cursor: pointer; list-style: none;
+    color: #8b9ab0; font-size: 13.5px; font-weight: 500;
+    border-radius: 8px; border: 1px solid transparent; margin: 2px 0;
     transition: background 0.18s, color 0.18s;
 }
-.subgroup-header-2:hover  { color: #cbd5e1; }
-.subgroup-header-2.open   { color: #f1f5f9; }
+.subgroup-header:hover,
+.subgroup-header-2:hover  { background: rgba(58,134,255,0.06); color: #e2e8f0; }
+.subgroup-header.open,
+.subgroup-header-2.open   { color: #e2e8f0; }
 
-/* ── Sub-sub-submenu (nível 2 expandido) ── */
+.subgroup-arrow { opacity: 0.6; }
+.subgroup-header.open .subgroup-arrow,
+.subgroup-header-2.open .subgroup-arrow { transform: translateY(1px) rotate(-135deg); opacity: 0.9; }
+
+/* ── Níveis de dentro ──
+   Cada nível entra 14px e ganha um fio à esquerda, na linha do texto de quem o abriu,
+   pra ver o que pertence a quem sem caixa nem cor nova. */
+.sub-submenu,
 .sub-sub-submenu {
     list-style: none;
     max-height: 0; overflow: hidden; opacity: 0;
-    transition: max-height 0.3s ease, opacity 0.22s ease;
-    padding: 0 6px 0 8px;
+    transition: max-height 0.35s ease, opacity 0.22s ease;
+    border-left: 1px solid rgba(148,163,184,0.16);
 }
+.sub-submenu     { margin-left: 44px; padding-left: 6px; }
+.sub-sub-submenu { margin-left: 7px;  padding-left: 6px; }
+.sub-submenu.open { max-height: 800px; opacity: 1; }
+.sub-submenu a,
+.sub-submenu .subgroup-header-2 { padding-left: 12px !important; font-size: 13.5px !important; }
 .sub-sub-submenu.open { max-height: 500px; opacity: 1; }
-.sub-sub-submenu a { padding-left: 18px !important; font-size: 12.5px !important; }
+.sub-sub-submenu a { padding-left: 12px !important; font-size: 13px !important; }
 
 /* ===== TELA IMPORTAR TRAMPAY ===== */
 .trampay-upload-area {

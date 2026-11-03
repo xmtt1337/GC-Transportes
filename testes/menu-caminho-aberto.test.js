@@ -145,11 +145,12 @@ test("rota aberta por endereço acha o link e abre o caminho", () => {
     assert.ok(m.naRua.classes.has("active") && aberto(m.grupoLoggi) && aberto(m.subTorre));
 });
 
-test("grupo aberto tem fundo próprio e o menu não tem mais bolinhas", () => {
+test("área aberta e tela atual em cartão azul, sem bolinhas nem caixa cinza", () => {
     const css = ler("style.css");
-    assert.match(css, /\.subgroup-header\.open,\s*\.subgroup-header-2\.open \{\s*background:/);
-    assert.match(css, /\.sub-submenu\.open,\s*\.sub-sub-submenu\.open \{\s*background:/);
+    assert.match(css, /\.sidebar\.expanded \.menu-item\.active \{[^}]*rgba\(58,134,255/);
+    assert.match(css, /\.submenu a\.active \{[^}]*border-color: rgba\(58,134,255/);
     assert.doesNotMatch(css, /\.submenu a::before/);
+    assert.doesNotMatch(css, /\.sub-submenu\.open,\s*\.sub-sub-submenu\.open \{\s*background:/, "caixa cinza do grupo aberto saiu");
 });
 
 test("trocar de tela não fecha mais o menu", () => {
