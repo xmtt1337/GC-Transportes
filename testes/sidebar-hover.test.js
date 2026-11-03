@@ -73,6 +73,14 @@ test("barra fixa volta fixa ao recarregar a página", () => {
     assert.ok(corpo.has("sidebar-fixa") && classes.has("expanded"));
 });
 
+test("aberta no computador, a tela anda pro lado sem animar a margem", () => {
+    const css = fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8");
+    const ini = css.indexOf("@media screen and (min-width: 681px)");
+    const bloco = css.slice(ini, css.indexOf("\n}\n", ini));
+    assert.match(bloco, /body:has\(> \.sidebar\.expanded\) \.content \{ margin-left: 272px; \}/);
+    assert.doesNotMatch(css.slice(css.indexOf("\n.content {"), css.indexOf("}", css.indexOf("\n.content {"))), /transition/);
+});
+
 test("no celular o botão só abre e fecha, nunca fixa", () => {
     const { corpo, ctx } = carregar(false, { gc_sidebar_fixa: "1" });
     assert.ok(!corpo.has("sidebar-fixa"), "salvo do computador não vale no celular");

@@ -32,9 +32,9 @@ function _menuVoltarAoAtivo() {
     document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("open"));
 }
 
-// No computador a barra abre por cima ao passar o mouse (empurrar a tela a cada hover
-// recalcula a página inteira e trava as tabelas grandes). Quem quer ela sempre aberta
-// fixa pelo botão do rodapé: aí a tela anda pro lado, num pulo só, e fica assim.
+// No computador a barra abre ao passar o mouse e a tela anda pro lado (num pulo só, sem
+// animar: animar a margem trava as tabelas grandes). Quem quer ela sempre aberta fixa
+// pelo botão do rodapé: aí o mouse saindo não recolhe.
 const _SIDEBAR_FIXA_CHAVE = "gc_sidebar_fixa";
 const _ehComputador = () => window.matchMedia("(min-width: 681px)").matches;
 const sidebarFixa = () => document.body.classList.contains("sidebar-fixa");
@@ -128,7 +128,8 @@ document.addEventListener("DOMContentLoaded", function () {
     sidebar.addEventListener("mouseenter", () => {
         clearTimeout(hoverTimer);
         if (!temHover.matches || sidebarFixa()) return;
-        hoverTimer = setTimeout(() => sidebar.classList.add("expanded"), 80);
+        // Abrir empurra a tela: espera o mouse parar na barra, pra não pular só de passar.
+        hoverTimer = setTimeout(() => sidebar.classList.add("expanded"), 250);
     });
     sidebar.addEventListener("mouseleave", () => {
         clearTimeout(hoverTimer);
