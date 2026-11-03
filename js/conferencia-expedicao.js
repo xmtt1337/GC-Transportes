@@ -2,6 +2,9 @@
 // Sobe o relatório da transportadora e confere duas coisas (o que antes era CONT.SE na planilha):
 //   1. foi atribuído?          pacote sem Entregador = sem atribuição
 //   2. foi atribuído certo?    o login do Entregador atende a cidade do pacote?
+//   3. é nosso?                cidade que nenhum login da lista faz = fora de abrangência
+// Salvo por dia (o dia em que subiu) e por polo (coluna Ponto Responsável): quem não é dev só
+// vê e só sobe o próprio polo; o dev vê todos e filtra.
 // A lista login → cidades fica na aba "Cidades por usuário" desta tela. Login sem cidade ou com
 // cidade fora da lista: clique no nome e marque as cidades que ele faz (mesmo jeito das
 // pendências do fechamento). A conferência é refeita na hora contra a lista atual — não precisa
@@ -11,6 +14,7 @@
 const _CEX_API = () => `${API}/admin/conferencia-expedicao`;
 const _CEX_NOMES = { anjun: "Anjun" };
 const _CEX_STATUS = {
+    fora_abrangencia:   { rotulo: "Fora de abrangência", classe: "cft-aviso" },
     sem_entregador:     { rotulo: "Sem atribuição",   classe: "cft-neg" },
     cidade_errada:      { rotulo: "Cidade errada",    classe: "cft-neg" },
     usuario_sem_cidade: { rotulo: "Login sem cidade", classe: "cft-aviso" },
@@ -24,6 +28,9 @@ let _cexAba = "conferencia";
 let _cexDados = null;     // resposta de /:transp/resultado
 let _cexFiltro = "pend";  // pend | todos | um dos status
 let _cexCidades = null;   // linhas de /cidades-usuario
+let _cexDia = null;       // AAAA-MM-DD escolhido; null = o último com relatório
+let _cexPolo = "";        // só dev: "" = todos os polos
+const _CEX_POLOS = { cacador: "Caçador", videira: "Videira", joacaba: "Joaçaba" };
 
 function _cexEsc(t) {
     return String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -41,6 +48,7 @@ function abrirConfExpedicao(event, transportadora) {
     _cexTransp = transportadora || "anjun";
     _cexDados = null;
     _cexCidades = null;
+    _cexDia = null;
     const nome = _CEX_NOMES[_cexTransp] || _cexTransp;
     document.getElementById("cex-titulo").innerText = "Conferência — " + nome;
     mostrarTela("tela-conf-expedicao", "Conferencias/" + nome);
@@ -59,15 +67,25 @@ function _cexAbrirAba(aba) {
 }
 
 // ── Conferência ──
-function _cexCarregar(envio, msg) {
+function _cexCarregar(msg) {
     const el = document.getElementById("cex-resultado");
     if (!_cexDados) el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
-    const qs = envio ? `?envio=${encodeURIComponent(envio)}` : (_cexDados && _cexDados.envio ? `?envio=${_cexDados.envio.id}` : "");
-    fetch(`${_CEX_API()}/${_cexTransp}/resultado${qs}`, { headers: _cexHeaders() })
+    const qs = new URLSearchParams();
+    if (_cexDia) qs.set("dia", _cexDia);
+    if (_cexPolo) qs.set("polo", _cexPolo);
+    fetch(`${_CEX_API()}/${_cexTransp}/resultado?${qs}`, { headers: _cexHeaders() })
     .then(r => r.json())
     .then(d => {
+        // Sem polo no cadastro: pergunta (mesma escolha das telas da Shopee) e tenta de novo.
+        if (d.polo_pendente && typeof gcPoloGarantir === "function") {
+            el.innerHTML = `<div class="cft-ajuda">${_cexEsc(d.error)}</div>`;
+            if (typeof gcPoloInvalidar === "function") gcPoloInvalidar();
+            gcPoloGarantir(() => _cexCarregar());
+            return;
+        }
         if (d.error) { el.innerHTML = `<div class="cft-erro">${_cexEsc(d.error)}</div>`; return; }
         _cexDados = d;
+        _cexDia = d.dia;
         _cexRender(msg);
     }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao conectar com o servidor.</div>`; });
 }
@@ -88,10 +106,15 @@ async function _cexSubir(input) {
         const d = await r.json().catch(() => ({}));
         if (!r.ok) { st.className = "cft-erro"; st.innerText = d.error || "Erro ao enviar."; return; }
         st.innerText = "";
-        const extra = [d.repetidos ? `${_cexNum(d.repetidos)} waybill repetido(s) contado(s) uma vez` : "",
+        const desc = Object.entries(d.desconhecidos || {});
+        const salvos = Object.entries(d.gravados || {}).map(([p, n]) => `${_CEX_POLOS[p] || p} ${_cexNum(n)}`).join(", ");
+        const extra = [d.outro_polo ? `${_cexNum(d.outro_polo)} de outro polo ignorado(s)` : "",
+            desc.length ? `${_cexNum(desc.reduce((a, [, n]) => a + n, 0))} com Ponto Responsável desconhecido (${desc.map(([k]) => k).slice(0, 3).join(", ")}) ignorado(s)` : "",
+            d.repetidos ? `${_cexNum(d.repetidos)} waybill repetido(s) contado(s) uma vez` : "",
             d.ignorados ? `${_cexNum(d.ignorados)} linha(s) sem waybill ignorada(s)` : ""].filter(Boolean).join(" · ");
         _cexDados = null;
-        _cexCarregar(d.envio_id, `${_cexNum(d.linhas)} pacotes conferidos${extra ? " — " + extra : ""}.`);
+        _cexDia = d.dia;
+        _cexCarregar(`Salvo em ${_cexDiaBr(d.dia)}: ${salvos}${extra ? " — " + extra : ""}.`);
     } catch (err) {
         st.className = "cft-erro";
         st.innerText = (err && err.message) || "Erro ao ler o arquivo.";
@@ -101,14 +124,19 @@ async function _cexSubir(input) {
 function _cexRender(msg) {
     const d = _cexDados || {};
     const el = document.getElementById("cex-resultado");
-    // Só existe o último envio: subir outro relatório substitui este.
-    const info = d.envio
-        ? `<span class="cft-ajuda">${_cexEsc(d.envio.arquivo || "relatório")} · ${_cexNum(d.envio.linhas)} pacotes · enviado ${d.envio.enviado_por ? "por " + _cexEsc(d.envio.enviado_por) + " " : ""}em ${_cexEsc(_cexData(d.envio.enviado_em))}</span>`
-        : "";
-    document.getElementById("cex-envio").innerHTML = info + (msg ? `<span class="cft-ajuda cft-pos">${_cexEsc(msg)}</span>` : "");
+    // Um relatório por dia e por polo: subir de novo no mesmo dia substitui aquele dia.
+    const dias = d.dias || [];
+    const selDia = dias.length ? `<select class="cft-input" style="width:auto;flex:0 0 auto;margin:0" onchange="_cexDia=this.value;_cexDados=null;_cexCarregar()">
+        ${dias.map(x => `<option value="${x}"${x === d.dia ? " selected" : ""}>${_cexDiaBr(x)}${x === d.hoje ? " (hoje)" : ""}</option>`).join("")}
+    </select>` : "";
+    const selPolo = d.ve_tudo ? `<span class="sstb-pills">${[["", "Todos"], ...Object.entries(_CEX_POLOS)].map(([k, n]) =>
+        `<button type="button" class="sstb-pill${k === (d.polo || "") ? " sel" : ""}" onclick="_cexPolo='${k}';_cexDia=null;_cexDados=null;_cexCarregar()">${n}</button>`).join("")}</span>`
+        : (d.polo ? `<span class="cft-ajuda">Polo ${_cexEsc(_CEX_POLOS[d.polo] || d.polo)}</span>` : "");
+    const info = (d.envios || []).map(e => `<span class="cft-ajuda">${d.ve_tudo && !d.polo ? `<b>${_cexEsc(_CEX_POLOS[e.polo] || e.polo)}</b>: ` : ""}${_cexNum(e.linhas)} pacotes · ${e.enviado_por ? "por " + _cexEsc(e.enviado_por) + " " : ""}às ${_cexEsc(_cexHora(e.enviado_em))}</span>`).join("");
+    document.getElementById("cex-envio").innerHTML = selDia + selPolo + info + (msg ? `<span class="cft-ajuda cft-pos">${_cexEsc(msg)}</span>` : "");
 
-    if (!d.envio) {
-        el.innerHTML = `<div class="fechamento-empty">Suba o relatório da ${_cexEsc(_CEX_NOMES[_cexTransp] || _cexTransp)} pra conferir.</div>`;
+    if (!(d.envios || []).length) {
+        el.innerHTML = `<div class="fechamento-empty">${d.dia ? "Nenhum relatório neste dia." : `Suba o relatório da ${_cexEsc(_CEX_NOMES[_cexTransp] || _cexTransp)} pra conferir.`}</div>`;
         return;
     }
     const usuarios = d.usuarios || [];
@@ -147,6 +175,18 @@ function _cexRender(msg) {
                     </div>
                 </div>
             </div>
+            <div class="nr-grafico-card">
+                <div class="nr-grafico-titulo">3. É cidade que a gente atende?</div>
+                <div class="nr-grafico-legenda" id="cex-gr-abr-leg"></div>
+                <div class="cex-par">
+                    <div class="nr-grafico-area"><canvas id="cex-gr-abr"></canvas><div class="cex-centro" id="cex-gr-abr-centro"></div></div>
+                    <div>
+                        <div class="cex-par-sub">Fora de abrangência por cidade <span class="cft-ajuda" style="font-weight:400">· nenhum login faz</span></div>
+                        <div class="nr-grafico-area"><canvas id="cex-gr-fora"></canvas>
+                            <div class="nr-grafico-vazio" id="cex-gr-fora-vazio" style="display:none">Todos os pacotes são de cidades que a gente atende.</div></div>
+                    </div>
+                </div>
+            </div>
         </div>
         ${grupos.length ? `<div class="cft-pend"><div class="cft-pend-titulo">Pendências</div>${grupos.join("")}</div>` : ""}
         <div class="cft-barra" style="margin:0 0 10px">
@@ -161,7 +201,7 @@ function _cexRender(msg) {
 
 // ── Gráficos ── (mesmo padrão do Backlog da Shopee: nr-graficos + Chart.js)
 // Meta é zero pendência: o % no meio da pizza só fica verde em 100%.
-const _CEX_CORES = { ok: "#22c55e", sem_entregador: "#ef4444", cidade_errada: "#f97316", usuario_sem_cidade: "#f59e0b", sem_cidade: "#64748b" };
+const _CEX_CORES = { fora_abrangencia: "#a78bfa", ok: "#22c55e", sem_entregador: "#ef4444", cidade_errada: "#f97316", usuario_sem_cidade: "#f59e0b", sem_cidade: "#64748b" };
 const _CEX_EIXO = { color: "#7b8ba3", font: { size: 11 } };
 const _CEX_GRADE = { color: "rgba(255,255,255,0.055)", drawTicks: false };
 const _CEX_GRAF_BASE = { responsive: true, maintainAspectRatio: false, animation: { duration: 220 } };
@@ -173,10 +213,12 @@ function _cexGraficar() {
     if (typeof Chart === "undefined") return;
     const r = (_cexDados && _cexDados.resumo) || {};
     const pacotes = (_cexDados && _cexDados.pacotes) || [];
-    const atribuidos = r.total - r.sem_entregador;
+    // Fora de abrangência não conta nas pizzas 1 e 2: não é pacote que a gente deveria atribuir.
+    const nossos = r.total - r.fora_abrangencia;
+    const atribuidos = nossos - r.sem_entregador;
 
     _cexRosca("atrib", [["Atribuídos", atribuidos, _CEX_CORES.ok], ["Sem atribuição", r.sem_entregador, _CEX_CORES.sem_entregador]],
-        atribuidos, r.total, "atribuído");
+        atribuidos, nossos, "atribuído");
     _cexRosca("certo", [["Cidade certa", r.ok, _CEX_CORES.ok], ["Cidade errada", r.cidade_errada, _CEX_CORES.cidade_errada],
         ["Login sem cidade", r.usuario_sem_cidade, _CEX_CORES.usuario_sem_cidade], ["Pacote sem cidade", r.sem_cidade, _CEX_CORES.sem_cidade]]
         .filter(([, n], i) => n || i < 2), r.ok, atribuidos, "na cidade certa");
@@ -196,6 +238,15 @@ function _cexGraficar() {
         .filter(u => u.cidade_errada || u.usuario_sem_cidade)
         .sort((a, b) => (b.cidade_errada + b.usuario_sem_cidade) - (a.cidade_errada + a.usuario_sem_cidade)).slice(0, 10);
     _cexBarras("logins", logins, [["cidade_errada", "Cidade errada"], ["usuario_sem_cidade", "Login sem cidade"]], u => _cexAbrirUsuario(u.rotulo));
+
+    // 3. O % aqui é informativo (o pacote não é nosso), mas fora de abrangência ainda é pendência:
+    // precisa voltar pra transportadora — ou a cidade entrar na lista de algum login.
+    _cexRosca("abr", [["Na abrangência", nossos, _CEX_CORES.ok], ["Fora de abrangência", r.fora_abrangencia, _CEX_CORES.fora_abrangencia]],
+        nossos, r.total, "na abrangência");
+    const fora = new Map();
+    pacotes.filter(p => p.status === "fora_abrangencia").forEach(p => fora.set(p.cidade, (fora.get(p.cidade) || 0) + 1));
+    _cexBarras("fora", [...fora.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([c, n]) => ({ rotulo: c, fora_abrangencia: n })),
+        [["fora_abrangencia", "Fora de abrangência"]]);
 }
 
 function _cexRosca(id, fatias, feitos, total, rotulo) {
@@ -248,6 +299,16 @@ function _cexBarras(id, linhas, series, aoClicar) {
     });
 }
 
+function _cexDiaBr(dia) {
+    const [a, m, d] = String(dia || "").split("-");
+    return d ? `${d}/${m}/${a}` : "";
+}
+
+function _cexHora(v) {
+    const d = new Date(v);
+    return isNaN(d) ? "" : d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
 function _cexData(v) {
     if (!v) return "";
     const d = new Date(v);
@@ -258,7 +319,7 @@ function _cexFiltrados() {
     const pacotes = (_cexDados && _cexDados.pacotes) || [];
     const q = _cexChave((document.getElementById("cex-busca") || {}).value);
     return pacotes.filter(p => (_cexFiltro === "todos" || (_cexFiltro === "pend" ? p.status !== "ok" : p.status === _cexFiltro))
-        && (!q || _cexChave(p.waybill).includes(q) || _cexChave(p.entregador).includes(q) || _cexChave(p.cidade).includes(q)));
+        && (!q || _cexChave(p.waybill).includes(q) || _cexChave(p.entregador).includes(q) || _cexChave(p.cidade).includes(q) || _cexChave(p.cliente).includes(q)));
 }
 
 function _cexPintarTabela() {
@@ -266,11 +327,12 @@ function _cexPintarTabela() {
     // Tiles = filtro da tabela (mesmo jeito do Backlog da Shopee).
     const pend = r.total - r.ok;
     const tiles = [["todos", "Pacotes", r.total, ""], ["pend", "Pendentes", pend, pend ? _CEX_CORES.sem_entregador : _CEX_CORES.ok],
+        ["fora_abrangencia", "Fora de abrangência", r.fora_abrangencia, _CEX_CORES.fora_abrangencia],
         ["sem_entregador", "Sem atribuição", r.sem_entregador, _CEX_CORES.sem_entregador],
         ["cidade_errada", "Cidade errada", r.cidade_errada, _CEX_CORES.cidade_errada],
         ["usuario_sem_cidade", "Login sem cidade", r.usuario_sem_cidade, _CEX_CORES.usuario_sem_cidade],
         ["sem_cidade", "Pacote sem cidade", r.sem_cidade, _CEX_CORES.sem_cidade], ["ok", "Atribuídos certo", r.ok, _CEX_CORES.ok]]
-        .filter(([k, , n]) => n || k !== "sem_cidade");
+        .filter(([k, , n]) => n || !["sem_cidade", "fora_abrangencia"].includes(k));
     const ft = document.getElementById("cex-tiles");
     if (ft) ft.innerHTML = tiles.map(([k, nome, n, cor]) => `
         <div class="nr-tile nr-tile-click${k === _cexFiltro ? " nr-tile-selecionada" : ""}" onclick="_cexFiltro='${k}';_cexPintarTabela()">
@@ -281,17 +343,21 @@ function _cexPintarTabela() {
     const el = document.getElementById("cex-tabela");
     if (!el) return;
     const lista = _cexFiltrados();
+    const verPolo = !!(_cexDados && _cexDados.ve_tudo && !_cexDados.polo);
     if (!lista.length) { el.innerHTML = `<div class="cft-ajuda">Nada por aqui.</div>`; return; }
     el.innerHTML = `<div class="cft-tabela-wrap" style="max-height:62vh"><table class="cft-tabela">
-        <thead><tr><th>Waybill</th><th>Entregador</th><th>Cidade do destinatário</th><th>Cidades do login</th><th>Área de recebimento</th><th>Última rota</th><th>Entrada no ponto</th><th>Situação</th></tr></thead>
+        <thead><tr><th>Waybill</th>${verPolo ? "<th>Polo</th>" : ""}<th>Entregador</th><th>Cidade do destinatário</th><th>Cidades do login</th><th>Remetente</th><th class="num">Valor declarado</th><th>Área de recebimento</th><th>Última rota</th><th>Entrada no ponto</th><th>Situação</th></tr></thead>
         <tbody>${lista.slice(0, _CEX_MAX_LINHAS).map(p => {
             const s = _CEX_STATUS[p.status] || { rotulo: p.status, classe: "" };
             const cid = p.cidades_usuario || [];
             return `<tr>
                 <td>${_cexEsc(p.waybill)}</td>
+                ${verPolo ? `<td title="${_cexEsc(p.ponto)}">${_cexEsc(_CEX_POLOS[p.polo] || p.polo)}</td>` : ""}
                 <td>${p.entregador ? `<a href="#" class="cft-link" data-u="${_cexEsc(p.entregador)}" onclick="event.preventDefault();_cexAbrirUsuario(this.dataset.u)">${_cexEsc(p.entregador)}</a>` : `<span class="cft-vazio">—</span>`}</td>
                 <td>${_cexEsc(p.cidade) || `<span class="cft-vazio">—</span>`}</td>
                 <td class="cft-ajuda" title="${_cexEsc(cid.join(", "))}">${cid.length ? _cexEsc(cid.slice(0, 3).join(", ")) + (cid.length > 3 ? ` +${cid.length - 3}` : "") : ""}</td>
+                <td title="${_cexEsc(p.cliente)}">${_cexEsc(String(p.cliente || "").slice(0, 32))}</td>
+                <td class="num">${_cexEsc(p.valor_declarado)}</td>
                 <td>${_cexEsc(p.area_recebimento)}</td>
                 <td title="${_cexEsc(p.ultima_rota)}">${_cexEsc(String(p.ultima_rota || "").slice(0, 40))}</td>
                 <td>${_cexEsc(p.entrada_ponto)}</td>
@@ -373,7 +439,7 @@ async function _cexSalvarUsuario() {
         if (!r.ok) { btn.disabled = false; st.innerText = d.error || "Erro ao salvar."; return; }
         _cexFecharModal();
         _cexCidades = null;
-        _cexCarregar(null, `${usuario}: ${cidades.length} cidade(s) cadastrada(s).`);
+        _cexCarregar(`${usuario}: ${cidades.length} cidade(s) cadastrada(s).`);
     } catch (_) { btn.disabled = false; st.innerText = "Erro ao salvar."; }
 }
 
