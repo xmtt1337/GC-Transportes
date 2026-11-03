@@ -124,27 +124,31 @@ function _cexRender(msg) {
 
     el.innerHTML = `
         <div class="nr-tiles" id="cex-tiles" style="margin-bottom:18px"></div>
-        <div class="nr-graficos">
+        <!-- Um card por conferência: a pizza diz QUANTO está certo; a barra ao lado, ONDE/QUEM falta. -->
+        <div class="nr-graficos cex-graficos">
             <div class="nr-grafico-card">
-                <div class="nr-grafico-titulo">Atribuição <span class="cft-ajuda" style="font-weight:400">· meta 100%</span></div>
+                <div class="nr-grafico-titulo">1. Foi atribuído? <span class="cft-ajuda" style="font-weight:400">· meta 100%</span></div>
                 <div class="nr-grafico-legenda" id="cex-gr-atrib-leg"></div>
-                <div class="nr-grafico-area"><canvas id="cex-gr-atrib"></canvas><div class="cex-centro" id="cex-gr-atrib-centro"></div></div>
+                <div class="cex-par">
+                    <div class="nr-grafico-area"><canvas id="cex-gr-atrib"></canvas><div class="cex-centro" id="cex-gr-atrib-centro"></div></div>
+                    <div>
+                        <div class="cex-par-sub">Sem atribuição por cidade</div>
+                        <div class="nr-grafico-area"><canvas id="cex-gr-cidades"></canvas>
+                            <div class="nr-grafico-vazio" id="cex-gr-cidades-vazio" style="display:none">Todos os pacotes atribuídos.</div></div>
+                    </div>
+                </div>
             </div>
             <div class="nr-grafico-card">
-                <div class="nr-grafico-titulo">Atribuídos na cidade certa <span class="cft-ajuda" style="font-weight:400">· meta 100%</span></div>
+                <div class="nr-grafico-titulo">2. Foi pra cidade certa? <span class="cft-ajuda" style="font-weight:400">· meta 100%</span></div>
                 <div class="nr-grafico-legenda" id="cex-gr-certo-leg"></div>
-                <div class="nr-grafico-area"><canvas id="cex-gr-certo"></canvas><div class="cex-centro" id="cex-gr-certo-centro"></div></div>
-            </div>
-            <div class="nr-grafico-card">
-                <div class="nr-grafico-titulo">Sem atribuição por cidade</div>
-                <div class="nr-grafico-area"><canvas id="cex-gr-cidades"></canvas>
-                    <div class="nr-grafico-vazio" id="cex-gr-cidades-vazio" style="display:none">Todos os pacotes atribuídos.</div></div>
-            </div>
-            <div class="nr-grafico-card">
-                <div class="nr-grafico-titulo">Atribuição errada por login</div>
-                <div class="nr-grafico-legenda" id="cex-gr-logins-leg"></div>
-                <div class="nr-grafico-area"><canvas id="cex-gr-logins"></canvas>
-                    <div class="nr-grafico-vazio" id="cex-gr-logins-vazio" style="display:none">Nenhum login com pacote fora das cidades dele.</div></div>
+                <div class="cex-par">
+                    <div class="nr-grafico-area"><canvas id="cex-gr-certo"></canvas><div class="cex-centro" id="cex-gr-certo-centro"></div></div>
+                    <div>
+                        <div class="cex-par-sub">Atribuição errada por login <span class="cft-ajuda" style="font-weight:400">· clique pra corrigir</span></div>
+                        <div class="nr-grafico-area"><canvas id="cex-gr-logins"></canvas>
+                            <div class="nr-grafico-vazio" id="cex-gr-logins-vazio" style="display:none">Nenhum login com pacote fora das cidades dele.</div></div>
+                    </div>
+                </div>
             </div>
         </div>
         ${grupos.length ? `<div class="cft-pend"><div class="cft-pend-titulo">Pendências</div>${grupos.join("")}</div>` : ""}
@@ -206,9 +210,12 @@ function _cexRosca(id, fatias, feitos, total, rotulo) {
     const centro = document.getElementById(`cex-gr-${id}-centro`);
     if (centro) centro.innerHTML = `<div class="cex-centro-valor" style="color:${feitos === total ? _CEX_CORES.ok : _CEX_CORES.sem_entregador}">${txt}</div>
         <div class="cex-centro-rotulo">${rotulo}</div>`;
+    // Fatia zerada fica só na legenda — na pizza ela vira um risco escuro no topo.
+    const comValor = fatias.filter(f => f[1]);
     _cexGraficos[id] = new Chart(document.getElementById(`cex-gr-${id}`), {
         type: "doughnut",
-        data: { labels: fatias.map(f => f[0]), datasets: [{ data: fatias.map(f => f[1]), backgroundColor: fatias.map(f => f[2]), borderColor: "#0f1520", borderWidth: 2 }] },
+        data: { labels: comValor.map(f => f[0]), datasets: [{ data: comValor.map(f => f[1]), backgroundColor: comValor.map(f => f[2]),
+            borderColor: "#0f1520", borderWidth: comValor.length > 1 ? 2 : 0 }] },
         options: { ..._CEX_GRAF_BASE, cutout: "68%", plugins: { legend: { display: false },
             tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed.toLocaleString("pt-BR")} pacotes` } } } },
     });
