@@ -1,8 +1,10 @@
-// Hover da sidebar so vale com mouse em tela larga, conferido a cada evento.
+// Barra lateral no computador: sempre aberta, encostada na tela, sem abrir pelo mouse.
+// O botão do rodapé minimiza (escolha salva). Minimizada, clicar num ícone abre até o
+// mouse sair. No celular o botão só abre e fecha.
 //
-// A checagem rodava uma vez, ao carregar. Pagina aberta larga e depois estreitada
-// ficava com o hover ligado: o mouse saia da barra aberta pelo menu do celular, ela
-// fechava e o fundo escuro continuava na tela (so fecharSidebar tira os dois juntos).
+// O mouse saindo confere a largura a cada evento, não só ao carregar: página aberta larga
+// e depois estreitada ficava com o hover ligado, o mouse saía da barra aberta pelo menu do
+// celular, ela fechava e o fundo escuro continuava (só fecharSidebar tira os dois juntos).
 
 const test = require("node:test");
 const assert = require("node:assert");
@@ -22,7 +24,7 @@ function classList(set) {
 }
 
 function carregar(larga, salvo = {}) {
-    const classes = new Set(["expanded"]);
+    const classes = new Set();
     const corpo = new Set();
     const ouvintes = {};
     const botao = { title: "" };
@@ -30,6 +32,7 @@ function carregar(larga, salvo = {}) {
         classList: classList(classes),
         addEventListener: (ev, fn) => { ouvintes[ev] = fn; },
         querySelector: () => botao,
+        style: {},
     };
     const media = { matches: larga };
     const timers = [];
@@ -54,23 +57,36 @@ function carregar(larga, salvo = {}) {
     return { classes, corpo, ouvintes, media, rodarTimers, ctx, guardado, botao };
 }
 
-test("no computador o botão fixa a barra: mouse saindo não recolhe e a escolha fica salva", () => {
-    const { classes, corpo, ouvintes, rodarTimers, ctx, guardado, botao } = carregar(true);
-    ctx.toggleSidebar();
+const MINIMIZADA = { gc_sidebar_minimizada: "1" };
+
+test("no computador a barra já nasce aberta e o mouse saindo não recolhe", () => {
+    const { classes, corpo, ouvintes, rodarTimers, botao } = carregar(true);
     assert.ok(corpo.has("sidebar-fixa") && classes.has("expanded"));
-    assert.strictEqual(guardado.gc_sidebar_fixa, "1");
-    assert.strictEqual(botao.title, "Soltar a barra");
+    assert.strictEqual(botao.title, "Minimizar a barra");
     ouvintes.mouseleave();
     rodarTimers();
-    assert.ok(classes.has("expanded"), "fixa não recolhe no hover");
-    ctx.toggleSidebar();
-    assert.ok(!corpo.has("sidebar-fixa") && !classes.has("expanded"));
-    assert.strictEqual(guardado.gc_sidebar_fixa, "0");
+    assert.ok(classes.has("expanded"));
 });
 
-test("barra fixa volta fixa ao recarregar a página", () => {
-    const { classes, corpo } = carregar(true, { gc_sidebar_fixa: "1" });
+test("passar o mouse não abre mais a barra", () => {
+    const { ouvintes } = carregar(true, MINIMIZADA);
+    assert.strictEqual(ouvintes.mouseenter, undefined);
+});
+
+test("o botão minimiza e abre de novo, e a escolha fica salva", () => {
+    const { classes, corpo, ctx, guardado, botao } = carregar(true);
+    ctx.toggleSidebar();
+    assert.ok(!corpo.has("sidebar-fixa") && !classes.has("expanded"));
+    assert.strictEqual(guardado.gc_sidebar_minimizada, "1");
+    assert.strictEqual(botao.title, "Abrir a barra");
+    ctx.toggleSidebar();
     assert.ok(corpo.has("sidebar-fixa") && classes.has("expanded"));
+    assert.strictEqual(guardado.gc_sidebar_minimizada, "0");
+});
+
+test("minimizada continua minimizada ao recarregar a página", () => {
+    const { classes, corpo } = carregar(true, MINIMIZADA);
+    assert.ok(!corpo.has("sidebar-fixa") && !classes.has("expanded"));
 });
 
 test("aberta no computador, a tela anda pro lado sem animar a margem", () => {
@@ -81,41 +97,26 @@ test("aberta no computador, a tela anda pro lado sem animar a margem", () => {
     assert.doesNotMatch(css.slice(css.indexOf("\n.content {"), css.indexOf("}", css.indexOf("\n.content {"))), /transition/);
 });
 
-test("no celular o botão só abre e fecha, nunca fixa", () => {
-    const { corpo, ctx } = carregar(false, { gc_sidebar_fixa: "1" });
-    assert.ok(!corpo.has("sidebar-fixa"), "salvo do computador não vale no celular");
+test("no celular a barra nasce fechada e o botão só abre e fecha", () => {
+    const { classes, corpo, ctx } = carregar(false);
+    assert.ok(!corpo.has("sidebar-fixa") && !classes.has("expanded"));
     ctx.toggleSidebar();
-    assert.ok(!corpo.has("sidebar-fixa"));
+    assert.ok(classes.has("expanded") && !corpo.has("sidebar-fixa"));
 });
 
-test("em tela larga com mouse, sair da barra recolhe", () => {
-    const { classes, ouvintes, rodarTimers } = carregar(true);
+test("minimizada, aberta por um ícone, recolhe quando o mouse sai", () => {
+    const { classes, ouvintes, rodarTimers } = carregar(true, MINIMIZADA);
+    classes.add("expanded");
     ouvintes.mouseleave();
     rodarTimers();
     assert.ok(!classes.has("expanded"));
 });
 
-test("pagina aberta larga e depois estreitada nao fecha a barra pelo hover", () => {
-    const { classes, ouvintes, media, rodarTimers } = carregar(true);
+test("pagina aberta larga e depois estreitada nao fecha a barra pelo mouse", () => {
+    const { classes, ouvintes, media, rodarTimers } = carregar(true, MINIMIZADA);
+    classes.add("expanded");
     media.matches = false;
     ouvintes.mouseleave();
     rodarTimers();
     assert.ok(classes.has("expanded"), "fecharia a barra deixando o fundo escuro ativo");
-});
-
-test("pagina aberta estreita e depois alargada passa a ter hover", () => {
-    const { classes, ouvintes, media, rodarTimers } = carregar(false);
-    media.matches = true;
-    ouvintes.mouseleave();
-    rodarTimers();
-    assert.ok(!classes.has("expanded"));
-});
-
-test("estreitar com o recolhimento pendente nao fecha a barra", () => {
-    const { classes, ouvintes, media, rodarTimers } = carregar(true);
-    ouvintes.mouseleave();
-    media.matches = false;
-    ouvintes.mouseenter();
-    rodarTimers();
-    assert.ok(classes.has("expanded"));
 });

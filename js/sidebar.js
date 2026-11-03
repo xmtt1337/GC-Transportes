@@ -32,10 +32,10 @@ function _menuVoltarAoAtivo() {
     document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("open"));
 }
 
-// No computador a barra abre ao passar o mouse e a tela anda pro lado (num pulo só, sem
-// animar: animar a margem trava as tabelas grandes). Quem quer ela sempre aberta fixa
-// pelo botão do rodapé: aí o mouse saindo não recolhe.
-const _SIDEBAR_FIXA_CHAVE = "gc_sidebar_fixa";
+// No computador a barra fica sempre aberta, encostada na tela (a margem muda num pulo só,
+// sem animar: animar trava as tabelas grandes). Não abre mais passando o mouse. O botão
+// do rodapé minimiza pra só os ícones, e a escolha fica salva no navegador.
+const _SIDEBAR_MINIMIZADA_CHAVE = "gc_sidebar_minimizada";
 const _ehComputador = () => window.matchMedia("(min-width: 681px)").matches;
 const sidebarFixa = () => document.body.classList.contains("sidebar-fixa");
 
@@ -44,14 +44,14 @@ function _aplicarSidebarFixa(fixa) {
     document.body.classList.toggle("sidebar-fixa", fixa);
     sidebar.classList.toggle("expanded", fixa);
     const botao = sidebar.querySelector(".hamburger-btn");
-    if (botao) botao.title = fixa ? "Soltar a barra" : "Deixar a barra fixa e aberta";
+    if (botao) botao.title = fixa ? "Minimizar a barra" : "Abrir a barra";
     if (!fixa) _menuVoltarAoAtivo();
 }
 
 function alternarSidebarFixa() {
     const fixa = !sidebarFixa();
     _aplicarSidebarFixa(fixa);
-    try { localStorage.setItem(_SIDEBAR_FIXA_CHAVE, fixa ? "1" : "0"); } catch (_) {}
+    try { localStorage.setItem(_SIDEBAR_MINIMIZADA_CHAVE, fixa ? "0" : "1"); } catch (_) {}
 }
 
 function toggleSidebar() {
@@ -113,7 +113,7 @@ function toggleSubGroup(el) {
     }
 }
 
-// Desktop hover-to-expand com debounce (evita travar ao entrar/sair rápido)
+// Minimizada, clicar num ícone abre a barra só até escolher a tela ou o mouse sair.
 // A largura é conferida a cada evento, não só ao carregar: página aberta larga e depois
 // estreitada (janela reduzida, modo celular do DevTools) ficava com o hover ligado, e o
 // mouse saindo fechava a barra sem tirar o fundo escuro, que só some em fecharSidebar.
@@ -121,16 +121,17 @@ document.addEventListener("DOMContentLoaded", function () {
     const sidebar = document.getElementById("sidebar");
     if (!sidebar) return;
     const temHover = window.matchMedia("(hover: hover) and (min-width: 681px)");
-    let fixaSalva = false;
-    try { fixaSalva = localStorage.getItem(_SIDEBAR_FIXA_CHAVE) === "1"; } catch (_) {}
-    if (fixaSalva && _ehComputador()) _aplicarSidebarFixa(true);
+    let minimizada = false;
+    try { minimizada = localStorage.getItem(_SIDEBAR_MINIMIZADA_CHAVE) === "1"; } catch (_) {}
+    if (_ehComputador()) {
+        // Ao carregar, aparece já aberta: sem isso ela animaria abrindo a cada recarga.
+        sidebar.style.transition = "none";
+        _aplicarSidebarFixa(!minimizada);
+        if (typeof requestAnimationFrame === "function") {
+            requestAnimationFrame(() => requestAnimationFrame(() => { sidebar.style.transition = ""; }));
+        }
+    }
     let hoverTimer;
-    sidebar.addEventListener("mouseenter", () => {
-        clearTimeout(hoverTimer);
-        if (!temHover.matches || sidebarFixa()) return;
-        // Abrir empurra a tela: espera o mouse parar na barra, pra não pular só de passar.
-        hoverTimer = setTimeout(() => sidebar.classList.add("expanded"), 250);
-    });
     sidebar.addEventListener("mouseleave", () => {
         clearTimeout(hoverTimer);
         if (!temHover.matches || sidebarFixa()) return;
