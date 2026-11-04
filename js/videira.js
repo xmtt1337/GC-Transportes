@@ -167,10 +167,10 @@ function _renderPainelVideira(d) {
                 <div class="vp-stat-lbl">Valor Coletas</div>
                 <div class="vp-stat-val">${d.valor_coletas || "—"}</div>
             </div>
-            <div class="vp-stat">
+            ${d.fonte === "sistema" ? "" : `<div class="vp-stat">
                 <div class="vp-stat-lbl">Diária Col.</div>
                 <div class="vp-stat-val">${d.diaria_coletas || "—"}</div>
-            </div>
+            </div>`}
             <div class="vp-stat${desNum > 0 ? " red" : ""}">
                 <div class="vp-stat-lbl">Descontos</div>
                 <div class="vp-stat-val">${d.valor_desconto || "R$ 0,00"}</div>
