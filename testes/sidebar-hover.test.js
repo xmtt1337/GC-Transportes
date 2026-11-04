@@ -23,7 +23,7 @@ function classList(set) {
     };
 }
 
-function carregar(larga, salvo = {}) {
+function carregar(larga, salvo = {}, toque = false) {
     const classes = new Set();
     const corpo = new Set();
     const ouvintes = {};
@@ -33,16 +33,17 @@ function carregar(larga, salvo = {}) {
         addEventListener: (ev, fn) => { ouvintes[ev] = fn; },
         querySelector: () => botao,
         style: {},
+        contains: el => el === sidebar || el.dentroDaBarra === true,
     };
+    const doc = {};
     const media = { matches: larga };
     const timers = [];
     const guardado = { ...salvo };
-    let aoCarregar;
     const ctx = {
-        window: { matchMedia: () => media },
+        window: { matchMedia: q => (q.includes("pointer") ? { matches: !toque } : media) },
         localStorage: { getItem: k => (k in guardado ? guardado[k] : null), setItem: (k, v) => { guardado[k] = v; } },
         document: {
-            addEventListener: (_, fn) => { aoCarregar = fn; },
+            addEventListener: (ev, fn) => { doc[ev] = fn; },
             getElementById: () => sidebar,
             querySelector: () => null,
             querySelectorAll: () => [],
@@ -52,9 +53,11 @@ function carregar(larga, salvo = {}) {
         clearTimeout: id => { timers[id - 1] = () => {}; },
     };
     vm.runInNewContext(codigo, ctx);
-    aoCarregar();
+    doc.DOMContentLoaded();
     const rodarTimers = () => timers.splice(0).forEach(fn => fn());
-    return { classes, corpo, ouvintes, media, rodarTimers, ctx, guardado, botao };
+    // Toque/clique em algum lugar da página (fora da barra, salvo dentroDaBarra).
+    const tocar = (alvo = { closest: () => null }) => doc.click({ target: alvo });
+    return { classes, corpo, ouvintes, media, rodarTimers, ctx, guardado, botao, tocar };
 }
 
 const MINIMIZADA = { gc_sidebar_minimizada: "1" };
@@ -65,6 +68,32 @@ test("no computador a barra já nasce aberta e o mouse saindo não recolhe", () 
     assert.strictEqual(botao.title, "Minimizar a barra");
     ouvintes.mouseleave();
     rodarTimers();
+    assert.ok(classes.has("expanded"));
+});
+
+test("celular deitado, tablet ou 'versão para computador': tela larga de toque é gaveta", () => {
+    const { classes, corpo, ctx, tocar } = carregar(true, { gc_sidebar_minimizada: "0" }, true);
+    assert.ok(!corpo.has("sidebar-fixa") && !classes.has("expanded"), "barra não toma a tela");
+    ctx.toggleSidebar();
+    assert.ok(classes.has("expanded") && !corpo.has("sidebar-fixa"), "abre sem fixar");
+    tocar();
+    assert.ok(!classes.has("expanded"), "tocar fora fecha");
+});
+
+test("no celular, tocar fora da barra aberta fecha; tocar dentro não", () => {
+    const { classes, ctx, tocar } = carregar(false);
+    ctx.toggleSidebar();
+    tocar({ dentroDaBarra: true });
+    assert.ok(classes.has("expanded"), "toque no menu não fecha");
+    tocar({ closest: s => (s === ".topbar-mobile-menu" ? {} : null) });
+    assert.ok(classes.has("expanded"), "o próprio botão de abrir não fecha");
+    tocar();
+    assert.ok(!classes.has("expanded"));
+});
+
+test("no computador fixa, clicar na tela não fecha a barra", () => {
+    const { classes, tocar } = carregar(true);
+    tocar();
     assert.ok(classes.has("expanded"));
 });
 

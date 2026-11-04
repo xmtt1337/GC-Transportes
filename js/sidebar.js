@@ -37,6 +37,9 @@ function _menuVoltarAoAtivo() {
 // do rodapé minimiza pra só os ícones, e a escolha fica salva no navegador.
 const _SIDEBAR_MINIMIZADA_CHAVE = "gc_sidebar_minimizada";
 const _ehComputador = () => window.matchMedia("(min-width: 681px)").matches;
+// Tela larga não basta: celular deitado, tablet e "versão para computador" também passam
+// de 681px e ficavam com a barra tomando a tela.
+const _temMouse = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 const sidebarFixa = () => document.body.classList.contains("sidebar-fixa");
 
 function _aplicarSidebarFixa(fixa) {
@@ -54,8 +57,12 @@ function alternarSidebarFixa() {
     try { localStorage.setItem(_SIDEBAR_MINIMIZADA_CHAVE, fixa ? "0" : "1"); } catch (_) {}
 }
 
+// Fixar é só pra computador com mouse. Tela de toque (celular, deitado ou não, tablet,
+// "versão para computador") abre e fecha como gaveta.
+const _fixaPermitida = () => _ehComputador() && _temMouse();
+
 function toggleSidebar() {
-    if (_ehComputador()) return alternarSidebarFixa();
+    if (_fixaPermitida()) return alternarSidebarFixa();
     const sidebar = document.getElementById("sidebar");
     const isExpanded = sidebar.classList.toggle("expanded");
     document.getElementById("sidebar-backdrop").classList.toggle("active", isExpanded);
@@ -123,7 +130,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const temHover = window.matchMedia("(hover: hover) and (min-width: 681px)");
     let minimizada = false;
     try { minimizada = localStorage.getItem(_SIDEBAR_MINIMIZADA_CHAVE) === "1"; } catch (_) {}
-    if (_ehComputador()) {
+    if (_fixaPermitida()) {
         // Ao carregar, aparece já aberta: sem isso ela animaria abrindo a cada recarga.
         sidebar.style.transition = "none";
         _aplicarSidebarFixa(!minimizada);
@@ -131,6 +138,13 @@ document.addEventListener("DOMContentLoaded", function () {
             requestAnimationFrame(() => requestAnimationFrame(() => { sidebar.style.transition = ""; }));
         }
     }
+    // Tocar/clicar fora da barra aberta (e não fixa) fecha. No celular estreito o fundo
+    // escuro já fazia isso; em tela larga de toque não tem fundo escuro e ela ficava aberta.
+    document.addEventListener("click", e => {
+        if (!sidebar.classList.contains("expanded") || sidebarFixa()) return;
+        if (sidebar.contains(e.target) || (e.target.closest && e.target.closest(".topbar-mobile-menu"))) return;
+        fecharSidebar();
+    });
     let hoverTimer;
     sidebar.addEventListener("mouseleave", () => {
         clearTimeout(hoverTimer);
