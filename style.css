@@ -4640,75 +4640,46 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
     padding: 16px;
     animation: gcFadeIn 0.15s ease;
 }
-/* ===== SKELETON LOADER =====
-   O brilho anda por transform, nao por background-position.
-   background-position nao e propriedade composta: mexer nela obriga o navegador
-   a REPINTAR o gradiente de 1200px de cada .sk, sessenta vezes por segundo. Um
-   skTabela(7) monta 40 .sk, e skMostrar aparece em 54 lugares — inclusive nas
-   telas de Fechamentos e Conferencias do entregador. No desktop passa batido;
-   no celular o rasterizador nao acompanha e a tela sai desenhada pela metade,
-   que e o piscar que ele filmou.
-   Com transform o compositor so desloca uma camada ja pronta: nada e repintado.
-   Medido com a CPU 20x mais lenta (perfil de celular fraco), 40 elementos:
-   antes ~20fps com quadros de ate 600ms; depois ~60fps sem quadro longo. */
-@keyframes sk-shimmer {
-    from { transform: translateX(-100%); }
-    to   { transform: translateX(100%); }
+/* ===== CARREGANDO =====
+   Logo XM quicando sobre um fundo fosco, no lugar do antigo skeleton cinza
+   (skMostrar/skLogo em core.js). A imagem fica no ::before e vem por url() do CSS:
+   o caminho conta a partir do style.css, então funciona em qualquer URL funda.
+   A animação só mexe em transform e opacity, que o compositor resolve sem
+   repintar; o skeleton antigo repintava 40 gradientes por quadro e a tela do
+   celular saía desenhada pela metade. */
+@keyframes xm-quica {
+    0%   { transform: translateY(-70%); opacity: 0; }
+    38%  { transform: translateY(0);    opacity: 1; }
+    48%  { transform: translateY(-16%); }
+    56%  { transform: translateY(0); }
+    63%  { transform: translateY(-6%); }
+    69%  { transform: translateY(0); }
+    90%  { transform: translateY(0);    opacity: 1; }
+    100% { transform: translateY(0);    opacity: 0; }
 }
-.sk {
-    position: relative;
-    overflow: hidden;
-    background: rgba(255,255,255,0.05);
-    border-radius: 6px;
+.xm-carregando {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 260px;
+    background: rgba(148,163,184,0.06);
+    border-radius: 12px;
 }
-.sk::after {
+.xm-carregando::before {
     content: "";
-    position: absolute; inset: 0;
-    background: linear-gradient(90deg,
-        rgba(255,255,255,0) 0%,
-        rgba(255,255,255,0.09) 50%,
-        rgba(255,255,255,0) 100%);
-    animation: sk-shimmer 1.6s infinite linear;
+    width: 120px; height: 64px;
+    background: url("img/xm-carregando.png") center / contain no-repeat;
+    opacity: 0.9;
+    animation: xm-quica 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
 }
-/* Quem pediu menos movimento no sistema fica so com a barra parada. */
+/* Compacto: modal, popover, linha de tabela. */
+.xm-carregando-p { min-height: 72px; border-radius: 8px; }
+.xm-carregando-p::before { width: 56px; height: 30px; }
+/* Quem pediu menos movimento no sistema fica com a logo parada. */
 @media (prefers-reduced-motion: reduce) {
-    .sk::after { animation: none; }
+    .xm-carregando::before { animation: none; }
 }
 .sk-mode, .fechamento-empty.sk-mode {
     background: transparent; border: none; padding: 0;
     min-height: unset; display: block;
-}
-.sk-banner {
-    border-radius: 18px; padding: 28px 32px;
-    border: 1px solid rgba(58,134,255,0.08);
-    background: rgba(27,38,59,0.45);
-    display: flex; align-items: center; gap: 32px;
-    margin-bottom: 20px;
-}
-.sk-banner-left  { flex: 1; display: flex; flex-direction: column; gap: 12px; }
-.sk-banner-right { min-width: 160px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.sk-divider { width: 1px; background: rgba(255,255,255,0.06); align-self: stretch; margin: 4px 0; }
-.sk-section { height: 8px; width: 100px; border-radius: 4px; margin-bottom: 10px; }
-.sk-grid-5  { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 20px; }
-.sk-grid-2  { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-.sk-card {
-    background: rgba(27,38,59,0.45); border: 1px solid rgba(58,134,255,0.08);
-    border-radius: 14px; padding: 16px 18px;
-    display: flex; flex-direction: column; gap: 10px;
-}
-.sk-tall { min-height: 100px; }
-.sk-h8  { height: 8px;  border-radius: 4px; }
-.sk-h14 { height: 14px; border-radius: 4px; }
-.sk-h44 { height: 44px; border-radius: 8px; }
-.sk-w40 { width: 40%; }
-.sk-w60 { width: 60%; }
-.sk-w80 { width: 80%; }
-@media (max-width: 680px) {
-    .sk-grid-5 { grid-template-columns: 1fr 1fr; }
-    .sk-grid-2 { grid-template-columns: 1fr; }
-    .sk-banner { flex-direction: column; gap: 16px; padding: 20px; }
-    .sk-divider { display: none; }
-    .sk-banner-right { width: 100%; align-items: flex-start; }
 }
 
 @keyframes gcFadeIn { from { opacity: 0 } to { opacity: 1 } }

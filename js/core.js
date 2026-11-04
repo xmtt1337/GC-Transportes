@@ -382,67 +382,27 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
     window.location.href = "login.html";
 });
 
-// ───── SKELETON DE CARREGAMENTO (uso geral) ─────
-// Formatos que imitam o conteúdo real de cada tela:
-//   skTabela(n)  — cabeçalho + linhas com colunas (telas de tabela/listagem)
-//   skCards(n)   — cards empilhados (históricos, viagens, transferências)
-//   skDash()     — faixa de KPIs + gráfico (dashboards)
-//   skLinhas(n)  — linhas simples (modais/popovers/containers pequenos)
-// skMostrar(el, tipo, n) aplica no placeholder; skFim(el, texto) volta ao normal.
-function skLinhas(linhas = 6) {
-    return Array(linhas).fill(`
-        <div style="display:flex;align-items:center;gap:14px;padding:12px 0">
-            <div class="sk" style="width:9px;height:9px;border-radius:50%;flex-shrink:0"></div>
-            <div class="sk sk-h8" style="width:26%;max-width:190px"></div>
-            <div class="sk sk-h8" style="flex:1"></div>
-            <div class="sk sk-h8" style="width:70px"></div>
-        </div>`).join("");
+// ───── CARREGANDO (uso geral) ─────
+// Logo XM quicando sobre um fundo fosco, no lugar do skeleton cinza. A imagem vem do CSS
+// (.xm-carregando::before), não de um <img>: o caminho no CSS conta a partir do style.css,
+// e um "img/..." no HTML quebraria nas URLs fundas (/Operacao/Shopee/...).
+//   skLogo()        — bloco de tela (tabelas, cards, dashboards)
+//   skLogo(true)    — compacto, pra modal/popover/linha de tabela
+// Os nomes antigos (skTabela, skCards, skDash, skHTML, skLinhas) continuam, pra quem já
+// chamava; o "n" de linhas não importa mais.
+function skLogo(compacto = false) {
+    return `<div class="xm-carregando${compacto ? " xm-carregando-p" : ""}" role="status" aria-label="Carregando"></div>`;
 }
-function skHTML(linhas = 6) {
-    return `<div class="sk-card" style="gap:0">${skLinhas(linhas)}</div>`;
-}
-function skTabela(linhas = 7) {
-    const cols = [16, 24, 13, 11, 9];
-    const header = `<div style="display:flex;gap:20px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.07)">`
-        + cols.map(w => `<div class="sk sk-h8" style="width:${Math.max(6, w - 6)}%"></div>`).join("") + `</div>`;
-    const row = `<div style="display:flex;align-items:center;gap:20px;padding:15px 18px;border-bottom:1px solid rgba(255,255,255,0.04)">`
-        + cols.map(w => `<div class="sk sk-h8" style="width:${w}%"></div>`).join("") + `</div>`;
-    return `<div class="sk-card" style="gap:0;padding:0;overflow:hidden">${header}${Array(linhas).fill(row).join("")}</div>`;
-}
-function skCards(n = 3) {
-    return Array(n).fill(`
-        <div class="sk-card" style="margin-bottom:12px">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
-                <div class="sk" style="height:13px;width:30%;max-width:220px;border-radius:5px"></div>
-                <div class="sk sk-h8" style="width:64px"></div>
-            </div>
-            <div class="sk sk-h8" style="width:55%;max-width:340px"></div>
-            <div class="sk sk-h8" style="width:38%;max-width:240px"></div>
-        </div>`).join("");
-}
-function skDash() {
-    const kpi = `
-        <div style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:10px">
-            <div class="sk sk-h8 sk-w60"></div>
-            <div class="sk" style="height:26px;width:70px;border-radius:6px"></div>
-            <div class="sk sk-h8 sk-w40"></div>
-        </div>`;
-    return `
-        <div class="sk-card" style="margin-bottom:16px"><div style="display:flex;gap:24px;flex-wrap:wrap">${Array(4).fill(kpi).join("")}</div></div>
-        <div class="sk-card" style="gap:14px">
-            <div class="sk sk-h8" style="width:180px"></div>
-            <div class="sk" style="height:240px;border-radius:10px"></div>
-        </div>`;
-}
-function skMostrar(el, tipo = "tabela", n) {
+function skLinhas() { return skLogo(true); }
+function skHTML()   { return skLogo(); }
+function skTabela() { return skLogo(); }
+function skCards()  { return skLogo(); }
+function skDash()   { return skLogo(); }
+function skMostrar(el) {
     if (!el) return;
     el.classList.add("sk-mode");
     el.style.display = "";
-    el.innerHTML = tipo === "cards" ? skCards(n || 3)
-                 : tipo === "dash"  ? skDash()
-                 : tipo === "fech"  ? (typeof _skeletonFechamento === "function" ? _skeletonFechamento() : skTabela(n || 7))
-                 : tipo === "lista" ? skHTML(n || 6)
-                 : skTabela(n || 7);
+    el.innerHTML = skLogo();
 }
 function skFim(el, texto) {
     if (!el) return;

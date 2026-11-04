@@ -86,58 +86,12 @@ function selecionarQuinzena(q) {
     _carregarPainel();
 }
 
-function _skeletonFechamento() {
-    const card5 = Array(5).fill(`
-        <div class="sk-card">
-            <div class="sk sk-h8 sk-w60"></div>
-            <div class="sk sk-h44"></div>
-            <div class="sk sk-h8 sk-w40"></div>
-        </div>`).join("");
-    const card5sm = Array(5).fill(`
-        <div class="sk-card">
-            <div class="sk sk-h8 sk-w60"></div>
-            <div class="sk sk-h14"></div>
-            <div class="sk sk-h8 sk-w40"></div>
-        </div>`).join("");
-    return `
-        <div class="sk-banner">
-            <div class="sk-banner-left">
-                <div class="sk sk-h8 sk-w40"></div>
-                <div class="sk sk-h44" style="width:55%"></div>
-                <div class="sk sk-h8 sk-w60"></div>
-            </div>
-            <div class="sk-divider"></div>
-            <div class="sk-banner-right">
-                <div class="sk sk-h8 sk-w80"></div>
-                <div class="sk sk-h44" style="width:80px"></div>
-                <div class="sk sk-h8 sk-w60"></div>
-            </div>
-        </div>
-        <div class="sk sk-section"></div>
-        <div class="sk-grid-5">${card5}</div>
-        <div class="sk sk-section"></div>
-        <div class="sk-grid-5">${card5sm}</div>
-        <div class="sk sk-section"></div>
-        <div class="sk-grid-2">
-            <div class="sk-card sk-tall">
-                <div class="sk sk-h8 sk-w40"></div>
-                <div class="sk sk-h8 sk-w80"></div>
-                <div class="sk sk-h8 sk-w60"></div>
-            </div>
-            <div class="sk-card sk-tall">
-                <div class="sk sk-h8 sk-w40"></div>
-                <div class="sk sk-h8 sk-w80"></div>
-                <div class="sk sk-h8 sk-w60"></div>
-            </div>
-        </div>`;
-}
-
 function _carregarPainel() {
     const reqId = ++_fPainelReqId;
     const empty = document.getElementById("fechamento-empty");
     const data  = document.getElementById("fechamento-data");
     empty.classList.add("sk-mode");
-    empty.innerHTML = _skeletonFechamento();
+    empty.innerHTML = skLogo();
     empty.style.display = "";
     data.style.display  = "none";
 

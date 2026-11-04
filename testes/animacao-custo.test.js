@@ -77,20 +77,35 @@ test("nenhuma animacao infinita nova repinta a cada quadro", () => {
         "use transform/opacity: sao os unicos que o compositor resolve sem repintar");
 });
 
-test("o brilho do esqueleto anda por transform", () => {
-    const corpo = keyframes("sk-shimmer");
-    assert.ok(corpo, "@keyframes sk-shimmer sumiu");
-    assert.match(corpo, /transform:\s*translateX/,
-        "o brilho precisa andar por transform");
-    assert.doesNotMatch(corpo, /background-position/,
-        "background-position aqui repinta 40 gradientes por quadro no celular");
+test("a logo do carregando quica so com transform e opacity", () => {
+    // O skeleton cinza saiu (04/11/2026); no lugar, a logo XM quicando. Ela aparece
+    // em quase toda tela que busca dado, inclusive no celular do entregador.
+    const corpo = keyframes("xm-quica");
+    assert.ok(corpo, "@keyframes xm-quica sumiu");
+    const props = [...new Set([...corpo.matchAll(/(?:^|[{;\s])([a-z-]+)\s*:/g)].map(m => m[1]))];
+    assert.deepStrictEqual(props.filter(p => p !== "transform" && p !== "opacity"), []);
 });
 
-test("o .sk recorta o brilho em vez de pintar gradiente no proprio fundo", () => {
-    // O gradiente vive num ::after que desliza; sem overflow: hidden no pai ele
-    // vazaria por cima do que estiver ao lado.
-    const m = /(?:^|\n)\.sk\s*\{([^}]*)\}/.exec(semComentario);
-    assert.ok(m, "regra .sk sumiu do style.css");
-    assert.match(m[1], /overflow:\s*hidden/, ".sk precisa recortar o brilho");
-    assert.match(m[1], /position:\s*relative/, ".sk precisa ancorar o ::after");
+test("a imagem do carregando vem do CSS, que funciona em qualquer URL funda", () => {
+    // Um <img src="img/..."> criado depois que a URL vira /Operacao/Shopee/... iria
+    // buscar /Operacao/Shopee/img/...; o url() do CSS conta a partir do style.css.
+    assert.match(semComentario, /\.xm-carregando::before\s*\{[^}]*url\("img\/xm-carregando\.png"\)/);
+    assert.ok(fs.existsSync(path.join(__dirname, "..", "img", "xm-carregando.png")));
+});
+
+test("skMostrar e os nomes antigos do esqueleto mostram a logo", () => {
+    const vm = require("node:vm");
+    const core = fs.readFileSync(path.join(__dirname, "..", "js", "core.js"), "utf8");
+    const ini = core.indexOf("function skLogo");
+    const ctx = {};
+    vm.runInNewContext(core.slice(ini, core.indexOf("function skFim", ini)), ctx);
+    ["skTabela", "skCards", "skDash", "skHTML"].forEach(f =>
+        assert.match(ctx[f](7), /class="xm-carregando"/, f));
+    assert.match(ctx.skLinhas(3), /class="xm-carregando xm-carregando-p"/);
+    const classes = new Set();
+    const el = { classList: { add: c => classes.add(c) }, style: {}, innerHTML: "" };
+    ctx.skMostrar(el, "dash");
+    assert.ok(classes.has("sk-mode"));
+    assert.match(el.innerHTML, /xm-carregando/);
+    assert.doesNotMatch(el.innerHTML, /class="sk/);
 });

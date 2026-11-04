@@ -286,42 +286,13 @@ function _isContestado(r, col) {
     return col && _nk(r[col]).includes("contest");
 }
 
-// ── Skeleton no formato do dashboard (faixa de KPIs + status + gráfico) ──
-function _skeletonExtravios() {
-    const kpi5 = Array(5).fill(`
-        <div style="flex:1;display:flex;flex-direction:column;gap:10px;min-width:140px">
-            <div class="sk sk-h8 sk-w60"></div>
-            <div class="sk" style="height:26px;width:70px;border-radius:6px"></div>
-            <div class="sk sk-h8 sk-w40"></div>
-        </div>`).join("");
-    const statusRows = Array(5).fill(`
-        <div style="display:flex;align-items:center;gap:12px">
-            <div class="sk" style="width:8px;height:8px;border-radius:50%;flex-shrink:0"></div>
-            <div class="sk sk-h8" style="width:140px"></div>
-            <div class="sk sk-h8" style="flex:1"></div>
-            <div class="sk sk-h8" style="width:90px"></div>
-        </div>`).join("");
-    return `
-    <div style="max-width:1240px;margin:0 auto">
-        <div class="sk-card" style="margin-bottom:16px;gap:20px">
-            <div class="sk sk-h8" style="width:130px"></div>
-            <div style="display:flex;gap:24px;flex-wrap:wrap">${kpi5}</div>
-            <div style="display:flex;flex-direction:column;gap:14px;margin-top:6px">${statusRows}</div>
-        </div>
-        <div class="sk-card" style="gap:14px">
-            <div class="sk sk-h8" style="width:200px"></div>
-            <div class="sk" style="height:260px;border-radius:10px"></div>
-        </div>
-    </div>`;
-}
-
 // ── Fetch ──
 async function _carregarExtravios() {
     const empty   = document.getElementById("extrv-empty");
     const content = document.getElementById("extrv-content");
     empty.style.display = "";
     empty.classList.add("sk-mode");
-    empty.innerHTML = _skeletonExtravios();
+    empty.innerHTML = skLogo();
     content.style.display = "none";
     try {
         if (!_extrvData) {
