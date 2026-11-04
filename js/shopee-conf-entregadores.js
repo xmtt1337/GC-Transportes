@@ -196,7 +196,7 @@ function _sceAbrirDetalhe(sessaoId, indice) {
     document.getElementById("sce-det-nome").innerText =
         (_sceLista[indice] && _sceLista[indice].nome) || "—";
     document.getElementById("sce-det-tbody").innerHTML =
-        `<tr><td colspan="4" style="text-align:center;color:#8494a9;padding:22px">Carregando...</td></tr>`;
+        `<tr><td colspan="4" style="padding:10px">${skLogo(true)}</td></tr>`;
     document.getElementById("sce-det-resumo").innerHTML = "";
 
     fetch(`${API}/shopee/conferencia/entregadores/sessao/${sessaoId}`, {

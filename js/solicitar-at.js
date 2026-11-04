@@ -74,7 +74,7 @@ function abrirSolicitarAT(event) {
     _solatDesenhado = null;
     document.getElementById("solat-codigo").value = "";
     _solatMsg("", null);
-    document.getElementById("solat-empty").innerText = "Carregando...";
+    document.getElementById("solat-empty").innerHTML = skLogo(true);
     document.getElementById("solat-resultado").style.display = "none";
     _solatGarantirPolo(() => _solatCarregarHoje());
 }

@@ -71,7 +71,7 @@ function _rqTrocarVisao(v) {
 function _rqCarregar() {
     const el = document.getElementById("rq-conteudo");
     const req = ++_rqReq;
-    el.innerHTML = `<div class="fechamento-empty">Carregando...</div>`;
+    el.innerHTML = skLogo();
     _rqPerf = null;
     fetch(`${_RQ_API()}/resumo-quinzena?mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
@@ -198,7 +198,7 @@ async function _rqCarregarPerf() {
     const el = document.getElementById("rq-painel-performance");
     const chave = `${_rqAno}-${_rqMes}-${_rqQuinzena}`;
     if (_rqPerf && _rqPerf.chave === chave) { _rqRenderPerf(); return; }
-    el.innerHTML = `<div class="cft-ajuda">Carregando a performance...</div>`;
+    el.innerHTML = skLogo(false, "Carregando a performance");
     const chaves = Object.entries(_rqDados.transportadoras).filter(([, t]) => /^shopee/i.test(t.nome) && t.enviado).map(([k]) => k);
     try {
         const linhas = await _rqPerfLinhas(chaves);
@@ -322,7 +322,7 @@ async function _rqAbrirCardEntregador(nome) {
     const ov = document.createElement("div");
     ov.className = "cft-modal-overlay";
     ov.id = "rq-card";
-    ov.innerHTML = `<div class="cft-modal rq-card"><div class="cft-ajuda">Carregando os pedidos de ${_rqEsc(nome)}...</div></div>`;
+    ov.innerHTML = `<div class="cft-modal rq-card">${skLogo(true, `Carregando os pedidos de ${_rqEsc(nome)}`)}</div>`;
     ov.addEventListener("click", e => { if (e.target === ov) _rqFecharCard(); });
     document.body.appendChild(ov);
     document.addEventListener("keydown", _rqCardEsc);

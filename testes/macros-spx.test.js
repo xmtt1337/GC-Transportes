@@ -21,6 +21,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const SK_LOGO = require("./_sk-logo");
 
 const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "macros.js"), "utf8");
 
@@ -93,6 +94,7 @@ function carregar({ rotas = {} } = {}) {
     setTimeout: (fn) => { timers.push(fn); return timers.length; },
     clearTimeout() {},
   });
+  vm.runInContext(SK_LOGO, ctx);
   vm.runInContext(fonte + ACESSOR, ctx, { filename: "macros.js" });
   const esperar = () => new Promise((r) => setImmediate(r));
   return { ctx, m: ctx.__m, els, el, chamadas, alertas, modais, timers, esperar };

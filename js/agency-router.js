@@ -26,7 +26,7 @@ async function abrirAgencyRouter(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-agency-router");
     const area = document.getElementById("agency-router-conteudo");
-    area.innerHTML = "<p class='carregando'>Carregando…</p>";
+    area.innerHTML = skLogo();
     try {
         const [situacao, recebidos] = await Promise.all([
             _cteApi("/api/agency-router/situacao"),
@@ -149,7 +149,7 @@ function _htmlAgencyRouter(s, recebidos) {
  */
 async function _arVerCorpo(id) {
     const alvo = document.getElementById("ar-corpo");
-    alvo.innerHTML = "<p class='carregando'>Carregando…</p>";
+    alvo.innerHTML = skLogo(true);
     try {
         const lista = await _cteApi("/api/agency-router/recebidos?limite=200");
         const linha = lista.find((x) => x.id === id);

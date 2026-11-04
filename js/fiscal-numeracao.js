@@ -11,7 +11,7 @@ async function abrirFiscalNumeracao(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-fiscal-numeracao");
     const area = document.getElementById("fiscal-numeracao-conteudo");
-    area.innerHTML = "<p class='carregando'>Carregando numeração…</p>";
+    area.innerHTML = skLogo(false, "Carregando numeração");
     try {
         const r = await _cteApi("/fiscal/numeracao");
         area.innerHTML = _htmlNumeracao(r);
@@ -111,7 +111,7 @@ async function salvarNumeracao() {
         alvo.innerHTML = `<div class="aviso-bloqueio">Informe a série e o próximo número.</div>`;
         return;
     }
-    alvo.innerHTML = "<p class='carregando'>Salvando…</p>";
+    alvo.innerHTML = skLogo(true, "Salvando");
     try {
         const r = await _cteApi("/fiscal/numeracao",
                                 { method: "POST", body: JSON.stringify(corpo) });

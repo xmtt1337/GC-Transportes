@@ -388,10 +388,12 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
 // e um "img/..." no HTML quebraria nas URLs fundas (/Operacao/Shopee/...).
 //   skLogo()        — bloco de tela (tabelas, cards, dashboards)
 //   skLogo(true)    — compacto, pra modal/popover/linha de tabela
+//   skLogo(c, "Transmitindo para a SEFAZ") — texto do passo no lugar de "Carregando".
+//     O texto entra como HTML: quem passa dado do usuário escapa antes.
 // Os nomes antigos (skTabela, skCards, skDash, skHTML, skLinhas) continuam, pra quem já
 // chamava; o "n" de linhas não importa mais.
-function skLogo(compacto = false) {
-    return `<div class="xm-carregando${compacto ? " xm-carregando-p" : ""}" role="status"><span>Carregando</span></div>`;
+function skLogo(compacto = false, texto = "Carregando") {
+    return `<div class="xm-carregando${compacto ? " xm-carregando-p" : ""}" role="status"><span>${texto}</span></div>`;
 }
 function skLinhas() { return skLogo(true); }
 function skHTML()   { return skLogo(); }

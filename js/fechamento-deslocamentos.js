@@ -83,7 +83,7 @@ function _dsGarantirEntregadores() {
 function _dsCarregar(msg) {
     const p = _dsPeriodo();
     const el = document.getElementById("ds-lista");
-    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    el.innerHTML = skLogo();
     fetch(`${_DS_API()}/deslocamentos?mes=${p.mes}&ano=${p.ano}&quinzena=${p.quinzena}`, { headers: _dsHeaders() })
     .then(r => r.json())
     .then(d => {

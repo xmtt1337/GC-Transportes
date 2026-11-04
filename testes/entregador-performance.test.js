@@ -12,6 +12,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const SK_LOGO = require("./_sk-logo");
 
 const ler = (...p) => fs.readFileSync(path.join(__dirname, "..", ...p), "utf8");
 const fonteNaRua = ler("js", "entregador-na-rua.js");
@@ -38,6 +39,7 @@ function carregar(fetchFalso) {
         fetch: fetchFalso || (() => Promise.reject(new Error("sem rede"))),
     });
     contexto.globalThis = contexto;
+    vm.runInContext(SK_LOGO, contexto);
     vm.runInContext(fonteNaRua, contexto, { filename: "entregador-na-rua.js" });
     vm.runInContext(fontePerf + ponte, contexto, { filename: "entregador-performance.js" });
     return { api: contexto.__epf, el, telas };

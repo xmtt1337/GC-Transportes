@@ -52,7 +52,7 @@ function _cvAbrirAba(aba) {
 function _cvCarregar(msg) {
     const el = document.getElementById("cv-principal");
     if (!el) return;
-    if (!_cvDados) el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    if (!_cvDados) el.innerHTML = skLogo();
     fetch(`${_CV_API()}/principais`, { headers: _cvHeaders() })
     .then(r => r.json())
     .then(d => {

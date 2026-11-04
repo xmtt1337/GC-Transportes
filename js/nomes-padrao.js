@@ -103,7 +103,7 @@ function _cnpAbrirAmbiguos(event) {
     document.getElementById("cnp-resultado").style.display = "none";
     document.getElementById("cnp-empty").style.display = "none";
     wrap.style.display = "";
-    lista.innerHTML = `<div class="fechamento-empty">Carregando...</div>`;
+    lista.innerHTML = skLogo();
 
     fetch(`${API}/nomes-padrao/ambiguos`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())

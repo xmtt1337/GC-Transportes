@@ -142,7 +142,7 @@ function _ajGarantirEntregadores() {
 function _ajCarregar(msg) {
     const p = _ajPeriodo();
     const el = document.getElementById("aj-lista");
-    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    el.innerHTML = skLogo();
     fetch(`${_AJ_API()}/ajustes?mes=${p.mes}&ano=${p.ano}&quinzena=${p.quinzena}`, { headers: _ajHeaders() })
     .then(r => r.json())
     .then(d => {

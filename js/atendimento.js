@@ -250,7 +250,7 @@ function atdFecharPainel() {
 function _atdCarregar(silencioso) {
     const body = document.getElementById("atd-body");
     if (!body) return;
-    if (!silencioso) body.innerHTML = `<div class="atd-aviso">Carregando...</div>`;
+    if (!silencioso) body.innerHTML = skLogo(true);
 
     return fetch(API + "/atendimento/minha", { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.ok ? r.json() : Promise.reject())

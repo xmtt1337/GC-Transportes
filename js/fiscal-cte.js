@@ -89,7 +89,7 @@ async function abrirCTes(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-fiscal-ctes");
     const area = document.getElementById("fiscal-ctes-conteudo");
-    area.innerHTML = "<p class='carregando'>Carregando CT-es…</p>";
+    area.innerHTML = skLogo(false, "Carregando CT-es");
     try {
         _cteContexto = await _cteApi("/fiscal/cte/contexto");
         area.innerHTML = _htmlListagem();
@@ -182,7 +182,7 @@ function _htmlListagem() {
         <button onclick="_carregarListaCTe(0)">Filtrar</button>
     </div>
 
-    <div id="lista-cte"><p>Carregando…</p></div>`;
+    <div id="lista-cte">${skLogo()}</div>`;
 }
 
 /**
@@ -231,7 +231,7 @@ async function _carregarFilaEmissaoStatus() {
 async function _carregarListaCTe(pagina = 0) {
     _ctePagina = Math.max(0, pagina);
     const alvo = document.getElementById("lista-cte");
-    alvo.innerHTML = "<p>Carregando…</p>";
+    alvo.innerHTML = skLogo(true);
     const corpo = { limite: _CTE_POR_PAGINA, pagina: _ctePagina };
     for (const [id, chave] of [["f-de", "de"], ["f-ate", "ate"], ["f-status", "status"],
                                ["f-numero", "numero"], ["f-serie", "serie"], ["f-busca", "busca"]]) {
@@ -437,7 +437,7 @@ function _linhaCTe(c) {
 async function verCTe(id) {
     mostrarTela("tela-fiscal-ctes");
     const area = document.getElementById("fiscal-ctes-conteudo");
-    area.innerHTML = "<p>Carregando…</p>";
+    area.innerHTML = skLogo();
     try {
         const c = await _cteApi(`/fiscal/cte/${id}`);
         area.innerHTML = `
@@ -477,7 +477,7 @@ async function verXmlCTe(id) {
 async function abrirImportarShopee() {
     mostrarTela("tela-fiscal-novo-cte");
     const area = document.getElementById("fiscal-novo-cte-conteudo");
-    area.innerHTML = "<p class='carregando'>Carregando…</p>";
+    area.innerHTML = skLogo();
 
     // O formulário precisa do contexto (empresa, ambiente, tributação). Quem
     // entra por aqui pelo menu nunca passou pela lista, onde ele era carregado
@@ -527,7 +527,7 @@ async function importarDaShopee() {
     const alvo = document.getElementById("resultado-importacao");
     if (!codigo) { alvo.innerHTML = `<div class="aviso-bloqueio">Informe o código do pedido.</div>`; return; }
 
-    alvo.innerHTML = "<p class='carregando'>Consultando a Shopee…</p>";
+    alvo.innerHTML = skLogo(true, "Consultando a Shopee");
     try {
         const r = await _cteApi("/fiscal/cte/importar",
                                 { method: "POST", body: JSON.stringify({ codigo }) });
@@ -576,7 +576,7 @@ async function _abrirRascunhoImportado() {
 async function abrirNovoCTe(id = null) {
     mostrarTela("tela-fiscal-novo-cte");
     const area = document.getElementById("fiscal-novo-cte-conteudo");
-    area.innerHTML = "<p class='carregando'>Carregando…</p>";
+    area.innerHTML = skLogo();
     try {
         if (!_cteContexto) _cteContexto = await _cteApi("/fiscal/cte/contexto");
         if (id) {
@@ -1430,7 +1430,7 @@ function _cancLoteLerArquivo(input) {
     const arquivo = input.files && input.files[0];
     if (!arquivo) return;
     const info = document.getElementById("canc-info-arquivo");
-    info.innerHTML = "<p class='carregando'>Lendo a planilha…</p>";
+    info.innerHTML = skLogo(true, "Lendo a planilha");
     document.getElementById("canc-conferencia").innerHTML = "";
     document.getElementById("canc-resultado").innerHTML = "";
 
@@ -1484,7 +1484,7 @@ function _cancLoteLerArquivo(input) {
 /** Resolve as chaves para CT-e desta empresa, SEM cancelar nada ainda — em blocos. */
 async function _cancLoteConsultar(chaves) {
     const conf = document.getElementById("canc-conferencia");
-    conf.innerHTML = "<p class='carregando'>Conferindo as chaves…</p>";
+    conf.innerHTML = skLogo(true, "Conferindo as chaves");
 
     const BLOCO = 1000;
     let encontrados = [];
@@ -1565,7 +1565,7 @@ async function _cancLoteExecutar() {
                  "plano — pode fechar esta aba depois de iniciado.")) return;
 
     const alvo = document.getElementById("canc-resultado");
-    alvo.innerHTML = "<p class='carregando'>Criando o lote…</p>";
+    alvo.innerHTML = skLogo(true, "Criando o lote");
 
     try {
         const lote = await _cteApi("/fiscal/cte/lote/cancelar-fila", {
@@ -1655,7 +1655,7 @@ async function emitirCTe(id) {
 
     const alvo = document.getElementById("lista-cte");
     const antes = alvo.innerHTML;
-    alvo.innerHTML = "<p class='carregando'>Transmitindo para a SEFAZ…</p>";
+    alvo.innerHTML = skLogo(true, "Transmitindo para a SEFAZ");
     try {
         const r = await _cteApi(`/fiscal/cte/${id}/emitir`, { method: "POST" });
         if (r.ok) {

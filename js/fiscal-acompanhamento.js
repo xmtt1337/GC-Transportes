@@ -30,7 +30,7 @@ async function abrirFiscalAcompanhamento(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-fiscal-acompanhamento");
     const area = document.getElementById("fiscal-acompanhamento-conteudo");
-    area.innerHTML = "<p class='carregando'>Carregando…</p>";
+    area.innerHTML = skLogo();
 
     try {
         if (!_cteContexto) _cteContexto = await _cteApi("/fiscal/cte/contexto");

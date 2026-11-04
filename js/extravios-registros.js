@@ -145,7 +145,7 @@ async function _extrvRegCarregar() {
     _extrvRegCarregando = true;
 
     const alvo = document.getElementById("extrvreg-lista");
-    alvo.innerHTML = `<div class="extrv-reg-carregando"><span class="extrv-reg-spinner"></span>Carregando registros...</div>`;
+    alvo.innerHTML = skLogo(false, "Carregando registros");
 
     const q = new URLSearchParams();
     Object.keys(_extrvRegEstado).forEach(k => { if (_extrvRegEstado[k]) q.set(k, _extrvRegEstado[k]); });
@@ -233,8 +233,7 @@ function _extrvRegOverlayCarregando() {
     overlay.id = "extrvreg-overlay";
     overlay.innerHTML = `
         <div class="extrv-reg-modal extrv-reg-modal-carregando">
-            <span class="extrv-reg-spinner"></span>
-            <span>Carregando registro...</span>
+            ${skLogo(true, "Carregando registro")}
         </div>`;
     document.body.appendChild(overlay);
 }

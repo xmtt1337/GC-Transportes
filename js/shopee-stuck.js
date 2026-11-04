@@ -214,7 +214,7 @@ function _sstAbrirHistorico(codigo) {
     _sstCodigoAberto = codigo;
     document.getElementById("sst-hist-codigo").innerText = codigo;
     document.getElementById("sst-hist-corpo").innerHTML =
-        `<div class="fechamento-empty" style="padding:20px">Carregando...</div>`;
+        skLogo();
     _abrirModal("modal-sst-historico");
 
     fetch(`${API}/shopee/stuck/historico?codigo=${encodeURIComponent(codigo)}`, {

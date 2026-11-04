@@ -355,7 +355,7 @@ function _slhAbrirTo(numeroTo) {
     const barra = document.getElementById("slh-to-barra");
     barra.style.width = Math.min(100, pct) + "%";
     barra.style.background = _slhCor(pct);
-    document.getElementById("slh-to-lista").innerHTML = `<div style="color:#8494a9;font-size:13px;padding:14px 0">Carregando...</div>`;
+    document.getElementById("slh-to-lista").innerHTML = skLogo(true);
     _abrirModal("modal-slh-to");
 
     fetch(`${API}/shopee/conferencia/linehaul/${encodeURIComponent(numeroTo)}`, {

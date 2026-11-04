@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261104b">
+<link rel="stylesheet" href="style.css?v=20261104c">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -874,7 +874,7 @@ if (_BASE) {
                         <button class="fech-filtrar-btn" onclick="adicionarPlanilha()">Adicionar</button>
                     </div>
                     <div class="admin-list" id="adm-planilhas-list">
-                        <div style="color:#7a8599;font-size:14px">Carregando...</div>
+                        <div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div>
                     </div>
                 </div>
 
@@ -1096,7 +1096,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="adm-nf-empty">Carregando...</div>
+                <div class="fechamento-empty" id="adm-nf-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="adm-nf-resultado" style="display:none">
                     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
                         <div class="adm-nf-counter" id="adm-nf-counter" style="margin-bottom:0"></div>
@@ -1338,7 +1338,7 @@ if (_BASE) {
                             <span style="font-size:11px;color:#8494a9;flex-basis:100%;text-align:right">O Chrome não aceita salvar direto em Downloads — escolha (ou crie) uma pasta, ex.: Documentos\Faturas</span>
                         </div>
                     </div>
-                    <div class="fechamento-empty" id="fat-empty">Carregando...</div>
+                    <div class="fechamento-empty" id="fat-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                     <div id="fat-resultado" style="display:none">
                         <div class="adm-nf-wrap">
                             <table class="adm-nf-table">
@@ -1396,7 +1396,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="trampay-ent-empty">Carregando...</div>
+                <div class="fechamento-empty" id="trampay-ent-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="trampay-ent-resultado" style="display:none">
                     <div class="adm-nf-wrap">
                         <table class="adm-nf-table">
@@ -1551,7 +1551,7 @@ if (_BASE) {
                         <div class="pb-ent-sub">no período</div>
                     </div>
                 </div>
-                <div class="fechamento-empty" id="ar-empty">Carregando...</div>
+                <div class="fechamento-empty" id="ar-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <table class="aq-table" id="ar-table" style="display:none">
                     <thead><tr><th>Entregador</th><th>Transportadora</th><th>Qtd</th><th>Valor est.</th></tr></thead>
                     <tbody id="ar-tbody"></tbody>
@@ -1573,7 +1573,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="adm-usr-empty">Carregando...</div>
+                <div class="fechamento-empty" id="adm-usr-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="adm-usr-resultado" style="display:none">
                     <div class="adm-nf-wrap">
                         <table class="adm-nf-table">
@@ -1607,7 +1607,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="adm-mot-empty">Carregando...</div>
+                <div class="fechamento-empty" id="adm-mot-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="adm-mot-resultado" style="display:none">
                     <div class="adm-nf-wrap">
                         <table class="adm-nf-table">
@@ -1637,7 +1637,7 @@ if (_BASE) {
             </div>
 
             <div class="fech-body">
-                <div class="fechamento-empty" id="dash-empty">Carregando...</div>
+                <div class="fechamento-empty" id="dash-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
 
                 <div id="dash-content" style="display:none">
 
@@ -1686,7 +1686,7 @@ if (_BASE) {
             </div>
 
             <div class="fech-body">
-                <div class="fechamento-empty" id="ent-dash-empty">Carregando...</div>
+                <div class="fechamento-empty" id="ent-dash-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
 
                 <div id="ent-dash-content" style="display:none">
 
@@ -1740,7 +1740,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="minhas-nf-empty">Carregando...</div>
+                <div class="fechamento-empty" id="minhas-nf-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="minhas-nf-resultado" style="display:none">
                     <div id="minhas-nf-lista"></div>
                 </div>
@@ -1789,7 +1789,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="extrv-empty">Carregando...</div>
+                <div class="fechamento-empty" id="extrv-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="extrv-content" style="display:none">
                     <div id="extrv-resumo"></div>
                     <div id="extrv-chart-topo"></div>
@@ -1848,7 +1848,7 @@ if (_BASE) {
                 <div style="font-size:15px;font-weight:700;color:#e2e8f0" id="alim-titulo">Alimentar</div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="alim-empty">Carregando...</div>
+                <div class="fechamento-empty" id="alim-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="alim-lista" style="display:none"></div>
             </div>
         </div>
@@ -2038,7 +2038,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="ped-empty">Carregando...</div>
+                <div class="fechamento-empty" id="ped-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="ped-lista" style="display:none">
                     <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap;gap:14px">
                         <span id="ped-counter" style="font-size:13px;color:#7b98b5;font-weight:500"></span>
@@ -2129,7 +2129,7 @@ if (_BASE) {
                     <button type="button" class="filtro-tab" data-tipo="recebimento" onclick="_desempEscolherTipo('recebimento')">Recebimento · Shopee</button>
                     <button type="button" class="filtro-tab" data-tipo="conferencia" onclick="_desempEscolherTipo('conferencia')">Conferência · Shopee</button>
                 </div>
-                <div class="fechamento-empty" id="desemp-empty">Carregando...</div>
+                <div class="fechamento-empty" id="desemp-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="desemp-content" style="display:none">
                     <div id="desemp-ranking"></div>
                 </div>
@@ -2165,7 +2165,7 @@ if (_BASE) {
                     <button type="button" class="filtro-tab" data-tipo="recebimento" onclick="_desempHoraEscolherTipo('recebimento')">Recebimento · Shopee</button>
                     <button type="button" class="filtro-tab" data-tipo="conferencia" onclick="_desempHoraEscolherTipo('conferencia')">Conferência · Shopee</button>
                 </div>
-                <div class="fechamento-empty" id="desemp-hora-empty">Carregando...</div>
+                <div class="fechamento-empty" id="desemp-hora-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="desemp-hora-content" style="display:none">
                     <div id="desemp-hora-lista"></div>
                 </div>
@@ -2200,7 +2200,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="gc-usr-empty">Carregando...</div>
+                <div class="fechamento-empty" id="gc-usr-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="gc-usr-resultado" style="display:none">
                     <div class="adm-nf-wrap">
                         <table class="adm-nf-table">
@@ -2292,7 +2292,7 @@ if (_BASE) {
                 <div id="etf-diagnostico" style="font-size:11.5px;color:#66829c;margin-top:4px"></div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="etf-empty">Carregando...</div>
+                <div class="fechamento-empty" id="etf-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="etf-resultado" style="display:none">
                     <div class="adm-nf-wrap">
                         <table class="ant-hist-table">
@@ -2316,7 +2316,7 @@ if (_BASE) {
                 </nav>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="mac-empty">Carregando...</div>
+                <div class="fechamento-empty" id="mac-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="mac-lista"></div>
             </div>
         </div><!-- /tela-macros -->
@@ -2337,7 +2337,7 @@ if (_BASE) {
                 </nav>
             </div>
             <div class="fech-body">
-                <div id="mex-corpo"><div class="fechamento-empty">Carregando...</div></div>
+                <div id="mex-corpo"><div class="fechamento-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div></div>
             </div>
         </div><!-- /tela-macros-execucao -->
 
@@ -2445,7 +2445,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="wac-lista-empty">Carregando...</div>
+                <div class="fechamento-empty" id="wac-lista-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
                     <div class="filtro-tabs" id="wac-abas">
                         <button type="button" class="filtro-tab active" data-aba="acareacao" onclick="_wacTrocarAba('acareacao')">Acareações</button>
@@ -2671,7 +2671,7 @@ if (_BASE) {
         <div id="tela-minhas-solicitacoes" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
                 <div class="ant-sol-title" style="margin-bottom:18px">Minhas Solicitações de Adiantamento</div>
-                <div class="fechamento-empty" id="ms-empty">Carregando...</div>
+                <div class="fechamento-empty" id="ms-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="ms-resultado" style="display:none">
                     <table class="ant-hist-table">
                         <thead>
@@ -2731,7 +2731,7 @@ if (_BASE) {
 
                 <div class="ant-historico-section">
                     <div class="ant-sol-title">Últimas Baixas Enviadas</div>
-                    <div class="fechamento-empty" id="bte-hist-empty">Carregando...</div>
+                    <div class="fechamento-empty" id="bte-hist-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                     <div id="bte-hist-resultado" style="display:none">
                         <table class="ant-hist-table">
                             <thead>
@@ -2859,7 +2859,7 @@ if (_BASE) {
         <!-- TELA DEVOLUÇÕES — ENVIADO (histórico do servidor) -->
         <div id="tela-devolucao-enviadas" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
-                <div class="fechamento-empty" id="dev-env-empty">Carregando...</div>
+                <div class="fechamento-empty" id="dev-env-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="dev-env-resultado" style="display:none">
                     <table class="ant-hist-table">
                         <thead>
@@ -2996,7 +2996,7 @@ if (_BASE) {
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input type="text" id="shr-busca" placeholder="Buscar por código ou quem recebeu..." oninput="_shrBuscar()" autocomplete="off">
                     </div>
-                    <div class="fechamento-empty" id="shr-empty">Carregando...</div>
+                    <div class="fechamento-empty" id="shr-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                     <div id="shr-resultado" style="display:none">
                         <table class="ant-hist-table">
                             <thead>
@@ -3080,7 +3080,7 @@ if (_BASE) {
                         Exportar
                     </button>
                 </div>
-                <div class="fechamento-empty" id="shl-hist-empty">Carregando...</div>
+                <div class="fechamento-empty" id="shl-hist-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="shl-hist-resultado" style="display:none">
                     <table class="ant-hist-table">
                         <thead>
@@ -3138,7 +3138,7 @@ if (_BASE) {
                     </div>
                 </div>
 
-                <div class="fechamento-empty" id="cus-empty">Carregando...</div>
+                <div class="fechamento-empty" id="cus-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="cus-resultado" style="display:none">
                     <table class="ant-hist-table">
                         <thead id="cus-thead"></thead>
@@ -3167,7 +3167,7 @@ if (_BASE) {
 
                     <div class="slh-cal" id="sce-dias" style="display:none;margin-bottom:14px"></div>
 
-                    <div class="fechamento-empty" id="sce-empty">Carregando...</div>
+                    <div class="fechamento-empty" id="sce-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                     <div id="sce-resultado" style="display:none">
                         <div class="shr-resumo" id="sce-resumo"></div>
                         <div id="sce-entregadores"></div>
@@ -3253,7 +3253,7 @@ if (_BASE) {
                         <input type="text" id="sat-busca" placeholder="Buscar código, AT, motorista ou cidade..." oninput="_satBuscar()" autocomplete="off">
                     </div>
                 </div>
-                <div class="fechamento-empty" id="sat-empty">Carregando...</div>
+                <div class="fechamento-empty" id="sat-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="sat-resultado" style="display:none">
                     <table class="ant-hist-table">
                         <thead>
@@ -3310,7 +3310,7 @@ if (_BASE) {
                         <input type="text" id="spp-busca" placeholder="Buscar pedido, comprador, motorista ou status..." oninput="_sppBuscar()" autocomplete="off">
                     </div>
                 </div>
-                <div class="fechamento-empty" id="spp-empty">Carregando...</div>
+                <div class="fechamento-empty" id="spp-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="spp-resultado" style="display:none">
                     <table class="ant-hist-table">
                         <thead>
@@ -3361,7 +3361,7 @@ if (_BASE) {
                     </div>
                 </div>
 
-                <div class="fechamento-empty" id="slh-empty">Carregando...</div>
+                <div class="fechamento-empty" id="slh-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="slh-resultado" style="display:none">
                     <table class="ant-hist-table">
                         <thead id="slh-thead"></thead>
@@ -3401,7 +3401,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="sst-empty">Carregando...</div>
+                <div class="fechamento-empty" id="sst-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="sst-conteudo" style="display:none">
                     <div class="adm-nf-wrap">
                         <table class="adm-nf-table sst-tabela">
@@ -3451,7 +3451,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="sstb-empty">Carregando...</div>
+                <div class="fechamento-empty" id="sstb-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="sstb-conteudo" style="display:none">
                     <div class="nr-tiles" id="sstb-tiles" style="margin-bottom:18px"></div>
 
@@ -3577,7 +3577,7 @@ if (_BASE) {
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input type="text" id="sav-busca" placeholder="Buscar por código ou quem bipou..." oninput="_savBuscar()" autocomplete="off">
                     </div>
-                    <div class="fechamento-empty" id="sav-empty">Carregando...</div>
+                    <div class="fechamento-empty" id="sav-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                     <div id="sav-resultado" style="display:none">
                         <table class="ant-hist-table">
                             <thead>
@@ -3642,7 +3642,7 @@ if (_BASE) {
                         </div>
                         <span style="font-size:12px;color:#8494a9" id="sca-visao-obs"></span>
                     </div>
-                    <div class="fechamento-empty" id="sca-visao-empty">Carregando...</div>
+                    <div class="fechamento-empty" id="sca-visao-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                     <div id="sca-visao-resultado" style="display:none">
                         <table class="ant-hist-table">
                             <thead>
@@ -3725,7 +3725,7 @@ if (_BASE) {
                         </div>
                     </div>
                     <div class="shr-cal" id="sca-hist-cal" style="display:none;max-width:320px;margin-bottom:12px"></div>
-                    <div class="fechamento-empty" id="sca-hist-empty">Carregando...</div>
+                    <div class="fechamento-empty" id="sca-hist-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                     <div id="sca-hist-resultado" style="display:none">
                         <table class="ant-hist-table">
                             <thead>
@@ -3749,7 +3749,7 @@ if (_BASE) {
                     <button type="button" class="filtro-tab" data-f="recebidos" onclick="_slhToFiltro('recebidos')">Recebidos</button>
                     <button type="button" class="filtro-tab" data-f="todos" onclick="_slhToFiltro('todos')">Todos</button>
                 </div>
-                <div class="slh-to-lista" id="slh-to-lista">Carregando...</div>
+                <div class="slh-to-lista" id="slh-to-lista"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div class="usr-modal-btns">
                     <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-slh-to')">Fechar</button>
                     <button class="usr-modal-btn-primary" id="slh-to-copiar" onclick="_slhCopiarFaltantes()">Copiar os que faltam</button>
@@ -3806,7 +3806,7 @@ if (_BASE) {
 
                     <div id="cen-busca-res" style="display:none;margin-bottom:18px"></div>
 
-                    <div class="fechamento-empty" id="cen-dias-empty">Carregando...</div>
+                    <div class="fechamento-empty" id="cen-dias-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                     <div id="cen-dias-lista" style="display:none"></div>
                 </div>
 
@@ -3820,7 +3820,7 @@ if (_BASE) {
                         </span>
                     </div>
 
-                    <div class="fechamento-empty" id="cen-empty">Carregando...</div>
+                    <div class="fechamento-empty" id="cen-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                     <div id="cen-lista" style="display:none">
                         <div class="sca-progresso">
                             <div class="sca-prog-topo">
@@ -3935,7 +3935,7 @@ if (_BASE) {
                     <span class="ant-sol-title" id="solat-lista-titulo" style="border:none;padding:0;margin:0">Pedidos de hoje</span>
                     <button type="button" class="shr-pag-btn" onclick="_solatCarregarHoje()">Atualizar</button>
                 </div>
-                <div class="fechamento-empty" id="solat-empty">Carregando...</div>
+                <div class="fechamento-empty" id="solat-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="solat-resultado" style="display:none">
                     <div class="solat-lista" id="solat-tbody"></div>
                 </div>
@@ -4000,7 +4000,7 @@ if (_BASE) {
         <!-- TELA VIAGEM — MINHAS VIAGENS (ENTREGADOR) -->
         <div id="tela-viagem-minhas" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
-                <div class="fechamento-empty" id="vm-empty">Carregando...</div>
+                <div class="fechamento-empty" id="vm-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="vm-lista" style="display:none"></div>
             </div>
         </div><!-- /tela-viagem-minhas -->
@@ -4058,7 +4058,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="pf-reg-empty">Carregando...</div>
+                <div class="fechamento-empty" id="pf-reg-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="pf-reg-resultado" style="display:none">
                     <table class="ant-hist-table">
                         <thead id="pf-reg-thead"><tr><th>Código</th><th>Transportadora</th><th>Data/Hora</th></tr></thead>
@@ -4146,7 +4146,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="trf-hist-empty">Carregando...</div>
+                <div class="fechamento-empty" id="trf-hist-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="trf-hist-lista" style="display:none"></div>
             </div>
         </div><!-- /tela-transferencia-historico -->
@@ -4187,7 +4187,7 @@ if (_BASE) {
                 <div style="font-size:15px;font-weight:700;color:#e2e8f0">Minhas Cargas</div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="motc-empty">Carregando...</div>
+                <div class="fechamento-empty" id="motc-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="motc-lista" style="display:none"></div>
             </div>
         </div><!-- /tela-motorista-cargas -->
@@ -4271,7 +4271,7 @@ if (_BASE) {
                     </div>
                 </div>
                 <span id="drr-total" style="display:block;font-size:13px;color:#7b98b5;font-weight:500;margin-bottom:12px"></span>
-                <div class="fechamento-empty" id="drr-empty">Carregando...</div>
+                <div class="fechamento-empty" id="drr-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="drr-resultado" style="display:none">
                     <table class="ant-hist-table">
                         <thead>
@@ -4294,7 +4294,7 @@ if (_BASE) {
                 <div style="font-size:15px;font-weight:700;color:#e2e8f0">Baixas — Total Express</div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="abte-empty">Carregando...</div>
+                <div class="fechamento-empty" id="abte-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="abte-lista" style="display:none">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:14px">
                         <button onclick="_abteAbrirExportar()" style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">
@@ -4349,7 +4349,7 @@ if (_BASE) {
                 <div style="font-size:15px;font-weight:700;color:#e2e8f0">Pacotes Faltantes</div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="pfa-empty">Carregando...</div>
+                <div class="fechamento-empty" id="pfa-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="pfa-lista" style="display:none">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:14px">
                         <button onclick="_pfaAbrirExportar()" style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:9px;border:1px solid rgba(58,134,255,0.35);background:rgba(58,134,255,0.08);color:#3a86ff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">
@@ -4412,7 +4412,7 @@ if (_BASE) {
                 </div>
             </div>
             <div class="fech-body">
-                <div class="fechamento-empty" id="trfa-empty">Carregando...</div>
+                <div class="fechamento-empty" id="trfa-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="trfa-lista" style="display:none"></div>
             </div>
         </div><!-- /tela-torre-transferencias -->
@@ -4440,7 +4440,7 @@ if (_BASE) {
                     </div>
                 </div>
 
-                <div class="fechamento-empty" id="nr-empty">Carregando...</div>
+                <div class="fechamento-empty" id="nr-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
 
                 <div id="nr-resultado" style="display:none">
 
@@ -4511,7 +4511,7 @@ if (_BASE) {
                             </button>
                         </div>
 
-                        <div class="fechamento-empty" id="snr-empty">Carregando...</div>
+                        <div class="fechamento-empty" id="snr-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                         <div id="snr-resultado" style="display:none">
                             <div class="snr-paineis">
                                 <section class="snr-painel">
@@ -4758,19 +4758,19 @@ if (_BASE) {
     </div>
 </div>
 
-<script src="js/core.js?v=20261104b"></script>
+<script src="js/core.js?v=20261104c"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
 <script src="js/router.js?v=20261103b"></script>
 <script src="js/sidebar.js?v=20261103f"></script>
 <script src="js/nav.js?v=20261103b"></script>
-<script src="js/atendimento.js?v=20261015a"></script>
-<script src="js/atendimento-admin.js?v=20261015b"></script>
+<script src="js/atendimento.js?v=20261104c"></script>
+<script src="js/atendimento-admin.js?v=20261104c"></script>
 <script src="js/fechamentos.js?v=20261104a"></script>
-<script src="js/fechamento-entregador.js?v=20261102b"></script>
+<script src="js/fechamento-entregador.js?v=20261104c"></script>
 <script src="js/admin.js?v=20261103a"></script>
 <script src="js/conf-nf.js?v=20261012a"></script>
 <script src="js/trampay.js?v=20260924a"></script>
-<script src="js/usuarios.js?v=20261022a"></script>
+<script src="js/usuarios.js?v=20261104c"></script>
 <script src="js/motoristas.js?v=20260924b"></script>
 <script src="js/pagamentos.js?v=20261012a"></script>
 <script src="js/faturas.js?v=20261028a"></script>
@@ -4778,44 +4778,44 @@ if (_BASE) {
 <script src="js/dashboard.js?v=30260812d"></script>
 <script src="js/ent-dashboard.js?v=30260812d"></script>
 <script src="js/anotacoes-entregador.js?v=20261012a"></script>
-<script src="js/anotacoes-relatorio.js?v=20261012a"></script>
-<script src="js/nota-fiscal.js?v=30260812d"></script>
+<script src="js/anotacoes-relatorio.js?v=20261104c"></script>
+<script src="js/nota-fiscal.js?v=30260812e"></script>
 <script src="js/extravios.js?v=20261104a"></script>
-<script src="js/extravios-registros.js?v=20261102f"></script>
+<script src="js/extravios-registros.js?v=20261104c"></script>
 <script src="js/usuarios-gc.js?v=20260924b"></script>
-<script src="js/nomes-padrao.js?v=20261029a"></script>
+<script src="js/nomes-padrao.js?v=20261104c"></script>
 <script src="js/entregador-telefone.js?v=20260922b"></script>
-<script src="js/macros.js?v=20261027a"></script>
-<script src="js/macros-execucao.js?v=20261019d"></script>
+<script src="js/macros.js?v=20261104c"></script>
+<script src="js/macros-execucao.js?v=20261104c"></script>
 <script src="js/whatsapp-teste.js?v=20261015a"></script>
 <script src="js/stuck-ativo.js?v=20260929a"></script>
-<script src="js/whatsapp-conversa.js?v=20261102a"></script>
-<script src="js/modals.js?v=20260924a"></script>
+<script src="js/whatsapp-conversa.js?v=20261104c"></script>
+<script src="js/modals.js?v=20261104c"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
-<script src="js/fechamento-criar.js?v=20261103a"></script>
-<script src="js/ticketlog-info.js?v=20261028a"></script>
-<script src="js/fechamento-resumo.js?v=20261103a"></script>
-<script src="js/fechamento-ajustes.js?v=20261028c"></script>
-<script src="js/fechamento-deslocamentos.js?v=20261027a"></script>
-<script src="js/fechamento-acareacoes.js?v=20261103b"></script>
-<script src="js/conversoes.js?v=20261103a"></script>
-<script src="js/fechamento-perdas.js?v=20261103a"></script>
-<script src="js/fechamento-regras.js?v=20261103a"></script>
-<script src="js/fechamento-extravios.js?v=20261028d"></script>
+<script src="js/fechamento-criar.js?v=20261104c"></script>
+<script src="js/ticketlog-info.js?v=20261104c"></script>
+<script src="js/fechamento-resumo.js?v=20261104c"></script>
+<script src="js/fechamento-ajustes.js?v=20261104c"></script>
+<script src="js/fechamento-deslocamentos.js?v=20261104c"></script>
+<script src="js/fechamento-acareacoes.js?v=20261104c"></script>
+<script src="js/conversoes.js?v=20261104c"></script>
+<script src="js/fechamento-perdas.js?v=20261104c"></script>
+<script src="js/fechamento-regras.js?v=20261104c"></script>
+<script src="js/fechamento-extravios.js?v=20261104c"></script>
 <script src="js/pedidos-ocorrencia.js?v=30260812d"></script>
-<script src="js/bipagens.js?v=20261014a"></script>
+<script src="js/bipagens.js?v=20261104c"></script>
 <script src="js/pedidos.js?v=20261020a"></script>
 <script src="js/desempenho-bip.js?v=20261015c"></script>
 <script src="js/desempenho-hora.js?v=20261015a"></script>
 <script src="js/conferencias.js?v=20261102b"></script>
-<script src="js/conferencia-expedicao.js?v=20261103i"></script>
-<script src="js/conferencias-hub.js?v=20261102g"></script>
+<script src="js/conferencia-expedicao.js?v=20261104c"></script>
+<script src="js/conferencias-hub.js?v=20261104c"></script>
 <script src="js/antecipacoes.js?v=20261014a"></script>
 <script src="js/antecipacoes-admin.js?v=20261015b"></script>
 <script src="js/xm-camera.js?v=20261021a"></script>
-<script src="js/baixas.js?v=20261021a"></script>
+<script src="js/baixas.js?v=20261104c"></script>
 <script src="js/custodia.js?v=20260820i"></script>
-<script src="js/devolucoes.js?v=20261021a"></script>
+<script src="js/devolucoes.js?v=20261104c"></script>
 <script src="js/shopee-polo.js?v=20261015a"></script>
 <script src="js/perfil-conta.js?v=20261015c"></script>
 <script src="js/shopee.js?v=30260812d"></script>
@@ -4823,30 +4823,30 @@ if (_BASE) {
 <script src="js/shopee-at.js?v=20261019a"></script>
 <script src="js/shopee-pedidos.js?v=30260812d"></script>
 <script src="js/calendario-dias.js?v=30260827b"></script>
-<script src="js/shopee-linehaul.js?v=30260827e"></script>
-<script src="js/shopee-atribuicoes.js?v=20261001a"></script>
+<script src="js/shopee-linehaul.js?v=30260827f"></script>
+<script src="js/shopee-atribuicoes.js?v=20261104c"></script>
 <script src="js/shopee-retidos.js?v=30260819f"></script>
-<script src="js/shopee-conf-entregadores.js?v=20261019a"></script>
-<script src="js/shopee-stuck.js?v=20261001a"></script>
+<script src="js/shopee-conf-entregadores.js?v=20261104c"></script>
+<script src="js/shopee-stuck.js?v=20261104c"></script>
 <script src="js/shopee-stuck-backlog.js?v=20260930d"></script>
 <script src="js/entregador-conferencia.js?v=20261015b"></script>
-<script src="js/solicitar-at.js?v=20261020f"></script>
-<script src="js/viagens.js?v=20261021a"></script>
+<script src="js/solicitar-at.js?v=20261104c"></script>
+<script src="js/viagens.js?v=20261104c"></script>
 <script src="js/ocorrencias.js?v=20261102c"></script>
 <script src="js/ocorrencias-admin.js?v=20261102f"></script>
 <script src="js/transferencias.js?v=20261021a"></script>
-<script src="js/transferencias-admin.js?v=30260812d"></script>
+<script src="js/transferencias-admin.js?v=30260812e"></script>
 <script src="js/motorista-devolucoes.js?v=30260812d"></script>
 <script src="js/etiquetas.js?v=20261102c"></script>
 <script src="js/videira.js?v=20261012a"></script>
 <script src="js/planejamento-videira.js?v=20261027b"></script>
-<script src="js/planejamento-enquete.js?v=20261027e"></script>
+<script src="js/planejamento-enquete.js?v=20261104c"></script>
 <script src="js/torre.js?v=30260812d"></script>
 <script src="js/torre-na-rua.js?v=20261102c"></script>
-<script src="js/shopee-na-rua.js?v=20261002a"></script>
-<script src="js/entregador-na-rua.js?v=20261005c"></script>
-<script src="js/entregador-performance.js?v=20261005a"></script>
-<script src="js/pod-semanal.js?v=20261102f"></script>
+<script src="js/shopee-na-rua.js?v=20261104c"></script>
+<script src="js/entregador-na-rua.js?v=20261104c"></script>
+<script src="js/entregador-performance.js?v=20261104c"></script>
+<script src="js/pod-semanal.js?v=20261104c"></script>
 
 <!-- TELA VIDEIRA — ALIMENTAR PLANILHA -->
 <div id="tela-videira-alimentar" class="view tela-full">
@@ -5126,7 +5126,7 @@ if (_BASE) {
             </div>
             <!-- Sem .fech-body aqui: já está dentro do da tela de Conversões, e rolagem dentro de rolagem prendia o scroll. -->
             <div style="padding-top:14px">
-                <div class="fechamento-empty" id="cnp-empty">Carregando...</div>
+                <div class="fechamento-empty" id="cnp-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
                 <div id="cnp-resultado" style="display:none">
                     <div class="adm-nf-wrap">
                         <table class="ant-hist-table">
@@ -5232,7 +5232,7 @@ if (_BASE) {
         </div>
     </div>
     <div class="fech-body">
-        <div class="fechamento-empty" id="pv-empty">Carregando...</div>
+        <div class="fechamento-empty" id="pv-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
         <div id="pv-content" style="display:none">
             <div id="pv-counter"></div>
             <div class="pv-card" id="pv-card">
@@ -5264,7 +5264,7 @@ if (_BASE) {
         </div>
     </div>
     <div class="fech-body">
-        <div class="fechamento-empty" id="vd-empty">Carregando...</div>
+        <div class="fechamento-empty" id="vd-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
         <div id="vd-content" style="display:none">
             <div class="dash-kpi-row">
                 <div class="dash-kpi-card" id="vdkpi-ant-card">
@@ -5955,16 +5955,16 @@ if (_BASE) {
 </div>
 
 
-    <script src="js/fiscal-tributacao.js?v=30260817a"></script>
-    <script src="js/fiscal-cte.js?v=20261031b"></script>
-    <script src="js/fiscal-acompanhamento.js?v=30260909a"></script>
-    <script src="js/fiscal-empresa.js?v=30260815b"></script>
-    <script src="js/fiscal-numeracao.js?v=30260815a"></script>
-    <script src="js/fiscal-perfil.js?v=30260816c"></script>
-    <script src="js/fiscal-valores.js?v=20261031b"></script>
+    <script src="js/fiscal-tributacao.js?v=30260817b"></script>
+    <script src="js/fiscal-cte.js?v=20261104c"></script>
+    <script src="js/fiscal-acompanhamento.js?v=30260909b"></script>
+    <script src="js/fiscal-empresa.js?v=30260815c"></script>
+    <script src="js/fiscal-numeracao.js?v=30260815b"></script>
+    <script src="js/fiscal-perfil.js?v=30260816d"></script>
+    <script src="js/fiscal-valores.js?v=20261104c"></script>
     <script src="js/fiscal-consulta-nfs.js?v=20261102d"></script>
     <script src="js/fiscal-dacte.js?v=30260820b"></script>
-    <script src="js/fiscal-certificado.js?v=20261021a"></script>
-    <script src="js/agency-router.js?v=20261002a"></script>
+    <script src="js/fiscal-certificado.js?v=20261104c"></script>
+    <script src="js/agency-router.js?v=20261104c"></script>
 </body>
 </html>

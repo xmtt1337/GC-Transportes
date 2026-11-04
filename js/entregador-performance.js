@@ -91,11 +91,11 @@ function _epfResumoHtml(d) {
         <p class="epf-nota">Vale como o dia fechou: o que ficou na rua ou com insucesso no fim do dia conta contra.</p>`;
 }
 
-function _epfAviso(texto, comBotao) {
+function _epfAviso(texto, comBotao, carregando) {
     const el = document.getElementById("epf-conteudo");
     if (!el) return;
     el.innerHTML = `
-        <div class="enr-aviso">${_enrEsc(texto)}</div>
+        ${carregando ? skLogo(true, _enrEsc(texto)) : `<div class="enr-aviso">${_enrEsc(texto)}</div>`}
         ${comBotao ? `<button type="button" class="enr-recarregar epf-de-novo" onclick="_epfCarregar()">Tentar de novo</button>` : ""}`;
 }
 
@@ -122,7 +122,7 @@ function _epfAlternarDia(dia) {
 function _epfCarregar() {
     if (_epfCarregando) return;
     _epfCarregando = true;
-    if (!_epfDados) _epfAviso("Carregando sua performance…", false);
+    if (!_epfDados) _epfAviso("Carregando sua performance", false, true);
 
     fetch(`${API}/entregador/na-rua/historico`, { headers: { "Authorization": "Bearer " + localStorage.getItem("token") } })
         .then(r => r.json())

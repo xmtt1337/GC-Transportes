@@ -214,7 +214,7 @@ function _mexDesenhar() {
     const corpo = document.getElementById("mex-corpo");
     if (!corpo) return;
     if (!_mexDados) {
-        corpo.innerHTML = `<div class="fechamento-empty">${_mexErro ? _mexEsc(_mexErro) : "Carregando..."}</div>`;
+        corpo.innerHTML = _mexErro ? `<div class="fechamento-empty">${_mexEsc(_mexErro)}</div>` : skLogo();
         return;
     }
     const abas = (_mexDados.abas || []);
@@ -492,7 +492,7 @@ function _mexDesenharHistorico() {
         (e.macro === "geral" ? _mexEhDev() && _mexFiltroMacro === "todos" : visiveis.includes(e.macro)) &&
         (_mexFiltroMacro === "todos" || e.macro === _mexFiltroMacro));
     if (!lista.length) {
-        el.innerHTML = `<div class="mex-vazio">${_mexHistorico.length ? "Nada no histórico com esse filtro." : "Carregando..."}</div>`;
+        el.innerHTML = _mexHistorico.length ? `<div class="mex-vazio">Nada no histórico com esse filtro.</div>` : skLogo(true);
         return;
     }
     const nomeDe = m => m === "geral" ? "Geral" : (_MEX_MACROS[m] || _MEX_MACROS.outro).nome;

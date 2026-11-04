@@ -84,7 +84,7 @@ function _atdaAbrirNova() {
     const busca = document.getElementById("atd-novo-busca");
     const alvo  = document.getElementById("atd-novo-lista");
     if (busca) busca.value = "";
-    if (alvo)  alvo.innerHTML = `<div class="atd-aviso">Carregando...</div>`;
+    if (alvo)  alvo.innerHTML = skLogo();
     _abrirModal("modal-atd-novo");
     if (busca) setTimeout(() => busca.focus(), 80);
 
@@ -344,7 +344,7 @@ function _atdaCarregarConversa(silencioso) {
     if (!_atdaAtual.id) return;
     const body = document.getElementById("atd-adm-body");
     if (!body) return;
-    if (!silencioso) body.innerHTML = `<div class="atd-aviso">Carregando...</div>`;
+    if (!silencioso) body.innerHTML = skLogo(true);
     const id = _atdaAtual.id;
 
     return fetch(`${API}/atendimento/conversas/${id}`, { headers: { "Authorization": "Bearer " + token } })

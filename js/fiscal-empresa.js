@@ -12,7 +12,7 @@ async function abrirFiscalEmpresas(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-fiscal-empresas");
     const area = document.getElementById("fiscal-empresas-conteudo");
-    area.innerHTML = "<p class='carregando'>Carregando empresas…</p>";
+    area.innerHTML = skLogo(false, "Carregando empresas");
     try {
         const lista = await _cteApi("/fiscal/admin/empresas");
         area.innerHTML = _htmlListaEmpresas(lista);
@@ -65,7 +65,7 @@ function _fmtCnpj(v) {
 async function abrirFormEmpresa(id = null) {
     mostrarTela("tela-fiscal-empresas");
     const area = document.getElementById("fiscal-empresas-conteudo");
-    area.innerHTML = "<p class='carregando'>Carregando…</p>";
+    area.innerHTML = skLogo();
     let e = {};
     if (id) {
         try { e = await _cteApi(`/fiscal/admin/empresas/${id}`); }
@@ -161,7 +161,7 @@ async function salvarEmpresa() {
         codigo_municipio: v("emp-cmun"), uf: v("emp-uf"), cep: v("emp-cep"),
     };
     const alvo = document.getElementById("resultado-empresa");
-    alvo.innerHTML = "<p class='carregando'>Salvando…</p>";
+    alvo.innerHTML = skLogo(true, "Salvando");
     try {
         const r = _empresaAtual
             ? await _cteApi(`/fiscal/admin/empresas/${_empresaAtual}`,
@@ -184,7 +184,7 @@ async function salvarEmpresa() {
 async function abrirUsuariosEmpresa(id) {
     mostrarTela("tela-fiscal-empresas");
     const area = document.getElementById("fiscal-empresas-conteudo");
-    area.innerHTML = "<p class='carregando'>Carregando usuários…</p>";
+    area.innerHTML = skLogo(false, "Carregando usuários");
     try {
         const [empresa, vinculos] = await Promise.all([
             _cteApi(`/fiscal/admin/empresas/${id}`),

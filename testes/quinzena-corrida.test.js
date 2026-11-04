@@ -20,6 +20,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const SK_LOGO = require("./_sk-logo");
 
 /** Elemento de mentira: aceita qualquer coisa e guarda o que escreveram nele. */
 function fazerElemento(id) {
@@ -84,6 +85,7 @@ function montar({ arquivos, selecionar, resposta }) {
     vm.createContext(ctx);
     for (const nome of arquivos) {
         const fonte = fs.readFileSync(path.join(__dirname, "..", "js", nome), "utf8");
+        vm.runInContext(SK_LOGO, ctx);
         vm.runInContext(fonte, ctx, { filename: nome });
     }
 

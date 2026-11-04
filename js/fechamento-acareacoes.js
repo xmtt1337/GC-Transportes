@@ -69,7 +69,7 @@ function abrirAcareacoes(event) {
 function _acCarregar(msg) {
     const el = document.getElementById("ac-lista");
     if (!el) return;
-    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    el.innerHTML = skLogo();
     fetch(`${_AC_API()}/acareacoes?${_acQs()}`, { headers: _acHeaders() })
     .then(r => r.json())
     .then(d => {

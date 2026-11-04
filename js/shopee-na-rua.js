@@ -440,7 +440,7 @@ function _snrClicarStatus(status) {
 
     if (_snrTodos.length) return _snrPintarStatusLista();
 
-    document.getElementById("snr-ger-status-lista").innerHTML = `<div class="snr-vazio">Carregando...</div>`;
+    document.getElementById("snr-ger-status-lista").innerHTML = skLogo(true);
     fetch(`${API}/shopee-na-rua/pedidos?dia=${encodeURIComponent(_snrDia)}`, {
         headers: { "Authorization": "Bearer " + token }
     }).then(r => r.json())
@@ -601,7 +601,7 @@ function _snrAbrirDetalhe(nome) {
     document.getElementById("snr-det-nome").innerText = nome;
     document.getElementById("snr-det-sub").innerText = gcCalBr(_snrDia);
     document.getElementById("snr-det-tbody").innerHTML =
-        `<tr><td colspan="4" style="text-align:center;color:#8494a9;padding:22px">Carregando...</td></tr>`;
+        `<tr><td colspan="4" style="padding:10px">${skLogo(true)}</td></tr>`;
 
     fetch(`${API}/shopee-na-rua/entregador?dia=${encodeURIComponent(_snrDia)}&nome=${encodeURIComponent(nome)}`, {
         headers: { "Authorization": "Bearer " + token }

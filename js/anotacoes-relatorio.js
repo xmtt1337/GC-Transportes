@@ -97,7 +97,7 @@ function _arCarregarRelatorio() {
     const transportadora = document.getElementById("ar-sel-transportadora").value;
     const empty = document.getElementById("ar-empty");
     const table = document.getElementById("ar-table");
-    empty.style.display = ""; empty.innerText = "Carregando...";
+    empty.style.display = ""; empty.innerHTML = skLogo(true);
     table.style.display = "none";
 
     let url = `${API}/admin/anotacoes/relatorio?mes=${_arMes}&ano=${_arAno}&quinzena=${_arQuinzena}`;

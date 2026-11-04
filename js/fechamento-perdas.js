@@ -66,7 +66,7 @@ function abrirPerdasDesempenho(event) {
 function _pdCarregar() {
     const el = document.getElementById("pd-lista");
     if (!el) return;
-    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    el.innerHTML = skLogo();
     fetch(`${_PD_API()}/perdas?${_pdQs()}`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
     .then(d => {

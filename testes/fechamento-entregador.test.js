@@ -4,6 +4,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const SK_LOGO = require("./_sk-logo");
 
 const D = {
     fonte: "sistema", codigo_quinzena: "Q2Set",
@@ -34,6 +35,7 @@ function carregar() {
         body: { appendChild() {} },
     } };
     vm.createContext(ctx);
+    vm.runInContext(SK_LOGO, ctx);
     vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-entregador.js"), "utf8")
         + "\n;this._fsPessoasTeste = (n) => _fsPessoas.findIndex(p => p.nome === n);", ctx);
     return { ctx, el, modal };

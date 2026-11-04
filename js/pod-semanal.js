@@ -178,11 +178,11 @@ function _pdsBuscaHtml() {
     return `<div class="pds-filtros">${_pdsCampoBusca()}</div>`;
 }
 
-function _pdsAviso(texto, comBotao) {
+function _pdsAviso(texto, comBotao, carregando) {
     const el = document.getElementById("pds-conteudo");
     if (!el) return;
     el.innerHTML = `
-        <div class="enr-aviso">${_enrEsc(texto)}</div>
+        ${carregando ? skLogo(true, _enrEsc(texto)) : `<div class="enr-aviso">${_enrEsc(texto)}</div>`}
         ${comBotao ? `<button type="button" class="enr-recarregar epf-de-novo" onclick="_pdsCarregar()">Tentar de novo</button>` : ""}`;
 }
 
@@ -230,7 +230,7 @@ function _pdsBuscarDados() {
 function _pdsCarregar() {
     if (_pdsCarregando) return;
     _pdsCarregando = true;
-    if (!_pdsDados) _pdsAviso("Carregando o POD…", false);
+    if (!_pdsDados) _pdsAviso("Carregando o POD", false, true);
     _pdsBuscarDados()
         .then(d => { _pdsCarregando = false; _pdsRender(); _pdsHome(); if (d.todos) _pdsDiagnostico(); })
         .catch(err => {

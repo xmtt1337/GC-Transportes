@@ -391,7 +391,7 @@ async function _valLerLink() {
             Link não reconhecido. Cole o link da planilha do Google Sheets.</div>`;
         return;
     }
-    info.innerHTML = "<p class='carregando'>Lendo a planilha…</p>";
+    info.innerHTML = skLogo(true, "Lendo a planilha");
     try {
         const r = await fetch(url);
         if (!r.ok) throw new Error(`A planilha respondeu ${r.status}. ` +
@@ -416,7 +416,7 @@ function _valLerArquivo(input) {
     const arquivo = input.files && input.files[0];
     if (!arquivo) return;
     const info = document.getElementById("val-info-arquivo");
-    info.innerHTML = "<p class='carregando'>Lendo a planilha…</p>";
+    info.innerHTML = skLogo(true, "Lendo a planilha");
 
     const leitor = new FileReader();
     leitor.onload = (e) => {
@@ -546,7 +546,7 @@ const _VAL_AMOSTRA = 50;
 async function _valEnviar() {
     if (!_valPlanilha) return;
     const alvo = document.getElementById("val-resultado");
-    alvo.innerHTML = "<p class='carregando'>Lendo a planilha…</p>";
+    alvo.innerHTML = skLogo(true, "Lendo a planilha");
 
     let local;
     try {
@@ -728,7 +728,7 @@ async function _valConfirmarLote() {
 
     _valPermitirReemissao = false;
     _valJaEmitidos = null;
-    alvo.innerHTML = "<p class='carregando'>Conferindo se algum código já tem CT-e emitido…</p>";
+    alvo.innerHTML = skLogo(true, "Conferindo se algum código já tem CT-e emitido");
     try {
         _valJaEmitidos = await _valChecarJaEmitidos(local.itens.map((i) => i.codigo));
     } catch (e) {
@@ -914,7 +914,7 @@ async function _valImportarLote() {
     const cfop = document.getElementById("val-cfop").value.trim() || null;
     const aliquotaSel = document.getElementById("val-aliquota").value;
     const aliquota = aliquotaSel === "" ? null : Number(aliquotaSel);
-    alvo.innerHTML = "<p class='carregando'>Preparando a importação…</p>";
+    alvo.innerHTML = skLogo(true, "Preparando a importação");
 
     try {
         const imp = await _cteApi("/fiscal/importacao", {

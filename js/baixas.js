@@ -1132,7 +1132,7 @@ function _abteVerFoto(id) {
     overlay.innerHTML = `
         <div style="max-width:520px;width:100%;background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;box-sizing:border-box;text-align:center">
             <div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:14px">Foto da etiqueta</div>
-            <div id="abte-foto-loading" style="color:#8494a9;font-size:13px;padding:40px 0">Carregando foto...</div>
+            <div id="abte-foto-loading" style="color:#8494a9;font-size:13px">${skLogo(true, "Carregando foto")}</div>
             <img id="abte-foto-img" style="display:none;max-width:100%;max-height:65vh;border-radius:10px">
             <button id="abte-foto-fechar" style="margin-top:16px;width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Fechar</button>
         </div>`;

@@ -70,7 +70,7 @@ function _cexAbrirAba(aba) {
 // ── Conferência ──
 function _cexCarregar(msg) {
     const el = document.getElementById("cex-resultado");
-    if (!_cexDados) el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    if (!_cexDados) el.innerHTML = skLogo();
     const qs = new URLSearchParams();
     if (_cexDia) qs.set("dia", _cexDia);
     if (_cexPolo) qs.set("polo", _cexPolo);
@@ -448,7 +448,7 @@ async function _cexSalvarUsuario() {
 // ── Cidades por usuário ──
 function _cexCarregarCidades(msg) {
     const el = document.getElementById("cex-cidades");
-    if (!_cexCidades) el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    if (!_cexCidades) el.innerHTML = skLogo();
     fetch(`${_CEX_API()}/cidades-usuario?transportadora=${_cexTransp}`, { headers: _cexHeaders() })
     .then(r => r.json())
     .then(d => {

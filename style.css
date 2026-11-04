@@ -4668,7 +4668,7 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 }
 .xm-carregando::before {
     content: "";
-    width: 120px; height: 64px;
+    width: 100px; height: 53px;
     background: url("img/xm-carregando.png") center / contain no-repeat;
     opacity: 0.35; /* parada (menos movimento); animando, o @keyframes manda */
     animation: xm-quica 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
@@ -4676,15 +4676,18 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 .xm-carregando > span {
     font-size: 13px; font-weight: 500; letter-spacing: 0.04em;
     color: #8b9ab0;
-    animation: xm-respira 1.6s ease-in-out infinite;
+    animation: xm-respira 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
 }
+/* Mesmo ciclo e curva da logo: acende quando ela pousa (38%) e apaga junto (90%→100%). */
 @keyframes xm-respira {
-    0%, 100% { opacity: 0.45; }
-    50%      { opacity: 1; }
+    0%   { opacity: 0.3; }
+    38%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { opacity: 0.3; }
 }
 /* Compacto: modal, popover, linha de tabela. */
 .xm-carregando-p { min-height: 96px; gap: 8px; border-radius: 8px; }
-.xm-carregando-p::before { width: 56px; height: 30px; }
+.xm-carregando-p::before { width: 48px; height: 26px; }
 .xm-carregando-p > span { font-size: 12px; }
 /* Quem pediu menos movimento no sistema fica com a logo parada. */
 @media (prefers-reduced-motion: reduce) {

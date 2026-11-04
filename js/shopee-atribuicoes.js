@@ -305,7 +305,7 @@ function _scaCarregarFaltantes(silencioso) {
     if (!_scaSessao) return;
     if (!silencioso) {
         document.getElementById("sca-tbody").innerHTML =
-            `<tr><td colspan="5" style="text-align:center;color:#8494a9;padding:26px 10px">Carregando...</td></tr>`;
+            `<tr><td colspan="5" style="padding:10px">${skLogo(true)}</td></tr>`;
     }
     fetch(`${API}/shopee/conferencia/atribuicoes/sessao/${_scaSessao.id}/faltantes`, {
         headers: { "Authorization": "Bearer " + token }
@@ -1025,7 +1025,7 @@ function _scaRenderFaltantes() {
 
     const tbody = document.getElementById("sca-tbody");
     if (!_scaFaltamCarregado) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#8494a9;padding:26px 10px">Carregando...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="padding:10px">${skLogo(true)}</td></tr>`;
         return;
     }
     if (!_scaFaltantes.length) {

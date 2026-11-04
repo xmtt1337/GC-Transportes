@@ -163,10 +163,7 @@ function _bipTextoFala(data) {
 }
 
 function _bipLoadingHtml() {
-    return `<div class="bip-loading">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Buscando...
-    </div>`;
+    return skLogo(true, "Buscando");
 }
 
 function _bipErroHtml(msg) {

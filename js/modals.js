@@ -344,7 +344,7 @@ function _baixarPainelAdminPDF() {
     // Overlay de loading
     const overlay = document.createElement("div");
     overlay.style.cssText = "position:fixed;inset:0;background:rgba(7,9,14,0.88);display:flex;align-items:center;justify-content:center;z-index:9998;font-family:Inter,sans-serif";
-    overlay.innerHTML = `<div style="text-align:center;color:#f1f5f9"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto 10px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div style="font-size:14px;font-weight:600">Gerando PDF...</div></div>`;
+    overlay.innerHTML = `<div style="width:min(420px,90vw)">${skLogo(false, "Gerando PDF")}</div>`;
     document.body.appendChild(overlay);
 
     // Conteúdo posicionado no viewport (z-index 1, atrás do overlay)

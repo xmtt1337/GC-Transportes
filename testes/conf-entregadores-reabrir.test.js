@@ -13,6 +13,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const SK_LOGO = require("./_sk-logo");
 
 const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "shopee-conf-entregadores.js"), "utf8") +
     "\n;globalThis.__sce = { _sceRenderDetalhe, _sceReabrir, set det(v) { _sceDet = v; }, set lista(v) { _sceLista = v; } };";
@@ -36,6 +37,7 @@ function carregar({ role, resposta = { success: true } }) {
     });
     ctx.globalThis = ctx;
     ctx.window = { _gcUser: role ? { role } : null };
+    vm.runInContext(SK_LOGO, ctx);
     vm.runInContext(fonte, ctx, { filename: "shopee-conf-entregadores.js" });
     return { api: ctx.__sce, els, chamadas, avisos };
 }

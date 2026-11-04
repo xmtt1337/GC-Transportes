@@ -180,7 +180,7 @@ function _enrAlternarEntregador(nome) {
 // Bloco sem dado ainda: "carregando" ou o erro com o botão de tentar de novo.
 // A consulta do dia é pesada e pode levar alguns segundos — sem este aviso o
 // bloco ficava em branco e parecia que a tela simplesmente não tinha a função.
-function _enrAviso(texto, comBotao) {
+function _enrAviso(texto, comBotao, carregando) {
     const el = document.getElementById("home-na-rua");
     if (!el) return;
     el.innerHTML = `
@@ -189,7 +189,7 @@ function _enrAviso(texto, comBotao) {
                 <span class="enr-titulo">Na rua hoje</span>
                 ${comBotao ? `<button type="button" class="enr-recarregar" onclick="_enrCarregar()">Tentar de novo</button>` : ""}
             </div>
-            <div class="enr-aviso">${_enrEsc(texto)}</div>
+            ${carregando ? skLogo(true, _enrEsc(texto)) : `<div class="enr-aviso">${_enrEsc(texto)}</div>`}
         </section>`;
 }
 
@@ -201,7 +201,7 @@ function _enrCarregar() {
     if (!el || _enrCarregando) return;
     _enrCarregando = true;
     if (_enrDados) _enrRender();
-    else _enrAviso("Carregando seus pedidos de hoje…", false);
+    else _enrAviso("Carregando seus pedidos de hoje", false, true);
 
     fetch(`${API}/entregador/na-rua`, { headers: { "Authorization": "Bearer " + localStorage.getItem("token") } })
         .then(r => r.json())

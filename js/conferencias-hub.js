@@ -53,7 +53,7 @@ function _chubPintarCarregando() {
     const lista = document.getElementById("alim-lista");
     if (!empty || !lista) return;
     empty.style.display = "";
-    empty.innerText = "Carregando...";
+    empty.innerHTML = skLogo(true);
     lista.style.display = "none";
 }
 

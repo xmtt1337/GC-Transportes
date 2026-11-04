@@ -847,7 +847,7 @@ function _wacDiaSeparador(data) {
 // silencioso: recarrega sem piscar "Carregando..." (usado pelo auto-refresh)
 function _wacCarregarConversa(silencioso) {
     const body = document.getElementById("wac-chat-body");
-    if (!silencioso) body.innerHTML = `<div style="text-align:center;color:#8494a9;font-size:13px;padding:20px">Carregando...</div>`;
+    if (!silencioso) body.innerHTML = skLogo(true);
 
     return fetch(`${API}/admin/whatsapp/conversa/${_wacNumeroAtual}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())

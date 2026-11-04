@@ -182,7 +182,7 @@ function _fxAbrirFonte() {
     const el = document.getElementById("fx-fonte");
     if (el.style.display !== "none") { el.style.display = "none"; return; }
     el.style.display = "";
-    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    el.innerHTML = skLogo();
     fetch(`${_FX_API()}/extravios-fonte`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
     .then(f => {

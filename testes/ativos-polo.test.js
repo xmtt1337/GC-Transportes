@@ -18,6 +18,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const SK_LOGO = require("./_sk-logo");
 
 const ler = (nome) => fs.readFileSync(path.join(__dirname, "..", "js", nome), "utf8");
 const fontePolo = ler("shopee-polo.js");
@@ -104,6 +105,7 @@ function carregar({ polo = null, conversas } = {}) {
     gcAlert() {},
     skMostrar() {}, skFim: (_, msg) => chamadas.vazios.push(msg), mostrarTela() {},
   });
+  vm.runInContext(SK_LOGO, ctx);
   vm.runInContext(ESTILOS, ctx);
   vm.runInContext(fontePolo, ctx, { filename: "shopee-polo.js" });
   vm.runInContext(fonteConversa + ACESSOR, ctx, { filename: "whatsapp-conversa.js" });

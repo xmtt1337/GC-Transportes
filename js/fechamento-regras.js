@@ -71,7 +71,7 @@ function abrirRegrasFechamento(event) {
 function _rgCarregar(msg) {
     const el = document.getElementById("rg-conteudo");
     if (!el) return;
-    if (!_rgDados) el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    if (!_rgDados) el.innerHTML = skLogo();
     fetch(`${_RG_API()}/regras`, { headers: _rgHeaders() })
     .then(r => r.json())
     .then(d => {

@@ -143,7 +143,7 @@ function _processarNota(input) {
 
 async function _processarNotaFile(file) {
     const area = document.getElementById("nota-upload-area");
-    area.innerHTML = `<div class="nota-loading">Lendo PDF…</div>`;
+    area.innerHTML = skLogo(true, "Lendo PDF");
     try {
         const buf = await file.arrayBuffer();
         let text = "";

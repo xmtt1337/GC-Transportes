@@ -123,7 +123,7 @@ function _cadAbrirAcessos(id, nome) {
     overlay.setAttribute("style", _gcOverlayStyle);
     overlay.innerHTML = `<div class="cad-acessos-card" style="${_gcCardStyle};max-width:860px">
         <div style="${_gcTitleStyle}">Acessos de ${_cadEsc(nome)}</div>
-        <div class="cad-acessos-corpo">Carregando...</div>
+        <div class="cad-acessos-corpo">${skLogo(true)}</div>
         <div style="${_gcBtnsStyle};margin-top:16px"><button data-fechar style="${_gcBtnOkStyle}">Fechar</button></div>
     </div>`;
     const fechar = () => overlay.remove();

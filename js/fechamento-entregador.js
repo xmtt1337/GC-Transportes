@@ -86,7 +86,7 @@ function _fsDesenhar() {
     const topo = `<div class="fs-visao">${visao("geral", "Geral")}${visao("usuario", "Por usuário")}</div>`;
     if (_fsVisao === "geral") { el.innerHTML = topo + _fsHtmlGeral(_fsDados); return; }
     if (_fsPedidos) { el.innerHTML = topo + _fsHtmlPorUsuario(); return; }
-    el.innerHTML = topo + `<div class="extr-vazio" id="fs-usuario">Carregando os pedidos...</div>`;
+    el.innerHTML = topo + `<div id="fs-usuario">${skLogo(true, "Carregando os pedidos")}</div>`;
     _fsCarregarPedidos().then(() => { if (_fsVisao === "usuario") _fsDesenhar(); }).catch(err => {
         const e = document.getElementById("fs-usuario");
         if (e && _fsVisao === "usuario") e.innerHTML = _fsEsc(err.message || "Erro ao carregar os pedidos.");
@@ -433,7 +433,7 @@ function _fsMostrarDia(dia, aba) {
     const abas = [["entregues", "Entregues", porUsuario ? listaE.length : entregues], ["atrasados", "Atrasados e onholds", listaA.length], ["pnr", "PNR abertas", listaP.length]];
     const linhas = aba === "entregues" ? listaE : aba === "pnr" ? listaP : listaA;
     const cards = linhas.map(aba === "entregues" ? _fsCardEntregue : _fsCardOcorrencia);
-    const corpo = esperando ? `<div class="extr-vazio">Carregando os pedidos...</div>`
+    const corpo = esperando ? skLogo(true, "Carregando os pedidos")
         : cards.length ? cards.join("") : `<div class="extr-vazio">Nenhum pedido nesta aba.</div>`;
     document.querySelector("#fs-modal .fs-modal").innerHTML = `
         <div class="fs-modal-topo"><span></span>

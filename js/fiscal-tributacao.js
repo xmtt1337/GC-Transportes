@@ -236,7 +236,7 @@ async function abrirFiscalConfigTributaria(event) {
 
     mostrarTela("tela-fiscal-tributacao");
     const area = document.getElementById("fiscal-tributacao-conteudo");
-    area.innerHTML = "<p class='carregando'>Carregando configuração fiscal…</p>";
+    area.innerHTML = skLogo(false, "Carregando configuração fiscal");
 
     try {
         const r = await fetch(`${API}/fiscal/empresas/${empresaId}/tributacao`, {

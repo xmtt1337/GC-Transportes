@@ -21,6 +21,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const SK_LOGO = require("./_sk-logo");
 
 const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "whatsapp-conversa.js"), "utf8");
 const indexHtml = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
@@ -89,6 +90,7 @@ function carregar(respostaConversas = []) {
     skMostrar() {}, skFim(elemento, msg) { elemento.innerHTML = msg; }, mostrarTela() {},
     _rotaAtualizarUrl() {},
   });
+  vm.runInContext(SK_LOGO, ctx);
   vm.runInContext(STUBS, ctx);
   vm.runInContext(fonte + ACESSOR, ctx, { filename: "whatsapp-conversa.js" });
 

@@ -18,7 +18,7 @@ async function abrirFiscalCertificado(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-fiscal-certificado");
     const area = document.getElementById("fiscal-certificado-conteudo");
-    area.innerHTML = "<p class='carregando'>Carregando certificado…</p>";
+    area.innerHTML = skLogo(false, "Carregando certificado");
     try {
         const [s, p] = await Promise.all([
             _cteApi("/fiscal/certificado"),

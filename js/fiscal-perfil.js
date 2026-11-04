@@ -34,7 +34,7 @@ async function abrirFiscalPerfil(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-fiscal-perfil");
     const area = document.getElementById("fiscal-perfil-conteudo");
-    area.innerHTML = "<p class='carregando'>Carregando perfil…</p>";
+    area.innerHTML = skLogo(false, "Carregando perfil");
     try {
         const r = await _cteApi("/fiscal/perfil-operacao");
         _perfilAtual = (r.perfis || [])[0] || null;
@@ -168,7 +168,7 @@ async function buscarCnpjTomador() {
         alvo.innerHTML = `<div class="aviso-bloqueio">CNPJ precisa ter 14 dígitos.</div>`;
         return;
     }
-    alvo.innerHTML = "<p class='carregando'>Consultando a Receita…</p>";
+    alvo.innerHTML = skLogo(true, "Consultando a Receita");
     try {
         const d = await _cteApi(`/fiscal/cnpj/${cnpj}`);
         const por = {
@@ -210,7 +210,7 @@ async function salvarPerfilOperacao() {
         alvo.innerHTML = `<div class="aviso-bloqueio">Preencha ao menos um campo.</div>`;
         return;
     }
-    alvo.innerHTML = "<p class='carregando'>Salvando…</p>";
+    alvo.innerHTML = skLogo(true, "Salvando");
     try {
         await _cteApi("/fiscal/perfil-operacao", {
             method: "POST",

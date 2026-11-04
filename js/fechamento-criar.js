@@ -230,7 +230,7 @@ function _cfAbrirTicketlog() {
 function _cfCarregarTicketlog(msg) {
     const el = document.getElementById("cf-ticketlog");
     if (!_cfQuinzena) { el.innerHTML = `<div class="cft-ajuda">Escolha a quinzena primeiro.</div>`; return; }
-    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    el.innerHTML = skLogo();
     const ehDev = window._gcUser && window._gcUser.role === "dev";
     fetch(`${_CF_API()}/ticketlog?${_cfQs()}`, { headers: _cfHeaders() })
     .then(r => r.json())
@@ -413,7 +413,7 @@ function _cfAbrirFixos() {
 
 function _cfCarregarFixos(msg) {
     const el = document.getElementById("cf-fixos");
-    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    el.innerHTML = skLogo();
     Promise.all([
         fetch(`${_CF_API()}/valores-fixos`, { headers: _cfHeaders() }).then(r => r.json()),
         _cfEntregadores ? Promise.resolve(_cfEntregadores)
@@ -765,7 +765,7 @@ function _cfCarregarPerformance() {
     const key = _cfTranspAtual;
     const el = document.getElementById("cf-perf");
     if (!el) return;
-    el.innerHTML = `<div class="cft-ajuda">Carregando performance...</div>`;
+    el.innerHTML = skLogo(false, "Carregando performance");
     fetch(`${_CF_API()}/performance?${_cfQs({ transportadora: key })}`, { headers: _cfHeaders() })
     .then(r => r.json())
     .then(d => {
@@ -869,7 +869,7 @@ function _cfAlternarInsucessos(i) {
     const l = _cfPerfVisiveis[i];
     const det = document.createElement("tr");
     det.id = "cf-perf-d" + i;
-    det.innerHTML = `<td colspan="10" style="background:rgba(255,255,255,0.02);padding:8px 14px"><span class="cft-ajuda">Carregando...</span></td>`;
+    det.innerHTML = `<td colspan="10" style="background:rgba(255,255,255,0.02);padding:8px 14px">${skLogo(true)}</td>`;
     tr.after(det);
     if (seta) seta.innerText = "▾";
     fetch(`${_CF_API()}/performance/insucessos?${_cfQs({ driver: l.driver, dia: l.dia })}`, { headers: _cfHeaders() })
@@ -892,7 +892,7 @@ function _cfCarregarDetalhe() {
     const key = _cfTranspAtual;
     const reqId = _cfReqId;
     const det = document.getElementById("cf-detalhe");
-    det.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    det.innerHTML = skLogo(true);
     fetch(`${_CF_API()}/lote?${_cfQs({ transportadora: key })}`, { headers: _cfHeaders() })
     .then(r => r.json())
     .then(d => {
@@ -1087,7 +1087,7 @@ function _cfAbrirConvCidades() {
 
 function _cfCarregarConvCidades(msg) {
     const el = document.getElementById("cf-cidades");
-    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    el.innerHTML = skLogo();
     fetch(`${_CF_API()}/cidades-conversao?transportadora=loggi`, { headers: _cfHeaders() })
     .then(r => r.json())
     .then(d => {
@@ -1256,7 +1256,7 @@ function _cfMostrarCidades(id, url, titulo, vazio) {
     const el = document.getElementById(id);
     if (!el) return;
     el.dataset.url = url;
-    el.innerHTML = `<div class="cft-ajuda">${titulo}: carregando...</div>`;
+    el.innerHTML = skLogo(true, `${titulo}: carregando`);
     fetch(url, { headers: _cfHeaders() })
     .then(r => r.json())
     .then(d => {
@@ -1282,7 +1282,7 @@ function _cfBuscarEntregador(q) {
     const ent = document.getElementById("cf-conv-cidades-ent");
     if (ent) { ent.innerHTML = ""; ent.dataset.url = ""; }
     if (!_cfEntregadores) {
-        el.innerHTML = `<div class="cft-ajuda" style="padding:6px 2px">Carregando entregadores...</div>`;
+        el.innerHTML = skLogo(true, "Carregando entregadores");
         fetch(`${_CF_API()}/entregadores`, { headers: _cfHeaders() })
         .then(r => r.json())
         .then(d => {
@@ -1705,7 +1705,7 @@ function _cfAbrirColunas(key) {
     if (!key && el.style.display !== "none") { el.style.display = "none"; return; }
     el.style.display = "";
     const transp = key || (_cfColCfg && _cfColCfg.transp) || _cfTranspAtual || _CF_TRANSPORTADORAS[0].key;
-    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    el.innerHTML = skLogo();
     fetch(`${_CF_API()}/colunas?transportadora=${transp}`, { headers: _cfHeaders() })
     .then(r => r.json())
     .then(d => {
@@ -1816,7 +1816,7 @@ function _cfAbrirRegras() {
     const el = document.getElementById("cf-regras");
     if (el.style.display !== "none") { el.style.display = "none"; return; }
     el.style.display = "";
-    el.innerHTML = `<div class="cft-ajuda">Carregando...</div>`;
+    el.innerHTML = skLogo();
     fetch(`${_CF_API()}/regras-prazo`, { headers: _cfHeaders() })
     .then(r => r.json())
     .then(d => {
@@ -2057,7 +2057,7 @@ let _cfMapa = null; // { transp, cabecalho, arquivo, alvo, campos, escolha: {cam
 
 async function _cfAbrirMapeamento({ transp, cabecalho, arquivo, alvo, aviso }) {
     const el = document.getElementById(alvo);
-    el.innerHTML = `<div class="cft-ajuda">Carregando colunas...</div>`;
+    el.innerHTML = skLogo(true, "Carregando colunas");
     try {
         const d = await fetch(`${_CF_API()}/colunas?transportadora=${transp}`, { headers: _cfHeaders() }).then(r => r.json());
         if (d.error) throw new Error(d.error);

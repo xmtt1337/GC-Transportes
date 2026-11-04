@@ -302,7 +302,7 @@ function _peLerArquivo(arquivo) {
 function _peAbrirGestor() {
     const overlay = document.createElement("div");
     overlay.setAttribute("style", _gcOverlayStyle);
-    overlay.innerHTML = `<div class="pe-card pe-card-gestor"><div class="pe-sub">Carregando...</div></div>`;
+    overlay.innerHTML = `<div class="pe-card pe-card-gestor">${skLogo(true)}</div>`;
     overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
     document.body.appendChild(overlay);
 

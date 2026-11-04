@@ -453,7 +453,7 @@ function _macMontarDetalhe() {
         ${hist ? `<div class="macd-bloco">
             <div class="macd-bloco-cab"><div class="macd-rotulo">Histórico recente${item.maquina ? ` · ${_macEsc(item.maquina)}` : ""}</div>
                 <button type="button" class="mac-link" onclick="_macAbrirHistorico('${_macEsc(item.qual)}')">Ver tudo</button></div>
-            <div id="macd-hist" class="mac-hist-lista macd-hist"><div class="mac-ag-vazio">Carregando...</div></div>
+            <div id="macd-hist" class="mac-hist-lista macd-hist">${skLogo(true)}</div>
         </div>` : ""}`;
     document.getElementById("macd-cab").innerHTML = _macCabecalhoHtml(item);
     document.getElementById("macd-vivo").innerHTML = _macVivoHtml(item);
@@ -765,7 +765,7 @@ function _macConfigHtml(item) {
         return `<div class="macd-bloco">
             <div class="macd-rotulo">Rodadas</div>
             <div class="macd-nota" style="margin-bottom:12px">Em cada horário, o sistema avisa quem se encaixa no critério escolhido.</div>
-            <div id="mac-rodadas-lista"><div class="mac-ag-vazio">Carregando...</div></div>
+            <div id="mac-rodadas-lista">${skLogo(true)}</div>
             <button type="button" class="mac-adicionar" onclick="_macAdicionarRodada()">+ Adicionar rodada</button>
             <div class="macd-salvar"><div class="usr-modal-error" id="mac-editar-erro"></div>
                 <button class="usr-modal-btn-primary" id="mac-editar-salvar" onclick="_macSalvar()">Salvar rodadas</button></div>
@@ -1621,7 +1621,7 @@ function _macAbrirHistorico(macro) {
     const nome = macro ? (_MAC_NOME_CURTO[macro] || macro) : "";
     document.getElementById("mac-hist-titulo").innerText = nome ? `Histórico — ${nome}` : "Histórico dos macros";
     const lista = document.getElementById("mac-hist-lista");
-    lista.innerHTML = `<div class="mac-ag-vazio">Carregando...</div>`;
+    lista.innerHTML = skLogo(true);
     _abrirModal("modal-macro-historico");
 
     const filtro = macro ? `&macro=${encodeURIComponent(macro)}` : "";

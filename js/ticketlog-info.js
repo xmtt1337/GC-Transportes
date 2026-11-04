@@ -30,7 +30,7 @@ function abrirTicketlogInfo(event) {
 
 function _tliCarregar(msg) {
     const el = document.getElementById("tli-conteudo");
-    el.innerHTML = `<div class="cft-ajuda">Carregando cartões e calculando a média dos últimos 4 meses (lê as planilhas de fechamento)...</div>`;
+    el.innerHTML = skLogo(false, "Carregando cartões e calculando a média dos últimos 4 meses");
     Promise.all([
         fetch(`${_TLI_API()}/ticketlog-cartoes`, { headers: _tliHeaders() }).then(r => r.json()),
         _tliEntregadores ? Promise.resolve(_tliEntregadores)
