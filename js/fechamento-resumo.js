@@ -128,6 +128,7 @@ function _rqRender() {
         <div class="cft-secao rq-abas">
             <a href="#" class="mex-aba" id="rq-aba-valores" onclick="event.preventDefault();_rqMudarAba('valores')">Valores por entregador</a>
             <a href="#" class="mex-aba" id="rq-aba-performance" onclick="event.preventDefault();_rqMudarAba('performance')">Performance por entregador</a>
+            <a href="#" class="mex-aba" id="rq-aba-cheio" onclick="event.preventDefault();_rqMudarAba('cheio')">Do cheio ao líquido</a>
         </div>
         <div class="cft-barra" style="justify-content:space-between;margin-top:0">
             <span class="cft-ajuda">Use o funil de cada coluna pra filtrar e ordenar.
@@ -171,7 +172,8 @@ function _rqRender() {
             Líquido = bruto + acréscimos − Ticketlog − extravios − descontos. Extravios: planilha de extravios, linhas com "Data desconto" = ${_rqEsc(d.codigo_quinzena || "")}.
             Acréscimos e descontos: Fechamento › Acréscimos e Descontos. Deslocamento: Fechamento › Deslocamentos. Clique no título da coluna pra ordenar.</div>
         </div>
-        <div id="rq-painel-performance" style="display:none"></div>`;
+        <div id="rq-painel-performance" style="display:none"></div>
+        <div id="rq-painel-cheio" style="display:none"></div>`;
     _rqRenderTabela();
     _rqRenderCidades();
     _rqRenderAbas();
@@ -182,11 +184,12 @@ function _rqRender() {
 // as transportadoras, só nos polos da regra) somada por entregador. Lida uma vez por quinzena.
 function _rqMudarAba(a) { _rqAba = a; _rqRenderAbas(); }
 function _rqRenderAbas() {
-    for (const a of ["valores", "performance"]) {
+    for (const a of ["valores", "performance", "cheio"]) {
         document.getElementById("rq-aba-" + a).classList.toggle("ativa", _rqAba === a);
         document.getElementById("rq-painel-" + a).style.display = _rqAba === a ? "" : "none";
     }
     if (_rqAba === "performance") _rqCarregarPerf();
+    if (_rqAba === "cheio") _chCarregar();
 }
 
 async function _rqCarregarPerf() {
@@ -586,8 +589,16 @@ function _rqExtraviosSemConversao(d) {
     const sem = (d.extravios_linhas || []).filter(e => e.sem_conversao);
     if (!sem.length) return "";
     const nomes = [...new Set(sem.map(e => e.responsavel || "(sem responsável)"))];
-    return `<li><b>${sem.length} extravio(s) com responsável sem conversão</b>
-        (R$ ${_rqNum(sem.reduce((s, e) => s + e.valor, 0))}): ${_rqEsc(nomes.join(", "))}.</li>`;
+    return `<li><details><summary style="cursor:pointer"><b>${sem.length} extravio(s) com responsável sem conversão</b>
+        (R$ ${_rqNum(sem.reduce((s, e) => s + e.valor, 0))}): ${_rqEsc(nomes.join(", "))}. <span class="cft-link">Ver quais</span></summary>
+        <div class="cft-tabela-wrap" style="margin:8px 0 4px;max-height:320px;overflow-y:auto"><table class="cft-tabela">
+            <thead><tr><th>Responsável na planilha</th><th>Transportadora</th><th>Código</th><th>Data</th><th>Status</th><th>Causa</th><th>Valor</th></tr></thead>
+            <tbody>${sem.slice().sort((x, y) => String(x.responsavel || "").localeCompare(String(y.responsavel || ""), "pt-BR")).map(e => `<tr>
+                <td>${e.responsavel ? _rqEsc(e.responsavel) : '<span class="cft-vazio">(sem responsável)</span>'}</td><td>${_rqEsc(e.transportadora || "")}</td>
+                <td>${_rqEsc(e.codigo || "")}</td><td>${_rqEsc(e.data || "")}</td><td>${_rqEsc(e.status || "")}</td><td>${_rqEsc(e.causa || "")}</td>
+                <td class="num">${_rqNum(e.valor)}</td></tr>`).join("")}</tbody>
+        </table></div>
+        <div class="cft-ajuda">Corrija o nome na planilha de extravios ou cadastre na Conversão de nomes (Usuário → Entregador).</div></details></li>`;
 }
 
 // Quem tem desconto/ajuste mas nenhum pacote na quinzena não entra na lista nem nos totais.

@@ -6886,3 +6886,11 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
     .cnfs-nf-linha { flex-direction: column; align-items: flex-start; gap: 0; }
     .cnfs-nf-linha:not(:last-child) { margin-bottom: 6px; }
 }
+
+/* Resumo da Quinzena › Do cheio ao líquido (js/fechamento-cheio.js) */
+.ch-cascata { max-width: 460px; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 6px 14px; margin-top: 10px; }
+.ch-linha { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; padding: 5px 0; font-size: 13px; color: #cbd5e1; font-variant-numeric: tabular-nums; }
+.ch-linha.ch-total { border-top: 1px solid rgba(255,255,255,0.07); font-weight: 600; color: #f1f5f9; }
+.ch-linha.ch-total:first-child { border-top: 0; }
+.ch-sinal { color: #717f95; text-align: center; }
+.ch-val { text-align: right; }

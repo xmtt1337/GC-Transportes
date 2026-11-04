@@ -51,3 +51,16 @@ test("Terceirizada: botão Liberar fechamento / Tirar a liberação conforme a q
     assert.match(ctx._tvHtml(base), /coletas \(3 × R\$\s*2,00\)/);
     assert.match(ctx._tvHtml({ ...base, publicado_em: "2026-11-04T12:00:00Z" }), /Tirar a liberação/);
 });
+
+test("Check List: grupos com pendência abrem a lista; sem pendência vira 'Tudo certo'", () => {
+    const ctx = carregar("fechamento-checklist.js");
+    const html = ctx._ckHtml({ codigo_quinzena: "Q2Out", pendencias: 2, grupos: [
+        { chave: "relatorios", titulo: "Relatórios que faltam", onde: "Criar Fechamento", colunas: ["Relatório", "Onde anexar"], itens: [["Ticketlog", "Criar Fechamento › Descontos: Ticketlog"]] },
+        { chave: "login_sem_conversao", titulo: "Login sem conversão de nome", onde: "Conversões", colunas: ["Login", "Transportadora", "Pacotes"], itens: [["login.teste", "Anjun", 1234]] },
+        { chave: "sem_cadastro", titulo: "Entregador do fechamento sem login no sistema", onde: "Cadastros", colunas: ["Entregador", "Situação"], itens: [] },
+    ] });
+    assert.match(html, /2 pendência\(s\)<\/b> em 2 grupo\(s\) na Q2Out/);
+    assert.match(html, /<td>1\.234<\/td>/);
+    assert.match(html, /Sem pendência: Entregador do fechamento sem login no sistema/);
+    assert.match(ctx._ckHtml({ codigo_quinzena: "Q1Out", pendencias: 0, grupos: [] }), /Tudo certo/);
+});

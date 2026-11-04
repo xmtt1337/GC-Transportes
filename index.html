@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261104e">
+<link rel="stylesheet" href="style.css?v=20261104f">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -463,6 +463,7 @@ if (_BASE) {
             <li><a href="#" data-rota="Fechamento/Extravios" onclick="abrirExtraviosFechamento(event)">Fechamento de Extravios</a></li>
             <li><a href="#" data-rota="Fechamento/Regras" onclick="abrirRegrasFechamento(event)">Regras e configurações</a></li>
             <li><a href="#" data-rota="Fechamento/Conversoes" onclick="abrirConversoes(event)">Conversões</a></li>
+            <li><a href="#" data-rota="Fechamento/CheckList" onclick="abrirChecklistFechamento(event)">Check List</a></li>
         </ul>
 
         <!-- Financeiro e Fiscal: quem é de finance/dev vê tudo; o admin vê só a Consulta de NFs,
@@ -4774,7 +4775,7 @@ if (_BASE) {
 
 <script src="js/core.js?v=20261104c"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261104b"></script>
+<script src="js/router.js?v=20261104c"></script>
 <script src="js/sidebar.js?v=20261103f"></script>
 <script src="js/nav.js?v=20261103b"></script>
 <script src="js/atendimento.js?v=20261104c"></script>
@@ -4808,7 +4809,9 @@ if (_BASE) {
 <script src="js/alimentar.js?v=30260812d"></script>
 <script src="js/fechamento-criar.js?v=20261104e"></script>
 <script src="js/ticketlog-info.js?v=20261104c"></script>
-<script src="js/fechamento-resumo.js?v=20261104d"></script>
+<script src="js/fechamento-resumo.js?v=20261104e"></script>
+<script src="js/fechamento-cheio.js?v=20261104a"></script>
+<script src="js/fechamento-checklist.js?v=20261104a"></script>
 <script src="js/fechamento-ajustes.js?v=20261104c"></script>
 <script src="js/fechamento-coletas.js?v=20261104a"></script>
 <script src="js/fechamento-terceirizada.js?v=20261104b"></script>
@@ -5189,6 +5192,13 @@ if (_BASE) {
         <div id="aj-conteudo"></div>
     </div>
 </div><!-- /tela-ajustes-fechamento -->
+
+<!-- TELA FECHAMENTO › CHECK LIST — js/fechamento-checklist.js -->
+<div id="tela-checklist-fechamento" class="view tela-full">
+    <div class="fech-body">
+        <div id="ck-conteudo"></div>
+    </div>
+</div>
 
 <!-- TELA FECHAMENTO › COLETAS — js/fechamento-coletas.js -->
 <div id="tela-coletas-fechamento" class="view tela-full">
