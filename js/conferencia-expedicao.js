@@ -13,6 +13,7 @@
 // transportadora nova = relatório dela em relatorios.js + entrada em _CEX_NOMES.
 const _CEX_API = () => `${API}/admin/conferencia-expedicao`;
 const _CEX_NOMES = { anjun: "Anjun" };
+const _CEX_LOGOS = { anjun: "img/Transportadoras/Anjun.branco.png" };
 const _CEX_STATUS = {
     fora_abrangencia:   { rotulo: "Fora de abrangência", classe: "cft-aviso" },
     sem_entregador:     { rotulo: "Sem atribuição",   classe: "cft-neg" },
@@ -51,7 +52,10 @@ function abrirConfExpedicao(event, transportadora) {
     _cexCidades = null;
     _cexDia = null;
     const nome = _CEX_NOMES[_cexTransp] || _cexTransp;
-    document.getElementById("cex-titulo").innerText = "Conferência — " + nome;
+    const logo = _CEX_LOGOS[_cexTransp];
+    document.getElementById("cex-titulo").innerHTML = logo
+        ? `<img src="${logo}" alt="${_cexEsc(nome)}" class="cex-logo"><span>Conferência</span>`
+        : "Conferência — " + _cexEsc(nome);
     mostrarTela("tela-conf-expedicao", "Conferencias/" + nome);
     document.getElementById("titulo-pagina").innerText = "Conferência — " + nome;
     _cexAbrirAba(_cexAba);
@@ -149,6 +153,7 @@ function _cexRender(msg) {
     if (comErro.length) grupos.push(`<div class="cft-pend-grupo"><b>Login com pacote de cidade que ele não faz</b> — confira a atribuição, ou clique no nome se a cidade for dele mesmo:<div class="cft-pend-tags">${comErro.map(u => tag(u, u.erradas)).join("")}</div></div>`);
 
     el.innerHTML = `
+        <div class="cex-conf" id="cex-conf"></div>
         <div class="nr-tiles" id="cex-tiles" style="margin-bottom:18px"></div>
         <!-- Um card por conferência: a pizza diz QUANTO está certo; a barra ao lado, ONDE/QUEM falta. -->
         <div class="nr-graficos cex-graficos">
@@ -183,8 +188,7 @@ function _cexRender(msg) {
                     <div class="nr-grafico-area cex-rosca"><canvas id="cex-gr-abr"></canvas><div class="cex-centro" id="cex-gr-abr-centro"></div></div>
                     <div>
                         <div class="cex-par-sub" title="Cidades que nenhum login desta transportadora faz">Fora de abrangência por cidade</div>
-                        <div class="nr-grafico-area cex-barras"><canvas id="cex-gr-fora"></canvas>
-                            <div class="nr-grafico-vazio" id="cex-gr-fora-vazio" style="display:none">Todos os pacotes são de cidades que a gente atende.</div></div>
+                        <div class="cex-lista" id="cex-fora"></div>
                     </div>
                 </div>
             </div>
@@ -244,21 +248,35 @@ function _cexGraficar() {
     // precisa voltar pra transportadora — ou a cidade entrar na lista de algum login.
     _cexRosca("abr", [["Na abrangência", nossos, _CEX_CORES.ok], ["Fora de abrangência", r.fora_abrangencia, _CEX_CORES.fora_abrangencia]],
         nossos, r.total, "na abrangência", false);
+    // Lista em vez de barra: costuma ser 1 pacote por cidade, e barras todas iguais não dizem nada.
     const fora = new Map();
-    pacotes.filter(p => p.status === "fora_abrangencia").forEach(p => fora.set(p.cidade, (fora.get(p.cidade) || 0) + 1));
-    _cexBarras("fora", [...fora.entries()].sort((a, b) => b[1] - a[1]).slice(0, _CEX_MAX_BARRAS).map(([c, n]) => ({ rotulo: c, fora_abrangencia: n })),
-        [["fora_abrangencia", "Fora de abrangência"]]);
+    pacotes.filter(p => p.status === "fora_abrangencia").forEach(p => {
+        const c = String(p.cidade || "").trim() || "(sem cidade)";
+        fora.set(c, (fora.get(c) || 0) + 1);
+    });
+    const cidadesFora = [...fora.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"));
+    const elFora = document.getElementById("cex-fora");
+    const limite = _CEX_MAX_BARRAS * 2;
+    if (elFora) elFora.innerHTML = !cidadesFora.length
+        ? `<div class="cft-ajuda">Todos os pacotes são de cidades que a gente atende.</div>`
+        : cidadesFora.slice(0, limite).map(([c, n]) => `<div class="cex-lista-item" title="${_cexEsc(c)}"><span>${_cexEsc(c)}</span><b>${_cexNum(n)}</b></div>`).join("")
+          + (cidadesFora.length > limite ? `<div class="cex-lista-item cft-ajuda">+${cidadesFora.length - limite} cidades</div>` : "");
+}
+
+// Arredonda pra baixo: 99,996% não pode aparecer como 100% se ainda tem pacote pendente.
+// O 1e-9 evita o erro de ponto flutuante (99,02 * 100 = 9901,999...).
+function _cexPct(feitos, total) {
+    if (!total) return "—";
+    if (feitos === total) return "100%";
+    return (Math.floor(feitos / total * 10000 + 1e-9) / 100)
+        .toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
 }
 
 // meta = o % tem que chegar a 100 (verde só lá; abaixo, vermelho). Sem meta o número fica neutro.
 function _cexRosca(id, fatias, feitos, total, rotulo, meta = true) {
     const leg = document.getElementById(`cex-gr-${id}-leg`);
     if (leg) leg.innerHTML = fatias.map(([n, v, cor]) => `<span class="nr-leg"><i style="background:${cor}"></i>${n} ${_cexNum(v)}</span>`).join("");
-    const pct = total ? feitos / total * 100 : 100;
-    // Arredonda pra baixo: 99,996% não pode aparecer como 100% se ainda tem pacote pendente.
-    // O 1e-9 evita o erro de ponto flutuante (99,02 * 100 = 9901,999...).
-    const txt = !total ? "—" : feitos === total ? "100%" : (Math.floor(pct * 100 + 1e-9) / 100)
-        .toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+    const txt = _cexPct(feitos, total);
     const centro = document.getElementById(`cex-gr-${id}-centro`);
     if (centro) centro.innerHTML = `<div class="cex-centro-valor" style="color:${!meta ? "#cbd5e1" : feitos === total ? _CEX_CORES.ok : _CEX_CORES.sem_entregador}">${txt}</div>
         <div class="cex-centro-rotulo">${rotulo}</div>`;
@@ -326,14 +344,28 @@ function _cexFiltrados() {
 
 function _cexPintarTabela() {
     const r = (_cexDados && _cexDados.resumo) || {};
+    // Conformidade: pacote nosso (dentro da abrangência) atribuído pro login certo. Meta 100%.
+    // Clicar filtra a tabela pelo que falta.
+    const nossos = r.total - r.fora_abrangencia;
+    const faltam = nossos - r.ok;
+    const segs = [["ok", r.ok], ["sem_entregador", r.sem_entregador], ["cidade_errada", r.cidade_errada],
+        ["usuario_sem_cidade", r.usuario_sem_cidade], ["sem_cidade", r.sem_cidade]].filter(([, n]) => n);
+    const fc = document.getElementById("cex-conf");
+    if (fc) fc.innerHTML = `
+        <div class="cex-conf-topo${_cexFiltro === "pend" ? " sel" : ""}" onclick="_cexFiltro='pend';_cexPintarTabela()" title="Clique pra ver só o que falta">
+            <span class="cex-conf-rotulo">Conformidade</span>
+            <b style="color:${faltam ? _CEX_CORES.sem_entregador : _CEX_CORES.ok}">${_cexPct(r.ok, nossos)}</b>
+            <span class="cft-ajuda">${_cexNum(r.ok)} de ${_cexNum(nossos)} atribuídos certo${faltam ? ` · faltam ${_cexNum(faltam)}` : ""} · meta 100%</span>
+        </div>
+        <div class="cex-conf-barra">${nossos ? segs.map(([k, n]) =>
+            `<i style="width:${n / nossos * 100}%;background:${_CEX_CORES[k]}" title="${_CEX_STATUS[k].rotulo}: ${_cexNum(n)}"></i>`).join("") : ""}</div>`;
+
     // Tiles = filtro da tabela (mesmo jeito do Backlog da Shopee).
-    const pend = r.total - r.ok;
-    const tiles = [["todos", "Pacotes", r.total, ""], ["pend", "Pendentes", pend, pend ? _CEX_CORES.sem_entregador : _CEX_CORES.ok],
+    const tiles = [["todos", "Pacotes", r.total, ""],
         ["fora_abrangencia", "Fora de abrangência", r.fora_abrangencia, _CEX_CORES.fora_abrangencia],
         ["sem_entregador", "Sem atribuição", r.sem_entregador, _CEX_CORES.sem_entregador],
         ["cidade_errada", "Cidade errada", r.cidade_errada, _CEX_CORES.cidade_errada],
-        ["usuario_sem_cidade", "Login sem cidade", r.usuario_sem_cidade, _CEX_CORES.usuario_sem_cidade],
-        ["sem_cidade", "Pacote sem cidade", r.sem_cidade, _CEX_CORES.sem_cidade], ["ok", "Atribuídos certo", r.ok, _CEX_CORES.ok]]
+        ["sem_cidade", "Pacote sem cidade", r.sem_cidade, _CEX_CORES.sem_cidade]]
         .filter(([k, , n]) => n || !["sem_cidade", "fora_abrangencia"].includes(k));
     const ft = document.getElementById("cex-tiles");
     if (ft) ft.innerHTML = tiles.map(([k, nome, n, cor]) => `
