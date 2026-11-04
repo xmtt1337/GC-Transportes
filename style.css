@@ -4649,33 +4649,46 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
    celular saía desenhada pela metade. */
 @keyframes xm-quica {
     0%   { transform: translateY(-70%); opacity: 0; }
-    38%  { transform: translateY(0);    opacity: 1; }
+    38%  { transform: translateY(0);    opacity: 0.35; }
     48%  { transform: translateY(-16%); }
     56%  { transform: translateY(0); }
     63%  { transform: translateY(-6%); }
     69%  { transform: translateY(0); }
-    90%  { transform: translateY(0);    opacity: 1; }
+    90%  { transform: translateY(0);    opacity: 0.35; }
     100% { transform: translateY(0);    opacity: 0; }
 }
+/* Estica até o fim da tela (sem ser camada fixa por cima: tela que esquecesse de
+   tirar o carregando travaria o site inteiro). */
 .xm-carregando {
-    display: flex; align-items: center; justify-content: center;
-    min-height: 260px;
-    background: rgba(148,163,184,0.06);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px;
+    min-height: max(320px, calc(100dvh - 230px));
+    background: rgba(148,163,184,0.05);
     border-radius: 12px;
 }
 .xm-carregando::before {
     content: "";
     width: 120px; height: 64px;
     background: url("img/xm-carregando.png") center / contain no-repeat;
-    opacity: 0.9;
+    opacity: 0.35; /* parada (menos movimento); animando, o @keyframes manda */
     animation: xm-quica 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
 }
+.xm-carregando > span {
+    font-size: 13px; font-weight: 500; letter-spacing: 0.04em;
+    color: #8b9ab0;
+    animation: xm-respira 1.6s ease-in-out infinite;
+}
+@keyframes xm-respira {
+    0%, 100% { opacity: 0.45; }
+    50%      { opacity: 1; }
+}
 /* Compacto: modal, popover, linha de tabela. */
-.xm-carregando-p { min-height: 72px; border-radius: 8px; }
+.xm-carregando-p { min-height: 96px; gap: 8px; border-radius: 8px; }
 .xm-carregando-p::before { width: 56px; height: 30px; }
+.xm-carregando-p > span { font-size: 12px; }
 /* Quem pediu menos movimento no sistema fica com a logo parada. */
 @media (prefers-reduced-motion: reduce) {
-    .xm-carregando::before { animation: none; }
+    .xm-carregando::before, .xm-carregando > span { animation: none; }
 }
 .sk-mode, .fechamento-empty.sk-mode {
     background: transparent; border: none; padding: 0;

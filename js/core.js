@@ -391,7 +391,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
 // Os nomes antigos (skTabela, skCards, skDash, skHTML, skLinhas) continuam, pra quem já
 // chamava; o "n" de linhas não importa mais.
 function skLogo(compacto = false) {
-    return `<div class="xm-carregando${compacto ? " xm-carregando-p" : ""}" role="status" aria-label="Carregando"></div>`;
+    return `<div class="xm-carregando${compacto ? " xm-carregando-p" : ""}" role="status"><span>Carregando</span></div>`;
 }
 function skLinhas() { return skLogo(true); }
 function skHTML()   { return skLogo(); }
