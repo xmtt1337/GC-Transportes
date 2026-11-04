@@ -84,7 +84,7 @@ function dizer(texto, erro = false) {
 
 async function baixarCsv(t, linhas) {
   const nome = X.nomeArquivo(t.chave);
-  const url = URL.createObjectURL(new Blob([X.montarCsv(linhas, t.colunas)], { type: 'text/csv;charset=utf-8' }));
+  const url = URL.createObjectURL(new Blob([X.montarCsv(linhas, t.colunas, t.titulos)], { type: 'text/csv;charset=utf-8' }));
   ultimoDownload = await chrome.downloads.download({ url, filename: `${X.PASTA_CSV}/${nome}`, saveAs: false });
   setTimeout(() => URL.revokeObjectURL(url), 60000);
   $('mostrar').hidden = false;

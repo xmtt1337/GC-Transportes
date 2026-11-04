@@ -55,7 +55,12 @@
       abas: 'https://ds.imile.com/*',
       url: 'https://ds.imile.com/#/DSOperation/WaybillManagement/dsTrackQuery',
       intervaloMs: INTERVALO_IMILE_MS,
-      colunas: COLUNAS,
+      // Ordem e nomes pedidos pelo usuario.
+      colunas: ['telefone', 'nome', 'waybill', 'remetente', 'produto'],
+      titulos: {
+        telefone: 'Número', nome: 'Nome do cliente', waybill: 'Número do pedido',
+        remetente: 'Remetente', produto: 'Produto',
+      },
     },
   ];
 
@@ -161,9 +166,10 @@
     return `"${seguro.replace(/"/g, '""')}"`;
   }
 
-  function montarCsv(linhas, colunas = COLUNAS) {
+  function montarCsv(linhas, colunas = COLUNAS, titulos = {}) {
+    const cabecalho = colunas.map((c) => titulos[c] || c).join(';');
     const corpo = linhas.map((l) => colunas.map((c) => celula(l[c])).join(';'));
-    return `﻿${[colunas.join(';'), ...corpo].join('\r\n')}\r\n`;
+    return `\ufeff${[cabecalho, ...corpo].join('\r\n')}\r\n`;
   }
 
   // A extensao abre no site em que o menu esta, para nao consultar a transportadora errada.
@@ -253,6 +259,8 @@
         status: d.status || '',
         nome: d.nome || '',
         telefone: formatarTelefone(d.telefone),
+        remetente: d.remetente || '',
+        produto: d.produto || '',
       });
       aoAvancar(i + 1, codigos.length);
       // A transportadora mandou parar depois deste (ex.: cota da iMile no fim): o pedido vale.
