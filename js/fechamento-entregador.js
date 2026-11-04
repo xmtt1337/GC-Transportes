@@ -130,6 +130,8 @@ function _fsHtmlGeral(d) {
             ${c.descontos ? paj("Outros descontos", c.descontos) : ""}
         </div>
 
+        ${_fsHtmlTicketlog(d.ticketlog || [])}
+
         ${(d.extravios || []).length ? `<div class="painel-ocorrencias"><div class="poc-card">
             <div class="poc-header">Extravios e multas</div>
             <div class="extr-lista">${d.extravios.map(e => `<div class="extr-card">
@@ -144,6 +146,38 @@ function _fsHtmlGeral(d) {
                 ${a.descricao ? `<div class="extr-endereco">${_fsEsc(a.descricao)}</div>` : ""}
                 <div class="extr-bottom"><span class="extr-valor ${a.tipo === "acrescimo" ? "fs-pos" : "val-neg"}">${a.tipo === "acrescimo" ? "+" : "−"} ${_fsR(a.valor)}</span></div></div>`).join("")}</div>
         </div></div>` : ""}`;
+}
+
+const _fsDataCurta = (iso) => iso ? iso.slice(8, 10) + "/" + iso.slice(5, 7) + "/" + iso.slice(0, 4) : "";
+const _fsNum = (n, casas) => Number(n).toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
+
+/** Cada abastecimento do Ticket Log descontado na quinzena: quando, onde, quanto e com qual cartão. */
+function _fsHtmlTicketlog(lista) {
+    if (!lista.length) return "";
+    const total = lista.reduce((s, a) => s + (a.valor || 0), 0);
+    const litros = lista.reduce((s, a) => s + (a.litros || 0), 0);
+    return `<div class="painel-ocorrencias"><div class="poc-card">
+        <div class="poc-header">Abastecimentos Ticket Log</div>
+        <div class="extr-endereco" style="margin-bottom:8px">${lista.length} abastecimento${lista.length !== 1 ? "s" : ""}${litros ? ` · ${_fsNum(litros, 2)} L` : ""} · ${_fsR(total)}</div>
+        <div class="extr-lista">${lista.map(a => {
+            const comb = [a.servico, a.litros != null ? `${_fsNum(a.litros, 2)} L` : "", a.valor_litro != null ? `${_fsR(a.valor_litro)}/L` : ""].filter(Boolean).join(" · ");
+            const ident = [a.cartao_final ? `Cartão final ${a.cartao_final}` : "", a.placa ? `Placa ${a.placa}` : "", a.matricula ? `Matrícula ${a.matricula}` : "",
+                a.km != null ? `Km ${_fsNum(a.km, 0)}` : ""].filter(Boolean).join(" · ");
+            return `<div class="extr-card">
+                <div class="extr-top"><span class="extr-transp">${_fsDataCurta(a.data)}${a.hora ? " às " + _fsEsc(a.hora) : ""}</span><span class="extr-codigo">${_fsEsc(a.posto || "")}</span></div>
+                ${comb || a.cidade ? `<div class="extr-endereco">${_fsEsc([comb, a.cidade].filter(Boolean).join(" · "))}</div>` : ""}
+                ${ident ? `<div class="extr-endereco">${_fsEsc(ident)}</div>` : ""}
+                ${a.aviso ? `<div class="extr-endereco" style="color:#f59e0b">${_fsEsc(a.aviso)}</div>` : ""}
+                <div class="extr-bottom"><span class="extr-valor val-neg">${_fsR(a.valor)}</span></div></div>`;
+        }).join("")}</div>
+    </div></div>`;
+}
+
+/** Aba "Ticket Log" da planilha do entregador. */
+function _fsAbaTicketlog(lista) {
+    return [["Data", "Hora", "Posto", "Cidade", "Combustível", "Litros", "R$/litro", "Valor", "Cartão (final)", "Placa", "Matrícula", "Km", "Aviso"]]
+        .concat(lista.map(a => [_fsDataCurta(a.data), a.hora || "", a.posto || "", a.cidade || "", a.servico || "", a.litros ?? "", a.valor_litro ?? "",
+            a.valor || 0, a.cartao_final || "", a.placa || "", a.matricula || "", a.km ?? "", a.aviso || ""]));
 }
 
 /** Km por dia do deslocamento (asfalto e chão), só os que tem. */
@@ -462,6 +496,7 @@ async function _fsBaixarRelatorio() {
         const onholds = (d.insucessos || []).filter(x => x.tipo === "Onhold" || x.tipo === "Acareação");
         const wb = XLSX.utils.book_new();
         for (const a of _rqAbasEntregador({ r: { dias: d.performance.dias }, pacotes, onholds })) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a.linhas), a.nome);
+        if ((d.ticketlog || []).length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(_fsAbaTicketlog(d.ticketlog)), "Ticket Log");
         XLSX.writeFile(wb, `fechamento_${d.codigo_quinzena}.xlsx`);
     } catch (err) {
         gcAlert(err.message || "Erro ao gerar o relatório.");

@@ -364,3 +364,26 @@ test("POD: sem desconto na quinzena não mostra o bloco", () => {
     ctx._fsRender(D);
     assert.doesNotMatch(el("fech-sistema").innerHTML, /Desconto por POD/);
 });
+
+test("Ticket Log: cada abastecimento com data, hora, posto, litros, R$/litro, cartão e aviso; planilha com a aba", () => {
+    const { ctx, el } = carregar();
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.ticketlog = [
+        { data: "2026-09-21", hora: "08:46", posto: "POSTO TESTE", cidade: "VILA TESTE - SC", servico: "GASOLINA COMUM", litros: 10, valor_litro: 6.39,
+          valor: 63.9, km: 1000, placa: "AAA0001", matricula: "12", cartao_final: "0001", aviso: null },
+        { data: "2026-09-22", hora: null, posto: null, cidade: null, servico: null, litros: null, valor_litro: null,
+          valor: 16.1, km: null, placa: null, matricula: null, cartao_final: null, aviso: "Abastecido com o seu cartão, mas com a matrícula de outra pessoa." }];
+    ctx._fsRender(D2);
+    const html = el("fech-sistema").innerHTML;
+    assert.match(html, /Abastecimentos Ticket Log/);
+    assert.match(html, /2 abastecimentos · 10,00 L · R\$ 80,00/);
+    assert.match(html, /21\/09\/2026 às 08:46/);
+    assert.match(html, /GASOLINA COMUM · 10,00 L · R\$ 6,39\/L · VILA TESTE - SC/);
+    assert.match(html, /Cartão final 0001 · Placa AAA0001 · Matrícula 12 · Km 1\.000/);
+    assert.match(html, /matrícula de outra pessoa/);
+    const aba = ctx._fsAbaTicketlog(D2.ticketlog);
+    assert.strictEqual(aba.length, 3);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(aba[1].slice(0, 8))), ["21/09/2026", "08:46", "POSTO TESTE", "VILA TESTE - SC", "GASOLINA COMUM", 10, 6.39, 63.9]);
+    ctx._fsRender(D);
+    assert.doesNotMatch(el("fech-sistema").innerHTML, /Abastecimentos Ticket Log/, "sem abastecimento, sem bloco");
+});
