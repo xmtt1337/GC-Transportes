@@ -131,6 +131,8 @@ function _cfCarregarResumo() {
         else document.getElementById("cf-painel").style.display = "none";
         const tl = document.getElementById("cf-ticketlog");
         if (tl && tl.style.display !== "none") _cfCarregarTicketlog();
+        const pz = document.getElementById("cf-prazo");
+        if (pz && pz.style.display !== "none") _cfCarregarPrazo();
     }).catch(() => {
         if (reqId === _cfReqId) skFim(empty, "Erro ao carregar dados do período.");
     });
@@ -210,6 +212,83 @@ async function _cfSincronizarCeps() {
         if (st) st.innerText = err.message;
     }
 }
+
+// ── Desconsiderar prazo: entregador cujo fora do prazo não conta nesta quinzena ──
+// O que ele entregou depois do prazo vira "no prazo" na origem: incentivo, sem o desconto de
+// 40%, sucesso na performance. Todo cálculo que olha o prazo (resumo, perdas, painel) segue.
+
+function _cfAbrirPrazo() {
+    const el = document.getElementById("cf-prazo");
+    if (el.style.display !== "none") { el.style.display = "none"; return; }
+    el.style.display = "";
+    _cfCarregarPrazo();
+}
+
+function _cfCarregarPrazo(msg) {
+    const el = document.getElementById("cf-prazo");
+    if (!el) return;
+    if (!_cfQuinzena) { el.innerHTML = `<div class="cft-ajuda">Escolha a quinzena primeiro.</div>`; return; }
+    el.innerHTML = skLogo();
+    const reqId = _cfReqId;
+    fetch(`${_CF_API()}/prazo-isentos?${_cfQs()}`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (reqId !== _cfReqId) return;
+        if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
+        el.innerHTML = _cfHtmlPrazo(d, msg);
+    }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar.</div>`; });
+}
+
+function _cfHtmlPrazo(d, msg) {
+    const isentos = d.isentos || [];
+    const marcados = new Set(isentos.map(i => i.driver.toLowerCase()));
+    const opcoes = (d.entregadores || []).filter(e => !marcados.has(e.driver.toLowerCase()))
+        .sort((a, b) => (b.fora_prazo - a.fora_prazo) || a.driver.localeCompare(b.driver, "pt-BR"));
+    return `
+        <div class="cft-pend-titulo" style="color:#e2e8f0">Desconsiderar prazo nesta quinzena</div>
+        <div class="cft-ajuda" style="margin-bottom:8px">O que o entregador escolhido entregou depois do prazo passa a contar como no prazo
+            em todas as transportadoras (menos a Shopee, que vai pelos onholds): recebe o incentivo, não perde os 40% e não baixa a performance do dia.
+            Pacote não entregue continua sem pagar. Vale só para esta quinzena e recalcula na hora.</div>
+        <div class="cft-barra" style="margin:0;flex-wrap:wrap">
+            <select id="cf-prazo-driver" class="fech-select" style="min-width:300px">
+                <option value="">Escolha o entregador...</option>
+                ${opcoes.map(e => `<option value="${_cfEsc(e.driver)}">${_cfEsc(e.driver)}${e.fora_prazo ? ` (${e.fora_prazo.toLocaleString("pt-BR")} fora do prazo)` : ""}</option>`).join("")}
+            </select>
+            <input id="cf-prazo-obs" class="cft-input" placeholder="Motivo (opcional)" style="min-width:220px;margin:0">
+            <button class="cft-btn primario" id="cf-prazo-add" onclick="_cfAdicionarPrazo()">Desconsiderar prazo</button>
+        </div>
+        <div class="cft-ajuda" id="cf-prazo-status" style="margin-top:6px">${msg || ""}</div>
+        ${isentos.length ? `<div class="cft-tabela-wrap" style="margin-top:8px"><table class="cft-tabela">
+            <thead><tr><th>Entregador</th><th>Motivo</th><th>Desde</th><th></th></tr></thead>
+            <tbody>${isentos.map(i => `<tr>
+                <td>${_cfEsc(i.driver)}</td><td>${_cfEsc(i.observacao || "")}</td>
+                <td>${i.criado_em ? new Date(i.criado_em).toLocaleString("pt-BR") : ""}</td>
+                <td><button class="cft-btn perigo" data-d="${_cfEsc(i.driver)}" onclick="_cfTirarPrazo(this.dataset.d)">Voltar a contar</button></td>
+            </tr>`).join("")}</tbody></table></div>` : `<div class="cft-ajuda" style="margin-top:6px">Nenhum entregador com o prazo desconsiderado nesta quinzena.</div>`}`;
+}
+
+async function _cfMudarPrazo(metodo, driver, obs) {
+    const st = document.getElementById("cf-prazo-status");
+    if (st) st.innerText = "Gravando e recalculando a quinzena...";
+    try {
+        const r = metodo === "POST"
+            ? await fetch(`${_CF_API()}/prazo-isentos`, { method: "POST", headers: _cfHeaders(true),
+                body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, driver, observacao: obs }) })
+            : await fetch(`${_CF_API()}/prazo-isentos?${_cfQs()}&driver=${encodeURIComponent(driver)}`, { method: "DELETE", headers: _cfHeaders() });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Erro ao gravar.");
+        _cfCarregarPrazo(_cfEsc(`${driver}: ${metodo === "POST" ? "prazo desconsiderado" : "prazo volta a contar"}${d.recalculado ? " · quinzena recalculada." : "."}`));
+        if (d.recalculado) { _cfAtualizarCards(); if (_cfTranspAtual) _cfCarregarDetalhe(); }
+    } catch (err) { if (st) st.innerText = err.message; }
+}
+
+function _cfAdicionarPrazo() {
+    const driver = document.getElementById("cf-prazo-driver").value;
+    if (!driver) { document.getElementById("cf-prazo-status").innerText = "Escolha o entregador."; return; }
+    _cfMudarPrazo("POST", driver, document.getElementById("cf-prazo-obs").value);
+}
+
+function _cfTirarPrazo(driver) { _cfMudarPrazo("DELETE", driver); }
 
 // ── Descontos: Ticketlog (combustível) da quinzena ──
 // Relatório da Ticketlog: NOME MOTORISTA + VALOR EMISSAO, conferidos com o cadastro de cartões

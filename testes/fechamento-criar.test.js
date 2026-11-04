@@ -532,3 +532,18 @@ test("registros do entregador: lista o que não conta e o botão certo pra cada 
     assert.match(html, />Desconsiderar</);
     assert.match(ctx._cfHtmlRegistros([]), /nenhum nos onholds/);
 });
+
+test("Desconsiderar prazo: lista pra escolher (mais atrasos primeiro, sem os já marcados) e os marcados com Voltar a contar", () => {
+    const ctx = carregar();
+    const html = ctx._cfHtmlPrazo({
+        isentos: [{ driver: "Beltrano Teste - Morro Falso", observacao: "Carro quebrado", criado_em: null }],
+        entregadores: [{ driver: "Ciclano Teste - Vila", fora_prazo: 0 }, { driver: "Fulano de Teste - Vila Teste", fora_prazo: 7 },
+            { driver: "Beltrano Teste - Morro Falso", fora_prazo: 3 }],
+    });
+    const opcoes = [...html.matchAll(/<option value="([^"]+)">/g)].map(m => m[1]);
+    assert.deepStrictEqual(opcoes, ["Fulano de Teste - Vila Teste", "Ciclano Teste - Vila"]);
+    assert.match(html, /Fulano de Teste - Vila Teste \(7 fora do prazo\)/);
+    assert.match(html, /Carro quebrado/);
+    assert.match(html, /Voltar a contar/);
+    assert.match(ctx._cfHtmlPrazo({ isentos: [], entregadores: [] }), /Nenhum entregador com o prazo desconsiderado/);
+});
