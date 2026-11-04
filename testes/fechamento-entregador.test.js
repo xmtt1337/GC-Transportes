@@ -410,3 +410,27 @@ test("fora do prazo pela cidade: conta do pacote (cidade − 40% = recebeu), dia
     ctx._fsRender(D);
     assert.doesNotMatch(el("fech-sistema").innerHTML, /Entregas fora do prazo/, "sem pacote, sem bloco");
 });
+
+test("relatório detalhado: link no topo mesmo sem performance; planilha com a aba de fora do prazo pela cidade", async () => {
+    const { ctx, el } = carregar();
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.performance = null;
+    D2.fora_prazo_cidade = [{ transportadora: "Imile", codigo: "I9", cidade: "Vila Teste", deveria: "2026-09-21", entregue: "2026-09-23",
+        valor_cidade: 3, desconto: 1.2, adicional_peso: 0, recebeu: 1.8, desconto_pct: 40 }];
+    ctx._fsRender(D2);
+    assert.match(el("fech-sistema").innerHTML, /Baixar relatório detalhado/);
+    const planilhas = [];
+    let card = null;
+    Object.assign(ctx, {
+        API: "", token: "t", _fMes: 9, _fAno: 2026, _fQuinzena: 2,
+        fetch: async () => ({ ok: true, json: async () => ({ pacotes: [] }) }),
+        _rqAbasEntregador: (c) => { card = c; return [{ nome: "Dias", linhas: [["Dia"]] }]; },
+        XLSX: { utils: { book_new: () => ({}), aoa_to_sheet: (l) => l, book_append_sheet: (wb, l, n) => planilhas.push([n, l]) }, writeFile: () => {} },
+    });
+    el("fs-baixar").textContent = "Baixar relatório detalhado";
+    await ctx._fsBaixarRelatorio();
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(card.r.dias)), [], "sem performance não quebra");
+    const fora = planilhas.find(([n]) => n === "Fora do prazo (cidade)");
+    assert.ok(fora, planilhas.map(([n]) => n).join(","));
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(fora[1][1])), ["Imile", "I9", "Vila Teste", "21/09/2026", "23/09/2026", 2, 3, 1.2, 0, 1.8]);
+});

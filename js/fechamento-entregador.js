@@ -83,7 +83,8 @@ function _fsRender(d) {
 function _fsDesenhar() {
     const el = document.getElementById("fech-sistema");
     const visao = (k, n) => `<button type="button"${_fsVisao === k ? ` class="active"` : ""} onclick="_fsTrocarVisao('${k}')">${n}</button>`;
-    const topo = `<div class="fs-visao">${visao("geral", "Geral")}${visao("usuario", "Por usuário")}</div>`;
+    const topo = `<div class="fs-visao">${visao("geral", "Geral")}${visao("usuario", "Por usuário")}</div>
+        <div style="margin-bottom:12px"><a href="#" class="fs-fechar" id="fs-baixar" onclick="event.preventDefault();_fsBaixarRelatorio()">Baixar relatório detalhado</a></div>`;
     if (_fsVisao === "geral") { el.innerHTML = topo + _fsHtmlGeral(_fsDados); return; }
     if (_fsPedidos) { el.innerHTML = topo + _fsHtmlPorUsuario(); return; }
     el.innerHTML = topo + `<div id="fs-usuario">${skLogo(true, "Carregando os pedidos")}</div>`;
@@ -220,6 +221,13 @@ function _fsHtmlForaPrazo(lista) {
     </div></div>`;
 }
 
+/** Aba "Fora do prazo (cidade)": a mesma conta do bloco, pacote a pacote. */
+function _fsAbaForaPrazo(lista) {
+    return [["Transportadora", "Pedido", "Cidade", "Prazo", "Entregue em", "Dias de atraso", "Valor da cidade", "Desconto por atraso", "Adicional de peso", "Recebeu"]]
+        .concat(lista.map(p => [p.transportadora, p.codigo, p.cidade || "", _fsDataCurta(p.deveria), p.entregue ? _fsDataCurta(p.entregue) : "Não entregue",
+            _fsDiasAtraso(p.deveria, p.entregue) ?? "", p.entregue ? p.valor_cidade || 0 : 0, p.desconto || 0, p.adicional_peso || 0, p.recebeu || 0]));
+}
+
 /** Aba "Ticket Log" da planilha do entregador. */
 function _fsAbaTicketlog(lista) {
     return [["Data", "Hora", "Posto", "Cidade", "Combustível", "Litros", "R$/litro", "Valor", "Cartão (final)", "Placa", "Matrícula", "Km", "Aviso"]]
@@ -288,7 +296,6 @@ function _fsHtmlPerformance(d) {
         </div>
         <div class="fs-sub">${afetados.length ? "Em vermelho, os dias em que você recebeu menos que o valor cheio. Toque no dia pra ver os pedidos."
             : "Nenhum dia com perda nesta quinzena: todos no valor cheio."}</div>
-        <div style="margin-bottom:10px"><a href="#" class="fs-fechar" id="fs-baixar" onclick="event.preventDefault();_fsBaixarRelatorio()">Baixar relatório detalhado</a></div>
         <div class="fs-dias" style="margin-bottom:18px">${perf.dias.slice().sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : 0)).map(_fsCardDia).join("")}</div>`;
 }
 
@@ -542,7 +549,8 @@ async function _fsBaixarRelatorio() {
         const d = _fsDados;
         const onholds = (d.insucessos || []).filter(x => x.tipo === "Onhold" || x.tipo === "Acareação");
         const wb = XLSX.utils.book_new();
-        for (const a of _rqAbasEntregador({ r: { dias: d.performance.dias }, pacotes, onholds })) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a.linhas), a.nome);
+        for (const a of _rqAbasEntregador({ r: { dias: (d.performance && d.performance.dias) || [] }, pacotes, onholds })) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a.linhas), a.nome);
+        if ((d.fora_prazo_cidade || []).length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(_fsAbaForaPrazo(d.fora_prazo_cidade)), "Fora do prazo (cidade)");
         if ((d.ticketlog || []).length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(_fsAbaTicketlog(d.ticketlog)), "Ticket Log");
         XLSX.writeFile(wb, `fechamento_${d.codigo_quinzena}.xlsx`);
     } catch (err) {
