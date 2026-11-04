@@ -130,6 +130,8 @@ function _fsHtmlGeral(d) {
             ${c.descontos ? paj("Outros descontos", c.descontos) : ""}
         </div>
 
+        ${_fsHtmlForaPrazo(d.fora_prazo_cidade || [])}
+
         ${_fsHtmlTicketlog(d.ticketlog || [])}
 
         ${(d.extravios || []).length ? `<div class="painel-ocorrencias"><div class="poc-card">
@@ -158,7 +160,7 @@ function _fsHtmlTicketlog(lista) {
     const litros = lista.reduce((s, a) => s + (a.litros || 0), 0);
     return `<div class="painel-ocorrencias"><div class="poc-card">
         <div class="poc-header">Abastecimentos Ticket Log</div>
-        <div class="extr-endereco" style="margin-bottom:8px">${lista.length} abastecimento${lista.length !== 1 ? "s" : ""}${litros ? ` · ${_fsNum(litros, 2)} L` : ""} · ${_fsR(total)}</div>
+        <div class="extr-endereco" style="margin:10px 12px 0">${lista.length} abastecimento${lista.length !== 1 ? "s" : ""}${litros ? ` · ${_fsNum(litros, 2)} L` : ""} · ${_fsR(total)}</div>
         <div class="extr-lista">${lista.map(a => {
             const comb = [a.servico, a.litros != null ? `${_fsNum(a.litros, 2)} L` : "", a.valor_litro != null ? `${_fsR(a.valor_litro)}/L` : ""].filter(Boolean).join(" · ");
             const ident = [a.cartao_final ? `Cartão final ${a.cartao_final}` : "", a.placa ? `Placa ${a.placa}` : "", a.matricula ? `Matrícula ${a.matricula}` : "",
@@ -170,6 +172,51 @@ function _fsHtmlTicketlog(lista) {
                 ${a.aviso ? `<div class="extr-endereco" style="color:#f59e0b">${_fsEsc(a.aviso)}</div>` : ""}
                 <div class="extr-bottom"><span class="extr-valor val-neg">${_fsR(a.valor)}</span></div></div>`;
         }).join("")}</div>
+    </div></div>`;
+}
+
+let _fsForaPrazoTodos = false; // lista de fora do prazo aberta inteira
+
+/** Dias entre o prazo e a entrega ("2026-09-21" → "2026-09-23" = 2). */
+function _fsDiasAtraso(deveria, entregue) {
+    if (!deveria || !entregue) return null;
+    return Math.round((Date.parse(entregue + "T12:00:00Z") - Date.parse(deveria + "T12:00:00Z")) / 86400000);
+}
+
+/**
+ * Entregas fora do prazo pagas pela tabela da cidade (polos fora da performance e cartões):
+ * pacote a pacote, a conta "valor da cidade − desconto = recebeu". Fora do prazo não tem
+ * incentivo; em cidade de parceiro sai também o desconto (40%).
+ */
+function _fsHtmlForaPrazo(lista) {
+    if (!lista.length) return "";
+    const pct = lista[0].desconto_pct || 40;
+    const desc = lista.reduce((s, p) => s + (p.desconto || 0), 0);
+    const naoEntregues = lista.filter(p => !p.entregue).length;
+    const mostrar = _fsForaPrazoTodos ? lista : lista.slice(0, 20);
+    return `<div class="painel-ocorrencias"><div class="poc-card">
+        <div class="poc-header">Entregas fora do prazo (valor pela cidade)</div>
+        <div class="extr-endereco" style="margin:10px 12px 4px">${lista.length} pacote${lista.length !== 1 ? "s" : ""} fora do prazo${naoEntregues ? ` (${naoEntregues} não entregue${naoEntregues !== 1 ? "s" : ""})` : ""}
+            ${desc ? ` · <b class="fs-neg">${_fsR(desc)}</b> de desconto (já tirado do valor das transportadoras)` : ""}</div>
+        <div class="extr-endereco" style="margin:0 12px 0">Entregou depois do prazo: não recebe o incentivo da cidade e, nas cidades de parceiro,
+            perde ${pct}% do valor. Pacote não entregue não é pago.</div>
+        <div class="extr-lista">${mostrar.map(p => {
+            const atraso = _fsDiasAtraso(p.deveria, p.entregue);
+            const quando = p.entregue
+                ? `Prazo ${_fsDataCurta(p.deveria)} · entregue ${_fsDataCurta(p.entregue)}${atraso > 0 ? ` (${atraso} dia${atraso !== 1 ? "s" : ""} depois)` : ""}`
+                : `Prazo ${_fsDataCurta(p.deveria)} · não entregue`;
+            const conta = !p.entregue
+                ? `<span>Não pago</span>`
+                : `<span>Cidade ${_fsR(p.valor_cidade)}</span>
+                   ${p.desconto ? `<span class="fs-neg">− ${pct}% atraso ${_fsR(p.desconto)}</span>` : `<span>sem desconto (cidade sem parceiro)</span>`}
+                   ${p.adicional_peso ? `<span>+ peso ${_fsR(p.adicional_peso)}</span>` : ""}
+                   <span>= <b>${_fsR(p.recebeu)}</b></span>`;
+            return `<div class="extr-card">
+                <div class="extr-top"><span class="extr-transp">${_fsEsc(p.transportadora)}${p.cidade ? " · " + _fsEsc(p.cidade) : ""}</span><span class="extr-codigo">${_fsEsc(p.codigo)}</span></div>
+                <div class="extr-endereco">${quando}</div>
+                <div class="extr-endereco fs-conta-pacote">${conta}</div></div>`;
+        }).join("")}</div>
+        ${lista.length > mostrar.length ? `<a href="#" class="fs-fechar" style="display:inline-block;margin:0 12px 12px" onclick="event.preventDefault();_fsForaPrazoTodos=true;_fsDesenhar()">Ver os ${lista.length} pacotes</a>` : ""}
     </div></div>`;
 }
 

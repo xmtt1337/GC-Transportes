@@ -387,3 +387,26 @@ test("Ticket Log: cada abastecimento com data, hora, posto, litros, R$/litro, ca
     ctx._fsRender(D);
     assert.doesNotMatch(el("fech-sistema").innerHTML, /Abastecimentos Ticket Log/, "sem abastecimento, sem bloco");
 });
+
+test("fora do prazo pela cidade: conta do pacote (cidade − 40% = recebeu), dias de atraso, não entregue e cidade sem parceiro", () => {
+    const { ctx, el } = carregar();
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.fora_prazo_cidade = [
+        { transportadora: "Imile", codigo: "I9", cidade: "Vila Teste", deveria: "2026-09-21", entregue: "2026-09-23",
+          valor_cidade: 3, desconto: 1.2, adicional_peso: 0, recebeu: 1.8, parceiro: true, desconto_pct: 40 },
+        { transportadora: "Anjun", codigo: "A1", cidade: "Morro Falso", deveria: "2026-09-21", entregue: "2026-09-22",
+          valor_cidade: 2.5, desconto: 0, adicional_peso: 1, recebeu: 3.5, parceiro: false, desconto_pct: 40 },
+        { transportadora: "Imile", codigo: "I10", cidade: "Vila Teste", deveria: "2026-09-21", entregue: null,
+          valor_cidade: 0, desconto: 0, adicional_peso: 0, recebeu: 0, parceiro: true, desconto_pct: 40 }];
+    ctx._fsRender(D2);
+    const html = el("fech-sistema").innerHTML;
+    assert.match(html, /Entregas fora do prazo \(valor pela cidade\)/);
+    assert.match(html, /3 pacotes fora do prazo \(1 não entregue\)/);
+    assert.match(html, /R\$ 1,20<\/b> de desconto/);
+    assert.match(html, /Prazo 21\/09\/2026 · entregue 23\/09\/2026 \(2 dias depois\)/);
+    assert.match(html, /Cidade R\$ 3,00<\/span>\s*<span class="fs-neg">− 40% atraso R\$ 1,20<\/span>[\s\S]*?= <b>R\$ 1,80<\/b>/);
+    assert.match(html, /sem desconto \(cidade sem parceiro\)[\s\S]*?\+ peso R\$ 1,00[\s\S]*?= <b>R\$ 3,50<\/b>/);
+    assert.match(html, /Prazo 21\/09\/2026 · não entregue[\s\S]*?Não pago/);
+    ctx._fsRender(D);
+    assert.doesNotMatch(el("fech-sistema").innerHTML, /Entregas fora do prazo/, "sem pacote, sem bloco");
+});
