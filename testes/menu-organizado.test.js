@@ -48,15 +48,22 @@ test("a Operação de cada uma tem Alimentar e sua conferência", () => {
     // Anjun: o relatório sobe pela própria Conferência ("Subir relatório"), sem Alimentar separado.
     assert.ok(grupo("op", "anjun").includes(">Conferência</a>"), "anjun: Conferência");
     assert.ok(!grupo("op", "anjun").includes(">Alimentar</a>"), "anjun: sem Alimentar");
-    ["Recebimento", "Alimentar", "Line Haul", "Atribuições"]
+    ["Recebimento", "Alimentar", "Line Haul", "Atribuições", "Item Avariado"]
         .forEach(i => assert.ok(grupo("op", "shopee").includes(`>${i}</a>`), i));
+});
+
+test("Item Avariado é da Operação (bipa e retém o item), não da Torre", () => {
+    assert.ok(!grupo("torre", "shopee").includes(">Item Avariado</a>"));
+    assert.match(router, /"Shopee\/ItemAvariado":\s*"Operacao\/Shopee\/ItemAvariado"/);
+    // O endereço da Torre foi público antes: link salvo ainda abre a tela.
+    assert.match(router, /_ROTAS_INTERNAS\["TorreControle\/Shopee\/ItemAvariado"\] = "Shopee\/ItemAvariado"/);
 });
 
 test("a Torre de cada uma tem Na Rua, Faltantes e Extravios", () => {
     TRANSPORTADORAS.forEach(t => {
         ["Na Rua", "Pacotes Faltantes", "Extravios"].forEach(i => assert.ok(grupo("torre", t).includes(`>${i}</a>`), `${t}: ${i}`));
     });
-    ["Item Avariado", "POD", "Stuck — Backlog", "Stuck — Planilha Andre"]
+    ["POD", "Stuck — Backlog", "Stuck — Planilha Andre"]
         .forEach(i => assert.ok(grupo("torre", "shopee").includes(`>${i}</a>`), i));
 });
 

@@ -353,7 +353,7 @@ const _ROTAS_URL = {
     "TorreControle/NaRua/TotalExpress":"TorreControle/TotalExpress/NaRua",
     "Shopee/Stuck":                    "TorreControle/Shopee/Stuck",
     "Shopee/Stuck/Backlog":            "TorreControle/Shopee/Stuck/Backlog",
-    "Shopee/ItemAvariado":             "TorreControle/Shopee/ItemAvariado",
+    "Shopee/ItemAvariado":             "Operacao/Shopee/ItemAvariado",
 
     // Entregador
     "Conferencia/Shopee":              "MinhaRota/Conferencia",
@@ -398,6 +398,9 @@ const _ROTAS_INTERNAS = {};
 Object.entries(_ROTAS_URL).forEach(([interna, publica]) => {
     if (!(publica in _ROTAS_INTERNAS)) _ROTAS_INTERNAS[publica] = interna;
 });
+// Endereços públicos que já existiram e mudaram de lugar no menu: o link salvo abre a
+// mesma tela e a barra troca pro endereço novo.
+_ROTAS_INTERNAS["TorreControle/Shopee/ItemAvariado"] = "Shopee/ItemAvariado"; // foi pra Operação em 04/11/2026
 
 // Conversas têm o resto do caminho variável (tipo/transportadora/código), então vão por prefixo.
 const _ROTA_PREFIXO_INTERNO = "Ativos/Conversas";
