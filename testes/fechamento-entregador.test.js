@@ -434,3 +434,24 @@ test("relatório detalhado: link no topo mesmo sem performance; planilha com a a
     assert.ok(fora, planilhas.map(([n]) => n).join(","));
     assert.deepStrictEqual(JSON.parse(JSON.stringify(fora[1][1])), ["Imile", "I9", "Vila Teste", "21/09/2026", "23/09/2026", 2, 3, 1.2, 0, 1.8]);
 });
+
+test("Coletas aparecem como card próprio (fora dos acréscimos) e o card 'Quando você recebe' com a previsão de 45 dias", () => {
+    const { ctx, el } = carregar();
+    vm.runInContext("var _fMes = 10, _fAno = 2026, _fQuinzena = 2;", ctx);
+    const D2 = JSON.parse(JSON.stringify(D));
+    D2.conta.acrescimos = 25;
+    D2.coletas = { quantidade: 4, valor: 2.5, total: 10 };
+    D2.total_receber_num = 345;
+    ctx._fsRender(D2);
+    let html = el("fech-sistema").innerHTML;
+    assert.match(html, /<div class="pt-header">Coletas<\/div>[\s\S]*?<span>Coletas<\/span><span>4<\/span>[\s\S]*?R\$\s*2,50[\s\S]*?R\$\s*10,00/);
+    assert.match(html, /<div class="pt-header">Acréscimos<\/div><div class="pt-row"><span>Valor<\/span><span>R\$\s*15,00/);
+    assert.match(html, /Quando você recebe[\s\S]*?R\$\s*345,00<\/b> previsto para <b>15\/12\/2026<\/b>/);
+    D2.antecipado_num = 100;
+    ctx._fsRender(D2);
+    html = el("fech-sistema").innerHTML;
+    assert.match(html, /Você antecipou <b>R\$\s*100,00<\/b>\. O saldo de <b>R\$\s*245,00<\/b> cai em <b>15\/12\/2026<\/b>/);
+    D2.pagamento_status = "pago";
+    ctx._fsRender(D2);
+    assert.doesNotMatch(el("fech-sistema").innerHTML, /Quando você recebe/, "pago tem o cartão próprio");
+});

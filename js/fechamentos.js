@@ -165,6 +165,8 @@ function _carregarPainel() {
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                     Solicitação enviada — aguardando liberação do saldo na Trampay
                 </div>`;
+            } else if (d.fonte === "sistema") {
+                antRow.style.display = "none"; // vai no card "Quando você recebe" (fechamento-entregador.js)
             } else {
                 const dataPrev = _calcularDataPagamento(_fMes, _fAno, _fQuinzena);
                 antRow.innerHTML = `

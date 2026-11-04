@@ -105,7 +105,9 @@ function _fsHtmlGeral(d) {
         <div class="pt-header">${titulo}</div>${linhas.map(([a, b]) => `<div class="pt-row"><span>${a}</span><span>${b}</span></div>`).join("")}</div>`;
     const paj = (rot, v, sub) => `<div class="paj-card${v ? " negativo" : ""}"><div class="paj-label">${rot}</div>
         ${sub ? `<div class="paj-sublabel">${sub}</div>` : ""}<div class="paj-value">${_fsR(v)}</div></div>`;
+    const col = d.coletas || null;
     return `
+        ${_fsHtmlPagamento(d)}
         <div class="painel-section-title">Transportadoras</div>
         <div class="painel-transp">${(d.transportadoras || []).map(t => `<div class="pt-card ${_fsClasseTransp(t.nome)}">
             <div class="pt-header">${_fsEsc(t.nome)}</div>
@@ -119,7 +121,8 @@ function _fsHtmlGeral(d) {
 
         <div class="painel-section-title">Adicionais</div>
         <div class="painel-adicionais">
-            ${card("Acréscimos", [["Valor", _fsR(c.acrescimos)]])}
+            ${card("Acréscimos", [["Valor", _fsR((c.acrescimos || 0) - (col ? col.total : 0))]])}
+            ${col ? card("Coletas", [["Coletas", col.quantidade.toLocaleString("pt-BR")], ["Por coleta", _fsR(col.valor)], ["Valor", _fsR(col.total)]]) : ""}
             ${card("Deslocamento", [["Valor", _fsR(c.deslocamento)]].concat(d.deslocamento ? [["Dias", `${d.deslocamento.dias} × ${_fsR(d.deslocamento.valor_dia)}`]]
                 .concat(_fsKm(d.deslocamento)) : []))}
         </div>
@@ -233,6 +236,35 @@ function _fsAbaTicketlog(lista) {
     return [["Data", "Hora", "Posto", "Cidade", "Combustível", "Litros", "R$/litro", "Valor", "Cartão (final)", "Placa", "Matrícula", "Km", "Aviso"]]
         .concat(lista.map(a => [_fsDataCurta(a.data), a.hora || "", a.posto || "", a.cidade || "", a.servico || "", a.litros ?? "", a.valor_litro ?? "",
             a.valor || 0, a.cartao_final || "", a.placa || "", a.matricula || "", a.km ?? "", a.aviso || ""]));
+}
+
+/** Dia do pagamento: 45 dias depois do fim da quinzena (15 ou último dia do mês). "AAAA-MM-DD". */
+function _fsDataPagamento(mes, ano, quinzena) {
+    const base = quinzena === 1 ? new Date(Date.UTC(ano, mes - 1, 15)) : new Date(Date.UTC(ano, mes, 0));
+    base.setUTCDate(base.getUTCDate() + 45);
+    return base.toISOString().slice(0, 10);
+}
+
+/**
+ * Quando ele recebe: previsão (45 dias depois do fim da quinzena); quem antecipou vê o que já
+ * recebeu e o saldo na mesma data. Pago já tem o cartão próprio no topo (fechamentos.js).
+ */
+function _fsHtmlPagamento(d) {
+    const mes = typeof _fMes !== "undefined" ? _fMes : null, ano = typeof _fAno !== "undefined" ? _fAno : null;
+    const q = typeof _fQuinzena !== "undefined" ? _fQuinzena : null;
+    if (!mes || !ano || !q || d.pagamento_status === "pago") return "";
+    const data = _fsDataCurta(_fsDataPagamento(mes, ano, q));
+    const fim = q === 1 ? "dia 15" : "último dia do mês";
+    const ant = Number(d.antecipado_num || 0);
+    const saldo = Math.max(0, Number(d.total_receber_num || 0) - ant);
+    const linha = ant > 0
+        ? `Você antecipou <b>${_fsR(ant)}</b>. ${saldo > 0.01 ? `O saldo de <b>${_fsR(saldo)}</b> cai em <b>${data}</b>.` : "Não sobrou saldo a receber."}`
+        : `<b>${_fsR(d.total_receber_num)}</b> previsto para <b>${data}</b>.`;
+    return `<div class="painel-ocorrencias"><div class="poc-card">
+        <div class="poc-header">Quando você recebe</div>
+        <div class="extr-endereco" style="margin:10px 12px 4px;color:#cbd5e1;font-size:13px">${linha}</div>
+        <div class="extr-endereco" style="margin:0 12px 12px">O pagamento sai 45 dias depois do fim da quinzena (${fim}). Quem antecipa recebe antes a parte antecipada.</div>
+    </div></div>`;
 }
 
 /** Km por dia do deslocamento (asfalto e chão), só os que tem. */

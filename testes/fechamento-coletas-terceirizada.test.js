@@ -41,3 +41,13 @@ test("Terceirizada: cidades × transportadoras, cidades da regra marcadas e plan
     assert.deepStrictEqual(abas.map(a => a.nome), ["Cidades", "Extravios", "Resumo"]);
     assert.deepStrictEqual(abas[0].linhas[1], ["Videira", 10, 5, 15, 7.2]);
 });
+
+test("Terceirizada: botão Liberar fechamento / Tirar a liberação conforme a quinzena", () => {
+    const ctx = carregar("fechamento-terceirizada.js");
+    const base = { nome: "Terceirizada - Expedição Videira", valor_pacote: 0.48, pacotes: 0, bruto: 0, extravios: 0, acrescimos: 0, descontos: 0, liquido: 0,
+        coletas: { quantidade: 3, valor: 2, total: 6 }, por_transportadora: {}, cidades: [], extravios_linhas: [], ajustes_linhas: [],
+        regra: { valor: 0.48, cidades: ["Videira"] }, cidades_quinzena: [] };
+    assert.match(ctx._tvHtml(base), /Liberar fechamento/);
+    assert.match(ctx._tvHtml(base), /coletas \(3 × R\$\s*2,00\)/);
+    assert.match(ctx._tvHtml({ ...base, publicado_em: "2026-11-04T12:00:00Z" }), /Tirar a liberação/);
+});

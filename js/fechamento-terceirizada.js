@@ -65,12 +65,19 @@ function _tvHtml(d, msg) {
     const kpi = (v, rot, cls) => `<div class="cft-kpi"><div class="cft-kpi-valor${cls ? " " + cls : ""}">${v}</div><div class="cft-kpi-rotulo">${rot}</div></div>`;
     const todasCidades = [...new Set(d.regra.cidades.concat(d.cidades_quinzena || []))];
     const marcadas = new Set(d.regra.cidades.map(_tvChave));
+    const pub = d.publicado_em ? new Date(d.publicado_em).toLocaleString("pt-BR") : null;
     return `
+        <div class="cft-barra" style="margin:0 0 10px;flex-wrap:wrap">
+            <span class="cft-ajuda">${pub ? `<span class="cft-sim">Liberado</span> em ${pub} — a terceirizada vê na tela Fechamento Videira.`
+                : "Ainda não liberado: a terceirizada não vê esta quinzena."}</span>
+            <button class="cft-btn${pub ? " perigo" : " primario"}" onclick="_tvLiberar(${pub ? "false" : "true"}, this)">${pub ? "Tirar a liberação" : "Liberar fechamento"}</button>
+        </div>
         <div class="cft-ajuda" style="margin-bottom:10px">${_tvEsc(d.nome)}: ${_tvR(d.valor_pacote)} por pacote de todas as transportadoras nas cidades abaixo
-            (entregue ou não; o Jadlog pela cidade do entregador), menos os extravios em nome dela.</div>
+            (entregue ou não; o Jadlog pela cidade do entregador), mais as coletas dela (Fechamento › Coletas), menos os extravios em nome dela.</div>
         <div class="cft-kpis">
             ${kpi(d.pacotes.toLocaleString("pt-BR"), "pacotes")}
             ${kpi(_tvR(d.bruto), "bruto")}
+            ${d.coletas && d.coletas.quantidade ? kpi(_tvR(d.coletas.total), `coletas (${d.coletas.quantidade} × ${_tvR(d.coletas.valor)})`) : ""}
             ${kpi(_tvR(d.extravios), `extravios (${(d.extravios_linhas || []).length})`, d.extravios ? "cft-nao" : "")}
             ${d.acrescimos || d.descontos ? kpi(_tvR(d.acrescimos - d.descontos), "acréscimos − descontos") : ""}
             ${kpi(_tvR(d.liquido), "líquido", "cft-sim")}
@@ -106,6 +113,16 @@ function _tvHtml(d, msg) {
         </div>`;
 }
 
+async function _tvLiberar(publicar, btn) {
+    btn.disabled = true;
+    try {
+        const r = await fetch(`${_TV_API()}/publicacao`, { method: "PUT", headers: _tvHeaders(true), body: JSON.stringify({ ..._tvPeriodo(), publicar }) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Erro ao liberar.");
+        _tvCarregar(publicar ? "Fechamento liberado." : "Liberação retirada.");
+    } catch (err) { gcAlert(err.message); btn.disabled = false; }
+}
+
 async function _tvSalvarRegra(btn) {
     const st = document.getElementById("tv-status");
     btn.disabled = true;
@@ -130,6 +147,7 @@ function _tvAbas(d) {
     if ((d.extravios_linhas || []).length) abas.push({ nome: "Extravios", linhas: [["Data", "Transportadora", "Código", "Status", "Valor", "Causa"]]
         .concat(d.extravios_linhas.map(e => [e.data || "", e.transportadora || "", e.codigo || "", e.status || "", e.valor || 0, e.causa || ""])) });
     abas.push({ nome: "Resumo", linhas: [["Item", "Valor"], ["R$ por pacote", d.valor_pacote], ["Pacotes", d.pacotes], ["Bruto", d.bruto],
+        ["Coletas", (d.coletas && d.coletas.quantidade) || 0], ["Valor das coletas", (d.coletas && d.coletas.total) || 0],
         ["Extravios", d.extravios], ["Acréscimos", d.acrescimos], ["Descontos", d.descontos], ["Líquido", d.liquido]] });
     return abas;
 }
