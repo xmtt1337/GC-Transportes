@@ -44,9 +44,25 @@ test('extrairCodigos aceita separadores, tira repetido e conta lixo', () => {
   });
 });
 
-test('Anjun e Shopee ativas, e as tres aparecem', () => {
+test('Anjun, Shopee e iMile ativas', () => {
   assert.deepStrictEqual(X.TRANSPORTADORAS.map((t) => t.chave), ['anjun', 'shopee', 'imile']);
-  assert.deepStrictEqual(X.TRANSPORTADORAS.filter((t) => t.ativa).map((t) => t.nome), ['Anjun', 'Shopee']);
+  assert.deepStrictEqual(X.TRANSPORTADORAS.filter((t) => t.ativa).map((t) => t.nome), ['Anjun', 'Shopee', 'iMile']);
+  assert.strictEqual(X.indiceDoSite('https://ds.imile.com'), 2);
+  const { codigos } = X.extrairCodigos('6102626852307 AJ100000000000001 BR2608892320879', X.TRANSPORTADORAS[2].padrao);
+  assert.deepStrictEqual(codigos, ['6102626852307']);
+});
+
+test('quando a transportadora manda parar, guarda o pedido e devolve o resto', async () => {
+  const res = await X.executar({
+    codigos: ['1', '2', '3'],
+    pedir: async (c) => ({ ok: true, dados: { nome: 'F' }, parar: c === '2' ? 'cota no fim' : undefined }),
+    aoAvancar() {},
+    deveParar: () => false,
+    dormir: semPausa,
+  });
+  assert.deepStrictEqual(res.linhas.map((l) => l.waybill), ['1', '2']);
+  assert.deepStrictEqual(res.pendentes, ['3']);
+  assert.strictEqual(res.erro, 'cota no fim');
 });
 
 test('Shopee aceita codigo terminado em letra e nao tem remetente', () => {
@@ -223,7 +239,7 @@ test('so os sites das transportadoras podem embutir o painel, e ele guarda o nom
   assert.strictEqual(m.name, 'XM - Consultas de telefone');
   assert.deepStrictEqual(m.web_accessible_resources, [{
     resources: ['pagina.html', 'img/logo.png', 'img/logo-claro.png'],
-    matches: ['https://newsupplier.anjunexpress.com/*', 'https://spx.shopee.com.br/*'],
+    matches: ['https://newsupplier.anjunexpress.com/*', 'https://spx.shopee.com.br/*', 'https://ds.imile.com/*'],
   }]);
 });
 
@@ -232,6 +248,7 @@ test('manifest alcanca so a Anjun e o sistema, com o id liberado no backend', ()
   assert.deepStrictEqual(m.host_permissions, [
     'https://newsupplier.anjunexpress.com/*',
     'https://spx.shopee.com.br/*',
+    'https://ds.imile.com/*',
     'https://sistema-backend-i4uh.onrender.com/*',
   ]);
   const hash = require('node:crypto').createHash('sha256')

@@ -45,7 +45,16 @@
       intervaloMs: INTERVALO_SHOPEE_MS,
       colunas: COLUNAS,
     },
-    { chave: 'imile', nome: 'iMile', ativa: false },
+    {
+      chave: 'imile',
+      nome: 'iMile',
+      ativa: true,
+      padrao: /^\d{12,14}$/,
+      abas: 'https://ds.imile.com/*',
+      url: 'https://ds.imile.com/#/DSOperation/WaybillManagement/dsTrackQuery',
+      intervaloMs: INTERVALO_MS,
+      colunas: COLUNAS,
+    },
   ];
 
   class ErroDeConta extends Error {}
@@ -244,6 +253,12 @@
         telefone: formatarTelefone(d.telefone),
       });
       aoAvancar(i + 1, codigos.length);
+      // A transportadora mandou parar depois deste (ex.: cota da iMile no fim): o pedido vale.
+      if (r.parar) {
+        res.erro = r.parar;
+        res.pendentes = codigos.slice(i + 1);
+        break;
+      }
       if (i < codigos.length - 1) await dormir(Math.max(0, intervalo - (agora() - inicio)));
     }
     return res;
