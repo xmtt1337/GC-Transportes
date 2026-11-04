@@ -21,6 +21,8 @@
   // Pedido a pedido, a pedido do usuario. Sao 2 campos por pedido, cerca de 1,3 chamada por
   // segundo. Se o SPX recusar, subir este numero.
   const INTERVALO_SHOPEE_MS = 1500;
+  // Pedido a pedido, a pedido do usuario: 1 revelacao por pedido. Se o DS recusar, subir.
+  const INTERVALO_IMILE_MS = 1200;
   const COLUNAS = ['waybill', 'status', 'nome', 'telefone'];
   const PASTA_CSV = 'XM Consultas de telefone';
 
@@ -52,7 +54,7 @@
       padrao: /^\d{12,14}$/,
       abas: 'https://ds.imile.com/*',
       url: 'https://ds.imile.com/#/DSOperation/WaybillManagement/dsTrackQuery',
-      intervaloMs: INTERVALO_MS,
+      intervaloMs: INTERVALO_IMILE_MS,
       colunas: COLUNAS,
     },
   ];

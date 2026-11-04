@@ -48,6 +48,7 @@ test('Anjun, Shopee e iMile ativas', () => {
   assert.deepStrictEqual(X.TRANSPORTADORAS.map((t) => t.chave), ['anjun', 'shopee', 'imile']);
   assert.deepStrictEqual(X.TRANSPORTADORAS.filter((t) => t.ativa).map((t) => t.nome), ['Anjun', 'Shopee', 'iMile']);
   assert.strictEqual(X.indiceDoSite('https://ds.imile.com'), 2);
+  assert.strictEqual(X.TRANSPORTADORAS[2].intervaloMs, 1200);
   const { codigos } = X.extrairCodigos('6102626852307 AJ100000000000001 BR2608892320879', X.TRANSPORTADORAS[2].padrao);
   assert.deepStrictEqual(codigos, ['6102626852307']);
 });
