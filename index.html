@@ -456,6 +456,8 @@ if (_BASE) {
             <li><a href="#" data-rota="Fechamento/Resumo" onclick="abrirResumoQuinzena(event)">Resumo da Quinzena</a></li>
             <li><a href="#" data-rota="Fechamento/Ajustes" onclick="abrirAjustesFechamento(event)">Acréscimos e Descontos</a></li>
             <li><a href="#" data-rota="Fechamento/Deslocamentos" onclick="abrirDeslocamentos(event)">Deslocamentos</a></li>
+            <li><a href="#" data-rota="Fechamento/Coletas" onclick="abrirColetasFechamento(event)">Coletas</a></li>
+            <li><a href="#" data-rota="Fechamento/TerceirizadaVideira" onclick="abrirTerceirizadaVideira(event)">Terceirizada Videira</a></li>
             <li><a href="#" data-rota="Fechamento/Acareacoes" onclick="abrirAcareacoes(event)">PNR abertas</a></li>
             <li><a href="#" data-rota="Fechamento/Perdas" onclick="abrirPerdasDesempenho(event)">Perdas por desempenho</a></li>
             <li><a href="#" data-rota="Fechamento/Extravios" onclick="abrirExtraviosFechamento(event)">Fechamento de Extravios</a></li>
@@ -4772,7 +4774,7 @@ if (_BASE) {
 
 <script src="js/core.js?v=20261104c"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261104a"></script>
+<script src="js/router.js?v=20261104b"></script>
 <script src="js/sidebar.js?v=20261103f"></script>
 <script src="js/nav.js?v=20261103b"></script>
 <script src="js/atendimento.js?v=20261104c"></script>
@@ -4808,6 +4810,8 @@ if (_BASE) {
 <script src="js/ticketlog-info.js?v=20261104c"></script>
 <script src="js/fechamento-resumo.js?v=20261104c"></script>
 <script src="js/fechamento-ajustes.js?v=20261104c"></script>
+<script src="js/fechamento-coletas.js?v=20261104a"></script>
+<script src="js/fechamento-terceirizada.js?v=20261104a"></script>
 <script src="js/fechamento-deslocamentos.js?v=20261104c"></script>
 <script src="js/fechamento-acareacoes.js?v=20261104c"></script>
 <script src="js/conversoes.js?v=20261104c"></script>
@@ -5185,6 +5189,20 @@ if (_BASE) {
         <div id="aj-conteudo"></div>
     </div>
 </div><!-- /tela-ajustes-fechamento -->
+
+<!-- TELA FECHAMENTO › COLETAS — js/fechamento-coletas.js -->
+<div id="tela-coletas-fechamento" class="view tela-full">
+    <div class="fech-body">
+        <div id="co-conteudo"></div>
+    </div>
+</div>
+
+<!-- TELA FECHAMENTO › TERCEIRIZADA VIDEIRA — js/fechamento-terceirizada.js -->
+<div id="tela-terceirizada-videira" class="view tela-full">
+    <div class="fech-body">
+        <div id="tv-conteudo"></div>
+    </div>
+</div>
 
 <!-- TELA FECHAMENTO › RESUMO DA QUINZENA -->
 <div id="tela-resumo-quinzena" class="view tela-full">
