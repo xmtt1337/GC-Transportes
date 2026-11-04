@@ -10,8 +10,9 @@ Funciona na Anjun, no SPX da Shopee e no DS da iMile. Na Shopee
 e na iMile o status fica vazio (na Shopee, pedido de outra
 estacao vem marcado). A iMile tem cota de revelacoes por conta
 (700): cada pedido gasta 1, e a extensao para quando sobram 30.
-O CSV da iMile sai nesta ordem: Numero (telefone), Nome do
-cliente, Numero do pedido, Remetente e Produto.
+O CSV da iMile sai no formato do modelo_reclamacao_imile.csv
+(disparo em massa do WhatsApp): Numero, Nome do cliente, Numero
+do pedido, Remetente e Produto, separado por virgula.
 
 
 -----------------------------------------------------------

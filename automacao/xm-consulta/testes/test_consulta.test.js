@@ -50,9 +50,11 @@ test('Anjun, Shopee e iMile ativas', () => {
   assert.strictEqual(X.indiceDoSite('https://ds.imile.com'), 2);
   assert.strictEqual(X.TRANSPORTADORAS[2].intervaloMs, 1200);
   const imile = X.TRANSPORTADORAS[2];
-  const csv = X.montarCsv([{ telefone: '55 49 900000000', nome: 'F', waybill: '1', remetente: 'R', produto: 'P' }], imile.colunas, imile.titulos);
-  assert.ok(csv.startsWith('\ufeffNúmero;Nome do cliente;Número do pedido;Remetente;Produto\r\n'));
-  assert.ok(csv.includes('"55 49 900000000";"F";"1";"R";"P"'));
+  const linha = { telefone: '55 49 900000000', nome: 'F', waybill: '1', remetente: 'R', produto: 'Capa, azul' };
+  const csv = X.montarCsv([linha], imile.colunas, imile.titulos, imile.separador);
+  // Mesmo cabecalho do modelo_reclamacao_imile.csv do disparo em massa do WhatsApp.
+  assert.ok(csv.startsWith('\ufeffNumero,Nome do cliente,Número do pedido,Remetente,Produto\r\n'));
+  assert.ok(csv.includes('"55 49 900000000","F","1","R","Capa, azul"'));
   const { codigos } = X.extrairCodigos('6102626852307 AJ100000000000001 BR2608892320879', X.TRANSPORTADORAS[2].padrao);
   assert.deepStrictEqual(codigos, ['6102626852307']);
 });

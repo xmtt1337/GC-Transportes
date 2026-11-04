@@ -55,12 +55,14 @@
       abas: 'https://ds.imile.com/*',
       url: 'https://ds.imile.com/#/DSOperation/WaybillManagement/dsTrackQuery',
       intervaloMs: INTERVALO_IMILE_MS,
-      // Ordem e nomes pedidos pelo usuario.
+      // Igual ao modelo_reclamacao_imile.csv do disparo em massa do WhatsApp (meusite,
+      // whatsapp-teste.js): mesma ordem, mesmos nomes e virgula, que e o que aquela tela le.
       colunas: ['telefone', 'nome', 'waybill', 'remetente', 'produto'],
       titulos: {
-        telefone: 'Número', nome: 'Nome do cliente', waybill: 'Número do pedido',
+        telefone: 'Numero', nome: 'Nome do cliente', waybill: 'Número do pedido',
         remetente: 'Remetente', produto: 'Produto',
       },
+      separador: ',',
     },
   ];
 
@@ -166,9 +168,9 @@
     return `"${seguro.replace(/"/g, '""')}"`;
   }
 
-  function montarCsv(linhas, colunas = COLUNAS, titulos = {}) {
-    const cabecalho = colunas.map((c) => titulos[c] || c).join(';');
-    const corpo = linhas.map((l) => colunas.map((c) => celula(l[c])).join(';'));
+  function montarCsv(linhas, colunas = COLUNAS, titulos = {}, separador = ';') {
+    const cabecalho = colunas.map((c) => titulos[c] || c).join(separador);
+    const corpo = linhas.map((l) => colunas.map((c) => celula(l[c])).join(separador));
     return `\ufeff${[cabecalho, ...corpo].join('\r\n')}\r\n`;
   }
 
