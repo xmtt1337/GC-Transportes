@@ -167,7 +167,7 @@ test("performance: soma por entregador com performance da quinzena, pior dia e d
     assert.strictEqual(f.por_pacote, 2.02);
 });
 
-test("performance: aba lista o pior primeiro e respeita a busca", () => {
+test("performance: aba lista o pior primeiro e respeita o funil de entregador", () => {
     const { ctx, el } = carregar();
     ctx._rqRender();
     vm.runInContext(`_rqPerf = { chave: "x", entregadores: _rqPerfPorEntregador(${JSON.stringify(PERF)}) }; _rqAba = "performance";`, ctx);
@@ -175,7 +175,7 @@ test("performance: aba lista o pior primeiro e respeita a busca", () => {
     let html = el("rq-painel-performance").innerHTML;
     assert.ok(html.indexOf("Fulano") < html.indexOf("Beltrano"));
     assert.match(html, /94,50%/);
-    el("rq-busca").value = "beltrano";
+    vm.runInContext(`_rqColFiltros = { entregador: _rqDadosVisao().linhas.filter(l => /Beltrano/.test(l.entregador)).map(l => l.entregador) };`, ctx);
     ctx._rqRenderTabela();
     html = el("rq-painel-performance").innerHTML;
     assert.doesNotMatch(html, /Fulano/);
@@ -229,4 +229,22 @@ test("R$/pacote do dia: com tarifa mínima ou POD vale o que foi pago, não o da
     assert.strictEqual(ctx._rqValorPago({ valor: 2.5, pacotes_pagos: 10, total: 23, pod_pacotes: 10 }), 2.3);
     assert.strictEqual(ctx._rqValorPago({ valor: 2.5, pacotes_pagos: 10, total: 25 }), 2.5, "dia normal");
     assert.strictEqual(ctx._rqValorPago({ valor: 2.5, pacotes_pagos: 0, total: 0, pacotes_minima: 1 }), 2.5, "sem pacote pago");
+});
+
+test("valores: funil em todas as colunas; filtra por texto do valor (número formatado) e soma só o que sobrou", () => {
+    const { ctx, el } = carregar();
+    ctx._rqRender();
+    const head = el("rq-thead").innerHTML;
+    const funis = (head.match(/_rqAbrirFiltro\(this, '/g) || []).length;
+    assert.strictEqual(funis, (head.match(/<th/g) || []).length, "todas as colunas têm funil");
+    assert.doesNotMatch(el("rq-conteudo").innerHTML, /id="rq-busca"|Todos os polos<\/option><\/select>\s*<\/span>/);
+    const linhas = vm.runInContext("_rqDadosVisao().linhas", ctx);
+    const alvo = linhas.find(l => !l.sem_conversao);
+    vm.runInContext(`_rqColFiltros = { liquido: [_rqValorCol(_rqDadosVisao().linhas.find(l => !l.sem_conversao), "liquido").txt] };`, ctx);
+    ctx._rqRenderTabela();
+    const filtradas = JSON.parse(JSON.stringify(ctx._rqFiltradas()));
+    assert.ok(filtradas.length >= 1 && filtradas.every(l => l.liquido === alvo.liquido));
+    assert.match(el("rq-tfoot").innerHTML, new RegExp(filtradas.length + " linha\\(s\\)"));
+    ctx._rqLimparFiltros();
+    assert.strictEqual(JSON.parse(JSON.stringify(ctx._rqFiltradas())).length, linhas.length);
 });

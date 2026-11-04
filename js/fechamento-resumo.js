@@ -14,6 +14,7 @@ let _rqReq = 0;
 let _rqXCidades = [];      // cidades escolhidas no "Baixar relatório": [{nome, variantes}] (vazio = todas)
 let _rqXNaoAchadas = [];   // nomes colados que não existem nesta quinzena
 let _rqAba = "valores";   // valores | performance
+let _rqColFiltros = {};    // filtro de coluna (funil) da tabela de valores: { campo: [valores visíveis] }
 let _rqPerf = null;       // {chave: "ano-mes-q", entregadores} da aba Performance
 let _rqPerfOrdem = { campo: "pct", desc: false }; // pior performance primeiro
 let _rqPerfVisiveis = [];
@@ -79,6 +80,7 @@ function _rqCarregar() {
         if (req !== _rqReq) return;
         if (d.error) { el.innerHTML = `<div class="cft-erro">${_rqEsc(d.error)}</div>`; return; }
         _rqDados = d;
+        _rqColFiltros = {}; // outra quinzena: os valores dos funis mudam
         _rqRender();
     }).catch(() => { if (req === _rqReq) el.innerHTML = `<div class="cft-erro">Erro ao carregar o resumo.</div>`; });
 }
@@ -92,7 +94,6 @@ function _rqRender() {
     const d = _rqDadosVisao();
     const el = document.getElementById("rq-conteudo");
     const t = d.totais;
-    const polos = [...new Set(d.linhas.map(l => l.polo).filter(Boolean))].sort();
     const faltam = Object.values(d.transportadoras).filter(x => !x.enviado).map(x => x.nome);
     // Pendências (âmbar) num bloco só; o que é só informação fica em cinza embaixo dele.
     const pend = [
@@ -129,14 +130,8 @@ function _rqRender() {
             <a href="#" class="mex-aba" id="rq-aba-performance" onclick="event.preventDefault();_rqMudarAba('performance')">Performance por entregador</a>
         </div>
         <div class="cft-barra" style="justify-content:space-between;margin-top:0">
-            <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <div class="adm-search-input-area" style="max-width:260px;margin:0">
-                    <input type="text" id="rq-busca" placeholder="Entregador..." oninput="_rqRenderTabela()">
-                </div>
-                <select class="fech-select" id="rq-polo" onchange="_rqRenderTabela()">
-                    <option value="">Todos os polos</option>${polos.map(p => `<option>${_rqEsc(p)}</option>`).join("")}
-                </select>
-            </span>
+            <span class="cft-ajuda">Use o funil de cada coluna pra filtrar e ordenar.
+                <button type="button" class="cft-link" id="rq-limpar-filtros" style="display:none" onclick="_rqLimparFiltros()">Limpar filtros</button></span>
             <button class="cft-btn" onclick="_rqAlternarBaixar()">Baixar relatório</button>
         </div>
         <div id="rq-baixar" class="cft-regras" style="display:none">
@@ -248,11 +243,11 @@ function _rqPct(p) { return p == null ? "—" : p.toLocaleString("pt-BR", { mini
 function _rqDiaCurto(iso) { const [, m, d] = String(iso || "").split("-"); return d ? `${d}/${m}` : ""; }
 
 function _rqPerfFiltrados() {
-    const busca = _rqChave((document.getElementById("rq-busca") || {}).value);
-    const polo = (document.getElementById("rq-polo") || {}).value || "";
     const poloResumo = new Map((_rqDadosVisao().linhas || []).map(l => [l.entregador, l.polo]));
+    const fEnt = _rqColFiltros.entregador ? new Set(_rqColFiltros.entregador) : null;
+    const fPolo = _rqColFiltros.polo ? new Set(_rqColFiltros.polo) : null;
     const lista = _rqPerf.entregadores.map(r => ({ ...r, polo: poloResumo.get(r.entregador) || r.polo }))
-        .filter(r => _rqDaVisao(r.entregador) && (!busca || _rqChave(r.entregador).includes(busca)) && (!polo || r.polo === polo));
+        .filter(r => _rqDaVisao(r.entregador) && (!fEnt || fEnt.has(r.entregador)) && (!fPolo || fPolo.has(r.polo || "(sem polo)")));
     const { campo, desc } = _rqPerfOrdem;
     const val = (r) => campo === "pior" ? (r.pior ? r.pior.pct : null) : r[campo];
     return lista.sort((a, b) => {
@@ -616,12 +611,24 @@ function _rqPublicar(publicar) {
         : "Os entregadores voltam a ver a planilha desta quinzena. Despublicar?", fazer, publicar ? "Publicar fechamento" : "Despublicar", publicar ? "Publicar" : "Despublicar");
 }
 
+/** Valor da coluna na linha: o número (pra ordenar) e o texto que aparece no funil. */
+function _rqValorCol(l, campo) {
+    if (campo === "entregador") return { num: null, txt: l.entregador };
+    if (campo === "polo") return { num: null, txt: l.polo || "(sem polo)" };
+    const n = campo.startsWith("t:") ? ((l.por_transp[campo.slice(2)] || {}).valor || 0) : (l[campo] || 0);
+    return { num: n, txt: campo === "pacotes" ? n.toLocaleString("pt-BR") : (n ? _rqNum(n) : "—") };
+}
+
+/** Linhas que passam nos funis (menos o da coluna `exceto`, pra lista de valores dela). */
+function _rqPassamFiltros(linhas, exceto) {
+    const ativos = Object.entries(_rqColFiltros).filter(([c]) => c !== exceto).map(([c, v]) => [c, new Set(v)]);
+    return linhas.filter(l => ativos.every(([c, set]) => set.has(_rqValorCol(l, c).txt)));
+}
+
 function _rqFiltradas() {
-    const busca = _rqChave((document.getElementById("rq-busca") || {}).value);
-    const polo = (document.getElementById("rq-polo") || {}).value || "";
-    const lista = _rqDadosVisao().linhas.filter(l => (!busca || _rqChave(l.entregador).includes(busca)) && (!polo || l.polo === polo));
+    const lista = _rqPassamFiltros(_rqDadosVisao().linhas);
     const { campo, desc } = _rqOrdem;
-    const val = (l) => campo.startsWith("t:") ? ((l.por_transp[campo.slice(2)] || {}).valor || 0) : l[campo];
+    const val = (l) => campo === "entregador" || campo === "polo" ? l[campo] : _rqValorCol(l, campo).num;
     return lista.slice().sort((a, b) => {
         if (a.sem_conversao !== b.sem_conversao) return a.sem_conversao ? 1 : -1; // sem conversão sempre no fim
         const x = val(a), y = val(b);
@@ -635,10 +642,44 @@ function _rqOrdenar(campo) {
     _rqRenderTabela();
 }
 
+const _RQ_FUNIL = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>';
+
+/** Funil da coluna: os valores que existem (já recortados pelos outros funis), ordenar e marcar. */
+function _rqAbrirFiltro(btn, campo) {
+    const base = _rqPassamFiltros(_rqDadosVisao().linhas, campo);
+    const cont = new Map();
+    for (const l of base) {
+        const v = _rqValorCol(l, campo);
+        const c = cont.get(v.txt) || { valor: v.txt, qtd: 0, num: v.num };
+        c.qtd++;
+        cont.set(v.txt, c);
+    }
+    const lista = [...cont.values()].sort((a, b) => a.num !== null && b.num !== null ? a.num - b.num
+        : String(a.valor).localeCompare(String(b.valor), "pt-BR"));
+    colfAbrir(btn, {
+        contagem: lista.map(({ valor, qtd }) => ({ valor, qtd })),
+        selecionados: _rqColFiltros[campo] ? new Set(_rqColFiltros[campo]) : null,
+        ordenar: { atual: _rqOrdem.campo === campo ? (_rqOrdem.desc ? "desc" : "asc") : null },
+        aoAplicar: (sel, ordem) => {
+            if (sel) _rqColFiltros[campo] = [...sel]; else delete _rqColFiltros[campo];
+            if (ordem) _rqOrdem = { campo, desc: ordem === "desc" };
+            _rqRenderTabela();
+        },
+    });
+}
+
+function _rqLimparFiltros() {
+    _rqColFiltros = {};
+    _rqOrdem = { campo: "entregador", desc: false };
+    _rqRenderTabela();
+}
+
 function _rqRenderTabela() {
     const cols = _rqColunas();
     const seta = (c) => _rqOrdem.campo === c ? (_rqOrdem.desc ? " ↓" : " ↑") : "";
-    const th = (c, rot, num) => `<th${num ? ` style="text-align:right"` : ""}><a href="#" class="cft-ordem" onclick="event.preventDefault();_rqOrdenar('${c}')">${rot}${seta(c)}</a></th>`;
+    const th = (c, rot, num) => `<th${num ? ` style="text-align:right"` : ""}><span class="colf-th"${num ? ` style="justify-content:flex-end"` : ""}>${rot}${seta(c)}<button type="button" class="colf-btn${_rqColFiltros[c] || _rqOrdem.campo === c ? " ativo" : ""}" onclick="_rqAbrirFiltro(this, '${c}')" title="Filtrar / ordenar">${_RQ_FUNIL}</button></span></th>`;
+    const limpar = document.getElementById("rq-limpar-filtros");
+    if (limpar) limpar.style.display = Object.keys(_rqColFiltros).length ? "" : "none";
     document.getElementById("rq-thead").innerHTML = `<tr>${th("entregador", "Entregador")}${th("polo", "Polo")}
         ${cols.map(c => th("t:" + c.chave, _rqEsc(c.nome), true)).join("")}
         ${th("pacotes", "Pacotes", true)}${th("bruto", "Bruto", true)}${th("acrescimos", "Acrésc.", true)}${th("deslocamento", "Desloc.", true)}${th("ticketlog", "Ticketlog", true)}
@@ -672,7 +713,7 @@ function _rqRenderTabela() {
             <td class="num"><strong>${_rqNum(soma(l => l.descontos))}</strong></td>
             <td class="num cft-pos"><strong>${_rqNum(soma(l => l.liquido))}</strong></td>
         </tr>` : "";
-    if (_rqAba === "performance") _rqRenderPerf(); // busca e polo valem pras duas abas
+    if (_rqAba === "performance") _rqRenderPerf(); // funil de entregador e polo vale pras duas abas
 }
 
 function _rqSelect(id, todos, lista) {
