@@ -218,6 +218,12 @@ if (_BASE) {
                     <li><a href="#" data-rota="Operacao/AlimentarTotalExpress" onclick="abrirAlimentar(event,'total_express')">Alimentar</a></li>
                     <li><a href="#" data-rota="Conferencias/TotalExpress" onclick="abrirConferencias(event,'total_express')">Conferência</a></li>
                 </ul>
+                <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
+                    Jadlog <span class="subgroup-arrow">▾</span>
+                </li>
+                <ul class="sub-sub-submenu" id="grupo-op-jadlog">
+                    <li><a href="#" data-rota="Jadlog/Anotacoes" onclick="abrirJadlogAnotacoes(event)">Anotações</a></li>
+                </ul>
             </ul>
         </ul>
 
@@ -1897,6 +1903,13 @@ if (_BASE) {
 
         <!-- TELA CONFERÊNCIA DE EXPEDIÇÃO (Operação > Transportadoras > Anjun > Conferência):
              relatório da transportadora x Cidades por usuário — js/conferencia-expedicao.js -->
+        <!-- TELA OPERAÇÃO > JADLOG > ANOTAÇÕES: pacotes Jadlog por entregador no dia — js/jadlog-anotacoes.js -->
+        <div id="tela-jadlog-anotacoes" class="view tela-full">
+            <div class="fech-body">
+                <div id="jad-conteudo"></div>
+            </div>
+        </div>
+
         <div id="tela-conf-expedicao" class="view tela-full">
             <div class="fech-header">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -4791,7 +4804,7 @@ if (_BASE) {
 <script src="js/whatsapp-conversa.js?v=20261104c"></script>
 <script src="js/modals.js?v=20261104c"></script>
 <script src="js/alimentar.js?v=30260812d"></script>
-<script src="js/fechamento-criar.js?v=20261104d"></script>
+<script src="js/fechamento-criar.js?v=20261104e"></script>
 <script src="js/ticketlog-info.js?v=20261104c"></script>
 <script src="js/fechamento-resumo.js?v=20261104c"></script>
 <script src="js/fechamento-ajustes.js?v=20261104c"></script>
@@ -4808,6 +4821,7 @@ if (_BASE) {
 <script src="js/desempenho-hora.js?v=20261015a"></script>
 <script src="js/conferencias.js?v=20261102b"></script>
 <script src="js/conferencia-expedicao.js?v=20261104d"></script>
+<script src="js/jadlog-anotacoes.js?v=20261104a"></script>
 <script src="js/conferencias-hub.js?v=20261104c"></script>
 <script src="js/antecipacoes.js?v=20261014a"></script>
 <script src="js/antecipacoes-admin.js?v=20261015b"></script>
@@ -4978,7 +4992,8 @@ if (_BASE) {
             <div id="cf-painel" style="display:none">
                 <div class="cft-painel-titulo"><span id="cf-painel-nome"></span><span class="cft-ajuda" id="cf-painel-arquivo"></span></div>
 
-                <label class="nota-upload-area" style="cursor:pointer">
+                <div id="cf-jadlog-wrap" style="display:none"></div>
+                <label class="nota-upload-area" id="cf-upload-area" style="cursor:pointer">
                     <input type="file" id="cf-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="_cfArquivoSelecionado(this)">
                     <div class="nota-upload-icon">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3a86ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

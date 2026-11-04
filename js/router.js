@@ -90,6 +90,7 @@ const _ROTAS = {
     "Conferencias/Loggi":            () => abrirConferencias(null, "loggi"),
     "Conferencias/JT":               () => abrirConferencias(null, "jt"),
     "Conferencias/Anjun":            () => abrirConfExpedicao(null, "anjun"),
+    "Jadlog/Anotacoes":              () => abrirJadlogAnotacoes(),
     "Conferencias/Imile":            () => abrirConferencias(null, "imile"),
     "Conferencias/Shopee":           () => abrirConferencias(null, "shopee"),
     "Conferencias/TotalExpress":     () => abrirConferencias(null, "total_express"),
@@ -262,6 +263,7 @@ const _TELA_ROTAS = {
     "tela-videira-alimentar":    "Videira/AlimentarFechamento",
     "tela-videira-painel":       "Videira/MeuFechamento",
     "tela-videira-dash":         "Videira/Dashboard",
+    "tela-jadlog-anotacoes":     "Jadlog/Anotacoes",
     "tela-criar-fechamento":     "Fechamento/Criar",
     "tela-resumo-quinzena":      "Fechamento/Resumo",
     "tela-ajustes-fechamento":   "Fechamento/Ajustes",
@@ -337,6 +339,7 @@ const _ROTAS_URL = {
     "Conferencias/Imile":              "Operacao/Imile/Conferencia",
     "Conferencias/JT":                 "Operacao/JT/Conferencia",
     "Conferencias/TotalExpress":       "Operacao/TotalExpress/Conferencia",
+    "Jadlog/Anotacoes":                "Operacao/Jadlog/Anotacoes",
 
     // Torre de Controle
     "Planejamento/Cacador":            "TorreControle/Planejamento/Cacador",

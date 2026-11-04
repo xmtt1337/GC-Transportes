@@ -41,6 +41,8 @@ const _CF_TRANSPORTADORAS = [
     { key: "anjun",  label: "Anjun",         cor: "#22C55E" },
     { key: "imile",  label: "Imile",         cor: "#9333EA" },
     { key: "total",  label: "Total Express", cor: "#EAB308" },
+    // Jadlog: sem relatório — os pacotes vêm das Anotações da operação (Operação › Jadlog).
+    { key: "jadlog", label: "Jadlog",        cor: "#DC2626", porAnotacao: true },
 ];
 
 /** Shopee (as duas XPTs): valor pela performance do usuário no dia, sem prazo. */
@@ -180,6 +182,15 @@ function _cfSelecionarTransp(key) {
     document.getElementById("cf-upload-status").innerHTML = "";
     document.getElementById("cf-file-input").value = "";
     document.getElementById("cf-painel").style.display = "";
+    // Jadlog: no lugar do anexo, o botão que monta o lote com as anotações da operação.
+    document.getElementById("cf-upload-area").style.display = cfg.porAnotacao ? "none" : "";
+    const jw = document.getElementById("cf-jadlog-wrap");
+    jw.style.display = cfg.porAnotacao ? "" : "none";
+    if (cfg.porAnotacao) jw.innerHTML = `<div class="cft-regras" style="margin:0">
+        <div class="cft-ajuda" style="margin-bottom:8px">${cfg.label} não tem relatório: os pacotes vêm das anotações da operação
+            (Operação › Transportadoras › ${cfg.label} › Anotações), um por pacote, entregue no dia anotado, na cidade do nome do entregador.
+            O valor segue a mesma regra das outras transportadoras (performance do dia nos polos da regra; tabela da cidade nos outros).</div>
+        <button class="cft-btn primario" onclick="_cfAtualizarJadlog(this)">Atualizar com as anotações</button></div>`;
     // Shopee: segundo upload, dos onholds da quinzena.
     const oh = document.getElementById("cf-onholds-wrap");
     oh.style.display = _cfEhShopee(key) ? "" : "none";
@@ -190,6 +201,24 @@ function _cfSelecionarTransp(key) {
         _cfCarregarIgnorar();
     }
     _cfCarregarDetalhe();
+}
+
+/** Jadlog: (re)monta o lote da quinzena com as anotações e recalcula a performance. */
+async function _cfAtualizarJadlog(btn) {
+    const st = document.getElementById("cf-upload-status");
+    btn.disabled = true;
+    st.innerHTML = `<span class="cft-ajuda">Montando com as anotações...</span>`;
+    try {
+        const r = await fetch(`${_CF_API()}/jadlog-atualizar`, { method: "POST", headers: _cfHeaders(true),
+            body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena }) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Erro ao atualizar.");
+        st.innerHTML = `<span class="cft-ajuda">${Number(d.resumo.total).toLocaleString("pt-BR")} pacotes Jadlog na quinzena.</span>`;
+        _cfAtualizarCards();
+        _cfCarregarDetalhe();
+    } catch (err) {
+        st.innerHTML = `<span class="cft-erro">${_cfEsc(err.message)}</span>`;
+    } finally { btn.disabled = false; }
 }
 
 // Planilha de CEP do Planejamento (aba "Cep Geral") — o sistema copia pro banco sozinho a

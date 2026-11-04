@@ -43,7 +43,7 @@ test("transportadoras com card (Shopee por XPT)", () => {
     const ctx = carregar();
     assert.deepStrictEqual(
         JSON.parse(vm.runInContext("JSON.stringify(_CF_TRANSPORTADORAS.map(t => t.label))", ctx)),
-        ["Shopee Caçador", "Shopee Videira", "Loggi", "Anjun", "Imile", "Total Express"]);
+        ["Shopee Caçador", "Shopee Videira", "Loggi", "Anjun", "Imile", "Total Express", "Jadlog"]);
 });
 
 test("coluna pela letra (#S, #AG) entra mesmo sem nome reconhecido", () => {
@@ -546,4 +546,10 @@ test("Desconsiderar prazo: lista pra escolher (mais atrasos primeiro, sem os já
     assert.match(html, /Carro quebrado/);
     assert.match(html, /Voltar a contar/);
     assert.match(ctx._cfHtmlPrazo({ isentos: [], entregadores: [] }), /Nenhum entregador com o prazo desconsiderado/);
+});
+
+test("Jadlog está na lista do Criar Fechamento como transportadora por anotação", () => {
+    const ctx = carregar();
+    const j = vm.runInContext("_CF_TRANSPORTADORAS.find(t => t.key === 'jadlog')", ctx);
+    assert.ok(j && j.porAnotacao && j.label === "Jadlog");
 });
