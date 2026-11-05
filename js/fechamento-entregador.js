@@ -205,15 +205,9 @@ function _fsDiasAtraso(deveria, entregue) {
 function _fsHtmlForaPrazo(lista) {
     if (!lista.length) return "";
     const pct = lista[0].desconto_pct || 40;
-    const desc = lista.reduce((s, p) => s + (p.desconto || 0), 0);
-    const naoEntregues = lista.filter(p => !p.entregue).length;
     const mostrar = _fsForaPrazoTodos ? lista : lista.slice(0, 20);
     return `<div class="painel-ocorrencias"><div class="poc-card">
         <div class="poc-header">Entregas fora do prazo (valor pela cidade)</div>
-        <div class="extr-endereco" style="margin:10px 12px 4px">${lista.length} pacote${lista.length !== 1 ? "s" : ""} fora do prazo${naoEntregues ? ` (${naoEntregues} não entregue${naoEntregues !== 1 ? "s" : ""})` : ""}
-            ${desc ? ` · <b class="fs-neg">${_fsR(desc)}</b> de desconto (já tirado do valor das transportadoras)` : ""}</div>
-        <div class="extr-endereco" style="margin:0 12px 0">Entregou depois do prazo: não recebe o incentivo da cidade e, nas cidades de parceiro,
-            perde ${pct}% do valor. Pacote não entregue não é pago.</div>
         <div class="extr-lista">${mostrar.map(p => {
             const atraso = _fsDiasAtraso(p.deveria, p.entregue);
             const quando = p.entregue

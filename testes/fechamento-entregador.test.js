@@ -401,8 +401,8 @@ test("fora do prazo pela cidade: conta do pacote (cidade − 40% = recebeu), dia
     ctx._fsRender(D2);
     const html = el("fech-sistema").innerHTML;
     assert.match(html, /Entregas fora do prazo \(valor pela cidade\)/);
-    assert.match(html, /3 pacotes fora do prazo \(1 não entregue\)/);
-    assert.match(html, /R\$ 1,20<\/b> de desconto/);
+    // Sem o resumo e a explicação no topo (05/11/2026): só os pacotes.
+    assert.doesNotMatch(html, /pacotes fora do prazo|Entregou depois do prazo|de desconto \(já tirado/);
     assert.match(html, /Prazo 21\/09\/2026 · entregue 23\/09\/2026 \(2 dias depois\)/);
     assert.match(html, /Cidade R\$ 3,00<\/span>\s*<span class="fs-neg">− 40% atraso R\$ 1,20<\/span>[\s\S]*?= <b>R\$ 1,80<\/b>/);
     assert.match(html, /sem desconto \(cidade sem parceiro\)[\s\S]*?\+ peso R\$ 1,00[\s\S]*?= <b>R\$ 3,50<\/b>/);
