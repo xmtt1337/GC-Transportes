@@ -222,3 +222,18 @@ test("bloqueio: aparece sem fechar, e some quando a chave chega", () => {
   c._dpgDesenharAviso();
   assert.strictEqual(corpo.length, 0, "salvou a chave: libera");
 });
+
+test("aviso da home: com solicitação pendente, mostra 'em análise' em vez de pedir pra preencher", () => {
+  const c = contexto();
+  const html = c.dpgHtmlAviso({ aplica: true, completo: false, dados: null, solicitacao: { status: "pendente", mudancas: [] } });
+  assert.match(html, /Dados de pagamento em análise/);
+  assert.match(html, /abrirConfigPagamento\(\)">Ver status/);
+  assert.doesNotMatch(html, /Preencher meus dados/);
+  assert.strictEqual(c.dpgHtmlAviso({ aplica: true, completo: true, dados: DADOS, solicitacao: { status: "aprovado" } }), "");
+});
+
+test("status pendente: primeiro envio diz 'Dados enviados', alteração diz 'Alteração solicitada'", () => {
+  const c = contexto();
+  assert.match(c.dpgHtmlStatusSolicitacao({ status: "pendente", mudancas: [{ campo: "chave_pix", rotulo: "Chave Pix", antes: null, depois: "x@exemplo.com" }] }), /Dados enviados — aguardando aprovação/);
+  assert.match(c.dpgHtmlStatusSolicitacao({ status: "pendente", mudancas: [{ campo: "chave_pix", rotulo: "Chave Pix", antes: "a@exemplo.com", depois: "x@exemplo.com" }] }), /Alteração solicitada/);
+});

@@ -91,7 +91,16 @@ function dpgTextoFaltando(d) {
 
 /** HTML do aviso. Vazio quando não precisa (outro cargo ou dados completos). */
 function dpgHtmlAviso(estado) {
-    if (!estado || !estado.aplica || estado.completo) return "";
+    if (!estado || !estado.aplica) return "";
+    if (estado.solicitacao && estado.solicitacao.status === "pendente") {
+        return `
+        <div class="dpg-aviso dpg-aviso-info" role="status">
+            <div class="dpg-aviso-titulo">Dados de pagamento em análise</div>
+            <div class="dpg-aviso-texto">Recebemos seus dados e eles estão aguardando aprovação. Assim que forem aprovados, passam a valer para o pagamento.</div>
+            <button type="button" class="dpg-aviso-btn" onclick="abrirConfigPagamento()">Ver status</button>
+        </div>`;
+    }
+    if (estado.completo) return "";
     const temChave = !!(estado.dados && estado.dados.chave_pix);
     const texto = temChave
         ? `Sua chave Pix já está com a gente, mas o cadastro de pagamento está incompleto. ${dpgTextoFaltando(estado.dados)} Complete para receber a quinzena sem atraso.`
@@ -174,8 +183,8 @@ function _dpgCampo(id, rotulo, valor, extra) {
 function dpgHtmlFormulario(d, temDados) {
     d = d || {};
     const intro = temDados
-        ? "Mudanças em dados que já temos (chave Pix, CPF, telefone...) passam por aprovação: seus dados só mudam depois que forem confirmados. Campo vazio que você preencher vale na hora."
-        : "Usamos estes dados para pagar sua quinzena. Confira com atenção: o Pix vai para a chave informada aqui.";
+        ? "Toda alteração passa por aprovação: seus dados só mudam depois que forem confirmados. Até lá, o pagamento usa os dados atuais."
+        : "Usamos estes dados para pagar sua quinzena. Confira com atenção: o Pix vai para a chave informada aqui. Depois de enviar, eles passam por uma conferência antes de valer.";
     return `
         <div class="dpg-intro">${intro}</div>
         ${_dpgCampo("nome", "Nome completo", d.nome, `autocomplete="name" maxlength="120" placeholder="Nome e sobrenome"`)}
@@ -262,10 +271,9 @@ function dpgAbrirFormulario() {
                 if (r.d.solicitado) {
                     // Nada mudou ainda: os dados seguem os de antes até a aprovação.
                     _dpgEstado = { ..._dpgEstado, aplica: true, solicitacao: r.d.solicitacao };
-                    gcAlert("Sua solicitação foi enviada. Os dados só mudam depois que forem aprovados — até lá o pagamento usa os dados atuais. Acompanhe o status em Pagamentos › Configurações de pagamento.", "Solicitação enviada");
+                    gcAlert("Seus dados foram enviados e estão aguardando aprovação. Eles passam a valer assim que forem aprovados. Acompanhe o status em Pagamentos › Configurações de pagamento.", "Dados enviados");
                 } else {
-                    _dpgEstado = { ..._dpgEstado, aplica: true, completo: true, dados: r.d.dados };
-                    gcAlert("Seus dados de pagamento foram salvos. Para mudar depois, vá em Pagamentos › Configurações de pagamento.", "Dados salvos");
+                    gcAlert("Você enviou os mesmos dados que já temos — nada para mudar.", "Sem alteração");
                 }
                 _dpgDesenharAviso();
                 _dpgDesenharConfig();
@@ -326,7 +334,7 @@ function _dpgHtmlMudancas(mudancas, tipoAtual) {
 function dpgHtmlStatusSolicitacao(s, tipoAtual) {
     if (!s) return "";
     const cfg = {
-        pendente:  { cls: "pendente",  titulo: "Alteração solicitada — aguardando aprovação",
+        pendente:  { cls: "pendente",  titulo: (s.mudancas || []).every(m => !m.antes) ? "Dados enviados — aguardando aprovação" : "Alteração solicitada — aguardando aprovação",
                      texto: `Enviada em ${_dpgData(s.criado_em)}. Seus dados só mudam depois de aprovados; até lá o pagamento usa os dados abaixo.` },
         aprovado:  { cls: "aprovado",  titulo: "Alteração aprovada",
                      texto: `Aprovada em ${_dpgData(s.decidido_em)}. Os dados abaixo já são os novos.` },
