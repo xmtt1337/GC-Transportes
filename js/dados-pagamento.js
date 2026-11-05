@@ -62,6 +62,27 @@ function dpgChaveLegivel(tipo, chave) {
 
 const dpgRotuloTipo = tipo => (DPG_TIPOS.find(t => t.valor === tipo) || {}).rotulo || "";
 
+/**
+ * Quais campos obrigatórios estão vazios, com o nome que o formulário usa. Lista vazia com
+ * cadastro incompleto = tudo preenchido, mas algo inválido (CPF, nome sem sobrenome...).
+ */
+function dpgFaltando(d) {
+    d = d || {};
+    const campos = [
+        ["nome", "nome completo"], ["cpf", "CPF"], ["whatsapp", "WhatsApp"],
+        ["email", "e-mail"], ["tipo_pix", "tipo da chave"], ["chave_pix", "chave Pix"],
+    ];
+    return campos.filter(([k]) => !String(d[k] || "").trim()).map(([, rotulo]) => rotulo);
+}
+
+/** "Falta o e-mail." / "Faltam CPF e e-mail." / "Confira seus dados." */
+function dpgTextoFaltando(d) {
+    const f = dpgFaltando(d);
+    if (!f.length) return "Confira seus dados.";
+    if (f.length === 1) return `Falta ${f[0] === "chave Pix" ? "a" : "o"} ${f[0]}.`;
+    return `Faltam ${f.slice(0, -1).join(", ")} e ${f[f.length - 1]}.`;
+}
+
 // ── Aviso na tela inicial ──
 
 /** HTML do aviso. Vazio quando não precisa (outro cargo ou dados completos). */
@@ -69,7 +90,7 @@ function dpgHtmlAviso(estado) {
     if (!estado || !estado.aplica || estado.completo) return "";
     const temChave = !!(estado.dados && estado.dados.chave_pix);
     const texto = temChave
-        ? "Sua chave Pix já está com a gente, mas faltam dados no seu cadastro de pagamento. Confira e complete para receber a quinzena sem atraso."
+        ? `Sua chave Pix já está com a gente, mas o cadastro de pagamento está incompleto. ${dpgTextoFaltando(estado.dados)} Complete para receber a quinzena sem atraso.`
         : "Notamos que ainda não temos seus dados de pagamento em nosso registro. Preencha o formulário para receber a quinzena sem atraso.";
     return `
         <div class="dpg-aviso" role="status">
@@ -205,8 +226,13 @@ function dpgAbrirFormulario() {
 function dpgSecaoPerfil(estado) {
     if (!estado || !estado.aplica) return "";
     const d = estado.dados || {};
-    const valor = estado.completo
-        ? `<div class="pc-conta-valor" title="${_gcEsc(dpgChaveLegivel(d.tipo_pix, d.chave_pix))}">${_gcEsc(dpgRotuloTipo(d.tipo_pix))} · ${_gcEsc(dpgChaveLegivel(d.tipo_pix, d.chave_pix))}</div>`
+    // Com chave, a chave aparece mesmo com o cadastro incompleto ("Pendente" ali parecia
+    // dizer que a chave não existia); o que falta vem embaixo, em âmbar.
+    const chave = dpgChaveLegivel(d.tipo_pix, d.chave_pix);
+    const tipo = dpgRotuloTipo(d.tipo_pix);
+    const valor = chave
+        ? `<div class="pc-conta-valor" title="${_gcEsc(chave)}">${tipo ? _gcEsc(tipo) + " · " : ""}${_gcEsc(chave)}</div>` +
+          (estado.completo ? "" : `<div class="dpg-falta">${_gcEsc(dpgTextoFaltando(d))}</div>`)
         : `<div class="pc-conta-valor dpg-pendente">Pendente</div>`;
     return `
         <div class="pc-section">
@@ -216,7 +242,7 @@ function dpgSecaoPerfil(estado) {
                     <div class="pc-conta-rotulo">Chave Pix</div>
                     ${valor}
                 </div>
-                <button type="button" class="pc-conta-link" data-pc="pagamento">${estado.completo ? "Editar" : "Preencher"}</button>
+                <button type="button" class="pc-conta-link" data-pc="pagamento">${estado.completo ? "Editar" : chave ? "Completar" : "Preencher"}</button>
             </div>
         </div>`;
 }

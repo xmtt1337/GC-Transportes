@@ -159,6 +159,7 @@ function deTextoImportacao(r) {
         `${r.sem_mudanca} sem mudança`,
     ];
     let txt = `${r.linhas_planilha} linhas lidas da planilha: ${partes.join(", ")}.`;
+    if (r.emails_do_login) txt += `\n${r.emails_do_login} e-mail${r.emails_do_login !== 1 ? "s" : ""} copiado${r.emails_do_login !== 1 ? "s" : ""} do login de quem não tinha.`;
     if (r.preservados) txt += `\n${r.preservados} já preenchido${r.preservados !== 1 ? "s" : ""} pelo entregador: o que ele escreveu foi mantido.`;
     if (r.cabecalho && r.cabecalho.length) txt += `\n\nColunas da planilha: ${r.cabecalho.filter(Boolean).join(", ")}.`;
     return txt;
@@ -258,7 +259,7 @@ function deHtmlHistorico(h, rotulos) {
     const tipo = h.tipo === "novo"
         ? `<span class="de-tipo-novo">Novo</span>`
         : `<span class="de-tipo-atualizado">Atualizado</span>`;
-    const origem = h.origem === "entregador" ? "pelo formulário" : "importação da planilha";
+    const origem = { entregador: "pelo formulário", usuario: "copiado do login" }[h.origem] || "importação da planilha";
     const ent = _deEsc(h.usuarios || "—") + (h.id_interno ? ` <span class="de-origem">· ID ${_deEsc(h.id_interno)}</span>` : "");
     return `
         <tr>

@@ -6944,6 +6944,7 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .dpg-campo.dpg-erro .pc-dlg-input { border-color: #f87171; }
 .dpg-campo.dpg-erro .pc-dlg-label { color: #f87171; }
 .pc-conta-valor.dpg-pendente { color: #f59e0b; font-weight: 600; }
+.dpg-falta { margin-top: 2px; font-size: 12px; color: #f59e0b; }
 @media (max-width: 520px) {
     .dpg-linha { grid-template-columns: 1fr; }
     .dpg-dialogo { padding: 22px 18px 18px !important; }

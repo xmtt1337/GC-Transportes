@@ -110,6 +110,22 @@ test("card do perfil: entregador sem dados vê Pendente e Preencher", () => {
   assert.match(html, /data-pc="pagamento">Preencher/);
 });
 
+test("card do perfil: tem chave mas falta dado — mostra a chave, o que falta e Completar (não 'Pendente')", () => {
+  const html = cardDoPerfil("entregador", { aplica: true, completo: false, dados: { ...DADOS, email: "" } });
+  assert.match(html, /Telefone · \(49\) 99999-0000/);
+  assert.doesNotMatch(html, /Pendente/);
+  assert.match(html, /Falta o e-mail\./);
+  assert.match(html, /data-pc="pagamento">Completar/);
+});
+
+test("o que falta: um, vários, ou nada vazio (dado inválido)", () => {
+  const c = contexto();
+  assert.strictEqual(c.dpgTextoFaltando({ ...DADOS, chave_pix: "" }), "Falta a chave Pix.");
+  assert.strictEqual(c.dpgTextoFaltando({ ...DADOS, cpf: "", email: "", whatsapp: "" }), "Faltam CPF, WhatsApp e e-mail.");
+  assert.strictEqual(c.dpgTextoFaltando(DADOS), "Confira seus dados.");
+  assert.match(c.dpgHtmlAviso({ aplica: true, completo: false, dados: { ...DADOS, email: "" } }), /Falta o e-mail\./);
+});
+
 test("card do perfil: sem resposta ou outro cargo, a seção não aparece", () => {
   assert.doesNotMatch(cardDoPerfil("entregador", null), /data-pc="pagamento"/);
   assert.doesNotMatch(cardDoPerfil("user", { aplica: false }), /data-pc="pagamento"/);

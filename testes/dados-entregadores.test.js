@@ -131,3 +131,12 @@ test("linha: texto comprido corta com o valor inteiro no title; tipo da planilha
   assert.match(html, />Aleatória</);
   assert.match(c.deHtmlLinha({ usuarios: "X Teste", tipo_chave_pix: "TELEFONE" }), />Telefone</);
 });
+
+test("novos dados: e-mail copiado do login aparece com essa origem; importação conta os e-mails", () => {
+  const c = carregar();
+  const html = c.deHtmlHistorico({ tipo: "atualizado", origem: "usuario", usuarios: "Maria Teste", quem: "E-mail do login",
+    campos: [{ campo: "email", antes: null, depois: "maria@exemplo.com" }] }, { email: "E-mail" });
+  assert.match(html, /copiado do login/);
+  assert.match(html, /E-mail:<\/span> maria@exemplo\.com/);
+  assert.match(c.deTextoImportacao({ linhas_planilha: 1, novos: 0, atualizados: 0, sem_mudanca: 1, emails_do_login: 3 }), /3 e-mails copiados do login/);
+});
