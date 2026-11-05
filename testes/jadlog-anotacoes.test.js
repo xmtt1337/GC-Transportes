@@ -30,12 +30,11 @@ test("lupa sugere só quem não está na lista, sem acento/caixa, até 8", () =>
     assert.deepStrictEqual(json(ctx._jadSugestoes(d, l, "")), []);
 });
 
-test("calendário: 120 dias até hoje, total anotado embaixo do dia", () => {
+test("calendário: até 31/10/2026 (de novembro em diante é Atribuir), total anotado embaixo do dia", () => {
     const ctx = carregar();
-    const dias = ctx._jadDiasDoCalendario([{ dia: "2026-11-03", total: 12 }], "2026-11-04");
-    assert.strictEqual(dias.length, 121);
-    assert.strictEqual(dias[dias.length - 1].dia, "2026-11-04");
-    assert.deepStrictEqual(json(dias.find(d => d.dia === "2026-11-03")), { dia: "2026-11-03", sub: "12", resumo: "12 pacote(s) Jadlog" });
+    const dias = ctx._jadDiasDoCalendario([{ dia: "2026-10-30", total: 12 }], "2026-11-04");
+    assert.strictEqual(dias[dias.length - 1].dia, "2026-10-31");
+    assert.deepStrictEqual(json(dias.find(d => d.dia === "2026-10-30")), { dia: "2026-10-30", sub: "12", resumo: "12 pacote(s) Jadlog" });
 });
 
 test("salvar manda só o que mudou, com vazio pra apagar", () => {

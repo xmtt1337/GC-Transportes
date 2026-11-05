@@ -227,7 +227,8 @@ if (_BASE) {
                     Jadlog <span class="subgroup-arrow">▾</span>
                 </li>
                 <ul class="sub-sub-submenu" id="grupo-op-jadlog">
-                    <li><a href="#" data-rota="Jadlog/Anotacoes" onclick="abrirJadlogAnotacoes(event)">Anotações</a></li>
+                    <li><a href="#" data-rota="Jadlog/Atribuir" onclick="abrirJadlogAtribuir(event)">Atribuir</a></li>
+                    <li><a href="#" data-rota="Jadlog/Anotacoes" onclick="abrirJadlogAnotacoes(event)">Anotações (até out/2026)</a></li>
                 </ul>
             </ul>
         </ul>
@@ -1915,6 +1916,13 @@ if (_BASE) {
         <div id="tela-jadlog-anotacoes" class="view tela-full">
             <div class="fech-body">
                 <div id="jad-conteudo"></div>
+            </div>
+        </div>
+
+        <!-- TELA OPERAÇÃO > JADLOG > ATRIBUIR: bipa os pacotes pro entregador — js/jadlog-atribuir.js -->
+        <div id="tela-jadlog-atribuir" class="view tela-full">
+            <div class="fech-body">
+                <div id="jat-conteudo"></div>
             </div>
         </div>
 
@@ -4781,7 +4789,7 @@ if (_BASE) {
 
 <script src="js/core.js?v=20261104c"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261105a"></script>
+<script src="js/router.js?v=20261105b"></script>
 <script src="js/sidebar.js?v=20261103f"></script>
 <script src="js/nav.js?v=20261105a"></script>
 <script src="js/atendimento.js?v=20261104c"></script>
@@ -4813,7 +4821,7 @@ if (_BASE) {
 <script src="js/whatsapp-conversa.js?v=20261104c"></script>
 <script src="js/modals.js?v=20261104c"></script>
 <script src="js/alimentar.js?v=20261105a"></script>
-<script src="js/fechamento-criar.js?v=20261104e"></script>
+<script src="js/fechamento-criar.js?v=20261105a"></script>
 <script src="js/ticketlog-info.js?v=20261104c"></script>
 <script src="js/fechamento-resumo.js?v=20261104e"></script>
 <script src="js/fechamento-cheio.js?v=20261104a"></script>
@@ -4834,7 +4842,8 @@ if (_BASE) {
 <script src="js/desempenho-hora.js?v=20261015a"></script>
 <script src="js/conferencias.js?v=20261102b"></script>
 <script src="js/conferencia-expedicao.js?v=20261104d"></script>
-<script src="js/jadlog-anotacoes.js?v=20261104c"></script>
+<script src="js/jadlog-anotacoes.js?v=20261105a"></script>
+<script src="js/jadlog-atribuir.js?v=20261105a"></script>
 <script src="js/conferencias-hub.js?v=20261104c"></script>
 <script src="js/antecipacoes.js?v=20261014a"></script>
 <script src="js/antecipacoes-admin.js?v=20261015b"></script>

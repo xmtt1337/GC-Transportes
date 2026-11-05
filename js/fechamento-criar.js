@@ -187,10 +187,10 @@ function _cfSelecionarTransp(key) {
     const jw = document.getElementById("cf-jadlog-wrap");
     jw.style.display = cfg.porAnotacao ? "" : "none";
     if (cfg.porAnotacao) jw.innerHTML = `<div class="cft-regras" style="margin:0">
-        <div class="cft-ajuda" style="margin-bottom:8px">${cfg.label} não tem relatório: os pacotes vêm das anotações da operação
-            (Operação › Transportadoras › ${cfg.label} › Anotações), um por pacote, entregue no dia anotado, na cidade do nome do entregador.
-            O valor segue a mesma regra das outras transportadoras (performance do dia nos polos da regra; tabela da cidade nos outros).</div>
-        <button class="cft-btn primario" onclick="_cfAtualizarJadlog(this)">Atualizar com as anotações</button></div>`;
+        <div class="cft-ajuda" style="margin-bottom:8px">${cfg.label} não tem relatório: os pacotes vêm da operação — de novembro/2026 em diante, os códigos
+            bipados em Operação › Transportadoras › ${cfg.label} › Atribuir; até a Q2 de outubro, a quantidade anotada. Cada pacote conta como entregue no dia,
+            no polo do entregador, e vale a mesma regra das outras transportadoras (performance do dia nos polos da regra).</div>
+        <button class="cft-btn primario" onclick="_cfAtualizarJadlog(this)">Atualizar com a operação</button></div>`;
     // Shopee: segundo upload, dos onholds da quinzena.
     const oh = document.getElementById("cf-onholds-wrap");
     oh.style.display = _cfEhShopee(key) ? "" : "none";
@@ -207,7 +207,7 @@ function _cfSelecionarTransp(key) {
 async function _cfAtualizarJadlog(btn) {
     const st = document.getElementById("cf-upload-status");
     btn.disabled = true;
-    st.innerHTML = `<span class="cft-ajuda">Montando com as anotações...</span>`;
+    st.innerHTML = `<span class="cft-ajuda">Montando com o que a operação lançou...</span>`;
     try {
         const r = await fetch(`${_CF_API()}/jadlog-atualizar`, { method: "POST", headers: _cfHeaders(true),
             body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena }) });

@@ -30,7 +30,7 @@ function abrirJadlogAnotacoes(event) {
     if (event) event.preventDefault();
     mostrarTela("tela-jadlog-anotacoes", "Jadlog/Anotacoes");
     document.getElementById("titulo-pagina").innerText = "Anotações — Jadlog";
-    _jadDia = _jadHoje();
+    _jadDia = _jadHoje() < "2026-11-01" ? _jadHoje() : "2026-10-31"; // quantidade só até a Q2 de outubro/2026
     document.getElementById("jad-conteudo").innerHTML = `
         <div class="cft-barra" style="margin-top:0;flex-wrap:wrap;align-items:center">
             <div class="slh-cal" id="jad-cal"></div>
@@ -58,6 +58,7 @@ function _jadDiasDoCalendario(comAnotacao, hoje) {
         const d = new Date(base);
         d.setDate(d.getDate() + i);
         const dia = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        if (dia >= "2026-11-01") continue; // de novembro em diante é por atribuição (jadlog-atribuir.js)
         const t = totais.get(dia);
         dias.push(t ? { dia, sub: String(t), resumo: `${t} pacote(s) Jadlog` } : { dia });
     }
