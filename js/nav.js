@@ -40,7 +40,7 @@ const _TELA_TITULOS = {
     "tela-bipagens":             "Separação",
     "tela-pesquisar-pedidos":    "Histórico de pedidos",
     "tela-desempenho-bip":       "Desempenho",
-    "tela-alimentar":            "Alimentar",
+    "tela-alimentar":            "Alimentações",
     "tela-antecipacoes":         "Solicitar Antecipação",
     "tela-minhas-solicitacoes":  "Minhas Solicitações",
     "tela-admin-antecipacoes":   "Antecipações",

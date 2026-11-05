@@ -41,11 +41,34 @@ test("toda transportadora tem um grupo em Operação e outro na Torre", () => {
     });
 });
 
-test("a Operação de cada uma tem Alimentar e sua conferência", () => {
-    // Anjun também: o "Subir relatório" da Conferência grava só pra conferência (conf_exp_*);
-    // a Separação acha o pacote pelo Alimentar. Sem ele, Anjun bipada dá "código não encontrado".
+test("Separação é um grupo com Bipagens e Alimentações", () => {
+    const ini = menu.indexOf('id="subgroup-separacao"');
+    assert.ok(ini > 0);
+    const sep = menu.slice(ini, menu.indexOf("</ul>", ini));
+    assert.match(sep, /data-rota="Operacao\/Bipagem"[^>]*>Bipagens<\/a>/);
+    assert.match(sep, /data-rota="Operacao\/Alimentacoes" onclick="abrirAlimentacoes\(event\)">Alimentações<\/a>/);
+    assert.ok(menu.slice(0, ini).split("<li").pop().includes("Separação"), "título do grupo");
+});
+
+test("Alimentações tem aba pra toda transportadora que a Separação procura", () => {
+    // A Separação acha o pacote só pelo arquivo do Alimentar; o "Subir relatório" da
+    // Conferência Anjun grava só pra conferência. Sem a aba, Anjun bipada dá "não encontrado".
+    const js = ler("js", "alimentar.js");
+    ["loggi", "anjun", "imile", "total_express"].forEach(t => assert.match(js, new RegExp(`k: '${t}'`), t));
+    assert.ok(!/k: 'jt'/.test(js), "J&T sem aba");
+});
+
+test("links antigos do Alimentar continuam abrindo", () => {
+    ["Operacao/AlimentarLoggi", "Operacao/AlimentarAnjun", "Operacao/AlimentarImile",
+     "Operacao/AlimentarTotalExpress", "Operacao/Alimentacoes"].forEach(r => assert.ok(router.includes(`"${r}":`), r));
+    ["Operacao/Separacao", "Operacao/Anjun/Alimentar", "Operacao/TotalExpress/Alimentar"]
+        .forEach(r => assert.ok(router.includes(`_ROTAS_INTERNAS["${r}"]`), r));
+});
+
+test("a Operação de cada uma tem sua conferência, e o Alimentar mora na Separação", () => {
     ["loggi", "anjun", "imile", "total_express"].forEach(t => {
-        ["Alimentar", "Conferência"].forEach(i => assert.ok(grupo("op", t).includes(`>${i}</a>`), `${t}: ${i}`));
+        assert.ok(grupo("op", t).includes(">Conferência</a>"), `${t}: Conferência`);
+        assert.ok(!grupo("op", t).includes(">Alimentar</a>"), `${t}: Alimentar fica em Separação`);
     });
     ["Recebimento", "Alimentar", "Line Haul", "Atribuições", "Item Avariado"]
         .forEach(i => assert.ok(grupo("op", "shopee").includes(`>${i}</a>`), i));

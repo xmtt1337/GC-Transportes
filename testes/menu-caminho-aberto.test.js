@@ -47,6 +47,8 @@ function montar() {
     const subOp = novo("submenu", raiz);
     const separacao = novo("", subOp, { rota: "Operacao/Separacao" });
     separacao.classes.add("link");
+    const alimentacoes = novo("", subOp, { rota: "Operacao/Alimentacoes" });
+    alimentacoes.classes.add("link");
 
     const torre = novo("menu-item", raiz);
     const subTorre = novo("submenu", raiz);
@@ -98,8 +100,10 @@ function montar() {
     vm.runInContext(ler("js", "sidebar.js"), ctx);
     const router = ler("js", "router.js");
     const ini = router.indexOf("function _marcarSubmenuAtivo");
+    const iniMapa = router.indexOf("const _ROTA_DO_MENU");
+    vm.runInContext(router.slice(iniMapa, router.indexOf("};", iniMapa) + 2).replace("const ", "var "), ctx);
     vm.runInContext(router.slice(ini, router.indexOf("\n}\n", ini) + 3), ctx);
-    return { ctx, op, subOp, separacao, torre, subTorre, transp, grupoTransp, loggi, grupoLoggi, naRua,
+    return { ctx, op, subOp, separacao, alimentacoes, torre, subTorre, transp, grupoTransp, loggi, grupoLoggi, naRua,
              imile, grupoImile, ativosImile, anjun, grupoAnjun, ativosAnjun };
 }
 
@@ -154,6 +158,15 @@ test("rota repetida em várias transportadoras mantém a que foi clicada", () =>
     m.ctx._marcarSubmenuAtivo("Ativos/Conversas");
     assert.ok(aberto(m.grupoAnjun) && m.ativosAnjun.classes.has("active"));
     assert.ok(!aberto(m.grupoImile));
+});
+
+test("Alimentações de qualquer transportadora acende o link único do menu", () => {
+    // A rota guarda a transportadora (Operacao/AlimentarAnjun), o menu tem um link só.
+    ["Operacao/AlimentarAnjun", "Operacao/AlimentarTotalExpress"].forEach(r => {
+        const m = montar();
+        m.ctx._marcarSubmenuAtivo(r);
+        assert.ok(m.alimentacoes.classes.has("active") && aberto(m.subOp), r);
+    });
 });
 
 test("rota aberta por endereço acha o link e abre o caminho", () => {

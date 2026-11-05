@@ -1,30 +1,84 @@
+// Separação > Alimentações: o arquivo de cada transportadora que a Separação usa pra achar
+// a cidade do pacote bipado. Uma tela só, com uma aba por transportadora; o envio mais novo
+// é o que vale na Separação e os anteriores ficam guardados pra baixar (o servidor guarda 10).
 let _alimentarTransp = null;
 
 const _ALIMENTAR_NOMES = { loggi: 'Loggi', anjun: 'Anjun', jt: 'J&T Express', imile: 'Imile', total_express: 'Total Express' };
+// Abas da tela. J&T não é mais atendida: a rota antiga abre, mas sem aba.
+const _ALIMENTAR_ABAS = [
+    { k: 'loggi',         cor: '#12A5E8' },
+    { k: 'anjun',         cor: '#22C55E' },
+    { k: 'imile',         cor: '#9333EA' },
+    { k: 'total_express', cor: '#F59E0B' },
+];
+const _ALIMENTAR_ROTAS = { loggi: 'Loggi', anjun: 'Anjun', jt: 'JT', imile: 'Imile', total_express: 'TotalExpress' };
+const _ALIMENTAR_ULTIMA_CHAVE = 'gc_alimentacoes_transp';
+
+function _alimEsc(t) {
+    return String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/** Menu Separação > Alimentações: abre na última transportadora vista. */
+function abrirAlimentacoes(event) {
+    let ultima = null;
+    try { ultima = localStorage.getItem(_ALIMENTAR_ULTIMA_CHAVE); } catch {}
+    const valida = _ALIMENTAR_ABAS.some(a => a.k === ultima);
+    abrirAlimentar(event, valida ? ultima : _ALIMENTAR_ABAS[0].k);
+}
 
 function abrirAlimentar(event, transportadora) {
     if (event) event.preventDefault();
     _alimentarTransp = transportadora;
-    document.getElementById('alimentar-titulo').innerText = 'Alimentar — ' + (_ALIMENTAR_NOMES[transportadora] || transportadora);
-    document.getElementById('titulo-pagina').innerText = 'Alimentar';
-    const _rotaNomes = { loggi: 'Loggi', anjun: 'Anjun', jt: 'JT', imile: 'Imile', total_express: 'TotalExpress' };
-    mostrarTela('tela-alimentar', 'Operacao/Alimentar' + (_rotaNomes[transportadora] || ''));
+    try { localStorage.setItem(_ALIMENTAR_ULTIMA_CHAVE, transportadora); } catch {}
+    document.getElementById('alimentar-titulo').innerText = 'Alimentações';
+    document.getElementById('titulo-pagina').innerText = 'Alimentações';
+    mostrarTela('tela-alimentar', 'Operacao/Alimentar' + (_ALIMENTAR_ROTAS[transportadora] || ''));
+    _alimentarPintarAbas();
     _alimentarCarregar();
+}
+
+function _alimentarPintarAbas() {
+    const el = document.getElementById('alimentar-abas');
+    if (!el) return;
+    el.innerHTML = _ALIMENTAR_ABAS.map(a => `<button type="button"
+        class="wac-transp-tab${a.k === _alimentarTransp ? ' active' : ''}" style="--transp-cor:${a.cor}"
+        onclick="abrirAlimentar(null,'${a.k}')">${_ALIMENTAR_NOMES[a.k]}</button>`).join('');
 }
 
 async function _alimentarCarregar() {
     const el = document.getElementById('alimentar-content');
+    const pedido = _alimentarTransp;
     el.innerHTML = skCards(3);
     try {
-        const res = await fetch(API + '/alimentar/arquivos?transportadora=' + _alimentarTransp, {
+        const res = await fetch(API + '/alimentar/arquivos?transportadora=' + pedido, {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         if (!res.ok) throw new Error();
         const arquivos = await res.json();
+        // Trocou de aba enquanto carregava: a resposta é da anterior.
+        if (pedido !== _alimentarTransp) return;
         _alimentarRenderizar(arquivos);
     } catch {
+        if (pedido !== _alimentarTransp) return;
         el.innerHTML = '<div style="color:#ef4444;font-size:14px;padding:20px 0">Erro ao carregar arquivos.</div>';
     }
+}
+
+function _alimentarLinhaArquivo(arq, atual) {
+    const data = new Date(arq.uploaded_at).toLocaleString('pt-BR');
+    const tamanho = arq.tamanho_bytes ? (arq.tamanho_bytes / 1024).toFixed(1) + ' KB' : '';
+    const quem = arq.enviado_por ? ' · ' + _alimEsc(arq.enviado_por) : '';
+    const nomeEsc = arq.nome_arquivo.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    return `
+        <div class="alim-arq${atual ? ' alim-arq-atual' : ''}">
+            <div style="min-width:0;flex:1">
+                <div class="alim-arq-nome">${_alimEsc(arq.nome_arquivo)}</div>
+                <div class="alim-arq-info">${data}${tamanho ? ' · ' + tamanho : ''}${quem}</div>
+            </div>
+            <div class="alim-arq-acoes">
+                <button type="button" class="alim-link" onclick="_alimentarBaixar(${arq.id},'${nomeEsc}')">Baixar</button>
+            </div>
+        </div>`;
 }
 
 function _alimentarRenderizar(arquivos) {
@@ -44,32 +98,24 @@ function _alimentarRenderizar(arquivos) {
         </div>
         <div class="nota-upload-text">
             <div class="nota-upload-title">Anexar planilha ${transpNome}</div>
-            <div class="nota-upload-sub">Selecione um arquivo .xlsx ou .csv</div>
+            <div class="nota-upload-sub">Selecione um arquivo .xlsx ou .csv. O novo passa a valer na Separação.</div>
         </div>
         <div class="nota-upload-btn">Selecionar arquivo</div>
     </label>
     <div id="alimentar-upload-status" style="margin-top:10px"></div>`;
 
-    if (arquivos.length) {
-        html += `<div class="painel-section-title" style="margin-top:20px">Arquivos salvos</div>`;
-        arquivos.forEach(arq => {
-            const data = new Date(arq.uploaded_at).toLocaleString('pt-BR');
-            const tamanho = arq.tamanho_bytes ? (arq.tamanho_bytes / 1024).toFixed(1) + ' KB' : '';
-            const nomeEsc = arq.nome_arquivo.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-            html += `
-            <div style="background:rgba(58,134,255,0.06);border:1px solid rgba(58,134,255,0.15);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-                <div style="min-width:0;flex:1">
-                    <div style="font-size:14px;font-weight:600;color:#e2e8f0;word-break:break-all">${arq.nome_arquivo}</div>
-                    <div style="font-size:12px;color:#8494a9;margin-top:3px">${data}${tamanho ? ' · ' + tamanho : ''}</div>
-                </div>
-                <div style="display:flex;gap:8px;flex-shrink:0">
-                    <button onclick="_alimentarBaixar(${arq.id},'${nomeEsc}')" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.08);color:#34d399;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(52,211,153,0.18)'" onmouseout="this.style.background='rgba(52,211,153,0.08)'">Baixar</button>
-                    <button onclick="_alimentarRemover(${arq.id})" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.08);color:#ef4444;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(239,68,68,0.18)'" onmouseout="this.style.background='rgba(239,68,68,0.08)'">Remover</button>
-                </div>
-            </div>`;
-        });
+    const atual = arquivos.find(a => a.atual) || arquivos[0];
+    const anteriores = arquivos.filter(a => a !== atual);
+    if (atual) {
+        html += `<div class="painel-section-title" style="margin-top:20px">Em uso na Separação</div>`;
+        html += _alimentarLinhaArquivo(atual, true);
+        if (anteriores.length) {
+            html += `<div class="painel-section-title" style="margin-top:20px">Envios anteriores</div>`;
+            html += `<div class="alim-arq-nota">Guardados só pra baixar. A Separação usa apenas o envio de cima.</div>`;
+            html += anteriores.map(a => _alimentarLinhaArquivo(a, false)).join('');
+        }
     } else {
-        html += `<div class="fechamento-empty" style="margin-top:20px">Nenhum arquivo salvo para ${transpNome}.</div>`;
+        html += `<div class="fechamento-empty" style="margin-top:20px">Nenhum arquivo enviado para ${transpNome}. Sem ele, a Separação não acha os pacotes da ${transpNome}.</div>`;
     }
 
     el.innerHTML = html;
@@ -282,19 +328,4 @@ async function _alimentarBaixar(id, nomeArquivo) {
     } catch (err) {
         gcAlert('Erro ao baixar: ' + err.message);
     }
-}
-
-function _alimentarRemover(id) {
-    gcConfirm('Remover este arquivo do banco de dados?', async () => {
-        try {
-            const res = await fetch(API + '/alimentar/' + id, {
-                method: 'DELETE',
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            if (!res.ok) throw new Error('Erro ao remover');
-            _alimentarCarregar();
-        } catch (err) {
-            gcAlert('Erro ao remover: ' + err.message);
-        }
-    }, null, "Remover");
 }

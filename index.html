@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261104f">
+<link rel="stylesheet" href="style.css?v=20261105a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -152,7 +152,15 @@ if (_BASE) {
             <span class="menu-tooltip">Operação</span>
         </li>
         <ul class="submenu" data-menu="operacao" id="submenu-operacao">
-            <li><a href="#" data-rota="Operacao/Bipagem" onclick="abrirBipagens(event)">Separação</a></li>
+            <!-- Separação: a bipagem e os arquivos que ela usa pra achar a cidade do pacote
+                 (Loggi, Anjun, Imile, Total). Sem o arquivo, a bipagem não acha o pacote. -->
+            <li class="subgroup-header" onclick="toggleSubGroup(this)">
+                Separação <span class="subgroup-arrow">▾</span>
+            </li>
+            <ul class="sub-submenu" id="subgroup-separacao">
+                <li><a href="#" data-rota="Operacao/Bipagem" onclick="abrirBipagens(event)">Bipagens</a></li>
+                <li><a href="#" data-rota="Operacao/Alimentacoes" onclick="abrirAlimentacoes(event)">Alimentações</a></li>
+            </ul>
             <li id="menu-item-etiquetas"><a href="#" data-rota="Operacao/Etiquetas" onclick="abrirEtiquetas(event)">Impressão de etiquetas</a></li>
             <li><a href="#" data-rota="Custodia/Pacotes" onclick="abrirCustodia(event)">Custódia</a></li>
             <!-- A conferência do entregador pega a rota inteira, com pacotes de várias
@@ -195,28 +203,24 @@ if (_BASE) {
                     Loggi <span class="subgroup-arrow">▾</span>
                 </li>
                 <ul class="sub-sub-submenu" id="grupo-op-loggi">
-                    <li><a href="#" data-rota="Operacao/AlimentarLoggi" onclick="abrirAlimentar(event,'loggi')">Alimentar</a></li>
                     <li><a href="#" data-rota="Conferencias/Loggi" onclick="abrirConferencias(event,'loggi')">Conferência</a></li>
                 </ul>
                 <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
                     Anjun <span class="subgroup-arrow">▾</span>
                 </li>
                 <ul class="sub-sub-submenu" id="grupo-op-anjun">
-                    <li><a href="#" data-rota="Operacao/AlimentarAnjun" onclick="abrirAlimentar(event,'anjun')">Alimentar</a></li>
                     <li><a href="#" data-rota="Conferencias/Anjun" onclick="abrirConfExpedicao(event,'anjun')">Conferência</a></li>
                 </ul>
                 <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
                     Imile <span class="subgroup-arrow">▾</span>
                 </li>
                 <ul class="sub-sub-submenu" id="grupo-op-imile">
-                    <li><a href="#" data-rota="Operacao/AlimentarImile" onclick="abrirAlimentar(event,'imile')">Alimentar</a></li>
                     <li><a href="#" data-rota="Conferencias/Imile" onclick="abrirConferencias(event,'imile')">Conferência</a></li>
                 </ul>
                 <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
                     Total Express <span class="subgroup-arrow">▾</span>
                 </li>
                 <ul class="sub-sub-submenu" id="grupo-op-total_express">
-                    <li><a href="#" data-rota="Operacao/AlimentarTotalExpress" onclick="abrirAlimentar(event,'total_express')">Alimentar</a></li>
                     <li><a href="#" data-rota="Conferencias/TotalExpress" onclick="abrirConferencias(event,'total_express')">Conferência</a></li>
                 </ul>
                 <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
@@ -2191,9 +2195,10 @@ if (_BASE) {
         <!-- TELA ALIMENTAR -->
         <div id="tela-alimentar" class="view tela-full">
             <div class="fech-header">
-                <div style="font-size:15px;font-weight:700;color:#e2e8f0" id="alimentar-titulo">Alimentar</div>
+                <div style="font-size:15px;font-weight:700;color:#e2e8f0" id="alimentar-titulo">Alimentações</div>
             </div>
             <div class="fech-body">
+                <div class="wac-transp-tabs" id="alimentar-abas"></div>
                 <div id="alimentar-content"></div>
             </div>
         </div>
@@ -4776,9 +4781,9 @@ if (_BASE) {
 
 <script src="js/core.js?v=20261104c"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261104c"></script>
+<script src="js/router.js?v=20261105a"></script>
 <script src="js/sidebar.js?v=20261103f"></script>
-<script src="js/nav.js?v=20261103b"></script>
+<script src="js/nav.js?v=20261105a"></script>
 <script src="js/atendimento.js?v=20261104c"></script>
 <script src="js/atendimento-admin.js?v=20261104c"></script>
 <script src="js/fechamentos.js?v=20261104b"></script>
@@ -4807,7 +4812,7 @@ if (_BASE) {
 <script src="js/stuck-ativo.js?v=20260929a"></script>
 <script src="js/whatsapp-conversa.js?v=20261104c"></script>
 <script src="js/modals.js?v=20261104c"></script>
-<script src="js/alimentar.js?v=30260812d"></script>
+<script src="js/alimentar.js?v=20261105a"></script>
 <script src="js/fechamento-criar.js?v=20261104e"></script>
 <script src="js/ticketlog-info.js?v=20261104c"></script>
 <script src="js/fechamento-resumo.js?v=20261104e"></script>

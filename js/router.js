@@ -32,6 +32,7 @@ const _ROTAS = {
     "Devolucoes/Enviadas":           () => abrirDevolucoesEnviadas(),
     "Devolucoes/MinhasViagens":      () => abrirViagemMinhas(),
     "Operacao/Bipagem":              () => abrirBipagens(),
+    "Operacao/Alimentacoes":         () => abrirAlimentacoes(),
     "Operacao/AlimentarLoggi":       () => abrirAlimentar(null, "loggi"),
     "Operacao/AlimentarAnjun":       () => abrirAlimentar(null, "anjun"),
     "Operacao/AlimentarJT":          () => abrirAlimentar(null, "jt"),
@@ -311,7 +312,7 @@ const _TELA_ROTAS = {
 // mesma pública (rota antiga de uma tela): a primeira da lista é a que a URL nova abre.
 const _ROTAS_URL = {
     // Operação
-    "Operacao/Bipagem":                "Operacao/Separacao",
+    "Operacao/Bipagem":                "Operacao/Separacao/Bipagens",
     "Custodia/Pacotes":                "Operacao/Custodia",
     "Pedidos/Pesquisar":               "Operacao/HistoricoPedidos",
     "Shopee/ConfEntregadores":         "Operacao/ConferenciaEntregadores",
@@ -334,12 +335,15 @@ const _ROTAS_URL = {
     "Shopee/Atribuicoes/VariosClusters": "Operacao/Shopee/Atribuicoes/VariosClusters",
     "Conferencias/Shopee":             "Operacao/Shopee/ConferenciaArquivo",
 
-    // Operação > as demais transportadoras
-    "Operacao/AlimentarLoggi":         "Operacao/Loggi/Alimentar",
-    "Operacao/AlimentarAnjun":         "Operacao/Anjun/Alimentar",
-    "Operacao/AlimentarImile":         "Operacao/Imile/Alimentar",
+    // Operação > Separação > Alimentações (uma aba por transportadora)
+    "Operacao/AlimentarLoggi":         "Operacao/Separacao/Alimentacoes/Loggi",
+    "Operacao/AlimentarAnjun":         "Operacao/Separacao/Alimentacoes/Anjun",
+    "Operacao/AlimentarImile":         "Operacao/Separacao/Alimentacoes/Imile",
+    "Operacao/AlimentarTotalExpress":  "Operacao/Separacao/Alimentacoes/TotalExpress",
+    "Operacao/Alimentacoes":           "Operacao/Separacao/Alimentacoes",
     "Operacao/AlimentarJT":            "Operacao/JT/Alimentar",
-    "Operacao/AlimentarTotalExpress":  "Operacao/TotalExpress/Alimentar",
+
+    // Operação > as demais transportadoras
     "Conferencias/Loggi":              "Operacao/Loggi/Conferencia",
     "Conferencias/Anjun":              "Operacao/Anjun/Conferencia",
     "Conferencias/Imile":              "Operacao/Imile/Conferencia",
@@ -410,6 +414,22 @@ Object.entries(_ROTAS_URL).forEach(([interna, publica]) => {
 // Endereços públicos que já existiram e mudaram de lugar no menu: o link salvo abre a
 // mesma tela e a barra troca pro endereço novo.
 _ROTAS_INTERNAS["TorreControle/Shopee/ItemAvariado"] = "Shopee/ItemAvariado"; // foi pra Operação em 04/11/2026
+// Separação virou grupo (Bipagens + Alimentações) em 05/11/2026.
+_ROTAS_INTERNAS["Operacao/Separacao"] = "Operacao/Bipagem";
+_ROTAS_INTERNAS["Operacao/Loggi/Alimentar"] = "Operacao/AlimentarLoggi";
+_ROTAS_INTERNAS["Operacao/Anjun/Alimentar"] = "Operacao/AlimentarAnjun";
+_ROTAS_INTERNAS["Operacao/Imile/Alimentar"] = "Operacao/AlimentarImile";
+_ROTAS_INTERNAS["Operacao/TotalExpress/Alimentar"] = "Operacao/AlimentarTotalExpress";
+
+// Rotas que abrem com um link do menu de outro nome: a tela de Alimentações guarda a
+// transportadora na rota, mas o menu tem um link só.
+const _ROTA_DO_MENU = {
+    "Operacao/AlimentarLoggi":        "Operacao/Alimentacoes",
+    "Operacao/AlimentarAnjun":        "Operacao/Alimentacoes",
+    "Operacao/AlimentarImile":        "Operacao/Alimentacoes",
+    "Operacao/AlimentarTotalExpress": "Operacao/Alimentacoes",
+    "Operacao/AlimentarJT":           "Operacao/Alimentacoes",
+};
 
 // Conversas têm o resto do caminho variável (tipo/transportadora/código), então vão por prefixo.
 const _ROTA_PREFIXO_INTERNO = "Ativos/Conversas";
@@ -486,6 +506,7 @@ function _rotaAbrirAtual() {
 // acontece ao clicar direto no menu — só que aqui a tela foi aberta por código, sem
 // clique, então precisa ser feito manualmente).
 function _marcarSubmenuAtivo(caminho) {
+    caminho = _ROTA_DO_MENU[caminho] || caminho;
     // O link clicado já está marcado: "Ativos/Conversas" existe em várias transportadoras
     // e procurar pela rota abriria a primeira, não a escolhida.
     const atual = document.querySelector(".submenu a.active");
