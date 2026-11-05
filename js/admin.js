@@ -311,18 +311,17 @@ function _carregarHomeAdmin(role) {
     const tok = localStorage.getItem("token");
     const mesNomes = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
-    Promise.all([
-        fetch(`${API}/admin/planilhas`,               { headers: { "Authorization": "Bearer " + tok } }).then(r => r.json()),
-        fetch(`${API}/admin/usuarios?role=entregador`, { headers: { "Authorization": "Bearer " + tok } }).then(r => r.json()),
-    ]).then(([planilhas, entregadores]) => {
-        if (!Array.isArray(planilhas) || !planilhas.length) return;
-
-        const ultimo = planilhas[0];
+    // Última quinzena com fechamento: a mais nova entre as planilhas e as publicadas no sistema
+    // (o backend escolhe e devolve mes/ano/quinzena junto).
+    fetch(`${API}/admin/usuarios?role=entregador`, { headers: { "Authorization": "Bearer " + tok } }).then(r => r.json())
+    .then(entregadores => {
         const nEnt   = Array.isArray(entregadores) ? entregadores.filter(u => u.active !== false).length : "—";
 
-        fetch(`${API}/admin/resumo-quinzena?mes=${ultimo.mes}&ano=${ultimo.ano}&quinzena=${ultimo.quinzena}`, {
+        fetch(`${API}/admin/resumo-quinzena?ultima=1`, {
             headers: { "Authorization": "Bearer " + tok }
         }).then(r => r.json()).then(resumo => {
+            if (!resumo || resumo.error || !resumo.mes) return;
+            const ultimo = { mes: resumo.mes, ano: resumo.ano, quinzena: resumo.quinzena };
             const periodoLabel = `${ultimo.quinzena}ª Qz · ${mesNomes[ultimo.mes]} ${ultimo.ano}`;
             const totalPagar   = resumo.total_geral || "—";
             const totalPacotes = resumo.total_entregues ? resumo.total_entregues.toLocaleString("pt-BR") : "—";
