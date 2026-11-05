@@ -112,22 +112,24 @@ function deFormatar(campo, v) {
 }
 
 // Tipo gravado pelo formulário ("email", "aleatorio") aparece como na planilha se escreve.
-const _DE_TIPOS = { cpf: "CPF", telefone: "Telefone", aleatorio: "Aleatória", email: "E-mail", cnpj: "CNPJ" };
+const _DE_TIPOS = { cpf: "CPF", telefone: "Telefone", aleatorio: "Aleatória", aleatoria: "Aleatória", email: "E-mail", "e-mail": "E-mail", cnpj: "CNPJ" };
 
 function deHtmlLinha(l) {
     const vazio = `<span class="cad-vazio">—</span>`;
     const c = v => (v ? _deEsc(v) : vazio);
+    // Coluna de texto comprido: corta em "…" na tela e o title guarda o valor inteiro.
+    const t = v => (v ? ` title="${_deEsc(v)}"` : "");
     return `
         <tr>
-            <td class="cad-num de-nowrap" data-rotulo="ID">${c(l.id_interno)}</td>
-            <td class="cad-nome" data-rotulo="Usuarios">${c(l.usuarios)}</td>
-            <td class="cad-num de-nowrap" data-rotulo="Telefone">${c(deFormatar("telefone", l.telefone))}</td>
-            <td data-rotulo="Nome">${c(l.nome)}</td>
-            <td class="cad-num de-nowrap" data-rotulo="Documento">${c(deFormatar("documento", l.documento))}</td>
-            <td class="cad-num de-nowrap" data-rotulo="CNPJ">${c(deFormatar("cnpj", l.cnpj))}</td>
-            <td class="cad-pix" data-rotulo="Chave Pix">${l.chave_pix ? _deEsc(l.chave_pix) : `<span class="de-pendente">sem chave</span>`}</td>
-            <td data-rotulo="Tipo Chave Pix">${c(_DE_TIPOS[l.tipo_chave_pix] || l.tipo_chave_pix)}</td>
-            <td data-rotulo="E-mail">${c(l.email)}</td>
+            <td class="cad-num" data-rotulo="ID">${c(l.id_interno)}</td>
+            <td class="cad-nome de-corta" data-rotulo="Usuarios"${t(l.usuarios)}>${c(l.usuarios)}</td>
+            <td class="cad-num" data-rotulo="Telefone">${c(deFormatar("telefone", l.telefone))}</td>
+            <td class="de-corta" data-rotulo="Nome"${t(l.nome)}>${c(l.nome)}</td>
+            <td class="cad-num" data-rotulo="Documento">${c(deFormatar("documento", l.documento))}</td>
+            <td class="cad-num" data-rotulo="CNPJ">${c(deFormatar("cnpj", l.cnpj))}</td>
+            <td class="de-corta" data-rotulo="Chave Pix"${t(l.chave_pix)}>${l.chave_pix ? _deEsc(l.chave_pix) : `<span class="de-pendente">sem chave</span>`}</td>
+            <td data-rotulo="Tipo Chave Pix">${c(_DE_TIPOS[String(l.tipo_chave_pix || "").toLowerCase()] || l.tipo_chave_pix)}</td>
+            <td class="de-corta" data-rotulo="E-mail"${t(l.email)}>${c(l.email)}</td>
             <td class="cad-data" data-rotulo="Origem">${deHtmlOrigem(l)}</td>
         </tr>`;
 }
@@ -261,7 +263,7 @@ function deHtmlHistorico(h, rotulos) {
     return `
         <tr>
             <td class="cad-data de-nowrap" data-rotulo="Quando">${_deEsc(_deData(h.criado_em))}</td>
-            <td class="cad-nome" data-rotulo="Entregador">${ent}</td>
+            <td class="cad-nome de-corta" data-rotulo="Entregador" title="${_deEsc(h.usuarios || "")}">${ent}</td>
             <td data-rotulo="Tipo">${tipo}</td>
             <td data-rotulo="O que mudou">${deHtmlMudancas(h, rotulos)}</td>
             <td data-rotulo="Quem"><div class="de-quem">${_deEsc(h.quem || "—")}</div><div class="de-quem-origem">${origem}</div></td>

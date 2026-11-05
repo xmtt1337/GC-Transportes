@@ -122,3 +122,12 @@ test("novos dados: linha com tipo, quem e de onde veio, escapada", () => {
   assert.match(html, /ID T001/);
   assert.match(c.deHtmlHistorico(HIST[0], ROTULOS), /de-tipo-novo">Novo[\s\S]*pelo formulário/);
 });
+
+test("linha: texto comprido corta com o valor inteiro no title; tipo da planilha em maiúsculas vira o rótulo", () => {
+  const c = carregar();
+  const html = c.deHtmlLinha({ usuarios: "Nome Bem Comprido Teste - Cidade", chave_pix: "chave-aleatoria-teste", tipo_chave_pix: "ALEATORIA" });
+  assert.match(html, /class="cad-nome de-corta" data-rotulo="Usuarios" title="Nome Bem Comprido Teste - Cidade"/);
+  assert.match(html, /data-rotulo="Chave Pix" title="chave-aleatoria-teste"/);
+  assert.match(html, />Aleatória</);
+  assert.match(c.deHtmlLinha({ usuarios: "X Teste", tipo_chave_pix: "TELEFONE" }), />Telefone</);
+});
