@@ -21,7 +21,7 @@ function carregar() {
 }
 
 const LINHAS = [
-  { usuarios: "João Teste", nome: "João Teste Souza", telefone: "(49) 98888-0000", chave_pix: "12345678909", preenchido_em: null, linha_planilha: 3 },
+  { id_interno: "T001", usuarios: "João Teste", nome: "João Teste Souza", telefone: "(49) 98888-0000", chave_pix: "12345678909", preenchido_em: null, linha_planilha: 3 },
   { usuarios: "Maria Teste", nome: "Maria Teste da Silva", telefone: "49999990000", chave_pix: "maria@exemplo.com", email: "maria@exemplo.com", preenchido_em: "2026-11-05T15:00:00Z" },
   { usuarios: "Ana Teste", nome: "Ana Teste", telefone: "", chave_pix: null, preenchido_em: null },
 ];
@@ -32,6 +32,7 @@ test("busca sem acento e em qualquer coluna", () => {
   const c = carregar();
   assert.strictEqual(nomes(c.deFiltrarLinhas(LINHAS, { busca: "joao" })), "João Teste");
   assert.strictEqual(nomes(c.deFiltrarLinhas(LINHAS, { busca: "exemplo.com" })), "Maria Teste");
+  assert.strictEqual(nomes(c.deFiltrarLinhas(LINHAS, { busca: "t001" })), "João Teste", "busca pelo ID");
   assert.strictEqual(c.deFiltrarLinhas(LINHAS, { busca: "" }).length, 3);
 });
 
@@ -41,13 +42,14 @@ test("filtros: só quem preencheu e só sem chave Pix", () => {
   assert.strictEqual(nomes(c.deFiltrarLinhas(LINHAS, { soSemPix: true })), "Ana Teste");
 });
 
-test("linha: colunas na ordem da planilha, texto escapado, sem chave em âmbar", () => {
+test("linha: ID primeiro, colunas na ordem da planilha, texto escapado, sem chave em âmbar", () => {
   const c = carregar();
   const html = c.deHtmlLinha({ ...LINHAS[2], usuarios: "<b>Ana</b>" });
   assert.ok(html.includes("&lt;b&gt;Ana&lt;/b&gt;"));
   assert.match(html, /sem chave/);
+  assert.match(c.deHtmlLinha(LINHAS[0]), /data-rotulo="ID">T001</);
   const rotulos = [...html.matchAll(/data-rotulo="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepStrictEqual(rotulos, ["Usuarios", "Telefone", "Nome", "Documento", "CNPJ", "Chave Pix", "Tipo Chave Pix", "E-mail", "Origem"]);
+  assert.deepStrictEqual(rotulos, ["ID", "Usuarios", "Telefone", "Nome", "Documento", "CNPJ", "Chave Pix", "Tipo Chave Pix", "E-mail", "Origem"]);
 });
 
 test("origem: planilha com a linha, entregador com a data e aviso se não copiou", () => {

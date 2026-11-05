@@ -903,7 +903,7 @@ function _scaDiagAbrir(event) {
 function _scaDiagBuscar() {
     const nome  = document.getElementById("sca-ent-diag-nome").value.trim();
     const saida = document.getElementById("sca-ent-diag-saida");
-    saida.innerHTML = "Lendo a planilha...";
+    saida.innerHTML = "Lendo a lista...";
 
     const url = `${API}/etiquetas/entregadores/diagnostico` + (nome ? `?nome=${encodeURIComponent(nome)}` : "");
     fetch(url, { headers: { "Authorization": "Bearer " + token } })
@@ -918,14 +918,20 @@ function _scaDiagBuscar() {
 
 function _scaDiagHtml(d) {
     const partes = [];
-    partes.push(`Planilha <strong>${_scaEsc(d.planilha_titulo || d.planilha_id)}</strong>, aba <strong>${_scaEsc(d.aba)}</strong>.`);
+    // Desde 05/11/2026 a lista sai de Cadastros › Dados entregadores (banco), não da planilha.
+    const doBanco = d.fonte === "dados_entregadores";
+    partes.push(doBanco
+        ? `Lista de <strong>Cadastros › Dados entregadores</strong>.`
+        : `Planilha <strong>${_scaEsc(d.planilha_titulo || d.planilha_id)}</strong>, aba <strong>${_scaEsc(d.aba)}</strong>.`);
     partes.push(`${d.linhas_lidas} linha(s) lidas · <strong>${d.no_seletor}</strong> no seletor.`);
 
     if (d.procurado) {
         if (!d.achados || !d.achados.length) {
             // O caso mais chato de achar: tudo certo do lado de quem cadastrou,
             // porque o cadastro foi feito em OUTRO arquivo.
-            partes.push(`<span style="color:#f87171">Nenhuma linha desta planilha contém "${_scaEsc(d.procurado)}". Confira se foi nela mesma que você cadastrou.</span>`);
+            partes.push(doBanco
+                ? `<span style="color:#f87171">Ninguém nos Dados entregadores com "${_scaEsc(d.procurado)}". Se a pessoa foi cadastrada na planilha agora, use Importar da planilha na tela Dados entregadores.</span>`
+                : `<span style="color:#f87171">Nenhuma linha desta planilha contém "${_scaEsc(d.procurado)}". Confira se foi nela mesma que você cadastrou.</span>`);
         } else {
             d.achados.forEach(a => {
                 const cor = a.no_seletor ? "#22c55e" : "#f59e0b";

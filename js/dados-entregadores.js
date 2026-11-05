@@ -62,7 +62,7 @@ function deFiltrarLinhas(linhas, { busca, soRespostas, soSemPix }) {
         if (soRespostas && !l.preenchido_em) return false;
         if (soSemPix && l.chave_pix) return false;
         if (!alvo) return true;
-        const texto = [l.usuarios, l.nome, l.telefone, l.documento, l.cnpj, l.chave_pix, l.email, l.login]
+        const texto = [l.id_interno, l.usuarios, l.nome, l.telefone, l.documento, l.cnpj, l.chave_pix, l.email, l.login]
             .join(" ").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
         return texto.includes(alvo);
     });
@@ -97,6 +97,7 @@ function deHtmlLinha(l) {
     const c = v => (v ? _deEsc(v) : vazio);
     return `
         <tr>
+            <td class="cad-num de-nowrap" data-rotulo="ID">${c(l.id_interno)}</td>
             <td class="cad-nome" data-rotulo="Usuarios">${c(l.usuarios)}</td>
             <td class="cad-num de-nowrap" data-rotulo="Telefone">${c(deFormatar("telefone", l.telefone))}</td>
             <td data-rotulo="Nome">${c(l.nome)}</td>

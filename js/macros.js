@@ -1374,7 +1374,7 @@ function _macRenderizarPlanejamento() {
     } else if (p.semTelefone.length) {
         semTel.innerHTML = `<div class="mac-sit mac-sit-aviso"><span class="mac-cmd-ponto"></span>
             <span><b>${p.semTelefone.length} de ${p.totalFixos} fixo${p.totalFixos !== 1 ? "s" : ""} sem telefone:</b> ${p.semTelefone.map(s => _macEsc(s.nome) + (s.motivo ? ` (${_macEsc(s.motivo)})` : "")).join(", ")}
-            — não recebem o aviso até isso ser corrigido na planilha "Dados entregadores/CLT's".</span></div>`;
+            — não recebem o aviso até isso ser corrigido em Cadastros &gt; Dados entregadores (planilha + Importar).</span></div>`;
     } else {
         semTel.innerHTML = "";
     }

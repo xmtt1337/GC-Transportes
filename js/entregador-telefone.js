@@ -1,6 +1,7 @@
 // ───── TELEFONES DOS ENTREGADORES (SÓ DEV) ─────
-// Tela de LEITURA: o telefone vem ao vivo da planilha "Dados entregadores/CLT's" (a mesma
-// que valida fechamento), casado pelo NOME PADRÃO DO SISTEMA (o mesmo já corrigido pela
+// Tela de LEITURA: o telefone vem da tabela dados_entregadores (Cadastros > Dados
+// entregadores, importada da planilha "Dados entregadores/CLT's"), casado pelo NOME
+// PADRÃO DO SISTEMA (o mesmo já corrigido pela
 // Conversão de nomes) — não por login/usuário, então um entregador com 5 grafias
 // diferentes espalhadas pelos relatórios cai no mesmo telefone.
 //
@@ -32,7 +33,7 @@ function _etfBuscar() {
     _etfBuscaTimeout = setTimeout(_etfCarregar, 300);
 }
 
-// 5549999276131 → +55 49 9 9927-6131 — só pra exibir o que a planilha já trouxe validado.
+// 5549999990000 → +55 49 9 9999-0000 — só pra exibir o que a planilha já trouxe validado.
 function _etfFormatarNumero(numero) {
     const n = String(numero || "").replace(/\D/g, "");
     const m11 = n.match(/^55(\d{2})9(\d{4})(\d{4})$/);
