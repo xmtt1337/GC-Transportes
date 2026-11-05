@@ -8,12 +8,15 @@ let _rqMes = new Date().getMonth() + 1;
 let _rqAno = new Date().getFullYear();
 let _rqQuinzena = null;
 let _rqDados = null;
-let _rqVisao = "entregadores"; // "entregadores" ou "interno"
+// Resumos escolhidos (um ou mais): entregadores, GC Interno e a Terceirizada Videira. Os totais
+// somam só os escolhidos; os pacotes da terceirizada já são de entregadores e não somam de novo.
+let _rqResumos = ["entregadores"];
+const _RQ_RESUMOS = [["entregadores", "Entregadores"], ["interno", "GC Interno"], ["terceirizada", "Terceirizada Videira"]];
 let _rqOrdem = { campo: "entregador", desc: false };
 let _rqReq = 0;
 let _rqXCidades = [];      // cidades escolhidas no "Baixar relatório": [{nome, variantes}] (vazio = todas)
 let _rqXNaoAchadas = [];   // nomes colados que não existem nesta quinzena
-let _rqAba = "valores";   // valores | performance
+let _rqAba = "cheio";     // valores | performance (ocultas, 05/11/2026) | cheio
 let _rqColFiltros = {};    // filtro de coluna (funil) da tabela de valores: { campo: [valores visíveis] }
 let _rqPerf = null;       // {chave: "ano-mes-q", entregadores} da aba Performance
 let _rqPerfOrdem = { campo: "pct", desc: false }; // pior performance primeiro
@@ -60,12 +63,32 @@ function _rqSelecionarQuinzena(q) {
 
 // Internos (GC Interno, Base Interna...) fora das somas e listas; aqui têm o fechamento deles.
 function _rqEhInterno(nome) { return /(^|[^a-zà-ú])(?:intern[oa]|correios)([^a-zà-ú]|$)/i.test(String(nome || "")); }
-const _rqDaVisao = (nome) => _rqEhInterno(nome) === (_rqVisao === "interno");
+const _rqDaVisao = (nome) => _rqResumos.includes(_rqEhInterno(nome) ? "interno" : "entregadores");
+
+/** Entregadores e/ou internos juntos (linhas, totais e transportadoras somados) — o relatório e os funis usam. */
 function _rqDadosVisao() {
-    return _rqVisao === "interno" && _rqDados.interno ? { ..._rqDados, ..._rqDados.interno } : _rqDados;
+    const ent = _rqResumos.includes("entregadores"), int = _rqResumos.includes("interno") && _rqDados.interno;
+    if (ent && !int) return _rqDados;
+    if (int && !ent) return { ..._rqDados, ..._rqDados.interno };
+    if (!ent && !int) return { ..._rqDados, linhas: [], transportadoras: {}, totais: { ..._rqDados.totais, entregadores: 0, pacotes: 0 } };
+    const a = _rqDados, b = _rqDados.interno;
+    const transportadoras = {};
+    for (const [k, x] of Object.entries(a.transportadoras)) {
+        const y = b.transportadoras[k] || { pacotes: 0, valor: 0 };
+        transportadoras[k] = { ...x, pacotes: x.pacotes + y.pacotes, valor: Math.round((x.valor + y.valor) * 100) / 100 };
+    }
+    const totais = { ...a.totais };
+    for (const c of ["entregadores", "pacotes", "bruto", "ticketlog", "extravios", "acrescimos", "deslocamento", "descontos", "liquido"]) {
+        totais[c] = Math.round(((a.totais[c] || 0) + (b.totais[c] || 0)) * 100) / 100;
+    }
+    return { ...a, linhas: a.linhas.concat(b.linhas), transportadoras, totais };
 }
-function _rqTrocarVisao(v) {
-    _rqVisao = v;
+
+/** Marca/desmarca um resumo (sempre fica pelo menos um). */
+function _rqAlternarResumo(k) {
+    const s = new Set(_rqResumos);
+    if (s.has(k)) { if (s.size > 1) s.delete(k); } else s.add(k);
+    _rqResumos = _RQ_RESUMOS.map(([c]) => c).filter(c => s.has(c));
     _rqRender();
 }
 
@@ -93,45 +116,45 @@ function _rqColunas() {
 function _rqRender() {
     const d = _rqDadosVisao();
     const el = document.getElementById("rq-conteudo");
-    const t = d.totais;
     const faltam = Object.values(d.transportadoras).filter(x => !x.enviado).map(x => x.nome);
-    // Pendências (âmbar) num bloco só; o que é só informação fica em cinza embaixo dele.
+    // Pendências (âmbar) num bloco só; o que é só informação fica em cinza embaixo dele. São da
+    // quinzena (dados a corrigir), não de um resumo: vêm sempre do bloco dos entregadores.
+    const tp = _rqDados.totais;
     const pend = [
-        t.sem_conversao.linhas ? `<li><b>${t.sem_conversao.linhas} usuário(s) sem conversão de nome</b> (R$ ${_rqNum(t.sem_conversao.valor)}) — aparecem no fim da lista; converta no Criar Fechamento.</li>` : "",
-        t.ticketlog_sem_nome ? `<li><b>R$ ${_rqNum(t.ticketlog_sem_nome)} de Ticketlog sem entregador</b> — confira em Descontos: Ticketlog.</li>` : "",
-        _rqExtraviosSemConversao(d),
+        tp.sem_conversao.linhas ? `<li><b>${tp.sem_conversao.linhas} usuário(s) sem conversão de nome</b> (R$ ${_rqNum(tp.sem_conversao.valor)}) — aparecem no fim da lista; converta no Criar Fechamento.</li>` : "",
+        tp.ticketlog_sem_nome ? `<li><b>R$ ${_rqNum(tp.ticketlog_sem_nome)} de Ticketlog sem entregador</b> — confira em Descontos: Ticketlog.</li>` : "",
+        _rqExtraviosSemConversao(_rqDados),
     ].join("");
     const info = [
         faltam.length ? `Sem relatório nesta quinzena: ${_rqEsc(faltam.join(", "))}.` : "",
         !d.ticketlog_arquivos ? "Nenhum relatório do Ticketlog nesta quinzena." : "",
-        _rqSemFechamento(t.sem_fechamento),
+        _rqSemFechamento(tp.sem_fechamento),
     ].filter(Boolean);
-    const visao = (k, n) => `<button type="button"${_rqVisao === k ? ` class="active"` : ""} onclick="_rqTrocarVisao('${k}')">${n}</button>`;
+    const resumo = ([k, n]) => `<button type="button"${_rqResumos.includes(k) ? ` class="active"` : ""} onclick="_rqAlternarResumo('${k}')">${n}</button>`;
     el.innerHTML = `
-        <div class="fs-visao" style="max-width:420px">${visao("entregadores", "Entregadores")}${visao("interno", "Fechamento GC Interno")}</div>
-        ${_rqVisao === "interno" ? `<div class="cft-ajuda" style="margin-bottom:10px">Internos não entram nas somas nem nas listas dos entregadores: ficam só aqui.</div>` : ""}
-        <div class="cft-barra" style="justify-content:space-between;margin:0 0 10px${_rqVisao === "interno" ? ";display:none" : ""}">
+        <div class="cft-rotulo" style="margin-bottom:4px">Resumos (escolha um ou mais — juntos, viram o total)</div>
+        <div class="fs-visao" style="max-width:560px">${_RQ_RESUMOS.map(resumo).join("")}</div>
+        ${_rqResumos.length > 1 ? `<div class="cft-ajuda" style="margin-bottom:10px">Total de ${_rqResumos.map(k => _RQ_RESUMOS.find(r => r[0] === k)[1]).join(" + ")}.
+            ${_rqResumos.includes("terceirizada") ? "Os pacotes da terceirizada já são de entregadores: entra o valor dela, os pacotes não somam de novo." : ""}</div>` : ""}
+        <div class="cft-barra" style="justify-content:space-between;margin:0 0 10px${_rqResumos.includes("entregadores") ? "" : ";display:none"}">
             <span class="cft-ajuda">${d.publicado_em
                 ? `<b class="cft-pos">Publicado pros entregadores</b> em ${new Date(d.publicado_em).toLocaleString("pt-BR")} — no Meus Fechamentos eles já veem este fechamento (performance e o que afetou cada dia).`
                 : `<b>Não publicado</b> — os entregadores ainda veem a planilha. Publique quando terminar de conferir.`}</span>
             <button class="cft-btn${d.publicado_em ? "" : " primario"}" onclick="_rqPublicar(${d.publicado_em ? "false" : "true"})">${d.publicado_em ? "Despublicar" : "Publicar para os entregadores"}</button>
         </div>
-        <div class="rq-topo">
-            ${_rqConta(t, d.codigo_quinzena)}
-            <div class="rq-meta"><b>${t.entregadores.toLocaleString("pt-BR")}</b> entregadores · <b>${t.pacotes.toLocaleString("pt-BR")}</b> pacotes</div>
-        </div>
-        ${_rqPorTransportadora(d, t.bruto)}
+        <div id="rq-topo-cheio">${skLogo(false, "Somando os resumos")}</div>
         ${d.extravios_erro ? `<div class="cft-erro" style="margin-bottom:10px">Não consegui ler a planilha de extravios: ${_rqEsc(d.extravios_erro)}</div>` : ""}
         ${pend ? `<div class="cft-pend"><div class="cft-pend-titulo">Pendências</div><ul class="rq-pend-lista">${pend}</ul></div>` : ""}
         ${info.map(x => `<div class="cft-ajuda" style="margin-bottom:4px">${x}</div>`).join("")}
 
-        <div class="cft-secao rq-abas">
+        <div class="cft-secao rq-abas" style="display:none">
             <a href="#" class="mex-aba" id="rq-aba-valores" onclick="event.preventDefault();_rqMudarAba('valores')">Valores por entregador</a>
             <a href="#" class="mex-aba" id="rq-aba-performance" onclick="event.preventDefault();_rqMudarAba('performance')">Performance por entregador</a>
             <a href="#" class="mex-aba" id="rq-aba-cheio" onclick="event.preventDefault();_rqMudarAba('cheio')">Do cheio ao líquido</a>
         </div>
+        <div class="cft-secao">Do cheio ao líquido</div>
         <div class="cft-barra" style="justify-content:space-between;margin-top:0">
-            <span class="cft-ajuda">Use o funil de cada coluna pra filtrar e ordenar.
+            <span class="cft-ajuda" style="${_rqAba === "valores" ? "" : "visibility:hidden"}">Use o funil de cada coluna pra filtrar e ordenar.
                 <button type="button" class="cft-link" id="rq-limpar-filtros" style="display:none" onclick="_rqLimparFiltros()">Limpar filtros</button></span>
             <button class="cft-btn" onclick="_rqAlternarBaixar()">Baixar relatório</button>
         </div>
@@ -557,32 +580,6 @@ function _rqRenderCidades() {
 }
 
 // A conta da quinzena numa linha: Bruto + Acréscimos + Deslocamento − Ticketlog − Extravios − Descontos = Líquido.
-function _rqConta(t, codigo) {
-    const item = (rot, v, cls) => `<div class="rq-conta-item"><span class="rq-conta-rot">${rot}</span><span class="rq-conta-val${v && cls ? " " + cls : ""}">${_rqNum(v)}</span></div>`;
-    const op = (s) => `<span class="rq-conta-op">${s}</span>`;
-    return `<div class="rq-conta">
-        ${item("Bruto (R$)", t.bruto)}${op("+")}${item("Acréscimos", t.acrescimos, "cft-pos")}${op("+")}${item("Deslocamento", t.deslocamento, "cft-pos")}${op("−")}${item("Ticketlog", t.ticketlog, "cft-neg")}
-        ${op("−")}${item(`Extravios · ${_rqEsc(codigo || "")}`, t.extravios, "cft-neg")}${op("−")}${item("Descontos", t.descontos, "cft-neg")}${op("=")}
-        <div class="rq-conta-item rq-conta-total"><span class="rq-conta-rot">Líquido (R$)</span><span class="rq-conta-val cft-pos">${_rqNum(t.liquido)}</span></div>
-    </div>`;
-}
-
-// Uma linha por transportadora, com a parte de cada uma no bruto (barra na cor dela).
-function _rqPorTransportadora(d, bruto) {
-    const cores = new Map((typeof _CF_TRANSPORTADORAS !== "undefined" ? _CF_TRANSPORTADORAS : []).map(x => [x.key, x.cor]));
-    const ts = Object.entries(d.transportadoras).filter(([, x]) => x.enviado).sort((a, b) => b[1].valor - a[1].valor);
-    if (!ts.length) return "";
-    return `<div class="cft-secao">Por transportadora</div><div class="rq-transp">${ts.map(([k, x]) => {
-        const pct = bruto ? x.valor / bruto * 100 : 0;
-        return `<div class="rq-transp-linha" style="--rq-cor:${cores.get(k) || "#64748b"}">
-            <span class="rq-transp-nome">${_rqEsc(x.nome)}</span>
-            <span class="rq-transp-pac">${x.pacotes.toLocaleString("pt-BR")} pacotes</span>
-            <span class="rq-transp-barra"><em><i style="width:${pct.toFixed(1)}%"></i></em></span>
-            <span class="rq-transp-pct">${pct.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span>
-            <span class="rq-transp-valor">${_rqNum(x.valor)}</span>
-        </div>`; }).join("")}</div>`;
-}
-
 // Responsável da planilha de extravios que não virou nome padrão: aparece como linha
 // "sem conversão" — aqui a soma, pra pessoa corrigir o nome na planilha ou na Conversão.
 function _rqExtraviosSemConversao(d) {

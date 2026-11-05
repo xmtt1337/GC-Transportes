@@ -228,7 +228,8 @@ if (_BASE) {
                 </li>
                 <ul class="sub-sub-submenu" id="grupo-op-jadlog">
                     <li><a href="#" data-rota="Jadlog/Atribuir" onclick="abrirJadlogAtribuir(event)">Atribuir</a></li>
-                    <li><a href="#" data-rota="Jadlog/Anotacoes" onclick="abrirJadlogAnotacoes(event)">Anotações (até out/2026)</a></li>
+                    <!-- Anotações por quantidade: só até a Q2 de outubro/2026. Fora do menu (05/11/2026); a tela e os dados seguem pro fechamento de outubro. -->
+                    <li style="display:none"><a href="#" data-rota="Jadlog/Anotacoes" onclick="abrirJadlogAnotacoes(event)">Anotações (até out/2026)</a></li>
                 </ul>
             </ul>
         </ul>
@@ -4823,8 +4824,8 @@ if (_BASE) {
 <script src="js/alimentar.js?v=20261105a"></script>
 <script src="js/fechamento-criar.js?v=20261105a"></script>
 <script src="js/ticketlog-info.js?v=20261104c"></script>
-<script src="js/fechamento-resumo.js?v=20261104e"></script>
-<script src="js/fechamento-cheio.js?v=20261104a"></script>
+<script src="js/fechamento-resumo.js?v=20261105a"></script>
+<script src="js/fechamento-cheio.js?v=20261105a"></script>
 <script src="js/fechamento-checklist.js?v=20261104a"></script>
 <script src="js/fechamento-ajustes.js?v=20261104c"></script>
 <script src="js/fechamento-coletas.js?v=20261104a"></script>

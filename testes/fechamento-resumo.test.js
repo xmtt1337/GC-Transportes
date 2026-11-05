@@ -35,6 +35,8 @@ function carregar() {
     vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-criar.js"), "utf8"), ctx);
     vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "fechamento-resumo.js"), "utf8"), ctx);
     vm.runInContext("_rqDados = " + JSON.stringify(DADOS), ctx);
+    // A tela abre no "Do cheio ao líquido" (busca no servidor); estes testes olham a aba de valores, que segue lá (oculta).
+    vm.runInContext("var skLogo = () => ''; var _chCarregar = () => {}; _rqAba = 'valores';", ctx);
     return { ctx, el, caixas };
 }
 
@@ -247,4 +249,19 @@ test("valores: funil em todas as colunas; filtra por texto do valor (número for
     assert.match(el("rq-tfoot").innerHTML, new RegExp(filtradas.length + " linha\\(s\\)"));
     ctx._rqLimparFiltros();
     assert.strictEqual(JSON.parse(JSON.stringify(ctx._rqFiltradas())).length, linhas.length);
+});
+
+test("resumos: escolhe um ou mais; entregadores + interno somam linhas e totais; sempre fica um", () => {
+    const { ctx } = carregar();
+    const base = vm.runInContext("_rqDadosVisao().linhas.length", ctx);
+    vm.runInContext(`_rqDados.interno = { linhas: [{ entregador: "GC Interno - Vila", polo: null, por_transp: {}, pacotes: 2, bruto: 5, acrescimos: 0,
+        deslocamento: 0, ticketlog: 0, extravios: 0, descontos: 0, liquido: 5 }], transportadoras: {},
+        totais: { entregadores: 1, pacotes: 2, bruto: 5, ticketlog: 0, extravios: 0, acrescimos: 0, deslocamento: 0, descontos: 0, liquido: 5 } };`, ctx);
+    ctx._rqAlternarResumo("interno");
+    assert.strictEqual(vm.runInContext("_rqDadosVisao().linhas.length", ctx), base + 1);
+    assert.strictEqual(vm.runInContext("_rqDaVisao('GC Interno - Vila') && _rqDaVisao('Fulano de Teste - Vila Teste')", ctx), true);
+    ctx._rqAlternarResumo("entregadores");
+    assert.strictEqual(vm.runInContext("_rqDadosVisao().linhas.length", ctx), 1);
+    ctx._rqAlternarResumo("interno");
+    assert.deepStrictEqual(JSON.parse(vm.runInContext("JSON.stringify(_rqResumos)", ctx)), ["interno"], "o último não sai");
 });

@@ -55,3 +55,17 @@ test("tela: cascata com cada linha, aviso de recalcular e de ajustes fora com fi
     html = ctx._chHtml(DADOS, { transportadora: null, cidade: null, polo: null });
     assert.doesNotMatch(html, /ficam de fora/);
 });
+
+test("resumos: só os blocos escolhidos; pacotes da terceirizada não somam de novo, o valor dela sim", () => {
+    const ctx = carregar();
+    const D = { grupos: DADOS.grupos.concat([
+        { entregador: "GC Interno - Vila", bloco: "interno", transportadora: "Anjun", cidade: "Vila Teste", polo: "Polo A", pacotes: 2, bruto: 4, fora_prazo: 0, ocorrencias: 0, pod: 0, pnr: 0 },
+        { entregador: "Terceirizada - Expedição Videira", bloco: "terceirizada", transportadora: "Anjun", cidade: "Vila Teste", polo: null, pacotes: 10, bruto: 5, fora_prazo: 0, ocorrencias: 0, pod: 0, pnr: 0 }]),
+        entregadores: DADOS.entregadores.concat([{ entregador: "Terceirizada - Expedição Videira", bloco: "terceirizada", polo: null, coletas: 3, acrescimos: 0, viagens: 0, ticketlog: 0, extravios: 1, descontos: 0 }]) };
+    let r = json(ctx._chAgregar(D, {}, ["entregadores"]));
+    assert.deepStrictEqual([r.total.pacotes, r.total.bruto], [19, 38]);
+    r = json(ctx._chAgregar(D, {}, ["entregadores", "interno", "terceirizada"]));
+    assert.deepStrictEqual([r.total.pacotes, r.total.pacotes_terceirizada, r.total.bruto, r.total.liquido], [21, 10, 47, 38 + 4 + 5 + 3 - 1]);
+    const topo = ctx._chHtmlTopo(D, ["entregadores", "terceirizada"], "Q1Out");
+    assert.match(topo, /terceirizada sobre <b>10<\/b>/);
+});
