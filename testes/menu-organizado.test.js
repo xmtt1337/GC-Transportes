@@ -42,12 +42,11 @@ test("toda transportadora tem um grupo em Operação e outro na Torre", () => {
 });
 
 test("a Operação de cada uma tem Alimentar e sua conferência", () => {
-    ["loggi", "imile", "total_express"].forEach(t => {
+    // Anjun também: o "Subir relatório" da Conferência grava só pra conferência (conf_exp_*);
+    // a Separação acha o pacote pelo Alimentar. Sem ele, Anjun bipada dá "código não encontrado".
+    ["loggi", "anjun", "imile", "total_express"].forEach(t => {
         ["Alimentar", "Conferência"].forEach(i => assert.ok(grupo("op", t).includes(`>${i}</a>`), `${t}: ${i}`));
     });
-    // Anjun: o relatório sobe pela própria Conferência ("Subir relatório"), sem Alimentar separado.
-    assert.ok(grupo("op", "anjun").includes(">Conferência</a>"), "anjun: Conferência");
-    assert.ok(!grupo("op", "anjun").includes(">Alimentar</a>"), "anjun: sem Alimentar");
     ["Recebimento", "Alimentar", "Line Haul", "Atribuições", "Item Avariado"]
         .forEach(i => assert.ok(grupo("op", "shopee").includes(`>${i}</a>`), i));
 });
