@@ -48,9 +48,39 @@ function _ckCarregar() {
     }).catch(() => { if (req === _ckReq) el.innerHTML = `<div class="cft-erro">Erro ao conferir a quinzena.</div>`; });
 }
 
+// Entregador sem login: cria ali mesmo, com o nome do fechamento (que já vem "Nome - Cidade"),
+// e mostra o card de usuário e senha pra copiar (o mesmo do reset de senha).
+let _ckSemLogin = [];
+function _ckCriarLogin(i, btn) {
+    const nome = _ckSemLogin[i];
+    if (!nome) return;
+    gcConfirm(`Criar o login de entregador "${nome}"?`, () => {
+        btn.disabled = true;
+        btn.textContent = "Criando...";
+        fetch(`${API}/admin/usuarios`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+            body: JSON.stringify({ name: nome, role: "entregador" }),
+        }).then(r => r.json())
+        .then(d => {
+            if (d.duplicate) { btn.disabled = false; btn.textContent = "Criar login"; return gcAlert(`Já existe um usuário com este nome: ${d.existing_username}.`); }
+            if (d.error) { btn.disabled = false; btn.textContent = "Criar login"; return gcAlert(d.error); }
+            Promise.resolve(gcSenhaGerada({ username: d.username, name: d.name, senha_temporaria: d.senha_temporaria }, "Login criado")).then(() => _ckCarregar());
+        }).catch(() => { btn.disabled = false; btn.textContent = "Criar login"; gcAlert("Erro ao criar o login."); });
+    }, null, "Criar login");
+}
+
 const _ckCelula = (v) => typeof v === "number" ? v.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) : _ckEsc(v);
 
+// Só pra quem não tem login nenhum (desativado se reativa em Cadastros › Usuários).
+function _ckBotaoLogin(item) {
+    if (!/^sem login/.test(String(item[1] || ""))) return "";
+    _ckSemLogin.push(item[0]);
+    return `<button class="cft-btn" onclick="_ckCriarLogin(${_ckSemLogin.length - 1}, this)">Criar login</button>`;
+}
+
 function _ckHtml(d) {
+    _ckSemLogin = [];
     const comItem = d.grupos.filter(g => g.itens.length), ok = d.grupos.filter(g => !g.itens.length);
     return `
         <div class="cft-ajuda" style="margin-bottom:10px">${d.pendencias
@@ -60,8 +90,8 @@ function _ckHtml(d) {
             <summary style="cursor:pointer"><span class="cft-pend-titulo" style="display:inline">${_ckEsc(g.titulo)}</span>
                 <span class="cft-ajuda"> · ${g.itens.length.toLocaleString("pt-BR")} · onde corrigir: ${_ckEsc(g.onde)}</span></summary>
             <div class="cft-tabela-wrap" style="margin-top:8px;max-height:360px;overflow-y:auto"><table class="cft-tabela">
-                <thead><tr>${g.colunas.map(c => `<th>${_ckEsc(c)}</th>`).join("")}</tr></thead>
-                <tbody>${g.itens.map(i => `<tr>${i.map(v => `<td>${_ckCelula(v)}</td>`).join("")}</tr>`).join("")}</tbody>
+                <thead><tr>${g.colunas.map(c => `<th>${_ckEsc(c)}</th>`).join("")}${g.chave === "sem_cadastro" ? "<th></th>" : ""}</tr></thead>
+                <tbody>${g.itens.map(i => `<tr>${i.map(v => `<td>${_ckCelula(v)}</td>`).join("")}${g.chave === "sem_cadastro" ? `<td style="text-align:right">${_ckBotaoLogin(i)}</td>` : ""}</tr>`).join("")}</tbody>
             </table></div></details></div>`).join("")}
         ${ok.length ? `<div class="cft-ajuda" style="margin-top:12px">Sem pendência: ${ok.map(g => _ckEsc(g.titulo)).join(" · ")}.</div>` : ""}`;
 }

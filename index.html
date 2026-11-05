@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261105g">
+<link rel="stylesheet" href="style.css?v=20261105h">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -293,6 +293,7 @@ if (_BASE) {
             <li><a href="#" data-rota="Fechamentos/NotasFiscais" onclick="abrirMinhasNFs(event)">Notas Fiscais</a></li>
             <li><a href="#" data-rota="Adiantamentos/Solicitar" onclick="abrirAntecipacoes(event)">Solicitar Antecipação</a></li>
             <li><a href="#" data-rota="Adiantamentos/Minhas" onclick="abrirMinhasSolicitacoes(event)">Minhas Solicitações</a></li>
+            <li><a href="#" data-rota="Pagamentos/Configuracoes" onclick="abrirConfigPagamento(event)">Configurações de pagamento</a></li>
         </ul>
 
         <!-- Baixas — Total Express: oculto pra todos os cargos. A tela e a rota
@@ -2784,6 +2785,18 @@ if (_BASE) {
         </div><!-- /tela-antecipacoes -->
 
         <!-- TELA MINHAS SOLICITAÇÕES (ENTREGADOR) -->
+        <!-- CONFIGURAÇÕES DE PAGAMENTO (entregador) — dados usados no Pix da quinzena e o status
+             da solicitação de alteração. js/dados-pagamento.js -->
+        <div id="tela-config-pagamento" class="view tela-full">
+            <div class="fech-body" style="padding-top:24px">
+                <div class="cpg">
+                    <div class="cpg-titulo">Configurações de pagamento</div>
+                    <div class="cpg-sub">Os dados que usamos para pagar sua quinzena.</div>
+                    <div id="cpg-conteudo"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
+                </div>
+            </div>
+        </div>
+
         <div id="tela-minhas-solicitacoes" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
                 <div class="ant-sol-title" style="margin-bottom:18px">Minhas Solicitações de Adiantamento</div>
@@ -4876,9 +4889,9 @@ if (_BASE) {
 
 <script src="js/core.js?v=20261105b"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261105c"></script>
+<script src="js/router.js?v=20261105d"></script>
 <script src="js/sidebar.js?v=20261103f"></script>
-<script src="js/nav.js?v=20261105b"></script>
+<script src="js/nav.js?v=20261105c"></script>
 <script src="js/atendimento.js?v=20261104c"></script>
 <script src="js/atendimento-admin.js?v=20261104c"></script>
 <script src="js/fechamentos.js?v=20261104b"></script>
@@ -4912,7 +4925,7 @@ if (_BASE) {
 <script src="js/ticketlog-info.js?v=20261104c"></script>
 <script src="js/fechamento-resumo.js?v=20261105a"></script>
 <script src="js/fechamento-cheio.js?v=20261105a"></script>
-<script src="js/fechamento-checklist.js?v=20261104a"></script>
+<script src="js/fechamento-checklist.js?v=20261105a"></script>
 <script src="js/fechamento-ajustes.js?v=20261104c"></script>
 <script src="js/fechamento-coletas.js?v=20261104a"></script>
 <script src="js/fechamento-terceirizada.js?v=20261104b"></script>
@@ -4940,7 +4953,7 @@ if (_BASE) {
 <script src="js/devolucoes.js?v=20261104c"></script>
 <script src="js/shopee-polo.js?v=20261015a"></script>
 <script src="js/perfil-conta.js?v=20261015c"></script>
-<script src="js/dados-pagamento.js?v=20261105b"></script>
+<script src="js/dados-pagamento.js?v=20261105c"></script>
 <script src="js/dados-entregadores.js?v=20261105e"></script>
 <script src="js/shopee.js?v=30260812d"></script>
 <script src="js/shopee-romaneiro.js?v=20261022f"></script>
