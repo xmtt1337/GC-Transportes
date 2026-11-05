@@ -1,4 +1,16 @@
 // ───── TELA IMPORTAR TRAMPAY (embutido na tela Entregadores) ─────
+
+// Linha preenchida pelo próprio entregador (dados-pagamento.js): login, quando, e se a
+// cópia pra planilha "Dados entregadores/CLT's" falhou — em âmbar, com o motivo no título.
+function _trampayPreenchido(u, vazio) {
+    if (!u.preenchido_em) return vazio;
+    const quando = new Date(u.preenchido_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    const quem = u.usuario ? `${_cadEsc(u.usuario)}<br>` : "";
+    const planilha = u.planilha_erro
+        ? `<br><span style="color:#f59e0b" title="${_cadEsc(u.planilha_erro)}">não copiado pra planilha</span>`
+        : "";
+    return `${quem}${quando}${planilha}`;
+}
 let _trampayRows = [];
 
 function _lerCsvTrampay(input) {
@@ -89,6 +101,8 @@ async function _confirmarImportTrampay() {
         const partes = [];
         if (data.atualizados) partes.push(`${data.atualizados} atualizados`);
         if (data.novos)       partes.push(`${data.novos} novos`);
+        // Quem preencheu pelo sistema mantém a própria chave; do CSV só entra o ID externo.
+        if (data.preservados) partes.push(`${data.preservados} mantidos com a chave que o entregador preencheu`);
         document.getElementById("trampay-sucesso-txt").textContent =
             (partes.length ? partes.join(", ") : "Nenhuma alteração") + " — importação concluída!";
         document.getElementById("trampay-resultado").style.display = "none";
@@ -148,6 +162,10 @@ function _carregarEntregadoresTrampay() {
                 <td class="cad-pix" data-rotulo="PIX">${u.chave_pix
                     ? `${_cadEsc(u.chave_pix)}${u.tipo_pix ? ` <span class="cad-pix-tipo">${_cadEsc(u.tipo_pix)}</span>` : ""}`
                     : vazio}</td>
+                <td data-rotulo="WhatsApp / e-mail">${u.whatsapp || u.email
+                    ? [u.whatsapp ? _cadEsc(dpgMascaraTelefone(u.whatsapp)) : "", _cadEsc(u.email || "")].filter(Boolean).join("<br>")
+                    : vazio}</td>
+                <td class="cad-data" data-rotulo="Preenchido pelo entregador">${_trampayPreenchido(u, vazio)}</td>
                 <td class="cad-num cad-data" data-rotulo="Criado em">${_cadEsc(u.data_criacao) || vazio}</td>
             </tr>
         `).join("");

@@ -6919,3 +6919,32 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 }
 .alim-link:hover { text-decoration: underline; }
 #alimentar-abas { margin-bottom: 18px; }
+
+/* ── Dados de pagamento do entregador (js/dados-pagamento.js) ── */
+/* Aviso na tela inicial: pendência = tarja âmbar com canto reto do lado dela. */
+#home-dados-pagamento { width: 100%; max-width: 760px; margin: 18px auto 0; text-align: left; }
+#home-dados-pagamento:empty { display: none; }
+.dpg-aviso {
+    background: rgba(17,24,39,0.85); border: 1px solid rgba(255,255,255,0.08);
+    border-left: 3px solid #f59e0b; border-radius: 0 10px 10px 0;
+    padding: 16px 18px 12px;
+}
+.dpg-aviso-titulo { font-size: 14px; font-weight: 700; color: #f59e0b; margin-bottom: 6px; }
+.dpg-aviso-texto { font-size: 13.5px; line-height: 1.55; color: #cbd5e1; }
+.dpg-aviso-btn {
+    background: none; border: none; padding: 8px 0 0; cursor: pointer;
+    font-family: inherit; font-size: 13.5px; font-weight: 600; color: #60a5fa;
+}
+.dpg-aviso-btn:hover { text-decoration: underline; }
+/* Formulário: mais largo que o diálogo padrão e rolando dentro da tela no celular. */
+.dpg-dialogo { max-width: 520px !important; max-height: calc(100vh - 32px); overflow-y: auto; }
+.dpg-intro { font-size: 13px; line-height: 1.55; color: #94a3b8; }
+.dpg-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.dpg-dialogo select.pc-dlg-input option { background: #111827; color: #e2e8f0; }
+.dpg-campo.dpg-erro .pc-dlg-input { border-color: #f87171; }
+.dpg-campo.dpg-erro .pc-dlg-label { color: #f87171; }
+.pc-conta-valor.dpg-pendente { color: #f59e0b; font-weight: 600; }
+@media (max-width: 520px) {
+    .dpg-linha { grid-template-columns: 1fr; }
+    .dpg-dialogo { padding: 22px 18px 18px !important; }
+}

@@ -435,8 +435,10 @@ function abrirPerfilCard(e) {
         json("/meus-dados"),
         role === "user" ? json("/meu-perfil") : null,
         role === "dev" ? gcPoloCarregar(true) : null,
+        // Dados de pagamento (dados-pagamento.js): só o entregador. Falhar não derruba o card.
+        role === "entregador" && typeof dpgCarregar === "function" ? dpgCarregar().catch(() => null) : null,
     ])
-    .then(([conta, desempenho, polo]) => _renderPerfilCard(card, { conta, desempenho, polo }))
+    .then(([conta, desempenho, polo, pagamento]) => _renderPerfilCard(card, { conta, desempenho, polo, pagamento }))
     .catch(() => { card.innerHTML = `<div style="padding:16px;color:#f87171;font-size:12px">Erro ao carregar</div>`; });
 }
 
@@ -589,7 +591,7 @@ function _pcSecaoConta(conta) {
         </div>`;
 }
 
-function _renderPerfilCard(card, { conta, desempenho, polo }) {
+function _renderPerfilCard(card, { conta, desempenho, polo, pagamento }) {
     const u = window._gcUser || {};
     conta = conta || {};
     card.innerHTML = `
@@ -597,6 +599,7 @@ function _renderPerfilCard(card, { conta, desempenho, polo }) {
         ${desempenho ? _pcSecaoDesempenho(desempenho) : ""}
         ${u.role === "dev" ? _pcSecaoPoloDev(polo) : ""}
         ${conta.pode_solicitar_polo ? _pcSecaoPoloPedido(conta) : ""}
+        ${pagamento && typeof dpgSecaoPerfil === "function" ? dpgSecaoPerfil(pagamento) : ""}
         ${_pcSecaoConta(conta)}
         <button type="button" class="pc-sair" data-pc="sair">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -611,6 +614,7 @@ function _renderPerfilCard(card, { conta, desempenho, polo }) {
         "senha":        () => pcAlterarSenha(),
         "polo":         () => pcSolicitarPolo(conta.polo),
         "mes":          () => _pcAlternarMes(),
+        "pagamento":    () => dpgAbrirFormulario(),
     };
     card.querySelectorAll("[data-pc]").forEach(el =>
         el.addEventListener("click", () => acoes[el.dataset.pc]()));

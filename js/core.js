@@ -238,6 +238,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         if (data.usuario.pode_ver_na_rua) show("menu-ent-performance");
         // POD Shopee: todo entregador; a tela inicial mostra a semana mais recente dele.
         show("menu-pod-shopee");
+        // Aviso "não temos seus dados de pagamento" na tela inicial (dados-pagamento.js).
+        if (typeof dpgCarregarAviso === "function") dpgCarregarAviso();
         if (typeof _pdsCarregarHome === "function") _pdsCarregarHome();
         // Quem leva rota e também roda transferência ganha as duas telas do motorista
         // (toggle em Cadastros → Entregadores, "Editar" → Liberar telas de motorista).
