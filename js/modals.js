@@ -158,6 +158,18 @@ function _carregarPainelAdmin() {
         }
         const d = body;
 
+        // Quinzena no Criar Fechamento: a mesma tela detalhada do Meus Fechamentos
+        // (fechamento-entregador.js), com os pedidos do entregador escolhido.
+        _admMostrarSistema(d.fonte === "sistema");
+        if (d.fonte === "sistema") {
+            const ent = _admFEntregador, mes = _admFMes, ano = _admFAno, q = _admFQuinzena;
+            _fsRender(d, { el: "adm-fech-sistema", mes: +mes, ano: +ano, quinzena: +q,
+                pedidos: () => `${API}/admin/fechamento-pedidos?entregador=${encodeURIComponent(ent)}&mes=${mes}&ano=${ano}&quinzena=${q}` });
+            empty.style.display = "none";
+            data.style.display  = "";
+            return;
+        }
+
         const banner = document.getElementById("adm-pb-banner");
         banner.className = "painel-banner " + (d.total_receber_num < 0 ? "banner-negativo" : "banner-positivo");
         document.getElementById("adm-pb-total-receber").innerText   = d.total_receber;
@@ -206,6 +218,18 @@ function _carregarPainelAdmin() {
         if (reqId !== _admPainelReqId) return;
         skFim(empty, "Erro ao conectar com o servidor.");
     });
+}
+
+// Visão do sistema: esconde os cards antigos (e o PDF deles) e mostra adm-fech-sistema.
+function _admMostrarSistema(sistema) {
+    const data = document.getElementById("adm-fech-data");
+    for (const filho of data.children) {
+        if (filho.id === "adm-fech-topbar" || filho.id === "adm-pdf-header") continue;
+        if (filho.id === "adm-fech-sistema") filho.style.display = sistema ? "" : "none";
+        else filho.style.display = sistema ? "none" : "";
+    }
+    const pdf = document.getElementById("adm-pdf-btn");
+    if (pdf) pdf.style.display = sistema ? "none" : "";
 }
 
 function _baixarPainelAdminPDF() {

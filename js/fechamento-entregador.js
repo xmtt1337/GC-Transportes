@@ -71,7 +71,17 @@ function _fsJuntarShopee(d) {
     return { ...d, transportadoras, por_dia: porDia, insucessos };
 }
 
-function _fsRender(d) {
+// Onde desenhar e de quem: o Meus Fechamentos (padrão, o próprio login) ou o Fechamento ›
+// Pesquisar do gestor (adm-fech-sistema, pedidos do entregador escolhido).
+let _fsCtx = null;
+function _fsCtxPadrao() {
+    const v = (f) => { try { return f(); } catch (e) { return null; } }; // fechamentos.js pode não estar carregado
+    return { el: "fech-sistema", mes: v(() => _fMes), ano: v(() => _fAno), quinzena: v(() => _fQuinzena),
+        pedidos: () => `${API}/painel/fechamento-pedidos?mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}` };
+}
+
+function _fsRender(d, ctx) {
+    _fsCtx = ctx || _fsCtxPadrao();
     d = _fsJuntarShopee(d);
     _fsDados = d;
     _fsPedidos = _fsPedidosBusca = null;
@@ -81,7 +91,7 @@ function _fsRender(d) {
 }
 
 function _fsDesenhar() {
-    const el = document.getElementById("fech-sistema");
+    const el = document.getElementById(_fsCtx.el);
     const visao = (k, n) => `<button type="button"${_fsVisao === k ? ` class="active"` : ""} onclick="_fsTrocarVisao('${k}')">${n}</button>`;
     const topo = `<div class="fs-visao">${visao("geral", "Geral")}${visao("usuario", "Por usuário")}</div>
         <div style="margin-bottom:12px"><a href="#" class="fs-fechar" id="fs-baixar" onclick="event.preventDefault();_fsBaixarRelatorio()">Baixar relatório detalhado</a></div>`;
@@ -250,8 +260,8 @@ function _fsDataPagamento(mes, ano, quinzena) {
  * recebeu e o saldo na mesma data. Pago já tem o cartão próprio no topo (fechamentos.js).
  */
 function _fsHtmlPagamento(d) {
-    const mes = typeof _fMes !== "undefined" ? _fMes : null, ano = typeof _fAno !== "undefined" ? _fAno : null;
-    const q = typeof _fQuinzena !== "undefined" ? _fQuinzena : null;
+    const c = _fsCtx || {};
+    const mes = c.mes || null, ano = c.ano || null, q = c.quinzena || null;
     if (!mes || !ano || !q || d.pagamento_status === "pago") return "";
     const data = _fsDataCurta(_fsDataPagamento(mes, ano, q));
     const fim = q === 1 ? "dia 15" : "último dia do mês";
@@ -381,7 +391,7 @@ function _fsCarregarPedidos() {
     if (_fsPedidosBusca) return _fsPedidosBusca;
     const dados = _fsDados;
     _fsPedidosBusca = (async () => {
-        const r = await fetch(`${API}/painel/fechamento-pedidos?mes=${_fMes}&ano=${_fAno}&quinzena=${_fQuinzena}`, { headers: { "Authorization": "Bearer " + token } });
+        const r = await fetch(_fsCtx.pedidos(), { headers: { "Authorization": "Bearer " + token } });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j.error || "Erro ao carregar os pedidos.");
         const lista = (j.pacotes || []).map(p => _fsEhShopee(p.transportadora) ? { ...p, transportadora: "Shopee" } : p);

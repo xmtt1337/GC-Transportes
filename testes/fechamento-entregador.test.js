@@ -455,3 +455,14 @@ test("Coletas aparecem como card próprio (fora dos acréscimos) e o card 'Quand
     ctx._fsRender(D2);
     assert.doesNotMatch(el("fech-sistema").innerHTML, /Quando você recebe/, "pago tem o cartão próprio");
 });
+
+test("Fechamento › Pesquisar (gestor): desenha no alvo dele e busca os pedidos do entregador escolhido", async () => {
+    const { ctx, el } = carregar();
+    const urls = [];
+    Object.assign(ctx, { API: "", token: "t", fetch: async (url) => { urls.push(url); return { ok: true, json: async () => ({ pacotes: [] }) }; } });
+    ctx._fsRender(D, { el: "adm-fech-sistema", mes: 9, ano: 2026, quinzena: 2, pedidos: () => "/admin/fechamento-pedidos?entregador=Fulano" });
+    assert.match(el("adm-fech-sistema").innerHTML, /Baixar relatório detalhado/);
+    assert.strictEqual(el("fech-sistema").innerHTML, "", "não mexe no Meus Fechamentos");
+    await ctx._fsCarregarPedidos();
+    assert.deepStrictEqual(urls, ["/admin/fechamento-pedidos?entregador=Fulano"]);
+});
