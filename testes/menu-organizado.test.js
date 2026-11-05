@@ -192,3 +192,13 @@ test("os níveis abertos não cortam a lista da Shopee", () => {
     assert.ok(px(/\.sub-sub-submenu\.open \{ max-height: (\d+)px/) >= 400);
     assert.ok(px(/\.sub-submenu\.open \{ max-height: (\d+)px/) >= 700);
 });
+
+test("todo nível no caminho da tela atual tem a barrinha azul", () => {
+    // Área, títulos do meio (ex.: Fechamento > Videira) e a tela: sem a barra num deles,
+    // o caminho parece parar no meio.
+    const css = ler("style.css");
+    const regra = sel => css.match(new RegExp(sel.replace(/\./g, "\.") + "[^{]*\{([^}]*)\}"))[1];
+    assert.match(regra(".menu-item.active"), /inset \dpx 0 0 #3a86ff/);
+    assert.match(regra(".subgroup-header-2.active"), /inset 2px 0 0 #3a86ff/);
+    assert.match(regra(".submenu a.active"), /inset 2px 0 0 #3a86ff/);
+});

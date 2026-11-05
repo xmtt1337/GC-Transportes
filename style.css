@@ -2398,9 +2398,13 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
 .subgroup-header-2:hover  { background: rgba(255,255,255,0.04); color: #e2e8f0; }
 .subgroup-header.open,
 .subgroup-header-2.open   { color: #e2e8f0; }
-/* Título no caminho da tela atual: azul com faixa mais leve que a da tela em si. */
+/* Título no caminho da tela atual: azul, barrinha à esquerda como a da tela e da área,
+   e faixa mais leve que a da tela em si. Sem a barrinha o caminho parecia parar no meio. */
 .subgroup-header.active,
-.subgroup-header-2.active { color: #7cb4ff; font-weight: 600; background: rgba(58,134,255,0.07); }
+.subgroup-header-2.active {
+    color: #7cb4ff; font-weight: 600; background: rgba(58,134,255,0.07);
+    box-shadow: inset 2px 0 0 #3a86ff;
+}
 
 .subgroup-arrow { opacity: 0.6; }
 .subgroup-header.open .subgroup-arrow,
