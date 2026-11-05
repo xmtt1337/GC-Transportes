@@ -24,6 +24,7 @@ function contexto(role = "entregador") {
     window: { _gcUser: { role, username: "usr.teste", name: "Usuário Teste", displayName: "Usuário Teste" } },
     document: { getElementById: () => null, addEventListener() {}, removeEventListener() {} },
     SHOPEE_POLOS: [{ chave: "cacador", label: "Caçador", xpt: "XPT_CFC" }],
+    _gcBtnOkStyle: '', _gcOverlayStyle: '',
   };
   vm.createContext(ctx);
   vm.runInContext(ESC + "\n" + ler("dados-pagamento.js") + "\n" + ler("nav.js"), ctx);
@@ -175,4 +176,49 @@ test("o que falta: um, vários, ou nada vazio (dado inválido)", () => {
 test("card do perfil: sem resposta ou outro cargo, a seção não aparece", () => {
   assert.doesNotMatch(cardDoPerfil("entregador", null), /data-pc="pagamento"/);
   assert.doesNotMatch(cardDoPerfil("user", { aplica: false }), /data-pc="pagamento"/);
+});
+
+// ── Bloqueio de quem não tem chave Pix ──
+
+test("bloqueio: só entregador sem chave e sem solicitação pendente", () => {
+  const c = contexto();
+  assert.strictEqual(c.dpgPrecisaBloquear({ aplica: true, completo: false, dados: null }), true);
+  assert.strictEqual(c.dpgPrecisaBloquear({ aplica: true, completo: false, dados: { ...DADOS, chave_pix: "" } }), true);
+  assert.strictEqual(c.dpgPrecisaBloquear({ aplica: true, completo: false, dados: { ...DADOS, email: "" } }), false, "tem chave: só o aviso");
+  assert.strictEqual(c.dpgPrecisaBloquear({ aplica: true, dados: null, solicitacao: { status: "pendente" } }), false, "já mandou, aguarda aprovação");
+  assert.strictEqual(c.dpgPrecisaBloquear({ aplica: true, dados: null, solicitacao: { status: "recusado" } }), true);
+  assert.strictEqual(c.dpgPrecisaBloquear({ aplica: false }), false, "outro cargo");
+  assert.strictEqual(c.dpgPrecisaBloquear(null), false, "sem resposta do servidor não trava ninguém");
+});
+
+test("bloqueio: aparece sem fechar, e some quando a chave chega", () => {
+  const c = contexto();
+  c._gcBtnOkStyle = c._gcOverlayStyle = "";
+  const corpo = [];
+  const criado = () => {
+    const el = { id: "", innerHTML: "", ouvintes: {}, setAttribute() {},
+      remove() { corpo.splice(corpo.indexOf(el), 1); },
+      querySelector: (sel) => ({ addEventListener: (ev, fn) => { el.ouvintes[sel] = fn; } }) };
+    return el;
+  };
+  c.document = {
+    getElementById: (id) => corpo.find((e) => e.id === id) || null,
+    createElement: criado,
+    body: { appendChild: (e) => corpo.push(e) },
+    addEventListener() {}, removeEventListener() {},
+  };
+  const estado = (e) => { c.__e = e; vm.runInContext("_dpgEstado = __e", c); };
+  estado({ aplica: true, completo: false, dados: null });
+  c._dpgDesenharAviso();
+  assert.strictEqual(corpo.length, 1);
+  assert.match(corpo[0].innerHTML, /Cadastre sua chave Pix para continuar/);
+  assert.match(corpo[0].innerHTML, /data-dpg="preencher"/);
+  assert.match(corpo[0].innerHTML, /data-dpg="sair"/, "dá pra sair da conta");
+  assert.doesNotMatch(corpo[0].innerHTML, /Cancelar|Fechar/);
+  c._dpgDesenharAviso();
+  assert.strictEqual(corpo.length, 1, "não empilha dois");
+
+  estado({ aplica: true, completo: true, dados: DADOS });
+  c._dpgDesenharAviso();
+  assert.strictEqual(corpo.length, 0, "salvou a chave: libera");
 });

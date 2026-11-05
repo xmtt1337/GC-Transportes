@@ -6945,6 +6945,15 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .dpg-campo.dpg-erro .pc-dlg-label { color: #f87171; }
 .pc-conta-valor.dpg-pendente { color: #f59e0b; font-weight: 600; }
 .dpg-falta { margin-top: 2px; font-size: 12px; color: #f59e0b; }
+/* Bloqueio de quem não tem chave Pix: mesmo cartão do aviso, com a tarja âmbar e canto reto. */
+.dpg-bloqueio-card {
+    width: 100%; max-width: 460px; background: #111827; border: 1px solid rgba(255,255,255,0.1);
+    border-left: 3px solid #f59e0b; border-radius: 0 12px 12px 0; padding: 20px 22px 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.dpg-bloqueio-acoes { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; }
+.dpg-bloqueio-sair { background: none; border: none; padding: 0; cursor: pointer; font: inherit; font-size: 13px; color: #8494a9; }
+.dpg-bloqueio-sair:hover { color: #e2e8f0; text-decoration: underline; }
 /* Atalho do perfil: a linha inteira é clicável e leva pra Configurações de pagamento. */
 .dpg-perfil-link {
     display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;

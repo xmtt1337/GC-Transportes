@@ -107,6 +107,46 @@ function dpgHtmlAviso(estado) {
 function _dpgDesenharAviso() {
     const el = document.getElementById("home-dados-pagamento");
     if (el) el.innerHTML = dpgHtmlAviso(_dpgEstado);
+    _dpgAtualizarBloqueio();
+}
+
+// ── Bloqueio: sem chave Pix, nada mais funciona ──
+// Pedido do usuário (05/11/2026): quem não tem chave Pix registrada não usa o sistema sem
+// preencher. A tela fica coberta por um cartão sem fechar (sem X, sem Esc, sem clique fora);
+// o formulário e os alertas abrem POR CIMA dele (entram depois no body, mesmo z-index).
+// Solicitação pendente libera: a pessoa já mandou a chave, só falta a aprovação.
+
+/** Precisa bloquear? Exportada pros testes. */
+function dpgPrecisaBloquear(estado) {
+    if (!estado || !estado.aplica) return false;
+    if (estado.dados && String(estado.dados.chave_pix || "").trim()) return false;
+    return !(estado.solicitacao && estado.solicitacao.status === "pendente");
+}
+
+/** Cartão do bloqueio. Exportada pros testes. */
+function dpgHtmlBloqueio() {
+    return `
+        <div class="dpg-bloqueio-card" role="alertdialog" aria-modal="true" aria-labelledby="dpg-bloqueio-titulo">
+            <div class="dpg-aviso-titulo" id="dpg-bloqueio-titulo">Cadastre sua chave Pix para continuar</div>
+            <div class="dpg-aviso-texto">Ainda não temos a sua chave Pix registrada, e sem ela não conseguimos pagar a sua quinzena. Preencha seus dados de pagamento para continuar usando o sistema — leva menos de um minuto.</div>
+            <div class="dpg-bloqueio-acoes">
+                <button type="button" style="${_gcBtnOkStyle}" data-dpg="preencher">Preencher meus dados</button>
+                <button type="button" class="dpg-bloqueio-sair" data-dpg="sair">Sair</button>
+            </div>
+        </div>`;
+}
+
+function _dpgAtualizarBloqueio() {
+    const atual = document.getElementById("dpg-bloqueio");
+    if (!dpgPrecisaBloquear(_dpgEstado)) { if (atual) atual.remove(); return; }
+    if (atual) return;
+    const overlay = document.createElement("div");
+    overlay.id = "dpg-bloqueio";
+    overlay.setAttribute("style", _gcOverlayStyle);
+    overlay.innerHTML = dpgHtmlBloqueio();
+    overlay.querySelector("[data-dpg=preencher]").addEventListener("click", () => dpgAbrirFormulario());
+    overlay.querySelector("[data-dpg=sair]").addEventListener("click", () => { overlay.remove(); logout(); });
+    document.body.appendChild(overlay);
 }
 
 async function dpgCarregar() {
@@ -168,7 +208,8 @@ function dpgSugestaoChave(tipo, valores) {
 
 function dpgAbrirFormulario() {
     const atual = (_dpgEstado && _dpgEstado.dados) || {};
-    const temDados = !!(atual.chave_pix || atual.cpf || atual.nome);
+    // Sem chave Pix é preenchimento (vale na hora), mesmo com nome/telefone vindos da planilha.
+    const temDados = !!atual.chave_pix;
     const titulo = temDados ? "Solicitar alteração dos dados de pagamento" : "Preencha seus dados de pagamento";
     _pcDialogo(titulo, dpgHtmlFormulario(atual, temDados), dlg => {
         // O card padrão do diálogo tem 420px; com 7 campos precisa de mais largura e rolar
@@ -305,7 +346,7 @@ function dpgHtmlStatusSolicitacao(s, tipoAtual) {
 function dpgHtmlConfig(estado) {
     if (!estado || !estado.aplica) return `<div class="cpg-erro">Seu cargo não usa dados de pagamento.</div>`;
     const d = estado.dados || {};
-    const temDados = !!(d.chave_pix || d.cpf || d.nome);
+    const temDados = !!d.chave_pix;
     const vazio = `<span class="cpg-vazio">não informado</span>`;
     // Opcional vazio (CNPJ) fica neutro; obrigatório vazio fica em âmbar.
     const linha = (rotulo, valor, opcional) => `
