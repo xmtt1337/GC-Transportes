@@ -339,6 +339,9 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("menu-item-pacotes-faltantes-op");
     }
 
+    // Cadastros > Dados entregadores (dados-entregadores.js): quem paga a quinzena.
+    if (["admin", "finance", "dev"].includes(role)) show("menu-item-dados-entregadores");
+
     // Ativos (disparo e conversas): sac e dev fazem acareação, com prazo e funil;
     // admin vê só os demais ativos. A própria tela decide o que mostrar por cargo.
     if (["sac", "dev", "admin"].includes(role)) {

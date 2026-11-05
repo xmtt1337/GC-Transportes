@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261105c">
+<link rel="stylesheet" href="style.css?v=20261105d">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -536,6 +536,7 @@ if (_BASE) {
             </li>
             <ul class="sub-submenu" id="subgroup-gc">
                 <li><a href="#" data-rota="Cadastros/Entregadores" onclick="abrirAdminUsuarios(event)">Entregadores</a></li>
+                <li id="menu-item-dados-entregadores" style="display:none"><a href="#" data-rota="Cadastros/DadosEntregadores" onclick="abrirDadosEntregadores(event)">Dados entregadores</a></li>
                 <li><a href="#" data-rota="Cadastros/Motoristas" onclick="abrirAdminMotoristas(event)">Motoristas</a></li>
                 <li><a href="#" data-rota="Cadastros/Usuarios" onclick="abrirAdminUsuariosGC(event)">Usuários</a></li>
                 <li id="menu-item-anotacoes-relatorio" style="display:none"><a href="#" data-rota="Cadastros/AnotacoesRelatorio" onclick="abrirAnotacoesRelatorio(event)">Anotações de Quantidade</a></li>
@@ -1422,8 +1423,6 @@ if (_BASE) {
                                     <th>Documento</th>
                                     <th>ID externo</th>
                                     <th>Chave PIX</th>
-                                    <th>WhatsApp / e-mail</th>
-                                    <th>Preenchido pelo entregador</th>
                                     <th>Criado em</th>
                                 </tr>
                             </thead>
@@ -1433,6 +1432,51 @@ if (_BASE) {
                 </div>
             </div>
         </div><!-- /tela-trampay-entregadores -->
+
+        <!-- CADASTROS > DADOS ENTREGADORES — a planilha "Dados entregadores/CLT's" no banco
+             (colunas nos nomes dela) + o que os entregadores preencheram. js/dados-entregadores.js -->
+        <div id="tela-dados-entregadores" class="view tela-full cad">
+            <div class="fech-header">
+                <div class="cad-topo">
+                    <div>
+                        <div class="cad-titulo">Dados entregadores</div>
+                        <div class="cad-sub" id="de-resumo"></div>
+                    </div>
+                    <div class="cad-botoes">
+                        <label class="de-check"><input type="checkbox" id="de-so-respostas" onchange="_deFiltrar()">Só quem preencheu pelo sistema</label>
+                        <label class="de-check"><input type="checkbox" id="de-so-sem-pix" onchange="_deFiltrar()">Só sem chave Pix</label>
+                        <div class="adm-search-input-area" style="max-width:240px">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="de-busca" placeholder="Buscar..." oninput="_deFiltrar()" autocomplete="off">
+                        </div>
+                        <button type="button" id="de-importar" class="cad-btn-sec" onclick="deImportar()">Importar da planilha</button>
+                    </div>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="fechamento-empty" id="de-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
+                <div id="de-resultado" style="display:none">
+                    <div class="adm-nf-wrap">
+                        <table class="adm-nf-table">
+                            <thead>
+                                <tr>
+                                    <th>Usuarios</th>
+                                    <th>Telefone</th>
+                                    <th>Nome</th>
+                                    <th>Documento</th>
+                                    <th>CNPJ</th>
+                                    <th>Chave Pix</th>
+                                    <th>Tipo Chave Pix</th>
+                                    <th>E-mail</th>
+                                    <th>Origem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="de-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tela-dados-entregadores -->
 
         <!-- TELA ENTREGADOR: ANOTAÇÕES → TRANSPORTADORAS -->
         <div id="tela-aq-transportadoras" class="view tela-full">
@@ -4791,9 +4835,9 @@ if (_BASE) {
     </div>
 </div>
 
-<script src="js/core.js?v=20261105a"></script>
+<script src="js/core.js?v=20261105b"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261105b"></script>
+<script src="js/router.js?v=20261105c"></script>
 <script src="js/sidebar.js?v=20261103f"></script>
 <script src="js/nav.js?v=20261105b"></script>
 <script src="js/atendimento.js?v=20261104c"></script>
@@ -4802,7 +4846,7 @@ if (_BASE) {
 <script src="js/fechamento-entregador.js?v=20261104g"></script>
 <script src="js/admin.js?v=20261103a"></script>
 <script src="js/conf-nf.js?v=20261012a"></script>
-<script src="js/trampay.js?v=20261105a"></script>
+<script src="js/trampay.js?v=20261105b"></script>
 <script src="js/usuarios.js?v=20261104c"></script>
 <script src="js/motoristas.js?v=20260924b"></script>
 <script src="js/pagamentos.js?v=20261012a"></script>
@@ -4858,6 +4902,7 @@ if (_BASE) {
 <script src="js/shopee-polo.js?v=20261015a"></script>
 <script src="js/perfil-conta.js?v=20261015c"></script>
 <script src="js/dados-pagamento.js?v=20261105a"></script>
+<script src="js/dados-entregadores.js?v=20261105a"></script>
 <script src="js/shopee.js?v=30260812d"></script>
 <script src="js/shopee-romaneiro.js?v=20261022f"></script>
 <script src="js/shopee-at.js?v=20261019a"></script>
