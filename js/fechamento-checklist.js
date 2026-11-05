@@ -51,6 +51,17 @@ function _ckCarregar() {
 // Entregador sem login: cria ali mesmo, com o nome do fechamento (que já vem "Nome - Cidade"),
 // e mostra o card de usuário e senha pra copiar (o mesmo do reset de senha).
 let _ckSemLogin = [];
+
+// O Copiar já leva a mensagem pronta pra mandar ao entregador, com o link do Meus Fechamentos.
+function _ckMensagemLogin(u) {
+    const primeiro = String(u.name || "").trim().split(/\s+/)[0] || "";
+    const link = (typeof location !== "undefined" ? location.origin : "https://xmtt.com.br") + "/Fechamentos/Meus";
+    return `Olá, ${primeiro}! Seu usuário para acessar o portal de fechamentos está pronto.
+Acesse: ${link}
+
+Usuário: ${u.username}
+Senha: ${u.senha_temporaria}`;
+}
 function _ckCriarLogin(i, btn) {
     const nome = _ckSemLogin[i];
     if (!nome) return;
@@ -65,7 +76,7 @@ function _ckCriarLogin(i, btn) {
         .then(d => {
             if (d.duplicate) { btn.disabled = false; btn.textContent = "Criar login"; return gcAlert(`Já existe um usuário com este nome: ${d.existing_username}.`); }
             if (d.error) { btn.disabled = false; btn.textContent = "Criar login"; return gcAlert(d.error); }
-            Promise.resolve(gcSenhaGerada({ username: d.username, name: d.name, senha_temporaria: d.senha_temporaria }, "Login criado")).then(() => _ckCarregar());
+            Promise.resolve(gcSenhaGerada({ username: d.username, name: d.name, senha_temporaria: d.senha_temporaria }, "Login criado", _ckMensagemLogin(d))).then(() => _ckCarregar());
         }).catch(() => { btn.disabled = false; btn.textContent = "Criar login"; gcAlert("Erro ao criar o login."); });
     }, null, "Criar login");
 }

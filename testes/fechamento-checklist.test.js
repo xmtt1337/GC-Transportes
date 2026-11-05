@@ -11,7 +11,7 @@ function carregar() {
         console, API: "http://api", token: "t",
         gcConfirm: (msg, ok) => { chamadas.push(["confirm", msg]); ok(); },
         gcAlert: (msg) => chamadas.push(["alert", msg]),
-        gcSenhaGerada: (dados, titulo) => { chamadas.push(["senha", dados, titulo]); return Promise.resolve(); },
+        gcSenhaGerada: (dados, titulo, texto) => { chamadas.push(["senha", dados, titulo, texto]); return Promise.resolve(); },
         fetch: (url, op) => { chamadas.push(["fetch", url, JSON.parse(op.body)]); return Promise.resolve({ json: () => ctx._resposta }); },
         document: { getElementById: () => ({ value: "1" }) },
     };
@@ -44,6 +44,8 @@ test("cria com o nome do fechamento (já com a cidade) e mostra o card de usuár
     const s = chamadas.find(c => c[0] === "senha");
     assert.strictEqual(s[1].username, "GC1234567");
     assert.strictEqual(s[1].senha_temporaria, "abc123");
+    // Copiar leva a mensagem pronta: primeiro nome, link do Meus Fechamentos, usuário e senha
+    assert.strictEqual(s[3], "Olá, Fulano! Seu usuário para acessar o portal de fechamentos está pronto.\nAcesse: https://xmtt.com.br/Fechamentos/Meus\n\nUsuário: GC1234567\nSenha: abc123");
     assert.ok(chamadas.some(c => c[0] === "recarregou"));
 });
 

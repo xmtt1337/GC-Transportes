@@ -10,9 +10,10 @@ const _gcBtnCxStyle   = "background:rgba(255,255,255,0.05);color:#94a3b8;border:
 // Senha temporária aparece uma vez só — não fica guardada em lugar de onde dê pra consultar
 // depois, de propósito. Por isso este modal existe separado do gcAlert: ele obriga a olhar,
 // facilita copiar, e avisa que fechar sem anotar significa gerar outra.
-function gcSenhaGerada(lista, titulo) {
+// textoCopiar (opcional): o que o Copiar põe na área de transferência, no lugar do padrão.
+function gcSenhaGerada(lista, titulo, textoCopiar) {
     const linhas = Array.isArray(lista) ? lista : [lista];
-    const texto = linhas.map(l => `${l.name || l.username}\nUsuário: ${l.username}\nSenha: ${l.senha_temporaria}`).join("\n\n");
+    const texto = textoCopiar || linhas.map(l => `${l.name || l.username}\nUsuário: ${l.username}\nSenha: ${l.senha_temporaria}`).join("\n\n");
     const umSo = linhas.length === 1;
 
     return new Promise(resolve => {
