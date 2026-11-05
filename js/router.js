@@ -104,6 +104,7 @@ const _ROTAS = {
     "Fechamentos/NotasFiscais":      () => abrirMinhasNFs(),
     "Adiantamentos/Solicitar":       () => abrirAntecipacoes(),
     "Adiantamentos/Minhas":          () => abrirMinhasSolicitacoes(),
+    "Pagamentos/Configuracoes":      () => abrirConfigPagamento(),
     "TorreControle/AlimentarAnjun":  () => abrirTorreAlimentar(null, "anjun"),
     "Fechamento/CacadorAlimentar":   () => abrirAdmin(),
     "Fechamento/CacadorPesquisar":   () => abrirAdminFechamentos(),
@@ -263,6 +264,7 @@ const _TELA_ROTAS = {
     "tela-minhas-nfs":           "Fechamentos/NotasFiscais",
     "tela-antecipacoes":         "Adiantamentos/Solicitar",
     "tela-minhas-solicitacoes":  "Adiantamentos/Minhas",
+    "tela-config-pagamento":     "Pagamentos/Configuracoes",
     "tela-admin":                "Fechamento/CacadorAlimentar",
     "tela-admin-fechamentos":    "Fechamento/CacadorPesquisar",
     "tela-dashboard":            "Fechamento/CacadorDashboard",
@@ -389,6 +391,7 @@ const _ROTAS_URL = {
     "Fechamentos/NotasFiscais":        "MeusPagamentos/NotasFiscais",
     "Adiantamentos/Solicitar":         "MeusPagamentos/Antecipacao",
     "Adiantamentos/Minhas":            "MeusPagamentos/Solicitacoes",
+    "Pagamentos/Configuracoes":        "MeusPagamentos/Configuracoes",
 
     // Sistema, Cadastros e Fiscal
     "Macros":                          "Sistema/Macros",

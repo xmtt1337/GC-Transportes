@@ -97,25 +97,71 @@ function cardDoPerfil(role, pagamento) {
   return card.innerHTML;
 }
 
-test("card do perfil: entregador com dados vê a chave e Editar", () => {
+test("card do perfil: atalho Configurações de pagamento com a chave", () => {
   const html = cardDoPerfil("entregador", { aplica: true, completo: true, dados: DADOS });
   assert.match(html, /Pagamento/);
+  assert.match(html, /class="dpg-perfil-link" data-pc="pagamento"/);
+  assert.match(html, /Configurações de pagamento/);
   assert.match(html, /Telefone · \(49\) 99999-0000/);
-  assert.match(html, /data-pc="pagamento">Editar/);
 });
 
-test("card do perfil: entregador sem dados vê Pendente e Preencher", () => {
+test("card do perfil: entregador sem dados vê Pendente", () => {
   const html = cardDoPerfil("entregador", { aplica: true, completo: false, dados: null });
   assert.match(html, /Pendente/);
-  assert.match(html, /data-pc="pagamento">Preencher/);
+  assert.match(html, /data-pc="pagamento"/);
 });
 
-test("card do perfil: tem chave mas falta dado — mostra a chave, o que falta e Completar (não 'Pendente')", () => {
+test("card do perfil: tem chave mas falta dado — mostra a chave e o que falta (não 'Pendente')", () => {
   const html = cardDoPerfil("entregador", { aplica: true, completo: false, dados: { ...DADOS, email: "" } });
   assert.match(html, /Telefone · \(49\) 99999-0000/);
   assert.doesNotMatch(html, /Pendente/);
   assert.match(html, /Falta o e-mail\./);
-  assert.match(html, /data-pc="pagamento">Completar/);
+});
+
+test("card do perfil: solicitação em análise aparece no atalho", () => {
+  const html = cardDoPerfil("entregador", { aplica: true, completo: true, dados: DADOS, solicitacao: { status: "pendente", mudancas: [] } });
+  assert.match(html, /Alteração aguardando aprovação/);
+});
+
+const MUDANCAS = [
+  { campo: "tipo_pix", rotulo: "Tipo da chave", antes: "cpf", depois: "telefone" },
+  { campo: "chave_pix", rotulo: "Chave Pix", antes: "12345678909", depois: "49999990000" },
+];
+
+test("configurações: dados atuais, e botão Solicitar alteração", () => {
+  const c = contexto();
+  const html = c.dpgHtmlConfig({ aplica: true, completo: true, dados: DADOS, solicitacao: null });
+  assert.match(html, /Dados atuais/);
+  assert.match(html, /123\.456\.789-09/);
+  assert.match(html, /\(49\) 99999-0000/);
+  assert.match(html, /CNPJ \(opcional\)<\/div><div class="cpg-valor"><span class="cad-vazio">—/, "opcional vazio fica neutro");
+  assert.match(c.dpgHtmlConfig({ aplica: true, completo: false, dados: { ...DADOS, email: "" } }),
+    /E-mail<\/div><div class="cpg-valor"><span class="cpg-vazio">não informado/, "obrigatório vazio em âmbar");
+  assert.match(html, /data-cpg="alterar">Solicitar alteração</);
+  assert.doesNotMatch(html, /cpg-status/);
+});
+
+test("configurações: sem dados → Preencher; pendente → status âmbar com antes → depois e Mudar a solicitação", () => {
+  const c = contexto();
+  assert.match(c.dpgHtmlConfig({ aplica: true, completo: false, dados: null }), />Preencher meus dados</);
+  const html = c.dpgHtmlConfig({ aplica: true, completo: true, dados: DADOS,
+    solicitacao: { status: "pendente", criado_em: "2026-11-05T15:00:00Z", mudancas: MUDANCAS } });
+  assert.match(html, /cpg-status-pendente/);
+  assert.match(html, /aguardando aprovação/);
+  assert.match(html, /só mudam depois de aprovados/);
+  assert.match(html, /Tipo da chave:<\/span> <span class="cpg-antes">CPF<\/span> → Telefone/);
+  assert.match(html, /Chave Pix:<\/span> <span class="cpg-antes">123\.456\.789-09<\/span> → \(49\) 99999-0000/, "chave com a máscara do tipo de cada lado");
+  assert.match(html, />Mudar a solicitação</);
+});
+
+test("configurações: aprovada em verde, recusada em vermelho dizendo que nada mudou", () => {
+  const c = contexto();
+  assert.match(c.dpgHtmlStatusSolicitacao({ status: "aprovado", decidido_em: "2026-11-05T16:00:00Z", mudancas: MUDANCAS }), /cpg-status-aprovado[\s\S]*Alteração aprovada/);
+  const rec = c.dpgHtmlStatusSolicitacao({ status: "recusado", decidido_em: "2026-11-05T16:00:00Z", mudancas: MUDANCAS });
+  assert.match(rec, /cpg-status-recusado/);
+  assert.match(rec, /continuam como estavam/);
+  assert.strictEqual(c.dpgHtmlStatusSolicitacao({ status: "substituido" }), "");
+  assert.strictEqual(c.dpgHtmlStatusSolicitacao(null), "");
 });
 
 test("o que falta: um, vários, ou nada vazio (dado inválido)", () => {

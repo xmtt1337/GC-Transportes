@@ -614,7 +614,7 @@ function _renderPerfilCard(card, { conta, desempenho, polo, pagamento }) {
         "senha":        () => pcAlterarSenha(),
         "polo":         () => pcSolicitarPolo(conta.polo),
         "mes":          () => _pcAlternarMes(),
-        "pagamento":    () => dpgAbrirFormulario(),
+        "pagamento":    () => { fecharPerfilCard(); abrirConfigPagamento(); },
     };
     card.querySelectorAll("[data-pc]").forEach(el =>
         el.addEventListener("click", () => acoes[el.dataset.pc]()));

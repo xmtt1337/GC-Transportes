@@ -3,10 +3,14 @@
 // WhatsApp, e-mail e chave Pix aqui mesmo. O servidor (modules/dados-pagamento) valida,
 // grava na tabela que o pagamento da quinzena lê e copia pra planilha.
 //
-// Dois pontos de entrada:
+// Pontos de entrada:
 //   - o aviso na tela inicial, pra quem ainda não tem os dados completos (core.js chama
 //     dpgCarregarAviso() só pro entregador);
-//   - a seção "Pagamento" do card do perfil (nav.js), pra conferir e editar depois.
+//   - a tela "Configurações de pagamento" (menu Pagamentos, e o atalho no card do perfil):
+//     mostra os dados, o status da solicitação de alteração e o botão pra pedir mudança.
+//
+// Preencher o que está vazio grava na hora. MUDAR um dado que já existe vira solicitação:
+// só vale quando o suporte aprova no Atendimento — até lá a tela mostra "aguardando".
 //
 // A validação de verdade é a do servidor: ele devolve a frase e o `campo` que errou, e o
 // formulário só marca esse campo. Aqui só formata enquanto digita.
@@ -19,7 +23,7 @@ const DPG_TIPOS = [
     { valor: "cnpj",      rotulo: "CNPJ" },
 ];
 
-let _dpgEstado = null; // { aplica, completo, dados } — última resposta do servidor
+let _dpgEstado = null; // { aplica, completo, dados, solicitacao } — última resposta do servidor
 
 const _dpgDigitos = v => String(v || "").replace(/\D/g, "");
 
@@ -127,10 +131,13 @@ function _dpgCampo(id, rotulo, valor, extra) {
         </div>`;
 }
 
-function dpgHtmlFormulario(d) {
+function dpgHtmlFormulario(d, temDados) {
     d = d || {};
+    const intro = temDados
+        ? "Mudanças em dados que já temos (chave Pix, CPF, telefone...) passam por aprovação: seus dados só mudam depois que forem confirmados. Campo vazio que você preencher vale na hora."
+        : "Usamos estes dados para pagar sua quinzena. Confira com atenção: o Pix vai para a chave informada aqui.";
     return `
-        <div class="dpg-intro">Usamos estes dados para pagar sua quinzena. Confira com atenção: o Pix vai para a chave informada aqui.</div>
+        <div class="dpg-intro">${intro}</div>
         ${_dpgCampo("nome", "Nome completo", d.nome, `autocomplete="name" maxlength="120" placeholder="Nome e sobrenome"`)}
         <div class="dpg-linha">
             ${_dpgCampo("cpf", "CPF", dpgMascaraCpf(d.cpf), `inputmode="numeric" maxlength="14" placeholder="000.000.000-00"`)}
@@ -161,8 +168,9 @@ function dpgSugestaoChave(tipo, valores) {
 
 function dpgAbrirFormulario() {
     const atual = (_dpgEstado && _dpgEstado.dados) || {};
-    const editando = !!(_dpgEstado && _dpgEstado.completo);
-    _pcDialogo(editando ? "Dados de pagamento" : "Preencha seus dados de pagamento", dpgHtmlFormulario(atual), dlg => {
+    const temDados = !!(atual.chave_pix || atual.cpf || atual.nome);
+    const titulo = temDados ? "Solicitar alteração dos dados de pagamento" : "Preencha seus dados de pagamento";
+    _pcDialogo(titulo, dpgHtmlFormulario(atual, temDados), dlg => {
         // O card padrão do diálogo tem 420px; com 7 campos precisa de mais largura e rolar
         // dentro da tela no celular.
         const card = dlg.overlay.firstElementChild;
@@ -209,10 +217,17 @@ function dpgAbrirFormulario() {
             try {
                 const r = await _pcPost("/meus-dados-pagamento", valores(), "PUT");
                 if (!r.ok) { dlg.erro(r.d.error || "Não foi possível salvar."); marcar(r.d.campo); return; }
-                _dpgEstado = { aplica: true, completo: true, dados: r.d.dados };
-                _dpgDesenharAviso();
                 dlg.fechar();
-                gcAlert("Seus dados de pagamento foram salvos. Para mudar depois, clique no seu nome no topo da tela.", "Dados salvos");
+                if (r.d.solicitado) {
+                    // Nada mudou ainda: os dados seguem os de antes até a aprovação.
+                    _dpgEstado = { ..._dpgEstado, aplica: true, solicitacao: r.d.solicitacao };
+                    gcAlert("Sua solicitação foi enviada. Os dados só mudam depois que forem aprovados — até lá o pagamento usa os dados atuais. Acompanhe o status em Pagamentos › Configurações de pagamento.", "Solicitação enviada");
+                } else {
+                    _dpgEstado = { ..._dpgEstado, aplica: true, completo: true, dados: r.d.dados };
+                    gcAlert("Seus dados de pagamento foram salvos. Para mudar depois, vá em Pagamentos › Configurações de pagamento.", "Dados salvos");
+                }
+                _dpgDesenharAviso();
+                _dpgDesenharConfig();
             } catch { dlg.erro("Erro ao conectar com o servidor."); }
             finally { dlg.ocupado(false, "Salvar"); }
         };
@@ -221,28 +236,124 @@ function dpgAbrirFormulario() {
     });
 }
 
-// ── Seção do card do perfil (nav.js) ──
+// ── Tela "Configurações de pagamento" ──
+
+const _dpgData = d => d ? new Date(d).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "";
+
+function abrirConfigPagamento(event) {
+    if (event) event.preventDefault();
+    mostrarTela("tela-config-pagamento");
+    const el = document.getElementById("cpg-conteudo");
+    if (_dpgEstado) _dpgDesenharConfig();
+    dpgCarregar()
+        .then(() => { _dpgDesenharConfig(); _dpgDesenharAviso(); })
+        .catch(() => { if (el && !_dpgEstado) el.innerHTML = `<div class="cpg-erro">Não foi possível carregar seus dados. Tente de novo.</div>`; });
+}
+
+function _dpgDesenharConfig() {
+    const el = document.getElementById("cpg-conteudo");
+    if (!el || !_dpgEstado) return;
+    el.innerHTML = dpgHtmlConfig(_dpgEstado);
+    const btn = el.querySelector("[data-cpg='alterar']");
+    if (btn) btn.addEventListener("click", () => dpgAbrirFormulario());
+}
+
+/**
+ * Lista "Campo: antes → depois" de uma solicitação, com a máscara de cada campo. A chave
+ * usa o tipo do mesmo lado (o de antes no "antes", o novo no "depois"); se o tipo não
+ * mudou, o tipo atual.
+ */
+function _dpgHtmlMudancas(mudancas, tipoAtual) {
+    const mudouTipo = (mudancas || []).find(m => m.campo === "tipo_pix");
+    const tipoDe = lado => (mudouTipo ? mudouTipo[lado] : tipoAtual);
+    return (mudancas || []).map(m => {
+        const fmt = (v, lado) => {
+            if (!v) return v;
+            if (m.campo === "tipo_pix") return dpgRotuloTipo(v) || v;
+            if (m.campo === "cpf") return dpgMascaraCpf(v);
+            if (m.campo === "cnpj") return dpgMascaraCnpj(v);
+            if (m.campo === "whatsapp") return dpgMascaraTelefone(v);
+            if (m.campo === "chave_pix") return dpgChaveLegivel(tipoDe(lado), v);
+            return v;
+        };
+        const antes = m.antes ? `<span class="cpg-antes">${_gcEsc(fmt(m.antes, "antes"))}</span> → ` : "";
+        return `<div><span class="cpg-mud-campo">${_gcEsc(m.rotulo || m.campo)}:</span> ${antes}${_gcEsc(fmt(m.depois, "depois") || "vazio")}</div>`;
+    }).join("");
+}
+
+/** Cartão do status da última solicitação. Exportada pros testes. */
+function dpgHtmlStatusSolicitacao(s, tipoAtual) {
+    if (!s) return "";
+    const cfg = {
+        pendente:  { cls: "pendente",  titulo: "Alteração solicitada — aguardando aprovação",
+                     texto: `Enviada em ${_dpgData(s.criado_em)}. Seus dados só mudam depois de aprovados; até lá o pagamento usa os dados abaixo.` },
+        aprovado:  { cls: "aprovado",  titulo: "Alteração aprovada",
+                     texto: `Aprovada em ${_dpgData(s.decidido_em)}. Os dados abaixo já são os novos.` },
+        recusado:  { cls: "recusado",  titulo: "Alteração recusada",
+                     texto: `Recusada em ${_dpgData(s.decidido_em)}. Seus dados continuam como estavam. Se precisar, fale com o suporte pelo atendimento.` },
+    }[s.status];
+    if (!cfg) return "";
+    return `
+        <div class="cpg-status cpg-status-${cfg.cls}" role="status">
+            <div class="cpg-status-titulo">${cfg.titulo}</div>
+            <div class="cpg-status-texto">${_gcEsc(cfg.texto)}</div>
+            <div class="cpg-mudancas">${_dpgHtmlMudancas(s.mudancas, tipoAtual)}</div>
+        </div>`;
+}
+
+/** Conteúdo da tela. Exportada pros testes. */
+function dpgHtmlConfig(estado) {
+    if (!estado || !estado.aplica) return `<div class="cpg-erro">Seu cargo não usa dados de pagamento.</div>`;
+    const d = estado.dados || {};
+    const temDados = !!(d.chave_pix || d.cpf || d.nome);
+    const vazio = `<span class="cpg-vazio">não informado</span>`;
+    // Opcional vazio (CNPJ) fica neutro; obrigatório vazio fica em âmbar.
+    const linha = (rotulo, valor, opcional) => `
+        <div class="cpg-linha"><div class="cpg-rotulo">${rotulo}</div><div class="cpg-valor">${valor ? _gcEsc(valor) : opcional ? `<span class="cad-vazio">—</span>` : vazio}</div></div>`;
+    const pendente = estado.solicitacao && estado.solicitacao.status === "pendente";
+    const botao = !temDados ? "Preencher meus dados" : pendente ? "Mudar a solicitação" : "Solicitar alteração";
+    return `
+        ${dpgHtmlStatusSolicitacao(estado.solicitacao, d.tipo_pix)}
+        <div class="cpg-card">
+            <div class="cpg-card-hd">Dados atuais</div>
+            ${linha("Nome completo", d.nome)}
+            ${linha("CPF", dpgMascaraCpf(d.cpf))}
+            ${linha("CNPJ (opcional)", d.cnpj ? dpgMascaraCnpj(d.cnpj) : "", true)}
+            ${linha("WhatsApp", dpgMascaraTelefone(d.whatsapp))}
+            ${linha("E-mail", d.email)}
+            ${linha("Tipo da chave", dpgRotuloTipo(d.tipo_pix))}
+            ${linha("Chave Pix", dpgChaveLegivel(d.tipo_pix, d.chave_pix))}
+            ${temDados && !estado.completo ? `<div class="dpg-falta cpg-falta">${_gcEsc(dpgTextoFaltando(d))}</div>` : ""}
+        </div>
+        <button type="button" class="cpg-btn" data-cpg="alterar">${botao}</button>`;
+}
+
+// ── Atalho no card do perfil (nav.js) ──
 
 function dpgSecaoPerfil(estado) {
     if (!estado || !estado.aplica) return "";
     const d = estado.dados || {};
-    // Com chave, a chave aparece mesmo com o cadastro incompleto ("Pendente" ali parecia
-    // dizer que a chave não existia); o que falta vem embaixo, em âmbar.
+    // A chave aparece mesmo com o cadastro incompleto ("Pendente" ali parecia dizer que a
+    // chave não existia); o que falta e a solicitação em análise vêm embaixo, em âmbar.
     const chave = dpgChaveLegivel(d.tipo_pix, d.chave_pix);
     const tipo = dpgRotuloTipo(d.tipo_pix);
     const valor = chave
-        ? `<div class="pc-conta-valor" title="${_gcEsc(chave)}">${tipo ? _gcEsc(tipo) + " · " : ""}${_gcEsc(chave)}</div>` +
-          (estado.completo ? "" : `<div class="dpg-falta">${_gcEsc(dpgTextoFaltando(d))}</div>`)
+        ? `<div class="pc-conta-valor" title="${_gcEsc(chave)}">${tipo ? _gcEsc(tipo) + " · " : ""}${_gcEsc(chave)}</div>`
         : `<div class="pc-conta-valor dpg-pendente">Pendente</div>`;
+    const s = estado.solicitacao;
+    const extra = s && s.status === "pendente"
+        ? `<div class="dpg-falta">Alteração aguardando aprovação</div>`
+        : chave && !estado.completo ? `<div class="dpg-falta">${_gcEsc(dpgTextoFaltando(d))}</div>` : "";
     return `
         <div class="pc-section">
             <div class="pc-section-hd">Pagamento</div>
-            <div class="pc-conta-row">
+            <button type="button" class="dpg-perfil-link" data-pc="pagamento">
                 <div style="min-width:0">
-                    <div class="pc-conta-rotulo">Chave Pix</div>
+                    <div class="pc-conta-rotulo">Configurações de pagamento</div>
                     ${valor}
+                    ${extra}
                 </div>
-                <button type="button" class="pc-conta-link" data-pc="pagamento">${estado.completo ? "Editar" : chave ? "Completar" : "Preencher"}</button>
-            </div>
+                <span class="dpg-perfil-seta" aria-hidden="true">›</span>
+            </button>
         </div>`;
 }
