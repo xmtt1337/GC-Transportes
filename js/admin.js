@@ -121,13 +121,7 @@ function renderHomeActions(role) {
             desc: "Veja seus valores quinzenais.",
             fn: "abrirFechamentos()"
         });
-        defs.push({
-            color: "#22c55e", ibg: "rgba(34,197,94,0.12)",
-            icon: `<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`,
-            title: "Dashboard",
-            desc: "Evolução dos seus valores por transportadora.",
-            fn: "abrirEntDashboard()"
-        });
+        // Dashboard do entregador desativado (05/11/2026, pedido do usuário); a tela segue no código.
     }
     if (role === "admin") {
         defs.push({

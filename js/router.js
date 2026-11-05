@@ -97,7 +97,8 @@ const _ROTAS = {
     "Conferencias/Shopee":           () => abrirConferencias(null, "shopee"),
     "Conferencias/TotalExpress":     () => abrirConferencias(null, "total_express"),
     "Fechamentos/Meus":              () => abrirFechamentos(),
-    "Fechamentos/Dashboard":         () => abrirEntDashboard(),
+    // Dashboard do entregador desativado (05/11/2026): link antigo cai no Meus Fechamentos.
+    "Fechamentos/Dashboard":         () => abrirFechamentos(),
     "Anotacoes/Transportadoras":     () => abrirAnotacoesTransportadoras(),
     "Anotacoes/PorDia":              () => abrirAnotacoesPorDia(),
     "Anotacoes/Quinzenas":           () => abrirAnotacoesQuinzenas(),
