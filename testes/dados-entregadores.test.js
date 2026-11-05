@@ -82,3 +82,43 @@ test("número puro ganha máscara; o que já veio formatado fica como está", ()
   assert.strictEqual(c.deFormatar("telefone", null), "");
   assert.match(c.deHtmlLinha({ usuarios: "X Teste", tipo_chave_pix: "email" }), />E-mail</);
 });
+
+// ── Novos dados (histórico) ──
+
+const ROTULOS = { chave_pix: "Chave Pix", telefone: "Telefone", tipo_chave_pix: "Tipo Chave Pix", documento: "Documento" };
+const HIST = [
+  { tipo: "novo", origem: "entregador", usuarios: "Maria Teste", quem: "Maria Teste - Caçador", criado_em: "2026-11-05T15:00:00Z",
+    campos: [{ campo: "chave_pix", antes: null, depois: "maria@exemplo.com" }, { campo: "tipo_chave_pix", antes: null, depois: "email" }] },
+  { tipo: "atualizado", origem: "planilha", usuarios: "João Teste", quem: "Financeiro Teste", id_interno: "T001", criado_em: "2026-11-05T16:00:00Z",
+    campos: [{ campo: "telefone", antes: "49988880000", depois: "49977770000" }] },
+  { tipo: "atualizado", origem: "entregador", usuarios: "Ana Teste", quem: "Ana Teste - Videira", campos: [] },
+];
+
+test("novos dados: filtro por tipo e busca por entregador, quem ou ID", () => {
+  const c = carregar();
+  assert.strictEqual(nomes(c.deFiltrarHistorico(HIST, { tipo: "novo" })), "Maria Teste");
+  assert.strictEqual(nomes(c.deFiltrarHistorico(HIST, { tipo: "atualizado" })), "João Teste,Ana Teste");
+  assert.strictEqual(nomes(c.deFiltrarHistorico(HIST, { busca: "financeiro" })), "João Teste");
+  assert.strictEqual(nomes(c.deFiltrarHistorico(HIST, { busca: "joao" })), "João Teste");
+  assert.strictEqual(nomes(c.deFiltrarHistorico(HIST, { busca: "t001" })), "João Teste");
+});
+
+test("novos dados: novo mostra o valor; atualizado mostra antes riscado → depois, com máscara", () => {
+  const c = carregar();
+  const novo = c.deHtmlMudancas(HIST[0], ROTULOS);
+  assert.match(novo, /Chave Pix:<\/span> maria@exemplo\.com/);
+  assert.match(novo, /Tipo Chave Pix:<\/span> E-mail/);
+  const at = c.deHtmlMudancas(HIST[1], ROTULOS);
+  assert.match(at, /de-mud-antes">\(49\) 98888-0000<\/span> → \(49\) 97777-0000/);
+  assert.match(c.deHtmlMudancas(HIST[2], ROTULOS), /detalhe não guardado/);
+});
+
+test("novos dados: linha com tipo, quem e de onde veio, escapada", () => {
+  const c = carregar();
+  const html = c.deHtmlHistorico({ ...HIST[1], quem: "<b>X</b>" }, ROTULOS);
+  assert.match(html, /de-tipo-atualizado">Atualizado/);
+  assert.match(html, /&lt;b&gt;X&lt;\/b&gt;/);
+  assert.match(html, /importação da planilha/);
+  assert.match(html, /ID T001/);
+  assert.match(c.deHtmlHistorico(HIST[0], ROTULOS), /de-tipo-novo">Novo[\s\S]*pelo formulário/);
+});

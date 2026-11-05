@@ -6956,3 +6956,12 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .de-pendente { font-size: 12px; color: #f59e0b; }
 #tela-dados-entregadores .cad-botoes { align-items: center; flex-wrap: wrap; gap: 14px; }
 #tela-dados-entregadores td.de-nowrap { white-space: nowrap; }
+.de-select { background: #0f172a; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 6px 8px; font-size: 12.5px; }
+.de-tipo-novo { font-size: 12.5px; font-weight: 600; color: #34d399; }
+.de-tipo-atualizado { font-size: 12.5px; font-weight: 600; color: #cbd5e1; }
+.de-mudancas { font-size: 12.5px; color: #cbd5e1; line-height: 1.6; }
+.de-mud-campo { color: #8494a9; }
+.de-mud-antes { color: #6b7789; text-decoration: line-through; }
+.de-mud-sem { font-size: 12.5px; color: #8494a9; font-style: italic; }
+.de-quem { font-size: 13px; color: #e2e8f0; }
+.de-quem-origem { font-size: 12px; color: #8494a9; }

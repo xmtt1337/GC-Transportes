@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261105d">
+<link rel="stylesheet" href="style.css?v=20261105e">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -1451,7 +1451,28 @@ if (_BASE) {
                         </div>
                         <button type="button" id="de-importar" class="cad-btn-sec" onclick="deImportar()">Importar da planilha</button>
                     </div>
+                    <div class="cad-botoes" id="de-hist-filtros" style="display:none">
+                        <select id="de-hist-tipo" class="de-select" onchange="_deHistFiltrar()" aria-label="Tipo">
+                            <option value="">Novos e atualizados</option>
+                            <option value="novo">Só dados novos</option>
+                            <option value="atualizado">Só atualizados</option>
+                        </select>
+                        <select id="de-hist-dias" class="de-select" onchange="_deHistCarregar()" aria-label="Período">
+                            <option value="7">Últimos 7 dias</option>
+                            <option value="30" selected>Últimos 30 dias</option>
+                            <option value="90">Últimos 90 dias</option>
+                            <option value="366">Último ano</option>
+                        </select>
+                        <div class="adm-search-input-area" style="max-width:240px">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="de-hist-busca" placeholder="Buscar entregador ou quem..." oninput="_deHistFiltrar()" autocomplete="off">
+                        </div>
+                    </div>
                 </div>
+                <nav class="mex-abas" aria-label="Dados entregadores">
+                    <a href="#" class="mex-aba ativa" id="de-aba-todos" onclick="deMostrarAba(event, 'todos')">Todos</a>
+                    <a href="#" class="mex-aba" id="de-aba-novos" onclick="deMostrarAba(event, 'novos')">Novos dados</a>
+                </nav>
             </div>
             <div class="fech-body">
                 <div class="fechamento-empty" id="de-empty"><div class="xm-carregando xm-carregando-p" role="status"><span>Carregando</span></div></div>
@@ -1473,6 +1494,23 @@ if (_BASE) {
                                 </tr>
                             </thead>
                             <tbody id="de-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="fechamento-empty" id="de-hist-empty" style="display:none"></div>
+                <div id="de-hist-resultado" style="display:none">
+                    <div class="adm-nf-wrap">
+                        <table class="adm-nf-table">
+                            <thead>
+                                <tr>
+                                    <th>Quando</th>
+                                    <th>Entregador</th>
+                                    <th>Tipo</th>
+                                    <th>O que mudou</th>
+                                    <th>Quem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="de-hist-tbody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -4903,7 +4941,7 @@ if (_BASE) {
 <script src="js/shopee-polo.js?v=20261015a"></script>
 <script src="js/perfil-conta.js?v=20261015c"></script>
 <script src="js/dados-pagamento.js?v=20261105a"></script>
-<script src="js/dados-entregadores.js?v=20261105b"></script>
+<script src="js/dados-entregadores.js?v=20261105c"></script>
 <script src="js/shopee.js?v=30260812d"></script>
 <script src="js/shopee-romaneiro.js?v=20261022f"></script>
 <script src="js/shopee-at.js?v=20261019a"></script>

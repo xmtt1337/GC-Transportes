@@ -20,7 +20,29 @@ function abrirDadosEntregadores(event) {
     document.getElementById("de-busca").value = "";
     document.getElementById("de-so-respostas").checked = false;
     document.getElementById("de-so-sem-pix").checked = false;
-    _deCarregar();
+    _deTrocarAba("todos");
+}
+
+// ── Abas: Todos (a tabela) | Novos dados (o histórico: quem mudou o quê e quando) ──
+let _deAba = "todos";
+
+function deMostrarAba(event, aba) {
+    if (event) event.preventDefault();
+    _deTrocarAba(aba);
+}
+
+function _deTrocarAba(aba) {
+    _deAba = aba;
+    const novos = aba === "novos";
+    document.getElementById("de-aba-todos").classList.toggle("ativa", !novos);
+    document.getElementById("de-aba-novos").classList.toggle("ativa", novos);
+    document.querySelector("#tela-dados-entregadores .cad-botoes").style.display = novos ? "none" : "";
+    document.getElementById("de-hist-filtros").style.display = novos ? "" : "none";
+    ["de-empty", "de-resultado", "de-hist-empty", "de-hist-resultado"].forEach(id => {
+        document.getElementById(id).style.display = "none";
+    });
+    if (novos) _deHistCarregar();
+    else _deCarregar();
 }
 
 function _deEsc(t) {
@@ -156,8 +178,109 @@ function deImportar() {
                 return;
             }
             gcAlert(_deEsc(deTextoImportacao(d)), "Importação concluída");
-            _deCarregar();
+            _deTrocarAba(_deAba);
         } catch { gcAlert("Erro ao conectar com o servidor."); }
         finally { btn.disabled = false; btn.innerText = "Importar da planilha"; }
     }, "Importar da planilha", "Importar");
+}
+
+// ───── NOVOS DADOS ─────
+// Cada cadastro novo ou alteração em dados_entregadores, com quem fez e quando: o
+// entregador pelo formulário de pagamento, ou quem clicou em Importar da planilha.
+
+let _deHist = [];
+let _deRotulos = {};
+
+function _deHistCarregar() {
+    const empty = document.getElementById("de-hist-empty");
+    skMostrar(empty, "tabela");
+    empty.style.display = "";
+    document.getElementById("de-hist-resultado").style.display = "none";
+    const dias = document.getElementById("de-hist-dias").value;
+    fetch(API + "/admin/dados-entregadores/historico?dias=" + encodeURIComponent(dias), { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            if (!ok) { skFim(empty, d.error || "Erro ao carregar."); return; }
+            _deHist = d.registros || [];
+            _deRotulos = d.rotulos || {};
+            _deHistResumo();
+            _deHistFiltrar();
+        })
+        .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
+}
+
+function _deHistResumo() {
+    const novos = _deHist.filter(h => h.tipo === "novo").length;
+    const atual = _deHist.length - novos;
+    document.getElementById("de-resumo").innerText = _deHist.length
+        ? `${novos} dado${novos !== 1 ? "s" : ""} novo${novos !== 1 ? "s" : ""} · ${atual} atualização${atual !== 1 ? "ões" : ""} no período`
+        : "";
+}
+
+/** Registros que passam pelo tipo e pela busca. Exportada pros testes. */
+function deFiltrarHistorico(registros, { tipo, busca }) {
+    const alvo = String(busca || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+    return registros.filter(h => {
+        if (tipo && h.tipo !== tipo) return false;
+        if (!alvo) return true;
+        return [h.usuarios, h.quem, h.id_interno].join(" ")
+            .normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().includes(alvo);
+    });
+}
+
+/** Valor como a tela mostra (máscara de telefone/documento, tipo da chave por extenso). */
+function _deValor(campo, v) {
+    if (v == null || v === "") return "vazio";
+    if (campo === "tipo_chave_pix") return _DE_TIPOS[v] || v;
+    if (campo === "outras") {
+        try { return Object.entries(JSON.parse(v)).map(([k, x]) => `${k}: ${x}`).join(", "); } catch { return v; }
+    }
+    return deFormatar(campo, v);
+}
+
+/** Coluna "O que mudou". Exportada pros testes. */
+function deHtmlMudancas(h, rotulos) {
+    const campos = h.campos || [];
+    if (!campos.length) {
+        return `<span class="de-mud-sem">${h.tipo === "novo" ? "Preencheu os dados" : "Atualizou os dados"} (detalhe não guardado — foi antes do histórico existir)</span>`;
+    }
+    const linhas = campos.map(c => {
+        const rot = `<span class="de-mud-campo">${_deEsc((rotulos || {})[c.campo] || c.campo)}:</span>`;
+        if (h.tipo === "novo" || c.antes == null) return `${rot} ${_deEsc(_deValor(c.campo, c.depois))}`;
+        return `${rot} <span class="de-mud-antes">${_deEsc(_deValor(c.campo, c.antes))}</span> → ${_deEsc(_deValor(c.campo, c.depois))}`;
+    });
+    return `<div class="de-mudancas">${linhas.join("<br>")}</div>`;
+}
+
+function deHtmlHistorico(h, rotulos) {
+    const tipo = h.tipo === "novo"
+        ? `<span class="de-tipo-novo">Novo</span>`
+        : `<span class="de-tipo-atualizado">Atualizado</span>`;
+    const origem = h.origem === "entregador" ? "pelo formulário" : "importação da planilha";
+    const ent = _deEsc(h.usuarios || "—") + (h.id_interno ? ` <span class="de-origem">· ID ${_deEsc(h.id_interno)}</span>` : "");
+    return `
+        <tr>
+            <td class="cad-data de-nowrap" data-rotulo="Quando">${_deEsc(_deData(h.criado_em))}</td>
+            <td class="cad-nome" data-rotulo="Entregador">${ent}</td>
+            <td data-rotulo="Tipo">${tipo}</td>
+            <td data-rotulo="O que mudou">${deHtmlMudancas(h, rotulos)}</td>
+            <td data-rotulo="Quem"><div class="de-quem">${_deEsc(h.quem || "—")}</div><div class="de-quem-origem">${origem}</div></td>
+        </tr>`;
+}
+
+function _deHistFiltrar() {
+    const empty = document.getElementById("de-hist-empty");
+    const lista = deFiltrarHistorico(_deHist, {
+        tipo: document.getElementById("de-hist-tipo").value,
+        busca: document.getElementById("de-hist-busca").value,
+    });
+    if (!lista.length) {
+        skFim(empty, _deHist.length ? "Nada com esse filtro." : "Nenhum dado novo ou atualizado nesse período.");
+        empty.style.display = "";
+        document.getElementById("de-hist-resultado").style.display = "none";
+        return;
+    }
+    empty.style.display = "none";
+    document.getElementById("de-hist-resultado").style.display = "";
+    document.getElementById("de-hist-tbody").innerHTML = lista.map(h => deHtmlHistorico(h, _deRotulos)).join("");
 }
