@@ -84,7 +84,7 @@ function deFiltrarLinhas(linhas, { busca, soRespostas, soSemPix }) {
         if (soRespostas && !l.preenchido_em) return false;
         if (soSemPix && l.chave_pix) return false;
         if (!alvo) return true;
-        const texto = [l.id_interno, l.usuarios, l.nome, l.telefone, l.documento, l.cnpj, l.chave_pix, l.email, l.login]
+        const texto = [l.id_interno, l.usuarios, l.nome, l.telefone, l.documento, l.cpf, l.cnpj, l.chave_pix, l.email, l.login]
             .join(" ").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
         return texto.includes(alvo);
     });
@@ -126,6 +126,7 @@ function deHtmlLinha(l) {
             <td class="cad-num" data-rotulo="Telefone">${c(deFormatar("telefone", l.telefone))}</td>
             <td class="de-corta" data-rotulo="Nome"${t(l.nome)}>${c(l.nome)}</td>
             <td class="cad-num" data-rotulo="Documento">${c(deFormatar("documento", l.documento))}</td>
+            <td class="cad-num" data-rotulo="CPF">${c(deFormatar("documento", l.cpf))}</td>
             <td class="cad-num" data-rotulo="CNPJ">${c(deFormatar("cnpj", l.cnpj))}</td>
             <td class="de-corta" data-rotulo="Chave Pix"${t(l.chave_pix)}>${l.chave_pix ? _deEsc(l.chave_pix) : `<span class="de-pendente">sem chave</span>`}</td>
             <td data-rotulo="Tipo Chave Pix">${c(_DE_TIPOS[String(l.tipo_chave_pix || "").toLowerCase()] || l.tipo_chave_pix)}</td>
@@ -235,6 +236,7 @@ function deFiltrarHistorico(registros, { tipo, busca }) {
 function _deValor(campo, v) {
     if (v == null || v === "") return "vazio";
     if (campo === "tipo_chave_pix") return _DE_TIPOS[v] || v;
+    if (campo === "cpf") return deFormatar("documento", v);
     if (campo === "outras") {
         try { return Object.entries(JSON.parse(v)).map(([k, x]) => `${k}: ${x}`).join(", "); } catch { return v; }
     }
@@ -259,7 +261,7 @@ function deHtmlHistorico(h, rotulos) {
     const tipo = h.tipo === "novo"
         ? `<span class="de-tipo-novo">Novo</span>`
         : `<span class="de-tipo-atualizado">Atualizado</span>`;
-    const origem = { entregador: "pelo formulário", usuario: "copiado do login" }[h.origem] || "importação da planilha";
+    const origem = { entregador: "pelo formulário", usuario: "copiado do login", sistema: "correção do sistema" }[h.origem] || "importação da planilha";
     const ent = _deEsc(h.usuarios || "—") + (h.id_interno ? ` <span class="de-origem">· ID ${_deEsc(h.id_interno)}</span>` : "");
     return `
         <tr>

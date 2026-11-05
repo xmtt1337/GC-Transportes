@@ -49,7 +49,7 @@ test("linha: ID primeiro, colunas na ordem da planilha, texto escapado, sem chav
   assert.match(html, /sem chave/);
   assert.match(c.deHtmlLinha(LINHAS[0]), /data-rotulo="ID">T001</);
   const rotulos = [...html.matchAll(/data-rotulo="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepStrictEqual(rotulos, ["ID", "Usuarios", "Telefone", "Nome", "Documento", "CNPJ", "Chave Pix", "Tipo Chave Pix", "E-mail", "Origem"]);
+  assert.deepStrictEqual(rotulos, ["ID", "Usuarios", "Telefone", "Nome", "Documento", "CPF", "CNPJ", "Chave Pix", "Tipo Chave Pix", "E-mail", "Origem"]);
 });
 
 test("origem: planilha com a linha, entregador com a data e aviso se não copiou", () => {
@@ -139,4 +139,14 @@ test("novos dados: e-mail copiado do login aparece com essa origem; importação
   assert.match(html, /copiado do login/);
   assert.match(html, /E-mail:<\/span> maria@exemplo\.com/);
   assert.match(c.deTextoImportacao({ linhas_planilha: 1, novos: 0, atualizados: 0, sem_mudanca: 1, emails_do_login: 3 }), /3 e-mails copiados do login/);
+});
+
+test("CPF em coluna própria, com máscara; correção do sistema aparece com essa origem", () => {
+  const c = carregar();
+  assert.match(c.deHtmlLinha({ usuarios: "X Teste", documento: "11222333000181", cpf: "12345678909" }),
+    /data-rotulo="Documento">11\.222\.333\/0001-81<\/td>\s*<td class="cad-num" data-rotulo="CPF">123\.456\.789-09/);
+  const h = c.deHtmlHistorico({ tipo: "atualizado", origem: "sistema", usuarios: "X Teste", quem: "Correção: CPF separado do Documento",
+    campos: [{ campo: "cpf", antes: null, depois: "12345678909" }] }, { cpf: "CPF" });
+  assert.match(h, /correção do sistema/);
+  assert.match(h, /CPF:<\/span> 123\.456\.789-09/);
 });
