@@ -430,6 +430,7 @@ function _rqCardAlternarDia(dia) {
 }
 
 const _RQ_CAB_PEDIDOS = ["Dia da performance", "Performance do dia (%)", "R$/pacote do dia", "Situação", "Afetou a performance?", "Data da ocorrência", "Transportadora", "Pedido", "Cidade", "Deveria ser entregue", "Entregue em", "Valor pago", "Motivo do onhold / PNR"];
+const _RQ_CAB_PACOTE = ["Cliente", "Endereço", "CEP", "Data de atribuição", "Peso (kg)", "Valor da entrega", "Incentivo", "Adicional de peso", "Desconto"];
 /** Linhas da planilha de pedidos, com o % e o R$/pacote do dia (o que vale pra todos os pedidos dele). */
 function _rqLinhasPedidos(dia, ped, dias) {
     const d = (dias || (_rqCard && _rqCard.r && _rqCard.r.dias) || []).find(x => x.dia === dia);
@@ -468,6 +469,16 @@ function _rqAbasEntregador(card) {
     const todos = r.dias.flatMap(d => _rqLinhasPedidos(d.dia, _rqPedidosDoDia(d.dia, pacotes, onholds, true), r.dias));
     const fora = pacotes.filter(p => !p.perf_dia && !/^shopee/i.test(p.transportadora)).map(p => ["", "", "", _rqSituacao(p), "Não", p.data_entrega || "", p.transportadora, p.codigo,
         p.cidade || "", p.deve_ser_entregue || "", p.data_entrega || "", p.valor_motorista || 0, ""]);
+    // Todos os pedidos: + os dados do pacote (cliente, endereço, datas, peso, composição do valor).
+    // Onhold/PNR pega do pacote com o mesmo código, quando ele está na quinzena.
+    const porCodigo = new Map(pacotes.map(p => [String(p.codigo), p]));
+    const vazio = (v) => (v === null || v === undefined ? "" : v);
+    const doPacote = (codigo) => {
+        const p = porCodigo.get(String(codigo));
+        return p ? [vazio(p.destinatario), vazio(p.endereco), vazio(p.cep), vazio(p.data_atribuicao), vazio(p.peso_kg),
+            vazio(p.valor_entrega), vazio(p.incentivo), vazio(p.adicional_peso), vazio(p.desconto)] : _RQ_CAB_PACOTE.map(() => "");
+    };
+    const todosCompletos = todos.concat(fora).map(l => l.concat(doPacote(l[7])));
     const pnr = [["Dia da performance", "Aberta em", "Transportadora", "Pedido", "Usuário", "Dia na tarifa mínima?"]]
         .concat(onholds.filter(o => o.tipo === "Acareação").map(o => {
             const d = r.dias.find(x => x.dia === o.dia);
@@ -477,7 +488,7 @@ function _rqAbasEntregador(card) {
         { nome: "Dias", linhas: dias },
         { nome: "O que afetou", linhas: [_RQ_CAB_PEDIDOS].concat(afetou) },
         { nome: "PNR", linhas: pnr },
-        { nome: "Todos os pedidos", linhas: [_RQ_CAB_PEDIDOS].concat(todos, fora) },
+        { nome: "Todos os pedidos", linhas: [_RQ_CAB_PEDIDOS.concat(_RQ_CAB_PACOTE)].concat(todosCompletos) },
     ];
 }
 function _rqBaixarEntregador() {
