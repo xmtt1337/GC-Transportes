@@ -585,7 +585,7 @@ async function _fsBaixarRelatorio() {
         const d = _fsDados;
         const onholds = (d.insucessos || []).filter(x => x.tipo === "Onhold" || x.tipo === "Acareação");
         const wb = XLSX.utils.book_new();
-        for (const a of _rqAbasEntregador({ r: { dias: (d.performance && d.performance.dias) || [] }, pacotes, onholds })) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a.linhas), a.nome);
+        for (const a of _rqAbasEntregador({ r: { entregador: d.entregador || "", dias: (d.performance && d.performance.dias) || [] }, pacotes, onholds })) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a.linhas), a.nome);
         if ((d.fora_prazo_cidade || []).length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(_fsAbaForaPrazo(d.fora_prazo_cidade)), "Fora do prazo (cidade)");
         if ((d.ticketlog || []).length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(_fsAbaTicketlog(d.ticketlog)), "Ticket Log");
         XLSX.writeFile(wb, `fechamento_${d.codigo_quinzena}.xlsx`);

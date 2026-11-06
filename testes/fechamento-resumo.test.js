@@ -188,7 +188,7 @@ test("card do entregador: pedidos do dia com situação, os que afetaram primeir
     const { ctx } = carregar();
     const pacotes = [
         { transportadora: "Imile", codigo: "I1", cidade: "Vila Teste", perf_dia: "21/09/2026", deve_ser_entregue: "21/09/2026", data_entrega: "21/09/2026", dentro_prazo: "Sim", valor_motorista: 2.5,
-            destinatario: "Cliente Teste", endereco: "Rua Teste, 10", cep: "00000-000", data_atribuicao: "20/09/2026", peso_kg: 1.2, valor_entrega: 2, incentivo: 0.5, adicional_peso: 0, desconto: 0 },
+            usuario: "fulano.imile", destinatario: "Cliente Teste", endereco: "Rua Teste, 10", cep: "00000-000", data_atribuicao: "20/09/2026", peso_kg: 1.2, valor_entrega: 2, incentivo: 0.5, adicional_peso: 0, desconto: 0 },
         { transportadora: "Imile", codigo: "I2", cidade: "Vila Teste", perf_dia: "21/09/2026", deve_ser_entregue: "21/09/2026", data_entrega: "23/09/2026", dentro_prazo: "Não", valor_motorista: 2.5 },
         { transportadora: "Loggi", codigo: "L1", cidade: "Vila Teste", perf_dia: "21/09/2026", deve_ser_entregue: "21/09/2026", data_entrega: null, dentro_prazo: null, valor_motorista: 0 },
         { transportadora: "Shopee Caçador", codigo: "BR1", perf_dia: "21/09/2026", data_entrega: "21/09/2026", valor_motorista: 2.5 },
@@ -214,11 +214,12 @@ test("card do entregador: pedidos do dia com situação, os que afetaram primeir
     assert.strictEqual(abas[3].linhas.length, 1 + 6 + 1, "dia inteiro + o que ficou fora da conta");
     assert.deepStrictEqual(abas[3].linhas.slice(1, 7).map(l => l[7]), ["BR1", "BRP", "BRX", "I1", "I2", "L1"], "todos na ordem do pedido, não os que afetaram primeiro");
     assert.strictEqual(abas[3].linhas[7][3], "Fora da conta");
-    assert.deepStrictEqual(abas[3].linhas[0].slice(13), ["Cliente", "Endereço", "CEP", "Data de atribuição", "Peso (kg)", "Valor da entrega", "Incentivo", "Adicional de peso", "Desconto"]);
-    assert.ok(abas[3].linhas.every(l => l.length === 22), "toda linha com as colunas do pacote");
+    assert.deepStrictEqual(abas[3].linhas[0].slice(13), ["Entregador", "Usuário (login)", "Cliente", "Endereço", "CEP", "Data de atribuição", "Peso (kg)", "Valor da entrega", "Incentivo", "Adicional de peso", "Desconto"]);
+    assert.ok(abas[3].linhas.every(l => l.length === 24), "toda linha com as colunas do pacote");
     const i1 = abas[3].linhas.find(l => l[7] === "I1");
-    assert.deepStrictEqual(i1.slice(13), ["Cliente Teste", "Rua Teste, 10", "00000-000", "20/09/2026", 1.2, 2, 0.5, 0, 0]);
-    assert.deepStrictEqual(abas[3].linhas.find(l => l[7] === "BRX").slice(13), ["", "", "", "", "", "", "", "", ""], "onhold sem pacote: em branco");
+    assert.deepStrictEqual(i1.slice(13), ["Fulano de Teste - Vila Teste", "fulano.imile", "Cliente Teste", "Rua Teste, 10", "00000-000", "20/09/2026", 1.2, 2, 0.5, 0, 0]);
+    assert.deepStrictEqual(abas[3].linhas.find(l => l[7] === "BRX").slice(15), ["", "", "", "", "", "", "", "", ""], "onhold sem pacote: em branco");
+    assert.deepStrictEqual(abas[3].linhas.find(l => l[7] === "BRP").slice(13, 15), ["Fulano de Teste - Vila Teste", "fulano.login"], "PNR: login da acareação");
     assert.strictEqual(abas[1].linhas[0].length, 13, "O que afetou continua igual");
     assert.strictEqual(ctx._rqNomeArquivo(""), "performance_Fulano-de-Teste-Vila-Teste_2q_09-2026.xlsx");
 });
