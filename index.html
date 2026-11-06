@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261105j">
+<link rel="stylesheet" href="style.css?v=20261106a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -292,6 +292,8 @@ if (_BASE) {
             <li><a href="#" data-rota="Fechamentos/NotasFiscais" onclick="abrirMinhasNFs(event)">Notas Fiscais</a></li>
             <li><a href="#" data-rota="Adiantamentos/Solicitar" onclick="abrirAntecipacoes(event)">Solicitar Antecipação</a></li>
             <li><a href="#" data-rota="Adiantamentos/Minhas" onclick="abrirMinhasSolicitacoes(event)">Minhas Solicitações</a></li>
+            <!-- Repasse para a equipe: só o dono de empresa (servidor decide em /repasses/permissao). js/repasses.js -->
+            <li id="menu-ent-repasse" style="display:none"><a href="#" data-rota="Pagamentos/Repasse" onclick="abrirRepasses(event)">Repasse para a equipe</a></li>
             <li><a href="#" data-rota="Pagamentos/Configuracoes" onclick="abrirConfigPagamento(event)">Configurações de pagamento</a></li>
         </ul>
 
@@ -2821,6 +2823,28 @@ if (_BASE) {
             </div>
         </div><!-- /tela-minhas-solicitacoes -->
 
+        <!-- REPASSE PARA A EQUIPE (dono de empresa divide o líquido com a equipe) — js/repasses.js -->
+        <div id="tela-repasses" class="view tela-full">
+            <div class="fech-header">
+                <div class="fech-period-row">
+                    <select class="fech-select" id="rp-mes" onchange="rpCarregar()">
+                        <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                        <option value="3">Março</option><option value="4">Abril</option>
+                        <option value="5">Maio</option><option value="6">Junho</option>
+                        <option value="7">Julho</option><option value="8">Agosto</option>
+                        <option value="9">Setembro</option><option value="10">Outubro</option>
+                        <option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    <select class="fech-select" id="rp-ano" onchange="rpCarregar()"></select>
+                </div>
+                <div class="quinzena-toggle">
+                    <button class="quinzena-btn" id="rp-btn-1q" onclick="rpSelecionarQuinzena(1)">1ª Quinzena &nbsp;(1 – 15)</button>
+                    <button class="quinzena-btn" id="rp-btn-2q" onclick="rpSelecionarQuinzena(2)">2ª Quinzena &nbsp;(16 – fim)</button>
+                </div>
+            </div>
+            <div class="fech-body"><div id="rp-conteudo"></div></div>
+        </div><!-- /tela-repasses -->
+
         <!-- TELA BAIXAS — TOTAL EXPRESS (ENTREGADOR) -->
         <div id="tela-baixa-te" class="view tela-full">
             <div class="fech-body" style="padding-top:24px">
@@ -4890,11 +4914,11 @@ if (_BASE) {
     </div>
 </div>
 
-<script src="js/core.js?v=20261105b"></script>
+<script src="js/core.js?v=20261106a"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261105e"></script>
+<script src="js/router.js?v=20261106a"></script>
 <script src="js/sidebar.js?v=20261103f"></script>
-<script src="js/nav.js?v=20261105c"></script>
+<script src="js/nav.js?v=20261106a"></script>
 <script src="js/atendimento.js?v=20261104c"></script>
 <script src="js/atendimento-admin.js?v=20261104c"></script>
 <script src="js/fechamentos.js?v=20261104b"></script>
@@ -4949,6 +4973,7 @@ if (_BASE) {
 <script src="js/jadlog-atribuir.js?v=20261105a"></script>
 <script src="js/conferencias-hub.js?v=20261104c"></script>
 <script src="js/antecipacoes.js?v=20261014a"></script>
+<script src="js/repasses.js?v=20261106a"></script>
 <script src="js/antecipacoes-admin.js?v=20261015b"></script>
 <script src="js/xm-camera.js?v=20261021a"></script>
 <script src="js/baixas.js?v=20261104c"></script>

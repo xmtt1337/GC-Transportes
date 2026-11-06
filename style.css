@@ -7037,3 +7037,7 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .de-mud-sem { font-size: 12.5px; color: #8494a9; font-style: italic; }
 .de-quem { font-size: 13px; color: #e2e8f0; }
 .de-quem-origem { font-size: 12px; color: #8494a9; }
+
+/* Repasse para a equipe (js/repasses.js): link de ação sóbrio, sublinha no hover. */
+.rp-link { color: #60a5fa; text-decoration: none; }
+.rp-link:hover { text-decoration: underline; }

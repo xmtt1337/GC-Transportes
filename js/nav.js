@@ -43,6 +43,7 @@ const _TELA_TITULOS = {
     "tela-alimentar":            "Alimentações",
     "tela-antecipacoes":         "Solicitar Antecipação",
     "tela-minhas-solicitacoes":  "Minhas Solicitações",
+    "tela-repasses":             "Repasse para a equipe",
     "tela-admin-antecipacoes":   "Antecipações",
     "tela-baixa-te":             "Baixas — Total Express",
     "tela-admin-baixas-te":      "Baixas — Total Express",

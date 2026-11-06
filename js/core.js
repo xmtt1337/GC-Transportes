@@ -225,6 +225,8 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
         show("submenu-ent-desempenho");
         show("menu-ent-pagamentos");
         show("submenu-ent-pagamentos");
+        // Repasse para a equipe: só o dono de empresa — o servidor responde (js/repasses.js).
+        if (typeof rpCarregarMenu === "function") rpCarregarMenu();
         // Pacotes Faltantes: só aparece pro entregador liberado
         // (toggle em Cadastros → Entregadores, "Editar" → Ativar formulário de faltante)
         if (data.usuario.pode_pacote_faltante) show("menu-ocorrencias");
