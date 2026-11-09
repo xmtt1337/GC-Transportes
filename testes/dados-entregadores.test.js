@@ -151,18 +151,38 @@ test("CPF em coluna própria, com máscara; correção do sistema aparece com es
   assert.match(h, /CPF:<\/span> 123\.456\.789-09/);
 });
 
-test("exportar Novos dados: linha completa do entregador, não só o que mudou", () => {
+// ── Exportar no modelo Trampay ──
+
+test("modelo Trampay: nome Nome Sobrenome, números sem pontuação e com o zero, ID dos Dados entregadores", () => {
   const c = carregar();
-  const csv = c.deCsvHistorico([{
-    tipo: "atualizado", origem: "entregador", quem: "Maria Teste - Caçador", criado_em: "2026-11-05T18:00:00Z",
-    usuarios: "Maria Teste", id_interno: "T001",
-    campos: [{ campo: "chave_pix", antes: "12345678909", depois: "maria@exemplo.com" }],
-    atual_usuarios: "Maria Teste", atual_telefone: "49999990000", atual_nome: "Maria; Teste da Silva",
-    atual_documento: "11222333000181", atual_cpf: "01234567890", atual_cnpj: "11222333000181",
-    atual_chave_pix: "maria@exemplo.com", atual_tipo_chave_pix: "email", atual_email: "maria@exemplo.com",
-  }], { chave_pix: "Chave Pix" });
-  assert.ok(csv.startsWith("﻿"), "BOM pros acentos no Excel");
-  const [cab, linha] = csv.slice(1).trim().split("\r\n");
-  assert.strictEqual(cab, "Quando;Tipo;Origem;Quem;O que mudou;ID;Usuarios;Telefone;Nome;Documento;CPF;CNPJ;Chave Pix;Tipo Chave Pix;E-mail");
-  assert.match(linha, /;Atualizado;Formulário;Maria Teste - Caçador;Chave Pix: 12345678909 → maria@exemplo\.com;T001;Maria Teste;\(49\) 99999-0000;"Maria; Teste da Silva";11\.222\.333\/0001-81;012\.345\.678-90;11\.222\.333\/0001-81;maria@exemplo\.com;E-mail;maria@exemplo\.com$/);
+  const linhas = c.deLinhasTrampay([
+    { dado_id: 1, id_interno: "175", usuarios: "Maria Teste", atual_nome: "MARIA DA SILVA teste",
+      atual_cpf: "1234567890", atual_cnpj: "11.222.333/0001-81", atual_telefone: "(49) 99999-0000",
+      atual_chave_pix: "11.222.333/0001-81", atual_tipo_chave_pix: "CNPJ", atual_documento: "11222333000181" },
+    // Registro mais antigo da mesma pessoa: não duplica.
+    { dado_id: 1, id_interno: "175", atual_nome: "Outro" },
+    { dado_id: 2, id_interno: "", atual_nome: "joão d'ávila", atual_cpf: null, atual_documento: "98765432100",
+      atual_telefone: "5549988887777", atual_chave_pix: "+55 (49) 98888-7777", atual_tipo_chave_pix: "Celular" },
+    { dado_id: null, atual_nome: "Sem linha" },
+  ]);
+  assert.strictEqual(linhas.length, 2);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(linhas[0])), {
+    nome_recebedor: "Maria da Silva Teste", cpf: "01234567890", cnpj: "11222333000181", telefone: "49999990000",
+    identificador_unico: "175", chave_pix: "11222333000181", chave_pix_tipo: "cnpj",
+  });
+  assert.strictEqual(linhas[1].nome_recebedor, "João D'Ávila");
+  assert.strictEqual(linhas[1].cpf, "98765432100", "sem CPF próprio, usa o Documento quando é CPF");
+  assert.strictEqual(linhas[1].telefone, "49988887777");
+  assert.strictEqual(linhas[1].chave_pix, "49988887777");
+  assert.strictEqual(linhas[1].chave_pix_tipo, "telefone");
+});
+
+test("modelo Trampay: CSV com as colunas exatamente com esses nomes", () => {
+  const c = carregar();
+  const csv = c.deCsvTrampay([{ nome_recebedor: "Maria Teste", cpf: "01234567890", cnpj: "", telefone: "49999990000",
+    identificador_unico: "175", chave_pix: "maria@exemplo.com", chave_pix_tipo: "email" }]);
+  assert.ok(csv.startsWith("﻿"));
+  const [cab, linha] = csv.slice(1).split("\r\n");
+  assert.strictEqual(cab, "nome_recebedor;cpf;cnpj;telefone;identificador_unico;chave_pix;chave_pix_tipo");
+  assert.strictEqual(linha, '"Maria Teste";="01234567890";"";="49999990000";="175";="maria@exemplo.com";"email"');
 });
