@@ -7028,6 +7028,29 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
     #tela-dados-entregadores .adm-nf-table td { padding: 10px 12px; white-space: nowrap; word-break: normal; }
     #tela-dados-entregadores td.de-corta { max-width: 230px; overflow: hidden; text-overflow: ellipsis; }
 }
+/* Calendários de Novos dados: dia com edição ganha um ponto embaixo (dica com quantas). */
+.ped-cal-day.de-com-edicao::after {
+    content: ""; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: #34d399;
+}
+.ped-cal-day.de-com-edicao { font-weight: 700; color: #e2e8f0; }
+.ped-cal-day.intervalo-inicio.de-com-edicao::after,
+.ped-cal-day.intervalo-fim.de-com-edicao::after,
+.ped-cal-day.intervalo-unico.de-com-edicao::after { background: #fff; }
+.de-cal-legenda { float: right; font-size: 11.5px; color: #8494a9; display: inline-flex; align-items: center; gap: 5px; }
+.de-cal-ponto { width: 6px; height: 6px; border-radius: 50%; background: #34d399; display: inline-block; }
+.de-periodo-btn { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.de-periodo-seta { color: #7b98b5; font-size: 11px; }
+.de-periodo-pop {
+    position: fixed; z-index: 2000; width: 292px; background: #0f172a;
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+}
+.de-periodo-atalhos { display: flex; gap: 14px; padding: 0 14px 12px; }
+.de-periodo-atalhos button { background: none; border: none; padding: 0; cursor: pointer; font: inherit; font-size: 12.5px; color: #60a5fa; }
+.de-periodo-atalhos button:hover { text-decoration: underline; }
+.de-tr-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.de-tr-resumo { margin-top: 10px; font-size: 13px; color: #cbd5e1; }
+.de-tr-fora { margin-top: 6px; max-height: 140px; overflow-y: auto; font-size: 12.5px; line-height: 1.6; color: #f59e0b; }
 .de-select { background: #0f172a; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 6px 8px; font-size: 12.5px; }
 .de-tipo-novo { font-size: 12.5px; font-weight: 600; color: #34d399; }
 .de-tipo-atualizado { font-size: 12.5px; font-weight: 600; color: #cbd5e1; }

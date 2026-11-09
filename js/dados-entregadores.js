@@ -41,7 +41,8 @@ function _deTrocarAba(aba) {
     ["de-empty", "de-resultado", "de-hist-empty", "de-hist-resultado"].forEach(id => {
         document.getElementById(id).style.display = "none";
     });
-    if (novos) _deHistCarregar();
+    _dePeriodoFechar();
+    if (novos) { _deHistCarregar(); _deDiasCarregar(); }
     else _deCarregar();
 }
 
@@ -200,8 +201,15 @@ function _deHistCarregar() {
     skMostrar(empty, "tabela");
     empty.style.display = "";
     document.getElementById("de-hist-resultado").style.display = "none";
-    const dias = document.getElementById("de-hist-dias").value;
-    fetch(API + "/admin/dados-entregadores/historico?dias=" + encodeURIComponent(dias), { headers: { "Authorization": "Bearer " + token } })
+    // Período do calendário da tela; na primeira vez, os últimos 30 dias.
+    if (!_deCals.tela.ini) {
+        const hoje = _deHoje();
+        const ini = new Date(hoje); ini.setDate(ini.getDate() - 29);
+        _deCalIniciar("tela", ini, hoje);
+    }
+    _dePeriodoBotao();
+    const de = _deFmtDia(_deCals.tela.ini), ate = _deFmtDia(_deCals.tela.fim || _deCals.tela.ini);
+    fetch(`${API}/admin/dados-entregadores/historico?de=${de}&ate=${ate}`, { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json().then(d => ({ ok: r.ok, d })))
         .then(({ ok, d }) => {
             if (!ok) { skFim(empty, d.error || "Erro ao carregar."); return; }
@@ -221,14 +229,20 @@ function _deHistResumo() {
         : "";
 }
 
-/** Registros que passam pelo tipo e pela busca. Exportada pros testes. */
-function deFiltrarHistorico(registros, { tipo, busca }) {
-    const alvo = String(busca || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+/**
+ * Registros que passam pelos filtros. Tela: tipo e busca. Exportação: tipo, entregador
+ * (pedaço do nome ou o ID) e quem (exato). Serve tanto pros registros completos quanto
+ * pra lista leve de dias. Exportada pros testes.
+ */
+function deFiltrarHistorico(registros, { tipo, busca, entregador, quem } = {}) {
+    const norm = x => String(x || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+    const alvo = norm(busca), ent = norm(entregador);
     return registros.filter(h => {
         if (tipo && h.tipo !== tipo) return false;
+        if (quem && h.quem !== quem) return false;
+        if (ent && !norm([h.usuarios, h.atual_usuarios, h.id_interno].join(" ")).includes(ent)) return false;
         if (!alvo) return true;
-        return [h.usuarios, h.quem, h.id_interno].join(" ")
-            .normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().includes(alvo);
+        return norm([h.usuarios, h.quem, h.id_interno].join(" ")).includes(alvo);
     });
 }
 
@@ -257,6 +271,23 @@ function deHtmlMudancas(h, rotulos) {
     return `<div class="de-mudancas">${linhas.join("<br>")}</div>`;
 }
 
+/**
+ * As colunas do modelo Trampay com os dados de AGORA do entregador — aparecem completas
+ * mesmo quando ele só mudou um campo. Obrigatória vazia (tudo menos CNPJ) fica em âmbar.
+ * Exportada pros testes.
+ */
+function deHtmlTrampay(h) {
+    if (!h.dado_id) return DE_TRAMPAY_COLUNAS.map(c => `<td data-rotulo="${c}"><span class="cad-vazio">—</span></td>`).join("");
+    const l = deTrampayDe(h);
+    const falta = new Set(deFaltandoTrampay(l));
+    return DE_TRAMPAY_COLUNAS.map(c => {
+        const v = l[c];
+        const corpo = v ? _deEsc(v) : falta.has(c) ? `<span class="de-pendente">falta</span>` : `<span class="cad-vazio">—</span>`;
+        const classe = c === "nome_recebedor" || c === "chave_pix" ? "de-corta" : "cad-num";
+        return `<td class="${classe}" data-rotulo="${c}"${v && classe === "de-corta" ? ` title="${_deEsc(v)}"` : ""}>${corpo}</td>`;
+    }).join("");
+}
+
 function deHtmlHistorico(h, rotulos) {
     const tipo = h.tipo === "novo"
         ? `<span class="de-tipo-novo">Novo</span>`
@@ -270,10 +301,12 @@ function deHtmlHistorico(h, rotulos) {
             <td data-rotulo="Tipo">${tipo}</td>
             <td data-rotulo="O que mudou">${deHtmlMudancas(h, rotulos)}</td>
             <td data-rotulo="Quem"><div class="de-quem">${_deEsc(h.quem || "—")}</div><div class="de-quem-origem">${origem}</div></td>
+            ${deHtmlTrampay(h)}
         </tr>`;
 }
 
 function _deHistFiltrar() {
+    _deCalRender("tela");
     const empty = document.getElementById("de-hist-empty");
     const lista = deFiltrarHistorico(_deHist, {
         tipo: document.getElementById("de-hist-tipo").value,
@@ -334,31 +367,52 @@ function deTipoTrampay(t) {
     return s;
 }
 
-/** Linhas do modelo Trampay (uma por entregador). Exportada pros testes. */
+/** Linha do modelo Trampay com os dados de AGORA de um registro. Exportada pros testes. */
+function deTrampayDe(h) {
+    const doc = _deDig(h.atual_documento);
+    const cpf = _deComZeros(_deDig(h.atual_cpf), 11) || (doc && doc.length <= 11 ? _deComZeros(doc, 11) : "");
+    const cnpjCol = String(h.atual_cnpj || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+    const cnpj = _deComZeros(cnpjCol, 14) || (doc.length >= 12 ? _deComZeros(doc, 14) : "");
+    let tel = _deDig(h.atual_telefone);
+    if (tel.length === 13 && tel.startsWith("55")) tel = tel.slice(2);
+    const tipo = deTipoTrampay(h.atual_tipo_chave_pix);
+    let chave = String(h.atual_chave_pix || "").trim();
+    if (tipo === "cpf") chave = _deComZeros(_deDig(chave), 11);
+    else if (tipo === "cnpj") chave = _deComZeros(chave.toUpperCase().replace(/[^0-9A-Z]/g, ""), 14);
+    else if (tipo === "telefone") { chave = _deDig(chave); if (chave.length === 13 && chave.startsWith("55")) chave = chave.slice(2); }
+    return {
+        nome_recebedor: deNomeProprio(h.atual_nome || h.atual_usuarios || h.usuarios),
+        cpf, cnpj, telefone: tel,
+        identificador_unico: h.id_interno || "",
+        chave_pix: chave,
+        chave_pix_tipo: tipo,
+    };
+}
+
+/**
+ * O que falta pra linha poder ir pra Trampay: tudo menos o CNPJ. Nome precisa de nome e
+ * sobrenome; CPF com 11 dígitos; telefone com DDD (10 ou 11 dígitos). Exportada pros testes.
+ * @return {string[]} Nomes das colunas que faltam (vazio = pode exportar).
+ */
+function deFaltandoTrampay(l) {
+    const falta = [];
+    if (String(l.nome_recebedor || "").trim().split(/\s+/).length < 2) falta.push("nome_recebedor");
+    if (!/^\d{11}$/.test(l.cpf || "")) falta.push("cpf");
+    if (!/^\d{10,11}$/.test(l.telefone || "")) falta.push("telefone");
+    if (!String(l.identificador_unico || "").trim()) falta.push("identificador_unico");
+    if (!String(l.chave_pix || "").trim()) falta.push("chave_pix");
+    if (!l.chave_pix_tipo) falta.push("chave_pix_tipo");
+    return falta;
+}
+
+/** Linhas do modelo Trampay (uma por entregador, a do registro mais recente). Exportada pros testes. */
 function deLinhasTrampay(registros) {
     const vistos = new Set();
     const linhas = [];
     for (const h of registros) {
         if (!h.dado_id || vistos.has(h.dado_id)) continue; // o mais recente vem primeiro
         vistos.add(h.dado_id);
-        const doc = _deDig(h.atual_documento);
-        const cpf = _deComZeros(_deDig(h.atual_cpf), 11) || (doc && doc.length <= 11 ? _deComZeros(doc, 11) : "");
-        const cnpjCol = String(h.atual_cnpj || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
-        const cnpj = _deComZeros(cnpjCol, 14) || (doc.length >= 12 ? _deComZeros(doc, 14) : "");
-        let tel = _deDig(h.atual_telefone);
-        if (tel.length === 13 && tel.startsWith("55")) tel = tel.slice(2);
-        const tipo = deTipoTrampay(h.atual_tipo_chave_pix);
-        let chave = String(h.atual_chave_pix || "").trim();
-        if (tipo === "cpf") chave = _deComZeros(_deDig(chave), 11);
-        else if (tipo === "cnpj") chave = _deComZeros(chave.toUpperCase().replace(/[^0-9A-Z]/g, ""), 14);
-        else if (tipo === "telefone") { chave = _deDig(chave); if (chave.length === 13 && chave.startsWith("55")) chave = chave.slice(2); }
-        linhas.push({
-            nome_recebedor: deNomeProprio(h.atual_nome || h.usuarios),
-            cpf, cnpj, telefone: tel,
-            identificador_unico: h.id_interno || "",
-            chave_pix: chave,
-            chave_pix_tipo: tipo,
-        });
+        linhas.push({ ...deTrampayDe(h), entregador: h.atual_usuarios || h.usuarios || "" });
     }
     return linhas;
 }
@@ -374,37 +428,81 @@ function deCsvTrampay(linhas) {
     return "﻿" + [DE_TRAMPAY_COLUNAS.join(";"), ...corpo].join("\r\n");
 }
 
-// Calendário de intervalo: o mesmo desenho do de Pedidos/Recebimento (classes ped-cal-*).
+// ── Calendários de intervalo (tela e exportação) ──
+// O mesmo desenho do de Pedidos/Recebimento (classes ped-cal-*), com uma diferença: dia
+// que teve edição fica MARCADO (ponto embaixo + quantas na dica), contando só o que passa
+// pelos filtros daquele lugar — na tela, tipo e busca; na exportação, entregador, tipo e
+// quem. Assim dá pra ver de cara em que dias há o que exportar.
+
 const _DE_CAL_DOW = ["D", "S", "T", "Q", "Q", "S", "S"];
 const _DE_CAL_MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-let _deCalIni = null, _deCalFim = null, _deCalMes = null;
 const _deFmtDia = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const _deParseDia = s => { const [a, m, d] = s.split("-").map(Number); return new Date(a, m - 1, d); };
+const _deHoje = () => _deParseDia(new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }));
 
-function _deCalMesAnterior() { _deCalMes.setMonth(_deCalMes.getMonth() - 1); _deCalRender(); }
-function _deCalMesProximo()  { _deCalMes.setMonth(_deCalMes.getMonth() + 1); _deCalRender(); }
+let _deDias = [];          // GET /historico/dias: {dia, dado_id, tipo, quem, usuarios, id_interno}
 
-function _deCalClick(dataStr) {
-    const d = _deParseDia(dataStr);
-    if (!_deCalIni || _deCalFim) { _deCalIni = d; _deCalFim = null; }
-    else if (d < _deCalIni)      { _deCalFim = _deCalIni; _deCalIni = d; }
-    else                         { _deCalFim = d; }
-    _deCalRender();
-    document.getElementById("de-tr-erro").innerText = "";
+const _deCals = {
+    tela: { alvo: "de-cal-tela", ini: null, fim: null, mes: null },
+    exp:  { alvo: "de-tr-cal",   ini: null, fim: null, mes: null },
+};
+
+/** Filtros de cada calendário (os mesmos que a lista/exportação usam). */
+function _deFiltrosDe(nome) {
+    const v = id => (document.getElementById(id) || {}).value || "";
+    return nome === "tela"
+        ? { tipo: v("de-hist-tipo"), busca: v("de-hist-busca") }
+        : { tipo: v("de-tr-tipo"), entregador: v("de-tr-entregador"), quem: v("de-tr-quem") };
 }
 
-function _deCalRender() {
-    const ano = _deCalMes.getFullYear(), mesIdx = _deCalMes.getMonth();
+/** Dia → quantas edições, só do que passa pelos filtros. Exportada pros testes. */
+function deContarDias(dias, filtros) {
+    const conta = new Map();
+    for (const d of deFiltrarHistorico(dias, filtros)) conta.set(d.dia, (conta.get(d.dia) || 0) + 1);
+    return conta;
+}
+
+function _deCalIniciar(nome, ini, fim) {
+    const c = _deCals[nome];
+    c.ini = ini; c.fim = fim;
+    c.mes = new Date(fim || ini); c.mes.setDate(1);
+}
+
+function _deCalMover(nome, passo) {
+    const c = _deCals[nome];
+    c.mes.setMonth(c.mes.getMonth() + passo);
+    _deCalRender(nome);
+}
+
+function _deCalClick(nome, dataStr) {
+    const c = _deCals[nome];
+    const d = _deParseDia(dataStr);
+    // Intervalo fechado começa uma seleção nova; clique antes do início inverte as pontas.
+    if (!c.ini || c.fim) { c.ini = d; c.fim = null; }
+    else if (d < c.ini)  { c.fim = c.ini; c.ini = d; }
+    else                 { c.fim = d; }
+    _deCalRender(nome);
+    if (nome === "tela" && c.fim) { _dePeriodoFechar(); _dePeriodoBotao(); _deHistCarregar(); }
+    if (nome === "exp") { document.getElementById("de-tr-erro").innerText = ""; _deTrResumo(); }
+}
+
+function _deCalRender(nome) {
+    const c = _deCals[nome];
+    const el = document.getElementById(c.alvo);
+    if (!el || !c.mes) return;
+    const marcas = deContarDias(_deDias, _deFiltrosDe(nome));
+    const ano = c.mes.getFullYear(), mesIdx = c.mes.getMonth();
     const primeiro = new Date(ano, mesIdx, 1).getDay();
     const diasNoMes = new Date(ano, mesIdx + 1, 0).getDate();
     const celulaIni = new Date(ano, mesIdx, 1 - primeiro);
     const total = Math.ceil((primeiro + diasNoMes) / 7) * 7;
-    const ini = _deCalIni, fim = _deCalFim;
+    const ini = c.ini, fim = c.fim;
     let grid = "";
     for (let i = 0; i < total; i++) {
         const dia = new Date(celulaIni);
         dia.setDate(celulaIni.getDate() + i);
+        const chave = _deFmtDia(dia);
         let classes = "ped-cal-day" + (dia.getMonth() !== mesIdx ? " outro-mes" : "");
         const t = dia.getTime();
         if (ini && fim) {
@@ -415,54 +513,186 @@ function _deCalRender() {
         } else if (ini && t === ini.getTime()) {
             classes += " intervalo-unico";
         }
-        grid += `<div class="${classes}" onclick="_deCalClick('${_deFmtDia(dia)}')">${dia.getDate()}</div>`;
+        const n = marcas.get(chave) || 0;
+        if (n) classes += " de-com-edicao";
+        const dica = n ? ` title="${n} edição${n !== 1 ? "ões" : ""}"` : "";
+        grid += `<div class="${classes}"${dica} onclick="_deCalClick('${nome}','${chave}')">${dia.getDate()}</div>`;
     }
     const texto = !ini ? "Clique na data"
-        : !fim ? `${ini.toLocaleDateString("pt-BR")} — clique de novo para um período`
+        : !fim ? `${ini.toLocaleDateString("pt-BR")} — clique de novo para fechar o período`
         : ini.getTime() === fim.getTime() ? ini.toLocaleDateString("pt-BR")
         : `${ini.toLocaleDateString("pt-BR")} — ${fim.toLocaleDateString("pt-BR")}`;
-    document.getElementById("de-tr-cal").innerHTML = `
+    el.innerHTML = `
         <div class="ped-cal-header">
-            <button type="button" class="ped-cal-nav" onclick="_deCalMesAnterior()">
+            <button type="button" class="ped-cal-nav" onclick="_deCalMover('${nome}',-1)">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
             <span>${_DE_CAL_MESES[mesIdx]} ${ano}</span>
-            <button type="button" class="ped-cal-nav" onclick="_deCalMesProximo()">
+            <button type="button" class="ped-cal-nav" onclick="_deCalMover('${nome}',1)">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
         </div>
         <div class="ped-cal-grid">${_DE_CAL_DOW.map(d => `<div class="ped-cal-dow">${d}</div>`).join("")}${grid}</div>
-        <div class="ped-cal-footer"><span class="ped-cal-range-txt">${texto}</span></div>`;
+        <div class="ped-cal-footer"><span class="ped-cal-range-txt">${texto}</span><span class="de-cal-legenda"><span class="de-cal-ponto"></span>teve edição</span></div>`;
 }
 
+/** Carrega os dias com edição (leve) e redesenha o que estiver aberto. */
+function _deDiasCarregar() {
+    return fetch(API + "/admin/dados-entregadores/historico/dias", { headers: { "Authorization": "Bearer " + token } })
+        .then(r => r.json())
+        .then(d => { _deDias = d.registros || []; _deCalRender("tela"); _deCalRender("exp"); })
+        .catch(() => {});
+}
+
+// ── Período da tela ("Quando") ──
+
+function _dePeriodoTexto() {
+    const c = _deCals.tela;
+    if (!c.ini) return "Escolher período";
+    const fim = c.fim || c.ini;
+    const br = d => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+    return c.ini.getTime() === fim.getTime() ? br(c.ini) : `${br(c.ini)} — ${br(fim)}`;
+}
+
+function _dePeriodoBotao() {
+    const t = document.getElementById("de-periodo-txt");
+    if (t) t.innerText = _dePeriodoTexto();
+}
+
+function _dePeriodoAlternar() {
+    const pop = document.getElementById("de-periodo-pop");
+    const abrir = pop.style.display === "none";
+    pop.style.display = abrir ? "" : "none";
+    if (abrir) {
+        const btn = document.getElementById("de-periodo-btn").getBoundingClientRect();
+        // Fixo na tela: o cabeçalho corta o que passa da borda dele.
+        pop.style.top = `${btn.bottom + 6}px`;
+        pop.style.left = `${Math.max(8, Math.min(btn.left, window.innerWidth - 300))}px`;
+        _deCalRender("tela");
+        setTimeout(() => document.addEventListener("click", _dePeriodoForaClick), 0);
+    } else {
+        document.removeEventListener("click", _dePeriodoForaClick);
+    }
+}
+
+function _dePeriodoForaClick(e) {
+    const pop = document.getElementById("de-periodo-pop");
+    const btn = document.getElementById("de-periodo-btn");
+    // O clique num dia redesenha a grade: o alvo some do DOM e parece "fora". Ignora.
+    if (!e.target.isConnected || pop.contains(e.target) || btn.contains(e.target)) return;
+    _dePeriodoFechar();
+}
+
+function _dePeriodoFechar() {
+    const pop = document.getElementById("de-periodo-pop");
+    if (pop) pop.style.display = "none";
+    document.removeEventListener("click", _dePeriodoForaClick);
+}
+
+/** Atalho: últimos N dias até hoje. */
+function _dePeriodoUltimos(n) {
+    const hoje = _deHoje();
+    const ini = new Date(hoje); ini.setDate(ini.getDate() - (n - 1));
+    _deCalIniciar("tela", ini, hoje);
+    _dePeriodoFechar();
+    _dePeriodoBotao();
+    _deHistCarregar();
+}
+
+// ── Exportar no modelo Trampay: filtros + calendário ──
+
 function _deTrAbrir() {
-    const hoje = _deParseDia(new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }));
-    _deCalIni = hoje; _deCalFim = hoje;
-    _deCalMes = new Date(hoje); _deCalMes.setDate(1);
-    _deCalRender();
+    const t = _deCals.tela;
+    _deCalIniciar("exp", t.ini || _deHoje(), t.fim || t.ini || _deHoje());
+    document.getElementById("de-tr-tipo").value = document.getElementById("de-hist-tipo").value;
+    document.getElementById("de-tr-entregador").value = "";
+    _deTrOpcoes();
+    document.getElementById("de-tr-quem").value = "";
     document.getElementById("de-tr-erro").innerText = "";
+    _deCalRender("exp");
+    _deTrResumo();
     _abrirModal("modal-de-trampay");
+    _deDiasCarregar().then(() => { _deTrOpcoes(); _deTrResumo(); });
+}
+
+/** Opções de entregador (lista pra digitar) e de quem (menu), a partir do último ano. */
+function _deTrOpcoes() {
+    const nomes = [...new Set(_deDias.map(d => d.usuarios).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    document.getElementById("de-tr-entregadores").innerHTML = nomes.map(n => `<option value="${_deEsc(n)}"></option>`).join("");
+    const sel = document.getElementById("de-tr-quem");
+    const atual = sel.value;
+    const quens = [...new Set(_deDias.map(d => d.quem).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    sel.innerHTML = `<option value="">Todos</option>` + quens.map(q => `<option value="${_deEsc(q)}">${_deEsc(q)}</option>`).join("");
+    sel.value = quens.includes(atual) ? atual : "";
+}
+
+/** Mudou um filtro da exportação: redesenha as marcas e o resumo. */
+function _deTrFiltrar() {
+    _deCalRender("exp");
+    _deTrResumo();
+}
+
+/** Quantos entregadores entram no arquivo com os filtros e o intervalo de agora. Exportada pros testes. */
+function deContarEntregadores(dias, filtros, de, ate) {
+    const ids = new Set();
+    for (const d of deFiltrarHistorico(dias, filtros)) if (d.dado_id && d.dia >= de && d.dia <= ate) ids.add(d.dado_id);
+    return ids.size;
+}
+
+/**
+ * Separa o que vai pro arquivo: linhas completas e as que ficam de fora (com o que falta).
+ * Sai da lista leve de dias, que já traz os dados de agora. Exportada pros testes.
+ */
+function dePrepararExportacao(dias, filtros, de, ate) {
+    const noIntervalo = deFiltrarHistorico(dias, filtros).filter(d => d.dia >= de && d.dia <= ate);
+    const completas = [], incompletas = [];
+    for (const l of deLinhasTrampay(noIntervalo)) {
+        const falta = deFaltandoTrampay(l);
+        if (falta.length) incompletas.push({ ...l, falta });
+        else completas.push(l);
+    }
+    return { completas, incompletas };
+}
+
+function _deTrPreparo() {
+    const c = _deCals.exp;
+    if (!c.ini) return null;
+    return dePrepararExportacao(_deDias, _deFiltrosDe("exp"), _deFmtDia(c.ini), _deFmtDia(c.fim || c.ini));
+}
+
+function _deTrResumo() {
+    const el = document.getElementById("de-tr-resumo");
+    const btn = document.getElementById("de-tr-btn");
+    if (!el) return;
+    const p = _deTrPreparo();
+    if (!p) { el.innerHTML = ""; return; }
+    const { completas, incompletas } = p;
+    btn.disabled = !completas.length;
+    if (!completas.length && !incompletas.length) { el.innerHTML = "Nenhum entregador com edição nesse intervalo e filtros."; return; }
+    let html = `<strong>${completas.length}</strong> entregador${completas.length !== 1 ? "es" : ""} no arquivo.`;
+    if (incompletas.length) {
+        html += `<div class="de-tr-fora">${incompletas.length} fora do arquivo por falta de dados (tudo é obrigatório, menos o CNPJ):`
+            + incompletas.slice(0, 30).map(l => `<div>· ${_deEsc(l.entregador || l.nome_recebedor || "—")} — falta ${_deEsc(l.falta.join(", "))}</div>`).join("")
+            + (incompletas.length > 30 ? `<div>… e mais ${incompletas.length - 30}.</div>` : "")
+            + `</div>`;
+    }
+    el.innerHTML = html;
 }
 
 async function _deTrExportar() {
     const erro = document.getElementById("de-tr-erro");
     const btn = document.getElementById("de-tr-btn");
+    const c = _deCals.exp;
     erro.innerText = "";
-    if (!_deCalIni) { erro.innerText = "Clique numa data no calendário."; return; }
-    const de = _deFmtDia(_deCalIni), ate = _deFmtDia(_deCalFim || _deCalIni);
+    if (!c.ini) { erro.innerText = "Clique numa data no calendário."; return; }
+    const de = _deFmtDia(c.ini), ate = _deFmtDia(c.fim || c.ini);
     btn.disabled = true; btn.textContent = "Gerando...";
     try {
-        const r = await fetch(`${API}/admin/dados-entregadores/historico?de=${de}&ate=${ate}`, { headers: { "Authorization": "Bearer " + token } });
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok) { erro.innerText = d.error || "Não foi possível gerar."; return; }
-        // Mesmo filtro de tipo e busca que estiver na tela.
-        const filtrados = deFiltrarHistorico(d.registros || [], {
-            tipo: document.getElementById("de-hist-tipo").value,
-            busca: document.getElementById("de-hist-busca").value,
-        });
-        const linhas = deLinhasTrampay(filtrados);
-        if (!linhas.length) { erro.innerText = "Nenhum entregador com dado novo ou atualizado nesse intervalo."; return; }
-        const url = URL.createObjectURL(new Blob([deCsvTrampay(linhas)], { type: "text/csv;charset=utf-8" }));
+        // Lista de dias fresca (alguém pode ter editado com o modal aberto).
+        await _deDiasCarregar();
+        const { completas } = _deTrPreparo();
+        if (!completas.length) { erro.innerText = "Nenhum entregador com todos os dados nesse intervalo e filtros."; _deTrResumo(); return; }
+        const url = URL.createObjectURL(new Blob([deCsvTrampay(completas)], { type: "text/csv;charset=utf-8" }));
         const a = document.createElement("a");
         a.href = url;
         a.download = `trampay_recebedores_${de}${ate !== de ? "_a_" + ate : ""}.csv`;
@@ -470,5 +700,5 @@ async function _deTrExportar() {
         URL.revokeObjectURL(url);
         _fecharModal("modal-de-trampay");
     } catch { erro.innerText = "Erro ao conectar com o servidor."; }
-    finally { btn.disabled = false; btn.textContent = "Baixar .csv"; }
+    finally { btn.textContent = "Baixar .csv"; _deTrResumo(); }
 }

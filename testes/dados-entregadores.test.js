@@ -168,7 +168,7 @@ test("modelo Trampay: nome Nome Sobrenome, números sem pontuação e com o zero
   assert.strictEqual(linhas.length, 2);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(linhas[0])), {
     nome_recebedor: "Maria da Silva Teste", cpf: "01234567890", cnpj: "11222333000181", telefone: "49999990000",
-    identificador_unico: "175", chave_pix: "11222333000181", chave_pix_tipo: "cnpj",
+    identificador_unico: "175", chave_pix: "11222333000181", chave_pix_tipo: "cnpj", entregador: "Maria Teste",
   });
   assert.strictEqual(linhas[1].nome_recebedor, "João D'Ávila");
   assert.strictEqual(linhas[1].cpf, "98765432100", "sem CPF próprio, usa o Documento quando é CPF");
@@ -185,4 +185,62 @@ test("modelo Trampay: CSV com as colunas exatamente com esses nomes", () => {
   const [cab, linha] = csv.slice(1).split("\r\n");
   assert.strictEqual(cab, "nome_recebedor;cpf;cnpj;telefone;identificador_unico;chave_pix;chave_pix_tipo");
   assert.strictEqual(linha, '"Maria Teste";="01234567890";"";="49999990000";="175";="maria@exemplo.com";"email"');
+});
+
+// ── Exportação: filtros, dias marcados e só linhas completas ──
+
+const COMPLETO = { atual_nome: "Maria Teste", atual_cpf: "12345678909", atual_telefone: "49999990000",
+  atual_chave_pix: "maria@exemplo.com", atual_tipo_chave_pix: "email" };
+const DIAS = [
+  { dia: "2026-11-09", dado_id: 1, tipo: "atualizado", quem: "Maria Teste - Caçador", usuarios: "Maria Teste", id_interno: "175", ...COMPLETO },
+  { dia: "2026-11-08", dado_id: 2, tipo: "novo", quem: "Suporte Teste", usuarios: "Joao Teste", id_interno: "",
+    atual_nome: "Joao", atual_cpf: "", atual_telefone: "49988880000", atual_chave_pix: "x", atual_tipo_chave_pix: "aleatorio" },
+  { dia: "2026-11-08", dado_id: 1, tipo: "novo", quem: "Maria Teste - Caçador", usuarios: "Maria Teste", id_interno: "175", ...COMPLETO },
+  { dia: "2026-10-01", dado_id: 3, tipo: "novo", quem: "Suporte Teste", usuarios: "Ana Teste", id_interno: "9", ...COMPLETO },
+];
+
+test("filtros da exportação: entregador (nome ou ID), tipo e quem", () => {
+  const c = carregar();
+  const ids = (f) => c.deFiltrarHistorico(DIAS, f).map((d) => d.dado_id).join(",");
+  assert.strictEqual(ids({ entregador: "joao" }), "2");
+  assert.strictEqual(ids({ entregador: "175" }), "1,1");
+  assert.strictEqual(ids({ quem: "Suporte Teste" }), "2,3");
+  assert.strictEqual(ids({ tipo: "novo", quem: "Maria Teste - Caçador" }), "1");
+});
+
+test("calendário marca os dias com edição de acordo com o filtro", () => {
+  const c = carregar();
+  const todos = c.deContarDias(DIAS, {});
+  assert.strictEqual(todos.get("2026-11-08"), 2);
+  assert.strictEqual(todos.get("2026-11-09"), 1);
+  const soSuporte = c.deContarDias(DIAS, { quem: "Suporte Teste" });
+  assert.strictEqual(soSuporte.get("2026-11-09"), undefined, "Maria não editou pelo suporte");
+  assert.strictEqual(soSuporte.get("2026-11-08"), 1);
+});
+
+test("o que falta pro modelo Trampay: tudo menos o CNPJ", () => {
+  const c = carregar();
+  assert.deepStrictEqual([...c.deFaltandoTrampay({ nome_recebedor: "Maria Teste", cpf: "12345678909", cnpj: "", telefone: "49999990000",
+    identificador_unico: "175", chave_pix: "x@exemplo.com", chave_pix_tipo: "email" })], [], "sem CNPJ pode");
+  assert.deepStrictEqual([...c.deFaltandoTrampay({ nome_recebedor: "Joao", cpf: "", telefone: "123", identificador_unico: "", chave_pix: "", chave_pix_tipo: "" })],
+    ["nome_recebedor", "cpf", "telefone", "identificador_unico", "chave_pix", "chave_pix_tipo"]);
+});
+
+test("exportação: só linhas completas no arquivo; as incompletas saem listadas com o que falta", () => {
+  const c = carregar();
+  const p = c.dePrepararExportacao(DIAS, {}, "2026-11-08", "2026-11-09");
+  assert.deepStrictEqual([...p.completas.map((l) => l.identificador_unico)], ["175"], "Maria uma vez só; Ana fora do intervalo");
+  assert.strictEqual(p.incompletas.length, 1);
+  assert.strictEqual(p.incompletas[0].entregador, "Joao Teste");
+  assert.deepStrictEqual([...p.incompletas[0].falta], ["nome_recebedor", "cpf", "identificador_unico"]);
+});
+
+test("tela: cada registro mostra o modelo Trampay completo; obrigatório vazio aparece como falta", () => {
+  const c = carregar();
+  const html = c.deHtmlTrampay({ dado_id: 1, id_interno: "175", ...COMPLETO, atual_cnpj: "" });
+  const rotulos = [...html.matchAll(/data-rotulo="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepStrictEqual(rotulos, ["nome_recebedor", "cpf", "cnpj", "telefone", "identificador_unico", "chave_pix", "chave_pix_tipo"]);
+  assert.match(html, /data-rotulo="cpf">12345678909</);
+  assert.doesNotMatch(html, /falta/, "CNPJ vazio não é falta");
+  assert.match(c.deHtmlTrampay({ dado_id: 2, ...COMPLETO, id_interno: "" }), /data-rotulo="identificador_unico"><span class="de-pendente">falta/);
 });
