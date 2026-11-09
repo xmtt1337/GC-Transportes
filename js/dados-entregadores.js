@@ -234,11 +234,14 @@ function _deHistResumo() {
  * (pedaço do nome ou o ID) e quem (exato). Serve tanto pros registros completos quanto
  * pra lista leve de dias. Exportada pros testes.
  */
-function deFiltrarHistorico(registros, { tipo, busca, entregador, quem } = {}) {
+function deFiltrarHistorico(registros, { tipo, status, busca, entregador, quem } = {}) {
     const norm = x => String(x || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
     const alvo = norm(busca), ent = norm(entregador);
     return registros.filter(h => {
         if (tipo && h.tipo !== tipo) return false;
+        // Status: o que está no histórico já foi gravado (aprovado); pendente e recusado vêm
+        // das solicitações dos entregadores.
+        if (status && (h.status || "aprovado") !== status) return false;
         if (quem && h.quem !== quem) return false;
         if (ent && !norm([h.usuarios, h.atual_usuarios, h.id_interno].join(" ")).includes(ent)) return false;
         if (!alvo) return true;
@@ -277,7 +280,7 @@ function deHtmlMudancas(h, rotulos) {
  * Exportada pros testes.
  */
 function deHtmlTrampay(h) {
-    if (!h.dado_id) return DE_TRAMPAY_COLUNAS.map(c => `<td data-rotulo="${c}"><span class="cad-vazio">—</span></td>`).join("");
+    if (!h.dado_id && !h.solicitacao_id) return DE_TRAMPAY_COLUNAS.map(c => `<td data-rotulo="${c}"><span class="cad-vazio">—</span></td>`).join("");
     const l = deTrampayDe(h);
     const falta = new Set(deFaltandoTrampay(l));
     return DE_TRAMPAY_COLUNAS.map(c => {
@@ -289,9 +292,14 @@ function deHtmlTrampay(h) {
 }
 
 function deHtmlHistorico(h, rotulos) {
-    const tipo = h.tipo === "novo"
+    const status = {
+        pendente: `<div class="de-status de-status-pendente">Pendente</div>`,
+        recusado: `<div class="de-status de-status-recusado"${h.decidido_por ? ` title="Recusado por ${_deEsc(h.decidido_por)}"` : ""}>Recusado</div>`,
+        aprovado: h.origem === "entregador" ? `<div class="de-status de-status-aprovado">Aprovado</div>` : "",
+    }[h.status || "aprovado"] || "";
+    const tipo = (h.tipo === "novo"
         ? `<span class="de-tipo-novo">Novo</span>`
-        : `<span class="de-tipo-atualizado">Atualizado</span>`;
+        : `<span class="de-tipo-atualizado">Atualizado</span>`) + status;
     const origem = { entregador: "pelo formulário", usuario: "copiado do login", sistema: "correção do sistema" }[h.origem] || "importação da planilha";
     const ent = _deEsc(h.usuarios || "—") + (h.id_interno ? ` <span class="de-origem">· ID ${_deEsc(h.id_interno)}</span>` : "");
     return `
@@ -410,8 +418,9 @@ function deLinhasTrampay(registros) {
     const vistos = new Set();
     const linhas = [];
     for (const h of registros) {
-        if (!h.dado_id || vistos.has(h.dado_id)) continue; // o mais recente vem primeiro
-        vistos.add(h.dado_id);
+        const quemE = h.dado_id ? "d" + h.dado_id : h.user_id ? "u" + h.user_id : null;
+        if (!quemE || vistos.has(quemE)) continue; // o mais recente vem primeiro
+        vistos.add(quemE);
         linhas.push({ ...deTrampayDe(h), entregador: h.atual_usuarios || h.usuarios || "" });
     }
     return linhas;
@@ -452,8 +461,8 @@ const _deCals = {
 function _deFiltrosDe(nome) {
     const v = id => (document.getElementById(id) || {}).value || "";
     return nome === "tela"
-        ? { tipo: v("de-hist-tipo"), busca: v("de-hist-busca") }
-        : { tipo: v("de-tr-tipo"), entregador: v("de-tr-entregador"), quem: v("de-tr-quem") };
+        ? { tipo: v("de-hist-tipo"), status: v("de-hist-status"), busca: v("de-hist-busca") }
+        : { tipo: v("de-tr-tipo"), status: v("de-tr-status"), entregador: v("de-tr-entregador"), quem: v("de-tr-quem") };
 }
 
 /** Dia → quantas edições, só do que passa pelos filtros. Exportada pros testes. */
@@ -484,7 +493,7 @@ function _deCalClick(nome, dataStr) {
     else                 { c.fim = d; }
     _deCalRender(nome);
     if (nome === "tela" && c.fim) { _dePeriodoFechar(); _dePeriodoBotao(); _deHistCarregar(); }
-    if (nome === "exp") { document.getElementById("de-tr-erro").innerText = ""; _deTrResumo(); }
+    if (nome === "exp") { document.getElementById("de-tr-erro").innerText = ""; _deTrOpcoes(); _deTrResumo(); }
 }
 
 function _deCalRender(nome) {
@@ -605,6 +614,7 @@ function _deTrAbrir() {
     const t = _deCals.tela;
     _deCalIniciar("exp", t.ini || _deHoje(), t.fim || t.ini || _deHoje());
     document.getElementById("de-tr-tipo").value = document.getElementById("de-hist-tipo").value;
+    document.getElementById("de-tr-status").value = document.getElementById("de-hist-status").value;
     document.getElementById("de-tr-entregador").value = "";
     _deTrOpcoes();
     document.getElementById("de-tr-quem").value = "";
@@ -618,18 +628,36 @@ function _deTrAbrir() {
 }
 
 /** Opções de entregador (lista pra digitar) e de quem (menu), a partir do último ano. */
+/**
+ * Opções de um filtro a partir do que passa pelos OUTROS filtros e pelo intervalo: escolher
+ * "Só dados novos" + "Pendentes" deixa no "Quem" só quem tem registro assim. Exportada pros testes.
+ * @param {"quem"|"usuarios"} campo
+ */
+function deOpcoesFiltro(dias, filtros, campo, de, ate) {
+    const sem = { ...filtros, [campo === "quem" ? "quem" : "entregador"]: "" };
+    const valores = deFiltrarHistorico(dias, sem)
+        .filter(d => (!de || d.dia >= de) && (!ate || d.dia <= ate))
+        .map(d => d[campo]).filter(Boolean);
+    return [...new Set(valores)].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
 function _deTrOpcoes() {
-    const nomes = [...new Set(_deDias.map(d => d.usuarios).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const c = _deCals.exp;
+    const de = c.ini ? _deFmtDia(c.ini) : "", ate = c.ini ? _deFmtDia(c.fim || c.ini) : "";
+    const filtros = _deFiltrosDe("exp");
+    const nomes = deOpcoesFiltro(_deDias, filtros, "usuarios", de, ate);
     document.getElementById("de-tr-entregadores").innerHTML = nomes.map(n => `<option value="${_deEsc(n)}"></option>`).join("");
     const sel = document.getElementById("de-tr-quem");
     const atual = sel.value;
-    const quens = [...new Set(_deDias.map(d => d.quem).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const quens = deOpcoesFiltro(_deDias, filtros, "quem", de, ate);
+    if (atual && !quens.includes(atual)) quens.unshift(atual); // o já escolhido não some
     sel.innerHTML = `<option value="">Todos</option>` + quens.map(q => `<option value="${_deEsc(q)}">${_deEsc(q)}</option>`).join("");
-    sel.value = quens.includes(atual) ? atual : "";
+    sel.value = atual;
 }
 
 /** Mudou um filtro da exportação: redesenha as marcas e o resumo. */
 function _deTrFiltrar() {
+    _deTrOpcoes();
     _deCalRender("exp");
     _deTrResumo();
 }

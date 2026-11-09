@@ -256,3 +256,38 @@ test("exportação: hora da edição junto com as datas (das X do 1º dia até Y
   assert.strictEqual(ids(c.dePrepararExportacao(dias, {}, "2026-11-08", "2026-11-09", "14:00", "10:30")), "9");
   assert.strictEqual(ids(c.dePrepararExportacao(dias, {}, "2026-11-08", "2026-11-09", "", "")), "175,9,10", "sem hora: o dia inteiro");
 });
+
+// ── Status (aprovado / pendente / recusado) e "Quem" que se adapta ──
+
+const COM_STATUS = [
+  { dia: "2026-11-09", dado_id: 1, tipo: "novo", status: "pendente", quem: "Maria Teste - Caçador", usuarios: "Maria Teste", id_interno: "175", user_id: 3, solicitacao_id: 7, ...COMPLETO },
+  { dia: "2026-11-09", dado_id: null, tipo: "novo", status: "recusado", quem: "Joao Teste - Videira", usuarios: "Joao Teste", user_id: 4, solicitacao_id: 8, ...COMPLETO },
+  { dia: "2026-11-08", dado_id: 2, tipo: "novo", quem: "Ana Teste - Caçador", usuarios: "Ana Teste", id_interno: "9", ...COMPLETO },
+  { dia: "2026-11-08", dado_id: 5, tipo: "atualizado", quem: "Suporte Teste", usuarios: "Bia Teste", id_interno: "10", ...COMPLETO },
+];
+
+test("filtro de status: o que está no histórico conta como aprovado", () => {
+  const c = carregar();
+  const quem = (f) => c.deFiltrarHistorico(COM_STATUS, f).map((d) => d.usuarios).join(",");
+  assert.strictEqual(quem({ status: "pendente" }), "Maria Teste");
+  assert.strictEqual(quem({ status: "recusado" }), "Joao Teste");
+  assert.strictEqual(quem({ tipo: "novo", status: "aprovado" }), "Ana Teste");
+});
+
+test("'Quem' mostra só quem passa pelos outros filtros (e pelo intervalo)", () => {
+  const c = carregar();
+  assert.deepStrictEqual([...c.deOpcoesFiltro(COM_STATUS, { tipo: "novo", status: "pendente" }, "quem")], ["Maria Teste - Caçador"]);
+  assert.deepStrictEqual([...c.deOpcoesFiltro(COM_STATUS, { tipo: "atualizado" }, "quem")], ["Suporte Teste"]);
+  assert.deepStrictEqual([...c.deOpcoesFiltro(COM_STATUS, {}, "quem", "2026-11-09", "2026-11-09")], ["Joao Teste - Videira", "Maria Teste - Caçador"]);
+  assert.strictEqual(c.deOpcoesFiltro(COM_STATUS, { quem: "Suporte Teste" }, "quem").length, 4, "o próprio filtro de quem não restringe as opções dele");
+});
+
+test("linha da tela mostra o status; solicitação sem linha na tabela ainda mostra o modelo Trampay", () => {
+  const c = carregar();
+  assert.match(c.deHtmlHistorico({ ...COM_STATUS[0], campos: [] }, {}), /de-status-pendente">Pendente/);
+  assert.match(c.deHtmlHistorico({ ...COM_STATUS[1], decidido_por: "Suporte Teste", campos: [] }, {}), /title="Recusado por Suporte Teste">Recusado/);
+  assert.match(c.deHtmlHistorico({ ...COM_STATUS[2], origem: "entregador", campos: [] }, {}), /de-status-aprovado">Aprovado/);
+  assert.match(c.deHtmlTrampay(COM_STATUS[1]), /data-rotulo="cpf">12345678909</);
+  const linhas = c.deLinhasTrampay(COM_STATUS);
+  assert.strictEqual(linhas.length, 4, "solicitação sem linha conta pelo login");
+});
