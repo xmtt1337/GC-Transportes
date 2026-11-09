@@ -316,6 +316,7 @@ fetch(API + "/perfil", { headers: { "Authorization": "Bearer " + token } })
             show("menu-item-anotacoes-relatorio"); // relatório consolidado de Anotações de Quantidade — só dev
             show("menu-macros"); // liga/desliga e configura tarefas automáticas — só dev
             show("menu-item-ticketlog"); // cartões Ticketlog e valor de cada um — só dev
+            show("menu-item-log-valores"); // log das mudanças de valor dos entregadores — só dev
         }
     }
 
