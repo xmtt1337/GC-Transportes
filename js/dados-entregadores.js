@@ -276,7 +276,7 @@ function deHtmlMudancas(h, rotulos) {
 
 /**
  * As colunas do modelo Trampay com os dados de AGORA do entregador — aparecem completas
- * mesmo quando ele só mudou um campo. Obrigatória vazia (tudo menos CNPJ) fica em âmbar.
+ * mesmo quando ele só mudou um campo. Obrigatória vazia fica em âmbar ("falta").
  * Exportada pros testes.
  */
 function deHtmlTrampay(h) {
@@ -286,7 +286,7 @@ function deHtmlTrampay(h) {
     return DE_TRAMPAY_COLUNAS.map(c => {
         const v = l[c];
         const corpo = v ? _deEsc(v) : falta.has(c) ? `<span class="de-pendente">falta</span>` : `<span class="cad-vazio">—</span>`;
-        const classe = c === "nome_recebedor" || c === "chave_pix" ? "de-corta" : "cad-num";
+        const classe = c === "nome" || c === "email" || c === "chave_pix" ? "de-corta" : "cad-num";
         return `<td class="${classe}" data-rotulo="${c}"${v && classe === "de-corta" ? ` title="${_deEsc(v)}"` : ""}>${corpo}</td>`;
     }).join("");
 }
@@ -316,10 +316,7 @@ function deHtmlHistorico(h, rotulos) {
 function _deHistFiltrar() {
     _deCalRender("tela");
     const empty = document.getElementById("de-hist-empty");
-    const lista = deFiltrarHistorico(_deHist, {
-        tipo: document.getElementById("de-hist-tipo").value,
-        busca: document.getElementById("de-hist-busca").value,
-    });
+    const lista = deFiltrarHistorico(_deHist, _deFiltrosDe("tela"));
     if (!lista.length) {
         skFim(empty, _deHist.length ? "Nada com esse filtro." : "Nenhum dado novo ou atualizado nesse período.");
         empty.style.display = "";
@@ -332,19 +329,23 @@ function _deHistFiltrar() {
 }
 
 // ── Exportar Novos dados no MODELO TRAMPAY ──
-// Pedido do usuário (09/11/2026): o arquivo sai no modelo de cadastro de recebedores da
-// Trampay, com as colunas exatamente com estes nomes:
-//   nome_recebedor | cpf | cnpj | telefone | identificador_unico | chave_pix | chave_pix_tipo
-// - nome no modelo "Nome Sobrenome" (só a primeira letra maiúscula; da/de/do/dos/das/e minúsculos);
-// - cpf, cnpj, telefone e chave numérica SEM pontuação (e com o zero da frente que a
-//   planilha perde: CPF 11 dígitos, CNPJ 14);
-// - identificador_unico = o ID dos Dados entregadores (coluna ID da planilha);
-// - uma linha por entregador que teve dado novo/atualizado no intervalo escolhido no
-//   calendário, com os dados de AGORA.
-// O CSV segue o mesmo formato do CSV de pagamento da Trampay que o sistema já gera
-// (/admin/pagamentos/csv): separador ";", BOM e ="..." nos números pro Excel não comer zero.
+// Modelo de cadastro de recebedores da Trampay (atualizado em 09/11/2026 — a Trampay mudou
+// o formato). Colunas exatamente com estes nomes, nesta ordem:
+//   nome | documento | telefone | email | praca | chave_pix_tipo | chave_pix | identificador
+// Exemplo deles: Maria da Silva | 123.456.789-09 | (11) 99999-9999 | maria@email.com | Campinas | email | maria@email.com
+// - nome no modelo "Nome Sobrenome" (da/de/do/dos/das/e minúsculos);
+// - documento COM pontuação, pela regra da Trampay (chave CNPJ → CNPJ; senão o CPF; e a
+//   exceção da planilha, que já vem no Documento gravado);
+// - telefone com máscara "(11) 99999-9999";
+// - praca: sempre "MeioOeste - SC" (pedido do usuário);
+// - chave_pix: o tipo em minúsculo; chave numérica (CPF/CNPJ/telefone) só com os dígitos;
+// - identificador = o ID dos Dados entregadores;
+// - uma linha por entregador que teve dado novo/atualizado no intervalo, com os dados de
+//   AGORA (ou os que ele mandou, se a solicitação está pendente/recusada).
+// CSV com ";" e BOM (o Excel em português abre em colunas).
 
-const DE_TRAMPAY_COLUNAS = ["nome_recebedor", "cpf", "cnpj", "telefone", "identificador_unico", "chave_pix", "chave_pix_tipo"];
+const DE_TRAMPAY_COLUNAS = ["nome", "documento", "telefone", "email", "praca", "chave_pix_tipo", "chave_pix", "identificador"];
+const DE_TRAMPAY_PRACA = "MeioOeste - SC";
 const _DE_CONECTIVOS = new Set(["da", "das", "de", "do", "dos", "e"]);
 
 /** "MARIA DA SILVA souza" → "Maria da Silva Souza". Exportada pros testes. */
@@ -363,6 +364,20 @@ function _deComZeros(d, tam) {
     return d && d.length < tam && d.length >= tam - 3 ? d.padStart(tam, "0") : d;
 }
 
+/** "12345678909" → "123.456.789-09"; 14 caracteres → "11.222.333/0001-81". */
+function _deMascaraDoc(d) {
+    if (d.length === 11) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+    if (d.length === 14) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+    return d;
+}
+
+/** "11999999999" → "(11) 99999-9999"; 10 dígitos → "(11) 9999-9999". */
+function _deMascaraTel(d) {
+    if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+    if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+    return d;
+}
+
 /** Tipo da chave como vier escrito ("Chave CPF", "CELULAR", "E-mail"...) → o do formulário. */
 function deTipoTrampay(t) {
     const s = String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -377,39 +392,52 @@ function deTipoTrampay(t) {
 
 /** Linha do modelo Trampay com os dados de AGORA de um registro. Exportada pros testes. */
 function deTrampayDe(h) {
-    const doc = _deDig(h.atual_documento);
-    const cpf = _deComZeros(_deDig(h.atual_cpf), 11) || (doc && doc.length <= 11 ? _deComZeros(doc, 11) : "");
-    const cnpjCol = String(h.atual_cnpj || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
-    const cnpj = _deComZeros(cnpjCol, 14) || (doc.length >= 12 ? _deComZeros(doc, 14) : "");
-    let tel = _deDig(h.atual_telefone);
-    if (tel.length === 13 && tel.startsWith("55")) tel = tel.slice(2);
     const tipo = deTipoTrampay(h.atual_tipo_chave_pix);
+    const docGravado = String(h.atual_documento || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+    const cpf = _deComZeros(_deDig(h.atual_cpf), 11) || (docGravado && /^\d{9,11}$/.test(docGravado) ? _deComZeros(docGravado, 11) : "");
+    const cnpjCol = String(h.atual_cnpj || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
     let chave = String(h.atual_chave_pix || "").trim();
     if (tipo === "cpf") chave = _deComZeros(_deDig(chave), 11);
     else if (tipo === "cnpj") chave = _deComZeros(chave.toUpperCase().replace(/[^0-9A-Z]/g, ""), 14);
     else if (tipo === "telefone") { chave = _deDig(chave); if (chave.length === 13 && chave.startsWith("55")) chave = chave.slice(2); }
+    const cnpj = _deComZeros(cnpjCol, 14) || (tipo === "cnpj" ? chave : "");
+    // Documento: o gravado (já é a regra da Trampay, com a exceção da planilha); sem ele
+    // (solicitação ainda não aprovada), pela regra: chave CNPJ → CNPJ, senão o CPF.
+    let doc = "";
+    if (docGravado.length >= 12) doc = _deComZeros(docGravado, 14);
+    else if (docGravado.length >= 9) doc = _deComZeros(docGravado, 11);
+    if (!doc) doc = tipo === "cnpj" ? cnpj : cpf;
+    let tel = _deDig(h.atual_telefone);
+    if (tel.length === 13 && tel.startsWith("55")) tel = tel.slice(2);
     return {
-        nome_recebedor: deNomeProprio(h.atual_nome || h.atual_usuarios || h.usuarios),
-        cpf, cnpj, telefone: tel,
-        identificador_unico: h.id_interno || "",
-        chave_pix: chave,
+        nome: deNomeProprio(h.atual_nome || h.atual_usuarios || h.usuarios),
+        documento: _deMascaraDoc(doc),
+        telefone: _deMascaraTel(tel),
+        email: String(h.atual_email || "").trim().toLowerCase(),
+        praca: DE_TRAMPAY_PRACA,
         chave_pix_tipo: tipo,
+        chave_pix: chave,
+        identificador: h.id_interno || "",
     };
 }
 
 /**
- * O que falta pra linha poder ir pra Trampay: tudo menos o CNPJ. Nome precisa de nome e
- * sobrenome; CPF com 11 dígitos; telefone com DDD (10 ou 11 dígitos). Exportada pros testes.
+ * O que falta pra linha poder ir pra Trampay (todas as colunas são obrigatórias). Nome com
+ * sobrenome; documento CPF (11) ou CNPJ (14); telefone com DDD; e-mail válido.
+ * Exportada pros testes.
  * @return {string[]} Nomes das colunas que faltam (vazio = pode exportar).
  */
 function deFaltandoTrampay(l) {
     const falta = [];
-    if (String(l.nome_recebedor || "").trim().split(/\s+/).length < 2) falta.push("nome_recebedor");
-    if (!/^\d{11}$/.test(l.cpf || "")) falta.push("cpf");
-    if (!/^\d{10,11}$/.test(l.telefone || "")) falta.push("telefone");
-    if (!String(l.identificador_unico || "").trim()) falta.push("identificador_unico");
-    if (!String(l.chave_pix || "").trim()) falta.push("chave_pix");
+    const doc = String(l.documento || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+    if (String(l.nome || "").trim().split(/\s+/).length < 2) falta.push("nome");
+    if (doc.length !== 11 && doc.length !== 14) falta.push("documento");
+    if (!/^\d{10,11}$/.test(_deDig(l.telefone))) falta.push("telefone");
+    if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(l.email || "")) falta.push("email");
+    if (!String(l.praca || "").trim()) falta.push("praca");
     if (!l.chave_pix_tipo) falta.push("chave_pix_tipo");
+    if (!String(l.chave_pix || "").trim()) falta.push("chave_pix");
+    if (!String(l.identificador || "").trim()) falta.push("identificador");
     return falta;
 }
 
@@ -429,11 +457,7 @@ function deLinhasTrampay(registros) {
 /** CSV no modelo Trampay. Exportada pros testes. */
 function deCsvTrampay(linhas) {
     const txt = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const num = v => (v ? `="${String(v).replace(/"/g, '""')}"` : `""`);
-    const corpo = linhas.map(l => [
-        txt(l.nome_recebedor), num(l.cpf), num(l.cnpj), num(l.telefone),
-        num(l.identificador_unico), num(l.chave_pix), txt(l.chave_pix_tipo),
-    ].join(";"));
+    const corpo = linhas.map(l => DE_TRAMPAY_COLUNAS.map(c => txt(l[c])).join(";"));
     return "﻿" + [DE_TRAMPAY_COLUNAS.join(";"), ...corpo].join("\r\n");
 }
 

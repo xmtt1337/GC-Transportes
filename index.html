@@ -1529,13 +1529,14 @@ if (_BASE) {
                                     <th>Tipo</th>
                                     <th>O que mudou</th>
                                     <th>Quem</th>
-                                    <th>nome_recebedor</th>
-                                    <th>cpf</th>
-                                    <th>cnpj</th>
+                                    <th>nome</th>
+                                    <th>documento</th>
                                     <th>telefone</th>
-                                    <th>identificador_unico</th>
-                                    <th>chave_pix</th>
+                                    <th>email</th>
+                                    <th>praca</th>
                                     <th>chave_pix_tipo</th>
+                                    <th>chave_pix</th>
+                                    <th>identificador</th>
                                 </tr>
                             </thead>
                             <tbody id="de-hist-tbody"></tbody>
@@ -5006,7 +5007,7 @@ if (_BASE) {
 <script src="js/shopee-polo.js?v=20261015a"></script>
 <script src="js/perfil-conta.js?v=20261015c"></script>
 <script src="js/dados-pagamento.js?v=20261109a"></script>
-<script src="js/dados-entregadores.js?v=20261109g"></script>
+<script src="js/dados-entregadores.js?v=20261109h"></script>
 <script src="js/shopee.js?v=30260812d"></script>
 <script src="js/shopee-romaneiro.js?v=20261022f"></script>
 <script src="js/shopee-at.js?v=20261019a"></script>
@@ -5545,7 +5546,7 @@ if (_BASE) {
 <div class="usr-modal-overlay" id="modal-de-trampay" onclick="_fecharModalSeBackdrop(event,'modal-de-trampay')">
     <div class="usr-modal">
         <div class="usr-modal-title">Exportar no modelo Trampay</div>
-        <div class="usr-modal-sub">Uma linha por entregador com dado novo ou atualizado no intervalo, com os dados de agora. Os dias marcados no calendário tiveram edição com esses filtros.</div>
+        <div class="usr-modal-sub">Modelo de recebedores da Trampay. Uma linha por entregador com dado novo ou atualizado no intervalo, com os dados de agora. Os dias marcados no calendário tiveram edição com esses filtros.</div>
         <div class="usr-modal-field">
             <label class="usr-modal-label" for="de-tr-entregador">Entregador</label>
             <input class="usr-modal-input" id="de-tr-entregador" list="de-tr-entregadores" placeholder="Todos — digite o nome ou o ID" oninput="_deTrFiltrar()" autocomplete="off">

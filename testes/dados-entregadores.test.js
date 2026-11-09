@@ -153,44 +153,44 @@ test("CPF em coluna própria, com máscara; correção do sistema aparece com es
 
 // ── Exportar no modelo Trampay ──
 
-test("modelo Trampay: nome Nome Sobrenome, números sem pontuação e com o zero, ID dos Dados entregadores", () => {
+test("modelo Trampay: Nome Sobrenome, documento e telefone com máscara, praça fixa, ID dos Dados entregadores", () => {
   const c = carregar();
   const linhas = c.deLinhasTrampay([
     { dado_id: 1, id_interno: "175", usuarios: "Maria Teste", atual_nome: "MARIA DA SILVA teste",
-      atual_cpf: "1234567890", atual_cnpj: "11.222.333/0001-81", atual_telefone: "(49) 99999-0000",
+      atual_cpf: "1234567890", atual_cnpj: "11.222.333/0001-81", atual_telefone: "(49) 99999-0000", atual_email: "Maria@Exemplo.com",
       atual_chave_pix: "11.222.333/0001-81", atual_tipo_chave_pix: "CNPJ", atual_documento: "11222333000181" },
     // Registro mais antigo da mesma pessoa: não duplica.
     { dado_id: 1, id_interno: "175", atual_nome: "Outro" },
-    { dado_id: 2, id_interno: "", atual_nome: "joão d'ávila", atual_cpf: null, atual_documento: "98765432100",
+    // Solicitação ainda não aprovada (sem Documento gravado): documento pela regra.
+    { dado_id: 2, id_interno: "", atual_nome: "joão d'ávila", atual_cpf: "98765432100", atual_documento: null,
       atual_telefone: "5549988887777", atual_chave_pix: "+55 (49) 98888-7777", atual_tipo_chave_pix: "Celular" },
     { dado_id: null, atual_nome: "Sem linha" },
   ]);
   assert.strictEqual(linhas.length, 2);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(linhas[0])), {
-    nome_recebedor: "Maria da Silva Teste", cpf: "01234567890", cnpj: "11222333000181", telefone: "49999990000",
-    identificador_unico: "175", chave_pix: "11222333000181", chave_pix_tipo: "cnpj", entregador: "Maria Teste",
+    nome: "Maria da Silva Teste", documento: "11.222.333/0001-81", telefone: "(49) 99999-0000",
+    email: "maria@exemplo.com", praca: "MeioOeste - SC", chave_pix_tipo: "cnpj", chave_pix: "11222333000181",
+    identificador: "175", entregador: "Maria Teste",
   });
-  assert.strictEqual(linhas[1].nome_recebedor, "João D'Ávila");
-  assert.strictEqual(linhas[1].cpf, "98765432100", "sem CPF próprio, usa o Documento quando é CPF");
-  assert.strictEqual(linhas[1].telefone, "49988887777");
+  assert.strictEqual(linhas[1].nome, "João D'Ávila");
+  assert.strictEqual(linhas[1].documento, "987.654.321-00", "chave não é CNPJ: documento é o CPF");
+  assert.strictEqual(linhas[1].telefone, "(49) 98888-7777");
   assert.strictEqual(linhas[1].chave_pix, "49988887777");
   assert.strictEqual(linhas[1].chave_pix_tipo, "telefone");
 });
-
-test("modelo Trampay: CSV com as colunas exatamente com esses nomes", () => {
+test("modelo Trampay: CSV com as colunas exatamente com esses nomes e nessa ordem", () => {
   const c = carregar();
-  const csv = c.deCsvTrampay([{ nome_recebedor: "Maria Teste", cpf: "01234567890", cnpj: "", telefone: "49999990000",
-    identificador_unico: "175", chave_pix: "maria@exemplo.com", chave_pix_tipo: "email" }]);
-  assert.ok(csv.startsWith("﻿"));
+  const csv = c.deCsvTrampay([{ nome: "Maria da Silva", documento: "123.456.789-09", telefone: "(11) 99999-9999",
+    email: "maria@email.com", praca: "MeioOeste - SC", chave_pix_tipo: "email", chave_pix: "maria@email.com", identificador: "175" }]);
+  assert.ok(csv.startsWith("\uFEFF"));
   const [cab, linha] = csv.slice(1).split("\r\n");
-  assert.strictEqual(cab, "nome_recebedor;cpf;cnpj;telefone;identificador_unico;chave_pix;chave_pix_tipo");
-  assert.strictEqual(linha, '"Maria Teste";="01234567890";"";="49999990000";="175";="maria@exemplo.com";"email"');
+  assert.strictEqual(cab, "nome;documento;telefone;email;praca;chave_pix_tipo;chave_pix;identificador");
+  assert.strictEqual(linha, '"Maria da Silva";"123.456.789-09";"(11) 99999-9999";"maria@email.com";"MeioOeste - SC";"email";"maria@email.com";"175"');
 });
-
 // ── Exportação: filtros, dias marcados e só linhas completas ──
 
 const COMPLETO = { atual_nome: "Maria Teste", atual_cpf: "12345678909", atual_telefone: "49999990000",
-  atual_chave_pix: "maria@exemplo.com", atual_tipo_chave_pix: "email" };
+  atual_chave_pix: "maria@exemplo.com", atual_tipo_chave_pix: "email", atual_email: "maria@exemplo.com" };
 const DIAS = [
   { dia: "2026-11-09", dado_id: 1, tipo: "atualizado", quem: "Maria Teste - Caçador", usuarios: "Maria Teste", id_interno: "175", ...COMPLETO },
   { dia: "2026-11-08", dado_id: 2, tipo: "novo", quem: "Suporte Teste", usuarios: "Joao Teste", id_interno: "",
@@ -218,33 +218,32 @@ test("calendário marca os dias com edição de acordo com o filtro", () => {
   assert.strictEqual(soSuporte.get("2026-11-08"), 1);
 });
 
-test("o que falta pro modelo Trampay: tudo menos o CNPJ", () => {
+test("o que falta pro modelo Trampay: todas as colunas", () => {
   const c = carregar();
-  assert.deepStrictEqual([...c.deFaltandoTrampay({ nome_recebedor: "Maria Teste", cpf: "12345678909", cnpj: "", telefone: "49999990000",
-    identificador_unico: "175", chave_pix: "x@exemplo.com", chave_pix_tipo: "email" })], [], "sem CNPJ pode");
-  assert.deepStrictEqual([...c.deFaltandoTrampay({ nome_recebedor: "Joao", cpf: "", telefone: "123", identificador_unico: "", chave_pix: "", chave_pix_tipo: "" })],
-    ["nome_recebedor", "cpf", "telefone", "identificador_unico", "chave_pix", "chave_pix_tipo"]);
+  assert.deepStrictEqual([...c.deFaltandoTrampay({ nome: "Maria Teste", documento: "123.456.789-09", telefone: "(49) 99999-0000",
+    email: "x@exemplo.com", praca: "MeioOeste - SC", chave_pix_tipo: "email", chave_pix: "x@exemplo.com", identificador: "175" })], []);
+  assert.deepStrictEqual([...c.deFaltandoTrampay({ nome: "Joao", documento: "", telefone: "123", email: "sem-arroba", praca: "", chave_pix_tipo: "", chave_pix: "", identificador: "" })],
+    ["nome", "documento", "telefone", "email", "praca", "chave_pix_tipo", "chave_pix", "identificador"]);
 });
-
 test("exportação: só linhas completas no arquivo; as incompletas saem listadas com o que falta", () => {
   const c = carregar();
   const p = c.dePrepararExportacao(DIAS, {}, "2026-11-08", "2026-11-09");
-  assert.deepStrictEqual([...p.completas.map((l) => l.identificador_unico)], ["175"], "Maria uma vez só; Ana fora do intervalo");
+  assert.deepStrictEqual([...p.completas.map((l) => l.identificador)], ["175"], "Maria uma vez só; Ana fora do intervalo");
   assert.strictEqual(p.incompletas.length, 1);
   assert.strictEqual(p.incompletas[0].entregador, "Joao Teste");
-  assert.deepStrictEqual([...p.incompletas[0].falta], ["nome_recebedor", "cpf", "identificador_unico"]);
+  assert.deepStrictEqual([...p.incompletas[0].falta], ["nome", "documento", "email", "identificador"]);
 });
 
 test("tela: cada registro mostra o modelo Trampay completo; obrigatório vazio aparece como falta", () => {
   const c = carregar();
-  const html = c.deHtmlTrampay({ dado_id: 1, id_interno: "175", ...COMPLETO, atual_cnpj: "" });
+  const html = c.deHtmlTrampay({ dado_id: 1, id_interno: "175", ...COMPLETO });
   const rotulos = [...html.matchAll(/data-rotulo="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepStrictEqual(rotulos, ["nome_recebedor", "cpf", "cnpj", "telefone", "identificador_unico", "chave_pix", "chave_pix_tipo"]);
-  assert.match(html, /data-rotulo="cpf">12345678909</);
-  assert.doesNotMatch(html, /falta/, "CNPJ vazio não é falta");
-  assert.match(c.deHtmlTrampay({ dado_id: 2, ...COMPLETO, id_interno: "" }), /data-rotulo="identificador_unico"><span class="de-pendente">falta/);
+  assert.deepStrictEqual(rotulos, ["nome", "documento", "telefone", "email", "praca", "chave_pix_tipo", "chave_pix", "identificador"]);
+  assert.match(html, /data-rotulo="documento">123\.456\.789-09</);
+  assert.match(html, /data-rotulo="praca">MeioOeste - SC</);
+  assert.doesNotMatch(html, /falta/);
+  assert.match(c.deHtmlTrampay({ dado_id: 2, ...COMPLETO, id_interno: "" }), /data-rotulo="identificador"><span class="de-pendente">falta/);
 });
-
 test("exportação: hora da edição junto com as datas (das X do 1º dia até Y do último)", () => {
   const c = carregar();
   const dias = [
@@ -252,7 +251,7 @@ test("exportação: hora da edição junto com as datas (das X do 1º dia até Y
     { dia: "2026-11-08", hora: "15:10", dado_id: 3, tipo: "novo", usuarios: "Ana Teste", id_interno: "9", ...COMPLETO },
     { dia: "2026-11-09", hora: "11:00", dado_id: 4, tipo: "novo", usuarios: "Bia Teste", id_interno: "10", ...COMPLETO },
   ];
-  const ids = (p) => [...p.completas.map((l) => l.identificador_unico)].join(",");
+  const ids = (p) => [...p.completas.map((l) => l.identificador)].join(",");
   assert.strictEqual(ids(c.dePrepararExportacao(dias, {}, "2026-11-08", "2026-11-09", "14:00", "10:30")), "9");
   assert.strictEqual(ids(c.dePrepararExportacao(dias, {}, "2026-11-08", "2026-11-09", "", "")), "175,9,10", "sem hora: o dia inteiro");
 });
@@ -287,7 +286,7 @@ test("linha da tela mostra o status; solicitação sem linha na tabela ainda mos
   assert.match(c.deHtmlHistorico({ ...COM_STATUS[0], campos: [] }, {}), /de-status-pendente">Pendente/);
   assert.match(c.deHtmlHistorico({ ...COM_STATUS[1], decidido_por: "Suporte Teste", campos: [] }, {}), /title="Recusado por Suporte Teste">Recusado/);
   assert.match(c.deHtmlHistorico({ ...COM_STATUS[2], origem: "entregador", campos: [] }, {}), /de-status-aprovado">Aprovado/);
-  assert.match(c.deHtmlTrampay(COM_STATUS[1]), /data-rotulo="cpf">12345678909</);
+  assert.match(c.deHtmlTrampay(COM_STATUS[1]), /data-rotulo="documento">123\.456\.789-09</);
   const linhas = c.deLinhasTrampay(COM_STATUS);
   assert.strictEqual(linhas.length, 4, "solicitação sem linha conta pelo login");
 });
