@@ -237,3 +237,39 @@ test("status pendente: primeiro envio diz 'Dados enviados', alteração diz 'Alt
   assert.match(c.dpgHtmlStatusSolicitacao({ status: "pendente", mudancas: [{ campo: "chave_pix", rotulo: "Chave Pix", antes: null, depois: "x@exemplo.com" }] }), /Dados enviados — aguardando aprovação/);
   assert.match(c.dpgHtmlStatusSolicitacao({ status: "pendente", mudancas: [{ campo: "chave_pix", rotulo: "Chave Pix", antes: "a@exemplo.com", depois: "x@exemplo.com" }] }), /Alteração solicitada/);
 });
+
+// ── Conferência da chave Pix com o tipo (enquanto digita) ──
+
+test("chave confere com o tipo: as mesmas regras do servidor", () => {
+  const c = contexto();
+  const ok = (t, k) => c.dpgConferirChave(t, k).ok;
+  assert.ok(ok("cpf", "123.456.789-09"));
+  assert.ok(!ok("cpf", "123.456.789-00"), "dígito errado");
+  assert.ok(ok("cnpj", "11.222.333/0001-81"));
+  assert.ok(ok("telefone", "(49) 99999-0000"));
+  assert.ok(ok("telefone", "+55 49 99999-0000"));
+  assert.ok(!ok("telefone", "(49) 89999-0000"), "celular sem o 9");
+  assert.ok(ok("email", "maria@exemplo.com"));
+  assert.ok(ok("aleatorio", "123e4567-e89b-12d3-a456-426614174000"));
+  assert.ok(!ok("aleatorio", "123e4567e89b12d3a456426614174000"), "sem os tracinhos");
+});
+
+test("chave de outro tipo: diz o que parece ser e sugere trocar", () => {
+  const c = contexto();
+  const r = c.dpgConferirChave("cpf", "maria@exemplo.com");
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.sugerir, "email");
+  assert.match(r.msg, /parece um E-mail, não um CPF/);
+  assert.strictEqual(c.dpgConferirChave("telefone", "11.222.333/0001-81").sugerir, "cnpj");
+  assert.strictEqual(c.dpgConferirChave("email", "123e4567-e89b-12d3-a456-426614174000").sugerir, "aleatorio");
+  assert.strictEqual(c.dpgConferirChave("cnpj", "123.456.789-09").sugerir, "cpf");
+});
+
+test("chave inválida de qualquer tipo: mensagem do tipo escolhido, sem sugestão", () => {
+  const c = contexto();
+  const r = c.dpgConferirChave("cpf", "123");
+  assert.strictEqual(r.sugerir, null);
+  assert.match(r.msg, /não é um CPF válido/);
+  assert.match(c.dpgConferirChave("", "123.456.789-09").msg, /Escolha o tipo/);
+  assert.strictEqual(c.dpgConferirChave("cpf", "").msg, "", "vazio não grita");
+});

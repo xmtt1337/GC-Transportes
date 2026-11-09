@@ -6945,6 +6945,12 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .dpg-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
 .dpg-dialogo select.pc-dlg-input option { background: #111827; color: #e2e8f0; }
 .dpg-campo.dpg-erro .pc-dlg-input { border-color: #f87171; }
+/* Conferência da chave com o tipo, embaixo do campo. */
+.dpg-chave-msg { margin-top: -4px; min-height: 18px; font-size: 12.5px; line-height: 1.5; color: #8494a9; }
+.dpg-chave-msg.ok { color: #4ade80; }
+.dpg-chave-msg.erro { color: #f87171; }
+.dpg-chave-trocar { background: none; border: none; padding: 0; margin-left: 4px; cursor: pointer; font: inherit; font-weight: 600; color: #60a5fa; }
+.dpg-chave-trocar:hover { text-decoration: underline; }
 .dpg-campo.dpg-erro .pc-dlg-label { color: #f87171; }
 .pc-conta-valor.dpg-pendente { color: #f59e0b; font-weight: 600; }
 .dpg-falta { margin-top: 2px; font-size: 12px; color: #f59e0b; }

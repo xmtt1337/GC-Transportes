@@ -66,6 +66,86 @@ function dpgChaveLegivel(tipo, chave) {
 
 const dpgRotuloTipo = tipo => (DPG_TIPOS.find(t => t.valor === tipo) || {}).rotulo || "";
 
+// ── Conferência da chave Pix com o tipo, enquanto o entregador digita ──
+// As MESMAS regras do servidor (modules/dados-pagamento/validacao.js): CPF e CNPJ pelo
+// dígito verificador (CNPJ pode ter letras, formato novo), telefone com DDD (celular com o
+// 9), e-mail, e chave aleatória no formato com tracinhos. O servidor confere de novo ao
+// salvar; aqui é pra pessoa ver o erro na hora — e, quando a chave é claramente de OUTRO
+// tipo (digitou e-mail com o tipo CPF), o formulário oferece trocar o tipo.
+
+function _dpgCpfValido(v) {
+    const c = _dpgDigitos(v);
+    if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+    const dv = n => {
+        let soma = 0;
+        for (let i = 0; i < n; i++) soma += Number(c[i]) * (n + 1 - i);
+        const r = (soma * 10) % 11;
+        return r === 10 ? 0 : r;
+    };
+    return dv(9) === Number(c[9]) && dv(10) === Number(c[10]);
+}
+
+function _dpgCnpjValido(v) {
+    const c = String(v || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+    if (!/^[0-9A-Z]{12}\d{2}$/.test(c) || /^(\d)\1{13}$/.test(c)) return false;
+    const dv = n => {
+        const pesos = n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+        let soma = 0;
+        for (let i = 0; i < n; i++) soma += (c.charCodeAt(i) - 48) * pesos[i];
+        const r = soma % 11;
+        return r < 2 ? 0 : 11 - r;
+    };
+    return dv(12) === Number(c[12]) && dv(13) === Number(c[13]);
+}
+
+function _dpgTelefoneValido(v) {
+    let d = _dpgDigitos(v);
+    if ((d.length === 12 || d.length === 13) && d.startsWith("55")) d = d.slice(2);
+    if (d.length !== 10 && d.length !== 11) return false;
+    if (Number(d.slice(0, 2)) < 11) return false;
+    if (d.length === 11 && d[2] !== "9") return false;
+    return true;
+}
+
+const _DPG_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
+const _DPG_ALEATORIA_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A chave vale pra este tipo? Exportada pros testes. */
+function dpgChaveValeComo(tipo, chave) {
+    const s = String(chave || "").trim();
+    if (tipo === "cpf") return /^[\d\s.\-]+$/.test(s) && _dpgCpfValido(s);
+    if (tipo === "cnpj") return _dpgCnpjValido(s);
+    if (tipo === "telefone") return /^[\d\s.\-()+]+$/.test(s) && _dpgTelefoneValido(s);
+    if (tipo === "email") return s.length <= 150 && _DPG_EMAIL_RE.test(s);
+    if (tipo === "aleatorio") return _DPG_ALEATORIA_RE.test(s);
+    return false;
+}
+
+/**
+ * Confere a chave com o tipo escolhido. Exportada pros testes.
+ * @return {{ok: boolean, msg: string, sugerir: ?string}} sugerir = tipo que a chave parece ser.
+ */
+function dpgConferirChave(tipo, chave) {
+    const s = String(chave || "").trim();
+    if (!s) return { ok: false, msg: "", sugerir: null };
+    if (!tipo) return { ok: false, msg: "Escolha o tipo da chave Pix.", sugerir: null };
+    if (dpgChaveValeComo(tipo, s)) return { ok: true, msg: `Confere: chave do tipo ${dpgRotuloTipo(tipo)}.`, sugerir: null };
+    // Ordem: o que é mais inequívoco primeiro (e-mail e aleatória não se confundem com número).
+    const outro = ["email", "aleatorio", "cnpj", "cpf", "telefone"].find(t => t !== tipo && dpgChaveValeComo(t, s)) || null;
+    const msgs = {
+        cpf: "A chave não é um CPF válido.",
+        cnpj: "A chave não é um CNPJ válido.",
+        telefone: "A chave do tipo telefone precisa de DDD + número (celular com o 9).",
+        email: "A chave não é um e-mail válido.",
+        aleatorio: "Chave aleatória inválida: cole a chave inteira, com os tracinhos.",
+    };
+    const msg = outro
+        ? `Isso parece um ${dpgRotuloTipo(outro)}, não ${tipo === "aleatorio" ? "uma chave aleatória" : "um " + dpgRotuloTipo(tipo)}.`
+        : msgs[tipo];
+    return { ok: false, msg, sugerir: outro };
+}
+
+
 /**
  * Quais campos obrigatórios estão vazios, com o nome que o formulário usa. Lista vazia com
  * cadastro incompleto = tudo preenchido, mas algo inválido (CPF, nome sem sobrenome...).
@@ -203,7 +283,8 @@ function dpgHtmlFormulario(d, temDados) {
                 ${DPG_TIPOS.map(t => `<option value="${t.valor}"${t.valor === d.tipo_pix ? " selected" : ""}>${t.rotulo}</option>`).join("")}
             </select>
         </div>
-        ${_dpgCampo("chave_pix", "Chave Pix", dpgChaveLegivel(d.tipo_pix, d.chave_pix), `maxlength="150" autocomplete="off"`)}`;
+        ${_dpgCampo("chave_pix", "Chave Pix", dpgChaveLegivel(d.tipo_pix, d.chave_pix), `maxlength="150" autocomplete="off"`)}
+        <div class="dpg-chave-msg" id="dpg-chave-msg" role="status" aria-live="polite"></div>`;
 }
 
 /** Chave sugerida quando o tipo muda: o mesmo dado que a pessoa já digitou acima. */
@@ -249,12 +330,32 @@ function dpgAbrirFormulario() {
             tipoAnterior = tipo;
         });
         $("chave_pix").placeholder = placeholderChave[tipoAnterior] || "";
-        $("chave_pix").addEventListener("input", () => {
+        const mascararChave = () => {
             const tipo = $("tipo_pix").value;
-            if (mascaras[tipo === "telefone" ? "whatsapp" : tipo]) {
-                $("chave_pix").value = mascaras[tipo === "telefone" ? "whatsapp" : tipo]($("chave_pix").value);
-            }
-        });
+            const m = mascaras[tipo === "telefone" ? "whatsapp" : tipo];
+            // Só número leva máscara: e-mail digitado com o tipo errado não pode perder as letras.
+            if (m && /^[\d\s.\-/()+]*$/.test($("chave_pix").value)) $("chave_pix").value = m($("chave_pix").value);
+        };
+        const conferirChave = () => {
+            const r = dpgConferirChave($("tipo_pix").value, $("chave_pix").value);
+            const el = dlg.overlay.querySelector("#dpg-chave-msg");
+            el.className = "dpg-chave-msg" + (r.ok ? " ok" : r.msg ? " erro" : "");
+            el.innerHTML = _gcEsc(r.msg) + (r.sugerir
+                ? ` <button type="button" class="dpg-chave-trocar" data-tipo="${r.sugerir}">Trocar o tipo para ${_gcEsc(dpgRotuloTipo(r.sugerir))}</button>`
+                : "");
+            const btn = el.querySelector(".dpg-chave-trocar");
+            if (btn) btn.addEventListener("click", () => {
+                $("tipo_pix").value = btn.dataset.tipo;
+                tipoAnterior = btn.dataset.tipo;
+                $("chave_pix").placeholder = placeholderChave[btn.dataset.tipo] || "";
+                mascararChave();
+                conferirChave();
+            });
+            return r;
+        };
+        $("chave_pix").addEventListener("input", () => { mascararChave(); conferirChave(); });
+        $("tipo_pix").addEventListener("change", () => { mascararChave(); conferirChave(); });
+        if ($("chave_pix").value) conferirChave();
 
         const marcar = campo => {
             dlg.overlay.querySelectorAll(".dpg-campo").forEach(el => el.classList.toggle("dpg-erro", el.dataset.campo === campo));
@@ -263,7 +364,10 @@ function dpgAbrirFormulario() {
 
         dlg.ocupado(false, "Salvar");
         const enviar = async () => {
-            dlg.erro(""); marcar(null); dlg.ocupado(true, "Salvando...");
+            dlg.erro(""); marcar(null);
+            const chave = conferirChave();
+            if (!chave.ok) { dlg.erro(chave.msg || "Informe a chave Pix."); marcar(chave.msg && $("tipo_pix").value ? "chave_pix" : (!$("tipo_pix").value ? "tipo_pix" : "chave_pix")); return; }
+            dlg.ocupado(true, "Salvando...");
             try {
                 const r = await _pcPost("/meus-dados-pagamento", valores(), "PUT");
                 if (!r.ok) { dlg.erro(r.d.error || "Não foi possível salvar."); marcar(r.d.campo); return; }
