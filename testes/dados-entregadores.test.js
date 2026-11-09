@@ -150,3 +150,19 @@ test("CPF em coluna própria, com máscara; correção do sistema aparece com es
   assert.match(h, /correção do sistema/);
   assert.match(h, /CPF:<\/span> 123\.456\.789-09/);
 });
+
+test("exportar Novos dados: linha completa do entregador, não só o que mudou", () => {
+  const c = carregar();
+  const csv = c.deCsvHistorico([{
+    tipo: "atualizado", origem: "entregador", quem: "Maria Teste - Caçador", criado_em: "2026-11-05T18:00:00Z",
+    usuarios: "Maria Teste", id_interno: "T001",
+    campos: [{ campo: "chave_pix", antes: "12345678909", depois: "maria@exemplo.com" }],
+    atual_usuarios: "Maria Teste", atual_telefone: "49999990000", atual_nome: "Maria; Teste da Silva",
+    atual_documento: "11222333000181", atual_cpf: "01234567890", atual_cnpj: "11222333000181",
+    atual_chave_pix: "maria@exemplo.com", atual_tipo_chave_pix: "email", atual_email: "maria@exemplo.com",
+  }], { chave_pix: "Chave Pix" });
+  assert.ok(csv.startsWith("﻿"), "BOM pros acentos no Excel");
+  const [cab, linha] = csv.slice(1).trim().split("\r\n");
+  assert.strictEqual(cab, "Quando;Tipo;Origem;Quem;O que mudou;ID;Usuarios;Telefone;Nome;Documento;CPF;CNPJ;Chave Pix;Tipo Chave Pix;E-mail");
+  assert.match(linha, /;Atualizado;Formulário;Maria Teste - Caçador;Chave Pix: 12345678909 → maria@exemplo\.com;T001;Maria Teste;\(49\) 99999-0000;"Maria; Teste da Silva";11\.222\.333\/0001-81;012\.345\.678-90;11\.222\.333\/0001-81;maria@exemplo\.com;E-mail;maria@exemplo\.com$/);
+});

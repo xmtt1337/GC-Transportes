@@ -289,3 +289,61 @@ function _deHistFiltrar() {
     document.getElementById("de-hist-resultado").style.display = "";
     document.getElementById("de-hist-tbody").innerHTML = lista.map(h => deHtmlHistorico(h, _deRotulos)).join("");
 }
+
+// ── Exportar Novos dados ──
+// Uma linha por registro (o que a tela mostra com os filtros de agora), com a linha
+// COMPLETA do entregador — como ela está hoje — e não só o campo que mudou.
+// Separador ";" (o Excel em português abre em colunas; o Google Planilhas detecta sozinho)
+// e BOM na frente pros acentos. CPF/CNPJ/telefone vão com máscara: assim o Excel não
+// trata como número e não come o zero da frente.
+
+function _deCsvCampo(v) {
+    const s = String(v ?? "");
+    return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+/** Texto do CSV. Exportada pros testes. */
+function deCsvHistorico(lista, rotulos) {
+    const colunas = ["Quando", "Tipo", "Origem", "Quem", "O que mudou",
+        "ID", "Usuarios", "Telefone", "Nome", "Documento", "CPF", "CNPJ", "Chave Pix", "Tipo Chave Pix", "E-mail"];
+    const origens = { entregador: "Formulário", usuario: "Copiado do login", sistema: "Correção do sistema" };
+    const linhas = lista.map(h => {
+        const mudou = (h.campos || []).map(c => {
+            const rot = (rotulos || {})[c.campo] || c.campo;
+            return c.antes == null ? `${rot}: ${_deValor(c.campo, c.depois)}` : `${rot}: ${_deValor(c.campo, c.antes)} → ${_deValor(c.campo, c.depois)}`;
+        }).join(" | ");
+        const tipoPix = h.atual_tipo_chave_pix;
+        return [
+            _deData(h.criado_em),
+            h.tipo === "novo" ? "Novo" : "Atualizado",
+            origens[h.origem] || "Importação da planilha",
+            h.quem || "",
+            mudou || "(detalhe não guardado)",
+            h.id_interno || "",
+            h.atual_usuarios || h.usuarios || "",
+            deFormatar("telefone", h.atual_telefone),
+            h.atual_nome || "",
+            deFormatar("documento", h.atual_documento),
+            deFormatar("documento", h.atual_cpf),
+            deFormatar("cnpj", h.atual_cnpj),
+            h.atual_chave_pix || "",
+            tipoPix ? (_DE_TIPOS[String(tipoPix).toLowerCase()] || tipoPix) : "",
+            h.atual_email || "",
+        ];
+    });
+    return "﻿" + [colunas, ...linhas].map(l => l.map(_deCsvCampo).join(";")).join("\r\n") + "\r\n";
+}
+
+function _deHistExportar() {
+    const lista = deFiltrarHistorico(_deHist, {
+        tipo: document.getElementById("de-hist-tipo").value,
+        busca: document.getElementById("de-hist-busca").value,
+    });
+    if (!lista.length) return gcAlert("Nada para exportar com esse filtro.");
+    const url = URL.createObjectURL(new Blob([deCsvHistorico(lista, _deRotulos)], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `novos-dados-entregadores_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
