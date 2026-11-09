@@ -609,6 +609,8 @@ function _deTrAbrir() {
     _deTrOpcoes();
     document.getElementById("de-tr-quem").value = "";
     document.getElementById("de-tr-erro").innerText = "";
+    document.getElementById("de-tr-hora-de").value = "00:00";
+    document.getElementById("de-tr-hora-ate").value = "23:59";
     _deCalRender("exp");
     _deTrResumo();
     _abrirModal("modal-de-trampay");
@@ -643,8 +645,13 @@ function deContarEntregadores(dias, filtros, de, ate) {
  * Separa o que vai pro arquivo: linhas completas e as que ficam de fora (com o que falta).
  * Sai da lista leve de dias, que já traz os dados de agora. Exportada pros testes.
  */
-function dePrepararExportacao(dias, filtros, de, ate) {
-    const noIntervalo = deFiltrarHistorico(dias, filtros).filter(d => d.dia >= de && d.dia <= ate);
+function dePrepararExportacao(dias, filtros, de, ate, horaDe, horaAte) {
+    // Data + hora (de Brasília): "das 14:00 do primeiro dia até as 10:30 do último".
+    const ini = `${de} ${horaDe || "00:00"}`, fim = `${ate} ${horaAte || "23:59"}`;
+    const noIntervalo = deFiltrarHistorico(dias, filtros).filter(d => {
+        const quando = `${d.dia} ${d.hora || "00:00"}`;
+        return quando >= ini && quando <= fim;
+    });
     const completas = [], incompletas = [];
     for (const l of deLinhasTrampay(noIntervalo)) {
         const falta = deFaltandoTrampay(l);
@@ -657,7 +664,8 @@ function dePrepararExportacao(dias, filtros, de, ate) {
 function _deTrPreparo() {
     const c = _deCals.exp;
     if (!c.ini) return null;
-    return dePrepararExportacao(_deDias, _deFiltrosDe("exp"), _deFmtDia(c.ini), _deFmtDia(c.fim || c.ini));
+    return dePrepararExportacao(_deDias, _deFiltrosDe("exp"), _deFmtDia(c.ini), _deFmtDia(c.fim || c.ini),
+        document.getElementById("de-tr-hora-de").value, document.getElementById("de-tr-hora-ate").value);
 }
 
 function _deTrResumo() {
@@ -671,10 +679,11 @@ function _deTrResumo() {
     if (!completas.length && !incompletas.length) { el.innerHTML = "Nenhum entregador com edição nesse intervalo e filtros."; return; }
     let html = `<strong>${completas.length}</strong> entregador${completas.length !== 1 ? "es" : ""} no arquivo.`;
     if (incompletas.length) {
-        html += `<div class="de-tr-fora">${incompletas.length} fora do arquivo por falta de dados (tudo é obrigatório, menos o CNPJ):`
-            + incompletas.slice(0, 30).map(l => `<div>· ${_deEsc(l.entregador || l.nome_recebedor || "—")} — falta ${_deEsc(l.falta.join(", "))}</div>`).join("")
-            + (incompletas.length > 30 ? `<div>… e mais ${incompletas.length - 30}.</div>` : "")
-            + `</div>`;
+        // Lista recolhida: com centenas de linhas ela empurrava os botões pra fora da tela.
+        html += `<details class="de-tr-fora"><summary>${incompletas.length} fora do arquivo por falta de dados (tudo é obrigatório, menos o CNPJ) — ver quem</summary>`
+            + `<div class="de-tr-fora-lista">`
+            + incompletas.map(l => `<div>· ${_deEsc(l.entregador || l.nome_recebedor || "—")} — falta ${_deEsc(l.falta.join(", "))}</div>`).join("")
+            + `</div></details>`;
     }
     el.innerHTML = html;
 }

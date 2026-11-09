@@ -7041,6 +7041,7 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .de-cal-ponto { width: 6px; height: 6px; border-radius: 50%; background: #34d399; display: inline-block; }
 .de-periodo-btn { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .de-periodo-seta { color: #7b98b5; font-size: 11px; }
+.de-periodo-pop .ped-cal-day { aspect-ratio: auto; height: 30px; }
 .de-periodo-pop {
     position: fixed; z-index: 2000; width: 292px; background: #0f172a;
     border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.45);
@@ -7050,7 +7051,15 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .de-periodo-atalhos button:hover { text-decoration: underline; }
 .de-tr-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
 .de-tr-resumo { margin-top: 10px; font-size: 13px; color: #cbd5e1; }
-.de-tr-fora { margin-top: 6px; max-height: 140px; overflow-y: auto; font-size: 12.5px; line-height: 1.6; color: #f59e0b; }
+.de-tr-fora { margin-top: 6px; font-size: 12.5px; line-height: 1.6; color: #f59e0b; }
+.de-tr-fora summary { cursor: pointer; }
+.de-tr-fora summary:hover { text-decoration: underline; }
+.de-tr-fora-lista { margin-top: 4px; max-height: 120px; overflow-y: auto; }
+/* Modal da exportação: nunca passa da altura da tela (rola por dentro) e o calendário é mais baixo. */
+#modal-de-trampay .usr-modal { max-height: calc(100vh - 32px); overflow-y: auto; padding: 24px 24px 20px; max-width: 400px; }
+#modal-de-trampay .usr-modal-field { margin-bottom: 10px; }
+#modal-de-trampay .ped-cal-day { aspect-ratio: auto; height: 30px; }
+#modal-de-trampay .usr-modal-btns { position: sticky; bottom: -20px; background: #0f1925; padding: 12px 0 0; margin-top: 12px; }
 .de-select { background: #0f172a; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 6px 8px; font-size: 12.5px; }
 .de-tipo-novo { font-size: 12.5px; font-weight: 600; color: #34d399; }
 .de-tipo-atualizado { font-size: 12.5px; font-weight: 600; color: #cbd5e1; }

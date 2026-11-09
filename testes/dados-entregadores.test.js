@@ -244,3 +244,15 @@ test("tela: cada registro mostra o modelo Trampay completo; obrigatório vazio a
   assert.doesNotMatch(html, /falta/, "CNPJ vazio não é falta");
   assert.match(c.deHtmlTrampay({ dado_id: 2, ...COMPLETO, id_interno: "" }), /data-rotulo="identificador_unico"><span class="de-pendente">falta/);
 });
+
+test("exportação: hora da edição junto com as datas (das X do 1º dia até Y do último)", () => {
+  const c = carregar();
+  const dias = [
+    { dia: "2026-11-08", hora: "09:30", dado_id: 1, tipo: "novo", usuarios: "Maria Teste", id_interno: "175", ...COMPLETO },
+    { dia: "2026-11-08", hora: "15:10", dado_id: 3, tipo: "novo", usuarios: "Ana Teste", id_interno: "9", ...COMPLETO },
+    { dia: "2026-11-09", hora: "11:00", dado_id: 4, tipo: "novo", usuarios: "Bia Teste", id_interno: "10", ...COMPLETO },
+  ];
+  const ids = (p) => [...p.completas.map((l) => l.identificador_unico)].join(",");
+  assert.strictEqual(ids(c.dePrepararExportacao(dias, {}, "2026-11-08", "2026-11-09", "14:00", "10:30")), "9");
+  assert.strictEqual(ids(c.dePrepararExportacao(dias, {}, "2026-11-08", "2026-11-09", "", "")), "175,9,10", "sem hora: o dia inteiro");
+});
