@@ -466,3 +466,14 @@ test("Fechamento › Pesquisar (gestor): desenha no alvo dele e busca os pedidos
     await ctx._fsCarregarPedidos();
     assert.deepStrictEqual(urls, ["/admin/fechamento-pedidos?entregador=Fulano"]);
 });
+
+test("extravio: entregador tem o Contestar (WhatsApp com transportadora e código); Pesquisar do gestor não", () => {
+    const { ctx, el } = carregar();
+    const D2 = { ...JSON.parse(JSON.stringify(D)), extravios: [{ status: "Extraviado", transportadora: "Anjun", codigo: "AJ123", valor: 50 }] };
+    ctx._fsRender(D2);
+    const html = el("fech-sistema").innerHTML;
+    assert.match(html, /class="extr-wa" href="https:\/\/wa\.me\/554991984179\?text=/);
+    assert.ok(html.includes(encodeURIComponent("contestar um pedido da Anjun.\nCódigo: AJ123")), "mensagem com transportadora e código");
+    ctx._fsRender(D2, { el: "adm-fech-sistema", pedidos: () => "" });
+    assert.doesNotMatch(el("adm-fech-sistema").innerHTML, /Contestar/);
+});
