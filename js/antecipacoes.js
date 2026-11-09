@@ -15,7 +15,15 @@ function abrirAntecipacoes(event) {
     document.getElementById("ant-btn-2q").classList.remove("active");
     document.getElementById("ant-empty").style.display = "";
     document.getElementById("ant-content").style.display = "none";
+    _antCarregando(false);
     mostrarTela("tela-antecipacoes");
+}
+
+function _antCarregando(sim) {
+    const el = document.getElementById("ant-carregando");
+    if (!el) return;
+    el.style.display = sim ? "" : "none";
+    el.innerHTML = sim ? skLogo() : "";
 }
 
 function _iniciarSelectsAnt() {
@@ -190,6 +198,11 @@ function _antBuscarNF() {
     _antMes = parseInt(mes); _antAno = parseInt(ano);
     _antNFAtual = null;
     const reqId = ++_antReqId;
+    // A nota e o painel demoram (o painel lê a quinzena inteira). Sem isto a tela seguia
+    // pedindo "Selecione a quinzena" com ela já escolhida, e o entregador achava que travou.
+    document.getElementById("ant-empty").style.display = "none";
+    document.getElementById("ant-content").style.display = "none";
+    _antCarregando(true);
 
     // Busca NF (dados cadastrais) e painel (valor vivo da planilha) em paralelo
     Promise.all([
@@ -202,6 +215,7 @@ function _antBuscarNF() {
     ]).then(([nf, painel]) => {
         // Resposta desatualizada deixaria a NF de uma quinzena pronta pra antecipar na outra.
         if (reqId !== _antReqId) return;
+        _antCarregando(false);
         const uploadedAt   = painel?.planilha_uploaded_at ?? null;
         const valorPlanilha = painel?.total_receber_num ?? null;
         const nfCard        = document.getElementById("ant-nf-card");
