@@ -92,9 +92,10 @@ function _fxRender() {
             <div class="cft-kpi"><div class="cft-kpi-valor${t.sem_fechamento.entregadores ? " cft-aviso" : ""}">${t.sem_fechamento.entregadores} · ${_fxNum(t.sem_fechamento.total)}</div><div class="cft-kpi-rotulo">Sem fechamento na quinzena</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor${t.sem_conversao.entregadores ? " cft-aviso" : ""}">${t.sem_conversao.entregadores} · ${_fxNum(t.sem_conversao.total)}</div><div class="cft-kpi-rotulo">Responsável sem entregador</div></div>
         </div>
-        <div class="cft-ajuda" style="margin-bottom:10px">Linhas da planilha de extravios com "Data desconto" = <b style="color:#cbd5e1">${_fxEsc(d.codigo_quinzena)}</b>.
+        <div class="cft-ajuda" style="margin-bottom:10px">Extravios com "Data desconto" = <b style="color:#cbd5e1">${_fxEsc(d.codigo_quinzena)}</b>.
             O desconto entra no Resumo da Quinzena de quem tem fechamento.
             <a href="#" class="cft-ordem" style="color:#60a5fa" onclick="event.preventDefault();_fxAbrirFonte()">Fonte: planilha e aba</a>
+            ${_fxHtmlCopia(d.copia)}
             ${d.tem_relatorios ? "" : `<span class="cft-aviso">Nenhum relatório de transportadora nesta quinzena ainda — todos aparecem como sem fechamento.</span>`}</div>
         <div class="cft-barra" style="justify-content:space-between">
             <span style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -118,6 +119,29 @@ function _fxRender() {
                 <th style="text-align:right">Valor (R$)</th><th>Causa</th></tr></thead>
             <tbody id="fx-tbody-lin"></tbody></table></div>`;
     _fxRenderTabelas();
+}
+
+// Os extravios ficam no sistema (cópia da planilha, conferida sozinha a cada poucos minutos);
+// "Atualizar agora" confere na hora.
+function _fxHtmlCopia(c) {
+    if (!c) return "";
+    const quando = c.conferido_em ? new Date(c.conferido_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : null;
+    return `<div style="margin-top:4px">${quando ? `Planilha conferida às ${_fxEsc(quando)}` : "Planilha ainda não conferida desde que o servidor ligou"}
+        (sozinho a cada ${Number(c.intervalo_min) || 5} min).
+        ${c.erro ? `<span class="cft-aviso">Última conferência falhou: ${_fxEsc(c.erro)}</span>` : ""}
+        <button class="cft-link" id="fx-sinc-btn" onclick="_fxSincronizar()">Atualizar agora</button> <span id="fx-sinc-status"></span></div>`;
+}
+
+async function _fxSincronizar() {
+    const btn = document.getElementById("fx-sinc-btn"), st = document.getElementById("fx-sinc-status");
+    btn.disabled = true;
+    st.innerText = "Conferindo a planilha...";
+    try {
+        const r = await fetch(`${_FX_API()}/extravios-sincronizar`, { method: "POST", headers: { "Authorization": "Bearer " + token } });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { btn.disabled = false; st.innerText = d.error || "Erro ao atualizar."; return; }
+        _fxCarregar();
+    } catch (_) { btn.disabled = false; st.innerText = "Erro ao atualizar."; }
 }
 
 function _fxMudarFiltro(k) { _fxFiltro = k; _fxRender(); }

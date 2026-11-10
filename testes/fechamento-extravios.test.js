@@ -69,3 +69,14 @@ test("categorias: GC Interno e Terceirizada separados, cada responsável por si"
     const abas = JSON.parse(JSON.stringify(ctx._fxAbas()));
     assert.deepStrictEqual(abas[0].linhas.slice(1).map(l => [l[0], l[1], l[5]]), [["GC Interno", "GC Interno - Caçador", 10], ["GC Interno", "GC Interno - Videira", 20]]);
 });
+
+test("cópia no sistema: mostra quando conferiu a planilha, o erro escapado e o Atualizar agora", () => {
+    const { ctx } = carregar();
+    assert.strictEqual(ctx._fxHtmlCopia(null), "");
+    const h = ctx._fxHtmlCopia({ conferido_em: "2026-11-10T12:05:00Z", erro: "<b>403</b>", intervalo_min: 5 });
+    assert.match(h, /Planilha conferida às \d\d:\d\d/);
+    assert.match(h, /a cada 5 min/);
+    assert.match(h, /&lt;b&gt;403/);
+    assert.match(h, /onclick="_fxSincronizar\(\)">Atualizar agora/);
+    assert.match(ctx._fxHtmlCopia({ conferido_em: null, erro: null, intervalo_min: 5 }), /ainda não conferida/);
+});

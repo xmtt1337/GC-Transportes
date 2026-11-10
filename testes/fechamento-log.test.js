@@ -22,7 +22,7 @@ const D = {
 
 function carregar() {
     const els = {};
-    const el = (id) => els[id] || (els[id] = { innerHTML: "", value: "", checked: false });
+    const el = (id) => els[id] || (els[id] = { innerHTML: "", value: "", checked: false, style: {} });
     const ctx = { document: { getElementById: el }, Date, Number, Math, String, Object, Set, isNaN };
     vm.createContext(ctx);
     vm.runInContext(fonte, ctx);
@@ -57,4 +57,31 @@ test("menu escondido e liberado só no bloco do dev", () => {
     const i = core.indexOf('show("menu-item-log-valores")');
     assert.ok(i > 0);
     assert.ok(core.lastIndexOf('if (role === "dev") {', i) > core.lastIndexOf('if (role === "finance") {', i), "dentro do if do dev");
+});
+
+test("aba Extravios: entrou/saiu/mudou com código, valores e detalhe; nome escapado; filtro de entregador", () => {
+  const { ctx, el } = carregar();
+  const ext = {
+    conferido_em: "2026-11-10T12:00:00Z", rotulos: { valor: "Valor", data_desconto: "Data desconto" },
+    linhas: [
+      { tipo: "entrou", codigo: "BR0001", entregador: "<i>Fulano</i> - Teste", status: "Extraviado", transportadora: "Shopee", valor_antes: null, valor_depois: 49.9, campos: [], em: "2026-11-10T12:00:00Z" },
+      { tipo: "mudou", codigo: "BR0002", entregador: "Beltrano - Teste", status: "Multa", transportadora: "Anjun", valor_antes: 10, valor_depois: 20,
+        campos: [{ campo: "valor", antes: 10, depois: 20 }], em: "2026-11-10T12:00:00Z" },
+      { tipo: "saiu", codigo: "BR0003", entregador: "Beltrano - Teste", status: "Extraviado", transportadora: "Imile", valor_antes: 5, valor_depois: null, campos: [], em: "2026-11-10T12:00:00Z" },
+    ],
+  };
+  vm.runInContext("_lvAba = 'extravios'; _lvExt = " + JSON.stringify(ext) + "; _lvDesenhar();", ctx);
+  let h = el("lv-lista").innerHTML;
+  assert.doesNotMatch(h, /<i>Fulano/);
+  assert.match(h, /&lt;i&gt;Fulano/);
+  assert.match(h, /cft-neg">Entrou/);
+  assert.match(h, /fs-pos">Saiu/);
+  assert.match(h, /Valor: 10 → 20/);
+  assert.match(h, /49,90/);
+  assert.match(el("lv-abas").innerHTML, /cft-chip on" onclick="_lvTrocarAba\('extravios'\)/);
+  el("lv-ent").value = "Beltrano - Teste";
+  vm.runInContext("_lvDesenhar();", ctx);
+  h = el("lv-lista").innerHTML;
+  assert.doesNotMatch(h, /BR0001/);
+  assert.match(h, /2 mudança/);
 });
