@@ -93,6 +93,7 @@ function deFiltrarLinhas(linhas, { busca, soRespostas, soSemPix }) {
 
 /** Coluna Origem: de onde veio e, se o entregador preencheu, quando — e se a planilha ficou sem a cópia. */
 function deHtmlOrigem(l) {
+    if (!l.preenchido_em && l.origem === "cadastro") return `<span class="de-origem">Cadastrado no sistema</span>`;
     if (!l.preenchido_em) return `<span class="de-origem">Planilha${l.linha_planilha ? ` · linha ${l.linha_planilha}` : ""}</span>`;
     const aviso = l.planilha_erro
         ? `<div class="de-pendente" title="${_deEsc(l.planilha_erro)}">não copiado pra planilha</div>`
@@ -300,7 +301,7 @@ function deHtmlHistorico(h, rotulos) {
     const tipo = (h.tipo === "novo"
         ? `<span class="de-tipo-novo">Novo</span>`
         : `<span class="de-tipo-atualizado">Atualizado</span>`) + status;
-    const origem = { entregador: "pelo formulário", usuario: "copiado do login", sistema: "correção do sistema" }[h.origem] || "importação da planilha";
+    const origem = { entregador: "pelo formulário", usuario: "copiado do login", sistema: "correção do sistema", cadastro: "cadastrado no sistema" }[h.origem] || "importação da planilha";
     const ent = _deEsc(h.usuarios || "—") + (h.id_interno ? ` <span class="de-origem">· ID ${_deEsc(h.id_interno)}</span>` : "");
     return `
         <tr>

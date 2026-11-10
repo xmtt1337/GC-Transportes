@@ -1420,8 +1420,8 @@ function _cfBuscarEntregador(q) {
     if (cont) cont.innerText = `${lista.length} de ${todos.length} entregadores`;
 }
 
-// Cadastro de entregador novo pela própria tela: grava na aba "Solicitação de usuários"
-// da planilha Dados entregadores (mesmo "Inserir Entregador" do Planejamento).
+// Cadastro de entregador novo pela própria tela: vira linha de Cadastros › Dados entregadores
+// no sistema (mesmo "Inserir Entregador" do Planejamento; desde 10/11/2026 não vai pra planilha).
 function _cfAbrirNovoEntregador() {
     const el = document.getElementById("cf-conv-novo");
     const digitado = (document.getElementById("cf-conv-input").value || "").trim();
@@ -1429,7 +1429,7 @@ function _cfAbrirNovoEntregador() {
         <label class="cft-rotulo" for="cf-novo-nome">Novo entregador</label>
         <input id="cf-novo-nome" class="cft-input" autocomplete="off" placeholder="Nome Sobrenome - Cidade" value="${_cfEsc(digitado)}"
             onkeydown="if(event.key==='Enter')_cfCadastrarEntregador()">
-        <div class="cft-ajuda" style="margin-top:6px">Modelo: <b style="color:#cbd5e1">Nome Sobrenome - Cidade</b>. Vai pra aba Solicitação de usuários dos Dados entregadores.</div>
+        <div class="cft-ajuda" style="margin-top:6px">Modelo: <b style="color:#cbd5e1">Nome Sobrenome - Cidade</b>. Entra em Cadastros › Dados entregadores e já aparece em todas as listas.</div>
         <div class="cft-barra" style="margin:8px 0 0">
             <button class="cft-btn" id="cf-novo-btn" onclick="_cfCadastrarEntregador()">Cadastrar</button>
             <span class="cft-ajuda" id="cf-novo-status"></span>

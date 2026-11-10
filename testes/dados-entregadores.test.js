@@ -59,6 +59,8 @@ test("origem: planilha com a linha, entregador com a data e aviso se não copiou
   assert.match(ent, /Entregador/);
   assert.match(ent, /não copiado pra planilha/);
   assert.doesNotMatch(c.deHtmlOrigem(LINHAS[1]), /não copiado/);
+  // Cadastrado pelo Cadastrar/Inserir Entregador (10/11/2026): sem planilha nenhuma.
+  assert.match(c.deHtmlOrigem({ usuarios: "Fulano de Teste - Vila", origem: "cadastro" }), /Cadastrado no sistema/);
 });
 
 test("resumo da importação", () => {

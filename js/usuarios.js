@@ -235,12 +235,12 @@ function _salvarNovoEntregador() {
         document.getElementById("mne-id-gerado").innerText = data.username;
         document.getElementById("mne-senha-gerada").innerText = data.senha_temporaria || "—";
         document.getElementById("mne-copiado").innerText   = "";
-        // O usuário já existe; a planilha é um passo a mais e pode falhar sozinha.
+        // O usuário já existe; entrar nos Dados entregadores é um passo a mais e pode falhar sozinho.
         const sol = data.solicitacao;
         const planilha = document.getElementById("mne-planilha");
         planilha.style.color = sol && !sol.ok ? "#f59e0b" : "";
         planilha.innerText = !sol ? ""
-            : sol.nome ? `${sol.nome} foi para a Solicitação de usuários dos Dados entregadores.`
+            : sol.nome ? `${sol.nome} entrou em Cadastros › Dados entregadores.`
             : sol.aviso + (sol.ok ? "" : " Peça o nome pelo Planejamento de Rotas.");
         document.getElementById("mne-form").style.display    = "none";
         document.getElementById("mne-sucesso").style.display = "";

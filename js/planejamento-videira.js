@@ -533,7 +533,7 @@ function _pvReatribuirPorDrag(linha, novoEntregador) {
 document.addEventListener("pointerdown", _pvDragIniciar);
 
 // ───── Inserir Entregador — quem planeja pede o cadastro de quem não está na lista ─────
-// Grava na aba "Solicitação de usuários" da planilha Dados entregadores, e o nome já
+// Vira linha de Cadastros › Dados entregadores no sistema (10/11/2026), e o nome já
 // entra no combobox. A regra do modelo é a mesma do backend (modules/planejamento/
 // usuarios.js); aqui ela só dá o aviso enquanto digita — quem decide é o servidor.
 const _PV_PALAVRA   = "[A-Za-zÀ-ÖØ-öø-ÿ]+(?:'[A-Za-zÀ-ÖØ-öø-ÿ]+)?";
