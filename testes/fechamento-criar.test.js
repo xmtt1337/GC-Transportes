@@ -124,6 +124,23 @@ test("cadastrar novo entregador: manda o nome, entra na lista e já fica escolhi
     assert.strictEqual(t.el("cf-conv-input").value, "Pessoa Nova - Vila Teste");
 });
 
+test("busca do entregador: usuário principal aparece com o entregador fosco e escolher atribui ao entregador", () => {
+    const t = carregarComDom(async () => ({ ok: true, json: async () => ({}) }));
+    vm.runInContext(`_cfEntregadores = { nomes: ["Ciclano Teste - Vila", "Fulano de Teste - Vila Teste"], aviso: null,
+        principais: [{ principal: "Fulaninho <b>Apelido</b>", entregador: "Fulano de Teste - Vila Teste" }] }`, t.ctx);
+    const s = JSON.parse(vm.runInContext("JSON.stringify(_cfSugestoes(_cfEntregadores, 'fula'))", t.ctx));
+    assert.deepStrictEqual(s.map(x => [x.rotulo, x.nome, x.principal]),
+        [["Fulaninho <b>Apelido</b>", "Fulano de Teste - Vila Teste", true], ["Fulano de Teste - Vila Teste", "Fulano de Teste - Vila Teste", false]]);
+    assert.deepStrictEqual(JSON.parse(vm.runInContext("JSON.stringify(_cfSugestoes(_cfEntregadores, 'apelido').map(x => x.nome))", t.ctx)), ["Fulano de Teste - Vila Teste"]);
+    t.el("cf-conv-sugestoes"); t.el("cf-conv-total"); t.el("cf-conv-cidades-ent").dataset = {};
+    t.ctx._cfBuscarEntregador("fula");
+    const h = t.el("cf-conv-sugestoes").innerHTML;
+    assert.doesNotMatch(h, /<b>Apelido/);
+    assert.ok(h.includes('>Fulaninho &lt;b&gt;Apelido&lt;/b&gt; <span style="color:#64748b">→ Fulano de Teste - Vila Teste</span>'), h);
+    assert.match(h, /data-nome="Fulano de Teste - Vila Teste"[^>]*>Fulaninho/);
+    assert.strictEqual(t.el("cf-conv-total").innerText, "1 de 2 entregadores", "principal não conta como entregador");
+});
+
 test("filtro de coluna: vai junto na busca de pacotes e marca o funil da coluna filtrada", () => {
     const ctx = carregar();
     vm.runInContext(`_cfTranspAtual = "anjun"; _cfColFiltros = { cidade: ["Vila Teste"] }; _cfOrdem = { coluna: "data_entrega", dir: "desc" };`, ctx);

@@ -422,7 +422,7 @@ function _cfHtmlTlSemConversao(d) {
 function _cfTlGarantirEntregadores() {
     if (_cfEntregadores) return;
     fetch(`${_CF_API()}/entregadores`, { headers: _cfHeaders() }).then(r => r.json()).then(d => {
-        _cfEntregadores = { nomes: d.nomes || [], aviso: d.aviso || null };
+        _cfEntregadores = { nomes: d.nomes || [], aviso: d.aviso || null, principais: d.principais || [] };
         const dl = document.getElementById("cf-tl-entregadores");
         if (dl) dl.innerHTML = _cfEntregadores.nomes.map(n => `<option value="${_cfEsc(n)}">`).join("");
     }).catch(() => {});
@@ -526,7 +526,7 @@ function _cfCarregarFixos(msg) {
         fetch(`${_CF_API()}/valores-fixos`, { headers: _cfHeaders() }).then(r => r.json()),
         _cfEntregadores ? Promise.resolve(_cfEntregadores)
             : fetch(`${_CF_API()}/entregadores`, { headers: _cfHeaders() }).then(r => r.json())
-                .then(d => (_cfEntregadores = { nomes: d.nomes || [], aviso: d.aviso || null })).catch(() => ({ nomes: [] })),
+                .then(d => (_cfEntregadores = { nomes: d.nomes || [], aviso: d.aviso || null, principais: d.principais || [] })).catch(() => ({ nomes: [] })),
     ]).then(([d, ent]) => {
         if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
         _cfFixos = d.linhas || [];
@@ -1395,29 +1395,43 @@ function _cfBuscarEntregador(q) {
         .then(r => r.json())
         .then(d => {
             if (d.error) throw new Error(d.error);
-            _cfEntregadores = { nomes: d.nomes || [], aviso: d.aviso || null };
+            _cfEntregadores = { nomes: d.nomes || [], aviso: d.aviso || null, principais: d.principais || [] };
             const atual = document.getElementById("cf-conv-input");
             if (atual) _cfBuscarEntregador(atual.value);
         }).catch(err => { el.innerHTML = `<div class="cft-erro">${_cfEsc(err.message || "Erro ao carregar entregadores.")}</div>`; });
         return;
     }
-    const termo = _cfChave(q);
-    // Começa com o termo primeiro, depois quem só contém; vazio mostra todo mundo.
+    const lista = _cfSugestoes(_cfEntregadores, q);
     const todos = _cfEntregadores.nomes;
-    const comeca = [], contem = [];
-    for (const n of todos) {
-        const k = _cfChave(n);
-        if (!termo || k.startsWith(termo)) comeca.push(n);
-        else if (k.includes(termo)) contem.push(n);
-    }
-    const lista = comeca.concat(contem);
     const aviso = _cfEntregadores.aviso ? `<div class="cft-erro" style="font-size:12px;padding:4px 2px">${_cfEsc(_cfEntregadores.aviso)}</div>` : "";
+    // Usuário principal (pessoa): o nome dela e, fosco, o entregador; clicar escolhe o entregador.
+    const item = (s) => `<button class="cft-sugestao" data-nome="${_cfEsc(s.nome)}" onclick="_cfEscolherEntregador(this.dataset.nome)"${s.principal ? ` title="Usuário principal — atribui para ${_cfEsc(s.nome)}"` : ""}>${_cfEsc(s.rotulo)}${s.principal
+        ? ` <span style="color:#64748b">→ ${_cfEsc(s.nome)}</span>` : ""}</button>`;
     el.innerHTML = aviso + (lista.length
-        ? lista.slice(0, 200).map(n => `<button class="cft-sugestao" data-nome="${_cfEsc(n)}" onclick="_cfEscolherEntregador(this.dataset.nome)">${_cfEsc(n)}</button>`).join("")
+        ? lista.slice(0, 200).map(item).join("")
           + (lista.length > 200 ? `<div class="cft-ajuda" style="padding:6px 2px">+${lista.length - 200} — digite mais pra filtrar.</div>` : "")
         : `<div class="cft-ajuda" style="padding:6px 2px">Ninguém com esse nome nos Dados entregadores — salvar cria um nome novo.</div>`);
     const cont = document.getElementById("cf-conv-total");
-    if (cont) cont.innerText = `${lista.length} de ${todos.length} entregadores`;
+    if (cont) cont.innerText = `${lista.filter(s => !s.principal).length} de ${todos.length} entregadores`;
+}
+
+/**
+ * Sugestões da busca: os entregadores e os usuários principais (pessoa → entregador dos logins
+ * dela). Começa com o termo primeiro, depois quem só contém; vazio mostra todo mundo, em ordem.
+ * @return {Array<{rotulo, nome, principal}>} nome = o entregador que vai ser escolhido
+ */
+function _cfSugestoes(dados, q) {
+    const termo = _cfChave(q);
+    const itens = (dados.nomes || []).map(n => ({ rotulo: n, nome: n, principal: false }))
+        .concat((dados.principais || []).map(p => ({ rotulo: p.principal, nome: p.entregador, principal: true })))
+        .sort((a, b) => a.rotulo.localeCompare(b.rotulo, "pt-BR") || (a.principal - b.principal));
+    const comeca = [], contem = [];
+    for (const s of itens) {
+        const k = _cfChave(s.rotulo);
+        if (!termo || k.startsWith(termo)) comeca.push(s);
+        else if (k.includes(termo)) contem.push(s);
+    }
+    return comeca.concat(contem);
 }
 
 // Cadastro de entregador novo pela própria tela: vira linha de Cadastros › Dados entregadores
