@@ -1035,7 +1035,7 @@ function _cfHtmlResumo(r) {
         <div class="cft-kpis">
             <div class="cft-kpi"><div class="cft-kpi-valor">${r.total.toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Pacotes</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">${perf ? _cfNum(perf.pct, 2) + "%" : "—"}</div><div class="cft-kpi-rotulo">Performance geral</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor">${perf ? perf.onholds.toLocaleString("pt-BR") : "—"}</div><div class="cft-kpi-rotulo">Onholds na quinzena${perf && perf.onholds_sem_entregador ? ` · <span class="cft-neg">${perf.onholds_sem_entregador} sem entregador</span>` : ""}</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor">${perf ? perf.onholds.toLocaleString("pt-BR") : "—"}</div><div class="cft-kpi-rotulo">Onholds na quinzena${perf && perf.onholds_sem_entregador ? ` · <button class="cft-link cft-neg" title="Ver quais são" onclick="_cfAbrirSemEntregador()">${perf.onholds_sem_entregador} sem entregador</button>` : ""}</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor cft-pos">${moedaJS(r.valor_motorista)}</div><div class="cft-kpi-rotulo">Valor motoristas</div></div>
         </div>` : `
         <div class="cft-kpis">
@@ -1313,6 +1313,55 @@ function _cfHtmlNomesPend() {
         ? `<span class="cft-tag cft-tag-ok" title="${_cfEsc(x.nome)} → ${_cfEsc(x.feito)}">${_cfEsc(x.nome)}<span>→ ${_cfEsc(x.feito)}</span></span>`
         : `<button class="cft-tag cft-tag-btn" onclick="_cfAbrirConversao(${i})">${_cfEsc(x.nome)} <b>${x.qtd}</b></button>`
     ).join("");
+}
+
+// ── Onholds que não contaram pra ninguém (lista guardada na última consolidação).
+function _cfAbrirSemEntregador() {
+    _cfFecharSemEntregador();
+    const ov = document.createElement("div");
+    ov.className = "cft-modal-overlay";
+    ov.id = "cf-sem-ent";
+    ov.innerHTML = `
+        <div class="cft-modal" style="max-width:980px;width:96vw">
+            <div class="cft-modal-titulo">Onholds sem entregador</div>
+            <div class="cft-ajuda" style="margin-bottom:12px">Não contam na performance de ninguém. Driver Name sem conversão:
+                cadastre em Conversão de nomes e clique em Recalcular.</div>
+            <div id="cf-sem-ent-corpo">${skLogo(true)}</div>
+            <div class="cft-barra" style="justify-content:flex-end;margin-bottom:0">
+                <button class="cft-btn" onclick="_cfFecharSemEntregador()">Fechar</button>
+            </div>
+        </div>`;
+    ov.addEventListener("click", e => { if (e.target === ov) _cfFecharSemEntregador(); });
+    document.body.appendChild(ov);
+    const corpo = document.getElementById("cf-sem-ent-corpo");
+    fetch(`${_CF_API()}/onholds-sem-entregador?${_cfQs()}`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => { corpo.innerHTML = _cfHtmlSemEntregador(d); })
+    .catch(() => { corpo.innerHTML = `<span class="cft-erro">Erro ao carregar.</span>`; });
+}
+
+function _cfFecharSemEntregador() {
+    const ov = document.getElementById("cf-sem-ent");
+    if (ov) ov.remove();
+}
+
+function _cfHtmlSemEntregador(d) {
+    if (d.error) return `<span class="cft-erro">${_cfEsc(d.error)}</span>`;
+    if (!d.linhas) return `<span class="cft-ajuda">A lista começa a ser guardada agora: clique em Recalcular pra ver.</span>`;
+    if (!d.linhas.length) return `<span class="cft-ajuda">Nenhum.</span>`;
+    // Resumo por Driver Name (o que dá pra corrigir) antes da lista.
+    const porNome = new Map();
+    for (const o of d.linhas) if (o.usuario) porNome.set(o.usuario, (porNome.get(o.usuario) || 0) + 1);
+    const semNome = d.linhas.filter(o => !o.usuario).length;
+    const resumo = [...porNome].map(([n, q]) => `<span class="cft-tag">${_cfEsc(n)} <b>${q}</b></span>`).join("")
+        + (semNome ? `<span class="cft-tag">sem Driver Name <b>${semNome}</b></span>` : "");
+    return `<div class="cft-pend-tags" style="margin-bottom:10px">${resumo}</div>
+        <div style="max-height:60vh;overflow:auto"><table class="cft-tabela" style="margin:0"><thead><tr>
+            <th>Pedido</th><th>Dia</th><th>XPT</th><th>Driver Name no arquivo</th><th>Motivo do onhold</th><th>Por que ficou sem entregador</th>
+        </tr></thead><tbody>${d.linhas.map(o => `<tr>
+            <td>${_cfEsc(o.codigo || "—")}</td><td>${o.dia ? _cfDia(o.dia) : "—"}${o.hora ? ` ${_cfEsc(o.hora)}` : ""}</td>
+            <td>${_cfEsc(o.xpt || "—")}</td><td>${_cfEsc(o.usuario || "—")}</td><td>${_cfEsc(o.motivo || "—")}</td>
+            <td>${_cfEsc(o.motivo_sem || "")}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
 // ── Card de conversão de nome: nome do relatório → entregador responsável. Grava na

@@ -570,3 +570,16 @@ test("Jadlog está na lista do Criar Fechamento como transportadora por anotaç�
     const j = vm.runInContext("_CF_TRANSPORTADORAS.find(t => t.key === 'jadlog')", ctx);
     assert.ok(j && j.porAnotacao && j.label === "Jadlog");
 });
+
+test("onholds sem entregador: resumo por Driver Name e aviso quando a lista ainda não existe", () => {
+    const ctx = carregar();
+    assert.match(ctx._cfHtmlSemEntregador({ linhas: null }), /Recalcular/);
+    const h = ctx._cfHtmlSemEntregador({ linhas: [
+        { codigo: "BRTESTE1", dia: "2026-10-05", usuario: "login.teste", xpt: "Caçador", motivo: "Cliente ausente", motivo_sem: "Driver Name sem conversão de nome" },
+        { codigo: "BRTESTE2", dia: "2026-10-06", usuario: "login.teste", motivo_sem: "Driver Name sem conversão de nome" },
+        { codigo: "BRTESTE3", dia: "2026-10-06", usuario: null, motivo_sem: "Sem Driver Name no arquivo e pedido sem entrega na quinzena" },
+    ] });
+    assert.ok(h.includes("login.teste <b>2</b>"));
+    assert.ok(h.includes("sem Driver Name <b>1</b>"));
+    assert.ok(h.includes("BRTESTE3"));
+});
