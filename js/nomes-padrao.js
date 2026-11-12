@@ -61,7 +61,7 @@ function _cnpCarregar() {
                 <tr>
                     <td data-label="Como a transportadora escreve">${_cnpEsc(l.nome_origem)}</td>
                     <td style="color:#4a5568">→</td>
-                    <td data-label="Nome no sistema">${_cnpEsc(l.nome_sistema)}</td>
+                    <td data-label="Nome no sistema">${_cnpEsc(l.nome_sistema)}${_cnpHtmlHistorico(l)}</td>
                     <td data-label="Ações">
                         <div style="display:flex;gap:6px">
                             <button class="adm-usr-action senha" onclick="_cnpAbrirEditar(${l.id},'${_cnpJs(l.nome_origem)}','${_cnpJs(l.nome_sistema)}')">Editar</button>
@@ -72,6 +72,29 @@ function _cnpCarregar() {
             _cnpPintarResumo(d);
         })
         .catch(() => skFim(empty, "Erro ao conectar com o servidor."));
+}
+
+// Trocas com data: "até 31/10/2026: Fulano" (o fechamento usa o da época pelo dia do pacote).
+function _cnpDia(d) { return String(d || "").split("-").reverse().join("/"); }
+function _cnpHtmlHistorico(l) {
+    const h = l.historico || [];
+    if (!h.length) return "";
+    return h.map((x, i) => `<div style="font-size:12px;color:#64748b;margin-top:3px">${i ? `de ${_cnpDia(_cnpDiaSeguinte(h[i - 1].ate))} ` : ""}até ${_cnpDia(x.ate)}: ${_cnpEsc(x.nome_sistema)}
+        <button class="cft-link" style="font-size:12px;margin-left:6px" onclick="_cnpDesfazerTroca(${x.id},'${_cnpJs(x.nome_sistema)}','${_cnpJs(_cnpDia(x.ate))}')">desfazer</button></div>`).join("")
+        + `<div style="font-size:12px;color:#64748b;margin-top:3px">de ${_cnpDia(_cnpDiaSeguinte(h[h.length - 1].ate))} em diante: ${_cnpEsc(l.nome_sistema)}</div>`;
+}
+function _cnpDiaSeguinte(d) {
+    const t = new Date(d + "T00:00:00Z");
+    t.setUTCDate(t.getUTCDate() + 1);
+    return t.toISOString().slice(0, 10);
+}
+function _cnpDesfazerTroca(id, nome, ate) {
+    gcConfirm(`Desfazer a troca? Os dias até ${ate} deixam de ser de "${nome}" e passam pro entregador de agora (depois de Recalcular).`, () => {
+        fetch(`${API}/admin/nomes-padrao/historico/${id}`, { method: "DELETE", headers: { "Authorization": "Bearer " + token } })
+            .then(r => r.json().then(d => ({ ok: r.ok, d })))
+            .then(({ ok, d }) => { if (!ok) return gcAlert(d.error || "Não foi possível desfazer."); _cnpCarregar(); })
+            .catch(() => gcAlert("Erro ao conectar com o servidor."));
+    }, null, "Desfazer");
 }
 
 // Escapa pra dentro de um atributo onclick="...('...')" — apóstrofo é o único caractere que
@@ -132,17 +155,45 @@ function _cnpAbrirNovo() {
     document.getElementById("cnp-editar-origem").value = "";
     document.getElementById("cnp-editar-sistema").value = "";
     document.getElementById("cnp-editar-erro").innerText = "";
+    _cnpMostrarData();
     _abrirModal("modal-cnp-editar");
     setTimeout(() => document.getElementById("cnp-editar-origem").focus(), 80);
 }
 
 function _cnpAbrirEditar(id, nome_origem, nome_sistema) {
-    _cnpEditando = { id };
+    _cnpEditando = { id, nome_sistema };
     document.getElementById("cnp-editar-titulo").innerText = "Editar par";
     document.getElementById("cnp-editar-origem").value = nome_origem;
     document.getElementById("cnp-editar-sistema").value = nome_sistema;
     document.getElementById("cnp-editar-erro").innerText = "";
+    document.getElementById("cnp-editar-data").value = _cnpHoje();
+    _cnpMostrarData();
     _abrirModal("modal-cnp-editar");
+}
+
+function _cnpHoje() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Trocou o entregador de um par existente: pergunta desde quando (antes fica com o anterior).
+function _cnpMostrarData() {
+    const wrap = document.getElementById("cnp-editar-data-wrap");
+    if (!wrap) return;
+    const ed = _cnpEditando;
+    const novo = document.getElementById("cnp-editar-sistema").value.trim();
+    const trocou = !!(ed && ed.nome_sistema && novo && novo !== ed.nome_sistema.trim());
+    wrap.style.display = trocou ? "" : "none";
+    if (trocou) document.getElementById("cnp-editar-data-ajuda").innerHTML =
+        `Antes desse dia continua de <b style="color:#e2e8f0">${_cnpEsc(ed.nome_sistema)}</b> — inclusive se recalcular quinzena antiga. Apague a data pra trocar em todos os dias.`;
+}
+
+/** O que vai no PUT/POST: a data só quando trocou o entregador de um par existente. */
+function _cnpCorpoSalvar(editando, origem, sistema) {
+    const corpo = { nome_origem: origem, nome_sistema: sistema };
+    const el = document.getElementById("cnp-editar-data");
+    if (editando && editando.nome_sistema && sistema !== editando.nome_sistema.trim() && el && el.value) corpo.a_partir_de = el.value;
+    return corpo;
 }
 
 function _cnpSalvar() {
@@ -161,7 +212,7 @@ function _cnpSalvar() {
     fetch(url, {
         method: editando ? "PUT" : "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ nome_origem: origem, nome_sistema: sistema })
+        body: JSON.stringify(_cnpCorpoSalvar(editando, origem, sistema))
     })
         .then(r => r.json().then(d => ({ ok: r.ok, d })))
         .then(({ ok, d }) => {
@@ -170,6 +221,7 @@ function _cnpSalvar() {
             if (!ok) { erro.innerText = d.error || "Não foi possível salvar."; return; }
             _fecharModal("modal-cnp-editar");
             _cnpCarregar();
+            if (d.historico_ate) gcAlert(`Salvo. Até ${_cnpDia(d.historico_ate)} continua com ${editando.nome_sistema}. Recalcule a quinzena atual pra aplicar.`);
         })
         .catch(() => {
             btn.disabled = false;

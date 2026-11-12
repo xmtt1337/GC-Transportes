@@ -111,3 +111,23 @@ test("_cnpNorm de vazio ou nulo nao quebra", () => {
   assert.strictEqual(api.norm(null), "");
   assert.strictEqual(api.norm(undefined), "");
 });
+
+// ── troca de entregador com data ──
+test("histórico da troca: até a véspera com o anterior, depois com o de agora", () => {
+  const ctx2 = vm.createContext({ console });
+  vm.runInContext(fonte + "\n;globalThis.__h = _cnpHtmlHistorico;", ctx2, { filename: "nomes-padrao.js" });
+  const h = ctx2.__h({ nome_sistema: "Beltrano Novo - Vila Teste", historico: [{ id: 1, nome_sistema: "Fulano Antigo - Vila Teste", ate: "2026-10-31" }] });
+  assert.ok(h.includes("até 31/10/2026: Fulano Antigo - Vila Teste"));
+  assert.ok(h.includes("de 01/11/2026 em diante: Beltrano Novo - Vila Teste"));
+  assert.strictEqual(ctx2.__h({ nome_sistema: "X", historico: [] }), "");
+});
+
+test("a data só vai no salvar quando troca o entregador de um par que já existe", () => {
+  const els = { "cnp-editar-data": { value: "2026-11-01" } };
+  const ctx2 = vm.createContext({ console, document: { getElementById: (id) => els[id] } });
+  vm.runInContext(fonte + "\n;globalThis.__c = _cnpCorpoSalvar;", ctx2, { filename: "nomes-padrao.js" });
+  const c = (ed, s) => plano(ctx2.__c(ed, "login.teste", s));
+  assert.strictEqual(c({ id: 1, nome_sistema: "Fulano Antigo" }, "Beltrano Novo").a_partir_de, "2026-11-01");
+  assert.strictEqual(c({ id: 1, nome_sistema: "Fulano Antigo" }, "Fulano Antigo").a_partir_de, undefined);
+  assert.strictEqual(c(null, "Beltrano Novo").a_partir_de, undefined);
+});

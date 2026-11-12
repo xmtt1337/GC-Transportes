@@ -2379,7 +2379,13 @@ if (_BASE) {
                 </div>
                 <div class="usr-modal-field">
                     <label class="usr-modal-label">Nome no sistema</label>
-                    <input class="usr-modal-input" id="cnp-editar-sistema" type="text" placeholder="Ex.: Adaiane da Silva - Videira" autocomplete="off">
+                    <input class="usr-modal-input" id="cnp-editar-sistema" type="text" placeholder="Ex.: Adaiane da Silva - Videira" autocomplete="off" oninput="_cnpMostrarData()">
+                </div>
+                <!-- Só ao trocar o entregador de um par que já existe: até a véspera fica com o anterior. -->
+                <div class="usr-modal-field" id="cnp-editar-data-wrap" style="display:none">
+                    <label class="usr-modal-label">Vale a partir de</label>
+                    <input class="usr-modal-input" id="cnp-editar-data" type="date">
+                    <div class="usr-modal-sub" id="cnp-editar-data-ajuda" style="margin-top:6px"></div>
                 </div>
                 <div class="usr-modal-error" id="cnp-editar-erro"></div>
                 <div class="usr-modal-btns">
@@ -4963,7 +4969,7 @@ if (_BASE) {
 <script src="js/extravios.js?v=20261104a"></script>
 <script src="js/extravios-registros.js?v=20261104c"></script>
 <script src="js/usuarios-gc.js?v=20260924b"></script>
-<script src="js/nomes-padrao.js?v=20261104c"></script>
+<script src="js/nomes-padrao.js?v=20261112a"></script>
 <script src="js/entregador-telefone.js?v=20261105a"></script>
 <script src="js/macros.js?v=20261105a"></script>
 <script src="js/macros-execucao.js?v=20261104c"></script>
