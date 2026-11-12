@@ -183,9 +183,11 @@ function _cnpMostrarData() {
     const ed = _cnpEditando;
     const novo = document.getElementById("cnp-editar-sistema").value.trim();
     const trocou = !!(ed && ed.nome_sistema && novo && novo !== ed.nome_sistema.trim());
-    wrap.style.display = trocou ? "" : "none";
-    if (trocou) document.getElementById("cnp-editar-data-ajuda").innerHTML =
-        `Antes desse dia continua de <b style="color:#e2e8f0">${_cnpEsc(ed.nome_sistema)}</b> — inclusive se recalcular quinzena antiga. Apague a data pra trocar em todos os dias.`;
+    // Sempre visível ao editar (escondido ficava parecendo que não existia); só vale se trocar o entregador.
+    wrap.style.display = ed && ed.nome_sistema ? "" : "none";
+    if (ed && ed.nome_sistema) document.getElementById("cnp-editar-data-ajuda").innerHTML = trocou
+        ? `Antes desse dia continua de <b style="color:#e2e8f0">${_cnpEsc(ed.nome_sistema)}</b> — inclusive se recalcular quinzena antiga. Apague a data pra trocar em todos os dias.`
+        : `Só vale se você trocar o nome no sistema acima: antes desse dia continua de <b style="color:#e2e8f0">${_cnpEsc(ed.nome_sistema)}</b>.`;
 }
 
 /** O que vai no PUT/POST: a data só quando trocou o entregador de um par existente. */
