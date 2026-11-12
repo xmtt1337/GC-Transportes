@@ -17,7 +17,7 @@ const _AR_MOTIVOS = {
     claims:           "Token sem os campos esperados",
     formato:          "Token malformado",
     agencia_errada:   "agency_id de outra agência",
-    ip_nao_permitido: "Origem fora da lista de IPs",
+    ip_nao_permitido: "Origem fora da lista de IPs (trava antiga, já retirada)",
 };
 
 const _AR_TIPOS = { 1: "FM — primeira milha", 2: "LH — linha-tronco", 3: "LM — última milha" };
@@ -64,19 +64,8 @@ function _htmlAgencyRouter(s, recebidos) {
             <div class="conf-bloco"><b>Agency ID</b><br>${_esc(s.agency_id || "—")}</div>
             <div class="conf-bloco"><b>Secret</b><br>
                 ${s.segredo_configurado ? "configurado" : "<b style='color:#e74c3c'>faltando</b>"}</div>
-            <div class="conf-bloco"><b>IPs permitidos</b><br>
-                ${s.ips_permitidos && s.ips_permitidos.length
-                    ? s.ips_permitidos.map(_esc).join("<br>")
-                    : "<span class='dica'>todos (lista vazia)</span>"}</div>
             <div class="conf-bloco"><b>Recebidos</b><br><b>${s.recebidos}</b></div>
         </div>
-        ${!(s.ips_permitidos && s.ips_permitidos.length) ? `
-        <p class="dica">
-            O secret desta integração é compartilhado com outras agências e
-            constava de um documento que circulou — assinatura válida, sozinha,
-            prova pouco. Quando a Shopee informar os IPs de origem, configure
-            <code>SPX_IPS_PERMITIDOS</code> no Render.
-        </p>` : ""}
     </div>
 
     ${s.recusas_7_dias && s.recusas_7_dias.length ? `
@@ -93,25 +82,6 @@ function _htmlAgencyRouter(s, recebidos) {
             <b>agency_id de outra agência</b> significa que chegou dado que não é
             da GC — vale mandar para a Shopee, é prova de erro de roteamento.
         </p>
-    </div>` : ""}
-
-    ${s.ips_recusados && s.ips_recusados.length ? `
-    <div class="secao-form">
-        <h3>IPs recusados por não estarem na lista</h3>
-        <p class="dica">
-            Sem janela de tempo — mostra desde o começo. É aqui que se vê se a
-            Shopee já está tentando mandar de um IP que falta incluir em
-            <code>SPX_IPS_PERMITIDOS</code>.
-        </p>
-        <table class="tabela">
-            <thead><tr><th>IP</th><th>Tentativas</th><th>Primeira</th><th>Última</th></tr></thead>
-            <tbody>${s.ips_recusados.map((i) => `<tr>
-                <td class="mono-pequeno">${_esc(i.ip || "—")}</td>
-                <td>${i.total}</td>
-                <td>${_fmtData(i.primeira_tentativa)}</td>
-                <td>${_fmtData(i.ultima_tentativa)}</td>
-            </tr>`).join("")}</tbody>
-        </table>
     </div>` : ""}
 
     <div class="secao-form">
