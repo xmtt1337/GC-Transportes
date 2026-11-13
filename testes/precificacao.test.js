@@ -85,3 +85,17 @@ test("Shopee: histórico mostra a faixa que mudou", () => {
     assert.match(h, /Caçador — seg a sáb: &lt; 95% R\$ 1\.50 → &lt; 95% R\$ 1\.60/);
     assert.match(h, /Q2 Nov\/2026/);
 });
+
+test("tabela: um bloco por cidade, nome uma vez ocupando as linhas dela e + Entregador embaixo", () => {
+    const grupos = ctx._prAgruparCidades([
+        { id: 1, cidade: "Vila Teste", entregador: null, valores: { NORMAL: { valor: 3, incentivo: 0 } } },
+        { id: 2, cidade: "Vila Teste", entregador: "Fulano Teste", valores: { NORMAL: { valor: 2.5, incentivo: 0 } } },
+        { id: 3, cidade: "Morro Falso", entregador: null, valores: { NORMAL: { valor: 4, incentivo: 0 } } },
+    ]);
+    const h = ctx._prHtmlGrupos(grupos, ["NORMAL"], true);
+    assert.strictEqual((h.match(/<tbody class="pr-cidade">/g) || []).length, 2);
+    assert.match(h, /rowspan="2"><b>Vila Teste<\/b>/);
+    assert.strictEqual((h.match(/\+ Entregador/g) || []).length, 2);
+    assert.doesNotMatch(ctx._prHtmlGrupos(grupos, ["NORMAL"], false), /Entregador<\/button>|Editar/);
+    assert.match(ctx._prHtmlGrupos([], ["NORMAL"], true), /Nenhuma linha/);
+});

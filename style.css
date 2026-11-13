@@ -7084,3 +7084,15 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 /* Repasse para a equipe (js/repasses.js): link de ação sóbrio, sublinha no hover. */
 .rp-link { color: #60a5fa; text-decoration: none; }
 .rp-link:hover { text-decoration: underline; }
+
+/* Fechamento › Precificação: cada cidade é um bloco (um <tbody>), com linha divisória entre
+   elas; dentro do bloco as linhas dos entregadores ficam sem divisória. */
+.pr-tabela tbody.pr-cidade td { border-bottom: none; }
+.pr-tabela tbody.pr-cidade tr:last-child td,
+.pr-tabela tbody.pr-cidade td.pr-cidade-nome { border-bottom: 1px solid rgba(255,255,255,0.12); }
+.pr-tabela tbody.pr-cidade td.pr-cidade-nome { vertical-align: top; color: #e2e8f0; min-width: 150px; }
+.pr-tabela tbody.pr-cidade tr:first-child td { padding-top: 10px; }
+.pr-tabela tbody.pr-cidade tr:last-child td { padding-bottom: 10px; }
+.pr-tabela tbody.pr-cidade:hover td { background: rgba(58,134,255,0.05); }
+.pr-tabela tbody.pr-cidade tr:hover td:not(.pr-cidade-nome) { background: rgba(58,134,255,0.10); }
+.pr-tabela .pr-mais { font-size: 12px; margin-top: 4px; }

@@ -187,11 +187,11 @@ function _prDesenharTabela() {
             <span class="cft-ajuda" id="pr-contagem"></span>
             ${editar ? `<button class="cft-btn primario" onclick="_prAbrirLinha(null)">Adicionar cidade</button>` : ""}
         </div>
-        <div class="cft-tabela-wrap" style="max-height:65vh;overflow:auto"><table class="cft-tabela"><thead><tr>
+        <div class="cft-tabela-wrap" style="max-height:65vh;overflow:auto"><table class="cft-tabela pr-tabela" id="pr-tabela"><thead><tr>
             <th>Cidade</th><th>Entregador</th><th>Polo</th><th class="num">SLA</th><th>Direto/Parceiro</th>
             ${d.tipos.map(tp => `<th class="num">${d.tipos.length > 1 ? _prEsc(tp) + " " : ""}Valor</th><th class="num">${d.tipos.length > 1 ? _prEsc(tp) + " " : ""}Incentivo</th>`).join("")}
             ${editar ? "<th></th>" : ""}
-        </tr></thead><tbody id="pr-linhas"></tbody></table></div>`;
+        </tr></thead></table></div>`;
     _prDesenharLinhas();
 }
 
@@ -202,23 +202,30 @@ function _prDesenharLinhas() {
     const grupos = _prAgruparCidades(linhas);
     const nCidades = _prAgruparCidades(d.linhas).length;
     document.getElementById("pr-contagem").innerText = `${grupos.length} de ${nCidades} cidade${nCidades !== 1 ? "s" : ""}`;
-    const colunas = 5 + d.tipos.length * 2 + (editar ? 1 : 0);
-    const linhaHtml = (l, primeira, cidade) => {
+    document.getElementById("pr-tabela").querySelectorAll("tbody").forEach(b => b.remove());
+    document.getElementById("pr-tabela").insertAdjacentHTML("beforeend", _prHtmlGrupos(grupos, d.tipos, editar));
+}
+
+/**
+ * Um <tbody> por cidade (linha divisória entre elas): o nome da cidade aparece uma vez, à
+ * esquerda, ocupando as linhas dela, com o "+ Entregador" logo abaixo.
+ */
+function _prHtmlGrupos(grupos, tipos, editar) {
+    if (!grupos.length) return `<tbody><tr><td colspan="99" class="cft-ajuda">Nenhuma linha.</td></tr></tbody>`;
+    const linhaHtml = (l) => {
         const v = l.valores || {};
         const nome = l.entregador ? _prEsc(l.entregador) : `<span class="cft-ajuda" title="${_prEsc(l.motoristas || "")}">${_PR_TODOS}</span>`;
-        return `<tr>
-            <td>${primeira ? `<b>${_prEsc(cidade)}</b>` : ""}</td>
-            <td>${nome}</td>
+        return `<td>${nome}</td>
             <td>${_prEsc(l.polo || "")}</td><td class="num">${l.sla ?? ""}</td><td>${l.parceiro ? "Parceiro" : "Direto"}</td>
-            ${d.tipos.map(tp => `<td class="num">${_prMoeda(v[tp] ? v[tp].valor : null)}</td><td class="num">${_prMoeda(v[tp] ? v[tp].incentivo : null)}</td>`).join("")}
+            ${tipos.map(tp => `<td class="num">${_prMoeda(v[tp] ? v[tp].valor : null)}</td><td class="num">${_prMoeda(v[tp] ? v[tp].incentivo : null)}</td>`).join("")}
             ${editar ? `<td style="white-space:nowrap"><button class="cft-link" onclick="_prAbrirLinha(${l.id})">Editar</button>
-                <button class="cft-link cft-neg" style="margin-left:8px" onclick="_prRemover(${l.id})">Remover</button></td>` : ""}
-        </tr>`;
+                <button class="cft-link cft-neg" style="margin-left:8px" onclick="_prRemover(${l.id})">Remover</button></td>` : ""}`;
     };
-    document.getElementById("pr-linhas").innerHTML = grupos.map(g =>
-        g.linhas.map((l, i) => linhaHtml(l, i === 0, g.cidade)).join("")
-        + (editar ? `<tr><td></td><td colspan="${colunas - 1}"><button class="cft-link" onclick="_prAbrirLinha(null, ${_prEsc(JSON.stringify(g.linhas[0].id))})">+ Entregador</button></td></tr>` : "")
-    ).join("") || `<tr><td colspan="99" class="cft-ajuda">Nenhuma linha.</td></tr>`;
+    return grupos.map(g => {
+        const cidade = `<td class="pr-cidade-nome" rowspan="${g.linhas.length}"><b>${_prEsc(g.cidade)}</b>
+            ${editar ? `<div><button class="cft-link pr-mais" onclick="_prAbrirLinha(null, ${Number(g.linhas[0].id)})">+ Entregador</button></div>` : ""}</td>`;
+        return `<tbody class="pr-cidade">${g.linhas.map((l, i) => `<tr>${i === 0 ? cidade : ""}${linhaHtml(l)}</tr>`).join("")}</tbody>`;
+    }).join("");
 }
 
 // ── Importar planilha (V1/V2/outra) como a tabela que vale a partir de uma quinzena ──
