@@ -88,8 +88,11 @@ function _prDesenhar() {
            ${_prDev() ? `<button class="cft-link" onclick="_prImportar(true)">Importar de novo da planilha</button>` : ""}`
         : `<span style="color:#eab308">Ainda lendo da planilha (aba "${_prEsc(t.aba)}") — o que aparece abaixo é a planilha, só leitura.</span>
            ${_prDev() ? `<button class="cft-btn primario" onclick="_prImportar(false)">Importar da planilha</button>` : `<span class="cft-ajuda">Só dev importa.</span>`}`;
+    const usam = (t.tambem_usam || []).length
+        ? `<div class="cft-ajuda" style="margin:0 0 10px">A ${_prEsc(t.tambem_usam.join(" e a "))} também usa esta tabela (não tem tabela própria).</div>` : "";
     corpo.innerHTML = `
         <div class="cft-barra" style="margin:0 0 10px;gap:12px;flex-wrap:wrap;align-items:center">${status}</div>
+        ${usam}
         ${d.erro ? `<div class="cft-erro" style="margin-bottom:10px">${_prEsc(d.erro)}</div>` : ""}
         <div class="cft-barra" style="margin:0 0 10px;gap:8px">
             <button type="button" class="filtro-tab${_prAba === "tabela" ? " active" : ""}" onclick="_prTrocarAba('tabela')">Tabela</button>
