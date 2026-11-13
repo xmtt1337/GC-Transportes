@@ -122,7 +122,10 @@ async function _arVerCorpo(id) {
     alvo.innerHTML = skLogo(true);
     try {
         const lista = await _cteApi("/api/agency-router/recebidos?limite=200");
-        const linha = lista.find((x) => x.id === id);
+        // id vem do banco como BIGINT — o driver devolve como string no JSON,
+        // mas o onclick interpola como número puro no HTML; comparar como
+        // texto cobre os dois lados.
+        const linha = lista.find((x) => String(x.id) === String(id));
         if (!linha) { alvo.innerHTML = "<p class='dica'>Não encontrado.</p>"; return; }
         alvo.innerHTML = `
         <details class="secao-form" open>
