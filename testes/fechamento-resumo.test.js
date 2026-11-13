@@ -273,3 +273,11 @@ test("resumos: escolhe um ou mais; entregadores + interno somam linhas e totais;
     ctx._rqAlternarResumo("interno");
     assert.deepStrictEqual(JSON.parse(vm.runInContext("JSON.stringify(_rqResumos)", ctx)), ["interno"], "o último não sai");
 });
+
+test("régua da performance vem das faixas da quinzena (Precificação › Shopee)", () => {
+    const { ctx } = carregar();
+    assert.deepStrictEqual({ ...ctx._rqLimites(null) }, { max: 98, min: 95 }, "sem faixas: a tabela de 28/10");
+    const novas = { semana: [{ ate: 93, valor: 1.4 }, { ate: 96.5, valor: 1.9 }, { ate: 99, valor: 2.3 }, { ate: null, valor: 2.7 }] };
+    assert.deepStrictEqual({ ...ctx._rqLimites(novas) }, { max: 99, min: 93 });
+    assert.strictEqual(ctx._rqPctTxt(96.5), "96,5%");
+});

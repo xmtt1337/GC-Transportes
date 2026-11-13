@@ -4,7 +4,7 @@
 // O dia de cada PNR é o ANTERIOR ao da abertura (criada dia 21 → conta no dia 20).
 // Regra: um usuário com mais de N acareações no mesmo dia (conta por usuário, não
 // soma os usuários do entregador) → as entregas desse usuário naquele dia valem a tarifa mínima
-// do dia (seg a sáb R$ 1,50, domingo R$ 1,80). Só nos polos da regra da performance.
+// do dia (menor faixa da tabela da Shopee na Precificação). Só nos polos da regra da performance.
 // Quem tem valor fixo: soma os usuários, compara com as baixas do dia e cai pro fixo menos
 // um desconto. Limites, desconto e exceções por entregador ficam em Fechamento › Regras e
 // configurações (fechamento-regras.js); aqui só o resumo.
@@ -154,7 +154,7 @@ function _acRegrasResumoHtml(d) {
     return `<div class="cft-regras">
         <div class="cft-pend-titulo" style="color:#e2e8f0">Regras que valem hoje</div>
         <div class="cft-ajuda"><b>Sem valor fixo:</b> uma pessoa (usuário principal, somando os logins dela de todas as transportadoras) com mais de <b>${limite}</b> PNR no mesmo dia →
-            as entregas de todos os logins dela naquele dia na tarifa mínima; as outras pessoas do entregador seguem normais (R$ 1,50 seg a sáb, R$ 1,80 dom).
+            as entregas de todos os logins dela naquele dia na tarifa mínima (a menor faixa da Precificação › Shopee); as outras pessoas do entregador seguem normais.
             <b>Com valor fixo:</b> somando os usuários, mais PNR que as baixas do dia × <b>${_acPct(r.fator)}</b> (1.000 baixas × ${_acPct(r.fator)} = mais de ${_acPct(1000 * r.fator)}) → fixo com <b>${_acPct(r.desconto_pct)}% a menos</b>.
             A PNR conta no dia anterior ao da abertura (criada dia 21 → dia 20). Só nos polos da performance. Pra mudar ou criar exceção pra um entregador:
             <a href="#" style="color:#60a5fa" onclick="event.preventDefault();abrirRegrasFechamento()">Regras e configurações</a>.</div>

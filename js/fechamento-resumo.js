@@ -19,6 +19,7 @@ let _rqXNaoAchadas = [];   // nomes colados que não existem nesta quinzena
 let _rqAba = "cheio";     // valores | performance (ocultas, 05/11/2026) | cheio
 let _rqColFiltros = {};    // filtro de coluna (funil) da tabela de valores: { campo: [valores visíveis] }
 let _rqPerf = null;       // {chave: "ano-mes-q", entregadores} da aba Performance
+let _rqFaixas = null;     // faixas da Shopee na quinzena (Fechamento › Precificação), vindas de /performance
 let _rqPerfOrdem = { campo: "pct", desc: false }; // pior performance primeiro
 let _rqPerfVisiveis = [];
 
@@ -97,6 +98,7 @@ function _rqCarregar() {
     const req = ++_rqReq;
     el.innerHTML = skLogo();
     _rqPerf = null;
+    _rqFaixas = null;
     fetch(`${_RQ_API()}/resumo-quinzena?mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}`, { headers: { "Authorization": "Bearer " + token } })
     .then(r => r.json())
     .then(d => {
@@ -255,16 +257,25 @@ function _rqPerfPorEntregador(linhas) {
             polo: [...r.polos.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0])[0] || "",
             pct: tentativas ? Math.round(r.sucessos / tentativas * 10000) / 100 : null,
             pior: comPct.reduce((m, d) => (!m || d.pct < m.pct ? d : m), null),
-            abaixo: comPct.filter(d => d.pct < 98).length,
-            acima: comPct.filter(d => d.pct >= 98).length,
+            abaixo: comPct.filter(d => d.pct < _rqLimites().max).length,
+            acima: comPct.filter(d => d.pct >= _rqLimites().max).length,
             pacotes_pagos: r.pacotes_pagos, total: Math.round(r.total * 100) / 100,
             por_pacote: r.pacotes_pagos ? Math.round(r.total / r.pacotes_pagos * 100) / 100 : 0,
         };
     });
 }
 
-// Mesma régua da tabela de valor: 98% ou mais paga o máximo, abaixo de 95% o mínimo (seg a sáb).
-function _rqPctClasse(p) { return p == null ? "cft-vazio" : p >= 98 ? "cft-pos" : p < 95 ? "cft-neg" : ""; }
+/**
+ * Régua da tabela de valor da quinzena (seg a sáb, Fechamento › Precificação › Shopee):
+ * max = a partir de onde paga o máximo (limite da penúltima faixa), min = abaixo de onde paga
+ * o mínimo (limite da primeira). Sem faixas carregadas: 98 e 95 (a tabela de 28/10/2026).
+ */
+function _rqLimites(faixas = _rqFaixas) {
+    const lim = ((faixas && faixas.semana) || []).map(f => f.ate).filter(a => a !== null && a !== undefined && isFinite(a));
+    return lim.length ? { max: lim[lim.length - 1], min: lim[0] } : { max: 98, min: 95 };
+}
+function _rqPctTxt(n) { return String(n).replace(".", ",") + "%"; }
+function _rqPctClasse(p) { const l = _rqLimites(); return p == null ? "cft-vazio" : p >= l.max ? "cft-pos" : p < l.min ? "cft-neg" : ""; }
 function _rqPct(p) { return p == null ? "—" : p.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%"; }
 function _rqDiaCurto(iso) { const [, m, d] = String(iso || "").split("-"); return d ? `${d}/${m}` : ""; }
 
@@ -512,22 +523,23 @@ function _rqRenderPerf() {
     _rqPerfVisiveis = lista.map(r => r.entregador);
     const s = lista.reduce((a, r) => a + r.sucessos, 0), f = lista.reduce((a, r) => a + r.onholds + r.atrasos, 0);
     const faixa = (fn) => lista.filter(r => r.pct != null && fn(r.pct)).length;
+    const { max, min } = _rqLimites();
     const seta = (c) => _rqPerfOrdem.campo === c ? (_rqPerfOrdem.desc ? " ↓" : " ↑") : "";
     const th = (c, rot, num) => `<th${num ? ` style="text-align:right"` : ""}><a href="#" class="cft-ordem" onclick="event.preventDefault();_rqPerfOrdenar('${c}')">${rot}${seta(c)}</a></th>`;
     el.innerHTML = `
         <div class="cft-kpis">
             <div class="cft-kpi"><div class="cft-kpi-valor ${_rqPctClasse(s + f ? s / (s + f) * 100 : null)}">${_rqPct(s + f ? Math.round(s / (s + f) * 10000) / 100 : null)}</div><div class="cft-kpi-rotulo">Performance geral</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">${lista.length}</div><div class="cft-kpi-rotulo">Entregadores</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor cft-pos">${faixa(p => p >= 98)}</div><div class="cft-kpi-rotulo">98% ou mais</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor">${faixa(p => p >= 95 && p < 98)}</div><div class="cft-kpi-rotulo">95% a 98%</div></div>
-            <div class="cft-kpi"><div class="cft-kpi-valor${faixa(p => p < 95) ? " cft-neg" : ""}">${faixa(p => p < 95)}</div><div class="cft-kpi-rotulo">Abaixo de 95%</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor cft-pos">${faixa(p => p >= max)}</div><div class="cft-kpi-rotulo">${_rqPctTxt(max)} ou mais</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor">${faixa(p => p >= min && p < max)}</div><div class="cft-kpi-rotulo">${_rqPctTxt(min)} a ${_rqPctTxt(max)}</div></div>
+            <div class="cft-kpi"><div class="cft-kpi-valor${faixa(p => p < min) ? " cft-neg" : ""}">${faixa(p => p < min)}</div><div class="cft-kpi-rotulo">Abaixo de ${_rqPctTxt(min)}</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">${lista.reduce((a, r) => a + r.onholds, 0).toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Onholds</div></div>
             <div class="cft-kpi"><div class="cft-kpi-valor">${lista.reduce((a, r) => a + r.atrasos, 0).toLocaleString("pt-BR")}</div><div class="cft-kpi-rotulo">Atrasos (outras transp.)</div></div>
         </div>
         <div class="cft-tabela-wrap" style="max-height:620px;overflow-y:auto"><table class="cft-tabela">
             <thead><tr>${th("entregador", "Entregador")}${th("polo", "Polo")}${th("dias_n", "Dias", true)}${th("sucessos", "Sucessos", true)}
                 ${th("onholds", "Onholds", true)}${th("atrasos", "Atrasos", true)}${th("pct", "Performance", true)}${th("pior", "Pior dia", true)}
-                ${th("acima", "Dias 98%+", true)}${th("abaixo", "Dias abaixo de 98%", true)}${th("pacotes_pagos", "Pacotes pagos", true)}${th("por_pacote", "Ticket médio", true)}${th("total", "Total (R$)", true)}</tr></thead>
+                ${th("acima", `Dias ${_rqPctTxt(max)}+`, true)}${th("abaixo", `Dias abaixo de ${_rqPctTxt(max)}`, true)}${th("pacotes_pagos", "Pacotes pagos", true)}${th("por_pacote", "Ticket médio", true)}${th("total", "Total (R$)", true)}</tr></thead>
             <tbody>${lista.length ? lista.map((r, i) => `<tr class="rq-perf-linha" onclick="_rqPerfAbrir(${i})" title="Clique pra ver os dias e os pedidos">
                 <td>${_rqEsc(r.entregador)}</td>
                 <td>${r.polo ? _rqEsc(r.polo) : `<span class="cft-vazio">—</span>`}</td>
@@ -546,7 +558,7 @@ function _rqRenderPerf() {
             : `<tr><td colspan="13" class="cft-vazio" style="padding:14px">Nada com esse filtro.</td></tr>`}</tbody>
         </table></div>
         <div class="cft-ajuda" style="margin-top:6px">Performance = sucessos ÷ (sucessos + onholds + atrasos), juntando todas as transportadoras — a mesma que define o valor da Shopee,
-            só nos polos da regra (Criar Fechamento). Verde: 98% ou mais; vermelho: abaixo de 95%. Clique no entregador pra ver os dias, os pedidos que afetaram cada dia e baixar.
+            só nos polos da regra (Criar Fechamento). Verde: ${_rqPctTxt(max)} ou mais; vermelho: abaixo de ${_rqPctTxt(min)} (faixas da Precificação › Shopee). Clique no entregador pra ver os dias, os pedidos que afetaram cada dia e baixar.
             Ticket médio = total ÷ pacotes pagos.</div>`;
 }
 
@@ -855,6 +867,7 @@ async function _rqPerfLinhas(chaves) {
         const r = await fetch(`${_RQ_API()}/performance?mes=${_rqMes}&ano=${_rqAno}&quinzena=${_rqQuinzena}&transportadora=${k}&todos=1`,
             { headers: { "Authorization": "Bearer " + token } });
         const d = await r.json().catch(() => ({}));
+        if (d.faixas) _rqFaixas = d.faixas;
         for (const l of d.linhas || []) {
             const id = l.driver + "|" + l.dia;
             if (!vistos.has(id)) { vistos.add(id); linhas.push(l); }

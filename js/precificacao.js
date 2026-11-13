@@ -144,14 +144,14 @@ function _prDesenhar() {
         status = `<label class="cft-rotulo" style="display:flex;gap:8px;align-items:center;margin:0">Tabela
                 <select class="cft-input" style="margin:0;width:auto" onchange="_prTrocarVersao(this.value)">${opcoes}</select></label>
             <span class="cft-ajuda">${_prEsc(d.versao.origem || "")}${d.versao.criado_por ? ` — ${_prEsc(d.versao.criado_por)}` : ""}${d.versao.criado_em ? `, ${_prQuando(d.versao.criado_em)}` : ""}</span>
-            ${_prDev() ? `<button class="cft-link" onclick="_prAbrirImportar()">Importar planilha</button>
+            ${_prDev() ? `${t.performance ? "" : `<button class="cft-link" onclick="_prAbrirImportar()">Importar planilha</button>`}
                 <button class="cft-link" onclick="_prAbrirNovaVersao()">Nova tabela a partir de uma quinzena</button>
                 <button class="cft-link cft-neg" onclick="_prRemoverVersao()">Remover esta tabela</button>` : ""}`;
     } else {
         status = `<span style="color:#eab308">Sem tabela no sistema — o fechamento ainda lê a planilha V1 (aba "${_prEsc(t.aba)}"). O que aparece abaixo é ela, só leitura.</span>
             ${_prDev() ? `<button class="cft-btn primario" onclick="_prAbrirImportar()">Importar planilha</button>` : `<span class="cft-ajuda">Só dev importa.</span>`}`;
     }
-    const cobre = sistema && t.versoes.length && !t.versoes.some(v => v.vale_de === _PR_DESDE_SEMPRE)
+    const cobre = sistema && !t.performance && t.versoes.length && !t.versoes.some(v => v.vale_de === _PR_DESDE_SEMPRE)
         ? `<div class="cft-ajuda" style="margin:0 0 10px">Antes de ${_prEsc(_prQuinzenaRotulo(t.versoes[0].vale_de))} o fechamento continua usando a planilha V1.</div>` : "";
     const usam = (t.tambem_usam || []).length
         ? `<div class="cft-ajuda" style="margin:0 0 10px">A ${_prEsc(t.tambem_usam.join(" e a "))} também usa esta tabela (não tem tabela própria).</div>` : "";
@@ -165,6 +165,7 @@ function _prDesenhar() {
         </div>
         <div id="pr-aba"></div>`;
     if (_prAba === "historico" && sistema) _prCarregarHistorico();
+    else if (d.performance) _prDesenharFaixas();
     else _prDesenharTabela();
 }
 
@@ -349,7 +350,7 @@ async function _prCriarVersao() {
 
 function _prRemoverVersao() {
     const v = _prDados.versao;
-    gcConfirm(`Remover a tabela que vale a partir de ${_prQuinzenaRotulo(v.vale_de)}? As quinzenas dela passam a usar a tabela anterior (ou a planilha V1, se não houver).`, async () => {
+    gcConfirm(`Remover a tabela que vale a partir de ${_prQuinzenaRotulo(v.vale_de)}? As quinzenas dela passam a usar a tabela anterior${_prDados.performance ? "" : " (ou a planilha V1, se não houver)"}.`, async () => {
         try {
             const r = await fetch(`${_PR_API()}/versao/${v.id}`, { method: "DELETE", headers: _prHeaders() });
             const d = await r.json();
@@ -507,13 +508,13 @@ function _prValorLog(v) {
 
 function _prHtmlHistorico(linhas) {
     if (!linhas.length) return `<div class="cft-ajuda">Nenhuma mudança ainda.</div>`;
-    const acao = { importou: "Importou planilha", criou: "Adicionou", alterou: "Alterou", removeu: "Removeu", "criou versão": "Nova tabela", "removeu versão": "Removeu tabela" };
+    const acao = { importou: "Importou planilha", criou: "Adicionou", alterou: "Alterou", removeu: "Removeu", "criou versão": "Nova tabela", "removeu versão": "Removeu tabela", "alterou faixas": "Alterou faixas" };
     const detalhe = (x) => {
-        if (x.acao === "alterou") return x.mudancas.map(m => `${_prEsc(m.campo)}: ${_prEsc(_prValorLog(m.antes))} → ${_prEsc(_prValorLog(m.depois))}`).join("<br>");
+        if (x.acao === "alterou" || x.acao === "alterou faixas") return x.mudancas.map(m => `${_prEsc(m.campo)}: ${_prEsc(_prValorLog(m.antes))} → ${_prEsc(_prValorLog(m.depois))}`).join("<br>");
         const dd = x.depois || {}, aa = x.antes || {};
         if (x.acao === "importou") return `${dd.linhas} linhas${dd.substituiu ? ` (substituiu ${dd.substituiu})` : ""}${dd.origem ? ` — ${_prEsc(dd.origem)}` : ""}`;
         if (x.acao === "criou versão") return `cópia de ${_prEsc(_prQuinzenaRotulo(dd.copia_de))}`;
-        if (x.acao === "removeu versão") return `${aa.linhas} linhas`;
+        if (x.acao === "removeu versão") return aa.faixas ? "faixas de performance" : `${aa.linhas} linhas`;
         const l = x.acao === "criou" ? dd : aa;
         return _prEsc(l.entregador || _PR_TODOS);
     };
@@ -524,4 +525,113 @@ function _prHtmlHistorico(linhas) {
             <td>${acao[x.acao] || _prEsc(x.acao)}</td><td>${_prEsc(x.cidade || "")}</td>
             <td style="white-space:normal">${detalhe(x)}</td>
         </tr>`).join("")}</tbody></table></div>`;
+}
+
+// ── Shopee: faixas de performance (R$ por pacote pela performance do dia) ──
+// Guardadas por XPT, seg a sáb e domingo; ate = "abaixo de X%", a última sem limite.
+const _PR_DIAS = [["semana", "Seg a sáb"], ["domingo", "Domingo"]];
+let _prFaixasEdit = null;
+
+/** Texto de cada faixa: "Abaixo de 95%", "95% a 98%", "98% ou mais". */
+function _prFaixaRotulo(lista, i) {
+    const pct = (n) => `${String(n).replace(".", ",")}%`;
+    const ant = i > 0 ? lista[i - 1].ate : null;
+    const ate = lista[i].ate;
+    if (ate === null || ate === undefined) return ant === null ? "Qualquer performance" : `${pct(ant)} ou mais`;
+    return ant === null ? `Abaixo de ${pct(ate)}` : `${pct(ant)} a ${pct(ate)}`;
+}
+
+function _prDesenharFaixas() {
+    const d = _prDados;
+    const el = document.getElementById("pr-aba");
+    const quadro = (x) => {
+        const f = d.faixas[x.chave] || { semana: [], domingo: [] };
+        return `<div style="min-width:260px;flex:1">
+            <div class="cft-secao" style="margin:0 0 6px">${_prEsc(x.nome)}</div>
+            <div class="cft-tabela-wrap"><table class="cft-tabela"><thead><tr><th>Dia</th><th>Performance no dia</th><th class="num">R$ por pacote</th></tr></thead><tbody>
+            ${_PR_DIAS.map(([k, rot]) => (f[k] || []).map((fx, i) => `<tr><td>${i === 0 ? `<b>${rot}</b>` : ""}</td>
+                <td>${_prFaixaRotulo(f[k], i)}</td><td class="num">${_prMoeda(fx.valor)}</td></tr>`).join("")).join("")}
+            </tbody></table></div></div>`;
+    };
+    el.innerHTML = `
+        <div class="cft-ajuda" style="margin:0 0 10px">A Shopee não paga por cidade: o valor do pacote sai da performance do entregador no dia
+            (entregues ÷ tentativas, juntando as transportadoras). Quem está em <b>Valores fixos</b> recebe o valor fixo dele.
+            Nos polos da regra de performance, as outras transportadoras também usam estas faixas.</div>
+        ${_prDev() ? `<div class="cft-barra" style="margin:0 0 10px"><button class="cft-btn primario" onclick="_prAbrirFaixas()">Editar faixas</button></div>` : ""}
+        <div style="display:flex;gap:18px;flex-wrap:wrap">${(d.xpts || []).map(quadro).join("")}</div>`;
+}
+
+/** Modal: uma lista editável por XPT × dia (limite % e valor). */
+function _prAbrirFaixas() {
+    const d = _prDados;
+    _prFecharModal();
+    _prFaixasEdit = JSON.parse(JSON.stringify(d.faixas));
+    _prModal(`
+        <div class="cft-modal-titulo">Faixas de performance — ${_prEsc(_prQuinzenaRotulo(d.versao.vale_de))}${d.versao.vale_de === _PR_DESDE_SEMPRE ? "" : " em diante"}</div>
+        <div class="cft-ajuda">"Abaixo de" é o limite de cada faixa; a última vale dali pra cima. Depois de salvar, recalcule as quinzenas dessa tabela.</div>
+        <div id="pr-faixas-edit"></div>
+        <div class="cft-erro" id="pr-modal-erro" style="min-height:18px;margin-top:8px"></div>
+        <div class="cft-barra" style="justify-content:flex-end;margin-bottom:0">
+            <button class="cft-btn" onclick="_prFecharModal()">Cancelar</button>
+            <button class="cft-btn primario" id="pr-modal-salvar" onclick="_prSalvarFaixas()">Salvar</button>
+        </div>`);
+    _prDesenharFaixasEdit();
+}
+
+function _prDesenharFaixasEdit() {
+    const el = document.getElementById("pr-faixas-edit");
+    if (!el) return;
+    const n = (v) => (v === null || v === undefined ? "" : String(v).replace(".", ","));
+    el.innerHTML = (_prDados.xpts || []).map(x => `
+        <div class="cft-secao" style="margin:12px 0 4px">${_prEsc(x.nome)}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 18px">
+        ${_PR_DIAS.map(([k, rot]) => {
+            const lista = _prFaixasEdit[x.chave][k];
+            return `<div><div class="cft-rotulo" style="margin:4px 0">${rot}</div>
+                ${lista.map((f, i) => {
+                    const ultima = i === lista.length - 1;
+                    return `<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+                        <span class="cft-ajuda" style="width:78px">${ultima ? (i ? "dali pra cima" : "sempre") : "abaixo de"}</span>
+                        ${ultima ? `<span style="width:64px"></span>` : `<input class="cft-input" style="margin:0;width:64px" value="${n(f.ate)}" oninput="_prFaixaCampo('${x.chave}','${k}',${i},'ate',this.value)" aria-label="Limite em %">`}
+                        <span class="cft-ajuda">% → R$</span>
+                        <input class="cft-input" style="margin:0;width:64px" value="${n(f.valor)}" oninput="_prFaixaCampo('${x.chave}','${k}',${i},'valor',this.value)" aria-label="Valor por pacote">
+                        ${lista.length > 1 ? `<button class="cft-link cft-neg" onclick="_prFaixaTirar('${x.chave}','${k}',${i})">tirar</button>` : ""}
+                    </div>`;
+                }).join("")}
+                <button class="cft-link" onclick="_prFaixaPor('${x.chave}','${k}')">+ faixa</button></div>`;
+        }).join("")}</div>`).join("");
+}
+
+function _prFaixaCampo(xpt, dia, i, campo, valor) { _prFaixasEdit[xpt][dia][i][campo] = valor; }
+
+/** + faixa: entra antes da última (que continua "dali pra cima"). */
+function _prFaixaPor(xpt, dia) {
+    const lista = _prFaixasEdit[xpt][dia];
+    lista.splice(lista.length - 1, 0, { ate: "", valor: "" });
+    _prDesenharFaixasEdit();
+}
+
+/** Tirar a última faixa: a anterior passa a ser a "dali pra cima". */
+function _prFaixaTirar(xpt, dia, i) {
+    const lista = _prFaixasEdit[xpt][dia];
+    lista.splice(i, 1);
+    lista[lista.length - 1].ate = null;
+    _prDesenharFaixasEdit();
+}
+
+async function _prSalvarFaixas() {
+    const btn = document.getElementById("pr-modal-salvar");
+    btn.disabled = true;
+    try {
+        const r = await fetch(`${_PR_API()}/faixas`, { method: "PUT", headers: _prHeaders(true), body: JSON.stringify({ versao_id: _prDados.versao.id, faixas: _prFaixasEdit }) });
+        const d = await r.json();
+        btn.disabled = false;
+        if (!r.ok) { document.getElementById("pr-modal-erro").innerText = d.error || "Não foi possível salvar."; return; }
+        _prFecharModal();
+        _prCarregar();
+        if (d.mudou) gcAlert("Faixas salvas. Recalcule as quinzenas dessa tabela no Criar Fechamento pra valer.");
+    } catch (_) {
+        btn.disabled = false;
+        document.getElementById("pr-modal-erro").innerText = "Erro ao conectar com o servidor.";
+    }
 }

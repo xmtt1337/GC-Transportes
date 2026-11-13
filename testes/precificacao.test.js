@@ -66,3 +66,22 @@ test("entregador do modal: All Drivers/vazio = todos; senão tem que estar na li
     assert.deepStrictEqual(plano(ctx._prConferirEntregador("fulano teste", nomes)), { nome: "Fulano Teste" });
     assert.match(ctx._prConferirEntregador("Sicrano", nomes).erro, /lista/);
 });
+
+test("Shopee: rótulo de cada faixa de performance", () => {
+    const l = [{ ate: 95, valor: 1.5 }, { ate: 98, valor: 2 }, { ate: null, valor: 2.5 }];
+    assert.strictEqual(ctx._prFaixaRotulo(l, 0), "Abaixo de 95%");
+    assert.strictEqual(ctx._prFaixaRotulo(l, 1), "95% a 98%");
+    assert.strictEqual(ctx._prFaixaRotulo(l, 2), "98% ou mais");
+    assert.strictEqual(ctx._prFaixaRotulo([{ ate: 97.5, valor: 1 }, { ate: null, valor: 2 }], 1), "97,5% ou mais");
+    assert.strictEqual(ctx._prFaixaRotulo([{ ate: null, valor: 2 }], 0), "Qualquer performance");
+});
+
+test("Shopee: histórico mostra a faixa que mudou", () => {
+    const h = ctx._prHtmlHistorico([
+        { acao: "alterou faixas", quem: "Gestor Teste", em: "2026-11-13T10:00:00Z", vale_de: "2026-11-16",
+          mudancas: [{ campo: "Caçador — seg a sáb", antes: "< 95% R$ 1.50", depois: "< 95% R$ 1.60" }] },
+    ]);
+    assert.match(h, /Alterou faixas/);
+    assert.match(h, /Caçador — seg a sáb: &lt; 95% R\$ 1\.50 → &lt; 95% R\$ 1\.60/);
+    assert.match(h, /Q2 Nov\/2026/);
+});
