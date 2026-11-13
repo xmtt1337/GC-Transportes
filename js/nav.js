@@ -74,6 +74,7 @@ const _TELA_TITULOS = {
     "tela-resumo-quinzena":      "Resumo da Quinzena",
     "tela-ajustes-fechamento":   "Acréscimos e Descontos",
     "tela-log-valores":          "Log de valores",
+    "tela-precificacao":         "Precificação",
     "tela-deslocamentos":        "Deslocamentos",
     "tela-acareacoes":           "PNR abertas",
     "tela-regras-fechamento":    "Regras e configurações",

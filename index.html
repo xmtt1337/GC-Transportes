@@ -471,6 +471,7 @@ if (_BASE) {
             <li><a href="#" data-rota="Fechamento/Perdas" onclick="abrirPerdasDesempenho(event)">Perdas por desempenho</a></li>
             <li><a href="#" data-rota="Fechamento/Extravios" onclick="abrirExtraviosFechamento(event)">Fechamento de Extravios</a></li>
             <li><a href="#" data-rota="Fechamento/Regras" onclick="abrirRegrasFechamento(event)">Regras e configurações</a></li>
+            <li><a href="#" data-rota="Fechamento/Precificacao" onclick="abrirPrecificacao(event)">Precificação</a></li>
             <!-- Log de valores: só dev (core.js). js/fechamento-log.js -->
             <li id="menu-item-log-valores" style="display:none"><a href="#" data-rota="Fechamento/LogValores" onclick="abrirLogValores(event)">Log de valores</a></li>
             <li><a href="#" data-rota="Fechamento/Conversoes" onclick="abrirConversoes(event)">Conversões</a></li>
@@ -4946,9 +4947,9 @@ if (_BASE) {
 
 <script src="js/core.js?v=20261109a"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261109a"></script>
+<script src="js/router.js?v=20261113a"></script>
 <script src="js/sidebar.js?v=20261103f"></script>
-<script src="js/nav.js?v=20261109a"></script>
+<script src="js/nav.js?v=20261113a"></script>
 <script src="js/atendimento.js?v=20261104c"></script>
 <script src="js/atendimento-admin.js?v=20261104c"></script>
 <script src="js/fechamentos.js?v=20261104b"></script>
@@ -4985,6 +4986,7 @@ if (_BASE) {
 <script src="js/fechamento-checklist.js?v=20261105b"></script>
 <script src="js/fechamento-ajustes.js?v=20261104c"></script>
 <script src="js/fechamento-log.js?v=20261110a"></script>
+<script src="js/precificacao.js?v=20261113a"></script>
 <script src="js/fechamento-coletas.js?v=20261104a"></script>
 <script src="js/fechamento-terceirizada.js?v=20261104b"></script>
 <script src="js/fechamento-deslocamentos.js?v=20261104c"></script>
@@ -5368,6 +5370,13 @@ if (_BASE) {
         <div id="aj-conteudo"></div>
     </div>
 </div><!-- /tela-ajustes-fechamento -->
+
+<!-- Fechamento › Precificação (a planilha de precificação no sistema) — js/precificacao.js -->
+<div id="tela-precificacao" class="view tela-full">
+    <div class="fech-body">
+        <div id="pr-conteudo"></div>
+    </div>
+</div><!-- /tela-precificacao -->
 
 <!-- Log de valores dos entregadores (só dev) — js/fechamento-log.js -->
 <div id="tela-log-valores" class="view tela-full">
