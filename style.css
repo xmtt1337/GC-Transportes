@@ -4923,9 +4923,10 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
 #cex-tiles .nr-tile-sub { font-size: 10.5px; }
 #cex-titulo { display: flex; align-items: center; gap: 10px; }
 .cex-logo { height: 20px; width: auto; display: block; }
-/* Menu suspenso escuro: sem isso a lista de opções abre branca no Chrome. */
-#tela-conf-expedicao select.cft-input { color-scheme: dark; }
-#tela-conf-expedicao select.cft-input option { background: #0f172a; color: #e2e8f0; }
+/* Menu suspenso escuro: sem isso a lista de opções abre branca no Chrome (vale pra todo
+   select.cft-input — Conferência de expedição, Precificação, modais do fechamento). */
+select.cft-input { color-scheme: dark; }
+select.cft-input option { background: #0f172a; color: #e2e8f0; }
 /* Conformidade: barra de conclusão acima dos tiles (meta 100%). */
 .cex-conf { margin-bottom: 12px; }
 .cex-conf-topo { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; cursor: pointer; margin-bottom: 6px; }
