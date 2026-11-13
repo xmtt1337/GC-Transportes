@@ -34,3 +34,35 @@ test("histórico mostra antes → depois de cada campo", () => {
     assert.ok(h.includes("Direto/Parceiro: Direto → Parceiro"));
     assert.ok(h.includes("40 linhas"));
 });
+
+test("quinzena: rótulo, lista e versão que vale", () => {
+    assert.strictEqual(ctx._prQuinzenaRotulo("2026-10-16"), "Q2 Out/2026");
+    assert.strictEqual(ctx._prQuinzenaRotulo("2026-11-01"), "Q1 Nov/2026");
+    assert.strictEqual(ctx._prQuinzenaRotulo("2000-01-01"), "Desde o início");
+    const qs = plano(ctx._prQuinzenas("2026-11-01"));
+    assert.strictEqual(qs[0], "2027-05-16", "vai até 6 meses depois");
+    assert.ok(qs.includes("2026-10-16") && qs.includes("2025-01-01"));
+    const versoes = [{ id: 1, vale_de: "2000-01-01" }, { id: 2, vale_de: "2026-10-16" }, { id: 3, vale_de: "2026-12-01" }];
+    assert.strictEqual(ctx._prVersaoQueVale(versoes, "2026-10-01").id, 1);
+    assert.strictEqual(ctx._prVersaoQueVale(versoes, "2026-11-16").id, 2);
+    assert.strictEqual(ctx._prVersaoQueVale([{ id: 2, vale_de: "2026-10-16" }], "2026-10-01"), null);
+});
+
+test("agrupa por cidade: All Drivers primeiro, depois entregadores em ordem", () => {
+    const g = plano(ctx._prAgruparCidades([
+        { id: 1, cidade: "Vila Teste", entregador: "Zeca Teste" },
+        { id: 2, cidade: "Morro Falso", entregador: null },
+        { id: 3, cidade: "VILA TESTE", entregador: null },
+        { id: 4, cidade: "Vila Teste", entregador: "Ana Teste" },
+    ]));
+    assert.deepStrictEqual(g.map(x => [x.cidade, x.linhas.map(l => l.id)]), [["Vila Teste", [3, 4, 1]], ["Morro Falso", [2]]]);
+    assert.deepStrictEqual(plano(ctx._prFiltrar([{ cidade: "Vila Teste", entregador: "Ana Teste" }, { cidade: "Morro Falso" }], "ana")).length, 1);
+});
+
+test("entregador do modal: All Drivers/vazio = todos; senão tem que estar na lista", () => {
+    const nomes = ["Fulano Teste", "Beltrano Teste"];
+    assert.deepStrictEqual(plano(ctx._prConferirEntregador("all drivers", nomes)), { nome: null });
+    assert.deepStrictEqual(plano(ctx._prConferirEntregador("", nomes)), { nome: null });
+    assert.deepStrictEqual(plano(ctx._prConferirEntregador("fulano teste", nomes)), { nome: "Fulano Teste" });
+    assert.match(ctx._prConferirEntregador("Sicrano", nomes).erro, /lista/);
+});

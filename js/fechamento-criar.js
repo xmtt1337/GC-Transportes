@@ -1061,6 +1061,7 @@ function _cfHtmlResumo(r) {
         `<div class="cft-pend-grupo"><b>Cidade sem conversão</b> — achou preço pelo nome, mas ainda não está na Conversão de cidades. Clique pra confirmar (ou trocar):<div class="cft-pend-tags" id="cf-cidades-conv-pend">${_cfHtmlCidadesPend("conv")}</div></div>`);
     if ((r.ceps_sem_cidade || []).length) grupos.push(`<div class="cft-pend-grupo"><b>CEP sem cidade</b> — não está na planilha de CEP do Planejamento; a cidade fica em branco. Cadastre o CEP e a cidade na aba <a class="cft-link" href="${_CF_PLANILHA_CEP}" target="_blank" rel="noopener">Cep Geral</a> e depois <button class="cft-link" id="cf-sinc-ceps" onclick="_cfSincronizarCeps()">sincronize os CEPs e recalcule</button>:${tags(r.ceps_sem_cidade)}<div class="cft-ajuda" id="cf-sinc-ceps-status"></div></div>`);
     if (r.tipos_sem_preco.length) grupos.push(`<div class="cft-pend-grupo"><b>Tipo de produto sem coluna de preço</b>:${tags(r.tipos_sem_preco)}</div>`);
+    if ((r.entregadores_sem_preco || []).length) grupos.push(`<div class="cft-pend-grupo"><b>Entregador sem preço na cidade</b> — a cidade só tem preço pra outros entregadores (sem linha All Drivers). Adicione o entregador ou a linha All Drivers em Fechamento › Precificação e recalcule:${tags(r.entregadores_sem_preco)}</div>`);
     if (r.nomes_sem_conversao.length) grupos.push(`<div class="cft-pend-grupo"><b>Usuário sem conversão de nome</b> — clique no nome pra dizer quem é o entregador:<div class="cft-pend-tags" id="cf-nomes-pend">${_cfHtmlNomesPend()}</div></div>`);
     if (r.sem_data_entrega) grupos.push(`<div class="cft-pend-grupo"><b>${r.sem_data_entrega}</b> sem data de entrega (não pagos)</div>`);
     if (r.sem_data_atribuicao) grupos.push(`<div class="cft-pend-grupo"><b>${r.sem_data_atribuicao}</b> sem data de atribuição (prazo não calculado)</div>`);
@@ -1711,7 +1712,7 @@ function _cfHtmlTabelaBase() {
 }
 
 const _CF_PENDENCIA_TEXTO = {
-    cidade_sem_preco: "cidade sem preço", tipo_sem_preco: "tipo sem preço", sem_conversao_nome: "sem conversão de nome",
+    cidade_sem_preco: "cidade sem preço", tipo_sem_preco: "tipo sem preço", entregador_sem_preco: "entregador sem preço na cidade", sem_conversao_nome: "sem conversão de nome",
     sem_data_entrega: "sem data de entrega", sem_data_atribuicao: "sem data de atribuição",
 };
 
