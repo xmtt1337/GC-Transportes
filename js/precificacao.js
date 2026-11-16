@@ -401,7 +401,7 @@ async function _prAbrirLinha(id, daCidade) {
     const d = _prDados;
     const ref = daCidade ? d.linhas.find(x => x.id === daCidade) : null;
     const l = id ? d.linhas.find(x => x.id === id)
-        : ref ? { cidade: ref.cidade, polo: ref.polo, sla: ref.sla, parceiro: ref.parceiro, sla_transportadora: ref.sla_transportadora, valores: {}, entregador: "" }
+        : ref ? { cidade: ref.cidade, polo: ref.polo, sla: ref.sla, parceiro: ref.parceiro, sla_transportadora: ref.sla_transportadora, cep_ini: ref.cep_ini ?? null, cep_fim: ref.cep_fim ?? null, regiao: ref.regiao ?? null, valores: {}, entregador: "" }
         : { valores: {}, entregador: null };
     if (!l) return;
     _prFecharModal();
