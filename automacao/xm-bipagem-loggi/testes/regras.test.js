@@ -23,10 +23,22 @@ test('chaveCidade iguala o jeito da Loggi e o do sistema', () => {
   assert.strictEqual(R.chaveCidade('Herval d’Oeste'), 'herval d oeste');
 });
 
-test('grupos e cidades soltas somam sem repetir, com rotulo legivel', () => {
-  const a = R.montarAlvo({ grupos: [1, 2], cidades: ['Videira', 'Arroio Trinta'] }, GRUPOS);
-  assert.deepStrictEqual(a.cidades, ['Caçador', 'Videira', 'Fraiburgo', 'Arroio Trinta']);
-  assert.strictEqual(a.rotulo, 'Grupo Teste + Grupo Dois + Arroio Trinta');
+test('circulos somam as cidades sem repetir; com circulo marcado, cidade solta nao conta', () => {
+  const a = R.montarAlvo({ grupos: [1, 2], cidades: ['Arroio Trinta'] }, GRUPOS);
+  assert.strictEqual(a.tipo, 'circulo');
+  assert.deepStrictEqual(a.cidades, ['Caçador', 'Videira', 'Fraiburgo']);
+  assert.strictEqual(a.rotulo, 'Círculos Grupo Teste + Grupo Dois');
+  assert.strictEqual(a.frase, 'dos círculos Grupo Teste e Grupo Dois');
+});
+
+test('textos para um circulo, uma cidade e varias cidades', () => {
+  assert.strictEqual(R.montarAlvo({ grupos: [1] }, GRUPOS).frase, 'do círculo Grupo Teste');
+  assert.strictEqual(R.montarAlvo({ grupos: [1] }, GRUPOS).rotulo, 'Círculo Grupo Teste');
+  const uma = R.montarAlvo({ cidades: ['Arroio Trinta'] }, GRUPOS);
+  assert.deepStrictEqual([uma.tipo, uma.rotulo, uma.frase], ['cidade', 'Arroio Trinta', 'de Arroio Trinta']);
+  const tres = R.montarAlvo({ cidades: ['Caçador', 'Videira', 'Fraiburgo'] }, GRUPOS);
+  assert.strictEqual(tres.frase, 'das cidades Caçador, Videira e Fraiburgo');
+  assert.strictEqual(tres.rotulo, 'Caçador, Videira, Fraiburgo');
 });
 
 test('grupo apagado some da selecao sem quebrar', () => {
@@ -121,4 +133,10 @@ test('manifest: so Loggi e o sistema, com id liberado no backend', () => {
   assert.strictEqual(id, 'ogpbfjkhogaonkoahbdgjkhbancgpgbh');
   const server = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'sistema-backend', 'server.js'), 'utf8');
   assert.ok(server.includes(`chrome-extension://${id}`));
+});
+
+test('circulo cujo nome ja diz "Círculo" nao repete a palavra', () => {
+  const a = R.montarAlvo({ grupos: [9] }, [{ id: 9, nome: 'Círculo Lindomar', cidades: ['Caçador'] }]);
+  assert.strictEqual(a.rotulo, 'Círculo Lindomar');
+  assert.strictEqual(a.frase, 'do Círculo Lindomar');
 });

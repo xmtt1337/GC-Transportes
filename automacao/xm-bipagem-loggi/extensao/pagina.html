@@ -9,7 +9,7 @@
   main { padding: 12px 14px; }
   [hidden] { display: none !important; }
   label.campo { display: block; margin: 14px 0 4px; }
-  input[type=text], input[type=password], input:not([type]) { width: 100%; padding: 8px; background: #0f1115; color: #e8eaed; border: 1px solid #3a3f4a; border-radius: 4px; font: inherit; }
+  input[type=text], input[type=password], input[type=search], input:not([type]) { width: 100%; padding: 8px; background: #0f1115; color: #e8eaed; border: 1px solid #3a3f4a; border-radius: 4px; font: inherit; }
   button { margin: 0 14px 0 0; padding: 0; background: none; border: 0; color: #6ea8fe; font: inherit; font-weight: 600; cursor: pointer; }
   button:hover:not(:disabled) { text-decoration: underline; }
   button:disabled { color: #6b7280; cursor: default; }
@@ -18,20 +18,20 @@
   .abas button { margin: 0; padding: 6px 0; color: #a8adb7; border-bottom: 2px solid transparent; }
   .abas button.ativa { color: #e8eaed; border-bottom-color: #6ea8fe; }
   .abas button:hover { text-decoration: none; color: #e8eaed; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: #a8adb7; margin: 14px 0 6px; }
-  .lista { max-height: 170px; overflow: auto; border: 1px solid #2a2e37; border-radius: 4px; padding: 4px 8px; }
+  .linha-titulo { display: flex; justify-content: space-between; align-items: baseline; margin: 14px 0 6px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: #a8adb7; margin: 0; }
+  .lista { max-height: 160px; overflow: auto; border: 1px solid #2a2e37; border-radius: 4px; padding: 4px 8px; }
+  .lista.alta { max-height: 260px; }
   .lista label { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
   .lista small { color: #a8adb7; }
+  .busca { position: relative; margin-top: 12px; }
+  .busca svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; fill: none; stroke: #a8adb7; stroke-width: 2; pointer-events: none; }
+  .busca input { padding-left: 32px; }
   .alvo { padding: 10px 12px; border-left: 4px solid #4ade80; background: #1d2128; border-radius: 0 4px 4px 0; line-height: 1.4; }
   .alvo.vazio { border-left-color: #fbbf24; }
   .suave { color: #a8adb7; margin: 6px 0 0; }
   .erro { color: #f87171; }
   .acoes { margin-top: 10px; }
-  .historico { list-style: none; margin: 0; padding: 0; font-variant-numeric: tabular-nums; }
-  .historico li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid #22262e; }
-  .historico .codigo { font-family: ui-monospace, Consolas, monospace; }
-  .certo { color: #4ade80; }
-  .errado { color: #f87171; font-weight: 600; }
   .grupo { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #22262e; }
   .grupo small { display: block; color: #a8adb7; }
   .grupo button { margin: 0 0 0 12px; }
@@ -52,30 +52,36 @@
     <div class="topo"><span id="logado"></span><button id="sair" type="button">Sair</button></div>
     <div class="abas">
       <button type="button" data-aba="bipar" class="ativa">Bipar</button>
-      <button type="button" data-aba="grupos">Grupos</button>
+      <button type="button" data-aba="circulos">Círculos</button>
     </div>
     <p id="mensagem" class="suave"></p>
 
     <div id="aba-bipar">
       <div id="alvo" class="alvo"></div>
-      <h2>Grupos</h2>
+      <div class="busca">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        <input id="busca" type="search" placeholder="Pesquisar círculo ou cidade" autocomplete="off">
+      </div>
+      <p class="suave">Marque círculos <strong>ou</strong> cidades: um ou outro.</p>
+      <div class="linha-titulo"><h2>Círculos</h2><button id="limpar" type="button">Remover marcados</button></div>
       <div id="sel-grupos" class="lista"></div>
-      <h2>Cidades</h2>
+      <div class="linha-titulo"><h2>Cidades</h2></div>
       <div id="sel-cidades" class="lista"></div>
-      <p class="acoes"><button id="limpar" type="button">Desmarcar tudo</button></p>
-      <h2>Últimos bipes</h2>
-      <ul id="historico" class="historico"></ul>
     </div>
 
-    <div id="aba-grupos" hidden>
+    <div id="aba-circulos" hidden>
       <div id="grupos"></div>
-      <p class="acoes"><button id="novo" type="button">Criar grupo de cidades</button><button id="atualizar" type="button">Atualizar</button></p>
+      <p class="acoes"><button id="novo" type="button">Criar círculo</button><button id="atualizar" type="button">Atualizar</button></p>
       <form id="form-grupo" hidden>
-        <h2 id="titulo-form">Novo grupo</h2>
-        <label class="campo" for="nome-grupo">Nome do grupo</label>
+        <div class="linha-titulo"><h2 id="titulo-form">Novo círculo</h2></div>
+        <label class="campo" for="nome-grupo">Nome do círculo</label>
         <input id="nome-grupo" maxlength="60" required>
-        <h2>Cidades do grupo</h2>
-        <div id="cidades-grupo" class="lista"></div>
+        <div class="busca">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input id="busca-form" type="search" placeholder="Pesquisar cidade" autocomplete="off">
+        </div>
+        <div class="linha-titulo"><h2>Cidades do círculo</h2></div>
+        <div id="cidades-grupo" class="lista alta"></div>
         <p class="acoes"><button type="submit">Salvar</button><button id="cancelar" type="button">Cancelar</button></p>
       </form>
     </div>

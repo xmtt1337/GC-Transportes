@@ -7,7 +7,6 @@
 (() => {
   const NOME = 'XM - Bipagem Loggi';
   const MARGEM = 8;
-  const HISTORICO_MAX = 30;
 
   function limitar(valor, maximo) {
     return Math.min(Math.max(MARGEM, valor), Math.max(MARGEM, maximo));
@@ -50,24 +49,23 @@
       .fundo { display: none; position: fixed; inset: 0; z-index: 2147483647; background: rgba(0, 0, 0, .55);
         align-items: center; justify-content: center; font: 15px system-ui, sans-serif; }
       .fundo.ver { display: flex; }
-      .card { width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; background: #fff;
-        color: #1f2933; border-left: 8px solid #dc2626; border-radius: 0 8px 8px 0; padding: 22px 24px;
-        box-shadow: 0 16px 40px rgba(0, 0, 0, .45); }
-      .card h2 { margin: 0 0 6px; color: #b91c1c; font-size: 22px; }
-      .card p { margin: 0 0 12px; color: #52606d; }
-      .card ul { margin: 0 0 16px; padding: 0; list-style: none; }
-      .card li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #e4e7eb; }
-      .card li span:first-child { font-family: ui-monospace, Consolas, monospace; font-weight: 600; }
-      .card li span:last-child { color: #b91c1c; font-weight: 600; }
-      .card button { padding: 0; background: none; border: 0; color: #1d4ed8; font: 600 15px system-ui, sans-serif; cursor: pointer; }
-      .card button:hover { text-decoration: underline; }
+      .card { width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; background: #dc2626;
+        color: #fff; border-radius: 10px; padding: 26px 30px; box-shadow: 0 16px 40px rgba(0, 0, 0, .5); }
+      .card h2 { margin: 0 0 8px; font-size: 26px; }
+      .card p { margin: 0 0 16px; font-size: 17px; line-height: 1.45; }
+      .card ul { margin: 0 0 18px; padding: 0; list-style: none; background: rgba(0, 0, 0, .15); border-radius: 6px; }
+      .card li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, .2); }
+      .card li:last-child { border-bottom: 0; }
+      .card li span:first-child { font-family: ui-monospace, Consolas, monospace; font-weight: 700; }
+      .card li span:last-child { font-weight: 700; }
+      .card button { padding: 0; background: none; border: 0; color: #fff; text-decoration: underline; font: 700 16px system-ui, sans-serif; cursor: pointer; }
     </style>
     <div class="fundo" role="alertdialog" aria-modal="true">
       <div class="card">
-        <h2>Retire estes pacotes do grupo</h2>
+        <h2>Pacotes bipados errado</h2>
         <p class="explica"></p>
         <ul></ul>
-        <button type="button">Entendi, vou retirar</button>
+        <button type="button">Entendi, vou verificar</button>
       </div>
     </div>
     <div class="tarja" role="alert">
@@ -170,15 +168,24 @@
   }
 
   function mostrarTarja(codigo, cidade) {
-    tarja.querySelector('.texto').textContent =
-      `${codigo} é de ${cidade}, fora de: ${alvo.rotulo || 'cidades marcadas'}`;
+    tarja.querySelector('.texto').textContent = `${codigo} é de ${cidade}, não é ${alvo.frase}`;
     tarja.classList.add('ver');
   }
 
-  async function guardarHistorico(itens) {
-    const { historico = [] } = await chrome.storage.local.get('historico');
-    const novos = itens.map((i) => ({ ...i, quando: Date.now() }));
-    await chrome.storage.local.set({ historico: [...novos.reverse(), ...historico].slice(0, HISTORICO_MAX) });
+  // Registro no sistema (loggi_bipagem_registros), pelo fundo.js, que tem o token.
+  function registrar(conferidos) {
+    const itens = conferidos.map((i) => ({
+      id: crypto.randomUUID(),
+      codigo: i.codigo,
+      cidade: i.cidade,
+      certo: i.ok === null ? null : i.ok,
+      esperado: (alvo && alvo.rotulo) || null,
+      esperadoCidades: (alvo && alvo.cidades) || [],
+      quando: Date.now(),
+    }));
+    try {
+      chrome.runtime.sendMessage({ tipo: 'bipes', itens }).catch(() => {});
+    } catch { /* extensao recarregada: esta aba precisa de F5 */ }
   }
 
   // ── conferencia do grupo inteiro no "Continuar" ──────────────────────────
@@ -188,9 +195,9 @@
   const fundo = sombra.querySelector('.fundo');
 
   function mostrarPendentes(errados) {
-    fundo.querySelector('.explica').textContent =
-      `${errados.length === 1 ? 'Este pacote não é' : 'Estes pacotes não são'} de ${alvo.rotulo || 'nenhuma cidade marcada'}. ` +
-      'Tire da lista na lixeira e clique em Continuar de novo.';
+    fundo.querySelector('.explica').textContent = errados.length === 1
+      ? `Este pacote não é ${alvo.frase}. Verifique o pacote que você bipou errado e remova para continuar.`
+      : `Estes pacotes não são ${alvo.frase}. Verifique os pacotes que você bipou errado e remova para continuar.`;
     const ul = fundo.querySelector('ul');
     ul.replaceChildren(...errados.map((e) => {
       const li = document.createElement('li');
@@ -236,7 +243,7 @@
     } else if (conferidos.some((i) => i.ok)) {
       tarja.classList.remove('ver');
     }
-    guardarHistorico(conferidos);
+    registrar(conferidos);
   });
 
   arrastar(botao, abrir);

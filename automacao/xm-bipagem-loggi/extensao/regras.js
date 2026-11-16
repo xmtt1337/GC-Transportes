@@ -19,22 +19,45 @@
       .replace(/\s+/g, ' ').trim();
   }
 
-  /** Grupos e cidades marcados → as cidades que valem e um nome para mostrar. */
+  const juntar = (nomes) => (nomes.length < 2 ? nomes.join('')
+    : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`);
+
+  /**
+   * Círculos ou cidades marcados → as cidades que valem e os textos dos avisos. Na tela é
+   * um ou outro; se vierem os dois (seleção antiga), valem os círculos.
+   *   rotulo: o que fica no registro ("Círculo Lindomar", "Caçador, Videira")
+   *   frase:  o fim de "não é ..." ("do círculo Lindomar", "das cidades Caçador e Videira")
+   */
   function montarAlvo(selecao, grupos) {
     const sel = selecao || {};
     const ids = new Set((sel.grupos || []).map(Number));
-    const escolhidos = (grupos || []).filter((g) => ids.has(Number(g.id)));
+    const circulos = (grupos || []).filter((g) => ids.has(Number(g.id)));
+    const tipo = circulos.length ? 'circulo' : 'cidade';
     const cidades = [];
     const chaves = new Set();
     const somar = (c) => {
       const k = chaveCidade(c);
       if (k && !chaves.has(k)) { chaves.add(k); cidades.push(c); }
     };
-    escolhidos.forEach((g) => (g.cidades || []).forEach(somar));
-    (sel.cidades || []).forEach(somar);
-    const soltas = (sel.cidades || []).filter((c) => !escolhidos.some((g) => (g.cidades || []).includes(c)));
-    const rotulo = [...escolhidos.map((g) => g.nome), ...soltas].join(' + ');
-    return { cidades, chaves: [...chaves], rotulo };
+    if (tipo === 'circulo') circulos.forEach((g) => (g.cidades || []).forEach(somar));
+    else (sel.cidades || []).forEach(somar);
+
+    const nomes = tipo === 'circulo' ? circulos.map((g) => g.nome) : cidades;
+    let rotulo = '';
+    let frase = '';
+    // Circulo chamado "Círculo Lindomar" nao vira "Círculo Círculo Lindomar".
+    const jaDiz = nomes.every((n) => chaveCidade(n).startsWith('circulo'));
+    if (nomes.length && tipo === 'circulo' && jaDiz) {
+      rotulo = nomes.join(' + ');
+      frase = nomes.length === 1 ? `do ${nomes[0]}` : `dos ${juntar(nomes)}`;
+    } else if (nomes.length && tipo === 'circulo') {
+      rotulo = `${nomes.length === 1 ? 'Círculo' : 'Círculos'} ${nomes.join(' + ')}`;
+      frase = nomes.length === 1 ? `do círculo ${nomes[0]}` : `dos círculos ${juntar(nomes)}`;
+    } else if (nomes.length) {
+      rotulo = nomes.join(', ');
+      frase = nomes.length === 1 ? `de ${nomes[0]}` : `das cidades ${juntar(nomes)}`;
+    }
+    return { tipo, cidades, chaves: [...chaves], rotulo, frase };
   }
 
   /**

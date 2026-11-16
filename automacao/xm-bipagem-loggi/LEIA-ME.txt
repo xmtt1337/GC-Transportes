@@ -3,14 +3,22 @@
 ===========================================================
 
 Extensao do Chrome para a tela "Agrupar pacotes" da Loggi.
-Marca-se quais cidades (ou grupos de cidades) estao sendo
-agrupadas; pacote de outra cidade toca alarme e mostra uma
-tarja vermelha no topo da tela.
+Marca-se quais cidades, ou quais Circulos (grupos de
+cidades), estao sendo agrupados: um ou outro, nunca os dois.
+Pacote de outra cidade toca alarme e mostra uma tarja
+vermelha no topo da tela.
 
 Ao clicar em "Continuar", confere a lista inteira: se ainda
-houver pacote de outra cidade, o clique nao passa e um card no
-meio da tela mostra quais retirar. Depois de tirar na lixeira,
-e so clicar em Continuar de novo.
+houver pacote de outra cidade, o clique nao passa e um card
+vermelho no meio da tela mostra quais verificar e remover.
+Depois de tirar na lixeira, e so clicar em Continuar de novo.
+
+Cada bipe vai para o sistema (tabela loggi_bipagem_registros):
+quem bipou, codigo, data e hora, se estava certo, a cidade do
+pacote e o que era esperado. Aparece no Historico de pedidos
+(Operacao > Historico de pedidos) como "Agrupamento Loggi";
+o errado em vermelho. Sem internet, o bipe espera numa fila e
+sobe depois.
 
 A extensao nao faz nenhuma consulta a Loggi: so le a resposta
 que a propria tela recebe ao bipar, e dela so o codigo e a
@@ -32,10 +40,11 @@ USAR
 
 1. Clique no botao XM no canto da Loggi e entre com o login do
    sistema XMTT.
-2. Aba "Grupos": "Criar grupo de cidades", com nome e cidades.
-   Os grupos ficam no sistema: todo mundo ve e pode editar.
-3. Aba "Bipar": marque um ou mais grupos e/ou cidades soltas.
-   Pode minimizar o painel; o alerta continua valendo.
+2. Aba "Circulos": "Criar circulo", com nome e cidades. Os
+   circulos ficam no sistema: todo computador ve os mesmos.
+3. Aba "Bipar": marque circulos OU cidades (a lupa pesquisa).
+   "Remover marcados" desliga o alerta. Pode minimizar o
+   painel; o alerta e o registro continuam valendo.
 
 As cidades da lista sao as da Loggi cadastradas na
 Conferencia de expedicao do sistema. Cidade nova entra la.
