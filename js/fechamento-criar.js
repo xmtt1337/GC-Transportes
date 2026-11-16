@@ -135,6 +135,8 @@ function _cfCarregarResumo() {
         if (tl && tl.style.display !== "none") _cfCarregarTicketlog();
         const pz = document.getElementById("cf-prazo");
         if (pz && pz.style.display !== "none") _cfCarregarPrazo();
+        const dc = document.getElementById("cf-desconsiderados");
+        if (dc && dc.style.display !== "none") _cfCarregarDesconsiderados();
     }).catch(() => {
         if (reqId === _cfReqId) skFim(empty, "Erro ao carregar dados do período.");
     });
@@ -200,6 +202,10 @@ function _cfSelecionarTransp(key) {
         _cfCarregarOnholdsInfo();
         _cfCarregarIgnorar();
     }
+    // Outras transportadoras: Desconsiderar pedidos.
+    const pi = document.getElementById("cf-pedidos-ignorar");
+    pi.style.display = _cfEhShopee(key) ? "none" : "";
+    if (!_cfEhShopee(key)) { _cfPedIgnAberta = false; _cfCarregarPedidosIgnorar(); }
     _cfCarregarDetalhe();
 }
 
@@ -807,6 +813,210 @@ function _cfTirarIgnorar(codigo) {
     };
     if (codigo) faz();
     else gcConfirm("Tirar todos os códigos desconsiderados deste fechamento? Os onholds deles voltam a contar.", faz, "Tirar todos", "Tirar");
+}
+
+// ── Desconsiderar pedidos (transportadoras que não são Shopee) ──
+// O pedido sai da performance do dia (nem sucesso nem falha); entregue, é pago pela
+// performance do dia da entrega.
+let _cfPedIgn = [];          // [{codigo, motivo, criado_em, criado_por_nome}]
+let _cfPedIgnAberta = false;
+
+/** Códigos de pedido no texto: palavras de 4+ letras/números/hífen com algum número, sem repetir. */
+function _cfExtrairCodigosPedido(texto) {
+    return [...new Set(String(texto || "").toUpperCase().split(/[\s,;|]+/)
+        .filter(s => /^[A-Z0-9][A-Z0-9-]{3,59}$/.test(s) && /[0-9]/.test(s)))];
+}
+
+function _cfCarregarPedidosIgnorar(msg) {
+    const key = _cfTranspAtual;
+    const el = document.getElementById("cf-pedidos-ignorar");
+    if (!el || _cfEhShopee(key)) return;
+    fetch(`${_CF_API()}/pacotes-ignorar?${_cfQs({ transportadora: key })}`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (key !== _cfTranspAtual) return;
+        if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
+        _cfPedIgn = d.codigos || [];
+        const n = _cfPedIgn.length;
+        el.innerHTML = `
+            <div class="cft-pend-titulo" style="color:#e2e8f0">Desconsiderar pedidos</div>
+            <div class="cft-ajuda" style="margin-bottom:8px">Cole os códigos dos pedidos (um por linha, ou do jeito que vierem) ou anexe uma planilha com eles.
+                O pedido sai da performance do dia: não conta como falha nem como sucesso. Se foi entregue, é pago pela performance do dia da entrega.
+                Vale pros polos da regra de performance.</div>
+            <textarea id="cf-pedign-texto" class="cft-input" rows="3" placeholder="CODIGO0001&#10;CODIGO0002"></textarea>
+            <input id="cf-pedign-motivo" class="cft-input" placeholder="Motivo (opcional) — aparece na lista de desconsiderados" style="margin-top:6px">
+            <div class="cft-barra" style="margin:8px 0 0">
+                <button class="cft-btn primario" id="cf-pedign-btn" onclick="_cfAdicionarPedidosIgnorar()">Desconsiderar</button>
+                <label class="cft-btn" style="cursor:pointer">Anexar planilha
+                    <input type="file" accept=".xlsx,.xls,.csv,.txt" multiple style="display:none" onchange="_cfPedidosIgnorarArquivo(this)">
+                </label>
+                ${n ? `<span style="flex:1"></span><button class="cft-btn perigo" onclick="_cfTirarPedidoIgnorar(null)">Tirar todos</button>` : ""}
+            </div>
+            <div class="cft-ajuda" id="cf-pedign-status" style="margin-top:6px">${msg || ""}</div>
+            ${n ? `
+                <div class="cft-barra" style="margin:6px 0 0">
+                    <span class="cft-ajuda">${n.toLocaleString("pt-BR")} pedido${n !== 1 ? "s" : ""} desconsiderado${n !== 1 ? "s" : ""} nesta transportadora.</span>
+                    <button class="cft-btn" id="cf-pedign-toggle" onclick="_cfAlternarPedidosIgnorar()">${_cfPedIgnAberta ? "Esconder lista" : "Ver lista"}</button>
+                </div>
+                <div id="cf-pedign-lista" style="display:${_cfPedIgnAberta ? "" : "none"}">
+                    <div class="adm-search-input-area" style="max-width:260px;margin:6px 0">
+                        <input type="text" id="cf-pedign-busca" placeholder="Buscar código..." oninput="_cfRenderPedidosIgnorar()">
+                    </div>
+                    <div class="cft-tabela-wrap" style="max-height:280px;overflow-y:auto"><table class="cft-tabela">
+                        <thead><tr><th>Pedido</th><th>Motivo</th><th>Por</th><th>Incluído em</th><th></th></tr></thead>
+                        <tbody id="cf-pedign-tbody"></tbody>
+                    </table></div>
+                    <div class="cft-ajuda" id="cf-pedign-contagem" style="margin-top:4px"></div>
+                </div>` : ""}`;
+        if (n && _cfPedIgnAberta) _cfRenderPedidosIgnorar();
+    }).catch(() => {});
+}
+
+function _cfAlternarPedidosIgnorar() {
+    _cfPedIgnAberta = !_cfPedIgnAberta;
+    document.getElementById("cf-pedign-lista").style.display = _cfPedIgnAberta ? "" : "none";
+    document.getElementById("cf-pedign-toggle").innerText = _cfPedIgnAberta ? "Esconder lista" : "Ver lista";
+    if (_cfPedIgnAberta) _cfRenderPedidosIgnorar();
+}
+
+function _cfRenderPedidosIgnorar() {
+    const busca = String((document.getElementById("cf-pedign-busca") || {}).value || "").trim().toUpperCase();
+    const lista = _cfPedIgn.filter(c => !busca || c.codigo.includes(busca));
+    document.getElementById("cf-pedign-tbody").innerHTML = lista.length ? lista.slice(0, 1000).map(c => `<tr>
+            <td>${_cfEsc(c.codigo)}</td>
+            <td>${_cfEsc(c.motivo || "")}</td>
+            <td>${_cfEsc(c.criado_por_nome || "")}</td>
+            <td>${c.criado_em ? new Date(c.criado_em).toLocaleString("pt-BR") : ""}</td>
+            <td><button class="cft-btn perigo" data-c="${_cfEsc(c.codigo)}" onclick="_cfTirarPedidoIgnorar(this.dataset.c)">Voltar a contar</button></td>
+        </tr>`).join("")
+        : `<tr><td colspan="5" class="cft-vazio" style="padding:12px">Nenhum código com isso.</td></tr>`;
+    document.getElementById("cf-pedign-contagem").innerText = lista.length > 1000
+        ? `Mostrando 1.000 de ${lista.length.toLocaleString("pt-BR")} — busque pra achar os outros.`
+        : `${lista.length.toLocaleString("pt-BR")} pedido${lista.length !== 1 ? "s" : ""}`;
+}
+
+async function _cfEnviarPedidosIgnorar(codigos, origem) {
+    const key = _cfTranspAtual;
+    const st = document.getElementById("cf-pedign-status");
+    if (!codigos.length) { if (st) st.innerText = `Nenhum código de pedido encontrado ${origem}.`; return; }
+    if (st) st.innerText = `Gravando ${codigos.length.toLocaleString("pt-BR")} pedido(s) e refazendo a performance...`;
+    const motivo = (document.getElementById("cf-pedign-motivo") || {}).value || "";
+    try {
+        const r = await fetch(`${_CF_API()}/pacotes-ignorar`, {
+            method: "POST", headers: _cfHeaders(true),
+            body: JSON.stringify({ mes: _cfMes, ano: _cfAno, quinzena: _cfQuinzena, transportadora: key, codigos, motivo }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Erro ao gravar.");
+        if (key !== _cfTranspAtual) return;
+        const n = (x) => Number(x || 0).toLocaleString("pt-BR");
+        _cfCarregarPedidosIgnorar(_cfEsc(`${n(d.adicionados)} pedido(s) desconsiderado(s)${d.ja_estavam ? ` · ${n(d.ja_estavam)} já estavam` : ""}`
+            + `${d.nao_encontrados ? ` · ${n(d.nao_encontrados)} não estão no relatório desta transportadora na quinzena (ficam guardados mesmo assim)` : ""}`
+            + `${d.recalculado ? " · performance refeita." : "."}`));
+        if (d.recalculado) { _cfAtualizarCards(); _cfCarregarDetalhe(); }
+        const dc = document.getElementById("cf-desconsiderados");
+        if (dc && dc.style.display !== "none") _cfCarregarDesconsiderados();
+    } catch (err) { if (st) st.innerText = err.message; }
+}
+
+function _cfAdicionarPedidosIgnorar() {
+    _cfEnviarPedidosIgnorar(_cfExtrairCodigosPedido(document.getElementById("cf-pedign-texto").value), "no texto colado");
+}
+
+async function _cfPedidosIgnorarArquivo(input) {
+    const arquivos = [...(input.files || [])];
+    input.value = "";
+    let codigos = [];
+    for (const f of arquivos) {
+        const grid = await _cfLerGrid(f).catch(() => []);
+        codigos = codigos.concat(_cfExtrairCodigosPedido(grid.map(row => (row || []).join(" ")).join("\n")));
+    }
+    _cfEnviarPedidosIgnorar([...new Set(codigos)], "no arquivo");
+}
+
+function _cfTirarPedidoIgnorar(codigo) {
+    const faz = async () => {
+        const key = _cfTranspAtual;
+        const extra = codigo ? { codigo } : { todos: "1" };
+        const r = await fetch(`${_CF_API()}/pacotes-ignorar?${_cfQs({ transportadora: key, ...extra })}`, { method: "DELETE", headers: _cfHeaders() });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { gcAlert(d.error || "Erro ao tirar."); return; }
+        if (key !== _cfTranspAtual) return;
+        _cfCarregarPedidosIgnorar(codigo ? _cfEsc(`${codigo} volta a contar.`) : "Todos voltam a contar.");
+        if (d.recalculado) { _cfAtualizarCards(); _cfCarregarDetalhe(); }
+        const dc = document.getElementById("cf-desconsiderados");
+        if (dc && dc.style.display !== "none") _cfCarregarDesconsiderados();
+    };
+    if (codigo) faz();
+    else gcConfirm("Tirar todos os pedidos desconsiderados desta transportadora? Eles voltam a contar na performance.", faz, "Tirar todos", "Tirar");
+}
+
+// ── Desconsiderados: tudo que não conta na quinzena, com o motivo ──
+let _cfDesc = { linhas: [], resumo: [] };
+
+function _cfAbrirDesconsiderados() {
+    const el = document.getElementById("cf-desconsiderados");
+    if (el.style.display !== "none") { el.style.display = "none"; return; }
+    el.style.display = "";
+    _cfCarregarDesconsiderados();
+}
+
+function _cfCarregarDesconsiderados() {
+    const el = document.getElementById("cf-desconsiderados");
+    if (!el) return;
+    if (!_cfQuinzena) { el.innerHTML = `<div class="cft-ajuda">Escolha a quinzena primeiro.</div>`; return; }
+    el.innerHTML = skLogo();
+    const q = `${_cfMes}-${_cfAno}-${_cfQuinzena}`;
+    fetch(`${_CF_API()}/desconsiderados?${_cfQs()}`, { headers: _cfHeaders() })
+    .then(r => r.json())
+    .then(d => {
+        if (q !== `${_cfMes}-${_cfAno}-${_cfQuinzena}`) return;
+        if (d.error) { el.innerHTML = `<div class="cft-erro">${_cfEsc(d.error)}</div>`; return; }
+        _cfDesc = { linhas: d.linhas || [], resumo: d.resumo || [] };
+        const n = (x) => Number(x || 0).toLocaleString("pt-BR");
+        el.innerHTML = `
+            <div class="cft-pend-titulo" style="color:#e2e8f0">Desconsiderados nesta quinzena</div>
+            <div class="cft-ajuda" style="margin-bottom:8px">Tudo que não conta na performance, com o motivo. Onhold e pedido desconsiderados não derrubam o dia;
+                entregador com o prazo desconsiderado tem o atrasado contado como no prazo.</div>
+            ${_cfDesc.linhas.length ? `
+                <div class="cft-barra" style="margin:0 0 8px;flex-wrap:wrap;gap:8px">
+                    <select id="cf-desc-motivo" class="fech-select" onchange="_cfRenderDesconsiderados()">
+                        <option value="">Todos os motivos (${n(_cfDesc.linhas.length)})</option>
+                        ${_cfDesc.resumo.map(x => `<option value="${_cfEsc(x.chave)}">${_cfEsc(x.motivo)} (${n(x.n)})</option>`).join("")}
+                    </select>
+                    <div class="adm-search-input-area" style="max-width:260px;margin:0">
+                        <input type="text" id="cf-desc-busca" placeholder="Buscar código ou entregador..." oninput="_cfRenderDesconsiderados()">
+                    </div>
+                </div>
+                <div class="cft-tabela-wrap" style="max-height:420px;overflow-y:auto"><table class="cft-tabela">
+                    <thead><tr><th>Tipo</th><th>Transportadora</th><th>Pedido</th><th>Dia</th><th>Entregador / login</th><th>Motivo</th><th>Detalhe</th></tr></thead>
+                    <tbody id="cf-desc-tbody"></tbody>
+                </table></div>
+                <div class="cft-ajuda" id="cf-desc-contagem" style="margin-top:4px"></div>`
+            : `<div class="cft-ajuda">Nada desconsiderado nesta quinzena.</div>`}`;
+        if (_cfDesc.linhas.length) _cfRenderDesconsiderados();
+    }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao carregar os desconsiderados.</div>`; });
+}
+
+function _cfRenderDesconsiderados() {
+    const motivo = (document.getElementById("cf-desc-motivo") || {}).value || "";
+    const busca = String((document.getElementById("cf-desc-busca") || {}).value || "").trim().toLowerCase();
+    const lista = _cfDesc.linhas.filter(l => (!motivo || l.motivo_chave === motivo)
+        && (!busca || String(l.codigo || "").toLowerCase().includes(busca) || String(l.entregador || "").toLowerCase().includes(busca)));
+    const dia = (d) => d ? d.split("-").reverse().slice(0, 2).join("/") : "";
+    document.getElementById("cf-desc-tbody").innerHTML = lista.length ? lista.slice(0, 1000).map(l => `<tr>
+            <td>${_cfEsc(l.tipo)}</td>
+            <td>${_cfEsc(l.transportadora || "")}</td>
+            <td>${_cfEsc(l.codigo || "—")}</td>
+            <td>${dia(l.dia)}</td>
+            <td>${_cfEsc(l.entregador || "")}</td>
+            <td>${_cfEsc(l.motivo)}</td>
+            <td>${_cfEsc([l.situacao, l.detalhe, l.motivo_onhold && l.motivo_chave !== "office_closed" ? `OnHold: ${l.motivo_onhold}` : ""].filter(Boolean).join(" · "))}</td>
+        </tr>`).join("")
+        : `<tr><td colspan="7" class="cft-vazio" style="padding:12px">Nada com esse filtro.</td></tr>`;
+    document.getElementById("cf-desc-contagem").innerText = lista.length > 1000
+        ? `Mostrando 1.000 de ${lista.length.toLocaleString("pt-BR")} — filtre ou busque pra achar os outros.`
+        : `${lista.length.toLocaleString("pt-BR")} linha${lista.length !== 1 ? "s" : ""}`;
 }
 
 // Vários arquivos de uma vez: um por um, cada um soma aos que já estão.

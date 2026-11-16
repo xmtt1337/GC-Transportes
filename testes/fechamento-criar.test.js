@@ -583,3 +583,32 @@ test("onholds sem entregador: resumo por Driver Name e aviso quando a lista aind
     assert.ok(h.includes("sem Driver Name <b>1</b>"));
     assert.ok(h.includes("BRTESTE3"));
 });
+
+test("Desconsiderar pedidos: pega os códigos do texto colado (com número), sem cabeçalho nem repetidos", () => {
+    const ctx = carregar();
+    const r = ctx._cfExtrairCodigosPedido("CODIGO\nab0001\nAB0001, TESTE-0002; x1 | outro texto");
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(r)), ["AB0001", "TESTE-0002"]);
+});
+
+test("Desconsiderados: lista com motivo, filtro por motivo e busca", () => {
+    const ctx = carregar();
+    const els = { "cf-desc-motivo": { value: "" }, "cf-desc-busca": { value: "" }, "cf-desc-tbody": {}, "cf-desc-contagem": {} };
+    ctx.document = { getElementById: (id) => els[id] };
+    vm.runInContext(`_cfDesc = ${JSON.stringify({ linhas: [
+        { tipo: "Onhold", transportadora: "Shopee Caçador", codigo: "BR0001", dia: "2026-02-17", entregador: "login.teste",
+            motivo_chave: "faltante", motivo: "Entregador reportou que o pacote não foi com ele (pacote faltante)", detalhe: "Registrado por Fulano Teste" },
+        { tipo: "Pedido", transportadora: "Imile", codigo: "IM0001", dia: "2026-02-18", entregador: "Ciclano Teste",
+            motivo_chave: "pedido_manual", motivo: "Pedido colado em Desconsiderar pedidos", situacao: "Entregue atrasado" },
+    ], resumo: [] })}`, ctx);
+    ctx._cfRenderDesconsiderados();
+    assert.match(els["cf-desc-tbody"].innerHTML, /não foi com ele/);
+    assert.match(els["cf-desc-tbody"].innerHTML, /17\/02/);
+    assert.match(els["cf-desc-tbody"].innerHTML, /Entregue atrasado/);
+    els["cf-desc-motivo"].value = "pedido_manual";
+    ctx._cfRenderDesconsiderados();
+    assert.doesNotMatch(els["cf-desc-tbody"].innerHTML, /BR0001/);
+    els["cf-desc-motivo"].value = ""; els["cf-desc-busca"].value = "fulano";
+    ctx._cfRenderDesconsiderados();
+    assert.match(els["cf-desc-tbody"].innerHTML, /Nada com esse filtro/);
+    assert.strictEqual(els["cf-desc-contagem"].innerText, "0 linhas");
+});
