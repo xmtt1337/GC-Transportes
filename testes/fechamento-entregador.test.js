@@ -477,3 +477,15 @@ test("extravio: entregador tem o Contestar (WhatsApp com transportadora e códig
     ctx._fsRender(D2, { el: "adm-fech-sistema", pedidos: () => "" });
     assert.doesNotMatch(el("adm-fech-sistema").innerHTML, /Contestar/);
 });
+
+test("pedido mostra a data de atribuição; sem atribuição conta no dia da entrega (no prazo); Shopee sem", () => {
+    const { ctx } = carregar();
+    const e = ctx._fsCardEntregue({ transportadora: "Imile", codigo: "C1", data_atribuicao: "25/10/2026", data_entrega: "27/10/2026", dentro_prazo: "Não", deve_ser_entregue: "26/10/2026" });
+    assert.match(e, /Atribuído 25\/10 · Entregue 27\/10/);
+    const sem = ctx._fsCardEntregue({ transportadora: "Anjun", codigo: "C2", data_atribuicao: null, data_entrega: "27/10/2026", dentro_prazo: "Sim" });
+    assert.match(sem, /Sem data de atribuição — conta como atribuído no dia da entrega \(27\/10\), no prazo · Entregue 27\/10/);
+    const sh = ctx._fsCardEntregue({ transportadora: "Shopee Caçador", codigo: "C3", data_atribuicao: null, data_entrega: "27/10/2026" });
+    assert.doesNotMatch(sh, /atribu/i);
+    const oc = ctx._fsCardOcorrencia({ tipo: "Atrasado", transportadora: "Imile", codigo: "C4", atribuido: "2026-10-24", deveria: "2026-10-26", entregue: "2026-10-27" });
+    assert.match(oc, /Atribuído 24\/10 · Deveria ser entregue 26\/10 · entregue 27\/10/);
+});
