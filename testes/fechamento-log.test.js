@@ -85,3 +85,22 @@ test("aba Extravios: entrou/saiu/mudou com código, valores e detalhe; nome esca
   assert.doesNotMatch(h, /BR0001/);
   assert.match(h, /2 mudança/);
 });
+
+test("O que mudou: extravios viram pedidos (código × edições), o resto fica como texto", () => {
+    const ctx = vm.createContext({ console, API: "", token: "", window: {} });
+    vm.runInContext(fonte, ctx);
+    const acao = 'Recalculado; Extravio mudou: COD111 — data "" → "25/08/2026"; Multa entrou: COD222 (R$ 100,00); '
+        + "Extravio saiu: COD333 (R$ 12,99); Multa saiu: COD222 (R$ 100,00)";
+    const r = JSON.parse(JSON.stringify(ctx._lvPedidos(acao)));
+    assert.deepStrictEqual(r.outros, ["Recalculado"]);
+    assert.deepStrictEqual(r.pedidos, [
+        { codigo: "COD111", edicoes: ['Extravio mudou: data "" → "25/08/2026"'] },
+        { codigo: "COD222", edicoes: ["Multa entrou (R$ 100,00)", "Multa saiu (R$ 100,00)"] },
+        { codigo: "COD333", edicoes: ["Extravio saiu (R$ 12,99)"] },
+    ]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(ctx._lvPedidos("Acréscimo/desconto"))), { pedidos: [], outros: ["Acréscimo/desconto"] });
+    const h = ctx._lvHtmlPedidos("<b>Fulano</b> - Teste", r.pedidos);
+    assert.match(h, /Entregador<\/th><th>Código<\/th><th>Edições feitas/);
+    assert.match(h, /&lt;b&gt;Fulano/);
+    assert.match(h, /Multa entrou \(R\$ 100,00\)<br>Multa saiu/);
+});

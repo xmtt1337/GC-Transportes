@@ -114,17 +114,54 @@ function _lvDesenhar() {
         <div class="cft-tabela-wrap" style="max-height:65vh;overflow-y:auto"><table class="cft-tabela">
         <thead><tr><th>Quando</th><th>Entregador</th><th>Campo</th><th style="text-align:right">Antes</th><th style="text-align:right">Depois</th>
             <th style="text-align:right">Diferença</th><th>O que mudou</th><th>Quem</th></tr></thead>
-        <tbody>${lista.map(l => {
+        <tbody>${lista.map((l, i) => {
             const dif = Math.round((l.depois - l.antes) * 100) / 100;
             // Mais dinheiro pro entregador = verde; menos = vermelho (desconto/Ticketlog/extravio subir é menos dinheiro).
             const contra = ["descontos", "ticketlog", "extravios"].includes(l.campo);
             const cls = dif === 0 ? "" : ((dif > 0) !== contra ? "fs-pos" : "cft-neg");
-            return `<tr><td style="white-space:nowrap">${_lvEsc(_lvQuando(l.em))}</td><td>${_lvEsc(l.entregador)}</td>
+            const ped = _lvPedidos(l.acao);
+            const n = ped.pedidos.length;
+            const oQue = [ped.outros.map(_lvEsc).join("; "),
+                n ? `<button class="cft-link" onclick="event.stopPropagation();_lvAbrirPedidos(${i})">${n} pedido${n !== 1 ? "s" : ""} com edição — ver</button>` : ""].filter(Boolean).join("<br>");
+            return `<tr${n ? ` style="cursor:pointer" onclick="_lvAbrirPedidos(${i})" title="Clique pra ver os pedidos que mudaram"` : ""}>
+                <td style="white-space:nowrap">${_lvEsc(_lvQuando(l.em))}</td><td>${_lvEsc(l.entregador)}</td>
                 <td>${_lvEsc(nomeCampo[l.campo] || l.campo)}</td>
                 <td class="num">${_lvNum(l.antes, l.campo)}</td><td class="num">${_lvNum(l.depois, l.campo)}</td>
                 <td class="num ${cls}">${dif > 0 ? "+" : ""}${_lvNum(dif, l.campo)}</td>
-                <td style="white-space:normal">${_lvEsc(l.acao)}</td><td>${_lvEsc(l.usuario || "—")}</td></tr>`;
+                <td style="white-space:normal">${oQue || "—"}</td><td>${_lvEsc(l.usuario || "—")}</td></tr>
+                ${n ? `<tr id="lv-ped-${i}" style="display:none"><td></td><td colspan="7">${_lvHtmlPedidos(l.entregador, ped.pedidos)}</td></tr>` : ""}`;
         }).join("")}</tbody></table></div>`;
+}
+
+/**
+ * "O que mudou" → pedidos (extravio/multa por código, com as edições de cada um) e o resto.
+ * O texto vem do backend (extravios-espelho.descrever), juntado com "; ":
+ *   "Extravio entrou: COD (R$ 1,00)" · "Multa saiu: COD (R$ 1,00)" · "Extravio mudou: COD — data "" → "08/07/2026""
+ * O mesmo código aparecendo mais de uma vez vira uma linha só, com as edições na ordem.
+ */
+function _lvPedidos(acao) {
+    const pedidos = new Map(), outros = [];
+    for (const parte of String(acao || "").split("; ").map(x => x.trim()).filter(Boolean)) {
+        const m = /^(Extravio|Multa) (entrou|saiu|mudou): (.+?)(?: \((R\$ [^)]*)\)| — (.*))$/.exec(parte);
+        if (!m) { outros.push(parte); continue; }
+        const [, tipo, como, codigo, valor, campos] = m;
+        const edicao = como === "mudou" ? `${tipo} mudou: ${campos}` : `${tipo} ${como} (${valor})`;
+        if (!pedidos.has(codigo)) pedidos.set(codigo, { codigo, edicoes: [] });
+        pedidos.get(codigo).edicoes.push(edicao);
+    }
+    return { pedidos: [...pedidos.values()], outros };
+}
+
+/** Sublista do clique: entregador × código × edições feitas. */
+function _lvHtmlPedidos(entregador, pedidos) {
+    return `<table class="cft-tabela" style="margin:4px 0 8px"><thead><tr><th>Entregador</th><th>Código</th><th>Edições feitas</th></tr></thead><tbody>
+        ${pedidos.map(p => `<tr><td>${_lvEsc(entregador)}</td><td style="white-space:nowrap">${_lvEsc(p.codigo)}</td>
+            <td style="white-space:normal">${p.edicoes.map(_lvEsc).join("<br>")}</td></tr>`).join("")}</tbody></table>`;
+}
+
+function _lvAbrirPedidos(i) {
+    const tr = document.getElementById("lv-ped-" + i);
+    if (tr) tr.style.display = tr.style.display === "none" ? "" : "none";
 }
 
 const _LV_TIPO_EXT = { entrou: ["Entrou", "cft-neg"], saiu: ["Saiu", "fs-pos"], mudou: ["Mudou", "cft-aviso"] };
