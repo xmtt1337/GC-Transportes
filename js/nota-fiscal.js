@@ -780,10 +780,12 @@ function _extrairCamposNota(raw) {
     // CNPJ da GC está na nota e não é o de quem emitiu, o tomador é a GC, tenha o nome
     // sido extraído ou não. Isso só transforma "não consegui ler" em acerto; não valida
     // nota nenhuma que não traga o CNPJ da GC.
-    const _GC_CNPJ = "40595873000109";
+    // Vale a raiz (8 primeiros dígitos), não o CNPJ inteiro: a GC tem filiais (0001-09
+    // Caçador, 0003-70 Joaçaba...) e o entregador emite pra filial da cidade dele.
+    const _GC_RAIZ = "40595873";
     const _digitos = s => String(s || "").replace(/\D/g, "");
-    if (!/gc.*transport/i.test(tomador) && _digitos(cnpj) !== _GC_CNPJ
-        && /40\.?595\.?873\/?0001-?09/.test(t)) {
+    if (!/gc.*transport/i.test(tomador) && _digitos(cnpj).slice(0, 8) !== _GC_RAIZ
+        && /40\.?595\.?873\/?\d{4}-?\d{2}/.test(t)) {
         tomador = "GC TRANSPORTES LTDA";
     }
 
