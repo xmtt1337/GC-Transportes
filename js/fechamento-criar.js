@@ -897,9 +897,9 @@ function _cfCarregarPerformance() {
             </div>
             <div class="cft-ajuda" style="margin-bottom:8px">Uma performance só por entregador e dia, juntando todas as transportadoras
                 (só os pacotes dos polos marcados acima; as duas XPTs juntas; os outros polos ficam com o valor da tabela de cidade):
-                (Shopee entregues + outras com prazo vencendo no dia entregues no prazo) ÷ (isso + onholds + outras com prazo vencendo no dia atrasadas ou não entregues).
+                (Shopee entregues + outras entregues no prazo naquele dia) ÷ (isso + onholds + outras com prazo vencendo no dia atrasadas ou não entregues).
                 Loggi, que não tem prazo, conta como no prazo no dia da entrega.
-                Todo pacote do entregador vale o R$/pacote do dia em que contou (Shopee: dia da entrega; outras: dia do prazo) — não entregue vale 0.
+                Todo pacote do entregador vale o R$/pacote do dia em que contou (entregue: dia da entrega; atrasado ou não entregue: dia do prazo) — não entregue vale 0.
                 Onhold que não conta: só Office closed no sábado ou domingo${oc ? ` (<b style="color:#cbd5e1">${oc.toLocaleString("pt-BR")} nesta quinzena</b>)` : ""}, além dos códigos em "Desconsiderar onholds"
                 e dos pedidos com Pacote faltante ou devolução "Fora de rota" registrados pelo entregador.
                 Entregador em "Valores fixos" ganha o valor dele, seja qual for a performance.
