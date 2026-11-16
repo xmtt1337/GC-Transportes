@@ -10,10 +10,71 @@
 // pendências do fechamento). A conferência é refeita na hora contra a lista atual — não precisa
 // subir o relatório de novo.
 // Backend: /admin/conferencia-expedicao (modules/conferencia-expedicao). Começou pela Anjun;
-// transportadora nova = relatório dela em relatorios.js + entrada em _CEX_NOMES.
+// transportadora nova = relatório dela em relatorios.js + entrada em _CEX_NOMES e _CEX_CFG.
+// Loggi (16/11/2026): "Na base" (recebimento, só acrescenta) + "Na rua"; o polo é o de quem sobe.
 const _CEX_API = () => `${API}/admin/conferencia-expedicao`;
-const _CEX_NOMES = { anjun: "Anjun" };
-const _CEX_LOGOS = { anjun: "img/Transportadoras/Anjun.branco.png" };
+const _CEX_NOMES = { anjun: "Anjun", loggi: "Loggi" };
+const _CEX_LOGOS = { anjun: "img/Transportadoras/Anjun.branco.png", loggi: "img/Transportadoras/loggi.branco.png" };
+
+// O que muda de uma transportadora pra outra. Loggi tem dois relatórios: "Na base" (o que
+// chegou hoje, só acrescenta) e "Na rua" (quem levou); recebido que não está no Na rua =
+// não expedido (status sem_entregador no backend).
+const _cexEntrada = (rotulo, fn, classe = "") => ({ rotulo, fn, classe });
+const _CEX_COL_COMUNS = {
+    entregador: _cexEntrada("Entregador", p => p.entregador
+        ? `<a href="#" class="cft-link" data-u="${_cexEsc(p.entregador)}" onclick="event.preventDefault();_cexAbrirUsuario(this.dataset.u)">${_cexEsc(p.entregador)}</a>`
+        : `<span class="cft-vazio">—</span>`),
+    cidadesLogin: _cexEntrada("Cidades do login", p => {
+        const cid = p.cidades_usuario || [];
+        return `<span title="${_cexEsc(cid.join(", "))}">${cid.length ? _cexEsc(cid.slice(0, 3).join(", ")) + (cid.length > 3 ? ` +${cid.length - 3}` : "") : ""}</span>`;
+    }, "cft-ajuda"),
+};
+const _cexCurto = (v, n) => `<span title="${_cexEsc(v)}">${_cexEsc(String(v || "").slice(0, n))}</span>`;
+const _CEX_CFG = {
+    anjun: {
+        envios: [{ tipo: "rua", rotulo: "Subir relatório" }],
+        atrib: { titulo: "1. Foi atribuído?", ok: "Atribuídos", falta: "Sem atribuição", sub: "Sem atribuição por cidade", vazio: "Todos os pacotes atribuídos." },
+        abr: "3. É cidade que a gente atende?",
+        certo: "atribuídos certo",
+        colunas: [
+            _cexEntrada("Waybill", p => _cexEsc(p.waybill)),
+            "polo", _CEX_COL_COMUNS.entregador,
+            _cexEntrada("Cidade do destinatário", p => _cexEsc(p.cidade) || `<span class="cft-vazio">—</span>`),
+            _CEX_COL_COMUNS.cidadesLogin,
+            _cexEntrada("Remetente", p => _cexCurto(p.cliente, 32)),
+            _cexEntrada("Valor declarado", p => _cexEsc(p.valor_declarado), "num"),
+            _cexEntrada("Área de recebimento", p => _cexEsc(p.area_recebimento)),
+            _cexEntrada("Última rota", p => _cexCurto(p.ultima_rota, 40)),
+            _cexEntrada("Entrada no ponto", p => _cexEsc(p.entrada_ponto)),
+        ],
+    },
+    loggi: {
+        envios: [{ tipo: "base", rotulo: "Subir Na base" }, { tipo: "rua", rotulo: "Subir Na rua" }],
+        dica: "Depois do recebimento, gere o relatório \"Na base\" na Loggi e suba aqui (só entra o que chegou hoje, e nunca apaga o que já subiu). Depois da expedição, suba o \"Na rua\".",
+        atrib: { titulo: "1. Foi expedido?", ok: "Expedidos", falta: "Não expedidos", sub: "Não expedido por cidade", vazio: "Todo pacote recebido foi expedido." },
+        abr: "3. Recebemos fora de abrangência?",
+        certo: "expedidos certo",
+        rotuloSemEntregador: "Não expedido",
+        colunas: [
+            _cexEntrada("Código de barras", p => _cexEsc(p.waybill)),
+            "polo", _CEX_COL_COMUNS.entregador,
+            _cexEntrada("Cidade", p => _cexEsc(p.cidade) || `<span class="cft-vazio">—</span>`),
+            _CEX_COL_COMUNS.cidadesLogin,
+            _cexEntrada("De", p => _cexCurto(p.remetente, 28)),
+            _cexEntrada("Para", p => _cexCurto(p.destinatario, 28)),
+            _cexEntrada("Endereço", p => _cexCurto(p.endereco, 40)),
+            _cexEntrada("CEP", p => _cexEsc(p.cep)),
+            _cexEntrada("Peso cubado", p => _cexEsc(p.peso_cubado), "num"),
+            _cexEntrada("Status", p => _cexEsc(p.status_rua || p.status_base)),
+            _cexEntrada("Chegou em", p => p.recebido ? _cexEsc(_cexData(p.chegou_em)) : `<span class="cft-vazio" title="Está no Na rua, mas não chegou hoje">outro dia</span>`),
+        ],
+    },
+};
+function _cexCfg() { return _CEX_CFG[_cexTransp] || _CEX_CFG.anjun; }
+function _cexRotulo(status) {
+    if (status === "sem_entregador" && _cexCfg().rotuloSemEntregador) return _cexCfg().rotuloSemEntregador;
+    return (_CEX_STATUS[status] || { rotulo: status }).rotulo;
+}
 const _CEX_STATUS = {
     fora_abrangencia:   { rotulo: "Fora de abrangência", classe: "cft-aviso" },
     sem_entregador:     { rotulo: "Sem atribuição",   classe: "cft-neg" },
@@ -56,6 +117,14 @@ function abrirConfExpedicao(event, transportadora) {
     document.getElementById("cex-titulo").innerHTML = logo
         ? `<img src="${logo}" alt="${_cexEsc(nome)}" class="cex-logo"><span>Conferência</span>`
         : "Conferência — " + _cexEsc(nome);
+    // Um botão por relatório (Anjun: 1; Loggi: Na base e Na rua).
+    const cfg = _cexCfg();
+    document.getElementById("cex-botoes").innerHTML = cfg.envios.map(e => `
+        <label class="cft-btn primario" for="cex-arquivo-${e.tipo}" style="cursor:pointer">${e.rotulo}</label>
+        <input type="file" id="cex-arquivo-${e.tipo}" accept=".xlsx,.xls,.csv" style="display:none" onchange="_cexSubir(this,'${e.tipo}')">`).join("");
+    const dica = document.getElementById("cex-dica");
+    dica.innerText = cfg.dica || "";
+    dica.style.display = cfg.dica ? "" : "none";
     mostrarTela("tela-conf-expedicao", "Conferencias/" + nome);
     document.getElementById("titulo-pagina").innerText = "Conferência — " + nome;
     _cexAbrirAba(_cexAba);
@@ -95,7 +164,9 @@ function _cexCarregar(msg) {
     }).catch(() => { el.innerHTML = `<div class="cft-erro">Erro ao conectar com o servidor.</div>`; });
 }
 
-async function _cexSubir(input) {
+// tipo "rua" = o relatório do dia (substitui o do dia); "base" = recebimento da Loggi (só acrescenta).
+// Polo: Anjun sai da coluna Ponto Responsável; Loggi é o de quem sobe — dev/admin mandam o do menu.
+async function _cexSubir(input, tipo = "rua") {
     const file = input.files[0];
     input.value = "";
     if (!file) return;
@@ -105,12 +176,21 @@ async function _cexSubir(input) {
     try {
         const grade = await _confLerGrid(file); // conferencias.js
         st.innerText = "Enviando...";
-        const r = await fetch(`${_CEX_API()}/${_cexTransp}/envios`, {
-            method: "POST", headers: _cexHeaders(true), body: JSON.stringify({ arquivo: file.name, grade }),
+        const r = await fetch(`${_CEX_API()}/${_cexTransp}/${tipo === "base" ? "recebimento" : "envios"}`, {
+            method: "POST", headers: _cexHeaders(true), body: JSON.stringify({ arquivo: file.name, grade, polo: _cexPolo || undefined }),
         });
         const d = await r.json().catch(() => ({}));
         if (!r.ok) { st.className = "cft-erro"; st.innerText = d.error || "Erro ao enviar."; return; }
         st.innerText = "";
+        if (tipo === "base") {
+            const fora = [d.outros_dias ? `${_cexNum(d.outros_dias)} de outros dias ignorado(s)` : "",
+                d.sem_data ? `${_cexNum(d.sem_data)} sem "Chegou em" ignorado(s)` : ""].filter(Boolean).join(" · ");
+            _cexDados = null;
+            _cexDia = d.dia;
+            _cexCarregar(`Na base de ${_cexDiaBr(d.dia)} (${_CEX_POLOS[d.polo] || d.polo}): ${_cexNum(d.novos)} novo(s)` +
+                `${d.ja_existiam ? `, ${_cexNum(d.ja_existiam)} já estava(m)` : ""}${fora ? " — " + fora : ""}.`);
+            return;
+        }
         const desc = Object.entries(d.desconhecidos || {});
         const salvos = Object.entries(d.gravados || {}).map(([p, n]) => `${_CEX_POLOS[p] || p} ${_cexNum(n)}`).join(", ");
         const extra = [d.outro_polo ? `${_cexNum(d.outro_polo)} de outro polo ignorado(s)` : "",
@@ -140,7 +220,8 @@ function _cexRender(msg) {
     </select>` : (d.polo ? `<span class="cft-ajuda">Polo ${_cexEsc(_CEX_POLOS[d.polo] || d.polo)}</span>` : "");
     document.getElementById("cex-envio").innerHTML = selDia + selPolo + (msg ? `<span class="cft-ajuda cft-pos">${_cexEsc(msg)}</span>` : "");
 
-    if (!(d.envios || []).length) {
+    const cfg = _cexCfg();
+    if (!(d.envios || []).length && !d.recebidos) {
         el.innerHTML = `<div class="fechamento-empty">${d.dia ? "Nenhum relatório neste dia." : `Suba o relatório da ${_cexEsc(_CEX_NOMES[_cexTransp] || _cexTransp)} pra conferir.`}</div>`;
         return;
     }
@@ -150,6 +231,9 @@ function _cexRender(msg) {
     const tag = (u, n) => `<button class="cft-tag cft-tag-btn" data-u="${_cexEsc(u.usuario)}" onclick="_cexAbrirUsuario(this.dataset.u)">${_cexEsc(u.usuario)} <b>${_cexNum(n)}</b></button>`;
     const grupos = [];
     if (semCad.length) grupos.push(`<div class="cft-pend-grupo"><b>Login sem cidade cadastrada</b> — clique no nome pra dizer quais cidades ele faz:<div class="cft-pend-tags">${semCad.map(u => tag(u, u.qtd)).join("")}</div></div>`);
+    // Loggi com o Na base e sem o Na rua: tudo aparece como não expedido — avisa o porquê.
+    if (cfg.envios.length > 1 && !(d.envios || []).length) grupos.push(`<div class="cft-pend-grupo"><b>Falta subir o Na rua deste dia</b> — sem ele, todo pacote recebido aparece como não expedido.</div>`);
+    if (cfg.envios.length > 1 && !d.recebidos) grupos.push(`<div class="cft-pend-grupo"><b>Falta subir o Na base deste dia</b> — sem ele não dá pra saber o que foi recebido e não saiu.</div>`);
     if (comErro.length) grupos.push(`<div class="cft-pend-grupo"><b>Login com pacote de cidade que ele não faz</b> — confira a atribuição, ou clique no nome se a cidade for dele mesmo:<div class="cft-pend-tags">${comErro.map(u => tag(u, u.erradas)).join("")}</div></div>`);
 
     el.innerHTML = `
@@ -158,14 +242,14 @@ function _cexRender(msg) {
         <!-- Um card por conferência: a pizza diz QUANTO está certo; a barra ao lado, ONDE/QUEM falta. -->
         <div class="nr-graficos cex-graficos">
             <div class="nr-grafico-card">
-                <div class="nr-grafico-titulo">1. Foi atribuído? <span class="cft-ajuda" style="font-weight:400">· meta 100%</span></div>
+                <div class="nr-grafico-titulo">${cfg.atrib.titulo} <span class="cft-ajuda" style="font-weight:400">· meta 100%</span></div>
                 <div class="nr-grafico-legenda" id="cex-gr-atrib-leg"></div>
                 <div class="cex-par">
                     <div class="nr-grafico-area cex-rosca"><canvas id="cex-gr-atrib"></canvas><div class="cex-centro" id="cex-gr-atrib-centro"></div></div>
                     <div>
-                        <div class="cex-par-sub">Sem atribuição por cidade</div>
+                        <div class="cex-par-sub">${cfg.atrib.sub}</div>
                         <div class="nr-grafico-area cex-barras"><canvas id="cex-gr-cidades"></canvas>
-                            <div class="nr-grafico-vazio" id="cex-gr-cidades-vazio" style="display:none">Todos os pacotes atribuídos.</div></div>
+                            <div class="nr-grafico-vazio" id="cex-gr-cidades-vazio" style="display:none">${cfg.atrib.vazio}</div></div>
                     </div>
                 </div>
             </div>
@@ -182,7 +266,7 @@ function _cexRender(msg) {
                 </div>
             </div>
             <div class="nr-grafico-card">
-                <div class="nr-grafico-titulo">3. É cidade que a gente atende?</div>
+                <div class="nr-grafico-titulo">${cfg.abr}</div>
                 <div class="nr-grafico-legenda" id="cex-gr-abr-leg"></div>
                 <div class="cex-par">
                     <div class="nr-grafico-area cex-rosca"><canvas id="cex-gr-abr"></canvas><div class="cex-centro" id="cex-gr-abr-centro"></div></div>
@@ -195,7 +279,7 @@ function _cexRender(msg) {
         </div>
         ${grupos.length ? `<div class="cft-pend"><div class="cft-pend-titulo">Pendências</div>${grupos.join("")}</div>` : ""}
         <div class="cft-barra" style="margin:0 0 10px">
-            <input class="cft-input" id="cex-busca" placeholder="Buscar waybill, login ou cidade..." style="width:280px;flex:0 0 auto;margin:0" oninput="_cexPintarTabela()">
+            <input class="cft-input" id="cex-busca" placeholder="Buscar código, login, cidade ou cliente..." style="width:280px;flex:0 0 auto;margin:0" oninput="_cexPintarTabela()">
             <button class="cft-btn" onclick="_cexCopiar()">Copiar waybills</button>
             <span class="cft-ajuda" id="cex-copia"></span>
         </div>
@@ -222,7 +306,8 @@ function _cexGraficar() {
     const nossos = r.total - r.fora_abrangencia;
     const atribuidos = nossos - r.sem_entregador;
 
-    _cexRosca("atrib", [["Atribuídos", atribuidos, _CEX_CORES.ok], ["Sem atribuição", r.sem_entregador, _CEX_CORES.sem_entregador]],
+    const cfg = _cexCfg();
+    _cexRosca("atrib", [[cfg.atrib.ok, atribuidos, _CEX_CORES.ok], [cfg.atrib.falta, r.sem_entregador, _CEX_CORES.sem_entregador]],
         atribuidos, nossos, "atribuído");
     _cexRosca("certo", [["Cidade certa", r.ok, _CEX_CORES.ok], ["Cidade errada", r.cidade_errada, _CEX_CORES.cidade_errada],
         ["Login sem cidade", r.usuario_sem_cidade, _CEX_CORES.usuario_sem_cidade], ["Pacote sem cidade", r.sem_cidade, _CEX_CORES.sem_cidade]]
@@ -235,7 +320,7 @@ function _cexGraficar() {
         porCidade.set(c, (porCidade.get(c) || 0) + 1);
     });
     _cexBarras("cidades", [...porCidade.entries()].sort((a, b) => b[1] - a[1]).slice(0, _CEX_MAX_BARRAS).map(([c, n]) => ({ rotulo: c, cidade_errada: 0, sem_entregador: n })),
-        [["sem_entregador", "Sem atribuição"]]);
+        [["sem_entregador", cfg.atrib.falta]]);
 
     // Quem recebeu pacote fora das cidades dele (ou sem cidade cadastrada). Clicar abre o card do login.
     const logins = ((_cexDados && _cexDados.usuarios) || [])
@@ -339,7 +424,8 @@ function _cexFiltrados() {
     const pacotes = (_cexDados && _cexDados.pacotes) || [];
     const q = _cexChave((document.getElementById("cex-busca") || {}).value);
     return pacotes.filter(p => (_cexFiltro === "todos" || (_cexFiltro === "pend" ? p.status !== "ok" : p.status === _cexFiltro))
-        && (!q || _cexChave(p.waybill).includes(q) || _cexChave(p.entregador).includes(q) || _cexChave(p.cidade).includes(q) || _cexChave(p.cliente).includes(q)));
+        && (!q || _cexChave(p.waybill).includes(q) || _cexChave(p.entregador).includes(q) || _cexChave(p.cidade).includes(q)
+            || _cexChave(p.cliente).includes(q) || _cexChave(p.remetente).includes(q) || _cexChave(p.destinatario).includes(q)));
 }
 
 function _cexPintarTabela() {
@@ -355,15 +441,15 @@ function _cexPintarTabela() {
         <div class="cex-conf-topo${_cexFiltro === "pend" ? " sel" : ""}" onclick="_cexFiltro='pend';_cexPintarTabela()" title="Clique pra ver só o que falta">
             <span class="cex-conf-rotulo">Conformidade</span>
             <b style="color:${faltam ? _CEX_CORES.sem_entregador : _CEX_CORES.ok}">${_cexPct(r.ok, nossos)}</b>
-            <span class="cft-ajuda">${_cexNum(r.ok)} de ${_cexNum(nossos)} atribuídos certo${faltam ? ` · faltam ${_cexNum(faltam)}` : ""} · meta 100%</span>
+            <span class="cft-ajuda">${_cexNum(r.ok)} de ${_cexNum(nossos)} ${_cexCfg().certo}${faltam ? ` · faltam ${_cexNum(faltam)}` : ""} · meta 100%</span>
         </div>
         <div class="cex-conf-barra">${nossos ? segs.map(([k, n]) =>
-            `<i style="width:${n / nossos * 100}%;background:${_CEX_CORES[k]}" title="${_CEX_STATUS[k].rotulo}: ${_cexNum(n)}"></i>`).join("") : ""}</div>`;
+            `<i style="width:${n / nossos * 100}%;background:${_CEX_CORES[k]}" title="${_cexRotulo(k)}: ${_cexNum(n)}"></i>`).join("") : ""}</div>`;
 
     // Tiles = filtro da tabela (mesmo jeito do Backlog da Shopee).
     const tiles = [["todos", "Pacotes", r.total, ""],
         ["fora_abrangencia", "Fora de abrangência", r.fora_abrangencia, _CEX_CORES.fora_abrangencia],
-        ["sem_entregador", "Sem atribuição", r.sem_entregador, _CEX_CORES.sem_entregador],
+        ["sem_entregador", _cexRotulo("sem_entregador"), r.sem_entregador, _CEX_CORES.sem_entregador],
         ["cidade_errada", "Cidade errada", r.cidade_errada, _CEX_CORES.cidade_errada],
         ["sem_cidade", "Pacote sem cidade", r.sem_cidade, _CEX_CORES.sem_cidade]]
         .filter(([k, , n]) => n || !["sem_cidade", "fora_abrangencia"].includes(k));
@@ -379,24 +465,15 @@ function _cexPintarTabela() {
     const lista = _cexFiltrados();
     const verPolo = !!(_cexDados && _cexDados.ve_tudo && !_cexDados.polo);
     if (!lista.length) { el.innerHTML = `<div class="cft-ajuda">Nada por aqui.</div>`; return; }
+    // Colunas de cada transportadora em _CEX_CFG; "polo" só aparece pra dev/admin em Todos os polos.
+    const cols = _cexCfg().colunas.filter(c => c !== "polo" || verPolo).map(c => c !== "polo" ? c
+        : _cexEntrada("Polo", p => `<span title="${_cexEsc(p.ponto || "")}">${_cexEsc(_CEX_POLOS[p.polo] || p.polo || "")}</span>`));
     el.innerHTML = `<div class="cft-tabela-wrap" style="max-height:62vh"><table class="cft-tabela">
-        <thead><tr><th>Waybill</th>${verPolo ? "<th>Polo</th>" : ""}<th>Entregador</th><th>Cidade do destinatário</th><th>Cidades do login</th><th>Remetente</th><th class="num">Valor declarado</th><th>Área de recebimento</th><th>Última rota</th><th>Entrada no ponto</th><th>Situação</th></tr></thead>
+        <thead><tr>${cols.map(c => `<th${c.classe === "num" ? ' class="num"' : ""}>${c.rotulo}</th>`).join("")}<th>Situação</th></tr></thead>
         <tbody>${lista.slice(0, _CEX_MAX_LINHAS).map(p => {
-            const s = _CEX_STATUS[p.status] || { rotulo: p.status, classe: "" };
-            const cid = p.cidades_usuario || [];
-            return `<tr>
-                <td>${_cexEsc(p.waybill)}</td>
-                ${verPolo ? `<td title="${_cexEsc(p.ponto)}">${_cexEsc(_CEX_POLOS[p.polo] || p.polo)}</td>` : ""}
-                <td>${p.entregador ? `<a href="#" class="cft-link" data-u="${_cexEsc(p.entregador)}" onclick="event.preventDefault();_cexAbrirUsuario(this.dataset.u)">${_cexEsc(p.entregador)}</a>` : `<span class="cft-vazio">—</span>`}</td>
-                <td>${_cexEsc(p.cidade) || `<span class="cft-vazio">—</span>`}</td>
-                <td class="cft-ajuda" title="${_cexEsc(cid.join(", "))}">${cid.length ? _cexEsc(cid.slice(0, 3).join(", ")) + (cid.length > 3 ? ` +${cid.length - 3}` : "") : ""}</td>
-                <td title="${_cexEsc(p.cliente)}">${_cexEsc(String(p.cliente || "").slice(0, 32))}</td>
-                <td class="num">${_cexEsc(p.valor_declarado)}</td>
-                <td>${_cexEsc(p.area_recebimento)}</td>
-                <td title="${_cexEsc(p.ultima_rota)}">${_cexEsc(String(p.ultima_rota || "").slice(0, 40))}</td>
-                <td>${_cexEsc(p.entrada_ponto)}</td>
-                <td class="${s.classe}">${s.rotulo}</td>
-            </tr>`;
+            const s = _CEX_STATUS[p.status] || { classe: "" };
+            return `<tr>${cols.map(c => `<td${c.classe ? ` class="${c.classe}"` : ""}>${c.fn(p)}</td>`).join("")}
+                <td class="${s.classe}">${_cexRotulo(p.status)}</td></tr>`;
         }).join("")}</tbody></table></div>
         ${lista.length > _CEX_MAX_LINHAS ? `<div class="cft-ajuda" style="margin-top:6px">Mostrando ${_CEX_MAX_LINHAS} de ${_cexNum(lista.length)} — "Copiar waybills" leva todos do filtro.</div>` : ""}`;
 }
