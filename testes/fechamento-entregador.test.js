@@ -489,3 +489,15 @@ test("pedido mostra a data de atribuição; sem atribuição conta no dia da ent
     const oc = ctx._fsCardOcorrencia({ tipo: "Atrasado", transportadora: "Imile", codigo: "C4", atribuido: "2026-10-24", deveria: "2026-10-26", entregue: "2026-10-27" });
     assert.match(oc, /Atribuído 24\/10 · Deveria ser entregue 26\/10 · entregue 27\/10/);
 });
+
+test("pedido mostra a hora da atribuição e da entrega quando o relatório traz", () => {
+    const { ctx } = carregar();
+    const e = ctx._fsCardEntregue({ transportadora: "Imile", codigo: "C1", data_atribuicao: "25/10/2026", hora_atribuicao: "14:32",
+        data_entrega: "27/10/2026", hora_entrega: "09:10", dentro_prazo: "Sim" });
+    assert.match(e, /Atribuído 25\/10 às 14:32 · Entregue 27\/10 às 09:10/);
+    const oc = ctx._fsCardOcorrencia({ tipo: "Atrasado", transportadora: "Imile", codigo: "C4", atribuido: "2026-10-24", atribuido_hora: "18:05",
+        deveria: "2026-10-26", entregue: "2026-10-27", entregue_hora: "11:00" });
+    assert.match(oc, /Atribuído 24\/10 às 18:05 · Deveria ser entregue 26\/10 · entregue 27\/10 às 11:00/);
+    assert.doesNotMatch(ctx._fsCardEntregue({ transportadora: "Anjun", codigo: "C5", data_atribuicao: "25/10/2026", data_entrega: "26/10/2026" }), / às /,
+        "relatório antigo (sem hora) fica como antes");
+});

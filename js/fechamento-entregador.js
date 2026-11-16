@@ -540,18 +540,21 @@ function _fsHtmlResumoDia(dia, p, entregues) {
  * fechamento: conta como atribuído no dia da entrega — no prazo. Shopee não tem prazo: nada.
  * @param {?string} atrib DD/MM/AAAA ou AAAA-MM-DD; @param {?string} entregue idem
  */
-function _fsAtribuicao(atrib, entregue, transportadora) {
+function _fsAtribuicao(atrib, entregue, transportadora, hora = null) {
     if (/^shopee/i.test(String(transportadora || ""))) return "";
     const curto = (d) => (/^\d{4}-/.test(d) ? _fsDia(d) : String(d).slice(0, 5));
-    if (atrib) return `Atribuído ${_fsEsc(curto(atrib))} · `;
+    if (atrib) return `Atribuído ${_fsEsc(curto(atrib))}${_fsHora(hora)} · `;
     if (entregue) return `Sem data de atribuição — conta como atribuído no dia da entrega (${_fsEsc(curto(entregue))}), no prazo · `;
     return "";
 }
 
+/** " às HH:MM" (hora do relatório; relatório antigo não tem → nada). */
+function _fsHora(h) { return h ? ` às ${_fsEsc(h)}` : ""; }
+
 function _fsCardEntregue(p) {
     return `<div class="extr-card">
         <div class="extr-top"><span class="extr-transp">${_fsEsc(p.transportadora)}</span><span class="extr-codigo">${_fsEsc(p.codigo || "")}</span></div>
-        <div class="extr-endereco">${_fsAtribuicao(p.data_atribuicao, p.data_entrega, p.transportadora)}Entregue ${_fsEsc(p.data_entrega.slice(0, 5))}${p.cidade ? ` · ${_fsEsc(p.cidade)}` : ""}${p.dentro_prazo === "Não" && p.deve_ser_entregue
+        <div class="extr-endereco">${_fsAtribuicao(p.data_atribuicao, p.data_entrega, p.transportadora, p.hora_atribuicao)}Entregue ${_fsEsc(p.data_entrega.slice(0, 5))}${_fsHora(p.hora_entrega)}${p.cidade ? ` · ${_fsEsc(p.cidade)}` : ""}${p.dentro_prazo === "Não" && p.deve_ser_entregue
             ? ` · deveria ser entregue ${_fsEsc(p.deve_ser_entregue.slice(0, 5))}` : ""}${p.pessoa ? ` · ${_fsEsc(p.pessoa)}` : ""}</div>
     </div>`;
 }
@@ -559,7 +562,7 @@ function _fsCardEntregue(p) {
 function _fsCardOcorrencia(x) {
     return `<div class="extr-card">
         <div class="extr-top"><span class="extr-transp fs-neg">${x.tipo === "Acareação" ? "PNR" : _fsEsc(x.tipo)} · ${_fsEsc(x.transportadora)}</span><span class="extr-codigo">${_fsEsc(x.codigo || "")}</span></div>
-        <div class="extr-endereco">${x.deveria ? `${_fsAtribuicao(x.atribuido, x.entregue, x.transportadora)}Deveria ser entregue ${_fsDia(x.deveria)}` : ""}${x.entregue ? ` · entregue ${_fsDia(x.entregue)}` : (x.tipo === "Não entregue" ? " · não entregue" : "")}
+        <div class="extr-endereco">${x.deveria ? `${_fsAtribuicao(x.atribuido, x.entregue, x.transportadora, x.atribuido_hora)}Deveria ser entregue ${_fsDia(x.deveria)}` : ""}${x.entregue ? ` · entregue ${_fsDia(x.entregue)}${_fsHora(x.entregue_hora)}` : (x.tipo === "Não entregue" ? " · não entregue" : "")}
             ${x.tipo === "Acareação" ? "" : x.motivo ? `${_fsEsc(x.motivo)}${x.ocorrencia_hora ? ` · às ${_fsEsc(x.ocorrencia_hora)}` : ""}` : ""}${x.pessoa ? ` · ${_fsEsc(x.pessoa)}` : ""}</div>
     </div>`;
 }
