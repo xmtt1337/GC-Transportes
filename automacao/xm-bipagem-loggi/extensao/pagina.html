@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>XM - Bipagem Loggi</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #16181d; color: #e8eaed; font: 14px system-ui, sans-serif; }
+  main { padding: 12px 14px; }
+  [hidden] { display: none !important; }
+  label.campo { display: block; margin: 14px 0 4px; }
+  input[type=text], input[type=password], input:not([type]) { width: 100%; padding: 8px; background: #0f1115; color: #e8eaed; border: 1px solid #3a3f4a; border-radius: 4px; font: inherit; }
+  button { margin: 0 14px 0 0; padding: 0; background: none; border: 0; color: #6ea8fe; font: inherit; font-weight: 600; cursor: pointer; }
+  button:hover:not(:disabled) { text-decoration: underline; }
+  button:disabled { color: #6b7280; cursor: default; }
+  .topo { display: flex; justify-content: space-between; align-items: baseline; color: #a8adb7; }
+  .abas { display: flex; gap: 18px; margin: 12px 0 10px; border-bottom: 1px solid #2a2e37; }
+  .abas button { margin: 0; padding: 6px 0; color: #a8adb7; border-bottom: 2px solid transparent; }
+  .abas button.ativa { color: #e8eaed; border-bottom-color: #6ea8fe; }
+  .abas button:hover { text-decoration: none; color: #e8eaed; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: #a8adb7; margin: 14px 0 6px; }
+  .lista { max-height: 170px; overflow: auto; border: 1px solid #2a2e37; border-radius: 4px; padding: 4px 8px; }
+  .lista label { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
+  .lista small { color: #a8adb7; }
+  .alvo { padding: 10px 12px; border-left: 4px solid #4ade80; background: #1d2128; border-radius: 0 4px 4px 0; line-height: 1.4; }
+  .alvo.vazio { border-left-color: #fbbf24; }
+  .suave { color: #a8adb7; margin: 6px 0 0; }
+  .erro { color: #f87171; }
+  .acoes { margin-top: 10px; }
+  .historico { list-style: none; margin: 0; padding: 0; font-variant-numeric: tabular-nums; }
+  .historico li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid #22262e; }
+  .historico .codigo { font-family: ui-monospace, Consolas, monospace; }
+  .certo { color: #4ade80; }
+  .errado { color: #f87171; font-weight: 600; }
+  .grupo { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #22262e; }
+  .grupo small { display: block; color: #a8adb7; }
+  .grupo button { margin: 0 0 0 12px; }
+</style>
+</head>
+<body>
+<main>
+  <form id="tela-login" hidden>
+    <label class="campo" for="usuario">Usuário no sistema XMTT</label>
+    <input id="usuario" autocomplete="username" required>
+    <label class="campo" for="senha">Senha</label>
+    <input id="senha" type="password" autocomplete="current-password" required>
+    <p class="acoes"><button id="entrar" type="submit">Entrar</button></p>
+    <p id="aviso-login" class="suave erro"></p>
+  </form>
+
+  <section id="tela-principal" hidden>
+    <div class="topo"><span id="logado"></span><button id="sair" type="button">Sair</button></div>
+    <div class="abas">
+      <button type="button" data-aba="bipar" class="ativa">Bipar</button>
+      <button type="button" data-aba="grupos">Grupos</button>
+    </div>
+    <p id="mensagem" class="suave"></p>
+
+    <div id="aba-bipar">
+      <div id="alvo" class="alvo"></div>
+      <h2>Grupos</h2>
+      <div id="sel-grupos" class="lista"></div>
+      <h2>Cidades</h2>
+      <div id="sel-cidades" class="lista"></div>
+      <p class="acoes"><button id="limpar" type="button">Desmarcar tudo</button></p>
+      <h2>Últimos bipes</h2>
+      <ul id="historico" class="historico"></ul>
+    </div>
+
+    <div id="aba-grupos" hidden>
+      <div id="grupos"></div>
+      <p class="acoes"><button id="novo" type="button">Criar grupo de cidades</button><button id="atualizar" type="button">Atualizar</button></p>
+      <form id="form-grupo" hidden>
+        <h2 id="titulo-form">Novo grupo</h2>
+        <label class="campo" for="nome-grupo">Nome do grupo</label>
+        <input id="nome-grupo" maxlength="60" required>
+        <h2>Cidades do grupo</h2>
+        <div id="cidades-grupo" class="lista"></div>
+        <p class="acoes"><button type="submit">Salvar</button><button id="cancelar" type="button">Cancelar</button></p>
+      </form>
+    </div>
+  </section>
+</main>
+<script src="regras.js"></script>
+<script src="pagina.js"></script>
+</body>
+</html>

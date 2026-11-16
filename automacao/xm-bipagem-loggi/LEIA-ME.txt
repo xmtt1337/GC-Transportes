@@ -1,0 +1,52 @@
+===========================================================
+  XM - BIPAGEM LOGGI
+===========================================================
+
+Extensao do Chrome para a tela "Agrupar pacotes" da Loggi.
+Marca-se quais cidades (ou grupos de cidades) estao sendo
+agrupadas; pacote de outra cidade toca alarme e mostra uma
+tarja vermelha no topo da tela.
+
+Ao clicar em "Continuar", confere a lista inteira: se ainda
+houver pacote de outra cidade, o clique nao passa e um card no
+meio da tela mostra quais retirar. Depois de tirar na lixeira,
+e so clicar em Continuar de novo.
+
+A extensao nao faz nenhuma consulta a Loggi: so le a resposta
+que a propria tela recebe ao bipar, e dela so o codigo e a
+cidade.
+
+
+-----------------------------------------------------------
+INSTALAR (uma vez por computador)
+-----------------------------------------------------------
+
+1. Chrome > chrome://extensions > ligue "Modo do desenvolvedor"
+2. "Carregar sem compactacao" > escolha a pasta  extensao
+3. Atualize a aba da Loggi com F5.
+
+
+-----------------------------------------------------------
+USAR
+-----------------------------------------------------------
+
+1. Clique no botao XM no canto da Loggi e entre com o login do
+   sistema XMTT.
+2. Aba "Grupos": "Criar grupo de cidades", com nome e cidades.
+   Os grupos ficam no sistema: todo mundo ve e pode editar.
+3. Aba "Bipar": marque um ou mais grupos e/ou cidades soltas.
+   Pode minimizar o painel; o alerta continua valendo.
+
+As cidades da lista sao as da Loggi cadastradas na
+Conferencia de expedicao do sistema. Cidade nova entra la.
+O nome que a Loggi manda passa pela Conversao de cidades do
+fechamento ("CACADOR" = "Caçador").
+
+
+-----------------------------------------------------------
+TESTES
+-----------------------------------------------------------
+
+  node --test testes/*.test.js
+
+Dados inventados. Backend: sistema-backend/modules/loggi-bipagem.

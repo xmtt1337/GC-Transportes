@@ -1,0 +1,124 @@
+// Regras da XM - Bipagem Loggi, sem rede e sem Chrome. Dados de TESTE, inventados.
+//
+//   node --test automacao/xm-bipagem-loggi/testes/
+
+const test = require('node:test');
+const assert = require('node:assert');
+const fs = require('node:fs');
+const path = require('node:path');
+const R = require('../extensao/regras.js');
+const { extrairBipes, ROTA } = require('../extensao/loggi.js');
+const { limitar } = require('../extensao/menu.js');
+
+const GRUPOS = [
+  { id: 1, nome: 'Grupo Teste', cidades: ['Caçador', 'Videira'] },
+  { id: 2, nome: 'Grupo Dois', cidades: ['Videira', 'Fraiburgo'] },
+];
+
+test('chaveCidade iguala o jeito da Loggi e o do sistema', () => {
+  assert.strictEqual(R.chaveCidade('CACADOR'), 'cacador');
+  assert.strictEqual(R.chaveCidade('Caçador'), 'cacador');
+  assert.strictEqual(R.chaveCidade('CACADOR - SC'), 'cacador');
+  assert.strictEqual(R.chaveCidade('Caçador (SC)'), 'cacador');
+  assert.strictEqual(R.chaveCidade('Herval d’Oeste'), 'herval d oeste');
+});
+
+test('grupos e cidades soltas somam sem repetir, com rotulo legivel', () => {
+  const a = R.montarAlvo({ grupos: [1, 2], cidades: ['Videira', 'Arroio Trinta'] }, GRUPOS);
+  assert.deepStrictEqual(a.cidades, ['Caçador', 'Videira', 'Fraiburgo', 'Arroio Trinta']);
+  assert.strictEqual(a.rotulo, 'Grupo Teste + Grupo Dois + Arroio Trinta');
+});
+
+test('grupo apagado some da selecao sem quebrar', () => {
+  const a = R.montarAlvo({ grupos: [99], cidades: [] }, GRUPOS);
+  assert.deepStrictEqual(a.chaves, []);
+});
+
+test('bipe da cidade marcada e certo; de outra, errado', () => {
+  const alvo = R.montarAlvo({ grupos: [1] }, GRUPOS);
+  assert.strictEqual(R.conferirBipe('VIDEIRA', alvo).ok, true);
+  assert.strictEqual(R.conferirBipe('CACADOR', alvo).ok, true);
+  assert.strictEqual(R.conferirBipe('FRAIBURGO', alvo).ok, false);
+});
+
+test('a conversao de cidades corrige o nome da Loggi antes de comparar', () => {
+  const alvo = R.montarAlvo({ cidades: ['Caçador'] }, []);
+  assert.strictEqual(R.conferirBipe('CACADORR', alvo).ok, false);
+  assert.strictEqual(R.conferirBipe('CACADORR', alvo, { cacadorr: 'Caçador' }).ok, true);
+});
+
+test('no Continuar, aponta so os errados que ainda estao na lista', () => {
+  const alvo = R.montarAlvo({ grupos: [1] }, GRUPOS);
+  const bipes = new Map([
+    ['SKTESTE0000000001', 'VIDEIRA'],
+    ['SKTESTE0000000002', 'FRAIBURGO'],
+    ['SKTESTE0000000003', 'LAGES'],
+  ]);
+  // O 3 foi tirado na lixeira: nao esta mais no texto da tela.
+  const tela = 'Lista 2 pacotes\nSKTESTE0000000001 empresa VIDEIRA\nskteste0000000002 empresa FRAIBURGO';
+  assert.deepStrictEqual(R.pendentes(bipes, tela, alvo), [{ codigo: 'SKTESTE0000000002', cidade: 'FRAIBURGO' }]);
+  assert.deepStrictEqual(R.pendentes(bipes, tela, R.montarAlvo({}, GRUPOS)), []);
+});
+
+test('sem nada marcado nao ha alarme', () => {
+  assert.strictEqual(R.conferirBipe('VIDEIRA', R.montarAlvo({}, GRUPOS)).ok, null);
+  assert.strictEqual(R.conferirBipe('VIDEIRA', null).ok, null);
+});
+
+test('le codigo e cidade da resposta do bipe da Loggi, e nada mais', () => {
+  const resposta = {
+    SKTESTE0000000001: {
+      company: { name: 'Empresa Teste' },
+      destination: { city: 'VIDEIRA' },
+      loggiAddress: { correiosAddress: { cidade: 'VIDEIRA', logradouro: 'Rua Teste' } },
+    },
+    SKTESTE0000000002: { loggiAddress: { postalAddress: { locality: 'CACADOR' } } },
+    SKTESTE0000000003: { status: { code: 1 } },
+  };
+  assert.deepStrictEqual(extrairBipes(resposta), [
+    { codigo: 'SKTESTE0000000001', cidade: 'VIDEIRA' },
+    { codigo: 'SKTESTE0000000002', cidade: 'CACADOR' },
+  ]);
+  assert.deepStrictEqual(extrairBipes(null), []);
+  assert.deepStrictEqual(extrairBipes([1]), []);
+});
+
+test('so a chamada do bipe e ouvida', () => {
+  assert.ok(ROTA.test('https://leve.loggi.com/proxy/last-mile/v1/x:1/group_packages/retrieve_and_validate_packages_by_barcode'));
+  assert.ok(!ROTA.test('https://leve.loggi.com/proxy/wms/api/v1/get-create-unitload'));
+});
+
+test('login usa o canal vigia e confere o acesso sem banco', async () => {
+  const chamadas = [];
+  const buscar = async (url, o) => {
+    chamadas.push({ url, o });
+    return url.endsWith('/login')
+      ? { status: 200, ok: true, json: async () => ({ success: true, token: 'T', name: 'Pessoa Teste' }) }
+      : { status: 200, ok: true, json: async () => ({ ok: true }) };
+  };
+  assert.deepStrictEqual(await R.entrar('pessoa', 'x', buscar), { token: 'T', nome: 'Pessoa Teste' });
+  assert.strictEqual(JSON.parse(chamadas[0].o.body).canal, 'vigia');
+  assert.ok(chamadas[1].url.endsWith('/macros/acesso'));
+});
+
+test('entregador barrado e mensagem de erro do servidor chegam certas', async () => {
+  const resp = (status, corpo) => async () => ({ status, ok: status < 400, json: async () => corpo });
+  await assert.rejects(R.api('T', 'GET', '/grupos', undefined, resp(403, { error: 'Acesso negado' })), R.ErroDeConta);
+  await assert.rejects(R.api('T', 'GET', '/grupos', undefined, resp(401, {})), R.ErroDeConta);
+  await assert.rejects(R.api('T', 'POST', '/grupos', {}, resp(409, { error: 'Já existe um grupo com esse nome.' })), /Já existe/);
+});
+
+test('menu nao sai da tela', () => {
+  assert.strictEqual(limitar(-30, 500), 8);
+  assert.strictEqual(limitar(900, 500), 500);
+});
+
+test('manifest: so Loggi e o sistema, com id liberado no backend', () => {
+  const m = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extensao', 'manifest.json'), 'utf8'));
+  assert.deepStrictEqual(m.host_permissions, ['https://*.loggi.com/*', 'https://sistema-backend-i4uh.onrender.com/*']);
+  const hash = require('node:crypto').createHash('sha256').update(Buffer.from(m.key, 'base64')).digest('hex').slice(0, 32);
+  const id = [...hash].map((c) => String.fromCharCode(97 + parseInt(c, 16))).join('');
+  assert.strictEqual(id, 'ogpbfjkhogaonkoahbdgjkhbancgpgbh');
+  const server = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'sistema-backend', 'server.js'), 'utf8');
+  assert.ok(server.includes(`chrome-extension://${id}`));
+});
