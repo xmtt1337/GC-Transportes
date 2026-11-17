@@ -32,8 +32,9 @@ const avisarSessao = () => chrome.storage.local.set({ sessaoMudou: Date.now() })
 const TELAS = {
   login: 'xm',
   inicio: 'xm',
-  'conferencia-loggi': 'loggi',
-  'relatorio-loggi': 'loggi',
+  // O usuario achou estranho sair do tema do sistema para o da Loggi: fica tudo no do sistema.
+  'conferencia-loggi': 'xm',
+  'relatorio-loggi': 'xm',
 };
 const TRANSPORTADORAS = [
   { id: 'loggi', nome: 'Loggi', ativa: true },
@@ -51,12 +52,12 @@ function irPara(tela) {
   // A moldura (cabecalho do painel, no menu.js) acompanha o tema.
   window.parent.postMessage({ xmOperacao: 'tema', tema }, '*');
   if (destino !== 'login') chrome.storage.local.set({ tela: destino });
-  if (TELAS[destino] !== 'xm') { telaAtual = destino; desenharMenu(); }
+  if (destino !== 'login' && destino !== 'inicio') { telaAtual = destino; desenharMenu(); }
 }
 
 // Menu como a barra lateral do sistema: area (Conferencias / Baixar relatorios) abre e
 // fecha; dentro, as transportadoras. Quais areas estao abertas fica guardado.
-let areasAbertas = ['conferencia', 'relatorio'];
+let areasAbertas = []; // comecam fechadas
 let telaAtual = '';
 
 function desenharMenu() {
@@ -84,6 +85,7 @@ function desenharMenu() {
   document.querySelectorAll('.area').forEach((a) => {
     const aberta = areasAbertas.includes(a.dataset.area);
     a.classList.toggle('aberta', aberta);
+    a.classList.toggle('ativa', telaAtual.startsWith(`${a.dataset.area}-`));
     $(`menu-${a.dataset.area}`).hidden = !aberta;
   });
 }
@@ -446,8 +448,9 @@ window.addEventListener('message', (e) => {
 });
 
 async function comecar() {
-  const guardado = await chrome.storage.local.get('areasAbertas');
+  const guardado = await chrome.storage.local.get(['areasAbertas', 'tela']);
   if (Array.isArray(guardado.areasAbertas)) areasAbertas = guardado.areasAbertas;
+  if (guardado.tela && guardado.tela !== 'inicio') telaAtual = guardado.tela;
   desenharMenu();
   const salvo = await chrome.storage.local.get('selecao');
   if (salvo.selecao) selecao = { grupos: salvo.selecao.grupos || [], cidades: salvo.selecao.cidades || [] };

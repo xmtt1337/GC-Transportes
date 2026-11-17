@@ -36,12 +36,12 @@
       .marca { display: flex; align-items: center; gap: 10px; }
       .marca img { width: 30px; pointer-events: none; }
       .painel { display: none; width: 420px; height: min(680px, calc(100vh - 16px)); flex-direction: column;
-        background: #0b0f17; border: 1px solid #1c2533; border-radius: 12px; overflow: hidden;
+        background: #080c13; border: 1px solid #1c2533; border-radius: 12px; overflow: hidden;
         box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
       .aberto .painel { display: flex; }
       .aberto .botao { display: none; }
       .cabecalho { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;
-        color: #fff; font-weight: 700; background: #0b0f17; border-bottom: 1px solid rgba(255, 255, 255, .06);
+        color: #fff; font-weight: 700; background: #080c13; border-bottom: 1px solid rgba(255, 255, 255, .06);
         cursor: grab; touch-action: none; user-select: none; }
       /* Tela de transportadora aberta: a moldura pega o tema dela (Loggi = Arco). */
       .painel.tema-loggi { background: #fff; border-color: #dde3ea; box-shadow: 0 10px 30px rgba(0, 40, 90, .22); }
@@ -365,9 +365,12 @@
       travado = R.precisaTravar(location.hostname, !!(r && r.logado));
       aplicarTrava();
     } catch {
-      // Extensao recarregada ou atualizada: este script ficou orfao.
+      // Extensao recarregada ou atualizada: este script ficou orfao. So o aviso, sem o
+      // painel (o painel de um script orfao nao funciona e parecia tela quebrada).
       travado = true;
+      menu.style.display = 'none';
       aplicarTrava('A extensão foi atualizada. Aperte F5 nesta página.');
+      trava.querySelector('.motivo').style.top = '50%';
     }
   }
 

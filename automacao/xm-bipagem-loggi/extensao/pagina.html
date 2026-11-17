@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>XM - Operação</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
   /*
    * Dois temas: o do sistema XMTT (login e tela inicial, escuro) e o da transportadora
@@ -10,7 +11,8 @@
    * Os componentes leem as variaveis; o body troca a classe.
    */
   body.tema-xm {
-    --fundo: #0b0f17; --texto: #e2e8f0; --forte: #f1f5f9; --suave: #4a6a8a; --apagado: #2a3e55;
+    color-scheme: dark;
+    --fundo: #080c13; --texto: #e2e8f0; --forte: #f1f5f9; --suave: #4a6a8a; --apagado: #2a3e55;
     --azul: #3a86ff; --linha: rgba(255, 255, 255, .06); --campo: rgba(255, 255, 255, .03); --borda-campo: rgba(255, 255, 255, .08);
     --fundo2: rgba(255, 255, 255, .025); --raio: 12px; --fonte: 'Inter', system-ui, sans-serif;
   }
@@ -66,12 +68,14 @@
   /* ── Tela inicial: arvore ──────────────────────────────────────── */
   /* Igual a barra lateral do xmtt.com.br (style.css: .menu-item, .submenu): area com icone e
      seta fina; aberta = faixa azul de ponta a ponta com a barrinha a esquerda, canto reto. */
+  html { scrollbar-width: thin; scrollbar-color: #1e2a3b transparent; }
   #tela-inicio { margin: 0 -18px; }
   #tela-inicio .topo { padding: 0 18px 10px; }
   .area { display: flex; width: 100%; align-items: center; gap: 13px; padding: 11px 18px; margin: 3px 0;
     color: #7a8599; font-size: 14px; font-weight: 500; text-align: left; border-radius: 0; }
   .area:hover { background: rgba(58, 134, 255, .08); color: #fff; text-decoration: none !important; }
-  .area.aberta { color: #7cb4ff; font-weight: 600; background: rgba(58, 134, 255, .12); box-shadow: inset 3px 0 0 #3a86ff; }
+  .area.aberta { color: #e2e8f0; }
+  .area.ativa { color: #7cb4ff; font-weight: 600; background: rgba(58, 134, 255, .12); box-shadow: inset 3px 0 0 #3a86ff; }
   .area svg { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
   .area .rotulo-area { flex: 1; }
   .seta-fina { width: 6px; height: 6px; flex: none; margin: 0 4px -3px auto; opacity: .7;
@@ -109,7 +113,7 @@
   .busca input { padding: 10px 12px 10px 36px; }
 
   .cabecalho { display: flex; justify-content: space-between; align-items: center; margin: 14px 0 6px; }
-  .cabecalho h2 { font-size: 15px; font-style: italic; font-weight: 400; color: var(--forte); margin: 0; }
+  .cabecalho h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--suave); margin: 0; }
 
   .lista { max-height: 300px; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--borda-campo) transparent; border: 1px solid var(--linha); border-radius: var(--raio); }
   .lista .vazia { padding: 12px; color: var(--suave); }
@@ -125,7 +129,6 @@
   .circulo strong { display: block; font-weight: 600; color: var(--forte); }
   .circulo small { display: block; color: var(--suave); font-size: 12px; margin-top: 2px; }
   .circulo .acoes-linha { display: flex; gap: 14px; padding-top: 1px; }
-  .circulo button, .rodape button, .acoes button, .cabecalho button { text-decoration: underline; }
   .rodape { display: flex; gap: 18px; margin-top: 14px; }
   .acoes { display: flex; gap: 18px; margin-top: 14px; }
 
