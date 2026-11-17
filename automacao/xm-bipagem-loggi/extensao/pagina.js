@@ -508,7 +508,7 @@ function desenharBarras(porCidade) {
     const tirar = document.createElement('button');
     tirar.type = 'button';
     tirar.className = 'tirar';
-    tirar.textContent = '×';
+    tirar.textContent = 'tirar';
     tirar.title = `Tirar ${c.cidade} da conta (para todos)`;
     tirar.addEventListener('click', () => ignorarCidade(c.cidade, true));
     l.append(nome, trilho, n, tirar);
