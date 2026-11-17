@@ -21,7 +21,7 @@ dia = agrupado; a lixeira fica para a conferencia). Cidades
 juntas pela grafia (CACADOR = Cacador). O "tirar" da barra tira a
 cidade da conta (para todos), "voltar" desfaz. Mostra pizza,
 barras por cidade e o que falta, no painel e em Operacao > Transportadoras > Loggi >
-Agrupamento. O menu "Baixar relatorios" saiu na 2.9.
+Conferencia (no sistema). O menu "Baixar relatorios" saiu na 2.9.
 
 CONFERENCIA LOGGI: para a tela "Agrupar pacotes" da Loggi.
 Marca-se quais cidades, ou quais Circulos (grupos de
