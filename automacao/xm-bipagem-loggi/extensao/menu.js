@@ -413,7 +413,44 @@
     if (e.data.xmOperacao === 'tema') painel.classList.toggle('tema-loggi', e.data.tema === 'loggi');
     if (e.data.xmOperacao === 'baixarNaBase' && !travado) baixarNaBase('baixar');
     if (e.data.xmOperacao === 'lerNaBase' && !travado) baixarNaBase('ler');
+    if (e.data.xmOperacao === 'conferirAnjun') conferirAnjun();
   });
+
+  // ── Conferencia Anjun ("Conferir agora") ───────────────────────────────────
+  // Quem busca no portal e o anjun.js (mundo da pagina, onde esta o token do proprio site). Aqui
+  // so chegam os pacotes ja enxutos, que vao ao fundo.js e dele ao sistema. O token nao passa aqui.
+  const ANJUN = 'newsupplier.anjunexpress.com';
+  const avisarAnjun = (dados) => avisarPainel({ ...dados, anjun: true });
+  let buscandoAnjun = false;
+
+  function conferirAnjun() {
+    if (location.hostname !== ANJUN) {
+      avisarAnjun({ texto: 'Abra o portal da Anjun (newsupplier.anjunexpress.com) e clique em Conferir agora lá.', erro: true, fim: true });
+      return;
+    }
+    if (buscandoAnjun) return;
+    buscandoAnjun = true;
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    avisarAnjun({ texto: 'Pedindo os pacotes de hoje ao portal...' });
+    const ouvir = async (e) => {
+      if (e.source !== window || !e.data || e.data.xmOperacao !== 'anjunResposta' || e.data.id !== id) return;
+      if (!e.data.fim) return avisarAnjun({ texto: String(e.data.andamento || '') });
+      window.removeEventListener('message', ouvir);
+      try {
+        if (e.data.erro) throw new Error(e.data.erro);
+        avisarAnjun({ texto: `Mandando ${e.data.pacotes.length} pacotes ao sistema...` });
+        const r = await chrome.runtime.sendMessage({ tipo: 'anjunLeitura', pacotes: e.data.pacotes });
+        if (!r || r.erro) throw new Error((r && r.erro) || 'Não deu certo.');
+        avisarAnjun({ texto: '', fim: true, resumo: r.resumo });
+      } catch (err) {
+        avisarAnjun({ texto: /context invalidated/i.test(err.message) ? 'A extensão foi atualizada. Aperte F5 nesta página.' : err.message, erro: true, fim: true });
+      } finally {
+        buscandoAnjun = false;
+      }
+    };
+    window.addEventListener('message', ouvir);
+    window.postMessage({ xmOperacao: 'anjunBuscar', id }, location.origin);
+  }
 
   // ── Baixar relatorio (Na base) ─────────────────────────────────────────────
   // So aperta o botao do proprio Arco: o "Baixar relatorio" ao lado de "Agrupar" na tela Na base

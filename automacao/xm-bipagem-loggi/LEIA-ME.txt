@@ -6,8 +6,19 @@ Extensao do Chrome com as ferramentas da operacao nos sites
 das transportadoras. Entra-se com o login do sistema XMTT e
 escolhe-se no menu:
 
-  Conferencias      Loggi (ativa) | Anjun, iMile, Shopee,
+  Conferencias      Loggi e Anjun (ativas) | iMile, Shopee,
                     Total Express (em breve)
+
+CONFERENCIA ANJUN (desde 3.2): no portal newsupplier.anjunexpress.com,
+Conferencias > Anjun > "Conferir agora". A extensao faz a mesma busca
+da tela Consulta de pacotes com "Tempo de entrada no ponto" = hoje
+(pageQuery, todas as paginas), com o token do proprio portal, que nao
+sai da pagina. Ao sistema vao so waybill, entregador, cidade, ponto,
+entrada, cliente, valor e status (nada do destinatario). O sistema
+confere: expedido (tem entregador), expedido certo (o login faz a
+cidade) e fora de abrangencia (cidade que nenhum login da Anjun faz),
+por polo (Ponto Responsavel). Leituras do dia se somam. Tambem em
+Operacao > Transportadoras > Anjun > Conferencia (no sistema).
 
 Conferencia Loggi > aba "Agrupamento" (canto direito, com a %
 ao lado) > "Conferir agora": le o relatorio Na base do Arco SEM

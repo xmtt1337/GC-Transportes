@@ -75,7 +75,25 @@ async function lerNaBase(url, base) {
   }
 }
 
+// Conferencia Anjun: os pacotes de hoje (ja enxutos pelo anjun.js) vao ao sistema.
+async function lerAnjun(pacotes) {
+  const { token } = await chrome.storage.session.get('token');
+  if (!token) throw new Error('Entre na extensão primeiro.');
+  try {
+    return await R.api(token, 'POST', '/macros/anjun-conferencia/leitura', { pacotes }, fetch, true);
+  } catch (e) {
+    if (e instanceof R.ErroDeConta) await chrome.storage.session.remove(['token', 'nome']);
+    throw e;
+  }
+}
+
 chrome.runtime.onMessage.addListener((pedido, _quem, responder) => {
+  if (pedido && pedido.tipo === 'anjunLeitura' && Array.isArray(pedido.pacotes)) {
+    lerAnjun(pedido.pacotes)
+      .then((resumo) => responder({ resumo }))
+      .catch((e) => responder({ erro: e.message || 'Não deu certo.' }));
+    return true;
+  }
   if (pedido && pedido.tipo === 'naBase') {
     lerNaBase(String(pedido.url || ''), String(pedido.base || ''))
       .then((resumo) => responder({ resumo }))

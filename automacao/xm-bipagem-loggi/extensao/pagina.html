@@ -165,6 +165,18 @@
   .barra-cidade .trilho i { display: block; height: 100%; }
   .barra-cidade em { font-style: normal; color: #f59e0b; text-align: right; font-weight: 600; }
   .barras .vazia { color: var(--suave); font-size: 12px; }
+  /* Conferência Anjun: cidade errada em laranja (pendência de outro tipo) e os dois números ao lado da pizza */
+  .cor-errada { background: #f97316; }
+  .indicadores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .indicadores div { border: 1px solid var(--linha); border-radius: var(--raio); padding: 10px 12px; }
+  .indicadores b { display: block; font-size: 18px; color: var(--forte); }
+  .indicadores b.completo { color: #22c55e; }
+  .indicadores b.alerta { color: #f59e0b; }
+  .indicadores small { color: var(--suave); font-size: 12px; }
+  .pendente .situacao { font-style: normal; font-size: 12px; text-align: right; }
+  .situacao.sem_entregador { color: #f59e0b; }
+  .situacao.cidade_errada { color: #f97316; }
+  .situacao.fora_abrangencia, .situacao.usuario_sem_cidade, .situacao.sem_cidade { color: var(--suave); }
   .pendente { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--linha); }
   .pendente:last-child { border-bottom: 0; }
   .pendente span { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--forte); overflow: hidden; text-overflow: ellipsis; }
@@ -271,6 +283,37 @@
         <div class="cabecalho" style="margin-top:16px"><h2>Faltam agrupar</h2><button id="ag-copiar" type="button">Copiar códigos</button></div>
         <div id="ag-lista" class="lista"></div>
       </div>
+    </div>
+  </section>
+
+  <!-- Conferência Anjun: recebidos no ponto hoje (Conferir agora no portal) — expedido, certo, fora de abrangência -->
+  <section id="tela-conferencia-anjun" hidden>
+    <div class="volta"><button class="voltar" type="button">‹ Voltar</button><strong>Conferência Anjun</strong></div>
+    <div class="ag-topo">
+      <div class="pizza" id="an-pizza" aria-hidden="true"><span id="an-porcentagem"></span></div>
+      <div class="ag-resumo">
+        <strong id="an-conta">Ainda não conferido hoje</strong>
+        <small id="an-lido" class="lido"></small>
+        <div class="ag-legenda"><span><i class="cor-ok"></i>Expedidos</span><span><i class="cor-falta"></i>Sem entregador</span></div>
+        <button id="an-conferir" class="pilula" type="button">Conferir agora</button>
+      </div>
+    </div>
+    <p id="an-status" class="mensagem" style="margin:10px 0 0"></p>
+    <div id="an-resultado" hidden>
+      <div class="indicadores">
+        <div><b id="an-certo"></b><small>expedidos certo</small></div>
+        <div><b id="an-fora"></b><small>fora de abrangência</small></div>
+      </div>
+      <div class="cabecalho" style="margin-top:16px"><h2>Pendências por cidade</h2><span class="lido" style="margin:0">"tirar" = fora da conta</span></div>
+      <div class="ag-legenda" style="margin:0 0 8px"><span><i class="cor-ok"></i>Certo</span><span><i class="cor-falta"></i>Sem entregador</span><span><i class="cor-errada"></i>Cidade errada</span></div>
+      <div id="an-barras" class="barras"></div>
+      <div id="an-fora-conta" class="fora-conta" hidden></div>
+      <div id="an-logins-caixa" hidden>
+        <div class="cabecalho" style="margin-top:16px"><h2>Logins com pacote de outra cidade</h2></div>
+        <div id="an-logins" class="lista"></div>
+      </div>
+      <div class="cabecalho" style="margin-top:16px"><h2>Pendências</h2><button id="an-copiar" type="button">Copiar waybills</button></div>
+      <div id="an-lista" class="lista"></div>
     </div>
   </section>
 </main>

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "XM - Operação",
-  "version": "3.1",
-  "description": "Ferramentas da operacao XMTT nos sites das transportadoras: conferencia de agrupamento e relatorios (Loggi).",
+  "version": "3.2",
+  "description": "Ferramentas da operacao XMTT nos sites das transportadoras: conferencia de agrupamento (Loggi) e conferencia de expedicao (Anjun).",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArVWkgRczLI2G2+CIF95NZFSFr5trg+6GB/QYnPwTMcg/0D9Mt4PEvQNPlTiwle64N8KM62Tls1R/UxQkMR4a/PtHDIcCKeLu8Ldufv3tNywbZjwyZiRoe2shQEm/zYCV/ZzSiFufZh/DL/90MrlJc7SBi2b9DkCLWyTItCHPTwIzusJoCx7Y7HLDcCbLDV7GZ1uJrNGCvOOoNSaHrOuLAFxFxNeIpvFkB1tVV7KOAqf9yDEU4ATr+Gq99jQQaHmkRIfCGZPHDmTCVRok7rTLbIARpuoT3yHGaQLDdQQ3fSRLH3yCtx2QPToKswEZ8Z65tVQ8D17hMcrUkTpz3tUXhwIDAQAB",
   "permissions": [
     "storage",
@@ -10,6 +10,7 @@
   ],
   "host_permissions": [
     "https://*.loggi.com/*",
+    "https://newsupplier.anjunexpress.com/*",
     "https://sistema-backend-i4uh.onrender.com/*"
   ],
   "content_scripts": [
@@ -26,7 +27,19 @@
     },
     {
       "matches": [
-        "https://*.loggi.com/*"
+        "https://newsupplier.anjunexpress.com/*"
+      ],
+      "js": [
+        "anjun.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://*.loggi.com/*",
+        "https://newsupplier.anjunexpress.com/*"
       ],
       "js": [
         "regras.js",
@@ -44,7 +57,8 @@
         "img/logo-claro.png"
       ],
       "matches": [
-        "https://*.loggi.com/*"
+        "https://*.loggi.com/*",
+        "https://newsupplier.anjunexpress.com/*"
       ]
     }
   ],

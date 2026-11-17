@@ -34,10 +34,11 @@ const TELAS = {
   inicio: 'xm',
   // O usuario achou estranho sair do tema do sistema para o da Loggi: fica tudo no do sistema.
   'conferencia-loggi': 'xm',
+  'conferencia-anjun': 'xm',
 };
 const TRANSPORTADORAS = [
   { id: 'loggi', nome: 'Loggi', ativa: true },
-  { id: 'anjun', nome: 'Anjun' },
+  { id: 'anjun', nome: 'Anjun', ativa: true },
   { id: 'imile', nome: 'iMile' },
   { id: 'shopee', nome: 'Shopee' },
   { id: 'total', nome: 'Total Express' },
@@ -53,6 +54,7 @@ function irPara(tela) {
   if (destino !== 'login') chrome.storage.local.set({ tela: destino });
   if (destino !== 'login' && destino !== 'inicio') { telaAtual = destino; desenharMenu(); }
   if (destino === 'conferencia-loggi') carregarAgrupamento();
+  if (destino === 'conferencia-anjun') carregarAnjun();
 }
 
 // Menu como a barra lateral do sistema: area (Conferencias; Baixar relatorios saiu na 2.9) abre e
@@ -608,6 +610,200 @@ async function carregarAgrupamento() {
     else semLeitura();
   } catch (e) {
     if (!(e instanceof R.ErroDeConta)) agrupamento(e.message, true);
+  }
+}
+
+// ── Conferencia Anjun ──────────────────────────────────────────────────────
+// "Conferir agora": o anjun.js (no portal) faz a busca da Consulta de pacotes com entrada no
+// ponto = hoje, o fundo.js manda ao sistema e o sistema confere (expedido, certo, fora de
+// abrangencia) contra a lista login → cidades. Ao abrir a tela, mostra a ultima conta de hoje.
+const ROTA_ANJUN = '/macros/anjun-conferencia';
+const ROTULO_ANJUN = {
+  sem_entregador: 'Sem entregador', cidade_errada: 'Cidade errada', usuario_sem_cidade: 'Login sem cidade',
+  sem_cidade: 'Sem cidade', fora_abrangencia: 'Fora de abrangência',
+};
+let pendentesAnjun = [];
+
+async function chamarAbs(metodo, caminho, corpo) {
+  try {
+    return await R.api(token, metodo, caminho, corpo, fetch, true);
+  } catch (e) {
+    if (e instanceof R.ErroDeConta) {
+      await chrome.storage.session.clear();
+      avisarSessao();
+      mostrarLogin(e.message);
+    }
+    throw e;
+  }
+}
+
+function statusAnjun(texto, erro = false, fim = false) {
+  $('an-status').textContent = texto;
+  $('an-status').className = erro ? 'mensagem erro' : 'mensagem';
+  if (fim) $('an-conferir').disabled = false;
+}
+
+$('an-conferir').addEventListener('click', () => {
+  $('an-conferir').disabled = true;
+  statusAnjun('Pedindo ao portal da Anjun...');
+  window.parent.postMessage({ xmOperacao: 'conferirAnjun' }, '*');
+});
+
+window.addEventListener('message', (e) => {
+  if (e.source !== window.parent || !e.data || e.data.xmOperacao !== 'statusRelatorio' || !e.data.anjun) return;
+  statusAnjun(String(e.data.texto || ''), !!e.data.erro, !!e.data.fim);
+  if (e.data.resumo) mostrarAnjun(e.data.resumo);
+});
+
+function anjunVazio(msg) {
+  $('an-resultado').hidden = true;
+  $('an-pizza').className = 'pizza vazia';
+  $('an-porcentagem').textContent = '—';
+  $('an-conta').textContent = msg || 'Ainda não conferido hoje';
+  $('an-lido').textContent = 'Recebidos no ponto hoje: expedido, certo e fora de abrangência.';
+}
+
+/** Barra por cidade: certo (azul), sem entregador (ambar), cidade errada (laranja). */
+function barrasAnjun(porCidade) {
+  const comPendencia = (porCidade || []).filter((c) => c.total > c.certos).slice(0, MAX_BARRAS);
+  const caixa = $('an-barras');
+  if (!comPendencia.length) {
+    const v = document.createElement('div');
+    v.className = 'vazia';
+    v.textContent = 'Nenhuma cidade com pendência.';
+    return caixa.replaceChildren(v);
+  }
+  const maior = Math.max(...comPendencia.map((c) => c.total));
+  caixa.replaceChildren(...comPendencia.map((c) => {
+    const sem = c.total - c.expedidos;
+    const outras = c.expedidos - c.certos;
+    const l = document.createElement('div');
+    l.className = 'barra-cidade';
+    l.title = `${c.cidade}: ${numero(c.certos)} certos, ${numero(sem)} sem entregador, ${numero(outras)} com outro problema (de ${numero(c.total)})`;
+    const nome = document.createElement('span');
+    nome.textContent = c.cidade;
+    const trilho = document.createElement('div');
+    trilho.className = 'trilho';
+    [['cor-ok', c.certos], ['cor-falta', sem], ['cor-errada', outras]].forEach(([cls, n]) => {
+      const i = document.createElement('i');
+      i.className = cls;
+      i.style.width = `${(n / maior) * 100}%`;
+      trilho.append(i);
+    });
+    const n = document.createElement('em');
+    n.textContent = numero(sem + outras);
+    const tirar = document.createElement('button');
+    tirar.type = 'button';
+    tirar.className = 'tirar';
+    tirar.textContent = 'tirar';
+    tirar.title = `Tirar ${c.cidade} da conta (para todos)`;
+    tirar.addEventListener('click', () => ignorarAnjun(c.cidade, true));
+    l.append(nome, trilho, n, tirar);
+    return l;
+  }));
+}
+
+function foraDaContaAnjun(ignoradas) {
+  const caixa = $('an-fora-conta');
+  caixa.hidden = !(ignoradas && ignoradas.length);
+  if (caixa.hidden) return caixa.replaceChildren();
+  const partes = [document.createTextNode('Fora da conta: ')];
+  ignoradas.forEach((c, i) => {
+    if (i) partes.push(document.createTextNode(' · '));
+    partes.push(document.createTextNode(`${c.cidade} (${numero(c.total)}) `));
+    const voltar = document.createElement('button');
+    voltar.type = 'button';
+    voltar.textContent = 'voltar';
+    voltar.addEventListener('click', () => ignorarAnjun(c.cidade, false));
+    partes.push(voltar);
+  });
+  caixa.replaceChildren(...partes);
+}
+
+async function ignorarAnjun(cidade, ignorar) {
+  try {
+    await chamarAbs('POST', `${ROTA_ANJUN}/ignorar`, { cidade, ignorar });
+    await carregarAnjun();
+  } catch (e) {
+    if (!(e instanceof R.ErroDeConta)) statusAnjun(e.message, true);
+  }
+}
+
+function linhaSimples(principal, detalhe, direita, classeDireita = '') {
+  const l = document.createElement('div');
+  l.className = 'pendente';
+  const a = document.createElement('span');
+  a.textContent = principal;
+  const s = document.createElement('small');
+  s.textContent = detalhe;
+  a.append(s);
+  const d = document.createElement('em');
+  d.className = classeDireita;
+  d.textContent = direita;
+  l.append(a, d);
+  return l;
+}
+
+function mostrarAnjun(r) {
+  if (!r || !r.total) return anjunVazio(r && r.dia ? 'Nenhum pacote recebido hoje no seu polo.' : '');
+  $('an-resultado').hidden = false;
+  const completo = r.nossos > 0 && r.expedidos === r.nossos;
+  const pizza = $('an-pizza');
+  pizza.className = `pizza${completo ? ' completo' : ''}${r.nossos ? '' : ' vazia'}`;
+  pizza.style.setProperty('--pct', Math.min(100, Number(r.pct_expedido) || 0));
+  $('an-porcentagem').textContent = `${Number(r.pct_expedido || 0).toLocaleString('pt-BR')}%`;
+  const falta = r.nossos - r.expedidos;
+  $('an-conta').textContent = `${numero(r.expedidos)} de ${numero(r.nossos)} expedidos${falta ? ` · faltam ${numero(falta)}` : ''}`;
+  const lido = r.leitura;
+  $('an-lido').textContent = `${numero(r.total)} recebidos hoje${r.polo ? '' : ' (todos os polos)'}`
+    + (lido && lido.lido_em ? ` · lido às ${horaDe(lido.lido_em)}${lido.usuario ? ` por ${lido.usuario}` : ''}` : '');
+  const certo = $('an-certo');
+  certo.textContent = r.expedidos ? `${Number(r.pct_certo || 0).toLocaleString('pt-BR')}%` : '—';
+  certo.className = r.expedidos && r.certos === r.expedidos ? 'completo' : '';
+  const fora = $('an-fora');
+  fora.textContent = numero(r.contagem ? r.contagem.fora_abrangencia : 0);
+  fora.className = r.contagem && r.contagem.fora_abrangencia ? 'alerta' : 'completo';
+  barrasAnjun(r.porCidade);
+  foraDaContaAnjun(r.ignoradas);
+  $('an-logins-caixa').hidden = !(r.porLogin && r.porLogin.length);
+  $('an-logins').replaceChildren(...(r.porLogin || []).map((l) => linhaSimples(l.usuario,
+    l.sem_cadastro && !l.erradas ? 'login sem cidade cadastrada' : 'pacote de cidade que ele não faz',
+    numero(l.erradas + l.sem_cadastro), 'situacao cidade_errada')));
+  pendentesAnjun = r.pendentes || [];
+  const lista = $('an-lista');
+  if (!pendentesAnjun.length) {
+    const v = document.createElement('div');
+    v.className = 'vazia';
+    v.textContent = 'Nada pendente. Tudo expedido certo.';
+    return lista.replaceChildren(v);
+  }
+  lista.replaceChildren(...pendentesAnjun.slice(0, 300).map((p) => linhaSimples(p.waybill,
+    [p.cidade, p.entregador].filter(Boolean).join(' · '), ROTULO_ANJUN[p.status] || p.status, `situacao ${p.status}`)));
+  if (pendentesAnjun.length > 300) {
+    const mais = document.createElement('div');
+    mais.className = 'vazia';
+    mais.textContent = `Mostrando 300 de ${numero(pendentesAnjun.length)}. "Copiar waybills" leva todos.`;
+    lista.append(mais);
+  }
+}
+
+$('an-copiar').addEventListener('click', () => {
+  const codigos = pendentesAnjun.map((p) => p.waybill);
+  if (!codigos.length) return statusAnjun('Nada para copiar.');
+  navigator.clipboard.writeText(codigos.join('\n'))
+    .then(() => statusAnjun(`${numero(codigos.length)} waybill(s) copiado(s).`))
+    .catch(() => statusAnjun('Não deu para copiar.', true));
+});
+
+/** A ultima conta de hoje (refeita no sistema com a lista de cidades atual). */
+async function carregarAnjun() {
+  if (!token) return;
+  try {
+    const j = await chamarAbs('GET', ROTA_ANJUN);
+    if (j.dia && j.dia === j.hoje) mostrarAnjun(j);
+    else anjunVazio();
+  } catch (e) {
+    if (!(e instanceof R.ErroDeConta)) statusAnjun(e.message, true);
   }
 }
 
