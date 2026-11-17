@@ -1,8 +1,22 @@
 ===========================================================
-  XM - BIPAGEM LOGGI
+  XM - OPERACAO   (antiga "XM - Bipagem Loggi")
 ===========================================================
 
-Extensao do Chrome para a tela "Agrupar pacotes" da Loggi.
+Extensao do Chrome com as ferramentas da operacao nos sites
+das transportadoras. Entra-se com o login do sistema XMTT e
+escolhe-se no menu:
+
+  Conferencias      Loggi (ativa) | Anjun, iMile, Shopee,
+                    Total Express (em breve)
+  Baixar relatorios Loggi (ativa) | as outras em breve
+
+Cada transportadora abre no tema dela (Loggi = Arco).
+
+Relatorios > Loggi > "Baixar pedidos na rua": a extensao vai
+para a tela "Na rua" do Arco (menu "Na base") e aperta o
+"Baixar relatorio" de la. Nao faz chamada propria a Loggi.
+
+CONFERENCIA LOGGI: para a tela "Agrupar pacotes" da Loggi.
 Marca-se quais cidades, ou quais Circulos (grupos de
 cidades), estao sendo agrupados: um ou outro, nunca os dois.
 Pacote de outra cidade toca alarme e mostra uma tarja
@@ -47,7 +61,7 @@ USAR
 -----------------------------------------------------------
 
 1. Clique no botao XM no canto da Loggi e entre com o login do
-   sistema XMTT.
+   sistema XMTT. Em Conferencias, escolha Loggi.
 2. Aba "Circulos": "Criar circulo", com nome e cidades. Os
    circulos ficam no sistema: todo computador ve os mesmos.
 3. Aba "Bipar": escolha UM circulo (clicar de novo nele

@@ -10,7 +10,7 @@
 // sistema como "removido".
 
 (() => {
-  const NOME = 'XM - Bipagem Loggi';
+  const NOME = 'XM - Operação';
   const MARGEM = 8;
 
   function limitar(valor, maximo) {
@@ -36,12 +36,16 @@
       .marca { display: flex; align-items: center; gap: 10px; }
       .marca img { width: 30px; pointer-events: none; }
       .painel { display: none; width: 420px; height: min(680px, calc(100vh - 16px)); flex-direction: column;
-        background: #fff; border: 1px solid #dde3ea; border-radius: 12px; overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0, 40, 90, .22); }
+        background: #0b0f17; border: 1px solid #1c2533; border-radius: 12px; overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
       .aberto .painel { display: flex; }
       .aberto .botao { display: none; }
       .cabecalho { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;
-        color: #fff; font-weight: 700; background: linear-gradient(90deg, #00a8ff, #006aff); cursor: grab; touch-action: none; user-select: none; }
+        color: #fff; font-weight: 700; background: #0b0f17; border-bottom: 1px solid rgba(255, 255, 255, .06);
+        cursor: grab; touch-action: none; user-select: none; }
+      /* Tela de transportadora aberta: a moldura pega o tema dela (Loggi = Arco). */
+      .painel.tema-loggi { background: #fff; border-color: #dde3ea; box-shadow: 0 10px 30px rgba(0, 40, 90, .22); }
+      .painel.tema-loggi .cabecalho { background: linear-gradient(90deg, #00baff, #006aff); border-bottom: 0; }
       .cabecalho button { color: #fff !important; }
       .cabecalho button, .tarja button { padding: 0; color: #6ea8fe; background: none; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
       .cabecalho button:hover, .tarja button:hover { text-decoration: underline; }
@@ -67,11 +71,11 @@
       /* Sem login: fundo escuro e o painel no meio da tela, so com o login. */
       .trava { display: none; position: fixed; inset: 0; z-index: 2147483645; background: rgba(15, 17, 21, .9); }
       .trava.ver { display: block; }
-      .trava p { position: absolute; left: 50%; top: calc(50% - 170px); transform: translateX(-50%); margin: 0;
+      .trava p { position: absolute; left: 50%; top: calc(50% - 250px); transform: translateX(-50%); margin: 0;
         width: min(420px, calc(100vw - 32px)); text-align: center; color: #e8eaed; font: 15px/1.45 system-ui, sans-serif; }
       .menu.travado { left: 50% !important; top: 50% !important; right: auto !important; bottom: auto !important;
         transform: translate(-50%, -50%); }
-      .menu.travado .painel { height: 270px; }
+      .menu.travado .painel { height: min(430px, calc(100vh - 16px)); }
       .menu.travado .cabecalho { cursor: default; }
       .menu.travado .cabecalho button { display: none; }
       .card button { padding: 0; background: none; border: 0; color: #fff; text-decoration: underline; font: 700 16px system-ui, sans-serif; cursor: pointer; }
@@ -97,7 +101,7 @@
       </button>
       <div class="painel">
         <div class="cabecalho">
-          <span class="marca"><img alt="XM" src="${chrome.runtime.getURL('img/logo-claro.png')}">- Bipagem Loggi</span>
+          <span class="marca"><img alt="XM" src="${chrome.runtime.getURL('img/logo-claro.png')}">- Operação</span>
           <button type="button">Minimizar</button>
         </div>
       </div>
@@ -388,6 +392,92 @@
   chrome.storage.onChanged.addListener((mudou, area) => {
     if (area === 'local' && mudou.alvo) alvo = mudou.alvo.newValue || null;
     if (area === 'local' && mudou.sessaoMudou) consultarLogin();
+  });
+
+  // ── conversa com o painel (iframe) ─────────────────────────────────────────
+  const ORIGEM_PAINEL = new URL(chrome.runtime.getURL('')).origin;
+  const avisarPainel = (dados) => { if (quadro) quadro.contentWindow.postMessage({ xmOperacao: 'statusRelatorio', ...dados }, ORIGEM_PAINEL); };
+
+  window.addEventListener('message', (e) => {
+    if (e.origin !== ORIGEM_PAINEL || !quadro || e.source !== quadro.contentWindow || !e.data) return;
+    if (e.data.xmOperacao === 'tema') painel.classList.toggle('tema-loggi', e.data.tema === 'loggi');
+    if (e.data.xmOperacao === 'baixarNaRua' && !travado) baixarNaRua();
+  });
+
+  // ── Baixar pedidos na rua ──────────────────────────────────────────────────
+  // So aperta os botoes do proprio Arco: vai para "Na rua" (pelo menu "Na base ▾") e clica no
+  // "Baixar relatorio" de la. Se a troca de tela recarregar a pagina, o pedido fica no storage
+  // e este script continua de onde parou ao carregar de novo.
+  const normal = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const visivel = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  /** O elemento visivel mais "de dentro" cujo texto e exatamente esse, subindo ate o clicavel. */
+  function acharTexto(texto) {
+    const alvoTexto = normal(texto);
+    const achados = [...document.body.querySelectorAll('a, button, [role="button"], [role="menuitem"], [role="option"], [role="tab"], li, span, p, div')]
+      .filter((el) => visivel(el) && normal(el.textContent) === alvoTexto);
+    const maisDentro = achados.find((el) => !achados.some((o) => o !== el && el.contains(o)));
+    return maisDentro ? (maisDentro.closest('a, button, [role="button"], [role="menuitem"], [role="option"], li') || maisDentro) : null;
+  }
+
+  async function esperar(achar, ms) {
+    for (const fim = Date.now() + ms; Date.now() < fim; await dormir(250)) {
+      const r = achar();
+      if (r) return r;
+    }
+    return null;
+  }
+
+  function clicarDeVerdade(el) {
+    const r = el.getBoundingClientRect();
+    const o = { bubbles: true, cancelable: true, view: window, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 };
+    el.dispatchEvent(new PointerEvent('pointerdown', o));
+    el.dispatchEvent(new MouseEvent('mousedown', o));
+    el.dispatchEvent(new PointerEvent('pointerup', o));
+    el.dispatchEvent(new MouseEvent('mouseup', o));
+    el.click();
+  }
+
+  const naTelaNaRua = () => /na-rua/i.test(location.pathname)
+    || [...document.querySelectorAll('h1, h2')].some((h) => visivel(h) && normal(h.textContent) === 'na rua');
+
+  async function baixarNaRua(continuacao = false) {
+    try {
+      if (!naTelaNaRua()) {
+        if (continuacao) throw new Error('Abri o "Na rua", mas a tela não carregou. Clique de novo.');
+        avisarPainel({ texto: 'Indo para a tela "Na rua"...' });
+        let link = acharTexto('Na rua');
+        if (!link) {
+          const seletor = [...document.querySelectorAll('a, button, [role="button"]')]
+            .find((el) => visivel(el) && /^na (base|rua)$/.test(normal(el.textContent)));
+          if (seletor) {
+            clicarDeVerdade(seletor);
+            link = await esperar(() => acharTexto('Na rua'), 3000);
+          }
+        }
+        if (!link) throw new Error('Não achei o "Na rua" no menu do Arco. Abra a tela Na rua e clique de novo.');
+        await chrome.storage.local.set({ pendenteNaRua: Date.now() });
+        clicarDeVerdade(link);
+        if (!await esperar(naTelaNaRua, 15000)) throw new Error('A tela "Na rua" não abriu. Abra ela e clique de novo.');
+      }
+      await chrome.storage.local.remove('pendenteNaRua');
+      avisarPainel({ texto: 'Na tela "Na rua". Apertando o "Baixar relatório"...' });
+      const botaoRel = await esperar(() => acharTexto('Baixar relatório'), 15000);
+      if (!botaoRel) throw new Error('Não achei o botão "Baixar relatório" na tela Na rua.');
+      clicarDeVerdade(botaoRel);
+      avisarPainel({ texto: 'Pronto: apertei o "Baixar relatório" da tela Na rua.', fim: true });
+    } catch (e) {
+      await chrome.storage.local.remove('pendenteNaRua');
+      avisarPainel({ texto: e.message, erro: true, fim: true });
+    }
+  }
+
+  // Pedido que ficou no meio de um recarregamento (menos de 1 minuto atras).
+  chrome.storage.local.get('pendenteNaRua').then(({ pendenteNaRua }) => {
+    if (pendenteNaRua && Date.now() - pendenteNaRua < 60000) {
+      esperar(naTelaNaRua, 15000).then(() => baixarNaRua(true));
+    }
   });
 
   document.documentElement.append(hospedeiro);

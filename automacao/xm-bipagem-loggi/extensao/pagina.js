@@ -26,9 +26,60 @@ function dizer(texto, erro = false) {
 // Avisa o menu.js (no site) que o login mudou: ele pergunta ao fundo.js e trava ou destrava.
 const avisarSessao = () => chrome.storage.local.set({ sessaoMudou: Date.now() });
 
+// ── telas e temas ──────────────────────────────────────────────────────────
+// Login e inicio no tema do sistema XMTT; a tela de uma transportadora, no tema dela.
+// A ultima tela aberta volta quando o painel abre de novo.
+const TELAS = {
+  login: 'xm',
+  inicio: 'xm',
+  'conferencia-loggi': 'loggi',
+  'relatorio-loggi': 'loggi',
+};
+const TRANSPORTADORAS = [
+  { id: 'loggi', nome: 'Loggi', cor: '#12A5E8', ativa: true },
+  { id: 'anjun', nome: 'Anjun', cor: '#22C55E' },
+  { id: 'imile', nome: 'iMile', cor: '#9333EA' },
+  { id: 'shopee', nome: 'Shopee', cor: '#F97316' },
+  { id: 'total', nome: 'Total Express', cor: '#EF4444' },
+];
+
+function irPara(tela) {
+  const destino = TELAS[tela] ? tela : 'inicio';
+  Object.keys(TELAS).forEach((t) => { $(`tela-${t}`).hidden = t !== destino; });
+  const tema = TELAS[destino];
+  document.body.className = `tema-${tema}`;
+  // A moldura (cabecalho do painel, no menu.js) acompanha o tema.
+  window.parent.postMessage({ xmOperacao: 'tema', tema }, '*');
+  if (destino !== 'login') chrome.storage.local.set({ tela: destino });
+}
+
+function desenharMenu() {
+  const montar = (caixa, secao) => {
+    $(caixa).replaceChildren(...TRANSPORTADORAS.map((t) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'transp';
+      b.disabled = !t.ativa;
+      const ponto = document.createElement('span');
+      ponto.className = 'ponto';
+      ponto.style.background = t.cor;
+      const nome = document.createElement('span');
+      nome.className = 'nome';
+      nome.textContent = t.nome;
+      const fim = document.createElement(t.ativa ? 'span' : 'small');
+      fim.className = t.ativa ? 'seta' : '';
+      fim.textContent = t.ativa ? '›' : 'em breve';
+      b.append(ponto, nome, fim);
+      if (t.ativa) b.addEventListener('click', () => irPara(`${secao}-${t.id}`));
+      return b;
+    }));
+  };
+  montar('menu-conferencia', 'conferencia');
+  montar('menu-relatorio', 'relatorio');
+}
+
 function mostrarLogin(aviso = '') {
-  $('tela-principal').hidden = true;
-  $('tela-login').hidden = false;
+  irPara('login');
   $('aviso-login').textContent = aviso;
   $('senha').value = '';
   verSenha(false);
@@ -307,9 +358,9 @@ async function carregar() {
 }
 
 async function mostrarPrincipal(nome) {
-  $('tela-login').hidden = true;
-  $('tela-principal').hidden = false;
-  $('logado').textContent = `Logado como ${nome}`;
+  document.querySelectorAll('.logado').forEach((e) => { e.textContent = `Logado como ${nome}`; });
+  const { tela } = await chrome.storage.local.get('tela');
+  irPara(tela && tela !== 'login' ? tela : 'inicio');
   dizer('Carregando círculos...');
   try {
     await carregar();
@@ -350,14 +401,35 @@ $('ver-senha').addEventListener('click', () => {
   $('senha').focus();
 });
 
-$('sair').addEventListener('click', async () => {
+document.querySelectorAll('.sair').forEach((b) => b.addEventListener('click', async () => {
   await chrome.storage.session.clear();
   avisarSessao();
   token = null;
   mostrarLogin();
+}));
+document.querySelectorAll('.voltar').forEach((b) => b.addEventListener('click', () => irPara('inicio')));
+
+// ── relatorios ─────────────────────────────────────────────────────────────
+// Quem aperta o botao da Loggi e o menu.js (esta pagina esta num iframe e nao mexe no Arco).
+$('baixar-na-rua').addEventListener('click', () => {
+  $('baixar-na-rua').disabled = true;
+  relatorio('Indo para a tela "Na rua"...');
+  window.parent.postMessage({ xmOperacao: 'baixarNaRua' }, '*');
+});
+
+function relatorio(texto, erro = false, fim = false) {
+  $('status-relatorio').textContent = texto;
+  $('status-relatorio').className = erro ? 'mensagem erro' : 'mensagem';
+  if (fim) $('baixar-na-rua').disabled = false;
+}
+
+window.addEventListener('message', (e) => {
+  if (e.source !== window.parent || !e.data || e.data.xmOperacao !== 'statusRelatorio') return;
+  relatorio(String(e.data.texto || ''), !!e.data.erro, !!e.data.fim);
 });
 
 async function comecar() {
+  desenharMenu();
   const salvo = await chrome.storage.local.get('selecao');
   if (salvo.selecao) selecao = { grupos: salvo.selecao.grupos || [], cidades: salvo.selecao.cidades || [] };
   // Abre a lista do que esta valendo.
