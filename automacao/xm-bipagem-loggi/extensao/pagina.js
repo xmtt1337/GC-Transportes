@@ -51,29 +51,49 @@ function irPara(tela) {
   // A moldura (cabecalho do painel, no menu.js) acompanha o tema.
   window.parent.postMessage({ xmOperacao: 'tema', tema }, '*');
   if (destino !== 'login') chrome.storage.local.set({ tela: destino });
+  if (TELAS[destino] !== 'xm') { telaAtual = destino; desenharMenu(); }
 }
+
+// Menu como a barra lateral do sistema: area (Conferencias / Baixar relatorios) abre e
+// fecha; dentro, as transportadoras. Quais areas estao abertas fica guardado.
+let areasAbertas = ['conferencia', 'relatorio'];
+let telaAtual = '';
 
 function desenharMenu() {
   const montar = (caixa, secao) => {
     $(caixa).replaceChildren(...TRANSPORTADORAS.map((t) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'transp';
       b.disabled = !t.ativa;
+      b.classList.toggle('atual', telaAtual === `${secao}-${t.id}`);
       const nome = document.createElement('span');
-      nome.className = 'nome';
       nome.textContent = t.nome;
-      const fim = document.createElement(t.ativa ? 'span' : 'small');
-      fim.className = t.ativa ? 'seta' : '';
-      fim.textContent = t.ativa ? '›' : 'em breve';
-      b.append(nome, fim);
-      if (t.ativa) b.addEventListener('click', () => irPara(`${secao}-${t.id}`));
+      b.append(nome);
+      if (!t.ativa) {
+        const breve = document.createElement('small');
+        breve.textContent = 'em breve';
+        b.append(breve);
+      } else {
+        b.addEventListener('click', () => irPara(`${secao}-${t.id}`));
+      }
       return b;
     }));
   };
   montar('menu-conferencia', 'conferencia');
   montar('menu-relatorio', 'relatorio');
+  document.querySelectorAll('.area').forEach((a) => {
+    const aberta = areasAbertas.includes(a.dataset.area);
+    a.classList.toggle('aberta', aberta);
+    $(`menu-${a.dataset.area}`).hidden = !aberta;
+  });
 }
+
+document.querySelectorAll('.area').forEach((a) => a.addEventListener('click', () => {
+  const id = a.dataset.area;
+  areasAbertas = areasAbertas.includes(id) ? areasAbertas.filter((x) => x !== id) : [...areasAbertas, id];
+  chrome.storage.local.set({ areasAbertas });
+  desenharMenu();
+}));
 
 function mostrarLogin(aviso = '') {
   irPara('login');
@@ -426,6 +446,8 @@ window.addEventListener('message', (e) => {
 });
 
 async function comecar() {
+  const guardado = await chrome.storage.local.get('areasAbertas');
+  if (Array.isArray(guardado.areasAbertas)) areasAbertas = guardado.areasAbertas;
   desenharMenu();
   const salvo = await chrome.storage.local.get('selecao');
   if (salvo.selecao) selecao = { grupos: salvo.selecao.grupos || [], cidades: salvo.selecao.cidades || [] };
