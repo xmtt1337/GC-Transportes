@@ -31,6 +31,7 @@ function mostrarLogin(aviso = '') {
   $('tela-login').hidden = false;
   $('aviso-login').textContent = aviso;
   $('senha').value = '';
+  verSenha(false);
   chrome.storage.local.get('usuario').then(({ usuario }) => {
     if (usuario && !$('usuario').value) $('usuario').value = usuario;
     $(usuario ? 'senha' : 'usuario').focus();
@@ -334,6 +335,19 @@ $('tela-login').addEventListener('submit', async (e) => {
   }
   $('entrar').disabled = false;
   $('entrar').textContent = 'Entrar';
+});
+
+// Olho da senha: mostra/esconde. Volta a esconder ao mostrar o login de novo.
+function verSenha(mostrar) {
+  $('senha').type = mostrar ? 'text' : 'password';
+  $('ver-senha').querySelector('.risco').style.display = mostrar ? '' : 'none';
+  const t = mostrar ? 'Esconder senha' : 'Mostrar senha';
+  $('ver-senha').title = t;
+  $('ver-senha').setAttribute('aria-label', t);
+}
+$('ver-senha').addEventListener('click', () => {
+  verSenha($('senha').type === 'password');
+  $('senha').focus();
 });
 
 $('sair').addEventListener('click', async () => {

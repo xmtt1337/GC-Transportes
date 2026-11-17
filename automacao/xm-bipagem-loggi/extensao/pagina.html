@@ -4,66 +4,76 @@
 <meta charset="utf-8">
 <title>XM - Bipagem Loggi</title>
 <style>
+  /* Cores da Loggi: fundo branco, texto grafite, azul #006aff. */
+  :root { --azul: #006aff; --texto: #1f2933; --suave: #5f6b7a; --linha: #e3e8ef; --campo: #c9d2dd; --fundo2: #f5f8fc; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: #16181d; color: #e8eaed; font: 14px/1.4 system-ui, sans-serif; }
-  main { padding: 12px 14px 16px; }
+  body { margin: 0; background: #fff; color: var(--texto); font: 14px/1.4 "Open Sans", system-ui, sans-serif; }
+  main { padding: 14px 16px 16px; }
   [hidden] { display: none !important; }
-  label.campo { display: block; margin: 14px 0 4px; color: #a8adb7; font-size: 13px; }
+  label.campo { display: block; margin: 14px 0 6px; color: var(--suave); font-size: 13px; font-weight: 600; }
   input[type=text], input[type=password], input[type=search], input:not([type]) {
-    width: 100%; padding: 8px 10px; background: #0f1115; color: #e8eaed;
-    border: 1px solid #3a3f4a; border-radius: 4px; font: inherit; outline: none;
+    width: 100%; padding: 9px 12px; background: #fff; color: var(--texto);
+    border: 1px solid var(--campo); border-radius: 8px; font: inherit; outline: none;
   }
-  input:focus { border-color: #6ea8fe; }
-  button { margin: 0; padding: 0; background: none; border: 0; color: #6ea8fe; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  input:focus { border-color: var(--azul); box-shadow: 0 0 0 3px rgba(0, 106, 255, .12); }
+  input::-ms-reveal { display: none; } /* o olho e o nosso, igual no Chrome e no Edge */
+  button { margin: 0; padding: 0; background: none; border: 0; color: var(--azul); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
   button:hover:not(:disabled) { text-decoration: underline; }
-  button:disabled { color: #6b7280; cursor: default; }
+  button:disabled { color: #9aa5b1; cursor: default; }
 
-  .topo { display: flex; justify-content: space-between; align-items: center; color: #a8adb7; gap: 12px; }
+  .senha { position: relative; }
+  .senha input { padding-right: 42px; }
+  .senha button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center; color: var(--suave); }
+  .senha button:hover { color: var(--azul); }
+  .senha svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .topo { display: flex; justify-content: space-between; align-items: center; color: var(--suave); gap: 12px; }
   .topo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .abas { display: flex; gap: 20px; margin: 10px 0 12px; border-bottom: 1px solid #2a2e37; }
-  .abas button { padding: 7px 0; color: #a8adb7; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-  .abas button.ativa { color: #e8eaed; border-bottom-color: #6ea8fe; }
-  .abas button:hover { text-decoration: none; color: #e8eaed; }
+  .abas { display: flex; gap: 22px; margin: 10px 0 14px; border-bottom: 1px solid var(--linha); }
+  .abas button { padding: 8px 0; color: var(--suave); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .abas button.ativa { color: var(--azul); border-bottom-color: var(--azul); }
+  .abas button:hover { text-decoration: none; color: var(--azul); }
 
-  .mensagem { color: #a8adb7; margin: 0 0 10px; font-size: 13px; }
+  .mensagem { color: var(--suave); margin: 0 0 10px; font-size: 13px; }
   .mensagem:empty { display: none; }
-  .erro { color: #f87171; }
+  .erro { color: #d92d20; }
 
   /* O que esta valendo agora */
-  .alvo { padding: 10px 12px; border: 1px solid #2a2e37; background: #1d2128; border-radius: 4px; margin-bottom: 14px; }
-  .alvo .rotulo { display: block; font-size: 12px; color: #4ade80; }
-  .alvo.vazio .rotulo { color: #fbbf24; }
+  .alvo { padding: 12px 14px; border: 1px solid var(--linha); background: var(--fundo2); border-radius: 10px; margin-bottom: 14px; }
+  .alvo .rotulo { display: block; font-size: 12px; font-weight: 600; color: #15803d; }
+  .alvo.vazio .rotulo { color: #b45309; }
   .alvo strong { display: block; font-size: 15px; }
-  .alvo small { display: block; color: #a8adb7; margin-top: 2px; }
+  .alvo small { display: block; color: var(--suave); margin-top: 2px; }
 
   /* Circulo | Cidades */
-  .modo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid #3a3f4a; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
-  .modo button { padding: 7px 0; color: #a8adb7; text-align: center; }
-  .modo button + button { border-left: 1px solid #3a3f4a; }
-  .modo button.ativa { color: #e8eaed; background: #262b34; }
-  .modo button:hover { text-decoration: none; color: #e8eaed; }
+  .modo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px; padding: 4px; background: var(--fundo2);
+    border: 1px solid var(--linha); border-radius: 999px; margin-bottom: 10px; }
+  .modo button { padding: 7px 0; color: var(--suave); text-align: center; border-radius: 999px; }
+  .modo button.ativa { color: var(--azul); background: #fff; box-shadow: 0 1px 3px rgba(0, 40, 90, .15); }
+  .modo button:hover { text-decoration: none; color: var(--azul); }
 
   .busca { position: relative; }
-  .busca svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; fill: none; stroke: #a8adb7; stroke-width: 2; pointer-events: none; }
-  .busca input { padding-left: 34px; }
+  .busca svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; fill: none; stroke: var(--suave); stroke-width: 2; pointer-events: none; }
+  .busca input { padding-left: 36px; }
 
-  .cabecalho { display: flex; justify-content: space-between; align-items: center; margin: 12px 0 6px; }
-  .cabecalho h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #a8adb7; margin: 0; font-weight: 600; }
+  .cabecalho { display: flex; justify-content: space-between; align-items: center; margin: 14px 0 6px; }
+  .cabecalho h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--suave); margin: 0; font-weight: 700; }
 
-  .lista { max-height: 300px; overflow: auto; scrollbar-width: thin; scrollbar-color: #3a3f4a transparent; border: 1px solid #2a2e37; border-radius: 4px; }
-  .lista .vazia { padding: 12px; color: #a8adb7; }
-  .item { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #22262e; }
+  .lista { max-height: 300px; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--campo) transparent; border: 1px solid var(--linha); border-radius: 10px; }
+  .lista .vazia { padding: 12px; color: var(--suave); }
+  .item { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; padding: 9px 12px; cursor: pointer; border-bottom: 1px solid var(--linha); }
   .item:last-child { border-bottom: 0; }
-  .item:hover { background: #1d2128; }
-  .item input { margin: 0; width: 16px; height: 16px; accent-color: #6ea8fe; cursor: pointer; }
+  .item:hover { background: var(--fundo2); }
+  .item input { margin: 0; width: 16px; height: 16px; accent-color: var(--azul); cursor: pointer; }
   .item .nome { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .item .nome small { display: block; color: #a8adb7; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .item .conta { color: #a8adb7; font-size: 12px; }
+  .item .nome small { display: block; color: var(--suave); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .conta { color: var(--suave); font-size: 12px; }
 
   /* Aba Circulos */
-  .circulo { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 14px; align-items: start; padding: 10px 0; border-bottom: 1px solid #22262e; }
+  .circulo { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 14px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--linha); }
   .circulo strong { display: block; }
-  .circulo small { display: block; color: #a8adb7; font-size: 12px; margin-top: 2px; }
+  .circulo small { display: block; color: var(--suave); font-size: 12px; margin-top: 2px; }
   .circulo .acoes-linha { display: flex; gap: 14px; padding-top: 1px; }
   .rodape { display: flex; gap: 18px; margin-top: 12px; }
   .acoes { display: flex; gap: 18px; margin-top: 14px; }
@@ -75,7 +85,12 @@
     <label class="campo" for="usuario">Usuário no sistema XMTT</label>
     <input id="usuario" autocomplete="username" required>
     <label class="campo" for="senha">Senha</label>
-    <input id="senha" type="password" autocomplete="current-password" required>
+    <div class="senha">
+      <input id="senha" type="password" autocomplete="current-password" required>
+      <button id="ver-senha" type="button" title="Mostrar senha" aria-label="Mostrar senha">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="risco" d="M3 3l18 18" style="display:none"/></svg>
+      </button>
+    </div>
     <div class="acoes"><button id="entrar" type="submit">Entrar</button></div>
     <p id="aviso-login" class="mensagem erro"></p>
   </form>

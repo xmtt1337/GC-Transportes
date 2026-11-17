@@ -36,12 +36,13 @@
       .marca { display: flex; align-items: center; gap: 10px; }
       .marca img { width: 30px; pointer-events: none; }
       .painel { display: none; width: 420px; height: min(680px, calc(100vh - 16px)); flex-direction: column;
-        background: #16181d; border: 1px solid #3a3f4a; border-radius: 8px; overflow: hidden;
-        box-shadow: 0 8px 28px rgba(0, 0, 0, .45); }
+        background: #fff; border: 1px solid #dde3ea; border-radius: 12px; overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 40, 90, .22); }
       .aberto .painel { display: flex; }
       .aberto .botao { display: none; }
       .cabecalho { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;
-        color: #e8eaed; font-weight: 700; border-bottom: 1px solid #3a3f4a; cursor: grab; touch-action: none; user-select: none; }
+        color: #fff; font-weight: 700; background: linear-gradient(90deg, #00a8ff, #006aff); cursor: grab; touch-action: none; user-select: none; }
+      .cabecalho button { color: #fff !important; }
       .cabecalho button, .tarja button { padding: 0; color: #6ea8fe; background: none; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
       .cabecalho button:hover, .tarja button:hover { text-decoration: underline; }
       iframe { flex: 1; width: 100%; border: 0; }
@@ -119,20 +120,33 @@
     menu.style.bottom = `${posicao.baixo}px`;
   }
 
+  // Abrir e minimizar mudam o tamanho: fica parado o canto que esta mais perto da borda da
+  // tela (painel arrastado para a esquerda minimiza para a esquerda, e assim por diante).
+  function trocarTamanho(mudar) {
+    const antes = menu.getBoundingClientRect();
+    mudar();
+    const depois = menu.getBoundingClientRect();
+    if (antes.width && !menu.classList.contains('travado')) {
+      if (antes.left + antes.width / 2 < window.innerWidth / 2) posicao.direita = window.innerWidth - antes.left - depois.width;
+      if (antes.top + antes.height / 2 < window.innerHeight / 2) posicao.baixo = window.innerHeight - antes.top - depois.height;
+    }
+    aplicarPosicao();
+    chrome.storage.local.set({ posicao });
+  }
+
   function abrir() {
+    if (menu.classList.contains('aberto')) return;
     if (!quadro) {
       quadro = document.createElement('iframe');
       quadro.title = NOME;
       quadro.src = chrome.runtime.getURL('pagina.html');
       painel.append(quadro);
     }
-    menu.classList.add('aberto');
-    aplicarPosicao();
+    trocarTamanho(() => menu.classList.add('aberto'));
   }
 
   function minimizar() {
-    menu.classList.remove('aberto');
-    aplicarPosicao();
+    trocarTamanho(() => menu.classList.remove('aberto'));
   }
 
   function arrastar(elemento, aoClicar) {
