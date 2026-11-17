@@ -81,8 +81,9 @@
   .seta-fina { width: 6px; height: 6px; flex: none; margin: 0 4px -3px auto; opacity: .7;
     border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-3px) rotate(45deg); transition: transform .25s ease; }
   .area.aberta .seta-fina { transform: translateY(1px) rotate(-135deg); }
-  .submenu { padding-bottom: 4px; }
-  .submenu button { display: flex; width: 100%; align-items: center; gap: 10px; padding: 10px 14px 10px 55px; margin: 1px 0;
+  /* Nivel de dentro igual ao .sub-submenu do sistema: entra na linha do texto da area, com um fio a esquerda; a tela atual pega a barrinha azul no fio. */
+  .submenu { margin: 0 0 4px 52px; padding-left: 6px; border-left: 1px solid rgba(148, 163, 184, .16); }
+  .submenu button { display: flex; width: 100%; align-items: center; gap: 10px; padding: 10px 14px 10px 12px; margin: 1px 0;
     color: #8b9ab0; font-size: 13.5px; font-weight: 500; line-height: 1.3; text-align: left; border-radius: 0; }
   .submenu button:hover:not(:disabled) { background: rgba(255, 255, 255, .04); color: #e2e8f0; text-decoration: none; }
   .submenu button.atual { color: #7cb4ff; font-weight: 600; background: rgba(58, 134, 255, .12); box-shadow: inset 2px 0 0 #3a86ff; }

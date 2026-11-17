@@ -92,7 +92,8 @@ function desenharMenu() {
 
 document.querySelectorAll('.area').forEach((a) => a.addEventListener('click', () => {
   const id = a.dataset.area;
-  areasAbertas = areasAbertas.includes(id) ? areasAbertas.filter((x) => x !== id) : [...areasAbertas, id];
+  // Igual o sistema: abrir uma area fecha a outra.
+  areasAbertas = areasAbertas.includes(id) ? [] : [id];
   chrome.storage.local.set({ areasAbertas });
   desenharMenu();
 }));
