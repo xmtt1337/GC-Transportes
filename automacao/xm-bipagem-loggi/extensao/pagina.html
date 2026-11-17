@@ -65,13 +65,11 @@
 
   /* ── Tela inicial: arvore ──────────────────────────────────────── */
   .secao { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: var(--suave); margin: 20px 0 6px; }
-  .transp { display: flex; width: 100%; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; color: var(--texto); font-weight: 500; text-align: left; }
-  .transp:hover:not(:disabled) { background: rgba(58, 134, 255, .07); text-decoration: none; }
-  .transp .ponto { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .transp { display: flex; width: 100%; align-items: center; gap: 10px; padding: 9px 0; color: var(--texto); font-weight: 500; text-align: left; }
+  .transp:hover:not(:disabled) { color: var(--azul); text-decoration: none; }
   .transp .nome { flex: 1; }
   .transp .seta { color: var(--suave); font-size: 18px; line-height: 1; }
   .transp:disabled .nome { color: var(--apagado); }
-  .transp:disabled .ponto { opacity: .35; }
   .transp small { color: var(--apagado); font-weight: 500; font-size: 12px; }
 
   /* ── Telas da Loggi (Arco) ─────────────────────────────────────── */

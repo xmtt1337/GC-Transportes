@@ -36,11 +36,11 @@ const TELAS = {
   'relatorio-loggi': 'loggi',
 };
 const TRANSPORTADORAS = [
-  { id: 'loggi', nome: 'Loggi', cor: '#12A5E8', ativa: true },
-  { id: 'anjun', nome: 'Anjun', cor: '#22C55E' },
-  { id: 'imile', nome: 'iMile', cor: '#9333EA' },
-  { id: 'shopee', nome: 'Shopee', cor: '#F97316' },
-  { id: 'total', nome: 'Total Express', cor: '#EF4444' },
+  { id: 'loggi', nome: 'Loggi', ativa: true },
+  { id: 'anjun', nome: 'Anjun' },
+  { id: 'imile', nome: 'iMile' },
+  { id: 'shopee', nome: 'Shopee' },
+  { id: 'total', nome: 'Total Express' },
 ];
 
 function irPara(tela) {
@@ -60,16 +60,13 @@ function desenharMenu() {
       b.type = 'button';
       b.className = 'transp';
       b.disabled = !t.ativa;
-      const ponto = document.createElement('span');
-      ponto.className = 'ponto';
-      ponto.style.background = t.cor;
       const nome = document.createElement('span');
       nome.className = 'nome';
       nome.textContent = t.nome;
       const fim = document.createElement(t.ativa ? 'span' : 'small');
       fim.className = t.ativa ? 'seta' : '';
       fim.textContent = t.ativa ? '›' : 'em breve';
-      b.append(ponto, nome, fim);
+      b.append(nome, fim);
       if (t.ativa) b.addEventListener('click', () => irPara(`${secao}-${t.id}`));
       return b;
     }));
