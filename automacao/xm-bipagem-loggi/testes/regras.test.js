@@ -158,3 +158,19 @@ test('lixeira: acha o pacote da linha clicada, e nada quando ja passou da linha'
   assert.strictEqual(R.codigoDaLinha(['', 'SKTESTE0000000001\nSKTESTE0000000002'], codigos), null);
   assert.strictEqual(R.codigoDaLinha(['', 'Nada aqui'], codigos), null);
 });
+
+// Relatorio Na base: so os "Sem tentativa", so codigo/ID/cidade/prazo. Dados de TESTE, inventados.
+test('semTentativa le o CSV do Na base com aspas e virgula dentro do endereco', () => {
+  const csv = '﻿Chegou em,Prazo,Endereço completo,Cidade,ID do pacote,Código de barras,Status\r\n'
+    + '2026-01-01T08:00:00.000,2026-01-02T22:00,"Rua Teste, 1 ""fundos""",Cidade A,id1,TESTE0001,Sem tentativa\r\n'
+    + '2026-01-01T08:00:00.000,2026-01-02T22:00,Rua Teste 2,Cidade B,id2,TESTE0002,Aguardando reenvio\r\n'
+    + '2026-01-01T08:00:00.000,2026-01-03T22:00,"Rua\nquebrada",Cidade B,id3,,SEM TENTATIVA\r\n';
+  assert.deepStrictEqual(R.semTentativa(csv), [
+    { codigo: 'TESTE0001', id: 'id1', cidade: 'Cidade A', prazo: '2026-01-02T22:00' },
+    { codigo: '', id: 'id3', cidade: 'Cidade B', prazo: '2026-01-03T22:00' },
+  ]);
+});
+
+test('semTentativa recusa arquivo sem as colunas', () => {
+  assert.throws(() => R.semTentativa('a,b\n1,2'), /Status/);
+});

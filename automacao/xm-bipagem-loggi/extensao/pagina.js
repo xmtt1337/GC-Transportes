@@ -53,6 +53,7 @@ function irPara(tela) {
   window.parent.postMessage({ xmOperacao: 'tema', tema }, '*');
   if (destino !== 'login') chrome.storage.local.set({ tela: destino });
   if (destino !== 'login' && destino !== 'inicio') { telaAtual = destino; desenharMenu(); }
+  if (destino === 'relatorio-loggi') carregarAgrupamento();
 }
 
 // Menu como a barra lateral do sistema: area (Conferencias / Baixar relatorios) abre e
@@ -445,8 +446,101 @@ function relatorio(texto, erro = false, fim = false) {
 
 window.addEventListener('message', (e) => {
   if (e.source !== window.parent || !e.data || e.data.xmOperacao !== 'statusRelatorio') return;
+  if (e.data.ler) {
+    agrupamento(String(e.data.texto || ''), !!e.data.erro, !!e.data.fim);
+    if (e.data.resumo) mostrarAgrupamento(e.data.resumo);
+    return;
+  }
   relatorio(String(e.data.texto || ''), !!e.data.erro, !!e.data.fim);
 });
+
+// ── Agrupamento de hoje ────────────────────────────────────────────────────
+// "Conferir agora": o menu.js pega o link do Baixar relatorio da tela Na base e o fundo.js le
+// o CSV sem baixar, fica com os "Sem tentativa" e o sistema cruza com os bipes do dia. Ao abrir
+// a tela, mostra a ultima leitura de hoje, recalculada com os bipes de agora.
+let pendentesAg = [];
+
+$('ler-na-base').addEventListener('click', () => {
+  $('ler-na-base').disabled = true;
+  agrupamento('Pedindo ao Arco...');
+  window.parent.postMessage({ xmOperacao: 'lerNaBase' }, '*');
+});
+
+function agrupamento(texto, erro = false, fim = false) {
+  $('status-agrupamento').textContent = texto;
+  $('status-agrupamento').className = erro ? 'mensagem erro' : 'mensagem';
+  if (fim) $('ler-na-base').disabled = false;
+}
+
+const dataCurta = (v) => {
+  const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}` : '';
+};
+const horaDe = (v) => {
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+};
+const numero = (n) => Number(n || 0).toLocaleString('pt-BR');
+
+function mostrarAgrupamento(r) {
+  $('agrupamento').hidden = false;
+  const completo = r.total > 0 && r.faltam === 0;
+  $('ag-porcentagem').textContent = `${Number(r.porcentagem || 0).toLocaleString('pt-BR')}%`;
+  $('ag-porcentagem').classList.toggle('completo', completo);
+  $('ag-conta').textContent = `${numero(r.agrupados)} de ${numero(r.total)} agrupados${r.faltam ? ` · faltam ${numero(r.faltam)}` : ''}`;
+  $('ag-barra').style.width = `${Math.min(100, Number(r.porcentagem) || 0)}%`;
+  $('ag-barra').classList.toggle('completo', completo);
+  $('ag-lido').textContent = r.lido_em ? `Na base lido às ${horaDe(r.lido_em)}${r.usuario ? ` por ${r.usuario}` : ''}` : '';
+  pendentesAg = r.pendentes || [];
+  const lista = $('ag-lista');
+  if (!pendentesAg.length) {
+    const v = document.createElement('div');
+    v.className = 'vazia';
+    v.textContent = r.total ? 'Todos os "Sem tentativa" foram agrupados.' : 'Nenhum pacote "Sem tentativa" no Na base.';
+    lista.replaceChildren(v);
+    return;
+  }
+  lista.replaceChildren(...pendentesAg.slice(0, 300).map((p) => {
+    const l = document.createElement('div');
+    l.className = 'pendente';
+    const cod = document.createElement('span');
+    cod.textContent = p.codigo || p.id;
+    const cid = document.createElement('small');
+    cid.textContent = p.cidade || '(sem cidade)';
+    cod.append(cid);
+    const prazo = document.createElement('em');
+    prazo.textContent = dataCurta(p.prazo) ? `prazo ${dataCurta(p.prazo)}` : '';
+    l.append(cod, prazo);
+    return l;
+  }));
+  if (pendentesAg.length > 300) {
+    const mais = document.createElement('div');
+    mais.className = 'vazia';
+    mais.textContent = `Mostrando 300 de ${numero(pendentesAg.length)}. "Copiar códigos" leva todos.`;
+    lista.append(mais);
+  }
+}
+
+$('ag-copiar').addEventListener('click', () => {
+  const codigos = pendentesAg.map((p) => p.codigo || p.id);
+  if (!codigos.length) return agrupamento('Nada para copiar.');
+  navigator.clipboard.writeText(codigos.join('\n'))
+    .then(() => agrupamento(`${numero(codigos.length)} código(s) copiado(s).`))
+    .catch(() => agrupamento('Não deu para copiar.', true));
+});
+
+/** A ultima leitura de hoje, com os bipes de agora. */
+async function carregarAgrupamento() {
+  if (!token) return;
+  try {
+    const j = await chamar('GET', '/na-base');
+    const hoje = j.dia && j.dia === j.hoje && j.bases && j.bases[0];
+    if (hoje) mostrarAgrupamento(hoje);
+    else { $('agrupamento').hidden = true; agrupamento('Ainda não conferido hoje.'); }
+  } catch (e) {
+    if (!(e instanceof R.ErroDeConta)) agrupamento(e.message, true);
+  }
+}
 
 async function comecar() {
   const guardado = await chrome.storage.local.get(['areasAbertas', 'tela']);

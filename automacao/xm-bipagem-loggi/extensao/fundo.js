@@ -42,7 +42,45 @@ async function enviar() {
   }
 }
 
+// Agrupamento do dia: le o relatorio Na base sem baixar. O link do "Baixar relatorio" do Arco
+// traz o token da conta Loggi na URL: ele e usado so nesta busca, nunca guardado nem enviado
+// ao sistema. Do CSV so sai o que conta (codigo, ID, cidade, prazo dos "Sem tentativa").
+const linkDoRelatorio = (url) => {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && (u.hostname === 'loggi.com' || u.hostname.endsWith('.loggi.com'))
+      && /\/packages\/report/.test(u.pathname);
+  } catch { return false; }
+};
+
+async function lerNaBase(url, base) {
+  const { token } = await chrome.storage.session.get('token');
+  if (!token) throw new Error('Entre na extensão primeiro.');
+  if (!linkDoRelatorio(url)) throw new Error('O link do relatório não é o da Loggi.');
+  let texto;
+  try {
+    const r = await fetch(url, { credentials: 'include' });
+    if (!r.ok) throw new Error();
+    texto = await r.text();
+  } catch {
+    throw new Error('A Loggi não entregou o relatório. Dê F5 no Arco e tente de novo.');
+  }
+  const pacotes = R.semTentativa(texto);
+  try {
+    return await R.api(token, 'POST', '/na-base', { base, pacotes });
+  } catch (e) {
+    if (e instanceof R.ErroDeConta) await chrome.storage.session.remove(['token', 'nome']);
+    throw e;
+  }
+}
+
 chrome.runtime.onMessage.addListener((pedido, _quem, responder) => {
+  if (pedido && pedido.tipo === 'naBase') {
+    lerNaBase(String(pedido.url || ''), String(pedido.base || ''))
+      .then((resumo) => responder({ resumo }))
+      .catch((e) => responder({ erro: e.message || 'Não deu certo.' }));
+    return true;
+  }
   if (pedido && pedido.tipo === 'bipes' && Array.isArray(pedido.itens)) {
     enfileirar(pedido.itens).then(enviar);
   }

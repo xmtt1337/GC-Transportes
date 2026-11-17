@@ -17,6 +17,15 @@ Relatorios > Loggi > "Baixar relatorio (Na base)": aperta o
 listagem_na_base). Em outra tela do Arco, vai antes para a
 Na base. Nao faz chamada propria a Loggi.
 
+Relatorios > Loggi > "Agrupamento de hoje" > "Conferir agora":
+le o mesmo relatorio Na base SEM baixar (pelo link do botao
+"Baixar relatorio", que tem o token da conta Loggi: usado so
+nessa leitura, nunca guardado), fica com os Status "Sem
+tentativa" e manda ao sistema so codigo, ID, cidade e prazo.
+O sistema cruza com os bipes do dia (bipou e tirou na lixeira
+= nao agrupado) e mostra a % e o que falta, no painel e em
+Operacao > Transportadoras > Loggi > Agrupamento.
+
 CONFERENCIA LOGGI: para a tela "Agrupar pacotes" da Loggi.
 Marca-se quais cidades, ou quais Circulos (grupos de
 cidades), estao sendo agrupados: um ou outro, nunca os dois.

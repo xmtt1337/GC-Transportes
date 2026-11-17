@@ -110,6 +110,47 @@
     return null;
   }
 
+  /** CSV (vírgula, aspas duplas, "" dentro de aspas) → linhas de colunas. */
+  function lerCsv(texto) {
+    const linhas = [];
+    let linha = [];
+    let campo = '';
+    let aspas = false;
+    const t = String(texto || '').replace(/^﻿/, '');
+    for (let i = 0; i < t.length; i += 1) {
+      const c = t[i];
+      if (aspas) {
+        if (c === '"' && t[i + 1] === '"') { campo += '"'; i += 1; } else if (c === '"') aspas = false; else campo += c;
+      } else if (c === '"') aspas = true;
+      else if (c === ',') { linha.push(campo); campo = ''; } else if (c === '\n' || c === '\r') {
+        if (c === '\r' && t[i + 1] === '\n') i += 1;
+        linha.push(campo); campo = '';
+        if (linha.some((x) => x !== '')) linhas.push(linha);
+        linha = [];
+      } else campo += c;
+    }
+    linha.push(campo);
+    if (linha.some((x) => x !== '')) linhas.push(linha);
+    return linhas;
+  }
+
+  /**
+   * Relatório Na base do Arco (listagem_na_base_<base>.csv) → os pacotes com Status "Sem
+   * tentativa", só com o que a conta precisa: código de barras, ID, cidade e prazo. Nome,
+   * telefone e endereço ficam no navegador.
+   */
+  function semTentativa(texto) {
+    const [cab = [], ...linhas] = lerCsv(texto);
+    const col = (nome) => cab.findIndex((c) => chaveCidade(c) === nome);
+    const i = { status: col('status'), codigo: col('codigo de barras'), id: col('id do pacote'), cidade: col('cidade'), prazo: col('prazo') };
+    if (i.status < 0 || (i.codigo < 0 && i.id < 0)) throw new Error('O relatório Na base veio sem as colunas Status e Código de barras.');
+    const valor = (l, k) => (i[k] < 0 ? '' : String(l[i[k]] || '').trim());
+    return linhas
+      .filter((l) => chaveCidade(valor(l, 'status')) === 'sem tentativa')
+      .map((l) => ({ codigo: valor(l, 'codigo'), id: valor(l, 'id'), cidade: valor(l, 'cidade'), prazo: valor(l, 'prazo') }))
+      .filter((p) => p.codigo || p.id);
+  }
+
   async function entrar(usuario, senha, buscar = fetch) {
     let corpo;
     try {
@@ -151,7 +192,7 @@
     return j;
   }
 
-  const publico = { BACKEND, ErroDeConta, chaveCidade, montarAlvo, conferirBipe, pendentes, precisaTravar, codigoDaLinha, entrar, api };
+  const publico = { BACKEND, ErroDeConta, chaveCidade, montarAlvo, conferirBipe, pendentes, precisaTravar, codigoDaLinha, lerCsv, semTentativa, entrar, api };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMBipagem = publico;
 })();

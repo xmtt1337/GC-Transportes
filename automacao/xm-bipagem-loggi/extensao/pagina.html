@@ -137,6 +137,20 @@
   .cartao { border: 1px solid var(--linha); border-radius: var(--raio); padding: 18px 20px; }
   .cartao strong { display: block; font-size: 18px; font-weight: 400; color: var(--forte); }
   .cartao p { margin: 4px 0 16px; color: var(--suave); }
+  /* Agrupamento de hoje: % (verde so em 100%), barra e a lista do que falta */
+  .progresso-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 14px; }
+  .porcentagem { font-size: 24px; font-weight: 700; color: var(--forte); letter-spacing: -.3px; }
+  .porcentagem.completo { color: #22c55e; }
+  .conta-ag { color: var(--suave); font-size: 12px; text-align: right; }
+  .barra-progresso { height: 6px; border-radius: 999px; background: var(--linha); overflow: hidden; margin-top: 6px; }
+  .barra-progresso i { display: block; height: 100%; width: 0; background: var(--azul); transition: width .3s ease; }
+  .barra-progresso i.completo { background: #22c55e; }
+  .lido { display: block; color: var(--suave); font-size: 12px; margin-top: 6px; }
+  .pendente { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--linha); }
+  .pendente:last-child { border-bottom: 0; }
+  .pendente span { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--forte); overflow: hidden; text-overflow: ellipsis; }
+  .pendente small { display: block; color: var(--suave); font: 12px/1.4 Inter, system-ui, sans-serif; }
+  .pendente em { font-style: normal; color: var(--suave); font-size: 12px; }
 </style>
 </head>
 <body class="tema-xm">
@@ -232,6 +246,19 @@
       <p>Aperta o "Baixar relatório" da tela Na base do Arco: o arquivo listagem_na_base.</p>
       <button id="baixar-relatorio" class="pilula" type="button">Baixar relatório (Na base)</button>
       <p id="status-relatorio" class="mensagem" style="margin:12px 0 0"></p>
+    </div>
+    <div class="cartao" style="margin-top:14px">
+      <strong>Agrupamento de hoje</strong>
+      <p>Lê o Na base sem baixar e confere os "Sem tentativa" com os bipes de hoje.</p>
+      <button id="ler-na-base" class="pilula" type="button">Conferir agora</button>
+      <p id="status-agrupamento" class="mensagem" style="margin:12px 0 0"></p>
+      <div id="agrupamento" hidden>
+        <div class="progresso-topo"><span id="ag-porcentagem" class="porcentagem"></span><span id="ag-conta" class="conta-ag"></span></div>
+        <div class="barra-progresso"><i id="ag-barra"></i></div>
+        <small id="ag-lido" class="lido"></small>
+        <div class="cabecalho" style="margin-top:14px"><h2>Faltam agrupar</h2><button id="ag-copiar" type="button">Copiar códigos</button></div>
+        <div id="ag-lista" class="lista"></div>
+      </div>
     </div>
   </section>
 </main>

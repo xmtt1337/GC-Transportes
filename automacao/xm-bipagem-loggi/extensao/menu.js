@@ -411,7 +411,8 @@
   window.addEventListener('message', (e) => {
     if (e.origin !== ORIGEM_PAINEL || !quadro || e.source !== quadro.contentWindow || !e.data) return;
     if (e.data.xmOperacao === 'tema') painel.classList.toggle('tema-loggi', e.data.tema === 'loggi');
-    if (e.data.xmOperacao === 'baixarNaBase' && !travado) baixarNaBase();
+    if (e.data.xmOperacao === 'baixarNaBase' && !travado) baixarNaBase('baixar');
+    if (e.data.xmOperacao === 'lerNaBase' && !travado) baixarNaBase('ler');
   });
 
   // ── Baixar relatorio (Na base) ─────────────────────────────────────────────
@@ -452,33 +453,48 @@
   const naTelaNaBase = () => /\/na-base(\/|$)/i.test(location.pathname)
     || [...document.querySelectorAll('h1, h2')].some((h) => visivel(h) && normal(h.textContent) === 'na base');
 
-  async function baixarNaBase(continuacao = false) {
+  // acao 'baixar': aperta o "Baixar relatório" (o arquivo baixa).
+  // acao 'ler': pega o link desse botao e pede ao fundo.js para ler o relatorio sem baixar e
+  // cruzar com os bipes do dia no sistema (Agrupamento de hoje). O link tem o token da conta
+  // Loggi: so passa daqui para o fundo.js, que usa e esquece.
+  async function baixarNaBase(acao, continuacao = false) {
+    const ler = acao === 'ler';
+    const avisar = (dados) => avisarPainel({ ...dados, ler });
     try {
+      const base = location.pathname.split('/').filter(Boolean)[0];
       if (!naTelaNaBase()) {
         if (continuacao) throw new Error('A tela Na base não abriu. Abra ela e clique de novo.');
-        const base = location.pathname.split('/').filter(Boolean)[0];
         if (!base) throw new Error('Abra a tela Na base do Arco e clique de novo.');
-        avisarPainel({ texto: 'Indo para a tela Na base...' });
-        await chrome.storage.local.set({ pendenteNaBase: Date.now() });
+        avisar({ texto: 'Indo para a tela Na base...' });
+        await chrome.storage.local.set({ pendenteNaBase: { quando: Date.now(), acao } });
         location.assign(`/${encodeURIComponent(base)}/na-base/colecoes`);
         return;
       }
       await chrome.storage.local.remove('pendenteNaBase');
-      avisarPainel({ texto: 'Apertando o "Baixar relatório"...' });
+      avisar({ texto: ler ? 'Lendo o relatório Na base...' : 'Apertando o "Baixar relatório"...' });
       const botaoRel = await esperar(() => acharTexto('Baixar relatório'), 15000);
       if (!botaoRel) throw new Error('Não achei o botão "Baixar relatório" na tela Na base.');
-      clicarDeVerdade(botaoRel);
-      avisarPainel({ texto: 'Pronto: o download do relatório Na base começou.', fim: true });
+      if (!ler) {
+        clicarDeVerdade(botaoRel);
+        avisar({ texto: 'Pronto: o download do relatório Na base começou.', fim: true });
+        return;
+      }
+      const link = botaoRel.closest('a[href]');
+      if (!link) throw new Error('O "Baixar relatório" não tem link. Use o Baixar relatório (Na base).');
+      const r = await chrome.runtime.sendMessage({ tipo: 'naBase', url: link.href, base });
+      if (!r || r.erro) throw new Error((r && r.erro) || 'Não deu certo.');
+      avisar({ texto: '', fim: true, resumo: r.resumo });
     } catch (e) {
       await chrome.storage.local.remove('pendenteNaBase');
-      avisarPainel({ texto: e.message, erro: true, fim: true });
+      avisar({ texto: /context invalidated/i.test(e.message) ? 'A extensão foi atualizada. Aperte F5 nesta página.' : e.message, erro: true, fim: true });
     }
   }
 
-  // Pedido que ficou no meio da troca de tela (menos de 1 minuto atras).
-  chrome.storage.local.get('pendenteNaBase').then(({ pendenteNaBase }) => {
-    if (pendenteNaBase && Date.now() - pendenteNaBase < 60000) {
-      esperar(naTelaNaBase, 15000).then(() => baixarNaBase(true));
+  // Pedido que ficou no meio da troca de tela (menos de 1 minuto atras). Antes da 2.7 era so a hora.
+  chrome.storage.local.get('pendenteNaBase').then(({ pendenteNaBase: p }) => {
+    const quando = typeof p === 'number' ? p : p && p.quando;
+    if (quando && Date.now() - quando < 60000) {
+      esperar(naTelaNaBase, 15000).then(() => baixarNaBase((p && p.acao) || 'baixar', true));
     }
   });
 
