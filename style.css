@@ -7097,17 +7097,34 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .pr-tabela tbody.pr-cidade tr:hover td:not(.pr-cidade-nome) { background: rgba(58,134,255,0.10); }
 .pr-tabela .pr-mais { font-size: 12px; margin-top: 4px; }
 
-/* Operação › Loggi › Agrupamento (js/loggi-agrupamento.js): % dos "Sem tentativa" agrupados.
-   Verde só em 100% (meta); faltando, número em vermelho. */
-.lag-progresso { border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; }
-.lag-topo { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
-.lag-pct { font-size: 30px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.02em; }
-.lag-pct.lag-completo { color: #22c55e; }
-.lag-barra { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; margin-top: 10px; }
-.lag-barra i { display: block; height: 100%; background: #3a86ff; transition: width 0.3s ease; }
-.lag-barra i.lag-completo { background: #22c55e; }
-.lag-colunas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 18px; align-items: start; }
-.lag-linha { cursor: pointer; }
-.lag-linha:hover td { background: rgba(58,134,255,0.05); }
-.lag-sel td { background: rgba(58,134,255,0.10); }
-@media (max-width: 900px) { .lag-colunas { grid-template-columns: 1fr; } }
+/* Operação › Loggi › Conferência (js/loggi-agrupamento.js): mesmo visual do painel da extensão.
+   Pizza agrupados (azul) x faltam (âmbar = pendência), verde só em 100%; barras por cidade. */
+.lag-colunas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
+.lag-cartao { border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px 20px; }
+.lag-resumo { display: flex; align-items: center; gap: 22px; }
+.lag-pizza { --pct: 0; flex: 0 0 auto; width: 132px; height: 132px; border-radius: 50%; display: grid; place-items: center;
+    background: conic-gradient(#3a86ff calc(var(--pct) * 1%), #f59e0b 0); }
+.lag-pizza.lag-completo { background: #22c55e; }
+.lag-pizza.lag-vazia { background: rgba(255,255,255,0.06); }
+.lag-pizza span { width: 96px; height: 96px; border-radius: 50%; background: #080c13; display: grid; place-items: center;
+    font-size: 22px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.02em; }
+.lag-conta { font-size: 16px; font-weight: 600; color: #e2e8f0; }
+.lag-legenda { display: flex; gap: 14px; align-items: center; margin: 8px 0 10px; font-size: 12px; color: #7b8ba3; }
+.lag-legenda i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+.lag-ok { background: #3a86ff; }
+.lag-falta { background: #f59e0b; }
+.lag-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #7b8ba3; }
+.lag-titulo .cft-ajuda { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.lag-barras { display: grid; gap: 7px; max-height: 260px; overflow: auto; }
+.lag-barra-cidade { display: grid; grid-template-columns: 150px minmax(0, 1fr) 36px auto; align-items: center; column-gap: 10px;
+    font-size: 12.5px; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+.lag-barra-cidade:hover { background: rgba(58,134,255,0.05); }
+.lag-barra-cidade.lag-sel { background: rgba(58,134,255,0.10); }
+.lag-barra-cidade span { color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lag-trilho { display: flex; height: 10px; border-radius: 3px; overflow: hidden; background: rgba(255,255,255,0.06); }
+.lag-trilho i { display: block; height: 100%; }
+.lag-barra-cidade em { font-style: normal; color: #f59e0b; font-weight: 600; text-align: right; }
+@media (max-width: 900px) { .lag-colunas { grid-template-columns: 1fr; } .lag-resumo { flex-wrap: wrap; } }
+.lag-acao { color: #3a86ff; text-decoration: none; font-weight: 500; }
+.lag-acao:hover { text-decoration: underline; }

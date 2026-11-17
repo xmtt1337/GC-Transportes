@@ -9,15 +9,18 @@ const vm = require("node:vm");
 const raiz = path.join(__dirname, "..");
 const ler = f => fs.readFileSync(path.join(raiz, f), "utf8");
 
-test("Agrupamento está no menu da Loggi e tem rota", () => {
+test("a Conferência da Loggi é a tela do Agrupamento e o link antigo ainda abre", () => {
     const menu = ler("index.html");
     const grupo = menu.slice(menu.indexOf('id="grupo-op-loggi"'), menu.indexOf("</ul>", menu.indexOf('id="grupo-op-loggi"')));
-    assert.match(grupo, /data-rota="Loggi\/Agrupamento"[^>]*>Agrupamento</);
+    assert.ok(grupo.includes('data-rota="Conferencias/Loggi" onclick="abrirLoggiAgrupamento(event)">Conferência<'));
+    assert.ok(!grupo.includes("abrirConfExpedicao"), "a conferência de expedição saiu do menu da Loggi");
+    assert.ok(!grupo.includes(">Agrupamento<"));
     assert.ok(menu.includes('id="tela-loggi-agrupamento"'));
     assert.match(menu, /js\/loggi-agrupamento\.js\?v=\d{8}[a-z]/);
     const router = ler("js/router.js");
-    assert.ok(router.includes('"Loggi/Agrupamento":             () => abrirLoggiAgrupamento()'));
-    assert.ok(router.includes('"Loggi/Agrupamento":               "Operacao/Loggi/Agrupamento"'));
+    assert.ok(router.includes('"Conferencias/Loggi":            () => abrirLoggiAgrupamento()'));
+    assert.ok(router.includes('"Conferencias/Loggi":              "Operacao/Loggi/Conferencia"'));
+    assert.ok(router.includes('_ROTAS_INTERNAS["Operacao/Loggi/Agrupamento"] = "Conferencias/Loggi"'));
 });
 
 test("porcentagem arredonda para baixo e filtro por cidade e busca", () => {

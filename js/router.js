@@ -88,7 +88,8 @@ const _ROTAS = {
     "Pedidos/Pesquisar":             () => abrirPesquisarPedidos(),
     "Conferencias":                  () => abrirConferenciasHub(),
     "Conferencias/Alimentar":        () => abrirPainelAlimentar(),
-    "Conferencias/Loggi":            () => abrirConfExpedicao(null, "loggi"),
+    // Loggi: a Conferência é a tela que nasceu como Agrupamento (17/11/2026); a de expedição saiu do menu.
+    "Conferencias/Loggi":            () => abrirLoggiAgrupamento(),
     "Loggi/Agrupamento":             () => abrirLoggiAgrupamento(),
     "Conferencias/JT":               () => abrirConferencias(null, "jt"),
     "Conferencias/Anjun":            () => abrirConfExpedicao(null, "anjun"),
@@ -279,7 +280,7 @@ const _TELA_ROTAS = {
     "tela-videira-dash":         "Videira/Dashboard",
     "tela-jadlog-anotacoes":     "Jadlog/Anotacoes",
     "tela-jadlog-atribuir":      "Jadlog/Atribuir",
-    "tela-loggi-agrupamento":    "Loggi/Agrupamento",
+    "tela-loggi-agrupamento":    "Conferencias/Loggi",
     "tela-criar-fechamento":     "Fechamento/Criar",
     "tela-resumo-quinzena":      "Fechamento/Resumo",
     "tela-ajustes-fechamento":   "Fechamento/Ajustes",
@@ -360,7 +361,6 @@ const _ROTAS_URL = {
 
     // Operação > as demais transportadoras
     "Conferencias/Loggi":              "Operacao/Loggi/Conferencia",
-    "Loggi/Agrupamento":               "Operacao/Loggi/Agrupamento",
     "Conferencias/Anjun":              "Operacao/Anjun/Conferencia",
     "Conferencias/Imile":              "Operacao/Imile/Conferencia",
     "Conferencias/JT":                 "Operacao/JT/Conferencia",
@@ -439,6 +439,7 @@ _ROTAS_INTERNAS["Operacao/Loggi/Alimentar"] = "Operacao/AlimentarLoggi";
 _ROTAS_INTERNAS["Operacao/Anjun/Alimentar"] = "Operacao/AlimentarAnjun";
 _ROTAS_INTERNAS["Operacao/Imile/Alimentar"] = "Operacao/AlimentarImile";
 _ROTAS_INTERNAS["Operacao/TotalExpress/Alimentar"] = "Operacao/AlimentarTotalExpress";
+_ROTAS_INTERNAS["Operacao/Loggi/Agrupamento"] = "Conferencias/Loggi"; // virou a Conferência em 17/11/2026
 
 // Rotas que abrem com um link do menu de outro nome: a tela de Alimentações guarda a
 // transportadora na rota, mas o menu tem um link só.

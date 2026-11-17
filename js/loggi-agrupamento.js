@@ -1,4 +1,5 @@
-// ───── OPERAÇÃO › TRANSPORTADORAS › LOGGI › AGRUPAMENTO ─────
+// ───── OPERAÇÃO › TRANSPORTADORAS › LOGGI › CONFERÊNCIA ─────
+// (Nasceu "Agrupamento"; em 17/11/2026 virou a Conferência da Loggi, no lugar da de expedição.)
 // Quanto dos pacotes que CHEGARAM HOJE no "Na base" da Loggi (Status "Sem tentativa") já foi
 // agrupado, e o que falta. As leituras do dia se somam (mesmo código = mesma linha).
 // Quem lê o relatório é a extensão XM - Operação, no Arco (Baixar relatórios › Loggi ›
@@ -28,8 +29,8 @@ function abrirLoggiAgrupamento(event) {
     if (event) event.preventDefault();
     _lagDia = null;
     _lagCidade = "";
-    mostrarTela("tela-loggi-agrupamento", "Loggi/Agrupamento");
-    document.getElementById("titulo-pagina").innerText = "Agrupamento — Loggi";
+    mostrarTela("tela-loggi-agrupamento", "Conferencias/Loggi");
+    document.getElementById("titulo-pagina").innerText = "Conferência — Loggi";
     _lagCarregar();
     // Enquanto a tela está aberta, a % acompanha os bipes.
     clearInterval(_lagTimer);
@@ -71,7 +72,7 @@ function _lagPintar() {
 
     const b = bases[_lagBase];
     if (!b) {
-        el.innerHTML = `<div class="cft-ajuda">Ninguém conferiu o Na base ainda. No Arco, abra a extensão XM - Operação › Baixar relatórios › Loggi › <b>Conferir agora</b>.</div>`;
+        el.innerHTML = `<div class="cft-ajuda">Ninguém conferiu o Na base ainda. No Arco, abra a extensão XM - Operação › Conferências › Loggi › aba <b>Agrupamento</b> › <b>Conferir agora</b>.</div>`;
         return;
     }
     const buscaAntes = (document.getElementById("lag-busca") || {}).value || ""; // a atualização de 1 em 1 min não apaga a busca
@@ -79,42 +80,43 @@ function _lagPintar() {
     const lido = new Date(b.lido_em);
     const hora = Number.isNaN(lido.getTime()) ? "" : lido.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const antigo = d.dia !== d.hoje;
-    el.innerHTML = `
-        <div class="lag-progresso">
-            <div class="lag-topo">
-                <span class="lag-pct${completo ? " lag-completo" : ""}">${_lagPct(b.agrupados, b.total)}</span>
-                <span class="cft-ajuda">${_lagNum(b.agrupados)} de ${_lagNum(b.total)} recebidos hoje agrupados${b.faltam ? ` · faltam <b class="cft-neg">${_lagNum(b.faltam)}</b>` : ""} · meta 100%</span>
-            </div>
-            <div class="lag-barra"><i class="${completo ? "lag-completo" : ""}" style="width:${Math.min(100, b.porcentagem || 0)}%"></i></div>
-            <div class="cft-ajuda" style="margin-top:6px">${_lagNum(b.recebidos)} recebidos no dia (só os "Sem tentativa" entram na conta) · Na base lido ${antigo ? `em ${_lagDiaBr(d.dia)} ` : ""}às ${hora}${b.usuario ? ` por ${_lagEsc(b.usuario)}` : ""} · base ${_lagEsc(b.base)}.
-                Pacote que chegou depois disso entra na próxima leitura ("Conferir agora" na extensão); as leituras se somam.</div>
-        </div>
-        <div class="lag-colunas">
-            <div>
-                <div class="nr-grafico-titulo" style="margin-bottom:8px">Por cidade</div>
-                <div class="cft-tabela-wrap" style="max-height:62vh"><table class="cft-tabela">
-                    <thead><tr><th>Cidade</th><th class="num">Sem tentativa</th><th class="num">Faltam</th><th class="num">Agrupado</th><th></th></tr></thead>
-                    <tbody>${(b.porCidade || []).map(c => {
-                        const falta = c.total - c.agrupados;
-                        return `<tr class="lag-linha${c.cidade === _lagCidade ? " lag-sel" : ""}" data-c="${_lagEsc(c.cidade)}" onclick="_lagFiltrarCidade(this.dataset.c)">
-                            <td>${_lagEsc(c.cidade)}</td><td class="num">${_lagNum(c.total)}</td>
-                            <td class="num ${falta ? "cft-neg" : ""}">${falta ? _lagNum(falta) : "—"}</td>
-                            <td class="num ${falta ? "" : "cft-pos"}">${_lagPct(c.agrupados, c.total)}</td>
-                            <td class="num"><a href="#" class="cft-link" title="Tirar da conta (para todos)" onclick="event.preventDefault();event.stopPropagation();_lagIgnorar(this.closest('tr').dataset.c,true)">tirar</a></td></tr>`;
-                    }).join("")}</tbody></table></div>
-                ${(b.ignoradas || []).length ? `<div class="cft-ajuda" style="margin-top:8px">Fora da conta: ${b.ignoradas.map(c =>
-                    `${_lagEsc(c.cidade)} (${_lagNum(c.total)}) <a href="#" class="cft-link" data-c="${_lagEsc(c.cidade)}" onclick="event.preventDefault();_lagIgnorar(this.dataset.c,false)">voltar</a>`).join(" · ")}</div>` : ""}
-            </div>
-            <div>
-                <div class="cft-barra" style="margin:0 0 8px">
-                    <span class="nr-grafico-titulo" style="margin:0">Faltam agrupar${_lagCidade ? ` · ${_lagEsc(_lagCidade)} <a href="#" class="cft-link" onclick="event.preventDefault();_lagFiltrarCidade('')">ver todas</a>` : ""}</span>
-                    <input class="cft-input" id="lag-busca" placeholder="Buscar código ou cidade..." style="width:220px;flex:0 0 auto;margin:0" oninput="_lagPintarTabela()">
-                    <button class="cft-btn" onclick="_lagCopiar()">Copiar códigos</button>
-                    <span class="cft-ajuda" id="lag-copia"></span>
-                </div>
-                <div id="lag-tabela"></div>
-            </div>
+    // Mesmo visual do painel da extensão: pizza (rosca) agrupados x faltam e barras por cidade.
+    const comFalta = (b.porCidade || []).filter(c => c.total > c.agrupados);
+    const maior = Math.max(1, ...comFalta.map(c => c.total));
+    const barras = comFalta.length ? comFalta.map(c => {
+        const falta = c.total - c.agrupados;
+        return `<div class="lag-barra-cidade${c.cidade === _lagCidade ? " lag-sel" : ""}" data-c="${_lagEsc(c.cidade)}" title="${_lagEsc(c.cidade)}: ${_lagNum(c.agrupados)} de ${_lagNum(c.total)} agrupados — clique pra ver os pacotes" onclick="_lagFiltrarCidade(this.dataset.c)">
+            <span>${_lagEsc(c.cidade)}</span>
+            <div class="lag-trilho"><i class="lag-ok" style="width:${c.agrupados / maior * 100}%"></i><i class="lag-falta" style="width:${falta / maior * 100}%"></i></div>
+            <em>${_lagNum(falta)}</em>
+            <a href="#" class="lag-acao" title="Tirar da conta (para todos)" onclick="event.preventDefault();event.stopPropagation();_lagIgnorar(this.parentElement.dataset.c,true)">tirar</a>
         </div>`;
+    }).join("") : `<div class="cft-ajuda">Nenhuma cidade com pacote faltando.</div>`;
+    el.innerHTML = `
+        <div class="lag-colunas">
+            <div class="lag-cartao lag-resumo">
+                <div class="lag-pizza${completo ? " lag-completo" : ""}${b.total ? "" : " lag-vazia"}" style="--pct:${Math.min(100, b.porcentagem || 0)}"><span>${_lagPct(b.agrupados, b.total)}</span></div>
+                <div>
+                    <div class="lag-conta">${b.total ? `${_lagNum(b.agrupados)} de ${_lagNum(b.total)} agrupados${b.faltam ? ` · faltam ${_lagNum(b.faltam)}` : ""}` : `Nenhum recebido hoje "Sem tentativa"`}</div>
+                    <div class="lag-legenda"><span><i class="lag-ok"></i>Agrupados</span><span><i class="lag-falta"></i>Faltam</span><span class="cft-ajuda">meta 100%</span></div>
+                    <div class="cft-ajuda">${_lagNum(b.recebidos)} recebidos ${antigo ? `em ${_lagDiaBr(d.dia)}` : "hoje"} (só os "Sem tentativa" entram na conta) · Na base lido às ${hora}${b.usuario ? ` por ${_lagEsc(b.usuario)}` : ""} · base ${_lagEsc(b.base)}.</div>
+                    <div class="cft-ajuda" style="margin-top:4px">Pacote que chegou depois disso entra na próxima leitura ("Conferir agora" na extensão); as leituras se somam.</div>
+                </div>
+            </div>
+            <div class="lag-cartao">
+                <div class="lag-titulo"><span>Faltam por cidade</span><span class="cft-ajuda">"tirar" = fora da conta</span></div>
+                <div class="lag-barras">${barras}</div>
+                ${(b.ignoradas || []).length ? `<div class="cft-ajuda" style="margin-top:10px">Fora da conta: ${b.ignoradas.map(c =>
+                    `${_lagEsc(c.cidade)} (${_lagNum(c.total)}) <a href="#" class="lag-acao" data-c="${_lagEsc(c.cidade)}" onclick="event.preventDefault();_lagIgnorar(this.dataset.c,false)">voltar</a>`).join(" · ")}</div>` : ""}
+            </div>
+        </div>
+        <div class="cft-barra" style="margin:18px 0 8px">
+            <span class="nr-grafico-titulo" style="margin:0">Faltam agrupar${_lagCidade ? ` · ${_lagEsc(_lagCidade)} <a href="#" class="cft-link" onclick="event.preventDefault();_lagFiltrarCidade('')">ver todas</a>` : ""}</span>
+            <input class="cft-input" id="lag-busca" placeholder="Buscar código ou cidade..." style="width:220px;flex:0 0 auto;margin:0" oninput="_lagPintarTabela()">
+            <button class="cft-btn" onclick="_lagCopiar()">Copiar códigos</button>
+            <span class="cft-ajuda" id="lag-copia"></span>
+        </div>
+        <div id="lag-tabela"></div>`;
     document.getElementById("lag-busca").value = buscaAntes;
     _lagPintarTabela();
 }
