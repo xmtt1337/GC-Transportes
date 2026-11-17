@@ -13,6 +13,7 @@ let _fatSeq = 0;          // trocou de planilha no meio da busca → descarta a 
 let _fatGerando = false;
 
 const FAT_BLOCO = 5;
+const FAT_BLOCO_TIMEOUT_MS = 120000;
 const FAT_RECEITA_PARALELO = 3;
 
 function abrirGeradorFaturas(event) {
@@ -299,11 +300,22 @@ async function _fatGerar() {
     try {
         for (let de = 0; de < total; de += FAT_BLOCO) {
             _fatProgresso(`Gerando faturas: ${geradas} de ${total}`, geradas, total);
-            const r = await fetch(`${API}/faturas/lote/gerar`, {
-                method: "POST",
-                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-                body: JSON.stringify({ referencia, data_emissao: emissaoISO, numero_inicial: numero, grid: _fatGrid, de, ate: de + FAT_BLOCO })
-            });
+            btn.innerText = `Gerando ${geradas} de ${total}...`;
+            // Bloco que não responde em 2 min vira erro em vez de "Gerando..." pra
+            // sempre. Gerar de novo é seguro: o servidor pula as que já saíram.
+            let r;
+            try {
+                r = await fetch(`${API}/faturas/lote/gerar`, {
+                    method: "POST",
+                    headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                    body: JSON.stringify({ referencia, data_emissao: emissaoISO, numero_inicial: numero, grid: _fatGrid, de, ate: de + FAT_BLOCO }),
+                    signal: AbortSignal.timeout(FAT_BLOCO_TIMEOUT_MS)
+                });
+            } catch (e) {
+                throw new Error(e && e.name === "TimeoutError"
+                    ? "O servidor parou de responder."
+                    : "Sem conexão com o servidor.");
+            }
             const d = await r.json().catch(() => ({}));
             if (!r.ok) throw new Error(d.error || "Erro ao gerar as faturas.");
             geradas += d.faturas.length;
@@ -323,7 +335,10 @@ async function _fatGerar() {
     } catch (err) {
         _fatGerando = false;
         _fatProgresso(null);
-        const parcial = geradas ? ` ${geradas} de ${total} já foram geradas e estão no histórico.` : "";
+        // Nº repetido (409) se resolve mudando o nº; o resto, gerando de novo igual.
+        const parcial = (geradas ? ` ${geradas} de ${total} já foram geradas e estão no histórico.` : "") +
+            (/Mude o nº/.test(err.message || "") ? ""
+                : " Clique em Gerar de novo, sem mudar a PO nem o nº: as que já saíram são puladas.");
         _fatMostrarMsg(_fatEsc(err.message || "Erro ao gerar as faturas.") + parcial, "erro");
         btn.disabled = false;
         btn.innerText = `Gerar ${total} fatura(s)`;
