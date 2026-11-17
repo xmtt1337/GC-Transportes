@@ -44,7 +44,8 @@ async function enviar() {
 
 // Agrupamento do dia: le o relatorio Na base sem baixar. O link do "Baixar relatorio" do Arco
 // traz o token da conta Loggi na URL: ele e usado so nesta busca, nunca guardado nem enviado
-// ao sistema. Do CSV so sai o que conta (codigo, ID, cidade, prazo dos "Sem tentativa").
+// ao sistema. Do CSV so sai codigo, ID, cidade, prazo, chegou em e status (o sistema escolhe
+// os que chegaram hoje e estao "Sem tentativa").
 const linkDoRelatorio = (url) => {
   try {
     const u = new URL(url);
@@ -65,7 +66,7 @@ async function lerNaBase(url, base) {
   } catch {
     throw new Error('A Loggi não entregou o relatório. Dê F5 no Arco e tente de novo.');
   }
-  const pacotes = R.semTentativa(texto);
+  const pacotes = R.linhasNaBase(texto);
   try {
     return await R.api(token, 'POST', '/na-base', { base, pacotes });
   } catch (e) {

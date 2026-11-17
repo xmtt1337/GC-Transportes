@@ -490,13 +490,13 @@ function mostrarAgrupamento(r) {
   $('ag-conta').textContent = `${numero(r.agrupados)} de ${numero(r.total)} agrupados${r.faltam ? ` · faltam ${numero(r.faltam)}` : ''}`;
   $('ag-barra').style.width = `${Math.min(100, Number(r.porcentagem) || 0)}%`;
   $('ag-barra').classList.toggle('completo', completo);
-  $('ag-lido').textContent = r.lido_em ? `Na base lido às ${horaDe(r.lido_em)}${r.usuario ? ` por ${r.usuario}` : ''}` : '';
+  $('ag-lido').textContent = r.lido_em ? `Recebidos hoje: ${numero(r.recebidos)} · Na base lido às ${horaDe(r.lido_em)}${r.usuario ? ` por ${r.usuario}` : ''}` : '';
   pendentesAg = r.pendentes || [];
   const lista = $('ag-lista');
   if (!pendentesAg.length) {
     const v = document.createElement('div');
     v.className = 'vazia';
-    v.textContent = r.total ? 'Todos os "Sem tentativa" foram agrupados.' : 'Nenhum pacote "Sem tentativa" no Na base.';
+    v.textContent = r.total ? 'Todos os recebidos hoje foram agrupados.' : 'Nenhum pacote recebido hoje "Sem tentativa".';
     lista.replaceChildren(v);
     return;
   }

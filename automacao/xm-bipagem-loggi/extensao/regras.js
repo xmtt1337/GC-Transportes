@@ -135,19 +135,18 @@
   }
 
   /**
-   * Relatório Na base do Arco (listagem_na_base_<base>.csv) → os pacotes com Status "Sem
-   * tentativa", só com o que a conta precisa: código de barras, ID, cidade e prazo. Nome,
-   * telefone e endereço ficam no navegador.
+   * Relatório Na base do Arco (listagem_na_base_<base>.csv) → os pacotes só com o que a conta
+   * precisa: código de barras, ID, cidade, prazo, "Chegou em" e Status. Nome, telefone e
+   * endereço ficam no navegador. Quem escolhe (chegou hoje, "Sem tentativa") é o sistema.
    */
-  function semTentativa(texto) {
+  function linhasNaBase(texto) {
     const [cab = [], ...linhas] = lerCsv(texto);
     const col = (nome) => cab.findIndex((c) => chaveCidade(c) === nome);
-    const i = { status: col('status'), codigo: col('codigo de barras'), id: col('id do pacote'), cidade: col('cidade'), prazo: col('prazo') };
-    if (i.status < 0 || (i.codigo < 0 && i.id < 0)) throw new Error('O relatório Na base veio sem as colunas Status e Código de barras.');
+    const i = { status: col('status'), codigo: col('codigo de barras'), id: col('id do pacote'), cidade: col('cidade'), prazo: col('prazo'), chegou: col('chegou em') };
+    if (i.status < 0 || i.chegou < 0 || (i.codigo < 0 && i.id < 0)) throw new Error('O relatório Na base veio sem as colunas Status, Chegou em e Código de barras.');
     const valor = (l, k) => (i[k] < 0 ? '' : String(l[i[k]] || '').trim());
     return linhas
-      .filter((l) => chaveCidade(valor(l, 'status')) === 'sem tentativa')
-      .map((l) => ({ codigo: valor(l, 'codigo'), id: valor(l, 'id'), cidade: valor(l, 'cidade'), prazo: valor(l, 'prazo') }))
+      .map((l) => ({ codigo: valor(l, 'codigo'), id: valor(l, 'id'), cidade: valor(l, 'cidade'), prazo: valor(l, 'prazo'), chegou: valor(l, 'chegou'), status: valor(l, 'status') }))
       .filter((p) => p.codigo || p.id);
   }
 
@@ -192,7 +191,7 @@
     return j;
   }
 
-  const publico = { BACKEND, ErroDeConta, chaveCidade, montarAlvo, conferirBipe, pendentes, precisaTravar, codigoDaLinha, lerCsv, semTentativa, entrar, api };
+  const publico = { BACKEND, ErroDeConta, chaveCidade, montarAlvo, conferirBipe, pendentes, precisaTravar, codigoDaLinha, lerCsv, linhasNaBase, entrar, api };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMBipagem = publico;
 })();
