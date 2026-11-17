@@ -12,9 +12,10 @@ escolhe-se no menu:
 
 Cada transportadora abre no tema dela (Loggi = Arco).
 
-Relatorios > Loggi > "Baixar pedidos na rua": a extensao vai
-para a tela "Na rua" do Arco (menu "Na base") e aperta o
-"Baixar relatorio" de la. Nao faz chamada propria a Loggi.
+Relatorios > Loggi > "Baixar relatorio (Na base)": aperta o
+"Baixar relatorio" da tela Na base do Arco (o arquivo
+listagem_na_base). Em outra tela do Arco, vai antes para a
+Na base. Nao faz chamada propria a Loggi.
 
 CONFERENCIA LOGGI: para a tela "Agrupar pacotes" da Loggi.
 Marca-se quais cidades, ou quais Circulos (grupos de

@@ -404,13 +404,13 @@
   window.addEventListener('message', (e) => {
     if (e.origin !== ORIGEM_PAINEL || !quadro || e.source !== quadro.contentWindow || !e.data) return;
     if (e.data.xmOperacao === 'tema') painel.classList.toggle('tema-loggi', e.data.tema === 'loggi');
-    if (e.data.xmOperacao === 'baixarNaRua' && !travado) baixarNaRua();
+    if (e.data.xmOperacao === 'baixarNaBase' && !travado) baixarNaBase();
   });
 
-  // ── Baixar pedidos na rua ──────────────────────────────────────────────────
-  // So aperta os botoes do proprio Arco: vai para "Na rua" (pelo menu "Na base ▾") e clica no
-  // "Baixar relatorio" de la. Se a troca de tela recarregar a pagina, o pedido fica no storage
-  // e este script continua de onde parou ao carregar de novo.
+  // ── Baixar relatorio (Na base) ─────────────────────────────────────────────
+  // So aperta o botao do proprio Arco: o "Baixar relatorio" ao lado de "Agrupar" na tela Na base
+  // (baixa listagem_na_base_<base>.csv). Em outra tela do Arco, vai antes para /<base>/na-base;
+  // como isso recarrega a pagina, o pedido fica no storage e continua quando ela abrir.
   const normal = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
   const visivel = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
   const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -442,44 +442,36 @@
     el.click();
   }
 
-  const naTelaNaRua = () => /na-rua/i.test(location.pathname)
-    || [...document.querySelectorAll('h1, h2')].some((h) => visivel(h) && normal(h.textContent) === 'na rua');
+  const naTelaNaBase = () => /\/na-base(\/|$)/i.test(location.pathname)
+    || [...document.querySelectorAll('h1, h2')].some((h) => visivel(h) && normal(h.textContent) === 'na base');
 
-  async function baixarNaRua(continuacao = false) {
+  async function baixarNaBase(continuacao = false) {
     try {
-      if (!naTelaNaRua()) {
-        if (continuacao) throw new Error('Abri o "Na rua", mas a tela não carregou. Clique de novo.');
-        avisarPainel({ texto: 'Indo para a tela "Na rua"...' });
-        let link = acharTexto('Na rua');
-        if (!link) {
-          const seletor = [...document.querySelectorAll('a, button, [role="button"]')]
-            .find((el) => visivel(el) && /^na (base|rua)$/.test(normal(el.textContent)));
-          if (seletor) {
-            clicarDeVerdade(seletor);
-            link = await esperar(() => acharTexto('Na rua'), 3000);
-          }
-        }
-        if (!link) throw new Error('Não achei o "Na rua" no menu do Arco. Abra a tela Na rua e clique de novo.');
-        await chrome.storage.local.set({ pendenteNaRua: Date.now() });
-        clicarDeVerdade(link);
-        if (!await esperar(naTelaNaRua, 15000)) throw new Error('A tela "Na rua" não abriu. Abra ela e clique de novo.');
+      if (!naTelaNaBase()) {
+        if (continuacao) throw new Error('A tela Na base não abriu. Abra ela e clique de novo.');
+        const base = location.pathname.split('/').filter(Boolean)[0];
+        if (!base) throw new Error('Abra a tela Na base do Arco e clique de novo.');
+        avisarPainel({ texto: 'Indo para a tela Na base...' });
+        await chrome.storage.local.set({ pendenteNaBase: Date.now() });
+        location.assign(`/${encodeURIComponent(base)}/na-base/colecoes`);
+        return;
       }
-      await chrome.storage.local.remove('pendenteNaRua');
-      avisarPainel({ texto: 'Na tela "Na rua". Apertando o "Baixar relatório"...' });
+      await chrome.storage.local.remove('pendenteNaBase');
+      avisarPainel({ texto: 'Apertando o "Baixar relatório"...' });
       const botaoRel = await esperar(() => acharTexto('Baixar relatório'), 15000);
-      if (!botaoRel) throw new Error('Não achei o botão "Baixar relatório" na tela Na rua.');
+      if (!botaoRel) throw new Error('Não achei o botão "Baixar relatório" na tela Na base.');
       clicarDeVerdade(botaoRel);
-      avisarPainel({ texto: 'Pronto: apertei o "Baixar relatório" da tela Na rua.', fim: true });
+      avisarPainel({ texto: 'Pronto: o download do relatório Na base começou.', fim: true });
     } catch (e) {
-      await chrome.storage.local.remove('pendenteNaRua');
+      await chrome.storage.local.remove('pendenteNaBase');
       avisarPainel({ texto: e.message, erro: true, fim: true });
     }
   }
 
-  // Pedido que ficou no meio de um recarregamento (menos de 1 minuto atras).
-  chrome.storage.local.get('pendenteNaRua').then(({ pendenteNaRua }) => {
-    if (pendenteNaRua && Date.now() - pendenteNaRua < 60000) {
-      esperar(naTelaNaRua, 15000).then(() => baixarNaRua(true));
+  // Pedido que ficou no meio da troca de tela (menos de 1 minuto atras).
+  chrome.storage.local.get('pendenteNaBase').then(({ pendenteNaBase }) => {
+    if (pendenteNaBase && Date.now() - pendenteNaBase < 60000) {
+      esperar(naTelaNaBase, 15000).then(() => baixarNaBase(true));
     }
   });
 

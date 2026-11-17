@@ -430,16 +430,16 @@ document.querySelectorAll('.voltar').forEach((b) => b.addEventListener('click', 
 
 // ── relatorios ─────────────────────────────────────────────────────────────
 // Quem aperta o botao da Loggi e o menu.js (esta pagina esta num iframe e nao mexe no Arco).
-$('baixar-na-rua').addEventListener('click', () => {
-  $('baixar-na-rua').disabled = true;
-  relatorio('Indo para a tela "Na rua"...');
-  window.parent.postMessage({ xmOperacao: 'baixarNaRua' }, '*');
+$('baixar-relatorio').addEventListener('click', () => {
+  $('baixar-relatorio').disabled = true;
+  relatorio('Pedindo ao Arco...');
+  window.parent.postMessage({ xmOperacao: 'baixarNaBase' }, '*');
 });
 
 function relatorio(texto, erro = false, fim = false) {
   $('status-relatorio').textContent = texto;
   $('status-relatorio').className = erro ? 'mensagem erro' : 'mensagem';
-  if (fim) $('baixar-na-rua').disabled = false;
+  if (fim) $('baixar-relatorio').disabled = false;
 }
 
 window.addEventListener('message', (e) => {
