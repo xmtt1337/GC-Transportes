@@ -34,7 +34,6 @@ const TELAS = {
   inicio: 'xm',
   // O usuario achou estranho sair do tema do sistema para o da Loggi: fica tudo no do sistema.
   'conferencia-loggi': 'xm',
-  'relatorio-loggi': 'xm',
 };
 const TRANSPORTADORAS = [
   { id: 'loggi', nome: 'Loggi', ativa: true },
@@ -53,10 +52,10 @@ function irPara(tela) {
   window.parent.postMessage({ xmOperacao: 'tema', tema }, '*');
   if (destino !== 'login') chrome.storage.local.set({ tela: destino });
   if (destino !== 'login' && destino !== 'inicio') { telaAtual = destino; desenharMenu(); }
-  if (destino === 'relatorio-loggi') carregarAgrupamento();
+  if (destino === 'conferencia-loggi') carregarAgrupamento();
 }
 
-// Menu como a barra lateral do sistema: area (Conferencias / Baixar relatorios) abre e
+// Menu como a barra lateral do sistema: area (Conferencias; Baixar relatorios saiu na 2.9) abre e
 // fecha; dentro, as transportadoras. Quais areas estao abertas fica guardado.
 let areasAbertas = []; // comecam fechadas
 let telaAtual = '';
@@ -82,7 +81,6 @@ function desenharMenu() {
     }));
   };
   montar('menu-conferencia', 'conferencia');
-  montar('menu-relatorio', 'relatorio');
   document.querySelectorAll('.area').forEach((a) => {
     const aberta = areasAbertas.includes(a.dataset.area);
     a.classList.toggle('aberta', aberta);
@@ -359,13 +357,14 @@ $('limpar').addEventListener('click', () => {
   dizer('Marcados removidos: o alerta está desligado.');
 });
 
-document.querySelectorAll('.abas button').forEach((b) => b.addEventListener('click', () => {
-  document.querySelectorAll('.abas button').forEach((x) => x.classList.toggle('ativa', x === b));
-  $('aba-bipar').hidden = b.dataset.aba !== 'bipar';
-  $('aba-circulos').hidden = b.dataset.aba !== 'circulos';
+function mostrarAba(aba, carregarDados = true) {
+  document.querySelectorAll('.abas button').forEach((x) => x.classList.toggle('ativa', x.dataset.aba === aba));
+  ['bipar', 'circulos', 'agrupamento'].forEach((a) => { $(`aba-${a}`).hidden = a !== aba; });
+  if (aba === 'agrupamento' && carregarDados) carregarAgrupamento();
   fecharForm();
   dizer('');
-}));
+}
+document.querySelectorAll('.abas button').forEach((b) => b.addEventListener('click', () => mostrarAba(b.dataset.aba)));
 
 // ── login e carga ──────────────────────────────────────────────────────────
 async function carregar() {
@@ -430,35 +429,21 @@ document.querySelectorAll('.sair').forEach((b) => b.addEventListener('click', as
 }));
 document.querySelectorAll('.voltar').forEach((b) => b.addEventListener('click', () => irPara('inicio')));
 
-// ── relatorios ─────────────────────────────────────────────────────────────
-// Quem aperta o botao da Loggi e o menu.js (esta pagina esta num iframe e nao mexe no Arco).
-$('baixar-relatorio').addEventListener('click', () => {
-  $('baixar-relatorio').disabled = true;
-  relatorio('Pedindo ao Arco...');
-  window.parent.postMessage({ xmOperacao: 'baixarNaBase' }, '*');
-});
-
-function relatorio(texto, erro = false, fim = false) {
-  $('status-relatorio').textContent = texto;
-  $('status-relatorio').className = erro ? 'mensagem erro' : 'mensagem';
-  if (fim) $('baixar-relatorio').disabled = false;
-}
+// ── Agrupamento de hoje (aba no canto direito da Conferencia Loggi) ─────────
+// "Conferir agora": o menu.js pega o link do Baixar relatorio da tela Na base e o fundo.js le
+// o CSV sem baixar; o sistema guarda os recebidos hoje e cruza os "Sem tentativa" com os bipes
+// do dia. Ao abrir a Conferencia, a % aparece ao lado do nome da aba (ultima leitura de hoje,
+// recalculada com os bipes de agora). Quem fala com o Arco e o menu.js: esta pagina e um iframe.
+let pendentesAg = [];
+const MAX_BARRAS = 8;
 
 window.addEventListener('message', (e) => {
-  if (e.source !== window.parent || !e.data || e.data.xmOperacao !== 'statusRelatorio') return;
-  if (e.data.ler) {
-    agrupamento(String(e.data.texto || ''), !!e.data.erro, !!e.data.fim);
-    if (e.data.resumo) mostrarAgrupamento(e.data.resumo);
-    return;
-  }
-  relatorio(String(e.data.texto || ''), !!e.data.erro, !!e.data.fim);
+  if (e.source !== window.parent || !e.data || e.data.xmOperacao !== 'statusRelatorio' || !e.data.ler) return;
+  // O Conferir agora pode ter trocado a pagina (foi para o Na base): volta para esta aba.
+  if ($('aba-agrupamento').hidden && !$('tela-conferencia-loggi').hidden) mostrarAba('agrupamento', false);
+  agrupamento(String(e.data.texto || ''), !!e.data.erro, !!e.data.fim);
+  if (e.data.resumo) mostrarAgrupamento(e.data.resumo);
 });
-
-// ── Agrupamento de hoje ────────────────────────────────────────────────────
-// "Conferir agora": o menu.js pega o link do Baixar relatorio da tela Na base e o fundo.js le
-// o CSV sem baixar, fica com os "Sem tentativa" e o sistema cruza com os bipes do dia. Ao abrir
-// a tela, mostra a ultima leitura de hoje, recalculada com os bipes de agora.
-let pendentesAg = [];
 
 $('ler-na-base').addEventListener('click', () => {
   $('ler-na-base').disabled = true;
@@ -481,22 +466,71 @@ const horaDe = (v) => {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 };
 const numero = (n) => Number(n || 0).toLocaleString('pt-BR');
+const pctTexto = (r) => `${Number(r.porcentagem || 0).toLocaleString('pt-BR')}%`;
+
+function semLeitura() {
+  $('agrupamento').hidden = true;
+  $('ag-mini').textContent = '';
+  $('ag-pizza').className = 'pizza vazia';
+  $('ag-porcentagem').textContent = '—';
+  $('ag-conta').textContent = 'Ainda não conferido hoje';
+  $('ag-lido').textContent = 'Recebidos hoje no Na base x bipes de hoje.';
+}
+
+/** Barras: as cidades onde mais falta, agrupado em azul e o que falta em ambar. */
+function desenharBarras(porCidade) {
+  const comFalta = (porCidade || []).filter((c) => c.total > c.agrupados).slice(0, MAX_BARRAS);
+  const caixa = $('ag-barras');
+  if (!comFalta.length) {
+    const v = document.createElement('div');
+    v.className = 'vazia';
+    v.textContent = 'Nenhuma cidade com pacote faltando.';
+    return caixa.replaceChildren(v);
+  }
+  const maior = Math.max(...comFalta.map((c) => c.total));
+  caixa.replaceChildren(...comFalta.map((c) => {
+    const l = document.createElement('div');
+    l.className = 'barra-cidade';
+    l.title = `${c.cidade}: ${numero(c.agrupados)} de ${numero(c.total)} agrupados`;
+    const nome = document.createElement('span');
+    nome.textContent = c.cidade;
+    const trilho = document.createElement('div');
+    trilho.className = 'trilho';
+    const ok = document.createElement('i');
+    ok.className = 'cor-ok';
+    ok.style.width = `${(c.agrupados / maior) * 100}%`;
+    const falta = document.createElement('i');
+    falta.className = 'cor-falta';
+    falta.style.width = `${((c.total - c.agrupados) / maior) * 100}%`;
+    trilho.append(ok, falta);
+    const n = document.createElement('em');
+    n.textContent = numero(c.total - c.agrupados);
+    l.append(nome, trilho, n);
+    return l;
+  }));
+}
 
 function mostrarAgrupamento(r) {
   $('agrupamento').hidden = false;
   const completo = r.total > 0 && r.faltam === 0;
-  $('ag-porcentagem').textContent = `${Number(r.porcentagem || 0).toLocaleString('pt-BR')}%`;
-  $('ag-porcentagem').classList.toggle('completo', completo);
-  $('ag-conta').textContent = `${numero(r.agrupados)} de ${numero(r.total)} agrupados${r.faltam ? ` · faltam ${numero(r.faltam)}` : ''}`;
-  $('ag-barra').style.width = `${Math.min(100, Number(r.porcentagem) || 0)}%`;
-  $('ag-barra').classList.toggle('completo', completo);
-  $('ag-lido').textContent = r.lido_em ? `Recebidos hoje: ${numero(r.recebidos)} · Na base lido às ${horaDe(r.lido_em)}${r.usuario ? ` por ${r.usuario}` : ''}` : '';
+  $('ag-mini').textContent = r.total ? pctTexto(r) : '';
+  $('ag-mini').classList.toggle('completo', completo);
+  const pizza = $('ag-pizza');
+  pizza.className = `pizza${completo ? ' completo' : ''}${r.total ? '' : ' vazia'}`;
+  pizza.style.setProperty('--pct', Math.min(100, Number(r.porcentagem) || 0));
+  $('ag-porcentagem').textContent = r.total ? pctTexto(r) : '—';
+  $('ag-conta').textContent = r.total
+    ? `${numero(r.agrupados)} de ${numero(r.total)} agrupados${r.faltam ? ` · faltam ${numero(r.faltam)}` : ''}`
+    : 'Nenhum recebido hoje "Sem tentativa"';
+  $('ag-lido').textContent = r.lido_em
+    ? `${numero(r.recebidos)} recebidos hoje · lido às ${horaDe(r.lido_em)}${r.usuario ? ` por ${r.usuario}` : ''}` : '';
+  desenharBarras(r.porCidade);
   pendentesAg = r.pendentes || [];
   const lista = $('ag-lista');
   if (!pendentesAg.length) {
     const v = document.createElement('div');
     v.className = 'vazia';
-    v.textContent = r.total ? 'Todos os recebidos hoje foram agrupados.' : 'Nenhum pacote recebido hoje "Sem tentativa".';
+    v.textContent = r.total ? 'Todos os recebidos hoje foram agrupados.' : 'Nada para agrupar.';
     lista.replaceChildren(v);
     return;
   }
@@ -536,7 +570,7 @@ async function carregarAgrupamento() {
     const j = await chamar('GET', '/na-base');
     const hoje = j.dia && j.dia === j.hoje && j.bases && j.bases[0];
     if (hoje) mostrarAgrupamento(hoje);
-    else { $('agrupamento').hidden = true; agrupamento('Ainda não conferido hoje.'); }
+    else semLeitura();
   } catch (e) {
     if (!(e instanceof R.ErroDeConta)) agrupamento(e.message, true);
   }

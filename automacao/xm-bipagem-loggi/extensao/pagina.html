@@ -133,19 +133,33 @@
   .rodape { display: flex; gap: 18px; margin-top: 14px; }
   .acoes { display: flex; gap: 18px; margin-top: 14px; }
 
-  /* Relatorios: cartao como os do Arco ("23 Para hoje · Ver pacotes") */
-  .cartao { border: 1px solid var(--linha); border-radius: var(--raio); padding: 18px 20px; }
-  .cartao strong { display: block; font-size: 18px; font-weight: 400; color: var(--forte); }
-  .cartao p { margin: 4px 0 16px; color: var(--suave); }
-  /* Agrupamento de hoje: % (verde so em 100%), barra e a lista do que falta */
-  .progresso-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 14px; }
-  .porcentagem { font-size: 24px; font-weight: 700; color: var(--forte); letter-spacing: -.3px; }
-  .porcentagem.completo { color: #22c55e; }
-  .conta-ag { color: var(--suave); font-size: 12px; text-align: right; }
-  .barra-progresso { height: 6px; border-radius: 999px; background: var(--linha); overflow: hidden; margin-top: 6px; }
-  .barra-progresso i { display: block; height: 100%; width: 0; background: var(--azul); transition: width .3s ease; }
-  .barra-progresso i.completo { background: #22c55e; }
-  .lido { display: block; color: var(--suave); font-size: 12px; margin-top: 6px; }
+  /* Aba Agrupamento, no canto direito das abas, com a % ao lado (verde so em 100%). */
+  .abas .aba-direita { margin-left: auto; }
+  .abas .aba-direita b { font-weight: 600; color: var(--forte); margin-left: 4px; }
+  .abas .aba-direita b.completo { color: #22c55e; }
+  /* Pizza (rosca) agrupados x faltam + resumo ao lado */
+  .ag-topo { display: flex; align-items: center; gap: 18px; }
+  .pizza { --pct: 0; flex: 0 0 auto; width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center;
+    background: conic-gradient(var(--azul) calc(var(--pct) * 1%), #f59e0b 0); }
+  .pizza.vazia { background: var(--linha); }
+  .pizza.completo { background: #22c55e; }
+  .pizza span { width: 74px; height: 74px; border-radius: 50%; background: var(--fundo); display: grid; place-items: center;
+    font-size: 17px; font-weight: 700; color: var(--forte); letter-spacing: -.3px; }
+  .ag-resumo { min-width: 0; }
+  .ag-resumo strong { display: block; color: var(--forte); font-weight: 600; }
+  .lido { display: block; color: var(--suave); font-size: 12px; margin-top: 2px; }
+  .ag-legenda { display: flex; gap: 12px; margin: 8px 0 10px; color: var(--suave); font-size: 12px; }
+  .ag-legenda i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+  .cor-ok { background: var(--azul); }
+  .cor-falta { background: #f59e0b; }
+  /* Barras: uma por cidade (as que mais faltam), agrupado em azul e o que falta em vermelho */
+  .barras { display: grid; gap: 7px; }
+  .barra-cidade { display: grid; grid-template-columns: 112px minmax(0, 1fr) 34px; align-items: center; column-gap: 8px; font-size: 12px; }
+  .barra-cidade span { color: var(--texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .barra-cidade .trilho { display: flex; height: 10px; border-radius: 3px; overflow: hidden; background: var(--linha); }
+  .barra-cidade .trilho i { display: block; height: 100%; }
+  .barra-cidade em { font-style: normal; color: #f59e0b; text-align: right; font-weight: 600; }
+  .barras .vazia { color: var(--suave); font-size: 12px; }
   .pendente { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--linha); }
   .pendente:last-child { border-bottom: 0; }
   .pendente span { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--forte); overflow: hidden; text-overflow: ellipsis; }
@@ -189,11 +203,6 @@
       <span class="rotulo-area">Conferências</span><span class="seta-fina"></span>
     </button>
     <div class="submenu" id="menu-conferencia"></div>
-    <button type="button" class="area" data-area="relatorio">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
-      <span class="rotulo-area">Baixar relatórios</span><span class="seta-fina"></span>
-    </button>
-    <div class="submenu" id="menu-relatorio"></div>
   </section>
 
   <!-- Conferência Loggi (tema Loggi) -->
@@ -202,6 +211,8 @@
     <div class="abas">
       <button type="button" data-aba="bipar" class="ativa">Bipar</button>
       <button type="button" data-aba="circulos">Círculos</button>
+      <!-- No canto direito: a % do agrupamento de hoje; abre a pizza e as barras. -->
+      <button type="button" data-aba="agrupamento" class="aba-direita">Agrupamento <b id="ag-mini"></b></button>
     </div>
     <p id="mensagem" class="mensagem"></p>
 
@@ -236,27 +247,22 @@
         <div class="acoes"><button type="submit">Salvar</button><button id="cancelar" type="button">Cancelar</button></div>
       </form>
     </div>
-  </section>
-
-  <!-- Relatórios Loggi (tema Loggi) -->
-  <section id="tela-relatorio-loggi" hidden>
-    <div class="volta"><button class="voltar" type="button">‹ Voltar</button><strong>Relatórios Loggi</strong></div>
-    <div class="cartao">
-      <strong>Pacotes na base</strong>
-      <p>Aperta o "Baixar relatório" da tela Na base do Arco: o arquivo listagem_na_base.</p>
-      <button id="baixar-relatorio" class="pilula" type="button">Baixar relatório (Na base)</button>
-      <p id="status-relatorio" class="mensagem" style="margin:12px 0 0"></p>
-    </div>
-    <div class="cartao" style="margin-top:14px">
-      <strong>Agrupamento de hoje</strong>
-      <p>Lê o Na base sem baixar e confere os recebidos hoje ("Sem tentativa") com os bipes de hoje.</p>
-      <button id="ler-na-base" class="pilula" type="button">Conferir agora</button>
-      <p id="status-agrupamento" class="mensagem" style="margin:12px 0 0"></p>
+    <!-- Agrupamento de hoje: recebidos hoje "Sem tentativa" (Na base lido sem baixar) x bipes de hoje -->
+    <div id="aba-agrupamento" hidden>
+      <div class="ag-topo">
+        <div class="pizza" id="ag-pizza" aria-hidden="true"><span id="ag-porcentagem"></span></div>
+        <div class="ag-resumo">
+          <strong id="ag-conta">Ainda não conferido hoje</strong>
+          <small id="ag-lido" class="lido"></small>
+          <div class="ag-legenda"><span><i class="cor-ok"></i>Agrupados</span><span><i class="cor-falta"></i>Faltam</span></div>
+          <button id="ler-na-base" class="pilula" type="button">Conferir agora</button>
+        </div>
+      </div>
+      <p id="status-agrupamento" class="mensagem" style="margin:10px 0 0"></p>
       <div id="agrupamento" hidden>
-        <div class="progresso-topo"><span id="ag-porcentagem" class="porcentagem"></span><span id="ag-conta" class="conta-ag"></span></div>
-        <div class="barra-progresso"><i id="ag-barra"></i></div>
-        <small id="ag-lido" class="lido"></small>
-        <div class="cabecalho" style="margin-top:14px"><h2>Faltam agrupar</h2><button id="ag-copiar" type="button">Copiar códigos</button></div>
+        <div class="cabecalho" style="margin-top:16px"><h2>Faltam por cidade</h2></div>
+        <div id="ag-barras" class="barras"></div>
+        <div class="cabecalho" style="margin-top:16px"><h2>Faltam agrupar</h2><button id="ag-copiar" type="button">Copiar códigos</button></div>
         <div id="ag-lista" class="lista"></div>
       </div>
     </div>

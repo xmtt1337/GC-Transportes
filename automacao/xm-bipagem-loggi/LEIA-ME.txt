@@ -8,24 +8,18 @@ escolhe-se no menu:
 
   Conferencias      Loggi (ativa) | Anjun, iMile, Shopee,
                     Total Express (em breve)
-  Baixar relatorios Loggi (ativa) | as outras em breve
 
-Cada transportadora abre no tema dela (Loggi = Arco).
-
-Relatorios > Loggi > "Baixar relatorio (Na base)": aperta o
-"Baixar relatorio" da tela Na base do Arco (o arquivo
-listagem_na_base). Em outra tela do Arco, vai antes para a
-Na base. Nao faz chamada propria a Loggi.
-
-Relatorios > Loggi > "Agrupamento de hoje" > "Conferir agora":
-le o mesmo relatorio Na base SEM baixar (pelo link do botao
-"Baixar relatorio", que tem o token da conta Loggi: usado so
-nessa leitura, nunca guardado) e manda ao sistema so codigo,
-ID, cidade, prazo, "Chegou em" e Status. O sistema guarda os
-que CHEGARAM HOJE (as leituras do dia se somam; o mesmo codigo
-troca a propria linha), conta os "Sem tentativa" e cruza com os bipes do dia (bipou e tirou na lixeira
-= nao agrupado) e mostra a % e o que falta, no painel e em
-Operacao > Transportadoras > Loggi > Agrupamento.
+Conferencia Loggi > aba "Agrupamento" (canto direito, com a %
+ao lado) > "Conferir agora": le o relatorio Na base do Arco SEM
+baixar (pelo link do botao "Baixar relatorio", que tem o token
+da conta Loggi: usado so nessa leitura, nunca guardado) e manda
+ao sistema so codigo, ID, cidade, prazo, "Chegou em" e Status.
+O sistema guarda os que CHEGARAM HOJE (as leituras do dia se
+somam; o mesmo codigo troca a propria linha), conta os "Sem
+tentativa" e cruza com os bipes do dia (bipou e tirou na
+lixeira = nao agrupado). Mostra pizza, barras por cidade e o
+que falta, no painel e em Operacao > Transportadoras > Loggi >
+Agrupamento. O menu "Baixar relatorios" saiu na 2.9.
 
 CONFERENCIA LOGGI: para a tela "Agrupar pacotes" da Loggi.
 Marca-se quais cidades, ou quais Circulos (grupos de
