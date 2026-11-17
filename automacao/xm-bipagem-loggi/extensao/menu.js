@@ -3,6 +3,11 @@
 // O painel e a pagina da extensao num iframe: o site nao le senha nem token. O alerta
 // (tarja vermelha e som) mora aqui, fora do iframe, para aparecer mesmo com o painel
 // minimizado. A conferencia usa o "alvo" que o painel grava no storage.
+//
+// No arco.loggi.com, sem login na extensao, a tela fica travada (nada de clique nem tecla
+// chega a Loggi). Quem diz se ha login e o fundo.js: o token nao vem para ca.
+// Clique na lixeira de uma linha com pacote bipado: se o pacote some da lista, vai para o
+// sistema como "removido".
 
 (() => {
   const NOME = 'XM - Bipagem Loggi';
@@ -58,6 +63,15 @@
       .card li:last-child { border-bottom: 0; }
       .card li span:first-child { font-family: ui-monospace, Consolas, monospace; font-weight: 700; }
       .card li span:last-child { font-weight: 700; }
+      .trava { display: none; position: fixed; inset: 0; z-index: 2147483645; background: rgba(15, 17, 21, .88);
+        align-items: center; justify-content: flex-start; padding-left: max(24px, 6vw); font: 15px system-ui, sans-serif; color: #e8eaed; } /* a esquerda: o painel abre a direita */
+      .trava.ver { display: flex; }
+      .trava .caixa { width: min(460px, calc(100vw - 32px)); padding: 24px 28px; background: #16181d;
+        border: 1px solid #3a3f4a; border-radius: 8px; }
+      .trava h2 { margin: 0 0 8px; font-size: 20px; }
+      .trava p { margin: 0 0 16px; color: #a8adb7; line-height: 1.45; }
+      .trava button { padding: 0; background: none; border: 0; color: #6ea8fe; font: 600 15px system-ui, sans-serif; cursor: pointer; }
+      .trava button:hover { text-decoration: underline; }
       .card button { padding: 0; background: none; border: 0; color: #fff; text-decoration: underline; font: 700 16px system-ui, sans-serif; cursor: pointer; }
     </style>
     <div class="fundo" role="alertdialog" aria-modal="true">
@@ -66,6 +80,13 @@
         <p class="explica"></p>
         <ul></ul>
         <button type="button">Entendi, vou verificar</button>
+      </div>
+    </div>
+    <div class="trava" role="alertdialog" aria-modal="true">
+      <div class="caixa">
+        <h2>Entre na XM - Bipagem Loggi</h2>
+        <p class="motivo">Para usar a Loggi neste computador, entre com o seu login do sistema XMTT no painel XM.</p>
+        <button type="button">Abrir o painel</button>
       </div>
     </div>
     <div class="tarja" role="alert">
@@ -173,9 +194,10 @@
   }
 
   // Registro no sistema (loggi_bipagem_registros), pelo fundo.js, que tem o token.
-  function registrar(conferidos) {
+  function registrar(conferidos, acao = 'bipe') {
     const itens = conferidos.map((i) => ({
       id: crypto.randomUUID(),
+      acao,
       codigo: i.codigo,
       cidade: i.cidade,
       certo: i.ok === null ? null : i.ok,
@@ -246,6 +268,100 @@
     registrar(conferidos);
   });
 
+  // ── lixeira ──────────────────────────────────────────────────────────────
+  // A lixeira da Loggi nao chama servidor nenhum: so tira a linha da tela. Entao: clique num
+  // botao de icone (sem texto) numa linha com um pacote bipado arma aquele codigo; se ele sumir
+  // da tela em ate 30 s (da tempo de confirmar, se a Loggi perguntar), foi removido.
+  const ARMADO_MS = 30000;
+  const armados = new Map(); // codigo → ate quando vale
+  let conferirDepois = null;
+
+  function ehBotaoDeIcone(el) {
+    const b = el && el.closest && (el.closest('button, [role="button"]') || el.closest('svg'));
+    return !!b && b.textContent.replace(/\s+/g, '').length <= 2;
+  }
+
+  function verRemocoes() {
+    conferirDepois = null;
+    if (!armados.size) return;
+    const tela = document.body.innerText.toUpperCase();
+    const agora = Date.now();
+    const removidos = [];
+    for (const [codigo, ate] of armados) {
+      if (!tela.includes(codigo)) {
+        removidos.push(codigo);
+        armados.delete(codigo);
+      } else if (agora > ate) {
+        armados.delete(codigo);
+      }
+    }
+    if (!removidos.length) return;
+    const porCodigo = new Map([...bipes].map(([c, cid]) => [c.toUpperCase(), [c, cid]]));
+    registrar(removidos.map((k) => {
+      const [codigo, cidade] = porCodigo.get(k) || [k, ''];
+      bipes.delete(codigo);
+      return { codigo, cidade, ok: cidade ? R.conferirBipe(cidade, alvo, alvo && alvo.conversao).ok : null };
+    }), 'removido');
+  }
+
+  function agendarVerRemocoes() {
+    if (armados.size && !conferirDepois) conferirDepois = setTimeout(verRemocoes, 300);
+  }
+
+  window.addEventListener('click', (e) => {
+    if (travado || !bipes.size || e.target === hospedeiro || !ehBotaoDeIcone(e.target)) return;
+    const textos = [];
+    for (let el = e.target instanceof Element ? e.target : null; el && el !== document.body && textos.length < 12; el = el.parentElement) {
+      textos.push(el.innerText || el.textContent || '');
+    }
+    const codigo = R.codigoDaLinha(textos, bipes.keys());
+    if (!codigo) return;
+    armados.set(codigo, Date.now() + ARMADO_MS);
+    agendarVerRemocoes();
+  }, true);
+
+  new MutationObserver(agendarVerRemocoes).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  setInterval(() => { if (armados.size) verRemocoes(); }, 2000);
+
+  // ── trava sem login (arco.loggi.com) ───────────────────────────────────────
+  const trava = sombra.querySelector('.trava');
+  let travado = R.precisaTravar(location.hostname, false); // comeca travado ate o fundo responder
+
+  function aplicarTrava(motivo) {
+    trava.classList.toggle('ver', travado);
+    if (motivo) trava.querySelector('.motivo').textContent = motivo;
+    if (travado) {
+      if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+      abrir();
+    }
+  }
+
+  async function consultarLogin() {
+    if (!R.precisaTravar(location.hostname, false)) return; // so nos sites da lista
+    try {
+      const r = await chrome.runtime.sendMessage({ tipo: 'estado' });
+      travado = R.precisaTravar(location.hostname, !!(r && r.logado));
+      aplicarTrava();
+    } catch {
+      // Extensao recarregada ou atualizada: este script ficou orfao.
+      travado = true;
+      aplicarTrava('A extensão foi atualizada. Aperte F5 nesta página.');
+    }
+  }
+
+  // Com a trava na tela, nada chega a Loggi: nem clique (a trava cobre tudo) nem tecla (o
+  // leitor de codigo digita como teclado). O que vem do menu XM tem como alvo o hospedeiro.
+  ['keydown', 'keypress', 'keyup', 'paste', 'beforeinput', 'input', 'submit', 'mousedown', 'pointerdown', 'click', 'touchstart']
+    .forEach((tipo) => window.addEventListener(tipo, (e) => {
+      if (!travado || e.target === hospedeiro) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }, true));
+
+  trava.querySelector('button').addEventListener('click', abrir);
+  setInterval(consultarLogin, 3000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) consultarLogin(); });
+
   arrastar(botao, abrir);
   arrastar(cabecalho);
   cabecalho.querySelector('button').addEventListener('click', minimizar);
@@ -254,10 +370,13 @@
 
   chrome.storage.onChanged.addListener((mudou, area) => {
     if (area === 'local' && mudou.alvo) alvo = mudou.alvo.newValue || null;
+    if (area === 'local' && mudou.sessaoMudou) consultarLogin();
   });
 
   document.documentElement.append(hospedeiro);
   aplicarPosicao();
+  aplicarTrava();
+  consultarLogin();
   chrome.storage.local.get(['posicao', 'alvo']).then((salvo) => {
     if (salvo.posicao) posicao = salvo.posicao;
     alvo = salvo.alvo || null;

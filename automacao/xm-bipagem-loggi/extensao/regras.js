@@ -88,6 +88,28 @@
     return errados;
   }
 
+  // Onde a Loggi so funciona com o login do sistema XMTT na extensao.
+  const SITES_TRAVADOS = ['arco.loggi.com'];
+  const precisaTravar = (host, logado) => SITES_TRAVADOS.includes(String(host || '').toLowerCase()) && !logado;
+
+  /**
+   * Clique num botao de icone (a lixeira): de qual pacote e a linha? Sobe do elemento clicado
+   * ate o primeiro ancestral cujo texto tem um codigo bipado. Se ali ja aparecem dois ou
+   * mais, passou da linha e chegou na lista: nao da para saber, devolve null.
+   * @param {string[]} textos  innerText do elemento clicado e de cada ancestral, de dentro para fora
+   * @param {Iterable<string>} codigos  codigos bipados nesta tela
+   */
+  function codigoDaLinha(textos, codigos) {
+    const lista = [...codigos].map((c) => String(c).toUpperCase());
+    for (const t of textos) {
+      const texto = String(t || '').toUpperCase();
+      const achados = lista.filter((c) => texto.includes(c));
+      if (achados.length === 1) return achados[0];
+      if (achados.length > 1) return null;
+    }
+    return null;
+  }
+
   async function entrar(usuario, senha, buscar = fetch) {
     let corpo;
     try {
@@ -129,7 +151,7 @@
     return j;
   }
 
-  const publico = { BACKEND, ErroDeConta, chaveCidade, montarAlvo, conferirBipe, pendentes, entrar, api };
+  const publico = { BACKEND, ErroDeConta, chaveCidade, montarAlvo, conferirBipe, pendentes, precisaTravar, codigoDaLinha, entrar, api };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMBipagem = publico;
 })();

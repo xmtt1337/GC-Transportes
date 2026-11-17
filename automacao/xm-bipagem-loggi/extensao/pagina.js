@@ -23,6 +23,9 @@ function dizer(texto, erro = false) {
   $('mensagem').className = erro ? 'mensagem erro' : 'mensagem';
 }
 
+// Avisa o menu.js (no site) que o login mudou: ele pergunta ao fundo.js e trava ou destrava.
+const avisarSessao = () => chrome.storage.local.set({ sessaoMudou: Date.now() });
+
 function mostrarLogin(aviso = '') {
   $('tela-principal').hidden = true;
   $('tela-login').hidden = false;
@@ -40,6 +43,7 @@ async function chamar(metodo, caminho, corpo) {
   } catch (e) {
     if (e instanceof R.ErroDeConta) {
       await chrome.storage.session.clear();
+      avisarSessao();
       mostrarLogin(e.message);
     }
     throw e;
@@ -159,7 +163,17 @@ function desenharSelecao() {
         detalhe: g.cidades.join(', '),
         conta: String(g.cidades.length),
       });
-      c.addEventListener('change', () => { if (c.checked) marcarCirculo(g.id); });
+      // Radio nao desmarca sozinho: clicar de novo no circulo escolhido tira a escolha.
+      c.addEventListener('click', () => {
+        if (selecao.grupos[0] === g.id) {
+          c.checked = false;
+          selecao = { grupos: [], cidades: [] };
+          salvarSelecao();
+          dizer('Círculo desmarcado: o alerta está desligado.');
+        } else {
+          marcarCirculo(g.id);
+        }
+      });
       box.append(l);
     });
   } else {
@@ -312,6 +326,7 @@ $('tela-login').addEventListener('submit', async (e) => {
     token = r.token;
     await chrome.storage.session.set({ token: r.token, nome: r.nome });
     await chrome.storage.local.set({ usuario });
+    avisarSessao();
     $('senha').value = '';
     await mostrarPrincipal(r.nome);
   } catch (erro) {
@@ -323,6 +338,7 @@ $('tela-login').addEventListener('submit', async (e) => {
 
 $('sair').addEventListener('click', async () => {
   await chrome.storage.session.clear();
+  avisarSessao();
   token = null;
   mostrarLogin();
 });

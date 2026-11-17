@@ -142,3 +142,19 @@ test('circulo cujo nome ja diz "Círculo" nao repete a palavra', () => {
   assert.strictEqual(a.rotulo, 'Círculo Lindomar');
   assert.strictEqual(a.frase, 'do Círculo Lindomar');
 });
+
+test('arco.loggi.com sem login trava; com login ou em outro site da Loggi, nao', () => {
+  assert.strictEqual(R.precisaTravar('arco.loggi.com', false), true);
+  assert.strictEqual(R.precisaTravar('ARCO.loggi.com', false), true);
+  assert.strictEqual(R.precisaTravar('arco.loggi.com', true), false);
+  assert.strictEqual(R.precisaTravar('www.loggi.com', false), false);
+});
+
+test('lixeira: acha o pacote da linha clicada, e nada quando ja passou da linha', () => {
+  const codigos = ['SKTESTE0000000001', 'skteste0000000002'];
+  // botao (sem texto) → linha com 1 codigo
+  assert.strictEqual(R.codigoDaLinha(['', 'SKTESTE0000000002 Empresa Teste VIDEIRA'], codigos), 'SKTESTE0000000002');
+  // botao fora de qualquer linha: o primeiro ancestral com codigo ja e a lista inteira
+  assert.strictEqual(R.codigoDaLinha(['', 'SKTESTE0000000001\nSKTESTE0000000002'], codigos), null);
+  assert.strictEqual(R.codigoDaLinha(['', 'Nada aqui'], codigos), null);
+});

@@ -1,4 +1,5 @@
-// Envia o registro dos bipes ao sistema (tabela loggi_bipagem_registros).
+// Envia o registro dos bipes ao sistema (tabela loggi_bipagem_registros) e diz ao site se
+// ha login (no arco.loggi.com, sem login a tela fica travada; o menu.js pergunta aqui).
 //
 // Fica aqui, e nao no menu.js, porque o token mora em storage.session, que os scripts do
 // site nao alcancam. O bipe entra numa fila no storage.local e sai em lote; sem internet
@@ -32,17 +33,25 @@ async function enviar() {
       const { fila: atual = [] } = await chrome.storage.local.get('fila');
       await chrome.storage.local.set({ fila: atual.filter((b) => !ids.has(b.id)) });
     }
-  } catch {
-    // Sem internet, servidor dormindo ou sessao vencida: fica na fila para a proxima.
+  } catch (e) {
+    // Sem internet ou servidor dormindo: fica na fila para a proxima. Sessao vencida: sai do
+    // login (a fila espera o proximo), e a tela da Loggi volta a travar.
+    if (e instanceof R.ErroDeConta) await chrome.storage.session.remove(['token', 'nome']);
   } finally {
     enviando = false;
   }
 }
 
-chrome.runtime.onMessage.addListener((pedido) => {
+chrome.runtime.onMessage.addListener((pedido, _quem, responder) => {
   if (pedido && pedido.tipo === 'bipes' && Array.isArray(pedido.itens)) {
     enfileirar(pedido.itens).then(enviar);
   }
+  // So sim ou nao: o token nunca sai daqui para a pagina.
+  if (pedido && pedido.tipo === 'estado') {
+    chrome.storage.session.get(['token', 'nome']).then((s) => responder({ logado: !!s.token, nome: s.nome || '' }));
+    return true;
+  }
+  return false;
 });
 
 chrome.storage.onChanged.addListener((mudou, area) => {

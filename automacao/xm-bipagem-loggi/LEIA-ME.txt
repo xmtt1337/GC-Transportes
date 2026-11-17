@@ -13,6 +13,14 @@ houver pacote de outra cidade, o clique nao passa e um card
 vermelho no meio da tela mostra quais verificar e remover.
 Depois de tirar na lixeira, e so clicar em Continuar de novo.
 
+No arco.loggi.com, sem entrar na extensao com o login do
+sistema XMTT, a tela da Loggi fica travada: nenhum clique nem
+tecla (nem o leitor) chega nela. Entrou, destrava; saiu ou a
+sessao venceu, trava de novo.
+
+Pacote tirado na lixeira tambem vai para o sistema, como
+"Removido do agrupamento Loggi" no Historico de pedidos.
+
 Cada bipe vai para o sistema (tabela loggi_bipagem_registros):
 quem bipou, codigo, data e hora, se estava certo, a cidade do
 pacote e o que era esperado. Aparece no Historico de pedidos
@@ -42,8 +50,9 @@ USAR
    sistema XMTT.
 2. Aba "Circulos": "Criar circulo", com nome e cidades. Os
    circulos ficam no sistema: todo computador ve os mesmos.
-3. Aba "Bipar": escolha UM circulo, ou troque para "Cidades"
-   e marque as cidades (a lupa pesquisa).
+3. Aba "Bipar": escolha UM circulo (clicar de novo nele
+   desmarca), ou troque para "Cidades" e marque as cidades
+   (a lupa pesquisa).
    "Remover marcados" desliga o alerta. Pode minimizar o
    painel; o alerta e o registro continuam valendo.
 
