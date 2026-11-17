@@ -1,5 +1,6 @@
 // ───── OPERAÇÃO › TRANSPORTADORAS › LOGGI › AGRUPAMENTO ─────
-// Quanto do "Na base" da Loggi (Status "Sem tentativa") já foi agrupado hoje, e o que falta.
+// Quanto dos pacotes que CHEGARAM HOJE no "Na base" da Loggi (Status "Sem tentativa") já foi
+// agrupado, e o que falta. As leituras do dia se somam (mesmo código = mesma linha).
 // Quem lê o relatório é a extensão XM - Operação, no Arco (Baixar relatórios › Loggi ›
 // "Conferir agora"): ela manda só código, ID, cidade e prazo. Agrupado = bipado no Agrupar
 // pacotes com a extensão no mesmo dia (tirou na lixeira depois = não conta). O sistema refaz
@@ -82,11 +83,11 @@ function _lagPintar() {
         <div class="lag-progresso">
             <div class="lag-topo">
                 <span class="lag-pct${completo ? " lag-completo" : ""}">${_lagPct(b.agrupados, b.total)}</span>
-                <span class="cft-ajuda">${_lagNum(b.agrupados)} de ${_lagNum(b.total)} "Sem tentativa" agrupados${b.faltam ? ` · faltam <b class="cft-neg">${_lagNum(b.faltam)}</b>` : ""} · meta 100%</span>
+                <span class="cft-ajuda">${_lagNum(b.agrupados)} de ${_lagNum(b.total)} recebidos hoje agrupados${b.faltam ? ` · faltam <b class="cft-neg">${_lagNum(b.faltam)}</b>` : ""} · meta 100%</span>
             </div>
             <div class="lag-barra"><i class="${completo ? "lag-completo" : ""}" style="width:${Math.min(100, b.porcentagem || 0)}%"></i></div>
-            <div class="cft-ajuda" style="margin-top:6px">Na base lido ${antigo ? `em ${_lagDiaBr(d.dia)} ` : ""}às ${hora}${b.usuario ? ` por ${_lagEsc(b.usuario)}` : ""} · base ${_lagEsc(b.base)}.
-                Pacote que chegou depois disso só entra numa nova leitura ("Conferir agora" na extensão).</div>
+            <div class="cft-ajuda" style="margin-top:6px">${_lagNum(b.recebidos)} recebidos no dia (só os "Sem tentativa" entram na conta) · Na base lido ${antigo ? `em ${_lagDiaBr(d.dia)} ` : ""}às ${hora}${b.usuario ? ` por ${_lagEsc(b.usuario)}` : ""} · base ${_lagEsc(b.base)}.
+                Pacote que chegou depois disso entra na próxima leitura ("Conferir agora" na extensão); as leituras se somam.</div>
         </div>
         <div class="lag-colunas">
             <div>
