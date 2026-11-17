@@ -42,7 +42,8 @@ USAR
    sistema XMTT.
 2. Aba "Circulos": "Criar circulo", com nome e cidades. Os
    circulos ficam no sistema: todo computador ve os mesmos.
-3. Aba "Bipar": marque circulos OU cidades (a lupa pesquisa).
+3. Aba "Bipar": escolha UM circulo, ou troque para "Cidades"
+   e marque as cidades (a lupa pesquisa).
    "Remover marcados" desliga o alerta. Pode minimizar o
    painel; o alerta e o registro continuam valendo.
 

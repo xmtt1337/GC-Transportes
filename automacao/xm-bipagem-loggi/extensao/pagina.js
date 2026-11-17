@@ -4,6 +4,8 @@
 // A senha nao e guardada. O token fica em storage.session: nao chega aos scripts do site
 // e some quando o Chrome fecha. A selecao e o alvo ficam em storage.local, que e de onde o
 // menu.js le para conferir cada bipe. Os circulos ficam no sistema (todos veem os mesmos).
+//
+// Na aba Bipar vale UM circulo OU cidades soltas, nunca os dois.
 
 const R = self.XMBipagem;
 const $ = (id) => document.getElementById(id);
@@ -14,10 +16,11 @@ let conversao = {};
 let grupos = [];
 let selecao = { grupos: [], cidades: [] };
 let editando = null;
+let modo = 'grupos'; // o que a lista da aba Bipar mostra: 'grupos' (circulos) ou 'cidades'
 
 function dizer(texto, erro = false) {
   $('mensagem').textContent = texto;
-  $('mensagem').className = erro ? 'suave erro' : 'suave';
+  $('mensagem').className = erro ? 'mensagem erro' : 'mensagem';
 }
 
 function mostrarLogin(aviso = '') {
@@ -43,35 +46,54 @@ async function chamar(metodo, caminho, corpo) {
   }
 }
 
-function caixa(rotulo, marcado, extra = '') {
+/** Uma linha da lista: [caixa] nome (com um detalhe embaixo, se houver) ... contagem. */
+function item(rotulo, { tipo = 'checkbox', marcado = false, detalhe = '', conta = '' } = {}) {
   const l = document.createElement('label');
+  l.className = 'item';
   l.dataset.busca = R.chaveCidade(rotulo);
   const c = document.createElement('input');
-  c.type = 'checkbox';
+  c.type = tipo;
+  if (tipo === 'radio') c.name = 'circulo';
   c.checked = marcado;
   const nome = document.createElement('span');
+  nome.className = 'nome';
   nome.textContent = rotulo;
-  l.append(c, nome);
-  if (extra) {
+  nome.title = detalhe ? `${rotulo}: ${detalhe}` : rotulo;
+  if (detalhe) {
     const s = document.createElement('small');
-    s.textContent = extra;
-    l.append(s);
+    s.textContent = detalhe;
+    nome.append(s);
   }
+  const n = document.createElement('span');
+  n.className = 'conta';
+  n.textContent = conta;
+  l.append(c, nome, n);
   return { l, c };
 }
 
-// Lupa: esconde o que nao casa, sem tirar da tela (o marcado continua marcado).
-function filtrar(campo, ...listas) {
-  const termo = R.chaveCidade(campo.value);
-  listas.forEach((lista) => lista.querySelectorAll('label').forEach((l) => {
-    l.hidden = !!termo && !l.dataset.busca.includes(termo);
-  }));
+function vazia(texto) {
+  const p = document.createElement('div');
+  p.className = 'vazia';
+  p.textContent = texto;
+  return p;
 }
+
+// Lupa: esconde o que nao casa, sem tirar da tela (o marcado continua marcado).
+function filtrar(campo, lista) {
+  const termo = R.chaveCidade(campo.value);
+  lista.querySelectorAll('label').forEach((l) => {
+    l.hidden = !!termo && !l.dataset.busca.includes(termo);
+  });
+}
+
+const qtd = (n) => `${n} ${n === 1 ? 'cidade' : 'cidades'}`;
+const marcadas = (n) => `${n} marcada${n === 1 ? '' : 's'}`;
 
 // ── selecao e alvo ─────────────────────────────────────────────────────────
 async function salvarSelecao() {
   const ids = new Set(grupos.map((g) => g.id));
-  selecao.grupos = selecao.grupos.filter((id) => ids.has(id));
+  // Um circulo so (selecao antiga com varios fica com o primeiro).
+  selecao.grupos = selecao.grupos.filter((id) => ids.has(id)).slice(0, 1);
   selecao.cidades = selecao.cidades.filter((c) => cidades.includes(c));
   const alvo = { ...R.montarAlvo(selecao, grupos), conversao };
   await chrome.storage.local.set({ selecao, alvo });
@@ -80,90 +102,137 @@ async function salvarSelecao() {
 
 function desenharAlvo(alvo) {
   const el = $('alvo');
+  el.replaceChildren();
+  const linha = (tag, cls, texto) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    e.textContent = texto;
+    el.append(e);
+  };
   if (!alvo.chaves.length) {
     el.className = 'alvo vazio';
-    el.textContent = 'Nada marcado: o alerta está desligado. Marque círculos ou cidades.';
+    linha('span', 'rotulo', 'Alerta desligado');
+    linha('strong', '', 'Nada marcado');
+    linha('small', '', 'Escolha um círculo ou marque as cidades abaixo.');
     return;
   }
   el.className = 'alvo';
-  const n = alvo.cidades.length;
-  el.textContent = `Conferindo: ${alvo.rotulo} (${n} ${n === 1 ? 'cidade' : 'cidades'}). Pacote de outra cidade toca o alarme.`;
+  linha('span', 'rotulo', `Conferindo · ${qtd(alvo.cidades.length)}`);
+  linha('strong', '', alvo.rotulo);
+  linha('small', '', alvo.tipo === 'circulo' ? alvo.cidades.join(', ') : 'Pacote de outra cidade toca o alarme.');
 }
 
-// Circulo ou cidade, nunca os dois: marcar um tipo desmarca o outro.
-function marcar(tipo, valor, ligado) {
-  const outro = tipo === 'grupos' ? 'cidades' : 'grupos';
-  if (ligado && selecao[outro].length) {
-    selecao[outro] = [];
-    dizer(tipo === 'grupos'
-      ? 'Círculo marcado: as cidades soltas foram desmarcadas.'
-      : 'Cidade marcada: os círculos foram desmarcados.');
-  }
-  selecao[tipo] = ligado ? [...selecao[tipo], valor] : selecao[tipo].filter((v) => v !== valor);
+function trocarModo(novo) {
+  modo = novo;
+  document.querySelectorAll('.modo button').forEach((b) => b.classList.toggle('ativa', b.dataset.modo === modo));
+  $('busca').placeholder = modo === 'grupos' ? 'Pesquisar círculo' : 'Pesquisar cidade';
+  $('busca').value = '';
   desenharSelecao();
+}
+
+// Um circulo OU cidades: escolher um desmarca o outro.
+function marcarCirculo(id) {
+  const tinha = selecao.cidades.length;
+  selecao = { grupos: [id], cidades: [] };
+  dizer(tinha ? 'Círculo escolhido: as cidades marcadas foram desmarcadas.' : '');
+  salvarSelecao();
+}
+
+function marcarCidade(cidade, ligado) {
+  const tinha = selecao.grupos.length;
+  const lista = ligado ? [...selecao.cidades, cidade] : selecao.cidades.filter((c) => c !== cidade);
+  selecao = { grupos: [], cidades: lista };
+  dizer(tinha && ligado ? 'Cidade marcada: o círculo foi desmarcado.' : '');
   salvarSelecao();
 }
 
 function desenharSelecao() {
-  const g = $('sel-grupos');
-  g.replaceChildren();
-  if (!grupos.length) g.textContent = 'Nenhum círculo ainda. Crie na aba Círculos.';
-  grupos.forEach((grupo) => {
-    const { l, c } = caixa(grupo.nome, selecao.grupos.includes(grupo.id), ` · ${grupo.cidades.length} cidades`);
-    c.addEventListener('change', () => marcar('grupos', grupo.id, c.checked));
-    g.append(l);
-  });
-
-  const cl = $('sel-cidades');
-  cl.replaceChildren();
-  if (!cidades.length) cl.textContent = 'Nenhuma cidade da Loggi cadastrada na Conferência de expedição.';
-  cidades.forEach((cidade) => {
-    const { l, c } = caixa(cidade, selecao.cidades.includes(cidade));
-    c.addEventListener('change', () => marcar('cidades', cidade, c.checked));
-    cl.append(l);
-  });
-  filtrar($('busca'), g, cl);
+  const box = $('lista');
+  box.replaceChildren();
+  if (modo === 'grupos') {
+    $('titulo-lista').textContent = 'Escolha um círculo';
+    if (!grupos.length) box.append(vazia('Nenhum círculo ainda. Crie na aba Círculos.'));
+    grupos.forEach((g) => {
+      const { l, c } = item(g.nome, {
+        tipo: 'radio',
+        marcado: selecao.grupos.includes(g.id),
+        detalhe: g.cidades.join(', '),
+        conta: String(g.cidades.length),
+      });
+      c.addEventListener('change', () => { if (c.checked) marcarCirculo(g.id); });
+      box.append(l);
+    });
+  } else {
+    $('titulo-lista').textContent = selecao.cidades.length ? `Cidades · ${marcadas(selecao.cidades.length)}` : 'Marque as cidades';
+    if (!cidades.length) box.append(vazia('Nenhuma cidade da Loggi cadastrada na Conferência de expedição.'));
+    cidades.forEach((cidade) => {
+      const { l, c } = item(cidade, { marcado: selecao.cidades.includes(cidade) });
+      c.addEventListener('change', () => {
+        marcarCidade(cidade, c.checked);
+        $('titulo-lista').textContent = selecao.cidades.length ? `Cidades · ${marcadas(selecao.cidades.length)}` : 'Marque as cidades';
+      });
+      box.append(l);
+    });
+  }
+  filtrar($('busca'), box);
 }
 
 // ── circulos ───────────────────────────────────────────────────────────────
 function desenharGrupos() {
   const box = $('grupos');
   box.replaceChildren();
-  if (!grupos.length) box.textContent = 'Nenhum círculo criado.';
+  if (!grupos.length) box.append(vazia('Nenhum círculo criado.'));
   grupos.forEach((g) => {
     const linha = document.createElement('div');
-    linha.className = 'grupo';
+    linha.className = 'circulo';
     const info = document.createElement('div');
     const nome = document.createElement('strong');
     nome.textContent = g.nome;
     const detalhe = document.createElement('small');
-    detalhe.textContent = g.cidades.join(', ');
+    detalhe.textContent = `${qtd(g.cidades.length)}: ${g.cidades.join(', ')}`;
     info.append(nome, detalhe);
     const acoes = document.createElement('div');
-    const editar = document.createElement('button');
-    editar.type = 'button';
-    editar.textContent = 'Editar';
-    editar.addEventListener('click', () => abrirForm(g));
-    const apagar = document.createElement('button');
-    apagar.type = 'button';
-    apagar.textContent = 'Apagar';
-    apagar.addEventListener('click', () => apagarGrupo(g));
-    acoes.append(editar, apagar);
+    acoes.className = 'acoes-linha';
+    const botao = (texto, fazer) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = texto;
+      b.addEventListener('click', fazer);
+      acoes.append(b);
+    };
+    botao('Editar', () => abrirForm(g));
+    botao('Apagar', () => apagarGrupo(g));
     linha.append(info, acoes);
     box.append(linha);
   });
 }
 
+function contarForm() {
+  const n = $('cidades-grupo').querySelectorAll('input:checked').length;
+  $('conta-form').textContent = n ? marcadas(n) : '';
+}
+
 function abrirForm(grupo) {
   editando = grupo || null;
-  $('titulo-form').textContent = grupo ? `Editar ${grupo.nome}` : 'Novo círculo';
+  $('titulo-form').textContent = grupo ? 'Editar círculo' : 'Novo círculo';
   $('nome-grupo').value = grupo ? grupo.nome : '';
   $('busca-form').value = '';
   const box = $('cidades-grupo');
   box.replaceChildren();
-  cidades.forEach((cidade) => box.append(caixa(cidade, !!grupo && grupo.cidades.includes(cidade)).l));
+  cidades.forEach((cidade) => {
+    const { l, c } = item(cidade, { marcado: !!grupo && grupo.cidades.includes(cidade) });
+    c.addEventListener('change', contarForm);
+    box.append(l);
+  });
+  contarForm();
+  $('lista-circulos').hidden = true;
   $('form-grupo').hidden = false;
   $('nome-grupo').focus();
+}
+
+function fecharForm() {
+  $('form-grupo').hidden = true;
+  $('lista-circulos').hidden = false;
 }
 
 async function apagarGrupo(g) {
@@ -177,23 +246,25 @@ async function apagarGrupo(g) {
 
 $('form-grupo').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const marcadas = [...$('cidades-grupo').querySelectorAll('label')]
-    .filter((l) => l.querySelector('input').checked).map((l) => l.querySelector('span').textContent);
-  const corpo = { nome: $('nome-grupo').value, cidades: marcadas };
+  const escolhidas = [...$('cidades-grupo').querySelectorAll('label')]
+    .filter((l) => l.querySelector('input').checked)
+    .map((l) => l.querySelector('.nome').firstChild.textContent);
+  const corpo = { nome: $('nome-grupo').value, cidades: escolhidas };
   try {
     if (editando) await chamar('PUT', `/grupos/${editando.id}`, corpo);
     else await chamar('POST', '/grupos', corpo);
     dizer(`Círculo "${corpo.nome.trim()}" salvo.`);
-    $('form-grupo').hidden = true;
+    fecharForm();
     await carregar();
   } catch (err) { if (!(err instanceof R.ErroDeConta)) dizer(err.message, true); }
 });
 
-$('cancelar').addEventListener('click', () => { $('form-grupo').hidden = true; });
+$('cancelar').addEventListener('click', fecharForm);
 $('novo').addEventListener('click', () => abrirForm(null));
 $('atualizar').addEventListener('click', () => carregar().then(() => dizer('Atualizado.')));
-$('busca').addEventListener('input', () => filtrar($('busca'), $('sel-grupos'), $('sel-cidades')));
+$('busca').addEventListener('input', () => filtrar($('busca'), $('lista')));
 $('busca-form').addEventListener('input', () => filtrar($('busca-form'), $('cidades-grupo')));
+document.querySelectorAll('.modo button').forEach((b) => b.addEventListener('click', () => trocarModo(b.dataset.modo)));
 $('limpar').addEventListener('click', () => {
   selecao = { grupos: [], cidades: [] };
   desenharSelecao();
@@ -205,6 +276,7 @@ document.querySelectorAll('.abas button').forEach((b) => b.addEventListener('cli
   document.querySelectorAll('.abas button').forEach((x) => x.classList.toggle('ativa', x === b));
   $('aba-bipar').hidden = b.dataset.aba !== 'bipar';
   $('aba-circulos').hidden = b.dataset.aba !== 'circulos';
+  fecharForm();
   dizer('');
 }));
 
@@ -214,9 +286,9 @@ async function carregar() {
   cidades = c.cidades || [];
   conversao = c.conversao || {};
   grupos = g.grupos || [];
+  await salvarSelecao();
   desenharSelecao();
   desenharGrupos();
-  await salvarSelecao();
 }
 
 async function mostrarPrincipal(nome) {
@@ -258,6 +330,8 @@ $('sair').addEventListener('click', async () => {
 async function comecar() {
   const salvo = await chrome.storage.local.get('selecao');
   if (salvo.selecao) selecao = { grupos: salvo.selecao.grupos || [], cidades: salvo.selecao.cidades || [] };
+  // Abre a lista do que esta valendo.
+  if (selecao.cidades.length && !selecao.grupos.length) trocarModo('cidades');
   const s = await chrome.storage.session.get(['token', 'nome']);
   if (!s.token) return mostrarLogin();
   token = s.token;

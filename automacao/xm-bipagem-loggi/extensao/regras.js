@@ -23,15 +23,16 @@
     : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`);
 
   /**
-   * Círculos ou cidades marcados → as cidades que valem e os textos dos avisos. Na tela é
-   * um ou outro; se vierem os dois (seleção antiga), valem os círculos.
+   * Círculo ou cidades marcados → as cidades que valem e os textos dos avisos. Vale UM
+   * círculo só; se vierem vários (seleção antiga), fica o primeiro. Se vierem círculo e
+   * cidades, vale o círculo.
    *   rotulo: o que fica no registro ("Círculo Lindomar", "Caçador, Videira")
    *   frase:  o fim de "não é ..." ("do círculo Lindomar", "das cidades Caçador e Videira")
    */
   function montarAlvo(selecao, grupos) {
     const sel = selecao || {};
-    const ids = new Set((sel.grupos || []).map(Number));
-    const circulos = (grupos || []).filter((g) => ids.has(Number(g.id)));
+    const primeiro = (sel.grupos || []).map(Number).find((id) => (grupos || []).some((g) => Number(g.id) === id));
+    const circulos = (grupos || []).filter((g) => Number(g.id) === primeiro);
     const tipo = circulos.length ? 'circulo' : 'cidade';
     const cidades = [];
     const chaves = new Set();

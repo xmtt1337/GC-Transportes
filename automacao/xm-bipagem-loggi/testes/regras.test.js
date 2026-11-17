@@ -23,12 +23,14 @@ test('chaveCidade iguala o jeito da Loggi e o do sistema', () => {
   assert.strictEqual(R.chaveCidade('Herval d’Oeste'), 'herval d oeste');
 });
 
-test('circulos somam as cidades sem repetir; com circulo marcado, cidade solta nao conta', () => {
-  const a = R.montarAlvo({ grupos: [1, 2], cidades: ['Arroio Trinta'] }, GRUPOS);
+test('vale um circulo so; com circulo marcado, cidade solta nao conta', () => {
+  const a = R.montarAlvo({ grupos: [2, 1], cidades: ['Arroio Trinta'] }, GRUPOS);
   assert.strictEqual(a.tipo, 'circulo');
-  assert.deepStrictEqual(a.cidades, ['Caçador', 'Videira', 'Fraiburgo']);
-  assert.strictEqual(a.rotulo, 'Círculos Grupo Teste + Grupo Dois');
-  assert.strictEqual(a.frase, 'dos círculos Grupo Teste e Grupo Dois');
+  assert.deepStrictEqual(a.cidades, ['Videira', 'Fraiburgo']);
+  assert.strictEqual(a.rotulo, 'Círculo Grupo Dois');
+  assert.strictEqual(a.frase, 'do círculo Grupo Dois');
+  // Circulo apagado na frente nao derruba o seguinte.
+  assert.strictEqual(R.montarAlvo({ grupos: [99, 1] }, GRUPOS).rotulo, 'Círculo Grupo Teste');
 });
 
 test('textos para um circulo, uma cidade e varias cidades', () => {
