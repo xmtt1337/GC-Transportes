@@ -462,6 +462,33 @@ async function _fatExportarPO() {
     }
 }
 
+function _fatExcluirPO() {
+    const sel = document.getElementById("fat-po-sel");
+    const referencia = sel.value;
+    if (!referencia) return gcAlert("Escolha a PO.");
+    const rotulo = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : referencia;
+    gcConfirm(
+        `Apagar todas as faturas da PO ${_fatEsc(rotulo)}? Os PDFs somem do sistema e os números ficam livres pra gerar de novo. Não dá pra desfazer.`,
+        async () => {
+            try {
+                const r = await fetch(`${API}/faturas/po?referencia=${encodeURIComponent(referencia)}`,
+                    { method: "DELETE", headers: { "Authorization": "Bearer " + token } });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(d.error || "Erro ao excluir a PO.");
+                _fatMostrarMsg(`PO ${_fatEsc(referencia)} excluída: ${d.apagadas} fatura(s) apagada(s).`, "sucesso");
+                _fatCarregarHistorico();
+                _fatCarregarPOs();
+                document.getElementById("fat-numero").value = "";
+                _fatSugerirNumero();
+            } catch (err) {
+                gcAlert(err.message || "Não foi possível excluir a PO.");
+            }
+        },
+        "Excluir PO",
+        "Excluir"
+    );
+}
+
 function _fatBase64ParaBytes(b64) {
     const bin = atob(b64);
     const bytes = new Uint8Array(bin.length);
