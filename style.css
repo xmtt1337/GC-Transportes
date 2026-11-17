@@ -7096,3 +7096,18 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .pr-tabela tbody.pr-cidade:hover td { background: rgba(58,134,255,0.05); }
 .pr-tabela tbody.pr-cidade tr:hover td:not(.pr-cidade-nome) { background: rgba(58,134,255,0.10); }
 .pr-tabela .pr-mais { font-size: 12px; margin-top: 4px; }
+
+/* Operação › Loggi › Agrupamento (js/loggi-agrupamento.js): % dos "Sem tentativa" agrupados.
+   Verde só em 100% (meta); faltando, número em vermelho. */
+.lag-progresso { border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; }
+.lag-topo { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.lag-pct { font-size: 30px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.02em; }
+.lag-pct.lag-completo { color: #22c55e; }
+.lag-barra { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; margin-top: 10px; }
+.lag-barra i { display: block; height: 100%; background: #3a86ff; transition: width 0.3s ease; }
+.lag-barra i.lag-completo { background: #22c55e; }
+.lag-colunas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 18px; align-items: start; }
+.lag-linha { cursor: pointer; }
+.lag-linha:hover td { background: rgba(58,134,255,0.05); }
+.lag-sel td { background: rgba(58,134,255,0.10); }
+@media (max-width: 900px) { .lag-colunas { grid-template-columns: 1fr; } }
