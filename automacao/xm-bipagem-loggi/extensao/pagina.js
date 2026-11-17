@@ -505,9 +505,43 @@ function desenharBarras(porCidade) {
     trilho.append(ok, falta);
     const n = document.createElement('em');
     n.textContent = numero(c.total - c.agrupados);
-    l.append(nome, trilho, n);
+    const tirar = document.createElement('button');
+    tirar.type = 'button';
+    tirar.className = 'tirar';
+    tirar.textContent = '×';
+    tirar.title = `Tirar ${c.cidade} da conta (para todos)`;
+    tirar.addEventListener('click', () => ignorarCidade(c.cidade, true));
+    l.append(nome, trilho, n, tirar);
     return l;
   }));
+}
+
+/** "Fora da conta: Cidade (3) voltar · ..." */
+function desenharFora(ignoradas) {
+  const caixa = $('ag-fora');
+  caixa.hidden = !(ignoradas && ignoradas.length);
+  if (caixa.hidden) return caixa.replaceChildren();
+  const partes = [document.createTextNode('Fora da conta: ')];
+  ignoradas.forEach((c, i) => {
+    if (i) partes.push(document.createTextNode(' · '));
+    partes.push(document.createTextNode(`${c.cidade} (${numero(c.total)}) `));
+    const voltar = document.createElement('button');
+    voltar.type = 'button';
+    voltar.textContent = 'voltar';
+    voltar.addEventListener('click', () => ignorarCidade(c.cidade, false));
+    partes.push(voltar);
+  });
+  caixa.replaceChildren(...partes);
+}
+
+// Tirar/voltar vale para todos (fica no sistema), entao refaz a conta pelo sistema.
+async function ignorarCidade(cidade, ignorar) {
+  try {
+    await chamar('POST', '/na-base/ignorar', { cidade, ignorar });
+    await carregarAgrupamento();
+  } catch (e) {
+    if (!(e instanceof R.ErroDeConta)) agrupamento(e.message, true);
+  }
 }
 
 function mostrarAgrupamento(r) {
@@ -525,6 +559,7 @@ function mostrarAgrupamento(r) {
   $('ag-lido').textContent = r.lido_em
     ? `${numero(r.recebidos)} recebidos hoje · lido às ${horaDe(r.lido_em)}${r.usuario ? ` por ${r.usuario}` : ''}` : '';
   desenharBarras(r.porCidade);
+  desenharFora(r.ignoradas);
   pendentesAg = r.pendentes || [];
   const lista = $('ag-lista');
   if (!pendentesAg.length) {

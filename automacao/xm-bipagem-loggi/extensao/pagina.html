@@ -152,9 +152,14 @@
   .ag-legenda i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
   .cor-ok { background: var(--azul); }
   .cor-falta { background: #f59e0b; }
-  /* Barras: uma por cidade (as que mais faltam), agrupado em azul e o que falta em vermelho */
+  /* Barras: uma por cidade (as que mais faltam), agrupado em azul e o que falta em ambar.
+     O x no fim tira a cidade da conta (para todos); "Fora da conta" lista as tiradas, com voltar. */
   .barras { display: grid; gap: 7px; }
-  .barra-cidade { display: grid; grid-template-columns: 112px minmax(0, 1fr) 34px; align-items: center; column-gap: 8px; font-size: 12px; }
+  .barra-cidade { display: grid; grid-template-columns: 112px minmax(0, 1fr) 34px 14px; align-items: center; column-gap: 8px; font-size: 12px; }
+  .barra-cidade .tirar { color: var(--apagado); font-weight: 400; font-size: 14px; line-height: 1; }
+  .barra-cidade .tirar:hover { color: var(--texto); text-decoration: none; }
+  .fora-conta { margin-top: 10px; color: var(--suave); font-size: 12px; line-height: 1.7; }
+  .fora-conta button { font-weight: 400; font-size: 12px; }
   .barra-cidade span { color: var(--texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .barra-cidade .trilho { display: flex; height: 10px; border-radius: 3px; overflow: hidden; background: var(--linha); }
   .barra-cidade .trilho i { display: block; height: 100%; }
@@ -262,6 +267,7 @@
       <div id="agrupamento" hidden>
         <div class="cabecalho" style="margin-top:16px"><h2>Faltam por cidade</h2></div>
         <div id="ag-barras" class="barras"></div>
+        <div id="ag-fora" class="fora-conta" hidden></div>
         <div class="cabecalho" style="margin-top:16px"><h2>Faltam agrupar</h2><button id="ag-copiar" type="button">Copiar códigos</button></div>
         <div id="ag-lista" class="lista"></div>
       </div>

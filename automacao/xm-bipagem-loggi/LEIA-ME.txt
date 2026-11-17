@@ -16,9 +16,11 @@ da conta Loggi: usado so nessa leitura, nunca guardado) e manda
 ao sistema so codigo, ID, cidade, prazo, "Chegou em" e Status.
 O sistema guarda os que CHEGARAM HOJE (as leituras do dia se
 somam; o mesmo codigo troca a propria linha), conta os "Sem
-tentativa" e cruza com os bipes do dia (bipou e tirou na
-lixeira = nao agrupado). Mostra pizza, barras por cidade e o
-que falta, no painel e em Operacao > Transportadoras > Loggi >
+tentativa" e cruza com os bipes do dia (bipado alguma vez no
+dia = agrupado; a lixeira fica para a conferencia). Cidades
+juntas pela grafia (CACADOR = Cacador). O x da barra tira a
+cidade da conta (para todos), "voltar" desfaz. Mostra pizza,
+barras por cidade e o que falta, no painel e em Operacao > Transportadoras > Loggi >
 Agrupamento. O menu "Baixar relatorios" saiu na 2.9.
 
 CONFERENCIA LOGGI: para a tela "Agrupar pacotes" da Loggi.
