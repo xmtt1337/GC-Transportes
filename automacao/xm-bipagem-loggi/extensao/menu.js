@@ -50,10 +50,12 @@
       .cabecalho button, .tarja button { padding: 0; color: #6ea8fe; background: none; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
       .cabecalho button:hover, .tarja button:hover { text-decoration: underline; }
       iframe { flex: 1; width: 100%; border: 0; }
-      .tarja { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 2147483647;
+      /* Aparece na hora, fica 2,5 s (TARJA_MS) e some devagar em 0,5 s. */
+      .tarja { display: flex; position: fixed; top: 0; left: 0; right: 0; z-index: 2147483647;
         padding: 18px 24px; background: #dc2626; color: #fff; font: 600 18px system-ui, sans-serif;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, .4); align-items: center; justify-content: space-between; gap: 16px; }
-      .tarja.ver { display: flex; }
+        box-shadow: 0 6px 20px rgba(0, 0, 0, .4); align-items: center; justify-content: space-between; gap: 16px;
+        opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .5s ease, visibility 0s linear .5s; }
+      .tarja.ver { opacity: 1; visibility: visible; pointer-events: auto; transition: none; }
       .tarja strong { display: block; font-size: 26px; letter-spacing: .5px; }
       .tarja button { color: #fff; text-decoration: underline; }
       .fundo { display: none; position: fixed; inset: 0; z-index: 2147483647; background: rgba(0, 0, 0, .55);
@@ -204,9 +206,14 @@
     } catch { /* sem audio, a tarja ainda aparece */ }
   }
 
+  const TARJA_MS = 2500;
+  let somirTarja = null;
   function mostrarTarja(codigo, cidade) {
     tarja.querySelector('.texto').textContent = `${codigo} é de ${cidade}, não é ${alvo.frase}`;
     tarja.classList.add('ver');
+    // Outro bipe errado no meio recomeça a contagem.
+    clearTimeout(somirTarja);
+    somirTarja = setTimeout(() => tarja.classList.remove('ver'), TARJA_MS);
   }
 
   // Registro no sistema (loggi_bipagem_registros), pelo fundo.js, que tem o token.
