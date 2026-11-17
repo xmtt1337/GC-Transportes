@@ -63,15 +63,16 @@
       .card li:last-child { border-bottom: 0; }
       .card li span:first-child { font-family: ui-monospace, Consolas, monospace; font-weight: 700; }
       .card li span:last-child { font-weight: 700; }
-      .trava { display: none; position: fixed; inset: 0; z-index: 2147483645; background: rgba(15, 17, 21, .88);
-        align-items: center; justify-content: flex-start; padding-left: max(24px, 6vw); font: 15px system-ui, sans-serif; color: #e8eaed; } /* a esquerda: o painel abre a direita */
-      .trava.ver { display: flex; }
-      .trava .caixa { width: min(460px, calc(100vw - 32px)); padding: 24px 28px; background: #16181d;
-        border: 1px solid #3a3f4a; border-radius: 8px; }
-      .trava h2 { margin: 0 0 8px; font-size: 20px; }
-      .trava p { margin: 0 0 16px; color: #a8adb7; line-height: 1.45; }
-      .trava button { padding: 0; background: none; border: 0; color: #6ea8fe; font: 600 15px system-ui, sans-serif; cursor: pointer; }
-      .trava button:hover { text-decoration: underline; }
+      /* Sem login: fundo escuro e o painel no meio da tela, so com o login. */
+      .trava { display: none; position: fixed; inset: 0; z-index: 2147483645; background: rgba(15, 17, 21, .9); }
+      .trava.ver { display: block; }
+      .trava p { position: absolute; left: 50%; top: calc(50% - 170px); transform: translateX(-50%); margin: 0;
+        width: min(420px, calc(100vw - 32px)); text-align: center; color: #e8eaed; font: 15px/1.45 system-ui, sans-serif; }
+      .menu.travado { left: 50% !important; top: 50% !important; right: auto !important; bottom: auto !important;
+        transform: translate(-50%, -50%); }
+      .menu.travado .painel { height: 270px; }
+      .menu.travado .cabecalho { cursor: default; }
+      .menu.travado .cabecalho button { display: none; }
       .card button { padding: 0; background: none; border: 0; color: #fff; text-decoration: underline; font: 700 16px system-ui, sans-serif; cursor: pointer; }
     </style>
     <div class="fundo" role="alertdialog" aria-modal="true">
@@ -83,11 +84,7 @@
       </div>
     </div>
     <div class="trava" role="alertdialog" aria-modal="true">
-      <div class="caixa">
-        <h2>Entre na XM - Bipagem Loggi</h2>
-        <p class="motivo">Para usar a Loggi neste computador, entre com o seu login do sistema XMTT no painel XM.</p>
-        <button type="button">Abrir o painel</button>
-      </div>
+      <p class="motivo">Para usar a Loggi, entre com o seu login do sistema XMTT.</p>
     </div>
     <div class="tarja" role="alert">
       <div><strong>GRUPO ERRADO</strong><span class="texto"></span></div>
@@ -143,6 +140,7 @@
     let moveu = false;
     elemento.addEventListener('pointerdown', (e) => {
       if (e.target.closest('button') && e.target !== botao) return;
+      if (menu.classList.contains('travado')) return; // no meio da tela, parado
       inicio = { x: e.clientX, y: e.clientY, direita: posicao.direita, baixo: posicao.baixo };
       moveu = false;
       elemento.setPointerCapture(e.pointerId);
@@ -327,13 +325,19 @@
   const trava = sombra.querySelector('.trava');
   let travado = R.precisaTravar(location.hostname, false); // comeca travado ate o fundo responder
 
+  let estavaTravado = null;
   function aplicarTrava(motivo) {
     trava.classList.toggle('ver', travado);
+    menu.classList.toggle('travado', travado);
     if (motivo) trava.querySelector('.motivo').textContent = motivo;
-    if (travado) {
-      if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+    // So na hora que trava: tira o foco do campo da Loggi. Nunca do hospedeiro, que e onde
+    // fica o foco quando se digita no login do painel (antes isso roubava o foco a cada 3 s).
+    if (travado && estavaTravado !== true) {
+      const ativo = document.activeElement;
+      if (ativo && ativo !== document.body && ativo !== hospedeiro) ativo.blur();
       abrir();
     }
+    estavaTravado = travado;
   }
 
   async function consultarLogin() {
@@ -358,7 +362,6 @@
       e.stopImmediatePropagation();
     }, true));
 
-  trava.querySelector('button').addEventListener('click', abrir);
   setInterval(consultarLogin, 3000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) consultarLogin(); });
 
