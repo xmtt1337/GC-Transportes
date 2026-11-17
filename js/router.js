@@ -92,7 +92,8 @@ const _ROTAS = {
     "Conferencias/Loggi":            () => abrirLoggiAgrupamento(),
     "Loggi/Agrupamento":             () => abrirLoggiAgrupamento(),
     "Conferencias/JT":               () => abrirConferencias(null, "jt"),
-    "Conferencias/Anjun":            () => abrirConfExpedicao(null, "anjun"),
+    // Anjun: desde 17/11/2026 a conferência pela extensão; a do upload saiu do menu.
+    "Conferencias/Anjun":            () => abrirAnjunConferencia(),
     "Jadlog/Anotacoes":              () => abrirJadlogAnotacoes(),
     "Jadlog/Atribuir":               () => abrirJadlogAtribuir(),
     "Conferencias/Imile":            () => abrirConferencias(null, "imile"),
@@ -281,6 +282,7 @@ const _TELA_ROTAS = {
     "tela-jadlog-anotacoes":     "Jadlog/Anotacoes",
     "tela-jadlog-atribuir":      "Jadlog/Atribuir",
     "tela-loggi-agrupamento":    "Conferencias/Loggi",
+    "tela-anjun-conferencia":    "Conferencias/Anjun",
     "tela-criar-fechamento":     "Fechamento/Criar",
     "tela-resumo-quinzena":      "Fechamento/Resumo",
     "tela-ajustes-fechamento":   "Fechamento/Ajustes",
