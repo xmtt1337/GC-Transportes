@@ -93,14 +93,17 @@ function _lagPintar() {
             <div>
                 <div class="nr-grafico-titulo" style="margin-bottom:8px">Por cidade</div>
                 <div class="cft-tabela-wrap" style="max-height:62vh"><table class="cft-tabela">
-                    <thead><tr><th>Cidade</th><th class="num">Sem tentativa</th><th class="num">Faltam</th><th class="num">Agrupado</th></tr></thead>
+                    <thead><tr><th>Cidade</th><th class="num">Sem tentativa</th><th class="num">Faltam</th><th class="num">Agrupado</th><th></th></tr></thead>
                     <tbody>${(b.porCidade || []).map(c => {
                         const falta = c.total - c.agrupados;
                         return `<tr class="lag-linha${c.cidade === _lagCidade ? " lag-sel" : ""}" data-c="${_lagEsc(c.cidade)}" onclick="_lagFiltrarCidade(this.dataset.c)">
                             <td>${_lagEsc(c.cidade)}</td><td class="num">${_lagNum(c.total)}</td>
                             <td class="num ${falta ? "cft-neg" : ""}">${falta ? _lagNum(falta) : "—"}</td>
-                            <td class="num ${falta ? "" : "cft-pos"}">${_lagPct(c.agrupados, c.total)}</td></tr>`;
+                            <td class="num ${falta ? "" : "cft-pos"}">${_lagPct(c.agrupados, c.total)}</td>
+                            <td class="num"><a href="#" class="cft-link" title="Tirar da conta (para todos)" onclick="event.preventDefault();event.stopPropagation();_lagIgnorar(this.closest('tr').dataset.c,true)">tirar</a></td></tr>`;
                     }).join("")}</tbody></table></div>
+                ${(b.ignoradas || []).length ? `<div class="cft-ajuda" style="margin-top:8px">Fora da conta: ${b.ignoradas.map(c =>
+                    `${_lagEsc(c.cidade)} (${_lagNum(c.total)}) <a href="#" class="cft-link" data-c="${_lagEsc(c.cidade)}" onclick="event.preventDefault();_lagIgnorar(this.dataset.c,false)">voltar</a>`).join(" · ")}</div>` : ""}
             </div>
             <div>
                 <div class="cft-barra" style="margin:0 0 8px">
@@ -114,6 +117,19 @@ function _lagPintar() {
         </div>`;
     document.getElementById("lag-busca").value = buscaAntes;
     _lagPintarTabela();
+}
+
+// Tirar/voltar uma cidade da conta: vale para todos (fica no sistema) e para todo dia.
+function _lagIgnorar(cidade, ignorar) {
+    if (_lagCidade === cidade) _lagCidade = "";
+    fetch(`${_LAG_API()}/ignorar`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ cidade, ignorar }),
+    }).then(r => r.json()).then(d => {
+        if (d.error) { alert(d.error); return; }
+        _lagCarregar(true);
+    }).catch(() => alert("Erro ao conectar com o servidor."));
 }
 
 function _lagFiltrarCidade(c) {
