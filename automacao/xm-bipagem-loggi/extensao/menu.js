@@ -152,6 +152,12 @@
 
   function abrir() {
     if (menu.classList.contains('aberto')) return;
+    // Extensao recarregada e pagina sem F5: este script ficou orfao e nao alcanca mais o painel
+    // (o clique so dava "Extension context invalidated" no console). Avisa em vez de nao fazer nada.
+    if (!chrome.runtime || !chrome.runtime.id) {
+      window.alert('A extensão XM - Operação foi atualizada. Aperte F5 nesta página para usar a versão nova.');
+      return;
+    }
     if (!quadro) {
       quadro = document.createElement('iframe');
       quadro.title = NOME;
