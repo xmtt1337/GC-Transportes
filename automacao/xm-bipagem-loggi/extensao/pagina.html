@@ -137,6 +137,12 @@
   .circulo small { display: block; color: var(--suave); font-size: 12px; margin-top: 2px; }
   .circulo .acoes-linha { display: flex; gap: 14px; padding-top: 1px; }
   .rodape { display: flex; gap: 18px; margin-top: 14px; }
+  /* Gráficos na cor da transportadora (pedido do usuário, 18/11/2026): --marca = parte feita, --falta = pendência.
+     Na Shopee o âmbar se confundiria com o laranja dela, então lá a pendência é cinza. */
+  section { --marca: var(--azul); --falta: #f59e0b; }
+  #tela-conferencia-loggi { --marca: #12a5e8; }
+  #tela-conferencia-anjun { --marca: #22c55e; }
+  #tela-conferencia-shopee { --marca: #f97316; --falta: #94a3b8; }
   .acoes { display: flex; gap: 18px; margin-top: 14px; }
 
   /* Aba Agrupamento, no canto direito das abas, com a % ao lado (verde so em 100%). */
@@ -146,9 +152,9 @@
   /* Pizza (rosca) agrupados x faltam + resumo ao lado */
   .ag-topo { display: flex; align-items: center; gap: 18px; }
   .pizza { --pct: 0; flex: 0 0 auto; width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center;
-    background: conic-gradient(var(--azul) calc(var(--pct) * 1%), #f59e0b 0); }
+    background: conic-gradient(var(--marca) calc(var(--pct) * 1%), var(--falta) 0); }
   .pizza.vazia { background: var(--linha); }
-  .pizza.completo { background: #22c55e; }
+  .pizza.completo { background: var(--marca); }
   .pizza span { width: 74px; height: 74px; border-radius: 50%; background: var(--fundo); display: grid; place-items: center;
     font-size: 15px; font-weight: 700; color: var(--forte); letter-spacing: -.3px; }
   .ag-resumo { min-width: 0; }
@@ -156,8 +162,8 @@
   .lido { display: block; color: var(--suave); font-size: 12px; margin-top: 2px; }
   .ag-legenda { display: flex; gap: 12px; margin: 8px 0 10px; color: var(--suave); font-size: 12px; }
   .ag-legenda i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
-  .cor-ok { background: var(--azul); }
-  .cor-falta { background: #f59e0b; }
+  .cor-ok { background: var(--marca); }
+  .cor-falta { background: var(--falta); }
   /* Barras: uma por cidade (as que mais faltam), agrupado em azul e o que falta em ambar.
      O "tirar" no fim tira a cidade da conta (para todos); "Fora da conta" lista as tiradas, com voltar. */
   .barras { display: grid; gap: 7px; }
@@ -169,7 +175,7 @@
   .barra-cidade span { color: var(--texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .barra-cidade .trilho { display: flex; height: 10px; border-radius: 3px; overflow: hidden; background: var(--linha); }
   .barra-cidade .trilho i { display: block; height: 100%; }
-  .barra-cidade em { font-style: normal; color: #f59e0b; text-align: right; font-weight: 600; }
+  .barra-cidade em { font-style: normal; color: var(--falta); text-align: right; font-weight: 600; }
   .barras .vazia { color: var(--suave); font-size: 12px; }
   /* Conferência Anjun: cidade errada em laranja (pendência de outro tipo) e os dois números ao lado da pizza */
   .cor-errada { background: #f97316; }
@@ -182,12 +188,7 @@
     box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
   #an-conferir.pilula:hover:not(:disabled) { background: #0f8d41; border-color: #0f8d41; }
   #an-conferir.pilula:disabled { opacity: .6; cursor: default; }
-  /* Pizza e barras: a parte certa/expedida no verde da Anjun (pedido do usuário); falta segue âmbar. */
-  #tela-conferencia-anjun .cor-ok { background: var(--anjun); }
-  #tela-conferencia-anjun .pizza { background: conic-gradient(var(--anjun) calc(var(--pct) * 1%), #f59e0b 0); }
-  #tela-conferencia-anjun .pizza.completo { background: var(--anjun); }
-  #tela-conferencia-anjun .pizza.vazia { background: var(--linha); }
-  /* Conferência Shopee: detalhes no laranja do SPX (título e botão "Procurar"); dados no padrão (azul/âmbar). */
+    /* Conferência Shopee: detalhes no laranja do SPX (título e botão "Procurar"); gráficos no laranja da Shopee. */
   .marca-shopee { color: #ee4d2d; }
   #tela-conferencia-shopee .volta { border-bottom-color: rgba(238, 77, 45, .35); }
   #sh-conferir.pilula { background: #ee4d2d; border: 1px solid #ee4d2d; color: #fff; font-weight: 700; border-radius: 4px; padding: 7px 16px;
@@ -198,7 +199,7 @@
   #sh-tipos .barra-cidade { grid-template-columns: 150px minmax(0, 1fr) 34px auto; }
   .barra-cidade.clicavel { cursor: pointer; }
   .barra-cidade.clicavel:hover span { color: var(--forte); }
-  .barra-cidade .fora-tag { color: #f59e0b; font-style: normal; font-size: 11px; margin-left: 4px; }
+  .barra-cidade .fora-tag { color: var(--falta); font-style: normal; font-size: 11px; margin-left: 4px; }
   /* Fluxo hora a hora: uma linha por etapa, uma coluna por hora; mais escuro = mais pacotes. */
   .fluxo { overflow-x: auto; scrollbar-width: thin; border: 1px solid var(--linha); border-radius: var(--raio); }
   .fluxo table { border-collapse: separate; border-spacing: 3px; font-size: 12px; }

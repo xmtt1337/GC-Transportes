@@ -890,7 +890,9 @@ function barraSimples(nome, partes, maior, numeroTexto, aoClicar, extra) {
 function fluxoShopee(f) {
   const caixa = $('sh-fluxo');
   if (!f || !f.horas.length) { caixa.textContent = 'Sem horários ainda.'; return; }
-  const linhas = [['Recebimento', f.recebimento, '18, 165, 74'], ['Atribuição', f.atribuicao, '58, 134, 255'], ['Expedição', f.expedicao, '238, 77, 45']];
+  // Tudo no laranja da Shopee (cor da transportadora): o nome da linha já diz a etapa.
+  const SHOPEE_RGB = '249, 115, 22';
+  const linhas = [['Recebimento', f.recebimento, SHOPEE_RGB], ['Atribuição', f.atribuicao, SHOPEE_RGB], ['Expedição', f.expedicao, SHOPEE_RGB]];
   const maior = Math.max(1, ...linhas.flatMap(([, v]) => v));
   const tabela = document.createElement('table');
   const cab = document.createElement('tr');
