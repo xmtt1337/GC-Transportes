@@ -180,7 +180,9 @@
     let moveu = false;
     elemento.addEventListener('pointerdown', (e) => {
       if (e.target.closest('button') && e.target !== botao) return;
-      if (menu.classList.contains('travado') || menu.classList.contains('cheio')) return; // parado
+      // Parado: travado, ou painel ABERTO em tela cheia. Minimizado (so o botao) sempre arrasta e
+      // abre: antes o "cheio" guardado travava o botao e o clique tambem (18/11/2026).
+      if (menu.classList.contains('travado') || (menu.classList.contains('cheio') && menu.classList.contains('aberto'))) return;
       inicio = { x: e.clientX, y: e.clientY, direita: posicao.direita, baixo: posicao.baixo };
       moveu = false;
       elemento.setPointerCapture(e.pointerId);
