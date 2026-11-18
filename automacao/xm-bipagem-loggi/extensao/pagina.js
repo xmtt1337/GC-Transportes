@@ -832,7 +832,9 @@ async function carregarAnjun() {
 const ROTA_SHOPEE = '/macros/shopee-conferencia';
 let poloShopee = '';
 let dadosShopee = null;
-let listaShopee = 'sem_at'; // qual divergencia a lista mostra: 'sem_at' | 'nao_recebido'
+let listaShopee = 'sem_at'; // o que a lista mostra: 'sem_at' | 'nao_recebido' | 'nao_recebidos' (todos, com ou sem AT)
+const LISTAS_SHOPEE = { sem_at: ['recebido_sem_at', 'Recebido - Sem AT'], nao_recebido: ['nao_recebido', 'Enviado - Não recebido'],
+  nao_recebidos: ['nao_recebidos', 'Não recebidos (com ou sem AT)'] };
 chrome.storage.local.get('poloShopee').then(({ poloShopee: p }) => { poloShopee = p || ''; $('sh-polo').value = poloShopee; });
 $('sh-polo').addEventListener('change', () => {
   poloShopee = $('sh-polo').value;
@@ -933,8 +935,9 @@ function fluxoShopee(f) {
 function listaDivergenciasShopee() {
   const r = dadosShopee || {};
   const semAt = listaShopee === 'sem_at';
-  const itens = (semAt ? r.recebido_sem_at : r.nao_recebido) || [];
-  $('sh-lista-titulo').textContent = semAt ? 'Recebido - Sem AT' : 'Enviado - Não recebido';
+  const [campo, titulo] = LISTAS_SHOPEE[listaShopee];
+  const itens = r[campo] || [];
+  $('sh-lista-titulo').textContent = titulo;
   const lista = $('sh-lista');
   if (!itens.length) {
     const v = document.createElement('div');
@@ -943,7 +946,7 @@ function listaDivergenciasShopee() {
     return lista.replaceChildren(v);
   }
   lista.replaceChildren(...itens.slice(0, 300).map((p) => linhaSimples(p.codigo,
-    semAt ? `recebido às ${horaCurta(p.recebido_em)}${p.motorista ? ` · ${p.motorista}` : ''}` : (p.achado_no_spx ? (p.estacao ? `está em ${p.estacao}` : 'no SPX, sem recebimento') : 'não achado no SPX'),
+    semAt ? `recebido às ${horaCurta(p.recebido_em)}${p.motorista ? ` · ${p.motorista}` : ''}` : (p.achado_no_spx ? (p.estacao ? `está em ${p.estacao}` : 'no SPX, sem recebimento') : 'não achado no SPX') + (p.at ? ` · na ${p.at}` : ''),
     '', '')));
   if (itens.length > 300) {
     const mais = document.createElement('div');
@@ -969,6 +972,10 @@ function mostrarShopee(r) {
   $('sh-total').textContent = numero(r.total);
   $('sh-recebidos').textContent = numero(r.recebidos);
   $('sh-recebidos-pct').textContent = `recebidos · ${pct2(r.pct_recebidos)} do romaneio`;
+  const faltaReceber = (r.nao_recebidos || []).length;
+  const ver = $('sh-ver-nao-recebidos');
+  ver.hidden = !faltaReceber;
+  ver.textContent = `ver os ${numero(faltaReceber)} não recebidos`;
   const div = $('sh-divergencias');
   div.textContent = numero(r.divergencias);
   div.className = r.divergencias ? 'alerta' : 'completo';
@@ -991,9 +998,15 @@ function mostrarShopee(r) {
   listaDivergenciasShopee();
 }
 
+$('sh-ver-nao-recebidos').addEventListener('click', () => {
+  listaShopee = 'nao_recebidos';
+  listaDivergenciasShopee();
+  $('sh-lista-titulo').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
 $('sh-copiar').addEventListener('click', () => {
   const r = dadosShopee || {};
-  const codigos = ((listaShopee === 'sem_at' ? r.recebido_sem_at : r.nao_recebido) || []).map((p) => p.codigo);
+  const codigos = (r[LISTAS_SHOPEE[listaShopee][0]] || []).map((p) => p.codigo);
   if (!codigos.length) return statusShopee('Nada para copiar.');
   copiarTexto(codigos.join('\n'))
     .then(() => statusShopee(`${numero(codigos.length)} BR copiado(s).`))
