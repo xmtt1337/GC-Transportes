@@ -21,7 +21,8 @@ function _lagEsc(t) {
     return String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 const _lagNum = n => Number(n || 0).toLocaleString("pt-BR");
-const _lagPct = (a, t) => t ? (Math.floor(a / t * 1000) / 10).toLocaleString("pt-BR") + "%" : "—";
+// Sempre 2 casas (99,78%), para baixo: 99,996% não vira 100,00%.
+const _lagPct = (a, t) => t ? (Math.floor(a * 10000 / t) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%" : "—";
 const _lagDiaBr = d => { const m = String(d || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; };
 const _lagPrazo = d => { const m = String(d || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}` : ""; };
 

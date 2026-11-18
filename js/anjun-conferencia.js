@@ -26,7 +26,7 @@ let _ancTimer = null;
 
 const _ancEsc = t => String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const _ancNum = n => Number(n || 0).toLocaleString("pt-BR");
-const _ancPct = v => Number(v || 0).toLocaleString("pt-BR") + "%";
+const _ancPct = v => Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%"; // sempre 99,78%
 const _ancDiaBr = d => { const m = String(d || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; };
 const _ancHora = d => { const m = String(d || "").match(/(\d{2}:\d{2})/); return m ? m[1] : ""; };
 

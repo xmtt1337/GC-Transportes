@@ -27,7 +27,9 @@ test("porcentagem arredonda para baixo e filtro por cidade e busca", () => {
     const ctx = { document: { getElementById: () => ({ value: "0002" }) } };
     vm.createContext(ctx);
     vm.runInContext(ler("js/loggi-agrupamento.js") + "\nthis._lagPct=_lagPct;this._lagFiltrados=_lagFiltrados;this.definir=(d,c)=>{_lagDados=d;_lagCidade=c;};", ctx);
-    assert.strictEqual(ctx._lagPct(2499, 2500), (99.9).toLocaleString("pt-BR") + "%");
+    assert.strictEqual(ctx._lagPct(2499, 2500), "99,96%");
+    assert.strictEqual(ctx._lagPct(29, 100), "29,00%");      // sem erro de vírgula flutuante (0,29 × 100)
+    assert.strictEqual(ctx._lagPct(99999, 100000), "99,99%"); // nunca 100,00% com pacote faltando
     assert.strictEqual(ctx._lagPct(0, 0), "—");
     ctx.definir({ bases: [{ pendentes: [
         { codigo: "TESTE0001", cidade: "Cidade A" },
