@@ -23,7 +23,8 @@ Operacao > Transportadoras > Anjun > Conferencia (no sistema).
 CONFERENCIA SHOPEE (desde 4.0): no SPX (spx.shopee.com.br),
 Conferencias > Shopee > "Conferir agora". O sistema manda os BR do
 romaneio de hoje (Shopee > Alimentar > Romaneiro, do polo de quem
-enviou); a extensao pesquisa esses BR em lote no Order Tracking e
+enviou); a extensao pesquisa em lote no Order Tracking so os BR que
+ainda podem mudar (500 por chamada, 2 ao mesmo tempo) e
 lista as ATs criadas hoje, com a sessao do proprio SPX (nada de
 cookie ou x-sap sai da pagina). Ao sistema vao so horarios,
 motorista, status e estacao de cada BR e, de cada AT, os BR, cidade,

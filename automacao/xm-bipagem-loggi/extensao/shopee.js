@@ -2,7 +2,7 @@
 //
 // "Conferir agora" faz no SPX as mesmas buscas da tela:
 //   1. pesquisa em lote do Order Tracking (/api/fleet_order/order/tracking_list/search) dos BR
-//      do romaneio de hoje, que o sistema manda; 50 por vez;
+//      do romaneio de hoje que ainda podem mudar (o sistema manda); 500 por vez, 2 ao mesmo tempo;
 //   2. lista de ATs criadas hoje (/spx_delivery/admin/assignment/assignment_task/search/v2,
 //      ctime = comeco e fim do dia em segundos), pagina por pagina.
 // Devolve so o que a conferencia usa: horarios, motorista, status e estacao de cada BR; e de
@@ -16,10 +16,12 @@
 (() => {
   const ROTA_RASTREIO = '/api/fleet_order/order/tracking_list/search';
   const ROTA_ATS = '/spx_delivery/admin/assignment/assignment_task/search/v2';
-  const LOTE_RASTREIO = 50;
+  const LOTE_RASTREIO = 500;
+  const LOTE_MINIMO = 50;
+  const EM_PARALELO = 2;
   const POR_PAGINA_ATS = 50;
   const MAX_PAGINAS = 200;
-  const PAUSA_MS = 400;
+  const PAUSA_MS = 200; // entre paginas de AT
   const HEADERS_DO_SITE = ['x-csrftoken', 'device-id', 'app', 'version'];
 
   /** Comeco e fim do dia (AAAA-MM-DD) de Sao Paulo, em segundos. */
@@ -56,15 +58,29 @@
   const dormirPadrao = (ms) => new Promise((r) => setTimeout(r, ms));
 
   /** Pesquisa em lote, 50 BR por vez. post(rota, corpo) devolve o "data" da resposta. */
-  async function rastrear(post, codigos, aviso = () => {}, dormir = dormirPadrao) {
+  // 500 BR por chamada, 2 chamadas ao mesmo tempo. Se o SPX recusar um lote grande, divide ao
+  // meio e tenta de novo (ate LOTE_MINIMO); abaixo disso o erro e de verdade e para.
+  async function rastrear(post, codigos, aviso = () => {}) {
     const saida = [];
-    for (let i = 0; i < codigos.length; i += LOTE_RASTREIO) {
-      const lote = codigos.slice(i, i + LOTE_RASTREIO);
-      const data = await post(ROTA_RASTREIO, { count: lote.length, page_no: 1, search_id_list: lote });
-      saida.push(...((data && data.list) || []).map(enxugarRastreio));
-      aviso(Math.min(i + lote.length, codigos.length), codigos.length);
-      if (i + LOTE_RASTREIO < codigos.length) await dormir(PAUSA_MS);
-    }
+    let feitos = 0;
+    const umLote = async (lote) => {
+      try {
+        const data = await post(ROTA_RASTREIO, { count: lote.length, page_no: 1, search_id_list: lote });
+        saida.push(...((data && data.list) || []).map(enxugarRastreio));
+        feitos += lote.length;
+        aviso(feitos, codigos.length);
+      } catch (e) {
+        if (lote.length <= LOTE_MINIMO) throw e;
+        const meio = Math.ceil(lote.length / 2);
+        await umLote(lote.slice(0, meio));
+        await umLote(lote.slice(meio));
+      }
+    };
+    const lotes = [];
+    for (let i = 0; i < codigos.length; i += LOTE_RASTREIO) lotes.push(codigos.slice(i, i + LOTE_RASTREIO));
+    let proximo = 0;
+    const trabalhador = async () => { while (proximo < lotes.length) await umLote(lotes[proximo++]); };
+    await Promise.all(Array.from({ length: Math.min(EM_PARALELO, lotes.length) }, trabalhador));
     return saida;
   }
 
@@ -125,7 +141,7 @@
       return;
     }
     try {
-      const rastreio = await rastrear(post, codigos, (n, t) => responder({ id, andamento: `Pesquisando os BR do romaneio: ${n} de ${t}...` }));
+      const rastreio = codigos.length ? await rastrear(post, codigos, (n, t) => responder({ id, andamento: `Pesquisando no SPX os BR que faltam: ${n} de ${t}...` })) : [];
       const ats = await listarAts(post, hojeSP(), (n, t) => responder({ id, andamento: `Lendo as ATs de hoje: ${n} de ${t}...` }));
       responder({ id, fim: true, rastreio, ats });
     } catch (err) {

@@ -103,7 +103,7 @@ const comPolo = (caminho, polo) => (polo ? `${caminho}?polo=${encodeURIComponent
 chrome.runtime.onMessage.addListener((pedido, _quem, responder) => {
   if (pedido && pedido.tipo === 'shopeeRomaneio') {
     chamarSistema('GET', comPolo('/macros/shopee-conferencia/romaneio', pedido.polo))
-      .then((r) => responder({ codigos: r.codigos || [] }))
+      .then((r) => responder({ codigos: r.codigos || [], consultar: r.consultar || r.codigos || [] }))
       .catch((e) => responder({ erro: e.message || 'Não deu certo.' }));
     return true;
   }

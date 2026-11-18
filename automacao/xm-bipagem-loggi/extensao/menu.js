@@ -460,7 +460,7 @@
     if (buscandoShopee) return;
     buscandoShopee = true;
     try {
-      avisarShopee({ texto: 'Pegando o romaneio de hoje no sistema...' });
+      avisarShopee({ texto: 'Pegando o romaneio de hoje no sistema...' }); // só os BR que ainda podem mudar vão ao SPX
       const rom = await chrome.runtime.sendMessage({ tipo: 'shopeeRomaneio', polo });
       if (!rom || rom.erro) throw new Error((rom && rom.erro) || 'Não deu para ler o romaneio.');
       if (!rom.codigos.length) throw new Error('Nenhum BR no romaneio de hoje deste polo. Alimente o Romaneiro no sistema primeiro.');
@@ -473,7 +473,7 @@
           if (e.data.erro) reject(new Error(e.data.erro)); else resolve(e.data);
         };
         window.addEventListener('message', ouvir);
-        window.postMessage({ xmOperacao: 'shopeeBuscar', id, codigos: rom.codigos }, location.origin);
+        window.postMessage({ xmOperacao: 'shopeeBuscar', id, codigos: rom.consultar || rom.codigos }, location.origin);
       });
       avisarShopee({ texto: `Mandando ao sistema (${resultado.rastreio.length} BR, ${resultado.ats.length} ATs)...` });
       const r = await chrome.runtime.sendMessage({ tipo: 'shopeeLeitura', polo, rastreio: resultado.rastreio, ats: resultado.ats });

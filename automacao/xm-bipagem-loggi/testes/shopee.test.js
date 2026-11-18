@@ -26,13 +26,39 @@ test('AT enxuta: BR da AT separados, cidade, bairro, cluster, criacao', () => {
   assert.deepStrictEqual(a, { at: 'ATTESTE1', codigos: ['BRTESTE1', 'BRTESTE2'], motorista: 'Motorista Teste', cidade: 'Cidade A', bairro: 'Centro', cluster: 'CA-1', criada_em: 123 });
 });
 
-test('rastrear manda 50 BR por vez', async () => {
-  const codigos = Array.from({ length: 120 }, (_, i) => `BR${i}`);
+test('rastrear manda 500 BR por vez, 2 ao mesmo tempo', async () => {
+  const codigos = Array.from({ length: 1200 }, (_, i) => `BR${i}`);
   const lotes = [];
-  const post = async (rota, corpo) => { lotes.push(corpo.search_id_list.length); return { list: corpo.search_id_list.map((c) => ({ shipment_id: c })) }; };
-  const r = await rastrear(post, codigos, () => {}, async () => {});
-  assert.deepStrictEqual(lotes, [50, 50, 20]);
-  assert.strictEqual(r.length, 120);
+  let emVoo = 0, maxEmVoo = 0;
+  const post = async (rota, corpo) => {
+    emVoo += 1; maxEmVoo = Math.max(maxEmVoo, emVoo);
+    await new Promise((r) => setTimeout(r, 5));
+    emVoo -= 1;
+    lotes.push(corpo.search_id_list.length);
+    return { list: corpo.search_id_list.map((c) => ({ shipment_id: c })) };
+  };
+  const r = await rastrear(post, codigos);
+  assert.deepStrictEqual(lotes.sort((a, b) => b - a), [500, 500, 200]);
+  assert.strictEqual(maxEmVoo, 2);
+  assert.strictEqual(new Set(r.map((x) => x.codigo)).size, 1200);
+});
+
+test('lote grande recusado pelo SPX: divide ao meio e tenta de novo', async () => {
+  const codigos = Array.from({ length: 500 }, (_, i) => `BR${i}`);
+  const tamanhos = [];
+  const post = async (rota, corpo) => {
+    tamanhos.push(corpo.search_id_list.length);
+    if (corpo.search_id_list.length > 200) throw new Error('A Shopee recusou (retcode 1): lista grande demais');
+    return { list: corpo.search_id_list.map((c) => ({ shipment_id: c })) };
+  };
+  const r = await rastrear(post, codigos);
+  assert.strictEqual(r.length, 500);
+  assert.deepStrictEqual(tamanhos, [500, 250, 125, 125, 250, 125, 125]);
+});
+
+test('recusa de verdade (lote pequeno) para', async () => {
+  const post = async () => { throw new Error('A Shopee recusou (retcode 9)'); };
+  await assert.rejects(rastrear(post, Array.from({ length: 40 }, (_, i) => `BR${i}`)), /retcode 9/);
 });
 
 test('listarAts le todas as paginas do dia', async () => {
