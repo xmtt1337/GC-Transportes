@@ -11,6 +11,8 @@ const R = self.XMBipagem;
 const $ = (id) => document.getElementById(id);
 
 let token = null;
+// Em que site o painel abriu (o menu.js manda ?site=anjun|loggi): decide a tela de entrada.
+const TELA_DO_SITE = { anjun: 'conferencia-anjun', loggi: 'conferencia-loggi' }[new URLSearchParams(location.search).get('site')] || '';
 let cidades = [];
 let conversao = {};
 let grupos = [];
@@ -381,8 +383,9 @@ async function carregar() {
 
 async function mostrarPrincipal(nome) {
   document.querySelectorAll('.logado').forEach((e) => { e.textContent = `Logado como ${nome}`; });
+  // No site de uma transportadora, abre a conferencia dela; fora disso, a ultima tela usada.
   const { tela } = await chrome.storage.local.get('tela');
-  irPara(tela && tela !== 'login' ? tela : 'inicio');
+  irPara(TELA_DO_SITE || (tela && tela !== 'login' ? tela : 'inicio'));
   dizer('Carregando círculos...');
   try {
     await carregar();
@@ -822,7 +825,8 @@ async function carregarAnjun() {
 async function comecar() {
   const guardado = await chrome.storage.local.get(['areasAbertas', 'tela']);
   if (Array.isArray(guardado.areasAbertas)) areasAbertas = guardado.areasAbertas;
-  if (guardado.tela && guardado.tela !== 'inicio') telaAtual = guardado.tela;
+  if (TELA_DO_SITE) telaAtual = TELA_DO_SITE;
+  else if (guardado.tela && guardado.tela !== 'inicio') telaAtual = guardado.tela;
   desenharMenu();
   const salvo = await chrome.storage.local.get('selecao');
   if (salvo.selecao) selecao = { grupos: salvo.selecao.grupos || [], cidades: salvo.selecao.cidades || [] };

@@ -145,7 +145,9 @@
     if (!quadro) {
       quadro = document.createElement('iframe');
       quadro.title = NOME;
-      quadro.src = chrome.runtime.getURL('pagina.html');
+      // O painel abre na conferencia do site em que esta (Anjun no portal da Anjun, Loggi no Arco).
+      const site = /anjunexpress\.com$/.test(location.hostname) ? 'anjun' : /loggi\.com$/.test(location.hostname) ? 'loggi' : '';
+      quadro.src = chrome.runtime.getURL(`pagina.html${site ? `?site=${site}` : ''}`);
       painel.append(quadro);
     }
     trocarTamanho(() => menu.classList.add('aberto'));
