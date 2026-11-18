@@ -941,7 +941,7 @@ function listaDivergenciasShopee() {
     return lista.replaceChildren(v);
   }
   lista.replaceChildren(...itens.slice(0, 300).map((p) => linhaSimples(p.codigo,
-    semAt ? `recebido às ${horaCurta(p.recebido_em)}${p.motorista ? ` · ${p.motorista}` : ''}` : (p.achado_no_spx ? (p.estacao || 'no SPX, sem recebimento') : 'não achado no SPX'),
+    semAt ? `recebido às ${horaCurta(p.recebido_em)}${p.motorista ? ` · ${p.motorista}` : ''}` : (p.achado_no_spx ? (p.estacao ? `está em ${p.estacao}` : 'no SPX, sem recebimento') : 'não achado no SPX'),
     '', '')));
   if (itens.length > 300) {
     const mais = document.createElement('div');
