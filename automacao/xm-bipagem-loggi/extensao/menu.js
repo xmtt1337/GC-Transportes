@@ -497,7 +497,7 @@
       // ir para os Downloads e sem gastar visualização (o "olho"). Se falhar, a conferência vale.
       let resumo = r.resumo;
       let aviso = '';
-      const divergentes = [...(resumo.recebido_sem_at || []), ...(resumo.nao_recebido || [])].map((p) => p.codigo).slice(0, 500);
+      const divergentes = [...(resumo.recebido_sem_at || []), ...(resumo.nao_recebido || [])].map((p) => p.codigo).slice(0, 10000); // o export do SPX aceita até 10 mil BR de uma vez
       if (divergentes.length) {
         avisarShopee({ texto: `Pedindo ao SPX o comprador e o CEP das ${divergentes.length} divergência(s)...`, resumo });
         try {
