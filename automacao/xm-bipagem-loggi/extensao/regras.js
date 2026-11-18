@@ -150,6 +150,23 @@
       .filter((p) => p.codigo || p.id);
   }
 
+  /**
+   * Export de pedidos do SPX (export_return_order_*.csv) → por BR só comprador, CEP, motorista e
+   * sort code (o relatório de divergências). Telefone e endereço ficam de fora.
+   */
+  function pedidosDoExport(texto) {
+    const [cab = [], ...linhas] = lerCsv(texto);
+    const col = (nome) => cab.findIndex((c) => String(c).trim().toLowerCase() === nome);
+    const i = { codigo: col('order id'), comprador: col('buyer name'), zip: col('zipcode name'), postal: col('postal code'),
+      motorista: col('driver name'), sort: col('sort code name') };
+    if (i.codigo < 0) throw new Error('O export de pedidos do SPX veio sem a coluna Order ID.');
+    const valor = (l, k) => (i[k] < 0 ? '' : String(l[i[k]] || '').trim());
+    return linhas
+      .map((l) => ({ codigo: valor(l, 'codigo').toUpperCase(), comprador: valor(l, 'comprador'), cep: valor(l, 'zip') || valor(l, 'postal'),
+        motorista: valor(l, 'motorista'), sort_code: valor(l, 'sort') }))
+      .filter((p) => p.codigo);
+  }
+
   async function entrar(usuario, senha, buscar = fetch) {
     let corpo;
     try {
@@ -191,7 +208,7 @@
     return j;
   }
 
-  const publico = { BACKEND, ErroDeConta, chaveCidade, montarAlvo, conferirBipe, pendentes, precisaTravar, codigoDaLinha, lerCsv, linhasNaBase, entrar, api };
+  const publico = { BACKEND, ErroDeConta, chaveCidade, montarAlvo, conferirBipe, pendentes, precisaTravar, codigoDaLinha, lerCsv, linhasNaBase, pedidosDoExport, entrar, api };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMBipagem = publico;
 })();

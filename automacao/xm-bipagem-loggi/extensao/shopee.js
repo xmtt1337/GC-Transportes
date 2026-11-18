@@ -6,8 +6,10 @@
 //   2. lista de ATs criadas hoje (/spx_delivery/admin/assignment/assignment_task/search/v2,
 //      ctime = comeco e fim do dia em segundos), pagina por pagina.
 // Devolve so o que a conferencia usa: horarios, motorista, status e estacao de cada BR; e de
-// cada AT os BR dela, cidade, bairro, cluster, motorista e criacao. Nome, telefone e endereco
-// do destinatario nao saem desta pagina.
+// cada AT os BR dela, cidade, bairro, cluster, motorista e criacao.
+//   3. so dos BR com divergencia: o export de pedidos do SPX (o mesmo do botao Export), para o
+//      relatorio de divergencias. Daqui sai so o link do arquivo; quem le e o fundo.js, que tira
+//      dele so comprador, CEP, motorista e sort code. Telefone e endereco nao saem.
 //
 // x-sap-ri e x-sap-sec sao a protecao anti-robo do SPX: nao copiar nem gerar. O pedido sai pelo
 // XMLHttpRequest da propria pagina, com os cabecalhos que o proprio site usa (csrf etc.), lidos
@@ -23,6 +25,14 @@
   const MAX_PAGINAS = 200;
   const PAUSA_MS = 200; // entre paginas de AT
   const HEADERS_DO_SITE = ['x-csrftoken', 'device-id', 'app', 'version'];
+  // Export de pedidos (o mesmo do botão Export do Order Tracking): cria a tarefa, espera ficar
+  // pronta (export_status 2) e pega o link assinado do arquivo (vale 10 min).
+  const ROTA_EXPORT = '/api/admin/tracking/am_hub/return/export';
+  const ROTA_TAREFAS = '/spxdata/api/export_platform/export_task/list_for_portal';
+  const ROTA_LINK = '/spxdata/api/export_platform/export_task/get_signed_download_url';
+  const EXPORT_PRONTO = 2;
+  const ESPERA_EXPORT_MS = 3000;
+  const MAX_ESPERAS = 60; // ~3 min
 
   /** Comeco e fim do dia (AAAA-MM-DD) de Sao Paulo, em segundos. */
   function faixaDoDia(dia) {
@@ -100,8 +110,32 @@
     return saida;
   }
 
+  /**
+   * Export de pedidos só dos BR pedidos. chamar(metodo, rota, corpo) devolve o "data" da resposta.
+   * Devolve o link assinado do CSV. A tarefa aparece no Latest Task do SPX como qualquer export.
+   */
+  async function exportarPedidos(chamar, codigos, aviso = () => {}, dormir = dormirPadrao, agora = () => Date.now()) {
+    const criada = await chamar('POST', ROTA_EXPORT, { search_id_list: codigos, searched_tag: 1 });
+    const id = criada && criada.task_id;
+    if (!id) throw new Error('O SPX não criou o export de pedidos.');
+    const desde = Math.floor(agora() / 1000) - 3600;
+    for (let vez = 1; vez <= MAX_ESPERAS; vez += 1) {
+      await dormir(ESPERA_EXPORT_MS);
+      const data = await chamar('GET', `${ROTA_TAREFAS}?start_time=${desde}&task_ids=${id}`);
+      const tarefa = ((data && data.task_list) || []).find((t) => String(t.task_id) === String(id));
+      if (tarefa && tarefa.failed_reason) throw new Error(`O export do SPX falhou: ${tarefa.failed_reason}`);
+      if (tarefa && Number(tarefa.export_status) === EXPORT_PRONTO) {
+        const link = await chamar('GET', `${ROTA_LINK}?source=fms&task_id=${id}`);
+        if (!link || !link.download_url) throw new Error('O SPX não deu o link do export.');
+        return link.download_url;
+      }
+      aviso(vez);
+    }
+    throw new Error('O export de pedidos do SPX demorou demais.');
+  }
+
   if (typeof module !== 'undefined') {
-    module.exports = { faixaDoDia, enxugarRastreio, enxugarAt, rastrear, listarAts, hojeSP, HEADERS_DO_SITE };
+    module.exports = { faixaDoDia, enxugarRastreio, enxugarAt, rastrear, listarAts, exportarPedidos, hojeSP, HEADERS_DO_SITE };
     return;
   }
 
@@ -113,11 +147,11 @@
     return original.apply(this, arguments);
   };
 
-  const post = (rota, corpo) => new Promise((resolve, reject) => {
+  const chamar = (metodo, rota, corpo) => new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', rota);
+    xhr.open(metodo, rota);
     xhr.setRequestHeader('Accept', 'application/json, text/plain, */*');
-    xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+    if (corpo !== undefined) xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
     Object.entries(headers).forEach(([n, v]) => xhr.setRequestHeader(n, v));
     xhr.onload = () => {
       let j = null;
@@ -127,10 +161,24 @@
       resolve(j.data);
     };
     xhr.onerror = () => reject(new Error('A Shopee não respondeu.'));
-    xhr.send(JSON.stringify(corpo));
+    xhr.send(corpo === undefined ? null : JSON.stringify(corpo));
   });
+  const post = (rota, corpo) => chamar('POST', rota, corpo);
 
   const responder = (dados) => window.postMessage({ xmOperacao: 'shopeeResposta', ...dados }, window.location.origin);
+
+  // Export de pedidos dos BR com divergência (comprador e CEP para o relatório).
+  window.addEventListener('message', async (e) => {
+    if (e.source !== window || !e.data || e.data.xmOperacao !== 'shopeeExportar') return;
+    const { id } = e.data;
+    const codigos = Array.isArray(e.data.codigos) ? e.data.codigos : [];
+    try {
+      const url = await exportarPedidos(chamar, codigos, (vez) => responder({ id, andamento: `Esperando o export de pedidos do SPX (${vez * 3} s)...` }));
+      responder({ id, fim: true, url });
+    } catch (err) {
+      responder({ id, fim: true, erro: err.message });
+    }
+  });
 
   window.addEventListener('message', async (e) => {
     if (e.source !== window || !e.data || e.data.xmOperacao !== 'shopeeBuscar') return;

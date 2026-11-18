@@ -98,6 +98,19 @@ async function chamarSistema(metodo, caminho, corpo) {
     throw e;
   }
 }
+// Export de pedidos do SPX: o link assinado aponta para o servidor de arquivos da Shopee
+// (*.susercontent.com). Só esse endereço é aceito; o arquivo é lido aqui e não vai para os Downloads.
+// Do arquivo só sai, por BR, comprador, CEP, motorista e sort code (regras.js pedidosDoExport).
+async function lerExportPedidos(url, polo) {
+  let destino;
+  try { destino = new URL(url); } catch { throw new Error('Link do export inválido.'); }
+  if (destino.protocol !== 'https:' || !/\.susercontent\.com$/.test(destino.hostname)) throw new Error('Link do export fora da Shopee.');
+  const r = await fetch(destino.href);
+  if (!r.ok) throw new Error(`Não deu para baixar o export do SPX (HTTP ${r.status}).`);
+  const pedidos = R.pedidosDoExport(await r.text());
+  return chamarSistema('POST', comPolo('/macros/shopee-conferencia/pedidos', polo), { pedidos });
+}
+
 const comPolo = (caminho, polo) => (polo ? `${caminho}?polo=${encodeURIComponent(polo)}` : caminho);
 
 chrome.runtime.onMessage.addListener((pedido, _quem, responder) => {
@@ -109,6 +122,12 @@ chrome.runtime.onMessage.addListener((pedido, _quem, responder) => {
   }
   if (pedido && pedido.tipo === 'shopeeLeitura' && Array.isArray(pedido.rastreio) && Array.isArray(pedido.ats)) {
     chamarSistema('POST', comPolo('/macros/shopee-conferencia/leitura', pedido.polo), { rastreio: pedido.rastreio, ats: pedido.ats })
+      .then((resumo) => responder({ resumo }))
+      .catch((e) => responder({ erro: e.message || 'Não deu certo.' }));
+    return true;
+  }
+  if (pedido && pedido.tipo === 'shopeePedidos') {
+    lerExportPedidos(String(pedido.url || ''), pedido.polo)
       .then((resumo) => responder({ resumo }))
       .catch((e) => responder({ erro: e.message || 'Não deu certo.' }));
     return true;

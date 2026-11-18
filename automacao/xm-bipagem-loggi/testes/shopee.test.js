@@ -76,3 +76,26 @@ test('listarAts le todas as paginas do dia', async () => {
   assert.strictEqual(r.length, 120);
   assert.deepStrictEqual(paginas, [1, 2, 3]);
 });
+
+test('exportarPedidos: cria o export, espera export_status 2 e devolve o link', async () => {
+  const { exportarPedidos } = require('../extensao/shopee.js');
+  const chamadas = [];
+  let vezes = 0;
+  const chamar = async (metodo, rota, corpo) => {
+    chamadas.push([metodo, rota.split('?')[0], corpo]);
+    if (rota.endsWith('/return/export')) return { task_id: 123 };
+    if (rota.includes('list_for_portal')) { vezes += 1; return { task_list: [{ task_id: 123, export_status: vezes < 2 ? 0 : 2, failed_reason: '' }] }; }
+    if (rota.includes('get_signed_download_url')) return { download_url: 'https://teste.susercontent.com/arquivo' };
+    throw new Error('rota inesperada ' + rota);
+  };
+  const url = await exportarPedidos(chamar, ['BRTESTE1'], () => {}, async () => {}, () => 1795000000000);
+  assert.strictEqual(url, 'https://teste.susercontent.com/arquivo');
+  assert.deepStrictEqual(chamadas[0], ['POST', '/api/admin/tracking/am_hub/return/export', { search_id_list: ['BRTESTE1'], searched_tag: 1 }]);
+  assert.strictEqual(vezes, 2);
+});
+
+test('exportarPedidos: falha do SPX vira erro', async () => {
+  const { exportarPedidos } = require('../extensao/shopee.js');
+  const chamar = async (metodo, rota) => (rota.endsWith('/return/export') ? { task_id: 9 } : { task_list: [{ task_id: 9, export_status: 3, failed_reason: 'sem dados' }] });
+  await assert.rejects(exportarPedidos(chamar, ['BRTESTE1'], () => {}, async () => {}), /sem dados/);
+});

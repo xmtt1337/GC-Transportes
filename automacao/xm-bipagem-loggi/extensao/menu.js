@@ -461,6 +461,21 @@
   const avisarShopee = (dados) => avisarPainel({ ...dados, shopee: true });
   let buscandoShopee = false;
 
+  /** Pede ao shopee.js (mundo da página) e espera a resposta final; o andamento vai ao painel. */
+  function pedirAoSpx(tipo, dados) {
+    return new Promise((resolve, reject) => {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const ouvir = (e) => {
+        if (e.source !== window || !e.data || e.data.xmOperacao !== 'shopeeResposta' || e.data.id !== id) return;
+        if (!e.data.fim) { avisarShopee({ texto: String(e.data.andamento || '') }); return; }
+        window.removeEventListener('message', ouvir);
+        if (e.data.erro) reject(new Error(e.data.erro)); else resolve(e.data);
+      };
+      window.addEventListener('message', ouvir);
+      window.postMessage({ xmOperacao: tipo, id, ...dados }, location.origin);
+    });
+  }
+
   async function conferirShopee(polo) {
     if (location.hostname !== SPX) {
       avisarShopee({ texto: 'Abra o SPX (spx.shopee.com.br) e clique em Conferir agora lá.', erro: true, fim: true });
@@ -473,21 +488,28 @@
       const rom = await chrome.runtime.sendMessage({ tipo: 'shopeeRomaneio', polo });
       if (!rom || rom.erro) throw new Error((rom && rom.erro) || 'Não deu para ler o romaneio.');
       if (!rom.codigos.length) throw new Error('Nenhum BR no romaneio de hoje deste polo. Alimente o Romaneiro no sistema primeiro.');
-      const resultado = await new Promise((resolve, reject) => {
-        const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        const ouvir = (e) => {
-          if (e.source !== window || !e.data || e.data.xmOperacao !== 'shopeeResposta' || e.data.id !== id) return;
-          if (!e.data.fim) { avisarShopee({ texto: String(e.data.andamento || '') }); return; }
-          window.removeEventListener('message', ouvir);
-          if (e.data.erro) reject(new Error(e.data.erro)); else resolve(e.data);
-        };
-        window.addEventListener('message', ouvir);
-        window.postMessage({ xmOperacao: 'shopeeBuscar', id, codigos: rom.consultar || rom.codigos }, location.origin);
-      });
+      const resultado = await pedirAoSpx('shopeeBuscar', { codigos: rom.consultar || rom.codigos });
       avisarShopee({ texto: `Mandando ao sistema (${resultado.rastreio.length} BR, ${resultado.ats.length} ATs)...` });
       const r = await chrome.runtime.sendMessage({ tipo: 'shopeeLeitura', polo, rastreio: resultado.rastreio, ats: resultado.ats });
       if (!r || r.erro) throw new Error((r && r.erro) || 'Não deu certo.');
-      avisarShopee({ texto: '', fim: true, resumo: r.resumo });
+      // Relatório de divergências: comprador e CEP saem do export de pedidos do SPX (o mesmo do
+      // botão Export do Order Tracking), pedido só dos BR com divergência e lido por dentro, sem
+      // ir para os Downloads e sem gastar visualização (o "olho"). Se falhar, a conferência vale.
+      let resumo = r.resumo;
+      let aviso = '';
+      const divergentes = [...(resumo.recebido_sem_at || []), ...(resumo.nao_recebido || [])].map((p) => p.codigo).slice(0, 500);
+      if (divergentes.length) {
+        avisarShopee({ texto: `Pedindo ao SPX o comprador e o CEP das ${divergentes.length} divergência(s)...`, resumo });
+        try {
+          const exp = await pedirAoSpx('shopeeExportar', { codigos: divergentes });
+          const p = await chrome.runtime.sendMessage({ tipo: 'shopeePedidos', polo, url: exp.url });
+          if (!p || p.erro) throw new Error((p && p.erro) || 'Não deu certo.');
+          resumo = p.resumo;
+        } catch (err) {
+          aviso = `Conferência pronta, mas o relatório ficou sem comprador e CEP: ${err.message}`;
+        }
+      }
+      avisarShopee({ texto: aviso, erro: !!aviso, fim: true, resumo });
     } catch (err) {
       avisarShopee({ texto: /context invalidated/i.test(err.message) ? 'A extensão foi atualizada. Aperte F5 nesta página.' : err.message, erro: true, fim: true });
     } finally {

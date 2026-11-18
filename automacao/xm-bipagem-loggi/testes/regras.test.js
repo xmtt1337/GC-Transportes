@@ -129,7 +129,7 @@ test('menu nao sai da tela', () => {
 
 test('manifest: so Loggi, portal da Anjun, SPX e o sistema, com id liberado no backend', () => {
   const m = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extensao', 'manifest.json'), 'utf8'));
-  assert.deepStrictEqual(m.host_permissions, ['https://*.loggi.com/*', 'https://newsupplier.anjunexpress.com/*', 'https://spx.shopee.com.br/*', 'https://sistema-backend-i4uh.onrender.com/*']);
+  assert.deepStrictEqual(m.host_permissions, ['https://*.loggi.com/*', 'https://newsupplier.anjunexpress.com/*', 'https://spx.shopee.com.br/*', 'https://*.susercontent.com/*', 'https://sistema-backend-i4uh.onrender.com/*']);
   const hash = require('node:crypto').createHash('sha256').update(Buffer.from(m.key, 'base64')).digest('hex').slice(0, 32);
   const id = [...hash].map((c) => String.fromCharCode(97 + parseInt(c, 16))).join('');
   assert.strictEqual(id, 'ogpbfjkhogaonkoahbdgjkhbancgpgbh');
@@ -174,3 +174,14 @@ test('linhasNaBase recusa arquivo sem as colunas', () => {
   assert.throws(() => R.linhasNaBase('Status,Código de barras\n1,2'), /Chegou em/);
 });
 
+
+test('pedidosDoExport: só comprador, CEP, motorista e sort code; telefone e endereço ficam de fora', () => {
+  const csv = '﻿Order ID,SLS Tracking Number,Sort Code Name,Zipcode Name,Buyer Name,Buyer Phone,Buyer Address,Postal Code,Driver Name\r\n'
+    + 'brteste1,X,,89000000,"Pessoa, Teste",5500000000,Rua Teste 1,89000-000,Motorista Teste\r\n'
+    + 'BRTESTE2,X,CA-1,,Outra Pessoa,,,"89000-001",\r\n';
+  assert.deepStrictEqual(R.pedidosDoExport(csv), [
+    { codigo: 'BRTESTE1', comprador: 'Pessoa, Teste', cep: '89000000', motorista: 'Motorista Teste', sort_code: '' },
+    { codigo: 'BRTESTE2', comprador: 'Outra Pessoa', cep: '89000-001', motorista: '', sort_code: 'CA-1' },
+  ]);
+  assert.throws(() => R.pedidosDoExport('a,b\r\n1,2'), /Order ID/);
+});
