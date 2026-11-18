@@ -601,7 +601,7 @@ function mostrarAgrupamento(r) {
 $('ag-copiar').addEventListener('click', () => {
   const codigos = pendentesAg.map((p) => p.codigo || p.id);
   if (!codigos.length) return agrupamento('Nada para copiar.');
-  navigator.clipboard.writeText(codigos.join('\n'))
+  copiarTexto(codigos.join('\n'))
     .then(() => agrupamento(`${numero(codigos.length)} código(s) copiado(s).`))
     .catch(() => agrupamento('Não deu para copiar.', true));
 });
@@ -807,7 +807,7 @@ function mostrarAnjun(r) {
 $('an-copiar').addEventListener('click', () => {
   const codigos = pendentesAnjun.map((p) => p.waybill);
   if (!codigos.length) return statusAnjun('Nada para copiar.');
-  navigator.clipboard.writeText(codigos.join('\n'))
+  copiarTexto(codigos.join('\n'))
     .then(() => statusAnjun(`${numero(codigos.length)} waybill(s) copiado(s).`))
     .catch(() => statusAnjun('Não deu para copiar.', true));
 });
@@ -993,7 +993,7 @@ $('sh-copiar').addEventListener('click', () => {
   const r = dadosShopee || {};
   const codigos = ((listaShopee === 'sem_at' ? r.recebido_sem_at : r.nao_recebido) || []).map((p) => p.codigo);
   if (!codigos.length) return statusShopee('Nada para copiar.');
-  navigator.clipboard.writeText(codigos.join('\n'))
+  copiarTexto(codigos.join('\n'))
     .then(() => statusShopee(`${numero(codigos.length)} BR copiado(s).`))
     .catch(() => statusShopee('Não deu para copiar.', true));
 });
@@ -1008,6 +1008,27 @@ async function carregarShopee() {
   } catch (e) {
     if (!(e instanceof R.ErroDeConta)) statusShopee(e.message, true);
   }
+}
+
+/**
+ * Copia para a area de transferencia. O painel roda num quadro dentro do site da transportadora:
+ * o clipboard moderno pode ser barrado ali, entao cai no jeito antigo (textarea + copy).
+ */
+async function copiarTexto(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    return;
+  } catch { /* tenta o jeito antigo */ }
+  const campo = document.createElement('textarea');
+  campo.value = texto;
+  campo.setAttribute('readonly', '');
+  campo.style.position = 'fixed';
+  campo.style.opacity = '0';
+  document.body.append(campo);
+  campo.select();
+  const ok = document.execCommand('copy');
+  campo.remove();
+  if (!ok) throw new Error('nao copiou');
 }
 
 async function comecar() {
