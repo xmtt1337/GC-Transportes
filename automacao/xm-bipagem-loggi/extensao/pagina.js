@@ -1020,7 +1020,9 @@ $('sh-baixar').addEventListener('click', () => {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  statusShopee(`Relatório com ${numero(r.divergencias)} divergência(s) baixado.`);
+  const c = r.completado;
+  statusShopee(`Relatório com ${numero(r.divergencias)} divergência(s) baixado.`
+    + (c ? ` Nos Pedidos pesquisados: ${numero(c.nos_pedidos)} de ${numero(c.itens)} · com bairro: ${numero(c.com_bairro)} · com cluster: ${numero(c.com_cluster)}.` : ''));
 });
 
 $('sh-copiar').addEventListener('click', () => {
