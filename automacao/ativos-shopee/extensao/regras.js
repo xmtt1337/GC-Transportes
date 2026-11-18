@@ -53,14 +53,15 @@
   }
 
   /**
-   * Export de pedidos do SPX (export_return_order_*.csv) -> por BR so nome e telefone do
-   * destinatario. Endereco e o resto do arquivo nao saem daqui.
+   * Export de pedidos do SPX (export_return_order_*.csv) -> por BR o nome do destinatario.
+   * A coluna Buyer Phone vem SEMPRE vazia (conferido em 58 exports, 18/11/2026): o telefone so
+   * sai pelo "olho" (spx.js buscarTelefone), na hora do disparo.
    */
   function contatosDoExport(texto) {
     const [cab = [], ...linhas] = lerCsv(texto);
     const col = (nome) => cab.findIndex((c) => String(c).trim().toLowerCase() === nome);
     const i = { codigo: col('order id'), nome: col('buyer name'), telefone: col('buyer phone') };
-    if (i.codigo < 0 || i.telefone < 0) throw new Error('O export de pedidos do SPX veio sem as colunas Order ID e Buyer Phone.');
+    if (i.codigo < 0) throw new Error('O export de pedidos do SPX veio sem a coluna Order ID.');
     const valor = (l, k) => (i[k] < 0 ? '' : String(l[i[k]] || '').trim());
     return linhas
       .map((l) => ({ codigo: valor(l, 'codigo').toUpperCase(), nome: nomeLimpo(valor(l, 'nome')), telefone: valor(l, 'telefone') }))

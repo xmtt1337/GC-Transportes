@@ -3,7 +3,7 @@
 // - O token do sistema mora em storage.session, que a pagina do SPX nao alcanca. A senha nunca
 //   e guardada.
 // - O CSV do export do SPX e baixado e lido aqui (o link assinado aponta para *.susercontent.com).
-//   Dele so sai, por BR, nome e telefone do destinatario. Nada vai para a pasta Downloads.
+//   Dele so sai, por BR, o nome do destinatario. Nada vai para a pasta Downloads.
 // - O disparo vai ao sistema (/macros/whatsapp/enviar), que manda pelo WABA e grava a conversa:
 //   ela aparece no sistema como qualquer ativo.
 

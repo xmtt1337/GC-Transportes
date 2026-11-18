@@ -7,11 +7,13 @@ Nao tem botao nem janelinha: aparece no menu lateral do SPX, no grupo "Ativos Sh
 Como usar
 1. No SPX, menu lateral > Ativos Shopee > Disparar ativos.
 2. Entre com o usuario e a senha do sistema (so SAC, admin e dev disparam ativos).
-3. Cole os SPX Tracking Number (BR...) e clique em "Buscar nome e telefone".
-   A extensao pede ao SPX o export de pedidos desses BR (aparece no Latest Task), le nome e
-   telefone por dentro (nada vai para a pasta Downloads, e nao gasta o "olho") e mostra quem
+3. Cole os SPX Tracking Number (BR...) e clique em "Buscar pedidos".
+   A extensao pede ao SPX o export de pedidos desses BR (aparece no Latest Task), le o nome
+   por dentro (nada vai para a pasta Downloads) e mostra quem
    ja recebeu ativo pelo sistema.
-4. Confira a lista e clique em "Disparar". Cada envio vai pelo sistema e a conversa aparece
+4. Confira a lista e clique em "Disparar". O telefone de cada pedido marcado e buscado no
+   olho do SPX na hora (1 visualizacao por pedido; o export nao traz telefone). Cada envio vai
+   pelo sistema e a conversa aparece
    em Ativos > Conversas, como qualquer disparo.
 
 Instalar

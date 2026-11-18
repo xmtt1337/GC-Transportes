@@ -4,7 +4,16 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 const R = require('../extensao/regras.js');
-const { exportarPedidos } = require('../extensao/spx.js');
+const { exportarPedidos, buscarTelefone } = require('../extensao/spx.js');
+
+test('buscarTelefone: o olho do telefone, outra estação e recusa', async () => {
+  const urls = [];
+  const get = async (u) => { urls.push(u); return { retcode: 0, data: { data_detail: '49912345678' } }; };
+  assert.deepStrictEqual(await buscarTelefone(get, 'BRTESTE00001'), { outraEstacao: false, telefone: '49912345678' });
+  assert.strictEqual(urls[0], '/api/fleet_order/order/detail/show_sensitive_data?shipment_id=BRTESTE00001&data_field=buyer_contact');
+  assert.deepStrictEqual(await buscarTelefone(async () => ({ retcode: 200301007 }), 'BR1'), { outraEstacao: true, telefone: '' });
+  await assert.rejects(buscarTelefone(async () => ({ retcode: 5, message: 'limite' }), 'BR1'), /recusou o telefone.*limite/);
+});
 
 test('lerCodigos: BR em linhas, espaços ou vírgulas, sem repetir e em maiúsculas', () => {
   assert.deepStrictEqual(R.lerCodigos('BRTESTE00001\nbrteste00002, BRTESTE00001;BRTESTE0000X  lixo 123'), ['BRTESTE00001', 'BRTESTE00002', 'BRTESTE0000X']);
@@ -19,7 +28,9 @@ test('contatosDoExport: só código, nome (sem o "_" do fim) e telefone', () => 
     { codigo: 'BRTESTE00001', nome: 'Pessoa Teste', telefone: '5549900000000' },
     { codigo: 'BRTESTE00002', nome: 'Outra, Pessoa', telefone: '' },
   ]);
-  assert.throws(() => R.contatosDoExport('Order ID,Buyer Name\r\nBR1,A'), /Buyer Phone/);
+  // o export real vem sem telefone: tudo bem, ele sai pelo olho
+  assert.deepStrictEqual(R.contatosDoExport('Order ID,Buyer Name\r\nbr1,A_\r\n'), [{ codigo: 'BR1', nome: 'A', telefone: '' }]);
+  assert.throws(() => R.contatosDoExport('Buyer Name\r\nA'), /Order ID/);
 });
 
 test('validarTelefone: mesma regra do sistema', () => {

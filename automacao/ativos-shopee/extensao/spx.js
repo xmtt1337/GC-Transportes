@@ -4,8 +4,9 @@
 //   1. POST /api/admin/tracking/am_hub/return/export {search_id_list, searched_tag: 1} -> task_id;
 //   2. GET  /spxdata/api/export_platform/export_task/list_for_portal ate export_status 2 (pronto);
 //   3. GET  /spxdata/api/export_platform/export_task/get_signed_download_url -> link do CSV (10 min).
-// Daqui so sai o link; quem baixa e le o arquivo e o fundo.js. O export traz nome e telefone
-// abertos, sem gastar a visualizacao do "olho". A tarefa aparece no Latest Task do SPX.
+// Daqui so sai o link; quem baixa e le o arquivo e o fundo.js. O export traz o NOME aberto (sem
+// gastar o "olho"), mas o telefone vem sempre vazio: ele sai pelo olho (buscarTelefone), um pedido
+// por vez, so dos que vao receber o ativo. A tarefa do export aparece no Latest Task do SPX.
 //
 // x-sap-ri e x-sap-sec sao a protecao anti-robo do SPX: nao copiar nem gerar. O pedido sai pelo
 // XMLHttpRequest da propria pagina, com os cabecalhos que o proprio site usa (csrf etc.), lidos
@@ -20,7 +21,20 @@
   const ESPERA_MS = 3000;
   const MAX_ESPERAS = 60; // ~3 min
 
+  // O "olho" do telefone (o mesmo da tela de detalhe e do consultador de telefone). Cada chamada
+  // gasta 1 visualizacao da conta no SPX: so e chamado para o pedido que vai receber o ativo.
+  const ROTA_OLHO = '/api/fleet_order/order/detail/show_sensitive_data';
+  const PEDIDO_DE_OUTRA_ESTACAO = 200301007;
+
   const dormirPadrao = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  /** Telefone do destinatario pelo olho. get(url) devolve a resposta inteira (com retcode). */
+  async function buscarTelefone(get, codigo) {
+    const r = await get(`${ROTA_OLHO}?shipment_id=${encodeURIComponent(codigo)}&data_field=buyer_contact`);
+    if (r.retcode === PEDIDO_DE_OUTRA_ESTACAO) return { outraEstacao: true, telefone: '' };
+    if (r.retcode !== 0) throw new Error(`A Shopee recusou o telefone (retcode ${r.retcode}): ${r.message || 'sem mensagem'}`);
+    return { outraEstacao: false, telefone: String((r.data && r.data.data_detail) || '') };
+  }
 
   /**
    * Export de pedidos dos BR pedidos. chamar(metodo, rota, corpo) devolve o "data" da resposta.
@@ -47,7 +61,7 @@
   }
 
   if (typeof module !== 'undefined') {
-    module.exports = { exportarPedidos, HEADERS_DO_SITE };
+    module.exports = { exportarPedidos, buscarTelefone, HEADERS_DO_SITE };
     return;
   }
 
@@ -76,7 +90,37 @@
     xhr.send(corpo === undefined ? null : JSON.stringify(corpo));
   });
 
+  // GET que devolve a resposta inteira (o olho responde retcode proprio para outra estacao).
+  const getBruto = (url) => new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url);
+    xhr.setRequestHeader('Accept', 'application/json, text/plain, */*');
+    Object.entries(headers).forEach(([n, v]) => xhr.setRequestHeader(n, v));
+    xhr.onload = () => {
+      let j = null;
+      try { j = JSON.parse(xhr.responseText); } catch { /* tratado abaixo */ }
+      if (xhr.status !== 200 || !j) return reject(new Error(`A Shopee recusou (HTTP ${xhr.status}). Dê F5 no SPX e tente de novo.`));
+      resolve(j);
+    };
+    xhr.onerror = () => reject(new Error('A Shopee não respondeu.'));
+    xhr.send();
+  });
+
   const responder = (dados) => window.postMessage({ xmAtivos: 'resposta', ...dados }, window.location.origin);
+
+  window.addEventListener('message', async (e) => {
+    if (e.source !== window || !e.data || e.data.xmAtivos !== 'telefone') return;
+    const { id } = e.data;
+    if (!headers['x-csrftoken']) {
+      responder({ id, fim: true, erro: 'O SPX ainda não fez nenhuma busca nesta aba. Dê F5 no SPX e tente de novo.' });
+      return;
+    }
+    try {
+      responder({ id, fim: true, ...(await buscarTelefone(getBruto, String(e.data.codigo || ''))) });
+    } catch (err) {
+      responder({ id, fim: true, erro: err.message });
+    }
+  });
 
   window.addEventListener('message', async (e) => {
     if (e.source !== window || !e.data || e.data.xmAtivos !== 'exportar') return;

@@ -21,6 +21,7 @@
   const LARANJA = 'rgb(238, 77, 45)';
   const FUNDO_ABERTO = 'rgb(14, 23, 35)';
   const PAUSA_ENVIO_MS = 500; // igual ao disparo em massa do sistema
+  const RITMO_OLHO_MS = 1500; // olho do telefone: o mesmo ritmo do consultador de telefone
 
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const numero = (n) => Number(n || 0).toLocaleString('pt-BR');
@@ -290,17 +291,18 @@
     });
   }
 
-  function pedirExport(codigos, aviso) {
+  /** Pede ao spx.js (mundo da pagina) e espera a resposta final; o andamento vai para aviso. */
+  function pedirAoSpx(tipo, dados, aviso = () => {}) {
     return new Promise((resolve, reject) => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const ouvir = (e) => {
         if (e.source !== window || !e.data || e.data.xmAtivos !== 'resposta' || e.data.id !== id) return;
         if (!e.data.fim) { aviso(String(e.data.andamento || '')); return; }
         window.removeEventListener('message', ouvir);
-        if (e.data.erro) reject(new Error(e.data.erro)); else resolve(e.data.url);
+        if (e.data.erro) reject(new Error(e.data.erro)); else resolve(e.data);
       };
       window.addEventListener('message', ouvir);
-      window.postMessage({ xmAtivos: 'exportar', id, codigos }, location.origin);
+      window.postMessage({ xmAtivos: tipo, id, ...dados }, location.origin);
     });
   }
 
@@ -327,7 +329,7 @@
           <label class="xm-rotulo" for="xm-codigos">SPX Tracking Number (um por linha, ou separados por espaço)</label>
           <textarea class="xm-area" id="xm-codigos" placeholder="BR..."></textarea>
           <div class="xm-acoes">
-            <button class="xm-btn xm-btn-primario" id="xm-buscar" type="button">Buscar nome e telefone</button>
+            <button class="xm-btn xm-btn-primario" id="xm-buscar" type="button">Buscar pedidos</button>
             <button class="xm-btn" id="xm-limpar" type="button">Redefinir</button>
           </div>
         </div>
@@ -410,14 +412,17 @@
   }
 
   // ── linhas da tabela ──────────────────────────────────────────────────────────
-  const podeMarcar = (l) => l.envio && !l.envio.erro && l.situacao_envio !== 'enviado';
+  // O telefone so vem pelo olho, na hora do disparo (o export traz so o nome). Ate la, o pedido
+  // com nome esta "pronto"; depois do olho, o envio pode falhar por telefone vazio ou invalido.
+  const podeMarcar = (l) => l.achado && !!l.nome && l.situacao_envio !== 'enviado';
 
   function situacaoTexto(l) {
+    if (l.situacao_envio === 'olho') return ['Buscando telefone...', 'pronto'];
     if (l.situacao_envio === 'enviando') return ['Enviando...', 'pronto'];
     if (l.situacao_envio === 'enviado') return ['Enviado', 'ok'];
     if (l.situacao_envio === 'erro') return [`Não enviou: ${l.erro}`, 'erro'];
     if (!l.achado) return ['Não achado no SPX', 'erro'];
-    if (l.envio.erro) return [l.envio.erro, 'erro'];
+    if (!l.nome) return ['Sem nome no SPX', 'erro'];
     if (l.ativo) {
       const quando = l.ativo.enviado_em ? new Date(l.ativo.enviado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
       const resposta = l.ativo.estado === 'recebeu' ? ' · respondeu: recebeu' : l.ativo.estado === 'nao_recebeu' ? ' · respondeu: não recebeu' : ' · sem resposta';
@@ -430,10 +435,10 @@
     const ls = estado.linhas;
     const prontos = ls.filter((l) => podeMarcar(l)).length;
     const marcados = ls.filter((l) => l.marcado && podeMarcar(l)).length;
-    const semContato = ls.filter((l) => !l.achado || (l.envio && l.envio.erro)).length;
+    const semNome = ls.filter((l) => !l.achado || !l.nome).length;
     const jaTem = ls.filter((l) => l.ativo).length;
     const enviados = ls.filter((l) => l.situacao_envio === 'enviado').length;
-    $('contas').innerHTML = `<b>${numero(ls.length)}</b> pedido(s) · ${numero(prontos)} com nome e telefone · ${numero(semContato)} sem contato`
+    $('contas').innerHTML = `<b>${numero(ls.length)}</b> pedido(s) · ${numero(prontos)} com nome · ${numero(semNome)} sem nome ou não achado`
       + ` · ${numero(jaTem)} já receberam ativo${enviados ? ` · <b>${numero(enviados)}</b> enviado(s) agora` : ''}`;
     const btn = $('disparar');
     btn.textContent = `Disparar ${numero(marcados)} ativo(s)`;
@@ -442,19 +447,19 @@
     todos.checked = prontos > 0 && marcados === prontos;
     todos.disabled = estado.ocupado;
     const primeiro = ls.find((l) => l.marcado && podeMarcar(l)) || ls.find((l) => podeMarcar(l));
-    $('previa').textContent = primeiro ? primeiro.envio.corpo.texto : 'Nenhum pedido com nome e telefone.';
+    $('previa').textContent = primeiro ? R.montarTexto(primeiro.nome, primeiro.codigo) : 'Nenhum pedido com nome.';
   }
 
   function desenhar() {
     $('resultado').hidden = !estado.linhas.length;
     $('linhas').innerHTML = estado.linhas.map((l) => {
       const [txt, tipo] = situacaoTexto(l);
-      const tel = l.envio && l.envio.corpo ? R.telefoneLegivel(l.envio.corpo.numero) : (l.telefone || '—');
+      const tel = l.e164 ? R.telefoneLegivel(l.e164) : (l.telefone || (podeMarcar(l) ? 'busca ao disparar' : '—'));
       return `<tr>
         <td><input type="checkbox" data-cod="${esc(l.codigo)}" ${l.marcado ? 'checked' : ''} ${podeMarcar(l) && !estado.ocupado ? '' : 'disabled'}></td>
         <td class="xm-cod">${esc(l.codigo)}</td>
         <td>${esc(l.nome || '—')}</td>
-        <td style="white-space:nowrap">${esc(tel)}</td>
+        <td style="white-space:nowrap;${l.e164 ? '' : 'color:#999'}">${esc(tel)}</td>
         <td><span class="xm-tag xm-tag-${tipo}">${esc(txt)}</span></td>
       </tr>`;
     }).join('');
@@ -471,22 +476,22 @@
     $('buscar').disabled = true;
     try {
       status(`Pedindo ao SPX o export de pedidos (${numero(codigos.length)} BR)...`);
-      const url = await pedirExport(codigos, status);
-      status('Lendo nome e telefone...');
+      const { url } = await pedirAoSpx('exportar', { codigos }, status);
+      status('Lendo os nomes...');
       const { contatos } = await pedirAoFundo('contatos', { url });
       status('Vendo no sistema quem já recebeu ativo...');
       const { estados } = await pedirAoFundo('situacao', { pedidos: codigos });
       const deCodigo = new Map(contatos.map((c) => [c.codigo, c]));
       estado.linhas = codigos.map((codigo) => {
         const c = deCodigo.get(codigo);
-        const envio = c ? R.montarEnvio(c) : null;
         const ativo = (estados || {})[codigo] || null;
-        const l = { codigo, achado: !!c, nome: c ? c.nome : '', telefone: c ? c.telefone : '', envio, ativo, marcado: false };
+        const l = { codigo, achado: !!c, nome: c ? c.nome : '', telefone: '', e164: '', ativo, marcado: false };
         l.marcado = podeMarcar(l) && !ativo; // quem já recebeu ativo fica desmarcado
         return l;
       });
       const faltam = estado.linhas.filter((l) => !l.achado).length;
-      status(faltam ? `${numero(faltam)} BR não vieram no export do SPX (de outra estação ou código errado).` : '');
+      status((faltam ? `${numero(faltam)} BR não vieram no export do SPX (de outra estação ou código errado). ` : '')
+        + 'O telefone é buscado no olho do SPX só na hora do disparo, 1 visualização por pedido marcado.');
     } catch (e) {
       erroDeConta(e);
     } finally {
@@ -500,18 +505,32 @@
     if (estado.ocupado) return;
     const fila = estado.linhas.filter((l) => l.marcado && podeMarcar(l));
     if (!fila.length) return;
-    if (!window.confirm(`Disparar ${numero(fila.length)} ativo(s) pelo WhatsApp da GC?`)) return;
+    if (!window.confirm(`Disparar ${numero(fila.length)} ativo(s) pelo WhatsApp da GC?\n\nO telefone de cada um é buscado no olho do SPX (1 visualização por pedido).`)) return;
     estado.ocupado = true;
     let ok = 0;
     let falha = 0;
+    let ultimoOlho = 0;
     try {
       for (let i = 0; i < fila.length; i += 1) {
         const l = fila[i];
-        status(`Enviando ${numero(i + 1)} de ${numero(fila.length)}... (${numero(ok)} ok, ${numero(falha)} falha(s))`);
-        l.situacao_envio = 'enviando';
-        desenhar();
+        status(`Pedido ${numero(i + 1)} de ${numero(fila.length)}... (${numero(ok)} enviado(s), ${numero(falha)} falha(s))`);
         try {
-          await pedirAoFundo('enviar', { corpo: l.envio.corpo });
+          if (!l.e164) {
+            const espera = RITMO_OLHO_MS - (Date.now() - ultimoOlho);
+            if (espera > 0) await dormir(espera);
+            l.situacao_envio = 'olho';
+            desenhar();
+            ultimoOlho = Date.now();
+            const olho = await pedirAoSpx('telefone', { codigo: l.codigo });
+            if (olho.outraEstacao) throw new Error('não é desta estação no SPX');
+            l.telefone = olho.telefone;
+          }
+          const envio = R.montarEnvio({ codigo: l.codigo, nome: l.nome, telefone: l.telefone });
+          if (envio.erro) throw new Error(envio.erro);
+          l.e164 = envio.corpo.numero;
+          l.situacao_envio = 'enviando';
+          desenhar();
+          await pedirAoFundo('enviar', { corpo: envio.corpo });
           l.situacao_envio = 'enviado';
           l.marcado = false;
           ok += 1;
@@ -520,11 +539,15 @@
           l.erro = e.message;
           falha += 1;
           if (e.conta) { erroDeConta(e); break; }
+          // A Shopee recusou o olho (limite de visualização, sessão): parar, não insistir.
+          if (/A Shopee recusou|não respondeu|F5/.test(e.message)) { status(e.message, true); break; }
         }
         desenhar();
         if (i < fila.length - 1) await dormir(PAUSA_ENVIO_MS);
       }
-      status(`Concluído: ${numero(ok)} enviado(s), ${numero(falha)} falha(s).`, falha > 0 && ok === 0);
+      if (!/A Shopee recusou|não respondeu|F5/.test($('status').textContent)) {
+        status(`Concluído: ${numero(ok)} enviado(s), ${numero(falha)} falha(s).`, falha > 0 && ok === 0);
+      }
     } finally {
       estado.ocupado = false;
       desenhar();
