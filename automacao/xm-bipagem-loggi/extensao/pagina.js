@@ -832,9 +832,8 @@ async function carregarAnjun() {
 const ROTA_SHOPEE = '/macros/shopee-conferencia';
 let poloShopee = '';
 let dadosShopee = null;
-let listaShopee = 'sem_at'; // o que a lista mostra: 'sem_at' | 'nao_recebido' | 'nao_recebidos' (todos, com ou sem AT)
-const LISTAS_SHOPEE = { sem_at: ['recebido_sem_at', 'Recebido - Sem AT'], nao_recebido: ['nao_recebido', 'Enviado - Não recebido'],
-  nao_recebidos: ['nao_recebidos', 'Não recebidos (com ou sem AT)'] };
+let listaShopee = 'sem_at'; // o que a lista mostra: 'sem_at' | 'nao_recebido' (com ou sem AT)
+const LISTAS_SHOPEE = { sem_at: ['recebido_sem_at', 'Recebido - Sem AT'], nao_recebido: ['nao_recebido', 'Enviado - Não recebido'] };
 chrome.storage.local.get('poloShopee').then(({ poloShopee: p }) => { poloShopee = p || ''; $('sh-polo').value = poloShopee; });
 $('sh-polo').addEventListener('change', () => {
   poloShopee = $('sh-polo').value;
@@ -972,10 +971,6 @@ function mostrarShopee(r) {
   $('sh-total').textContent = numero(r.total);
   $('sh-recebidos').textContent = numero(r.recebidos);
   $('sh-recebidos-pct').textContent = `recebidos · ${pct2(r.pct_recebidos)} do romaneio`;
-  const faltaReceber = (r.nao_recebidos || []).length;
-  const ver = $('sh-ver-nao-recebidos');
-  ver.hidden = !faltaReceber;
-  ver.textContent = `ver os ${numero(faltaReceber)} não recebidos`;
   const div = $('sh-divergencias');
   div.textContent = numero(r.divergencias);
   div.className = r.divergencias ? 'alerta' : 'completo';
@@ -998,10 +993,34 @@ function mostrarShopee(r) {
   listaDivergenciasShopee();
 }
 
-$('sh-ver-nao-recebidos').addEventListener('click', () => {
-  listaShopee = 'nao_recebidos';
-  listaDivergenciasShopee();
-  $('sh-lista-titulo').scrollIntoView({ behavior: 'smooth', block: 'start' });
+// Relatório de divergências com as mesmas colunas do da Shopee (pedido do usuário, 18/11/2026).
+// Gerado aqui com o que a tela já tem: nada é baixado do SPX.
+const XPT_DO_POLO = { cacador: 'XPT_SC_Caçador', videira: 'XPT_SC_Videira', joacaba: 'XPT_SC_Joaçaba' };
+const celulaCsv = (v) => { const t = String(v == null || v === '' ? '—' : v); return /[;"\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+
+function csvDivergenciasShopee(r) {
+  const manifesto = XPT_DO_POLO[r.polo] || 'Todos os polos';
+  const cab = ['Manifesto/Operação', 'Tracking Number', 'Número da TO', 'Comprador', 'Cidade', 'Bairro', 'Cluster', 'Motorista', 'AT (rota)', 'Localização atual', 'Status'];
+  const linhas = [
+    ...(r.recebido_sem_at || []).map((p) => [manifesto, p.codigo, p.to, p.comprador, '', '', '', '', '', p.estacao, 'Recebido - Sem AT']),
+    ...(r.nao_recebido || []).map((p) => [manifesto, p.codigo, p.to, p.comprador, p.cidade, p.bairro, p.cluster, p.motorista, p.at,
+      p.achado_no_spx ? p.estacao : 'não achado no SPX', /^soc/i.test(p.estacao || '') ? 'Enviado SOC - Não recebido' : 'Enviado - Não recebido']),
+  ];
+  return String.fromCharCode(0xfeff) + [cab.join(';'), ...linhas.map((l) => l.map(celulaCsv).join(';'))].join('\r\n');
+}
+
+$('sh-baixar').addEventListener('click', () => {
+  const r = dadosShopee || {};
+  if (!r.divergencias) return statusShopee('Nenhuma divergência para baixar.');
+  const [ano, mes, dia] = String(r.dia || '').split('-');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csvDivergenciasShopee(r)], { type: 'text/csv;charset=utf-8' }));
+  a.download = `${dia}-${mes}-${ano}_${XPT_DO_POLO[r.polo] || 'Todos'}_Divergências.csv`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  statusShopee(`Relatório com ${numero(r.divergencias)} divergência(s) baixado.`);
 });
 
 $('sh-copiar').addEventListener('click', () => {

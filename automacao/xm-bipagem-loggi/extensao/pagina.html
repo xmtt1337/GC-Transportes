@@ -199,8 +199,6 @@
     box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
   #sh-conferir.pilula:hover:not(:disabled) { background: #d73211; border-color: #d73211; }
   #sh-conferir.pilula:disabled { opacity: .6; cursor: default; }
-  .link-pequeno { display: block; margin-top: 4px; font-size: 12px; font-weight: 500; }
-  .link-pequeno:hover { text-decoration: underline; }
   .indicadores.quatro { grid-template-columns: 1fr 1fr; }
   #sh-tipos .barra-cidade { grid-template-columns: 150px minmax(0, 1fr) 34px auto; }
   .barra-cidade.clicavel { cursor: pointer; }
@@ -393,12 +391,11 @@
     <div id="sh-resultado" hidden>
       <div class="indicadores quatro">
         <div><b id="sh-total"></b><small>total de pacotes (romaneio)</small></div>
-        <div><b id="sh-recebidos"></b><small id="sh-recebidos-pct">pacotes recebidos</small>
-          <button id="sh-ver-nao-recebidos" class="link-pequeno" type="button" hidden></button></div>
+        <div><b id="sh-recebidos"></b><small id="sh-recebidos-pct">pacotes recebidos</small></div>
         <div><b id="sh-divergencias"></b><small>divergências</small></div>
         <div><b id="sh-fora"></b><small id="sh-fora-txt">fora de abrangência</small></div>
       </div>
-      <div class="cabecalho" style="margin-top:16px"><h2>Divergências</h2></div>
+      <div class="cabecalho" style="margin-top:16px"><h2>Divergências</h2><button id="sh-baixar" type="button">Baixar relatório</button></div>
       <div id="sh-tipos" class="barras"></div>
       <div class="cabecalho" style="margin-top:16px"><h2>Volume por cidade (nas ATs)</h2></div>
       <div id="sh-cidades" class="barras"></div>
