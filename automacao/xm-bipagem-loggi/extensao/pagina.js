@@ -471,7 +471,8 @@ const horaDe = (v) => {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 };
 const numero = (n) => Number(n || 0).toLocaleString('pt-BR');
-const pctTexto = (r) => `${Number(r.porcentagem || 0).toLocaleString('pt-BR')}%`;
+const DUAS_CASAS = { minimumFractionDigits: 2, maximumFractionDigits: 2 }; // sempre 99,78% (pedido do usuário)
+const pctTexto = (r) => `${Number(r.porcentagem || 0).toLocaleString('pt-BR', DUAS_CASAS)}%`;
 
 function semLeitura() {
   $('agrupamento').hidden = true;
@@ -765,14 +766,14 @@ function mostrarAnjun(r) {
   const pizza = $('an-pizza');
   pizza.className = `pizza${completo ? ' completo' : ''}${r.nossos ? '' : ' vazia'}`;
   pizza.style.setProperty('--pct', Math.min(100, Number(r.pct_expedido) || 0));
-  $('an-porcentagem').textContent = `${Number(r.pct_expedido || 0).toLocaleString('pt-BR')}%`;
+  $('an-porcentagem').textContent = `${Number(r.pct_expedido || 0).toLocaleString('pt-BR', DUAS_CASAS)}%`;
   const falta = r.nossos - r.expedidos;
   $('an-conta').textContent = `${numero(r.expedidos)} de ${numero(r.nossos)} expedidos${falta ? ` · faltam ${numero(falta)}` : ''}`;
   const lido = r.leitura;
   $('an-lido').textContent = `${numero(r.total)} recebidos hoje${r.polo ? ` · ${NOMES_POLO[r.polo] || r.polo}` : ' (todos os polos)'}`
     + (lido && lido.lido_em ? ` · lido às ${horaDe(lido.lido_em)}${lido.usuario ? ` por ${lido.usuario}` : ''}` : '');
   const certo = $('an-certo');
-  certo.textContent = r.expedidos ? `${Number(r.pct_certo || 0).toLocaleString('pt-BR')}%` : '—';
+  certo.textContent = r.expedidos ? `${Number(r.pct_certo || 0).toLocaleString('pt-BR', DUAS_CASAS)}%` : '—';
   certo.className = r.expedidos && r.certos === r.expedidos ? 'completo' : '';
   const fora = $('an-fora');
   fora.textContent = numero(r.contagem ? r.contagem.fora_abrangencia : 0);
