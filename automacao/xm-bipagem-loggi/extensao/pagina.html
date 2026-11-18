@@ -149,14 +149,18 @@
   .abas .aba-direita { margin-left: auto; }
   .abas .aba-direita b { font-weight: 600; color: var(--forte); margin-left: 4px; }
   .abas .aba-direita b.completo { color: #22c55e; }
-  /* Pizza (rosca) agrupados x faltam + resumo ao lado */
+  /* Meio arco (velocímetro, pedido do usuário 18/11): feito na cor da transportadora, falta no fundo do arco.
+     O arco tem 157 de comprimento (meia volta de raio 50), então --pct × 1,5708 é quanto pintar. */
   .ag-topo { display: flex; align-items: center; gap: 18px; }
-  .pizza { --pct: 0; flex: 0 0 auto; width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center;
-    background: conic-gradient(var(--marca) calc(var(--pct) * 1%), var(--falta) 0); }
-  .pizza.vazia { background: var(--linha); }
-  .pizza.completo { background: var(--marca); }
-  .pizza span { width: 74px; height: 74px; border-radius: 50%; background: var(--fundo); display: grid; place-items: center;
-    font-size: 15px; font-weight: 700; color: var(--forte); letter-spacing: -.3px; }
+  .pizza { --pct: 0; flex: 0 0 auto; position: relative; width: 132px; height: 75px; }
+  .pizza svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .pizza path { fill: none; stroke-width: 12; stroke-linecap: round; }
+  .pizza .arco-fundo { stroke: var(--falta); }
+  .pizza .arco-valor { stroke: var(--marca); stroke-dasharray: calc(var(--pct) * 1.5708px) 400px; transition: stroke-dasharray .4s; }
+  .pizza.vazia .arco-fundo { stroke: var(--linha); }
+  .pizza.vazia .arco-valor { display: none; }
+  .pizza span { position: absolute; left: 0; right: 0; bottom: 2px; text-align: center;
+    font-size: 19px; font-weight: 700; color: var(--forte); letter-spacing: -.3px; }
   .ag-resumo { min-width: 0; }
   .ag-resumo strong { display: block; color: var(--forte); font-weight: 600; }
   .lido { display: block; color: var(--suave); font-size: 12px; margin-top: 2px; }
@@ -310,7 +314,7 @@
     <!-- Agrupamento de hoje: recebidos hoje "Sem tentativa" (Na base lido sem baixar) x bipes de hoje -->
     <div id="aba-agrupamento" hidden>
       <div class="ag-topo">
-        <div class="pizza" id="ag-pizza" aria-hidden="true"><span id="ag-porcentagem"></span></div>
+        <div class="pizza" id="ag-pizza" aria-hidden="true"><svg viewBox="0 0 120 68"><path class="arco-fundo" d="M10 60 A50 50 0 0 1 110 60"/><path class="arco-valor" d="M10 60 A50 50 0 0 1 110 60"/></svg><span id="ag-porcentagem"></span></div>
         <div class="ag-resumo">
           <strong id="ag-conta">Ainda não conferido hoje</strong>
           <small id="ag-lido" class="lido"></small>
@@ -339,7 +343,7 @@
       </select>
     </div>
     <div class="ag-topo">
-      <div class="pizza" id="an-pizza" aria-hidden="true"><span id="an-porcentagem"></span></div>
+      <div class="pizza" id="an-pizza" aria-hidden="true"><svg viewBox="0 0 120 68"><path class="arco-fundo" d="M10 60 A50 50 0 0 1 110 60"/><path class="arco-valor" d="M10 60 A50 50 0 0 1 110 60"/></svg><span id="an-porcentagem"></span></div>
       <div class="ag-resumo">
         <strong id="an-conta">Ainda não conferido hoje</strong>
         <small id="an-lido" class="lido"></small>
@@ -375,7 +379,7 @@
       </select>
     </div>
     <div class="ag-topo">
-      <div class="pizza" id="sh-pizza" aria-hidden="true"><span id="sh-porcentagem"></span></div>
+      <div class="pizza" id="sh-pizza" aria-hidden="true"><svg viewBox="0 0 120 68"><path class="arco-fundo" d="M10 60 A50 50 0 0 1 110 60"/><path class="arco-valor" d="M10 60 A50 50 0 0 1 110 60"/></svg><span id="sh-porcentagem"></span></div>
       <div class="ag-resumo">
         <strong id="sh-conta">Ainda não conferido hoje</strong>
         <small id="sh-lido" class="lido"></small>
