@@ -146,9 +146,20 @@
     ul.append(caixa);
     li.append(titulo, ul);
 
-    titulo.addEventListener('click', () => abrirGrupo(!li.classList.contains('ssc-menu-opened')));
+    // Um grupo aberto por vez, como o menu do SPX: abrir o nosso fecha o deles (pelo clique no
+    // título deles, para o próprio SPX fechar e ficar coerente).
+    titulo.addEventListener('click', () => {
+      const abrir = !li.classList.contains('ssc-menu-opened');
+      if (abrir) fecharOsDoSpx();
+      abrirGrupo(abrir);
+    });
     item.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); mostrarPagina(); });
     return li;
+  }
+
+  function fecharOsDoSpx() {
+    document.querySelectorAll(`.sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(#${ID_GRUPO}) > .ssc-menu-submenu-title`)
+      .forEach((t) => t.click());
   }
 
   function abrirGrupo(abrir) {
@@ -184,7 +195,8 @@
     grupo = montarGrupo(menu);
     // Logo depois de "Order Management" (onde estão os pedidos); no fim do menu ficava cortado
     // pela barra de baixo. Se o SPX mudar o nome do grupo, vai para o fim.
-    const pedidos = [...lista.children].find((li) => /order management/i.test((li.querySelector('.sub-menu-title') || {}).textContent || ''));
+    // Achado pelo link do Order Tracking (o nome do grupo muda com o idioma: "Pedidos" em português).
+    const pedidos = [...lista.children].find((li) => li !== grupo && li.querySelector('a[href="#/orderTracking"]'));
     if (pedidos) pedidos.after(grupo); else lista.append(grupo);
     if (reabrir || aberta) abrirGrupo(true);
     if (aberta) marcarItem(true);
@@ -239,6 +251,14 @@
     if (bc) [...bc.children].forEach((s) => { if ('xmDisplay' in s.dataset) { s.style.display = s.dataset.xmDisplay; delete s.dataset.xmDisplay; } });
     marcarItem(false);
   }
+
+  // Abrir um grupo do SPX fecha o nosso (um aberto por vez, como o menu deles).
+  document.addEventListener('click', (e) => {
+    const t = e.target && e.target.closest && e.target.closest('.sidebar-container .ssc-menu-submenu-title');
+    if (!t || !grupo || grupo.contains(t)) return;
+    const li = t.closest('li.ssc-menu-submenu');
+    if (li && !li.classList.contains('ssc-menu-opened')) abrirGrupo(false);
+  }, true);
 
   // Outro item do menu (ou outro endereco): volta para a tela do SPX.
   document.addEventListener('click', (e) => {
@@ -295,7 +315,7 @@
       <div class="xm-cartao">
         <span class="xm-conta" id="xm-conta"></span>
         <h2 class="xm-titulo">Disparar ativos</h2>
-        <p class="xm-sub">Mensagem "confirmação de entrega" da Shopee pelo WhatsApp da GC. Nome e telefone saem do export de pedidos do SPX, sem usar o olho. A conversa aparece no sistema.</p>
+        <p class="xm-sub">Mensagem "confirmação de entrega" da Shopee pelo WhatsApp da GC. A conversa aparece no sistema XMTT.</p>
         <div id="xm-login" hidden>
           <div class="xm-linha">
             <label><span class="xm-rotulo">Usuário do sistema</span><input class="xm-campo" id="xm-usuario" autocomplete="username"></label>
