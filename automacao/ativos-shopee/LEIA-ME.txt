@@ -1,0 +1,19 @@
+XM - Ativos Shopee
+==================
+
+Dispara os ativos da Shopee (modelo "confirmacao_entrega", WhatsApp da GC) de dentro do SPX.
+Nao tem botao nem janelinha: aparece no menu lateral do SPX, no grupo "Ativos Shopee".
+
+Como usar
+1. No SPX, menu lateral > Ativos Shopee > Disparar ativos.
+2. Entre com o usuario e a senha do sistema (so SAC, admin e dev disparam ativos).
+3. Cole os SPX Tracking Number (BR...) e clique em "Buscar nome e telefone".
+   A extensao pede ao SPX o export de pedidos desses BR (aparece no Latest Task), le nome e
+   telefone por dentro (nada vai para a pasta Downloads, e nao gasta o "olho") e mostra quem
+   ja recebeu ativo pelo sistema.
+4. Confira a lista e clique em "Disparar". Cada envio vai pelo sistema e a conversa aparece
+   em Ativos > Conversas, como qualquer disparo.
+
+Instalar
+chrome://extensions > Modo do desenvolvedor > Carregar sem compactacao > esta pasta "extensao".
+Depois de atualizar a extensao, de F5 no SPX.
