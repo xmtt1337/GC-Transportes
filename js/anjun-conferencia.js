@@ -69,7 +69,7 @@ function _ancPintar() {
     const selPolo = d.ve_tudo ? `<select class="cft-input" style="width:auto;flex:0 0 auto;margin:0" onchange="_ancPolo=this.value;_ancCarregar()">
         <option value="">Todos os polos</option>${Object.entries(_ANC_POLOS).map(([k, n]) => `<option value="${k}"${k === _ancPolo ? " selected" : ""}>${n}</option>`).join("")}</select>`
         : (d.polo ? `<span class="cft-ajuda">Polo ${_ancEsc(_ANC_POLOS[d.polo] || d.polo)}</span>` : "");
-    document.getElementById("anc-barra").innerHTML = selDia + selPolo + `<button class="cft-btn" onclick="_ancCarregar()">Atualizar</button>`;
+    document.getElementById("anc-barra").innerHTML = selDia + selPolo + `<button class="cft-btn" onclick="_ancCarregar()">Atualizar</button><button class="cft-btn" onclick="_ancAbrirLista()">Cidades por login</button>`;
 
     if (!d.dia || !d.total) {
         el.innerHTML = `<div class="cft-ajuda">${d.dia ? "Nenhum pacote recebido neste dia" + (d.polo ? " no polo." : ".") : "Ninguém conferiu ainda."}
@@ -122,8 +122,8 @@ function _ancPintar() {
                     `${_ancEsc(x.cidade)} (${_ancNum(x.total)}) <a href="#" class="lag-acao" data-c="${_ancEsc(x.cidade)}" onclick="event.preventDefault();_ancIgnorar(this.dataset.c,false)">voltar</a>`).join(" · ")}</div>` : ""}
             </div>
             <div class="lag-cartao">
-                <div class="lag-titulo"><span>Logins com pacote de outra cidade</span></div>
-                ${(d.porLogin || []).length ? `<div class="lag-barras">${d.porLogin.map(l => `<div class="anc-login"><span>${_ancEsc(l.usuario)}</span>
+                <div class="lag-titulo"><span>Logins com pacote de outra cidade</span><span class="cft-ajuda">clique no login pra ver as cidades dele</span></div>
+                ${(d.porLogin || []).length ? `<div class="lag-barras">${d.porLogin.map(l => `<div class="anc-login"><a href="#" class="lag-acao" title="Ver e corrigir as cidades deste login" data-u="${_ancEsc(l.usuario)}" onclick="event.preventDefault();_ancAbrirLogin(this.dataset.u)">${_ancEsc(l.usuario)}</a>
                     <span class="cft-ajuda">${l.erradas ? `${_ancNum(l.erradas)} de cidade que ele não faz` : ""}${l.erradas && l.sem_cadastro ? " · " : ""}${l.sem_cadastro ? `${_ancNum(l.sem_cadastro)} sem cidade cadastrada` : ""}</span></div>`).join("")}</div>`
                     : `<div class="cft-ajuda">Nenhum login com pacote fora das cidades dele.</div>`}
             </div>
@@ -160,7 +160,7 @@ function _ancPintarTabela() {
         <tbody>${lista.slice(0, _ANC_MAX_LINHAS).map(p => {
             const [rot, cls] = _ANC_STATUS[p.status] || [p.status, ""];
             return `<tr><td>${_ancEsc(p.waybill)}</td>${verPolo ? `<td>${_ancEsc(_ANC_POLOS[p.polo] || p.polo || "—")}</td>` : ""}
-                <td>${p.entregador ? _ancEsc(p.entregador) : `<span class="cft-vazio">—</span>`}</td><td>${_ancEsc(p.cidade)}</td>
+                <td>${p.entregador ? `<a href="#" class="lag-acao" data-u="${_ancEsc(p.entregador)}" onclick="event.preventDefault();_ancAbrirLogin(this.dataset.u)">${_ancEsc(p.entregador)}</a>` : `<span class="cft-vazio">—</span>`}</td><td>${_ancEsc(p.cidade)}</td>
                 <td>${_ancEsc(String(p.cliente || "").slice(0, 32))}</td><td class="num">${p.valor == null ? "" : Number(p.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
                 <td>${_ancEsc(_ancHora(p.entrada))}</td><td class="${cls}">${rot}</td></tr>`;
         }).join("")}</tbody></table></div>
@@ -187,4 +187,128 @@ function _ancIgnorar(cidade, ignorar) {
         if (d.error) { alert(d.error); return; }
         _ancCarregar(true);
     }).catch(() => alert("Erro ao conectar com o servidor."));
+}
+
+// ── Cidades de cada login (lista login → cidades da Anjun, a mesma da conferência antiga) ──
+// Clicar no login (na lista de logins ou na coluna Entregador) abre o cartão: cidades já
+// cadastradas (com "×" pra tirar) e as cidades dele hoje que ainda não estão, pra marcar.
+// "Cidades por login" na barra mostra a lista inteira. Toda mudança fica no log com quem fez.
+const _ANC_CID_API = () => `${API}/admin/conferencia-expedicao/cidades-usuario`;
+const _ancChave = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+let _ancLista = null; // linhas de cidades-usuario da Anjun
+
+async function _ancCarregarLista() {
+    const r = await fetch(`${_ANC_CID_API()}?transportadora=anjun`, { headers: { "Authorization": "Bearer " + token } });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || "Erro ao ler a lista de cidades.");
+    _ancLista = d.linhas || [];
+    return _ancLista;
+}
+
+function _ancFecharModal() { const ov = document.getElementById("anc-modal"); if (ov) ov.remove(); }
+
+function _ancModal(html) {
+    _ancFecharModal();
+    const ov = document.createElement("div");
+    ov.className = "cft-modal-overlay";
+    ov.id = "anc-modal";
+    ov.innerHTML = `<div class="cft-modal">${html}</div>`;
+    ov.addEventListener("click", e => { if (e.target === ov) _ancFecharModal(); });
+    document.body.appendChild(ov);
+}
+
+async function _ancAbrirLogin(usuario) {
+    _ancModal(`<div class="cft-ajuda">Carregando...</div>`);
+    try { await _ancCarregarLista(); } catch (e) { _ancModal(`<div class="cft-erro">${_ancEsc(e.message)}</div>`); return; }
+    const k = _ancChave(usuario);
+    const dele = _ancLista.filter(l => _ancChave(l.usuario) === k);
+    const cadastradas = new Set(dele.map(l => _ancChave(l.cidade)));
+    // Cidades dos pacotes dele hoje que não estão na lista (as pendências "cidade errada"/"sem cidade").
+    const hoje = new Map();
+    for (const p of (_ancDados && _ancDados.pendentes) || []) {
+        if (_ancChave(p.entregador) !== k || !p.cidade || cadastradas.has(_ancChave(p.cidade))) continue;
+        hoje.set(p.cidade, (hoje.get(p.cidade) || 0) + 1);
+    }
+    const conhecidas = [...new Set(_ancLista.map(l => l.cidade))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    _ancModal(`
+        <div class="cft-modal-titulo">Cidades de <span style="color:#e2e8f0">${_ancEsc(usuario)}</span> na Anjun</div>
+        <div class="cft-ajuda">Cadastradas (a conferência só dá "certo" nestas):</div>
+        ${dele.length ? `<div class="cft-pend-tags" style="margin:6px 0 12px">${dele.map(l => `<span class="cft-tag">${_ancEsc(l.cidade)}
+            <a href="#" class="lag-acao" title="Tirar esta cidade do login" data-u="${_ancEsc(usuario)}" onclick="event.preventDefault();_ancTirarCidade(${Number(l.id)}, this.dataset.u)">×</a></span>`).join("")}</div>`
+            : `<div class="cft-ajuda" style="font-style:italic;margin:6px 0 12px">Nenhuma: os pacotes dele aparecem como "Login sem cidade".</div>`}
+        ${hoje.size ? `<div class="cft-ajuda">Cidades dele hoje que não estão na lista. Marque as que ele faz:</div>
+            <div style="display:flex;flex-direction:column;gap:4px;margin:6px 0 12px;max-height:200px;overflow:auto">
+            ${[...hoje].map(([c, n]) => `<label class="cft-ajuda" style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cbd5e1">
+                <input type="checkbox" class="anc-marca" value="${_ancEsc(c)}"> ${_ancEsc(c)} <span class="cft-ajuda">${_ancNum(n)} pacote(s)</span></label>`).join("")}
+            </div>` : ""}
+        <label class="cft-rotulo" for="anc-outra">Outra cidade</label>
+        <input id="anc-outra" class="cft-input" list="anc-conhecidas" autocomplete="off" placeholder="Digite a cidade..." onkeydown="if(event.key==='Enter')_ancSalvarLogin()">
+        <datalist id="anc-conhecidas">${conhecidas.map(c => `<option value="${_ancEsc(c)}">`).join("")}</datalist>
+        <div class="cft-ajuda" id="anc-modal-status" style="min-height:18px;margin-top:8px"></div>
+        <div class="cft-barra" style="justify-content:flex-end;margin-bottom:0">
+            <button class="cft-btn" onclick="_ancFecharModal()">Fechar</button>
+            <button class="cft-btn primario" id="anc-modal-salvar" data-u="${_ancEsc(usuario)}" onclick="_ancSalvarLogin()">Acrescentar</button>
+        </div>`);
+}
+
+async function _ancSalvarLogin() {
+    const btn = document.getElementById("anc-modal-salvar");
+    const st = document.getElementById("anc-modal-status");
+    const usuario = btn.dataset.u;
+    const cidades = [...document.querySelectorAll(".anc-marca")].filter(c => c.checked).map(c => c.value);
+    const outra = document.getElementById("anc-outra").value.trim();
+    if (outra) cidades.push(outra);
+    if (!cidades.length) { st.innerText = "Marque ou digite pelo menos uma cidade."; return; }
+    btn.disabled = true;
+    st.innerText = "Salvando...";
+    try {
+        const r = await fetch(_ANC_CID_API(), {
+            method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+            body: JSON.stringify({ transportadora: "anjun", usuario, cidades }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { btn.disabled = false; st.innerText = d.error || "Erro ao salvar."; return; }
+        _ancCarregar(true);
+        await _ancAbrirLogin(usuario);
+    } catch (_) { btn.disabled = false; st.innerText = "Erro ao salvar."; }
+}
+
+async function _ancTirarCidade(id, usuario) {
+    if (!confirm("Tirar esta cidade do login? Os pacotes dela passam a contar como cidade errada.")) return;
+    const r = await fetch(`${_ANC_CID_API()}/${id}`, { method: "DELETE", headers: { "Authorization": "Bearer " + token } }).catch(() => null);
+    if (!r || !r.ok) { alert("Não deu pra tirar a cidade."); return; }
+    _ancCarregar(true);
+    await _ancAbrirLogin(usuario);
+}
+
+/** "Cidades por login": a lista inteira da Anjun, com busca; clicar no login abre o cartão. */
+async function _ancAbrirLista() {
+    _ancModal(`<div class="cft-ajuda">Carregando...</div>`);
+    try { await _ancCarregarLista(); } catch (e) { _ancModal(`<div class="cft-erro">${_ancEsc(e.message)}</div>`); return; }
+    _ancModal(`
+        <div class="cft-modal-titulo">Cidades por login · Anjun</div>
+        <input class="cft-input" id="anc-lista-busca" placeholder="Buscar login ou cidade..." oninput="_ancPintarLista()" style="margin-bottom:10px">
+        <div id="anc-lista-logins" style="max-height:60vh;overflow:auto"></div>
+        <div class="cft-barra" style="justify-content:space-between;margin:10px 0 0">
+            <span class="cft-ajuda">Login que não está aqui: clique nele na coluna Entregador da conferência.</span>
+            <button class="cft-btn" onclick="_ancFecharModal()">Fechar</button>
+        </div>`);
+    _ancPintarLista();
+}
+
+function _ancPintarLista() {
+    const busca = _ancChave((document.getElementById("anc-lista-busca") || {}).value);
+    const porLogin = new Map();
+    for (const l of _ancLista || []) {
+        const k = _ancChave(l.usuario);
+        if (!porLogin.has(k)) porLogin.set(k, { usuario: l.usuario, cidades: [] });
+        porLogin.get(k).cidades.push(l.cidade);
+    }
+    const lista = [...porLogin.values()]
+        .filter(u => !busca || _ancChave(u.usuario).includes(busca) || u.cidades.some(c => _ancChave(c).includes(busca)))
+        .sort((a, b) => a.usuario.localeCompare(b.usuario, "pt-BR"));
+    document.getElementById("anc-lista-logins").innerHTML = lista.length ? lista.map(u => `
+        <div class="anc-lista-item"><a href="#" class="lag-acao" data-u="${_ancEsc(u.usuario)}" onclick="event.preventDefault();_ancAbrirLogin(this.dataset.u)">${_ancEsc(u.usuario)}</a>
+            <span class="cft-ajuda">${u.cidades.map(_ancEsc).join(", ")}</span></div>`).join("")
+        : `<div class="cft-ajuda">Nenhum login encontrado.</div>`;
 }

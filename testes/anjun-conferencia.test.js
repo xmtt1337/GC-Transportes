@@ -38,3 +38,34 @@ test("filtro da tabela por situação, cidade e busca", () => {
     ctx.definir({ pendentes }, "", "");
     assert.deepStrictEqual(ctx._ancFiltrados().map(p => p.waybill), ["AJTESTE2", "AJTESTE3"]);
 });
+
+test("cartão do login: mostra as cadastradas e oferece só as cidades de hoje que faltam", async () => {
+    let html = "";
+    const corpo = { appendChild: () => {} };
+    const ctx = {
+        API: "http://x", token: "T", body: corpo, console,
+        fetch: async () => ({ ok: true, json: async () => ({ linhas: [
+            { id: 1, usuario: "Login.Teste2", cidade: "Cidade A" },
+            { id: 2, usuario: "Outro.Login", cidade: "Cidade B" },
+        ] }) }),
+        document: {
+            body: corpo,
+            getElementById: () => null,
+            createElement: () => ({ addEventListener: () => {}, set innerHTML(v) { html = v; }, get innerHTML() { return html; } }),
+        },
+    };
+    vm.createContext(ctx);
+    vm.runInContext(ler("js/anjun-conferencia.js") + "\nthis._ancAbrirLogin=_ancAbrirLogin;this.definir=d=>{_ancDados=d;};", ctx);
+    ctx.definir({ pendentes: [
+        { waybill: "AJTESTE1", entregador: "login.teste2", cidade: "Cidade B", status: "cidade_errada" },
+        { waybill: "AJTESTE2", entregador: "Login.Teste2", cidade: "Cidade B", status: "cidade_errada" },
+        { waybill: "AJTESTE3", entregador: "Login.Teste2", cidade: "Cidade A", status: "sem_cidade" },
+        { waybill: "AJTESTE4", entregador: "Outro.Login", cidade: "Cidade C", status: "cidade_errada" },
+    ] });
+    await ctx._ancAbrirLogin("Login.Teste2");
+    assert.match(html, /Cidades de <span[^>]*>Login\.Teste2<\/span>/);
+    assert.match(html, /cft-tag">Cidade A/);                       // cadastrada, com o × pra tirar
+    assert.match(html, /value="Cidade B"> Cidade B <span class="cft-ajuda">2 pacote/); // dele hoje, falta na lista
+    assert.ok(!html.includes('class="anc-marca" value="Cidade A"')); // já cadastrada: não oferece de novo
+    assert.ok(!html.includes('class="anc-marca" value="Cidade C"')); // é de outro login
+});
