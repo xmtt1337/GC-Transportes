@@ -167,6 +167,12 @@
   .barras .vazia { color: var(--suave); font-size: 12px; }
   /* Conferência Anjun: cidade errada em laranja (pendência de outro tipo) e os dois números ao lado da pizza */
   .cor-errada { background: #f97316; }
+  /* Detalhes no verde da Anjun (pedido do usuário: só detalhinhos; dados continuam azul/âmbar/verde de 100%) */
+  .marca-anjun { color: var(--anjun); }
+  #tela-conferencia-anjun { --anjun: #22c55e; }
+  #tela-conferencia-anjun .volta { border-bottom-color: rgba(34, 197, 94, .35); }
+  #an-conferir.pilula { border-color: var(--anjun); color: var(--anjun); }
+  #an-conferir.pilula:hover:not(:disabled) { background: rgba(34, 197, 94, .08); }
   .escolha-polo { margin-left: auto; width: auto; padding: 5px 8px; font-size: 12px; border-radius: 8px; background: var(--campo);
     border: 1px solid var(--borda-campo); color: var(--texto); }
   .indicadores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
@@ -290,7 +296,7 @@
 
   <!-- Conferência Anjun: recebidos no ponto hoje (Conferir agora no portal) — expedido, certo, fora de abrangência -->
   <section id="tela-conferencia-anjun" hidden>
-    <div class="volta"><button class="voltar" type="button">‹ Voltar</button><strong>Conferência Anjun</strong>
+    <div class="volta"><button class="voltar" type="button">‹ Voltar</button><strong>Conferência <span class="marca-anjun">Anjun</span></strong>
       <!-- Só dev e admin: escolher o polo (os outros veem só o do cadastro). -->
       <select id="an-polo" class="escolha-polo" hidden aria-label="Polo">
         <option value="">Todos os polos</option><option value="cacador">Caçador</option>
