@@ -989,6 +989,11 @@ function mostrarShopee(r) {
   const maiorCidade = Math.max(1, ...cidades.map((c) => c.total));
   $('sh-cidades').replaceChildren(...(cidades.length ? cidades.map((c) => barraSimples(c.cidade, [[c.fora ? 'cor-falta' : 'cor-ok', c.total]], maiorCidade,
     numero(c.total), null, c.fora ? 'fora' : '')) : [Object.assign(document.createElement('div'), { className: 'vazia', textContent: 'Nenhuma AT de hoje com BR do romaneio.' })]));
+  // Quanto do relatório deu para completar (comprador/bairro/cluster): mostra onde falta dado.
+  const c = r.completado;
+  $('sh-completado').textContent = c && c.itens
+    ? `Relatório: ${numero(c.nos_pedidos)} de ${numero(c.itens)} nos Pedidos pesquisados · ${numero(c.com_bairro)} com bairro · ${numero(c.com_cluster)} com cluster`
+    : '';
   fluxoShopee(r.fluxo);
   listaDivergenciasShopee();
 }
@@ -1020,9 +1025,7 @@ $('sh-baixar').addEventListener('click', () => {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  const c = r.completado;
-  statusShopee(`Relatório com ${numero(r.divergencias)} divergência(s) baixado.`
-    + (c ? ` Nos Pedidos pesquisados: ${numero(c.nos_pedidos)} de ${numero(c.itens)} · com bairro: ${numero(c.com_bairro)} · com cluster: ${numero(c.com_cluster)}.` : ''));
+  statusShopee(`Relatório com ${numero(r.divergencias)} divergência(s) baixado.`);
 });
 
 $('sh-copiar').addEventListener('click', () => {
