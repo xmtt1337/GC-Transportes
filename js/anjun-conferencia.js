@@ -100,7 +100,7 @@ function _ancPintar() {
     el.innerHTML = `
         <div class="anc-cartoes">
             <div class="lag-cartao lag-resumo">
-                <div class="lag-pizza${completo ? " lag-completo" : ""}" style="--pct:${Math.min(100, d.pct_expedido || 0)}"><span>${_ancPct(d.pct_expedido)}</span></div>
+                <div class="lag-pizza${completo ? " lag-completo" : ""}" style="--pct:${Math.min(100, d.pct_expedido || 0)}"><svg viewBox="0 0 120 68"><path class="arco-fundo" d="M10 60 A50 50 0 0 1 110 60"/><path class="arco-valor" d="M10 60 A50 50 0 0 1 110 60"/></svg><span>${_ancPct(d.pct_expedido)}</span></div>
                 <div>
                     <div class="lag-conta">${_ancNum(d.expedidos)} de ${_ancNum(d.nossos)} expedidos${falta ? ` · faltam ${_ancNum(falta)}` : ""}</div>
                     <div class="lag-legenda"><span><i class="lag-ok"></i>Expedidos</span><span><i class="lag-falta"></i>Sem entregador</span><span class="cft-ajuda">meta 100%</span></div>

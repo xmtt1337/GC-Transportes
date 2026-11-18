@@ -7102,12 +7102,16 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .lag-colunas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
 .lag-cartao { border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px 20px; }
 .lag-resumo { display: flex; align-items: center; gap: 22px; }
-.lag-pizza { --pct: 0; flex: 0 0 auto; width: 132px; height: 132px; border-radius: 50%; display: grid; place-items: center;
-    background: conic-gradient(#12a5e8 calc(var(--pct) * 1%), #f59e0b 0); }
-.lag-pizza.lag-completo { background: #12a5e8; }
-.lag-pizza.lag-vazia { background: rgba(255,255,255,0.06); }
-.lag-pizza span { width: 96px; height: 96px; border-radius: 50%; background: #080c13; display: grid; place-items: center;
-    font-size: 22px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.02em; }
+/* Meio arco (velocímetro, pedido do usuário 18/11): 157 de comprimento, --pct × 1,5708 é quanto pintar. */
+.lag-pizza { --pct: 0; --marca: #12a5e8; --falta: #f59e0b; flex: 0 0 auto; position: relative; width: 170px; height: 96px; }
+.lag-pizza svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.lag-pizza path { fill: none; stroke-width: 12; stroke-linecap: round; }
+.lag-pizza .arco-fundo { stroke: var(--falta); }
+.lag-pizza .arco-valor { stroke: var(--marca); stroke-dasharray: calc(var(--pct) * 1.5708px) 400px; }
+.lag-pizza.lag-vazia .arco-fundo { stroke: rgba(255,255,255,0.06); }
+.lag-pizza.lag-vazia .arco-valor { display: none; }
+.lag-pizza span { position: absolute; left: 0; right: 0; bottom: 2px; text-align: center;
+    font-size: 24px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.02em; }
 .lag-conta { font-size: 16px; font-weight: 600; color: #e2e8f0; }
 .lag-legenda { display: flex; gap: 14px; align-items: center; margin: 8px 0 10px; font-size: 12px; color: #7b8ba3; }
 .lag-legenda i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
@@ -7145,5 +7149,4 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 
 /* Anjun › Conferência: a parte certa/expedida da pizza e das barras no verde da Anjun (igual à extensão). */
 #tela-anjun-conferencia .lag-ok { background: #22c55e; }
-#tela-anjun-conferencia .lag-pizza { background: conic-gradient(#22c55e calc(var(--pct) * 1%), #f59e0b 0); }
-#tela-anjun-conferencia .lag-pizza.lag-completo { background: #22c55e; }
+#tela-anjun-conferencia .lag-pizza { --marca: #22c55e; }

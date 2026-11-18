@@ -96,7 +96,7 @@ function _lagPintar() {
     el.innerHTML = `
         <div class="lag-colunas">
             <div class="lag-cartao lag-resumo">
-                <div class="lag-pizza${completo ? " lag-completo" : ""}${b.total ? "" : " lag-vazia"}" style="--pct:${Math.min(100, b.porcentagem || 0)}"><span>${_lagPct(b.agrupados, b.total)}</span></div>
+                <div class="lag-pizza${completo ? " lag-completo" : ""}${b.total ? "" : " lag-vazia"}" style="--pct:${Math.min(100, b.porcentagem || 0)}"><svg viewBox="0 0 120 68"><path class="arco-fundo" d="M10 60 A50 50 0 0 1 110 60"/><path class="arco-valor" d="M10 60 A50 50 0 0 1 110 60"/></svg><span>${_lagPct(b.agrupados, b.total)}</span></div>
                 <div>
                     <div class="lag-conta">${b.total ? `${_lagNum(b.agrupados)} de ${_lagNum(b.total)} agrupados${b.faltam ? ` · faltam ${_lagNum(b.faltam)}` : ""}` : `Nenhum recebido hoje "Sem tentativa"`}</div>
                     <div class="lag-legenda"><span><i class="lag-ok"></i>Agrupados</span><span><i class="lag-falta"></i>Faltam</span><span class="cft-ajuda">meta 100%</span></div>
