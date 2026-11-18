@@ -1002,7 +1002,7 @@ function csvDivergenciasShopee(r) {
   const manifesto = XPT_DO_POLO[r.polo] || 'Todos os polos';
   const cab = ['Manifesto/Operação', 'Tracking Number', 'Número da TO', 'Comprador', 'Cidade', 'Bairro', 'Cluster', 'Motorista', 'AT (rota)', 'Localização atual', 'Status'];
   const linhas = [
-    ...(r.recebido_sem_at || []).map((p) => [manifesto, p.codigo, p.to, p.comprador, '', '', '', '', '', p.estacao, 'Recebido - Sem AT']),
+    ...(r.recebido_sem_at || []).map((p) => [manifesto, p.codigo, p.to, p.comprador, p.cidade, p.bairro, p.cluster, p.motorista, '', p.estacao, 'Recebido - Sem AT']),
     ...(r.nao_recebido || []).map((p) => [manifesto, p.codigo, p.to, p.comprador, p.cidade, p.bairro, p.cluster, p.motorista, p.at,
       p.achado_no_spx ? p.estacao : 'não achado no SPX', /^soc/i.test(p.estacao || '') ? 'Enviado SOC - Não recebido' : 'Enviado - Não recebido']),
   ];
