@@ -618,6 +618,7 @@ async function carregarAgrupamento() {
 // ponto = hoje, o fundo.js manda ao sistema e o sistema confere (expedido, certo, fora de
 // abrangencia) contra a lista login → cidades. Ao abrir a tela, mostra a ultima conta de hoje.
 const ROTA_ANJUN = '/macros/anjun-conferencia';
+const NOMES_POLO = { cacador: 'Caçador', videira: 'Videira', joacaba: 'Joaçaba' };
 const ROTULO_ANJUN = {
   sem_entregador: 'Sem entregador', cidade_errada: 'Cidade errada', usuario_sem_cidade: 'Login sem cidade',
   sem_cidade: 'Sem cidade', fora_abrangencia: 'Fora de abrangência',
@@ -652,7 +653,17 @@ $('an-conferir').addEventListener('click', () => {
 window.addEventListener('message', (e) => {
   if (e.source !== window.parent || !e.data || e.data.xmOperacao !== 'statusRelatorio' || !e.data.anjun) return;
   statusAnjun(String(e.data.texto || ''), !!e.data.erro, !!e.data.fim);
-  if (e.data.resumo) mostrarAnjun(e.data.resumo);
+  // A leitura volta com a visao padrao (todos, para dev/admin); com um polo escolhido, refaz no polo.
+  if (e.data.resumo) { if (poloAnjun) carregarAnjun(); else mostrarAnjun(e.data.resumo); }
+});
+
+// Dev e admin escolhem o polo (o sistema so aceita deles); a escolha fica guardada neste navegador.
+let poloAnjun = '';
+chrome.storage.local.get('poloAnjun').then(({ poloAnjun: p }) => { poloAnjun = p || ''; $('an-polo').value = poloAnjun; });
+$('an-polo').addEventListener('change', () => {
+  poloAnjun = $('an-polo').value;
+  chrome.storage.local.set({ poloAnjun });
+  carregarAnjun();
 });
 
 function anjunVazio(msg) {
@@ -745,7 +756,7 @@ function linhaSimples(principal, detalhe, direita, classeDireita = '') {
 }
 
 function mostrarAnjun(r) {
-  if (!r || !r.total) return anjunVazio(r && r.dia ? 'Nenhum pacote recebido hoje no seu polo.' : '');
+  if (!r || !r.total) return anjunVazio(r && r.dia ? 'Nenhum pacote recebido hoje neste polo.' : '');
   $('an-resultado').hidden = false;
   const completo = r.nossos > 0 && r.expedidos === r.nossos;
   const pizza = $('an-pizza');
@@ -755,7 +766,7 @@ function mostrarAnjun(r) {
   const falta = r.nossos - r.expedidos;
   $('an-conta').textContent = `${numero(r.expedidos)} de ${numero(r.nossos)} expedidos${falta ? ` · faltam ${numero(falta)}` : ''}`;
   const lido = r.leitura;
-  $('an-lido').textContent = `${numero(r.total)} recebidos hoje${r.polo ? '' : ' (todos os polos)'}`
+  $('an-lido').textContent = `${numero(r.total)} recebidos hoje${r.polo ? ` · ${NOMES_POLO[r.polo] || r.polo}` : ' (todos os polos)'}`
     + (lido && lido.lido_em ? ` · lido às ${horaDe(lido.lido_em)}${lido.usuario ? ` por ${lido.usuario}` : ''}` : '');
   const certo = $('an-certo');
   certo.textContent = r.expedidos ? `${Number(r.pct_certo || 0).toLocaleString('pt-BR')}%` : '—';
@@ -799,7 +810,8 @@ $('an-copiar').addEventListener('click', () => {
 async function carregarAnjun() {
   if (!token) return;
   try {
-    const j = await chamarAbs('GET', ROTA_ANJUN);
+    const j = await chamarAbs('GET', `${ROTA_ANJUN}${poloAnjun ? `?polo=${encodeURIComponent(poloAnjun)}` : ''}`);
+    $('an-polo').hidden = !j.ve_tudo;
     if (j.dia && j.dia === j.hoje) mostrarAnjun(j);
     else anjunVazio();
   } catch (e) {
