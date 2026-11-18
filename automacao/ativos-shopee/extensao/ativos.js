@@ -505,7 +505,6 @@
     if (estado.ocupado) return;
     const fila = estado.linhas.filter((l) => l.marcado && podeMarcar(l));
     if (!fila.length) return;
-    if (!window.confirm(`Disparar ${numero(fila.length)} ativo(s) pelo WhatsApp da GC?\n\nO telefone de cada um é buscado no olho do SPX (1 visualização por pedido).`)) return;
     estado.ocupado = true;
     let ok = 0;
     let falha = 0;
