@@ -127,9 +127,9 @@ test('menu nao sai da tela', () => {
   assert.strictEqual(limitar(900, 500), 500);
 });
 
-test('manifest: so Loggi, portal da Anjun e o sistema, com id liberado no backend', () => {
+test('manifest: so Loggi, portal da Anjun, SPX e o sistema, com id liberado no backend', () => {
   const m = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extensao', 'manifest.json'), 'utf8'));
-  assert.deepStrictEqual(m.host_permissions, ['https://*.loggi.com/*', 'https://newsupplier.anjunexpress.com/*', 'https://sistema-backend-i4uh.onrender.com/*']);
+  assert.deepStrictEqual(m.host_permissions, ['https://*.loggi.com/*', 'https://newsupplier.anjunexpress.com/*', 'https://spx.shopee.com.br/*', 'https://sistema-backend-i4uh.onrender.com/*']);
   const hash = require('node:crypto').createHash('sha256').update(Buffer.from(m.key, 'base64')).digest('hex').slice(0, 32);
   const id = [...hash].map((c) => String.fromCharCode(97 + parseInt(c, 16))).join('');
   assert.strictEqual(id, 'ogpbfjkhogaonkoahbdgjkhbancgpgbh');

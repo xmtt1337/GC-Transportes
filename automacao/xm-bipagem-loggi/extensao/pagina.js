@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 
 let token = null;
 // Em que site o painel abriu (o menu.js manda ?site=anjun|loggi): decide a tela de entrada.
-const TELA_DO_SITE = { anjun: 'conferencia-anjun', loggi: 'conferencia-loggi' }[new URLSearchParams(location.search).get('site')] || '';
+const TELA_DO_SITE = { anjun: 'conferencia-anjun', loggi: 'conferencia-loggi', shopee: 'conferencia-shopee' }[new URLSearchParams(location.search).get('site')] || '';
 let cidades = [];
 let conversao = {};
 let grupos = [];
@@ -37,12 +37,13 @@ const TELAS = {
   // O usuario achou estranho sair do tema do sistema para o da Loggi: fica tudo no do sistema.
   'conferencia-loggi': 'xm',
   'conferencia-anjun': 'xm',
+  'conferencia-shopee': 'xm',
 };
 const TRANSPORTADORAS = [
   { id: 'loggi', nome: 'Loggi', ativa: true },
   { id: 'anjun', nome: 'Anjun', ativa: true },
   { id: 'imile', nome: 'iMile' },
-  { id: 'shopee', nome: 'Shopee' },
+  { id: 'shopee', nome: 'Shopee', ativa: true },
   { id: 'total', nome: 'Total Express' },
 ];
 
@@ -57,6 +58,7 @@ function irPara(tela) {
   if (destino !== 'login' && destino !== 'inicio') { telaAtual = destino; desenharMenu(); }
   if (destino === 'conferencia-loggi') carregarAgrupamento();
   if (destino === 'conferencia-anjun') carregarAnjun();
+  if (destino === 'conferencia-shopee') carregarShopee();
 }
 
 // Menu como a barra lateral do sistema: area (Conferencias; Baixar relatorios saiu na 2.9) abre e
@@ -820,6 +822,191 @@ async function carregarAnjun() {
     else anjunVazio();
   } catch (e) {
     if (!(e instanceof R.ErroDeConta)) statusAnjun(e.message, true);
+  }
+}
+
+// ── Conferencia Shopee ─────────────────────────────────────────────────────
+// "Conferir agora" no SPX: o sistema manda os BR do romaneio de hoje (do polo), o shopee.js
+// pesquisa esses BR e lista as ATs de hoje no proprio SPX, e o sistema faz a conta. Ao abrir a
+// tela, mostra a ultima conta de hoje. Dev/admin escolhem o polo (os outros veem o do cadastro).
+const ROTA_SHOPEE = '/macros/shopee-conferencia';
+let poloShopee = '';
+let dadosShopee = null;
+let listaShopee = 'sem_at'; // qual divergencia a lista mostra: 'sem_at' | 'nao_recebido'
+chrome.storage.local.get('poloShopee').then(({ poloShopee: p }) => { poloShopee = p || ''; $('sh-polo').value = poloShopee; });
+$('sh-polo').addEventListener('change', () => {
+  poloShopee = $('sh-polo').value;
+  chrome.storage.local.set({ poloShopee });
+  carregarShopee();
+});
+
+function statusShopee(texto, erro = false, fim = false) {
+  $('sh-status').textContent = texto;
+  $('sh-status').className = erro ? 'mensagem erro' : 'mensagem';
+  if (fim) $('sh-conferir').disabled = false;
+}
+
+$('sh-conferir').addEventListener('click', () => {
+  $('sh-conferir').disabled = true;
+  statusShopee('Começando...');
+  window.parent.postMessage({ xmOperacao: 'conferirShopee', polo: poloShopee }, '*');
+});
+
+window.addEventListener('message', (e) => {
+  if (e.source !== window.parent || !e.data || e.data.xmOperacao !== 'statusRelatorio' || !e.data.shopee) return;
+  statusShopee(String(e.data.texto || ''), !!e.data.erro, !!e.data.fim);
+  if (e.data.resumo) mostrarShopee(e.data.resumo);
+});
+
+const pct2 = (v) => `${Number(v || 0).toLocaleString('pt-BR', DUAS_CASAS)}%`;
+const horaCurta = (seg) => (seg ? new Date(seg * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : '');
+
+function shopeeVazio(msg) {
+  $('sh-resultado').hidden = true;
+  $('sh-pizza').className = 'pizza vazia';
+  $('sh-porcentagem').textContent = '—';
+  $('sh-conta').textContent = msg || 'Ainda não conferido hoje';
+  $('sh-lido').textContent = 'Romaneio de hoje x SPX: AT vinculada, recebidos e divergências.';
+}
+
+/** Uma linha de barra simples: nome, trilho, numero (e um extra no fim). */
+function barraSimples(nome, partes, maior, numeroTexto, aoClicar, extra) {
+  const l = document.createElement('div');
+  l.className = `barra-cidade${aoClicar ? ' clicavel' : ''}`;
+  const n = document.createElement('span');
+  n.textContent = nome;
+  if (extra) { const t = document.createElement('em'); t.className = 'fora-tag'; t.textContent = extra; n.append(t); }
+  const trilho = document.createElement('div');
+  trilho.className = 'trilho';
+  partes.forEach(([cls, v]) => { const i = document.createElement('i'); i.className = cls; i.style.width = `${(v / maior) * 100}%`; trilho.append(i); });
+  const num = document.createElement('em');
+  num.textContent = numeroTexto;
+  const fim = document.createElement('span');
+  l.append(n, trilho, num, fim);
+  if (aoClicar) l.addEventListener('click', aoClicar);
+  return l;
+}
+
+function fluxoShopee(f) {
+  const caixa = $('sh-fluxo');
+  if (!f || !f.horas.length) { caixa.textContent = 'Sem horários ainda.'; return; }
+  const linhas = [['Recebimento', f.recebimento, '18, 165, 74'], ['Atribuição', f.atribuicao, '58, 134, 255'], ['Expedição', f.expedicao, '238, 77, 45']];
+  const maior = Math.max(1, ...linhas.flatMap(([, v]) => v));
+  const tabela = document.createElement('table');
+  const cab = document.createElement('tr');
+  cab.append(document.createElement('th'));
+  let diaAnterior = '';
+  f.horas.forEach((h) => {
+    const th = document.createElement('th');
+    const [dia, hora] = h.split(' ');
+    th.textContent = `${dia !== diaAnterior ? `${dia.slice(8, 10)}/${dia.slice(5, 7)} ` : ''}${hora}h`;
+    diaAnterior = dia;
+    cab.append(th);
+  });
+  const thTotal = document.createElement('th');
+  thTotal.textContent = 'Total';
+  cab.append(thTotal);
+  tabela.append(cab);
+  linhas.forEach(([nome, valores, rgb]) => {
+    const tr = document.createElement('tr');
+    const etapa = document.createElement('td');
+    etapa.className = 'etapa';
+    etapa.textContent = nome;
+    tr.append(etapa);
+    valores.forEach((v) => {
+      const td = document.createElement('td');
+      td.textContent = numero(v);
+      td.style.background = v ? `rgba(${rgb}, ${0.15 + 0.75 * (v / maior)})` : 'var(--campo)';
+      tr.append(td);
+    });
+    const tot = document.createElement('td');
+    tot.className = 'total';
+    tot.textContent = numero(valores.reduce((a, b) => a + b, 0));
+    tr.append(tot);
+    tabela.append(tr);
+  });
+  caixa.replaceChildren(tabela);
+}
+
+function listaDivergenciasShopee() {
+  const r = dadosShopee || {};
+  const semAt = listaShopee === 'sem_at';
+  const itens = (semAt ? r.recebido_sem_at : r.nao_recebido) || [];
+  $('sh-lista-titulo').textContent = semAt ? 'Recebido - Sem AT' : 'Enviado - Não recebido';
+  const lista = $('sh-lista');
+  if (!itens.length) {
+    const v = document.createElement('div');
+    v.className = 'vazia';
+    v.textContent = 'Nenhum.';
+    return lista.replaceChildren(v);
+  }
+  lista.replaceChildren(...itens.slice(0, 300).map((p) => linhaSimples(p.codigo,
+    semAt ? `recebido às ${horaCurta(p.recebido_em)}${p.motorista ? ` · ${p.motorista}` : ''}` : (p.achado_no_spx ? (p.estacao || 'no SPX, sem recebimento') : 'não achado no SPX'),
+    '', '')));
+  if (itens.length > 300) {
+    const mais = document.createElement('div');
+    mais.className = 'vazia';
+    mais.textContent = `Mostrando 300 de ${numero(itens.length)}. "Copiar BR" leva todos.`;
+    lista.append(mais);
+  }
+}
+
+function mostrarShopee(r) {
+  dadosShopee = r;
+  if (!r || !r.total) return shopeeVazio(r && r.dia ? 'Nenhum BR no romaneio deste dia/polo.' : '');
+  $('sh-resultado').hidden = false;
+  const completo = r.em_at === r.total;
+  const pizza = $('sh-pizza');
+  pizza.className = `pizza${completo ? ' completo' : ''}`;
+  pizza.style.setProperty('--pct', Math.min(100, Number(r.pct_at) || 0));
+  $('sh-porcentagem').textContent = pct2(r.pct_at);
+  $('sh-conta').textContent = `${numero(r.em_at)} de ${numero(r.total)} com AT${r.total - r.em_at ? ` · faltam ${numero(r.total - r.em_at)}` : ''}`;
+  const lido = r.leitura;
+  $('sh-lido').textContent = `% AT vinculada${r.polo ? ` · ${NOMES_POLO[r.polo] || r.polo}` : ' (todos os polos)'}`
+    + (lido && lido.lido_em ? ` · lido às ${horaDe(lido.lido_em)}${lido.usuario ? ` por ${lido.usuario}` : ''}` : '');
+  $('sh-total').textContent = numero(r.total);
+  $('sh-recebidos').textContent = numero(r.recebidos);
+  $('sh-recebidos-pct').textContent = `recebidos · ${pct2(r.pct_recebidos)} do romaneio`;
+  const div = $('sh-divergencias');
+  div.textContent = numero(r.divergencias);
+  div.className = r.divergencias ? 'alerta' : 'completo';
+  const fora = $('sh-fora');
+  fora.textContent = numero(r.fora_abrangencia);
+  fora.className = r.fora_abrangencia ? 'alerta' : 'completo';
+  $('sh-fora-txt').textContent = r.fora_abrangencia
+    ? `fora de abrangência · ${(r.fora || []).slice(0, 2).map((f) => f.cidade).join(', ')}` : 'fora de abrangência · nenhum';
+  // Divergencias por tipo (clicar troca a lista de baixo).
+  const tipos = [['sem_at', 'Recebido - Sem AT', (r.recebido_sem_at || []).length], ['nao_recebido', 'Enviado - Não recebido', (r.nao_recebido || []).length]];
+  const maiorTipo = Math.max(1, ...tipos.map(([, , n]) => n));
+  $('sh-tipos').replaceChildren(...tipos.map(([k, nome, n]) => barraSimples(nome, [['cor-falta', n]], maiorTipo,
+    `${numero(n)}`, () => { listaShopee = k; listaDivergenciasShopee(); }, r.divergencias ? `${Math.floor((n * 100) / r.divergencias)}%` : '')));
+  // Cidades nas ATs (as que tem mais pacotes); fora de abrangencia marcada.
+  const cidades = (r.porCidade || []).slice(0, MAX_BARRAS);
+  const maiorCidade = Math.max(1, ...cidades.map((c) => c.total));
+  $('sh-cidades').replaceChildren(...(cidades.length ? cidades.map((c) => barraSimples(c.cidade, [[c.fora ? 'cor-falta' : 'cor-ok', c.total]], maiorCidade,
+    numero(c.total), null, c.fora ? 'fora' : '')) : [Object.assign(document.createElement('div'), { className: 'vazia', textContent: 'Nenhuma AT de hoje com BR do romaneio.' })]));
+  fluxoShopee(r.fluxo);
+  listaDivergenciasShopee();
+}
+
+$('sh-copiar').addEventListener('click', () => {
+  const r = dadosShopee || {};
+  const codigos = ((listaShopee === 'sem_at' ? r.recebido_sem_at : r.nao_recebido) || []).map((p) => p.codigo);
+  if (!codigos.length) return statusShopee('Nada para copiar.');
+  navigator.clipboard.writeText(codigos.join('\n'))
+    .then(() => statusShopee(`${numero(codigos.length)} BR copiado(s).`))
+    .catch(() => statusShopee('Não deu para copiar.', true));
+});
+
+async function carregarShopee() {
+  if (!token) return;
+  try {
+    const j = await chamarAbs('GET', `${ROTA_SHOPEE}${poloShopee ? `?polo=${encodeURIComponent(poloShopee)}` : ''}`);
+    $('sh-polo').hidden = !j.ve_tudo;
+    if (j.dia && j.dia === j.hoje) mostrarShopee(j);
+    else shopeeVazio();
+  } catch (e) {
+    if (!(e instanceof R.ErroDeConta)) statusShopee(e.message, true);
   }
 }
 

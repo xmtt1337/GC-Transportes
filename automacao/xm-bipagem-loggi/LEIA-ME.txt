@@ -6,7 +6,7 @@ Extensao do Chrome com as ferramentas da operacao nos sites
 das transportadoras. Entra-se com o login do sistema XMTT e
 escolhe-se no menu:
 
-  Conferencias      Loggi e Anjun (ativas) | iMile, Shopee,
+  Conferencias      Loggi, Anjun e Shopee (ativas) | iMile,
                     Total Express (em breve)
 
 CONFERENCIA ANJUN (desde 3.2): no portal newsupplier.anjunexpress.com,
@@ -19,6 +19,17 @@ confere: expedido (tem entregador), expedido certo (o login faz a
 cidade) e fora de abrangencia (cidade que nenhum login da Anjun faz),
 por polo (Ponto Responsavel). Leituras do dia se somam. Tambem em
 Operacao > Transportadoras > Anjun > Conferencia (no sistema).
+
+CONFERENCIA SHOPEE (desde 4.0): no SPX (spx.shopee.com.br),
+Conferencias > Shopee > "Conferir agora". O sistema manda os BR do
+romaneio de hoje (Shopee > Alimentar > Romaneiro, do polo de quem
+enviou); a extensao pesquisa esses BR em lote no Order Tracking e
+lista as ATs criadas hoje, com a sessao do proprio SPX (nada de
+cookie ou x-sap sai da pagina). Ao sistema vao so horarios,
+motorista, status e estacao de cada BR e, de cada AT, os BR, cidade,
+bairro, cluster, motorista e criacao. Mostra % AT vinculada, total,
+recebidos, divergencias (Recebido - Sem AT, Enviado - Nao recebido),
+fora de abrangencia, volume por cidade e fluxo hora a hora.
 
 Conferencia Loggi > aba "Agrupamento" (canto direito, com a %
 ao lado) > "Conferir agora": le o relatorio Na base do Arco SEM

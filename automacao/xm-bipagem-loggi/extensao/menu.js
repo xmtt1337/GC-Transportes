@@ -156,7 +156,8 @@
       quadro = document.createElement('iframe');
       quadro.title = NOME;
       // O painel abre na conferencia do site em que esta (Anjun no portal da Anjun, Loggi no Arco).
-      const site = /anjunexpress\.com$/.test(location.hostname) ? 'anjun' : /loggi\.com$/.test(location.hostname) ? 'loggi' : '';
+      const site = /anjunexpress\.com$/.test(location.hostname) ? 'anjun' : /loggi\.com$/.test(location.hostname) ? 'loggi'
+        : location.hostname === 'spx.shopee.com.br' ? 'shopee' : '';
       quadro.src = chrome.runtime.getURL(`pagina.html${site ? `?site=${site}` : ''}`);
       painel.append(quadro);
     }
@@ -440,7 +441,50 @@
     if (e.data.xmOperacao === 'baixarNaBase' && !travado) baixarNaBase('baixar');
     if (e.data.xmOperacao === 'lerNaBase' && !travado) baixarNaBase('ler');
     if (e.data.xmOperacao === 'conferirAnjun') conferirAnjun();
+    if (e.data.xmOperacao === 'conferirShopee') conferirShopee(String(e.data.polo || ''));
   });
+
+  // ── Conferencia Shopee ("Conferir agora" no SPX) ───────────────────────────
+  // 1. o fundo.js pede ao sistema os BR do romaneio de hoje (do polo);
+  // 2. o shopee.js (mundo da pagina) pesquisa esses BR no SPX e lista as ATs de hoje;
+  // 3. o fundo.js manda o resultado (ja enxuto) ao sistema, que faz a conta.
+  const SPX = 'spx.shopee.com.br';
+  const avisarShopee = (dados) => avisarPainel({ ...dados, shopee: true });
+  let buscandoShopee = false;
+
+  async function conferirShopee(polo) {
+    if (location.hostname !== SPX) {
+      avisarShopee({ texto: 'Abra o SPX (spx.shopee.com.br) e clique em Conferir agora lá.', erro: true, fim: true });
+      return;
+    }
+    if (buscandoShopee) return;
+    buscandoShopee = true;
+    try {
+      avisarShopee({ texto: 'Pegando o romaneio de hoje no sistema...' });
+      const rom = await chrome.runtime.sendMessage({ tipo: 'shopeeRomaneio', polo });
+      if (!rom || rom.erro) throw new Error((rom && rom.erro) || 'Não deu para ler o romaneio.');
+      if (!rom.codigos.length) throw new Error('Nenhum BR no romaneio de hoje deste polo. Alimente o Romaneiro no sistema primeiro.');
+      const resultado = await new Promise((resolve, reject) => {
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const ouvir = (e) => {
+          if (e.source !== window || !e.data || e.data.xmOperacao !== 'shopeeResposta' || e.data.id !== id) return;
+          if (!e.data.fim) { avisarShopee({ texto: String(e.data.andamento || '') }); return; }
+          window.removeEventListener('message', ouvir);
+          if (e.data.erro) reject(new Error(e.data.erro)); else resolve(e.data);
+        };
+        window.addEventListener('message', ouvir);
+        window.postMessage({ xmOperacao: 'shopeeBuscar', id, codigos: rom.codigos }, location.origin);
+      });
+      avisarShopee({ texto: `Mandando ao sistema (${resultado.rastreio.length} BR, ${resultado.ats.length} ATs)...` });
+      const r = await chrome.runtime.sendMessage({ tipo: 'shopeeLeitura', polo, rastreio: resultado.rastreio, ats: resultado.ats });
+      if (!r || r.erro) throw new Error((r && r.erro) || 'Não deu certo.');
+      avisarShopee({ texto: '', fim: true, resumo: r.resumo });
+    } catch (err) {
+      avisarShopee({ texto: /context invalidated/i.test(err.message) ? 'A extensão foi atualizada. Aperte F5 nesta página.' : err.message, erro: true, fim: true });
+    } finally {
+      buscandoShopee = false;
+    }
+  }
 
   // ── Conferencia Anjun ("Conferir agora") ───────────────────────────────────
   // Quem busca no portal e o anjun.js (mundo da pagina, onde esta o token do proprio site). Aqui

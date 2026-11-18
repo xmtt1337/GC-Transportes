@@ -187,6 +187,26 @@
   #tela-conferencia-anjun .pizza { background: conic-gradient(var(--anjun) calc(var(--pct) * 1%), #f59e0b 0); }
   #tela-conferencia-anjun .pizza.completo { background: var(--anjun); }
   #tela-conferencia-anjun .pizza.vazia { background: var(--linha); }
+  /* Conferência Shopee: detalhes no laranja do SPX (título e botão "Procurar"); dados no padrão (azul/âmbar). */
+  .marca-shopee { color: #ee4d2d; }
+  #tela-conferencia-shopee .volta { border-bottom-color: rgba(238, 77, 45, .35); }
+  #sh-conferir.pilula { background: #ee4d2d; border: 1px solid #ee4d2d; color: #fff; font-weight: 700; border-radius: 4px; padding: 7px 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+  #sh-conferir.pilula:hover:not(:disabled) { background: #d73211; border-color: #d73211; }
+  #sh-conferir.pilula:disabled { opacity: .6; cursor: default; }
+  .indicadores.quatro { grid-template-columns: 1fr 1fr; }
+  #sh-tipos .barra-cidade { grid-template-columns: 150px minmax(0, 1fr) 34px auto; }
+  .barra-cidade.clicavel { cursor: pointer; }
+  .barra-cidade.clicavel:hover span { color: var(--forte); }
+  .barra-cidade .fora-tag { color: #f59e0b; font-style: normal; font-size: 11px; margin-left: 4px; }
+  /* Fluxo hora a hora: uma linha por etapa, uma coluna por hora; mais escuro = mais pacotes. */
+  .fluxo { overflow-x: auto; scrollbar-width: thin; border: 1px solid var(--linha); border-radius: var(--raio); }
+  .fluxo table { border-collapse: separate; border-spacing: 3px; font-size: 12px; }
+  .fluxo th { color: var(--suave); font-weight: 600; font-size: 11px; padding: 2px 4px; white-space: nowrap; text-align: center; }
+  .fluxo th:first-child, .fluxo td:first-child { text-align: left; position: sticky; left: 0; background: var(--fundo); z-index: 1; }
+  .fluxo td { min-width: 40px; padding: 5px 4px; text-align: center; border-radius: 4px; color: var(--forte); }
+  .fluxo td.etapa { color: var(--texto); font-weight: 600; white-space: nowrap; padding-right: 8px; }
+  .fluxo td.total { font-weight: 700; background: var(--campo); }
   .escolha-polo { margin-left: auto; width: auto; padding: 5px 8px; font-size: 12px; border-radius: 8px; background: var(--campo);
     border: 1px solid var(--borda-campo); color: var(--texto); }
   .indicadores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
@@ -342,6 +362,42 @@
       </div>
       <div class="cabecalho" style="margin-top:16px"><h2>Pendências</h2><button id="an-copiar" type="button">Copiar waybills</button></div>
       <div id="an-lista" class="lista"></div>
+    </div>
+  </section>
+
+  <!-- Conferência Shopee: romaneio do dia x SPX (pesquisa em lote + ATs de hoje), pelo Conferir agora no SPX -->
+  <section id="tela-conferencia-shopee" hidden>
+    <div class="volta"><button class="voltar" type="button">‹ Voltar</button><strong>Conferência <span class="marca-shopee">Shopee</span></strong>
+      <select id="sh-polo" class="escolha-polo" hidden aria-label="Polo">
+        <option value="">Todos os polos</option><option value="cacador">Caçador</option>
+        <option value="videira">Videira</option><option value="joacaba">Joaçaba</option>
+      </select>
+    </div>
+    <div class="ag-topo">
+      <div class="pizza" id="sh-pizza" aria-hidden="true"><span id="sh-porcentagem"></span></div>
+      <div class="ag-resumo">
+        <strong id="sh-conta">Ainda não conferido hoje</strong>
+        <small id="sh-lido" class="lido"></small>
+        <div class="ag-legenda"><span><i class="cor-ok"></i>Com AT</span><span><i class="cor-falta"></i>Sem AT</span></div>
+        <button id="sh-conferir" class="pilula" type="button">Conferir agora</button>
+      </div>
+    </div>
+    <p id="sh-status" class="mensagem" style="margin:10px 0 0"></p>
+    <div id="sh-resultado" hidden>
+      <div class="indicadores quatro">
+        <div><b id="sh-total"></b><small>total de pacotes (romaneio)</small></div>
+        <div><b id="sh-recebidos"></b><small id="sh-recebidos-pct">pacotes recebidos</small></div>
+        <div><b id="sh-divergencias"></b><small>divergências</small></div>
+        <div><b id="sh-fora"></b><small id="sh-fora-txt">fora de abrangência</small></div>
+      </div>
+      <div class="cabecalho" style="margin-top:16px"><h2>Divergências</h2></div>
+      <div id="sh-tipos" class="barras"></div>
+      <div class="cabecalho" style="margin-top:16px"><h2>Volume por cidade (nas ATs)</h2></div>
+      <div id="sh-cidades" class="barras"></div>
+      <div class="cabecalho" style="margin-top:16px"><h2>Fluxo hora a hora</h2></div>
+      <div id="sh-fluxo" class="fluxo"></div>
+      <div class="cabecalho" style="margin-top:16px"><h2 id="sh-lista-titulo">Divergências</h2><button id="sh-copiar" type="button">Copiar BR</button></div>
+      <div id="sh-lista" class="lista"></div>
     </div>
   </section>
 </main>

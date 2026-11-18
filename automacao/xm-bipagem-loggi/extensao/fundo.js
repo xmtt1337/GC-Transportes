@@ -87,7 +87,32 @@ async function lerAnjun(pacotes) {
   }
 }
 
+// Conferencia Shopee: o romaneio de hoje (BR do polo) e a leitura do SPX vao e vem do sistema.
+async function chamarSistema(metodo, caminho, corpo) {
+  const { token } = await chrome.storage.session.get('token');
+  if (!token) throw new Error('Entre na extensão primeiro.');
+  try {
+    return await R.api(token, metodo, caminho, corpo, fetch, true);
+  } catch (e) {
+    if (e instanceof R.ErroDeConta) await chrome.storage.session.remove(['token', 'nome']);
+    throw e;
+  }
+}
+const comPolo = (caminho, polo) => (polo ? `${caminho}?polo=${encodeURIComponent(polo)}` : caminho);
+
 chrome.runtime.onMessage.addListener((pedido, _quem, responder) => {
+  if (pedido && pedido.tipo === 'shopeeRomaneio') {
+    chamarSistema('GET', comPolo('/macros/shopee-conferencia/romaneio', pedido.polo))
+      .then((r) => responder({ codigos: r.codigos || [] }))
+      .catch((e) => responder({ erro: e.message || 'Não deu certo.' }));
+    return true;
+  }
+  if (pedido && pedido.tipo === 'shopeeLeitura' && Array.isArray(pedido.rastreio) && Array.isArray(pedido.ats)) {
+    chamarSistema('POST', comPolo('/macros/shopee-conferencia/leitura', pedido.polo), { rastreio: pedido.rastreio, ats: pedido.ats })
+      .then((resumo) => responder({ resumo }))
+      .catch((e) => responder({ erro: e.message || 'Não deu certo.' }));
+    return true;
+  }
   if (pedido && pedido.tipo === 'anjunLeitura' && Array.isArray(pedido.pacotes)) {
     lerAnjun(pedido.pacotes)
       .then((resumo) => responder({ resumo }))
