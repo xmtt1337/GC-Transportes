@@ -39,6 +39,11 @@
         background: #080c13; border: 1px solid #1c2533; border-radius: 12px; overflow: hidden;
         box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
       .aberto .painel { display: flex; }
+      /* Expandir: o painel ocupa quase a tela toda (12 px de folga), parado. */
+      .menu.cheio.aberto:not(.travado) { top: 12px !important; left: 12px !important; right: 12px !important; bottom: 12px !important; }
+      .menu.cheio.aberto:not(.travado) .painel { width: 100%; height: 100%; }
+      .menu.cheio .cabecalho { cursor: default; }
+      .acoes-moldura { display: flex; gap: 16px; }
       .aberto .botao { display: none; }
       .cabecalho { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;
         color: #fff; font-weight: 700; background: #080c13; border-bottom: 1px solid rgba(255, 255, 255, .06);
@@ -104,7 +109,10 @@
       <div class="painel">
         <div class="cabecalho">
           <span class="marca"><img alt="XM" src="${chrome.runtime.getURL('img/logo-claro.png')}">- Operação</span>
-          <button type="button">Minimizar</button>
+          <span class="acoes-moldura">
+            <button type="button" class="expandir" title="Abrir o painel na tela toda">Expandir</button>
+            <button type="button" class="minimizar">Minimizar</button>
+          </span>
         </div>
       </div>
     </div>`;
@@ -119,6 +127,7 @@
   let alvo = null;
 
   function aplicarPosicao() {
+    if (menu.classList.contains('cheio') && menu.classList.contains('aberto') && !menu.classList.contains('travado')) return; // tela cheia: o CSS posiciona
     const r = menu.getBoundingClientRect();
     posicao.direita = limitar(posicao.direita, window.innerWidth - r.width - MARGEM);
     posicao.baixo = limitar(posicao.baixo, window.innerHeight - r.height - MARGEM);
@@ -129,6 +138,7 @@
   // Abrir e minimizar mudam o tamanho: fica parado o canto que esta mais perto da borda da
   // tela (painel arrastado para a esquerda minimiza para a esquerda, e assim por diante).
   function trocarTamanho(mudar) {
+    if (menu.classList.contains('cheio')) { mudar(); aplicarPosicao(); return; } // tela cheia nao mexe na posicao guardada
     const antes = menu.getBoundingClientRect();
     mudar();
     const depois = menu.getBoundingClientRect();
@@ -162,7 +172,7 @@
     let moveu = false;
     elemento.addEventListener('pointerdown', (e) => {
       if (e.target.closest('button') && e.target !== botao) return;
-      if (menu.classList.contains('travado')) return; // no meio da tela, parado
+      if (menu.classList.contains('travado') || menu.classList.contains('cheio')) return; // parado
       inicio = { x: e.clientX, y: e.clientY, direita: posicao.direita, baixo: posicao.baixo };
       moveu = false;
       elemento.setPointerCapture(e.pointerId);
@@ -397,7 +407,21 @@
 
   arrastar(botao, abrir);
   arrastar(cabecalho);
-  cabecalho.querySelector('button').addEventListener('click', minimizar);
+  cabecalho.querySelector('.minimizar').addEventListener('click', minimizar);
+  // Expandir/Reduzir: fica guardado, reabre do mesmo jeito.
+  const botaoExpandir = cabecalho.querySelector('.expandir');
+  function aplicarCheio(cheio) {
+    menu.classList.toggle('cheio', cheio);
+    botaoExpandir.textContent = cheio ? 'Reduzir' : 'Expandir';
+    botaoExpandir.title = cheio ? 'Voltar ao tamanho normal' : 'Abrir o painel na tela toda';
+    aplicarPosicao();
+  }
+  botaoExpandir.addEventListener('click', () => {
+    const cheio = !menu.classList.contains('cheio');
+    aplicarCheio(cheio);
+    chrome.storage.local.set({ telaCheia: cheio });
+  });
+  chrome.storage.local.get('telaCheia').then(({ telaCheia }) => { if (telaCheia) aplicarCheio(true); });
   tarja.querySelector('button').addEventListener('click', () => tarja.classList.remove('ver'));
   window.addEventListener('resize', aplicarPosicao);
 
