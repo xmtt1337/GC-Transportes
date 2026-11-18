@@ -100,15 +100,19 @@ async function chamarSistema(metodo, caminho, corpo) {
 }
 // Export de pedidos do SPX: o link assinado aponta para o servidor de arquivos da Shopee
 // (*.susercontent.com). Só esse endereço é aceito; o arquivo é lido aqui e não vai para os Downloads.
-// Do arquivo só sai, por BR, comprador, CEP, motorista e sort code (regras.js pedidosDoExport).
-async function lerExportPedidos(url, polo) {
+// Do arquivo só sai, por BR, comprador, CEP, motorista e sort code (regras.js pedidosDoExport);
+// ao sistema vão completos só os BR com divergência, e dos outros só o CEP.
+async function lerExportPedidos(url, polo, divergentes) {
   let destino;
   try { destino = new URL(url); } catch { throw new Error('Link do export inválido.'); }
   if (destino.protocol !== 'https:' || !/\.susercontent\.com$/.test(destino.hostname)) throw new Error('Link do export fora da Shopee.');
   const r = await fetch(destino.href);
   if (!r.ok) throw new Error(`Não deu para baixar o export do SPX (HTTP ${r.status}).`);
-  const pedidos = R.pedidosDoExport(await r.text());
-  return chamarSistema('POST', comPolo('/macros/shopee-conferencia/pedidos', polo), { pedidos });
+  const todos = R.pedidosDoExport(await r.text());
+  const quer = new Set(divergentes.map((c) => String(c).toUpperCase()));
+  const pedidos = quer.size ? todos.filter((p) => quer.has(p.codigo)) : todos;
+  const ceps = todos.filter((p) => p.cep).map((p) => ({ codigo: p.codigo, cep: p.cep }));
+  return chamarSistema('POST', comPolo('/macros/shopee-conferencia/pedidos', polo), { pedidos, ceps });
 }
 
 const comPolo = (caminho, polo) => (polo ? `${caminho}?polo=${encodeURIComponent(polo)}` : caminho);
@@ -127,7 +131,7 @@ chrome.runtime.onMessage.addListener((pedido, _quem, responder) => {
     return true;
   }
   if (pedido && pedido.tipo === 'shopeePedidos') {
-    lerExportPedidos(String(pedido.url || ''), pedido.polo)
+    lerExportPedidos(String(pedido.url || ''), pedido.polo, Array.isArray(pedido.divergentes) ? pedido.divergentes : [])
       .then((resumo) => responder({ resumo }))
       .catch((e) => responder({ erro: e.message || 'Não deu certo.' }));
     return true;

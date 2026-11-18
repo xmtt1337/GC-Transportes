@@ -493,16 +493,19 @@
       const r = await chrome.runtime.sendMessage({ tipo: 'shopeeLeitura', polo, rastreio: resultado.rastreio, ats: resultado.ats });
       if (!r || r.erro) throw new Error((r && r.erro) || 'Não deu certo.');
       // Relatório de divergências: comprador e CEP saem do export de pedidos do SPX (o mesmo do
-      // botão Export do Order Tracking), pedido só dos BR com divergência e lido por dentro, sem
-      // ir para os Downloads e sem gastar visualização (o "olho"). Se falhar, a conferência vale.
+      // botão Export do Order Tracking), lido por dentro, sem ir para os Downloads e sem gastar
+      // visualização (o "olho"). O export leva a viagem inteira: o CEP de todos deixa o pacote sem
+      // AT "emprestar" cidade/bairro/cluster de quem tem o mesmo CEP (como o painel da Shopee).
+      // Os dados completos só vão ao sistema dos BR com divergência. Se falhar, a conferência vale.
       let resumo = r.resumo;
       let aviso = '';
       const divergentes = [...(resumo.recebido_sem_at || []), ...(resumo.nao_recebido || [])].map((p) => p.codigo).slice(0, 10000); // o export do SPX aceita até 10 mil BR de uma vez
       if (divergentes.length) {
-        avisarShopee({ texto: `Pedindo ao SPX o comprador e o CEP das ${divergentes.length} divergência(s)...`, resumo });
+        avisarShopee({ texto: `Pedindo ao SPX o export de pedidos da viagem (comprador e CEP das ${divergentes.length} divergência(s))...`, resumo });
         try {
-          const exp = await pedirAoSpx('shopeeExportar', { codigos: divergentes });
-          const p = await chrome.runtime.sendMessage({ tipo: 'shopeePedidos', polo, url: exp.url });
+          const viagem = [...new Set([...divergentes, ...rom.codigos])].slice(0, 10000);
+          const exp = await pedirAoSpx('shopeeExportar', { codigos: viagem });
+          const p = await chrome.runtime.sendMessage({ tipo: 'shopeePedidos', polo, url: exp.url, divergentes });
           if (!p || p.erro) throw new Error((p && p.erro) || 'Não deu certo.');
           resumo = p.resumo;
         } catch (err) {
