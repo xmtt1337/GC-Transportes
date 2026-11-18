@@ -7098,20 +7098,20 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 .pr-tabela .pr-mais { font-size: 12px; margin-top: 4px; }
 
 /* Operação › Loggi › Conferência (js/loggi-agrupamento.js): mesmo visual do painel da extensão.
-   Pizza agrupados (azul) x faltam (âmbar = pendência), verde só em 100%; barras por cidade. */
+   Gráficos na cor da Loggi (#12A5E8, pedido do usuário 18/11): agrupados x faltam (âmbar = pendência); barras por cidade. */
 .lag-colunas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
 .lag-cartao { border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px 20px; }
 .lag-resumo { display: flex; align-items: center; gap: 22px; }
 .lag-pizza { --pct: 0; flex: 0 0 auto; width: 132px; height: 132px; border-radius: 50%; display: grid; place-items: center;
-    background: conic-gradient(#3a86ff calc(var(--pct) * 1%), #f59e0b 0); }
-.lag-pizza.lag-completo { background: #22c55e; }
+    background: conic-gradient(#12a5e8 calc(var(--pct) * 1%), #f59e0b 0); }
+.lag-pizza.lag-completo { background: #12a5e8; }
 .lag-pizza.lag-vazia { background: rgba(255,255,255,0.06); }
 .lag-pizza span { width: 96px; height: 96px; border-radius: 50%; background: #080c13; display: grid; place-items: center;
     font-size: 22px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.02em; }
 .lag-conta { font-size: 16px; font-weight: 600; color: #e2e8f0; }
 .lag-legenda { display: flex; gap: 14px; align-items: center; margin: 8px 0 10px; font-size: 12px; color: #7b8ba3; }
 .lag-legenda i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
-.lag-ok { background: #3a86ff; }
+.lag-ok { background: #12a5e8; }
 .lag-falta { background: #f59e0b; }
 .lag-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px;
     font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #7b8ba3; }
