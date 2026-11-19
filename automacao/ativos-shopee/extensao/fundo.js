@@ -86,7 +86,7 @@ const tratar = {
   async pedidosConferencia({ url, polo, divergentes }) {
     const todos = R.pedidosDoExport(await baixarExport(String(url || '')));
     const quer = new Set((Array.isArray(divergentes) ? divergentes : []).map((c) => String(c).toUpperCase()));
-    const pedidos = quer.size ? todos.filter((p) => quer.has(p.codigo)) : todos;
+    const pedidos = todos.filter((p) => quer.has(p.codigo)); // sem divergência, nenhum: só os CEPs
     const ceps = todos.filter((p) => p.cep).map((p) => ({ codigo: p.codigo, cep: p.cep }));
     return { resumo: await chamarSistema('POST', comPolo('/macros/shopee-conferencia/pedidos', polo), { pedidos, ceps }) };
   },

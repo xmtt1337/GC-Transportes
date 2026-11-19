@@ -322,7 +322,8 @@
       // Order Tracking), lido por dentro. Se falhar, a conferência vale do mesmo jeito.
       const divergentes = [...(resumo.recebido_sem_at || []), ...(resumo.nao_recebido || [])].map((d) => d.codigo);
       let aviso = '';
-      if (divergentes.length) {
+      // Também quando alguma AT veio do SPX sem cidade: o CEP do export dá a cidade a esses pacotes.
+      if (divergentes.length || resumo.at_sem_cidade) {
         try {
           status('Pedindo ao SPX o export de pedidos da viagem (comprador e CEP das divergências)...');
           const viagem = [...new Set([...divergentes, ...rom.codigos])].slice(0, 10000);

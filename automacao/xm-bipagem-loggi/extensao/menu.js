@@ -500,7 +500,8 @@
       let resumo = r.resumo;
       let aviso = '';
       const divergentes = [...(resumo.recebido_sem_at || []), ...(resumo.nao_recebido || [])].map((p) => p.codigo).slice(0, 10000); // o export do SPX aceita até 10 mil BR de uma vez
-      if (divergentes.length) {
+      // Também quando alguma AT veio do SPX sem cidade: o CEP do export dá a cidade a esses pacotes.
+      if (divergentes.length || resumo.at_sem_cidade) {
         avisarShopee({ texto: `Pedindo ao SPX o export de pedidos da viagem (comprador e CEP das ${divergentes.length} divergência(s))...`, resumo });
         try {
           const viagem = [...new Set([...divergentes, ...rom.codigos])].slice(0, 10000);

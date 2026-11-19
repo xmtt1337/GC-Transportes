@@ -110,7 +110,7 @@ async function lerExportPedidos(url, polo, divergentes) {
   if (!r.ok) throw new Error(`Não deu para baixar o export do SPX (HTTP ${r.status}).`);
   const todos = R.pedidosDoExport(await r.text());
   const quer = new Set(divergentes.map((c) => String(c).toUpperCase()));
-  const pedidos = quer.size ? todos.filter((p) => quer.has(p.codigo)) : todos;
+  const pedidos = todos.filter((p) => quer.has(p.codigo)); // sem divergência, nenhum: só os CEPs
   const ceps = todos.filter((p) => p.cep).map((p) => ({ codigo: p.codigo, cep: p.cep }));
   return chamarSistema('POST', comPolo('/macros/shopee-conferencia/pedidos', polo), { pedidos, ceps });
 }
