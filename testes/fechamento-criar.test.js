@@ -612,3 +612,67 @@ test("Desconsiderados: lista com motivo, filtro por motivo e busca", () => {
     assert.match(els["cf-desc-tbody"].innerHTML, /Nada com esse filtro/);
     assert.strictEqual(els["cf-desc-contagem"].innerText, "0 linhas");
 });
+
+// Leitura do relatório: o SheetJS roda num Worker (relatório grande travava a página). Aqui,
+// um SheetJS de mentira — o de verdade vem do CDN no navegador.
+function xlsxFalso(crus, txt) {
+    return {
+        read: () => ({ SheetNames: ["s"], Sheets: { s: {} } }),
+        utils: { sheet_to_json: (_ws, o) => (o.raw ? crus : txt) },
+    };
+}
+const jsonDe = (x) => JSON.parse(JSON.stringify(x));
+
+test("leitura: data vira texto no fuso local, inteiro grande fica inteiro, o resto como o Excel mostra", () => {
+    const ctx = carregar();
+    const quando = vm.runInContext("new Date(2026, 10, 5, 8, 30, 15, 400)", ctx);
+    const grid = ctx._cfGridDeBytes(xlsxFalso(
+        [["Codigo", "Quando", "Peso"], [6035740000000001, quando, 0.35]],
+        [["Codigo", "Quando", "Peso"], ["6,03574E+15", "05/11/26", "0,35"]]), new Uint8Array(0), false);
+    assert.deepStrictEqual(jsonDe(grid), [["Codigo", "Quando", "Peso"], ["6035740000000001", "2026-11-05 08:30:15", "0,35"]]);
+});
+
+test("Worker: a fonte roda sozinha (sem nada da página) e devolve o grid; sem biblioteca ou com arquivo ruim, avisa", () => {
+    const ctx = carregar();
+    const fonte = ctx._cfWorkerFonte();
+    assert.match(fonte, /importScripts\("https:\/\/cdn\.jsdelivr\.net\/npm\/xlsx@0\.18\.5\/dist\/xlsx\.full\.min\.js"\)/);
+    const rodar = (extra) => {
+        const msgs = [];
+        const w = { postMessage: (m) => msgs.push(m), TextDecoder, ...extra };
+        w.self = w;
+        vm.createContext(w);
+        vm.runInContext(fonte, w);
+        w.onmessage({ data: { buf: new ArrayBuffer(0), csv: false } });
+        return jsonDe(msgs);
+    };
+    assert.deepStrictEqual(rodar({ XLSX: xlsxFalso([["A"], ["1"]], [["A"], ["1"]]) }), [{ grid: [["A"], ["1"]] }]);
+    assert.deepStrictEqual(rodar({ importScripts: () => { throw new Error("sem rede"); } }), [{ semLib: true }]);
+    assert.deepStrictEqual(rodar({ XLSX: { read: () => { throw new Error("arquivo corrompido"); } } }), [{ erro: "arquivo corrompido" }]);
+});
+
+test("_cfLerGrid: usa o Worker; arquivo ruim é erro (não relê na página); sem Worker lê na página; acento consertado", async () => {
+    const arquivo = { name: "relatorio.xlsx", arrayBuffer: async () => new ArrayBuffer(0) };
+    const comWorker = (resposta) => {
+        const ctx = carregar();
+        ctx.TextDecoder = TextDecoder;
+        ctx.URL = { createObjectURL: () => "blob:teste", revokeObjectURL: () => {} };
+        ctx.Blob = class { constructor(p) { this.p = p; } };
+        ctx.Worker = class {
+            postMessage() { Promise.resolve().then(() => this.onmessage({ data: resposta })); }
+            terminate() {}
+        };
+        return ctx;
+    };
+    let ctx = comWorker({ grid: [["CÃ³digo"], ["P1"]] });
+    assert.deepStrictEqual(jsonDe(await ctx._cfLerGrid(arquivo)), [["Código"], ["P1"]]);
+    ctx = comWorker({ erro: "arquivo corrompido" });
+    await assert.rejects(ctx._cfLerGrid(arquivo), /arquivo corrompido/);
+    // Sem Worker (nem URL/Blob): lê com o XLSX da página.
+    ctx = carregar();
+    ctx.TextDecoder = TextDecoder;
+    ctx.XLSX = xlsxFalso([["CÃ³digo"], ["P2"]], [["CÃ³digo"], ["P2"]]);
+    assert.deepStrictEqual(jsonDe(await ctx._cfLerGrid(arquivo)), [["Código"], ["P2"]]);
+    ctx = comWorker({ semLib: true });
+    ctx.XLSX = xlsxFalso([["X"], ["P3"]], [["X"], ["P3"]]);
+    assert.deepStrictEqual(jsonDe(await ctx._cfLerGrid(arquivo)), [["X"], ["P3"]], "biblioteca não carregou no Worker: lê na página");
+});

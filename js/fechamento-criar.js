@@ -2398,8 +2398,10 @@ async function _cfEnviarArquivo(file, key) {
         }
         const grid = await _cfLerGrid(file);
         if (!grid || grid.length < 2) throw new Error("Arquivo vazio ou inválido.");
-        // Loggi filtra pela coluna Status (só "Entregue") no servidor — ela tem que ir junto.
-        const { grid: enviar, posicoes } = _cfSoColunasUteis(grid, [...(_cfColunas[key] || []), ...(key === "loggi" ? ["Status"] : [])]);
+        // Coluna do filtro do servidor tem que ir junto: Loggi só "Entregue" (Status); Imile só
+        // as entregas da GC (Driver's supplier). O /config novo já manda; aqui é a garantia.
+        const filtro = { loggi: ["Status"], imile: ["Driver's supplier"] }[key] || [];
+        const { grid: enviar, posicoes } = _cfSoColunasUteis(grid, [...(_cfColunas[key] || []), ...filtro]);
         status.innerHTML = `<div class="cft-ajuda" style="font-size:13px">Tratando ${(grid.length - 1).toLocaleString("pt-BR")} linhas (planilha de precificação + conversão de nomes)...</div>`;
         const res = await fetch(`${_CF_API()}/upload`, {
             method: "POST", headers: _cfHeaders(true),
@@ -2422,7 +2424,8 @@ async function _cfEnviarArquivo(file, key) {
         const ign = d.ignorados || [];
         const totalIgn = ign.reduce((s, x) => s + x.qtd, 0);
         status.innerHTML = `<div class="cft-ajuda" style="font-size:13px;color:#cbd5e1">${d.resumo.total.toLocaleString("pt-BR")} pacotes tratados e gravados.</div>`
-            + (totalIgn ? `<div class="cft-ajuda" style="margin-top:4px">${totalIgn.toLocaleString("pt-BR")} linha${totalIgn !== 1 ? "s" : ""} fora do fechamento por não estar${totalIgn !== 1 ? "em" : ""} com Status "Entregue":
+            + (totalIgn ? `<div class="cft-ajuda" style="margin-top:4px">${totalIgn.toLocaleString("pt-BR")} linha${totalIgn !== 1 ? "s" : ""} fora do fechamento por
+                ${_cfEsc(d.motivo_ignorados || 'Status diferente de "Entregue"')}:
                 ${ign.map(x => `${_cfEsc(x.status)} ${x.qtd.toLocaleString("pt-BR")}`).join(" · ")}</div>` : "");
         _cfAtualizarCards();
         _cfCarregarDetalhe();
@@ -2612,41 +2615,78 @@ function _cfDesembrulharLinhas(grid, lerLinha) {
     });
 }
 
-function _cfLerGrid(file) {
+// Arquivo → grid. O SheetJS roda num Worker (fora da página): o relatório da Imile
+// (8 mil linhas × 136 colunas) levava vários segundos e o Chrome mostrava "Página sem
+// resposta". Sem Worker, ou se a biblioteca não carregar nele, lê aqui mesmo, como antes.
+const _CF_XLSX_URL = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+
+async function _cfLerGrid(file) {
+    const buf = await file.arrayBuffer();
+    const csv = file.name.toLowerCase().endsWith(".csv");
+    let grid;
+    try {
+        grid = await _cfGridNoWorker(buf, csv);
+    } catch (err) {
+        if (err) throw err; // erro lendo o arquivo: ler de novo aqui daria o mesmo erro
+        grid = _cfGridDeBytes(XLSX, new Uint8Array(buf), csv);
+    }
+    return _cfDesembrulharLinhas(grid.map(row => row.map(_cfConsertarAcento)));
+}
+
+/** Bytes do arquivo → linhas × colunas de texto. Roda no Worker também: só usa X (SheetJS) e TextDecoder. */
+function _cfGridDeBytes(X, data, csv) {
+    let wb;
+    if (csv) {
+        let text = new TextDecoder("utf-8").decode(data);
+        if (text.includes("�")) text = new TextDecoder("windows-1252").decode(data);
+        // raw: texto puro, sem o SheetJS tentar ler "01/10/2026" como data americana.
+        wb = X.read(text, { type: "string", raw: true });
+    } else {
+        wb = X.read(data, { type: "array", cellDates: true });
+    }
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const crus = X.utils.sheet_to_json(ws, { header: 1, defval: "", raw: true });
+    const txt = X.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
+    const p2 = n => String(n).padStart(2, "0");
+    return crus.map((row, i) => row.map((v, j) => {
+        if (v instanceof Date) {
+            // SheetJS monta a data no fuso local; arredonda pro segundo (vem com ms de sobra).
+            const d = new Date(Math.round(v.getTime() / 1000) * 1000);
+            return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+        }
+        // Inteiro grande (cartão, código numérico): o número de verdade — o texto
+        // formatado do Excel pode vir "6,03574E+15" e perder dígitos.
+        if (typeof v === "number" && Number.isInteger(v) && Math.abs(v) >= 1e11) return String(v);
+        const t = txt[i] && txt[i][j];
+        return t !== undefined && t !== "" ? String(t) : String(v ?? "");
+    }));
+}
+
+function _cfWorkerFonte() {
+    return `${_cfGridDeBytes.toString()}
+self.onmessage = function (e) {
+    try { if (!self.XLSX) importScripts(${JSON.stringify(_CF_XLSX_URL)}); }
+    catch (err) { self.postMessage({ semLib: true }); return; }
+    try { self.postMessage({ grid: _cfGridDeBytes(self.XLSX, new Uint8Array(e.data.buf), e.data.csv) }); }
+    catch (err) { self.postMessage({ erro: String((err && err.message) || err) }); }
+};`;
+}
+
+/** Rejeita com null quando o Worker não deu (aí lê na página); com Error quando o arquivo não abre. */
+function _cfGridNoWorker(buf, csv) {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = e => {
-            try {
-                const data = new Uint8Array(e.target.result);
-                let wb;
-                if (file.name.toLowerCase().endsWith(".csv")) {
-                    let text = new TextDecoder("utf-8").decode(data);
-                    if (text.includes("�")) text = new TextDecoder("windows-1252").decode(data);
-                    // raw: texto puro, sem o SheetJS tentar ler "01/10/2026" como data americana.
-                    wb = XLSX.read(text, { type: "string", raw: true });
-                } else {
-                    wb = XLSX.read(data, { type: "array", cellDates: true });
-                }
-                const ws = wb.Sheets[wb.SheetNames[0]];
-                const crus = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: true });
-                const txt = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
-                const p2 = n => String(n).padStart(2, "0");
-                const grid = crus.map((row, i) => row.map((v, j) => {
-                    if (v instanceof Date) {
-                        // SheetJS monta a data no fuso local; arredonda pro segundo (vem com ms de sobra).
-                        const d = new Date(Math.round(v.getTime() / 1000) * 1000);
-                        return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
-                    }
-                    // Inteiro grande (cartão, código numérico): o número de verdade — o texto
-                    // formatado do Excel pode vir "6,03574E+15" e perder dígitos.
-                    if (typeof v === "number" && Number.isInteger(v) && Math.abs(v) >= 1e11) return String(v);
-                    const t = txt[i] && txt[i][j];
-                    return _cfConsertarAcento(t !== undefined && t !== "" ? String(t) : String(v ?? ""));
-                }));
-                resolve(_cfDesembrulharLinhas(grid));
-            } catch (err) { reject(err); }
+        let w, url;
+        try {
+            url = URL.createObjectURL(new Blob([_cfWorkerFonte()], { type: "text/javascript" }));
+            w = new Worker(url);
+        } catch (_) { if (url) URL.revokeObjectURL(url); reject(null); return; }
+        const fim = () => { w.terminate(); URL.revokeObjectURL(url); };
+        w.onmessage = e => {
+            fim();
+            if (e.data && e.data.grid) resolve(e.data.grid);
+            else reject(e.data && e.data.erro ? new Error(e.data.erro) : null);
         };
-        reader.onerror = reject;
-        reader.readAsArrayBuffer(file);
+        w.onerror = ev => { if (ev && ev.preventDefault) ev.preventDefault(); fim(); reject(null); };
+        w.postMessage({ buf, csv });
     });
 }
