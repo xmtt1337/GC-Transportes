@@ -21,6 +21,8 @@ const ACESSOR = `
   transportadora: _pvTransportadora,
   agrupar: (l) => JSON.stringify(_pvAgrupar(l)),
   folha: _pvHtmlImpressao,
+  // Data montada dentro do vm (o Date de fora é de outro "mundo" pro toLocaleDateString).
+  diaDaRota: (a, m, d, h) => JSON.stringify(_pvDiaDaRota(new Date(a, m - 1, d, h || 0))),
 };`;
 
 function carregar() {
@@ -107,4 +109,26 @@ test("nome vindo da planilha nunca vira HTML na folha", () => {
   assert.ok(!html.includes("<img"));
   assert.ok(html.includes("&lt;img src=x onerror=alert(1)&gt;"));
   assert.ok(html.includes("&lt;b&gt;x&lt;/b&gt;"));
+});
+
+test("a rota impressa é a do dia seguinte, com o dia da semana", () => {
+  // Quinta 19/11/2026 → sexta 20/11/2026, a qualquer hora do dia.
+  const p = carregar();
+  assert.deepStrictEqual(JSON.parse(p.diaDaRota(2026, 11, 19, 8)), { longo: "sexta-feira, 20/11/2026", curto: "20-11-2026" });
+  assert.deepStrictEqual(JSON.parse(p.diaDaRota(2026, 11, 19, 23)), { longo: "sexta-feira, 20/11/2026", curto: "20-11-2026" });
+});
+
+test("o dia seguinte vira o mês e o ano", () => {
+  const p = carregar();
+  assert.strictEqual(JSON.parse(p.diaDaRota(2026, 11, 30)).curto, "01-12-2026");
+  assert.strictEqual(JSON.parse(p.diaDaRota(2026, 12, 31)).curto, "01-01-2027");
+  assert.strictEqual(JSON.parse(p.diaDaRota(2028, 2, 28)).curto, "29-02-2028");
+});
+
+test("a folha mostra o dia da rota em destaque e no nome do arquivo", () => {
+  const html = carregar().folha(LINHAS, "Caçador", "19/11/2026 17:30", "",
+    { longo: "sexta-feira, 20/11/2026", curto: "20-11-2026" });
+  assert.match(html, /<div class="dia">Rota de sexta-feira, 20\/11\/2026<\/div>/);
+  assert.match(html, /<title>Rota Caçador 20-11-2026<\/title>/);
+  assert.match(html, /Impresso em 19\/11\/2026 17:30/);
 });

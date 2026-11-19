@@ -335,13 +335,28 @@ function _pvRenderizarPorEntregador(linhas) {
 // do navegador. Imprime o que o filtro de cima está mostrando.
 
 /**
+ * Dia da rota que está sendo impressa: sempre o dia SEGUINTE — o planejamento é
+ * feito e impresso na véspera. Vira o mês e o ano sozinho (setDate cuida disso).
+ * @param {Date} agora
+ * @return {{longo: string, curto: string}} "quinta-feira, 20/11/2026" e "20-11-2026".
+ */
+function _pvDiaDaRota(agora) {
+    const d = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1);
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const semana = d.toLocaleDateString("pt-BR", { weekday: "long" });
+    return { longo: `${semana}, ${dd}/${mm}/${d.getFullYear()}`, curto: `${dd}-${mm}-${d.getFullYear()}` };
+}
+
+/**
  * HTML da folha. Sem depender da tela: recebe tudo pronto, pra ser testável.
  * @param {Array} linhas Bairros (já filtrados).
  * @param {string} unidade Rótulo da unidade ("Caçador").
- * @param {string} quando Data/hora já formatada.
+ * @param {string} quando Data/hora da impressão, já formatada.
  * @param {string=} filtro Texto do filtro, se houver.
+ * @param {{longo: string, curto: string}=} dia Dia da rota (_pvDiaDaRota).
  */
-function _pvHtmlImpressao(linhas, unidade, quando, filtro) {
+function _pvHtmlImpressao(linhas, unidade, quando, filtro, dia) {
     const { grupos, vazios } = _pvAgrupar(linhas);
     const todos = grupos.concat(vazios.length ? [{ nome: "Sem entregador", itens: vazios, vazio: true }] : []);
 
@@ -358,12 +373,13 @@ function _pvHtmlImpressao(linhas, unidade, quando, filtro) {
     ].filter(Boolean).join(" · ");
 
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
-<title>Rota ${_pvEsc(unidade)}</title>
+<title>Rota ${_pvEsc(unidade)}${dia ? " " + _pvEsc(dia.curto) : ""}</title>
 <style>
     @page { size: A4 portrait; margin: 12mm; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111; font-size: 12px; }
     h1 { font-size: 17px; margin: 0 0 3px; }
+    .dia { font-size: 14px; font-weight: bold; margin: 0 0 3px; }
     .sub { color: #555; font-size: 11px; margin-bottom: 12px; }
     table { width: 100%; border-collapse: collapse; }
     thead th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
@@ -376,9 +392,9 @@ function _pvHtmlImpressao(linhas, unidade, quando, filtro) {
     td.ent small { color: #666; font-size: 10.5px; }
     td.sig { width: 64px; font-family: Consolas, "Courier New", monospace; font-weight: bold; white-space: nowrap; }
     tbody.vazio td.ent b { font-style: italic; }
-    .rodape { margin-top: 10px; font-size: 10px; color: #888; }
 </style></head><body>
 <h1>Planejamento de Rotas — ${_pvEsc(unidade)}</h1>
+${dia ? `<div class="dia">Rota de ${_pvEsc(dia.longo)}</div>` : ""}
 <div class="sub">Impresso em ${_pvEsc(quando)} · ${resumo}</div>
 <table><thead><tr><th>Entregador</th><th>Sigla</th><th>Bairro</th></tr></thead>${corpo}</table>
 </body></html>`;
@@ -388,9 +404,10 @@ function _pvImprimir() {
     const linhas = _pvLinhasFiltradas();
     if (!linhas.length) { gcAlert("Nada para imprimir com este filtro."); return; }
 
-    const quando = new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const agora  = new Date();
+    const quando = agora.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
     const html = _pvHtmlImpressao(linhas, _PV_UNIDADE_LABEL[_pvUnidade] || _pvUnidade, quando,
-        document.getElementById("pv-filtro-input").value.trim());
+        document.getElementById("pv-filtro-input").value.trim(), _pvDiaDaRota(agora));
 
     // Iframe escondido em vez de janela nova: abre direto a caixa de impressão, sem
     // depender de pop-up liberado. O anterior só sai na próxima impressão — tirar
