@@ -730,9 +730,10 @@
       if (primeira || !dados.novas.length) return;
       // Uma por conversa (a mais recente), no máximo 3 avisos; o resto vira um aviso de resumo.
       const porNumero = new Map();
-      // Quem não é SAC nem dev não vê Acareação: não avisa de cliente que só tem acareação.
+      // Só avisa do que a tela de Conversas mostra: cliente com disparo da Shopee em Ativos, ou em
+      // Acareação para SAC e dev. "Nos chamaram" (sem disparo nosso) fica de fora.
       const veAcareacao = R.ROLES_ACAREACAO.includes(papel);
-      dados.novas.filter((n) => veAcareacao || !n.acareacao || n.outros).forEach((n) => porNumero.set(n.numero, n));
+      dados.novas.filter((n) => n.outros || (veAcareacao && n.acareacao)).forEach((n) => porNumero.set(n.numero, n));
       if (!porNumero.size) return;
       const lista = [...porNumero.values()].reverse();
       lista.slice(0, MAX_AVISOS).forEach((n) => mostrarAviso({

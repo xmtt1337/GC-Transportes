@@ -152,10 +152,14 @@ Por gentileza, poderia confirmar a entrega preenchendo os dados abaixo?
     return acareacao ? 'acareacao' : 'outros';
   }
 
-  /** As conversas que a extensao mostra: as da Shopee nas abas com transportadora, e "Nos chamaram". */
+  /**
+   * As conversas que a extensao mostra: so as que nasceram de disparo da Shopee (Acareacao e
+   * Ativos). "Nos chamaram" (cliente que escreveu sem disparo nosso) fica so no sistema
+   * (pedido do usuario, 19/11/2026).
+   */
   function conversasDaShopee(lista) {
     return (Array.isArray(lista) ? lista : [])
-      .filter((c) => { const a = abaDe(c); return a === 'chamaram' || ((a === 'acareacao' || a === 'outros') && ehShopee(c)); })
+      .filter((c) => { const a = abaDe(c); return (a === 'acareacao' || a === 'outros') && ehShopee(c); })
       .sort((a, b) => new Date(b.ultima || 0) - new Date(a.ultima || 0));
   }
 

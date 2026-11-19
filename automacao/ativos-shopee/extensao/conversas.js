@@ -2,8 +2,9 @@
 //
 // E a tela Ativos > Conversas do sistema (meusite/js/whatsapp-conversa.js) so com a Shopee:
 //   Acareacao   (disparos de SAC/dev, com prazo): Vencendo hoje, 24h +, Vencidos, Recebido, Nao recebido;
-//   Ativos      (os outros ativos):               Novas respostas, Aguardando, Entregue, Nao entregue;
-//   Nos chamaram (o cliente escreveu sem disparo nosso): lista unica.
+//   Ativos      (os outros ativos):               Novas respostas, Aguardando, Entregue, Nao entregue.
+// "Nos chamaram" (cliente que escreveu sem disparo nosso) nao entra aqui: fica so no sistema.
+// Acareacao so aparece para SAC e dev.
 // Arrastar o card para Recebido/Entregue ou Nao recebido/Nao entregue resolve o pedido; arrastar
 // de volta reabre. Abrir o card mostra a conversa: responder (janela de 24h), marcar a resposta,
 // copiar o codigo, excluir mensagem do historico.
@@ -31,9 +32,8 @@
       { chave: 'entregue', titulo: 'Entregue', resultado: 'recebeu' },
       { chave: 'nao_entregue', titulo: 'Não entregue', resultado: 'nao_recebeu' },
     ],
-    chamaram: [{ chave: 'chamaram', titulo: 'Nos chamaram', semDrop: true }],
   };
-  const ABAS = [['acareacao', 'Acareação'], ['outros', 'Ativos'], ['chamaram', 'Nos chamaram']];
+  const ABAS = [['acareacao', 'Acareação'], ['outros', 'Ativos']];
 
   const CSS = `
   .xm-ativos-pagina .xm-conv-barra { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
@@ -279,7 +279,6 @@
   }
 
   function colunaDe(c, aba) {
-    if (aba === 'chamaram') return 'chamaram';
     if (aba === 'outros') return ctx.R.colunaDesfecho(c);
     const s = ctx.R.statusPrazo(c);
     if (s !== 'respondidos') return s;
@@ -307,8 +306,7 @@
       linha = `<div class="xm-card-linha">${c.enviado_por_nome ? `${esc(c.enviado_por_nome)} · ` : ''}${ctx.R.dataCurta(c.ultima)}${lida}</div>`;
     }
     const reabrir = c.respondido ? '<button class="xm-link xm-card-reabrir" type="button" title="Tira a marcação: o card volta para Aguardando">Desfazer</button>' : '';
-    const arrasta = aba === 'chamaram' ? '' : 'draggable="true"';
-    return `<div class="xm-card${nl ? ' xm-nao-lida' : ''}" ${arrasta} data-numero="${esc(c.numero)}" data-pedido="${esc(c.pedido || '')}" data-resolvido="${c.respondido ? '1' : ''}" data-resultado="${esc(c.resultado || '')}">
+    return `<div class="xm-card${nl ? ' xm-nao-lida' : ''}" draggable="true" data-numero="${esc(c.numero)}" data-pedido="${esc(c.pedido || '')}" data-resolvido="${c.respondido ? '1' : ''}" data-resultado="${esc(c.resultado || '')}">
       <div class="xm-card-cod">${esc(c.pedido || ctx.R.formatarNumero(c.numero))}</div>
       ${linha}${reabrir}${selo}
     </div>`;
@@ -316,7 +314,7 @@
 
   function desenharLista() {
     if (!raiz || !est.logado) return;
-    const contagem = { acareacao: 0, outros: 0, chamaram: 0 };
+    const contagem = { acareacao: 0, outros: 0 };
     est.dados.filter(casaBusca).forEach((c) => { const a = ctx.R.abaDe(c); if (a in contagem) contagem[a] += 1; });
     raiz.querySelectorAll('.xm-aba').forEach((b) => {
       b.classList.toggle('ativa', b.dataset.aba === est.aba);

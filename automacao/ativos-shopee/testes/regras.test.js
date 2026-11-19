@@ -100,7 +100,7 @@ test('manifest: sem popup, só SPX, arquivos do export e o sistema', () => {
   for (const cs of m.content_scripts) for (const f of cs.js) assert.ok(fs.existsSync(path.join(__dirname, '../extensao', f)), f);
 });
 
-test('conversas: só Shopee (e Nos chamaram), aba e coluna iguais às do sistema', () => {
+test('conversas: só as da Shopee (sem Nos chamaram), aba e coluna iguais às do sistema', () => {
   const agora = new Date('2026-11-18T15:00:00Z');
   const base = { numero: '5549900000001', primeiro_envio: '2026-11-18T12:00:00Z', ultima: '2026-11-18T12:00:00Z' };
   const lista = [
@@ -112,8 +112,10 @@ test('conversas: só Shopee (e Nos chamaram), aba e coluna iguais às do sistema
     { ...base, pedido: '', transportadora: 'shopee', tem_entregador: true },
   ];
   const vis = R.conversasDaShopee(lista);
-  assert.deepStrictEqual(vis.map((c) => c.pedido || c.numero), ['BRTESTE2', '5549900000009', 'BRTESTE1', 'BRTESTE4']); // mais recente primeiro
-  assert.deepStrictEqual(vis.map((c) => R.abaDe(c)), ['outros', 'chamaram', 'acareacao', 'outros']);
+  // mais recente primeiro; o "Nos chamaram" (5549900000009), a J&T e o entregador ficam de fora
+  assert.deepStrictEqual(vis.map((c) => c.pedido || c.numero), ['BRTESTE2', 'BRTESTE1', 'BRTESTE4']);
+  assert.deepStrictEqual(vis.map((c) => R.abaDe(c)), ['outros', 'acareacao', 'outros']);
+  assert.strictEqual(R.abaDe(lista[4]), 'chamaram');
   assert.strictEqual(R.statusPrazo(lista[0], agora), 'vencendo_hoje'); // vence 12h+24h = amanhã 12h, faltam 21h
   assert.strictEqual(R.statusPrazo({ ...lista[0], prazo_horas: 2 }, agora), 'vencidos');
   assert.strictEqual(R.statusPrazo({ ...lista[0], prazo_horas: 72 }, agora), 'mais_24h');
