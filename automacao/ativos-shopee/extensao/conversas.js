@@ -20,7 +20,15 @@
 
   // Cor só onde informa (regra do usuário): laranja = pede ação, âmbar = pendente,
   // verde = entregue/recebido, vermelho = não entregue/vencido, cinza = sem urgência.
-  const COR = { acao: '#ee4d2d', pendente: '#f59e0b', ok: '#1f9d55', ruim: '#d0021b', neutro: '#8c99a6' };
+  // Cada cor tem o tom do texto (escuro, legível) e o fundo clarinho do cabeçalho da coluna,
+  // no jeito das etiquetas do SPX. A faixa no topo foi recusada pelo usuário (19/11/2026).
+  const COR = {
+    acao: { forte: '#ee4d2d', texto: '#d73211', fundo: '#fff1ec' },
+    pendente: { forte: '#f59e0b', texto: '#b45309', fundo: '#fff7e6' },
+    ok: { forte: '#1f9d55', texto: '#15803d', fundo: '#ebf8f0' },
+    ruim: { forte: '#d0021b', texto: '#b91c1c', fundo: '#fdeeee' },
+    neutro: { forte: '#8c99a6', texto: '#5f6b77', fundo: '#f3f5f7' },
+  };
   const COLUNAS = {
     acareacao: [
       { chave: 'vencendo_hoje', titulo: 'Vencendo hoje', resultado: null, cor: COR.pendente },
@@ -48,9 +56,10 @@
   .xm-ativos-pagina .xm-aba.ativa .xm-n { background: #fff1ec; color: #ee4d2d; }
   .xm-ativos-pagina .xm-conv-busca { max-width: 320px; }
   .xm-ativos-pagina .xm-quadro { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 4px; }
-  .xm-ativos-pagina .xm-coluna { background: #fff; border-radius: 0 0 4px 4px; border-top: 3px solid var(--cor, #e5e5e5); display: flex; flex-direction: column; min-height: 200px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
-  .xm-ativos-pagina .xm-coluna-topo { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid #f0f0f0; font-weight: 500; color: #333; }
-  .xm-ativos-pagina .xm-coluna-n { min-width: 22px; padding: 0 7px; border-radius: 11px; background: var(--cor-fundo, #f5f5f5); color: var(--cor, #666); font-size: 12px; line-height: 20px; text-align: center; font-weight: 500; }
+  .xm-ativos-pagina .xm-coluna { background: #fff; border-radius: 4px; display: flex; flex-direction: column; min-height: 200px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .xm-ativos-pagina .xm-coluna-topo { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; border-radius: 4px 4px 0 0;
+    background: var(--cor-fundo, #fafafa); border-bottom: 1px solid #f0f0f0; font-weight: 500; color: var(--cor-texto, #333); }
+  .xm-ativos-pagina .xm-coluna-n { min-width: 22px; padding: 0 7px; border-radius: 11px; background: #fff; color: var(--cor-texto, #666); font-size: 12px; line-height: 20px; text-align: center; font-weight: 500; }
   .xm-ativos-pagina .xm-coluna.xm-destaque .xm-coluna-n { background: var(--cor, #ee4d2d); color: #fff; }
   .xm-ativos-pagina .xm-coluna-cards { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; max-height: var(--xm-altura-cards, 62vh); overflow-y: auto; transition: background .15s; }
   .xm-ativos-pagina .xm-coluna-cards.xm-sobre { background: #fff7f4; outline: 1px dashed #ee4d2d; outline-offset: -4px; }
@@ -340,7 +349,7 @@
       est.paginas[chave] = pag;
       const pagina = itens.slice((pag - 1) * POR_PAGINA, pag * POR_PAGINA);
       const drop = g.semDrop ? '' : ` xm-drop" data-resultado="${g.resultado || ''}`;
-      return `<div class="xm-coluna${g.semDrop && itens.length && aba === 'outros' ? ' xm-destaque' : ''}" style="--cor:${g.cor};--cor-fundo:${g.cor}1f">
+      return `<div class="xm-coluna${g.semDrop && itens.length && aba === 'outros' ? ' xm-destaque' : ''}" style="--cor:${g.cor.forte};--cor-texto:${g.cor.texto};--cor-fundo:${g.cor.fundo}">
         <div class="xm-coluna-topo"><span>${g.titulo}</span><span class="xm-coluna-n">${ctx.numero(itens.length)}</span></div>
         <div class="xm-coluna-cards${drop}">${pagina.map((c) => cardHTML(c, aba)).join('') || '<div class="xm-vazia">—</div>'}</div>
         ${total > 1 ? `<div class="xm-pag"><button type="button" data-pag="${chave}" data-delta="-1" ${pag <= 1 ? 'disabled' : ''}>‹</button>${pag}/${total}<button type="button" data-pag="${chave}" data-delta="1" ${pag >= total ? 'disabled' : ''}>›</button></div>` : ''}
