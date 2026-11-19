@@ -70,20 +70,36 @@ test("resumos: só os blocos escolhidos; pacotes da terceirizada não somam de n
     assert.match(topo, /terceirizada sobre <b>10<\/b>/);
 });
 
-test("Copiar resumo da quinzena: líquido e descontos (sem Ticketlog e sem acréscimos/descontos lançados) no formato do WhatsApp", () => {
+test("Copiar resumo da quinzena: a conta fecha — cheio − descontos (com Ticketlog) + adicionais = líquido", () => {
     const ctx = carregar();
-    const t = { pacotes: 160000, entregadores: 90, cheio: 1000, liquido: 900.5, fora_prazo: 10, ocorrencias: 2.5, pod: 0, pnr: 1.25,
-        extravios: 36.25, ticketlog: 99, descontos: 77, acrescimos: 55 };
+    // bruto = 1000 − 13,75 = 986,25; líquido = 986,25 + 5 + 55 + 20 − 99 − 36,25 − 77 = 854
+    const t = { pacotes: 160000, entregadores: 90, cheio: 1000, bruto: 986.25, liquido: 854, fora_prazo: 10, ocorrencias: 2.5, pod: 0, pnr: 1.25,
+        extravios: 36.25, ticketlog: 99, coletas: 5, viagens: 20, acrescimos: 55, descontos: 77 };
     const txt = ctx._chTextoResumo(t, { mes: 11, ano: 2026, quinzena: 1 });
     assert.match(txt, /^\*Resumo da quinzena Q1 de novembro\/2026\*/);
     assert.match(txt, /\*160\.000 pacotes\* que estamos pagando aos entregadores terceirizados \(90 entregadores\)/);
     assert.doesNotMatch(txt, /[\u{1F300}-\u{1FAFF}]/u, "sem emoji");
-    assert.match(txt, /\(líquido\): R\$\s900,50\*/);
+    assert.match(txt, /\(líquido\): R\$\s854,00\*/);
+    assert.match(txt, /Valor cheio .*: R\$\s1\.000,00/);
     assert.match(txt, /• Fora do prazo: R\$\s10,00/);
     assert.match(txt, /• Extravios: R\$\s36,25/);
+    assert.match(txt, /• Ticketlog: R\$\s99,00/);
     assert.doesNotMatch(txt, /POD/, "desconto zerado não aparece");
-    assert.doesNotMatch(txt, /Ticketlog|Acréscimos|99,00|77,00/);
-    assert.match(txt, /Total de descontos: R\$\s50,00\* \(5,00% do valor cheio de R\$\s1\.000,00\)/);
+    assert.match(txt, /Total de descontos: R\$\s149,00\* \(14,90% do valor cheio\)/);
+    assert.match(txt, /• Coletas: R\$\s5,00/);
+    assert.match(txt, /• Deslocamento \(viagens\): R\$\s20,00/);
+    assert.match(txt, /• Acréscimos menos descontos lançados: −R\$\s22,00/, "lançados viram uma linha só, o saldo");
+    assert.match(txt, /Total de adicionais: R\$\s3,00/);
+    assert.match(txt, /Conta: R\$\s1\.000,00 − R\$\s149,00 \+ R\$\s3,00 = R\$\s854,00$/);
+});
+
+test("Copiar resumo da quinzena: adicionais negativos tiram na conta; sem adicionais, a seção some", () => {
+    const ctx = carregar();
+    const neg = ctx._chTextoResumo({ pacotes: 1, entregadores: 1, cheio: 100, liquido: 80, fora_prazo: 10, descontos: 10 }, { mes: 1, ano: 2026, quinzena: 2 });
+    assert.match(neg, /Conta: R\$\s100,00 − R\$\s10,00 − R\$\s10,00 = R\$\s80,00$/);
+    const sem = ctx._chTextoResumo({ pacotes: 1, entregadores: 1, cheio: 100, liquido: 90, fora_prazo: 10 }, { mes: 1, ano: 2026, quinzena: 2 });
+    assert.doesNotMatch(sem, /Adicionais/);
+    assert.match(sem, /Conta: R\$\s100,00 − R\$\s10,00 = R\$\s90,00$/);
 });
 
 test("Copiar resumo da Terceirizada Videira: pacotes por cidade × R$ por pacote, adicionais, descontos e líquido, sem emoji", () => {
@@ -95,7 +111,7 @@ test("Copiar resumo da Terceirizada Videira: pacotes por cidade × R$ por pacote
             { entregador: "Terceirizada Teste", bloco: "terceirizada", transportadora: "Anjun", cidade: "Cidade B", pacotes: 200, bruto: 96 },
             { entregador: "Fulano - Vila", bloco: "entregadores", transportadora: "Anjun", cidade: "Cidade A", pacotes: 999, bruto: 999 },
         ],
-        entregadores: [{ entregador: "Terceirizada Teste", bloco: "terceirizada", coletas: 10, acrescimos: 0, extravios: 5.5, descontos: 2 }],
+        entregadores: [{ entregador: "Terceirizada Teste", bloco: "terceirizada", coletas: 10, acrescimos: 0, extravios: 5.5, extravios_qtd: 3, descontos: 2 }],
     };
     const txt = ctx._chTextoTerceirizada(dados, { mes: 10, ano: 2026, quinzena: 2 });
     assert.match(txt, /^\*Resumo da quinzena Q2 de outubro\/2026 — Terceirizada Expedição Videira\*/);
@@ -103,8 +119,14 @@ test("Copiar resumo da Terceirizada Videira: pacotes por cidade × R$ por pacote
     assert.ok(txt.indexOf("• Cidade B: 200") < txt.indexOf("• Cidade A: 150"), "cidade com mais pacotes primeiro");
     assert.match(txt, /• Coletas: R\$\s10,00/);
     assert.doesNotMatch(txt, /Acréscimos/, "zerado não aparece");
-    assert.match(txt, /• Extravios: R\$\s5,50/);
+    assert.match(txt, /• Extravios: 3 pedidos — R\$\s5,50/);
     assert.match(txt, /• Descontos: R\$\s2,00/);
-    assert.match(txt, /\(líquido\): R\$\s170,50\*$/);
+    assert.match(txt, /\(líquido\): R\$\s170,50\*/);
+    assert.match(txt, /Conta: R\$\s168,00 \+ R\$\s10,00 − R\$\s7,50 = R\$\s170,50$/);
     assert.doesNotMatch(txt, /[\u{1F300}-\u{1FAFF}]/u);
+    // Um extravio só: singular; sem a quantidade (backend antigo), só o valor.
+    dados.entregadores[0].extravios_qtd = 1;
+    assert.match(ctx._chTextoTerceirizada(dados, { mes: 10, ano: 2026, quinzena: 2 }), /• Extravios: 1 pedido — R\$\s5,50/);
+    delete dados.entregadores[0].extravios_qtd;
+    assert.match(ctx._chTextoTerceirizada(dados, { mes: 10, ano: 2026, quinzena: 2 }), /• Extravios: R\$\s5,50/);
 });

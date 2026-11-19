@@ -177,20 +177,30 @@ function _chHtml(dados, filtros, blocos) {
 }
 
 // ── Copiar resumo da quinzena (19/11/2026): texto pronto pro WhatsApp, da quinzena inteira
-// (resumos escolhidos, sem os filtros de transportadora/cidade/polo). Descontos dos entregadores
-// sem Ticketlog e sem os acréscimos/descontos lançados — pedido do usuário.
+// (sem os filtros de transportadora/cidade/polo). A conta FECHA: valor cheio − descontos +
+// adicionais = líquido. Acréscimos e descontos lançados vão numa linha só (o saldo), pra não
+// inflar os dois lados — pedido do usuário.
 const _CH_MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-const _CH_DESC_RESUMO = [["fora_prazo", "Fora do prazo"], ["ocorrencias", "Ocorrências"], ["pod", "POD"], ["pnr", "PNR acima do limite"], ["extravios", "Extravios"]];
+const _CH_DESC_RESUMO = [["fora_prazo", "Fora do prazo"], ["ocorrencias", "Ocorrências"], ["pod", "POD"], ["pnr", "PNR acima do limite"],
+    ["extravios", "Extravios"], ["ticketlog", "Ticketlog"]];
 
+/** "R$ 1.234,50"; negativo sai "−R$ 1.234,50". */
 function _chMoeda(n) {
-    return "R$ " + (Number(n) || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const v = Number(n) || 0;
+    return (v < 0 ? "−" : "") + "R$ " + Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+const _chPct = (parte, todo) => todo ? (parte / todo * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%" : null;
 
 /** Texto do resumo a partir do total de _chAgregar (sem filtros) e da quinzena. */
 function _chTextoResumo(t, { mes, ano, quinzena }) {
     const desc = _CH_DESC_RESUMO.filter(([c]) => t[c]);
     const totalDesc = _chR2(desc.reduce((s, [c]) => s + t[c], 0));
-    const pct = t.cheio ? (totalDesc / t.cheio * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null;
+    const saldoLanc = _chR2((t.acrescimos || 0) - (t.descontos || 0));
+    const adic = [["Coletas", _chR2(t.coletas)], ["Deslocamento (viagens)", _chR2(t.viagens)],
+        ["Acréscimos menos descontos lançados", saldoLanc]].filter(([, v]) => v);
+    const totalAdic = _chR2(adic.reduce((s, [, v]) => s + v, 0));
+    const pct = _chPct(totalDesc, t.cheio);
     return [
         `*Resumo da quinzena Q${quinzena} de ${_CH_MESES[mes - 1]}/${ano}*`,
         "",
@@ -198,10 +208,14 @@ function _chTextoResumo(t, { mes, ano, quinzena }) {
         "",
         `*Valor presumido para pagamento dos entregadores terceirizados (líquido): ${_chMoeda(t.liquido)}*`,
         "",
+        `Valor cheio (todo pacote entregue pelo valor máximo): ${_chMoeda(t.cheio)}`,
+        "",
         "*Descontos que os entregadores tiveram:*",
         ...(desc.length ? desc.map(([c, rot]) => `• ${rot}: ${_chMoeda(t[c])}`) : ["• Nenhum"]),
+        `*Total de descontos: ${_chMoeda(totalDesc)}*${pct ? ` (${pct} do valor cheio)` : ""}`,
+        ...(adic.length ? ["", "*Adicionais:*", ...adic.map(([rot, v]) => `• ${rot}: ${_chMoeda(v)}`), `*Total de adicionais: ${_chMoeda(totalAdic)}*`] : []),
         "",
-        `*Total de descontos: ${_chMoeda(totalDesc)}*${pct !== null ? ` (${pct}% do valor cheio de ${_chMoeda(t.cheio)})` : ""}`,
+        `Conta: ${_chMoeda(t.cheio)} − ${_chMoeda(totalDesc)}${adic.length ? ` ${totalAdic < 0 ? "−" : "+"} ${_chMoeda(Math.abs(totalAdic))}` : ""} = ${_chMoeda(t.liquido)}`,
     ].join("\n");
 }
 
@@ -228,9 +242,13 @@ function _chTextoTerceirizada(dados, { mes, ano, quinzena }) {
         `*${n(pacotes)} pacotes* nas cidades da terceirizada × ${_chMoeda(porPacote)} = *${_chMoeda(bruto)}*`,
         ...cidades.map(([c, q]) => `• ${c}: ${n(q)}`),
         ...(coletas || acresc ? ["", "*Adicionais:*", ...(coletas ? [`• Coletas: ${_chMoeda(coletas)}`] : []), ...(acresc ? [`• Acréscimos: ${_chMoeda(acresc)}`] : [])] : []),
-        ...(ext || desc ? ["", "*Descontos:*", ...(ext ? [`• Extravios: ${_chMoeda(ext)}`] : []), ...(desc ? [`• Descontos: ${_chMoeda(desc)}`] : [])] : []),
+        ...(ext || desc ? ["", "*Descontos:*",
+            ...(ext ? [`• Extravios: ${aj.extravios_qtd ? `${n(aj.extravios_qtd)} pedido${aj.extravios_qtd !== 1 ? "s" : ""} — ` : ""}${_chMoeda(ext)}`] : []),
+            ...(desc ? [`• Descontos: ${_chMoeda(desc)}`] : [])] : []),
         "",
         `*Valor presumido para pagamento da terceirizada (líquido): ${_chMoeda(liquido)}*`,
+        "",
+        `Conta: ${_chMoeda(bruto)}${coletas || acresc ? ` + ${_chMoeda(_chR2(coletas + acresc))}` : ""}${ext || desc ? ` − ${_chMoeda(_chR2(ext + desc))}` : ""} = ${_chMoeda(liquido)}`,
     ].join("\n");
 }
 
