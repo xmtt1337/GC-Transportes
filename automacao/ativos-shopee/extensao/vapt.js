@@ -36,7 +36,7 @@
   .xm-ativos-pagina .xm-vv-h { font-size: 15px; font-weight: 500; color: #333; margin: 0 0 2px; }
   .xm-ativos-pagina .xm-vv-hsub { color: #999; font-size: 12px; margin: 0 0 12px; }
   .xm-ativos-pagina .xm-vv-barras { display: grid; gap: 8px; }
-  .xm-ativos-pagina .xm-vv-linha { display: grid; grid-template-columns: minmax(90px, 160px) minmax(0, 1fr) 48px; align-items: center; gap: 10px; font-size: 13px; color: #333; }
+  .xm-ativos-pagina .xm-vv-linha { display: grid; grid-template-columns: minmax(90px, 160px) minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 13px; color: #333; }
   .xm-ativos-pagina .xm-vv-linha.xm-clica { cursor: pointer; padding: 4px 6px; margin: 0 -6px; border-radius: 4px; }
   .xm-ativos-pagina .xm-vv-linha.xm-clica:hover, .xm-ativos-pagina .xm-vv-linha.xm-ativa { background: #fff7f4; }
   .xm-ativos-pagina .xm-vv-linha span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -55,7 +55,7 @@
 
   let ctx = null;
   let raiz = null;
-  const est = { logado: false, papel: '', polo: '', dia: '', dados: null, tipo: 'sem_at', ocupado: false };
+  const est = { logado: false, papel: '', polo: '', dia: '', dias: [], dados: null, tipo: 'sem_at', ocupado: false };
   const $ = (sel) => raiz.querySelector(sel);
   const esc = (v) => ctx.esc(v);
   const n = (v) => ctx.numero(v);
@@ -169,7 +169,10 @@
 
   function mostrar(r) {
     est.dados = r || null;
-    const dias = (r && r.dias) || [];
+    // A resposta do Conferir agora (leitura/pedidos) não traz a lista de dias: mantém a que já veio,
+    // senão o seletor ficava só com hoje e parecia que os outros dias não estavam salvos.
+    if (r && Array.isArray(r.dias)) est.dias = r.dias;
+    const dias = est.dias || [];
     const dia = (r && r.dia) || '';
     if (dia) est.dia = dia;
     const sel = $('.xm-vv-dia');
@@ -219,7 +222,8 @@
 
     // Detalhamento por tipo
     const maiorTipo = Math.max(semAt.length, naoRec.length);
-    const pctDe = (q) => (r.divergencias ? `${Math.floor((q * 100) / r.divergencias)}%` : '0%');
+    // Porcentagem sempre com 2 casas, para baixo (regra do usuário): 30 de 3.028 = 0,99%, não 0%.
+    const pctDe = (q) => pct2(r.divergencias ? Math.floor((q * 10000) / r.divergencias) / 100 : 0);
     $('.xm-vv-tipos').innerHTML = r.divergencias
       ? linhaBarra('Recebido - Sem AT', semAt.length, maiorTipo, { tipo: 'sem_at', ativa: est.tipo === 'sem_at', direita: `${n(semAt.length)} · ${pctDe(semAt.length)}` })
         + linhaBarra('Enviado - Não recebido', naoRec.length, maiorTipo, { tipo: 'nao_recebido', ativa: est.tipo === 'nao_recebido', direita: `${n(naoRec.length)} · ${pctDe(naoRec.length)}` })
