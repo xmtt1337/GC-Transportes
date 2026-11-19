@@ -32,8 +32,15 @@
   .xm-ativos-pagina .xm-vv-val { color: #333; font-size: 24px; font-weight: 500; line-height: 1.3; margin: 4px 0 2px; white-space: nowrap; }
   .xm-ativos-pagina .xm-vv-val.xm-atencao { color: #ee4d2d; }
   .xm-ativos-pagina .xm-vv-sub { color: #999; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .xm-ativos-pagina .xm-vv-trilho { height: 4px; background: #f0f0f0; border-radius: 2px; margin-top: 8px; overflow: hidden; }
-  .xm-ativos-pagina .xm-vv-trilho i { display: block; height: 100%; background: #ee4d2d; }
+  /* Meio arco da % AT vinculada (o mesmo da XM - Operação): 157 de comprimento, --pct x 1,5708 é o pintado. */
+  .xm-ativos-pagina .xm-vv-arco { --pct: 0; position: relative; width: 150px; height: 84px; margin: 6px auto 2px; }
+  .xm-ativos-pagina .xm-vv-arco svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .xm-ativos-pagina .xm-vv-arco path { fill: none; stroke-width: 12; stroke-linecap: round; }
+  .xm-ativos-pagina .xm-vv-arco .xm-arco-fundo { stroke: #f0f0f0; }
+  .xm-ativos-pagina .xm-vv-arco .xm-arco-valor { stroke: #ee4d2d; stroke-dasharray: calc(var(--pct) * 1.5708px) 400px; }
+  .xm-ativos-pagina .xm-vv-arco.xm-zero .xm-arco-valor { display: none; }
+  .xm-ativos-pagina .xm-vv-arco span { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 22px; font-weight: 500; color: #333; }
+  .xm-ativos-pagina .xm-vv-card-at .xm-vv-sub { text-align: center; }
   .xm-ativos-pagina .xm-vv-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
   @media (max-width: 1100px) { .xm-ativos-pagina .xm-vv-tres { grid-template-columns: 1fr; } }
   .xm-ativos-pagina .xm-vv-tres .xm-cartao { margin-bottom: 0; }
@@ -198,6 +205,15 @@
   }
   const hora = (seg) => (seg ? new Date(seg * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : '');
 
+  /** % AT vinculada em meio arco (pedido do usuário: igual ao da XM - Operação). */
+  function cardAt(r) {
+    const p = Math.min(100, Math.max(0, Number(r.pct_at) || 0));
+    const arco = 'M10 60 A50 50 0 0 1 110 60';
+    return `<div class="xm-vv-card xm-vv-card-at"><div class="xm-vv-rot">% AT vinculada</div>
+      <div class="xm-vv-arco${p ? '' : ' xm-zero'}" style="--pct:${p}"><svg viewBox="0 0 120 68"><path class="xm-arco-fundo" d="${arco}"/><path class="xm-arco-valor" d="${arco}"/></svg><span>${pct2(r.pct_at)}</span></div>
+      <div class="xm-vv-sub">${n(r.em_at)} / ${n(r.total)} pacotes</div></div>`;
+  }
+
   function card(rotulo, valor, sub, extra = '', atencao = false) {
     return `<div class="xm-vv-card"><div class="xm-vv-rot">${rotulo}</div><div class="xm-vv-val${atencao ? ' xm-atencao' : ''}">${valor}</div><div class="xm-vv-sub" title="${esc(sub)}">${esc(sub)}</div>${extra}</div>`;
   }
@@ -217,7 +233,7 @@
     const tipos = (semAt.length ? 1 : 0) + (naoRec.length ? 1 : 0);
     const foraTxt = r.fora_abrangencia ? (r.fora || []).slice(0, 2).map((f) => f.cidade).join(', ') : 'nenhum pacote';
     $('.xm-vv-cards').innerHTML = [
-      card('% AT vinculada', pct2(r.pct_at), `${n(r.em_at)} / ${n(r.total)} pacotes`, `<div class="xm-vv-trilho"><i style="width:${Math.min(100, Number(r.pct_at) || 0)}%"></i></div>`),
+      cardAt(r),
       card('Total de pacotes', n(r.total), 'no romaneio'),
       card('Pacotes recebidos', n(r.recebidos), `${pct2(r.pct_recebidos)} do romaneio`),
       card('Divergências', n(r.divergencias), `${tipos} tipo(s) · ${pct2(r.total ? Math.floor((r.divergencias * 10000) / r.total) / 100 : 0)} do romaneio`,
