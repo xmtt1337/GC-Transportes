@@ -134,7 +134,7 @@
     titulo.className = 'ssc-menu-submenu-title';
     const nome = comDataV(document.createElement('span'), vTitulo);
     nome.className = 'sub-menu-title';
-    nome.textContent = 'Ativos Shopee';
+    nome.textContent = 'Ativos'; // dentro do SPX o "Shopee" sobrava (pedido do usuário, 19/11/2026)
     const seta = document.createElement('span');
     seta.className = 'ssc-menu-submenu-title-icon';
     seta.append(svg(SETA, 'submenu-icon', []));
@@ -286,7 +286,7 @@
       migalha.className = modelo ? modelo.className : 'ssc-breadcrumb-item';
       bc.append(migalha);
     }
-    if (migalha) migalha.textContent = `Ativos Shopee  /  ${PAGINAS.find((p) => p.chave === chave).titulo}`;
+    if (migalha) migalha.textContent = `Ativos  /  ${PAGINAS.find((p) => p.chave === chave).titulo}`;
     abrirGrupo(true);
     marcarItem(chave);
     if (chave === 'disparar') atualizarConta();
