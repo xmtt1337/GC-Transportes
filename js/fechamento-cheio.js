@@ -149,6 +149,8 @@ function _chHtml(dados, filtros, blocos) {
         <div class="cft-barra" style="margin-top:0;flex-wrap:wrap">
             ${rotFiltro("transportadora", "Transportadora")}${rotFiltro("cidade", "Cidade")}${rotFiltro("polo", "Polo")}
             ${algum ? `<button type="button" class="cft-link" onclick="_chFiltros={transportadora:null,cidade:null,polo:null};_chRender()">Limpar filtros</button>` : ""}
+            <span style="flex:1"></span>
+            <button type="button" class="cft-btn" onclick="_chCopiarResumo(this)" title="Copia o resumo da quinzena inteira (sem os filtros) pronto pra colar no WhatsApp">Copiar resumo da quinzena</button>
         </div>
         ${dados.sem_conta ? `<div class="cft-pend" style="margin:8px 0"><div class="cft-pend-titulo">Recalcular</div>
             ${dados.sem_conta.toLocaleString("pt-BR")} pacote(s) foram calculados antes desta conta e aparecem sem perda. Clique em
@@ -171,6 +173,56 @@ function _chHtml(dados, filtros, blocos) {
             ${r.linhas.length ? `<tfoot><tr><td><strong>Total</strong></td><td class="num"><strong>${t.pacotes.toLocaleString("pt-BR")}</strong></td>
                 ${_CH_LINHAS.map(([c]) => `<td class="num"><strong>${v(c, t[c])}</strong></td>`).join("")}</tr></tfoot>` : ""}
         </table></div>`;
+}
+
+// ── Copiar resumo da quinzena (19/11/2026): texto pronto pro WhatsApp, da quinzena inteira
+// (resumos escolhidos, sem os filtros de transportadora/cidade/polo). Descontos dos entregadores
+// sem Ticketlog e sem os acréscimos/descontos lançados — pedido do usuário.
+const _CH_MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const _CH_DESC_RESUMO = [["fora_prazo", "Fora do prazo"], ["ocorrencias", "Ocorrências"], ["pod", "POD"], ["pnr", "PNR acima do limite"], ["extravios", "Extravios"]];
+
+function _chMoeda(n) {
+    return "R$ " + (Number(n) || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/** Texto do resumo a partir do total de _chAgregar (sem filtros) e da quinzena. */
+function _chTextoResumo(t, { mes, ano, quinzena }) {
+    const desc = _CH_DESC_RESUMO.filter(([c]) => t[c]);
+    const totalDesc = _chR2(desc.reduce((s, [c]) => s + t[c], 0));
+    const pct = t.cheio ? (totalDesc / t.cheio * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null;
+    return [
+        `*Resumo da quinzena Q${quinzena} de ${_CH_MESES[mes - 1]}/${ano}*`,
+        "",
+        `📦 ${t.pacotes.toLocaleString("pt-BR")} pacotes entregues · ${t.entregadores.toLocaleString("pt-BR")} entregadores`,
+        "",
+        `💰 *Valor presumido para pagamento dos entregadores terceirizados (líquido): ${_chMoeda(t.liquido)}*`,
+        "",
+        "*Descontos que os entregadores tiveram:*",
+        ...(desc.length ? desc.map(([c, rot]) => `• ${rot}: ${_chMoeda(t[c])}`) : ["• Nenhum"]),
+        "",
+        `*Total de descontos: ${_chMoeda(totalDesc)}*${pct !== null ? ` (${pct}% do valor cheio de ${_chMoeda(t.cheio)})` : ""}`,
+    ].join("\n");
+}
+
+function _chCopiarResumo(btn) {
+    if (!_chDados) return;
+    const texto = _chTextoResumo(_chAgregar(_chDados, {}, _rqResumos).total, { mes: _rqMes, ano: _rqAno, quinzena: _rqQuinzena });
+    const rotulo = btn.innerText;
+    const aviso = (msg) => { btn.innerText = msg; setTimeout(() => { btn.innerText = rotulo; }, 1800); };
+    const jeitoVelho = () => {
+        try {
+            const ta = document.createElement("textarea");
+            ta.value = texto;
+            ta.style.cssText = "position:fixed;left:-9999px;top:0";
+            document.body.appendChild(ta);
+            ta.select();
+            const deu = document.execCommand("copy");
+            ta.remove();
+            aviso(deu ? "Copiado!" : "Não consegui copiar");
+        } catch (_) { aviso("Não consegui copiar"); }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(() => aviso("Copiado!")).catch(jeitoVelho);
+    else jeitoVelho();
 }
 
 function _chRender() {

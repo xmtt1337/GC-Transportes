@@ -69,3 +69,18 @@ test("resumos: só os blocos escolhidos; pacotes da terceirizada não somam de n
     const topo = ctx._chHtmlTopo(D, ["entregadores", "terceirizada"], "Q1Out");
     assert.match(topo, /terceirizada sobre <b>10<\/b>/);
 });
+
+test("Copiar resumo da quinzena: líquido e descontos (sem Ticketlog e sem acréscimos/descontos lançados) no formato do WhatsApp", () => {
+    const ctx = carregar();
+    const t = { pacotes: 160000, entregadores: 90, cheio: 1000, liquido: 900.5, fora_prazo: 10, ocorrencias: 2.5, pod: 0, pnr: 1.25,
+        extravios: 36.25, ticketlog: 99, descontos: 77, acrescimos: 55 };
+    const txt = ctx._chTextoResumo(t, { mes: 11, ano: 2026, quinzena: 1 });
+    assert.match(txt, /^\*Resumo da quinzena Q1 de novembro\/2026\*/);
+    assert.match(txt, /160\.000 pacotes entregues · 90 entregadores/);
+    assert.match(txt, /\(líquido\): R\$\s900,50\*/);
+    assert.match(txt, /• Fora do prazo: R\$\s10,00/);
+    assert.match(txt, /• Extravios: R\$\s36,25/);
+    assert.doesNotMatch(txt, /POD/, "desconto zerado não aparece");
+    assert.doesNotMatch(txt, /Ticketlog|Acréscimos|99,00|77,00/);
+    assert.match(txt, /Total de descontos: R\$\s50,00\* \(5,00% do valor cheio de R\$\s1\.000,00\)/);
+});
