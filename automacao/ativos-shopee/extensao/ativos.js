@@ -643,10 +643,11 @@
   // ── aviso de mensagem nova de cliente ─────────────────────────────────────────
   // Em qualquer tela do SPX, com a conta do sistema entrada: pergunta ao sistema só pelas
   // mensagens recebidas depois da última vista (/macros/whatsapp/novidades, consulta leve), e
-  // mostra um aviso com som leve. O aviso fica 2,5 s e some em 0,5 s (pedido do usuário).
+  // mostra um aviso com som leve. O aviso fica 6 s (era 2,5 s; o usuário pediu mais tempo) e some
+  // em 0,5 s; com o mouse em cima ele não some, e volta a contar ao tirar o mouse.
   // Clicar abre a conversa. A primeira pergunta só marca o ponto de partida: não avisa o antigo.
   const NOVIDADES_MS = 20000;
-  const AVISO_FICA_MS = 2500;
+  const AVISO_FICA_MS = 6000;
   const AVISO_SOME_MS = 500;
   const MAX_AVISOS = 3;
   let ultimaVista = null;
@@ -685,7 +686,14 @@
     if (aoClicar) a.addEventListener('click', () => { aoClicar(); a.remove(); });
     caixaDeAvisos().append(a);
     requestAnimationFrame(() => a.classList.add('xm-visivel'));
-    setTimeout(() => { a.classList.remove('xm-visivel'); setTimeout(() => a.remove(), AVISO_SOME_MS); }, AVISO_FICA_MS);
+    let tempo = null;
+    const contar = () => {
+      clearTimeout(tempo);
+      tempo = setTimeout(() => { a.classList.remove('xm-visivel'); tempo = setTimeout(() => a.remove(), AVISO_SOME_MS); }, AVISO_FICA_MS);
+    };
+    a.addEventListener('mouseenter', () => { clearTimeout(tempo); a.classList.add('xm-visivel'); });
+    a.addEventListener('mouseleave', contar);
+    contar();
   }
 
   // Som leve: dois tons curtos e baixos. O navegador só deixa tocar depois de um clique na
