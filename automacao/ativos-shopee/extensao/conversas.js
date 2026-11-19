@@ -18,19 +18,22 @@
   const RELOGIO_LISTA_MS = 60000;
   const RELOGIO_CHAT_MS = 30000;
 
+  // Cor só onde informa (regra do usuário): laranja = pede ação, âmbar = pendente,
+  // verde = entregue/recebido, vermelho = não entregue/vencido, cinza = sem urgência.
+  const COR = { acao: '#ee4d2d', pendente: '#f59e0b', ok: '#1f9d55', ruim: '#d0021b', neutro: '#8c99a6' };
   const COLUNAS = {
     acareacao: [
-      { chave: 'vencendo_hoje', titulo: 'Vencendo hoje', resultado: null },
-      { chave: 'mais_24h', titulo: '24h +', resultado: null },
-      { chave: 'vencidos', titulo: 'Vencidos sem resposta', resultado: null },
-      { chave: 'recebido', titulo: 'Recebido', resultado: 'recebeu' },
-      { chave: 'nao_recebido', titulo: 'Não recebido', resultado: 'nao_recebeu' },
+      { chave: 'vencendo_hoje', titulo: 'Vencendo hoje', resultado: null, cor: COR.pendente },
+      { chave: 'mais_24h', titulo: '24h +', resultado: null, cor: COR.neutro },
+      { chave: 'vencidos', titulo: 'Vencidos sem resposta', resultado: null, cor: COR.ruim },
+      { chave: 'recebido', titulo: 'Recebido', resultado: 'recebeu', cor: COR.ok },
+      { chave: 'nao_recebido', titulo: 'Não recebido', resultado: 'nao_recebeu', cor: COR.ruim },
     ],
     outros: [
-      { chave: 'novas_respostas', titulo: 'Novas respostas', semDrop: true },
-      { chave: 'aguardando', titulo: 'Aguardando', resultado: null },
-      { chave: 'entregue', titulo: 'Entregue', resultado: 'recebeu' },
-      { chave: 'nao_entregue', titulo: 'Não entregue', resultado: 'nao_recebeu' },
+      { chave: 'novas_respostas', titulo: 'Novas respostas', semDrop: true, cor: COR.acao },
+      { chave: 'aguardando', titulo: 'Aguardando', resultado: null, cor: COR.pendente },
+      { chave: 'entregue', titulo: 'Entregue', resultado: 'recebeu', cor: COR.ok },
+      { chave: 'nao_entregue', titulo: 'Não entregue', resultado: 'nao_recebeu', cor: COR.ruim },
     ],
   };
   const ABAS = [['acareacao', 'Acareação'], ['outros', 'Ativos']];
@@ -45,10 +48,10 @@
   .xm-ativos-pagina .xm-aba.ativa .xm-n { background: #fff1ec; color: #ee4d2d; }
   .xm-ativos-pagina .xm-conv-busca { max-width: 320px; }
   .xm-ativos-pagina .xm-quadro { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 4px; }
-  .xm-ativos-pagina .xm-coluna { background: #fff; border-radius: 4px; display: flex; flex-direction: column; min-height: 200px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .xm-ativos-pagina .xm-coluna { background: #fff; border-radius: 0 0 4px 4px; border-top: 3px solid var(--cor, #e5e5e5); display: flex; flex-direction: column; min-height: 200px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
   .xm-ativos-pagina .xm-coluna-topo { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid #f0f0f0; font-weight: 500; color: #333; }
-  .xm-ativos-pagina .xm-coluna-n { min-width: 22px; padding: 0 7px; border-radius: 11px; background: #f5f5f5; color: #666; font-size: 12px; line-height: 20px; text-align: center; font-weight: 400; }
-  .xm-ativos-pagina .xm-coluna.xm-destaque .xm-coluna-n { background: #ee4d2d; color: #fff; }
+  .xm-ativos-pagina .xm-coluna-n { min-width: 22px; padding: 0 7px; border-radius: 11px; background: var(--cor-fundo, #f5f5f5); color: var(--cor, #666); font-size: 12px; line-height: 20px; text-align: center; font-weight: 500; }
+  .xm-ativos-pagina .xm-coluna.xm-destaque .xm-coluna-n { background: var(--cor, #ee4d2d); color: #fff; }
   .xm-ativos-pagina .xm-coluna-cards { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; max-height: var(--xm-altura-cards, 62vh); overflow-y: auto; transition: background .15s; }
   .xm-ativos-pagina .xm-coluna-cards.xm-sobre { background: #fff7f4; outline: 1px dashed #ee4d2d; outline-offset: -4px; }
   .xm-ativos-pagina .xm-vazia { color: #bbb; text-align: center; padding: 16px 0; font-size: 13px; }
@@ -337,7 +340,7 @@
       est.paginas[chave] = pag;
       const pagina = itens.slice((pag - 1) * POR_PAGINA, pag * POR_PAGINA);
       const drop = g.semDrop ? '' : ` xm-drop" data-resultado="${g.resultado || ''}`;
-      return `<div class="xm-coluna${g.semDrop && itens.length && aba === 'outros' ? ' xm-destaque' : ''}">
+      return `<div class="xm-coluna${g.semDrop && itens.length && aba === 'outros' ? ' xm-destaque' : ''}" style="--cor:${g.cor};--cor-fundo:${g.cor}1f">
         <div class="xm-coluna-topo"><span>${g.titulo}</span><span class="xm-coluna-n">${ctx.numero(itens.length)}</span></div>
         <div class="xm-coluna-cards${drop}">${pagina.map((c) => cardHTML(c, aba)).join('') || '<div class="xm-vazia">—</div>'}</div>
         ${total > 1 ? `<div class="xm-pag"><button type="button" data-pag="${chave}" data-delta="-1" ${pag <= 1 ? 'disabled' : ''}>‹</button>${pag}/${total}<button type="button" data-pag="${chave}" data-delta="1" ${pag >= total ? 'disabled' : ''}>›</button></div>` : ''}
