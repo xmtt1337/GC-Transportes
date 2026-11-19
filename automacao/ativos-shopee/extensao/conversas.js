@@ -49,18 +49,17 @@
   .xm-ativos-pagina .xm-coluna-topo { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid #f0f0f0; font-weight: 500; color: #333; }
   .xm-ativos-pagina .xm-coluna-n { min-width: 22px; padding: 0 7px; border-radius: 11px; background: #f5f5f5; color: #666; font-size: 12px; line-height: 20px; text-align: center; font-weight: 400; }
   .xm-ativos-pagina .xm-coluna.xm-destaque .xm-coluna-n { background: #ee4d2d; color: #fff; }
-  .xm-ativos-pagina .xm-coluna-cards { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 8px; max-height: 62vh; overflow-y: auto; transition: background .15s; }
+  .xm-ativos-pagina .xm-coluna-cards { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; max-height: 62vh; overflow-y: auto; transition: background .15s; }
   .xm-ativos-pagina .xm-coluna-cards.xm-sobre { background: #fff7f4; outline: 1px dashed #ee4d2d; outline-offset: -4px; }
   .xm-ativos-pagina .xm-vazia { color: #bbb; text-align: center; padding: 16px 0; font-size: 13px; }
-  .xm-ativos-pagina .xm-card { position: relative; border: 1px solid #eee; border-radius: 4px; padding: 10px 12px; cursor: pointer; background: #fff; }
+  .xm-ativos-pagina .xm-card { position: relative; border: 1px solid #eee; border-radius: 4px; padding: 7px 10px; cursor: pointer; background: #fff; }
   .xm-ativos-pagina .xm-card:hover { border-color: #ee4d2d; }
   .xm-ativos-pagina .xm-card.xm-nao-lida { border-left: 3px solid #ee4d2d; }
   .xm-ativos-pagina .xm-card.xm-arrastando { opacity: .4; }
-  .xm-ativos-pagina .xm-card-cod { font-weight: 500; color: #333; padding-right: 28px; word-break: break-all; }
-  .xm-ativos-pagina .xm-card-num { color: #999; font-size: 12px; }
-  .xm-ativos-pagina .xm-card-linha { color: #666; font-size: 12px; margin-top: 4px; }
-  .xm-ativos-pagina .xm-card-selo { position: absolute; top: 8px; right: 8px; min-width: 20px; padding: 0 6px; border-radius: 10px; background: #ee4d2d; color: #fff; font-size: 12px; line-height: 20px; text-align: center; }
-  .xm-ativos-pagina .xm-card-reabrir { margin-top: 6px; font-size: 12px; }
+  .xm-ativos-pagina .xm-card-cod { font-size: 13px; font-weight: 500; color: #333; padding-right: 26px; word-break: break-all; line-height: 1.4; }
+  .xm-ativos-pagina .xm-card-linha { color: #888; font-size: 11px; margin-top: 2px; line-height: 1.4; }
+  .xm-ativos-pagina .xm-card-selo { position: absolute; top: 6px; right: 6px; min-width: 18px; padding: 0 5px; border-radius: 9px; background: #ee4d2d; color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+  .xm-ativos-pagina .xm-card-reabrir { margin-top: 2px; font-size: 11px; }
   .xm-ativos-pagina .xm-pag { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 8px; border-top: 1px solid #f0f0f0; font-size: 12px; color: #666; }
   .xm-ativos-pagina .xm-pag button { border: 1px solid #e5e5e5; background: #fff; border-radius: 4px; width: 26px; height: 24px; cursor: pointer; }
   .xm-ativos-pagina .xm-pag button:disabled { opacity: .4; cursor: default; }
@@ -86,6 +85,9 @@
   .xm-ativos-pagina .xm-compor { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
   .xm-ativos-pagina .xm-compor textarea { flex: 1; min-height: 34px; height: 34px; max-height: 140px; padding: 6px 12px; }
   `;
+
+  // A mensagem recebida pode vir sem o nono dígito: compara pelos 8 últimos.
+  const mesmoNumero = (a, b) => String(a || '').replace(/\D/g, '').slice(-8) === String(b || '').replace(/\D/g, '').slice(-8);
 
   let ctx = null;
   let raiz = null;
@@ -252,6 +254,12 @@
         est.dados = ctx.R.conversasDaShopee(r);
         status('');
       }
+      if (est.abrirDepois) {
+        const { numero, pedido } = est.abrirDepois;
+        est.abrirDepois = null;
+        const c = est.dados.find((x) => mesmoNumero(x.numero, numero) && (!pedido || x.pedido === pedido)) || est.dados.find((x) => mesmoNumero(x.numero, numero));
+        if (c) { est.aba = ctx.R.abaDe(c); abrirConversa(c.numero, c.pedido, !!c.respondido, c.resultado); }
+      }
       if (!est.aba) est.aba = ctx.R.ROLES_ACAREACAO.includes(est.papel) ? 'acareacao' : 'outros';
       desenharLista();
     } catch (e) { falhou(e); }
@@ -299,7 +307,6 @@
     const arrasta = aba === 'chamaram' ? '' : 'draggable="true"';
     return `<div class="xm-card${nl ? ' xm-nao-lida' : ''}" ${arrasta} data-numero="${esc(c.numero)}" data-pedido="${esc(c.pedido || '')}" data-resolvido="${c.respondido ? '1' : ''}" data-resultado="${esc(c.resultado || '')}">
       <div class="xm-card-cod">${esc(c.pedido || ctx.R.formatarNumero(c.numero))}</div>
-      <div class="xm-card-num">${esc(ctx.R.formatarNumero(c.numero))}</div>
       ${linha}${reabrir}${selo}
     </div>`;
   }
@@ -513,5 +520,15 @@
 
   function aoSair() { pararRelogios(); }
 
-  self.XMAtivosConversas = { montar, aoMostrar, aoSair };
+  /** Pelo aviso de mensagem nova: abre esta conversa assim que a lista chegar. */
+  function abrirDepois(numero, pedido) { est.abrirDepois = { numero, pedido: pedido || '' }; }
+
+  /** Chegou mensagem nova: atualiza o que estiver aberto, sem piscar. */
+  function novidade(numeros) {
+    if (!raiz || !raiz.isConnected || !est.logado) return;
+    if (est.chat && numeros.some((n) => mesmoNumero(n, est.chat.numero))) carregarConversa(true);
+    if (!est.chat && !est.arrastando) carregarLista(true);
+  }
+
+  self.XMAtivosConversas = { montar, aoMostrar, aoSair, abrirDepois, novidade };
 })();

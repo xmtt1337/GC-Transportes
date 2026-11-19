@@ -20,6 +20,7 @@
   const ID_PAGINA = 'xm-ativos-pagina';
   const LARANJA = 'rgb(238, 77, 45)';
   const FUNDO_ABERTO = 'rgb(14, 23, 35)';
+  const HOVER_MENU = 'rgb(48, 56, 68)';
   const PAUSA_ENVIO_MS = 500; // igual ao disparo em massa do sistema
   const RITMO_OLHO_MS = 1500; // olho do telefone: o mesmo ritmo do consultador de telefone
 
@@ -165,6 +166,22 @@
       const abrir = !li.classList.contains('ssc-menu-opened');
       if (abrir) fecharOsDoSpx();
       abrirGrupo(abrir);
+    });
+    // O realce ao passar o mouse do SPX vem de script deles (estilo direto no elemento), então
+    // não pega no nosso: a mesma cor, medida na tela deles (rgb 48, 56, 68 com texto branco).
+    titulo.addEventListener('mouseenter', () => {
+      if (li.classList.contains('ssc-menu-opened')) return;
+      titulo.style.background = HOVER_MENU;
+      titulo.style.color = 'rgb(255, 255, 255)';
+    });
+    titulo.addEventListener('mouseleave', () => {
+      if (li.classList.contains('ssc-menu-opened')) return;
+      titulo.style.background = '';
+      titulo.style.color = '';
+    });
+    ul.querySelectorAll('a.xm-ativos-item').forEach((a) => {
+      a.addEventListener('mouseenter', () => { if (!a.classList.contains('ssc-menu-item-selected')) a.style.color = 'rgb(255, 255, 255)'; });
+      a.addEventListener('mouseleave', () => { if (!a.classList.contains('ssc-menu-item-selected')) a.style.color = ''; });
     });
     return li;
   }
@@ -622,6 +639,116 @@
       desenhar();
     }
   }
+
+  // ── aviso de mensagem nova de cliente ─────────────────────────────────────────
+  // Em qualquer tela do SPX, com a conta do sistema entrada: pergunta ao sistema só pelas
+  // mensagens recebidas depois da última vista (/macros/whatsapp/novidades, consulta leve), e
+  // mostra um aviso com som leve. O aviso fica 2,5 s e some em 0,5 s (pedido do usuário).
+  // Clicar abre a conversa. A primeira pergunta só marca o ponto de partida: não avisa o antigo.
+  const NOVIDADES_MS = 20000;
+  const AVISO_FICA_MS = 2500;
+  const AVISO_SOME_MS = 500;
+  const MAX_AVISOS = 3;
+  let ultimaVista = null;
+  let perguntando = false;
+
+  const CSS_AVISO = `
+  .xm-avisos { position: fixed; top: 72px; right: 24px; z-index: 2147483000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .xm-aviso { pointer-events: auto; width: 320px; background: #fff; color: #333; border-left: 4px solid ${LARANJA}; border-radius: 0 4px 4px 0;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15); padding: 10px 14px; font: 13px/1.45 Roboto, "Helvetica Neue", Arial, sans-serif; cursor: pointer;
+    opacity: 0; transform: translateY(-6px); transition: opacity ${AVISO_SOME_MS}ms ease, transform ${AVISO_SOME_MS}ms ease; }
+  .xm-aviso.xm-visivel { opacity: 1; transform: none; }
+  .xm-aviso b { display: block; font-weight: 500; color: #333; }
+  .xm-aviso .xm-aviso-cod { color: ${LARANJA}; font-size: 12px; }
+  .xm-aviso .xm-aviso-txt { color: #666; font-size: 12px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }`;
+
+  function caixaDeAvisos() {
+    let c = document.getElementById('xm-avisos');
+    if (c) return c;
+    if (!document.getElementById('xm-avisos-estilo')) {
+      const st = document.createElement('style');
+      st.id = 'xm-avisos-estilo';
+      st.textContent = CSS_AVISO;
+      (document.head || document.documentElement).append(st);
+    }
+    c = document.createElement('div');
+    c.id = 'xm-avisos';
+    c.className = 'xm-avisos';
+    document.body.append(c);
+    return c;
+  }
+
+  function mostrarAviso({ titulo, codigo, texto, aoClicar }) {
+    const a = document.createElement('div');
+    a.className = 'xm-aviso';
+    a.innerHTML = `<b>${esc(titulo)}</b>${codigo ? `<span class="xm-aviso-cod">${esc(codigo)}</span>` : ''}${texto ? `<div class="xm-aviso-txt">${esc(texto)}</div>` : ''}`;
+    if (aoClicar) a.addEventListener('click', () => { aoClicar(); a.remove(); });
+    caixaDeAvisos().append(a);
+    requestAnimationFrame(() => a.classList.add('xm-visivel'));
+    setTimeout(() => { a.classList.remove('xm-visivel'); setTimeout(() => a.remove(), AVISO_SOME_MS); }, AVISO_FICA_MS);
+  }
+
+  // Som leve: dois tons curtos e baixos. O navegador só deixa tocar depois de um clique na
+  // página, então o áudio é preparado no primeiro clique.
+  let audio = null;
+  const prepararAudio = () => {
+    try { audio = audio || new AudioContext(); if (audio.state === 'suspended') audio.resume(); } catch { audio = null; }
+  };
+  document.addEventListener('pointerdown', prepararAudio, { capture: true, passive: true });
+  function tocarSom() {
+    if (!audio || audio.state !== 'running') return;
+    const agora = audio.currentTime;
+    [[880, 0], [1320, 0.12]].forEach(([freq, atraso]) => {
+      const osc = audio.createOscillator();
+      const vol = audio.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      vol.gain.setValueAtTime(0, agora + atraso);
+      vol.gain.linearRampToValueAtTime(0.06, agora + atraso + 0.02);
+      vol.gain.exponentialRampToValueAtTime(0.0001, agora + atraso + 0.22);
+      osc.connect(vol).connect(audio.destination);
+      osc.start(agora + atraso);
+      osc.stop(agora + atraso + 0.25);
+    });
+  }
+
+  function abrirConversaDoAviso(numero, pedido) {
+    if (self.XMAtivosConversas) self.XMAtivosConversas.abrirDepois(numero, pedido);
+    mostrarPagina('conversas');
+  }
+
+  async function verNovidades() {
+    if (perguntando || document.hidden || !chrome.runtime || !chrome.runtime.id) return;
+    perguntando = true;
+    try {
+      const { logado } = await pedirAoFundo('estado');
+      if (!logado) { ultimaVista = null; return; }
+      const q = ultimaVista == null ? '' : `?desde=${ultimaVista}`;
+      const { dados } = await pedirAoFundo('sistema', { metodo: 'GET', caminho: `/macros/whatsapp/novidades${q}` });
+      const primeira = ultimaVista == null;
+      ultimaVista = dados.ultimo;
+      if (primeira || !dados.novas.length) return;
+      // Uma por conversa (a mais recente), no máximo 3 avisos; o resto vira um aviso de resumo.
+      const porNumero = new Map();
+      dados.novas.forEach((n) => porNumero.set(n.numero, n));
+      const lista = [...porNumero.values()].reverse();
+      lista.slice(0, MAX_AVISOS).forEach((n) => mostrarAviso({
+        titulo: 'Nova mensagem de cliente',
+        codigo: n.pedido || R.formatarNumero(n.numero),
+        texto: n.texto,
+        aoClicar: () => abrirConversaDoAviso(n.numero, n.pedido),
+      }));
+      if (lista.length > MAX_AVISOS) {
+        mostrarAviso({ titulo: `+${lista.length - MAX_AVISOS} conversa(s) com mensagem nova`, aoClicar: () => mostrarPagina('conversas') });
+      }
+      tocarSom();
+      if (self.XMAtivosConversas) self.XMAtivosConversas.novidade(lista.map((n) => n.numero));
+    } catch { /* sem sistema ou sem conta: tenta de novo na próxima */ } finally {
+      perguntando = false;
+    }
+  }
+  setInterval(verNovidades, NOVIDADES_MS);
+  setTimeout(verNovidades, 3000);
 
   colocarEstilo();
   colocarMenu();
