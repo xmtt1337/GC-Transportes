@@ -21,7 +21,7 @@ async function chamarSistema(metodo, caminho, corpo) {
   try {
     return await R.api(await token(), metodo, caminho, corpo);
   } catch (e) {
-    if (e instanceof R.ErroDeConta) await chrome.storage.session.remove(['token', 'nome']);
+    if (e instanceof R.ErroDeConta) await chrome.storage.session.remove(['token', 'nome', 'papel']);
     throw e;
   }
 }
@@ -37,16 +37,16 @@ async function lerContatos(url) {
 
 const tratar = {
   async estado() {
-    const { token: t, nome } = await chrome.storage.session.get(['token', 'nome']);
-    return { logado: !!t, nome: nome || '' };
+    const { token: t, nome, papel } = await chrome.storage.session.get(['token', 'nome', 'papel']);
+    return { logado: !!t, nome: nome || '', papel: papel || '' };
   },
   async entrar({ usuario, senha }) {
-    const { token: t, nome } = await R.entrar(String(usuario || '').trim(), String(senha || ''));
-    await chrome.storage.session.set({ token: t, nome });
-    return { logado: true, nome };
+    const { token: t, nome, papel } = await R.entrar(String(usuario || '').trim(), String(senha || ''));
+    await chrome.storage.session.set({ token: t, nome, papel });
+    return { logado: true, nome, papel };
   },
   async sair() {
-    await chrome.storage.session.remove(['token', 'nome']);
+    await chrome.storage.session.remove(['token', 'nome', 'papel']);
     return { logado: false };
   },
   async contatos({ url }) {
@@ -61,6 +61,14 @@ const tratar = {
       Object.assign(estados, r.estados || {});
     }
     return { estados };
+  },
+  // Conversas: as rotas do sistema em /macros/whatsapp/ (lista, conversa, responder, resolver,
+  // excluir). So esse prefixo passa; o servidor decide o que a conta ve e pode fazer.
+  async sistema({ metodo, caminho, corpo }) {
+    const m = String(metodo || 'GET').toUpperCase();
+    const c = String(caminho || '');
+    if (!['GET', 'POST'].includes(m) || !c.startsWith('/macros/whatsapp/') || c.includes('..')) throw new Error('Caminho não permitido.');
+    return { dados: await chamarSistema(m, c, m === 'POST' ? (corpo || {}) : undefined) };
   },
   async enviar({ corpo }) {
     const r = await chamarSistema('POST', R.ROTA_ENVIAR, corpo);

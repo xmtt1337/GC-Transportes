@@ -72,7 +72,7 @@ test('entrar: login com canal vigia e confere o acesso aos ativos', async () => 
     if (url.endsWith('/login')) return { status: 200, ok: true, json: async () => ({ success: true, token: 'T', name: 'Pessoa Teste' }) };
     return { status: 200, ok: true, json: async () => ({ estados: {} }) };
   };
-  assert.deepStrictEqual(await R.entrar('pessoa', 'segredo', buscar), { token: 'T', nome: 'Pessoa Teste' });
+  assert.deepStrictEqual(await R.entrar('pessoa', 'segredo', buscar), { token: 'T', nome: 'Pessoa Teste', papel: '' });
   assert.strictEqual(chamadas[0][2].canal, 'vigia');
   assert.deepStrictEqual(chamadas[1], ['/macros/whatsapp/ativos-status', 'POST', { pedidos: [] }]);
   const negado = async (url) => (url.endsWith('/login')
@@ -98,4 +98,35 @@ test('manifest: sem popup, só SPX, arquivos do export e o sistema', () => {
   assert.strictEqual(m.action, undefined);
   assert.deepStrictEqual(m.host_permissions, ['https://spx.shopee.com.br/*', 'https://*.susercontent.com/*', 'https://sistema-backend-i4uh.onrender.com/*']);
   for (const cs of m.content_scripts) for (const f of cs.js) assert.ok(fs.existsSync(path.join(__dirname, '../extensao', f)), f);
+});
+
+test('conversas: só Shopee (e Nos chamaram), aba e coluna iguais às do sistema', () => {
+  const agora = new Date('2026-11-18T15:00:00Z');
+  const base = { numero: '5549900000001', primeiro_envio: '2026-11-18T12:00:00Z', ultima: '2026-11-18T12:00:00Z' };
+  const lista = [
+    { ...base, pedido: 'BRTESTE1', transportadora: 'shopee', enviado_por_role: 'sac', prazo_horas: 24 },
+    { ...base, pedido: 'BRTESTE2', transportadora: 'shopee', enviado_por_role: 'admin', tipo: 'outros', nao_lidas: 2, ultima: '2026-11-18T14:00:00Z' },
+    { ...base, pedido: 'JTTESTE3', transportadora: 'jt', enviado_por_role: 'sac' },
+    { ...base, pedido: 'BRTESTE4', template_inicial: 'confirmacao_entrega', enviado_por_role: 'dev', tipo: 'outros', respondido: true, resultado: 'recebeu' },
+    { numero: '5549900000009', primeiro_envio: null, ultima: '2026-11-18T13:00:00Z' },
+    { ...base, pedido: '', transportadora: 'shopee', tem_entregador: true },
+  ];
+  const vis = R.conversasDaShopee(lista);
+  assert.deepStrictEqual(vis.map((c) => c.pedido || c.numero), ['BRTESTE2', '5549900000009', 'BRTESTE1', 'BRTESTE4']); // mais recente primeiro
+  assert.deepStrictEqual(vis.map((c) => R.abaDe(c)), ['outros', 'chamaram', 'acareacao', 'outros']);
+  assert.strictEqual(R.statusPrazo(lista[0], agora), 'vencendo_hoje'); // vence 12h+24h = amanhã 12h, faltam 21h
+  assert.strictEqual(R.statusPrazo({ ...lista[0], prazo_horas: 2 }, agora), 'vencidos');
+  assert.strictEqual(R.statusPrazo({ ...lista[0], prazo_horas: 72 }, agora), 'mais_24h');
+  assert.strictEqual(R.colunaDesfecho(lista[1]), 'novas_respostas');
+  assert.strictEqual(R.colunaDesfecho(lista[3]), 'entregue');
+  assert.strictEqual(R.colunaDesfecho({ respondido: true, resultado: 'nao_recebeu', nao_lidas: 3 }), 'nao_entregue'); // desfecho vence a leitura
+  assert.strictEqual(R.tempoRestante(new Date('2026-11-18T21:10:00Z'), agora), 'faltam 6h 10min');
+  assert.strictEqual(R.tempoRestante(new Date('2026-11-18T12:00:00Z'), agora), 'venceu há 3h 0min');
+  assert.strictEqual(R.formatarNumero('5549999276131'), '+55 49 99927-6131');
+});
+
+test('papelDoToken: lê o cargo do token (só para a aba inicial)', () => {
+  const corpo = Buffer.from(JSON.stringify({ id: 1, role: 'sac' })).toString('base64').replace(/=+$/, '');
+  assert.strictEqual(R.papelDoToken(`x.${corpo}.y`), 'sac');
+  assert.strictEqual(R.papelDoToken('lixo'), '');
 });

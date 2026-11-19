@@ -34,47 +34,47 @@
   #${ID_GRUPO} a.xm-ativos-item { cursor: pointer; }
   body.xm-ativos-aberto .sidebar-container a.ssc-menu-item-selected:not(.xm-ativos-item) { font-weight: normal !important; color: rgba(255,255,255,.7) !important; }
   body.xm-ativos-aberto .sidebar-container a.ssc-menu-item-selected:not(.xm-ativos-item) .ssc-menu-item-cursor { background: transparent !important; }
-  #${ID_PAGINA} { padding: 16px 24px 32px; color: #333; font-size: 14px; line-height: 1.5; box-sizing: border-box; }
-  #${ID_PAGINA} * { box-sizing: border-box; }
-  #${ID_PAGINA} .xm-cartao { background: #fff; border-radius: 4px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
-  #${ID_PAGINA} .xm-titulo { font-size: 18px; font-weight: 500; color: #333; margin: 0 0 4px; }
-  #${ID_PAGINA} .xm-sub { color: #999; font-size: 13px; margin: 0 0 16px; }
-  #${ID_PAGINA} .xm-rotulo { display: block; color: #666; font-size: 13px; margin: 0 0 6px; }
-  #${ID_PAGINA} .xm-campo, #${ID_PAGINA} .xm-area { width: 100%; border: 1px solid #e5e5e5; border-radius: 4px; font: inherit; color: #333; background: #fff; outline: none; }
-  #${ID_PAGINA} .xm-campo { height: 32px; padding: 0 12px; }
-  #${ID_PAGINA} .xm-area { min-height: 120px; padding: 8px 12px; resize: vertical; font-family: inherit; }
-  #${ID_PAGINA} .xm-campo:focus, #${ID_PAGINA} .xm-area:focus { border-color: ${LARANJA}; }
-  #${ID_PAGINA} .xm-linha { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
-  #${ID_PAGINA} .xm-linha > label { flex: 1 1 200px; max-width: 280px; }
-  #${ID_PAGINA} .xm-acoes { display: flex; gap: 8px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
-  #${ID_PAGINA} .xm-btn { height: 32px; padding: 0 16px; border: 1px solid #e5e5e5; border-radius: 4px; background: #fff; color: #333; font: inherit; cursor: pointer; white-space: nowrap; }
-  #${ID_PAGINA} .xm-btn:hover:not(:disabled) { color: ${LARANJA}; border-color: ${LARANJA}; }
-  #${ID_PAGINA} .xm-btn-primario { background: ${LARANJA}; border-color: ${LARANJA}; color: #fff; }
-  #${ID_PAGINA} .xm-btn-primario:hover:not(:disabled) { background: #d73211; border-color: #d73211; color: #fff; }
-  #${ID_PAGINA} .xm-btn:disabled { opacity: .5; cursor: not-allowed; }
-  #${ID_PAGINA} .xm-link { background: none; border: 0; padding: 0; color: #2673dd; font: inherit; cursor: pointer; }
-  #${ID_PAGINA} .xm-link:hover { text-decoration: underline; }
-  #${ID_PAGINA} .xm-status { color: #666; font-size: 13px; }
-  #${ID_PAGINA} .xm-status.xm-erro { color: #d0021b; }
-  #${ID_PAGINA} .xm-conta { color: #666; font-size: 13px; float: right; }
-  #${ID_PAGINA} .xm-cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-  #${ID_PAGINA} .xm-contas { color: #666; font-size: 13px; }
-  #${ID_PAGINA} .xm-contas b { color: #333; }
-  #${ID_PAGINA} .xm-tabela-caixa { max-height: 60vh; overflow: auto; border: 1px solid #f0f0f0; border-radius: 4px; }
-  #${ID_PAGINA} table.xm-tabela { width: 100%; border-collapse: collapse; }
-  #${ID_PAGINA} .xm-tabela th { position: sticky; top: 0; background: #fafafa; color: #333; font-weight: 500; text-align: left; padding: 10px 16px; border-bottom: 1px solid #e8e8e8; white-space: nowrap; z-index: 1; }
-  #${ID_PAGINA} .xm-tabela td { padding: 10px 16px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
-  #${ID_PAGINA} .xm-tabela tr:hover td { background: #fafafa; }
-  #${ID_PAGINA} .xm-tabela .xm-cod { white-space: nowrap; }
-  #${ID_PAGINA} .xm-tabela input[type=checkbox] { width: 16px; height: 16px; accent-color: ${LARANJA}; cursor: pointer; }
-  #${ID_PAGINA} .xm-tag { display: inline-block; padding: 0 8px; border-radius: 2px; font-size: 12px; line-height: 20px; white-space: nowrap; }
-  #${ID_PAGINA} .xm-tag-pronto { background: #f5f5f5; color: #666; }
-  #${ID_PAGINA} .xm-tag-ok { background: #e7f6ec; color: #1a8f43; }
-  #${ID_PAGINA} .xm-tag-aviso { background: #fff5e6; color: #b26a00; }
-  #${ID_PAGINA} .xm-tag-erro { background: #fdecee; color: #d0021b; }
-  #${ID_PAGINA} .xm-previa { white-space: pre-wrap; background: #fafafa; border: 1px solid #f0f0f0; border-radius: 4px; padding: 12px 16px; color: #333; font-size: 13px; margin-top: 12px; }
-  #${ID_PAGINA} details summary { cursor: pointer; color: #666; font-size: 13px; margin-top: 12px; }
-  #${ID_PAGINA} [hidden] { display: none !important; }
+  .xm-ativos-pagina { padding: 16px 24px 32px; color: #333; font-size: 14px; line-height: 1.5; box-sizing: border-box; }
+  .xm-ativos-pagina * { box-sizing: border-box; }
+  .xm-ativos-pagina .xm-cartao { background: #fff; border-radius: 4px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .xm-ativos-pagina .xm-titulo { font-size: 18px; font-weight: 500; color: #333; margin: 0 0 4px; }
+  .xm-ativos-pagina .xm-sub { color: #999; font-size: 13px; margin: 0 0 16px; }
+  .xm-ativos-pagina .xm-rotulo { display: block; color: #666; font-size: 13px; margin: 0 0 6px; }
+  .xm-ativos-pagina .xm-campo, .xm-ativos-pagina .xm-area { width: 100%; border: 1px solid #e5e5e5; border-radius: 4px; font: inherit; color: #333; background: #fff; outline: none; }
+  .xm-ativos-pagina .xm-campo { height: 32px; padding: 0 12px; }
+  .xm-ativos-pagina .xm-area { min-height: 120px; padding: 8px 12px; resize: vertical; font-family: inherit; }
+  .xm-ativos-pagina .xm-campo:focus, .xm-ativos-pagina .xm-area:focus { border-color: ${LARANJA}; }
+  .xm-ativos-pagina .xm-linha { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .xm-ativos-pagina .xm-linha > label { flex: 1 1 200px; max-width: 280px; }
+  .xm-ativos-pagina .xm-acoes { display: flex; gap: 8px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  .xm-ativos-pagina .xm-btn { height: 32px; padding: 0 16px; border: 1px solid #e5e5e5; border-radius: 4px; background: #fff; color: #333; font: inherit; cursor: pointer; white-space: nowrap; }
+  .xm-ativos-pagina .xm-btn:hover:not(:disabled) { color: ${LARANJA}; border-color: ${LARANJA}; }
+  .xm-ativos-pagina .xm-btn-primario { background: ${LARANJA}; border-color: ${LARANJA}; color: #fff; }
+  .xm-ativos-pagina .xm-btn-primario:hover:not(:disabled) { background: #d73211; border-color: #d73211; color: #fff; }
+  .xm-ativos-pagina .xm-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .xm-ativos-pagina .xm-link { background: none; border: 0; padding: 0; color: #2673dd; font: inherit; cursor: pointer; }
+  .xm-ativos-pagina .xm-link:hover { text-decoration: underline; }
+  .xm-ativos-pagina .xm-status { color: #666; font-size: 13px; }
+  .xm-ativos-pagina .xm-status.xm-erro { color: #d0021b; }
+  .xm-ativos-pagina .xm-conta { color: #666; font-size: 13px; float: right; }
+  .xm-ativos-pagina .xm-cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .xm-ativos-pagina .xm-contas { color: #666; font-size: 13px; }
+  .xm-ativos-pagina .xm-contas b { color: #333; }
+  .xm-ativos-pagina .xm-tabela-caixa { max-height: 60vh; overflow: auto; border: 1px solid #f0f0f0; border-radius: 4px; }
+  .xm-ativos-pagina table.xm-tabela { width: 100%; border-collapse: collapse; }
+  .xm-ativos-pagina .xm-tabela th { position: sticky; top: 0; background: #fafafa; color: #333; font-weight: 500; text-align: left; padding: 10px 16px; border-bottom: 1px solid #e8e8e8; white-space: nowrap; z-index: 1; }
+  .xm-ativos-pagina .xm-tabela td { padding: 10px 16px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  .xm-ativos-pagina .xm-tabela tr:hover td { background: #fafafa; }
+  .xm-ativos-pagina .xm-tabela .xm-cod { white-space: nowrap; }
+  .xm-ativos-pagina .xm-tabela input[type=checkbox] { width: 16px; height: 16px; accent-color: ${LARANJA}; cursor: pointer; }
+  .xm-ativos-pagina .xm-tag { display: inline-block; padding: 0 8px; border-radius: 2px; font-size: 12px; line-height: 20px; white-space: nowrap; }
+  .xm-ativos-pagina .xm-tag-pronto { background: #f5f5f5; color: #666; }
+  .xm-ativos-pagina .xm-tag-ok { background: #e7f6ec; color: #1a8f43; }
+  .xm-ativos-pagina .xm-tag-aviso { background: #fff5e6; color: #b26a00; }
+  .xm-ativos-pagina .xm-tag-erro { background: #fdecee; color: #d0021b; }
+  .xm-ativos-pagina .xm-previa { white-space: pre-wrap; background: #fafafa; border: 1px solid #f0f0f0; border-radius: 4px; padding: 12px 16px; color: #333; font-size: 13px; margin-top: 12px; }
+  .xm-ativos-pagina details summary { cursor: pointer; color: #666; font-size: 13px; margin-top: 12px; }
+  .xm-ativos-pagina [hidden] { display: none !important; }
   `;
 
   function colocarEstilo() {
@@ -107,6 +107,14 @@
     return s;
   }
 
+  // As paginas do grupo, na ordem do menu. "conversas" vem do conversas.js (self.XMAtivosConversas).
+  const PAGINAS = [
+    { chave: 'disparar', titulo: 'Disparar ativos' },
+    { chave: 'conversas', titulo: 'Conversas' },
+  ];
+  let atual = null; // chave da pagina aberta
+  const elementos = {};
+
   function montarGrupo(menu) {
     const modelo = menu.querySelector('li.ssc-menu-submenu');
     const itemModelo = menu.querySelector('a.ssc-menu-item');
@@ -134,17 +142,21 @@
     const ul = document.createElement('ul');
     ul.className = 'ssc-menu';
     ul.style.cssText = 'color: rgba(255, 255, 255, 0.7); display: none;';
-    const caixa = comDataV(document.createElement('div'), vCaixa);
-    const item = comDataV(document.createElement('a'), vItem);
-    item.className = 'submenu-item ssc-menu-item xm-ativos-item';
-    item.title = 'Disparar ativos';
-    item.setAttribute('data-active-background', '#ee4d2d');
-    item.style.paddingLeft = '44px';
-    const cursor = document.createElement('span');
-    cursor.className = 'ssc-menu-item-cursor';
-    item.append(cursor, ' Disparar ativos ');
-    caixa.append(item);
-    ul.append(caixa);
+    for (const p of PAGINAS) {
+      const caixa = comDataV(document.createElement('div'), vCaixa);
+      const item = comDataV(document.createElement('a'), vItem);
+      item.className = 'submenu-item ssc-menu-item xm-ativos-item';
+      item.title = p.titulo;
+      item.dataset.pagina = p.chave;
+      item.setAttribute('data-active-background', '#ee4d2d');
+      item.style.paddingLeft = '44px';
+      const cursor = document.createElement('span');
+      cursor.className = 'ssc-menu-item-cursor';
+      item.append(cursor, ` ${p.titulo} `);
+      item.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); mostrarPagina(p.chave); });
+      caixa.append(item);
+      ul.append(caixa);
+    }
     li.append(titulo, ul);
 
     // Um grupo aberto por vez, como o menu do SPX: abrir o nosso fecha o deles (pelo clique no
@@ -154,7 +166,6 @@
       if (abrir) fecharOsDoSpx();
       abrirGrupo(abrir);
     });
-    item.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); mostrarPagina(); });
     return li;
   }
 
@@ -175,16 +186,19 @@
     titulo.style.background = abrir ? FUNDO_ABERTO : '';
   }
 
-  function marcarItem(sel) {
+  /** Marca o item da pagina aberta (null = nenhum). */
+  function marcarItem(chave) {
     if (!grupo) return;
-    const item = grupo.querySelector('a.xm-ativos-item');
-    const cursor = item.querySelector('.ssc-menu-item-cursor');
-    ['ssc-menu-item-active', 'ssc-menu-item-selected'].forEach((c) => item.classList.toggle(c, sel));
-    ['ssc-menu-item-active', 'ssc-menu-child-item-active'].forEach((c) => grupo.classList.toggle(c, sel));
-    item.style.fontWeight = sel ? 'bold' : '';
-    item.style.color = sel ? 'rgb(255, 255, 255)' : '';
-    cursor.style.background = sel ? LARANJA : '';
-    document.body.classList.toggle('xm-ativos-aberto', sel);
+    grupo.querySelectorAll('a.xm-ativos-item').forEach((item) => {
+      const sel = item.dataset.pagina === chave;
+      const cursor = item.querySelector('.ssc-menu-item-cursor');
+      ['ssc-menu-item-active', 'ssc-menu-item-selected'].forEach((c) => item.classList.toggle(c, sel));
+      item.style.fontWeight = sel ? 'bold' : '';
+      item.style.color = sel ? 'rgb(255, 255, 255)' : '';
+      cursor.style.background = sel ? LARANJA : '';
+    });
+    ['ssc-menu-item-active', 'ssc-menu-child-item-active'].forEach((c) => grupo.classList.toggle(c, !!chave));
+    document.body.classList.toggle('xm-ativos-aberto', !!chave);
   }
 
   function colocarMenu() {
@@ -194,17 +208,16 @@
     const lista = (menu.querySelector('li.ssc-menu-submenu') || {}).parentElement || menu;
     const reabrir = grupo && grupo.classList.contains('ssc-menu-opened');
     grupo = montarGrupo(menu);
-    // Logo depois de "Order Management" (onde estão os pedidos); no fim do menu ficava cortado
-    // pela barra de baixo. Se o SPX mudar o nome do grupo, vai para o fim.
-    // Achado pelo link do Order Tracking (o nome do grupo muda com o idioma: "Pedidos" em português).
+    // Logo depois do grupo dos pedidos (achado pelo link do Order Tracking: o nome muda com o
+    // idioma, "Pedidos" em português). No fim do menu ficava cortado pela barra de baixo.
     const pedidos = [...lista.children].find((li) => li !== grupo && li.querySelector('a[href="#/orderTracking"]'));
     if (pedidos) pedidos.after(grupo); else lista.append(grupo);
     if (reabrir || aberta) abrirGrupo(true);
-    if (aberta) marcarItem(true);
+    if (aberta) marcarItem(atual);
   }
 
-  // ── entrar e sair da pagina ───────────────────────────────────────────────────
-  let pagina = null;
+  // ── entrar e sair das paginas ─────────────────────────────────────────────────
+  let pagina = null; // a de Disparar (as funcoes dela usam $)
   let escondidos = [];
   let migalha = null;
 
@@ -212,45 +225,70 @@
 
   function esconderDoSpx(main) {
     for (const c of main.children) {
-      if (c === pagina || c.dataset.xmEscondido) continue;
+      if (c.dataset.xmPagina || c.dataset.xmEscondido) continue;
       escondidos.push([c, c.style.display]);
       c.dataset.xmEscondido = '1';
       c.style.display = 'none';
     }
   }
 
-  function mostrarPagina() {
+  // O que a pagina de Conversas usa daqui.
+  const ctx = {
+    R, esc, numero, dormir, LARANJA,
+    pedirAoFundo: (...a) => pedirAoFundo(...a),
+    blocoLogin: (...a) => blocoLogin(...a),
+  };
+
+  function elementoDa(chave) {
+    if (!elementos[chave]) {
+      const el = chave === 'disparar' ? (pagina = montarPagina()) : self.XMAtivosConversas.montar(ctx);
+      el.dataset.xmPagina = chave;
+      elementos[chave] = el;
+    }
+    return elementos[chave];
+  }
+
+  function aoSair(chave) {
+    if (chave === 'conversas' && self.XMAtivosConversas) self.XMAtivosConversas.aoSair();
+  }
+
+  function mostrarPagina(chave) {
     const main = areaPrincipal();
     if (!main) return;
-    if (!pagina) pagina = montarPagina();
+    if (atual && atual !== chave) { aoSair(atual); elementos[atual].remove(); }
+    atual = chave;
     aberta = true;
     esconderDoSpx(main);
-    if (pagina.parentElement !== main) main.append(pagina);
+    const el = elementoDa(chave);
+    if (el.parentElement !== main) main.append(el);
     const bc = document.querySelector('.header-container .ssc-breadcrumb');
     if (bc && !migalha) {
       [...bc.children].forEach((s) => { s.dataset.xmDisplay = s.style.display; s.style.display = 'none'; });
       const modelo = bc.querySelector('.ssc-breadcrumb-item');
       migalha = document.createElement('span');
       migalha.className = modelo ? modelo.className : 'ssc-breadcrumb-item';
-      migalha.textContent = 'Ativos Shopee  /  Disparar ativos';
       bc.append(migalha);
     }
+    if (migalha) migalha.textContent = `Ativos Shopee  /  ${PAGINAS.find((p) => p.chave === chave).titulo}`;
     abrirGrupo(true);
-    marcarItem(true);
-    atualizarConta();
+    marcarItem(chave);
+    if (chave === 'disparar') atualizarConta();
+    else self.XMAtivosConversas.aoMostrar();
   }
 
   function fecharPagina() {
     if (!aberta) return;
     aberta = false;
-    if (pagina) pagina.remove();
+    aoSair(atual);
+    if (elementos[atual]) elementos[atual].remove();
+    atual = null;
     escondidos.forEach(([c, d]) => { c.style.display = d; delete c.dataset.xmEscondido; });
     escondidos = [];
     const bc = document.querySelector('.header-container .ssc-breadcrumb');
     if (migalha) migalha.remove();
     migalha = null;
     if (bc) [...bc.children].forEach((s) => { if ('xmDisplay' in s.dataset) { s.style.display = s.dataset.xmDisplay; delete s.dataset.xmDisplay; } });
-    marcarItem(false);
+    marcarItem(null);
   }
 
   // Abrir um grupo do SPX fecha o nosso (um aberto por vez, como o menu deles).
@@ -277,9 +315,40 @@
       agendado = false;
       colocarEstilo();
       colocarMenu();
-      if (aberta) { const main = areaPrincipal(); if (main) { esconderDoSpx(main); if (pagina.parentElement !== main) main.append(pagina); } }
+      if (aberta && atual) {
+        const main = areaPrincipal();
+        if (main) { esconderDoSpx(main); const el = elementos[atual]; if (el.parentElement !== main) main.append(el); }
+      }
     }, 250);
   }).observe(document.documentElement, { childList: true, subtree: true });
+
+  /** Formulario de login (usado pela pagina de Conversas). aoEntrar(r) depois de entrar. */
+  function blocoLogin(aoEntrar) {
+    const d = document.createElement('div');
+    d.innerHTML = `
+      <div class="xm-linha">
+        <label><span class="xm-rotulo">Usuário do sistema</span><input class="xm-campo xm-l-usuario" autocomplete="username"></label>
+        <label><span class="xm-rotulo">Senha</span><input class="xm-campo xm-l-senha" type="password" autocomplete="current-password"></label>
+        <button class="xm-btn xm-btn-primario xm-l-entrar" type="button">Entrar</button>
+      </div>
+      <p class="xm-status xm-l-status"></p>`;
+    const st = (t, erro) => { const p = d.querySelector('.xm-l-status'); p.textContent = t; p.className = `xm-status xm-l-status${erro ? ' xm-erro' : ''}`; };
+    const entrarAgora = async () => {
+      const usuario = d.querySelector('.xm-l-usuario').value;
+      const senha = d.querySelector('.xm-l-senha').value;
+      if (!usuario || !senha) return st('Preencha usuário e senha.', true);
+      st('Entrando...');
+      try {
+        const r = await pedirAoFundo('entrar', { usuario, senha });
+        d.querySelector('.xm-l-senha').value = '';
+        st('');
+        aoEntrar(r);
+      } catch (e) { st(e.message, true); }
+    };
+    d.querySelector('.xm-l-entrar').addEventListener('click', entrarAgora);
+    d.querySelector('.xm-l-senha').addEventListener('keydown', (e) => { if (e.key === 'Enter') entrarAgora(); });
+    return d;
+  }
 
   // ── conversa com o fundo.js e com o spx.js ────────────────────────────────────
   function pedirAoFundo(tipo, dados = {}) {
@@ -313,6 +382,7 @@
   function montarPagina() {
     const p = document.createElement('div');
     p.id = ID_PAGINA;
+    p.className = 'xm-ativos-pagina';
     p.innerHTML = `
       <div class="xm-cartao">
         <span class="xm-conta" id="xm-conta"></span>

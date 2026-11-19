@@ -122,6 +122,96 @@ Por gentileza, poderia confirmar a entrega preenchendo os dados abaixo?
     };
   }
 
+  // ── Conversas (mesmas regras de meusite/js/whatsapp-conversa.js) ─────────────────────────────
+  // Quem pode ver e mexer em cada conversa e decidido pelo servidor (polo, cargo, quem disparou):
+  // ele so devolve o que a conta enxerga. Aqui fica so como a tela separa e ordena.
+
+  const ROLES_ACAREACAO = ['sac', 'dev'];
+  const PRAZO_HORAS_PADRAO = 48;
+  // Templates que identificam a Shopee quando o disparo nao gravou a transportadora (os antigos).
+  const TEMPLATES_SHOPEE = ['confirmacao_entrega', 'reclamacao_shopee'];
+
+  /** Cargo gravado no token do sistema (so para escolher a aba inicial; quem barra e o servidor). */
+  function papelDoToken(token) {
+    try {
+      const parte = String(token || '').split('.')[1] || '';
+      const json = typeof atob === 'function'
+        ? decodeURIComponent(escape(atob(parte.replace(/-/g, '+').replace(/_/g, '/'))))
+        : Buffer.from(parte, 'base64').toString('utf8');
+      return JSON.parse(json).role || '';
+    } catch { return ''; }
+  }
+
+  const ehShopee = (c) => (c.transportadora ? c.transportadora === 'shopee' : TEMPLATES_SHOPEE.includes(c.template_inicial));
+
+  /** Aba da conversa: entregadores | chamaram | acareacao | outros (igual a _wacAbaDe). */
+  function abaDe(c) {
+    if (c.tem_entregador) return 'entregadores';
+    if (!c.primeiro_envio) return 'chamaram';
+    const acareacao = c.tipo !== 'outros' && (!c.enviado_por_role || ROLES_ACAREACAO.includes(c.enviado_por_role));
+    return acareacao ? 'acareacao' : 'outros';
+  }
+
+  /** As conversas que a extensao mostra: as da Shopee nas abas com transportadora, e "Nos chamaram". */
+  function conversasDaShopee(lista) {
+    return (Array.isArray(lista) ? lista : [])
+      .filter((c) => { const a = abaDe(c); return a === 'chamaram' || ((a === 'acareacao' || a === 'outros') && ehShopee(c)); })
+      .sort((a, b) => new Date(b.ultima || 0) - new Date(a.ultima || 0));
+  }
+
+  function vencimento(c) {
+    return new Date(new Date(c.primeiro_envio).getTime() + (c.prazo_horas || PRAZO_HORAS_PADRAO) * 3600000);
+  }
+
+  /** Coluna da acareacao: vencendo_hoje | mais_24h | vencidos | respondidos. */
+  function statusPrazo(c, agora = new Date()) {
+    if (c.respondido) return 'respondidos';
+    const horas = (vencimento(c) - agora) / 3600000;
+    if (horas <= 0) return 'vencidos';
+    if (horas <= 24) return 'vencendo_hoje';
+    return 'mais_24h';
+  }
+
+  /** Coluna dos outros ativos: novas_respostas | aguardando | entregue | nao_entregue. */
+  function colunaDesfecho(c) {
+    if (c.respondido) return c.resultado === 'recebeu' ? 'entregue' : 'nao_entregue';
+    if (Number(c.nao_lidas) > 0) return 'novas_respostas';
+    return 'aguardando';
+  }
+
+  /** "faltam 6h 10min" / "venceu há 3h" */
+  function tempoRestante(venc, agora = new Date()) {
+    const ms = venc - agora;
+    const totalMin = Math.floor(Math.abs(ms) / 60000);
+    const horas = Math.floor(totalMin / 60);
+    const min = totalMin % 60;
+    const texto = horas >= 24 ? `${Math.floor(horas / 24)}d ${horas % 24}h` : horas >= 1 ? `${horas}h ${min}min` : `${min}min`;
+    return ms < 0 ? `venceu há ${texto}` : `faltam ${texto}`;
+  }
+
+  /** 5549999276131 -> +55 49 99927-6131 */
+  function formatarNumero(numero) {
+    const n = String(numero || '').replace(/\D/g, '');
+    const m = n.match(/^55(\d{2})(\d{4,5})(\d{4})$/);
+    return m ? `+55 ${m[1]} ${m[2]}-${m[3]}` : `+${n}`;
+  }
+
+  /** "Hoje 10:05" / "Ontem 18:30" / "12/11 09:00" */
+  function dataCurta(valor, agora = new Date()) {
+    if (!valor) return '—';
+    const d = new Date(valor);
+    if (Number.isNaN(d.getTime())) return '—';
+    const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const mesmoDia = (a, b) => a.toDateString() === b.toDateString();
+    if (mesmoDia(d, agora)) return `Hoje ${hora}`;
+    const ontem = new Date(agora);
+    ontem.setDate(ontem.getDate() - 1);
+    if (mesmoDia(d, ontem)) return `Ontem ${hora}`;
+    const dia = d.toLocaleDateString('pt-BR', d.getFullYear() === agora.getFullYear()
+      ? { day: '2-digit', month: '2-digit' } : { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return `${dia} ${hora}`;
+  }
+
   /** Chamada ao sistema. Sessao vencida ou sem acesso vira ErroDeConta (volta ao login). */
   async function api(token, metodo, caminho, corpo, buscar = fetch) {
     let r;
@@ -136,7 +226,9 @@ Por gentileza, poderia confirmar a entrega preenchendo os dados abaixo?
     }
     const j = await r.json().catch(() => ({}));
     if (r.status === 401) throw new ErroDeConta('Sessão vencida. Entre de novo.');
-    if (r.status === 403) throw new ErroDeConta('Essa conta não pode disparar ativos (só SAC, admin e dev).');
+    // 403 "Acesso negado" e o cargo sem acesso aos ativos; outros 403 trazem o motivo (ex.: mensagem
+    // de outro polo) e nao derrubam o login.
+    if (r.status === 403 && (!j.error || j.error === 'Acesso negado')) throw new ErroDeConta('Essa conta não pode usar os ativos (só SAC, admin e dev).');
     if (!r.ok) throw new Error(j.error || `O sistema respondeu ${r.status}.`);
     return j;
   }
@@ -162,13 +254,15 @@ Por gentileza, poderia confirmar a entrega preenchendo os dados abaixo?
     if (corpo.require_password_change) throw new ErroDeConta('A senha é temporária. Entre no site e troque.');
     if (!corpo.token) throw new Error('O login passou, mas não veio token.');
     await api(corpo.token, 'POST', ROTA_SITUACAO, { pedidos: [] }, buscar);
-    return { token: corpo.token, nome: corpo.name || corpo.username || usuario };
+    return { token: corpo.token, nome: corpo.name || corpo.username || usuario, papel: papelDoToken(corpo.token) };
   }
 
   const publico = {
     BACKEND, ROTA_ENVIAR, ROTA_SITUACAO, TEMPLATE, MAX_CODIGOS, ErroDeConta,
     lerCodigos, lerCsv, nomeLimpo, contatosDoExport, digitosLocais, validarTelefone, telefoneLegivel,
     montarTexto, montarEnvio, api, entrar,
+    ROLES_ACAREACAO, papelDoToken, ehShopee, abaDe, conversasDaShopee, vencimento, statusPrazo, colunaDesfecho,
+    tempoRestante, formatarNumero, dataCurta,
   };
   if (typeof self !== 'undefined') self.XMAtivos = publico;
   if (typeof module !== 'undefined' && module.exports) module.exports = publico;
