@@ -1,0 +1,325 @@
+// Painel da XM - Perdas Anjun, em qualquer tela da Anjun.
+//
+// Recebe a lista de pedidos AJ, consulta o rastreio de cada um (pagina.js, mesma chamada da
+// janela "Consulta de rastreamentos") e diz quem estava com o pacote quando a entrega falhou
+// (regras.js). Gera o relatorio por pedido e o resumo por culpado em CSV.
+//
+// O resultado fica guardado no Chrome deste computador: atualizar a aba nao perde nada, e
+// Analisar de novo so consulta o que falta.
+
+(() => {
+  const R = globalThis.XMPerdasRegras;
+  const INTERVALO_MS = 1500; // 1 pedido a cada 1,5 s; a Anjun barra quem vai rapido demais
+  const PRAZO_MS = 25000;
+
+  const hospedeiro = document.createElement('div');
+  const sombra = hospedeiro.attachShadow({ mode: 'closed' });
+  sombra.innerHTML = `
+    <style>
+      * { box-sizing: border-box; }
+      [hidden] { display: none !important; }
+      .botao { position: fixed; right: 20px; bottom: 140px; z-index: 2147483646; padding: 10px 16px; color: #e8eaed;
+        background: #16181d; border: 1px solid #3a3f4a; border-radius: 22px; box-shadow: 0 4px 14px rgba(0,0,0,.35);
+        font: 700 13px system-ui, sans-serif; cursor: pointer; }
+      .botao:hover { border-color: #6ea8fe; }
+      .painel { position: fixed; right: 20px; bottom: 20px; z-index: 2147483647; width: 460px;
+        max-height: calc(100vh - 40px); display: flex; flex-direction: column; color: #e8eaed; background: #16181d;
+        border: 1px solid #3a3f4a; border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.45); font: 13px system-ui, sans-serif; }
+      .cabecalho { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;
+        border-bottom: 1px solid #3a3f4a; font-weight: 700; }
+      .corpo { overflow: auto; padding: 4px 14px 14px; }
+      label { display: flex; justify-content: space-between; align-items: baseline; margin: 12px 0 4px; color: #c9ced6; }
+      textarea { width: 100%; height: 110px; padding: 7px 8px; color: #e8eaed; background: #0f1115; border: 1px solid #3a3f4a;
+        border-radius: 4px; resize: vertical; font: 13px ui-monospace, Consolas, monospace; }
+      button.link { padding: 0; color: #6ea8fe; background: none; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
+      button.link:hover:not(:disabled) { text-decoration: underline; }
+      button.link:disabled { color: #6b7280; cursor: default; }
+      .acoes { display: flex; gap: 18px; margin-top: 12px; }
+      .suave { margin: 4px 0 0; color: #a8adb7; line-height: 1.4; }
+      .erro { color: #f87171; }
+      #status { margin: 12px 0 0; min-height: 18px; line-height: 1.4; }
+      h3 { margin: 16px 0 4px; font-size: 13px; color: #c9ced6; }
+      table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+      td { padding: 4px 0; border-top: 1px solid #262a33; vertical-align: top; }
+      td.qtd { width: 48px; text-align: right; font-weight: 700; }
+      td.tipo { width: 110px; color: #a8adb7; }
+      ol { margin: 0; padding: 0; list-style: none; }
+      #lista li { padding: 6px 0; border-top: 1px solid #262a33; }
+      #lista .linha { display: flex; justify-content: space-between; gap: 10px; }
+      #lista .cod { font-family: ui-monospace, Consolas, monospace; }
+      #lista .quem { font-weight: 700; text-align: right; }
+      #lista .detalhe { display: block; margin-top: 2px; color: #a8adb7; font-size: 12px; line-height: 1.35; }
+      .pendente, .rodando { color: #fbbf24; }
+    </style>
+    <button class="botao" type="button">XM Perdas</button>
+    <div class="painel" hidden>
+      <div class="cabecalho"><span>XM - Perdas Anjun</span><button class="link" id="minimizar" type="button">Minimizar</button></div>
+      <div class="corpo">
+        <label for="codigos">Pedidos AJ</label>
+        <textarea id="codigos" spellcheck="false" placeholder="Cole os pedidos, um por linha"></textarea>
+        <p class="suave" id="contagem"></p>
+        <p class="suave">Culpado: quem estava com o pacote antes do "A entrega falhou". Saiu para entrega com alguém: o entregador. Foi recebido no ponto e o próximo passo já é a falha: a base.</p>
+
+        <div class="acoes">
+          <button class="link" id="analisar" type="button" disabled>Analisar</button>
+          <button class="link" id="parar" type="button" disabled>Parar</button>
+          <button class="link" id="limpar" type="button" disabled>Limpar resultado</button>
+        </div>
+        <p id="status"></p>
+
+        <div id="blocoResumo" hidden>
+          <h3>Culpados</h3>
+          <table><tbody id="resumo"></tbody></table>
+          <div class="acoes">
+            <button class="link" id="csv" type="button">Baixar relatório</button>
+            <button class="link" id="csvResumo" type="button">Baixar resumo</button>
+          </div>
+        </div>
+
+        <h3 id="tituloLista" hidden>Pedidos</h3>
+        <ol id="lista"></ol>
+      </div>
+    </div>`;
+
+  const $ = (id) => sombra.getElementById(id);
+  const botao = sombra.querySelector('.botao');
+  const painel = sombra.querySelector('.painel');
+
+  let itens = []; // { codigo, situacao, erro, ...R.analisar() }
+  let rodando = false;
+  let parar = false;
+
+  botao.addEventListener('click', () => { painel.hidden = false; botao.hidden = true; });
+  $('minimizar').addEventListener('click', () => { painel.hidden = true; botao.hidden = false; });
+
+  // ── espera que nao atrasa com a aba em segundo plano ─────────────────────────
+  // O Chrome segura os timers de aba escondida (ate 1 por minuto); o de um Worker, nao.
+  const relogio = (() => {
+    try {
+      const codigo = 'onmessage=(e)=>setTimeout(()=>postMessage(e.data.id),e.data.ms)';
+      const w = new Worker(URL.createObjectURL(new Blob([codigo], { type: 'text/javascript' })));
+      const espera = new Map();
+      let n = 0;
+      w.onmessage = (e) => { const f = espera.get(e.data); espera.delete(e.data); if (f) f(); };
+      return (ms) => new Promise((r) => { n += 1; espera.set(n, r); w.postMessage({ id: n, ms }); });
+    } catch (e) {
+      return null;
+    }
+  })();
+  function esperar(ms) {
+    const simples = new Promise((r) => setTimeout(r, ms + 1000)); // se o Worker nao andar
+    return relogio ? Promise.race([relogio(ms), simples]) : simples;
+  }
+
+  // ── conversa com o pagina.js ────────────────────────────────────────────────
+  let proximoId = 0;
+  function pedirRastreio(codigo) {
+    return new Promise((resolve) => {
+      proximoId += 1;
+      const id = `${Date.now()}-${proximoId}`;
+      const fim = (resposta) => {
+        clearTimeout(prazo);
+        window.removeEventListener('message', ouvir);
+        resolve(resposta);
+      };
+      const ouvir = (e) => {
+        if (e.source !== window || !e.data || e.data.xmPerdas !== 'resposta' || e.data.id !== id) return;
+        fim(e.data.resposta);
+      };
+      const prazo = setTimeout(() => fim({ ok: false, erro: 'A Anjun não respondeu a tempo.' }), PRAZO_MS);
+      window.addEventListener('message', ouvir);
+      window.postMessage({ xmPerdas: 'pedido', id, codigo }, window.location.origin);
+    });
+  }
+
+  // ── guardar ─────────────────────────────────────────────────────────────────
+  function guardar() {
+    chrome.storage.local.set({ analise: itens }).catch(() => {});
+  }
+  chrome.storage.local.get(['analise']).then((s) => {
+    if (!Array.isArray(s.analise) || itens.length) return;
+    itens = s.analise.map((i) => (i.situacao === 'rodando' ? { codigo: i.codigo, situacao: 'pendente' } : i));
+    if (!$('codigos').value) $('codigos').value = itens.map((i) => i.codigo).join('\n');
+    desenhar();
+    contar();
+  }).catch(() => {});
+
+  // ── tela ────────────────────────────────────────────────────────────────────
+  const feito = (i) => i.situacao !== 'pendente' && i.situacao !== 'rodando' && i.situacao !== 'erro';
+
+  function contar() {
+    const codigos = R.lerCodigos($('codigos').value);
+    const ja = new Set(itens.filter(feito).map((i) => i.codigo));
+    const faltam = codigos.filter((c) => !ja.has(c)).length;
+    const partes = [];
+    if (codigos.length) partes.push(`${codigos.length} pedido(s)`);
+    if (codigos.length && faltam < codigos.length) partes.push(`${codigos.length - faltam} já analisado(s)`);
+    if (faltam) partes.push(`${faltam} para consultar, uns ${Math.max(1, Math.ceil(faltam * INTERVALO_MS / 60000))} min`);
+    $('contagem').textContent = partes.join(' · ');
+    $('analisar').disabled = rodando || !faltam;
+    $('limpar').disabled = rodando || !itens.length;
+  }
+  $('codigos').addEventListener('input', contar);
+
+  function detalhe(i) {
+    if (i.situacao === 'pendente' || i.situacao === 'rodando') return R.SITUACOES[i.situacao];
+    const partes = [];
+    if (i.falha) partes.push(`Falhou em ${i.falha.data}${i.falha.motivo ? `: ${i.falha.motivo}` : ''}`);
+    if (i.evidencia) partes.push(`antes disso: ${i.evidencia.data}, ${i.evidencia.texto}`);
+    const obs = R.observacao(i);
+    if (obs) partes.push(obs);
+    return partes.join(' · ');
+  }
+
+  function desenhar() {
+    const ol = $('lista');
+    ol.textContent = '';
+    for (const i of itens) {
+      const li = document.createElement('li');
+      const linha = document.createElement('div');
+      linha.className = 'linha';
+      const cod = document.createElement('span');
+      cod.className = 'cod';
+      cod.textContent = i.codigo;
+      const quem = document.createElement('span');
+      quem.className = `quem ${i.situacao === 'erro' ? 'erro' : i.situacao}`;
+      const semCulpado = { erro: 'Erro', sem_rastreio: 'Sem rastreio', pendente: '', rodando: '' };
+      quem.textContent = i.culpado || (i.situacao in semCulpado ? semCulpado[i.situacao] : R.TIPOS.nao_identificado);
+      linha.append(cod, quem);
+      const det = document.createElement('span');
+      det.className = 'detalhe';
+      det.textContent = detalhe(i);
+      li.append(linha, det);
+      ol.append(li);
+    }
+    $('tituloLista').hidden = !itens.length;
+
+    const tbody = $('resumo');
+    tbody.textContent = '';
+    const grupos = R.resumir(itens);
+    for (const g of grupos) {
+      const tr = document.createElement('tr');
+      for (const [classe, texto] of [['', g.culpado], ['tipo', R.TIPOS[g.tipo]], ['qtd', g.pedidos.length]]) {
+        const td = document.createElement('td');
+        if (classe) td.className = classe;
+        td.textContent = texto;
+        tr.append(td);
+      }
+      tbody.append(tr);
+    }
+    const semCulpado = itens.filter((i) => feito(i) && !i.culpado).length + itens.filter((i) => i.situacao === 'erro').length;
+    if (semCulpado) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td></td><td class="tipo"></td><td class="qtd"></td>';
+      tr.children[0].textContent = 'Sem culpado (ver observação)';
+      tr.children[2].textContent = semCulpado;
+      tbody.append(tr);
+    }
+    $('blocoResumo').hidden = !itens.some((i) => i.situacao !== 'pendente' && i.situacao !== 'rodando');
+    $('csv').disabled = rodando;
+    $('csvResumo').disabled = rodando || !grupos.length;
+  }
+
+  function mostrarStatus(texto, erro = false) {
+    $('status').className = erro ? 'erro' : '';
+    $('status').textContent = texto;
+  }
+
+  // ── rodar ───────────────────────────────────────────────────────────────────
+  $('analisar').addEventListener('click', async () => {
+    const codigos = R.lerCodigos($('codigos').value);
+    const anteriores = new Map(itens.map((i) => [i.codigo, i]));
+    itens = codigos.map((codigo) => {
+      const a = anteriores.get(codigo);
+      return a && feito(a) ? a : { codigo, situacao: 'pendente' };
+    });
+    rodando = true;
+    parar = false;
+    $('parar').disabled = false;
+    $('codigos').disabled = true;
+    contar();
+    desenhar();
+
+    let motivoParada = '';
+    let ultimo = 0;
+    const fila = itens.filter((i) => i.situacao === 'pendente');
+    for (const [n, item] of fila.entries()) {
+      if (parar) break;
+      const falta = INTERVALO_MS - (Date.now() - ultimo);
+      if (falta > 0) await esperar(falta);
+      if (parar) break;
+      ultimo = Date.now();
+      item.situacao = 'rodando';
+      desenhar();
+      mostrarStatus(`Consultando ${item.codigo} (${n + 1} de ${fila.length})...`);
+      const r = await pedirRastreio(item.codigo);
+      if (r.ok) {
+        Object.assign(item, R.analisar(r.eventos));
+        delete item.erro;
+      } else {
+        Object.assign(item, { situacao: 'erro', tipo: 'erro', culpado: '', erro: r.erro });
+        if (r.frequente) motivoParada = 'A Anjun pediu para ir mais devagar. Espere uns 30 minutos e clique em Analisar: continua de onde parou.';
+        else if (r.semToken) motivoParada = r.erro;
+        else if (r.sessao) motivoParada = 'A sessão da Anjun caiu. Entre de novo e clique em Analisar: continua de onde parou.';
+        if (motivoParada) {
+          item.situacao = 'pendente';
+          delete item.tipo;
+          delete item.erro;
+          parar = true;
+        }
+      }
+      guardar();
+      desenhar();
+    }
+
+    rodando = false;
+    $('parar').disabled = true;
+    $('codigos').disabled = false;
+    for (const i of itens) if (i.situacao === 'rodando') i.situacao = 'pendente';
+    guardar();
+    desenhar();
+    contar();
+    const comCulpado = itens.filter((i) => i.culpado).length;
+    const erros = itens.filter((i) => i.situacao === 'erro').length;
+    const faltam = itens.filter((i) => i.situacao === 'pendente').length;
+    let fim = `${comCulpado} de ${itens.length} pedido(s) com culpado`;
+    if (erros) fim += `, ${erros} com erro (Analisar tenta de novo)`;
+    if (faltam) fim += `, ${faltam} na fila`;
+    mostrarStatus(motivoParada ? `${motivoParada} ${fim}.` : `${fim}.`, !!motivoParada || erros > 0);
+  });
+
+  $('parar').addEventListener('click', () => {
+    parar = true;
+    $('parar').disabled = true;
+    mostrarStatus('Vou parar depois da consulta que está em andamento.');
+  });
+
+  $('limpar').addEventListener('click', () => {
+    if (!window.confirm('Apagar o resultado desta análise?')) return;
+    itens = [];
+    guardar();
+    desenhar();
+    contar();
+    mostrarStatus('');
+  });
+
+  function baixar(prefixo, conteudo) {
+    const agora = new Date();
+    const dois = (n) => String(n).padStart(2, '0');
+    const nome = `${prefixo}-${agora.getFullYear()}${dois(agora.getMonth() + 1)}${dois(agora.getDate())}-${dois(agora.getHours())}${dois(agora.getMinutes())}.csv`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([`﻿${conteudo}`], { type: 'text/csv;charset=utf-8' }));
+    a.download = nome;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  $('csv').addEventListener('click', () => baixar('perdas-anjun', R.montarCsv(itens)));
+  $('csvResumo').addEventListener('click', () => baixar('perdas-anjun-resumo', R.montarCsvResumo(itens)));
+
+  window.addEventListener('beforeunload', (e) => {
+    if (rodando) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  document.documentElement.append(hospedeiro);
+  contar();
+})();

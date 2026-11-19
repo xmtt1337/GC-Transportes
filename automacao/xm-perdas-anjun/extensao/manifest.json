@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "XM - Perdas Anjun",
+  "version": "1.0",
+  "description": "Lê o rastreio dos pedidos com suspeita de perda na Anjun e diz quem estava com o pacote quando a entrega falhou.",
+  "permissions": [
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://newsupplier.anjunexpress.com/*"
+      ],
+      "js": [
+        "pagina.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://newsupplier.anjunexpress.com/*"
+      ],
+      "js": [
+        "regras.js",
+        "painel.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "icons": {
+    "16": "img/icone-16.png",
+    "32": "img/icone-32.png",
+    "48": "img/icone-48.png",
+    "128": "img/icone-128.png"
+  }
+}
