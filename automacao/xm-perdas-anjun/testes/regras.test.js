@@ -122,6 +122,16 @@ test('resumo agrupa por culpado, do maior para o menor', () => {
   assert.strictEqual(resumo[1], '"Entregador.A";"Entregador";"2";"AJ1, AJ3"');
 });
 
+test('dividirEmLotes e tempoEstimado', () => {
+  const lista = Array.from({ length: 120 }, (_, i) => i);
+  assert.deepStrictEqual(R.dividirEmLotes(lista, 50).map((l) => l.length), [50, 50, 20]);
+  assert.deepStrictEqual(R.dividirEmLotes([1, 2], 0), [[1], [2]]); // lote invalido vira 1
+  assert.deepStrictEqual(R.dividirEmLotes([], 50), []);
+  assert.strictEqual(R.tempoEstimado(0, 50, 1500), '');
+  assert.strictEqual(R.tempoEstimado(1000, 50, 1500), 'menos de 1 min'); // 20 lotes x 1,5 s = 30 s
+  assert.strictEqual(R.tempoEstimado(100, 1, 1500), 'uns 3 min');
+});
+
 test('relatorio CSV: uma linha por pedido, com aspas escapadas', () => {
   const a = { codigo: 'AJ100000000000001', ...R.analisar(FAKE_DELIVERY) };
   const erro = { codigo: 'AJ100000000000002', situacao: 'erro', tipo: 'erro', culpado: '', erro: 'disse "não"' };

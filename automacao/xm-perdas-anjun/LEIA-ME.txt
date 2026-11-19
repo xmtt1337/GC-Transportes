@@ -47,8 +47,10 @@ USAR
 2. Clique em "XM Perdas" (canto de baixo, a direita).
 3. Cole os pedidos AJ (um por linha, ou do jeito que vier: ela
    acha os codigos no meio do texto) e clique em Analisar.
-   Vai 1 pedido a cada 1,5 s (100 pedidos = uns 3 minutos).
-   Pode deixar a aba em segundo plano.
+   "Consultar de quantos em quantos": 1, 10, 25 ou 50 de uma
+   vez (padrao 50). Cada lote sai junto e o proximo espera
+   1,5 s. Com 50, 1000 pedidos levam menos de 1 minuto.
+   A escolha fica guardada. Pode deixar a aba em segundo plano.
 4. "Culpados" mostra quantos pedidos ficaram com cada um.
    "Baixar relatorio" = CSV com um pedido por linha (culpado,
    o evento que decidiu, a falha, quem assinou, todos os
@@ -60,5 +62,7 @@ a aba nao perde nada, e Analisar de novo so consulta os pedidos
 novos e os que deram erro. "Limpar resultado" apaga.
 
 Se a Anjun pedir para ir mais devagar ("operacoes muito
-frequentes") ou a sessao cair, ela para sozinha e continua de
-onde parou quando clicar em Analisar de novo.
+frequentes") ou a sessao cair, ela para sozinha depois do lote
+em andamento e continua de onde parou quando clicar em Analisar
+de novo. No caso do "muito frequentes", a Anjun pode segurar a
+conta por uns 30 minutos: espere e escolha um numero menor.

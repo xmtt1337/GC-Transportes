@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "XM - Perdas Anjun",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Lê o rastreio dos pedidos com suspeita de perda na Anjun e diz quem estava com o pacote quando a entrega falhou.",
   "permissions": [
     "storage"

@@ -9,8 +9,13 @@
 
 (() => {
   const R = globalThis.XMPerdasRegras;
-  const INTERVALO_MS = 1500; // 1 pedido a cada 1,5 s; a Anjun barra quem vai rapido demais
-  const PRAZO_MS = 25000;
+  // Um lote de consultas sai junto; o proximo espera 1,5 s desde o inicio do anterior.
+  // A Anjun barra quem vai rapido demais ("operacoes muito frequentes"): se barrar, escolher
+  // um lote menor no painel.
+  const INTERVALO_MS = 1500;
+  const LOTES = [1, 10, 25, 50];
+  const LOTE_PADRAO = 50;
+  const PRAZO_MS = 30000;
 
   const hospedeiro = document.createElement('div');
   const sombra = hospedeiro.attachShadow({ mode: 'closed' });
@@ -29,6 +34,7 @@
         border-bottom: 1px solid #3a3f4a; font-weight: 700; }
       .corpo { overflow: auto; padding: 4px 14px 14px; }
       label { display: flex; justify-content: space-between; align-items: baseline; margin: 12px 0 4px; color: #c9ced6; }
+      select { padding: 6px 8px; color: #e8eaed; background: #0f1115; border: 1px solid #3a3f4a; border-radius: 4px; font: inherit; }
       textarea { width: 100%; height: 110px; padding: 7px 8px; color: #e8eaed; background: #0f1115; border: 1px solid #3a3f4a;
         border-radius: 4px; resize: vertical; font: 13px ui-monospace, Consolas, monospace; }
       button.link { padding: 0; color: #6ea8fe; background: none; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
@@ -58,6 +64,9 @@
         <label for="codigos">Pedidos AJ</label>
         <textarea id="codigos" spellcheck="false" placeholder="Cole os pedidos, um por linha"></textarea>
         <p class="suave" id="contagem"></p>
+        <label for="lote">Consultar de quantos em quantos</label>
+        <select id="lote">${LOTES.map((n) => `<option value="${n}">${n === 1 ? '1 por vez' : `${n} de uma vez`}</option>`).join('')}</select>
+        <p class="suave">Se a Anjun disser "operações muito frequentes", espere e escolha um número menor.</p>
         <p class="suave">Culpado: quem estava com o pacote antes do "A entrega falhou". Saiu para entrega com alguém: o entregador. Foi recebido no ponto e o próximo passo já é a falha: a base.</p>
 
         <div class="acoes">
@@ -136,7 +145,17 @@
   function guardar() {
     chrome.storage.local.set({ analise: itens }).catch(() => {});
   }
-  chrome.storage.local.get(['analise']).then((s) => {
+  function tamanhoDoLote() {
+    const n = Number($('lote').value);
+    return LOTES.includes(n) ? n : LOTE_PADRAO;
+  }
+  $('lote').value = String(LOTE_PADRAO);
+  $('lote').addEventListener('change', () => {
+    chrome.storage.local.set({ lote: tamanhoDoLote() }).catch(() => {});
+    contar();
+  });
+  chrome.storage.local.get(['analise', 'lote']).then((s) => {
+    if (LOTES.includes(s.lote)) { $('lote').value = String(s.lote); contar(); }
     if (!Array.isArray(s.analise) || itens.length) return;
     itens = s.analise.map((i) => (i.situacao === 'rodando' ? { codigo: i.codigo, situacao: 'pendente' } : i));
     if (!$('codigos').value) $('codigos').value = itens.map((i) => i.codigo).join('\n');
@@ -154,7 +173,7 @@
     const partes = [];
     if (codigos.length) partes.push(`${codigos.length} pedido(s)`);
     if (codigos.length && faltam < codigos.length) partes.push(`${codigos.length - faltam} já analisado(s)`);
-    if (faltam) partes.push(`${faltam} para consultar, uns ${Math.max(1, Math.ceil(faltam * INTERVALO_MS / 60000))} min`);
+    if (faltam) partes.push(`${faltam} para consultar, ${R.tempoEstimado(faltam, tamanhoDoLote(), INTERVALO_MS)}`);
     $('contagem').textContent = partes.join(' · ');
     $('analisar').disabled = rodando || !faltam;
     $('limpar').disabled = rodando || !itens.length;
@@ -243,31 +262,44 @@
     let motivoParada = '';
     let ultimo = 0;
     const fila = itens.filter((i) => i.situacao === 'pendente');
-    for (const [n, item] of fila.entries()) {
+    const lote = tamanhoDoLote();
+    const lotes = R.dividirEmLotes(fila, lote);
+    let feitos = 0;
+    for (const [n, grupo] of lotes.entries()) {
       if (parar) break;
       const falta = INTERVALO_MS - (Date.now() - ultimo);
       if (falta > 0) await esperar(falta);
       if (parar) break;
       ultimo = Date.now();
-      item.situacao = 'rodando';
+      for (const item of grupo) item.situacao = 'rodando';
       desenhar();
-      mostrarStatus(`Consultando ${item.codigo} (${n + 1} de ${fila.length})...`);
-      const r = await pedirRastreio(item.codigo);
-      if (r.ok) {
-        Object.assign(item, R.analisar(r.eventos));
-        delete item.erro;
-      } else {
-        Object.assign(item, { situacao: 'erro', tipo: 'erro', culpado: '', erro: r.erro });
-        if (r.frequente) motivoParada = 'A Anjun pediu para ir mais devagar. Espere uns 30 minutos e clique em Analisar: continua de onde parou.';
-        else if (r.semToken) motivoParada = r.erro;
-        else if (r.sessao) motivoParada = 'A sessão da Anjun caiu. Entre de novo e clique em Analisar: continua de onde parou.';
-        if (motivoParada) {
-          item.situacao = 'pendente';
+      mostrarStatus(lote === 1
+        ? `Consultando ${grupo[0].codigo} (${feitos + 1} de ${fila.length})...`
+        : `Consultando o lote ${n + 1} de ${lotes.length} (pedidos ${feitos + 1} a ${feitos + grupo.length} de ${fila.length})...`);
+      const respostas = await Promise.all(grupo.map((item) => pedirRastreio(item.codigo)));
+      grupo.forEach((item, k) => {
+        const r = respostas[k];
+        if (r.ok) {
+          Object.assign(item, R.analisar(r.eventos));
+          delete item.erro;
+          return;
+        }
+        let motivo = '';
+        if (r.frequente) motivo = `A Anjun pediu para ir mais devagar. Espere uns 30 minutos, escolha um número menor em "de quantos em quantos" e clique em Analisar: continua de onde parou.`;
+        else if (r.semToken) motivo = r.erro;
+        else if (r.sessao) motivo = 'A sessão da Anjun caiu. Entre de novo e clique em Analisar: continua de onde parou.';
+        if (motivo) {
+          // nao e problema do pedido: volta para a fila
+          motivoParada = motivoParada || motivo;
+          Object.assign(item, { situacao: 'pendente', culpado: '' });
           delete item.tipo;
           delete item.erro;
           parar = true;
+        } else {
+          Object.assign(item, { situacao: 'erro', tipo: 'erro', culpado: '', erro: r.erro });
         }
-      }
+      });
+      feitos += grupo.length;
       guardar();
       desenhar();
     }
@@ -291,7 +323,7 @@
   $('parar').addEventListener('click', () => {
     parar = true;
     $('parar').disabled = true;
-    mostrarStatus('Vou parar depois da consulta que está em andamento.');
+    mostrarStatus('Vou parar quando o lote que está em andamento terminar.');
   });
 
   $('limpar').addEventListener('click', () => {

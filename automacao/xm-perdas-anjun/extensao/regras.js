@@ -148,7 +148,24 @@
     return linhas.join('\r\n');
   }
 
-  const api = { lerCodigos, classificar, analisar, resumir, observacao, montarCsv, montarCsvResumo, TIPOS, SITUACOES };
+  function dividirEmLotes(lista, tamanho) {
+    const n = Math.max(1, Math.floor(Number(tamanho)) || 1);
+    const lotes = [];
+    for (let i = 0; i < lista.length; i += n) lotes.push(lista.slice(i, i + n));
+    return lotes;
+  }
+
+  // Cada lote sai junto e o proximo espera intervaloMs desde o inicio do anterior.
+  function tempoEstimado(qtd, lote, intervaloMs) {
+    if (!qtd) return '';
+    const segundos = (Math.ceil(qtd / Math.max(1, lote)) * intervaloMs) / 1000;
+    return segundos < 60 ? 'menos de 1 min' : `uns ${Math.ceil(segundos / 60)} min`;
+  }
+
+  const api = {
+    lerCodigos, classificar, analisar, resumir, observacao, montarCsv, montarCsvResumo, dividirEmLotes, tempoEstimado,
+    TIPOS, SITUACOES,
+  };
   if (typeof module !== 'undefined') module.exports = api;
   else globalThis.XMPerdasRegras = api;
 })();
