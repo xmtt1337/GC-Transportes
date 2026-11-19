@@ -4197,240 +4197,140 @@ select.ant-input option { background: #1a2535; color: #e2e8f0; }
     animation: pc-in 0.15s ease;
 }
 
-/* Combobox de entregador (Planejamento de Rotas) */
-.pv-combo-pop {
-    position: fixed; z-index: 99999;
-    background: #0b1018; border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 10px; overflow: hidden auto; max-height: 240px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(58,134,255,0.06);
-    animation: pc-in 0.15s ease;
-}
-.pv-combo-item {
-    padding: 9px 14px; font-size: 13px; color: #cbd5e1; cursor: pointer;
-    white-space: normal; word-break: break-word; line-height: 1.35;
-}
-.pv-combo-item:hover { background: color-mix(in srgb, var(--pv-accent, #3a86ff) 18%, transparent); color: #fff; }
-.pv-combo-empty { padding: 10px 14px; font-size: 12.5px; color: #7b98b5; }
+/* ───── Planejamento de Rotas (pv-) ─────
+   Sóbrio de propósito (pedido de 19/11/2026: "muita cara de IA, arredondado,
+   desalinhado"): sem caixa tingida, sem bolinha de iniciais, sem pílula. Cor só
+   onde informa — sigla em azul, definidos em verde, pendente em âmbar. */
+.pv-titulo { font-size: 15px; font-weight: 600; color: #e2e8f0; }
+.pv-titulo > span { color: var(--text-muted); font-weight: 500; }
 
-/* Título com ícone (Planejamento de Rotas) */
-.pv-title-icon {
-    width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: color-mix(in srgb, var(--pv-accent, #3a86ff) 14%, transparent);
-    color: var(--pv-accent, #3a86ff);
-    transition: background 0.25s ease, color 0.25s ease;
+.pv-barra { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; margin-top: 14px; }
+.pv-acoes { display: flex; align-items: center; flex-wrap: wrap; gap: 0 4px; }
+/* Botão de ação = só o texto em azul; sublinha ao passar o mouse (mesmo do .cft-btn). */
+.pv-acao {
+    padding: 6px 2px; margin-right: 10px; font-size: 13px; font-weight: 500; cursor: pointer;
+    font-family: inherit; border: 0; background: none; color: #60a5fa; text-underline-offset: 3px;
 }
+.pv-acao:hover { text-decoration: underline; color: #93c5fd; }
 
-/* Abas de transportadora (Planejamento de Rotas) — cada uma na cor da própria transportadora */
+/* Abas de transportadora — só aparecem com _PV_POR_TRANSPORTADORA ligado (hoje desligado). */
 .pv-transp-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 .pv-transp-tab {
     display: inline-flex; align-items: center; gap: 7px;
-    padding: 8px 18px 8px 14px; border-radius: 99px; cursor: pointer; font-family: inherit;
-    font-size: 13px; font-weight: 600; transition: all 0.2s ease;
-    border: 1px solid color-mix(in srgb, var(--pvc) 32%, transparent);
-    background: color-mix(in srgb, var(--pvc) 8%, transparent);
-    color: var(--pvc);
+    padding: 7px 14px 7px 12px; border-radius: 6px; cursor: pointer; font-family: inherit;
+    font-size: 13px; font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #8494a9;
 }
-.pv-transp-tab svg { flex-shrink: 0; opacity: 0.85; }
-.pv-transp-tab:hover { background: color-mix(in srgb, var(--pvc) 18%, transparent); transform: translateY(-1px); }
-.pv-transp-tab.active {
-    background: var(--pvc); color: #fff; border-color: var(--pvc);
-    box-shadow: 0 4px 16px color-mix(in srgb, var(--pvc) 50%, transparent);
-}
-.pv-transp-tab.active .pv-tab-dot { background: #fff; }
-.pv-tab-dot {
-    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-    background: var(--pvc); box-shadow: 0 0 8px 1px color-mix(in srgb, var(--pvc) 60%, transparent);
-}
+.pv-transp-tab:hover, .pv-transp-tab.active { border-color: var(--pvc); color: var(--pvc); }
+.pv-tab-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--pvc); }
 
-/* Tira de indicadores (total / definidos / pendentes / cobertura) */
-.pv-stats { display: flex; align-items: stretch; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-.pv-stat-tile {
-    background: var(--surface-2); border: 1px solid rgba(255,255,255,0.06);
-    border-radius: var(--radius-sm); padding: 12px 22px; min-width: 96px;
+/* Alternador Por Bairro / Por Entregador — segmentado neutro, igual ao da quinzena. */
+.pv-view-toggle {
+    display: flex; gap: 2px; padding: 3px; margin-left: auto;
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
 }
-.pv-stat-val { font-size: 24px; font-weight: 700; color: #f1f5f9; line-height: 1; font-variant-numeric: tabular-nums; }
-.pv-stat-val.pv-ok   { color: #22c55e; }
-.pv-stat-val.pv-warn { color: #fb923c; }
-.pv-stat-lbl {
-    font-size: 10px; color: var(--text-muted); text-transform: uppercase;
-    letter-spacing: .05em; margin-top: 5px; white-space: nowrap;
+.pv-view-btn {
+    padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    background: transparent; color: #8494a9;
 }
-.pv-stat-progress {
-    flex: 1; min-width: 200px; background: var(--surface-2);
-    border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-sm);
-    padding: 11px 18px; display: flex; flex-direction: column; justify-content: center; gap: 8px;
-}
-.pv-stat-progress-hd {
-    display: flex; justify-content: space-between; align-items: baseline;
-    font-size: 10px; color: var(--text-muted); font-weight: 600;
-    text-transform: uppercase; letter-spacing: .05em;
-}
-.pv-stat-progress-hd b { color: var(--pv-accent, #3a86ff); font-size: 14px; letter-spacing: 0; }
-.pv-progress-track { height: 7px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: hidden; }
-.pv-progress-fill {
-    height: 100%; border-radius: 99px; transition: width 0.5s ease;
-    background: var(--pv-accent, #3a86ff);
-}
+.pv-view-btn:hover:not(.active) { color: #cbd5e1; background: rgba(255,255,255,0.04); }
+.pv-view-btn.active { background: rgba(255,255,255,0.09); color: #e2e8f0; }
 
-/* Card da tabela — acento na cor da transportadora selecionada */
-.pv-card {
-    background: rgba(14,22,40,0.9);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: var(--radius); overflow: hidden;
-}
+/* Números da tela: uma faixa sem caixa, rótulo em cima e divisória fina entre eles. */
+.pv-kpis { display: flex; flex-wrap: wrap; gap: 14px 0; margin-bottom: 18px; }
+.pv-kpi { display: flex; flex-direction: column; gap: 3px; padding: 0 26px; border-left: 1px solid rgba(255,255,255,0.08); }
+.pv-kpi:first-child { padding-left: 0; border-left: 0; }
+.pv-kpi-rot { font-size: 12px; color: #8494a9; }
+.pv-kpi-val { font-size: 20px; font-weight: 600; color: #e2e8f0; font-variant-numeric: tabular-nums; }
+.pv-kpi-val.pv-ok   { color: #34d399; }
+.pv-kpi-val.pv-warn { color: #f59e0b; }
+.pv-cob-barra { display: block; width: 150px; height: 4px; margin-top: 3px; background: rgba(255,255,255,0.07); }
+.pv-cob-barra i { display: block; height: 100%; background: var(--pv-accent, #3a86ff); transition: width 0.4s ease; }
+
+/* Por Bairro: tabela sem caixa em volta. */
+.pv-card { background: transparent; border: 0; border-top: 1px solid rgba(255,255,255,0.07); }
 .pv-table { table-layout: fixed; width: 100%; }
 .pv-table th:nth-child(2) { width: 90px; }
 .pv-table th:nth-child(3), .pv-table td:nth-child(3) { width: 46%; }
 .pv-table td:nth-child(1) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#pv-tbody tr:hover td { background: color-mix(in srgb, var(--pv-accent, #3a86ff) 6%, transparent); }
+.pv-table td { padding-top: 7px; padding-bottom: 7px; }
+#pv-tbody tr:hover td { background: rgba(255,255,255,0.025); }
+.pv-sigla { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; font-weight: 600; color: #7fb0ff; white-space: nowrap; }
 
-.pv-sigla-pill {
-    display: inline-block; padding: 3px 11px; border-radius: 99px; white-space: nowrap;
-    font-size: 11.5px; font-weight: 700; font-family: 'SFMono-Regular', Consolas, monospace; letter-spacing: .01em;
-    color: var(--pv-accent, #3a86ff);
-    background: color-mix(in srgb, var(--pv-accent, #3a86ff) 13%, transparent);
-    border: 1px solid color-mix(in srgb, var(--pv-accent, #3a86ff) 28%, transparent);
+/* Combobox de entregador */
+.pv-combo-input { width: 100%; border-radius: 6px; padding-top: 8px; padding-bottom: 8px; }
+.pv-combo-input:focus { border-color: var(--pv-accent, #3a86ff) !important; box-shadow: none; outline: none; }
+.pv-combo-input.pv-nao-definido { color: #f59e0b; font-style: italic; }
+.pv-combo-pop {
+    position: fixed; z-index: 99999;
+    background: #0b1018; border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px; overflow: hidden auto; max-height: 240px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.6);
 }
+.pv-combo-item {
+    padding: 8px 12px; font-size: 13px; color: #cbd5e1; cursor: pointer;
+    white-space: normal; word-break: break-word; line-height: 1.35;
+}
+.pv-combo-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.pv-combo-empty { padding: 10px 12px; font-size: 12.5px; color: #7b98b5; }
 
-.pv-ent-cell { display: flex; align-items: center; gap: 10px; }
-.pv-ent-avatar {
-    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 10.5px; font-weight: 700; color: #fff;
-    background: var(--pv-accent, #3a86ff);
+/* Por Entregador: uma linha por entregador, em colunas fixas — o nome sai inteiro
+   e o começo dos bairros fica na mesma vertical em todas as linhas. */
+.pv-driver-grid { border-top: 1px solid rgba(255,255,255,0.07); }
+.pv-driver-cab, .pv-driver-card {
+    display: grid; grid-template-columns: minmax(200px, 320px) 64px minmax(0, 1fr);
+    column-gap: 18px; align-items: start;
 }
-.pv-ent-avatar.pv-avatar-vazio {
-    background: rgba(255,255,255,0.04); color: #fb923c;
-    border: 1.5px dashed rgba(251,146,60,0.4); box-shadow: none;
+.pv-driver-cab {
+    padding: 9px 12px; font-size: 11px; font-weight: 600; color: #7a8599;
+    text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid rgba(255,255,255,0.07);
 }
-.pv-ent-cell .pv-combo-input { flex: 1; min-width: 0; }
-
-.pv-combo-input { transition: border-color 0.2s, box-shadow 0.2s, color 0.2s; }
-.pv-combo-input:focus {
-    border-color: var(--pv-accent, #3a86ff) !important;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pv-accent, #3a86ff) 18%, transparent);
-    outline: none;
-}
-.pv-combo-input.pv-nao-definido { color: #fb923c; font-style: italic; }
-
-/* Alternador de visão: Por Bairro / Por Entregador */
-.pv-view-toggle {
-    display: flex; border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 99px; padding: 3px; gap: 2px;
-    background: rgba(0,0,0,0.2);
-}
-.pv-view-btn {
-    padding: 7px 16px; border-radius: 99px; border: none; cursor: pointer;
-    font-family: inherit; font-size: 12.5px; font-weight: 600;
-    background: transparent; color: var(--text-muted); transition: all 0.2s ease;
-}
-.pv-view-btn:hover:not(.active) { color: #cbd5e1; }
-.pv-view-btn.active {
-    background: var(--pv-accent, #3a86ff); color: #fff;
-}
-
-/* "Inserir Entregador" — pede cadastro de quem não está na lista */
-.pv-inserir-btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 8px 14px; border-radius: 99px; cursor: pointer;
-    font-family: inherit; font-size: 12.5px; font-weight: 600;
-    color: var(--pv-accent, #3a86ff);
-    background: color-mix(in srgb, var(--pv-accent, #3a86ff) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--pv-accent, #3a86ff) 35%, transparent);
-    transition: background 0.2s ease, transform 0.2s ease;
-}
-.pv-inserir-btn:hover {
-    background: color-mix(in srgb, var(--pv-accent, #3a86ff) 22%, transparent);
-    transform: translateY(-1px);
-}
-
-/* Cards agrupados por entregador — "quem vai fazer qual rota" */
-.pv-driver-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;
-    align-items: start;
-}
-.pv-driver-card {
-    background: rgba(14,22,40,0.9);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: var(--radius); padding: 16px 18px;
-    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-    min-width: 0; /* item de grid não deve crescer além da coluna por causa do header nowrap */
-}
+.pv-driver-cab span:nth-child(2) { text-align: right; }
+.pv-driver-card { padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.pv-driver-card:hover { background: rgba(255,255,255,0.02); }
 .pv-driver-card.pv-drop-target {
-    transform: scale(1.02);
-    background: color-mix(in srgb, var(--pv-accent, #3a86ff) 10%, rgba(14,22,40,0.9));
-    box-shadow: 0 0 0 2px var(--pv-accent, #3a86ff);
+    background: rgba(58,134,255,0.08);
+    outline: 1px solid var(--pv-accent, #3a86ff); outline-offset: -1px;
 }
-.pv-driver-card.pv-driver-vazio {
-    border-color: rgba(251,146,60,0.35);
-}
-.pv-driver-head { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
-.pv-driver-name {
-    font-size: 14px; font-weight: 700; color: #e2e8f0; flex: 1; min-width: 0;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.pv-driver-vazio .pv-driver-name { color: #fb923c; }
-.pv-driver-count {
-    font-size: 11px; font-weight: 700; padding: 3px 11px; border-radius: 99px;
-    color: var(--pv-accent, #3a86ff); background: color-mix(in srgb, var(--pv-accent, #3a86ff) 14%, transparent);
-    white-space: nowrap; flex-shrink: 0;
-}
-.pv-driver-vazio .pv-driver-count { color: #fb923c; background: rgba(251,146,60,0.14); }
-.pv-driver-bairros { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv-driver-name { font-size: 13.5px; font-weight: 600; color: #e2e8f0; line-height: 26px; overflow-wrap: anywhere; }
+.pv-driver-vazio .pv-driver-name { color: #f59e0b; }
+.pv-driver-count { font-size: 13px; color: #8494a9; text-align: right; line-height: 26px; font-variant-numeric: tabular-nums; }
+.pv-driver-bairros { display: flex; flex-wrap: wrap; gap: 4px; }
 .pv-bairro-chip {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 11.5px; padding: 4px 10px; border-radius: 8px;
-    background: rgba(255,255,255,0.035); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.06);
+    display: inline-flex; align-items: baseline; gap: 7px;
+    font-size: 12.5px; line-height: 18px; padding: 3px 9px; border-radius: 4px;
+    color: #cbd5e1; border: 1px solid rgba(255,255,255,0.08);
     cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
-    transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
-.pv-bairro-chip:hover { border-color: color-mix(in srgb, var(--pv-accent, #3a86ff) 40%, transparent); }
+.pv-bairro-chip:hover { border-color: rgba(255,255,255,0.22); }
 .pv-bairro-chip:active { cursor: grabbing; }
-.pv-bairro-chip .sigla { font-family: monospace; font-weight: 700; color: var(--pv-accent, #3a86ff); font-size: 10.5px; }
+.pv-bairro-chip .sigla { font-family: 'SFMono-Regular', Consolas, monospace; font-weight: 600; color: #7fb0ff; font-size: 11.5px; }
 
-/* Chip "fantasma" que segue o cursor enquanto o bairro é arrastado */
-.pv-chip-source-dragging {
-    opacity: 0.28; border-style: dashed; border-color: var(--pv-accent, #3a86ff);
-    background: transparent;
-}
+/* Bairro sendo arrastado: a origem fica apagada e uma cópia segue o cursor. */
+.pv-chip-source-dragging { opacity: 0.3; border-style: dashed; }
 .pv-chip-ghost {
     z-index: 99999; pointer-events: none; margin: 0 !important;
-    background: color-mix(in srgb, var(--pv-accent, #3a86ff) 26%, #0b1018);
-    color: #fff; border: 1px solid var(--pv-accent, #3a86ff);
-    box-shadow: 0 16px 36px rgba(0,0,0,0.55), 0 0 0 1px color-mix(in srgb, var(--pv-accent, #3a86ff) 45%, transparent);
+    background: #142035; color: #fff; border: 1px solid var(--pv-accent, #3a86ff);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.55);
     /* transform (escala + rotação do "balanço") é controlado via JS a cada frame */
-    animation: pv-chip-pulse 1s ease-in-out infinite;
-}
-.pv-chip-ghost .sigla { color: #fff; opacity: 0.85; }
-@keyframes pv-chip-pulse {
-    0%, 100% {
-        box-shadow: 0 16px 36px rgba(0,0,0,0.55), 0 0 0 1px color-mix(in srgb, var(--pv-accent, #3a86ff) 45%, transparent);
-    }
-    50% {
-        box-shadow: 0 20px 44px rgba(0,0,0,0.6), 0 0 0 5px color-mix(in srgb, var(--pv-accent, #3a86ff) 60%, transparent);
-    }
 }
 
 @media (max-width: 680px) {
-    .pv-stats { gap: 8px; }
-    .pv-stat-tile { padding: 10px 14px; min-width: 0; flex: 1; }
-    .pv-stat-progress { flex-basis: 100%; }
-    /* padding lateral: da uma folga pro card crescer (scale do drop-target) sem estourar a tela,
-       já que no mobile é 1 coluna full-width */
-    .pv-driver-grid { grid-template-columns: 1fr; padding: 0 6px; }
+    .pv-kpi { padding: 0 14px; }
+    .pv-cob-barra { width: 110px; }
+    .pv-view-toggle { margin-left: 0; }
 
-    .pv-transp-tabs { gap: 6px; margin-top: 10px; }
-    .pv-transp-tab { padding: 7px 12px 7px 10px; font-size: 12px; }
-
-    .pv-table th, .pv-table td { padding: 10px 6px; }
+    .pv-table th, .pv-table td { padding: 8px 6px; }
     .pv-table th:nth-child(1), .pv-table td:nth-child(1) { width: 30%; }
-    .pv-table th:nth-child(2), .pv-table td:nth-child(2) { width: 74px; }
+    .pv-table th:nth-child(2), .pv-table td:nth-child(2) { width: 58px; }
     .pv-table th:nth-child(3), .pv-table td:nth-child(3) { width: auto; }
-    .pv-sigla-pill { padding: 3px 7px; font-size: 10.5px; }
-    .pv-ent-cell { gap: 5px; }
-    .pv-ent-avatar { width: 22px; height: 22px; font-size: 9px; }
     .pv-combo-input { padding: 7px 8px; font-size: 12.5px; }
+
+    /* Celular: nome e quantidade em cima, bairros embaixo ocupando a linha toda. */
+    .pv-driver-cab { display: none; }
+    .pv-driver-card { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; padding: 10px 4px; }
+    .pv-driver-bairros { grid-column: 1 / -1; }
 }
 .ped-cal-header {
     display: flex; align-items: center; justify-content: space-between;

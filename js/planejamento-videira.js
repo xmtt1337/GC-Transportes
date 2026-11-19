@@ -98,10 +98,36 @@ function _pvCarregar() {
     .catch(() => { skFim(empty, "Erro ao conectar com o servidor."); });
 }
 
-function _pvIniciais(nome) {
-    const partes = nome.trim().split(/\s+/);
-    const ini = partes.length > 1 ? partes[0][0] + partes[partes.length - 1][0] : partes[0].slice(0, 2);
-    return ini.toUpperCase();
+// Nome vem da planilha (e do "Inserir Entregador"): nunca vira HTML.
+function _pvEsc(t) {
+    return String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Ordem da rota: pela sigla, com número em ordem numérica ("C-2" antes de "C-10");
+// bairro sem sigla vai pro fim, em ordem alfabética.
+function _pvOrdemSigla(a, b) {
+    if (!a.sigla !== !b.sigla) return a.sigla ? -1 : 1;
+    return String(a.sigla || "").localeCompare(String(b.sigla || ""), "pt-BR", { numeric: true })
+        || String(a.bairro || "").localeCompare(String(b.bairro || ""), "pt-BR");
+}
+
+/**
+ * Bairros agrupados por entregador, cada grupo na ordem da sigla. Usado na tela
+ * "Por Entregador" e na impressão — as duas mostram a mesma coisa.
+ * @return {{grupos: Array<{nome: string, itens: Array}>, vazios: Array}}
+ */
+function _pvAgrupar(linhas) {
+    const mapa = new Map();
+    const vazios = [];
+    (linhas || []).forEach(l => {
+        if (!l.entregador) { vazios.push(l); return; }
+        if (!mapa.has(l.entregador)) mapa.set(l.entregador, []);
+        mapa.get(l.entregador).push(l);
+    });
+    const grupos = [...mapa.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"))
+        .map(([nome, itens]) => ({ nome, itens: itens.slice().sort(_pvOrdemSigla) }));
+    return { grupos, vazios: vazios.sort(_pvOrdemSigla) };
 }
 
 function _pvRenderizar(linhas) {
@@ -110,19 +136,13 @@ function _pvRenderizar(linhas) {
     document.getElementById("pv-tbody").innerHTML = linhas.map(l => {
         const exibicao    = l.entregador || "Não Definido";
         const naoDefinido = !l.entregador;
-        const avatarTxt   = naoDefinido
-            ? `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
-            : _pvIniciais(l.entregador);
         return `<tr>
-            <td class="adm-nf-entregador">${l.bairro || "—"}</td>
-            <td>${l.sigla ? `<span class="pv-sigla-pill">${l.sigla}</span>` : "—"}</td>
+            <td class="adm-nf-entregador">${_pvEsc(l.bairro) || "—"}</td>
+            <td><span class="pv-sigla">${_pvEsc(l.sigla) || "—"}</span></td>
             <td>
-                <div class="pv-ent-cell">
-                    <div class="pv-ent-avatar${naoDefinido ? " pv-avatar-vazio" : ""}">${avatarTxt}</div>
-                    <input type="text" class="fech-select pv-combo-input${naoDefinido ? " pv-nao-definido" : ""}" autocomplete="off"
-                        value="${exibicao.replace(/"/g, "&quot;")}" data-linha="${l.linha}"
-                        oninput="_pvComboFiltrar(this)" onfocus="_pvComboAbrir(this)" onblur="_pvComboBlur(this)">
-                </div>
+                <input type="text" class="fech-select pv-combo-input${naoDefinido ? " pv-nao-definido" : ""}" autocomplete="off"
+                    value="${_pvEsc(exibicao)}" data-linha="${l.linha}"
+                    oninput="_pvComboFiltrar(this)" onfocus="_pvComboAbrir(this)" onblur="_pvComboBlur(this)">
             </td>
         </tr>`;
     }).join("");
@@ -237,14 +257,6 @@ function _pvSalvar(linha, entregador, inputEl) {
         inputEl.classList.toggle("pv-nao-definido", !entregador);
         inputEl.style.borderColor = "rgba(34,197,94,0.6)";
         setTimeout(() => { inputEl.style.borderColor = ""; }, 900);
-
-        const avatarEl = inputEl.closest(".pv-ent-cell")?.querySelector(".pv-ent-avatar");
-        if (avatarEl) {
-            avatarEl.classList.toggle("pv-avatar-vazio", !entregador);
-            avatarEl.innerHTML = entregador
-                ? _pvIniciais(entregador)
-                : `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
-        }
         _pvAtualizarContador();
     })
     .catch(() => {
@@ -258,73 +270,143 @@ function _pvAtualizarContador(linhas) {
     const total      = base.length;
     const definidos  = base.filter(l => !!l.entregador).length;
     const pendentes  = total - definidos;
-    const pct        = total > 0 ? Math.round((definidos / total) * 100) : 0;
+    // Duas casas e arredondando pra baixo: 99,96% nunca pode aparecer como 100,00%.
+    const pct        = total > 0 ? Math.floor(definidos * 10000 / total) / 100 : 0;
+    const pctTxt     = pct.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     document.getElementById("pv-counter").innerHTML = `
-        <div class="pv-stats">
-            <div class="pv-stat-tile">
-                <div class="pv-stat-val">${total}</div>
-                <div class="pv-stat-lbl">Bairro${total !== 1 ? "s" : ""}</div>
-            </div>
-            <div class="pv-stat-tile">
-                <div class="pv-stat-val pv-ok">${definidos}</div>
-                <div class="pv-stat-lbl">Definidos</div>
-            </div>
-            <div class="pv-stat-tile">
-                <div class="pv-stat-val${pendentes ? " pv-warn" : ""}">${pendentes}</div>
-                <div class="pv-stat-lbl">Pendentes</div>
-            </div>
-            <div class="pv-stat-progress">
-                <div class="pv-stat-progress-hd"><span>Cobertura da rota</span><b>${pct}%</b></div>
-                <div class="pv-progress-track"><div class="pv-progress-fill" style="width:${pct}%"></div></div>
+        <div class="pv-kpis">
+            <div class="pv-kpi"><span class="pv-kpi-rot">Bairros</span><span class="pv-kpi-val">${total}</span></div>
+            <div class="pv-kpi"><span class="pv-kpi-rot">Definidos</span><span class="pv-kpi-val pv-ok">${definidos}</span></div>
+            <div class="pv-kpi"><span class="pv-kpi-rot">Pendentes</span><span class="pv-kpi-val${pendentes ? " pv-warn" : ""}">${pendentes}</span></div>
+            <div class="pv-kpi pv-kpi-cob">
+                <span class="pv-kpi-rot">Cobertura da rota</span>
+                <span class="pv-kpi-val">${pctTxt}%</span>
+                <span class="pv-cob-barra"><i style="width:${pct}%"></i></span>
             </div>
         </div>`;
 }
 
-function _pvFiltrarLocal() {
+/** O que o filtro de cima deixa ver — a tela e a impressão usam o mesmo recorte. */
+function _pvLinhasFiltradas() {
     const termo = document.getElementById("pv-filtro-input").value.trim().toLowerCase();
-    const base = !termo ? _pvLinhas : _pvLinhas.filter(l =>
+    return !termo ? _pvLinhas : _pvLinhas.filter(l =>
         (l.bairro     || "").toLowerCase().includes(termo) ||
         (l.sigla      || "").toLowerCase().includes(termo) ||
         (l.entregador || "").toLowerCase().includes(termo)
     );
+}
+
+function _pvFiltrarLocal() {
+    const base = _pvLinhasFiltradas();
     if (_pvView === "bairro") _pvRenderizar(base);
     else _pvRenderizarPorEntregador(base);
 }
 
 // ───── Visão "Por Entregador" — quais bairros/siglas cada um vai atender ─────
+// Uma linha por entregador, em colunas fixas (nome | quantidade | bairros): o nome
+// aparece inteiro e tudo fica alinhado, em vez de cartões de alturas diferentes.
+// As classes .pv-driver-card (destino) e .pv-bairro-chip (o que se arrasta) são o
+// contrato com o arrastar-e-soltar mais abaixo.
 function _pvRenderizarPorEntregador(linhas) {
     _pvAtualizarContador(linhas);
+    const { grupos, vazios } = _pvAgrupar(linhas);
 
-    const grupos = {};
-    linhas.forEach(l => {
-        const chave = l.entregador || "__vazio__";
-        (grupos[chave] = grupos[chave] || []).push(l);
-    });
-
-    const nomes = Object.keys(grupos)
-        .filter(n => n !== "__vazio__")
-        .sort((a, b) => a.localeCompare(b, "pt-BR"));
-
-    const cardHtml = (nome, itens) => {
-        const chips = itens.map(i => `
-            <span class="pv-bairro-chip" data-linha="${i.linha}">${i.bairro || "—"}${i.sigla ? ` <span class="sigla">${i.sigla}</span>` : ""}</span>
-        `).join("");
-        return `
-        <div class="pv-driver-card" data-nome="${nome.replace(/"/g, "&quot;")}">
-            <div class="pv-driver-head">
-                <div class="pv-ent-avatar" style="width:36px;height:36px;font-size:12px">${_pvIniciais(nome)}</div>
-                <div class="pv-driver-name">${nome}</div>
-                <div class="pv-driver-count">${itens.length} bairro${itens.length !== 1 ? "s" : ""}</div>
-            </div>
-            <div class="pv-driver-bairros">${chips}</div>
+    const chips = itens => itens.map(i => `<span class="pv-bairro-chip" data-linha="${i.linha}">`
+        + `<span class="sigla">${_pvEsc(i.sigla) || "—"}</span>${_pvEsc(i.bairro) || "—"}</span>`).join("");
+    const linha = (nome, itens, vazio) => `
+        <div class="pv-driver-card${vazio ? " pv-driver-vazio" : ""}" data-nome="${vazio ? "" : _pvEsc(nome)}">
+            <div class="pv-driver-name">${_pvEsc(nome)}</div>
+            <div class="pv-driver-count">${itens.length}</div>
+            <div class="pv-driver-bairros">${chips(itens)}</div>
         </div>`;
+
+    // Pendente em cima: é o que falta resolver, e dá pra arrastar dali pra alguém.
+    const html = (vazios.length ? linha("Sem entregador", vazios, true) : "")
+        + grupos.map(g => linha(g.nome, g.itens, false)).join("");
+
+    document.getElementById("pv-driver-grid").innerHTML = html
+        ? `<div class="pv-driver-cab"><span>Entregador</span><span>Bairros</span><span>Sigla e bairro</span></div>${html}`
+        : `<div class="fechamento-empty">Nenhum resultado para este filtro.</div>`;
+}
+
+// ───── Imprimir rota (Por Entregador) ─────
+// Folha branca, para a impressora ou "Salvar como PDF" na própria janela de impressão
+// do navegador. Imprime o que o filtro de cima está mostrando.
+
+/**
+ * HTML da folha. Sem depender da tela: recebe tudo pronto, pra ser testável.
+ * @param {Array} linhas Bairros (já filtrados).
+ * @param {string} unidade Rótulo da unidade ("Caçador").
+ * @param {string} quando Data/hora já formatada.
+ * @param {string=} filtro Texto do filtro, se houver.
+ */
+function _pvHtmlImpressao(linhas, unidade, quando, filtro) {
+    const { grupos, vazios } = _pvAgrupar(linhas);
+    const todos = grupos.concat(vazios.length ? [{ nome: "Sem entregador", itens: vazios, vazio: true }] : []);
+
+    const corpo = todos.map(g => `<tbody${g.vazio ? ' class="vazio"' : ""}>` + g.itens.map((i, n) => `<tr>`
+        + (n === 0 ? `<td class="ent" rowspan="${g.itens.length}"><b>${_pvEsc(g.nome)}</b>`
+            + `<small>${g.itens.length} bairro${g.itens.length !== 1 ? "s" : ""}</small></td>` : "")
+        + `<td class="sig">${_pvEsc(i.sigla) || "—"}</td><td>${_pvEsc(i.bairro) || "—"}</td></tr>`).join("") + `</tbody>`).join("");
+
+    const resumo = [
+        `${linhas.length} bairro${linhas.length !== 1 ? "s" : ""}`,
+        `${grupos.length} entregador${grupos.length !== 1 ? "es" : ""}`,
+        vazios.length ? `${vazios.length} sem entregador` : "",
+        filtro ? `filtro: “${_pvEsc(filtro)}”` : "",
+    ].filter(Boolean).join(" · ");
+
+    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Rota ${_pvEsc(unidade)}</title>
+<style>
+    @page { size: A4 portrait; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111; font-size: 12px; }
+    h1 { font-size: 17px; margin: 0 0 3px; }
+    .sub { color: #555; font-size: 11px; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+               color: #555; padding: 5px 8px; border-bottom: 1.5px solid #111; }
+    td { padding: 4px 8px; border-bottom: 1px solid #ddd; vertical-align: top; }
+    tbody { break-inside: avoid; page-break-inside: avoid; }
+    tbody tr:last-child td, td.ent { border-bottom: 1.5px solid #111; }
+    td.ent { width: 40%; }
+    td.ent b { display: block; font-size: 12.5px; }
+    td.ent small { color: #666; font-size: 10.5px; }
+    td.sig { width: 64px; font-family: Consolas, "Courier New", monospace; font-weight: bold; white-space: nowrap; }
+    tbody.vazio td.ent b { font-style: italic; }
+    .rodape { margin-top: 10px; font-size: 10px; color: #888; }
+</style></head><body>
+<h1>Planejamento de Rotas — ${_pvEsc(unidade)}</h1>
+<div class="sub">Impresso em ${_pvEsc(quando)} · ${resumo}</div>
+<table><thead><tr><th>Entregador</th><th>Sigla</th><th>Bairro</th></tr></thead>${corpo}</table>
+</body></html>`;
+}
+
+function _pvImprimir() {
+    const linhas = _pvLinhasFiltradas();
+    if (!linhas.length) { gcAlert("Nada para imprimir com este filtro."); return; }
+
+    const quando = new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const html = _pvHtmlImpressao(linhas, _PV_UNIDADE_LABEL[_pvUnidade] || _pvUnidade, quando,
+        document.getElementById("pv-filtro-input").value.trim());
+
+    // Iframe escondido em vez de janela nova: abre direto a caixa de impressão, sem
+    // depender de pop-up liberado. O anterior só sai na próxima impressão — tirar
+    // durante a caixa aberta cancelaria a impressão em alguns navegadores.
+    const antigo = document.getElementById("pv-print-frame");
+    if (antigo) antigo.remove();
+    const frame = document.createElement("iframe");
+    frame.id = "pv-print-frame";
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+    frame.onload = () => {
+        try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+        catch (_) { gcAlert("Não foi possível abrir a impressão."); }
     };
-
-    const html = nomes.map(n => cardHtml(n, grupos[n])).join("");
-
-    document.getElementById("pv-driver-grid").innerHTML =
-        html || `<div class="fechamento-empty">Nenhum resultado para este filtro.</div>`;
+    frame.srcdoc = html;
+    document.body.appendChild(frame);
 }
 
 // ───── Arrastar e soltar: mover um bairro de um entregador para outro ─────
