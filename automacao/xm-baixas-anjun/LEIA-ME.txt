@@ -10,8 +10,9 @@ Para cada codigo da lista ela faz o que a pessoa faria:
   1. Bipa o codigo e vai em Proximo.
   2. Marca "Proprio" (o nome do recebedor vem da propria Anjun)
      e coloca o CPF configurado (padrao 000.000.000-00).
-  3. Acha no PDF a pagina da etiqueta daquele codigo e anexa
-     nas duas fotos obrigatorias (Pacote + Etiqueta e Ambiente).
+  3. Acha a pagina da etiqueta daquele codigo (em qualquer um
+     dos PDFs escolhidos) e anexa nas duas fotos obrigatorias
+     (Pacote + Etiqueta e Ambiente).
   4. Assina com o nome de quem esta dando a baixa (a conta
      logada na Anjun, ou o que estiver em "Assinar como") e
      confirma o recebimento.
@@ -41,15 +42,19 @@ USAR
 1. Na Anjun, abra Centro de operacao > Baixar Pacotes.
    A lista "Pacotes para Recebimento" tem que estar vazia.
 2. Clique em "XM Baixas" (canto de baixo, a direita).
-3. Escolha o PDF das etiquetas. Cole os codigos AJ, um por
-   linha, ou clique em "Usar todos do PDF".
+3. Escolha os PDFs das etiquetas: pode marcar varios de uma
+   vez ou ir escolhendo um depois do outro; cada um aparece na
+   lista com quantos codigos tem. Se o codigo nao esta num PDF,
+   ela procura nos outros. "Tirar os PDFs" limpa a lista.
+   Cole os codigos AJ, um por linha, ou clique em "Usar todos
+   dos PDFs".
 4. Confira o CPF e o "Assinar como" e clique em Iniciar baixas.
 5. Nao feche nem atualize a aba ate terminar. "Parar" espera a
    baixa em andamento acabar.
 6. No fim, "Baixar resultado" gera um CSV com cada codigo,
    a situacao e o motivo dos erros.
 
-O PDF fica so na memoria da aba. CPF e "Assinar como" ficam
+Os PDFs ficam so na memoria da aba. CPF e "Assinar como" ficam
 guardados no Chrome deste computador.
 
 pdf.js (Mozilla, licenca Apache 2.0) em extensao/vendor.

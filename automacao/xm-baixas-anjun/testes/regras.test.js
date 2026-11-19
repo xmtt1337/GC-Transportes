@@ -4,7 +4,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { lerCodigos, mapearEtiquetas, formatarCpf, tracosDoTexto, montarCsv } = require('../extensao/regras.js');
+const { lerCodigos, localizarEtiquetas, formatarCpf, tracosDoTexto, montarCsv } = require('../extensao/regras.js');
 
 test('lerCodigos: um por linha ou por espaco, sem repetir e na ordem', () => {
   const colado = 'AJ100000000000001\naj100000000000002  AJ100000000000001\n\nAJ1000000000003 lixo';
@@ -13,24 +13,44 @@ test('lerCodigos: um por linha ou por espaco, sem repetir e na ordem', () => {
   assert.deepStrictEqual(lerCodigos(null), []);
 });
 
-test('mapearEtiquetas: vale a pagina da etiqueta, nao a lista de mercadorias', () => {
+test('localizarEtiquetas: vale a pagina da etiqueta, nao a lista de mercadorias', () => {
   const paginas = [
     { numero: 1, texto: 'Lista de mercadorias Pedido:TESTE001 Anjun_No:AJ100000000000001' },
     { numero: 2, texto: 'DANFE SIMPLIFICADO-ETIQUETA Fulano de Tal DESTINATARIO AJ100000000000001 SC-W-TESTE' },
     { numero: 3, texto: 'DANFE SIMPLIFICADO-ETIQUETA Ciclano DESTINATARIO AJ100000000000002' },
     { numero: 4, texto: 'Lista de mercadorias Anjun_No:AJ100000000000002' },
   ];
-  assert.deepStrictEqual(mapearEtiquetas(paginas), { AJ100000000000001: 2, AJ100000000000002: 3 });
+  assert.deepStrictEqual(localizarEtiquetas(paginas), {
+    AJ100000000000001: { arquivo: 0, numero: 2 },
+    AJ100000000000002: { arquivo: 0, numero: 3 },
+  });
 });
 
-test('mapearEtiquetas: sem pagina de etiqueta, fica a primeira que cita o codigo', () => {
+test('localizarEtiquetas: sem pagina de etiqueta, fica a primeira que cita o codigo', () => {
   const paginas = [
     { numero: 1, texto: 'Lista de mercadorias Anjun_No:AJ100000000000009' },
     { numero: 2, texto: 'Lista de mercadorias Anjun_No:AJ100000000000009' },
     { numero: 3, texto: 'pagina em branco' },
   ];
-  assert.deepStrictEqual(mapearEtiquetas(paginas), { AJ100000000000009: 1 });
-  assert.deepStrictEqual(mapearEtiquetas([]), {});
+  assert.deepStrictEqual(localizarEtiquetas(paginas), { AJ100000000000009: { arquivo: 0, numero: 1 } });
+  assert.deepStrictEqual(localizarEtiquetas([]), {});
+});
+
+test('localizarEtiquetas: com varios PDFs, procura em todos e a etiqueta ganha da lista', () => {
+  const paginas = [
+    // PDF 0: so a lista de mercadorias do 1 e a etiqueta do 2
+    { arquivo: 0, numero: 1, texto: 'Lista de mercadorias Anjun_No:AJ100000000000001' },
+    { arquivo: 0, numero: 2, texto: 'DANFE SIMPLIFICADO-ETIQUETA DESTINATARIO AJ100000000000002' },
+    // PDF 1: a etiqueta do 1, outra do 2 (fica a primeira) e um codigo que so existe aqui
+    { arquivo: 1, numero: 1, texto: 'DANFE SIMPLIFICADO-ETIQUETA DESTINATARIO AJ100000000000002' },
+    { arquivo: 1, numero: 2, texto: 'DANFE SIMPLIFICADO-ETIQUETA DESTINATARIO AJ100000000000001' },
+    { arquivo: 1, numero: 3, texto: 'DANFE SIMPLIFICADO-ETIQUETA DESTINATARIO AJ100000000000003' },
+  ];
+  assert.deepStrictEqual(localizarEtiquetas(paginas), {
+    AJ100000000000001: { arquivo: 1, numero: 2 },
+    AJ100000000000002: { arquivo: 0, numero: 2 },
+    AJ100000000000003: { arquivo: 1, numero: 3 },
+  });
 });
 
 test('formatarCpf: so formata o que foi digitado, nunca inventa', () => {
@@ -77,6 +97,6 @@ test('montarCsv: cabecalho, situacao por extenso e aspas escapadas', () => {
     '"Codigo";"Situacao";"Motivo";"Hora"',
     '"AJ100000000000001";"Baixa feita";"";"10:00:00"',
     '"AJ100000000000002";"Erro";"a Anjun recusou: ""pacote ja assinado""";"10:01:00"',
-    '"AJ100000000000003";"Sem etiqueta no PDF";"";""',
+    '"AJ100000000000003";"Sem etiqueta nos PDFs";"";""',
   ]);
 });

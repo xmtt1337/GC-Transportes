@@ -1,8 +1,9 @@
 // Painel da XM - Baixas Anjun, dentro da tela "Baixar Pacotes".
 //
-// Recebe o PDF de etiquetas e a lista de codigos, acha a pagina da etiqueta de cada AJ e
-// da a baixa de um em um pela propria tela da Anjun (baixa.js). O PDF fica so na memoria
-// desta aba; CPF e "Assinar como" ficam guardados no Chrome deste computador.
+// Recebe um ou mais PDFs de etiquetas e a lista de codigos, acha em qualquer dos PDFs a
+// pagina da etiqueta de cada AJ e da a baixa de um em um pela propria tela da Anjun
+// (baixa.js). Os PDFs ficam so na memoria desta aba; CPF e "Assinar como" ficam guardados
+// no Chrome deste computador.
 //
 // O pdf.js roda aqui mesmo, sem Worker: o pdf.worker.min.js entra antes como content script
 // e o pdf.js usa o globalThis.pdfjsWorker dele.
@@ -45,11 +46,13 @@
       .atual { display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; }
       canvas { width: 90px; border: 1px solid #3a3f4a; border-radius: 4px; background: #fff; }
       ol { margin: 10px 0 0; padding: 0; list-style: none; }
-      li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-top: 1px solid #262a33;
+      #arquivos { margin: 6px 0 0; padding: 0 0 0 16px; }
+      #arquivos:empty { display: none; }
+      #lista li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-top: 1px solid #262a33;
         font-variant-numeric: tabular-nums; }
-      li .cod { font-family: ui-monospace, Consolas, monospace; }
-      li .sit { text-align: right; }
-      li .motivo { display: block; color: #a8adb7; font-size: 12px; }
+      #lista li .cod { font-family: ui-monospace, Consolas, monospace; }
+      #lista li .sit { text-align: right; }
+      #lista li .motivo { display: block; color: #a8adb7; font-size: 12px; }
       .ok { color: #4ade80; }
       .pendente, .rodando { color: #fbbf24; }
       .sem_etiqueta { color: #f87171; }
@@ -58,11 +61,12 @@
     <div class="painel" hidden>
       <div class="cabecalho"><span>XM - Baixas Anjun</span><button class="link" id="minimizar" type="button">Minimizar</button></div>
       <div class="corpo">
-        <label for="pdf">PDF das etiquetas</label>
-        <input id="pdf" type="file" accept="application/pdf,.pdf">
-        <p class="suave" id="info-pdf">A etiqueta de cada código vai nas duas fotos obrigatórias.</p>
+        <label for="pdf">PDFs das etiquetas <button class="link" id="tirar" type="button" hidden>Tirar os PDFs</button></label>
+        <input id="pdf" type="file" accept="application/pdf,.pdf" multiple>
+        <p class="suave" id="info-pdf">Pode escolher mais de um, de uma vez ou um depois do outro. A etiqueta de cada código vai nas duas fotos obrigatórias.</p>
+        <ul class="suave" id="arquivos"></ul>
 
-        <label for="codigos">Códigos AJ <button class="link" id="todos" type="button" disabled>Usar todos do PDF</button></label>
+        <label for="codigos">Códigos AJ <button class="link" id="todos" type="button" disabled>Usar todos dos PDFs</button></label>
         <textarea id="codigos" spellcheck="false" placeholder="Um código por linha"></textarea>
         <p class="suave" id="contagem"></p>
 
@@ -87,7 +91,8 @@
   const botao = sombra.querySelector('.botao');
   const painel = sombra.querySelector('.painel');
 
-  let pdf = null; // { doc, mapa: { AJ: pagina }, paginas }
+  let pdfs = []; // { nome, tamanho, doc, paginas: [{ numero, texto }], codigos }
+  let mapa = {}; // { AJ: { arquivo, numero } } procurando em todos os PDFs
   let itens = []; // { codigo, situacao, motivo, hora }
   let rodando = false;
   let parar = false;
@@ -117,41 +122,67 @@
   $('assinar').addEventListener('change', () => chrome.storage.local.set({ assinarComo: $('assinar').value.trim() }));
 
   // ── PDF ──────────────────────────────────────────────────────────────────────
-  $('pdf').addEventListener('change', async () => {
-    const arquivo = $('pdf').files[0];
-    pdf = null;
-    $('todos').disabled = true;
-    contar();
-    if (!arquivo) return;
-    $('info-pdf').className = 'suave';
-    $('info-pdf').textContent = 'Lendo o PDF...';
-    try {
-      const doc = await pdfjsLib.getDocument({ data: new Uint8Array(await arquivo.arrayBuffer()), isEvalSupported: false }).promise;
-      const paginas = [];
-      for (let n = 1; n <= doc.numPages; n += 1) {
-        const texto = await (await doc.getPage(n)).getTextContent();
-        paginas.push({ numero: n, texto: texto.items.map((i) => i.str).join(' ') });
-      }
-      const mapa = R.mapearEtiquetas(paginas);
-      pdf = { doc, mapa, paginas: doc.numPages };
-      $('info-pdf').textContent = `${doc.numPages} páginas, ${Object.keys(mapa).length} etiquetas.`;
-      $('todos').disabled = !Object.keys(mapa).length;
-    } catch (e) {
-      $('info-pdf').className = 'suave erro';
-      $('info-pdf').textContent = `Não deu para ler o PDF: ${e.message}`;
+  async function lerPdf(arquivo) {
+    const doc = await pdfjsLib.getDocument({ data: new Uint8Array(await arquivo.arrayBuffer()), isEvalSupported: false }).promise;
+    const paginas = [];
+    for (let n = 1; n <= doc.numPages; n += 1) {
+      const texto = await (await doc.getPage(n)).getTextContent();
+      paginas.push({ numero: n, texto: texto.items.map((i) => i.str).join(' ') });
     }
+    return { nome: arquivo.name, tamanho: arquivo.size, doc, paginas, codigos: Object.keys(R.localizarEtiquetas(paginas)).length };
+  }
+
+  function juntarPdfs() {
+    mapa = R.localizarEtiquetas(pdfs.flatMap((p, arquivo) => p.paginas.map((pg) => ({ ...pg, arquivo }))));
+    const ul = $('arquivos');
+    ul.textContent = '';
+    for (const p of pdfs) {
+      const li = document.createElement('li');
+      li.textContent = `${p.nome}: ${p.codigos} código(s) em ${p.paginas.length} página(s)`;
+      ul.append(li);
+    }
+    $('tirar').hidden = !pdfs.length;
+    $('todos').disabled = !Object.keys(mapa).length;
     contar();
+  }
+
+  $('pdf').addEventListener('change', async () => {
+    const escolhidos = [...$('pdf').files];
+    $('pdf').value = ''; // deixa escolher o mesmo arquivo de novo depois de tirar
+    if (!escolhidos.length) return;
+    $('info-pdf').className = 'suave';
+    const falhas = [];
+    for (const [n, arquivo] of escolhidos.entries()) {
+      if (pdfs.some((p) => p.nome === arquivo.name && p.tamanho === arquivo.size)) continue; // ja esta na lista
+      $('info-pdf').textContent = `Lendo ${arquivo.name} (${n + 1} de ${escolhidos.length})...`;
+      try {
+        pdfs.push(await lerPdf(arquivo));
+      } catch (e) {
+        falhas.push(`${arquivo.name}: ${e.message}`);
+      }
+    }
+    juntarPdfs();
+    $('info-pdf').className = falhas.length ? 'suave erro' : 'suave';
+    $('info-pdf').textContent = falhas.length
+      ? `Não deu para ler: ${falhas.join(' | ')}`
+      : `${pdfs.length} PDF(s), ${Object.keys(mapa).length} código(s) com etiqueta no total.`;
+  });
+
+  $('tirar').addEventListener('click', () => {
+    pdfs = [];
+    juntarPdfs();
+    $('info-pdf').className = 'suave';
+    $('info-pdf').textContent = 'PDFs tirados. Escolha de novo.';
   });
 
   $('todos').addEventListener('click', () => {
-    if (!pdf) return;
-    $('codigos').value = Object.keys(pdf.mapa).join('\n');
+    $('codigos').value = Object.keys(mapa).join('\n');
     contar();
   });
   $('codigos').addEventListener('input', contar);
 
-  async function imagemDaEtiqueta(pagina) {
-    const p = await pdf.doc.getPage(pagina);
+  async function imagemDaEtiqueta({ arquivo, numero }) {
+    const p = await pdfs[arquivo].doc.getPage(numero);
     const vp = p.getViewport({ scale: 2.5 });
     const tela = document.createElement('canvas');
     tela.width = Math.ceil(vp.width);
@@ -172,11 +203,11 @@
   // ── lista ────────────────────────────────────────────────────────────────────
   function contar() {
     const codigos = R.lerCodigos($('codigos').value);
-    const comEtiqueta = pdf ? codigos.filter((c) => c in pdf.mapa).length : 0;
+    const comEtiqueta = codigos.filter((c) => c in mapa).length;
     const partes = [`${codigos.length} código(s)`];
-    if (pdf) partes.push(`${comEtiqueta} com etiqueta`, `${codigos.length - comEtiqueta} sem etiqueta no PDF`);
+    if (pdfs.length) partes.push(`${comEtiqueta} com etiqueta`, `${codigos.length - comEtiqueta} sem etiqueta nos PDFs`);
     $('contagem').textContent = codigos.length ? partes.join(' · ') : '';
-    $('iniciar').disabled = rodando || !pdf || !comEtiqueta || !R.formatarCpf($('cpf').value);
+    $('iniciar').disabled = rodando || !comEtiqueta || !R.formatarCpf($('cpf').value);
   }
 
   function desenharLista() {
@@ -217,17 +248,18 @@
     const cpf = R.formatarCpf($('cpf').value);
     const assinarComo = $('assinar').value.trim();
     const codigos = R.lerCodigos($('codigos').value);
-    const comEtiqueta = codigos.filter((c) => c in pdf.mapa);
+    const comEtiqueta = codigos.filter((c) => c in mapa);
     const ok = window.confirm(`Dar baixa em ${comEtiqueta.length} pacote(s), um por vez?\n\n`
       + `Recebido por: Próprio (nome do recebedor da Anjun)\nCPF: ${cpf}\n`
-      + `Assinatura: ${assinarComo || 'nome da conta logada na Anjun'}\nFoto: a etiqueta do PDF`);
+      + `Assinatura: ${assinarComo || 'nome da conta logada na Anjun'}\nFoto: a etiqueta de cada um, achada em ${pdfs.length} PDF(s)`);
     if (!ok) return;
 
-    itens = codigos.map((codigo) => ({ codigo, situacao: codigo in pdf.mapa ? 'pendente' : 'sem_etiqueta' }));
+    itens = codigos.map((codigo) => ({ codigo, situacao: codigo in mapa ? 'pendente' : 'sem_etiqueta' }));
     rodando = true;
     parar = false;
     $('parar').disabled = false;
     $('pdf').disabled = true;
+    $('tirar').disabled = true;
     $('codigos').disabled = true;
     contar();
     desenharLista();
@@ -242,7 +274,7 @@
       desenharLista();
       mostrarStatus(`Dando baixa em ${item.codigo}...`);
       try {
-        const imagem = await imagemDaEtiqueta(pdf.mapa[item.codigo]);
+        const imagem = await imagemDaEtiqueta(mapa[item.codigo]);
         await TELA.darBaixa({
           codigo: item.codigo, imagem, cpf, assinarComo,
           aoMudar: (etapa) => { item.etapa = etapa; $('etapa').textContent = `${item.codigo}: ${etapa}`; desenharLista(); },
@@ -269,6 +301,7 @@
     rodando = false;
     $('parar').disabled = true;
     $('pdf').disabled = false;
+    $('tirar').disabled = false;
     $('codigos').disabled = false;
     const { feitos, erros } = desenharLista();
     const faltam = itens.filter((i) => i.situacao === 'pendente').length;

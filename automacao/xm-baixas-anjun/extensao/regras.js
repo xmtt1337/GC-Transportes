@@ -1,7 +1,7 @@
 // Regras da XM - Baixas Anjun, sem tela e sem rede (testadas em testes/regras.test.js).
 //
 // - codigos: le a lista colada (um AJ por linha, ou separados por espaco).
-// - etiquetas: acha, no PDF de etiquetas, a pagina da etiqueta de cada AJ.
+// - etiquetas: acha, nos PDFs de etiquetas, a pagina da etiqueta de cada AJ.
 // - documento: so formata o que a pessoa digitou. A extensao nunca inventa CPF.
 // - tracos: transforma o texto da assinatura (o nome de quem esta dando a baixa) em
 //   riscos para "deslizar" no quadro de assinatura da Anjun.
@@ -16,18 +16,20 @@
   }
 
   /**
-   * paginas: [{ numero, texto }]. Devolve { AJ...: numero da pagina }.
-   * O PDF traz, para cada pedido, a etiqueta (DANFE simplificado) e a lista de mercadorias;
-   * as duas citam o AJ. Vale a etiqueta; sem ela, a primeira pagina que citar o codigo.
+   * paginas: [{ arquivo, numero, texto }], de um ou de varios PDFs (arquivo = posicao do PDF
+   * na lista; sem ele, 0). Devolve { AJ...: { arquivo, numero } }.
+   * O PDF traz, para cada pedido, a etiqueta (DANFE simplificado) e as vezes a lista de
+   * mercadorias; as duas citam o AJ. Vale a etiqueta, em qualquer dos PDFs; sem ela, a
+   * primeira pagina que citar o codigo.
    */
-  function mapearEtiquetas(paginas) {
+  function localizarEtiquetas(paginas) {
     const etiqueta = {};
     const qualquer = {};
-    for (const { numero, texto } of paginas) {
+    for (const { arquivo = 0, numero, texto } of paginas) {
       const ehEtiqueta = /ETIQUETA|DESTINAT/i.test(texto || '');
       for (const codigo of lerCodigos(texto)) {
-        if (!(codigo in qualquer)) qualquer[codigo] = numero;
-        if (ehEtiqueta && !(codigo in etiqueta)) etiqueta[codigo] = numero;
+        if (!(codigo in qualquer)) qualquer[codigo] = { arquivo, numero };
+        if (ehEtiqueta && !(codigo in etiqueta)) etiqueta[codigo] = { arquivo, numero };
       }
     }
     return { ...qualquer, ...etiqueta };
@@ -69,7 +71,7 @@
   /** Texto curto de cada situacao, para a lista do painel e o CSV. */
   const SITUACOES = {
     pendente: 'Na fila',
-    sem_etiqueta: 'Sem etiqueta no PDF',
+    sem_etiqueta: 'Sem etiqueta nos PDFs',
     rodando: 'Dando baixa...',
     ok: 'Baixa feita',
     erro: 'Erro',
@@ -85,7 +87,7 @@
     return linhas.join('\r\n');
   }
 
-  const api = { lerCodigos, mapearEtiquetas, formatarCpf, tracosDoTexto, montarCsv, SITUACOES };
+  const api = { lerCodigos, localizarEtiquetas, formatarCpf, tracosDoTexto, montarCsv, SITUACOES };
   if (typeof module !== 'undefined') module.exports = api;
   else globalThis.XMBaixasRegras = api;
 })();
