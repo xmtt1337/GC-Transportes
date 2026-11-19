@@ -231,7 +231,7 @@
       $('.xm-cv-conta').textContent = '';
       return;
     }
-    $('.xm-cv-conta').innerHTML = `${ctx.esc(nome)} · <button class="xm-link xm-cv-sair" type="button">Sair</button>`;
+    $('.xm-cv-conta').innerHTML = `${ctx.esc(nome)} · <button class="xm-link xm-cfg" type="button">Configurar</button> · <button class="xm-link xm-cv-sair" type="button">Sair</button>`;
     $('.xm-cv-sair').addEventListener('click', () => ctx.pedirAoFundo('sair').then(() => { pararRelogios(); mostrarConta(false); status(''); }));
   }
 

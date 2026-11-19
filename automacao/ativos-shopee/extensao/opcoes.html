@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XM - Ativos Shopee · Configurar</title>
+<style>
+  :root { --laranja: #ee4d2d; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f5f5f5; color: #333; font: 14px/1.5 Roboto, "Helvetica Neue", Arial, sans-serif; }
+  .topo { background: #fff; border-bottom: 1px solid #e8e8e8; padding: 16px 24px; }
+  .topo h1 { margin: 0; font-size: 18px; font-weight: 500; }
+  .topo p { margin: 2px 0 0; color: #999; font-size: 13px; }
+  main { max-width: 640px; margin: 24px auto; padding: 0 16px; }
+  .cartao { background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.04); padding: 8px 24px 16px; }
+  .cartao h2 { font-size: 15px; font-weight: 500; margin: 16px 0 4px; }
+  .cartao .dica { color: #999; font-size: 13px; margin: 0 0 8px; }
+  .item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid #f0f0f0; }
+  .item:first-of-type { border-top: 0; }
+  .item b { display: block; font-weight: 500; }
+  .item span { color: #999; font-size: 13px; }
+  .chave { position: relative; width: 40px; height: 22px; flex: 0 0 auto; }
+  .chave input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .chave i { position: absolute; inset: 0; background: #ccc; border-radius: 11px; transition: background .15s; pointer-events: none; }
+  .chave i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .15s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  .chave input:checked + i { background: var(--laranja); }
+  .chave input:checked + i::after { left: 20px; }
+  .chave input:focus-visible + i { outline: 2px solid var(--laranja); outline-offset: 2px; }
+  .salvo { color: #1a8f43; font-size: 13px; min-height: 20px; margin: 12px 0 0; }
+</style>
+</head>
+<body>
+  <div class="topo">
+    <h1>XM - Ativos Shopee</h1>
+    <p>Quais menus aparecem no SPX. Vale na hora, sem dar F5, e fica salvo neste computador.</p>
+  </div>
+  <main>
+    <div class="cartao">
+      <h2>Ativos</h2>
+      <p class="dica">Só aparece para SAC, admin e dev. Com os dois desligados, o grupo some.</p>
+      <label class="item"><div><b>Disparar ativos</b><span>Colar os BR e mandar a mensagem pelo WhatsApp da GC</span></div>
+        <span class="chave"><input type="checkbox" data-menu="disparar"><i></i></span></label>
+      <label class="item"><div><b>Conversas</b><span>As conversas dos ativos da Shopee</span></div>
+        <span class="chave"><input type="checkbox" data-menu="conversas"><i></i></span></label>
+      <label class="item"><div><b>Aviso de mensagem nova</b><span>Notificação com som quando um cliente responde</span></div>
+        <span class="chave"><input type="checkbox" data-menu="aviso"><i></i></span></label>
+
+      <h2>Conferência</h2>
+      <p class="dica">Desligado, o grupo Conferência inteiro some do menu.</p>
+      <label class="item"><div><b>Vapt Vupt</b><span>Romaneio de hoje contra o SPX</span></div>
+        <span class="chave"><input type="checkbox" data-menu="vapt"><i></i></span></label>
+      <p class="salvo" id="salvo"></p>
+    </div>
+  </main>
+  <script src="opcoes.js"></script>
+</body>
+</html>

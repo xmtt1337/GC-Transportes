@@ -159,7 +159,7 @@
       return;
     }
     $('.xm-vv-polo').hidden = !vePolos();
-    $('.xm-vv-conta').innerHTML = `${esc(nome)} · <button class="xm-link xm-vv-sair" type="button">Sair</button>`;
+    $('.xm-vv-conta').innerHTML = `${esc(nome)} · <button class="xm-link xm-cfg" type="button">Configurar</button> · <button class="xm-link xm-vv-sair" type="button">Sair</button>`;
     $('.xm-vv-sair').addEventListener('click', () => ctx.pedirAoFundo('sair').then(() => { ctx.aoEntrar(null); mostrarConta(false); status(''); }));
   }
 

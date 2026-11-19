@@ -237,8 +237,38 @@
   /** Mostra ou esconde os grupos conforme o cargo da conta entrada. */
   function aplicarPapel(papel) {
     papelAtual = papel;
-    GRUPOS.forEach((g) => { if (lis[g.id]) lis[g.id].style.display = g.visivel(papel) ? '' : 'none'; });
+    aplicarVisibilidade();
   }
+
+  // ── configuração (página de opções da extensão: opcoes.html) ──────────────────
+  // Liga e desliga cada menu nosso; vale na hora (storage.onChanged). O cargo continua valendo por
+  // cima: quem não usa ativos não vê o grupo Ativos de jeito nenhum.
+  let menus = { disparar: true, conversas: true, vapt: true, aviso: true };
+  const ligado = (chave) => menus[chave] !== false;
+
+  function aplicarVisibilidade() {
+    GRUPOS.forEach((g) => {
+      const li = lis[g.id];
+      if (!li) return;
+      li.querySelectorAll('a.xm-ativos-item').forEach((a) => { a.parentElement.style.display = ligado(a.dataset.pagina) ? '' : 'none'; });
+      const algum = g.paginas.some((p) => ligado(p.chave));
+      li.style.display = g.visivel(papelAtual) && algum ? '' : 'none';
+    });
+    // A página aberta foi desligada: volta para a tela do SPX.
+    if (aberta && atual && !ligado(atual)) fecharPagina();
+  }
+
+  try {
+    chrome.storage.local.get('menus').then(({ menus: salvos }) => { menus = { ...menus, ...(salvos || {}) }; aplicarVisibilidade(); }).catch(() => {});
+    chrome.storage.onChanged.addListener((mud, area) => {
+      if (area === 'local' && mud.menus) { menus = { disparar: true, conversas: true, vapt: true, aviso: true, ...(mud.menus.newValue || {}) }; aplicarVisibilidade(); }
+    });
+  } catch { /* extensão recarregada sem F5: fica tudo visível */ }
+
+  // "Configurar" nas páginas: abre a página de opções da extensão.
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.closest && e.target.closest('.xm-cfg')) { e.preventDefault(); pedirAoFundo('abrirOpcoes').catch(() => {}); }
+  });
 
   function colocarMenu() {
     const menu = document.querySelector('.sidebar-container .ssc-menu-vertical');
@@ -501,7 +531,7 @@
     estado.nome = nome || '';
     $('login').hidden = logado;
     $('busca').hidden = !logado;
-    $('conta').innerHTML = logado ? `${esc(estado.nome)} · <button class="xm-link" id="xm-sair" type="button">Sair</button>` : '';
+    $('conta').innerHTML = logado ? `${esc(estado.nome)} · <button class="xm-link xm-cfg" type="button">Configurar</button> · <button class="xm-link" id="xm-sair" type="button">Sair</button>` : '';
     const sair = $('sair');
     if (sair) sair.addEventListener('click', () => pedirAoFundo('sair').then(() => { aplicarPapel(null); mostrarLogin(false); status(''); }));
   }
@@ -774,6 +804,7 @@
       if (!logado) { ultimaVista = null; return; }
       // Mensagem de cliente é coisa de quem usa os ativos; a operação (só Conferência) não pergunta.
       if (!R.ROLES_ATIVOS.includes(papel)) return;
+      if (!ligado('aviso')) return; // desligado na configuração da extensão
       const q = ultimaVista == null ? '' : `?desde=${ultimaVista}`;
       const { dados } = await pedirAoFundo('sistema', { metodo: 'GET', caminho: `/macros/whatsapp/novidades${q}` });
       const primeira = ultimaVista == null;

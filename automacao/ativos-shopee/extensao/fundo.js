@@ -53,6 +53,11 @@ const tratar = {
     await chrome.storage.session.set({ token: t, nome, papel });
     return { logado: true, nome, papel };
   },
+  // "Configurar" nas páginas: a página de opções (quais menus aparecem no SPX).
+  async abrirOpcoes() {
+    await chrome.runtime.openOptionsPage();
+    return { ok: true };
+  },
   async sair() {
     await chrome.storage.session.remove(['token', 'nome', 'papel']);
     return { logado: false };

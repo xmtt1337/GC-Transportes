@@ -170,3 +170,14 @@ test('papelDoToken: lê o cargo do token (só para a aba inicial)', () => {
   assert.strictEqual(R.papelDoToken(`x.${corpo}.y`), 'sac');
   assert.strictEqual(R.papelDoToken('lixo'), '');
 });
+
+test('opções: página registrada no manifest e um liga/desliga para cada menu', () => {
+  const m = JSON.parse(fs.readFileSync(path.join(__dirname, '../extensao/manifest.json'), 'utf8'));
+  assert.deepStrictEqual(m.options_ui, { page: 'opcoes.html', open_in_tab: true });
+  const html = fs.readFileSync(path.join(__dirname, '../extensao/opcoes.html'), 'utf8');
+  const chaves = [...html.matchAll(/data-menu="([a-z]+)"/g)].map((x) => x[1]);
+  assert.deepStrictEqual(chaves, ['disparar', 'conversas', 'aviso', 'vapt']);
+  // as chaves são as mesmas páginas do menu (ativos.js)
+  const ativos = fs.readFileSync(path.join(__dirname, '../extensao/ativos.js'), 'utf8');
+  ['disparar', 'conversas', 'vapt'].forEach((k) => assert.ok(ativos.includes(`chave: '${k}'`), k));
+});
