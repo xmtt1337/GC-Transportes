@@ -98,6 +98,7 @@
     relogioLista: null, relogioChat: null,
   };
   const $ = (sel) => raiz.querySelector(sel);
+  const podeAcareacao = () => ctx.R.ROLES_ACAREACAO.includes(est.papel);
 
   function montar(contexto) {
     ctx = contexto;
@@ -251,7 +252,9 @@
         est.dados = [];
         status('Escolha o seu polo no sistema XMTT para ver as conversas.', true);
       } else {
-        est.dados = ctx.R.conversasDaShopee(r);
+        // Acareação é só de SAC e dev (pedido do usuário, 19/11/2026): os outros cargos nem
+        // recebem essas conversas na tela (a aba some e a busca não leva até elas).
+        est.dados = ctx.R.conversasDaShopee(r).filter((c) => podeAcareacao() || ctx.R.abaDe(c) !== 'acareacao');
         status('');
       }
       if (est.abrirDepois) {
@@ -260,7 +263,7 @@
         const c = est.dados.find((x) => mesmoNumero(x.numero, numero) && (!pedido || x.pedido === pedido)) || est.dados.find((x) => mesmoNumero(x.numero, numero));
         if (c) { est.aba = ctx.R.abaDe(c); abrirConversa(c.numero, c.pedido, !!c.respondido, c.resultado); }
       }
-      if (!est.aba) est.aba = ctx.R.ROLES_ACAREACAO.includes(est.papel) ? 'acareacao' : 'outros';
+      if (!est.aba || (est.aba === 'acareacao' && !podeAcareacao())) est.aba = podeAcareacao() ? 'acareacao' : 'outros';
       desenharLista();
     } catch (e) { falhou(e); }
   }
@@ -317,6 +320,7 @@
     est.dados.filter(casaBusca).forEach((c) => { const a = ctx.R.abaDe(c); if (a in contagem) contagem[a] += 1; });
     raiz.querySelectorAll('.xm-aba').forEach((b) => {
       b.classList.toggle('ativa', b.dataset.aba === est.aba);
+      b.hidden = b.dataset.aba === 'acareacao' && !podeAcareacao();
       b.querySelector('.xm-n').textContent = ctx.numero(contagem[b.dataset.aba]);
     });
     if (est.chat) return; // a conversa aberta esconde o quadro

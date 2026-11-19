@@ -721,7 +721,7 @@
     if (perguntando || document.hidden || !chrome.runtime || !chrome.runtime.id) return;
     perguntando = true;
     try {
-      const { logado } = await pedirAoFundo('estado');
+      const { logado, papel } = await pedirAoFundo('estado');
       if (!logado) { ultimaVista = null; return; }
       const q = ultimaVista == null ? '' : `?desde=${ultimaVista}`;
       const { dados } = await pedirAoFundo('sistema', { metodo: 'GET', caminho: `/macros/whatsapp/novidades${q}` });
@@ -730,7 +730,10 @@
       if (primeira || !dados.novas.length) return;
       // Uma por conversa (a mais recente), no máximo 3 avisos; o resto vira um aviso de resumo.
       const porNumero = new Map();
-      dados.novas.forEach((n) => porNumero.set(n.numero, n));
+      // Quem não é SAC nem dev não vê Acareação: não avisa de cliente que só tem acareação.
+      const veAcareacao = R.ROLES_ACAREACAO.includes(papel);
+      dados.novas.filter((n) => veAcareacao || !n.acareacao || n.outros).forEach((n) => porNumero.set(n.numero, n));
+      if (!porNumero.size) return;
       const lista = [...porNumero.values()].reverse();
       lista.slice(0, MAX_AVISOS).forEach((n) => mostrarAviso({
         titulo: 'Nova mensagem de cliente',

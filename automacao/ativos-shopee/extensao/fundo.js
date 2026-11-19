@@ -38,7 +38,8 @@ async function lerContatos(url) {
 const tratar = {
   async estado() {
     const { token: t, nome, papel } = await chrome.storage.session.get(['token', 'nome', 'papel']);
-    return { logado: !!t, nome: nome || '', papel: papel || '' };
+    // Quem entrou antes de a extensão guardar o cargo: ele está no próprio token.
+    return { logado: !!t, nome: nome || '', papel: papel || (t ? R.papelDoToken(t) : '') };
   },
   async entrar({ usuario, senha }) {
     const { token: t, nome, papel } = await R.entrar(String(usuario || '').trim(), String(senha || ''));
