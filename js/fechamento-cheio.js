@@ -150,7 +150,8 @@ function _chHtml(dados, filtros, blocos) {
             ${rotFiltro("transportadora", "Transportadora")}${rotFiltro("cidade", "Cidade")}${rotFiltro("polo", "Polo")}
             ${algum ? `<button type="button" class="cft-link" onclick="_chFiltros={transportadora:null,cidade:null,polo:null};_chRender()">Limpar filtros</button>` : ""}
             <span style="flex:1"></span>
-            <button type="button" class="cft-btn" onclick="_chCopiarResumo(this)" title="Copia o resumo da quinzena inteira (sem os filtros) pronto pra colar no WhatsApp">Copiar resumo da quinzena</button>
+            <button type="button" class="cft-btn" onclick="_chCopiarResumo(this, 'entregadores')" title="Copia o resumo dos entregadores na quinzena inteira (sem os filtros) pronto pra colar no WhatsApp">Copiar resumo dos entregadores</button>
+            <button type="button" class="cft-btn" onclick="_chCopiarResumo(this, 'terceirizada')" title="Copia o resumo da Terceirizada - Expedição Videira na quinzena, pronto pra colar no WhatsApp">Copiar resumo da Terceirizada Videira</button>
         </div>
         ${dados.sem_conta ? `<div class="cft-pend" style="margin:8px 0"><div class="cft-pend-titulo">Recalcular</div>
             ${dados.sem_conta.toLocaleString("pt-BR")} pacote(s) foram calculados antes desta conta e aparecem sem perda. Clique em
@@ -193,9 +194,9 @@ function _chTextoResumo(t, { mes, ano, quinzena }) {
     return [
         `*Resumo da quinzena Q${quinzena} de ${_CH_MESES[mes - 1]}/${ano}*`,
         "",
-        `📦 ${t.pacotes.toLocaleString("pt-BR")} pacotes entregues · ${t.entregadores.toLocaleString("pt-BR")} entregadores`,
+        `*${t.pacotes.toLocaleString("pt-BR")} pacotes* que estamos pagando aos entregadores terceirizados (${t.entregadores.toLocaleString("pt-BR")} entregadores)`,
         "",
-        `💰 *Valor presumido para pagamento dos entregadores terceirizados (líquido): ${_chMoeda(t.liquido)}*`,
+        `*Valor presumido para pagamento dos entregadores terceirizados (líquido): ${_chMoeda(t.liquido)}*`,
         "",
         "*Descontos que os entregadores tiveram:*",
         ...(desc.length ? desc.map(([c, rot]) => `• ${rot}: ${_chMoeda(t[c])}`) : ["• Nenhum"]),
@@ -204,9 +205,41 @@ function _chTextoResumo(t, { mes, ano, quinzena }) {
     ].join("\n");
 }
 
-function _chCopiarResumo(btn) {
+/**
+ * Modelo da Terceirizada - Expedição Videira: pacotes das cidades dela × R$ por pacote, por
+ * cidade, coletas/acréscimos, extravios/descontos e o líquido. Sai dos dados da própria tela
+ * (bloco "terceirizada"); R$ por pacote = bruto ÷ pacotes.
+ */
+function _chTextoTerceirizada(dados, { mes, ano, quinzena }) {
+    const grupos = (dados.grupos || []).filter(g => g.bloco === "terceirizada");
+    const aj = (dados.entregadores || []).find(a => a.bloco === "terceirizada") || {};
+    const porCidade = new Map();
+    for (const g of grupos) porCidade.set(g.cidade || "(sem cidade)", (porCidade.get(g.cidade || "(sem cidade)") || 0) + (g.pacotes || 0));
+    const pacotes = grupos.reduce((s, g) => s + (g.pacotes || 0), 0);
+    const bruto = _chR2(grupos.reduce((s, g) => s + (g.bruto || 0), 0));
+    const porPacote = pacotes ? _chR2(bruto / pacotes) : 0;
+    const coletas = _chR2(aj.coletas), acresc = _chR2(aj.acrescimos), ext = _chR2(aj.extravios), desc = _chR2(aj.descontos);
+    const liquido = _chR2(bruto + coletas + acresc - ext - desc);
+    const n = (x) => Number(x || 0).toLocaleString("pt-BR");
+    const cidades = [...porCidade.entries()].filter(([, q]) => q).sort((a, b) => b[1] - a[1]);
+    return [
+        `*Resumo da quinzena Q${quinzena} de ${_CH_MESES[mes - 1]}/${ano} — Terceirizada Expedição Videira*`,
+        "",
+        `*${n(pacotes)} pacotes* nas cidades da terceirizada × ${_chMoeda(porPacote)} = *${_chMoeda(bruto)}*`,
+        ...cidades.map(([c, q]) => `• ${c}: ${n(q)}`),
+        ...(coletas || acresc ? ["", "*Adicionais:*", ...(coletas ? [`• Coletas: ${_chMoeda(coletas)}`] : []), ...(acresc ? [`• Acréscimos: ${_chMoeda(acresc)}`] : [])] : []),
+        ...(ext || desc ? ["", "*Descontos:*", ...(ext ? [`• Extravios: ${_chMoeda(ext)}`] : []), ...(desc ? [`• Descontos: ${_chMoeda(desc)}`] : [])] : []),
+        "",
+        `*Valor presumido para pagamento da terceirizada (líquido): ${_chMoeda(liquido)}*`,
+    ].join("\n");
+}
+
+function _chCopiarResumo(btn, tipo) {
     if (!_chDados) return;
-    const texto = _chTextoResumo(_chAgregar(_chDados, {}, _rqResumos).total, { mes: _rqMes, ano: _rqAno, quinzena: _rqQuinzena });
+    const per = { mes: _rqMes, ano: _rqAno, quinzena: _rqQuinzena };
+    // Entregadores: só o resumo "Entregadores" (o texto fala dos terceirizados), seja qual for a escolha na tela.
+    const texto = tipo === "terceirizada" ? _chTextoTerceirizada(_chDados, per)
+        : _chTextoResumo(_chAgregar(_chDados, {}, ["entregadores"]).total, per);
     const rotulo = btn.innerText;
     const aviso = (msg) => { btn.innerText = msg; setTimeout(() => { btn.innerText = rotulo; }, 1800); };
     const jeitoVelho = () => {

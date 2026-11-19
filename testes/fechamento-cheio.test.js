@@ -76,11 +76,35 @@ test("Copiar resumo da quinzena: líquido e descontos (sem Ticketlog e sem acré
         extravios: 36.25, ticketlog: 99, descontos: 77, acrescimos: 55 };
     const txt = ctx._chTextoResumo(t, { mes: 11, ano: 2026, quinzena: 1 });
     assert.match(txt, /^\*Resumo da quinzena Q1 de novembro\/2026\*/);
-    assert.match(txt, /160\.000 pacotes entregues · 90 entregadores/);
+    assert.match(txt, /\*160\.000 pacotes\* que estamos pagando aos entregadores terceirizados \(90 entregadores\)/);
+    assert.doesNotMatch(txt, /[\u{1F300}-\u{1FAFF}]/u, "sem emoji");
     assert.match(txt, /\(líquido\): R\$\s900,50\*/);
     assert.match(txt, /• Fora do prazo: R\$\s10,00/);
     assert.match(txt, /• Extravios: R\$\s36,25/);
     assert.doesNotMatch(txt, /POD/, "desconto zerado não aparece");
     assert.doesNotMatch(txt, /Ticketlog|Acréscimos|99,00|77,00/);
     assert.match(txt, /Total de descontos: R\$\s50,00\* \(5,00% do valor cheio de R\$\s1\.000,00\)/);
+});
+
+test("Copiar resumo da Terceirizada Videira: pacotes por cidade × R$ por pacote, adicionais, descontos e líquido, sem emoji", () => {
+    const ctx = carregar();
+    const dados = {
+        grupos: [
+            { entregador: "Terceirizada Teste", bloco: "terceirizada", transportadora: "Anjun", cidade: "Cidade A", pacotes: 100, bruto: 48 },
+            { entregador: "Terceirizada Teste", bloco: "terceirizada", transportadora: "Imile", cidade: "Cidade A", pacotes: 50, bruto: 24 },
+            { entregador: "Terceirizada Teste", bloco: "terceirizada", transportadora: "Anjun", cidade: "Cidade B", pacotes: 200, bruto: 96 },
+            { entregador: "Fulano - Vila", bloco: "entregadores", transportadora: "Anjun", cidade: "Cidade A", pacotes: 999, bruto: 999 },
+        ],
+        entregadores: [{ entregador: "Terceirizada Teste", bloco: "terceirizada", coletas: 10, acrescimos: 0, extravios: 5.5, descontos: 2 }],
+    };
+    const txt = ctx._chTextoTerceirizada(dados, { mes: 10, ano: 2026, quinzena: 2 });
+    assert.match(txt, /^\*Resumo da quinzena Q2 de outubro\/2026 — Terceirizada Expedição Videira\*/);
+    assert.match(txt, /\*350 pacotes\* nas cidades da terceirizada × R\$\s0,48 = \*R\$\s168,00\*/);
+    assert.ok(txt.indexOf("• Cidade B: 200") < txt.indexOf("• Cidade A: 150"), "cidade com mais pacotes primeiro");
+    assert.match(txt, /• Coletas: R\$\s10,00/);
+    assert.doesNotMatch(txt, /Acréscimos/, "zerado não aparece");
+    assert.match(txt, /• Extravios: R\$\s5,50/);
+    assert.match(txt, /• Descontos: R\$\s2,00/);
+    assert.match(txt, /\(líquido\): R\$\s170,50\*$/);
+    assert.doesNotMatch(txt, /[\u{1F300}-\u{1FAFF}]/u);
 });
