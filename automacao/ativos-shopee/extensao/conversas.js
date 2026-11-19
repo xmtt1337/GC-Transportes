@@ -49,7 +49,7 @@
   .xm-ativos-pagina .xm-coluna-topo { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid #f0f0f0; font-weight: 500; color: #333; }
   .xm-ativos-pagina .xm-coluna-n { min-width: 22px; padding: 0 7px; border-radius: 11px; background: #f5f5f5; color: #666; font-size: 12px; line-height: 20px; text-align: center; font-weight: 400; }
   .xm-ativos-pagina .xm-coluna.xm-destaque .xm-coluna-n { background: #ee4d2d; color: #fff; }
-  .xm-ativos-pagina .xm-coluna-cards { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; max-height: 62vh; overflow-y: auto; transition: background .15s; }
+  .xm-ativos-pagina .xm-coluna-cards { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; max-height: var(--xm-altura-cards, 62vh); overflow-y: auto; transition: background .15s; }
   .xm-ativos-pagina .xm-coluna-cards.xm-sobre { background: #fff7f4; outline: 1px dashed #ee4d2d; outline-offset: -4px; }
   .xm-ativos-pagina .xm-vazia { color: #bbb; text-align: center; padding: 16px 0; font-size: 13px; }
   .xm-ativos-pagina .xm-card { position: relative; border: 1px solid #eee; border-radius: 4px; padding: 7px 10px; cursor: pointer; background: #fff; }
@@ -321,6 +321,8 @@
       b.hidden = b.dataset.aba === 'acareacao' && !podeAcareacao();
       b.querySelector('.xm-n').textContent = ctx.numero(contagem[b.dataset.aba]);
     });
+    // Uma aba só (quem não faz acareação): a linha das abas não diz nada e só ocupa espaço.
+    $('.xm-abas').hidden = !podeAcareacao();
     if (est.chat) return; // a conversa aberta esconde o quadro
     const aba = est.aba;
     const daAba = est.dados.filter((c) => ctx.R.abaDe(c) === aba && casaBusca(c));
@@ -341,7 +343,19 @@
         ${total > 1 ? `<div class="xm-pag"><button type="button" data-pag="${chave}" data-delta="-1" ${pag <= 1 ? 'disabled' : ''}>‹</button>${pag}/${total}<button type="button" data-pag="${chave}" data-delta="1" ${pag >= total ? 'disabled' : ''}>›</button></div>` : ''}
       </div>`;
     }).join('');
+    ajustarAltura();
   }
+
+  // As colunas ocupam a altura que sobra na tela (do topo do quadro até o fim da janela, menos o
+  // cabeçalho e a paginação da coluna), em vez de um limite fixo: cabe o máximo de cards.
+  function ajustarAltura() {
+    const quadro = $('.xm-cv-quadro');
+    if (!quadro || quadro.hidden || !quadro.isConnected) return;
+    const topo = quadro.getBoundingClientRect().top + window.scrollY;
+    const altura = Math.max(260, window.innerHeight - topo - 120);
+    quadro.style.setProperty('--xm-altura-cards', `${altura}px`);
+  }
+  window.addEventListener('resize', () => { if (raiz && raiz.isConnected) ajustarAltura(); });
 
   async function resolver(corpo) {
     try {
