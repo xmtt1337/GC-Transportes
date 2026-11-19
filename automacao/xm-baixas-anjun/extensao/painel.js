@@ -13,7 +13,6 @@
   const TELA = globalThis.XMBaixasTela;
   const ROTA = 'operatingCenter/signScan';
   const CPF_PADRAO = '000.000.000-00';
-  const ERROS_SEGUIDOS = 3; // tres erros em seguida: algo maior (sessao caiu, tela mudou); para
 
   const hospedeiro = document.createElement('div');
   const sombra = hospedeiro.attachShadow({ mode: 'closed' });
@@ -265,7 +264,7 @@
     desenharLista();
     sombra.querySelector('.atual').hidden = false;
 
-    let seguidos = 0;
+    let travou = ''; // a tela nao voltou ao passo 1 depois de um erro: os proximos falhariam todos
     for (const item of itens) {
       if (parar) break;
       if (item.situacao !== 'pendente') continue;
@@ -280,18 +279,16 @@
           aoMudar: (etapa) => { item.etapa = etapa; $('etapa').textContent = `${item.codigo}: ${etapa}`; desenharLista(); },
         });
         item.situacao = 'ok';
-        seguidos = 0;
       } catch (e) {
         item.situacao = 'erro';
         item.motivo = e.message;
-        seguidos += 1;
         try {
           await TELA.voltarAoInicio(item.codigo);
         } catch (e2) {
           item.motivo += ` (e a tela não voltou ao passo 1: ${e2.message})`;
+          travou = item.codigo;
           parar = true;
         }
-        if (seguidos >= ERROS_SEGUIDOS) parar = true;
       }
       item.hora = new Date().toLocaleTimeString('pt-BR');
       delete item.etapa;
@@ -307,7 +304,7 @@
     const faltam = itens.filter((i) => i.situacao === 'pendente').length;
     let fim = `${feitos} baixa(s) feita(s), ${erros} com erro`;
     if (faltam) fim += `, ${faltam} na fila`;
-    if (seguidos >= ERROS_SEGUIDOS) fim += '. Parei depois de 3 erros seguidos: confira a tela da Anjun';
+    if (travou) fim += `. Parei porque a tela da Anjun não voltou ao passo 1 depois do erro em ${travou}: arrume a tela e clique em Iniciar de novo`;
     mostrarStatus(`${fim}.`, erros > 0 || faltam > 0);
     $('etapa').textContent = '';
     contar();

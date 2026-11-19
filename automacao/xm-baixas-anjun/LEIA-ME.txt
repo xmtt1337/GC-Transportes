@@ -20,8 +20,9 @@ Para cada codigo da lista ela faz o que a pessoa faria:
 A extensao nunca inventa CPF nem assina com o nome do cliente.
 
 Se der erro num pacote, ela anota o motivo, tira o pacote da
-lista da Anjun e segue para o proximo. Para sozinha depois de
-3 erros seguidos (sessao caida, tela mudou). Pacote que pede
+lista da Anjun e segue para o proximo, ate o fim da lista. So
+para sozinha se a tela da Anjun nao conseguir voltar ao passo 1
+depois do erro (ai os proximos falhariam todos). Pacote que pede
 codigo de entrega fica como erro: esse precisa ser feito a mao.
 
 
