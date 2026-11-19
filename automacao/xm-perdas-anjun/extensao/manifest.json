@@ -1,11 +1,18 @@
 {
   "manifest_version": 3,
   "name": "XM - Perdas Anjun",
-  "version": "1.1",
+  "version": "1.2",
   "description": "Lê o rastreio dos pedidos com suspeita de perda na Anjun e diz quem estava com o pacote quando a entrega falhou.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqqXu/e20uB7CjaJBHHyPkgUdbw3ARLX2mv69qeoCiOq6d7G1v8IyEmX+8r/zBmb7C3XHZyzsjV456Aspc9vxeHWksF9ci19tnI/FxXPemNRQPJhnepHkQesGEFKdUBbtR6AuQoakBBuLks2XoPzQVh7cuhzDzhdtLR29VJKfdo6aOpXIwgacS6eQf2ncH+WMOBKx0Zs8QfoBKuz6Px4FAcGjQAGgLIowka7bW7BILhCO/DDJiMUDPTtWM3dHmduHcHGNj/uBwLWrD3CY2LNUMNVg7p5fEKXWZa2ey8VvV1n03ff5gERddZ1G95ZEH9XN9EWAX6d/fb9/JVswoZaAmQIDAQAB",
   "permissions": [
     "storage"
   ],
+  "host_permissions": [
+    "https://sistema-backend-i4uh.onrender.com/*"
+  ],
+  "background": {
+    "service_worker": "fundo.js"
+  },
   "content_scripts": [
     {
       "matches": [
@@ -28,6 +35,16 @@
       ],
       "run_at": "document_idle",
       "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "login.html"
+      ],
+      "matches": [
+        "https://newsupplier.anjunexpress.com/*"
+      ]
     }
   ],
   "icons": {

@@ -22,11 +22,25 @@ entregador saiu, falhou e nao teve recebimento no ponto depois,
 continua sendo dele. Se voltou e foi recebido no ponto, passa a
 ser da base.
 
+Entregador responsavel (coluna ao lado do culpado):
+  - Culpado entregador: o login do rastreio passa pela
+    Conversao de nomes do sistema XMTT (Conversoes > Usuario ->
+    Entregador), pelo dia em que ele saiu com o pacote. Precisa
+    entrar no sistema pelo painel (mesmo usuario do site).
+  - Culpado base: a unidade da base
+      SC-W-D073 -> Terceirizado Joacaba
+      SC-W-D026 -> Cacador
+      SC-W-D047 -> Terceirizada Videira
+  O resumo junta pelo entregador responsavel: varios logins do
+  mesmo entregador viram uma linha so.
+
 Casos marcados na observacao:
   - Sem "A entrega falhou": mostra quem esta com o pacote agora.
   - Teve movimento depois da falha (ex.: o pacote apareceu).
   - A Anjun nao tem rastreio do pacote.
   - Antes da falha nao tem saida nem recebimento no ponto.
+  - Login sem conversao no sistema, ou com mais de um
+    entregador (ai a extensao nao escolhe).
 
 
 -----------------------------------------------------------
@@ -45,6 +59,10 @@ USAR
 
 1. Abra qualquer tela da Anjun, logado.
 2. Clique em "XM Perdas" (canto de baixo, a direita).
+   Na primeira vez (e depois de fechar o Chrome), entre com o
+   usuario e a senha do sistema XMTT no proprio painel. A senha
+   nao fica guardada. Sem entrar, funciona igual, so que o
+   relatorio sai sem o entregador responsavel.
 3. Cole os pedidos AJ (um por linha, ou do jeito que vier: ela
    acha os codigos no meio do texto) e clique em Analisar.
    "Consultar de quantos em quantos": 1, 10, 25 ou 50 de uma
@@ -53,9 +71,9 @@ USAR
    A escolha fica guardada. Pode deixar a aba em segundo plano.
 4. "Culpados" mostra quantos pedidos ficaram com cada um.
    "Baixar relatorio" = CSV com um pedido por linha (culpado,
-   o evento que decidiu, a falha, quem assinou, todos os
-   entregadores que sairam com o pacote).
-   "Baixar resumo" = CSV com um culpado por linha.
+   entregador responsavel, o evento que decidiu, a falha, quem
+   assinou, todos os entregadores que sairam com o pacote).
+   "Baixar resumo" = CSV com um entregador responsavel por linha.
 
 O resultado fica guardado no Chrome deste computador: atualizar
 a aba nao perde nada, e Analisar de novo so consulta os pedidos

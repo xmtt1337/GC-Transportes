@@ -106,20 +106,73 @@ test('saida sem nome do entregador ainda culpa o entregador', () => {
   assert.strictEqual(a.culpado, '(sem nome no rastreio)');
 });
 
-test('resumo agrupa por culpado, do maior para o menor', () => {
+test('resumo agrupa pelo entregador responsável (vários logins viram uma linha)', () => {
   const itens = [
-    { codigo: 'AJ1', situacao: 'ok', tipo: 'entregador', culpado: 'Entregador.A' },
-    { codigo: 'AJ2', situacao: 'ok', tipo: 'base', culpado: 'Base XX-W-D001' },
-    { codigo: 'AJ3', situacao: 'ok', tipo: 'entregador', culpado: 'Entregador.A' },
-    { codigo: 'AJ4', situacao: 'erro', tipo: 'erro', culpado: '', erro: 'x' },
+    { codigo: 'AJ1', situacao: 'ok', tipo: 'entregador', culpado: 'Entregador.A', responsavel: 'Fulano Teste' },
+    { codigo: 'AJ2', situacao: 'ok', tipo: 'base', culpado: 'Base SC-W-D073', responsavel: 'Terceirizado Joaçaba' },
+    { codigo: 'AJ3', situacao: 'ok', tipo: 'entregador', culpado: 'Entregador.A2', responsavel: 'Fulano Teste' },
+    { codigo: 'AJ4', situacao: 'ok', tipo: 'entregador', culpado: 'Sem.Conversao', responsavel: '' },
+    { codigo: 'AJ5', situacao: 'erro', tipo: 'erro', culpado: '', erro: 'x' },
   ];
   assert.deepStrictEqual(R.resumir(itens), [
-    { tipo: 'entregador', culpado: 'Entregador.A', pedidos: ['AJ1', 'AJ3'] },
-    { tipo: 'base', culpado: 'Base XX-W-D001', pedidos: ['AJ2'] },
+    { tipo: 'entregador', nome: 'Fulano Teste', culpados: ['Entregador.A', 'Entregador.A2'], pedidos: ['AJ1', 'AJ3'] },
+    { tipo: 'entregador', nome: 'Sem.Conversao', culpados: ['Sem.Conversao'], pedidos: ['AJ4'] },
+    { tipo: 'base', nome: 'Terceirizado Joaçaba', culpados: ['Base SC-W-D073'], pedidos: ['AJ2'] },
   ]);
   const resumo = R.montarCsvResumo(itens).split('\r\n');
-  assert.strictEqual(resumo[0], '"Culpado";"Tipo";"Quantidade";"Pedidos"');
-  assert.strictEqual(resumo[1], '"Entregador.A";"Entregador";"2";"AJ1, AJ3"');
+  assert.strictEqual(resumo[0], '"Entregador responsável";"Tipo";"Quantidade";"Culpado no rastreio";"Pedidos"');
+  assert.strictEqual(resumo[1], '"Fulano Teste";"Entregador";"2";"Entregador.A, Entregador.A2";"AJ1, AJ3"');
+});
+
+test('base vira a unidade: D073 Joaçaba, D026 Caçador, D047 Videira', () => {
+  assert.strictEqual(R.unidadeDaBase('SC-W-D073'), 'Terceirizado Joaçaba');
+  assert.strictEqual(R.unidadeDaBase('SC-W-D026'), 'Caçador');
+  assert.strictEqual(R.unidadeDaBase('sc-w-d047 '), 'Terceirizada Videira');
+  assert.strictEqual(R.unidadeDaBase('XX-W-D001'), '');
+  assert.strictEqual(R.unidadeDaBase(''), '');
+
+  const recebido = ev('29-09-2026 06:02:57', 'O pacote já recebido pelo ponto de entrega[SC-W-D073] , Digitalizar pessoas[Conferente Teste]');
+  const base = R.analisar([FAKE_DELIVERY[0], recebido]);
+  assert.strictEqual(base.culpado, 'Base SC-W-D073');
+  assert.strictEqual(base.responsavel, 'Terceirizado Joaçaba');
+  const entregador = R.analisar([FAKE_DELIVERY[0], FAKE_DELIVERY[2], recebido]);
+  assert.strictEqual(entregador.unidade, 'Terceirizado Joaçaba');
+  assert.strictEqual(entregador.responsavel, ''); // vem do sistema
+});
+
+test('conversão de login: pergunta pelo dia da saída e aplica a resposta', () => {
+  assert.strictEqual(R.diaIso('14-10-2026 10:07:15'), '2026-10-14');
+  assert.strictEqual(R.diaIso('ontem'), null);
+  const itens = [
+    { codigo: 'AJ1', ...R.analisar(FAKE_DELIVERY) }, // Entregador.B, saiu 14-10-2026
+    { codigo: 'AJ2', ...R.analisar([FAKE_DELIVERY[0], ev('20-10-2026 09:00:00', 'Objeto saiu para entrega ao destinatário, Entregador[Duplo.Login]')]) },
+    { codigo: 'AJ3', ...R.analisar([FAKE_DELIVERY[0], ev('21-10-2026 09:00:00', 'Objeto saiu para entrega ao destinatário, Entregador[Sem.Conversao]')]) },
+    { codigo: 'AJ4', ...R.analisar([FAKE_DELIVERY[0], ev('21-10-2026 09:00:00', 'Objeto saiu para entrega ao destinatário')]) },
+    { codigo: 'AJ5', ...R.analisar([FAKE_DELIVERY[0], FAKE_DELIVERY[4]]) }, // base
+    { codigo: 'AJ6', ...R.analisar(FAKE_DELIVERY) }, // mesmo login e dia do AJ1: pergunta uma vez só
+  ];
+  assert.deepStrictEqual(R.pedidosDeConversao(itens), [
+    { login: 'Entregador.B', dia: '2026-10-14' },
+    { login: 'Duplo.Login', dia: '2026-10-20' },
+    { login: 'Sem.Conversao', dia: '2026-10-21' },
+  ]);
+
+  R.aplicarConversao(itens, null); // sem conta no sistema
+  assert.strictEqual(itens[0].semResponsavel, 'sem_login');
+  assert.match(R.observacao(itens[0]), /entre no sistema/);
+
+  R.aplicarConversao(itens, [
+    { login: 'Entregador.B', dia: '2026-10-14', entregador: 'Fulano Teste - Caçador', ambiguo: false },
+    { login: 'Duplo.Login', dia: '2026-10-20', entregador: null, ambiguo: true },
+    { login: 'Sem.Conversao', dia: '2026-10-21', entregador: null, ambiguo: false },
+  ]);
+  assert.deepStrictEqual(itens.map((i) => i.responsavel), ['Fulano Teste - Caçador', '', '', '', '', 'Fulano Teste - Caçador']);
+  assert.strictEqual(itens[0].semResponsavel, undefined);
+  assert.strictEqual(itens[1].semResponsavel, 'ambiguo');
+  assert.strictEqual(itens[2].semResponsavel, 'sem_conversao');
+  assert.match(R.observacao(itens[2]), /Login sem conversão/);
+  assert.strictEqual(itens[3].semResponsavel, undefined); // sem nome no rastreio: nada a perguntar
+  assert.match(R.observacao(itens[4]), /Base sem unidade/);
 });
 
 test('dividirEmLotes e tempoEstimado', () => {
@@ -137,8 +190,10 @@ test('relatorio CSV: uma linha por pedido, com aspas escapadas', () => {
   const erro = { codigo: 'AJ100000000000002', situacao: 'erro', tipo: 'erro', culpado: '', erro: 'disse "não"' };
   const linhas = R.montarCsv([a, erro]).split('\r\n');
   assert.strictEqual(linhas.length, 3);
-  assert.match(linhas[0], /^"Pedido";"Culpado";"Tipo";"Base"/);
-  assert.match(linhas[1], /^"AJ100000000000001";"Entregador.B";"Entregador";"XX-W-D001";"Objeto saiu para entrega/);
+  assert.match(linhas[0], /^"Pedido";"Culpado";"Entregador responsável";"Tipo";"Base"/);
+  assert.match(linhas[1], /^"AJ100000000000001";"Entregador.B";"";"Entregador";"XX-W-D001";"Objeto saiu para entrega/);
   assert.match(linhas[1], /"Perda confirmada-Fake delivery";"03-11-2026 10:59:44";"";"Entregador.B";"Entregador.B, Entregador.A";""$/);
-  assert.strictEqual(linhas[2], '"AJ100000000000002";"";"Erro";"";"";"";"";"";"";"";"";"Erro: disse ""não"""');
+  assert.strictEqual(linhas[2], '"AJ100000000000002";"";"";"Erro";"";"";"";"";"";"";"";"";"Erro: disse ""não"""');
+  const comResponsavel = { ...a, responsavel: 'Fulano Teste', base: 'SC-W-D026', unidade: 'Caçador' };
+  assert.match(R.montarCsv([comResponsavel]).split('\r\n')[1], /^"AJ100000000000001";"Entregador.B";"Fulano Teste";"Entregador";"SC-W-D026 \(Caçador\)";/);
 });

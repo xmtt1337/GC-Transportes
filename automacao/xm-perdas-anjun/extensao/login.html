@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Entrar no sistema</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; color: #e8eaed; background: #16181d; font: 13px system-ui, sans-serif; }
+  form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+  label { display: block; margin-bottom: 4px; color: #c9ced6; }
+  input { width: 100%; padding: 7px 8px; color: #e8eaed; background: #0f1115; border: 1px solid #3a3f4a; border-radius: 4px; font: inherit; }
+  button { padding: 7px 0; color: #6ea8fe; background: none; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
+  button:hover:not(:disabled) { text-decoration: underline; }
+  button:disabled { color: #6b7280; cursor: default; }
+  #msg { min-height: 16px; margin: 6px 0 0; color: #a8adb7; line-height: 1.35; }
+  #msg.erro { color: #f87171; }
+</style>
+</head>
+<body>
+<form id="form" autocomplete="on">
+  <div><label for="usuario">Usuário do sistema</label><input id="usuario" autocomplete="username" required></div>
+  <div><label for="senha">Senha</label><input id="senha" type="password" autocomplete="current-password" required></div>
+  <button id="entrar" type="submit">Entrar</button>
+</form>
+<p id="msg"></p>
+<script src="login.js"></script>
+</body>
+</html>

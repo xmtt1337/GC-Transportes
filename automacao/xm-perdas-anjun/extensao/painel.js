@@ -56,6 +56,8 @@
       #lista .quem { font-weight: 700; text-align: right; }
       #lista .detalhe { display: block; margin-top: 2px; color: #a8adb7; font-size: 12px; line-height: 1.35; }
       .pendente, .rodando { color: #fbbf24; }
+      #conta { margin-top: 12px; padding: 10px 0 0; border-top: 1px solid #262a33; }
+      #login { display: block; width: 100%; height: 96px; margin-top: 6px; border: 0; }
     </style>
     <button class="botao" type="button">XM Perdas</button>
     <div class="painel" hidden>
@@ -68,6 +70,11 @@
         <select id="lote">${LOTES.map((n) => `<option value="${n}">${n === 1 ? '1 por vez' : `${n} de uma vez`}</option>`).join('')}</select>
         <p class="suave">Se a Anjun disser "operações muito frequentes", espere e escolha um número menor.</p>
         <p class="suave">Culpado: quem estava com o pacote antes do "A entrega falhou". Saiu para entrega com alguém: o entregador. Foi recebido no ponto e o próximo passo já é a falha: a base.</p>
+
+        <div id="conta">
+          <p class="suave" id="contaTexto">Conferindo a conta do sistema...</p>
+          <iframe id="login" title="Entrar no sistema" hidden></iframe>
+        </div>
 
         <div class="acoes">
           <button class="link" id="analisar" type="button" disabled>Analisar</button>
@@ -157,11 +164,76 @@
   chrome.storage.local.get(['analise', 'lote']).then((s) => {
     if (LOTES.includes(s.lote)) { $('lote').value = String(s.lote); contar(); }
     if (!Array.isArray(s.analise) || itens.length) return;
-    itens = s.analise.map((i) => (i.situacao === 'rodando' ? { codigo: i.codigo, situacao: 'pendente' } : i));
+    itens = s.analise.map((i) => {
+      if (i.situacao === 'rodando') return { codigo: i.codigo, situacao: 'pendente' };
+      // resultado de versao antiga ou unidade nova em UNIDADES: refaz a unidade da base
+      const unidade = R.unidadeDaBase(i.base);
+      return i.tipo === 'base' ? { ...i, unidade, responsavel: unidade } : { ...i, unidade };
+    });
     if (!$('codigos').value) $('codigos').value = itens.map((i) => i.codigo).join('\n');
     desenhar();
     contar();
-  }).catch(() => {});
+  }).catch(() => {}).then(atualizarConta).then((nome) => { if (nome && !rodando) completarResponsaveis(); });
+
+  // ── conta do sistema (entregador responsavel) ───────────────────────────────
+  // O login e um iframe da propria extensao (login.html): a senha e o token nao passam por
+  // esta pagina. Aqui so chega o nome da conta e, depois, os nomes dos entregadores.
+  let conectado = null;
+
+  function pedirFundo(pedido) {
+    try {
+      return chrome.runtime.sendMessage(pedido).catch((e) => ({ ok: false, erro: e.message }));
+    } catch (e) {
+      // extensao recarregada com a aba aberta
+      return Promise.resolve({ ok: false, erro: 'A extensão foi atualizada. Atualize a aba (F5).' });
+    }
+  }
+
+  async function atualizarConta() {
+    const r = await pedirFundo({ tipo: 'conta' });
+    conectado = (r && r.ok && r.nome) || null;
+    const texto = $('contaTexto');
+    texto.textContent = '';
+    if (conectado) {
+      texto.append(`Entregador responsável pelo sistema XMTT. Conectado como ${conectado}. `);
+      const sair = document.createElement('button');
+      sair.className = 'link';
+      sair.type = 'button';
+      sair.textContent = 'Sair';
+      sair.addEventListener('click', async () => { await pedirFundo({ tipo: 'sair' }); atualizarConta(); });
+      texto.append(sair);
+      $('login').hidden = true;
+      $('login').removeAttribute('src');
+    } else {
+      texto.textContent = 'Entre no sistema XMTT para o relatório já sair com o entregador responsável de cada login.';
+      if (!$('login').getAttribute('src')) $('login').src = chrome.runtime.getURL('login.html');
+      $('login').hidden = false;
+    }
+    return conectado;
+  }
+
+  window.addEventListener('message', async (e) => {
+    if (e.origin !== `chrome-extension://${chrome.runtime.id}` || !e.data || e.data.xmPerdas !== 'conta') return;
+    if (await atualizarConta() && !rodando) completarResponsaveis();
+  });
+
+  // Pergunta ao sistema o entregador de cada login culpado (pelo dia em que saiu com o pacote).
+  async function completarResponsaveis() {
+    const pedidos = R.pedidosDeConversao(itens);
+    if (!pedidos.length) return '';
+    const r = await pedirFundo({ tipo: 'entregadores', logins: pedidos });
+    let aviso = '';
+    if (r && r.ok) {
+      R.aplicarConversao(itens, r.entregadores);
+    } else {
+      R.aplicarConversao(itens, null);
+      aviso = (r && r.erro) || 'Não deu para buscar o entregador responsável.';
+      if (r && r.deslogado) await atualizarConta();
+    }
+    guardar();
+    desenhar();
+    return aviso;
+  }
 
   // ── tela ────────────────────────────────────────────────────────────────────
   const feito = (i) => i.situacao !== 'pendente' && i.situacao !== 'rodando' && i.situacao !== 'erro';
@@ -183,6 +255,7 @@
   function detalhe(i) {
     if (i.situacao === 'pendente' || i.situacao === 'rodando') return R.SITUACOES[i.situacao];
     const partes = [];
+    if (i.responsavel) partes.push(`Culpado no rastreio: ${i.culpado}`);
     if (i.falha) partes.push(`Falhou em ${i.falha.data}${i.falha.motivo ? `: ${i.falha.motivo}` : ''}`);
     if (i.evidencia) partes.push(`antes disso: ${i.evidencia.data}, ${i.evidencia.texto}`);
     const obs = R.observacao(i);
@@ -203,7 +276,7 @@
       const quem = document.createElement('span');
       quem.className = `quem ${i.situacao === 'erro' ? 'erro' : i.situacao}`;
       const semCulpado = { erro: 'Erro', sem_rastreio: 'Sem rastreio', pendente: '', rodando: '' };
-      quem.textContent = i.culpado || (i.situacao in semCulpado ? semCulpado[i.situacao] : R.TIPOS.nao_identificado);
+      quem.textContent = i.responsavel || i.culpado || (i.situacao in semCulpado ? semCulpado[i.situacao] : R.TIPOS.nao_identificado);
       linha.append(cod, quem);
       const det = document.createElement('span');
       det.className = 'detalhe';
@@ -218,7 +291,7 @@
     const grupos = R.resumir(itens);
     for (const g of grupos) {
       const tr = document.createElement('tr');
-      for (const [classe, texto] of [['', g.culpado], ['tipo', R.TIPOS[g.tipo]], ['qtd', g.pedidos.length]]) {
+      for (const [classe, texto] of [['', g.nome], ['tipo', R.TIPOS[g.tipo]], ['qtd', g.pedidos.length]]) {
         const td = document.createElement('td');
         if (classe) td.className = classe;
         td.textContent = texto;
@@ -296,7 +369,7 @@
           delete item.erro;
           parar = true;
         } else {
-          Object.assign(item, { situacao: 'erro', tipo: 'erro', culpado: '', erro: r.erro });
+          Object.assign(item, { situacao: 'erro', tipo: 'erro', culpado: '', responsavel: '', erro: r.erro });
         }
       });
       feitos += grupo.length;
@@ -311,13 +384,22 @@
     guardar();
     desenhar();
     contar();
+    let avisoConta = '';
+    if (R.pedidosDeConversao(itens).length) {
+      mostrarStatus('Buscando o entregador responsável no sistema...');
+      avisoConta = conectado
+        ? await completarResponsaveis()
+        : (R.aplicarConversao(itens, null), guardar(), desenhar(), 'Entre no sistema XMTT (abaixo) para trazer o entregador responsável.');
+    }
     const comCulpado = itens.filter((i) => i.culpado).length;
     const erros = itens.filter((i) => i.situacao === 'erro').length;
     const faltam = itens.filter((i) => i.situacao === 'pendente').length;
     let fim = `${comCulpado} de ${itens.length} pedido(s) com culpado`;
     if (erros) fim += `, ${erros} com erro (Analisar tenta de novo)`;
     if (faltam) fim += `, ${faltam} na fila`;
-    mostrarStatus(motivoParada ? `${motivoParada} ${fim}.` : `${fim}.`, !!motivoParada || erros > 0);
+    fim += '.';
+    if (avisoConta) fim += ` ${avisoConta}`;
+    mostrarStatus(motivoParada ? `${motivoParada} ${fim}` : fim, !!motivoParada || erros > 0 || !!avisoConta);
   });
 
   $('parar').addEventListener('click', () => {
