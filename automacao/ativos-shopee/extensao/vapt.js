@@ -23,7 +23,11 @@
   .xm-ativos-pagina .xm-vv-lido { color: #999; font-size: 12px; margin-left: auto; }
   .xm-ativos-pagina .xm-vv-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
   @media (max-width: 1300px) { .xm-ativos-pagina .xm-vv-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  .xm-ativos-pagina .xm-vv-card { background: #fff; border-radius: 4px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); min-width: 0; }
+  .xm-ativos-pagina .xm-vv-card { position: relative; background: #fff; border-radius: 4px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); min-width: 0; }
+  .xm-ativos-pagina .xm-vv-baixar-card { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border: 0; border-radius: 4px;
+    background: #ee4d2d; color: #fff; cursor: pointer; display: grid; place-items: center; padding: 0; }
+  .xm-ativos-pagina .xm-vv-baixar-card:hover { background: #d73211; }
+  .xm-ativos-pagina .xm-vv-baixar-card svg { width: 18px; height: 18px; }
   .xm-ativos-pagina .xm-vv-rot { color: #666; font-size: 12px; }
   .xm-ativos-pagina .xm-vv-val { color: #333; font-size: 24px; font-weight: 500; line-height: 1.3; margin: 4px 0 2px; white-space: nowrap; }
   .xm-ativos-pagina .xm-vv-val.xm-atencao { color: #ee4d2d; }
@@ -119,6 +123,7 @@
       carregar();
     });
     $('.xm-vv-dia').addEventListener('change', (e) => { est.dia = e.target.value; carregar(); });
+    $('.xm-vv-cards').addEventListener('click', (e) => { if (e.target.closest('[data-acao="baixar"]')) baixarRelatorio(); });
     $('.xm-vv-tipos').addEventListener('click', (e) => {
       const l = e.target.closest('[data-tipo]');
       if (!l) return;
@@ -215,7 +220,11 @@
       card('% AT vinculada', pct2(r.pct_at), `${n(r.em_at)} / ${n(r.total)} pacotes`, `<div class="xm-vv-trilho"><i style="width:${Math.min(100, Number(r.pct_at) || 0)}%"></i></div>`),
       card('Total de pacotes', n(r.total), 'no romaneio'),
       card('Pacotes recebidos', n(r.recebidos), `${pct2(r.pct_recebidos)} do romaneio`),
-      card('Divergências', n(r.divergencias), `${tipos} tipo(s) · ${pct2(r.total ? Math.floor((r.divergencias * 10000) / r.total) / 100 : 0)} do romaneio`, '', r.divergencias > 0),
+      card('Divergências', n(r.divergencias), `${tipos} tipo(s) · ${pct2(r.total ? Math.floor((r.divergencias * 10000) / r.total) / 100 : 0)} do romaneio`,
+        // Baixar o relatório pelo próprio cartão, como no painel da Shopee (pedido do usuário).
+        r.divergencias ? `<button class="xm-vv-baixar-card" type="button" data-acao="baixar" title="Baixar relatório de divergências">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg></button>` : '',
+        r.divergencias > 0),
       card('Fora de abrangência', n(r.fora_abrangencia), foraTxt, '', r.fora_abrangencia > 0),
       card('BWT processamento', duracao(p.inicio, p.fim), p.inicio && p.fim ? `${hora(p.inicio)} → ${hora(p.fim)}` : 'sem horário ainda'),
     ].join('');
