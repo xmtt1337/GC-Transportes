@@ -7,6 +7,8 @@
   // sistema (/admin/whatsapp/...), com as mesmas regras: polo, SAIR, so sac/dev/admin.
   const ROTA_ENVIAR = '/macros/whatsapp/enviar';
   const ROTA_SITUACAO = '/macros/whatsapp/ativos-status';
+  // Atras de verificarNaoEntregador e sem banco: so confere se a conta pode usar a extensao.
+  const ROTA_ACESSO = '/macros/acesso';
   // Modelo dos "demais ativos" da Shopee no WABA (o mesmo da tela Ativos do sistema).
   const TEMPLATE = 'confirmacao_entrega';
   const MAX_CODIGOS = 10000; // o export de pedidos do SPX aceita ate 10 mil BR
@@ -229,17 +231,22 @@ Por gentileza, poderia confirmar a entrega preenchendo os dados abaixo?
       throw new Error('Não alcancei o sistema. Tente de novo em instantes.');
     }
     const j = await r.json().catch(() => ({}));
+    // So a sessao vencida derruba o login. 403 e o cargo sem acesso a ESTA parte (ex.: os ativos,
+    // que sao so de SAC, admin e dev, enquanto a Conferencia e de toda a operacao): avisa e segue.
     if (r.status === 401) throw new ErroDeConta('Sessão vencida. Entre de novo.');
-    // 403 "Acesso negado" e o cargo sem acesso aos ativos; outros 403 trazem o motivo (ex.: mensagem
-    // de outro polo) e nao derrubam o login.
-    if (r.status === 403 && (!j.error || j.error === 'Acesso negado')) throw new ErroDeConta('Essa conta não pode usar os ativos (só SAC, admin e dev).');
+    if (r.status === 403) {
+      const e = new Error(!j.error || j.error === 'Acesso negado' ? 'Sua conta não tem acesso a esta parte do sistema.' : j.error);
+      e.semAcesso = true;
+      throw e;
+    }
     if (!r.ok) throw new Error(j.error || `O sistema respondeu ${r.status}.`);
     return j;
   }
 
   /**
    * Login com o canal das extensoes ("vigia"): nao derruba o login do site. Depois confere se a
-   * conta pode disparar ativos e tem polo, consultando a situacao de nenhum pedido.
+   * conta pode usar a extensao (/macros/acesso: toda a operacao, menos entregador). O que cada
+   * cargo ve dentro dela (os ativos so para SAC, admin e dev) e decidido por pagina.
    */
   async function entrar(usuario, senha, buscar = fetch) {
     let corpo;
@@ -257,14 +264,41 @@ Por gentileza, poderia confirmar a entrega preenchendo os dados abaixo?
     if (!corpo.success) throw new ErroDeConta('Usuário ou senha não confere.');
     if (corpo.require_password_change) throw new ErroDeConta('A senha é temporária. Entre no site e troque.');
     if (!corpo.token) throw new Error('O login passou, mas não veio token.');
-    await api(corpo.token, 'POST', ROTA_SITUACAO, { pedidos: [] }, buscar);
+    try {
+      await api(corpo.token, 'GET', ROTA_ACESSO, undefined, buscar);
+    } catch (e) {
+      if (e.semAcesso) throw new ErroDeConta('Essa conta não pode usar a extensão.');
+      throw e;
+    }
     return { token: corpo.token, nome: corpo.name || corpo.username || usuario, papel: papelDoToken(corpo.token) };
+  }
+
+  /** Quem ve o grupo "Ativos" no menu (o servidor barra os outros do mesmo jeito). */
+  const ROLES_ATIVOS = ['sac', 'dev', 'admin'];
+  /** Quem escolhe o polo na Conferencia (os outros veem so o proprio). */
+  const ROLES_TODOS_POLOS = ['dev', 'admin'];
+
+  /**
+   * Export de pedidos do SPX -> por BR comprador, CEP, motorista e sort code (o relatorio de
+   * divergencias da Conferencia). Telefone e endereco ficam de fora. Igual ao da XM - Operacao.
+   */
+  function pedidosDoExport(texto) {
+    const [cab = [], ...linhas] = lerCsv(texto);
+    const col = (nome) => cab.findIndex((c) => String(c).trim().toLowerCase() === nome);
+    const i = { codigo: col('order id'), comprador: col('buyer name'), zip: col('zipcode name'), postal: col('postal code'),
+      motorista: col('driver name'), sort: col('sort code name') };
+    if (i.codigo < 0) throw new Error('O export de pedidos do SPX veio sem a coluna Order ID.');
+    const valor = (l, k) => (i[k] < 0 ? '' : String(l[i[k]] || '').trim());
+    return linhas
+      .map((l) => ({ codigo: valor(l, 'codigo').toUpperCase(), comprador: valor(l, 'comprador'), cep: valor(l, 'zip') || valor(l, 'postal'),
+        motorista: valor(l, 'motorista'), sort_code: valor(l, 'sort') }))
+      .filter((p) => p.codigo);
   }
 
   const publico = {
     BACKEND, ROTA_ENVIAR, ROTA_SITUACAO, TEMPLATE, MAX_CODIGOS, ErroDeConta,
     lerCodigos, lerCsv, nomeLimpo, contatosDoExport, digitosLocais, validarTelefone, telefoneLegivel,
-    montarTexto, montarEnvio, api, entrar,
+    montarTexto, montarEnvio, api, entrar, pedidosDoExport, ROLES_ATIVOS, ROLES_TODOS_POLOS,
     ROLES_ACAREACAO, papelDoToken, ehShopee, abaDe, conversasDaShopee, vencimento, statusPrazo, colunaDesfecho,
     tempoRestante, formatarNumero, dataCurta,
   };

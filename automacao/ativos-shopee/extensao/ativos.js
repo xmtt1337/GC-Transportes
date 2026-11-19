@@ -87,11 +87,34 @@
   }
 
   // ── menu lateral ──────────────────────────────────────────────────────────────
-  const ICONE = 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-3 11H7v-2h10v2zm0-3H7V8h10v2z';
+  // Dois grupos nossos, logo depois do grupo dos pedidos do SPX:
+  //   Ativos       (Disparar ativos, Conversas) — só SAC, admin e dev (o servidor barra os outros);
+  //   Conferência  (Vapt Vupt) — toda a operação (pedido do usuário, 19/11/2026).
+  const ICONE_ATIVOS = 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-3 11H7v-2h10v2zm0-3H7V8h10v2z';
+  const ICONE_CONFERENCIA = 'M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z';
   const SETA = 'M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z';
   const SVG = 'http://www.w3.org/2000/svg';
-  let grupo = null;
   let aberta = false;
+  let papelAtual = null; // cargo da conta entrada (null = ninguém entrou ainda)
+
+  const GRUPOS = [
+    {
+      id: ID_GRUPO, titulo: 'Ativos', icone: ICONE_ATIVOS, // dentro do SPX o "Shopee" sobrava (19/11/2026)
+      paginas: [{ chave: 'disparar', titulo: 'Disparar ativos' }, { chave: 'conversas', titulo: 'Conversas' }],
+      // Sem conta entrada ainda aparece (é por ele que o SAC entra); com conta, só para quem usa ativos.
+      visivel: (papel) => papel == null || R.ROLES_ATIVOS.includes(papel),
+    },
+    {
+      id: 'xm-conferencia-grupo', titulo: 'Conferência', icone: ICONE_CONFERENCIA,
+      paginas: [{ chave: 'vapt', titulo: 'Vapt Vupt' }],
+      visivel: () => true,
+    },
+  ];
+  const PAGINAS = GRUPOS.flatMap((g) => g.paginas.map((p) => ({ ...p, grupo: g })));
+  const grupoDaPagina = (chave) => (PAGINAS.find((p) => p.chave === chave) || {}).grupo;
+  const lis = {}; // id do grupo -> li no menu
+  let atual = null; // chave da pagina aberta
+  const elementos = {};
 
   function svg(caminho, classe, v) {
     const s = document.createElementNS(SVG, 'svg');
@@ -108,17 +131,9 @@
     return s;
   }
 
-  // As paginas do grupo, na ordem do menu. "conversas" vem do conversas.js (self.XMAtivosConversas).
-  const PAGINAS = [
-    { chave: 'disparar', titulo: 'Disparar ativos' },
-    { chave: 'conversas', titulo: 'Conversas' },
-  ];
-  let atual = null; // chave da pagina aberta
-  const elementos = {};
-
-  function montarGrupo(menu) {
-    const modelo = menu.querySelector('li.ssc-menu-submenu');
-    const itemModelo = menu.querySelector('a.ssc-menu-item');
+  function montarGrupo(menu, def) {
+    const modelo = menu.querySelector('li.ssc-menu-submenu:not(.xm-grupo)');
+    const itemModelo = menu.querySelector('a.ssc-menu-item:not(.xm-ativos-item)');
     const vLi = dataV(modelo);
     const vTitulo = dataV(modelo && modelo.querySelector('.sub-menu-title'));
     const vIcone = dataV(modelo && modelo.querySelector('svg.title-icon'));
@@ -126,24 +141,24 @@
     const vCaixa = dataV(itemModelo && itemModelo.parentElement);
 
     const li = comDataV(document.createElement('li'), vLi);
-    li.id = ID_GRUPO;
-    li.className = 'submenu ssc-menu-submenu';
+    li.id = def.id;
+    li.className = 'submenu ssc-menu-submenu xm-grupo';
     li.style.cssText = 'color: rgba(255, 255, 255, 0.7); border-top: 1px solid transparent; border-bottom: 1px solid transparent;';
 
     const titulo = document.createElement('div');
     titulo.className = 'ssc-menu-submenu-title';
     const nome = comDataV(document.createElement('span'), vTitulo);
     nome.className = 'sub-menu-title';
-    nome.textContent = 'Ativos'; // dentro do SPX o "Shopee" sobrava (pedido do usuário, 19/11/2026)
+    nome.textContent = def.titulo;
     const seta = document.createElement('span');
     seta.className = 'ssc-menu-submenu-title-icon';
     seta.append(svg(SETA, 'submenu-icon', []));
-    titulo.append(svg(ICONE, 'title-icon', vIcone), ' ', nome, ' ', seta);
+    titulo.append(svg(def.icone, 'title-icon', vIcone), ' ', nome, ' ', seta);
 
     const ul = document.createElement('ul');
     ul.className = 'ssc-menu';
     ul.style.cssText = 'color: rgba(255, 255, 255, 0.7); display: none;';
-    for (const p of PAGINAS) {
+    for (const p of def.paginas) {
       const caixa = comDataV(document.createElement('div'), vCaixa);
       const item = comDataV(document.createElement('a'), vItem);
       item.className = 'submenu-item ssc-menu-item xm-ativos-item';
@@ -155,17 +170,19 @@
       cursor.className = 'ssc-menu-item-cursor';
       item.append(cursor, ` ${p.titulo} `);
       item.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); mostrarPagina(p.chave); });
+      item.addEventListener('mouseenter', () => { if (!item.classList.contains('ssc-menu-item-selected')) item.style.color = 'rgb(255, 255, 255)'; });
+      item.addEventListener('mouseleave', () => { if (!item.classList.contains('ssc-menu-item-selected')) item.style.color = ''; });
       caixa.append(item);
       ul.append(caixa);
     }
     li.append(titulo, ul);
 
-    // Um grupo aberto por vez, como o menu do SPX: abrir o nosso fecha o deles (pelo clique no
-    // título deles, para o próprio SPX fechar e ficar coerente).
+    // Um grupo aberto por vez, como o menu do SPX: abrir um nosso fecha o deles (pelo clique no
+    // título deles, para o próprio SPX fechar e ficar coerente) e o outro nosso.
     titulo.addEventListener('click', () => {
       const abrir = !li.classList.contains('ssc-menu-opened');
-      if (abrir) fecharOsDoSpx();
-      abrirGrupo(abrir);
+      if (abrir) { fecharOsDoSpx(); GRUPOS.forEach((g) => { if (g.id !== def.id) abrirGrupo(g.id, false); }); }
+      abrirGrupo(def.id, abrir);
     });
     // O realce ao passar o mouse do SPX vem de script deles (estilo direto no elemento), então
     // não pega no nosso: a mesma cor, medida na tela deles (rgb 48, 56, 68 com texto branco).
@@ -179,57 +196,70 @@
       titulo.style.background = '';
       titulo.style.color = '';
     });
-    ul.querySelectorAll('a.xm-ativos-item').forEach((a) => {
-      a.addEventListener('mouseenter', () => { if (!a.classList.contains('ssc-menu-item-selected')) a.style.color = 'rgb(255, 255, 255)'; });
-      a.addEventListener('mouseleave', () => { if (!a.classList.contains('ssc-menu-item-selected')) a.style.color = ''; });
-    });
     return li;
   }
 
   function fecharOsDoSpx() {
-    document.querySelectorAll(`.sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(#${ID_GRUPO}) > .ssc-menu-submenu-title`)
+    document.querySelectorAll('.sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.xm-grupo) > .ssc-menu-submenu-title')
       .forEach((t) => t.click());
   }
 
-  function abrirGrupo(abrir) {
-    if (!grupo) return;
-    const titulo = grupo.querySelector('.ssc-menu-submenu-title');
-    const ul = grupo.querySelector('ul.ssc-menu');
-    grupo.classList.toggle('ssc-menu-opened', abrir);
+  function abrirGrupo(id, abrir) {
+    const li = lis[id];
+    if (!li) return;
+    const titulo = li.querySelector('.ssc-menu-submenu-title');
+    const ul = li.querySelector('ul.ssc-menu');
+    li.classList.toggle('ssc-menu-opened', abrir);
     ul.style.display = abrir ? '' : 'none';
     ul.style.background = abrir ? FUNDO_ABERTO : '';
-    grupo.style.background = abrir ? FUNDO_ABERTO : '';
+    li.style.background = abrir ? FUNDO_ABERTO : '';
     titulo.style.color = abrir ? 'rgb(255, 255, 255)' : '';
     titulo.style.background = abrir ? FUNDO_ABERTO : '';
   }
 
   /** Marca o item da pagina aberta (null = nenhum). */
   function marcarItem(chave) {
-    if (!grupo) return;
-    grupo.querySelectorAll('a.xm-ativos-item').forEach((item) => {
-      const sel = item.dataset.pagina === chave;
-      const cursor = item.querySelector('.ssc-menu-item-cursor');
-      ['ssc-menu-item-active', 'ssc-menu-item-selected'].forEach((c) => item.classList.toggle(c, sel));
-      item.style.fontWeight = sel ? 'bold' : '';
-      item.style.color = sel ? 'rgb(255, 255, 255)' : '';
-      cursor.style.background = sel ? LARANJA : '';
+    const doGrupo = grupoDaPagina(chave);
+    Object.entries(lis).forEach(([id, li]) => {
+      li.querySelectorAll('a.xm-ativos-item').forEach((item) => {
+        const sel = item.dataset.pagina === chave;
+        const cursor = item.querySelector('.ssc-menu-item-cursor');
+        ['ssc-menu-item-active', 'ssc-menu-item-selected'].forEach((c) => item.classList.toggle(c, sel));
+        item.style.fontWeight = sel ? 'bold' : '';
+        item.style.color = sel ? 'rgb(255, 255, 255)' : '';
+        cursor.style.background = sel ? LARANJA : '';
+      });
+      ['ssc-menu-item-active', 'ssc-menu-child-item-active'].forEach((c) => li.classList.toggle(c, !!doGrupo && doGrupo.id === id));
     });
-    ['ssc-menu-item-active', 'ssc-menu-child-item-active'].forEach((c) => grupo.classList.toggle(c, !!chave));
     document.body.classList.toggle('xm-ativos-aberto', !!chave);
+  }
+
+  /** Mostra ou esconde os grupos conforme o cargo da conta entrada. */
+  function aplicarPapel(papel) {
+    papelAtual = papel;
+    GRUPOS.forEach((g) => { if (lis[g.id]) lis[g.id].style.display = g.visivel(papel) ? '' : 'none'; });
   }
 
   function colocarMenu() {
     const menu = document.querySelector('.sidebar-container .ssc-menu-vertical');
     if (!menu) return;
-    if (grupo && menu.contains(grupo)) return;
-    const lista = (menu.querySelector('li.ssc-menu-submenu') || {}).parentElement || menu;
-    const reabrir = grupo && grupo.classList.contains('ssc-menu-opened');
-    grupo = montarGrupo(menu);
+    const lista = (menu.querySelector('li.ssc-menu-submenu:not(.xm-grupo)') || {}).parentElement || menu;
     // Logo depois do grupo dos pedidos (achado pelo link do Order Tracking: o nome muda com o
     // idioma, "Pedidos" em português). No fim do menu ficava cortado pela barra de baixo.
-    const pedidos = [...lista.children].find((li) => li !== grupo && li.querySelector('a[href="#/orderTracking"]'));
-    if (pedidos) pedidos.after(grupo); else lista.append(grupo);
-    if (reabrir || aberta) abrirGrupo(true);
+    let anterior = [...lista.children].find((li) => !li.classList.contains('xm-grupo') && li.querySelector('a[href="#/orderTracking"]'));
+    GRUPOS.forEach((def) => {
+      let li = lis[def.id];
+      if (!li || !menu.contains(li)) {
+        const reabrir = li && li.classList.contains('ssc-menu-opened');
+        li = montarGrupo(menu, def);
+        lis[def.id] = li;
+        if (anterior) anterior.after(li); else lista.append(li);
+        const daPagina = grupoDaPagina(atual);
+        if (reabrir || (aberta && daPagina && daPagina.id === def.id)) abrirGrupo(def.id, true);
+      }
+      anterior = li;
+    });
+    aplicarPapel(papelAtual);
     if (aberta) marcarItem(atual);
   }
 
@@ -249,16 +279,21 @@
     }
   }
 
-  // O que a pagina de Conversas usa daqui.
+  // O que as paginas de Conversas e Vapt Vupt usam daqui.
   const ctx = {
     R, esc, numero, dormir, LARANJA,
     pedirAoFundo: (...a) => pedirAoFundo(...a),
+    pedirAoSpx: (...a) => pedirAoSpx(...a),
     blocoLogin: (...a) => blocoLogin(...a),
+    aoEntrar: (r) => aplicarPapel(r && r.papel),
   };
+
+  // As paginas de outros arquivos: conversas.js (self.XMAtivosConversas) e vapt.js (self.XMAtivosVapt).
+  const MODULOS = { conversas: () => self.XMAtivosConversas, vapt: () => self.XMAtivosVapt };
 
   function elementoDa(chave) {
     if (!elementos[chave]) {
-      const el = chave === 'disparar' ? (pagina = montarPagina()) : self.XMAtivosConversas.montar(ctx);
+      const el = chave === 'disparar' ? (pagina = montarPagina()) : MODULOS[chave]().montar(ctx);
       el.dataset.xmPagina = chave;
       elementos[chave] = el;
     }
@@ -266,7 +301,8 @@
   }
 
   function aoSair(chave) {
-    if (chave === 'conversas' && self.XMAtivosConversas) self.XMAtivosConversas.aoSair();
+    const m = MODULOS[chave] && MODULOS[chave]();
+    if (m) m.aoSair();
   }
 
   function mostrarPagina(chave) {
@@ -286,11 +322,12 @@
       migalha.className = modelo ? modelo.className : 'ssc-breadcrumb-item';
       bc.append(migalha);
     }
-    if (migalha) migalha.textContent = `Ativos  /  ${PAGINAS.find((p) => p.chave === chave).titulo}`;
-    abrirGrupo(true);
+    const def = grupoDaPagina(chave);
+    if (migalha) migalha.textContent = `${def.titulo}  /  ${PAGINAS.find((p) => p.chave === chave).titulo}`;
+    GRUPOS.forEach((g) => abrirGrupo(g.id, g.id === def.id));
     marcarItem(chave);
     if (chave === 'disparar') atualizarConta();
-    else self.XMAtivosConversas.aoMostrar();
+    else MODULOS[chave]().aoMostrar();
   }
 
   function fecharPagina() {
@@ -308,12 +345,12 @@
     marcarItem(null);
   }
 
-  // Abrir um grupo do SPX fecha o nosso (um aberto por vez, como o menu deles).
+  // Abrir um grupo do SPX fecha os nossos (um aberto por vez, como o menu deles).
   document.addEventListener('click', (e) => {
     const t = e.target && e.target.closest && e.target.closest('.sidebar-container .ssc-menu-submenu-title');
-    if (!t || !grupo || grupo.contains(t)) return;
+    if (!t || t.closest('li.xm-grupo')) return;
     const li = t.closest('li.ssc-menu-submenu');
-    if (li && !li.classList.contains('ssc-menu-opened')) abrirGrupo(false);
+    if (li && !li.classList.contains('ssc-menu-opened')) GRUPOS.forEach((g) => abrirGrupo(g.id, false));
   }, true);
 
   // Outro item do menu (ou outro endereco): volta para a tela do SPX.
@@ -359,6 +396,7 @@
         const r = await pedirAoFundo('entrar', { usuario, senha });
         d.querySelector('.xm-l-senha').value = '';
         st('');
+        aplicarPapel(r.papel);
         aoEntrar(r);
       } catch (e) { st(e.message, true); }
     };
@@ -465,11 +503,12 @@
     $('busca').hidden = !logado;
     $('conta').innerHTML = logado ? `${esc(estado.nome)} · <button class="xm-link" id="xm-sair" type="button">Sair</button>` : '';
     const sair = $('sair');
-    if (sair) sair.addEventListener('click', () => pedirAoFundo('sair').then(() => { mostrarLogin(false); status(''); }));
+    if (sair) sair.addEventListener('click', () => pedirAoFundo('sair').then(() => { aplicarPapel(null); mostrarLogin(false); status(''); }));
   }
 
   function atualizarConta() {
-    pedirAoFundo('estado').then((r) => mostrarLogin(r.logado, r.nome)).catch((e) => status(e.message, true));
+    pedirAoFundo('estado').then((r) => { aplicarPapel(r.logado ? r.papel : null); mostrarLogin(r.logado, r.nome); })
+      .catch((e) => status(e.message, true));
   }
 
   function erroDeConta(e) {
@@ -485,6 +524,7 @@
     try {
       const r = await pedirAoFundo('entrar', { usuario, senha });
       $('senha').value = '';
+      aplicarPapel(r.papel);
       mostrarLogin(true, r.nome);
       status('');
     } catch (e) { status(e.message, true); }
@@ -730,7 +770,10 @@
     perguntando = true;
     try {
       const { logado, papel } = await pedirAoFundo('estado');
+      if (papelAtual !== (logado ? papel : null)) aplicarPapel(logado ? papel : null);
       if (!logado) { ultimaVista = null; return; }
+      // Mensagem de cliente é coisa de quem usa os ativos; a operação (só Conferência) não pergunta.
+      if (!R.ROLES_ATIVOS.includes(papel)) return;
       const q = ultimaVista == null ? '' : `?desde=${ultimaVista}`;
       const { dados } = await pedirAoFundo('sistema', { metodo: 'GET', caminho: `/macros/whatsapp/novidades${q}` });
       const primeira = ultimaVista == null;
@@ -764,4 +807,8 @@
 
   colocarEstilo();
   colocarMenu();
+  // Cargo de quem já está entrado: decide se o grupo Ativos aparece.
+  if (chrome.runtime && chrome.runtime.id) {
+    pedirAoFundo('estado').then((r) => aplicarPapel(r.logado ? r.papel : null)).catch(() => {});
+  }
 })();

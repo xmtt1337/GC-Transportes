@@ -65,20 +65,58 @@ test('texto da mensagem é o mesmo do sistema (meusite/js/whatsapp-teste.js)', (
   assert.strictEqual(R.montarTexto('Pessoa Teste', 'BRTESTE00001'), esperado);
 });
 
-test('entrar: login com canal vigia e confere o acesso aos ativos', async () => {
+test('entrar: login com canal vigia e confere o acesso à extensão (/macros/acesso)', async () => {
   const chamadas = [];
   const buscar = async (url, op) => {
     chamadas.push([url.replace(R.BACKEND, ''), op.method, JSON.parse(op.body || 'null')]);
     if (url.endsWith('/login')) return { status: 200, ok: true, json: async () => ({ success: true, token: 'T', name: 'Pessoa Teste' }) };
-    return { status: 200, ok: true, json: async () => ({ estados: {} }) };
+    return { status: 200, ok: true, json: async () => ({ ok: true }) };
   };
   assert.deepStrictEqual(await R.entrar('pessoa', 'segredo', buscar), { token: 'T', nome: 'Pessoa Teste', papel: '' });
   assert.strictEqual(chamadas[0][2].canal, 'vigia');
-  assert.deepStrictEqual(chamadas[1], ['/macros/whatsapp/ativos-status', 'POST', { pedidos: [] }]);
+  assert.deepStrictEqual(chamadas[1], ['/macros/acesso', 'GET', null]);
   const negado = async (url) => (url.endsWith('/login')
     ? { status: 200, ok: true, json: async () => ({ success: true, token: 'T' }) }
     : { status: 403, ok: false, json: async () => ({ error: 'Acesso negado' }) });
-  await assert.rejects(R.entrar('a', 'b', negado), (e) => e instanceof R.ErroDeConta && /SAC/.test(e.message));
+  await assert.rejects(R.entrar('a', 'b', negado), (e) => e instanceof R.ErroDeConta && /extensão/.test(e.message));
+});
+
+test('api: só a sessão vencida derruba o login; 403 é "sem acesso a esta parte"', async () => {
+  const resp = (status, j) => async () => ({ status, ok: status < 400, json: async () => j });
+  await assert.rejects(R.api('T', 'GET', '/x', undefined, resp(401, {})), (e) => e instanceof R.ErroDeConta);
+  await assert.rejects(R.api('T', 'GET', '/x', undefined, resp(403, { error: 'Acesso negado' })),
+    (e) => !(e instanceof R.ErroDeConta) && e.semAcesso && /não tem acesso/.test(e.message));
+  await assert.rejects(R.api('T', 'GET', '/x', undefined, resp(403, { error: 'A seleção tem mensagem de outro polo.' })),
+    (e) => !(e instanceof R.ErroDeConta) && /outro polo/.test(e.message));
+});
+
+test('pedidosDoExport (Conferência): comprador, CEP, motorista e sort code', () => {
+  const csv = '﻿Order ID,Sort Code Name,Zipcode Name,Buyer Name,Buyer Phone,Postal Code,Driver Name\r\n'
+    + 'brteste1,,89000000,"Pessoa, Teste",,89000-000,Motorista Teste\r\nBRTESTE2,CA-1,,Outra Pessoa,,89000-001,\r\n';
+  assert.deepStrictEqual(R.pedidosDoExport(csv), [
+    { codigo: 'BRTESTE1', comprador: 'Pessoa, Teste', cep: '89000000', motorista: 'Motorista Teste', sort_code: '' },
+    { codigo: 'BRTESTE2', comprador: 'Outra Pessoa', cep: '89000-001', motorista: '', sort_code: 'CA-1' },
+  ]);
+});
+
+test('Vapt Vupt: pesquisa em lote divide o lote recusado e lista as ATs do dia', async () => {
+  const { rastrear, listarAts, faixaDoDia } = require('../extensao/spx.js');
+  const lotes = [];
+  const post = async (rota, corpo) => {
+    if (rota.includes('tracking_list')) {
+      lotes.push(corpo.search_id_list.length);
+      if (corpo.search_id_list.length > 300) throw new Error('grande demais');
+      return { list: corpo.search_id_list.map((c) => ({ shipment_id: c, current_station_received_time: 1, current_station_name: 'XPT_TESTE' })) };
+    }
+    return { total: 2, list: corpo.pageno === 1 ? [{ assignment_task_id: 'ATTESTE1', shipment_id: 'BR1, BR2', city: 'Cidade A' }, { assignment_task_id: 'ATTESTE2', shipment_id: 'BR3' }] : [] };
+  };
+  const codigos = Array.from({ length: 600 }, (_, i) => `BRTESTE${i}`);
+  const r = await rastrear(post, codigos);
+  assert.strictEqual(r.length, 600);
+  assert.ok(lotes.includes(500) && lotes.includes(250));
+  const ats = await listarAts(post, '2026-11-19', () => {}, async () => {});
+  assert.deepStrictEqual(ats.map((a) => [a.at, a.codigos]), [['ATTESTE1', ['BR1', 'BR2']], ['ATTESTE2', ['BR3']]]);
+  assert.strictEqual(faixaDoDia('2026-11-19'), `${Date.parse('2026-11-19T03:00:00Z') / 1000},${Date.parse('2026-11-19T03:00:00Z') / 1000 + 86399}`);
 });
 
 test('exportarPedidos: cria o export, espera ficar pronto e devolve o link', async () => {
