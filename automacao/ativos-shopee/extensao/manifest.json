@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "XM - Ativos Shopee",
-  "version": "1.4",
+  "version": "1.5",
   "description": "Ativos da Shopee (WhatsApp da GC) dentro do SPX, pelo menu lateral: disparar e conversas, integrados ao sistema XMTT.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAiNE+1KkUKZdLMUr9TdZBpPJ5J9sw/STe8psknlTbm4JQY1EfS/uJh+1TQhNKwbAaOe3uibNyBzaCCtsvw5YFN41nUNdKRxfXaVKyUpuCVu7a6kpuWpDz5vP5H28aIX/8YEErQtQ+1Bu6rlzc8FhJ8NPYJPK1tjzFmnM1jBgjG9Dic5928kCYpe50ayBX/tL2v9YAG3n/vXE/KOWdEp7xbwBq7BG5zjM8cHSeciQWi4LqXPv0zWS0jInqM7Gl6wCZaJ49Z+9TAHAauA2KKbkrjyBXcpcf9sSnwDmnEV34x42H3mkZmEZv5PcJLK80HNW7xNaWWWhkC3NjNjdD2hfspwIDAQAB",
   "permissions": [

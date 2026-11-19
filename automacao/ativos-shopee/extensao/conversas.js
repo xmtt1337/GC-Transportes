@@ -64,23 +64,27 @@
   .xm-ativos-pagina .xm-pag { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 8px; border-top: 1px solid #f0f0f0; font-size: 12px; color: #666; }
   .xm-ativos-pagina .xm-pag button { border: 1px solid #e5e5e5; background: #fff; border-radius: 4px; width: 26px; height: 24px; cursor: pointer; }
   .xm-ativos-pagina .xm-pag button:disabled { opacity: .4; cursor: default; }
-  .xm-ativos-pagina .xm-chat-topo { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
-  .xm-ativos-pagina .xm-chat-titulo { font-size: 16px; font-weight: 500; color: #333; }
-  .xm-ativos-pagina .xm-chat-sub { color: #999; font-size: 13px; }
-  .xm-ativos-pagina .xm-chat-corpo { background: #f5f5f5; border-radius: 4px; padding: 16px; height: 55vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
-  .xm-ativos-pagina .xm-dia { align-self: center; background: #fff; color: #999; font-size: 12px; padding: 2px 10px; border-radius: 10px; margin: 8px 0; }
-  .xm-ativos-pagina .xm-bolha { max-width: 70%; padding: 8px 12px 6px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; cursor: pointer; border: 1px solid #eee; background: #fff; color: #333; font-size: 14px; }
+  .xm-ativos-pagina .xm-cv-chat { padding: 16px 20px; }
+  .xm-ativos-pagina .xm-chat-topo { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+  .xm-ativos-pagina .xm-chat-titulo { font-size: 15px; font-weight: 500; color: #333; }
+  .xm-ativos-pagina .xm-chat-sub { color: #999; font-size: 12px; }
+  .xm-ativos-pagina .xm-resultado { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #666; }
+  .xm-ativos-pagina .xm-resultado b { color: #333; font-weight: 500; }
+  .xm-ativos-pagina .xm-chat-corpo { background: #f5f5f5; border-radius: 4px; padding: 12px 16px; height: calc(100vh - 290px); min-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+  .xm-ativos-pagina .xm-dia { align-self: center; background: #fff; color: #999; font-size: 11px; padding: 1px 10px; border-radius: 10px; margin: 6px 0; }
+  .xm-ativos-pagina .xm-bolha { max-width: 60%; padding: 6px 10px 4px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; cursor: pointer; border: 1px solid #eee; background: #fff; color: #333; font-size: 13px; line-height: 1.45; }
   .xm-ativos-pagina .xm-bolha.enviada { align-self: flex-end; background: #fff1ec; border-color: #ffd8cc; }
   .xm-ativos-pagina .xm-bolha.recebida { align-self: flex-start; }
   .xm-ativos-pagina .xm-bolha.xm-sel { outline: 2px solid #ee4d2d; }
   .xm-ativos-pagina .xm-bolha.xm-pisca { box-shadow: 0 0 0 3px rgba(238,77,45,.35); }
-  .xm-ativos-pagina .xm-bolha-autor { display: block; font-size: 12px; font-weight: 500; color: #ee4d2d; margin-bottom: 2px; }
-  .xm-ativos-pagina .xm-bolha-hora { display: block; text-align: right; font-size: 11px; color: #999; margin-top: 2px; }
-  .xm-ativos-pagina .xm-selecao { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; padding: 10px 12px; background: #fff7f4; border: 1px solid #ffd8cc; border-radius: 4px; }
+  .xm-ativos-pagina .xm-bolha-autor { display: block; font-size: 11px; font-weight: 500; color: #ee4d2d; margin-bottom: 1px; }
+  .xm-ativos-pagina .xm-bolha-hora { display: block; text-align: right; font-size: 10px; color: #999; margin-top: 1px; }
+  .xm-ativos-pagina .xm-janela { margin-top: 10px; padding: 8px 12px; background: #fff5e6; color: #8a5300; border-radius: 4px; font-size: 13px; }
+  .xm-ativos-pagina .xm-selecao { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; padding: 10px 12px; background: #fff7f4; border: 1px solid #ffd8cc; border-radius: 4px; }
   .xm-ativos-pagina .xm-selecao-n { color: #333; margin-right: auto; }
   .xm-ativos-pagina .xm-btn-perigo:hover:not(:disabled) { color: #d0021b; border-color: #d0021b; }
-  .xm-ativos-pagina .xm-compor { display: flex; gap: 8px; align-items: flex-end; margin-top: 12px; }
-  .xm-ativos-pagina .xm-compor textarea { flex: 1; min-height: 40px; max-height: 160px; }
+  .xm-ativos-pagina .xm-compor { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
+  .xm-ativos-pagina .xm-compor textarea { flex: 1; min-height: 34px; height: 34px; max-height: 140px; padding: 6px 12px; }
   `;
 
   let ctx = null;
@@ -104,7 +108,7 @@
     raiz = document.createElement('div');
     raiz.className = 'xm-ativos-pagina';
     raiz.innerHTML = `
-      <div class="xm-cartao">
+      <div class="xm-cartao xm-cv-cabeca">
         <span class="xm-conta xm-cv-conta"></span>
         <h2 class="xm-titulo">Conversas</h2>
         <p class="xm-sub">Ativos da Shopee pelo WhatsApp da GC, os mesmos do sistema XMTT. Arraste o card para marcar o desfecho.</p>
@@ -123,7 +127,8 @@
         <div class="xm-chat-topo">
           <button class="xm-link xm-cv-voltar" type="button">‹ Voltar</button>
           <div><div class="xm-chat-titulo xm-cv-chat-titulo"></div><div class="xm-chat-sub xm-cv-chat-sub"></div></div>
-          <button class="xm-btn xm-cv-reabrir" type="button" hidden>Reabrir pedido</button>
+          <div class="xm-resultado xm-cv-resultado" hidden><span>Marcado como <b class="xm-cv-resultado-txt"></b></span>
+            <button class="xm-btn xm-cv-reabrir" type="button" title="Tira a marcação: o card volta para Aguardando">Desfazer</button></div>
         </div>
         <div class="xm-chat-corpo xm-cv-corpo"></div>
         <div class="xm-selecao xm-cv-selecao" hidden>
@@ -134,13 +139,14 @@
           <button class="xm-btn xm-btn-perigo xm-cv-excluir" type="button">Excluir</button>
           <button class="xm-link xm-cv-limpar" type="button">Limpar</button>
         </div>
-        <div class="xm-compor">
-          <textarea class="xm-area xm-cv-texto" rows="1" placeholder="Responder (só dentro de 24h da última mensagem do cliente)"></textarea>
+        <div class="xm-janela xm-cv-janela" hidden>O cliente não escreve há mais de 24 horas. Pelas regras do WhatsApp, depois disso só dá para falar com ele disparando o ativo de novo (em Disparar ativos).</div>
+        <div class="xm-compor xm-cv-compor">
+          <textarea class="xm-area xm-cv-texto" rows="1" placeholder="Escreva uma resposta"></textarea>
           <button class="xm-btn xm-btn-primario xm-cv-enviar" type="button">Enviar</button>
         </div>
       </div>`;
 
-    raiz.querySelectorAll('.xm-aba').forEach((b) => b.addEventListener('click', () => { est.aba = b.dataset.aba; desenharLista(); }));
+    raiz.querySelectorAll('.xm-aba').forEach((b) => b.addEventListener('click', () => { est.aba = b.dataset.aba; if (est.chat) fecharConversa(); desenharLista(); }));
     $('.xm-conv-busca').addEventListener('input', (e) => { est.busca = e.target.value.trim().toLowerCase(); irOndeEsta(); desenharLista(); });
     $('.xm-cv-atualizar').addEventListener('click', () => carregarLista());
     $('.xm-cv-voltar').addEventListener('click', voltarParaLista);
@@ -195,7 +201,7 @@
       const c = e.target.closest('.xm-card');
       if (!c) return;
       if (reabrir) { e.stopPropagation(); resolver({ numero: c.dataset.numero, pedido: c.dataset.pedido, resolvido: false }).then(() => carregarLista(true)); return; }
-      abrirConversa(c.dataset.numero, c.dataset.pedido, c.dataset.resolvido === '1');
+      abrirConversa(c.dataset.numero, c.dataset.pedido, c.dataset.resolvido === '1', c.dataset.resultado);
     });
     return raiz;
   }
@@ -217,6 +223,8 @@
       caixa.replaceChildren(ctx.blocoLogin((r) => { mostrarConta(true, r.nome, r.papel); carregarLista(); }));
       $('.xm-cv-quadro').replaceChildren();
       $('.xm-cv-chat').hidden = true;
+      $('.xm-cv-cabeca').hidden = false;
+      est.chat = null;
       $('.xm-cv-conta').textContent = '';
       return;
     }
@@ -287,9 +295,9 @@
     } else {
       linha = `<div class="xm-card-linha">${c.enviado_por_nome ? `${esc(c.enviado_por_nome)} · ` : ''}${ctx.R.dataCurta(c.ultima)}${lida}</div>`;
     }
-    const reabrir = c.respondido ? '<button class="xm-link xm-card-reabrir" type="button">↺ Reabrir</button>' : '';
+    const reabrir = c.respondido ? '<button class="xm-link xm-card-reabrir" type="button" title="Tira a marcação: o card volta para Aguardando">Desfazer</button>' : '';
     const arrasta = aba === 'chamaram' ? '' : 'draggable="true"';
-    return `<div class="xm-card${nl ? ' xm-nao-lida' : ''}" ${arrasta} data-numero="${esc(c.numero)}" data-pedido="${esc(c.pedido || '')}" data-resolvido="${c.respondido ? '1' : ''}">
+    return `<div class="xm-card${nl ? ' xm-nao-lida' : ''}" ${arrasta} data-numero="${esc(c.numero)}" data-pedido="${esc(c.pedido || '')}" data-resolvido="${c.respondido ? '1' : ''}" data-resultado="${esc(c.resultado || '')}">
       <div class="xm-card-cod">${esc(c.pedido || ctx.R.formatarNumero(c.numero))}</div>
       <div class="xm-card-num">${esc(ctx.R.formatarNumero(c.numero))}</div>
       ${linha}${reabrir}${selo}
@@ -333,14 +341,20 @@
   }
 
   // ── conversa ───────────────────────────────────────────────────────────────────
-  function abrirConversa(numero, pedido, resolvido) {
+  const NOME_RESULTADO = { recebeu: 'Entregue (recebeu)', nao_recebeu: 'Não entregue (não recebeu)' };
+
+  function abrirConversa(numero, pedido, resolvido, resultado) {
     est.chat = { numero, pedido: pedido || '', resolvido };
     est.selecionadas.clear();
     $('.xm-cv-quadro').hidden = true;
+    $('.xm-cv-cabeca').hidden = true; // a conversa usa a tela inteira
     $('.xm-cv-chat').hidden = false;
+    $('.xm-cv-janela').hidden = true;
+    $('.xm-cv-compor').hidden = false;
     $('.xm-cv-chat-titulo').textContent = pedido || ctx.R.formatarNumero(numero);
     $('.xm-cv-chat-sub').textContent = pedido ? ctx.R.formatarNumero(numero) : '';
-    $('.xm-cv-reabrir').hidden = !resolvido;
+    $('.xm-cv-resultado').hidden = !resolvido;
+    $('.xm-cv-resultado-txt').textContent = NOME_RESULTADO[resultado] || 'respondido';
     $('.xm-cv-corpo').innerHTML = '<div class="xm-vazia">Carregando...</div>';
     desenharSelecao();
     carregarConversa(false, true);
@@ -348,12 +362,18 @@
     est.relogioChat = setInterval(() => carregarConversa(true), RELOGIO_CHAT_MS);
   }
 
-  function voltarParaLista() {
+  /** Fecha a conversa e mostra o quadro de novo (sem recarregar). */
+  function fecharConversa() {
     clearInterval(est.relogioChat);
     est.chat = null;
     est.selecionadas.clear();
     $('.xm-cv-chat').hidden = true;
+    $('.xm-cv-cabeca').hidden = false;
     $('.xm-cv-quadro').hidden = false;
+  }
+
+  function voltarParaLista() {
+    fecharConversa();
     carregarLista(true);
   }
 
@@ -388,6 +408,11 @@
         return `${sep}<div class="xm-bolha ${m.direcao === 'enviada' ? 'enviada' : 'recebida'}${est.selecionadas.has(m.id) ? ' xm-sel' : ''}" data-id="${esc(m.id)}"${m.pedido ? ` data-pedido="${esc(m.pedido)}"` : ''}>${autor}${esc(m.texto)}<span class="xm-bolha-hora" title="${d.toLocaleString('pt-BR')}">${hora}${check}</span></div>`;
       }).join('');
       corpo.scrollTop = silencioso ? rolagem : corpo.scrollHeight;
+      // Regra do WhatsApp: resposta livre só até 24h depois da última mensagem do cliente.
+      const recebidas = msgs.filter((m) => m.direcao !== 'enviada').map((m) => new Date(m.criado_em).getTime());
+      const fechada = !recebidas.length || Date.now() - Math.max(...recebidas) > 24 * 3600000;
+      $('.xm-cv-janela').hidden = !fechada;
+      $('.xm-cv-compor').hidden = fechada;
       if (destacar && est.chat.pedido) {
         const alvo = [...corpo.querySelectorAll('.xm-bolha[data-pedido]')].find((b) => b.dataset.pedido === est.chat.pedido);
         if (alvo) { alvo.scrollIntoView({ block: 'center' }); alvo.classList.add('xm-pisca'); setTimeout(() => alvo.classList.remove('xm-pisca'), 2000); }
@@ -477,7 +502,8 @@
     ctx.pedirAoFundo('estado').then((r) => {
       mostrarConta(r.logado, r.nome, r.papel);
       if (!r.logado) return;
-      if (est.chat) { carregarConversa(true); est.relogioChat = setInterval(() => carregarConversa(true), RELOGIO_CHAT_MS); }
+      // Clicar em "Conversas" no menu (mesmo com uma conversa aberta) volta para o quadro.
+      if (est.chat) fecharConversa();
       carregarLista(!!est.dados.length);
       clearInterval(est.relogioLista);
       // A lista depende do relogio (prazo) e das respostas novas: refaz de minuto em minuto.
