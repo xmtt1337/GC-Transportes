@@ -141,6 +141,35 @@ test('contar: % AT, recebidos, divergências com TO, comprador e lugar emprestad
   assert.deepStrictEqual(s.porCidade.map((x) => x.cidade).sort(), ['(sem cidade)', 'Cidade A']);
 });
 
+test('abrangência aprendida: prefixo de CEP que nunca esteve em AT é fora', () => {
+  const ats = [{ at: 'AT1', codigos: ['BRTESTE00001', 'BRTESTE00002'], cidade: 'Cidade A', bairro: 'Centro', cluster: 'CL1', criada_em: H('02:00') }];
+  const pedidos = [
+    { codigo: 'BRTESTE00001', cep: '89500-100' },
+    { codigo: 'BRTESTE00002', cep: '89560000' },
+    { codigo: 'BRTESTE00003', cep: '89500-900' }, // sem AT, mas prefixo conhecido: dentro
+    { codigo: 'BRTESTE00004', cep: '88010-000' }, // sem AT e prefixo nunca visto: fora
+    { codigo: 'BRTESTE00005', cep: '' }, // sem CEP: não dá para dizer
+  ];
+  assert.deepStrictEqual(C.prefixosDasAts(pedidos, ats), ['89500', '89560']);
+
+  // Área de dois dias: o prefixo de ontem também vale.
+  const area = { [XPT]: { '2026-11-19': ['89540'], '2026-11-20': C.prefixosDasAts(pedidos, ats) }, XPT_SC_Outra: { '2026-11-20': ['88010'] } };
+  const conhecida = C.areaConhecida(area, XPT);
+  assert.deepStrictEqual([...conhecida.prefixos].sort(), ['89500', '89540', '89560']);
+  assert.strictEqual(conhecida.dias, 2);
+
+  const romaneio = ['1', '2', '3', '4', '5'].map((x) => ({ codigo: `BRTESTE0000${x}`, to: '' }));
+  const rastreio = romaneio.map((x) => ({ codigo: x.codigo, recebido_em: H('03:00'), estacao: XPT }));
+  const c = C.contar({ romaneio, rastreio, ats, pedidos, area: conhecida.prefixos, areaDias: conhecida.dias });
+  assert.strictEqual(c.fora_abrangencia, 1);
+  assert.deepStrictEqual(c.fora, [{ prefixo: '88010', qtd: 1 }]);
+  assert.strictEqual(c.area_dias, 2);
+  assert.deepStrictEqual(c.recebido_sem_at.map((d) => [d.codigo, !!d.fora]), [['BRTESTE00003', false], ['BRTESTE00004', true], ['BRTESTE00005', false]]);
+
+  // Sem o export (sem CEP), não dá para dizer: null, não zero.
+  assert.strictEqual(C.contar({ romaneio, rastreio, ats }).fora_abrangencia, null);
+});
+
 test('guardarNoHistorico: por estação, guarda só os últimos dias', () => {
   let h = {};
   for (const d of ['2026-11-15', '2026-11-16', '2026-11-17', '2026-11-18']) h = C.guardarNoHistorico(h, XPT, d, { dia: d }, 3);

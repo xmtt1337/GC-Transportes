@@ -206,8 +206,8 @@
       return;
     }
     try {
-      const rastreio = codigos.length ? await rastrear(post, codigos, (n, t) => responder({ id, andamento: `Pesquisando no SPX os BR que faltam: ${n} de ${t}...` })) : [];
-      const ats = await listarAts(post, hojeSP(), (n, t) => responder({ id, andamento: `Lendo as ATs de hoje: ${n} de ${t}...` }));
+      const rastreio = codigos.length ? await rastrear(post, codigos, (n, t) => responder({ id, andamento: `Pesquisando no SPX os BR que faltam: ${n} de ${t}...`, etapa: "pesquisa", n, t })) : [];
+      const ats = await listarAts(post, hojeSP(), (n, t) => responder({ id, andamento: `Lendo as ATs de hoje: ${n} de ${t}...`, etapa: "ats", n, t }));
       responder({ id, fim: true, rastreio, ats });
     } catch (err) {
       responder({ id, fim: true, erro: err.message });
@@ -255,7 +255,15 @@
     }
     try {
       if (rota === ROTA_ANEXO) { responder({ id, fim: true, bytes: await getBinario(url) }); return; }
-      const j = await getBruto(url);
+      let j;
+      try {
+        j = await getBruto(url);
+      } catch (e) {
+        // O painel AMH-LM respondeu 404 ao GET (20/11/2026). O print da Rede não tinha aba Payload,
+        // o que também acontece num POST sem corpo: tenta uma vez como POST.
+        if (rota !== ROTAS_DA_VIAGEM[0] || !/HTTP 404/.test(e.message)) throw e;
+        j = { retcode: 0, data: await chamar('POST', url, {}) };
+      }
       if (j.retcode != null && Number(j.retcode) !== 0) throw new Error(`A Shopee recusou (retcode ${j.retcode}): ${j.message || 'sem mensagem'}`);
       responder({ id, fim: true, json: j });
     } catch (err) {
@@ -286,7 +294,7 @@
       return;
     }
     try {
-      const url = await exportarPedidos(chamar, codigos, (s) => responder({ id, andamento: `Esperando o export de pedidos do SPX (${s} s)...` }));
+      const url = await exportarPedidos(chamar, codigos, (s) => responder({ id, andamento: `Esperando o export de pedidos do SPX (${s} s)...`, etapa: "export", s }));
       responder({ id, fim: true, url });
     } catch (err) {
       responder({ id, fim: true, erro: err.message });

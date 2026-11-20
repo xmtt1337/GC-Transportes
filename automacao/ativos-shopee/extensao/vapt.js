@@ -18,6 +18,8 @@
   const CHAVE_HISTORICO = 'vaptHistorico';
   const CHAVE_RASTREIO = 'vaptRastreio';
   const CHAVE_ESTACAO = 'vaptEstacao';
+  const CHAVE_AREA = 'vaptArea'; // prefixos de CEP das ATs, por estação e dia (abrangência aprendida)
+  const DIAS_AREA = 15;
   const DUAS = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
 
   const CSS = `
@@ -25,7 +27,25 @@
   .xm-ativos-pagina .xm-vv-barra select { height: 32px; border: 1px solid #e5e5e5; border-radius: 4px; padding: 0 8px; font: inherit; color: #333; background: #fff; }
   .xm-ativos-pagina .xm-vv-lido { color: #999; font-size: 12px; margin-left: auto; }
   .xm-ativos-pagina .xm-vv-viagem { color: #666; font-size: 13px; margin: 0 0 10px; }
-  .xm-ativos-pagina .xm-vv-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+  /* Checklist do Conferir agora, no canto de baixo (verde feito, âmbar andando ou aviso, vermelho erro). */
+  .xm-ativos-pagina .xm-vv-passos { position: fixed; right: 24px; bottom: 24px; z-index: 1000; width: 340px; background: #fff;
+    border-radius: 4px; box-shadow: 0 4px 18px rgba(0,0,0,.16); padding: 12px 14px; font-size: 12px; color: #333; }
+  .xm-ativos-pagina .xm-vv-passos-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; font-weight: 500; }
+  .xm-ativos-pagina .xm-vv-passos-cab button { border: 0; background: none; color: #999; cursor: pointer; font-size: 18px; line-height: 1; padding: 0 2px; }
+  .xm-ativos-pagina .xm-vv-passos ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+  .xm-ativos-pagina .xm-vv-passos li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 7px; align-items: start; }
+  .xm-ativos-pagina .xm-vv-ic { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; margin-top: 1px;
+    font-size: 11px; font-weight: 700; color: #fff; background: #e5e5e5; }
+  .xm-ativos-pagina .xm-vv-ic.xm-ok { background: #26a65b; }
+  .xm-ativos-pagina .xm-vv-ic.xm-andamento { background: #f5a623; animation: xm-vv-pulsa 1s ease-in-out infinite; }
+  .xm-ativos-pagina .xm-vv-ic.xm-aviso { background: #f5a623; }
+  .xm-ativos-pagina .xm-vv-ic.xm-erro { background: #ee4d2d; }
+  .xm-ativos-pagina .xm-vv-ic.xm-pulado { background: #d9d9d9; }
+  @keyframes xm-vv-pulsa { 50% { opacity: .45; } }
+  .xm-ativos-pagina .xm-vv-pt { color: #333; }
+  .xm-ativos-pagina .xm-vv-pt.xm-espera { color: #aaa; }
+  .xm-ativos-pagina .xm-vv-pd { display: block; color: #999; overflow-wrap: anywhere; }
+  .xm-ativos-pagina .xm-vv-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
   @media (max-width: 1300px) { .xm-ativos-pagina .xm-vv-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .xm-ativos-pagina .xm-vv-card { position: relative; background: #fff; border-radius: 4px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); min-width: 0; }
   .xm-ativos-pagina .xm-vv-baixar-card { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border: 0; border-radius: 4px;
@@ -111,6 +131,10 @@
         </div>
         <p class="xm-status xm-vv-status"></p>
       </div>
+      <div class="xm-vv-passos" hidden>
+        <div class="xm-vv-passos-cab"><span class="xm-vv-passos-tit"></span><button type="button" class="xm-vv-passos-fechar" title="Fechar">×</button></div>
+        <ol class="xm-vv-passos-lista"></ol>
+      </div>
       <div class="xm-vv-corpo" hidden>
         <div class="xm-vv-cards"></div>
         <div class="xm-vv-tres">
@@ -130,6 +154,7 @@
     $('.xm-vv-conferir').addEventListener('click', conferir);
     $('.xm-vv-baixar').addEventListener('click', baixarRelatorio);
     $('.xm-vv-copiar').addEventListener('click', copiarBR);
+    $('.xm-vv-passos-fechar').addEventListener('click', () => { $('.xm-vv-passos').hidden = true; });
     $('.xm-vv-dia').addEventListener('change', (e) => { est.dia = e.target.value; carregar(); });
     $('.xm-vv-cards').addEventListener('click', (e) => { if (e.target.closest('[data-acao="baixar"]')) baixarRelatorio(); });
     $('.xm-vv-tipos').addEventListener('click', (e) => {
@@ -217,6 +242,17 @@
       <div class="xm-vv-sub">${n(r.em_at)} / ${n(r.total)} pacotes</div></div>`;
   }
 
+  /**
+   * Fora de abrangência sem lista do sistema: pacote fora de AT com CEP (5 primeiros dígitos) que
+   * não apareceu em nenhuma AT dos últimos dias. Sem o export de pedidos (o CEP), fica "—".
+   */
+  function cardFora(r) {
+    const explica = `Pacote fora de AT com CEP (5 primeiros dígitos) que não apareceu em nenhuma AT dos últimos ${r.area_dias || 0} dia(s) desta estação.`;
+    if (r.fora_abrangencia == null) return card('Fora de abrangência', '—', 'sem o CEP do export de pedidos');
+    const sub = r.fora_abrangencia ? `CEP ${(r.fora || []).slice(0, 3).map((f) => `${f.prefixo}-xxx`).join(', ')}` : 'nenhum pacote';
+    return card('Fora de abrangência', n(r.fora_abrangencia), sub, '', r.fora_abrangencia > 0).replace('<div class="xm-vv-card">', `<div class="xm-vv-card" title="${esc(explica)}">`);
+  }
+
   function card(rotulo, valor, sub, extra = '', atencao = false) {
     return `<div class="xm-vv-card"><div class="xm-vv-rot">${rotulo}</div><div class="xm-vv-val${atencao ? ' xm-atencao' : ''}">${valor}</div><div class="xm-vv-sub" title="${esc(sub)}">${esc(sub)}</div>${extra}</div>`;
   }
@@ -243,6 +279,7 @@
         r.divergencias ? `<button class="xm-vv-baixar-card" type="button" data-acao="baixar" title="Baixar relatório de divergências">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg></button>` : '',
         r.divergencias > 0),
+      cardFora(r),
       card('BWT processamento', duracao(p.inicio, p.fim), p.inicio && p.fim ? `${hora(p.inicio)} → ${hora(p.fim)}` : 'sem horário ainda'),
     ].join('');
 
@@ -263,7 +300,7 @@
     $('.xm-vv-loc').innerHTML = cidades.length ? cidades.map(([c, q]) => linhaBarra(c, q, maiorLoc)).join('') : '<div class="xm-vv-vazio">Nenhuma divergência.</div>';
 
     // Volume: os pacotes do romaneio que estão em AT, por cidade da AT
-    $('.xm-vv-volsub').textContent = `${n(r.em_at)} pacotes do romaneio nas ATs de hoje`;
+    $('.xm-vv-volsub').textContent = `${n(r.em_at)} pacotes do romaneio nas ATs de hoje${r.area_dias ? ` · abrangência aprendida com ${n(r.area_dias)} dia(s) de ATs` : ''}`;
     const vol = (r.porCidade || []).slice(0, 8);
     const maiorVol = Math.max(0, ...vol.map((c) => c.total));
     $('.xm-vv-vol').innerHTML = vol.length
@@ -307,20 +344,72 @@
   // ── conferir agora ─────────────────────────────────────────────────────────────
   const lerSpx = (url) => ctx.pedirAoSpx('lerViagem', { url });
 
+  // Checklist no canto: cada passo espera -> andamento -> ok / aviso / erro / pulado.
+  const PASSOS = [
+    ['viagem', 'Viagem de hoje (painel AMH-LM)'],
+    ['trip', 'Viagem em Viagens de Carga Direta'],
+    ['romaneio', 'Romaneio da viagem'],
+    ['pesquisa', 'Pesquisa dos pedidos no SPX'],
+    ['ats', 'ATs de hoje'],
+    ['export', 'Export de pedidos (comprador e CEP)'],
+    ['conta', 'Conta, abrangência e histórico'],
+  ];
+  const ICONE = { espera: '', andamento: '…', ok: '✓', aviso: '!', erro: '×', pulado: '–' };
+  let passos = {};
+  let passoAtual = '';
+  let tituloPassos = '';
+
+  function desenharPassos() {
+    $('.xm-vv-passos-tit').textContent = tituloPassos;
+    $('.xm-vv-passos-lista').innerHTML = PASSOS.map(([id, rotulo]) => {
+      const p = passos[id] || { estado: 'espera', texto: '' };
+      return `<li><span class="xm-vv-ic xm-${p.estado}">${ICONE[p.estado] || ''}</span>
+        <span class="xm-vv-pt${p.estado === 'espera' ? ' xm-espera' : ''}">${esc(rotulo)}${p.texto ? `<span class="xm-vv-pd">${esc(p.texto)}</span>` : ''}</span></li>`;
+    }).join('');
+  }
+  function iniciarPassos() {
+    passos = {};
+    passoAtual = '';
+    tituloPassos = 'Conferindo a viagem de hoje...';
+    $('.xm-vv-passos').hidden = false;
+    desenharPassos();
+  }
+  function passo(id, estado, texto = '') {
+    passos[id] = { estado, texto };
+    if (estado === 'andamento') passoAtual = id;
+    desenharPassos();
+  }
+  function fimDosPassos(titulo) {
+    tituloPassos = titulo;
+    desenharPassos();
+  }
+
+  // Andamento que vem do spx.js (pesquisa, ATs, export).
+  function andamento(_texto, d = {}) {
+    if (d.etapa === 'pesquisa') passo('pesquisa', 'andamento', `${n(d.n)} de ${n(d.t)}`);
+    else if (d.etapa === 'ats') {
+      if (passos.pesquisa && passos.pesquisa.estado === 'andamento') passo('pesquisa', 'ok', passos.pesquisa.texto);
+      passo('ats', 'andamento', `${n(d.n)} de ${n(d.t)}`);
+    } else if (d.etapa === 'export') passo('export', 'andamento', `esperando o SPX montar o arquivo (${d.s} s)`);
+  }
+
   /**
    * A viagem de hoje: painel AMH-LM (número da viagem) -> Viagens de Carga Direta, Pendente e
    * depois Finalizado (o tripId) -> anexo da viagem (o romaneio, xlsx).
    */
   async function viagemDeHoje() {
-    const avisos = [];
     // 1. O número da viagem: o painel AMH-LM. Se ele não responder, a lista de viagens dá conta.
     let viagens = [];
-    status('Procurando a viagem de hoje no painel AMH-LM do SPX...');
+    let semPainel = '';
+    passo('viagem', 'andamento', 'lendo o painel...');
     try {
       viagens = C.viagensDoPainel((await lerSpx(C.ROTA_PAINEL_LH)).json).filter((v) => v.chega_aqui);
+      if (!viagens.length) semPainel = 'o painel não mostra viagem chegando';
     } catch (e) {
-      avisos.push(`o painel AMH-LM não respondeu (${e.message.replace(/\.?\s*Dê F5.*$/, '')}), a viagem saiu da lista de Viagens de Carga Direta`);
+      semPainel = `o painel não respondeu (${e.message.replace(/\.?\s*Dê F5.*$/, '').replace(/^A Shopee recusou /, '').replace(/[()]/g, '')})`;
     }
+    if (viagens.length) passo('viagem', 'ok', viagens.map((v) => v.numero).join(', '));
+    else passo('viagem', 'andamento', `${semPainel}; procurando na lista de viagens`);
 
     // 2. O tripId (e, sem o painel, a própria viagem): Viagens de Carga Direta, Pendente e Finalizado.
     const itens = [];
@@ -328,7 +417,7 @@
     for (const [aba, urlDe] of [['Pendente', C.urlPendentes], ['Finalizado', C.urlFinalizadas]]) {
       let daAba = 0;
       for (let pagina = 1; pagina <= C.MAX_PAGINAS && !achouTodas(); pagina += 1) {
-        status(`Procurando a viagem de hoje em Viagens de Carga Direta (${aba}, página ${pagina})...`);
+        passo('trip', 'andamento', `${aba}, página ${pagina}`);
         let dados;
         try {
           dados = ((await lerSpx(urlDe(pagina))).json || {}).data || {};
@@ -342,37 +431,47 @@
       }
     }
     if (viagens.length) for (const v of viagens) v.id = v.id || C.idDaViagem({ list: itens }, v.numero);
-    else viagens = C.viagensDasListas(itens, C.hojeSP());
-    if (!viagens.length) {
-      throw new Error(`Não achei viagem chegando hoje nesta estação${avisos.length ? ` (${avisos.join('; ')})` : ' no painel AMH-LM'}.`);
+    else {
+      viagens = C.viagensDasListas(itens, C.hojeSP());
+      if (viagens.length) passo('viagem', 'ok', `${viagens.map((v) => v.numero).join(', ')} · pela lista de viagens (${semPainel})`);
     }
+    if (!viagens.length) {
+      passoAtual = 'viagem';
+      throw new Error(`Não achei viagem chegando hoje nesta estação (${semPainel || 'nem na lista de viagens'}).`);
+    }
+    const semId = viagens.filter((v) => !v.id).map((v) => v.numero);
+    passo('trip', semId.length ? 'aviso' : 'ok', semId.length ? `não achei: ${semId.join(', ')}` : `tripId ${viagens.map((v) => v.id).join(', ')}`);
     const estacao = viagens[0].estacao || viagens[0].destino;
 
     // 3. O romaneio: o anexo de cada viagem.
     const romaneio = new Map();
+    const falhas = [];
     for (const v of viagens) {
-      if (!v.id) { avisos.push(`a viagem ${v.numero} não apareceu em Viagens de Carga Direta`); continue; }
-      status(`Baixando o romaneio da viagem ${v.numero}...`);
+      if (!v.id) continue;
+      passo('romaneio', 'andamento', `baixando o anexo da ${v.numero}...`);
       try {
         const { bytes } = await lerSpx(C.urlAnexo(v.id));
         const r = C.romaneioDaPlanilha(await C.lerXlsx(bytes), estacao);
         v.romaneio = r.itens.length;
         for (const x of r.itens) if (!romaneio.has(x.codigo)) romaneio.set(x.codigo, x);
       } catch (e) {
-        avisos.push(`${v.numero}: ${e.message}`);
+        falhas.push(`${v.numero}: ${e.message}`);
       }
     }
-    if (!romaneio.size) throw new Error(`Não deu para ler o romaneio da viagem de hoje${avisos.length ? ` (${avisos.join('; ')})` : ''}.`);
+    if (!romaneio.size) throw new Error(`Não deu para ler o romaneio da viagem de hoje${falhas.length ? ` (${falhas.join('; ')})` : ''}.`);
+    passo('romaneio', falhas.length ? 'aviso' : 'ok', `${n(romaneio.size)} pedidos para ${estacao}${falhas.length ? ` · ${falhas.join('; ')}` : ''}`);
     const resumoViagens = viagens.filter((v) => v.romaneio).map((v) => ({ numero: v.numero, id: v.id, pedidos: v.pedidos, romaneio: v.romaneio, eta: v.eta, ata: v.ata }));
-    return { estacao, viagens: resumoViagens, romaneio: [...romaneio.values()], avisos };
+    return { estacao, viagens: resumoViagens, romaneio: [...romaneio.values()] };
   }
 
   async function conferir() {
     if (est.ocupado || !est.logado) return;
     est.ocupado = true;
     $('.xm-vv-conferir').disabled = true;
+    status('');
+    iniciarPassos();
     try {
-      const { estacao, viagens, romaneio, avisos } = await viagemDeHoje();
+      const { estacao, viagens, romaneio } = await viagemDeHoje();
       const dia = C.hojeSP();
       est.estacao = estacao;
       est.dia = dia;
@@ -382,7 +481,12 @@
       const guardado = await ler(CHAVE_RASTREIO);
       const anterior = guardado && guardado.estacao === estacao && guardado.dia === dia ? guardado.rastreio : [];
       const codigos = romaneio.map((x) => x.codigo);
-      const res = await ctx.pedirAoSpx('buscar', { codigos: C.faltaConsultar(codigos, anterior) }, status);
+      const consultar = C.faltaConsultar(codigos, anterior);
+      const jaLidos = codigos.length - consultar.length;
+      passo('pesquisa', 'andamento', consultar.length ? `0 de ${n(consultar.length)}` : 'nada novo para pesquisar');
+      const res = await ctx.pedirAoSpx('buscar', { codigos: consultar }, andamento);
+      passo('pesquisa', 'ok', `${n(consultar.length)} pesquisados${jaLidos ? ` · ${n(jaLidos)} já lidos hoje (recebidos e já saíram)` : ''}`);
+      passo('ats', 'ok', `${n(res.ats.length)} ATs`);
       const daViagem = new Set(codigos);
       const rastreio = C.juntarRastreio(anterior, res.rastreio).filter((r) => daViagem.has(r.codigo));
       await gravar(CHAVE_RASTREIO, { estacao, dia, rastreio });
@@ -390,24 +494,37 @@
       const registro = { dia, estacao, viagens, lido_em: new Date().toISOString(), usuario: est.nome, conta: C.contar({ romaneio, rastreio, ats: res.ats }) };
       mostrar(registro, [dia]);
 
-      // Comprador e CEP: o export de pedidos da viagem (o mesmo do botão Export do Order Tracking).
-      // Também quando alguma AT veio sem cidade: o CEP dá a cidade. Se falhar, a conferência vale.
-      let aviso = avisos.length ? `Atenção: ${avisos.join('; ')}.` : '';
-      if (registro.conta.divergencias || registro.conta.at_sem_cidade) {
-        try {
-          status('Pedindo ao SPX o export de pedidos da viagem (comprador e CEP das divergências)...');
-          const exp = await ctx.pedirAoSpx('exportar', { codigos: codigos.slice(0, ctx.R.MAX_CODIGOS) }, status);
-          const { pedidos } = await ctx.pedirAoFundo('pedidosConferencia', { url: exp.url });
-          registro.conta = C.contar({ romaneio, rastreio, ats: res.ats, pedidos });
-        } catch (e) {
-          aviso = `${aviso ? `${aviso} ` : ''}Conferência pronta, mas o relatório ficou sem comprador e CEP: ${e.message}`;
-        }
+      // O export de pedidos da viagem (o do botão Export do Order Tracking): comprador e CEP. O CEP
+      // empresta cidade a quem está fora de AT e ensina a abrangência. Se falhar, a conferência vale.
+      let pedidos = null;
+      try {
+        passo('export', 'andamento', 'pedindo ao SPX...');
+        const exp = await ctx.pedirAoSpx('exportar', { codigos: codigos.slice(0, ctx.R.MAX_CODIGOS) }, andamento);
+        passo('export', 'andamento', 'lendo o arquivo...');
+        pedidos = (await ctx.pedirAoFundo('pedidosConferencia', { url: exp.url })).pedidos;
+        passo('export', 'ok', `${n(pedidos.length)} pedidos com comprador e CEP`);
+      } catch (e) {
+        passo('export', 'aviso', `sem comprador, CEP e abrangência: ${e.message}`);
+      }
+
+      passo('conta', 'andamento', 'calculando...');
+      let detalheConta = 'guardado neste Chrome';
+      if (pedidos) {
+        const area = C.guardarNoHistorico((await ler(CHAVE_AREA)) || {}, estacao, dia, C.prefixosDasAts(pedidos, res.ats), DIAS_AREA);
+        await gravar(CHAVE_AREA, area);
+        const conhecida = C.areaConhecida(area, estacao);
+        registro.conta = C.contar({ romaneio, rastreio, ats: res.ats, pedidos, area: conhecida.prefixos, areaDias: conhecida.dias });
+        detalheConta = `abrangência de ${n(conhecida.dias)} dia(s) de ATs (${n(conhecida.prefixos.size)} prefixos de CEP) · guardado neste Chrome`;
       }
       const historico = C.guardarNoHistorico((await ler(CHAVE_HISTORICO)) || {}, estacao, dia, registro, DIAS_GUARDADOS);
       await gravar(CHAVE_HISTORICO, historico);
       mostrar(registro, Object.keys(historico[estacao] || {}).sort().reverse());
-      status(aviso, !!aviso);
+      passo('conta', 'ok', detalheConta);
+      fimDosPassos(`Pronto às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`);
     } catch (e) {
+      if (passoAtual) passo(passoAtual, 'erro', e.message);
+      for (const [id] of PASSOS) if (!passos[id]) passos[id] = { estado: 'pulado', texto: '' };
+      fimDosPassos('Parou');
       falhou(e);
     } finally {
       est.ocupado = false;
@@ -422,11 +539,12 @@
     const r = conta();
     if (!r || !r.divergencias) return status('Nenhuma divergência para baixar.');
     const manifesto = est.registro.estacao || '';
-    const cab = ['Manifesto/Operação', 'Tracking Number', 'Número da TO', 'Comprador', 'Cidade', 'Bairro', 'Cluster', 'Motorista', 'AT (rota)', 'Localização atual', 'Status'];
+    const cab = ['Manifesto/Operação', 'Tracking Number', 'Número da TO', 'Comprador', 'Cidade', 'Bairro', 'Cluster', 'Motorista', 'AT (rota)', 'Localização atual', 'Status', 'Abrangência'];
+    const abrangencia = (d) => (d.fora ? 'Fora' : r.fora_abrangencia == null ? '' : 'Dentro');
     const linhas = [
-      ...(r.recebido_sem_at || []).map((d) => [manifesto, d.codigo, d.to, d.comprador, d.cidade, d.bairro, d.cluster, d.motorista, '', d.estacao, 'Recebido - Sem AT']),
+      ...(r.recebido_sem_at || []).map((d) => [manifesto, d.codigo, d.to, d.comprador, d.cidade, d.bairro, d.cluster, d.motorista, '', d.estacao, 'Recebido - Sem AT', abrangencia(d)]),
       ...(r.nao_recebido || []).map((d) => [manifesto, d.codigo, d.to, d.comprador, d.cidade, d.bairro, d.cluster, d.motorista, d.at,
-        d.achado_no_spx ? d.estacao : 'não achado no SPX', /^soc/i.test(d.estacao || '') ? 'Enviado SOC - Não recebido' : 'Enviado - Não recebido']),
+        d.achado_no_spx ? d.estacao : 'não achado no SPX', /^soc/i.test(d.estacao || '') ? 'Enviado SOC - Não recebido' : 'Enviado - Não recebido', abrangencia(d)]),
     ];
     const texto = String.fromCharCode(0xfeff) + [cab.join(';'), ...linhas.map((l) => l.map(celula).join(';'))].join('\r\n');
     const [ano, mes, dia] = String(est.registro.dia || '').split('-');

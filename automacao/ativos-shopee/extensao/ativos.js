@@ -451,7 +451,7 @@
       const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const ouvir = (e) => {
         if (e.source !== window || !e.data || e.data.xmAtivos !== 'resposta' || e.data.id !== id) return;
-        if (!e.data.fim) { aviso(String(e.data.andamento || '')); return; }
+        if (!e.data.fim) { aviso(String(e.data.andamento || ''), e.data); return; }
         window.removeEventListener('message', ouvir);
         if (e.data.erro) reject(new Error(e.data.erro)); else resolve(e.data);
       };

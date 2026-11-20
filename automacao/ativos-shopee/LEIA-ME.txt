@@ -18,6 +18,13 @@ logo abaixo de Pedidos, em dois grupos:
                          4. pesquisa em lote, ATs de hoje e export de pedidos, como antes.
                        A conta e feita na extensao e fica guardada neste Chrome (10 dias, por
                        estacao). Conferir de novo so pesquisa os BR que ainda podem mudar.
+                       Se o painel AMH-LM nao responder, a viagem sai da lista de Viagens de
+                       Carga Direta (a que termina no XPT e chega hoje).
+                       Um checklist no canto de baixo mostra cada passo (viagem, romaneio,
+                       pesquisa x de y, ATs, export, conta) enquanto roda.
+                       Fora de abrangencia: pacote fora de AT cujo CEP (5 primeiros digitos)
+                       nunca apareceu numa AT desta estacao nos ultimos 15 dias. A area vai
+                       sendo aprendida a cada Conferir agora, so com dados do SPX.
 
 Entre com o usuario e a senha do sistema (o login fica dentro da propria pagina).
 

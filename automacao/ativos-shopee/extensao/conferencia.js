@@ -437,14 +437,43 @@
     return saida;
   }
 
+  // ── abrangência aprendida com as ATs do próprio SPX (sem lista do sistema) ──────
+  // A área da estação = os 5 primeiros dígitos do CEP dos pacotes que estiveram em alguma AT nos
+  // últimos dias (o SPX não marca nada como "fora": todo pacote da viagem tem Destination Station
+  // = a estação). Fora de abrangência = pacote do romaneio que não está em AT e cujo prefixo de CEP
+  // nunca apareceu numa AT. Escolha do usuário em 20/11/2026.
+  const prefixoCep = (cep) => normCep(cep).slice(0, 5);
+
+  /** Prefixos de CEP dos pacotes que estão nas ATs (o CEP vem do export de pedidos). */
+  function prefixosDasAts(pedidos, ats) {
+    const emAt = new Set();
+    for (const a of ats || []) for (const c of a.codigos || []) emAt.add(chaveCodigo(c));
+    const saida = new Set();
+    for (const p of pedidos || []) {
+      const pre = prefixoCep(p && p.cep);
+      if (pre && emAt.has(chaveCodigo(p.codigo))) saida.add(pre);
+    }
+    return [...saida].sort();
+  }
+
+  /** A área guardada da estação: { estacao: { dia: [prefixos] } } -> Set e quantos dias. */
+  function areaConhecida(area, estacao) {
+    const dias = (area && area[estacao]) || {};
+    const prefixos = new Set();
+    for (const lista of Object.values(dias)) for (const p of lista || []) prefixos.add(p);
+    return { prefixos, dias: Object.keys(dias).length };
+  }
+
   /**
    * A conferência inteira.
    * @param {{codigo, to}[]} romaneio  da viagem (romaneioDaPlanilha)
    * @param {object[]} rastreio  pesquisa em lote (enxugada pelo spx.js)
    * @param {object[]} ats       ATs de hoje (enxugadas pelo spx.js)
    * @param {object[]} [pedidos] export de pedidos: {codigo, comprador, cep, motorista, sort_code}
+   * @param {Set<string>} [area] prefixos de CEP da estação (areaConhecida); sem ela, fora = null
+   * @param {number} [areaDias]  de quantos dias de ATs a área foi aprendida
    */
-  function contar({ romaneio, rastreio, ats, pedidos }) {
+  function contar({ romaneio, rastreio, ats, pedidos, area, areaDias = 0 }) {
     const rs = lerRastreio(rastreio);
     const as = lerAts(ats);
     const peds = Array.isArray(pedidos) ? pedidos : [];
@@ -479,6 +508,27 @@
       com_bairro: itens.filter((p) => p.bairro).length,
       com_cluster: itens.filter((p) => p.cluster).length,
     };
+
+    // Fora de abrangência: fora de AT e com prefixo de CEP que nunca apareceu numa AT.
+    conta.fora_abrangencia = null;
+    conta.fora = [];
+    conta.area_dias = areaDias;
+    if (area && area.size && peds.length) {
+      const emAt = new Set();
+      for (const a of as) for (const c of a.codigos) emAt.add(c);
+      const foraDe = new Map();
+      for (const x of lista) {
+        const codigo = chaveCodigo(x.codigo);
+        if (emAt.has(codigo)) continue;
+        const pre = prefixoCep(cepDe.get(codigo));
+        if (pre && !area.has(pre)) foraDe.set(codigo, pre);
+      }
+      const porPrefixo = new Map();
+      for (const pre of foraDe.values()) porPrefixo.set(pre, (porPrefixo.get(pre) || 0) + 1);
+      conta.fora_abrangencia = foraDe.size;
+      conta.fora = [...porPrefixo].map(([prefixo, qtd]) => ({ prefixo, qtd })).sort((x, y) => y.qtd - x.qtd || x.prefixo.localeCompare(y.prefixo));
+      for (const p of itens) if (foraDe.has(p.codigo)) p.fora = true;
+    }
     return conta;
   }
 
@@ -497,6 +547,7 @@
     viagensDoPainel, viagensDasListas, idDaViagem, faixa, urlPendentes, urlFinalizadas, urlAnexo,
     lerRastreio, recebidoNoXpt, foiRecebido, faltaConsultar, juntarRastreio, lerAts, resumir,
     clusterPorBairro, chaveBairro, normCep, lugarPorCep, contar, guardarNoHistorico, hojeSP, pct,
+    prefixosDasAts, areaConhecida,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else self.XMVaptConta = api;
