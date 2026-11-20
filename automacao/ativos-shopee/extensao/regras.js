@@ -232,7 +232,7 @@ Por gentileza, poderia confirmar a entrega preenchendo os dados abaixo?
     }
     const j = await r.json().catch(() => ({}));
     // So a sessao vencida derruba o login. 403 e o cargo sem acesso a ESTA parte (ex.: os ativos,
-    // que sao so de SAC, admin e dev, enquanto a Conferencia e de toda a operacao): avisa e segue.
+    // que sao so de SAC, admin e dev, enquanto as extensoes sao de toda a operacao): avisa e segue.
     if (r.status === 401) throw new ErroDeConta('Sessão vencida. Entre de novo.');
     if (r.status === 403) {
       const e = new Error(!j.error || j.error === 'Acesso negado' ? 'Sua conta não tem acesso a esta parte do sistema.' : j.error);
@@ -275,30 +275,11 @@ Por gentileza, poderia confirmar a entrega preenchendo os dados abaixo?
 
   /** Quem ve o grupo "Ativos" no menu (o servidor barra os outros do mesmo jeito). */
   const ROLES_ATIVOS = ['sac', 'dev', 'admin'];
-  /** Quem escolhe o polo na Conferencia (os outros veem so o proprio). */
-  const ROLES_TODOS_POLOS = ['dev', 'admin'];
-
-  /**
-   * Export de pedidos do SPX -> por BR comprador, CEP, motorista e sort code (o relatorio de
-   * divergencias da Conferencia). Telefone e endereco ficam de fora. Igual ao da XM - Operacao.
-   */
-  function pedidosDoExport(texto) {
-    const [cab = [], ...linhas] = lerCsv(texto);
-    const col = (nome) => cab.findIndex((c) => String(c).trim().toLowerCase() === nome);
-    const i = { codigo: col('order id'), comprador: col('buyer name'), zip: col('zipcode name'), postal: col('postal code'),
-      motorista: col('driver name'), sort: col('sort code name') };
-    if (i.codigo < 0) throw new Error('O export de pedidos do SPX veio sem a coluna Order ID.');
-    const valor = (l, k) => (i[k] < 0 ? '' : String(l[i[k]] || '').trim());
-    return linhas
-      .map((l) => ({ codigo: valor(l, 'codigo').toUpperCase(), comprador: valor(l, 'comprador'), cep: valor(l, 'zip') || valor(l, 'postal'),
-        motorista: valor(l, 'motorista'), sort_code: valor(l, 'sort') }))
-      .filter((p) => p.codigo);
-  }
 
   const publico = {
     BACKEND, ROTA_ENVIAR, ROTA_SITUACAO, TEMPLATE, MAX_CODIGOS, ErroDeConta,
     lerCodigos, lerCsv, nomeLimpo, contatosDoExport, digitosLocais, validarTelefone, telefoneLegivel,
-    montarTexto, montarEnvio, api, entrar, pedidosDoExport, ROLES_ATIVOS, ROLES_TODOS_POLOS,
+    montarTexto, montarEnvio, api, entrar, ROLES_ATIVOS,
     ROLES_ACAREACAO, papelDoToken, ehShopee, abaDe, conversasDaShopee, vencimento, statusPrazo, colunaDesfecho,
     tempoRestante, formatarNumero, dataCurta,
   };

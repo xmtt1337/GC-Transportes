@@ -87,11 +87,12 @@
   }
 
   // ── menu lateral ──────────────────────────────────────────────────────────────
-  // Dois grupos nossos, logo depois do grupo dos pedidos do SPX:
-  //   Ativos       (Disparar ativos, Conversas) — só SAC, admin e dev (o servidor barra os outros);
-  //   Conferência  (Vapt Vupt) — toda a operação (pedido do usuário, 19/11/2026).
+  // O grupo nosso, logo depois do grupo dos pedidos do SPX:
+  //   Ativos       (Disparar ativos, Conversas) — só SAC, admin e dev (o servidor barra os outros).
+  // A Conferência (Vapt Vupt) virou outra extensão, a XM - Conferência Shopee (20/11/2026). As
+  // classes dela são xm-conf-*: daqui o grupo dela é como mais um grupo do SPX (abrir um fecha o
+  // outro, clicar no item dela fecha a página daqui).
   const ICONE_ATIVOS = 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-3 11H7v-2h10v2zm0-3H7V8h10v2z';
-  const ICONE_CONFERENCIA = 'M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z';
   const SETA = 'M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z';
   const SVG = 'http://www.w3.org/2000/svg';
   let aberta = false;
@@ -103,11 +104,6 @@
       paginas: [{ chave: 'disparar', titulo: 'Disparar ativos' }, { chave: 'conversas', titulo: 'Conversas' }],
       // Sem conta entrada ainda aparece (é por ele que o SAC entra); com conta, só para quem usa ativos.
       visivel: (papel) => papel == null || R.ROLES_ATIVOS.includes(papel),
-    },
-    {
-      id: 'xm-conferencia-grupo', titulo: 'Conferência', icone: ICONE_CONFERENCIA,
-      paginas: [{ chave: 'vapt', titulo: 'Vapt Vupt' }],
-      visivel: () => true,
     },
   ];
   const PAGINAS = GRUPOS.flatMap((g) => g.paginas.map((p) => ({ ...p, grupo: g })));
@@ -243,7 +239,7 @@
   // ── configuração (página de opções da extensão: opcoes.html) ──────────────────
   // Liga e desliga cada menu nosso; vale na hora (storage.onChanged). O cargo continua valendo por
   // cima: quem não usa ativos não vê o grupo Ativos de jeito nenhum.
-  let menus = { disparar: true, conversas: true, vapt: true, aviso: true };
+  let menus = { disparar: true, conversas: true, aviso: true };
   const ligado = (chave) => menus[chave] !== false;
 
   function aplicarVisibilidade() {
@@ -261,7 +257,7 @@
   try {
     chrome.storage.local.get('menus').then(({ menus: salvos }) => { menus = { ...menus, ...(salvos || {}) }; aplicarVisibilidade(); }).catch(() => {});
     chrome.storage.onChanged.addListener((mud, area) => {
-      if (area === 'local' && mud.menus) { menus = { disparar: true, conversas: true, vapt: true, aviso: true, ...(mud.menus.newValue || {}) }; aplicarVisibilidade(); }
+      if (area === 'local' && mud.menus) { menus = { disparar: true, conversas: true, aviso: true, ...(mud.menus.newValue || {}) }; aplicarVisibilidade(); }
     });
   } catch { /* extensão recarregada sem F5: fica tudo visível */ }
 
@@ -309,7 +305,7 @@
     }
   }
 
-  // O que as paginas de Conversas e Vapt Vupt usam daqui.
+  // O que a pagina de Conversas usa daqui.
   const ctx = {
     R, esc, numero, dormir, LARANJA,
     pedirAoFundo: (...a) => pedirAoFundo(...a),
@@ -318,8 +314,8 @@
     aoEntrar: (r) => aplicarPapel(r && r.papel),
   };
 
-  // As paginas de outros arquivos: conversas.js (self.XMAtivosConversas) e vapt.js (self.XMAtivosVapt).
-  const MODULOS = { conversas: () => self.XMAtivosConversas, vapt: () => self.XMAtivosVapt };
+  // A pagina de outro arquivo: conversas.js (self.XMAtivosConversas).
+  const MODULOS = { conversas: () => self.XMAtivosConversas };
 
   function elementoDa(chave) {
     if (!elementos[chave]) {
@@ -354,6 +350,9 @@
     }
     const def = grupoDaPagina(chave);
     if (migalha) migalha.textContent = `${def.titulo}  /  ${PAGINAS.find((p) => p.chave === chave).titulo}`;
+    // Um grupo aberto por vez também quando a página abre sem passar pelo título (ex.: o aviso de
+    // mensagem nova abre Conversas): fecha os do SPX e o da XM - Conferência Shopee.
+    if (lis[def.id] && !lis[def.id].classList.contains('ssc-menu-opened')) fecharOsDoSpx();
     GRUPOS.forEach((g) => abrirGrupo(g.id, g.id === def.id));
     marcarItem(chave);
     if (chave === 'disparar') atualizarConta();
@@ -802,7 +801,7 @@
       const { logado, papel } = await pedirAoFundo('estado');
       if (papelAtual !== (logado ? papel : null)) aplicarPapel(logado ? papel : null);
       if (!logado) { ultimaVista = null; return; }
-      // Mensagem de cliente é coisa de quem usa os ativos; a operação (só Conferência) não pergunta.
+      // Mensagem de cliente é coisa de quem usa os ativos; o resto da operação não pergunta.
       if (!R.ROLES_ATIVOS.includes(papel)) return;
       if (!ligado('aviso')) return; // desligado na configuração da extensão
       const q = ultimaVista == null ? '' : `?desde=${ultimaVista}`;

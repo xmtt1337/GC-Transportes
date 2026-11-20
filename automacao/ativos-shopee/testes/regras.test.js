@@ -90,35 +90,6 @@ test('api: só a sessão vencida derruba o login; 403 é "sem acesso a esta part
     (e) => !(e instanceof R.ErroDeConta) && /outro polo/.test(e.message));
 });
 
-test('pedidosDoExport (Conferência): comprador, CEP, motorista e sort code', () => {
-  const csv = '﻿Order ID,Sort Code Name,Zipcode Name,Buyer Name,Buyer Phone,Postal Code,Driver Name\r\n'
-    + 'brteste1,,89000000,"Pessoa, Teste",,89000-000,Motorista Teste\r\nBRTESTE2,CA-1,,Outra Pessoa,,89000-001,\r\n';
-  assert.deepStrictEqual(R.pedidosDoExport(csv), [
-    { codigo: 'BRTESTE1', comprador: 'Pessoa, Teste', cep: '89000000', motorista: 'Motorista Teste', sort_code: '' },
-    { codigo: 'BRTESTE2', comprador: 'Outra Pessoa', cep: '89000-001', motorista: '', sort_code: 'CA-1' },
-  ]);
-});
-
-test('Vapt Vupt: pesquisa em lote divide o lote recusado e lista as ATs do dia', async () => {
-  const { rastrear, listarAts, faixaDoDia } = require('../extensao/spx.js');
-  const lotes = [];
-  const post = async (rota, corpo) => {
-    if (rota.includes('tracking_list')) {
-      lotes.push(corpo.search_id_list.length);
-      if (corpo.search_id_list.length > 300) throw new Error('grande demais');
-      return { list: corpo.search_id_list.map((c) => ({ shipment_id: c, current_station_received_time: 1, current_station_name: 'XPT_TESTE' })) };
-    }
-    return { total: 2, list: corpo.pageno === 1 ? [{ assignment_task_id: 'ATTESTE1', shipment_id: 'BR1, BR2', city: 'Cidade A' }, { assignment_task_id: 'ATTESTE2', shipment_id: 'BR3' }] : [] };
-  };
-  const codigos = Array.from({ length: 600 }, (_, i) => `BRTESTE${i}`);
-  const r = await rastrear(post, codigos);
-  assert.strictEqual(r.length, 600);
-  assert.ok(lotes.includes(500) && lotes.includes(250));
-  const ats = await listarAts(post, '2026-11-19', () => {}, async () => {});
-  assert.deepStrictEqual(ats.map((a) => [a.at, a.codigos]), [['ATTESTE1', ['BR1', 'BR2']], ['ATTESTE2', ['BR3']]]);
-  assert.strictEqual(faixaDoDia('2026-11-19'), `${Date.parse('2026-11-19T03:00:00Z') / 1000},${Date.parse('2026-11-19T03:00:00Z') / 1000 + 86399}`);
-});
-
 test('exportarPedidos: cria o export, espera ficar pronto e devolve o link', async () => {
   let vezes = 0;
   const chamar = async (metodo, rota, corpo) => {
@@ -176,8 +147,10 @@ test('opções: página registrada no manifest e um liga/desliga para cada menu'
   assert.deepStrictEqual(m.options_ui, { page: 'opcoes.html', open_in_tab: true });
   const html = fs.readFileSync(path.join(__dirname, '../extensao/opcoes.html'), 'utf8');
   const chaves = [...html.matchAll(/data-menu="([a-z]+)"/g)].map((x) => x[1]);
-  assert.deepStrictEqual(chaves, ['disparar', 'conversas', 'aviso', 'vapt']);
+  assert.deepStrictEqual(chaves, ['disparar', 'conversas', 'aviso']);
   // as chaves são as mesmas páginas do menu (ativos.js)
   const ativos = fs.readFileSync(path.join(__dirname, '../extensao/ativos.js'), 'utf8');
-  ['disparar', 'conversas', 'vapt'].forEach((k) => assert.ok(ativos.includes(`chave: '${k}'`), k));
+  ['disparar', 'conversas'].forEach((k) => assert.ok(ativos.includes(`chave: '${k}'`), k));
+  // a Conferência é outra extensão (XM - Conferência Shopee)
+  assert.ok(!ativos.includes("chave: 'vapt'"));
 });

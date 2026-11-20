@@ -1,0 +1,37 @@
+XM - Conferencia Shopee
+=======================
+
+A conferencia da viagem do dia dentro do SPX. Nao tem botao nem janelinha: aparece no menu
+lateral do SPX, logo abaixo de Pedidos (ou do grupo Ativos, se a XM - Ativos Shopee estiver
+instalada), no grupo:
+
+  Conferencia
+    Vapt Vupt  - a viagem de hoje contra o SPX: % AT vinculada, recebidos, divergencias, fora de
+                 abrangencia, fluxo hora a hora e o relatorio de divergencias.
+
+Ate 20/11/2026 o Vapt Vupt ficava dentro da XM - Ativos Shopee; foi separado para a conferencia
+nao ficar junto com o disparo de mensagens. As duas podem ficar instaladas juntas: cada uma tem o
+seu grupo no menu, abrir um fecha o outro, e cada uma tem o seu login.
+
+Tudo vem do proprio SPX (do sistema XMTT so o login):
+  1. painel AMH-LM: o numero da viagem que chega hoje (LT...). Se o painel nao responder, a viagem
+     sai da lista de Viagens de Carga Direta (a que termina no XPT e chega hoje);
+  2. Viagens de Carga Direta (Pendente, depois Finalizado): o tripId;
+  3. o anexo da viagem (xlsx, as colunas do Romaneiro): os BR desta estacao;
+  4. pesquisa em lote dos BR, ATs de hoje e o export de pedidos (comprador e CEP).
+Um checklist no canto de baixo mostra cada passo enquanto roda.
+
+A conta e feita na extensao e fica guardada neste Chrome (10 dias, por estacao). Conferir de novo
+so pesquisa os BR que ainda podem mudar.
+
+Fora de abrangencia: pacote fora de AT cujo CEP (5 primeiros digitos) nunca apareceu numa AT desta
+estacao nos ultimos 15 dias. A area vai sendo aprendida a cada Conferir agora, so com dados do SPX
+(no primeiro dia ela so conhece as ATs de hoje).
+
+Nao usa o "olho" do telefone e nao manda mensagem nenhuma.
+
+Entre com o usuario e a senha do sistema (o login fica dentro da propria pagina).
+
+Instalar
+chrome://extensions > Modo do desenvolvedor > Carregar sem compactacao > esta pasta "extensao".
+Depois de atualizar a extensao, de F5 no SPX.

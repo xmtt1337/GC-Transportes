@@ -2,7 +2,7 @@
 // Liga e desliga os menus que a extensão põe no SPX. Fica em chrome.storage.local ("menus"); o
 // ativos.js ouve a mudança e mostra ou esconde na hora, sem F5. Sem nada salvo, tudo aparece.
 
-const PADRAO = { disparar: true, conversas: true, vapt: true, aviso: true };
+const PADRAO = { disparar: true, conversas: true, aviso: true };
 let tempoSalvo = null;
 
 async function carregar() {

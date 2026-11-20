@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "XM - Conferência Shopee",
+  "version": "1.0",
+  "description": "Conferência da viagem do dia dentro do SPX (Conferência > Vapt Vupt): romaneio, AT vinculada, recebidos, divergências e abrangência, tudo lido do SPX.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArZ6V7hoHbGTRqGmlwWQl7NtkSvUpcqkjzVcgFaXymAxUlStAc+RqLetYtq4+x8UnlaIhYGQzLO2RKD4OrBuAnXQcevWgmMsR9bUJ5M+JzuvTkE2b9uAUeQwAxbdHMCyquRqluPnOAJeApXuKOsC3Vf+oM+1sYibFxpnjMgvQuBJfvHfQqiXEGmZPkdIPfN48ItQSEcRotZMzBhof7d5V9GrWO2rRXHq15WmgV4NXkGz1yJPaawJg/RyBr4UcD7JIdLCZi/+5juH/OAXqSfq4otfk9A/bcP6AjBdpvernBIEVr5dRhUTbvfDiA+GWbIpG1vt2vxd46kNQ43eUruFxFwIDAQAB",
+  "permissions": [
+    "storage",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "https://spx.shopee.com.br/*",
+    "https://*.susercontent.com/*",
+    "https://sistema-backend-i4uh.onrender.com/*"
+  ],
+  "background": {
+    "service_worker": "fundo.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://spx.shopee.com.br/*"
+      ],
+      "js": [
+        "spx.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://spx.shopee.com.br/*"
+      ],
+      "js": [
+        "regras.js",
+        "conferencia.js",
+        "vapt.js",
+        "menu.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "icons": {
+    "16": "img/icone-16.png",
+    "32": "img/icone-32.png",
+    "48": "img/icone-48.png",
+    "128": "img/icone-128.png"
+  }
+}

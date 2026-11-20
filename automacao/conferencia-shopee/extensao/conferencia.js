@@ -1,4 +1,4 @@
-// XM - Ativos Shopee: a conta do Vapt Vupt, feita aqui na extensao com dados so do SPX (3.0,
+// XM - Conferencia Shopee: a conta do Vapt Vupt, feita aqui na extensao com dados so do SPX (3.0,
 // 20/11/2026: "a conferencia nao pega nada do XMTT alem do login").
 //
 // Romaneio = a viagem do dia, do proprio SPX:

@@ -40,7 +40,6 @@ async function lerContatos(url) {
   return R.contatosDoExport(await baixarExport(url));
 }
 
-
 const tratar = {
   async estado() {
     const { token: t, nome, papel } = await chrome.storage.session.get(['token', 'nome', 'papel']);
@@ -75,17 +74,12 @@ const tratar = {
     return { estados };
   },
   // Conversas (/macros/whatsapp/...): so esse prefixo passa; o servidor decide o que a conta ve e
-  // pode fazer. O Vapt Vupt nao chama o sistema (desde a 3.0 a conta e toda na extensao).
+  // pode fazer.
   async sistema({ metodo, caminho, corpo }) {
     const m = String(metodo || 'GET').toUpperCase();
     const c = String(caminho || '');
     if (!['GET', 'POST'].includes(m) || !c.startsWith('/macros/whatsapp/') || c.includes('..')) throw new Error('Caminho não permitido.');
     return { dados: await chamarSistema(m, c, m === 'POST' ? (corpo || {}) : undefined) };
-  },
-  // Vapt Vupt: o export de pedidos da viagem, lido aqui (o link é do servidor de arquivos da
-  // Shopee) e devolvido à página: comprador, CEP, motorista e sort code. Não vai a lugar nenhum.
-  async pedidosConferencia({ url }) {
-    return { pedidos: R.pedidosDoExport(await baixarExport(String(url || ''))) };
   },
   async enviar({ corpo }) {
     const r = await chamarSistema('POST', R.ROTA_ENVIAR, corpo);

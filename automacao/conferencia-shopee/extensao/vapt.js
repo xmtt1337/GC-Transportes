@@ -1,4 +1,5 @@
-// XM - Ativos Shopee: a pagina "Vapt Vupt" (Conferencia > Vapt Vupt), no tema do SPX.
+// XM - Conferencia Shopee: a pagina "Vapt Vupt" (Conferencia > Vapt Vupt), no tema do SPX. Antes
+// ficava na XM - Ativos Shopee; separada em 20/11/2026 (o usuario achou arriscado juntas).
 //
 // A viagem do dia, toda pelo SPX (3.0, 20/11/2026: do sistema XMTT so o login): o romaneio vem
 // da viagem que o painel AMH-LM mostra hoje (anexo da viagem em Viagens de Carga Direta), contra
@@ -23,69 +24,69 @@
   const DUAS = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
 
   const CSS = `
-  .xm-ativos-pagina .xm-vv-barra { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .xm-ativos-pagina .xm-vv-barra select { height: 32px; border: 1px solid #e5e5e5; border-radius: 4px; padding: 0 8px; font: inherit; color: #333; background: #fff; }
-  .xm-ativos-pagina .xm-vv-lido { color: #999; font-size: 12px; margin-left: auto; }
-  .xm-ativos-pagina .xm-vv-viagem { color: #666; font-size: 13px; margin: 0 0 10px; }
+  .xm-conf-pagina .xm-vv-barra { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .xm-conf-pagina .xm-vv-barra select { height: 32px; border: 1px solid #e5e5e5; border-radius: 4px; padding: 0 8px; font: inherit; color: #333; background: #fff; }
+  .xm-conf-pagina .xm-vv-lido { color: #999; font-size: 12px; margin-left: auto; }
+  .xm-conf-pagina .xm-vv-viagem { color: #666; font-size: 13px; margin: 0 0 10px; }
   /* Checklist do Conferir agora, no canto de baixo (verde feito, âmbar andando ou aviso, vermelho erro). */
-  .xm-ativos-pagina .xm-vv-passos { position: fixed; right: 24px; bottom: 24px; z-index: 1000; width: 340px; background: #fff;
+  .xm-conf-pagina .xm-vv-passos { position: fixed; right: 24px; bottom: 24px; z-index: 1000; width: 340px; background: #fff;
     border-radius: 4px; box-shadow: 0 4px 18px rgba(0,0,0,.16); padding: 12px 14px; font-size: 12px; color: #333; }
-  .xm-ativos-pagina .xm-vv-passos-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; font-weight: 500; }
-  .xm-ativos-pagina .xm-vv-passos-cab button { border: 0; background: none; color: #999; cursor: pointer; font-size: 18px; line-height: 1; padding: 0 2px; }
-  .xm-ativos-pagina .xm-vv-passos ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
-  .xm-ativos-pagina .xm-vv-passos li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 7px; align-items: start; }
-  .xm-ativos-pagina .xm-vv-ic { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; margin-top: 1px;
+  .xm-conf-pagina .xm-vv-passos-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; font-weight: 500; }
+  .xm-conf-pagina .xm-vv-passos-cab button { border: 0; background: none; color: #999; cursor: pointer; font-size: 18px; line-height: 1; padding: 0 2px; }
+  .xm-conf-pagina .xm-vv-passos ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+  .xm-conf-pagina .xm-vv-passos li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 7px; align-items: start; }
+  .xm-conf-pagina .xm-vv-ic { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; margin-top: 1px;
     font-size: 11px; font-weight: 700; color: #fff; background: #e5e5e5; }
-  .xm-ativos-pagina .xm-vv-ic.xm-ok { background: #26a65b; }
-  .xm-ativos-pagina .xm-vv-ic.xm-andamento { background: #f5a623; animation: xm-vv-pulsa 1s ease-in-out infinite; }
-  .xm-ativos-pagina .xm-vv-ic.xm-aviso { background: #f5a623; }
-  .xm-ativos-pagina .xm-vv-ic.xm-erro { background: #ee4d2d; }
-  .xm-ativos-pagina .xm-vv-ic.xm-pulado { background: #d9d9d9; }
+  .xm-conf-pagina .xm-vv-ic.xm-ok { background: #26a65b; }
+  .xm-conf-pagina .xm-vv-ic.xm-andamento { background: #f5a623; animation: xm-vv-pulsa 1s ease-in-out infinite; }
+  .xm-conf-pagina .xm-vv-ic.xm-aviso { background: #f5a623; }
+  .xm-conf-pagina .xm-vv-ic.xm-erro { background: #ee4d2d; }
+  .xm-conf-pagina .xm-vv-ic.xm-pulado { background: #d9d9d9; }
   @keyframes xm-vv-pulsa { 50% { opacity: .45; } }
-  .xm-ativos-pagina .xm-vv-pt { color: #333; }
-  .xm-ativos-pagina .xm-vv-pt.xm-espera { color: #aaa; }
-  .xm-ativos-pagina .xm-vv-pd { display: block; color: #999; overflow-wrap: anywhere; }
-  .xm-ativos-pagina .xm-vv-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-  @media (max-width: 1300px) { .xm-ativos-pagina .xm-vv-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  .xm-ativos-pagina .xm-vv-card { position: relative; background: #fff; border-radius: 4px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); min-width: 0; }
-  .xm-ativos-pagina .xm-vv-baixar-card { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border: 0; border-radius: 4px;
+  .xm-conf-pagina .xm-vv-pt { color: #333; }
+  .xm-conf-pagina .xm-vv-pt.xm-espera { color: #aaa; }
+  .xm-conf-pagina .xm-vv-pd { display: block; color: #999; overflow-wrap: anywhere; }
+  .xm-conf-pagina .xm-vv-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 1300px) { .xm-conf-pagina .xm-vv-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .xm-conf-pagina .xm-vv-card { position: relative; background: #fff; border-radius: 4px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); min-width: 0; }
+  .xm-conf-pagina .xm-vv-baixar-card { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border: 0; border-radius: 4px;
     background: #ee4d2d; color: #fff; cursor: pointer; display: grid; place-items: center; padding: 0; }
-  .xm-ativos-pagina .xm-vv-baixar-card:hover { background: #d73211; }
-  .xm-ativos-pagina .xm-vv-baixar-card svg { width: 18px; height: 18px; }
-  .xm-ativos-pagina .xm-vv-rot { color: #666; font-size: 12px; }
-  .xm-ativos-pagina .xm-vv-val { color: #333; font-size: 24px; font-weight: 500; line-height: 1.3; margin: 4px 0 2px; white-space: nowrap; }
-  .xm-ativos-pagina .xm-vv-val.xm-atencao { color: #ee4d2d; }
-  .xm-ativos-pagina .xm-vv-sub { color: #999; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .xm-conf-pagina .xm-vv-baixar-card:hover { background: #d73211; }
+  .xm-conf-pagina .xm-vv-baixar-card svg { width: 18px; height: 18px; }
+  .xm-conf-pagina .xm-vv-rot { color: #666; font-size: 12px; }
+  .xm-conf-pagina .xm-vv-val { color: #333; font-size: 24px; font-weight: 500; line-height: 1.3; margin: 4px 0 2px; white-space: nowrap; }
+  .xm-conf-pagina .xm-vv-val.xm-atencao { color: #ee4d2d; }
+  .xm-conf-pagina .xm-vv-sub { color: #999; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Meio arco da % AT vinculada (o mesmo da XM - Operação): 157 de comprimento, --pct x 1,5708 é o pintado. */
-  .xm-ativos-pagina .xm-vv-arco { --pct: 0; position: relative; width: 150px; height: 84px; margin: 6px auto 2px; }
-  .xm-ativos-pagina .xm-vv-arco svg { display: block; width: 100%; height: 100%; overflow: visible; }
-  .xm-ativos-pagina .xm-vv-arco path { fill: none; stroke-width: 12; stroke-linecap: round; }
-  .xm-ativos-pagina .xm-vv-arco .xm-arco-fundo { stroke: #f0f0f0; }
-  .xm-ativos-pagina .xm-vv-arco .xm-arco-valor { stroke: #ee4d2d; stroke-dasharray: calc(var(--pct) * 1.5708px) 400px; }
-  .xm-ativos-pagina .xm-vv-arco.xm-zero .xm-arco-valor { display: none; }
-  .xm-ativos-pagina .xm-vv-arco span { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 22px; font-weight: 500; color: #333; }
-  .xm-ativos-pagina .xm-vv-card-at .xm-vv-sub { text-align: center; }
-  .xm-ativos-pagina .xm-vv-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-  @media (max-width: 1100px) { .xm-ativos-pagina .xm-vv-tres { grid-template-columns: 1fr; } }
-  .xm-ativos-pagina .xm-vv-tres .xm-cartao { margin-bottom: 0; }
-  .xm-ativos-pagina .xm-vv-h { font-size: 15px; font-weight: 500; color: #333; margin: 0 0 2px; }
-  .xm-ativos-pagina .xm-vv-hsub { color: #999; font-size: 12px; margin: 0 0 12px; }
-  .xm-ativos-pagina .xm-vv-barras { display: grid; gap: 8px; }
-  .xm-ativos-pagina .xm-vv-linha { display: grid; grid-template-columns: minmax(90px, 160px) minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 13px; color: #333; }
-  .xm-ativos-pagina .xm-vv-linha.xm-clica { cursor: pointer; padding: 4px 6px; margin: 0 -6px; border-radius: 4px; }
-  .xm-ativos-pagina .xm-vv-linha.xm-clica:hover, .xm-ativos-pagina .xm-vv-linha.xm-ativa { background: #fff7f4; }
-  .xm-ativos-pagina .xm-vv-linha span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .xm-ativos-pagina .xm-vv-linha b { font-weight: 500; text-align: right; }
-  .xm-ativos-pagina .xm-vv-t { height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
-  .xm-ativos-pagina .xm-vv-t i { display: block; height: 100%; background: #ee4d2d; border-radius: 4px; }
-  .xm-ativos-pagina .xm-vv-t.xm-cinza i { background: #b8c0c8; }
-  .xm-ativos-pagina .xm-vv-vazio { color: #bbb; font-size: 13px; padding: 8px 0; }
-  .xm-ativos-pagina .xm-vv-fluxo { overflow-x: auto; }
-  .xm-ativos-pagina .xm-vv-fluxo table { border-collapse: separate; border-spacing: 4px; font-size: 12px; }
-  .xm-ativos-pagina .xm-vv-fluxo th { color: #999; font-weight: 500; padding: 2px 6px; white-space: nowrap; }
-  .xm-ativos-pagina .xm-vv-fluxo td { min-width: 46px; padding: 6px 4px; text-align: center; border-radius: 4px; color: #333; }
-  .xm-ativos-pagina .xm-vv-fluxo td.xm-et { text-align: left; font-weight: 500; white-space: nowrap; padding-right: 10px; }
-  .xm-ativos-pagina .xm-vv-fluxo td.xm-tot { font-weight: 500; background: #fafafa; }
+  .xm-conf-pagina .xm-vv-arco { --pct: 0; position: relative; width: 150px; height: 84px; margin: 6px auto 2px; }
+  .xm-conf-pagina .xm-vv-arco svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .xm-conf-pagina .xm-vv-arco path { fill: none; stroke-width: 12; stroke-linecap: round; }
+  .xm-conf-pagina .xm-vv-arco .xm-arco-fundo { stroke: #f0f0f0; }
+  .xm-conf-pagina .xm-vv-arco .xm-arco-valor { stroke: #ee4d2d; stroke-dasharray: calc(var(--pct) * 1.5708px) 400px; }
+  .xm-conf-pagina .xm-vv-arco.xm-zero .xm-arco-valor { display: none; }
+  .xm-conf-pagina .xm-vv-arco span { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 22px; font-weight: 500; color: #333; }
+  .xm-conf-pagina .xm-vv-card-at .xm-vv-sub { text-align: center; }
+  .xm-conf-pagina .xm-vv-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 1100px) { .xm-conf-pagina .xm-vv-tres { grid-template-columns: 1fr; } }
+  .xm-conf-pagina .xm-vv-tres .xm-cartao { margin-bottom: 0; }
+  .xm-conf-pagina .xm-vv-h { font-size: 15px; font-weight: 500; color: #333; margin: 0 0 2px; }
+  .xm-conf-pagina .xm-vv-hsub { color: #999; font-size: 12px; margin: 0 0 12px; }
+  .xm-conf-pagina .xm-vv-barras { display: grid; gap: 8px; }
+  .xm-conf-pagina .xm-vv-linha { display: grid; grid-template-columns: minmax(90px, 160px) minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 13px; color: #333; }
+  .xm-conf-pagina .xm-vv-linha.xm-clica { cursor: pointer; padding: 4px 6px; margin: 0 -6px; border-radius: 4px; }
+  .xm-conf-pagina .xm-vv-linha.xm-clica:hover, .xm-conf-pagina .xm-vv-linha.xm-ativa { background: #fff7f4; }
+  .xm-conf-pagina .xm-vv-linha span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .xm-conf-pagina .xm-vv-linha b { font-weight: 500; text-align: right; }
+  .xm-conf-pagina .xm-vv-t { height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+  .xm-conf-pagina .xm-vv-t i { display: block; height: 100%; background: #ee4d2d; border-radius: 4px; }
+  .xm-conf-pagina .xm-vv-t.xm-cinza i { background: #b8c0c8; }
+  .xm-conf-pagina .xm-vv-vazio { color: #bbb; font-size: 13px; padding: 8px 0; }
+  .xm-conf-pagina .xm-vv-fluxo { overflow-x: auto; }
+  .xm-conf-pagina .xm-vv-fluxo table { border-collapse: separate; border-spacing: 4px; font-size: 12px; }
+  .xm-conf-pagina .xm-vv-fluxo th { color: #999; font-weight: 500; padding: 2px 6px; white-space: nowrap; }
+  .xm-conf-pagina .xm-vv-fluxo td { min-width: 46px; padding: 6px 4px; text-align: center; border-radius: 4px; color: #333; }
+  .xm-conf-pagina .xm-vv-fluxo td.xm-et { text-align: left; font-weight: 500; white-space: nowrap; padding-right: 10px; }
+  .xm-conf-pagina .xm-vv-fluxo td.xm-tot { font-weight: 500; background: #fafafa; }
   `;
 
   let ctx = null;
@@ -115,7 +116,7 @@
       (document.head || document.documentElement).append(s);
     }
     raiz = document.createElement('div');
-    raiz.className = 'xm-ativos-pagina';
+    raiz.className = 'xm-conf-pagina';
     raiz.innerHTML = `
       <div class="xm-cartao">
         <span class="xm-conta xm-vv-conta"></span>
@@ -185,7 +186,7 @@
       $('.xm-vv-conta').textContent = '';
       return;
     }
-    $('.xm-vv-conta').innerHTML = `${esc(nome)} · <button class="xm-link xm-cfg" type="button">Configurar</button> · <button class="xm-link xm-vv-sair" type="button">Sair</button>`;
+    $('.xm-vv-conta').innerHTML = `${esc(nome)} · <button class="xm-link xm-vv-sair" type="button">Sair</button>`;
     $('.xm-vv-sair').addEventListener('click', () => ctx.pedirAoFundo('sair').then(() => { ctx.aoEntrar(null); mostrarConta(false); status(''); }));
   }
 
@@ -580,5 +581,5 @@
 
   function aoSair() {}
 
-  self.XMAtivosVapt = { montar, aoMostrar, aoSair };
+  self.XMConfVapt = { montar, aoMostrar, aoSair };
 })();
