@@ -40,3 +40,14 @@ test("cartão por transportadora continua com o nome dela", () => {
   const html = carregar()([{ entregador: "Bruno Teste", transportadora: "loggi" }]);
   assert.match(html, />Loggi</);
 });
+
+test("Videira com troca: cartão 'Demais transportadoras' + cartão da transportadora com o entregador dela", () => {
+  const html = carregar()([
+    { entregador: "Ana Teste", bairro: "Centro TESTE", sigla: "V-01", transportadora: "geral", rotulo: "Demais transportadoras" },
+    { entregador: "Bruno Teste", bairro: "Centro TESTE", sigla: "V-01", transportadora: "loggi" },
+  ]);
+  assert.match(html, />Demais transportadoras</);
+  assert.match(html, />Loggi</);
+  assert.strictEqual((html.match(/bip-result-card/g) || []).length, 2);
+  assert.ok(html.indexOf("Ana Teste") < html.indexOf("Bruno Teste"));
+});

@@ -315,7 +315,9 @@ function _bipCorTransp(t) { return _TRANSP_CORES[t] || '#3a86ff'; }
 function _bipRenderCepCards(linhas) {
     return linhas.map(d => {
         const cor        = _bipCorTransp(d.transportadora);
-        const transpNome = _TRANSP_NOMES[d.transportadora] || d.transportadora || '—';
+        // rotulo: "Demais transportadoras" quando o bairro tem entregador próprio de
+        // alguma transportadora (planejamento por transportadora de Videira).
+        const transpNome = d.rotulo || _TRANSP_NOMES[d.transportadora] || d.transportadora || '—';
         const temEnt     = !!d.entregador;
         const detalhes   = [
             d.cidade ? _bipLinha('Cidade', d.cidade) : '',

@@ -22,6 +22,11 @@ let _pvTransportadora = _PV_POR_TRANSPORTADORA ? "loggi" : "geral";
 let _pvLinhas   = [];
 let _pvUsuarios = [];
 let _pvView     = "bairro"; // 'bairro' | 'entregador'
+// Planejamento POR TRANSPORTADORA (só Videira, pedido de 20/11/2026): o servidor manda a
+// lista [{chave, rotulo}] e, em cada bairro, `transportadoras` { shopee: "Fulano" | "" }.
+// Vazio = igual a todas (a coluna C). null = unidade no modelo geral (Caçador).
+let _pvTransps  = null;
+const _PV_IGUAL = "Igual a todas";
 
 function abrirPlanejamentoVideira(event, unidade) {
     if (event) event.preventDefault();
@@ -91,6 +96,8 @@ function _pvCarregar() {
         if (!b.linhas || !b.linhas.length) { skFim(empty, "Nenhum bairro encontrado nesta aba."); return; }
         _pvLinhas   = b.linhas;
         _pvUsuarios = b.usuarios || [];
+        _pvTransps  = Array.isArray(b.por_transportadora) && b.por_transportadora.length ? b.por_transportadora : null;
+        document.getElementById("pv-th-entregador").textContent = _pvTransps ? "Entregador (todas as transportadoras)" : "Entregador";
         empty.style.display = "none";
         content.style.display = "";
         _pvFiltrarLocal();
@@ -130,38 +137,101 @@ function _pvAgrupar(linhas) {
     return { grupos, vazios: vazios.sort(_pvOrdemSigla) };
 }
 
+/**
+ * Quem faz cada bairro, já considerando o planejamento por transportadora: o bairro
+ * vira um item por entregador, com `escopo` dizendo em quais transportadoras.
+ *   Centro: todas = Ana, Loggi = Bruno  →  Ana "menos Loggi"  +  Bruno "só Loggi"
+ * Transportadora com o mesmo nome da "todas" não conta como exceção. Sem lista de
+ * transportadoras (Caçador), devolve as linhas como vieram.
+ * @param {Array} linhas
+ * @param {?Array<{chave, rotulo}>} transps
+ * @return {Array} Itens {linha, bairro, sigla, entregador, transp?: string[], escopo?: string}
+ */
+function _pvAtribuicoes(linhas, transps) {
+    if (!transps || !transps.length) return linhas || [];
+    const itens = [];
+    (linhas || []).forEach(l => {
+        const t = l.transportadoras || {};
+        const proprias = transps.filter(x => t[x.chave] && t[x.chave] !== l.entregador);
+        if (!proprias.length) { itens.push({ ...l }); return; }
+
+        const porNome = new Map();
+        proprias.forEach(x => {
+            if (!porNome.has(t[x.chave])) porNome.set(t[x.chave], []);
+            porNome.get(t[x.chave]).push(x);
+        });
+        porNome.forEach((xs, nome) => itens.push({
+            ...l, entregador: nome, transp: xs.map(x => x.chave), escopo: "só " + xs.map(x => x.rotulo).join(", "),
+        }));
+        // A "todas" fica com o que sobrou; se as cinco têm dono próprio, não sobra nada pra ela.
+        if (proprias.length < transps.length) {
+            itens.push({ ...l, escopo: "menos " + proprias.map(x => x.rotulo).join(", ") });
+        }
+    });
+    return itens;
+}
+
+function _pvComboHtml(l, transp) {
+    const valor = transp ? ((l.transportadoras || {})[transp] || "") : (l.entregador || "");
+    const vazio = transp ? _PV_IGUAL : "Não Definido";
+    const classe = !valor ? (transp ? " pv-igual" : " pv-nao-definido") : "";
+    return `<input type="text" class="fech-select pv-combo-input${classe}" autocomplete="off"
+        value="${_pvEsc(valor || vazio)}" data-linha="${l.linha}"${transp ? ` data-transp="${_pvEsc(transp)}"` : ""}
+        oninput="_pvComboFiltrar(this)" onfocus="_pvComboAbrir(this)" onblur="_pvComboBlur(this)">`;
+}
+
 function _pvRenderizar(linhas) {
     _pvAtualizarContador(linhas);
 
     document.getElementById("pv-tbody").innerHTML = linhas.map(l => {
-        const exibicao    = l.entregador || "Não Definido";
-        const naoDefinido = !l.entregador;
-        return `<tr>
+        const bairro = `<tr${_pvTransps ? ' class="pv-tr-bairro"' : ""}>
             <td class="adm-nf-entregador">${_pvEsc(l.bairro) || "—"}</td>
             <td><span class="pv-sigla">${_pvEsc(l.sigla) || "—"}</span></td>
-            <td>
-                <input type="text" class="fech-select pv-combo-input${naoDefinido ? " pv-nao-definido" : ""}" autocomplete="off"
-                    value="${_pvEsc(exibicao)}" data-linha="${l.linha}"
-                    oninput="_pvComboFiltrar(this)" onfocus="_pvComboAbrir(this)" onblur="_pvComboBlur(this)">
-            </td>
+            <td>${_pvComboHtml(l)}</td>
         </tr>`;
+        if (!_pvTransps) return bairro;
+        // Videira: uma linha por transportadora embaixo do bairro. Sem sigla não dá pra
+        // achar o bairro na planilha de CEPs com segurança — o servidor recusaria.
+        if (!l.sigla) {
+            return bairro + `<tr class="pv-tr-transp pv-tr-fim"><td colspan="3" class="pv-sem-sigla">Sem sigla na planilha: coloque a sigla para separar por transportadora.</td></tr>`;
+        }
+        return bairro + _pvTransps.map((t, i) => `<tr class="pv-tr-transp${i === _pvTransps.length - 1 ? " pv-tr-fim" : ""}">
+            <td class="pv-transp-nome">${_pvEsc(t.rotulo)}</td>
+            <td></td>
+            <td>${_pvComboHtml(l, t.chave)}</td>
+        </tr>`).join("");
     }).join("");
 }
 
 // ───── Combobox de busca do entregador (só aceita nome que esteja na lista de usuários) ─────
 let _pvComboLinha   = null;
 let _pvComboInputEl = null;
+let _pvComboTransp  = "";   // "" = a "todas" (coluna C); senão a chave da transportadora
 
-function _pvOpcoesFiltradas(termo) {
+/** Texto da opção "vazia": "Não Definido" na todas, "Igual a todas" numa transportadora. */
+function _pvRotuloVazio(transp) {
+    return transp ? _PV_IGUAL : "Não Definido";
+}
+
+/** Valor salvo hoje no campo (todas ou a transportadora), "" se vazio. */
+function _pvValorAtual(linha, transp) {
+    const item = _pvLinhas.find(l => l.linha === linha);
+    if (!item) return "";
+    return transp ? ((item.transportadoras || {})[transp] || "") : (item.entregador || "");
+}
+
+function _pvOpcoesFiltradas(termo, transp) {
+    const vazio = _pvRotuloVazio(transp);
     const t = (termo || "").trim().toLowerCase();
-    const todas = ["Não Definido", ..._pvUsuarios];
-    if (!t || t === "não definido") return todas;
+    const todas = [vazio, ..._pvUsuarios];
+    if (!t || t === vazio.toLowerCase()) return todas;
     return todas.filter(u => u.toLowerCase().includes(t));
 }
 
 function _pvComboAbrir(inputEl) {
     _pvComboLinha   = parseInt(inputEl.dataset.linha);
     _pvComboInputEl = inputEl;
+    _pvComboTransp  = inputEl.dataset.transp || "";
     inputEl.select();
 
     const pop = document.getElementById("pv-combo-pop");
@@ -177,11 +247,11 @@ function _pvComboAbrir(inputEl) {
     pop.style.left  = left + "px";
     pop.style.width = largura + "px";
     pop.style.display = "block";
-    _pvComboRenderLista(_pvOpcoesFiltradas(inputEl.value));
+    _pvComboRenderLista(_pvOpcoesFiltradas(inputEl.value, _pvComboTransp));
 }
 
 function _pvComboFiltrar(inputEl) {
-    _pvComboRenderLista(_pvOpcoesFiltradas(inputEl.value));
+    _pvComboRenderLista(_pvOpcoesFiltradas(inputEl.value, inputEl.dataset.transp || ""));
 }
 
 function _pvComboRenderLista(opcoes) {
@@ -199,33 +269,34 @@ function _pvComboEscolher(nome) {
     if (!_pvComboInputEl || _pvComboLinha === null) return;
     const inputEl = _pvComboInputEl;
     const linha   = _pvComboLinha;
+    const transp  = _pvComboTransp;
     inputEl.value = nome;
     _pvComboFechar();
-    const item = _pvLinhas.find(l => l.linha === linha);
-    const atual = (item && item.entregador) || "Não Definido";
-    if (nome !== atual) _pvSalvar(linha, nome === "Não Definido" ? "" : nome, inputEl);
+    const valor = nome === _pvRotuloVazio(transp) ? "" : nome;
+    if (valor !== _pvValorAtual(linha, transp)) _pvSalvar(linha, valor, inputEl, transp);
 }
 
 function _pvComboBlur(inputEl) {
     // Pequeno atraso para o onmousedown do item da lista disparar antes do blur fechar tudo
     setTimeout(() => {
         _pvComboFechar();
-        const linha = parseInt(inputEl.dataset.linha);
-        const item  = _pvLinhas.find(l => l.linha === linha);
-        const atual = (item && item.entregador) || "Não Definido";
+        const linha  = parseInt(inputEl.dataset.linha);
+        const transp = inputEl.dataset.transp || "";
+        const vazio  = _pvRotuloVazio(transp);
+        const atual  = _pvValorAtual(linha, transp);
         const digitado = inputEl.value.trim();
 
-        if (digitado === "" || digitado === "Não Definido") {
-            inputEl.value = "Não Definido";
-            if (atual !== "Não Definido") _pvSalvar(linha, "", inputEl);
+        if (digitado === "" || digitado === vazio) {
+            inputEl.value = vazio;
+            if (atual) _pvSalvar(linha, "", inputEl, transp);
             return;
         }
         // Só aceita texto que bata exatamente com um nome da lista de usuários
         if (!_pvUsuarios.includes(digitado)) {
-            inputEl.value = atual;
+            inputEl.value = atual || vazio;
             return;
         }
-        if (digitado !== atual) _pvSalvar(linha, digitado, inputEl);
+        if (digitado !== atual) _pvSalvar(linha, digitado, inputEl, transp);
     }, 150);
 }
 
@@ -234,6 +305,7 @@ function _pvComboFechar() {
     pop.style.display = "none";
     _pvComboLinha   = null;
     _pvComboInputEl = null;
+    _pvComboTransp  = "";
 }
 
 // Chamada crua da API — usada tanto pelo campo de busca quanto pelo arrastar-e-soltar
@@ -245,16 +317,34 @@ function _pvSalvarAPI(linha, entregador) {
     }).then(r => r.json());
 }
 
-function _pvSalvar(linha, entregador, inputEl) {
+// Entregador de uma transportadora num bairro (Videira). O bairro vai por sigla + nome,
+// não pela linha: é assim que o servidor acha os CEPs dele na planilha de CEPs.
+function _pvSalvarTranspAPI(linha, transp, entregador) {
+    const item = _pvLinhas.find(l => l.linha === linha) || {};
+    return fetch(`${API}/videira/planejamento/transportadora`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ unidade: _pvUnidade, sigla: item.sigla, bairro: item.bairro, transportadora: transp, entregador })
+    }).then(r => r.json());
+}
+
+/** Atualiza o estado local depois de gravar (todas ou uma transportadora). */
+function _pvGuardarLocal(linha, entregador, transp) {
+    const item = _pvLinhas.find(l => l.linha === linha);
+    if (!item) return;
+    if (!transp) { item.entregador = entregador; return; }
+    item.transportadoras = { ...(item.transportadoras || {}), [transp]: entregador };
+}
+
+function _pvSalvar(linha, entregador, inputEl, transp) {
     inputEl.disabled = true;
-    _pvSalvarAPI(linha, entregador)
+    (transp ? _pvSalvarTranspAPI(linha, transp, entregador) : _pvSalvarAPI(linha, entregador))
     .then(d => {
         inputEl.disabled = false;
-        if (d.error) { gcAlert(d.error); return; }
+        if (d.error) { gcAlert(d.error); inputEl.value = _pvValorAtual(linha, transp) || _pvRotuloVazio(transp); return; }
         // Atualiza estado local para o filtro/revalidação continuar refletindo o valor salvo
-        const item = _pvLinhas.find(l => l.linha === linha);
-        if (item) item.entregador = entregador;
-        inputEl.classList.toggle("pv-nao-definido", !entregador);
+        _pvGuardarLocal(linha, entregador, transp);
+        inputEl.classList.toggle(transp ? "pv-igual" : "pv-nao-definido", !entregador);
         inputEl.style.borderColor = "rgba(34,197,94,0.6)";
         setTimeout(() => { inputEl.style.borderColor = ""; }, 900);
         _pvAtualizarContador();
@@ -293,7 +383,9 @@ function _pvLinhasFiltradas() {
     return !termo ? _pvLinhas : _pvLinhas.filter(l =>
         (l.bairro     || "").toLowerCase().includes(termo) ||
         (l.sigla      || "").toLowerCase().includes(termo) ||
-        (l.entregador || "").toLowerCase().includes(termo)
+        (l.entregador || "").toLowerCase().includes(termo) ||
+        // Videira: achar também quem só faz uma transportadora no bairro.
+        Object.values(l.transportadoras || {}).some(n => (n || "").toLowerCase().includes(termo))
     );
 }
 
@@ -310,10 +402,14 @@ function _pvFiltrarLocal() {
 // contrato com o arrastar-e-soltar mais abaixo.
 function _pvRenderizarPorEntregador(linhas) {
     _pvAtualizarContador(linhas);
-    const { grupos, vazios } = _pvAgrupar(linhas);
+    const { grupos, vazios } = _pvAgrupar(_pvAtribuicoes(linhas, _pvTransps));
 
-    const chips = itens => itens.map(i => `<span class="pv-bairro-chip" data-linha="${i.linha}">`
-        + `<span class="sigla">${_pvEsc(i.sigla) || "—"}</span>${_pvEsc(i.bairro) || "—"}</span>`).join("");
+    // data-transp: bairro que o entregador faz só em algumas transportadoras (Videira) —
+    // arrastar move só essas; sem ele, arrastar move a "todas".
+    const chips = itens => itens.map(i => `<span class="pv-bairro-chip" data-linha="${i.linha}"`
+        + `${i.transp ? ` data-transp="${_pvEsc(i.transp.join(","))}"` : ""}>`
+        + `<span class="sigla">${_pvEsc(i.sigla) || "—"}</span>${_pvEsc(i.bairro) || "—"}`
+        + `${i.escopo ? `<span class="pv-escopo">${_pvEsc(i.escopo)}</span>` : ""}</span>`).join("");
     const linha = (nome, itens, vazio) => `
         <div class="pv-driver-card${vazio ? " pv-driver-vazio" : ""}" data-nome="${vazio ? "" : _pvEsc(nome)}">
             <div class="pv-driver-name">${_pvEsc(nome)}</div>
@@ -363,10 +459,13 @@ function _pvHtmlImpressao(linhas, unidade, quando, filtro, dia) {
     const corpo = todos.map(g => `<tbody${g.vazio ? ' class="vazio"' : ""}>` + g.itens.map((i, n) => `<tr>`
         + (n === 0 ? `<td class="ent" rowspan="${g.itens.length}"><b>${_pvEsc(g.nome)}</b>`
             + `<small>${g.itens.length} bairro${g.itens.length !== 1 ? "s" : ""}</small></td>` : "")
-        + `<td class="sig">${_pvEsc(i.sigla) || "—"}</td><td>${_pvEsc(i.bairro) || "—"}</td></tr>`).join("") + `</tbody>`).join("");
+        + `<td class="sig">${_pvEsc(i.sigla) || "—"}</td><td>${_pvEsc(i.bairro) || "—"}`
+        + `${i.escopo ? ` <span class="esc">(${_pvEsc(i.escopo)})</span>` : ""}</td></tr>`).join("") + `</tbody>`).join("");
 
+    // Conta bairros, não itens: no planejamento por transportadora um bairro vira vários.
+    const nBairros = new Set(linhas.map(l => l.linha)).size;
     const resumo = [
-        `${linhas.length} bairro${linhas.length !== 1 ? "s" : ""}`,
+        `${nBairros} bairro${nBairros !== 1 ? "s" : ""}`,
         `${grupos.length} entregador${grupos.length !== 1 ? "es" : ""}`,
         vazios.length ? `${vazios.length} sem entregador` : "",
         filtro ? `filtro: “${_pvEsc(filtro)}”` : "",
@@ -390,6 +489,7 @@ function _pvHtmlImpressao(linhas, unidade, quando, filtro, dia) {
     td.ent { width: 40%; }
     td.ent b { display: block; font-size: 12.5px; }
     td.ent small { color: #666; font-size: 10.5px; }
+    .esc { color: #555; font-size: 11px; }
     td.sig { width: 64px; font-family: Consolas, "Courier New", monospace; font-weight: bold; white-space: nowrap; }
     tbody.vazio td.ent b { font-style: italic; }
 </style></head><body>
@@ -406,7 +506,7 @@ function _pvImprimir() {
 
     const agora  = new Date();
     const quando = agora.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-    const html = _pvHtmlImpressao(linhas, _PV_UNIDADE_LABEL[_pvUnidade] || _pvUnidade, quando,
+    const html = _pvHtmlImpressao(_pvAtribuicoes(linhas, _pvTransps), _PV_UNIDADE_LABEL[_pvUnidade] || _pvUnidade, quando,
         document.getElementById("pv-filtro-input").value.trim(), _pvDiaDaRota(agora));
 
     // Iframe escondido em vez de janela nova: abre direto a caixa de impressão, sem
@@ -593,8 +693,11 @@ function _pvDragSoltar(e) {
     _pvDragFinalizar(chip, overCard);
 
     const novoNome  = overCard ? overCard.dataset.nome : null;
-    const item      = _pvLinhas.find(l => l.linha === linha);
-    const nomeAtual = item ? item.entregador : null;
+    // Nome atual = o do cartão de onde o chip saiu: no planejamento por transportadora
+    // (Videira) o mesmo bairro aparece em mais de um entregador.
+    const origem    = chip.closest(".pv-driver-card");
+    const nomeAtual = origem ? origem.dataset.nome : null;
+    const transps   = chip.dataset.transp ? chip.dataset.transp.split(",") : [];
 
     if (overCard && novoNome && novoNome !== nomeAtual) {
         // Drop válido: anima o chip "encaixando" no card de destino e confirma no servidor
@@ -607,7 +710,7 @@ function _pvDragSoltar(e) {
         destLeft = Math.max(4, Math.min(destLeft, window.innerWidth  - ghostRect.width  - 4));
         destTop  = Math.max(4, Math.min(destTop,  window.innerHeight - ghostRect.height - 4));
         _pvDragAnimarGhostAte(ghost, destLeft, destTop, { opacity: "0", transform: "scale(0.35) rotate(0deg)" });
-        _pvReatribuirPorDrag(linha, novoNome);
+        _pvReatribuirPorDrag(linha, novoNome, transps);
     } else {
         // Drop inválido (fora de um card, ou no próprio card de origem): volta animado
         _pvDragAnimarGhostAte(ghost, startLeft, startTop, { transform: "scale(1) rotate(0deg)" });
@@ -620,11 +723,15 @@ function _pvDragCancelar() {
     _pvDragForcarLimpeza();
 }
 
-function _pvReatribuirPorDrag(linha, novoEntregador) {
-    return _pvSalvarAPI(linha, novoEntregador).then(d => {
-        if (d.error) { gcAlert(d.error); return; }
-        const item = _pvLinhas.find(l => l.linha === linha);
-        if (item) item.entregador = novoEntregador;
+function _pvReatribuirPorDrag(linha, novoEntregador, transps) {
+    // Sem transportadora: move a "todas". Com: move só as dessas transportadoras.
+    const gravacoes = transps && transps.length
+        ? transps.map(t => _pvSalvarTranspAPI(linha, t, novoEntregador).then(d => ({ d, t })))
+        : [_pvSalvarAPI(linha, novoEntregador).then(d => ({ d, t: "" }))];
+    return Promise.all(gravacoes).then(rs => {
+        const erro = rs.find(r => r.d.error);
+        rs.filter(r => !r.d.error).forEach(r => _pvGuardarLocal(linha, novoEntregador, r.t));
+        if (erro) gcAlert(erro.d.error);
         _pvFiltrarLocal();
     }).catch(() => gcAlert("Erro ao mover o bairro. Tente novamente."));
 }

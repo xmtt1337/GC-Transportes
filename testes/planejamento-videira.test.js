@@ -21,6 +21,7 @@ const ACESSOR = `
   transportadora: _pvTransportadora,
   agrupar: (l) => JSON.stringify(_pvAgrupar(l)),
   folha: _pvHtmlImpressao,
+  atribuicoes: (l, t) => JSON.stringify(_pvAtribuicoes(l, t)),
   // Data montada dentro do vm (o Date de fora é de outro "mundo" pro toLocaleDateString).
   diaDaRota: (a, m, d, h) => JSON.stringify(_pvDiaDaRota(new Date(a, m - 1, d, h || 0))),
 };`;
@@ -131,4 +132,60 @@ test("a folha mostra o dia da rota em destaque e no nome do arquivo", () => {
   assert.match(html, /<div class="dia">Rota de sexta-feira, 20\/11\/2026<\/div>/);
   assert.match(html, /<title>Rota Caçador 20-11-2026<\/title>/);
   assert.match(html, /Impresso em 19\/11\/2026 17:30/);
+});
+
+// ───── Planejamento por transportadora (Videira) ─────
+
+const TRANSPS = [
+  { chave: "shopee", rotulo: "Shopee" }, { chave: "imile", rotulo: "Imile" }, { chave: "anjun", rotulo: "Anjun" },
+  { chave: "loggi", rotulo: "Loggi" }, { chave: "total_express", rotulo: "Total Express" },
+];
+const vazias = () => ({ shopee: "", imile: "", anjun: "", loggi: "", total_express: "" });
+
+test("sem lista de transportadoras (Caçador) as linhas passam como vieram", () => {
+  assert.deepStrictEqual(JSON.parse(carregar().atribuicoes(LINHAS, null)), LINHAS);
+});
+
+test("bairro com troca em duas transportadoras vira 'menos' pra todas e 'só' pro outro", () => {
+  const linhas = [{ linha: 2, bairro: "Centro TESTE", sigla: "V-01", entregador: "Ana Teste",
+    transportadoras: { ...vazias(), loggi: "Bruno Teste", imile: "Bruno Teste" } }];
+  const itens = JSON.parse(carregar().atribuicoes(linhas, TRANSPS));
+  assert.deepStrictEqual(itens.map((i) => [i.entregador, i.escopo, i.transp || null]), [
+    ["Bruno Teste", "só Imile, Loggi", ["imile", "loggi"]],
+    ["Ana Teste", "menos Imile, Loggi", null],
+  ]);
+});
+
+test("transportadora com o mesmo nome da 'todas' não conta como troca", () => {
+  const linhas = [{ linha: 2, bairro: "Centro TESTE", sigla: "V-01", entregador: "Ana Teste",
+    transportadoras: { ...vazias(), shopee: "Ana Teste" } }];
+  const itens = JSON.parse(carregar().atribuicoes(linhas, TRANSPS));
+  assert.strictEqual(itens.length, 1);
+  assert.strictEqual(itens[0].escopo, undefined);
+});
+
+test("as cinco com dono próprio: a 'todas' não sobra pra ninguém", () => {
+  const t = { shopee: "B", imile: "B", anjun: "C", loggi: "C", total_express: "C" };
+  const itens = JSON.parse(carregar().atribuicoes([{ linha: 2, bairro: "X", sigla: "V-01", entregador: "Ana Teste", transportadoras: t }], TRANSPS));
+  assert.deepStrictEqual(itens.map((i) => i.entregador).sort(), ["B", "C"]);
+});
+
+test("bairro sem 'todas' mas com uma transportadora: o resto fica pendente", () => {
+  const itens = JSON.parse(carregar().atribuicoes([{ linha: 2, bairro: "X", sigla: "V-01", entregador: "",
+    transportadoras: { ...vazias(), shopee: "Bruno Teste" } }], TRANSPS));
+  assert.deepStrictEqual(itens.map((i) => [i.entregador, i.escopo]), [
+    ["Bruno Teste", "só Shopee"],
+    ["", "menos Shopee"],
+  ]);
+});
+
+test("a folha conta bairros (não itens) e mostra em quais transportadoras", () => {
+  const p = carregar();
+  const linhas = [{ linha: 2, bairro: "Centro TESTE", sigla: "V-01", entregador: "Ana Teste",
+    transportadoras: { ...vazias(), loggi: "Bruno Teste" } }];
+  // O itens volta do vm como texto e é reconstruído aqui fora (outro protótipo).
+  const html = p.folha(JSON.parse(p.atribuicoes(linhas, TRANSPS)), "Videira", "20/11/2026 10:00", "");
+  assert.match(html, /1 bairro · 2 entregadores/);
+  assert.match(html, /Centro TESTE <span class="esc">\(só Loggi\)<\/span>/);
+  assert.match(html, /Centro TESTE <span class="esc">\(menos Loggi\)<\/span>/);
 });
