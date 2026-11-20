@@ -221,6 +221,28 @@
     return [...vistas.values()];
   }
 
+  /**
+   * Reserva para quando o painel não responde: a viagem de hoje pelas listas de Viagens de Carga
+   * Direta. Vale a que TERMINA num XPT (as que saem do XPT para o SoC ficam de fora) e chega hoje
+   * (ata; sem ata, eta; sem eta, sta) nesse XPT.
+   */
+  function viagensDasListas(itens, hoje) {
+    const vistas = new Map();
+    for (const t of itens || []) {
+      if (!t || !t.trip_number || vistas.has(t.trip_number) || !Array.isArray(t.trip_station) || !t.trip_station.length) continue;
+      const ultima = [...t.trip_station].sort((a, b) => (Number(a.sequence_number) || 0) - (Number(b.sequence_number) || 0)).pop();
+      if (!/XPT/i.test(ultima.station_name || '')) continue;
+      const chegada = epoch(ultima.ata) || epoch(ultima.eta) || epoch(ultima.sta);
+      if (!chegada || diaSP(chegada) !== hoje) continue;
+      vistas.set(t.trip_number, {
+        numero: t.trip_number, id: t.id || null, estacao: ultima.station_name, estacao_id: ultima.station || null,
+        origem: (t.trip_station.find((s) => s !== ultima) || {}).station_name || '', destino: ultima.station_name,
+        pedidos: 0, status: t.trip_status, atd: 0, eta: epoch(ultima.eta), ata: epoch(ultima.ata), chega_aqui: true,
+      });
+    }
+    return [...vistas.values()];
+  }
+
   /** O id (tripId) da viagem numa página das listas de Viagens de Carga Direta. */
   function idDaViagem(dados, numero) {
     const lista = (dados && Array.isArray(dados.list)) ? dados.list : [];
@@ -472,7 +494,7 @@
   const api = {
     ROTA_PAINEL_LH, ROTA_PENDENTES, ROTA_FINALIZADAS, ROTA_ANEXO, MAX_PAGINAS,
     chaveCodigo, chaveCidade, mesmaEstacao, entradasDoZip, linhasDaAba, lerXlsx, romaneioDaPlanilha,
-    viagensDoPainel, idDaViagem, faixa, urlPendentes, urlFinalizadas, urlAnexo,
+    viagensDoPainel, viagensDasListas, idDaViagem, faixa, urlPendentes, urlFinalizadas, urlAnexo,
     lerRastreio, recebidoNoXpt, foiRecebido, faltaConsultar, juntarRastreio, lerAts, resumir,
     clusterPorBairro, chaveBairro, normCep, lugarPorCep, contar, guardarNoHistorico, hojeSP, pct,
   };

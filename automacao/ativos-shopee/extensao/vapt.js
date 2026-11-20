@@ -312,25 +312,44 @@
    * depois Finalizado (o tripId) -> anexo da viagem (o romaneio, xlsx).
    */
   async function viagemDeHoje() {
+    const avisos = [];
+    // 1. O número da viagem: o painel AMH-LM. Se ele não responder, a lista de viagens dá conta.
+    let viagens = [];
     status('Procurando a viagem de hoje no painel AMH-LM do SPX...');
-    const painel = await lerSpx(C.ROTA_PAINEL_LH);
-    const viagens = C.viagensDoPainel(painel.json).filter((v) => v.chega_aqui);
-    if (!viagens.length) throw new Error('O painel AMH-LM do SPX não mostra nenhuma viagem chegando hoje nesta estação.');
-    const estacao = viagens[0].estacao || viagens[0].destino;
-    const nomes = viagens.map((v) => v.numero).join(', ');
-
-    for (const [aba, urlDe] of [['Pendente', C.urlPendentes], ['Finalizado', C.urlFinalizadas]]) {
-      for (let pagina = 1; pagina <= C.MAX_PAGINAS && viagens.some((v) => !v.id); pagina += 1) {
-        status(`Procurando ${nomes} em Viagens de Carga Direta (${aba}, página ${pagina})...`);
-        const dados = ((await lerSpx(urlDe(pagina))).json || {}).data || {};
-        for (const v of viagens) if (!v.id) v.id = C.idDaViagem(dados, v.numero);
-        const lista = Array.isArray(dados.list) ? dados.list : [];
-        if (!lista.length || pagina * lista.length >= (Number(dados.total) || 0)) break;
-      }
+    try {
+      viagens = C.viagensDoPainel((await lerSpx(C.ROTA_PAINEL_LH)).json).filter((v) => v.chega_aqui);
+    } catch (e) {
+      avisos.push(`o painel AMH-LM não respondeu (${e.message.replace(/\.?\s*Dê F5.*$/, '')}), a viagem saiu da lista de Viagens de Carga Direta`);
     }
 
+    // 2. O tripId (e, sem o painel, a própria viagem): Viagens de Carga Direta, Pendente e Finalizado.
+    const itens = [];
+    const achouTodas = () => viagens.length && viagens.every((v) => v.id || C.idDaViagem({ list: itens }, v.numero));
+    for (const [aba, urlDe] of [['Pendente', C.urlPendentes], ['Finalizado', C.urlFinalizadas]]) {
+      let daAba = 0;
+      for (let pagina = 1; pagina <= C.MAX_PAGINAS && !achouTodas(); pagina += 1) {
+        status(`Procurando a viagem de hoje em Viagens de Carga Direta (${aba}, página ${pagina})...`);
+        let dados;
+        try {
+          dados = ((await lerSpx(urlDe(pagina))).json || {}).data || {};
+        } catch (e) {
+          throw new Error(`Viagens de Carga Direta (${aba}): ${e.message}`);
+        }
+        const lista = Array.isArray(dados.list) ? dados.list : [];
+        itens.push(...lista);
+        daAba += lista.length;
+        if (!lista.length || daAba >= (Number(dados.total) || 0)) break;
+      }
+    }
+    if (viagens.length) for (const v of viagens) v.id = v.id || C.idDaViagem({ list: itens }, v.numero);
+    else viagens = C.viagensDasListas(itens, C.hojeSP());
+    if (!viagens.length) {
+      throw new Error(`Não achei viagem chegando hoje nesta estação${avisos.length ? ` (${avisos.join('; ')})` : ' no painel AMH-LM'}.`);
+    }
+    const estacao = viagens[0].estacao || viagens[0].destino;
+
+    // 3. O romaneio: o anexo de cada viagem.
     const romaneio = new Map();
-    const avisos = [];
     for (const v of viagens) {
       if (!v.id) { avisos.push(`a viagem ${v.numero} não apareceu em Viagens de Carga Direta`); continue; }
       status(`Baixando o romaneio da viagem ${v.numero}...`);

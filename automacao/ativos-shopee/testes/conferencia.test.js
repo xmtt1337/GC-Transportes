@@ -51,6 +51,23 @@ test('viagensDoPainel: acha a lista dentro do data e marca as que chegam na esta
   assert.deepStrictEqual(C.viagensDoPainel({ data: null }), []);
 });
 
+test('viagensDasListas: sem o painel, a viagem que chega hoje num XPT', () => {
+  const s = (seq, nome, extra) => ({ sequence_number: seq, station: seq, station_name: nome, ...extra });
+  const hoje = '2026-11-20';
+  const T = (d, hm) => Math.floor(Date.parse(`${d}T${hm}:00-03:00`) / 1000);
+  const itens = [
+    { id: 1, trip_number: 'LTCHEGOU', trip_station: [s(2, 'XPT_SC_Teste', { ata: T(hoje, '01:22') }), s(1, 'SoC_PR_Teste', { atd: T('2026-11-19', '18:31') })] },
+    { id: 2, trip_number: 'LTONTEM', trip_station: [s(1, 'SoC_PR_Teste'), s(2, 'XPT_SC_Teste', { ata: T('2026-11-19', '01:00') })] },
+    { id: 3, trip_number: 'LTSAIDA', trip_station: [s(1, 'XPT_SC_Teste', { atd: T(hoje, '06:00') }), s(2, 'SoC_PR_Teste', { eta: T(hoje, '10:00') })] },
+    { id: 4, trip_number: 'LTACAMINHO', trip_station: [s(1, 'SoC_PR_Teste'), s(2, 'XPT_SC_Teste', { eta: T(hoje, '23:00') })] },
+    { id: 1, trip_number: 'LTCHEGOU', trip_station: [] },
+  ];
+  const v = C.viagensDasListas(itens, hoje);
+  assert.deepStrictEqual(v.map((x) => [x.numero, x.id, x.estacao]), [['LTCHEGOU', 1, 'XPT_SC_Teste'], ['LTACAMINHO', 4, 'XPT_SC_Teste']]);
+  assert.strictEqual(v[0].origem, 'SoC_PR_Teste');
+  assert.strictEqual(v[0].ata, T(hoje, '01:22'));
+});
+
 test('idDaViagem e endereços das listas do SPX', () => {
   const dados = { pageno: 1, total: 2, list: [{ id: 111, trip_number: 'LTTESTE00009' }, { id: 4417809, trip_number: 'LTTESTE00001' }] };
   assert.strictEqual(C.idDaViagem(dados, 'lttESTE00001'), 4417809);
