@@ -137,36 +137,28 @@ async function _alimentarAnexar(input) {
         _alimentarFilePendente = file;
         _alimentarGridPendente = grid;
 
-        const headers = grid[0].map(c => String(c || '').trim()).filter(c => c);
-        const lower   = headers.map(h => h.toLowerCase());
-        const defBar  = lower.findIndex(h => h.includes('barras') || h.includes('barcode') || h.includes('waybill') || h.includes('código') || h.includes('codigo') || h.includes('tracking') || h.includes('rastreio') || h.includes('jms') || h.includes('pedido'));
-        const defCep  = (() => {
-            const destino = lower.findIndex(h => (h.includes('cep') || h.includes('zip') || h.includes('postal')) && (h.includes('dest') || h.includes('receb') || h.includes('entrega') || h.includes('consig')));
-            if (destino >= 0) return destino;
-            const semOrigem = lower.findIndex(h => (h.includes('cep') || h.includes('zip') || h.includes('postal')) && !h.includes('orig') && !h.includes('reme') && !h.includes('sender'));
-            return semOrigem >= 0 ? semOrigem : lower.findIndex(h => h.includes('cep') || h.includes('zip') || h.includes('postal'));
-        })();
+        // Cabeçalho inteiro, sem tirar as colunas sem título: o índice daqui é usado
+        // direto na linha do arquivo. Tirar as vazias deslocava tudo que vinha depois.
+        const cab = grid[0].map(c => String(c ?? '').trim());
+        const col = _alimentarDetectarColunas(cab);
 
         status.innerHTML = '';
 
-        // Se as colunas obrigatórias foram detectadas com segurança, pula o seletor
-        if (defBar >= 0 && defCep >= 0) {
-            const defCid  = lower.findIndex(h => h.includes('cidade') || h.includes('city'));
-            const defReg  = lower.findIndex(h => h.includes('região') || h.includes('regiao') || h.includes('saca') || h.includes('hub'));
-            const defDest = lower.findIndex(h => h.includes('para') || h.includes('destinat') || h.includes('recipient'));
-            await _alimentarEnviarComIndices(file, grid, defBar, defCep, defCid, defReg, defDest);
+        // Colunas obrigatórias achadas E a do CEP tem CEP de verdade: pula o seletor.
+        // Sem a segunda conferência, uma coluna errada subia o arquivo inteiro sem CEP.
+        if (col.bar >= 0 && col.cep >= 0 && _alimentarColunaTemCep(grid, col.cep)) {
+            await _alimentarEnviarComIndices(file, grid, col.bar, col.cep, col.cid, col.reg, col.dest);
         } else if (_alimentarTransp === 'imile') {
             // Fallback iMile: colunas exatas do formato alternativo
-            const rawHeaders = grid[0].map(c => String(c || '').trim());
-            const imileBar = rawHeaders.findIndex(h => h === 'Waybill No');
-            const imileCep = rawHeaders.findIndex(h => h === 'Destination Zipcode');
+            const imileBar = cab.findIndex(h => h === 'Waybill No');
+            const imileCep = cab.findIndex(h => h === 'Destination Zipcode');
             if (imileBar >= 0 && imileCep >= 0) {
                 await _alimentarEnviarComIndices(file, grid, imileBar, imileCep, -1, -1, -1);
             } else {
-                _alimentarMostrarSeletorColunas(headers);
+                _alimentarMostrarSeletorColunas(cab);
             }
         } else {
-            _alimentarMostrarSeletorColunas(headers);
+            _alimentarMostrarSeletorColunas(cab);
         }
     } catch (err) {
         status.innerHTML = `<div style="color:#ef4444;font-size:13px">${err.message}</div>`;
@@ -174,18 +166,70 @@ async function _alimentarAnexar(input) {
     }
 }
 
-function _alimentarMostrarSeletorColunas(headers) {
-    const lower   = headers.map(h => h.toLowerCase());
-    const defBar  = lower.findIndex(h => h.includes('barras') || h.includes('barcode') || h.includes('waybill') || h.includes('código') || h.includes('codigo') || h.includes('tracking') || h.includes('rastreio') || h.includes('jms') || h.includes('pedido'));
-    const defCep  = (() => {
-        const destino = lower.findIndex(h => (h.includes('cep') || h.includes('zip') || h.includes('postal')) && (h.includes('dest') || h.includes('receb') || h.includes('entrega') || h.includes('consig')));
-        if (destino >= 0) return destino;
-        const semOrigem = lower.findIndex(h => (h.includes('cep') || h.includes('zip') || h.includes('postal')) && !h.includes('orig') && !h.includes('reme') && !h.includes('sender'));
-        return semOrigem >= 0 ? semOrigem : lower.findIndex(h => h.includes('cep') || h.includes('zip') || h.includes('postal'));
-    })();
-    const defCid  = lower.findIndex(h => h.includes('cidade') || h.includes('city'));
-    const defReg  = lower.findIndex(h => h.includes('região') || h.includes('regiao') || h.includes('saca') || h.includes('hub'));
-    const defDest = lower.findIndex(h => h.includes('para') || h.includes('destinat') || h.includes('recipient'));
+/** Palavras do cabeçalho, sem acento e sem caixa ("CEP_Destino" → ["cep", "destino"]). */
+function _alimentarPalavras(h) {
+    return String(h || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+        .split(/[^a-z0-9]+/).filter(Boolean);
+}
+
+/**
+ * Coluna do CEP de entrega.
+ *
+ * Por PALAVRA, não por pedaço de texto: o "Central waybill query" da Imile tem a
+ * coluna "Intercept Status" antes da "Zipcode", e "inter-cep-t" contém "cep" — o
+ * arquivo inteiro subia lendo "NO" como CEP (20/11/2026). "cepdestino" grudado
+ * continua valendo (começa com "cep" sem o "t" de "cept").
+ * CEP de remetente/devolução fica de fora; entre os que sobram, o de destino ganha.
+ */
+function _alimentarColunaCep(cab) {
+    const palavras = (cab || []).map(_alimentarPalavras);
+    const ehCep    = p => p.some(w => /^cep(?!t)/.test(w) || /^zip/.test(w) || w === 'postal' || w === 'postcode');
+    const origem   = p => p.some(w => /^(orig|reme|sender|shipper|shipping|return|devol|coleta)/.test(w));
+    const destino  = p => p.some(w => /^(dest|receb|entrega|consig|recipient)/.test(w));
+
+    const candidatas = palavras.map((p, i) => i).filter(i => ehCep(palavras[i]));
+    const semOrigem  = candidatas.filter(i => !origem(palavras[i]));
+    const deDestino  = semOrigem.find(i => destino(palavras[i]));
+    if (deDestino !== undefined) return deDestino;
+    if (semOrigem.length) return semOrigem[0];
+    return candidatas.length ? candidatas[0] : -1;
+}
+
+/**
+ * Onde está cada coluna no cabeçalho do arquivo. O índice é o da linha do arquivo
+ * (o cabeçalho vem inteiro, com as colunas sem título). -1 = não achou.
+ * @return {{bar: number, cep: number, cid: number, reg: number, dest: number}}
+ */
+function _alimentarDetectarColunas(cab) {
+    const lower = (cab || []).map(h => String(h || '').toLowerCase());
+    const acha  = (...k) => lower.findIndex(h => h && k.some(x => h.includes(x)));
+    return {
+        bar:  acha('barras', 'barcode', 'waybill', 'código', 'codigo', 'tracking', 'rastreio', 'jms', 'pedido'),
+        cep:  _alimentarColunaCep(cab),
+        cid:  acha('cidade', 'city'),
+        reg:  acha('região', 'regiao', 'saca', 'hub'),
+        dest: acha('para', 'destinat', 'recipient'),
+    };
+}
+
+/**
+ * A coluna escolhida tem CEP de verdade? Olha as primeiras 200 linhas: pelo menos
+ * metade das preenchidas precisa ter 8 dígitos (ou 7, quando a planilha comeu o zero
+ * da frente). Senão quem sobe escolhe a coluna.
+ */
+function _alimentarColunaTemCep(grid, idx) {
+    const amostra = (grid || []).slice(1, 201).map(r => String((r || [])[idx] ?? '').trim()).filter(Boolean);
+    if (!amostra.length) return false;
+    const comCep = amostra.filter(v => { const n = v.replace(/\D/g, '').length; return n === 7 || n === 8; }).length;
+    return comCep * 2 >= amostra.length;
+}
+
+function _alimentarMostrarSeletorColunas(cab) {
+    const col     = _alimentarDetectarColunas(cab);
+    // Coluna sem título aparece com a letra dela, pra lista continuar alinhada com o arquivo.
+    const letra   = i => { let s = '', n = i + 1; while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); } return s; };
+    const headers = cab.map((h, i) => _alimEsc(h || `(coluna ${letra(i)} sem título)`));
+    const defBar  = col.bar, defCep = col.cep, defCid = col.cid, defReg = col.reg, defDest = col.dest;
 
     document.getElementById('alimentar-upload-status').innerHTML = `
         <div style="background:rgba(58,134,255,0.07);border:1px solid rgba(58,134,255,0.18);border-radius:12px;padding:16px 18px;margin-top:8px">
