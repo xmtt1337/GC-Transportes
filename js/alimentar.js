@@ -45,19 +45,32 @@ function _alimentarPintarAbas() {
         onclick="abrirAlimentar(null,'${a.k}')">${_ALIMENTAR_NOMES[a.k]}</button>`).join('');
 }
 
+// Carga por POLO (20/11/2026): o envio de Caçador apagava a de Videira. Cada polo troca
+// só a própria; o servidor decide o polo pelo cadastro. Dev/admin escolhem aqui.
+const _ALIMENTAR_POLOS = { cacador: 'Caçador', videira: 'Videira', joacaba: 'Joaçaba' };
+let _alimentarPoloInfo = { polo: null, ve_tudo: false, polos: [] };
+let _alimentarPoloSel  = null; // só dev/admin: polo que está vendo e pra onde sobe
+
+/** Polo da tela: o escolhido (dev/admin) ou o do cadastro. */
+function _alimentarPoloAtual() {
+    return (_alimentarPoloInfo.ve_tudo && _alimentarPoloSel) || _alimentarPoloInfo.polo || null;
+}
+
 async function _alimentarCarregar() {
     const el = document.getElementById('alimentar-content');
     const pedido = _alimentarTransp;
     el.innerHTML = skCards(3);
     try {
-        const res = await fetch(API + '/alimentar/arquivos?transportadora=' + pedido, {
+        const res = await fetch(API + '/alimentar/arquivos?com_polo=1&transportadora=' + pedido, {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         if (!res.ok) throw new Error();
-        const arquivos = await res.json();
+        const dados = await res.json();
         // Trocou de aba enquanto carregava: a resposta é da anterior.
         if (pedido !== _alimentarTransp) return;
-        _alimentarRenderizar(arquivos);
+        _alimentarPoloInfo = { polo: dados.polo || null, ve_tudo: !!dados.ve_tudo, polos: dados.polos || [] };
+        if (_alimentarPoloInfo.ve_tudo && !_alimentarPoloSel) _alimentarPoloSel = dados.polo || (dados.polos || [])[0] || null;
+        _alimentarRenderizar(dados.arquivos || []);
     } catch {
         if (pedido !== _alimentarTransp) return;
         el.innerHTML = '<div style="color:#ef4444;font-size:14px;padding:20px 0">Erro ao carregar arquivos.</div>';
@@ -81,11 +94,43 @@ function _alimentarLinhaArquivo(arq, atual) {
         </div>`;
 }
 
-function _alimentarRenderizar(arquivos) {
+/**
+ * Arquivos que a tela mostra no polo escolhido: os desse polo e, se ainda estiver em uso,
+ * o envio de antes da divisão por polo (sem polo).
+ * @return {{doPolo: Array, semPolo: ?Object}}
+ */
+function _alimentarDoPolo(arquivos, polo) {
+    const doPolo = (arquivos || []).filter(a => a.polo && a.polo === polo);
+    const semPolo = (arquivos || []).find(a => !a.polo && a.atual) || null;
+    return { doPolo, semPolo };
+}
+
+function _alimentarTrocarPolo(polo) {
+    _alimentarPoloSel = polo;
+    _alimentarCarregar();
+}
+
+function _alimentarCabecalhoPolo(polo) {
+    const nome = _ALIMENTAR_POLOS[polo] || polo || '—';
+    if (_alimentarPoloInfo.ve_tudo) {
+        const opcoes = (_alimentarPoloInfo.polos || Object.keys(_ALIMENTAR_POLOS))
+            .map(p => `<option value="${_alimEsc(p)}"${p === polo ? ' selected' : ''}>${_alimEsc(_ALIMENTAR_POLOS[p] || p)}</option>`).join('');
+        return `<div class="alim-polo">Polo <select class="cft-input alim-polo-sel" onchange="_alimentarTrocarPolo(this.value)">${opcoes}</select>
+            <span class="alim-polo-ajuda">Cada polo tem a própria carga: o envio troca só a de ${_alimEsc(nome)}.</span></div>`;
+    }
+    if (!polo) return '';
+    return `<div class="alim-polo">Polo <b>${_alimEsc(nome)}</b>
+        <span class="alim-polo-ajuda">O envio troca só a carga de ${_alimEsc(nome)}; a do outro polo continua valendo.</span></div>`;
+}
+
+function _alimentarRenderizar(todos) {
     const el = document.getElementById('alimentar-content');
     const transpNome = _ALIMENTAR_NOMES[_alimentarTransp] || _alimentarTransp;
+    const polo = _alimentarPoloAtual();
+    const poloNome = _ALIMENTAR_POLOS[polo] || '';
+    const { doPolo: arquivos, semPolo } = _alimentarDoPolo(todos, polo);
 
-    let html = `
+    let html = _alimentarCabecalhoPolo(polo) + `
     <label class="nota-upload-area" style="cursor:pointer">
         <input type="file" id="alimentar-file-input" accept=".xlsx,.csv" style="display:none" onchange="_alimentarAnexar(this)">
         <div class="nota-upload-icon">
@@ -97,8 +142,8 @@ function _alimentarRenderizar(arquivos) {
             </svg>
         </div>
         <div class="nota-upload-text">
-            <div class="nota-upload-title">Anexar planilha ${transpNome}</div>
-            <div class="nota-upload-sub">Selecione um arquivo .xlsx ou .csv. O novo passa a valer na Separação.</div>
+            <div class="nota-upload-title">Anexar planilha ${transpNome}${poloNome ? ' · ' + _alimEsc(poloNome) : ''}</div>
+            <div class="nota-upload-sub">Selecione um arquivo .xlsx ou .csv. O novo passa a valer na Separação${poloNome ? ' de ' + _alimEsc(poloNome) : ''}.</div>
         </div>
         <div class="nota-upload-btn">Selecionar arquivo</div>
     </label>
@@ -115,7 +160,13 @@ function _alimentarRenderizar(arquivos) {
             html += anteriores.map(a => _alimentarLinhaArquivo(a, false)).join('');
         }
     } else {
-        html += `<div class="fechamento-empty" style="margin-top:20px">Nenhum arquivo enviado para ${transpNome}. Sem ele, a Separação não acha os pacotes da ${transpNome}.</div>`;
+        html += `<div class="fechamento-empty" style="margin-top:20px">Nenhum arquivo de ${transpNome}${poloNome ? ' enviado por ' + _alimEsc(poloNome) : ''}. Sem ele, a Separação não acha os pacotes da ${transpNome}${poloNome ? ' deste polo' : ''}.</div>`;
+    }
+    // Envio de antes da divisão por polo: continua valendo até o primeiro envio com polo.
+    if (semPolo) {
+        html += `<div class="painel-section-title" style="margin-top:20px">Enviado antes da divisão por polo</div>`;
+        html += `<div class="alim-arq-nota">Ainda vale na Separação para os dois polos, até alguém mandar o arquivo de ${transpNome} pelo polo dele.</div>`;
+        html += _alimentarLinhaArquivo(semPolo, true);
     }
 
     el.innerHTML = html;
@@ -316,6 +367,8 @@ async function _alimentarEnviarComIndices(file, grid, barIdx, cepIdx, cidIdx, re
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 transportadora:  _alimentarTransp,
+                // Só vale pra dev/admin; dos outros o servidor usa o polo do cadastro.
+                polo:            _alimentarPoloAtual(),
                 nome_arquivo:    file.name,
                 conteudo_base64: base64,
                 mime_type:       file.type || 'application/octet-stream',
@@ -323,6 +376,13 @@ async function _alimentarEnviarComIndices(file, grid, barIdx, cepIdx, cidIdx, re
             })
         });
         const data = await res.json();
+        // Cadastro sem polo: pergunta (mesma escolha das telas da Shopee) e recarrega.
+        if (res.status === 409 && data.polo_pendente && typeof gcPoloGarantir === 'function') {
+            status.innerHTML = `<div style="color:#f59e0b;font-size:13px">${_alimEsc(data.error)} Escolha e envie de novo.</div>`;
+            if (typeof gcPoloInvalidar === 'function') gcPoloInvalidar();
+            gcPoloGarantir(() => _alimentarCarregar());
+            return;
+        }
         if (!res.ok) throw new Error(data.error || 'Erro ao enviar');
         status.innerHTML = '';
         document.getElementById('alimentar-file-input').value = '';
