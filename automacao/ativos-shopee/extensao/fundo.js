@@ -40,7 +40,6 @@ async function lerContatos(url) {
   return R.contatosDoExport(await baixarExport(url));
 }
 
-const comPolo = (caminho, polo) => (polo ? `${caminho}${caminho.includes('?') ? '&' : '?'}polo=${encodeURIComponent(polo)}` : caminho);
 
 const tratar = {
   async estado() {
@@ -75,25 +74,18 @@ const tratar = {
     }
     return { estados };
   },
-  // Conversas (/macros/whatsapp/...) e Conferencia Vapt Vupt (/macros/shopee-conferencia...): so
-  // esses prefixos passam; o servidor decide o que a conta ve e pode fazer.
+  // Conversas (/macros/whatsapp/...): so esse prefixo passa; o servidor decide o que a conta ve e
+  // pode fazer. O Vapt Vupt nao chama o sistema (desde a 3.0 a conta e toda na extensao).
   async sistema({ metodo, caminho, corpo }) {
     const m = String(metodo || 'GET').toUpperCase();
     const c = String(caminho || '');
-    const permitido = c.startsWith('/macros/whatsapp/') || c === '/macros/shopee-conferencia'
-      || c.startsWith('/macros/shopee-conferencia?') || c.startsWith('/macros/shopee-conferencia/');
-    if (!['GET', 'POST'].includes(m) || !permitido || c.includes('..')) throw new Error('Caminho não permitido.');
+    if (!['GET', 'POST'].includes(m) || !c.startsWith('/macros/whatsapp/') || c.includes('..')) throw new Error('Caminho não permitido.');
     return { dados: await chamarSistema(m, c, m === 'POST' ? (corpo || {}) : undefined) };
   },
-  // Conferencia: o export de pedidos da viagem. Ao sistema vao completos so os BR com divergencia
-  // (comprador, CEP, motorista, sort code), e dos outros so o CEP (o pacote sem AT "empresta"
-  // cidade/bairro/cluster de quem tem o mesmo CEP). Telefone e endereco nao saem.
-  async pedidosConferencia({ url, polo, divergentes }) {
-    const todos = R.pedidosDoExport(await baixarExport(String(url || '')));
-    const quer = new Set((Array.isArray(divergentes) ? divergentes : []).map((c) => String(c).toUpperCase()));
-    const pedidos = todos.filter((p) => quer.has(p.codigo)); // sem divergência, nenhum: só os CEPs
-    const ceps = todos.filter((p) => p.cep).map((p) => ({ codigo: p.codigo, cep: p.cep }));
-    return { resumo: await chamarSistema('POST', comPolo('/macros/shopee-conferencia/pedidos', polo), { pedidos, ceps }) };
+  // Vapt Vupt: o export de pedidos da viagem, lido aqui (o link é do servidor de arquivos da
+  // Shopee) e devolvido à página: comprador, CEP, motorista e sort code. Não vai a lugar nenhum.
+  async pedidosConferencia({ url }) {
+    return { pedidos: R.pedidosDoExport(await baixarExport(String(url || ''))) };
   },
   async enviar({ corpo }) {
     const r = await chamarSistema('POST', R.ROTA_ENVIAR, corpo);

@@ -1,27 +1,31 @@
 // XM - Ativos Shopee: a pagina "Vapt Vupt" (Conferencia > Vapt Vupt), no tema do SPX.
 //
-// E a Conferencia Shopee da XM - Operacao, dentro do SPX: o romaneio de hoje (sistema, polo de
-// quem enviou) contra a pesquisa em lote do SPX e as ATs criadas hoje. Mostra % AT vinculada,
-// recebidos, divergencias (Recebido - Sem AT e Enviado - Nao recebido), fora de abrangencia,
-// BWT de processamento, volume por cidade, fluxo hora a hora e a lista das divergencias, com o
-// relatorio no formato do painel da Shopee.
+// A viagem do dia, toda pelo SPX (3.0, 20/11/2026: do sistema XMTT so o login): o romaneio vem
+// da viagem que o painel AMH-LM mostra hoje (anexo da viagem em Viagens de Carga Direta), contra
+// a pesquisa em lote do SPX e as ATs criadas hoje. Mostra % AT vinculada, recebidos, divergencias
+// (Recebido - Sem AT e Enviado - Nao recebido), BWT de processamento, volume por cidade, fluxo hora
+// a hora e a lista das divergencias, com o relatorio no formato do painel da Shopee.
 //
-// "Conferir agora": romaneio (GET /macros/shopee-conferencia/romaneio) -> spx.js pesquisa os BR e
-// lista as ATs -> POST /leitura -> se houver divergencia, o export de pedidos da viagem (comprador
-// e CEP) -> fundo.js -> POST /pedidos. As regras e a conta sao do sistema (modules/shopee-conferencia).
-// Quem nao e dev nem admin ve so o proprio polo; dev e admin escolhem.
+// "Conferir agora": spx.js le o painel, acha o tripId e baixa o anexo -> conferencia.js le o xlsx
+// -> spx.js pesquisa os BR e lista as ATs -> se houver divergencia, o export de pedidos da viagem
+// (comprador e CEP) -> fundo.js le o CSV -> conferencia.js faz a conta. O resultado fica guardado
+// neste Chrome (historico dos ultimos dias, por estacao); nada vai ao sistema.
 
 (() => {
-  const POLOS = [['', 'Todos os polos'], ['cacador', 'Caçador'], ['videira', 'Videira'], ['joacaba', 'Joaçaba']];
-  const XPT_DO_POLO = { cacador: 'XPT_SC_Caçador', videira: 'XPT_SC_Videira', joacaba: 'XPT_SC_Joaçaba' };
+  const C = self.XMVaptConta;
   const MAX_LISTA = 500;
+  const DIAS_GUARDADOS = 10;
+  const CHAVE_HISTORICO = 'vaptHistorico';
+  const CHAVE_RASTREIO = 'vaptRastreio';
+  const CHAVE_ESTACAO = 'vaptEstacao';
   const DUAS = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
 
   const CSS = `
   .xm-ativos-pagina .xm-vv-barra { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .xm-ativos-pagina .xm-vv-barra select { height: 32px; border: 1px solid #e5e5e5; border-radius: 4px; padding: 0 8px; font: inherit; color: #333; background: #fff; }
   .xm-ativos-pagina .xm-vv-lido { color: #999; font-size: 12px; margin-left: auto; }
-  .xm-ativos-pagina .xm-vv-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .xm-ativos-pagina .xm-vv-viagem { color: #666; font-size: 13px; margin: 0 0 10px; }
+  .xm-ativos-pagina .xm-vv-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
   @media (max-width: 1300px) { .xm-ativos-pagina .xm-vv-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .xm-ativos-pagina .xm-vv-card { position: relative; background: #fff; border-radius: 4px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); min-width: 0; }
   .xm-ativos-pagina .xm-vv-baixar-card { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border: 0; border-radius: 4px;
@@ -66,18 +70,21 @@
 
   let ctx = null;
   let raiz = null;
-  const est = { logado: false, papel: '', polo: '', dia: '', dias: [], dados: null, tipo: 'sem_at', ocupado: false };
+  // registro = um dia conferido: { dia, estacao, viagens, lido_em, usuario, conta }
+  const est = { logado: false, nome: '', estacao: '', dia: '', registro: null, tipo: 'sem_at', ocupado: false };
   const $ = (sel) => raiz.querySelector(sel);
   const esc = (v) => ctx.esc(v);
   const n = (v) => ctx.numero(v);
   const pct2 = (v) => `${Number(v || 0).toLocaleString('pt-BR', DUAS)}%`;
-  const vePolos = () => ctx.R.ROLES_TODOS_POLOS.includes(est.papel);
-  const sistema = (metodo, caminho, corpo) => ctx.pedirAoFundo('sistema', { metodo, caminho, corpo }).then((r) => r.dados);
-  const comPolo = (caminho) => {
-    const q = [];
-    if (vePolos() && est.polo) q.push(`polo=${encodeURIComponent(est.polo)}`);
-    return q.length ? `${caminho}${caminho.includes('?') ? '&' : '?'}${q.join('&')}` : caminho;
-  };
+  const conta = () => (est.registro && est.registro.conta) || null;
+
+  // ── guardado neste Chrome ─────────────────────────────────────────────────────
+  async function ler(chave) {
+    try { return (await chrome.storage.local.get(chave))[chave]; } catch { return undefined; }
+  }
+  async function gravar(chave, valor) {
+    try { await chrome.storage.local.set({ [chave]: valor }); } catch { /* sem guardar, a tela vale do mesmo jeito */ }
+  }
 
   function montar(contexto) {
     ctx = contexto;
@@ -93,10 +100,10 @@
       <div class="xm-cartao">
         <span class="xm-conta xm-vv-conta"></span>
         <h2 class="xm-titulo">Vapt Vupt</h2>
-        <p class="xm-sub">Romaneio de hoje contra o SPX: AT vinculada, recebidos e divergências. Os mesmos números da Conferência do sistema XMTT.</p>
+        <p class="xm-sub">A viagem de hoje (painel AMH-LM) contra o SPX: AT vinculada, recebidos e divergências. Tudo lido do próprio SPX.</p>
         <div class="xm-vv-login" hidden></div>
+        <p class="xm-vv-viagem" hidden></p>
         <div class="xm-vv-barra" hidden>
-          <select class="xm-vv-polo" hidden>${POLOS.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>
           <select class="xm-vv-dia" title="Dia da conferência"></select>
           <button class="xm-btn xm-btn-primario xm-vv-conferir" type="button">Conferir agora</button>
           <button class="xm-btn xm-vv-baixar" type="button">Baixar relatório</button>
@@ -109,7 +116,7 @@
         <div class="xm-vv-tres">
           <div class="xm-cartao"><h3 class="xm-vv-h">Divergências — Detalhamento</h3><p class="xm-vv-hsub">Pacotes fora de "AT vinculada". Clique para ver a lista.</p><div class="xm-vv-barras xm-vv-tipos"></div></div>
           <div class="xm-cartao"><h3 class="xm-vv-h">Divergências — Localização</h3><p class="xm-vv-hsub">Divergências por cidade</p><div class="xm-vv-barras xm-vv-loc"></div></div>
-          <div class="xm-cartao"><h3 class="xm-vv-h">Volume — Abrangência</h3><p class="xm-vv-hsub xm-vv-volsub"></p><div class="xm-vv-barras xm-vv-vol"></div></div>
+          <div class="xm-cartao"><h3 class="xm-vv-h">Volume por cidade</h3><p class="xm-vv-hsub xm-vv-volsub"></p><div class="xm-vv-barras xm-vv-vol"></div></div>
         </div>
         <div class="xm-cartao"><h3 class="xm-vv-h">Fluxo hora a hora</h3><p class="xm-vv-hsub">Recebimento no XPT, atribuição (AT) e expedição, por hora</p><div class="xm-vv-fluxo"></div></div>
         <div class="xm-cartao">
@@ -123,12 +130,6 @@
     $('.xm-vv-conferir').addEventListener('click', conferir);
     $('.xm-vv-baixar').addEventListener('click', baixarRelatorio);
     $('.xm-vv-copiar').addEventListener('click', copiarBR);
-    $('.xm-vv-polo').addEventListener('change', (e) => {
-      est.polo = e.target.value;
-      try { chrome.storage.local.set({ poloVapt: est.polo }); } catch { /* sem guardar, segue */ }
-      est.dia = '';
-      carregar();
-    });
     $('.xm-vv-dia').addEventListener('change', (e) => { est.dia = e.target.value; carregar(); });
     $('.xm-vv-cards').addEventListener('click', (e) => { if (e.target.closest('[data-acao="baixar"]')) baixarRelatorio(); });
     $('.xm-vv-tipos').addEventListener('click', (e) => {
@@ -147,18 +148,18 @@
     p.className = `xm-status xm-vv-status${erro ? ' xm-erro' : ''}`;
   }
 
-  function mostrarConta(logado, nome, papel) {
+  function mostrarConta(logado, nome) {
     est.logado = logado;
-    est.papel = papel || '';
+    est.nome = nome || '';
     $('.xm-vv-login').hidden = logado;
     $('.xm-vv-barra').hidden = !logado;
     if (!logado) {
-      $('.xm-vv-login').replaceChildren(ctx.blocoLogin((r) => { ctx.aoEntrar(r); mostrarConta(true, r.nome, r.papel); carregar(); }));
+      $('.xm-vv-login').replaceChildren(ctx.blocoLogin((r) => { ctx.aoEntrar(r); mostrarConta(true, r.nome); carregar(); }));
       $('.xm-vv-corpo').hidden = true;
+      $('.xm-vv-viagem').hidden = true;
       $('.xm-vv-conta').textContent = '';
       return;
     }
-    $('.xm-vv-polo').hidden = !vePolos();
     $('.xm-vv-conta').innerHTML = `${esc(nome)} · <button class="xm-link xm-cfg" type="button">Configurar</button> · <button class="xm-link xm-vv-sair" type="button">Sair</button>`;
     $('.xm-vv-sair').addEventListener('click', () => ctx.pedirAoFundo('sair').then(() => { ctx.aoEntrar(null); mostrarConta(false); status(''); }));
   }
@@ -168,34 +169,36 @@
     status(e.message, true);
   }
 
-  // ── dados ──────────────────────────────────────────────────────────────────────
+  // ── dados (o histórico deste Chrome) ─────────────────────────────────────────
   async function carregar() {
     if (!est.logado) return;
-    try {
-      const caminho = comPolo(`/macros/shopee-conferencia${est.dia ? `?dia=${encodeURIComponent(est.dia)}` : ''}`);
-      const r = await sistema('GET', caminho);
-      mostrar(r);
-      if (!r || !r.dia) status('Nenhuma conferência ainda. Clique em Conferir agora.');
-    } catch (e) { falhou(e); }
+    const historico = (await ler(CHAVE_HISTORICO)) || {};
+    if (!est.estacao) est.estacao = (await ler(CHAVE_ESTACAO)) || '';
+    const dias = Object.keys(historico[est.estacao] || {}).sort().reverse();
+    if (!dias.includes(est.dia)) est.dia = dias[0] || '';
+    mostrar(est.dia ? historico[est.estacao][est.dia] : null, dias);
+    if (!est.dia) status('Nenhuma conferência neste computador ainda. Clique em Conferir agora.');
   }
 
-  function mostrar(r) {
-    est.dados = r || null;
-    // A resposta do Conferir agora (leitura/pedidos) não traz a lista de dias: mantém a que já veio,
-    // senão o seletor ficava só com hoje e parecia que os outros dias não estavam salvos.
-    if (r && Array.isArray(r.dias)) est.dias = r.dias;
-    const dias = est.dias || [];
-    const dia = (r && r.dia) || '';
-    if (dia) est.dia = dia;
+  const horaMin = (seg) => (seg ? new Date(seg * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : '');
+
+  function mostrar(registro, dias) {
+    est.registro = registro || null;
     const sel = $('.xm-vv-dia');
-    const opcoes = [...new Set([...(r && r.hoje ? [r.hoje] : []), ...dias])];
-    sel.innerHTML = opcoes.map((d) => `<option value="${d}"${d === dia ? ' selected' : ''}>${d.split('-').reverse().join('/')}</option>`).join('');
-    sel.hidden = !opcoes.length;
-    const l = r && r.leitura;
-    $('.xm-vv-lido').textContent = l && l.lido_em
-      ? `lido às ${new Date(l.lido_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}${l.usuario ? ` por ${l.usuario}` : ''}` : '';
-    $('.xm-vv-corpo').hidden = !(r && r.total);
-    if (r && r.total) desenhar();
+    sel.innerHTML = (dias || []).map((d) => `<option value="${d}"${d === est.dia ? ' selected' : ''}>${d.split('-').reverse().join('/')}</option>`).join('');
+    sel.hidden = !(dias && dias.length);
+    $('.xm-vv-lido').textContent = registro && registro.lido_em
+      ? `lido às ${new Date(registro.lido_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}${registro.usuario ? ` por ${registro.usuario}` : ''}` : '';
+    // A estação e a(s) viagem(ns) de onde saiu o romaneio.
+    const v = $('.xm-vv-viagem');
+    v.hidden = !registro;
+    if (registro) {
+      const viagens = (registro.viagens || []).map((t) => `${t.numero} (${n(t.romaneio || 0)} pedidos${t.ata ? `, chegou ${horaMin(t.ata)}` : t.eta ? `, previsão ${horaMin(t.eta)}` : ''})`);
+      v.textContent = `${registro.estacao} · viagem ${viagens.join(' + ') || '—'}`;
+    }
+    const c = conta();
+    $('.xm-vv-corpo').hidden = !(c && c.total);
+    if (c && c.total) desenhar();
   }
 
   function duracao(ini, fim) {
@@ -225,13 +228,12 @@
   }
 
   function desenhar() {
-    const r = est.dados;
+    const r = conta();
     if (!r || !r.total) return;
     const semAt = r.recebido_sem_at || [];
     const naoRec = r.nao_recebido || [];
     const p = r.processamento || {};
     const tipos = (semAt.length ? 1 : 0) + (naoRec.length ? 1 : 0);
-    const foraTxt = r.fora_abrangencia ? (r.fora || []).slice(0, 2).map((f) => f.cidade).join(', ') : 'nenhum pacote';
     $('.xm-vv-cards').innerHTML = [
       cardAt(r),
       card('Total de pacotes', n(r.total), 'no romaneio'),
@@ -241,7 +243,6 @@
         r.divergencias ? `<button class="xm-vv-baixar-card" type="button" data-acao="baixar" title="Baixar relatório de divergências">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg></button>` : '',
         r.divergencias > 0),
-      card('Fora de abrangência', n(r.fora_abrangencia), foraTxt, '', r.fora_abrangencia > 0),
       card('BWT processamento', duracao(p.inicio, p.fim), p.inicio && p.fim ? `${hora(p.inicio)} → ${hora(p.fim)}` : 'sem horário ainda'),
     ].join('');
 
@@ -261,13 +262,12 @@
     const maiorLoc = Math.max(0, ...cidades.map((c) => c[1]));
     $('.xm-vv-loc').innerHTML = cidades.length ? cidades.map(([c, q]) => linhaBarra(c, q, maiorLoc)).join('') : '<div class="xm-vv-vazio">Nenhuma divergência.</div>';
 
-    // Volume: dentro e fora da abrangência + as cidades das ATs
-    const totalAt = (r.dentro || 0) + (r.fora_abrangencia || 0);
-    $('.xm-vv-volsub').textContent = `${n(totalAt)} pacotes nas ATs · ${pct2(totalAt ? Math.floor(((r.dentro || 0) * 10000) / totalAt) / 100 : 0)} dentro da abrangência`;
+    // Volume: os pacotes do romaneio que estão em AT, por cidade da AT
+    $('.xm-vv-volsub').textContent = `${n(r.em_at)} pacotes do romaneio nas ATs de hoje`;
     const vol = (r.porCidade || []).slice(0, 8);
     const maiorVol = Math.max(0, ...vol.map((c) => c.total));
     $('.xm-vv-vol').innerHTML = vol.length
-      ? vol.map((c) => linhaBarra(`${c.cidade}${c.fora ? ' (fora)' : ''}`, c.total, maiorVol, { cinza: !c.fora })).join('')
+      ? vol.map((c) => linhaBarra(c.cidade, c.total, maiorVol, { cinza: true })).join('')
       : '<div class="xm-vv-vazio">Nenhuma AT de hoje com BR do romaneio.</div>';
 
     desenharFluxo(r.fluxo);
@@ -292,7 +292,7 @@
     }).join('')}<td class="xm-tot">${n(vals.reduce((x, y) => x + y, 0))}</td></tr>`).join('')}</table>`;
   }
 
-  const itensDoTipo = () => (est.dados ? (est.tipo === 'sem_at' ? est.dados.recebido_sem_at : est.dados.nao_recebido) || [] : []);
+  const itensDoTipo = () => { const c = conta(); return c ? (est.tipo === 'sem_at' ? c.recebido_sem_at : c.nao_recebido) || [] : []; };
 
   function desenharLista() {
     const itens = itensDoTipo();
@@ -305,36 +305,88 @@
   }
 
   // ── conferir agora ─────────────────────────────────────────────────────────────
+  const lerSpx = (url) => ctx.pedirAoSpx('lerViagem', { url });
+
+  /**
+   * A viagem de hoje: painel AMH-LM (número da viagem) -> Viagens de Carga Direta, Pendente e
+   * depois Finalizado (o tripId) -> anexo da viagem (o romaneio, xlsx).
+   */
+  async function viagemDeHoje() {
+    status('Procurando a viagem de hoje no painel AMH-LM do SPX...');
+    const painel = await lerSpx(C.ROTA_PAINEL_LH);
+    const viagens = C.viagensDoPainel(painel.json).filter((v) => v.chega_aqui);
+    if (!viagens.length) throw new Error('O painel AMH-LM do SPX não mostra nenhuma viagem chegando hoje nesta estação.');
+    const estacao = viagens[0].estacao || viagens[0].destino;
+    const nomes = viagens.map((v) => v.numero).join(', ');
+
+    for (const [aba, urlDe] of [['Pendente', C.urlPendentes], ['Finalizado', C.urlFinalizadas]]) {
+      for (let pagina = 1; pagina <= C.MAX_PAGINAS && viagens.some((v) => !v.id); pagina += 1) {
+        status(`Procurando ${nomes} em Viagens de Carga Direta (${aba}, página ${pagina})...`);
+        const dados = ((await lerSpx(urlDe(pagina))).json || {}).data || {};
+        for (const v of viagens) if (!v.id) v.id = C.idDaViagem(dados, v.numero);
+        const lista = Array.isArray(dados.list) ? dados.list : [];
+        if (!lista.length || pagina * lista.length >= (Number(dados.total) || 0)) break;
+      }
+    }
+
+    const romaneio = new Map();
+    const avisos = [];
+    for (const v of viagens) {
+      if (!v.id) { avisos.push(`a viagem ${v.numero} não apareceu em Viagens de Carga Direta`); continue; }
+      status(`Baixando o romaneio da viagem ${v.numero}...`);
+      try {
+        const { bytes } = await lerSpx(C.urlAnexo(v.id));
+        const r = C.romaneioDaPlanilha(await C.lerXlsx(bytes), estacao);
+        v.romaneio = r.itens.length;
+        for (const x of r.itens) if (!romaneio.has(x.codigo)) romaneio.set(x.codigo, x);
+      } catch (e) {
+        avisos.push(`${v.numero}: ${e.message}`);
+      }
+    }
+    if (!romaneio.size) throw new Error(`Não deu para ler o romaneio da viagem de hoje${avisos.length ? ` (${avisos.join('; ')})` : ''}.`);
+    const resumoViagens = viagens.filter((v) => v.romaneio).map((v) => ({ numero: v.numero, id: v.id, pedidos: v.pedidos, romaneio: v.romaneio, eta: v.eta, ata: v.ata }));
+    return { estacao, viagens: resumoViagens, romaneio: [...romaneio.values()], avisos };
+  }
+
   async function conferir() {
     if (est.ocupado || !est.logado) return;
     est.ocupado = true;
     $('.xm-vv-conferir').disabled = true;
     try {
-      status('Pegando o romaneio de hoje no sistema...');
-      const rom = await sistema('GET', comPolo('/macros/shopee-conferencia/romaneio'));
-      if (!rom.codigos || !rom.codigos.length) throw new Error('Nenhum BR no romaneio de hoje deste polo. Alimente o Romaneiro no sistema primeiro.');
-      const res = await ctx.pedirAoSpx('buscar', { codigos: rom.consultar || rom.codigos }, status);
-      status(`Mandando ao sistema (${n(res.rastreio.length)} BR, ${n(res.ats.length)} ATs)...`);
-      let resumo = await sistema('POST', comPolo('/macros/shopee-conferencia/leitura'), { rastreio: res.rastreio, ats: res.ats });
-      est.dia = resumo.dia || est.dia;
-      mostrar(resumo);
-      // Comprador e CEP das divergências: o export de pedidos da viagem (o mesmo do botão Export do
-      // Order Tracking), lido por dentro. Se falhar, a conferência vale do mesmo jeito.
-      const divergentes = [...(resumo.recebido_sem_at || []), ...(resumo.nao_recebido || [])].map((d) => d.codigo);
-      let aviso = '';
-      // Também quando alguma AT veio do SPX sem cidade: o CEP do export dá a cidade a esses pacotes.
-      if (divergentes.length || resumo.at_sem_cidade) {
+      const { estacao, viagens, romaneio, avisos } = await viagemDeHoje();
+      const dia = C.hojeSP();
+      est.estacao = estacao;
+      est.dia = dia;
+      await gravar(CHAVE_ESTACAO, estacao);
+
+      // Só pesquisa no SPX o que ainda pode mudar (o resto vem do que já foi lido hoje, neste Chrome).
+      const guardado = await ler(CHAVE_RASTREIO);
+      const anterior = guardado && guardado.estacao === estacao && guardado.dia === dia ? guardado.rastreio : [];
+      const codigos = romaneio.map((x) => x.codigo);
+      const res = await ctx.pedirAoSpx('buscar', { codigos: C.faltaConsultar(codigos, anterior) }, status);
+      const daViagem = new Set(codigos);
+      const rastreio = C.juntarRastreio(anterior, res.rastreio).filter((r) => daViagem.has(r.codigo));
+      await gravar(CHAVE_RASTREIO, { estacao, dia, rastreio });
+
+      const registro = { dia, estacao, viagens, lido_em: new Date().toISOString(), usuario: est.nome, conta: C.contar({ romaneio, rastreio, ats: res.ats }) };
+      mostrar(registro, [dia]);
+
+      // Comprador e CEP: o export de pedidos da viagem (o mesmo do botão Export do Order Tracking).
+      // Também quando alguma AT veio sem cidade: o CEP dá a cidade. Se falhar, a conferência vale.
+      let aviso = avisos.length ? `Atenção: ${avisos.join('; ')}.` : '';
+      if (registro.conta.divergencias || registro.conta.at_sem_cidade) {
         try {
           status('Pedindo ao SPX o export de pedidos da viagem (comprador e CEP das divergências)...');
-          const viagem = [...new Set([...divergentes, ...rom.codigos])].slice(0, 10000);
-          const exp = await ctx.pedirAoSpx('exportar', { codigos: viagem }, status);
-          const p = await ctx.pedirAoFundo('pedidosConferencia', { url: exp.url, polo: vePolos() ? est.polo : '', divergentes });
-          resumo = p.resumo;
-          mostrar(resumo);
+          const exp = await ctx.pedirAoSpx('exportar', { codigos: codigos.slice(0, ctx.R.MAX_CODIGOS) }, status);
+          const { pedidos } = await ctx.pedirAoFundo('pedidosConferencia', { url: exp.url });
+          registro.conta = C.contar({ romaneio, rastreio, ats: res.ats, pedidos });
         } catch (e) {
-          aviso = `Conferência pronta, mas o relatório ficou sem comprador e CEP: ${e.message}`;
+          aviso = `${aviso ? `${aviso} ` : ''}Conferência pronta, mas o relatório ficou sem comprador e CEP: ${e.message}`;
         }
       }
+      const historico = C.guardarNoHistorico((await ler(CHAVE_HISTORICO)) || {}, estacao, dia, registro, DIAS_GUARDADOS);
+      await gravar(CHAVE_HISTORICO, historico);
+      mostrar(registro, Object.keys(historico[estacao] || {}).sort().reverse());
       status(aviso, !!aviso);
     } catch (e) {
       falhou(e);
@@ -348,9 +400,9 @@
   const celula = (v) => { const t = String(v == null || v === '' ? '—' : v); return /[;"\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
 
   function baixarRelatorio() {
-    const r = est.dados;
+    const r = conta();
     if (!r || !r.divergencias) return status('Nenhuma divergência para baixar.');
-    const manifesto = XPT_DO_POLO[r.polo] || 'Todos os polos';
+    const manifesto = est.registro.estacao || '';
     const cab = ['Manifesto/Operação', 'Tracking Number', 'Número da TO', 'Comprador', 'Cidade', 'Bairro', 'Cluster', 'Motorista', 'AT (rota)', 'Localização atual', 'Status'];
     const linhas = [
       ...(r.recebido_sem_at || []).map((d) => [manifesto, d.codigo, d.to, d.comprador, d.cidade, d.bairro, d.cluster, d.motorista, '', d.estacao, 'Recebido - Sem AT']),
@@ -358,10 +410,10 @@
         d.achado_no_spx ? d.estacao : 'não achado no SPX', /^soc/i.test(d.estacao || '') ? 'Enviado SOC - Não recebido' : 'Enviado - Não recebido']),
     ];
     const texto = String.fromCharCode(0xfeff) + [cab.join(';'), ...linhas.map((l) => l.map(celula).join(';'))].join('\r\n');
-    const [ano, mes, dia] = String(r.dia || '').split('-');
+    const [ano, mes, dia] = String(est.registro.dia || '').split('-');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([texto], { type: 'text/csv;charset=utf-8' }));
-    a.download = `${dia}-${mes}-${ano}_${XPT_DO_POLO[r.polo] || 'Todos'}_Divergências.csv`;
+    a.download = `${dia}-${mes}-${ano}_${manifesto || 'XPT'}_Divergências.csv`;
     document.body.append(a);
     a.click();
     a.remove();
@@ -383,12 +435,8 @@
 
   // ── entrar e sair da pagina ────────────────────────────────────────────────────
   function aoMostrar() {
-    ctx.pedirAoFundo('estado').then(async (r) => {
-      if (r.logado && ctx.R.ROLES_TODOS_POLOS.includes(r.papel)) {
-        try { est.polo = (await chrome.storage.local.get('poloVapt')).poloVapt || ''; } catch { est.polo = ''; }
-        $('.xm-vv-polo').value = est.polo;
-      }
-      mostrarConta(r.logado, r.nome, r.papel);
+    ctx.pedirAoFundo('estado').then((r) => {
+      mostrarConta(r.logado, r.nome);
       if (r.logado) carregar();
     }).catch((e) => status(e.message, true));
   }

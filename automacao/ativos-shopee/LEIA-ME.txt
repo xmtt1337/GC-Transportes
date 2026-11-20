@@ -9,8 +9,15 @@ logo abaixo de Pedidos, em dois grupos:
                        "confirmacao_entrega" pelo WhatsApp da GC (o telefone sai do olho, na hora).
     Conversas        - as conversas dos ativos da Shopee, as mesmas do sistema XMTT.
   Conferencia   (toda a operacao)
-    Vapt Vupt        - romaneio de hoje contra o SPX: % AT vinculada, recebidos, divergencias,
-                       fora de abrangencia, fluxo hora a hora e o relatorio de divergencias.
+    Vapt Vupt        - a viagem de hoje contra o SPX: % AT vinculada, recebidos, divergencias,
+                       fluxo hora a hora e o relatorio de divergencias. Desde a 3.0 tudo vem do
+                       proprio SPX (do sistema so o login):
+                         1. painel AMH-LM: o numero da viagem que chega hoje (LT...);
+                         2. Viagens de Carga Direta (Pendente, depois Finalizado): o tripId;
+                         3. o anexo da viagem (xlsx, as colunas do Romaneiro): os BR da estacao;
+                         4. pesquisa em lote, ATs de hoje e export de pedidos, como antes.
+                       A conta e feita na extensao e fica guardada neste Chrome (10 dias, por
+                       estacao). Conferir de novo so pesquisa os BR que ainda podem mudar.
 
 Entre com o usuario e a senha do sistema (o login fica dentro da propria pagina).
 

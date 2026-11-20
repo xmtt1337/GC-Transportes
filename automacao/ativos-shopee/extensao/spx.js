@@ -1,5 +1,8 @@
 // XM - Ativos Shopee, no mundo da pagina (spx.shopee.com.br).
 //
+// Vapt Vupt (desde a 3.0): le a viagem do dia (painel AMH-LM, Viagens de Carga Direta e o anexo
+// com o romaneio) e pesquisa os BR e as ATs; a conta e do conferencia.js.
+//
 // Pede ao SPX o export de pedidos (o mesmo do botao Export do Order Tracking) dos BR colados:
 //   1. POST /api/admin/tracking/am_hub/return/export {search_id_list, searched_tag: 1} -> task_id;
 //   2. GET  /spxdata/api/export_platform/export_task/list_for_portal ate export_status 2 (pronto);
@@ -206,6 +209,55 @@
       const rastreio = codigos.length ? await rastrear(post, codigos, (n, t) => responder({ id, andamento: `Pesquisando no SPX os BR que faltam: ${n} de ${t}...` })) : [];
       const ats = await listarAts(post, hojeSP(), (n, t) => responder({ id, andamento: `Lendo as ATs de hoje: ${n} de ${t}...` }));
       responder({ id, fim: true, rastreio, ats });
+    } catch (err) {
+      responder({ id, fim: true, erro: err.message });
+    }
+  });
+
+  // Vapt Vupt: a viagem do dia (painel AMH-LM, Viagens de Carga Direta e o anexo da viagem). So
+  // estas rotas, so GET; o anexo volta em bytes (xlsx) e quem le e o conferencia.js.
+  const ROTAS_DA_VIAGEM = [
+    '/mgmt/api/pc/dashboard/lm/linehaul_trips',
+    '/api/admin/transportation/trip/list_v2',
+    '/api/admin/transportation/trip/history/list',
+    '/api/admin/transportation/agency/email/attachments/get',
+  ];
+  const ROTA_ANEXO = '/api/admin/transportation/agency/email/attachments/get';
+
+  const getBinario = (url) => new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url);
+    xhr.responseType = 'arraybuffer';
+    Object.entries(headers).forEach(([n, v]) => xhr.setRequestHeader(n, v));
+    xhr.onload = () => {
+      if (xhr.status !== 200) return reject(new Error(`A Shopee recusou o anexo da viagem (HTTP ${xhr.status}).`));
+      const bytes = xhr.response;
+      const u8 = new Uint8Array(bytes || new ArrayBuffer(0));
+      if (u8[0] === 0x50 && u8[1] === 0x4b) return resolve(bytes); // "PK": é o xlsx
+      // Não veio arquivo: o SPX respondeu JSON (erro ou viagem sem anexo).
+      let j = null;
+      try { j = JSON.parse(new TextDecoder().decode(u8)); } catch { /* tratado abaixo */ }
+      reject(new Error(j ? `O SPX não deu o anexo da viagem (retcode ${j.retcode}): ${j.message || 'sem mensagem'}` : 'O anexo da viagem não veio como planilha.'));
+    };
+    xhr.onerror = () => reject(new Error('A Shopee não respondeu.'));
+    xhr.send();
+  });
+
+  window.addEventListener('message', async (e) => {
+    if (e.source !== window || !e.data || e.data.xmAtivos !== 'lerViagem') return;
+    const { id } = e.data;
+    const url = String(e.data.url || '');
+    const rota = url.split('?')[0];
+    if (!ROTAS_DA_VIAGEM.includes(rota)) { responder({ id, fim: true, erro: 'Rota do SPX não permitida.' }); return; }
+    if (!headers['x-csrftoken']) {
+      responder({ id, fim: true, erro: 'O SPX ainda não fez nenhuma busca nesta aba. Dê F5 no SPX e tente de novo.' });
+      return;
+    }
+    try {
+      if (rota === ROTA_ANEXO) { responder({ id, fim: true, bytes: await getBinario(url) }); return; }
+      const j = await getBruto(url);
+      if (j.retcode != null && Number(j.retcode) !== 0) throw new Error(`A Shopee recusou (retcode ${j.retcode}): ${j.message || 'sem mensagem'}`);
+      responder({ id, fim: true, json: j });
     } catch (err) {
       responder({ id, fim: true, erro: err.message });
     }
