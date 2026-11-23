@@ -37,7 +37,13 @@
   #${ID_GRUPO} a.${CLASSE_ITEM} { cursor: pointer; }
   body.xm-conf-aberto .sidebar-container a.ssc-menu-item-selected:not(.${CLASSE_ITEM}) { font-weight: normal !important; color: rgba(255,255,255,.7) !important; }
   body.xm-conf-aberto .sidebar-container a.ssc-menu-item-selected:not(.${CLASSE_ITEM}) .ssc-menu-item-cursor { background: transparent !important; }
-  .xm-conf-pagina { padding: 16px 24px 32px; color: #333; font-size: 14px; line-height: 1.5; box-sizing: border-box; }
+  /* Nosso grupo aberto: o grupo que o SPX deixar aberto (o da tela atual) aparece fechado. */
+  body.xm-conf-menu-aberto .sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.${CLASSE_GRUPO}) > ul.ssc-menu { display: none !important; }
+  body.xm-conf-menu-aberto .sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.${CLASSE_GRUPO}) { background: transparent !important; }
+  body.xm-conf-menu-aberto .sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.${CLASSE_GRUPO}) > .ssc-menu-submenu-title { background: transparent !important; color: rgba(255,255,255,.7) !important; font-weight: normal !important; }
+  /* A setinha do SPX: fechada = translateY(-50%); aberta = translateY(-50%) rotate(180deg) (ssc-ui-vue). */
+  body.xm-conf-menu-aberto .sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.${CLASSE_GRUPO}) > .ssc-menu-submenu-title .ssc-menu-submenu-title-icon { transform: translateY(-50%) !important; }
+  .xm-conf-pagina { padding: 16px 24px 32px; color: #333; font-size: 14px; line-height: 1.5; box-sizing: border-box; min-width: 0; max-width: 100%; }
   .xm-conf-pagina * { box-sizing: border-box; }
   .xm-conf-pagina .xm-cartao { background: #fff; border-radius: 4px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
   .xm-conf-pagina .xm-titulo { font-size: 18px; font-weight: 500; color: #333; margin: 0 0 4px; }
@@ -175,14 +181,22 @@
   // reabrir um grupo logo depois (o da tela atual), confere mais uma vez.
   const outrosAbertosDeCima = () => [...document.querySelectorAll(`.sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.${CLASSE_GRUPO})`)]
     .filter((x) => !x.parentElement.closest('li.ssc-menu-submenu'));
+  let clicandoNosOutros = false; // os cliques abaixo são nossos: o ouvinte de captura não mexe neles
   function fecharOsOutros(conferindo = false) {
     const abertos = outrosAbertosDeCima();
-    abertos.forEach((x) => { const t = x.querySelector(':scope > .ssc-menu-submenu-title'); if (t) t.click(); });
+    clicandoNosOutros = true;
+    try {
+      abertos.forEach((x) => { const t = x.querySelector(':scope > .ssc-menu-submenu-title'); if (t) t.click(); });
+    } finally { clicandoNosOutros = false; }
     if (!conferindo && abertos.length) setTimeout(() => { if (li && li.classList.contains('ssc-menu-opened') && outrosAbertosDeCima().length) fecharOsOutros(true); }, 400);
   }
 
+  // O grupo da tela atual do SPX "nasce" aberto e o SPX reabre ele mesmo depois do clique (23/11/2026).
+  // Enquanto o nosso grupo está aberto, o que o SPX deixar aberto fica escondido por CSS
+  // (body.xm-conf-menu-aberto): aparece fechado, sem depender do SPX obedecer.
   function abrirGrupo(abrir) {
     if (!li) return;
+    document.body.classList.toggle('xm-conf-menu-aberto', abrir);
     const titulo = li.querySelector('.ssc-menu-submenu-title');
     const ul = li.querySelector('ul.ssc-menu');
     li.classList.toggle('ssc-menu-opened', abrir);
@@ -302,12 +316,23 @@
     marcarItem(null);
   }
 
-  // Abrir outro grupo (do SPX ou da XM - Ativos Shopee) fecha o daqui.
+  // Abrir outro grupo (do SPX ou da XM - Ativos Shopee) fecha o daqui. Se o grupo clicado estava
+  // aberto para o SPX, mas escondido por nós, só mostra de novo: o clique não vai para o SPX (senão
+  // ele fecharia o grupo, e a pessoa teria de clicar duas vezes).
   document.addEventListener('click', (e) => {
+    if (clicandoNosOutros) return;
     const t = e.target && e.target.closest && e.target.closest('.sidebar-container .ssc-menu-submenu-title');
     if (!t || t.closest(`li.${CLASSE_GRUPO}`)) return;
     const outro = t.closest('li.ssc-menu-submenu');
-    if (outro && !outro.classList.contains('ssc-menu-opened')) abrirGrupo(false);
+    if (!outro || outro.parentElement.closest('li.ssc-menu-submenu')) return; // subgrupo: dentro de um grupo já à mostra
+    const nossoAberto = !!(li && li.classList.contains('ssc-menu-opened'));
+    if (nossoAberto && outro.classList.contains('ssc-menu-opened')) {
+      e.stopPropagation();
+      e.preventDefault();
+      abrirGrupo(false);
+      return;
+    }
+    if (!outro.classList.contains('ssc-menu-opened')) abrirGrupo(false);
   }, true);
 
   // Outro item do menu (do SPX ou da outra extensão) ou outro endereço: volta para a tela do SPX.

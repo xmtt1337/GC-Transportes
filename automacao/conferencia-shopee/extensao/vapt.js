@@ -14,7 +14,9 @@
 
 (() => {
   const C = self.XMVaptConta;
-  const MAX_LISTA = 500;
+  // Paginação das tabelas (a escolha de tamanho fica enquanto a página está aberta).
+  const TAMANHOS = [24, 48, 96];
+  const paginas = { div: { pagina: 1, tamanho: 24 }, tos: { pagina: 1, tamanho: 24 }, card: { pagina: 1, tamanho: 24 } };
   const DIAS_GUARDADOS = 10;
   const CHAVE_HISTORICO = 'vaptHistorico';
   const CHAVE_RASTREIO = 'vaptRastreio';
@@ -64,6 +66,21 @@
   .xm-conf-pagina .xm-vv-pct-to { display: grid; grid-template-columns: 64px minmax(80px, 160px); align-items: center; gap: 8px; }
   .xm-conf-pagina .xm-vv-pct-to b { font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
   .xm-conf-pagina a.xm-vv-ver { text-decoration: none; white-space: nowrap; }
+  /* Coluna Ação fixa à direita, como nas tabelas do SPX (com a sombrinha de separação). */
+  .xm-conf-pagina .xm-vv-fixa th:last-child, .xm-conf-pagina .xm-vv-fixa td:last-child { position: sticky; right: 0; background: #fff; box-shadow: -6px 0 6px -6px rgba(0,0,0,.18); }
+  .xm-conf-pagina .xm-vv-fixa th:last-child { background: #fafafa; z-index: 2; }
+  .xm-conf-pagina .xm-vv-fixa tr:hover td:last-child { background: #fafafa; }
+  .xm-conf-pagina .xm-vv-tabela-div { min-width: 1100px; }
+  .xm-conf-pagina .xm-vv-tabela-div td { white-space: nowrap; }
+  /* Paginação no rodapé da tabela (Total à esquerda; páginas e tamanho à direita), como no SPX. */
+  .xm-conf-pagina .xm-vv-pager { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 4px 0; color: #666; font-size: 13px; flex-wrap: wrap; }
+  .xm-conf-pagina .xm-vv-pg { display: flex; align-items: center; gap: 4px; }
+  .xm-conf-pagina .xm-vv-pg button { min-width: 30px; height: 30px; padding: 0 6px; border: 0; border-radius: 4px; background: transparent !important; box-shadow: none !important; color: #333; font: inherit; cursor: pointer; }
+  .xm-conf-pagina .xm-vv-pg button:hover:not(:disabled) { color: #ee4d2d; }
+  .xm-conf-pagina .xm-vv-pg button.xm-ativo { color: #ee4d2d; font-weight: 500; }
+  .xm-conf-pagina .xm-vv-pg button:disabled { color: #ccc !important; cursor: not-allowed; }
+  .xm-conf-pagina .xm-vv-pg span { color: #999; padding: 0 4px; }
+  .xm-conf-pagina .xm-vv-pg select { height: 30px; margin-left: 8px; border: 1px solid #e5e5e5; border-radius: 4px; padding: 0 8px; font: inherit; color: #333; background: #fff; }
   .xm-conf-pagina a.xm-vv-ver:hover { text-decoration: underline; }
   .xm-conf-pagina .xm-vv-pd { display: block; color: #999; overflow-wrap: anywhere; }
   .xm-conf-pagina .xm-vv-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -164,10 +181,11 @@
           </div>
           <div class="xm-vv-ct-barra"></div>
           <div class="xm-cabecalho" style="margin:14px 0 8px"><div class="xm-vv-abas xm-vv-ct-abas"></div><button class="xm-btn xm-btn-primario xm-vv-ct-copiar" type="button">Copiar faltantes</button></div>
-          <div class="xm-tabela-caixa xm-vv-ct-caixa"><table class="xm-tabela">
+          <div class="xm-tabela-caixa xm-vv-ct-caixa"><table class="xm-tabela xm-vv-fixa">
             <thead><tr><th>SPX Tracking Number</th><th>Situação</th><th>Localização atual</th><th>Cidade · Bairro</th><th>Motorista / AT</th><th>Ação</th></tr></thead>
             <tbody class="xm-vv-ct-linhas"></tbody>
           </table></div>
+          <div class="xm-vv-pager" data-pager="card"></div>
         </div>
       </div>
       <div class="xm-vv-corpo" hidden>
@@ -182,18 +200,20 @@
             <div><h3 class="xm-vv-h" style="margin:0">TOs da viagem</h3><p class="xm-vv-hsub xm-vv-tos-sub" style="margin:2px 0 0"></p></div>
             <div class="xm-vv-filtros"></div>
           </div>
-          <div class="xm-tabela-caixa"><table class="xm-tabela xm-vv-tabela-tos">
+          <div class="xm-tabela-caixa"><table class="xm-tabela xm-vv-tabela-tos xm-vv-fixa">
             <thead><tr><th>TO</th><th>% recebido</th><th>Total</th><th>Recebidos</th><th>Faltam</th><th>Ação</th></tr></thead>
             <tbody class="xm-vv-tos"></tbody>
           </table></div>
+          <div class="xm-vv-pager" data-pager="tos"></div>
         </div>
         <div class="xm-cartao"><h3 class="xm-vv-h">Fluxo hora a hora</h3><p class="xm-vv-hsub">Recebimento no XPT, atribuição (AT) e expedição, por hora</p><div class="xm-vv-fluxo"></div></div>
         <div class="xm-cartao">
           <div class="xm-cabecalho"><h3 class="xm-vv-h xm-vv-lista-tit" style="margin:0"></h3><button class="xm-btn xm-vv-copiar" type="button">Copiar BR</button></div>
-          <div class="xm-tabela-caixa"><table class="xm-tabela">
+          <div class="xm-tabela-caixa"><table class="xm-tabela xm-vv-fixa xm-vv-tabela-div">
             <thead><tr><th>SPX Tracking Number</th><th>TO</th><th>Cidade</th><th>Bairro</th><th>Cluster</th><th>Motorista / AT</th><th>Localização atual</th><th>Ação</th></tr></thead>
             <tbody class="xm-vv-linhas"></tbody>
           </table></div>
+          <div class="xm-vv-pager" data-pager="div"></div>
         </div>
       </div>`;
     $('.xm-vv-conferir').addEventListener('click', conferir);
@@ -206,12 +226,14 @@
       const l = e.target.closest('[data-tipo]');
       if (!l) return;
       est.tipo = l.dataset.tipo;
+      paginas.div.pagina = 1;
       desenhar();
     });
     $('.xm-vv-filtros').addEventListener('click', (e) => {
       const b = e.target.closest('[data-filtro]');
       if (!b) return;
       est.filtroTo = b.dataset.filtro;
+      paginas.tos.pagina = 1;
       desenharTos();
     });
     // Visualizar (como a coluna Ação do SPX) abre o card flutuante da TO, completa ou não.
@@ -222,7 +244,7 @@
     $('.xm-vv-fundo-to').addEventListener('click', (e) => {
       if (e.target === e.currentTarget || e.target.closest('.xm-vv-ct-fechar')) { fecharCardTo(); return; }
       const aba = e.target.closest('[data-aba-to]');
-      if (aba) { est.abaTo = aba.dataset.abaTo; desenharCardTo(); return; }
+      if (aba) { est.abaTo = aba.dataset.abaTo; paginas.card.pagina = 1; desenharCardTo(); return; }
       if (e.target.closest('.xm-vv-ct-copiar')) {
         // O status da página fica atrás do card: o próprio botão confirma.
         const b = e.target.closest('.xm-vv-ct-copiar');
@@ -234,6 +256,20 @@
       }
     });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && est.toNoCard) fecharCardTo(); });
+    raiz.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-pager] [data-pag]');
+      if (!b || b.disabled) return;
+      const chave = b.closest('[data-pager]').dataset.pager;
+      paginas[chave].pagina = Number(b.dataset.pag);
+      redesenharTabela(chave);
+    });
+    raiz.addEventListener('change', (e) => {
+      const sel = e.target.closest('[data-pager] select');
+      if (!sel) return;
+      const chave = sel.closest('[data-pager]').dataset.pager;
+      paginas[chave] = { pagina: 1, tamanho: Number(sel.value) || TAMANHOS[0] };
+      redesenharTabela(chave);
+    });
     return raiz;
   }
 
@@ -280,6 +316,7 @@
 
   function mostrar(registro, dias) {
     est.registro = registro || null;
+    Object.values(paginas).forEach((pg) => { pg.pagina = 1; });
     const sel = $('.xm-vv-dia');
     sel.innerHTML = (dias || []).map((d) => `<option value="${d}"${d === est.dia ? ' selected' : ''}>${d.split('-').reverse().join('/')}</option>`).join('');
     sel.hidden = !(dias && dias.length);
@@ -402,7 +439,7 @@
     const filtros = [['abertas', 'Abertas', abertas.length], ['completas', 'Completas', completas], ['todas', 'Todas', tos.length]];
     $('.xm-vv-filtros').innerHTML = filtros.map(([k, rot, q]) => `<button type="button" class="xm-link xm-vv-filtro${est.filtroTo === k ? ' xm-ativo' : ''}" data-filtro="${k}">${rot} (${n(q)})</button>`).join('<span class="xm-vv-sep">·</span>');
     const lista = est.filtroTo === 'abertas' ? abertas : est.filtroTo === 'completas' ? tos.filter((t) => !t.faltam) : tos;
-    $('.xm-vv-tos').innerHTML = lista.length ? lista.map((t) => {
+    $('.xm-vv-tos').innerHTML = lista.length ? daPagina('tos', lista).map((t) => {
       const cor = corDaTo(t);
       return `<tr data-to="${esc(t.to)}">
         <td class="xm-cod">${esc(t.to)}</td>
@@ -410,6 +447,7 @@
         <td>${n(t.total)}</td><td>${n(t.recebidos)}</td><td>${t.faltam ? `<b style="color:${cor}">${n(t.faltam)}</b>` : '0'}</td>
         <td><button type="button" class="xm-link xm-vv-ver-to" data-ver-to="${esc(t.to)}">Visualizar</button></td></tr>`;
     }).join('') : `<tr><td colspan="6" style="color:#bbb;text-align:center">${est.filtroTo === 'abertas' ? 'Todas as TOs estão 100% recebidas.' : 'Nenhuma.'}</td></tr>`;
+    if (!lista.length) daPagina('tos', lista);
   }
 
   const barraDaTo = (t) => {
@@ -447,6 +485,7 @@
     est.toNoCard = to;
     // Abre no que interessa: o que falta; TO completa abre nos recebidos.
     est.abaTo = t.faltam ? 'faltam' : 'recebidos';
+    paginas.card.pagina = 1;
     desenharCardTo();
     $('.xm-vv-fundo-to').hidden = false;
   }
@@ -465,7 +504,7 @@
       + (temTodos ? '' : '<span class="xm-vv-sep">·</span><span style="color:#999">confira de novo para ver os recebidos</span>');
     card.querySelector('.xm-vv-ct-copiar').textContent = { faltam: 'Copiar faltantes', recebidos: 'Copiar recebidos', todos: 'Copiar todos' }[est.abaTo];
     const lista = itensDaAba();
-    card.querySelector('.xm-vv-ct-linhas').innerHTML = lista.length ? lista.map((d) => {
+    card.querySelector('.xm-vv-ct-linhas').innerHTML = lista.length ? daPagina('card', lista).map((d) => {
       const [rotulo, cor] = SITUACAO[d.situacao] || [d.situacao, '#666'];
       return `<tr>
       <td class="xm-cod">${esc(d.codigo)}</td>
@@ -475,6 +514,7 @@
       <td>${esc([d.motorista, d.at].filter(Boolean).join(' · ') || '—')}</td>
       <td><a class="xm-link xm-vv-ver" href="${esc(C.linkDoPedido(d.codigo, location.origin))}" target="_blank" rel="noopener">Visualizar</a></td></tr>`;
     }).join('') : `<tr><td colspan="6" style="color:#bbb;text-align:center">${est.abaTo === 'faltam' ? 'Nada faltando: TO completa.' : 'Nenhum.'}</td></tr>`;
+    if (!lista.length) daPagina('card', lista);
     card.querySelector('.xm-vv-ct-caixa').scrollTop = 0;
   }
 
@@ -506,12 +546,52 @@
   function desenharLista() {
     const itens = itensDoTipo();
     $('.xm-vv-lista-tit').textContent = `${est.tipo === 'sem_at' ? 'Recebido - Sem AT' : 'Enviado - Não recebido'} (${n(itens.length)})`;
-    $('.xm-vv-linhas').innerHTML = itens.length ? itens.slice(0, MAX_LISTA).map((d) => `<tr>
+    $('.xm-vv-linhas').innerHTML = itens.length ? daPagina('div', itens).map((d) => `<tr>
       <td class="xm-cod">${esc(d.codigo)}</td><td>${esc(d.to || '—')}</td><td>${esc(d.cidade || '—')}</td><td>${esc(d.bairro || '—')}</td>
       <td>${esc(d.cluster || '—')}</td><td>${esc([d.motorista, d.at].filter(Boolean).join(' · ') || '—')}</td>
       <td>${esc(d.achado_no_spx === false ? 'não achado no SPX' : (d.estacao || '—'))}</td>
       <td><a class="xm-link xm-vv-ver" href="${esc(C.linkDoPedido(d.codigo, location.origin))}" target="_blank" rel="noopener">Visualizar</a></td></tr>`).join('')
       : '<tr><td colspan="8" style="color:#bbb;text-align:center">Nenhum.</td></tr>';
+    if (!itens.length) daPagina('div', itens);
+  }
+
+  // ── paginação (Total, ‹ 1 2 … ›, tamanho), no rodapé de cada tabela ──────────────────────────
+  /** Os itens da página atual da tabela; desenha a paginação dela. */
+  function daPagina(chave, lista) {
+    const pg = paginas[chave];
+    const qtd = Math.max(1, Math.ceil(lista.length / pg.tamanho));
+    if (pg.pagina > qtd) pg.pagina = qtd;
+    if (pg.pagina < 1) pg.pagina = 1;
+    desenharPaginacao(chave, lista.length, qtd);
+    return lista.slice((pg.pagina - 1) * pg.tamanho, pg.pagina * pg.tamanho);
+  }
+
+  /** 1 … atual-2 … atual+2 … última. */
+  function numerosDasPaginas(atual, qtd) {
+    const nums = [...new Set([1, qtd, atual - 2, atual - 1, atual, atual + 1, atual + 2])].filter((x) => x >= 1 && x <= qtd).sort((a, b) => a - b);
+    const saida = [];
+    nums.forEach((x, i) => { if (i && x - nums[i - 1] > 1) saida.push('…'); saida.push(x); });
+    return saida;
+  }
+
+  function desenharPaginacao(chave, total, qtd) {
+    const caixa = raiz.querySelector(`[data-pager="${chave}"]`);
+    if (!caixa) return;
+    const pg = paginas[chave];
+    caixa.hidden = !total;
+    if (!total) return;
+    caixa.innerHTML = `<span>Total ${n(total)}</span><div class="xm-vv-pg">
+      <button type="button" data-pag="${pg.pagina - 1}"${pg.pagina <= 1 ? ' disabled' : ''} title="Anterior">‹</button>
+      ${numerosDasPaginas(pg.pagina, qtd).map((x) => (x === '…' ? '<span>…</span>' : `<button type="button" data-pag="${x}" class="${x === pg.pagina ? 'xm-ativo' : ''}">${x}</button>`)).join('')}
+      <button type="button" data-pag="${pg.pagina + 1}"${pg.pagina >= qtd ? ' disabled' : ''} title="Próxima">›</button>
+      <select title="Itens por página">${TAMANHOS.map((t) => `<option value="${t}"${t === pg.tamanho ? ' selected' : ''}>${t} / página</option>`).join('')}</select>
+    </div>`;
+  }
+
+  function redesenharTabela(chave) {
+    if (chave === 'div') desenharLista();
+    else if (chave === 'tos') desenharTos();
+    else if (chave === 'card') desenharCardTo();
   }
 
   // ── conferir agora ─────────────────────────────────────────────────────────────

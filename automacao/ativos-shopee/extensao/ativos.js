@@ -35,6 +35,12 @@
   #${ID_GRUPO} a.xm-ativos-item { cursor: pointer; }
   body.xm-ativos-aberto .sidebar-container a.ssc-menu-item-selected:not(.xm-ativos-item) { font-weight: normal !important; color: rgba(255,255,255,.7) !important; }
   body.xm-ativos-aberto .sidebar-container a.ssc-menu-item-selected:not(.xm-ativos-item) .ssc-menu-item-cursor { background: transparent !important; }
+  /* Nosso grupo aberto: o grupo que o SPX deixar aberto (o da tela atual) aparece fechado. */
+  body.xm-ativos-menu-aberto .sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.xm-grupo) > ul.ssc-menu { display: none !important; }
+  body.xm-ativos-menu-aberto .sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.xm-grupo) { background: transparent !important; }
+  body.xm-ativos-menu-aberto .sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.xm-grupo) > .ssc-menu-submenu-title { background: transparent !important; color: rgba(255,255,255,.7) !important; font-weight: normal !important; }
+  /* A setinha do SPX: fechada = translateY(-50%); aberta = translateY(-50%) rotate(180deg) (ssc-ui-vue). */
+  body.xm-ativos-menu-aberto .sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.xm-grupo) > .ssc-menu-submenu-title .ssc-menu-submenu-title-icon { transform: translateY(-50%) !important; }
   .xm-ativos-pagina { padding: 16px 24px 32px; color: #333; font-size: 14px; line-height: 1.5; box-sizing: border-box; }
   .xm-ativos-pagina * { box-sizing: border-box; }
   .xm-ativos-pagina .xm-cartao { background: #fff; border-radius: 4px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
@@ -200,13 +206,20 @@
   // reabrir um grupo logo depois (o da tela atual), confere mais uma vez.
   const gruposAbertosDeCima = () => [...document.querySelectorAll('.sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.xm-grupo)')]
     .filter((li) => !li.parentElement.closest('li.ssc-menu-submenu'));
+  let clicandoNosOutros = false; // os cliques abaixo são nossos: o ouvinte de captura não mexe neles
   function fecharOsDoSpx(conferindo = false) {
     const abertos = gruposAbertosDeCima();
-    abertos.forEach((li) => { const t = li.querySelector(':scope > .ssc-menu-submenu-title'); if (t) t.click(); });
+    clicandoNosOutros = true;
+    try {
+      abertos.forEach((li) => { const t = li.querySelector(':scope > .ssc-menu-submenu-title'); if (t) t.click(); });
+    } finally { clicandoNosOutros = false; }
     const algumNossoAberto = () => GRUPOS.some((g) => lis[g.id] && lis[g.id].classList.contains('ssc-menu-opened'));
     if (!conferindo && abertos.length) setTimeout(() => { if (algumNossoAberto() && gruposAbertosDeCima().length) fecharOsDoSpx(true); }, 400);
   }
 
+  // O grupo da tela atual do SPX "nasce" aberto e o SPX reabre ele mesmo depois do clique (23/11/2026).
+  // Enquanto um grupo nosso está aberto, o que o SPX deixar aberto fica escondido por CSS
+  // (body.xm-ativos-menu-aberto): aparece fechado, sem depender do SPX obedecer.
   function abrirGrupo(id, abrir) {
     const li = lis[id];
     if (!li) return;
@@ -218,6 +231,7 @@
     li.style.background = abrir ? FUNDO_ABERTO : '';
     titulo.style.color = abrir ? 'rgb(255, 255, 255)' : '';
     titulo.style.background = abrir ? FUNDO_ABERTO : '';
+    document.body.classList.toggle('xm-ativos-menu-aberto', GRUPOS.some((g) => lis[g.id] && lis[g.id].classList.contains('ssc-menu-opened')));
   }
 
   /** Marca o item da pagina aberta (null = nenhum). */
@@ -381,12 +395,23 @@
     marcarItem(null);
   }
 
-  // Abrir um grupo do SPX fecha os nossos (um aberto por vez, como o menu deles).
+  // Abrir um grupo do SPX (ou o da XM - Conferência Shopee) fecha os nossos (um aberto por vez,
+  // como o menu deles). Se o grupo clicado estava aberto para o SPX, mas escondido por nós, só mostra
+  // de novo: o clique não vai para o SPX (senão ele fecharia, e seriam dois cliques).
   document.addEventListener('click', (e) => {
+    if (clicandoNosOutros) return;
     const t = e.target && e.target.closest && e.target.closest('.sidebar-container .ssc-menu-submenu-title');
     if (!t || t.closest('li.xm-grupo')) return;
     const li = t.closest('li.ssc-menu-submenu');
-    if (li && !li.classList.contains('ssc-menu-opened')) GRUPOS.forEach((g) => abrirGrupo(g.id, false));
+    if (!li || li.parentElement.closest('li.ssc-menu-submenu')) return; // subgrupo: dentro de um grupo já à mostra
+    const algumNossoAberto = GRUPOS.some((g) => lis[g.id] && lis[g.id].classList.contains('ssc-menu-opened'));
+    if (algumNossoAberto && li.classList.contains('ssc-menu-opened')) {
+      e.stopPropagation();
+      e.preventDefault();
+      GRUPOS.forEach((g) => abrirGrupo(g.id, false));
+      return;
+    }
+    if (!li.classList.contains('ssc-menu-opened')) GRUPOS.forEach((g) => abrirGrupo(g.id, false));
   }, true);
 
   // Outro item do menu (ou outro endereco): volta para a tela do SPX.
