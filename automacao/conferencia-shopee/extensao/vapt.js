@@ -51,14 +51,18 @@
   .xm-conf-pagina .xm-vv-sep { color: #ccc; }
   .xm-conf-pagina .xm-vv-tabela-tos td { padding-top: 8px; padding-bottom: 8px; }
   .xm-conf-pagina .xm-vv-to-clica { cursor: pointer; }
-  .xm-conf-pagina .xm-vv-to-aberta td { background: #fff7f4; }
+  .xm-conf-pagina .xm-vv-to-clica:hover td { background: #fff7f4; }
+  /* Card flutuante da TO (por cima de tudo, até do checklist). */
+  .xm-conf-pagina .xm-vv-fundo-to { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.35); display: grid; place-items: center; padding: 24px; }
+  .xm-conf-pagina .xm-vv-card-to { width: min(980px, 100%); max-height: calc(100vh - 48px); display: flex; flex-direction: column; background: #fff; border-radius: 4px; box-shadow: 0 10px 32px rgba(0,0,0,.25); padding: 20px 24px; }
+  .xm-conf-pagina .xm-vv-ct-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .xm-conf-pagina .xm-vv-ct-tit { font-family: ui-monospace, Consolas, monospace; }
+  .xm-conf-pagina .xm-vv-ct-fechar { flex: none; width: 32px; height: 32px; border: 1px solid #e5e5e5; border-radius: 4px; background: #fff; color: #666; cursor: pointer; font-size: 20px; line-height: 1; padding: 0; display: grid; place-items: center; }
+  .xm-conf-pagina .xm-vv-ct-fechar:hover { color: #ee4d2d; border-color: #ee4d2d; }
+  .xm-conf-pagina .xm-vv-ct-barra .xm-vv-pct-to { grid-template-columns: 70px minmax(120px, 1fr); }
+  .xm-conf-pagina .xm-vv-ct-caixa { max-height: none; min-height: 0; flex: 1 1 auto; overflow: auto; }
   .xm-conf-pagina .xm-vv-pct-to { display: grid; grid-template-columns: 64px minmax(80px, 160px); align-items: center; gap: 8px; }
   .xm-conf-pagina .xm-vv-pct-to b { font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
-  .xm-conf-pagina .xm-vv-to-det td { background: #fffaf8; padding: 10px 16px 14px; }
-  .xm-conf-pagina .xm-vv-falt-cab { display: flex; justify-content: space-between; color: #666; font-size: 13px; margin-bottom: 8px; }
-  .xm-conf-pagina .xm-vv-falt { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 4px 24px; max-height: 260px; overflow: auto; font-size: 13px; }
-  .xm-conf-pagina .xm-vv-falt div { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
-  .xm-conf-pagina .xm-vv-falt div span:nth-child(2) { color: #999; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .xm-conf-pagina a.xm-vv-ver { text-decoration: none; white-space: nowrap; }
   .xm-conf-pagina a.xm-vv-ver:hover { text-decoration: underline; }
   .xm-conf-pagina .xm-vv-pd { display: block; color: #999; overflow-wrap: anywhere; }
@@ -108,7 +112,7 @@
   let ctx = null;
   let raiz = null;
   // registro = um dia conferido: { dia, estacao, viagens, lido_em, usuario, conta }
-  const est = { logado: false, nome: '', estacao: '', dia: '', registro: null, tipo: 'sem_at', ocupado: false, filtroTo: 'abertas', toAberta: '' };
+  const est = { logado: false, nome: '', estacao: '', dia: '', registro: null, tipo: 'sem_at', ocupado: false, filtroTo: 'abertas', toNoCard: '' };
   const $ = (sel) => raiz.querySelector(sel);
   const esc = (v) => ctx.esc(v);
   const n = (v) => ctx.numero(v);
@@ -152,6 +156,20 @@
         <div class="xm-vv-passos-cab"><span class="xm-vv-passos-tit"></span><button type="button" class="xm-vv-passos-fechar" title="Fechar">×</button></div>
         <ol class="xm-vv-passos-lista"></ol>
       </div>
+      <div class="xm-vv-fundo-to" hidden>
+        <div class="xm-vv-card-to" role="dialog" aria-modal="true">
+          <div class="xm-vv-ct-cab">
+            <div><h3 class="xm-vv-h xm-vv-ct-tit" style="margin:0"></h3><p class="xm-vv-hsub xm-vv-ct-sub" style="margin:2px 0 8px"></p></div>
+            <button type="button" class="xm-vv-ct-fechar" title="Voltar (Esc)" aria-label="Voltar">×</button>
+          </div>
+          <div class="xm-vv-ct-barra"></div>
+          <div class="xm-cabecalho" style="margin:14px 0 8px"><span class="xm-vv-hsub" style="margin:0">Pedidos que faltam receber</span><button class="xm-btn xm-btn-primario xm-vv-ct-copiar" type="button">Copiar faltantes</button></div>
+          <div class="xm-tabela-caixa xm-vv-ct-caixa"><table class="xm-tabela">
+            <thead><tr><th>SPX Tracking Number</th><th>Localização atual</th><th>Cidade · Bairro</th><th>Motorista / AT</th><th>Ação</th></tr></thead>
+            <tbody class="xm-vv-ct-linhas"></tbody>
+          </table></div>
+        </div>
+      </div>
       <div class="xm-vv-corpo" hidden>
         <div class="xm-vv-cards"></div>
         <div class="xm-vv-tres">
@@ -194,18 +212,25 @@
       const b = e.target.closest('[data-filtro]');
       if (!b) return;
       est.filtroTo = b.dataset.filtro;
-      est.toAberta = '';
       desenharTos();
     });
+    // Clicar na TO (com pacote faltando) abre o card flutuante com os pedidos que faltam.
     $('.xm-vv-tos').addEventListener('click', (e) => {
-      if (e.target.closest('a.xm-vv-ver')) return; // Visualizar abre o pedido
-      const copiar = e.target.closest('[data-copiar-to]');
-      if (copiar) { copiarLista(faltantesDa(copiar.dataset.copiarTo).map((d) => d.codigo)); return; }
       const linha = e.target.closest('tr[data-to]');
-      if (!linha || !Number(linha.dataset.faltam)) return;
-      est.toAberta = est.toAberta === linha.dataset.to ? '' : linha.dataset.to;
-      desenharTos();
+      if (linha && Number(linha.dataset.faltam)) abrirCardTo(linha.dataset.to);
     });
+    $('.xm-vv-fundo-to').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget || e.target.closest('.xm-vv-ct-fechar')) fecharCardTo();
+      else if (e.target.closest('.xm-vv-ct-copiar')) {
+        // O status da página fica atrás do card: o próprio botão confirma.
+        const b = e.target.closest('.xm-vv-ct-copiar');
+        copiarLista(faltantesDa(est.toNoCard).map((d) => d.codigo), (q) => {
+          b.textContent = `Copiado (${n(q)})`;
+          setTimeout(() => { b.textContent = 'Copiar faltantes'; }, 2000);
+        });
+      }
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && est.toNoCard) fecharCardTo(); });
     return raiz;
   }
 
@@ -376,21 +401,42 @@
     const lista = est.filtroTo === 'abertas' ? abertas : est.filtroTo === 'completas' ? tos.filter((t) => !t.faltam) : tos;
     $('.xm-vv-tos').innerHTML = lista.length ? lista.map((t) => {
       const cor = corDaTo(t);
-      const aberta = est.toAberta === t.to;
-      let linha = `<tr data-to="${esc(t.to)}" data-faltam="${t.faltam}" class="${t.faltam ? 'xm-vv-to-clica' : ''}${aberta ? ' xm-vv-to-aberta' : ''}">
+      return `<tr data-to="${esc(t.to)}" data-faltam="${t.faltam}" class="${t.faltam ? 'xm-vv-to-clica' : ''}">
         <td class="xm-cod">${esc(t.to)}</td>
-        <td><div class="xm-vv-pct-to"><b style="color:${cor}">${pct2(t.pct)}</b><div class="xm-vv-t"><i style="width:${Math.min(100, t.pct)}%;background:${cor}"></i></div></div></td>
+        <td>${barraDaTo(t)}</td>
         <td>${n(t.total)}</td><td>${n(t.recebidos)}</td><td>${t.faltam ? `<b style="color:${cor}">${n(t.faltam)}</b>` : '0'}</td>
-        <td>${t.faltam ? `<span class="xm-link">${aberta ? 'Fechar' : 'Ver o que falta'}</span>` : ''}</td></tr>`;
-      if (aberta) {
-        const falt = faltantesDa(t.to);
-        linha += `<tr class="xm-vv-to-det"><td colspan="6"><div class="xm-vv-falt-cab"><span>${n(falt.length)} pacote(s) da ${esc(t.to)} ainda não recebido(s)</span>
-          <button type="button" class="xm-link" data-copiar-to="${esc(t.to)}">Copiar BR</button></div>
-          <div class="xm-vv-falt">${falt.map((d) => `<div><span class="xm-cod">${esc(d.codigo)}</span><span>${esc(d.achado_no_spx === false ? 'não achado no SPX' : (d.estacao || '—'))}</span>
-            <a class="xm-link xm-vv-ver" href="${esc(C.linkDoPedido(d.codigo, location.origin))}" target="_blank" rel="noopener">Visualizar</a></div>`).join('')}</div></td></tr>`;
-      }
-      return linha;
+        <td>${t.faltam ? '<span class="xm-link">Ver o que falta</span>' : ''}</td></tr>`;
     }).join('') : `<tr><td colspan="6" style="color:#bbb;text-align:center">${est.filtroTo === 'abertas' ? 'Todas as TOs estão 100% recebidas.' : 'Nenhuma.'}</td></tr>`;
+  }
+
+  const barraDaTo = (t) => {
+    const cor = corDaTo(t);
+    return `<div class="xm-vv-pct-to"><b style="color:${cor}">${pct2(t.pct)}</b><div class="xm-vv-t"><i style="width:${Math.min(100, t.pct)}%;background:${cor}"></i></div></div>`;
+  };
+
+  // ── card flutuante da TO: os pedidos que faltam receber dela ──────────────────────────────────
+  function abrirCardTo(to) {
+    const t = ((conta() && conta().tos) || []).find((x) => x.to === to);
+    if (!t) return;
+    const falt = faltantesDa(to);
+    est.toNoCard = to;
+    const card = $('.xm-vv-card-to');
+    card.querySelector('.xm-vv-ct-tit').textContent = to;
+    card.querySelector('.xm-vv-ct-sub').textContent = `${n(t.recebidos)} de ${n(t.total)} recebidos · ${n(t.faltam)} faltam receber`;
+    card.querySelector('.xm-vv-ct-barra').innerHTML = barraDaTo(t);
+    card.querySelector('.xm-vv-ct-linhas').innerHTML = falt.length ? falt.map((d) => `<tr>
+      <td class="xm-cod">${esc(d.codigo)}</td>
+      <td>${esc(d.achado_no_spx === false ? 'não achado no SPX' : (d.estacao || '—'))}</td>
+      <td>${esc([d.cidade, d.bairro].filter(Boolean).join(' · ') || '—')}</td>
+      <td>${esc([d.motorista, d.at].filter(Boolean).join(' · ') || '—')}</td>
+      <td><a class="xm-link xm-vv-ver" href="${esc(C.linkDoPedido(d.codigo, location.origin))}" target="_blank" rel="noopener">Visualizar</a></td></tr>`).join('')
+      : '<tr><td colspan="5" style="color:#bbb;text-align:center">Nenhum.</td></tr>';
+    $('.xm-vv-fundo-to').hidden = false;
+  }
+
+  function fecharCardTo() {
+    est.toNoCard = '';
+    $('.xm-vv-fundo-to').hidden = true;
   }
 
   function desenharFluxo(f) {
@@ -652,10 +698,10 @@
     copiarLista(itensDoTipo().map((d) => d.codigo));
   }
 
-  function copiarLista(codigos) {
+  function copiarLista(codigos, aoCopiar = () => {}) {
     const texto = codigos.join('\n');
     if (!texto) return status('Nada para copiar.');
-    const pronto = () => status(`${n(codigos.length)} BR copiado(s).`);
+    const pronto = () => { status(`${n(codigos.length)} BR copiado(s).`); aoCopiar(codigos.length); };
     navigator.clipboard.writeText(texto).then(pronto).catch(() => {
       const t = document.createElement('textarea');
       t.value = texto; t.style.cssText = 'position:fixed;opacity:0';

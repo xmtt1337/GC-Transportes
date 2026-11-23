@@ -22,7 +22,8 @@ Tudo vem do proprio SPX (do sistema XMTT so o login):
 Um checklist no canto de baixo mostra cada passo enquanto roda.
 
 TOs da viagem: a conclusao de cada TO do romaneio (pacotes recebidos / pacotes da TO), com as
-abertas primeiro; clicando na TO aparecem os BR que faltam, com Visualizar (abre o pedido no SPX).
+abertas primeiro; clicando na TO abre um card flutuante com os pedidos que faltam receber dela
+(Visualizar em cada um, Copiar faltantes, X ou Esc para voltar).
 Cada pedido das listas tambem tem Visualizar.
 
 A conta e feita na extensao e fica guardada neste Chrome (10 dias, por estacao). Conferir de novo
