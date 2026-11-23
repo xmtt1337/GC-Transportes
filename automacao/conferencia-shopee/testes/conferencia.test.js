@@ -180,3 +180,9 @@ test('guardarNoHistorico: por estação, guarda só os últimos dias', () => {
   h = C.guardarNoHistorico(h, XPT, '2026-11-18', { dia: '2026-11-18', v: 2 }, 3);
   assert.strictEqual(h[XPT]['2026-11-18'].v, 2);
 });
+
+test('linkDoPedido: a mesma tela do Visualizar de Rastreio de pedidos do SPX', () => {
+  assert.strictEqual(C.linkDoPedido(' brteste00001 '),
+    'https://spx.shopee.com.br/#/orderDetail/BRTESTE00001/order_info?originUrl=%2ForderTracking&module=am_hubDeliveryManagement&stationType=AM_HUB');
+  assert.match(C.linkDoPedido('BRTESTE00001', 'http://127.0.0.1:9'), /^http:\/\/127\.0\.0\.1:9\/#\/orderDetail\/BRTESTE00001\//);
+});

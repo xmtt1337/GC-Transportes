@@ -45,6 +45,8 @@
   @keyframes xm-vv-pulsa { 50% { opacity: .45; } }
   .xm-conf-pagina .xm-vv-pt { color: #333; }
   .xm-conf-pagina .xm-vv-pt.xm-espera { color: #aaa; }
+  .xm-conf-pagina a.xm-vv-ver { text-decoration: none; white-space: nowrap; }
+  .xm-conf-pagina a.xm-vv-ver:hover { text-decoration: underline; }
   .xm-conf-pagina .xm-vv-pd { display: block; color: #999; overflow-wrap: anywhere; }
   .xm-conf-pagina .xm-vv-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
   @media (max-width: 1300px) { .xm-conf-pagina .xm-vv-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -147,7 +149,7 @@
         <div class="xm-cartao">
           <div class="xm-cabecalho"><h3 class="xm-vv-h xm-vv-lista-tit" style="margin:0"></h3><button class="xm-btn xm-vv-copiar" type="button">Copiar BR</button></div>
           <div class="xm-tabela-caixa"><table class="xm-tabela">
-            <thead><tr><th>SPX Tracking Number</th><th>TO</th><th>Cidade</th><th>Bairro</th><th>Cluster</th><th>Motorista / AT</th><th>Localização atual</th></tr></thead>
+            <thead><tr><th>SPX Tracking Number</th><th>TO</th><th>Cidade</th><th>Bairro</th><th>Cluster</th><th>Motorista / AT</th><th>Localização atual</th><th>Ação</th></tr></thead>
             <tbody class="xm-vv-linhas"></tbody>
           </table></div>
         </div>
@@ -338,8 +340,9 @@
     $('.xm-vv-linhas').innerHTML = itens.length ? itens.slice(0, MAX_LISTA).map((d) => `<tr>
       <td class="xm-cod">${esc(d.codigo)}</td><td>${esc(d.to || '—')}</td><td>${esc(d.cidade || '—')}</td><td>${esc(d.bairro || '—')}</td>
       <td>${esc(d.cluster || '—')}</td><td>${esc([d.motorista, d.at].filter(Boolean).join(' · ') || '—')}</td>
-      <td>${esc(d.achado_no_spx === false ? 'não achado no SPX' : (d.estacao || '—'))}</td></tr>`).join('')
-      : '<tr><td colspan="7" style="color:#bbb;text-align:center">Nenhum.</td></tr>';
+      <td>${esc(d.achado_no_spx === false ? 'não achado no SPX' : (d.estacao || '—'))}</td>
+      <td><a class="xm-link xm-vv-ver" href="${esc(C.linkDoPedido(d.codigo, location.origin))}" target="_blank" rel="noopener">Visualizar</a></td></tr>`).join('')
+      : '<tr><td colspan="8" style="color:#bbb;text-align:center">Nenhum.</td></tr>';
   }
 
   // ── conferir agora ─────────────────────────────────────────────────────────────
@@ -368,7 +371,9 @@
         <span class="xm-vv-pt${p.estado === 'espera' ? ' xm-espera' : ''}">${esc(rotulo)}${p.texto ? `<span class="xm-vv-pd">${esc(p.texto)}</span>` : ''}</span></li>`;
     }).join('');
   }
+  let fecharPassos = null;
   function iniciarPassos() {
+    clearTimeout(fecharPassos);
     passos = {};
     passoAtual = '';
     tituloPassos = 'Conferindo a viagem de hoje...';
@@ -380,9 +385,14 @@
     if (estado === 'andamento') passoAtual = id;
     desenharPassos();
   }
+  // Deu tudo certo: o checklist some sozinho (ele cobre a coluna Ação da lista). Com aviso ou erro,
+  // fica até fecharem no ×.
+  const SOME_EM_MS = 8000;
   function fimDosPassos(titulo) {
     tituloPassos = titulo;
     desenharPassos();
+    const limpo = Object.values(passos).every((p) => p.estado === 'ok' || p.estado === 'pulado');
+    if (limpo) fecharPassos = setTimeout(() => { $('.xm-vv-passos').hidden = true; }, SOME_EM_MS);
   }
 
   // Andamento que vem do spx.js (pesquisa, ATs, export).

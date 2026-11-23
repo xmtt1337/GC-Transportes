@@ -532,6 +532,14 @@
     return conta;
   }
 
+  /**
+   * A tela "Informações do pedido" do SPX, a mesma do Visualizar de Pedidos > Rastreio de pedidos
+   * (endereço copiado da tela deles em 23/11/2026).
+   */
+  function linkDoPedido(codigo, origem = 'https://spx.shopee.com.br') {
+    return `${origem}/#/orderDetail/${encodeURIComponent(chaveCodigo(codigo))}/order_info?originUrl=%2ForderTracking&module=am_hubDeliveryManagement&stationType=AM_HUB`;
+  }
+
   /** Histórico guardado no Chrome: { estacao: { dia: registro } }, só os últimos dias. */
   function guardarNoHistorico(historico, estacao, dia, registro, maxDias = 15) {
     const h = historico && typeof historico === 'object' ? { ...historico } : {};
@@ -547,7 +555,7 @@
     viagensDoPainel, viagensDasListas, idDaViagem, faixa, urlPendentes, urlFinalizadas, urlAnexo,
     lerRastreio, recebidoNoXpt, foiRecebido, faltaConsultar, juntarRastreio, lerAts, resumir,
     clusterPorBairro, chaveBairro, normCep, lugarPorCep, contar, guardarNoHistorico, hojeSP, pct,
-    prefixosDasAts, areaConhecida,
+    prefixosDasAts, areaConhecida, linkDoPedido,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else self.XMVaptConta = api;
