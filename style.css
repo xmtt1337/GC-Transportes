@@ -7071,3 +7071,41 @@ button.pe-ex-op:hover { background: rgba(255,255,255,0.05); }
 /* Anjun › Conferência: a parte certa/expedida da pizza e das barras no verde da Anjun (igual à extensão). */
 #tela-anjun-conferencia .lag-ok { background: #22c55e; }
 #tela-anjun-conferencia .lag-pizza { --marca: #22c55e; }
+
+/* SPX Agency Router: o que a Shopee manda e com qual status. Mesma linguagem do .pv-
+   (números em faixa, ação = texto azul, alternador neutro); tabelas sem caixa. */
+#tela-agency-router .cabecalho-tela h2 { display: flex; align-items: baseline; gap: 12px; }
+.ar-estado { font-size: 12.5px; font-weight: 500; }
+.ar-ok { color: #34d399; }
+.ar-pendente { color: #f59e0b; }
+.ar-kpis { margin: 4px 0 6px; }
+.ar-secao { margin: 24px 0 8px; }
+.ar-titulo { display: block; margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #e2e8f0; }
+.ar-sub { margin: 0 0 10px; font-size: 12px; font-weight: 400; color: var(--text-muted); }
+.ar-rolagem { overflow-x: auto; }
+.ar-tabela { border-top: 1px solid rgba(255,255,255,0.07); }
+.ar-tabela th, .ar-tabela td { padding: 8px 12px; }
+.ar-tabela th.ar-num, .ar-tabela td.ar-num { text-align: right; font-variant-numeric: tabular-nums; }
+.ar-tabela tr.ar-grupo td { border-top: 1px solid rgba(255,255,255,0.1); }
+.ar-tabela td.ar-quando { white-space: nowrap; color: #cbd5e1; }
+.ar-tabela td .pv-acao { padding: 2px; margin: 0; white-space: nowrap; }
+.ar-estreita { max-width: 520px; }
+.ar-mono { font-family: Consolas, monospace; font-size: 12px; color: #cbd5e1; overflow-wrap: anywhere; }
+.ar-campo { font-family: Consolas, monospace; font-size: 12px; color: #8494a9; }
+.ar-valor { color: #e2e8f0; }
+.ar-vazio { color: #6b7a90; font-style: italic; font-family: inherit; }
+.ar-status-lista { display: flex; flex-direction: column; gap: 2px; }
+.ar-filtro { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 8px;
+             font-size: 13px; color: var(--text-muted); }
+.ar-filtro b { color: #e2e8f0; font-weight: 600; }
+.ar-paginacao { display: flex; align-items: center; justify-content: flex-end; gap: 4px 14px;
+                flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; color: var(--text-muted); }
+.pv-acao:disabled { color: #4b5563; cursor: default; text-decoration: none; }
+.ar-detalhe { margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; }
+.ar-detalhe-cab { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+                  flex-wrap: wrap; font-size: 13px; color: #cbd5e1; }
+.ar-pre { margin: 0; max-height: 520px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+          padding: 12px; background: var(--surface-2); border: 1px solid var(--border);
+          font-family: Consolas, monospace; font-size: 11.5px; color: #cbd5e1; }
+.ar-config summary { cursor: pointer; }
+.ar-config[open] summary { margin-bottom: 10px; }
