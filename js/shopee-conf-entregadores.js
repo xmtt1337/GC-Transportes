@@ -42,15 +42,15 @@ function abrirShopeeConfEntregadores(event) {
     _sceCarregar();
 }
 
-function _sceMostrarLista() {
-    document.getElementById("sce-lista-wrap").style.display = "";
-    document.getElementById("sce-detalhe").style.display = "none";
+function _sceMostrarVista(id) {
+    for (const v of ["sce-lista-wrap", "sce-detalhe", "sce-relatorio"]) {
+        const el = document.getElementById(v);
+        if (el) el.style.display = v === id ? "" : "none";
+    }
 }
 
-function _sceMostrarDetalhe() {
-    document.getElementById("sce-lista-wrap").style.display = "none";
-    document.getElementById("sce-detalhe").style.display = "";
-}
+function _sceMostrarLista()   { _sceMostrarVista("sce-lista-wrap"); }
+function _sceMostrarDetalhe() { _sceMostrarVista("sce-detalhe"); }
 
 // ── Lista por dia ──
 function _sceCarregar() {

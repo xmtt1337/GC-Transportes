@@ -3377,6 +3377,7 @@ if (_BASE) {
                             Conferências dos entregadores
                         </div>
                         <div class="bip-scan-hint">O que cada entregador bipou no aplicativo dele, por dia. Aqui é só acompanhamento — quem confere a rota é ele.</div>
+                        <div style="margin-top:8px"><button type="button" class="mac-link" style="font-size:13px" onclick="_sceRelAbrir()">Relatório do período</button></div>
                     </div>
 
                     <div class="slh-cal" id="sce-dias" style="display:none;margin-bottom:14px"></div>
@@ -3422,6 +3423,46 @@ if (_BASE) {
                         <thead id="sce-det-thead"></thead>
                         <tbody id="sce-det-tbody"></tbody>
                     </table>
+                </div>
+
+                <!-- Relatório do período: a geral do que cada um deveria ter bipado -->
+                <div id="sce-relatorio" style="display:none">
+                    <div class="shr-faixa cfc">
+                        <span class="shr-faixa-label">Relatório do período</span>
+                        <span class="shr-faixa-xpt" id="sce-rel-base">—</span>
+                        <span class="shr-faixa-obs">
+                            <button type="button" class="shr-pag-btn" onclick="_sceRelVoltar()">← Entregadores</button>
+                        </span>
+                    </div>
+
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:4px 0 14px">
+                        <label style="font-size:12px;color:#8494a9;display:flex;flex-direction:column;gap:4px">De
+                            <input type="date" id="sce-rel-de" class="ant-input" style="max-width:170px">
+                        </label>
+                        <label style="font-size:12px;color:#8494a9;display:flex;flex-direction:column;gap:4px">Até
+                            <input type="date" id="sce-rel-ate" class="ant-input" style="max-width:170px">
+                        </label>
+                        <button type="button" class="shr-pag-btn" onclick="_sceRelGerar()">Gerar</button>
+                        <label style="font-size:12px;color:#8494a9;display:flex;flex-direction:column;gap:4px">Entregador
+                            <select id="sce-rel-ent" class="fech-select" style="min-width:220px" onchange="_sceRelRender()">
+                                <option value="">Todos</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="fechamento-empty" id="sce-rel-empty">Escolha o período e clique em Gerar.</div>
+                    <div id="sce-rel-resultado" style="display:none">
+                        <div class="shr-resumo" id="sce-rel-resumo"></div>
+                        <div style="display:flex;gap:18px;flex-wrap:wrap;margin:4px 0 12px">
+                            <button type="button" class="mac-link" style="font-size:13px" onclick="_sceRelPlanilha()" title="Abas: Resumo, Geral (todos os pacotes da rota), Outra rota e A mais">Baixar planilha</button>
+                            <button type="button" class="mac-link" style="font-size:13px" onclick="_sceRelImprimir()" title="Uma página por entregador por dia, inclusive de quem não bipou nada">Imprimir / salvar PDF (uma página por dia)</button>
+                        </div>
+                        <div style="font-size:12px;color:#8494a9;margin-bottom:8px" id="sce-rel-obs"></div>
+                        <table class="ant-hist-table">
+                            <thead><tr><th>Entregador</th><th>Dias</th><th>Deveria bipar</th><th>Bipou da rota</th><th>Não bipou</th><th>Outra rota</th><th>A mais</th><th>Conclusão</th></tr></thead>
+                            <tbody id="sce-rel-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div><!-- /tela-shopee-conf-entregadores -->
@@ -5053,7 +5094,8 @@ if (_BASE) {
 <script src="js/shopee-linehaul.js?v=30260827f"></script>
 <script src="js/shopee-atribuicoes.js?v=20261105a"></script>
 <script src="js/shopee-retidos.js?v=30260819f"></script>
-<script src="js/shopee-conf-entregadores.js?v=20261104c"></script>
+<script src="js/shopee-conf-entregadores.js?v=20261123a"></script>
+<script src="js/shopee-conf-entregadores-relatorio.js?v=20261123a"></script>
 <script src="js/shopee-stuck.js?v=20261104c"></script>
 <script src="js/shopee-stuck-backlog.js?v=20260930d"></script>
 <script src="js/entregador-conferencia.js?v=20261015b"></script>
