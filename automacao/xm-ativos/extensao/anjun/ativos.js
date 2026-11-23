@@ -12,7 +12,7 @@
 // outro nesse meio tempo). Clicar num item do menu deles ou trocar de endereco volta para o portal.
 //
 // Fluxo: cola os waybills (AJ) -> a busca da Consulta de pacotes (sem dado sensivel: cliente,
-// comerciante, status; o comerciante limpo vira o Remetente) -> o sistema diz quem ja recebeu ativo
+// comerciante, status; a plataforma do cliente vira o Remetente) -> o sistema diz quem ja recebeu ativo
 // -> "Disparar": para cada marcado, abre nome e telefone (packageInfoLimit + viewPlaintext, 1 pedido
 // a cada 3 s) e envia pelo WABA do sistema (modelo confirmacao_anjun).
 
@@ -394,7 +394,7 @@
         </div>
         <div class="xm-aj-tabela-caixa">
           <table class="xm-aj-tabela">
-            <thead><tr><th style="width:40px"><input type="checkbox" id="xm-aj-todos" title="Marcar todos os prontos"></th><th>Waybill</th><th title="O nome da loja que vai na mensagem (do Nome do comerciante da Anjun)">Remetente</th><th>Cliente</th><th>Status</th><th>Nome do cliente</th><th>Telefone</th><th>Situação</th></tr></thead>
+            <thead><tr><th style="width:40px"><input type="checkbox" id="xm-aj-todos" title="Marcar todos os prontos"></th><th>Waybill</th><th title="A plataforma que vai na mensagem (pelo Nome do cliente da Anjun)">Remetente</th><th>Cliente</th><th>Status</th><th>Nome do cliente</th><th>Telefone</th><th>Situação</th></tr></thead>
             <tbody id="xm-aj-linhas"></tbody>
           </table>
         </div>
@@ -554,7 +554,7 @@
       const { estados } = await pedirAoFundo('situacao', { pedidos: codigos });
       estado.linhas = pedidos.map((p) => {
         const ativo = (estados || {})[p.codigo] || null;
-        const l = { ...p, remetente: p.achado ? R.lojaUnica(p.comerciante, p.cliente) : '', nome: '', telefone: '', e164: '', ativo, marcado: false };
+        const l = { ...p, remetente: p.achado ? R.remetente(p.cliente, p.comerciante) : '', nome: '', telefone: '', e164: '', ativo, marcado: false };
         l.marcado = podeMarcar(l) && !ativo; // quem já recebeu ativo fica desmarcado
         return l;
       });
@@ -598,7 +598,7 @@
             l.telefone = olho.telefone;
             if (!l.cliente && olho.cliente) l.cliente = olho.cliente;
             if (!l.comerciante && olho.comerciante) l.comerciante = olho.comerciante;
-            if (!l.remetente) l.remetente = R.lojaUnica(l.comerciante, l.cliente);
+            if (!l.remetente) l.remetente = R.remetente(l.cliente, l.comerciante);
             l.revelado = true;
           }
           const envio = R.montarEnvio({ codigo: l.codigo, nome: l.nome, telefone: l.telefone, remetente: l.remetente, atendente: estado.nome });

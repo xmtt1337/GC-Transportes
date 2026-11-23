@@ -14,7 +14,7 @@ test('lerCodigos: waybills AJ (maiúsculos, sem repetir); o resto vai para ignor
   assert.deepStrictEqual(R.lerCodigos(''), { codigos: [], ignorados: [] });
 });
 
-test('montarEnvio: confirmacao_anjun com {{1}} nome, {{2}} quem dispara, {{3}} remetente (a loja), {{4}} pedido', () => {
+test('montarEnvio: confirmacao_anjun com {{1}} nome, {{2}} quem dispara, {{3}} remetente (a plataforma), {{4}} pedido', () => {
   const { corpo } = R.montarEnvio({ codigo: 'AJ0000000000001', nome: 'Pessoa Teste', telefone: '49999990000', remetente: 'Loja Teste', atendente: 'Atendente Teste' });
   assert.deepStrictEqual(corpo.parametros, ['Pessoa Teste', 'Atendente Teste', 'Loja Teste', 'AJ0000000000001']);
   assert.strictEqual(corpo.template, 'confirmacao_anjun');
@@ -39,32 +39,18 @@ Por favor, responda com SIM ou NÃO.`);
   assert.match(R.montarEnvio({ codigo: 'AJ1', nome: 'A', telefone: '49999990000', atendente: '' }).erro, /quem dispara/);
 });
 
-test('lojaUnica: o nome único da loja (do Nome do comerciante), nunca o código do Nome do cliente', () => {
-  // razão social com a marca entre parênteses vira só a marca (o "szanjun" do cliente não importa)
-  assert.strictEqual(R.lojaUnica('EXEMPLO SHINE PTE.LTD.(SHEIN)-INTERNACIONAL', 'szanjun'), 'Shein');
-  // loja comum fica como está; o cliente (temud2d, tiktok logistics...) é ignorado
-  assert.strictEqual(R.lojaUnica('Loja Exemplo Fashion', 'temud2d'), 'Loja Exemplo Fashion');
-  assert.strictEqual(R.lojaUnica('MODA TESTE', 'tiktok logistics brazil ltda'), 'MODA TESTE');
-  assert.strictEqual(R.lojaUnica('Casa Home', 'sheind2d'), 'Casa Home'); // "Home" não perde o "me"
-  assert.strictEqual(R.lojaUnica('XY 001', 'temud2d'), 'XY 001');
-  // sufixos de razão social no fim saem
-  assert.strictEqual(R.lojaUnica('MODA EXEMPLO COMERCIO LTDA', ''), 'MODA EXEMPLO COMERCIO');
-  assert.strictEqual(R.lojaUnica('Exemplo Trading Co., Ltd.', ''), 'Exemplo Trading');
-  assert.strictEqual(R.lojaUnica('LOJA EXEMPLO (FILIAL 2)', ''), 'LOJA EXEMPLO');
-  assert.strictEqual(R.lojaUnica('EXEMPLO HOLDINGS LIMITED (LOJA BOA)', ''), 'LOJA BOA');
-  // só a marca escrita do jeito conhecido
-  assert.strictEqual(R.lojaUnica('SHEIN', ''), 'Shein');
-  // sem comerciante: a marca do cliente (sheind2d = Shein, temud2d = Temu, tiktok logistics = TikTok); senão vazio (a mensagem leva "não informado")
-  assert.strictEqual(R.lojaUnica('', 'temud2d'), 'Temu');
-  assert.strictEqual(R.lojaUnica('', 'sheind2d'), 'Shein');
-  assert.strictEqual(R.lojaUnica('', 'szanjun'), '');
-  assert.strictEqual(R.lojaUnica('  ', ''), '');
-  // nome em chinês ou com cara de código: vale a marca do cliente (ou nada)
-  assert.strictEqual(R.lojaUnica('厦门测试电子商务有限公司', 'szanjun'), '');
-  assert.strictEqual(R.lojaUnica('厦门测试电子商务有限公司', 'sheind2d'), 'Shein');
-  assert.strictEqual(R.lojaUnica("J123456'shop", 'temud2d'), 'Temu');
-  assert.strictEqual(R.lojaUnica('X9 001', 'temuxborder'), 'X9 001');
-  assert.strictEqual(R.lojaUnica('', 'temuxborder'), 'Temu');
+test('remetente: a plataforma pelo cliente da Anjun; o nome da loja não vai', () => {
+  assert.strictEqual(R.remetente('temud2d', 'LOJA EXEMPLO'), 'Temu');
+  assert.strictEqual(R.remetente('temuxborder', "J123456'shop"), 'Temu');
+  assert.strictEqual(R.remetente('tiktok logistics brazil ltda', 'LOJA EXEMPLO'), 'TikTok');
+  assert.strictEqual(R.remetente('shein', 'Loja Exemplo Fashion'), 'Shein');
+  assert.strictEqual(R.remetente('sheind2d', ''), 'Shein');
+  // szanjun nem sempre é Shein: vale a plataforma citada no comerciante, senão vazio ("não informado")
+  assert.strictEqual(R.remetente('szanjun', 'EXEMPLO SHINE PTE.LTD.(SHEIN)-INTERNACIONAL'), 'Shein');
+  assert.strictEqual(R.remetente('szanjun', 'Shopee'), 'Shopee');
+  assert.strictEqual(R.remetente('szanjun', '厦门测试电子商务有限公司'), '');
+  assert.strictEqual(R.remetente('szanjun', 'LOJA EXEMPLO'), '');
+  assert.strictEqual(R.remetente('', ''), '');
 });
 
 test('buscarPedidos: a Consulta de pacotes por waybill, em partes; cliente, comerciante, status e não achados', async () => {
@@ -123,9 +109,3 @@ test('manifest e menu: o portal da Anjun roda os scripts da pasta anjun; seção
   assert.ok(ativos.lastIndexOf('s.id = ID_SECAO') > ativos.indexOf('limparClone(s)'));
 });
 
-test('clientes da Anjun que viram marca: szanjun fica sem marca (nem sempre é Shein), temud2d = Temu, tiktok logistics = TikTok', () => {
-  assert.strictEqual(R.lojaUnica('', 'szanjun'), '');
-  assert.strictEqual(R.lojaUnica('', 'temud2d'), 'Temu');
-  assert.strictEqual(R.lojaUnica('', 'tiktok logistics brazil ltda'), 'TikTok');
-  assert.strictEqual(R.lojaUnica('', 'loja desconhecida xyz'), '');
-});

@@ -3,9 +3,8 @@
 // mesmas regras das outras transportadoras).
 //
 // Modelo: confirmacao_anjun (dado pelo usuario em 23/11/2026):
-//   {{1}} nome do cliente  {{2}} quem dispara (a conta do sistema)  {{3}} remetente (a loja)  {{4}} pedido (AJ)
-// Remetente = o nome unico da loja, tirado do "Nome do comerciante" da Anjun (ver lojaUnica): o
-// "Nome do cliente" deles e um codigo interno (temud2d, sheind2d, szanjun...) e nao serve.
+//   {{1}} nome do cliente  {{2}} quem dispara (a conta do sistema)  {{3}} remetente (a plataforma)  {{4}} pedido (AJ)
+// Remetente = a plataforma, pelo "Nome do cliente" da Anjun (ver remetente): temud2d -> Temu...
 
 (() => {
   const TEMPLATE = 'confirmacao_anjun';
@@ -56,50 +55,22 @@
   // Marcas conhecidas: escritas do jeito que o cliente reconhece.
   const MARCAS = [
     // clientes da Anjun (confirmado pelo usuario): temud2d = Temu, tiktok logistics = TikTok.
-    // szanjun NAO: nem sempre e Shein (o usuario corrigiu em 23/11); sem loja legivel, "nao informado".
+    // szanjun NAO: nem sempre e Shein (o usuario corrigiu em 23/11).
     [/shein/i, 'Shein'], [/temu/i, 'Temu'], [/tik\s*tok/i, 'TikTok'], [/mercado\s*livre|\bmeli\b/i, 'Mercado Livre'],
     [/shopee/i, 'Shopee'], [/aliexpress|cainiao/i, 'AliExpress'], [/\bkwai\b/i, 'Kwai'], [/amazon/i, 'Amazon'],
     [/magalu|magazine\s*luiza/i, 'Magalu'],
   ];
   const marca = (texto) => { const m = MARCAS.find(([re]) => re.test(String(texto || ''))); return m ? m[1] : ''; };
 
-  // Razao social no fim do nome: "PTE.LTD.", "LTDA", "EIRELI", "S/A", "-INTERNACIONAL"...
-  // (pelo menos um separador antes: "Home" nao perde o "me" do fim)
-  const SUFIXO = /[\s.,\-–]+(?:pte\.?\s*ltd|ltda|ltd|limited|eireli|s\s*\/\s*a|s\.a|inc|corp|co|me|epp|internacional|international)\.?$/i;
-  const temRazaoSocial = (texto) => /\b(?:pte|ltda|ltd|limited|eireli|inc|corp)\b|s\s*\/\s*a\b/i.test(String(texto || ''));
-
-  const ilegivel = (texto) => /[぀-ヿ㐀-鿿가-힯＀-￯]/.test(texto) || /\d{4,}/.test(texto);
-
-  function semSufixos(texto) {
-    let t = String(texto || '').replace(/\s+/g, ' ').trim();
-    for (let i = 0; i < 6 && SUFIXO.test(t); i += 1) t = t.replace(SUFIXO, '').trim();
-    return t.replace(/^[\s.,\-–]+|[\s.,\-–]+$/g, '');
-  }
-
   /**
-   * O nome unico da loja para o "Remetente" da mensagem.
-   * - Do "Nome do comerciante" da Anjun (o "Nome do cliente" deles e codigo interno: temud2d, szanjun).
-   * - Razao social com a marca entre parenteses vira so a marca:
-   *   "MERCURY SHINE PTE.LTD.(SHEIN)-INTERNACIONAL" -> "Shein".
-   * - Sem os sufixos de razao social no fim ("LOJA X LTDA" -> "LOJA X").
-   * - Sem comerciante: a marca que der para reconhecer no cliente (temud2d -> Temu); senao, vazio.
+   * O "Remetente" da mensagem = a plataforma, pelo cliente da Anjun (pedido do usuario em 23/11/2026:
+   * "deixar apenas o cliente da anjun"; o nome da loja do comerciante nao vai mais).
+   *   temud2d/temuxborder -> Temu, tiktok logistics brazil ltda -> TikTok, shein/sheind2d -> Shein.
+   * Cliente que nao diz a plataforma (szanjun, que nem sempre e Shein): vale a plataforma citada no
+   * comerciante ("...(SHEIN)...", "Shopee"); senao vazio (a mensagem leva "nao informado").
    */
-  function lojaUnica(comerciante, cliente) {
-    const c = String(comerciante || '').replace(/\s+/g, ' ').trim();
-    if (c) {
-      const par = c.match(/\(([^)]+)\)/);
-      if (par) {
-        const fora = c.replace(par[0], ' ');
-        if (marca(par[1])) return marca(par[1]);
-        if (temRazaoSocial(fora)) return semSufixos(par[1]);
-      }
-      const limpo = semSufixos(c.replace(/\([^)]*\)/g, ' '));
-      // Nome em chines/japones/coreano ou com cara de codigo ("J741829'shop"): o cliente nao
-      // reconhece; vale a marca do cliente da Anjun, se houver.
-      if (ilegivel(limpo)) return marca(cliente);
-      if (limpo) return marca(limpo) && limpo.length <= marca(limpo).length + 2 ? marca(limpo) : limpo;
-    }
-    return marca(cliente);
+  function remetente(cliente, comerciante) {
+    return marca(cliente) || marca(comerciante);
   }
 
   /** O texto aprovado do confirmacao_anjun. */
@@ -144,7 +115,7 @@ Por favor, responda com SIM ou NÃO.`;
 
   const publico = {
     TEMPLATE, MAX_CODIGOS, RITMO_OLHO_MS, BLOQUEIO_MS, ROLES_ATIVOS,
-    lerCodigos, digitosLocais, validarTelefone, telefoneLegivel, lojaUnica, montarTexto, montarEnvio, eBloqueio,
+    lerCodigos, digitosLocais, validarTelefone, telefoneLegivel, remetente, montarTexto, montarEnvio, eBloqueio,
   };
   if (typeof self !== 'undefined') self.XMAtivosAnjun = publico;
   if (typeof module !== 'undefined' && module.exports) module.exports = publico;
