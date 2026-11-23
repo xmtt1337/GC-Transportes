@@ -470,14 +470,17 @@
    * (a mesma regra do card Pacotes recebidos). Abertas primeiro, da menos para a mais recebida.
    */
   const SEM_TO = '(sem TO)';
-  function porTo(romaneio, naoRecebido) {
+  function porTo(romaneio, naoRecebido, detalhe = null) {
     const falta = new Set((naoRecebido || []).map((d) => chaveCodigo(d.codigo)));
     const grupos = new Map();
     for (const x of romaneio || []) {
       const to = texto(x.to, 40) || SEM_TO;
-      const g = grupos.get(to) || { to, total: 0, recebidos: 0 };
+      const g = grupos.get(to) || { to, total: 0, recebidos: 0, ...(detalhe ? { itens: [] } : {}) };
+      const codigo = chaveCodigo(x.codigo);
       g.total += 1;
-      if (!falta.has(chaveCodigo(x.codigo))) g.recebidos += 1;
+      if (!falta.has(codigo)) g.recebidos += 1;
+      // Os BR da TO (para o Visualizar da TO, inclusive das completas).
+      if (detalhe) g.itens.push(detalhe(codigo, !falta.has(codigo)));
       grupos.set(to, g);
     }
     const lista = [...grupos.values()].map((g) => ({ ...g, faltam: g.total - g.recebidos, pct: pct(g.recebidos, g.total) }));
@@ -530,7 +533,22 @@
       com_cluster: itens.filter((p) => p.cluster).length,
     };
 
-    conta.tos = porTo(lista, conta.nao_recebido);
+    // Cada BR da TO, enxuto: situação no SPX, onde está, AT e lugar (os divergentes já completados acima).
+    const atDoPacote = new Map();
+    for (const a of as) for (const c of a.codigos) if (!atDoPacote.has(c)) atDoPacote.set(c, a);
+    const divergente = new Map(itens.map((p) => [p.codigo, p]));
+    conta.tos = porTo(lista, conta.nao_recebido, (codigo, recebido) => {
+      const r = rs.get(codigo);
+      const a = atDoPacote.get(codigo);
+      const d = divergente.get(codigo) || {};
+      let situacao = 'falta';
+      if (recebido) situacao = r && r.entregue_em ? 'entregue' : r && r.saiu_em ? 'saiu' : 'recebido';
+      else if (!r) situacao = 'nao_achado';
+      const cidade = (a && a.cidade) || d.cidade || '';
+      const bairro = (a && a.bairro) || d.bairro || '';
+      return { codigo, situacao, estacao: r ? r.estacao : '', at: a ? a.at : '', motorista: (a && a.motorista) || (r && r.motorista) || '',
+        lugar: [cidade, bairro].filter(Boolean).join(' · ') };
+    });
 
     // Fora de abrangência: fora de AT e com prefixo de CEP que nunca apareceu numa AT.
     conta.fora_abrangencia = null;

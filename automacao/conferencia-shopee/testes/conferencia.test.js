@@ -210,6 +210,29 @@ test('contar devolve as TOs junto com a conta', () => {
   const romaneio = [{ codigo: 'BRTESTE1', to: 'TO1' }, { codigo: 'BRTESTE2', to: 'TO1' }];
   const rastreio = [{ codigo: 'BRTESTE1', recebido_em: H('03:00'), estacao: XPT }];
   const c = C.contar({ romaneio, rastreio, ats: [] });
-  assert.deepStrictEqual(c.tos, [{ to: 'TO1', total: 2, recebidos: 1, faltam: 1, pct: 50 }]);
+  const { itens, ...resto } = c.tos[0];
+  assert.deepStrictEqual(resto, { to: 'TO1', total: 2, recebidos: 1, faltam: 1, pct: 50 });
+  // Os BR da TO, para o Visualizar (inclusive de TO completa).
+  assert.deepStrictEqual(itens.map((i) => [i.codigo, i.situacao, i.estacao]), [['BRTESTE1', 'recebido', XPT], ['BRTESTE2', 'nao_achado', '']]);
   assert.strictEqual(c.nao_recebido[0].to, 'TO1');
+});
+
+test('itens da TO: situação de cada BR (recebido, saiu, entregue, falta) com AT e lugar', () => {
+  const romaneio = ['1', '2', '3', '4'].map((x) => ({ codigo: 'BRTESTE' + x, to: 'TO9' }));
+  const rastreio = [
+    { codigo: 'BRTESTE1', recebido_em: H('03:00'), estacao: XPT },
+    { codigo: 'BRTESTE2', recebido_em: H('03:00'), saiu_em: H('08:00'), estacao: XPT },
+    { codigo: 'BRTESTE3', recebido_em: H('03:00'), saiu_em: H('08:00'), entregue_em: H('10:00'), estacao: XPT },
+    { codigo: 'BRTESTE4', recebido_em: H('01:00'), estacao: 'SoC_PR_Teste' },
+  ];
+  const ats = [{ at: 'AT1', codigos: ['BRTESTE2', 'BRTESTE3'], cidade: 'Cidade A', bairro: 'Centro', motorista: 'Motorista Teste', criada_em: H('02:00') }];
+  const [t] = C.contar({ romaneio, rastreio, ats }).tos;
+  assert.strictEqual(t.faltam, 1);
+  assert.deepStrictEqual(t.itens.map((i) => [i.codigo, i.situacao, i.at, i.lugar]), [
+    ['BRTESTE1', 'recebido', '', ''],
+    ['BRTESTE2', 'saiu', 'AT1', 'Cidade A · Centro'],
+    ['BRTESTE3', 'entregue', 'AT1', 'Cidade A · Centro'],
+    ['BRTESTE4', 'falta', '', ''],
+  ]);
+  assert.strictEqual(t.itens[1].motorista, 'Motorista Teste');
 });
