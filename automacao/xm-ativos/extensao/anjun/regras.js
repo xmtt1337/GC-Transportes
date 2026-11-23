@@ -66,6 +66,8 @@
   const SUFIXO = /[\s.,\-–]+(?:pte\.?\s*ltd|ltda|ltd|limited|eireli|s\s*\/\s*a|s\.a|inc|corp|co|me|epp|internacional|international)\.?$/i;
   const temRazaoSocial = (texto) => /\b(?:pte|ltda|ltd|limited|eireli|inc|corp)\b|s\s*\/\s*a\b/i.test(String(texto || ''));
 
+  const ilegivel = (texto) => /[぀-ヿ㐀-鿿가-힯＀-￯]/.test(texto) || /\d{4,}/.test(texto);
+
   function semSufixos(texto) {
     let t = String(texto || '').replace(/\s+/g, ' ').trim();
     for (let i = 0; i < 6 && SUFIXO.test(t); i += 1) t = t.replace(SUFIXO, '').trim();
@@ -90,6 +92,9 @@
         if (temRazaoSocial(fora)) return semSufixos(par[1]);
       }
       const limpo = semSufixos(c.replace(/\([^)]*\)/g, ' '));
+      // Nome em chines/japones/coreano ou com cara de codigo ("J741829'shop"): o cliente nao
+      // reconhece; vale a marca do cliente da Anjun, se houver.
+      if (ilegivel(limpo)) return marca(cliente);
       if (limpo) return marca(limpo) && limpo.length <= marca(limpo).length + 2 ? marca(limpo) : limpo;
     }
     return marca(cliente);
