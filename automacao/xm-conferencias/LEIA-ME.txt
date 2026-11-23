@@ -1,10 +1,27 @@
-XM - Conferencia Shopee
-=======================
+XM - Conferencias
+=================
 
-A conferencia da viagem do dia dentro do SPX. Nao tem botao nem janelinha: aparece no menu
-lateral do SPX, logo abaixo de Pedidos (ou do grupo Ativos, se a XM - Ativos Shopee estiver
-instalada), no grupo:
+As conferencias das transportadoras dentro dos portais delas. Uma extensao so para todas (desde
+23/11/2026; antes era a XM - Conferencia Shopee, mesmo id). Pastas: extensao/shopee e extensao/anjun.
+Na Anjun ela divide o menu "XMTT" com a XM - Ativos:
 
+  XMTT                      (secao no menu lateral do portal da Anjun, acima de "Principais funcoes")
+    Conferencias
+      Conferencia do dia    - XM - Conferencias
+    Ativos
+      Disparar ativos       - XM - Ativos
+
+Anjun (newsupplier.anjunexpress.com) - pasta extensao/anjun
+  A mesma conferencia do sistema (Operacao > Anjun > Conferencia), que antes ficava na janela
+  flutuante da XM - Operacao (de la saiu). "Conferir agora" le no portal os pacotes que entraram no
+  ponto hoje (so waybill, entregador, cidade, ponto, entrada, cliente, valor e status; nada do
+  destinatario) e manda ao sistema, que confere contra a lista login -> cidades: % expedido, % na
+  cidade certa, fora de abrangencia, cidades com pendencia (tirar/voltar da conta, para todos),
+  logins com problema e os pendentes (Copiar waybills). Dev e admin escolhem o polo.
+  O menu XMTT e montado pelo anjun/xmtt-menu.js, IGUAL nas duas extensoes (os testes conferem):
+  um grupo aberto por vez e uma pagina por vez entre elas.
+
+Shopee (spx.shopee.com.br) - pasta extensao/shopee (no SPX continua o grupo proprio):
   Conferencia
     Vapt Vupt  - a viagem de hoje contra o SPX: % AT vinculada, recebidos, divergencias, fora de
                  abrangencia, fluxo hora a hora e o relatorio de divergencias.
@@ -39,5 +56,6 @@ Nao usa o "olho" do telefone e nao manda mensagem nenhuma.
 Entre com o usuario e a senha do sistema (o login fica dentro da propria pagina).
 
 Instalar
+Quem tinha a XM - Conferencia Shopee: remova antes (mesmo id).
 chrome://extensions > Modo do desenvolvedor > Carregar sem compactacao > esta pasta "extensao".
-Depois de atualizar a extensao, de F5 no SPX.
+Depois de atualizar a extensao, de F5 no SPX e na Anjun.

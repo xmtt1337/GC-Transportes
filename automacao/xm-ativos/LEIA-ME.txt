@@ -25,7 +25,8 @@ iMile (ds.imile.com) - pasta extensao/imile
   "confirmacao_imile" ({{1}} nome, {{2}} quem dispara, {{3}} produto, {{4}} pedido).
 
 Anjun (newsupplier.anjunexpress.com) - pasta extensao/anjun
-  Uma secao "XM" no menu lateral, acima de "Principais funcoes": Ativos > Disparar ativos.
+  Na secao "XMTT" do menu lateral, acima de "Principais funcoes": Ativos > Disparar ativos (junto
+  com Conferencias > Conferencia do dia, da XM - Conferencias; anjun/xmtt-menu.js e igual nas duas).
   Cola os waybills (AJ...); a busca da Consulta de pacotes (sem dado sensivel) traz Cliente,
   Comerciante e status; no disparo, abre nome e telefone (packageInfoLimit + viewPlaintext, o mesmo
   "Visualizar Informacoes Sensiveis" da tela) e vai "confirmacao_anjun" ({{1}} nome, {{2}} quem

@@ -36,12 +36,12 @@ const TELAS = {
   inicio: 'xm',
   // O usuario achou estranho sair do tema do sistema para o da Loggi: fica tudo no do sistema.
   'conferencia-loggi': 'xm',
-  'conferencia-anjun': 'xm',
   'conferencia-shopee': 'xm',
 };
 const TRANSPORTADORAS = [
   { id: 'loggi', nome: 'Loggi', ativa: true },
-  { id: 'anjun', nome: 'Anjun', ativa: true },
+  // A conferencia da Anjun foi para o menu XMTT do proprio portal (XM - Conferencias, 23/11/2026).
+  { id: 'anjun', nome: 'Anjun', aviso: 'no portal da Anjun' },
   { id: 'imile', nome: 'iMile' },
   { id: 'shopee', nome: 'Shopee', ativa: true },
   { id: 'total', nome: 'Total Express' },
@@ -78,7 +78,7 @@ function desenharMenu() {
       b.append(nome);
       if (!t.ativa) {
         const breve = document.createElement('small');
-        breve.textContent = 'em breve';
+        breve.textContent = t.aviso || 'em breve';
         b.append(breve);
       } else {
         b.addEventListener('click', () => irPara(`${secao}-${t.id}`));

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "XM - Conferência Shopee",
-  "version": "1.6",
-  "description": "Conferência da viagem do dia dentro do SPX (Conferência > Vapt Vupt): romaneio, AT vinculada, recebidos, divergências e abrangência, tudo lido do SPX.",
+  "name": "XM - Conferências",
+  "version": "2.0",
+  "description": "Conferências das transportadoras dentro dos portais delas, no menu XMTT: Shopee (Vapt Vupt, no SPX) e Anjun (Conferência do dia, no portal de parceiros), integradas ao sistema XMTT.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArZ6V7hoHbGTRqGmlwWQl7NtkSvUpcqkjzVcgFaXymAxUlStAc+RqLetYtq4+x8UnlaIhYGQzLO2RKD4OrBuAnXQcevWgmMsR9bUJ5M+JzuvTkE2b9uAUeQwAxbdHMCyquRqluPnOAJeApXuKOsC3Vf+oM+1sYibFxpnjMgvQuBJfvHfQqiXEGmZPkdIPfN48ItQSEcRotZMzBhof7d5V9GrWO2rRXHq15WmgV4NXkGz1yJPaawJg/RyBr4UcD7JIdLCZi/+5juH/OAXqSfq4otfk9A/bcP6AjBdpvernBIEVr5dRhUTbvfDiA+GWbIpG1vt2vxd46kNQ43eUruFxFwIDAQAB",
   "permissions": [
     "storage",
@@ -11,6 +11,7 @@
   "host_permissions": [
     "https://spx.shopee.com.br/*",
     "https://*.susercontent.com/*",
+    "https://newsupplier.anjunexpress.com/*",
     "https://sistema-backend-i4uh.onrender.com/*"
   ],
   "background": {
@@ -22,7 +23,7 @@
         "https://spx.shopee.com.br/*"
       ],
       "js": [
-        "spx.js"
+        "shopee/spx.js"
       ],
       "run_at": "document_start",
       "world": "MAIN",
@@ -34,9 +35,31 @@
       ],
       "js": [
         "regras.js",
-        "conferencia.js",
-        "vapt.js",
-        "menu.js"
+        "shopee/conferencia.js",
+        "shopee/vapt.js",
+        "shopee/menu.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://newsupplier.anjunexpress.com/*"
+      ],
+      "js": [
+        "anjun/anjun.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://newsupplier.anjunexpress.com/*"
+      ],
+      "js": [
+        "anjun/xmtt-menu.js",
+        "anjun/conferencia.js"
       ],
       "run_at": "document_idle",
       "all_frames": false

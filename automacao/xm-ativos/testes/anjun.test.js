@@ -96,16 +96,20 @@ test('lerResposta e bloqueio: a recusa da Anjun vira erro com a mensagem; "frequ
   assert.strictEqual(R.BLOQUEIO_MS, 30 * 60 * 1000);
 });
 
-test('manifest e menu: o portal da Anjun roda os scripts da pasta anjun; seção própria "XM"; canal próprio', () => {
+test('manifest e menu: o portal da Anjun roda os scripts da pasta anjun; grupo Ativos na seção XMTT; canal próprio', () => {
   const m = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
   const daAnjun = m.content_scripts.filter((cs) => cs.matches.includes('https://newsupplier.anjunexpress.com/*'));
-  assert.deepStrictEqual(daAnjun.map((cs) => cs.js), [['anjun/anjun.js'], ['anjun/regras.js', 'anjun/ativos.js']]);
+  assert.deepStrictEqual(daAnjun.map((cs) => cs.js), [['anjun/anjun.js'], ['anjun/xmtt-menu.js', 'anjun/regras.js', 'anjun/ativos.js']]);
   assert.strictEqual(daAnjun[0].world, 'MAIN');
   const ativos = fs.readFileSync(path.join(EXT, 'anjun/ativos.js'), 'utf8');
   assert.strictEqual(A.CANAL, 'xmAtivosAnjun');
   assert.ok(ativos.includes("const CANAL = 'xmAtivosAnjun'"));
-  assert.ok(ativos.includes("titulo.textContent = 'XM'"), 'seção XM acima de Principais funções');
+  assert.ok(ativos.includes('const ORDEM = 2;') && ativos.includes("const DONO = 'ativos';"), 'Ativos depois de Conferências');
+  // o xmtt-menu.js é o mesmo da XM - Conferências (as duas dividem a seção XMTT)
+  const nosso = fs.readFileSync(path.join(EXT, 'anjun/xmtt-menu.js'), 'utf8');
+  const daConf = path.join(__dirname, '../../xm-conferencias/extensao/anjun/xmtt-menu.js');
+  if (fs.existsSync(daConf)) assert.strictEqual(nosso, fs.readFileSync(daConf, 'utf8'));
   // a limpeza dos ids do clone não pode apagar o id da própria seção
-  assert.ok(ativos.lastIndexOf('s.id = ID_SECAO') > ativos.indexOf('limparClone(s)'));
+  assert.ok(nosso.lastIndexOf('s.id = ID_SECAO') > nosso.indexOf('limparClone(s)'));
 });
 

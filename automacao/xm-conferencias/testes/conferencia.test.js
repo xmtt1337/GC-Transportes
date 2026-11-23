@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const C = require('../extensao/conferencia.js');
+const C = require('../extensao/shopee/conferencia.js');
 
 const PLANILHA = fs.readFileSync(path.join(__dirname, 'romaneio-sintetico.xlsx'));
 

@@ -1,10 +1,10 @@
-// Conferencia Anjun (anjun.js), sem rede e sem Chrome. Dados de TESTE, inventados.
+// Conferencia Anjun (anjun/anjun.js da XM - Conferencias; veio da XM - Operacao), sem rede e sem Chrome. Dados de TESTE, inventados.
 //
-//   node --test automacao/xm-bipagem-loggi/testes/
+//   node --test testes/*.test.js
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { corpoDaBusca, enxugar, buscarDia, hojeSP } = require('../extensao/anjun.js');
+const { corpoDaBusca, enxugar, buscarDia, hojeSP } = require('../extensao/anjun/anjun.js');
 
 test('a busca e a da tela: entrada no ponto do dia inteiro, pagina e tamanho', () => {
   const c = corpoDaBusca('2026-01-02', 3, 200);

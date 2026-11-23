@@ -1,7 +1,10 @@
-// XM - Conferencia Shopee: o que precisa da extensao (e nao da pagina do SPX).
+// XM - Conferencias: o que precisa da extensao (e nao da pagina do portal: SPX ou Anjun).
 //
-// - O token do sistema mora em storage.session, que a pagina do SPX nao alcanca. A senha nunca e
-//   guardada. Do sistema so vem o login (a conta precisa poder usar as extensoes: /macros/acesso).
+// - O token do sistema mora em storage.session, que as paginas dos portais nao alcancam. A senha
+//   nunca e guardada. A conta precisa poder usar as extensoes (/macros/acesso).
+// - Shopee (Vapt Vupt): do sistema so vem o login; a conta e toda feita na extensao.
+// - Anjun: a conferencia e a do sistema (/macros/anjun-conferencia): a leitura do portal vai e a
+//   conta volta. So esse prefixo passa pelo canal "sistema".
 // - O CSV do export de pedidos do SPX e baixado e lido aqui (o link assinado aponta para
 //   *.susercontent.com): comprador, CEP, motorista e sort code voltam para a pagina. Nada vai ao
 //   sistema nem para a pasta Downloads.
@@ -33,6 +36,20 @@ const tratar = {
   async sair() {
     await chrome.storage.session.remove(['token', 'nome', 'papel']);
     return { logado: false };
+  },
+  // Conferência da Anjun no sistema: só /macros/anjun-conferencia passa.
+  async sistema({ metodo, caminho, corpo }) {
+    const m = String(metodo || 'GET').toUpperCase();
+    const c = String(caminho || '');
+    if (!['GET', 'POST'].includes(m) || !c.startsWith('/macros/anjun-conferencia') || c.includes('..')) throw new Error('Caminho não permitido.');
+    const { token: t } = await chrome.storage.session.get('token');
+    if (!t) throw new R.ErroDeConta('Entre com sua conta do sistema.');
+    try {
+      return { dados: await R.api(t, m, c, m === 'POST' ? (corpo || {}) : undefined) };
+    } catch (e) {
+      if (e instanceof R.ErroDeConta) await chrome.storage.session.remove(['token', 'nome', 'papel']);
+      throw e;
+    }
   },
   // O export de pedidos da viagem, lido aqui e devolvido à página.
   async pedidosConferencia({ url }) {

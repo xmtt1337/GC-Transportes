@@ -1,4 +1,5 @@
-// Conferencia da Anjun, no mundo da pagina (newsupplier.anjunexpress.com).
+// XM - Conferencias na Anjun, no mundo da pagina (newsupplier.anjunexpress.com). Mesma busca da
+// XM - Operacao (de onde veio), com canal proprio ("xmConfAnjun").
 //
 // "Conferir agora" faz a MESMA busca da tela Consulta de pacotes com "Tempo de entrada no
 // ponto" = hoje (/admin/package/pageQuery, searchTimeType 1, storageStartTime/EndTime), pagina
@@ -70,7 +71,7 @@
   }
 
   if (typeof module !== 'undefined') {
-    module.exports = { corpoDaBusca, enxugar, buscarDia, hojeSP, dois };
+    module.exports = { corpoDaBusca, enxugar, buscarDia, hojeSP, dois, CANAL: 'xmConfAnjun' };
     return;
   }
 
@@ -95,13 +96,14 @@
     return j.data;
   }
 
-  const responder = (dados) => window.postMessage({ xmOperacao: 'anjunResposta', ...dados }, window.location.origin);
+  const CANAL = 'xmConfAnjun';
+  const responder = (dados) => window.postMessage({ [CANAL]: 'resposta', ...dados }, window.location.origin);
 
   window.addEventListener('message', async (e) => {
-    if (e.source !== window || !e.data || e.data.xmOperacao !== 'anjunBuscar') return;
+    if (e.source !== window || !e.data || e.data[CANAL] !== 'buscar') return;
     const id = e.data.id;
     if (!headers.token) {
-      responder({ id, fim: true, erro: 'O portal ainda não fez nenhuma busca nesta aba. Abra a Consulta de pacotes (ou dê F5) e clique em Conferir agora de novo.' });
+      responder({ id, fim: true, erro: 'O portal ainda não fez nenhuma busca nesta aba. Dê F5 no portal e clique em Conferir agora de novo.' });
       return;
     }
     try {

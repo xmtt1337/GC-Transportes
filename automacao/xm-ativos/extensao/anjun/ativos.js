@@ -1,11 +1,10 @@
-// XM - Ativos na Anjun: uma secao propria "XM" no menu lateral do portal (acima de "Principais
-// funcoes"), com o grupo "Ativos" (logo XM no estilo dos icones deles) e a pagina de disparo, no
-// tema do proprio portal (sem painel flutuante). Mesmo fluxo da Shopee e da iMile.
+// XM - Ativos na Anjun: o grupo "Ativos" (Disparar ativos) na secao "XMTT" do menu lateral do
+// portal (acima de "Principais funcoes"), ao lado do grupo "Conferencias" da XM - Conferencias, e a
+// pagina de disparo no tema do proprio portal (sem painel flutuante). Mesmo fluxo da Shopee e da iMile.
 //
-// Menu: o portal e Vue 3 + Element Plus. A nossa secao e montada com clones dos elementos deles (o
-// titulo .aside-menu-section-title, a raiz ul.el-menu e um li.el-sub-menu com itens li.el-menu-item):
-// herda as classes e os data-v e fica igual. Fica FORA da lista deles (antes do titulo deles), entao
-// o Vue nunca mexe nela. Recolhido (el-menu--collapse), clicar no icone abre a pagina direto.
+// Menu: xmtt-menu.js (arquivo igual nas duas extensoes) monta a secao com clones do Element Plus do
+// portal e cuida de um grupo aberto por vez e de uma pagina por vez entre as extensoes. Fica FORA da
+// lista do Vue, entao o portal nunca mexe nela. Recolhido, clicar no icone abre a pagina direto.
 //
 // Pagina: entra em main.el-main, escondendo (display:none) o que o portal mostra ali. Enquanto ela
 // esta aberta, o item deles marcado perde o "is-active" (devolvido ao sair, se o portal nao marcou
@@ -19,7 +18,6 @@
 (() => {
   const R = self.XMAtivosAnjun;
   const CANAL = 'xmAtivosAnjun'; // o mesmo do anjun.js
-  const ID_SECAO = 'xm-aj-secao';
   const PAUSA_ENVIO_MS = 500;
   const PAGINAS = [{ chave: 'disparar', titulo: 'Disparar ativos' }];
   const NOME_GRUPO = 'Ativos';
@@ -31,7 +29,7 @@
 
   // ── estilo (a pagina usa as classes do Element Plus do portal; aqui so o que falta) ──
   const CSS = `
-  #${ID_SECAO} .xm-aj-item, #${ID_SECAO} .el-sub-menu__title { cursor: pointer; }
+  #xmtt-secao .xmtt-item, #xmtt-secao .el-sub-menu__title { cursor: pointer; }
   .xm-aj-pagina { color: var(--el-text-color-primary, #303133); font-size: 14px; line-height: 1.5; min-width: 0; }
   .xm-aj-pagina * { box-sizing: border-box; }
   .xm-aj-pagina [hidden] { display: none !important; }
@@ -72,33 +70,13 @@
     (document.head || document.documentElement).append(s);
   }
 
-  // ── icones no estilo dos deles (Element Plus: 1024 x 1024, uma cor, currentColor) ──
-  const SVG_NS = 'http://www.w3.org/2000/svg';
-  // A logo XM (redesenhada em 240x127), inteira na cor do texto, como os icones deles.
-  const LOGO_XM = 'M1 0h32l96 127H97ZM98 0h32L33 127H1ZM134 12h5l34 49l42 -61h25v127h-27V48l-40 58l-41 -57v66l-25 -34V50Z';
-  function icone(tipo) {
-    const s = document.createElementNS(SVG_NS, 'svg');
-    s.setAttribute('viewBox', '0 0 1024 1024');
-    s.setAttribute('xmlns', SVG_NS);
-    const p = document.createElementNS(SVG_NS, 'path');
-    if (tipo === 'logo') {
-      p.setAttribute('d', LOGO_XM);
-      p.setAttribute('transform', 'translate(32 258) scale(4)'); // 960 x 508 no meio
-      p.setAttribute('fill', 'currentColor');
-    } else { // aviao de papel (disparar)
-      p.setAttribute('d', 'M112 464 912 112 656 912 512 592Z M512 592 912 112');
-      p.setAttribute('fill', 'none');
-      p.setAttribute('stroke', 'currentColor');
-      p.setAttribute('stroke-width', '64');
-      p.setAttribute('stroke-linejoin', 'round');
-      p.setAttribute('stroke-linecap', 'round');
-    }
-    s.append(p);
-    return s;
-  }
-
-  // ── a secao "XM" no menu lateral ─────────────────────────────────────────────
-  let secao = null;
+  // ── o grupo "Ativos" na secao XMTT (xmtt-menu.js, o mesmo da XM - Conferencias) ──
+  const M = self.XMTTMenu;
+  const DONO = 'ativos';
+  const ID_GRUPO = 'xmtt-ativos';
+  const ORDEM = 2; // depois de Conferencias
+  const ICONE_DISPARAR = 'M112 464 912 112 656 912 512 592Z M512 592 912 112'; // aviao de papel
+  let grupo = null;
   let papelAtual = null; // cargo da conta entrada (null = ninguém entrou ainda)
   let aberta = false; // a nossa pagina esta na tela
   let atual = null;
@@ -106,134 +84,44 @@
   let escondidos = [];
   let tirados = []; // itens do menu deles que perderam o "is-active" enquanto a nossa pagina esta aberta
 
-  const vistaDoMenu = () => document.querySelector('.aside-box .el-scrollbar__view');
-  const raizDeles = (vista) => vista && [...vista.querySelectorAll(':scope > ul.el-menu')].find((u) => !u.closest(`#${ID_SECAO}`));
-  const tituloDeles = (vista) => vista && vista.querySelector(':scope > .aside-menu-section-title');
-  const eDeles = (el) => el && !el.closest(`#${ID_SECAO}, .xm-aj-pagina`);
-  const recolhido = () => { const r = raizDeles(vistaDoMenu()); return !!(r && r.classList.contains('el-menu--collapse')); };
-  const grupo = () => secao && secao.querySelector('li.el-sub-menu');
-
-  function limparClone(el) {
-    [el, ...el.querySelectorAll('*')].forEach((e) => {
-      e.removeAttribute('id');
-      e.removeAttribute('aria-describedby');
-      e.removeAttribute('aria-controls');
-      ['data-old-padding-top', 'data-old-padding-bottom', 'data-old-overflow'].forEach((a) => e.removeAttribute(a));
-    });
-  }
-
-  function montarSecao(vista) {
-    const raiz = raizDeles(vista);
-    if (!raiz) return null;
-    const modelo = [...raiz.children].find((li) => li.matches('li.el-sub-menu') && li.querySelector(':scope > .el-sub-menu__title') && li.querySelector(':scope > ul li.el-menu-item'));
-    if (!modelo) return null;
-    const s = document.createElement('div');
-    s.id = ID_SECAO;
-    const t = tituloDeles(vista);
-    if (t) {
-      const titulo = t.cloneNode(false);
-      titulo.textContent = 'XM';
-      s.append(titulo);
-    }
-    const ul = raiz.cloneNode(false);
-    const li = modelo.cloneNode(false);
-    li.classList.remove('is-active', 'is-opened');
-    li.setAttribute('aria-expanded', 'false');
-    const cabeca = modelo.querySelector(':scope > .el-sub-menu__title').cloneNode(true);
-    const caixaIcone = cabeca.querySelector('.menu-item-icon');
-    if (caixaIcone) { caixaIcone.textContent = ''; caixaIcone.append(icone('logo')); }
-    const nome = cabeca.querySelector('.menu-title-tooltip-trigger');
-    if (nome) nome.textContent = NOME_GRUPO;
-    const seta = cabeca.querySelector('.el-sub-menu__icon-arrow');
-    if (seta) seta.style.transform = 'none';
-    const listaDeles = modelo.querySelector(':scope > ul.el-menu');
-    const lista = listaDeles.cloneNode(false);
-    lista.style.display = 'none';
-    const itemModelo = listaDeles.querySelector(':scope > li.el-menu-item') || modelo.querySelector('li.el-menu-item');
-    for (const p of PAGINAS) {
-      const item = itemModelo.cloneNode(true);
-      item.classList.remove('is-active');
-      item.classList.add('xm-aj-item');
-      item.dataset.pagina = p.chave;
-      const ic = item.querySelector('.menu-item-icon');
-      if (ic) { ic.textContent = ''; ic.append(icone('disparar')); }
-      const n = item.querySelector('.menu-title-tooltip-trigger');
-      if (n) n.textContent = p.titulo;
-      item.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); mostrarPagina(p.chave); });
-      lista.append(item);
-    }
-    li.append(cabeca, lista);
-    ul.append(li);
-    s.append(ul);
-    limparClone(s);
-    s.id = ID_SECAO; // depois da limpeza (que tira os ids copiados deles)
-    // Um grupo aberto por vez: abrir o nosso fecha os deles (pelo clique no titulo deles, para o
-    // proprio portal fechar). Recolhido, o icone abre a pagina direto.
-    cabeca.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (recolhido()) { mostrarPagina(atual || PAGINAS[0].chave); return; }
-      const abrir = !li.classList.contains('is-opened');
-      if (abrir) fecharOsDeles();
-      abrirGrupo(abrir);
-    });
-    return s;
-  }
-
-  function fecharOsDeles() {
-    const raiz = raizDeles(vistaDoMenu());
-    if (!raiz) return;
-    raiz.querySelectorAll(':scope > li.el-sub-menu.is-opened > .el-sub-menu__title').forEach((t) => t.click());
-  }
-
-  function abrirGrupo(abrir) {
-    const li = grupo();
-    if (!li) return;
-    li.classList.toggle('is-opened', abrir);
-    li.setAttribute('aria-expanded', String(abrir));
-    const lista = li.querySelector(':scope > ul.el-menu');
-    lista.style.display = abrir && !recolhido() ? '' : 'none';
-    const seta = li.querySelector('.el-sub-menu__icon-arrow');
-    if (seta) seta.style.transform = abrir ? 'rotateZ(180deg)' : 'none';
+  function aoTitulo(li) {
+    if (M.recolhido()) { mostrarPagina(atual || PAGINAS[0].chave); return; }
+    const abrir = !li.classList.contains('is-opened');
+    if (abrir) M.fecharOsOutros(li);
+    M.abrirGrupo(li, abrir);
   }
 
   function marcarItem(chave) {
-    if (!secao) return;
-    secao.querySelectorAll('.xm-aj-item').forEach((it) => it.classList.toggle('is-active', it.dataset.pagina === chave));
-    const li = grupo();
-    if (li) li.classList.toggle('is-active', !!chave);
+    if (!grupo) return;
+    grupo.querySelectorAll('.xmtt-item').forEach((it) => it.classList.toggle('is-active', it.dataset.pagina === chave));
+    grupo.classList.toggle('is-active', !!chave);
   }
 
   function aplicarPapel(papel) {
     papelAtual = papel;
     const pode = papel == null || R.ROLES_ATIVOS.includes(papel);
-    if (secao) secao.style.display = pode ? '' : 'none';
+    if (grupo) grupo.style.display = pode ? '' : 'none';
     if (!pode) fecharPagina();
   }
 
-  /** Recoloca a secao (o portal redesenha o menu) e acompanha o recolher do menu deles. */
+  /** Recoloca o grupo (o portal redesenha o menu) e acompanha o recolher do menu deles. */
   function colocarMenu() {
-    const vista = vistaDoMenu();
-    if (!vista) return;
-    if (!secao || secao.parentElement !== vista) {
-      const nova = montarSecao(vista);
-      if (!nova) return;
-      const abertoAntes = !!(grupo() && grupo().classList.contains('is-opened'));
-      if (secao) secao.remove();
-      secao = nova;
-      vista.prepend(secao);
-      abrirGrupo(abertoAntes || aberta);
+    if (!grupo || !grupo.isConnected) {
+      const novo = M.montarGrupo({
+        id: ID_GRUPO, ordem: ORDEM, titulo: NOME_GRUPO, aoTitulo,
+        itens: PAGINAS.map((p) => ({ chave: p.chave, titulo: p.titulo, caminhoIcone: ICONE_DISPARAR, aoClicar: () => mostrarPagina(p.chave) })),
+      });
+      if (!novo) return;
+      const abertoAntes = !!(grupo && grupo.classList.contains('is-opened'));
+      grupo = novo;
+      if (!M.colocarGrupo(grupo)) { grupo = null; return; }
+      M.abrirGrupo(grupo, abertoAntes || aberta);
       marcarItem(aberta ? atual : null);
       aplicarPapel(papelAtual);
+    } else {
+      M.colocarGrupo(grupo);
     }
-    // O mesmo recolhido/aberto do menu deles (classe da raiz e o titulo da secao, que some recolhido).
-    const raiz = raizDeles(vista);
-    const nossaRaiz = secao.querySelector(':scope > ul.el-menu');
-    if (raiz && nossaRaiz) nossaRaiz.classList.toggle('el-menu--collapse', raiz.classList.contains('el-menu--collapse'));
-    const t = tituloDeles(vista);
-    const nossoTitulo = secao.querySelector(':scope > .aside-menu-section-title');
-    if (t && nossoTitulo) nossoTitulo.style.display = t.style.display;
-    if (recolhido()) { const l = grupo().querySelector(':scope > ul.el-menu'); if (l) l.style.display = 'none'; }
+    M.sincronizar();
   }
 
   // ── entrar e sair da pagina ───────────────────────────────────────────────────
@@ -241,7 +129,7 @@
 
   function esconderDoPortal(main) {
     for (const c of main.children) {
-      if (c === pagina || c.dataset.xmAjEscondido) continue;
+      if (c === pagina || c.dataset.xmAjEscondido || c.classList.contains('xmtt-pagina')) continue;
       escondidos.push([c, c.style.display]);
       c.dataset.xmAjEscondido = '1';
       c.style.display = 'none';
@@ -250,8 +138,7 @@
   }
 
   function tirarAtivoDeles() {
-    document.querySelectorAll('.aside-box li.is-active').forEach((el) => {
-      if (!eDeles(el)) return;
+    M.ativosDeles().forEach((el) => {
       el.classList.remove('is-active');
       if (!tirados.includes(el)) tirados.push(el);
     });
@@ -260,12 +147,13 @@
   function mostrarPagina(chave) {
     const main = areaPrincipal();
     if (!main) return;
+    M.anunciarPagina(DONO); // a XM - Conferencias fecha a pagina dela antes
     atual = chave;
     aberta = true;
     if (!pagina) pagina = montarPagina();
     esconderDoPortal(main);
     tirarAtivoDeles();
-    if (!recolhido()) abrirGrupo(true);
+    if (!M.recolhido()) { M.fecharOsOutros(grupo); M.abrirGrupo(grupo, true); }
     marcarItem(chave);
     atualizarConta();
   }
@@ -278,20 +166,21 @@
     escondidos.forEach(([c, d]) => { c.style.display = d; delete c.dataset.xmAjEscondido; });
     escondidos = [];
     // Devolve o "is-active" só se o portal não marcou outro nesse meio tempo (se marcou, ele já redesenhou).
-    const algum = [...document.querySelectorAll('.aside-box li.is-active')].some(eDeles);
-    if (!algum) tirados.forEach((el) => { if (el.isConnected) el.classList.add('is-active'); });
+    if (!M.ativosDeles().length) tirados.forEach((el) => { if (el.isConnected) el.classList.add('is-active'); });
     tirados = [];
     marcarItem(null);
   }
 
+  M.aoAbrirOutra(DONO, fecharPagina);
+
   // Abrir um grupo deles fecha o nosso; clicar num item deles (ou trocar de endereco) volta ao portal.
   document.addEventListener('click', (e) => {
     const alvo = e.target && e.target.closest ? e.target : null;
-    if (!alvo || !eDeles(alvo) || !alvo.closest('.aside-box')) return;
+    if (!alvo || M.eDoXmtt(alvo) || !alvo.closest('.aside-box')) return;
     const titulo = alvo.closest('.el-sub-menu__title');
     if (titulo) {
       const li = titulo.closest('li.el-sub-menu');
-      if (li && !li.classList.contains('is-opened')) abrirGrupo(false);
+      if (li && !li.classList.contains('is-opened')) M.abrirGrupo(grupo, false);
       return;
     }
     if (alvo.closest('li.el-menu-item')) fecharPagina();
@@ -299,7 +188,7 @@
   window.addEventListener('hashchange', fecharPagina);
   window.addEventListener('popstate', fecharPagina);
 
-  // O portal redesenha o menu e o conteúdo: recoloca a secao e mantém a tela dele escondida.
+  // O portal redesenha o menu e o conteúdo: recoloca o grupo e mantém a tela dele escondida.
   let agendado = false;
   new MutationObserver(() => {
     if (agendado) return;
@@ -365,7 +254,7 @@
 
   function montarPagina() {
     const p = document.createElement('div');
-    p.className = 'xm-aj-pagina';
+    p.className = 'xm-aj-pagina xmtt-pagina';
     p.innerHTML = `
       <div class="el-card is-always-shadow"><div class="el-card__body">
         <div class="xm-aj-topo">

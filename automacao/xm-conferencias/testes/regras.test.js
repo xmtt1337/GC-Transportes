@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 const R = require('../extensao/regras.js');
-const S = require('../extensao/spx.js');
+const S = require('../extensao/shopee/spx.js');
 
 const EXT = path.join(__dirname, '../extensao');
 
@@ -80,27 +80,49 @@ test('spx.js: só as rotas da viagem passam, e sem o "olho" do telefone', () => 
   assert.ok(S.rotaDaViagem('/api/admin/transportation/agency/email/attachments/get?trip_id=1'));
   assert.ok(!S.rotaDaViagem('/api/fleet_order/order/detail/show_sensitive_data?shipment_id=BR1'));
   assert.ok(!S.rotaDaViagem('/api/admin/transportation/trip/delete'));
-  const fonte = fs.readFileSync(path.join(EXT, 'spx.js'), 'utf8');
+  const fonte = fs.readFileSync(path.join(EXT, 'shopee/spx.js'), 'utf8');
   assert.ok(!fonte.includes('show_sensitive_data'), 'o olho do telefone fica só na XM - Ativos Shopee');
   // Canal próprio: a XM - Ativos Shopee responde em "xmAtivos"; aqui é "xmConf".
   assert.strictEqual(S.CANAL, 'xmConf');
   assert.ok(!/xmAtivos/.test(fonte.replace(/\/\/.*$/gm, '')));
-  assert.ok(fs.readFileSync(path.join(EXT, 'menu.js'), 'utf8').includes("const CANAL = 'xmConf'"));
+  assert.ok(fs.readFileSync(path.join(EXT, 'shopee/menu.js'), 'utf8').includes("const CANAL = 'xmConf'"));
 });
 
-test('manifest: sem popup, só SPX, arquivos do export e o sistema; arquivos existem', () => {
+test('manifest: XM - Conferências (SPX e Anjun), sem popup, id da antiga Conferência Shopee; arquivos existem', () => {
   const m = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
-  assert.strictEqual(m.name, 'XM - Conferência Shopee');
+  assert.strictEqual(m.name, 'XM - Conferências');
   assert.strictEqual(m.action, undefined);
-  assert.ok(m.key, 'id fixo (o sistema só aceita login de extensão conhecida)');
-  assert.deepStrictEqual(m.host_permissions, ['https://spx.shopee.com.br/*', 'https://*.susercontent.com/*', 'https://sistema-backend-i4uh.onrender.com/*']);
+  // id ccldgbajagfjmdcgofjmcglcboojndcm, já liberado no CORS do sistema
+  const hash = require('node:crypto').createHash('sha256').update(Buffer.from(m.key, 'base64')).digest('hex').slice(0, 32);
+  assert.strictEqual([...hash].map((c) => String.fromCharCode(97 + parseInt(c, 16))).join(''), 'ccldgbajagfjmdcgofjmcglcboojndcm');
+  assert.deepStrictEqual(m.host_permissions, ['https://spx.shopee.com.br/*', 'https://*.susercontent.com/*', 'https://newsupplier.anjunexpress.com/*', 'https://sistema-backend-i4uh.onrender.com/*']);
   for (const cs of m.content_scripts) for (const f of cs.js) assert.ok(fs.existsSync(path.join(EXT, f)), f);
   assert.ok(fs.existsSync(path.join(EXT, m.background.service_worker)));
+  const daAnjun = m.content_scripts.filter((cs) => cs.matches.includes('https://newsupplier.anjunexpress.com/*'));
+  assert.deepStrictEqual(daAnjun.map((cs) => cs.js), [['anjun/anjun.js'], ['anjun/xmtt-menu.js', 'anjun/conferencia.js']]);
+  assert.strictEqual(daAnjun[0].world, 'MAIN');
+});
+
+test('menu XMTT na Anjun: o xmtt-menu.js é igual ao da XM - Ativos; Conferências vem antes de Ativos', () => {
+  const nosso = fs.readFileSync(path.join(EXT, 'anjun/xmtt-menu.js'), 'utf8');
+  const daAtivos = path.join(__dirname, '../../xm-ativos/extensao/anjun/xmtt-menu.js');
+  if (fs.existsSync(daAtivos)) assert.strictEqual(nosso, fs.readFileSync(daAtivos, 'utf8'), 'os dois xmtt-menu.js precisam ser iguais');
+  assert.ok(nosso.includes("const TITULO = 'XMTT'"));
+  const conf = fs.readFileSync(path.join(EXT, 'anjun/conferencia.js'), 'utf8');
+  assert.ok(conf.includes('const ORDEM = 1;') && conf.includes("const DONO = 'conferencias';"));
+  assert.ok(conf.includes("const CANAL = 'xmConfAnjun';"));
+  assert.ok(conf.includes('xmtt-pagina'), 'a página entra na regra de uma página por vez');
+});
+
+test('fundo.js: o canal "sistema" só deixa passar a conferência da Anjun', () => {
+  const fundo = fs.readFileSync(path.join(EXT, 'fundo.js'), 'utf8');
+  assert.ok(fundo.includes("c.startsWith('/macros/anjun-conferencia')"));
+  assert.ok(fundo.includes("c.includes('..')"));
 });
 
 test('menu.js e vapt.js: classes próprias (xm-conf-*), sem esbarrar nas da XM - Ativos Shopee', () => {
-  const menu = fs.readFileSync(path.join(EXT, 'menu.js'), 'utf8');
-  const vapt = fs.readFileSync(path.join(EXT, 'vapt.js'), 'utf8');
+  const menu = fs.readFileSync(path.join(EXT, 'shopee/menu.js'), 'utf8');
+  const vapt = fs.readFileSync(path.join(EXT, 'shopee/vapt.js'), 'utf8');
   assert.ok(menu.includes("const CLASSE_ITEM = 'xm-conf-item'") && menu.includes("const CLASSE_GRUPO = 'xm-conf-grupo'"));
   assert.ok(!/xm-ativos-pagina|XMAtivos/.test(vapt));
   assert.ok(vapt.includes('self.XMConfVapt'));
