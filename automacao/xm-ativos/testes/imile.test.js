@@ -3,8 +3,8 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const R = require('../extensao/regras.js');
-const I = require('../extensao/imile.js');
+const R = require('../extensao/imile/regras.js');
+const I = require('../extensao/imile/imile.js');
 
 const EXT = path.join(__dirname, '../extensao');
 
@@ -81,7 +81,7 @@ test('revelar: nome, telefone, produto e a cota; para com a reserva e quando a i
 });
 
 test('menu: módulo próprio na barra de ícones (logo XM), não um grupo repetido no painel de cada módulo', () => {
-  const fonte = fs.readFileSync(path.join(EXT, 'ativos.js'), 'utf8');
+  const fonte = fs.readFileSync(path.join(EXT, 'imile/ativos.js'), 'utf8');
   assert.ok(fonte.includes(".ImileSMN-AsideMenu-scoller"), 'entra na barra de ícones');
   assert.ok(fonte.includes("const NOME_MODULO = 'Ativos'"));
   assert.ok(!/waybill\.after|xm-im-grupo/.test(fonte), 'o grupo clonado dentro do painel deles saiu');
@@ -90,14 +90,12 @@ test('menu: módulo próprio na barra de ícones (logo XM), não um grupo repeti
   assert.ok(dx >= 0 && dy >= 0 && dx + 240 * k <= 24 && dy + 127 * k <= 24);
 });
 
-test('manifest: só o DS da iMile e o sistema; id fixo; arquivos existem; canal próprio', () => {
+test('manifest: o DS da iMile roda os scripts da pasta imile; canal próprio', () => {
   const m = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
-  assert.strictEqual(m.name, 'XM - Ativos iMile');
-  assert.ok(m.key);
-  assert.strictEqual(m.action, undefined);
-  assert.deepStrictEqual(m.host_permissions, ['https://ds.imile.com/*', 'https://sistema-backend-i4uh.onrender.com/*']);
-  for (const cs of m.content_scripts) for (const f of cs.js) assert.ok(fs.existsSync(path.join(EXT, f)), f);
+  const daImile = m.content_scripts.filter((cs) => cs.matches.includes('https://ds.imile.com/*'));
+  assert.deepStrictEqual(daImile.map((cs) => cs.js), [['imile/imile.js'], ['imile/regras.js', 'imile/ativos.js']]);
+  assert.strictEqual(daImile[0].world, 'MAIN');
   assert.strictEqual(I.CANAL, 'xmAtivosImile');
-  assert.ok(fs.readFileSync(path.join(EXT, 'ativos.js'), 'utf8').includes("const CANAL = 'xmAtivosImile'"));
-  assert.ok(!/Front-Sec['"]?\s*[:=]/i.test(fs.readFileSync(path.join(EXT, 'imile.js'), 'utf8')), 'nunca copiar a assinatura Front-Sec');
+  assert.ok(fs.readFileSync(path.join(EXT, 'imile/ativos.js'), 'utf8').includes("const CANAL = 'xmAtivosImile'"));
+  assert.ok(!/Front-Sec['"]?\s*[:=]/i.test(fs.readFileSync(path.join(EXT, 'imile/imile.js'), 'utf8')), 'nunca copiar a assinatura Front-Sec');
 });

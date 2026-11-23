@@ -3,8 +3,8 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const R = require('../extensao/regras.js');
-const { exportarPedidos, buscarTelefone } = require('../extensao/spx.js');
+const R = require('../extensao/shopee/regras.js');
+const { exportarPedidos, buscarTelefone } = require('../extensao/shopee/spx.js');
 
 test('buscarTelefone: o olho do telefone, outra estação e recusa', async () => {
   const urls = [];
@@ -102,11 +102,19 @@ test('exportarPedidos: cria o export, espera ficar pronto e devolve o link', asy
   assert.strictEqual(vezes, 3);
 });
 
-test('manifest: sem popup, só SPX, arquivos do export e o sistema', () => {
+test('manifest: uma extensão só (XM - Ativos) para as três transportadoras, sem popup, id da antiga Ativos Shopee', () => {
   const m = JSON.parse(fs.readFileSync(path.join(__dirname, '../extensao/manifest.json'), 'utf8'));
+  assert.strictEqual(m.name, 'XM - Ativos');
   assert.strictEqual(m.action, undefined);
-  assert.deepStrictEqual(m.host_permissions, ['https://spx.shopee.com.br/*', 'https://*.susercontent.com/*', 'https://sistema-backend-i4uh.onrender.com/*']);
+  // O "key" é o da antiga XM - Ativos Shopee: o id (igjjbomfhibdcfngjclomdomhkpgcedo) já está liberado no CORS.
+  assert.ok(m.key.startsWith('MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAiNE+1KkUKZdLMUr9'));
+  assert.deepStrictEqual(m.host_permissions, ['https://spx.shopee.com.br/*', 'https://*.susercontent.com/*', 'https://ds.imile.com/*',
+    'https://newsupplier.anjunexpress.com/*', 'https://sistema-backend-i4uh.onrender.com/*']);
   for (const cs of m.content_scripts) for (const f of cs.js) assert.ok(fs.existsSync(path.join(__dirname, '../extensao', f)), f);
+  const doSpx = m.content_scripts.filter((cs) => cs.matches.includes('https://spx.shopee.com.br/*'));
+  assert.deepStrictEqual(doSpx.map((cs) => cs.js), [['shopee/spx.js'], ['shopee/regras.js', 'shopee/conversas.js', 'shopee/ativos.js']]);
+  // O fundo.js usa as regras da Shopee (login, envio e o CSV do export) para todas.
+  assert.ok(fs.readFileSync(path.join(__dirname, '../extensao/fundo.js'), 'utf8').includes("importScripts('shopee/regras.js')"));
 });
 
 test('conversas: só as da Shopee (sem Nos chamaram), aba e coluna iguais às do sistema', () => {
@@ -149,7 +157,7 @@ test('opções: página registrada no manifest e um liga/desliga para cada menu'
   const chaves = [...html.matchAll(/data-menu="([a-z]+)"/g)].map((x) => x[1]);
   assert.deepStrictEqual(chaves, ['disparar', 'conversas', 'aviso']);
   // as chaves são as mesmas páginas do menu (ativos.js)
-  const ativos = fs.readFileSync(path.join(__dirname, '../extensao/ativos.js'), 'utf8');
+  const ativos = fs.readFileSync(path.join(__dirname, '../extensao/shopee/ativos.js'), 'utf8');
   ['disparar', 'conversas'].forEach((k) => assert.ok(ativos.includes(`chave: '${k}'`), k));
   // a Conferência é outra extensão (XM - Conferência Shopee)
   assert.ok(!ativos.includes("chave: 'vapt'"));

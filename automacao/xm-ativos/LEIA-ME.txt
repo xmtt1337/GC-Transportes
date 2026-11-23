@@ -1,0 +1,42 @@
+XM - Ativos
+===========
+
+Os ativos das transportadoras dentro dos portais delas, pelo WhatsApp da GC e integrados ao sistema
+XMTT (a conversa aparece no sistema como qualquer ativo). Uma extensao so para todas, com um login so:
+entrou numa, vale nas outras. Nao tem botao nem janelinha: cada portal ganha um menu no tema dele.
+So SAC, admin e dev veem os menus.
+
+Juntou em 23/11/2026 a XM - Ativos Shopee (4.2) e a XM - Ativos iMile (1.1), e ganhou a Anjun.
+Usa o mesmo id da antiga Ativos Shopee (ja liberado no sistema). A Conferencia (Vapt Vupt) continua
+separada: XM - Conferencia Shopee (automacao/conferencia-shopee).
+
+Shopee (spx.shopee.com.br) - pasta extensao/shopee
+  No menu lateral do SPX, logo abaixo de Pedidos, o grupo:
+    Ativos
+      Disparar ativos  - cola os BR, busca o nome no export do SPX e dispara "confirmacao_entrega"
+                         (o telefone sai do olho do SPX, na hora do disparo).
+      Conversas        - as conversas dos ativos da Shopee, as mesmas do sistema XMTT.
+  "Configurar" (ou chrome://extensions > Detalhes > Opcoes da extensao) liga e desliga esses menus.
+
+iMile (ds.imile.com) - pasta extensao/imile
+  Um modulo proprio na barra de icones do DS (por ultimo, logo XM): Ativos > Disparar ativos.
+  Cola os waybills; a busca normal (sem cota) traz o remetente; no disparo, o olho da iMile abre
+  nome, telefone e produto (1 da cota de ~700 por dia, 1 a cada 1,2 s; para com 30 de reserva) e vai
+  "confirmacao_imile" ({{1}} nome, {{2}} quem dispara, {{3}} produto, {{4}} pedido).
+
+Anjun (newsupplier.anjunexpress.com) - pasta extensao/anjun
+  Uma secao "XM" no menu lateral, acima de "Principais funcoes": Ativos > Disparar ativos.
+  Cola os waybills (AJ...); a busca da Consulta de pacotes (sem dado sensivel) traz Cliente,
+  Comerciante e status; no disparo, abre nome e telefone (packageInfoLimit + viewPlaintext, o mesmo
+  "Visualizar Informacoes Sensiveis" da tela) e vai "reclamacao_anjun" ({{1}} nome, {{2}} pedido,
+  {{3}} plataforma = o Cliente da Anjun), o mesmo modelo do disparo em massa do sistema.
+  Ritmo: 1 pedido a cada 3 s, contado entre todas as abas (mais rapido a Anjun bloqueia por ~30 min).
+  Se a Anjun disser "operacoes muito frequentes", para e nao deixa disparar de novo por 30 min.
+
+Entre com o usuario e a senha do sistema (o login fica dentro da propria pagina; a senha nao e
+guardada).
+
+Instalar
+chrome://extensions > Modo do desenvolvedor > Carregar sem compactacao > esta pasta "extensao".
+Quem tinha a XM - Ativos Shopee ou a XM - Ativos iMile: remova as duas antes (a Shopee tem o mesmo id).
+Depois de atualizar a extensao, de F5 no portal.

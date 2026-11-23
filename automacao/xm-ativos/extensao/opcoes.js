@@ -1,4 +1,4 @@
-// Configuração da XM - Ativos Shopee (página de opções da extensão).
+// Configuração da XM - Ativos (página de opções da extensão; por enquanto, só os menus do SPX).
 // Liga e desliga os menus que a extensão põe no SPX. Fica em chrome.storage.local ("menus"); o
 // ativos.js ouve a mudança e mostra ou esconde na hora, sem F5. Sem nada salvo, tudo aparece.
 
