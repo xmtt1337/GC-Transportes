@@ -2,11 +2,15 @@ XM - Ativos iMile
 =================
 
 O disparo de ativos da iMile dentro do DS da iMile (ds.imile.com), como a XM - Ativos Shopee faz no
-SPX. Nao tem botao nem janelinha: aparece no menu lateral do DS, logo abaixo do grupo dos waybills:
+SPX. Nao tem botao nem janelinha: e um modulo proprio na barra de icones do DS (a da esquerda, com
+Home, Operation, Monitor...), por ultimo, com a logo XM no estilo dos icones deles (cinza parado, azul
+marcado). Clicar nele abre o painel dele e a pagina de disparo:
 
   Ativos        (so SAC, admin e dev)
     Disparar ativos  - cola os waybills, ve quem ja recebeu ativo e dispara a mensagem
                        "confirmacao_imile" pelo WhatsApp da GC. A conversa aparece no sistema XMTT.
+
+Clicar em outro modulo da barra (ou nos favoritos, busca, historico) volta para o DS como estava.
 
 Mensagem (modelo confirmacao_imile, aprovado na Meta):
   Ola, {nome}! Tudo bem?

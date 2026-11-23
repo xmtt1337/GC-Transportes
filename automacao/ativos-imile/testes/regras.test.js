@@ -80,6 +80,16 @@ test('revelar: nome, telefone, produto e a cota; para com a reserva e quando a i
   await assert.rejects(I.revelar(async () => ({ status: 'success', resultObject: { config: { limit: true } } }), '1'), /cota/);
 });
 
+test('menu: módulo próprio na barra de ícones (logo XM), não um grupo repetido no painel de cada módulo', () => {
+  const fonte = fs.readFileSync(path.join(EXT, 'ativos.js'), 'utf8');
+  assert.ok(fonte.includes(".ImileSMN-AsideMenu-scoller"), 'entra na barra de ícones');
+  assert.ok(fonte.includes("const NOME_MODULO = 'Ativos'"));
+  assert.ok(!/waybill\.after|xm-im-grupo/.test(fonte), 'o grupo clonado dentro do painel deles saiu');
+  // A logo cabe no 24 x 24 do ícone: 240 x 127 vezes a escala, a partir do deslocamento.
+  const [, dx, dy, k] = fonte.match(/translate\(([\d.]+) ([\d.]+)\) scale\(([\d.]+)\)/).map(Number);
+  assert.ok(dx >= 0 && dy >= 0 && dx + 240 * k <= 24 && dy + 127 * k <= 24);
+});
+
 test('manifest: só o DS da iMile e o sistema; id fixo; arquivos existem; canal próprio', () => {
   const m = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
   assert.strictEqual(m.name, 'XM - Ativos iMile');

@@ -1,14 +1,17 @@
-// XM - Ativos iMile: o grupo "Ativos" no menu lateral do DS da iMile e a pagina de disparo, no tema
-// do proprio DS (sem painel flutuante). Mesmo fluxo da XM - Ativos Shopee, com o modelo da iMile.
+// XM - Ativos iMile: um modulo proprio ("Ativos", com a logo XM) na barra de icones do DS da iMile,
+// o painel dele so com as nossas paginas e a pagina de disparo, no tema do proprio DS (sem painel
+// flutuante). Mesmo fluxo da XM - Ativos Shopee, com o modelo da iMile.
 //
 // Menu: o DS e React (componentes ImileSMN); as classes de estilo sao geradas na hora (emotion), entao
-// o nosso grupo e um CLONE de um grupo deles com itens: herda as mesmas classes e fica igual. Cada
-// grupo e .ImileSMN-MenuGroup-root (titulo .ImileSMN-MenuGroup-menu2Root, que ganha "open"/"active",
-// e uma caixa que abre por altura com os itens .ImileSMN-Menu3-root). Os elementos deles nunca sao
-// alterados; o clone nao leva os eventos do React (clonar nao copia ouvintes).
+// o nosso item da barra e um CLONE de um item deles (.ImileSMN-AsideMenu1-root, que ganha "active") e o
+// nosso painel e montado com clones do painel deles (titulo .ImileSMN-ContentPanel-title e grupos
+// .ImileSMN-MenuGroup-root sem itens): herdam as mesmas classes e ficam iguais. O clone nao leva os
+// eventos do React (clonar nao copia ouvintes).
 //
-// Pagina: entra em .ImileProLayoutNew-outlet, escondendo (display:none) o que o DS mostra ali; ao
-// clicar em outro item do menu ou trocar de endereco, sai e devolve tudo como estava.
+// Modulo aberto: o item deles marcado perde o "active" (devolvido ao sair, se o DS nao marcou outro
+// nesse meio tempo), o painel deles e a tela deles ficam escondidos (display:none) e no lugar entram
+// o nosso painel e a nossa pagina (em .ImileProLayoutNew-outlet). Clicar em qualquer coisa da barra
+// deles ou trocar de endereco sai do modulo e devolve tudo como estava.
 //
 // Fluxo: cola os waybills -> o imile.js faz a busca normal de cada um (sem cota; remetente) -> o
 // sistema diz quem ja recebeu ativo -> "Disparar": para cada marcado, o olho (nome, telefone e
@@ -17,7 +20,9 @@
 (() => {
   const R = self.XMAtivosImile;
   const CANAL = 'xmAtivosImile'; // o mesmo do imile.js
-  const ID_GRUPO = 'xm-im-grupo';
+  const ID_MODULO = 'xm-im-modulo'; // o nosso item na barra de icones
+  const ID_MENU = 'xm-im-menu'; // o nosso painel
+  const NOME_MODULO = 'Ativos';
   const AZUL = '#2546ff'; // a cor de destaque do DS
   const RITMO_OLHO_MS = 1200; // o mesmo da XM - Consultas de telefone na iMile
   const PAUSA_ENVIO_MS = 500; // igual ao disparo em massa do sistema
@@ -29,8 +34,8 @@
 
   // ── estilo (a pagina; o menu usa as classes do proprio DS) ───────────────────
   const CSS = `
-  #${ID_GRUPO} .xm-im-item { cursor: pointer; }
-  #${ID_GRUPO} .xm-im-item.xm-ativo .ImileEllipsis-root { color: ${AZUL}; font-weight: 500; }
+  #${ID_MODULO}, #${ID_MENU} .xm-im-item { cursor: pointer; }
+  #${ID_MENU} .xm-im-item.xm-ativo .ImileEllipsis-root { color: ${AZUL}; font-weight: 500; }
   .xm-im-pagina { padding: 16px 20px 32px; color: #1d2129; font-size: 14px; line-height: 1.5; box-sizing: border-box; min-width: 0; }
   .xm-im-pagina * { box-sizing: border-box; }
   .xm-im-pagina [hidden] { display: none !important; }
@@ -82,160 +87,215 @@
     (document.head || document.documentElement).append(s);
   }
 
-  // ── menu lateral ──────────────────────────────────────────────────────────────
-  let grupo = null;
-  let papelAtual = null; // cargo da conta entrada (null = ninguém entrou ainda)
-  let aberta = false;
+  // ── a logo XM no estilo dos icones do DS ────────────────────────────────────────
+  // Os icones da barra deles sao em duas tonalidades da cor do texto (currentColor: cinza parado, azul
+  // marcado). A logo XM (redesenhada aqui em 240x127) vai assim: o X a 50% e o M cheio, como o Monitor.
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const LOGO_X = 'M1 0h32l96 127H97ZM98 0h32L33 127H1Z';
+  const LOGO_M = 'M134 12h5l34 49l42 -61h25v127h-27V48l-40 58l-41 -57v66l-25 -34V50Z';
+  const LOGO_POSICAO = 'translate(2.4 6.92) scale(.08)'; // 19,2 x 10,2 no meio do 24 x 24
 
-  const SEL_LISTA = '.ImileSMN-Panel-root .ImileSMN-MyMenus-root-scroller';
-  const eDeles = (el) => el && !el.closest(`#${ID_GRUPO}`);
-  const temItens = (g) => !!(g && g.querySelector('.ImileSMN-Menu3-root'));
-
-  /** A lista dos grupos do painel aberto (o MuiStack que tem os ImileSMN-MenuGroup-root). */
-  function acharLista() {
-    const g = [...document.querySelectorAll(`${SEL_LISTA} .ImileSMN-MenuGroup-root`)].find(eDeles);
-    return g ? g.parentElement : null;
-  }
-
-  function montarGrupo(lista) {
-    const modelo = [...lista.children].find((g) => g.classList.contains('ImileSMN-MenuGroup-root') && eDeles(g) && temItens(g));
-    if (!modelo) return null;
-    const g = modelo.cloneNode(true);
-    g.id = ID_GRUPO;
-    g.querySelectorAll('[aria-label]').forEach((e) => e.removeAttribute('aria-label'));
-    const titulo = g.querySelector('.ImileSMN-MenuGroup-menu2Root');
-    titulo.classList.remove('active', 'open');
-    const nome = titulo.querySelector('.ImileEllipsis-root');
-    nome.textContent = 'Ativos';
-    nome.classList.remove('ImileEllipsis-hasTip');
-    const caixaItens = g.querySelector('.ImileSMN-MenuGroup-menu3Container');
-    const itemModelo = caixaItens.querySelector('.ImileSMN-Menu3-root');
-    caixaItens.textContent = '';
-    for (const p of PAGINAS) {
-      const item = itemModelo.cloneNode(true);
-      item.classList.remove('active');
-      item.classList.add('xm-im-item');
-      item.dataset.pagina = p.chave;
-      item.querySelector('.ImileEllipsis-root').textContent = p.titulo;
-      item.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); mostrarPagina(p.chave); });
-      caixaItens.append(item);
+  function iconeXm(classe) {
+    const s = document.createElementNS(SVG_NS, 'svg');
+    s.setAttribute('viewBox', '0 0 24 24');
+    s.setAttribute('focusable', 'false');
+    if (classe) s.setAttribute('class', classe); else { s.setAttribute('width', '24'); s.setAttribute('height', '24'); }
+    for (const [d, opacidade] of [[LOGO_X, '.5'], [LOGO_M, '']]) {
+      const p = document.createElementNS(SVG_NS, 'path');
+      p.setAttribute('d', d);
+      p.setAttribute('transform', LOGO_POSICAO);
+      p.setAttribute('fill', 'currentColor');
+      if (opacidade) p.setAttribute('opacity', opacidade);
+      s.append(p);
     }
-    // Um grupo aberto por vez: abrir o nosso fecha os deles que têm itens (pelo clique no título
-    // deles, para o próprio DS fechar). Grupo sem itens nunca é clicado: o clique nele troca de tela.
-    titulo.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const abrir = !titulo.classList.contains('open');
-      if (abrir) fecharOsDeles();
-      abrirGrupo(abrir);
-    });
-    return g;
+    return s;
   }
 
-  function fecharOsDeles() {
-    document.querySelectorAll(`${SEL_LISTA} .ImileSMN-MenuGroup-root`).forEach((g) => {
-      if (!eDeles(g) || !temItens(g)) return;
-      const t = g.querySelector('.ImileSMN-MenuGroup-menu2Root');
-      if (t && t.classList.contains('open')) t.click();
-    });
+  // ── o modulo na barra de icones e o painel dele ─────────────────────────────────
+  let modulo = null; // o nosso item da barra
+  let menu = null; // o nosso painel (montado uma vez, com clones do painel deles)
+  let noModulo = false;
+  let papelAtual = null; // cargo da conta entrada (null = ninguém entrou ainda)
+  let tirados = []; // itens da barra deles que perderam o "active" enquanto o nosso esta marcado
+  let atual = null;
+  let pagina = null;
+  const escondidos = { painel: [], tela: [] };
+
+  const SEL_BARRA = '.ImileSMN-AsideMenu-scoller, .ImileSMN-AsideMenu-scroller';
+  const SEL_PAINEL = '.ImileSMN-Panel-content';
+  const areaPrincipal = () => document.querySelector('.ImileProLayoutNew-outlet');
+  const eDeles = (el) => el && !el.closest(`#${ID_MODULO}, #${ID_MENU}, .xm-im-pagina`);
+  const temItens = (g) => !!(g && g.querySelector('.ImileSMN-Menu3-root'));
+  const raizDoModulo = () => modulo && modulo.querySelector('.ImileSMN-AsideMenu1-root');
+
+  function montarModulo(barra) {
+    const itens = [...barra.querySelectorAll('.ImileSMN-AsideMenu1-root')].filter(eDeles);
+    const modeloItem = itens.find((i) => !i.classList.contains('active')) || itens[0];
+    if (!modeloItem) return null;
+    let embrulho = modeloItem; // o filho direto da barra (o arrastavel deles)
+    while (embrulho.parentElement && embrulho.parentElement !== barra) embrulho = embrulho.parentElement;
+    if (embrulho.parentElement !== barra) return null;
+    const m = embrulho.cloneNode(true);
+    m.id = ID_MODULO;
+    m.style.setProperty('--index', String(barra.children.length));
+    m.querySelectorAll('[aria-label]').forEach((e) => e.removeAttribute('aria-label'));
+    m.querySelectorAll('[id]').forEach((e) => e.removeAttribute('id'));
+    const raiz = m.querySelector('.ImileSMN-AsideMenu1-root');
+    raiz.classList.remove('active');
+    raiz.title = 'XM - Ativos iMile';
+    const caixaIcone = raiz.querySelector('.ImileSMN-AsideMenu1-icon');
+    const svgDeles = [...barra.querySelectorAll('.ImileSMN-AsideMenu1-icon svg')].find((s) => s.classList.contains('ImileSvgIcon-root'));
+    if (caixaIcone) { caixaIcone.textContent = ''; caixaIcone.append(iconeXm(svgDeles ? svgDeles.getAttribute('class') : '')); }
+    const nome = raiz.querySelector('.ImileEllipsis-root');
+    if (nome) { nome.textContent = NOME_MODULO; nome.classList.remove('ImileEllipsis-hasTip'); }
+    m.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); entrarNoModulo(); });
+    return m;
   }
 
-  function abrirGrupo(abrir) {
-    if (!grupo) return;
-    const titulo = grupo.querySelector('.ImileSMN-MenuGroup-menu2Root');
-    const caixa = grupo.querySelector('.ImileSMN-MenuGroup-menu3Container').parentElement;
-    titulo.classList.toggle('open', abrir);
-    caixa.style.height = abrir ? 'auto' : '0px';
-    caixa.style.visibility = abrir ? 'visible' : 'hidden';
-    caixa.style.overflow = 'hidden';
+  /** O nosso painel: o titulo e grupos sem itens (como "DA OFD Monitor"), clonados do painel deles. */
+  function montarMenu(painel) {
+    const raiz = painel.querySelector('.ImileSMN-MyMenus-root');
+    const titulo = painel.querySelector('.ImileSMN-ContentPanel-title');
+    const rolagem = painel.querySelector('.ImileSMN-MyMenus-root-scroller');
+    const grupos = [...painel.querySelectorAll('.ImileSMN-MenuGroup-root')].filter(eDeles);
+    if (!raiz || !titulo || !rolagem || !grupos.length) return null;
+    const ativo = (g) => !!g.querySelector('.ImileSMN-MenuGroup-menu2Root.active');
+    const modelo = grupos.find((g) => !temItens(g) && !ativo(g)) || grupos.find((g) => !temItens(g)) || grupos[0];
+    const m = raiz.cloneNode(false);
+    m.id = ID_MENU;
+    const t = titulo.cloneNode(false);
+    t.textContent = NOME_MODULO;
+    const r = rolagem.cloneNode(false);
+    const pilha = modelo.parentElement.cloneNode(false);
+    for (const p of PAGINAS) {
+      const g = modelo.cloneNode(true);
+      const tituloG = g.querySelector('.ImileSMN-MenuGroup-menu2Root');
+      tituloG.classList.remove('active', 'open');
+      // Grupo sem itens: tira a setinha e a caixa dos itens, se o modelo tinha.
+      [...tituloG.children].filter((c) => c.tagName.toLowerCase() === 'svg').forEach((c) => c.remove());
+      [...g.children].filter((c) => c !== tituloG).forEach((c) => c.remove());
+      g.querySelectorAll('[aria-label]').forEach((e) => e.removeAttribute('aria-label'));
+      const nome = tituloG.querySelector('.ImileEllipsis-root');
+      nome.textContent = p.titulo;
+      nome.classList.remove('ImileEllipsis-hasTip');
+      g.classList.add('xm-im-item');
+      g.dataset.pagina = p.chave;
+      g.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); mostrarPagina(p.chave); });
+      pilha.append(g);
+    }
+    r.append(pilha);
+    m.append(t, r);
+    return m;
   }
 
   function marcarItem(chave) {
-    if (!grupo) return;
-    grupo.querySelectorAll('.xm-im-item').forEach((it) => {
-      const sel = it.dataset.pagina === chave;
-      it.classList.toggle('active', sel);
-      it.classList.toggle('xm-ativo', sel);
+    if (!menu) return;
+    menu.querySelectorAll('.xm-im-item').forEach((g) => {
+      const sel = g.dataset.pagina === chave;
+      g.classList.toggle('xm-ativo', sel);
+      const t = g.querySelector('.ImileSMN-MenuGroup-menu2Root');
+      t.classList.toggle('active', sel);
+      t.classList.toggle('open', sel);
     });
-    grupo.querySelector('.ImileSMN-MenuGroup-menu2Root').classList.toggle('active', !!chave);
   }
 
   function aplicarPapel(papel) {
     papelAtual = papel;
-    if (grupo) grupo.style.display = papel == null || R.ROLES_ATIVOS.includes(papel) ? '' : 'none';
+    const pode = papel == null || R.ROLES_ATIVOS.includes(papel);
+    if (modulo) modulo.style.display = pode ? '' : 'none';
+    if (!pode) sairDoModulo();
   }
 
-  function colocarMenu() {
-    const lista = acharLista();
-    if (!lista) return;
-    if (grupo && lista.contains(grupo)) return;
-    const reabrir = grupo && grupo.querySelector('.ImileSMN-MenuGroup-menu2Root').classList.contains('open');
-    const novo = montarGrupo(lista);
-    if (!novo) return;
-    grupo = novo;
-    // Logo depois do grupo dos waybills (o nome muda com o idioma; senão, no fim).
-    const waybill = [...lista.children].find((g) => eDeles(g) && /waybill/i.test(g.textContent || ''));
-    if (waybill) waybill.after(grupo); else lista.append(grupo);
-    if (reabrir || aberta) abrirGrupo(true);
-    if (aberta) marcarItem(atual);
-    aplicarPapel(papelAtual);
-  }
-
-  // ── entrar e sair da pagina ───────────────────────────────────────────────────
-  let atual = null;
-  let pagina = null;
-  let escondidos = [];
-
-  const areaPrincipal = () => document.querySelector('.ImileProLayoutNew-outlet');
-
-  function esconderDoDs(main) {
-    for (const c of main.children) {
-      if (c === pagina || c.dataset.xmImEscondido) continue;
-      escondidos.push([c, c.style.display]);
+  /** Esconde (display:none) o que o DS pôs em caixa, menos o nosso; anota para devolver depois. */
+  function esconderDoDs(caixa, nosso, lista) {
+    for (const c of caixa.children) {
+      if (c === nosso || c.dataset.xmImEscondido) continue;
+      lista.push([c, c.style.display]);
       c.dataset.xmImEscondido = '1';
       c.style.display = 'none';
     }
+    if (nosso && nosso.parentElement !== caixa) caixa.append(nosso);
+  }
+
+  function devolverAoDs(lista) {
+    lista.forEach(([c, d]) => { c.style.display = d; delete c.dataset.xmImEscondido; });
+    lista.length = 0;
+  }
+
+  function tirarAtivoDeles() {
+    document.querySelectorAll('.ImileSMN-AsideMenu1-root.active').forEach((el) => {
+      if (!eDeles(el)) return;
+      el.classList.remove('active');
+      if (!tirados.includes(el)) tirados.push(el);
+    });
+  }
+
+  /** Recoloca o modulo e, com ele aberto, mantém o painel e a tela do DS escondidos. */
+  function manterModulo() {
+    const barra = document.querySelector(SEL_BARRA);
+    if (barra) {
+      if (!modulo || modulo.parentElement !== barra) {
+        const novo = montarModulo(barra);
+        if (novo) { if (modulo) modulo.remove(); modulo = novo; barra.append(modulo); aplicarPapel(papelAtual); }
+      } else if (modulo.nextElementSibling) {
+        barra.append(modulo); // o DS pôs item novo depois do nosso: o nosso fica por último
+      }
+      const raiz = raizDoModulo();
+      if (raiz) raiz.classList.toggle('active', noModulo);
+    }
+    const painel = document.querySelector(SEL_PAINEL);
+    if (!menu && painel) { menu = montarMenu(painel); if (menu) marcarItem(atual); }
+    if (!noModulo) return;
+    tirarAtivoDeles();
+    if (painel && menu) esconderDoDs(painel, menu, escondidos.painel);
+    const main = areaPrincipal();
+    if (main && pagina) esconderDoDs(main, pagina, escondidos.tela);
+  }
+
+  function entrarNoModulo() {
+    noModulo = true;
+    manterModulo();
+    mostrarPagina(atual || PAGINAS[0].chave);
   }
 
   function mostrarPagina(chave) {
-    const main = areaPrincipal();
-    if (!main) return;
+    if (!noModulo) return;
     atual = chave;
-    aberta = true;
     if (!pagina) pagina = montarPagina();
-    esconderDoDs(main);
-    if (pagina.parentElement !== main) main.append(pagina);
-    abrirGrupo(true);
+    const main = areaPrincipal();
+    if (main) esconderDoDs(main, pagina, escondidos.tela);
     marcarItem(chave);
     atualizarConta();
   }
 
-  function fecharPagina() {
-    if (!aberta) return;
-    aberta = false;
-    atual = null;
+  function sairDoModulo() {
+    if (!noModulo) return;
+    noModulo = false;
+    const raiz = raizDoModulo();
+    if (raiz) raiz.classList.remove('active');
+    // Devolve o "active" só se o DS não marcou outro nesse meio tempo (se marcou, já redesenhou).
+    const deles = [...document.querySelectorAll('.ImileSMN-AsideMenu1-root.active')].filter(eDeles);
+    if (!deles.length) tirados.forEach((el) => { if (el.isConnected) el.classList.add('active'); });
+    tirados = [];
+    if (menu) menu.remove();
+    devolverAoDs(escondidos.painel);
     if (pagina) pagina.remove();
-    escondidos.forEach(([c, d]) => { c.style.display = d; delete c.dataset.xmImEscondido; });
-    escondidos = [];
+    devolverAoDs(escondidos.tela);
+    atual = null;
     marcarItem(null);
   }
 
-  // Abrir outro grupo do DS fecha o nosso. Outro item do menu (ou outra tela) volta para o DS.
+  // Qualquer clique na barra deles (outro modulo, favoritos, busca, historico, mais) sai do nosso
+  // antes do DS tratar o clique; trocar de endereco também.
   document.addEventListener('click', (e) => {
     const alvo = e.target && e.target.closest ? e.target : null;
-    if (!alvo || !eDeles(alvo)) return;
-    const titulo = alvo.closest('.ImileSMN-MenuGroup-menu2Root');
-    if (titulo) {
-      const g = titulo.closest('.ImileSMN-MenuGroup-root');
-      if (temItens(g)) { if (!titulo.classList.contains('open')) abrirGrupo(false); } else fecharPagina();
-      return;
-    }
-    if (alvo.closest('.ImileSMN-Menu3-root')) fecharPagina();
+    if (!alvo || !noModulo || !eDeles(alvo)) return;
+    if (alvo.closest('.ImileSMN-Aside-Root')) sairDoModulo();
   }, true);
-  window.addEventListener('hashchange', fecharPagina);
-  window.addEventListener('popstate', fecharPagina);
+  window.addEventListener('hashchange', sairDoModulo);
+  window.addEventListener('popstate', sairDoModulo);
 
-  // O DS redesenha o menu e o conteúdo: recoloca o grupo e mantém a tela dele escondida.
+  // O DS redesenha a barra, o painel e o conteúdo: recoloca o nosso e mantém o deles escondido.
   let agendado = false;
   new MutationObserver(() => {
     if (agendado) return;
@@ -243,11 +303,7 @@
     setTimeout(() => {
       agendado = false;
       colocarEstilo();
-      colocarMenu();
-      if (aberta && pagina) {
-        const main = areaPrincipal();
-        if (main) { esconderDoDs(main); if (pagina.parentElement !== main) main.append(pagina); }
-      }
+      manterModulo();
     }, 250);
   }).observe(document.documentElement, { childList: true, subtree: true });
 
@@ -541,7 +597,7 @@
   }
 
   colocarEstilo();
-  colocarMenu();
+  manterModulo();
   if (chrome.runtime && chrome.runtime.id) {
     pedirAoFundo('estado').then((r) => aplicarPapel(r.logado ? r.papel : null)).catch(() => {});
   }

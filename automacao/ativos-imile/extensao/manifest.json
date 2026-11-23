@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "XM - Ativos iMile",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Dispara o ativo de confirmação de recebimento da iMile (confirmacao_imile) pelo WhatsApp da GC, direto do menu do DS da iMile, integrado ao sistema XMTT.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuDyRepKSso6AqPXR9KXVaNlVYlntG35QwSZ6tDc2CVEghIfPKnKSuQK7IDvSTRoSmLXhmOAWqjOpv+2T+n+24O8ObhQoXao0/QFBZ3yj5BRlxWOMy85KuW1E4U7TN3Liq1q5zCT+7KIiW8NHpHnKowiQeqwoDGpatW8BW59xBeB19lHLJ/vpu0QWJR3NI+QrpFMUdaxBSTp7w8M91VIAQ9EA+0cfyCF6NvM3CiNgLZUdx9PdNr+QydS0uC25qTGloJvGK0Zc4jUYnPpjTMywe8HRcxUIDhDffyPGpTcrwba1H7jXRVX4/DuEktwsHdivJd7/9SY5S7JJCsifns20uQIDAQAB",
   "permissions": [
