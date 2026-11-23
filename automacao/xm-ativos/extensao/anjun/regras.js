@@ -55,7 +55,8 @@
 
   // Marcas conhecidas: escritas do jeito que o cliente reconhece.
   const MARCAS = [
-    [/shein/i, 'Shein'], [/temu/i, 'Temu'], [/tik\s*tok/i, 'TikTok Shop'], [/mercado\s*livre|\bmeli\b/i, 'Mercado Livre'],
+    // clientes da Anjun (confirmado pelo usuario): szanjun = Shein, temud2d = Temu, tiktok logistics = TikTok
+    [/shein|szanjun/i, 'Shein'], [/temu/i, 'Temu'], [/tik\s*tok/i, 'TikTok'], [/mercado\s*livre|\bmeli\b/i, 'Mercado Livre'],
     [/shopee/i, 'Shopee'], [/aliexpress|cainiao/i, 'AliExpress'], [/\bkwai\b/i, 'Kwai'], [/amazon/i, 'Amazon'],
     [/magalu|magazine\s*luiza/i, 'Magalu'],
   ];

@@ -54,13 +54,13 @@ test('lojaUnica: o nome único da loja (do Nome do comerciante), nunca o código
   assert.strictEqual(R.lojaUnica('EXEMPLO HOLDINGS LIMITED (LOJA BOA)', ''), 'LOJA BOA');
   // só a marca escrita do jeito conhecido
   assert.strictEqual(R.lojaUnica('SHEIN', ''), 'Shein');
-  // sem comerciante: a marca reconhecível do cliente; senão vazio (a mensagem leva "não informado")
+  // sem comerciante: a marca do cliente (szanjun e sheind2d = Shein, temud2d = Temu, tiktok logistics = TikTok); senão vazio (a mensagem leva "não informado")
   assert.strictEqual(R.lojaUnica('', 'temud2d'), 'Temu');
   assert.strictEqual(R.lojaUnica('', 'sheind2d'), 'Shein');
-  assert.strictEqual(R.lojaUnica('', 'szanjun'), '');
+  assert.strictEqual(R.lojaUnica('', 'szanjun'), 'Shein');
   assert.strictEqual(R.lojaUnica('  ', ''), '');
   // nome em chinês ou com cara de código: vale a marca do cliente (ou nada)
-  assert.strictEqual(R.lojaUnica('厦门测试电子商务有限公司', 'szanjun'), '');
+  assert.strictEqual(R.lojaUnica('厦门测试电子商务有限公司', 'szanjun'), 'Shein');
   assert.strictEqual(R.lojaUnica('厦门测试电子商务有限公司', 'sheind2d'), 'Shein');
   assert.strictEqual(R.lojaUnica("J123456'shop", 'temud2d'), 'Temu');
   assert.strictEqual(R.lojaUnica('X9 001', 'temuxborder'), 'X9 001');
@@ -121,4 +121,11 @@ test('manifest e menu: o portal da Anjun roda os scripts da pasta anjun; seção
   assert.ok(ativos.includes("titulo.textContent = 'XM'"), 'seção XM acima de Principais funções');
   // a limpeza dos ids do clone não pode apagar o id da própria seção
   assert.ok(ativos.lastIndexOf('s.id = ID_SECAO') > ativos.indexOf('limparClone(s)'));
+});
+
+test('clientes da Anjun que viram marca: szanjun = Shein, temud2d = Temu, tiktok logistics = TikTok', () => {
+  assert.strictEqual(R.lojaUnica('', 'szanjun'), 'Shein');
+  assert.strictEqual(R.lojaUnica('', 'temud2d'), 'Temu');
+  assert.strictEqual(R.lojaUnica('', 'tiktok logistics brazil ltda'), 'TikTok');
+  assert.strictEqual(R.lojaUnica('', 'loja desconhecida xyz'), '');
 });
