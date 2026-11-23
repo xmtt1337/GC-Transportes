@@ -22,6 +22,8 @@ const ACESSOR = `
   query: (e) => _arQuery(e),
   html: () => _htmlAgencyRouter(),
   lista: () => _htmlLista(),
+  filtrarEntregador: (i, j) => _arFiltrarEntregador(i, j),
+  filtrarServico: (i) => _arFiltrarServico(i),
 };`;
 
 function carregar() {
@@ -53,10 +55,25 @@ function preencher(a) {
     lista: {
       total: 1, pagina: 1, limite: 50,
       itens: [{ id: "7", data_type: 3, servico: MALDADE, recebido_em: "2026-01-01",
-                itens: 2, referencia: MALDADE, referencia_campo: MALDADE,
+                itens: 2, pedido: MALDADE, pedido_campo: MALDADE, at: MALDADE,
+                entregador: MALDADE, motivo: MALDADE,
                 status: [{ campo: MALDADE, valor: MALDADE, n: 2 }] }],
     },
   });
+  a.estado.resumo.por_entregador = [
+    { entregador: MALDADE, ats: [MALDADE], status: { [MALDADE]: 2 } },
+  ];
+}
+
+/** Quadro por entregador com nomes de teste. */
+function preencherEntregadores(a) {
+  preencher(a);
+  a.estado.resumo.por_entregador = [
+    { entregador: null, ats: ["ATZ9"], status: { OnHold: 50 } },
+    { entregador: "Fulano Teste", ats: ["ATX1"], status: { OnHold: 2, Delivered: 30 } },
+    { entregador: "Ciclano Teste", ats: ["ATX2", "ATX3"], status: { OnHold: 7, Delivered: 1 } },
+  ];
+  Object.assign(a.estado, { ordemEnt: null });
 }
 
 test("texto vindo da SPX sai escapado na tela inteira", () => {
@@ -111,4 +128,50 @@ test("paginação: 'Próximos' desliga na última página", () => {
   assert.ok(html.includes("51–60 de 60"));
   assert.match(html, /_arPagina\(1\)" disabled/);
   assert.doesNotMatch(html, /_arPagina\(-1\)" disabled/);
+});
+
+// ── por entregador
+test("quadro por entregador: abre ordenado por OnHold, sem entregador no fim", () => {
+  const a = carregar();
+  preencherEntregadores(a);
+  const html = a.html();
+  assert.strictEqual(a.estado.ordemEnt, "OnHold");
+  const nomes = [...a.estado.entregadores].map((g) => g.entregador);
+  assert.deepStrictEqual(nomes, ["Ciclano Teste", "Fulano Teste", null],
+    "50 OnHold sem entregador não passa na frente de quem é gente");
+  assert.ok(html.includes("AT sem entregador no sistema"));
+});
+
+test("quadro por entregador: colunas na ordem do total de cada status", () => {
+  const a = carregar();
+  preencherEntregadores(a);
+  a.html();
+  // OnHold 59 > Delivered 31
+  assert.deepStrictEqual([...a.estado.colunasEnt], ["OnHold", "Delivered"]);
+});
+
+test("Ver disparos do entregador filtra pelas ATs dele (e pelo status da coluna)", () => {
+  const a = carregar();
+  preencherEntregadores(a);
+  a.html();
+  a.filtrarEntregador(0, 0); // Ciclano, coluna OnHold
+  const q = new URLSearchParams(a.query());
+  assert.strictEqual(q.get("ats"), "ATX2,ATX3");
+  assert.strictEqual(q.get("tipo"), "3");
+  assert.strictEqual(q.get("campo"), "order_status");
+  assert.strictEqual(q.get("valor"), "OnHold");
+
+  a.filtrarEntregador(1); // Fulano, todos os status
+  const q2 = new URLSearchParams(a.query());
+  assert.strictEqual(q2.get("ats"), "ATX1");
+  assert.ok(!q2.has("campo"));
+});
+
+test("filtrar por serviço tira o filtro de entregador", () => {
+  const a = carregar();
+  preencherEntregadores(a);
+  a.html();
+  a.filtrarEntregador(0);
+  a.filtrarServico(0);
+  assert.ok(!new URLSearchParams(a.query()).has("ats"));
 });

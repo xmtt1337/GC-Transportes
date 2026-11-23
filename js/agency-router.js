@@ -11,6 +11,10 @@
 //
 // O status é achado pelo NOME do campo (tudo que tem "status"), em qualquer
 // profundidade do payload — ver sistema-backend/modules/agencyrouter/leitura.js.
+//
+// A SPX NÃO manda o entregador na atualização de entrega (o receiver_name é o
+// destinatário). O backend acha o entregador pelo número da AT (trip_number)
+// na nossa AT exportada — daí o quadro "Por entregador".
 
 const _AR_MOTIVOS = {
     sem_token:        "Requisição sem JWT",
@@ -42,8 +46,15 @@ const _AR_POR_PAGINA = 50;
 // onclick das linhas passa só o ÍNDICE, nunca o valor (que pode ter aspas).
 const _ar = {
     periodo: "hoje", tipo: null, servico: null, campo: null, valor: null, pagina: 1,
+    ats: null, rotuloAts: null,   // filtro "Ver disparos" de um entregador
+    ordemEnt: null,               // status pelo qual o quadro por entregador está ordenado
+    entregadores: [], colunasEnt: [],
     situacao: null, resumo: null, lista: null,
 };
+
+// Status que abre o quadro por entregador ordenado, quando aparece — é a
+// pergunta que originou o quadro ("quem fez o OnHold?").
+const _AR_STATUS_INICIAL = "OnHold";
 
 const _arNum = (n) => Number(n || 0).toLocaleString("pt-BR");
 const _arTipo = (t) => _AR_TIPOS[t] ? `${_AR_TIPOS[t].sigla} · ${_AR_TIPOS[t].nome}` : (t ?? "—");
@@ -57,6 +68,7 @@ function _arQuery(extra = {}) {
         p.set("campo", _ar.campo);
         if (_ar.valor !== null) p.set("valor", _ar.valor);
     }
+    if (_ar.ats && _ar.ats.length) p.set("ats", _ar.ats.join(","));
     return p.toString();
 }
 
@@ -100,20 +112,46 @@ async function _arRecarregarLista(rolar = true) {
     }
 }
 
+const _AR_SEM_ENTREGADOR = { ats: null, rotuloAts: null };
+
 function _arFiltrarServico(i) {
     const l = _ar.resumo.por_servico[i];
-    Object.assign(_ar, { tipo: l.data_type, servico: l.servico, campo: null, valor: null, pagina: 1 });
+    Object.assign(_ar, _AR_SEM_ENTREGADOR,
+        { tipo: l.data_type, servico: l.servico, campo: null, valor: null, pagina: 1 });
     _arRecarregarLista();
 }
 
 function _arFiltrarStatus(i) {
     const l = _ar.resumo.status[i];
-    Object.assign(_ar, { tipo: l.data_type, servico: l.servico, campo: l.campo, valor: l.valor, pagina: 1 });
+    Object.assign(_ar, _AR_SEM_ENTREGADOR,
+        { tipo: l.data_type, servico: l.servico, campo: l.campo, valor: l.valor, pagina: 1 });
     _arRecarregarLista();
 }
 
+/**
+ * Disparos de um entregador (linha i do quadro), opcionalmente só de um status
+ * (coluna j). O filtro vai pelas ATs dele — é o que liga disparo a entregador.
+ */
+function _arFiltrarEntregador(i, j = null) {
+    const e = _ar.entregadores[i];
+    const status = j === null ? null : _ar.colunasEnt[j];
+    Object.assign(_ar, {
+        tipo: 3, servico: null, pagina: 1,
+        campo: status === null ? null : "order_status", valor: status,
+        ats: e.ats, rotuloAts: e.entregador || "AT sem entregador no sistema",
+    });
+    _arRecarregarLista();
+}
+
+function _arOrdenarEntregadores(j) {
+    _ar.ordemEnt = _ar.colunasEnt[j];
+    const alvo = document.getElementById("ar-entregadores");
+    if (alvo) alvo.innerHTML = _htmlTabelaEntregadores();
+}
+
 function _arLimparFiltro() {
-    Object.assign(_ar, { tipo: null, servico: null, campo: null, valor: null, pagina: 1 });
+    Object.assign(_ar, _AR_SEM_ENTREGADOR,
+        { tipo: null, servico: null, campo: null, valor: null, pagina: 1 });
     _arRecarregarLista(false);
 }
 
@@ -148,6 +186,7 @@ function _htmlAgencyRouter() {
 
     ${_htmlKpis(periodo)}
     ${_htmlPorServico(periodo)}
+    ${_htmlPorEntregador()}
     ${_htmlStatus()}
 
     <div class="ar-secao">
@@ -208,6 +247,63 @@ function _htmlPorServico(periodo) {
 }
 
 /**
+ * Quadro por entregador das atualizações de entrega (LM): uma coluna por
+ * status, contando pedidos distintos. Colunas na ordem do total; linhas
+ * ordenadas pelo status escolhido (clique no cabeçalho), começando por OnHold.
+ */
+function _htmlPorEntregador() {
+    const grupos = _ar.resumo.por_entregador || [];
+    if (!grupos.length) return "";
+
+    const totais = {};
+    for (const g of grupos) {
+        for (const [st, n] of Object.entries(g.status)) totais[st] = (totais[st] || 0) + n;
+    }
+    _ar.colunasEnt = Object.keys(totais).sort((a, b) => totais[b] - totais[a] || a.localeCompare(b));
+    if (!_ar.colunasEnt.includes(_ar.ordemEnt)) {
+        _ar.ordemEnt = _ar.colunasEnt.includes(_AR_STATUS_INICIAL) ? _AR_STATUS_INICIAL : _ar.colunasEnt[0];
+    }
+
+    return `
+    <div class="ar-secao">
+        <h3 class="ar-titulo">Por entregador · última milha</h3>
+        <p class="ar-sub">A SPX não manda quem estava com o pacote. O entregador sai da nossa
+           AT exportada, pelo número da AT que vem em cada atualização. Conta pedidos: a mesma
+           atualização repetida conta uma vez.</p>
+        <div id="ar-entregadores">${_htmlTabelaEntregadores()}</div>
+    </div>`;
+}
+
+function _htmlTabelaEntregadores() {
+    const cols = _ar.colunasEnt;
+    const ordem = _ar.ordemEnt;
+    // "sem entregador" sempre no fim: não é uma pessoa para comparar.
+    _ar.entregadores = [...(_ar.resumo.por_entregador || [])].sort((a, b) =>
+        (a.entregador === null) - (b.entregador === null)
+        || (b.status[ordem] || 0) - (a.status[ordem] || 0)
+        || String(a.entregador).localeCompare(String(b.entregador), "pt-BR"));
+
+    return `
+    <div class="ar-rolagem"><table class="adm-nf-table ar-tabela">
+        <thead><tr>
+            <th>Entregador</th><th class="ar-num">ATs</th>
+            ${cols.map((c, j) => `<th class="ar-num">
+                <button class="ar-ordenar ${c === ordem ? "ar-ordem-ativa" : ""}"
+                        onclick="_arOrdenarEntregadores(${j})">${_esc(c || "sem status")}</button></th>`).join("")}
+            <th></th>
+        </tr></thead>
+        <tbody>${_ar.entregadores.map((g, i) => `<tr>
+            <td>${g.entregador ? _esc(g.entregador) : `<span class="ar-vazio">AT sem entregador no sistema</span>`}</td>
+            <td class="ar-num" title="${_esc(g.ats.join(", "))}">${_arNum(g.ats.length)}</td>
+            ${cols.map((c, j) => `<td class="ar-num">${g.status[c]
+                ? `<button class="pv-acao ar-num-acao" onclick="_arFiltrarEntregador(${i}, ${j})">${_arNum(g.status[c])}</button>`
+                : `<span class="ar-vazio">—</span>`}</td>`).join("")}
+            <td><button class="pv-acao" onclick="_arFiltrarEntregador(${i})">Ver disparos</button></td>
+        </tr>`).join("")}</tbody>
+    </table></div>`;
+}
+
+/**
  * Status agrupados por tipo/serviço. Tipo e serviço só aparecem na primeira
  * linha do grupo, para o olho correr pelos valores.
  */
@@ -245,8 +341,9 @@ function _htmlStatus() {
 }
 
 function _htmlFiltroAtivo() {
-    if (!_ar.tipo && _ar.servico === null && !_ar.campo) return "";
+    if (!_ar.tipo && _ar.servico === null && !_ar.campo && !_ar.ats) return "";
     const partes = [];
+    if (_ar.ats) partes.push(`${_esc(_ar.rotuloAts)} <span class="ar-vazio">(${_arNum(_ar.ats.length)} AT${_ar.ats.length > 1 ? "s" : ""})</span>`);
     if (_ar.tipo) partes.push(_esc(_arTipo(_ar.tipo)));
     if (_ar.servico !== null) partes.push(_arServico(_ar.servico));
     if (_ar.campo) partes.push(`<span class="ar-mono">${_esc(_ar.campo)} = ${_esc(_ar.valor ?? "")}</span>`);
@@ -254,13 +351,17 @@ function _htmlFiltroAtivo() {
         <button class="pv-acao" onclick="_arLimparFiltro()">Mostrar todos</button></div>`;
 }
 
-/** Status de um disparo: os 3 mais frequentes, o resto vira "+N". */
-function _htmlStatusDaLinha(status) {
-    if (!status.length) return `<span class="ar-vazio">—</span>`;
+/**
+ * Status de um disparo: os 3 mais frequentes, o resto vira "+N". O motivo
+ * (onhold_reason etc.) vem embaixo — é o que explica o OnHold.
+ */
+function _htmlStatusDaLinha(status, motivo) {
+    if (!status.length && !motivo) return `<span class="ar-vazio">—</span>`;
     const mostra = status.slice(0, 3).map((s) => `<span>
         <span class="ar-campo">${_esc(s.campo)}</span>
         <span class="ar-mono">${_esc(s.valor)}</span>${s.n > 1 ? ` <span class="ar-vazio">×${_arNum(s.n)}</span>` : ""}</span>`);
     if (status.length > 3) mostra.push(`<span class="ar-vazio">+${status.length - 3} outros</span>`);
+    if (motivo) mostra.push(`<span class="ar-motivo">${_esc(motivo)}</span>`);
     return `<div class="ar-status-lista">${mostra.join("")}</div>`;
 }
 
@@ -277,16 +378,19 @@ function _htmlLista() {
     ${_htmlFiltroAtivo()}
     <div class="ar-rolagem"><table class="adm-nf-table ar-tabela">
         <thead><tr>
-            <th>Quando</th><th>Tipo</th><th>Serviço</th><th>Referência</th>
-            <th>Status</th><th class="ar-num">Itens</th><th></th>
+            <th>Quando</th><th>Tipo</th><th>Pedido</th><th>AT / viagem</th>
+            <th>Entregador</th><th>Status</th><th></th>
         </tr></thead>
         <tbody>${l.itens.map((r) => `<tr>
             <td class="ar-quando">${_fmtData(r.recebido_em)}</td>
-            <td>${_esc(_AR_TIPOS[r.data_type] ? _AR_TIPOS[r.data_type].sigla : (r.data_type ?? "—"))}</td>
-            <td class="ar-mono">${_arServico(r.servico)}</td>
-            <td class="ar-mono" title="${_esc(r.referencia_campo || "")}">${_esc(r.referencia || "—")}</td>
-            <td>${_htmlStatusDaLinha(r.status)}</td>
-            <td class="ar-num">${_arNum(r.itens)}</td>
+            <td><span class="ar-sigla">${_esc(_AR_TIPOS[r.data_type] ? _AR_TIPOS[r.data_type].sigla : (r.data_type ?? "—"))}</span>
+                <span class="ar-mono ar-servico">${_arServico(r.servico)}</span></td>
+            <td class="ar-mono" title="${_esc(r.pedido_campo || "")}">${_esc(r.pedido || "—")}${
+                r.itens > 1 ? ` <span class="ar-vazio">+${_arNum(r.itens - 1)}</span>` : ""}</td>
+            <td class="ar-mono">${_esc(r.at || "—")}</td>
+            <td>${r.entregador ? _esc(r.entregador)
+                : (r.at && r.data_type === 3 ? `<span class="ar-vazio">AT fora do sistema</span>` : `<span class="ar-vazio">—</span>`)}</td>
+            <td>${_htmlStatusDaLinha(r.status, r.motivo)}</td>
             <td><button class="pv-acao" onclick="_arVerCorpo('${_esc(String(r.id))}')">Ver</button></td>
         </tr>`).join("")}</tbody>
     </table></div>
@@ -350,7 +454,8 @@ async function _arVerCorpo(id) {
         <div class="ar-detalhe">
             <div class="ar-detalhe-cab">
                 <span><b>Disparo #${_esc(String(linha.id))}</b> · ${_esc(_arTipo(linha.data_type))}
-                    · ${_arServico(linha.business_type)} · ${_fmtData(linha.recebido_em)}</span>
+                    · ${_arServico(linha.business_type)} · ${_fmtData(linha.recebido_em)}${
+                    linha.entregador ? ` · entregador da AT: <b>${_esc(linha.entregador)}</b>` : ""}</span>
                 <button class="pv-acao" onclick="document.getElementById('ar-corpo').innerHTML=''">Fechar</button>
             </div>
             <p class="ar-sub ar-mono">trace_id ${_esc(linha.trace_id || "—")}</p>
