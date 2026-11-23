@@ -195,9 +195,16 @@
     return li;
   }
 
-  function fecharOsDoSpx() {
-    document.querySelectorAll('.sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.xm-grupo) > .ssc-menu-submenu-title')
-      .forEach((t) => t.click());
+  // Só os grupos de cima do menu. Clicar no título de um subgrupo aberto (ex.: Painel >
+  // Entrega/Devolução) faz o SPX reabrir o grupo pai, e ficavam dois abertos (23/11/2026). Se o SPX
+  // reabrir um grupo logo depois (o da tela atual), confere mais uma vez.
+  const gruposAbertosDeCima = () => [...document.querySelectorAll('.sidebar-container li.ssc-menu-submenu.ssc-menu-opened:not(.xm-grupo)')]
+    .filter((li) => !li.parentElement.closest('li.ssc-menu-submenu'));
+  function fecharOsDoSpx(conferindo = false) {
+    const abertos = gruposAbertosDeCima();
+    abertos.forEach((li) => { const t = li.querySelector(':scope > .ssc-menu-submenu-title'); if (t) t.click(); });
+    const algumNossoAberto = () => GRUPOS.some((g) => lis[g.id] && lis[g.id].classList.contains('ssc-menu-opened'));
+    if (!conferindo && abertos.length) setTimeout(() => { if (algumNossoAberto() && gruposAbertosDeCima().length) fecharOsDoSpx(true); }, 400);
   }
 
   function abrirGrupo(id, abrir) {

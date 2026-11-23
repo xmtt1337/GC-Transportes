@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "XM - Conferência Shopee",
-  "version": "1.3",
+  "version": "1.4",
   "description": "Conferência da viagem do dia dentro do SPX (Conferência > Vapt Vupt): romaneio, AT vinculada, recebidos, divergências e abrangência, tudo lido do SPX.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArZ6V7hoHbGTRqGmlwWQl7NtkSvUpcqkjzVcgFaXymAxUlStAc+RqLetYtq4+x8UnlaIhYGQzLO2RKD4OrBuAnXQcevWgmMsR9bUJ5M+JzuvTkE2b9uAUeQwAxbdHMCyquRqluPnOAJeApXuKOsC3Vf+oM+1sYibFxpnjMgvQuBJfvHfQqiXEGmZPkdIPfN48ItQSEcRotZMzBhof7d5V9GrWO2rRXHq15WmgV4NXkGz1yJPaawJg/RyBr4UcD7JIdLCZi/+5juH/OAXqSfq4otfk9A/bcP6AjBdpvernBIEVr5dRhUTbvfDiA+GWbIpG1vt2vxd46kNQ43eUruFxFwIDAQAB",
   "permissions": [
