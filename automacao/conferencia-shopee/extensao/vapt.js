@@ -45,6 +45,20 @@
   @keyframes xm-vv-pulsa { 50% { opacity: .45; } }
   .xm-conf-pagina .xm-vv-pt { color: #333; }
   .xm-conf-pagina .xm-vv-pt.xm-espera { color: #aaa; }
+  .xm-conf-pagina .xm-vv-filtros { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .xm-conf-pagina .xm-vv-filtro { color: #666; }
+  .xm-conf-pagina .xm-vv-filtro.xm-ativo { color: #ee4d2d; font-weight: 500; }
+  .xm-conf-pagina .xm-vv-sep { color: #ccc; }
+  .xm-conf-pagina .xm-vv-tabela-tos td { padding-top: 8px; padding-bottom: 8px; }
+  .xm-conf-pagina .xm-vv-to-clica { cursor: pointer; }
+  .xm-conf-pagina .xm-vv-to-aberta td { background: #fff7f4; }
+  .xm-conf-pagina .xm-vv-pct-to { display: grid; grid-template-columns: 64px minmax(80px, 160px); align-items: center; gap: 8px; }
+  .xm-conf-pagina .xm-vv-pct-to b { font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+  .xm-conf-pagina .xm-vv-to-det td { background: #fffaf8; padding: 10px 16px 14px; }
+  .xm-conf-pagina .xm-vv-falt-cab { display: flex; justify-content: space-between; color: #666; font-size: 13px; margin-bottom: 8px; }
+  .xm-conf-pagina .xm-vv-falt { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 4px 24px; max-height: 260px; overflow: auto; font-size: 13px; }
+  .xm-conf-pagina .xm-vv-falt div { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+  .xm-conf-pagina .xm-vv-falt div span:nth-child(2) { color: #999; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .xm-conf-pagina a.xm-vv-ver { text-decoration: none; white-space: nowrap; }
   .xm-conf-pagina a.xm-vv-ver:hover { text-decoration: underline; }
   .xm-conf-pagina .xm-vv-pd { display: block; color: #999; overflow-wrap: anywhere; }
@@ -94,7 +108,7 @@
   let ctx = null;
   let raiz = null;
   // registro = um dia conferido: { dia, estacao, viagens, lido_em, usuario, conta }
-  const est = { logado: false, nome: '', estacao: '', dia: '', registro: null, tipo: 'sem_at', ocupado: false };
+  const est = { logado: false, nome: '', estacao: '', dia: '', registro: null, tipo: 'sem_at', ocupado: false, filtroTo: 'abertas', toAberta: '' };
   const $ = (sel) => raiz.querySelector(sel);
   const esc = (v) => ctx.esc(v);
   const n = (v) => ctx.numero(v);
@@ -145,6 +159,16 @@
           <div class="xm-cartao"><h3 class="xm-vv-h">Divergências — Localização</h3><p class="xm-vv-hsub">Divergências por cidade</p><div class="xm-vv-barras xm-vv-loc"></div></div>
           <div class="xm-cartao"><h3 class="xm-vv-h">Volume por cidade</h3><p class="xm-vv-hsub xm-vv-volsub"></p><div class="xm-vv-barras xm-vv-vol"></div></div>
         </div>
+        <div class="xm-cartao xm-vv-tos-cartao">
+          <div class="xm-cabecalho">
+            <div><h3 class="xm-vv-h" style="margin:0">TOs da viagem</h3><p class="xm-vv-hsub xm-vv-tos-sub" style="margin:2px 0 0"></p></div>
+            <div class="xm-vv-filtros"></div>
+          </div>
+          <div class="xm-tabela-caixa"><table class="xm-tabela xm-vv-tabela-tos">
+            <thead><tr><th>TO</th><th>% recebido</th><th>Total</th><th>Recebidos</th><th>Faltam</th><th></th></tr></thead>
+            <tbody class="xm-vv-tos"></tbody>
+          </table></div>
+        </div>
         <div class="xm-cartao"><h3 class="xm-vv-h">Fluxo hora a hora</h3><p class="xm-vv-hsub">Recebimento no XPT, atribuição (AT) e expedição, por hora</p><div class="xm-vv-fluxo"></div></div>
         <div class="xm-cartao">
           <div class="xm-cabecalho"><h3 class="xm-vv-h xm-vv-lista-tit" style="margin:0"></h3><button class="xm-btn xm-vv-copiar" type="button">Copiar BR</button></div>
@@ -165,6 +189,22 @@
       if (!l) return;
       est.tipo = l.dataset.tipo;
       desenhar();
+    });
+    $('.xm-vv-filtros').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-filtro]');
+      if (!b) return;
+      est.filtroTo = b.dataset.filtro;
+      est.toAberta = '';
+      desenharTos();
+    });
+    $('.xm-vv-tos').addEventListener('click', (e) => {
+      if (e.target.closest('a.xm-vv-ver')) return; // Visualizar abre o pedido
+      const copiar = e.target.closest('[data-copiar-to]');
+      if (copiar) { copiarLista(faltantesDa(copiar.dataset.copiarTo).map((d) => d.codigo)); return; }
+      const linha = e.target.closest('tr[data-to]');
+      if (!linha || !Number(linha.dataset.faltam)) return;
+      est.toAberta = est.toAberta === linha.dataset.to ? '' : linha.dataset.to;
+      desenharTos();
     });
     return raiz;
   }
@@ -310,8 +350,47 @@
       ? vol.map((c) => linhaBarra(c.cidade, c.total, maiorVol, { cinza: true })).join('')
       : '<div class="xm-vv-vazio">Nenhuma AT de hoje com BR do romaneio.</div>';
 
+    desenharTos();
     desenharFluxo(r.fluxo);
     desenharLista();
+  }
+
+  // ── TOs da viagem: conclusão de cada TO (pacotes recebidos / pacotes da TO no romaneio) ──────
+  // Mesmas cores da conferência de LineHaul do sistema: verde só fechada, âmbar no meio, vermelho
+  // nada recebido. Porcentagem com 2 casas, para baixo (99,99% não vira 100,00%).
+  const corDaTo = (t) => (t.faltam === 0 ? '#26a65b' : t.recebidos > 0 ? '#f5a623' : '#ee4d2d');
+  const faltantesDa = (to) => ((conta() && conta().nao_recebido) || []).filter((d) => (d.to || C.SEM_TO) === to);
+
+  function desenharTos() {
+    const r = conta();
+    const caixa = raiz.querySelector('.xm-vv-tos-cartao');
+    const tos = (r && r.tos) || null;
+    caixa.hidden = !tos;
+    if (!tos) return;
+    const abertas = tos.filter((t) => t.faltam > 0);
+    const completas = tos.length - abertas.length;
+    const faltam = abertas.reduce((s, t) => s + t.faltam, 0);
+    $('.xm-vv-tos-sub').textContent = `${n(completas)} de ${n(tos.length)} TOs 100% recebidas · ${n(faltam)} pacote(s) faltando em ${n(abertas.length)} TO(s)`;
+    const filtros = [['abertas', 'Abertas', abertas.length], ['completas', 'Completas', completas], ['todas', 'Todas', tos.length]];
+    $('.xm-vv-filtros').innerHTML = filtros.map(([k, rot, q]) => `<button type="button" class="xm-link xm-vv-filtro${est.filtroTo === k ? ' xm-ativo' : ''}" data-filtro="${k}">${rot} (${n(q)})</button>`).join('<span class="xm-vv-sep">·</span>');
+    const lista = est.filtroTo === 'abertas' ? abertas : est.filtroTo === 'completas' ? tos.filter((t) => !t.faltam) : tos;
+    $('.xm-vv-tos').innerHTML = lista.length ? lista.map((t) => {
+      const cor = corDaTo(t);
+      const aberta = est.toAberta === t.to;
+      let linha = `<tr data-to="${esc(t.to)}" data-faltam="${t.faltam}" class="${t.faltam ? 'xm-vv-to-clica' : ''}${aberta ? ' xm-vv-to-aberta' : ''}">
+        <td class="xm-cod">${esc(t.to)}</td>
+        <td><div class="xm-vv-pct-to"><b style="color:${cor}">${pct2(t.pct)}</b><div class="xm-vv-t"><i style="width:${Math.min(100, t.pct)}%;background:${cor}"></i></div></div></td>
+        <td>${n(t.total)}</td><td>${n(t.recebidos)}</td><td>${t.faltam ? `<b style="color:${cor}">${n(t.faltam)}</b>` : '0'}</td>
+        <td>${t.faltam ? `<span class="xm-link">${aberta ? 'Fechar' : 'Ver o que falta'}</span>` : ''}</td></tr>`;
+      if (aberta) {
+        const falt = faltantesDa(t.to);
+        linha += `<tr class="xm-vv-to-det"><td colspan="6"><div class="xm-vv-falt-cab"><span>${n(falt.length)} pacote(s) da ${esc(t.to)} ainda não recebido(s)</span>
+          <button type="button" class="xm-link" data-copiar-to="${esc(t.to)}">Copiar BR</button></div>
+          <div class="xm-vv-falt">${falt.map((d) => `<div><span class="xm-cod">${esc(d.codigo)}</span><span>${esc(d.achado_no_spx === false ? 'não achado no SPX' : (d.estacao || '—'))}</span>
+            <a class="xm-link xm-vv-ver" href="${esc(C.linkDoPedido(d.codigo, location.origin))}" target="_blank" rel="noopener">Visualizar</a></div>`).join('')}</div></td></tr>`;
+      }
+      return linha;
+    }).join('') : `<tr><td colspan="6" style="color:#bbb;text-align:center">${est.filtroTo === 'abertas' ? 'Todas as TOs estão 100% recebidas.' : 'Nenhuma.'}</td></tr>`;
   }
 
   function desenharFluxo(f) {
@@ -570,9 +649,13 @@
   }
 
   function copiarBR() {
-    const texto = itensDoTipo().map((d) => d.codigo).join('\n');
+    copiarLista(itensDoTipo().map((d) => d.codigo));
+  }
+
+  function copiarLista(codigos) {
+    const texto = codigos.join('\n');
     if (!texto) return status('Nada para copiar.');
-    const pronto = () => status(`${n(itensDoTipo().length)} BR copiado(s).`);
+    const pronto = () => status(`${n(codigos.length)} BR copiado(s).`);
     navigator.clipboard.writeText(texto).then(pronto).catch(() => {
       const t = document.createElement('textarea');
       t.value = texto; t.style.cssText = 'position:fixed;opacity:0';

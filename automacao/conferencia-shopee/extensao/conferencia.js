@@ -465,6 +465,27 @@
   }
 
   /**
+   * Conclusão de cada TO do romaneio (igual à conferência de LineHaul do sistema, mas pelo SPX):
+   * total = pacotes da TO na viagem; recebidos = os que não estão em "Enviado - Não recebido"
+   * (a mesma regra do card Pacotes recebidos). Abertas primeiro, da menos para a mais recebida.
+   */
+  const SEM_TO = '(sem TO)';
+  function porTo(romaneio, naoRecebido) {
+    const falta = new Set((naoRecebido || []).map((d) => chaveCodigo(d.codigo)));
+    const grupos = new Map();
+    for (const x of romaneio || []) {
+      const to = texto(x.to, 40) || SEM_TO;
+      const g = grupos.get(to) || { to, total: 0, recebidos: 0 };
+      g.total += 1;
+      if (!falta.has(chaveCodigo(x.codigo))) g.recebidos += 1;
+      grupos.set(to, g);
+    }
+    const lista = [...grupos.values()].map((g) => ({ ...g, faltam: g.total - g.recebidos, pct: pct(g.recebidos, g.total) }));
+    const aberta = (g) => g.faltam > 0;
+    return lista.sort((a, b) => (aberta(b) - aberta(a)) || (aberta(a) ? a.pct - b.pct || b.faltam - a.faltam : 0) || a.to.localeCompare(b.to));
+  }
+
+  /**
    * A conferência inteira.
    * @param {{codigo, to}[]} romaneio  da viagem (romaneioDaPlanilha)
    * @param {object[]} rastreio  pesquisa em lote (enxugada pelo spx.js)
@@ -508,6 +529,8 @@
       com_bairro: itens.filter((p) => p.bairro).length,
       com_cluster: itens.filter((p) => p.cluster).length,
     };
+
+    conta.tos = porTo(lista, conta.nao_recebido);
 
     // Fora de abrangência: fora de AT e com prefixo de CEP que nunca apareceu numa AT.
     conta.fora_abrangencia = null;
@@ -555,7 +578,7 @@
     viagensDoPainel, viagensDasListas, idDaViagem, faixa, urlPendentes, urlFinalizadas, urlAnexo,
     lerRastreio, recebidoNoXpt, foiRecebido, faltaConsultar, juntarRastreio, lerAts, resumir,
     clusterPorBairro, chaveBairro, normCep, lugarPorCep, contar, guardarNoHistorico, hojeSP, pct,
-    prefixosDasAts, areaConhecida, linkDoPedido,
+    prefixosDasAts, areaConhecida, linkDoPedido, porTo, SEM_TO,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else self.XMVaptConta = api;

@@ -186,3 +186,30 @@ test('linkDoPedido: a mesma tela do Visualizar de Rastreio de pedidos do SPX', (
     'https://spx.shopee.com.br/#/orderDetail/BRTESTE00001/order_info?originUrl=%2ForderTracking&module=am_hubDeliveryManagement&stationType=AM_HUB');
   assert.match(C.linkDoPedido('BRTESTE00001', 'http://127.0.0.1:9'), /^http:\/\/127\.0\.0\.1:9\/#\/orderDetail\/BRTESTE00001\//);
 });
+
+test('porTo: conclusão de cada TO do romaneio, abertas primeiro (da menos recebida)', () => {
+  const romaneio = [
+    { codigo: 'BR1', to: 'TOA' }, { codigo: 'BR2', to: 'TOA' }, { codigo: 'BR3', to: 'TOA' }, { codigo: 'BR4', to: 'TOA' },
+    { codigo: 'BR5', to: 'TOB' }, { codigo: 'BR6', to: 'TOB' },
+    { codigo: 'BR7', to: 'TOC' },
+    { codigo: 'BR8', to: '' },
+  ];
+  const naoRecebido = [{ codigo: 'BR1' }, { codigo: 'br5' }, { codigo: 'BR6' }, { codigo: 'BR8' }];
+  const tos = C.porTo(romaneio, naoRecebido);
+  assert.deepStrictEqual(tos.map((t) => [t.to, t.total, t.recebidos, t.faltam, t.pct]), [
+    ['TOB', 2, 0, 2, 0], // mesma % (0): primeiro a que falta mais
+    ['(sem TO)', 1, 0, 1, 0],
+    ['TOA', 4, 3, 1, 75],
+    ['TOC', 1, 1, 0, 100],
+  ]);
+  // 2 casas para baixo: 2 de 3 = 66,66%
+  assert.strictEqual(C.porTo([{ codigo: 'X1', to: 'T' }, { codigo: 'X2', to: 'T' }, { codigo: 'X3', to: 'T' }], [{ codigo: 'X3' }])[0].pct, 66.66);
+});
+
+test('contar devolve as TOs junto com a conta', () => {
+  const romaneio = [{ codigo: 'BRTESTE1', to: 'TO1' }, { codigo: 'BRTESTE2', to: 'TO1' }];
+  const rastreio = [{ codigo: 'BRTESTE1', recebido_em: H('03:00'), estacao: XPT }];
+  const c = C.contar({ romaneio, rastreio, ats: [] });
+  assert.deepStrictEqual(c.tos, [{ to: 'TO1', total: 2, recebidos: 1, faltam: 1, pct: 50 }]);
+  assert.strictEqual(c.nao_recebido[0].to, 'TO1');
+});
