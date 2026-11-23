@@ -1,8 +1,8 @@
 // XM - Ativos na Anjun, no mundo da pagina (newsupplier.anjunexpress.com). As mesmas chamadas das
 // telas do portal:
 //   buscar   POST /admin/package/pageQuery: a busca da Consulta de pacotes pelos waybills (sem
-//            dado sensivel): Cliente (a plataforma), Comerciante e status. Diz se o pedido esta
-//            nesta conta.
+//            dado sensivel): Cliente, Comerciante (a loja, que vira o Remetente) e status. Diz se
+//            o pedido esta nesta conta.
 //   revelar  POST /admin/package/packageInfoLimit {waybillNumber} traz nome e telefones
 //            criptografados; POST /user/sensitive/viewPlaintext abre so esses (o "Visualizar
 //            Informacoes Sensiveis" da tela). Igual a XM - Consultas de telefone.
@@ -62,7 +62,7 @@
   /** Nome e telefone de um waybill (packageInfoLimit + viewPlaintext). */
   async function revelar(post, codigo) {
     const p = await post(ROTA_PACOTE, { waybillNumber: codigo });
-    if (!p) return { nome: '', telefone: '', cliente: '', semPacote: true };
+    if (!p) return { nome: '', telefone: '', cliente: '', comerciante: '', semPacote: true };
     const data = {};
     const chave = {};
     CAMPOS.forEach((campo) => {
@@ -75,6 +75,7 @@
       nome: ler('receiveName'),
       telefone: ler('receiveMobile') || ler('receivePhone'),
       cliente: p.customerName || '',
+      comerciante: p.merchantName || '',
     };
   }
 

@@ -12,9 +12,9 @@
 // outro nesse meio tempo). Clicar num item do menu deles ou trocar de endereco volta para o portal.
 //
 // Fluxo: cola os waybills (AJ) -> a busca da Consulta de pacotes (sem dado sensivel: cliente,
-// comerciante, status) -> o sistema diz quem ja recebeu ativo -> "Disparar": para cada marcado, abre
-// nome e telefone (packageInfoLimit + viewPlaintext, 1 pedido a cada 3 s) e envia pelo WABA do
-// sistema (modelo reclamacao_anjun).
+// comerciante, status; o comerciante limpo vira o Remetente) -> o sistema diz quem ja recebeu ativo
+// -> "Disparar": para cada marcado, abre nome e telefone (packageInfoLimit + viewPlaintext, 1 pedido
+// a cada 3 s) e envia pelo WABA do sistema (modelo confirmacao_anjun).
 
 (() => {
   const R = self.XMAtivosAnjun;
@@ -372,7 +372,7 @@
           <h2 class="xm-aj-titulo">Disparar ativos</h2>
           <span class="xm-aj-conta" id="xm-aj-conta"></span>
         </div>
-        <p class="xm-aj-sub">Mensagem da Anjun (modelo reclamacao_anjun) pelo WhatsApp da GC. A conversa aparece no sistema XMTT.</p>
+        <p class="xm-aj-sub">Mensagem de confirmação de recebimento da Anjun (modelo confirmacao_anjun) pelo WhatsApp da GC. A conversa aparece no sistema XMTT.</p>
         <div id="xm-aj-login" hidden>
           <div class="xm-aj-linha">
             <label><span class="xm-aj-rotulo">Usuário do sistema</span><div class="el-input"><div class="el-input__wrapper"><input class="el-input__inner" id="xm-aj-usuario" autocomplete="username"></div></div></label>
@@ -394,7 +394,7 @@
         </div>
         <div class="xm-aj-tabela-caixa">
           <table class="xm-aj-tabela">
-            <thead><tr><th style="width:40px"><input type="checkbox" id="xm-aj-todos" title="Marcar todos os prontos"></th><th>Waybill</th><th>Cliente</th><th>Comerciante</th><th>Status</th><th>Nome do cliente</th><th>Telefone</th><th>Situação</th></tr></thead>
+            <thead><tr><th style="width:40px"><input type="checkbox" id="xm-aj-todos" title="Marcar todos os prontos"></th><th>Waybill</th><th title="O nome da loja que vai na mensagem (do Nome do comerciante da Anjun)">Remetente</th><th>Cliente</th><th>Status</th><th>Nome do cliente</th><th>Telefone</th><th>Situação</th></tr></thead>
             <tbody id="xm-aj-linhas"></tbody>
           </table>
         </div>
@@ -515,8 +515,9 @@
     const exemplo = ls.find((l) => l.nome) || ls.find((l) => l.marcado && podeMarcar(l)) || ls.find((l) => podeMarcar(l));
     $('previa').textContent = R.montarTexto({
       nome: exemplo && exemplo.nome ? exemplo.nome : '(nome do cliente)',
+      atendente: estado.nome || '(seu nome)',
+      remetente: exemplo ? (exemplo.remetente || 'não informado') : '(loja)',
       pedido: exemplo ? exemplo.codigo : '(pedido)',
-      plataforma: exemplo && exemplo.cliente ? exemplo.cliente : '(cliente da Anjun)',
     });
   }
 
@@ -528,9 +529,9 @@
       return `<tr>
         <td><input type="checkbox" data-cod="${esc(l.codigo)}" ${l.marcado ? 'checked' : ''} ${podeMarcar(l) && !estado.ocupado ? '' : 'disabled'}></td>
         <td class="xm-aj-cod">${esc(l.codigo)}</td>
-        <td>${esc(l.cliente || '—')}</td>
-        <td>${esc(l.comerciante || '—')}</td>
-        <td>${esc(l.status || '—')}</td>
+        <td title="${esc(l.comerciante ? `Na Anjun: ${l.comerciante}` : 'Sem comerciante na Anjun')}"${l.remetente ? '' : ' class="xm-aj-apagado"'}>${esc(l.remetente || (l.achado ? 'não informado' : '—'))}</td>
+        <td class="xm-aj-apagado">${esc(l.cliente || '—')}</td>
+        <td style="white-space:nowrap">${esc(l.status || '—')}</td>
         <td${l.nome ? '' : ' class="xm-aj-apagado"'}>${esc(l.nome || (podeMarcar(l) ? 'abre ao disparar' : '—'))}</td>
         <td style="white-space:nowrap"${l.e164 ? '' : ' class="xm-aj-apagado"'}>${esc(tel)}</td>
         <td>${etiqueta(txt, tipo)}</td>
@@ -553,7 +554,7 @@
       const { estados } = await pedirAoFundo('situacao', { pedidos: codigos });
       estado.linhas = pedidos.map((p) => {
         const ativo = (estados || {})[p.codigo] || null;
-        const l = { ...p, nome: '', telefone: '', e164: '', ativo, marcado: false };
+        const l = { ...p, remetente: p.achado ? R.lojaUnica(p.comerciante, p.cliente) : '', nome: '', telefone: '', e164: '', ativo, marcado: false };
         l.marcado = podeMarcar(l) && !ativo; // quem já recebeu ativo fica desmarcado
         return l;
       });
@@ -596,9 +597,11 @@
             l.nome = olho.nome;
             l.telefone = olho.telefone;
             if (!l.cliente && olho.cliente) l.cliente = olho.cliente;
+            if (!l.comerciante && olho.comerciante) l.comerciante = olho.comerciante;
+            if (!l.remetente) l.remetente = R.lojaUnica(l.comerciante, l.cliente);
             l.revelado = true;
           }
-          const envio = R.montarEnvio({ codigo: l.codigo, nome: l.nome, telefone: l.telefone, plataforma: l.cliente });
+          const envio = R.montarEnvio({ codigo: l.codigo, nome: l.nome, telefone: l.telefone, remetente: l.remetente, atendente: estado.nome });
           if (envio.erro) throw new Error(envio.erro);
           l.e164 = envio.corpo.numero;
           l.situacao_envio = 'enviando';

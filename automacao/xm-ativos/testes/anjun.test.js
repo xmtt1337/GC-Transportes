@@ -14,32 +14,51 @@ test('lerCodigos: waybills AJ (maiúsculos, sem repetir); o resto vai para ignor
   assert.deepStrictEqual(R.lerCodigos(''), { codigos: [], ignorados: [] });
 });
 
-test('montarEnvio: reclamacao_anjun com {{1}} nome, {{2}} pedido, {{3}} plataforma (o Cliente da Anjun)', () => {
-  const { corpo } = R.montarEnvio({ codigo: 'AJ0000000000001', nome: 'Pessoa Teste', telefone: '49999990000', plataforma: 'Plataforma Teste' });
-  assert.deepStrictEqual(corpo.parametros, ['Pessoa Teste', 'AJ0000000000001', 'Plataforma Teste']);
-  assert.strictEqual(corpo.template, 'reclamacao_anjun');
+test('montarEnvio: confirmacao_anjun com {{1}} nome, {{2}} quem dispara, {{3}} remetente (a loja), {{4}} pedido', () => {
+  const { corpo } = R.montarEnvio({ codigo: 'AJ0000000000001', nome: 'Pessoa Teste', telefone: '49999990000', remetente: 'Loja Teste', atendente: 'Atendente Teste' });
+  assert.deepStrictEqual(corpo.parametros, ['Pessoa Teste', 'Atendente Teste', 'Loja Teste', 'AJ0000000000001']);
+  assert.strictEqual(corpo.template, 'confirmacao_anjun');
   assert.strictEqual(corpo.transportadora, 'anjun');
   assert.strictEqual(corpo.destino, 'outros');
   assert.strictEqual(corpo.prazo_horas, null);
   assert.strictEqual(corpo.numero, '5549999990000');
   assert.strictEqual(corpo.pedido, 'AJ0000000000001');
-  // Plataforma vazia não pode ir vazia para a Meta.
-  assert.strictEqual(R.montarEnvio({ codigo: 'AJ1', nome: 'A', telefone: '49999990000', plataforma: '' }).corpo.parametros[2], 'não informada');
-  assert.strictEqual(R.montarEnvio({ codigo: 'AJ1', nome: '', telefone: '49999990000' }).erro, 'Sem nome na Anjun.');
-  assert.strictEqual(R.montarEnvio({ codigo: 'AJ1', nome: 'A', telefone: '' }).erro, 'Sem telefone na Anjun.');
+  // O texto aprovado na Meta (o que o usuário passou), com Remetente antes do Pedido.
+  assert.strictEqual(corpo.texto, `Olá, Pessoa Teste! Tudo bem?
+Me chamo Atendente Teste e faço parte do time de SAC da Anjun Express.
+Gostaria de confirmar se você recebeu seu pedido:
+Remetente: Loja Teste
+Pedido: AJ0000000000001
+
+Você recebeu o pedido?
+Por favor, responda com SIM ou NÃO.`);
+  // Remetente vazio não pode ir vazio para a Meta.
+  assert.strictEqual(R.montarEnvio({ codigo: 'AJ1', nome: 'A', telefone: '49999990000', remetente: '', atendente: 'B' }).corpo.parametros[2], 'não informado');
+  assert.strictEqual(R.montarEnvio({ codigo: 'AJ1', nome: '', telefone: '49999990000', atendente: 'B' }).erro, 'Sem nome na Anjun.');
+  assert.strictEqual(R.montarEnvio({ codigo: 'AJ1', nome: 'A', telefone: '', atendente: 'B' }).erro, 'Sem telefone na Anjun.');
+  assert.match(R.montarEnvio({ codigo: 'AJ1', nome: 'A', telefone: '49999990000', atendente: '' }).erro, /quem dispara/);
 });
 
-test('texto da mensagem é o mesmo do sistema (meusite/js/whatsapp-teste.js)', () => {
-  const site = path.join(__dirname, '../../../meusite/js/whatsapp-teste.js');
-  if (!fs.existsSync(site)) return;
-  const fonte = fs.readFileSync(site, 'utf8').replace(/\r\n/g, '\n');
-  const trecho = fonte.slice(fonte.indexOf('template: "reclamacao_anjun"'));
-  const modelo = trecho.slice(trecho.indexOf('montar: v => `') + 'montar: v => `'.length, trecho.indexOf('`,'));
-  const esperado = modelo.replace('${v.nome_cliente || "___"}', 'Pessoa Teste')
-    .replace('${v.numero_pedido || "___"}', 'AJ0000000000001').replace('${v.plataforma || "___"}', 'Plataforma Teste');
-  assert.strictEqual(R.montarTexto({ nome: 'Pessoa Teste', pedido: 'AJ0000000000001', plataforma: 'Plataforma Teste' }), esperado);
-  // e os parâmetros na mesma ordem do sistema
-  assert.ok(trecho.includes('parametros: v => [v.nome_cliente, v.numero_pedido, v.plataforma]'));
+test('lojaUnica: o nome único da loja (do Nome do comerciante), nunca o código do Nome do cliente', () => {
+  // razão social com a marca entre parênteses vira só a marca (o "szanjun" do cliente não importa)
+  assert.strictEqual(R.lojaUnica('EXEMPLO SHINE PTE.LTD.(SHEIN)-INTERNACIONAL', 'szanjun'), 'Shein');
+  // loja comum fica como está; o cliente (temud2d, tiktok logistics...) é ignorado
+  assert.strictEqual(R.lojaUnica('Loja Exemplo Fashion', 'temud2d'), 'Loja Exemplo Fashion');
+  assert.strictEqual(R.lojaUnica('MODA TESTE', 'tiktok logistics brazil ltda'), 'MODA TESTE');
+  assert.strictEqual(R.lojaUnica('Casa Home', 'sheind2d'), 'Casa Home'); // "Home" não perde o "me"
+  assert.strictEqual(R.lojaUnica('XY 001', 'temud2d'), 'XY 001');
+  // sufixos de razão social no fim saem
+  assert.strictEqual(R.lojaUnica('MODA EXEMPLO COMERCIO LTDA', ''), 'MODA EXEMPLO COMERCIO');
+  assert.strictEqual(R.lojaUnica('Exemplo Trading Co., Ltd.', ''), 'Exemplo Trading');
+  assert.strictEqual(R.lojaUnica('LOJA EXEMPLO (FILIAL 2)', ''), 'LOJA EXEMPLO');
+  assert.strictEqual(R.lojaUnica('EXEMPLO HOLDINGS LIMITED (LOJA BOA)', ''), 'LOJA BOA');
+  // só a marca escrita do jeito conhecido
+  assert.strictEqual(R.lojaUnica('SHEIN', ''), 'Shein');
+  // sem comerciante: a marca reconhecível do cliente; senão vazio (a mensagem leva "não informado")
+  assert.strictEqual(R.lojaUnica('', 'temud2d'), 'Temu');
+  assert.strictEqual(R.lojaUnica('', 'sheind2d'), 'Shein');
+  assert.strictEqual(R.lojaUnica('', 'szanjun'), '');
+  assert.strictEqual(R.lojaUnica('  ', ''), '');
 });
 
 test('buscarPedidos: a Consulta de pacotes por waybill, em partes; cliente, comerciante, status e não achados', async () => {
@@ -66,14 +85,14 @@ test('revelar: packageInfoLimit + viewPlaintext só com nome e telefones (nada d
   const chamadas = [];
   const post = async (rota, corpo) => {
     chamadas.push([rota, corpo]);
-    if (rota === '/admin/package/packageInfoLimit') return { receiveName: '{$n$}', receiveMobile: 'm', receivePhone: '', receiveAddress: '{$a$}', customerName: 'Plataforma Teste' };
+    if (rota === '/admin/package/packageInfoLimit') return { receiveName: '{$n$}', receiveMobile: 'm', receivePhone: '', receiveAddress: '{$a$}', customerName: 'temud2d', merchantName: 'Loja Teste' };
     return { field0: 'Pessoa Teste', field1: '49999990000' };
   };
   const r = await A.revelar(post, 'AJ0000000000001');
-  assert.deepStrictEqual(r, { nome: 'Pessoa Teste', telefone: '49999990000', cliente: 'Plataforma Teste' });
+  assert.deepStrictEqual(r, { nome: 'Pessoa Teste', telefone: '49999990000', cliente: 'temud2d', comerciante: 'Loja Teste' });
   assert.deepStrictEqual(chamadas[0], ['/admin/package/packageInfoLimit', { waybillNumber: 'AJ0000000000001' }]);
   assert.deepStrictEqual(chamadas[1], ['/user/sensitive/viewPlaintext', { data: { field0: '{$n$}', field1: '{$m$}' } }]);
-  assert.deepStrictEqual(await A.revelar(async () => null, 'AJ1'), { nome: '', telefone: '', cliente: '', semPacote: true });
+  assert.deepStrictEqual(await A.revelar(async () => null, 'AJ1'), { nome: '', telefone: '', cliente: '', comerciante: '', semPacote: true });
 });
 
 test('lerResposta e bloqueio: a recusa da Anjun vira erro com a mensagem; "frequente" para por 30 min', () => {

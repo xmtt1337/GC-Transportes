@@ -28,8 +28,12 @@ Anjun (newsupplier.anjunexpress.com) - pasta extensao/anjun
   Uma secao "XM" no menu lateral, acima de "Principais funcoes": Ativos > Disparar ativos.
   Cola os waybills (AJ...); a busca da Consulta de pacotes (sem dado sensivel) traz Cliente,
   Comerciante e status; no disparo, abre nome e telefone (packageInfoLimit + viewPlaintext, o mesmo
-  "Visualizar Informacoes Sensiveis" da tela) e vai "reclamacao_anjun" ({{1}} nome, {{2}} pedido,
-  {{3}} plataforma = o Cliente da Anjun), o mesmo modelo do disparo em massa do sistema.
+  "Visualizar Informacoes Sensiveis" da tela) e vai "confirmacao_anjun" ({{1}} nome, {{2}} quem
+  dispara, {{3}} remetente, {{4}} pedido).
+  Remetente = o nome unico da loja, do "Nome do comerciante" (o "Nome do cliente" deles e codigo:
+  temud2d, szanjun...). Razao social com a marca entre parenteses vira a marca ("... PTE.LTD.(SHEIN)
+  -INTERNACIONAL" -> Shein); LTDA, PTE.LTD., -INTERNACIONAL no fim saem; sem comerciante, a marca do
+  cliente se der para reconhecer (temud2d -> Temu), senao "nao informado".
   Ritmo: 1 pedido a cada 3 s, contado entre todas as abas (mais rapido a Anjun bloqueia por ~30 min).
   Se a Anjun disser "operacoes muito frequentes", para e nao deixa disparar de novo por 30 min.
 

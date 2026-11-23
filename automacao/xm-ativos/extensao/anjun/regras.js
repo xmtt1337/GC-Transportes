@@ -2,11 +2,13 @@
 // Anjun). Nos testes, carregado pelo Node. O login e o envio ao sistema passam pelo fundo.js (as
 // mesmas regras das outras transportadoras).
 //
-// Modelo: reclamacao_anjun, o mesmo do disparo em massa do sistema (meusite/js/whatsapp-teste.js):
-//   {{1}} nome do cliente  {{2}} numero do pedido (AJ)  {{3}} plataforma (o "Cliente" da Anjun)
+// Modelo: confirmacao_anjun (dado pelo usuario em 23/11/2026):
+//   {{1}} nome do cliente  {{2}} quem dispara (a conta do sistema)  {{3}} remetente (a loja)  {{4}} pedido (AJ)
+// Remetente = o nome unico da loja, tirado do "Nome do comerciante" da Anjun (ver lojaUnica): o
+// "Nome do cliente" deles e um codigo interno (temud2d, sheind2d, szanjun...) e nao serve.
 
 (() => {
-  const TEMPLATE = 'reclamacao_anjun';
+  const TEMPLATE = 'confirmacao_anjun';
   const MAX_CODIGOS = 500;
   // A Anjun barra "operacoes muito frequentes" (em 30/10/2026: a 2 pacotes/s parou no 3o e ficou
   // ~30 min bloqueada; a 1 a cada 3 s passaram 157). Abrir nome e telefone: 1 pedido a cada 3 s.
@@ -51,25 +53,75 @@
     return String(e164 || '');
   }
 
-  /** O texto aprovado do reclamacao_anjun (igual ao do sistema). */
-  function montarTexto({ nome, pedido, plataforma }) {
-    return `Olá, ${nome || '___'} ! Faço parte da equipe de parceiros da Anjun Express, transportadora responsável pela entrega do seu pedido. O motivo do meu contato é para falarmos a respeito do pedido ${pedido || '___'}, do qual foi aberto uma reclamação. Plataforma: ${plataforma || '___'} Por gentileza, poderia confirmar o recebimento do seu pedido preenchendo os dados abaixo? .CPF: .Seu pedido foi entregue? Responda com SIM ou NÃO.`;
+  // Marcas conhecidas: escritas do jeito que o cliente reconhece.
+  const MARCAS = [
+    [/shein/i, 'Shein'], [/temu/i, 'Temu'], [/tik\s*tok/i, 'TikTok Shop'], [/mercado\s*livre|\bmeli\b/i, 'Mercado Livre'],
+    [/shopee/i, 'Shopee'], [/aliexpress|cainiao/i, 'AliExpress'], [/\bkwai\b/i, 'Kwai'], [/amazon/i, 'Amazon'],
+    [/magalu|magazine\s*luiza/i, 'Magalu'],
+  ];
+  const marca = (texto) => { const m = MARCAS.find(([re]) => re.test(String(texto || ''))); return m ? m[1] : ''; };
+
+  // Razao social no fim do nome: "PTE.LTD.", "LTDA", "EIRELI", "S/A", "-INTERNACIONAL"...
+  // (pelo menos um separador antes: "Home" nao perde o "me" do fim)
+  const SUFIXO = /[\s.,\-–]+(?:pte\.?\s*ltd|ltda|ltd|limited|eireli|s\s*\/\s*a|s\.a|inc|corp|co|me|epp|internacional|international)\.?$/i;
+  const temRazaoSocial = (texto) => /\b(?:pte|ltda|ltd|limited|eireli|inc|corp)\b|s\s*\/\s*a\b/i.test(String(texto || ''));
+
+  function semSufixos(texto) {
+    let t = String(texto || '').replace(/\s+/g, ' ').trim();
+    for (let i = 0; i < 6 && SUFIXO.test(t); i += 1) t = t.replace(SUFIXO, '').trim();
+    return t.replace(/^[\s.,\-–]+|[\s.,\-–]+$/g, '');
+  }
+
+  /**
+   * O nome unico da loja para o "Remetente" da mensagem.
+   * - Do "Nome do comerciante" da Anjun (o "Nome do cliente" deles e codigo interno: temud2d, szanjun).
+   * - Razao social com a marca entre parenteses vira so a marca:
+   *   "MERCURY SHINE PTE.LTD.(SHEIN)-INTERNACIONAL" -> "Shein".
+   * - Sem os sufixos de razao social no fim ("LOJA X LTDA" -> "LOJA X").
+   * - Sem comerciante: a marca que der para reconhecer no cliente (temud2d -> Temu); senao, vazio.
+   */
+  function lojaUnica(comerciante, cliente) {
+    const c = String(comerciante || '').replace(/\s+/g, ' ').trim();
+    if (c) {
+      const par = c.match(/\(([^)]+)\)/);
+      if (par) {
+        const fora = c.replace(par[0], ' ');
+        if (marca(par[1])) return marca(par[1]);
+        if (temRazaoSocial(fora)) return semSufixos(par[1]);
+      }
+      const limpo = semSufixos(c.replace(/\([^)]*\)/g, ' '));
+      if (limpo) return marca(limpo) && limpo.length <= marca(limpo).length + 2 ? marca(limpo) : limpo;
+    }
+    return marca(cliente);
+  }
+
+  /** O texto aprovado do confirmacao_anjun. */
+  function montarTexto({ nome, atendente, remetente, pedido }) {
+    return `Olá, ${nome || '___'}! Tudo bem?
+Me chamo ${atendente || '___'} e faço parte do time de SAC da Anjun Express.
+Gostaria de confirmar se você recebeu seu pedido:
+Remetente: ${remetente || '___'}
+Pedido: ${pedido || '___'}
+
+Você recebeu o pedido?
+Por favor, responda com SIM ou NÃO.`;
   }
 
   /**
    * Corpo do disparo, igual ao do disparo em massa do sistema: sem prazo e destino "outros" (o
    * servidor so respeita para dev; para os demais o cargo decide). Devolve { erro } ou { corpo }.
    */
-  function montarEnvio({ codigo, nome, telefone, plataforma }) {
+  function montarEnvio({ codigo, nome, telefone, remetente, atendente }) {
     const tel = validarTelefone(telefone);
     if (!tel.ok) return { erro: tel.erro };
     if (!nome) return { erro: 'Sem nome na Anjun.' };
+    if (!atendente) return { erro: 'Sem o nome de quem dispara (entre de novo no sistema).' };
     // A Meta recusa parametro vazio.
-    const plataformaTexto = String(plataforma || '').trim() || 'não informada';
+    const remetenteTexto = String(remetente || '').trim() || 'não informado';
     return {
       corpo: {
-        numero: tel.e164, template: TEMPLATE, parametros: [nome, codigo, plataformaTexto],
-        texto: montarTexto({ nome, pedido: codigo, plataforma: plataformaTexto }), nome_cliente: nome, pedido: codigo,
+        numero: tel.e164, template: TEMPLATE, parametros: [nome, atendente, remetenteTexto, codigo],
+        texto: montarTexto({ nome, atendente, remetente: remetenteTexto, pedido: codigo }), nome_cliente: nome, pedido: codigo,
         prazo_horas: null, transportadora: 'anjun', destino: 'outros',
       },
     };
@@ -85,7 +137,7 @@
 
   const publico = {
     TEMPLATE, MAX_CODIGOS, RITMO_OLHO_MS, BLOQUEIO_MS, ROLES_ATIVOS,
-    lerCodigos, digitosLocais, validarTelefone, telefoneLegivel, montarTexto, montarEnvio, eBloqueio,
+    lerCodigos, digitosLocais, validarTelefone, telefoneLegivel, lojaUnica, montarTexto, montarEnvio, eBloqueio,
   };
   if (typeof self !== 'undefined') self.XMAtivosAnjun = publico;
   if (typeof module !== 'undefined' && module.exports) module.exports = publico;
