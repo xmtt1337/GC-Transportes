@@ -75,7 +75,8 @@
   const DONO = 'ativos';
   const ID_GRUPO = 'xmtt-ativos';
   const ORDEM = 2; // depois de Conferencias
-  const ICONE_DISPARAR = 'M112 464 912 112 656 912 512 592Z M512 592 912 112'; // aviao de papel
+  const ICONE_GRUPO = 'M160 224h704v448H448L288 800V672H160Z M352 448h1 M512 448h1 M672 448h1'; // balao de conversa
+  const ICONE_DISPARAR ='M112 464 912 112 656 912 512 592Z M512 592 912 112'; // aviao de papel
   let grupo = null;
   let papelAtual = null; // cargo da conta entrada (null = ninguém entrou ainda)
   let aberta = false; // a nossa pagina esta na tela
@@ -108,7 +109,7 @@
   function colocarMenu() {
     if (!grupo || !grupo.isConnected) {
       const novo = M.montarGrupo({
-        id: ID_GRUPO, ordem: ORDEM, titulo: NOME_GRUPO, aoTitulo,
+        id: ID_GRUPO, ordem: ORDEM, titulo: NOME_GRUPO, caminhoIcone: ICONE_GRUPO, aoTitulo,
         itens: PAGINAS.map((p) => ({ chave: p.chave, titulo: p.titulo, caminhoIcone: ICONE_DISPARAR, aoClicar: () => mostrarPagina(p.chave) })),
       });
       if (!novo) return;

@@ -84,8 +84,9 @@
   /**
    * O grupo (li.el-sub-menu) de uma extensao, clonado de um grupo deles com itens.
    * itens: [{ chave, titulo, caminhoIcone, aoClicar }]; aoTitulo(li) trata o clique no titulo.
+   * caminhoIcone do grupo: o desenho dele (a secao ja diz XMTT; sem ele, cai na logo XM).
    */
-  function montarGrupo({ id, ordem, titulo, itens, aoTitulo }) {
+  function montarGrupo({ id, ordem, titulo, caminhoIcone, itens, aoTitulo }) {
     const raiz = raizDeles(vista());
     if (!raiz) return null;
     const modelo = [...raiz.children].find((li) => li.matches('li.el-sub-menu') && li.querySelector(':scope > .el-sub-menu__title') && li.querySelector(':scope > ul li.el-menu-item'));
@@ -95,7 +96,7 @@
     li.setAttribute('aria-expanded', 'false');
     const cabeca = modelo.querySelector(':scope > .el-sub-menu__title').cloneNode(true);
     const caixaIcone = cabeca.querySelector('.menu-item-icon');
-    if (caixaIcone) { caixaIcone.textContent = ''; caixaIcone.append(icone('logo')); }
+    if (caixaIcone) { caixaIcone.textContent = ''; caixaIcone.append(caminhoIcone ? icone('item', caminhoIcone) : icone('logo')); }
     const nome = cabeca.querySelector('.menu-title-tooltip-trigger');
     if (nome) nome.textContent = titulo;
     const seta = cabeca.querySelector('.el-sub-menu__icon-arrow');

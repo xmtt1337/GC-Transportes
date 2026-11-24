@@ -19,7 +19,8 @@
   const ORDEM = 1; // antes de Ativos
   const ROTA = '/macros/anjun-conferencia';
   const PAGINAS = [{ chave: 'dia', titulo: 'Conferência do dia' }];
-  const ICONE_CONFERIR = 'M352 192H224v704h576V192H672 M384 128h256v128H384Z M384 576l96 96 192-192'; // prancheta com check
+  const ICONE_GRUPO = 'M352 192H224v704h576V192H672 M384 128h256v128H384Z M384 576l96 96 192-192'; // prancheta com check
+  const ICONE_CONFERIR = 'M192 224h640v608H192Z M192 384h640 M352 160v128 M672 160v128 M400 608l80 80 160-160'; // calendario com check (do dia)
   const MAX_LISTA = 300;
   const NOMES_POLO = { cacador: 'Caçador', videira: 'Videira', joacaba: 'Joaçaba' };
   const ROTULO = {
@@ -120,7 +121,7 @@
   function colocarMenu() {
     if (!grupo || !grupo.isConnected) {
       const novo = M.montarGrupo({
-        id: ID_GRUPO, ordem: ORDEM, titulo: 'Conferências', aoTitulo,
+        id: ID_GRUPO, ordem: ORDEM, titulo: 'Conferências', caminhoIcone: ICONE_GRUPO, aoTitulo,
         itens: PAGINAS.map((p) => ({ chave: p.chave, titulo: p.titulo, caminhoIcone: ICONE_CONFERIR, aoClicar: () => mostrarPagina(p.chave) })),
       });
       if (!novo) return;
