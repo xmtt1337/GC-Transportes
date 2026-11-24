@@ -137,26 +137,21 @@
     return true;
   }
 
-  // O deslizar do Element Plus (el-collapse-transition): altura de 0 ate o conteudo, no tempo
-  // do tema deles (--el-transition-duration, 0.3s), ease-in-out.
-  const ANIMACAO = 'height var(--el-transition-duration, 0.3s) ease-in-out';
+  // O deslizar do Element Plus (el-collapse-transition): altura de 0 ate o conteudo em 0.3s,
+  // ease-in-out. Pela animacao do proprio navegador (element.animate): nao forca recalcular a
+  // pagina antes de comecar e, cancelada no meio, segue da altura em que estava.
   const TEMPO_MS = 300;
   function deslizar(lista, abrir) {
-    clearTimeout(lista._xmttFim);
-    const limpar = () => { lista.style.height = ''; lista.style.overflow = ''; lista.style.transition = ''; };
-    const aberta = lista.style.display !== 'none';
-    if (abrir === aberta && !lista.style.transition) return;
-    const de = aberta ? lista.getBoundingClientRect().height : 0;
+    const atual = lista._xmttAnim;
+    const de = lista.style.display === 'none' ? 0 : lista.getBoundingClientRect().height;
+    if (atual) { atual.onfinish = null; atual.cancel(); lista._xmttAnim = null; }
+    else if ((de > 0) === abrir) return; // ja esta como pedido
     lista.style.display = '';
-    lista.style.overflow = 'hidden';
-    lista.style.transition = 'none';
-    lista.style.height = 'auto';
-    const ate = abrir ? lista.scrollHeight : 0;
-    lista.style.height = `${de}px`;
-    void lista.offsetHeight; // aplica a altura de partida antes de animar
-    lista.style.transition = ANIMACAO;
-    lista.style.height = `${ate}px`;
-    lista._xmttFim = setTimeout(() => { if (!abrir) lista.style.display = 'none'; limpar(); }, TEMPO_MS + 30);
+    const ate = abrir ? lista.getBoundingClientRect().height : 0;
+    if (typeof lista.animate !== 'function') { if (!abrir) lista.style.display = 'none'; return; }
+    const anim = lista.animate([{ height: `${de}px` }, { height: `${ate}px` }], { duration: TEMPO_MS, easing: 'ease-in-out' });
+    lista._xmttAnim = anim;
+    anim.onfinish = () => { lista._xmttAnim = null; if (!abrir) lista.style.display = 'none'; };
   }
 
   /** Abre/fecha o grupo; deslizando como os deles (instantaneo: sem animar, p.ex. ao remontar). */
@@ -166,10 +161,11 @@
     li.setAttribute('aria-expanded', String(abrir));
     const lista = li.querySelector(':scope > ul.el-menu');
     if (lista) {
+      // sempre contida: as margens dos itens nao "vazam" e a altura nao pula no fim da animacao
+      lista.style.overflow = 'hidden';
       const mostrar = abrir && !recolhido();
       if (instantaneo || !li.isConnected || recolhido()) {
-        clearTimeout(lista._xmttFim);
-        ['height', 'overflow', 'transition'].forEach((p) => { lista.style[p] = ''; });
+        if (lista._xmttAnim) { lista._xmttAnim.onfinish = null; lista._xmttAnim.cancel(); lista._xmttAnim = null; }
         lista.style.display = mostrar ? '' : 'none';
       } else deslizar(lista, mostrar);
     }
