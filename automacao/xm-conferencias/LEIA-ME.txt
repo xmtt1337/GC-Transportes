@@ -22,6 +22,15 @@ Anjun (newsupplier.anjunexpress.com) - pasta extensao/anjun
   O menu XMTT e montado pelo anjun/xmtt-menu.js, IGUAL nas duas extensoes (os testes conferem):
   um grupo aberto por vez e uma pagina por vez entre elas.
 
+Tela padrao das conferencias (desde 24/11/2026) - pasta extensao/padrao
+  A Conferencia do dia da Anjun e da iMile tem o mesmo desenho, que e tambem o do sistema
+  (Operacao > Anjun/Imile > Conferencia): padrao/conferencia-padrao.js, IGUAL ao meusite/js/
+  conferencia-padrao.js (os testes conferem). Numeros do dia (na rua, cidade certa, atribuidos
+  errado, fora de abrangencia; na iMile tambem a caminho do DS), abas Por cidade / Por entregador /
+  Atribuidos errado (por entregador, com "quem faz essa cidade") / Na base / Certos, e o Visualizar:
+  um card por cima com os pedidos daquele recorte, filtro por situacao, busca e Copiar.
+  Cada lugar so passa as cores dele. Loggi e Shopee entram no padrao depois.
+
 iMile (ds.imile.com) - pasta extensao/imile
   No modulo "XMTT" (logo XM) da barra de icones do DS, dividido com a XM - Ativos pelo
   imile/xmtt-modulo.js (IGUAL nas duas, os testes conferem): Conferencias > Conferencia do dia e

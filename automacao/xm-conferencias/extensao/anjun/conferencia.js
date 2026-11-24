@@ -9,6 +9,10 @@
 // confere contra a lista login -> cidades: expedido, cidade certa, fora de abrangencia. Ao abrir,
 // mostra a ultima conta de hoje (refeita no sistema com a lista de cidades atual).
 //
+// O resultado e a TELA PADRAO das conferencias (padrao/conferencia-padrao.js, igual no sistema):
+// numeros do dia, abas Por cidade / Por entregador / Atribuidos errado / Na base / Certos e o
+// "Visualizar" com os pedidos. Aqui so o login, os botoes, o polo e as cores do Element Plus.
+//
 // Menu e "uma pagina por vez": xmtt-menu.js (arquivo igual nas duas extensoes).
 
 (() => {
@@ -21,17 +25,22 @@
   const PAGINAS = [{ chave: 'dia', titulo: 'Conferência do dia' }];
   const ICONE_GRUPO = 'M352 192H224v704h576V192H672 M384 128h256v128H384Z M384 576l96 96 192-192'; // prancheta com check
   const ICONE_CONFERIR = 'M192 224h640v608H192Z M192 384h640 M352 160v128 M672 160v128 M400 608l80 80 160-160'; // calendario com check (do dia)
-  const MAX_LISTA = 300;
   const NOMES_POLO = { cacador: 'Caçador', videira: 'Videira', joacaba: 'Joaçaba' };
-  const ROTULO = {
-    sem_entregador: ['Sem entregador', 'warning'], cidade_errada: ['Cidade errada', 'danger'],
-    usuario_sem_cidade: ['Login sem cidade', 'danger'], sem_cidade: ['Sem cidade', 'danger'],
-    fora_abrangencia: ['Fora de abrangência', 'info'],
+  // As cores da tela padrao no tema do portal (Element Plus; pega ate o modo escuro).
+  const TEMA = {
+    '--xcp-texto': 'var(--el-text-color-primary, #303133)', '--xcp-sub': 'var(--el-text-color-secondary, #909399)',
+    '--xcp-borda': 'var(--el-border-color-lighter, #ebeef5)', '--xcp-cartao': 'var(--el-bg-color, #fff)',
+    '--xcp-janela': 'var(--el-bg-color-overlay, #fff)', '--xcp-cabecalho': 'var(--el-fill-color-light, #f5f7fa)',
+    '--xcp-linha': 'var(--el-border-color-extra-light, #f2f6fc)', '--xcp-hover': 'var(--el-fill-color-lighter, #fafafa)',
+    '--xcp-destaque': 'var(--el-color-primary, #00a551)', '--xcp-ok': 'var(--el-color-success, #67c23a)',
+    '--xcp-base': 'var(--el-color-warning, #e6a23c)', '--xcp-erro': 'var(--el-color-danger, #f56c6c)',
+    '--xcp-trilho': 'var(--el-fill-color, #f0f2f5)', '--xcp-campo': 'var(--el-fill-color-blank, #fff)',
+    '--xcp-veu': 'var(--el-overlay-color-lighter, rgba(0, 0, 0, .5))', '--xcp-raio': 'var(--el-card-border-radius, 4px)',
+    '--xcp-sombra': 'var(--el-box-shadow-light, 0 0 12px rgba(0, 0, 0, .12))',
   };
 
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const numero = (n) => Number(n || 0).toLocaleString('pt-BR');
-  const pct = (v) => `${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
   const horaDe = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 
   // ── estilo (a pagina usa as classes do Element Plus do portal; aqui so o que falta) ──
@@ -54,39 +63,6 @@
   .xm-cf-pagina .xm-cf-status { color: var(--el-text-color-regular, #606266); font-size: 13px; margin: 12px 0 0; }
   .xm-cf-pagina .xm-cf-status.xm-cf-erro { color: var(--el-color-danger, #f56c6c); }
   .xm-cf-pagina .xm-cf-status:empty { display: none; }
-  .xm-cf-pagina .xm-cf-numeros { display: grid; grid-template-columns: auto repeat(3, minmax(0, 1fr)); gap: 24px; align-items: center; }
-  @media (max-width: 900px) { .xm-cf-pagina .xm-cf-numeros { grid-template-columns: 1fr 1fr; } }
-  .xm-cf-pagina .xm-cf-pizza { --pct: 0; width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center;
-    background: conic-gradient(var(--el-color-primary, #00a551) calc(var(--pct) * 1%), var(--el-color-warning-light-7, #f8e3c5) 0); }
-  .xm-cf-pagina .xm-cf-pizza::before { content: ''; grid-area: 1 / 1; width: 70px; height: 70px; border-radius: 50%; background: var(--el-bg-color, #fff); }
-  .xm-cf-pagina .xm-cf-pizza b { grid-area: 1 / 1; z-index: 1; font-size: 15px; }
-  .xm-cf-pagina .xm-cf-pizza.xm-cf-vazia { background: var(--el-fill-color, #f0f2f5); }
-  .xm-cf-pagina .xm-cf-numero small { display: block; color: var(--el-text-color-secondary, #909399); font-size: 12px; }
-  .xm-cf-pagina .xm-cf-numero strong { font-size: 22px; font-weight: 600; }
-  .xm-cf-pagina .xm-cf-numero .xm-cf-bom { color: var(--el-color-primary, #00a551); }
-  .xm-cf-pagina .xm-cf-numero .xm-cf-alerta { color: var(--el-color-warning, #e6a23c); }
-  .xm-cf-pagina .xm-cf-lido { color: var(--el-text-color-secondary, #909399); font-size: 12px; margin-top: 12px; }
-  .xm-cf-pagina .xm-cf-secao { font-size: 15px; font-weight: 600; margin: 0 0 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-  .xm-cf-pagina .xm-cf-legenda { display: flex; gap: 14px; font-size: 12px; font-weight: 400; color: var(--el-text-color-secondary, #909399); }
-  .xm-cf-pagina .xm-cf-legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
-  .xm-cf-pagina .xm-cf-barra { display: grid; grid-template-columns: 180px 1fr 48px 44px; gap: 12px; align-items: center; padding: 6px 0; font-size: 13px; }
-  .xm-cf-pagina .xm-cf-barra > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .xm-cf-pagina .xm-cf-trilho { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--el-fill-color, #f0f2f5); }
-  .xm-cf-pagina .xm-cf-ok { background: var(--el-color-primary, #00a551); }
-  .xm-cf-pagina .xm-cf-falta { background: var(--el-color-warning, #e6a23c); }
-  .xm-cf-pagina .xm-cf-errada { background: var(--el-color-danger, #f56c6c); }
-  .xm-cf-pagina .xm-cf-barra em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; }
-  .xm-cf-pagina .xm-cf-link { background: none; border: 0; padding: 0; color: var(--el-color-primary, #00a551); font: inherit; font-size: 12px; cursor: pointer; }
-  .xm-cf-pagina .xm-cf-link:hover { text-decoration: underline; }
-  .xm-cf-pagina .xm-cf-fora { margin-top: 10px; font-size: 12px; color: var(--el-text-color-secondary, #909399); }
-  .xm-cf-pagina .xm-cf-vazio { color: var(--el-text-color-secondary, #909399); font-size: 13px; padding: 8px 0; }
-  .xm-cf-pagina .xm-cf-tabela-caixa { max-height: 60vh; overflow: auto; border: 1px solid var(--el-border-color-lighter, #ebeef5); border-radius: 6px; }
-  .xm-cf-pagina table.xm-cf-tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .xm-cf-pagina .xm-cf-tabela th { position: sticky; top: 0; z-index: 1; background: var(--el-fill-color-light, #f5f7fa); color: var(--el-text-color-secondary, #909399); font-weight: 600; text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5); white-space: nowrap; }
-  .xm-cf-pagina .xm-cf-tabela td { padding: 9px 12px; border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5); color: var(--el-text-color-regular, #606266); }
-  .xm-cf-pagina .xm-cf-tabela tr:hover td { background: var(--el-fill-color-lighter, #fafafa); }
-  .xm-cf-pagina .xm-cf-tabela .xm-cf-cod { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--el-text-color-primary, #303133); }
-  .xm-cf-pagina .xm-cf-mais { color: var(--el-text-color-secondary, #909399); font-size: 12px; margin-top: 8px; }
   `;
 
   function colocarEstilo() {
@@ -174,6 +150,7 @@
     if (!aberta) return;
     aberta = false;
     atual = null;
+    if (vista) vista.fecharJanela();
     if (pagina) pagina.remove();
     escondidos.forEach(([c, d]) => { c.style.display = d; delete c.dataset.xmCfEscondido; });
     escondidos = [];
@@ -241,7 +218,8 @@
   }
 
   // ── a pagina ──────────────────────────────────────────────────────────────────
-  const estado = { logado: false, nome: '', ocupado: false, polo: '', pendentes: [] };
+  const estado = { logado: false, nome: '', ocupado: false, polo: '' };
+  let vista = null; // a tela padrao (XMConfPadrao.criar)
   const $ = (id) => pagina.querySelector(`#xm-cf-${id}`);
   const botao = (id, texto, primario) => `<button class="el-button${primario ? ' el-button--primary' : ''}" id="xm-cf-${id}" type="button"><span>${texto}</span></button>`;
 
@@ -268,42 +246,23 @@
         <div class="xm-cf-acoes" id="xm-cf-botoes" hidden>${botao('conferir', 'Conferir agora', true)}${botao('atualizar', 'Atualizar', false)}</div>
         <p class="xm-cf-status" id="xm-cf-status"></p>
       </div></div>
-      <div id="xm-cf-resultado" hidden>
-        <div class="el-card is-always-shadow"><div class="el-card__body">
-          <div class="xm-cf-numeros">
-            <div class="xm-cf-pizza" id="xm-cf-pizza"><b id="xm-cf-pct">—</b></div>
-            <div class="xm-cf-numero"><small>Expedidos</small><strong id="xm-cf-expedidos">—</strong><small id="xm-cf-falta"></small></div>
-            <div class="xm-cf-numero"><small>Na cidade certa</small><strong id="xm-cf-certo">—</strong><small>dos expedidos</small></div>
-            <div class="xm-cf-numero"><small>Fora de abrangência</small><strong id="xm-cf-fora-abr">—</strong><small>cidade que nenhum login faz</small></div>
-          </div>
-          <div class="xm-cf-lido" id="xm-cf-lido"></div>
-        </div></div>
-        <div class="el-card is-always-shadow"><div class="el-card__body">
-          <div class="xm-cf-secao">Cidades com pendência
-            <span class="xm-cf-legenda"><span><i class="xm-cf-ok"></i>certo</span><span><i class="xm-cf-falta"></i>sem entregador</span><span><i class="xm-cf-errada"></i>outro problema</span></span></div>
-          <div id="xm-cf-barras"></div>
-          <div class="xm-cf-fora" id="xm-cf-fora-conta" hidden></div>
-        </div></div>
-        <div class="el-card is-always-shadow" id="xm-cf-logins-caixa" hidden><div class="el-card__body">
-          <div class="xm-cf-secao">Logins com problema</div>
-          <div class="xm-cf-tabela-caixa"><table class="xm-cf-tabela"><thead><tr><th>Login</th><th>Problema</th><th>Pacotes</th></tr></thead><tbody id="xm-cf-logins"></tbody></table></div>
-        </div></div>
-        <div class="el-card is-always-shadow"><div class="el-card__body">
-          <div class="xm-cf-secao"><span id="xm-cf-pend-titulo">Pendentes</span>${botao('copiar', 'Copiar waybills', false)}</div>
-          <div id="xm-cf-lista"></div>
-        </div></div>
-      </div>`;
+      <div id="xm-cf-resultado" hidden></div>`;
     p.addEventListener('focusin', (e) => { const w = e.target.closest && e.target.closest('.el-input__wrapper'); if (w) w.classList.add('is-focus'); });
     p.addEventListener('focusout', (e) => { const w = e.target.closest && e.target.closest('.el-input__wrapper'); if (w) w.classList.remove('is-focus'); });
     p.querySelector('#xm-cf-entrar').addEventListener('click', entrar);
     p.querySelector('#xm-cf-senha').addEventListener('keydown', (e) => { if (e.key === 'Enter') entrar(); });
     p.querySelector('#xm-cf-conferir').addEventListener('click', conferir);
     p.querySelector('#xm-cf-atualizar').addEventListener('click', carregar);
-    p.querySelector('#xm-cf-copiar').addEventListener('click', copiar);
     p.querySelector('#xm-cf-polo').addEventListener('change', (e) => {
       estado.polo = e.target.value;
       chrome.storage.local.set({ poloAnjun: estado.polo }).catch(() => {});
       carregar();
+    });
+    vista = self.XMConfPadrao.criar(p.querySelector('#xm-cf-resultado'), {
+      tema: TEMA,
+      extras: [{ campo: 'cliente', titulo: 'Cliente' }, { campo: 'entrada', titulo: 'Entrada no ponto', formato: 'hora' }],
+      info: infoDoDia,
+      aoIgnorar: ignorar,
     });
     chrome.storage.local.get('poloAnjun').then(({ poloAnjun }) => { estado.polo = poloAnjun || ''; p.querySelector('#xm-cf-polo').value = estado.polo; }).catch(() => {});
     return p;
@@ -390,60 +349,19 @@
     status(msg || 'Ainda não conferido hoje. Clique em Conferir agora.');
   }
 
-  function mostrar(r) {
-    if (!r || !r.total) return vazio(r && r.dia ? 'Nenhum pacote recebido hoje neste polo.' : '');
-    $('resultado').hidden = false;
-    const pizza = $('pizza');
-    pizza.classList.toggle('xm-cf-vazia', !r.nossos);
-    pizza.style.setProperty('--pct', Math.min(100, Number(r.pct_expedido) || 0));
-    $('pct').textContent = pct(r.pct_expedido);
-    $('expedidos').textContent = `${numero(r.expedidos)} de ${numero(r.nossos)}`;
-    const falta = r.nossos - r.expedidos;
-    $('expedidos').className = falta ? '' : 'xm-cf-bom';
-    $('falta').textContent = falta ? `faltam ${numero(falta)}` : 'todos expedidos';
-    $('certo').textContent = r.expedidos ? pct(r.pct_certo) : '—';
-    $('certo').className = r.expedidos && r.certos === r.expedidos ? 'xm-cf-bom' : '';
-    const fora = r.contagem ? r.contagem.fora_abrangencia : 0;
-    $('fora-abr').textContent = numero(fora);
-    $('fora-abr').className = fora ? 'xm-cf-alerta' : 'xm-cf-bom';
+  /** Recebidos no ponto, polo e quem leu (a linha embaixo dos numeros). */
+  function infoDoDia(r) {
     const lido = r.leitura;
-    $('lido').textContent = `${numero(r.total)} recebidos hoje${r.polo ? ` · ${NOMES_POLO[r.polo] || r.polo}` : ' (todos os polos)'}`
-      + (lido && lido.lido_em ? ` · lido às ${horaDe(lido.lido_em)}${lido.usuario ? ` por ${lido.usuario}` : ''}` : '');
-    desenharBarras(r.porCidade);
-    desenharForaDaConta(r.ignoradas);
-    const logins = r.porLogin || [];
-    $('logins-caixa').hidden = !logins.length;
-    $('logins').innerHTML = logins.map((l) => `<tr><td class="xm-cf-cod">${esc(l.usuario)}</td>
-      <td>${esc(l.sem_cadastro && !l.erradas ? 'login sem cidade cadastrada' : 'pacote de cidade que ele não faz')}</td>
-      <td>${numero(l.erradas + l.sem_cadastro)}</td></tr>`).join('');
-    desenharPendentes(r.pendentes || []);
+    return `${numero(r.total)} recebidos no ponto hoje${r.polo ? ` · ${NOMES_POLO[r.polo] || r.polo}` : ' (todos os polos)'}`
+      + (r.ve_tudo && !r.polo && r.sem_polo ? ` · ${numero(r.sem_polo)} de ponto desconhecido` : '')
+      + (lido && lido.lido_em ? ` · lido às ${horaDe(lido.lido_em)}${lido.usuario ? ` por ${lido.usuario}` : ''}` : '')
+      + '. As leituras do dia se somam.';
   }
 
-  function desenharBarras(porCidade) {
-    const comPendencia = (porCidade || []).filter((c) => c.total > c.certos);
-    const caixa = $('barras');
-    if (!comPendencia.length) { caixa.innerHTML = '<div class="xm-cf-vazio">Nenhuma cidade com pendência.</div>'; return; }
-    const maior = Math.max(...comPendencia.map((c) => c.total));
-    caixa.innerHTML = comPendencia.map((c, i) => {
-      const sem = c.total - c.expedidos;
-      const outras = c.expedidos - c.certos;
-      const parte = (cls, n) => `<i class="${cls}" style="width:${(n / maior) * 100}%"></i>`;
-      return `<div class="xm-cf-barra" title="${esc(`${c.cidade}: ${numero(c.certos)} certos, ${numero(sem)} sem entregador, ${numero(outras)} com outro problema (de ${numero(c.total)})`)}">
-        <span>${esc(c.cidade)}</span>
-        <div class="xm-cf-trilho">${parte('xm-cf-ok', c.certos)}${parte('xm-cf-falta', sem)}${parte('xm-cf-errada', outras)}</div>
-        <em>${numero(sem + outras)}</em>
-        <button class="xm-cf-link" type="button" data-tirar="${i}" title="Tirar ${esc(c.cidade)} da conta (para todos)">tirar</button>
-      </div>`;
-    }).join('');
-    caixa.querySelectorAll('[data-tirar]').forEach((b) => b.addEventListener('click', () => ignorar(comPendencia[Number(b.dataset.tirar)].cidade, true)));
-  }
-
-  function desenharForaDaConta(ignoradas) {
-    const caixa = $('fora-conta');
-    caixa.hidden = !(ignoradas && ignoradas.length);
-    if (caixa.hidden) { caixa.innerHTML = ''; return; }
-    caixa.innerHTML = `Fora da conta: ${ignoradas.map((c, i) => `${esc(c.cidade)} (${numero(c.total)}) <button class="xm-cf-link" type="button" data-voltar="${i}">voltar</button>`).join(' · ')}`;
-    caixa.querySelectorAll('[data-voltar]').forEach((b) => b.addEventListener('click', () => ignorar(ignoradas[Number(b.dataset.voltar)].cidade, false)));
+  function mostrar(r) {
+    if (!r || !(r.total || (r.ignoradas || []).length)) return vazio(r && r.dia ? 'Nenhum pacote recebido hoje neste polo.' : '');
+    $('resultado').hidden = false;
+    vista.mostrar(r);
   }
 
   async function ignorar(cidade, sim) {
@@ -451,31 +369,6 @@
       await sistema('POST', `${ROTA}/ignorar`, { cidade, ignorar: sim });
       await carregar();
     } catch (e) { erroDeConta(e); }
-  }
-
-  const etiqueta = (status) => {
-    const [texto, tipo] = ROTULO[status] || [status, 'info'];
-    return `<span class="el-tag el-tag--${tipo} el-tag--light"><span class="el-tag__content">${esc(texto)}</span></span>`;
-  };
-
-  function desenharPendentes(pendentes) {
-    estado.pendentes = pendentes;
-    $('pend-titulo').textContent = `Pendentes (${numero(pendentes.length)})`;
-    const lista = $('lista');
-    if (!pendentes.length) { lista.innerHTML = '<div class="xm-cf-vazio">Nada pendente. Tudo expedido na cidade certa.</div>'; return; }
-    lista.innerHTML = `<div class="xm-cf-tabela-caixa"><table class="xm-cf-tabela"><thead><tr><th>Waybill</th><th>Cidade</th><th>Entregador</th><th>Situação</th></tr></thead><tbody>
-      ${pendentes.slice(0, MAX_LISTA).map((p) => `<tr><td class="xm-cf-cod">${esc(p.waybill)}</td><td>${esc(p.cidade || '—')}</td><td>${esc(p.entregador || '—')}</td><td>${etiqueta(p.status)}</td></tr>`).join('')}
-      </tbody></table></div>${pendentes.length > MAX_LISTA ? `<div class="xm-cf-mais">Mostrando ${numero(MAX_LISTA)} de ${numero(pendentes.length)}. "Copiar waybills" leva todos.</div>` : ''}`;
-  }
-
-  async function copiar() {
-    const codigos = estado.pendentes.map((p) => p.waybill);
-    if (!codigos.length) return status('Nada para copiar.');
-    try {
-      await navigator.clipboard.writeText(codigos.join('\n'));
-      $('copiar').querySelector('span').textContent = `Copiado (${numero(codigos.length)})`;
-      setTimeout(() => { if (pagina) $('copiar').querySelector('span').textContent = 'Copiar waybills'; }, 2500);
-    } catch { status('Não deu para copiar.', true); }
   }
 
   colocarEstilo();
