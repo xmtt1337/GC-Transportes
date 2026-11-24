@@ -128,7 +128,7 @@
       const abertoAntes = !!(grupo && grupo.classList.contains('is-opened'));
       grupo = novo;
       if (!M.colocarGrupo(grupo)) { grupo = null; return; }
-      M.abrirGrupo(grupo, abertoAntes || aberta);
+      M.abrirGrupo(grupo, abertoAntes || aberta, true);
       marcarItem(aberta ? atual : null);
     } else {
       M.colocarGrupo(grupo);

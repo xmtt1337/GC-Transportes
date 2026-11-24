@@ -137,12 +137,42 @@
     return true;
   }
 
-  function abrirGrupo(li, abrir) {
+  // O deslizar do Element Plus (el-collapse-transition): altura de 0 ate o conteudo, no tempo
+  // do tema deles (--el-transition-duration, 0.3s), ease-in-out.
+  const ANIMACAO = 'height var(--el-transition-duration, 0.3s) ease-in-out';
+  const TEMPO_MS = 300;
+  function deslizar(lista, abrir) {
+    clearTimeout(lista._xmttFim);
+    const limpar = () => { lista.style.height = ''; lista.style.overflow = ''; lista.style.transition = ''; };
+    const aberta = lista.style.display !== 'none';
+    if (abrir === aberta && !lista.style.transition) return;
+    const de = aberta ? lista.getBoundingClientRect().height : 0;
+    lista.style.display = '';
+    lista.style.overflow = 'hidden';
+    lista.style.transition = 'none';
+    lista.style.height = 'auto';
+    const ate = abrir ? lista.scrollHeight : 0;
+    lista.style.height = `${de}px`;
+    void lista.offsetHeight; // aplica a altura de partida antes de animar
+    lista.style.transition = ANIMACAO;
+    lista.style.height = `${ate}px`;
+    lista._xmttFim = setTimeout(() => { if (!abrir) lista.style.display = 'none'; limpar(); }, TEMPO_MS + 30);
+  }
+
+  /** Abre/fecha o grupo; deslizando como os deles (instantaneo: sem animar, p.ex. ao remontar). */
+  function abrirGrupo(li, abrir, instantaneo) {
     if (!li) return;
     li.classList.toggle('is-opened', abrir);
     li.setAttribute('aria-expanded', String(abrir));
     const lista = li.querySelector(':scope > ul.el-menu');
-    if (lista) lista.style.display = abrir && !recolhido() ? '' : 'none';
+    if (lista) {
+      const mostrar = abrir && !recolhido();
+      if (instantaneo || !li.isConnected || recolhido()) {
+        clearTimeout(lista._xmttFim);
+        ['height', 'overflow', 'transition'].forEach((p) => { lista.style[p] = ''; });
+        lista.style.display = mostrar ? '' : 'none';
+      } else deslizar(lista, mostrar);
+    }
     const seta = li.querySelector(':scope > .el-sub-menu__title .el-sub-menu__icon-arrow');
     if (seta) seta.style.transform = abrir ? 'rotateZ(180deg)' : 'none';
   }
