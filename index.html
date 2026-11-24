@@ -215,7 +215,7 @@ if (_BASE) {
                     Imile <span class="subgroup-arrow">▾</span>
                 </li>
                 <ul class="sub-sub-submenu" id="grupo-op-imile">
-                    <li><a href="#" data-rota="Conferencias/Imile" onclick="abrirConferencias(event,'imile')">Conferência</a></li>
+                    <li><a href="#" data-rota="Conferencias/Imile" onclick="abrirImileConferencia(event)">Conferência</a></li>
                 </ul>
                 <li class="subgroup-header-2" onclick="toggleSubSubGroup(this)">
                     Total Express <span class="subgroup-arrow">▾</span>
@@ -2057,7 +2057,8 @@ if (_BASE) {
             </div>
         </div>
 
-        <!-- TELA OPERAÇÃO > ANJUN > CONFERÊNCIA (17/11): recebidos no ponto hoje pela extensão (Conferir agora) — js/anjun-conferencia.js -->
+        <!-- TELA OPERAÇÃO > ANJUN > CONFERÊNCIA (17/11): recebidos no ponto hoje pela extensão (Conferir agora).
+             Desde 24/11 no padrão das conferências: js/conferencia-dia.js + js/conferencia-padrao.js -->
         <div id="tela-anjun-conferencia" class="view tela-full">
             <div class="fech-header">
                 <div style="font-size:15px;font-weight:700;color:#e2e8f0;display:flex;align-items:center;gap:10px">
@@ -2067,6 +2068,20 @@ if (_BASE) {
             <div class="fech-body">
                 <div class="cft-barra" id="anc-barra" style="margin:0 0 14px"></div>
                 <div id="anc-resultado"></div>
+            </div>
+        </div>
+
+        <!-- TELA OPERAÇÃO > IMILE > CONFERÊNCIA (24/11): recebidos no hub hoje pela extensão XM - Conferências (DS da iMile),
+             no padrão das conferências — js/conferencia-dia.js + js/conferencia-padrao.js. O upload antigo (js/conferencias.js) saiu do menu. -->
+        <div id="tela-imile-conferencia" class="view tela-full">
+            <div class="fech-header">
+                <div style="font-size:15px;font-weight:700;color:#e2e8f0;display:flex;align-items:center;gap:10px">
+                    <img src="img/Transportadoras/iMile.preto.png" alt="iMile" class="cex-logo" style="filter:brightness(0) invert(1)"><span>Conferência</span>
+                </div>
+            </div>
+            <div class="fech-body">
+                <div class="cft-barra" id="imc-barra" style="margin:0 0 14px"></div>
+                <div id="imc-resultado"></div>
             </div>
         </div>
 
@@ -5071,7 +5086,8 @@ if (_BASE) {
 <script src="js/conferencias.js?v=20261102b"></script>
 <script src="js/conferencia-expedicao.js?v=20261116a"></script>
 <script src="js/loggi-agrupamento.js?v=20261118b"></script>
-<script src="js/anjun-conferencia.js?v=20261118c"></script>
+<script src="js/conferencia-padrao.js?v=20261124a"></script>
+<script src="js/conferencia-dia.js?v=20261124a"></script>
 <script src="js/jadlog-anotacoes.js?v=20261105a"></script>
 <script src="js/jadlog-atribuir.js?v=20261105a"></script>
 <script src="js/conferencias-hub.js?v=20261104c"></script>
