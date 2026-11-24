@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "XM - Conferências",
-  "version": "2.2",
+  "version": "2.3",
   "description": "Conferências das transportadoras dentro dos portais delas: Shopee (Vapt Vupt, no SPX), Anjun (Conferência do dia, menu XMTT do portal de parceiros) e iMile (Conferência do dia, módulo Conferências no DS), integradas ao sistema XMTT.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArZ6V7hoHbGTRqGmlwWQl7NtkSvUpcqkjzVcgFaXymAxUlStAc+RqLetYtq4+x8UnlaIhYGQzLO2RKD4OrBuAnXQcevWgmMsR9bUJ5M+JzuvTkE2b9uAUeQwAxbdHMCyquRqluPnOAJeApXuKOsC3Vf+oM+1sYibFxpnjMgvQuBJfvHfQqiXEGmZPkdIPfN48ItQSEcRotZMzBhof7d5V9GrWO2rRXHq15WmgV4NXkGz1yJPaawJg/RyBr4UcD7JIdLCZi/+5juH/OAXqSfq4otfk9A/bcP6AjBdpvernBIEVr5dRhUTbvfDiA+GWbIpG1vt2vxd46kNQ43eUruFxFwIDAQAB",
   "permissions": [

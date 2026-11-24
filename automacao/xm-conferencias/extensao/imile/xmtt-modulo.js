@@ -41,6 +41,10 @@
 
   const CSS = `
   #${ID_MODULO}, #${ID_PAINEL} .ImileSMN-MenuGroup-menu2Root, #${ID_PAINEL} .xmtt-ds-item { cursor: pointer; }
+  /* So a logo, sem o nome embaixo: maior que os icones deles, no meio do quadrado. */
+  #${ID_MODULO} .ImileSMN-AsideMenu1-root { justify-content: center; min-height: 48px; }
+  #${ID_MODULO} .ImileSMN-AsideMenu1-icon { display: flex; align-items: center; justify-content: center; }
+  #${ID_MODULO} .ImileSMN-AsideMenu1-icon svg { width: 34px !important; height: 34px !important; }
   #${ID_PAINEL} .xmtt-ds-item.xmtt-ativo .ImileEllipsis-root { color: ${AZUL}; font-weight: 500; }
   #${ID_PAINEL} .ImileSMN-MenuGroup-menu2Root > svg { transition: transform .2s; }
   #${ID_PAINEL} .ImileSMN-MenuGroup-root:not(.xmtt-aberto) .ImileSMN-MenuGroup-menu2Root > svg { transform: rotate(-90deg); }
@@ -65,8 +69,12 @@
     for (const [d, opacidade] of [[LOGO_X, '.5'], [LOGO_M, '']]) {
       const p = document.createElementNS(SVG_NS, 'path');
       p.setAttribute('d', d);
-      p.setAttribute('transform', 'translate(2.4 6.92) scale(.08)');
+      // 240 x 127 -> 21,1 x 11,2 no meio do 24 x 24; o contorno da mesma cor engrossa o traco.
+      p.setAttribute('transform', 'translate(1.44 6.41) scale(.088)');
       p.setAttribute('fill', 'currentColor');
+      p.setAttribute('stroke', 'currentColor');
+      p.setAttribute('stroke-width', '14');
+      p.setAttribute('stroke-linejoin', 'round');
       if (opacidade) p.setAttribute('opacity', opacidade);
       s.append(p);
     }
@@ -124,7 +132,7 @@
       const svgDeles = [...barra.querySelectorAll('.ImileSMN-AsideMenu1-icon svg')].find((s) => s.classList.contains('ImileSvgIcon-root'));
       if (caixaIcone) { caixaIcone.textContent = ''; caixaIcone.append(iconeXm(svgDeles ? svgDeles.getAttribute('class') : '')); }
       const nome = raiz.querySelector('.ImileEllipsis-root');
-      if (nome) { nome.textContent = TITULO; nome.classList.remove('ImileEllipsis-hasTip'); }
+      if (nome) nome.remove(); // so a logo, sem escrever "XMTT" embaixo
       m.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); entrar(); });
       barra.append(m);
     } else if (m.nextElementSibling) {
@@ -214,7 +222,7 @@
       lista.append(item);
     }
     cabeca.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); abrirGrupo(g, !g.classList.contains('xmtt-aberto')); });
-    abrirGrupo(g, true);
+    abrirGrupo(g, false); // fechado; abre sozinho so o da pagina aberta
     return g;
   }
 
@@ -291,7 +299,13 @@
       const existente = document.getElementById(`xmtt-ds-grupo-${registrado.dono}`);
       if (existente && existente !== grupo) existente.remove(); // sobra de uma carga anterior desta extensao
       const novo = nossoPainel() ? montarGrupo(registrado) : null;
-      if (novo) { if (grupo) grupo.remove(); grupo = novo; colocarGrupo(grupo); }
+      if (novo) {
+        const aberto = !!(grupo && grupo.classList.contains('xmtt-aberto'));
+        if (grupo) grupo.remove();
+        grupo = novo;
+        colocarGrupo(grupo);
+        if (aberto || atual().startsWith(`${registrado.dono}:`)) abrirGrupo(grupo, true);
+      }
     }
     if (grupo) {
       grupo.style.display = oculto ? 'none' : '';
@@ -311,7 +325,11 @@
       pagina.classList.add(CLASSE_PAGINA);
       const main = areaPrincipal();
       if (main && pagina.parentElement !== main) main.append(pagina);
-      if (mostrando !== pag) { mostrando = pag; registrado.aoMostrar(chave); }
+      if (mostrando !== pag) {
+        mostrando = pag;
+        if (grupo) abrirGrupo(grupo, true); // o grupo da pagina aberta fica aberto
+        registrado.aoMostrar(chave);
+      }
     } else if (mostrando) {
       mostrando = '';
       if (pagina) pagina.remove();
