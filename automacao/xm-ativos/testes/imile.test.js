@@ -80,20 +80,23 @@ test('revelar: nome, telefone, produto e a cota; para com a reserva e quando a i
   await assert.rejects(I.revelar(async () => ({ status: 'success', resultObject: { config: { limit: true } } }), '1'), /cota/);
 });
 
-test('menu: módulo próprio na barra de ícones (logo XM), não um grupo repetido no painel de cada módulo', () => {
+test('menu: um módulo só, "XMTT" (logo XM), dividido com a XM - Conferências pelo xmtt-modulo.js igual', () => {
   const fonte = fs.readFileSync(path.join(EXT, 'imile/ativos.js'), 'utf8');
-  assert.ok(fonte.includes(".ImileSMN-AsideMenu-scoller"), 'entra na barra de ícones');
-  assert.ok(fonte.includes("const NOME_MODULO = 'Ativos'"));
-  assert.ok(!/waybill\.after|xm-im-grupo/.test(fonte), 'o grupo clonado dentro do painel deles saiu');
+  const modulo = fs.readFileSync(path.join(EXT, 'imile/xmtt-modulo.js'), 'utf8');
+  const daConf = path.join(__dirname, '../../xm-conferencias/extensao/imile/xmtt-modulo.js');
+  if (fs.existsSync(daConf)) assert.strictEqual(modulo, fs.readFileSync(daConf, 'utf8'), 'os dois xmtt-modulo.js precisam ser iguais');
+  assert.ok(modulo.includes("const TITULO = 'XMTT';") && modulo.includes('.ImileSMN-AsideMenu-scoller'), 'entra na barra de ícones');
+  assert.ok(fonte.includes("dono: 'ativos', ordem: 2, titulo: 'Ativos'"), 'grupo Ativos, depois de Conferências');
+  assert.ok(!/ID_MODULO|AsideMenu1-root/.test(fonte), 'o módulo próprio "Ativos" saiu');
   // A logo cabe no 24 x 24 do ícone: 240 x 127 vezes a escala, a partir do deslocamento.
-  const [, dx, dy, k] = fonte.match(/translate\(([\d.]+) ([\d.]+)\) scale\(([\d.]+)\)/).map(Number);
+  const [, dx, dy, k] = modulo.match(/translate\(([\d.]+) ([\d.]+)\) scale\(([\d.]+)\)/).map(Number);
   assert.ok(dx >= 0 && dy >= 0 && dx + 240 * k <= 24 && dy + 127 * k <= 24);
 });
 
 test('manifest: o DS da iMile roda os scripts da pasta imile; canal próprio', () => {
   const m = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
   const daImile = m.content_scripts.filter((cs) => cs.matches.includes('https://ds.imile.com/*'));
-  assert.deepStrictEqual(daImile.map((cs) => cs.js), [['imile/imile.js'], ['imile/regras.js', 'imile/ativos.js']]);
+  assert.deepStrictEqual(daImile.map((cs) => cs.js), [['imile/imile.js'], ['imile/xmtt-modulo.js', 'imile/regras.js', 'imile/ativos.js']]);
   assert.strictEqual(daImile[0].world, 'MAIN');
   assert.strictEqual(I.CANAL, 'xmAtivosImile');
   assert.ok(fs.readFileSync(path.join(EXT, 'imile/ativos.js'), 'utf8').includes("const CANAL = 'xmAtivosImile'"));

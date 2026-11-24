@@ -102,7 +102,7 @@ test('manifest: XM - Conferências (SPX e Anjun), sem popup, id da antiga Confer
   assert.deepStrictEqual(daAnjun.map((cs) => cs.js), [['anjun/anjun.js'], ['anjun/xmtt-menu.js', 'anjun/conferencia.js']]);
   assert.strictEqual(daAnjun[0].world, 'MAIN');
   const daImile = m.content_scripts.filter((cs) => cs.matches.includes('https://ds.imile.com/*'));
-  assert.deepStrictEqual(daImile.map((cs) => cs.js), [['imile/imile.js'], ['imile/conferencia.js']]);
+  assert.deepStrictEqual(daImile.map((cs) => cs.js), [['imile/imile.js'], ['imile/xmtt-modulo.js', 'imile/conferencia.js']]);
   assert.strictEqual(daImile[0].world, 'MAIN');
 });
 

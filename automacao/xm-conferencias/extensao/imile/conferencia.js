@@ -1,15 +1,7 @@
-// XM - Conferencias no DS da iMile: um modulo proprio ("Conferencias", prancheta no estilo dos icones
-// do DS) na barra de icones, ao lado do "Ativos" da XM - Ativos, com o painel so com as nossas paginas
-// e a pagina da conferencia do dia no tema do proprio DS.
-//
-// Menu: o mesmo jeito da XM - Ativos iMile (imile/ativos.js de la): o item da barra e o painel sao
-// CLONES dos do DS (React + classes geradas na hora), sem os eventos deles. Modulo aberto: o item deles
-// marcado perde o "active" (devolvido ao sair), o painel e a tela deles ficam escondidos e no lugar
-// entram os nossos. Clicar em qualquer coisa da barra (inclusive no "Ativos" da outra extensao) ou
-// trocar de endereco sai do modulo.
-//
-// Convivencia com a XM - Ativos: ela quer o modulo dela por ultimo na barra; o nosso fica logo antes
-// dele (nunca brigam pela posicao) e nada dela e clonado nem mexido aqui.
+// XM - Conferencias no DS da iMile: o grupo "Conferencias" (Conferencia do dia) dentro do modulo
+// "XMTT" (logo XM) da barra de icones do DS, junto com o grupo "Ativos" da XM - Ativos. O modulo, o
+// painel e o entrar/sair sao do imile/xmtt-modulo.js (arquivo igual nas duas extensoes); aqui fica a
+// pagina da conferencia, no tema do proprio DS.
 //
 // Fluxo: "Conferir agora" -> o imile.js le no DS os recebidos no hub hoje (todas as paginas) -> o
 // fundo.js manda ao sistema (/macros/imile-conferencia/leitura), que separa os que ainda estao a
@@ -18,9 +10,6 @@
 
 (() => {
   const CANAL = 'xmConfImile'; // o mesmo do imile.js
-  const ID_MODULO = 'xm-ic-modulo';
-  const ID_MENU = 'xm-ic-menu';
-  const NOME_MODULO = 'Conferências';
   const ROTA = '/macros/imile-conferencia';
   const AZUL = '#2546ff'; // a cor de destaque do DS
   const PAGINAS = [{ chave: 'dia', titulo: 'Conferência do dia' }];
@@ -31,8 +20,6 @@
     usuario_sem_cidade: ['Entregador sem cidade', 'erro'], sem_cidade: ['Sem cidade', 'erro'],
     fora_abrangencia: ['Fora de abrangência', 'pronto'],
   };
-  // O que e da XM - Ativos na barra/painel/tela: nao clonar, nao mexer.
-  const SEL_DA_ATIVOS = '#xm-im-modulo, #xm-im-menu, .xm-im-pagina';
 
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const numero = (n) => Number(n || 0).toLocaleString('pt-BR');
@@ -41,8 +28,6 @@
 
   // ── estilo (a pagina; o menu usa as classes do proprio DS) ───────────────────
   const CSS = `
-  #${ID_MODULO}, #${ID_MENU} .xm-ic-item { cursor: pointer; }
-  #${ID_MENU} .xm-ic-item.xm-ativo .ImileEllipsis-root { color: ${AZUL}; font-weight: 500; }
   .xm-ic-pagina { padding: 16px 20px 32px; color: #1d2129; font-size: 14px; line-height: 1.5; box-sizing: border-box; min-width: 0; }
   .xm-ic-pagina * { box-sizing: border-box; }
   .xm-ic-pagina [hidden] { display: none !important; }
@@ -112,214 +97,7 @@
     (document.head || document.documentElement).append(s);
   }
 
-  // ── icone: prancheta com check, em duas tonalidades como os do DS ──────────────
-  const SVG_NS = 'http://www.w3.org/2000/svg';
-  function iconePrancheta(classe) {
-    const s = document.createElementNS(SVG_NS, 'svg');
-    s.setAttribute('viewBox', '0 0 24 24');
-    s.setAttribute('focusable', 'false');
-    if (classe) s.setAttribute('class', classe); else { s.setAttribute('width', '24'); s.setAttribute('height', '24'); }
-    const partes = [
-      ['M6 4h12a1.5 1.5 0 0 1 1.5 1.5v15A1.5 1.5 0 0 1 18 22H6a1.5 1.5 0 0 1-1.5-1.5v-15A1.5 1.5 0 0 1 6 4Z', { fill: 'currentColor', opacity: '.5' }],
-      ['M9 2.5h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z', { fill: 'currentColor' }],
-      ['M8.5 13.5l2.5 2.5 4.5-5', { fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }],
-    ];
-    for (const [d, attrs] of partes) {
-      const p = document.createElementNS(SVG_NS, 'path');
-      p.setAttribute('d', d);
-      Object.entries(attrs).forEach(([k, v]) => p.setAttribute(k, v));
-      s.append(p);
-    }
-    return s;
-  }
-
-  // ── o modulo na barra de icones e o painel dele ─────────────────────────────────
-  let modulo = null;
-  let menu = null;
-  let noModulo = false;
-  let tirados = [];
-  let atual = null;
   let pagina = null;
-  const escondidos = { painel: [], tela: [] };
-
-  const SEL_BARRA = '.ImileSMN-AsideMenu-scoller, .ImileSMN-AsideMenu-scroller';
-  const SEL_PAINEL = '.ImileSMN-Panel-content';
-  const areaPrincipal = () => document.querySelector('.ImileProLayoutNew-outlet');
-  const eNosso = (el) => !!(el && el.closest && el.closest(`#${ID_MODULO}, #${ID_MENU}, .xm-ic-pagina`));
-  /** Do DS mesmo: nem nosso, nem da XM - Ativos. */
-  const eDeles = (el) => el && !eNosso(el) && !el.closest(SEL_DA_ATIVOS);
-  const temItens = (g) => !!(g && g.querySelector('.ImileSMN-Menu3-root'));
-  const raizDoModulo = () => modulo && modulo.querySelector('.ImileSMN-AsideMenu1-root');
-
-  function montarModulo(barra) {
-    const itens = [...barra.querySelectorAll('.ImileSMN-AsideMenu1-root')].filter(eDeles);
-    const modeloItem = itens.find((i) => !i.classList.contains('active')) || itens[0];
-    if (!modeloItem) return null;
-    let embrulho = modeloItem;
-    while (embrulho.parentElement && embrulho.parentElement !== barra) embrulho = embrulho.parentElement;
-    if (embrulho.parentElement !== barra) return null;
-    const m = embrulho.cloneNode(true);
-    m.id = ID_MODULO;
-    m.querySelectorAll('[aria-label]').forEach((e) => e.removeAttribute('aria-label'));
-    m.querySelectorAll('[id]').forEach((e) => e.removeAttribute('id'));
-    const raiz = m.querySelector('.ImileSMN-AsideMenu1-root');
-    raiz.classList.remove('active');
-    raiz.title = 'XM - Conferências iMile';
-    const caixaIcone = raiz.querySelector('.ImileSMN-AsideMenu1-icon');
-    const svgDeles = [...barra.querySelectorAll('.ImileSMN-AsideMenu1-icon svg')].find((s) => s.classList.contains('ImileSvgIcon-root'));
-    if (caixaIcone) { caixaIcone.textContent = ''; caixaIcone.append(iconePrancheta(svgDeles ? svgDeles.getAttribute('class') : '')); }
-    const nome = raiz.querySelector('.ImileEllipsis-root');
-    if (nome) { nome.textContent = NOME_MODULO; nome.classList.remove('ImileEllipsis-hasTip'); }
-    m.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); entrarNoModulo(); });
-    return m;
-  }
-
-  /** Na barra: logo antes do "Ativos" da XM - Ativos (que fica por ultimo), senao por ultimo. */
-  function posicionar(barra) {
-    const ativos = barra.querySelector(':scope > #xm-im-modulo');
-    if (ativos) { if (modulo.nextElementSibling !== ativos) barra.insertBefore(modulo, ativos); } else if (modulo.nextElementSibling) barra.append(modulo);
-    modulo.style.setProperty('--index', String([...barra.children].indexOf(modulo)));
-  }
-
-  function montarMenu(painel) {
-    const raiz = painel.querySelector('.ImileSMN-MyMenus-root');
-    const titulo = painel.querySelector('.ImileSMN-ContentPanel-title');
-    const rolagem = painel.querySelector('.ImileSMN-MyMenus-root-scroller');
-    const grupos = [...painel.querySelectorAll('.ImileSMN-MenuGroup-root')].filter(eDeles);
-    if (!raiz || !titulo || !rolagem || !grupos.length) return null;
-    const ativo = (g) => !!g.querySelector('.ImileSMN-MenuGroup-menu2Root.active');
-    const modelo = grupos.find((g) => !temItens(g) && !ativo(g)) || grupos.find((g) => !temItens(g)) || grupos[0];
-    const m = raiz.cloneNode(false);
-    m.id = ID_MENU;
-    const t = titulo.cloneNode(false);
-    t.textContent = NOME_MODULO;
-    const r = rolagem.cloneNode(false);
-    const pilha = modelo.parentElement.cloneNode(false);
-    for (const p of PAGINAS) {
-      const g = modelo.cloneNode(true);
-      const tituloG = g.querySelector('.ImileSMN-MenuGroup-menu2Root');
-      tituloG.classList.remove('active', 'open');
-      [...tituloG.children].filter((c) => c.tagName.toLowerCase() === 'svg').forEach((c) => c.remove());
-      [...g.children].filter((c) => c !== tituloG).forEach((c) => c.remove());
-      g.querySelectorAll('[aria-label]').forEach((e) => e.removeAttribute('aria-label'));
-      const nome = tituloG.querySelector('.ImileEllipsis-root');
-      nome.textContent = p.titulo;
-      nome.classList.remove('ImileEllipsis-hasTip');
-      g.classList.add('xm-ic-item');
-      g.dataset.pagina = p.chave;
-      g.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); mostrarPagina(p.chave); });
-      pilha.append(g);
-    }
-    r.append(pilha);
-    m.append(t, r);
-    return m;
-  }
-
-  function marcarItem(chave) {
-    if (!menu) return;
-    menu.querySelectorAll('.xm-ic-item').forEach((g) => {
-      const sel = g.dataset.pagina === chave;
-      g.classList.toggle('xm-ativo', sel);
-      const t = g.querySelector('.ImileSMN-MenuGroup-menu2Root');
-      t.classList.toggle('active', sel);
-      t.classList.toggle('open', sel);
-    });
-  }
-
-  function esconderDoDs(caixa, nosso, lista) {
-    for (const c of caixa.children) {
-      if (c === nosso || c.dataset.xmIcEscondido) continue;
-      lista.push([c, c.style.display]);
-      c.dataset.xmIcEscondido = '1';
-      c.style.display = 'none';
-    }
-    if (nosso && nosso.parentElement !== caixa) caixa.append(nosso);
-  }
-
-  function devolverAoDs(lista) {
-    lista.forEach(([c, d]) => { c.style.display = d; delete c.dataset.xmIcEscondido; });
-    lista.length = 0;
-  }
-
-  function tirarAtivoDeles() {
-    document.querySelectorAll('.ImileSMN-AsideMenu1-root.active').forEach((el) => {
-      if (!eDeles(el)) return;
-      el.classList.remove('active');
-      if (!tirados.includes(el)) tirados.push(el);
-    });
-  }
-
-  function manterModulo() {
-    const barra = document.querySelector(SEL_BARRA);
-    if (barra) {
-      if (!modulo || modulo.parentElement !== barra) {
-        const novo = montarModulo(barra);
-        if (novo) { if (modulo) modulo.remove(); modulo = novo; barra.append(modulo); }
-      }
-      if (modulo && modulo.parentElement === barra) posicionar(barra);
-      const raiz = raizDoModulo();
-      if (raiz) raiz.classList.toggle('active', noModulo);
-    }
-    const painel = document.querySelector(SEL_PAINEL);
-    if (!menu && painel) { menu = montarMenu(painel); if (menu) marcarItem(atual); }
-    if (!noModulo) return;
-    tirarAtivoDeles();
-    if (painel && menu) esconderDoDs(painel, menu, escondidos.painel);
-    const main = areaPrincipal();
-    if (main && pagina) esconderDoDs(main, pagina, escondidos.tela);
-  }
-
-  function entrarNoModulo() {
-    noModulo = true;
-    manterModulo();
-    mostrarPagina(atual || PAGINAS[0].chave);
-  }
-
-  function mostrarPagina(chave) {
-    if (!noModulo) return;
-    atual = chave;
-    if (!pagina) pagina = montarPagina();
-    const main = areaPrincipal();
-    if (main) esconderDoDs(main, pagina, escondidos.tela);
-    marcarItem(chave);
-    atualizarConta();
-  }
-
-  function sairDoModulo() {
-    if (!noModulo) return;
-    noModulo = false;
-    const raiz = raizDoModulo();
-    if (raiz) raiz.classList.remove('active');
-    const deles = [...document.querySelectorAll('.ImileSMN-AsideMenu1-root.active')].filter(eDeles);
-    if (!deles.length) tirados.forEach((el) => { if (el.isConnected) el.classList.add('active'); });
-    tirados = [];
-    if (menu) menu.remove();
-    devolverAoDs(escondidos.painel);
-    if (pagina) pagina.remove();
-    devolverAoDs(escondidos.tela);
-    atual = null;
-    marcarItem(null);
-  }
-
-  // Qualquer clique na barra que nao seja no nosso (outro modulo do DS ou o "Ativos") sai do nosso.
-  document.addEventListener('click', (e) => {
-    const alvo = e.target && e.target.closest ? e.target : null;
-    if (!alvo || !noModulo || eNosso(alvo)) return;
-    if (alvo.closest('.ImileSMN-Aside-Root')) sairDoModulo();
-  }, true);
-  window.addEventListener('hashchange', sairDoModulo);
-  window.addEventListener('popstate', sairDoModulo);
-
-  let agendado = false;
-  new MutationObserver(() => {
-    if (agendado) return;
-    agendado = true;
-    setTimeout(() => {
-      agendado = false;
-      colocarEstilo();
-      manterModulo();
-    }, 250);
-  }).observe(document.documentElement, { childList: true, subtree: true });
 
   // ── conversa com o fundo.js e com o imile.js ──────────────────────────────────
   function pedirAoFundo(tipo, dados = {}) {
@@ -586,5 +364,9 @@
   }
 
   colocarEstilo();
-  manterModulo();
+  self.XMTTDs.registrar({
+    dono: 'conferencias', ordem: 1, titulo: 'Conferências', itens: PAGINAS,
+    montarPagina: () => (pagina = montarPagina()),
+    aoMostrar: () => atualizarConta(),
+  });
 })();

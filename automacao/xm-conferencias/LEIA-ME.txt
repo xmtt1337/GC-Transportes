@@ -23,8 +23,9 @@ Anjun (newsupplier.anjunexpress.com) - pasta extensao/anjun
   um grupo aberto por vez e uma pagina por vez entre elas.
 
 iMile (ds.imile.com) - pasta extensao/imile
-  Modulo proprio "Conferencias" (prancheta) na barra de icones do DS, logo antes do "Ativos" da
-  XM - Ativos. Pagina: Conferencia do dia. "Conferir agora" le no DS a mesma busca da tela
+  No modulo "XMTT" (logo XM) da barra de icones do DS, dividido com a XM - Ativos pelo
+  imile/xmtt-modulo.js (IGUAL nas duas, os testes conferem): Conferencias > Conferencia do dia e
+  Ativos > Disparar ativos. "Conferir agora" le no DS a mesma busca da tela
   Pesquisar por destinatario (searchDispatchWaybill) com Horario de recebimento (Hub) = hoje, todas
   as paginas, e manda ao sistema (/macros/imile-conferencia) so: waybill, Delivery Associate
   (courier), Consignee City, station de entrega (DS CCR = Cacador), recebimento, chegada no DS e

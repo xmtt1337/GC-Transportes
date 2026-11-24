@@ -19,7 +19,11 @@ Shopee (spx.shopee.com.br) - pasta extensao/shopee
   "Configurar" (ou chrome://extensions > Detalhes > Opcoes da extensao) liga e desliga esses menus.
 
 iMile (ds.imile.com) - pasta extensao/imile
-  Um modulo proprio na barra de icones do DS (por ultimo, logo XM): Ativos > Disparar ativos.
+  Desde 24/11/2026 um modulo so na barra de icones do DS, "XMTT" (logo XM, por ultimo), dividido com a
+  XM - Conferencias pelo imile/xmtt-modulo.js (IGUAL nas duas, os testes conferem):
+    XMTT
+      Conferencias > Conferencia do dia   - XM - Conferencias
+      Ativos > Disparar ativos            - XM - Ativos
   Cola os waybills; a busca normal (sem cota) traz o remetente; no disparo, o olho da iMile abre
   nome, telefone e produto (1 da cota de ~700 por dia, 1 a cada 1,2 s; para com 30 de reserva) e vai
   "confirmacao_imile" ({{1}} nome, {{2}} quem dispara, {{3}} produto, {{4}} pedido).

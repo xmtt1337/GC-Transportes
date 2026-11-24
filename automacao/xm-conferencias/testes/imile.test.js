@@ -83,15 +83,13 @@ test('imile.js: Front-Sec não é copiado; canal próprio, longe do da XM - Ativ
   assert.ok(!/getDesensitizationInfo/.test(fonte), 'o olho (cota) fica só na XM - Ativos');
 });
 
-test('conferencia.js (iMile): módulo próprio, não mexe no da XM - Ativos e fica antes dele na barra', () => {
+test('conferencia.js (iMile): grupo Conferências no módulo XMTT, xmtt-modulo.js igual ao da XM - Ativos', () => {
   const conf = fs.readFileSync(path.join(EXT, 'imile/conferencia.js'), 'utf8');
+  const modulo = fs.readFileSync(path.join(EXT, 'imile/xmtt-modulo.js'), 'utf8');
   assert.ok(conf.includes("const CANAL = 'xmConfImile';"));
   assert.ok(conf.includes("const ROTA = '/macros/imile-conferencia';"));
-  assert.ok(conf.includes("const ID_MODULO = 'xm-ic-modulo';"));
-  assert.ok(conf.includes("const SEL_DA_ATIVOS = '#xm-im-modulo, #xm-im-menu, .xm-im-pagina';"));
-  assert.ok(conf.includes("barra.insertBefore(modulo, ativos)"), 'fica logo antes do Ativos, sem brigar pela última posição');
-  // os ids/classes da XM - Ativos (xm-im-*) não podem ser usados como nossos
-  assert.ok(!/['"`]xm-im-(?!modulo|menu|pagina)/.test(conf));
-  const daAtivos = path.join(__dirname, '../../xm-ativos/extensao/imile/ativos.js');
-  if (fs.existsSync(daAtivos)) assert.ok(fs.readFileSync(daAtivos, 'utf8').includes("const ID_MODULO = 'xm-im-modulo';"), 'o id do módulo da XM - Ativos mudou: atualize SEL_DA_ATIVOS');
+  assert.ok(conf.includes("dono: 'conferencias', ordem: 1, titulo: 'Conferências'"));
+  assert.ok(!/ID_MODULO|AsideMenu1-root/.test(conf), 'sem ícone próprio na barra: um só, o XMTT');
+  const daAtivos = path.join(__dirname, '../../xm-ativos/extensao/imile/xmtt-modulo.js');
+  if (fs.existsSync(daAtivos)) assert.strictEqual(modulo, fs.readFileSync(daAtivos, 'utf8'), 'os dois xmtt-modulo.js precisam ser iguais');
 });
