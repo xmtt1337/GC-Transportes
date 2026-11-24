@@ -676,3 +676,14 @@ test("_cfLerGrid: usa o Worker; arquivo ruim é erro (não relê na página); se
     ctx.XLSX = xlsxFalso([["X"], ["P3"]], [["X"], ["P3"]]);
     assert.deepStrictEqual(jsonDe(await ctx._cfLerGrid(arquivo)), [["X"], ["P3"]], "biblioteca não carregou no Worker: lê na página");
 });
+
+test("aviso de onhold sem Driver Name: quantos pela AT do dia e quantos vão pra quem entregou", () => {
+    const ctx = carregar();
+    const n = (x) => String(x);
+    assert.strictEqual(ctx._cfAvisoSemDriverName({ sem_driver_name: 0 }, n), "");
+    assert.strictEqual(ctx._cfAvisoSemDriverName({}, n), "");
+    const todos = ctx._cfAvisoSemDriverName({ sem_driver_name: 5, pela_at: 5 }, n);
+    assert.match(todos, /5 sem Driver Name no arquivo: 5 pelo entregador da AT do dia/);
+    assert.doesNotMatch(todos, /quem entregou/);
+    assert.match(ctx._cfAvisoSemDriverName({ sem_driver_name: 5, pela_at: 3 }, n), /2 sem AT do dia, vão pra quem entregou o pedido/);
+});

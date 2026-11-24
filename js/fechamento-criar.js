@@ -1019,6 +1019,16 @@ function _cfRenderDesconsiderados() {
         : `${lista.length.toLocaleString("pt-BR")} linha${lista.length !== 1 ? "s" : ""}`;
 }
 
+// Onhold sem Driver Name: o dono sai da AT do dia (quem estava com o pedido); sem AT do dia,
+// vai pra quem entregou o pedido depois — que pode não ser quem tentou.
+function _cfAvisoSemDriverName(d, n) {
+    const sem = Number(d.sem_driver_name || 0);
+    if (!sem) return "";
+    const pelaAt = Number(d.pela_at || 0), resto = sem - pelaAt;
+    return `<div class="cft-ajuda">${n(sem)} sem Driver Name no arquivo: ${n(pelaAt)} pelo entregador da AT do dia`
+        + (resto ? ` · <b style="color:#fbbf24">${n(resto)} sem AT do dia, vão pra quem entregou o pedido</b>` : "") + `</div>`;
+}
+
 // Vários arquivos de uma vez: um por um, cada um soma aos que já estão.
 async function _cfOnholdsSelecionado(input) {
     const arquivos = [...(input.files || [])];
@@ -1049,7 +1059,8 @@ async function _cfOnholdsSelecionado(input) {
             recalculado = recalculado || d.recalculado;
             msgs.push(_cfEsc(`${file.name}: ${n(d.gravados)} onholds da quinzena`
                 + (d.fora_da_quinzena ? ` · ${n(d.fora_da_quinzena)} fora da quinzena ignorados` : "")
-                + (d.sem_data ? ` · ${n(d.sem_data)} sem OnHold Time` : "")));
+                + (d.sem_data ? ` · ${n(d.sem_data)} sem OnHold Time` : ""))
+                + _cfAvisoSemDriverName(d, n));
         } catch (err) {
             msgs.push(`<span class="cft-erro">${_cfEsc(file.name)}: ${_cfEsc(err.message)}</span>`);
         }
