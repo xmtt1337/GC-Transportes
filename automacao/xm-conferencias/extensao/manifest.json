@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "XM - Conferências",
-  "version": "2.0",
-  "description": "Conferências das transportadoras dentro dos portais delas, no menu XMTT: Shopee (Vapt Vupt, no SPX) e Anjun (Conferência do dia, no portal de parceiros), integradas ao sistema XMTT.",
+  "version": "2.1",
+  "description": "Conferências das transportadoras dentro dos portais delas: Shopee (Vapt Vupt, no SPX), Anjun (Conferência do dia, menu XMTT do portal de parceiros) e iMile (Conferência do dia, módulo Conferências no DS), integradas ao sistema XMTT.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArZ6V7hoHbGTRqGmlwWQl7NtkSvUpcqkjzVcgFaXymAxUlStAc+RqLetYtq4+x8UnlaIhYGQzLO2RKD4OrBuAnXQcevWgmMsR9bUJ5M+JzuvTkE2b9uAUeQwAxbdHMCyquRqluPnOAJeApXuKOsC3Vf+oM+1sYibFxpnjMgvQuBJfvHfQqiXEGmZPkdIPfN48ItQSEcRotZMzBhof7d5V9GrWO2rRXHq15WmgV4NXkGz1yJPaawJg/RyBr4UcD7JIdLCZi/+5juH/OAXqSfq4otfk9A/bcP6AjBdpvernBIEVr5dRhUTbvfDiA+GWbIpG1vt2vxd46kNQ43eUruFxFwIDAQAB",
   "permissions": [
     "storage",
@@ -12,6 +12,7 @@
     "https://spx.shopee.com.br/*",
     "https://*.susercontent.com/*",
     "https://newsupplier.anjunexpress.com/*",
+    "https://ds.imile.com/*",
     "https://sistema-backend-i4uh.onrender.com/*"
   ],
   "background": {
@@ -60,6 +61,27 @@
       "js": [
         "anjun/xmtt-menu.js",
         "anjun/conferencia.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://ds.imile.com/*"
+      ],
+      "js": [
+        "imile/imile.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://ds.imile.com/*"
+      ],
+      "js": [
+        "imile/conferencia.js"
       ],
       "run_at": "document_idle",
       "all_frames": false

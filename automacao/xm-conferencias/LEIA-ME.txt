@@ -2,7 +2,8 @@ XM - Conferencias
 =================
 
 As conferencias das transportadoras dentro dos portais delas. Uma extensao so para todas (desde
-23/11/2026; antes era a XM - Conferencia Shopee, mesmo id). Pastas: extensao/shopee e extensao/anjun.
+23/11/2026; antes era a XM - Conferencia Shopee, mesmo id). Pastas: extensao/shopee, extensao/anjun e
+extensao/imile.
 Na Anjun ela divide o menu "XMTT" com a XM - Ativos:
 
   XMTT                      (secao no menu lateral do portal da Anjun, acima de "Principais funcoes")
@@ -20,6 +21,17 @@ Anjun (newsupplier.anjunexpress.com) - pasta extensao/anjun
   logins com problema e os pendentes (Copiar waybills). Dev e admin escolhem o polo.
   O menu XMTT e montado pelo anjun/xmtt-menu.js, IGUAL nas duas extensoes (os testes conferem):
   um grupo aberto por vez e uma pagina por vez entre elas.
+
+iMile (ds.imile.com) - pasta extensao/imile
+  Modulo proprio "Conferencias" (prancheta) na barra de icones do DS, logo antes do "Ativos" da
+  XM - Ativos. Pagina: Conferencia do dia. "Conferir agora" le no DS a mesma busca da tela
+  Pesquisar por destinatario (searchDispatchWaybill) com Horario de recebimento (Hub) = hoje, todas
+  as paginas, e manda ao sistema (/macros/imile-conferencia) so: waybill, Delivery Associate
+  (courier), Consignee City, station de entrega (DS CCR = Cacador), recebimento, chegada no DS e
+  Last Scan Status. Nada do destinatario.
+  Recebido no hub mas ainda nao chegou no DS (drop, "devolucao consolidada") fica fora da conta, como
+  "a caminho". "Recebido no DS" sem entregador = parado na base. O resto e a conta de sempre contra a
+  lista entregador -> cidades da iMile no sistema: % na rua, % na cidade certa, fora de abrangencia.
 
 Shopee (spx.shopee.com.br) - pasta extensao/shopee (no SPX continua o grupo proprio):
   Conferencia

@@ -95,12 +95,15 @@ test('manifest: XM - Conferências (SPX e Anjun), sem popup, id da antiga Confer
   // id ccldgbajagfjmdcgofjmcglcboojndcm, já liberado no CORS do sistema
   const hash = require('node:crypto').createHash('sha256').update(Buffer.from(m.key, 'base64')).digest('hex').slice(0, 32);
   assert.strictEqual([...hash].map((c) => String.fromCharCode(97 + parseInt(c, 16))).join(''), 'ccldgbajagfjmdcgofjmcglcboojndcm');
-  assert.deepStrictEqual(m.host_permissions, ['https://spx.shopee.com.br/*', 'https://*.susercontent.com/*', 'https://newsupplier.anjunexpress.com/*', 'https://sistema-backend-i4uh.onrender.com/*']);
+  assert.deepStrictEqual(m.host_permissions, ['https://spx.shopee.com.br/*', 'https://*.susercontent.com/*', 'https://newsupplier.anjunexpress.com/*', 'https://ds.imile.com/*', 'https://sistema-backend-i4uh.onrender.com/*']);
   for (const cs of m.content_scripts) for (const f of cs.js) assert.ok(fs.existsSync(path.join(EXT, f)), f);
   assert.ok(fs.existsSync(path.join(EXT, m.background.service_worker)));
   const daAnjun = m.content_scripts.filter((cs) => cs.matches.includes('https://newsupplier.anjunexpress.com/*'));
   assert.deepStrictEqual(daAnjun.map((cs) => cs.js), [['anjun/anjun.js'], ['anjun/xmtt-menu.js', 'anjun/conferencia.js']]);
   assert.strictEqual(daAnjun[0].world, 'MAIN');
+  const daImile = m.content_scripts.filter((cs) => cs.matches.includes('https://ds.imile.com/*'));
+  assert.deepStrictEqual(daImile.map((cs) => cs.js), [['imile/imile.js'], ['imile/conferencia.js']]);
+  assert.strictEqual(daImile[0].world, 'MAIN');
 });
 
 test('menu XMTT na Anjun: o xmtt-menu.js é igual ao da XM - Ativos; Conferências vem antes de Ativos', () => {
@@ -114,9 +117,9 @@ test('menu XMTT na Anjun: o xmtt-menu.js é igual ao da XM - Ativos; Conferênci
   assert.ok(conf.includes('xmtt-pagina'), 'a página entra na regra de uma página por vez');
 });
 
-test('fundo.js: o canal "sistema" só deixa passar a conferência da Anjun', () => {
+test('fundo.js: o canal "sistema" só deixa passar as conferências da Anjun e da iMile', () => {
   const fundo = fs.readFileSync(path.join(EXT, 'fundo.js'), 'utf8');
-  assert.ok(fundo.includes("c.startsWith('/macros/anjun-conferencia')"));
+  assert.ok(fundo.includes("['/macros/anjun-conferencia', '/macros/imile-conferencia'].some((p) => c.startsWith(p))"));
   assert.ok(fundo.includes("c.includes('..')"));
 });
 
