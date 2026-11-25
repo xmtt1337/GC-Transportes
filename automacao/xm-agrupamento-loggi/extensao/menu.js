@@ -298,7 +298,7 @@
     let itens;
     if (modo === 'circulos') {
       $('.titulo-lista').textContent = 'Escolha um círculo';
-      itens = R.filtrar(circulos, busca).map((c) => itemLista({
+      itens = R.filtrar(R.ordenarCirculos(circulos), busca).map((c) => itemLista({
         unico: true,
         marcado: alvo.tipo === 'circulo' && alvo.id === c.id,
         nome: c.nome,

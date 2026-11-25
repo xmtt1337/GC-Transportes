@@ -86,6 +86,15 @@ test('começa sem nada escolhido (não confere); marcar cidades, Limpar e migra�
   assert.deepStrictEqual(R.normalizarCfg({ escolha: { tipo: 'base' }, desligadas: ['longe'], adicionadas: ['X'] }), { adicionadas: ['X'], extrasCirculo: {}, escolha: null });
 });
 
+test('cidades e círculos em ordem alfabética, sem olhar acento nem maiúscula', () => {
+  const cidades = [{ codigo: 'CITY_SC_VIDEIRA', nome: 'Videira' }, { codigo: 'CITY_SC_CACADOR', nome: 'Cacador' }, { codigo: 'CITY_SC_AGUA_DOCE', nome: 'Agua Doce' }, { codigo: 'CITY_SC_ZORTEA', nome: 'Zortea' }];
+  const cfg = { adicionadas: ['Água Branca', 'beta'] };
+  assert.deepStrictEqual(R.listaDaBase(cidades, cfg).map((c) => c.nome), ['Agua Doce', 'Água Branca', 'beta', 'Cacador', 'Videira', 'Zortea'].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })));
+  assert.deepStrictEqual(R.listaDaBase(cidades, {}).map((c) => c.nome), ['Agua Doce', 'Cacador', 'Videira', 'Zortea']);
+  assert.deepStrictEqual(R.listaDoCirculo({ id: 'x', cidades: ['CITY_SC_ZORTEA', 'CITY_SC_CACADOR'] }, cidades, {}).map((c) => c.nome), ['Cacador', 'Zortea']);
+  assert.deepStrictEqual(R.ordenarCirculos([{ nome: 'LUANA - VIDEIRA' }, { nome: 'Base Joaçaba' }, { nome: 'DIDIO - CONCORDIA' }]).map((c) => c.nome), ['Base Joaçaba', 'DIDIO - CONCORDIA', 'LUANA - VIDEIRA']);
+});
+
 test('adicionar cidade: sem círculo entra na lista e já marcada; repetida avisa; tirar desmarca', () => {
   let r = R.adicionarCidade(R.cfgVazia(), '  Micro   Cidade ', CIDADES, CIRCULOS);
   assert.ok(!r.erro);

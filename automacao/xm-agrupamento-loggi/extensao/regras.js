@@ -94,7 +94,10 @@
     return cfg;
   }
 
-  /** As cidades da base para marcar: as da Loggi (mais pacotes primeiro) e depois as adicionadas. */
+  // Ordem alfabetica do portugues: sem olhar acento nem maiuscula ("Água Doce" junto de "Agua Doce").
+  const porNome = (a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR', { sensitivity: 'base', numeric: true });
+
+  /** As cidades da base para marcar (as da Loggi e as adicionadas), em ordem alfabetica. */
   function listaDaBase(cidadesLoggi, cfg) {
     const c = normalizarCfg(cfg);
     const vistas = new Set();
@@ -111,7 +114,7 @@
       vistas.add(k);
       lista.push({ chave: k, nome, pacotes: null, origem: 'adicionada' });
     }
-    return lista;
+    return lista.sort(porNome);
   }
 
   /** As cidades de um circulo: as da Loggi e as adicionadas nele. */
@@ -127,8 +130,11 @@
     };
     for (const cod of (circulo && circulo.cidades) || []) somar(chave(cod), nomes.get(chave(cod)) || nomeDoCodigo(cod), 'loggi');
     for (const nome of c.extrasCirculo[circulo && circulo.id] || []) somar(chave(nome), nome, 'adicionada');
-    return lista;
+    return lista.sort(porNome);
   }
+
+  /** Os circulos em ordem alfabetica. */
+  const ordenarCirculos = (circulos) => [...(circulos || [])].sort(porNome);
 
   const juntar = (nomes) => (nomes.length < 2 ? nomes.join('') : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`);
 
@@ -260,7 +266,7 @@
   const ehAgrupar = (texto) => /^agrupar( pacotes)?$/.test(String(texto || '').replace(/\s+/g, ' ').trim().toLowerCase());
 
   const publico = { chave, consertarTexto, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
-    pendentes, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar };
+    pendentes, ordenarCirculos, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMAgrupamento = publico;
 })();
