@@ -98,7 +98,7 @@
       .estado.vazio .ico { color: #ff9800; }
       .estado.ok { background: var(--marcado); color: var(--texto); border: 1px solid var(--borda-marcado); }
       .estado.ok .ico { color: var(--azul); }
-      /* janela "Ainda tem pacote na base" (no Continuar) */
+      /* janela "Pacotes não bipados" (no Continuar) */
       .lista-faltam { max-height: 46vh; overflow-y: auto; margin: 0; padding: 0; list-style: none; border: 1px solid var(--divisa); border-radius: 8px; }
       .lista-faltam li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--divisa); font-size: .8125rem; }
       .lista-faltam li:last-child { border-bottom: 0; }
@@ -106,13 +106,12 @@
       .lista-faltam .cid { color: var(--texto); white-space: nowrap; }
       .lista-faltam .hora { color: var(--cinza); white-space: nowrap; }
       .lista-faltam:empty { display: none; }
-      .card.aviso-faltam { border-top-color: #ed6c02; }
-      .card.aviso-faltam h2 { color: #b45309; }
+      .card.aviso-faltam h2 { color: var(--texto); }
+      .card.aviso-faltam h2 .ico { color: #ed6c02; }
       .card.aviso-faltam .lista-faltam { margin: 0 0 20px; }
       .card.aviso-faltam .lista-faltam li { display: grid; font-weight: 400; }
       .card.aviso-faltam .lista-faltam li span:last-child { color: var(--cinza); }
-      .card .acoes { gap: 16px; align-items: center; }
-      .card .texto-botao { padding: 6px 8px; color: var(--texto); background: none; border: 0; border-radius: 4px; font-weight: 600; }
+      .card .texto-botao { min-height: 48px; padding: 0 16px; color: var(--texto); background: none; border: 0; border-radius: 24px; font-size: 15px; font-weight: 600; }
       .card .texto-botao:hover { background: rgba(0, 0, 0, .04); }
       .linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
       /* alternar como o "Pacotes | Grupos" do Arco */
@@ -148,7 +147,7 @@
       .adicionar .campo { flex: 1; margin: 8px 0; }
       .adicionar .campo input { height: 48px; padding-left: 14px; font-size: 14px; }
       .adicionar .campo input:focus { padding-left: 13px; }
-      .contorno { padding: 5px 15px; color: var(--azul); background: #fff; border: 1px solid var(--azul); border-radius: 24px; font-weight: 600; white-space: nowrap; }
+      .contorno { min-height: 48px; padding: 0 24px; color: var(--azul); background: #fff; border: 1px solid var(--azul); border-radius: 24px; font-size: 15px; font-weight: 600; white-space: nowrap; }
       .contorno:hover { background: rgba(0, 186, 255, .04); }
       .sugestoes { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 8px; }
       .sugestoes:empty { display: none; }
@@ -157,9 +156,9 @@
       .recado.erro { color: var(--erro); }
       .diagnostico { margin: 0 0 12px; color: #9fabbb; font-size: .75rem; }
       .rodape { display: grid; grid-template-columns: 1fr 3fr; gap: 16px; padding: 20px 28px; border-top: 1px solid var(--divisa); box-shadow: 0 -2px 5px rgba(46, 53, 69, .1); }
-      .rodape .limpar { padding: 6px 8px; color: var(--texto); background: none; border: 0; border-radius: 4px; font-weight: 600; }
+      .rodape .limpar { min-height: 48px; padding: 0 16px; color: var(--texto); background: none; border: 0; border-radius: 24px; font-size: 15px; font-weight: 600; }
       .rodape .limpar:hover { background: rgba(0, 0, 0, .04); }
-      .rodape .aplicar { padding: 8px 22px; color: var(--azul); background: #fff; border: 1px solid var(--azul); border-radius: 24px; font-weight: 600; }
+      .rodape .aplicar { min-height: 48px; padding: 0 24px; color: var(--azul); background: #fff; border: 1px solid var(--azul); border-radius: 24px; font-size: 15px; font-weight: 600; }
       .rodape .aplicar:hover { background: rgba(0, 186, 255, .04); }
       .rodape .aplicar.desligado { color: #9fabbb; border-color: #d8ddeb; cursor: not-allowed; }
       .rodape .aplicar.desligado:hover { background: #fff; }
@@ -176,7 +175,7 @@
       .fundo { display: none; position: fixed; inset: 0; z-index: 2147483647; background: rgba(0, 0, 0, .5); align-items: center; justify-content: center; }
       .fundo.ver { display: flex; }
       .card { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; background: #fff; border-radius: 12px;
-        border-top: 6px solid var(--erro); box-shadow: 0 11px 15px -7px rgba(0,0,0,.2), 0 24px 38px 3px rgba(0,0,0,.14); padding: 28px; }
+        box-shadow: 0 11px 15px -7px rgba(0,0,0,.2), 0 24px 38px 3px rgba(0,0,0,.14); padding: 28px; }
       .card h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font: 700 24px/1.25 Montserrat, 'Open Sans', sans-serif; color: var(--erro); }
       .card p { margin: 0 0 16px; font-size: 16px; }
       .card ul { margin: 0 0 20px; padding: 0; list-style: none; border: 1px solid var(--divisa); border-radius: 8px; }
@@ -184,7 +183,9 @@
       .card li:last-child { border-bottom: 0; }
       .card li span:first-child { font-family: ui-monospace, Consolas, monospace; }
       .card li span:last-child { color: var(--erro); }
-      .card .acoes { display: flex; justify-content: flex-end; }
+      .card .acoes { display: grid; grid-template-columns: auto 1fr; gap: 16px; }
+      .card .acoes button { white-space: nowrap; }
+      .card .acoes.um { grid-template-columns: 1fr; }
     </style>
     <div class="raiz">
       <div class="fundo" role="alertdialog" aria-modal="true">
@@ -192,12 +193,12 @@
           <h2>${svg('aviso')}Tem pacote de fora neste grupo</h2>
           <p class="explica"></p>
           <ul></ul>
-          <div class="acoes"><button type="button" class="contorno entendi">Entendi, vou tirar</button></div>
+          <div class="acoes um"><button type="button" class="contorno entendi">Entendi, vou tirar</button></div>
         </div>
       </div>
       <div class="fundo fundo-faltam" role="alertdialog" aria-modal="true">
         <div class="card aviso-faltam">
-          <h2>${svg('relogio')}Ainda tem pacote na base</h2>
+          <h2>${svg('relogio')}Pacotes não bipados</h2>
           <p class="explica-faltam"></p>
           <ul class="lista-faltam"></ul>
           <div class="acoes">
@@ -389,11 +390,11 @@
   // Linha discreta na gaveta: o que o relatorio Na base trouxe (para conferir se esta lendo certo).
   function desenharDiagnostico() {
     const d = $('.diagnostico');
-    if (!naBase) { d.textContent = naBaseErro ? `Na base: ${naBaseErro}` : ''; return; }
+    if (!naBase) { d.textContent = naBaseErro || ''; return; }
     const r = R.resumoNaBase(naBase);
-    d.textContent = `Na base: ${numero(r.total)} pacotes lidos, ${numero(r.hoje)} chegaram hoje`
+    d.textContent = `Relatório da Loggi: ${numero(r.total)} pacotes, ${numero(r.hoje)} chegaram hoje`
       + (r.semData ? `, ${numero(r.semData)} sem data reconhecida (ex.: "${r.exemplo}")` : '')
-      + ` · ${numero(Object.keys(agrupados).length)} já agrupados neste navegador.`;
+      + ` · ${numero(Object.keys(agrupados).length)} já bipados em grupos neste navegador.`;
   }
 
   function selo(classe, icone_, n, dica) {
@@ -413,7 +414,7 @@
       pilula.append(el('span', 'rot', 'Agrupando'), el('span', 'qual', nome));
       const selos = el('span', 'selos');
       selos.append(selo('ok', 'certo', certos, `${certos} certo(s) na lista`), selo('fora', 'fechar', deFora, `${deFora} de fora na lista`));
-      if (naBase) selos.append(selo('falta', 'relogio', faltam.length, `${faltam.length} chegaram hoje, estão na base e ainda não foram bipados`));
+      if (naBase) selos.append(selo('falta', 'relogio', faltam.length, `${faltam.length} que chegaram hoje ainda não foram bipados`));
       pilula.append(selos);
       pilula.title = `Agrupando ${nome}: ${alvo.cidades.map((c) => c.nome).join(', ')}. Clique para trocar.`;
     }
@@ -654,7 +655,7 @@
     tocarErro();
   }
 
-  // "Ainda tem pacote na base": os que chegaram hoje, das cidades escolhidas, e nao foram bipados.
+  // "Pacotes não bipados": os que chegaram hoje, das cidades escolhidas, e nao foram bipados.
   const fundoFaltam = $('.fundo-faltam');
   let continuarDaLoggi = null; // o botao "Continuar" que foi segurado
   let deixarPassar = false;
@@ -664,7 +665,7 @@
   function mostrarFaltam(lista, botao) {
     continuarDaLoggi = botao;
     const onde = alvo.tipo === 'circulo' ? `do círculo ${alvo.nome}` : alvo.cidades.length === 1 ? `de ${alvo.cidades[0].nome}` : 'das cidades escolhidas';
-    $('.explica-faltam').textContent = `${numero(lista.length)} pacote(s) ${onde} chegaram hoje, estão na base e ainda não foram bipados neste grupo.`;
+    $('.explica-faltam').textContent = (lista.length === 1 ? `1 pacote ${onde} que chegou hoje ainda não foi bipado.` : `${numero(lista.length)} pacotes ${onde} que chegaram hoje ainda não foram bipados.`);
     $('.lista-faltam').replaceChildren(...lista.slice(0, 500).map((p) => {
       const li = el('li');
       li.append(el('span', 'cod', p.codigo || p.id), el('span', 'cid', p.cidade), el('span', 'hora', R.horaDe(p.chegou)));

@@ -40,8 +40,8 @@ CIDADES
 FALTAM AGRUPAR (desde 1.8, no Continuar)
   - Ao clicar em Continuar: com pacote de outra cidade, a trava
     de sempre. Sem nenhum, mas com pacotes das cidades escolhidas
-    que CHEGARAM HOJE, estao na base e nao foram bipados, aparece
-    "Ainda tem pacote na base" com a lista: "Voltar e bipar" ou
+    que CHEGARAM HOJE e nao foram bipados, aparece
+    "Pacotes nao bipados" com a lista: "Voltar e bipar" ou
     "Continuar assim mesmo" (ai nao pergunta de novo ate o
     proximo Agrupar). O selo laranja do "Agrupando" mostra quantos.
   - Na base = o relatorio da propria tela Na base (o arquivo do
