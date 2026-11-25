@@ -1,8 +1,8 @@
 // O que a XM - Agrupamento Loggi decide, sem tela e sem rede. Usado pelo menu.js; nos testes,
 // carregado pelo Node.
 //
-// Cidades da base = as da Loggi (todas ligadas) menos as desligadas, mais as adicionadas a mao.
-// Circulo = as cidades que o circulo tem na Loggi, mais as adicionadas a mao naquele circulo.
+// Confere contra UM circulo da Loggi (as cidades dele + as adicionadas nele) OU as cidades marcadas
+// da lista da base (a da Loggi + as adicionadas a mao). Comeca sem nada escolhido; "Limpar" volta a isso.
 // A configuracao fica no navegador, uma por base (codigo da base no Arco, ex.: CCR).
 
 (() => {
@@ -79,26 +79,37 @@
       .map((p) => p[0].toUpperCase() + p.slice(1)).join(' ');
   }
 
-  const cfgVazia = () => ({ desligadas: [], adicionadas: [], extrasCirculo: {}, escolha: { tipo: 'base' } });
-  const normalizarCfg = (c) => ({ ...cfgVazia(), ...(c || {}), extrasCirculo: { ...((c && c.extrasCirculo) || {}) } });
+  // Configuracao de uma base:
+  //   escolha: null (nada escolhido), { tipo: 'circulo', id } ou { tipo: 'cidades', chaves: [...] }
+  //   adicionadas: cidades escritas a mao (entram na lista de cidades da base)
+  //   extrasCirculo: { idDoCirculo: [cidades escritas a mao naquele circulo] }
+  // Ate a 1.1 havia "Base toda" com todas ligadas (escolha.tipo 'base' e desligadas): vira nada escolhido.
+  const cfgVazia = () => ({ adicionadas: [], extrasCirculo: {}, escolha: null });
+  function normalizarCfg(c) {
+    const cfg = { ...cfgVazia(), ...(c || {}), extrasCirculo: { ...((c && c.extrasCirculo) || {}) } };
+    const e = cfg.escolha;
+    if (!e || (e.tipo !== 'circulo' && e.tipo !== 'cidades')) cfg.escolha = null;
+    else if (e.tipo === 'cidades') cfg.escolha = { tipo: 'cidades', chaves: [...new Set(e.chaves || [])] };
+    delete cfg.desligadas;
+    return cfg;
+  }
 
-  /** As cidades da base, na ordem da Loggi (mais pacotes primeiro), e depois as adicionadas. */
+  /** As cidades da base para marcar: as da Loggi (mais pacotes primeiro) e depois as adicionadas. */
   function listaDaBase(cidadesLoggi, cfg) {
     const c = normalizarCfg(cfg);
-    const desligadas = new Set(c.desligadas);
     const vistas = new Set();
     const lista = [];
     for (const x of cidadesLoggi || []) {
       const k = chave(x.codigo || x.nome);
       if (!k || vistas.has(k)) continue;
       vistas.add(k);
-      lista.push({ chave: k, nome: consertarTexto(x.nome) || nomeDoCodigo(x.codigo), pacotes: Number(x.pacotes) || 0, origem: 'loggi', ligada: !desligadas.has(k) });
+      lista.push({ chave: k, nome: consertarTexto(x.nome) || nomeDoCodigo(x.codigo), pacotes: Number(x.pacotes) || 0, origem: 'loggi' });
     }
     for (const nome of c.adicionadas) {
       const k = chave(nome);
       if (!k || vistas.has(k)) continue;
       vistas.add(k);
-      lista.push({ chave: k, nome, pacotes: null, origem: 'adicionada', ligada: true });
+      lista.push({ chave: k, nome, pacotes: null, origem: 'adicionada' });
     }
     return lista;
   }
@@ -112,31 +123,45 @@
     const somar = (k, nome, origem) => {
       if (!k || vistas.has(k)) return;
       vistas.add(k);
-      lista.push({ chave: k, nome, pacotes: null, origem, ligada: true });
+      lista.push({ chave: k, nome, pacotes: null, origem });
     };
     for (const cod of (circulo && circulo.cidades) || []) somar(chave(cod), nomes.get(chave(cod)) || nomeDoCodigo(cod), 'loggi');
     for (const nome of c.extrasCirculo[circulo && circulo.id] || []) somar(chave(nome), nome, 'adicionada');
     return lista;
   }
 
+  const juntar = (nomes) => (nomes.length < 2 ? nomes.join('') : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`);
+
   /**
-   * O que vale agora: base toda ou um circulo. Circulo que sumiu da Loggi volta para a base.
-   *   fora: o fim de "Caçador: ..." na tarja ("fora do círculo X" / "fora das cidades da base")
+   * O que vale agora: um circulo, as cidades marcadas ou nada (sem conferencia).
+   *   rotulo: "Círculo X" / "Caçador, Videira e mais 2"
+   *   fora:   o fim de "123 é de Lages: ..." ("fora do círculo X" / "não é de Caçador" / "fora das cidades marcadas")
    */
   function montarAlvo(cfg, cidadesLoggi, circulos) {
     const c = normalizarCfg(cfg);
-    const circulo = c.escolha && c.escolha.tipo === 'circulo' ? (circulos || []).find((x) => x.id === c.escolha.id) : null;
-    if (circulo) {
-      const cidades = listaDoCirculo(circulo, cidadesLoggi, c);
-      return { tipo: 'circulo', id: circulo.id, nome: circulo.nome, cidades, chaves: cidades.map((x) => x.chave),
-        rotulo: `Círculo ${circulo.nome}`, fora: `fora do círculo ${circulo.nome}` };
+    const e = c.escolha;
+    if (e && e.tipo === 'circulo') {
+      const circulo = (circulos || []).find((x) => x.id === e.id);
+      if (circulo) {
+        const cidades = listaDoCirculo(circulo, cidadesLoggi, c);
+        return { tipo: 'circulo', id: circulo.id, nome: circulo.nome, cidades, chaves: cidades.map((x) => x.chave),
+          rotulo: `Círculo ${circulo.nome}`, fora: `fora do círculo ${circulo.nome}` };
+      }
     }
-    const cidades = listaDaBase(cidadesLoggi, c);
-    return { tipo: 'base', cidades, chaves: cidades.filter((x) => x.ligada).map((x) => x.chave),
-      rotulo: 'Base toda', fora: 'fora das cidades da base' };
+    if (e && e.tipo === 'cidades') {
+      const marcadas = new Set(e.chaves);
+      const cidades = listaDaBase(cidadesLoggi, c).filter((x) => marcadas.has(x.chave));
+      if (cidades.length) {
+        const nomes = cidades.map((x) => x.nome);
+        return { tipo: 'cidades', cidades, chaves: cidades.map((x) => x.chave),
+          rotulo: nomes.length <= 3 ? juntar(nomes) : `${nomes.slice(0, 2).join(', ')} e mais ${nomes.length - 2}`,
+          fora: nomes.length === 1 ? `não é de ${nomes[0]}` : 'fora das cidades marcadas' };
+      }
+    }
+    return { tipo: 'nada', cidades: [], chaves: [], rotulo: '', fora: '' };
   }
 
-  /** O pacote e do que esta escolhido? Sem lista, nao ha o que conferir (ok: null). */
+  /** O pacote e do que esta escolhido? Nada escolhido: nao confere (ok: null). */
   function conferirBipe(cidade, alvo) {
     if (!alvo || !alvo.chaves || !alvo.chaves.length) return { ok: null };
     if (alvo.chaves.includes(chave(cidade))) return { ok: true };
@@ -159,15 +184,28 @@
     return errados;
   }
 
-  /** Liga/desliga uma cidade da Loggi na base. */
-  function alternarCidade(cfg, k) {
+  /** Escolhe um circulo (vale um so); clicar de novo no mesmo desmarca. */
+  function escolherCirculo(cfg, id) {
     const c = normalizarCfg(cfg);
-    const desligadas = new Set(c.desligadas);
-    if (desligadas.has(k)) desligadas.delete(k); else desligadas.add(k);
-    return { ...c, desligadas: [...desligadas] };
+    const mesmo = c.escolha && c.escolha.tipo === 'circulo' && c.escolha.id === id;
+    return { ...c, escolha: mesmo ? null : { tipo: 'circulo', id } };
   }
 
-  /** Adiciona no que esta escolhido (base ou o circulo). Nome vazio ou repetido nao muda nada. */
+  /** Marca/desmarca uma cidade. Marcar cidade troca um circulo escolhido pelas cidades. */
+  function alternarCidade(cfg, k) {
+    const c = normalizarCfg(cfg);
+    const atuais = new Set(c.escolha && c.escolha.tipo === 'cidades' ? c.escolha.chaves : []);
+    if (atuais.has(k)) atuais.delete(k); else atuais.add(k);
+    return { ...c, escolha: atuais.size ? { tipo: 'cidades', chaves: [...atuais] } : null };
+  }
+
+  /** Limpar: nada escolhido (as cidades adicionadas a mao continuam na lista). */
+  const limpar = (cfg) => ({ ...normalizarCfg(cfg), escolha: null });
+
+  /**
+   * Adicionar cidade. Com um circulo escolhido, entra naquele circulo; senao entra na lista da base
+   * e ja fica marcada. Nome vazio ou repetido nao muda nada.
+   */
   function adicionarCidade(cfg, nome, cidadesLoggi, circulos) {
     const c = normalizarCfg(cfg);
     const n = String(nome || '').replace(/\s+/g, ' ').trim();
@@ -179,13 +217,14 @@
       const lista = [...(c.extrasCirculo[alvo.id] || []), n];
       return { cfg: { ...c, extrasCirculo: { ...c.extrasCirculo, [alvo.id]: lista } } };
     }
-    const existe = alvo.cidades.find((x) => x.chave === k);
-    if (existe && existe.ligada) return { cfg: c, erro: `${existe.nome} já está na lista.` };
-    if (existe) return { cfg: alternarCidade(c, k) }; // estava desligada: liga
-    return { cfg: { ...c, adicionadas: [...c.adicionadas, n] } };
+    const existe = listaDaBase(cidadesLoggi, c).find((x) => x.chave === k);
+    const marcadas = new Set(alvo.tipo === 'cidades' ? alvo.chaves : []);
+    if (existe && marcadas.has(k)) return { cfg: c, erro: `${existe.nome} já está marcada.` };
+    const comNome = existe ? c : { ...c, adicionadas: [...c.adicionadas, n] };
+    return { cfg: { ...comNome, escolha: { tipo: 'cidades', chaves: [...marcadas, k] } } };
   }
 
-  /** Tira uma cidade adicionada a mao (da base ou do circulo escolhido). */
+  /** Tira uma cidade adicionada a mao (do circulo escolhido, ou da lista da base). */
   function tirarAdicionada(cfg, k, cidadesLoggi, circulos) {
     const c = normalizarCfg(cfg);
     const alvo = montarAlvo(c, cidadesLoggi, circulos);
@@ -193,7 +232,12 @@
       const lista = (c.extrasCirculo[alvo.id] || []).filter((n) => chave(n) !== k);
       return { ...c, extrasCirculo: { ...c.extrasCirculo, [alvo.id]: lista } };
     }
-    return { ...c, adicionadas: c.adicionadas.filter((n) => chave(n) !== k) };
+    const sem = { ...c, adicionadas: c.adicionadas.filter((n) => chave(n) !== k) };
+    if (c.escolha && c.escolha.tipo === 'cidades') {
+      const resto = c.escolha.chaves.filter((x) => x !== k);
+      sem.escolha = resto.length ? { tipo: 'cidades', chaves: resto } : null;
+    }
+    return sem;
   }
 
   /** Cidades bipadas fora do escolhido, sem repetir: atalho do "Adicionar cidade". */
@@ -206,14 +250,17 @@
     return [...vistas.values()];
   }
 
-  /** Busca na lista de cidades, sem acento nem caixa. */
-  const filtrar = (cidades, texto) => {
+  /** Busca sem acento nem caixa, por nome (cidades ou circulos). */
+  const filtrar = (itens, texto) => {
     const t = chave(texto);
-    return t ? cidades.filter((c) => c.chave.includes(t)) : cidades;
+    return t ? itens.filter((c) => chave(c.nome).includes(t)) : itens;
   };
 
+  /** O botao clicado e o "Agrupar" (ou "Agrupar pacotes") de alguma tela do Arco? */
+  const ehAgrupar = (texto) => /^agrupar( pacotes)?$/.test(String(texto || '').replace(/\s+/g, ' ').trim().toLowerCase());
+
   const publico = { chave, consertarTexto, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
-    pendentes, alternarCidade, adicionarCidade, tirarAdicionada, sugestoes, filtrar };
+    pendentes, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMAgrupamento = publico;
 })();

@@ -45,7 +45,7 @@ test('acentuação quebrada (UTF-8 lido como Latin-1/Windows-1252) volta ao cert
 });
 
 test('letra perdida (? ou �), letra repetida e sinal solto ainda acham a cidade', () => {
-  const alvo = R.montarAlvo(R.cfgVazia(), [{ codigo: 'CITY_SC_CACADOR', nome: 'Cacador' }, { codigo: 'CITY_SC_TANGARA', nome: 'Tangara' }], []);
+  const alvo = R.montarAlvo({ escolha: { tipo: 'cidades', chaves: ['cacador', 'tangara'] } }, [{ codigo: 'CITY_SC_CACADOR', nome: 'Cacador' }, { codigo: 'CITY_SC_TANGARA', nome: 'Tangara' }], []);
   assert.deepStrictEqual(R.conferirBipe('Ca?ador', alvo), { ok: true });
   assert.deepStrictEqual(R.conferirBipe('Ca��ador', alvo), { ok: true });
   assert.deepStrictEqual(R.conferirBipe('Tangaraa', alvo), { ok: true });
@@ -58,56 +58,79 @@ test('letra perdida (? ou �), letra repetida e sinal solto ainda acham a cidad
   assert.strictEqual(lista[0].nome, 'Joaçaba');
 });
 
-test('base toda: todas as cidades da Loggi ligadas; desligar tira da conta; adicionada entra', () => {
+test('começa sem nada escolhido (não confere); marcar cidades, Limpar e migração da 1.1', () => {
   let cfg = R.cfgVazia();
   let alvo = R.montarAlvo(cfg, CIDADES, CIRCULOS);
-  assert.strictEqual(alvo.tipo, 'base');
-  assert.strictEqual(alvo.chaves.length, 4);
-  assert.deepStrictEqual(R.conferirBipe('CIDADE A', alvo), { ok: true });
-  assert.deepStrictEqual(R.conferirBipe('Outra Cidade', alvo), { ok: false });
+  assert.strictEqual(alvo.tipo, 'nada');
+  assert.deepStrictEqual(R.conferirBipe('Cidade A', alvo), { ok: null });
+  // a lista da base continua toda lá, para marcar
+  assert.deepStrictEqual(R.listaDaBase(CIDADES, cfg).map((c) => c.nome), ['Cidade A', 'Cidade B', 'Herval Doeste', 'Longe']);
 
-  cfg = R.alternarCidade(cfg, R.chave('Longe'));
+  cfg = R.alternarCidade(cfg, R.chave('Cidade A'));
+  cfg = R.alternarCidade(cfg, R.chave('Herval Doeste'));
   alvo = R.montarAlvo(cfg, CIDADES, CIRCULOS);
-  assert.deepStrictEqual(R.conferirBipe('Longe', alvo), { ok: false });
-  assert.strictEqual(alvo.cidades.find((c) => c.nome === 'Longe').ligada, false); // continua na lista, desligada
-
-  const r = R.adicionarCidade(cfg, '  Micro   Cidade ', CIDADES, CIRCULOS);
-  assert.ok(!r.erro);
-  alvo = R.montarAlvo(r.cfg, CIDADES, CIRCULOS);
-  assert.deepStrictEqual(R.conferirBipe('MICRO CIDADE', alvo), { ok: true });
-  assert.strictEqual(alvo.cidades.at(-1).origem, 'adicionada');
-  // adicionar uma desligada liga de novo; repetida dá aviso
-  assert.deepStrictEqual(R.conferirBipe('Longe', R.montarAlvo(R.adicionarCidade(r.cfg, 'longe', CIDADES, CIRCULOS).cfg, CIDADES, CIRCULOS)), { ok: true });
-  assert.match(R.adicionarCidade(r.cfg, 'Cidade A', CIDADES, CIRCULOS).erro, /já está na lista/);
-  assert.match(R.adicionarCidade(r.cfg, '   ', CIDADES, CIRCULOS).erro, /Escreva/);
-  // tirar a adicionada
-  const sem = R.tirarAdicionada(r.cfg, R.chave('Micro Cidade'), CIDADES, CIRCULOS);
-  assert.deepStrictEqual(R.conferirBipe('Micro Cidade', R.montarAlvo(sem, CIDADES, CIRCULOS)), { ok: false });
+  assert.strictEqual(alvo.tipo, 'cidades');
+  assert.strictEqual(alvo.rotulo, 'Cidade A e Herval Doeste');
+  assert.deepStrictEqual(R.conferirBipe("HERVAL D'OESTE", alvo), { ok: true });
+  assert.deepStrictEqual(R.conferirBipe('Cidade B', alvo), { ok: false });
+  assert.strictEqual(alvo.fora, 'fora das cidades marcadas');
+  // desmarcar todas = nada escolhido
+  assert.strictEqual(R.montarAlvo(R.alternarCidade(R.alternarCidade(cfg, 'cidadea'), 'hervaldoeste'), CIDADES, CIRCULOS).tipo, 'nada');
+  // uma só: "não é de X"; muitas: "A, B e mais N"
+  assert.strictEqual(R.montarAlvo(R.alternarCidade(R.cfgVazia(), 'longe'), CIDADES, CIRCULOS).fora, 'não é de Longe');
+  const todas = CIDADES.reduce((c, x) => R.alternarCidade(c, R.chave(x.codigo)), R.cfgVazia());
+  assert.strictEqual(R.montarAlvo(todas, CIDADES, CIRCULOS).rotulo, 'Cidade A, Cidade B e mais 2');
+  // Limpar
+  assert.strictEqual(R.montarAlvo(R.limpar(cfg), CIDADES, CIRCULOS).tipo, 'nada');
+  // configuração da 1.1 ("Base toda" com desligadas) vira nada escolhido
+  assert.deepStrictEqual(R.normalizarCfg({ escolha: { tipo: 'base' }, desligadas: ['longe'], adicionadas: ['X'] }), { adicionadas: ['X'], extrasCirculo: {}, escolha: null });
 });
 
-test('círculo: só as cidades dele (nome da Loggi); adicionar vale só no círculo', () => {
-  let cfg = { ...R.cfgVazia(), escolha: { tipo: 'circulo', id: 'c1' } };
+test('adicionar cidade: sem círculo entra na lista e já marcada; repetida avisa; tirar desmarca', () => {
+  let r = R.adicionarCidade(R.cfgVazia(), '  Micro   Cidade ', CIDADES, CIRCULOS);
+  assert.ok(!r.erro);
+  let alvo = R.montarAlvo(r.cfg, CIDADES, CIRCULOS);
+  assert.deepStrictEqual(alvo.cidades.map((c) => [c.nome, c.origem]), [['Micro Cidade', 'adicionada']]);
+  assert.deepStrictEqual(R.conferirBipe('MICRO CIDADE', alvo), { ok: true });
+  // cidade que já é da Loggi: só marca, não duplica na lista
+  r = R.adicionarCidade(r.cfg, 'cidade b', CIDADES, CIRCULOS);
+  assert.deepStrictEqual(r.cfg.adicionadas, ['Micro Cidade']);
+  assert.deepStrictEqual(R.montarAlvo(r.cfg, CIDADES, CIRCULOS).chaves, ['cidadeb', 'microcidade']);
+  assert.match(R.adicionarCidade(r.cfg, 'Cidade B', CIDADES, CIRCULOS).erro, /já está marcada/);
+  assert.match(R.adicionarCidade(r.cfg, '   ', CIDADES, CIRCULOS).erro, /Escreva/);
+  const sem = R.tirarAdicionada(r.cfg, R.chave('Micro Cidade'), CIDADES, CIRCULOS);
+  assert.deepStrictEqual(sem.adicionadas, []);
+  assert.deepStrictEqual(R.montarAlvo(sem, CIDADES, CIRCULOS).chaves, ['cidadeb']);
+});
+
+test('círculo: só as cidades dele (nome da Loggi); clicar de novo desmarca; adicionar vale só nele', () => {
+  let cfg = R.escolherCirculo(R.cfgVazia(), 'c1');
   let alvo = R.montarAlvo(cfg, CIDADES, CIRCULOS);
   assert.strictEqual(alvo.tipo, 'circulo');
   assert.deepStrictEqual(alvo.cidades.map((c) => c.nome), ['Cidade B', 'Herval Doeste']);
   assert.deepStrictEqual(R.conferirBipe('Cidade A', alvo), { ok: false });
   assert.strictEqual(alvo.fora, 'fora do círculo CIRCULO TESTE');
+  assert.strictEqual(R.montarAlvo(R.escolherCirculo(cfg, 'c1'), CIDADES, CIRCULOS).tipo, 'nada');
   cfg = R.adicionarCidade(cfg, 'Distrito Teste', CIDADES, CIRCULOS).cfg;
   assert.deepStrictEqual(R.conferirBipe('Distrito Teste', R.montarAlvo(cfg, CIDADES, CIRCULOS)), { ok: true });
-  assert.deepStrictEqual(cfg.adicionadas, []); // não foi para a base
+  assert.deepStrictEqual(cfg.adicionadas, []); // não foi para a lista da base
   assert.match(R.adicionarCidade(cfg, 'Cidade B', CIDADES, CIRCULOS).erro, /já está no círculo/);
-  // círculo que sumiu da Loggi: volta para a base toda
-  assert.strictEqual(R.montarAlvo({ escolha: { tipo: 'circulo', id: 'sumiu' } }, CIDADES, CIRCULOS).tipo, 'base');
+  // marcar uma cidade troca o círculo pelas cidades
+  assert.strictEqual(R.montarAlvo(R.alternarCidade(cfg, 'cidadea'), CIDADES, CIRCULOS).tipo, 'cidades');
+  // círculo que sumiu da Loggi: nada escolhido
+  assert.strictEqual(R.montarAlvo({ escolha: { tipo: 'circulo', id: 'sumiu' } }, CIDADES, CIRCULOS).tipo, 'nada');
 });
 
-test('sem lista não confere; pendentes do Continuar só os de fora ainda na tela; sugestões', () => {
-  assert.deepStrictEqual(R.conferirBipe('Cidade A', R.montarAlvo(R.cfgVazia(), [], [])), { ok: null });
+test('pendentes do Continuar só os de fora ainda na tela; sugestões; busca; botão Agrupar', () => {
   const alvo = R.montarAlvo({ escolha: { tipo: 'circulo', id: 'c1' } }, CIDADES, CIRCULOS);
   const bipes = new Map([['TESTE001', 'Cidade B'], ['TESTE002', 'Cidade A'], ['TESTE003', 'Longe'], ['TESTE004', 'Cidade A']]);
   const tela = 'Pacotes do grupo TESTE001 TESTE002 TESTE003'; // TESTE004 foi tirado na lixeira
   assert.deepStrictEqual(R.pendentes(bipes, tela, alvo), [{ codigo: 'TESTE002', cidade: 'Cidade A' }, { codigo: 'TESTE003', cidade: 'Longe' }]);
   assert.deepStrictEqual(R.sugestoes(bipes, alvo), ['Cidade A', 'Longe']);
   assert.deepStrictEqual(R.filtrar(alvo.cidades, 'herval').map((c) => c.nome), ['Herval Doeste']);
+  assert.deepStrictEqual(R.filtrar(CIRCULOS, 'teste').map((c) => c.id), ['c1']);
+  for (const t of ['Agrupar', ' agrupar ', 'Agrupar pacotes', 'AGRUPAR']) assert.ok(R.ehAgrupar(t), t);
+  for (const t of ['Agrupamento', 'Desagrupar', 'Agrupar e sair', '']) assert.ok(!R.ehAgrupar(t), t);
 });
 
 test('loggi.js: lê o bipe, a base, as cidades e os círculos; monta as chamadas', () => {

@@ -7,22 +7,26 @@ Nao depende de nenhum sistema: cidades e circulos vem da
 propria Loggi, com a sessao de quem esta logado no Arco.
 
 COMO FUNCIONA
-  - Botao XM no canto do Arco abre o painel.
-  - "Conferir contra": Base toda (cidades atendidas) ou um
-    circulo da Loggi (as cidades daquele circulo).
+  - Ao clicar em "Agrupar" (em qualquer tela do Arco) abre a
+    janela "O que voce vai agrupar?": escolha UM circulo da
+    Loggi ou marque as cidades. Comeca sem nada escolhido;
+    "Limpar" volta a isso. O botao XM no canto reabre a janela;
+    ao lado dele fica o que esta valendo e a contagem.
   - Cada bipe de cidade de fora: tarja vermelha + som.
   - "Continuar" com pacote de fora ainda no grupo: o clique e
     barrado e aparece quais pacotes tirar.
+  - Tudo no tema da Loggi.
 
 CIDADES
-  - Base toda: a lista de cidades que a Loggi mostra no filtro
-    Cidades do Na base (e na "Regiao de atuacao" do Criar
-    circulo), em ordem de pacotes. Todas comecam ligadas;
-    desligue a que a base nao atende.
+  - Lista de cidades: a que a Loggi mostra no filtro Cidades
+    do Na base (e na "Regiao de atuacao" do Criar circulo), em
+    ordem de pacotes.
   - "Adicionar cidade": para micro cidade ou distrito que a
-    Loggi nao lista. Vale para o que esta escolhido (base ou
-    o circulo). As cidades bipadas de fora aparecem como
-    atalho (+ Cidade).
+    Loggi nao lista. Com um circulo escolhido entra nele; senao
+    entra na lista e ja fica marcada. As cidades bipadas de fora
+    aparecem como atalho (+ Cidade).
+  - Acentuacao quebrada da Loggi ("CaÃ§ador") e consertada antes
+    de conferir.
   - "Atualizar da Loggi" busca de novo (sozinho a cada 6 h).
   - A configuracao fica neste navegador, uma por base (CCR...).
 

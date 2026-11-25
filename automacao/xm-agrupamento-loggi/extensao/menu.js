@@ -1,8 +1,10 @@
-// Painel, tarja e trava do "Continuar" no Arco da Loggi (XM - Agrupamento Loggi).
+// Tela da XM - Agrupamento Loggi no Arco, no tema da Loggi.
 //
-// O painel escolhe contra o que conferir (base toda ou um circulo da Loggi) e mostra as cidades,
-// com liga/desliga e "Adicionar cidade". Cada bipe de fora: tarja vermelha + som. No "Continuar"
-// com pacote de fora ainda na lista, o clique nao chega a Loggi e um cartao diz quais tirar.
+// Ao clicar em "Agrupar" (em qualquer tela do Arco; todas levam a mesma tela de agrupar) abre a
+// janela de escolha: UM circulo da Loggi ou as cidades marcadas (comeca vazio; "Limpar" desfaz).
+// O botao XM no canto reabre a janela; ao lado dele, o que esta valendo e a contagem.
+// Cada bipe de fora: tarja vermelha + som. No "Continuar" com pacote de fora ainda na lista, o
+// clique nao chega a Loggi e um cartao diz quais tirar.
 // A configuracao fica no chrome.storage.local, uma por base (ex.: "base:CCR").
 
 (() => {
@@ -10,13 +12,14 @@
   const MARGEM = 8;
   const VALIDADE_MS = 6 * 60 * 60 * 1000; // lista da Loggi guardada vale 6 h; depois busca de novo
   const TARJA_MS = 2500;
+  const PEDIDO_MS = 20000; // "Agrupar" que recarregou a pagina: a janela abre se a tela nova vier em ate 20 s
 
   function limitar(valor, maximo) {
     return Math.min(Math.max(MARGEM, valor), Math.max(MARGEM, maximo));
   }
 
   if (typeof module !== 'undefined') {
-    module.exports = { limitar, VALIDADE_MS };
+    module.exports = { limitar, VALIDADE_MS, PEDIDO_MS };
     return;
   }
 
@@ -28,67 +31,87 @@
     <style>
       :host { all: initial; }
       * { box-sizing: border-box; }
-      .menu { position: fixed; z-index: 2147483646; font: 13px/1.4 system-ui, sans-serif; color: #e8eaed; }
-      .botao { display: flex; align-items: center; justify-content: center; width: 56px; height: 56px;
-        background: #fff; border: 1px solid #c9ced6; border-radius: 28px; box-shadow: 0 4px 14px rgba(0,0,0,.35);
-        cursor: grab; touch-action: none; padding: 0; }
-      .botao:hover { border-color: #30475a; }
+      [hidden] { display: none !important; }
+      .raiz { --azul: #12a5e8; --texto: #2e2e2e; --forte: #1f1f1f; --suave: #6b6b6b;
+        --linha: #e6e6e6; --campo: #cfd6dd; --claro: #f7f9fa; --verde: #13a14b; --vermelho: #e5484d;
+        font: 14px/1.45 'Open Sans', system-ui, sans-serif; color: var(--texto); }
+      button { font: inherit; cursor: pointer; }
+      .link { padding: 0; color: var(--azul); background: none; border: 0; font-weight: 600; white-space: nowrap; }
+      .link:hover { text-decoration: underline; }
+      .pilula { padding: 7px 20px; color: var(--azul); background: #fff; border: 1px solid var(--azul); border-radius: 999px; font-weight: 600; }
+      .pilula:hover { background: rgba(18, 165, 232, .06); }
+      .pilula.ativa { color: #fff; background: var(--azul); }
+      .cheia { padding: 9px 28px; color: #fff; background: var(--azul); border: 1px solid var(--azul); border-radius: 999px; font-weight: 700; }
+      .cheia:hover { background: #0e93d0; }
+
+      /* canto: botao XM + o que esta valendo */
+      .canto { position: fixed; z-index: 2147483646; display: flex; align-items: center; gap: 10px; }
+      .botao { width: 56px; height: 56px; padding: 0; display: flex; align-items: center; justify-content: center; flex: none;
+        background: #fff; border: 1px solid #c9ced6; border-radius: 28px; box-shadow: 0 4px 14px rgba(0, 40, 90, .25); cursor: grab; touch-action: none; }
+      .botao:hover { border-color: var(--azul); }
       .botao img { width: 36px; pointer-events: none; }
-      .aberto .botao { display: none; }
-      .painel { display: none; width: 380px; height: min(640px, calc(100vh - 16px)); flex-direction: column;
-        background: #080c13; border: 1px solid #1c2533; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
-      .aberto .painel { display: flex; }
-      .cabecalho { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;
-        font-weight: 700; color: #fff; border-bottom: 1px solid rgba(255,255,255,.06); cursor: grab; touch-action: none; user-select: none; }
-      .marca { display: flex; align-items: center; gap: 8px; }
-      .marca img { width: 28px; pointer-events: none; }
-      button.link { padding: 0; color: #6ea8fe; background: none; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
-      button.link:hover { text-decoration: underline; }
-      .cabecalho button.link { color: #fff; }
-      .corpo { flex: 1; overflow: auto; padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 14px; }
-      .aviso { color: #9aa4b2; font-size: 12px; min-height: 16px; }
-      .aviso.erro { color: #f87171; }
-      .rotulo { color: #9aa4b2; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
-      .escolhas { display: flex; flex-direction: column; gap: 4px; }
-      .escolha { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px;
-        border: 1px solid #1c2533; border-radius: 8px; cursor: pointer; background: #0d131d; color: #e8eaed; font: inherit; text-align: left; width: 100%; }
-      .escolha:hover { border-color: #2c3a4f; }
-      .escolha.atual { border-color: #3a86ff; }
-      .escolha small { color: #9aa4b2; white-space: nowrap; }
-      .placar { display: flex; gap: 18px; font-size: 14px; }
-      .placar b { font-size: 20px; }
-      .certos b { color: #22c55e; }
-      .errados b { color: #ef4444; }
-      .topo-secao { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-      .topo-secao .link { white-space: nowrap; }
-      input[type="text"] { width: 100%; padding: 8px 10px; color: #e8eaed; background: #0d131d; border: 1px solid #1c2533;
-        border-radius: 8px; font: inherit; outline: none; }
-      input[type="text"]:focus { border-color: #3a86ff; }
-      .cidades { list-style: none; margin: 6px 0 0; padding: 0; border: 1px solid #1c2533; border-radius: 8px; max-height: 240px; overflow: auto; }
-      .cidades li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #121a26; }
-      .cidades li:last-child { border-bottom: 0; }
-      .cidades li.desligada .nome { color: #5d6776; text-decoration: line-through; }
-      .cidades .info { display: flex; flex-direction: column; }
-      .cidades small { color: #6b7685; font-size: 11px; }
-      .vazio { padding: 10px; color: #6b7685; }
-      .chave { position: relative; width: 34px; height: 18px; flex: none; }
-      .chave input { opacity: 0; width: 0; height: 0; }
-      .chave span { position: absolute; inset: 0; background: #2a3443; border-radius: 9px; cursor: pointer; transition: background .15s; }
-      .chave span::after { content: ''; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: transform .15s; }
-      .chave input:checked + span { background: #3a86ff; }
-      .chave input:checked + span::after { transform: translateX(16px); }
-      .adicionar { display: flex; gap: 8px; margin-top: 6px; }
-      .adicionar button { flex: none; padding: 0 12px; color: #fff; background: #3a86ff; border: 0; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
-      .sugestoes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-      .sugestoes button { padding: 4px 10px; color: #e8eaed; background: #0d131d; border: 1px solid #2c3a4f; border-radius: 14px; font: inherit; font-size: 12px; cursor: pointer; }
-      .sugestoes button:hover { border-color: #3a86ff; }
+      .resumo { display: flex; align-items: center; gap: 12px; max-width: 360px; padding: 8px 16px; background: #fff; border: 1px solid var(--azul);
+        border-radius: 999px; box-shadow: 0 4px 14px rgba(0, 40, 90, .18); color: var(--texto); }
+      .resumo .qual { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+      .resumo .nada { color: #b45309; }
+      .resumo .ok, .resumo .fora { white-space: nowrap; }
+      .resumo .ok b { color: var(--verde); }
+      .resumo .fora b { color: var(--vermelho); }
+
+      /* janela de escolha */
+      .fundo-janela { display: none; position: fixed; inset: 0; z-index: 2147483646; background: rgba(15, 30, 50, .45);
+        align-items: center; justify-content: center; }
+      .fundo-janela.ver { display: flex; }
+      .fundo-janela.ver ~ .canto { display: none; } /* janela aberta: o resumo do canto nao fica por cima */
+      .janela { width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 48px); display: flex; flex-direction: column;
+        background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 18px 50px rgba(0, 40, 90, .35); }
+      .topo { display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; color: #fff;
+        background: linear-gradient(90deg, #00baff, #006aff); }
+      .topo .marca { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; }
+      .topo img { width: 30px; }
+      .topo .fechar { padding: 0; color: #fff; background: none; border: 0; font-size: 28px; line-height: 1; }
+      .miolo { flex: 1; overflow: auto; padding: 18px 22px 8px; display: flex; flex-direction: column; gap: 14px; }
+      .alvo { padding: 12px 16px; border: 1px solid var(--linha); border-radius: 4px; }
+      .alvo .rotulo { display: block; font-size: 12px; font-weight: 600; color: var(--verde); }
+      .alvo strong { display: block; font-size: 16px; font-weight: 600; color: var(--forte); }
+      .alvo small { display: block; color: var(--suave); margin-top: 2px; }
+      .alvo.vazio .rotulo { color: #b45309; }
+      .linha-modo { display: flex; align-items: center; gap: 10px; }
+      .linha-modo .link { margin-left: auto; }
+      .busca { position: relative; }
+      .busca svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; fill: none; stroke: var(--suave); stroke-width: 1.8; }
+      input[type="text"] { width: 100%; padding: 10px 12px; color: var(--texto); background: #fff; border: 1px solid var(--campo); border-radius: 4px; font: inherit; outline: none; }
+      .busca input { padding-left: 36px; }
+      input[type="text"]:focus { border-color: var(--azul); }
+      .cab-lista { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+      .cab-lista h3 { margin: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--suave); }
+      .lista { max-height: 36vh; overflow: auto; border: 1px solid var(--linha); border-radius: 4px; }
+      .item { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; column-gap: 12px; padding: 10px 14px;
+        border-bottom: 1px solid var(--linha); cursor: pointer; }
+      .item:last-child { border-bottom: 0; }
+      .item:hover { background: var(--claro); }
+      .item input { margin: 0; width: 16px; height: 16px; accent-color: var(--azul); cursor: pointer; }
+      .item .nome { min-width: 0; color: var(--forte); }
+      .item .nome small { display: block; color: var(--suave); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .item .conta { color: var(--suave); font-size: 12px; white-space: nowrap; }
+      .vazia { padding: 12px 14px; color: var(--suave); }
+      .adicionar { display: flex; gap: 10px; }
+      .adicionar .pilula { flex: none; }
+      .sugestoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+      .sugestoes:empty { display: none; }
+      .sugestoes button { padding: 4px 12px; color: var(--azul); background: #fff; border: 1px dashed var(--azul); border-radius: 999px; font-size: 13px; }
+      .rodape { display: flex; align-items: center; gap: 16px; padding: 14px 22px 18px; border-top: 1px solid var(--linha); }
+      .aviso { flex: 1; color: var(--suave); font-size: 13px; }
+      .aviso.erro { color: var(--vermelho); }
+
+      /* alerta e trava (vermelho, igual em qualquer tema) */
       .tarja { display: flex; position: fixed; top: 0; left: 0; right: 0; z-index: 2147483647; padding: 18px 24px;
         background: #dc2626; color: #fff; font: 600 18px system-ui, sans-serif; box-shadow: 0 6px 20px rgba(0,0,0,.4);
         align-items: center; justify-content: space-between; gap: 16px; opacity: 0; visibility: hidden; pointer-events: none;
         transition: opacity .5s ease, visibility 0s linear .5s; }
       .tarja.ver { opacity: 1; visibility: visible; pointer-events: auto; transition: none; }
       .tarja strong { display: block; font-size: 26px; letter-spacing: .5px; }
-      .tarja button { padding: 0; color: #fff; background: none; border: 0; font: inherit; text-decoration: underline; cursor: pointer; }
+      .tarja button { padding: 0; color: #fff; background: none; border: 0; text-decoration: underline; }
       .fundo { display: none; position: fixed; inset: 0; z-index: 2147483647; background: rgba(0,0,0,.55);
         align-items: center; justify-content: center; font: 15px system-ui, sans-serif; }
       .fundo.ver { display: flex; }
@@ -100,75 +123,86 @@
       .card li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.2); font-weight: 700; }
       .card li:last-child { border-bottom: 0; }
       .card li span:first-child { font-family: ui-monospace, Consolas, monospace; }
-      .card button { padding: 0; background: none; border: 0; color: #fff; text-decoration: underline; font: 700 16px system-ui, sans-serif; cursor: pointer; }
+      .card button { padding: 0; background: none; border: 0; color: #fff; text-decoration: underline; font: 700 16px system-ui, sans-serif; }
     </style>
-    <div class="fundo" role="alertdialog" aria-modal="true">
-      <div class="card">
-        <h2>Pacotes de fora neste grupo</h2>
-        <p class="explica"></p>
-        <ul></ul>
-        <button type="button">Entendi, vou tirar</button>
-      </div>
-    </div>
-    <div class="tarja" role="alert">
-      <div><strong>GRUPO ERRADO</strong><span class="texto"></span></div>
-      <button type="button">Fechar</button>
-    </div>
-    <div class="menu">
-      <button class="botao" type="button" title="${NOME}"><img alt="XM" src="${chrome.runtime.getURL('img/logo.png')}"></button>
-      <div class="painel">
-        <div class="cabecalho">
-          <span class="marca"><img alt="XM" src="${chrome.runtime.getURL('img/logo-claro.png')}">Agrupamento</span>
-          <button type="button" class="link minimizar">Minimizar</button>
+    <div class="raiz">
+      <div class="fundo" role="alertdialog" aria-modal="true">
+        <div class="card">
+          <h2>Pacotes de fora neste grupo</h2>
+          <p class="explica"></p>
+          <ul></ul>
+          <button type="button">Entendi, vou tirar</button>
         </div>
-        <div class="corpo">
-          <div class="aviso"></div>
-          <div>
-            <div class="rotulo">Conferir contra</div>
-            <div class="escolhas"></div>
+      </div>
+      <div class="tarja" role="alert">
+        <div><strong>GRUPO ERRADO</strong><span class="texto"></span></div>
+        <button type="button">Fechar</button>
+      </div>
+
+      <div class="fundo-janela" role="dialog" aria-modal="true" aria-label="Escolha do agrupamento">
+        <div class="janela">
+          <div class="topo">
+            <span class="marca"><img alt="XM" src="${chrome.runtime.getURL('img/logo-claro.png')}">O que você vai agrupar?</span>
+            <button type="button" class="fechar" title="Fechar (Esc)" aria-label="Fechar">×</button>
           </div>
-          <div class="placar">
-            <span class="certos"><b>0</b> certos</span>
-            <span class="errados"><b>0</b> de fora</span>
-          </div>
-          <div>
-            <div class="topo-secao">
-              <div class="rotulo titulo-cidades">Cidades</div>
+          <div class="miolo">
+            <div class="alvo"></div>
+            <div class="linha-modo">
+              <button type="button" class="pilula" data-modo="circulos">Círculo</button>
+              <button type="button" class="pilula" data-modo="cidades">Cidades</button>
               <button type="button" class="link atualizar">Atualizar da Loggi</button>
             </div>
-            <input type="text" class="filtro" placeholder="Buscar cidade" autocomplete="off">
-            <ul class="cidades"></ul>
+            <div class="busca">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+              <input type="text" class="filtro" autocomplete="off">
+            </div>
+            <div>
+              <div class="cab-lista"><h3 class="titulo-lista"></h3><button type="button" class="link limpar">Limpar</button></div>
+              <div class="lista"></div>
+            </div>
+            <div class="bloco-adicionar">
+              <div class="cab-lista"><h3 class="titulo-adicionar">Adicionar cidade</h3></div>
+              <form class="adicionar">
+                <input type="text" class="nova" placeholder="Cidade que não está na lista (ex.: micro cidade)" autocomplete="off">
+                <button type="submit" class="pilula">Adicionar</button>
+              </form>
+              <div class="sugestoes"></div>
+            </div>
           </div>
-          <div>
-            <div class="rotulo titulo-adicionar">Adicionar cidade</div>
-            <div class="sugestoes"></div>
-            <form class="adicionar">
-              <input type="text" class="nova" placeholder="Nome da cidade (ex.: micro cidade)" autocomplete="off">
-              <button type="submit">Adicionar</button>
-            </form>
+          <div class="rodape">
+            <span class="aviso"></span>
+            <button type="button" class="cheia pronto">Pronto</button>
           </div>
         </div>
+      </div>
+
+      <div class="canto">
+        <button type="button" class="resumo" hidden></button>
+        <button class="botao" type="button" title="${NOME}: escolher círculo ou cidades"><img alt="XM" src="${chrome.runtime.getURL('img/logo.png')}"></button>
       </div>
     </div>`;
 
   const $ = (s) => sombra.querySelector(s);
-  const menu = $('.menu');
+  const canto = $('.canto');
   const botao = $('.botao');
-  const cabecalho = $('.cabecalho');
+  const resumo = $('.resumo');
+  const janela = $('.fundo-janela');
   const tarja = $('.tarja');
   const fundo = $('.fundo');
   const numero = (n) => Number(n || 0).toLocaleString('pt-BR');
+  const el = (tag, classe, texto) => { const e = document.createElement(tag); if (classe) e.className = classe; if (texto != null) e.textContent = texto; return e; };
 
   // ── estado ────────────────────────────────────────────────────────────────
   let codigoBase = (location.pathname.split('/').filter(Boolean)[0] || '').toUpperCase();
   let cfg = R.cfgVazia();
   let cidadesLoggi = [];
   let circulos = [];
-  let alvo = null;
+  let alvo = R.montarAlvo(cfg, [], []);
+  let modo = 'circulos';
   const bipes = new Map(); // codigo -> cidade, desde que a pagina abriu
   let certos = 0;
   let deFora = 0;
-  let posicao = { direita: 20, baixo: 90 }; // acima do botão de outras extensões XM, que fica no canto
+  let posicao = { direita: 20, baixo: 90 }; // acima do botao de outras extensoes XM, que fica no canto
 
   const chaveDaBase = () => `base:${codigoBase || 'sem-base'}`;
   async function guardar() {
@@ -180,94 +214,147 @@
     $('.aviso').classList.toggle('erro', !!erro);
   }
 
+  function mudar(novo) {
+    cfg = novo;
+    guardar();
+    desenhar();
+  }
+
   // ── desenhar ──────────────────────────────────────────────────────────────
-  function desenhar() {
-    alvo = R.montarAlvo(cfg, cidadesLoggi, circulos);
-    const ligadas = R.listaDaBase(cidadesLoggi, cfg).filter((c) => c.ligada).length;
-    const opcoes = [{ id: '', nome: 'Base toda', qtd: ligadas }, ...circulos.map((c) => ({ id: c.id, nome: c.nome, qtd: R.listaDoCirculo(c, cidadesLoggi, cfg).length }))];
-    $('.escolhas').replaceChildren(...opcoes.map((o) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = `escolha${(o.id ? alvo.tipo === 'circulo' && alvo.id === o.id : alvo.tipo === 'base') ? ' atual' : ''}`;
-      const nome = document.createElement('span');
-      nome.textContent = o.id ? o.nome : 'Base toda';
-      const qtd = document.createElement('small');
-      qtd.textContent = `${numero(o.qtd)} cidade(s)`;
-      b.append(nome, qtd);
-      b.addEventListener('click', () => {
-        cfg = { ...cfg, escolha: o.id ? { tipo: 'circulo', id: o.id } : { tipo: 'base' } };
-        guardar();
-        desenhar();
-      });
-      return b;
-    }));
-
-    $('.titulo-cidades').textContent = alvo.tipo === 'circulo' ? `Cidades do círculo ${alvo.nome}` : 'Cidades da base';
-    $('.titulo-adicionar').textContent = alvo.tipo === 'circulo' ? `Adicionar cidade neste círculo` : 'Adicionar cidade na base';
-    const lista = R.filtrar(alvo.cidades, $('.filtro').value);
-    const ul = $('.cidades');
-    if (!lista.length) {
-      const li = document.createElement('li');
-      li.className = 'vazio';
-      li.textContent = alvo.cidades.length ? 'Nenhuma cidade com esse nome.' : 'Nenhuma cidade ainda. Clique em "Atualizar da Loggi".';
-      ul.replaceChildren(li);
-    } else {
-      ul.replaceChildren(...lista.map((c) => {
-        const li = document.createElement('li');
-        if (!c.ligada) li.className = 'desligada';
-        const info = document.createElement('span');
-        info.className = 'info';
-        const nome = document.createElement('span');
-        nome.className = 'nome';
-        nome.textContent = c.nome;
-        const det = document.createElement('small');
-        det.textContent = c.origem === 'adicionada' ? 'adicionada por você' : c.pacotes ? `${numero(c.pacotes)} pacotes na Loggi` : 'da Loggi';
-        info.append(nome, det);
-        li.append(info);
-        if (c.origem === 'adicionada') {
-          const tirar = document.createElement('button');
-          tirar.type = 'button';
-          tirar.className = 'link';
-          tirar.textContent = 'Tirar';
-          tirar.addEventListener('click', () => { cfg = R.tirarAdicionada(cfg, c.chave, cidadesLoggi, circulos); guardar(); desenhar(); });
-          li.append(tirar);
-        } else if (alvo.tipo === 'base') {
-          const chaveEl = document.createElement('label');
-          chaveEl.className = 'chave';
-          chaveEl.title = c.ligada ? 'Atendida pela base (desligue se não atende)' : 'Desligada: bipe dela dá alerta';
-          const caixa = document.createElement('input');
-          caixa.type = 'checkbox';
-          caixa.checked = c.ligada;
-          caixa.addEventListener('change', () => { cfg = R.alternarCidade(cfg, c.chave); guardar(); desenhar(); });
-          chaveEl.append(caixa, document.createElement('span'));
-          li.append(chaveEl);
-        }
-        return li;
-      }));
+  function desenharAlvo() {
+    const caixa = $('.alvo');
+    caixa.classList.toggle('vazio', alvo.tipo === 'nada');
+    caixa.replaceChildren();
+    if (alvo.tipo === 'nada') {
+      caixa.append(el('span', 'rotulo', 'Nada escolhido'), el('strong', '', 'Os bipes não estão sendo conferidos'),
+        el('small', '', 'Escolha um círculo ou marque as cidades deste agrupamento.'));
+      return;
     }
+    caixa.append(el('span', 'rotulo', 'Conferindo'), el('strong', '', alvo.rotulo),
+      el('small', '', `${numero(alvo.cidades.length)} cidade(s): ${alvo.cidades.slice(0, 8).map((c) => c.nome).join(', ')}${alvo.cidades.length > 8 ? '...' : ''}`));
+  }
 
-    const sug = R.sugestoes(bipes, alvo);
-    $('.sugestoes').replaceChildren(...sug.map((cidade) => {
-      const b = document.createElement('button');
+  function itemLista({ marcado, nome, detalhe, conta, aoClicar, tirar }) {
+    const linha = el('label', 'item');
+    const caixa = el('input');
+    caixa.type = 'checkbox';
+    caixa.checked = marcado;
+    caixa.addEventListener('change', aoClicar);
+    const n = el('span', 'nome', nome);
+    if (detalhe) n.append(el('small', '', detalhe));
+    linha.append(caixa, n);
+    if (tirar) {
+      const b = el('button', 'link', 'Tirar');
+      b.type = 'button';
+      b.addEventListener('click', (e) => { e.preventDefault(); tirar(); });
+      linha.append(b);
+    } else linha.append(el('span', 'conta', conta || ''));
+    return linha;
+  }
+
+  function desenharLista() {
+    const busca = $('.filtro').value;
+    const lista = $('.lista');
+    sombra.querySelectorAll('[data-modo]').forEach((b) => b.classList.toggle('ativa', b.dataset.modo === modo));
+    $('.filtro').placeholder = modo === 'circulos' ? 'Pesquisar círculo' : 'Pesquisar cidade';
+    let itens;
+    if (modo === 'circulos') {
+      $('.titulo-lista').textContent = 'Escolha um círculo';
+      itens = R.filtrar(circulos, busca).map((c) => {
+        const cidades = R.listaDoCirculo(c, cidadesLoggi, cfg);
+        return itemLista({
+          marcado: alvo.tipo === 'circulo' && alvo.id === c.id,
+          nome: c.nome,
+          detalhe: cidades.map((x) => x.nome).join(', '),
+          conta: `${numero(cidades.length)} cidade(s)`,
+          aoClicar: () => mudar(R.escolherCirculo(cfg, c.id)),
+        });
+      });
+      if (!circulos.length) itens = [el('div', 'vazia', 'A Loggi não trouxe círculos desta base. Use "Cidades" ou clique em "Atualizar da Loggi".')];
+    } else {
+      $('.titulo-lista').textContent = 'Marque as cidades';
+      const marcadas = new Set(alvo.tipo === 'cidades' ? alvo.chaves : []);
+      itens = R.filtrar(R.listaDaBase(cidadesLoggi, cfg), busca).map((c) => itemLista({
+        marcado: marcadas.has(c.chave),
+        nome: c.nome,
+        detalhe: c.origem === 'adicionada' ? 'adicionada por você' : '',
+        conta: c.pacotes ? `${numero(c.pacotes)} pacotes` : '',
+        aoClicar: () => mudar(R.alternarCidade(cfg, c.chave)),
+        tirar: c.origem === 'adicionada' ? () => mudar(R.tirarAdicionada(cfg, c.chave, cidadesLoggi, circulos)) : null,
+      }));
+      if (!cidadesLoggi.length && !itens.length) itens = [el('div', 'vazia', 'Nenhuma cidade ainda. Clique em "Atualizar da Loggi".')];
+    }
+    if (!itens.length) itens = [el('div', 'vazia', 'Nada com esse nome.')];
+    lista.replaceChildren(...itens);
+
+    // Adicionar: no circulo escolhido, ou na lista de cidades (ja marcada).
+    const noCirculo = alvo.tipo === 'circulo';
+    $('.bloco-adicionar').hidden = modo === 'circulos' && !noCirculo;
+    $('.titulo-adicionar').textContent = noCirculo ? `Adicionar cidade no círculo ${alvo.nome}` : 'Adicionar cidade';
+    $('.sugestoes').replaceChildren(...R.sugestoes(bipes, alvo).map((cidade) => {
+      const b = el('button', '', `+ ${cidade}`);
       b.type = 'button';
       b.title = 'Bipada aqui e de fora. Clique para adicionar.';
-      b.textContent = `+ ${cidade}`;
       b.addEventListener('click', () => adicionar(cidade));
       return b;
     }));
-    $('.certos b').textContent = numero(certos);
-    $('.errados b').textContent = numero(deFora);
+  }
+
+  function desenharResumo() {
+    resumo.hidden = false;
+    resumo.replaceChildren();
+    if (alvo.tipo === 'nada') {
+      resumo.append(el('span', 'qual nada', 'Escolher círculo ou cidades'));
+    } else {
+      resumo.append(el('span', 'qual', alvo.rotulo));
+      const ok = el('span', 'ok');
+      ok.append(el('b', '', numero(certos)), ' certos');
+      const fora = el('span', 'fora');
+      fora.append(el('b', '', numero(deFora)), ' de fora');
+      resumo.append(ok, fora);
+    }
+    aplicarPosicao();
+  }
+
+  function desenhar() {
+    alvo = R.montarAlvo(cfg, cidadesLoggi, circulos);
+    desenharAlvo();
+    desenharLista();
+    desenharResumo();
   }
 
   function adicionar(nome) {
     const r = R.adicionarCidade(cfg, nome, cidadesLoggi, circulos);
     if (r.erro) return aviso(r.erro, true);
-    cfg = r.cfg;
     $('.nova').value = '';
     aviso(`${String(nome).trim()} adicionada.`);
-    guardar();
-    desenhar();
+    if (r.cfg.escolha && r.cfg.escolha.tipo === 'cidades') modo = 'cidades';
+    mudar(r.cfg);
   }
+
+  // ── janela ────────────────────────────────────────────────────────────────
+  function abrirJanela() {
+    if (!chrome.runtime || !chrome.runtime.id) {
+      window.alert(`A extensão ${NOME} foi atualizada. Aperte F5 nesta página.`);
+      return;
+    }
+    chrome.storage.local.remove('pedirEscolha');
+    modo = alvo.tipo === 'cidades' || !circulos.length ? 'cidades' : 'circulos';
+    $('.filtro').value = '';
+    desenhar();
+    janela.classList.add('ver');
+    setTimeout(() => $('.filtro').focus(), 50);
+  }
+  const fecharJanela = () => janela.classList.remove('ver');
+
+  // "Agrupar" em qualquer tela do Arco: a janela abre (o clique segue para a Loggi normalmente).
+  // Ja bipando nesta tela, nao abre de novo.
+  window.addEventListener('click', (e) => {
+    const b = e.target && e.target.closest && e.target.closest('button, a, [role="button"]');
+    if (!b || e.composedPath().includes(hospedeiro) || !R.ehAgrupar(b.textContent) || bipes.size) return;
+    chrome.storage.local.set({ pedirEscolha: Date.now() }); // se a pagina recarregar, abre na nova
+    setTimeout(abrirJanela, 400);
+  }, true);
 
   // ── buscar na Loggi (pelo loggi.js, com a sessao da propria pagina) ─────────
   function pedirALoggi(tipo) {
@@ -289,14 +376,15 @@
   async function atualizarDaLoggi() {
     if (buscando) return;
     buscando = true;
-    aviso('Buscando as cidades e os círculos na Loggi...');
+    aviso('Buscando os círculos e as cidades na Loggi...');
     try {
       const c = await pedirALoggi('cidades');
       if (c.base && c.base.codigo && c.base.codigo !== codigoBase) { codigoBase = c.base.codigo; await carregarCfg(false); }
       cidadesLoggi = c.cidades;
-      try { circulos = (await pedirALoggi('circulos')).circulos; } catch (e) { aviso(`Cidades ok, mas os círculos não vieram: ${e.message}`, true); }
+      let erro = '';
+      try { circulos = (await pedirALoggi('circulos')).circulos; } catch (e) { erro = `As cidades vieram, mas os círculos não: ${e.message}`; }
       await guardar();
-      if (!$('.aviso').classList.contains('erro')) aviso(`Base ${codigoBase}: ${numero(cidadesLoggi.length)} cidades e ${numero(circulos.length)} círculo(s) da Loggi.`);
+      aviso(erro || `Base ${codigoBase}: ${numero(circulos.length)} círculo(s) e ${numero(cidadesLoggi.length)} cidades da Loggi.`, !!erro);
     } catch (e) {
       aviso(cidadesLoggi.length ? `Usando a lista guardada. ${e.message}` : e.message, true);
     } finally {
@@ -363,16 +451,13 @@
 
   // ── trava do "Continuar" ──────────────────────────────────────────────────
   function mostrarPendentes(errados) {
+    const onde = alvo.fora.replace(/^não é de/, 'fora de');
     fundo.querySelector('.explica').textContent = errados.length === 1
-      ? `Este pacote está ${alvo.fora}. Tire ele do grupo para continuar.`
-      : `Estes ${errados.length} pacotes estão ${alvo.fora}. Tire eles do grupo para continuar.`;
+      ? `Este pacote está ${onde}. Tire ele do grupo para continuar.`
+      : `Estes ${errados.length} pacotes estão ${onde}. Tire eles do grupo para continuar.`;
     fundo.querySelector('ul').replaceChildren(...errados.map((x) => {
-      const li = document.createElement('li');
-      const cod = document.createElement('span');
-      cod.textContent = x.codigo;
-      const cid = document.createElement('span');
-      cid.textContent = x.cidade;
-      li.append(cod, cid);
+      const li = el('li');
+      li.append(el('span', '', x.codigo), el('span', '', x.cidade));
       return li;
     }));
     fundo.classList.add('ver');
@@ -390,39 +475,25 @@
     mostrarPendentes(errados);
   }, true);
   fundo.querySelector('button').addEventListener('click', () => fundo.classList.remove('ver'));
-  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && fundo.classList.contains('ver')) fundo.classList.remove('ver'); }, true);
   tarja.querySelector('button').addEventListener('click', () => tarja.classList.remove('ver'));
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (fundo.classList.contains('ver')) fundo.classList.remove('ver'); else if (janela.classList.contains('ver')) fecharJanela();
+  }, true);
 
-  // ── painel: abrir, minimizar, arrastar ────────────────────────────────────
+  // ── canto: posicao e arrastar ─────────────────────────────────────────────
   function aplicarPosicao() {
-    const r = menu.getBoundingClientRect();
+    const r = canto.getBoundingClientRect();
     posicao.direita = limitar(posicao.direita, window.innerWidth - r.width - MARGEM);
     posicao.baixo = limitar(posicao.baixo, window.innerHeight - r.height - MARGEM);
-    menu.style.right = `${posicao.direita}px`;
-    menu.style.bottom = `${posicao.baixo}px`;
-  }
-
-  function abrir() {
-    if (!chrome.runtime || !chrome.runtime.id) {
-      window.alert(`A extensão ${NOME} foi atualizada. Aperte F5 nesta página.`);
-      return;
-    }
-    menu.classList.add('aberto');
-    aplicarPosicao();
-    chrome.storage.local.set({ aberto: true });
-  }
-
-  function minimizar() {
-    menu.classList.remove('aberto');
-    aplicarPosicao();
-    chrome.storage.local.set({ aberto: false });
+    canto.style.right = `${posicao.direita}px`;
+    canto.style.bottom = `${posicao.baixo}px`;
   }
 
   function arrastar(elemento, aoClicar) {
     let inicio = null;
     let moveu = false;
     elemento.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('button') && e.target !== botao) return;
       inicio = { x: e.clientX, y: e.clientY, direita: posicao.direita, baixo: posicao.baixo };
       moveu = false;
       elemento.setPointerCapture(e.pointerId);
@@ -444,21 +515,25 @@
     });
   }
 
-  arrastar(botao, abrir);
-  arrastar(cabecalho);
-  $('.minimizar').addEventListener('click', minimizar);
+  arrastar(botao, abrirJanela);
+  resumo.addEventListener('click', abrirJanela);
+  $('.fechar').addEventListener('click', fecharJanela);
+  $('.pronto').addEventListener('click', fecharJanela);
+  janela.addEventListener('click', (e) => { if (e.target === janela) fecharJanela(); });
+  sombra.querySelectorAll('[data-modo]').forEach((b) => b.addEventListener('click', () => { modo = b.dataset.modo; $('.filtro').value = ''; desenharLista(); }));
   $('.atualizar').addEventListener('click', atualizarDaLoggi);
-  $('.filtro').addEventListener('input', desenhar);
+  $('.limpar').addEventListener('click', () => { mudar(R.limpar(cfg)); aviso('Escolha limpa: nada está sendo conferido.'); });
+  $('.filtro').addEventListener('input', desenharLista);
   $('.adicionar').addEventListener('submit', (e) => { e.preventDefault(); adicionar($('.nova').value); });
-  // O leitor de codigo digita como teclado: o que se digita no painel nao vai para o Arco.
-  ['keydown', 'keypress', 'keyup'].forEach((t) => hospedeiro.addEventListener(t, (e) => e.stopPropagation()));
+  // O leitor de codigo digita como teclado: o que se digita na janela nao vai para o Arco.
+  ['keydown', 'keypress', 'keyup'].forEach((t) => hospedeiro.addEventListener(t, (e) => { if (e.key !== 'Escape') e.stopPropagation(); }));
   window.addEventListener('resize', aplicarPosicao);
 
   document.documentElement.append(hospedeiro);
-  chrome.storage.local.get(['posicao', 'aberto']).then((s) => {
+  chrome.storage.local.get(['posicao', 'pedirEscolha']).then((s) => {
     if (s.posicao) posicao = s.posicao;
-    if (s.aberto) menu.classList.add('aberto');
     aplicarPosicao();
+    if (s.pedirEscolha && Date.now() - s.pedirEscolha < PEDIDO_MS) setTimeout(abrirJanela, 300);
   });
   carregarCfg();
 })();
