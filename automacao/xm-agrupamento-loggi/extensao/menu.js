@@ -350,7 +350,7 @@
     let algumCerto = false;
     for (const i of e.data.itens) {
       const codigo = String(i.codigo);
-      const cidade = String(i.cidade);
+      const cidade = R.consertarTexto(String(i.cidade)); // "CaÃ§ador" aparece como "Caçador"
       const novo = !bipes.has(codigo);
       bipes.set(codigo, cidade);
       const { ok } = R.conferirBipe(cidade, alvo);

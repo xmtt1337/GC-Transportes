@@ -28,6 +28,36 @@ test('chave iguala o código da Loggi, o nome do bipe e variações', () => {
   assert.strictEqual(R.nomeDoCodigo('CITY_SC_LINDOIA_DO_SUL'), 'Lindoia Do Sul');
 });
 
+test('acentuação quebrada (UTF-8 lido como Latin-1/Windows-1252) volta ao certo', () => {
+  // monta o erro do jeito que ele acontece: bytes UTF-8 lidos como Latin-1, uma e duas vezes
+  const quebrar = (t) => Buffer.from(t, 'utf8').toString('latin1');
+  for (const certo of ['Caçador', 'Joaçaba', 'São José do Cerrito', 'Lindóia do Sul', 'Tangará', 'Iomerê', 'Ibiá']) {
+    assert.strictEqual(R.consertarTexto(quebrar(certo)), certo, certo);
+    assert.strictEqual(R.consertarTexto(quebrar(quebrar(certo))), certo, `${certo} (duas vezes)`);
+    assert.strictEqual(R.chave(quebrar(certo)), R.chave(certo), certo);
+  }
+  // maiúsculas passam por Windows-1252 (Ç = Ã‡, Ã = Ãƒ)
+  assert.strictEqual(R.consertarTexto('JOAÃ‡ABA'), 'JOAÇABA');
+  assert.strictEqual(R.consertarTexto('SÃƒO JOSÃ‰'), 'SÃO JOSÉ');
+  assert.strictEqual(R.chave('CAÃ‡ADOR - SC'), R.chave('CITY_SC_CACADOR'));
+  // texto certo não mexe
+  for (const t of ['São', 'SÃO PAULO', 'Caçador', 'Cidade A', '']) assert.strictEqual(R.consertarTexto(t), t);
+});
+
+test('letra perdida (? ou �), letra repetida e sinal solto ainda acham a cidade', () => {
+  const alvo = R.montarAlvo(R.cfgVazia(), [{ codigo: 'CITY_SC_CACADOR', nome: 'Cacador' }, { codigo: 'CITY_SC_TANGARA', nome: 'Tangara' }], []);
+  assert.deepStrictEqual(R.conferirBipe('Ca?ador', alvo), { ok: true });
+  assert.deepStrictEqual(R.conferirBipe('Ca��ador', alvo), { ok: true });
+  assert.deepStrictEqual(R.conferirBipe('Tangaraa', alvo), { ok: true });
+  assert.deepStrictEqual(R.conferirBipe('Tanga~ra', alvo), { ok: true });
+  assert.deepStrictEqual(R.conferirBipe('Tangará^', alvo), { ok: true });
+  assert.deepStrictEqual(R.conferirBipe('Ou?ra Cidade', alvo), { ok: false }); // curinga não inventa cidade
+  assert.deepStrictEqual(R.conferirBipe('??', alvo), { ok: false });
+  // nome da Loggi quebrado aparece consertado na lista
+  const lista = R.listaDaBase([{ codigo: 'CITY_SC_JOACABA', nome: Buffer.from('Joaçaba', 'utf8').toString('latin1') }], R.cfgVazia());
+  assert.strictEqual(lista[0].nome, 'Joaçaba');
+});
+
 test('base toda: todas as cidades da Loggi ligadas; desligar tira da conta; adicionada entra', () => {
   let cfg = R.cfgVazia();
   let alvo = R.montarAlvo(cfg, CIDADES, CIRCULOS);
