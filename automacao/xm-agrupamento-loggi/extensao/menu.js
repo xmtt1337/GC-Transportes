@@ -97,23 +97,22 @@
       .estado.vazio .ico { color: #ff9800; }
       .estado.ok { background: var(--marcado); color: var(--texto); border: 1px solid var(--borda-marcado); }
       .estado.ok .ico { color: var(--azul); }
-      /* faltam agrupar */
-      .faltam { margin: -8px 0 24px; }
-      .faltam .subtitulo { padding-top: 4px; }
-      .quando { display: inline-flex; gap: 4px; }
-      .quando button { padding: 2px 10px; color: var(--cinza); background: none; border: 1px solid transparent; border-radius: 100px; font-size: .75rem; font-weight: 600; text-transform: none; }
-      .quando button.ativo { color: var(--azul); border-color: var(--azul); background: #fff; }
-      .faltam .resumo-faltam { margin: 0 0 8px; font-size: .875rem; }
-      .faltam .resumo-faltam b { font-weight: 700; }
-      .faltam .resumo-faltam.zero { color: var(--verde); }
-      .faltam .resumo-faltam.erro { color: var(--erro); }
-      .lista-faltam { max-height: 240px; overflow-y: auto; margin: 0; padding: 0; list-style: none; border: 1px solid var(--divisa); border-radius: 8px; }
+      /* janela "Ainda tem pacote na base" (no Continuar) */
+      .lista-faltam { max-height: 46vh; overflow-y: auto; margin: 0; padding: 0; list-style: none; border: 1px solid var(--divisa); border-radius: 8px; }
       .lista-faltam li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--divisa); font-size: .8125rem; }
       .lista-faltam li:last-child { border-bottom: 0; }
       .lista-faltam .cod { font-family: ui-monospace, Consolas, monospace; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .lista-faltam .cid { color: var(--texto); white-space: nowrap; }
       .lista-faltam .hora { color: var(--cinza); white-space: nowrap; }
       .lista-faltam:empty { display: none; }
+      .card.aviso-faltam { border-top-color: #ed6c02; }
+      .card.aviso-faltam h2 { color: #b45309; }
+      .card.aviso-faltam .lista-faltam { margin: 0 0 20px; }
+      .card.aviso-faltam .lista-faltam li { display: grid; font-weight: 400; }
+      .card.aviso-faltam .lista-faltam li span:last-child { color: var(--cinza); }
+      .card .acoes { gap: 16px; align-items: center; }
+      .card .texto-botao { padding: 6px 8px; color: var(--texto); background: none; border: 0; border-radius: 4px; font-weight: 600; }
+      .card .texto-botao:hover { background: rgba(0, 0, 0, .04); }
       .linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
       /* alternar como o "Pacotes | Grupos" do Arco */
       .alternar { display: inline-flex; padding: 2px; background: var(--azul); border: thin solid var(--azul); border-radius: 800px; }
@@ -192,6 +191,17 @@
           <div class="acoes"><button type="button" class="contorno entendi">Entendi, vou tirar</button></div>
         </div>
       </div>
+      <div class="fundo fundo-faltam" role="alertdialog" aria-modal="true">
+        <div class="card aviso-faltam">
+          <h2>${svg('relogio')}Ainda tem pacote na base</h2>
+          <p class="explica-faltam"></p>
+          <ul class="lista-faltam"></ul>
+          <div class="acoes">
+            <button type="button" class="texto-botao assim-mesmo">Continuar assim mesmo</button>
+            <button type="button" class="contorno voltar-bipar">Voltar e bipar</button>
+          </div>
+        </div>
+      </div>
       <div class="tarja" role="alert">
         ${svg('aviso')}
         <div><strong>Grupo errado</strong><span class="texto-tarja"></span></div>
@@ -207,13 +217,6 @@
             <h2 class="titulo">Conferência</h2>
             <p class="texto">Escolha o círculo ou as cidades deste grupo. Pacote de outra cidade é avisado na hora do bipe e não deixa continuar.</p>
             <div class="estado"></div>
-            <section class="faltam" hidden>
-              <div class="subtitulo"><span>Faltam agrupar</span>
-                <span class="quando"><button type="button" data-quando="hoje">Chegaram hoje</button><button type="button" data-quando="todos">Toda a base</button></span>
-              </div>
-              <p class="resumo-faltam"></p>
-              <ul class="lista-faltam"></ul>
-            </section>
             <div class="linha">
               <div class="alternar" role="group">
                 <button type="button" data-modo="circulos">Círculo</button>
@@ -275,7 +278,6 @@
   let naBase = null; // linhas do relatorio; null = ainda nao leu
   let naBaseEm = 0;
   let naBaseErro = '';
-  let quando = 'hoje';
   let agrupados = {};
   let faltam = [];
   const NA_BASE_MS = 2 * 60 * 1000; // relatorio lido vale 2 min (o botao "Atualizar" le de novo)
@@ -373,36 +375,10 @@
     }));
   }
 
-  function desenharFaltam() {
-    const secao = $('.faltam');
-    secao.hidden = alvo.tipo === 'nada';
-    if (secao.hidden) { faltam = []; return; }
-    sombra.querySelectorAll('[data-quando]').forEach((b) => b.classList.toggle('ativo', b.dataset.quando === quando));
-    const resumo = $('.resumo-faltam');
-    resumo.className = 'resumo-faltam';
-    const ul = $('.lista-faltam');
-    if (!naBase) {
-      faltam = [];
-      resumo.textContent = naBaseErro || 'Lendo os pacotes na base...';
-      if (naBaseErro) resumo.classList.add('erro');
-      ul.replaceChildren();
-      return;
-    }
-    faltam = R.faltantes(naBase, alvo, agrupados, R.naListaAgora(bipes, textoDaLista()), { soHoje: quando === 'hoje' });
-    const onde = alvo.tipo === 'circulo' ? `do círculo ${alvo.nome}` : alvo.cidades.length === 1 ? `de ${alvo.cidades[0].nome}` : 'das cidades marcadas';
-    const que = quando === 'hoje' ? 'que chegaram hoje e' : 'na base que';
-    resumo.replaceChildren();
-    if (!faltam.length) {
-      resumo.classList.add('zero');
-      resumo.textContent = `Nenhum pacote ${onde} ${que} ainda não foi agrupado.`;
-    } else {
-      resumo.append(el('b', '', numero(faltam.length)), ` pacote(s) ${onde} ${que} ainda não foram agrupados:`);
-    }
-    ul.replaceChildren(...faltam.slice(0, 500).map((p) => {
-      const li = el('li');
-      li.append(el('span', 'cod', p.codigo || p.id), el('span', 'cid', p.cidade), el('span', 'hora', R.horaDe(p.chegou)));
-      return li;
-    }));
+  /** O que chegou hoje, esta na base e nao foi bipado (nem esta na lista agora): selo e janela do Continuar. */
+  function calcularFaltam() {
+    faltam = alvo.tipo === 'nada' || !naBase ? [] : R.faltantes(naBase, alvo, agrupados, R.naListaAgora(bipes, textoDaLista()), { soHoje: true });
+    return faltam;
   }
 
   function selo(classe, icone_, n, dica) {
@@ -422,7 +398,7 @@
       pilula.append(el('span', 'rot', 'Agrupando'), el('span', 'qual', nome));
       const selos = el('span', 'selos');
       selos.append(selo('ok', 'certo', certos, `${certos} certo(s) na lista`), selo('fora', 'fechar', deFora, `${deFora} de fora na lista`));
-      if (naBase) selos.append(selo('falta', 'relogio', faltam.length, `${faltam.length} na base ainda sem grupo`));
+      if (naBase) selos.append(selo('falta', 'relogio', faltam.length, `${faltam.length} chegaram hoje, estão na base e ainda não foram bipados`));
       pilula.append(selos);
       pilula.title = `Agrupando ${nome}: ${alvo.cidades.map((c) => c.nome).join(', ')}. Clique para trocar.`;
     }
@@ -433,7 +409,7 @@
     alvo = R.montarAlvo(cfg, cidadesLoggi, circulos);
     if (bipes.size) { const c = R.contarNaLista(bipes, textoDaLista(), alvo); certos = c.certos; deFora = c.deFora; }
     desenharEstado();
-    desenharFaltam();
+    calcularFaltam();
     desenharLista();
     desenharPilula();
   }
@@ -513,6 +489,7 @@
     const b = e.target && e.target.closest && e.target.closest('button, a, [role="button"]');
     if (!b || e.composedPath().includes(hospedeiro) || !R.ehAgrupar(b.textContent)) return;
     mudar(R.limpar(cfg)); // cada "Agrupar" comeca sem nada marcado
+    semAvisoDeFaltam = false;
     chrome.storage.local.set({ pedirEscolha: Date.now() });
     setTimeout(() => { if (!document.hidden) abrirGaveta(); }, 700);
   }, true);
@@ -648,21 +625,62 @@
     tocarErro();
   }
 
+  // "Ainda tem pacote na base": os que chegaram hoje, das cidades escolhidas, e nao foram bipados.
+  const fundoFaltam = $('.fundo-faltam');
+  let continuarDaLoggi = null; // o botao "Continuar" que foi segurado
+  let deixarPassar = false;
+  // Depois do "Continuar assim mesmo", a janela nao volta nos proximos passos do mesmo grupo
+  // (outro "Continuar" da Loggi): so no proximo "Agrupar".
+  let semAvisoDeFaltam = false;
+  function mostrarFaltam(lista, botao) {
+    continuarDaLoggi = botao;
+    const onde = alvo.tipo === 'circulo' ? `do círculo ${alvo.nome}` : alvo.cidades.length === 1 ? `de ${alvo.cidades[0].nome}` : 'das cidades escolhidas';
+    $('.explica-faltam').textContent = `${numero(lista.length)} pacote(s) ${onde} chegaram hoje, estão na base e ainda não foram bipados neste grupo.`;
+    $('.lista-faltam').replaceChildren(...lista.slice(0, 500).map((p) => {
+      const li = el('li');
+      li.append(el('span', 'cod', p.codigo || p.id), el('span', 'cid', p.cidade), el('span', 'hora', R.horaDe(p.chegou)));
+      return li;
+    }));
+    fundoFaltam.classList.add('ver');
+  }
+  $('.voltar-bipar').addEventListener('click', () => {
+    fundoFaltam.classList.remove('ver');
+    const campo = gavetaDoArco() && gavetaDoArco().querySelector('input');
+    if (campo) campo.focus(); // volta para o "Bipe ou digite o código"
+  });
+  $('.assim-mesmo').addEventListener('click', () => {
+    fundoFaltam.classList.remove('ver');
+    semAvisoDeFaltam = true;
+    if (continuarDaLoggi && continuarDaLoggi.isConnected) { deixarPassar = true; continuarDaLoggi.click(); }
+  });
+
   // Fase de captura no window: o clique para aqui antes do React do Arco.
   window.addEventListener('click', (e) => {
     const b = e.target && e.target.closest && e.target.closest('button');
     if (!b || b.textContent.replace(/\s+/g, ' ').trim().toLowerCase() !== 'continuar') return;
+    const naLista = R.naListaAgora(bipes, textoDaLista());
+    if (deixarPassar) { deixarPassar = false; registrarAgrupados(naLista); return; }
     const errados = R.pendentes(bipes, textoDaLista(), alvo);
-    if (!errados.length) { registrarAgrupados(R.naListaAgora(bipes, textoDaLista())); return; }
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    mostrarPendentes(errados);
+    if (errados.length) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      mostrarPendentes(errados);
+      return;
+    }
+    if (!semAvisoDeFaltam && calcularFaltam().length) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      mostrarFaltam(faltam, b);
+      return;
+    }
+    registrarAgrupados(naLista);
   }, true);
   $('.entendi').addEventListener('click', () => fundo.classList.remove('ver'));
   tarja.querySelector('button').addEventListener('click', () => tarja.classList.remove('ver'));
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (fundo.classList.contains('ver')) fundo.classList.remove('ver'); else if (envolve.classList.contains('aberta')) fecharGaveta();
+    if (fundoFaltam.classList.contains('ver')) fundoFaltam.classList.remove('ver');
+    else if (fundo.classList.contains('ver')) fundo.classList.remove('ver'); else if (envolve.classList.contains('aberta')) fecharGaveta();
   }, true);
 
   // ── "Agrupando X" na gaveta "Agrupar pacotes" do Arco ──────────────────────
@@ -699,7 +717,6 @@
   $('.aplicar').addEventListener('click', fecharGaveta);
   sombra.querySelectorAll('[data-modo]').forEach((b) => b.addEventListener('click', () => { modo = b.dataset.modo; $('.filtro').value = ''; desenharLista(); }));
   $('.atualizar').addEventListener('click', () => { atualizarDaLoggi(); carregarNaBase(true); });
-  sombra.querySelectorAll('[data-quando]').forEach((b) => b.addEventListener('click', () => { quando = b.dataset.quando; desenhar(); }));
   $('.limpar').addEventListener('click', () => { mudar(R.limpar(cfg)); recado('Escolha limpa: nada está sendo conferido.'); });
   $('.filtro').addEventListener('input', desenharLista);
   $('.adicionar').addEventListener('submit', (e) => { e.preventDefault(); adicionar($('.nova').value); });

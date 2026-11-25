@@ -34,10 +34,13 @@ CIDADES
   - "Atualizar da Loggi" busca de novo (sozinho a cada 6 h).
   - A configuracao fica neste navegador, uma por base (CCR...).
 
-FALTAM AGRUPAR (desde 1.6)
-  - Na gaveta, com um circulo ou cidades escolhidos, aparece a
-    lista dos pacotes na base dessas cidades que ainda nao foram
-    agrupados ("Chegaram hoje" ou "Toda a base").
+FALTAM AGRUPAR (desde 1.8, no Continuar)
+  - Ao clicar em Continuar: com pacote de outra cidade, a trava
+    de sempre. Sem nenhum, mas com pacotes das cidades escolhidas
+    que CHEGARAM HOJE, estao na base e nao foram bipados, aparece
+    "Ainda tem pacote na base" com a lista: "Voltar e bipar" ou
+    "Continuar assim mesmo" (ai nao pergunta de novo ate o
+    proximo Agrupar). O selo laranja do "Agrupando" mostra quantos.
   - Na base = o relatorio da propria tela Na base (o arquivo do
     "Baixar relatorio"), lido pela extensao sem baixar.
   - Ja agrupado = estava na lista quando o "Continuar" passou;
