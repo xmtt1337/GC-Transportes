@@ -16,18 +16,43 @@
   const ROTA_BUSCA = '/saastms/v1/biz/track/query';
   const ROTA_OLHO = '/saastms/v1/biz/track/getDesensitizationInfoV1';
   const RESERVA_DA_COTA = 30; // revelacoes que ficam para o uso normal da tela
-  const PAUSA_BUSCA_MS = 250;
+  // Em 25/11/2026, 63 waybills a 1 a cada 250 ms: a partir do 9o a iMile respondeu "The system is
+  // busy, please try again later" para todos. Agora 1 a cada 600 ms; se ela pedir calma, espera e
+  // tenta o mesmo de novo (e segue mais devagar). Se continuar recusando, para: o resto fica "nao
+  // buscado" (nunca "nao achado") para buscar de novo depois.
+  const PAUSA_BUSCA_MS = 600;
+  const PAUSA_DEVAGAR_MS = 1500;
+  const ESPERAS_OCUPADO_MS = [3000, 8000, 15000, 30000];
+  const OCUPADO = /busy|try again|frequent|too many|频繁|稍后/i;
+  const MOTIVO_OCUPADO = 'a iMile pediu para ir mais devagar';
+  const ocupado = (r) => !!r && r.status !== 'success' && OCUPADO.test(String(r.message || ''));
   const HEADERS_DO_SITE = ['authorization', 'lang', 'timezone', 'resource-code', 'sys-name',
     'x-page-path', 'path', 'hubcode', 'sys-portal'];
 
   const dormirPadrao = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  /** Busca normal de cada waybill (sem cota). post(rota, corpo) devolve a resposta inteira. */
+  /**
+   * Busca normal de cada waybill (sem cota). post(rota, corpo) devolve a resposta inteira.
+   * aviso(n, total, texto?) mostra o andamento.
+   */
   async function buscarPedidos(post, codigos, aviso = () => {}, dormir = dormirPadrao) {
     const saida = [];
+    let pausa = PAUSA_BUSCA_MS;
     for (let i = 0; i < codigos.length; i += 1) {
       const codigo = codigos[i];
-      const r = await post(ROTA_BUSCA, { searchType: 'waybillNo', searchValue: codigo });
+      let r = await post(ROTA_BUSCA, { searchType: 'waybillNo', searchValue: codigo });
+      for (let t = 0; ocupado(r) && t < ESPERAS_OCUPADO_MS.length; t += 1) {
+        const espera = ESPERAS_OCUPADO_MS[t];
+        aviso(i, codigos.length, `A iMile pediu para ir mais devagar: esperando ${Math.round(espera / 1000)} s para continuar (${i} de ${codigos.length})...`);
+        await dormir(espera);
+        pausa = PAUSA_DEVAGAR_MS;
+        r = await post(ROTA_BUSCA, { searchType: 'waybillNo', searchValue: codigo });
+      }
+      if (ocupado(r)) {
+        for (const resto of codigos.slice(i)) saida.push({ codigo: resto, achado: false, naoBuscado: true, motivo: MOTIVO_OCUPADO });
+        aviso(codigos.length, codigos.length);
+        return saida;
+      }
       if (r && r.status === 'success' && r.resultObject) {
         const remetente = r.resultObject.consignorinfo || {};
         saida.push({ codigo, achado: true, remetente: remetente.consignor || remetente.consignorContact || '' });
@@ -35,7 +60,7 @@
         saida.push({ codigo, achado: false, motivo: (r && r.message) || '' });
       }
       aviso(i + 1, codigos.length);
-      if (i < codigos.length - 1) await dormir(PAUSA_BUSCA_MS);
+      if (i < codigos.length - 1) await dormir(pausa);
     }
     return saida;
   }
@@ -74,7 +99,7 @@
   }
 
   if (typeof module !== 'undefined') {
-    module.exports = { buscarPedidos, revelar, lerResposta, HEADERS_DO_SITE, RESERVA_DA_COTA, CANAL };
+    module.exports = { buscarPedidos, revelar, lerResposta, HEADERS_DO_SITE, RESERVA_DA_COTA, CANAL, ESPERAS_OCUPADO_MS, PAUSA_BUSCA_MS };
     return;
   }
 
@@ -116,7 +141,7 @@
 
   ouvir('buscar', async (d, id) => {
     const codigos = Array.isArray(d.codigos) ? d.codigos : [];
-    const pedidos = await buscarPedidos(post, codigos, (n, t) => responder({ id, andamento: `Buscando na iMile: ${n} de ${t}...`, n, t }));
+    const pedidos = await buscarPedidos(post, codigos, (n, t, texto) => responder({ id, andamento: texto || `Buscando na iMile: ${n} de ${t}...`, n, t }));
     responder({ id, fim: true, pedidos });
   });
 

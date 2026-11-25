@@ -69,6 +69,27 @@ test('buscarPedidos: busca normal (sem cota); remetente e não achados', async (
   assert.ok(rotas.every(([rota]) => rota === '/saastms/v1/biz/track/query'));
 });
 
+test('buscarPedidos: "system is busy" não vira "não achado"; espera, tenta de novo e segue mais devagar', async () => {
+  const busy = { status: 'fail', message: 'The system is busy,please try again later' };
+  const ok = { status: 'success', resultObject: { consignorinfo: { consignor: 'Loja Teste' } } };
+  // o 2o pede calma 2 vezes e depois responde
+  let vezes = 0;
+  const esperas = [];
+  const avisos = [];
+  const post = async (rota, corpo) => (corpo.searchValue === '2' && vezes++ < 2 ? busy : ok);
+  const r = await I.buscarPedidos(post, ['1', '2', '3'], (n, t, texto) => avisos.push(texto || ''), async (ms) => { esperas.push(ms); });
+  assert.deepStrictEqual(r.map((p) => p.achado), [true, true, true]);
+  assert.deepStrictEqual(esperas, [I.PAUSA_BUSCA_MS, I.ESPERAS_OCUPADO_MS[0], I.ESPERAS_OCUPADO_MS[1], 1500]);
+  assert.ok(avisos.some((a) => /mais devagar: esperando 3 s/.test(a)));
+  // continua recusando: para, e o resto fica "não buscado" (nunca "não achado")
+  const sempre = await I.buscarPedidos(async (rota, corpo) => (corpo.searchValue === '1' ? ok : busy), ['1', '2', '3'], () => {}, async () => {});
+  assert.deepStrictEqual(sempre.map((p) => [p.codigo, p.achado, !!p.naoBuscado]), [['1', true, false], ['2', false, true], ['3', false, true]]);
+  // "não existe" de verdade continua sendo não achado, sem esperar
+  const esp2 = [];
+  const nao = await I.buscarPedidos(async () => ({ status: 'fail', message: 'waybill not exist' }), ['9'], () => {}, async (ms) => esp2.push(ms));
+  assert.deepStrictEqual([nao[0].achado, !!nao[0].naoBuscado, esp2.length], [false, false, 0]);
+});
+
 test('revelar: nome, telefone, produto e a cota; para com a reserva e quando a iMile recusa', async () => {
   const resposta = (atual) => async () => ({ status: 'success', resultObject: {
     infoResult: { consigneeContact: 'Pessoa Teste', consigneeMobile: '5549999990000', sku: 'Produto Teste' },

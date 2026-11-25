@@ -225,6 +225,7 @@
     if (l.situacao_envio === 'enviando') return ['Enviando...', 'pronto'];
     if (l.situacao_envio === 'enviado') return ['Enviado', 'ok'];
     if (l.situacao_envio === 'erro') return [`Não enviou: ${l.erro}`, 'erro'];
+    if (l.naoBuscado) return ['Não buscado: a iMile pediu para ir mais devagar. Clique em Buscar pedidos de novo daqui a pouco', 'aviso'];
     if (!l.achado) return [`Não achado na iMile${l.motivo ? `: ${l.motivo}` : ''}`, 'erro'];
     if (l.ativo) {
       const quando = l.ativo.enviado_em ? new Date(l.ativo.enviado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
@@ -239,12 +240,13 @@
     const ls = estado.linhas;
     const prontos = ls.filter((l) => podeMarcar(l)).length;
     const marcados = ls.filter((l) => l.marcado && podeMarcar(l)).length;
-    const naoAchados = ls.filter((l) => !l.achado).length;
-    const achados = ls.length - naoAchados;
+    const naoBuscados = ls.filter((l) => l.naoBuscado).length;
+    const naoAchados = ls.filter((l) => !l.achado && !l.naoBuscado).length;
+    const achados = ls.filter((l) => l.achado).length;
     const jaTem = ls.filter((l) => l.ativo).length;
     const enviados = ls.filter((l) => l.situacao_envio === 'enviado').length;
     const cota = estado.cota && estado.cota.max ? ` · cota de revelações: ${numero(estado.cota.usadas)} de ${numero(estado.cota.max)}` : '';
-    $('contas').innerHTML = `<b>${numero(ls.length)}</b> pedido(s) · ${numero(achados)} achado(s) na iMile · ${numero(naoAchados)} não achado(s)`
+    $('contas').innerHTML = `<b>${numero(ls.length)}</b> pedido(s) · ${numero(achados)} achado(s) na iMile · ${numero(naoAchados)} não achado(s)${naoBuscados ? ` · <b>${numero(naoBuscados)}</b> não buscado(s)` : ''}`
       + ` · ${numero(jaTem)} já receberam ativo${enviados ? ` · <b>${numero(enviados)}</b> enviado(s) agora` : ''}${esc(cota)}`;
     const btn = $('disparar');
     btn.textContent = `Disparar ${numero(marcados)} ativo(s)`;
@@ -288,19 +290,28 @@
     estado.ocupado = true;
     $('buscar').disabled = true;
     try {
-      const { pedidos } = await pedirAoDs('buscar', { codigos }, status);
+      // Buscar de novo a mesma lista: os já achados ficam como estão (com o que o olho já abriu);
+      // só vai à iMile o que faltou (os "não buscados" de quando ela pediu calma, e os novos).
+      const jaAchados = new Map(estado.linhas.filter((l) => l.achado).map((l) => [l.codigo, l]));
+      const buscarAgora = codigos.filter((c) => !jaAchados.has(c));
+      const { pedidos } = buscarAgora.length ? await pedirAoDs('buscar', { codigos: buscarAgora }, status) : { pedidos: [] };
+      const novos = new Map(pedidos.map((p) => [p.codigo, p]));
       status('Vendo no sistema quem já recebeu ativo...');
       const { estados } = await pedirAoFundo('situacao', { pedidos: codigos });
-      estado.linhas = pedidos.map((p) => {
-        const ativo = (estados || {})[p.codigo] || null;
-        const l = { ...p, nome: '', telefone: '', produto: '', e164: '', ativo, marcado: false };
+      estado.linhas = codigos.map((c) => {
+        const ativo = (estados || {})[c] || null;
+        const antes = jaAchados.get(c);
+        if (antes) return { ...antes, ativo };
+        const l = { ...novos.get(c), nome: '', telefone: '', produto: '', e164: '', ativo, marcado: false };
         l.marcado = podeMarcar(l) && !ativo; // quem já recebeu ativo fica desmarcado
         return l;
       });
-      const faltam = estado.linhas.filter((l) => !l.achado).length;
+      const faltam = estado.linhas.filter((l) => !l.achado && !l.naoBuscado).length;
+      const naoBuscados = estado.linhas.filter((l) => l.naoBuscado).length;
       status([
         ignorados.length ? `${numero(ignorados.length)} item(ns) ignorado(s) por não parecer waybill (${ignorados.slice(0, 3).join(', ')}${ignorados.length > 3 ? '...' : ''}).` : '',
         faltam ? `${numero(faltam)} waybill(s) não achado(s) na iMile.` : '',
+        naoBuscados ? `${numero(naoBuscados)} não buscado(s): a iMile pediu para ir mais devagar. Espere uns minutos e clique em Buscar pedidos de novo; só esses serão buscados.` : '',
         'Nome, telefone e produto são abertos no olho da iMile só na hora do disparo: 1 da cota por pedido marcado.',
       ].filter(Boolean).join(' '));
     } catch (e) {
