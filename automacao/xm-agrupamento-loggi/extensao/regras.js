@@ -409,13 +409,19 @@
    * @param {Iterable} naLista    codigos bipados que estao na lista de agrupar agora
    * @param {boolean} soHoje      so os que chegaram hoje
    */
-  function faltantes(linhas, alvo, agrupados, naLista, { soHoje = true, agora = Date.now() } = {}) {
+  function faltantes(linhas, alvo, agrupados, naLista, { soHoje = true, agora = Date.now(), avulsos = null } = {}) {
     if (!alvo || !alvo.chaves || !alvo.chaves.length) return [];
-    const ja = new Set([...Object.keys(agrupados || {}), ...[...(naLista || [])].map((c) => String(c).toUpperCase())]);
+    const up = (c) => String(c || '').toUpperCase();
+    const agora_ = new Set([...(naLista || [])].map(up));
+    const ja = new Set(Object.keys(agrupados || {}));
+    const tem = (conj, p) => (p.codigo && conj.has(up(p.codigo))) || (p.id && conj.has(up(p.id)));
     const dia = hoje(agora);
     return (linhas || [])
       .filter((p) => conferirBipe(p.cidade, alvo).ok === true)
-      .filter((p) => !ja.has(String(p.codigo).toUpperCase()) && !ja.has(String(p.id).toUpperCase()))
+      .filter((p) => !tem(agora_, p))
+      // Com os avulsos da Loggi (Recebimento + Sem tentativa): nao agrupado = esta neles, feito em
+      // qualquer computador. Sem eles, vale o que este navegador guardou dos grupos criados.
+      .filter((p) => (avulsos ? tem(avulsos, p) : !tem(ja, p)))
       .filter((p) => !soHoje || diaDe(p.chegou, agora) === dia)
       .sort((a, b) => a.cidade.localeCompare(b.cidade, 'pt-BR', { sensitivity: 'base' }) || String(a.chegou).localeCompare(String(b.chegou)));
   }
@@ -426,6 +432,13 @@
     const dia = hoje(agora);
     return { total: ls.length, hoje: ls.filter((p) => diaDe(p.chegou, agora) === dia).length,
       semData: ls.filter((p) => !diaDe(p.chegou, agora)).length, exemplo: (ls.find((p) => p.chegou) || {}).chegou || '' };
+  }
+
+  /** Avulsos da Loggi -> conjunto com todos os codigos de cada um (barras, rastreio, ID), em maiusculas. */
+  function codigosAvulsos(pacotes) {
+    const s = new Set();
+    for (const p of pacotes || []) for (const c of [p.codigo, p.rastreio, p.id]) if (c) s.add(String(c).toUpperCase());
+    return s;
   }
 
   /** Bipados que estao na lista de agrupar agora (o codigo aparece no texto dela). */
@@ -439,7 +452,7 @@
 
   const publico = { chave, consertarTexto, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
     pendentes, contarNaLista, ordenarCirculos, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar,
-    lerCsv, linhasNaBase, linkDoRelatorio, relatorioDaBase, hoje, diaDe, horaDe, resumoNaBase, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };
+    lerCsv, linhasNaBase, linkDoRelatorio, relatorioDaBase, hoje, diaDe, horaDe, resumoNaBase, codigosAvulsos, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMAgrupamento = publico;
 })();

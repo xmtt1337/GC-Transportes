@@ -7,6 +7,11 @@
 //              a lista de cidades da base com a quantidade de pacotes (a mesma do filtro Cidades do
 //              Na base e da "Regiao de atuacao" do Criar circulo).
 //    circulos  GET leve.loggi.com/api/v1/<empresa>:<centro>/circle/list (cada circulo com as cidades).
+//    avulsos   os pacotes que NAO estao em grupo nenhum, do jeito da tela Distribuir > Grupos com
+//              Estacao = Recebimento (COL) e Status = Sem tentativa (89):
+//              POST leve.loggi.com/api/v1/last_mile/<empresa>:<centro>/unit_load -> o(s) grupo(s) da
+//              estacao (os "Pacotes avulsos"), e POST leve.loggi.com/api/v2/last_mile/packages/filter_search
+//              por placa do grupo, pagina a pagina. Dos pacotes saem so codigo, ID, cidade e status.
 //
 // A sessao e a da propria pagina: os cabecalhos que o Arco manda ao leve.loggi.com ficam so na
 // memoria desta aba, para essas duas chamadas. Nada disso sai daqui: para o menu.js vao so nomes de
@@ -50,6 +55,7 @@
       if (j.last_mile_company_id) b.empresa = String(j.last_mile_company_id);
       if (j.routing_code) b.codigo = String(j.routing_code);
       if (j.aggregatedField === 'city_enum' && j.lastMileCompanyType) b.tipo = String(j.lastMileCompanyType);
+      if ((j.aggregatedField === 'unit_load' || j.unitLoadFilter) && j.lastMileCompanyType) b.tipoGrupos = String(j.lastMileCompanyType);
     }
     return b;
   }
@@ -81,8 +87,52 @@
       .map((c) => ({ id: String(c.id), nome: String(c.name || ''), cidades: (c.cities || []).map(String) }));
   }
 
+  // ── avulsos ──
+  const ESTACAO_RECEBIMENTO = 'COL';
+  const SEM_TENTATIVA = '89';
+  const ORDEM = 'last_awaiting_resolution_promised_date_annotation.annotation.awaiting_resolution_promised_date.promised_date.promised_date';
+  const POR_PAGINA = 100;
+
+  function filtrosDaBase(b, tipo) {
+    return {
+      statusFilters: [SEM_TENTATIVA], stationFilter: [ESTACAO_RECEBIMENTO], orderBy: ORDEM, dateFilter: null,
+      searchArgument: null, startDate: null, endDate: null, view: 'base', viewFilterBy: FILTRO_PRAZO,
+      lastMileCompanyType: tipo, distribution_center_id: Number(b.centro), last_mile_company_id: b.empresa, routing_code: b.codigo,
+    };
+  }
+  const urlGrupos = (b) => `${API}/api/v1/last_mile/${encodeURIComponent(b.empresa)}:${encodeURIComponent(b.centro)}/unit_load`;
+  const URL_PACOTES = `${API}/api/v2/last_mile/packages/filter_search`;
+  const corpoGrupos = (b, tipo, pagina = 1) => ({ ...filtrosDaBase(b, tipo), page: pagina, itemsPerPage: 30, aggregatedField: 'unit_load' });
+  const corpoAvulsos = (b, tipo, placa, pagina = 1, porPagina = POR_PAGINA) => ({
+    ...filtrosDaBase(b, tipo), page: pagina, itemsPerPage: porPagina, orderDirection: 'asc',
+    unitLoadFilter: 'LICENSE_PLATE', unitLoadLicensePlateFilter: placa,
+  });
+
+  /** unit_load -> as placas dos grupos da estacao Recebimento (os "Pacotes avulsos") e o total. */
+  function lerGrupos(j) {
+    const lista = ((j && j.data) || []).filter((u) => u && u.licensePlate);
+    return { placas: lista.map((u) => String(u.licensePlate)), total: Number(j && j.totalPackages) || 0 };
+  }
+
+  /** filter_search -> { pacotes: [{ codigo, rastreio, id, cidade, status }], total } (sem nome nem endereco). */
+  function lerAvulsos(j) {
+    const hits = (j && j.hits) || {};
+    const pacotes = (hits.hits || []).map((h) => {
+      const f = (h && h._source) || {};
+      const pac = f.package || {};
+      return {
+        codigo: String((f.package_integration_info && f.package_integration_info.barcode) || pac.tracking_key || ''),
+        rastreio: String(pac.tracking_key || ''), id: String(pac.id || ''),
+        cidade: String((f.destination && f.destination.city) || ''), status: Number(f.status && f.status.code) || null,
+      };
+    }).filter((p) => p.codigo || p.id);
+    const total = hits.total && typeof hits.total === 'object' ? Number(hits.total.value) : Number(hits.total);
+    return { pacotes, total: Number.isFinite(total) ? total : pacotes.length };
+  }
+
   if (typeof module !== 'undefined') {
-    module.exports = { extrairBipes, lerBase, baseCompleta, corpoCidades, urlCirculos, lerCidades, lerCirculos, ROTA_BIPE, CANAL };
+    module.exports = { extrairBipes, lerBase, baseCompleta, corpoCidades, urlCirculos, lerCidades, lerCirculos, ROTA_BIPE, CANAL,
+      urlGrupos, URL_PACOTES, corpoGrupos, corpoAvulsos, lerGrupos, lerAvulsos };
     return;
   }
 
@@ -168,6 +218,28 @@
     });
   }
 
+  /** Todos os pacotes nao agrupados (Recebimento + Sem tentativa), pagina a pagina. */
+  async function buscarAvulsos() {
+    const tipos = [...new Set([base.tipoGrupos, 'LAST_MILE_COMPANY_TYPE_LEVE', base.tipo, 'LEVE'].filter(Boolean))];
+    let grupos = null;
+    let tipo = '';
+    let erro = null;
+    for (const t of tipos) {
+      try { grupos = lerGrupos(await pedir('POST', urlGrupos(base), corpoGrupos(base, t))); tipo = t; break; } catch (e) { erro = e; }
+    }
+    if (!grupos) throw erro || new Error('A Loggi não trouxe os grupos.');
+    const pacotes = [];
+    for (const placa of grupos.placas) {
+      for (let pagina = 1; pagina <= 60; pagina += 1) {
+        const r = lerAvulsos(await pedir('POST', URL_PACOTES, corpoAvulsos(base, tipo, placa, pagina)));
+        pacotes.push(...r.pacotes);
+        if (!r.pacotes.length || pagina * POR_PAGINA >= r.total) break;
+        await dormir(200);
+      }
+    }
+    return pacotes;
+  }
+
   window.addEventListener('message', async (e) => {
     if (e.source !== window || !e.data || e.data[CANAL] !== 'pedir') return;
     const { id, tipo } = e.data;
@@ -177,6 +249,7 @@
       const quem = { codigo: base.codigo, nome: base.codigo };
       if (tipo === 'cidades') responder({ base: quem, cidades: lerCidades(await pedir('POST', `${API}/api/v2/last_mile/packages/aggregated`, corpoCidades(base))) });
       else if (tipo === 'circulos') responder({ base: quem, circulos: lerCirculos(await pedir('GET', urlCirculos(base))) });
+      else if (tipo === 'avulsos') responder({ base: quem, avulsos: await buscarAvulsos() });
       else responder({ erro: 'Pedido desconhecido.' });
     } catch (err) {
       responder({ erro: err.message });

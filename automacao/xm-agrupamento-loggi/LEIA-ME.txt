@@ -43,18 +43,21 @@ PACOTES NAO AGRUPADOS (desde 1.12, no fim do agrupamento)
     da Loggi), a extensao espera a Loggi criar o grupo e mostra
     "Pacotes nao agrupados": os que CHEGARAM HOJE, das cidades
     daquela conferencia, e ficaram fora do grupo.
-  - Na base = o relatorio da propria tela Na base (o arquivo do
-    "Baixar relatorio"), lido pela extensao sem baixar.
-  - Ja agrupado = estava na lista quando o "Continuar" passou;
-    fica guardado NESTE navegador (hoje e ontem). Grupo feito em
-    outro computador nao entra nessa conta.
+  - Chegou hoje = coluna "Chegou em" do relatorio da tela Na
+    base (o arquivo do "Baixar relatorio"), lido sem baixar.
+  - Nao agrupado = esta nos "Pacotes avulsos" da Loggi (o mesmo
+    de Distribuir > Grupos com Estacao Recebimento e Status Sem
+    tentativa) - vale para grupo feito em qualquer computador.
+    Se a Loggi nao responder, vale o que este navegador guardou
+    dos grupos criados aqui (hoje e ontem).
 
 PRIVACIDADE
   A sessao do Arco fica so na memoria da aba. O link do
   relatorio Na base e usado na hora e esquecido. A extensao le
   da Loggi: a lista de cidades da base, os circulos (nome e
-  cidades) e, do relatorio Na base, so codigo, cidade, prazo,
-  chegada e status. Nome, telefone, CPF e endereco ficam de fora.
+  cidades), do relatorio Na base so codigo, cidade, prazo,
+  chegada e status, e dos pacotes avulsos so codigo, ID, cidade
+  e status. Nome, telefone, CPF e endereco ficam de fora.
 
 INSTALAR
   chrome://extensions > Modo do desenvolvedor > Carregar sem

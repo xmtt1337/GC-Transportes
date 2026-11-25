@@ -283,6 +283,9 @@
   let naBaseErro = '';
   let agrupados = {};
   let faltam = [];
+  let avulsos = null; // codigos que a Loggi diz que nao estao em grupo (Recebimento + Sem tentativa)
+  let avulsosEm = 0;
+  let avulsosQtd = 0;
   const NA_BASE_MS = 2 * 60 * 1000; // relatorio lido vale 2 min (o botao "Atualizar" le de novo)
 
   const chaveDaBase = () => `base:${codigoBase || 'sem-base'}`;
@@ -380,7 +383,7 @@
 
   /** O que chegou hoje, esta na base e nao foi bipado (nem esta na lista agora): selo e janela do Continuar. */
   function calcularFaltam() {
-    faltam = alvo.tipo === 'nada' || !naBase ? [] : R.faltantes(naBase, alvo, agrupados, R.naListaAgora(bipes, textoDaLista()), { soHoje: true });
+    faltam = alvo.tipo === 'nada' || !naBase ? [] : R.faltantes(naBase, alvo, agrupados, R.naListaAgora(bipes, textoDaLista()), { soHoje: true, avulsos });
     return faltam;
   }
 
@@ -391,7 +394,7 @@
     const r = R.resumoNaBase(naBase);
     d.textContent = `Relatório da Loggi: ${numero(r.total)} pacotes, ${numero(r.hoje)} chegaram hoje`
       + (r.semData ? `, ${numero(r.semData)} sem data reconhecida (ex.: "${r.exemplo}")` : '')
-      + ` · ${numero(Object.keys(agrupados).length)} já bipados em grupos neste navegador.`;
+      + (avulsos ? ` · ${numero(avulsosQtd)} sem grupo na Loggi.` : ` · ${numero(Object.keys(agrupados).length)} já bipados em grupos neste navegador.`);
   }
 
   function selo(classe, icone_, n, dica) {
@@ -454,6 +457,7 @@
     envolve.classList.add('aberta');
     setTimeout(() => $('.filtro').focus(), 250);
     carregarNaBase();
+    carregarAvulsos();
   }
 
   // ── Na base e agrupados ───────────────────────────────────────────────────
@@ -474,6 +478,24 @@
 
   // O link do "Baixar relatório" so existe na tela Na base (e tem a sessao da conta: vai direto ao fundo.js).
   const linkNaBase = () => { const a = document.querySelector('a[href*="/packages/report"]'); return a ? a.href : ''; };
+
+  // Os que a Loggi diz que estao sem grupo (o mesmo de Distribuir > Grupos, Recebimento + Sem tentativa).
+  let lendoAvulsos = false;
+  async function carregarAvulsos(forcar = false) {
+    if (lendoAvulsos || (!forcar && avulsos && Date.now() - avulsosEm < NA_BASE_MS)) return;
+    lendoAvulsos = true;
+    try {
+      const r = await pedirALoggi('avulsos');
+      avulsos = R.codigosAvulsos(r.avulsos);
+      avulsosQtd = r.avulsos.length;
+      avulsosEm = Date.now();
+    } catch {
+      // sem os avulsos, vale o que este navegador guardou dos grupos criados
+    } finally {
+      lendoAvulsos = false;
+      desenhar();
+    }
+  }
 
   let lendoNaBase = false;
   async function carregarNaBase(forcar = false) {
@@ -685,10 +707,11 @@
       if (gavetaDoArco() && Date.now() < ate) return;
       clearInterval(esperandoFim);
       esperandoFim = null;
-      await carregarNaBase(true); // o relatorio de agora, ja sem os que entraram no grupo
+      // o relatorio e os avulsos de agora, ja sem os que entraram no grupo
+      await Promise.all([carregarNaBase(true), carregarAvulsos(true)]);
       if (!naBase) return;
       await carregarAgrupados();
-      const lista = R.faltantes(naBase, conferido, agrupados, noGrupo, { soHoje: true });
+      const lista = R.faltantes(naBase, conferido, agrupados, noGrupo, { soHoje: true, avulsos });
       if (lista.length) mostrarFaltam(lista, conferido);
     }, 500);
   }
