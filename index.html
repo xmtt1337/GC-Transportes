@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261123b">
+<link rel="stylesheet" href="style.css?v=20261125a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -2991,14 +2991,21 @@ if (_BASE) {
                 <div id="dev-fila-card" style="display:none"></div>
 
                 <div class="ant-form-wrap" id="dev-form-wrap">
+                    <!-- Só pra equipe (quem não é entregador): veio do Registro e a devolução vai pro CD de Caçador -->
+                    <button type="button" class="dev-voltar" id="dev-voltar-registro" style="display:none" onclick="abrirDevolucoesRegistro()">← Voltar ao Registro</button>
                     <div class="dev-form-head">
                         <div class="dev-form-icon">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
                         </div>
                         <div>
-                            <div class="ant-form-title" style="margin-bottom:2px">Criar Devolução</div>
-                            <div class="dev-form-sub">Registre o pacote que voltou pra base</div>
+                            <div class="ant-form-title" style="margin-bottom:2px" id="dev-form-titulo">Criar Devolução</div>
+                            <div class="dev-form-sub" id="dev-form-sub">Registre o pacote que voltou pra base</div>
                         </div>
+                    </div>
+                    <div class="dev-destino" id="dev-destino" style="display:none">
+                        <span class="dev-destino-rot">Destino</span>
+                        <span class="dev-destino-val">CD de Caçador</span>
+                        <span class="dev-destino-obs">Toda devolução registrada pela equipe vai pra base de Caçador.</span>
                     </div>
 
                     <div class="dev-sec">
@@ -3076,6 +3083,7 @@ if (_BASE) {
                         <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     </div>
                     <div style="font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:10px">Pedido adicionado à viagem <span id="dev-sucesso-numero" style="color:#3a86ff;font-family:monospace">—</span></div>
+                    <div style="font-size:13px;color:#94a3b8;margin-bottom:6px;display:none" id="dev-sucesso-destino">Destino: <strong style="color:#e2e8f0">CD de Caçador</strong></div>
                     <div style="font-size:13px;color:#94a3b8;margin-bottom:20px">Pedidos adicionados: <strong id="dev-sucesso-qtd" style="color:#e2e8f0">—</strong></div>
                     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
                         <button onclick="_devAdicionarMais()" style="padding:11px 20px;border-radius:10px;border:none;background:#3a86ff;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Adicionar mais</button>
@@ -4535,9 +4543,12 @@ if (_BASE) {
                         <button type="button" class="filtro-tab" data-filtro="recebidas" onclick="_drrTrocarFiltro('recebidas')">Recebidas no hub</button>
                         <button type="button" class="filtro-tab" data-filtro="sem_registro" onclick="_drrTrocarFiltro('sem_registro')">Não registradas</button>
                     </div>
-                    <div class="adm-search-input-area" style="max-width:300px">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="text" id="drr-busca" placeholder="Buscar por código, entregador, motivo..." oninput="_drrFiltrar()">
+                    <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+                        <button type="button" class="drr-nova" onclick="abrirDevolucaoNova()" title="A devolução registrada aqui vai pro CD de Caçador">+ Registrar nova devolução ao CD de Caçador</button>
+                        <div class="adm-search-input-area" style="max-width:300px">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7b98b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="drr-busca" placeholder="Buscar por código, entregador, motivo..." oninput="_drrFiltrar()">
+                        </div>
                     </div>
                 </div>
                 <span id="drr-total" style="display:block;font-size:13px;color:#7b98b5;font-weight:500;margin-bottom:12px"></span>
@@ -5030,7 +5041,7 @@ if (_BASE) {
 
 <script src="js/core.js?v=20261109a"></script>
 <script src="js/col-filtro.js?v=20261016c"></script>
-<script src="js/router.js?v=20261117c"></script>
+<script src="js/router.js?v=20261125a"></script>
 <script src="js/sidebar.js?v=20261103f"></script>
 <script src="js/nav.js?v=20261113a"></script>
 <script src="js/atendimento.js?v=20261104c"></script>
@@ -5097,7 +5108,7 @@ if (_BASE) {
 <script src="js/xm-camera.js?v=20261021a"></script>
 <script src="js/baixas.js?v=20261104c"></script>
 <script src="js/custodia.js?v=20260820i"></script>
-<script src="js/devolucoes.js?v=20261104c"></script>
+<script src="js/devolucoes.js?v=20261125a"></script>
 <script src="js/shopee-polo.js?v=20261015a"></script>
 <script src="js/perfil-conta.js?v=20261015c"></script>
 <script src="js/dados-pagamento.js?v=20261109a"></script>

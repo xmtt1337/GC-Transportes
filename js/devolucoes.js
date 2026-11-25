@@ -17,12 +17,36 @@ function _devEhCep(codigo) {
 // nela) — id guardado aqui pros botões "Ver pedidos" / "Fechar Viagem".
 let _devViagemAtualId = null;
 
+// Quem não é entregador (admin, user, dev...) abre o mesmo formulário pelo botão da tela
+// Registro — e essa devolução vai SEMPRE pro CD de Caçador (o backend grava o destino
+// pelo cargo). O modo sai do cargo, não de quem chamou: "Adicionar pedido" da viagem
+// também cai aqui e precisa mostrar o mesmo destino.
+function _devModoEquipe() {
+    return !!(window._gcUser && window._gcUser.role && window._gcUser.role !== "entregador");
+}
+
+function _devAplicarModo() {
+    const equipe = _devModoEquipe();
+    document.getElementById("dev-voltar-registro").style.display = equipe ? "" : "none";
+    document.getElementById("dev-destino").style.display         = equipe ? "" : "none";
+    document.getElementById("dev-form-titulo").innerText = equipe ? "Devolução ao CD de Caçador" : "Criar Devolução";
+    document.getElementById("dev-form-sub").innerText    = equipe
+        ? "Registre o pacote que vai pra base de Caçador"
+        : "Registre o pacote que voltou pra base";
+    if (equipe) {
+        const titulo = document.getElementById("titulo-pagina");
+        if (titulo) titulo.innerText = "Devolução ao CD de Caçador";
+    }
+}
+
 function abrirDevolucaoNova(event) {
     if (event) event.preventDefault();
     _devLimparForm();
     document.getElementById("dev-form-wrap").style.display = "";
     document.getElementById("dev-pedido-sucesso").style.display = "none";
-    mostrarTela("tela-devolucao-nova");
+    if (_devModoEquipe()) mostrarTela("tela-devolucao-nova", "Operacao/DevolucoesNova");
+    else mostrarTela("tela-devolucao-nova");
+    _devAplicarModo();
     _devAtualizarBadgeFila();
     _devAtualizarBannerViagem();
     _devFilaSincronizar();
@@ -75,6 +99,7 @@ function _devMostrarSucesso(viagem) {
     document.getElementById("dev-pedido-sucesso").style.display = "";
     document.getElementById("dev-sucesso-numero").innerText = viagem ? viagem.numero : "—";
     document.getElementById("dev-sucesso-qtd").innerText = viagem ? viagem.pedidos : "—";
+    document.getElementById("dev-sucesso-destino").style.display = _devModoEquipe() ? "" : "none";
     if (viagem) {
         _devViagemAtualId = viagem.id;
         _devAtualizarBannerComDados(viagem);
@@ -503,7 +528,8 @@ function _drrRenderizar(rows) {
             <td>${r.sem_registro ? `
                 <span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;font-size:11.5px;font-weight:700">Não registrada pelo entregador</span>` : `
                 <div style="color:#e2e8f0">${r.usuario_nome || "—"}</div>
-                <div style="font-size:11.5px;color:#8494a9">${r.data_hora_brasilia || "—"}</div>`}
+                <div style="font-size:11.5px;color:#8494a9">${r.data_hora_brasilia || "—"}</div>
+                ${r.destino ? `<div class="drr-destino">Destino: <strong>${r.destino}</strong></div>` : ""}`}
             </td>
             <td>${r.status === "recebido" ? `
                 <div style="color:#22c55e;font-weight:600">${r.recebido_por || "Recebido"}</div>
@@ -552,7 +578,7 @@ function _drrAplicar() {
 
     const q = document.getElementById("drr-busca").value.trim().toLowerCase();
     if (q) rows = rows.filter(r =>
-        [r.codigo, r.descricao, r.transportadora, r.motivo, r.usuario_nome, r.recebido_por, r.viagem_numero]
+        [r.codigo, r.descricao, r.transportadora, r.motivo, r.usuario_nome, r.recebido_por, r.viagem_numero, r.destino]
             .some(v => String(v || "").toLowerCase().includes(q))
     );
 

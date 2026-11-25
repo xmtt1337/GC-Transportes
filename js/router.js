@@ -43,6 +43,8 @@ const _ROTAS = {
     "Operacao/DevolucoesReceber":       () => abrirDevolucoesReceber(),
     "Operacao/DevolucoesReceberAvulso": () => abrirDevolucoesReceberAvulso(),
     "Operacao/DevolucoesRegistro":      () => abrirDevolucoesRegistro(),
+    // Equipe registrando devolução (vai pro CD de Caçador): mesmo formulário do entregador.
+    "Operacao/DevolucoesNova":          () => abrirDevolucaoNova(),
     "Operacao/Etiquetas":            () => abrirEtiquetas(),
     "Shopee/Recebimento":            () => abrirShopeeReceber(),
     "Shopee/Romaneiro":              () => abrirShopeeRomaneiro(),
@@ -339,6 +341,7 @@ const _ROTAS_URL = {
     "Operacao/DevolucoesReceber":      "Operacao/Devolucoes/Receber",
     "Operacao/DevolucoesReceberAvulso":"Operacao/Devolucoes/ReceberAvulso",
     "Operacao/DevolucoesRegistro":     "Operacao/Devolucoes/Registro",
+    "Operacao/DevolucoesNova":         "Operacao/Devolucoes/Nova",
     "Operacao/DesempenhoUsuario":      "Operacao/Desempenho/Usuario",
     "Operacao/DesempenhoHora":         "Operacao/Desempenho/Hora",
 
@@ -452,6 +455,7 @@ const _ROTA_DO_MENU = {
     "Operacao/AlimentarImile":        "Operacao/Alimentacoes",
     "Operacao/AlimentarTotalExpress": "Operacao/Alimentacoes",
     "Operacao/AlimentarJT":           "Operacao/Alimentacoes",
+    "Operacao/DevolucoesNova":        "Operacao/DevolucoesRegistro",
 };
 
 // Conversas têm o resto do caminho variável (tipo/transportadora/código), então vão por prefixo.
