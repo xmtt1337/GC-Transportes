@@ -32,11 +32,22 @@ CIDADES
   - "Atualizar da Loggi" busca de novo (sozinho a cada 6 h).
   - A configuracao fica neste navegador, uma por base (CCR...).
 
+FALTAM AGRUPAR (desde 1.6)
+  - Na gaveta, com um circulo ou cidades escolhidos, aparece a
+    lista dos pacotes na base dessas cidades que ainda nao foram
+    agrupados ("Chegaram hoje" ou "Toda a base").
+  - Na base = o relatorio da propria tela Na base (o arquivo do
+    "Baixar relatorio"), lido pela extensao sem baixar.
+  - Ja agrupado = estava na lista quando o "Continuar" passou;
+    fica guardado NESTE navegador (hoje e ontem). Grupo feito em
+    outro computador nao entra nessa conta.
+
 PRIVACIDADE
-  A sessao do Arco fica so na memoria da aba. A extensao le so
-  duas coisas da Loggi: a lista de cidades da base (com
-  quantidade de pacotes) e os circulos (nome e cidades). Nao le
-  nome, telefone, CPF nem endereco de ninguem.
+  A sessao do Arco fica so na memoria da aba. O link do
+  relatorio Na base e usado na hora e esquecido. A extensao le
+  da Loggi: a lista de cidades da base, os circulos (nome e
+  cidades) e, do relatorio Na base, so codigo, cidade, prazo,
+  chegada e status. Nome, telefone, CPF e endereco ficam de fora.
 
 INSTALAR
   chrome://extensions > Modo do desenvolvedor > Carregar sem

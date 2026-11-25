@@ -90,6 +90,24 @@
       .estado.vazio .ico { color: #ff9800; }
       .estado.ok { background: var(--marcado); color: var(--texto); border: 1px solid var(--borda-marcado); }
       .estado.ok .ico { color: var(--azul); }
+      /* faltam agrupar */
+      .faltam { margin: -8px 0 24px; }
+      .faltam .subtitulo { padding-top: 4px; }
+      .quando { display: inline-flex; gap: 4px; }
+      .quando button { padding: 2px 10px; color: var(--cinza); background: none; border: 1px solid transparent; border-radius: 100px; font-size: .75rem; font-weight: 600; text-transform: none; }
+      .quando button.ativo { color: var(--azul); border-color: var(--azul); background: #fff; }
+      .faltam .resumo-faltam { margin: 0 0 8px; font-size: .875rem; }
+      .faltam .resumo-faltam b { font-weight: 700; }
+      .faltam .resumo-faltam.zero { color: var(--verde); }
+      .faltam .resumo-faltam.erro { color: var(--erro); }
+      .lista-faltam { max-height: 240px; overflow-y: auto; margin: 0; padding: 0; list-style: none; border: 1px solid var(--divisa); border-radius: 8px; }
+      .lista-faltam li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--divisa); font-size: .8125rem; }
+      .lista-faltam li:last-child { border-bottom: 0; }
+      .lista-faltam .cod { font-family: ui-monospace, Consolas, monospace; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .lista-faltam .cid { color: var(--texto); white-space: nowrap; }
+      .lista-faltam .hora { color: var(--cinza); white-space: nowrap; }
+      .lista-faltam:empty { display: none; }
+      .pilula-canto .falta b { color: #ed6c02; }
       .linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
       /* alternar como o "Pacotes | Grupos" do Arco */
       .alternar { display: inline-flex; padding: 2px; background: var(--azul); border: thin solid var(--azul); border-radius: 800px; }
@@ -183,6 +201,13 @@
             <h2 class="titulo">Conferência</h2>
             <p class="texto">Escolha o círculo ou as cidades deste grupo. Pacote de outra cidade é avisado na hora do bipe e não deixa continuar.</p>
             <div class="estado"></div>
+            <section class="faltam" hidden>
+              <div class="subtitulo"><span>Faltam agrupar</span>
+                <span class="quando"><button type="button" data-quando="hoje">Chegaram hoje</button><button type="button" data-quando="todos">Toda a base</button></span>
+              </div>
+              <p class="resumo-faltam"></p>
+              <ul class="lista-faltam"></ul>
+            </section>
             <div class="linha">
               <div class="alternar" role="group">
                 <button type="button" data-modo="circulos">Círculo</button>
@@ -241,6 +266,14 @@
   let certos = 0;
   let deFora = 0;
   let posicao = { direita: 24, baixo: 24 };
+  // Na base (relatorio da Loggi) e os agrupados guardados neste navegador (hoje e ontem).
+  let naBase = null; // linhas do relatorio; null = ainda nao leu
+  let naBaseEm = 0;
+  let naBaseErro = '';
+  let quando = 'hoje';
+  let agrupados = {};
+  let faltam = [];
+  const NA_BASE_MS = 2 * 60 * 1000; // relatorio lido vale 2 min (o botao "Atualizar" le de novo)
 
   const chaveDaBase = () => `base:${codigoBase || 'sem-base'}`;
   async function guardar() {
@@ -335,6 +368,38 @@
     }));
   }
 
+  function desenharFaltam() {
+    const secao = $('.faltam');
+    secao.hidden = alvo.tipo === 'nada';
+    if (secao.hidden) { faltam = []; return; }
+    sombra.querySelectorAll('[data-quando]').forEach((b) => b.classList.toggle('ativo', b.dataset.quando === quando));
+    const resumo = $('.resumo-faltam');
+    resumo.className = 'resumo-faltam';
+    const ul = $('.lista-faltam');
+    if (!naBase) {
+      faltam = [];
+      resumo.textContent = naBaseErro || 'Lendo os pacotes na base...';
+      if (naBaseErro) resumo.classList.add('erro');
+      ul.replaceChildren();
+      return;
+    }
+    faltam = R.faltantes(naBase, alvo, agrupados, R.naListaAgora(bipes, textoDaLista()), { soHoje: quando === 'hoje' });
+    const onde = alvo.tipo === 'circulo' ? `do círculo ${alvo.nome}` : alvo.cidades.length === 1 ? `de ${alvo.cidades[0].nome}` : 'das cidades marcadas';
+    const que = quando === 'hoje' ? 'que chegaram hoje e' : 'na base que';
+    resumo.replaceChildren();
+    if (!faltam.length) {
+      resumo.classList.add('zero');
+      resumo.textContent = `Nenhum pacote ${onde} ${que} ainda não foi agrupado.`;
+    } else {
+      resumo.append(el('b', '', numero(faltam.length)), ` pacote(s) ${onde} ${que} ainda não foram agrupados:`);
+    }
+    ul.replaceChildren(...faltam.slice(0, 500).map((p) => {
+      const li = el('li');
+      li.append(el('span', 'cod', p.codigo || p.id), el('span', 'cid', p.cidade), el('span', 'hora', R.horaDe(p.chegou)));
+      return li;
+    }));
+  }
+
   function desenharPilula() {
     pilula.replaceChildren(icone('lista'));
     if (alvo.tipo === 'nada') {
@@ -346,6 +411,11 @@
       const fora = el('span', 'conta fora');
       fora.append(el('b', '', numero(deFora)), ' de fora');
       pilula.append(ok, fora);
+      if (naBase) {
+        const falta = el('span', 'conta falta');
+        falta.append(el('b', '', numero(faltam.length)), ' faltam');
+        pilula.append(falta);
+      }
     }
     aplicarPosicao();
   }
@@ -354,6 +424,7 @@
     alvo = R.montarAlvo(cfg, cidadesLoggi, circulos);
     if (bipes.size) { const c = R.contarNaLista(bipes, textoDaLista(), alvo); certos = c.certos; deFora = c.deFora; }
     desenharEstado();
+    desenharFaltam();
     desenharLista();
     desenharPilula();
   }
@@ -380,6 +451,50 @@
     desenhar();
     envolve.classList.add('aberta');
     setTimeout(() => $('.filtro').focus(), 250);
+    carregarNaBase();
+  }
+
+  // ── Na base e agrupados ───────────────────────────────────────────────────
+  const chaveAgrupados = () => `agrupados:${codigoBase || 'sem-base'}`;
+  async function carregarAgrupados() {
+    const salvo = (await chrome.storage.local.get(chaveAgrupados()))[chaveAgrupados()];
+    agrupados = R.agrupadosValidos(salvo);
+  }
+
+  /** Grupo criado ("Continuar" passou): o que estava na lista vira agrupado. */
+  async function registrarAgrupados(codigos) {
+    if (!codigos.length) return;
+    await carregarAgrupados();
+    agrupados = R.somarAgrupados(agrupados, codigos);
+    await chrome.storage.local.set({ [chaveAgrupados()]: agrupados });
+    desenhar();
+  }
+
+  // O link do "Baixar relatório" so existe na tela Na base (e tem a sessao da conta: vai direto ao fundo.js).
+  const linkNaBase = () => { const a = document.querySelector('a[href*="/packages/report"]'); return a ? a.href : ''; };
+
+  let lendoNaBase = false;
+  async function carregarNaBase(forcar = false) {
+    if (lendoNaBase || (!forcar && naBase && Date.now() - naBaseEm < NA_BASE_MS)) return;
+    const url = linkNaBase();
+    if (!url) {
+      if (!naBase) { naBaseErro = 'Abra a tela Na base do Arco para ver o que falta agrupar.'; desenhar(); }
+      return;
+    }
+    lendoNaBase = true;
+    try {
+      await carregarAgrupados();
+      const r = await chrome.runtime.sendMessage({ tipo: 'naBase', url });
+      if (!r || r.erro) throw new Error((r && r.erro) || 'Não deu para ler o Na base.');
+      naBase = r.linhas;
+      naBaseEm = Date.now();
+      naBaseErro = '';
+    } catch (e) {
+      naBaseErro = /context invalidated/i.test(e.message) ? 'A extensão foi atualizada. Aperte F5 nesta página.' : e.message;
+    } finally {
+      lendoNaBase = false;
+      desenhar();
+    }
   }
   const fecharGaveta = () => envolve.classList.remove('aberta');
 
@@ -435,6 +550,7 @@
     const cache = salvo && salvo.cache;
     cidadesLoggi = (cache && cache.cidades) || [];
     circulos = (cache && cache.circulos) || [];
+    await carregarAgrupados();
     desenhar();
     if (buscarSeVelho && (!cache || Date.now() - cache.em > VALIDADE_MS || !cidadesLoggi.length)) atualizarDaLoggi();
   }
@@ -495,12 +611,13 @@
     return (gavetas.length ? gavetas[gavetas.length - 1] : document.body).innerText || '';
   }
 
+  // Mudou o que esta na lista (bipe novo, lixeira, grupo criado): refaz contagem e faltantes.
+  let ultimaLista = null;
   function recontar() {
-    const c = R.contarNaLista(bipes, textoDaLista(), alvo);
-    if (c.certos === certos && c.deFora === deFora) return;
-    certos = c.certos;
-    deFora = c.deFora;
-    desenharPilula();
+    const lista = R.naListaAgora(bipes, textoDaLista()).join(',');
+    if (lista === ultimaLista) return;
+    ultimaLista = lista;
+    desenhar();
   }
   let recontagem = null;
   const recontarDepois = () => { clearTimeout(recontagem); recontagem = setTimeout(recontar, 250); };
@@ -526,7 +643,7 @@
     const b = e.target && e.target.closest && e.target.closest('button');
     if (!b || b.textContent.replace(/\s+/g, ' ').trim().toLowerCase() !== 'continuar') return;
     const errados = R.pendentes(bipes, textoDaLista(), alvo);
-    if (!errados.length) return;
+    if (!errados.length) { registrarAgrupados(R.naListaAgora(bipes, textoDaLista())); return; }
     e.preventDefault();
     e.stopImmediatePropagation();
     mostrarPendentes(errados);
@@ -577,7 +694,8 @@
   $('.cortina').addEventListener('click', fecharGaveta);
   $('.aplicar').addEventListener('click', fecharGaveta);
   sombra.querySelectorAll('[data-modo]').forEach((b) => b.addEventListener('click', () => { modo = b.dataset.modo; $('.filtro').value = ''; desenharLista(); }));
-  $('.atualizar').addEventListener('click', atualizarDaLoggi);
+  $('.atualizar').addEventListener('click', () => { atualizarDaLoggi(); carregarNaBase(true); });
+  sombra.querySelectorAll('[data-quando]').forEach((b) => b.addEventListener('click', () => { quando = b.dataset.quando; desenhar(); }));
   $('.limpar').addEventListener('click', () => { mudar(R.limpar(cfg)); recado('Escolha limpa: nada está sendo conferido.'); });
   $('.filtro').addEventListener('input', desenharLista);
   $('.adicionar').addEventListener('submit', (e) => { e.preventDefault(); adicionar($('.nova').value); });

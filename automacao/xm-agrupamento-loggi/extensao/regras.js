@@ -276,11 +276,142 @@
     return t ? itens.filter((c) => chave(c.nome).includes(t)) : itens;
   };
 
+  // ── Na base x agrupados: o que falta agrupar ──────────────────────────────────
+  // O "Na base" vem do relatorio da propria tela (o "Baixar relatório" do Arco, listagem_na_base_<base>.csv).
+  // "Ja agrupado" = estava na lista quando o "Continuar" passou (grupo criado), guardado neste navegador.
+
+  /** CSV (virgula, aspas duplas, "" dentro de aspas) -> linhas de colunas. */
+  function lerCsv(texto) {
+    const linhas = [];
+    let linha = [];
+    let campo = '';
+    let aspas = false;
+    const t = String(texto || '').replace(/^﻿/, '');
+    for (let i = 0; i < t.length; i += 1) {
+      const c = t[i];
+      if (aspas) {
+        if (c === '"' && t[i + 1] === '"') { campo += '"'; i += 1; } else if (c === '"') aspas = false; else campo += c;
+      } else if (c === '"') aspas = true;
+      else if (c === ',') { linha.push(campo); campo = ''; } else if (c === '\n' || c === '\r') {
+        if (c === '\r' && t[i + 1] === '\n') i += 1;
+        linha.push(campo); campo = '';
+        if (linha.some((x) => x !== '')) linhas.push(linha);
+        linha = [];
+      } else campo += c;
+    }
+    linha.push(campo);
+    if (linha.some((x) => x !== '')) linhas.push(linha);
+    return linhas;
+  }
+
+  const cabecalho = (v) => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+  /**
+   * Relatorio Na base -> so o que a conta usa: codigo de barras, ID, cidade, prazo, "Chegou em" e
+   * Status. Nome, telefone e endereco ficam de fora.
+   */
+  function linhasNaBase(texto) {
+    const [cab = [], ...linhas] = lerCsv(texto);
+    const col = (nome) => cab.findIndex((c) => cabecalho(c) === nome);
+    const i = { codigo: col('codigo de barras'), id: col('id do pacote'), cidade: col('cidade'), prazo: col('prazo'), chegou: col('chegou em'), status: col('status') };
+    if (i.cidade < 0 || (i.codigo < 0 && i.id < 0)) throw new Error('O relatório Na base veio sem as colunas Cidade e Código de barras.');
+    const valor = (l, k) => (i[k] < 0 ? '' : String(l[i[k]] || '').trim());
+    return linhas
+      .map((l) => ({ codigo: valor(l, 'codigo'), id: valor(l, 'id'), cidade: consertarTexto(valor(l, 'cidade')), prazo: valor(l, 'prazo'), chegou: valor(l, 'chegou'), status: valor(l, 'status') }))
+      .filter((p) => p.codigo || p.id);
+  }
+
+  /** O link do "Baixar relatório" e da Loggi? (so esse vai para o fundo.js buscar) */
+  function linkDoRelatorio(url) {
+    try {
+      const u = new URL(url);
+      return u.protocol === 'https:' && (u.hostname === 'loggi.com' || u.hostname.endsWith('.loggi.com')) && /\/packages\/report/.test(u.pathname);
+    } catch { return false; }
+  }
+
+  /** O relatorio de toda a base, qualquer que seja o filtro da tela ("para amanhã" etc.). */
+  function relatorioDaBase(url) {
+    try {
+      const u = new URL(url);
+      if (u.searchParams.has('view')) u.searchParams.set('view', 'base');
+      return u.toString();
+    } catch { return ''; }
+  }
+
+  const diaSP = (ms) => new Date(ms).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  const hoje = (agora = Date.now()) => diaSP(agora);
+  const ontem = (agora = Date.now()) => diaSP(agora - 86400000);
+
+  /** "Chegou em" -> "AAAA-MM-DD" no fuso de Sao Paulo (ISO com fuso, AAAA-MM-DD ou DD/MM/AAAA). */
+  function diaDe(valor) {
+    const t = String(valor || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}T.*(Z|[+-]\d{2}:?\d{2})$/i.test(t)) {
+      const d = new Date(t);
+      if (!Number.isNaN(d.getTime())) return diaSP(d.getTime());
+    }
+    let m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    return '';
+  }
+
+  /** "Chegou em" -> "08:15" (ou o texto como veio). */
+  function horaDe(valor) {
+    const t = String(valor || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}T.*(Z|[+-]\d{2}:?\d{2})$/i.test(t)) {
+      const d = new Date(t);
+      if (!Number.isNaN(d.getTime())) return d.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+    }
+    const m = t.match(/(\d{1,2}):(\d{2})/);
+    return m ? `${m[1].padStart(2, '0')}:${m[2]}` : t;
+  }
+
+  /** Agrupados guardados ({ CODIGO: 'AAAA-MM-DD' }): ficam so os de hoje e de ontem. */
+  function agrupadosValidos(registro, agora = Date.now()) {
+    const valem = new Set([hoje(agora), ontem(agora)]);
+    const r = {};
+    for (const [c, dia] of Object.entries(registro || {})) if (valem.has(dia)) r[c] = dia;
+    return r;
+  }
+
+  /** Junta os codigos de um grupo criado agora aos agrupados guardados. */
+  function somarAgrupados(registro, codigos, agora = Date.now()) {
+    const r = agrupadosValidos(registro, agora);
+    for (const c of codigos || []) r[String(c).toUpperCase()] = hoje(agora);
+    return r;
+  }
+
+  /**
+   * O que falta agrupar: na base, das cidades escolhidas, sem grupo criado e fora da lista de agora.
+   * @param {object[]} linhas     do relatorio (linhasNaBase)
+   * @param {object} agrupados    { CODIGO: dia } (agrupadosValidos)
+   * @param {Iterable} naLista    codigos bipados que estao na lista de agrupar agora
+   * @param {boolean} soHoje      so os que chegaram hoje
+   */
+  function faltantes(linhas, alvo, agrupados, naLista, { soHoje = true, agora = Date.now() } = {}) {
+    if (!alvo || !alvo.chaves || !alvo.chaves.length) return [];
+    const ja = new Set([...Object.keys(agrupados || {}), ...[...(naLista || [])].map((c) => String(c).toUpperCase())]);
+    const dia = hoje(agora);
+    return (linhas || [])
+      .filter((p) => conferirBipe(p.cidade, alvo).ok === true)
+      .filter((p) => !ja.has(String(p.codigo).toUpperCase()) && !ja.has(String(p.id).toUpperCase()))
+      .filter((p) => !soHoje || diaDe(p.chegou) === dia)
+      .sort((a, b) => a.cidade.localeCompare(b.cidade, 'pt-BR', { sensitivity: 'base' }) || String(a.chegou).localeCompare(String(b.chegou)));
+  }
+
+  /** Bipados que estao na lista de agrupar agora (o codigo aparece no texto dela). */
+  const naListaAgora = (bipes, textoDaLista) => {
+    const tela = String(textoDaLista || '').toUpperCase();
+    return [...(bipes || new Map()).keys()].filter((c) => tela.includes(String(c).toUpperCase()));
+  };
+
   /** O botao clicado e o "Agrupar" (ou "Agrupar pacotes") de alguma tela do Arco? */
   const ehAgrupar = (texto) => /^agrupar( pacotes)?$/.test(String(texto || '').replace(/\s+/g, ' ').trim().toLowerCase());
 
   const publico = { chave, consertarTexto, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
-    pendentes, contarNaLista, ordenarCirculos, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar };
+    pendentes, contarNaLista, ordenarCirculos, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar,
+    lerCsv, linhasNaBase, linkDoRelatorio, relatorioDaBase, hoje, diaDe, horaDe, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMAgrupamento = publico;
 })();
