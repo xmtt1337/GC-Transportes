@@ -1,18 +1,20 @@
-// Tela da XM - Agrupamento Loggi no Arco, no tema da Loggi.
+// Tela da XM - Agrupamento Loggi no Arco, com a cara do proprio Arco (sem marca XM na tela).
 //
-// Ao clicar em "Agrupar" (em qualquer tela do Arco; todas levam a mesma tela de agrupar) abre a
-// janela de escolha: UM circulo da Loggi ou as cidades marcadas (comeca vazio; "Limpar" desfaz).
-// O botao XM no canto reabre a janela; ao lado dele, o que esta valendo e a contagem.
-// Cada bipe de fora: tarja vermelha + som. No "Continuar" com pacote de fora ainda na lista, o
-// clique nao chega a Loggi e um cartao diz quais tirar.
+// Ao clicar em "Agrupar" (em qualquer tela do Arco) abre a gaveta "Conferência", no mesmo jeito do
+// "Criar círculo" da Loggi: UM circulo ou as cidades marcadas (comeca vazio; "Limpar" desfaz).
+// No canto fica uma pilula com o que esta valendo e a contagem; clicar nela reabre a gaveta.
+// Cada bipe de fora: faixa vermelha + som. No "Continuar" com pacote de fora ainda na lista, o
+// clique nao chega a Loggi e uma janela diz quais tirar.
 // A configuracao fica no chrome.storage.local, uma por base (ex.: "base:CCR").
+// Estilo copiado do Arco (jss do filtro Cidades e do Criar circulo): Open Sans, #00BAFF, #2E3545,
+// subtitulo #BEC7D6, item marcado #F3FCFF com barra #079BD3, divisoria #F5F8FA.
 
 (() => {
   const NOME = 'XM - Agrupamento Loggi';
   const MARGEM = 8;
   const VALIDADE_MS = 6 * 60 * 60 * 1000; // lista da Loggi guardada vale 6 h; depois busca de novo
   const TARJA_MS = 2500;
-  const PEDIDO_MS = 20000; // "Agrupar" que recarregou a pagina: a janela abre se a tela nova vier em ate 20 s
+  const PEDIDO_MS = 20000; // "Agrupar" que abriu outra aba/recarregou: a gaveta abre na tela nova em ate 20 s
 
   function limitar(valor, maximo) {
     return Math.min(Math.max(MARGEM, valor), Math.max(MARGEM, maximo));
@@ -25,6 +27,19 @@
 
   const R = self.XMAgrupamento;
   const CANAL = 'xmAgrup';
+  // Icones do Material (os mesmos do Arco).
+  const ICONE = {
+    caixa: '<path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',
+    caixaMarcada: '<path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>',
+    radio: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>',
+    radioMarcado: '<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>',
+    fechar: '<path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>',
+    busca: '<path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>',
+    lista: '<path d="M22 7h-9v2h9V7zm0 8h-9v2h9v-2zM5.54 11 2 7.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 11zm0 8L2 15.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 19z"/>',
+    aviso: '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>',
+  };
+  const svg = (nome, classe = '') => `<svg class="ico ${classe}" viewBox="0 0 24 24" aria-hidden="true">${ICONE[nome]}</svg>`;
+
   const hospedeiro = document.createElement('div');
   const sombra = hospedeiro.attachShadow({ mode: 'closed' });
   sombra.innerHTML = `
@@ -32,165 +47,187 @@
       :host { all: initial; }
       * { box-sizing: border-box; }
       [hidden] { display: none !important; }
-      .raiz { --azul: #12a5e8; --texto: #2e2e2e; --forte: #1f1f1f; --suave: #6b6b6b;
-        --linha: #e6e6e6; --campo: #cfd6dd; --claro: #f7f9fa; --verde: #13a14b; --vermelho: #e5484d;
-        font: 14px/1.45 'Open Sans', system-ui, sans-serif; color: var(--texto); }
+      .raiz { --azul: #00baff; --azul-escuro: #079bd3; --texto: #2e3545; --cinza: #757d8c; --sub: #bec7d6; --divisa: #f5f8fa;
+        --marcado: #f3fcff; --borda-marcado: #ccf1ff; --erro: #d32f2f; --verde: #43a047;
+        font: 400 14px/1.5 'Open Sans', sans-serif; color: var(--texto); -webkit-font-smoothing: antialiased; }
       button { font: inherit; cursor: pointer; }
-      .link { padding: 0; color: var(--azul); background: none; border: 0; font-weight: 600; white-space: nowrap; }
-      .link:hover { text-decoration: underline; }
-      .pilula { padding: 7px 20px; color: var(--azul); background: #fff; border: 1px solid var(--azul); border-radius: 999px; font-weight: 600; }
-      .pilula:hover { background: rgba(18, 165, 232, .06); }
-      .pilula.ativa { color: #fff; background: var(--azul); }
-      .cheia { padding: 9px 28px; color: #fff; background: var(--azul); border: 1px solid var(--azul); border-radius: 999px; font-weight: 700; }
-      .cheia:hover { background: #0e93d0; }
+      .ico { width: 24px; height: 24px; flex: none; fill: currentColor; }
 
-      /* canto: botao XM + o que esta valendo */
-      .canto { position: fixed; z-index: 2147483646; display: flex; align-items: center; gap: 10px; }
-      .botao { width: 56px; height: 56px; padding: 0; display: flex; align-items: center; justify-content: center; flex: none;
-        background: #fff; border: 1px solid #c9ced6; border-radius: 28px; box-shadow: 0 4px 14px rgba(0, 40, 90, .25); cursor: grab; touch-action: none; }
-      .botao:hover { border-color: var(--azul); }
-      .botao img { width: 36px; pointer-events: none; }
-      .resumo { display: flex; align-items: center; gap: 12px; max-width: 360px; padding: 8px 16px; background: #fff; border: 1px solid var(--azul);
-        border-radius: 999px; box-shadow: 0 4px 14px rgba(0, 40, 90, .18); color: var(--texto); }
-      .resumo .qual { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-      .resumo .nada { color: #b45309; }
-      .resumo .ok, .resumo .fora { white-space: nowrap; }
-      .resumo .ok b { color: var(--verde); }
-      .resumo .fora b { color: var(--vermelho); }
+      /* pilula do canto: o que esta valendo (estilo dos botoes brancos do Arco) */
+      .canto { position: fixed; z-index: 2147483645; }
+      .pilula-canto { display: flex; align-items: center; gap: 10px; max-width: 420px; padding: 10px 20px 10px 14px; color: var(--texto);
+        background: #fff; border: 1px solid var(--azul); border-radius: 24px; box-shadow: 0 5px 8px 0 rgba(139, 159, 183, .2);
+        font-weight: 600; cursor: grab; touch-action: none; user-select: none; }
+      .pilula-canto:hover { background: var(--marcado); }
+      .pilula-canto .ico { color: var(--azul); width: 22px; height: 22px; }
+      .pilula-canto .qual { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .pilula-canto .nada { color: var(--azul); }
+      .pilula-canto .conta { white-space: nowrap; font-weight: 400; color: var(--cinza); }
+      .pilula-canto .conta b { font-weight: 700; }
+      .pilula-canto .ok b { color: var(--verde); }
+      .pilula-canto .fora b { color: var(--erro); }
 
-      /* janela de escolha */
-      .fundo-janela { display: none; position: fixed; inset: 0; z-index: 2147483646; background: rgba(15, 30, 50, .45);
-        align-items: center; justify-content: center; }
-      .fundo-janela.ver { display: flex; }
-      .fundo-janela.ver ~ .canto { display: none; } /* janela aberta: o resumo do canto nao fica por cima */
-      .janela { width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 48px); display: flex; flex-direction: column;
-        background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 18px 50px rgba(0, 40, 90, .35); }
-      .topo { display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; color: #fff;
-        background: linear-gradient(90deg, #00baff, #006aff); }
-      .topo .marca { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; }
-      .topo img { width: 30px; }
-      .topo .fechar { padding: 0; color: #fff; background: none; border: 0; font-size: 28px; line-height: 1; }
-      .miolo { flex: 1; overflow: auto; padding: 18px 22px 8px; display: flex; flex-direction: column; gap: 14px; }
-      .alvo { padding: 12px 16px; border: 1px solid var(--linha); border-radius: 4px; }
-      .alvo .rotulo { display: block; font-size: 12px; font-weight: 600; color: var(--verde); }
-      .alvo strong { display: block; font-size: 16px; font-weight: 600; color: var(--forte); }
-      .alvo small { display: block; color: var(--suave); margin-top: 2px; }
-      .alvo.vazio .rotulo { color: #b45309; }
-      .linha-modo { display: flex; align-items: center; gap: 10px; }
-      .linha-modo .link { margin-left: auto; }
-      .busca { position: relative; }
-      .busca svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; fill: none; stroke: var(--suave); stroke-width: 1.8; }
-      input[type="text"] { width: 100%; padding: 10px 12px; color: var(--texto); background: #fff; border: 1px solid var(--campo); border-radius: 4px; font: inherit; outline: none; }
-      .busca input { padding-left: 36px; }
-      input[type="text"]:focus { border-color: var(--azul); }
-      .cab-lista { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-      .cab-lista h3 { margin: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--suave); }
-      .lista { max-height: 36vh; overflow: auto; border: 1px solid var(--linha); border-radius: 4px; }
-      .item { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; column-gap: 12px; padding: 10px 14px;
-        border-bottom: 1px solid var(--linha); cursor: pointer; }
-      .item:last-child { border-bottom: 0; }
-      .item:hover { background: var(--claro); }
-      .item input { margin: 0; width: 16px; height: 16px; accent-color: var(--azul); cursor: pointer; }
-      .item .nome { min-width: 0; color: var(--forte); }
-      .item .nome small { display: block; color: var(--suave); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .item .conta { color: var(--suave); font-size: 12px; white-space: nowrap; }
-      .vazia { padding: 12px 14px; color: var(--suave); }
-      .adicionar { display: flex; gap: 10px; }
-      .adicionar .pilula { flex: none; }
-      .sugestoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+      /* gaveta (igual a do "Criar círculo") */
+      .cortina { position: fixed; inset: 0; z-index: 2147483646; background: rgba(0, 0, 0, .5); opacity: 0; pointer-events: none; transition: opacity 225ms cubic-bezier(.4, 0, .2, 1); }
+      .gaveta { position: fixed; top: 0; right: 0; bottom: 0; z-index: 2147483646; width: min(480px, 100vw); display: flex; flex-direction: column;
+        background: #fff; box-shadow: 0 8px 10px -5px rgba(0,0,0,.2), 0 16px 24px 2px rgba(0,0,0,.14), 0 6px 30px 5px rgba(0,0,0,.12);
+        transform: translateX(100%); visibility: hidden; transition: transform 225ms cubic-bezier(0, 0, .2, 1), visibility 0s linear 225ms; }
+      .aberta .cortina { opacity: 1; pointer-events: auto; }
+      .aberta .gaveta { transform: none; visibility: visible; transition: transform 225ms cubic-bezier(0, 0, .2, 1); }
+      .aberta ~ .canto, .aberta + .canto { display: none; }
+      .gaveta-corpo { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 24px 28px 8px; }
+      .fechar { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; color: var(--azul);
+        background: #fff; border: 1px solid var(--azul); border-radius: 50%; }
+      .fechar:hover { background: rgba(0, 186, 255, .04); }
+      .fechar .ico { width: 20px; height: 20px; }
+      .sobre { margin: 40px 0 4px; color: var(--cinza); font-size: 14px; }
+      .titulo { margin: 0 0 12px; font: 700 32px/1.2 Montserrat, 'Open Sans', sans-serif; color: var(--texto); }
+      .texto { margin: 0 0 20px; font-size: 16px; color: var(--texto); }
+      .estado { display: flex; gap: 12px; align-items: flex-start; padding: 10px 16px; margin-bottom: 24px; border-radius: 8px; font-size: 14px; }
+      .estado .ico { width: 22px; height: 22px; margin-top: 1px; }
+      .estado strong { display: block; font-weight: 600; }
+      .estado.vazio { background: #fff4e5; color: #663c00; }
+      .estado.vazio .ico { color: #ff9800; }
+      .estado.ok { background: var(--marcado); color: var(--texto); border: 1px solid var(--borda-marcado); }
+      .estado.ok .ico { color: var(--azul); }
+      .linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+      /* alternar como o "Pacotes | Grupos" do Arco */
+      .alternar { display: inline-flex; padding: 2px; background: var(--azul); border: thin solid var(--azul); border-radius: 800px; }
+      .alternar button { padding: 8px 24px; color: #fff; background: transparent; border: 0; border-radius: 24px; font-weight: 600; letter-spacing: .02857em; }
+      .alternar button.ativo { color: var(--azul); background: #fff; }
+      .atualizar { padding: 6px 8px; color: var(--azul); background: none; border: 0; border-radius: 4px; font-weight: 600; white-space: nowrap; }
+      .atualizar:hover { background: rgba(0, 186, 255, .04); }
+      /* campo com rotulo na borda (MUI outlined) */
+      .campo { position: relative; margin: 8px 0 8px; }
+      .campo label { position: absolute; left: 12px; top: -9px; padding: 0 4px; background: #fff; color: var(--cinza); font-size: 12px; line-height: 18px; }
+      .campo input { width: 100%; height: 56px; padding: 16px 14px 16px 48px; color: var(--texto); background: #fff; border: 1px solid rgba(0,0,0,.23);
+        border-radius: 4px; font: inherit; font-size: 16px; outline: none; }
+      .campo input:hover { border-color: var(--texto); }
+      .campo input:focus { border: 2px solid var(--azul); padding-left: 47px; }
+      .campo:focus-within label { color: var(--azul); }
+      .campo .ico { position: absolute; left: 14px; top: 16px; color: var(--cinza); }
+      .subtitulo { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; color: var(--sub); font-size: .75rem; font-weight: 700; line-height: 1; text-transform: uppercase; }
+      .lista { margin: 0 -28px; padding: 0; list-style: none; }
+      .lista li { display: flex; align-items: center; gap: 16px; min-height: 48px; padding: 8px 28px; border-bottom: 1px solid var(--divisa); cursor: pointer; }
+      .lista li:last-child { border-bottom-width: 0; }
+      .lista li:hover { background: rgba(0, 0, 0, .04); }
+      .lista li.sel { padding-left: 25px; background: var(--marcado); border-left: 3px solid var(--azul-escuro); border-bottom-color: var(--borda-marcado); }
+      .lista li .ico { color: rgba(0, 0, 0, .6); }
+      .lista li.sel .ico { color: var(--azul); }
+      .lista .nome { flex: 1; min-width: 0; font-size: .875rem; }
+      .lista .nome small { display: block; color: var(--cinza); font-size: .75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .lista .tirar { padding: 4px 8px; color: var(--erro); background: none; border: 0; border-radius: 4px; font-size: .8125rem; font-weight: 600; }
+      .lista .tirar:hover { background: rgba(211, 47, 47, .04); }
+      .lista .vazia { color: var(--cinza); cursor: default; }
+      .lista .vazia:hover { background: none; }
+      .adicionar { display: flex; gap: 12px; align-items: center; }
+      .adicionar .campo { flex: 1; margin: 8px 0; }
+      .adicionar .campo input { height: 48px; padding-left: 14px; font-size: 14px; }
+      .adicionar .campo input:focus { padding-left: 13px; }
+      .contorno { padding: 5px 15px; color: var(--azul); background: #fff; border: 1px solid var(--azul); border-radius: 24px; font-weight: 600; white-space: nowrap; }
+      .contorno:hover { background: rgba(0, 186, 255, .04); }
+      .sugestoes { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 8px; }
       .sugestoes:empty { display: none; }
-      .sugestoes button { padding: 4px 12px; color: var(--azul); background: #fff; border: 1px dashed var(--azul); border-radius: 999px; font-size: 13px; }
-      .rodape { display: flex; align-items: center; gap: 16px; padding: 14px 22px 18px; border-top: 1px solid var(--linha); }
-      .aviso { flex: 1; color: var(--suave); font-size: 13px; }
-      .aviso.erro { color: var(--vermelho); }
+      .sugestoes button { padding: 4px 12px; color: var(--azul); background: var(--marcado); border: 1px solid var(--borda-marcado); border-radius: 100px; font-size: .8125rem; }
+      .recado { min-height: 20px; margin: 4px 0 12px; color: var(--cinza); font-size: .8125rem; }
+      .recado.erro { color: var(--erro); }
+      .rodape { display: grid; grid-template-columns: 1fr 3fr; gap: 16px; padding: 20px 28px; border-top: 1px solid var(--divisa); box-shadow: 0 -2px 5px rgba(46, 53, 69, .1); }
+      .rodape .limpar { padding: 6px 8px; color: var(--texto); background: none; border: 0; border-radius: 4px; font-weight: 600; }
+      .rodape .limpar:hover { background: rgba(0, 0, 0, .04); }
+      .rodape .aplicar { padding: 8px 22px; color: var(--azul); background: #fff; border: 1px solid var(--azul); border-radius: 24px; font-weight: 600; }
+      .rodape .aplicar:hover { background: rgba(0, 186, 255, .04); }
 
-      /* alerta e trava (vermelho, igual em qualquer tema) */
-      .tarja { display: flex; position: fixed; top: 0; left: 0; right: 0; z-index: 2147483647; padding: 18px 24px;
-        background: #dc2626; color: #fff; font: 600 18px system-ui, sans-serif; box-shadow: 0 6px 20px rgba(0,0,0,.4);
-        align-items: center; justify-content: space-between; gap: 16px; opacity: 0; visibility: hidden; pointer-events: none;
-        transition: opacity .5s ease, visibility 0s linear .5s; }
+      /* alerta do bipe (faixa no alto) e janela do "Continuar" */
+      .tarja { display: flex; position: fixed; top: 0; left: 0; right: 0; z-index: 2147483647; gap: 16px; align-items: center; padding: 18px 28px;
+        color: #fff; background: var(--erro); font: 400 18px 'Open Sans', sans-serif; box-shadow: 0 6px 20px rgba(0,0,0,.3);
+        opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .5s ease, visibility 0s linear .5s; }
       .tarja.ver { opacity: 1; visibility: visible; pointer-events: auto; transition: none; }
-      .tarja strong { display: block; font-size: 26px; letter-spacing: .5px; }
-      .tarja button { padding: 0; color: #fff; background: none; border: 0; text-decoration: underline; }
-      .fundo { display: none; position: fixed; inset: 0; z-index: 2147483647; background: rgba(0,0,0,.55);
-        align-items: center; justify-content: center; font: 15px system-ui, sans-serif; }
+      .tarja .ico { width: 36px; height: 36px; }
+      .tarja div { flex: 1; }
+      .tarja strong { display: block; font: 700 24px Montserrat, 'Open Sans', sans-serif; }
+      .tarja button { padding: 6px 8px; color: #fff; background: none; border: 0; font-weight: 600; text-decoration: underline; }
+      .fundo { display: none; position: fixed; inset: 0; z-index: 2147483647; background: rgba(0, 0, 0, .5); align-items: center; justify-content: center; }
       .fundo.ver { display: flex; }
-      .card { width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; background: #dc2626; color: #fff;
-        border-radius: 10px; padding: 26px 30px; box-shadow: 0 16px 40px rgba(0,0,0,.5); }
-      .card h2 { margin: 0 0 8px; font-size: 26px; }
-      .card p { margin: 0 0 16px; font-size: 17px; line-height: 1.45; }
-      .card ul { margin: 0 0 18px; padding: 0; list-style: none; background: rgba(0,0,0,.15); border-radius: 6px; }
-      .card li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.2); font-weight: 700; }
+      .card { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; background: #fff; border-radius: 12px;
+        border-top: 6px solid var(--erro); box-shadow: 0 11px 15px -7px rgba(0,0,0,.2), 0 24px 38px 3px rgba(0,0,0,.14); padding: 28px; }
+      .card h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font: 700 24px/1.25 Montserrat, 'Open Sans', sans-serif; color: var(--erro); }
+      .card p { margin: 0 0 16px; font-size: 16px; }
+      .card ul { margin: 0 0 20px; padding: 0; list-style: none; border: 1px solid var(--divisa); border-radius: 8px; }
+      .card li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--divisa); font-weight: 600; }
       .card li:last-child { border-bottom: 0; }
       .card li span:first-child { font-family: ui-monospace, Consolas, monospace; }
-      .card button { padding: 0; background: none; border: 0; color: #fff; text-decoration: underline; font: 700 16px system-ui, sans-serif; }
+      .card li span:last-child { color: var(--erro); }
+      .card .acoes { display: flex; justify-content: flex-end; }
     </style>
     <div class="raiz">
       <div class="fundo" role="alertdialog" aria-modal="true">
         <div class="card">
-          <h2>Pacotes de fora neste grupo</h2>
+          <h2>${svg('aviso')}Tem pacote de fora neste grupo</h2>
           <p class="explica"></p>
           <ul></ul>
-          <button type="button">Entendi, vou tirar</button>
+          <div class="acoes"><button type="button" class="contorno entendi">Entendi, vou tirar</button></div>
         </div>
       </div>
       <div class="tarja" role="alert">
-        <div><strong>GRUPO ERRADO</strong><span class="texto"></span></div>
+        ${svg('aviso')}
+        <div><strong>Grupo errado</strong><span class="texto-tarja"></span></div>
         <button type="button">Fechar</button>
       </div>
 
-      <div class="fundo-janela" role="dialog" aria-modal="true" aria-label="Escolha do agrupamento">
-        <div class="janela">
-          <div class="topo">
-            <span class="marca"><img alt="XM" src="${chrome.runtime.getURL('img/logo-claro.png')}">O que você vai agrupar?</span>
-            <button type="button" class="fechar" title="Fechar (Esc)" aria-label="Fechar">×</button>
-          </div>
-          <div class="miolo">
-            <div class="alvo"></div>
-            <div class="linha-modo">
-              <button type="button" class="pilula" data-modo="circulos">Círculo</button>
-              <button type="button" class="pilula" data-modo="cidades">Cidades</button>
-              <button type="button" class="link atualizar">Atualizar da Loggi</button>
+      <div class="gaveta-envolve">
+        <div class="cortina"></div>
+        <aside class="gaveta" role="dialog" aria-modal="true" aria-label="Conferência do agrupamento">
+          <div class="gaveta-corpo">
+            <button type="button" class="fechar" title="Fechar" aria-label="Fechar">${svg('fechar')}</button>
+            <div class="sobre">Agrupar</div>
+            <h2 class="titulo">Conferência</h2>
+            <p class="texto">Escolha o círculo ou as cidades deste grupo. Pacote de outra cidade é avisado na hora do bipe e não deixa continuar.</p>
+            <div class="estado"></div>
+            <div class="linha">
+              <div class="alternar" role="group">
+                <button type="button" data-modo="circulos">Círculo</button>
+                <button type="button" data-modo="cidades">Cidades</button>
+              </div>
+              <button type="button" class="atualizar">Atualizar</button>
             </div>
-            <div class="busca">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <div class="campo">
+              <label class="rotulo-busca">Buscar círculo</label>
+              ${svg('busca')}
               <input type="text" class="filtro" autocomplete="off">
             </div>
-            <div>
-              <div class="cab-lista"><h3 class="titulo-lista"></h3><button type="button" class="link limpar">Limpar</button></div>
-              <div class="lista"></div>
-            </div>
+            <div class="subtitulo"><span class="titulo-lista"></span></div>
+            <ul class="lista"></ul>
             <div class="bloco-adicionar">
-              <div class="cab-lista"><h3 class="titulo-adicionar">Adicionar cidade</h3></div>
+              <div class="subtitulo"><span class="titulo-adicionar">Adicionar cidade</span></div>
               <form class="adicionar">
-                <input type="text" class="nova" placeholder="Cidade que não está na lista (ex.: micro cidade)" autocomplete="off">
-                <button type="submit" class="pilula">Adicionar</button>
+                <div class="campo"><input type="text" class="nova" placeholder="Cidade que não está na lista" autocomplete="off"></div>
+                <button type="submit" class="contorno">Adicionar</button>
               </form>
               <div class="sugestoes"></div>
             </div>
+            <div class="recado"></div>
           </div>
-          <div class="rodape">
-            <span class="aviso"></span>
-            <button type="button" class="cheia pronto">Pronto</button>
-          </div>
-        </div>
+          <footer class="rodape">
+            <button type="button" class="limpar">Limpar</button>
+            <button type="button" class="aplicar">Aplicar</button>
+          </footer>
+        </aside>
       </div>
 
       <div class="canto">
-        <button type="button" class="resumo" hidden></button>
-        <button class="botao" type="button" title="${NOME}: escolher círculo ou cidades"><img alt="XM" src="${chrome.runtime.getURL('img/logo.png')}"></button>
+        <button type="button" class="pilula-canto" title="Conferência do agrupamento"></button>
       </div>
     </div>`;
 
   const $ = (s) => sombra.querySelector(s);
   const canto = $('.canto');
-  const botao = $('.botao');
-  const resumo = $('.resumo');
-  const janela = $('.fundo-janela');
+  const pilula = $('.pilula-canto');
+  const envolve = $('.gaveta-envolve');
   const tarja = $('.tarja');
   const fundo = $('.fundo');
   const numero = (n) => Number(n || 0).toLocaleString('pt-BR');
   const el = (tag, classe, texto) => { const e = document.createElement(tag); if (classe) e.className = classe; if (texto != null) e.textContent = texto; return e; };
+  const icone = (nome) => { const t = document.createElement('template'); t.innerHTML = svg(nome); return t.content.firstChild; };
 
   // ── estado ────────────────────────────────────────────────────────────────
   let codigoBase = (location.pathname.split('/').filter(Boolean)[0] || '').toUpperCase();
@@ -202,16 +239,16 @@
   const bipes = new Map(); // codigo -> cidade, desde que a pagina abriu
   let certos = 0;
   let deFora = 0;
-  let posicao = { direita: 20, baixo: 90 }; // acima do botao de outras extensoes XM, que fica no canto
+  let posicao = { direita: 24, baixo: 24 };
 
   const chaveDaBase = () => `base:${codigoBase || 'sem-base'}`;
   async function guardar() {
     await chrome.storage.local.set({ [chaveDaBase()]: { ...cfg, cache: { cidades: cidadesLoggi, circulos, em: Date.now() } } });
   }
 
-  function aviso(texto, erro = false) {
-    $('.aviso').textContent = texto || '';
-    $('.aviso').classList.toggle('erro', !!erro);
+  function recado(texto, erro = false) {
+    $('.recado').textContent = texto || '';
+    $('.recado').classList.toggle('erro', !!erro);
   }
 
   function mudar(novo) {
@@ -221,71 +258,68 @@
   }
 
   // ── desenhar ──────────────────────────────────────────────────────────────
-  function desenharAlvo() {
-    const caixa = $('.alvo');
-    caixa.classList.toggle('vazio', alvo.tipo === 'nada');
-    caixa.replaceChildren();
+  function desenharEstado() {
+    const caixa = $('.estado');
+    caixa.className = `estado ${alvo.tipo === 'nada' ? 'vazio' : 'ok'}`;
+    const txt = el('div');
     if (alvo.tipo === 'nada') {
-      caixa.append(el('span', 'rotulo', 'Nada escolhido'), el('strong', '', 'Os bipes não estão sendo conferidos'),
-        el('small', '', 'Escolha um círculo ou marque as cidades deste agrupamento.'));
-      return;
+      txt.append(el('strong', '', 'Nada escolhido'), 'Os bipes não estão sendo conferidos.');
+      caixa.replaceChildren(icone('aviso'), txt);
+    } else {
+      const nomes = alvo.cidades.map((c) => c.nome);
+      txt.append(el('strong', '', `Conferindo: ${alvo.rotulo}`), `${nomes.slice(0, 8).join(', ')}${nomes.length > 8 ? ` e mais ${nomes.length - 8}` : ''}`);
+      caixa.replaceChildren(icone('lista'), txt);
     }
-    caixa.append(el('span', 'rotulo', 'Conferindo'), el('strong', '', alvo.rotulo),
-      el('small', '', `${numero(alvo.cidades.length)} cidade(s): ${alvo.cidades.slice(0, 8).map((c) => c.nome).join(', ')}${alvo.cidades.length > 8 ? '...' : ''}`));
   }
 
-  function itemLista({ marcado, nome, detalhe, conta, aoClicar, tirar }) {
-    const linha = el('label', 'item');
-    const caixa = el('input');
-    caixa.type = 'checkbox';
-    caixa.checked = marcado;
-    caixa.addEventListener('change', aoClicar);
+  function itemLista({ marcado, unico, nome, detalhe, aoClicar, tirar }) {
+    const li = el('li');
+    if (marcado) li.classList.add('sel');
+    li.setAttribute('role', unico ? 'radio' : 'checkbox');
+    li.setAttribute('aria-checked', marcado ? 'true' : 'false');
+    li.append(icone(unico ? (marcado ? 'radioMarcado' : 'radio') : (marcado ? 'caixaMarcada' : 'caixa')));
     const n = el('span', 'nome', nome);
     if (detalhe) n.append(el('small', '', detalhe));
-    linha.append(caixa, n);
+    li.append(n);
     if (tirar) {
-      const b = el('button', 'link', 'Tirar');
+      const b = el('button', 'tirar', 'Tirar');
       b.type = 'button';
-      b.addEventListener('click', (e) => { e.preventDefault(); tirar(); });
-      linha.append(b);
-    } else linha.append(el('span', 'conta', conta || ''));
-    return linha;
+      b.addEventListener('click', (e) => { e.stopPropagation(); tirar(); });
+      li.append(b);
+    }
+    li.addEventListener('click', aoClicar);
+    return li;
   }
 
   function desenharLista() {
     const busca = $('.filtro').value;
-    const lista = $('.lista');
-    sombra.querySelectorAll('[data-modo]').forEach((b) => b.classList.toggle('ativa', b.dataset.modo === modo));
-    $('.filtro').placeholder = modo === 'circulos' ? 'Pesquisar círculo' : 'Pesquisar cidade';
+    sombra.querySelectorAll('[data-modo]').forEach((b) => b.classList.toggle('ativo', b.dataset.modo === modo));
+    $('.rotulo-busca').textContent = modo === 'circulos' ? 'Buscar círculo' : 'Buscar cidade';
     let itens;
     if (modo === 'circulos') {
       $('.titulo-lista').textContent = 'Escolha um círculo';
-      itens = R.filtrar(circulos, busca).map((c) => {
-        const cidades = R.listaDoCirculo(c, cidadesLoggi, cfg);
-        return itemLista({
-          marcado: alvo.tipo === 'circulo' && alvo.id === c.id,
-          nome: c.nome,
-          detalhe: cidades.map((x) => x.nome).join(', '),
-          conta: `${numero(cidades.length)} cidade(s)`,
-          aoClicar: () => mudar(R.escolherCirculo(cfg, c.id)),
-        });
-      });
-      if (!circulos.length) itens = [el('div', 'vazia', 'A Loggi não trouxe círculos desta base. Use "Cidades" ou clique em "Atualizar da Loggi".')];
+      itens = R.filtrar(circulos, busca).map((c) => itemLista({
+        unico: true,
+        marcado: alvo.tipo === 'circulo' && alvo.id === c.id,
+        nome: c.nome,
+        detalhe: R.listaDoCirculo(c, cidadesLoggi, cfg).map((x) => x.nome).join(', '),
+        aoClicar: () => mudar(R.escolherCirculo(cfg, c.id)),
+      }));
+      if (!circulos.length) itens = [el('li', 'vazia', 'Nenhum círculo nesta base. Use "Cidades".')];
     } else {
-      $('.titulo-lista').textContent = 'Marque as cidades';
+      $('.titulo-lista').textContent = 'Escolha uma ou mais cidades';
       const marcadas = new Set(alvo.tipo === 'cidades' ? alvo.chaves : []);
       itens = R.filtrar(R.listaDaBase(cidadesLoggi, cfg), busca).map((c) => itemLista({
         marcado: marcadas.has(c.chave),
         nome: c.nome,
-        detalhe: c.origem === 'adicionada' ? 'adicionada por você' : '',
-        conta: c.pacotes ? `${numero(c.pacotes)} pacotes` : '',
+        detalhe: c.origem === 'adicionada' ? 'Adicionada por você' : '',
         aoClicar: () => mudar(R.alternarCidade(cfg, c.chave)),
         tirar: c.origem === 'adicionada' ? () => mudar(R.tirarAdicionada(cfg, c.chave, cidadesLoggi, circulos)) : null,
       }));
-      if (!cidadesLoggi.length && !itens.length) itens = [el('div', 'vazia', 'Nenhuma cidade ainda. Clique em "Atualizar da Loggi".')];
+      if (!cidadesLoggi.length && !itens.length) itens = [el('li', 'vazia', 'Carregando as cidades da base...')];
     }
-    if (!itens.length) itens = [el('div', 'vazia', 'Nada com esse nome.')];
-    lista.replaceChildren(...itens);
+    if (!itens.length) itens = [el('li', 'vazia', 'Nada com esse nome.')];
+    $('.lista').replaceChildren(...itens);
 
     // Adicionar: no circulo escolhido, ou na lista de cidades (ja marcada).
     const noCirculo = alvo.tipo === 'circulo';
@@ -300,40 +334,39 @@
     }));
   }
 
-  function desenharResumo() {
-    resumo.hidden = false;
-    resumo.replaceChildren();
+  function desenharPilula() {
+    pilula.replaceChildren(icone('lista'));
     if (alvo.tipo === 'nada') {
-      resumo.append(el('span', 'qual nada', 'Escolher círculo ou cidades'));
+      pilula.append(el('span', 'qual nada', 'Escolher círculo ou cidades'));
     } else {
-      resumo.append(el('span', 'qual', alvo.rotulo));
-      const ok = el('span', 'ok');
+      pilula.append(el('span', 'qual', alvo.rotulo));
+      const ok = el('span', 'conta ok');
       ok.append(el('b', '', numero(certos)), ' certos');
-      const fora = el('span', 'fora');
+      const fora = el('span', 'conta fora');
       fora.append(el('b', '', numero(deFora)), ' de fora');
-      resumo.append(ok, fora);
+      pilula.append(ok, fora);
     }
     aplicarPosicao();
   }
 
   function desenhar() {
     alvo = R.montarAlvo(cfg, cidadesLoggi, circulos);
-    desenharAlvo();
+    desenharEstado();
     desenharLista();
-    desenharResumo();
+    desenharPilula();
   }
 
   function adicionar(nome) {
     const r = R.adicionarCidade(cfg, nome, cidadesLoggi, circulos);
-    if (r.erro) return aviso(r.erro, true);
+    if (r.erro) return recado(r.erro, true);
     $('.nova').value = '';
-    aviso(`${String(nome).trim()} adicionada.`);
+    recado(`${String(nome).trim()} adicionada.`);
     if (r.cfg.escolha && r.cfg.escolha.tipo === 'cidades') modo = 'cidades';
     mudar(r.cfg);
   }
 
-  // ── janela ────────────────────────────────────────────────────────────────
-  function abrirJanela() {
+  // ── gaveta ────────────────────────────────────────────────────────────────
+  function abrirGaveta() {
     if (!chrome.runtime || !chrome.runtime.id) {
       window.alert(`A extensão ${NOME} foi atualizada. Aperte F5 nesta página.`);
       return;
@@ -341,19 +374,20 @@
     chrome.storage.local.remove('pedirEscolha');
     modo = alvo.tipo === 'cidades' || !circulos.length ? 'cidades' : 'circulos';
     $('.filtro').value = '';
+    recado('');
     desenhar();
-    janela.classList.add('ver');
-    setTimeout(() => $('.filtro').focus(), 50);
+    envolve.classList.add('aberta');
+    setTimeout(() => $('.filtro').focus(), 250);
   }
-  const fecharJanela = () => janela.classList.remove('ver');
+  const fecharGaveta = () => envolve.classList.remove('aberta');
 
-  // "Agrupar" em qualquer tela do Arco: a janela abre (o clique segue para a Loggi normalmente).
-  // Ja bipando nesta tela, nao abre de novo.
+  // "Agrupar" em qualquer tela do Arco. O clique segue para a Loggi. Se abriu outra aba, a gaveta
+  // abre nela (pedirEscolha); se ficou nesta, abre aqui. Ja bipando nesta tela, nao abre de novo.
   window.addEventListener('click', (e) => {
     const b = e.target && e.target.closest && e.target.closest('button, a, [role="button"]');
     if (!b || e.composedPath().includes(hospedeiro) || !R.ehAgrupar(b.textContent) || bipes.size) return;
-    chrome.storage.local.set({ pedirEscolha: Date.now() }); // se a pagina recarregar, abre na nova
-    setTimeout(abrirJanela, 400);
+    chrome.storage.local.set({ pedirEscolha: Date.now() });
+    setTimeout(() => { if (!document.hidden) abrirGaveta(); }, 700);
   }, true);
 
   // ── buscar na Loggi (pelo loggi.js, com a sessao da propria pagina) ─────────
@@ -376,7 +410,7 @@
   async function atualizarDaLoggi() {
     if (buscando) return;
     buscando = true;
-    aviso('Buscando os círculos e as cidades na Loggi...');
+    recado('Buscando os círculos e as cidades da base...');
     try {
       const c = await pedirALoggi('cidades');
       if (c.base && c.base.codigo && c.base.codigo !== codigoBase) { codigoBase = c.base.codigo; await carregarCfg(false); }
@@ -384,9 +418,9 @@
       let erro = '';
       try { circulos = (await pedirALoggi('circulos')).circulos; } catch (e) { erro = `As cidades vieram, mas os círculos não: ${e.message}`; }
       await guardar();
-      aviso(erro || `Base ${codigoBase}: ${numero(circulos.length)} círculo(s) e ${numero(cidadesLoggi.length)} cidades da Loggi.`, !!erro);
+      recado(erro, !!erro);
     } catch (e) {
-      aviso(cidadesLoggi.length ? `Usando a lista guardada. ${e.message}` : e.message, true);
+      recado(cidadesLoggi.length ? `Usando a lista guardada. ${e.message}` : e.message, true);
     } finally {
       buscando = false;
       desenhar();
@@ -421,12 +455,12 @@
         osc.start(t0 + i * 0.22);
         osc.stop(t0 + i * 0.22 + 0.17);
       }
-    } catch { /* sem audio, a tarja ainda aparece */ }
+    } catch { /* sem audio, a faixa ainda aparece */ }
   }
 
   let sumirTarja = null;
   function mostrarTarja(codigo, cidade) {
-    tarja.querySelector('.texto').textContent = `${codigo} é de ${cidade}: ${alvo.fora}`;
+    tarja.querySelector('.texto-tarja').textContent = `${codigo} é de ${cidade}: ${alvo.fora}`;
     tarja.classList.add('ver');
     clearTimeout(sumirTarja);
     sumirTarja = setTimeout(() => tarja.classList.remove('ver'), TARJA_MS);
@@ -474,11 +508,11 @@
     e.stopImmediatePropagation();
     mostrarPendentes(errados);
   }, true);
-  fundo.querySelector('button').addEventListener('click', () => fundo.classList.remove('ver'));
+  $('.entendi').addEventListener('click', () => fundo.classList.remove('ver'));
   tarja.querySelector('button').addEventListener('click', () => tarja.classList.remove('ver'));
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (fundo.classList.contains('ver')) fundo.classList.remove('ver'); else if (janela.classList.contains('ver')) fecharJanela();
+    if (fundo.classList.contains('ver')) fundo.classList.remove('ver'); else if (envolve.classList.contains('aberta')) fecharGaveta();
   }, true);
 
   // ── canto: posicao e arrastar ─────────────────────────────────────────────
@@ -511,29 +545,28 @@
     elemento.addEventListener('pointerup', () => {
       if (!inicio) return;
       inicio = null;
-      if (moveu) chrome.storage.local.set({ posicao }); else if (aoClicar) aoClicar();
+      if (moveu) chrome.storage.local.set({ posicaoAgrup: posicao }); else if (aoClicar) aoClicar();
     });
   }
 
-  arrastar(botao, abrirJanela);
-  resumo.addEventListener('click', abrirJanela);
-  $('.fechar').addEventListener('click', fecharJanela);
-  $('.pronto').addEventListener('click', fecharJanela);
-  janela.addEventListener('click', (e) => { if (e.target === janela) fecharJanela(); });
+  arrastar(pilula, abrirGaveta);
+  $('.fechar').addEventListener('click', fecharGaveta);
+  $('.cortina').addEventListener('click', fecharGaveta);
+  $('.aplicar').addEventListener('click', fecharGaveta);
   sombra.querySelectorAll('[data-modo]').forEach((b) => b.addEventListener('click', () => { modo = b.dataset.modo; $('.filtro').value = ''; desenharLista(); }));
   $('.atualizar').addEventListener('click', atualizarDaLoggi);
-  $('.limpar').addEventListener('click', () => { mudar(R.limpar(cfg)); aviso('Escolha limpa: nada está sendo conferido.'); });
+  $('.limpar').addEventListener('click', () => { mudar(R.limpar(cfg)); recado('Escolha limpa: nada está sendo conferido.'); });
   $('.filtro').addEventListener('input', desenharLista);
   $('.adicionar').addEventListener('submit', (e) => { e.preventDefault(); adicionar($('.nova').value); });
-  // O leitor de codigo digita como teclado: o que se digita na janela nao vai para o Arco.
+  // O leitor de codigo digita como teclado: o que se digita na gaveta nao vai para o Arco.
   ['keydown', 'keypress', 'keyup'].forEach((t) => hospedeiro.addEventListener(t, (e) => { if (e.key !== 'Escape') e.stopPropagation(); }));
   window.addEventListener('resize', aplicarPosicao);
 
   document.documentElement.append(hospedeiro);
-  chrome.storage.local.get(['posicao', 'pedirEscolha']).then((s) => {
-    if (s.posicao) posicao = s.posicao;
+  chrome.storage.local.get(['posicaoAgrup', 'pedirEscolha']).then((s) => {
+    if (s.posicaoAgrup) posicao = s.posicaoAgrup;
     aplicarPosicao();
-    if (s.pedirEscolha && Date.now() - s.pedirEscolha < PEDIDO_MS) setTimeout(abrirJanela, 300);
+    if (s.pedirEscolha && Date.now() - s.pedirEscolha < PEDIDO_MS) setTimeout(abrirGaveta, 300);
   });
   carregarCfg();
 })();

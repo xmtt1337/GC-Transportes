@@ -7,20 +7,22 @@ Nao depende de nenhum sistema: cidades e circulos vem da
 propria Loggi, com a sessao de quem esta logado no Arco.
 
 COMO FUNCIONA
+  - Sem marca XM na tela: tudo com a cara do Arco (Open Sans,
+    azul #00BAFF, gaveta igual a do "Criar circulo").
   - Ao clicar em "Agrupar" (em qualquer tela do Arco) abre a
-    janela "O que voce vai agrupar?": escolha UM circulo da
-    Loggi ou marque as cidades. Comeca sem nada escolhido;
-    "Limpar" volta a isso. O botao XM no canto reabre a janela;
-    ao lado dele fica o que esta valendo e a contagem.
-  - Cada bipe de cidade de fora: tarja vermelha + som.
+    gaveta "Conferencia": escolha UM circulo ou marque as
+    cidades. Comeca sem nada escolhido; "Limpar" volta a isso.
+  - No canto fica uma pilula com o que esta valendo e a
+    contagem (certos / de fora); clicar nela reabre a gaveta.
+  - Cada bipe de cidade de fora: faixa vermelha + som.
   - "Continuar" com pacote de fora ainda no grupo: o clique e
     barrado e aparece quais pacotes tirar.
-  - Tudo no tema da Loggi.
 
 CIDADES
   - Lista de cidades: a que a Loggi mostra no filtro Cidades
-    do Na base (e na "Regiao de atuacao" do Criar circulo), em
-    ordem de pacotes.
+    do Na base (e na "Regiao de atuacao" do Criar circulo).
+    A quantidade de pacotes nao aparece (a da Loggi e de todo
+    o historico, nao de hoje).
   - "Adicionar cidade": para micro cidade ou distrito que a
     Loggi nao lista. Com um circulo escolhido entra nele; senao
     entra na lista e ja fica marcada. As cidades bipadas de fora
