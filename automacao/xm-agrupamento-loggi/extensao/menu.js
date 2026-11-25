@@ -198,13 +198,10 @@
       </div>
       <div class="fundo fundo-faltam" role="alertdialog" aria-modal="true">
         <div class="card aviso-faltam">
-          <h2>${svg('relogio')}Pacotes não bipados</h2>
+          <h2>${svg('relogio')}Pacotes não agrupados</h2>
           <p class="explica-faltam"></p>
           <ul class="lista-faltam"></ul>
-          <div class="acoes">
-            <button type="button" class="texto-botao assim-mesmo">Continuar assim mesmo</button>
-            <button type="button" class="contorno voltar-bipar">Voltar e bipar</button>
-          </div>
+          <div class="acoes um"><button type="button" class="contorno fechar-faltam">Entendi</button></div>
         </div>
       </div>
       <div class="tarja" role="alert">
@@ -517,9 +514,11 @@
     if (!b || e.composedPath().includes(hospedeiro) || !R.ehAgrupar(b.textContent)) return;
     // O "Agrupar" de dentro da gaveta/janela da Loggi (o que confirma o grupo, depois do Continuar)
     // nao e o comeco de um agrupamento: so o botao da tela (Na base etc.) abre a escolha.
-    if (b.closest('.MuiDrawer-paper, .MuiDialog-paper, .MuiModal-root, [role="dialog"], [role="presentation"]')) return;
+    if (b.closest('.MuiDrawer-paper, .MuiDialog-paper, .MuiModal-root, [role="dialog"], [role="presentation"]')) {
+      fimDoAgrupamento(); // esse "Agrupar" confirma o grupo
+      return;
+    }
     mudar(R.limpar(cfg)); // cada "Agrupar" comeca sem nada marcado
-    semAvisoDeFaltam = false;
     chrome.storage.local.set({ pedirEscolha: Date.now() });
     setTimeout(() => { if (!document.hidden) abrirGaveta(); }, 700);
   }, true);
@@ -655,41 +654,49 @@
     tocarErro();
   }
 
-  // "Pacotes não bipados": os que chegaram hoje, das cidades escolhidas, e nao foram bipados.
+  // "Pacotes não agrupados": no FIM do agrupamento (o "Agrupar" que confirma o grupo, dentro da
+  // gaveta da Loggi), os que chegaram hoje, das cidades daquela conferencia, e ficaram fora do grupo.
+  // Durante o agrupamento nao aparece: o grupo ainda nao existe.
   const fundoFaltam = $('.fundo-faltam');
-  let continuarDaLoggi = null; // o botao "Continuar" que foi segurado
-  let deixarPassar = false;
-  // Depois do "Continuar assim mesmo", a janela nao volta nos proximos passos do mesmo grupo
-  // (outro "Continuar" da Loggi): so no proximo "Agrupar".
-  let semAvisoDeFaltam = false;
-  function mostrarFaltam(lista, botao) {
-    continuarDaLoggi = botao;
-    const onde = alvo.tipo === 'circulo' ? `do círculo ${alvo.nome}` : alvo.cidades.length === 1 ? `de ${alvo.cidades[0].nome}` : 'das cidades escolhidas';
-    $('.explica-faltam').textContent = (lista.length === 1 ? `1 pacote ${onde} que chegou hoje ainda não foi bipado.` : `${numero(lista.length)} pacotes ${onde} que chegaram hoje ainda não foram bipados.`);
-    $('.lista-faltam').replaceChildren(...lista.slice(0, 500).map((p) => {
+  function mostrarFaltam(lista, conferido) {
+    const onde = conferido.tipo === 'circulo' ? `do círculo ${conferido.nome}`
+      : conferido.cidades.length === 1 ? `de ${conferido.cidades[0].nome}` : 'das cidades desta conferência';
+    $('.explica-faltam').textContent = lista.length === 1
+      ? `Dos pacotes que chegaram hoje ${onde}, 1 não foi agrupado:`
+      : `Dos pacotes que chegaram hoje ${onde}, ${numero(lista.length)} não foram agrupados:`;
+    $('.lista-faltam').replaceChildren(...lista.slice(0, 500).map((x) => {
       const li = el('li');
-      li.append(el('span', 'cod', p.codigo || p.id), el('span', 'cid', p.cidade), el('span', 'hora', R.horaDe(p.chegou)));
+      li.append(el('span', 'cod', x.codigo || x.id), el('span', 'cid', x.cidade), el('span', 'hora', R.horaDe(x.chegou)));
       return li;
     }));
     fundoFaltam.classList.add('ver');
   }
-  $('.voltar-bipar').addEventListener('click', () => {
-    fundoFaltam.classList.remove('ver');
-    const campo = gavetaDoArco() && gavetaDoArco().querySelector('input');
-    if (campo) campo.focus(); // volta para o "Bipe ou digite o código"
-  });
-  $('.assim-mesmo').addEventListener('click', () => {
-    fundoFaltam.classList.remove('ver');
-    semAvisoDeFaltam = true;
-    if (continuarDaLoggi && continuarDaLoggi.isConnected) { deixarPassar = true; continuarDaLoggi.click(); }
-  });
+  $('.fechar-faltam').addEventListener('click', () => fundoFaltam.classList.remove('ver'));
+
+  let esperandoFim = null;
+  function fimDoAgrupamento() {
+    if (alvo.tipo === 'nada' || esperandoFim) return;
+    const conferido = alvo;
+    const noGrupo = R.naListaAgora(bipes, textoDaLista());
+    registrarAgrupados(noGrupo);
+    // Espera a Loggi criar o grupo (a gaveta "Agrupar pacotes" fecha); no maximo 10 s.
+    const ate = Date.now() + 10000;
+    esperandoFim = setInterval(async () => {
+      if (gavetaDoArco() && Date.now() < ate) return;
+      clearInterval(esperandoFim);
+      esperandoFim = null;
+      await carregarNaBase(true); // o relatorio de agora, ja sem os que entraram no grupo
+      if (!naBase) return;
+      await carregarAgrupados();
+      const lista = R.faltantes(naBase, conferido, agrupados, noGrupo, { soHoje: true });
+      if (lista.length) mostrarFaltam(lista, conferido);
+    }, 500);
+  }
 
   // Fase de captura no window: o clique para aqui antes do React do Arco.
   window.addEventListener('click', (e) => {
     const b = e.target && e.target.closest && e.target.closest('button');
     if (!b || b.textContent.replace(/\s+/g, ' ').trim().toLowerCase() !== 'continuar') return;
-    const naLista = R.naListaAgora(bipes, textoDaLista());
-    if (deixarPassar) { deixarPassar = false; registrarAgrupados(naLista); return; }
     const errados = R.pendentes(bipes, textoDaLista(), alvo);
     if (errados.length) {
       e.preventDefault();
@@ -697,13 +704,7 @@
       mostrarPendentes(errados);
       return;
     }
-    if (!semAvisoDeFaltam && calcularFaltam().length) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      mostrarFaltam(faltam, b);
-      return;
-    }
-    registrarAgrupados(naLista);
+    registrarAgrupados(R.naListaAgora(bipes, textoDaLista()));
   }, true);
   $('.entendi').addEventListener('click', () => fundo.classList.remove('ver'));
   tarja.querySelector('button').addEventListener('click', () => tarja.classList.remove('ver'));

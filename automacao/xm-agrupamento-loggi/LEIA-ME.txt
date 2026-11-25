@@ -37,13 +37,12 @@ CIDADES
   - "Atualizar da Loggi" busca de novo (sozinho a cada 6 h).
   - A configuracao fica neste navegador, uma por base (CCR...).
 
-FALTAM AGRUPAR (desde 1.8, no Continuar)
-  - Ao clicar em Continuar: com pacote de outra cidade, a trava
-    de sempre. Sem nenhum, mas com pacotes das cidades escolhidas
-    que CHEGARAM HOJE e nao foram bipados, aparece
-    "Pacotes nao bipados" com a lista: "Voltar e bipar" ou
-    "Continuar assim mesmo" (ai nao pergunta de novo ate o
-    proximo Agrupar). O selo laranja do "Agrupando" mostra quantos.
+PACOTES NAO AGRUPADOS (desde 1.12, no fim do agrupamento)
+  - No Continuar so a trava do pacote de outra cidade.
+  - No "Agrupar" final (o que confirma o grupo, dentro da gaveta
+    da Loggi), a extensao espera a Loggi criar o grupo e mostra
+    "Pacotes nao agrupados": os que CHEGARAM HOJE, das cidades
+    daquela conferencia, e ficaram fora do grupo.
   - Na base = o relatorio da propria tela Na base (o arquivo do
     "Baixar relatorio"), lido pela extensao sem baixar.
   - Ja agrupado = estava na lista quando o "Continuar" passou;
