@@ -237,6 +237,7 @@
   let alvo = R.montarAlvo(cfg, [], []);
   let modo = 'circulos';
   const bipes = new Map(); // codigo -> cidade, desde que a pagina abriu
+  // Contagem = o que esta NA LISTA de agrupar agora (tirou na lixeira, sai da conta).
   let certos = 0;
   let deFora = 0;
   let posicao = { direita: 24, baixo: 24 };
@@ -351,6 +352,7 @@
 
   function desenhar() {
     alvo = R.montarAlvo(cfg, cidadesLoggi, circulos);
+    if (bipes.size) { const c = R.contarNaLista(bipes, textoDaLista(), alvo); certos = c.certos; deFora = c.deFora; }
     desenharEstado();
     desenharLista();
     desenharPilula();
@@ -473,15 +475,36 @@
     for (const i of e.data.itens) {
       const codigo = String(i.codigo);
       const cidade = R.consertarTexto(String(i.cidade)); // "CaÃ§ador" aparece como "Caçador"
-      const novo = !bipes.has(codigo);
       bipes.set(codigo, cidade);
       const { ok } = R.conferirBipe(cidade, alvo);
-      if (ok === false) { errado = errado || { codigo, cidade }; if (novo) deFora += 1; }
-      if (ok === true) { algumCerto = true; if (novo) certos += 1; }
+      if (ok === false) errado = errado || { codigo, cidade };
+      if (ok === true) algumCerto = true;
     }
     if (errado) { mostrarTarja(errado.codigo, errado.cidade); tocarErro(); } else if (algumCerto) tarja.classList.remove('ver');
     desenhar();
+    recontarDepois(); // a linha do pacote aparece na lista um instante depois da resposta
   });
+
+  /**
+   * Texto da gaveta "Agrupar pacotes" do Arco (onde fica a lista bipada). Sem ela aberta, a pagina
+   * toda. Assim um codigo que aparece na tabela do Na base, atras, nao conta como "na lista".
+   */
+  function textoDaLista() {
+    const gavetas = [...document.querySelectorAll('.MuiDrawer-paper, [role="dialog"], [role="presentation"]')]
+      .filter((g) => /agrupar pacotes/i.test(g.innerText || ''));
+    return (gavetas.length ? gavetas[gavetas.length - 1] : document.body).innerText || '';
+  }
+
+  function recontar() {
+    const c = R.contarNaLista(bipes, textoDaLista(), alvo);
+    if (c.certos === certos && c.deFora === deFora) return;
+    certos = c.certos;
+    deFora = c.deFora;
+    desenharPilula();
+  }
+  let recontagem = null;
+  const recontarDepois = () => { clearTimeout(recontagem); recontagem = setTimeout(recontar, 250); };
+  new MutationObserver(() => { if (bipes.size) recontarDepois(); }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 
   // ── trava do "Continuar" ──────────────────────────────────────────────────
   function mostrarPendentes(errados) {
@@ -502,7 +525,7 @@
   window.addEventListener('click', (e) => {
     const b = e.target && e.target.closest && e.target.closest('button');
     if (!b || b.textContent.replace(/\s+/g, ' ').trim().toLowerCase() !== 'continuar') return;
-    const errados = R.pendentes(bipes, document.body.innerText, alvo);
+    const errados = R.pendentes(bipes, textoDaLista(), alvo);
     if (!errados.length) return;
     e.preventDefault();
     e.stopImmediatePropagation();

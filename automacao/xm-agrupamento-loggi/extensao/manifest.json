@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "XM - Agrupamento Loggi",
-  "version": "1.4",
+  "version": "1.5",
   "description": "Confere o agrupamento no Arco da Loggi: alerta e trava pacote de cidade fora do circulo ou da base. Cidades e circulos vem da propria Loggi.",
   "permissions": [
     "storage"

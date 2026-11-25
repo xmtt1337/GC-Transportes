@@ -86,6 +86,15 @@ test('começa sem nada escolhido (não confere); marcar cidades, Limpar e migra�
   assert.deepStrictEqual(R.normalizarCfg({ escolha: { tipo: 'base' }, desligadas: ['longe'], adicionadas: ['X'] }), { adicionadas: ['X'], extrasCirculo: {}, escolha: null });
 });
 
+test('contagem só do que está na lista agora: tirou o pacote de fora, sai da conta', () => {
+  const alvo = R.montarAlvo({ escolha: { tipo: 'circulo', id: 'c1' } }, CIDADES, CIRCULOS);
+  const bipes = new Map([['TESTE001', 'Cidade B'], ['TESTE002', 'Cidade A'], ['TESTE003', 'Herval Doeste']]);
+  assert.deepStrictEqual(R.contarNaLista(bipes, 'TESTE001 TESTE002 TESTE003', alvo), { certos: 2, deFora: 1 });
+  assert.deepStrictEqual(R.contarNaLista(bipes, 'teste001 teste003', alvo), { certos: 2, deFora: 0 }); // TESTE002 foi para a lixeira
+  assert.deepStrictEqual(R.contarNaLista(bipes, 'Sua lista ainda está vazia', alvo), { certos: 0, deFora: 0 }); // grupo criado
+  assert.deepStrictEqual(R.contarNaLista(bipes, 'TESTE002', R.montarAlvo(R.cfgVazia(), CIDADES, CIRCULOS)), { certos: 0, deFora: 0 }); // nada escolhido
+});
+
 test('cidades e círculos em ordem alfabética, sem olhar acento nem maiúscula', () => {
   const cidades = [{ codigo: 'CITY_SC_VIDEIRA', nome: 'Videira' }, { codigo: 'CITY_SC_CACADOR', nome: 'Cacador' }, { codigo: 'CITY_SC_AGUA_DOCE', nome: 'Agua Doce' }, { codigo: 'CITY_SC_ZORTEA', nome: 'Zortea' }];
   const cfg = { adicionadas: ['Água Branca', 'beta'] };

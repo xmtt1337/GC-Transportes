@@ -190,6 +190,20 @@
     return errados;
   }
 
+  /** Quantos dos bipados ainda estao na lista de agrupar (o codigo aparece no texto dela): certos e de fora. */
+  function contarNaLista(bipes, textoDaLista, alvo) {
+    const tela = String(textoDaLista || '').toUpperCase();
+    let certos = 0;
+    let deFora = 0;
+    for (const [codigo, cidade] of bipes || []) {
+      if (!tela.includes(String(codigo).toUpperCase())) continue;
+      const { ok } = conferirBipe(cidade, alvo);
+      if (ok === true) certos += 1;
+      if (ok === false) deFora += 1;
+    }
+    return { certos, deFora };
+  }
+
   /** Escolhe um circulo (vale um so); clicar de novo no mesmo desmarca. */
   function escolherCirculo(cfg, id) {
     const c = normalizarCfg(cfg);
@@ -266,7 +280,7 @@
   const ehAgrupar = (texto) => /^agrupar( pacotes)?$/.test(String(texto || '').replace(/\s+/g, ' ').trim().toLowerCase());
 
   const publico = { chave, consertarTexto, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
-    pendentes, ordenarCirculos, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar };
+    pendentes, contarNaLista, ordenarCirculos, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMAgrupamento = publico;
 })();
