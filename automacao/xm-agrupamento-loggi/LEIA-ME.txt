@@ -1,0 +1,40 @@
+===========================================================
+  XM - AGRUPAMENTO LOGGI
+===========================================================
+
+Extensao do Chrome que confere o agrupamento no Arco da Loggi.
+Nao depende de nenhum sistema: cidades e circulos vem da
+propria Loggi, com a sessao de quem esta logado no Arco.
+
+COMO FUNCIONA
+  - Botao XM no canto do Arco abre o painel.
+  - "Conferir contra": Base toda (cidades atendidas) ou um
+    circulo da Loggi (as cidades daquele circulo).
+  - Cada bipe de cidade de fora: tarja vermelha + som.
+  - "Continuar" com pacote de fora ainda no grupo: o clique e
+    barrado e aparece quais pacotes tirar.
+
+CIDADES
+  - Base toda: a lista de cidades que a Loggi mostra no filtro
+    Cidades do Na base (e na "Regiao de atuacao" do Criar
+    circulo), em ordem de pacotes. Todas comecam ligadas;
+    desligue a que a base nao atende.
+  - "Adicionar cidade": para micro cidade ou distrito que a
+    Loggi nao lista. Vale para o que esta escolhido (base ou
+    o circulo). As cidades bipadas de fora aparecem como
+    atalho (+ Cidade).
+  - "Atualizar da Loggi" busca de novo (sozinho a cada 6 h).
+  - A configuracao fica neste navegador, uma por base (CCR...).
+
+PRIVACIDADE
+  A sessao do Arco fica so na memoria da aba. A extensao le so
+  duas coisas da Loggi: a lista de cidades da base (com
+  quantidade de pacotes) e os circulos (nome e cidades). Nao le
+  nome, telefone, CPF nem endereco de ninguem.
+
+INSTALAR
+  chrome://extensions > Modo do desenvolvedor > Carregar sem
+  compactacao > pasta "extensao". Depois F5 no Arco.
+
+TESTES
+  node --test testes/*.test.js

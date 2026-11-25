@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "XM - Agrupamento Loggi",
+  "version": "1.0",
+  "description": "Confere o agrupamento no Arco da Loggi: alerta e trava pacote de cidade fora do circulo ou da base. Cidades e circulos vem da propria Loggi.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.loggi.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.loggi.com/*"
+      ],
+      "js": [
+        "loggi.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://*.loggi.com/*"
+      ],
+      "js": [
+        "regras.js",
+        "menu.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "img/logo.png",
+        "img/logo-claro.png"
+      ],
+      "matches": [
+        "https://*.loggi.com/*"
+      ]
+    }
+  ],
+  "action": {
+    "default_title": "XM - Agrupamento Loggi: use o botao XM no Arco da Loggi",
+    "default_icon": {
+      "16": "img/icone-16.png",
+      "32": "img/icone-32.png",
+      "48": "img/icone-48.png",
+      "128": "img/icone-128.png"
+    }
+  },
+  "icons": {
+    "16": "img/icone-16.png",
+    "32": "img/icone-32.png",
+    "48": "img/icone-48.png",
+    "128": "img/icone-128.png"
+  }
+}
