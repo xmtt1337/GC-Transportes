@@ -1,7 +1,10 @@
 // XM - Ativos iMile, no mundo da pagina (ds.imile.com). As mesmas chamadas da XM - Consultas de
 // telefone:
-//   buscar   POST /saastms/v1/biz/track/query {searchType:'waybillNo', searchValue}: a busca normal do
-//            waybill (nao gasta cota); traz o remetente aberto. Diz se o pedido existe na iMile.
+//   buscar   POST /saastms/v1/biz/waybillInfo/searchDispatchWaybill {waybillNos:[ate 50]}: a lista do
+//            "Pesquisar por despacho" do DS (a mesma da XM - Conferencias), 50 waybills por chamada
+//            (desde 25/11/2026: 1 chamada por waybill fazia a iMile responder "system is busy").
+//            O que a lista nao trouxer vai pela busca normal, 1 por vez:
+//            POST /saastms/v1/biz/track/query {searchType:'waybillNo', searchValue} (nao gasta cota).
 //   revelar  POST /saastms/v1/biz/track/getDesensitizationInfoV1 {waybillNo, keyName:'consigneeContact',
 //            model:'TRACK'}: o "olho" — abre nome, telefone e produto juntos e gasta 1 da cota de
 //            revelacoes da conta (~700). A resposta traz a cota: para antes de ela acabar.
@@ -14,6 +17,9 @@
 (() => {
   const CANAL = 'xmAtivosImile';
   const ROTA_BUSCA = '/saastms/v1/biz/track/query';
+  const ROTA_LOTE = '/saastms/v1/biz/waybillInfo/searchDispatchWaybill';
+  const LOTE = 50;
+  const DIAS_DO_LOTE = 90; // se a iMile exigir periodo: recebidos nos ultimos 90 dias
   const ROTA_OLHO = '/saastms/v1/biz/track/getDesensitizationInfoV1';
   const RESERVA_DA_COTA = 30; // revelacoes que ficam para o uso normal da tela
   // Em 25/11/2026, 63 waybills a 1 a cada 250 ms: a partir do 9o a iMile respondeu "The system is
@@ -31,11 +37,79 @@
 
   const dormirPadrao = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  const diaSp = (ms) => new Date(ms).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+
+  /** Corpo da lista do despacho filtrada pelos waybills; com dias, por recebimento nesse periodo. */
+  function corpoDoLote(codigos, dias = 0, agora = Date.now()) {
+    return {
+      currentPage: 1, showCount: Math.max(codigos.length, 20),
+      waybillNos: codigos, referenceNos: [], labelOrderCodes: [], mainWaybillNos: [],
+      dateSearchType: 'receive',
+      startTime: dias ? `${diaSp(agora - dias * 86400000)} 00:00:00` : '',
+      endTime: dias ? `${diaSp(agora)} 23:59:59` : '',
+      actualReceiveStation: '', dispatchStatus: '', stationCode: '', lastScanStatus: [],
+      stageStatus: '', stageDetailStatus: '', handleType: '',
+      returnProvince: '', returnCity: '', returnArea: '', clientCodes: [],
+    };
+  }
+
+  // Remetente que a lista traz mascarado ("***") nao serve: fica vazio (a mensagem da iMile nao usa).
+  const semMascara = (v) => { const t = String(v || '').trim(); return t.includes('*') ? '' : t; };
+
+  /** Pede de novo enquanto a iMile pedir calma (3/8/15/30 s). */
+  async function comCalma(chamar, dormir, aviso) {
+    let r = await chamar();
+    for (let t = 0; ocupado(r) && t < ESPERAS_OCUPADO_MS.length; t += 1) {
+      aviso(ESPERAS_OCUPADO_MS[t]);
+      await dormir(ESPERAS_OCUPADO_MS[t]);
+      r = await chamar();
+    }
+    return r;
+  }
+
+  /**
+   * Os waybills pela lista do despacho, 50 por chamada. Devolve Map waybill -> { remetente } so com
+   * os que vieram; qualquer recusa so deixa o lote para a busca 1 por vez.
+   */
+  async function buscarEmLote(post, codigos, aviso = () => {}, dormir = dormirPadrao) {
+    const achados = new Map();
+    let dias = 0;
+    for (let i = 0; i < codigos.length; i += LOTE) {
+      const parte = codigos.slice(i, i + LOTE);
+      aviso(i, codigos.length, `Buscando na iMile: ${Math.min(i + LOTE, codigos.length)} de ${codigos.length}...`);
+      try {
+        const pedir = () => comCalma(() => post(ROTA_LOTE, corpoDoLote(parte, dias)), dormir,
+          (ms) => aviso(i, codigos.length, `A iMile pediu para ir mais devagar: esperando ${Math.round(ms / 1000)} s...`));
+        let r = await pedir();
+        if (!dias && r && r.status !== 'success' && !ocupado(r)) { dias = DIAS_DO_LOTE; r = await pedir(); }
+        const lista = r && r.status === 'success' && r.resultObject && Array.isArray(r.resultObject.results) ? r.resultObject.results : [];
+        for (const x of lista) {
+          const cod = String(x.waybillNo || '');
+          if (parte.includes(cod) && !achados.has(cod)) achados.set(cod, { remetente: semMascara(x.consignorContact || x.consignor) });
+        }
+      } catch { /* fica para a busca 1 por vez */ }
+      if (i + LOTE < codigos.length) await dormir(PAUSA_BUSCA_MS);
+    }
+    return achados;
+  }
+
+  /** Primeiro em lotes; o que faltar, 1 por vez. aviso(n, total, texto?) mostra o andamento. */
+  async function buscarPedidos(post, codigos, aviso = () => {}, dormir = dormirPadrao) {
+    const lote = await buscarEmLote(post, codigos, aviso, dormir);
+    const faltam = codigos.filter((c) => !lote.has(c));
+    const avulsos = new Map();
+    if (faltam.length) {
+      const um = await buscarUmAUm(post, faltam, (n, t, texto) => aviso(n, t, texto || `Buscando 1 por vez os que a lista não trouxe: ${n} de ${t}...`), dormir);
+      for (const p of um) avulsos.set(p.codigo, p);
+    }
+    return codigos.map((c) => (lote.has(c) ? { codigo: c, achado: true, ...lote.get(c) } : avulsos.get(c)));
+  }
+
   /**
    * Busca normal de cada waybill (sem cota). post(rota, corpo) devolve a resposta inteira.
    * aviso(n, total, texto?) mostra o andamento.
    */
-  async function buscarPedidos(post, codigos, aviso = () => {}, dormir = dormirPadrao) {
+  async function buscarUmAUm(post, codigos, aviso = () => {}, dormir = dormirPadrao) {
     const saida = [];
     let pausa = PAUSA_BUSCA_MS;
     for (let i = 0; i < codigos.length; i += 1) {
@@ -66,8 +140,8 @@
   }
 
   /** O olho de um waybill: nome, telefone e produto, e a cota que sobrou. */
-  async function revelar(post, codigo) {
-    const r = await post(ROTA_OLHO, { waybillNo: codigo, keyName: 'consigneeContact', model: 'TRACK' });
+  async function revelar(post, codigo, dormir = dormirPadrao) {
+    const r = await comCalma(() => post(ROTA_OLHO, { waybillNo: codigo, keyName: 'consigneeContact', model: 'TRACK' }), dormir, () => {});
     if (!r || r.status !== 'success' || !r.resultObject) {
       const e = new Error(`A iMile recusou o olho: ${(r && r.message) || 'sem mensagem'}`);
       e.parar = true;
@@ -99,7 +173,7 @@
   }
 
   if (typeof module !== 'undefined') {
-    module.exports = { buscarPedidos, revelar, lerResposta, HEADERS_DO_SITE, RESERVA_DA_COTA, CANAL, ESPERAS_OCUPADO_MS, PAUSA_BUSCA_MS };
+    module.exports = { buscarPedidos, buscarEmLote, buscarUmAUm, corpoDoLote, ROTA_LOTE, LOTE, revelar, lerResposta, HEADERS_DO_SITE, RESERVA_DA_COTA, CANAL, ESPERAS_OCUPADO_MS, PAUSA_BUSCA_MS };
     return;
   }
 

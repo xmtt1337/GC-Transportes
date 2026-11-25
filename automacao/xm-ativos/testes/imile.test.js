@@ -58,18 +58,18 @@ test('entrar: login com canal vigia e confere o acesso (/macros/acesso)', async 
   assert.deepStrictEqual(chamadas[1], ['/macros/acesso', 'GET', null]);
 });
 
-test('buscarPedidos: busca normal (sem cota); remetente e não achados', async () => {
+test('buscarUmAUm: busca normal (sem cota); remetente e não achados', async () => {
   const rotas = [];
   const post = async (rota, corpo) => {
     rotas.push([rota, corpo.searchValue]);
     return corpo.searchValue === '2' ? { status: 'fail', message: 'não existe' } : { status: 'success', resultObject: { consignorinfo: { consignor: 'Loja Teste' } } };
   };
-  const r = await I.buscarPedidos(post, ['1', '2'], () => {}, async () => {});
+  const r = await I.buscarUmAUm(post, ['1', '2'], () => {}, async () => {});
   assert.deepStrictEqual(r, [{ codigo: '1', achado: true, remetente: 'Loja Teste' }, { codigo: '2', achado: false, motivo: 'não existe' }]);
   assert.ok(rotas.every(([rota]) => rota === '/saastms/v1/biz/track/query'));
 });
 
-test('buscarPedidos: "system is busy" não vira "não achado"; espera, tenta de novo e segue mais devagar', async () => {
+test('buscarUmAUm: "system is busy" não vira "não achado"; espera, tenta de novo e segue mais devagar', async () => {
   const busy = { status: 'fail', message: 'The system is busy,please try again later' };
   const ok = { status: 'success', resultObject: { consignorinfo: { consignor: 'Loja Teste' } } };
   // o 2o pede calma 2 vezes e depois responde
@@ -77,17 +77,66 @@ test('buscarPedidos: "system is busy" não vira "não achado"; espera, tenta de 
   const esperas = [];
   const avisos = [];
   const post = async (rota, corpo) => (corpo.searchValue === '2' && vezes++ < 2 ? busy : ok);
-  const r = await I.buscarPedidos(post, ['1', '2', '3'], (n, t, texto) => avisos.push(texto || ''), async (ms) => { esperas.push(ms); });
+  const r = await I.buscarUmAUm(post, ['1', '2', '3'], (n, t, texto) => avisos.push(texto || ''), async (ms) => { esperas.push(ms); });
   assert.deepStrictEqual(r.map((p) => p.achado), [true, true, true]);
   assert.deepStrictEqual(esperas, [I.PAUSA_BUSCA_MS, I.ESPERAS_OCUPADO_MS[0], I.ESPERAS_OCUPADO_MS[1], 1500]);
   assert.ok(avisos.some((a) => /mais devagar: esperando 3 s/.test(a)));
   // continua recusando: para, e o resto fica "não buscado" (nunca "não achado")
-  const sempre = await I.buscarPedidos(async (rota, corpo) => (corpo.searchValue === '1' ? ok : busy), ['1', '2', '3'], () => {}, async () => {});
+  const sempre = await I.buscarUmAUm(async (rota, corpo) => (corpo.searchValue === '1' ? ok : busy), ['1', '2', '3'], () => {}, async () => {});
   assert.deepStrictEqual(sempre.map((p) => [p.codigo, p.achado, !!p.naoBuscado]), [['1', true, false], ['2', false, true], ['3', false, true]]);
   // "não existe" de verdade continua sendo não achado, sem esperar
   const esp2 = [];
-  const nao = await I.buscarPedidos(async () => ({ status: 'fail', message: 'waybill not exist' }), ['9'], () => {}, async (ms) => esp2.push(ms));
+  const nao = await I.buscarUmAUm(async () => ({ status: 'fail', message: 'waybill not exist' }), ['9'], () => {}, async (ms) => esp2.push(ms));
   assert.deepStrictEqual([nao[0].achado, !!nao[0].naoBuscado, esp2.length], [false, false, 0]);
+});
+
+test('buscarPedidos: 50 por chamada pela lista do despacho; o que ela não trouxer vai 1 por vez', async () => {
+  const codigos = Array.from({ length: 63 }, (_, i) => String(3320000000000 + i));
+  const chamadas = [];
+  const post = async (rota, corpo) => {
+    chamadas.push([rota, corpo.waybillNos ? corpo.waybillNos.length : corpo.searchValue]);
+    if (rota === I.ROTA_LOTE) {
+      // a lista não traz o último; o remetente vem mascarado num deles
+      const results = corpo.waybillNos.filter((c) => c !== codigos[62]).map((c) => ({ waybillNo: c, consignorContact: c === codigos[0] ? '***' : 'Loja Teste' }));
+      return { status: 'success', resultObject: { results, pagination: { totalResult: results.length } } };
+    }
+    return { status: 'fail', message: 'waybill not exist' };
+  };
+  const r = await I.buscarPedidos(post, codigos, () => {}, async () => {});
+  assert.deepStrictEqual(chamadas.filter(([rota]) => rota === I.ROTA_LOTE).map(([, n]) => n), [50, 13]);
+  assert.deepStrictEqual(chamadas.filter(([rota]) => rota !== I.ROTA_LOTE), [['/saastms/v1/biz/track/query', codigos[62]]]);
+  assert.strictEqual(r.length, 63);
+  assert.deepStrictEqual(r[0], { codigo: codigos[0], achado: true, remetente: '' });
+  assert.deepStrictEqual(r[1], { codigo: codigos[1], achado: true, remetente: 'Loja Teste' });
+  assert.strictEqual(r[62].achado, false);
+});
+
+test('buscarPedidos: a lista recusa sem período → tenta com os últimos 90 dias; busy → espera e repete', async () => {
+  const corpos = [];
+  let busy = 1;
+  const post = async (rota, corpo) => {
+    corpos.push(corpo);
+    if (!corpo.startTime) return { status: 'fail', message: 'startTime is required' };
+    if (busy-- > 0) return { status: 'fail', message: 'The system is busy,please try again later' };
+    return { status: 'success', resultObject: { results: [{ waybillNo: '1', consignorContact: 'Loja Teste' }] } };
+  };
+  const esperas = [];
+  const r = await I.buscarPedidos(post, ['1'], () => {}, async (ms) => esperas.push(ms));
+  assert.deepStrictEqual(r, [{ codigo: '1', achado: true, remetente: 'Loja Teste' }]);
+  assert.match(corpos[1].startTime, /^\d{4}-\d{2}-\d{2} 00:00:00$/);
+  assert.deepStrictEqual(esperas, [I.ESPERAS_OCUPADO_MS[0]]);
+  const c = I.corpoDoLote(['1'], 90, Date.UTC(2026, 10, 25, 15));
+  assert.deepStrictEqual([c.startTime, c.endTime, c.dateSearchType], ['2026-08-27 00:00:00', '2026-11-25 23:59:59', 'receive']);
+});
+
+test('revelar: "system is busy" espera e tenta de novo antes de desistir', async () => {
+  let vez = 0;
+  const post = async () => (vez++ === 0 ? { status: 'fail', message: 'The system is busy,please try again later' }
+    : { status: 'success', resultObject: { infoResult: { consigneeContact: 'Pessoa Teste', consigneeMobile: '5549999990000' }, config: { maxCount: 700, currentCount: 1 } } });
+  const esperas = [];
+  const r = await I.revelar(post, '1', async (ms) => esperas.push(ms));
+  assert.strictEqual(r.nome, 'Pessoa Teste');
+  assert.deepStrictEqual(esperas, [I.ESPERAS_OCUPADO_MS[0]]);
 });
 
 test('revelar: nome, telefone, produto e a cota; para com a reserva e quando a iMile recusa', async () => {
