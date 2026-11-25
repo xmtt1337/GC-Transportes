@@ -11,9 +11,11 @@ COMO FUNCIONA
     azul #00BAFF, gaveta igual a do "Criar circulo").
   - Ao clicar em "Agrupar" (em qualquer tela do Arco) abre a
     gaveta "Conferencia": escolha UM circulo ou marque as
-    cidades. Comeca sem nada escolhido; "Limpar" volta a isso.
-  - No canto fica uma pilula com o que esta valendo e a
-    contagem (certos / de fora); clicar nela reabre a gaveta.
+    cidades. CADA "Agrupar" comeca sem nada escolhido;
+    "Limpar" tambem volta a isso.
+  - Dentro da gaveta "Agrupar pacotes" do Arco, ao lado do X,
+    fica fixo "Agrupando X" com os selos certos / de fora /
+    faltam; clicar nele reabre a escolha.
   - Cada bipe de cidade de fora: faixa vermelha + som.
   - "Continuar" com pacote de fora ainda no grupo: o clique e
     barrado e aparece quais pacotes tirar.

@@ -2,7 +2,9 @@
 //
 // Ao clicar em "Agrupar" (em qualquer tela do Arco) abre a gaveta "Conferência", no mesmo jeito do
 // "Criar círculo" da Loggi: UM circulo ou as cidades marcadas (comeca vazio; "Limpar" desfaz).
-// No canto fica uma pilula com o que esta valendo e a contagem; clicar nela reabre a gaveta.
+// Cada clique em "Agrupar" comeca limpo (desmarca o escolhido antes).
+// Dentro da gaveta "Agrupar pacotes" do Arco, ao lado do X, fica fixo o "Agrupando X" com a
+// contagem; clicar nele reabre a escolha. Fora dessa gaveta nao aparece nada.
 // Cada bipe de fora: faixa vermelha + som. No "Continuar" com pacote de fora ainda na lista, o
 // clique nao chega a Loggi e uma janela diz quais tirar.
 // A configuracao fica no chrome.storage.local, uma por base (ex.: "base:CCR").
@@ -37,6 +39,8 @@
     busca: '<path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>',
     lista: '<path d="M22 7h-9v2h9V7zm0 8h-9v2h9v-2zM5.54 11 2 7.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 11zm0 8L2 15.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 19z"/>',
     aviso: '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>',
+    certo: '<path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>',
+    relogio: '<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>',
   };
   const svg = (nome, classe = '') => `<svg class="ico ${classe}" viewBox="0 0 24 24" aria-hidden="true">${ICONE[nome]}</svg>`;
 
@@ -53,19 +57,22 @@
       button { font: inherit; cursor: pointer; }
       .ico { width: 24px; height: 24px; flex: none; fill: currentColor; }
 
-      /* pilula do canto: o que esta valendo (estilo dos botoes brancos do Arco) */
-      .canto { position: fixed; z-index: 2147483645; }
-      .pilula-canto { display: flex; align-items: center; gap: 10px; max-width: 420px; padding: 10px 20px 10px 14px; color: var(--texto);
-        background: #fff; border: 1px solid var(--azul); border-radius: 24px; box-shadow: 0 5px 8px 0 rgba(139, 159, 183, .2);
-        font-weight: 600; cursor: grab; touch-action: none; user-select: none; }
+      /* "Agrupando X": fixo ao lado do X da gaveta "Agrupar pacotes" do Arco (estilo dos botoes do Arco) */
+      .canto { position: fixed; z-index: 2147483645; display: none; }
+      .canto.ver { display: block; }
+      .pilula-canto { display: flex; align-items: center; gap: 8px; max-width: 100%; height: 40px; padding: 0 6px 0 16px; color: var(--texto);
+        background: #fff; border: 1px solid var(--azul); border-radius: 24px; font-weight: 600; cursor: pointer; user-select: none; }
+      .pilula-canto .rot { color: var(--cinza); font-weight: 400; white-space: nowrap; }
       .pilula-canto:hover { background: var(--marcado); }
-      .pilula-canto .ico { color: var(--azul); width: 22px; height: 22px; }
-      .pilula-canto .qual { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .pilula-canto .qual { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
       .pilula-canto .nada { color: var(--azul); }
-      .pilula-canto .conta { white-space: nowrap; font-weight: 400; color: var(--cinza); }
-      .pilula-canto .conta b { font-weight: 700; }
-      .pilula-canto .ok b { color: var(--verde); }
-      .pilula-canto .fora b { color: var(--erro); }
+      /* selos da contagem: certos (verde), de fora (vermelho), faltam (laranja) */
+      .pilula-canto .selos { display: flex; gap: 4px; flex: none; }
+      .pilula-canto .selo { display: inline-flex; align-items: center; gap: 2px; height: 28px; padding: 0 9px 0 6px; border-radius: 14px; font-size: .8125rem; font-weight: 700; }
+      .pilula-canto .selo .ico { width: 16px; height: 16px; }
+      .pilula-canto .selo.ok { color: #2e7d32; background: #edf7ed; }
+      .pilula-canto .selo.fora { color: var(--erro); background: #fdeded; }
+      .pilula-canto .selo.falta { color: #b45309; background: #fff4e5; }
 
       /* gaveta (igual a do "Criar círculo") */
       .cortina { position: fixed; inset: 0; z-index: 2147483646; background: rgba(0, 0, 0, .5); opacity: 0; pointer-events: none; transition: opacity 225ms cubic-bezier(.4, 0, .2, 1); }
@@ -107,7 +114,6 @@
       .lista-faltam .cid { color: var(--texto); white-space: nowrap; }
       .lista-faltam .hora { color: var(--cinza); white-space: nowrap; }
       .lista-faltam:empty { display: none; }
-      .pilula-canto .falta b { color: #ed6c02; }
       .linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
       /* alternar como o "Pacotes | Grupos" do Arco */
       .alternar { display: inline-flex; padding: 2px; background: var(--azul); border: thin solid var(--azul); border-radius: 800px; }
@@ -265,7 +271,6 @@
   // Contagem = o que esta NA LISTA de agrupar agora (tirou na lixeira, sai da conta).
   let certos = 0;
   let deFora = 0;
-  let posicao = { direita: 24, baixo: 24 };
   // Na base (relatorio da Loggi) e os agrupados guardados neste navegador (hoje e ontem).
   let naBase = null; // linhas do relatorio; null = ainda nao leu
   let naBaseEm = 0;
@@ -400,24 +405,28 @@
     }));
   }
 
+  function selo(classe, icone_, n, dica) {
+    const e = el('span', `selo ${classe}`);
+    e.title = dica;
+    e.append(icone(icone_), numero(n));
+    return e;
+  }
+
   function desenharPilula() {
-    pilula.replaceChildren(icone('lista'));
+    pilula.replaceChildren();
     if (alvo.tipo === 'nada') {
-      pilula.append(el('span', 'qual nada', 'Escolher círculo ou cidades'));
+      pilula.append(el('span', 'qual nada', 'Escolher o que agrupar'));
+      pilula.title = 'Nada escolhido: os bipes não estão sendo conferidos.';
     } else {
-      pilula.append(el('span', 'qual', alvo.rotulo));
-      const ok = el('span', 'conta ok');
-      ok.append(el('b', '', numero(certos)), ' certos');
-      const fora = el('span', 'conta fora');
-      fora.append(el('b', '', numero(deFora)), ' de fora');
-      pilula.append(ok, fora);
-      if (naBase) {
-        const falta = el('span', 'conta falta');
-        falta.append(el('b', '', numero(faltam.length)), ' faltam');
-        pilula.append(falta);
-      }
+      const nome = alvo.tipo === 'circulo' ? alvo.nome : alvo.rotulo;
+      pilula.append(el('span', 'rot', 'Agrupando'), el('span', 'qual', nome));
+      const selos = el('span', 'selos');
+      selos.append(selo('ok', 'certo', certos, `${certos} certo(s) na lista`), selo('fora', 'fechar', deFora, `${deFora} de fora na lista`));
+      if (naBase) selos.append(selo('falta', 'relogio', faltam.length, `${faltam.length} na base ainda sem grupo`));
+      pilula.append(selos);
+      pilula.title = `Agrupando ${nome}: ${alvo.cidades.map((c) => c.nome).join(', ')}. Clique para trocar.`;
     }
-    aplicarPosicao();
+    posicionarAgrupando();
   }
 
   function desenhar() {
@@ -496,13 +505,14 @@
       desenhar();
     }
   }
-  const fecharGaveta = () => envolve.classList.remove('aberta');
+  const fecharGaveta = () => { envolve.classList.remove('aberta'); posicionarAgrupando(); };
 
   // "Agrupar" em qualquer tela do Arco. O clique segue para a Loggi. Se abriu outra aba, a gaveta
   // abre nela (pedirEscolha); se ficou nesta, abre aqui. Ja bipando nesta tela, nao abre de novo.
   window.addEventListener('click', (e) => {
     const b = e.target && e.target.closest && e.target.closest('button, a, [role="button"]');
-    if (!b || e.composedPath().includes(hospedeiro) || !R.ehAgrupar(b.textContent) || bipes.size) return;
+    if (!b || e.composedPath().includes(hospedeiro) || !R.ehAgrupar(b.textContent)) return;
+    mudar(R.limpar(cfg)); // cada "Agrupar" comeca sem nada marcado
     chrome.storage.local.set({ pedirEscolha: Date.now() });
     setTimeout(() => { if (!document.hidden) abrirGaveta(); }, 700);
   }, true);
@@ -655,41 +665,35 @@
     if (fundo.classList.contains('ver')) fundo.classList.remove('ver'); else if (envolve.classList.contains('aberta')) fecharGaveta();
   }, true);
 
-  // ── canto: posicao e arrastar ─────────────────────────────────────────────
-  function aplicarPosicao() {
-    const r = canto.getBoundingClientRect();
-    posicao.direita = limitar(posicao.direita, window.innerWidth - r.width - MARGEM);
-    posicao.baixo = limitar(posicao.baixo, window.innerHeight - r.height - MARGEM);
-    canto.style.right = `${posicao.direita}px`;
-    canto.style.bottom = `${posicao.baixo}px`;
+  // ── "Agrupando X" na gaveta "Agrupar pacotes" do Arco ──────────────────────
+  /** A gaveta "Agrupar pacotes" aberta do Arco (ou null). */
+  function gavetaDoArco() {
+    const g = [...document.querySelectorAll('.MuiDrawer-paper, [role="dialog"], [role="presentation"]')]
+      .filter((x) => /agrupar pacotes/i.test(x.textContent || '') && x.getBoundingClientRect().width > 0);
+    return g.length ? g[g.length - 1] : null;
   }
 
-  function arrastar(elemento, aoClicar) {
-    let inicio = null;
-    let moveu = false;
-    elemento.addEventListener('pointerdown', (e) => {
-      inicio = { x: e.clientX, y: e.clientY, direita: posicao.direita, baixo: posicao.baixo };
-      moveu = false;
-      elemento.setPointerCapture(e.pointerId);
-    });
-    elemento.addEventListener('pointermove', (e) => {
-      if (!inicio) return;
-      const dx = e.clientX - inicio.x;
-      const dy = e.clientY - inicio.y;
-      if (!moveu && Math.hypot(dx, dy) < 4) return;
-      moveu = true;
-      posicao.direita = inicio.direita - dx;
-      posicao.baixo = inicio.baixo - dy;
-      aplicarPosicao();
-    });
-    elemento.addEventListener('pointerup', () => {
-      if (!inicio) return;
-      inicio = null;
-      if (moveu) chrome.storage.local.set({ posicaoAgrup: posicao }); else if (aoClicar) aoClicar();
-    });
+  // Fica na linha do X (botao de fechar no alto da gaveta), logo a direita dele.
+  function posicionarAgrupando() {
+    const g = envolve.classList.contains('aberta') ? null : gavetaDoArco();
+    canto.classList.toggle('ver', !!g);
+    if (!g) return;
+    const caixa = g.getBoundingClientRect();
+    const botoes = [...g.querySelectorAll('button')].filter((b) => { const r = b.getBoundingClientRect(); return r.width && r.top - caixa.top < 120; });
+    const x = botoes.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)[0];
+    const r = x ? x.getBoundingClientRect() : { right: caixa.left + 24, top: caixa.top + 24, height: 40 };
+    const esquerda = r.right + 16;
+    canto.style.left = `${esquerda}px`;
+    canto.style.top = `${r.top + (r.height - 40) / 2}px`;
+    canto.style.width = `${Math.max(120, caixa.right - esquerda - 24)}px`;
   }
+  // A gaveta do Arco abre deslizando e pode mudar de lugar. Aberta, o Na base ja e lido (o selo "faltam").
+  setInterval(() => {
+    posicionarAgrupando();
+    if (canto.classList.contains('ver') && alvo.tipo !== 'nada' && !naBase && !naBaseErro) carregarNaBase();
+  }, 300);
 
-  arrastar(pilula, abrirGaveta);
+  pilula.addEventListener('click', abrirGaveta);
   $('.fechar').addEventListener('click', fecharGaveta);
   $('.cortina').addEventListener('click', fecharGaveta);
   $('.aplicar').addEventListener('click', fecharGaveta);
@@ -701,12 +705,10 @@
   $('.adicionar').addEventListener('submit', (e) => { e.preventDefault(); adicionar($('.nova').value); });
   // O leitor de codigo digita como teclado: o que se digita na gaveta nao vai para o Arco.
   ['keydown', 'keypress', 'keyup'].forEach((t) => hospedeiro.addEventListener(t, (e) => { if (e.key !== 'Escape') e.stopPropagation(); }));
-  window.addEventListener('resize', aplicarPosicao);
+  window.addEventListener('resize', posicionarAgrupando);
 
   document.documentElement.append(hospedeiro);
-  chrome.storage.local.get(['posicaoAgrup', 'pedirEscolha']).then((s) => {
-    if (s.posicaoAgrup) posicao = s.posicaoAgrup;
-    aplicarPosicao();
+  chrome.storage.local.get(['pedirEscolha']).then((s) => {
     if (s.pedirEscolha && Date.now() - s.pedirEscolha < PEDIDO_MS) setTimeout(abrirGaveta, 300);
   });
   carregarCfg();
