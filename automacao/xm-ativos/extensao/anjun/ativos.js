@@ -406,7 +406,7 @@
     $('previa').textContent = R.montarTexto({
       nome: exemplo && exemplo.nome ? exemplo.nome : '(nome do cliente)',
       atendente: estado.nome || '(seu nome)',
-      remetente: exemplo ? (exemplo.remetente || 'não informado') : '(loja)',
+      remetente: exemplo && exemplo.remetente ? exemplo.remetente : '(loja)',
       pedido: exemplo ? exemplo.codigo : '(pedido)',
     });
   }
@@ -419,7 +419,7 @@
       return `<tr>
         <td><input type="checkbox" data-cod="${esc(l.codigo)}" ${l.marcado ? 'checked' : ''} ${podeMarcar(l) && !estado.ocupado ? '' : 'disabled'}></td>
         <td class="xm-aj-cod">${esc(l.codigo)}</td>
-        <td title="${esc(l.comerciante ? `Na Anjun: ${l.comerciante}` : 'Sem comerciante na Anjun')}"${l.remetente ? '' : ' class="xm-aj-apagado"'}>${esc(l.remetente || (l.achado ? 'não informado' : '—'))}</td>
+        <td title="${esc(l.comerciante ? `Na Anjun: ${l.comerciante}` : 'Sem comerciante na Anjun')}"${l.remetente ? '' : ' class="xm-aj-apagado"'}>${esc(l.remetente || '—')}</td>
         <td class="xm-aj-apagado">${esc(l.cliente || '—')}</td>
         <td style="white-space:nowrap">${esc(l.status || '—')}</td>
         <td${l.nome ? '' : ' class="xm-aj-apagado"'}>${esc(l.nome || (podeMarcar(l) ? 'abre ao disparar' : '—'))}</td>

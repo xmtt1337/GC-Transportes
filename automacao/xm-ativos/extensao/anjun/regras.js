@@ -67,10 +67,13 @@
    * "deixar apenas o cliente da anjun"; o nome da loja do comerciante nao vai mais).
    *   temud2d/temuxborder -> Temu, tiktok logistics brazil ltda -> TikTok, shein/sheind2d -> Shein.
    * Cliente que nao diz a plataforma (szanjun, que nem sempre e Shein): vale a plataforma citada no
-   * comerciante ("...(SHEIN)...", "Shopee"); senao vazio (a mensagem leva "nao informado").
+   * comerciante ("...(SHEIN)...", "Shopee").
+   * Sem plataforma nenhuma: vai o nome da loja (coluna Comerciante) do jeito que esta, e sem loja o
+   * cliente da Anjun. NUNCA "nao informado" (pedido do usuario em 25/11/2026: "por hipotese alguma").
    */
+  const limpo = (texto) => String(texto || '').replace(/\s+/g, ' ').trim();
   function remetente(cliente, comerciante) {
-    return marca(cliente) || marca(comerciante);
+    return marca(cliente) || marca(comerciante) || limpo(comerciante) || limpo(cliente);
   }
 
   /** O texto aprovado do confirmacao_anjun. */
@@ -94,8 +97,9 @@ Por favor, responda com SIM ou NÃO.`;
     if (!tel.ok) return { erro: tel.erro };
     if (!nome) return { erro: 'Sem nome na Anjun.' };
     if (!atendente) return { erro: 'Sem o nome de quem dispara (entre de novo no sistema).' };
-    // A Meta recusa parametro vazio.
-    const remetenteTexto = String(remetente || '').trim() || 'não informado';
+    // A Meta recusa parametro vazio, e "nao informado" nao vai nunca: sem loja nem cliente, nao dispara.
+    const remetenteTexto = limpo(remetente);
+    if (!remetenteTexto) return { erro: 'Sem loja e sem cliente na Anjun (remetente vazio).' };
     return {
       corpo: {
         numero: tel.e164, template: TEMPLATE, parametros: [nome, atendente, remetenteTexto, codigo],

@@ -32,25 +32,31 @@ Pedido: AJ0000000000001
 
 Você recebeu o pedido?
 Por favor, responda com SIM ou NÃO.`);
-  // Remetente vazio não pode ir vazio para a Meta.
-  assert.strictEqual(R.montarEnvio({ codigo: 'AJ1', nome: 'A', telefone: '49999990000', remetente: '', atendente: 'B' }).corpo.parametros[2], 'não informado');
+  // Remetente vazio não vai para a Meta, e "não informado" nunca: não dispara.
+  assert.match(R.montarEnvio({ codigo: 'AJ1', nome: 'A', telefone: '49999990000', remetente: '', atendente: 'B' }).erro, /remetente vazio/);
+  assert.match(R.montarEnvio({ codigo: 'AJ1', nome: 'A', telefone: '49999990000', remetente: '  ', atendente: 'B' }).erro, /remetente vazio/);
   assert.strictEqual(R.montarEnvio({ codigo: 'AJ1', nome: '', telefone: '49999990000', atendente: 'B' }).erro, 'Sem nome na Anjun.');
   assert.strictEqual(R.montarEnvio({ codigo: 'AJ1', nome: 'A', telefone: '', atendente: 'B' }).erro, 'Sem telefone na Anjun.');
   assert.match(R.montarEnvio({ codigo: 'AJ1', nome: 'A', telefone: '49999990000', atendente: '' }).erro, /quem dispara/);
 });
 
-test('remetente: a plataforma pelo cliente da Anjun; o nome da loja não vai', () => {
+test('remetente: a plataforma pelo cliente da Anjun; sem plataforma, o nome da loja (nunca "não informado")', () => {
   assert.strictEqual(R.remetente('temud2d', 'LOJA EXEMPLO'), 'Temu');
   assert.strictEqual(R.remetente('temuxborder', "J123456'shop"), 'Temu');
   assert.strictEqual(R.remetente('tiktok logistics brazil ltda', 'LOJA EXEMPLO'), 'TikTok');
   assert.strictEqual(R.remetente('shein', 'Loja Exemplo Fashion'), 'Shein');
   assert.strictEqual(R.remetente('sheind2d', ''), 'Shein');
-  // szanjun nem sempre é Shein: vale a plataforma citada no comerciante, senão vazio ("não informado")
+  // szanjun nem sempre é Shein: vale a plataforma citada no comerciante
   assert.strictEqual(R.remetente('szanjun', 'EXEMPLO SHINE PTE.LTD.(SHEIN)-INTERNACIONAL'), 'Shein');
   assert.strictEqual(R.remetente('szanjun', 'Shopee'), 'Shopee');
-  assert.strictEqual(R.remetente('szanjun', '厦门测试电子商务有限公司'), '');
-  assert.strictEqual(R.remetente('szanjun', 'LOJA EXEMPLO'), '');
+  // sem plataforma: o nome da loja como está (nunca "não informado"); sem loja, o cliente
+  assert.strictEqual(R.remetente('szanjun', '厦门测试电子商务有限公司'), '厦门测试电子商务有限公司');
+  assert.strictEqual(R.remetente('szanjun', '  LOJA   EXEMPLO '), 'LOJA EXEMPLO');
+  assert.strictEqual(R.remetente('szanjun', ''), 'szanjun');
   assert.strictEqual(R.remetente('', ''), '');
+  const { corpo } = R.montarEnvio({ codigo: 'AJ1', nome: 'A', telefone: '49999990000', remetente: R.remetente('szanjun', 'LOJA EXEMPLO'), atendente: 'B' });
+  assert.strictEqual(corpo.parametros[2], 'LOJA EXEMPLO');
+  assert.ok(!corpo.texto.includes('não informado'));
 });
 
 test('buscarPedidos: a Consulta de pacotes por waybill, em partes; cliente, comerciante, status e não achados', async () => {
