@@ -8,7 +8,8 @@
 //              Na base e da "Regiao de atuacao" do Criar circulo).
 //    circulos  GET leve.loggi.com/api/v1/<empresa>:<centro>/circle/list (cada circulo com as cidades).
 //    avulsos   os pacotes que NAO estao em grupo nenhum, do jeito da tela Distribuir > Grupos com
-//              Estacao = Recebimento (COL) e Status = Sem tentativa (89):
+//              Estacao = Recebimento (COL), em qualquer status (o que chegou hoje esta como
+//              "Transferencia finalizada", nao "Sem tentativa"; agrupado vai para Processamento):
 //              POST leve.loggi.com/api/v1/last_mile/<empresa>:<centro>/unit_load -> o(s) grupo(s) da
 //              estacao (os "Pacotes avulsos"), e POST leve.loggi.com/api/v2/last_mile/packages/filter_search
 //              por placa do grupo, pagina a pagina. Dos pacotes saem so codigo, ID, cidade e status.
@@ -89,13 +90,12 @@
 
   // ── avulsos ──
   const ESTACAO_RECEBIMENTO = 'COL';
-  const SEM_TENTATIVA = '89';
   const ORDEM = 'last_awaiting_resolution_promised_date_annotation.annotation.awaiting_resolution_promised_date.promised_date.promised_date';
   const POR_PAGINA = 100;
 
   function filtrosDaBase(b, tipo) {
     return {
-      statusFilters: [SEM_TENTATIVA], stationFilter: [ESTACAO_RECEBIMENTO], orderBy: ORDEM, dateFilter: null,
+      stationFilter: [ESTACAO_RECEBIMENTO], orderBy: ORDEM, dateFilter: null,
       searchArgument: null, startDate: null, endDate: null, view: 'base', viewFilterBy: FILTRO_PRAZO,
       lastMileCompanyType: tipo, distribution_center_id: Number(b.centro), last_mile_company_id: b.empresa, routing_code: b.codigo,
     };

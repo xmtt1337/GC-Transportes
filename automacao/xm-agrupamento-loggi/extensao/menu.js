@@ -373,7 +373,7 @@
     $('.bloco-adicionar').hidden = modo === 'circulos' && !noCirculo;
     $('.titulo-adicionar').textContent = noCirculo ? `Adicionar cidade no círculo ${alvo.nome}` : 'Adicionar cidade';
     $('.sugestoes').replaceChildren(...R.sugestoes(bipes, alvo).map((cidade) => {
-      const b = el('button', '', `+ ${cidade}`);
+      const b = el('button', '', `+ ${R.bonito(cidade)}`);
       b.type = 'button';
       b.title = 'Bipada aqui e de fora. Clique para adicionar.';
       b.addEventListener('click', () => adicionar(cidade));
@@ -511,6 +511,7 @@
       const r = await chrome.runtime.sendMessage({ tipo: 'naBase', url });
       if (!r || r.erro) throw new Error((r && r.erro) || 'Não deu para ler o Na base.');
       naBase = r.linhas;
+      R.aprenderNomes(naBase.map((p) => p.cidade));
       naBaseEm = Date.now();
       naBaseErro = '';
     } catch (e) {
@@ -570,6 +571,7 @@
       const c = await pedirALoggi('cidades');
       if (c.base && c.base.codigo && c.base.codigo !== codigoBase) { codigoBase = c.base.codigo; await carregarCfg(false); }
       cidadesLoggi = c.cidades;
+      R.aprenderNomes(cidadesLoggi.map((x) => x.nome));
       let erro = '';
       try { circulos = (await pedirALoggi('circulos')).circulos; } catch (e) { erro = `As cidades vieram, mas os círculos não: ${e.message}`; }
       await guardar();
@@ -587,6 +589,7 @@
     cfg = R.normalizarCfg(salvo);
     const cache = salvo && salvo.cache;
     cidadesLoggi = (cache && cache.cidades) || [];
+    R.aprenderNomes(cidadesLoggi.map((x) => x.nome));
     circulos = (cache && cache.circulos) || [];
     await carregarAgrupados();
     desenhar();
@@ -616,7 +619,7 @@
 
   let sumirTarja = null;
   function mostrarTarja(codigo, cidade) {
-    tarja.querySelector('.texto-tarja').textContent = `${codigo} é de ${cidade}: ${alvo.fora}`;
+    tarja.querySelector('.texto-tarja').textContent = `${codigo} é de ${R.bonito(cidade)}: ${alvo.fora}`;
     tarja.classList.add('ver');
     clearTimeout(sumirTarja);
     sumirTarja = setTimeout(() => tarja.classList.remove('ver'), TARJA_MS);
@@ -630,6 +633,7 @@
       const codigo = String(i.codigo);
       const cidade = R.consertarTexto(String(i.cidade)); // "CaÃ§ador" aparece como "Caçador"
       bipes.set(codigo, cidade);
+      R.aprenderNomes([cidade]);
       const { ok } = R.conferirBipe(cidade, alvo);
       if (ok === false) errado = errado || { codigo, cidade };
       if (ok === true) algumCerto = true;
@@ -669,7 +673,7 @@
       : `Estes ${errados.length} pacotes estão ${onde}. Tire eles do grupo para continuar.`;
     fundo.querySelector('ul').replaceChildren(...errados.map((x) => {
       const li = el('li');
-      li.append(el('span', '', x.codigo), el('span', '', x.cidade));
+      li.append(el('span', '', x.codigo), el('span', '', R.bonito(x.cidade)));
       return li;
     }));
     fundo.classList.add('ver');
@@ -688,7 +692,7 @@
       : `Dos pacotes que chegaram hoje ${onde}, ${numero(lista.length)} não foram agrupados:`;
     $('.lista-faltam').replaceChildren(...lista.slice(0, 500).map((x) => {
       const li = el('li');
-      li.append(el('span', 'cod', x.codigo || x.id), el('span', 'cid', x.cidade), el('span', 'hora', R.horaDe(x.chegou)));
+      li.append(el('span', 'cod', x.codigo || x.id), el('span', 'cid', R.bonito(x.cidade)), el('span', 'hora', R.horaDe(x.chegou)));
       return li;
     }));
     fundoFaltam.classList.add('ver');

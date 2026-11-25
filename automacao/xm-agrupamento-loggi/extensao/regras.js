@@ -73,6 +73,38 @@
     return new RegExp(`^${partes.join('[a-z0-9]{0,2}')}$`);
   }
 
+  // ── nome padrao das cidades ──────────────────────────────────────────────────
+  // A Loggi manda a mesma cidade de varios jeitos ("CACADOR", "Cacador", "Caçador"). Para mostrar,
+  // vale a grafia mais completa que ja apareceu (com acento) e a caixa de nome proprio:
+  // "São Cristóvão do Sul", "Herval d'Oeste".
+  const PARTICULAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
+  const capital = (w) => w.replace(/^(\p{L})/u, (c) => c.toUpperCase());
+
+  function formatarNome(v) {
+    const t = consertarTexto(v).replace(/\s+/g, ' ').trim().toLowerCase();
+    return t.split(' ').map((w, i) => {
+      if (i > 0 && PARTICULAS.has(w)) return w;
+      const ap = w.match(/^d['’](\p{L}.*)$/u); // d'oeste -> d'Oeste
+      if (ap && i > 0) return `d'${capital(ap[1])}`;
+      return capital(w).replace(/-(\p{L})/gu, (m, c) => `-${c.toUpperCase()}`);
+    }).join(' ');
+  }
+
+  const preferidos = new Map();
+  const pontos = (n) => (String(n).match(/[^\x00-\x7f]/g) || []).length * 2 + (/['’]/.test(n) ? 1 : 0);
+  /** Guarda a grafia mais completa de cada cidade (a com mais acento ganha). */
+  function aprenderNomes(nomes) {
+    for (const bruto of nomes || []) {
+      const n = consertarTexto(bruto).replace(/\s+/g, ' ').trim();
+      const k = chave(n);
+      if (!k) continue;
+      const atual = preferidos.get(k);
+      if (!atual || pontos(n) > pontos(atual)) preferidos.set(k, n);
+    }
+  }
+  /** O nome da cidade para mostrar: a melhor grafia conhecida, com caixa de nome proprio. */
+  const bonito = (n) => (String(n || '').trim() ? formatarNome(preferidos.get(chave(n)) || n) : '');
+
   /** "CITY_SC_LINDOIA_DO_SUL" -> "Lindoia Do Sul" (quando a Loggi nao mandou o nome). */
   function nomeDoCodigo(codigo) {
     return String(codigo || '').replace(PREFIXO, '').toLowerCase().split('_').filter(Boolean)
@@ -106,13 +138,13 @@
       const k = chave(x.codigo || x.nome);
       if (!k || vistas.has(k)) continue;
       vistas.add(k);
-      lista.push({ chave: k, nome: consertarTexto(x.nome) || nomeDoCodigo(x.codigo), pacotes: Number(x.pacotes) || 0, origem: 'loggi' });
+      lista.push({ chave: k, nome: bonito(consertarTexto(x.nome) || nomeDoCodigo(x.codigo)), pacotes: Number(x.pacotes) || 0, origem: 'loggi' });
     }
     for (const nome of c.adicionadas) {
       const k = chave(nome);
       if (!k || vistas.has(k)) continue;
       vistas.add(k);
-      lista.push({ chave: k, nome, pacotes: null, origem: 'adicionada' });
+      lista.push({ chave: k, nome: bonito(nome), pacotes: null, origem: 'adicionada' });
     }
     return lista.sort(porNome);
   }
@@ -128,8 +160,8 @@
       vistas.add(k);
       lista.push({ chave: k, nome, pacotes: null, origem });
     };
-    for (const cod of (circulo && circulo.cidades) || []) somar(chave(cod), nomes.get(chave(cod)) || nomeDoCodigo(cod), 'loggi');
-    for (const nome of c.extrasCirculo[circulo && circulo.id] || []) somar(chave(nome), nome, 'adicionada');
+    for (const cod of (circulo && circulo.cidades) || []) somar(chave(cod), bonito(nomes.get(chave(cod)) || nomeDoCodigo(cod)), 'loggi');
+    for (const nome of c.extrasCirculo[circulo && circulo.id] || []) somar(chave(nome), bonito(nome), 'adicionada');
     return lista.sort(porNome);
   }
 
@@ -450,7 +482,7 @@
   /** O botao clicado e o "Agrupar" (ou "Agrupar pacotes") de alguma tela do Arco? */
   const ehAgrupar = (texto) => /^agrupar( pacotes)?$/.test(String(texto || '').replace(/\s+/g, ' ').trim().toLowerCase());
 
-  const publico = { chave, consertarTexto, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
+  const publico = { chave, consertarTexto, formatarNome, aprenderNomes, bonito, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
     pendentes, contarNaLista, ordenarCirculos, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar,
     lerCsv, linhasNaBase, linkDoRelatorio, relatorioDaBase, hoje, diaDe, horaDe, resumoNaBase, codigosAvulsos, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };
   if (typeof module !== 'undefined') module.exports = publico;

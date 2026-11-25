@@ -32,6 +32,8 @@ CIDADES
     Loggi nao lista. Com um circulo escolhido entra nele; senao
     entra na lista e ja fica marcada. As cidades bipadas de fora
     aparecem como atalho (+ Cidade).
+  - Nome padrao: a mesma cidade aparece sempre igual, na grafia
+    mais completa que a Loggi mandou ("CACADOR" -> "Caçador").
   - Acentuacao quebrada da Loggi ("CaÃ§ador") e consertada antes
     de conferir.
   - "Atualizar da Loggi" busca de novo (sozinho a cada 6 h).
@@ -45,9 +47,11 @@ PACOTES NAO AGRUPADOS (desde 1.12, no fim do agrupamento)
     daquela conferencia, e ficaram fora do grupo.
   - Chegou hoje = coluna "Chegou em" do relatorio da tela Na
     base (o arquivo do "Baixar relatorio"), lido sem baixar.
-  - Nao agrupado = esta nos "Pacotes avulsos" da Loggi (o mesmo
-    de Distribuir > Grupos com Estacao Recebimento e Status Sem
-    tentativa) - vale para grupo feito em qualquer computador.
+  - Nao agrupado = ainda esta na estacao Recebimento da Loggi
+    (Distribuir > Grupos, Estacao Recebimento), em qualquer status:
+    o que chegou hoje fica "Transferencia finalizada", nao "Sem
+    tentativa"; agrupado vai para Processamento. Vale para grupo
+    feito em qualquer computador.
     Se a Loggi nao responder, vale o que este navegador guardou
     dos grupos criados aqui (hoje e ontem).
 

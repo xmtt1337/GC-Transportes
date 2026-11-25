@@ -98,7 +98,7 @@ test('contagem só do que está na lista agora: tirou o pacote de fora, sai da c
 test('cidades e círculos em ordem alfabética, sem olhar acento nem maiúscula', () => {
   const cidades = [{ codigo: 'CITY_SC_VIDEIRA', nome: 'Videira' }, { codigo: 'CITY_SC_CACADOR', nome: 'Cacador' }, { codigo: 'CITY_SC_AGUA_DOCE', nome: 'Agua Doce' }, { codigo: 'CITY_SC_ZORTEA', nome: 'Zortea' }];
   const cfg = { adicionadas: ['Água Branca', 'beta'] };
-  assert.deepStrictEqual(R.listaDaBase(cidades, cfg).map((c) => c.nome), ['Agua Doce', 'Água Branca', 'beta', 'Cacador', 'Videira', 'Zortea'].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })));
+  assert.deepStrictEqual(R.listaDaBase(cidades, cfg).map((c) => c.nome), ['Agua Doce', 'Água Branca', 'Beta', 'Cacador', 'Videira', 'Zortea'].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })));
   assert.deepStrictEqual(R.listaDaBase(cidades, {}).map((c) => c.nome), ['Agua Doce', 'Cacador', 'Videira', 'Zortea']);
   assert.deepStrictEqual(R.listaDoCirculo({ id: 'x', cidades: ['CITY_SC_ZORTEA', 'CITY_SC_CACADOR'] }, cidades, {}).map((c) => c.nome), ['Cacador', 'Zortea']);
   assert.deepStrictEqual(R.ordenarCirculos([{ nome: 'LUANA - VIDEIRA' }, { nome: 'Base Joaçaba' }, { nome: 'DIDIO - CONCORDIA' }]).map((c) => c.nome), ['Base Joaçaba', 'DIDIO - CONCORDIA', 'LUANA - VIDEIRA']);
