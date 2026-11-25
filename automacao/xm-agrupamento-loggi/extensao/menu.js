@@ -83,11 +83,12 @@
       .aberta .gaveta { transform: none; visibility: visible; transition: transform 225ms cubic-bezier(0, 0, .2, 1); }
       .aberta ~ .canto, .aberta + .canto { display: none; }
       .gaveta-corpo { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 24px 28px 8px; }
+      .sair-sem { padding: 0; color: var(--cinza); background: none; border: 0; font-size: .8125rem; text-decoration: underline; }
       .fechar { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; color: var(--azul);
         background: #fff; border: 1px solid var(--azul); border-radius: 50%; }
       .fechar:hover { background: rgba(0, 186, 255, .04); }
       .fechar .ico { width: 20px; height: 20px; }
-      .sobre { margin: 40px 0 4px; color: var(--cinza); font-size: 14px; }
+      .sobre { margin: 8px 0 4px; color: var(--cinza); font-size: 14px; }
       .titulo { margin: 0 0 12px; font: 700 32px/1.2 Montserrat, 'Open Sans', sans-serif; color: var(--texto); }
       .texto { margin: 0 0 20px; font-size: 16px; color: var(--texto); }
       .estado { display: flex; gap: 12px; align-items: flex-start; padding: 10px 16px; margin-bottom: 24px; border-radius: 8px; font-size: 14px; }
@@ -159,6 +160,8 @@
       .rodape .limpar:hover { background: rgba(0, 0, 0, .04); }
       .rodape .aplicar { padding: 8px 22px; color: var(--azul); background: #fff; border: 1px solid var(--azul); border-radius: 24px; font-weight: 600; }
       .rodape .aplicar:hover { background: rgba(0, 186, 255, .04); }
+      .rodape .aplicar.desligado { color: #9fabbb; border-color: #d8ddeb; cursor: not-allowed; }
+      .rodape .aplicar.desligado:hover { background: #fff; }
 
       /* alerta do bipe (faixa no alto) e janela do "Continuar" */
       .tarja { display: flex; position: fixed; top: 0; left: 0; right: 0; z-index: 2147483647; gap: 16px; align-items: center; padding: 18px 28px;
@@ -212,7 +215,6 @@
         <div class="cortina"></div>
         <aside class="gaveta" role="dialog" aria-modal="true" aria-label="Conferência do agrupamento">
           <div class="gaveta-corpo">
-            <button type="button" class="fechar" title="Fechar" aria-label="Fechar">${svg('fechar')}</button>
             <div class="sobre">Agrupar</div>
             <h2 class="titulo">Conferência</h2>
             <p class="texto">Escolha o círculo ou as cidades deste grupo. Pacote de outra cidade é avisado na hora do bipe e não deixa continuar.</p>
@@ -240,6 +242,7 @@
               <div class="sugestoes"></div>
             </div>
             <div class="recado"></div>
+            <button type="button" class="sair-sem" hidden>Fechar sem conferir (a lista da Loggi não carregou)</button>
           </div>
           <footer class="rodape">
             <button type="button" class="limpar">Limpar</button>
@@ -409,6 +412,9 @@
     alvo = R.montarAlvo(cfg, cidadesLoggi, circulos);
     if (bipes.size) { const c = R.contarNaLista(bipes, textoDaLista(), alvo); certos = c.certos; deFora = c.deFora; }
     desenharEstado();
+    $('.aplicar').classList.toggle('desligado', alvo.tipo === 'nada');
+    $('.aplicar').title = alvo.tipo === 'nada' ? 'Escolha um círculo ou cidade primeiro' : '';
+    $('.sair-sem').hidden = !semNadaParaEscolher();
     calcularFaltam();
     desenharLista();
     desenharPilula();
@@ -482,6 +488,13 @@
     }
   }
   const fecharGaveta = () => { envolve.classList.remove('aberta'); posicionarAgrupando(); };
+  // Escolher e obrigatorio: so fecha com um circulo ou cidade escolhido. Unica saida sem escolher:
+  // a lista da Loggi nao carregou (nada para escolher), senao a gaveta prenderia a tela.
+  const semNadaParaEscolher = () => !cidadesLoggi.length && !circulos.length && !buscando;
+  function tentarFechar() {
+    if (alvo.tipo !== 'nada') { fecharGaveta(); return; }
+    recado('Escolha um círculo ou pelo menos uma cidade para agrupar.', true);
+  }
 
   // "Agrupar" em qualquer tela do Arco. O clique segue para a Loggi. Se abriu outra aba, a gaveta
   // abre nela (pedirEscolha); se ficou nesta, abre aqui. Ja bipando nesta tela, nao abre de novo.
@@ -680,7 +693,7 @@
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (fundoFaltam.classList.contains('ver')) fundoFaltam.classList.remove('ver');
-    else if (fundo.classList.contains('ver')) fundo.classList.remove('ver'); else if (envolve.classList.contains('aberta')) fecharGaveta();
+    else if (fundo.classList.contains('ver')) fundo.classList.remove('ver'); else if (envolve.classList.contains('aberta')) tentarFechar();
   }, true);
 
   // ── "Agrupando X" na gaveta "Agrupar pacotes" do Arco ──────────────────────
@@ -712,9 +725,9 @@
   }, 300);
 
   pilula.addEventListener('click', abrirGaveta);
-  $('.fechar').addEventListener('click', fecharGaveta);
-  $('.cortina').addEventListener('click', fecharGaveta);
-  $('.aplicar').addEventListener('click', fecharGaveta);
+  $('.cortina').addEventListener('click', tentarFechar);
+  $('.aplicar').addEventListener('click', tentarFechar);
+  $('.sair-sem').addEventListener('click', fecharGaveta);
   sombra.querySelectorAll('[data-modo]').forEach((b) => b.addEventListener('click', () => { modo = b.dataset.modo; $('.filtro').value = ''; desenharLista(); }));
   $('.atualizar').addEventListener('click', () => { atualizarDaLoggi(); carregarNaBase(true); });
   $('.limpar').addEventListener('click', () => { mudar(R.limpar(cfg)); recado('Escolha limpa: nada está sendo conferido.'); });

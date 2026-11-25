@@ -12,7 +12,10 @@ COMO FUNCIONA
   - Ao clicar em "Agrupar" (em qualquer tela do Arco) abre a
     gaveta "Conferencia": escolha UM circulo ou marque as
     cidades. CADA "Agrupar" comeca sem nada escolhido;
-    "Limpar" tambem volta a isso.
+    "Limpar" tambem volta a isso. Escolher e OBRIGATORIO: a
+    gaveta nao tem X, e Aplicar, Esc e clique fora so fecham com
+    um circulo ou cidade escolhido (se a lista da Loggi nao
+    carregar, aparece "Fechar sem conferir").
   - Dentro da gaveta "Agrupar pacotes" do Arco, ao lado do X,
     fica fixo "Agrupando X" com os selos certos / de fora /
     faltam; clicar nele reabre a escolha.
