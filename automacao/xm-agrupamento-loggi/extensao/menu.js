@@ -155,6 +155,7 @@
       .sugestoes button { padding: 4px 12px; color: var(--azul); background: var(--marcado); border: 1px solid var(--borda-marcado); border-radius: 100px; font-size: .8125rem; }
       .recado { min-height: 20px; margin: 4px 0 12px; color: var(--cinza); font-size: .8125rem; }
       .recado.erro { color: var(--erro); }
+      .diagnostico { margin: 0 0 12px; color: #9fabbb; font-size: .75rem; }
       .rodape { display: grid; grid-template-columns: 1fr 3fr; gap: 16px; padding: 20px 28px; border-top: 1px solid var(--divisa); box-shadow: 0 -2px 5px rgba(46, 53, 69, .1); }
       .rodape .limpar { padding: 6px 8px; color: var(--texto); background: none; border: 0; border-radius: 4px; font-weight: 600; }
       .rodape .limpar:hover { background: rgba(0, 0, 0, .04); }
@@ -242,6 +243,7 @@
               <div class="sugestoes"></div>
             </div>
             <div class="recado"></div>
+            <div class="diagnostico"></div>
             <button type="button" class="sair-sem" hidden>Fechar sem conferir (a lista da Loggi não carregou)</button>
           </div>
           <footer class="rodape">
@@ -384,6 +386,16 @@
     return faltam;
   }
 
+  // Linha discreta na gaveta: o que o relatorio Na base trouxe (para conferir se esta lendo certo).
+  function desenharDiagnostico() {
+    const d = $('.diagnostico');
+    if (!naBase) { d.textContent = naBaseErro ? `Na base: ${naBaseErro}` : ''; return; }
+    const r = R.resumoNaBase(naBase);
+    d.textContent = `Na base: ${numero(r.total)} pacotes lidos, ${numero(r.hoje)} chegaram hoje`
+      + (r.semData ? `, ${numero(r.semData)} sem data reconhecida (ex.: "${r.exemplo}")` : '')
+      + ` · ${numero(Object.keys(agrupados).length)} já agrupados neste navegador.`;
+  }
+
   function selo(classe, icone_, n, dica) {
     const e = el('span', `selo ${classe}`);
     e.title = dica;
@@ -416,6 +428,7 @@
     $('.aplicar').title = alvo.tipo === 'nada' ? 'Escolha um círculo ou cidade primeiro' : '';
     $('.sair-sem').hidden = !semNadaParaEscolher();
     calcularFaltam();
+    desenharDiagnostico();
     desenharLista();
     desenharPilula();
   }
@@ -501,6 +514,9 @@
   window.addEventListener('click', (e) => {
     const b = e.target && e.target.closest && e.target.closest('button, a, [role="button"]');
     if (!b || e.composedPath().includes(hospedeiro) || !R.ehAgrupar(b.textContent)) return;
+    // O "Agrupar" de dentro da gaveta/janela da Loggi (o que confirma o grupo, depois do Continuar)
+    // nao e o comeco de um agrupamento: so o botao da tela (Na base etc.) abre a escolha.
+    if (b.closest('.MuiDrawer-paper, .MuiDialog-paper, .MuiModal-root, [role="dialog"], [role="presentation"]')) return;
     mudar(R.limpar(cfg)); // cada "Agrupar" comeca sem nada marcado
     semAvisoDeFaltam = false;
     chrome.storage.local.set({ pedirEscolha: Date.now() });

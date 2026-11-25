@@ -37,6 +37,15 @@ test('datas: dia e hora de São Paulo', () => {
   assert.strictEqual(R.horaDe('25/11/2026 9:05'), '09:05');
 });
 
+test('"Chegou em" nos jeitos que a Loggi pode mandar', () => {
+  for (const v of ['2026-11-25T11:10:00Z', '2026-11-25T08:10:00', '2026-11-25 08:10', '25/11/2026 08:10', '25/11/26', '25/11 08:10', '25 nov', '25 nov, 08:10', '25 de nov. de 2026', 'Hoje, 08:10', 'hoje'])
+    assert.strictEqual(R.diaDe(v, AGORA), '2026-11-25', v);
+  assert.strictEqual(R.diaDe('Ontem 18:00', AGORA), '2026-11-24');
+  assert.strictEqual(R.diaDe('28 dez', Date.UTC(2027, 0, 5, 15)), '2026-12-28'); // dezembro lido em janeiro: ano passado
+  assert.strictEqual(R.diaDe('sem data', AGORA), '');
+  assert.deepStrictEqual(R.resumoNaBase([{ chegou: '25 nov, 08:10' }, { chegou: '20 nov' }, { chegou: '?' }], AGORA), { total: 3, hoje: 1, semData: 1, exemplo: '25 nov, 08:10' });
+});
+
 test('faltam: das cidades escolhidas, sem os agrupados nem os que estão na lista agora; hoje x toda a base', () => {
   const linhas = R.linhasNaBase(CSV);
   const hoje = R.faltantes(linhas, ALVO, {}, [], { soHoje: true, agora: AGORA }).map((p) => p.codigo || p.id);

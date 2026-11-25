@@ -343,7 +343,20 @@
   const ontem = (agora = Date.now()) => diaSP(agora - 86400000);
 
   /** "Chegou em" -> "AAAA-MM-DD" no fuso de Sao Paulo (ISO com fuso, AAAA-MM-DD ou DD/MM/AAAA). */
-  function diaDe(valor) {
+  const MESES = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12 };
+
+  /** Dia e mes sem ano: o ano de agora (ou o passado, se o mes ainda vai chegar: "28 dez" lido em janeiro). */
+  function comAno(dia, mes, agora) {
+    const [a, m] = hoje(agora).split('-').map(Number);
+    const ano = mes > m + 1 ? a - 1 : a;
+    return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+  }
+
+  /**
+   * "Chegou em" -> "AAAA-MM-DD" no fuso de Sao Paulo. Aceita ISO (com ou sem fuso), AAAA-MM-DD,
+   * DD/MM/AAAA, DD/MM, "25 nov", "25 de nov.", "hoje" e "ontem" (com ou sem hora depois).
+   */
+  function diaDe(valor, agora = Date.now()) {
     const t = String(valor || '').trim();
     if (/^\d{4}-\d{2}-\d{2}T.*(Z|[+-]\d{2}:?\d{2})$/i.test(t)) {
       const d = new Date(t);
@@ -351,8 +364,15 @@
     }
     let m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-    m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+    if (m) return `${m[3].length === 2 ? `20${m[3]}` : m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    m = t.match(/^(\d{1,2})\/(\d{1,2})(?!\d)/);
+    if (m) return comAno(Number(m[1]), Number(m[2]), agora);
+    const minus = t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (/^hoje\b/.test(minus)) return hoje(agora);
+    if (/^ontem\b/.test(minus)) return ontem(agora);
+    m = minus.match(/^(\d{1,2})\s*(?:de\s*)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*\.?(?:\s*(?:de\s*)?(\d{4}))?/);
+    if (m) return m[3] ? `${m[3]}-${String(MESES[m[2]]).padStart(2, '0')}-${m[1].padStart(2, '0')}` : comAno(Number(m[1]), MESES[m[2]], agora);
     return '';
   }
 
@@ -396,8 +416,16 @@
     return (linhas || [])
       .filter((p) => conferirBipe(p.cidade, alvo).ok === true)
       .filter((p) => !ja.has(String(p.codigo).toUpperCase()) && !ja.has(String(p.id).toUpperCase()))
-      .filter((p) => !soHoje || diaDe(p.chegou) === dia)
+      .filter((p) => !soHoje || diaDe(p.chegou, agora) === dia)
       .sort((a, b) => a.cidade.localeCompare(b.cidade, 'pt-BR', { sensitivity: 'base' }) || String(a.chegou).localeCompare(String(b.chegou)));
+  }
+
+  /** Para conferir a leitura: quantos vieram, quantos chegaram hoje e um exemplo do "Chegou em". */
+  function resumoNaBase(linhas, agora = Date.now()) {
+    const ls = linhas || [];
+    const dia = hoje(agora);
+    return { total: ls.length, hoje: ls.filter((p) => diaDe(p.chegou, agora) === dia).length,
+      semData: ls.filter((p) => !diaDe(p.chegou, agora)).length, exemplo: (ls.find((p) => p.chegou) || {}).chegou || '' };
   }
 
   /** Bipados que estao na lista de agrupar agora (o codigo aparece no texto dela). */
@@ -411,7 +439,7 @@
 
   const publico = { chave, consertarTexto, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
     pendentes, contarNaLista, ordenarCirculos, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar,
-    lerCsv, linhasNaBase, linkDoRelatorio, relatorioDaBase, hoje, diaDe, horaDe, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };
+    lerCsv, linhasNaBase, linkDoRelatorio, relatorioDaBase, hoje, diaDe, horaDe, resumoNaBase, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMAgrupamento = publico;
 })();
