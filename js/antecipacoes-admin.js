@@ -317,7 +317,11 @@ function _admAntRenderConferencia() {
         const trampay = i.linhas_trampay
             ? `${moedaJS(i.recebido)}${i.linhas_trampay > 1 ? `<div class="sub">${i.linhas_trampay} pedidos somados</div>` : ""}`
             : "—";
-        const obs = [i.pelo_nome ? "achado pelo nome" : "", !i.id_trampay ? "sem ID Trampay no cadastro" : ""].filter(Boolean).join(" · ");
+        const obs = [
+            i.pelo_nome ? "achado pelo nome" : "",
+            i.id_no_relatorio ? `na Trampay com o ID ${i.id_no_relatorio}` : "",
+            !i.id_trampay ? "sem ID Trampay no cadastro" : "",
+        ].filter(Boolean).join(" · ");
         let acao = "";
         if (i.situacao === "valor_diferente") acao = `<button type="button" class="ant-conf-link" onclick="_admAntUsarValorTrampay(${i.idx})">usar ${moedaJS(i.recebido)} da Trampay</button>`;
         if (i.situacao === "nao_encontrado") acao = `<button type="button" class="ant-conf-link" onclick="_admAntExcluirSemTrampay(${i.idx})">excluir pedido</button>`;
