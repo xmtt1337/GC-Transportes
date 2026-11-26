@@ -114,7 +114,10 @@
     return { placas: lista.map((u) => String(u.licensePlate)), total: Number(j && j.totalPackages) || 0 };
   }
 
-  /** filter_search -> { pacotes: [{ codigo, rastreio, id, cidade, status }], total } (sem nome nem endereco). */
+  /**
+   * filter_search -> { pacotes: [{ codigo, rastreio, id, cidade, status, situacao, recebido, prazo }], total }
+   * (sem nome nem endereco). recebido = o bipe de recebimento na base (last_breadcrumbs_sorting_record).
+   */
   function lerAvulsos(j) {
     const hits = (j && j.hits) || {};
     const pacotes = (hits.hits || []).map((h) => {
@@ -124,6 +127,9 @@
         codigo: String((f.package_integration_info && f.package_integration_info.barcode) || pac.tracking_key || ''),
         rastreio: String(pac.tracking_key || ''), id: String(pac.id || ''),
         cidade: String((f.destination && f.destination.city) || ''), status: Number(f.status && f.status.code) || null,
+        situacao: String(((h.fields && (h.fields.status_string_v2 || h.fields.status_string)) || [])[0] || ''),
+        recebido: String((f.last_breadcrumbs_sorting_record && f.last_breadcrumbs_sorting_record.created) || ''),
+        prazo: String((f.last_promised_date && f.last_promised_date.promised_date) || ''),
       };
     }).filter((p) => p.codigo || p.id);
     const total = hits.total && typeof hits.total === 'object' ? Number(hits.total.value) : Number(hits.total);

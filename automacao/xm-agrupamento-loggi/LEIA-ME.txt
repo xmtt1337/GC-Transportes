@@ -55,6 +55,15 @@ PACOTES NAO AGRUPADOS (desde 1.12, no fim do agrupamento)
     Se a Loggi nao responder, vale o que este navegador guardou
     dos grupos criados aqui (hoje e ontem).
 
+CONFERENCIA (desde 1.15, na barra de cima do Arco)
+  - Item "Conferencia" ao lado de Acareacoes, com a cara do Arco.
+  - Mostra os pacotes SEM GRUPO na Loggi (estacao Recebimento, o
+    mesmo de Distribuir > Grupos), em duas abas:
+      Chegaram hoje  - recebidos hoje e ainda sem grupo
+      Todos parados  - todos sem grupo, ha quantos dias, prazo
+  - Filtro "Cidades" igual ao do Arco. "Atualizar" busca de novo.
+  - Clicar em outro item da barra volta para a tela da Loggi.
+
 PRIVACIDADE
   A sessao do Arco fica so na memoria da aba. O link do
   relatorio Na base e usado na hora e esquecido. A extensao le

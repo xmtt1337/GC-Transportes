@@ -28,8 +28,8 @@ test('lê os grupos e os pacotes sem nome, endereço nem placa de pessoa', () =>
     { _source: { package: { id: '2', tracking_key: 'RASTRO2' }, destination: { city: 'Cidade B' }, status: { code: 89 } } },
   ] } });
   assert.deepStrictEqual(r, { total: 2, pacotes: [
-    { codigo: 'BARRA1', rastreio: 'RASTRO1', id: '1', cidade: 'Cidade A', status: 89 },
-    { codigo: 'RASTRO2', rastreio: 'RASTRO2', id: '2', cidade: 'Cidade B', status: 89 },
+    { codigo: 'BARRA1', rastreio: 'RASTRO1', id: '1', cidade: 'Cidade A', status: 89, situacao: '', recebido: '', prazo: '' },
+    { codigo: 'RASTRO2', rastreio: 'RASTRO2', id: '2', cidade: 'Cidade B', status: 89, situacao: '', recebido: '', prazo: '' },
   ] });
   assert.ok(!JSON.stringify(r).includes('Pessoa Teste') && !JSON.stringify(r).includes('Rua Teste'));
   assert.deepStrictEqual(L.lerAvulsos({}), { pacotes: [], total: 0 });
@@ -60,4 +60,34 @@ test('nome padrão das cidades: a grafia mais completa que apareceu, com caixa d
   assert.strictEqual(R.bonito(Buffer.from('Cidade Teste Acentó', 'utf8').toString('latin1')), 'Cidade Teste Acentó'); // quebrada também
   assert.strictEqual(R.bonito('OUTRA CIDADE'), 'Outra Cidade'); // sem grafia melhor: só a caixa
   assert.strictEqual(R.bonito(''), '');
+});
+
+test('Conferência: abas Chegaram hoje x Todos parados, dias parado, prazo e filtro por cidade', () => {
+  const lido = L.lerAvulsos({ hits: { total: { value: 1 }, hits: [{ _source: {
+    package: { id: '9', tracking_key: 'RASTRO9' }, destination: { city: 'Cidade A' }, status: { code: 12 },
+    last_breadcrumbs_sorting_record: { created: '2026-11-25T11:00:00Z', user_details: { full_name: 'Pessoa Teste' } },
+    last_promised_date: { promised_date: '2026-11-27T02:00:00Z' } }, fields: { status_string_v2: ['Transferência finalizada'] } }] } });
+  assert.deepStrictEqual([lido.pacotes[0].recebido, lido.pacotes[0].prazo, lido.pacotes[0].situacao], ['2026-11-25T11:00:00Z', '2026-11-27T02:00:00Z', 'Transferência finalizada']);
+  assert.ok(!JSON.stringify(lido).includes('Pessoa Teste'));
+
+  const pacotes = [
+    { codigo: 'T1', cidade: 'Cidade A', recebido: '2026-11-25T11:00:00Z', status: 12 },
+    { codigo: 'T2', cidade: 'CIDADE B', recebido: '2026-11-20T11:00:00Z', status: 89 },
+    { codigo: 'T3', cidade: 'Cidade A', recebido: '2026-11-25T14:00:00Z', status: 12 },
+    { codigo: 'T4', cidade: 'Cidade A', recebido: '', status: 12 },
+  ];
+  const p = R.separarParados(pacotes, AGORA);
+  assert.deepStrictEqual(p.hoje.map((x) => x.codigo), ['T3', 'T1']); // hoje: mais novo primeiro
+  assert.deepStrictEqual(p.todos.map((x) => x.codigo), ['T2', 'T1', 'T3', 'T4']); // todos: mais antigo primeiro
+  assert.strictEqual(R.diasParado('2026-11-20T11:00:00Z', AGORA), 5);
+  assert.strictEqual(R.diasParado('2026-11-25T11:00:00Z', AGORA), 0);
+  assert.strictEqual(R.diasParado('', AGORA), null);
+  assert.strictEqual(R.prazoCurto('2026-11-27T02:00:00Z'), 'até 26 nov'); // 23h do dia 26 em São Paulo
+  assert.strictEqual(R.recebidoCurto('2026-11-25T11:00:00Z', AGORA), '08:00');
+  assert.strictEqual(R.recebidoCurto('2026-11-20T11:00:00Z', AGORA), '20/11 08:00');
+  assert.strictEqual(R.situacaoDe({ status: 89 }), 'Sem tentativa');
+  assert.strictEqual(R.situacaoDe({ status: 12, situacao: 'Transferência finalizada' }), 'Transferência finalizada');
+  assert.deepStrictEqual(R.contarPorCidade(pacotes).map((c) => [c.nome, c.qtd]), [['Cidade A', 3], ['Cidade B', 1]]);
+  assert.deepStrictEqual(R.daCidade(pacotes, new Set(['cidadeb'])).map((x) => x.codigo), ['T2']);
+  assert.strictEqual(R.daCidade(pacotes, new Set()).length, 4);
 });

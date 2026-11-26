@@ -473,6 +473,63 @@
     return s;
   }
 
+  // ── Conferencia (menu do Arco): pacotes sem grupo ───────────────────────────
+  const MES_CURTO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+  /** Prazo da Loggi -> "até 27 nov" (como a tela do Arco). */
+  function prazoCurto(iso) {
+    const d = diaDe(iso);
+    if (!d) return '';
+    const [, m, dia] = d.split('-').map(Number);
+    return `até ${String(dia).padStart(2, '0')} ${MES_CURTO[m - 1]}`;
+  }
+
+  /** Dias inteiros entre o dia do recebimento e hoje (Sao Paulo). */
+  function diasParado(iso, agora = Date.now()) {
+    const d = diaDe(iso, agora);
+    if (!d) return null;
+    return Math.max(0, Math.round((Date.parse(`${hoje(agora)}T12:00:00Z`) - Date.parse(`${d}T12:00:00Z`)) / 86400000));
+  }
+
+  /** "25/11 08:10" (outro dia) ou "08:10" (hoje). */
+  function recebidoCurto(iso, agora = Date.now()) {
+    const d = diaDe(iso, agora);
+    if (!d) return '';
+    const h = horaDe(iso);
+    if (d === hoje(agora)) return h;
+    const [, m, dia] = d.split('-');
+    return `${dia}/${m} ${h}`;
+  }
+
+  const SITUACOES = { 89: 'Sem tentativa' };
+  const situacaoDe = (p) => p.situacao || SITUACOES[p.status] || (p.status ? `Status ${p.status}` : '');
+
+  /**
+   * Os sem grupo da Loggi (estacao Recebimento) para as abas: "hoje" = recebidos hoje (mais novos
+   * primeiro); "todos" = todos parados (mais antigos primeiro).
+   */
+  function separarParados(pacotes, agora = Date.now()) {
+    const dia = hoje(agora);
+    const todos = [...(pacotes || [])].sort((a, b) => String(a.recebido || '9').localeCompare(String(b.recebido || '9')));
+    const deHoje = todos.filter((p) => diaDe(p.recebido, agora) === dia).reverse();
+    return { hoje: deHoje, todos };
+  }
+
+  /** Quantos por cidade (nome padrao), em ordem alfabetica. */
+  function contarPorCidade(pacotes) {
+    const m = new Map();
+    for (const p of pacotes || []) {
+      const k = chave(p.cidade) || '?';
+      const atual = m.get(k) || { chave: k, nome: bonito(p.cidade) || 'Sem cidade', qtd: 0 };
+      atual.qtd += 1;
+      m.set(k, atual);
+    }
+    return [...m.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
+  }
+
+  /** Filtra pelas cidades marcadas (Set de chaves); vazio = todas. */
+  const daCidade = (pacotes, chaves) => (!chaves || !chaves.size ? pacotes : pacotes.filter((p) => chaves.has(chave(p.cidade) || '?')));
+
   /** Bipados que estao na lista de agrupar agora (o codigo aparece no texto dela). */
   const naListaAgora = (bipes, textoDaLista) => {
     const tela = String(textoDaLista || '').toUpperCase();
@@ -484,7 +541,8 @@
 
   const publico = { chave, consertarTexto, formatarNome, aprenderNomes, bonito, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
     pendentes, contarNaLista, ordenarCirculos, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar,
-    lerCsv, linhasNaBase, linkDoRelatorio, relatorioDaBase, hoje, diaDe, horaDe, resumoNaBase, codigosAvulsos, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };
+    lerCsv, linhasNaBase, linkDoRelatorio, relatorioDaBase, hoje, diaDe, horaDe, resumoNaBase, codigosAvulsos,
+    prazoCurto, diasParado, recebidoCurto, situacaoDe, separarParados, contarPorCidade, daCidade, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMAgrupamento = publico;
 })();
