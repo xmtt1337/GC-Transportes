@@ -74,7 +74,7 @@ if (_BASE) {
 <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=20261125a">
+<link rel="stylesheet" href="style.css?v=20261126a">
 
 
 <!-- ───── AUTOVERIFICAÇÃO DE VERSÃO ─────
@@ -5119,7 +5119,7 @@ if (_BASE) {
 <script src="js/shopee-pedidos.js?v=30260812d"></script>
 <script src="js/calendario-dias.js?v=30260827b"></script>
 <script src="js/shopee-linehaul.js?v=30260827f"></script>
-<script src="js/shopee-atribuicoes.js?v=20261105a"></script>
+<script src="js/shopee-atribuicoes.js?v=20261126a"></script>
 <script src="js/shopee-retidos.js?v=30260819f"></script>
 <script src="js/shopee-conf-entregadores.js?v=20261123a"></script>
 <script src="js/shopee-conf-entregadores-relatorio.js?v=20261123a"></script>
@@ -5949,10 +5949,16 @@ if (_BASE) {
 <!-- MODAL: ENTREGADOR DO CLUSTER -->
 <div class="usr-modal-overlay" id="modal-sca-entregador" onclick="_fecharModalSeBackdrop(event,'modal-sca-entregador')">
     <div class="usr-modal">
-        <div class="usr-modal-title">Entregador do cluster</div>
+        <div class="usr-modal-title">Entregadores do cluster</div>
         <div class="usr-modal-sub" style="color:#e2e8f0;font-size:14px;font-weight:600;margin-bottom:16px" id="sca-ent-cluster"></div>
+        <!-- Desde 26/11/2026 o cluster aceita mais de um entregador: cada um confere a rota
+             inteira no celular dele. Aqui aparece quem ja esta, e o seletor acrescenta. -->
         <div class="usr-modal-field">
-            <label class="usr-modal-label">Entregador</label>
+            <label class="usr-modal-label">No cluster hoje</label>
+            <div id="sca-ent-atuais"></div>
+        </div>
+        <div class="usr-modal-field">
+            <label class="usr-modal-label">Adicionar entregador</label>
             <!-- Sao ~300 nomes: sem filtro, achar alguem no <select> e rolagem no olho. -->
             <input class="usr-modal-input" id="sca-ent-busca" placeholder="Filtrar por nome ou cidade..."
                    autocomplete="off" style="margin-bottom:8px"
@@ -5979,9 +5985,8 @@ if (_BASE) {
             </div>
         </div>
         <div class="usr-modal-btns">
-            <button class="usr-modal-btn-cancel" id="sca-ent-remover" style="display:none" onclick="_scaSalvarEntregador(true)">Remover</button>
-            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-sca-entregador')">Cancelar</button>
-            <button class="usr-modal-btn-primary" id="sca-ent-salvar" onclick="_scaSalvarEntregador(false)">Salvar</button>
+            <button class="usr-modal-btn-cancel" onclick="_fecharModal('modal-sca-entregador')">Fechar</button>
+            <button class="usr-modal-btn-primary" id="sca-ent-salvar" onclick="_scaSalvarEntregador()">Adicionar</button>
         </div>
     </div>
 </div>

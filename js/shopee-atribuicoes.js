@@ -680,7 +680,7 @@ function _scaRenderVisao(tipo) {
     // Copiar só faz sentido no dia aberto: dia fechado não recebe atribuição nova.
     const btnCopiar = document.getElementById("sca-copiar-ent");
     if (btnCopiar) {
-        const faltaAlguem = _scaVisao.some(g => !_scaEhInterceptados(g.grupo) && !_scaEntregadores[_scaChave(g.grupo)]);
+        const faltaAlguem = _scaVisao.some(g => !_scaEhInterceptados(g.grupo) && !_scaEntDoCluster(g.grupo).length);
         btnCopiar.style.display = (tipo === "cluster" && !_scaVisaoRetrato && faltaAlguem) ? "" : "none";
     }
 
@@ -721,9 +721,21 @@ function _scaRenderVisao(tipo) {
 // Fica na visão geral porque é ali que se olha cluster por cluster. Quando falta pacote,
 // a primeira pergunta é "de quem é esse cluster?" — e a resposta tinha que sair de fora
 // do sistema, na memória de alguém.
-let _scaEntregadores = {};   // chave normalizada do cluster -> { id, nome }
+//
+// Desde 26/11/2026 um cluster pode ter mais de um entregador no dia: cada um confere a rota
+// inteira no celular dele. Por isso a chave aponta pra uma lista.
+let _scaEntregadores = {};   // chave normalizada do cluster -> [{ id, nome }, ...]
 let _scaListaEntregadores = null;
 let _scaClusterEditando = null;
+
+/** Entregadores do cluster, sempre como lista (vazia quando não há ninguém). */
+function _scaEntDoCluster(grupo) {
+    const v = _scaEntregadores[_scaChave(grupo)];
+    if (!v) return [];
+    // Servidor anterior a 26/11 mandava um objeto só; a tela aberta desde antes do deploy
+    // continua funcionando.
+    return (Array.isArray(v) ? v : [v]).filter(e => e && e.nome);
+}
 
 function _scaChave(v) {
     return String(v || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -732,15 +744,17 @@ function _scaChave(v) {
 function _scaCelulaEntregador(grupo, nomeEsc) {
     // O Interceptados não é rota de ninguém: não tem "+ atribuir".
     if (_scaEhInterceptados(grupo)) return `<span style="font-size:12px;color:#5c6b80">—</span>`;
-    const e = _scaEntregadores[_scaChave(grupo)];
+    const lista = _scaEntDoCluster(grupo);
+    // Um nome por linha: com dois no mesmo cluster, cortar com reticências escondia o segundo.
+    const nomes = lista.map(e => _scaEsc(e.nome)).join("<br>");
     // Dia fechado é registro: mostra quem saiu naquele dia, sem deixar reescrever.
     if (_scaVisaoRetrato) {
-        return e && e.nome
-            ? `<span style="font-size:12px;color:#93c5fd">${_scaEsc(e.nome)}</span>`
+        return lista.length
+            ? `<span style="font-size:12px;color:#93c5fd;line-height:1.4">${nomes}</span>`
             : `<span style="font-size:12px;color:#5c6b80">—</span>`;
     }
-    if (e && e.nome) {
-        return `<button class="sca-entregador definido" onclick="_scaAbrirEntregador('${nomeEsc}')" title="Trocar o entregador de ${_scaEsc(grupo)} hoje">${_scaEsc(e.nome)}</button>`;
+    if (lista.length) {
+        return `<button class="sca-entregador definido${lista.length > 1 ? " varios" : ""}" onclick="_scaAbrirEntregador('${nomeEsc}')" title="Entregadores de ${_scaEsc(grupo)} hoje (pôr mais um ou tirar)">${nomes}</button>`;
     }
     return `<button class="sca-entregador" onclick="_scaAbrirEntregador('${nomeEsc}')" title="Definir o entregador de ${_scaEsc(grupo)} hoje">+ atribuir</button>`;
 }
@@ -772,9 +786,9 @@ function _scaCopiarEntregadores() {
         }, "Repetir dia anterior", "Repetir");
 }
 
-// Quem já estava atribuído ao cluster que está aberto. Fica fora da função porque
-// o filtro redesenha o <select> a cada tecla e precisa saber o que reselecionar.
-let _scaEntAtual = null;
+// Quem já está no cluster aberto. Fica fora da função porque o filtro redesenha o
+// <select> a cada tecla e esses nomes saem marcados como "já está" em vez de escolhíveis.
+let _scaEntAtuais = [];
 
 /**
  * Filtra a lista de entregadores pelo que foi digitado.
@@ -800,17 +814,19 @@ function _scaEntPreencher() {
     const conta = document.getElementById("sca-ent-conta");
     const todos = _scaListaEntregadores || [];
 
-    // A escolha atual da tela vem antes da atribuição salva: se a pessoa já
-    // clicou em outro nome, filtrar de novo não pode desfazer o clique.
-    const anterior = sel.value || (_scaEntAtual ? _scaEntAtual.nome : "");
+    // Se a pessoa já clicou num nome, filtrar de novo não pode desfazer o clique.
+    const anterior = sel.value;
     const lista = _scaFiltrarEntregadores(todos, busca ? busca.value : "");
+    const jaEsta = new Set(_scaEntAtuais.map(e => e.nome));
 
     sel.innerHTML = `<option value="">Selecione o entregador...</option>` +
-        lista.map(e => `<option value="${_scaEsc(e.nome)}" data-id="${_scaEsc(e.id)}">${_scaEsc(e.nome)}</option>`).join("");
+        lista.map(e => jaEsta.has(e.nome)
+            ? `<option value="" disabled>${_scaEsc(e.nome)} (já está no cluster)</option>`
+            : `<option value="${_scaEsc(e.nome)}" data-id="${_scaEsc(e.id)}">${_scaEsc(e.nome)}</option>`).join("");
 
     // Só sobrou um: escolhe sozinho, senão a pessoa digita o nome inteiro e
     // ainda precisa abrir a lista pra clicar no único item.
-    if (lista.length === 1) sel.value = lista[0].nome;
+    if (lista.length === 1 && !jaEsta.has(lista[0].nome)) sel.value = lista[0].nome;
     else if (anterior && lista.some(e => e.nome === anterior)) sel.value = anterior;
 
     if (!conta) return;
@@ -823,7 +839,7 @@ function _scaEntPreencher() {
 /** Enter no filtro pega o primeiro da lista — o atalho de quem já sabe o nome. */
 function _scaEntEscolherPrimeiro() {
     const sel = document.getElementById("sca-ent-select");
-    const primeira = [...sel.options].find(o => o.value);
+    const primeira = [...sel.options].find(o => o.value && !o.disabled);
     if (primeira) sel.value = primeira.value;
 }
 
@@ -836,14 +852,13 @@ function _scaAbrirEntregador(cluster) {
 
     const sel   = document.getElementById("sca-ent-select");
     const busca = document.getElementById("sca-ent-busca");
-    const atual = _scaEntregadores[_scaChave(cluster)];
-    _scaEntAtual = atual || null;
+    _scaEntAtuais = _scaEntDoCluster(cluster);
+    _scaEntRenderAtuais();
 
     // Cada cluster começa com o filtro limpo: sobra de busca do cluster anterior
     // faz a lista nascer curta sem motivo aparente.
     busca.value = "";
-    // Botão de remover só aparece se há o que remover.
-    document.getElementById("sca-ent-remover").style.display = atual ? "" : "none";
+    sel.value = "";
 
     // Mostra o que já tem na mão pra não piscar vazio, mas SEMPRE rebusca. A lista mora numa
     // planilha que muda o tempo todo: cadastrar alguém e não achar no seletor até dar F5 é
@@ -957,50 +972,104 @@ function _scaDiagHtml(d) {
     return partes.join("<br>");
 }
 
-function _scaSalvarEntregador(remover) {
-    const sel = document.getElementById("sca-ent-select");
-    const nome = remover ? "" : sel.value;
-    const opt  = sel.selectedOptions[0];
-    const id   = remover ? "" : (opt ? opt.dataset.id || "" : "");
-    if (!remover && !nome) {
-        const erro = document.getElementById("sca-ent-erro");
-        erro.innerText = "Escolha um entregador.";
-        erro.style.display = "";
+/** Lista de quem já está no cluster, dentro do modal, cada um com o seu "Tirar". */
+function _scaEntRenderAtuais() {
+    const caixa = document.getElementById("sca-ent-atuais");
+    if (!caixa) return;
+    if (!_scaEntAtuais.length) {
+        caixa.innerHTML = `<div style="font-size:12px;color:#5c6b80">Ninguém neste cluster hoje.</div>`;
         return;
     }
-    const btn = document.getElementById(remover ? "sca-ent-remover" : "sca-ent-salvar");
-    const rotulo = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = remover ? "Removendo..." : "Salvando...";
+    caixa.innerHTML = _scaEntAtuais.map((e, i) => `
+        <div class="sca-ent-atual">
+            <span>${_scaEsc(e.nome)}</span>
+            <button class="sca-ent-tirar" onclick="_scaTirarEntregador(${i}, this)">Tirar</button>
+        </div>`).join("") +
+        (_scaEntAtuais.length > 1 ? `<div style="font-size:11px;color:#7b98b5;margin-top:4px">Cada um confere a rota inteira no celular dele.</div>` : "");
+}
 
-    fetch(`${API}/shopee/conferencia/atribuicoes/entregador`, {
+/** Manda a mudança; a resposta traz quem ficou no cluster, como o servidor gravou. */
+function _scaPostEntregador(corpo) {
+    return fetch(`${API}/shopee/conferencia/atribuicoes/entregador`, {
         method: "POST",
         headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
         // Manda o dia que está na tela: se ele não for o dia atual, o servidor recusa em vez
         // de gravar em cima do registro de outro dia.
-        body: JSON.stringify({ cluster: _scaClusterEditando, dia: _scaVisaoDia || _scaVisaoAtual, entregador_nome: nome, entregador_id: id })
-    }).then(r => r.json().then(d => ({ ok: r.ok, d })))
+        body: JSON.stringify(Object.assign({ cluster: _scaClusterEditando, dia: _scaVisaoDia || _scaVisaoAtual }, corpo))
+    }).then(r => r.json().then(d => ({ ok: r.ok, d })));
+}
+
+function _scaEntErro(texto) {
+    const erro = document.getElementById("sca-ent-erro");
+    erro.innerText = texto;
+    erro.style.display = "";
+}
+
+/** Guarda a lista nova do cluster e redesenha a tabela de trás. */
+function _scaEntAplicar(cluster, lista) {
+    const chave = _scaChave(cluster);
+    if (lista.length) _scaEntregadores[chave] = lista;
+    else delete _scaEntregadores[chave];
+    _scaRenderVisao(_scaTipoAtual || "cluster");
+}
+
+// Adicionar acrescenta: quem já estava no cluster continua nele. Fecha o modal porque o
+// caso comum ainda é um entregador por cluster; pra pôr o segundo, abre de novo.
+function _scaSalvarEntregador() {
+    const sel = document.getElementById("sca-ent-select");
+    const nome = sel.value;
+    const opt  = sel.selectedOptions[0];
+    const id   = opt ? opt.dataset.id || "" : "";
+    if (!nome) return _scaEntErro("Escolha um entregador.");
+
+    const btn = document.getElementById("sca-ent-salvar");
+    const rotulo = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Salvando...";
+    const cluster = _scaClusterEditando;
+
+    _scaPostEntregador({ entregador_nome: nome, entregador_id: id })
     .then(({ ok, d }) => {
         btn.disabled = false;
         btn.textContent = rotulo;
-        if (!ok) {
-            const erro = document.getElementById("sca-ent-erro");
-            erro.innerText = d.error || "Não foi possível salvar.";
-            erro.style.display = "";
-            return;
-        }
-        const chave = _scaChave(_scaClusterEditando);
-        if (nome) _scaEntregadores[chave] = { id, nome };
-        else delete _scaEntregadores[chave];
+        if (!ok) return _scaEntErro(d.error || "Não foi possível salvar.");
+        _scaEntAplicar(cluster, Array.isArray(d.entregadores) ? d.entregadores : [..._scaEntAtuais, { id, nome }]);
         _fecharModal("modal-sca-entregador");
-        _scaRenderVisao(_scaTipoAtual || "cluster");
     })
     .catch(() => {
         btn.disabled = false;
         btn.textContent = rotulo;
-        const erro = document.getElementById("sca-ent-erro");
-        erro.innerText = "Erro ao conectar com o servidor.";
-        erro.style.display = "";
+        _scaEntErro("Erro ao conectar com o servidor.");
+    });
+}
+
+// Tirar um só e continuar no modal: quem tira um costuma estar trocando por outro.
+function _scaTirarEntregador(i, btn) {
+    const e = _scaEntAtuais[i];
+    if (!e) return;
+    document.getElementById("sca-ent-erro").style.display = "none";
+    btn.disabled = true;
+    btn.textContent = "Tirando...";
+    const cluster = _scaClusterEditando;
+
+    _scaPostEntregador({ remover: e.nome })
+    .then(({ ok, d }) => {
+        if (!ok) {
+            btn.disabled = false;
+            btn.textContent = "Tirar";
+            return _scaEntErro(d.error || "Não foi possível tirar.");
+        }
+        const lista = Array.isArray(d.entregadores) ? d.entregadores : _scaEntAtuais.filter(x => x.nome !== e.nome);
+        _scaEntAplicar(cluster, lista);
+        if (_scaClusterEditando !== cluster) return;
+        _scaEntAtuais = lista;
+        _scaEntRenderAtuais();
+        _scaEntPreencher();
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.textContent = "Tirar";
+        _scaEntErro("Erro ao conectar com o servidor.");
     });
 }
 

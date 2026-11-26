@@ -969,6 +969,22 @@ input.fech-select[type="date"]::-webkit-calendar-picker-indicator { filter: inve
     background: rgba(58,134,255,0.08); color: #93c5fd;
 }
 .sca-entregador.definido:hover { border-color: #3a86ff; color: #dbeafe; }
+/* Mais de um no mesmo cluster: um nome por linha, sem cortar o segundo com reticências. */
+.sca-entregador.varios { white-space: normal; text-align: left; line-height: 1.4; max-width: 240px; }
+
+/* Quem já está no cluster, dentro do modal de entregadores. */
+.sca-ent-atual {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 6px 0; border-bottom: 1px solid var(--border);
+    font-size: 13px; color: #e2e8f0;
+}
+.sca-ent-atual:last-of-type { border-bottom: none; }
+.sca-ent-tirar {
+    background: none; border: none; padding: 0; cursor: pointer; font-family: inherit;
+    font-size: 12px; font-weight: 600; color: #60a5fa;
+}
+.sca-ent-tirar:hover { text-decoration: underline; }
+.sca-ent-tirar:disabled { color: #5c6b80; cursor: default; text-decoration: none; }
 
 /* Seletor de dia da visão geral. Fica colado no título porque é ele que diz de quando é o
    quadro — solto num canto, dava pra ler o dia 5 achando que era hoje. */
