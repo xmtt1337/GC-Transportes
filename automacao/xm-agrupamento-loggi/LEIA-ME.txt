@@ -61,6 +61,9 @@ CONFERENCIA (desde 1.15, na barra de cima do Arco)
     mesmo de Distribuir > Grupos), em duas abas:
       Chegaram hoje  - recebidos hoje e ainda sem grupo
       Todos parados  - todos sem grupo, ha quantos dias, prazo
+  - So entram as cidades que a base atende (as dos circulos da Loggi
+    e as adicionadas no Agrupar). Pacote de cidade de outra base ou
+    "Aguardando reenvio" fica fora da conta (aparece so o numero).
   - Filtro "Cidades" igual ao do Arco. "Atualizar" busca de novo.
   - Clicar em outro item da barra volta para a tela da Loggi.
 

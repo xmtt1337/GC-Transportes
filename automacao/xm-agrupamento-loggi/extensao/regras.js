@@ -530,6 +530,37 @@
   /** Filtra pelas cidades marcadas (Set de chaves); vazio = todas. */
   const daCidade = (pacotes, chaves) => (!chaves || !chaves.size ? pacotes : pacotes.filter((p) => chaves.has(chave(p.cidade) || '?')));
 
+  /**
+   * As cidades que a base atende: as de todos os circulos da Loggi + as adicionadas a mao
+   * (na base toda ou num circulo). Set de chaves; vazio = nao deu para saber.
+   */
+  function cidadesAtendidas(circulos, cfg) {
+    const c = normalizarCfg(cfg);
+    const s = new Set();
+    for (const ci of circulos || []) for (const cod of ci.cidades || []) if (chave(cod)) s.add(chave(cod));
+    for (const lista of Object.values(c.extrasCirculo)) for (const nome of lista || []) if (chave(nome)) s.add(chave(nome));
+    for (const nome of c.adicionadas || []) if (chave(nome)) s.add(chave(nome));
+    return s;
+  }
+
+  // Vai embora da base, nao espera atribuicao ("Aguardando reenvio", devolucao...).
+  const SAINDO = /reenvio|devolu|retorno|extravi|transferir|redirecion/i;
+
+  /**
+   * Pendentes de atribuicao x de fora: fica de fora o pacote de cidade que a base nao atende
+   * (veio errado para ca) ou que esta saindo da base. Sem a lista de cidades: so o status separa.
+   */
+  function separarDaBase(pacotes, atendidas) {
+    const daBase = [];
+    const fora = [];
+    for (const p of pacotes || []) {
+      const k = chave(p.cidade);
+      const deOutra = atendidas && atendidas.size && !(k && (atendidas.has(k) || [...atendidas].some((a) => { const r = curinga(p.cidade); return r && r.test(a); })));
+      (deOutra || SAINDO.test(situacaoDe(p)) ? fora : daBase).push(p);
+    }
+    return { daBase, fora };
+  }
+
   /** Bipados que estao na lista de agrupar agora (o codigo aparece no texto dela). */
   const naListaAgora = (bipes, textoDaLista) => {
     const tela = String(textoDaLista || '').toUpperCase();
@@ -542,7 +573,7 @@
   const publico = { chave, consertarTexto, formatarNome, aprenderNomes, bonito, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
     pendentes, contarNaLista, ordenarCirculos, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar,
     lerCsv, linhasNaBase, linkDoRelatorio, relatorioDaBase, hoje, diaDe, horaDe, resumoNaBase, codigosAvulsos,
-    prazoCurto, diasParado, recebidoCurto, situacaoDe, separarParados, contarPorCidade, daCidade, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };
+    prazoCurto, diasParado, recebidoCurto, situacaoDe, separarParados, contarPorCidade, daCidade, cidadesAtendidas, separarDaBase, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMAgrupamento = publico;
 })();

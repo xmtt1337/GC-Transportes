@@ -91,3 +91,21 @@ test('Conferência: abas Chegaram hoje x Todos parados, dias parado, prazo e fil
   assert.deepStrictEqual(R.daCidade(pacotes, new Set(['cidadeb'])).map((x) => x.codigo), ['T2']);
   assert.strictEqual(R.daCidade(pacotes, new Set()).length, 4);
 });
+
+test('Conferência: só cidades dos círculos (e adicionadas); de outra base ou aguardando reenvio ficam de fora', () => {
+  const circulos = [{ id: 'c1', cidades: ['CITY_SC_CIDADE_A', 'CITY_SC_CIDADE_B'] }];
+  const atendidas = R.cidadesAtendidas(circulos, { adicionadas: ['Vila Teste'], extrasCirculo: { c1: ['Distrito Teste'] } });
+  assert.deepStrictEqual([...atendidas].sort(), ['cidadea', 'cidadeb', 'distritoteste', 'vilateste']);
+  const pacotes = [
+    { codigo: 'T1', cidade: 'CIDADE A', situacao: 'Transferência finalizada' },
+    { codigo: 'T2', cidade: 'Cidade Longe', situacao: 'Conferido' }, // outra base
+    { codigo: 'T3', cidade: 'Cidade B', situacao: 'Aguardando reenvio' }, // saindo
+    { codigo: 'T4', cidade: 'Vila Teste', status: 89 },
+    { codigo: 'T5', cidade: 'Cidade ?', status: 89 }, // letra perdida: casa pelo curinga
+  ];
+  const r = R.separarDaBase(pacotes, atendidas);
+  assert.deepStrictEqual(r.daBase.map((p) => p.codigo), ['T1', 'T4', 'T5']);
+  assert.deepStrictEqual(r.fora.map((p) => p.codigo), ['T2', 'T3']);
+  // sem círculos (a Loggi não respondeu): só o status separa
+  assert.deepStrictEqual(R.separarDaBase(pacotes, new Set()).fora.map((p) => p.codigo), ['T3']);
+});

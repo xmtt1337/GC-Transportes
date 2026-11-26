@@ -33,6 +33,8 @@
       .cab { display: flex; justify-content: space-between; align-items: flex-start; color: #fff; min-height: 120px; }
       .cab h1 { margin: 0 0 8px; font: 700 28px/1.3 'Open Sans', sans-serif; }
       .cab .sub { margin: 0; font-size: 26px; font-weight: 400; }
+      .cab .obs { margin: 4px 0 0; font-size: 14px; color: rgba(255, 255, 255, .85); }
+      .cab .obs:empty { display: none; }
       .cab button { margin-top: 4px; padding: 0 24px; min-height: 44px; color: #fff; background: transparent; border: 1px solid #fff; border-radius: 24px;
         font: 600 15px 'Open Sans', sans-serif; cursor: pointer; }
       .cab button:hover { background: rgba(255, 255, 255, .12); }
@@ -82,7 +84,7 @@
       <div class="faixa"></div>
       <div class="miolo">
         <div class="cab">
-          <div><h1>Conferência</h1><p class="sub">Carregando...</p></div>
+          <div><h1>Conferência</h1><p class="sub">Carregando...</p><p class="obs"></p></div>
           <button type="button" class="atualizar">Atualizar</button>
         </div>
         <div class="cartao">
@@ -113,6 +115,7 @@
   let aba = 'hoje';
   let parados = null; // { hoje, todos }
   let erro = '';
+  let deFora = 0; // sem grupo, mas de cidade de outra base ou saindo (aguardando reenvio)
   let filtro = new Set(); // chaves de cidade aplicadas
   let escolhendo = new Set(); // marcadas no filtro, antes de "Aplicar filtros"
 
@@ -140,9 +143,16 @@
     parados = null;
     desenhar();
     try {
-      const r = await pedirALoggi('avulsos');
+      const [r, c] = await Promise.all([pedirALoggi('avulsos'), pedirALoggi('circulos').catch(() => null)]);
       R.aprenderNomes(r.avulsos.map((p) => p.cidade));
-      parados = R.separarParados(r.avulsos);
+      // cidades que a base atende: circulos da Loggi + as adicionadas no "Agrupar" (guardadas)
+      const chaveCfg = `base:${(r.base && r.base.codigo) || 'sem-base'}`;
+      let salvo = null;
+      try { salvo = (await chrome.storage.local.get(chaveCfg))[chaveCfg]; } catch (_) { /* sem storage: so os circulos */ }
+      const circulos = (c && c.circulos && c.circulos.length) ? c.circulos : ((salvo && salvo.cache && salvo.cache.circulos) || []);
+      const { daBase, fora } = R.separarDaBase(r.avulsos, R.cidadesAtendidas(circulos, salvo));
+      parados = R.separarParados(daBase);
+      deFora = fora.length;
     } catch (e) {
       erro = e.message;
     } finally {
@@ -157,6 +167,8 @@
     $('.q-hoje').textContent = parados ? numero(parados.hoje.length) : '…';
     $('.q-todos').textContent = parados ? numero(parados.todos.length) : '…';
     $('.sub').textContent = parados ? `${numero(parados.todos.length)} pacotes sem grupo` : erro ? 'Não deu para carregar' : 'Carregando...';
+    $('.obs').textContent = parados && deFora
+      ? `Fora da conta: ${numero(deFora)} de outras cidades ou aguardando reenvio` : '';
     const corpo = $('.corpo');
     if (!parados) {
       corpo.replaceChildren(el('div', `vazio${erro ? ' erro' : ''}`, erro || 'Buscando os pacotes sem grupo na Loggi...'));
