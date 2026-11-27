@@ -600,17 +600,17 @@
   }
 
   // ── linhas da tabela ──────────────────────────────────────────────────────────
-  // O telefone so vem pelo olho, na hora do disparo (o export traz so o nome). Ate la, o pedido
-  // com nome esta "pronto"; depois do olho, o envio pode falhar por telefone vazio ou invalido.
-  const podeMarcar = (l) => l.achado && !!l.nome && l.situacao_envio !== 'enviado';
+  // O telefone so vem pelo olho, na hora do disparo. O nome vinha aberto no export, mas desde
+  // 27/11/2026 pode vir vazio: ai ele tambem sai pelo olho (mais 1 visualizacao). Ate la, todo
+  // pedido achado esta "pronto"; depois do olho, o envio pode falhar por nome ou telefone vazio.
+  const podeMarcar = (l) => l.achado && l.situacao_envio !== 'enviado';
 
   function situacaoTexto(l) {
-    if (l.situacao_envio === 'olho') return ['Buscando telefone...', 'pronto'];
+    if (l.situacao_envio === 'olho') return [l.nome ? 'Buscando telefone...' : 'Buscando nome e telefone...', 'pronto'];
     if (l.situacao_envio === 'enviando') return ['Enviando...', 'pronto'];
     if (l.situacao_envio === 'enviado') return ['Enviado', 'ok'];
     if (l.situacao_envio === 'erro') return [`Não enviou: ${l.erro}`, 'erro'];
     if (!l.achado) return ['Não achado no SPX', 'erro'];
-    if (!l.nome) return ['Sem nome no SPX', 'erro'];
     if (l.ativo) {
       const quando = l.ativo.enviado_em ? new Date(l.ativo.enviado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
       const resposta = l.ativo.estado === 'recebeu' ? ' · respondeu: recebeu' : l.ativo.estado === 'nao_recebeu' ? ' · respondeu: não recebeu' : ' · sem resposta';
@@ -623,10 +623,10 @@
     const ls = estado.linhas;
     const prontos = ls.filter((l) => podeMarcar(l)).length;
     const marcados = ls.filter((l) => l.marcado && podeMarcar(l)).length;
-    const semNome = ls.filter((l) => !l.achado || !l.nome).length;
+    const naoAchados = ls.filter((l) => !l.achado).length;
     const jaTem = ls.filter((l) => l.ativo).length;
     const enviados = ls.filter((l) => l.situacao_envio === 'enviado').length;
-    $('contas').innerHTML = `<b>${numero(ls.length)}</b> pedido(s) · ${numero(prontos)} com nome · ${numero(semNome)} sem nome ou não achado`
+    $('contas').innerHTML = `<b>${numero(ls.length)}</b> pedido(s) · ${numero(prontos)} achado(s) no SPX · ${numero(naoAchados)} não achado(s)`
       + ` · ${numero(jaTem)} já receberam ativo${enviados ? ` · <b>${numero(enviados)}</b> enviado(s) agora` : ''}`;
     const btn = $('disparar');
     btn.textContent = `Disparar ${numero(marcados)} ativo(s)`;
@@ -635,7 +635,7 @@
     todos.checked = prontos > 0 && marcados === prontos;
     todos.disabled = estado.ocupado;
     const primeiro = ls.find((l) => l.marcado && podeMarcar(l)) || ls.find((l) => podeMarcar(l));
-    $('previa').textContent = primeiro ? R.montarTexto(primeiro.nome, primeiro.codigo) : 'Nenhum pedido com nome.';
+    $('previa').textContent = primeiro ? R.montarTexto(primeiro.nome || '[nome do recebedor]', primeiro.codigo) : 'Nenhum pedido achado no SPX.';
   }
 
   function desenhar() {
@@ -646,7 +646,7 @@
       return `<tr>
         <td><input type="checkbox" data-cod="${esc(l.codigo)}" ${l.marcado ? 'checked' : ''} ${podeMarcar(l) && !estado.ocupado ? '' : 'disabled'}></td>
         <td class="xm-cod">${esc(l.codigo)}</td>
-        <td>${esc(l.nome || '—')}</td>
+        <td${l.nome ? '' : ' style="color:#999"'}>${esc(l.nome || (podeMarcar(l) ? 'busca ao disparar' : '—'))}</td>
         <td style="white-space:nowrap;${l.e164 ? '' : 'color:#999'}">${esc(tel)}</td>
         <td><span class="xm-tag xm-tag-${tipo}">${esc(txt)}</span></td>
       </tr>`;
@@ -678,8 +678,11 @@
         return l;
       });
       const faltam = estado.linhas.filter((l) => !l.achado).length;
+      const semNome = estado.linhas.some((l) => l.achado && !l.nome);
       status((faltam ? `${numero(faltam)} BR não vieram no export do SPX (de outra estação ou código errado). ` : '')
-        + 'O telefone é buscado no olho do SPX só na hora do disparo, 1 visualização por pedido marcado.');
+        + (semNome
+          ? 'O export veio sem o nome: nome e telefone são buscados no olho do SPX só na hora do disparo, 2 visualizações por pedido marcado.'
+          : 'O telefone é buscado no olho do SPX só na hora do disparo, 1 visualização por pedido marcado.'));
     } catch (e) {
       erroDeConta(e);
     } finally {
@@ -702,15 +705,16 @@
         const l = fila[i];
         status(`Pedido ${numero(i + 1)} de ${numero(fila.length)}... (${numero(ok)} enviado(s), ${numero(falha)} falha(s))`);
         try {
-          if (!l.e164) {
+          if (!l.e164 || !l.nome) {
             const espera = RITMO_OLHO_MS - (Date.now() - ultimoOlho);
             if (espera > 0) await dormir(espera);
             l.situacao_envio = 'olho';
             desenhar();
             ultimoOlho = Date.now();
-            const olho = await pedirAoSpx('telefone', { codigo: l.codigo });
+            const olho = await pedirAoSpx('telefone', { codigo: l.codigo, comNome: !l.nome });
             if (olho.outraEstacao) throw new Error('não é desta estação no SPX');
             l.telefone = olho.telefone;
+            if (!l.nome) l.nome = R.nomeLimpo(olho.nome);
           }
           const envio = R.montarEnvio({ codigo: l.codigo, nome: l.nome, telefone: l.telefone });
           if (envio.erro) throw new Error(envio.erro);

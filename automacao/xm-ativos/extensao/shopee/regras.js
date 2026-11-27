@@ -49,9 +49,13 @@
     return linhas;
   }
 
-  /** O SPX grava alguns nomes com "_" no fim ("Fulano Tal_"): fica fora da mensagem. */
+  /**
+   * O SPX grava alguns nomes com "_" no fim ("Fulano Tal_"): fica fora da mensagem. Nome
+   * mascarado ("F*****o") nao serve: vazio, e o nome sai pelo olho na hora do disparo.
+   */
   function nomeLimpo(v) {
-    return String(v || '').replace(/[_\s]+$/, '').replace(/^[_\s]+/, '').replace(/\s+/g, ' ').trim();
+    const t = String(v || '').replace(/[_\s]+$/, '').replace(/^[_\s]+/, '').replace(/\s+/g, ' ').trim();
+    return /\*/.test(t) ? '' : t;
   }
 
   /**

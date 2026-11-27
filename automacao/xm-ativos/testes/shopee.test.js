@@ -162,3 +162,22 @@ test('opções: página registrada no manifest e um liga/desliga para cada menu'
   // a Conferência é outra extensão (XM - Conferência Shopee)
   assert.ok(!ativos.includes("chave: 'vapt'"));
 });
+
+test('buscarTelefone com nome: export sem nome -> o nome também sai pelo olho (buyer_name)', async () => {
+  const urls = [];
+  const get = async (u) => { urls.push(u); return { retcode: 0, data: { data_detail: u.includes('buyer_name') ? 'Pessoa Teste_' : '49912345678' } }; };
+  const r = await buscarTelefone(get, 'BRTESTE00001', true, async () => {});
+  assert.deepStrictEqual(r, { outraEstacao: false, telefone: '49912345678', nome: 'Pessoa Teste_' });
+  assert.deepStrictEqual(urls.map((u) => u.split('data_field=')[1]), ['buyer_contact', 'buyer_name']);
+  assert.strictEqual(R.nomeLimpo(r.nome), 'Pessoa Teste');
+  // sem pedir o nome: um olho só, como antes
+  urls.length = 0;
+  await buscarTelefone(get, 'BRTESTE00001', false, async () => {});
+  assert.strictEqual(urls.length, 1);
+  await assert.rejects(buscarTelefone(async (u) => (u.includes('buyer_name') ? { retcode: 5, message: 'limite' } : { retcode: 0, data: { data_detail: '1' } }), 'BR1', true, async () => {}), /recusou o nome.*limite/);
+});
+
+test('nome mascarado no export (com *) conta como sem nome', () => {
+  assert.strictEqual(R.nomeLimpo('P*****e'), '');
+  assert.deepStrictEqual(R.contatosDoExport('Order ID,Buyer Name\r\nbr1,P****e T***e\r\nbr2,\r\n'), [{ codigo: 'BR1', nome: '', telefone: '' }, { codigo: 'BR2', nome: '', telefone: '' }]);
+});

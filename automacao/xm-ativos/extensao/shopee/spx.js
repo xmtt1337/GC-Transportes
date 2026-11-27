@@ -4,9 +4,9 @@
 //   1. POST /api/admin/tracking/am_hub/return/export {search_id_list, searched_tag: 1} -> task_id;
 //   2. GET  /spxdata/api/export_platform/export_task/list_for_portal ate export_status 2 (pronto);
 //   3. GET  /spxdata/api/export_platform/export_task/get_signed_download_url -> link do CSV (10 min).
-// Daqui so sai o link; quem baixa e le o arquivo e o fundo.js. O export traz o NOME aberto (sem
-// gastar o "olho"), mas o telefone vem sempre vazio: ele sai pelo olho (buscarTelefone), um pedido
-// por vez, so dos que vao receber o ativo. A tarefa do export aparece no Latest Task do SPX.
+// Daqui so sai o link; quem baixa e le o arquivo e o fundo.js. O telefone vem sempre vazio no
+// export, e desde 27/11/2026 o nome tambem pode vir vazio: os dois saem pelo olho (buscarTelefone),
+// um pedido por vez, so dos que vao receber o ativo. A tarefa do export aparece no Latest Task do SPX.
 //
 // x-sap-ri e x-sap-sec sao a protecao anti-robo do SPX: nao copiar nem gerar. O pedido sai pelo
 // XMLHttpRequest da propria pagina, com os cabecalhos que o proprio site usa (csrf etc.), lidos
@@ -28,12 +28,26 @@
 
   const dormirPadrao = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  /** Telefone do destinatario pelo olho. get(url) devolve a resposta inteira (com retcode). */
-  async function buscarTelefone(get, codigo) {
-    const r = await get(`${ROTA_OLHO}?shipment_id=${encodeURIComponent(codigo)}&data_field=buyer_contact`);
-    if (r.retcode === PEDIDO_DE_OUTRA_ESTACAO) return { outraEstacao: true, telefone: '' };
-    if (r.retcode !== 0) throw new Error(`A Shopee recusou o telefone (retcode ${r.retcode}): ${r.message || 'sem mensagem'}`);
-    return { outraEstacao: false, telefone: String((r.data && r.data.data_detail) || '') };
+  const PAUSA_CAMPO_MS = 300; // entre o olho do telefone e o do nome (igual ao XM Consulta)
+
+  /**
+   * Telefone do destinatario pelo olho; com comNome, tambem o nome (outro olho, data_field
+   * buyer_name), para quando o export vem sem ele (desde 27/11/2026 o export parou de trazer).
+   * get(url) devolve a resposta inteira (com retcode).
+   */
+  async function buscarTelefone(get, codigo, comNome = false, dormir = dormirPadrao) {
+    const campo = async (nome, rotulo) => {
+      const r = await get(`${ROTA_OLHO}?shipment_id=${encodeURIComponent(codigo)}&data_field=${nome}`);
+      if (r.retcode === PEDIDO_DE_OUTRA_ESTACAO) return null;
+      if (r.retcode !== 0) throw new Error(`A Shopee recusou o ${rotulo} (retcode ${r.retcode}): ${r.message || 'sem mensagem'}`);
+      return String((r.data && r.data.data_detail) || '');
+    };
+    const telefone = await campo('buyer_contact', 'telefone');
+    if (telefone === null) return { outraEstacao: true, telefone: '' };
+    if (!comNome) return { outraEstacao: false, telefone };
+    await dormir(PAUSA_CAMPO_MS);
+    const nome = await campo('buyer_name', 'nome');
+    return { outraEstacao: nome === null, telefone, nome: nome || '' };
   }
 
   /**
@@ -116,7 +130,7 @@
       return;
     }
     try {
-      responder({ id, fim: true, ...(await buscarTelefone(getBruto, String(e.data.codigo || ''))) });
+      responder({ id, fim: true, ...(await buscarTelefone(getBruto, String(e.data.codigo || ''), !!e.data.comNome)) });
     } catch (err) {
       responder({ id, fim: true, erro: err.message });
     }
