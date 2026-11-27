@@ -23,13 +23,15 @@ test('chamadas iguais às da tela Distribuir > Grupos: estação Recebimento (CO
 
 test('lê os grupos e os pacotes sem nome, endereço nem placa de pessoa', () => {
   assert.deepStrictEqual(L.lerGrupos({ data: [{ licensePlate: 'PLACA-TESTE', station: 'Recebimento', quantityPackages: 2 }], totalPackages: 2 }), { placas: ['PLACA-TESTE'], total: 2 });
+  // grupo de outra estação (Processamento) não entra
+  assert.deepStrictEqual(L.lerGrupos({ data: [{ licensePlate: 'G1', station: 'Processamento' }, { licensePlate: 'A1', station: 'Recebimento' }] }).placas, ['A1']);
   const r = L.lerAvulsos({ hits: { total: { value: 2 }, hits: [
     { _source: { package: { id: '1', tracking_key: 'RASTRO1' }, package_integration_info: { barcode: 'BARRA1' }, destination: { city: 'Cidade A', address_st: 'Rua Teste' }, recipient: { name: 'Pessoa Teste' }, status: { code: 89 } } },
     { _source: { package: { id: '2', tracking_key: 'RASTRO2' }, destination: { city: 'Cidade B' }, status: { code: 89 } } },
   ] } });
   assert.deepStrictEqual(r, { total: 2, pacotes: [
-    { codigo: 'BARRA1', rastreio: 'RASTRO1', id: '1', cidade: 'Cidade A', status: 89, situacao: '', recebido: '', prazo: '' },
-    { codigo: 'RASTRO2', rastreio: 'RASTRO2', id: '2', cidade: 'Cidade B', status: 89, situacao: '', recebido: '', prazo: '' },
+    { codigo: 'BARRA1', rastreio: 'RASTRO1', id: '1', cidade: 'Cidade A', status: 89, situacao: '', recebido: '', prazo: '', placa: '', placaBipe: '' },
+    { codigo: 'RASTRO2', rastreio: 'RASTRO2', id: '2', cidade: 'Cidade B', status: 89, situacao: '', recebido: '', prazo: '', placa: '', placaBipe: '' },
   ] });
   assert.ok(!JSON.stringify(r).includes('Pessoa Teste') && !JSON.stringify(r).includes('Rua Teste'));
   assert.deepStrictEqual(L.lerAvulsos({}), { pacotes: [], total: 0 });
@@ -108,4 +110,19 @@ test('Conferência: só cidades dos círculos (e adicionadas); de outra base ou 
   assert.deepStrictEqual(r.fora.map((p) => p.codigo), ['T2', 'T3']);
   // sem círculos (a Loggi não respondeu): só o status separa
   assert.deepStrictEqual(R.separarDaBase(pacotes, new Set()).fora.map((p) => p.codigo), ['T3']);
+});
+
+test('pacote que já foi agrupado (último bipe numa placa de grupo) sai dos sem grupo, e as placas não saem do loggi.js', () => {
+  const hit = (id, placa, placaBipe, criado) => ({ _source: { package: { id, tracking_key: `R${id}` }, destination: { city: 'Cidade A' }, status: { code: 12 },
+    unit_load: { license_plate: placa }, last_breadcrumbs_sorting_record: { created: criado, destination: { license_plate: placaBipe } } } });
+  const lido = L.lerAvulsos({ hits: { hits: [
+    hit('1', 'AVULSOS-TESTE', 'AVULSOS-TESTE', '2026-11-25T11:00:00Z'), // recebido, sem grupo
+    hit('2', 'AVULSOS-TESTE', 'GRUPO-TESTE', '2026-11-25T14:00:00Z'), // agrupado hoje (Processamento)
+    hit('3', 'GRUPO-TESTE', '', ''), // já está noutra placa
+    hit('4', '', '', ''), // sem placa nenhuma: fica
+  ] } });
+  const r = L.semGrupo(lido.pacotes, 'AVULSOS-TESTE');
+  assert.deepStrictEqual(r.pacotes.map((p) => p.id), ['1', '4']);
+  assert.strictEqual(r.emGrupo, 2);
+  assert.ok(r.pacotes.every((p) => !('placa' in p) && !('placaBipe' in p)));
 });

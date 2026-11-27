@@ -116,6 +116,7 @@
   let parados = null; // { hoje, todos }
   let erro = '';
   let deFora = 0; // sem grupo, mas de cidade de outra base ou saindo (aguardando reenvio)
+  let emGrupo = 0; // vieram na placa dos avulsos, mas o ultimo bipe foi num grupo (Processamento)
   let filtro = new Set(); // chaves de cidade aplicadas
   let escolhendo = new Set(); // marcadas no filtro, antes de "Aplicar filtros"
 
@@ -153,6 +154,7 @@
       const { daBase, fora } = R.separarDaBase(r.avulsos, R.cidadesAtendidas(circulos, salvo));
       parados = R.separarParados(daBase);
       deFora = fora.length;
+      emGrupo = Number(r.emGrupo) || 0;
     } catch (e) {
       erro = e.message;
     } finally {
@@ -167,8 +169,10 @@
     $('.q-hoje').textContent = parados ? numero(parados.hoje.length) : '…';
     $('.q-todos').textContent = parados ? numero(parados.todos.length) : '…';
     $('.sub').textContent = parados ? `${numero(parados.todos.length)} pacotes sem grupo` : erro ? 'Não deu para carregar' : 'Carregando...';
-    $('.obs').textContent = parados && deFora
-      ? `Fora da conta: ${numero(deFora)} de outras cidades ou aguardando reenvio` : '';
+    const partes = [];
+    if (deFora) partes.push(`${numero(deFora)} de outras cidades ou aguardando reenvio`);
+    if (emGrupo) partes.push(`${numero(emGrupo)} já em grupo`);
+    $('.obs').textContent = parados && partes.length ? `Fora da conta: ${partes.join(' · ')}` : '';
     const corpo = $('.corpo');
     if (!parados) {
       corpo.replaceChildren(el('div', `vazio${erro ? ' erro' : ''}`, erro || 'Buscando os pacotes sem grupo na Loggi...'));

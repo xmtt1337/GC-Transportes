@@ -109,8 +109,9 @@
   });
 
   /** unit_load -> as placas dos grupos da estacao Recebimento (os "Pacotes avulsos") e o total. */
+  const ehRecebimento = (estacao) => !estacao || String(estacao).normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase() === 'recebimento';
   function lerGrupos(j) {
-    const lista = ((j && j.data) || []).filter((u) => u && u.licensePlate);
+    const lista = ((j && j.data) || []).filter((u) => u && u.licensePlate && ehRecebimento(u.station));
     return { placas: lista.map((u) => String(u.licensePlate)), total: Number(j && j.totalPackages) || 0 };
   }
 
@@ -123,22 +124,43 @@
     const pacotes = (hits.hits || []).map((h) => {
       const f = (h && h._source) || {};
       const pac = f.package || {};
+      const s = f.last_breadcrumbs_sorting_record || {};
       return {
         codigo: String((f.package_integration_info && f.package_integration_info.barcode) || pac.tracking_key || ''),
         rastreio: String(pac.tracking_key || ''), id: String(pac.id || ''),
         cidade: String((f.destination && f.destination.city) || ''), status: Number(f.status && f.status.code) || null,
         situacao: String(((h.fields && (h.fields.status_string_v2 || h.fields.status_string)) || [])[0] || ''),
-        recebido: String((f.last_breadcrumbs_sorting_record && f.last_breadcrumbs_sorting_record.created) || ''),
+        recebido: String(s.created || ''),
         prazo: String((f.last_promised_date && f.last_promised_date.promised_date) || ''),
+        // placas (de grupo, nao de pessoa): onde o pacote esta e para onde foi o ultimo bipe.
+        // So servem para tirar quem ja esta em grupo (semGrupo) e nao saem do loggi.js.
+        placa: String((f.unit_load && f.unit_load.license_plate) || ''),
+        placaBipe: String((s.destination && s.destination.license_plate) || ''),
       };
     }).filter((p) => p.codigo || p.id);
     const total = hits.total && typeof hits.total === 'object' ? Number(hits.total.value) : Number(hits.total);
     return { pacotes, total: Number.isFinite(total) ? total : pacotes.length };
   }
 
+  /**
+   * O filter_search pela placa dos avulsos ainda traz pacote que ja foi agrupado (Processamento):
+   * o ultimo bipe dele foi para a placa de um grupo. Esse sai (e o "recebido" dele era a hora do
+   * agrupamento, nao da chegada). Devolve { pacotes (sem as placas), emGrupo }.
+   */
+  function semGrupo(pacotes, placaAvulsos) {
+    const livres = [];
+    let emGrupo = 0;
+    for (const p of pacotes || []) {
+      const { placa, placaBipe, ...resto } = p;
+      if ((placa && placa !== placaAvulsos) || (placaBipe && placaBipe !== placaAvulsos)) emGrupo += 1;
+      else livres.push(resto);
+    }
+    return { pacotes: livres, emGrupo };
+  }
+
   if (typeof module !== 'undefined') {
     module.exports = { extrairBipes, lerBase, baseCompleta, corpoCidades, urlCirculos, lerCidades, lerCirculos, ROTA_BIPE, CANAL,
-      urlGrupos, URL_PACOTES, corpoGrupos, corpoAvulsos, lerGrupos, lerAvulsos };
+      urlGrupos, URL_PACOTES, corpoGrupos, corpoAvulsos, lerGrupos, lerAvulsos, semGrupo };
     return;
   }
 
@@ -235,15 +257,18 @@
     }
     if (!grupos) throw erro || new Error('A Loggi não trouxe os grupos.');
     const pacotes = [];
+    let emGrupo = 0;
     for (const placa of grupos.placas) {
       for (let pagina = 1; pagina <= 60; pagina += 1) {
         const r = lerAvulsos(await pedir('POST', URL_PACOTES, corpoAvulsos(base, tipo, placa, pagina)));
-        pacotes.push(...r.pacotes);
+        const livres = semGrupo(r.pacotes, placa);
+        pacotes.push(...livres.pacotes);
+        emGrupo += livres.emGrupo;
         if (!r.pacotes.length || pagina * POR_PAGINA >= r.total) break;
         await dormir(200);
       }
     }
-    return pacotes;
+    return { pacotes, emGrupo };
   }
 
   window.addEventListener('message', async (e) => {
@@ -255,7 +280,7 @@
       const quem = { codigo: base.codigo, nome: base.codigo };
       if (tipo === 'cidades') responder({ base: quem, cidades: lerCidades(await pedir('POST', `${API}/api/v2/last_mile/packages/aggregated`, corpoCidades(base))) });
       else if (tipo === 'circulos') responder({ base: quem, circulos: lerCirculos(await pedir('GET', urlCirculos(base))) });
-      else if (tipo === 'avulsos') responder({ base: quem, avulsos: await buscarAvulsos() });
+      else if (tipo === 'avulsos') { const r = await buscarAvulsos(); responder({ base: quem, avulsos: r.pacotes, emGrupo: r.emGrupo }); }
       else responder({ erro: 'Pedido desconhecido.' });
     } catch (err) {
       responder({ erro: err.message });

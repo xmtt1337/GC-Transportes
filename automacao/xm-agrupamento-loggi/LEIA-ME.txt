@@ -64,6 +64,9 @@ CONFERENCIA (desde 1.15, na barra de cima do Arco)
   - So entram as cidades que a base atende (as dos circulos da Loggi
     e as adicionadas no Agrupar). Pacote de cidade de outra base ou
     "Aguardando reenvio" fica fora da conta (aparece so o numero).
+  - Pacote que ja foi agrupado (ultimo bipe num grupo, estacao
+    Processamento) sai da lista, mesmo que a Loggi ainda o traga
+    nos avulsos (desde 1.17).
   - Filtro "Cidades" igual ao do Arco. "Atualizar" busca de novo.
   - Clicar em outro item da barra volta para a tela da Loggi.
 
