@@ -348,16 +348,19 @@
 
   // A barra do Arco nao tem folga para mais um item: se o "Conferência" encostar no "Buscar",
   // tira um pouco do espaco entre os itens (e, se precisar, do respiro dentro deles).
-  function encaixar() {
+  // Os botoes do Arco tem animacao: sem tirar a do espaco, a medida pegava o meio da animacao e a
+  // barra ficava "se mexendo". So recalcula quando encosta (o Arco redesenhou) ou a janela muda.
+  function encaixar(refazer = false) {
     const nosso = document.querySelector(`[${MARCA}]`);
     const busca = document.querySelector('[data-testid="input-search"]');
     const alvo = busca && (busca.closest('form') || busca);
     if (!nosso || !alvo || !nosso.parentElement) return;
+    const falta = () => nosso.getBoundingClientRect().right + 16 - alvo.getBoundingClientRect().left;
+    if (!refazer && falta() <= 0) return;
     const itens = [...nosso.parentElement.children];
     const botoes = itens.map((i) => (i.matches('button, a') ? i : i.querySelector('button, a'))).filter(Boolean);
-    itens.forEach((i) => { i.style.marginRight = ''; });
-    botoes.forEach((b) => { b.style.paddingLeft = ''; b.style.paddingRight = ''; });
-    const falta = () => nosso.getBoundingClientRect().right + 16 - alvo.getBoundingClientRect().left;
+    itens.forEach((i) => { i.style.transition = 'none'; i.style.marginRight = ''; });
+    botoes.forEach((b) => { b.style.transitionProperty = 'background-color, color, box-shadow, border-color'; b.style.paddingLeft = ''; b.style.paddingRight = ''; });
     if (falta() <= 0) return;
     const n = itens.length;
     const margem = parseFloat(getComputedStyle(itens[0]).marginRight) || 0;
@@ -433,7 +436,7 @@
     if (!$('.pop').hidden) $('.pop').hidden = true;
     else if (!gaveta.hidden) fecharPacote();
   }, true);
-  window.addEventListener('resize', posicionar);
+  window.addEventListener('resize', () => { posicionar(); encaixar(true); });
 
   setInterval(() => {
     colocarNaBarra(); // o Arco redesenha a barra as vezes: o item volta
