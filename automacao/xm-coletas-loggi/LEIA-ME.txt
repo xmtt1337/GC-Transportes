@@ -1,0 +1,33 @@
+XM - Coletas Loggi
+==================
+
+PARA QUE SERVE
+  Nas coletas, o Agrupar do Arco recebe pacote do Brasil inteiro.
+  Com a extensao ligada, cada pacote bipado que for de uma cidade da
+  NOSSA abrangencia apita e mostra uma faixa escura no alto da tela,
+  com a cidade e o codigo, para separar. Pacote de fora: nada acontece.
+
+LIGAR E DESLIGAR
+  Clique no icone da extensao na barra do Chrome.
+    ON no icone  = ligada
+    sem nada     = desligada
+  Vale na hora, sem F5. Nao tem nada para configurar.
+
+DE ONDE VEM A ABRANGENCIA
+  Das cidades de todos os circulos da base, na propria Loggi
+  (Distribuir > Circulos). Se a base nao tiver circulo, vale a lista
+  de cidades da base. A lista fica guardada 6 horas por base.
+
+JUNTO COM A XM - AGRUPAMENTO LOGGI
+  Pode ter as duas instaladas. Com a Coletas LIGADA, a Agrupamento
+  fica quieta (nao pede circulo/cidades, nao alerta "de fora", nao
+  trava o Continuar). Desligue a Coletas para voltar a conferir o
+  agrupamento normal.
+
+INSTALAR
+  chrome://extensions > Modo do desenvolvedor > Carregar sem compactacao
+  > escolha a pasta "extensao".
+
+PRIVACIDADE
+  A sessao do Arco fica so na memoria da aba. Do pacote bipado so se
+  usa o codigo e a cidade. Nada sai do computador.

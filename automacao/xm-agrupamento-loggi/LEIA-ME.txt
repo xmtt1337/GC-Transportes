@@ -70,6 +70,11 @@ CONFERENCIA (desde 1.15, na barra de cima do Arco)
   - Filtro "Cidades" igual ao do Arco. "Atualizar" busca de novo.
   - Clicar em outro item da barra volta para a tela da Loggi.
 
+COLETAS (desde 1.18)
+  Com a XM - Coletas Loggi LIGADA no mesmo Chrome, esta fica quieta
+  (nao pede circulo/cidades, nao alerta "de fora", nao trava o
+  Continuar). Desligue a Coletas para conferir o agrupamento.
+
 PRIVACIDADE
   A sessao do Arco fica so na memoria da aba. O link do
   relatorio Na base e usado na hora e esquecido. A extensao le

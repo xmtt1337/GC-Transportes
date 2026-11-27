@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "XM - Coletas Loggi",
+  "version": "1.0",
+  "description": "Coletas no Arco da Loggi: apita quando o pacote bipado no Agrupar e de uma cidade da nossa abrangencia (circulos da base). Clique no icone para ligar ou desligar.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.loggi.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.loggi.com/*"
+      ],
+      "js": [
+        "loggi.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://*.loggi.com/*"
+      ],
+      "js": [
+        "regras.js",
+        "abrangencia.js",
+        "coletas.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_title": "XM - Coletas Loggi: clique para ligar ou desligar",
+    "default_icon": {
+      "16": "img/icone-16.png",
+      "32": "img/icone-32.png",
+      "48": "img/icone-48.png",
+      "128": "img/icone-128.png"
+    }
+  },
+  "icons": {
+    "16": "img/icone-16.png",
+    "32": "img/icone-32.png",
+    "48": "img/icone-48.png",
+    "128": "img/icone-128.png"
+  },
+  "background": {
+    "service_worker": "fundo.js"
+  }
+}

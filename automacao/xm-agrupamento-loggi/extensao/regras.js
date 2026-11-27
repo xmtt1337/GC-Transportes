@@ -570,7 +570,7 @@
   /** O botao clicado e o "Agrupar" (ou "Agrupar pacotes") de alguma tela do Arco? */
   const ehAgrupar = (texto) => /^agrupar( pacotes)?$/.test(String(texto || '').replace(/\s+/g, ' ').trim().toLowerCase());
 
-  const publico = { chave, consertarTexto, formatarNome, aprenderNomes, bonito, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
+  const publico = { chave, curinga, consertarTexto, formatarNome, aprenderNomes, bonito, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
     pendentes, contarNaLista, ordenarCirculos, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar,
     lerCsv, linhasNaBase, linkDoRelatorio, relatorioDaBase, hoje, diaDe, horaDe, resumoNaBase, codigosAvulsos,
     prazoCurto, diasParado, recebidoCurto, situacaoDe, separarParados, contarPorCidade, daCidade, cidadesAtendidas, separarDaBase, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };

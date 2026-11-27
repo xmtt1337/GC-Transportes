@@ -530,11 +530,15 @@
     recado('Escolha um círculo ou pelo menos uma cidade para agrupar.', true);
   }
 
+  // Coleta em andamento (XM - Coletas Loggi ligada: <html data-xm-coletas>): o Agrupar recebe
+  // pacote do Brasil inteiro, entao aqui nao abre escolha, nao alerta "de fora" e nao trava.
+  const emColeta = () => document.documentElement.hasAttribute('data-xm-coletas');
+
   // "Agrupar" em qualquer tela do Arco. O clique segue para a Loggi. Se abriu outra aba, a gaveta
   // abre nela (pedirEscolha); se ficou nesta, abre aqui. Ja bipando nesta tela, nao abre de novo.
   window.addEventListener('click', (e) => {
     const b = e.target && e.target.closest && e.target.closest('button, a, [role="button"]');
-    if (!b || e.composedPath().includes(hospedeiro) || !R.ehAgrupar(b.textContent)) return;
+    if (!b || emColeta() || e.composedPath().includes(hospedeiro) || !R.ehAgrupar(b.textContent)) return;
     // O "Agrupar" de dentro da gaveta/janela da Loggi (o que confirma o grupo, depois do Continuar)
     // nao e o comeco de um agrupamento: so o botao da tela (Na base etc.) abre a escolha.
     if (b.closest('.MuiDrawer-paper, .MuiDialog-paper, .MuiModal-root, [role="dialog"], [role="presentation"]')) {
@@ -626,7 +630,7 @@
   }
 
   window.addEventListener('message', (e) => {
-    if (e.source !== window || !e.data || e.data[CANAL] !== 'bipe' || !Array.isArray(e.data.itens)) return;
+    if (e.source !== window || !e.data || e.data[CANAL] !== 'bipe' || !Array.isArray(e.data.itens) || emColeta()) return;
     let errado = null;
     let algumCerto = false;
     for (const i of e.data.itens) {
@@ -723,7 +727,7 @@
   // Fase de captura no window: o clique para aqui antes do React do Arco.
   window.addEventListener('click', (e) => {
     const b = e.target && e.target.closest && e.target.closest('button');
-    if (!b || b.textContent.replace(/\s+/g, ' ').trim().toLowerCase() !== 'continuar') return;
+    if (!b || emColeta() || b.textContent.replace(/\s+/g, ' ').trim().toLowerCase() !== 'continuar') return;
     const errados = R.pendentes(bipes, textoDaLista(), alvo);
     if (errados.length) {
       e.preventDefault();
@@ -784,7 +788,7 @@
 
   document.documentElement.append(hospedeiro);
   chrome.storage.local.get(['pedirEscolha']).then((s) => {
-    if (s.pedirEscolha && Date.now() - s.pedirEscolha < PEDIDO_MS) setTimeout(abrirGaveta, 300);
+    if (s.pedirEscolha && Date.now() - s.pedirEscolha < PEDIDO_MS) setTimeout(() => { if (!emColeta()) abrirGaveta(); }, 600);
   });
   carregarCfg();
 })();
