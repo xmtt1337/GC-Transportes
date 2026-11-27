@@ -30,10 +30,11 @@ test('lê os grupos e os pacotes sem nome, endereço nem placa de pessoa', () =>
     { _source: { package: { id: '2', tracking_key: 'RASTRO2' }, destination: { city: 'Cidade B' }, status: { code: 89 } } },
   ] } });
   assert.deepStrictEqual(r, { total: 2, pacotes: [
-    { codigo: 'BARRA1', rastreio: 'RASTRO1', id: '1', cidade: 'Cidade A', status: 89, situacao: '', recebido: '', prazo: '', placa: '', placaBipe: '' },
-    { codigo: 'RASTRO2', rastreio: 'RASTRO2', id: '2', cidade: 'Cidade B', status: 89, situacao: '', recebido: '', prazo: '', placa: '', placaBipe: '' },
+    { codigo: 'BARRA1', rastreio: 'RASTRO1', id: '1', cidade: 'Cidade A', status: 89, situacao: '', recebido: '', prazo: '', placa: '', placaBipe: '',
+      ficha: { empresa: '', destinatario: 'Pessoa Teste', rua: 'Rua Teste', numero: '', complemento: '', bairro: '', uf: '', cep: '', direcao: '' } },
+    { codigo: 'RASTRO2', rastreio: 'RASTRO2', id: '2', cidade: 'Cidade B', status: 89, situacao: '', recebido: '', prazo: '', placa: '', placaBipe: '',
+      ficha: { empresa: '', destinatario: '', rua: '', numero: '', complemento: '', bairro: '', uf: '', cep: '', direcao: '' } },
   ] });
-  assert.ok(!JSON.stringify(r).includes('Pessoa Teste') && !JSON.stringify(r).includes('Rua Teste'));
   assert.deepStrictEqual(L.lerAvulsos({}), { pacotes: [], total: 0 });
 });
 
@@ -70,7 +71,14 @@ test('Conferência: abas Chegaram hoje x Todos parados, dias parado, prazo e fil
     last_breadcrumbs_sorting_record: { created: '2026-11-25T11:00:00Z', user_details: { full_name: 'Pessoa Teste' } },
     last_promised_date: { promised_date: '2026-11-27T02:00:00Z' } }, fields: { status_string_v2: ['Transferência finalizada'] } }] } });
   assert.deepStrictEqual([lido.pacotes[0].recebido, lido.pacotes[0].prazo, lido.pacotes[0].situacao], ['2026-11-25T11:00:00Z', '2026-11-27T02:00:00Z', 'Transferência finalizada']);
-  assert.ok(!JSON.stringify(lido).includes('Pessoa Teste'));
+  assert.ok(!JSON.stringify(lido).includes('Pessoa Teste')); // quem bipou (operador) nunca sai
+
+  // recebido = "Chegou em" da Loggi (trigger_date); o ultimo bipe (tratativa de hoje) nao e a chegada
+  const tratativa = L.lerAvulsos({ hits: { hits: [{ _source: {
+    package: { id: '8' }, destination: { city: 'Cidade A' }, status: { code: 12 },
+    last_breadcrumbs_sorting_record: { created: '2026-11-27T14:38:00Z' },
+    last_last_mile_promised_date_annotation: { annotation: { last_mile_promised_date: { promised_date: { trigger_date: '2026-11-23T14:11:00Z' } } } } } }] } });
+  assert.strictEqual(tratativa.pacotes[0].recebido, '2026-11-23T14:11:00Z');
 
   const pacotes = [
     { codigo: 'T1', cidade: 'Cidade A', recebido: '2026-11-25T11:00:00Z', status: 12 },
@@ -125,4 +133,17 @@ test('pacote que já foi agrupado (último bipe numa placa de grupo) sai dos sem
   assert.deepStrictEqual(r.pacotes.map((p) => p.id), ['1', '4']);
   assert.strictEqual(r.emGrupo, 2);
   assert.ok(r.pacotes.every((p) => !('placa' in p) && !('placaBipe' in p)));
+});
+
+test('gaveta do pacote: chegou, nome curto, endereço em linhas e direção, como a da Loggi', () => {
+  assert.strictEqual(R.chegouLongo('2026-11-23T14:11:00Z'), '23 nov, às 11:11');
+  assert.strictEqual(R.chegouLongo(''), '');
+  assert.strictEqual(R.nomeCurto('Pessoa de Teste Silva'), 'Pessoa S.');
+  assert.strictEqual(R.nomeCurto('Pessoa'), 'Pessoa');
+  assert.strictEqual(R.nomeCurto(''), '');
+  assert.deepStrictEqual(R.enderecoDe({ rua: 'Rua Teste', numero: '10', complemento: 'Casa', bairro: 'Centro', uf: 'SC', cep: '89000000' }, 'CIDADE TESTE'),
+    ['Rua Teste, 10 Casa Centro', 'Cidade Teste • SC', '89000-000']);
+  assert.deepStrictEqual(R.enderecoDe({}, ''), []);
+  assert.strictEqual(R.indoPara('PACKAGE_DIRECTION_RETURN'), 'Indo para o endereço do remetente');
+  assert.strictEqual(R.indoPara('PACKAGE_DIRECTION_DELIVERY'), 'Indo para o endereço do destinatário');
 });

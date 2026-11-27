@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "XM - Coletas Loggi",
-  "version": "1.0",
+  "version": "1.0.1",
   "description": "Coletas no Arco da Loggi: apita quando o pacote bipado no Agrupar e de uma cidade da nossa abrangencia (circulos da base). Clique no icone para ligar ou desligar.",
   "permissions": [
     "storage"

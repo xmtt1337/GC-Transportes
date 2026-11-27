@@ -4,7 +4,8 @@
 // com os pacotes que estao SEM GRUPO na Loggi (estacao Recebimento, como Distribuir > Grupos):
 //   Chegaram hoje  - recebidos hoje e ainda sem grupo
 //   Todos parados  - todos sem grupo, ha quantos dias, com o prazo
-// Os pacotes vem pelo loggi.js (sessao da propria pagina); daqui nada sai.
+// Clicar na linha abre a gaveta do pacote (como a do Na base).
+// Os pacotes vem pelo loggi.js (sessao da propria pagina); daqui nada sai nem e guardado.
 
 (() => {
   if (typeof module !== 'undefined') return;
@@ -16,6 +17,8 @@
     caixa: '<path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',
     caixaMarcada: '<path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>',
     seta: '<path d="m7 10 5 5 5-5z"/>',
+    x: '<path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>',
+    direita: '<path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>',
   };
   const svg = (nome) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONE[nome]}</svg>`;
 
@@ -79,6 +82,33 @@
       .pop footer button { white-space: nowrap; padding: 0 16px; min-height: 44px; border-radius: 24px; font: 600 15px 'Open Sans', sans-serif; cursor: pointer; }
       .pop .ver-todos { color: #2e3545; background: none; border: 0; }
       .pop .aplicar { color: #00baff; background: #fff; border: 1px solid #00baff; }
+      /* linha clicavel e gaveta do pacote, como no Na base */
+      .tabela tbody tr { cursor: pointer; }
+      .tabela tbody tr:hover td { background: rgba(0, 0, 0, .04); }
+      .tabela tbody tr.sel td { background: #f3fcff; }
+      .fundo-g { position: fixed; inset: 0; z-index: 1101; }
+      .gaveta { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1102; width: 470px; max-width: 100vw; overflow-y: auto; background: #fff;
+        box-shadow: 0 8px 10px -5px rgba(0,0,0,.2), 0 16px 24px 2px rgba(0,0,0,.14), 0 6px 30px 5px rgba(0,0,0,.12);
+        font: 400 14px/1.5 'Open Sans', sans-serif; color: #2e3545; -webkit-font-smoothing: antialiased; }
+      .gaveta .fechar-g { display: grid; place-items: center; width: 40px; height: 40px; margin: 28px 28px 8px; padding: 0; color: #00baff; background: #fff;
+        border: 1px solid #d8ddeb; border-radius: 50%; cursor: pointer; }
+      .gaveta .fechar-g:hover { background: rgba(0, 186, 255, .04); }
+      .gaveta .bloco { margin: 0 28px; padding: 16px 0 24px; }
+      .gaveta .bloco + .bloco { border-top: 1px solid #f5f8fa; padding-top: 24px; }
+      .gaveta p { margin: 0 0 4px; }
+      .gaveta .st { font-size: 16px; margin-bottom: 8px; }
+      .gaveta .st .ponto { background: #2e3545; }
+      .gaveta .datas p { font-size: 16px; }
+      .gaveta h2 { margin: 20px 0 0; font: 700 28px/1.3 'Open Sans', sans-serif; }
+      .gaveta .emp { font-style: italic; word-break: break-word; }
+      .gaveta .cinza { color: #757d8c; }
+      .gaveta .ficha p + p { margin-top: 8px; }
+      .gaveta .ficha .end p { margin: 0; }
+      .gaveta .historico { display: flex; align-items: center; width: 100%; padding: 20px 28px; color: #2e3545; background: none; border: 0;
+        border-top: 1px solid #f5f8fa; border-bottom: 1px solid #f5f8fa; font: 400 16px 'Open Sans', sans-serif; text-align: left; cursor: pointer; }
+      .gaveta .historico:hover { background: rgba(0, 0, 0, .04); }
+      .gaveta .historico span { flex: 1; }
+      .gaveta .historico .ico { color: #00baff; }
     </style>
     <div class="pagina" hidden>
       <div class="faixa"></div>
@@ -104,7 +134,14 @@
           <div class="corpo"></div>
         </div>
       </div>
-    </div>`;
+    </div>
+    <div class="fundo-g" hidden></div>
+    <aside class="gaveta" role="dialog" aria-label="Pacote" hidden>
+      <button type="button" class="fechar-g" title="Fechar">${svg('x')}</button>
+      <div class="bloco datas"></div>
+      <div class="bloco ficha"></div>
+      <button type="button" class="historico"><span>Ver histórico do pacote</span>${svg('direita')}</button>
+    </aside>`;
 
   const $ = (s) => sombra.querySelector(s);
   const pagina = $('.pagina');
@@ -189,7 +226,7 @@
     }
     const tabela = el('table', 'tabela');
     const cab = el('tr');
-    const colunas = aba === 'hoje' ? ['Código', 'Cidade', 'Recebido', 'Prazo', 'Status'] : ['Código', 'Cidade', 'Recebido', 'Parado há', 'Prazo', 'Status'];
+    const colunas = aba === 'hoje' ? ['Código', 'Cidade', 'Chegou', 'Prazo', 'Status'] : ['Código', 'Cidade', 'Chegou', 'Parado há', 'Prazo', 'Status'];
     colunas.forEach((c) => cab.append(el('th', '', c)));
     const thead = el('thead');
     thead.append(cab);
@@ -204,11 +241,55 @@
       const st = el('td', 'num');
       st.append(el('span', 'ponto'), R.situacaoDe(p));
       tr.append(el('td', 'num', R.prazoCurto(p.prazo)), st);
+      if (aberto === p) tr.classList.add('sel');
+      tr.addEventListener('click', () => { tbody.querySelectorAll('tr.sel').forEach((x) => x.classList.remove('sel')); tr.classList.add('sel'); abrirPacote(p); });
       tbody.append(tr);
     }
     tabela.append(thead, tbody);
     corpo.replaceChildren(tabela);
   }
+
+  // ── gaveta do pacote (clicou na linha), no jeito da gaveta do Na base ─────
+  let aberto = null;
+  const gaveta = $('.gaveta');
+  function abrirPacote(p) {
+    aberto = p;
+    const f = p.ficha || {};
+    const situacao = R.situacaoDe(p);
+    const st = el('p', 'st');
+    st.append(el('span', 'ponto'), situacao);
+    const datas = [st];
+    if (p.recebido) datas.push(el('p', '', `Chegou ${R.chegouLongo(p.recebido)}`));
+    if (p.prazo) datas.push(el('p', '', `${/aguardando/i.test(situacao) ? 'Aguardar' : 'Entregar'} ${R.prazoCurto(p.prazo)}`));
+    datas.push(el('h2', '', 'Na base'));
+    $('.datas').replaceChildren(...datas);
+    const codigo = p.codigo || p.rastreio || p.id;
+    const end = el('div', 'end cinza');
+    end.append(...R.enderecoDe(f, p.cidade).map((l) => el('p', '', l)));
+    $('.ficha').replaceChildren(...[
+      el('p', 'emp', `${f.empresa ? `${f.empresa} ` : ''}#${codigo}`),
+      el('p', 'cinza', R.indoPara(f.direcao)),
+      f.destinatario ? el('p', 'cinza', R.nomeCurto(f.destinatario)) : null,
+      end,
+    ].filter(Boolean));
+    gaveta.hidden = false;
+    $('.fundo-g').hidden = false;
+    gaveta.scrollTop = 0;
+  }
+  function fecharPacote() {
+    aberto = null;
+    gaveta.hidden = true;
+    $('.fundo-g').hidden = true;
+    sombra.querySelectorAll('tr.sel').forEach((x) => x.classList.remove('sel'));
+  }
+  $('.fechar-g').addEventListener('click', fecharPacote);
+  $('.fundo-g').addEventListener('click', fecharPacote);
+  // o historico completo fica na busca da propria Loggi (nova aba; a Conferencia continua aqui)
+  $('.historico').addEventListener('click', () => {
+    if (!aberto) return;
+    const base = location.pathname.split('/').filter(Boolean)[0] || '';
+    window.open(`/${base}/acompanhamento/resultado?pacote=${encodeURIComponent(aberto.codigo || aberto.rastreio || aberto.id)}`, '_blank', 'noopener');
+  });
 
   function desenharFiltro() {
     const base = parados ? parados[aba] : [];
@@ -265,6 +346,33 @@
     embrulho.after(novo);
   }
 
+  // A barra do Arco nao tem folga para mais um item: se o "Conferência" encostar no "Buscar",
+  // tira um pouco do espaco entre os itens (e, se precisar, do respiro dentro deles).
+  function encaixar() {
+    const nosso = document.querySelector(`[${MARCA}]`);
+    const busca = document.querySelector('[data-testid="input-search"]');
+    const alvo = busca && (busca.closest('form') || busca);
+    if (!nosso || !alvo || !nosso.parentElement) return;
+    const itens = [...nosso.parentElement.children];
+    const botoes = itens.map((i) => (i.matches('button, a') ? i : i.querySelector('button, a'))).filter(Boolean);
+    itens.forEach((i) => { i.style.marginRight = ''; });
+    botoes.forEach((b) => { b.style.paddingLeft = ''; b.style.paddingRight = ''; });
+    const falta = () => nosso.getBoundingClientRect().right + 16 - alvo.getBoundingClientRect().left;
+    if (falta() <= 0) return;
+    const n = itens.length;
+    const margem = parseFloat(getComputedStyle(itens[0]).marginRight) || 0;
+    const corte = Math.min(margem, Math.ceil(falta() / n));
+    itens.forEach((i) => { i.style.marginRight = `${margem - corte}px`; });
+    if (falta() <= 0 || !botoes.length) return;
+    const respiro = parseFloat(getComputedStyle(botoes[0]).paddingLeft) || 0;
+    const corte2 = Math.min(Math.max(0, respiro - 4), Math.ceil(falta() / (2 * n)));
+    botoes.forEach((b) => { b.style.paddingLeft = `${respiro - corte2}px`; b.style.paddingRight = `${respiro - corte2}px`; });
+  }
+
+  // Os menus que abrem ao passar o mouse (Performance, Distribuir...) ficam por cima da pagina.
+  const estiloArco = document.createElement('style');
+  estiloArco.textContent = '[data-testid="menu-group-popper"] { z-index: 1150 !important; }';
+
   function itensDaBarra() {
     const nosso = document.querySelector(`[${MARCA}]`);
     if (!nosso || !barraItem) return [];
@@ -310,6 +418,7 @@
     aberta = false;
     pagina.hidden = true;
     $('.pop').hidden = true;
+    fecharPacote();
     marcarBarra(false);
   }
 
@@ -319,11 +428,17 @@
     const b = e.target && e.target.closest && e.target.closest('button, a');
     if (b && !b.closest(`[${MARCA}]`) && itensDaBarra().includes(b)) fechar();
   }, true);
-  window.addEventListener('keydown', (e) => { if (aberta && e.key === 'Escape' && !$('.pop').hidden) $('.pop').hidden = true; }, true);
+  window.addEventListener('keydown', (e) => {
+    if (!aberta || e.key !== 'Escape') return;
+    if (!$('.pop').hidden) $('.pop').hidden = true;
+    else if (!gaveta.hidden) fecharPacote();
+  }, true);
   window.addEventListener('resize', posicionar);
 
   setInterval(() => {
     colocarNaBarra(); // o Arco redesenha a barra as vezes: o item volta
+    encaixar();
+    if (!estiloArco.isConnected) (document.head || document.documentElement).append(estiloArco);
     if (aberta && location.pathname !== caminho) fechar();
     posicionar();
   }, 700);

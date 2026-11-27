@@ -117,8 +117,12 @@
   }
 
   /**
-   * filter_search -> { pacotes: [{ codigo, rastreio, id, cidade, status, situacao, recebido, prazo }], total }
-   * (sem nome nem endereco). recebido = o bipe de recebimento na base (last_breadcrumbs_sorting_record).
+   * filter_search -> { pacotes: [{ codigo, rastreio, id, cidade, status, situacao, recebido, prazo, ficha }], total }
+   * recebido = quando chegou na base: o mesmo "Chegou em" da Loggi (trigger_date da promessa da
+   * ultima milha). O ultimo bipe (last_breadcrumbs_sorting_record) so vale se nao tiver essa data:
+   * ele muda quando alguem mexe no pacote (tratativa, agrupamento) e nao e a chegada.
+   * ficha = o que a gaveta do pacote mostra (empresa, destinatario, endereco). Fica so na memoria
+   * da aba, para a gaveta; nada disso e guardado.
    */
   function lerAvulsos(j) {
     const hits = (j && j.hits) || {};
@@ -126,17 +130,26 @@
       const f = (h && h._source) || {};
       const pac = f.package || {};
       const s = f.last_breadcrumbs_sorting_record || {};
+      const d = f.destination || {};
+      const promessa = (((f.last_last_mile_promised_date_annotation || {}).annotation || {}).last_mile_promised_date || {}).promised_date || {};
       return {
         codigo: String((f.package_integration_info && f.package_integration_info.barcode) || pac.tracking_key || ''),
         rastreio: String(pac.tracking_key || ''), id: String(pac.id || ''),
         cidade: String((f.destination && f.destination.city) || ''), status: Number(f.status && f.status.code) || null,
         situacao: String(((h.fields && (h.fields.status_string_v2 || h.fields.status_string)) || [])[0] || ''),
-        recebido: String(s.created || ''),
+        recebido: String(promessa.trigger_date || s.created || ''),
         prazo: String((f.last_promised_date && f.last_promised_date.promised_date) || ''),
         // placas (de grupo, nao de pessoa): onde o pacote esta e para onde foi o ultimo bipe.
         // So servem para tirar quem ja esta em grupo (semGrupo) e nao saem do loggi.js.
         placa: String((f.unit_load && f.unit_load.license_plate) || ''),
         placaBipe: String((s.destination && s.destination.license_plate) || ''),
+        ficha: {
+          empresa: String((f.company && f.company.name) || ''),
+          destinatario: String((f.recipient && f.recipient.name) || ''),
+          rua: String(d.address_st || ''), numero: String(d.address_number || ''), complemento: String(d.address_complement || ''),
+          bairro: String(d.vicinity || ''), uf: String(d.state || ''), cep: String(d.zip || ''),
+          direcao: String((f.last_package_direction && f.last_package_direction.direction) || ''),
+        },
       };
     }).filter((p) => p.codigo || p.id);
     const total = hits.total && typeof hits.total === 'object' ? Number(hits.total.value) : Number(hits.total);

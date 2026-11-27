@@ -501,6 +501,32 @@
     return `${dia}/${m} ${h}`;
   }
 
+  /** Gaveta do pacote: "23 nov, às 11:11" (como o "Chegou" da Loggi). */
+  function chegouLongo(iso) {
+    const d = diaDe(iso);
+    if (!d) return '';
+    const [, m, dia] = d.split('-').map(Number);
+    return `${String(dia).padStart(2, '0')} ${MES_CURTO[m - 1]}, às ${horaDe(iso)}`;
+  }
+
+  /** Gaveta do pacote, no jeito da Loggi: "Fulano S." e o endereco em tres linhas. */
+  function nomeCurto(nome) {
+    const partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
+    if (partes.length < 2) return partes[0] || '';
+    return `${partes[0]} ${partes[partes.length - 1][0].toUpperCase()}.`;
+  }
+  function enderecoDe(f, cidade) {
+    const x = f || {};
+    const juntar = (...v) => v.map((s) => String(s || '').trim()).filter(Boolean);
+    const cep = String(x.cep || '').replace(/\D/g, '');
+    return [
+      juntar(juntar(x.rua, x.numero).join(', '), x.complemento, x.bairro).join(' '),
+      juntar(bonito(cidade), x.uf).join(' • '),
+      cep.length === 8 ? `${cep.slice(0, 5)}-${cep.slice(5)}` : String(x.cep || '').trim(),
+    ].filter(Boolean);
+  }
+  const indoPara = (direcao) => (/RETURN/i.test(String(direcao || '')) ? 'Indo para o endereço do remetente' : 'Indo para o endereço do destinatário');
+
   const SITUACOES = { 89: 'Sem tentativa' };
   const situacaoDe = (p) => p.situacao || SITUACOES[p.status] || (p.status ? `Status ${p.status}` : '');
 
@@ -573,7 +599,7 @@
   const publico = { chave, curinga, consertarTexto, formatarNome, aprenderNomes, bonito, nomeDoCodigo, cfgVazia, normalizarCfg, listaDaBase, listaDoCirculo, montarAlvo, conferirBipe,
     pendentes, contarNaLista, ordenarCirculos, escolherCirculo, alternarCidade, limpar, adicionarCidade, tirarAdicionada, sugestoes, filtrar, ehAgrupar,
     lerCsv, linhasNaBase, linkDoRelatorio, relatorioDaBase, hoje, diaDe, horaDe, resumoNaBase, codigosAvulsos,
-    prazoCurto, diasParado, recebidoCurto, situacaoDe, separarParados, contarPorCidade, daCidade, cidadesAtendidas, separarDaBase, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };
+    prazoCurto, diasParado, recebidoCurto, chegouLongo, nomeCurto, enderecoDe, indoPara, situacaoDe, separarParados, contarPorCidade, daCidade, cidadesAtendidas, separarDaBase, agrupadosValidos, somarAgrupados, faltantes, naListaAgora };
   if (typeof module !== 'undefined') module.exports = publico;
   else self.XMAgrupamento = publico;
 })();

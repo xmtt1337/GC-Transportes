@@ -67,8 +67,17 @@ CONFERENCIA (desde 1.15, na barra de cima do Arco)
   - Pacote que ja foi agrupado (ultimo bipe num grupo, estacao
     Processamento) sai da lista, mesmo que a Loggi ainda o traga
     nos avulsos (desde 1.17).
+  - "Chegou" e a mesma data do "Chegou em" da Loggi (desde 1.19;
+    antes era o ultimo bipe, que muda quando mexem no pacote, ex.:
+    tratativa de hoje num pacote que chegou dias atras).
+  - Clicar na linha abre a gaveta do pacote, como no Na base:
+    status, chegou, prazo, empresa, destinatario e endereco.
+    "Ver historico do pacote" abre a busca da Loggi em outra aba.
   - Filtro "Cidades" igual ao do Arco. "Atualizar" busca de novo.
   - Clicar em outro item da barra volta para a tela da Loggi.
+  - Os menus da barra (Performance etc.) abrem por cima da tela, e
+    se a barra ficar sem espaco os itens apertam um pouco para o
+    "Conferencia" nao encostar no "Buscar".
 
 COLETAS (desde 1.18)
   Com a XM - Coletas Loggi LIGADA no mesmo Chrome, esta fica quieta
@@ -80,8 +89,9 @@ PRIVACIDADE
   relatorio Na base e usado na hora e esquecido. A extensao le
   da Loggi: a lista de cidades da base, os circulos (nome e
   cidades), do relatorio Na base so codigo, cidade, prazo,
-  chegada e status, e dos pacotes avulsos so codigo, ID, cidade
-  e status. Nome, telefone, CPF e endereco ficam de fora.
+  chegada e status, e dos pacotes avulsos o que a gaveta do
+  pacote mostra (o mesmo da gaveta da Loggi). Isso fica so na
+  memoria da aba, nada e guardado. Telefone e CPF ficam de fora.
 
 INSTALAR
   chrome://extensions > Modo do desenvolvedor > Carregar sem
