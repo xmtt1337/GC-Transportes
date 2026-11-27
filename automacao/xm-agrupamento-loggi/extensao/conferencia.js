@@ -343,6 +343,9 @@
     const texto = [...botao.querySelectorAll('*')].concat([botao]).find((n) => [...n.childNodes].some((c) => c.nodeType === 3 && normal(c.textContent) === 'acareacoes'));
     if (texto) [...texto.childNodes].forEach((c) => { if (c.nodeType === 3 && normal(c.textContent) === 'acareacoes') c.textContent = 'Conferência'; });
     novo.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); abrir(); }, true);
+    // o Arco pinta o item de branco ao passar o mouse (pelo React dele, que a copia nao tem)
+    botao.addEventListener('mouseenter', () => pintar(botao, true));
+    botao.addEventListener('mouseleave', () => { if (!aberta) pintar(botao, false); });
     embrulho.after(novo);
   }
 
@@ -385,17 +388,25 @@
 
   // Selecionado igual ao "Na base" quando aberto (pilula branca, texto azul); o item que a Loggi
   // marcava fica com cara de nao selecionado ate fechar.
+  // Branco com texto azul: igual ao item selecionado (ou com o mouse em cima) do Arco.
+  function pintar(botao, branco) {
+    if (!botao) return;
+    botao.style.backgroundColor = branco ? '#fff' : '';
+    botao.style.color = branco ? '#00baff' : '';
+    botao.style.borderRadius = branco ? '23px' : '';
+  }
+
   function marcarBarra(abrindo) {
     const nosso = document.querySelector(`[${MARCA}]`);
     const botao = nosso && (nosso.matches('button, a') ? nosso : nosso.querySelector('button, a'));
     if (abrindo) {
       ativoDaLoggi = itensDaBarra().filter((e) => getComputedStyle(e).backgroundColor === 'rgb(255, 255, 255)').map((e) => ({ el: e, estilo: e.getAttribute('style') }));
       ativoDaLoggi.forEach(({ el: e }) => { e.style.backgroundColor = 'transparent'; e.style.color = '#fff'; });
-      if (botao) { botao.style.backgroundColor = '#fff'; botao.style.color = '#00baff'; botao.style.borderRadius = '23px'; }
+      pintar(botao, true);
     } else {
       ativoDaLoggi.forEach(({ el: e, estilo }) => { if (estilo == null) e.removeAttribute('style'); else e.setAttribute('style', estilo); });
       ativoDaLoggi = [];
-      if (botao) { botao.style.backgroundColor = ''; botao.style.color = ''; }
+      pintar(botao, botao && botao.matches(':hover'));
     }
   }
 
